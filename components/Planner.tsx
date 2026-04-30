@@ -131,9 +131,32 @@ export default function Planner() {
     return edges.find((e) => e.id === selectedEdgeId) || null;
   }, [edges, selectedEdgeId]);
 
+  const exportBOM = useCallback(() => {
+    const bom = {
+      nodes: nodes.map(n => ({ id: n.id, label: n.data.label })),
+      cables: edges.map(e => ({
+        id: e.id,
+        length: e.data?.length,
+        crossSection: e.data?.crossSection,
+      }))
+    };
+
+    // Dispatch a custom event to notify the Chat component
+    const event = new CustomEvent('export-bom', { detail: bom });
+    window.dispatchEvent(event);
+  }, [nodes, edges]);
+
   return (
     <div className="flex h-screen w-full bg-gray-50 overflow-hidden font-sans">
       <div className="flex-1 h-full relative">
+        <div className="absolute top-4 left-4 z-10">
+          <button
+            onClick={exportBOM}
+            className="bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-4 rounded shadow-md transition-colors"
+          >
+            Stückliste an KI senden
+          </button>
+        </div>
         <ReactFlow
           nodes={nodes}
           edges={edges}
