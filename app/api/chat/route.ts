@@ -2,6 +2,8 @@ import { createOpenAI } from '@ai-sdk/openai';
 import { streamText, embed, convertToModelMessages } from 'ai';
 import pool from '../../../lib/db';
 
+import type { UIMessage } from 'ai';
+
 interface MessagePart {
   type: string;
   text?: string;
@@ -9,9 +11,10 @@ interface MessagePart {
 }
 
 interface Message {
-  role: string;
+  id: string;
+  role: 'system' | 'user' | 'assistant';
   content: string;
-  parts?: MessagePart[];
+  parts?: UIMessage['parts'];
 }
 
 const openai = createOpenAI({
@@ -24,7 +27,9 @@ export const maxDuration = 30;
 export async function POST(req: Request) {
   const { messages }: { messages: Message[] } = await req.json();
   const latestMessage = messages[messages.length - 1];
-  const userQuery = latestMessage?.parts?.find((p: MessagePart) => p.type === 'text')?.text || '';
+  // Use map to avoid type inference issues with find on union types
+  const textParts = latestMessage?.parts?.map((p: any) => p.type === 'text' ? p.text : null).filter(Boolean);
+  const userQuery = (textParts && textParts.length > 0) ? textParts[0] : latestMessage?.content || '';
 
   let contextText = '';
   let productRecommendations = '';
@@ -138,7 +143,7 @@ Antworte auf Deutsch, sei hilfreich und verständlich.
   `;
 
   // 5. Call LLM with the injected system prompt
-  const modelMessages = await convertToModelMessages(messages);
+  const modelMessages = await convertToModelMessages(messages as any);
   const result = streamText({
     model: openai('gpt-4o-mini'),
     messages: [
@@ -148,7 +153,7 @@ Antworte auf Deutsch, sei hilfreich und verständlich.
   });
 
   return result.toUIMessageStreamResponse({
-    originalMessages: messages,
+    originalMessages: messages as any,
     generateMessageId: () => `msg_${Date.now()}`
   });
 }
