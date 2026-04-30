@@ -11,6 +11,11 @@ export const maxDuration = 30;
 
 export async function POST(req: Request) {
   const { messages } = await req.json();
+
+  if (!Array.isArray(messages) || messages.length === 0) {
+    return new Response('Missing or empty messages array', { status: 400 });
+  }
+
   const latestMessage = messages[messages.length - 1];
   const userQuery = latestMessage.parts?.find((p: any) => p.type === 'text')?.text || '';
 
