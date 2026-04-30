@@ -21,15 +21,47 @@ const guides = [
   {
     content: "Dämmung und Isolierung: Armaflex AF ist der Standard im Camperausbau. Es ist selbstklebend und verhindert Kondenswasserbildung. Für Hohlräume eignet sich Schafwolle oder Stopfhanf, da diese Materialien Feuchtigkeit aufnehmen und wieder abgeben können, ohne an Dämmwirkung zu verlieren.",
     metadata: { topic: "isolierung", type: "guide" }
+  },
+  {
+    content: "Nach DIN VDE 0100-721 muss der Mindestquerschnitt für 12V-Kabel im Wohnmobil 1,5 mm² betragen.",
+    metadata: { topic: "elektrik", type: "norm", standard: "VDE 0100-721" }
+  },
+  {
+    content: "Es dürfen im Camper nur feindrähtige Leitungen verwendet werden. Starre NYM-Kabel aus der Hausinstallation sind verboten.",
+    metadata: { topic: "elektrik", type: "norm" }
+  },
+  {
+    content: "Für 230V-Landstrom-Anlagen ist zwingend ein RCD (FI-Schutzschalter) mit maximal 30 mA Fehlerstrom vorgeschrieben.",
+    metadata: { topic: "elektrik", type: "norm", voltage: "230V" }
+  },
+  {
+    content: "LiFePO4-Batterien (Lithium) können zu 80% bis 100% entladen werden (DoD), während AGM-Batterien nur zu maximal 50% entladen werden sollten, um irreparable Schäden zu vermeiden.",
+    metadata: { topic: "batterien", type: "fakt" }
   }
 ];
 
 const dummyComponents = [
-  { name: 'Kabel 1.5mm² (Rot/Schwarz) 10m', type: 'cable', cross_section: 1.5, price: 12.99, brand: 'Auprotec' },
-  { name: 'Kabel 2.5mm² (Rot/Schwarz) 10m', type: 'cable', cross_section: 2.5, price: 18.99, brand: 'Auprotec' },
-  { name: 'Kabel 6mm² (Rot/Schwarz) 5m', type: 'cable', cross_section: 6, price: 24.99, brand: 'Auprotec' },
-  { name: 'Batteriekabel 16mm² 1m', type: 'cable', cross_section: 16, price: 14.50, brand: 'Ebrom' },
-  { name: 'Batteriekabel 25mm² 1m', type: 'cable', cross_section: 25, price: 19.50, brand: 'Ebrom' },
+  // Budget Solar & Charge Controllers
+  { name: 'Eco-Worthy 120W Monokristallines Solarpanel', type: 'solar', cross_section: null, price: 69.99, brand: 'Eco-Worthy' },
+  { name: 'Renogy 100W 12V Monokristallines Solarpanel', type: 'solar', cross_section: null, price: 89.99, brand: 'Renogy' },
+  { name: 'Eco-Worthy 20A MPPT Laderegler', type: 'charge_controller', cross_section: null, price: 54.99, brand: 'Eco-Worthy' },
+  { name: 'Renogy Rover 20A MPPT Laderegler', type: 'charge_controller', cross_section: null, price: 119.99, brand: 'Renogy' },
+
+  // Premium Inverters & MPPTs
+  { name: 'Victron Energy SmartSolar MPPT 75/15', type: 'charge_controller', cross_section: null, price: 145.00, brand: 'Victron Energy' },
+  { name: 'Victron Energy SmartSolar MPPT 100/30', type: 'charge_controller', cross_section: null, price: 210.00, brand: 'Victron Energy' },
+  { name: 'Victron Phoenix Inverter 12/500 230V', type: 'inverter', cross_section: null, price: 185.00, brand: 'Victron Energy' },
+  { name: 'Victron MultiPlus 12/1200/50', type: 'inverter_charger', cross_section: null, price: 650.00, brand: 'Victron Energy' },
+
+  // Standard Cables
+  { name: 'Kabel 1.5mm² FLYY feindrähtig 10m', type: 'cable', cross_section: 1.5, price: 10.99, brand: 'Standard' },
+  { name: 'Kabel 2.5mm² FLYY feindrähtig 10m', type: 'cable', cross_section: 2.5, price: 15.99, brand: 'Standard' },
+  { name: 'Kabel 4mm² FLYY feindrähtig 5m', type: 'cable', cross_section: 4, price: 14.99, brand: 'Standard' },
+  { name: 'Kabel 6mm² FLYY feindrähtig 5m', type: 'cable', cross_section: 6, price: 19.99, brand: 'Standard' },
+  { name: 'Kabel 10mm² FLYY feindrähtig 5m', type: 'cable', cross_section: 10, price: 29.99, brand: 'Standard' },
+  { name: 'Kabel 16mm² Batteriekabel feindrähtig 2m', type: 'cable', cross_section: 16, price: 22.50, brand: 'Standard' },
+
+  // Batteries
   { name: 'AGM Batterie 100Ah', type: 'battery', cross_section: null, price: 149.99, brand: 'Varta' },
   { name: 'LiFePO4 Batterie 100Ah', type: 'battery', cross_section: null, price: 399.00, brand: 'Redodo' },
 ];
