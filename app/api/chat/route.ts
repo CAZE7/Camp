@@ -2,6 +2,18 @@ import { createOpenAI } from '@ai-sdk/openai';
 import { streamText, embed, convertToModelMessages } from 'ai';
 import pool from '../../../lib/db';
 
+interface MessagePart {
+  type: string;
+  text?: string;
+  [key: string]: any;
+}
+
+interface Message {
+  role: string;
+  content: string;
+  parts?: MessagePart[];
+}
+
 const openai = createOpenAI({
   apiKey: process.env.OPENAI_API_KEY || 'dummy_key',
 });
@@ -10,9 +22,9 @@ const openai = createOpenAI({
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
-  const { messages } = await req.json();
+  const { messages }: { messages: Message[] } = await req.json();
   const latestMessage = messages[messages.length - 1];
-  const userQuery = latestMessage.parts?.find((p: any) => p.type === 'text')?.text || '';
+  const userQuery = latestMessage?.parts?.find((p: MessagePart) => p.type === 'text')?.text || '';
 
   let contextText = '';
   let productRecommendations = '';
