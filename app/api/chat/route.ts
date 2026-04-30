@@ -2,6 +2,19 @@ import { createOpenAI } from '@ai-sdk/openai';
 import { streamText, embed, convertToModelMessages } from 'ai';
 import pool from '../../../lib/db';
 
+interface MessagePart {
+  type: string;
+  text?: string;
+  [key: string]: any;
+}
+
+interface Message {
+  id: string;
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+  parts?: MessagePart[];
+}
+
 const openai = createOpenAI({
   apiKey: process.env.OPENAI_API_KEY || 'dummy_key',
 });
@@ -10,9 +23,14 @@ const openai = createOpenAI({
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
-  const { messages } = await req.json();
+  const { messages }: { messages: Message[] } = await req.json();
+
+  if (!Array.isArray(messages) || messages.length === 0) {
+    return new Response('Missing or empty messages array', { status: 400 });
+  }
+
   const latestMessage = messages[messages.length - 1];
-  const userQuery = latestMessage.parts?.find((p: any) => p.type === 'text')?.text || '';
+  const userQuery = latestMessage?.parts?.find((p: MessagePart) => p.type === 'text')?.text || '';
 
   let contextText = '';
   let productRecommendations = '';
@@ -44,29 +62,52 @@ export async function POST(req: Request) {
       try {
         const bom = JSON.parse(bomMatch[1]);
         const cables = bom.cables || [];
+        const uniqueCrossSections = Array.from(new Set(
+          cables
+            .map((c: any) => c.crossSection)
+            .filter((cs: any) => cs !== null && cs !== undefined)
+        ));
 
-        // Find matching products for each cable in the BOM based on crossSection
         const recommendedProducts = [];
 
-        for (const cable of cables) {
-            if (cable.crossSection) {
-                const productQuery = `
-                    SELECT name, brand, price, cross_section
-                    FROM Components
-                    WHERE type = 'cable' AND cross_section = $1
-                    ORDER BY price ASC
-                    LIMIT 2
-                `;
-                const productRes = await client.query(productQuery, [cable.crossSection]);
+        if (uniqueCrossSections.length > 0) {
+          // Optimized: Fetch all matching products for all unique crossSections in a single query
+          // Using a Window Function (ROW_NUMBER) to get the top 2 cheapest products per cross_section
+          const productQuery = `
+            WITH RankedProducts AS (
+              SELECT name, brand, price, cross_section,
+                     ROW_NUMBER() OVER(PARTITION BY cross_section ORDER BY price ASC) as rank
+              FROM Components
+              WHERE type = 'cable' AND cross_section = ANY($1)
+            )
+            SELECT name, brand, price, cross_section
+            FROM RankedProducts
+            WHERE rank <= 2
+            ORDER BY cross_section, price ASC
+          `;
+          const productRes = await client.query(productQuery, [uniqueCrossSections]);
 
-                if (productRes.rows.length > 0) {
-                    recommendedProducts.push({
-                        needed_crossSection: cable.crossSection,
-                        length: cable.length,
-                        recommendations: productRes.rows
-                    });
-                }
+          // Group the database results by cross_section for efficient lookup
+          const productsByCrossSection: Record<string, any[]> = {};
+          for (const row of productRes.rows) {
+            const cs = row.cross_section.toString();
+            if (!productsByCrossSection[cs]) {
+              productsByCrossSection[cs] = [];
             }
+            productsByCrossSection[cs].push(row);
+          }
+
+          // Map back to the original cables list to preserve order and include lengths
+          for (const cable of cables) {
+            const csKey = cable.crossSection?.toString();
+            if (csKey && productsByCrossSection[csKey]) {
+              recommendedProducts.push({
+                needed_crossSection: cable.crossSection,
+                length: cable.length,
+                recommendations: productsByCrossSection[csKey]
+              });
+            }
+          }
         }
 
         if (recommendedProducts.length > 0) {
@@ -103,7 +144,8 @@ Antworte auf Deutsch, sei hilfreich und verständlich.
   `;
 
   // 5. Call LLM with the injected system prompt
-  const modelMessages = await convertToModelMessages(messages);
+  // Convert Message[] to CoreMessage[] for AI SDK
+  const modelMessages = await convertToModelMessages(messages as any);
   const result = streamText({
     model: openai('gpt-4o-mini'),
     messages: [
@@ -113,7 +155,7 @@ Antworte auf Deutsch, sei hilfreich und verständlich.
   });
 
   return result.toUIMessageStreamResponse({
-    originalMessages: messages,
+    originalMessages: messages as any,
     generateMessageId: () => `msg_${Date.now()}`
   });
 }
