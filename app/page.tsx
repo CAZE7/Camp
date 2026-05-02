@@ -54,12 +54,15 @@ export default function Home() {
             <div className="uppercase tracking-wide text-sm text-blue-600 font-semibold mb-2">Wissen</div>
             <h2 className="block mt-1 text-2xl leading-tight font-bold text-gray-900">Ausbau-Guides</h2>
             <p className="mt-4 text-gray-600 text-lg">
-              Schritt-für-Schritt Anleitungen und Fachwissen. Aktuell verfügbar: unser umfassender Guide zum Holzausbau.
+              Schritt-für-Schritt Anleitungen und Fachwissen. Entdecke unseren detaillierten Ausbau-Fahrplan und den Guide zum Holzausbau.
             </p>
           </div>
-          <div className="p-8 pt-0 mt-auto">
+          <div className="p-8 pt-0 mt-auto space-y-4">
+             <Link href="/guides/ausbau-fahrplan" className="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 md:py-4 md:text-lg">
+                Fahrplan ansehen
+             </Link>
              <Link href="/guides/holzausbau" className="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 md:py-4 md:text-lg">
-                Guides lesen
+                Holzausbau-Guide
              </Link>
           </div>
         </div>
