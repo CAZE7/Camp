@@ -1,9 +1,10 @@
 import React from 'react';
-import { BaseEdge, EdgeProps, getBezierPath, EdgeLabelRenderer, useReactFlow } from 'reactflow';
+import { BaseEdge, EdgeProps, getBezierPath, getSmoothStepPath, EdgeLabelRenderer, useReactFlow } from 'reactflow';
 
 export type CableEdgeData = {
   length: number;
   crossSection?: number; // Made optional as it's computed now
+  isProMode?: boolean;
 };
 
 export default function CableEdge({
@@ -24,14 +25,20 @@ export default function CableEdge({
   const { getNodes } = useReactFlow();
   const nodes = getNodes();
 
-  const [edgePath, labelX, labelY] = getBezierPath({
+  const isProMode = data?.isProMode ?? false;
+
+  const pathParams = {
     sourceX,
     sourceY,
     sourcePosition,
     targetX,
     targetY,
     targetPosition,
-  });
+  };
+
+  const [edgePath, labelX, labelY] = isProMode
+    ? getSmoothStepPath({ ...pathParams, borderRadius: 5 })
+    : getBezierPath(pathParams);
 
   const length = data?.length ?? 3;
 
