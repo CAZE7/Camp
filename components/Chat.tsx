@@ -23,8 +23,10 @@ export default function Chat() {
       });
     };
 
-    window.addEventListener('export-bom', handleExportBOM);
-    return () => window.removeEventListener('export-bom', handleExportBOM);
+    if (typeof window !== 'undefined') {
+      window.addEventListener('export-bom', handleExportBOM);
+      return () => window.removeEventListener('export-bom', handleExportBOM);
+    }
   }, [sendMessage]);
 
   if (!isOpen) {

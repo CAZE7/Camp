@@ -101,7 +101,7 @@ export default function CableEdge({
 
   // Animation duration calculation based on Current (I)
   // Higher I = faster animation (shorter duration). Base duration 5s, min 0.5s.
-  const animationDuration = Math.max(0.5, 5 - (I / 10));
+  const animationDuration = Number.isNaN(I) || !isFinite(I) ? 5 : Math.max(0.5, 5 - (I / 10));
 
   return (
     <>
