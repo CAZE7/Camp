@@ -9,10 +9,18 @@ export default function ConsumerNode({ id, data, isConnectable }: any) {
         <div>Leistung: {data.watts || 0} W</div>
         <div>Nutzung: {data.hours || 0} h/Tag</div>
       </div>
-      <Handle type="target" position={Position.Left} id="plus" style={{ background: 'red', top: '30%' }} isConnectable={isConnectable} />
-      <Handle type="target" position={Position.Left} id="minus" style={{ background: 'black', top: '70%' }} isConnectable={isConnectable} />
-      <Handle type="source" position={Position.Right} id="out-plus" style={{ background: 'red', top: '30%' }} isConnectable={isConnectable} />
-      <Handle type="source" position={Position.Right} id="out-minus" style={{ background: 'black', top: '70%' }} isConnectable={isConnectable} />
+      <Handle type="target" position={Position.Left} id="plus"  isConnectable={isConnectable}  style={{ background: 'transparent', border: 'none', width: '24px', height: '24px', zIndex: 10, display: 'flex', justifyContent: 'center', alignItems: 'center', top: '30%' }}>
+        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'red', pointerEvents: 'none' }} />
+      </Handle>
+      <Handle type="target" position={Position.Left} id="minus"  isConnectable={isConnectable}  style={{ background: 'transparent', border: 'none', width: '24px', height: '24px', zIndex: 10, display: 'flex', justifyContent: 'center', alignItems: 'center', top: '70%' }}>
+        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'black', pointerEvents: 'none' }} />
+      </Handle>
+      <Handle type="source" position={Position.Right} id="out-plus"  isConnectable={isConnectable}  style={{ background: 'transparent', border: 'none', width: '24px', height: '24px', zIndex: 10, display: 'flex', justifyContent: 'center', alignItems: 'center', top: '30%' }}>
+        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'red', pointerEvents: 'none' }} />
+      </Handle>
+      <Handle type="source" position={Position.Right} id="out-minus"  isConnectable={isConnectable}  style={{ background: 'transparent', border: 'none', width: '24px', height: '24px', zIndex: 10, display: 'flex', justifyContent: 'center', alignItems: 'center', top: '70%' }}>
+        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'black', pointerEvents: 'none' }} />
+      </Handle>
     </div>
   );
 }

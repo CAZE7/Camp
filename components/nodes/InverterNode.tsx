@@ -9,9 +9,15 @@ export default function InverterNode({ id, data, isConnectable }: any) {
         <div>12V in / 230V out</div>
         <div>Effizienz: 85%</div>
       </div>
-      <Handle type="target" position={Position.Left} id="in-plus" style={{ background: 'red', top: '30%' }} isConnectable={isConnectable} />
-      <Handle type="target" position={Position.Left} id="in-minus" style={{ background: 'black', top: '70%' }} isConnectable={isConnectable} />
-      <Handle type="source" position={Position.Right} id="out-plus" style={{ background: 'blue', top: '50%' }} isConnectable={isConnectable} />
+      <Handle type="target" position={Position.Left} id="in-plus"  isConnectable={isConnectable}  style={{ background: 'transparent', border: 'none', width: '24px', height: '24px', zIndex: 10, display: 'flex', justifyContent: 'center', alignItems: 'center', top: '30%' }}>
+        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'red', pointerEvents: 'none' }} />
+      </Handle>
+      <Handle type="target" position={Position.Left} id="in-minus"  isConnectable={isConnectable}  style={{ background: 'transparent', border: 'none', width: '24px', height: '24px', zIndex: 10, display: 'flex', justifyContent: 'center', alignItems: 'center', top: '70%' }}>
+        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'black', pointerEvents: 'none' }} />
+      </Handle>
+      <Handle type="source" position={Position.Right} id="out-plus"  isConnectable={isConnectable}  style={{ background: 'transparent', border: 'none', width: '24px', height: '24px', zIndex: 10, display: 'flex', justifyContent: 'center', alignItems: 'center', top: '50%' }}>
+        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'blue', pointerEvents: 'none' }} />
+      </Handle>
     </div>
   );
 }

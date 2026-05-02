@@ -8,10 +8,18 @@ export default function ChargerNode({ id, data, isConnectable }: any) {
       <div className="flex flex-col gap-1 text-xs text-gray-600">
         <div>Ladeleistung: {data.amps || 0} A</div>
       </div>
-      <Handle type="source" position={Position.Right} id="plus" style={{ background: 'red', top: '30%' }} isConnectable={isConnectable} />
-      <Handle type="source" position={Position.Right} id="minus" style={{ background: 'black', top: '70%' }} isConnectable={isConnectable} />
-      <Handle type="target" position={Position.Left} id="in-plus" style={{ background: 'red', top: '30%' }} isConnectable={isConnectable} />
-      <Handle type="target" position={Position.Left} id="in-minus" style={{ background: 'black', top: '70%' }} isConnectable={isConnectable} />
+      <Handle type="source" position={Position.Right} id="plus"  isConnectable={isConnectable}  style={{ background: 'transparent', border: 'none', width: '24px', height: '24px', zIndex: 10, display: 'flex', justifyContent: 'center', alignItems: 'center', top: '30%' }}>
+        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'red', pointerEvents: 'none' }} />
+      </Handle>
+      <Handle type="source" position={Position.Right} id="minus"  isConnectable={isConnectable}  style={{ background: 'transparent', border: 'none', width: '24px', height: '24px', zIndex: 10, display: 'flex', justifyContent: 'center', alignItems: 'center', top: '70%' }}>
+        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'black', pointerEvents: 'none' }} />
+      </Handle>
+      <Handle type="target" position={Position.Left} id="in-plus"  isConnectable={isConnectable}  style={{ background: 'transparent', border: 'none', width: '24px', height: '24px', zIndex: 10, display: 'flex', justifyContent: 'center', alignItems: 'center', top: '30%' }}>
+        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'red', pointerEvents: 'none' }} />
+      </Handle>
+      <Handle type="target" position={Position.Left} id="in-minus"  isConnectable={isConnectable}  style={{ background: 'transparent', border: 'none', width: '24px', height: '24px', zIndex: 10, display: 'flex', justifyContent: 'center', alignItems: 'center', top: '70%' }}>
+        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'black', pointerEvents: 'none' }} />
+      </Handle>
     </div>
   );
 }
