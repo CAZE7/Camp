@@ -12,17 +12,21 @@ export default function GroundNode({ id, data, isConnectable }: any) {
         type="target"
         position={Position.Left}
         id="in-minus"
-        style={{ background: 'black' }}
+
         isConnectable={isConnectable}
-      />
+       style={{ background: 'transparent', border: 'none', width: '24px', height: '24px', zIndex: 10, display: 'flex', justifyContent: 'center', alignItems: 'center', top: '50%' }}>
+        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'black', pointerEvents: 'none' }} />
+      </Handle>
       {/* Source handle for continuing ground connection */}
       <Handle
         type="source"
         position={Position.Right}
         id="out-minus"
-        style={{ background: 'black' }}
+
         isConnectable={isConnectable}
-      />
+       style={{ background: 'transparent', border: 'none', width: '24px', height: '24px', zIndex: 10, display: 'flex', justifyContent: 'center', alignItems: 'center', top: '50%' }}>
+        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'black', pointerEvents: 'none' }} />
+      </Handle>
     </div>
   );
 }

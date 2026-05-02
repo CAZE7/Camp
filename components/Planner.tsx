@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useMemo, useState } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import ReactFlow, {
   Background,
   Controls,
@@ -133,6 +134,8 @@ function PlannerInner() {
   const [nodes, setNodes] = useState<Node[]>(initialNodes);
   const [edges, setEdges] = useState<Edge<CableEdgeData>[]>(initialEdges);
   const [season, setSeason] = useState<'summer' | 'winter'>('summer');
+  const [isLeftSidebarOpen, setIsLeftSidebarOpen] = useState(true);
+  const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(true);
 
   const [selectedNodes, setSelectedNodes] = useState<Node[]>([]);
   const [selectedEdges, setSelectedEdges] = useState<Edge[]>([]);
@@ -520,9 +523,34 @@ function PlannerInner() {
   });
 
   return (
-    <div className="flex h-screen w-full bg-gray-50 overflow-hidden font-sans">
-      <Sidebar />
-      <div className="flex-1 h-full relative">
+    <div className="flex h-screen w-full bg-gray-50 overflow-hidden font-sans relative">
+      <div
+        className={`transition-all duration-300 ease-in-out ${isLeftSidebarOpen ? 'w-64 translate-x-0' : 'w-0 -translate-x-full'} z-20 flex-shrink-0 bg-white shadow-sm`}
+      >
+        <div className="w-64 h-full">
+          <Sidebar />
+        </div>
+      </div>
+
+      <button
+        onClick={() => setIsLeftSidebarOpen(!isLeftSidebarOpen)}
+        className="absolute top-1/2 -translate-y-1/2 z-30 bg-white text-gray-700 hover:bg-gray-100 p-2 rounded shadow-md transition-all duration-300 border border-gray-200"
+        style={{ left: isLeftSidebarOpen ? 'calc(16rem + 1rem)' : '1rem' }}
+        title={isLeftSidebarOpen ? "Sidebar einklappen" : "Sidebar ausklappen"}
+      >
+        {isLeftSidebarOpen ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
+      </button>
+
+      <button
+        onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)}
+        className="absolute top-1/2 -translate-y-1/2 z-30 bg-white text-gray-700 hover:bg-gray-100 p-2 rounded shadow-md transition-all duration-300 border border-gray-200"
+        style={{ right: isRightSidebarOpen ? 'calc(250px + 1rem)' : '1rem' }}
+        title={isRightSidebarOpen ? "Inspector einklappen" : "Inspector ausklappen"}
+      >
+        {isRightSidebarOpen ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+      </button>
+
+      <div className="flex-1 h-full relative overflow-hidden flex flex-col">
         <div className="absolute top-4 left-4 z-10 flex gap-2">
           <button
             onClick={exportBOM}
@@ -640,14 +668,21 @@ function PlannerInner() {
           </div>
         )}
       </div>
-      <Inspector
-        selectedEdge={selectedEdge}
-        selectedNode={selectedNode}
-        onChangeLength={handleChangeLength}
-        onChangeCrossSection={handleChangeCrossSection}
-        onDelete={deleteSelected}
-        onUpdateNodeData={updateNodeData}
-      />
+
+      <div
+        className={`transition-all duration-300 ease-in-out ${isRightSidebarOpen ? 'w-[250px] translate-x-0' : 'w-0 translate-x-full'} z-20 flex-shrink-0 bg-white shadow-sm`}
+      >
+        <div className="w-[250px] h-full">
+          <Inspector
+            selectedEdge={selectedEdge}
+            selectedNode={selectedNode}
+            onChangeLength={handleChangeLength}
+            onChangeCrossSection={handleChangeCrossSection}
+            onDelete={deleteSelected}
+            onUpdateNodeData={updateNodeData}
+          />
+        </div>
+      </div>
     </div>
   );
 }

@@ -9,7 +9,9 @@ export default function Consumer230VNode({ id, data, isConnectable }: any) {
         <div>Leistung: {data.watts || 0} W</div>
         <div>Nutzung: {data.hours || 0} h/Tag</div>
       </div>
-      <Handle type="target" position={Position.Left} id="in-plus" style={{ background: 'blue', top: '50%' }} isConnectable={isConnectable} />
+      <Handle type="target" position={Position.Left} id="in-plus"  isConnectable={isConnectable}  style={{ background: 'transparent', border: 'none', width: '24px', height: '24px', zIndex: 10, display: 'flex', justifyContent: 'center', alignItems: 'center', top: '50%' }}>
+        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'blue', pointerEvents: 'none' }} />
+      </Handle>
     </div>
   );
 }
