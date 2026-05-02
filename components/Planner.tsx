@@ -338,6 +338,158 @@ function PlannerInner() {
     });
   }, [nodes, edges, fitView]);
 
+  const autoWireSystem = useCallback(() => {
+    const batteryNode = nodes.find(n => n.type === 'battery');
+    if (!batteryNode) {
+      alert("Bitte zuerst eine Batterie platzieren");
+      return;
+    }
+
+    let currentNodes = [...nodes];
+    let newEdges = [];
+    let edgeIdCounter = 1;
+
+    let fuseNode = currentNodes.find(n => n.type === 'fuse');
+    if (!fuseNode) {
+      fuseNode = {
+        id: 'fuse-auto-' + Date.now(),
+        type: 'fuse',
+        position: { x: batteryNode.position.x + 300, y: batteryNode.position.y },
+        data: { label: 'Zentraler Sicherungskasten', rating: 100 }
+      };
+      currentNodes.push(fuseNode);
+    }
+
+    // Connect Battery to Fuse
+    newEdges.push({
+      id: `e-auto-${edgeIdCounter++}`,
+      source: batteryNode.id,
+      target: fuseNode.id,
+      sourceHandle: 'plus',
+      targetHandle: 'in-plus',
+      type: 'cable',
+      data: { length: 1, crossSection: 35 } // main cable
+    });
+    newEdges.push({
+      id: `e-auto-${edgeIdCounter++}`,
+      source: batteryNode.id,
+      target: fuseNode.id,
+      sourceHandle: 'minus',
+      targetHandle: 'in-minus',
+      type: 'cable',
+      data: { length: 1, crossSection: 35 } // main cable
+    });
+
+    // Consumers
+    const consumers = currentNodes.filter(n => n.type === 'consumer' || n.type === 'consumer230v');
+    consumers.forEach(consumer => {
+      const I = (consumer.data.watts || 0) / 12;
+      const length = 3.0; // standard length
+      const calculatedA = (I * (length * 2)) / (58 * 0.24);
+      const minRequiredA = Math.max(1.5, calculatedA);
+      const VDE_SIZES = [1.5, 2.5, 4.0, 6.0, 10.0, 16.0, 25.0, 35.0, 50.0];
+      const crossSection = VDE_SIZES.find(size => size >= minRequiredA) || 50.0;
+
+      let fuseSize = 15;
+      if (crossSection === 1.5) fuseSize = 15;
+      else if (crossSection === 2.5) fuseSize = 20;
+      else if (crossSection === 4.0) fuseSize = 30;
+      else if (crossSection === 6.0) fuseSize = 40;
+      else if (crossSection >= 10.0) fuseSize = 60;
+
+      newEdges.push({
+        id: `e-auto-${edgeIdCounter++}`,
+        source: fuseNode.id,
+        target: consumer.id,
+        sourceHandle: 'out-plus',
+        targetHandle: consumer.type === 'consumer230v' ? 'in-plus' : 'plus',
+        type: 'cable',
+        data: { length, crossSection, fuseSize }
+      });
+
+      if (consumer.type !== 'consumer230v') {
+         newEdges.push({
+            id: `e-auto-${edgeIdCounter++}`,
+            source: fuseNode.id,
+            target: consumer.id,
+            sourceHandle: 'out-minus',
+            targetHandle: 'minus',
+            type: 'cable',
+            data: { length, crossSection }
+          });
+      }
+    });
+
+    // Solar
+    const solars = currentNodes.filter(n => n.type === 'solar');
+    if (solars.length > 0) {
+      let mpptNode = currentNodes.find(n => n.type === 'charger' && n.data.label?.toLowerCase().includes('mppt'));
+      if (!mpptNode) {
+        mpptNode = currentNodes.find(n => n.type === 'charger');
+      }
+
+      if (!mpptNode) {
+        mpptNode = {
+          id: 'mppt-auto-' + Date.now(),
+          type: 'charger',
+          position: { x: batteryNode.position.x - 300, y: batteryNode.position.y - 200 },
+          data: { label: 'MPPT Laderegler', amps: 30 }
+        };
+        currentNodes.push(mpptNode);
+      }
+
+      solars.forEach(solar => {
+        newEdges.push({
+          id: `e-auto-${edgeIdCounter++}`,
+          source: solar.id,
+          target: mpptNode.id,
+          sourceHandle: 'out-plus',
+          targetHandle: 'in-plus',
+          type: 'cable',
+          data: { length: 5, crossSection: 6, fuseSize: 30 }
+        });
+        newEdges.push({
+          id: `e-auto-${edgeIdCounter++}`,
+          source: solar.id,
+          target: mpptNode.id,
+          sourceHandle: 'out-minus',
+          targetHandle: 'in-minus',
+          type: 'cable',
+          data: { length: 5, crossSection: 6 }
+        });
+      });
+
+      // Connect MPPT to Battery
+      newEdges.push({
+        id: `e-auto-${edgeIdCounter++}`,
+        source: mpptNode.id,
+        target: batteryNode.id,
+        sourceHandle: 'plus',
+        targetHandle: 'in-plus',
+        type: 'cable',
+        data: { length: 2, crossSection: 10, fuseSize: 40 }
+      });
+      newEdges.push({
+        id: `e-auto-${edgeIdCounter++}`,
+        source: mpptNode.id,
+        target: batteryNode.id,
+        sourceHandle: 'minus',
+        targetHandle: 'in-minus',
+        type: 'cable',
+        data: { length: 2, crossSection: 10 }
+      });
+    }
+
+    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(currentNodes, newEdges, 'LR');
+    setNodes([...layoutedNodes]);
+    setEdges([...layoutedEdges]);
+
+    window.requestAnimationFrame(() => {
+      fitView({ duration: 800 });
+    });
+  }, [nodes, fitView, setNodes, setEdges]);
+
+
   const handleChangeLength = useCallback((id: string, length: number) => {
     setEdges((eds) =>
       eds.map((e) => {
@@ -636,6 +788,14 @@ function PlannerInner() {
             className="bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-4 rounded shadow-md transition-colors"
           >
             Stückliste an KI senden
+          </button>
+
+
+          <button
+            onClick={autoWireSystem}
+            className="bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-semibold py-2 px-4 rounded shadow-md transition-colors border border-yellow-500"
+          >
+            ⚡ Automatisch Verkabeln & Absichern
           </button>
 
           <button
