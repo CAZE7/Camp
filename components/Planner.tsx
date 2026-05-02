@@ -34,8 +34,11 @@ import SolarNode from './nodes/SolarNode';
 import GroundNode from './nodes/GroundNode';
 import RoofWindowNode from './nodes/RoofWindowNode';
 import RoofSolarNode from './nodes/RoofSolarNode';
+import WaterNode from './nodes/WaterNode';
+import WaterPipeEdge from './edges/WaterPipeEdge';
 import Inspector from './Inspector';
 import Sidebar from './Sidebar';
+import HeatingCalculator from './HeatingCalculator';
 import dagre from 'dagre';
 import { toPng } from 'html-to-image';
 
@@ -134,11 +137,14 @@ const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'LR') => 
 };
 
 function PlannerInner() {
-  const [viewMode, setViewMode] = useState<'electric' | 'roof'>('electric');
+  const [viewMode, setViewMode] = useState<'electric' | 'roof' | 'water'>('electric');
   const [nodes, setNodes] = useState<Node[]>(initialNodes);
   const [edges, setEdges] = useState<Edge<CableEdgeData>[]>(initialEdges);
   const [roofNodes, setRoofNodes] = useState<Node[]>([]);
   const [roofEdges, setRoofEdges] = useState<Edge[]>([]);
+  const [waterNodes, setWaterNodes] = useState<Node[]>([]);
+  const [waterEdges, setWaterEdges] = useState<Edge[]>([]);
+  const [waterWarning, setWaterWarning] = useState<string | null>(null);
 
   const [season, setSeason] = useState<'summer' | 'winter'>('summer');
   const [isLeftSidebarOpen, setIsLeftSidebarOpen] = useState(true);
@@ -154,7 +160,7 @@ function PlannerInner() {
 
   const { screenToFlowPosition, fitView } = useReactFlow();
 
-  const edgeTypes = useMemo(() => ({ cableEdge: CableEdge }), []);
+  const edgeTypes = useMemo(() => ({ cableEdge: CableEdge, waterPipe: WaterPipeEdge }), []);
   const nodeTypes = useMemo(() => ({
     battery: BatteryNode,
     consumer: ConsumerNode,
@@ -166,7 +172,14 @@ function PlannerInner() {
     solar: SolarNode,
     ground: GroundNode,
     roofWindow: RoofWindowNode,
-    roofSolar: RoofSolarNode
+    roofSolar: RoofSolarNode,
+    freshWaterTank: WaterNode,
+    grayWaterTank: WaterNode,
+    pump: WaterNode,
+    accumulator: WaterNode,
+    preFilter: WaterNode,
+    sink: WaterNode,
+    shower: WaterNode
   }), []);
 
   const onNodesChange: OnNodesChange = useCallback(
@@ -188,6 +201,16 @@ function PlannerInner() {
 
   const onRoofEdgesChange: OnEdgesChange = useCallback(
     (changes) => setRoofEdges((eds) => applyEdgeChanges(changes, eds)),
+    []
+  );
+
+  const onWaterNodesChange: OnNodesChange = useCallback(
+    (changes) => setWaterNodes((nds) => applyNodeChanges(changes, nds)),
+    []
+  );
+
+  const onWaterEdgesChange: OnEdgesChange = useCallback(
+    (changes) => setWaterEdges((eds) => applyEdgeChanges(changes, eds)),
     []
   );
 
@@ -215,6 +238,17 @@ function PlannerInner() {
 
   const isValidConnection = useCallback(
     (connection: Connection) => {
+      const allNodes = [...nodes, ...roofNodes, ...waterNodes];
+      const sourceNode = allNodes.find((n) => n.id === connection.source);
+      const targetNode = allNodes.find((n) => n.id === connection.target);
+
+      if (viewMode === 'water') {
+        if (sourceNode?.type === 'grayWaterTank' && targetNode?.type === 'sink') {
+          return false;
+        }
+        return true;
+      }
+
       // Pre-check for polarity matching
       const sHandle = connection.sourceHandle || '';
       const tHandle = connection.targetHandle || '';
@@ -223,9 +257,6 @@ function PlannerInner() {
       const tIsPlus = tHandle.includes('plus');
       const sIsMinus = sHandle.includes('minus');
       const tIsMinus = tHandle.includes('minus');
-
-      const sourceNode = nodes.find((n) => n.id === connection.source);
-      const targetNode = nodes.find((n) => n.id === connection.target);
 
       // Exception for series connection between batteries or solars
       const isSeriesException =
@@ -263,6 +294,29 @@ function PlannerInner() {
   const onConnect: OnConnect = useCallback(
     (connection) => {
       if (!connection.source || !connection.target) return;
+
+      if (viewMode === 'water') {
+        const allNodes = [...waterNodes];
+        const sourceNode = allNodes.find((n) => n.id === connection.source);
+        const targetNode = allNodes.find((n) => n.id === connection.target);
+
+        if (sourceNode?.type === 'pump' && targetNode?.type === 'sink') {
+          setWaterWarning("Ein Accumulator schont die Pumpe und verhindert stotternden Wasserfluss.");
+          setTimeout(() => setWaterWarning(null), 5000);
+        }
+
+        const newEdge: Edge = {
+          source: connection.source,
+          target: connection.target,
+          sourceHandle: connection.sourceHandle,
+          targetHandle: connection.targetHandle,
+          id: `ew-${connection.source}-${connection.target}-${Date.now()}`,
+          type: 'waterPipe',
+          data: {}
+        };
+        setWaterEdges((eds) => addEdge(newEdge, eds));
+        return;
+      }
 
       const newEdge: Edge<CableEdgeData> = {
         source: connection.source,
@@ -626,6 +680,8 @@ function PlannerInner() {
 
       if (viewMode === 'roof') {
         setRoofNodes((nds) => nds.concat(newNode));
+      } else if (viewMode === 'water') {
+        setWaterNodes((nds) => nds.concat(newNode));
       } else {
         setNodes((nds) => nds.concat(newNode));
       }
@@ -781,6 +837,12 @@ function PlannerInner() {
             >
               Dach-Planer
             </button>
+            <button
+              className={`px-4 py-2 font-semibold text-sm transition-colors ${viewMode === 'water' ? 'bg-cyan-500 text-white' : 'bg-transparent text-gray-600 hover:bg-gray-50/50'}`}
+              onClick={() => setViewMode('water')}
+            >
+              Wasser & Sanitär
+            </button>
           </div>
 
           <button
@@ -834,13 +896,18 @@ function PlannerInner() {
             {isProMode ? 'Profi-Modus (CAD-Optik) An' : 'Profi-Modus (CAD-Optik) Aus'}
           </button>
         </div>
+        {waterWarning && (
+          <div className="absolute top-20 left-1/2 -translate-x-1/2 z-50 bg-yellow-100 text-yellow-800 border border-yellow-300 p-4 rounded-xl shadow-xl font-semibold">
+            ⚠️ {waterWarning}
+          </div>
+        )}
         <ReactFlow
-          nodes={viewMode === 'roof' ? roofNodes : nodes}
-          edges={viewMode === 'roof' ? roofEdges : edges}
+          nodes={viewMode === 'roof' ? roofNodes : viewMode === 'water' ? waterNodes : nodes}
+          edges={viewMode === 'roof' ? roofEdges : viewMode === 'water' ? waterEdges : edges}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
-          onNodesChange={viewMode === 'roof' ? onRoofNodesChange : onNodesChange}
-          onEdgesChange={viewMode === 'roof' ? onRoofEdgesChange : onEdgesChange}
+          onNodesChange={viewMode === 'roof' ? onRoofNodesChange : viewMode === 'water' ? onWaterNodesChange : onNodesChange}
+          onEdgesChange={viewMode === 'roof' ? onRoofEdgesChange : viewMode === 'water' ? onWaterEdgesChange : onEdgesChange}
           onConnect={onConnect}
           isValidConnection={isValidConnection}
           onSelectionChange={onSelectionChange}
@@ -898,6 +965,8 @@ function PlannerInner() {
             </Panel>
           )}
         </ReactFlow>
+
+        <HeatingCalculator />
 
         {showBOM && (
           <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
