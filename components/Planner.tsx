@@ -13,6 +13,9 @@ import ReactFlow, {
   applyEdgeChanges,
   applyNodeChanges,
   Panel,
+  ReactFlowProvider,
+  OnSelectionChangeParams,
+  useReactFlow,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import CableEdge, { CableEdgeData } from './edges/CableEdge';
@@ -20,6 +23,7 @@ import BatteryNode from './nodes/BatteryNode';
 import ConsumerNode from './nodes/ConsumerNode';
 import ChargerNode from './nodes/ChargerNode';
 import Inspector from './Inspector';
+import Sidebar from './Sidebar';
 
 const initialNodes: Node[] = [
   {
@@ -82,10 +86,18 @@ const initialEdges: Edge<CableEdgeData>[] = [
   },
 ];
 
-export default function Planner() {
+function PlannerInner() {
   const [nodes, setNodes] = useState<Node[]>(initialNodes);
   const [edges, setEdges] = useState<Edge<CableEdgeData>[]>(initialEdges);
-  const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
+
+  const [selectedNodes, setSelectedNodes] = useState<Node[]>([]);
+  const [selectedEdges, setSelectedEdges] = useState<Edge[]>([]);
+
+  // We map selected edges backwards for Inspector.tsx (which currently expects a single selected edge)
+  const selectedEdgeId = selectedEdges.length > 0 ? selectedEdges[0].id : null;
+  const selectedNodeId = selectedNodes.length > 0 ? selectedNodes[0].id : null;
+
+  const { screenToFlowPosition } = useReactFlow();
 
   const edgeTypes = useMemo(() => ({ cableEdge: CableEdge }), []);
   const nodeTypes = useMemo(() => ({ battery: BatteryNode, consumer: ConsumerNode, charger: ChargerNode }), []);
@@ -98,14 +110,8 @@ export default function Planner() {
   const onEdgesChange: OnEdgesChange = useCallback(
     (changes) => {
       setEdges((eds) => applyEdgeChanges(changes, eds) as Edge<CableEdgeData>[]);
-
-      // If the selected edge is removed, clear selection
-      const removedEdgeIds = changes.filter(c => c.type === 'remove').map(c => (c as any).id);
-      if (selectedEdgeId && removedEdgeIds.includes(selectedEdgeId)) {
-        setSelectedEdgeId(null);
-      }
     },
-    [selectedEdgeId]
+    []
   );
 
   const onConnect: OnConnect = useCallback(
@@ -125,20 +131,39 @@ export default function Planner() {
         },
       };
       setEdges((eds) => addEdge(newEdge, eds) as Edge<CableEdgeData>[]);
-      setSelectedEdgeId(newEdge.id); // Select new edge automatically
     },
     []
   );
 
-  const onEdgeClick = useCallback(
-    (event: React.MouseEvent, edge: Edge) => {
-      setSelectedEdgeId(edge.id);
-    },
-    []
-  );
+  const onSelectionChange = useCallback((params: OnSelectionChangeParams) => {
+    setSelectedNodes(params.nodes);
+    setSelectedEdges(params.edges);
+  }, []);
 
-  const onPaneClick = useCallback(() => {
-    setSelectedEdgeId(null);
+  const deleteSelected = useCallback(() => {
+    if (selectedNodes.length > 0) {
+      const nodeIds = selectedNodes.map(n => n.id);
+      setNodes((nds) => nds.filter((n) => !nodeIds.includes(n.id)));
+      // Also delete connected edges
+      setEdges((eds) => eds.filter((e) => !nodeIds.includes(e.source) && !nodeIds.includes(e.target)));
+      setSelectedNodes([]);
+    }
+    if (selectedEdges.length > 0) {
+      const edgeIds = selectedEdges.map(e => e.id);
+      setEdges((eds) => eds.filter((e) => !edgeIds.includes(e.id)));
+      setSelectedEdges([]);
+    }
+  }, [selectedNodes, selectedEdges]);
+
+  const updateNodeData = useCallback((id: string, data: any) => {
+    setNodes((nds) =>
+      nds.map((n) => {
+        if (n.id === id) {
+          return { ...n, data: { ...n.data, ...data } };
+        }
+        return n;
+      })
+    );
   }, []);
 
   const handleChangeLength = useCallback((id: string, length: number) => {
@@ -167,6 +192,10 @@ export default function Planner() {
     return edges.find((e) => e.id === selectedEdgeId) || null;
   }, [edges, selectedEdgeId]);
 
+  const selectedNode = useMemo(() => {
+    return nodes.find((n) => n.id === selectedNodeId) || null;
+  }, [nodes, selectedNodeId]);
+
   const exportBOM = useCallback(() => {
     const bom = {
       nodes: nodes.map(n => ({ id: n.id, label: n.data.label || n.type })),
@@ -180,6 +209,47 @@ export default function Planner() {
     const event = new CustomEvent('export-bom', { detail: bom });
     window.dispatchEvent(event);
   }, [nodes, edges]);
+
+  const onDragOver = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+  }, []);
+
+  const onDrop = useCallback(
+    (event: React.DragEvent) => {
+      event.preventDefault();
+
+      const type = event.dataTransfer.getData('application/reactflow');
+      const label = event.dataTransfer.getData('application/reactflow-label');
+
+      if (typeof type === 'undefined' || !type) {
+        return;
+      }
+
+      const position = screenToFlowPosition({
+        x: event.clientX,
+        y: event.clientY,
+      });
+
+      const newNode: Node = {
+        id: `${type}-${Date.now()}`,
+        type,
+        position,
+        data: { label: label },
+      };
+
+      if (type === 'battery') {
+        newNode.data = { ...newNode.data, capacity: 100, chemistry: 'LiFePO4' };
+      } else if (type === 'consumer') {
+        newNode.data = { ...newNode.data, watts: 50, hours: 2 };
+      } else if (type === 'charger') {
+        newNode.data = { ...newNode.data, amps: 10 };
+      }
+
+      setNodes((nds) => nds.concat(newNode));
+    },
+    [screenToFlowPosition]
+  );
 
   // --- Calculations for Dashboard ---
   const batteryNode = nodes.find((n) => n.type === 'battery');
@@ -221,6 +291,7 @@ export default function Planner() {
 
   return (
     <div className="flex h-screen w-full bg-gray-50 overflow-hidden font-sans">
+      <Sidebar />
       <div className="flex-1 h-full relative">
         <div className="absolute top-4 left-4 z-10">
           <button
@@ -238,13 +309,15 @@ export default function Planner() {
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
-          onEdgeClick={onEdgeClick}
-          onPaneClick={onPaneClick}
+          onSelectionChange={onSelectionChange}
+          onDragOver={onDragOver}
+          onDrop={onDrop}
           fitView
+          deleteKeyCode={['Backspace', 'Delete']}
         >
           <Background color="#ccc" gap={16} />
           <Controls />
-          <Panel position="top-right" className="bg-white p-4 rounded-md shadow-lg border border-gray-200 text-sm w-80">
+          <Panel position="top-center" className="bg-white p-4 rounded-md shadow-lg border border-gray-200 text-sm w-80">
             <h3 className="font-bold text-gray-800 mb-2 border-b pb-1">System Berechnungen</h3>
             <div className="flex flex-col gap-2">
               <div className="flex justify-between">
@@ -265,9 +338,20 @@ export default function Planner() {
       </div>
       <Inspector
         selectedEdge={selectedEdge}
+        selectedNode={selectedNode}
         onChangeLength={handleChangeLength}
         onChangeCrossSection={handleChangeCrossSection}
+        onDelete={deleteSelected}
+        onUpdateNodeData={updateNodeData}
       />
     </div>
+  );
+}
+
+export default function Planner() {
+  return (
+    <ReactFlowProvider>
+      <PlannerInner />
+    </ReactFlowProvider>
   );
 }
