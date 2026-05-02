@@ -424,6 +424,12 @@ function PlannerInner() {
     setShowBOM(true);
   }, [generateBOM]);
 
+  const checkSchematic = useCallback(() => {
+    const schematic = { nodes, edges };
+    const event = new CustomEvent('check-schematic', { detail: schematic });
+    window.dispatchEvent(event);
+  }, [nodes, edges]);
+
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
@@ -636,6 +642,13 @@ function PlannerInner() {
             className="bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-4 rounded shadow-md transition-colors"
           >
             Stückliste an KI senden
+          </button>
+
+          <button
+            onClick={checkSchematic}
+            className="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded shadow-md transition-colors"
+          >
+            Schaltplan von KI prüfen lassen
           </button>
 
           <button

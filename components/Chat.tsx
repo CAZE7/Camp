@@ -24,7 +24,27 @@ export default function Chat() {
     };
 
     window.addEventListener('export-bom', handleExportBOM);
-    return () => window.removeEventListener('export-bom', handleExportBOM);
+
+    const handleCheckSchematic = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      const schematic = customEvent.detail;
+
+      setIsOpen(true);
+
+      const schematicString = JSON.stringify(schematic, null, 2);
+      const promptText = `Bitte überprüfe diesen Schaltplan auf Fehler. Hier ist die Topologie:\n\`\`\`json\n${schematicString}\n\`\`\``;
+
+      sendMessage({
+        text: promptText,
+      });
+    };
+
+    window.addEventListener('check-schematic', handleCheckSchematic);
+
+    return () => {
+      window.removeEventListener('export-bom', handleExportBOM);
+      window.removeEventListener('check-schematic', handleCheckSchematic);
+    };
   }, [sendMessage]);
 
   if (!isOpen) {
@@ -48,21 +68,29 @@ export default function Chat() {
       </div>
 
       <div className="flex-1 p-4 overflow-y-auto flex flex-col gap-4 bg-gray-50">
-        {messages.map((m) => (
-          <div key={m.id} className={`max-w-[85%] p-3 rounded-lg text-sm ${m.role === 'user' ? 'bg-blue-100 self-end text-blue-900 rounded-br-none' : 'bg-white border border-gray-200 self-start text-gray-800 rounded-bl-none shadow-sm'}`}>
-            <div className="font-semibold text-xs mb-1 opacity-60">
-              {m.role === 'user' ? 'Du' : 'KI Assistent'}
+        {messages.map((m) => {
+          // Hide messages containing large JSON payloads from the user UI
+          const hasJsonPayload = m.parts.some(p => p.type === 'text' && p.text?.includes('```json\n'));
+          if (m.role === 'user' && hasJsonPayload) {
+             return null;
+          }
+
+          return (
+            <div key={m.id} className={`max-w-[85%] p-3 rounded-lg text-sm ${m.role === 'user' ? 'bg-blue-100 self-end text-blue-900 rounded-br-none' : 'bg-white border border-gray-200 self-start text-gray-800 rounded-bl-none shadow-sm'}`}>
+              <div className="font-semibold text-xs mb-1 opacity-60">
+                {m.role === 'user' ? 'Du' : 'KI Assistent'}
+              </div>
+              <div className="whitespace-pre-wrap">
+                {m.parts.map((part, index) => {
+                  if (part.type === 'text') {
+                    return <span key={index}>{part.text}</span>;
+                  }
+                  return null;
+                })}
+              </div>
             </div>
-            <div className="whitespace-pre-wrap">
-              {m.parts.map((part, index) => {
-                if (part.type === 'text') {
-                  return <span key={index}>{part.text}</span>;
-                }
-                return null;
-              })}
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <form onSubmit={(e) => {
