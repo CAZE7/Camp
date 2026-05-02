@@ -1,13 +1,14 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { POST } from './route';
 import pool from '../../../lib/db';
+import { streamText, embed } from 'ai';
 
 vi.mock('ai', () => ({
   streamText: vi.fn().mockReturnValue({
     toUIMessageStreamResponse: vi.fn().mockReturnValue(new Response('stream'))
   }),
   embed: vi.fn().mockResolvedValue({ embedding: [0.1, 0.2] }),
-  convertToModelMessages: vi.fn().mockResolvedValue([]),
+  convertToModelMessages: vi.fn().mockResolvedValue([{ role: 'user', content: 'What is a battery?' }]),
 }));
 
 // Mock createOpenAI correctly to return a callable function with an embedding method
@@ -29,6 +30,201 @@ vi.mock('../../../lib/db', () => ({
 }));
 
 describe('POST /api/chat', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    process.env.OPENAI_API_KEY = 'test_key';
+  });
+
+  it('performs a successful RAG query and calls streamText', async () => {
+    // Mock the database query specifically for this test
+    const mockQuery = vi.fn().mockResolvedValue({
+      rows: [
+        { content: 'Context chunk 1' },
+        { content: 'Context chunk 2' }
+      ]
+    });
+
+    (pool.connect as any).mockResolvedValueOnce({
+      query: mockQuery,
+      release: vi.fn(),
+    });
+
+    const req = new Request('http://localhost/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: [
+          {
+            id: '3',
+            role: 'user',
+            content: 'What is a battery?',
+          }
+        ]
+      })
+    });
+
+    const response = await POST(req);
+
+    expect(response).toBeInstanceOf(Response);
+
+    // Verify embedding was called with the user query
+    expect(embed).toHaveBeenCalledWith(expect.objectContaining({
+      value: 'What is a battery?'
+    }));
+
+    // Verify the DB was queried for vector similarity
+    expect(mockQuery).toHaveBeenCalledWith(
+      expect.stringContaining('SELECT content, metadata'),
+      expect.any(Array)
+    );
+
+    // Verify streamText was called and system prompt includes the retrieved context
+    expect(streamText).toHaveBeenCalled();
+    const streamTextArgs = vi.mocked(streamText).mock.calls[0][0];
+    const systemMessage = streamTextArgs.messages.find(m => m.role === 'system');
+
+    expect(systemMessage).toBeDefined();
+    expect(systemMessage?.content).toContain('Context chunk 1');
+    expect(systemMessage?.content).toContain('Context chunk 2');
+  });
+
+  it('handles DB connection or query errors gracefully without crashing', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    // Force the DB query to throw an error
+    (pool.connect as any).mockResolvedValueOnce({
+      query: vi.fn().mockRejectedValue(new Error('DB Connection Failed')),
+      release: vi.fn(),
+    });
+
+    const req = new Request('http://localhost/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: [
+          {
+            id: '4',
+            role: 'user',
+            content: 'What is a battery?',
+          }
+        ]
+      })
+    });
+
+    const response = await POST(req);
+
+    // It should still return a successful response stream
+    expect(response).toBeInstanceOf(Response);
+
+    // Ensure the error was caught and logged
+    expect(consoleSpy).toHaveBeenCalledWith(
+      'Error during RAG pipeline:',
+      expect.any(Error)
+    );
+
+    // Verify streamText was still called
+    expect(streamText).toHaveBeenCalled();
+    const streamTextArgs = vi.mocked(streamText).mock.calls[0][0];
+    const systemMessage = streamTextArgs.messages.find(m => m.role === 'system');
+
+    // Context should just be the fallback
+    expect(systemMessage?.content).toContain('Kein spezifischer Kontext gefunden.');
+
+    consoleSpy.mockRestore();
+  });
+
+  it('parses valid BOM JSON with cables and provides product recommendations', async () => {
+    // Mock the DB query to return components for the BOM
+    const mockQuery = vi.fn()
+      .mockResolvedValueOnce({ rows: [] }) // 1st query: Knowledge RAG (mock empty)
+      .mockResolvedValueOnce({ // 2nd query: Products for the cables
+        rows: [
+          { name: 'Cable A', brand: 'BrandX', price: 10.5, cross_section: 4 },
+          { name: 'Cable B', brand: 'BrandY', price: 12.0, cross_section: 4 },
+        ]
+      });
+
+    (pool.connect as any).mockResolvedValueOnce({
+      query: mockQuery,
+      release: vi.fn(),
+    });
+
+    const bomJson = JSON.stringify({
+      cables: [
+        { crossSection: 4, length: 2 },
+        { crossSection: null, length: 5 } // to ensure null crossSections are handled
+      ]
+    });
+
+    const req = new Request('http://localhost/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: [
+          {
+            id: '5',
+            role: 'user',
+            content: `Here is my setup\n\`\`\`json\n${bomJson}\n\`\`\``,
+          }
+        ]
+      })
+    });
+
+    const response = await POST(req);
+
+    expect(response).toBeInstanceOf(Response);
+
+    // Verify DB was queried for the products using the unique cross section (4)
+    expect(mockQuery).toHaveBeenCalledTimes(2);
+    expect(mockQuery).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining('SELECT name, brand, price, cross_section'),
+      [[4]]
+    );
+
+    // Verify streamText was called and system prompt includes product recommendations
+    expect(streamText).toHaveBeenCalled();
+    const streamTextArgs = vi.mocked(streamText).mock.calls[0][0];
+    const systemMessage = streamTextArgs.messages.find(m => m.role === 'system');
+
+    expect(systemMessage).toBeDefined();
+    expect(systemMessage?.content).toContain('DER NUTZER HAT EINE STÜCKLISTE (BOM) GESENDET.');
+    expect(systemMessage?.content).toContain('Cable A');
+    expect(systemMessage?.content).toContain('BrandX');
+  });
+
+  it('returns 400 Bad Request if messages array is missing', async () => {
+    const req = new Request('http://localhost/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        otherData: 'no messages here'
+      })
+    });
+
+    const response = await POST(req);
+    expect(response.status).toBe(400);
+
+    const json = await response.json();
+    expect(json.error).toBe('messages must be a non-empty array');
+  });
+
+  it('returns 400 Bad Request if messages array is empty', async () => {
+    const req = new Request('http://localhost/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: []
+      })
+    });
+
+    const response = await POST(req);
+    expect(response.status).toBe(400);
+
+    const json = await response.json();
+    expect(json.error).toBe('messages must be a non-empty array');
+  });
+
   it('handles invalid JSON in BOM extraction gracefully', async () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 

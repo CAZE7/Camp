@@ -25,7 +25,16 @@ const openai = createOpenAI({
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
-  const { messages }: { messages: Message[] } = await req.json();
+  const body = await req.json();
+  const { messages }: { messages: Message[] } = body;
+
+  if (!Array.isArray(messages) || messages.length === 0) {
+    return new Response(JSON.stringify({ error: 'messages must be a non-empty array' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
   const latestMessage = messages[messages.length - 1];
   // Use map to avoid type inference issues with find on union types
   const textParts = latestMessage?.parts?.map((p: any) => p.type === 'text' ? p.text : null).filter(Boolean);
