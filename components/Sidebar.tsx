@@ -3,11 +3,12 @@ import React, { useState } from 'react';
 const components = [
   { type: 'battery', label: 'Batterie' },
   { type: 'charger', label: 'Ladebooster' },
-  { type: 'charger', label: 'Solarmodul' },
-  { type: 'consumer', label: 'Wechselrichter' },
-  { type: 'consumer', label: 'Heizung' },
-  { type: 'consumer', label: 'Kühlschrank' },
-  { type: 'consumer', label: 'Licht' },
+  { type: 'solar', label: 'Solarmodul' },
+  { type: 'inverter', label: 'Wechselrichter' },
+  { type: 'consumer', label: '12V Verbraucher (Heizung, Licht)' },
+  { type: 'consumer230v', label: '230V Verbraucher (Induktion, Kaffee)' },
+  { type: 'shorePower', label: 'Landstromanschluss' },
+  { type: 'fuse', label: 'Sicherungskasten' },
 ];
 
 export default function Sidebar() {
