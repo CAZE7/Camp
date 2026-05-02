@@ -12,7 +12,12 @@ const components = [
   { type: 'ground', label: 'Massepunkt (Karosserie)' },
 ];
 
-export default function Sidebar() {
+const roofComponents = [
+  { type: 'roofWindow', label: 'Dachfenster' },
+  { type: 'roofSolar', label: 'Dach-Solarpanel' },
+];
+
+export default function Sidebar({ mode = 'electric' }: { mode?: 'electric' | 'roof' }) {
   const [searchTerm, setSearchTerm] = useState('');
 
   const onDragStart = (event: React.DragEvent, nodeType: string, label: string) => {
@@ -21,7 +26,9 @@ export default function Sidebar() {
     event.dataTransfer.effectAllowed = 'move';
   };
 
-  const filteredComponents = components.filter(c =>
+  const activeComponents = mode === 'roof' ? roofComponents : components;
+
+  const filteredComponents = activeComponents.filter(c =>
     c.label.toLowerCase().includes(searchTerm.toLowerCase())
   );
 

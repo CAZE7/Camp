@@ -212,6 +212,66 @@ export default function Inspector({
                   </div>
                 </>
               )}
+
+              {selectedNode.type === 'roofWindow' && (
+                <>
+                  <div className="flex flex-col">
+                    <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider">Breite (cm)</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={selectedNode.data?.width || 0}
+                      onChange={(e) => onUpdateNodeData?.(selectedNode.id, { width: Number(e.target.value) })}
+                      className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow"
+                    />
+                  </div>
+                  <div className="flex flex-col">
+                    <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider">Länge (cm)</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={selectedNode.data?.height || 0}
+                      onChange={(e) => onUpdateNodeData?.(selectedNode.id, { height: Number(e.target.value) })}
+                      className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow"
+                    />
+                  </div>
+                </>
+              )}
+
+              {selectedNode.type === 'roofSolar' && (
+                <>
+                  <div className="flex flex-col">
+                    <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider">Breite (cm)</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={selectedNode.data?.width || 0}
+                      onChange={(e) => onUpdateNodeData?.(selectedNode.id, { width: Number(e.target.value) })}
+                      className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow"
+                    />
+                  </div>
+                  <div className="flex flex-col">
+                    <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider">Länge (cm)</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={selectedNode.data?.height || 0}
+                      onChange={(e) => onUpdateNodeData?.(selectedNode.id, { height: Number(e.target.value) })}
+                      className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow"
+                    />
+                  </div>
+                  <div className="flex flex-col">
+                    <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider">Leistung (Wp)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={selectedNode.data?.watts || 0}
+                      onChange={(e) => onUpdateNodeData?.(selectedNode.id, { watts: Number(e.target.value) })}
+                      className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow"
+                    />
+                  </div>
+                </>
+              )}
             </div>
           )}
 
