@@ -9,15 +9,13 @@ import ReactFlow, {
   Edge,
   Node,
   OnConnect,
-  OnEdgesChange,
-  OnNodesChange,
   addEdge,
-  applyEdgeChanges,
-  applyNodeChanges,
   Panel,
   ReactFlowProvider,
   OnSelectionChangeParams,
   useReactFlow,
+  useNodesState,
+  useEdgesState,
   getOutgoers,
   Connection,
 } from 'reactflow';
@@ -38,6 +36,22 @@ import Inspector from './Inspector';
 import Sidebar from './Sidebar';
 import dagre from 'dagre';
 import { toPng } from 'html-to-image';
+
+const NODE_TYPES = {
+  battery: BatteryNode,
+  consumer: ConsumerNode,
+  charger: ChargerNode,
+  fuse: FuseNode,
+  shorePower: ShorePowerNode,
+  consumer230v: Consumer230VNode,
+  inverter: InverterNode,
+  solar: SolarNode,
+  ground: GroundNode,
+  roofWindow: RoofWindowNode,
+  roofSolar: RoofSolarNode
+};
+
+const EDGE_TYPES = { cableEdge: CableEdge };
 
 const initialNodes: Node[] = [
   {
@@ -135,10 +149,10 @@ const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'LR') => 
 
 function PlannerInner() {
   const [viewMode, setViewMode] = useState<'electric' | 'roof'>('electric');
-  const [nodes, setNodes] = useState<Node[]>(initialNodes);
-  const [edges, setEdges] = useState<Edge<CableEdgeData>[]>(initialEdges);
-  const [roofNodes, setRoofNodes] = useState<Node[]>([]);
-  const [roofEdges, setRoofEdges] = useState<Edge[]>([]);
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node>(initialNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<CableEdgeData>(initialEdges);
+  const [roofNodes, setRoofNodes, onRoofNodesChange] = useNodesState<Node>([]);
+  const [roofEdges, setRoofEdges, onRoofEdgesChange] = useEdgesState([]);
 
   const [season, setSeason] = useState<'summer' | 'winter'>('summer');
   const [isLeftSidebarOpen, setIsLeftSidebarOpen] = useState(true);
@@ -153,43 +167,6 @@ function PlannerInner() {
   const selectedNodeId = selectedNodes.length > 0 ? selectedNodes[0].id : null;
 
   const { screenToFlowPosition, fitView } = useReactFlow();
-
-  const edgeTypes = useMemo(() => ({ cableEdge: CableEdge }), []);
-  const nodeTypes = useMemo(() => ({
-    battery: BatteryNode,
-    consumer: ConsumerNode,
-    charger: ChargerNode,
-    fuse: FuseNode,
-    shorePower: ShorePowerNode,
-    consumer230v: Consumer230VNode,
-    inverter: InverterNode,
-    solar: SolarNode,
-    ground: GroundNode,
-    roofWindow: RoofWindowNode,
-    roofSolar: RoofSolarNode
-  }), []);
-
-  const onNodesChange: OnNodesChange = useCallback(
-    (changes) => setNodes((nds) => applyNodeChanges(changes, nds)),
-    []
-  );
-
-  const onEdgesChange: OnEdgesChange = useCallback(
-    (changes) => {
-      setEdges((eds) => applyEdgeChanges(changes, eds) as Edge<CableEdgeData>[]);
-    },
-    []
-  );
-
-  const onRoofNodesChange: OnNodesChange = useCallback(
-    (changes) => setRoofNodes((nds) => applyNodeChanges(changes, nds)),
-    []
-  );
-
-  const onRoofEdgesChange: OnEdgesChange = useCallback(
-    (changes) => setRoofEdges((eds) => applyEdgeChanges(changes, eds)),
-    []
-  );
 
   const toggleProMode = useCallback(() => {
     setIsProMode((prev) => {
@@ -333,9 +310,11 @@ function PlannerInner() {
     setNodes([...layoutedNodes]);
     setEdges([...layoutedEdges]);
 
-    window.requestAnimationFrame(() => {
-      fitView({ duration: 800 });
-    });
+    if (typeof window !== 'undefined') {
+      window.requestAnimationFrame(() => {
+        fitView({ duration: 800 });
+      });
+    }
   }, [nodes, edges, fitView]);
 
   const handleChangeLength = useCallback((id: string, length: number) => {
@@ -417,8 +396,10 @@ function PlannerInner() {
     const bom = generateBOM();
 
     // Dispatch a custom event to notify the Chat component if needed
-    const event = new CustomEvent('export-bom', { detail: bom });
-    window.dispatchEvent(event);
+    if (typeof window !== 'undefined') {
+      const event = new CustomEvent('export-bom', { detail: bom });
+      window.dispatchEvent(event);
+    }
 
     // Show BOM Modal
     setShowBOM(true);
@@ -483,8 +464,8 @@ function PlannerInner() {
 
   // --- Calculations for Dashboard ---
   const batteryNode = nodes.find((n) => n.type === 'battery');
-  const capacityAh = batteryNode?.data.capacity || 0;
-  const chemistry = batteryNode?.data.chemistry || 'LiFePO4';
+  const capacityAh = (batteryNode?.data as any)?.capacity || 0;
+  const chemistry = (batteryNode?.data as any)?.chemistry || 'LiFePO4';
   const dod = chemistry === 'AGM' ? 0.5 : 0.9;
   const usableCapacityAh = capacityAh * dod;
 
@@ -495,15 +476,15 @@ function PlannerInner() {
   const hasInverter = nodes.some(n => n.type === 'inverter');
 
   let dailyConsumptionAh = consumers.reduce((acc, n) => {
-    const w = n.data.watts || 0;
-    const h = n.data.hours || 0;
+    const w = (n.data as any)?.watts || 0;
+    const h = (n.data as any)?.hours || 0;
     return acc + (w / 12) * h;
   }, 0);
 
   if (hasInverter) {
     const inverterConsumptionAh = consumers230v.reduce((acc, n) => {
-      const w = n.data.watts || 0;
-      const h = n.data.hours || 0;
+      const w = (n.data as any)?.watts || 0;
+      const h = (n.data as any)?.hours || 0;
       // Inverter takes 12V from battery, loses 15% efficiency (0.85)
       // Ah = (W / 12V) * h / 0.85
       return acc + ((w / 12) * h) / 0.85;
@@ -547,12 +528,12 @@ function PlannerInner() {
 
     if (hasSeriesConnection) {
       // Series: Voltage adds up, Amps stays the same (take min or average, here we assume identical panels so we take the first)
-      totalSolarVoltage = solarNodes.reduce((acc, n) => acc + (n.data.voltage || 0), 0);
-      totalSolarAmps = solarNodes[0]?.data.amps || 0;
+      totalSolarVoltage = solarNodes.reduce((acc, n) => acc + ((n.data as any)?.voltage || 0), 0);
+      totalSolarAmps = (solarNodes[0]?.data as any)?.amps || 0;
     } else {
       // Parallel: Amps add up, Voltage stays the same
-      totalSolarAmps = solarNodes.reduce((acc, n) => acc + (n.data.amps || 0), 0);
-      totalSolarVoltage = solarNodes[0]?.data.voltage || 0;
+      totalSolarAmps = solarNodes.reduce((acc, n) => acc + ((n.data as any)?.amps || 0), 0);
+      totalSolarVoltage = (solarNodes[0]?.data as any)?.voltage || 0;
     }
 
     // Seasonal yield reduction for solar
@@ -561,11 +542,11 @@ function PlannerInner() {
     }
   }
 
-  const totalRoofSolarWatts = roofNodes.filter((n) => n.type === 'roofSolar').reduce((acc, n) => acc + (n.data.watts || 0), 0);
+  const totalRoofSolarWatts = roofNodes.filter((n) => n.type === 'roofSolar').reduce((acc, n) => acc + ((n.data as any)?.watts || 0), 0);
 
   // Charging time: Capacity * DoD / ChargerAmps * 1.15
   const chargers = nodes.filter((n) => n.type === 'charger');
-  const totalChargerAmps = chargers.reduce((acc, n) => acc + (n.data.amps || 0), 0) + totalSolarAmps + (totalRoofSolarWatts / 12);
+  const totalChargerAmps = chargers.reduce((acc, n) => acc + ((n.data as any)?.amps || 0), 0) + totalSolarAmps + (totalRoofSolarWatts / 12);
   let chargingTimeStr = 'N/A';
   if (totalChargerAmps > 0) {
     const chargingTime = (usableCapacityAh / totalChargerAmps) * 1.15;
@@ -589,9 +570,9 @@ function PlannerInner() {
   return (
     <div className="flex h-screen w-full bg-gray-50 overflow-hidden font-sans relative">
       <div
-        className={`transition-all duration-300 ease-in-out ${isLeftSidebarOpen ? 'w-64 translate-x-0' : 'w-0 -translate-x-full'} z-20 flex-shrink-0 shadow-xl bg-white/80 backdrop-blur-md`}
+        className={`transition-all duration-300 ease-in-out absolute md:relative z-40 h-full ${isLeftSidebarOpen ? 'w-64 translate-x-0' : 'w-0 -translate-x-full'} flex-shrink-0 shadow-xl bg-white/80 backdrop-blur-md max-w-[calc(100vw-2rem)]`}
       >
-        <div className="w-64 h-full">
+        <div className="w-64 h-full max-w-full">
           <Sidebar mode={viewMode} />
         </div>
       </div>
@@ -677,8 +658,8 @@ function PlannerInner() {
         <ReactFlow
           nodes={viewMode === 'roof' ? roofNodes : nodes}
           edges={viewMode === 'roof' ? roofEdges : edges}
-          nodeTypes={nodeTypes}
-          edgeTypes={edgeTypes}
+          nodeTypes={NODE_TYPES}
+          edgeTypes={EDGE_TYPES}
           onNodesChange={viewMode === 'roof' ? onRoofNodesChange : onNodesChange}
           onEdgesChange={viewMode === 'roof' ? onRoofEdgesChange : onEdgesChange}
           onConnect={onConnect}
@@ -774,9 +755,9 @@ function PlannerInner() {
       </div>
 
       <div
-        className={`transition-all duration-300 ease-in-out ${isRightSidebarOpen ? 'w-[250px] translate-x-0' : 'w-0 translate-x-full'} z-20 flex-shrink-0 shadow-xl bg-white/80 backdrop-blur-md`}
+        className={`transition-all duration-300 ease-in-out absolute right-0 md:relative z-40 h-full ${isRightSidebarOpen ? 'w-[250px] translate-x-0' : 'w-0 translate-x-full'} flex-shrink-0 shadow-xl bg-white/80 backdrop-blur-md max-w-[calc(100vw-2rem)]`}
       >
-        <div className="w-[250px] h-full">
+        <div className="w-[250px] h-full max-w-full">
           <Inspector
             selectedEdge={selectedEdge}
             selectedNode={selectedNode}
