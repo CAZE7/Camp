@@ -9,6 +9,7 @@ const components = [
   { type: 'consumer230v', label: '230V Verbraucher (Induktion, Kaffee)' },
   { type: 'shorePower', label: 'Landstromanschluss' },
   { type: 'fuse', label: 'Sicherungskasten' },
+  { type: 'ground', label: 'Massepunkt (Karosserie)' },
 ];
 
 export default function Sidebar() {

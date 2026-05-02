@@ -22,10 +22,13 @@
   "dependencies": {
     "@ai-sdk/openai": "^3.0.54",
     "@ai-sdk/react": "^3.0.172",
+    "@types/dagre": "^0.7.54",
     "@types/pg": "^8.20.0",
     "ai": "^6.0.170",
     "clsx": "^2.1.1",
+    "dagre": "^0.8.5",
     "dotenv": "^17.4.2",
+    "html-to-image": "^1.11.13",
     "lucide-react": "^1.14.0",
     "next": "^16.2.4",
     "pg": "^8.20.0",
