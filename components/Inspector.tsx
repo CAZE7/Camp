@@ -40,29 +40,7 @@ export default function Inspector({ selectedEdge, onChangeLength, onChangeCrossS
               className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow"
             />
           </div>
-
-          <div className="flex flex-col">
-            <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider" htmlFor="cross-section-select">
-              Querschnitt (mm²)
-            </label>
-            <select
-              id="cross-section-select"
-              value={selectedEdge.data?.crossSection ?? 2.5}
-              onChange={(e) => {
-                const val = parseFloat(e.target.value);
-                if (!isNaN(val)) {
-                  onChangeCrossSection(selectedEdge.id, val);
-                }
-              }}
-              className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow bg-white"
-            >
-              {crossSectionOptions.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-          </div>
+          <p className="text-xs text-gray-500 mt-2">Der Kabelquerschnitt wird automatisch nach VDE 0100-721 berechnet und an der Leitung im Planer angezeigt.</p>
         </div>
       )}
     </div>
