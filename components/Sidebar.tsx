@@ -17,7 +17,17 @@ const roofComponents = [
   { type: 'roofSolar', label: 'Dach-Solarpanel' },
 ];
 
-export default function Sidebar({ mode = 'electric' }: { mode?: 'electric' | 'roof' }) {
+const waterComponents = [
+  { type: 'freshWaterTank', label: 'Frischwassertank' },
+  { type: 'grayWaterTank', label: 'Grauwassertank' },
+  { type: 'pump', label: 'Wasserpumpe' },
+  { type: 'accumulator', label: 'Druckausgleichsgefäß (Accumulator)' },
+  { type: 'preFilter', label: 'Vorfilter' },
+  { type: 'sink', label: 'Spüle' },
+  { type: 'shower', label: 'Dusche' },
+];
+
+export default function Sidebar({ mode = 'electric' }: { mode?: 'electric' | 'roof' | 'water' }) {
   const [searchTerm, setSearchTerm] = useState('');
 
   const onDragStart = (event: React.DragEvent, nodeType: string, label: string) => {
@@ -26,7 +36,7 @@ export default function Sidebar({ mode = 'electric' }: { mode?: 'electric' | 'ro
     event.dataTransfer.effectAllowed = 'move';
   };
 
-  const activeComponents = mode === 'roof' ? roofComponents : components;
+  const activeComponents = mode === 'roof' ? roofComponents : mode === 'water' ? waterComponents : components;
 
   const filteredComponents = activeComponents.filter(c =>
     c.label.toLowerCase().includes(searchTerm.toLowerCase())

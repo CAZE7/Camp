@@ -5,6 +5,7 @@ export type CableEdgeData = {
   length: number;
   crossSection?: number; // Made optional as it's computed now
   isProMode?: boolean;
+  fuseSize?: number;
 };
 
 export default function CableEdge({
@@ -71,7 +72,7 @@ export default function CableEdge({
   // Force a hard minimum of 1.5 mm² as per DIN VDE 0100-721
   const minRequiredA = Math.max(1.5, calculatedA);
   const VDE_SIZES = [1.5, 2.5, 4.0, 6.0, 10.0, 16.0, 25.0, 35.0, 50.0];
-  const crossSection = VDE_SIZES.find(size => size >= minRequiredA) || 50.0;
+  const crossSection = data?.crossSection ?? (VDE_SIZES.find(size => size >= minRequiredA) || 50.0);
 
   let maxFuse = 0;
   if (crossSection === 1.5) maxFuse = 16;
@@ -148,6 +149,7 @@ export default function CableEdge({
           <span>{length.toFixed(2)} m</span>
           <span>{crossSection} mm²</span>
           {maxFuse > 0 && <span style={{ color: 'red', fontSize: '10px' }}>Max: {maxFuse}A</span>}
+          {data?.fuseSize && <span style={{ background: 'red', color: 'white', padding: '1px 4px', borderRadius: '4px', fontSize: '10px', marginTop: '2px' }}>{data.fuseSize}A Sicherung</span>}
         </div>
       </EdgeLabelRenderer>
 

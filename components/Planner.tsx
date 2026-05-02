@@ -32,8 +32,11 @@ import SolarNode from './nodes/SolarNode';
 import GroundNode from './nodes/GroundNode';
 import RoofWindowNode from './nodes/RoofWindowNode';
 import RoofSolarNode from './nodes/RoofSolarNode';
+import WaterNode from './nodes/WaterNode';
+import WaterPipeEdge from './edges/WaterPipeEdge';
 import Inspector from './Inspector';
 import Sidebar from './Sidebar';
+import HeatingCalculator from './HeatingCalculator';
 import dagre from 'dagre';
 import { toPng } from 'html-to-image';
 
@@ -148,11 +151,14 @@ const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'LR') => 
 };
 
 function PlannerInner() {
-  const [viewMode, setViewMode] = useState<'electric' | 'roof'>('electric');
-  const [nodes, setNodes, onNodesChange] = useNodesState<Node>(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState<CableEdgeData>(initialEdges);
-  const [roofNodes, setRoofNodes, onRoofNodesChange] = useNodesState<Node>([]);
-  const [roofEdges, setRoofEdges, onRoofEdgesChange] = useEdgesState([]);
+  const [viewMode, setViewMode] = useState<'electric' | 'roof' | 'water'>('electric');
+  const [nodes, setNodes] = useState<Node[]>(initialNodes);
+  const [edges, setEdges] = useState<Edge<CableEdgeData>[]>(initialEdges);
+  const [roofNodes, setRoofNodes] = useState<Node[]>([]);
+  const [roofEdges, setRoofEdges] = useState<Edge[]>([]);
+  const [waterNodes, setWaterNodes] = useState<Node[]>([]);
+  const [waterEdges, setWaterEdges] = useState<Edge[]>([]);
+  const [waterWarning, setWaterWarning] = useState<string | null>(null);
 
   const [season, setSeason] = useState<'summer' | 'winter'>('summer');
   const [isLeftSidebarOpen, setIsLeftSidebarOpen] = useState(true);
@@ -167,6 +173,60 @@ function PlannerInner() {
   const selectedNodeId = selectedNodes.length > 0 ? selectedNodes[0].id : null;
 
   const { screenToFlowPosition, fitView } = useReactFlow();
+
+  const edgeTypes = useMemo(() => ({ cableEdge: CableEdge, waterPipe: WaterPipeEdge }), []);
+  const nodeTypes = useMemo(() => ({
+    battery: BatteryNode,
+    consumer: ConsumerNode,
+    charger: ChargerNode,
+    fuse: FuseNode,
+    shorePower: ShorePowerNode,
+    consumer230v: Consumer230VNode,
+    inverter: InverterNode,
+    solar: SolarNode,
+    ground: GroundNode,
+    roofWindow: RoofWindowNode,
+    roofSolar: RoofSolarNode,
+    freshWaterTank: WaterNode,
+    grayWaterTank: WaterNode,
+    pump: WaterNode,
+    accumulator: WaterNode,
+    preFilter: WaterNode,
+    sink: WaterNode,
+    shower: WaterNode
+  }), []);
+
+  const onNodesChange: OnNodesChange = useCallback(
+    (changes) => setNodes((nds) => applyNodeChanges(changes, nds)),
+    []
+  );
+
+  const onEdgesChange: OnEdgesChange = useCallback(
+    (changes) => {
+      setEdges((eds) => applyEdgeChanges(changes, eds) as Edge<CableEdgeData>[]);
+    },
+    []
+  );
+
+  const onRoofNodesChange: OnNodesChange = useCallback(
+    (changes) => setRoofNodes((nds) => applyNodeChanges(changes, nds)),
+    []
+  );
+
+  const onRoofEdgesChange: OnEdgesChange = useCallback(
+    (changes) => setRoofEdges((eds) => applyEdgeChanges(changes, eds)),
+    []
+  );
+
+  const onWaterNodesChange: OnNodesChange = useCallback(
+    (changes) => setWaterNodes((nds) => applyNodeChanges(changes, nds)),
+    []
+  );
+
+  const onWaterEdgesChange: OnEdgesChange = useCallback(
+    (changes) => setWaterEdges((eds) => applyEdgeChanges(changes, eds)),
+    []
+  );
 
   const toggleProMode = useCallback(() => {
     setIsProMode((prev) => {
@@ -192,6 +252,17 @@ function PlannerInner() {
 
   const isValidConnection = useCallback(
     (connection: Connection) => {
+      const allNodes = [...nodes, ...roofNodes, ...waterNodes];
+      const sourceNode = allNodes.find((n) => n.id === connection.source);
+      const targetNode = allNodes.find((n) => n.id === connection.target);
+
+      if (viewMode === 'water') {
+        if (sourceNode?.type === 'grayWaterTank' && targetNode?.type === 'sink') {
+          return false;
+        }
+        return true;
+      }
+
       // Pre-check for polarity matching
       const sHandle = connection.sourceHandle || '';
       const tHandle = connection.targetHandle || '';
@@ -200,9 +271,6 @@ function PlannerInner() {
       const tIsPlus = tHandle.includes('plus');
       const sIsMinus = sHandle.includes('minus');
       const tIsMinus = tHandle.includes('minus');
-
-      const sourceNode = nodes.find((n) => n.id === connection.source);
-      const targetNode = nodes.find((n) => n.id === connection.target);
 
       // Exception for series connection between batteries or solars
       const isSeriesException =
@@ -240,6 +308,29 @@ function PlannerInner() {
   const onConnect: OnConnect = useCallback(
     (connection) => {
       if (!connection.source || !connection.target) return;
+
+      if (viewMode === 'water') {
+        const allNodes = [...waterNodes];
+        const sourceNode = allNodes.find((n) => n.id === connection.source);
+        const targetNode = allNodes.find((n) => n.id === connection.target);
+
+        if (sourceNode?.type === 'pump' && targetNode?.type === 'sink') {
+          setWaterWarning("Ein Accumulator schont die Pumpe und verhindert stotternden Wasserfluss.");
+          setTimeout(() => setWaterWarning(null), 5000);
+        }
+
+        const newEdge: Edge = {
+          source: connection.source,
+          target: connection.target,
+          sourceHandle: connection.sourceHandle,
+          targetHandle: connection.targetHandle,
+          id: `ew-${connection.source}-${connection.target}-${Date.now()}`,
+          type: 'waterPipe',
+          data: {}
+        };
+        setWaterEdges((eds) => addEdge(newEdge, eds));
+        return;
+      }
 
       const newEdge: Edge<CableEdgeData> = {
         source: connection.source,
@@ -316,6 +407,158 @@ function PlannerInner() {
       });
     }
   }, [nodes, edges, fitView]);
+
+  const autoWireSystem = useCallback(() => {
+    const batteryNode = nodes.find(n => n.type === 'battery');
+    if (!batteryNode) {
+      alert("Bitte zuerst eine Batterie platzieren");
+      return;
+    }
+
+    let currentNodes = [...nodes];
+    let newEdges = [];
+    let edgeIdCounter = 1;
+
+    let fuseNode = currentNodes.find(n => n.type === 'fuse');
+    if (!fuseNode) {
+      fuseNode = {
+        id: 'fuse-auto-' + Date.now(),
+        type: 'fuse',
+        position: { x: batteryNode.position.x + 300, y: batteryNode.position.y },
+        data: { label: 'Zentraler Sicherungskasten', rating: 100 }
+      };
+      currentNodes.push(fuseNode);
+    }
+
+    // Connect Battery to Fuse
+    newEdges.push({
+      id: `e-auto-${edgeIdCounter++}`,
+      source: batteryNode.id,
+      target: fuseNode.id,
+      sourceHandle: 'plus',
+      targetHandle: 'in-plus',
+      type: 'cable',
+      data: { length: 1, crossSection: 35 } // main cable
+    });
+    newEdges.push({
+      id: `e-auto-${edgeIdCounter++}`,
+      source: batteryNode.id,
+      target: fuseNode.id,
+      sourceHandle: 'minus',
+      targetHandle: 'in-minus',
+      type: 'cable',
+      data: { length: 1, crossSection: 35 } // main cable
+    });
+
+    // Consumers
+    const consumers = currentNodes.filter(n => n.type === 'consumer' || n.type === 'consumer230v');
+    consumers.forEach(consumer => {
+      const I = (consumer.data.watts || 0) / 12;
+      const length = 3.0; // standard length
+      const calculatedA = (I * (length * 2)) / (58 * 0.24);
+      const minRequiredA = Math.max(1.5, calculatedA);
+      const VDE_SIZES = [1.5, 2.5, 4.0, 6.0, 10.0, 16.0, 25.0, 35.0, 50.0];
+      const crossSection = VDE_SIZES.find(size => size >= minRequiredA) || 50.0;
+
+      let fuseSize = 15;
+      if (crossSection === 1.5) fuseSize = 15;
+      else if (crossSection === 2.5) fuseSize = 20;
+      else if (crossSection === 4.0) fuseSize = 30;
+      else if (crossSection === 6.0) fuseSize = 40;
+      else if (crossSection >= 10.0) fuseSize = 60;
+
+      newEdges.push({
+        id: `e-auto-${edgeIdCounter++}`,
+        source: fuseNode.id,
+        target: consumer.id,
+        sourceHandle: 'out-plus',
+        targetHandle: consumer.type === 'consumer230v' ? 'in-plus' : 'plus',
+        type: 'cable',
+        data: { length, crossSection, fuseSize }
+      });
+
+      if (consumer.type !== 'consumer230v') {
+         newEdges.push({
+            id: `e-auto-${edgeIdCounter++}`,
+            source: fuseNode.id,
+            target: consumer.id,
+            sourceHandle: 'out-minus',
+            targetHandle: 'minus',
+            type: 'cable',
+            data: { length, crossSection }
+          });
+      }
+    });
+
+    // Solar
+    const solars = currentNodes.filter(n => n.type === 'solar');
+    if (solars.length > 0) {
+      let mpptNode = currentNodes.find(n => n.type === 'charger' && n.data.label?.toLowerCase().includes('mppt'));
+      if (!mpptNode) {
+        mpptNode = currentNodes.find(n => n.type === 'charger');
+      }
+
+      if (!mpptNode) {
+        mpptNode = {
+          id: 'mppt-auto-' + Date.now(),
+          type: 'charger',
+          position: { x: batteryNode.position.x - 300, y: batteryNode.position.y - 200 },
+          data: { label: 'MPPT Laderegler', amps: 30 }
+        };
+        currentNodes.push(mpptNode);
+      }
+
+      solars.forEach(solar => {
+        newEdges.push({
+          id: `e-auto-${edgeIdCounter++}`,
+          source: solar.id,
+          target: mpptNode.id,
+          sourceHandle: 'out-plus',
+          targetHandle: 'in-plus',
+          type: 'cable',
+          data: { length: 5, crossSection: 6, fuseSize: 30 }
+        });
+        newEdges.push({
+          id: `e-auto-${edgeIdCounter++}`,
+          source: solar.id,
+          target: mpptNode.id,
+          sourceHandle: 'out-minus',
+          targetHandle: 'in-minus',
+          type: 'cable',
+          data: { length: 5, crossSection: 6 }
+        });
+      });
+
+      // Connect MPPT to Battery
+      newEdges.push({
+        id: `e-auto-${edgeIdCounter++}`,
+        source: mpptNode.id,
+        target: batteryNode.id,
+        sourceHandle: 'plus',
+        targetHandle: 'in-plus',
+        type: 'cable',
+        data: { length: 2, crossSection: 10, fuseSize: 40 }
+      });
+      newEdges.push({
+        id: `e-auto-${edgeIdCounter++}`,
+        source: mpptNode.id,
+        target: batteryNode.id,
+        sourceHandle: 'minus',
+        targetHandle: 'in-minus',
+        type: 'cable',
+        data: { length: 2, crossSection: 10 }
+      });
+    }
+
+    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(currentNodes, newEdges, 'LR');
+    setNodes([...layoutedNodes]);
+    setEdges([...layoutedEdges]);
+
+    window.requestAnimationFrame(() => {
+      fitView({ duration: 800 });
+    });
+  }, [nodes, fitView, setNodes, setEdges]);
+
 
   const handleChangeLength = useCallback((id: string, length: number) => {
     setEdges((eds) =>
@@ -455,6 +698,8 @@ function PlannerInner() {
 
       if (viewMode === 'roof') {
         setRoofNodes((nds) => nds.concat(newNode));
+      } else if (viewMode === 'water') {
+        setWaterNodes((nds) => nds.concat(newNode));
       } else {
         setNodes((nds) => nds.concat(newNode));
       }
@@ -610,6 +855,12 @@ function PlannerInner() {
             >
               Dach-Planer
             </button>
+            <button
+              className={`px-4 py-2 font-semibold text-sm transition-colors ${viewMode === 'water' ? 'bg-cyan-500 text-white' : 'bg-transparent text-gray-600 hover:bg-gray-50/50'}`}
+              onClick={() => setViewMode('water')}
+            >
+              Wasser & Sanitär
+            </button>
           </div>
 
           <button
@@ -617,6 +868,14 @@ function PlannerInner() {
             className="bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-4 rounded shadow-md transition-colors"
           >
             Stückliste an KI senden
+          </button>
+
+
+          <button
+            onClick={autoWireSystem}
+            className="bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-semibold py-2 px-4 rounded shadow-md transition-colors border border-yellow-500"
+          >
+            ⚡ Automatisch Verkabeln & Absichern
           </button>
 
           <button
@@ -655,13 +914,18 @@ function PlannerInner() {
             {isProMode ? 'Profi-Modus (CAD-Optik) An' : 'Profi-Modus (CAD-Optik) Aus'}
           </button>
         </div>
+        {waterWarning && (
+          <div className="absolute top-20 left-1/2 -translate-x-1/2 z-50 bg-yellow-100 text-yellow-800 border border-yellow-300 p-4 rounded-xl shadow-xl font-semibold">
+            ⚠️ {waterWarning}
+          </div>
+        )}
         <ReactFlow
-          nodes={viewMode === 'roof' ? roofNodes : nodes}
-          edges={viewMode === 'roof' ? roofEdges : edges}
-          nodeTypes={NODE_TYPES}
-          edgeTypes={EDGE_TYPES}
-          onNodesChange={viewMode === 'roof' ? onRoofNodesChange : onNodesChange}
-          onEdgesChange={viewMode === 'roof' ? onRoofEdgesChange : onEdgesChange}
+          nodes={viewMode === 'roof' ? roofNodes : viewMode === 'water' ? waterNodes : nodes}
+          edges={viewMode === 'roof' ? roofEdges : viewMode === 'water' ? waterEdges : edges}
+          nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
+          onNodesChange={viewMode === 'roof' ? onRoofNodesChange : viewMode === 'water' ? onWaterNodesChange : onNodesChange}
+          onEdgesChange={viewMode === 'roof' ? onRoofEdgesChange : viewMode === 'water' ? onWaterEdgesChange : onEdgesChange}
           onConnect={onConnect}
           isValidConnection={isValidConnection}
           onSelectionChange={onSelectionChange}
@@ -719,6 +983,8 @@ function PlannerInner() {
             </Panel>
           )}
         </ReactFlow>
+
+        <HeatingCalculator />
 
         {showBOM && (
           <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
