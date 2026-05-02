@@ -12,7 +12,7 @@ describe('Inspector Component', () => {
     vi.clearAllMocks();
   });
 
-  it('renders "Kein Kabel ausgewählt" when no edge is selected', () => {
+  it('renders "Kein Element ausgewählt" when no edge or node is selected', () => {
     render(
       <Inspector
         selectedEdge={null}
@@ -21,7 +21,7 @@ describe('Inspector Component', () => {
       />
     );
 
-    expect(screen.getByText('Kein Kabel ausgewählt')).toBeInTheDocument();
+    expect(screen.getByText('Kein Element ausgewählt')).toBeInTheDocument();
   });
 
   it('renders length input when an edge is selected', () => {
