@@ -648,6 +648,12 @@ function PlannerInner() {
     setShowBOM(true);
   }, [generateBOM]);
 
+  const checkSchematic = useCallback(() => {
+    const schematic = { nodes, edges };
+    const event = new CustomEvent('check-schematic', { detail: schematic });
+    window.dispatchEvent(event);
+  }, [nodes, edges]);
+
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
@@ -876,6 +882,13 @@ function PlannerInner() {
             className="bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-semibold py-2 px-4 rounded shadow-md transition-colors border border-yellow-500"
           >
             ⚡ Automatisch Verkabeln & Absichern
+          </button>
+
+          <button
+            onClick={checkSchematic}
+            className="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded shadow-md transition-colors"
+          >
+            Schaltplan von KI prüfen lassen
           </button>
 
           <button

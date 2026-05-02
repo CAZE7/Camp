@@ -25,7 +25,16 @@ const openai = createOpenAI({
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
-  const body = await req.json();
+  let body;
+  try {
+    body = await req.json();
+  } catch (error) {
+    return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
   const { messages }: { messages: Message[] } = body;
 
   if (!Array.isArray(messages) || messages.length === 0) {
@@ -136,6 +145,13 @@ export async function POST(req: Request) {
   const systemPrompt = `
 Du bist ein erfahrener Camper-Ausbau Assistent und Senior Elektriker.
 Beantworte die Fragen des Nutzers basierend auf deinem Wissen und dem folgenden Kontext aus unserer Datenbank.
+
+Prüfe den Schaltplan auf folgende Fehler nach VDE-Norm:
+- Fehlt ein FI-Schutzschalter (RCD mit <= 30 mA) nach dem Landstrom-Eingang? Falls ja, warne den Nutzer, da dies nach DIN VDE 0100-721 illegal ist.
+- Werden starre NYM-Kabel verwendet? Erinnere den Nutzer, dass nur feindrähtige Leitungen im Camper erlaubt sind.
+- Prüfe, ob der Wechselrichter-Verlust von ca. 15% (Faktor 0.85) bei 230V-Geräten beachtet wurde.
+
+Formatiere dein KI-Gutachten übersichtlich und verwende Warn-Icons (⚠️) bei gefundenen Fehlern.
 
 WICHTIGER KONTEXT AUS DER DATENBANK:
 ${contextText ? contextText : "Kein spezifischer Kontext gefunden."}
