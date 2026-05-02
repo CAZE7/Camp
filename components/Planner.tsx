@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import ReactFlow, {
   Background,
   Controls,
+  MiniMap,
   Edge,
   Node,
   OnConnect,
@@ -136,6 +137,7 @@ function PlannerInner() {
   const [season, setSeason] = useState<'summer' | 'winter'>('summer');
   const [isLeftSidebarOpen, setIsLeftSidebarOpen] = useState(true);
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(true);
+  const [isProMode, setIsProMode] = useState(false);
 
   const [selectedNodes, setSelectedNodes] = useState<Node[]>([]);
   const [selectedEdges, setSelectedEdges] = useState<Edge[]>([]);
@@ -170,6 +172,28 @@ function PlannerInner() {
     },
     []
   );
+
+  const toggleProMode = useCallback(() => {
+    setIsProMode((prev) => {
+      const nextMode = !prev;
+      setEdges((eds) =>
+        eds.map((edge) => {
+          if (edge.type === 'cableEdge') {
+            return {
+              ...edge,
+              data: {
+                ...edge.data,
+                length: edge.data?.length ?? 3,
+                isProMode: nextMode,
+              },
+            } as Edge<CableEdgeData>;
+          }
+          return edge;
+        })
+      );
+      return nextMode;
+    });
+  }, []);
 
   const isValidConnection = useCallback(
     (connection: Connection) => {
@@ -232,11 +256,12 @@ function PlannerInner() {
         data: {
           length: 3,
           crossSection: 2.5,
+          isProMode: isProMode,
         },
       };
       setEdges((eds) => addEdge(newEdge, eds) as Edge<CableEdgeData>[]);
     },
-    []
+    [isProMode]
   );
 
   const onSelectionChange = useCallback((params: OnSelectionChangeParams) => {
@@ -525,7 +550,7 @@ function PlannerInner() {
   return (
     <div className="flex h-screen w-full bg-gray-50 overflow-hidden font-sans relative">
       <div
-        className={`transition-all duration-300 ease-in-out ${isLeftSidebarOpen ? 'w-64 translate-x-0' : 'w-0 -translate-x-full'} z-20 flex-shrink-0 bg-white shadow-sm`}
+        className={`transition-all duration-300 ease-in-out ${isLeftSidebarOpen ? 'w-64 translate-x-0' : 'w-0 -translate-x-full'} z-20 flex-shrink-0 shadow-xl bg-white/80 backdrop-blur-md`}
       >
         <div className="w-64 h-full">
           <Sidebar />
@@ -573,20 +598,27 @@ function PlannerInner() {
             Als Bild speichern
           </button>
 
-          <div className="bg-white rounded shadow-md flex items-center border border-gray-200 overflow-hidden">
+          <div className="bg-white/80 backdrop-blur-md rounded shadow-xl flex items-center border border-gray-200 overflow-hidden">
             <button
-              className={`px-4 py-2 font-semibold text-sm transition-colors ${season === 'summer' ? 'bg-yellow-400 text-yellow-900' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+              className={`px-4 py-2 font-semibold text-sm transition-colors ${season === 'summer' ? 'bg-yellow-400 text-yellow-900' : 'bg-transparent text-gray-600 hover:bg-gray-50/50'}`}
               onClick={() => setSeason('summer')}
             >
               Sommer
             </button>
             <button
-              className={`px-4 py-2 font-semibold text-sm transition-colors ${season === 'winter' ? 'bg-blue-400 text-blue-900' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+              className={`px-4 py-2 font-semibold text-sm transition-colors ${season === 'winter' ? 'bg-blue-400 text-blue-900' : 'bg-transparent text-gray-600 hover:bg-gray-50/50'}`}
               onClick={() => setSeason('winter')}
             >
               Winter
             </button>
           </div>
+
+          <button
+            onClick={toggleProMode}
+            className={`font-semibold py-2 px-4 rounded-xl shadow-xl transition-colors border backdrop-blur-md ${isProMode ? 'bg-blue-500/90 hover:bg-blue-600/90 text-white border-blue-600' : 'bg-white/80 hover:bg-gray-50/90 text-gray-700 border-gray-200'}`}
+          >
+            {isProMode ? 'Profi-Modus (CAD-Optik) An' : 'Profi-Modus (CAD-Optik) Aus'}
+          </button>
         </div>
         <ReactFlow
           nodes={nodes}
@@ -601,11 +633,13 @@ function PlannerInner() {
           onDragOver={onDragOver}
           onDrop={onDrop}
           fitView
+          snapToGrid={true}
           deleteKeyCode={['Backspace', 'Delete']}
         >
           <Background color="#ccc" gap={16} />
           <Controls />
-          <Panel position="top-center" className="bg-white p-4 rounded-md shadow-lg border border-gray-200 text-sm w-80">
+          <MiniMap />
+          <Panel position="top-center" className="bg-white/80 backdrop-blur-md p-4 rounded-xl shadow-xl border border-gray-200 text-sm w-80">
             <h3 className="font-bold text-gray-800 mb-2 border-b pb-1">System Berechnungen</h3>
             <div className="flex flex-col gap-2">
               <div className="flex justify-between">
@@ -670,7 +704,7 @@ function PlannerInner() {
       </div>
 
       <div
-        className={`transition-all duration-300 ease-in-out ${isRightSidebarOpen ? 'w-[250px] translate-x-0' : 'w-0 translate-x-full'} z-20 flex-shrink-0 bg-white shadow-sm`}
+        className={`transition-all duration-300 ease-in-out ${isRightSidebarOpen ? 'w-[250px] translate-x-0' : 'w-0 translate-x-full'} z-20 flex-shrink-0 shadow-xl bg-white/80 backdrop-blur-md`}
       >
         <div className="w-[250px] h-full">
           <Inspector

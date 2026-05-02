@@ -1,9 +1,9 @@
 import React from 'react';
 import { Handle, Position } from 'reactflow';
 
-export default function InverterNode({ id, data, isConnectable }: any) {
+export default function InverterNode({ id, data, isConnectable, selected }: any) {
   return (
-    <div className="bg-white border-2 border-teal-500 rounded-md p-3 shadow-md w-48">
+    <div className={"bg-white border-2 border-teal-500 rounded-md p-3 shadow-md w-48" + (selected ? " ring-4 ring-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.6)]" : "")}>
       <div className="font-bold mb-2 text-sm text-center">{data.label || 'Wechselrichter'}</div>
       <div className="flex flex-col gap-1 text-xs text-gray-600">
         <div>12V in / 230V out</div>

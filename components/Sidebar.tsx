@@ -26,7 +26,7 @@ export default function Sidebar() {
   );
 
   return (
-    <aside className="w-64 bg-white border-r border-gray-200 p-4 flex flex-col h-full shadow-sm">
+    <aside className="w-64 bg-transparent border-r border-gray-200 p-4 flex flex-col h-full">
       <h2 className="text-lg font-semibold mb-4 text-gray-800">Komponenten</h2>
 
       <div className="mb-4">
@@ -45,7 +45,7 @@ export default function Sidebar() {
             {filteredComponents.map((comp, index) => (
               <div
                 key={index}
-                className="p-3 border border-gray-200 rounded cursor-grab hover:bg-orange-50 transition-colors text-sm font-medium text-gray-700 bg-white shadow-sm"
+                className="p-3 border border-gray-200 rounded cursor-grab hover:bg-orange-50 hover:scale-105 transition-transform transition-colors text-sm font-medium text-gray-700 bg-white shadow-sm"
                 onDragStart={(event) => onDragStart(event, comp.type, comp.label)}
                 draggable
               >

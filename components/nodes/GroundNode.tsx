@@ -1,9 +1,9 @@
 import React from 'react';
 import { Handle, Position } from 'reactflow';
 
-export default function GroundNode({ id, data, isConnectable }: any) {
+export default function GroundNode({ id, data, isConnectable, selected }: any) {
   return (
-    <div className="bg-gray-100 border-2 border-gray-600 rounded-md p-3 shadow-md w-32 flex flex-col items-center">
+    <div className={"bg-gray-100 border-2 border-gray-600 rounded-md p-3 shadow-md w-32 flex flex-col items-center" + (selected ? " ring-4 ring-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.6)]" : "")}>
       <div className="font-bold mb-1 text-sm text-center">{data.label || 'Massepunkt'}</div>
       <div className="text-xs text-gray-500 mb-2">(Karosserie)</div>
 
