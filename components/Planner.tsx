@@ -29,8 +29,11 @@ import ShorePowerNode from './nodes/ShorePowerNode';
 import Consumer230VNode from './nodes/Consumer230VNode';
 import InverterNode from './nodes/InverterNode';
 import SolarNode from './nodes/SolarNode';
+import GroundNode from './nodes/GroundNode';
 import Inspector from './Inspector';
 import Sidebar from './Sidebar';
+import dagre from 'dagre';
+import { toPng } from 'html-to-image';
 
 const initialNodes: Node[] = [
   {
@@ -93,6 +96,39 @@ const initialEdges: Edge<CableEdgeData>[] = [
   },
 ];
 
+const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'LR') => {
+  const dagreGraph = new dagre.graphlib.Graph();
+  dagreGraph.setDefaultEdgeLabel(() => ({}));
+
+  const nodeWidth = 200;
+  const nodeHeight = 100;
+
+  dagreGraph.setGraph({ rankdir: direction });
+
+  nodes.forEach((node) => {
+    dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight });
+  });
+
+  edges.forEach((edge) => {
+    dagreGraph.setEdge(edge.source, edge.target);
+  });
+
+  dagre.layout(dagreGraph);
+
+  const layoutedNodes = nodes.map((node) => {
+    const nodeWithPosition = dagreGraph.node(node.id);
+    return {
+      ...node,
+      position: {
+        x: nodeWithPosition.x - nodeWidth / 2,
+        y: nodeWithPosition.y - nodeHeight / 2,
+      },
+    };
+  });
+
+  return { nodes: layoutedNodes, edges };
+};
+
 function PlannerInner() {
   const [nodes, setNodes] = useState<Node[]>(initialNodes);
   const [edges, setEdges] = useState<Edge<CableEdgeData>[]>(initialEdges);
@@ -105,7 +141,7 @@ function PlannerInner() {
   const selectedEdgeId = selectedEdges.length > 0 ? selectedEdges[0].id : null;
   const selectedNodeId = selectedNodes.length > 0 ? selectedNodes[0].id : null;
 
-  const { screenToFlowPosition } = useReactFlow();
+  const { screenToFlowPosition, fitView } = useReactFlow();
 
   const edgeTypes = useMemo(() => ({ cableEdge: CableEdge }), []);
   const nodeTypes = useMemo(() => ({
@@ -116,7 +152,8 @@ function PlannerInner() {
     shorePower: ShorePowerNode,
     consumer230v: Consumer230VNode,
     inverter: InverterNode,
-    solar: SolarNode
+    solar: SolarNode,
+    ground: GroundNode
   }), []);
 
   const onNodesChange: OnNodesChange = useCallback(
@@ -230,6 +267,20 @@ function PlannerInner() {
     );
   }, []);
 
+  const onLayout = useCallback(() => {
+    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
+      nodes,
+      edges,
+      'LR'
+    );
+    setNodes([...layoutedNodes]);
+    setEdges([...layoutedEdges]);
+
+    window.requestAnimationFrame(() => {
+      fitView({ duration: 800 });
+    });
+  }, [nodes, edges, fitView]);
+
   const handleChangeLength = useCallback((id: string, length: number) => {
     setEdges((eds) =>
       eds.map((e) => {
@@ -239,6 +290,34 @@ function PlannerInner() {
         return e;
       })
     );
+  }, []);
+
+  const onExportImage = useCallback(() => {
+    const reactFlowWrapper = document.querySelector('.react-flow') as HTMLElement;
+    if (!reactFlowWrapper) return;
+
+    // We optionally use the view pane inside react flow so we capture only the canvas
+    toPng(reactFlowWrapper, {
+      filter: (node) => {
+        // Exclude the controls and panels if desired, or exclude HTML components that cause issues.
+        // For now, keep everything as requested.
+        if (
+          node?.classList?.contains('react-flow__panel') ||
+          node?.classList?.contains('react-flow__controls') ||
+          node?.classList?.contains('react-flow__minimap')
+        ) {
+          return false;
+        }
+        return true;
+      },
+    }).then((dataUrl) => {
+      const link = document.createElement('a');
+      link.download = 'schaltplan.png';
+      link.href = dataUrl;
+      link.click();
+    }).catch((err) => {
+      console.error('Failed to export image', err);
+    });
   }, []);
 
   const handleChangeCrossSection = useCallback((id: string, crossSection: number) => {
@@ -450,6 +529,20 @@ function PlannerInner() {
             className="bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-4 rounded shadow-md transition-colors"
           >
             Stückliste an KI senden
+          </button>
+
+          <button
+            onClick={onLayout}
+            className="bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-2 px-4 rounded shadow-md transition-colors"
+          >
+            Schaltplan aufräumen
+          </button>
+
+          <button
+            onClick={onExportImage}
+            className="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded shadow-md transition-colors"
+          >
+            Als Bild speichern
           </button>
 
           <div className="bg-white rounded shadow-md flex items-center border border-gray-200 overflow-hidden">

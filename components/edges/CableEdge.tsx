@@ -53,7 +53,11 @@ export default function CableEdge({
     I = allConsumers.reduce((acc, n) => acc + ((n.data.watts || 0) / 12), 0);
   }
 
-  const calculatedA = (I * (length * 2)) / (58 * 0.24);
+  // Check if either node is a ground node, which means chassis return is used (no return wire over full distance)
+  const isChassisGround = sourceNode?.type === 'ground' || targetNode?.type === 'ground';
+  const distanceMultiplier = isChassisGround ? 1 : 2;
+
+  const calculatedA = (I * (length * distanceMultiplier)) / (58 * 0.24);
   const VDE_SIZES = [1.5, 2.5, 4.0, 6.0, 10.0, 16.0, 25.0, 35.0, 50.0, 70.0];
   const crossSection = VDE_SIZES.find(size => size >= calculatedA) || 70.0;
 
@@ -82,6 +86,10 @@ export default function CableEdge({
 
   const stroke = selected ? '#f97316' : '#9ca3af';
 
+  // Animation duration calculation based on Current (I)
+  // Higher I = faster animation (shorter duration). Base duration 5s, min 0.5s.
+  const animationDuration = Math.max(0.5, 5 - (I / 10));
+
   return (
     <>
       <BaseEdge
@@ -96,6 +104,16 @@ export default function CableEdge({
           cursor: 'pointer',
         }}
       />
+
+      {I > 0 && (
+        <circle r={strokeWidth} fill="#fbbf24">
+          <animateMotion
+            dur={`${animationDuration}s`}
+            repeatCount="indefinite"
+            path={edgePath}
+          />
+        </circle>
+      )}
 
       <EdgeLabelRenderer>
         <div
