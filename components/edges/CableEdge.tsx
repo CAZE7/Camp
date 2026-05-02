@@ -40,7 +40,10 @@ export default function CableEdge({
     ? getSmoothStepPath({ ...pathParams, borderRadius: 5 })
     : getBezierPath(pathParams);
 
-  const length = data?.length ?? 3;
+  // Calculate length based on spatial layout
+  // 100 pixels = 1 meter, add 20% buffer
+  const pixelDistance = Math.sqrt(Math.pow(targetX - sourceX, 2) + Math.pow(targetY - sourceY, 2));
+  const length = (pixelDistance / 100) * 1.2;
 
   let I = 0;
   const sourceNode = nodes.find(n => n.id === source);
@@ -65,8 +68,10 @@ export default function CableEdge({
   const distanceMultiplier = isChassisGround ? 1 : 2;
 
   const calculatedA = (I * (length * distanceMultiplier)) / (58 * 0.24);
-  const VDE_SIZES = [1.5, 2.5, 4.0, 6.0, 10.0, 16.0, 25.0, 35.0, 50.0, 70.0];
-  const crossSection = VDE_SIZES.find(size => size >= calculatedA) || 70.0;
+  // Force a hard minimum of 1.5 mm² as per DIN VDE 0100-721
+  const minRequiredA = Math.max(1.5, calculatedA);
+  const VDE_SIZES = [1.5, 2.5, 4.0, 6.0, 10.0, 16.0, 25.0, 35.0, 50.0];
+  const crossSection = VDE_SIZES.find(size => size >= minRequiredA) || 50.0;
 
   let maxFuse = 0;
   if (crossSection === 1.5) maxFuse = 16;
@@ -140,6 +145,7 @@ export default function CableEdge({
           }}
           className="nodrag nopan"
         >
+          <span>{length.toFixed(2)} m</span>
           <span>{crossSection} mm²</span>
           {maxFuse > 0 && <span style={{ color: 'red', fontSize: '10px' }}>Max: {maxFuse}A</span>}
         </div>
@@ -153,7 +159,7 @@ export default function CableEdge({
         strokeWidth={20}
         style={{ cursor: 'pointer' }}
       >
-        <title>{`${length}m | ${crossSection}mm²`}</title>
+        <title>{`${length.toFixed(2)}m | ${crossSection}mm²`}</title>
       </path>
     </>
   );
