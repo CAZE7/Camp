@@ -32,6 +32,8 @@ import Consumer230VNode from './nodes/Consumer230VNode';
 import InverterNode from './nodes/InverterNode';
 import SolarNode from './nodes/SolarNode';
 import GroundNode from './nodes/GroundNode';
+import RoofWindowNode from './nodes/RoofWindowNode';
+import RoofSolarNode from './nodes/RoofSolarNode';
 import Inspector from './Inspector';
 import Sidebar from './Sidebar';
 import dagre from 'dagre';
@@ -132,8 +134,12 @@ const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'LR') => 
 };
 
 function PlannerInner() {
+  const [viewMode, setViewMode] = useState<'electric' | 'roof'>('electric');
   const [nodes, setNodes] = useState<Node[]>(initialNodes);
   const [edges, setEdges] = useState<Edge<CableEdgeData>[]>(initialEdges);
+  const [roofNodes, setRoofNodes] = useState<Node[]>([]);
+  const [roofEdges, setRoofEdges] = useState<Edge[]>([]);
+
   const [season, setSeason] = useState<'summer' | 'winter'>('summer');
   const [isLeftSidebarOpen, setIsLeftSidebarOpen] = useState(true);
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(true);
@@ -158,7 +164,9 @@ function PlannerInner() {
     consumer230v: Consumer230VNode,
     inverter: InverterNode,
     solar: SolarNode,
-    ground: GroundNode
+    ground: GroundNode,
+    roofWindow: RoofWindowNode,
+    roofSolar: RoofSolarNode
   }), []);
 
   const onNodesChange: OnNodesChange = useCallback(
@@ -170,6 +178,16 @@ function PlannerInner() {
     (changes) => {
       setEdges((eds) => applyEdgeChanges(changes, eds) as Edge<CableEdgeData>[]);
     },
+    []
+  );
+
+  const onRoofNodesChange: OnNodesChange = useCallback(
+    (changes) => setRoofNodes((nds) => applyNodeChanges(changes, nds)),
+    []
+  );
+
+  const onRoofEdgesChange: OnEdgesChange = useCallback(
+    (changes) => setRoofEdges((eds) => applyEdgeChanges(changes, eds)),
     []
   );
 
@@ -273,19 +291,30 @@ function PlannerInner() {
     if (selectedNodes.length > 0) {
       const nodeIds = selectedNodes.map(n => n.id);
       setNodes((nds) => nds.filter((n) => !nodeIds.includes(n.id)));
+      setRoofNodes((nds) => nds.filter((n) => !nodeIds.includes(n.id)));
       // Also delete connected edges
       setEdges((eds) => eds.filter((e) => !nodeIds.includes(e.source) && !nodeIds.includes(e.target)));
+      setRoofEdges((eds) => eds.filter((e) => !nodeIds.includes(e.source) && !nodeIds.includes(e.target)));
       setSelectedNodes([]);
     }
     if (selectedEdges.length > 0) {
       const edgeIds = selectedEdges.map(e => e.id);
       setEdges((eds) => eds.filter((e) => !edgeIds.includes(e.id)));
+      setRoofEdges((eds) => eds.filter((e) => !edgeIds.includes(e.id)));
       setSelectedEdges([]);
     }
   }, [selectedNodes, selectedEdges]);
 
   const updateNodeData = useCallback((id: string, data: any) => {
     setNodes((nds) =>
+      nds.map((n) => {
+        if (n.id === id) {
+          return { ...n, data: { ...n.data, ...data } };
+        }
+        return n;
+      })
+    );
+    setRoofNodes((nds) =>
       nds.map((n) => {
         if (n.id === id) {
           return { ...n, data: { ...n.data, ...data } };
@@ -437,11 +466,19 @@ function PlannerInner() {
         newNode.data = { ...newNode.data, watts: 1000, hours: 0.5 };
       } else if (type === 'solar') {
         newNode.data = { ...newNode.data, voltage: 18, amps: 5 };
+      } else if (type === 'roofWindow') {
+        newNode.data = { ...newNode.data, width: 40, height: 40 };
+      } else if (type === 'roofSolar') {
+        newNode.data = { ...newNode.data, width: 100, height: 60, watts: 100 };
       }
 
-      setNodes((nds) => nds.concat(newNode));
+      if (viewMode === 'roof') {
+        setRoofNodes((nds) => nds.concat(newNode));
+      } else {
+        setNodes((nds) => nds.concat(newNode));
+      }
     },
-    [screenToFlowPosition]
+    [screenToFlowPosition, viewMode]
   );
 
   // --- Calculations for Dashboard ---
@@ -524,14 +561,16 @@ function PlannerInner() {
     }
   }
 
+  const totalRoofSolarWatts = roofNodes.filter((n) => n.type === 'roofSolar').reduce((acc, n) => acc + (n.data.watts || 0), 0);
+
   // Charging time: Capacity * DoD / ChargerAmps * 1.15
   const chargers = nodes.filter((n) => n.type === 'charger');
-  const totalChargerAmps = chargers.reduce((acc, n) => acc + (n.data.amps || 0), 0) + totalSolarAmps;
+  const totalChargerAmps = chargers.reduce((acc, n) => acc + (n.data.amps || 0), 0) + totalSolarAmps + (totalRoofSolarWatts / 12);
   let chargingTimeStr = 'N/A';
   if (totalChargerAmps > 0) {
     const chargingTime = (usableCapacityAh / totalChargerAmps) * 1.15;
     chargingTimeStr = `${chargingTime.toFixed(1)} Stunden`;
-  } else if (chargers.length > 0 || solarNodes.length > 0) {
+  } else if (chargers.length > 0 || solarNodes.length > 0 || totalRoofSolarWatts > 0) {
     chargingTimeStr = '0 Ladeleistung';
   } else {
     chargingTimeStr = 'Kein Ladegerät';
@@ -553,7 +592,7 @@ function PlannerInner() {
         className={`transition-all duration-300 ease-in-out ${isLeftSidebarOpen ? 'w-64 translate-x-0' : 'w-0 -translate-x-full'} z-20 flex-shrink-0 shadow-xl bg-white/80 backdrop-blur-md`}
       >
         <div className="w-64 h-full">
-          <Sidebar />
+          <Sidebar mode={viewMode} />
         </div>
       </div>
 
@@ -577,6 +616,21 @@ function PlannerInner() {
 
       <div className="flex-1 h-full relative overflow-hidden flex flex-col">
         <div className="absolute top-4 left-4 z-10 flex gap-2">
+          <div className="bg-white/80 backdrop-blur-md rounded shadow-xl flex items-center border border-gray-200 overflow-hidden mr-4">
+            <button
+              className={`px-4 py-2 font-semibold text-sm transition-colors ${viewMode === 'electric' ? 'bg-orange-500 text-white' : 'bg-transparent text-gray-600 hover:bg-gray-50/50'}`}
+              onClick={() => setViewMode('electric')}
+            >
+              Elektrik-Schaltplan
+            </button>
+            <button
+              className={`px-4 py-2 font-semibold text-sm transition-colors ${viewMode === 'roof' ? 'bg-blue-500 text-white' : 'bg-transparent text-gray-600 hover:bg-gray-50/50'}`}
+              onClick={() => setViewMode('roof')}
+            >
+              Dach-Planer
+            </button>
+          </div>
+
           <button
             onClick={exportBOM}
             className="bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-4 rounded shadow-md transition-colors"
@@ -621,12 +675,12 @@ function PlannerInner() {
           </button>
         </div>
         <ReactFlow
-          nodes={nodes}
-          edges={edges}
+          nodes={viewMode === 'roof' ? roofNodes : nodes}
+          edges={viewMode === 'roof' ? roofEdges : edges}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
+          onNodesChange={viewMode === 'roof' ? onRoofNodesChange : onNodesChange}
+          onEdgesChange={viewMode === 'roof' ? onRoofEdgesChange : onEdgesChange}
           onConnect={onConnect}
           isValidConnection={isValidConnection}
           onSelectionChange={onSelectionChange}
@@ -636,11 +690,22 @@ function PlannerInner() {
           snapToGrid={true}
           deleteKeyCode={['Backspace', 'Delete']}
         >
+          {viewMode === 'roof' && (
+            <div
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-3xl border-4 border-gray-400 flex items-center justify-center text-gray-300 font-bold text-4xl"
+              style={{ width: 520, height: 316, zIndex: -1 }}
+            >
+              L1 Fahrzeugdach
+            </div>
+          )}
+
           <Background color="#ccc" gap={16} />
           <Controls />
           <MiniMap />
-          <Panel position="top-center" className="bg-white/80 backdrop-blur-md p-4 rounded-xl shadow-xl border border-gray-200 text-sm w-80">
-            <h3 className="font-bold text-gray-800 mb-2 border-b pb-1">System Berechnungen</h3>
+
+          {viewMode === 'electric' && (
+            <Panel position="top-center" className="bg-white/80 backdrop-blur-md p-4 rounded-xl shadow-xl border border-gray-200 text-sm w-80">
+              <h3 className="font-bold text-gray-800 mb-2 border-b pb-1">System Berechnungen</h3>
             <div className="flex flex-col gap-2">
               <div className="flex justify-between">
                 <span className="text-gray-600">Täglicher Gesamtverbrauch:</span>
@@ -654,10 +719,14 @@ function PlannerInner() {
                 <span className="text-gray-600">Ladezeit (komplett leer bis voll):</span>
                 <span className="font-semibold text-gray-900">{chargingTimeStr}</span>
               </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Eingehende Ladeleistung (Dach):</span>
+                <span className="font-semibold text-gray-900">{totalRoofSolarWatts} W</span>
+              </div>
               {solarNodes.length > 0 && (
                 <div className="flex justify-between">
                   <span className="text-gray-600">Solar-Array Output:</span>
-                  <span className="font-semibold text-gray-900">{totalSolarVoltage}V / {totalSolarAmps}A</span>
+                  <span className="font-semibold text-gray-900">{totalSolarVoltage}V / {totalSolarAmps.toFixed(1)}A</span>
                 </div>
               )}
               {hasDirectBatteryToConsumer && (
@@ -665,8 +734,9 @@ function PlannerInner() {
                   ⚠️ Warnung: Verbraucher ist direkt mit der Batterie verbunden. Ein Sicherungsknoten fehlt!
                 </div>
               )}
-            </div>
-          </Panel>
+              </div>
+            </Panel>
+          )}
         </ReactFlow>
 
         {showBOM && (
