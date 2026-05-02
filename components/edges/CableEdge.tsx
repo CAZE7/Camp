@@ -57,6 +57,18 @@ export default function CableEdge({
   const VDE_SIZES = [1.5, 2.5, 4.0, 6.0, 10.0, 16.0, 25.0, 35.0, 50.0, 70.0];
   const crossSection = VDE_SIZES.find(size => size >= calculatedA) || 70.0;
 
+  let maxFuse = 0;
+  if (crossSection === 1.5) maxFuse = 16;
+  else if (crossSection === 2.5) maxFuse = 25;
+  else if (crossSection === 4.0) maxFuse = 32;
+  else if (crossSection === 6.0) maxFuse = 50;
+  else if (crossSection === 10.0) maxFuse = 70;
+  else if (crossSection === 16.0) maxFuse = 100;
+  else if (crossSection === 25.0) maxFuse = 130;
+  else if (crossSection === 35.0) maxFuse = 150;
+  else if (crossSection === 50.0) maxFuse = 200;
+  else if (crossSection >= 70.0) maxFuse = 250;
+
   let strokeWidth = 2;
   if (crossSection <= 1.5) {
     strokeWidth = 2;
@@ -97,10 +109,14 @@ export default function CableEdge({
             fontWeight: 'bold',
             border: '1px solid #ccc',
             pointerEvents: 'all',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center'
           }}
           className="nodrag nopan"
         >
-          {crossSection} mm²
+          <span>{crossSection} mm²</span>
+          {maxFuse > 0 && <span style={{ color: 'red', fontSize: '10px' }}>Max: {maxFuse}A</span>}
         </div>
       </EdgeLabelRenderer>
 

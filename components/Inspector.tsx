@@ -127,6 +127,91 @@ export default function Inspector({
                   />
                 </div>
               )}
+
+              {selectedNode.type === 'fuse' && (
+                <div className="flex flex-col">
+                  <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider">Sicherung (A)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={selectedNode.data?.rating || 0}
+                    onChange={(e) => onUpdateNodeData?.(selectedNode.id, { rating: Number(e.target.value) })}
+                    className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow"
+                  />
+                </div>
+              )}
+
+              {selectedNode.type === 'shorePower' && (
+                <div className="flex flex-col gap-2">
+                  <label className="flex items-center gap-2 text-sm text-gray-700">
+                    <input
+                      type="checkbox"
+                      checked={selectedNode.data?.hasRcd || false}
+                      onChange={(e) => onUpdateNodeData?.(selectedNode.id, { hasRcd: e.target.checked })}
+                      className="rounded border-gray-300 text-orange-500 focus:ring-orange-500"
+                    />
+                    RCD (FI-Schalter) 30mA installiert
+                  </label>
+                  {!selectedNode.data?.hasRcd && (
+                    <div className="p-2 bg-red-100 text-red-800 text-xs rounded border border-red-200">
+                      ⚠️ Ein FI-Schutzschalter (max. 30mA) ist bei Landstromanschlüssen vorgeschrieben (DIN VDE 0100-721).
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {selectedNode.type === 'consumer230v' && (
+                <>
+                  <div className="flex flex-col">
+                    <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider">Leistung 230V (W)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={selectedNode.data?.watts || 0}
+                      onChange={(e) => onUpdateNodeData?.(selectedNode.id, { watts: Number(e.target.value) })}
+                      className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow"
+                    />
+                  </div>
+                  <div className="flex flex-col">
+                    <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider">Nutzung (h/Tag)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="24"
+                      value={selectedNode.data?.hours || 0}
+                      onChange={(e) => onUpdateNodeData?.(selectedNode.id, { hours: Number(e.target.value) })}
+                      className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow"
+                    />
+                  </div>
+                </>
+              )}
+
+              {selectedNode.type === 'solar' && (
+                <>
+                  <div className="flex flex-col">
+                    <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider">Arbeitsspannung (V)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      value={selectedNode.data?.voltage || 0}
+                      onChange={(e) => onUpdateNodeData?.(selectedNode.id, { voltage: Number(e.target.value) })}
+                      className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow"
+                    />
+                  </div>
+                  <div className="flex flex-col">
+                    <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider">Strom (A)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      value={selectedNode.data?.amps || 0}
+                      onChange={(e) => onUpdateNodeData?.(selectedNode.id, { amps: Number(e.target.value) })}
+                      className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow"
+                    />
+                  </div>
+                </>
+              )}
             </div>
           )}
 
