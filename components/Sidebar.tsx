@@ -11,6 +11,7 @@ const components = [
   { type: 'shorePower', label: 'Landstromanschluss' },
   { type: 'fuse', label: 'Sicherungskasten' },
   { type: 'ground', label: 'Massepunkt (Karosserie)' },
+  { type: 'conduit', label: 'Leerrohr / Kabelkanal' },
 ];
 
 const roofComponents = [
