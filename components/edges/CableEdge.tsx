@@ -1,10 +1,10 @@
 import React from 'react';
 import { BaseEdge, EdgeProps, getBezierPath, getSmoothStepPath, EdgeLabelRenderer, useReactFlow } from 'reactflow';
+import { useAppStore } from '../../lib/store';
 
 export type CableEdgeData = {
   length: number;
   crossSection?: number; // Made optional as it's computed now
-  isProMode?: boolean;
   fuseSize?: number;
 };
 
@@ -25,6 +25,7 @@ export default function CableEdge({
 }: EdgeProps<CableEdgeData>) {
   const { getNodes } = useReactFlow();
   const nodes = getNodes();
+  const isProMode = useAppStore(state => state.isProMode);
 
   const pathParams = {
     sourceX,
@@ -35,7 +36,9 @@ export default function CableEdge({
     targetPosition,
   };
 
-  const [edgePath, labelX, labelY] = getSmoothStepPath({ ...pathParams, borderRadius: 10 });
+  const [edgePath, labelX, labelY] = isProMode
+    ? getSmoothStepPath({ ...pathParams, borderRadius: 10 })
+    : getBezierPath(pathParams);
 
   // Calculate length based on spatial layout
   // 100 pixels = 1 meter, add 20% buffer

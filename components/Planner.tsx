@@ -41,6 +41,7 @@ import WaterNode from './nodes/WaterNode';
 import WaterPipeEdge from './edges/WaterPipeEdge';
 import Inspector from './Inspector';
 import Sidebar from './Sidebar';
+import { useAppStore } from '../lib/store';
 import HeatingCalculator from './HeatingCalculator';
 import dagre from 'dagre';
 import { toPng } from 'html-to-image';
@@ -170,7 +171,7 @@ function PlannerInner() {
   const [season, setSeason] = useState<'summer' | 'winter'>('summer');
   const [isLeftSidebarOpen, setIsLeftSidebarOpen] = useState(true);
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(true);
-  const [isProMode, setIsProMode] = useState(false);
+  const { isProMode, toggleProMode } = useAppStore();
 
   const [selectedNodes, setSelectedNodes] = useState<Node[]>([]);
   const [selectedEdges, setSelectedEdges] = useState<Edge[]>([]);
@@ -234,29 +235,6 @@ function PlannerInner() {
     (changes) => setWaterEdges((eds) => applyEdgeChanges(changes, eds)),
     []
   );
-
-
-  const toggleProMode = useCallback(() => {
-    setIsProMode((prev) => {
-      const nextMode = !prev;
-      setEdges((eds) =>
-        eds.map((edge) => {
-          if (edge.type === 'cableEdge') {
-            return {
-              ...edge,
-              data: {
-                ...edge.data,
-                length: edge.data?.length ?? 3,
-                isProMode: nextMode,
-              },
-            } as Edge<CableEdgeData>;
-          }
-          return edge;
-        })
-      );
-      return nextMode;
-    });
-  }, []);
 
   const isValidConnection = useCallback(
     (connection: Connection) => {
@@ -350,12 +328,11 @@ function PlannerInner() {
         data: {
           length: 3,
           crossSection: 2.5,
-          isProMode: isProMode,
         },
       };
       setEdges((eds) => addEdge(newEdge, eds) as Edge<CableEdgeData>[]);
     },
-    [isProMode]
+    []
   );
 
     // Sequential Tap Connect Logic
@@ -954,8 +931,8 @@ function PlannerInner() {
       </button>
 
       <div className="flex-1 h-full relative overflow-hidden flex flex-col">
-        <div className="absolute top-4 left-4 z-10 flex gap-2 bg-white/80 backdrop-blur-md shadow-xl rounded-xl p-2">
-          <div className="bg-white/80 backdrop-blur-md rounded shadow-xl flex items-center border border-gray-200 overflow-hidden mr-4">
+        <div className="absolute top-4 left-4 z-10 flex flex-wrap gap-4 bg-white/80 backdrop-blur-md shadow-xl rounded-xl p-4 pointer-events-none">
+          <div className="bg-white/80 backdrop-blur-md rounded shadow-xl flex items-center border border-gray-200 overflow-hidden mr-4 pointer-events-auto">
             <button
               className={`px-4 py-2 font-semibold text-sm transition-colors ${viewMode === 'electric' ? 'bg-orange-500 text-white' : 'bg-transparent text-gray-600 hover:bg-gray-50/50'}`}
               onClick={() => setViewMode('electric')}
@@ -978,7 +955,7 @@ function PlannerInner() {
 
           <button
             onClick={exportBOM}
-            className="bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-4 rounded shadow-md transition-colors"
+            className="bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-4 rounded shadow-md transition-colors pointer-events-auto"
           >
             Stückliste an KI senden
           </button>
@@ -986,33 +963,33 @@ function PlannerInner() {
 
           <button
             onClick={autoWireSystem}
-            className="bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-semibold py-2 px-4 rounded shadow-md transition-colors border border-yellow-500"
+            className="bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-semibold py-2 px-4 rounded shadow-md transition-colors border border-yellow-500 pointer-events-auto"
           >
             ⚡ Automatisch Verkabeln & Absichern
           </button>
 
           <button
             onClick={checkSchematic}
-            className="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded shadow-md transition-colors"
+            className="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded shadow-md transition-colors pointer-events-auto"
           >
             Schaltplan von KI prüfen lassen
           </button>
 
           <button
             onClick={onLayout}
-            className="bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-2 px-4 rounded shadow-md transition-colors"
+            className="bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-2 px-4 rounded shadow-md transition-colors pointer-events-auto"
           >
             Schaltplan aufräumen
           </button>
 
           <button
             onClick={onExportImage}
-            className="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded shadow-md transition-colors"
+            className="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded shadow-md transition-colors pointer-events-auto"
           >
             Als Bild speichern
           </button>
 
-          <div className="bg-white/80 backdrop-blur-md rounded shadow-xl flex items-center border border-gray-200 overflow-hidden">
+          <div className="bg-white/80 backdrop-blur-md rounded shadow-xl flex items-center border border-gray-200 overflow-hidden pointer-events-auto">
             <button
               className={`px-4 py-2 font-semibold text-sm transition-colors ${season === 'summer' ? 'bg-yellow-400 text-yellow-900' : 'bg-transparent text-gray-600 hover:bg-gray-50/50'}`}
               onClick={() => setSeason('summer')}
@@ -1027,12 +1004,14 @@ function PlannerInner() {
             </button>
           </div>
 
-          <button
-            onClick={toggleProMode}
-            className={`font-semibold py-2 px-4 rounded-xl shadow-xl transition-colors border backdrop-blur-md ${isProMode ? 'bg-blue-500/90 hover:bg-blue-600/90 text-white border-blue-600' : 'bg-white/80 hover:bg-gray-50/90 text-gray-700 border-gray-200'}`}
-          >
-            {isProMode ? 'Profi-Modus (CAD-Optik) An' : 'Profi-Modus (CAD-Optik) Aus'}
-          </button>
+          <div className="ml-auto pointer-events-auto pl-4 border-l border-gray-300">
+            <button
+              onClick={toggleProMode}
+              className={`font-semibold py-2 px-4 rounded-xl shadow-xl transition-colors border backdrop-blur-md ${isProMode ? 'bg-blue-500/90 hover:bg-blue-600/90 text-white border-blue-600' : 'bg-white/80 hover:bg-gray-50/90 text-gray-700 border-gray-200'}`}
+            >
+              {isProMode ? 'Profi-Modus (CAD-Optik) An' : 'Profi-Modus (CAD-Optik) Aus'}
+            </button>
+          </div>
         </div>
         {waterWarning && (
           <div className="absolute top-20 left-1/2 -translate-x-1/2 z-50 bg-yellow-100 text-yellow-800 border border-yellow-300 p-4 rounded-xl shadow-xl font-semibold">
