@@ -45,6 +45,13 @@ import { useAppStore } from '../lib/store';
 import HeatingCalculator from './HeatingCalculator';
 import dagre from 'dagre';
 import { toPng } from 'html-to-image';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
 
 const NODE_TYPES = {
   battery: BatteryNode,
@@ -931,8 +938,8 @@ function PlannerInner() {
       </button>
 
       <div className="flex-1 h-full relative overflow-hidden flex flex-col">
-        <div className="absolute top-4 left-4 z-10 flex flex-wrap gap-4 bg-white/80 backdrop-blur-md shadow-xl rounded-xl p-4 pointer-events-none">
-          <div className="bg-white/80 backdrop-blur-md rounded shadow-xl flex items-center border border-gray-200 overflow-hidden mr-4 pointer-events-auto">
+        <div className="absolute top-4 left-4 z-10 flex flex-wrap gap-4 bg-white/80 backdrop-blur-md shadow-xl rounded-xl p-4 pointer-events-none w-[calc(100%-2rem)]">
+          <div className="bg-white/80 backdrop-blur-md rounded shadow-xl flex items-center border border-gray-200 overflow-hidden mr-4 pointer-events-auto flex-wrap">
             <button
               className={`px-4 py-2 font-semibold text-sm transition-colors ${viewMode === 'electric' ? 'bg-orange-500 text-white' : 'bg-transparent text-gray-600 hover:bg-gray-50/50'}`}
               onClick={() => setViewMode('electric')}
@@ -953,63 +960,56 @@ function PlannerInner() {
             </button>
           </div>
 
-          <button
-            onClick={exportBOM}
-            className="bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-4 rounded shadow-md transition-colors pointer-events-auto"
-          >
-            Stückliste an KI senden
-          </button>
+          <div className="pointer-events-auto flex items-center gap-2 flex-wrap">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="bg-white font-semibold">
+                  🛠 Aktionen
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="bg-white/95 backdrop-blur-md border border-gray-200 shadow-xl rounded-xl p-2 min-w-56">
+                <DropdownMenuItem onClick={exportBOM} className="cursor-pointer hover:bg-orange-50 text-orange-700 font-medium rounded-lg p-2 mb-1">
+                  📦 Stückliste an KI senden
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={autoWireSystem} className="cursor-pointer hover:bg-yellow-50 text-yellow-700 font-medium rounded-lg p-2 mb-1">
+                  ⚡ Automatisch Verkabeln & Absichern
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={checkSchematic} className="cursor-pointer hover:bg-red-50 text-red-700 font-medium rounded-lg p-2 mb-1">
+                  🔍 Schaltplan von KI prüfen lassen
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onLayout} className="cursor-pointer hover:bg-indigo-50 text-indigo-700 font-medium rounded-lg p-2 mb-1">
+                  📐 Schaltplan aufräumen
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onExportImage} className="cursor-pointer hover:bg-green-50 text-green-700 font-medium rounded-lg p-2">
+                  🖼 Als Bild speichern
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
+            <div className="bg-white/80 backdrop-blur-md rounded shadow-xl flex items-center border border-gray-200 overflow-hidden flex-wrap">
+              <button
+                className={`px-4 py-2 font-semibold text-sm transition-colors ${season === 'summer' ? 'bg-yellow-400 text-yellow-900' : 'bg-transparent text-gray-600 hover:bg-gray-50/50'}`}
+                onClick={() => setSeason('summer')}
+              >
+                Sommer
+              </button>
+              <button
+                className={`px-4 py-2 font-semibold text-sm transition-colors ${season === 'winter' ? 'bg-blue-400 text-blue-900' : 'bg-transparent text-gray-600 hover:bg-gray-50/50'}`}
+                onClick={() => setSeason('winter')}
+              >
+                Winter
+              </button>
+            </div>
 
-          <button
-            onClick={autoWireSystem}
-            className="bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-semibold py-2 px-4 rounded shadow-md transition-colors border border-yellow-500 pointer-events-auto"
-          >
-            ⚡ Automatisch Verkabeln & Absichern
-          </button>
-
-          <button
-            onClick={checkSchematic}
-            className="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded shadow-md transition-colors pointer-events-auto"
-          >
-            Schaltplan von KI prüfen lassen
-          </button>
-
-          <button
-            onClick={onLayout}
-            className="bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-2 px-4 rounded shadow-md transition-colors pointer-events-auto"
-          >
-            Schaltplan aufräumen
-          </button>
-
-          <button
-            onClick={onExportImage}
-            className="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded shadow-md transition-colors pointer-events-auto"
-          >
-            Als Bild speichern
-          </button>
-
-          <div className="bg-white/80 backdrop-blur-md rounded shadow-xl flex items-center border border-gray-200 overflow-hidden pointer-events-auto">
-            <button
-              className={`px-4 py-2 font-semibold text-sm transition-colors ${season === 'summer' ? 'bg-yellow-400 text-yellow-900' : 'bg-transparent text-gray-600 hover:bg-gray-50/50'}`}
-              onClick={() => setSeason('summer')}
-            >
-              Sommer
-            </button>
-            <button
-              className={`px-4 py-2 font-semibold text-sm transition-colors ${season === 'winter' ? 'bg-blue-400 text-blue-900' : 'bg-transparent text-gray-600 hover:bg-gray-50/50'}`}
-              onClick={() => setSeason('winter')}
-            >
-              Winter
-            </button>
+            <HeatingCalculator asTab={true} />
           </div>
 
-          <div className="ml-auto pointer-events-auto pl-4 border-l border-gray-300">
+          <div className="ml-auto pointer-events-auto pl-4 border-l border-gray-300 flex items-center">
             <button
               onClick={toggleProMode}
               className={`font-semibold py-2 px-4 rounded-xl shadow-xl transition-colors border backdrop-blur-md ${isProMode ? 'bg-blue-500/90 hover:bg-blue-600/90 text-white border-blue-600' : 'bg-white/80 hover:bg-gray-50/90 text-gray-700 border-gray-200'}`}
             >
-              {isProMode ? 'Profi-Modus (CAD-Optik) An' : 'Profi-Modus (CAD-Optik) Aus'}
+              {isProMode ? 'Profi-Modus An' : 'Profi-Modus Aus'}
             </button>
           </div>
         </div>
@@ -1083,8 +1083,6 @@ function PlannerInner() {
             </Panel>
           )}
         </ReactFlow>
-
-        <HeatingCalculator />
 
         {showBOM && (
           <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
