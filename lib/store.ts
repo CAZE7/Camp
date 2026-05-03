@@ -1,11 +1,23 @@
-import { create } from 'zustand'
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
 interface AppState {
-  isProMode: boolean
-  toggleProMode: () => void
+  isProMode: boolean;
+  toggleProMode: () => void;
+  calculatedSolarWatts: number;
+  setCalculatedSolarWatts: (watts: number) => void;
 }
 
-export const useAppStore = create<AppState>((set) => ({
-  isProMode: false,
-  toggleProMode: () => set((state) => ({ isProMode: !state.isProMode })),
-}))
+export const useAppStore = create<AppState>()(
+  persist(
+    (set) => ({
+      isProMode: false,
+      toggleProMode: () => set((state) => ({ isProMode: !state.isProMode })),
+      calculatedSolarWatts: 0,
+      setCalculatedSolarWatts: (watts) => set({ calculatedSolarWatts: watts }),
+    }),
+    {
+      name: 'camper-app-storage',
+    }
+  )
+);

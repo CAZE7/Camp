@@ -35,14 +35,11 @@ import InverterNode from './nodes/InverterNode';
 import SolarNode from './nodes/SolarNode';
 import GroundNode from './nodes/GroundNode';
 import ConduitNode from './nodes/ConduitNode';
-import RoofWindowNode from './nodes/RoofWindowNode';
-import RoofSolarNode from './nodes/RoofSolarNode';
 import WaterNode from './nodes/WaterNode';
 import WaterPipeEdge from './edges/WaterPipeEdge';
 import Inspector from './Inspector';
 import Sidebar from './Sidebar';
 import { useAppStore } from '../lib/store';
-import HeatingCalculator from './HeatingCalculator';
 import dagre from 'dagre';
 import { toPng } from 'html-to-image';
 import {
@@ -64,8 +61,8 @@ const NODE_TYPES = {
   solar: SolarNode,
   ground: GroundNode,
   conduit: ConduitNode,
-  roofWindow: RoofWindowNode,
-  roofSolar: RoofSolarNode
+
+
 };
 
 const EDGE_TYPES = { cableEdge: CableEdge };
@@ -165,11 +162,9 @@ const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'LR') => 
 };
 
 function PlannerInner() {
-  const [viewMode, setViewMode] = useState<'electric' | 'roof' | 'water'>('electric');
+  const [viewMode, setViewMode] = useState<'electric' | 'water'>('electric');
   const [nodes, setNodes] = useState<Node[]>(initialNodes);
   const [edges, setEdges] = useState<Edge<CableEdgeData>[]>(initialEdges);
-  const [roofNodes, setRoofNodes] = useState<Node[]>([]);
-  const [roofEdges, setRoofEdges] = useState<Edge[]>([]);
   const [waterNodes, setWaterNodes] = useState<Node[]>([]);
   const [waterEdges, setWaterEdges] = useState<Edge[]>([]);
   const [waterWarning, setWaterWarning] = useState<string | null>(null);
@@ -178,7 +173,7 @@ function PlannerInner() {
   const [season, setSeason] = useState<'summer' | 'winter'>('summer');
   const [isLeftSidebarOpen, setIsLeftSidebarOpen] = useState(true);
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(true);
-  const { isProMode, toggleProMode } = useAppStore();
+  const { isProMode, toggleProMode, calculatedSolarWatts } = useAppStore();
 
   const [selectedNodes, setSelectedNodes] = useState<Node[]>([]);
   const [selectedEdges, setSelectedEdges] = useState<Edge[]>([]);
@@ -200,8 +195,6 @@ function PlannerInner() {
     inverter: InverterNode,
     solar: SolarNode,
     ground: GroundNode,
-    roofWindow: RoofWindowNode,
-    roofSolar: RoofSolarNode,
     freshWaterTank: WaterNode,
     grayWaterTank: WaterNode,
     pump: WaterNode,
@@ -223,15 +216,7 @@ function PlannerInner() {
     []
   );
 
-  const onRoofNodesChange: OnNodesChange = useCallback(
-    (changes) => setRoofNodes((nds) => applyNodeChanges(changes, nds)),
-    []
-  );
 
-  const onRoofEdgesChange: OnEdgesChange = useCallback(
-    (changes) => setRoofEdges((eds) => applyEdgeChanges(changes, eds)),
-    []
-  );
 
   const onWaterNodesChange: OnNodesChange = useCallback(
     (changes) => setWaterNodes((nds) => applyNodeChanges(changes, nds)),
@@ -245,7 +230,7 @@ function PlannerInner() {
 
   const isValidConnection = useCallback(
     (connection: Connection) => {
-      const allNodes = [...nodes, ...roofNodes, ...waterNodes];
+      const allNodes = [...nodes, ...waterNodes];
       const sourceNode = allNodes.find((n) => n.id === connection.source);
       const targetNode = allNodes.find((n) => n.id === connection.target);
 
@@ -398,30 +383,19 @@ function PlannerInner() {
     if (selectedNodes.length > 0) {
       const nodeIds = selectedNodes.map(n => n.id);
       setNodes((nds) => nds.filter((n) => !nodeIds.includes(n.id)));
-      setRoofNodes((nds) => nds.filter((n) => !nodeIds.includes(n.id)));
       // Also delete connected edges
       setEdges((eds) => eds.filter((e) => !nodeIds.includes(e.source) && !nodeIds.includes(e.target)));
-      setRoofEdges((eds) => eds.filter((e) => !nodeIds.includes(e.source) && !nodeIds.includes(e.target)));
       setSelectedNodes([]);
     }
     if (selectedEdges.length > 0) {
       const edgeIds = selectedEdges.map(e => e.id);
       setEdges((eds) => eds.filter((e) => !edgeIds.includes(e.id)));
-      setRoofEdges((eds) => eds.filter((e) => !edgeIds.includes(e.id)));
       setSelectedEdges([]);
     }
   }, [selectedNodes, selectedEdges]);
 
   const updateNodeData = useCallback((id: string, data: any) => {
     setNodes((nds) =>
-      nds.map((n) => {
-        if (n.id === id) {
-          return { ...n, data: { ...n.data, ...data } };
-        }
-        return n;
-      })
-    );
-    setRoofNodes((nds) =>
       nds.map((n) => {
         if (n.id === id) {
           return { ...n, data: { ...n.data, ...data } };
@@ -735,15 +709,9 @@ function PlannerInner() {
         newNode.data = { ...newNode.data, watts: 1000, hours: 0.5 };
       } else if (type === 'solar') {
         newNode.data = { ...newNode.data, voltage: 18, amps: 5 };
-      } else if (type === 'roofWindow') {
-        newNode.data = { ...newNode.data, width: 40, height: 40 };
-      } else if (type === 'roofSolar') {
-        newNode.data = { ...newNode.data, width: 100, height: 60, watts: 100 };
       }
 
-      if (viewMode === 'roof') {
-        setRoofNodes((nds) => nds.concat(newNode));
-      } else if (viewMode === 'water') {
+      if (viewMode === 'water') {
         setWaterNodes((nds) => nds.concat(newNode));
       } else {
         setNodes((nds) => nds.concat(newNode));
@@ -783,15 +751,9 @@ function PlannerInner() {
         newNode.data = { ...newNode.data, watts: 1000, hours: 0.5 };
       } else if (type === 'solar') {
         newNode.data = { ...newNode.data, voltage: 18, amps: 5 };
-      } else if (type === 'roofWindow') {
-        newNode.data = { ...newNode.data, width: 40, height: 40 };
-      } else if (type === 'roofSolar') {
-        newNode.data = { ...newNode.data, width: 100, height: 60, watts: 100 };
       }
 
-      if (viewMode === 'roof') {
-        setRoofNodes((nds) => nds.concat(newNode));
-      } else if (viewMode === 'water') {
+      if (viewMode === 'water') {
         setWaterNodes((nds) => nds.concat(newNode));
       } else {
         setNodes((nds) => nds.concat(newNode));
@@ -882,16 +844,15 @@ function PlannerInner() {
     }
   }
 
-  const totalRoofSolarWatts = roofNodes.filter((n) => n.type === 'roofSolar').reduce((acc, n) => acc + ((n.data as any)?.watts || 0), 0);
 
   // Charging time: Capacity * DoD / ChargerAmps * 1.15
   const chargers = nodes.filter((n) => n.type === 'charger');
-  const totalChargerAmps = chargers.reduce((acc, n) => acc + ((n.data as any)?.amps || 0), 0) + totalSolarAmps + (totalRoofSolarWatts / 12);
+  const totalChargerAmps = chargers.reduce((acc, n) => acc + ((n.data as any)?.amps || 0), 0) + totalSolarAmps + (calculatedSolarWatts / 12);
   let chargingTimeStr = 'N/A';
   if (totalChargerAmps > 0) {
     const chargingTime = (usableCapacityAh / totalChargerAmps) * 1.15;
     chargingTimeStr = `${chargingTime.toFixed(1)} Stunden`;
-  } else if (chargers.length > 0 || solarNodes.length > 0 || totalRoofSolarWatts > 0) {
+  } else if (chargers.length > 0 || solarNodes.length > 0 || calculatedSolarWatts > 0) {
     chargingTimeStr = '0 Ladeleistung';
   } else {
     chargingTimeStr = 'Kein Ladegerät';
@@ -947,12 +908,6 @@ function PlannerInner() {
               Elektrik-Schaltplan
             </button>
             <button
-              className={`px-4 py-2 font-semibold text-sm transition-colors ${viewMode === 'roof' ? 'bg-blue-500 text-white' : 'bg-transparent text-gray-600 hover:bg-gray-50/50'}`}
-              onClick={() => setViewMode('roof')}
-            >
-              Dach-Planer
-            </button>
-            <button
               className={`px-4 py-2 font-semibold text-sm transition-colors ${viewMode === 'water' ? 'bg-cyan-500 text-white' : 'bg-transparent text-gray-600 hover:bg-gray-50/50'}`}
               onClick={() => setViewMode('water')}
             >
@@ -1000,8 +955,6 @@ function PlannerInner() {
                 Winter
               </button>
             </div>
-
-            <HeatingCalculator asTab={true} />
           </div>
 
           <div className="ml-auto pointer-events-auto pl-4 border-l border-gray-300 flex items-center">
@@ -1019,12 +972,12 @@ function PlannerInner() {
           </div>
         )}
         <ReactFlow
-          nodes={viewMode === 'roof' ? roofNodes : viewMode === 'water' ? waterNodes : nodes}
-          edges={viewMode === 'roof' ? roofEdges : viewMode === 'water' ? waterEdges : edges}
+          nodes={viewMode === 'water' ? waterNodes : nodes}
+          edges={viewMode === 'water' ? waterEdges : edges}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
-          onNodesChange={viewMode === 'roof' ? onRoofNodesChange : viewMode === 'water' ? onWaterNodesChange : onNodesChange}
-          onEdgesChange={viewMode === 'roof' ? onRoofEdgesChange : viewMode === 'water' ? onWaterEdgesChange : onEdgesChange}
+          onNodesChange={viewMode === 'water' ? onWaterNodesChange : onNodesChange}
+          onEdgesChange={viewMode === 'water' ? onWaterEdgesChange : onEdgesChange}
           onConnect={onConnect}
           isValidConnection={isValidConnection}
           onSelectionChange={onSelectionChange}
@@ -1035,14 +988,6 @@ function PlannerInner() {
           snapGrid={[10, 10]}
           deleteKeyCode={['Backspace', 'Delete']}
         >
-          {viewMode === 'roof' && (
-            <div
-              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-3xl border-4 border-gray-400 flex items-center justify-center text-gray-300 font-bold text-4xl"
-              style={{ width: 520, height: 316, zIndex: -1 }}
-            >
-              L1 Fahrzeugdach
-            </div>
-          )}
 
           <Background color="#ccc" gap={16} />
           <Controls />
@@ -1066,7 +1011,7 @@ function PlannerInner() {
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Eingehende Ladeleistung (Dach):</span>
-                <span className="font-semibold text-gray-900">{totalRoofSolarWatts} W</span>
+                <span className="font-semibold text-gray-900">{calculatedSolarWatts} W</span>
               </div>
               {solarNodes.length > 0 && (
                 <div className="flex justify-between">
@@ -1080,6 +1025,12 @@ function PlannerInner() {
                 </div>
               )}
               </div>
+            </Panel>
+          )}
+
+          {viewMode === 'electric' && calculatedSolarWatts > 0 && (
+            <Panel position="bottom-center" className="bg-blue-50/90 backdrop-blur-md p-3 rounded-xl shadow border border-blue-200 text-blue-800 text-sm mb-4">
+              <strong>Dachplaner-Daten erkannt:</strong> {calculatedSolarWatts} W Solarleistung verfügbar. Du kannst nun deinen MPPT-Regler entsprechend dimensionieren.
             </Panel>
           )}
         </ReactFlow>
