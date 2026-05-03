@@ -2,13 +2,12 @@
 import React from 'react';
 import { Handle, Position } from 'reactflow';
 
-const ConsumerNode = function({ id, data, isConnectable, selected }: any) {
+const ShuntNode = function({ id, data, isConnectable, selected }: any) {
   return (
-    <div className={`hover:scale-105 transition-all custom-drag-handle bg-white border-2 border-green-500 rounded-md p-3 shadow-md w-48 ${selected ? " ring-4 ring-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.6)]" : ""}`}>
-      <div className="font-bold mb-2 text-sm text-center">{data.label || 'Verbraucher'}</div>
+    <div className={`hover:scale-105 transition-all custom-drag-handle bg-white border-2 border-stone-500 rounded-md p-3 shadow-md w-48 ${selected ? " ring-4 ring-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.6)]" : ""}`}>
+      <div className="font-bold mb-2 text-sm text-center">{data.label || 'Smart Shunt'}</div>
       <div className="flex flex-col gap-1 text-xs text-gray-600">
-        <div>Leistung: {data.watts || 0} W</div>
-        <div>Nutzung: {data.hours || 0} h/Tag</div>
+        <div>Batteriemonitor</div>
       </div>
       <Handle type="target" position={Position.Left} id="plus" isConnectable={isConnectable} style={{ background: 'transparent', border: 'none', width: '24px', height: '24px', zIndex: 10, display: 'flex', justifyContent: 'center', alignItems: 'center', top: '30%' }}>
         <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'red', pointerEvents: 'none' }} />
@@ -25,4 +24,4 @@ const ConsumerNode = function({ id, data, isConnectable, selected }: any) {
     </div>
   );
 }
-export default React.memo(ConsumerNode);
+export default React.memo(ShuntNode);

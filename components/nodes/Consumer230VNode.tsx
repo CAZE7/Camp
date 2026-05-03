@@ -10,7 +10,7 @@ const Consumer230VNode = function({ id, data, isConnectable, selected }: any) {
         <div>Leistung: {data.watts || 0} W</div>
         <div>Nutzung: {data.hours || 0} h/Tag</div>
       </div>
-      <Handle type="target" position={Position.Left} id="in-plus" isConnectable={isConnectable} style={{ background: 'transparent', border: 'none', width: '24px', height: '24px', zIndex: 10, display: 'flex', justifyContent: 'center', alignItems: 'center', top: '50%' }}>
+      <Handle type="target" position={Position.Left} id="plus" isConnectable={isConnectable} style={{ background: 'transparent', border: 'none', width: '24px', height: '24px', zIndex: 10, display: 'flex', justifyContent: 'center', alignItems: 'center', top: '50%' }}>
         <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'red', pointerEvents: 'none' }} />
       </Handle>
     </div>
