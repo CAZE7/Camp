@@ -936,6 +936,7 @@ function PlannerInner() {
         className="absolute top-1/2 -translate-y-1/2 z-30 bg-white text-gray-700 hover:bg-gray-100 p-2 rounded shadow-md transition-all duration-300 border border-gray-200"
         style={{ left: isLeftSidebarOpen ? 'calc(16rem + 1rem)' : '1rem' }}
         title={isLeftSidebarOpen ? "Sidebar einklappen" : "Sidebar ausklappen"}
+        aria-label={isLeftSidebarOpen ? "Linke Sidebar einklappen" : "Linke Sidebar ausklappen"}
       >
         {isLeftSidebarOpen ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
       </button>
@@ -945,6 +946,7 @@ function PlannerInner() {
         className="absolute top-1/2 -translate-y-1/2 z-30 bg-white text-gray-700 hover:bg-gray-100 p-2 rounded shadow-md transition-all duration-300 border border-gray-200"
         style={{ right: isRightSidebarOpen ? 'calc(250px + 1rem)' : '1rem' }}
         title={isRightSidebarOpen ? "Inspector einklappen" : "Inspector ausklappen"}
+        aria-label={isRightSidebarOpen ? "Rechte Sidebar einklappen" : "Rechte Sidebar ausklappen"}
       >
         {isRightSidebarOpen ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
       </button>
