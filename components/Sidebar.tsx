@@ -3,6 +3,8 @@ import React, { useState } from 'react';
 
 const components = [
   { type: 'battery', label: 'Batterie' },
+  { type: 'shunt', label: 'Smart Shunt' },
+  { type: 'busbar', label: 'Main Busbar' },
   { type: 'charger', label: 'Ladebooster' },
   { type: 'solar', label: 'Solarmodul' },
   { type: 'inverter', label: 'Wechselrichter' },
