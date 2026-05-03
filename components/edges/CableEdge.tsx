@@ -26,8 +26,6 @@ export default function CableEdge({
   const { getNodes } = useReactFlow();
   const nodes = getNodes();
 
-  const isProMode = data?.isProMode ?? false;
-
   const pathParams = {
     sourceX,
     sourceY,
@@ -37,9 +35,7 @@ export default function CableEdge({
     targetPosition,
   };
 
-  const [edgePath, labelX, labelY] = isProMode
-    ? getSmoothStepPath({ ...pathParams, borderRadius: 5 })
-    : getBezierPath(pathParams);
+  const [edgePath, labelX, labelY] = getSmoothStepPath({ ...pathParams, borderRadius: 10 });
 
   // Calculate length based on spatial layout
   // 100 pixels = 1 meter, add 20% buffer
@@ -118,15 +114,13 @@ export default function CableEdge({
         }}
       />
 
-      {I > 0 && (
-        <circle r={strokeWidth} fill="#fbbf24">
-          <animateMotion
-            dur={`${animationDuration}s`}
-            repeatCount="indefinite"
-            path={edgePath}
-          />
-        </circle>
-      )}
+      <circle r={strokeWidth} fill="#fbbf24">
+        <animateMotion
+          dur={`${animationDuration}s`}
+          repeatCount="indefinite"
+          path={edgePath}
+        />
+      </circle>
 
       <EdgeLabelRenderer>
         <div

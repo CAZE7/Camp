@@ -1,6 +1,7 @@
+"use client";
 import React from 'react';
 
-export default function RoofSolarNode({ data, selected }: any) {
+const RoofSolarNode = function({ data, selected }: any) {
   const width = data.width || 100;
   const height = data.height || 60;
   const watts = data.watts || 100;
@@ -12,7 +13,7 @@ export default function RoofSolarNode({ data, selected }: any) {
       style={{ width: width * 2, height: height * 2 }}
     >
       {/* Grid lines to look like solar panel */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#475569_1px,transparent_1px),linear-gradient(to_bottom,#475569_1px,transparent_1px)] bg-[size:10px_10px] opacity-30 pointer-events-none"></div>
+      <div className="hover:scale-105 transition-all custom-drag-handle absolute inset-0 bg-[linear-gradient(to_right,#475569_1px,transparent_1px),linear-gradient(to_bottom,#475569_1px,transparent_1px)] bg-[size:10px_10px] opacity-30 pointer-events-none"></div>
 
       <div className="font-bold text-xs text-white text-center z-10 px-1 bg-slate-900/60 rounded py-1">
         {data.label || 'Solarpanel'}<br/>
@@ -23,3 +24,4 @@ export default function RoofSolarNode({ data, selected }: any) {
     </div>
   );
 }
+export default React.memo(RoofSolarNode);

@@ -163,6 +163,7 @@ function PlannerInner() {
   const [waterNodes, setWaterNodes] = useState<Node[]>([]);
   const [waterEdges, setWaterEdges] = useState<Edge[]>([]);
   const [waterWarning, setWaterWarning] = useState<string | null>(null);
+  const [firstTappedHandle, setFirstTappedHandle] = useState<{ nodeId: string, handleId: string, handleType: string } | null>(null);
 
   const [season, setSeason] = useState<'summer' | 'winter'>('summer');
   const [isLeftSidebarOpen, setIsLeftSidebarOpen] = useState(true);
@@ -231,6 +232,7 @@ function PlannerInner() {
     (changes) => setWaterEdges((eds) => applyEdgeChanges(changes, eds)),
     []
   );
+
 
   const toggleProMode = useCallback(() => {
     setIsProMode((prev) => {
@@ -353,6 +355,53 @@ function PlannerInner() {
     },
     [isProMode]
   );
+
+    // Sequential Tap Connect Logic
+  React.useEffect(() => {
+    const handleGlobalClick = (e: MouseEvent | TouchEvent) => {
+      const target = e.target as HTMLElement;
+      const handleEl = target.closest('.react-flow__handle');
+      if (handleEl) {
+        const nodeId = handleEl.getAttribute('data-nodeid');
+        const handleId = handleEl.getAttribute('data-handleid');
+        const handleType = handleEl.classList.contains('source') ? 'source' : 'target';
+
+        if (nodeId && handleId) {
+          setFirstTappedHandle((prev) => {
+            if (!prev) {
+               // First tap
+               return { nodeId, handleId, handleType };
+            } else {
+               // Second tap
+               if (prev.nodeId === nodeId && prev.handleId === handleId) {
+                  return null; // Cancel if same handle tapped twice
+               }
+
+               // Attempt connection
+               const connection = {
+                 source: prev.handleType === 'source' ? prev.nodeId : nodeId,
+                 target: prev.handleType === 'target' ? prev.nodeId : nodeId,
+                 sourceHandle: prev.handleType === 'source' ? prev.handleId : handleId,
+                 targetHandle: prev.handleType === 'target' ? prev.handleId : handleId,
+               };
+
+               if (isValidConnection(connection as Connection)) {
+                 onConnect(connection as Connection);
+               }
+
+               return null; // Reset after attempt
+            }
+          });
+        }
+      } else {
+        // Clicked somewhere else, reset tap connect
+        setFirstTappedHandle(null);
+      }
+    };
+
+    document.addEventListener('click', handleGlobalClick);
+    return () => document.removeEventListener('click', handleGlobalClick);
+  }, [isValidConnection, onConnect]);
 
   const onSelectionChange = useCallback((params: OnSelectionChangeParams) => {
     setSelectedNodes(params.nodes);
@@ -717,6 +766,56 @@ function PlannerInner() {
     [screenToFlowPosition, viewMode]
   );
 
+  React.useEffect(() => {
+    const handleCustomDrop = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      const { clientX, clientY, type, label } = customEvent.detail;
+
+      const position = screenToFlowPosition({
+        x: clientX,
+        y: clientY,
+      });
+
+      const newNode: Node = {
+        id: `${type}-${Date.now()}`,
+        type,
+        position,
+        data: { label: label },
+      };
+
+      if (type === 'battery') {
+        newNode.data = { ...newNode.data, capacity: 100, chemistry: 'LiFePO4' };
+      } else if (type === 'consumer') {
+        newNode.data = { ...newNode.data, watts: 50, hours: 2 };
+      } else if (type === 'charger') {
+        newNode.data = { ...newNode.data, amps: 10 };
+      } else if (type === 'fuse') {
+        newNode.data = { ...newNode.data, rating: 30 };
+      } else if (type === 'shorePower') {
+        newNode.data = { ...newNode.data, hasRcd: false };
+      } else if (type === 'consumer230v') {
+        newNode.data = { ...newNode.data, watts: 1000, hours: 0.5 };
+      } else if (type === 'solar') {
+        newNode.data = { ...newNode.data, voltage: 18, amps: 5 };
+      } else if (type === 'roofWindow') {
+        newNode.data = { ...newNode.data, width: 40, height: 40 };
+      } else if (type === 'roofSolar') {
+        newNode.data = { ...newNode.data, width: 100, height: 60, watts: 100 };
+      }
+
+      if (viewMode === 'roof') {
+        setRoofNodes((nds) => nds.concat(newNode));
+      } else if (viewMode === 'water') {
+        setWaterNodes((nds) => nds.concat(newNode));
+      } else {
+        setNodes((nds) => nds.concat(newNode));
+      }
+    };
+
+    window.addEventListener('custom-node-drop', handleCustomDrop);
+    return () => window.removeEventListener('custom-node-drop', handleCustomDrop);
+  }, [screenToFlowPosition, viewMode]);
+
   // --- Calculations for Dashboard ---
   const batteryNode = nodes.find((n) => n.type === 'battery');
   const capacityAh = (batteryNode?.data as any)?.capacity || 0;
@@ -851,7 +950,7 @@ function PlannerInner() {
       </button>
 
       <div className="flex-1 h-full relative overflow-hidden flex flex-col">
-        <div className="absolute top-4 left-4 z-10 flex gap-2">
+        <div className="absolute top-4 left-4 z-10 flex gap-2 bg-white/80 backdrop-blur-md shadow-xl rounded-xl p-2">
           <div className="bg-white/80 backdrop-blur-md rounded shadow-xl flex items-center border border-gray-200 overflow-hidden mr-4">
             <button
               className={`px-4 py-2 font-semibold text-sm transition-colors ${viewMode === 'electric' ? 'bg-orange-500 text-white' : 'bg-transparent text-gray-600 hover:bg-gray-50/50'}`}
@@ -950,6 +1049,7 @@ function PlannerInner() {
           onDrop={onDrop}
           fitView
           snapToGrid={true}
+          snapGrid={[10, 10]}
           deleteKeyCode={['Backspace', 'Delete']}
         >
           {viewMode === 'roof' && (
