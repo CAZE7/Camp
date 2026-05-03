@@ -1,7 +1,8 @@
+"use client";
 import React from 'react';
 import { Handle, Position } from 'reactflow';
 
-export default function WaterNode({ id, data, isConnectable, selected, type }: any) {
+const WaterNode = function({ id, data, isConnectable, selected, type }: any) {
   let bgColor = 'bg-blue-50';
   let borderColor = 'border-blue-400';
 
@@ -23,30 +24,19 @@ export default function WaterNode({ id, data, isConnectable, selected, type }: a
   }
 
   return (
-    <div className={`border-2 rounded-md p-3 shadow-md w-48 ${bgColor} ${borderColor} ${selected ? 'ring-4 ring-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.6)]' : ''}`}>
+    <div className={`hover:scale-105 transition-all custom-drag-handle border-2 rounded-md p-3 shadow-md w-48 ${bgColor} ${borderColor} ${selected ? 'ring-4 ring-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.6)]' : ''}`}>
       <div className="font-bold mb-2 text-sm text-center">{data.label || 'Wasser-Komponente'}</div>
 
       {/* Target handle (Input) */}
-      <Handle
-        type="target"
-        position={Position.Left}
-        id="in"
-        isConnectable={isConnectable}
-        style={{ background: 'transparent', border: 'none', width: '24px', height: '24px', zIndex: 10, display: 'flex', justifyContent: 'center', alignItems: 'center' }}
-      >
-        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#3b82f6', pointerEvents: 'none' }} />
+      <Handle type="target" position={Position.Left} id="in" isConnectable={isConnectable} style={{ background: 'transparent', border: 'none', width: '24px', height: '24px', zIndex: 10, display: 'flex', justifyContent: 'center', alignItems: 'center', top: '50%' }}>
+        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'red', pointerEvents: 'none' }} />
       </Handle>
 
       {/* Source handle (Output) */}
-      <Handle
-        type="source"
-        position={Position.Right}
-        id="out"
-        isConnectable={isConnectable}
-        style={{ background: 'transparent', border: 'none', width: '24px', height: '24px', zIndex: 10, display: 'flex', justifyContent: 'center', alignItems: 'center' }}
-      >
-        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#3b82f6', pointerEvents: 'none' }} />
+      <Handle type="source" position={Position.Right} id="out" isConnectable={isConnectable} style={{ background: 'transparent', border: 'none', width: '24px', height: '24px', zIndex: 10, display: 'flex', justifyContent: 'center', alignItems: 'center', top: '50%' }}>
+        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'black', pointerEvents: 'none' }} />
       </Handle>
     </div>
   );
 }
+export default React.memo(WaterNode);
