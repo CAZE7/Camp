@@ -9,6 +9,7 @@ interface InspectorProps {
   onChangeCrossSection: (id: string, crossSection: number) => void;
   onDelete?: () => void;
   onUpdateNodeData?: (id: string, data: any) => void;
+  edges?: Edge[];
 }
 
 export default function Inspector({
@@ -18,6 +19,7 @@ export default function Inspector({
   onChangeCrossSection,
   onDelete,
   onUpdateNodeData,
+  edges = [],
 }: InspectorProps) {
   const crossSectionOptions = [1.5, 2.5, 4, 6, 10, 16, 25];
 
@@ -269,6 +271,68 @@ export default function Inspector({
                       onChange={(e) => onUpdateNodeData?.(selectedNode.id, { watts: Number(e.target.value) })}
                       className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow"
                     />
+                  </div>
+                </>
+              )}
+
+              {selectedNode.type === 'conduit' && (
+                <>
+                  <div className="flex flex-col">
+                    <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider" htmlFor="conduit-type-select">Rohrtyp</label>
+                    <select
+                      id="conduit-type-select"
+                      value={selectedNode.data?.conduitType || 'EN 20'}
+                      onChange={(e) => onUpdateNodeData?.(selectedNode.id, { conduitType: e.target.value })}
+                      className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow bg-white"
+                    >
+                      <option value="EN 20">EN 20 (16.9 mm Innen-Ø)</option>
+                      <option value="EN 25">EN 25 (21.4 mm Innen-Ø)</option>
+                      <option value="EN 32">EN 32 (28.1 mm Innen-Ø)</option>
+                      <option value="EN 40">EN 40 (37.7 mm Innen-Ø)</option>
+                    </select>
+                  </div>
+
+                  <div className="flex flex-col mt-4">
+                    <label className="text-xs font-medium text-gray-500 mb-2 uppercase tracking-wider">Zugewiesene Kabel</label>
+                    {edges && edges.length > 0 ? (
+                      <div className="flex flex-col gap-2 max-h-48 overflow-y-auto p-2 border border-gray-200 rounded">
+                        {edges.map(edge => {
+                          const assignedEdges = selectedNode.data?.assignedEdges || [];
+                          const isAssigned = assignedEdges.includes(edge.id);
+                          const edgeData = edge.data as any;
+                          const length = edgeData?.length || 3;
+                          const crossSection = edgeData?.crossSection || 2.5;
+
+                          return (
+                            <label key={edge.id} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer p-1 hover:bg-gray-50 rounded">
+                              <input
+                                type="checkbox"
+                                id={`edge-assign-${edge.id}`}
+                                checked={isAssigned}
+                                onChange={(e) => {
+                                  const checked = e.target.checked;
+                                  let newAssignedEdges = [...assignedEdges];
+                                  if (checked) {
+                                    newAssignedEdges.push(edge.id);
+                                  } else {
+                                    newAssignedEdges = newAssignedEdges.filter((id: string) => id !== edge.id);
+                                  }
+                                  onUpdateNodeData?.(selectedNode.id, { assignedEdges: newAssignedEdges });
+                                }}
+                                className="rounded border-gray-300 text-orange-500 focus:ring-orange-500"
+                              />
+                              <span className="truncate flex-1">
+                                Kabel ({length}m, {crossSection}mm²)
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="text-xs text-gray-500 italic p-2 bg-gray-50 rounded border border-gray-100">
+                        Keine Kabel im Plan vorhanden.
+                      </div>
+                    )}
                   </div>
                 </>
               )}

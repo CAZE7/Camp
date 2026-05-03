@@ -34,6 +34,7 @@ import Consumer230VNode from './nodes/Consumer230VNode';
 import InverterNode from './nodes/InverterNode';
 import SolarNode from './nodes/SolarNode';
 import GroundNode from './nodes/GroundNode';
+import ConduitNode from './nodes/ConduitNode';
 import RoofWindowNode from './nodes/RoofWindowNode';
 import RoofSolarNode from './nodes/RoofSolarNode';
 import WaterNode from './nodes/WaterNode';
@@ -54,6 +55,7 @@ const NODE_TYPES = {
   inverter: InverterNode,
   solar: SolarNode,
   ground: GroundNode,
+  conduit: ConduitNode,
   roofWindow: RoofWindowNode,
   roofSolar: RoofSolarNode
 };
@@ -1150,6 +1152,7 @@ function PlannerInner() {
             onChangeCrossSection={handleChangeCrossSection}
             onDelete={deleteSelected}
             onUpdateNodeData={updateNodeData}
+            edges={edges}
           />
         </div>
       </div>
