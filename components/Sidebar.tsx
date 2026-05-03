@@ -14,11 +14,6 @@ const components = [
   { type: 'conduit', label: 'Leerrohr / Kabelkanal' },
 ];
 
-const roofComponents = [
-  { type: 'roofWindow', label: 'Dachfenster' },
-  { type: 'roofSolar', label: 'Dach-Solarpanel' },
-];
-
 const waterComponents = [
   { type: 'freshWaterTank', label: 'Frischwassertank' },
   { type: 'grayWaterTank', label: 'Grauwassertank' },
@@ -29,10 +24,10 @@ const waterComponents = [
   { type: 'shower', label: 'Dusche' },
 ];
 
-export default function Sidebar({ mode = 'electric' }: { mode?: 'electric' | 'roof' | 'water' }) {
+export default function Sidebar({ mode = 'electric' }: { mode?: 'electric' | 'water' }) {
   const [searchTerm, setSearchTerm] = useState('');
 
-  const activeComponents = mode === 'roof' ? roofComponents : mode === 'water' ? waterComponents : components;
+  const activeComponents = mode === 'water' ? waterComponents : components;
 
   const handlePointerDown = (e: React.PointerEvent, comp: { type: string, label: string }) => {
     e.preventDefault(); // Prevent default touch actions

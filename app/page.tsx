@@ -15,57 +15,85 @@ export default function Home() {
       </div>
 
       {/* Features Grid */}
-      <div className="max-w-6xl w-full grid grid-cols-1 md:grid-cols-3 gap-8">
+      <div className="max-w-6xl w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
         {/* Card 1: 2D Elektrik-Planer */}
-        <div className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 flex flex-col h-full">
-          <div className="p-8 flex-grow">
-            <div className="uppercase tracking-wide text-sm text-blue-600 font-semibold mb-2">Elektrik</div>
-            <h2 className="block mt-1 text-2xl leading-tight font-bold text-gray-900">2D Elektrik-Planer</h2>
-            <p className="mt-4 text-gray-600 text-lg">
-              Zeichne und plane deine 12V Anlage interaktiv. Wähle Komponenten und verbinde sie auf einer visuellen 2D-Fläche.
+        <div className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 flex flex-col h-full border border-gray-100">
+          <div className="p-6 flex-grow">
+            <div className="text-4xl mb-4">⚡</div>
+            <h2 className="block mt-1 text-xl leading-tight font-bold text-gray-900">Elektrik-Planer</h2>
+            <p className="mt-2 text-gray-600 text-sm">
+              Zeichne und plane deine 12V Anlage interaktiv. Verbinde Komponenten auf einer 2D-Fläche.
             </p>
           </div>
-          <div className="p-8 pt-0 mt-auto">
-             <Link href="/elektrik-planung" className="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 md:py-4 md:text-lg">
+          <div className="p-6 pt-0 mt-auto">
+             <Link href="/elektrik-planung" className="w-full flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 transition-colors">
                 Planer starten
              </Link>
           </div>
         </div>
 
-        {/* Card 2: KI-Ausbau-Assistent */}
-        <div className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 flex flex-col h-full">
-           <div className="p-8 flex-grow">
-            <div className="uppercase tracking-wide text-sm text-blue-600 font-semibold mb-2">Hilfe & Beratung</div>
-            <h2 className="block mt-1 text-2xl leading-tight font-bold text-gray-900">KI-Ausbau-Assistent</h2>
-            <p className="mt-4 text-gray-600 text-lg">
-              Hast du Fragen zum Ausbau? Unser KI-Assistent kennt sich mit DIN VDE Normen und Camper-Komponenten bestens aus.
+        {/* Card 2: Dachflächen-Planer */}
+        <div className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 flex flex-col h-full border border-gray-100">
+          <div className="p-6 flex-grow">
+            <div className="text-4xl mb-4">☀️</div>
+            <h2 className="block mt-1 text-xl leading-tight font-bold text-gray-900">Dach-Planer</h2>
+            <p className="mt-2 text-gray-600 text-sm">
+              Plane die Anordnung von Solarpanels und Dachfenstern auf deinem Fahrzeugdach.
             </p>
           </div>
-          <div className="p-8 pt-0 mt-auto">
-             <Link href="/ki-assistent" className="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 md:py-4 md:text-lg">
-                Chat starten
+          <div className="p-6 pt-0 mt-auto">
+             <Link href="/tools/dach" className="w-full flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 transition-colors">
+                Planer starten
              </Link>
           </div>
         </div>
 
-        {/* Card 3: Ausbau-Guides */}
-        <div className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 flex flex-col h-full">
-           <div className="p-8 flex-grow">
-            <div className="uppercase tracking-wide text-sm text-blue-600 font-semibold mb-2">Wissen</div>
-            <h2 className="block mt-1 text-2xl leading-tight font-bold text-gray-900">Ausbau-Guides</h2>
-            <p className="mt-4 text-gray-600 text-lg">
-              Schritt-für-Schritt Anleitungen und Fachwissen. Entdecke unseren detaillierten Ausbau-Fahrplan und den Guide zum Holzausbau.
+        {/* Card 3: Heizlast-Rechner */}
+        <div className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 flex flex-col h-full border border-gray-100">
+          <div className="p-6 flex-grow">
+            <div className="text-4xl mb-4">🔥</div>
+            <h2 className="block mt-1 text-xl leading-tight font-bold text-gray-900">Heizlast-Rechner</h2>
+            <p className="mt-2 text-gray-600 text-sm">
+              Berechne den Wärmebedarf basierend auf Fahrzeuggröße und Dämmung.
             </p>
           </div>
-          <div className="p-8 pt-0 mt-auto space-y-4">
-             <Link href="/guides/ausbau-fahrplan" className="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 md:py-4 md:text-lg">
-                Fahrplan ansehen
-             </Link>
-             <Link href="/guides/holzausbau" className="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 md:py-4 md:text-lg">
-                Holzausbau-Guide
+          <div className="p-6 pt-0 mt-auto">
+             <Link href="/tools/heizung" className="w-full flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 transition-colors">
+                Rechner starten
              </Link>
           </div>
         </div>
+
+        {/* Card 4: KI-Ausbau-Assistent */}
+        <div className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 flex flex-col h-full border border-gray-100">
+           <div className="p-6 flex-grow">
+            <div className="text-4xl mb-4">🤖</div>
+            <h2 className="block mt-1 text-xl leading-tight font-bold text-gray-900">KI-Assistent</h2>
+            <p className="mt-2 text-gray-600 text-sm">
+              Hast du Fragen zum Ausbau? Unser KI-Assistent kennt sich mit DIN VDE Normen bestens aus.
+            </p>
+          </div>
+          <div className="p-6 pt-0 mt-auto">
+             <Link href="/ki-assistent" className="w-full flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 transition-colors">
+                Chat starten
+             </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* Guides Section */}
+      <div className="max-w-6xl w-full mt-12 bg-white rounded-xl shadow-md p-8 border border-gray-100">
+         <h2 className="text-2xl font-bold text-gray-900 mb-6">📚 Ausbau-Guides & Wissen</h2>
+         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+             <Link href="/guides/ausbau-fahrplan" className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                <span className="font-semibold text-gray-800">Der komplette Ausbau-Fahrplan</span>
+                <span className="text-blue-600">➔</span>
+             </Link>
+             <Link href="/guides/holzausbau" className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                <span className="font-semibold text-gray-800">Holzausbau-Guide für Anfänger</span>
+                <span className="text-blue-600">➔</span>
+             </Link>
+         </div>
       </div>
     </div>
   );
