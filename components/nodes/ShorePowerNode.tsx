@@ -10,9 +10,7 @@ const ShorePowerNode = function({ id, data, isConnectable, selected }: any) {
         <div>230V Eingang</div>
         <div>RCD (30mA): {data.hasRcd ? 'Ja' : 'Nein'}</div>
       </div>
-      <Handle type="source" position={Position.Right} id="out-plus" isConnectable={isConnectable} style={{ background: 'transparent', border: 'none', width: '24px', height: '24px', zIndex: 10, display: 'flex', justifyContent: 'center', alignItems: 'center', top: '50%' }}>
-        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'red', pointerEvents: 'none' }} />
-      </Handle>
+      <Handle type="source" position={Position.Right} id="out-plus" isConnectable={isConnectable} className="!w-4 !h-4 !bg-red-600 !border-2 !border-gray-800 !z-10 cursor-pointer" style={{top: '50%'}} />
     </div>
   );
 }

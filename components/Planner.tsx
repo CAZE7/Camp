@@ -910,9 +910,9 @@ function PlannerInner() {
   return (
     <div className="flex h-screen w-full bg-gray-50 overflow-hidden font-sans relative">
       <div
-        className={`transition-all duration-300 ease-in-out absolute md:relative z-40 h-full ${isLeftSidebarOpen ? 'w-64 translate-x-0' : 'w-0 -translate-x-full'} flex-shrink-0 shadow-xl bg-white/80 backdrop-blur-md max-w-[calc(100vw-2rem)]`}
+        className={`transition-all duration-300 ease-in-out absolute md:relative z-40 h-full overflow-hidden whitespace-nowrap ${isLeftSidebarOpen ? 'w-64 translate-x-0' : 'w-0 -translate-x-full'} flex-shrink-0 shadow-xl bg-white/80 backdrop-blur-md max-w-[calc(100vw-2rem)]`}
       >
-        <div className="w-64 h-full max-w-full">
+        <div className={`w-64 h-full max-w-full transition-opacity duration-300 ${isLeftSidebarOpen ? 'opacity-100' : 'opacity-0'}`}>
           <Sidebar mode={viewMode} />
         </div>
       </div>
@@ -1119,9 +1119,9 @@ function PlannerInner() {
       </div>
 
       <div
-        className={`transition-all duration-300 ease-in-out absolute right-0 md:relative z-40 h-full ${isRightSidebarOpen ? 'w-[250px] translate-x-0' : 'w-0 translate-x-full'} flex-shrink-0 shadow-xl bg-white/80 backdrop-blur-md max-w-[calc(100vw-2rem)]`}
+        className={`transition-all duration-300 ease-in-out absolute right-0 md:relative z-40 h-full overflow-hidden whitespace-nowrap ${isRightSidebarOpen ? 'w-[250px] translate-x-0' : 'w-0 translate-x-full'} flex-shrink-0 shadow-xl bg-white/80 backdrop-blur-md max-w-[calc(100vw-2rem)]`}
       >
-        <div className="w-[250px] h-full max-w-full">
+        <div className={`w-[250px] h-full max-w-full transition-opacity duration-300 ${isRightSidebarOpen ? 'opacity-100' : 'opacity-0'}`}>
           <Inspector
             selectedEdge={selectedEdge}
             selectedNode={selectedNode}
