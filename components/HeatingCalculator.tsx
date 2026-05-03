@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { vehicleTemplates, VehicleTemplate } from '@/lib/vehicleTemplates';
 
-export default function HeatingCalculator() {
+export default function HeatingCalculator({ asTab = false }: { asTab?: boolean }) {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>(vehicleTemplates[0].id);
   const [insulationThickness, setInsulationThickness] = useState<number>(19); // in mm
@@ -42,7 +42,7 @@ export default function HeatingCalculator() {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="absolute bottom-4 right-4 bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-xl shadow-xl transition-colors z-40 border border-red-600 backdrop-blur-md"
+        className={`${asTab ? 'relative' : 'absolute bottom-4 right-4'} bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-xl shadow-xl transition-colors z-40 border border-red-600 backdrop-blur-md whitespace-nowrap`}
       >
         🔥 Heizungs-Kalkulator
       </button>
@@ -50,7 +50,7 @@ export default function HeatingCalculator() {
   }
 
   return (
-    <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-md p-6 rounded-xl shadow-2xl z-40 border border-gray-200 w-80 text-sm">
+    <div className={`${asTab ? 'absolute top-16 left-0' : 'absolute bottom-4 right-4'} bg-white/95 backdrop-blur-md p-6 rounded-xl shadow-2xl z-50 border border-gray-200 w-80 text-sm`}>
       <div className="flex justify-between items-center mb-4 border-b pb-2">
         <h3 className="font-bold text-gray-800 text-lg">🔥 Heizlast-Rechner</h3>
         <button onClick={() => setIsOpen(false)} className="text-gray-500 hover:text-red-500 font-bold">✕</button>

@@ -85,20 +85,22 @@ export default function Sidebar({ mode = 'electric' }: { mode?: 'electric' | 'ro
   );
 
   return (
-    <aside className="w-64 bg-transparent border-r border-gray-200 p-4 flex flex-col h-full">
-      <h2 className="text-lg font-semibold mb-4 text-gray-800">Komponenten</h2>
+    <aside className="w-64 bg-white dark:bg-gray-900 border-r border-gray-200 flex flex-col h-full">
+      <div className="p-4 border-b border-gray-100">
+        <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100">Komponenten</h2>
+      </div>
 
-      <div className="mb-4">
+      <div className="m-4">
         <input
           type="text"
           placeholder="Suchen..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow"
+          className="w-full border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all bg-gray-50 dark:bg-gray-800 dark:text-gray-200"
         />
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto px-4 pb-4">
         {filteredComponents.length > 0 ? (
           <div className="flex flex-col gap-2">
             {filteredComponents.map((comp, index) => (
