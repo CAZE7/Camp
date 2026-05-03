@@ -135,11 +135,19 @@ async function seed() {
 
     // 4. Insert dummy components
     console.log("Inserting components...");
-    for (const comp of dummyComponents) {
-      await client.query(
-        'INSERT INTO Components (name, type, cross_section, price, brand) VALUES ($1, $2, $3, $4, $5)',
-        [comp.name, comp.type, comp.cross_section, comp.price, comp.brand]
-      );
+    if (dummyComponents.length > 0) {
+      const values: any[] = [];
+      const placeholders: string[] = [];
+      let i = 1;
+
+      for (const comp of dummyComponents) {
+        placeholders.push(`($${i}, $${i + 1}, $${i + 2}, $${i + 3}, $${i + 4})`);
+        values.push(comp.name, comp.type, comp.cross_section, comp.price, comp.brand);
+        i += 5;
+      }
+
+      const query = `INSERT INTO Components (name, type, cross_section, price, brand) VALUES ${placeholders.join(', ')}`;
+      await client.query(query, values);
     }
 
     console.log("Seeding complete!");
