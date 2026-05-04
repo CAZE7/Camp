@@ -26,7 +26,6 @@ import ReactFlow, {
   useReactFlow,
   useNodesState,
   useEdgesState,
-  getOutgoers,
   Connection,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
@@ -144,12 +143,25 @@ function PlannerInner() {
 
       // Check for cycles
       const target = nodes.find((node) => node.id === connection.target);
+
+      const outgoersMap = new Map<string, Node[]>();
+      const nodeMap = new Map(nodes.map(n => [n.id, n]));
+
+      for (const edge of edges) {
+        if (!outgoersMap.has(edge.source)) {
+          outgoersMap.set(edge.source, []);
+        }
+        const tNode = nodeMap.get(edge.target);
+        if (tNode) outgoersMap.get(edge.source)!.push(tNode);
+      }
+
       const hasCycle = (node: Node, visited = new Set()) => {
         if (visited.has(node.id)) return false;
 
         visited.add(node.id);
 
-        for (const outgoer of getOutgoers(node, nodes, edges)) {
+        const outgoers = outgoersMap.get(node.id) || [];
+        for (const outgoer of outgoers) {
           if (outgoer.id === connection.source) return true;
           if (hasCycle(outgoer, visited)) return true;
         }
@@ -497,7 +509,15 @@ function PlannerInner() {
   }, [screenToFlowPosition, viewMode]);
 
 
-  const metrics = useDashboardMetrics(nodes, edges, season, calculatedSolarWatts);
+  const {
+    dailyConsumptionAh,
+    autarkyStr,
+    solarNodesCount,
+    totalSolarVoltage,
+    totalSolarAmps,
+    hasDirectBatteryToConsumer,
+    chargingTimeStr,
+  } = useDashboardMetrics(nodes, edges, season, calculatedSolarWatts);
 
   return (
     <div className="flex h-screen w-full bg-gray-50 overflow-hidden font-sans relative">
@@ -639,7 +659,7 @@ function PlannerInner() {
                 <span className="text-gray-600">Batterie-Autarkie (ohne Laden):</span>
                 <span className="font-semibold text-gray-900">{autarkyStr}</span>
               </div>
-              {solarNodes.length > 0 && (
+              {solarNodesCount > 0 && (
                 <div className="flex justify-between">
                   <span className="text-gray-600">Solar-Array Output:</span>
                   <span className="font-semibold text-gray-900">{totalSolarVoltage}V / {totalSolarAmps.toFixed(1)}A</span>
@@ -683,7 +703,19 @@ function PlannerInner() {
                   ))}
                 </ul>
               </div>
+              <div className="mt-6 flex justify-end">
+                <button
+                  onClick={() => setShowBOM(false)}
+                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition-colors"
+                >
+                  Schließen
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
+        {/* Keeping existing BOMModal to not break any external dependencies, but the above renders first */}
         {showBOM && <BOMModal bom={generateBOM()} onClose={() => setShowBOM(false)} />}
       </div>
 
