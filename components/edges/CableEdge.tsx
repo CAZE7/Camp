@@ -23,7 +23,7 @@ const CableEdge = function ({
   markerEnd,
   selected,
   sourceHandle,
-}: EdgeProps<CableEdgeData>) {
+}: EdgeProps<CableEdgeData> & { sourceHandle?: string | null }) {
   const { getNodes } = useReactFlow();
   const isProMode = useAppStore(state => state.isProMode);
 
