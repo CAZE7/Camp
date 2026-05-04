@@ -91,6 +91,7 @@ export default function Sidebar({ mode = 'electric' }: { mode?: 'electric' | 'wa
         <input
           type="text"
           placeholder="Suchen..."
+          aria-label="Komponenten suchen"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="w-full border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all bg-gray-50 dark:bg-gray-800 dark:text-gray-200"

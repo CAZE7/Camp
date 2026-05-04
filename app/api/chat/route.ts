@@ -69,7 +69,7 @@ export async function POST(req: Request) {
         ORDER BY embedding <-> $1::vector
         LIMIT 3
       `;
-      const knowledgeRes = await client.query(knowledgeQuery, [`[${embedding.join(',')}]`]);
+      const knowledgeRes = await client.query(knowledgeQuery, [JSON.stringify(embedding)]);
       contextText = knowledgeRes.rows.map(row => row.content).join('\n\n');
     }
 

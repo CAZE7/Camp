@@ -38,7 +38,8 @@ const ConduitNode = function ({ id, data, selected }: { id: string, data: Condui
     const innerArea = Math.PI * Math.pow(innerDiameter / 2, 2);
 
     let totalCableArea = 0;
-    const assignedCables = edges.filter(e => assignedEdgeIds.includes(e.id));
+    const assignedEdgeIdsSet = new Set(assignedEdgeIds);
+    const assignedCables = edges.filter(e => assignedEdgeIdsSet.has(e.id));
 
     assignedCables.forEach(edge => {
       const edgeData = edge.data as CableEdgeData;
