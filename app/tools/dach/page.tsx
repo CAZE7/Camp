@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useMemo, useEffect, useRef } from 'react';
+import React, { useCallback, useMemo, useEffect, useRef, useState } from 'react';
 import ReactFlow, {
   Background,
   Controls,
@@ -10,37 +10,141 @@ import ReactFlow, {
   useNodesState,
   ReactFlowProvider,
   Panel,
+  XYPosition,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 import Link from 'next/link';
 import RoofWindowNode from '@/components/nodes/RoofWindowNode';
 import RoofSolarNode from '@/components/nodes/RoofSolarNode';
+import RoofBackgroundNode from '@/components/nodes/RoofBackgroundNode';
 import { useAppStore } from '@/lib/store';
+import { vehicleTemplates } from '@/lib/vehicleTemplates';
 
 const nodeTypes = {
   roofWindow: RoofWindowNode,
   roofSolar: RoofSolarNode,
+  roofBackground: RoofBackgroundNode,
 };
 
-const initialNodes: Node[] = [
-  { id: 'solar-1', type: 'roofSolar', position: { x: 100, y: 100 }, data: { watts: 200 } }
-];
+const SAFE_MARGINS = {
+  front: 15, // cm
+  rear: 5,   // cm
+  left: 5,   // cm
+  right: 5,  // cm
+};
 
 function DachPlanerFlow() {
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string>(vehicleTemplates[0].id);
+  const selectedVehicle = useMemo(() => 
+    vehicleTemplates.find(v => v.id === selectedVehicleId) || vehicleTemplates[0],
+    [selectedVehicleId]
+  );
+
+  const initialNodes: Node[] = useMemo(() => [
+    { 
+      id: 'background', 
+      type: 'roofBackground', 
+      position: { x: 0, y: 0 }, 
+      draggable: false,
+      selectable: false,
+      data: { 
+        width: selectedVehicle.roofWidth * 100, 
+        height: selectedVehicle.roofLength * 100,
+        safeMargins: SAFE_MARGINS
+      } 
+    },
+    { 
+      id: 'solar-1', 
+      type: 'roofSolar', 
+      position: { x: 20, y: 50 }, 
+      data: { watts: 200, width: 100, height: 60 } 
+    }
+  ], [selectedVehicle]);
+
   const [nodes, setNodes] = useNodesState(initialNodes);
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const { setCalculatedSolarWatts } = useAppStore();
 
+  // Reset background node when vehicle changes
+  useEffect(() => {
+    setNodes((nds) => nds.map(node => {
+      if (node.id === 'background') {
+        return {
+          ...node,
+          data: { 
+            width: selectedVehicle.roofWidth * 100, 
+            height: selectedVehicle.roofLength * 100,
+            safeMargins: SAFE_MARGINS
+          }
+        };
+      }
+      return node;
+    }));
+  }, [selectedVehicle, setNodes]);
+
+  const validateNodes = useCallback((nds: Node[]) => {
+    const roofW = selectedVehicle.roofWidth * 100;
+    const roofH = selectedVehicle.roofLength * 100;
+    
+    const safeMinX = SAFE_MARGINS.left;
+    const safeMaxX = roofW - SAFE_MARGINS.right;
+    const safeMinY = SAFE_MARGINS.front;
+    const safeMaxY = roofH - SAFE_MARGINS.rear;
+
+    return nds.map(node => {
+      if (node.id === 'background') return node;
+
+      const nodeW = node.data.width || (node.type === 'roofSolar' ? 100 : 40);
+      const nodeH = node.data.height || (node.type === 'roofSolar' ? 60 : 40);
+      
+      const isOutside = 
+        node.position.x < safeMinX || 
+        node.position.y < safeMinY || 
+        (node.position.x + nodeW) > safeMaxX || 
+        (node.position.y + nodeH) > safeMaxY;
+
+      if (node.data.isInvalid !== isOutside) {
+        return { ...node, data: { ...node.data, isInvalid: isOutside } };
+      }
+      return node;
+    });
+  }, [selectedVehicle]);
+
   const onNodesChange: OnNodesChange = useCallback(
-    (changes) => setNodes((nds) => applyNodeChanges(changes, nds)),
-    [setNodes]
+    (changes) => {
+      setNodes((nds) => {
+        const nextNodes = applyNodeChanges(changes, nds);
+        return validateNodes(nextNodes);
+      });
+    },
+    [setNodes, validateNodes]
   );
+
+  const onNodeResize = useCallback((event: any, { id, width, height }: any) => {
+    setNodes((nds) =>
+      nds.map((node) => {
+        if (node.id === id) {
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              width: width / 2, // px to cm
+              height: height / 2, // px to cm
+            },
+          };
+        }
+        return node;
+      })
+    );
+  }, [setNodes]);
 
   const totalRoofSolarWatts = useMemo(() => {
     return nodes
-      .filter((n) => n.type === 'roofSolar')
+      .filter((n) => n.type === 'roofSolar' && !n.data.isInvalid)
       .reduce((acc, n) => {
         const data = n.data as { watts?: number } | undefined;
         return acc + (data?.watts || 0);
@@ -67,20 +171,25 @@ function DachPlanerFlow() {
       if (!reactFlowBounds) return;
 
       const position = {
-        x: event.clientX - reactFlowBounds.left,
-        y: event.clientY - reactFlowBounds.top,
+        x: (event.clientX - reactFlowBounds.left) / 2, // px to cm
+        y: (event.clientY - reactFlowBounds.top) / 2,  // px to cm
       };
 
       const newNode: Node = {
         id: `${type}-${Date.now()}`,
         type,
         position,
-        data: { label: type === 'roofSolar' ? 'Solarpanel' : 'Dachfenster', watts: type === 'roofSolar' ? 200 : undefined },
+        data: { 
+          label: type === 'roofSolar' ? 'Solarpanel' : 'Dachfenster', 
+          watts: type === 'roofSolar' ? 200 : undefined,
+          width: type === 'roofSolar' ? 100 : 40,
+          height: type === 'roofSolar' ? 60 : 40,
+        },
       };
 
-      setNodes((nds) => nds.concat(newNode));
+      setNodes((nds) => validateNodes(nds.concat(newNode)));
     },
-    [setNodes]
+    [setNodes, validateNodes]
   );
 
   const onDragStart = (event: React.DragEvent, nodeType: string) => {
@@ -91,36 +200,65 @@ function DachPlanerFlow() {
   return (
     <div className="flex h-[calc(100vh-73px)] w-full relative">
       {/* Sidebar */}
-      <div className="w-72 bg-card border-r border-border p-6 flex flex-col gap-6 overflow-y-auto z-10 shrink-0">
-        <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Komponenten</p>
-        <div className="space-y-3">
-          <Card
-            className="cursor-grab hover:ring-2 hover:ring-blue-400 transition-all active:cursor-grabbing"
-            onDragStart={(event) => onDragStart(event, 'roofSolar')}
-            draggable
-          >
-            <CardContent className="flex items-center gap-4 py-3">
-              <div className="w-10 h-10 bg-sky-50 text-sky-500 rounded-lg flex items-center justify-center text-xl">☀️</div>
-              <div className="flex flex-col">
-                <span className="font-bold text-sm">Solarpanel</span>
-                <span className="text-[10px] uppercase tracking-widest text-muted-foreground">Drag & Drop</span>
-              </div>
-            </CardContent>
-          </Card>
-          <Card
-            className="cursor-grab hover:ring-2 hover:ring-amber-400 transition-all active:cursor-grabbing"
-            onDragStart={(event) => onDragStart(event, 'roofWindow')}
-            draggable
-          >
-            <CardContent className="flex items-center gap-4 py-3">
-              <div className="w-10 h-10 bg-amber-50 text-amber-500 rounded-lg flex items-center justify-center text-xl">🪟</div>
-              <div className="flex flex-col">
-                <span className="font-bold text-sm">Dachfenster</span>
-                <span className="text-[10px] uppercase tracking-widest text-muted-foreground">Drag & Drop</span>
-              </div>
-            </CardContent>
-          </Card>
+      <div className="w-80 bg-card border-r border-border p-6 flex flex-col gap-6 overflow-y-auto z-10 shrink-0">
+        <div className="space-y-4">
+          <Label className="text-xs font-black text-muted-foreground uppercase tracking-widest">Fahrzeug Modell</Label>
+          <Select value={selectedVehicleId} onValueChange={setSelectedVehicleId}>
+            <SelectTrigger className="h-12">
+              <SelectValue placeholder="Wähle dein Fahrzeug" />
+            </SelectTrigger>
+            <SelectContent>
+              {vehicleTemplates.map(v => (
+                <SelectItem key={v.id} value={v.id}>
+                  {v.brand} {v.version}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
+
+        <div className="space-y-4">
+          <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Komponenten</p>
+          <div className="space-y-3">
+            <Card
+              className="cursor-grab hover:ring-2 hover:ring-blue-400 transition-all active:cursor-grabbing border-blue-100 bg-blue-50/20"
+              onDragStart={(event) => onDragStart(event, 'roofSolar')}
+              draggable
+            >
+              <CardContent className="flex items-center gap-4 py-3 px-4">
+                <div className="w-10 h-10 bg-blue-500 text-white rounded-lg flex items-center justify-center text-xl shadow-sm">☀️</div>
+                <div className="flex flex-col">
+                  <span className="font-bold text-sm">Solarpanel</span>
+                  <span className="text-[10px] uppercase tracking-widest text-blue-600/70 font-bold">Basis: 100x60cm</span>
+                </div>
+              </CardContent>
+            </Card>
+            <Card
+              className="cursor-grab hover:ring-2 hover:ring-amber-400 transition-all active:cursor-grabbing border-amber-100 bg-amber-50/20"
+              onDragStart={(event) => onDragStart(event, 'roofWindow')}
+              draggable
+            >
+              <CardContent className="flex items-center gap-4 py-3 px-4">
+                <div className="w-10 h-10 bg-amber-500 text-white rounded-lg flex items-center justify-center text-xl shadow-sm">🪟</div>
+                <div className="flex flex-col">
+                  <span className="font-bold text-sm">Dachfenster</span>
+                  <span className="text-[10px] uppercase tracking-widest text-amber-600/70 font-bold">Basis: 40x40cm</span>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        <Card className="mt-auto border-dashed">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs uppercase tracking-tighter text-muted-foreground">Hinweis</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-[11px] leading-relaxed text-muted-foreground">
+              Die <strong>Safe Zone</strong> berücksichtigt 15cm Front-Abstand und 5cm Seiten-Abstand. Elemente außerhalb werden rot markiert und nicht zur Leistung addiert.
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Canvas */}
@@ -129,28 +267,35 @@ function DachPlanerFlow() {
           nodes={nodes}
           nodeTypes={nodeTypes}
           onNodesChange={onNodesChange}
+          onNodeResize={onNodeResize}
           onDrop={onDrop}
           onDragOver={onDragOver}
           fitView
           className="bg-muted/30"
+          minZoom={0.1}
+          maxZoom={4}
         >
-          <Background color="hsl(var(--border))" gap={24} size={2} />
+          <Background color="hsl(var(--border))" gap={20} size={1} />
           <Controls className="rounded-lg overflow-hidden border border-border shadow-sm" />
 
           <Panel position="top-right" className="mt-4 mr-4 pointer-events-auto">
-            <Card size="sm" className="min-w-[220px] shadow-lg">
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg bg-blue-50 text-blue-500 w-7 h-7 rounded-md flex items-center justify-center">⚡</span>
-                    <span className="text-[10px] text-muted-foreground font-black uppercase tracking-widest">Solarleistung</span>
-                  </div>
-                  <span className="font-black text-xl">{totalRoofSolarWatts} <span className="text-sm font-bold text-blue-600">W</span></span>
+            <Card className="min-w-[240px] shadow-2xl border-none bg-slate-900 text-white">
+              <CardHeader className="pb-2">
+                <CardDescription className="text-blue-400 font-bold uppercase tracking-[0.2em] text-[10px]">System Check</CardDescription>
+                <CardTitle className="flex items-center justify-between text-2xl font-black">
+                  <span>Solarleistung</span>
+                  <span className="text-orange-400">{totalRoofSolarWatts} W</span>
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-xs font-medium text-muted-foreground bg-muted p-2.5 rounded-md">
-                  Wird <span className="text-blue-600 font-semibold">automatisch</span> in den Elektrik-Planer übernommen.
+                <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-orange-500 transition-all duration-500" 
+                    style={{ width: `${Math.min(100, (totalRoofSolarWatts / 1000) * 100)}%` }}
+                  />
+                </div>
+                <p className="text-[10px] text-white/50 mt-3 font-medium">
+                  Daten werden in Echtzeit mit dem Elektrik-Planer synchronisiert.
                 </p>
               </CardContent>
             </Card>
@@ -163,27 +308,34 @@ function DachPlanerFlow() {
 
 export default function DachPlanerPage() {
   return (
-    <div className="flex flex-col min-h-screen bg-background font-sans">
+    <div className="flex flex-col min-h-screen bg-background font-sans overflow-hidden">
       {/* Header */}
-      <div className="bg-card border-b border-border px-6 py-4 flex items-center justify-between z-20 sticky top-0">
+      <div className="bg-card border-b border-border px-6 py-4 flex items-center justify-between z-20 sticky top-0 shadow-sm">
         <div className="flex items-center gap-4">
           <Link href="/">
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" className="gap-2">
               ← Zurück
             </Button>
           </Link>
-          <h1 className="text-xl font-black flex items-center gap-2.5">
-            <span className="bg-gradient-to-br from-sky-400 to-blue-500 text-white w-8 h-8 rounded-lg flex items-center justify-center shadow-sm text-base">🚐</span>
-            Dachflächen-Planer
+          <div className="h-6 w-px bg-border mx-2" />
+          <h1 className="text-xl font-black flex items-center gap-3 tracking-tight">
+            <span className="bg-gradient-to-br from-orange-400 to-red-500 text-white w-9 h-9 rounded-xl flex items-center justify-center shadow-lg text-lg">☀️</span>
+            Dachflächen-Planer <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full ml-2 uppercase tracking-widest">Pro</span>
           </h1>
         </div>
-        <p className="text-sm text-muted-foreground max-w-sm text-right hidden md:block">
-          Plane die Anordnung deiner <span className="text-blue-600 font-semibold">Solarpanels</span> und <span className="text-amber-600 font-semibold">Dachfenster</span>.
-        </p>
+        <div className="flex items-center gap-6">
+          <div className="hidden lg:flex flex-col items-end">
+            <span className="text-[10px] font-black uppercase text-muted-foreground tracking-widest leading-none mb-1">Status</span>
+            <span className="text-xs font-bold text-emerald-500 flex items-center gap-1.5">
+              <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+              Live Sync Aktiv
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* Flow */}
-      <div className="flex-1 relative">
+      <div className="flex-1 relative overflow-hidden">
         <ReactFlowProvider>
           <DachPlanerFlow />
         </ReactFlowProvider>
