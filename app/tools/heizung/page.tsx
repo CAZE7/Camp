@@ -11,8 +11,8 @@ import { cn } from "@/lib/utils";
 export default function HeatingCalculatorPage() {
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>(vehicleTemplates[0].id);
   const [insulationThickness, setInsulationThickness] = useState<number>(19); // in mm
-  const [tempInside, setTempInside] = useState<number>(20); // in °C
-  const [tempOutside, setTempOutside] = useState<number>(-10); // in °C
+  const [tempInside, setTempInside] = useState<number[]>([20]); // in °C
+  const [tempOutside, setTempOutside] = useState<number[]>([-10]); // in °C
 
   const selectedVehicle = useMemo(() =>
     vehicleTemplates.find(v => v.id === selectedVehicleId) || vehicleTemplates[0],
@@ -20,8 +20,8 @@ export default function HeatingCalculatorPage() {
   );
 
   // Safe values for calculations
-  const tIn = typeof tempInside === 'number' && !isNaN(tempInside) ? tempInside : 20;
-  const tOut = typeof tempOutside === 'number' && !isNaN(tempOutside) ? tempOutside : -10;
+  const tIn = tempInside[0];
+  const tOut = tempOutside[0];
 
   // Thermodynamic calculation logic
   // A = 2 * (L*H + B*H + L*B)
@@ -111,8 +111,8 @@ export default function HeatingCalculatorPage() {
                 min={5}
                 max={30}
                 step={1}
-                value={[tIn]}
-                onValueChange={(val) => setTempInside(Array.isArray(val) ? val[0] : val)}
+                value={tempInside}
+                onValueChange={(val) => val && setTempInside(val as number[])}
               />
             </div>
 
@@ -132,8 +132,8 @@ export default function HeatingCalculatorPage() {
                 min={-30}
                 max={15}
                 step={1}
-                value={[tOut]}
-                onValueChange={(val) => setTempOutside(Array.isArray(val) ? val[0] : val)}
+                value={tempOutside}
+                onValueChange={(val) => val && setTempOutside(val as number[])}
               />
             </div>
           </div>
