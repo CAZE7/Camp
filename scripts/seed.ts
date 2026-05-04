@@ -110,25 +110,39 @@ async function seed() {
       });
 
       console.log("Inserting knowledge chunks...");
-      for (let i = 0; i < guides.length; i++) {
-        const guide = guides[i];
-        const embedding = embeddings[i];
+      if (guides.length > 0) {
+        const values: any[] = [];
+        const placeholders: string[] = [];
+        let paramIndex = 1;
 
-        await client.query(
-          'INSERT INTO Knowledge_Chunks (content, embedding, metadata) VALUES ($1, $2::vector, $3)',
-          [guide.content, `[${embedding.join(',')}]`, guide.metadata]
-        );
+        for (let i = 0; i < guides.length; i++) {
+          const guide = guides[i];
+          const embedding = embeddings[i];
+          placeholders.push(`($${paramIndex}, $${paramIndex + 1}::vector, $${paramIndex + 2})`);
+          values.push(guide.content, JSON.stringify(embedding), guide.metadata);
+          paramIndex += 3;
+        }
+
+        const query = `INSERT INTO Knowledge_Chunks (content, embedding, metadata) VALUES ${placeholders.join(', ')}`;
+        await client.query(query, values);
       }
     } else {
         console.warn("OPENAI_API_KEY is not set. Skipping real embeddings, using mock vectors...");
-        for (let i = 0; i < guides.length; i++) {
-            const guide = guides[i];
-            const mockEmbedding = new Array(1536).fill(0).map(() => Math.random());
+        if (guides.length > 0) {
+          const values: any[] = [];
+          const placeholders: string[] = [];
+          let paramIndex = 1;
 
-            await client.query(
-              'INSERT INTO Knowledge_Chunks (content, embedding, metadata) VALUES ($1, $2::vector, $3)',
-              [guide.content, `[${mockEmbedding.join(',')}]`, guide.metadata]
-            );
+          for (let i = 0; i < guides.length; i++) {
+              const guide = guides[i];
+              const mockEmbedding = new Array(1536).fill(0).map(() => Math.random());
+              placeholders.push(`($${paramIndex}, $${paramIndex + 1}::vector, $${paramIndex + 2})`);
+              values.push(guide.content, JSON.stringify(mockEmbedding), guide.metadata);
+              paramIndex += 3;
+          }
+
+          const query = `INSERT INTO Knowledge_Chunks (content, embedding, metadata) VALUES ${placeholders.join(', ')}`;
+          await client.query(query, values);
         }
     }
 
