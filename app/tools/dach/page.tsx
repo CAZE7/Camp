@@ -13,6 +13,8 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 import RoofWindowNode from '@/components/nodes/RoofWindowNode';
 import RoofSolarNode from '@/components/nodes/RoofSolarNode';
 import { useAppStore } from '@/lib/store';
@@ -154,10 +156,17 @@ export default function DachPlanerPage() {
   return (
     <div className="flex flex-col min-h-screen bg-[#f1f5f9] font-sans selection:bg-blue-100">
       <div className="bg-white/80 backdrop-blur-xl border-b border-slate-200 px-8 py-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex items-center justify-between z-20 relative sticky top-0">
-        <h1 className="text-3xl font-black text-slate-800 flex items-center gap-3">
-          <span className="bg-gradient-to-br from-sky-400 to-blue-500 text-white w-10 h-10 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20 text-xl">🚐</span>
-          Dachflächen-Planer
-        </h1>
+        <div className="flex items-center gap-6">
+          <Link href="/">
+            <Button variant="outline" size="sm" className="bg-white border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-900 font-bold rounded-lg shadow-sm transition-all hover:-translate-x-1">
+              ← Zurück
+            </Button>
+          </Link>
+          <h1 className="text-3xl font-black text-slate-800 flex items-center gap-3">
+            <span className="bg-gradient-to-br from-sky-400 to-blue-500 text-white w-10 h-10 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20 text-xl">🚐</span>
+            Dachflächen-Planer
+          </h1>
+        </div>
         <p className="text-sm font-semibold text-slate-500 max-w-md text-right bg-slate-50 p-3 rounded-xl border border-slate-100">
           Plane die Anordnung deiner <span className="text-blue-600 font-bold">Solarpanels</span> und <span className="text-amber-600 font-bold">Dachfenster</span> auf dem Fahrzeugdach.
         </p>

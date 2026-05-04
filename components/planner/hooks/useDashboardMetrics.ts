@@ -1,6 +1,5 @@
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { Node, Edge } from 'reactflow';
-import { checkHasSeriesConnection } from '../utils/solarCalculations';
 
 export function useDashboardMetrics(
   nodes: Node[],
@@ -8,6 +7,16 @@ export function useDashboardMetrics(
   season: 'summer' | 'winter',
   calculatedSolarWatts: number
 ) {
+  // Performance Optimization: 
+  // We only care about the type, data, and connections. We explicitly ignore 'position' 
+  // to avoid recalculating heavy metrics on every frame during a drag event.
+  const serializedNodes = JSON.stringify(
+    nodes.map((n) => ({ id: n.id, type: n.type, data: n.data }))
+  );
+  const serializedEdges = JSON.stringify(
+    edges.map((e) => ({ id: e.id, source: e.source, target: e.target, sourceHandle: e.sourceHandle, targetHandle: e.targetHandle }))
+  );
+
   return useMemo(() => {
     // Single pass to categorize nodes and precompute node types
     const {
@@ -183,5 +192,6 @@ export function useDashboardMetrics(
       hasDirectBatteryToConsumer,
       solarNodesCount: solarNodes.length,
     };
-  }, [nodes, edges, season, calculatedSolarWatts]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serializedNodes, serializedEdges, season, calculatedSolarWatts]);
 }

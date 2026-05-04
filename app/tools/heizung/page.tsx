@@ -6,6 +6,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import Link from 'next/link';
 import { cn } from "@/lib/utils";
 
 export default function HeatingCalculatorPage() {
@@ -55,7 +58,16 @@ export default function HeatingCalculatorPage() {
   const Q = isNaN(rawQ) ? 0 : Math.max(0, rawQ);
 
   return (
-    <div className="min-h-screen bg-[#f1f5f9] flex items-center justify-center p-4 md:p-12 font-sans selection:bg-blue-100">
+    <div className="min-h-screen bg-[#f1f5f9] flex items-center justify-center p-4 md:p-12 font-sans selection:bg-blue-100 relative">
+      {/* Back Button */}
+      <div className="absolute top-4 left-4 md:top-8 md:left-8 z-50">
+        <Link href="/">
+          <Button variant="outline" className="bg-white/80 backdrop-blur-md border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-900 font-bold rounded-xl shadow-sm transition-all hover:-translate-x-1">
+            ← Zurück
+          </Button>
+        </Link>
+      </div>
+
       <div className="absolute top-0 left-0 w-full h-1/3 bg-gradient-to-b from-blue-600 to-transparent opacity-10 pointer-events-none" />
       
       <Card className="w-full max-w-2xl shadow-[0_20px_50px_rgba(8,_112,_184,_0.15)] border-none bg-white/90 backdrop-blur-xl overflow-hidden rounded-[2.5rem] transition-all">
@@ -102,8 +114,14 @@ export default function HeatingCalculatorPage() {
                   <Label htmlFor="temp-inside" className="text-[10px] font-black text-blue-400 uppercase tracking-widest">🏠 Wunsch-Temperatur</Label>
                   <p className="text-sm font-bold text-slate-600 italic">Gemütlich & Warm</p>
                 </div>
-                <div className="bg-white text-blue-600 px-4 py-2 rounded-2xl text-xl font-black shadow-sm border border-blue-50">
-                  {tIn}<span className="text-sm ml-0.5">°C</span>
+                <div className="relative group">
+                  <Input 
+                    type="number" 
+                    value={tIn} 
+                    onChange={(e) => setTempInside([Number(e.target.value) || 0])}
+                    className="bg-white text-blue-600 w-24 h-12 rounded-2xl text-xl font-black shadow-sm border border-blue-100 focus-visible:ring-blue-400 text-center pr-8 transition-all hover:border-blue-300"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-black text-blue-300 pointer-events-none transition-colors group-hover:text-blue-500">°C</span>
                 </div>
               </div>
               <Slider
@@ -123,8 +141,14 @@ export default function HeatingCalculatorPage() {
                   <Label htmlFor="temp-outside" className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">❄️ Außen-Temperatur</Label>
                   <p className="text-sm font-bold text-slate-600 italic">Extremer Winter</p>
                 </div>
-                <div className="bg-white text-indigo-600 px-4 py-2 rounded-2xl text-xl font-black shadow-sm border border-indigo-50">
-                  {tOut}<span className="text-sm ml-0.5">°C</span>
+                <div className="relative group">
+                  <Input 
+                    type="number" 
+                    value={tOut} 
+                    onChange={(e) => setTempOutside([Number(e.target.value)])}
+                    className="bg-white text-indigo-600 w-28 h-12 rounded-2xl text-xl font-black shadow-sm border border-indigo-100 focus-visible:ring-indigo-400 text-center pr-8 transition-all hover:border-indigo-300"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-black text-indigo-300 pointer-events-none transition-colors group-hover:text-indigo-500">°C</span>
                 </div>
               </div>
               <Slider

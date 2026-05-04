@@ -11,7 +11,7 @@ import { FlowCanvas } from './planner/FlowCanvas';
 
 function PlannerInner() {
   return (
-    <div className="flex h-screen w-full bg-gray-50 overflow-hidden font-sans relative">
+    <div className="flex h-screen w-full bg-[#f1f5f9] overflow-hidden font-sans relative selection:bg-blue-100">
       <PlannerSidebar />
       <div className="flex-1 h-full relative overflow-hidden flex flex-col">
         <PlannerDashboard />

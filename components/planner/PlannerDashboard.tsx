@@ -60,9 +60,11 @@ export function PlannerDashboard() {
 
   return (
     <div className="absolute top-4 left-4 z-10 flex flex-wrap gap-4 bg-white/80 backdrop-blur-md shadow-xl rounded-xl p-4 pointer-events-none w-[calc(100%-2rem)]">
-      <div className="bg-white/80 backdrop-blur-md rounded shadow-xl flex items-center border border-gray-200 overflow-hidden mr-4 pointer-events-auto flex-wrap">
-        <Link href="/" className="px-4 py-2 font-semibold text-sm transition-colors border-r bg-transparent text-gray-600 hover:bg-gray-50/50">
-          Zurück zur Startseite
+      <div className="bg-white/80 backdrop-blur-md rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex items-center border border-slate-200 overflow-hidden mr-4 pointer-events-auto flex-wrap">
+        <Link href="/">
+          <Button variant="ghost" className="rounded-none border-r border-slate-200 px-6 font-bold text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-all hover:-translate-x-1 h-full">
+            ← Zurück
+          </Button>
         </Link>
         <button
           className={`px-4 py-2 font-semibold text-sm transition-colors ${viewMode === 'electric' ? 'bg-orange-500 text-white' : 'bg-transparent text-gray-600 hover:bg-gray-50/50'}`}
