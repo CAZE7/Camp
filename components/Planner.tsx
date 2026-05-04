@@ -261,15 +261,15 @@ function PlannerInner() {
 
   const deleteSelected = useCallback(() => {
     if (selectedNodes.length > 0) {
-      const nodeIds = selectedNodes.map(n => n.id);
-      setNodes((nds) => nds.filter((n) => !nodeIds.includes(n.id)));
+      const nodeIdsSet = new Set(selectedNodes.map(n => n.id));
+      setNodes((nds) => nds.filter((n) => !nodeIdsSet.has(n.id)));
       // Also delete connected edges
-      setEdges((eds) => eds.filter((e) => !nodeIds.includes(e.source) && !nodeIds.includes(e.target)));
+      setEdges((eds) => eds.filter((e) => !nodeIdsSet.has(e.source) && !nodeIdsSet.has(e.target)));
       setSelectedNodes([]);
     }
     if (selectedEdges.length > 0) {
-      const edgeIds = selectedEdges.map(e => e.id);
-      setEdges((eds) => eds.filter((e) => !edgeIds.includes(e.id)));
+      const edgeIdsSet = new Set(selectedEdges.map(e => e.id));
+      setEdges((eds) => eds.filter((e) => !edgeIdsSet.has(e.id)));
       setSelectedEdges([]);
     }
   }, [selectedNodes, selectedEdges]);
