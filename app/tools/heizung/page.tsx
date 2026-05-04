@@ -47,7 +47,7 @@ export default function HeatingCalculatorPage() {
       <Card className="w-full max-w-lg shadow-xl">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold flex justify-center items-center gap-2">
-            🔥 Heizlast-Rechner
+            Heizlast-Rechner
           </CardTitle>
           <CardDescription>
             Berechne die benötigte Heizleistung für deinen Camper.
@@ -135,12 +135,12 @@ export default function HeatingCalculatorPage() {
 
           {Q <= 2000 ? (
             <div className="p-4 bg-green-50 rounded-lg border border-green-200 text-green-800">
-              <p className="font-bold mb-1 flex items-center text-sm">✅ Reicht aus</p>
+              <p className="font-bold mb-1 flex items-center text-sm">Reicht aus</p>
               <p className="text-sm">Für diesen Ausbau reicht eine klassische <strong>2kW Standheizung</strong> völlig aus.</p>
             </div>
           ) : (
             <div className="p-4 bg-orange-50 rounded-lg border border-orange-200 text-orange-800">
-              <p className="font-bold mb-1 flex items-center text-sm">⚠️ Höherer Bedarf</p>
+              <p className="font-bold mb-1 flex items-center text-sm">Höherer Bedarf</p>
               <p className="text-sm">Aufgrund der Fahrzeuggröße / Dämmung benötigst du eine <strong>4kW Standheizung</strong> (oder 6/8 kW), um es im Winter warm zu haben.</p>
             </div>
           )}

@@ -10,6 +10,8 @@ interface InspectorProps {
   onDelete?: () => void;
   onUpdateNodeData?: (id: string, data: any) => void;
   edges?: Edge[];
+  chargingTimeStr?: string;
+  calculatedSolarWatts?: number;
 }
 
 export default function Inspector({
@@ -20,6 +22,8 @@ export default function Inspector({
   onDelete,
   onUpdateNodeData,
   edges = [],
+  chargingTimeStr,
+  calculatedSolarWatts,
 }: InspectorProps) {
   const crossSectionOptions = [1.5, 2.5, 4, 6, 10, 16, 25];
 
@@ -68,6 +72,25 @@ export default function Inspector({
               {selectedNode.type === 'battery' && (
                 <>
                   <div className="flex flex-col">
+                  {(chargingTimeStr || calculatedSolarWatts !== undefined) && (
+                    <div className="mb-4 p-3 bg-blue-50 border border-blue-100 rounded-lg">
+                      <h4 className="text-xs font-bold text-blue-900 mb-2 uppercase tracking-wider">Lade-Informationen</h4>
+                      <div className="flex flex-col gap-1 text-sm text-blue-800">
+                        {chargingTimeStr && (
+                          <div className="flex justify-between">
+                            <span>Ladezeit:</span>
+                            <span className="font-semibold">{chargingTimeStr}</span>
+                          </div>
+                        )}
+                        {calculatedSolarWatts !== undefined && (
+                          <div className="flex justify-between">
+                            <span>Ladeleistung (Dach):</span>
+                            <span className="font-semibold">{calculatedSolarWatts} W</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                     <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider">Kapazität (Ah)</label>
                     <input
                       type="number"
@@ -156,7 +179,7 @@ export default function Inspector({
                   </label>
                   {!selectedNode.data?.hasRcd && (
                     <div className="p-2 bg-red-100 text-red-800 text-xs rounded border border-red-200">
-                      ⚠️ Ein FI-Schutzschalter (max. 30mA) ist bei Landstromanschlüssen vorgeschrieben (DIN VDE 0100-721).
+                      Ein FI-Schutzschalter (max. 30mA) ist bei Landstromanschlüssen vorgeschrieben (DIN VDE 0100-721).
                     </div>
                   )}
                 </div>

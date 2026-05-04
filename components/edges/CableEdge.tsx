@@ -42,8 +42,8 @@ export default function CableEdge({
 
   // Calculate length based on spatial layout
   // 100 pixels = 1 meter, add 20% buffer
-  const pixelDistance = Math.sqrt(Math.pow(targetX - sourceX, 2) + Math.pow(targetY - sourceY, 2));
-  const length = (pixelDistance / 100) * 1.2;
+  // length manually provided
+  const length = data?.length || 3;
 
   let I = 0;
   const sourceNode = nodes.find(n => n.id === source);

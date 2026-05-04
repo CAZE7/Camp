@@ -151,7 +151,7 @@ Prüfe den Schaltplan auf folgende Fehler nach VDE-Norm:
 - Werden starre NYM-Kabel verwendet? Erinnere den Nutzer, dass nur feindrähtige Leitungen im Camper erlaubt sind.
 - Prüfe, ob der Wechselrichter-Verlust von ca. 15% (Faktor 0.85) bei 230V-Geräten beachtet wurde.
 
-Formatiere dein KI-Gutachten übersichtlich und verwende Warn-Icons (⚠️) bei gefundenen Fehlern.
+Formatiere dein KI-Gutachten übersichtlich und verwende Warn-Icons () bei gefundenen Fehlern.
 
 WICHTIGER KONTEXT AUS DER DATENBANK:
 ${contextText ? contextText : "Kein spezifischer Kontext gefunden."}

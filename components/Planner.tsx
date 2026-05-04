@@ -2,6 +2,7 @@
 
 import React, { useCallback, useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import Link from 'next/link';
 import ReactFlow, {
   Background,
   Controls,
@@ -890,6 +891,9 @@ function PlannerInner() {
       <div className="flex-1 h-full relative overflow-hidden flex flex-col">
         <div className="absolute top-4 left-4 z-10 flex flex-wrap gap-4 bg-white/80 backdrop-blur-md shadow-xl rounded-xl p-4 pointer-events-none w-[calc(100%-2rem)]">
           <div className="bg-white/80 backdrop-blur-md rounded shadow-xl flex items-center border border-gray-200 overflow-hidden mr-4 pointer-events-auto flex-wrap">
+            <Link href="/" className="px-4 py-2 font-semibold text-sm transition-colors border-r bg-transparent text-gray-600 hover:bg-gray-50/50">
+              Zurück zur Startseite
+            </Link>
             <button
               className={`px-4 py-2 font-semibold text-sm transition-colors ${viewMode === 'electric' ? 'bg-orange-500 text-white' : 'bg-transparent text-gray-600 hover:bg-gray-50/50'}`}
               onClick={() => setViewMode('electric')}
@@ -908,24 +912,24 @@ function PlannerInner() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="bg-white font-semibold">
-                  🛠 Aktionen
+                  Aktionen
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="bg-white/95 backdrop-blur-md border border-gray-200 shadow-xl rounded-xl p-2 min-w-56">
                 <DropdownMenuItem onClick={exportBOM} className="cursor-pointer hover:bg-orange-50 text-orange-700 font-medium rounded-lg p-2 mb-1">
-                  📦 Stückliste an KI senden
+                  Stückliste an KI senden
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={autoWireSystem} className="cursor-pointer hover:bg-yellow-50 text-yellow-700 font-medium rounded-lg p-2 mb-1">
-                  ⚡ Automatisch Verkabeln & Absichern
+                  Automatisch Verkabeln & Absichern
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={checkSchematic} className="cursor-pointer hover:bg-red-50 text-red-700 font-medium rounded-lg p-2 mb-1">
-                  🔍 Schaltplan von KI prüfen lassen
+                  Schaltplan von KI prüfen lassen
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={onLayout} className="cursor-pointer hover:bg-indigo-50 text-indigo-700 font-medium rounded-lg p-2 mb-1">
-                  📐 Schaltplan aufräumen
+                  Schaltplan aufräumen
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={onExportImage} className="cursor-pointer hover:bg-green-50 text-green-700 font-medium rounded-lg p-2">
-                  🖼 Als Bild speichern
+                  Als Bild speichern
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -957,7 +961,7 @@ function PlannerInner() {
         </div>
         {waterWarning && (
           <div className="absolute top-20 left-1/2 -translate-x-1/2 z-50 bg-yellow-100 text-yellow-800 border border-yellow-300 p-4 rounded-xl shadow-xl font-semibold">
-            ⚠️ {waterWarning}
+            {waterWarning}
           </div>
         )}
         <ReactFlow
@@ -994,14 +998,6 @@ function PlannerInner() {
                 <span className="text-gray-600">Batterie-Autarkie (ohne Laden):</span>
                 <span className="font-semibold text-gray-900">{autarkyStr}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Ladezeit (komplett leer bis voll):</span>
-                <span className="font-semibold text-gray-900">{chargingTimeStr}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Eingehende Ladeleistung (Dach):</span>
-                <span className="font-semibold text-gray-900">{calculatedSolarWatts} W</span>
-              </div>
               {solarNodes.length > 0 && (
                 <div className="flex justify-between">
                   <span className="text-gray-600">Solar-Array Output:</span>
@@ -1010,7 +1006,7 @@ function PlannerInner() {
               )}
               {hasDirectBatteryToConsumer && (
                 <div className="mt-2 p-2 bg-red-100 text-red-800 text-xs rounded border border-red-200">
-                  ⚠️ Warnung: Verbraucher ist direkt mit der Batterie verbunden. Ein Sicherungsknoten fehlt!
+                  Warnung: Verbraucher ist direkt mit der Batterie verbunden. Ein Sicherungsknoten fehlt!
                 </div>
               )}
               </div>
@@ -1070,6 +1066,8 @@ function PlannerInner() {
             onDelete={deleteSelected}
             onUpdateNodeData={updateNodeData}
             edges={edges}
+            chargingTimeStr={chargingTimeStr}
+            calculatedSolarWatts={calculatedSolarWatts}
           />
         </div>
       </div>
