@@ -509,15 +509,7 @@ function PlannerInner() {
   }, [screenToFlowPosition, viewMode]);
 
 
-  const {
-    dailyConsumptionAh,
-    autarkyStr,
-    solarNodesCount,
-    totalSolarVoltage,
-    totalSolarAmps,
-    hasDirectBatteryToConsumer,
-    chargingTimeStr,
-  } = useDashboardMetrics(nodes, edges, season, calculatedSolarWatts);
+  const metrics = useDashboardMetrics(nodes, edges, season, calculatedSolarWatts);
 
   return (
     <div className="flex h-screen w-full bg-gray-50 overflow-hidden font-sans relative">
