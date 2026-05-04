@@ -203,7 +203,7 @@ function DachPlanerFlow() {
       <div className="w-80 bg-card border-r border-border p-6 flex flex-col gap-6 overflow-y-auto z-10 shrink-0">
         <div className="space-y-4">
           <Label className="text-xs font-black text-muted-foreground uppercase tracking-widest">Fahrzeug Modell</Label>
-          <Select value={selectedVehicleId} onValueChange={setSelectedVehicleId}>
+          <Select value={selectedVehicleId} onValueChange={(val) => val && setSelectedVehicleId(val)}>
             <SelectTrigger className="h-12">
               <SelectValue placeholder="Wähle dein Fahrzeug" />
             </SelectTrigger>
