@@ -93,7 +93,7 @@ function DachPlanerFlow() {
             onDragStart={(event) => onDragStart(event, 'roofSolar')}
             draggable
           >
-            ☀️ Dach-Solarpanel
+            Dach-Solarpanel
           </div>
           <div
             className="p-3 border-2 border-gray-300 rounded-lg bg-gray-50 cursor-grab hover:border-blue-500 hover:bg-blue-50 transition-colors shadow-sm text-sm font-semibold text-gray-700 flex items-center gap-2"
@@ -138,7 +138,7 @@ export default function DachPlanerPage() {
   return (
     <div className="flex flex-col min-h-screen">
       <div className="bg-white border-b border-gray-200 px-6 py-4 shadow-sm flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">☀️ Dachflächen-Planer</h1>
+        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">Dachflächen-Planer</h1>
         <p className="text-sm text-gray-500 max-w-md text-right">Plane die Anordnung deiner Solarpanels und Dachfenster auf dem Fahrzeugdach.</p>
       </div>
       <div className="flex-1">
