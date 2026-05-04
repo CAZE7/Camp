@@ -44,11 +44,90 @@ export async function POST(req: Request) {
 
   const { messages }: { messages: Message[] } = body;
 
+  const MAX_MESSAGES = 100;
+  const MAX_CONTENT_LENGTH = 10000;
+  const MAX_PARTS = 10;
+
   if (!Array.isArray(messages) || messages.length === 0) {
     return new Response(JSON.stringify({ error: 'messages must be a non-empty array' }), {
       status: 400,
       headers: { 'Content-Type': 'application/json' },
     });
+  }
+
+  if (messages.length > MAX_MESSAGES) {
+    return new Response(JSON.stringify({ error: `Too many messages. Maximum is ${MAX_MESSAGES}` }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  for (const msg of messages) {
+    if (!msg || typeof msg !== 'object') {
+      return new Response(JSON.stringify({ error: 'Invalid message format' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (!msg.id || typeof msg.id !== 'string') {
+      return new Response(JSON.stringify({ error: 'Message id is required and must be a string' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (!['system', 'user', 'assistant', 'tool', 'data'].includes(msg.role)) {
+      return new Response(JSON.stringify({ error: 'Invalid message role' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (msg.content !== undefined && typeof msg.content !== 'string') {
+      return new Response(JSON.stringify({ error: 'Message content must be a string' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (msg.content && msg.content.length > MAX_CONTENT_LENGTH) {
+      return new Response(JSON.stringify({ error: `Message content too long. Maximum is ${MAX_CONTENT_LENGTH} characters` }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (msg.parts) {
+      if (!Array.isArray(msg.parts)) {
+        return new Response(JSON.stringify({ error: 'Message parts must be an array' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+
+      if (msg.parts.length > MAX_PARTS) {
+        return new Response(JSON.stringify({ error: `Too many message parts. Maximum is ${MAX_PARTS}` }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+
+      for (const part of msg.parts) {
+        if (!part || typeof part !== 'object' || !part.type) {
+          return new Response(JSON.stringify({ error: 'Invalid message part format' }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+        if (part.type === 'text' && part.text && part.text.length > MAX_CONTENT_LENGTH) {
+          return new Response(JSON.stringify({ error: `Message part text too long. Maximum is ${MAX_CONTENT_LENGTH} characters` }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+      }
+    }
   }
 
   const latestMessage = messages[messages.length - 1];
