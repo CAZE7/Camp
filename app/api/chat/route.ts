@@ -18,13 +18,20 @@ interface Message {
 }
 
 const openai = createOpenAI({
-  apiKey: process.env.OPENAI_API_KEY || 'dummy_key',
+  apiKey: process.env.OPENAI_API_KEY,
 });
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
+  if (!process.env.OPENAI_API_KEY) {
+    return new Response(JSON.stringify({ error: 'Missing OpenAI API Key configuration' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
   let body;
   try {
     body = await req.json();
@@ -56,22 +63,20 @@ export async function POST(req: Request) {
 
   try {
     // 1. Generate embedding for the user's query
-    if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'dummy_key') {
-      const { embedding } = await embed({
-        model: openai.embedding('text-embedding-3-small'),
-        value: userQuery,
-      });
+    const { embedding } = await embed({
+      model: openai.embedding('text-embedding-3-small'),
+      value: userQuery,
+    });
 
-      // 2. Perform Vector Similarity Search for Knowledge RAG
-      const knowledgeQuery = `
-        SELECT content, metadata
-        FROM Knowledge_Chunks
-        ORDER BY embedding <-> $1::vector
-        LIMIT 3
-      `;
-      const knowledgeRes = await client.query(knowledgeQuery, [JSON.stringify(embedding)]);
-      contextText = knowledgeRes.rows.map(row => row.content).join('\n\n');
-    }
+    // 2. Perform Vector Similarity Search for Knowledge RAG
+    const knowledgeQuery = `
+      SELECT content, metadata
+      FROM Knowledge_Chunks
+      ORDER BY embedding <-> $1::vector
+      LIMIT 3
+    `;
+    const knowledgeRes = await client.query(knowledgeQuery, [JSON.stringify(embedding)]);
+    contextText = knowledgeRes.rows.map(row => row.content).join('\n\n');
 
     // 3. Extract BOM from user query if present
     const bomMatch = userQuery.match(/\`\`\`json\n([\s\S]*?)\n\`\`\`/);
