@@ -11,8 +11,8 @@ import { cn } from "@/lib/utils";
 export default function HeatingCalculatorPage() {
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>(vehicleTemplates[0].id);
   const [insulationThickness, setInsulationThickness] = useState<number>(19); // in mm
-  const [tempInside, setTempInside] = useState<number[]>([20]); // in °C
-  const [tempOutside, setTempOutside] = useState<number[]>([-10]); // in °C
+  const [tempInside, setTempInside] = useState<number>(20); // in °C
+  const [tempOutside, setTempOutside] = useState<number>(-10); // in °C
 
   const selectedVehicle = useMemo(() =>
     vehicleTemplates.find(v => v.id === selectedVehicleId) || vehicleTemplates[0],
@@ -20,32 +20,39 @@ export default function HeatingCalculatorPage() {
   );
 
   // Safe values for calculations
-  const tIn = (tempInside && typeof tempInside[0] === 'number' && !isNaN(tempInside[0])) ? tempInside[0] : 20;
-  const tOut = (tempOutside && typeof tempOutside[0] === 'number' && !isNaN(tempOutside[0])) ? tempOutside[0] : -10;
+  const tIn = typeof tempInside === 'number' && !isNaN(tempInside) ? tempInside : 20;
+  const tOut = typeof tempOutside === 'number' && !isNaN(tempOutside) ? tempOutside : -10;
 
   // Thermodynamic calculation logic
   // A = 2 * (L*H + B*H + L*B)
   const area = useMemo(() => {
     const { length, width, height } = selectedVehicle;
-    if (!length || !width || !height) return 0;
-    return 2 * (length * height + width * height + length * width);
+    const l = Number(length) || 0;
+    const w = Number(width) || 0;
+    const h = Number(height) || 0;
+    if (l === 0 || w === 0 || h === 0) return 0;
+    const calcArea = 2 * (l * h + w * h + l * w);
+    return isNaN(calcArea) ? 0 : calcArea;
   }, [selectedVehicle]);
 
   // Delta T = T_innen - T_aussen
-  const deltaT = tIn - tOut;
+  const deltaT = isNaN(tIn - tOut) ? 0 : (tIn - tOut);
 
   // U-Value calculation
   // k = 0.036 W/(m*K)
   // U = k / d
   const U = useMemo(() => {
-    if (insulationThickness === 0) return 5.0; // Approximation for uninsulated metal
+    const thickness = Number(insulationThickness) || 0;
+    if (thickness === 0) return 5.0; // Approximation for uninsulated metal
     const k = 0.036;
-    const d = (insulationThickness || 1) / 1000;
-    return k / d;
+    const d = thickness / 1000;
+    const calcU = k / d;
+    return isNaN(calcU) ? 5.0 : calcU;
   }, [insulationThickness]);
 
   // Q = U * A * Delta T
-  const Q = Math.max(0, U * area * deltaT);
+  const rawQ = U * area * deltaT;
+  const Q = isNaN(rawQ) ? 0 : Math.max(0, rawQ);
 
   return (
     <div className="min-h-screen bg-[#f1f5f9] flex items-center justify-center p-4 md:p-12 font-sans selection:bg-blue-100">
@@ -105,7 +112,7 @@ export default function HeatingCalculatorPage() {
                 max={30}
                 step={1}
                 value={[tIn]}
-                onValueChange={(val) => val && setTempInside(val as number[])}
+                onValueChange={(val) => setTempInside(Array.isArray(val) ? val[0] : val)}
               />
             </div>
 
@@ -126,7 +133,7 @@ export default function HeatingCalculatorPage() {
                 max={15}
                 step={1}
                 value={[tOut]}
-                onValueChange={(val) => val && setTempOutside(val as number[])}
+                onValueChange={(val) => setTempOutside(Array.isArray(val) ? val[0] : val)}
               />
             </div>
           </div>
@@ -189,19 +196,19 @@ export default function HeatingCalculatorPage() {
 
           <div className="space-y-4">
             {Q <= 2000 ? (
-              <div className="group p-6 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-[2.5rem] border-2 border-emerald-100 text-emerald-900 flex items-center gap-6 transition-all hover:bg-white hover:border-emerald-300 shadow-sm">
-                <div className="bg-gradient-to-br from-emerald-400 to-teal-500 text-white w-14 h-14 rounded-2xl shadow-lg shadow-emerald-500/20 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">✓</div>
+              <div className="group p-6 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-[2.5rem] border-2 border-emerald-500 text-emerald-900 flex items-center gap-6 transition-all hover:bg-white hover:border-emerald-600 shadow-sm">
+                <div className="bg-gradient-to-br from-emerald-500 to-teal-600 text-white w-14 h-14 rounded-2xl shadow-lg shadow-emerald-500/30 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">✓</div>
                 <div>
-                  <p className="font-black text-lg uppercase tracking-tight leading-none mb-1">Optimaler Bereich</p>
-                  <p className="text-sm text-emerald-800/70 font-medium">Eine Standard <strong>2kW Standheizung</strong> ist für dein Setup perfekt geeignet.</p>
+                  <p className="font-black text-lg uppercase tracking-tight leading-none mb-1">Optimaler Bereich (≤ 2000 W)</p>
+                  <p className="text-sm text-emerald-800/80 font-medium">Eine Standard <strong>2kW Standheizung</strong> ist für dein Setup perfekt geeignet.</p>
                 </div>
               </div>
             ) : (
-              <div className="group p-6 bg-gradient-to-br from-orange-50 to-amber-50 rounded-[2.5rem] border-2 border-orange-100 text-orange-900 flex items-center gap-6 transition-all hover:bg-white hover:border-orange-300 shadow-sm">
-                <div className="bg-gradient-to-br from-orange-400 to-amber-500 text-white w-14 h-14 rounded-2xl shadow-lg shadow-orange-500/20 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">!</div>
+              <div className="group p-6 bg-gradient-to-br from-orange-50 to-amber-50 rounded-[2.5rem] border-2 border-orange-500 text-orange-900 flex items-center gap-6 transition-all hover:bg-white hover:border-orange-600 shadow-sm">
+                <div className="bg-gradient-to-br from-orange-500 to-amber-600 text-white w-14 h-14 rounded-2xl shadow-lg shadow-orange-500/30 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">!</div>
                 <div>
-                  <p className="font-black text-lg uppercase tracking-tight leading-none mb-1">Hoher Bedarf</p>
-                  <p className="text-sm text-orange-800/70 font-medium">Du benötigst mindestens eine <strong>4kW Standheizung</strong> für echten Winterkomfort.</p>
+                  <p className="font-black text-lg uppercase tracking-tight leading-none mb-1">Hoher Bedarf (&gt; 2000 W)</p>
+                  <p className="text-sm text-orange-800/80 font-medium">Du benötigst mindestens eine <strong>4kW Standheizung</strong> für echten Winterkomfort.</p>
                 </div>
               </div>
             )}
