@@ -1,6 +1,11 @@
 "use client";
 
 import React, { useCallback, useMemo, useState } from 'react';
+
+import { useDashboardMetrics } from './planner/hooks/useDashboardMetrics';
+import { useAutoWire } from './planner/hooks/useAutoWire';
+import { DashboardPanel } from './planner/ui/DashboardPanel';
+import { BOMModal } from './planner/ui/BOMModal';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import ReactFlow, {
   Background,
@@ -24,25 +29,12 @@ import ReactFlow, {
   Connection,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import CableEdge, { CableEdgeData } from './edges/CableEdge';
-import BatteryNode from './nodes/BatteryNode';
-import ConsumerNode from './nodes/ConsumerNode';
-import ChargerNode from './nodes/ChargerNode';
-import FuseNode from './nodes/FuseNode';
-import ShorePowerNode from './nodes/ShorePowerNode';
-import Consumer230VNode from './nodes/Consumer230VNode';
-import InverterNode from './nodes/InverterNode';
-import SolarNode from './nodes/SolarNode';
-import GroundNode from './nodes/GroundNode';
-import ConduitNode from './nodes/ConduitNode';
-import BusbarNode from './nodes/BusbarNode';
-import ShuntNode from './nodes/ShuntNode';
+
 import WaterNode from './nodes/WaterNode';
 import WaterPipeEdge from './edges/WaterPipeEdge';
 import Inspector from './Inspector';
 import Sidebar from './Sidebar';
 import { useAppStore } from '../lib/store';
-import dagre from 'dagre';
 import { toPng } from 'html-to-image';
 import {
   DropdownMenu,
@@ -52,116 +44,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 
-const NODE_TYPES = {
-  battery: BatteryNode,
-  consumer: ConsumerNode,
-  charger: ChargerNode,
-  fuse: FuseNode,
-  shorePower: ShorePowerNode,
-  consumer230v: Consumer230VNode,
-  inverter: InverterNode,
-  solar: SolarNode,
-  ground: GroundNode,
-  conduit: ConduitNode,
-  busbar: BusbarNode,
-  shunt: ShuntNode,
-};
+import { NODE_TYPES, EDGE_TYPES, initialNodes, initialEdges } from './planner/constants';
+import { CableEdgeData } from './edges/CableEdge';
 
-const EDGE_TYPES = { cableEdge: CableEdge };
-
-const initialNodes: Node[] = [
-  {
-    id: 'battery',
-    type: 'battery',
-    position: { x: 100, y: 100 },
-    data: { capacity: 100, chemistry: 'LiFePO4' },
-  },
-  {
-    id: 'fuse-box',
-    type: 'default',
-    position: { x: 400, y: 100 },
-    data: { label: 'Sicherungskasten' },
-    style: { border: '1px solid #777', padding: 10, borderRadius: 5, background: '#fff' }
-  },
-  {
-    id: 'consumer-1',
-    type: 'consumer',
-    position: { x: 700, y: 50 },
-    data: { watts: 60, hours: 12 },
-  },
-  {
-    id: 'charger-1',
-    type: 'charger',
-    position: { x: 100, y: 300 },
-    data: { amps: 30 },
-  },
-];
-
-const initialEdges: Edge<CableEdgeData>[] = [
-  {
-    id: 'e-battery-fuse',
-    source: 'battery',
-    target: 'fuse-box',
-    type: 'cableEdge',
-    data: {
-      length: 3,
-      crossSection: 6,
-    },
-  },
-  {
-    id: 'e-fuse-consumer',
-    source: 'fuse-box',
-    target: 'consumer-1',
-    type: 'cableEdge',
-    data: {
-      length: 5,
-      crossSection: 2.5,
-    },
-  },
-  {
-    id: 'e-charger-battery',
-    source: 'charger-1',
-    target: 'battery',
-    type: 'cableEdge',
-    data: {
-      length: 2,
-      crossSection: 10,
-    },
-  },
-];
-
-const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'LR') => {
-  const dagreGraph = new dagre.graphlib.Graph();
-  dagreGraph.setDefaultEdgeLabel(() => ({}));
-
-  const nodeWidth = 200;
-  const nodeHeight = 100;
-
-  dagreGraph.setGraph({ rankdir: direction });
-
-  nodes.forEach((node) => {
-    dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight });
-  });
-
-  edges.forEach((edge) => {
-    dagreGraph.setEdge(edge.source, edge.target);
-  });
-
-  dagre.layout(dagreGraph);
-
-  const layoutedNodes = nodes.map((node) => {
-    const nodeWithPosition = dagreGraph.node(node.id);
-    return {
-      ...node,
-      position: {
-        x: nodeWithPosition.x - nodeWidth / 2,
-        y: nodeWithPosition.y - nodeHeight / 2,
-      },
-    };
-  });
-
-  return { nodes: layoutedNodes, edges };
-};
+import { getLayoutedElements } from './planner/utils/layout';
 
 function PlannerInner() {
   const [viewMode, setViewMode] = useState<'electric' | 'water'>('electric');
@@ -186,19 +72,9 @@ function PlannerInner() {
 
   const { screenToFlowPosition, fitView } = useReactFlow();
 
-  const edgeTypes = useMemo(() => ({ cableEdge: CableEdge, waterPipe: WaterPipeEdge }), []);
+  const edgeTypes = useMemo(() => ({ ...EDGE_TYPES, waterPipe: WaterPipeEdge }), []);
   const nodeTypes = useMemo(() => ({
-    battery: BatteryNode,
-    consumer: ConsumerNode,
-    charger: ChargerNode,
-    fuse: FuseNode,
-    shorePower: ShorePowerNode,
-    consumer230v: Consumer230VNode,
-    inverter: InverterNode,
-    solar: SolarNode,
-    ground: GroundNode,
-    busbar: BusbarNode,
-    shunt: ShuntNode,
+    ...NODE_TYPES,
     freshWaterTank: WaterNode,
     grayWaterTank: WaterNode,
     pump: WaterNode,
@@ -425,141 +301,7 @@ function PlannerInner() {
     }
   }, [nodes, edges, fitView]);
 
-  const autoWireSystem = useCallback(() => {
-    const batteryNode = nodes.find(n => n.type === 'battery');
-    if (!batteryNode) {
-      alert("Bitte zuerst eine Batterie platzieren");
-      return;
-    }
-
-    let currentNodes = [...nodes];
-    let newEdges: Edge[] = [];
-    let edgeIdCounter = 1;
-
-    // Helper to generate missing nodes
-    const ensureNode = (type: string, label: string, offsetX: number, offsetY: number, extraData: any = {}) => {
-      let node = currentNodes.find(n => n.type === type || (n.data && n.data.label === label));
-      if (!node) {
-        node = {
-          id: `${type}-auto-${Date.now()}-${Math.floor(Math.random()*1000)}`,
-          type,
-          position: { x: batteryNode.position.x + offsetX, y: batteryNode.position.y + offsetY },
-          data: { label, ...extraData }
-        };
-        currentNodes.push(node);
-      }
-      return node;
-    };
-
-    // Helper to calculate wire cross section according to VDE
-    const calculateWire = (I: number, length: number = 2) => {
-      const calculatedA = (I * (length * 2)) / (58 * 0.24);
-      const minRequiredA = Math.max(1.5, calculatedA);
-      const VDE_SIZES = [1.5, 2.5, 4.0, 6.0, 10.0, 16.0, 25.0, 35.0, 50.0, 70.0];
-      const crossSection = VDE_SIZES.find(size => size >= minRequiredA) || 70.0;
-
-      let fuseSize = 15;
-      if (crossSection === 1.5) fuseSize = 15;
-      else if (crossSection === 2.5) fuseSize = 20;
-      else if (crossSection === 4.0) fuseSize = 30;
-      else if (crossSection === 6.0) fuseSize = 40;
-      else if (crossSection === 10.0) fuseSize = 60;
-      else if (crossSection === 16.0) fuseSize = 80;
-      else if (crossSection === 25.0) fuseSize = 100;
-      else if (crossSection === 35.0) fuseSize = 150;
-      else if (crossSection === 50.0) fuseSize = 200;
-      else if (crossSection >= 70.0) fuseSize = 250;
-
-      return { crossSection, fuseSize, length };
-    };
-
-    // Helper to connect two nodes with plus and minus edges
-    const connect = (sourceId: string, targetId: string, I: number = 0, length: number = 2) => {
-      const { crossSection, fuseSize } = calculateWire(I, length);
-      newEdges.push({
-        id: `e-auto-${edgeIdCounter++}`,
-        source: sourceId,
-        target: targetId,
-        sourceHandle: 'plus',
-        targetHandle: 'plus',
-        type: 'cableEdge',
-        data: { length, crossSection, fuseSize }
-      });
-      newEdges.push({
-        id: `e-auto-${edgeIdCounter++}`,
-        source: sourceId,
-        target: targetId,
-        sourceHandle: 'minus',
-        targetHandle: 'minus',
-        type: 'cableEdge',
-        data: { length, crossSection }
-      });
-    };
-
-    // Schritt 1: Falls Main Busbar und 12V Sicherungskasten fehlen, generiere sie.
-    const busbarNode = ensureNode('busbar', 'Main Busbar', 300, 0);
-    const fuseBoxNode = ensureNode('fuse', '12V Sicherungskasten', 300, 200, { rating: 100 });
-
-    // Generiere Smart Shunt falls fehlt
-    const shuntNode = ensureNode('shunt', 'Smart Shunt', 150, 0);
-
-    // Schritt 2 (Core Power): Verbinde Batterie -> Smart Shunt -> Main Busbar.
-    const batteryCapacity = Number(batteryNode.data.capacity) || 100;
-    const maxDischargeA = batteryCapacity; // Assume 1C discharge rate
-    connect(batteryNode.id, shuntNode.id, maxDischargeA, 0.5);
-    connect(shuntNode.id, busbarNode.id, maxDischargeA, 0.5);
-
-    // Schritt 3 (Heavy Loads): Wechselrichter -> Main Busbar, 12V Sicherungskasten -> Main Busbar.
-    const inverters = currentNodes.filter(n => n.type === 'inverter');
-    inverters.forEach(inverter => {
-      const inverterWatts = Number(inverter.data.watts) || 1000;
-      const inverterAmps = (inverterWatts / 12) / 0.85; // 15% loss
-      connect(busbarNode.id, inverter.id, inverterAmps, 1);
-    });
-
-    // Connect Fuse Box to Busbar
-    connect(busbarNode.id, fuseBoxNode.id, Number(fuseBoxNode.data.rating) || 100, 1);
-
-    // Schritt 4 (Charging): Solarmodul(e) -> MPPT Laderegler -> Main Busbar, Ladebooster -> Main Busbar.
-    const solars = currentNodes.filter(n => n.type === 'solar' || n.type === 'roofsolar');
-    if (solars.length > 0) {
-      const mpptNode = ensureNode('charger', 'MPPT Laderegler', 150, -200, { amps: 30 });
-      solars.forEach(solar => {
-        const solarWatts = Number(solar.data.watts) || 100;
-        const solarAmps = solarWatts / 12;
-        connect(solar.id, mpptNode.id, solarAmps, 5); // Solar -> MPPT
-      });
-      // MPPT -> Busbar
-      connect(mpptNode.id, busbarNode.id, Number(mpptNode.data.amps) || 30, 2);
-    }
-
-    const boosters = currentNodes.filter(n => n.type === 'charger' && (n.data.label as string)?.toLowerCase().includes('ladequelle'));
-    boosters.forEach(booster => {
-       connect(booster.id, busbarNode.id, Number(booster.data.amps) || 30, 3);
-    });
-
-    const plainChargers = currentNodes.filter(n => n.type === 'charger' && !(n.data.label as string)?.toLowerCase().includes('mppt') && !(n.data.label as string)?.toLowerCase().includes('ladequelle'));
-    plainChargers.forEach(charger => {
-       connect(charger.id, busbarNode.id, Number(charger.data.amps) || 30, 3);
-    });
-
-    // Schritt 5 (Consumers): 12V Verbraucher -> 12V Sicherungskasten.
-    const consumers = currentNodes.filter(n => n.type === 'consumer');
-    consumers.forEach(consumer => {
-      const I = (Number(consumer.data.watts) || 0) / 12;
-      connect(fuseBoxNode.id, consumer.id, I, 3); // Default length 3m for consumers
-    });
-
-    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(currentNodes, newEdges, 'LR');
-    setNodes([...layoutedNodes]);
-    setEdges([...layoutedEdges]);
-
-    if (typeof window !== 'undefined') {
-      window.requestAnimationFrame(() => {
-        fitView({ duration: 800 });
-      });
-    }
-  }, [nodes, edges, fitView, setNodes, setEdges]);
+  const autoWireSystem = useAutoWire(nodes, setNodes, edges, setEdges, fitView);
 
 
   const handleChangeLength = useCallback((id: string, length: number) => {
@@ -753,109 +495,8 @@ function PlannerInner() {
     return () => window.removeEventListener('custom-node-drop', handleCustomDrop);
   }, [screenToFlowPosition, viewMode]);
 
-  // --- Calculations for Dashboard ---
-  const batteryNode = nodes.find((n) => n.type === 'battery');
-  const capacityAh = (batteryNode?.data as any)?.capacity || 0;
-  const chemistry = (batteryNode?.data as any)?.chemistry || 'LiFePO4';
-  const dod = chemistry === 'AGM' ? 0.5 : 0.9;
-  const usableCapacityAh = capacityAh * dod;
 
-  const consumers = nodes.filter((n) => n.type === 'consumer');
-  const consumers230v = nodes.filter((n) => n.type === 'consumer230v');
-
-  // Has an inverter in the circuit to power 230v devices?
-  const hasInverter = nodes.some(n => n.type === 'inverter');
-
-  let dailyConsumptionAh = consumers.reduce((acc, n) => {
-    const w = (n.data as any)?.watts || 0;
-    const h = (n.data as any)?.hours || 0;
-    return acc + (w / 12) * h;
-  }, 0);
-
-  if (hasInverter) {
-    const inverterConsumptionAh = consumers230v.reduce((acc, n) => {
-      const w = (n.data as any)?.watts || 0;
-      const h = (n.data as any)?.hours || 0;
-      // Inverter takes 12V from battery, loses 15% efficiency (0.85)
-      // Ah = (W / 12V) * h / 0.85
-      return acc + ((w / 12) * h) / 0.85;
-    }, 0);
-    dailyConsumptionAh += inverterConsumptionAh;
-  }
-
-  // Seasonal adjustment for consumption
-  if (season === 'winter') {
-    dailyConsumptionAh *= 2;
-  } else {
-    dailyConsumptionAh *= 1.5;
-  }
-
-  // Autarky duration: Capacity * DoD / (Daily Consumption / 24)
-  let autarkyHours = 0;
-  if (dailyConsumptionAh > 0) {
-    autarkyHours = usableCapacityAh / (dailyConsumptionAh / 24);
-  } else if (usableCapacityAh > 0) {
-    autarkyHours = Infinity;
-  }
-  const autarkyDays = autarkyHours === Infinity ? 'Unendlich' : Math.floor(autarkyHours / 24);
-  const autarkyRemainderHours = autarkyHours === Infinity ? 0 : Math.round(autarkyHours % 24);
-  const autarkyStr = autarkyHours === Infinity ? 'Unendlich' : `${autarkyDays} Tage / ${autarkyRemainderHours} Stunden`;
-
-  // Solar calculation (Series vs Parallel)
-  const solarNodes = nodes.filter(n => n.type === 'solar');
-  let totalSolarAmps = 0;
-  let totalSolarVoltage = 0;
-
-  if (solarNodes.length > 0) {
-    // Basic heuristic for the demo:
-    // If we find an edge between two solars from plus to minus, it's series.
-    const hasSeriesConnection = edges.some(e => {
-      const s = nodes.find(n => n.id === e.source);
-      const t = nodes.find(n => n.id === e.target);
-      return s?.type === 'solar' && t?.type === 'solar' &&
-             ((e.sourceHandle?.includes('plus') && e.targetHandle?.includes('minus')) ||
-              (e.sourceHandle?.includes('minus') && e.targetHandle?.includes('plus')));
-    });
-
-    if (hasSeriesConnection) {
-      // Series: Voltage adds up, Amps stays the same (take min or average, here we assume identical panels so we take the first)
-      totalSolarVoltage = solarNodes.reduce((acc, n) => acc + ((n.data as any)?.voltage || 0), 0);
-      totalSolarAmps = (solarNodes[0]?.data as any)?.amps || 0;
-    } else {
-      // Parallel: Amps add up, Voltage stays the same
-      totalSolarAmps = solarNodes.reduce((acc, n) => acc + ((n.data as any)?.amps || 0), 0);
-      totalSolarVoltage = (solarNodes[0]?.data as any)?.voltage || 0;
-    }
-
-    // Seasonal yield reduction for solar
-    if (season === 'winter') {
-      totalSolarAmps *= 0.2; // Significant reduction in winter
-    }
-  }
-
-
-  // Charging time: Capacity * DoD / ChargerAmps * 1.15
-  const chargers = nodes.filter((n) => n.type === 'charger');
-  const totalChargerAmps = chargers.reduce((acc, n) => acc + ((n.data as any)?.amps || 0), 0) + totalSolarAmps + (calculatedSolarWatts / 12);
-  let chargingTimeStr = 'N/A';
-  if (totalChargerAmps > 0) {
-    const chargingTime = (usableCapacityAh / totalChargerAmps) * 1.15;
-    chargingTimeStr = `${chargingTime.toFixed(1)} Stunden`;
-  } else if (chargers.length > 0 || solarNodes.length > 0 || calculatedSolarWatts > 0) {
-    chargingTimeStr = '0 Ladeleistung';
-  } else {
-    chargingTimeStr = 'Kein Ladegerät';
-  }
-
-  // Check for direct connection from battery to consumer without fuse
-  const hasDirectBatteryToConsumer = edges.some(e => {
-    const sourceNode = nodes.find(n => n.id === e.source);
-    const targetNode = nodes.find(n => n.id === e.target);
-    if (!sourceNode || !targetNode) return false;
-
-    return (sourceNode.type === 'battery' && (targetNode.type === 'consumer' || targetNode.type === 'consumer230v' || targetNode.type === 'inverter')) ||
-           (targetNode.type === 'battery' && (sourceNode.type === 'consumer' || sourceNode.type === 'consumer230v' || sourceNode.type === 'inverter'));
-  });
+  const metrics = useDashboardMetrics(nodes, edges, season, calculatedSolarWatts);
 
   return (
     <div className="flex h-screen w-full bg-gray-50 overflow-hidden font-sans relative">
@@ -982,80 +623,9 @@ function PlannerInner() {
           <Controls />
           <MiniMap />
 
-          {viewMode === 'electric' && (
-            <Panel position="top-center" className="bg-white/80 backdrop-blur-md p-4 rounded-xl shadow-xl border border-gray-200 text-sm w-80">
-              <h3 className="font-bold text-gray-800 mb-2 border-b pb-1">System Berechnungen</h3>
-            <div className="flex flex-col gap-2">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Täglicher Gesamtverbrauch:</span>
-                <span className="font-semibold text-gray-900">{dailyConsumptionAh.toFixed(1)} Ah</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Batterie-Autarkie (ohne Laden):</span>
-                <span className="font-semibold text-gray-900">{autarkyStr}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Ladezeit (komplett leer bis voll):</span>
-                <span className="font-semibold text-gray-900">{chargingTimeStr}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Eingehende Ladeleistung (Dach):</span>
-                <span className="font-semibold text-gray-900">{calculatedSolarWatts} W</span>
-              </div>
-              {solarNodes.length > 0 && (
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Solar-Array Output:</span>
-                  <span className="font-semibold text-gray-900">{totalSolarVoltage}V / {totalSolarAmps.toFixed(1)}A</span>
-                </div>
-              )}
-              {hasDirectBatteryToConsumer && (
-                <div className="mt-2 p-2 bg-red-100 text-red-800 text-xs rounded border border-red-200">
-                  ⚠️ Warnung: Verbraucher ist direkt mit der Batterie verbunden. Ein Sicherungsknoten fehlt!
-                </div>
-              )}
-              </div>
-            </Panel>
-          )}
+          {viewMode === 'electric' && <DashboardPanel metrics={metrics} calculatedSolarWatts={calculatedSolarWatts} />}        </ReactFlow>
 
-          {viewMode === 'electric' && calculatedSolarWatts > 0 && (
-            <Panel position="bottom-center" className="bg-blue-50/90 backdrop-blur-md p-3 rounded-xl shadow border border-blue-200 text-blue-800 text-sm mb-4">
-              <strong>Dachplaner-Daten erkannt:</strong> {calculatedSolarWatts} W Solarleistung verfügbar. Du kannst nun deinen MPPT-Regler entsprechend dimensionieren.
-            </Panel>
-          )}
-        </ReactFlow>
-
-        {showBOM && (
-          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white p-6 rounded-lg shadow-xl w-96 max-h-[80vh] overflow-y-auto">
-              <h2 className="text-xl font-bold mb-4 border-b pb-2">Stückliste (BOM)</h2>
-
-              <div className="mb-4">
-                <h3 className="font-semibold mb-2 text-gray-700">Komponenten:</h3>
-                <ul className="list-disc pl-5 text-sm space-y-1">
-                  {Object.entries(generateBOM().counts).map(([type, count]) => (
-                    <li key={type} className="capitalize">{count}x {type}</li>
-                  ))}
-                </ul>
-              </div>
-
-              <div className="mb-6">
-                <h3 className="font-semibold mb-2 text-gray-700">Kabelbedarf:</h3>
-                <ul className="list-disc pl-5 text-sm space-y-1">
-                  {Object.entries(generateBOM().cableLengths).map(([cs, length]) => (
-                    <li key={cs}>{length.toFixed(1)} Meter {cs} mm² Kabel</li>
-                  ))}
-                </ul>
-              </div>
-
-              <button
-                onClick={() => setShowBOM(false)}
-                className="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded transition-colors"
-              >
-                Schließen
-              </button>
-            </div>
-          </div>
-        )}
+        {showBOM && <BOMModal bom={generateBOM()} onClose={() => setShowBOM(false)} />}
       </div>
 
       <div
