@@ -47,6 +47,10 @@ jobs:
         run: npm ci
       - name: Build with Next.js
         run: npx next build
+      - name: Optimize Artifact (Remove Source Maps)
+        run: find ./out -name "*.map" -type f -delete || true
+      - name: Disable Jekyll
+        run: touch ./out/.nojekyll
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
