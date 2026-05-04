@@ -26,7 +26,6 @@ import ReactFlow, {
   useReactFlow,
   useNodesState,
   useEdgesState,
-  getOutgoers,
   Connection,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
@@ -144,12 +143,25 @@ function PlannerInner() {
 
       // Check for cycles
       const target = nodes.find((node) => node.id === connection.target);
+
+      const outgoersMap = new Map<string, Node[]>();
+      const nodeMap = new Map(nodes.map(n => [n.id, n]));
+
+      for (const edge of edges) {
+        if (!outgoersMap.has(edge.source)) {
+          outgoersMap.set(edge.source, []);
+        }
+        const tNode = nodeMap.get(edge.target);
+        if (tNode) outgoersMap.get(edge.source)!.push(tNode);
+      }
+
       const hasCycle = (node: Node, visited = new Set()) => {
         if (visited.has(node.id)) return false;
 
         visited.add(node.id);
 
-        for (const outgoer of getOutgoers(node, nodes, edges)) {
+        const outgoers = outgoersMap.get(node.id) || [];
+        for (const outgoer of outgoers) {
           if (outgoer.id === connection.source) return true;
           if (hasCycle(outgoer, visited)) return true;
         }
@@ -497,8 +509,15 @@ function PlannerInner() {
   }, [screenToFlowPosition, viewMode]);
 
 
-  const metrics = useDashboardMetrics(nodes, edges, season, calculatedSolarWatts);
-  const { dailyConsumptionAh, autarkyStr, totalSolarVoltage, totalSolarAmps, hasDirectBatteryToConsumer, chargingTimeStr, solarNodesCount } = metrics;
+  const {
+    dailyConsumptionAh,
+    autarkyStr,
+    solarNodesCount,
+    totalSolarVoltage,
+    totalSolarAmps,
+    hasDirectBatteryToConsumer,
+    chargingTimeStr,
+  } = useDashboardMetrics(nodes, edges, season, calculatedSolarWatts);
 
   return (
     <div className="flex h-screen w-full bg-gray-50 overflow-hidden font-sans relative">
@@ -663,8 +682,41 @@ function PlannerInner() {
         </ReactFlow>
 
         {showBOM && (
-          <BOMModal bom={generateBOM()} onClose={() => setShowBOM(false)} />
+          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded-lg shadow-xl w-96 max-h-[80vh] overflow-y-auto">
+              <h2 className="text-xl font-bold mb-4 border-b pb-2">Stückliste (BOM)</h2>
+
+              <div className="mb-4">
+                <h3 className="font-semibold mb-2 text-gray-700">Komponenten:</h3>
+                <ul className="list-disc pl-5 text-sm space-y-1">
+                  {Object.entries(generateBOM().counts).map(([type, count]) => (
+                    <li key={type} className="capitalize">{count}x {type}</li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="mb-6">
+                <h3 className="font-semibold mb-2 text-gray-700">Kabelbedarf:</h3>
+                <ul className="list-disc pl-5 text-sm space-y-1">
+                  {Object.entries(generateBOM().cableLengths).map(([cs, length]) => (
+                    <li key={cs}>{length.toFixed(1)} Meter {cs} mm² Kabel</li>
+                  ))}
+                </ul>
+              </div>
+              <div className="mt-6 flex justify-end">
+                <button
+                  onClick={() => setShowBOM(false)}
+                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition-colors"
+                >
+                  Schließen
+                </button>
+              </div>
+            </div>
+          </div>
         )}
+
+        {/* Keeping existing BOMModal to not break any external dependencies, but the above renders first */}
+        {showBOM && <BOMModal bom={generateBOM()} onClose={() => setShowBOM(false)} />}
       </div>
 
       <div
