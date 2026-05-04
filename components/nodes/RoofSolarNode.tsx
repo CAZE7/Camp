@@ -4,11 +4,12 @@ import React from 'react';
 import { NodeResizer } from 'reactflow';
 import { cn } from '@/lib/utils';
 
-const RoofSolarNode = function({ data, selected }: any) {
+const RoofSolarNode = function({ id, data, selected }: any) {
   const width = data.width || 100;
   const height = data.height || 60;
   const watts = data.watts || 100;
   const isInvalid = data.isInvalid || false;
+  const onNodeResize = data.onNodeResize;
 
   // Scale: 1cm = 2px
   return (
@@ -19,9 +20,10 @@ const RoofSolarNode = function({ data, selected }: any) {
         isVisible={selected}
         lineClassName="border-orange-500"
         handleClassName="h-3 w-3 bg-white border-2 border-orange-500 rounded-full"
-        onResize={(_, { width: newWidth, height: newHeight }) => {
-          // Internal scaling logic can be handled here if needed,
-          // but we rely on the component re-rendering with new data props
+        onResize={(event, params) => {
+          if (onNodeResize) {
+            onNodeResize(event, { id, ...params });
+          }
         }}
       />
       <div

@@ -54,16 +54,17 @@ function DachPlanerFlow() {
       data: { 
         width: selectedVehicle.roofWidth * 100, 
         height: selectedVehicle.roofLength * 100,
-        safeMargins: SAFE_MARGINS
+        safeMargins: SAFE_MARGINS,
+        onNodeResize
       } 
     },
     { 
       id: 'solar-1', 
       type: 'roofSolar', 
       position: { x: 20, y: 50 }, 
-      data: { watts: 200, width: 100, height: 60 } 
+      data: { watts: 200, width: 100, height: 60, onNodeResize } 
     }
-  ], [selectedVehicle]);
+  ], [selectedVehicle, onNodeResize]);
 
   const [nodes, setNodes] = useNodesState(initialNodes);
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
@@ -76,15 +77,17 @@ function DachPlanerFlow() {
         return {
           ...node,
           data: { 
+            ...node.data,
             width: selectedVehicle.roofWidth * 100, 
             height: selectedVehicle.roofLength * 100,
-            safeMargins: SAFE_MARGINS
+            safeMargins: SAFE_MARGINS,
+            onNodeResize
           }
         };
       }
-      return node;
+      return { ...node, data: { ...node.data, onNodeResize } };
     }));
-  }, [selectedVehicle, setNodes]);
+  }, [selectedVehicle, setNodes, onNodeResize]);
 
   const validateNodes = useCallback((nds: Node[]) => {
     const roofW = selectedVehicle.roofWidth * 100;
@@ -184,6 +187,7 @@ function DachPlanerFlow() {
           watts: type === 'roofSolar' ? 200 : undefined,
           width: type === 'roofSolar' ? 100 : 40,
           height: type === 'roofSolar' ? 60 : 40,
+          onNodeResize
         },
       };
 
