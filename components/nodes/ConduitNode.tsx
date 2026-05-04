@@ -19,6 +19,7 @@ const CABLE_OUTER_DIAMETERS: Record<number, number> = {
   16.0: 8.3,
   25.0: 10.4,
   35.0: 11.6,
+  50.0: 13.5,
 };
 
 export interface ConduitNodeData {
@@ -53,9 +54,21 @@ const ConduitNode = function ({ id, data, selected }: { id: string, data: Condui
 
     const fillPercentage = (totalCableArea / innerArea) * 100;
 
+    let recommendedConduit = null;
+    if (fillPercentage > 60) {
+      for (const [type, diameter] of Object.entries(CONDUIT_SIZES)) {
+        const testArea = Math.PI * Math.pow(diameter / 2, 2);
+        if ((totalCableArea / testArea) * 100 <= 60) {
+          recommendedConduit = type;
+          break;
+        }
+      }
+    }
+
     return {
       fillPercentage,
-      isOverfilled: fillPercentage > 60
+      isOverfilled: fillPercentage > 60,
+      recommendedConduit
     };
   }, [conduitType, assignedEdgeIds, edges]);
 
@@ -84,8 +97,13 @@ const ConduitNode = function ({ id, data, selected }: { id: string, data: Condui
       </div>
 
       {fillStats.isOverfilled && (
-        <div className="mt-2 p-2 bg-red-500 text-white text-xs font-bold rounded">
-          Kanal überfüllt! Gefahr durch Hitzestau in der Kabelbündelung, nimm ein größeres Leerrohr!
+        <div className="mt-2 p-2 bg-red-500 text-white text-xs font-bold rounded leading-tight">
+          Kanal überfüllt! Gefahr durch Hitzestau in der Kabelbündelung.
+          {fillStats.recommendedConduit ? (
+            <span className="block mt-1">Bitte mindestens {fillStats.recommendedConduit} Rohr verwenden.</span>
+          ) : (
+            <span className="block mt-1">Bitte ein größeres Leerrohr verwenden.</span>
+          )}
         </div>
       )}
 

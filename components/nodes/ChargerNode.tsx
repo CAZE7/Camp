@@ -8,6 +8,7 @@ const ChargerNode = function({ id, data, isConnectable, selected }: any) {
       <div className="font-bold mb-2 text-sm text-center">{data.label || 'Ladequelle'}</div>
       <div className="flex flex-col gap-1 text-xs text-gray-600">
         <div>Ladeleistung: {data.amps || 0} A</div>
+        <div>Effizienz: {data.efficiency ?? 100}%</div>
       </div>
       <Handle type="source" position={Position.Right} id="plus" isConnectable={isConnectable} style={{ background: 'transparent', border: 'none', width: '24px', height: '24px', zIndex: 10, display: 'flex', justifyContent: 'center', alignItems: 'center', top: '30%' }}>
         <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'red', pointerEvents: 'none' }} />
