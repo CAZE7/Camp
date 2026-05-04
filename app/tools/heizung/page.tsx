@@ -136,7 +136,11 @@ export default function HeatingCalculatorPage() {
                   max={30}
                   step={1}
                   value={[tempInside]}
-                  onValueChange={(val) => val && setTempInside(val[0])}
+                  onValueChange={(val) => {
+                    if (val !== undefined) {
+                      setTempInside(Array.isArray(val) ? val[0] : val);
+                    }
+                  }}
                 />
             </CardContent>
           </Card>
@@ -168,7 +172,11 @@ export default function HeatingCalculatorPage() {
                   max={15}
                   step={1}
                   value={[tempOutside]}
-                  onValueChange={(val) => val && setTempOutside(val[0])}
+                  onValueChange={(val) => {
+                    if (val !== undefined) {
+                      setTempOutside(Array.isArray(val) ? val[0] : val);
+                    }
+                  }}
                 />
             </CardContent>
           </Card>
