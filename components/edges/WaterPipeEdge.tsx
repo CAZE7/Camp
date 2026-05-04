@@ -1,13 +1,13 @@
 "use client";
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { BaseEdge, EdgeProps, getBezierPath, useReactFlow } from 'reactflow';
 
 export type WaterPipeEdgeData = {
   pipeType?: 'fresh' | 'gray';
 };
 
-export default function WaterPipeEdge({
+const WaterPipeEdge = function ({
   id,
   source,
   target,
@@ -23,30 +23,34 @@ export default function WaterPipeEdge({
   selected,
 }: EdgeProps<WaterPipeEdgeData>) {
   const { getNodes } = useReactFlow();
-  const nodes = getNodes();
 
-  const sourceNode = nodes.find(n => n.id === source);
+  const [edgePath] = useMemo(() => {
+    return getBezierPath({
+      sourceX,
+      sourceY,
+      sourcePosition,
+      targetX,
+      targetY,
+      targetPosition,
+    });
+  }, [sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition]);
 
-  let isGrayWater = false;
+  const strokeColor = useMemo(() => {
+    const nodes = getNodes();
+    const sourceNode = nodes.find(n => n.id === source);
 
-  if (sourceNode?.type === 'sink' || sourceNode?.type === 'shower' || sourceNode?.type === 'grayWaterTank') {
-    isGrayWater = true;
-  }
+    let isGrayWater = false;
+    if (sourceNode?.type === 'sink' || sourceNode?.type === 'shower' || sourceNode?.type === 'grayWaterTank') {
+      isGrayWater = true;
+    }
 
-  if (data?.pipeType === 'gray') isGrayWater = true;
-  if (data?.pipeType === 'fresh') isGrayWater = false;
+    if (data?.pipeType === 'gray') isGrayWater = true;
+    if (data?.pipeType === 'fresh') isGrayWater = false;
 
-  const strokeColor = selected ? '#f97316' : (isGrayWater ? '#9ca3af' : '#3b82f6');
+    return selected ? '#f97316' : (isGrayWater ? '#9ca3af' : '#3b82f6');
+  }, [getNodes, source, data?.pipeType, selected]);
+
   const strokeWidth = 6;
-
-  const [edgePath] = getBezierPath({
-    sourceX,
-    sourceY,
-    sourcePosition,
-    targetX,
-    targetY,
-    targetPosition,
-  });
 
   return (
     <>
@@ -80,4 +84,6 @@ export default function WaterPipeEdge({
       </path>
     </>
   );
-}
+};
+
+export default React.memo(WaterPipeEdge);

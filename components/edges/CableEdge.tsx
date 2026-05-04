@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { BaseEdge, EdgeProps, getBezierPath, getSmoothStepPath, EdgeLabelRenderer, useReactFlow } from 'reactflow';
 import { useAppStore } from '../../lib/store';
 
@@ -8,7 +8,7 @@ export type CableEdgeData = {
   fuseSize?: number;
 };
 
-export default function CableEdge({
+const CableEdge = function ({
   id,
   source,
   target,
@@ -24,83 +24,73 @@ export default function CableEdge({
   selected,
 }: EdgeProps<CableEdgeData>) {
   const { getNodes } = useReactFlow();
-  const nodes = getNodes();
   const isProMode = useAppStore(state => state.isProMode);
 
-  const pathParams = {
-    sourceX,
-    sourceY,
-    sourcePosition,
-    targetX,
-    targetY,
-    targetPosition,
-  };
+  const [edgePath, labelX, labelY] = useMemo(() => {
+    const pathParams = {
+      sourceX,
+      sourceY,
+      sourcePosition,
+      targetX,
+      targetY,
+      targetPosition,
+    };
+    return isProMode
+      ? getSmoothStepPath({ ...pathParams, borderRadius: 10 })
+      : getBezierPath(pathParams);
+  }, [sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, isProMode]);
 
-  const [edgePath, labelX, labelY] = isProMode
-    ? getSmoothStepPath({ ...pathParams, borderRadius: 10 })
-    : getBezierPath(pathParams);
+  const { length, crossSection, maxFuse, strokeWidth, animationDuration } = useMemo(() => {
+    const nodes = getNodes();
+    const length = data?.length || 3;
+    let I = 0;
+    const sourceNode = nodes.find(n => n.id === source);
+    const targetNode = nodes.find(n => n.id === target);
 
-  // Calculate length based on spatial layout
-  // 100 pixels = 1 meter, add 20% buffer
-  // length manually provided
-  const length = data?.length || 3;
+    if (sourceNode?.type === 'consumer') {
+      I = (sourceNode.data.watts || 0) / 12;
+    } else if (targetNode?.type === 'consumer') {
+      I = (targetNode.data.watts || 0) / 12;
+    } else if (sourceNode?.type === 'charger') {
+      I = sourceNode.data.amps || 0;
+    } else if (targetNode?.type === 'charger') {
+      I = targetNode.data.amps || 0;
+    } else {
+      const allConsumers = nodes.filter(n => n.type === 'consumer');
+      I = allConsumers.reduce((acc, n) => acc + ((n.data.watts || 0) / 12), 0);
+    }
 
-  let I = 0;
-  const sourceNode = nodes.find(n => n.id === source);
-  const targetNode = nodes.find(n => n.id === target);
+    const isChassisGround = sourceNode?.type === 'ground' || targetNode?.type === 'ground';
+    const distanceMultiplier = isChassisGround ? 1 : 2;
+    const calculatedA = (I * (length * distanceMultiplier)) / (58 * 0.24);
+    const minRequiredA = Math.max(1.5, calculatedA);
+    const VDE_SIZES = [1.5, 2.5, 4.0, 6.0, 10.0, 16.0, 25.0, 35.0, 50.0];
+    const cs = data?.crossSection ?? (VDE_SIZES.find(size => size >= minRequiredA) || 50.0);
 
-  if (sourceNode?.type === 'consumer') {
-    I = (sourceNode.data.watts || 0) / 12;
-  } else if (targetNode?.type === 'consumer') {
-    I = (targetNode.data.watts || 0) / 12;
-  } else if (sourceNode?.type === 'charger') {
-    I = sourceNode.data.amps || 0;
-  } else if (targetNode?.type === 'charger') {
-    I = targetNode.data.amps || 0;
-  } else {
-    // fallback: sum of all consumers
-    const allConsumers = nodes.filter(n => n.type === 'consumer');
-    I = allConsumers.reduce((acc, n) => acc + ((n.data.watts || 0) / 12), 0);
-  }
+    let mf = 0;
+    if (cs === 1.5) mf = 16;
+    else if (cs === 2.5) mf = 25;
+    else if (cs === 4.0) mf = 32;
+    else if (cs === 6.0) mf = 50;
+    else if (cs === 10.0) mf = 70;
+    else if (cs === 16.0) mf = 100;
+    else if (cs === 25.0) mf = 130;
+    else if (cs === 35.0) mf = 150;
+    else if (cs === 50.0) mf = 200;
+    else if (cs >= 70.0) mf = 250;
 
-  // Check if either node is a ground node, which means chassis return is used (no return wire over full distance)
-  const isChassisGround = sourceNode?.type === 'ground' || targetNode?.type === 'ground';
-  const distanceMultiplier = isChassisGround ? 1 : 2;
+    let sw = 2;
+    if (cs <= 1.5) sw = 2;
+    else if (cs <= 4) sw = 4;
+    else if (cs <= 6) sw = 6;
+    else sw = 10;
 
-  const calculatedA = (I * (length * distanceMultiplier)) / (58 * 0.24);
-  // Force a hard minimum of 1.5 mm² as per DIN VDE 0100-721
-  const minRequiredA = Math.max(1.5, calculatedA);
-  const VDE_SIZES = [1.5, 2.5, 4.0, 6.0, 10.0, 16.0, 25.0, 35.0, 50.0];
-  const crossSection = data?.crossSection ?? (VDE_SIZES.find(size => size >= minRequiredA) || 50.0);
+    const dur = Number.isNaN(I) || !isFinite(I) ? 5 : Math.max(0.5, 5 - (I / 10));
 
-  let maxFuse = 0;
-  if (crossSection === 1.5) maxFuse = 16;
-  else if (crossSection === 2.5) maxFuse = 25;
-  else if (crossSection === 4.0) maxFuse = 32;
-  else if (crossSection === 6.0) maxFuse = 50;
-  else if (crossSection === 10.0) maxFuse = 70;
-  else if (crossSection === 16.0) maxFuse = 100;
-  else if (crossSection === 25.0) maxFuse = 130;
-  else if (crossSection === 35.0) maxFuse = 150;
-  else if (crossSection === 50.0) maxFuse = 200;
-  else if (crossSection >= 70.0) maxFuse = 250;
-
-  let strokeWidth = 2;
-  if (crossSection <= 1.5) {
-    strokeWidth = 2;
-  } else if (crossSection <= 4) {
-    strokeWidth = 4;
-  } else if (crossSection <= 6) {
-    strokeWidth = 6;
-  } else {
-    strokeWidth = 10;
-  }
+    return { length, crossSection: cs, maxFuse: mf, strokeWidth: sw, animationDuration: dur };
+  }, [getNodes, data?.length, data?.crossSection, source, target]);
 
   const stroke = selected ? '#f97316' : '#9ca3af';
-
-  // Animation duration calculation based on Current (I)
-  // Higher I = faster animation (shorter duration). Base duration 5s, min 0.5s.
-  const animationDuration = Number.isNaN(I) || !isFinite(I) ? 5 : Math.max(0.5, 5 - (I / 10));
 
   return (
     <>
@@ -117,7 +107,7 @@ export default function CableEdge({
         }}
       />
 
-      <circle r={strokeWidth} fill="#fbbf24">
+      <circle r={strokeWidth / 2} fill="#fbbf24">
         <animateMotion
           dur={`${animationDuration}s`}
           repeatCount="indefinite"
@@ -162,4 +152,6 @@ export default function CableEdge({
       </path>
     </>
   );
-}
+};
+
+export default React.memo(CableEdge);
