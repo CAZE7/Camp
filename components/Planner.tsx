@@ -498,6 +498,7 @@ function PlannerInner() {
 
 
   const metrics = useDashboardMetrics(nodes, edges, season, calculatedSolarWatts);
+  const { dailyConsumptionAh, autarkyStr, totalSolarVoltage, totalSolarAmps, hasDirectBatteryToConsumer, chargingTimeStr, solarNodesCount } = metrics;
 
   return (
     <div className="flex h-screen w-full bg-gray-50 overflow-hidden font-sans relative">
@@ -639,7 +640,7 @@ function PlannerInner() {
                 <span className="text-gray-600">Batterie-Autarkie (ohne Laden):</span>
                 <span className="font-semibold text-gray-900">{autarkyStr}</span>
               </div>
-              {solarNodes.length > 0 && (
+              {solarNodesCount > 0 && (
                 <div className="flex justify-between">
                   <span className="text-gray-600">Solar-Array Output:</span>
                   <span className="font-semibold text-gray-900">{totalSolarVoltage}V / {totalSolarAmps.toFixed(1)}A</span>
@@ -662,29 +663,8 @@ function PlannerInner() {
         </ReactFlow>
 
         {showBOM && (
-          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white p-6 rounded-lg shadow-xl w-96 max-h-[80vh] overflow-y-auto">
-              <h2 className="text-xl font-bold mb-4 border-b pb-2">Stückliste (BOM)</h2>
-
-              <div className="mb-4">
-                <h3 className="font-semibold mb-2 text-gray-700">Komponenten:</h3>
-                <ul className="list-disc pl-5 text-sm space-y-1">
-                  {Object.entries(generateBOM().counts).map(([type, count]) => (
-                    <li key={type} className="capitalize">{count}x {type}</li>
-                  ))}
-                </ul>
-              </div>
-
-              <div className="mb-6">
-                <h3 className="font-semibold mb-2 text-gray-700">Kabelbedarf:</h3>
-                <ul className="list-disc pl-5 text-sm space-y-1">
-                  {Object.entries(generateBOM().cableLengths).map(([cs, length]) => (
-                    <li key={cs}>{length.toFixed(1)} Meter {cs} mm² Kabel</li>
-                  ))}
-                </ul>
-              </div>
-
-        {showBOM && <BOMModal bom={generateBOM()} onClose={() => setShowBOM(false)} />}
+          <BOMModal bom={generateBOM()} onClose={() => setShowBOM(false)} />
+        )}
       </div>
 
       <div
