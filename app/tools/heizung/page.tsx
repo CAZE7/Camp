@@ -14,48 +14,45 @@ import { cn } from "@/lib/utils";
 export default function HeatingCalculatorPage() {
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>(vehicleTemplates[0].id);
   const [insulationThickness, setInsulationThickness] = useState<number>(19); // in mm
-  const [tempInside, setTempInside] = useState<number[]>([20]); // in °C
-  const [tempOutside, setTempOutside] = useState<number[]>([-10]); // in °C
+  const [tempInside, setTempInside] = useState<number>(20); // in °C
+  const [tempOutside, setTempOutside] = useState<number>(-10); // in °C
 
   const selectedVehicle = useMemo(() =>
     vehicleTemplates.find(v => v.id === selectedVehicleId) || vehicleTemplates[0],
     [selectedVehicleId]
   );
 
-  // Safe values for calculations
-  const tIn = tempInside[0];
-  const tOut = tempOutside[0];
-
-  // Thermodynamic calculation logic
-  // A = 2 * (L*H + B*H + L*B)
-  const area = useMemo(() => {
+  // Consolidated Thermodynamic Calculation
+  const { area, U, deltaT, Q } = useMemo(() => {
+    // 1. Surface Area Calculation
     const { length, width, height } = selectedVehicle;
     const l = Number(length) || 0;
     const w = Number(width) || 0;
     const h = Number(height) || 0;
-    if (l === 0 || w === 0 || h === 0) return 0;
-    const calcArea = 2 * (l * h + w * h + l * w);
-    return isNaN(calcArea) ? 0 : calcArea;
-  }, [selectedVehicle]);
+    const calcArea = (l > 0 && w > 0 && h > 0) ? 2 * (l * h + w * h + l * w) : 0;
 
-  // Delta T = T_innen - T_aussen
-  const deltaT = isNaN(tIn - tOut) ? 0 : (tIn - tOut);
+    // 2. U-Value Calculation (k = 0.036 W/(m*K))
+    const thickness = Number(insulationThickness);
+    let calcU = 5.0; // Default for uninsulated metal
+    if (thickness > 0) {
+      const k = 0.036;
+      const d = thickness / 1000; // convert mm to m
+      calcU = k / d;
+    }
 
-  // U-Value calculation
-  // k = 0.036 W/(m*K)
-  // U = k / d
-  const U = useMemo(() => {
-    const thickness = Number(insulationThickness) || 0;
-    if (thickness === 0) return 5.0; // Approximation for uninsulated metal
-    const k = 0.036;
-    const d = thickness / 1000;
-    const calcU = k / d;
-    return isNaN(calcU) ? 5.0 : calcU;
-  }, [insulationThickness]);
+    // 3. Delta T calculation
+    const calcDeltaT = tempInside - tempOutside;
 
-  // Q = U * A * Delta T
-  const rawQ = U * area * deltaT;
-  const Q = isNaN(rawQ) ? 0 : Math.max(0, rawQ);
+    // 4. Required Power Q = U * A * Delta T
+    const calcQ = Math.max(0, calcU * calcArea * calcDeltaT);
+
+    return {
+      area: calcArea,
+      U: calcU,
+      deltaT: calcDeltaT,
+      Q: isNaN(calcQ) ? 0 : calcQ
+    };
+  }, [selectedVehicle, insulationThickness, tempInside, tempOutside]);
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-6 md:p-12 font-sans relative">
@@ -124,23 +121,23 @@ export default function HeatingCalculatorPage() {
               <div className="flex items-center justify-between">
                 <Label htmlFor="temp-inside" className="text-sm font-medium text-muted-foreground">Temperatur</Label>
                 <div className="relative">
-                  <Input
-                    id="temp-inside"
-                    type="number"
-                    value={tIn}
-                    onChange={(e) => setTempInside([Number(e.target.value) || 0])}
-                    className="w-24 h-10 rounded-lg text-lg font-bold text-blue-600 text-center pr-8"
-                  />
-                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-sm font-bold text-muted-foreground pointer-events-none">°C</span>
+                    <Input
+                      id="temp-inside"
+                      type="number"
+                      value={tempInside}
+                      onChange={(e) => setTempInside(Number(e.target.value) || 0)}
+                      className="w-24 h-10 rounded-lg text-lg font-bold text-blue-600 text-center pr-8"
+                    />
+                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-sm font-bold text-muted-foreground pointer-events-none">°C</span>
+                  </div>
                 </div>
-              </div>
-              <Slider
-                min={5}
-                max={30}
-                step={1}
-                value={tempInside}
-                onValueChange={(val) => val && setTempInside(val as number[])}
-              />
+                <Slider
+                  min={5}
+                  max={30}
+                  step={1}
+                  value={[tempInside]}
+                  onValueChange={(val) => val && setTempInside(val[0])}
+                />
             </CardContent>
           </Card>
 
@@ -156,23 +153,23 @@ export default function HeatingCalculatorPage() {
               <div className="flex items-center justify-between">
                 <Label htmlFor="temp-outside" className="text-sm font-medium text-muted-foreground">Temperatur</Label>
                 <div className="relative">
-                  <Input
-                    id="temp-outside"
-                    type="number"
-                    value={tOut}
-                    onChange={(e) => setTempOutside([Number(e.target.value)])}
-                    className="w-24 h-10 rounded-lg text-lg font-bold text-indigo-600 text-center pr-8"
-                  />
-                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-sm font-bold text-muted-foreground pointer-events-none">°C</span>
+                    <Input
+                      id="temp-outside"
+                      type="number"
+                      value={tempOutside}
+                      onChange={(e) => setTempOutside(Number(e.target.value) || 0)}
+                      className="w-24 h-10 rounded-lg text-lg font-bold text-indigo-600 text-center pr-8"
+                    />
+                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-sm font-bold text-muted-foreground pointer-events-none">°C</span>
+                  </div>
                 </div>
-              </div>
-              <Slider
-                min={-30}
-                max={15}
-                step={1}
-                value={tempOutside}
-                onValueChange={(val) => val && setTempOutside(val as number[])}
-              />
+                <Slider
+                  min={-30}
+                  max={15}
+                  step={1}
+                  value={[tempOutside]}
+                  onValueChange={(val) => val && setTempOutside(val[0])}
+                />
             </CardContent>
           </Card>
         </div>
