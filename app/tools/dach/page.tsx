@@ -12,7 +12,7 @@ import ReactFlow, {
   Panel,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import RoofWindowNode from '@/components/nodes/RoofWindowNode';
@@ -42,7 +42,6 @@ function DachPlanerFlow() {
     return nodes
       .filter((n) => n.type === 'roofSolar')
       .reduce((acc, n) => {
-        // Safe type cast based on node structure
         const data = n.data as { watts?: number } | undefined;
         return acc + (data?.watts || 0);
       }, 0);
@@ -90,35 +89,41 @@ function DachPlanerFlow() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-85px)] w-full relative">
-      <div className="w-80 bg-white/90 backdrop-blur-md border-r border-slate-200 p-6 flex flex-col gap-6 overflow-y-auto z-10 shadow-[20px_0_40px_rgb(0,0,0,0.03)] relative">
-        <div className="absolute inset-0 bg-gradient-to-b from-blue-50/50 to-transparent pointer-events-none" />
-        <h2 className="text-xs font-black text-slate-400 uppercase tracking-[0.25em] border-b border-slate-100 pb-4 relative z-10">Komponenten</h2>
-        <div className="space-y-4 relative z-10">
-          <div
-            className="p-4 border-2 border-slate-100 rounded-2xl bg-white cursor-grab hover:border-blue-400 hover:bg-blue-50 hover:shadow-md transition-all shadow-sm font-bold text-slate-700 flex items-center gap-4 group"
+    <div className="flex h-[calc(100vh-73px)] w-full relative">
+      {/* Sidebar */}
+      <div className="w-72 bg-card border-r border-border p-6 flex flex-col gap-6 overflow-y-auto z-10 shrink-0">
+        <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Komponenten</p>
+        <div className="space-y-3">
+          <Card
+            className="cursor-grab hover:ring-2 hover:ring-blue-400 transition-all active:cursor-grabbing"
             onDragStart={(event) => onDragStart(event, 'roofSolar')}
             draggable
           >
-            <div className="w-12 h-12 bg-sky-50 text-sky-500 rounded-xl flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">☀️</div>
-            <div className="flex flex-col">
-              <span>Solarpanel</span>
-              <span className="text-[10px] uppercase tracking-widest text-slate-400">Drag & Drop</span>
-            </div>
-          </div>
-          <div
-            className="p-4 border-2 border-slate-100 rounded-2xl bg-white cursor-grab hover:border-amber-400 hover:bg-amber-50 hover:shadow-md transition-all shadow-sm font-bold text-slate-700 flex items-center gap-4 group"
+            <CardContent className="flex items-center gap-4 py-3">
+              <div className="w-10 h-10 bg-sky-50 text-sky-500 rounded-lg flex items-center justify-center text-xl">☀️</div>
+              <div className="flex flex-col">
+                <span className="font-bold text-sm">Solarpanel</span>
+                <span className="text-[10px] uppercase tracking-widest text-muted-foreground">Drag & Drop</span>
+              </div>
+            </CardContent>
+          </Card>
+          <Card
+            className="cursor-grab hover:ring-2 hover:ring-amber-400 transition-all active:cursor-grabbing"
             onDragStart={(event) => onDragStart(event, 'roofWindow')}
             draggable
           >
-            <div className="w-12 h-12 bg-amber-50 text-amber-500 rounded-xl flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">🪟</div>
-            <div className="flex flex-col">
-              <span>Dachfenster</span>
-              <span className="text-[10px] uppercase tracking-widest text-slate-400">Drag & Drop</span>
-            </div>
-          </div>
+            <CardContent className="flex items-center gap-4 py-3">
+              <div className="w-10 h-10 bg-amber-50 text-amber-500 rounded-lg flex items-center justify-center text-xl">🪟</div>
+              <div className="flex flex-col">
+                <span className="font-bold text-sm">Dachfenster</span>
+                <span className="text-[10px] uppercase tracking-widest text-muted-foreground">Drag & Drop</span>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
+
+      {/* Canvas */}
       <div className="flex-1 relative react-flow-wrapper" ref={reactFlowWrapper}>
         <ReactFlow
           nodes={nodes}
@@ -127,24 +132,28 @@ function DachPlanerFlow() {
           onDrop={onDrop}
           onDragOver={onDragOver}
           fitView
-          className="bg-slate-100"
+          className="bg-muted/30"
         >
-          <Background color="#cbd5e1" gap={24} size={2} />
-          <Controls className="bg-white border-slate-200 shadow-md rounded-xl overflow-hidden" />
+          <Background color="hsl(var(--border))" gap={24} size={2} />
+          <Controls className="rounded-lg overflow-hidden border border-border shadow-sm" />
 
-          <Panel position="top-right" className="bg-white/95 backdrop-blur-xl p-6 rounded-[2rem] shadow-[0_20px_40px_rgb(0,0,0,0.08)] border border-slate-100 pointer-events-auto mt-6 mr-6 transition-all hover:shadow-[0_20px_50px_rgb(37,99,235,0.1)]">
-             <div className="flex flex-col gap-3 min-w-[220px]">
-                <div className="flex justify-between items-center pb-4 border-b border-slate-100">
-                   <div className="flex items-center gap-2">
-                     <span className="text-xl bg-blue-50 text-blue-500 w-8 h-8 rounded-lg flex items-center justify-center">⚡</span>
-                     <span className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em]">Solarleistung</span>
-                   </div>
-                   <span className="font-black text-2xl text-slate-800">{totalRoofSolarWatts} <span className="text-sm font-bold text-blue-600">W</span></span>
-                </div>
-                <div className="text-xs font-semibold text-slate-500 leading-relaxed bg-slate-50 p-3 rounded-xl">
-                  Wird <span className="text-blue-600">automatisch</span> in den Elektrik-Planer übernommen.
-                </div>
-             </div>
+          <Panel position="top-right" className="mt-4 mr-4 pointer-events-auto">
+            <Card size="sm" className="min-w-[220px] shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg bg-blue-50 text-blue-500 w-7 h-7 rounded-md flex items-center justify-center">⚡</span>
+                    <span className="text-[10px] text-muted-foreground font-black uppercase tracking-widest">Solarleistung</span>
+                  </div>
+                  <span className="font-black text-xl">{totalRoofSolarWatts} <span className="text-sm font-bold text-blue-600">W</span></span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-xs font-medium text-muted-foreground bg-muted p-2.5 rounded-md">
+                  Wird <span className="text-blue-600 font-semibold">automatisch</span> in den Elektrik-Planer übernommen.
+                </p>
+              </CardContent>
+            </Card>
           </Panel>
         </ReactFlow>
       </div>
@@ -154,23 +163,26 @@ function DachPlanerFlow() {
 
 export default function DachPlanerPage() {
   return (
-    <div className="flex flex-col min-h-screen bg-[#f1f5f9] font-sans selection:bg-blue-100">
-      <div className="bg-white/80 backdrop-blur-xl border-b border-slate-200 px-8 py-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex items-center justify-between z-20 relative sticky top-0">
-        <div className="flex items-center gap-6">
+    <div className="flex flex-col min-h-screen bg-background font-sans">
+      {/* Header */}
+      <div className="bg-card border-b border-border px-6 py-4 flex items-center justify-between z-20 sticky top-0">
+        <div className="flex items-center gap-4">
           <Link href="/">
-            <Button variant="outline" size="sm" className="bg-white border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-900 font-bold rounded-lg shadow-sm transition-all hover:-translate-x-1">
+            <Button variant="outline" size="sm">
               ← Zurück
             </Button>
           </Link>
-          <h1 className="text-3xl font-black text-slate-800 flex items-center gap-3">
-            <span className="bg-gradient-to-br from-sky-400 to-blue-500 text-white w-10 h-10 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20 text-xl">🚐</span>
+          <h1 className="text-xl font-black flex items-center gap-2.5">
+            <span className="bg-gradient-to-br from-sky-400 to-blue-500 text-white w-8 h-8 rounded-lg flex items-center justify-center shadow-sm text-base">🚐</span>
             Dachflächen-Planer
           </h1>
         </div>
-        <p className="text-sm font-semibold text-slate-500 max-w-md text-right bg-slate-50 p-3 rounded-xl border border-slate-100">
-          Plane die Anordnung deiner <span className="text-blue-600 font-bold">Solarpanels</span> und <span className="text-amber-600 font-bold">Dachfenster</span> auf dem Fahrzeugdach.
+        <p className="text-sm text-muted-foreground max-w-sm text-right hidden md:block">
+          Plane die Anordnung deiner <span className="text-blue-600 font-semibold">Solarpanels</span> und <span className="text-amber-600 font-semibold">Dachfenster</span>.
         </p>
       </div>
+
+      {/* Flow */}
       <div className="flex-1 relative">
         <ReactFlowProvider>
           <DachPlanerFlow />

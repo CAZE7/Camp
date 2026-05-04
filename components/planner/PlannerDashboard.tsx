@@ -59,76 +59,91 @@ export function PlannerDashboard() {
   }, []);
 
   return (
-    <div className="absolute top-4 left-4 z-10 flex flex-wrap gap-4 bg-white/80 backdrop-blur-md shadow-xl rounded-xl p-4 pointer-events-none w-[calc(100%-2rem)]">
-      <div className="bg-white/80 backdrop-blur-md rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex items-center border border-slate-200 overflow-hidden mr-4 pointer-events-auto flex-wrap">
+    <div className="absolute top-4 left-4 z-10 flex flex-wrap gap-3 bg-card/90 backdrop-blur-md shadow-lg rounded-lg p-3 pointer-events-none w-[calc(100%-2rem)] border border-border">
+      {/* Navigation & View Mode */}
+      <div className="flex items-center gap-1 pointer-events-auto">
         <Link href="/">
-          <Button variant="ghost" className="rounded-none border-r border-slate-200 px-6 font-bold text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-all hover:-translate-x-1 h-full">
+          <Button variant="ghost" size="sm" className="font-semibold">
             ← Zurück
           </Button>
         </Link>
-        <button
-          className={`px-4 py-2 font-semibold text-sm transition-colors ${viewMode === 'electric' ? 'bg-orange-500 text-white' : 'bg-transparent text-gray-600 hover:bg-gray-50/50'}`}
+        <div className="w-px h-6 bg-border mx-1" />
+        <Button
+          variant={viewMode === 'electric' ? 'default' : 'ghost'}
+          size="sm"
           onClick={() => setViewMode('electric')}
+          className={viewMode === 'electric' ? 'bg-orange-500 hover:bg-orange-600' : ''}
         >
           Elektrik-Schaltplan
-        </button>
-        <button
-          className={`px-4 py-2 font-semibold text-sm transition-colors ${viewMode === 'water' ? 'bg-cyan-500 text-white' : 'bg-transparent text-gray-600 hover:bg-gray-50/50'}`}
+        </Button>
+        <Button
+          variant={viewMode === 'water' ? 'default' : 'ghost'}
+          size="sm"
           onClick={() => setViewMode('water')}
+          className={viewMode === 'water' ? 'bg-cyan-500 hover:bg-cyan-600' : ''}
         >
           Wasser & Sanitär
-        </button>
+        </Button>
       </div>
 
+      {/* Actions */}
       <div className="pointer-events-auto flex items-center gap-2 flex-wrap">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="bg-white font-semibold">
+            <Button variant="outline" size="sm" className="font-semibold">
               Aktionen
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="bg-white/95 backdrop-blur-md border border-gray-200 shadow-xl rounded-xl p-2 min-w-56">
-            <DropdownMenuItem onClick={handleExportBOM} className="cursor-pointer hover:bg-orange-50 text-orange-700 font-medium rounded-lg p-2 mb-1">
+          <DropdownMenuContent className="rounded-lg min-w-52">
+            <DropdownMenuItem onClick={handleExportBOM} className="cursor-pointer text-orange-700 font-medium rounded-md">
               Stückliste an KI senden
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => autoWireSystem(fitView)} className="cursor-pointer hover:bg-yellow-50 text-yellow-700 font-medium rounded-lg p-2 mb-1">
+            <DropdownMenuItem onClick={() => autoWireSystem(fitView)} className="cursor-pointer text-yellow-700 font-medium rounded-md">
               Automatisch Verkabeln & Absichern
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={checkSchematic} className="cursor-pointer hover:bg-red-50 text-red-700 font-medium rounded-lg p-2 mb-1">
+            <DropdownMenuItem onClick={checkSchematic} className="cursor-pointer text-red-700 font-medium rounded-md">
               Schaltplan von KI prüfen lassen
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onLayout(fitView)} className="cursor-pointer hover:bg-indigo-50 text-indigo-700 font-medium rounded-lg p-2 mb-1">
+            <DropdownMenuItem onClick={() => onLayout(fitView)} className="cursor-pointer text-indigo-700 font-medium rounded-md">
               Schaltplan aufräumen
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={onExportImage} className="cursor-pointer hover:bg-green-50 text-green-700 font-medium rounded-lg p-2">
+            <DropdownMenuItem onClick={onExportImage} className="cursor-pointer text-green-700 font-medium rounded-md">
               Als Bild speichern
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <div className="bg-white/80 backdrop-blur-md rounded shadow-xl flex items-center border border-gray-200 overflow-hidden flex-wrap">
-          <button
-            className={`px-4 py-2 font-semibold text-sm transition-colors ${season === 'summer' ? 'bg-yellow-400 text-yellow-900' : 'bg-transparent text-gray-600 hover:bg-gray-50/50'}`}
+        {/* Season Toggle */}
+        <div className="flex items-center gap-1">
+          <Button
+            variant={season === 'summer' ? 'default' : 'ghost'}
+            size="sm"
             onClick={() => setSeason('summer')}
+            className={season === 'summer' ? 'bg-yellow-400 text-yellow-900 hover:bg-yellow-500' : ''}
           >
             Sommer
-          </button>
-          <button
-            className={`px-4 py-2 font-semibold text-sm transition-colors ${season === 'winter' ? 'bg-blue-400 text-blue-900' : 'bg-transparent text-gray-600 hover:bg-gray-50/50'}`}
+          </Button>
+          <Button
+            variant={season === 'winter' ? 'default' : 'ghost'}
+            size="sm"
             onClick={() => setSeason('winter')}
+            className={season === 'winter' ? 'bg-blue-400 text-blue-900 hover:bg-blue-500' : ''}
           >
             Winter
-          </button>
+          </Button>
         </div>
       </div>
 
-      <div className="ml-auto pointer-events-auto pl-4 border-l border-gray-300 flex items-center">
-        <button
+      {/* Pro Mode */}
+      <div className="ml-auto pointer-events-auto pl-3 border-l border-border flex items-center">
+        <Button
+          variant={isProMode ? 'default' : 'outline'}
+          size="sm"
           onClick={toggleProMode}
-          className={`font-semibold py-2 px-4 rounded-xl shadow-xl transition-colors border backdrop-blur-md ${isProMode ? 'bg-blue-500/90 hover:bg-blue-600/90 text-white border-blue-600' : 'bg-white/80 hover:bg-gray-50/90 text-gray-700 border-gray-200'}`}
+          className={isProMode ? 'bg-blue-500 hover:bg-blue-600' : ''}
         >
           {isProMode ? 'Profi-Modus An' : 'Profi-Modus Aus'}
-        </button>
+        </Button>
       </div>
     </div>
   );
