@@ -8,6 +8,8 @@ export type CableEdgeData = {
   fuseSize?: number;
 };
 
+type CableEdgeProps = EdgeProps<CableEdgeData> & { sourceHandle?: string | null };
+
 const CableEdge = function ({
   id,
   source,
@@ -23,7 +25,7 @@ const CableEdge = function ({
   markerEnd,
   selected,
   sourceHandle,
-}: EdgeProps<CableEdgeData> & { sourceHandle?: string | null }) {
+}: CableEdgeProps) {
   const { getNodes } = useReactFlow();
   const isProMode = useAppStore(state => state.isProMode);
 
