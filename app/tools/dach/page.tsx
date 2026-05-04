@@ -267,7 +267,6 @@ function DachPlanerFlow() {
           nodes={nodes}
           nodeTypes={nodeTypes}
           onNodesChange={onNodesChange}
-          onNodeResize={onNodeResize}
           onDrop={onDrop}
           onDragOver={onDragOver}
           fitView
