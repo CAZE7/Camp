@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { Node, Edge } from 'reactflow';
+import { checkHasSeriesConnection } from '../utils/solarCalculations';
 
 export function useDashboardMetrics(
   nodes: Node[],

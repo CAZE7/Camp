@@ -11,7 +11,7 @@ interface AppState {
 export const useAppStore = create<AppState>()(
   persist(
     (set) => ({
-      isProMode: false,
+      isProMode: true,
       toggleProMode: () => set((state) => ({ isProMode: !state.isProMode })),
       calculatedSolarWatts: 0,
       setCalculatedSolarWatts: (watts) => set({ calculatedSolarWatts: watts }),
