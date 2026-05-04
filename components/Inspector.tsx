@@ -12,6 +12,7 @@ interface InspectorProps {
   edges?: Edge[];
   chargingTimeStr?: string;
   calculatedSolarWatts?: number;
+  nodes?: Node[];
 }
 
 export default function Inspector({
@@ -24,6 +25,7 @@ export default function Inspector({
   edges = [],
   chargingTimeStr,
   calculatedSolarWatts,
+  nodes,
 }: InspectorProps) {
   const crossSectionOptions = [1.5, 2.5, 4, 6, 10, 16, 25];
 
@@ -141,16 +143,29 @@ export default function Inspector({
               )}
 
               {selectedNode.type === 'charger' && (
-                <div className="flex flex-col">
-                  <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider">Ladeleistung (A)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={selectedNode.data?.amps || 0}
-                    onChange={(e) => onUpdateNodeData?.(selectedNode.id, { amps: Number(e.target.value) })}
-                    className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow"
-                  />
-                </div>
+                <>
+                  <div className="flex flex-col">
+                    <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider">Ladeleistung (A)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={selectedNode.data?.amps || 0}
+                      onChange={(e) => onUpdateNodeData?.(selectedNode.id, { amps: Number(e.target.value) })}
+                      className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow"
+                    />
+                  </div>
+                  <div className="flex flex-col">
+                    <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider">Effizienz in %</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={selectedNode.data?.efficiency ?? 100}
+                      onChange={(e) => onUpdateNodeData?.(selectedNode.id, { efficiency: Number(e.target.value) })}
+                      className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow"
+                    />
+                  </div>
+                </>
               )}
 
               {selectedNode.type === 'fuse' && (
@@ -183,6 +198,46 @@ export default function Inspector({
                     </div>
                   )}
                 </div>
+              )}
+
+              {selectedNode.type === 'inverter' && (
+                <>
+                  <div className="flex flex-col">
+                    <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider">Dauerleistung (W)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={selectedNode.data?.continuousPower || 0}
+                      onChange={(e) => onUpdateNodeData?.(selectedNode.id, { continuousPower: Number(e.target.value) })}
+                      className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow"
+                    />
+                  </div>
+                  <div className="flex flex-col mt-4">
+                    <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider">Gleichzeitige 230V Geräte</label>
+                    <div className="flex flex-col gap-1 max-h-32 overflow-y-auto border border-gray-200 rounded p-1">
+                      {nodes?.filter(n => n.type === 'consumer230v').map(consumer => {
+                        const isChecked = (selectedNode.data?.concurrentDevices || []).includes(consumer.id);
+                        return (
+                          <label key={consumer.id} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer p-1 hover:bg-gray-50 rounded">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={(e) => {
+                                const curr = selectedNode.data?.concurrentDevices || [];
+                                const next = e.target.checked ? [...curr, consumer.id] : curr.filter((id: string) => id !== consumer.id);
+                                onUpdateNodeData?.(selectedNode.id, { concurrentDevices: next });
+                              }}
+                              className="rounded border-gray-300 text-orange-500 focus:ring-orange-500"
+                            />
+                            <span className="truncate flex-1">
+                              {consumer.data?.label || '230V Verbraucher'} ({consumer.data?.watts || 0}W)
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </>
               )}
 
               {selectedNode.type === 'consumer230v' && (

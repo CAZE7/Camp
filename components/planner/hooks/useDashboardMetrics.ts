@@ -114,7 +114,7 @@ export function useDashboardMetrics(
     // Charging time: Capacity * DoD / ChargerAmps * 1.15
     const chargers = nodes.filter((n) => n.type === 'charger');
     const totalChargerAmps =
-      chargers.reduce((acc, n) => acc + ((n.data as any)?.amps || 0), 0) +
+      chargers.reduce((acc, n) => acc + (((n.data as any)?.amps || 0) * (((n.data as any)?.efficiency ?? 100) / 100)), 0) +
       totalSolarAmps +
       calculatedSolarWatts / 12;
     let chargingTimeStr = 'N/A';

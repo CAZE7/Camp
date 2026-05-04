@@ -633,19 +633,19 @@ function PlannerInner() {
             <div className="flex flex-col gap-2">
               <div className="flex justify-between">
                 <span className="text-gray-600">Täglicher Gesamtverbrauch:</span>
-                <span className="font-semibold text-gray-900">{dailyConsumptionAh.toFixed(1)} Ah</span>
+                <span className="font-semibold text-gray-900">{metrics.dailyConsumptionAh.toFixed(1)} Ah</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Batterie-Autarkie (ohne Laden):</span>
-                <span className="font-semibold text-gray-900">{autarkyStr}</span>
+                <span className="font-semibold text-gray-900">{metrics.autarkyStr}</span>
               </div>
-              {solarNodes.length > 0 && (
+              {metrics.solarNodesCount > 0 && (
                 <div className="flex justify-between">
                   <span className="text-gray-600">Solar-Array Output:</span>
-                  <span className="font-semibold text-gray-900">{totalSolarVoltage}V / {totalSolarAmps.toFixed(1)}A</span>
+                  <span className="font-semibold text-gray-900">{metrics.totalSolarVoltage}V / {metrics.totalSolarAmps.toFixed(1)}A</span>
                 </div>
               )}
-              {hasDirectBatteryToConsumer && (
+              {metrics.hasDirectBatteryToConsumer && (
                 <div className="mt-2 p-2 bg-red-100 text-red-800 text-xs rounded border border-red-200">
                   Warnung: Verbraucher ist direkt mit der Batterie verbunden. Ein Sicherungsknoten fehlt!
                 </div>
@@ -683,10 +683,12 @@ function PlannerInner() {
                   ))}
                 </ul>
               </div>
+            </div>
+          </div>
+        )}
 
         {showBOM && <BOMModal bom={generateBOM()} onClose={() => setShowBOM(false)} />}
       </div>
-
       <div
         className={`transition-all duration-300 ease-in-out absolute right-0 md:relative z-40 h-full ${isRightSidebarOpen ? 'w-[250px] translate-x-0' : 'w-0 translate-x-full'} flex-shrink-0 shadow-xl bg-white/80 backdrop-blur-md max-w-[calc(100vw-2rem)]`}
       >
@@ -699,8 +701,9 @@ function PlannerInner() {
             onDelete={deleteSelected}
             onUpdateNodeData={updateNodeData}
             edges={edges}
-            chargingTimeStr={chargingTimeStr}
+            chargingTimeStr={metrics.chargingTimeStr}
             calculatedSolarWatts={calculatedSolarWatts}
+            nodes={nodes}
           />
         </div>
       </div>
