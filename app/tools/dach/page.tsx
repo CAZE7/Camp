@@ -44,6 +44,30 @@ function DachPlanerFlow() {
     [selectedVehicleId]
   );
 
+  const [nodes, setNodes] = useNodesState([]);
+  const reactFlowWrapper = useRef<HTMLDivElement>(null);
+  const { setCalculatedSolarWatts } = useAppStore();
+
+  const onNodeResize = useCallback((event: any, { id, width, height }: any) => {
+    setNodes((nds) =>
+      nds.map((node) => {
+        if (node.id === id) {
+          return {
+            ...node,
+            width,
+            height,
+            data: {
+              ...node.data,
+              width: width / 2, // px to cm
+              height: height / 2, // px to cm
+            },
+          };
+        }
+        return node;
+      })
+    );
+  }, [setNodes]);
+
   const initialNodes: Node[] = useMemo(() => [
     { 
       id: 'background', 
@@ -51,8 +75,10 @@ function DachPlanerFlow() {
       position: { x: 0, y: 0 }, 
       draggable: false,
       selectable: false,
+      width: selectedVehicle.roofWidth * 200, // m to px (100cm/m * 2px/cm)
+      height: selectedVehicle.roofLength * 200,
       data: { 
-        width: selectedVehicle.roofWidth * 100, 
+        width: selectedVehicle.roofWidth * 100, // m to cm
         height: selectedVehicle.roofLength * 100,
         safeMargins: SAFE_MARGINS,
         onNodeResize
@@ -61,48 +87,32 @@ function DachPlanerFlow() {
     { 
       id: 'solar-1', 
       type: 'roofSolar', 
-      position: { x: 20, y: 50 }, 
+      position: { x: 40, y: 100 }, // px (20cm * 2, 50cm * 2)
+      width: 200, // px (100cm * 2)
+      height: 120, // px (60cm * 2)
       data: { watts: 200, width: 100, height: 60, onNodeResize } 
     }
   ], [selectedVehicle, onNodeResize]);
 
-  const [nodes, setNodes] = useNodesState(initialNodes);
-  const reactFlowWrapper = useRef<HTMLDivElement>(null);
-  const { setCalculatedSolarWatts } = useAppStore();
-
-  // Reset background node when vehicle changes
+  // Set initial nodes or reset on vehicle change
   useEffect(() => {
-    setNodes((nds) => nds.map(node => {
-      if (node.id === 'background') {
-        return {
-          ...node,
-          data: { 
-            ...node.data,
-            width: selectedVehicle.roofWidth * 100, 
-            height: selectedVehicle.roofLength * 100,
-            safeMargins: SAFE_MARGINS,
-            onNodeResize
-          }
-        };
-      }
-      return { ...node, data: { ...node.data, onNodeResize } };
-    }));
-  }, [selectedVehicle, setNodes, onNodeResize]);
+    setNodes(initialNodes);
+  }, [initialNodes, setNodes]);
 
   const validateNodes = useCallback((nds: Node[]) => {
-    const roofW = selectedVehicle.roofWidth * 100;
-    const roofH = selectedVehicle.roofLength * 100;
+    const roofW_px = selectedVehicle.roofWidth * 200;
+    const roofH_px = selectedVehicle.roofLength * 200;
     
-    const safeMinX = SAFE_MARGINS.left;
-    const safeMaxX = roofW - SAFE_MARGINS.right;
-    const safeMinY = SAFE_MARGINS.front;
-    const safeMaxY = roofH - SAFE_MARGINS.rear;
+    const safeMinX = SAFE_MARGINS.left * 2;
+    const safeMaxX = roofW_px - (SAFE_MARGINS.right * 2);
+    const safeMinY = SAFE_MARGINS.front * 2;
+    const safeMaxY = roofH_px - (SAFE_MARGINS.rear * 2);
 
     return nds.map(node => {
       if (node.id === 'background') return node;
 
-      const nodeW = node.data.width || (node.type === 'roofSolar' ? 100 : 40);
-      const nodeH = node.data.height || (node.type === 'roofSolar' ? 60 : 40);
+      const nodeW = node.width || (node.type === 'roofSolar' ? 200 : 80);
+      const nodeH = node.height || (node.type === 'roofSolar' ? 120 : 80);
       
       const isOutside = 
         node.position.x < safeMinX || 
@@ -174,19 +184,21 @@ function DachPlanerFlow() {
       if (!reactFlowBounds) return;
 
       const position = {
-        x: (event.clientX - reactFlowBounds.left) / 2, // px to cm
-        y: (event.clientY - reactFlowBounds.top) / 2,  // px to cm
+        x: event.clientX - reactFlowBounds.left,
+        y: event.clientY - reactFlowBounds.top,
       };
 
       const newNode: Node = {
         id: `${type}-${Date.now()}`,
         type,
         position,
+        width: type === 'roofSolar' ? 200 : 80, // px
+        height: type === 'roofSolar' ? 120 : 80, // px
         data: { 
           label: type === 'roofSolar' ? 'Solarpanel' : 'Dachfenster', 
           watts: type === 'roofSolar' ? 200 : undefined,
-          width: type === 'roofSolar' ? 100 : 40,
-          height: type === 'roofSolar' ? 60 : 40,
+          width: type === 'roofSolar' ? 100 : 40, // cm
+          height: type === 'roofSolar' ? 60 : 40, // cm
           onNodeResize
         },
       };
