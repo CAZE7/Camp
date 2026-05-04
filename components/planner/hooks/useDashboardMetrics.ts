@@ -9,24 +9,51 @@ export function useDashboardMetrics(
   calculatedSolarWatts: number
 ) {
   return useMemo(() => {
-    // Precompute a map of node types to avoid O(N*E) lookups in edges.some
-    const nodeTypeMap = nodes.reduce<Record<string, string | undefined>>((acc, n) => {
-      acc[n.id] = n.type;
-      return acc;
-    }, {});
+    // Single pass to categorize nodes and precompute node types
+    const {
+      nodeTypeMap,
+      batteryNode,
+      consumers,
+      consumers230v,
+      hasInverter,
+      solarNodes,
+      chargers,
+    } = nodes.reduce(
+      (acc, n) => {
+        acc.nodeTypeMap[n.id] = n.type;
+
+        if (n.type === 'battery') {
+          if (!acc.batteryNode) acc.batteryNode = n;
+        } else if (n.type === 'consumer') {
+          acc.consumers.push(n);
+        } else if (n.type === 'consumer230v') {
+          acc.consumers230v.push(n);
+        } else if (n.type === 'inverter') {
+          acc.hasInverter = true;
+        } else if (n.type === 'solar') {
+          acc.solarNodes.push(n);
+        } else if (n.type === 'charger') {
+          acc.chargers.push(n);
+        }
+
+        return acc;
+      },
+      {
+        nodeTypeMap: {} as Record<string, string | undefined>,
+        batteryNode: undefined as Node | undefined,
+        consumers: [] as Node[],
+        consumers230v: [] as Node[],
+        hasInverter: false,
+        solarNodes: [] as Node[],
+        chargers: [] as Node[],
+      }
+    );
 
     // --- Calculations for Dashboard ---
-    const batteryNode = nodes.find((n) => n.type === 'battery');
     const capacityAh = (batteryNode?.data as any)?.capacity || 0;
     const chemistry = (batteryNode?.data as any)?.chemistry || 'LiFePO4';
     const dod = chemistry === 'AGM' ? 0.5 : 0.9;
     const usableCapacityAh = capacityAh * dod;
-
-    const consumers = nodes.filter((n) => n.type === 'consumer');
-    const consumers230v = nodes.filter((n) => n.type === 'consumer230v');
-
-    // Has an inverter in the circuit to power 230v devices?
-    const hasInverter = nodes.some((n) => n.type === 'inverter');
 
     let dailyConsumptionAh = consumers.reduce((acc, n) => {
       const w = (n.data as any)?.watts || 0;
@@ -69,7 +96,6 @@ export function useDashboardMetrics(
         : `${autarkyDays} Tage / ${autarkyRemainderHours} Stunden`;
 
     // Solar calculation (Series vs Parallel)
-    const solarNodes = nodes.filter((n) => n.type === 'solar');
     let totalSolarAmps = 0;
     let totalSolarVoltage = 0;
 
@@ -112,7 +138,6 @@ export function useDashboardMetrics(
     }
 
     // Charging time: Capacity * DoD / ChargerAmps * 1.15
-    const chargers = nodes.filter((n) => n.type === 'charger');
     const totalChargerAmps =
       chargers.reduce((acc, n) => acc + ((n.data as any)?.amps || 0), 0) +
       totalSolarAmps +

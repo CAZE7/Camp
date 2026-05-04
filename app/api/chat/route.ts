@@ -18,13 +18,20 @@ interface Message {
 }
 
 const openai = createOpenAI({
-  apiKey: process.env.OPENAI_API_KEY || 'dummy_key',
+  apiKey: process.env.OPENAI_API_KEY,
 });
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
+  if (!process.env.OPENAI_API_KEY) {
+    return new Response(JSON.stringify({ error: 'Missing OpenAI API Key configuration' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
   let body;
   try {
     body = await req.json();
@@ -37,11 +44,90 @@ export async function POST(req: Request) {
 
   const { messages }: { messages: Message[] } = body;
 
+  const MAX_MESSAGES = 100;
+  const MAX_CONTENT_LENGTH = 10000;
+  const MAX_PARTS = 10;
+
   if (!Array.isArray(messages) || messages.length === 0) {
     return new Response(JSON.stringify({ error: 'messages must be a non-empty array' }), {
       status: 400,
       headers: { 'Content-Type': 'application/json' },
     });
+  }
+
+  if (messages.length > MAX_MESSAGES) {
+    return new Response(JSON.stringify({ error: `Too many messages. Maximum is ${MAX_MESSAGES}` }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  for (const msg of messages) {
+    if (!msg || typeof msg !== 'object') {
+      return new Response(JSON.stringify({ error: 'Invalid message format' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (!msg.id || typeof msg.id !== 'string') {
+      return new Response(JSON.stringify({ error: 'Message id is required and must be a string' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (!['system', 'user', 'assistant', 'tool', 'data'].includes(msg.role)) {
+      return new Response(JSON.stringify({ error: 'Invalid message role' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (msg.content !== undefined && typeof msg.content !== 'string') {
+      return new Response(JSON.stringify({ error: 'Message content must be a string' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (msg.content && msg.content.length > MAX_CONTENT_LENGTH) {
+      return new Response(JSON.stringify({ error: `Message content too long. Maximum is ${MAX_CONTENT_LENGTH} characters` }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (msg.parts) {
+      if (!Array.isArray(msg.parts)) {
+        return new Response(JSON.stringify({ error: 'Message parts must be an array' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+
+      if (msg.parts.length > MAX_PARTS) {
+        return new Response(JSON.stringify({ error: `Too many message parts. Maximum is ${MAX_PARTS}` }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+
+      for (const part of msg.parts) {
+        if (!part || typeof part !== 'object' || !part.type) {
+          return new Response(JSON.stringify({ error: 'Invalid message part format' }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+        if (part.type === 'text' && part.text && part.text.length > MAX_CONTENT_LENGTH) {
+          return new Response(JSON.stringify({ error: `Message part text too long. Maximum is ${MAX_CONTENT_LENGTH} characters` }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+      }
+    }
   }
 
   const latestMessage = messages[messages.length - 1];
@@ -56,22 +142,20 @@ export async function POST(req: Request) {
 
   try {
     // 1. Generate embedding for the user's query
-    if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'dummy_key') {
-      const { embedding } = await embed({
-        model: openai.embedding('text-embedding-3-small'),
-        value: userQuery,
-      });
+    const { embedding } = await embed({
+      model: openai.embedding('text-embedding-3-small'),
+      value: userQuery,
+    });
 
-      // 2. Perform Vector Similarity Search for Knowledge RAG
-      const knowledgeQuery = `
-        SELECT content, metadata
-        FROM Knowledge_Chunks
-        ORDER BY embedding <-> $1::vector
-        LIMIT 3
-      `;
-      const knowledgeRes = await client.query(knowledgeQuery, [JSON.stringify(embedding)]);
-      contextText = knowledgeRes.rows.map(row => row.content).join('\n\n');
-    }
+    // 2. Perform Vector Similarity Search for Knowledge RAG
+    const knowledgeQuery = `
+      SELECT content, metadata
+      FROM Knowledge_Chunks
+      ORDER BY embedding <-> $1::vector
+      LIMIT 3
+    `;
+    const knowledgeRes = await client.query(knowledgeQuery, [JSON.stringify(embedding)]);
+    contextText = knowledgeRes.rows.map(row => row.content).join('\n\n');
 
     // 3. Extract BOM from user query if present
     const bomMatch = userQuery.match(/\`\`\`json\n([\s\S]*?)\n\`\`\`/);
