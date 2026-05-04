@@ -225,6 +225,171 @@ describe('POST /api/chat', () => {
     expect(json.error).toBe('messages must be a non-empty array');
   });
 
+  it('returns 400 Bad Request if messages array exceeds maximum length', async () => {
+    const manyMessages = Array.from({ length: 101 }, (_, i) => ({
+      id: i.toString(),
+      role: 'user',
+      content: 'test content'
+    }));
+
+    const req = new Request('http://localhost/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: manyMessages
+      })
+    });
+
+    const response = await POST(req);
+    expect(response.status).toBe(400);
+
+    const json = await response.json();
+    expect(json.error).toContain('Too many messages');
+  });
+
+  it('returns 400 Bad Request if a message has an invalid role', async () => {
+    const req = new Request('http://localhost/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: [
+          {
+            id: '1',
+            role: 'hacker',
+            content: 'malicious intent'
+          }
+        ]
+      })
+    });
+
+    const response = await POST(req);
+    expect(response.status).toBe(400);
+
+    const json = await response.json();
+    expect(json.error).toBe('Invalid message role');
+  });
+
+  it('returns 400 Bad Request if a message content exceeds maximum length', async () => {
+    const longContent = 'a'.repeat(10001);
+    const req = new Request('http://localhost/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: [
+          {
+            id: '1',
+            role: 'user',
+            content: longContent
+          }
+        ]
+      })
+    });
+
+    const response = await POST(req);
+    expect(response.status).toBe(400);
+
+    const json = await response.json();
+    expect(json.error).toContain('Message content too long');
+  });
+
+  it('returns 400 Bad Request if a message has too many parts', async () => {
+    const tooManyParts = Array.from({ length: 11 }, () => ({
+      type: 'text',
+      text: 'test'
+    }));
+
+    const req = new Request('http://localhost/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: [
+          {
+            id: '1',
+            role: 'user',
+            content: 'test',
+            parts: tooManyParts
+          }
+        ]
+      })
+    });
+
+    const response = await POST(req);
+    expect(response.status).toBe(400);
+
+    const json = await response.json();
+    expect(json.error).toContain('Too many message parts');
+  });
+
+  it('returns 400 Bad Request if a message part text exceeds maximum length', async () => {
+    const longPartText = 'a'.repeat(10001);
+    const req = new Request('http://localhost/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: [
+          {
+            id: '1',
+            role: 'user',
+            content: 'test',
+            parts: [{ type: 'text', text: longPartText }]
+          }
+        ]
+      })
+    });
+
+    const response = await POST(req);
+    expect(response.status).toBe(400);
+
+    const json = await response.json();
+    expect(json.error).toContain('Message part text too long');
+  });
+
+  it('allows tool and data roles', async () => {
+    const req = new Request('http://localhost/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: [
+          {
+            id: '1',
+            role: 'tool',
+            content: 'tool output'
+          },
+          {
+            id: '2',
+            role: 'data',
+            content: 'additional data'
+          },
+          {
+            id: '3',
+            role: 'user',
+            content: 'what now?'
+          }
+        ]
+      })
+    });
+
+    const response = await POST(req);
+    // Should proceed to RAG pipeline/LLM call (returning 200/stream in this mock setup)
+    expect(response.status).not.toBe(400);
+  });
+
+  it('returns 400 Bad Request if a message format is invalid', async () => {
+    const req = new Request('http://localhost/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: ["not an object"]
+      })
+    });
+
+    const response = await POST(req);
+    expect(response.status).toBe(400);
+
+    const json = await response.json();
+    expect(json.error).toBe('Invalid message format');
+  });
+
   it('handles invalid JSON in BOM extraction gracefully', async () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
