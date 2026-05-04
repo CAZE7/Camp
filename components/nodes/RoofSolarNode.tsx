@@ -4,7 +4,7 @@ import React from 'react';
 import { NodeResizer } from 'reactflow';
 import { cn } from '@/lib/utils';
 
-const RoofSolarNode = function({ id, data, selected }: any) {
+const RoofSolarNode = function({ id, data, selected }: { id: string, data: any, selected: boolean }) {
   const width = data.width || 100;
   const height = data.height || 60;
   const watts = data.watts || 100;
@@ -20,7 +20,7 @@ const RoofSolarNode = function({ id, data, selected }: any) {
         isVisible={selected}
         lineClassName="border-orange-500"
         handleClassName="h-3 w-3 bg-white border-2 border-orange-500 rounded-full"
-        onResize={(event, params) => {
+        onResize={(event: React.SyntheticEvent, params: { width: number, height: number }) => {
           if (onNodeResize) {
             onNodeResize(event, { id, ...params });
           }

@@ -4,7 +4,7 @@ import React from 'react';
 import { NodeResizer } from 'reactflow';
 import { cn } from '@/lib/utils';
 
-const RoofWindowNode = function({ id, data, selected }: any) {
+const RoofWindowNode = function({ id, data, selected }: { id: string, data: any, selected: boolean }) {
   const width = data.width || 40;
   const height = data.height || 40;
   const isInvalid = data.isInvalid || false;
@@ -19,7 +19,7 @@ const RoofWindowNode = function({ id, data, selected }: any) {
         isVisible={selected}
         lineClassName="border-blue-500"
         handleClassName="h-3 w-3 bg-white border-2 border-blue-500 rounded-full"
-        onResize={(event, params) => {
+        onResize={(event: React.SyntheticEvent, params: { width: number, height: number }) => {
           if (onNodeResize) {
             onNodeResize(event, { id, ...params });
           }

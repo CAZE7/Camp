@@ -48,8 +48,8 @@ function DachPlanerFlow() {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const { setCalculatedSolarWatts } = useAppStore();
 
-  const onNodeResize = useCallback((event: any, { id, width, height }: any) => {
-    setNodes((nds) =>
+  const onNodeResize = useCallback((event: React.SyntheticEvent, { id, width, height }: { id: string, width: number, height: number }) => {
+    setNodes((nds: Node[]) =>
       nds.map((node) => {
         if (node.id === id) {
           return {
@@ -108,7 +108,7 @@ function DachPlanerFlow() {
     const safeMinY = SAFE_MARGINS.front * 2;
     const safeMaxY = roofH_px - (SAFE_MARGINS.rear * 2);
 
-    return nds.map(node => {
+    return nds.map((node: Node) => {
       if (node.id === 'background') return node;
 
       const nodeW = node.width || (node.type === 'roofSolar' ? 200 : 80);
@@ -129,7 +129,7 @@ function DachPlanerFlow() {
 
   const onNodesChange: OnNodesChange = useCallback(
     (changes) => {
-      setNodes((nds) => {
+      setNodes((nds: Node[]) => {
         const nextNodes = applyNodeChanges(changes, nds);
         return validateNodes(nextNodes);
       });
@@ -137,28 +137,11 @@ function DachPlanerFlow() {
     [setNodes, validateNodes]
   );
 
-  const onNodeResize = useCallback((event: any, { id, width, height }: any) => {
-    setNodes((nds) =>
-      nds.map((node) => {
-        if (node.id === id) {
-          return {
-            ...node,
-            data: {
-              ...node.data,
-              width: width / 2, // px to cm
-              height: height / 2, // px to cm
-            },
-          };
-        }
-        return node;
-      })
-    );
-  }, [setNodes]);
 
   const totalRoofSolarWatts = useMemo(() => {
     return nodes
-      .filter((n) => n.type === 'roofSolar' && !n.data.isInvalid)
-      .reduce((acc, n) => {
+      .filter((n: Node) => n.type === 'roofSolar' && !n.data.isInvalid)
+      .reduce((acc: number, n: Node) => {
         const data = n.data as { watts?: number } | undefined;
         return acc + (data?.watts || 0);
       }, 0);
