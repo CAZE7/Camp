@@ -20,7 +20,7 @@ const RoofSolarNode = function({ id, data, selected }: { id: string, data: any, 
         isVisible={selected}
         lineClassName="border-orange-500"
         handleClassName="h-3 w-3 bg-white border-2 border-orange-500 rounded-full"
-        onResize={(event: React.SyntheticEvent, params: { width: number, height: number }) => {
+        onResize={(event: any, params: { width: number, height: number }) => {
           if (onNodeResize) {
             onNodeResize(event, { id, ...params });
           }

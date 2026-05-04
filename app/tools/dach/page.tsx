@@ -49,7 +49,7 @@ function DachPlanerFlow() {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const { setCalculatedSolarWatts } = useAppStore();
 
-  const onNodeResize = useCallback((event: React.SyntheticEvent, { id, width, height }: { id: string, width: number, height: number }) => {
+  const onNodeResize = useCallback((event: any, { id, width, height }: { id: string, width: number, height: number }) => {
     setNodes((nds: Node[]) =>
       nds.map((node) => {
         if (node.id === id) {

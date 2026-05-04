@@ -119,7 +119,7 @@ const CableEdge = function ({
         <div
           style={{
             position: 'absolute',
-            transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
+            transform: `translate(-50%, -50%) translate(${labelX}px,${labelY + (sourceHandle?.includes('minus') ? 25 : -25)}px)`,
             background: 'white',
             padding: '2px 6px',
             borderRadius: '4px',
