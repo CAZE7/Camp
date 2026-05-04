@@ -120,6 +120,7 @@ export default function Chat() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Frag etwas zu deinem Camper-Ausbau..."
+            aria-label="Chat Nachricht"
             className="w-full border border-gray-300 rounded-full py-2 pl-4 pr-12 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
           />
           <button

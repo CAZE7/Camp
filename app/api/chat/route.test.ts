@@ -81,11 +81,11 @@ describe('POST /api/chat', () => {
     // Verify streamText was called and system prompt includes the retrieved context
     expect(streamText).toHaveBeenCalled();
     const streamTextArgs = vi.mocked(streamText).mock.calls[0][0];
-    const systemMessage = streamTextArgs.messages.find(m => m.role === 'system');
+    const systemMessage = streamTextArgs.messages?.find((m: any) => m.role === 'system');
 
     expect(systemMessage).toBeDefined();
-    expect(systemMessage?.content).toContain('Context chunk 1');
-    expect(systemMessage?.content).toContain('Context chunk 2');
+    expect((systemMessage as any)?.content).toContain('Context chunk 1');
+    expect((systemMessage as any)?.content).toContain('Context chunk 2');
   });
 
   it('handles DB connection or query errors gracefully without crashing', async () => {
@@ -125,10 +125,10 @@ describe('POST /api/chat', () => {
     // Verify streamText was still called
     expect(streamText).toHaveBeenCalled();
     const streamTextArgs = vi.mocked(streamText).mock.calls[0][0];
-    const systemMessage = streamTextArgs.messages.find(m => m.role === 'system');
+    const systemMessage = streamTextArgs.messages?.find((m: any) => m.role === 'system');
 
     // Context should just be the fallback
-    expect(systemMessage?.content).toContain('Kein spezifischer Kontext gefunden.');
+    expect((systemMessage as any)?.content).toContain('Kein spezifischer Kontext gefunden.');
 
     consoleSpy.mockRestore();
   });
@@ -185,10 +185,10 @@ describe('POST /api/chat', () => {
     // Verify streamText was called and system prompt includes product recommendations
     expect(streamText).toHaveBeenCalled();
     const streamTextArgs = vi.mocked(streamText).mock.calls[0][0];
-    const systemMessage = streamTextArgs.messages.find(m => m.role === 'system');
+    const systemMessage = streamTextArgs.messages?.find((m: any) => m.role === 'system');
 
     expect(systemMessage).toBeDefined();
-    expect(systemMessage?.content).toContain('DER NUTZER HAT EINE STÜCKLISTE (BOM) GESENDET.');
+    expect((systemMessage as any)?.content).toContain('DER NUTZER HAT EINE STÜCKLISTE (BOM) GESENDET.');
     expect(systemMessage?.content).toContain('Cable A');
     expect(systemMessage?.content).toContain('BrandX');
   });
