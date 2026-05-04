@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { Node, Edge } from 'reactflow';
+import { checkHasSeriesConnection } from '../utils/solarCalculations';
 
 export function useDashboardMetrics(
   nodes: Node[],
@@ -69,18 +70,7 @@ export function useDashboardMetrics(
     if (solarNodes.length > 0) {
       // Basic heuristic for the demo:
       // If we find an edge between two solars from plus to minus, it's series.
-      const hasSeriesConnection = edges.some((e) => {
-        const s = nodes.find((n) => n.id === e.source);
-        const t = nodes.find((n) => n.id === e.target);
-        return (
-          s?.type === 'solar' &&
-          t?.type === 'solar' &&
-          ((e.sourceHandle?.includes('plus') &&
-            e.targetHandle?.includes('minus')) ||
-            (e.sourceHandle?.includes('minus') &&
-              e.targetHandle?.includes('plus')))
-        );
-      });
+      const hasSeriesConnection = checkHasSeriesConnection(nodes, edges);
 
       if (hasSeriesConnection) {
         // Series: Voltage adds up, Amps stays the same (take min or average, here we assume identical panels so we take the first)
