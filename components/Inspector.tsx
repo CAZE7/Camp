@@ -296,14 +296,16 @@ export default function Inspector({
                     <label className="text-xs font-medium text-gray-500 mb-2 uppercase tracking-wider">Zugewiesene Kabel</label>
                     {edges && edges.length > 0 ? (
                       <div className="flex flex-col gap-2 max-h-48 overflow-y-auto p-2 border border-gray-200 rounded">
-                        {edges.map(edge => {
+                        {(() => {
                           const assignedEdges = selectedNode.data?.assignedEdges || [];
-                          const isAssigned = assignedEdges.includes(edge.id);
-                          const edgeData = edge.data as any;
-                          const length = edgeData?.length || 3;
-                          const crossSection = edgeData?.crossSection || 2.5;
+                          const assignedEdgesSet = new Set(assignedEdges);
+                          return edges.map(edge => {
+                            const isAssigned = assignedEdgesSet.has(edge.id);
+                            const edgeData = edge.data as any;
+                            const length = edgeData?.length || 3;
+                            const crossSection = edgeData?.crossSection || 2.5;
 
-                          return (
+                            return (
                             <label key={edge.id} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer p-1 hover:bg-gray-50 rounded">
                               <input
                                 type="checkbox"
@@ -325,8 +327,9 @@ export default function Inspector({
                                 Kabel ({length}m, {crossSection}mm²)
                               </span>
                             </label>
-                          );
-                        })}
+                            );
+                          });
+                        })()}
                       </div>
                     ) : (
                       <div className="text-xs text-gray-500 italic p-2 bg-gray-50 rounded border border-gray-100">

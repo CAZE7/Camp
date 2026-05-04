@@ -8,6 +8,12 @@ export function useDashboardMetrics(
   calculatedSolarWatts: number
 ) {
   return useMemo(() => {
+    // Precompute a map of node types to avoid O(N*E) lookups in edges.some
+    const nodeTypeMap = nodes.reduce<Record<string, string | undefined>>((acc, n) => {
+      acc[n.id] = n.type;
+      return acc;
+    }, {});
+
     // --- Calculations for Dashboard ---
     const batteryNode = nodes.find((n) => n.type === 'battery');
     const capacityAh = (batteryNode?.data as any)?.capacity || 0;
@@ -70,11 +76,11 @@ export function useDashboardMetrics(
       // Basic heuristic for the demo:
       // If we find an edge between two solars from plus to minus, it's series.
       const hasSeriesConnection = edges.some((e) => {
-        const s = nodes.find((n) => n.id === e.source);
-        const t = nodes.find((n) => n.id === e.target);
+        const sType = nodeTypeMap[e.source];
+        const tType = nodeTypeMap[e.target];
         return (
-          s?.type === 'solar' &&
-          t?.type === 'solar' &&
+          sType === 'solar' &&
+          tType === 'solar' &&
           ((e.sourceHandle?.includes('plus') &&
             e.targetHandle?.includes('minus')) ||
             (e.sourceHandle?.includes('minus') &&
@@ -126,19 +132,19 @@ export function useDashboardMetrics(
 
     // Check for direct connection from battery to consumer without fuse
     const hasDirectBatteryToConsumer = edges.some((e) => {
-      const sourceNode = nodes.find((n) => n.id === e.source);
-      const targetNode = nodes.find((n) => n.id === e.target);
-      if (!sourceNode || !targetNode) return false;
+      const sourceType = nodeTypeMap[e.source];
+      const targetType = nodeTypeMap[e.target];
+      if (!sourceType || !targetType) return false;
 
       return (
-        (sourceNode.type === 'battery' &&
-          (targetNode.type === 'consumer' ||
-            targetNode.type === 'consumer230v' ||
-            targetNode.type === 'inverter')) ||
-        (targetNode.type === 'battery' &&
-          (sourceNode.type === 'consumer' ||
-            sourceNode.type === 'consumer230v' ||
-            sourceNode.type === 'inverter'))
+        (sourceType === 'battery' &&
+          (targetType === 'consumer' ||
+            targetType === 'consumer230v' ||
+            targetType === 'inverter')) ||
+        (targetType === 'battery' &&
+          (sourceType === 'consumer' ||
+            sourceType === 'consumer230v' ||
+            sourceType === 'inverter'))
       );
     });
 
