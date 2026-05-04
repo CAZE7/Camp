@@ -5,6 +5,7 @@ import ReactFlow, {
   Background,
   Controls,
   Node,
+  NodeChange,
   OnNodesChange,
   applyNodeChanges,
   useNodesState,
@@ -128,7 +129,7 @@ function DachPlanerFlow() {
   }, [selectedVehicle]);
 
   const onNodesChange: OnNodesChange = useCallback(
-    (changes) => {
+    (changes: NodeChange[]) => {
       setNodes((nds: Node[]) => {
         const nextNodes = applyNodeChanges(changes, nds);
         return validateNodes(nextNodes);
@@ -186,7 +187,7 @@ function DachPlanerFlow() {
         },
       };
 
-      setNodes((nds) => validateNodes(nds.concat(newNode)));
+      setNodes((nds: Node[]) => validateNodes(nds.concat(newNode)));
     },
     [setNodes, validateNodes]
   );
@@ -202,7 +203,7 @@ function DachPlanerFlow() {
       <div className="w-80 bg-card border-r border-border p-6 flex flex-col gap-6 overflow-y-auto z-10 shrink-0">
         <div className="space-y-4">
           <Label className="text-xs font-black text-muted-foreground uppercase tracking-widest">Fahrzeug Modell</Label>
-          <Select value={selectedVehicleId} onValueChange={(val) => val && setSelectedVehicleId(val)}>
+          <Select value={selectedVehicleId} onValueChange={(val: string | null) => val && setSelectedVehicleId(val)}>
             <SelectTrigger className="h-12">
               <SelectValue placeholder="Wähle dein Fahrzeug" />
             </SelectTrigger>
