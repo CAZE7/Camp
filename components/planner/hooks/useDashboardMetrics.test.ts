@@ -13,7 +13,7 @@ describe('useDashboardMetrics', () => {
     );
 
     expect(result.current.dailyConsumptionAh).toBe(0);
-    expect(result.current.autarkyStr).toBe('Unendlich');
+    expect(result.current.autarkyStr).toBe('0 Tage / 0 Stunden');
     expect(result.current.chargingTimeStr).toBe('Kein Ladegerät');
     expect(result.current.totalSolarVoltage).toBe(0);
     expect(result.current.totalSolarAmps).toBe(0);
@@ -154,6 +154,7 @@ describe('useDashboardMetrics', () => {
   it('should not re-calculate metrics when only node positions change', () => {
     const nodes1: Node[] = [
       { id: 'b1', type: 'battery', data: { capacity: 100 }, position: { x: 0, y: 0 } },
+      { id: 'c1', type: 'consumer', data: { watts: 12, hours: 24 }, position: { x: 0, y: 0 } },
     ];
     const { result, rerender } = renderHook(
       ({ nodes }) => useDashboardMetrics(nodes, emptyEdges, 'summer', 0),
@@ -165,6 +166,7 @@ describe('useDashboardMetrics', () => {
     // Change position only
     const nodes2: Node[] = [
       { id: 'b1', type: 'battery', data: { capacity: 100 }, position: { x: 10, y: 10 } },
+      { id: 'c1', type: 'consumer', data: { watts: 12, hours: 24 }, position: { x: 100, y: 100 } },
     ];
     rerender({ nodes: nodes2 });
 
