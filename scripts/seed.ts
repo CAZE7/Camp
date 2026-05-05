@@ -66,8 +66,19 @@ const dummyComponents = [
   { name: 'LiFePO4 Batterie 100Ah', type: 'battery', cross_section: null, price: 399.00, brand: 'Redodo' },
 ];
 
+const logger = {
+  info: (msg: string) => process.stdout.write(`[INFO] ${msg}\n`),
+  warn: (msg: string) => process.stdout.write(`[WARN] ${msg}\n`),
+  error: (msg: string, err?: any) => {
+    process.stderr.write(`[ERROR] ${msg}\n`);
+    if (err) {
+      process.stderr.write(`${err instanceof Error ? err.stack || err.message : err}\n`);
+    }
+  },
+};
+
 async function seed() {
-  console.log("Starting DB seeding...");
+  logger.info("Starting DB seeding...");
   const client = await pool.connect();
 
   try {
@@ -100,14 +111,14 @@ async function seed() {
     await client.query('TRUNCATE TABLE Components RESTART IDENTITY CASCADE');
 
     // 3. Generate embeddings and insert into Knowledge_Chunks
-    console.log("Generating embeddings...");
+    logger.info("Generating embeddings...");
     if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'dummy_key') {
       const { embeddings } = await embedMany({
         model: openai.embedding('text-embedding-3-small'),
         values: guides.map(g => g.content),
       });
 
-      console.log("Inserting knowledge chunks...");
+      logger.info("Inserting knowledge chunks...");
       if (guides.length > 0) {
         const values: any[] = [];
         const placeholders: string[] = [];
@@ -125,7 +136,7 @@ async function seed() {
         await client.query(query, values);
       }
     } else {
-        console.warn("OPENAI_API_KEY is not set. Skipping real embeddings, using mock vectors...");
+        logger.warn("OPENAI_API_KEY is not set. Skipping real embeddings, using mock vectors...");
         if (guides.length > 0) {
           const values: any[] = [];
           const placeholders: string[] = [];
@@ -146,7 +157,7 @@ async function seed() {
 
 
     // 4. Insert dummy components
-    console.log("Inserting components...");
+    logger.info("Inserting components...");
     if (dummyComponents.length > 0) {
       const values: any[] = [];
       const placeholders: string[] = [];
@@ -162,14 +173,14 @@ async function seed() {
       await client.query(query, values);
     }
 
-    console.log("Seeding complete!");
+    logger.info("Seeding complete!");
 
   } catch (err) {
-    console.error("Error during seeding:", err);
+    logger.error("Error during seeding:", err);
   } finally {
     client.release();
     pool.end();
   }
 }
 
-seed().catch(console.error);
+seed().catch((err) => logger.error("Unhandled error:", err));
