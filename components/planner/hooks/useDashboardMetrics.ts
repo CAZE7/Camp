@@ -14,7 +14,6 @@ export function useDashboardMetrics(
 
   const lastNodesRef = useRef<Node[]>(nodes);
   const lastEdgesRef = useRef<Edge[]>(edges);
-  const memoKeyRef = useRef(0);
 
   // Check if nodes have changed in a way that affects metrics
   // We use JSON.stringify for data comparison to handle deep changes while avoiding it for the whole array
@@ -45,8 +44,10 @@ export function useDashboardMetrics(
   if (nodesChanged || edgesChanged) {
     lastNodesRef.current = nodes;
     lastEdgesRef.current = edges;
-    memoKeyRef.current += 1;
   }
+
+  const significantNodes = lastNodesRef.current;
+  const significantEdges = lastEdgesRef.current;
 
   return useMemo(() => {
     // Single pass to categorize nodes and precompute node types
@@ -58,7 +59,7 @@ export function useDashboardMetrics(
       hasInverter,
       solarNodes,
       chargers,
-    } = nodes.reduce(
+    } = significantNodes.reduce(
       (acc, n) => {
         acc.nodeTypeMap[n.id] = n.type;
 
@@ -123,7 +124,7 @@ export function useDashboardMetrics(
     let autarkyHours = 0;
     if (dailyConsumptionAh > 0) {
       autarkyHours = usableCapacityAh / (dailyConsumptionAh / 24);
-    } else if (usableCapacityAh > 0) {
+    } else {
       autarkyHours = Infinity;
     }
     const autarkyDays =
@@ -142,7 +143,7 @@ export function useDashboardMetrics(
     if (solarNodes.length > 0) {
       // Basic heuristic for the demo:
       // If we find an edge between two solars from plus to minus, it's series.
-      const hasSeriesConnection = edges.some((e) => {
+      const hasSeriesConnection = significantEdges.some((e) => {
         const sType = nodeTypeMap[e.source];
         const tType = nodeTypeMap[e.target];
         return (
@@ -197,7 +198,7 @@ export function useDashboardMetrics(
     }
 
     // Check for direct connection from battery to consumer without fuse
-    const hasDirectBatteryToConsumer = edges.some((e) => {
+    const hasDirectBatteryToConsumer = significantEdges.some((e) => {
       const sourceType = nodeTypeMap[e.source];
       const targetType = nodeTypeMap[e.target];
       if (!sourceType || !targetType) return false;
@@ -223,6 +224,5 @@ export function useDashboardMetrics(
       hasDirectBatteryToConsumer,
       solarNodesCount: solarNodes.length,
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [memoKeyRef.current, season, calculatedSolarWatts]);
+  }, [significantNodes, significantEdges, season, calculatedSolarWatts]);
 }
