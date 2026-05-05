@@ -192,6 +192,20 @@ describe('POST /api/chat', () => {
     expect(systemMessage?.content).toContain('BrandX');
   });
 
+  it('returns 400 Bad Request if the JSON body is invalid', async () => {
+    const req = new Request('http://localhost/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: 'invalid-json'
+    });
+
+    const response = await POST(req);
+    expect(response.status).toBe(400);
+
+    const json = await response.json();
+    expect(json.error).toBe('Invalid JSON body');
+  });
+
   it('returns 400 Bad Request if messages array is missing', async () => {
     const req = new Request('http://localhost/api/chat', {
       method: 'POST',
