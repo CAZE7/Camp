@@ -113,8 +113,12 @@ describe('POST /api/chat', () => {
 
     const response = await POST(req);
 
-    // It should still return a successful response stream
+    // It should return a 500 status response now instead of continuing to streamText
     expect(response).toBeInstanceOf(Response);
+    expect(response.status).toBe(500);
+
+    const json = await response.json();
+    expect(json.error).toBe('Internal Server Error during RAG pipeline');
 
     // Ensure the error was caught and logged
     expect(consoleSpy).toHaveBeenCalledWith(
@@ -122,13 +126,8 @@ describe('POST /api/chat', () => {
       expect.any(Error)
     );
 
-    // Verify streamText was still called
-    expect(streamText).toHaveBeenCalled();
-    const streamTextArgs = vi.mocked(streamText).mock.calls[0][0];
-    const systemMessage = streamTextArgs.messages?.find((m: any) => m.role === 'system');
-
-    // Context should just be the fallback
-    expect((systemMessage as any)?.content).toContain('Kein spezifischer Kontext gefunden.');
+    // Verify streamText was NOT called, preventing unnecessary API calls
+    expect(streamText).not.toHaveBeenCalled();
 
     consoleSpy.mockRestore();
   });
