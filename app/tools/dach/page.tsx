@@ -140,12 +140,16 @@ function DachPlanerFlow() {
 
 
   const totalRoofSolarWatts = useMemo(() => {
-    return nodes
-      .filter((n: Node) => n.type === 'roofSolar' && !n.data.isInvalid)
-      .reduce((acc: number, n: Node) => {
+    let total = 0;
+    const len = nodes.length;
+    for (let i = 0; i < len; i++) {
+      const n = nodes[i];
+      if (n.type === 'roofSolar' && !n.data.isInvalid) {
         const data = n.data as { watts?: number } | undefined;
-        return acc + (data?.watts || 0);
-      }, 0);
+        total += data?.watts || 0;
+      }
+    }
+    return total;
   }, [nodes]);
 
   useEffect(() => {

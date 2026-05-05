@@ -255,8 +255,8 @@ describe('POST /api/chat', () => {
         messages: [
           {
             id: '1',
-            role: 'hacker',
-            content: 'malicious intent'
+            role: 'invalid_role',
+            content: 'test content'
           }
         ]
       })
