@@ -99,8 +99,6 @@ async function seed() {
     await client.query('TRUNCATE TABLE Knowledge_Chunks RESTART IDENTITY CASCADE');
     await client.query('TRUNCATE TABLE Components RESTART IDENTITY CASCADE');
 
-    console.log("Tables created/truncated.");
-
     // 3. Generate embeddings and insert into Knowledge_Chunks
     console.log("Generating embeddings...");
     if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'dummy_key') {
