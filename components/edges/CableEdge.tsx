@@ -63,12 +63,10 @@ const CableEdge = function ({
       I = allConsumers.reduce((acc, n) => acc + ((n.data.watts || 0) / 12), 0);
     }
 
-    const isChassisGround = sourceNode?.type === 'ground' || targetNode?.type === 'ground';
-    const distanceMultiplier = isChassisGround ? 1 : 2;
-    const calculatedA = (I * (length * distanceMultiplier)) / (58 * 0.24);
+    const calculatedA = (I * (length * 2)) / (58 * 0.24);
     const minRequiredA = Math.max(1.5, calculatedA);
-    const VDE_SIZES = [1.5, 2.5, 4.0, 6.0, 10.0, 16.0, 25.0, 35.0, 50.0];
-    const cs = data?.crossSection ?? (VDE_SIZES.find(size => size >= minRequiredA) || 50.0);
+    const VDE_SIZES = [1.5, 2.5, 4.0, 6.0, 10.0, 16.0, 25.0, 35.0, 50.0, 70.0];
+    const cs = data?.crossSection ?? (VDE_SIZES.find(size => size >= minRequiredA) || 70.0);
 
     let mf = 0;
     if (cs === 1.5) mf = 16;
@@ -122,7 +120,7 @@ const CableEdge = function ({
         <div
           style={{
             position: 'absolute',
-            transform: `translate(-50%, -50%) translate(${labelX}px,${labelY + (sourceHandle?.includes('minus') ? 25 : -25)}px)`,
+            transform: `translate(-50%, -50%) translate(${labelX}px,${labelY + (sourceHandle?.includes('minus') ? 40 : -40)}px)`,
             background: 'white',
             padding: '2px 6px',
             borderRadius: '4px',
