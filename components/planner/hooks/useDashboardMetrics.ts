@@ -10,12 +10,43 @@ export function useDashboardMetrics(
   // Performance Optimization: 
   // We only care about the type, data, and connections. We explicitly ignore 'position' 
   // to avoid recalculating heavy metrics on every frame during a drag event.
-  const serializedNodes = JSON.stringify(
-    nodes.map((n) => ({ id: n.id, type: n.type, data: n.data }))
+  // Instead of JSON.stringify, we use a manual check to only update a memo key when needed.
+
+  const lastNodesRef = useRef<Node[]>(nodes);
+  const lastEdgesRef = useRef<Edge[]>(edges);
+  const memoKeyRef = useRef(0);
+
+  // Check if nodes have changed in a way that affects metrics
+  // We use JSON.stringify for data comparison to handle deep changes while avoiding it for the whole array
+  const nodesChanged = nodes !== lastNodesRef.current && (
+    nodes.length !== lastNodesRef.current.length ||
+    nodes.some((n, i) => {
+      const prev = lastNodesRef.current[i];
+      return !prev || n.id !== prev.id || n.type !== prev.type || JSON.stringify(n.data) !== JSON.stringify(prev.data);
+    })
   );
-  const serializedEdges = JSON.stringify(
-    edges.map((e) => ({ id: e.id, source: e.source, target: e.target, sourceHandle: e.sourceHandle, targetHandle: e.targetHandle }))
+
+  // Check if edges have changed in a way that affects metrics
+  // Original logic: serializedEdges = JSON.stringify(edges.map((e) => ({ id: e.id, source: e.source, target: e.target, sourceHandle: e.sourceHandle, targetHandle: e.targetHandle })));
+  // Note: Original logic DID NOT include e.data for edges.
+  const edgesChanged = edges !== lastEdgesRef.current && (
+    edges.length !== lastEdgesRef.current.length ||
+    edges.some((e, i) => {
+      const prev = lastEdgesRef.current[i];
+      return !prev ||
+        e.id !== prev.id ||
+        e.source !== prev.source ||
+        e.target !== prev.target ||
+        e.sourceHandle !== prev.sourceHandle ||
+        e.targetHandle !== prev.targetHandle;
+    })
   );
+
+  if (nodesChanged || edgesChanged) {
+    lastNodesRef.current = nodes;
+    lastEdgesRef.current = edges;
+    memoKeyRef.current += 1;
+  }
 
   return useMemo(() => {
     // Single pass to categorize nodes and precompute node types
@@ -193,5 +224,5 @@ export function useDashboardMetrics(
       solarNodesCount: solarNodes.length,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [serializedNodes, serializedEdges, season, calculatedSolarWatts]);
+  }, [memoKeyRef.current, season, calculatedSolarWatts]);
 }
