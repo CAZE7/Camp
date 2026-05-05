@@ -207,7 +207,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
         target: connection.target,
         sourceHandle: connection.sourceHandle,
         targetHandle: connection.targetHandle,
-        id: `ew-${connection.source}-${connection.target}-${Date.now()}`,
+        id: crypto.randomUUID(),
         type: 'waterPipe',
         data: {}
       };
@@ -220,7 +220,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
       target: connection.target,
       sourceHandle: connection.sourceHandle,
       targetHandle: connection.targetHandle,
-      id: `e-${connection.source}-${connection.target}-${Date.now()}`,
+      id: crypto.randomUUID(),
       type: 'cableEdge',
       data: {
         length: 3,
@@ -255,7 +255,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
       );
       if (!node) {
         node = {
-          id: `${type}-auto-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+          id: crypto.randomUUID(),
           type,
           position: {
             x: batteryNode.position.x + offsetX,
@@ -470,7 +470,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
     });
 
     const newNode: Node = {
-      id: `${type}-${Date.now()}`,
+      id: crypto.randomUUID(),
       type,
       position,
       data: { label: label },
@@ -510,7 +510,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
     });
 
     const newNode: Node = {
-      id: `${type}-${Date.now()}`,
+      id: crypto.randomUUID(),
       type,
       position,
       data: { label: label },
