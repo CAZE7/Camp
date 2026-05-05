@@ -51,15 +51,19 @@ export function FlowCanvas() {
     const handleShowBom = () => {
       // Re-calculate directly to match original local state flow
       const counts: Record<string, number> = {};
-      nodes.forEach((n: Node) => {
-        counts[n.type!] = (counts[n.type!] || 0) + 1;
-      });
+      for (let i = 0, len = nodes.length; i < len; i++) {
+        const type = nodes[i].type;
+        if (type) {
+          counts[type] = (counts[type] || 0) + 1;
+        }
+      }
 
       const cableLengths: Record<string, number> = {};
-      edges.forEach((e: Edge) => {
-        const cs = e.data?.crossSection || 2.5;
-        cableLengths[cs] = (cableLengths[cs] || 0) + (e.data?.length || 3);
-      });
+      for (let i = 0, len = edges.length; i < len; i++) {
+        const data = edges[i].data;
+        const cs = data?.crossSection || 2.5;
+        cableLengths[cs] = (cableLengths[cs] || 0) + (data?.length || 3);
+      }
       setBomData({ counts, cableLengths });
       setShowBOM(true);
     };
