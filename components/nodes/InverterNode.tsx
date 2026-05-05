@@ -1,9 +1,10 @@
 "use client";
 import React, { useMemo } from 'react';
 import { Handle, Position, useNodes } from 'reactflow';
+import { CommonNodeData } from './types';
 
 const InverterNode = function({ id, data, isConnectable, selected }: any) {
-  const nodes = useNodes();
+  const nodes = useNodes<CommonNodeData>();
 
   const overloadStats = useMemo(() => {
     const concurrentDevices = data.concurrentDevices || [];
@@ -12,7 +13,7 @@ const InverterNode = function({ id, data, isConnectable, selected }: any) {
     let totalWatts = 0;
     nodes.forEach(n => {
       if (n.type === 'consumer230v' && concurrentDevices.includes(n.id)) {
-        totalWatts += (n.data as any)?.watts || 0;
+        totalWatts += n.data?.watts || 0;
       }
     });
 
