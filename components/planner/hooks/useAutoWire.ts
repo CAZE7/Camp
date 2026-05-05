@@ -30,7 +30,7 @@ export function useAutoWire(
       extraData: any = {}
     ) => {
       let node = currentNodes.find(
-        (n) => n.type === type || (n.data && n.data.label === label)
+        (n) => n.data && n.data.label === label
       );
       if (!node) {
         node = {
