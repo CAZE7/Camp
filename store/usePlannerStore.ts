@@ -157,32 +157,34 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
     // Check for cycles
     const target = nodes.find((node) => node.id === connection.target);
 
-    const outgoersMap = new Map<string, Node[]>();
-    const nodeMap = new Map(nodes.map((n) => [n.id, n]));
+    const outgoersMap = new Map<string, string[]>();
 
-    for (const edge of edges) {
-      if (!outgoersMap.has(edge.source)) {
-        outgoersMap.set(edge.source, []);
+    for (let i = 0; i < edges.length; i++) {
+      const edge = edges[i];
+      let targets = outgoersMap.get(edge.source);
+      if (!targets) {
+        targets = [];
+        outgoersMap.set(edge.source, targets);
       }
-      const tNode = nodeMap.get(edge.target);
-      if (tNode) outgoersMap.get(edge.source)!.push(tNode);
+      targets.push(edge.target);
     }
 
-    const hasCycle = (node: Node, visited = new Set()) => {
-      if (visited.has(node.id)) return false;
+    const hasCycle = (nodeId: string, visited = new Set<string>()) => {
+      if (visited.has(nodeId)) return false;
 
-      visited.add(node.id);
+      visited.add(nodeId);
 
-      const outgoers = outgoersMap.get(node.id) || [];
-      for (const outgoer of outgoers) {
-        if (outgoer.id === connection.source) return true;
-        if (hasCycle(outgoer, visited)) return true;
+      const outgoers = outgoersMap.get(nodeId) || [];
+      for (let i = 0; i < outgoers.length; i++) {
+        const outgoerId = outgoers[i];
+        if (outgoerId === connection.source) return true;
+        if (hasCycle(outgoerId, visited)) return true;
       }
       return false;
     };
 
     if (target?.id === connection.source) return false;
-    if (target) return !hasCycle(target);
+    if (target) return !hasCycle(target.id);
 
     return true;
   },
