@@ -88,6 +88,44 @@ describe('POST /api/chat', () => {
     expect((systemMessage as any)?.content).toContain('Context chunk 2');
   });
 
+  it('handles embed (RAG embedding pipeline) errors gracefully without crashing', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    // Force the embed function to throw an error
+    vi.mocked(embed).mockRejectedValueOnce(new Error('Embedding Service Failed'));
+
+    const req = new Request('http://localhost/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: [
+          {
+            id: 'embed-error',
+            role: 'user',
+            content: 'What is a battery?',
+          }
+        ]
+      })
+    });
+
+    const response = await POST(req);
+
+    // It should NOT return a 500 status response, it should continue to streamText
+    expect(response).toBeInstanceOf(Response);
+    expect(response.status).toBe(200);
+
+    // Ensure the error was caught and logged
+    expect(consoleSpy).toHaveBeenCalledWith(
+      'Error during RAG pipeline:',
+      expect.any(Error)
+    );
+
+    // Verify streamText WAS called, ensuring graceful fallback
+    expect(streamText).toHaveBeenCalled();
+
+    consoleSpy.mockRestore();
+  });
+
   it('handles DB connection or query errors gracefully without crashing', async () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
@@ -113,12 +151,9 @@ describe('POST /api/chat', () => {
 
     const response = await POST(req);
 
-    // It should return a 500 status response now instead of continuing to streamText
+    // It should NOT return a 500 status response, it should continue to streamText
     expect(response).toBeInstanceOf(Response);
-    expect(response.status).toBe(500);
-
-    const json = await response.json();
-    expect(json.error).toBe('Internal Server Error during RAG pipeline');
+    expect(response.status).toBe(200);
 
     // Ensure the error was caught and logged
     expect(consoleSpy).toHaveBeenCalledWith(
@@ -126,8 +161,8 @@ describe('POST /api/chat', () => {
       expect.any(Error)
     );
 
-    // Verify streamText was NOT called, preventing unnecessary API calls
-    expect(streamText).not.toHaveBeenCalled();
+    // Verify streamText WAS called, ensuring graceful fallback
+    expect(streamText).toHaveBeenCalled();
 
     consoleSpy.mockRestore();
   });
