@@ -34,7 +34,7 @@ export function useAutoWire(
       );
       if (!node) {
         node = {
-          id: `${type}-auto-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+          id: crypto.randomUUID(),
           type,
           position: {
             x: batteryNode.position.x + offsetX,
