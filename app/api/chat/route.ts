@@ -158,10 +158,21 @@ export async function POST(req: Request) {
     contextText = knowledgeRes.rows.map(row => row.content).join('\n\n');
 
     // 3. Extract BOM from user query if present
-    const bomMatch = userQuery.match(/\`\`\`json\n([\s\S]*?)\n\`\`\`/);
-    if (bomMatch && bomMatch[1]) {
+    let bomContent = null;
+    const startTag = '```json\n';
+    const endTag = '\n```';
+    const startIndex = userQuery.indexOf(startTag);
+    if (startIndex !== -1) {
+      const contentStart = startIndex + startTag.length;
+      const endIndex = userQuery.indexOf(endTag, contentStart);
+      if (endIndex !== -1) {
+        bomContent = userQuery.slice(contentStart, endIndex);
+      }
+    }
+
+    if (bomContent) {
       try {
-        const bom = JSON.parse(bomMatch[1]);
+        const bom = JSON.parse(bomContent);
 
         // Security: Validate parsed JSON structure and types
         if (!bom || typeof bom !== 'object' || !Array.isArray(bom.cables)) {
