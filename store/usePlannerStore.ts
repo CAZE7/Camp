@@ -274,7 +274,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
       extraData: any = {}
     ) => {
       let node = currentNodes.find(
-        (n) => n.type === type || (n.data && n.data.label === label)
+        (n) => n.type === type && n.data?.label === label
       );
       if (!node) {
         node = {
