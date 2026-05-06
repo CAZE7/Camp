@@ -39,4 +39,14 @@ describe('cn utility', () => {
     expect(cn('w-[10px]', 'w-[20px]')).toBe('w-[20px]');
     expect(cn('text-[14px]', 'text-[#fff]')).toBe('text-[14px] text-[#fff]');
   });
+
+  it('should handle Tailwind class prefix handling', () => {
+    expect(cn('hover:bg-red-500', 'hover:bg-blue-500')).toBe('hover:bg-blue-500');
+    expect(cn('hover:bg-red-500', 'focus:bg-blue-500')).toBe('hover:bg-red-500 focus:bg-blue-500');
+  });
+
+  it('should handle overriding specific Tailwind utility groups', () => {
+    expect(cn('p-4', 'px-2', 'py-2')).toBe('p-4 px-2 py-2');
+    expect(cn('px-2 py-2', 'p-4')).toBe('p-4');
+  });
 });
