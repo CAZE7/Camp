@@ -5,3 +5,7 @@
 ## 2026-05-04 - Loading states for async submissions
 **Learning:** For components executing async operations like AI chat, simply disabling the submit button leaves the user wondering if their action registered. Adding a visual loading spinner inside the button provides clear feedback without needing an extra layout container.
 **Action:** Always check async submit buttons (e.g., forms, AI prompts) to ensure they provide explicit visual feedback (like a spinner) beyond just a `disabled` state.
+
+## 2026-05-18 - Search Input UX
+**Learning:** Empty search results with just a "No components found" message provide poor user experience. Users have to manually select the input and delete their text to see the list again.
+**Action:** Always provide an explicit "Clear Search" button in empty states, and add an inline 'X' clear button inside the search input itself to make returning to the default state a one-click action.

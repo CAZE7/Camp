@@ -1,5 +1,6 @@
 "use client";
 import React, { useState } from 'react';
+import { XCircle } from 'lucide-react';
 
 const components = [
   { type: 'battery', label: 'Batterie' },
@@ -87,15 +88,24 @@ export default function Sidebar({ mode = 'electric' }: { mode?: 'electric' | 'wa
         <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100">Komponenten</h2>
       </div>
 
-      <div className="m-4">
+      <div className="m-4 relative group">
         <input
           type="text"
           placeholder="Suchen..."
           aria-label="Komponenten suchen"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all bg-gray-50 dark:bg-gray-800 dark:text-gray-200"
+          className="w-full border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all bg-gray-50 dark:bg-gray-800 dark:text-gray-200"
         />
+        {searchTerm && (
+          <button
+            onClick={() => setSearchTerm('')}
+            aria-label="Suche zurücksetzen"
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500 rounded-full"
+          >
+            <XCircle size={16} />
+          </button>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 pb-4">
@@ -104,15 +114,32 @@ export default function Sidebar({ mode = 'electric' }: { mode?: 'electric' | 'wa
             {filteredComponents.map((comp, index) => (
               <div
                 key={index}
-                className="p-3 border border-gray-200 rounded cursor-grab hover:bg-orange-50 hover:scale-105 transition-transform transition-colors text-sm font-medium text-gray-700 bg-white shadow-sm touch-none"
+                className="p-3 border border-gray-200 rounded cursor-grab hover:bg-orange-50 hover:scale-105 transition-transform transition-colors text-sm font-medium text-gray-700 bg-white shadow-sm touch-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
+                tabIndex={0}
+                role="button"
+                aria-grabbed="false"
                 onPointerDown={(e) => handlePointerDown(e, comp)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    // Could potentially implement keyboard-based dropping here, but pointer is main method for React Flow.
+                  }
+                }}
               >
                 {comp.label}
               </div>
             ))}
           </div>
         ) : (
-          <div className="text-gray-500 text-sm text-center py-4">Keine Komponenten gefunden</div>
+          <div className="text-gray-500 text-sm text-center py-8 flex flex-col items-center gap-3">
+            <p>Keine Komponenten gefunden für &quot;{searchTerm}&quot;</p>
+            <button
+              onClick={() => setSearchTerm('')}
+              className="text-orange-600 hover:text-orange-700 font-medium text-xs border border-orange-200 hover:border-orange-300 rounded-md px-3 py-1.5 transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500"
+            >
+              Suche zurücksetzen
+            </button>
+          </div>
         )}
       </div>
     </aside>
