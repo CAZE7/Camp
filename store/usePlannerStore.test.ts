@@ -1,7 +1,13 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { usePlannerStore } from './usePlannerStore';
 import { initialNodes, initialEdges } from '../components/planner/constants';
+import * as layoutUtils from '../components/planner/utils/layout';
+
+// Mock the layout utility so it doesn't try to use dagre in tests
+vi.mock('../components/planner/utils/layout', () => ({
+  getLayoutedElements: vi.fn((nodes, edges) => ({ nodes, edges })),
+}));
 
 describe('usePlannerStore', () => {
   beforeEach(() => {
@@ -197,5 +203,159 @@ describe('usePlannerStore', () => {
     });
 
     expect(result.current.edges).toContainEqual(mockEdge);
+  });
+
+  describe('autoWireSystem', () => {
+    let mockFitView: ReturnType<typeof vi.fn>;
+    let originalAlert: typeof window.alert;
+    let mockAlert: ReturnType<typeof vi.fn>;
+    let originalRequestAnimationFrame: typeof window.requestAnimationFrame;
+    let mockRequestAnimationFrame: ReturnType<typeof vi.fn>;
+    let originalRandomUUID: typeof crypto.randomUUID;
+
+    beforeEach(() => {
+      mockFitView = vi.fn();
+
+      originalAlert = window.alert;
+      mockAlert = vi.fn();
+      window.alert = mockAlert as any;
+
+      originalRequestAnimationFrame = window.requestAnimationFrame;
+      mockRequestAnimationFrame = vi.fn((cb) => {
+        cb(0);
+        return 0;
+      });
+      window.requestAnimationFrame = mockRequestAnimationFrame as any;
+
+      originalRandomUUID = crypto.randomUUID;
+      let idCounter = 0;
+      crypto.randomUUID = vi.fn(() => `uuid-${idCounter++}`) as any;
+
+      vi.clearAllMocks();
+    });
+
+    afterEach(() => {
+      window.alert = originalAlert;
+      window.requestAnimationFrame = originalRequestAnimationFrame;
+      crypto.randomUUID = originalRandomUUID;
+    });
+
+    it('should alert if no battery is present', () => {
+      usePlannerStore.setState({
+        nodes: [{ id: '1', type: 'consumer', position: { x: 0, y: 0 }, data: { label: 'Consumer' } }],
+        edges: []
+      });
+
+      usePlannerStore.getState().autoWireSystem(mockFitView as any);
+
+      expect(mockAlert).toHaveBeenCalledWith('Bitte zuerst eine Batterie platzieren');
+      const state = usePlannerStore.getState();
+      expect(state.nodes).toHaveLength(1);
+      expect(state.edges).toHaveLength(0);
+    });
+
+    it('should generate basic wiring (busbar, shunt, fuse) when only battery is present', () => {
+      usePlannerStore.setState({
+        nodes: [
+          { id: 'b1', type: 'battery', position: { x: 0, y: 0 }, data: { label: 'Battery', capacity: 100 } }
+        ],
+        edges: []
+      });
+
+      usePlannerStore.getState().autoWireSystem(mockFitView as any);
+
+      expect(mockAlert).not.toHaveBeenCalled();
+
+      const state = usePlannerStore.getState();
+
+      // Original battery + Busbar + Fuse Box + Smart Shunt = 4 nodes
+      expect(state.nodes).toHaveLength(4);
+
+      const busbar = state.nodes.find((n) => n.type === 'busbar');
+      expect(busbar).toBeDefined();
+
+      const shunt = state.nodes.find((n) => n.type === 'shunt');
+      expect(shunt).toBeDefined();
+
+      const fuseBox = state.nodes.find((n) => n.type === 'fuse');
+      expect(fuseBox).toBeDefined();
+
+      // Battery <-> Shunt (2 edges: plus, minus)
+      // Shunt <-> Busbar (2 edges)
+      // Busbar <-> Fuse Box (2 edges)
+      // Total = 6 edges
+      expect(state.edges).toHaveLength(6);
+
+      // Verify layout and fitView
+      expect(layoutUtils.getLayoutedElements).toHaveBeenCalled();
+      expect(mockRequestAnimationFrame).toHaveBeenCalled();
+      expect(mockFitView).toHaveBeenCalledWith({ duration: 800 });
+    });
+
+    it('should connect inverters and consumers correctly', () => {
+      usePlannerStore.setState({
+        nodes: [
+          { id: 'b1', type: 'battery', position: { x: 0, y: 0 }, data: { label: 'Battery', capacity: 100 } },
+          { id: 'i1', type: 'inverter', position: { x: 10, y: 10 }, data: { label: 'Inverter', watts: 1000 } },
+          { id: 'c1', type: 'consumer', position: { x: 20, y: 20 }, data: { label: 'Light', watts: 24 } }
+        ],
+        edges: []
+      });
+
+      usePlannerStore.getState().autoWireSystem(mockFitView as any);
+
+      const state = usePlannerStore.getState();
+
+      // 3 existing + 3 generated (Busbar, Shunt, Fuse) = 6 nodes
+      expect(state.nodes).toHaveLength(6);
+
+      const busbar = state.nodes.find((n) => n.type === 'busbar');
+      const fuseBox = state.nodes.find((n) => n.type === 'fuse');
+
+      // Inverter should connect to Busbar (plus and minus)
+      const inverterEdges = state.edges.filter((e) => e.target === 'i1' && e.source === busbar?.id);
+      expect(inverterEdges).toHaveLength(2);
+
+      // Consumer should connect to Fuse Box
+      const consumerEdges = state.edges.filter((e) => e.target === 'c1' && e.source === fuseBox?.id);
+      expect(consumerEdges).toHaveLength(2);
+
+      // Check calculations on consumer edge
+      const consumerPlusEdge = consumerEdges.find((e) => e.sourceHandle === 'plus');
+      expect(consumerPlusEdge?.data?.crossSection).toBeGreaterThanOrEqual(1.5);
+    });
+
+    it('should handle solar panels and chargers correctly', () => {
+      usePlannerStore.setState({
+        nodes: [
+          { id: 'b1', type: 'battery', position: { x: 0, y: 0 }, data: { label: 'Battery', capacity: 100 } },
+          { id: 's1', type: 'solar', position: { x: 10, y: 10 }, data: { label: 'Solar', watts: 120 } },
+          { id: 'ch1', type: 'charger', position: { x: 20, y: 20 }, data: { label: 'Ladequelle Booster', amps: 30 } }
+        ],
+        edges: []
+      });
+
+      usePlannerStore.getState().autoWireSystem(mockFitView as any);
+
+      const state = usePlannerStore.getState();
+
+      // Check that an MPPT charger was generated for the solar panel
+      const mppt = state.nodes.find((n) => n.type === 'charger' && n.data?.label === 'MPPT Laderegler');
+      expect(mppt).toBeDefined();
+
+      const busbar = state.nodes.find((n) => n.type === 'busbar');
+
+      // Solar -> MPPT
+      const solarToMpptEdges = state.edges.filter((e) => e.source === 's1' && e.target === mppt?.id);
+      expect(solarToMpptEdges).toHaveLength(2);
+
+      // MPPT -> Busbar
+      const mpptToBusbarEdges = state.edges.filter((e) => e.source === mppt?.id && e.target === busbar?.id);
+      expect(mpptToBusbarEdges).toHaveLength(2);
+
+      // Booster -> Busbar
+      const boosterToBusbarEdges = state.edges.filter((e) => e.source === 'ch1' && e.target === busbar?.id);
+      expect(boosterToBusbarEdges).toHaveLength(2);
+    });
   });
 });

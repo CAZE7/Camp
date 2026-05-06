@@ -142,11 +142,16 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
 
   isValidConnection: (connection) => {
     const { nodes, waterNodes, viewMode, edges } = get();
-    const nodeMap = getNodeMap(nodes, waterNodes);
+    const allNodes = [...nodes, ...waterNodes];
 
-    // Use O(1) cached map instead of O(N) array spread and find
-    const sourceNode = connection.source ? nodeMap.get(connection.source) : undefined;
-    const targetNode = connection.target ? nodeMap.get(connection.target) : undefined;
+    // Create a node map for O(1) lookups
+    const nodesMap = new Map<string, import('reactflow').Node>();
+    for (let i = 0; i < allNodes.length; i++) {
+      nodesMap.set(allNodes[i].id, allNodes[i]);
+    }
+
+    const sourceNode = nodesMap.get(connection.source || '');
+    const targetNode = nodesMap.get(connection.target || '');
 
     if (viewMode === 'water') {
       if (sourceNode?.type === 'grayWaterTank' && targetNode?.type === 'sink') {
@@ -176,7 +181,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
     }
 
     // Check for cycles
-    const target = connection.target ? nodes.find((node) => node.id === connection.target) : undefined;
+    const target = targetNode;
 
     const outgoersMap = new Map<string, string[]>();
 
@@ -274,7 +279,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
       extraData: any = {}
     ) => {
       let node = currentNodes.find(
-        (n) => n.type === type || (n.data && n.data.label === label)
+        (n) => n.type === type && n.data?.label === label
       );
       if (!node) {
         node = {
