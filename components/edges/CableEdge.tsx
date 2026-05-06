@@ -1,6 +1,26 @@
 import React, { useMemo } from 'react';
-import { BaseEdge, EdgeProps, getBezierPath, getSmoothStepPath, EdgeLabelRenderer, useReactFlow } from 'reactflow';
+import { BaseEdge, EdgeProps, getBezierPath, getSmoothStepPath, EdgeLabelRenderer, useReactFlow, Node } from 'reactflow';
 import { useAppStore } from '../../lib/store';
+
+let lastNodesRef: Node[] | null = null;
+let cachedNodeMap = new Map<string, Node>();
+let cachedConsumers: Node[] = [];
+
+function getCachedNodesData(currentNodes: Node[]) {
+  if (currentNodes !== lastNodesRef) {
+    cachedNodeMap.clear();
+    cachedConsumers = [];
+    for (let i = 0; i < currentNodes.length; i++) {
+      const n = currentNodes[i];
+      cachedNodeMap.set(n.id, n);
+      if (n.type === 'consumer') {
+        cachedConsumers.push(n);
+      }
+    }
+    lastNodesRef = currentNodes;
+  }
+  return { nodeMap: cachedNodeMap, consumers: cachedConsumers };
+}
 
 export type CableEdgeData = {
   length: number;
@@ -45,22 +65,23 @@ const CableEdge = function ({
 
   const { length, crossSection, maxFuse, strokeWidth, animationDuration } = useMemo(() => {
     const nodes = getNodes();
+    const { nodeMap, consumers } = getCachedNodesData(nodes);
+
     const length = data?.length || 3;
     let I = 0;
-    const sourceNode = nodes.find(n => n.id === source);
-    const targetNode = nodes.find(n => n.id === target);
+    const sourceNode = nodeMap.get(source);
+    const targetNode = nodeMap.get(target);
 
     if (sourceNode?.type === 'consumer') {
-      I = (sourceNode.data.watts || 0) / 12;
+      I = (sourceNode.data.watts as number || 0) / 12;
     } else if (targetNode?.type === 'consumer') {
-      I = (targetNode.data.watts || 0) / 12;
+      I = (targetNode.data.watts as number || 0) / 12;
     } else if (sourceNode?.type === 'charger') {
-      I = sourceNode.data.amps || 0;
+      I = sourceNode.data.amps as number || 0;
     } else if (targetNode?.type === 'charger') {
-      I = targetNode.data.amps || 0;
+      I = targetNode.data.amps as number || 0;
     } else {
-      const allConsumers = nodes.filter(n => n.type === 'consumer');
-      I = allConsumers.reduce((acc, n) => acc + ((n.data.watts || 0) / 12), 0);
+      I = consumers.reduce((acc, n) => acc + ((n.data.watts as number || 0) / 12), 0);
     }
 
     const calculatedA = (I * (length * 2)) / (58 * 0.24);
