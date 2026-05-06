@@ -109,8 +109,8 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
   onSelectionChange: (params) => set({ selectedNodes: params.nodes, selectedEdges: params.edges }),
 
   deleteSelected: () => set((state) => {
-    const nodeIdsSet = new Set(state.selectedNodes.map((n) => n.id));
-    const edgeIdsSet = new Set(state.selectedEdges.map((e) => e.id));
+    const nodeIdsSet = state.selectedNodes.reduce((acc, n) => { acc.add(n.id); return acc; }, new Set<string>());
+    const edgeIdsSet = state.selectedEdges.reduce((acc, e) => { acc.add(e.id); return acc; }, new Set<string>());
 
     return {
       nodes: state.nodes.filter((n) => !nodeIdsSet.has(n.id)),
