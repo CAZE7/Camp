@@ -218,12 +218,12 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
   onConnect: (connection) => {
     if (!connection.source || !connection.target) return;
 
-    const { viewMode, waterNodes } = get();
+    const { viewMode, waterNodes, nodes } = get();
 
     if (viewMode === 'water') {
-      const allNodes = [...waterNodes];
-      const sourceNode = allNodes.find((n) => n.id === connection.source);
-      const targetNode = allNodes.find((n) => n.id === connection.target);
+      const nodesMap = getNodeMap(nodes, waterNodes);
+      const sourceNode = nodesMap.get(connection.source || '');
+      const targetNode = nodesMap.get(connection.target || '');
 
       if (sourceNode?.type === 'pump' && targetNode?.type === 'sink') {
         get().setWaterWarning("Ein Accumulator schont die Pumpe und verhindert stotternden Wasserfluss.");
