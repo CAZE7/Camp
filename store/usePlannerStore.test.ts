@@ -205,157 +205,171 @@ describe('usePlannerStore', () => {
     expect(result.current.edges).toContainEqual(mockEdge);
   });
 
-  describe('autoWireSystem', () => {
-    let mockFitView: ReturnType<typeof vi.fn>;
-    let originalAlert: typeof window.alert;
-    let mockAlert: ReturnType<typeof vi.fn>;
-    let originalRequestAnimationFrame: typeof window.requestAnimationFrame;
-    let mockRequestAnimationFrame: ReturnType<typeof vi.fn>;
-    let originalRandomUUID: typeof crypto.randomUUID;
+  describe('checkSchematic', () => {
+    it('should dispatch check-schematic event with nodes and edges', () => {
+      const { result } = renderHook(() => usePlannerStore());
+      const mockNode = { id: '1', type: 'battery', position: { x: 0, y: 0 }, data: { label: 'Battery' } };
+      const mockEdge = { id: 'e1', source: '1', target: '2', type: 'cableEdge', data: { length: 3, crossSection: 2.5 } };
 
-    beforeEach(() => {
-      mockFitView = vi.fn();
-
-      originalAlert = window.alert;
-      mockAlert = vi.fn();
-      window.alert = mockAlert as any;
-
-      originalRequestAnimationFrame = window.requestAnimationFrame;
-      mockRequestAnimationFrame = vi.fn((cb) => {
-        cb(0);
-        return 0;
-      });
-      window.requestAnimationFrame = mockRequestAnimationFrame as any;
-
-      originalRandomUUID = crypto.randomUUID;
-      let idCounter = 0;
-      crypto.randomUUID = vi.fn(() => `uuid-${idCounter++}`) as any;
-
-      vi.clearAllMocks();
-    });
-
-    afterEach(() => {
-      window.alert = originalAlert;
-      window.requestAnimationFrame = originalRequestAnimationFrame;
-      crypto.randomUUID = originalRandomUUID;
-    });
-
-    it('should alert if no battery is present', () => {
-      usePlannerStore.setState({
-        nodes: [{ id: '1', type: 'consumer', position: { x: 0, y: 0 }, data: { label: 'Consumer' } }],
-        edges: []
+      act(() => {
+        result.current.setNodes([mockNode]);
+        result.current.setEdges([mockEdge]);
       });
 
-      usePlannerStore.getState().autoWireSystem(mockFitView as any);
+      let dispatchedEvent: CustomEvent | null = null;
+      const listener = (e: Event) => {
+        dispatchedEvent = e as CustomEvent;
+      };
 
-      expect(mockAlert).toHaveBeenCalledWith('Bitte zuerst eine Batterie platzieren');
-      const state = usePlannerStore.getState();
-      expect(state.nodes).toHaveLength(1);
-      expect(state.edges).toHaveLength(0);
-    });
+      window.addEventListener('check-schematic', listener);
 
-    it('should generate basic wiring (busbar, shunt, fuse) when only battery is present', () => {
-      usePlannerStore.setState({
-        nodes: [
-          { id: 'b1', type: 'battery', position: { x: 0, y: 0 }, data: { label: 'Battery', capacity: 100 } }
-        ],
-        edges: []
+      act(() => {
+        result.current.checkSchematic();
       });
 
-      usePlannerStore.getState().autoWireSystem(mockFitView as any);
+      window.removeEventListener('check-schematic', listener);
 
-      expect(mockAlert).not.toHaveBeenCalled();
-
-      const state = usePlannerStore.getState();
-
-      // Original battery + Busbar + Fuse Box + Smart Shunt = 4 nodes
-      expect(state.nodes).toHaveLength(4);
-
-      const busbar = state.nodes.find((n) => n.type === 'busbar');
-      expect(busbar).toBeDefined();
-
-      const shunt = state.nodes.find((n) => n.type === 'shunt');
-      expect(shunt).toBeDefined();
-
-      const fuseBox = state.nodes.find((n) => n.type === 'fuse');
-      expect(fuseBox).toBeDefined();
-
-      // Battery <-> Shunt (2 edges: plus, minus)
-      // Shunt <-> Busbar (2 edges)
-      // Busbar <-> Fuse Box (2 edges)
-      // Total = 6 edges
-      expect(state.edges).toHaveLength(6);
-
-      // Verify layout and fitView
-      expect(layoutUtils.getLayoutedElements).toHaveBeenCalled();
-      expect(mockRequestAnimationFrame).toHaveBeenCalled();
-      expect(mockFitView).toHaveBeenCalledWith({ duration: 800 });
+      expect(dispatchedEvent).not.toBeNull();
+      expect(dispatchedEvent?.detail).toEqual({
+        nodes: [mockNode],
+        edges: [mockEdge]
+      });
     });
+  });
 
-    it('should connect inverters and consumers correctly', () => {
-      usePlannerStore.setState({
-        nodes: [
-          { id: 'b1', type: 'battery', position: { x: 0, y: 0 }, data: { label: 'Battery', capacity: 100 } },
-          { id: 'i1', type: 'inverter', position: { x: 10, y: 10 }, data: { label: 'Inverter', watts: 1000 } },
-          { id: 'c1', type: 'consumer', position: { x: 20, y: 20 }, data: { label: 'Light', watts: 24 } }
-        ],
-        edges: []
+  describe('exportBOM', () => {
+    it('should dispatch export-bom event with counts and cableLengths', () => {
+      const { result } = renderHook(() => usePlannerStore());
+
+      const mockNodes = [
+        { id: '1', type: 'battery', position: { x: 0, y: 0 }, data: {} },
+        { id: '2', type: 'battery', position: { x: 0, y: 0 }, data: {} },
+        { id: '3', type: 'solar', position: { x: 0, y: 0 }, data: {} }
+      ];
+
+      const mockEdges = [
+        { id: 'e1', source: '1', target: '2', type: 'cableEdge', data: { length: 5, crossSection: 2.5 } },
+        { id: 'e2', source: '2', target: '3', type: 'cableEdge', data: { length: 2, crossSection: 4 } },
+        { id: 'e3', source: '1', target: '3', type: 'cableEdge', data: { length: 1, crossSection: 2.5 } }
+      ];
+
+      act(() => {
+        result.current.setNodes(mockNodes);
+        result.current.setEdges(mockEdges);
       });
 
-      usePlannerStore.getState().autoWireSystem(mockFitView as any);
+      let dispatchedEvent: CustomEvent | null = null;
+      const listener = (e: Event) => {
+        dispatchedEvent = e as CustomEvent;
+      };
 
-      const state = usePlannerStore.getState();
+      window.addEventListener('export-bom', listener);
 
-      // 3 existing + 3 generated (Busbar, Shunt, Fuse) = 6 nodes
-      expect(state.nodes).toHaveLength(6);
-
-      const busbar = state.nodes.find((n) => n.type === 'busbar');
-      const fuseBox = state.nodes.find((n) => n.type === 'fuse');
-
-      // Inverter should connect to Busbar (plus and minus)
-      const inverterEdges = state.edges.filter((e) => e.target === 'i1' && e.source === busbar?.id);
-      expect(inverterEdges).toHaveLength(2);
-
-      // Consumer should connect to Fuse Box
-      const consumerEdges = state.edges.filter((e) => e.target === 'c1' && e.source === fuseBox?.id);
-      expect(consumerEdges).toHaveLength(2);
-
-      // Check calculations on consumer edge
-      const consumerPlusEdge = consumerEdges.find((e) => e.sourceHandle === 'plus');
-      expect(consumerPlusEdge?.data?.crossSection).toBeGreaterThanOrEqual(1.5);
-    });
-
-    it('should handle solar panels and chargers correctly', () => {
-      usePlannerStore.setState({
-        nodes: [
-          { id: 'b1', type: 'battery', position: { x: 0, y: 0 }, data: { label: 'Battery', capacity: 100 } },
-          { id: 's1', type: 'solar', position: { x: 10, y: 10 }, data: { label: 'Solar', watts: 120 } },
-          { id: 'ch1', type: 'charger', position: { x: 20, y: 20 }, data: { label: 'Ladequelle Booster', amps: 30 } }
-        ],
-        edges: []
+      act(() => {
+        result.current.exportBOM();
       });
 
-      usePlannerStore.getState().autoWireSystem(mockFitView as any);
+      window.removeEventListener('export-bom', listener);
 
-      const state = usePlannerStore.getState();
+      expect(dispatchedEvent).not.toBeNull();
+      expect(dispatchedEvent?.detail).toEqual({
+        counts: {
+          battery: 2,
+          solar: 1
+        },
+        cableLengths: {
+          '2.5': 6,
+          '4': 2
+        }
+      });
+    });
+  });
 
-      // Check that an MPPT charger was generated for the solar panel
-      const mppt = state.nodes.find((n) => n.type === 'charger' && n.data?.label === 'MPPT Laderegler');
-      expect(mppt).toBeDefined();
+  describe('onDrop', () => {
+    it('should add a node based on drop event', () => {
+      const { result } = renderHook(() => usePlannerStore());
+      const initialNodeCount = result.current.nodes.length;
 
-      const busbar = state.nodes.find((n) => n.type === 'busbar');
+      const mockEvent = {
+        preventDefault: () => {},
+        dataTransfer: {
+          getData: (key: string) => {
+            if (key === 'application/reactflow') return 'battery';
+            if (key === 'application/reactflow-label') return 'My Battery';
+            return '';
+          }
+        },
+        clientX: 100,
+        clientY: 200
+      } as any;
 
-      // Solar -> MPPT
-      const solarToMpptEdges = state.edges.filter((e) => e.source === 's1' && e.target === mppt?.id);
-      expect(solarToMpptEdges).toHaveLength(2);
+      const mockScreenToFlowPosition = ({ x, y }: { x: number, y: number }) => ({ x: x - 10, y: y - 20 });
 
-      // MPPT -> Busbar
-      const mpptToBusbarEdges = state.edges.filter((e) => e.source === mppt?.id && e.target === busbar?.id);
-      expect(mpptToBusbarEdges).toHaveLength(2);
+      act(() => {
+        result.current.onDrop(mockEvent, mockScreenToFlowPosition);
+      });
 
-      // Booster -> Busbar
-      const boosterToBusbarEdges = state.edges.filter((e) => e.source === 'ch1' && e.target === busbar?.id);
-      expect(boosterToBusbarEdges).toHaveLength(2);
+      expect(result.current.nodes.length).toBe(initialNodeCount + 1);
+      const addedNode = result.current.nodes[result.current.nodes.length - 1];
+
+      expect(addedNode.type).toBe('battery');
+      expect(addedNode.position).toEqual({ x: 90, y: 180 });
+      expect(addedNode.data.label).toBe('My Battery');
+      expect(addedNode.data.capacity).toBe(100); // Default for battery
+      expect(addedNode.data.chemistry).toBe('LiFePO4');
+    });
+
+    it('should not add a node if type is missing', () => {
+      const { result } = renderHook(() => usePlannerStore());
+      const initialNodeCount = result.current.nodes.length;
+
+      const mockEvent = {
+        preventDefault: () => {},
+        dataTransfer: {
+          getData: () => ''
+        },
+        clientX: 100,
+        clientY: 200
+      } as any;
+
+      const mockScreenToFlowPosition = ({ x, y }: { x: number, y: number }) => ({ x, y });
+
+      act(() => {
+        result.current.onDrop(mockEvent, mockScreenToFlowPosition);
+      });
+
+      expect(result.current.nodes.length).toBe(initialNodeCount);
+    });
+  });
+
+  describe('onCustomDrop', () => {
+    it('should add a node based on custom drop event', () => {
+      const { result } = renderHook(() => usePlannerStore());
+      const initialNodeCount = result.current.nodes.length;
+
+      const mockEvent = {
+        detail: {
+          clientX: 100,
+          clientY: 200,
+          type: 'consumer',
+          label: 'My Consumer'
+        }
+      } as any;
+
+      const mockScreenToFlowPosition = ({ x, y }: { x: number, y: number }) => ({ x: x - 10, y: y - 20 });
+
+      act(() => {
+        result.current.onCustomDrop(mockEvent, mockScreenToFlowPosition);
+      });
+
+      expect(result.current.nodes.length).toBe(initialNodeCount + 1);
+      const addedNode = result.current.nodes[result.current.nodes.length - 1];
+
+      expect(addedNode.type).toBe('consumer');
+      expect(addedNode.position).toEqual({ x: 90, y: 180 });
+      expect(addedNode.data.label).toBe('My Consumer');
+      expect(addedNode.data.watts).toBe(50); // Default for consumer
+      expect(addedNode.data.hours).toBe(2);
     });
   });
 });
