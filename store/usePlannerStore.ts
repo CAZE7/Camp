@@ -124,8 +124,15 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
   isValidConnection: (connection) => {
     const { nodes, waterNodes, viewMode, edges } = get();
     const allNodes = [...nodes, ...waterNodes];
-    const sourceNode = allNodes.find((n) => n.id === connection.source);
-    const targetNode = allNodes.find((n) => n.id === connection.target);
+
+    // Create a node map for O(1) lookups
+    const nodesMap = new Map<string, import('reactflow').Node>();
+    for (let i = 0; i < allNodes.length; i++) {
+      nodesMap.set(allNodes[i].id, allNodes[i]);
+    }
+
+    const sourceNode = nodesMap.get(connection.source || '');
+    const targetNode = nodesMap.get(connection.target || '');
 
     if (viewMode === 'water') {
       if (sourceNode?.type === 'grayWaterTank' && targetNode?.type === 'sink') {
@@ -155,7 +162,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
     }
 
     // Check for cycles
-    const target = nodes.find((node) => node.id === connection.target);
+    const target = targetNode;
 
     const outgoersMap = new Map<string, string[]>();
 
