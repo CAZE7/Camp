@@ -379,7 +379,7 @@ export default function Inspector({
                           const assignedEdgesSet = new Set(assignedEdges);
                           return edges.map(edge => {
                             const isAssigned = assignedEdgesSet.has(edge.id);
-                            const edgeData = edge.data as any;
+                            const edgeData = edge.data as CableEdgeData | undefined;
                             const length = edgeData?.length || 3;
                             const crossSection = edgeData?.crossSection || 2.5;
 
