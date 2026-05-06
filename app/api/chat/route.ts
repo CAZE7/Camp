@@ -221,6 +221,10 @@ export async function POST(req: Request) {
     }
   } catch (error) {
     console.error("Error during RAG pipeline:", error);
+    return new Response(JSON.stringify({ error: 'Internal Server Error during RAG pipeline' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
   } finally {
     client.release();
   }
