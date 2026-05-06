@@ -26,4 +26,17 @@ describe('cn utility', () => {
   it('should handle undefined and null values', () => {
     expect(cn('bg-red-500', undefined, null, 'text-white')).toBe('bg-red-500 text-white');
   });
+
+  it('should handle falsy values like empty string, 0, and NaN', () => {
+    expect(cn('bg-red-500', '', 0, NaN, 'text-white')).toBe('bg-red-500 text-white');
+  });
+
+  it('should handle complex nested arrays and mixed structures', () => {
+    expect(cn(['bg-red-500', ['text-white', { 'font-bold': true, 'italic': false }]])).toBe('bg-red-500 text-white font-bold');
+  });
+
+  it('should handle arbitrary values in Tailwind classes', () => {
+    expect(cn('w-[10px]', 'w-[20px]')).toBe('w-[20px]');
+    expect(cn('text-[14px]', 'text-[#fff]')).toBe('text-[14px] text-[#fff]');
+  });
 });
