@@ -198,4 +198,172 @@ describe('usePlannerStore', () => {
 
     expect(result.current.edges).toContainEqual(mockEdge);
   });
+
+  describe('checkSchematic', () => {
+    it('should dispatch check-schematic event with nodes and edges', () => {
+      const { result } = renderHook(() => usePlannerStore());
+      const mockNode = { id: '1', type: 'battery', position: { x: 0, y: 0 }, data: { label: 'Battery' } };
+      const mockEdge = { id: 'e1', source: '1', target: '2', type: 'cableEdge', data: { length: 3, crossSection: 2.5 } };
+
+      act(() => {
+        result.current.setNodes([mockNode]);
+        result.current.setEdges([mockEdge]);
+      });
+
+      let dispatchedEvent: CustomEvent | null = null;
+      const listener = (e: Event) => {
+        dispatchedEvent = e as CustomEvent;
+      };
+
+      window.addEventListener('check-schematic', listener);
+
+      act(() => {
+        result.current.checkSchematic();
+      });
+
+      window.removeEventListener('check-schematic', listener);
+
+      expect(dispatchedEvent).not.toBeNull();
+      expect(dispatchedEvent?.detail).toEqual({
+        nodes: [mockNode],
+        edges: [mockEdge]
+      });
+    });
+  });
+
+  describe('exportBOM', () => {
+    it('should dispatch export-bom event with counts and cableLengths', () => {
+      const { result } = renderHook(() => usePlannerStore());
+
+      const mockNodes = [
+        { id: '1', type: 'battery', position: { x: 0, y: 0 }, data: {} },
+        { id: '2', type: 'battery', position: { x: 0, y: 0 }, data: {} },
+        { id: '3', type: 'solar', position: { x: 0, y: 0 }, data: {} }
+      ];
+
+      const mockEdges = [
+        { id: 'e1', source: '1', target: '2', type: 'cableEdge', data: { length: 5, crossSection: 2.5 } },
+        { id: 'e2', source: '2', target: '3', type: 'cableEdge', data: { length: 2, crossSection: 4 } },
+        { id: 'e3', source: '1', target: '3', type: 'cableEdge', data: { length: 1, crossSection: 2.5 } }
+      ];
+
+      act(() => {
+        result.current.setNodes(mockNodes);
+        result.current.setEdges(mockEdges);
+      });
+
+      let dispatchedEvent: CustomEvent | null = null;
+      const listener = (e: Event) => {
+        dispatchedEvent = e as CustomEvent;
+      };
+
+      window.addEventListener('export-bom', listener);
+
+      act(() => {
+        result.current.exportBOM();
+      });
+
+      window.removeEventListener('export-bom', listener);
+
+      expect(dispatchedEvent).not.toBeNull();
+      expect(dispatchedEvent?.detail).toEqual({
+        counts: {
+          battery: 2,
+          solar: 1
+        },
+        cableLengths: {
+          '2.5': 6,
+          '4': 2
+        }
+      });
+    });
+  });
+
+  describe('onDrop', () => {
+    it('should add a node based on drop event', () => {
+      const { result } = renderHook(() => usePlannerStore());
+      const initialNodeCount = result.current.nodes.length;
+
+      const mockEvent = {
+        preventDefault: () => {},
+        dataTransfer: {
+          getData: (key: string) => {
+            if (key === 'application/reactflow') return 'battery';
+            if (key === 'application/reactflow-label') return 'My Battery';
+            return '';
+          }
+        },
+        clientX: 100,
+        clientY: 200
+      } as any;
+
+      const mockScreenToFlowPosition = ({ x, y }: { x: number, y: number }) => ({ x: x - 10, y: y - 20 });
+
+      act(() => {
+        result.current.onDrop(mockEvent, mockScreenToFlowPosition);
+      });
+
+      expect(result.current.nodes.length).toBe(initialNodeCount + 1);
+      const addedNode = result.current.nodes[result.current.nodes.length - 1];
+
+      expect(addedNode.type).toBe('battery');
+      expect(addedNode.position).toEqual({ x: 90, y: 180 });
+      expect(addedNode.data.label).toBe('My Battery');
+      expect(addedNode.data.capacity).toBe(100); // Default for battery
+      expect(addedNode.data.chemistry).toBe('LiFePO4');
+    });
+
+    it('should not add a node if type is missing', () => {
+      const { result } = renderHook(() => usePlannerStore());
+      const initialNodeCount = result.current.nodes.length;
+
+      const mockEvent = {
+        preventDefault: () => {},
+        dataTransfer: {
+          getData: () => ''
+        },
+        clientX: 100,
+        clientY: 200
+      } as any;
+
+      const mockScreenToFlowPosition = ({ x, y }: { x: number, y: number }) => ({ x, y });
+
+      act(() => {
+        result.current.onDrop(mockEvent, mockScreenToFlowPosition);
+      });
+
+      expect(result.current.nodes.length).toBe(initialNodeCount);
+    });
+  });
+
+  describe('onCustomDrop', () => {
+    it('should add a node based on custom drop event', () => {
+      const { result } = renderHook(() => usePlannerStore());
+      const initialNodeCount = result.current.nodes.length;
+
+      const mockEvent = {
+        detail: {
+          clientX: 100,
+          clientY: 200,
+          type: 'consumer',
+          label: 'My Consumer'
+        }
+      } as any;
+
+      const mockScreenToFlowPosition = ({ x, y }: { x: number, y: number }) => ({ x: x - 10, y: y - 20 });
+
+      act(() => {
+        result.current.onCustomDrop(mockEvent, mockScreenToFlowPosition);
+      });
+
+      expect(result.current.nodes.length).toBe(initialNodeCount + 1);
+      const addedNode = result.current.nodes[result.current.nodes.length - 1];
+
+      expect(addedNode.type).toBe('consumer');
+      expect(addedNode.position).toEqual({ x: 90, y: 180 });
+      expect(addedNode.data.label).toBe('My Consumer');
+      expect(addedNode.data.watts).toBe(50); // Default for consumer
+      expect(addedNode.data.hours).toBe(2);
+    });
+  });
 });
