@@ -24,6 +24,7 @@ import RoofSolarNode from '@/components/nodes/RoofSolarNode';
 import RoofBackgroundNode from '@/components/nodes/RoofBackgroundNode';
 import { useAppStore } from '@/lib/store';
 import { vehicleTemplates } from '@/lib/vehicleTemplates';
+import { OnNodeResize, RoofNodeData } from '@/components/nodes/types';
 
 const nodeTypes = {
   roofWindow: RoofWindowNode,
@@ -45,12 +46,12 @@ function DachPlanerFlow() {
     [selectedVehicleId]
   );
 
-  const [nodes, setNodes] = useNodesState([]);
+  const [nodes, setNodes] = useNodesState<RoofNodeData>([]);
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const { setCalculatedSolarWatts } = useAppStore();
 
-  const onNodeResize = useCallback((event: any, { id, width, height }: { id: string, width: number, height: number }) => {
-    setNodes((nds: Node[]) =>
+  const onNodeResize: OnNodeResize = useCallback((event, { id, width, height }) => {
+    setNodes((nds: Node<RoofNodeData>[]) =>
       nds.map((node) => {
         if (node.id === id) {
           return {
@@ -69,7 +70,7 @@ function DachPlanerFlow() {
     );
   }, [setNodes]);
 
-  const initialNodes: Node[] = useMemo(() => [
+  const initialNodes: Node<RoofNodeData>[] = useMemo(() => [
     { 
       id: 'background', 
       type: 'roofBackground', 
@@ -100,7 +101,7 @@ function DachPlanerFlow() {
     setNodes(initialNodes);
   }, [initialNodes, setNodes]);
 
-  const validateNodes = useCallback((nds: Node[]) => {
+  const validateNodes = useCallback((nds: Node<RoofNodeData>[]) => {
     const roofW_px = selectedVehicle.roofWidth * 200;
     const roofH_px = selectedVehicle.roofLength * 200;
     
@@ -109,7 +110,7 @@ function DachPlanerFlow() {
     const safeMinY = SAFE_MARGINS.front * 2;
     const safeMaxY = roofH_px - (SAFE_MARGINS.rear * 2);
 
-    return nds.map((node: Node) => {
+    return nds.map((node: Node<RoofNodeData>) => {
       if (node.id === 'background') return node;
 
       const nodeW = node.width || (node.type === 'roofSolar' ? 200 : 80);
@@ -130,9 +131,9 @@ function DachPlanerFlow() {
 
   const onNodesChange: OnNodesChange = useCallback(
     (changes: NodeChange[]) => {
-      setNodes((nds: Node[]) => {
+      setNodes((nds: Node<RoofNodeData>[]) => {
         const nextNodes = applyNodeChanges(changes, nds);
-        return validateNodes(nextNodes);
+        return validateNodes(nextNodes as Node<RoofNodeData>[]);
       });
     },
     [setNodes, validateNodes]
@@ -176,7 +177,7 @@ function DachPlanerFlow() {
         y: event.clientY - reactFlowBounds.top,
       };
 
-      const newNode: Node = {
+      const newNode: Node<RoofNodeData> = {
         id: `${type}-${Date.now()}`,
         type,
         position,
@@ -191,7 +192,7 @@ function DachPlanerFlow() {
         },
       };
 
-      setNodes((nds: Node[]) => validateNodes(nds.concat(newNode)));
+      setNodes((nds: Node<RoofNodeData>[]) => validateNodes(nds.concat(newNode)));
     },
     [setNodes, validateNodes]
   );

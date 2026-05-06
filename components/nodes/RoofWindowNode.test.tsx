@@ -13,7 +13,7 @@ vi.mock('reactflow', async () => {
         data-is-visible={isVisible}
         onClick={(e) => {
           if (onResize) {
-            onResize(e, { width: 50, height: 60 });
+            onResize(e as any, { width: 50, height: 60 });
           }
         }}
         {...props}

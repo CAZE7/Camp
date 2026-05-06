@@ -7,11 +7,11 @@ vi.mock('reactflow', async () => {
   const actual = await vi.importActual('reactflow');
   return {
     ...actual,
-    NodeResizer: ({ isVisible, minWidth, minHeight, onResize }: any) => (
+    NodeResizer: ({ isVisible, onResize }: any) => (
       <div
         data-testid="node-resizer"
         data-isvisible={isVisible?.toString()}
-        onClick={(event) => onResize?.(event, { width: 120, height: 80 })}
+        onClick={(event) => onResize?.(event as any, { width: 120, height: 80 })}
       />
     ),
   };
