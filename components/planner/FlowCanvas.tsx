@@ -152,6 +152,14 @@ export function FlowCanvas() {
 
   const metrics = useDashboardMetrics(nodes, edges, season, calculatedSolarWatts);
 
+  const bomCountsEntries = useMemo(() => {
+    return bomData?.counts ? Object.entries(bomData.counts) : [];
+  }, [bomData?.counts]);
+
+  const bomCableEntries = useMemo(() => {
+    return bomData?.cableLengths ? Object.entries(bomData.cableLengths) : [];
+  }, [bomData?.cableLengths]);
+
   return (
     <>
       {waterWarning && (
@@ -222,7 +230,7 @@ export function FlowCanvas() {
             <div className="mb-4">
               <h3 className="font-semibold mb-2 text-muted-foreground">Komponenten:</h3>
               <ul className="list-disc pl-5 text-sm space-y-1">
-                {Object.entries(bomData.counts).map(([type, count]) => (
+                {bomCountsEntries.map(([type, count]) => (
                   <li key={type} className="capitalize">{count}x {type}</li>
                 ))}
               </ul>
@@ -231,7 +239,7 @@ export function FlowCanvas() {
             <div className="mb-6">
               <h3 className="font-semibold mb-2 text-muted-foreground">Kabelbedarf:</h3>
               <ul className="list-disc pl-5 text-sm space-y-1">
-                {Object.entries(bomData.cableLengths).map(([cs, length]) => (
+                {bomCableEntries.map(([cs, length]) => (
                   <li key={cs}>{length.toFixed(1)} Meter {cs} mm² Kabel</li>
                 ))}
               </ul>
