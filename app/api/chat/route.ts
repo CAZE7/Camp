@@ -162,11 +162,28 @@ export async function POST(req: Request) {
     if (bomMatch && bomMatch[1]) {
       try {
         const bom = JSON.parse(bomMatch[1]);
-        const cables = bom.cables || [];
+
+        // Security: Validate parsed JSON structure and types
+        if (!bom || typeof bom !== 'object' || !Array.isArray(bom.cables)) {
+          throw new Error('Invalid BOM structure: cables must be an array');
+        }
+
+        // DoS Protection: Limit the number of items processed
+        const MAX_BOM_CABLES = 50;
+        const rawCables = bom.cables.slice(0, MAX_BOM_CABLES);
+
+        // Input Validation: Filter for valid cable objects with numeric cross-sections
+        const validCables = rawCables.filter((c: any) =>
+          c && typeof c === 'object' &&
+          typeof c.crossSection === 'number' &&
+          !isNaN(c.crossSection) &&
+          c.crossSection > 0 &&
+          c.crossSection < 1000 && // Reasonable upper limit for cross-section (mm²)
+          (c.length === undefined || (typeof c.length === 'number' && !isNaN(c.length) && c.length >= 0))
+        );
+
         const uniqueCrossSections = Array.from(new Set(
-          cables
-            .map((c: any) => c.crossSection)
-            .filter((cs: any) => cs !== null && cs !== undefined)
+          validCables.map((c: any) => c.crossSection)
         ));
 
         const recommendedProducts = [];
@@ -198,10 +215,10 @@ export async function POST(req: Request) {
             productsByCrossSection[cs].push(row);
           }
 
-          // Map back to the original cables list to preserve order and include lengths
-          for (const cable of cables) {
-            const csKey = cable.crossSection?.toString();
-            if (csKey && productsByCrossSection[csKey]) {
+          // Map back to the validated cables list to preserve order and include lengths
+          for (const cable of validCables) {
+            const csKey = cable.crossSection.toString();
+            if (productsByCrossSection[csKey]) {
               recommendedProducts.push({
                 needed_crossSection: cable.crossSection,
                 length: cable.length,
