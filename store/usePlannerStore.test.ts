@@ -1,7 +1,13 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { usePlannerStore } from './usePlannerStore';
 import { initialNodes, initialEdges } from '../components/planner/constants';
+import * as layoutUtils from '../components/planner/utils/layout';
+
+// Mock the layout utility so it doesn't try to use dagre in tests
+vi.mock('../components/planner/utils/layout', () => ({
+  getLayoutedElements: vi.fn((nodes, edges) => ({ nodes, edges })),
+}));
 
 describe('usePlannerStore', () => {
   beforeEach(() => {
