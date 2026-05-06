@@ -22,6 +22,21 @@ const CABLE_OUTER_DIAMETERS: Record<number, number> = {
   50.0: 13.5,
 };
 
+// Precompute areas to avoid redundant Math.PI * Math.pow calls in loops
+const CABLE_AREAS = Object.fromEntries(
+  Object.entries(CABLE_OUTER_DIAMETERS).map(([cs, diam]) => [
+    cs,
+    Math.PI * Math.pow(diam / 2, 2),
+  ])
+);
+
+const CONDUIT_AREAS = Object.fromEntries(
+  Object.entries(CONDUIT_SIZES).map(([type, diam]) => [
+    type,
+    Math.PI * Math.pow(diam / 2, 2),
+  ])
+);
+
 export interface ConduitNodeData {
   label?: string;
   conduitType?: keyof typeof CONDUIT_SIZES;
@@ -35,29 +50,27 @@ const ConduitNode = function ({ id, data, selected }: { id: string, data: Condui
   const assignedEdgeIds = data.assignedEdges || [];
 
   const fillStats = useMemo(() => {
-    const innerDiameter = CONDUIT_SIZES[conduitType as keyof typeof CONDUIT_SIZES];
-    const innerArea = Math.PI * Math.pow(innerDiameter / 2, 2);
+    const innerArea = CONDUIT_AREAS[conduitType] || CONDUIT_AREAS['EN 20'];
 
     let totalCableArea = 0;
     const assignedEdgeIdsSet = new Set(assignedEdgeIds);
     const assignedCables = edges.filter(e => assignedEdgeIdsSet.has(e.id));
 
-    assignedCables.forEach(edge => {
+    for (let i = 0; i < assignedCables.length; i++) {
+      const edge = assignedCables[i];
       const edgeData = edge.data as CableEdgeData;
       const crossSection = edgeData?.crossSection || 2.5; // default fallback
 
-      // Get closest outer diameter if exact not found
-      const outerDiam = CABLE_OUTER_DIAMETERS[crossSection] || CABLE_OUTER_DIAMETERS[2.5];
-      const cableArea = Math.PI * Math.pow(outerDiam / 2, 2);
+      // Use precomputed area
+      const cableArea = CABLE_AREAS[crossSection] || CABLE_AREAS[2.5];
       totalCableArea += cableArea;
-    });
+    }
 
     const fillPercentage = (totalCableArea / innerArea) * 100;
 
     let recommendedConduit = null;
     if (fillPercentage > 60) {
-      for (const [type, diameter] of Object.entries(CONDUIT_SIZES)) {
-        const testArea = Math.PI * Math.pow(diameter / 2, 2);
+      for (const [type, testArea] of Object.entries(CONDUIT_AREAS)) {
         if ((totalCableArea / testArea) * 100 <= 60) {
           recommendedConduit = type;
           break;
