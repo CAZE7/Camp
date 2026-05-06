@@ -54,6 +54,25 @@ interface PlannerState {
   onCustomDrop: (event: Event, screenToFlowPosition: (client: {x: number, y: number}) => {x: number, y: number}) => void;
 }
 
+let cachedNodesRef: Node[] | null = null;
+let cachedWaterNodesRef: Node[] | null = null;
+let cachedNodeMap = new Map<string, Node>();
+
+function getNodeMap(currentNodes: Node[], currentWaterNodes: Node[]): Map<string, Node> {
+  if (currentNodes !== cachedNodesRef || currentWaterNodes !== cachedWaterNodesRef) {
+    cachedNodeMap.clear();
+    for (let i = 0, len = currentNodes.length; i < len; i++) {
+      cachedNodeMap.set(currentNodes[i].id, currentNodes[i]);
+    }
+    for (let i = 0, len = currentWaterNodes.length; i < len; i++) {
+      cachedNodeMap.set(currentWaterNodes[i].id, currentWaterNodes[i]);
+    }
+    cachedNodesRef = currentNodes;
+    cachedWaterNodesRef = currentWaterNodes;
+  }
+  return cachedNodeMap;
+}
+
 export const usePlannerStore = create<PlannerState>((set, get) => ({
   viewMode: 'electric',
   setViewMode: (mode) => set({ viewMode: mode }),
@@ -260,7 +279,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
       extraData: any = {}
     ) => {
       let node = currentNodes.find(
-        (n) => n.type === type || (n.data && n.data.label === label)
+        (n) => n.type === type && n.data?.label === label
       );
       if (!node) {
         node = {
