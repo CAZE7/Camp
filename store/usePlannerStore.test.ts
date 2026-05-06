@@ -216,9 +216,9 @@ describe('usePlannerStore', () => {
         result.current.setEdges([mockEdge]);
       });
 
-      let dispatchedEvent: CustomEvent | null = null;
+      let dispatchedEvent: Event | null = null;
       const listener = (e: Event) => {
-        dispatchedEvent = e as CustomEvent;
+        dispatchedEvent = e;
       };
 
       window.addEventListener('check-schematic', listener);
@@ -230,7 +230,7 @@ describe('usePlannerStore', () => {
       window.removeEventListener('check-schematic', listener);
 
       expect(dispatchedEvent).not.toBeNull();
-      expect(dispatchedEvent?.detail).toEqual({
+      expect((dispatchedEvent as unknown as CustomEvent)?.detail).toEqual({
         nodes: [mockNode],
         edges: [mockEdge]
       });
@@ -258,9 +258,9 @@ describe('usePlannerStore', () => {
         result.current.setEdges(mockEdges);
       });
 
-      let dispatchedEvent: CustomEvent | null = null;
+      let dispatchedEvent: Event | null = null;
       const listener = (e: Event) => {
-        dispatchedEvent = e as CustomEvent;
+        dispatchedEvent = e;
       };
 
       window.addEventListener('export-bom', listener);
@@ -272,7 +272,7 @@ describe('usePlannerStore', () => {
       window.removeEventListener('export-bom', listener);
 
       expect(dispatchedEvent).not.toBeNull();
-      expect(dispatchedEvent?.detail).toEqual({
+      expect((dispatchedEvent as unknown as CustomEvent)?.detail).toEqual({
         counts: {
           battery: 2,
           solar: 1

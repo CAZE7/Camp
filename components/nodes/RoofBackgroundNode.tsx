@@ -7,8 +7,8 @@ const RoofBackgroundNode = function({ data }: { data: RoofNodeData }) {
   const { width, height, safeMargins } = data;
   
   // Scale: 1cm = 2px. Width/Height are in cm.
-  const pxWidth = width * 2;
-  const pxHeight = height * 2;
+  const pxWidth = (width || 0) * 2;
+  const pxHeight = (height || 0) * 2;
   
   const marginFront = (safeMargins?.front || 15) * 2;
   const marginRear = (safeMargins?.rear || 5) * 2;
