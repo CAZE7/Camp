@@ -1,8 +1,6 @@
 import { Node, Edge } from 'reactflow';
 
 export function checkHasSeriesConnection(nodes: Node[], edges: Edge[]): boolean {
-  let solarNodeIds: Set<string> | null = null;
-
   for (let i = 0; i < edges.length; i++) {
     const e = edges[i];
 
@@ -11,17 +9,12 @@ export function checkHasSeriesConnection(nodes: Node[], edges: Edge[]): boolean 
       (e.sourceHandle?.includes('minus') && e.targetHandle?.includes('plus'));
 
     if (hasCorrectHandles) {
-      if (solarNodeIds === null) {
-        solarNodeIds = new Set<string>();
-        for (let j = 0; j < nodes.length; j++) {
-          if (nodes[j].type === 'solar') {
-            solarNodeIds.add(nodes[j].id);
-          }
+      const s = nodes.find((n) => n.id === e.source);
+      if (s?.type === 'solar') {
+        const t = nodes.find((n) => n.id === e.target);
+        if (t?.type === 'solar') {
+          return true;
         }
-      }
-
-      if (solarNodeIds.has(e.source) && solarNodeIds.has(e.target)) {
-        return true;
       }
     }
   }
