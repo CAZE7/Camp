@@ -38,7 +38,8 @@ describe('Sidebar Component', () => {
 
     fireEvent.change(searchInput, { target: { value: 'XYZ123' } });
 
-    expect(screen.getByText('Keine Komponenten gefunden')).toBeInTheDocument();
+    expect(screen.getByText('Keine Komponenten gefunden für "XYZ123"')).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Suche zurücksetzen' }).length).toBe(2);
   });
 
   it('handles pointer drag and drop over react-flow pane', () => {
