@@ -1,8 +1,9 @@
 "use client";
 import React from 'react';
 import { cn } from '@/lib/utils';
+import { RoofNodeData } from './types';
 
-const RoofBackgroundNode = function({ data }: { data: any }) {
+const RoofBackgroundNode = function({ data }: { data: RoofNodeData }) {
   const { width, height, safeMargins } = data;
   
   // Scale: 1cm = 2px. Width/Height are in cm.
