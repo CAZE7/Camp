@@ -126,6 +126,57 @@ describe('POST /api/chat', () => {
     consoleSpy.mockRestore();
   });
 
+  it('robustly handles missing closing BOM tags', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const req = new Request('http://localhost/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: [
+          {
+            id: 'missing-end-tag',
+            role: 'user',
+            content: 'Here is my request \n```json\n{ "cables": [] }',
+          }
+        ]
+      })
+    });
+
+    const response = await POST(req);
+
+    expect(response).toBeInstanceOf(Response);
+    // Should NOT log failure because it shouldn't even try to parse if end tag is missing
+    expect(consoleSpy).not.toHaveBeenCalled();
+
+    consoleSpy.mockRestore();
+  });
+
+  it('handles large input without ReDoS', async () => {
+    const largeContent = '```json\n' + '{"cables": []}' + 'A'.repeat(5000) + '\n```';
+
+    const req = new Request('http://localhost/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: [
+          {
+            id: 'large-input',
+            role: 'user',
+            content: largeContent,
+          }
+        ]
+      })
+    });
+
+    const start = Date.now();
+    const response = await POST(req);
+    const end = Date.now();
+
+    expect(response).toBeInstanceOf(Response);
+    expect(end - start).toBeLessThan(1000); // Should be very fast
+  });
+
   it('handles DB connection or query errors gracefully without crashing', async () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
