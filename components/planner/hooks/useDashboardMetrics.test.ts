@@ -177,6 +177,7 @@ describe('useDashboardMetrics', () => {
     // Change data
     const nodes3: Node[] = [
       { id: 'b1', type: 'battery', data: { capacity: 200 }, position: { x: 10, y: 10 } },
+      { id: 'c1', type: 'consumer', data: { watts: 10, hours: 2 }, position: { x: 10, y: 10 } },
     ];
     rerender({ nodes: nodes3 });
     expect(result.current).not.toBe(firstResult);
