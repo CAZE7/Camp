@@ -25,3 +25,22 @@ export interface RoofNodeData extends CommonNodeData {
     right?: number;
   };
 }
+
+export interface BatteryNodeData extends CommonNodeData {
+  capacity?: number;
+  chemistry?: string;
+}
+
+export interface ConsumerNodeData extends CommonNodeData {
+  hours?: number;
+}
+
+export interface SolarNodeData extends CommonNodeData {
+  voltage?: number;
+  amps?: number;
+}
+
+export interface ChargerNodeData extends CommonNodeData {
+  amps?: number;
+  efficiency?: number;
+}
