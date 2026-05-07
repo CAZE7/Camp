@@ -18,6 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import Link from 'next/link';
 import RoofWindowNode from '@/components/nodes/RoofWindowNode';
 import RoofSolarNode from '@/components/nodes/RoofSolarNode';
@@ -109,6 +110,28 @@ function DachPlanerFlow() {
     [setNodes, validateNodes]
   );
 
+
+  const selectedSolarNode = useMemo(() => {
+    return nodes.find(n => n.selected && n.type === 'roofSolar');
+  }, [nodes]);
+
+  const updateSelectedNodeWatts = useCallback((watts: number) => {
+    if (!selectedSolarNode) return;
+    setNodes((nds: Node<RoofNodeData>[]) =>
+      nds.map(node => {
+        if (node.id === selectedSolarNode.id) {
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              watts
+            }
+          };
+        }
+        return node;
+      })
+    );
+  }, [selectedSolarNode, setNodes]);
 
   const totalRoofSolarWatts = useMemo(() => {
     let total = 0;
@@ -252,7 +275,28 @@ function DachPlanerFlow() {
           <Background color="hsl(var(--border))" gap={20} size={1} />
           <Controls className="rounded-lg overflow-hidden border border-border shadow-sm" />
 
-          <Panel position="top-right" className="mt-4 mr-4 pointer-events-auto">
+          <Panel position="top-right" className="mt-4 mr-4 pointer-events-auto flex flex-col gap-4">
+            {selectedSolarNode && (
+              <Card className="min-w-[240px] shadow-xl border border-border bg-card">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-bold">Einstellungen</CardTitle>
+                  <CardDescription className="text-xs">Solarpanel anpassen</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    <Label htmlFor="watts-input" className="text-xs">Leistung (Wp)</Label>
+                    <Input
+                      id="watts-input"
+                      type="number"
+                      value={selectedSolarNode.data.watts || 0}
+                      onChange={(e) => updateSelectedNodeWatts(Number(e.target.value))}
+                      className="h-8"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             <Card className="min-w-[240px] shadow-2xl border-none bg-slate-900 text-white">
               <CardHeader className="pb-2">
                 <CardDescription className="text-blue-400 font-bold uppercase tracking-[0.2em] text-[10px]">System Check</CardDescription>

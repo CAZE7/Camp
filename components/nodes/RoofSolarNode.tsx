@@ -16,8 +16,8 @@ const RoofSolarNode = function({ id, data, selected }: { id: string, data: RoofN
   return (
     <>
       <NodeResizer
-        minWidth={40}
-        minHeight={40}
+        minWidth={30}
+        minHeight={30}
         isVisible={selected}
         lineClassName="border-orange-500"
         handleClassName="h-3 w-3 bg-white border-2 border-orange-500 rounded-full"
