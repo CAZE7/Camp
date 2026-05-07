@@ -16,7 +16,6 @@ import { NODE_TYPES, EDGE_TYPES } from './constants';
 import { usePlannerStore } from '../../store/usePlannerStore';
 import { useAppStore } from '../../lib/store';
 import { useDashboardMetrics } from './hooks/useDashboardMetrics';
-import { BOMModal } from './ui/BOMModal';
 import { Button } from '@/components/ui/button';
 
 export function FlowCanvas() {
@@ -254,9 +253,6 @@ export function FlowCanvas() {
           </div>
         </div>
       )}
-
-      {/* Keeping existing BOMModal to not break any external dependencies, but the above renders first */}
-      {showBOM && bomData && <BOMModal bom={bomData} onClose={() => setShowBOM(false)} />}
     </>
   );
 }
