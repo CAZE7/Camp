@@ -5,6 +5,7 @@ import React from 'react';
 import { Node, Edge, Connection } from 'reactflow';
 import { initialNodes, initialEdges } from '../components/planner/constants';
 import { CableEdgeData } from '../components/edges/CableEdge';
+import { PlannerNodeData } from '../components/nodes/types';
 
 interface PlannerState {
   viewMode: 'electric' | 'water';
@@ -40,7 +41,7 @@ interface PlannerState {
   onWaterEdgesChange: (changes: import('reactflow').EdgeChange[]) => void;
   onSelectionChange: (params: import('reactflow').OnSelectionChangeParams) => void;
   deleteSelected: () => void;
-  updateNodeData: (id: string, data: any) => void;
+  updateNodeData: (id: string, data: Partial<PlannerNodeData>) => void;
   handleChangeLength: (id: string, length: number) => void;
   handleChangeCrossSection: (id: string, crossSection: number) => void;
 

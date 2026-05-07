@@ -44,3 +44,11 @@ export interface ChargerNodeData extends CommonNodeData {
   amps?: number;
   efficiency?: number;
 }
+
+export type PlannerNodeData =
+  | RoofNodeData
+  | BatteryNodeData
+  | ConsumerNodeData
+  | SolarNodeData
+  | ChargerNodeData
+  | CommonNodeData;
