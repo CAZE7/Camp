@@ -7,6 +7,7 @@ import ReactFlow, {
   useReactFlow,
   Edge,
   Node,
+  Connection,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 
@@ -113,15 +114,15 @@ export function FlowCanvas() {
                }
 
                // Attempt connection
-               const connection = {
+               const connection: Connection = {
                  source: prev.handleType === 'source' ? prev.nodeId : nodeId,
                  target: prev.handleType === 'target' ? prev.nodeId : nodeId,
                  sourceHandle: prev.handleType === 'source' ? prev.handleId : handleId,
                  targetHandle: prev.handleType === 'target' ? prev.handleId : handleId,
                };
 
-               if (isValidConnection(connection as any)) {
-                 onConnect(connection as any);
+               if (isValidConnection(connection)) {
+                 onConnect(connection);
                }
 
                return null; // Reset after attempt
