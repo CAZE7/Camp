@@ -22,7 +22,7 @@ const WaterPipeEdge = function ({
   markerEnd,
   selected,
 }: EdgeProps<WaterPipeEdgeData>) {
-  const { getNodes } = useReactFlow();
+  const { getNode } = useReactFlow();
 
   const [edgePath] = useMemo(() => {
     return getBezierPath({
@@ -36,8 +36,7 @@ const WaterPipeEdge = function ({
   }, [sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition]);
 
   const strokeColor = useMemo(() => {
-    const nodes = getNodes();
-    const sourceNode = nodes.find(n => n.id === source);
+    const sourceNode = getNode(source);
 
     let isGrayWater = false;
     if (sourceNode?.type === 'sink' || sourceNode?.type === 'shower' || sourceNode?.type === 'grayWaterTank') {
@@ -48,7 +47,7 @@ const WaterPipeEdge = function ({
     if (data?.pipeType === 'fresh') isGrayWater = false;
 
     return selected ? '#f97316' : (isGrayWater ? '#9ca3af' : '#3b82f6');
-  }, [getNodes, source, data?.pipeType, selected]);
+  }, [getNode, source, data?.pipeType, selected]);
 
   const strokeWidth = 6;
 
