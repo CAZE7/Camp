@@ -1,4 +1,5 @@
 import { useMemo, useRef } from 'react';
+import { BatteryNodeData, ConsumerNodeData, SolarNodeData, ChargerNodeData } from '@/components/nodes/types';
 import { Node, Edge } from 'reactflow';
 
 export function useDashboardMetrics(
@@ -91,21 +92,21 @@ export function useDashboardMetrics(
     );
 
     // --- Calculations for Dashboard ---
-    const capacityAh = (batteryNode?.data as any)?.capacity || 0;
-    const chemistry = (batteryNode?.data as any)?.chemistry || 'LiFePO4';
+    const capacityAh = (batteryNode?.data as BatteryNodeData)?.capacity || 0;
+    const chemistry = (batteryNode?.data as BatteryNodeData)?.chemistry || 'LiFePO4';
     const dod = chemistry === 'AGM' ? 0.5 : 0.9;
     const usableCapacityAh = capacityAh * dod;
 
     let dailyConsumptionAh = consumers.reduce((acc, n) => {
-      const w = (n.data as any)?.watts || 0;
-      const h = (n.data as any)?.hours || 0;
+      const w = (n.data as ConsumerNodeData)?.watts || 0;
+      const h = (n.data as ConsumerNodeData)?.hours || 0;
       return acc + (w / 12) * h;
     }, 0);
 
     if (hasInverter) {
       const inverterConsumptionAh = consumers230v.reduce((acc, n) => {
-        const w = (n.data as any)?.watts || 0;
-        const h = (n.data as any)?.hours || 0;
+        const w = (n.data as ConsumerNodeData)?.watts || 0;
+        const h = (n.data as ConsumerNodeData)?.hours || 0;
         // Inverter takes 12V from battery, loses 15% efficiency (0.85)
         // Ah = (W / 12V) * h / 0.85
         return acc + ((w / 12) * h) / 0.85;
@@ -122,7 +123,9 @@ export function useDashboardMetrics(
 
     // Autarky duration: Capacity * DoD / (Daily Consumption / 24)
     let autarkyHours = 0;
-    if (dailyConsumptionAh > 0) {
+    if (usableCapacityAh === 0) {
+      autarkyHours = 0;
+    } else if (dailyConsumptionAh > 0) {
       autarkyHours = usableCapacityAh / (dailyConsumptionAh / 24);
     } else {
       autarkyHours = Infinity;
@@ -159,17 +162,17 @@ export function useDashboardMetrics(
       if (hasSeriesConnection) {
         // Series: Voltage adds up, Amps stays the same (take min or average, here we assume identical panels so we take the first)
         totalSolarVoltage = solarNodes.reduce(
-          (acc, n) => acc + ((n.data as any)?.voltage || 0),
+          (acc, n) => acc + ((n.data as SolarNodeData)?.voltage || 0),
           0
         );
-        totalSolarAmps = (solarNodes[0]?.data as any)?.amps || 0;
+        totalSolarAmps = (solarNodes[0]?.data as SolarNodeData)?.amps || 0;
       } else {
         // Parallel: Amps add up, Voltage stays the same
         totalSolarAmps = solarNodes.reduce(
-          (acc, n) => acc + ((n.data as any)?.amps || 0),
+          (acc, n) => acc + ((n.data as SolarNodeData)?.amps || 0),
           0
         );
-        totalSolarVoltage = (solarNodes[0]?.data as any)?.voltage || 0;
+        totalSolarVoltage = (solarNodes[0]?.data as SolarNodeData)?.voltage || 0;
       }
 
       // Seasonal yield reduction for solar
@@ -180,7 +183,7 @@ export function useDashboardMetrics(
 
     // Charging time: Capacity * DoD / ChargerAmps * 1.15
     const totalChargerAmps =
-      chargers.reduce((acc, n) => acc + (((n.data as any)?.amps || 0) * (((n.data as any)?.efficiency ?? 100) / 100)), 0) +
+      chargers.reduce((acc, n) => acc + (((n.data as ChargerNodeData)?.amps || 0) * (((n.data as ChargerNodeData)?.efficiency ?? 100) / 100)), 0) +
       totalSolarAmps +
       calculatedSolarWatts / 12;
     let chargingTimeStr = 'N/A';
