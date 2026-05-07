@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
 import Link from 'next/link';
 import { cn } from "@/lib/utils";
 
@@ -17,13 +18,18 @@ export default function HeatingCalculatorPage() {
   const [tempInside, setTempInside] = useState<number>(20); // in °C
   const [tempOutside, setTempOutside] = useState<number>(-10); // in °C
 
+  // Realism Parameters
+  const [windowArea, setWindowArea] = useState<number>(1); // in m²
+  const [insulationCoverage, setInsulationCoverage] = useState<number>(85); // in %
+  const [quickHeat, setQuickHeat] = useState<boolean>(false);
+
   const selectedVehicle = useMemo(() =>
     vehicleTemplates.find(v => v.id === selectedVehicleId) || vehicleTemplates[0],
     [selectedVehicleId]
   );
 
   // Consolidated Thermodynamic Calculation
-  const { area, U, deltaT, Q } = useMemo(() => {
+  const { area, U_mix, deltaT, Q_total } = useMemo(() => {
     // 1. Surface Area Calculation
     const { length, width, height } = selectedVehicle;
     const l = Number(length) || 0;
@@ -31,7 +37,19 @@ export default function HeatingCalculatorPage() {
     const h = Number(height) || 0;
     const calcArea = (l > 0 && w > 0 && h > 0) ? 2 * (l * h + w * h + l * w) : 0;
 
-    // 2. U-Value Calculation (k = 0.036 W/(m*K))
+    // 2. Zone Area Calculation
+    const A_fenster = Number(windowArea) || 0;
+    const coverage = Number(insulationCoverage) || 0;
+
+    // Ensure areas are not negative
+    const A_remaining = Math.max(0, calcArea - A_fenster);
+    const A_isoliert = A_remaining * (coverage / 100);
+    const A_blank = A_remaining * (1 - (coverage / 100));
+
+    // 3. U-Value Calculation
+    const U_fenster = 3.0;
+    const U_blank = 5.88;
+
     const thickness = Number(insulationThickness);
     const R_base = 0.17; // Base resistance for uninsulated metal + air layers
     let R_insulation = 0;
@@ -43,21 +61,29 @@ export default function HeatingCalculatorPage() {
     }
 
     const R_total = R_base + R_insulation;
-    const calcU = 1 / R_total;
+    const U_isoliert = 1 / R_total;
 
-    // 3. Delta T calculation
+    // Mixed U-Value
+    const calcU_mix = calcArea > 0 ? ((U_fenster * A_fenster) + (U_isoliert * A_isoliert) + (U_blank * A_blank)) / calcArea : 0;
+
+    // 4. Delta T calculation
     const calcDeltaT = tempInside - tempOutside;
 
-    // 4. Required Power Q = U * A * Delta T
-    const calcQ = Math.max(0, calcU * calcArea * calcDeltaT);
+    // 5. Required Power Q_trans
+    const Q_trans = (U_fenster * A_fenster + U_isoliert * A_isoliert + U_blank * A_blank) * calcDeltaT;
+    const calcQ_trans = Math.max(0, Q_trans);
+
+    // 6. Heat-up Buffer
+    const buffer = quickHeat ? 1.30 : 1.0;
+    const calcQ_total = isNaN(calcQ_trans) ? 0 : calcQ_trans * buffer;
 
     return {
       area: calcArea,
-      U: calcU,
+      U_mix: isNaN(calcU_mix) ? 0 : calcU_mix,
       deltaT: calcDeltaT,
-      Q: isNaN(calcQ) ? 0 : calcQ
+      Q_total: calcQ_total
     };
-  }, [selectedVehicle, insulationThickness, tempInside, tempOutside]);
+  }, [selectedVehicle, insulationThickness, tempInside, tempOutside, windowArea, insulationCoverage, quickHeat]);
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-6 md:p-12 font-sans relative">
@@ -214,6 +240,89 @@ export default function HeatingCalculatorPage() {
           </CardContent>
         </Card>
 
+        {/* Input Section: Erweiterte Parameter (Realism) */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-xs font-black text-muted-foreground uppercase tracking-widest flex items-center gap-3">
+              ⚙️ Erweiterte Parameter
+            </CardTitle>
+            <CardDescription>Für noch realistischere Ergebnisse</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-8">
+            {/* Fensterfläche */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="window-area" className="text-sm font-medium text-muted-foreground">Fensterfläche</Label>
+                <div className="relative">
+                  <Input
+                    id="window-area"
+                    type="number"
+                    value={windowArea}
+                    onChange={(e) => setWindowArea(Number(e.target.value) || 0)}
+                    className="w-24 h-10 rounded-lg text-lg font-bold text-center pr-8"
+                  />
+                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-sm font-bold text-muted-foreground pointer-events-none">m²</span>
+                </div>
+              </div>
+              <Slider
+                min={0}
+                max={5}
+                step={0.1}
+                value={[windowArea]}
+                onValueChange={(val) => {
+                  if (val !== undefined) {
+                    setWindowArea(Array.isArray(val) ? val[0] : val);
+                  }
+                }}
+              />
+            </div>
+
+            {/* Abdeckungsgrad */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label htmlFor="insulation-coverage" className="text-sm font-medium text-muted-foreground">Abdeckungsgrad der Dämmung</Label>
+                  <p className="text-xs text-muted-foreground/70 mt-1">Niemand schafft 100%. Die Metallholme (Kältebrücken) machen ca. 10-15% der Fläche aus.</p>
+                </div>
+                <div className="relative">
+                  <Input
+                    id="insulation-coverage"
+                    type="number"
+                    value={insulationCoverage}
+                    onChange={(e) => setInsulationCoverage(Number(e.target.value) || 0)}
+                    className="w-24 h-10 rounded-lg text-lg font-bold text-center pr-8"
+                  />
+                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-sm font-bold text-muted-foreground pointer-events-none">%</span>
+                </div>
+              </div>
+              <Slider
+                min={50}
+                max={100}
+                step={1}
+                value={[insulationCoverage]}
+                onValueChange={(val) => {
+                  if (val !== undefined) {
+                    setInsulationCoverage(Array.isArray(val) ? val[0] : val);
+                  }
+                }}
+              />
+            </div>
+
+            {/* Aufheizzuschlag */}
+            <div className="flex items-center justify-between space-x-4 pt-2 border-t">
+              <div className="flex-1">
+                <Label htmlFor="quick-heat" className="text-sm font-bold text-foreground">Aufheizzuschlag (Schnelles Warmwerden)</Label>
+                <p className="text-xs text-muted-foreground mt-1">Gibt extra Power, damit der Van nicht Stunden braucht, um von {tempOutside}°C auf {tempInside}°C aufzuheizen.</p>
+              </div>
+              <Switch
+                id="quick-heat"
+                checked={quickHeat}
+                onCheckedChange={setQuickHeat}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Results Section */}
         <Card>
           <CardHeader>
@@ -235,7 +344,7 @@ export default function HeatingCalculatorPage() {
                 <CardContent className="flex flex-col items-center justify-center py-4">
                   <span className="text-lg mb-1">🌡️</span>
                   <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mb-1">U-Wert</p>
-                  <p className="text-xl font-black tracking-tight">{U.toFixed(2)} <span className="text-[9px] font-semibold text-muted-foreground uppercase">W/m²K</span></p>
+                  <p className="text-xl font-black tracking-tight">{U_mix.toFixed(2)} <span className="text-[9px] font-semibold text-muted-foreground uppercase">W/m²K</span></p>
                 </CardContent>
               </Card>
             </div>
@@ -245,7 +354,7 @@ export default function HeatingCalculatorPage() {
               <CardContent className="flex flex-col items-center justify-center py-8">
                 <p className="text-xs text-primary uppercase font-black tracking-[0.3em] mb-3">Benötigte Energie (Q)</p>
                 <div className="flex items-baseline gap-2">
-                  <p className="text-6xl font-black tracking-tighter tabular-nums">{Q.toFixed(0)}</p>
+                  <p className="text-6xl font-black tracking-tighter tabular-nums">{Q_total.toFixed(0)}</p>
                   <div className="flex flex-col items-start">
                     <p className="text-xl font-black text-primary leading-none">WATT</p>
                     <p className="text-[10px] font-semibold text-muted-foreground tracking-widest">STÜNDLICH</p>
@@ -255,23 +364,33 @@ export default function HeatingCalculatorPage() {
             </Card>
 
             {/* Recommendation */}
-            {Q <= 2000 ? (
+            {Q_total <= 2200 ? (
               <Card className="border-emerald-200 bg-emerald-50/50">
                 <CardContent className="flex items-center gap-4 py-4">
                   <div className="bg-emerald-500 text-white w-10 h-10 rounded-lg flex items-center justify-center text-lg font-bold shrink-0">✓</div>
                   <div>
-                    <p className="font-bold text-emerald-900">Optimaler Bereich (≤ 2000 W)</p>
+                    <p className="font-bold text-emerald-900">Optimaler Bereich (≤ 2200 W)</p>
                     <p className="text-sm text-emerald-800/70">Eine Standard <strong>2kW Standheizung</strong> ist für dein Setup perfekt geeignet.</p>
                   </div>
                 </CardContent>
               </Card>
-            ) : (
+            ) : Q_total > 2200 && Q_total <= 4500 ? (
               <Card className="border-orange-200 bg-orange-50/50">
                 <CardContent className="flex items-center gap-4 py-4">
                   <div className="bg-orange-500 text-white w-10 h-10 rounded-lg flex items-center justify-center text-lg font-bold shrink-0">!</div>
                   <div>
-                    <p className="font-bold text-orange-900">Hoher Bedarf (&gt; 2000 W)</p>
-                    <p className="text-sm text-orange-800/70">Du benötigst mindestens eine <strong>4kW Standheizung</strong> für echten Winterkomfort.</p>
+                    <p className="font-bold text-orange-900">Hoher Bedarf (2200 W - 4500 W)</p>
+                    <p className="text-sm text-orange-800/70">Du benötigst zwingend eine <strong>4kW Standheizung</strong>. Eine 2kW Heizung würde den Wagen im Winter niemals warm bekommen oder ewig auf 100% Volllast laufen.</p>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card className="border-red-200 bg-red-50/50">
+                <CardContent className="flex items-center gap-4 py-4">
+                  <div className="bg-red-500 text-white w-10 h-10 rounded-lg flex items-center justify-center text-lg font-bold shrink-0">⚠️</div>
+                  <div>
+                    <p className="font-bold text-red-900">Sehr hoher Bedarf (&gt; 4500 W)</p>
+                    <p className="text-sm text-red-800/70">Dein Bedarf ist extrem hoch. Überprüfe deine Isolierung oder ziehe ein System mit mehr als 4kW Leistung (oder mehrere Heizungen) in Betracht.</p>
                   </div>
                 </CardContent>
               </Card>
