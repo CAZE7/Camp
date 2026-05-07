@@ -199,3 +199,74 @@ describe('PlannerDashboard', () => {
     createElementSpy.mockRestore();
   });
 });
+
+  it('does not export image if react flow wrapper is not found', () => {
+    // Ensure no wrapper exists
+    const existingElements = document.querySelectorAll('.react-flow');
+    existingElements.forEach(el => document.body.removeChild(el));
+
+    vi.mocked(toPng).mockClear();
+
+    render(<PlannerDashboard />);
+
+    fireEvent.click(screen.getByTestId('menu-item-Als Bild speichern'));
+
+    expect(toPng).not.toHaveBeenCalled();
+  });
+
+  it('filters out specific elements during image export', async () => {
+    const mockReactFlowElem = document.createElement('div');
+    mockReactFlowElem.className = 'react-flow';
+    document.body.appendChild(mockReactFlowElem);
+
+    render(<PlannerDashboard />);
+
+    fireEvent.click(screen.getByTestId('menu-item-Als Bild speichern'));
+
+    await waitFor(() => {
+      expect(toPng).toHaveBeenCalled();
+    });
+
+    const filterFunc = (toPng as unknown as any).mock.calls[0][1].filter;
+
+    // Test positive case
+    const validNode = document.createElement('div');
+    expect(filterFunc(validNode)).toBe(true);
+
+    // Test negative cases
+    const panelNode = document.createElement('div');
+    panelNode.classList.add('react-flow__panel');
+    expect(filterFunc(panelNode)).toBe(false);
+
+    const controlsNode = document.createElement('div');
+    controlsNode.classList.add('react-flow__controls');
+    expect(filterFunc(controlsNode)).toBe(false);
+
+    const minimapNode = document.createElement('div');
+    minimapNode.classList.add('react-flow__minimap');
+    expect(filterFunc(minimapNode)).toBe(false);
+
+    document.body.removeChild(mockReactFlowElem);
+  });
+
+  it('logs an error if image export fails', async () => {
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    // Setup wrapper but force an error from toPng
+    const mockReactFlowElem = document.createElement('div');
+    mockReactFlowElem.className = 'react-flow';
+    document.body.appendChild(mockReactFlowElem);
+
+    (toPng as unknown as any).mockRejectedValueOnce(new Error('Export failed'));
+
+    render(<PlannerDashboard />);
+
+    fireEvent.click(screen.getByTestId('menu-item-Als Bild speichern'));
+
+    await waitFor(() => {
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to export image', expect.any(Error));
+    });
+
+    consoleErrorSpy.mockRestore();
+    document.body.removeChild(mockReactFlowElem);
+  });
