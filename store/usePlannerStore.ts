@@ -279,6 +279,20 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
     let newEdges: Edge[] = [];
     let edgeIdCounter = 1;
 
+    // Build dictionary for fast lookups
+    const nodesByType: Record<string, Node[]> = {};
+    const len = currentNodes.length;
+    for (let i = 0; i < len; i++) {
+      const node = currentNodes[i];
+      const type = node.type || 'default';
+      let arr = nodesByType[type];
+      if (!arr) {
+        arr = [];
+        nodesByType[type] = arr;
+      }
+      arr.push(node);
+    }
+
     // Helper to generate missing nodes
     const ensureNode = (
       type: string,
@@ -287,9 +301,12 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
       offsetY: number,
       extraData: any = {}
     ) => {
-      let node = currentNodes.find(
-        (n) => n.type === type && n.data?.label === label
-      );
+      let typeNodes = nodesByType[type];
+      if (!typeNodes) {
+        typeNodes = [];
+        nodesByType[type] = typeNodes;
+      }
+      let node = typeNodes.find((n) => n.data?.label === label);
       if (!node) {
         node = {
           id: crypto.randomUUID(),
@@ -301,29 +318,39 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
           data: { label, ...extraData },
         };
         currentNodes.push(node);
+        typeNodes.push(node);
       }
       return node;
     };
 
     // Helper to calculate wire cross section according to VDE
+    const VDE_SIZES = [1.5, 2.5, 4.0, 6.0, 10.0, 16.0, 25.0, 35.0, 50.0, 70.0];
+    const FUSE_MAP: Record<number, number> = {
+      1.5: 15,
+      2.5: 20,
+      4.0: 30,
+      6.0: 40,
+      10.0: 60,
+      16.0: 80,
+      25.0: 100,
+      35.0: 150,
+      50.0: 200,
+      70.0: 250,
+    };
+
     const calculateWire = (I: number, length: number = 2) => {
       const calculatedA = (I * (length * 2)) / (58 * 0.24);
       const minRequiredA = Math.max(1.5, calculatedA);
-      const VDE_SIZES = [1.5, 2.5, 4.0, 6.0, 10.0, 16.0, 25.0, 35.0, 50.0, 70.0];
-      const crossSection =
-        VDE_SIZES.find((size) => size >= minRequiredA) || 70.0;
 
-      let fuseSize = 15;
-      if (crossSection === 1.5) fuseSize = 15;
-      else if (crossSection === 2.5) fuseSize = 20;
-      else if (crossSection === 4.0) fuseSize = 30;
-      else if (crossSection === 6.0) fuseSize = 40;
-      else if (crossSection === 10.0) fuseSize = 60;
-      else if (crossSection === 16.0) fuseSize = 80;
-      else if (crossSection === 25.0) fuseSize = 100;
-      else if (crossSection === 35.0) fuseSize = 150;
-      else if (crossSection === 50.0) fuseSize = 200;
-      else if (crossSection >= 70.0) fuseSize = 250;
+      let crossSection = 70.0;
+      for (let i = 0; i < 10; i++) {
+        if (VDE_SIZES[i] >= minRequiredA) {
+          crossSection = VDE_SIZES[i];
+          break;
+        }
+      }
+
+      const fuseSize = FUSE_MAP[crossSection] || 250;
 
       return { crossSection, fuseSize, length };
     };
@@ -367,12 +394,14 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
     connect(batteryNode.id, shuntNode.id, maxDischargeA, 0.5);
     connect(shuntNode.id, busbarNode.id, maxDischargeA, 0.5);
 
-    const inverters = currentNodes.filter((n) => n.type === 'inverter');
-    inverters.forEach((inverter) => {
+    const inverters = nodesByType['inverter'] || [];
+    const invertersLen = inverters.length;
+    for (let i = 0; i < invertersLen; i++) {
+      const inverter = inverters[i];
       const inverterWatts = Number(inverter.data.watts) || 1000;
       const inverterAmps = inverterWatts / 12 / 0.85;
       connect(busbarNode.id, inverter.id, inverterAmps, 1);
-    });
+    }
 
     connect(
       busbarNode.id,
@@ -381,18 +410,21 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
       1
     );
 
-    const solars = currentNodes.filter(
-      (n) => n.type === 'solar' || n.type === 'roofsolar'
-    );
-    if (solars.length > 0) {
+    const solars = [
+      ...(nodesByType['solar'] || []),
+      ...(nodesByType['roofsolar'] || [])
+    ];
+    const solarsLen = solars.length;
+    if (solarsLen > 0) {
       const mpptNode = ensureNode('charger', 'MPPT Laderegler', 150, -200, {
         amps: 30,
       });
-      solars.forEach((solar) => {
+      for (let i = 0; i < solarsLen; i++) {
+        const solar = solars[i];
         const solarWatts = Number(solar.data.watts) || 100;
         const solarAmps = solarWatts / 12;
         connect(solar.id, mpptNode.id, solarAmps, 5);
-      });
+      }
       connect(
         mpptNode.id,
         busbarNode.id,
@@ -401,40 +433,47 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
       );
     }
 
-    const boosters = currentNodes.filter(
-      (n) =>
-        n.type === 'charger' &&
-        (n.data.label as string)?.toLowerCase().includes('ladequelle')
-    );
-    boosters.forEach((booster) => {
+    const chargers = nodesByType['charger'] || [];
+    const chargersLen = chargers.length;
+    const boosters: Node[] = [];
+    const plainChargers: Node[] = [];
+    for (let i = 0; i < chargersLen; i++) {
+      const c = chargers[i];
+      const lbl = (c.data?.label as string)?.toLowerCase() || '';
+      if (lbl.includes('ladequelle')) {
+        boosters.push(c);
+      } else if (!lbl.includes('mppt')) {
+        plainChargers.push(c);
+      }
+    }
+
+    const boostersLen = boosters.length;
+    for (let i = 0; i < boostersLen; i++) {
       connect(
-        booster.id,
+        boosters[i].id,
         busbarNode.id,
-        Number(booster.data.amps) || 30,
+        Number(boosters[i].data.amps) || 30,
         3
       );
-    });
+    }
 
-    const plainChargers = currentNodes.filter(
-      (n) =>
-        n.type === 'charger' &&
-        !(n.data.label as string)?.toLowerCase().includes('mppt') &&
-        !(n.data.label as string)?.toLowerCase().includes('ladequelle')
-    );
-    plainChargers.forEach((charger) => {
+    const plainChargersLen = plainChargers.length;
+    for (let i = 0; i < plainChargersLen; i++) {
       connect(
-        charger.id,
+        plainChargers[i].id,
         busbarNode.id,
-        Number(charger.data.amps) || 30,
+        Number(plainChargers[i].data.amps) || 30,
         3
       );
-    });
+    }
 
-    const consumers = currentNodes.filter((n) => n.type === 'consumer');
-    consumers.forEach((consumer) => {
+    const consumers = nodesByType['consumer'] || [];
+    const consumersLen = consumers.length;
+    for (let i = 0; i < consumersLen; i++) {
+      const consumer = consumers[i];
       const I = (Number(consumer.data.watts) || 0) / 12;
       connect(fuseBoxNode.id, consumer.id, I, 3);
-    });
+    }
 
     const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
       currentNodes,
