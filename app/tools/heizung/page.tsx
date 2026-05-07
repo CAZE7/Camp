@@ -33,12 +33,17 @@ export default function HeatingCalculatorPage() {
 
     // 2. U-Value Calculation (k = 0.036 W/(m*K))
     const thickness = Number(insulationThickness);
-    let calcU = 5.0; // Default for uninsulated metal
+    const R_base = 0.17; // Base resistance for uninsulated metal + air layers
+    let R_insulation = 0;
+
     if (thickness > 0) {
       const k = 0.036;
       const d = thickness / 1000; // convert mm to m
-      calcU = k / d;
+      R_insulation = d / k;
     }
+
+    const R_total = R_base + R_insulation;
+    const calcU = 1 / R_total;
 
     // 3. Delta T calculation
     const calcDeltaT = tempInside - tempOutside;
