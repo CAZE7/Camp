@@ -69,10 +69,10 @@ const dummyComponents = [
 const logger = {
   info: (msg: string) => process.stdout.write(`[INFO] ${msg}\n`),
   warn: (msg: string) => process.stdout.write(`[WARN] ${msg}\n`),
-  error: (msg: string, err?: any) => {
+  error: (msg: string, err?: unknown) => {
     process.stderr.write(`[ERROR] ${msg}\n`);
     if (err) {
-      process.stderr.write(`${err instanceof Error ? err.stack || err.message : err}\n`);
+      process.stderr.write(`${err instanceof Error ? err.stack || err.message : String(err)}\n`);
     }
   },
 };
