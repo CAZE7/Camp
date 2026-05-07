@@ -26,7 +26,7 @@ const CableEdge = function ({
   selected,
   sourceHandle,
 }: CableEdgeProps) {
-  const { getNodes } = useReactFlow();
+  const { getNode, getNodes } = useReactFlow();
   const isProMode = useAppStore(state => state.isProMode);
 
   const [edgePath, labelX, labelY] = useMemo(() => {
@@ -44,11 +44,10 @@ const CableEdge = function ({
   }, [sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, isProMode]);
 
   const { length, crossSection, maxFuse, strokeWidth, animationDuration } = useMemo(() => {
-    const nodes = getNodes();
     const length = data?.length || 3;
     let I = 0;
-    const sourceNode = nodes.find(n => n.id === source);
-    const targetNode = nodes.find(n => n.id === target);
+    const sourceNode = getNode(source);
+    const targetNode = getNode(target);
 
     if (sourceNode?.type === 'consumer') {
       I = (sourceNode.data.watts || 0) / 12;
@@ -59,8 +58,15 @@ const CableEdge = function ({
     } else if (targetNode?.type === 'charger') {
       I = targetNode.data.amps || 0;
     } else {
-      const allConsumers = nodes.filter(n => n.type === 'consumer');
-      I = allConsumers.reduce((acc, n) => acc + ((n.data.watts || 0) / 12), 0);
+      const nodes = getNodes();
+      let totalWatts = 0;
+      for (let i = 0; i < nodes.length; i++) {
+        const n = nodes[i];
+        if (n.type === 'consumer') {
+          totalWatts += (n.data.watts || 0) / 12;
+        }
+      }
+      I = totalWatts;
     }
 
     const calculatedA = (I * (length * 2)) / (58 * 0.24);
@@ -89,7 +95,7 @@ const CableEdge = function ({
     const dur = Number.isNaN(I) || !isFinite(I) ? 5 : Math.max(0.5, 5 - (I / 10));
 
     return { length, crossSection: cs, maxFuse: mf, strokeWidth: sw, animationDuration: dur };
-  }, [getNodes, data?.length, data?.crossSection, source, target]);
+  }, [getNode, getNodes, data?.length, data?.crossSection, source, target]);
 
   const stroke = selected ? '#f97316' : '#9ca3af';
 
