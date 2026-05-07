@@ -300,7 +300,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
       label: string,
       offsetX: number,
       offsetY: number,
-      extraData: any = {}
+      extraData: Record<string, unknown> = {}
     ) => {
       let typeNodes = nodesByType[type];
       if (!typeNodes) {
