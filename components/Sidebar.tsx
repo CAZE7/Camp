@@ -27,56 +27,56 @@ const waterComponents = [
   { type: 'shower', label: 'Dusche' },
 ];
 
+const handlePointerDown = (e: React.PointerEvent, comp: { type: string, label: string }) => {
+  e.preventDefault(); // Prevent default touch actions
+
+  // Create a ghost element that follows the pointer
+  const target = e.currentTarget as HTMLElement;
+  const clone = target.cloneNode(true) as HTMLElement;
+  clone.style.position = 'fixed';
+  clone.style.zIndex = '9999';
+  clone.style.opacity = '0.8';
+  clone.style.pointerEvents = 'none'; // so it doesn't interfere with mouseup/pointerup targets
+  clone.style.left = `${e.clientX - target.offsetWidth / 2}px`;
+  clone.style.top = `${e.clientY - target.offsetHeight / 2}px`;
+  document.body.appendChild(clone);
+
+  const onPointerMove = (moveEvent: PointerEvent) => {
+    clone.style.left = `${moveEvent.clientX - target.offsetWidth / 2}px`;
+    clone.style.top = `${moveEvent.clientY - target.offsetHeight / 2}px`;
+  };
+
+  const onPointerUp = (upEvent: PointerEvent) => {
+    document.removeEventListener('pointermove', onPointerMove);
+    document.removeEventListener('pointerup', onPointerUp);
+    clone.remove();
+
+    // Check if dropped over the react-flow pane
+    const elementsUnderPointer = document.elementsFromPoint(upEvent.clientX, upEvent.clientY);
+    const isOverCanvas = elementsUnderPointer.some(el => el.classList.contains('react-flow__pane'));
+
+    if (isOverCanvas) {
+      // Dispatch custom event to Planner.tsx
+      const dropEvent = new CustomEvent('custom-node-drop', {
+        detail: {
+          clientX: upEvent.clientX,
+          clientY: upEvent.clientY,
+          type: comp.type,
+          label: comp.label
+        }
+      });
+      window.dispatchEvent(dropEvent);
+    }
+  };
+
+  document.addEventListener('pointermove', onPointerMove);
+  document.addEventListener('pointerup', onPointerUp);
+};
+
 export default function Sidebar({ mode = 'electric' }: { mode?: 'electric' | 'water' }) {
   const [searchTerm, setSearchTerm] = useState('');
 
   const activeComponents = mode === 'water' ? waterComponents : components;
-
-  const handlePointerDown = (e: React.PointerEvent, comp: { type: string, label: string }) => {
-    e.preventDefault(); // Prevent default touch actions
-
-    // Create a ghost element that follows the pointer
-    const target = e.currentTarget as HTMLElement;
-    const clone = target.cloneNode(true) as HTMLElement;
-    clone.style.position = 'fixed';
-    clone.style.zIndex = '9999';
-    clone.style.opacity = '0.8';
-    clone.style.pointerEvents = 'none'; // so it doesn't interfere with mouseup/pointerup targets
-    clone.style.left = `${e.clientX - target.offsetWidth / 2}px`;
-    clone.style.top = `${e.clientY - target.offsetHeight / 2}px`;
-    document.body.appendChild(clone);
-
-    const onPointerMove = (moveEvent: PointerEvent) => {
-      clone.style.left = `${moveEvent.clientX - target.offsetWidth / 2}px`;
-      clone.style.top = `${moveEvent.clientY - target.offsetHeight / 2}px`;
-    };
-
-    const onPointerUp = (upEvent: PointerEvent) => {
-      document.removeEventListener('pointermove', onPointerMove);
-      document.removeEventListener('pointerup', onPointerUp);
-      clone.remove();
-
-      // Check if dropped over the react-flow pane
-      const elementsUnderPointer = document.elementsFromPoint(upEvent.clientX, upEvent.clientY);
-      const isOverCanvas = elementsUnderPointer.some(el => el.classList.contains('react-flow__pane'));
-
-      if (isOverCanvas) {
-        // Dispatch custom event to Planner.tsx
-        const dropEvent = new CustomEvent('custom-node-drop', {
-          detail: {
-            clientX: upEvent.clientX,
-            clientY: upEvent.clientY,
-            type: comp.type,
-            label: comp.label
-          }
-        });
-        window.dispatchEvent(dropEvent);
-      }
-    };
-
-    document.addEventListener('pointermove', onPointerMove);
-    document.addEventListener('pointerup', onPointerUp);
-  };
 
   const filteredComponents = activeComponents.filter(c =>
     c.label.toLowerCase().includes(searchTerm.toLowerCase())
