@@ -270,11 +270,8 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
 
   autoWireSystem: (fitView) => {
     const { nodes, edges } = get();
-    const batteryNode = nodes.find((n) => n.type === 'battery');
-    if (!batteryNode) {
-      alert('Bitte zuerst eine Batterie platzieren');
-      return;
-    }
+    // batteryNode lookup deferred after indexing
+
 
     let currentNodes = [...nodes];
     let newEdges: Edge[] = [];
@@ -282,6 +279,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
 
     // Build dictionary for fast lookups
     const nodesByType: Record<string, Node[]> = {};
+    const nodesByLabel: Record<string, Node> = {};
     const len = currentNodes.length;
     for (let i = 0; i < len; i++) {
       const node = currentNodes[i];
@@ -292,6 +290,15 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
         nodesByType[type] = arr;
       }
       arr.push(node);
+      if (node.data?.label) {
+        nodesByLabel[`${type}-${node.data.label}`] = node;
+      }
+    }
+
+    const batteryNode = nodesByType['battery']?.[0];
+    if (!batteryNode) {
+      alert('Bitte zuerst eine Batterie platzieren');
+      return;
     }
 
     // Helper to generate missing nodes
@@ -307,7 +314,8 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
         typeNodes = [];
         nodesByType[type] = typeNodes;
       }
-      let node = typeNodes.find((n) => n.data?.label === label);
+      const key = `${type}-${label}`;
+      let node = nodesByLabel[key];
       if (!node) {
         node = {
           id: crypto.randomUUID(),
@@ -320,6 +328,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
         };
         currentNodes.push(node);
         typeNodes.push(node);
+        nodesByLabel[key] = node;
       }
       return node;
     };
