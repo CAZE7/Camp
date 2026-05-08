@@ -11,8 +11,9 @@ const InverterNode = function({ id, data, isConnectable, selected }: any) {
     const continuousPower = data.continuousPower || 0;
 
     let totalWatts = 0;
+    const deviceSet = new Set(concurrentDevices);
     nodes.forEach(n => {
-      if (n.type === 'consumer230v' && concurrentDevices.includes(n.id)) {
+      if (n.type === 'consumer230v' && deviceSet.has(n.id)) {
         totalWatts += n.data?.watts || 0;
       }
     });
