@@ -1,5 +1,6 @@
 import React from 'react';
 import { Edge, Node } from 'reactflow';
+import { MousePointerClick } from 'lucide-react';
 import { CableEdgeData } from './edges/CableEdge';
 import { EdgeInspector } from './inspector/EdgeInspector';
 import {
@@ -48,8 +49,14 @@ export default function Inspector({
       <h2 className="text-lg font-semibold mb-4 text-gray-800">Inspector</h2>
 
       {!hasSelection ? (
-        <div className="text-gray-500 text-sm flex-1 flex items-center justify-center">
-          Kein Element ausgewählt
+        <div className="text-gray-500 text-sm flex-1 flex flex-col items-center justify-center text-center p-4">
+          <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center mb-3">
+            <MousePointerClick className="w-6 h-6 text-gray-400" aria-hidden="true" />
+          </div>
+          <p className="font-medium text-gray-700 mb-1">Kein Element ausgewählt</p>
+          <p className="text-xs text-gray-400">
+            Klicke auf eine Komponente oder Verbindung im Schaltplan, um Details zu bearbeiten.
+          </p>
         </div>
       ) : (
         <div className="flex flex-col space-y-4 flex-1">
