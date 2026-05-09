@@ -37,6 +37,8 @@ const CONDUIT_AREAS = Object.fromEntries(
   ])
 );
 
+const CONDUIT_AREAS_ENTRIES = Object.entries(CONDUIT_AREAS);
+
 export interface ConduitNodeData {
   label?: string;
   conduitType?: keyof typeof CONDUIT_SIZES;
@@ -70,7 +72,8 @@ const ConduitNode = function ({ id, data, selected }: { id: string, data: Condui
 
     let recommendedConduit = null;
     if (fillPercentage > 60) {
-      for (const [type, testArea] of Object.entries(CONDUIT_AREAS)) {
+      for (let i = 0; i < CONDUIT_AREAS_ENTRIES.length; i++) {
+        const [type, testArea] = CONDUIT_AREAS_ENTRIES[i];
         if ((totalCableArea / testArea) * 100 <= 60) {
           recommendedConduit = type;
           break;
