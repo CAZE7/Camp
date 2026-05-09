@@ -279,7 +279,8 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
 
     // Build dictionary for fast lookups
     const nodesByType: Record<string, Node[]> = {};
-    const nodesByLabel: Record<string, Node> = {};
+    // Optimized O(1) Map lookup replacing typeNodes.find()
+    const nodesByLabel = new Map<string, Node>();
     const len = currentNodes.length;
     for (let i = 0; i < len; i++) {
       const node = currentNodes[i];
@@ -291,7 +292,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
       }
       arr.push(node);
       if (node.data?.label) {
-        nodesByLabel[`${type}-${node.data.label}`] = node;
+        nodesByLabel.set(`${type}-${node.data.label}`, node);
       }
     }
 
@@ -314,8 +315,10 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
         typeNodes = [];
         nodesByType[type] = typeNodes;
       }
+
       const key = `${type}-${label}`;
-      let node = nodesByLabel[key];
+      // Map lookup is O(1) compared to array .find()
+      let node = nodesByLabel.get(key);
       if (!node) {
         node = {
           id: crypto.randomUUID(),
@@ -328,7 +331,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
         };
         currentNodes.push(node);
         typeNodes.push(node);
-        nodesByLabel[key] = node;
+        nodesByLabel.set(key, node);
       }
       return node;
     };
