@@ -2,6 +2,7 @@ import { createOpenAI } from '@ai-sdk/openai';
 import { embedMany } from 'ai';
 import pool from '../lib/db';
 import * as dotenv from 'dotenv';
+import { PoolClient } from 'pg';
 
 dotenv.config();
 
@@ -77,101 +78,110 @@ const logger = {
   },
 };
 
-async function seed() {
-  logger.info("Starting DB seeding...");
-  const client = await pool.connect();
+async function setupDatabase(client: PoolClient) {
+  // 1. Setup Extensions
+  await client.query('CREATE EXTENSION IF NOT EXISTS vector');
 
-  try {
-    // 1. Setup Extensions
-    await client.query('CREATE EXTENSION IF NOT EXISTS vector');
+  // 2. Create Tables
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS Knowledge_Chunks (
+      id SERIAL PRIMARY KEY,
+      content TEXT NOT NULL,
+      embedding vector(1536),
+      metadata JSONB
+    );
+  `);
 
-    // 2. Create Tables
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS Knowledge_Chunks (
-        id SERIAL PRIMARY KEY,
-        content TEXT NOT NULL,
-        embedding vector(1536),
-        metadata JSONB
-      );
-    `);
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS Components (
+      id SERIAL PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      type VARCHAR(50) NOT NULL,
+      cross_section DECIMAL(5,2),
+      price DECIMAL(10,2),
+      brand VARCHAR(100)
+    );
+  `);
 
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS Components (
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(255) NOT NULL,
-        type VARCHAR(50) NOT NULL,
-        cross_section DECIMAL(5,2),
-        price DECIMAL(10,2),
-        brand VARCHAR(100)
-      );
-    `);
+  // Clear existing data for a fresh seed
+  await client.query('TRUNCATE TABLE Knowledge_Chunks RESTART IDENTITY CASCADE');
+  await client.query('TRUNCATE TABLE Components RESTART IDENTITY CASCADE');
+}
 
-    // Clear existing data for a fresh seed
-    await client.query('TRUNCATE TABLE Knowledge_Chunks RESTART IDENTITY CASCADE');
-    await client.query('TRUNCATE TABLE Components RESTART IDENTITY CASCADE');
+async function seedKnowledgeChunks(client: PoolClient) {
+  // 3. Generate embeddings and insert into Knowledge_Chunks
+  logger.info("Generating embeddings...");
+  if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'dummy_key') {
+    const { embeddings } = await embedMany({
+      model: openai.embedding('text-embedding-3-small'),
+      values: guides.map(g => g.content),
+    });
 
-    // 3. Generate embeddings and insert into Knowledge_Chunks
-    logger.info("Generating embeddings...");
-    if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'dummy_key') {
-      const { embeddings } = await embedMany({
-        model: openai.embedding('text-embedding-3-small'),
-        values: guides.map(g => g.content),
-      });
+    logger.info("Inserting knowledge chunks...");
+    if (guides.length > 0) {
+      const values: any[] = [];
+      const placeholders: string[] = [];
+      let paramIndex = 1;
 
-      logger.info("Inserting knowledge chunks...");
+      for (let i = 0; i < guides.length; i++) {
+        const guide = guides[i];
+        const embedding = embeddings[i];
+        placeholders.push(`($${paramIndex}, $${paramIndex + 1}::vector, $${paramIndex + 2})`);
+        values.push(guide.content, JSON.stringify(embedding), guide.metadata);
+        paramIndex += 3;
+      }
+
+      const query = `INSERT INTO Knowledge_Chunks (content, embedding, metadata) VALUES ${placeholders.join(', ')}`;
+      await client.query(query, values);
+    }
+  } else {
+      logger.warn("OPENAI_API_KEY is not set. Skipping real embeddings, using mock vectors...");
       if (guides.length > 0) {
         const values: any[] = [];
         const placeholders: string[] = [];
         let paramIndex = 1;
 
         for (let i = 0; i < guides.length; i++) {
-          const guide = guides[i];
-          const embedding = embeddings[i];
-          placeholders.push(`($${paramIndex}, $${paramIndex + 1}::vector, $${paramIndex + 2})`);
-          values.push(guide.content, JSON.stringify(embedding), guide.metadata);
-          paramIndex += 3;
+            const guide = guides[i];
+            const mockEmbedding = new Array(1536).fill(0).map(() => Math.random());
+            placeholders.push(`($${paramIndex}, $${paramIndex + 1}::vector, $${paramIndex + 2})`);
+            values.push(guide.content, JSON.stringify(mockEmbedding), guide.metadata);
+            paramIndex += 3;
         }
 
         const query = `INSERT INTO Knowledge_Chunks (content, embedding, metadata) VALUES ${placeholders.join(', ')}`;
         await client.query(query, values);
       }
-    } else {
-        logger.warn("OPENAI_API_KEY is not set. Skipping real embeddings, using mock vectors...");
-        if (guides.length > 0) {
-          const values: any[] = [];
-          const placeholders: string[] = [];
-          let paramIndex = 1;
+  }
+}
 
-          for (let i = 0; i < guides.length; i++) {
-              const guide = guides[i];
-              const mockEmbedding = new Array(1536).fill(0).map(() => Math.random());
-              placeholders.push(`($${paramIndex}, $${paramIndex + 1}::vector, $${paramIndex + 2})`);
-              values.push(guide.content, JSON.stringify(mockEmbedding), guide.metadata);
-              paramIndex += 3;
-          }
+async function seedComponents(client: PoolClient) {
+  // 4. Insert dummy components
+  logger.info("Inserting components...");
+  if (dummyComponents.length > 0) {
+    const values: any[] = [];
+    const placeholders: string[] = [];
+    let i = 1;
 
-          const query = `INSERT INTO Knowledge_Chunks (content, embedding, metadata) VALUES ${placeholders.join(', ')}`;
-          await client.query(query, values);
-        }
+    for (const comp of dummyComponents) {
+      placeholders.push(`($${i}, $${i + 1}, $${i + 2}, $${i + 3}, $${i + 4})`);
+      values.push(comp.name, comp.type, comp.cross_section, comp.price, comp.brand);
+      i += 5;
     }
 
+    const query = `INSERT INTO Components (name, type, cross_section, price, brand) VALUES ${placeholders.join(', ')}`;
+    await client.query(query, values);
+  }
+}
 
-    // 4. Insert dummy components
-    logger.info("Inserting components...");
-    if (dummyComponents.length > 0) {
-      const values: any[] = [];
-      const placeholders: string[] = [];
-      let i = 1;
+async function seed() {
+  logger.info("Starting DB seeding...");
+  const client = await pool.connect();
 
-      for (const comp of dummyComponents) {
-        placeholders.push(`($${i}, $${i + 1}, $${i + 2}, $${i + 3}, $${i + 4})`);
-        values.push(comp.name, comp.type, comp.cross_section, comp.price, comp.brand);
-        i += 5;
-      }
-
-      const query = `INSERT INTO Components (name, type, cross_section, price, brand) VALUES ${placeholders.join(', ')}`;
-      await client.query(query, values);
-    }
+  try {
+    await setupDatabase(client);
+    await seedKnowledgeChunks(client);
+    await seedComponents(client);
 
     logger.info("Seeding complete!");
 
