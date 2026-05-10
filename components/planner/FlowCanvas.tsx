@@ -1,13 +1,10 @@
-import React, { useCallback, useMemo, useState, useEffect } from 'react';
+import React, { useMemo } from 'react';
 import ReactFlow, {
   Background,
   Controls,
   MiniMap,
   Panel,
   useReactFlow,
-  Edge,
-  Node,
-  Connection,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 
@@ -17,7 +14,9 @@ import { NODE_TYPES, EDGE_TYPES } from './constants';
 import { usePlannerStore } from '../../store/usePlannerStore';
 import { useAppStore } from '../../lib/store';
 import { useDashboardMetrics } from './hooks/useDashboardMetrics';
-import { Button } from '@/components/ui/button';
+import { BOMModal } from './BOMModal';
+import { useSequentialTapConnect } from './hooks/useSequentialTapConnect';
+import { usePlannerDragDrop } from './hooks/usePlannerDragDrop';
 
 export function FlowCanvas() {
   const { screenToFlowPosition, fitView } = useReactFlow();
@@ -38,105 +37,11 @@ export function FlowCanvas() {
   const isValidConnection = usePlannerStore((state) => state.isValidConnection);
   const onSelectionChange = usePlannerStore((state) => state.onSelectionChange);
 
-  const onDropFromStore = usePlannerStore((state) => state.onDrop);
-  const onCustomDropFromStore = usePlannerStore((state) => state.onCustomDrop);
-  const setFirstTappedHandle = usePlannerStore((state) => state.setFirstTappedHandle);
-
   const calculatedSolarWatts = useAppStore((state) => state.calculatedSolarWatts);
 
-  const [showBOM, setShowBOM] = useState(false);
-  const [bomData, setBomData] = useState<{ counts: Record<string, number>, cableLengths: Record<string, number> } | null>(null);
-
-  useEffect(() => {
-    const handleShowBom = () => {
-      // Re-calculate directly to match original local state flow
-      const counts: Record<string, number> = {};
-      for (let i = 0, len = nodes.length; i < len; i++) {
-        const type = nodes[i].type;
-        if (type) {
-          counts[type] = (counts[type] || 0) + 1;
-        }
-      }
-
-      const cableLengths: Record<string, number> = {};
-      for (let i = 0, len = edges.length; i < len; i++) {
-        const data = edges[i].data;
-        const cs = data?.crossSection || 2.5;
-        cableLengths[cs] = (cableLengths[cs] || 0) + (data?.length || 3);
-      }
-      setBomData({ counts, cableLengths });
-      setShowBOM(true);
-    };
-    window.addEventListener('show-bom-modal', handleShowBom);
-    return () => window.removeEventListener('show-bom-modal', handleShowBom);
-  }, [nodes, edges]);
-
-  const onDragOver = useCallback((event: React.DragEvent) => {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = 'move';
-  }, []);
-
-  const onDropWrapper = useCallback(
-    (event: React.DragEvent) => {
-      onDropFromStore(event, screenToFlowPosition);
-    },
-    [onDropFromStore, screenToFlowPosition]
-  );
-
-  useEffect(() => {
-    const handleCustomDrop = (event: Event) => {
-      onCustomDropFromStore(event, screenToFlowPosition);
-    };
-    window.addEventListener('custom-node-drop', handleCustomDrop);
-    return () => window.removeEventListener('custom-node-drop', handleCustomDrop);
-  }, [onCustomDropFromStore, screenToFlowPosition]);
-
-  // Sequential Tap Connect Logic
-  useEffect(() => {
-    const handleGlobalClick = (e: MouseEvent | TouchEvent) => {
-      const target = e.target as HTMLElement;
-      const handleEl = target.closest('.react-flow__handle');
-      if (handleEl) {
-        const nodeId = handleEl.getAttribute('data-nodeid');
-        const handleId = handleEl.getAttribute('data-handleid');
-        const handleType = handleEl.classList.contains('source') ? 'source' : 'target';
-
-        if (nodeId && handleId) {
-          setFirstTappedHandle((prev) => {
-            if (!prev) {
-               // First tap
-               return { nodeId, handleId, handleType };
-            } else {
-               // Second tap
-               if (prev.nodeId === nodeId && prev.handleId === handleId) {
-                  return null; // Cancel if same handle tapped twice
-               }
-
-               // Attempt connection
-               const connection: Connection = {
-                 source: prev.handleType === 'source' ? prev.nodeId : nodeId,
-                 target: prev.handleType === 'target' ? prev.nodeId : nodeId,
-                 sourceHandle: prev.handleType === 'source' ? prev.handleId : handleId,
-                 targetHandle: prev.handleType === 'target' ? prev.handleId : handleId,
-               };
-
-               if (isValidConnection(connection)) {
-                 onConnect(connection);
-               }
-
-               return null; // Reset after attempt
-            }
-          });
-        }
-      } else {
-        // Clicked somewhere else, reset tap connect
-        setFirstTappedHandle(null);
-      }
-    };
-
-    document.addEventListener('click', handleGlobalClick);
-    return () => document.removeEventListener('click', handleGlobalClick);
-  }, [isValidConnection, onConnect, setFirstTappedHandle]);
+  // Use extracted hooks for logic
+  const { onDragOver, onDrop } = usePlannerDragDrop(screenToFlowPosition);
+  useSequentialTapConnect();
 
   const edgeTypes = useMemo(() => ({ ...EDGE_TYPES, waterPipe: WaterPipeEdge }), []);
   const nodeTypes = useMemo(() => ({
@@ -151,14 +56,6 @@ export function FlowCanvas() {
   }), []);
 
   const metrics = useDashboardMetrics(nodes, edges, season, calculatedSolarWatts);
-
-  const bomCountsEntries = useMemo(() => {
-    return bomData?.counts ? Object.entries(bomData.counts) : [];
-  }, [bomData?.counts]);
-
-  const bomCableEntries = useMemo(() => {
-    return bomData?.cableLengths ? Object.entries(bomData.cableLengths) : [];
-  }, [bomData?.cableLengths]);
 
   return (
     <>
@@ -178,7 +75,7 @@ export function FlowCanvas() {
         isValidConnection={isValidConnection}
         onSelectionChange={onSelectionChange}
         onDragOver={onDragOver}
-        onDrop={onDropWrapper}
+        onDrop={onDrop}
         fitView
         snapToGrid={true}
         snapGrid={[10, 10]}
@@ -222,38 +119,7 @@ export function FlowCanvas() {
         )}
       </ReactFlow>
 
-      {showBOM && bomData && (
-        <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-50 pointer-events-auto">
-          <div className="bg-card p-6 rounded-lg shadow-lg w-96 max-h-[80vh] overflow-y-auto border border-border">
-            <h2 className="text-xl font-bold mb-4 border-b border-border pb-2">Stückliste (BOM)</h2>
-
-            <div className="mb-4">
-              <h3 className="font-semibold mb-2 text-muted-foreground">Komponenten:</h3>
-              <ul className="list-disc pl-5 text-sm space-y-1">
-                {bomCountsEntries.map(([type, count]) => (
-                  <li key={type} className="capitalize">{count}x {type}</li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="mb-6">
-              <h3 className="font-semibold mb-2 text-muted-foreground">Kabelbedarf:</h3>
-              <ul className="list-disc pl-5 text-sm space-y-1">
-                {bomCableEntries.map(([cs, length]) => (
-                  <li key={cs}>{length.toFixed(1)} Meter {cs} mm² Kabel</li>
-                ))}
-              </ul>
-            </div>
-
-            <Button
-              onClick={() => setShowBOM(false)}
-              className="w-full"
-            >
-              Schließen
-            </Button>
-          </div>
-        </div>
-      )}
+      <BOMModal />
     </>
   );
 }
