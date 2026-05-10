@@ -9,3 +9,7 @@
 ## 2026-05-18 - Search Input UX
 **Learning:** Empty search results with just a "No components found" message provide poor user experience. Users have to manually select the input and delete their text to see the list again.
 **Action:** Always provide an explicit "Clear Search" button in empty states, and add an inline 'X' clear button inside the search input itself to make returning to the default state a one-click action.
+
+## 2026-05-18 - Missing Empty State for Inspector
+**Learning:** The `Inspector` component simply displayed "Kein Element ausgewählt" when no node or edge was selected, leaving the user with an empty pane. An empty state like this should provide guidance or an action.
+**Action:** Replaced the plain text empty state in `Inspector` with an icon (`MousePointerClick`) and a short sentence guiding the user to click on a component or connection in the schematic.
