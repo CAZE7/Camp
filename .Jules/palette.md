@@ -13,3 +13,7 @@
 ## 2026-05-18 - Missing Empty State for Inspector
 **Learning:** The `Inspector` component simply displayed "Kein Element ausgewählt" when no node or edge was selected, leaving the user with an empty pane. An empty state like this should provide guidance or an action.
 **Action:** Replaced the plain text empty state in `Inspector` with an icon (`MousePointerClick`) and a short sentence guiding the user to click on a component or connection in the schematic.
+
+## 2026-05-18 - Missing Input Labels ID Linking
+**Learning:** In the Inspector UI components, multiple `<input>` and `<select>` fields had visual labels but lacked proper `id` attributes linked via the label's `htmlFor` attribute. This is a significant accessibility issue because screen readers cannot associate the text label with the form field, and users cannot click the label to focus the input.
+**Action:** Always ensure every form element (`<input>`, `<select>`, `<textarea>`) has a unique `id` and is paired with a `<label>` containing a matching `htmlFor` attribute, or is wrapped by the label.
