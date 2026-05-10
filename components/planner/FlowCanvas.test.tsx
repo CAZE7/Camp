@@ -75,7 +75,7 @@ const defaultPlannerStoreState = {
   onDrop: mockOnDropFromStore,
   onCustomDrop: mockOnCustomDropFromStore,
   setFirstTappedHandle: mockSetFirstTappedHandle,
-};
+} as any;
 
 vi.mock('../../store/usePlannerStore', () => ({
   usePlannerStore: vi.fn((selector) => {
@@ -85,7 +85,7 @@ vi.mock('../../store/usePlannerStore', () => ({
 
 const defaultAppStoreState = {
   calculatedSolarWatts: 0,
-};
+} as any;
 
 vi.mock('../../lib/store', () => ({
   useAppStore: vi.fn((selector) => {
@@ -313,7 +313,7 @@ describe('FlowCanvas', () => {
         totalSolarVoltage: 0,
         totalSolarAmps: 0,
         hasDirectBatteryToConsumer: true,
-      });
+      } as any);
 
       render(<FlowCanvas />);
 
