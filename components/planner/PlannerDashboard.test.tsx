@@ -66,7 +66,7 @@ vi.mock('@/components/ui/dropdown-menu', () => ({
   ),
 }));
 
-describe('PlannerDashboard', () => {
+describe('PlannerDashboard - Core Interactions', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -114,6 +114,16 @@ describe('PlannerDashboard', () => {
     fireEvent.click(screen.getByText('Profi-Modus Aus'));
     expect(mockToggleProMode).toHaveBeenCalledTimes(1);
   });
+});
+
+describe('PlannerDashboard - Action Menu', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
 
   it('dispatches show-bom-modal and calls exportBOM when clicking Stückliste', async () => {
     render(<PlannerDashboard />);
@@ -150,6 +160,16 @@ describe('PlannerDashboard', () => {
     fireEvent.click(screen.getByTestId('menu-item-Schaltplan aufräumen'));
 
     expect(mockOnLayout).toHaveBeenCalledWith(mockFitView);
+  });
+});
+
+describe('PlannerDashboard - Image Export', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it('calls toPng and downloads image when clicking Als Bild speichern', async () => {
@@ -198,7 +218,6 @@ describe('PlannerDashboard', () => {
     document.body.removeChild(mockReactFlowElem);
     createElementSpy.mockRestore();
   });
-});
 
   it('does not export image if react flow wrapper is not found', () => {
     // Ensure no wrapper exists
@@ -270,3 +289,4 @@ describe('PlannerDashboard', () => {
     consoleErrorSpy.mockRestore();
     document.body.removeChild(mockReactFlowElem);
   });
+});
