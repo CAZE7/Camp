@@ -34,6 +34,137 @@ const nodeTypes = {
   roofBackground: RoofBackgroundNode,
 };
 
+
+
+function DachSidebar({
+  selectedVehicleId,
+  setSelectedVehicleId,
+  onDragStart
+}: {
+  selectedVehicleId: string;
+  setSelectedVehicleId: (val: string) => void;
+  onDragStart: (event: React.DragEvent, nodeType: string) => void;
+}) {
+  return (
+    <div className="w-80 bg-card border-r border-border p-6 flex flex-col gap-6 overflow-y-auto z-10 shrink-0">
+      <div className="space-y-4">
+        <Label className="text-xs font-black text-muted-foreground uppercase tracking-widest">Fahrzeug Modell</Label>
+        <Select value={selectedVehicleId} onValueChange={(val: string | null) => val && setSelectedVehicleId(val)}>
+          <SelectTrigger className="h-12">
+            <SelectValue placeholder="Wähle dein Fahrzeug" />
+          </SelectTrigger>
+          <SelectContent>
+            {vehicleTemplates.map(v => (
+              <SelectItem key={v.id} value={v.id}>
+                {v.brand} {v.version}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-4">
+        <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Komponenten</p>
+        <div className="space-y-3">
+          <Card
+            className="cursor-grab hover:ring-2 hover:ring-blue-400 transition-all active:cursor-grabbing border-blue-100 bg-blue-50/20"
+            onDragStart={(event) => onDragStart(event, 'roofSolar')}
+            draggable
+          >
+            <CardContent className="flex items-center gap-4 py-3 px-4">
+              <div className="w-10 h-10 bg-blue-500 text-white rounded-lg flex items-center justify-center text-xl shadow-sm">☀️</div>
+              <div className="flex flex-col">
+                <span className="font-bold text-sm">Solarpanel</span>
+                <span className="text-[10px] uppercase tracking-widest text-blue-600/70 font-bold">Basis: 100x60cm</span>
+              </div>
+            </CardContent>
+          </Card>
+          <Card
+            className="cursor-grab hover:ring-2 hover:ring-amber-400 transition-all active:cursor-grabbing border-amber-100 bg-amber-50/20"
+            onDragStart={(event) => onDragStart(event, 'roofWindow')}
+            draggable
+          >
+            <CardContent className="flex items-center gap-4 py-3 px-4">
+              <div className="w-10 h-10 bg-amber-500 text-white rounded-lg flex items-center justify-center text-xl shadow-sm">🪟</div>
+              <div className="flex flex-col">
+                <span className="font-bold text-sm">Dachfenster</span>
+                <span className="text-[10px] uppercase tracking-widest text-amber-600/70 font-bold">Basis: 40x40cm</span>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      <Card className="mt-auto border-dashed">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-xs uppercase tracking-tighter text-muted-foreground">Hinweis</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-[11px] leading-relaxed text-muted-foreground">
+            Die <strong>Safe Zone</strong> berücksichtigt 15cm Front-Abstand und 5cm Seiten-Abstand. Elemente außerhalb werden rot markiert und nicht zur Leistung addiert.
+          </p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function DachPanel({
+  selectedSolarNode,
+  updateSelectedNodeWatts,
+  totalRoofSolarWatts
+}: {
+  selectedSolarNode: Node<RoofNodeData> | undefined;
+  updateSelectedNodeWatts: (watts: number) => void;
+  totalRoofSolarWatts: number;
+}) {
+  return (
+    <Panel position="top-right" className="mt-4 mr-4 pointer-events-auto flex flex-col gap-4">
+      {selectedSolarNode && (
+        <Card className="min-w-[240px] shadow-xl border border-border bg-card">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-bold">Einstellungen</CardTitle>
+            <CardDescription className="text-xs">Solarpanel anpassen</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <Label htmlFor="watts-input" className="text-xs">Leistung (Wp)</Label>
+              <Input
+                id="watts-input"
+                type="number"
+                value={selectedSolarNode.data.watts || 0}
+                onChange={(e) => updateSelectedNodeWatts(Number(e.target.value))}
+                className="h-8"
+              />
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <Card className="min-w-[240px] shadow-2xl border-none bg-slate-900 text-white">
+        <CardHeader className="pb-2">
+          <CardDescription className="text-blue-400 font-bold uppercase tracking-[0.2em] text-[10px]">System Check</CardDescription>
+          <CardTitle className="flex items-center justify-between text-2xl font-black">
+            <span>Solarleistung</span>
+            <span className="text-orange-400">{totalRoofSolarWatts} W</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-orange-500 transition-all duration-500"
+              style={{ width: `${Math.min(100, (totalRoofSolarWatts / 1000) * 100)}%` }}
+            />
+          </div>
+          <p className="text-[10px] text-white/50 mt-3 font-medium">
+            Daten werden in Echtzeit mit dem Elektrik-Planer synchronisiert.
+          </p>
+        </CardContent>
+      </Card>
+    </Panel>
+  );
+}
+
 function DachPlanerFlow() {
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>(vehicleTemplates[0].id);
   const selectedVehicle = useMemo(() => 
@@ -198,66 +329,11 @@ function DachPlanerFlow() {
   return (
     <div className="flex h-[calc(100vh-73px)] w-full relative">
       {/* Sidebar */}
-      <div className="w-80 bg-card border-r border-border p-6 flex flex-col gap-6 overflow-y-auto z-10 shrink-0">
-        <div className="space-y-4">
-          <Label className="text-xs font-black text-muted-foreground uppercase tracking-widest">Fahrzeug Modell</Label>
-          <Select value={selectedVehicleId} onValueChange={(val: string | null) => val && setSelectedVehicleId(val)}>
-            <SelectTrigger className="h-12">
-              <SelectValue placeholder="Wähle dein Fahrzeug" />
-            </SelectTrigger>
-            <SelectContent>
-              {vehicleTemplates.map(v => (
-                <SelectItem key={v.id} value={v.id}>
-                  {v.brand} {v.version}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-4">
-          <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Komponenten</p>
-          <div className="space-y-3">
-            <Card
-              className="cursor-grab hover:ring-2 hover:ring-blue-400 transition-all active:cursor-grabbing border-blue-100 bg-blue-50/20"
-              onDragStart={(event) => onDragStart(event, 'roofSolar')}
-              draggable
-            >
-              <CardContent className="flex items-center gap-4 py-3 px-4">
-                <div className="w-10 h-10 bg-blue-500 text-white rounded-lg flex items-center justify-center text-xl shadow-sm">☀️</div>
-                <div className="flex flex-col">
-                  <span className="font-bold text-sm">Solarpanel</span>
-                  <span className="text-[10px] uppercase tracking-widest text-blue-600/70 font-bold">Basis: 100x60cm</span>
-                </div>
-              </CardContent>
-            </Card>
-            <Card
-              className="cursor-grab hover:ring-2 hover:ring-amber-400 transition-all active:cursor-grabbing border-amber-100 bg-amber-50/20"
-              onDragStart={(event) => onDragStart(event, 'roofWindow')}
-              draggable
-            >
-              <CardContent className="flex items-center gap-4 py-3 px-4">
-                <div className="w-10 h-10 bg-amber-500 text-white rounded-lg flex items-center justify-center text-xl shadow-sm">🪟</div>
-                <div className="flex flex-col">
-                  <span className="font-bold text-sm">Dachfenster</span>
-                  <span className="text-[10px] uppercase tracking-widest text-amber-600/70 font-bold">Basis: 40x40cm</span>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-
-        <Card className="mt-auto border-dashed">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs uppercase tracking-tighter text-muted-foreground">Hinweis</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-[11px] leading-relaxed text-muted-foreground">
-              Die <strong>Safe Zone</strong> berücksichtigt 15cm Front-Abstand und 5cm Seiten-Abstand. Elemente außerhalb werden rot markiert und nicht zur Leistung addiert.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      <DachSidebar
+        selectedVehicleId={selectedVehicleId}
+        setSelectedVehicleId={setSelectedVehicleId}
+        onDragStart={onDragStart}
+      />
 
       {/* Canvas */}
       <div className="flex-1 relative react-flow-wrapper" ref={reactFlowWrapper}>
@@ -275,49 +351,11 @@ function DachPlanerFlow() {
           <Background color="hsl(var(--border))" gap={20} size={1} />
           <Controls className="rounded-lg overflow-hidden border border-border shadow-sm" />
 
-          <Panel position="top-right" className="mt-4 mr-4 pointer-events-auto flex flex-col gap-4">
-            {selectedSolarNode && (
-              <Card className="min-w-[240px] shadow-xl border border-border bg-card">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-bold">Einstellungen</CardTitle>
-                  <CardDescription className="text-xs">Solarpanel anpassen</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <Label htmlFor="watts-input" className="text-xs">Leistung (Wp)</Label>
-                    <Input
-                      id="watts-input"
-                      type="number"
-                      value={selectedSolarNode.data.watts || 0}
-                      onChange={(e) => updateSelectedNodeWatts(Number(e.target.value))}
-                      className="h-8"
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            <Card className="min-w-[240px] shadow-2xl border-none bg-slate-900 text-white">
-              <CardHeader className="pb-2">
-                <CardDescription className="text-blue-400 font-bold uppercase tracking-[0.2em] text-[10px]">System Check</CardDescription>
-                <CardTitle className="flex items-center justify-between text-2xl font-black">
-                  <span>Solarleistung</span>
-                  <span className="text-orange-400">{totalRoofSolarWatts} W</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-orange-500 transition-all duration-500" 
-                    style={{ width: `${Math.min(100, (totalRoofSolarWatts / 1000) * 100)}%` }}
-                  />
-                </div>
-                <p className="text-[10px] text-white/50 mt-3 font-medium">
-                  Daten werden in Echtzeit mit dem Elektrik-Planer synchronisiert.
-                </p>
-              </CardContent>
-            </Card>
-          </Panel>
+          <DachPanel
+            selectedSolarNode={selectedSolarNode}
+            updateSelectedNodeWatts={updateSelectedNodeWatts}
+            totalRoofSolarWatts={totalRoofSolarWatts}
+          />
         </ReactFlow>
       </div>
     </div>
