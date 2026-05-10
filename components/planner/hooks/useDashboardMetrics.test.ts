@@ -3,11 +3,13 @@ import { describe, it, expect } from 'vitest';
 import { useDashboardMetrics } from './useDashboardMetrics';
 import { Node, Edge } from 'reactflow';
 
-describe('useDashboardMetrics', () => {
-  const emptyNodes: Node[] = [];
-  const emptyEdges: Edge[] = [];
+const emptyNodes: Node[] = [];
+const emptyEdges: Edge[] = [];
 
-  it('should return default values for empty inputs', () => {
+describe('useDashboardMetrics - Default states and basic calculations', () => {
+
+  describe('Default and empty states', () => {
+    it('should return default values for empty inputs', () => {
     const { result } = renderHook(() =>
       useDashboardMetrics(emptyNodes, emptyEdges, 'summer', 0)
     );
@@ -19,9 +21,11 @@ describe('useDashboardMetrics', () => {
     expect(result.current.totalSolarAmps).toBe(0);
     expect(result.current.hasDirectBatteryToConsumer).toBe(false);
     expect(result.current.solarNodesCount).toBe(0);
+    });
   });
 
-  it('should calculate battery usable capacity correctly (LiFePO4 vs AGM)', () => {
+  describe('Battery and consumption calculations', () => {
+    it('should calculate battery usable capacity correctly (LiFePO4 vs AGM)', () => {
     const nodesLiFePO4: Node[] = [
       { id: 'b1', type: 'battery', data: { capacity: 100, chemistry: 'LiFePO4' }, position: { x: 0, y: 0 } },
     ];
@@ -79,6 +83,7 @@ describe('useDashboardMetrics', () => {
       useDashboardMetrics(nodes, emptyEdges, 'summer', 0)
     );
     expect(result.current.dailyConsumptionAh).toBeCloseTo(17.647, 3);
+    });
   });
 
   describe('Solar Calculations', () => {
@@ -122,7 +127,8 @@ describe('useDashboardMetrics', () => {
     });
   });
 
-  it('should calculate charging time correctly', () => {
+  describe('Charging time and direct connections', () => {
+    it('should calculate charging time correctly', () => {
     const nodes: Node[] = [
       { id: 'b1', type: 'battery', data: { capacity: 100, chemistry: 'LiFePO4' }, position: { x: 0, y: 0 } },
       { id: 'ch1', type: 'charger', data: { amps: 10, efficiency: 90 }, position: { x: 0, y: 0 } },
@@ -149,9 +155,11 @@ describe('useDashboardMetrics', () => {
       useDashboardMetrics(nodes, edges, 'summer', 0)
     );
     expect(result.current.hasDirectBatteryToConsumer).toBe(true);
+    });
   });
 
-  it('should not re-calculate metrics when only node positions change', () => {
+  describe('Memoization and performance', () => {
+    it('should not re-calculate metrics when only node positions change', () => {
     const nodes1: Node[] = [
       { id: 'b1', type: 'battery', data: { capacity: 100 }, position: { x: 0, y: 0 } },
       { id: 'c1', type: 'consumer', data: { watts: 12, hours: 24 }, position: { x: 0, y: 0 } },
@@ -184,11 +192,13 @@ describe('useDashboardMetrics', () => {
     rerender({ nodes: nodes3 });
     expect(result.current).not.toBe(firstResult);
     expect(result.current.autarkyStr).not.toBe(firstResult.autarkyStr);
+    });
   });
 });
 
   describe('Edge cases and error conditions', () => {
-    it('should return "0 Ladeleistung" when there is solar but no charge', () => {
+    describe('Charging edge cases', () => {
+      it('should return "0 Ladeleistung" when there is solar but no charge', () => {
       const nodes: Node[] = [
         { id: 'b1', type: 'battery', data: { capacity: 100 }, position: { x: 0, y: 0 } },
         { id: 's1', type: 'solar', data: { amps: 0 }, position: { x: 0, y: 0 } },
@@ -208,9 +218,11 @@ describe('useDashboardMetrics', () => {
         useDashboardMetrics(nodes, [], 'summer', 0)
       );
       expect(result.current.chargingTimeStr).toBe('0 Ladeleistung');
+      });
     });
 
-    it('should handle series solar connection correctly (minus to plus)', () => {
+    describe('Solar connection edge cases', () => {
+      it('should handle series solar connection correctly (minus to plus)', () => {
       const solarNodes: Node[] = [
         { id: 's1', type: 'solar', data: { voltage: 20, amps: 5 }, position: { x: 0, y: 0 } },
         { id: 's2', type: 'solar', data: { voltage: 20, amps: 5 }, position: { x: 0, y: 0 } },
@@ -248,9 +260,11 @@ describe('useDashboardMetrics', () => {
       );
       expect(result.current.totalSolarVoltage).toBe(0);
       expect(result.current.totalSolarAmps).toBe(0);
+      });
     });
 
-    it('should handle missing nodes gracefully when checking direct connection', () => {
+    describe('Missing data or unmapped types', () => {
+      it('should handle missing nodes gracefully when checking direct connection', () => {
       const edges: Edge[] = [
         { id: 'e1', source: 'nonexistent1', target: 'nonexistent2' }
       ];
@@ -280,9 +294,11 @@ describe('useDashboardMetrics', () => {
         useDashboardMetrics(nodes, [], 'summer', 0)
       );
       expect(result.current.dailyConsumptionAh).toBe(0);
+      });
     });
 
-    it('should detect direct battery connection when battery is target', () => {
+    describe('Direct connections', () => {
+      it('should detect direct battery connection when battery is target', () => {
       const nodes: Node[] = [
         { id: 'b1', type: 'battery', data: {}, position: { x: 0, y: 0 } },
         { id: 'c1', type: 'consumer', data: {}, position: { x: 0, y: 0 } },
@@ -294,9 +310,11 @@ describe('useDashboardMetrics', () => {
         useDashboardMetrics(nodes, edges, 'summer', 0)
       );
       expect(result.current.hasDirectBatteryToConsumer).toBe(true);
+      });
     });
 
-    it('should re-calculate metrics when edges change', () => {
+    describe('Re-calculation and reactivity', () => {
+      it('should re-calculate metrics when edges change', () => {
       const nodes: Node[] = [
         { id: 'b1', type: 'battery', data: {}, position: { x: 0, y: 0 } },
         { id: 'c1', type: 'consumer', data: {}, position: { x: 0, y: 0 } },
@@ -339,9 +357,11 @@ describe('useDashboardMetrics', () => {
 
       expect(result.current).not.toBe(firstResult);
       expect(result.current.hasDirectBatteryToConsumer).toBe(true);
+      });
     });
 
-    it('should ignore secondary battery nodes if one already exists', () => {
+    describe('Multiple node handling', () => {
+      it('should ignore secondary battery nodes if one already exists', () => {
       const nodes: Node[] = [
         { id: 'b1', type: 'battery', data: { capacity: 100 }, position: { x: 0, y: 0 } },
         { id: 'b2', type: 'battery', data: { capacity: 200 }, position: { x: 0, y: 0 } },
@@ -406,5 +426,6 @@ describe('useDashboardMetrics', () => {
         useDashboardMetrics(nodes, edges, 'summer', 0)
       );
       expect(result.current.hasDirectBatteryToConsumer).toBe(true);
+      });
     });
   });
