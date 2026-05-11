@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
-import { BaseEdge, EdgeProps, getBezierPath, getSmoothStepPath, EdgeLabelRenderer, useReactFlow, Node } from 'reactflow';
+import { BaseEdge, EdgeProps, EdgeLabelRenderer, useReactFlow, Node } from 'reactflow';
 import { useAppStore } from '../../lib/store';
+import { calculateEdgePath } from './utils/pathUtils';
 
 export type CableEdgeData = {
   length: number;
@@ -95,17 +96,15 @@ const CableEdge = function ({
   const isProMode = useAppStore(state => state.isProMode);
 
   const [edgePath, labelX, labelY] = useMemo(() => {
-    const pathParams = {
+    return calculateEdgePath({
       sourceX,
       sourceY,
       sourcePosition,
       targetX,
       targetY,
       targetPosition,
-    };
-    return isProMode
-      ? getSmoothStepPath({ ...pathParams, borderRadius: 10 })
-      : getBezierPath(pathParams);
+      isProMode,
+    });
   }, [sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, isProMode]);
 
   const { length, crossSection, maxFuse, strokeWidth, animationDuration } = useMemo(() => {
