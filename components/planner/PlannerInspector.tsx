@@ -45,9 +45,9 @@ export function PlannerInspector() {
       </Button>
 
       <div
-        className={`transition-all duration-300 ease-in-out absolute right-0 md:relative z-40 h-full ${isRightSidebarOpen ? 'w-[250px] translate-x-0' : 'w-0 translate-x-full'} flex-shrink-0 shadow-lg bg-card border-l border-border max-w-[calc(100vw-2rem)]`}
+        className={`transition-all duration-300 ease-in-out absolute right-0 md:relative z-40 h-full ${isRightSidebarOpen ? 'w-full md:w-[250px] translate-x-0' : 'w-0 translate-x-full'} flex-shrink-0 shadow-lg bg-card border-l border-border max-w-[calc(100vw-2rem)]`}
       >
-        <div className="w-[250px] h-full max-w-full">
+        <div className="w-full md:w-[250px] h-full max-w-full">
           <Inspector
             selectedEdge={selectedEdge}
             selectedNode={selectedNode}

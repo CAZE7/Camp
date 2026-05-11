@@ -151,7 +151,7 @@ export default function NavigationSidebar() {
       {/* Mobile Toggle Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed top-4 left-4 z-[60] lg:hidden bg-stone-800/90 backdrop-blur-md text-amber-100 p-3 rounded-2xl shadow-lg border border-stone-700 hover:bg-stone-700 transition-all"
+        className="fixed top-4 left-4 z-[60] lg:hidden bg-stone-800/90 backdrop-blur-md text-amber-100 p-4 rounded-2xl shadow-lg border border-stone-700 hover:bg-stone-700 transition-all"
         aria-label="Navigation öffnen"
       >
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
@@ -176,7 +176,7 @@ export default function NavigationSidebar() {
         ref={containerRef}
         className={cn(
           "fixed top-0 left-0 h-screen z-50 flex flex-col transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]",
-          "w-72 lg:w-[17rem]",
+          "w-[85vw] max-w-sm lg:w-[17rem]",
           // Nature gradient background
           "bg-gradient-to-b from-stone-900 via-stone-800 to-[#1a2e1a]",
           "border-r border-stone-700/50",

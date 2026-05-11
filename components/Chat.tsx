@@ -86,13 +86,13 @@ const ChatInputForm = ({
         onChange={(e) => setInput(e.target.value)}
         placeholder="Frag etwas zu deinem Camper-Ausbau..."
         aria-label="Chat Nachricht"
-        className="w-full border border-gray-300 rounded-full py-2 pl-4 pr-12 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+        className="w-full border border-gray-300 rounded-full py-3 pl-4 pr-12 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base md:text-sm"
       />
       <button
         type="submit"
         aria-label="Nachricht senden"
         disabled={isLoading || !input.trim()}
-        className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1.5 bg-blue-600 text-white rounded-full hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+        className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2.5 md:p-1.5 bg-blue-600 text-white rounded-full hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
       >
         {isLoading ? (
           <svg className="animate-spin" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -161,7 +161,7 @@ export default function Chat() {
   }
 
   return (
-    <div className="fixed bottom-6 right-6 w-96 h-[600px] bg-white border border-gray-200 rounded-lg shadow-2xl flex flex-col z-50 overflow-hidden">
+    <div className="fixed bottom-0 right-0 md:bottom-6 md:right-6 w-full md:w-96 h-[80vh] md:h-[600px] bg-white border border-gray-200 rounded-lg md:rounded-lg rounded-b-none md:rounded-b-lg shadow-2xl flex flex-col z-50 overflow-hidden">
       <ChatHeader onClose={() => setIsOpen(false)} />
 
       <div className="flex-1 p-4 overflow-y-auto flex flex-col gap-4 bg-gray-50">

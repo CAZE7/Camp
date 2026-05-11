@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import Planner from './Planner';
 
@@ -32,24 +32,29 @@ vi.mock('reactflow', async () => {
 });
 
 describe('Planner Component', () => {
-  it('renders all main planner areas', () => {
+  it('renders all main planner areas', async () => {
     render(<Planner />);
 
     // Verify ReactFlowProvider wraps the content
     expect(screen.getByTestId('react-flow-provider')).toBeInTheDocument();
 
-    // Verify all major child components are rendered
-    expect(screen.getByTestId('planner-sidebar')).toBeInTheDocument();
-    expect(screen.getByTestId('planner-dashboard')).toBeInTheDocument();
-    expect(screen.getByTestId('flow-canvas')).toBeInTheDocument();
-    expect(screen.getByTestId('planner-inspector')).toBeInTheDocument();
+    // Verify all major child components are rendered after dynamic import
+    await waitFor(() => {
+        expect(screen.getByTestId('planner-sidebar')).toBeInTheDocument();
+        expect(screen.getByTestId('planner-dashboard')).toBeInTheDocument();
+        expect(screen.getByTestId('flow-canvas')).toBeInTheDocument();
+        expect(screen.getByTestId('planner-inspector')).toBeInTheDocument();
+    });
   });
 
-  it('has the correct layout structure', () => {
+  it('has the correct layout structure', async () => {
     const { container } = render(<Planner />);
 
-    // Check if the main container has the expected classes
-    const mainContainer = container.firstChild?.firstChild;
-    expect(mainContainer).toHaveClass('flex', 'h-screen', 'w-full', 'bg-background', 'overflow-hidden');
+    // Because of dynamic loading, we need to wait for the inner div to appear.
+    await waitFor(() => {
+        const sidebar = screen.getByTestId('planner-sidebar');
+        const mainContainer = sidebar.parentElement;
+        expect(mainContainer).toHaveClass('flex', 'h-screen', 'w-full', 'bg-background', 'overflow-hidden');
+    });
   });
 });

@@ -91,7 +91,7 @@ describe('DachPlanerPage', () => {
     render(<DachPlanerPage />);
 
     // Check header
-    expect(await screen.findByText(/Dachflächen-Planer/)).toBeInTheDocument();
+    expect(await screen.findByText(/Dach-Planer/)).toBeInTheDocument();
 
     // Check standard layout
     expect(screen.getByText('Fahrzeug Modell')).toBeInTheDocument();
