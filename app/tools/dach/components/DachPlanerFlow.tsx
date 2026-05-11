@@ -46,6 +46,11 @@ export function DachPlanerFlow() {
             ...node,
             width,
             height,
+            style: {
+              ...node.style,
+              width,
+              height,
+            },
             data: {
               ...node.data,
               width: width / 2, // px to cm
@@ -67,6 +72,10 @@ export function DachPlanerFlow() {
       selectable: false,
       width: selectedVehicle.roofWidth * 200, // m to px (100cm/m * 2px/cm)
       height: selectedVehicle.roofLength * 200,
+      style: {
+        width: selectedVehicle.roofWidth * 200,
+        height: selectedVehicle.roofLength * 200,
+      },
       data: {
         width: selectedVehicle.roofWidth * 100, // m to cm
         height: selectedVehicle.roofLength * 100,
@@ -80,6 +89,10 @@ export function DachPlanerFlow() {
       position: { x: 40, y: 100 }, // px (20cm * 2, 50cm * 2)
       width: 200, // px (100cm * 2)
       height: 120, // px (60cm * 2)
+      style: {
+        width: 200,
+        height: 120,
+      },
       data: { watts: 200, width: 100, height: 60, onNodeResize }
     }
   ], [selectedVehicle, onNodeResize]);
@@ -104,15 +117,15 @@ export function DachPlanerFlow() {
   );
 
 
-  const selectedSolarNode = useMemo(() => {
-    return nodes.find(n => n.selected && n.type === 'roofSolar');
+  const selectedNode = useMemo(() => {
+    return nodes.find(n => n.selected && (n.type === 'roofSolar' || n.type === 'roofWindow'));
   }, [nodes]);
 
   const updateSelectedNodeWatts = useCallback((watts: number) => {
-    if (!selectedSolarNode) return;
+    if (!selectedNode || selectedNode.type !== 'roofSolar') return;
     setNodes((nds: Node<RoofNodeData>[]) =>
       nds.map(node => {
-        if (node.id === selectedSolarNode.id) {
+        if (node.id === selectedNode.id) {
           return {
             ...node,
             data: {
@@ -124,7 +137,57 @@ export function DachPlanerFlow() {
         return node;
       })
     );
-  }, [selectedSolarNode, setNodes]);
+  }, [selectedNode, setNodes]);
+
+  const updateSelectedNodeWidth = useCallback((widthCm: number) => {
+    if (!selectedNode) return;
+    setNodes((nds: Node<RoofNodeData>[]) => {
+      const nextNodes = nds.map(node => {
+        if (node.id === selectedNode.id) {
+          const nextWidth = widthCm * 2;
+          return {
+            ...node,
+            width: nextWidth,
+            style: {
+              ...node.style,
+              width: nextWidth,
+            },
+            data: {
+              ...node.data,
+              width: widthCm
+            }
+          };
+        }
+        return node;
+      });
+      return validateNodes(nextNodes);
+    });
+  }, [selectedNode, setNodes, validateNodes]);
+
+  const updateSelectedNodeHeight = useCallback((heightCm: number) => {
+    if (!selectedNode) return;
+    setNodes((nds: Node<RoofNodeData>[]) => {
+      const nextNodes = nds.map(node => {
+        if (node.id === selectedNode.id) {
+          const nextHeight = heightCm * 2;
+          return {
+            ...node,
+            height: nextHeight,
+            style: {
+              ...node.style,
+              height: nextHeight,
+            },
+            data: {
+              ...node.data,
+              height: heightCm
+            }
+          };
+        }
+        return node;
+      });
+      return validateNodes(nextNodes);
+    });
+  }, [selectedNode, setNodes, validateNodes]);
 
   const totalRoofSolarWatts = useMemo(() => {
     let total = 0;
@@ -169,6 +232,10 @@ export function DachPlanerFlow() {
         position,
         width: type === 'roofSolar' ? 200 : 80, // px
         height: type === 'roofSolar' ? 120 : 80, // px
+        style: {
+          width: type === 'roofSolar' ? 200 : 80,
+          height: type === 'roofSolar' ? 120 : 80,
+        },
         data: {
           label: type === 'roofSolar' ? 'Solarpanel' : 'Dachfenster',
           watts: type === 'roofSolar' ? 200 : undefined,
@@ -214,8 +281,10 @@ export function DachPlanerFlow() {
           <Controls className="rounded-lg overflow-hidden border border-border shadow-sm" />
 
           <DachPanel
-            selectedSolarNode={selectedSolarNode}
+            selectedNode={selectedNode}
             updateSelectedNodeWatts={updateSelectedNodeWatts}
+            updateSelectedNodeWidth={updateSelectedNodeWidth}
+            updateSelectedNodeHeight={updateSelectedNodeHeight}
             totalRoofSolarWatts={totalRoofSolarWatts}
           />
         </ReactFlow>

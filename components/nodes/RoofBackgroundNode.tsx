@@ -18,7 +18,7 @@ const RoofBackgroundNode = function({ data }: { data: RoofNodeData }) {
   return (
     <div 
       className="border-2 border-red-500 border-dashed bg-gray-100/30 rounded-[40px] relative shadow-inner"
-      style={{ width: '100%', height: '100%', pointerEvents: 'none', zIndex: -1 }}
+      style={{ width: pxWidth, height: pxHeight, pointerEvents: 'none' }}
     >
       {/* Front Indicator (Windshield) */}
       <div className="absolute -top-12 left-1/2 -translate-x-1/2 flex flex-col items-center">

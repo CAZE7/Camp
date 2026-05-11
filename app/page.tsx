@@ -27,7 +27,7 @@ function FeaturesGrid() {
   return (
     <div className="max-w-7xl w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 relative z-10">
       {/* Card 1: 2D Elektrik-Planer */}
-      <div className="bg-white/80 backdrop-blur-xl rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_40px_rgb(37,99,235,0.1)] transition-all duration-300 flex flex-col h-full border border-white hover:-translate-y-2 overflow-hidden group">
+      <div className="bg-white/95 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_40px_rgb(37,99,235,0.1)] transition-all duration-300 will-change-transform flex flex-col h-full border border-white hover:-translate-y-2 overflow-hidden group">
         <div className="h-2 w-full bg-gradient-to-r from-yellow-400 to-orange-500" />
         <div className="p-8 flex-grow">
           <div className="text-5xl mb-6 bg-yellow-50 w-16 h-16 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">⚡</div>
@@ -44,7 +44,7 @@ function FeaturesGrid() {
       </div>
 
       {/* Card 2: Dachflächen-Planer */}
-      <div className="bg-white/80 backdrop-blur-xl rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_40px_rgb(37,99,235,0.1)] transition-all duration-300 flex flex-col h-full border border-white hover:-translate-y-2 overflow-hidden group">
+      <div className="bg-white/95 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_40px_rgb(37,99,235,0.1)] transition-all duration-300 will-change-transform flex flex-col h-full border border-white hover:-translate-y-2 overflow-hidden group">
         <div className="h-2 w-full bg-gradient-to-r from-sky-400 to-blue-500" />
         <div className="p-8 flex-grow">
           <div className="text-5xl mb-6 bg-sky-50 w-16 h-16 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">🚐</div>
@@ -61,7 +61,7 @@ function FeaturesGrid() {
       </div>
 
       {/* Card 3: Heizlast-Rechner */}
-      <div className="bg-white/80 backdrop-blur-xl rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_40px_rgb(37,99,235,0.1)] transition-all duration-300 flex flex-col h-full border border-white hover:-translate-y-2 overflow-hidden group">
+      <div className="bg-white/95 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_40px_rgb(37,99,235,0.1)] transition-all duration-300 will-change-transform flex flex-col h-full border border-white hover:-translate-y-2 overflow-hidden group">
         <div className="h-2 w-full bg-gradient-to-r from-red-400 to-rose-500" />
         <div className="p-8 flex-grow">
           <div className="text-5xl mb-6 bg-red-50 w-16 h-16 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">🔥</div>
@@ -78,7 +78,7 @@ function FeaturesGrid() {
       </div>
 
       {/* Card 4: KI-Ausbau-Assistent */}
-      <div className="bg-white/80 backdrop-blur-xl rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_40px_rgb(37,99,235,0.1)] transition-all duration-300 flex flex-col h-full border border-white hover:-translate-y-2 overflow-hidden group">
+      <div className="bg-white/95 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_40px_rgb(37,99,235,0.1)] transition-all duration-300 will-change-transform flex flex-col h-full border border-white hover:-translate-y-2 overflow-hidden group">
          <div className="h-2 w-full bg-gradient-to-r from-purple-400 to-indigo-500" />
          <div className="p-8 flex-grow">
           <div className="text-5xl mb-6 bg-purple-50 w-16 h-16 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">🤖</div>
@@ -99,7 +99,7 @@ function FeaturesGrid() {
 
 function GuidesSection() {
   return (
-    <div className="max-w-7xl w-full mt-16 bg-white/60 backdrop-blur-md rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-10 md:p-14 border border-white relative z-10">
+    <div className="max-w-7xl w-full mt-16 bg-white/95 rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-10 md:p-14 border border-white relative z-10">
        <div className="flex items-center gap-4 mb-8">
          <div className="bg-indigo-100 p-3 rounded-2xl text-2xl">📚</div>
          <h2 className="text-3xl font-black text-slate-800">Ausbau-Guides & Wissen</h2>
@@ -121,9 +121,7 @@ function GuidesSection() {
 export default function Home() {
   return (
     <div className="min-h-screen bg-[#f1f5f9] flex flex-col items-center py-12 px-4 sm:px-6 lg:px-8 font-sans selection:bg-blue-100 relative overflow-hidden">
-      <div className="absolute top-0 left-0 w-full h-[50vh] bg-gradient-to-b from-blue-600/10 to-transparent pointer-events-none" />
-      <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-blue-400/20 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-indigo-400/20 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(59,130,246,0.12),transparent_40%),radial-gradient(circle_at_80%_80%,rgba(99,102,241,0.12),transparent_40%)] pointer-events-none" />
 
       <HeroSection />
       <FeaturesGrid />
