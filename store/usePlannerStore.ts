@@ -74,6 +74,246 @@ function getNodeMap(currentNodes: Node[], currentWaterNodes: Node[]): Map<string
   return cachedNodeMap;
 }
 
+
+const VDE_SIZES = [1.5, 2.5, 4.0, 6.0, 10.0, 16.0, 25.0, 35.0, 50.0, 70.0];
+const FUSE_MAP: Record<number, number> = {
+  1.5: 15,
+  2.5: 20,
+  4.0: 30,
+  6.0: 40,
+  10.0: 60,
+  16.0: 80,
+  25.0: 100,
+  35.0: 150,
+  50.0: 200,
+  70.0: 250,
+};
+
+function calculateWire(I: number, length: number = 2) {
+  const calculatedA = (I * (length * 2)) / (58 * 0.24);
+  const minRequiredA = Math.max(1.5, calculatedA);
+
+  let crossSection = 70.0;
+  for (let i = 0; i < 10; i++) {
+    if (VDE_SIZES[i] >= minRequiredA) {
+      crossSection = VDE_SIZES[i];
+      break;
+    }
+  }
+
+  const fuseSize = FUSE_MAP[crossSection] || 250;
+
+  return { crossSection, fuseSize, length };
+}
+
+function buildDictionaries(currentNodes: Node[]) {
+  const nodesByType: Record<string, Node[]> = {};
+  // Optimized O(1) Map lookup replacing typeNodes.find()
+  const nodesByLabel = new Map<string, Node>();
+  const len = currentNodes.length;
+  for (let i = 0; i < len; i++) {
+    const node = currentNodes[i];
+    const type = node.type || 'default';
+    let arr = nodesByType[type];
+    if (!arr) {
+      arr = [];
+      nodesByType[type] = arr;
+    }
+    arr.push(node);
+    if (node.data?.label) {
+      nodesByLabel.set(`${type}-${node.data.label}`, node);
+    }
+  }
+  return { nodesByType, nodesByLabel };
+}
+
+function ensureNode(
+  currentNodes: Node[],
+  nodesByType: Record<string, Node[]>,
+  nodesByLabel: Map<string, Node>,
+  batteryNode: Node,
+  type: string,
+  label: string,
+  offsetX: number,
+  offsetY: number,
+  extraData: Record<string, unknown> = {}
+) {
+  let typeNodes = nodesByType[type];
+  if (!typeNodes) {
+    typeNodes = [];
+    nodesByType[type] = typeNodes;
+  }
+
+  const key = `${type}-${label}`;
+  // Map lookup is O(1) compared to array .find()
+  let node = nodesByLabel.get(key);
+  if (!node) {
+    node = {
+      id: crypto.randomUUID(),
+      type,
+      position: {
+        x: batteryNode.position.x + offsetX,
+        y: batteryNode.position.y + offsetY,
+      },
+      data: { label, ...extraData },
+    };
+    currentNodes.push(node);
+    typeNodes.push(node);
+    nodesByLabel.set(key, node);
+  }
+  return node;
+}
+
+function connectEdges(
+  newEdges: Edge[],
+  edgeIdRef: { counter: number },
+  sourceId: string,
+  targetId: string,
+  I: number = 0,
+  length: number = 2
+) {
+  const { crossSection, fuseSize } = calculateWire(I, length);
+  newEdges.push({
+    id: `e-auto-${edgeIdRef.counter++}`,
+    source: sourceId,
+    target: targetId,
+    sourceHandle: 'plus',
+    targetHandle: 'plus',
+    type: 'cableEdge',
+    data: { length, crossSection, fuseSize },
+  });
+  newEdges.push({
+    id: `e-auto-${edgeIdRef.counter++}`,
+    source: sourceId,
+    target: targetId,
+    sourceHandle: 'minus',
+    targetHandle: 'minus',
+    type: 'cableEdge',
+    data: { length, crossSection },
+  });
+}
+
+function wireSolars(
+  solars: Node[],
+  busbarNode: Node,
+  currentNodes: Node[],
+  nodesByType: Record<string, Node[]>,
+  nodesByLabel: Map<string, Node>,
+  batteryNode: Node,
+  newEdges: Edge[],
+  edgeIdRef: { counter: number }
+) {
+  const solarsLen = solars.length;
+  if (solarsLen > 0) {
+    const mpptNode = ensureNode(currentNodes, nodesByType, nodesByLabel, batteryNode, 'charger', 'MPPT Laderegler', 150, -200, {
+      amps: 30,
+    });
+    for (let i = 0; i < solarsLen; i++) {
+      const solar = solars[i];
+      const solarWatts = Number(solar.data.watts) || 100;
+      const solarAmps = solarWatts / 12;
+      connectEdges(newEdges, edgeIdRef, solar.id, mpptNode.id, solarAmps, 5);
+    }
+    connectEdges(newEdges, edgeIdRef, mpptNode.id, busbarNode.id, Number(mpptNode.data.amps) || 30, 2);
+  }
+}
+
+function wireChargers(
+  chargers: Node[],
+  busbarNode: Node,
+  newEdges: Edge[],
+  edgeIdRef: { counter: number }
+) {
+  const chargersLen = chargers.length;
+  const boosters: Node[] = [];
+  const plainChargers: Node[] = [];
+  for (let i = 0; i < chargersLen; i++) {
+    const c = chargers[i];
+    const lbl = (c.data?.label as string)?.toLowerCase() || '';
+    if (lbl.includes('ladequelle')) {
+      boosters.push(c);
+    } else if (!lbl.includes('mppt')) {
+      plainChargers.push(c);
+    }
+  }
+
+  const boostersLen = boosters.length;
+  for (let i = 0; i < boostersLen; i++) {
+    connectEdges(newEdges, edgeIdRef, boosters[i].id, busbarNode.id, Number(boosters[i].data.amps) || 30, 3);
+  }
+
+  const plainChargersLen = plainChargers.length;
+  for (let i = 0; i < plainChargersLen; i++) {
+    connectEdges(newEdges, edgeIdRef, plainChargers[i].id, busbarNode.id, Number(plainChargers[i].data.amps) || 30, 3);
+  }
+}
+
+function wireInverters(
+  inverters: Node[],
+  busbarNode: Node,
+  newEdges: Edge[],
+  edgeIdRef: { counter: number }
+) {
+  const invertersLen = inverters.length;
+  for (let i = 0; i < invertersLen; i++) {
+    const inverter = inverters[i];
+    const inverterWatts = Number(inverter.data.watts) || 1000;
+    const inverterAmps = inverterWatts / 12 / 0.85;
+    connectEdges(newEdges, edgeIdRef, busbarNode.id, inverter.id, inverterAmps, 1);
+  }
+}
+
+function wireConsumers(
+  consumers: Node[],
+  fuseBoxNode: Node,
+  newEdges: Edge[],
+  edgeIdRef: { counter: number }
+) {
+  const consumersLen = consumers.length;
+  for (let i = 0; i < consumersLen; i++) {
+    const consumer = consumers[i];
+    const I = (Number(consumer.data.watts) || 0) / 12;
+    connectEdges(newEdges, edgeIdRef, fuseBoxNode.id, consumer.id, I, 3);
+  }
+}
+
+function performAutoWiring(initialNodes: Node[]): { nodes: Node[], edges: Edge[] } | null {
+  let currentNodes = [...initialNodes];
+  let newEdges: Edge[] = [];
+  let edgeIdRef = { counter: 1 };
+
+  const { nodesByType, nodesByLabel } = buildDictionaries(currentNodes);
+
+  const batteryNode = nodesByType['battery']?.[0];
+  if (!batteryNode) {
+    return null;
+  }
+
+  const busbarNode = ensureNode(currentNodes, nodesByType, nodesByLabel, batteryNode, 'busbar', 'Main Busbar', 300, 0);
+  const fuseBoxNode = ensureNode(currentNodes, nodesByType, nodesByLabel, batteryNode, 'fuse', '12V Sicherungskasten', 300, 200, {
+    rating: 100,
+  });
+  const shuntNode = ensureNode(currentNodes, nodesByType, nodesByLabel, batteryNode, 'shunt', 'Smart Shunt', 150, 0);
+
+  const batteryCapacity = Number(batteryNode.data.capacity) || 100;
+  const maxDischargeA = batteryCapacity;
+  connectEdges(newEdges, edgeIdRef, batteryNode.id, shuntNode.id, maxDischargeA, 0.5);
+  connectEdges(newEdges, edgeIdRef, shuntNode.id, busbarNode.id, maxDischargeA, 0.5);
+
+  wireInverters(nodesByType['inverter'] || [], busbarNode, newEdges, edgeIdRef);
+  connectEdges(newEdges, edgeIdRef, busbarNode.id, fuseBoxNode.id, Number(fuseBoxNode.data.rating) || 100, 1);
+
+  const solars = [
+    ...(nodesByType['solar'] || []),
+    ...(nodesByType['roofsolar'] || [])
+  ];
+  wireSolars(solars, busbarNode, currentNodes, nodesByType, nodesByLabel, batteryNode, newEdges, edgeIdRef);
+  wireChargers(nodesByType['charger'] || [], busbarNode, newEdges, edgeIdRef);
+  wireConsumers(nodesByType['consumer'] || [], fuseBoxNode, newEdges, edgeIdRef);
+
+  return { nodes: currentNodes, edges: newEdges };
+}
+
 export const usePlannerStore = create<PlannerState>((set, get) => ({
   viewMode: 'electric',
   setViewMode: (mode) => set({ viewMode: mode }),
@@ -269,228 +509,17 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
   },
 
   autoWireSystem: (fitView) => {
-    const { nodes, edges } = get();
-    // batteryNode lookup deferred after indexing
+    const { nodes } = get();
 
-
-    let currentNodes = [...nodes];
-    let newEdges: Edge[] = [];
-    let edgeIdCounter = 1;
-
-    // Build dictionary for fast lookups
-    const nodesByType: Record<string, Node[]> = {};
-    // Optimized O(1) Map lookup replacing typeNodes.find()
-    const nodesByLabel = new Map<string, Node>();
-    const len = currentNodes.length;
-    for (let i = 0; i < len; i++) {
-      const node = currentNodes[i];
-      const type = node.type || 'default';
-      let arr = nodesByType[type];
-      if (!arr) {
-        arr = [];
-        nodesByType[type] = arr;
-      }
-      arr.push(node);
-      if (node.data?.label) {
-        nodesByLabel.set(`${type}-${node.data.label}`, node);
-      }
-    }
-
-    const batteryNode = nodesByType['battery']?.[0];
-    if (!batteryNode) {
+    const result = performAutoWiring(nodes);
+    if (!result) {
       alert('Bitte zuerst eine Batterie platzieren');
       return;
     }
 
-    // Helper to generate missing nodes
-    const ensureNode = (
-      type: string,
-      label: string,
-      offsetX: number,
-      offsetY: number,
-      extraData: Record<string, unknown> = {}
-    ) => {
-      let typeNodes = nodesByType[type];
-      if (!typeNodes) {
-        typeNodes = [];
-        nodesByType[type] = typeNodes;
-      }
-
-      const key = `${type}-${label}`;
-      // Map lookup is O(1) compared to array .find()
-      let node = nodesByLabel.get(key);
-      if (!node) {
-        node = {
-          id: crypto.randomUUID(),
-          type,
-          position: {
-            x: batteryNode.position.x + offsetX,
-            y: batteryNode.position.y + offsetY,
-          },
-          data: { label, ...extraData },
-        };
-        currentNodes.push(node);
-        typeNodes.push(node);
-        nodesByLabel.set(key, node);
-      }
-      return node;
-    };
-
-    // Helper to calculate wire cross section according to VDE
-    const VDE_SIZES = [1.5, 2.5, 4.0, 6.0, 10.0, 16.0, 25.0, 35.0, 50.0, 70.0];
-    const FUSE_MAP: Record<number, number> = {
-      1.5: 15,
-      2.5: 20,
-      4.0: 30,
-      6.0: 40,
-      10.0: 60,
-      16.0: 80,
-      25.0: 100,
-      35.0: 150,
-      50.0: 200,
-      70.0: 250,
-    };
-
-    const calculateWire = (I: number, length: number = 2) => {
-      const calculatedA = (I * (length * 2)) / (58 * 0.24);
-      const minRequiredA = Math.max(1.5, calculatedA);
-
-      let crossSection = 70.0;
-      for (let i = 0; i < 10; i++) {
-        if (VDE_SIZES[i] >= minRequiredA) {
-          crossSection = VDE_SIZES[i];
-          break;
-        }
-      }
-
-      const fuseSize = FUSE_MAP[crossSection] || 250;
-
-      return { crossSection, fuseSize, length };
-    };
-
-    // Helper to connect two nodes with plus and minus edges
-    const connect = (
-      sourceId: string,
-      targetId: string,
-      I: number = 0,
-      length: number = 2
-    ) => {
-      const { crossSection, fuseSize } = calculateWire(I, length);
-      newEdges.push({
-        id: `e-auto-${edgeIdCounter++}`,
-        source: sourceId,
-        target: targetId,
-        sourceHandle: 'plus',
-        targetHandle: 'plus',
-        type: 'cableEdge',
-        data: { length, crossSection, fuseSize },
-      });
-      newEdges.push({
-        id: `e-auto-${edgeIdCounter++}`,
-        source: sourceId,
-        target: targetId,
-        sourceHandle: 'minus',
-        targetHandle: 'minus',
-        type: 'cableEdge',
-        data: { length, crossSection },
-      });
-    };
-
-    const busbarNode = ensureNode('busbar', 'Main Busbar', 300, 0);
-    const fuseBoxNode = ensureNode('fuse', '12V Sicherungskasten', 300, 200, {
-      rating: 100,
-    });
-    const shuntNode = ensureNode('shunt', 'Smart Shunt', 150, 0);
-
-    const batteryCapacity = Number(batteryNode.data.capacity) || 100;
-    const maxDischargeA = batteryCapacity;
-    connect(batteryNode.id, shuntNode.id, maxDischargeA, 0.5);
-    connect(shuntNode.id, busbarNode.id, maxDischargeA, 0.5);
-
-    const inverters = nodesByType['inverter'] || [];
-    const invertersLen = inverters.length;
-    for (let i = 0; i < invertersLen; i++) {
-      const inverter = inverters[i];
-      const inverterWatts = Number(inverter.data.watts) || 1000;
-      const inverterAmps = inverterWatts / 12 / 0.85;
-      connect(busbarNode.id, inverter.id, inverterAmps, 1);
-    }
-
-    connect(
-      busbarNode.id,
-      fuseBoxNode.id,
-      Number(fuseBoxNode.data.rating) || 100,
-      1
-    );
-
-    const solars = [
-      ...(nodesByType['solar'] || []),
-      ...(nodesByType['roofsolar'] || [])
-    ];
-    const solarsLen = solars.length;
-    if (solarsLen > 0) {
-      const mpptNode = ensureNode('charger', 'MPPT Laderegler', 150, -200, {
-        amps: 30,
-      });
-      for (let i = 0; i < solarsLen; i++) {
-        const solar = solars[i];
-        const solarWatts = Number(solar.data.watts) || 100;
-        const solarAmps = solarWatts / 12;
-        connect(solar.id, mpptNode.id, solarAmps, 5);
-      }
-      connect(
-        mpptNode.id,
-        busbarNode.id,
-        Number(mpptNode.data.amps) || 30,
-        2
-      );
-    }
-
-    const chargers = nodesByType['charger'] || [];
-    const chargersLen = chargers.length;
-    const boosters: Node[] = [];
-    const plainChargers: Node[] = [];
-    for (let i = 0; i < chargersLen; i++) {
-      const c = chargers[i];
-      const lbl = (c.data?.label as string)?.toLowerCase() || '';
-      if (lbl.includes('ladequelle')) {
-        boosters.push(c);
-      } else if (!lbl.includes('mppt')) {
-        plainChargers.push(c);
-      }
-    }
-
-    const boostersLen = boosters.length;
-    for (let i = 0; i < boostersLen; i++) {
-      connect(
-        boosters[i].id,
-        busbarNode.id,
-        Number(boosters[i].data.amps) || 30,
-        3
-      );
-    }
-
-    const plainChargersLen = plainChargers.length;
-    for (let i = 0; i < plainChargersLen; i++) {
-      connect(
-        plainChargers[i].id,
-        busbarNode.id,
-        Number(plainChargers[i].data.amps) || 30,
-        3
-      );
-    }
-
-    const consumers = nodesByType['consumer'] || [];
-    const consumersLen = consumers.length;
-    for (let i = 0; i < consumersLen; i++) {
-      const consumer = consumers[i];
-      const I = (Number(consumer.data.watts) || 0) / 12;
-      connect(fuseBoxNode.id, consumer.id, I, 3);
-    }
-
     const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
-      currentNodes,
-      newEdges,
+      result.nodes,
+      result.edges,
       'LR'
     );
 
