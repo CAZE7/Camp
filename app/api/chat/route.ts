@@ -193,23 +193,26 @@ async function extractAndProcessBOM(client: PoolClient, userQuery: string): Prom
       const productRes = await client.query(productQuery, [uniqueCrossSections]);
 
       // Group the database results by cross_section for efficient lookup
-      const productsByCrossSection: Record<string, any[]> = {};
+      const productsByCrossSection = new Map<number, any[]>();
       for (const row of productRes.rows) {
-        const cs = row.cross_section.toString();
-        if (!productsByCrossSection[cs]) {
-          productsByCrossSection[cs] = [];
+        const cs = row.cross_section;
+        let arr = productsByCrossSection.get(cs);
+        if (!arr) {
+          arr = [];
+          productsByCrossSection.set(cs, arr);
         }
-        productsByCrossSection[cs].push(row);
+        arr.push(row);
       }
 
       // Map back to the validated cables list to preserve order and include lengths
-      for (const cable of validCables) {
-        const csKey = cable.crossSection.toString();
-        if (productsByCrossSection[csKey]) {
+      for (let i = 0; i < validCables.length; i++) {
+        const cable = validCables[i];
+        const recommendations = productsByCrossSection.get(cable.crossSection);
+        if (recommendations) {
           recommendedProducts.push({
             needed_crossSection: cable.crossSection,
             length: cable.length,
-            recommendations: productsByCrossSection[csKey]
+            recommendations
           });
         }
       }
