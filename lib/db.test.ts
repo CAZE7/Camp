@@ -2,13 +2,14 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Use vi.doMock so it doesn't get hoisted and we can control when it's used with resetModules
 vi.doMock('pg', () => {
+  const Pool = vi.fn().mockImplementation(function(this: any, config) {
+    this.config = config;
+    this.connect = vi.fn();
+    this.end = vi.fn();
+    this.query = vi.fn();
+  });
   return {
-    Pool: vi.fn().mockImplementation((config) => ({
-        config,
-        connect: vi.fn(),
-        end: vi.fn(),
-        query: vi.fn(),
-    })),
+    Pool,
   };
 });
 
