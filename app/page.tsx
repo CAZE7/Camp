@@ -104,7 +104,11 @@ function GuidesSection() {
          <div className="bg-indigo-100 p-3 rounded-2xl text-2xl">📚</div>
          <h2 className="text-3xl font-black text-slate-800">Ausbau-Guides & Wissen</h2>
        </div>
-       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+           <Link href="/guides/camper-ausbauguide" className="group flex items-center justify-between p-6 bg-white rounded-2xl shadow-sm border border-slate-100 hover:border-blue-300 hover:shadow-md transition-all lg:col-span-2">
+              <span className="font-bold text-slate-700 group-hover:text-blue-600 transition-colors text-lg">Der ultimative Camper Ausbauguide</span>
+              <span className="text-blue-400 group-hover:translate-x-1 transition-transform">➔</span>
+           </Link>
            <Link href="/guides/ausbau-fahrplan" className="group flex items-center justify-between p-6 bg-white rounded-2xl shadow-sm border border-slate-100 hover:border-indigo-300 hover:shadow-md transition-all">
               <span className="font-bold text-slate-700 group-hover:text-indigo-600 transition-colors text-lg">Der komplette Ausbau-Fahrplan</span>
               <span className="text-indigo-400 group-hover:translate-x-1 transition-transform">➔</span>
