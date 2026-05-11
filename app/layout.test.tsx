@@ -1,3 +1,18 @@
+
+
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: vi.fn().mockImplementation(query => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: vi.fn(), // Deprecated
+    removeListener: vi.fn(), // Deprecated
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  })),
+});
 import { render } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import RootLayout, { metadata } from './layout';
@@ -23,17 +38,21 @@ describe('RootLayout', () => {
 
     const bodyElement = element.props.children;
     expect(bodyElement.type).toBe('body');
-    expect(bodyElement.props.className).toBe('mocked-inter-class');
+    expect(bodyElement.props.className).toContain('mocked-inter-class');
+    expect(bodyElement.props.className).toContain('bg-stone-50');
 
-    const childElement = bodyElement.props.children;
+    // NavigationSidebar and main container are rendered inside body
+    const mainElement = bodyElement.props.children.find((c: any) => c.type === 'main');
+    expect(mainElement).toBeDefined();
+    const childElement = mainElement.props.children;
     expect(childElement.props['data-testid']).toBe('child');
     expect(childElement.props.children).toBe('Test Child');
   });
 
   it('exports the correct metadata', () => {
     expect(metadata).toEqual({
-      title: 'Camper Elektrik Planer',
-      description: '12V Camper Elektrik Kabelplaner',
+      title: 'CampCraft — DIY Camper-Ausbau Plattform',
+      description: 'Plane deinen Camper-Ausbau wie ein Profi. Elektrik, Dach, Heizung und mehr — alles an einem Ort.',
     });
   });
 });

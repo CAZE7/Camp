@@ -11,9 +11,9 @@ export function PlannerSidebar() {
   return (
     <>
       <div
-        className={`transition-all duration-300 ease-in-out absolute md:relative z-40 h-full ${isLeftSidebarOpen ? 'w-64 translate-x-0' : 'w-0 -translate-x-full'} flex-shrink-0 shadow-lg bg-card border-r border-border max-w-[calc(100vw-2rem)]`}
+        className={`transition-all duration-300 ease-in-out absolute md:relative z-40 h-full ${isLeftSidebarOpen ? 'w-full md:w-64 translate-x-0' : 'w-0 -translate-x-full'} flex-shrink-0 shadow-lg bg-card border-r border-border max-w-[calc(100vw-2rem)]`}
       >
-        <div className="w-64 h-full max-w-full">
+        <div className="w-full md:w-64 h-full max-w-full">
           <Sidebar mode={viewMode} />
         </div>
       </div>

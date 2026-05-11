@@ -132,7 +132,7 @@ export default function Inspector({
   const hasSelection = selectedEdge || selectedNode;
 
   return (
-    <div className="w-[250px] bg-white border-l border-gray-200 p-4 flex flex-col h-full shadow-sm">
+    <div className="w-full md:w-[250px] bg-white border-l border-gray-200 p-4 flex flex-col h-full shadow-sm">
       <h2 className="text-lg font-semibold mb-4 text-gray-800">Inspector</h2>
 
       {!hasSelection ? (

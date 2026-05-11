@@ -83,7 +83,7 @@ export default function Sidebar({ mode = 'electric' }: { mode?: 'electric' | 'wa
   );
 
   return (
-    <aside className="w-64 bg-gradient-to-b from-stone-50 to-amber-50/30 border-r border-stone-200/80 flex flex-col h-full">
+    <aside className="w-full md:w-64 bg-gradient-to-b from-stone-50 to-amber-50/30 border-r border-stone-200/80 flex flex-col h-full">
       {/* Header with nature accent */}
       <div className="p-4 border-b border-stone-200/60 bg-gradient-to-r from-stone-100 to-emerald-50/40">
         <div className="flex items-center gap-2">
