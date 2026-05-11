@@ -18,29 +18,49 @@ export function useDashboardMetrics(
 
   // Check if nodes have changed in a way that affects metrics
   // We use JSON.stringify for data comparison to handle deep changes while avoiding it for the whole array
-  const nodesChanged = nodes !== lastNodesRef.current && (
-    nodes.length !== lastNodesRef.current.length ||
-    nodes.some((n, i) => {
-      const prev = lastNodesRef.current[i];
-      return !prev || n.id !== prev.id || n.type !== prev.type || JSON.stringify(n.data) !== JSON.stringify(prev.data);
-    })
-  );
+  let nodesChanged = nodes !== lastNodesRef.current;
+  if (nodesChanged) {
+    if (nodes.length !== lastNodesRef.current.length) {
+      nodesChanged = true;
+    } else {
+      nodesChanged = false;
+      for (let i = 0, len = nodes.length; i < len; i++) {
+        const n = nodes[i];
+        const prev = lastNodesRef.current[i];
+        if (!prev || n.id !== prev.id || n.type !== prev.type || (n.data !== prev.data && JSON.stringify(n.data) !== JSON.stringify(prev.data))) {
+          nodesChanged = true;
+          break;
+        }
+      }
+    }
+  }
 
   // Check if edges have changed in a way that affects metrics
   // Original logic: serializedEdges = JSON.stringify(edges.map((e) => ({ id: e.id, source: e.source, target: e.target, sourceHandle: e.sourceHandle, targetHandle: e.targetHandle })));
   // Note: Original logic DID NOT include e.data for edges.
-  const edgesChanged = edges !== lastEdgesRef.current && (
-    edges.length !== lastEdgesRef.current.length ||
-    edges.some((e, i) => {
-      const prev = lastEdgesRef.current[i];
-      return !prev ||
-        e.id !== prev.id ||
-        e.source !== prev.source ||
-        e.target !== prev.target ||
-        e.sourceHandle !== prev.sourceHandle ||
-        e.targetHandle !== prev.targetHandle;
-    })
-  );
+  let edgesChanged = edges !== lastEdgesRef.current;
+  if (edgesChanged) {
+    if (edges.length !== lastEdgesRef.current.length) {
+      edgesChanged = true;
+    } else {
+      edgesChanged = false;
+      for (let i = 0, len = edges.length; i < len; i++) {
+        const e = edges[i];
+        const prev = lastEdgesRef.current[i];
+        if (
+          !prev ||
+          e.id !== prev.id ||
+          e.source !== prev.source ||
+          e.target !== prev.target ||
+          e.sourceHandle !== prev.sourceHandle ||
+          e.targetHandle !== prev.targetHandle
+        ) {
+          edgesChanged = true;
+          break;
+        }
+      }
+    }
+  }
 
   if (nodesChanged || edgesChanged) {
     lastNodesRef.current = nodes;
@@ -99,36 +119,37 @@ export function useDashboardMetrics(
 // --- Helper Functions ---
 
 function categorizeNodes(nodes: Node[]) {
-  return nodes.reduce(
-    (acc, n) => {
-      acc.nodeTypeMap[n.id] = n.type;
+  const result = {
+    nodeTypeMap: {} as Record<string, string | undefined>,
+    batteryNode: undefined as Node | undefined,
+    consumers: [] as Node[],
+    consumers230v: [] as Node[],
+    hasInverter: false,
+    solarNodes: [] as Node[],
+    chargers: [] as Node[],
+  };
 
-      if (n.type === 'battery') {
-        if (!acc.batteryNode) acc.batteryNode = n;
-      } else if (n.type === 'consumer') {
-        acc.consumers.push(n);
-      } else if (n.type === 'consumer230v') {
-        acc.consumers230v.push(n);
-      } else if (n.type === 'inverter') {
-        acc.hasInverter = true;
-      } else if (n.type === 'solar') {
-        acc.solarNodes.push(n);
-      } else if (n.type === 'charger') {
-        acc.chargers.push(n);
-      }
+  for (let i = 0, len = nodes.length; i < len; i++) {
+    const n = nodes[i];
+    result.nodeTypeMap[n.id] = n.type;
+    const type = n.type;
 
-      return acc;
-    },
-    {
-      nodeTypeMap: {} as Record<string, string | undefined>,
-      batteryNode: undefined as Node | undefined,
-      consumers: [] as Node[],
-      consumers230v: [] as Node[],
-      hasInverter: false,
-      solarNodes: [] as Node[],
-      chargers: [] as Node[],
+    if (type === 'battery') {
+      if (!result.batteryNode) result.batteryNode = n;
+    } else if (type === 'consumer') {
+      result.consumers.push(n);
+    } else if (type === 'consumer230v') {
+      result.consumers230v.push(n);
+    } else if (type === 'inverter') {
+      result.hasInverter = true;
+    } else if (type === 'solar') {
+      result.solarNodes.push(n);
+    } else if (type === 'charger') {
+      result.chargers.push(n);
     }
-  );
+  }
+
+  return result;
 }
 
 function calculateUsableCapacity(batteryNode: Node | undefined): number {
