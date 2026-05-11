@@ -12,7 +12,7 @@ export const metadata = {
 
 export default function CamperAusbauguide() {
   return (
-    <div className="min-h-screen bg-stone-50 pt-24 pb-32 px-4 sm:px-6 relative overflow-hidden">
+    <div id="ausbau-page" className="min-h-screen bg-stone-50 pt-24 pb-32 px-4 sm:px-6 relative overflow-hidden">
       
       {/* GSAP Animation Sidebar / Background track */}
       <RoadTripAnimation />
