@@ -13,8 +13,8 @@ vi.mock('reactflow', async () => {
       <path data-testid="base-edge" id={id} d={path} style={style} markerEnd={markerEnd} />
     )),
     EdgeLabelRenderer: vi.fn(({ children }) => <div data-testid="edge-label-renderer">{children}</div>),
-    getBezierPath: vi.fn(() => ['bezier-path', 0, 0]),
-    getSmoothStepPath: vi.fn(() => ['smooth-step-path', 0, 0]),
+    getBezierPath: vi.fn(() => ['bezier-path', 0, 0, 0, 0]),
+    getSmoothStepPath: vi.fn(() => ['smooth-step-path', 0, 0, 0, 0]),
     useReactFlow: vi.fn(),
   };
 });
