@@ -83,38 +83,50 @@ export default function Sidebar({ mode = 'electric' }: { mode?: 'electric' | 'wa
   );
 
   return (
-    <aside className="w-64 bg-white dark:bg-gray-900 border-r border-gray-200 flex flex-col h-full">
-      <div className="p-4 border-b border-gray-100">
-        <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100">Komponenten</h2>
+    <aside className="w-64 bg-gradient-to-b from-stone-50 to-amber-50/30 border-r border-stone-200/80 flex flex-col h-full">
+      {/* Header with nature accent */}
+      <div className="p-4 border-b border-stone-200/60 bg-gradient-to-r from-stone-100 to-emerald-50/40">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-sm">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" className="w-4 h-4">
+              <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z" />
+            </svg>
+          </div>
+          <h2 className="text-base font-black text-stone-800 tracking-tight">
+            Komponenten
+          </h2>
+        </div>
       </div>
 
+      {/* Search input with nature styling */}
       <div className="m-4 relative group">
         <input
           type="text"
-          placeholder="Suchen..."
+          placeholder="🔍 Suchen..."
           aria-label="Komponenten suchen"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all bg-gray-50 dark:bg-gray-800 dark:text-gray-200"
+          className="w-full border border-stone-200 rounded-xl px-3 py-2.5 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-400 transition-all bg-white/80 backdrop-blur-sm text-stone-700 placeholder:text-stone-400 shadow-sm"
         />
         {searchTerm && (
           <button
             onClick={() => setSearchTerm('')}
             aria-label="Suche zurücksetzen"
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500 rounded-full"
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-stone-400 hover:text-rose-500 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 rounded-full"
           >
             <XCircle size={16} />
           </button>
         )}
       </div>
 
+      {/* Component list with nature-themed cards */}
       <div className="flex-1 overflow-y-auto px-4 pb-4">
         {filteredComponents.length > 0 ? (
           <div className="flex flex-col gap-2">
             {filteredComponents.map((comp, index) => (
               <div
                 key={index}
-                className="p-3 border border-gray-200 rounded cursor-grab hover:bg-orange-50 hover:scale-105 transition-transform transition-colors text-sm font-medium text-gray-700 bg-white shadow-sm touch-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
+                className="p-3 border border-stone-200/70 rounded-xl cursor-grab hover:bg-emerald-50/60 hover:border-emerald-300/50 hover:scale-[1.03] hover:shadow-md transition-all duration-200 text-sm font-semibold text-stone-700 bg-white/90 shadow-sm touch-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 backdrop-blur-sm"
                 tabIndex={0}
                 role="button"
                 aria-grabbed="false"
@@ -126,21 +138,33 @@ export default function Sidebar({ mode = 'electric' }: { mode?: 'electric' | 'wa
                   }
                 }}
               >
-                {comp.label}
+                <span className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0" />
+                  {comp.label}
+                </span>
               </div>
             ))}
           </div>
         ) : (
-          <div className="text-gray-500 text-sm text-center py-8 flex flex-col items-center gap-3">
+          <div className="text-stone-500 text-sm text-center py-8 flex flex-col items-center gap-3">
+            <div className="text-3xl">🌿</div>
             <p>Keine Komponenten gefunden für &quot;{searchTerm}&quot;</p>
             <button
               onClick={() => setSearchTerm('')}
-              className="text-orange-600 hover:text-orange-700 font-medium text-xs border border-orange-200 hover:border-orange-300 rounded-md px-3 py-1.5 transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500"
+              className="text-emerald-700 hover:text-emerald-800 font-semibold text-xs border border-emerald-200 hover:border-emerald-300 bg-emerald-50 hover:bg-emerald-100 rounded-lg px-3 py-1.5 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500"
             >
               Suche zurücksetzen
             </button>
           </div>
         )}
+      </div>
+
+      {/* Nature footer accent */}
+      <div className="px-4 py-3 border-t border-stone-200/60 bg-gradient-to-r from-emerald-50/40 to-amber-50/40">
+        <p className="text-[10px] text-stone-400 font-medium flex items-center gap-1">
+          <span>🌱</span>
+          <span>Ziehe Komponenten auf die Arbeitsfläche</span>
+        </p>
       </div>
     </aside>
   );
