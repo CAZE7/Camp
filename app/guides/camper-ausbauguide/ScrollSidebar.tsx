@@ -59,44 +59,51 @@ export default function ScrollSidebar({ headings }: ScrollSidebarProps) {
       <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400 mb-6 px-4">
         Inhalt
       </h3>
-      <div className="relative border-l-2 border-slate-100 pl-4">
+      <div className="relative pl-6">
+        {/* Fine dashed line / road */}
+        <div className="absolute left-1 top-0 bottom-0 w-px border-l border-dashed border-slate-300 z-0" />
+        
         {/* The Camper Icon */}
         <div
-          className="absolute left-[-16px] w-8 h-8 transition-transform duration-300 ease-out z-10 bg-white rounded-full flex items-center justify-center shadow-sm border border-slate-200"
-          style={{ transform: `translateY(${camperYOffset}px)` }}
+          className="absolute left-[-11px] w-6 h-6 transition-transform duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] z-10 flex items-center justify-center"
+          style={{ transform: `translateY(${camperYOffset + 10}px)` }}
         >
           <svg
-            xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
-            className="w-4 h-4 text-indigo-600"
+            className="w-4 h-4 text-emerald-600 drop-shadow-sm bg-white rounded-full"
           >
-            <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2" />
-            <circle cx="7" cy="17" r="2" />
-            <path d="M9 17h6" />
-            <circle cx="17" cy="17" r="2" />
+            <path d="M2 12h18a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2H2" />
+            <path d="M4 12V8a2 2 0 0 1 2-2h8l3 4h3" />
+            <circle cx="7" cy="18" r="2" />
+            <circle cx="17" cy="18" r="2" />
           </svg>
         </div>
 
-        <ul className="flex flex-col relative z-0">
+        <ul className="flex flex-col relative z-0 space-y-0.5">
           {headings.map((heading, idx) => (
             <li
               key={heading.id}
               ref={(el) => { itemRefs.current[idx] = el; }}
               className={cn(
-                "py-2 px-3 rounded-lg transition-colors cursor-pointer text-sm font-medium h-[44px] flex items-center",
+                "py-2 px-3 rounded-xl transition-all duration-300 cursor-pointer text-sm font-medium h-[44px] flex items-center group/item",
                 activeId === heading.id
-                  ? "text-indigo-600 bg-indigo-50/50"
-                  : "text-slate-500 hover:text-slate-800 hover:bg-slate-50",
+                  ? "text-emerald-700 bg-emerald-50/50 shadow-sm"
+                  : "text-slate-500 hover:text-slate-900 hover:bg-slate-50/80",
                 heading.level === 3 ? "ml-4 text-xs" : ""
               )}
             >
               <Link href={`#${heading.id}`} className="block w-full truncate">
-                {heading.text}
+                <span className={cn(
+                  "inline-block transition-transform duration-300",
+                  activeId === heading.id ? "translate-x-1" : "group-hover/item:translate-x-0.5"
+                )}>
+                  {heading.text}
+                </span>
               </Link>
             </li>
           ))}
