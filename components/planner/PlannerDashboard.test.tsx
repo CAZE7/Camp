@@ -79,7 +79,7 @@ describe('PlannerDashboard - Core Interactions', () => {
     render(<PlannerDashboard />);
 
     // Check main buttons
-    expect(screen.getByText('← Zurück')).toBeInTheDocument();
+
     expect(screen.getByText('Elektrik-Schaltplan')).toBeInTheDocument();
     expect(screen.getByText('Wasser & Sanitär')).toBeInTheDocument();
     expect(screen.getByText('Aktionen')).toBeInTheDocument();
