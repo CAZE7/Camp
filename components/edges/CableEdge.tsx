@@ -1,39 +1,55 @@
 import React, { useMemo } from 'react';
 import { BaseEdge, EdgeProps, EdgeLabelRenderer, useReactFlow, Node } from 'reactflow';
 import { useAppStore } from '../../lib/store';
+import { usePlannerStore } from '../../store/usePlannerStore';
+import { useShallow } from 'zustand/react/shallow';
 import { calculateEdgePath } from './utils/pathUtils';
 
 export type CableEdgeData = {
   length: number;
-  crossSection?: number; // Made optional as it's computed now
+  crossSection?: number;
   fuseSize?: number;
 };
 
 type CableEdgeProps = EdgeProps<CableEdgeData> & { sourceHandleId?: string | null };
+
 export const calculateCurrent = (
   sourceNode: Node | undefined,
   targetNode: Node | undefined,
   getNodes: () => Node[]
 ): number => {
-  if (sourceNode?.type === 'consumer') {
-    return (sourceNode.data.watts || 0) / 12;
-  } else if (targetNode?.type === 'consumer') {
-    return (targetNode.data.watts || 0) / 12;
-  } else if (sourceNode?.type === 'charger') {
-    return sourceNode.data.amps || 0;
-  } else if (targetNode?.type === 'charger') {
-    return targetNode.data.amps || 0;
-  } else {
-    const nodes = getNodes();
-    let totalWatts = 0;
-    for (let i = 0; i < nodes.length; i++) {
-      const n = nodes[i];
-      if (n.type === 'consumer') {
-        totalWatts += (n.data.watts || 0) / 12;
-      }
+  const sData = sourceNode?.data;
+  const tData = targetNode?.data;
+
+  // 1. Explicit Amps/TotalAmps (Priority)
+  if (sData?.totalAmps !== undefined) return Number(sData.totalAmps);
+  if (tData?.totalAmps !== undefined) return Number(tData.totalAmps);
+  
+  if (sData?.amps !== undefined && sourceNode?.type !== 'battery') return Number(sData.amps);
+  if (tData?.amps !== undefined && targetNode?.type !== 'battery') return Number(tData.amps);
+
+  // 2. Specific Node Types
+  if (sourceNode?.type === 'consumer') return (Number(sData?.watts) || 0) / 12;
+  if (targetNode?.type === 'consumer') return (Number(tData?.watts) || 0) / 12;
+
+  if (sourceNode?.type === 'inverter') return (Number(sData?.watts) || 0) / 12 / 0.85;
+  if (targetNode?.type === 'inverter') return (Number(tData?.watts) || 0) / 12 / 0.85;
+
+  if (sourceNode?.type === 'solar') return (Number(sData?.watts) || 0) / 18; // Typical Vmp
+  if (targetNode?.type === 'solar') return (Number(tData?.watts) || 0) / 18;
+
+  // 3. Fallback: Sum of all consumers (for main lines like Battery -> Busbar)
+  const nodes = getNodes();
+  let totalAmps = 0;
+  for (let i = 0; i < nodes.length; i++) {
+    const n = nodes[i];
+    if (n.type === 'consumer') {
+      totalAmps += (Number(n.data.watts) || 0) / 12;
+    } else if (n.type === 'consumer230v') {
+      totalAmps += (Number(n.data.watts) || 0) / 12 / 0.85;
     }
-    return totalWatts;
   }
+  return totalAmps;
 };
 
 export const calculateCrossSection = (
@@ -41,13 +57,17 @@ export const calculateCrossSection = (
   length: number,
   dataCrossSection?: number
 ): number => {
-  if (dataCrossSection !== undefined) {
-    return dataCrossSection;
-  }
+  // Formula: A = (I * L * 2) / (58 * 0.24)
+  // κ (copper) = 58, ΔU (allowed drop) = 0.24V (approx 2% of 12V)
   const calculatedA = (I * (length * 2)) / (58 * 0.24);
   const minRequiredA = Math.max(1.5, calculatedA);
+  
   const VDE_SIZES = [1.5, 2.5, 4.0, 6.0, 10.0, 16.0, 25.0, 35.0, 50.0, 70.0];
-  return VDE_SIZES.find(size => size >= minRequiredA) || 70.0;
+  const autoSize = VDE_SIZES.find(size => size >= minRequiredA) || 70.0;
+  
+  // If dataCrossSection is set, we treat it as a minimum or manual override
+  // But we always ensure it's at least what the physics requires
+  return Math.max(autoSize, dataCrossSection || 0);
 };
 
 export const calculateMaxFuse = (cs: number): number => {
@@ -93,6 +113,25 @@ const CableEdge = function ({
   const { getNode, getNodes } = useReactFlow();
   const isProMode = useAppStore(state => state.isProMode);
 
+  // Subscribe to connected nodes and total consumption for reactivity
+  const { sNodeData, tNodeData, systemLoad } = usePlannerStore(useShallow(state => {
+    const s = state.nodes.find(n => n.id === source) || state.waterNodes.find(n => n.id === source);
+    const t = state.nodes.find(n => n.id === target) || state.waterNodes.find(n => n.id === target);
+    
+    const totalWatts = state.nodes.reduce((acc, n) => {
+      if (n.type === 'consumer' || n.type === 'consumer230v' || n.type === 'inverter') {
+        return acc + (Number(n.data.watts) || 0);
+      }
+      return acc;
+    }, 0);
+    
+    return { 
+      sNodeData: s?.data, 
+      tNodeData: t?.data,
+      systemLoad: totalWatts
+    };
+  }));
+
   const [edgePath, labelX, labelY] = useMemo(() => {
     return calculateEdgePath({
       sourceX,
@@ -117,7 +156,8 @@ const CableEdge = function ({
     const dur = calculateAnimationDuration(I);
 
     return { length, crossSection: cs, maxFuse: mf, strokeWidth: sw, animationDuration: dur };
-  }, [getNode, getNodes, data?.length, data?.crossSection, source, target]);
+    // Dependencies include node data and system load to force re-calc when anything relevant changes
+  }, [getNode, getNodes, data?.length, data?.crossSection, source, target, sNodeData, tNodeData, systemLoad]);
 
   const stroke = selected ? '#f97316' : '#9ca3af';
 
@@ -184,3 +224,4 @@ const CableEdge = function ({
 };
 
 export default React.memo(CableEdge);
+
