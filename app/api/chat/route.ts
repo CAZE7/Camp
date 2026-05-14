@@ -261,15 +261,18 @@ export async function POST(req: Request) {
   let contextText = '';
   let productRecommendations = '';
 
-  const dbClient = await pool.connect();
+  let dbClient;
 
   try {
+    dbClient = await pool.connect();
     contextText = await performKnowledgeRAG(dbClient, userQuery);
     productRecommendations = await extractAndProcessBOM(dbClient, userQuery);
   } catch (error) {
     console.error("Error during RAG pipeline:", error);
   } finally {
-    dbClient.release();
+    if (dbClient) {
+      dbClient.release();
+    }
   }
 
   // 4. Construct System Prompt

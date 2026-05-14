@@ -88,6 +88,44 @@ describe('POST /api/chat', () => {
     expect((systemMessage as any)?.content).toContain('Context chunk 2');
   });
 
+  it('handles database connection errors gracefully without crashing', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    // Force pool.connect to throw an error
+    (pool.connect as any).mockRejectedValueOnce(new Error('Database Connection Failed'));
+
+    const req = new Request('http://localhost/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: [
+          {
+            id: 'db-error',
+            role: 'user',
+            content: 'What is a battery?',
+          }
+        ]
+      })
+    });
+
+    const response = await POST(req);
+
+    // It should NOT return a 500 status response, it should continue to streamText
+    expect(response).toBeInstanceOf(Response);
+    expect(response.status).toBe(200);
+
+    // Ensure the error was caught and logged
+    expect(consoleSpy).toHaveBeenCalledWith(
+      'Error during RAG pipeline:',
+      expect.any(Error)
+    );
+
+    // Verify streamText WAS called, ensuring graceful fallback
+    expect(streamText).toHaveBeenCalled();
+
+    consoleSpy.mockRestore();
+  });
+
   it('handles embed (RAG embedding pipeline) errors gracefully without crashing', async () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
