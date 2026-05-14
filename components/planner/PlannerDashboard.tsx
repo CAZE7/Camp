@@ -23,12 +23,6 @@ function NavigationSection({
 }) {
   return (
     <div className="flex items-center gap-1 pointer-events-auto">
-      <Link href="/">
-        <Button variant="ghost" size="sm" className="font-semibold">
-          ← Zurück
-        </Button>
-      </Link>
-      <div className="w-px h-6 bg-border mx-1" />
       <Button
         variant={viewMode === 'electric' ? 'default' : 'ghost'}
         size="sm"

@@ -53,6 +53,7 @@ interface PlannerState {
   exportBOM: () => void;
   onDrop: (event: React.DragEvent, screenToFlowPosition: (client: {x: number, y: number}) => {x: number, y: number}) => void;
   onCustomDrop: (event: Event, screenToFlowPosition: (client: {x: number, y: number}) => {x: number, y: number}) => void;
+  addNode: (type: string, label: string, position: {x: number, y: number}) => void;
 }
 
 let cachedNodesRef: Node[] | null = null;
@@ -490,6 +491,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
         data: {}
       };
       set((state) => ({ waterEdges: addEdge(newEdge, state.waterEdges) }));
+      setTimeout(() => get().onLayout(), 50);
       return;
     }
 
@@ -506,6 +508,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
       },
     };
     set((state) => ({ edges: addEdge(newEdge, state.edges) as Edge<CableEdgeData>[] }));
+    setTimeout(() => get().onLayout(), 50);
   },
 
   autoWireSystem: (fitView) => {
@@ -587,35 +590,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
       y: event.clientY,
     });
 
-    const newNode: Node = {
-      id: crypto.randomUUID(),
-      type,
-      position,
-      data: { label: label },
-    };
-
-    if (type === 'battery') {
-      newNode.data = { ...newNode.data, capacity: 100, chemistry: 'LiFePO4' };
-    } else if (type === 'consumer') {
-      newNode.data = { ...newNode.data, watts: 50, hours: 2 };
-    } else if (type === 'charger') {
-      newNode.data = { ...newNode.data, amps: 10 };
-    } else if (type === 'fuse') {
-      newNode.data = { ...newNode.data, rating: 30 };
-    } else if (type === 'shorePower') {
-      newNode.data = { ...newNode.data, hasRcd: false };
-    } else if (type === 'consumer230v') {
-      newNode.data = { ...newNode.data, watts: 1000, hours: 0.5 };
-    } else if (type === 'solar') {
-      newNode.data = { ...newNode.data, voltage: 18, amps: 5 };
-    }
-
-    const { viewMode } = get();
-    if (viewMode === 'water') {
-      set((state) => ({ waterNodes: state.waterNodes.concat(newNode) }));
-    } else {
-      set((state) => ({ nodes: state.nodes.concat(newNode) }));
-    }
+    get().addNode(type, label, position);
   },
 
   onCustomDrop: (event, screenToFlowPosition) => {
@@ -627,8 +602,12 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
       y: clientY,
     });
 
+    get().addNode(type, label, position);
+  },
+
+  addNode: (type, label, position) => {
     const newNode: Node = {
-      id: crypto.randomUUID(),
+      id: `${type}-${crypto.randomUUID()}`,
       type,
       position,
       data: { label: label },
