@@ -18,6 +18,6 @@
 **Learning:** In the Inspector UI components, multiple `<input>` and `<select>` fields had visual labels but lacked proper `id` attributes linked via the label's `htmlFor` attribute. This is a significant accessibility issue because screen readers cannot associate the text label with the form field, and users cannot click the label to focus the input.
 **Action:** Always ensure every form element (`<input>`, `<select>`, `<textarea>`) has a unique `id` and is paired with a `<label>` containing a matching `htmlFor` attribute, or is wrapped by the label.
 
-## 2024-05-12 - Added keyboard focus styles and ARIA states to ExpertPanel
-**Learning:** Collapsible accordion and toggle buttons often lack `aria-expanded` and clear focus indicators by default. Adding semantic ARIA attributes and `focus-visible` Tailwind classes (e.g., `focus-visible:ring-emerald-500`) to standard `<button>` elements significantly improves keyboard navigation without altering the visual design for mouse users.
-**Action:** Always include `focus-visible` outline classes on interactive elements and use `aria-expanded` for elements that toggle content visibility.
+## 2026-05-18 - Keyboard Accessibility: Escape key support
+**Learning:** Users naturally use the "Escape" key to back out of overlay components or clear inputs. The Chat window, mobile NavigationSidebar, and the search input in the component Sidebar lacked this standard keyboard behavior, forcing users to click specific close/clear buttons.
+**Action:** Implemented global `'keydown'` event listeners for the `Escape` key to close overlays (`Chat`, `NavigationSidebar`), and added an `onKeyDown` handler to clear search inputs and blur focus (`Sidebar`). Always consider keyboard shortcuts for modal-like or interruptible UI states.
