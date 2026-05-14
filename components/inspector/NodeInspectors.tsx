@@ -159,6 +159,10 @@ export function InverterInspector({
   onUpdateNodeData,
   nodes,
 }: BaseNodeInspectorProps & { nodes?: Node[] }) {
+  const consumerNodes = React.useMemo(() => {
+    return nodes?.filter((n) => n.type === 'consumer230v') || [];
+  }, [nodes]);
+
   return (
     <>
       <div className="flex flex-col">
@@ -174,7 +178,7 @@ export function InverterInspector({
       <div className="flex flex-col mt-4">
         <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider">Gleichzeitige 230V Geräte</label>
         <div className="flex flex-col gap-1 max-h-32 overflow-y-auto border border-gray-200 rounded p-1">
-          {nodes?.filter((n) => n.type === 'consumer230v').map((consumer) => {
+          {consumerNodes.map((consumer) => {
             const isChecked = (node.data?.concurrentDevices || []).includes(consumer.id);
             return (
               <label key={consumer.id} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer p-1 hover:bg-gray-50 rounded">
