@@ -1,79 +1,74 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useRef } from "react";
 import gsap from "gsap";
+import { useGSAP } from "@gsap/react";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { MotionPathPlugin } from "gsap/MotionPathPlugin";
 
 // Register plugins
 if (typeof window !== "undefined") {
-  gsap.registerPlugin(ScrollTrigger, MotionPathPlugin);
+  gsap.registerPlugin(ScrollTrigger, MotionPathPlugin, useGSAP);
 }
 
 export default function RoadTripAnimation() {
   const containerRef = useRef<HTMLDivElement>(null);
   const camperRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
+  useGSAP(() => {
     const path = document.querySelector("#road-path") as SVGPathElement;
     const pageWrapper = document.querySelector("#ausbau-page");
     
     if (!path || !camperRef.current || !pageWrapper) return;
 
-    // Use a small timeout to ensure DOM is fully laid out
-    const initAnimation = () => {
-      // Refresh ScrollTrigger to calculate correct heights
-      ScrollTrigger.refresh();
+    // Hint browser for optimization
+    path.style.willChange = "transform";
+    camperRef.current.style.willChange = "transform";
 
-      // Animate the camper along the SVG path
-      const tl = gsap.timeline({
-        scrollTrigger: {
-          trigger: pageWrapper,
-          start: "top top",
-          end: "bottom bottom",
-          scrub: 1, // smooth scrubbing
-        }
-      });
+    // Refresh ScrollTrigger to calculate correct heights
+    ScrollTrigger.refresh();
 
-      tl.to(camperRef.current, {
-        motionPath: {
-          path: path,
-          align: path,
-          alignOrigin: [0.5, 0.5],
-          autoRotate: 90, // Adjust rotation offset if the car points right by default
-        },
-        ease: "none",
-        duration: 1
-      }, 0);
-
-      // Ambient UI Interpolation
-      tl.to(document.documentElement, {
-        "--ambient-bg": "#ffffff",
-        "--ambient-glow": "rgba(255, 255, 255, 0.5)",
-        ease: "none",
-        duration: 0.5
-      }, 0);
-
-      tl.to(document.documentElement, {
-        "--ambient-bg": "#fff7ed",
-        "--ambient-glow": "rgba(255, 247, 237, 0.5)",
-        ease: "none",
-        duration: 0.5
-      }, 0.5);
-      
-      // Reveal the camper once GSAP has positioned it
-      if (camperRef.current) {
-        gsap.to(camperRef.current, { opacity: 1, duration: 0.5 });
+    // Animate the camper along the SVG path
+    const tl = gsap.timeline({
+      scrollTrigger: {
+        trigger: pageWrapper,
+        start: "top top",
+        end: "bottom bottom",
+        scrub: 1, // smooth scrubbing
       }
-    };
+    });
 
-    const timer = setTimeout(initAnimation, 500);
+    tl.to(camperRef.current, {
+      motionPath: {
+        path: path,
+        align: path,
+        alignOrigin: [0.5, 0.5],
+        autoRotate: 90, // Adjust rotation offset if the car points right by default
+      },
+      ease: "none",
+      duration: 1
+    }, 0);
 
-    return () => {
-      clearTimeout(timer);
-      ScrollTrigger.getAll().forEach(t => t.kill());
-    };
-  }, []);
+    // Ambient UI Interpolation
+    tl.to(document.documentElement, {
+      "--ambient-bg": "#ffffff",
+      "--ambient-glow": "rgba(255, 255, 255, 0.5)",
+      ease: "none",
+      duration: 0.5
+    }, 0);
+
+    tl.to(document.documentElement, {
+      "--ambient-bg": "#fff7ed",
+      "--ambient-glow": "rgba(255, 247, 237, 0.5)",
+      ease: "none",
+      duration: 0.5
+    }, 0.5);
+    
+    // Reveal the camper once GSAP has positioned it
+    if (camperRef.current) {
+      gsap.to(camperRef.current, { opacity: 1, duration: 0.5 });
+    }
+  }, { scope: containerRef });
 
   return (
     <div ref={containerRef} className="fixed left-0 top-0 w-24 md:w-32 lg:w-48 h-screen pointer-events-none z-10 opacity-30 lg:opacity-100">

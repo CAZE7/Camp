@@ -1,16 +1,17 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import gsap from "gsap";
+import { useGSAP } from "@gsap/react";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { MotionPathPlugin } from "gsap/MotionPathPlugin";
 import { cn } from "@/lib/utils";
 
 // Register GSAP plugins
 if (typeof window !== "undefined") {
-  gsap.registerPlugin(ScrollTrigger, MotionPathPlugin);
+  gsap.registerPlugin(ScrollTrigger, MotionPathPlugin, useGSAP);
 }
 
 const navLinks = [
@@ -105,46 +106,40 @@ export default function NavigationSidebar() {
   const camperRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(false);
 
-  useEffect(() => {
+  useGSAP(() => {
     const path = document.querySelector("#nav-road-path") as SVGPathElement;
     if (!path || !camperRef.current) return;
 
-    // Small delay for DOM layout
-    const initAnimation = () => {
-      ScrollTrigger.refresh();
+    // Hint browser
+    path.style.willChange = "transform";
+    camperRef.current.style.willChange = "transform";
 
-      const tl = gsap.timeline({
-        scrollTrigger: {
-          trigger: document.documentElement,
-          start: "top top",
-          end: "bottom bottom",
-          scrub: 1.2,
-        },
-      });
+    ScrollTrigger.refresh();
 
-      tl.to(camperRef.current, {
-        motionPath: {
-          path: path,
-          align: path,
-          alignOrigin: [0.5, 0.5],
-          autoRotate: 90,
-        },
-        ease: "none",
-      });
+    const tl = gsap.timeline({
+      scrollTrigger: {
+        trigger: document.documentElement,
+        start: "top top",
+        end: "bottom bottom",
+        scrub: 1.2,
+      },
+    });
 
-      // Reveal
-      if (camperRef.current) {
-        gsap.to(camperRef.current, { opacity: 1, duration: 0.6, delay: 0.3 });
-      }
-    };
+    tl.to(camperRef.current, {
+      motionPath: {
+        path: path,
+        align: path,
+        alignOrigin: [0.5, 0.5],
+        autoRotate: 90,
+      },
+      ease: "none",
+    });
 
-    const timer = setTimeout(initAnimation, 600);
-
-    return () => {
-      clearTimeout(timer);
-      ScrollTrigger.getAll().forEach((t) => t.kill());
-    };
-  }, [pathname]);
+    // Reveal
+    if (camperRef.current) {
+      gsap.to(camperRef.current, { opacity: 1, duration: 0.6, delay: 0.3 });
+    }
+  }, { dependencies: [pathname], scope: containerRef });
 
   return (
     <>

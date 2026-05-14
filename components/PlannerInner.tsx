@@ -13,7 +13,9 @@ export default function PlannerInner() {
       <PlannerSidebar />
       <div className="flex-1 h-full relative overflow-hidden flex flex-col">
         <PlannerDashboard />
-        <FlowCanvas />
+        <React.Suspense fallback={<div className="flex-1 flex items-center justify-center bg-stone-50"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div></div>}>
+          <FlowCanvas />
+        </React.Suspense>
         {/* Floating Expert Knowledge Panel — reads from store independently, never re-renders FlowCanvas */}
         <ExpertPanel />
       </div>

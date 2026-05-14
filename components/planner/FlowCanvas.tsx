@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, Suspense } from 'react';
 import ReactFlow, {
   Background,
   Controls,
@@ -7,6 +7,7 @@ import ReactFlow, {
   useReactFlow,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
+import { useShallow } from 'zustand/react/shallow';
 
 import WaterNode from '../nodes/WaterNode';
 import WaterPipeEdge from '../edges/WaterPipeEdge';
@@ -21,21 +22,37 @@ import { usePlannerDragDrop } from './hooks/usePlannerDragDrop';
 export function FlowCanvas() {
   const { screenToFlowPosition, fitView } = useReactFlow();
 
-  const viewMode = usePlannerStore((state) => state.viewMode);
-  const nodes = usePlannerStore((state) => state.nodes);
-  const edges = usePlannerStore((state) => state.edges);
-  const waterNodes = usePlannerStore((state) => state.waterNodes);
-  const waterEdges = usePlannerStore((state) => state.waterEdges);
-  const waterWarning = usePlannerStore((state) => state.waterWarning);
-  const season = usePlannerStore((state) => state.season);
-
-  const onNodesChange = usePlannerStore((state) => state.onNodesChange);
-  const onEdgesChange = usePlannerStore((state) => state.onEdgesChange);
-  const onWaterNodesChange = usePlannerStore((state) => state.onWaterNodesChange);
-  const onWaterEdgesChange = usePlannerStore((state) => state.onWaterEdgesChange);
-  const onConnect = usePlannerStore((state) => state.onConnect);
-  const isValidConnection = usePlannerStore((state) => state.isValidConnection);
-  const onSelectionChange = usePlannerStore((state) => state.onSelectionChange);
+  const {
+    viewMode,
+    nodes,
+    edges,
+    waterNodes,
+    waterEdges,
+    waterWarning,
+    season,
+    onNodesChange,
+    onEdgesChange,
+    onWaterNodesChange,
+    onWaterEdgesChange,
+    onConnect,
+    isValidConnection,
+    onSelectionChange
+  } = usePlannerStore(useShallow((state) => ({
+    viewMode: state.viewMode,
+    nodes: state.nodes,
+    edges: state.edges,
+    waterNodes: state.waterNodes,
+    waterEdges: state.waterEdges,
+    waterWarning: state.waterWarning,
+    season: state.season,
+    onNodesChange: state.onNodesChange,
+    onEdgesChange: state.onEdgesChange,
+    onWaterNodesChange: state.onWaterNodesChange,
+    onWaterEdgesChange: state.onWaterEdgesChange,
+    onConnect: state.onConnect,
+    isValidConnection: state.isValidConnection,
+    onSelectionChange: state.onSelectionChange,
+  })));
 
   const calculatedSolarWatts = useAppStore((state) => state.calculatedSolarWatts);
 
@@ -64,7 +81,7 @@ export function FlowCanvas() {
           {waterWarning}
         </div>
       )}
-      <ReactFlow
+    <ReactFlow
         nodes={viewMode === 'water' ? waterNodes : nodes}
         edges={viewMode === 'water' ? waterEdges : edges}
         nodeTypes={nodeTypes}
@@ -80,6 +97,7 @@ export function FlowCanvas() {
         snapToGrid={true}
         snapGrid={[10, 10]}
         deleteKeyCode={['Backspace', 'Delete']}
+        onlyRenderVisibleElements={true}
       >
         <Background color="hsl(var(--border))" gap={16} />
         <Controls className="rounded-lg overflow-hidden border border-border shadow-sm" />
