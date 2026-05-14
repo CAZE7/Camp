@@ -112,9 +112,23 @@ export default function NavigationSidebar() {
     const path = document.querySelector("#nav-road-path") as SVGPathElement;
     if (!path || !camperRef.current) return;
 
-    // Hint browser — promote to GPU layer
-    path.style.willChange = "transform, opacity";
-    camperRef.current.style.willChange = "transform, opacity";
+    // Dynamic will-change for performance (Lighthouse optimization)
+    let scrollTimeout: NodeJS.Timeout;
+    const handleScroll = () => {
+      if (containerRef.current) containerRef.current.style.willChange = "transform";
+      if (camperRef.current) camperRef.current.style.willChange = "transform";
+      
+      clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(() => {
+        if (containerRef.current) containerRef.current.style.willChange = "auto";
+        if (camperRef.current) camperRef.current.style.willChange = "auto";
+      }, 100);
+    };
+
+    const scrollContainer = document.querySelector('nav');
+    if (scrollContainer) {
+      scrollContainer.addEventListener("scroll", handleScroll, { passive: true });
+    }
 
     // Create a series of snap points based on link positions
     const snapPoints: number[] = [];
@@ -128,7 +142,7 @@ export default function NavigationSidebar() {
         trigger: "nav",
         start: "top 20%",
         end: "bottom 80%",
-        scrub: 1, // Smoother follow as requested
+        scrub: 1,
         snap: {
           snapTo: snapPoints,
           duration: { min: 0.2, max: 0.5 },
@@ -136,7 +150,6 @@ export default function NavigationSidebar() {
           ease: "power2.inOut"
         },
         onUpdate: (self) => {
-          // Fade in/out at the start and end of the path
           if (camperRef.current) {
             const progress = self.progress;
             const opacity = progress < 0.05 ? progress * 20 : progress > 0.95 ? (1 - progress) * 20 : 1;
@@ -161,6 +174,12 @@ export default function NavigationSidebar() {
     if (camperRef.current) {
       gsap.to(camperRef.current, { opacity: 0, duration: 0 }); // Start hidden
     }
+
+    return () => {
+      if (scrollContainer) {
+        scrollContainer.removeEventListener("scroll", handleScroll);
+      }
+    };
   }, { dependencies: [pathname], scope: containerRef });
 
   return (
@@ -201,6 +220,7 @@ export default function NavigationSidebar() {
           // Mobile: slide in/out
           isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
+        style={{ isolation: "isolate" }} // Layer Isolation
       >
         {/* Logo / Brand Area */}
         <div className="px-5 pt-6 pb-4 border-b border-stone-700/40">
