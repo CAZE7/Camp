@@ -21,8 +21,15 @@ export default function RootLayout({
   return (
     <html lang="de" className={cn("font-sans", geist.variable)}>
       <body className={cn(inter.className, "bg-stone-50")}>
+        <div 
+          className="fixed inset-0 pointer-events-none z-50 mix-blend-soft-light transition-colors duration-500" 
+          style={{ 
+            background: `radial-gradient(circle at 50% 50%, var(--ambient-glow) 0%, var(--ambient-bg) 100%)`,
+            opacity: 0.7
+          }} 
+        />
         <NavigationSidebar />
-        <main className="lg:pl-[17rem] min-h-screen transition-all duration-500">
+        <main className="lg:pl-[17rem] min-h-screen transition-all duration-500 relative z-10">
           {children}
         </main>
       </body>

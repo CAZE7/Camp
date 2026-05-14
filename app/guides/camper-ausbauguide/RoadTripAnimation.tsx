@@ -43,7 +43,23 @@ export default function RoadTripAnimation() {
           autoRotate: 90, // Adjust rotation offset if the car points right by default
         },
         ease: "none",
-      });
+        duration: 1
+      }, 0);
+
+      // Ambient UI Interpolation
+      tl.to(document.documentElement, {
+        "--ambient-bg": "#ffffff",
+        "--ambient-glow": "rgba(255, 255, 255, 0.5)",
+        ease: "none",
+        duration: 0.5
+      }, 0);
+
+      tl.to(document.documentElement, {
+        "--ambient-bg": "#fff7ed",
+        "--ambient-glow": "rgba(255, 247, 237, 0.5)",
+        ease: "none",
+        duration: 0.5
+      }, 0.5);
       
       // Reveal the camper once GSAP has positioned it
       if (camperRef.current) {
