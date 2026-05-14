@@ -18,6 +18,6 @@
 **Learning:** In the Inspector UI components, multiple `<input>` and `<select>` fields had visual labels but lacked proper `id` attributes linked via the label's `htmlFor` attribute. This is a significant accessibility issue because screen readers cannot associate the text label with the form field, and users cannot click the label to focus the input.
 **Action:** Always ensure every form element (`<input>`, `<select>`, `<textarea>`) has a unique `id` and is paired with a `<label>` containing a matching `htmlFor` attribute, or is wrapped by the label.
 
-## 2026-05-18 - Keyboard Accessibility: Escape key support
-**Learning:** Users naturally use the "Escape" key to back out of overlay components or clear inputs. The Chat window, mobile NavigationSidebar, and the search input in the component Sidebar lacked this standard keyboard behavior, forcing users to click specific close/clear buttons.
-**Action:** Implemented global `'keydown'` event listeners for the `Escape` key to close overlays (`Chat`, `NavigationSidebar`), and added an `onKeyDown` handler to clear search inputs and blur focus (`Sidebar`). Always consider keyboard shortcuts for modal-like or interruptible UI states.
+## 2026-05-18 - Missing Input Labels ID Linking
+**Learning:** In the Inspector UI components, multiple `<input>` and `<select>` fields had visual labels but lacked proper `id` attributes linked via the label's `htmlFor` attribute. This is a significant accessibility issue because screen readers cannot associate the text label with the form field, and users cannot click the label to focus the input.
+**Action:** Always ensure every form element (`<input>`, `<select>`, `<textarea>`) has a unique `id` and is paired with a `<label>` containing a matching `htmlFor` attribute, or is wrapped by the label.

@@ -66,8 +66,8 @@ export function ConsumerInspector({ node, onUpdateNodeData }: BaseNodeInspectorP
   return (
     <>
       <div className="flex flex-col">
-        <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider" htmlFor={`${node.id}-chemistry`}>Leistung (W)</label>
-        <input id={`${node.id}-chemistry`}
+        <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider" htmlFor={`${node.id}-watts`}>Leistung (W)</label>
+        <input id={`${node.id}-watts`}
           type="number"
           min="0"
           value={node.data?.watts || 0}
@@ -76,8 +76,8 @@ export function ConsumerInspector({ node, onUpdateNodeData }: BaseNodeInspectorP
         />
       </div>
       <div className="flex flex-col">
-        <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider" htmlFor={`${node.id}-watts`}>Nutzung (h/Tag)</label>
-        <input id={`${node.id}-watts`}
+        <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider" htmlFor={`${node.id}-hours`}>Nutzung (h/Tag)</label>
+        <input id={`${node.id}-hours`}
           type="number"
           min="0"
           max="24"
@@ -94,8 +94,8 @@ export function ChargerInspector({ node, onUpdateNodeData }: BaseNodeInspectorPr
   return (
     <>
       <div className="flex flex-col">
-        <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider" htmlFor={`${node.id}-hours`}>Ladeleistung (A)</label>
-        <input id={`${node.id}-hours`}
+        <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider" htmlFor={`${node.id}-amps`}>Ladeleistung (A)</label>
+        <input id={`${node.id}-amps`}
           type="number"
           min="0"
           value={node.data?.amps || 0}
@@ -104,8 +104,8 @@ export function ChargerInspector({ node, onUpdateNodeData }: BaseNodeInspectorPr
         />
       </div>
       <div className="flex flex-col">
-        <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider" htmlFor={`${node.id}-amps`}>Effizienz in %</label>
-        <input id={`${node.id}-amps`}
+        <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider" htmlFor={`${node.id}-efficiency`}>Effizienz in %</label>
+        <input id={`${node.id}-efficiency`}
           type="number"
           min="0"
           max="100"
@@ -121,8 +121,8 @@ export function ChargerInspector({ node, onUpdateNodeData }: BaseNodeInspectorPr
 export function FuseInspector({ node, onUpdateNodeData }: BaseNodeInspectorProps) {
   return (
     <div className="flex flex-col">
-      <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider" htmlFor={`${node.id}-efficiency`}>Sicherung (A)</label>
-        <input id={`${node.id}-efficiency`}
+      <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider" htmlFor={`${node.id}-rating`}>Sicherung (A)</label>
+        <input id={`${node.id}-rating`}
         type="number"
         min="0"
         value={node.data?.rating || 0}
@@ -162,8 +162,8 @@ export function InverterInspector({
   return (
     <>
       <div className="flex flex-col">
-        <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider" htmlFor={`${node.id}-rating`}>Dauerleistung (W)</label>
-        <input id={`${node.id}-rating`}
+        <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider" htmlFor={`${node.id}-continuousPower`}>Dauerleistung (W)</label>
+        <input id={`${node.id}-continuousPower`}
           type="number"
           min="0"
           value={node.data?.continuousPower || 0}
@@ -204,8 +204,8 @@ export function Consumer230VInspector({ node, onUpdateNodeData }: BaseNodeInspec
   return (
     <>
       <div className="flex flex-col">
-        <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider" htmlFor={`${node.id}-continuousPower`}>Leistung 230V (W)</label>
-        <input id={`${node.id}-continuousPower`}
+        <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider" htmlFor={`${node.id}-watts230`}>Leistung 230V (W)</label>
+        <input id={`${node.id}-watts230`}
           type="number"
           min="0"
           value={node.data?.watts || 0}
@@ -214,8 +214,8 @@ export function Consumer230VInspector({ node, onUpdateNodeData }: BaseNodeInspec
         />
       </div>
       <div className="flex flex-col">
-        <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider" htmlFor={`${node.id}-watts230`}>Nutzung (h/Tag)</label>
-        <input id={`${node.id}-watts230`}
+        <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider" htmlFor={`${node.id}-hours230`}>Nutzung (h/Tag)</label>
+        <input id={`${node.id}-hours230`}
           type="number"
           min="0"
           max="24"
@@ -232,8 +232,8 @@ export function SolarInspector({ node, onUpdateNodeData }: BaseNodeInspectorProp
   return (
     <>
       <div className="flex flex-col">
-        <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider" htmlFor={`${node.id}-hours230`}>Arbeitsspannung (V)</label>
-        <input id={`${node.id}-hours230`}
+        <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider" htmlFor={`${node.id}-voltage`}>Arbeitsspannung (V)</label>
+        <input id={`${node.id}-voltage`}
           type="number"
           min="0"
           step="0.1"
@@ -243,8 +243,8 @@ export function SolarInspector({ node, onUpdateNodeData }: BaseNodeInspectorProp
         />
       </div>
       <div className="flex flex-col">
-        <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider" htmlFor={`${node.id}-voltage`}>Strom (A)</label>
-        <input id={`${node.id}-voltage`}
+        <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider" htmlFor={`${node.id}-ampsSolar`}>Strom (A)</label>
+        <input id={`${node.id}-ampsSolar`}
           type="number"
           min="0"
           step="0.1"
@@ -261,8 +261,8 @@ export function RoofWindowInspector({ node, onUpdateNodeData }: BaseNodeInspecto
   return (
     <>
       <div className="flex flex-col">
-        <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider" htmlFor={`${node.id}-ampsSolar`}>Breite (cm)</label>
-        <input id={`${node.id}-ampsSolar`}
+        <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider" htmlFor={`${node.id}-width`}>Breite (cm)</label>
+        <input id={`${node.id}-width`}
           type="number"
           min="1"
           value={node.data?.width || 0}
@@ -271,8 +271,8 @@ export function RoofWindowInspector({ node, onUpdateNodeData }: BaseNodeInspecto
         />
       </div>
       <div className="flex flex-col">
-        <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider" htmlFor={`${node.id}-width`}>Länge (cm)</label>
-        <input id={`${node.id}-width`}
+        <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider" htmlFor={`${node.id}-height`}>Länge (cm)</label>
+        <input id={`${node.id}-height`}
           type="number"
           min="1"
           value={node.data?.height || 0}
@@ -288,8 +288,8 @@ export function RoofSolarInspector({ node, onUpdateNodeData }: BaseNodeInspector
   return (
     <>
       <div className="flex flex-col">
-        <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider" htmlFor={`${node.id}-height`}>Breite (cm)</label>
-        <input id={`${node.id}-height`}
+        <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider" htmlFor={`${node.id}-width2`}>Breite (cm)</label>
+        <input id={`${node.id}-width2`}
           type="number"
           min="1"
           value={node.data?.width || 0}
@@ -298,8 +298,8 @@ export function RoofSolarInspector({ node, onUpdateNodeData }: BaseNodeInspector
         />
       </div>
       <div className="flex flex-col">
-        <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider" htmlFor={`${node.id}-width2`}>Länge (cm)</label>
-        <input id={`${node.id}-width2`}
+        <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider" htmlFor={`${node.id}-height2`}>Länge (cm)</label>
+        <input id={`${node.id}-height2`}
           type="number"
           min="1"
           value={node.data?.height || 0}
@@ -308,8 +308,8 @@ export function RoofSolarInspector({ node, onUpdateNodeData }: BaseNodeInspector
         />
       </div>
       <div className="flex flex-col">
-        <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider" htmlFor={`${node.id}-height2`}>Leistung (Wp)</label>
-        <input id={`${node.id}-height2`}
+        <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider" htmlFor={`${node.id}-wattsRoof`}>Leistung (Wp)</label>
+        <input id={`${node.id}-wattsRoof`}
           type="number"
           min="0"
           value={node.data?.watts || 0}
