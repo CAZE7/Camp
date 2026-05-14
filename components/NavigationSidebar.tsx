@@ -110,9 +110,9 @@ export default function NavigationSidebar() {
     const path = document.querySelector("#nav-road-path") as SVGPathElement;
     if (!path || !camperRef.current) return;
 
-    // Hint browser
-    path.style.willChange = "transform";
-    camperRef.current.style.willChange = "transform";
+    // Hint browser — promote to GPU layer
+    path.style.willChange = "transform, opacity";
+    camperRef.current.style.willChange = "transform, opacity";
 
     ScrollTrigger.refresh();
 
@@ -121,7 +121,7 @@ export default function NavigationSidebar() {
         trigger: document.documentElement,
         start: "top top",
         end: "bottom bottom",
-        scrub: 1.2,
+        scrub: 0.5,
       },
     });
 
@@ -133,11 +133,12 @@ export default function NavigationSidebar() {
         autoRotate: 90,
       },
       ease: "none",
+      force3D: true,
     });
 
     // Reveal
     if (camperRef.current) {
-      gsap.to(camperRef.current, { opacity: 1, duration: 0.6, delay: 0.3 });
+      gsap.to(camperRef.current, { opacity: 1, duration: 0.6, delay: 0.3, force3D: true });
     }
   }, { dependencies: [pathname], scope: containerRef });
 

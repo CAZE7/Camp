@@ -98,13 +98,15 @@ export function FlowCanvas() {
         snapGrid={[10, 10]}
         deleteKeyCode={['Backspace', 'Delete']}
         onlyRenderVisibleElements={true}
+        elementsSelectable={true}
+        translateExtent={[[-2000, -2000], [4000, 4000]]}
       >
         <Background color="hsl(var(--border))" gap={16} />
         <Controls className="rounded-lg overflow-hidden border border-border shadow-sm" />
         <MiniMap className="rounded-lg overflow-hidden border border-border shadow-sm" />
 
         {viewMode === 'electric' && (
-          <Panel position="top-center" className="bg-card/95 backdrop-blur-md p-4 rounded-lg shadow-lg border border-border text-sm w-80">
+          <Panel position="top-center" className="bg-card p-4 rounded-lg shadow-lg border border-border text-sm w-80">
             <h3 className="font-bold mb-2 border-b border-border pb-1">System Berechnungen</h3>
             <div className="flex flex-col gap-2">
               <div className="flex justify-between">
@@ -131,7 +133,7 @@ export function FlowCanvas() {
         )}
 
         {viewMode === 'electric' && calculatedSolarWatts > 0 && (
-          <Panel position="bottom-center" className="bg-blue-50/90 backdrop-blur-md p-3 rounded-lg shadow-sm border border-blue-200 text-blue-800 text-sm mb-4">
+          <Panel position="bottom-center" className="bg-blue-50 p-3 rounded-lg shadow-sm border border-blue-200 text-blue-800 text-sm mb-4">
             <strong>Dachplaner-Daten erkannt:</strong> {calculatedSolarWatts} W Solarleistung verfügbar. Du kannst nun deinen MPPT-Regler entsprechend dimensionieren.
           </Panel>
         )}

@@ -106,7 +106,7 @@ export default function Sidebar({ mode = 'electric' }: { mode?: 'electric' | 'wa
           aria-label="Komponenten suchen"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full border border-stone-200 rounded-xl px-3 py-2.5 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-400 transition-all bg-white/80 backdrop-blur-sm text-stone-700 placeholder:text-stone-400 shadow-sm"
+          className="w-full border border-stone-200 rounded-xl px-3 py-2.5 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-400 transition-all bg-white/80 text-stone-700 placeholder:text-stone-400 shadow-sm"
         />
         {searchTerm && (
           <button
@@ -126,7 +126,7 @@ export default function Sidebar({ mode = 'electric' }: { mode?: 'electric' | 'wa
             {filteredComponents.map((comp, index) => (
               <div
                 key={index}
-                className="p-3 border border-stone-200/70 rounded-xl cursor-grab hover:bg-emerald-50/60 hover:border-emerald-300/50 hover:scale-[1.03] hover:shadow-md transition-all duration-200 text-sm font-semibold text-stone-700 bg-white/90 shadow-sm touch-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 backdrop-blur-sm"
+                className="p-3 border border-stone-200/70 rounded-xl cursor-grab hover:bg-emerald-50/60 hover:border-emerald-300/50 hover:scale-[1.03] hover:shadow-md transition-all duration-200 text-sm font-semibold text-stone-700 bg-white/90 shadow-sm touch-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                 tabIndex={0}
                 role="button"
                 aria-grabbed="false"

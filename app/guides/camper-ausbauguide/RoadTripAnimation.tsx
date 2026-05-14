@@ -21,9 +21,9 @@ export default function RoadTripAnimation() {
     
     if (!path || !camperRef.current || !pageWrapper) return;
 
-    // Hint browser for optimization
-    path.style.willChange = "transform";
-    camperRef.current.style.willChange = "transform";
+    // Hint browser for optimization — promote to GPU layer
+    path.style.willChange = "transform, opacity";
+    camperRef.current.style.willChange = "transform, opacity";
 
     // Refresh ScrollTrigger to calculate correct heights
     ScrollTrigger.refresh();
@@ -34,7 +34,7 @@ export default function RoadTripAnimation() {
         trigger: pageWrapper,
         start: "top top",
         end: "bottom bottom",
-        scrub: 1, // smooth scrubbing
+        scrub: 0.5, // smooth scrubbing — lower = more responsive
       }
     });
 
@@ -46,7 +46,8 @@ export default function RoadTripAnimation() {
         autoRotate: 90, // Adjust rotation offset if the car points right by default
       },
       ease: "none",
-      duration: 1
+      duration: 1,
+      force3D: true,
     }, 0);
 
     // Ambient UI Interpolation
@@ -66,7 +67,7 @@ export default function RoadTripAnimation() {
     
     // Reveal the camper once GSAP has positioned it
     if (camperRef.current) {
-      gsap.to(camperRef.current, { opacity: 1, duration: 0.5 });
+      gsap.to(camperRef.current, { opacity: 1, duration: 0.5, force3D: true });
     }
   }, { scope: containerRef });
 

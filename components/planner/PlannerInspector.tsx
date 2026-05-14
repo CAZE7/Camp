@@ -3,22 +3,34 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Inspector from '../Inspector';
 import { usePlannerStore } from '../../store/usePlannerStore';
+import { useShallow } from 'zustand/react/shallow';
 import { useAppStore } from '../../lib/store';
 import { useDashboardMetrics } from './hooks/useDashboardMetrics';
 
 export function PlannerInspector() {
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(true);
 
-  const nodes = usePlannerStore((state) => state.nodes);
-  const edges = usePlannerStore((state) => state.edges);
-  const season = usePlannerStore((state) => state.season);
-  const selectedNodes = usePlannerStore((state) => state.selectedNodes);
-  const selectedEdges = usePlannerStore((state) => state.selectedEdges);
-
-  const handleChangeLength = usePlannerStore((state) => state.handleChangeLength);
-  const handleChangeCrossSection = usePlannerStore((state) => state.handleChangeCrossSection);
-  const deleteSelected = usePlannerStore((state) => state.deleteSelected);
-  const updateNodeData = usePlannerStore((state) => state.updateNodeData);
+  const {
+    nodes,
+    edges,
+    season,
+    selectedNodes,
+    selectedEdges,
+    handleChangeLength,
+    handleChangeCrossSection,
+    deleteSelected,
+    updateNodeData,
+  } = usePlannerStore(useShallow((state) => ({
+    nodes: state.nodes,
+    edges: state.edges,
+    season: state.season,
+    selectedNodes: state.selectedNodes,
+    selectedEdges: state.selectedEdges,
+    handleChangeLength: state.handleChangeLength,
+    handleChangeCrossSection: state.handleChangeCrossSection,
+    deleteSelected: state.deleteSelected,
+    updateNodeData: state.updateNodeData,
+  })));
 
   const calculatedSolarWatts = useAppStore((state) => state.calculatedSolarWatts);
 

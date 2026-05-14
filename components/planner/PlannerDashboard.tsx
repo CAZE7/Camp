@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { usePlannerStore } from '../../store/usePlannerStore';
+import { useShallow } from 'zustand/react/shallow';
 import { useAppStore } from '../../lib/store';
 import { toPng } from 'html-to-image';
 import { useReactFlow } from 'reactflow';
@@ -167,20 +168,31 @@ function ProModeSection({
 
 export function PlannerDashboard() {
   const { fitView } = useReactFlow();
-  const viewMode = usePlannerStore((state) => state.viewMode);
-  const setViewMode = usePlannerStore((state) => state.setViewMode);
-  const season = usePlannerStore((state) => state.season);
-  const setSeason = usePlannerStore((state) => state.setSeason);
 
-  const exportBOM = usePlannerStore((state) => state.exportBOM);
-  const autoWireSystem = usePlannerStore((state) => state.autoWireSystem);
-  const checkSchematic = usePlannerStore((state) => state.checkSchematic);
-  const onLayout = usePlannerStore((state) => state.onLayout);
+  const {
+    viewMode,
+    setViewMode,
+    season,
+    setSeason,
+    exportBOM,
+    autoWireSystem,
+    checkSchematic,
+    onLayout,
+  } = usePlannerStore(useShallow((state) => ({
+    viewMode: state.viewMode,
+    setViewMode: state.setViewMode,
+    season: state.season,
+    setSeason: state.setSeason,
+    exportBOM: state.exportBOM,
+    autoWireSystem: state.autoWireSystem,
+    checkSchematic: state.checkSchematic,
+    onLayout: state.onLayout,
+  })));
 
   const { isProMode, toggleProMode } = useAppStore();
 
   return (
-    <div className="absolute top-4 left-4 z-10 flex flex-wrap gap-3 bg-card/90 backdrop-blur-md shadow-lg rounded-lg p-3 pointer-events-none w-[calc(100%-2rem)] border border-border">
+    <div className="absolute top-4 left-4 z-10 flex flex-wrap gap-3 bg-card shadow-lg rounded-lg p-3 pointer-events-none w-[calc(100%-2rem)] border border-border">
       <NavigationSection viewMode={viewMode} setViewMode={setViewMode} />
 
       <ActionsSection
