@@ -9,9 +9,7 @@ export type CableEdgeData = {
   fuseSize?: number;
 };
 
-type CableEdgeProps = EdgeProps<CableEdgeData> & { sourceHandle?: string | null };
-
-// Extracted Helper Functions
+type CableEdgeProps = EdgeProps<CableEdgeData> & { sourceHandleId?: string | null };
 export const calculateCurrent = (
   sourceNode: Node | undefined,
   targetNode: Node | undefined,
@@ -90,7 +88,7 @@ const CableEdge = function ({
   data,
   markerEnd,
   selected,
-  sourceHandle,
+  sourceHandleId,
 }: CableEdgeProps) {
   const { getNode, getNodes } = useReactFlow();
   const isProMode = useAppStore(state => state.isProMode);
@@ -150,7 +148,7 @@ const CableEdge = function ({
         <div
           style={{
             position: 'absolute',
-            transform: `translate(-50%, -50%) translate(${labelX}px,${labelY + (sourceHandle?.includes('minus') ? 40 : -40)}px)`,
+            transform: `translate(-50%, -50%) translate(${labelX}px,${labelY + (sourceHandleId?.includes('minus') ? 40 : -40)}px)`,
             background: 'white',
             padding: '2px 6px',
             borderRadius: '4px',

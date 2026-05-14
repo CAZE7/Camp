@@ -312,6 +312,64 @@ function performAutoWiring(initialNodes: Node[]): { nodes: Node[], edges: Edge[]
   wireChargers(nodesByType['charger'] || [], busbarNode, newEdges, edgeIdRef);
   wireConsumers(nodesByType['consumer'] || [], fuseBoxNode, newEdges, edgeIdRef);
 
+  function wire230VAndGround(
+    inverters: Node[],
+    consumers230v: Node[],
+    shorePowers: Node[],
+    grounds: Node[],
+    busbarNode: Node,
+    newEdges: Edge[],
+    edgeIdRef: { counter: number }
+  ) {
+    if (inverters.length > 0) {
+      const mainInverter = inverters[0];
+      for (let i = 0; i < consumers230v.length; i++) {
+        newEdges.push({
+          id: `e-auto-ac-${edgeIdRef.counter++}`,
+          source: mainInverter.id,
+          target: consumers230v[i].id,
+          sourceHandle: 'plus',
+          targetHandle: 'plus',
+          type: 'cableEdge',
+          data: { length: 2, crossSection: 1.5, fuseSize: 16 },
+        });
+      }
+      for (let i = 0; i < shorePowers.length; i++) {
+        newEdges.push({
+          id: `e-auto-ac-in-${edgeIdRef.counter++}`,
+          source: shorePowers[i].id,
+          target: mainInverter.id,
+          sourceHandle: 'plus',
+          targetHandle: 'plus',
+          type: 'cableEdge',
+          data: { length: 2, crossSection: 2.5, fuseSize: 16 },
+        });
+      }
+    }
+    if (grounds.length > 0 && busbarNode) {
+      const mainGround = grounds[0];
+      newEdges.push({
+        id: `e-auto-gnd-${edgeIdRef.counter++}`,
+        source: busbarNode.id,
+        target: mainGround.id,
+        sourceHandle: 'minus',
+        targetHandle: 'plus',
+        type: 'cableEdge',
+        data: { length: 1, crossSection: 16 },
+      });
+    }
+  }
+
+  wire230VAndGround(
+    nodesByType['inverter'] || [],
+    nodesByType['consumer230v'] || [],
+    nodesByType['shorePower'] || [],
+    nodesByType['ground'] || [],
+    busbarNode,
+    newEdges,
+    edgeIdRef
+  );
+
   return { nodes: currentNodes, edges: newEdges };
 }
 
