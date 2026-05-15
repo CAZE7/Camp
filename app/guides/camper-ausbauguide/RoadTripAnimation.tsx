@@ -50,7 +50,7 @@ export default function RoadTripAnimation() {
         trigger: pageWrapper,
         start: "top top",
         end: "bottom bottom",
-        scrub: 0.5,
+        scrub: 1.2,
         snap: {
           snapTo: snapPoints,
           duration: { min: 0.2, max: 0.5 },
@@ -184,7 +184,7 @@ export default function RoadTripAnimation() {
       {/* The Camper Icon */}
       <div
         ref={camperRef}
-        className="absolute w-12 h-12 flex items-center justify-center bg-stone-50 rounded-xl shadow-[0_10px_25px_rgba(0,0,0,0.2)] border-2 border-emerald-600 text-emerald-700"
+        className="absolute w-12 h-12 flex items-center justify-center bg-stone-50 rounded-xl border-2 border-emerald-600 text-emerald-700"
         style={{ top: 0, left: 0, opacity: 0 }} 
       >
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-8 h-8 relative">
@@ -194,8 +194,8 @@ export default function RoadTripAnimation() {
            <circle cx="17" cy="17" r="2.5" fill="#10b981" stroke="none" />
            
            {/* Headlights (Evening Mode) */}
-           <circle className="camper-headlight" cx="21" cy="13" r="2.0" fill="#fbbf24" style={{ opacity: 0 }} />
-           <circle className="camper-headlight" cx="21" cy="15" r="1.5" fill="#fbbf24" style={{ opacity: 0 }} />
+           <circle className="camper-headlight" cx="21" cy="13" r="1.5" fill="#fbbf24" style={{ opacity: 0 }} />
+           <circle className="camper-headlight" cx="21" cy="15" r="1" fill="#fbbf24" style={{ opacity: 0 }} />
         </svg>
       </div>
     </div>
