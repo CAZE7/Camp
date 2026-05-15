@@ -75,7 +75,7 @@ export const calculateMaxFuse = (cs: number): number => {
   if (cs <= 2.5) return 25;
   if (cs <= 4.0) return 32;
   if (cs <= 6.0) return 50;
-  if (cs <= 10.0) return 70;
+  if (cs <= 10.0) return 60;
   if (cs <= 16.0) return 100;
   if (cs <= 25.0) return 130;
   if (cs <= 35.0) return 150;
@@ -144,7 +144,9 @@ const CableEdge = function ({
     });
   }, [sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, isProMode]);
 
-  const { length, crossSection, maxFuse, strokeWidth, animationDuration } = useMemo(() => {
+  const isPlus = sourceHandleId?.includes('plus');
+
+  const { length, crossSection, maxFuse, strokeWidth, animationDuration, I, sourceNode, dropPercentage } = useMemo(() => {
     const length = data?.length || 3;
     const sourceNode = getNode(source);
     const targetNode = getNode(target);
@@ -155,11 +157,33 @@ const CableEdge = function ({
     const sw = calculateStrokeWidth(cs);
     const dur = calculateAnimationDuration(I);
 
-    return { length, crossSection: cs, maxFuse: mf, strokeWidth: sw, animationDuration: dur };
+    const voltageDrop = (I * (length * 2)) / (58 * cs);
+    const dropPercentage = (voltageDrop / 12) * 100;
+
+    return { length, crossSection: cs, maxFuse: mf, strokeWidth: sw, animationDuration: dur, I, sourceNode, dropPercentage };
     // Dependencies include node data and system load to force re-calc when anything relevant changes
   }, [getNode, getNodes, data?.length, data?.crossSection, source, target, sNodeData, tNodeData, systemLoad]);
 
-  const stroke = selected ? '#f97316' : '#9ca3af';
+  let stroke = selected ? '#f97316' : '#9ca3af';
+  if (dropPercentage > 3) stroke = 'red';
+  else if (dropPercentage > 2) stroke = 'yellow';
+
+  const errors: string[] = [];
+  if (isPlus) {
+    if (!data?.fuseSize) {
+      errors.push('Sicherung fehlt!');
+    } else {
+      if (data.fuseSize > maxFuse) {
+        errors.push('Sicherung zu groß!');
+      }
+      if (data.fuseSize < I) {
+        errors.push('Sicherung zu klein!');
+      }
+    }
+    if (sourceNode?.type === 'battery' && length > 0.2) {
+      errors.push('Hauptsicherung nach Batterie max 20cm!');
+    }
+  }
 
   return (
     <>
@@ -205,7 +229,10 @@ const CableEdge = function ({
           <span>{length.toFixed(2)} m</span>
           <span>{crossSection} mm²</span>
           {maxFuse > 0 && <span style={{ color: 'red', fontSize: '10px' }}>Max: {maxFuse}A</span>}
-          {data?.fuseSize && <span style={{ background: 'red', color: 'white', padding: '1px 4px', borderRadius: '4px', fontSize: '10px', marginTop: '2px' }}>{data.fuseSize}A Sicherung</span>}
+          {data?.fuseSize && <span style={{ background: 'green', color: 'white', padding: '1px 4px', borderRadius: '4px', fontSize: '10px', marginTop: '2px' }}>{data.fuseSize}A Sicherung</span>}
+          {errors.map((err, idx) => (
+            <span key={idx} style={{ background: 'red', color: 'white', padding: '1px 4px', borderRadius: '4px', fontSize: '10px', marginTop: '2px' }}>{err}</span>
+          ))}
         </div>
       </EdgeLabelRenderer>
 

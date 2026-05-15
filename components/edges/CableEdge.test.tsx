@@ -98,7 +98,7 @@ describe('CableEdge', () => {
     const { getByText } = render(<CableEdge {...defaultProps} />);
 
     expect(getByText('10 mm²')).toBeInTheDocument();
-    expect(getByText('Max: 70A')).toBeInTheDocument();
+    expect(getByText('Max: 60A')).toBeInTheDocument();
   });
 
   it('calculates crossSection and maxFuse when target is charger', () => {

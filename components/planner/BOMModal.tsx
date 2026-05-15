@@ -3,8 +3,7 @@ import { Button } from '@/components/ui/button';
 import { usePlannerStore } from '../../store/usePlannerStore';
 
 export function BOMModal() {
-  const nodes = usePlannerStore((state) => state.nodes);
-  const edges = usePlannerStore((state) => state.edges);
+
 
   const [showBOM, setShowBOM] = useState(false);
   const [bomData, setBomData] = useState<{ counts: Record<string, number>, cableLengths: Record<string, number> } | null>(null);
@@ -12,6 +11,7 @@ export function BOMModal() {
   useEffect(() => {
     const handleShowBom = () => {
       // Re-calculate directly to match original local state flow
+      const { nodes, edges } = (usePlannerStore as any).getState();
       const counts: Record<string, number> = {};
       for (let i = 0, len = nodes.length; i < len; i++) {
         const type = nodes[i].type;
@@ -31,7 +31,7 @@ export function BOMModal() {
     };
     window.addEventListener('show-bom-modal', handleShowBom);
     return () => window.removeEventListener('show-bom-modal', handleShowBom);
-  }, [nodes, edges]);
+  }, []);
 
   const bomCountsEntries = useMemo(() => {
     return bomData?.counts ? Object.entries(bomData.counts) : [];
