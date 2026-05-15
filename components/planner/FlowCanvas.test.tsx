@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { FlowCanvas } from './FlowCanvas';
 import { usePlannerStore } from '../../store/usePlannerStore';
+import * as StoreModule from '../../store/usePlannerStore';
 import { useAppStore } from '../../lib/store';
 import { useDashboardMetrics } from './hooks/useDashboardMetrics';
 
@@ -98,6 +99,7 @@ describe('FlowCanvas', () => {
     vi.clearAllMocks();
 
     // Reset store mocks to default before each test
+    Object.assign(usePlannerStore, { getState: () => defaultPlannerStoreState });
     vi.mocked(usePlannerStore).mockImplementation((selector) => selector(defaultPlannerStoreState));
     vi.mocked(useAppStore).mockImplementation((selector) => selector(defaultAppStoreState));
   });
@@ -121,7 +123,8 @@ describe('FlowCanvas', () => {
   });
 
   it('passes water nodes and edges when viewMode is water', () => {
-    vi.mocked(usePlannerStore).mockImplementation((selector) => {
+    Object.assign(usePlannerStore, { getState: () => defaultPlannerStoreState });
+    vi.mocked(usePlannerStore).mockImplementation((selector: any) => {
       return selector({
         ...defaultPlannerStoreState,
         viewMode: 'water',
@@ -280,7 +283,8 @@ describe('FlowCanvas', () => {
 
   describe('Metrics & Warnings', () => {
     it('displays water warning when viewMode is water and warning exists', () => {
-      vi.mocked(usePlannerStore).mockImplementation((selector) => {
+      Object.assign(usePlannerStore, { getState: () => defaultPlannerStoreState });
+    vi.mocked(usePlannerStore).mockImplementation((selector: any) => {
         return selector({
           ...defaultPlannerStoreState,
           viewMode: 'water',

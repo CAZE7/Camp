@@ -65,13 +65,13 @@ export default function RoadTripAnimation() {
 
           // Evening Mode (Headlights)
           const headlights = document.querySelectorAll(".camper-headlight");
-          gsap.to(headlights, { opacity: progress > 0.7 ? 1 : 0, duration: 0.3 });
+          gsap.to(headlights, { opacity: progress > 0.7 ? 1 : 0, duration: 0.3, force3D: true });
 
           // Landmarks fade in
           const landmarks = document.querySelectorAll(".landmark");
           landmarks.forEach((landmark) => {
             const pos = parseFloat(landmark.getAttribute("data-pos") || "0");
-            gsap.to(landmark, { opacity: progress > pos ? 1 : 0, duration: 0.5 });
+            gsap.to(landmark, { opacity: progress > pos ? 1 : 0, duration: 0.5, force3D: true });
           });
         }
       }
@@ -83,10 +83,10 @@ export default function RoadTripAnimation() {
         trigger: chapter,
         start: "top center",
         onEnter: () => {
-          gsap.to(camperRef.current, { scale: 1.2, duration: 0.2, yoyo: true, repeat: 1 });
+          gsap.to(camperRef.current, { scale: 1.2, duration: 0.2, yoyo: true, repeat: 1, force3D: true });
         },
         onEnterBack: () => {
-          gsap.to(camperRef.current, { scale: 1.2, duration: 0.2, yoyo: true, repeat: 1 });
+          gsap.to(camperRef.current, { scale: 1.2, duration: 0.2, yoyo: true, repeat: 1, force3D: true });
         }
       });
     });
@@ -194,8 +194,8 @@ export default function RoadTripAnimation() {
            <circle cx="17" cy="17" r="2.5" fill="#10b981" stroke="none" />
            
            {/* Headlights (Evening Mode) */}
-           <circle className="camper-headlight" cx="21" cy="13" r="1.5" fill="#fbbf24" style={{ opacity: 0, filter: "blur(1px)" }} />
-           <circle className="camper-headlight" cx="21" cy="15" r="1" fill="#fbbf24" style={{ opacity: 0, filter: "blur(2px)" }} />
+           <circle className="camper-headlight" cx="21" cy="13" r="2.0" fill="#fbbf24" style={{ opacity: 0 }} />
+           <circle className="camper-headlight" cx="21" cy="15" r="1.5" fill="#fbbf24" style={{ opacity: 0 }} />
         </svg>
       </div>
     </div>
