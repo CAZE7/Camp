@@ -103,7 +103,9 @@ export default function Sidebar({ mode = 'electric' }: { mode?: 'electric' | 'wa
 
       {/* Search input with nature styling */}
       <div className="m-4 relative group">
+        <label className="sr-only" htmlFor="component-search">Komponenten suchen</label>
         <input
+          id="component-search"
           type="text"
           placeholder="🔍 Suchen..."
           aria-label="Komponenten suchen"
@@ -129,7 +131,7 @@ export default function Sidebar({ mode = 'electric' }: { mode?: 'electric' | 'wa
             {filteredComponents.map((comp, index) => (
               <div
                 key={index}
-                className="p-3 border border-stone-200/70 rounded-xl cursor-grab hover:bg-emerald-50/60 hover:border-emerald-300/50 hover:scale-[1.03] hover:shadow-md transition-all duration-200 text-sm font-semibold text-stone-700 bg-white/90 shadow-sm touch-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                className="p-3 border border-stone-200/70 rounded-xl cursor-grab hover:bg-emerald-50/60 hover:border-emerald-300/50 hover:scale-[1.03] hover:shadow-md transition-all duration-200 text-sm font-semibold text-stone-700 bg-white/90 shadow-sm touch-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2"
                 tabIndex={0}
                 role="button"
                 aria-grabbed="false"
