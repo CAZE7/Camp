@@ -53,8 +53,11 @@ interface PlannerState {
   exportBOM: () => void;
   onDrop: (event: React.DragEvent, screenToFlowPosition: (client: {x: number, y: number}) => {x: number, y: number}) => void;
   onCustomDrop: (event: Event, screenToFlowPosition: (client: {x: number, y: number}) => {x: number, y: number}) => void;
-  addNode: (type: string, label: string, position: {x: number, y: number}) => void;
+  addNode: (type: string, label: string, position: {x: number, y: number}, watts?: number) => void;
+  applyTemplate: (templateId: string) => void;
 }
+
+import { TEMPLATES_DICT } from '../components/planner/templates';
 
 let cachedNodesRef: Node[] | null = null;
 let cachedWaterNodesRef: Node[] | null = null;
@@ -612,6 +615,18 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
     }
   },
 
+  applyTemplate: (templateId: string) => {
+    const template = TEMPLATES_DICT[templateId];
+    if (template) {
+      set({
+        nodes: [...template.nodes],
+        edges: [...template.edges],
+        waterNodes: [],
+        waterEdges: [],
+      });
+    }
+  },
+
   exportBOM: () => {
     const { nodes, edges } = get();
     const counts: Record<string, number> = {};
@@ -638,6 +653,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
 
     const type = event.dataTransfer.getData('application/reactflow');
     const label = event.dataTransfer.getData('application/reactflow-label');
+    const wattsStr = event.dataTransfer.getData('application/reactflow-watts');
 
     if (typeof type === 'undefined' || !type) {
       return;
@@ -648,27 +664,27 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
       y: event.clientY,
     });
 
-    get().addNode(type, label, position);
+    get().addNode(type, label, position, wattsStr ? Number(wattsStr) : undefined);
   },
 
   onCustomDrop: (event, screenToFlowPosition) => {
     const customEvent = event as CustomEvent;
-    const { clientX, clientY, type, label } = customEvent.detail;
+    const { clientX, clientY, type, label, watts } = customEvent.detail;
 
     const position = screenToFlowPosition({
       x: clientX,
       y: clientY,
     });
 
-    get().addNode(type, label, position);
+    get().addNode(type, label, position, watts);
   },
 
-  addNode: (type, label, position) => {
+  addNode: (type, label, position, watts?: number) => {
     const newNode: Node = {
       id: `${type}-${crypto.randomUUID()}`,
       type,
       position,
-      data: { label: label },
+      data: { label, ...(watts !== undefined ? { watts } : {}) },
     };
 
     if (type === 'battery') {

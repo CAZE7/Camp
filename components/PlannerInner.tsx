@@ -6,10 +6,15 @@ import { PlannerInspector } from './planner/PlannerInspector';
 import { PlannerDashboard } from './planner/PlannerDashboard';
 import { FlowCanvas } from './planner/FlowCanvas';
 import { ExpertPanel } from './planner/ExpertPanel';
+import { OnboardingWizard } from './planner/OnboardingWizard';
+import { useAppStore } from '../lib/store';
 
 export default function PlannerInner() {
+  const hasOnboarded = useAppStore((state) => state.hasOnboarded);
+
   return (
     <div className="flex h-screen w-full bg-background overflow-hidden font-sans relative">
+      {!hasOnboarded && <OnboardingWizard />}
       <PlannerSidebar />
       <div className="flex-1 h-full relative overflow-hidden flex flex-col">
         <PlannerDashboard />
