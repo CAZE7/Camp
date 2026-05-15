@@ -82,6 +82,7 @@ export function FlowCanvas() {
         </div>
       )}
     <ReactFlow
+      style={{ willChange: 'transform', backfaceVisibility: 'hidden' }}
         nodes={viewMode === 'water' ? waterNodes : nodes}
         edges={viewMode === 'water' ? waterEdges : edges}
         nodeTypes={nodeTypes}

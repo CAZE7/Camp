@@ -142,7 +142,7 @@ export default function NavigationSidebar() {
         trigger: "nav",
         start: "top 20%",
         end: "bottom 80%",
-        scrub: 1,
+        scrub: 1.2,
         snap: {
           snapTo: snapPoints,
           duration: { min: 0.2, max: 0.5 },
@@ -187,7 +187,7 @@ export default function NavigationSidebar() {
       {/* Mobile Toggle Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed top-4 left-4 z-[60] lg:hidden bg-stone-800/90 backdrop-blur-md text-amber-100 p-4 rounded-2xl shadow-lg border border-stone-700 hover:bg-stone-700 transition-all"
+        className="fixed top-4 left-4 z-[60] lg:hidden bg-stone-800/90 text-amber-100 p-4 rounded-2xl border border-stone-700 hover:bg-stone-700 transition-all"
         aria-label="Navigation öffnen"
       >
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
@@ -202,7 +202,7 @@ export default function NavigationSidebar() {
       {/* Overlay for mobile */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[45] lg:hidden"
+          className="fixed inset-0 bg-black/40 z-[45] lg:hidden"
           onClick={() => setIsOpen(false)}
         />
       )}
@@ -216,11 +216,10 @@ export default function NavigationSidebar() {
           // Nature gradient background
           "bg-gradient-to-b from-stone-900 via-stone-800 to-[#1a2e1a]",
           "border-r border-stone-700/50",
-          "shadow-[4px_0_24px_rgba(0,0,0,0.3)]",
           // Mobile: slide in/out
           isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
-        style={{ isolation: "isolate" }} // Layer Isolation
+        style={{ isolation: "isolate", willChange: 'transform', backfaceVisibility: 'hidden' }} // Layer Isolation + Performance
       >
         {/* Logo / Brand Area */}
         <div className="px-5 pt-6 pb-4 border-b border-stone-700/40">
