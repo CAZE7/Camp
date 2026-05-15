@@ -160,7 +160,7 @@ describe('CableEdge', () => {
   });
 
   it('adjusts labelY when sourceHandle contains minus', () => {
-    const { container } = render(<CableEdge {...defaultProps} sourceHandle="handle-minus" />);
+    const { container } = render(<CableEdge {...defaultProps} sourceHandleId="handle-minus" />);
     // The exact inline style check is brittle, let's just ensure it renders without error
     // and verify the class
     const labelContainer = container.querySelector('.nodrag.nopan');
