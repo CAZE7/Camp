@@ -48,7 +48,7 @@ export default function CamperAusbauguide() {
 
             {/* Decorative Image Placeholder */}
             <div className="w-full aspect-video bg-stone-100 rounded-3xl flex items-center justify-center my-10 border-2 border-stone-200 shadow-inner relative overflow-hidden group">
-               <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1523987355523-c7b5b0dd90a7?auto=format&fit=crop&q=80')] bg-cover bg-center opacity-40 group-hover:opacity-60 transition-opacity duration-700"></div>
+               <img src="https://images.unsplash.com/photo-1523987355523-c7b5b0dd90a7?auto=format&fit=crop&q=80" alt="Ausbau Impressionen" loading="lazy" style={{objectFit: "cover", width: "100%", height: "100%", position: "absolute", inset: 0}} className="opacity-40 group-hover:opacity-60 transition-opacity duration-700" />
                <span className="text-stone-700 font-bold tracking-widest uppercase z-10 bg-white/80 px-6 py-3 rounded-full backdrop-blur-md shadow-sm">Ausbau Impressionen</span>
             </div>
 
@@ -197,7 +197,7 @@ export default function CamperAusbauguide() {
             <hr className="border-stone-200/60 my-16" />
 
             <div className="bg-stone-900 text-stone-50 p-10 md:p-16 rounded-[3rem] mt-24 text-center relative overflow-hidden shadow-2xl">
-              <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/wood-pattern.png')]"></div>
+              <img src="https://www.transparenttextures.com/patterns/wood-pattern.png" alt="Wood Pattern" loading="lazy" style={{objectFit: "cover", width: "100%", height: "100%", position: "absolute", inset: 0}} className="opacity-20" />
               
               <h3 className={cn("text-3xl md:text-5xl font-black mb-6 relative z-10 text-emerald-400", outfit.className)}>Bereit für den ersten Roadtrip?</h3>
               <p className="text-stone-300 mb-10 max-w-2xl mx-auto text-lg md:text-xl relative z-10 leading-relaxed">

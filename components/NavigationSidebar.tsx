@@ -153,7 +153,7 @@ export default function NavigationSidebar() {
           if (camperRef.current) {
             const progress = self.progress;
             const opacity = progress < 0.05 ? progress * 20 : progress > 0.95 ? (1 - progress) * 20 : 1;
-            gsap.set(camperRef.current, { opacity: Math.max(0, Math.min(1, opacity)) });
+            gsap.set(camperRef.current, { opacity: Math.max(0, Math.min(1, opacity)), force3D: true });
           }
         }
       },
@@ -172,7 +172,7 @@ export default function NavigationSidebar() {
 
     // Reveal
     if (camperRef.current) {
-      gsap.to(camperRef.current, { opacity: 0, duration: 0 }); // Start hidden
+      gsap.to(camperRef.current, { opacity: 0, duration: 0, force3D: true }); // Start hidden
     }
 
     return () => {
