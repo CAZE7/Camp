@@ -9,14 +9,22 @@ import { vehicleTemplates } from '@/lib/vehicleTemplates';
 export function DachSidebar({
   selectedVehicleId,
   setSelectedVehicleId,
-  onDragStart
+  onDragStart,
+  onMobileAdd
 }: {
   selectedVehicleId: string;
   setSelectedVehicleId: (val: string) => void;
   onDragStart: (event: React.DragEvent, nodeType: string) => void;
+  onMobileAdd?: (nodeType: string) => void;
 }) {
+  const handleClick = (nodeType: string) => {
+    if (window.innerWidth < 768 && onMobileAdd) {
+      onMobileAdd(nodeType);
+    }
+  };
+
   return (
-    <div className="w-80 bg-card border-r border-border p-6 flex flex-col gap-6 overflow-y-auto z-10 shrink-0">
+    <div className="w-full md:w-80 bg-card border-r border-border p-6 flex flex-col gap-6 overflow-y-auto z-10 shrink-0 h-full">
       <div className="space-y-4">
         <Label className="text-xs font-black text-muted-foreground uppercase tracking-widest">Fahrzeug Modell</Label>
         <Select value={selectedVehicleId} onValueChange={(val: string | null) => val && setSelectedVehicleId(val)}>
@@ -39,6 +47,7 @@ export function DachSidebar({
           <Card
             className="cursor-grab hover:ring-2 hover:ring-blue-400 transition-all active:cursor-grabbing border-blue-100 bg-blue-50/20"
             onDragStart={(event) => onDragStart(event, 'roofSolar')}
+            onClick={() => handleClick('roofSolar')}
             draggable
           >
             <CardContent className="flex items-center gap-4 py-3 px-4">
@@ -52,6 +61,7 @@ export function DachSidebar({
           <Card
             className="cursor-grab hover:ring-2 hover:ring-amber-400 transition-all active:cursor-grabbing border-amber-100 bg-amber-50/20"
             onDragStart={(event) => onDragStart(event, 'roofWindow')}
+            onClick={() => handleClick('roofWindow')}
             draggable
           >
             <CardContent className="flex items-center gap-4 py-3 px-4">

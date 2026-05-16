@@ -1,6 +1,7 @@
 "use client";
 import React, { useState } from 'react';
 import { XCircle } from 'lucide-react';
+import { usePlannerStore } from '../store/usePlannerStore';
 
 const components = [
   { type: 'battery', label: 'Batterie' },
@@ -27,8 +28,18 @@ const waterComponents = [
   { type: 'shower', label: 'Dusche' },
 ];
 
-const handlePointerDown = (e: React.PointerEvent, comp: { type: string, label: string }) => {
+const handlePointerDown = (e: React.PointerEvent, comp: { type: string, label: string }, onMobileAdd?: () => void) => {
   e.preventDefault(); // Prevent default touch actions
+
+  // Mobile optimization: Click to add directly to canvas instead of drag and drop
+  if (window.innerWidth < 768) {
+    usePlannerStore.getState().addNode(comp.type, comp.label, {
+      x: window.innerWidth / 2 - 40,
+      y: window.innerHeight / 2 - 40
+    });
+    if (onMobileAdd) onMobileAdd();
+    return;
+  }
 
   // Create a ghost element that follows the pointer
   const target = e.currentTarget as HTMLElement;
@@ -73,7 +84,12 @@ const handlePointerDown = (e: React.PointerEvent, comp: { type: string, label: s
   document.addEventListener('pointerup', onPointerUp);
 };
 
-export default function Sidebar({ mode = 'electric' }: { mode?: 'electric' | 'water' }) {
+interface SidebarProps {
+  mode?: 'electric' | 'water';
+  onMobileAdd?: () => void;
+}
+
+export default function Sidebar({ mode = 'electric', onMobileAdd }: SidebarProps) {
   const [searchTerm, setSearchTerm] = useState('');
 
   const activeComponents = mode === 'water' ? waterComponents : components;
@@ -133,7 +149,7 @@ export default function Sidebar({ mode = 'electric' }: { mode?: 'electric' | 'wa
                 tabIndex={0}
                 role="button"
                 aria-grabbed="false"
-                onPointerDown={(e) => handlePointerDown(e, comp)}
+                onPointerDown={(e) => handlePointerDown(e, comp, onMobileAdd)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
