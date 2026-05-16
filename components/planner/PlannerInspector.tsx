@@ -48,7 +48,7 @@ export function PlannerInspector() {
         variant="outline"
         size="icon"
         onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)}
-        className="absolute top-1/2 -translate-y-1/2 z-30 shadow-md transition-all duration-300 h-8 w-8"
+        className="absolute top-1/2 -translate-y-1/2 z-30 shadow-md transition-all duration-300 h-8 w-8 hidden md:flex items-center justify-center"
         style={{ right: isRightSidebarOpen ? 'calc(250px + 0.75rem)' : '0.75rem' }}
         title={isRightSidebarOpen ? "Inspector einklappen" : "Inspector ausklappen"}
         aria-label={isRightSidebarOpen ? "Rechte Sidebar einklappen" : "Rechte Sidebar ausklappen"}
@@ -57,7 +57,7 @@ export function PlannerInspector() {
       </Button>
 
       <div
-        className={`transition-all duration-300 ease-in-out absolute right-0 md:relative z-40 h-full ${isRightSidebarOpen ? 'w-full md:w-[250px] translate-x-0' : 'w-0 translate-x-full'} flex-shrink-0 shadow-lg bg-card border-l border-border max-w-[calc(100vw-2rem)]`}
+        className={`transition-all duration-300 ease-in-out relative z-40 h-full w-full md:w-[250px] ${!isRightSidebarOpen ? 'md:w-0' : ''} flex-shrink-0 shadow-lg bg-card border-l border-border overflow-hidden`}
       >
         <div className="w-full md:w-[250px] h-full max-w-full">
           <Inspector

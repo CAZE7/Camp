@@ -15,6 +15,7 @@ import RoofBackgroundNode from '@/components/nodes/RoofBackgroundNode';
 import { DachSidebar } from './DachSidebar';
 import { DachPanel } from './DachPanel';
 import { useDachNodes } from '../hooks/useDachNodes';
+import { ListPlus, LayoutTemplate } from 'lucide-react';
 
 const nodeTypes = {
   roofWindow: RoofWindowNode,
@@ -23,6 +24,7 @@ const nodeTypes = {
 };
 
 export function DachPlanerFlow() {
+  const [activeTab, setActiveTab] = useState<'sidebar' | 'canvas'>('canvas');
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>(vehicleTemplates[0].id);
   const selectedVehicle = useMemo(() =>
     vehicleTemplates.find(v => v.id === selectedVehicleId) || vehicleTemplates[0],
@@ -93,17 +95,44 @@ export function DachPlanerFlow() {
     event.dataTransfer.effectAllowed = 'move';
   };
 
+  const handleMobileAdd = (nodeType: string) => {
+    const newNode: Node<RoofNodeData> = {
+      id: `${nodeType}-${Date.now()}`,
+      type: nodeType,
+      position: { x: window.innerWidth / 2 - 40, y: window.innerHeight / 2 - 40 },
+      width: nodeType === 'roofSolar' ? 200 : 80, // px
+      height: nodeType === 'roofSolar' ? 120 : 80, // px
+      style: {
+        width: nodeType === 'roofSolar' ? 200 : 80,
+        height: nodeType === 'roofSolar' ? 120 : 80,
+      },
+      data: {
+        label: nodeType === 'roofSolar' ? 'Solarpanel' : 'Dachfenster',
+        watts: nodeType === 'roofSolar' ? 200 : undefined,
+        width: nodeType === 'roofSolar' ? 100 : 40, // cm
+        height: nodeType === 'roofSolar' ? 60 : 40, // cm
+        onNodeResize
+      },
+    };
+
+    setNodes((nds: Node<RoofNodeData>[]) => validateNodes(nds.concat(newNode)));
+    setActiveTab('canvas');
+  };
+
   return (
-    <div className="flex h-[calc(100vh-73px)] w-full relative">
+    <div className="flex flex-col md:flex-row h-[calc(100vh-73px)] w-full relative planner-mobile-container">
       {/* Sidebar */}
-      <DachSidebar
-        selectedVehicleId={selectedVehicleId}
-        setSelectedVehicleId={setSelectedVehicleId}
-        onDragStart={onDragStart}
-      />
+      <div className={`md:flex h-full ${activeTab === 'sidebar' ? 'block' : 'hidden md:block'} flex-1 md:flex-none`}>
+        <DachSidebar
+          selectedVehicleId={selectedVehicleId}
+          setSelectedVehicleId={setSelectedVehicleId}
+          onDragStart={onDragStart}
+          onMobileAdd={handleMobileAdd}
+        />
+      </div>
 
       {/* Canvas */}
-      <div className="flex-1 relative react-flow-wrapper" ref={reactFlowWrapper}>
+      <div className={`md:flex flex-1 relative react-flow-wrapper flex-col h-full ${activeTab === 'canvas' ? 'flex' : 'hidden md:flex'}`} ref={reactFlowWrapper}>
         <ReactFlow
           nodes={nodes}
           nodeTypes={nodeTypes}
@@ -126,6 +155,26 @@ export function DachPlanerFlow() {
             totalRoofSolarWatts={totalRoofSolarWatts}
           />
         </ReactFlow>
+      </div>
+
+      {/* Mobile Bottom Navigation Bar */}
+      <div className="md:hidden flex flex-row items-center justify-around bg-card border-t border-border p-2 z-50 shrink-0">
+        <button
+          onClick={() => setActiveTab('sidebar')}
+          className={`flex flex-col items-center justify-center min-h-[48px] min-w-[48px] rounded-lg p-2 transition-colors ${activeTab === 'sidebar' ? 'text-blue-600 bg-blue-50' : 'text-muted-foreground hover:bg-stone-100'}`}
+          aria-label="Bauteile"
+        >
+          <ListPlus size={24} />
+          <span className="text-[10px] font-semibold mt-1">Bauteile</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('canvas')}
+          className={`flex flex-col items-center justify-center min-h-[48px] min-w-[48px] rounded-lg p-2 transition-colors ${activeTab === 'canvas' ? 'text-blue-600 bg-blue-50' : 'text-muted-foreground hover:bg-stone-100'}`}
+          aria-label="Plan"
+        >
+          <LayoutTemplate size={24} />
+          <span className="text-[10px] font-semibold mt-1">Plan</span>
+        </button>
       </div>
     </div>
   );

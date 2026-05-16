@@ -87,10 +87,12 @@
   }
 }
 
-/* ─── Performance: Layout Containment ─── */
+/* ─── Performance & Mobile Touch: Layout Containment ─── */
 /* Isolate the React Flow canvas so reflows don't propagate to sidebar/inspector */
 .react-flow {
   contain: layout style paint;
+  touch-action: none;
+  overscroll-behavior: none;
 }
 
 /* Isolate planner sidebar to prevent reflow cascading into the canvas */

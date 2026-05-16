@@ -278,7 +278,7 @@ export function ExpertPanel() {
   return (
     <div
       className={cn(
-        "absolute bottom-4 right-4 z-50 transition-all duration-400 ease-out",
+        "absolute bottom-20 md:bottom-4 right-4 z-50 transition-all duration-400 ease-out",
         "pointer-events-auto"
       )}
       style={{ maxWidth: isOpen ? 380 : 56 }}

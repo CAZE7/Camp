@@ -29,7 +29,7 @@ function NavigationSection({
         variant={viewMode === 'electric' ? 'default' : 'ghost'}
         size="sm"
         onClick={() => setViewMode('electric')}
-        className={viewMode === 'electric' ? 'bg-orange-500 hover:bg-orange-600' : ''}
+        className={`min-h-[48px] md:min-h-0 ${viewMode === 'electric' ? 'bg-orange-500 hover:bg-orange-600' : ''}`}
       >
         Elektrik-Schaltplan
       </Button>
@@ -37,7 +37,7 @@ function NavigationSection({
         variant={viewMode === 'water' ? 'default' : 'ghost'}
         size="sm"
         onClick={() => setViewMode('water')}
-        className={viewMode === 'water' ? 'bg-cyan-500 hover:bg-cyan-600' : ''}
+        className={`min-h-[48px] md:min-h-0 ${viewMode === 'water' ? 'bg-cyan-500 hover:bg-cyan-600' : ''}`}
       >
         Wasser & Sanitär
       </Button>
@@ -98,24 +98,24 @@ function ActionsSection({
     <div className="pointer-events-auto flex items-center gap-2 flex-wrap">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm" className="font-semibold">
+          <Button variant="outline" size="sm" className="font-semibold min-h-[48px] md:min-h-0">
             Aktionen
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent className="rounded-lg min-w-52">
-          <DropdownMenuItem onClick={handleExportBOM} className="cursor-pointer text-orange-700 font-medium rounded-md">
+          <DropdownMenuItem onClick={handleExportBOM} className="cursor-pointer text-orange-700 font-medium rounded-md py-3 md:py-1.5">
             Stückliste an KI senden
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => autoWireSystem(fitView)} className="cursor-pointer text-yellow-700 font-medium rounded-md">
+          <DropdownMenuItem onClick={() => autoWireSystem(fitView)} className="cursor-pointer text-yellow-700 font-medium rounded-md py-3 md:py-1.5">
             Automatisch Verkabeln & Absichern
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={checkSchematic} className="cursor-pointer text-red-700 font-medium rounded-md">
+          <DropdownMenuItem onClick={checkSchematic} className="cursor-pointer text-red-700 font-medium rounded-md py-3 md:py-1.5">
             Schaltplan von KI prüfen lassen
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => onLayout(fitView)} className="cursor-pointer text-indigo-700 font-medium rounded-md">
+          <DropdownMenuItem onClick={() => onLayout(fitView)} className="cursor-pointer text-indigo-700 font-medium rounded-md py-3 md:py-1.5">
             Schaltplan aufräumen
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={onExportImage} className="cursor-pointer text-green-700 font-medium rounded-md">
+          <DropdownMenuItem onClick={onExportImage} className="cursor-pointer text-green-700 font-medium rounded-md py-3 md:py-1.5">
             Als Bild speichern
           </DropdownMenuItem>
         </DropdownMenuContent>
@@ -127,7 +127,7 @@ function ActionsSection({
           variant={season === 'summer' ? 'default' : 'ghost'}
           size="sm"
           onClick={() => setSeason('summer')}
-          className={season === 'summer' ? 'bg-yellow-400 text-yellow-900 hover:bg-yellow-500' : ''}
+          className={`min-h-[48px] md:min-h-0 ${season === 'summer' ? 'bg-yellow-400 text-yellow-900 hover:bg-yellow-500' : ''}`}
         >
           Sommer
         </Button>
@@ -135,7 +135,7 @@ function ActionsSection({
           variant={season === 'winter' ? 'default' : 'ghost'}
           size="sm"
           onClick={() => setSeason('winter')}
-          className={season === 'winter' ? 'bg-blue-400 text-blue-900 hover:bg-blue-500' : ''}
+          className={`min-h-[48px] md:min-h-0 ${season === 'winter' ? 'bg-blue-400 text-blue-900 hover:bg-blue-500' : ''}`}
         >
           Winter
         </Button>
@@ -157,7 +157,7 @@ function ProModeSection({
         variant={isProMode ? 'default' : 'outline'}
         size="sm"
         onClick={toggleProMode}
-        className={isProMode ? 'bg-blue-500 hover:bg-blue-600' : ''}
+        className={`min-h-[48px] md:min-h-0 ${isProMode ? 'bg-blue-500 hover:bg-blue-600' : ''}`}
       >
         {isProMode ? 'Profi-Modus An' : 'Profi-Modus Aus'}
       </Button>
@@ -198,6 +198,20 @@ export function PlannerDashboard() {
   const warnings = useLiveValidation(nodes, edges);
 
   return (
+    <div className="absolute top-16 md:top-4 left-4 z-10 flex flex-wrap gap-3 bg-card shadow-lg rounded-lg p-3 pointer-events-none w-[calc(100%-2rem)] border border-border">
+      <NavigationSection viewMode={viewMode} setViewMode={setViewMode} />
+
+      <ActionsSection
+        fitView={fitView}
+        season={season}
+        setSeason={setSeason}
+        exportBOM={exportBOM}
+        autoWireSystem={autoWireSystem}
+        checkSchematic={checkSchematic}
+        onLayout={onLayout}
+      />
+
+      <ProModeSection isProMode={isProMode} toggleProMode={toggleProMode} />
     <div className="absolute top-4 left-4 z-10 flex flex-col gap-2 pointer-events-none w-[calc(100%-2rem)]">
       <div className="flex flex-wrap gap-3 bg-card shadow-lg rounded-lg p-3 border border-border">
         <NavigationSection viewMode={viewMode} setViewMode={setViewMode} />

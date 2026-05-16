@@ -4,17 +4,21 @@ import { Button } from '@/components/ui/button';
 import Sidebar from '../Sidebar';
 import { usePlannerStore } from '../../store/usePlannerStore';
 
-export function PlannerSidebar() {
+interface PlannerSidebarProps {
+  onMobileAdd?: () => void;
+}
+
+export function PlannerSidebar({ onMobileAdd }: PlannerSidebarProps) {
   const [isLeftSidebarOpen, setIsLeftSidebarOpen] = useState(true);
   const viewMode = usePlannerStore((state) => state.viewMode);
 
   return (
     <>
       <div
-        className={`transition-all duration-300 ease-in-out absolute md:relative z-40 h-full ${isLeftSidebarOpen ? 'w-full md:w-64 translate-x-0' : 'w-0 -translate-x-full'} flex-shrink-0 shadow-lg bg-card border-r border-border max-w-[calc(100vw-2rem)] overflow-hidden`}
+        className={`transition-all duration-300 ease-in-out relative z-40 h-full w-full md:w-64 ${!isLeftSidebarOpen ? 'md:w-0' : ''} flex-shrink-0 shadow-lg bg-card border-r border-border overflow-hidden`}
       >
         <div className="w-full md:w-64 h-full max-w-full">
-          <Sidebar mode={viewMode} />
+          <Sidebar mode={viewMode} onMobileAdd={onMobileAdd} />
         </div>
       </div>
 
@@ -22,7 +26,7 @@ export function PlannerSidebar() {
         variant="outline"
         size="icon"
         onClick={() => setIsLeftSidebarOpen(!isLeftSidebarOpen)}
-        className="absolute top-1/2 -translate-y-1/2 z-30 shadow-md transition-all duration-300 h-8 w-8"
+        className="absolute top-1/2 -translate-y-1/2 z-30 shadow-md transition-all duration-300 h-8 w-8 hidden md:flex items-center justify-center"
         style={{ left: isLeftSidebarOpen ? 'calc(16rem + 0.75rem)' : '0.75rem' }}
         title={isLeftSidebarOpen ? "Sidebar einklappen" : "Sidebar ausklappen"}
         aria-label={isLeftSidebarOpen ? "Linke Sidebar einklappen" : "Linke Sidebar ausklappen"}
