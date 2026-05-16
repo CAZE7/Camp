@@ -81,12 +81,14 @@ const ChatInputForm = ({
 }) => (
   <form onSubmit={onSubmit} className="p-3 border-t border-gray-200 bg-white">
     <div className="flex relative">
+      <label className="sr-only" htmlFor="chat-input">Chat Nachricht</label>
       <input
+        id="chat-input"
         value={input}
         onChange={(e) => setInput(e.target.value)}
         placeholder="Frag etwas zu deinem Camper-Ausbau..."
         aria-label="Chat Nachricht"
-        className="w-full border border-gray-300 rounded-full py-3 pl-4 pr-12 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base md:text-sm"
+        className="w-full border border-gray-300 rounded-full py-3 pl-4 pr-12 focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus:border-transparent text-base md:text-sm"
       />
       <button
         type="submit"
