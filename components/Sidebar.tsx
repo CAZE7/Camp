@@ -29,6 +29,16 @@ const waterComponents = [
 ];
 
 const handlePointerDown = (e: React.PointerEvent, comp: { type: string, label: string }, onMobileAdd?: () => void) => {
+const deviceAssistant = [
+  { type: 'consumer', label: 'Kompressorkühlschrank', watts: 60 },
+  { type: 'consumer', label: 'LED-Beleuchtung', watts: 20 },
+  { type: 'consumer', label: 'Standheizung', watts: 15 },
+  { type: 'consumer', label: 'Wasserpumpe', watts: 40 },
+  { type: 'consumer230v', label: 'Laptop-Ladegerät', watts: 90 },
+  { type: 'consumer', label: 'Handyladegerät', watts: 18 },
+];
+
+const handlePointerDown = (e: React.PointerEvent, comp: { type: string, label: string, watts?: number }) => {
   e.preventDefault(); // Prevent default touch actions
 
   // Mobile optimization: Click to add directly to canvas instead of drag and drop
@@ -73,7 +83,8 @@ const handlePointerDown = (e: React.PointerEvent, comp: { type: string, label: s
           clientX: upEvent.clientX,
           clientY: upEvent.clientY,
           type: comp.type,
-          label: comp.label
+          label: comp.label,
+          watts: comp.watts
         }
       });
       window.dispatchEvent(dropEvent);
@@ -119,7 +130,9 @@ export default function Sidebar({ mode = 'electric', onMobileAdd }: SidebarProps
 
       {/* Search input with nature styling */}
       <div className="m-4 relative group">
+        <label className="sr-only" htmlFor="component-search">Komponenten suchen</label>
         <input
+          id="component-search"
           type="text"
           placeholder="🔍 Suchen..."
           aria-label="Komponenten suchen"
@@ -145,7 +158,7 @@ export default function Sidebar({ mode = 'electric', onMobileAdd }: SidebarProps
             {filteredComponents.map((comp, index) => (
               <div
                 key={index}
-                className="p-3 border border-stone-200/70 rounded-xl cursor-grab hover:bg-emerald-50/60 hover:border-emerald-300/50 hover:scale-[1.03] hover:shadow-md transition-all duration-200 text-sm font-semibold text-stone-700 bg-white/90 shadow-sm touch-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                className="p-3 border border-stone-200/70 rounded-xl cursor-grab hover:bg-emerald-50/60 hover:border-emerald-300/50 hover:scale-[1.03] hover:shadow-md transition-all duration-200 text-sm font-semibold text-stone-700 bg-white/90 shadow-sm touch-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2"
                 tabIndex={0}
                 role="button"
                 aria-grabbed="false"
@@ -163,6 +176,30 @@ export default function Sidebar({ mode = 'electric', onMobileAdd }: SidebarProps
                 </span>
               </div>
             ))}
+
+            {mode === 'electric' && (
+              <>
+                <h3 className="text-sm font-semibold mt-4 mb-2 text-emerald-700 uppercase tracking-wider">
+                  Verbraucher-Datenbank
+                </h3>
+                {deviceAssistant.filter(c => c.label.toLowerCase().includes(searchTerm.toLowerCase())).map((comp, index) => (
+                  <div
+                    key={`device-${index}`}
+                    className="p-3 border border-emerald-200 rounded-xl cursor-grab hover:bg-emerald-100 hover:border-emerald-400 hover:scale-[1.03] hover:shadow-md transition-all duration-200 text-sm font-semibold text-emerald-900 bg-emerald-50 shadow-sm touch-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 flex justify-between items-center"
+                    tabIndex={0}
+                    role="button"
+                    aria-grabbed="false"
+                    onPointerDown={(e) => handlePointerDown(e, comp)}
+                  >
+                    <span className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0" />
+                      {comp.label}
+                    </span>
+                    <span className="text-xs font-mono bg-white px-2 py-0.5 rounded text-emerald-700 border border-emerald-100">{comp.watts}W</span>
+                  </div>
+                ))}
+              </>
+            )}
           </div>
         ) : (
           <div className="text-stone-500 text-sm text-center py-8 flex flex-col items-center gap-3">

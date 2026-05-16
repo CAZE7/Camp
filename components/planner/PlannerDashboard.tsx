@@ -12,6 +12,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { useAppStore } from '../../lib/store';
 import { toPng } from 'html-to-image';
 import { useReactFlow } from 'reactflow';
+import { useLiveValidation } from './hooks/useLiveValidation';
 
 // --- Subcomponents ---
 
@@ -178,6 +179,8 @@ export function PlannerDashboard() {
     autoWireSystem,
     checkSchematic,
     onLayout,
+    nodes,
+    edges,
   } = usePlannerStore(useShallow((state) => ({
     viewMode: state.viewMode,
     setViewMode: state.setViewMode,
@@ -187,9 +190,12 @@ export function PlannerDashboard() {
     autoWireSystem: state.autoWireSystem,
     checkSchematic: state.checkSchematic,
     onLayout: state.onLayout,
+    nodes: state.nodes,
+    edges: state.edges,
   })));
 
   const { isProMode, toggleProMode } = useAppStore();
+  const warnings = useLiveValidation(nodes, edges);
 
   return (
     <div className="absolute top-16 md:top-4 left-4 z-10 flex flex-wrap gap-3 bg-card shadow-lg rounded-lg p-3 pointer-events-none w-[calc(100%-2rem)] border border-border">
@@ -206,6 +212,36 @@ export function PlannerDashboard() {
       />
 
       <ProModeSection isProMode={isProMode} toggleProMode={toggleProMode} />
+    <div className="absolute top-4 left-4 z-10 flex flex-col gap-2 pointer-events-none w-[calc(100%-2rem)]">
+      <div className="flex flex-wrap gap-3 bg-card shadow-lg rounded-lg p-3 border border-border">
+        <NavigationSection viewMode={viewMode} setViewMode={setViewMode} />
+
+        <ActionsSection
+          fitView={fitView}
+          season={season}
+          setSeason={setSeason}
+          exportBOM={exportBOM}
+          autoWireSystem={autoWireSystem}
+          checkSchematic={checkSchematic}
+          onLayout={onLayout}
+        />
+
+        <ProModeSection isProMode={isProMode} toggleProMode={toggleProMode} />
+      </div>
+
+      {warnings.length > 0 && (
+        <div className="flex flex-col gap-2 pointer-events-auto">
+          {warnings.map((w) => (
+            <div key={w.id} className={`p-3 rounded-lg shadow-md border text-sm font-semibold max-w-md ${
+              w.type === 'critical' ? 'bg-red-50 text-red-800 border-red-200' :
+              w.type === 'warning' ? 'bg-orange-50 text-orange-800 border-orange-200' :
+              'bg-blue-50 text-blue-800 border-blue-200'
+            }`}>
+              {w.message}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
