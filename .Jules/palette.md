@@ -21,3 +21,6 @@
 ## 2026-05-18 - Missing Input Labels ID Linking
 **Learning:** In the Inspector UI components, multiple `<input>` and `<select>` fields had visual labels but lacked proper `id` attributes linked via the label's `htmlFor` attribute. This is a significant accessibility issue because screen readers cannot associate the text label with the form field, and users cannot click the label to focus the input.
 **Action:** Always ensure every form element (`<input>`, `<select>`, `<textarea>`) has a unique `id` and is paired with a `<label>` containing a matching `htmlFor` attribute, or is wrapped by the label.
+## 2026-05-16 - Add ARIA Attributes to Custom Accordion
+**Learning:** Custom implementations of interactive components like accordions often lack built-in accessibility. It is crucial to manually link the toggle button state and the content container using `aria-expanded` and `aria-controls`, paired with an `id` on the content wrapper, so screen readers can interpret the relationship and state changes correctly.
+**Action:** Always verify custom interactive components (dropdowns, accordions, tabs) for appropriate ARIA state and linking attributes (`aria-expanded`, `aria-controls`, `id`) during implementation and code reviews.
