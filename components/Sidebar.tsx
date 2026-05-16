@@ -28,7 +28,6 @@ const waterComponents = [
   { type: 'shower', label: 'Dusche' },
 ];
 
-const handlePointerDown = (e: React.PointerEvent, comp: { type: string, label: string }, onMobileAdd?: () => void) => {
 const deviceAssistant = [
   { type: 'consumer', label: 'Kompressorkühlschrank', watts: 60 },
   { type: 'consumer', label: 'LED-Beleuchtung', watts: 20 },
@@ -38,7 +37,7 @@ const deviceAssistant = [
   { type: 'consumer', label: 'Handyladegerät', watts: 18 },
 ];
 
-const handlePointerDown = (e: React.PointerEvent, comp: { type: string, label: string, watts?: number }) => {
+const handlePointerDown = (e: React.PointerEvent, comp: { type: string, label: string, watts?: number }, onMobileAdd?: () => void) => {
   e.preventDefault(); // Prevent default touch actions
 
   // Mobile optimization: Click to add directly to canvas instead of drag and drop
@@ -100,7 +99,7 @@ interface SidebarProps {
   onMobileAdd?: () => void;
 }
 
-export default function Sidebar({ mode = 'electric', onMobileAdd }: SidebarProps) {
+export function Sidebar({ mode = 'electric', onMobileAdd }: SidebarProps) {
   const [searchTerm, setSearchTerm] = useState('');
 
   const activeComponents = mode === 'water' ? waterComponents : components;

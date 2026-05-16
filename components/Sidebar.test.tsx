@@ -1,6 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import Sidebar from './Sidebar';
+import { Sidebar } from './Sidebar';
 
 describe('Sidebar Component', () => {
   beforeEach(() => {
