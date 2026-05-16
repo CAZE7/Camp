@@ -6,10 +6,13 @@ import { PlannerInspector } from './planner/PlannerInspector';
 import { PlannerDashboard } from './planner/PlannerDashboard';
 import { FlowCanvas } from './planner/FlowCanvas';
 import { ExpertPanel } from './planner/ExpertPanel';
+import { OnboardingWizard } from './planner/OnboardingWizard';
 import { ListPlus, LayoutTemplate, Settings2 } from 'lucide-react';
+import { useAppStore } from '../lib/store';
 
 export default function PlannerInner() {
   const [activeTab, setActiveTab] = useState<'sidebar' | 'canvas' | 'inspector'>('canvas');
+  const hasOnboarded = useAppStore((state) => state.hasOnboarded);
 
   // Triggered when an item is added on mobile to automatically switch to the canvas
   const handleMobileAdd = () => {
@@ -18,6 +21,7 @@ export default function PlannerInner() {
 
   return (
     <div className="flex flex-col md:flex-row h-screen w-full bg-background overflow-hidden font-sans relative planner-mobile-container">
+      {!hasOnboarded && <OnboardingWizard />}
 
       {/* Sidebar Area */}
       <div className={`md:flex h-full ${activeTab === 'sidebar' ? 'block' : 'hidden md:block'} flex-1 md:flex-none`}>
@@ -26,17 +30,6 @@ export default function PlannerInner() {
 
       {/* Main Canvas Area */}
       <div className={`md:flex flex-1 h-full relative overflow-hidden flex-col ${activeTab === 'canvas' ? 'flex' : 'hidden md:flex'}`}>
-import { OnboardingWizard } from './planner/OnboardingWizard';
-import { useAppStore } from '../lib/store';
-
-export default function PlannerInner() {
-  const hasOnboarded = useAppStore((state) => state.hasOnboarded);
-
-  return (
-    <div className="flex h-screen w-full bg-background overflow-hidden font-sans relative">
-      {!hasOnboarded && <OnboardingWizard />}
-      <PlannerSidebar />
-      <div className="flex-1 h-full relative overflow-hidden flex flex-col">
         <PlannerDashboard />
         <React.Suspense fallback={<div className="flex-1 flex items-center justify-center bg-stone-50"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div></div>}>
           <FlowCanvas />

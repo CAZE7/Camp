@@ -13,7 +13,7 @@ vi.mock('../../store/usePlannerStore', () => ({
 
 // Mock Sidebar component
 vi.mock('../Sidebar', () => ({
-  default: ({ mode }: { mode: string }) => <div data-testid="sidebar-mock">Sidebar Mode: {mode}</div>
+  Sidebar: ({ mode }: { mode: string }) => <div data-testid="sidebar-mock">Sidebar Mode: {mode}</div>
 }));
 
 describe('PlannerSidebar', () => {

@@ -198,20 +198,6 @@ export function PlannerDashboard() {
   const warnings = useLiveValidation(nodes, edges);
 
   return (
-    <div className="absolute top-16 md:top-4 left-4 z-10 flex flex-wrap gap-3 bg-card shadow-lg rounded-lg p-3 pointer-events-none w-[calc(100%-2rem)] border border-border">
-      <NavigationSection viewMode={viewMode} setViewMode={setViewMode} />
-
-      <ActionsSection
-        fitView={fitView}
-        season={season}
-        setSeason={setSeason}
-        exportBOM={exportBOM}
-        autoWireSystem={autoWireSystem}
-        checkSchematic={checkSchematic}
-        onLayout={onLayout}
-      />
-
-      <ProModeSection isProMode={isProMode} toggleProMode={toggleProMode} />
     <div className="absolute top-4 left-4 z-10 flex flex-col gap-2 pointer-events-none w-[calc(100%-2rem)]">
       <div className="flex flex-wrap gap-3 bg-card shadow-lg rounded-lg p-3 border border-border">
         <NavigationSection viewMode={viewMode} setViewMode={setViewMode} />

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import Sidebar from '../Sidebar';
+import { Sidebar } from '../Sidebar';
 import { usePlannerStore } from '../../store/usePlannerStore';
 
 interface PlannerSidebarProps {
