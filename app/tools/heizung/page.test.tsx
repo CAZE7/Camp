@@ -49,7 +49,7 @@ describe('HeatingCalculatorPage', () => {
     expect(screen.getByText(/Heizlast-Rechner/i)).toBeInTheDocument();
     expect(screen.getByText(/Wunsch-Temperatur/i)).toBeInTheDocument();
     expect(screen.getByText(/Außen-Temperatur/i)).toBeInTheDocument();
-    expect(screen.getByText(/Isolierung/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Isolierung/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/Erweiterte Parameter/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Ergebnisse/i).length).toBeGreaterThan(0);
 
@@ -114,37 +114,22 @@ describe('HeatingCalculatorPage', () => {
   });
 
   it('displays the correct recommendation based on calculated Q_total', () => {
-    // Note: The actual calculation is complex (depends on U_mix, area, etc).
-    // We will test the bounds by manipulating temperatures to get low and high Q_total values.
-
     render(<HeatingCalculatorPage />);
 
     const tempInsideInput = screen.getByLabelText(/Temperatur/i, { selector: '#temp-inside' });
     const tempOutsideInput = screen.getByLabelText(/Temperatur/i, { selector: '#temp-outside' });
 
-    // Scenario 1: Optimaler Bereich (Low energy requirement)
-    // Small delta T
-    fireEvent.change(tempInsideInput, { target: { value: '10' } });
-    fireEvent.change(tempOutsideInput, { target: { value: '5' } });
+    // Scenario 1: Optimaler Bereich / Modulierend
+    fireEvent.change(tempInsideInput, { target: { value: '18' } });
+    fireEvent.change(tempOutsideInput, { target: { value: '-2' } });
 
-    // Give it a moment to update results (synchronous in React)
-    expect(screen.getByText(/Optimaler Bereich/i)).toBeInTheDocument();
+    // With smaller delta T, Autoterm Air 2D (Diesel) will modulate or fit optimal range perfectly
+    expect(screen.getByText(/Auslegung Optimal/i)).toBeInTheDocument();
 
-    // Scenario 2: Hoher Bedarf (Medium energy requirement)
-    // Medium delta T, e.g., 20 inside, -15 outside
+    // Scenario 2: Underdimensioniert (extremely high load exceeding 2000W of default Autoterm 2D)
     fireEvent.change(tempInsideInput, { target: { value: '25' } });
-    fireEvent.change(tempOutsideInput, { target: { value: '-20' } });
+    fireEvent.change(tempOutsideInput, { target: { value: '-25' } });
 
-    expect(screen.getByText(/Hoher Bedarf/i)).toBeInTheDocument();
-
-    // Scenario 3: Sehr hoher Bedarf (High energy requirement)
-    // Large delta T, e.g., 30 inside, -30 outside, plus 0mm insulation
-    fireEvent.change(tempInsideInput, { target: { value: '30' } });
-    fireEvent.change(tempOutsideInput, { target: { value: '-30' } });
-
-    const btn0mm = screen.getByRole('button', { name: /0\s*mm/i });
-    fireEvent.click(btn0mm);
-
-    expect(screen.getByText(/Sehr hoher Bedarf/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Heizung zu schwach/i).length).toBeGreaterThan(0);
   });
 });
