@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { BatteryNodeData, ConsumerNodeData, SolarNodeData, ChargerNodeData } from '@/components/nodes/types';
 import { Node, Edge } from 'reactflow';
 
@@ -8,70 +8,19 @@ export function useDashboardMetrics(
   season: 'summer' | 'winter',
   calculatedSolarWatts: number
 ) {
-  // Performance Optimization: 
-  // We only care about the type, data, and connections. We explicitly ignore 'position' 
-  // to avoid recalculating heavy metrics on every frame during a drag event.
-  // Instead of JSON.stringify, we use a manual check to only update a memo key when needed.
+  const [debouncedNodes, setDebouncedNodes] = useState(nodes);
+  const [debouncedEdges, setDebouncedEdges] = useState(edges);
 
-  const lastNodesRef = useRef<Node[]>(nodes);
-  const lastEdgesRef = useRef<Edge[]>(edges);
-
-  // Check if nodes have changed in a way that affects metrics
-  // We use JSON.stringify for data comparison to handle deep changes while avoiding it for the whole array
-  let nodesChanged = nodes !== lastNodesRef.current;
-  if (nodesChanged) {
-    if (nodes.length !== lastNodesRef.current.length) {
-      nodesChanged = true;
-    } else {
-      nodesChanged = false;
-      for (let i = 0, len = nodes.length; i < len; i++) {
-        const n = nodes[i];
-        const prev = lastNodesRef.current[i];
-        if (!prev || n.id !== prev.id || n.type !== prev.type || (n.data !== prev.data && JSON.stringify(n.data) !== JSON.stringify(prev.data))) {
-          nodesChanged = true;
-          break;
-        }
-      }
-    }
-  }
-
-  // Check if edges have changed in a way that affects metrics
-  // Original logic: serializedEdges = JSON.stringify(edges.map((e) => ({ id: e.id, source: e.source, target: e.target, sourceHandle: e.sourceHandle, targetHandle: e.targetHandle })));
-  // Note: Original logic DID NOT include e.data for edges.
-  let edgesChanged = edges !== lastEdgesRef.current;
-  if (edgesChanged) {
-    if (edges.length !== lastEdgesRef.current.length) {
-      edgesChanged = true;
-    } else {
-      edgesChanged = false;
-      for (let i = 0, len = edges.length; i < len; i++) {
-        const e = edges[i];
-        const prev = lastEdgesRef.current[i];
-        if (
-          !prev ||
-          e.id !== prev.id ||
-          e.source !== prev.source ||
-          e.target !== prev.target ||
-          e.sourceHandle !== prev.sourceHandle ||
-          e.targetHandle !== prev.targetHandle
-        ) {
-          edgesChanged = true;
-          break;
-        }
-      }
-    }
-  }
-
-  if (nodesChanged || edgesChanged) {
-    lastNodesRef.current = nodes;
-    lastEdgesRef.current = edges;
-  }
-
-  const significantNodes = lastNodesRef.current;
-  const significantEdges = lastEdgesRef.current;
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedNodes(nodes);
+      setDebouncedEdges(edges);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [nodes, edges]);
 
   return useMemo(() => {
-    const categories = categorizeNodes(significantNodes);
+    const categories = categorizeNodes(debouncedNodes);
 
     const usableCapacityAh = calculateUsableCapacity(categories.batteryNode);
 
@@ -86,7 +35,7 @@ export function useDashboardMetrics(
 
     const { totalSolarAmps, totalSolarVoltage } = calculateSolarMetrics(
       categories.solarNodes,
-      significantEdges,
+      debouncedEdges,
       categories.nodeTypeMap,
       season
     );
@@ -100,7 +49,7 @@ export function useDashboardMetrics(
     );
 
     const hasDirectBatteryToConsumer = checkDirectBatteryConnection(
-      significantEdges,
+      debouncedEdges,
       categories.nodeTypeMap
     );
 
@@ -113,7 +62,7 @@ export function useDashboardMetrics(
       hasDirectBatteryToConsumer,
       solarNodesCount: categories.solarNodes.length,
     };
-  }, [significantNodes, significantEdges, season, calculatedSolarWatts]);
+  }, [debouncedNodes, debouncedEdges, season, calculatedSolarWatts]);
 }
 
 // --- Helper Functions ---
@@ -168,7 +117,21 @@ function calculateDailyConsumption(
   let dailyConsumptionAh = consumers.reduce((acc, n) => {
     const w = (n.data as ConsumerNodeData)?.watts || 0;
     const h = (n.data as ConsumerNodeData)?.hours || 0;
-    return acc + (w / 12) * h;
+    let consumption = (w / 12) * h;
+    
+    // Seasonal adjustment only for heaters
+    const label = String(n.data?.label || '').toLowerCase();
+    const isHeater = n.type === 'heater' || label.includes('heiz') || label.includes('heater') || label.includes('autoterm');
+    
+    if (isHeater) {
+      if (season === 'winter') {
+        consumption *= 2;
+      } else {
+        consumption *= 1.5;
+      }
+    }
+    
+    return acc + consumption;
   }, 0);
 
   if (hasInverter) {
@@ -180,13 +143,6 @@ function calculateDailyConsumption(
       return acc + ((w / 12) * h) / 0.85;
     }, 0);
     dailyConsumptionAh += inverterConsumptionAh;
-  }
-
-  // Seasonal adjustment for consumption
-  if (season === 'winter') {
-    dailyConsumptionAh *= 2;
-  } else {
-    dailyConsumptionAh *= 1.5;
   }
 
   return dailyConsumptionAh;
@@ -271,10 +227,14 @@ function calculateChargingTime(
   usableCapacityAh: number,
   solarNodesCount: number
 ): string {
+  // BUG-15 Fix: Priority 1: Canvas Solar, Priority 2: Roof Planner Solar
+  const effectiveSolarWatts = solarNodesCount > 0 ? 0 : calculatedSolarWatts;
+  const effectiveSolarAmps = solarNodesCount > 0 ? totalSolarAmps : 0;
+
   const totalChargerAmps =
     chargers.reduce((acc, n) => acc + (((n.data as ChargerNodeData)?.amps || 0) * (((n.data as ChargerNodeData)?.efficiency ?? 100) / 100)), 0) +
-    totalSolarAmps +
-    calculatedSolarWatts / 12;
+    effectiveSolarAmps +
+    effectiveSolarWatts / 12;
 
   let chargingTimeStr = 'N/A';
   if (totalChargerAmps > 0) {

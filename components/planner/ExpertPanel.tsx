@@ -265,8 +265,9 @@ export function ExpertPanel() {
   const [isOpen, setIsOpen] = useState(false);
   const [expandedTip, setExpandedTip] = useState<number | null>(0);
 
-  // Read-only subscription to selection state — does NOT cause FlowCanvas to re-render
+  // Read-only subscription to selection state
   const selectedNodes = usePlannerStore((s) => s.selectedNodes);
+  const edges = usePlannerStore((s) => s.edges);
 
   const currentKnowledge = useMemo(() => {
     if (selectedNodes.length === 0) return DEFAULT_TIP;
@@ -333,7 +334,14 @@ export function ExpertPanel() {
             else if (node.data?.watts) I = Number(node.data.watts) / 12;
             else if (node.data?.amps) I = Number(node.data.amps);
             
-            const length = 2; // Default assumption 2 meters
+            const connectedEdges = edges.filter(e => e.source === node.id || e.target === node.id);
+            let length = 2; // Default assumption 2 meters
+            let isFallback = true;
+            if (connectedEdges.length > 0) {
+              length = Math.max(...connectedEdges.map(e => e.data?.length || 2));
+              isFallback = false;
+            }
+
             const calculatedA = (I * (length * 2)) / (58 * 0.24);
             const minRequiredA = Math.max(1.5, calculatedA);
             const VDE_SIZES = [1.5, 2.5, 4.0, 6.0, 10.0, 16.0, 25.0, 35.0, 50.0, 70.0];
@@ -357,7 +365,7 @@ export function ExpertPanel() {
                   <div className="absolute -left-4 -bottom-4 w-16 h-16 bg-emerald-500/10 rounded-full blur-xl pointer-events-none" />
                   <h4 className="text-xs font-bold text-stone-700 uppercase tracking-wider mb-3 flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
-                    Live-Empfehlung <span className="text-[10px] font-normal text-stone-400 normal-case">(bei 2m Kabel)</span>
+                    Live-Empfehlung <span className="text-[10px] font-normal text-stone-400 normal-case">{isFallback ? "(Berechnung basiert auf 2m Fallback – bitte Kabel verbinden!)" : `(bei ${length.toFixed(1)}m Kabel)`}</span>
                   </h4>
                   <div className="grid grid-cols-2 gap-3 relative z-10">
                     <div className="flex flex-col bg-white/60 rounded-lg p-2.5 border border-white">
