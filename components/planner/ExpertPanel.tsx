@@ -334,6 +334,8 @@ export function ExpertPanel() {
                       setExpandedTip(isExpanded ? null : idx)
                     }
                     className="w-full flex items-center gap-3 px-5 py-3 text-left hover:bg-stone-50 transition-colors group"
+                    aria-expanded={isExpanded}
+                    aria-controls={`tip-content-${idx}`}
                   >
                     {/* Accent dot */}
                     <span
@@ -371,7 +373,10 @@ export function ExpertPanel() {
 
                   {/* Expanded content */}
                   {isExpanded && (
-                    <div className="px-5 pb-4 pl-10 animate-in slide-in-from-top-2 fade-in duration-200">
+                    <div
+                      id={`tip-content-${idx}`}
+                      className="px-5 pb-4 pl-10 animate-in slide-in-from-top-2 fade-in duration-200"
+                    >
                       <p className="text-sm text-stone-600 leading-relaxed">
                         {tip.body}
                       </p>
