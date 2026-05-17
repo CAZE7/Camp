@@ -98,7 +98,8 @@ describe('CableEdge', () => {
     const { getByText } = render(<CableEdge {...defaultProps} />);
 
     expect(getByText('10 mm²')).toBeInTheDocument();
-    expect(getByText('Max: 60A')).toBeInTheDocument();
+    // NEU-HIGH-B: New derated FUSE_MAP value for 10mm² in camper conditions = 50A (was 60A)
+    expect(getByText('Max: 50A')).toBeInTheDocument();
   });
 
   it('calculates crossSection and maxFuse when target is charger', () => {
@@ -117,7 +118,8 @@ describe('CableEdge', () => {
     const { getByText } = render(<CableEdge {...defaultProps} />);
 
     expect(getByText('25 mm²')).toBeInTheDocument();
-    expect(getByText('Max: 130A')).toBeInTheDocument();
+    // NEU-HIGH-B: New derated FUSE_MAP value for 25mm² in camper conditions = 90A (was 130A)
+    expect(getByText('Max: 90A')).toBeInTheDocument();
   });
 
   it('uses fallback logic to calculate total watts from all consumers when no source/target match', () => {
@@ -136,7 +138,8 @@ describe('CableEdge', () => {
     const { getByText } = render(<CableEdge {...defaultProps} />);
 
     expect(getByText('16 mm²')).toBeInTheDocument();
-    expect(getByText('Max: 100A')).toBeInTheDocument();
+    // NEU-HIGH-B: New derated FUSE_MAP value for 16mm² in camper conditions = 70A (was 100A)
+    expect(getByText('Max: 70A')).toBeInTheDocument();
   });
 
   it('renders selected state with #f97316 stroke', () => {

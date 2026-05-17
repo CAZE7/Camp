@@ -87,7 +87,7 @@ const CableEdge = function ({
   const isProMode = useAppStore(state => state.isProMode);
 
   // Subscribe to connected nodes and total consumption for reactivity
-  const { sNodeData, tNodeData, systemLoad } = usePlannerStore(useShallow(state => {
+  const { sNodeData, tNodeData, systemLoad, cumulativeDrop } = usePlannerStore(useShallow(state => {
     const s = state.nodes.find(n => n.id === source) || state.waterNodes.find(n => n.id === source);
     const t = state.nodes.find(n => n.id === target) || state.waterNodes.find(n => n.id === target);
     
@@ -98,10 +98,15 @@ const CableEdge = function ({
       return acc;
     }, 0);
     
+    // CRIT-02 Fix: Call calculatePathVoltageDrop inside the selector so it re-evaluates
+    // reactively whenever state.edges or state.nodes change, instead of reading stale getState().
+    const cumulativeDrop = state.calculatePathVoltageDrop(source);
+    
     return { 
       sNodeData: s?.data, 
       tNodeData: t?.data,
-      systemLoad: totalWatts
+      systemLoad: totalWatts,
+      cumulativeDrop,
     };
   }));
 
@@ -166,7 +171,6 @@ const CableEdge = function ({
     // Dependencies include node data, system load, and coordinates to force re-calc when anything relevant changes including moves
   }, [getNode, getNodes, data?.length, data?.crossSection, data?.edgeDomain, source, target, sNodeData, tNodeData, systemLoad, sourceX, sourceY, targetX, targetY, sourceHandle]);
 
-  const cumulativeDrop = usePlannerStore.getState().calculatePathVoltageDrop(source);
   const totalDropPercentage = dropPercentage + cumulativeDrop;
 
   const errors: string[] = [];

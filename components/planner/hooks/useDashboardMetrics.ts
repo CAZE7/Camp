@@ -70,7 +70,8 @@ export function useDashboardMetrics(
       totalSolarAmps,
       calculatedSolarWatts,
       usableCapacityAh,
-      categories.solarNodes.length
+      categories.solarNodes.length,
+      season
     );
 
     const hasDirectBatteryToConsumer = checkDirectBatteryConnection(
@@ -252,16 +253,23 @@ function calculateChargingTime(
   totalSolarAmps: number,
   calculatedSolarWatts: number,
   usableCapacityAh: number,
-  solarNodesCount: number
+  solarNodesCount: number,
+  season: 'summer' | 'winter'
 ): string {
   // BUG-15 Fix: Priority 1: Canvas Solar, Priority 2: Roof Planner Solar
   const effectiveSolarWatts = solarNodesCount > 0 ? 0 : calculatedSolarWatts;
   const effectiveSolarAmps = solarNodesCount > 0 ? totalSolarAmps : 0;
 
+  // NEU-CRIT-C Fix: Apply winter season factor (0.35) to roof planner solar contribution.
+  // Canvas solar already has the season factor applied in calculateSolarMetrics.
+  // The roof planner solar (effectiveSolarWatts) must apply it here.
+  const seasonFactor = season === 'winter' ? 0.35 : 1;
+  const roofSolarAmps = (effectiveSolarWatts / 12) * seasonFactor;
+
   const totalChargerAmps =
     chargers.reduce((acc, n) => acc + (((n.data as ChargerNodeData)?.amps || 0) * (((n.data as ChargerNodeData)?.efficiency ?? 100) / 100)), 0) +
     effectiveSolarAmps +
-    effectiveSolarWatts / 12;
+    roofSolarAmps;
 
   let chargingTimeStr = 'N/A';
   if (totalChargerAmps > 0) {

@@ -14,16 +14,18 @@ export const VDE_AMPACITY: Record<number, number> = {
 };
 
 export const FUSE_MAP: Record<number, number> = {
-  1.5: 16,
-  2.5: 25,
-  4.0: 32,
-  6.0: 50,
-  10.0: 60,
-  16.0: 100,
-  25.0: 130,
-  35.0: 150,
-  50.0: 200,
-  70.0: 250,
+  // NEU-HIGH-B Fix: Derated values (~0.7 factor) for KFZ/Camper conditions.
+  // Accounts for cable bundling, heat accumulation in wall cavities and conduit runs.
+  1.5: 10,
+  2.5: 15,
+  4.0: 25,
+  6.0: 35,
+  10.0: 50,
+  16.0: 70,
+  25.0: 90,
+  35.0: 105,
+  50.0: 140,
+  70.0: 175,
 };
 
 export const calculateMaxFuse = (crossSection: number): number => {

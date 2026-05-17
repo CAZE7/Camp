@@ -178,7 +178,8 @@ function wireSolars(
     for (let i = 0; i < solarsLen; i++) {
       const solar = solars[i];
       const solarWatts = Number(solar.data.watts) || 100;
-      const solarAmps = solarWatts / 12;
+      // NEU-CRIT-B Fix: Use Vmp (18V) not 12V — must match calculateCurrent() in CableEdge.tsx
+      const solarAmps = solarWatts / 18;
       connectEdges(newEdges, edgeIdRef, solar.id, mpptNode.id, solarAmps, 5);
     }
     connectEdges(newEdges, edgeIdRef, mpptNode.id, busbarNode.id, Number(mpptNode.data.amps) || 30, 2);
@@ -413,9 +414,14 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
       edgeIdsSet.add(state.selectedEdges[i].id);
     }
 
+    // NEU-CRIT-A Fix: Also filter waterNodes and waterEdges to avoid ghost/invisible edges in memory.
     return {
       nodes: state.nodes.filter((n) => !nodeIdsSet.has(n.id)),
       edges: state.edges.filter(
+        (e) => !nodeIdsSet.has(e.source) && !nodeIdsSet.has(e.target) && !edgeIdsSet.has(e.id)
+      ),
+      waterNodes: state.waterNodes.filter((n) => !nodeIdsSet.has(n.id)),
+      waterEdges: state.waterEdges.filter(
         (e) => !nodeIdsSet.has(e.source) && !nodeIdsSet.has(e.target) && !edgeIdsSet.has(e.id)
       ),
       selectedNodes: [],
