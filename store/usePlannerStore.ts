@@ -55,6 +55,7 @@ interface PlannerState {
   onCustomDrop: (event: Event, screenToFlowPosition: (client: {x: number, y: number}) => {x: number, y: number}) => void;
   addNode: (type: string, label: string, position: {x: number, y: number}, watts?: number) => void;
   applyTemplate: (templateId: string) => void;
+  calculatePathVoltageDrop: (targetNodeId: string) => number;
 }
 
 import { TEMPLATES_DICT } from '../components/planner/templates';
@@ -404,9 +405,35 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
   setSelectedNodes: (nodes) => set({ selectedNodes: nodes }),
   setSelectedEdges: (edges) => set({ selectedEdges: edges }),
 
-  onNodesChange: (changes) => set((state) => ({ nodes: applyNodeChanges(changes, state.nodes) })),
+  onNodesChange: (changes) => set((state) => {
+    const newNodes = applyNodeChanges(changes, state.nodes);
+    const deletedNodeIds = new Set<string>();
+    for (const change of changes) {
+      if (change.type === 'remove') deletedNodeIds.add(change.id);
+    }
+    if (deletedNodeIds.size > 0) {
+      return {
+        nodes: newNodes,
+        edges: state.edges.filter(e => !deletedNodeIds.has(e.source) && !deletedNodeIds.has(e.target))
+      };
+    }
+    return { nodes: newNodes };
+  }),
   onEdgesChange: (changes) => set((state) => ({ edges: applyEdgeChanges(changes, state.edges) as Edge<CableEdgeData>[] })),
-  onWaterNodesChange: (changes) => set((state) => ({ waterNodes: applyNodeChanges(changes, state.waterNodes) })),
+  onWaterNodesChange: (changes) => set((state) => {
+    const newWaterNodes = applyNodeChanges(changes, state.waterNodes);
+    const deletedNodeIds = new Set<string>();
+    for (const change of changes) {
+      if (change.type === 'remove') deletedNodeIds.add(change.id);
+    }
+    if (deletedNodeIds.size > 0) {
+      return {
+        waterNodes: newWaterNodes,
+        waterEdges: state.waterEdges.filter(e => !deletedNodeIds.has(e.source) && !deletedNodeIds.has(e.target))
+      };
+    }
+    return { waterNodes: newWaterNodes };
+  }),
   onWaterEdgesChange: (changes) => set((state) => ({ waterEdges: applyEdgeChanges(changes, state.waterEdges) })),
 
   onSelectionChange: (params) => set({ selectedNodes: params.nodes, selectedEdges: params.edges }),
@@ -493,8 +520,8 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
     }
 
     // Check for cycles
-    const target = targetNode;
-
+    // If there is already a path from the connection's target back to the connection's source,
+    // adding this new edge will create a cycle.
     const outgoersMap = new Map<string, string[]>();
 
     for (let i = 0; i < edges.length; i++) {
@@ -507,22 +534,20 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
       targets.push(edge.target);
     }
 
-    const hasCycle = (nodeId: string, visited = new Set<string>()) => {
-      if (visited.has(nodeId)) return false;
-
-      visited.add(nodeId);
-
-      const outgoers = outgoersMap.get(nodeId) || [];
+    const hasPath = (fromNode: string, toNode: string, visited = new Set<string>()): boolean => {
+      if (fromNode === toNode) return true;
+      if (visited.has(fromNode)) return false;
+      visited.add(fromNode);
+      const outgoers = outgoersMap.get(fromNode) || [];
       for (let i = 0; i < outgoers.length; i++) {
-        const outgoerId = outgoers[i];
-        if (outgoerId === connection.source) return true;
-        if (hasCycle(outgoerId, visited)) return true;
+        if (hasPath(outgoers[i], toNode, visited)) return true;
       }
       return false;
     };
 
-    if (target?.id === connection.source) return false;
-    if (target) return !hasCycle(target.id);
+    if (connection.source && connection.target && hasPath(connection.target, connection.source)) {
+      return false;
+    }
 
     return true;
   },
@@ -719,4 +744,67 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
       return e;
     })
   })),
+
+  calculatePathVoltageDrop: (targetNodeId) => {
+    const { edges, nodes } = get();
+
+    const getI = (sourceNode: Node | undefined, targetNode: Node | undefined) => {
+      const sData = sourceNode?.data;
+      const tData = targetNode?.data;
+      if (sData?.totalAmps !== undefined) return Number(sData.totalAmps);
+      if (tData?.totalAmps !== undefined) return Number(tData.totalAmps);
+      if (sData?.amps !== undefined && sourceNode?.type !== 'battery') return Number(sData.amps);
+      if (tData?.amps !== undefined && targetNode?.type !== 'battery') return Number(tData.amps);
+      if (sourceNode?.type === 'consumer') return (Number(sData?.watts) || 0) / 12;
+      if (targetNode?.type === 'consumer') return (Number(tData?.watts) || 0) / 12;
+      if (sourceNode?.type === 'inverter') return (Number(sData?.watts) || 0) / 12 / 0.85;
+      if (targetNode?.type === 'inverter') return (Number(tData?.watts) || 0) / 12 / 0.85;
+      if (sourceNode?.type === 'solar') return (Number(sData?.watts) || 0) / 18;
+      if (targetNode?.type === 'solar') return (Number(tData?.watts) || 0) / 18;
+      let totalAmps = 0;
+      for (let i = 0; i < nodes.length; i++) {
+        const n = nodes[i];
+        if (n.type === 'consumer') totalAmps += (Number(n.data.watts) || 0) / 12;
+        else if (n.type === 'consumer230v') totalAmps += (Number(n.data.watts) || 0) / 12 / 0.85;
+      }
+      return totalAmps;
+    };
+
+    let maxCumulativeDrop = 0;
+
+    const dfs = (currentNodeId: string, currentDrop: number, visited: Set<string>) => {
+      if (visited.has(currentNodeId)) return;
+      visited.add(currentNodeId);
+
+      const node = nodes.find(n => n.id === currentNodeId);
+      if (node?.type === 'battery' || node?.type === 'shorePower') {
+        if (currentDrop > maxCumulativeDrop) {
+          maxCumulativeDrop = currentDrop;
+        }
+        return;
+      }
+
+      const incomingEdges = edges.filter(e => e.target === currentNodeId);
+      if (incomingEdges.length === 0) {
+        if (currentDrop > maxCumulativeDrop) {
+          maxCumulativeDrop = currentDrop;
+        }
+        return;
+      }
+
+      for (const edge of incomingEdges) {
+        const sourceNode = nodes.find(n => n.id === edge.source);
+        const I = getI(sourceNode, node);
+        const length = edge.data?.length || 1;
+        const cs = edge.data?.crossSection || 2.5;
+        const voltageDrop = (I * (length * 2)) / (58 * cs);
+        const dropPercentage = (voltageDrop / 12) * 100;
+        
+        dfs(edge.source, currentDrop + dropPercentage, new Set(visited));
+      }
+    };
+
+    dfs(targetNodeId, 0, new Set<string>());
+    return maxCumulativeDrop;
+  },
 }));

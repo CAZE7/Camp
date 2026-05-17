@@ -165,14 +165,17 @@ const CableEdge = function ({
     // Dependencies include node data, system load, and coordinates to force re-calc when anything relevant changes including moves
   }, [getNode, getNodes, data?.length, data?.crossSection, source, target, sNodeData, tNodeData, systemLoad, sourceX, sourceY, targetX, targetY]);
 
+  const cumulativeDrop = usePlannerStore.getState().calculatePathVoltageDrop(source);
+  const totalDropPercentage = dropPercentage + cumulativeDrop;
+
   const errors: string[] = [];
   
-  if (dropPercentage > 2) {
-    errors.push(`Spannungsabfall! (${dropPercentage.toFixed(1)}% > 2%)`);
+  if (totalDropPercentage > 2) {
+    errors.push(`Gesamt-Drop! (${totalDropPercentage.toFixed(1)}% > 2%)`);
   }
 
   let stroke = selected ? '#f97316' : '#9ca3af';
-  if (dropPercentage > 2) stroke = '#ef4444'; // strict red for > 2%
+  if (totalDropPercentage > 2) stroke = '#ef4444'; // strict red for > 2%
 
   if (isPlus) {
     if (!data?.fuseSize) {
