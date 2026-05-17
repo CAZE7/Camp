@@ -59,56 +59,17 @@ interface PlannerState {
 }
 
 import { TEMPLATES_DICT } from '../components/planner/templates';
-
-let cachedNodesRef: Node[] | null = null;
-let cachedWaterNodesRef: Node[] | null = null;
-let cachedNodeMap = new Map<string, Node>();
+import { calculateCrossSection, calculateMaxFuse } from '../lib/electrical';
 
 function getNodeMap(currentNodes: Node[], currentWaterNodes: Node[]): Map<string, Node> {
-  if (currentNodes !== cachedNodesRef || currentWaterNodes !== cachedWaterNodesRef) {
-    cachedNodeMap.clear();
-    for (let i = 0, len = currentNodes.length; i < len; i++) {
-      cachedNodeMap.set(currentNodes[i].id, currentNodes[i]);
-    }
-    for (let i = 0, len = currentWaterNodes.length; i < len; i++) {
-      cachedNodeMap.set(currentWaterNodes[i].id, currentWaterNodes[i]);
-    }
-    cachedNodesRef = currentNodes;
-    cachedWaterNodesRef = currentWaterNodes;
+  const map = new Map<string, Node>();
+  for (let i = 0, len = currentNodes.length; i < len; i++) {
+    map.set(currentNodes[i].id, currentNodes[i]);
   }
-  return cachedNodeMap;
-}
-
-
-const VDE_SIZES = [1.5, 2.5, 4.0, 6.0, 10.0, 16.0, 25.0, 35.0, 50.0, 70.0];
-const FUSE_MAP: Record<number, number> = {
-  1.5: 15,
-  2.5: 20,
-  4.0: 30,
-  6.0: 40,
-  10.0: 60,
-  16.0: 80,
-  25.0: 100,
-  35.0: 150,
-  50.0: 200,
-  70.0: 250,
-};
-
-function calculateWire(I: number, length: number = 2) {
-  const calculatedA = (I * (length * 2)) / (58 * 0.24);
-  const minRequiredA = Math.max(1.5, calculatedA);
-
-  let crossSection = 70.0;
-  for (let i = 0; i < 10; i++) {
-    if (VDE_SIZES[i] >= minRequiredA) {
-      crossSection = VDE_SIZES[i];
-      break;
-    }
+  for (let i = 0, len = currentWaterNodes.length; i < len; i++) {
+    map.set(currentWaterNodes[i].id, currentWaterNodes[i]);
   }
-
-  const fuseSize = FUSE_MAP[crossSection] || 250;
-
-  return { crossSection, fuseSize, length };
+  return map;
 }
 
 function buildDictionaries(currentNodes: Node[]) {
@@ -177,7 +138,8 @@ function connectEdges(
   I: number = 0,
   length: number = 2
 ) {
-  const { crossSection, fuseSize } = calculateWire(I, length);
+  const crossSection = calculateCrossSection(I, length);
+  const fuseSize = calculateMaxFuse(crossSection);
   newEdges.push({
     id: `e-auto-${edgeIdRef.counter++}`,
     source: sourceId,
@@ -514,8 +476,8 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
       (sourceNode?.type === 'solar' && targetNode?.type === 'solar');
 
     if (!isSeriesException) {
-      if ((sIsPlus && tIsMinus) || (sIsMinus && tIsPlus)) {
-        return false; // Polarity mismatch
+      if ((sIsPlus && !tIsPlus) || (sIsMinus && !tIsMinus)) {
+        return false; // Polarity mismatch strict block
       }
     }
 

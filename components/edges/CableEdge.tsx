@@ -4,6 +4,7 @@ import { useAppStore } from '../../lib/store';
 import { usePlannerStore } from '../../store/usePlannerStore';
 import { useShallow } from 'zustand/react/shallow';
 import { calculateEdgePath } from './utils/pathUtils';
+import { calculateCrossSection, calculateMaxFuse, calculateStrokeWidth } from '../../lib/electrical';
 
 export type CableEdgeData = {
   length: number;
@@ -11,7 +12,7 @@ export type CableEdgeData = {
   fuseSize?: number;
 };
 
-type CableEdgeProps = EdgeProps<CableEdgeData> & { sourceHandleId?: string | null };
+type CableEdgeProps = EdgeProps<CableEdgeData> & { sourceHandle?: string | null };
 
 export const calculateCurrent = (
   sourceNode: Node | undefined,
@@ -38,56 +39,27 @@ export const calculateCurrent = (
   if (sourceNode?.type === 'solar') return (Number(sData?.watts) || 0) / 18; // Typical Vmp
   if (targetNode?.type === 'solar') return (Number(tData?.watts) || 0) / 18;
 
-  // 3. Fallback: Sum of all consumers (for main lines like Battery -> Busbar)
+  // 3. Fallback: Main lines
   const nodes = getNodes();
-  let totalAmps = 0;
+  let totalConsumerAmps = 0;
+  let totalChargerAmps = 0;
   for (let i = 0; i < nodes.length; i++) {
     const n = nodes[i];
     if (n.type === 'consumer') {
-      totalAmps += (Number(n.data.watts) || 0) / 12;
-    } else if (n.type === 'consumer230v') {
-      totalAmps += (Number(n.data.watts) || 0) / 12 / 0.85;
+      totalConsumerAmps += (Number(n.data.watts) || 0) / 12;
+    } else if (n.type === 'inverter') {
+      totalConsumerAmps += (Number(n.data.watts) || 0) / 12 / 0.85;
+    } else if (n.type === 'charger') {
+      totalChargerAmps += Number(n.data.amps) || 0;
+    } else if (n.type === 'solar') {
+      totalChargerAmps += (Number(n.data.watts) || 0) / 18;
     }
   }
-  return totalAmps;
-};
-
-export const calculateCrossSection = (
-  I: number,
-  length: number,
-  dataCrossSection?: number
-): number => {
-  // Formula: A = (I * L * 2) / (58 * 0.24)
-  // κ (copper) = 58, ΔU (allowed drop) = 0.24V (approx 2% of 12V)
-  const calculatedA = (I * (length * 2)) / (58 * 0.24);
-  const minRequiredA = Math.max(1.5, calculatedA);
   
-  const VDE_SIZES = [1.5, 2.5, 4.0, 6.0, 10.0, 16.0, 25.0, 35.0, 50.0, 70.0];
-  const autoSize = VDE_SIZES.find(size => size >= minRequiredA) || 70.0;
+  if (sourceNode?.type === 'battery') return totalConsumerAmps;
+  if (targetNode?.type === 'battery') return totalChargerAmps;
   
-  // If dataCrossSection is set, we treat it as a minimum or manual override
-  // But we always ensure it's at least what the physics requires
-  return Math.max(autoSize, dataCrossSection || 0);
-};
-
-export const calculateMaxFuse = (cs: number): number => {
-  if (cs <= 1.5) return 16;
-  if (cs <= 2.5) return 25;
-  if (cs <= 4.0) return 32;
-  if (cs <= 6.0) return 50;
-  if (cs <= 10.0) return 60;
-  if (cs <= 16.0) return 100;
-  if (cs <= 25.0) return 130;
-  if (cs <= 35.0) return 150;
-  if (cs <= 50.0) return 200;
-  return 250;
-};
-
-export const calculateStrokeWidth = (cs: number): number => {
-  if (cs <= 1.5) return 2;
-  if (cs <= 4) return 4;
-  if (cs <= 6) return 6;
-  return 10;
+  return Math.max(totalConsumerAmps, totalChargerAmps);
 };
 
 export const calculateAnimationDuration = (I: number): number => {
@@ -108,7 +80,7 @@ const CableEdge = function ({
   data,
   markerEnd,
   selected,
-  sourceHandleId,
+  sourceHandle,
 }: CableEdgeProps) {
   const { getNode, getNodes } = useReactFlow();
   const isProMode = useAppStore(state => state.isProMode);
@@ -144,7 +116,7 @@ const CableEdge = function ({
     });
   }, [sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, isProMode]);
 
-  const isPlus = sourceHandleId?.includes('plus');
+  const isPlus = sourceHandle?.includes('plus');
 
   const { length, crossSection, maxFuse, strokeWidth, animationDuration, I, sourceNode, dropPercentage } = useMemo(() => {
     const physicalDistance = Math.max(1, Math.sqrt(Math.pow(targetX - sourceX, 2) + Math.pow(targetY - sourceY, 2)) / 100);
@@ -220,7 +192,7 @@ const CableEdge = function ({
         <div
           style={{
             position: 'absolute',
-            transform: `translate(-50%, -50%) translate(${labelX}px,${labelY + (sourceHandleId?.includes('minus') ? 40 : -40)}px)`,
+            transform: `translate(-50%, -50%) translate(${labelX}px,${labelY + (sourceHandle?.includes('minus') ? 40 : -40)}px)`,
             background: 'white',
             padding: '2px 6px',
             borderRadius: '4px',
