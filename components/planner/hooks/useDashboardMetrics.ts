@@ -12,17 +12,42 @@ export function useDashboardMetrics(
   const [debouncedEdges, setDebouncedEdges] = useState(edges);
 
   useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedNodes(nodes);
-      setDebouncedEdges(edges);
-    }, 300);
-    return () => clearTimeout(handler);
-  }, [nodes, edges]);
+    const nodesChanged = nodes.length !== debouncedNodes.length || nodes.some((n, i) => {
+      const prev = debouncedNodes[i];
+      if (!prev) return true;
+      return (
+        n.id !== prev.id ||
+        n.type !== prev.type ||
+        JSON.stringify(n.data) !== JSON.stringify(prev.data)
+      );
+    });
+
+    const edgesChanged = edges.length !== debouncedEdges.length || edges.some((e, i) => {
+      const prev = debouncedEdges[i];
+      if (!prev) return true;
+      return (
+        e.id !== prev.id ||
+        e.source !== prev.source ||
+        e.target !== prev.target ||
+        e.sourceHandle !== prev.sourceHandle ||
+        e.targetHandle !== prev.targetHandle ||
+        JSON.stringify(e.data) !== JSON.stringify(prev.data)
+      );
+    });
+
+    if (nodesChanged || edgesChanged) {
+      const handler = setTimeout(() => {
+        if (nodesChanged) setDebouncedNodes(nodes);
+        if (edgesChanged) setDebouncedEdges(edges);
+      }, 300);
+      return () => clearTimeout(handler);
+    }
+  }, [nodes, edges, debouncedNodes, debouncedEdges]);
 
   return useMemo(() => {
     const categories = categorizeNodes(debouncedNodes);
 
-    const usableCapacityAh = calculateUsableCapacity(categories.batteryNode);
+    const usableCapacityAh = calculateUsableCapacity(categories.batteries);
 
     const dailyConsumptionAh = calculateDailyConsumption(
       categories.consumers,
@@ -71,6 +96,7 @@ function categorizeNodes(nodes: Node[]) {
   const result = {
     nodeTypeMap: {} as Record<string, string | undefined>,
     batteryNode: undefined as Node | undefined,
+    batteries: [] as Node[],
     consumers: [] as Node[],
     consumers230v: [] as Node[],
     hasInverter: false,
@@ -85,6 +111,7 @@ function categorizeNodes(nodes: Node[]) {
 
     if (type === 'battery') {
       if (!result.batteryNode) result.batteryNode = n;
+      result.batteries.push(n);
     } else if (type === 'consumer') {
       result.consumers.push(n);
     } else if (type === 'consumer230v') {
@@ -101,11 +128,13 @@ function categorizeNodes(nodes: Node[]) {
   return result;
 }
 
-function calculateUsableCapacity(batteryNode: Node | undefined): number {
-  const capacityAh = (batteryNode?.data as BatteryNodeData)?.capacity || 0;
-  const chemistry = (batteryNode?.data as BatteryNodeData)?.chemistry || 'LiFePO4';
-  const dod = chemistry === 'AGM' ? 0.5 : 0.9;
-  return capacityAh * dod;
+function calculateUsableCapacity(batteries: Node[]): number {
+  return batteries.reduce((acc, batteryNode) => {
+    const capacityAh = (batteryNode?.data as BatteryNodeData)?.capacity || 0;
+    const chemistry = (batteryNode?.data as BatteryNodeData)?.chemistry || 'LiFePO4';
+    const dod = chemistry === 'AGM' ? 0.5 : 0.9;
+    return acc + capacityAh * dod;
+  }, 0);
 }
 
 function calculateDailyConsumption(
@@ -134,16 +163,14 @@ function calculateDailyConsumption(
     return acc + consumption;
   }, 0);
 
-  if (hasInverter) {
-    const inverterConsumptionAh = consumers230v.reduce((acc, n) => {
-      const w = (n.data as ConsumerNodeData)?.watts || 0;
-      const h = (n.data as ConsumerNodeData)?.hours || 0;
-      // Inverter takes 12V from battery, loses 15% efficiency (0.85)
-      // Ah = (W / 12V) * h / 0.85
-      return acc + ((w / 12) * h) / 0.85;
-    }, 0);
-    dailyConsumptionAh += inverterConsumptionAh;
-  }
+  const inverterConsumptionAh = consumers230v.reduce((acc, n) => {
+    const w = (n.data as ConsumerNodeData)?.watts || 0;
+    const h = (n.data as ConsumerNodeData)?.hours || 0;
+    // Inverter takes 12V from battery, loses 15% efficiency (0.85)
+    // Ah = (W / 12V) * h / 0.85
+    return acc + ((w / 12) * h) / 0.85;
+  }, 0);
+  dailyConsumptionAh += inverterConsumptionAh;
 
   return dailyConsumptionAh;
 }
@@ -213,7 +240,7 @@ function calculateSolarMetrics(
 
     // Seasonal yield reduction for solar
     if (season === 'winter') {
-      totalSolarAmps *= 0.2; // Significant reduction in winter
+      totalSolarAmps *= 0.35; // Significant reduction in winter (increased to 0.35 per BUG-10/15 requirement)
     }
   }
 

@@ -41,8 +41,12 @@ describe('Sidebar Component', () => {
 
       fireEvent.change(searchInput, { target: { value: 'XYZ123' } });
 
-      expect(screen.getByText('Keine Komponenten gefunden für "XYZ123"')).toBeInTheDocument();
-      expect(screen.getAllByRole('button', { name: 'Suche zurücksetzen' }).length).toBe(2);
+      expect(screen.getByText(/Keine Treffer für/)).toBeInTheDocument();
+      const resetButton = screen.getByRole('button', { name: 'Filter zurücksetzen' });
+      expect(resetButton).toBeInTheDocument();
+
+      fireEvent.click(resetButton);
+      expect((searchInput as HTMLInputElement).value).toBe('');
     });
   });
 

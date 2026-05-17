@@ -40,6 +40,8 @@ vi.mock('../../store/usePlannerStore', () => ({
       autoWireSystem: mockAutoWireSystem,
       checkSchematic: mockCheckSchematic,
       onLayout: mockOnLayout,
+      nodes: [],
+      edges: [],
     };
     return selector(state);
   })
@@ -54,18 +56,6 @@ vi.mock('../../lib/store', () => ({
   }))
 }));
 
-// Mock Dropdown Menu to avoid Radix UI complexities in JSDOM testing
-vi.mock('@/components/ui/dropdown-menu', () => ({
-  DropdownMenu: ({ children }: { children: React.ReactNode }) => <div data-testid="dropdown-menu">{children}</div>,
-  DropdownMenuTrigger: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DropdownMenuContent: ({ children }: { children: React.ReactNode }) => <div data-testid="dropdown-content">{children}</div>,
-  DropdownMenuItem: ({ children, onClick, className }: { children: React.ReactNode, onClick: () => void, className?: string }) => (
-    <button onClick={onClick} className={className} data-testid={`menu-item-${children?.toString().trim()}`}>
-      {children}
-    </button>
-  ),
-}));
-
 describe('PlannerDashboard - Core Interactions', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -78,13 +68,15 @@ describe('PlannerDashboard - Core Interactions', () => {
   it('renders default UI elements correctly', () => {
     render(<PlannerDashboard />);
 
-    // Check main buttons
-
     expect(screen.getByText('Elektrik-Schaltplan')).toBeInTheDocument();
     expect(screen.getByText('Wasser & Sanitär')).toBeInTheDocument();
-    expect(screen.getByText('Aktionen')).toBeInTheDocument();
-    expect(screen.getByText('Sommer')).toBeInTheDocument();
-    expect(screen.getByText('Winter')).toBeInTheDocument();
+    expect(screen.getByText(/Stückliste/)).toBeInTheDocument();
+    expect(screen.getByText(/Auto-Wire/)).toBeInTheDocument();
+    expect(screen.getByText(/KI-Check/)).toBeInTheDocument();
+    expect(screen.getByText(/Aufräumen/)).toBeInTheDocument();
+    expect(screen.getByText(/Bild Export/)).toBeInTheDocument();
+    expect(screen.getByText(/Sommer/)).toBeInTheDocument();
+    expect(screen.getByText(/Winter/)).toBeInTheDocument();
     expect(screen.getByText('Profi-Modus Aus')).toBeInTheDocument();
   });
 
@@ -101,10 +93,10 @@ describe('PlannerDashboard - Core Interactions', () => {
   it('calls setSeason when changing season', () => {
     render(<PlannerDashboard />);
 
-    fireEvent.click(screen.getByText('Winter'));
+    fireEvent.click(screen.getByText(/Winter/));
     expect(mockSetSeason).toHaveBeenCalledWith('winter');
 
-    fireEvent.click(screen.getByText('Sommer'));
+    fireEvent.click(screen.getByText(/Sommer/));
     expect(mockSetSeason).toHaveBeenCalledWith('summer');
   });
 
@@ -116,7 +108,7 @@ describe('PlannerDashboard - Core Interactions', () => {
   });
 });
 
-describe('PlannerDashboard - Action Menu', () => {
+describe('PlannerDashboard - Action Buttons', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -129,7 +121,7 @@ describe('PlannerDashboard - Action Menu', () => {
     render(<PlannerDashboard />);
     const dispatchEventSpy = vi.spyOn(window, 'dispatchEvent');
 
-    fireEvent.click(screen.getByTestId('menu-item-Stückliste an KI senden'));
+    fireEvent.click(screen.getByText(/Stückliste/));
 
     expect(mockExportBOM).toHaveBeenCalledTimes(1);
 
@@ -141,23 +133,23 @@ describe('PlannerDashboard - Action Menu', () => {
   it('calls autoWireSystem with fitView when clicking Automatisch Verkabeln', () => {
     render(<PlannerDashboard />);
 
-    fireEvent.click(screen.getByTestId('menu-item-Automatisch Verkabeln & Absichern'));
+    fireEvent.click(screen.getByText(/Auto-Wire/));
 
     expect(mockAutoWireSystem).toHaveBeenCalledWith(mockFitView);
   });
 
-  it('calls checkSchematic when clicking Schaltplan prüfen', () => {
+  it('calls checkSchematic when clicking KI-Check', () => {
     render(<PlannerDashboard />);
 
-    fireEvent.click(screen.getByTestId('menu-item-Schaltplan von KI prüfen lassen'));
+    fireEvent.click(screen.getByText(/KI-Check/));
 
     expect(mockCheckSchematic).toHaveBeenCalledTimes(1);
   });
 
-  it('calls onLayout with fitView when clicking Schaltplan aufräumen', () => {
+  it('calls onLayout with fitView when clicking Aufräumen', () => {
     render(<PlannerDashboard />);
 
-    fireEvent.click(screen.getByTestId('menu-item-Schaltplan aufräumen'));
+    fireEvent.click(screen.getByText(/Aufräumen/));
 
     expect(mockOnLayout).toHaveBeenCalledWith(mockFitView);
   });
@@ -172,8 +164,7 @@ describe('PlannerDashboard - Image Export', () => {
     vi.restoreAllMocks();
   });
 
-  it('calls toPng and downloads image when clicking Als Bild speichern', async () => {
-    // Setup fake react-flow DOM element to prevent early return
+  it('calls toPng and downloads image when clicking Bild Export', async () => {
     const mockReactFlowElem = document.createElement('div');
     mockReactFlowElem.className = 'react-flow';
     document.body.appendChild(mockReactFlowElem);
@@ -184,12 +175,10 @@ describe('PlannerDashboard - Image Export', () => {
       click: vi.fn(),
     };
 
-    // Create an actual anchor element and override its methods/properties for observation
     const originalCreateElement = document.createElement.bind(document);
     const createElementSpy = vi.spyOn(document, 'createElement').mockImplementation((tagName: string, options?: ElementCreationOptions) => {
       const el = originalCreateElement(tagName, options);
       if (tagName === 'a') {
-        // Intercept properties
         Object.defineProperty(el, 'download', {
           get: () => mockLink.download,
           set: (val) => mockLink.download = val,
@@ -205,7 +194,7 @@ describe('PlannerDashboard - Image Export', () => {
 
     render(<PlannerDashboard />);
 
-    fireEvent.click(screen.getByTestId('menu-item-Als Bild speichern'));
+    fireEvent.click(screen.getByText(/Bild Export/));
 
     await waitFor(() => {
       expect(toPng).toHaveBeenCalledWith(mockReactFlowElem, expect.any(Object));
@@ -220,7 +209,6 @@ describe('PlannerDashboard - Image Export', () => {
   });
 
   it('does not export image if react flow wrapper is not found', () => {
-    // Ensure no wrapper exists
     const existingElements = document.querySelectorAll('.react-flow');
     existingElements.forEach(el => document.body.removeChild(el));
 
@@ -228,7 +216,7 @@ describe('PlannerDashboard - Image Export', () => {
 
     render(<PlannerDashboard />);
 
-    fireEvent.click(screen.getByTestId('menu-item-Als Bild speichern'));
+    fireEvent.click(screen.getByText(/Bild Export/));
 
     expect(toPng).not.toHaveBeenCalled();
   });
@@ -240,7 +228,7 @@ describe('PlannerDashboard - Image Export', () => {
 
     render(<PlannerDashboard />);
 
-    fireEvent.click(screen.getByTestId('menu-item-Als Bild speichern'));
+    fireEvent.click(screen.getByText(/Bild Export/));
 
     await waitFor(() => {
       expect(toPng).toHaveBeenCalled();
@@ -248,11 +236,9 @@ describe('PlannerDashboard - Image Export', () => {
 
     const filterFunc = (toPng as unknown as any).mock.calls[0][1].filter;
 
-    // Test positive case
     const validNode = document.createElement('div');
     expect(filterFunc(validNode)).toBe(true);
 
-    // Test negative cases
     const panelNode = document.createElement('div');
     panelNode.classList.add('react-flow__panel');
     expect(filterFunc(panelNode)).toBe(false);
@@ -271,7 +257,6 @@ describe('PlannerDashboard - Image Export', () => {
   it('logs an error if image export fails', async () => {
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-    // Setup wrapper but force an error from toPng
     const mockReactFlowElem = document.createElement('div');
     mockReactFlowElem.className = 'react-flow';
     document.body.appendChild(mockReactFlowElem);
@@ -280,7 +265,7 @@ describe('PlannerDashboard - Image Export', () => {
 
     render(<PlannerDashboard />);
 
-    fireEvent.click(screen.getByTestId('menu-item-Als Bild speichern'));
+    fireEvent.click(screen.getByText(/Bild Export/));
 
     await waitFor(() => {
       expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to export image', expect.any(Error));

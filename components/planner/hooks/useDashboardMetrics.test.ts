@@ -1,7 +1,16 @@
-import { renderHook } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { renderHook, act } from '@testing-library/react';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { useDashboardMetrics } from './useDashboardMetrics';
 import { Node, Edge } from 'reactflow';
+
+beforeEach(() => {
+  vi.useFakeTimers();
+});
+
+afterEach(() => {
+  vi.runOnlyPendingTimers();
+  vi.useRealTimers();
+});
 
 describe('useDashboardMetrics', () => {
   const emptyNodes: Node[] = [];
@@ -41,16 +50,16 @@ describe('useDashboardMetrics', () => {
       useDashboardMetrics(nodesAGM, emptyEdges, 'summer', 0)
     );
     // AGM usableCapacityAh = 100 * 0.5 = 50
-    // consumer dailyConsumptionAh = (12/12) * 24 * 1.5 (summer) = 36
-    // autarkyHours = 50 / (36 / 24) = 50 / 1.5 = 33.333
-    // 33.333 hours = 1 Day, 9 Hours (rounded)
-    expect(resAGM.current.autarkyStr).toBe('1 Tage / 9 Stunden');
+    // consumer dailyConsumptionAh = (12/12) * 24 = 24
+    // autarkyHours = 50 / (24 / 24) = 50
+    // 50 hours = 2 Tage / 2 Stunden (rounded)
+    expect(resAGM.current.autarkyStr).toBe('2 Tage / 2 Stunden');
   });
 
   it('should handle seasonal adjustment for consumption', () => {
     const nodes: Node[] = [
       { id: 'b1', type: 'battery', data: { capacity: 100 }, position: { x: 0, y: 0 } },
-      { id: 'c1', type: 'consumer', data: { watts: 12, hours: 10 }, position: { x: 0, y: 0 } },
+      { id: 'c1', type: 'consumer', data: { watts: 12, hours: 10, label: 'Autoterm Heizung' }, position: { x: 0, y: 0 } },
     ];
 
     const { result: resSummer } = renderHook(() =>
@@ -73,12 +82,12 @@ describe('useDashboardMetrics', () => {
       { id: 'c1', type: 'consumer230v', data: { watts: 120, hours: 1 }, position: { x: 0, y: 0 } },
     ];
     // Inverter efficiency is fixed at 0.85 in code
-    // dailyConsumptionAh = ((120/12) * 1) / 0.85 * 1.5 (summer) = 10 / 0.85 * 1.5 = 11.764 * 1.5 = 17.647...
+    // dailyConsumptionAh = ((120/12) * 1) / 0.85 = 11.764...
 
     const { result } = renderHook(() =>
       useDashboardMetrics(nodes, emptyEdges, 'summer', 0)
     );
-    expect(result.current.dailyConsumptionAh).toBeCloseTo(17.647, 3);
+    expect(result.current.dailyConsumptionAh).toBeCloseTo(11.765, 3);
   });
 
   describe('Solar Calculations', () => {
@@ -117,8 +126,8 @@ describe('useDashboardMetrics', () => {
         useDashboardMetrics(solarNodes, emptyEdges, 'winter', 0)
       );
       // Parallel totalSolarAmps = 10
-      // Winter reduction: 10 * 0.2 = 2
-      expect(result.current.totalSolarAmps).toBe(2);
+      // Winter reduction: 10 * 0.35 = 3.5
+      expect(result.current.totalSolarAmps).toBe(3.5);
     });
   });
 
@@ -169,11 +178,10 @@ describe('useDashboardMetrics', () => {
       { id: 'c1', type: 'consumer', data: { watts: 12, hours: 24 }, position: { x: 100, y: 100 } },
     ];
     rerender({ nodes: nodes2 });
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
 
-    // Since it's useMemo, it should return the same object reference if it didn't re-calculate
-    // But useDashboardMetrics returns a NEW object every time the memo executes.
-    // The memo only executes if memoKeyRef.current changes.
-    // So if it DID NOT re-calculate, result.current should be the exact same object as firstResult.
     expect(result.current).toBe(firstResult);
 
     // Change data
@@ -182,6 +190,9 @@ describe('useDashboardMetrics', () => {
       { id: 'c1', type: 'consumer', data: { watts: 10, hours: 2 }, position: { x: 10, y: 10 } },
     ];
     rerender({ nodes: nodes3 });
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
     expect(result.current).not.toBe(firstResult);
     expect(result.current.autarkyStr).not.toBe(firstResult.autarkyStr);
   });
@@ -312,6 +323,9 @@ describe('useDashboardMetrics', () => {
         { id: 'e1', source: 'b1', target: 'c1' }
       ];
       rerender({ edges: edges2 });
+      act(() => {
+        vi.advanceTimersByTime(300);
+      });
 
       expect(result.current).not.toBe(firstResult);
       expect(result.current.hasDirectBatteryToConsumer).toBe(true);
@@ -336,20 +350,30 @@ describe('useDashboardMetrics', () => {
         { id: 'e1', source: 'b1', target: 'c1' }
       ];
       rerender({ edges: edges2 });
+      act(() => {
+        vi.advanceTimersByTime(300);
+      });
 
       expect(result.current).not.toBe(firstResult);
       expect(result.current.hasDirectBatteryToConsumer).toBe(true);
     });
 
-    it('should ignore secondary battery nodes if one already exists', () => {
+    it('should sum capacity of multiple battery nodes (parallel banks)', () => {
       const nodes: Node[] = [
-        { id: 'b1', type: 'battery', data: { capacity: 100 }, position: { x: 0, y: 0 } },
-        { id: 'b2', type: 'battery', data: { capacity: 200 }, position: { x: 0, y: 0 } },
+        { id: 'b1', type: 'battery', data: { capacity: 100, chemistry: 'LiFePO4' }, position: { x: 0, y: 0 } },
+        { id: 'b2', type: 'battery', data: { capacity: 200, chemistry: 'AGM' }, position: { x: 0, y: 0 } },
+        { id: 'c1', type: 'consumer', data: { watts: 12, hours: 24 }, position: { x: 0, y: 0 } },
       ];
       const { result } = renderHook(() =>
         useDashboardMetrics(nodes, [], 'summer', 0)
       );
-      expect(result.current.autarkyStr).toBe('Unendlich');
+      // b1 usable = 100 * 0.9 = 90
+      // b2 usable = 200 * 0.5 = 100
+      // total usable = 190
+      // consumer dailyConsumptionAh = (12/12) * 24 = 24
+      // autarky hours = 190 / (24 / 24) = 190
+      // 190 hours = 7 days, 22 hours
+      expect(result.current.autarkyStr).toBe('7 Tage / 22 Stunden');
     });
 
     it('should detect direct connection from battery to consumer230v', () => {

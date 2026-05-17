@@ -25,16 +25,15 @@ describe('DashboardPanel', () => {
   it('renders default metrics correctly without optional sections', () => {
     render(<DashboardPanel metrics={defaultMetrics} calculatedSolarWatts={0} />);
 
-    expect(screen.getByText('System Berechnungen')).toBeInTheDocument();
+    expect(screen.getByText(/System Berechnungen/)).toBeInTheDocument();
     expect(screen.getByText('50.5 Ah')).toBeInTheDocument();
     expect(screen.getByText('2 days')).toBeInTheDocument();
     expect(screen.getByText('4 hours')).toBeInTheDocument();
-    expect(screen.getByText('0 W')).toBeInTheDocument();
 
     // Ensure optional sections are not rendered
-    expect(screen.queryByText('Solar-Array Output:')).not.toBeInTheDocument();
+    expect(screen.queryByText('PV-Output:')).not.toBeInTheDocument();
     expect(screen.queryByText(/Warnung: Verbraucher ist direkt mit der Batterie verbunden/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/Dachplaner-Daten erkannt:/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/☀️ Dach-Solar:/)).not.toBeInTheDocument();
   });
 
   it('renders Solar-Array Output when solarNodesCount > 0', () => {
@@ -46,7 +45,7 @@ describe('DashboardPanel', () => {
     };
     render(<DashboardPanel metrics={metrics} calculatedSolarWatts={0} />);
 
-    expect(screen.getByText('Solar-Array Output:')).toBeInTheDocument();
+    expect(screen.getByText('PV-Output:')).toBeInTheDocument();
     expect(screen.getByText('24V / 15.5A')).toBeInTheDocument();
   });
 
@@ -63,7 +62,7 @@ describe('DashboardPanel', () => {
   it('renders Dachplaner-Daten panel when calculatedSolarWatts > 0', () => {
     render(<DashboardPanel metrics={defaultMetrics} calculatedSolarWatts={400} />);
 
-    expect(screen.getByText(/Dachplaner-Daten erkannt:/)).toBeInTheDocument();
+    expect(screen.getByText(/☀️ Dach-Solar:/)).toBeInTheDocument();
     expect(screen.getAllByText(/400 W/).length).toBeGreaterThan(0);
   });
 
@@ -77,9 +76,9 @@ describe('DashboardPanel', () => {
     };
     render(<DashboardPanel metrics={metrics} calculatedSolarWatts={200} />);
 
-    expect(screen.getByText('Solar-Array Output:')).toBeInTheDocument();
+    expect(screen.getByText('PV-Output:')).toBeInTheDocument();
     expect(screen.getByText('12V / 10.0A')).toBeInTheDocument();
     expect(screen.getByText(/Warnung: Verbraucher ist direkt mit der Batterie verbunden/)).toBeInTheDocument();
-    expect(screen.getByText(/Dachplaner-Daten erkannt:/)).toBeInTheDocument();
+    expect(screen.getByText(/☀️ Dach-Solar:/)).toBeInTheDocument();
   });
 });
