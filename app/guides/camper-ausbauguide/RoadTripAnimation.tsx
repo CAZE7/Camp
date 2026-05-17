@@ -6,9 +6,10 @@ import { useGSAP } from "@gsap/react";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { MotionPathPlugin } from "gsap/MotionPathPlugin";
 
-// Register plugins
+// Register plugins & performance optimization
 if (typeof window !== "undefined") {
   gsap.registerPlugin(ScrollTrigger, MotionPathPlugin, useGSAP);
+  gsap.ticker.lagSmoothing(0);
 }
 
 export default function RoadTripAnimation() {
@@ -24,12 +25,18 @@ export default function RoadTripAnimation() {
     // Dynamic will-change for performance (Lighthouse optimization)
     let scrollTimeout: NodeJS.Timeout;
     const handleScroll = () => {
-      if (containerRef.current) containerRef.current.style.willChange = "transform";
+      if (containerRef.current) {
+        containerRef.current.style.willChange = "transform";
+        containerRef.current.classList.add("is-scrolling");
+      }
       if (camperRef.current) camperRef.current.style.willChange = "transform";
       
       clearTimeout(scrollTimeout);
       scrollTimeout = setTimeout(() => {
-        if (containerRef.current) containerRef.current.style.willChange = "auto";
+        if (containerRef.current) {
+          containerRef.current.style.willChange = "auto";
+          containerRef.current.classList.remove("is-scrolling");
+        }
         if (camperRef.current) camperRef.current.style.willChange = "auto";
       }, 100);
     };
@@ -50,7 +57,7 @@ export default function RoadTripAnimation() {
         trigger: pageWrapper,
         start: "top top",
         end: "bottom bottom",
-        scrub: 1.2,
+        scrub: 2,
         snap: {
           snapTo: snapPoints,
           duration: { min: 0.2, max: 0.5 },
@@ -108,14 +115,16 @@ export default function RoadTripAnimation() {
       "--ambient-bg": "#ffffff",
       "--ambient-glow": "rgba(255, 255, 255, 0.5)",
       ease: "none",
-      duration: 0.5
+      duration: 0.5,
+      force3D: true
     }, 0);
 
     tl.to(document.documentElement, {
       "--ambient-bg": "#fff7ed",
       "--ambient-glow": "rgba(255, 247, 237, 0.5)",
       ease: "none",
-      duration: 0.5
+      duration: 0.5,
+      force3D: true
     }, 0.5);
     
     // Reveal the camper
@@ -131,13 +140,14 @@ export default function RoadTripAnimation() {
   return (
     <div 
       ref={containerRef} 
-      className="fixed left-0 top-0 w-24 md:w-32 lg:w-48 h-screen pointer-events-none z-10 opacity-30 lg:opacity-100"
-      style={{ isolation: "isolate" }} // Layer Isolation
+      className="fixed left-0 top-0 w-24 md:w-32 lg:w-48 h-screen pointer-events-none z-10 opacity-30 lg:opacity-100 gpu-accelerated"
+      style={{ isolation: "isolate", willChange: "transform", backfaceVisibility: "hidden" }} // Layer Isolation + GPU
     >
       <svg
-        className="w-full h-full"
+        className="w-full h-full speed-svg"
         viewBox="0 0 200 1000"
         preserveAspectRatio="xMidYMid slice"
+        shapeRendering="optimizeSpeed"
       >
         <rect x="0" y="0" width="200" height="1000" fill="transparent" />
 
@@ -149,6 +159,8 @@ export default function RoadTripAnimation() {
           strokeWidth="1"
           opacity="0.1"
           strokeDasharray="4 4"
+          className="gpu-accelerated"
+          style={{ willChange: "transform", backfaceVisibility: "hidden" }}
         />
 
         {/* The Road - Animated building path */}
@@ -160,6 +172,8 @@ export default function RoadTripAnimation() {
           strokeWidth="4"
           strokeDasharray="8 10"
           strokeLinecap="round"
+          className="gpu-accelerated"
+          style={{ willChange: "transform", backfaceVisibility: "hidden" }}
         />
 
         {/* Landmarks */}
@@ -184,8 +198,8 @@ export default function RoadTripAnimation() {
       {/* The Camper Icon */}
       <div
         ref={camperRef}
-        className="absolute w-12 h-12 flex items-center justify-center bg-stone-50 rounded-xl border-2 border-emerald-600 text-emerald-700"
-        style={{ top: 0, left: 0, opacity: 0 }} 
+        className="absolute w-12 h-12 flex items-center justify-center bg-stone-50 rounded-xl border-2 border-emerald-600 text-emerald-700 gpu-accelerated"
+        style={{ top: 0, left: 0, opacity: 0, willChange: "transform", backfaceVisibility: "hidden" }} 
       >
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-8 h-8 relative">
            <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/>

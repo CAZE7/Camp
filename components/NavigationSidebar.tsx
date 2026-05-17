@@ -9,9 +9,10 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { MotionPathPlugin } from "gsap/MotionPathPlugin";
 import { cn } from "@/lib/utils";
 
-// Register GSAP plugins
+// Register GSAP plugins & performance optimization
 if (typeof window !== "undefined") {
   gsap.registerPlugin(ScrollTrigger, MotionPathPlugin, useGSAP);
+  gsap.ticker.lagSmoothing(0);
 }
 
 const navLinks = [
@@ -115,12 +116,18 @@ export default function NavigationSidebar() {
     // Dynamic will-change for performance (Lighthouse optimization)
     let scrollTimeout: NodeJS.Timeout;
     const handleScroll = () => {
-      if (containerRef.current) containerRef.current.style.willChange = "transform";
+      if (containerRef.current) {
+        containerRef.current.style.willChange = "transform";
+        containerRef.current.classList.add("is-scrolling");
+      }
       if (camperRef.current) camperRef.current.style.willChange = "transform";
       
       clearTimeout(scrollTimeout);
       scrollTimeout = setTimeout(() => {
-        if (containerRef.current) containerRef.current.style.willChange = "auto";
+        if (containerRef.current) {
+          containerRef.current.style.willChange = "auto";
+          containerRef.current.classList.remove("is-scrolling");
+        }
         if (camperRef.current) camperRef.current.style.willChange = "auto";
       }, 100);
     };
@@ -142,7 +149,7 @@ export default function NavigationSidebar() {
         trigger: "nav",
         start: "top 20%",
         end: "bottom 80%",
-        scrub: 1.2,
+        scrub: 2,
         snap: {
           snapTo: snapPoints,
           duration: { min: 0.2, max: 0.5 },
@@ -244,9 +251,10 @@ export default function NavigationSidebar() {
           {/* Integrated Road Background */}
           <div className="absolute left-7 top-0 bottom-0 w-8 pointer-events-none z-0 opacity-20">
             <svg
-              className="w-full h-full"
+              className="w-full h-full speed-svg"
               viewBox="0 0 40 1000"
               preserveAspectRatio="none"
+              shapeRendering="optimizeSpeed"
             >
               <path
                 id="nav-road-path"
@@ -256,6 +264,8 @@ export default function NavigationSidebar() {
                 strokeWidth="1"
                 strokeDasharray="4 6"
                 strokeLinecap="round"
+                className="gpu-accelerated"
+                style={{ willChange: "transform", backfaceVisibility: "hidden" }}
               />
             </svg>
           </div>
@@ -263,8 +273,8 @@ export default function NavigationSidebar() {
           {/* Minimalist Camper Icon - Animated along the road */}
           <div
             ref={camperRef}
-            className="absolute left-7 top-0 w-6 h-6 flex items-center justify-center z-10 pointer-events-none"
-            style={{ opacity: 0 }}
+            className="absolute left-7 top-0 w-6 h-6 flex items-center justify-center z-10 pointer-events-none gpu-accelerated"
+            style={{ opacity: 0, willChange: "transform", backfaceVisibility: "hidden" }}
           >
             <svg
               viewBox="0 0 24 24"
@@ -273,7 +283,8 @@ export default function NavigationSidebar() {
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="w-4 h-4 drop-shadow-[0_0_8px_rgba(251,191,36,0.4)]"
+              className="w-4 h-4 drop-shadow-[0_0_8px_rgba(251,191,36,0.4)] speed-svg"
+              shapeRendering="optimizeSpeed"
             >
               <path d="M2 12h18a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2H2" />
               <path d="M4 12V8a2 2 0 0 1 2-2h8l3 4h3" />

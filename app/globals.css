@@ -112,3 +112,21 @@
 .camper-shadow {
   filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.15));
 }
+
+/* ─── Chrome Performance & GPU Acceleration ─── */
+.gpu-accelerated {
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+.speed-svg {
+  shape-rendering: optimizeSpeed;
+}
+
+/* Disable backdrop-filter, box-shadows, and filters during scrolling to avoid repaint storm in Chrome */
+.is-scrolling,
+.is-scrolling * {
+  box-shadow: none !important;
+  filter: none !important;
+  backdrop-filter: none !important;
+}
