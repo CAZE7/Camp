@@ -4,12 +4,13 @@ import { useAppStore } from '../../lib/store';
 import { usePlannerStore } from '../../store/usePlannerStore';
 import { useShallow } from 'zustand/react/shallow';
 import { calculateEdgePath } from './utils/pathUtils';
-import { calculateCrossSection, calculateMaxFuse, calculateStrokeWidth } from '../../lib/electrical';
+import { calculateCrossSection, calculateMaxFuse, calculateStrokeWidth, getEdgeDomain } from '../../lib/electrical';
 
 export type CableEdgeData = {
   length: number;
   crossSection?: number;
   fuseSize?: number;
+  edgeDomain?: 'DC_12V' | 'AC_230V';
 };
 
 type CableEdgeProps = EdgeProps<CableEdgeData> & { sourceHandle?: string | null };
@@ -118,14 +119,32 @@ const CableEdge = function ({
 
   const isPlus = sourceHandle?.includes('plus');
 
-  const { length, crossSection, maxFuse, strokeWidth, animationDuration, I, sourceNode, dropPercentage } = useMemo(() => {
+  const { length, crossSection, maxFuse, strokeWidth, animationDuration, I, sourceNode, dropPercentage, edgeDomain } = useMemo(() => {
     const physicalDistance = Math.max(1, Math.sqrt(Math.pow(targetX - sourceX, 2) + Math.pow(targetY - sourceY, 2)) / 100);
     const length = data?.length || physicalDistance;
     const sourceNode = getNode(source);
     const targetNode = getNode(target);
 
+    const edgeDomain = data?.edgeDomain || getEdgeDomain(sourceNode?.type, targetNode?.type, sourceHandle);
+
+    if (edgeDomain === 'AC_230V') {
+      const cs = Math.max(1.5, data?.crossSection || 0);
+      const sw = calculateStrokeWidth(cs);
+      return {
+        length,
+        crossSection: cs,
+        maxFuse: 0,
+        strokeWidth: sw,
+        animationDuration: 3,
+        I: 0,
+        sourceNode,
+        dropPercentage: 0,
+        edgeDomain,
+      };
+    }
+
     const I = calculateCurrent(sourceNode, targetNode, getNodes);
-    const cs = calculateCrossSection(I, length, data?.crossSection);
+    const cs = calculateCrossSection(I, length, data?.crossSection, 'DC_12V');
     const mf = calculateMaxFuse(cs);
     const sw = calculateStrokeWidth(cs);
     const dur = calculateAnimationDuration(I);
@@ -133,23 +152,37 @@ const CableEdge = function ({
     const voltageDrop = (I * (length * 2)) / (58 * cs);
     const dropPercentage = (voltageDrop / 12) * 100;
 
-    return { length, crossSection: cs, maxFuse: mf, strokeWidth: sw, animationDuration: dur, I, sourceNode, dropPercentage };
+    return {
+      length,
+      crossSection: cs,
+      maxFuse: mf,
+      strokeWidth: sw,
+      animationDuration: dur,
+      I,
+      sourceNode,
+      dropPercentage,
+      edgeDomain,
+    };
     // Dependencies include node data, system load, and coordinates to force re-calc when anything relevant changes including moves
-  }, [getNode, getNodes, data?.length, data?.crossSection, source, target, sNodeData, tNodeData, systemLoad, sourceX, sourceY, targetX, targetY]);
+  }, [getNode, getNodes, data?.length, data?.crossSection, data?.edgeDomain, source, target, sNodeData, tNodeData, systemLoad, sourceX, sourceY, targetX, targetY, sourceHandle]);
 
   const cumulativeDrop = usePlannerStore.getState().calculatePathVoltageDrop(source);
   const totalDropPercentage = dropPercentage + cumulativeDrop;
 
   const errors: string[] = [];
   
-  if (totalDropPercentage > 2) {
-    errors.push(`Gesamt-Drop! (${totalDropPercentage.toFixed(1)}% > 2%)`);
+  if (edgeDomain !== 'AC_230V') {
+    if (totalDropPercentage > 2) {
+      errors.push(`Gesamt-Drop! (${totalDropPercentage.toFixed(1)}% > 2%)`);
+    }
   }
 
   let stroke = selected ? '#f97316' : '#9ca3af';
-  if (totalDropPercentage > 2) stroke = '#ef4444'; // strict red for > 2%
+  if (edgeDomain !== 'AC_230V' && totalDropPercentage > 2) {
+    stroke = '#ef4444'; // strict red for > 2%
+  }
 
-  if (isPlus) {
+  if (edgeDomain !== 'AC_230V' && isPlus) {
     if (!data?.fuseSize) {
       errors.push('Sicherung fehlt!');
     } else {
@@ -207,12 +240,21 @@ const CableEdge = function ({
           className="nodrag nopan"
         >
           <span>{length.toFixed(2)} m</span>
-          <span>{crossSection} mm²</span>
-          {maxFuse > 0 && <span style={{ color: 'red', fontSize: '10px' }}>Max: {maxFuse}A</span>}
-          {data?.fuseSize && <span style={{ background: 'green', color: 'white', padding: '1px 4px', borderRadius: '4px', fontSize: '10px', marginTop: '2px' }}>{data.fuseSize}A Sicherung</span>}
-          {errors.map((err, idx) => (
-            <span key={idx} style={{ background: 'red', color: 'white', padding: '1px 4px', borderRadius: '4px', fontSize: '10px', marginTop: '2px' }}>{err}</span>
-          ))}
+          {edgeDomain === 'AC_230V' ? (
+            <>
+              <span style={{ color: '#16a34a', fontSize: '10px' }}>3-adrig (L, N, PE)</span>
+              <span style={{ background: '#0284c7', color: 'white', padding: '1px 4px', borderRadius: '4px', fontSize: '10px', marginTop: '2px' }}>RCBO (FI/LS) empfohlen</span>
+            </>
+          ) : (
+            <>
+              <span>{crossSection} mm²</span>
+              {maxFuse > 0 && <span style={{ color: 'red', fontSize: '10px' }}>Max: {maxFuse}A</span>}
+              {data?.fuseSize && <span style={{ background: 'green', color: 'white', padding: '1px 4px', borderRadius: '4px', fontSize: '10px', marginTop: '2px' }}>{data.fuseSize}A Sicherung</span>}
+              {errors.map((err, idx) => (
+                <span key={idx} style={{ background: 'red', color: 'white', padding: '1px 4px', borderRadius: '4px', fontSize: '10px', marginTop: '2px' }}>{err}</span>
+              ))}
+            </>
+          )}
         </div>
       </EdgeLabelRenderer>
 

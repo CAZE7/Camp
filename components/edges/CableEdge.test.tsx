@@ -166,4 +166,22 @@ describe('CableEdge', () => {
     const labelContainer = container.querySelector('.nodrag.nopan');
     expect(labelContainer).toBeInTheDocument();
   });
+
+  it('renders AC edges with standard AC layout and RCBO recommendations', () => {
+    (useReactFlow as any).mockReturnValue({
+      getNode: vi.fn((id) => {
+        if (id === '1') return { id: '1', type: 'shorePower', data: {} };
+        return null;
+      }),
+      getNodes: vi.fn().mockReturnValue([]),
+    });
+
+    const { getByText, queryByText } = render(
+      <CableEdge {...defaultProps} data={{ length: 5, edgeDomain: 'AC_230V' }} />
+    );
+
+    expect(getByText('3-adrig (L, N, PE)')).toBeInTheDocument();
+    expect(getByText('RCBO (FI/LS) empfohlen')).toBeInTheDocument();
+    expect(queryByText('Sicherung fehlt!')).toBeNull();
+  });
 });

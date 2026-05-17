@@ -59,7 +59,7 @@ interface PlannerState {
 }
 
 import { TEMPLATES_DICT } from '../components/planner/templates';
-import { calculateCrossSection, calculateMaxFuse } from '../lib/electrical';
+import { calculateCrossSection, calculateMaxFuse, getEdgeDomain, getHandleDomain } from '../lib/electrical';
 
 function getNodeMap(currentNodes: Node[], currentWaterNodes: Node[]): Map<string, Node> {
   const map = new Map<string, Node>();
@@ -138,7 +138,7 @@ function connectEdges(
   I: number = 0,
   length: number = 2
 ) {
-  const crossSection = calculateCrossSection(I, length);
+  const crossSection = calculateCrossSection(I, length, undefined, 'DC_12V');
   const fuseSize = calculateMaxFuse(crossSection);
   newEdges.push({
     id: `e-auto-${edgeIdRef.counter++}`,
@@ -147,7 +147,7 @@ function connectEdges(
     sourceHandle: 'plus',
     targetHandle: 'plus',
     type: 'cableEdge',
-    data: { length, crossSection, fuseSize },
+    data: { length, crossSection, fuseSize, edgeDomain: 'DC_12V' },
   });
   newEdges.push({
     id: `e-auto-${edgeIdRef.counter++}`,
@@ -156,7 +156,7 @@ function connectEdges(
     sourceHandle: 'minus',
     targetHandle: 'minus',
     type: 'cableEdge',
-    data: { length, crossSection },
+    data: { length, crossSection, edgeDomain: 'DC_12V' },
   });
 }
 
@@ -297,7 +297,7 @@ function performAutoWiring(initialNodes: Node[]): { nodes: Node[], edges: Edge[]
           sourceHandle: 'plus',
           targetHandle: 'plus',
           type: 'cableEdge',
-          data: { length: 2, crossSection: 1.5, fuseSize: 16 },
+          data: { length: 2, crossSection: 1.5, fuseSize: 16, edgeDomain: 'AC_230V' },
         });
       }
       for (let i = 0; i < shorePowers.length; i++) {
@@ -308,7 +308,7 @@ function performAutoWiring(initialNodes: Node[]): { nodes: Node[], edges: Edge[]
           sourceHandle: 'plus',
           targetHandle: 'plus',
           type: 'cableEdge',
-          data: { length: 2, crossSection: 2.5, fuseSize: 16 },
+          data: { length: 2, crossSection: 2.5, fuseSize: 16, edgeDomain: 'AC_230V' },
         });
       }
     }
@@ -321,7 +321,7 @@ function performAutoWiring(initialNodes: Node[]): { nodes: Node[], edges: Edge[]
         sourceHandle: 'minus',
         targetHandle: 'plus',
         type: 'cableEdge',
-        data: { length: 1, crossSection: 16 },
+        data: { length: 1, crossSection: 16, edgeDomain: 'DC_12V' },
       });
     }
   }
@@ -461,6 +461,13 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
       return true;
     }
 
+    // Strict AC vs. DC domain separation
+    const sourceDomain = getHandleDomain(sourceNode?.type, connection.sourceHandle, 'source');
+    const targetDomain = getHandleDomain(targetNode?.type, connection.targetHandle, 'target');
+    if (sourceDomain !== targetDomain) {
+      return false; // Blocker!
+    }
+
     // Pre-check for polarity matching
     const sHandle = connection.sourceHandle || '';
     const tHandle = connection.targetHandle || '';
@@ -543,6 +550,11 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
       return;
     }
 
+    const nodesMap = getNodeMap(nodes, []);
+    const sourceNode = nodesMap.get(connection.source || '');
+    const targetNode = nodesMap.get(connection.target || '');
+    const edgeDomain = getEdgeDomain(sourceNode?.type, targetNode?.type, connection.sourceHandle);
+
     const newEdge: Edge<CableEdgeData> = {
       source: connection.source,
       target: connection.target,
@@ -552,7 +564,8 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
       type: 'cableEdge',
       data: {
         length: 3,
-        crossSection: 2.5,
+        crossSection: edgeDomain === 'AC_230V' ? 1.5 : 2.5,
+        edgeDomain,
       },
     };
     set((state) => ({ edges: addEdge(newEdge, state.edges) as Edge<CableEdgeData>[] }));

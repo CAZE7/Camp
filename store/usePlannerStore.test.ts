@@ -380,4 +380,74 @@ describe('usePlannerStore', () => {
       expect(addedNode.data.hours).toBe(2);
     });
   });
+
+  describe('AC vs. DC strict separation in isValidConnection', () => {
+    it('should allow connecting DC battery to DC consumer', () => {
+      const { result } = renderHook(() => usePlannerStore());
+      act(() => {
+        result.current.setNodes([
+          { id: 'bat', type: 'battery', position: { x: 0, y: 0 }, data: {} },
+          { id: 'cons', type: 'consumer', position: { x: 100, y: 0 }, data: {} }
+        ]);
+      });
+      const valid = result.current.isValidConnection({
+        source: 'bat',
+        target: 'cons',
+        sourceHandle: 'plus',
+        targetHandle: 'plus'
+      });
+      expect(valid).toBe(true);
+    });
+
+    it('should block connecting DC battery to AC consumer230v', () => {
+      const { result } = renderHook(() => usePlannerStore());
+      act(() => {
+        result.current.setNodes([
+          { id: 'bat', type: 'battery', position: { x: 0, y: 0 }, data: {} },
+          { id: 'ac_cons', type: 'consumer230v', position: { x: 100, y: 0 }, data: {} }
+        ]);
+      });
+      const valid = result.current.isValidConnection({
+        source: 'bat',
+        target: 'ac_cons',
+        sourceHandle: 'plus',
+        targetHandle: 'plus'
+      });
+      expect(valid).toBe(false);
+    });
+
+    it('should allow connecting AC inverter output to AC consumer230v', () => {
+      const { result } = renderHook(() => usePlannerStore());
+      act(() => {
+        result.current.setNodes([
+          { id: 'inv', type: 'inverter', position: { x: 0, y: 0 }, data: {} },
+          { id: 'ac_cons', type: 'consumer230v', position: { x: 100, y: 0 }, data: {} }
+        ]);
+      });
+      const valid = result.current.isValidConnection({
+        source: 'inv',
+        target: 'ac_cons',
+        sourceHandle: 'plus', // Right side source AC output
+        targetHandle: 'plus'
+      });
+      expect(valid).toBe(true);
+    });
+
+    it('should allow connecting DC battery to DC inverter input', () => {
+      const { result } = renderHook(() => usePlannerStore());
+      act(() => {
+        result.current.setNodes([
+          { id: 'bat', type: 'battery', position: { x: 0, y: 0 }, data: {} },
+          { id: 'inv', type: 'inverter', position: { x: 100, y: 0 }, data: {} }
+        ]);
+      });
+      const valid = result.current.isValidConnection({
+        source: 'bat',
+        target: 'inv',
+        sourceHandle: 'plus',
+        targetHandle: 'plus' // Left side target DC input
+      });
+      expect(valid).toBe(true);
+    });
+  });
 });

@@ -17,6 +17,7 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
     // --- Rule A: Missing Fuse on High Power Component ---
     // Look for edges coming from battery, inverter, solar charger on positive line
     edges.forEach((edge) => {
+      if (edge.data?.edgeDomain === 'AC_230V') return; // Skip DC fuse warning for AC edges
       if (edge.sourceHandle?.includes('plus')) {
         const sourceNode = nodes.find(n => n.id === edge.source);
         const targetNode = nodes.find(n => n.id === edge.target);
