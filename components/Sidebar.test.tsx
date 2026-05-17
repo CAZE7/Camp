@@ -42,10 +42,11 @@ describe('Sidebar Component', () => {
       fireEvent.change(searchInput, { target: { value: 'XYZ123' } });
 
       expect(screen.getByText(/Keine Treffer für/)).toBeInTheDocument();
-      const resetButton = screen.getByRole('button', { name: 'Filter zurücksetzen' });
-      expect(resetButton).toBeInTheDocument();
+      // Using getAllByRole because both the clear search icon and the empty state button have the same aria-label/text
+      const resetButtons = screen.getAllByRole('button', { name: 'Filter zurücksetzen' });
+      expect(resetButtons.length).toBeGreaterThan(0);
 
-      fireEvent.click(resetButton);
+      fireEvent.click(resetButtons[resetButtons.length - 1]);
       expect((searchInput as HTMLInputElement).value).toBe('');
     });
   });

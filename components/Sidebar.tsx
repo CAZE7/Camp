@@ -153,6 +153,7 @@ export function Sidebar({ mode = 'electric', onMobileAdd }: SidebarProps) {
             <button
               onClick={() => setSearchTerm('')}
               className="absolute right-2 top-1/2 -translate-y-1/2 text-stone-400 hover:text-rose-500 transition-colors focus:outline-none"
+              aria-label="Filter zurücksetzen"
             >
               <XCircle size={16} />
             </button>
