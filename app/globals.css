@@ -130,3 +130,10 @@
   filter: none !important;
   backdrop-filter: none !important;
 }
+
+/* React Flow Nodes Performance */
+.react-flow__node {
+  will-change: transform;
+  backface-visibility: hidden;
+  transform: translateZ(0); /* force3D */
+}

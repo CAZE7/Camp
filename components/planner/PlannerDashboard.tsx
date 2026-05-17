@@ -64,7 +64,6 @@ function ActionsSection({
 }) {
   const handleExportBOM = useCallback(() => {
     exportBOM();
-    // Dispatch event to show the BOM Modal in FlowCanvas component instead
     const event = new CustomEvent('show-bom-modal');
     window.dispatchEvent(event);
   }, [exportBOM]);
@@ -95,49 +94,43 @@ function ActionsSection({
   }, []);
 
   return (
-    <div className="pointer-events-auto flex items-center gap-2 flex-wrap">
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm" className="font-semibold min-h-[48px] md:min-h-0">
-            Aktionen
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent className="rounded-lg min-w-52">
-          <DropdownMenuItem onClick={handleExportBOM} className="cursor-pointer text-orange-700 font-medium rounded-md py-3 md:py-1.5">
-            Stückliste an KI senden
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => autoWireSystem(fitView)} className="cursor-pointer text-yellow-700 font-medium rounded-md py-3 md:py-1.5">
-            Automatisch Verkabeln & Absichern
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={checkSchematic} className="cursor-pointer text-red-700 font-medium rounded-md py-3 md:py-1.5">
-            Schaltplan von KI prüfen lassen
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => onLayout(fitView)} className="cursor-pointer text-indigo-700 font-medium rounded-md py-3 md:py-1.5">
-            Schaltplan aufräumen
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={onExportImage} className="cursor-pointer text-green-700 font-medium rounded-md py-3 md:py-1.5">
-            Als Bild speichern
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+    <div className="pointer-events-auto flex items-center gap-4 flex-wrap">
+      {/* Segmented Action Buttons */}
+      <div className="flex bg-stone-100/50 p-1 rounded-lg border border-stone-200/60 backdrop-blur-sm gap-1">
+        <Button variant="ghost" size="sm" onClick={handleExportBOM} className="text-orange-700 hover:bg-white hover:shadow-sm">
+          📦 Stückliste
+        </Button>
+        <Button variant="ghost" size="sm" onClick={() => autoWireSystem(fitView)} className="text-yellow-700 hover:bg-white hover:shadow-sm">
+          ⚡ Auto-Wire
+        </Button>
+        <Button variant="ghost" size="sm" onClick={checkSchematic} className="text-red-700 hover:bg-white hover:shadow-sm">
+          🔍 KI-Check
+        </Button>
+        <Button variant="ghost" size="sm" onClick={() => onLayout(fitView)} className="text-indigo-700 hover:bg-white hover:shadow-sm">
+          🧹 Aufräumen
+        </Button>
+        <Button variant="ghost" size="sm" onClick={onExportImage} className="text-green-700 hover:bg-white hover:shadow-sm">
+          📸 Bild Export
+        </Button>
+      </div>
 
       {/* Season Toggle */}
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1 bg-stone-100/50 p-1 rounded-lg border border-stone-200/60 backdrop-blur-sm">
         <Button
           variant={season === 'summer' ? 'default' : 'ghost'}
           size="sm"
           onClick={() => setSeason('summer')}
-          className={`min-h-[48px] md:min-h-0 ${season === 'summer' ? 'bg-yellow-400 text-yellow-900 hover:bg-yellow-500' : ''}`}
+          className={`min-h-[48px] md:min-h-0 ${season === 'summer' ? 'bg-yellow-400 text-yellow-900 shadow-sm' : ''}`}
         >
-          Sommer
+          ☀️ Sommer
         </Button>
         <Button
           variant={season === 'winter' ? 'default' : 'ghost'}
           size="sm"
           onClick={() => setSeason('winter')}
-          className={`min-h-[48px] md:min-h-0 ${season === 'winter' ? 'bg-blue-400 text-blue-900 hover:bg-blue-500' : ''}`}
+          className={`min-h-[48px] md:min-h-0 ${season === 'winter' ? 'bg-blue-400 text-blue-900 shadow-sm' : ''}`}
         >
-          Winter
+          ❄️ Winter
         </Button>
       </div>
     </div>

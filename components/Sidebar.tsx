@@ -4,59 +4,61 @@ import { XCircle } from 'lucide-react';
 import { usePlannerStore } from '../store/usePlannerStore';
 
 const components = [
-  { type: 'battery', label: 'Batterie' },
-  { type: 'shunt', label: 'Smart Shunt' },
-  { type: 'busbar', label: 'Main Busbar' },
-  { type: 'charger', label: 'Ladebooster' },
-  { type: 'solar', label: 'Solarmodul' },
-  { type: 'inverter', label: 'Wechselrichter' },
-  { type: 'consumer', label: '12V Verbraucher (Heizung, Licht)' },
-  { type: 'consumer230v', label: '230V Verbraucher (Induktion, Kaffee)' },
-  { type: 'shorePower', label: 'Landstromanschluss' },
-  { type: 'fuse', label: 'Sicherungskasten' },
-  { type: 'ground', label: 'Massepunkt (Karosserie)' },
-  { type: 'conduit', label: 'Leerrohr / Kabelkanal' },
+  { type: 'battery', label: 'Batterie', category: 'Laden' },
+  { type: 'shunt', label: 'Smart Shunt', category: 'Laden' },
+  { type: 'busbar', label: 'Main Busbar', category: 'Laden' },
+  { type: 'charger', label: 'Ladebooster', category: 'Laden' },
+  { type: 'solar', label: 'Solarmodul', category: 'Laden' },
+  { type: 'inverter', label: 'Wechselrichter', category: 'Laden' },
+  { type: 'consumer', label: '12V Verbraucher', category: 'Allgemein' },
+  { type: 'consumer230v', label: '230V Verbraucher', category: 'Allgemein' },
+  { type: 'shorePower', label: 'Landstrom', category: 'Laden' },
+  { type: 'fuse', label: 'Sicherungskasten', category: 'Allgemein' },
+  { type: 'ground', label: 'Massepunkt', category: 'Allgemein' },
+  { type: 'conduit', label: 'Leerrohr', category: 'Allgemein' },
 ];
 
 const waterComponents = [
-  { type: 'freshWaterTank', label: 'Frischwassertank' },
-  { type: 'grayWaterTank', label: 'Grauwassertank' },
-  { type: 'pump', label: 'Wasserpumpe' },
-  { type: 'accumulator', label: 'Druckausgleichsgefäß (Accumulator)' },
-  { type: 'preFilter', label: 'Vorfilter' },
-  { type: 'sink', label: 'Spüle' },
-  { type: 'shower', label: 'Dusche' },
+  { type: 'freshWaterTank', label: 'Frischwassertank', category: 'Wasser' },
+  { type: 'grayWaterTank', label: 'Grauwassertank', category: 'Wasser' },
+  { type: 'pump', label: 'Wasserpumpe', category: 'Wasser' },
+  { type: 'accumulator', label: 'Druckausgleich', category: 'Wasser' },
+  { type: 'preFilter', label: 'Vorfilter', category: 'Wasser' },
+  { type: 'sink', label: 'Spüle', category: 'Wasser' },
+  { type: 'shower', label: 'Dusche', category: 'Wasser' },
 ];
 
 const deviceAssistant = [
-  { type: 'consumer', label: 'Kompressorkühlschrank', watts: 60 },
-  { type: 'consumer', label: 'LED-Beleuchtung', watts: 20 },
-  { type: 'consumer', label: 'Standheizung', watts: 15 },
-  { type: 'consumer', label: 'Wasserpumpe', watts: 40 },
-  { type: 'consumer230v', label: 'Laptop-Ladegerät', watts: 90 },
-  { type: 'consumer', label: 'Handyladegerät', watts: 18 },
+  { type: 'consumer230v', label: 'Induktion', watts: 2000, category: 'Kochen' },
+  { type: 'consumer230v', label: 'Kaffeemaschine', watts: 1500, category: 'Kochen' },
+  { type: 'consumer', label: 'Kompressorkühlschrank', watts: 60, category: 'Kochen' },
+  { type: 'consumer', label: 'Standheizung', watts: 40, category: 'Klima' },
+  { type: 'consumer', label: 'Dachventilator (Fan)', watts: 30, category: 'Klima' },
+  { type: 'consumer', label: 'LED-Beleuchtung', watts: 20, category: 'Licht' },
+  { type: 'consumer230v', label: 'Starlink', watts: 50, category: 'Laden' },
+  { type: 'consumer230v', label: 'Laptop-Ladegerät', watts: 65, category: 'Laden' },
+  { type: 'consumer', label: 'Handyladegerät', watts: 18, category: 'Laden' },
+  { type: 'consumer', label: 'Wasserpumpe', watts: 40, category: 'Allgemein' },
 ];
 
 const handlePointerDown = (e: React.PointerEvent, comp: { type: string, label: string, watts?: number }, onMobileAdd?: () => void) => {
-  e.preventDefault(); // Prevent default touch actions
+  e.preventDefault();
 
-  // Mobile optimization: Click to add directly to canvas instead of drag and drop
   if (window.innerWidth < 768) {
     usePlannerStore.getState().addNode(comp.type, comp.label, {
       x: window.innerWidth / 2 - 40,
       y: window.innerHeight / 2 - 40
-    });
+    }, comp.watts);
     if (onMobileAdd) onMobileAdd();
     return;
   }
 
-  // Create a ghost element that follows the pointer
   const target = e.currentTarget as HTMLElement;
   const clone = target.cloneNode(true) as HTMLElement;
   clone.style.position = 'fixed';
   clone.style.zIndex = '9999';
   clone.style.opacity = '0.8';
-  clone.style.pointerEvents = 'none'; // so it doesn't interfere with mouseup/pointerup targets
+  clone.style.pointerEvents = 'none';
   clone.style.left = `${e.clientX - target.offsetWidth / 2}px`;
   clone.style.top = `${e.clientY - target.offsetHeight / 2}px`;
   document.body.appendChild(clone);
@@ -71,12 +73,10 @@ const handlePointerDown = (e: React.PointerEvent, comp: { type: string, label: s
     document.removeEventListener('pointerup', onPointerUp);
     clone.remove();
 
-    // Check if dropped over the react-flow pane
     const elementsUnderPointer = document.elementsFromPoint(upEvent.clientX, upEvent.clientY);
     const isOverCanvas = elementsUnderPointer.some(el => el.classList.contains('react-flow__pane'));
 
     if (isOverCanvas) {
-      // Dispatch custom event to Planner.tsx
       const dropEvent = new CustomEvent('custom-node-drop', {
         detail: {
           clientX: upEvent.clientX,
@@ -101,19 +101,32 @@ interface SidebarProps {
 
 export function Sidebar({ mode = 'electric', onMobileAdd }: SidebarProps) {
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('Alle');
 
   const activeComponents = mode === 'water' ? waterComponents : components;
+  
+  const allCategories = ['Alle', ...Array.from(new Set([
+    ...activeComponents.map(c => c.category),
+    ...(mode === 'electric' ? deviceAssistant.map(c => c.category) : [])
+  ]))];
 
-  const filteredComponents = activeComponents.filter(c =>
-    c.label.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredComponents = activeComponents.filter(c => {
+    const matchesSearch = c.label.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCat = selectedCategory === 'Alle' || c.category === selectedCategory;
+    return matchesSearch && matchesCat;
+  });
+
+  const filteredDevices = mode === 'electric' ? deviceAssistant.filter(c => {
+    const matchesSearch = c.label.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCat = selectedCategory === 'Alle' || c.category === selectedCategory;
+    return matchesSearch && matchesCat;
+  }) : [];
 
   return (
     <aside
       className="w-full md:w-64 bg-gradient-to-b from-stone-50 to-amber-50/30 border-r border-stone-200/80 flex flex-col h-full"
       style={{ willChange: 'transform', backfaceVisibility: 'hidden' }}
     >
-      {/* Header with nature accent */}
       <div className="p-4 border-b border-stone-200/60 bg-gradient-to-r from-stone-100 to-emerald-50/40">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-sm">
@@ -127,94 +140,93 @@ export function Sidebar({ mode = 'electric', onMobileAdd }: SidebarProps) {
         </div>
       </div>
 
-      {/* Search input with nature styling */}
-      <div className="m-4 relative group">
-        <label className="sr-only" htmlFor="component-search">Komponenten suchen</label>
-        <input
-          id="component-search"
-          type="text"
-          placeholder="🔍 Suchen..."
-          aria-label="Komponenten suchen"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full border border-stone-200 rounded-xl px-3 py-2.5 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-400 transition-all bg-white/80 text-stone-700 placeholder:text-stone-400 shadow-sm"
-        />
-        {searchTerm && (
-          <button
-            onClick={() => setSearchTerm('')}
-            aria-label="Suche zurücksetzen"
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-stone-400 hover:text-rose-500 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 rounded-full"
-          >
-            <XCircle size={16} />
-          </button>
-        )}
+      <div className="p-4 border-b border-stone-200/50 space-y-3">
+        <div className="relative group">
+          <input
+            type="text"
+            placeholder="🔍 Suchen..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full border border-stone-200 rounded-xl px-3 py-2.5 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-400 transition-all bg-white/80 text-stone-700 placeholder:text-stone-400 shadow-sm"
+          />
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm('')}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-stone-400 hover:text-rose-500 transition-colors focus:outline-none"
+            >
+              <XCircle size={16} />
+            </button>
+          )}
+        </div>
+        
+        {/* Category Filter */}
+        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+          {allCategories.map(cat => (
+            <button
+              key={cat}
+              onClick={() => setSelectedCategory(cat)}
+              className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-colors border ${selectedCategory === cat ? 'bg-emerald-500 text-white border-emerald-600' : 'bg-white text-stone-600 border-stone-200 hover:border-emerald-300 hover:bg-emerald-50'}`}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Component list with nature-themed cards */}
-      <div className="flex-1 overflow-y-auto px-4 pb-4">
-        {filteredComponents.length > 0 ? (
-          <div className="flex flex-col gap-2">
-            {filteredComponents.map((comp, index) => (
-              <div
-                key={index}
-                className="p-3 border border-stone-200/70 rounded-xl cursor-grab hover:bg-emerald-50/60 hover:border-emerald-300/50 hover:scale-[1.03] hover:shadow-md transition-all duration-200 text-sm font-semibold text-stone-700 bg-white/90 shadow-sm touch-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2"
-                tabIndex={0}
-                role="button"
-                aria-grabbed="false"
-                onPointerDown={(e) => handlePointerDown(e, comp, onMobileAdd)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    // Could potentially implement keyboard-based dropping here, but pointer is main method for React Flow.
-                  }
-                }}
-              >
-                <span className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0" />
-                  {comp.label}
-                </span>
+      <div className="flex-1 overflow-y-auto px-4 pb-4 pt-4">
+        {filteredComponents.length > 0 || filteredDevices.length > 0 ? (
+          <div className="flex flex-col gap-6">
+            {filteredComponents.length > 0 && (
+              <div>
+                <h3 className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-3">Bauteile</h3>
+                <div className="grid grid-cols-2 gap-2">
+                  {filteredComponents.map((comp, index) => (
+                    <div
+                      key={index}
+                      className="p-2.5 border border-stone-200/70 rounded-xl cursor-grab hover:bg-emerald-50/60 hover:border-emerald-300/50 hover:scale-[1.03] hover:shadow-md transition-all duration-200 text-xs font-semibold text-stone-700 bg-white/90 shadow-sm touch-none flex flex-col items-center justify-center text-center gap-1.5"
+                      onPointerDown={(e) => handlePointerDown(e, comp, onMobileAdd)}
+                    >
+                      <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                      <span className="line-clamp-2">{comp.label}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            ))}
+            )}
 
-            {mode === 'electric' && (
-              <>
-                <h3 className="text-sm font-semibold mt-4 mb-2 text-emerald-700 uppercase tracking-wider">
-                  Verbraucher-Datenbank
-                </h3>
-                {deviceAssistant.filter(c => c.label.toLowerCase().includes(searchTerm.toLowerCase())).map((comp, index) => (
-                  <div
-                    key={`device-${index}`}
-                    className="p-3 border border-emerald-200 rounded-xl cursor-grab hover:bg-emerald-100 hover:border-emerald-400 hover:scale-[1.03] hover:shadow-md transition-all duration-200 text-sm font-semibold text-emerald-900 bg-emerald-50 shadow-sm touch-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 flex justify-between items-center"
-                    tabIndex={0}
-                    role="button"
-                    aria-grabbed="false"
-                    onPointerDown={(e) => handlePointerDown(e, comp)}
-                  >
-                    <span className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0" />
-                      {comp.label}
-                    </span>
-                    <span className="text-xs font-mono bg-white px-2 py-0.5 rounded text-emerald-700 border border-emerald-100">{comp.watts}W</span>
-                  </div>
-                ))}
-              </>
+            {mode === 'electric' && filteredDevices.length > 0 && (
+              <div>
+                <h3 className="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-3">Verbraucher</h3>
+                <div className="grid grid-cols-2 gap-2">
+                  {filteredDevices.map((comp, index) => (
+                    <div
+                      key={`device-${index}`}
+                      className="p-2.5 border border-emerald-200 rounded-xl cursor-grab hover:bg-emerald-100 hover:border-emerald-400 hover:scale-[1.03] hover:shadow-md transition-all duration-200 text-xs font-semibold text-emerald-900 bg-emerald-50 shadow-sm touch-none flex flex-col items-center justify-center text-center gap-1.5"
+                      onPointerDown={(e) => handlePointerDown(e, comp)}
+                    >
+                      <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                      <span className="line-clamp-2 leading-tight">{comp.label}</span>
+                      <span className="text-[10px] font-mono bg-white px-1.5 py-0.5 rounded text-emerald-700 border border-emerald-100">{comp.watts}W</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
         ) : (
           <div className="text-stone-500 text-sm text-center py-8 flex flex-col items-center gap-3">
             <div className="text-3xl">🌿</div>
-            <p>Keine Komponenten gefunden für &quot;{searchTerm}&quot;</p>
+            <p>Keine Treffer für &quot;{searchTerm}&quot;</p>
             <button
-              onClick={() => setSearchTerm('')}
-              className="text-emerald-700 hover:text-emerald-800 font-semibold text-xs border border-emerald-200 hover:border-emerald-300 bg-emerald-50 hover:bg-emerald-100 rounded-lg px-3 py-1.5 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              onClick={() => { setSearchTerm(''); setSelectedCategory('Alle'); }}
+              className="text-emerald-700 hover:text-emerald-800 font-semibold text-xs border border-emerald-200 hover:border-emerald-300 bg-emerald-50 hover:bg-emerald-100 rounded-lg px-3 py-1.5 transition-all"
             >
-              Suche zurücksetzen
+              Filter zurücksetzen
             </button>
           </div>
         )}
       </div>
 
-      {/* Nature footer accent */}
       <div className="px-4 py-3 border-t border-stone-200/60 bg-gradient-to-r from-emerald-50/40 to-amber-50/40">
         <p className="text-[10px] text-stone-400 font-medium flex items-center gap-1">
           <span>🌱</span>

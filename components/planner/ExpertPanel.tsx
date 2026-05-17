@@ -323,8 +323,64 @@ export function ExpertPanel() {
             </button>
           </div>
 
+          {/* Dynamic Calculation Card */}
+          {selectedNodes.length > 0 && (selectedNodes[0].data?.watts || selectedNodes[0].data?.amps || selectedNodes[0].type === 'inverter' || selectedNodes[0].type === 'solar') && (() => {
+            const node = selectedNodes[0];
+            let I = 0;
+            if (node.type === 'inverter') I = (Number(node.data.watts) || 1000) / 12 / 0.85;
+            else if (node.type === 'solar') I = (Number(node.data.watts) || 100) / 18;
+            else if (node.type === 'consumer230v') I = (Number(node.data.watts) || 0) / 12 / 0.85;
+            else if (node.data?.watts) I = Number(node.data.watts) / 12;
+            else if (node.data?.amps) I = Number(node.data.amps);
+            
+            const length = 2; // Default assumption 2 meters
+            const calculatedA = (I * (length * 2)) / (58 * 0.24);
+            const minRequiredA = Math.max(1.5, calculatedA);
+            const VDE_SIZES = [1.5, 2.5, 4.0, 6.0, 10.0, 16.0, 25.0, 35.0, 50.0, 70.0];
+            const crossSection = VDE_SIZES.find(size => size >= minRequiredA) || 70.0;
+            
+            let fuseSize = 250;
+            if (crossSection <= 1.5) fuseSize = 16;
+            else if (crossSection <= 2.5) fuseSize = 25;
+            else if (crossSection <= 4.0) fuseSize = 32;
+            else if (crossSection <= 6.0) fuseSize = 50;
+            else if (crossSection <= 10.0) fuseSize = 60;
+            else if (crossSection <= 16.0) fuseSize = 100;
+            else if (crossSection <= 25.0) fuseSize = 130;
+            else if (crossSection <= 35.0) fuseSize = 150;
+            else if (crossSection <= 50.0) fuseSize = 200;
+
+            if (I > 0) {
+              return (
+                <div className="mx-4 mt-4 p-4 rounded-xl bg-gradient-to-br from-white/60 to-white/30 border border-white/50 shadow-[0_8px_32px_rgba(31,38,135,0.07)] backdrop-blur-md relative overflow-hidden">
+                  <div className="absolute -right-4 -top-4 w-16 h-16 bg-blue-500/10 rounded-full blur-xl pointer-events-none" />
+                  <div className="absolute -left-4 -bottom-4 w-16 h-16 bg-emerald-500/10 rounded-full blur-xl pointer-events-none" />
+                  <h4 className="text-xs font-bold text-stone-700 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
+                    Live-Empfehlung <span className="text-[10px] font-normal text-stone-400 normal-case">(bei 2m Kabel)</span>
+                  </h4>
+                  <div className="grid grid-cols-2 gap-3 relative z-10">
+                    <div className="flex flex-col bg-white/60 rounded-lg p-2.5 border border-white">
+                      <span className="text-[10px] text-stone-500 font-semibold mb-1">Kabelquerschnitt</span>
+                      <span className="text-lg font-black text-stone-800">{crossSection} <span className="text-xs font-bold text-stone-500">mm²</span></span>
+                    </div>
+                    <div className="flex flex-col bg-white/60 rounded-lg p-2.5 border border-white">
+                      <span className="text-[10px] text-stone-500 font-semibold mb-1">Max. Sicherung</span>
+                      <span className="text-lg font-black text-stone-800">{fuseSize} <span className="text-xs font-bold text-stone-500">A</span></span>
+                    </div>
+                    <div className="col-span-2 flex justify-between items-center bg-white/40 rounded-lg p-2 border border-white/50">
+                      <span className="text-[10px] text-stone-600 font-semibold">Erwarteter Strom:</span>
+                      <span className="text-sm font-bold text-stone-800">{I.toFixed(1)} A</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+            return null;
+          })()}
+
           {/* Tip Accordion */}
-          <div className="max-h-[45vh] overflow-y-auto overscroll-contain">
+          <div className="max-h-[40vh] overflow-y-auto overscroll-contain mt-2">
             {currentKnowledge.tips.map((tip, idx) => {
               const isExpanded = expandedTip === idx;
               return (

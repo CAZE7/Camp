@@ -147,7 +147,8 @@ const CableEdge = function ({
   const isPlus = sourceHandleId?.includes('plus');
 
   const { length, crossSection, maxFuse, strokeWidth, animationDuration, I, sourceNode, dropPercentage } = useMemo(() => {
-    const length = data?.length || 3;
+    const physicalDistance = Math.max(1, Math.sqrt(Math.pow(targetX - sourceX, 2) + Math.pow(targetY - sourceY, 2)) / 100);
+    const length = data?.length || physicalDistance;
     const sourceNode = getNode(source);
     const targetNode = getNode(target);
 
@@ -161,14 +162,18 @@ const CableEdge = function ({
     const dropPercentage = (voltageDrop / 12) * 100;
 
     return { length, crossSection: cs, maxFuse: mf, strokeWidth: sw, animationDuration: dur, I, sourceNode, dropPercentage };
-    // Dependencies include node data and system load to force re-calc when anything relevant changes
-  }, [getNode, getNodes, data?.length, data?.crossSection, source, target, sNodeData, tNodeData, systemLoad]);
-
-  let stroke = selected ? '#f97316' : '#9ca3af';
-  if (dropPercentage > 3) stroke = 'red';
-  else if (dropPercentage > 2) stroke = 'yellow';
+    // Dependencies include node data, system load, and coordinates to force re-calc when anything relevant changes including moves
+  }, [getNode, getNodes, data?.length, data?.crossSection, source, target, sNodeData, tNodeData, systemLoad, sourceX, sourceY, targetX, targetY]);
 
   const errors: string[] = [];
+  
+  if (dropPercentage > 2) {
+    errors.push(`Spannungsabfall! (${dropPercentage.toFixed(1)}% > 2%)`);
+  }
+
+  let stroke = selected ? '#f97316' : '#9ca3af';
+  if (dropPercentage > 2) stroke = '#ef4444'; // strict red for > 2%
+
   if (isPlus) {
     if (!data?.fuseSize) {
       errors.push('Sicherung fehlt!');
