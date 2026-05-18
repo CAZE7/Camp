@@ -8,6 +8,7 @@ import { useGSAP } from "@gsap/react";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { MotionPathPlugin } from "gsap/MotionPathPlugin";
 import { cn } from "@/lib/utils";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 // Register GSAP plugins & performance optimization
 if (typeof window !== "undefined") {
@@ -106,6 +107,7 @@ export default function NavigationSidebar() {
   const containerRef = useRef<HTMLDivElement>(null);
   const camperRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   const linkRefs = useRef<(HTMLAnchorElement | null)[]>([]);
 
@@ -218,8 +220,8 @@ export default function NavigationSidebar() {
       <aside
         ref={containerRef}
         className={cn(
-          "fixed top-0 left-0 h-screen z-50 flex flex-col transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]",
-          "w-[85vw] max-w-sm lg:w-[17rem]",
+          "fixed top-0 left-0 h-screen z-50 flex flex-col transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]",
+          "w-[85vw] max-w-sm", isCollapsed ? "lg:w-14" : "lg:w-[17rem]",
           // Nature gradient background
           "bg-gradient-to-b from-stone-900 via-stone-800 to-[#1a2e1a]",
           "border-r border-stone-700/50",
@@ -239,10 +241,12 @@ export default function NavigationSidebar() {
                 <circle cx="17" cy="17" r="2" />
               </svg>
             </div>
-            <div className="flex flex-col">
-              <span className="text-amber-100 font-black text-base tracking-tight leading-none">CampCraft</span>
-              <span className="text-stone-500 text-[11px] font-medium tracking-wider uppercase mt-0.5">VanLife Plattform</span>
-            </div>
+            {!isCollapsed && (
+              <div className="flex flex-col">
+                <span className="text-amber-100 font-black text-base tracking-tight leading-none">CampCraft</span>
+                <span className="text-stone-500 text-[11px] font-medium tracking-wider uppercase mt-0.5">VanLife Plattform</span>
+              </div>
+            )}
           </Link>
         </div>
 
@@ -293,7 +297,9 @@ export default function NavigationSidebar() {
             </svg>
           </div>
 
-          <p className="relative z-10 text-[10px] uppercase tracking-[0.2em] text-stone-500 font-bold px-3 mb-3">Werkzeuge</p>
+          {!isCollapsed && (
+            <p className="relative z-10 text-[10px] uppercase tracking-[0.2em] text-stone-500 font-bold px-3 mb-3">Werkzeuge</p>
+          )}
 
           {navLinks.slice(0, 5).map((link, idx) => {
             const isActive = pathname === link.href;
@@ -320,15 +326,17 @@ export default function NavigationSidebar() {
                 >
                   {link.icon}
                 </span>
-                <span className="truncate">{link.label}</span>
-                {isActive && (
+                <span className="truncate">{!isCollapsed && link.label}</span>
+                {isActive && !isCollapsed && (
                   <span className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                 )}
               </Link>
             );
           })}
 
-          <p className="relative z-10 text-[10px] uppercase tracking-[0.2em] text-stone-500 font-bold px-3 mb-3 mt-6">Guides & Wissen</p>
+          {!isCollapsed && (
+            <p className="relative z-10 text-[10px] uppercase tracking-[0.2em] text-stone-500 font-bold px-3 mb-3 mt-6">Guides & Wissen</p>
+          )}
 
           {navLinks.slice(5).map((link, idx) => {
             const index = idx + 5;
@@ -356,8 +364,8 @@ export default function NavigationSidebar() {
                 >
                   {link.icon}
                 </span>
-                <span className="truncate">{link.label}</span>
-                {isActive && (
+                <span className="truncate">{!isCollapsed && link.label}</span>
+                {isActive && !isCollapsed && (
                   <span className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                 )}
               </Link>
@@ -365,12 +373,22 @@ export default function NavigationSidebar() {
           })}
         </nav>
 
+        {/* Toggle Button for Desktop */}
+        <div className="hidden lg:flex items-center justify-end px-3 py-2">
+          <button
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="p-1.5 rounded-lg text-stone-500 hover:text-amber-300 hover:bg-stone-700/50 transition-colors focus:outline-none"
+            aria-label={isCollapsed ? "Sidebar ausklappen" : "Sidebar einklappen"}
+          >
+            {isCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+          </button>
+        </div>
 
         {/* Footer */}
         <div className="px-5 py-4 border-t border-stone-700/40">
           <div className="flex items-center gap-2 text-stone-600 text-[10px] font-medium">
-            <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span>CampCraft v1.0 — Gute Reise! 🌿</span>
+            <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse flex-shrink-0" />
+            {!isCollapsed && <span>CampCraft v1.0 — Gute Reise! 🌿</span>}
           </div>
         </div>
       </aside>

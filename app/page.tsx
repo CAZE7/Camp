@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BookOpen } from "lucide-react";
 import { Outfit } from "next/font/google";
 import { cn } from "@/lib/utils";
 import {
@@ -171,10 +172,6 @@ function ProgressBar({
 function HeroSection() {
   return (
     <section className="relative max-w-4xl w-full text-center mb-16 mt-12">
-      {/* Decorative background blobs */}
-      <div className="absolute -top-20 -left-20 w-72 h-72 bg-emerald-200/20 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-10 -right-16 w-56 h-56 bg-amber-200/20 rounded-full blur-3xl pointer-events-none" />
-
       {/* Status badge */}
       <div className="inline-flex items-center gap-2.5 px-5 py-2 rounded-full bg-stone-900/5 border border-stone-200 text-stone-600 text-xs font-bold mb-8 shadow-sm backdrop-blur-sm">
         <span className="relative flex h-2 w-2">
@@ -200,7 +197,7 @@ function HeroSection() {
           />
         </span>
         <br />
-        <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700">
+        <span className="text-emerald-700">
           Nutze unsere interaktiven Tools.
         </span>
       </h1>
@@ -216,7 +213,7 @@ function HeroSection() {
         <Button
           asChild
           size="lg"
-          className="rounded-2xl px-8 py-6 text-base font-bold bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-lg shadow-emerald-600/20 transition-all hover:shadow-xl hover:shadow-emerald-600/30 hover:-translate-y-0.5"
+          className="rounded-2xl px-8 py-6 text-base font-bold bg-stone-900 hover:bg-stone-800 text-white shadow-lg transition-all hover:shadow-xl hover:-translate-y-0.5"
         >
           <Link href="/elektrik-planung">
             <svg
@@ -353,10 +350,7 @@ function ToolGrid() {
               {/* Icon */}
               <div
                 className={cn(
-                  "w-14 h-14 rounded-2xl flex items-center justify-center mb-4",
-                  "shadow-sm group-hover:scale-110 group-hover:shadow-md",
-                  "transition-all duration-300",
-                  tool.iconBg,
+                  "mb-4 group-hover:scale-110 transition-all duration-300 inline-block",
                   tool.iconColor
                 )}
               >
@@ -429,8 +423,8 @@ function GuidesSection() {
       <Card className="border-0 rounded-[2rem] bg-white/95 backdrop-blur-sm shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden">
         <CardHeader className="px-8 sm:px-10 pt-8 pb-2">
           <div className="flex items-center gap-3">
-            <div className="bg-stone-100 p-2.5 rounded-xl text-xl border border-stone-200 shadow-inner">
-              📚
+            <div className="bg-stone-100 p-2.5 rounded-xl text-stone-700 border border-stone-200 shadow-inner flex items-center justify-center">
+              <BookOpen size={24} />
             </div>
             <CardTitle
               className={cn(
