@@ -27,7 +27,7 @@ describe('Sidebar Component', () => {
   describe('Search and Filtering', () => {
     it('filters components based on search term', () => {
       render(<Sidebar />);
-      const searchInput = screen.getByPlaceholderText('🔍 Suchen...');
+      const searchInput = screen.getByPlaceholderText('Suchen...');
 
       fireEvent.change(searchInput, { target: { value: 'Solar' } });
 
@@ -37,7 +37,7 @@ describe('Sidebar Component', () => {
 
     it('shows empty state when no components match search', () => {
       render(<Sidebar />);
-      const searchInput = screen.getByPlaceholderText('🔍 Suchen...');
+      const searchInput = screen.getByPlaceholderText('Suchen...');
 
       fireEvent.change(searchInput, { target: { value: 'XYZ123' } });
 
