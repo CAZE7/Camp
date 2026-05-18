@@ -137,3 +137,55 @@
   backface-visibility: hidden;
   transform: translateZ(0); /* force3D */
 }
+
+/* ─── Mobile Optimizations & Animations ─── */
+@media (max-width: 767px) {
+  /* Completely hide the desktop NavigationSidebar aside and toggle button */
+  aside.fixed.top-0.left-0 {
+    display: none !important;
+  }
+  
+  button.fixed.top-4.left-4 {
+    display: none !important;
+  }
+
+  /* Reset main layout padding */
+  main {
+    padding-left: 0 !important;
+  }
+  
+  /* Prevent horizontal overflow on mobile body */
+  body {
+    overflow-x: hidden;
+  }
+}
+
+/* Keyframes & Classes for Premium Modal Transitions */
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes scale-up {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-scale-up {
+  animation: scale-up 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+

@@ -2,7 +2,7 @@ import './globals.css';
 import type { Metadata } from 'next';
 import { Inter, Geist } from 'next/font/google';
 import { cn } from "@/lib/utils";
-import NavigationSidebar from "@/components/NavigationSidebar";
+import MainLayout from "@/components/layout/MainLayout";
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
@@ -28,10 +28,9 @@ export default function RootLayout({
             opacity: 0.7
           }} 
         />
-        <NavigationSidebar />
-        <main className="lg:pl-[17rem] min-h-screen transition-all duration-500 relative z-10">
+        <MainLayout>
           {children}
-        </main>
+        </MainLayout>
       </body>
     </html>
   );
