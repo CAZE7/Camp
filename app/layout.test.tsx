@@ -42,8 +42,11 @@ describe('RootLayout', () => {
     expect(bodyElement.props.className).toContain('bg-stone-50');
 
     // MainLayout container is rendered inside body
-    const mainLayoutElement = bodyElement.props.children.find((c: any) => c && c.type && typeof c.type !== 'string');
+    // Since we removed the ambient background div, bodyElement.props.children is no longer an array
+    const mainLayoutElement = bodyElement.props.children;
     expect(mainLayoutElement).toBeDefined();
+    expect(typeof mainLayoutElement.type).not.toBe('string');
+
     const childElement = mainLayoutElement.props.children;
     expect(childElement.props['data-testid']).toBe('child');
     expect(childElement.props.children).toBe('Test Child');
