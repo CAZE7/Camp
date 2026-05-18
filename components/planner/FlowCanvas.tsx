@@ -11,6 +11,7 @@ import { useShallow } from 'zustand/react/shallow';
 
 import WaterNode from '../nodes/WaterNode';
 import WaterPipeEdge from '../edges/WaterPipeEdge';
+import { EmptyState } from '../ui/EmptyState';
 import { NODE_TYPES, EDGE_TYPES } from './constants';
 import { usePlannerStore } from '../../store/usePlannerStore';
 import { useAppStore } from '../../lib/store';
@@ -117,6 +118,10 @@ export function FlowCanvas() {
         <Background color="hsl(var(--border))" gap={16} />
         <Controls className="rounded-lg overflow-hidden border border-border shadow-sm" />
         <MiniMap className="rounded-lg overflow-hidden border border-border shadow-sm" />
+
+        {((viewMode === 'electric' && nodes.length === 0) || (viewMode === 'water' && waterNodes.length === 0)) && (
+          <EmptyState onAdd={() => usePlannerStore.getState().addNode()} />
+        )}
 
         {viewMode === 'electric' && (
           <Panel position="top-center" className="bg-card p-4 rounded-lg shadow-lg border border-border text-sm w-80">
