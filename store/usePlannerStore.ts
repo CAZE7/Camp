@@ -56,6 +56,8 @@ interface PlannerState {
   addNode: (type: string, label: string, position: {x: number, y: number}, watts?: number) => void;
   applyTemplate: (templateId: string) => void;
   calculatePathVoltageDrop: (targetNodeId: string) => number;
+  isLayoutPending: boolean;
+  setIsLayoutPending: (pending: boolean) => void;
 }
 
 import { TEMPLATES_DICT } from '../components/planner/templates';
@@ -363,6 +365,9 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
   firstTappedHandle: null,
   setFirstTappedHandle: (update) => set({ firstTappedHandle: typeof update === 'function' ? update(get().firstTappedHandle) : update }),
 
+  isLayoutPending: false,
+  setIsLayoutPending: (pending) => set({ isLayoutPending: pending }),
+
   selectedNodes: [],
   selectedEdges: [],
   setSelectedNodes: (nodes) => set({ selectedNodes: nodes }),
@@ -552,7 +557,14 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
         data: {}
       };
       set((state) => ({ waterEdges: addEdge(newEdge, state.waterEdges) }));
-      setTimeout(() => get().onLayout(), 50);
+      
+      if (!get().isLayoutPending) {
+        get().setIsLayoutPending(true);
+        setTimeout(() => {
+          get().onLayout();
+          get().setIsLayoutPending(false);
+        }, 50);
+      }
       return;
     }
 
@@ -575,7 +587,14 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
       },
     };
     set((state) => ({ edges: addEdge(newEdge, state.edges) as Edge<CableEdgeData>[] }));
-    setTimeout(() => get().onLayout(), 50);
+    
+    if (!get().isLayoutPending) {
+      get().setIsLayoutPending(true);
+      setTimeout(() => {
+        get().onLayout();
+        get().setIsLayoutPending(false);
+      }, 50);
+    }
   },
 
   autoWireSystem: (fitView) => {
