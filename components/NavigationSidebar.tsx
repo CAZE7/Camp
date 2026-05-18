@@ -102,12 +102,11 @@ const navLinks = [
   },
 ];
 
-export default function NavigationSidebar() {
+export default function NavigationSidebar({ isCollapsed = false, onToggle }: { isCollapsed?: boolean; onToggle?: () => void }) {
   const pathname = usePathname();
   const containerRef = useRef<HTMLDivElement>(null);
   const camperRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(false);
-  const [isCollapsed, setIsCollapsed] = useState(false);
 
   const linkRefs = useRef<(HTMLAnchorElement | null)[]>([]);
 
@@ -307,6 +306,7 @@ export default function NavigationSidebar() {
               <Link
                 key={link.href}
                 href={link.href}
+                title={isCollapsed ? link.label : undefined}
                 ref={(el) => { linkRefs.current[idx] = el; }}
                 onClick={() => setIsOpen(false)}
                 className={cn(
@@ -345,6 +345,7 @@ export default function NavigationSidebar() {
               <Link
                 key={link.href}
                 href={link.href}
+                title={isCollapsed ? link.label : undefined}
                 ref={(el) => { linkRefs.current[index] = el; }}
                 onClick={() => setIsOpen(false)}
                 className={cn(
@@ -376,7 +377,7 @@ export default function NavigationSidebar() {
         {/* Toggle Button for Desktop */}
         <div className="hidden lg:flex items-center justify-end px-3 py-2">
           <button
-            onClick={() => setIsCollapsed(!isCollapsed)}
+            onClick={() => onToggle && onToggle()}
             className="p-1.5 rounded-lg text-stone-500 hover:text-amber-300 hover:bg-stone-700/50 transition-colors focus:outline-none"
             aria-label={isCollapsed ? "Sidebar ausklappen" : "Sidebar einklappen"}
           >

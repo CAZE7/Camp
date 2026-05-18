@@ -8,9 +8,9 @@
     --font-sans: var(--font-sans)
   }
   :root {
-    --background: #ffffff;
+    --background: #f8f7f4;
     --foreground: #020817;
-    --card: #ffffff;
+    --card: #faf9f7;
     --card-foreground: #020817;
     --popover: #ffffff;
     --popover-foreground: #020817;

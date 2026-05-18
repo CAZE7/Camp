@@ -1,12 +1,10 @@
 import './globals.css';
 import type { Metadata } from 'next';
-import { Inter, Geist } from 'next/font/google';
+import { Geist } from 'next/font/google';
 import { cn } from "@/lib/utils";
 import MainLayout from "@/components/layout/MainLayout";
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
-
-const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: 'CampCraft — DIY Camper-Ausbau Plattform',
@@ -19,8 +17,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="de" className={cn("font-sans", geist.variable)}>
-      <body className={cn(inter.className, "bg-stone-50")}>
+    <html lang="de" className={geist.variable}>
+      <body className="bg-stone-50 font-sans">
         <MainLayout>
           {children}
         </MainLayout>

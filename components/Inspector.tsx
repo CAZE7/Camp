@@ -138,7 +138,7 @@ export default function Inspector({
       {!hasSelection ? (
         <EmptySelection />
       ) : (
-        <div className="flex flex-col space-y-4 flex-1">
+        <div className="flex flex-col space-y-4 flex-1 overflow-y-auto">
           {selectedEdge && (
             <EdgeInspector edge={selectedEdge} onChangeLength={onChangeLength} />
           )}

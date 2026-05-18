@@ -18,6 +18,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
 
   const [isNodePickerOpen, setIsNodePickerOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const handleNavClick = (tab: 'electric' | 'heating' | 'water' | 'profile') => {
     if (tab === 'electric') {
@@ -42,64 +43,15 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     <div className="min-h-screen w-full relative">
       {/* Desktop Sidebar (visible on screens >= 768px) */}
       <div className="hidden md:block">
-        <NavigationSidebar />
+        <NavigationSidebar isCollapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
       </div>
 
       {/* Main content wrapper */}
-      <main className="md:pl-[17rem] min-h-screen transition-all duration-500 relative z-10 pb-20 md:pb-0">
+      <main className={`${sidebarCollapsed ? 'md:pl-14' : 'md:pl-[17rem]'} min-h-screen transition-all duration-300 relative z-10 pb-20 md:pb-0`}>
         {children}
       </main>
 
-      {/* Mobile Bottom Navigation (visible on screens < 768px) */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-white/95 backdrop-blur-lg border-t border-stone-200/80 z-[100] flex items-center justify-around px-4 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] rounded-t-3xl">
-        <button
-          onClick={() => handleNavClick('electric')}
-          className={cn(
-            "flex flex-col items-center justify-center w-14 h-12 rounded-xl transition-all active:scale-95 touch-manipulation",
-            isElectricActive ? "text-emerald-600 font-bold" : "text-stone-400 hover:text-stone-600"
-          )}
-          aria-label="Elektrik-Planer"
-        >
-          <Zap className={cn("w-5 h-5 transition-transform", isElectricActive && "scale-110")} />
-          <span className="text-[10px] mt-0.5 tracking-tight font-semibold">Elektrik</span>
-        </button>
 
-        <button
-          onClick={() => handleNavClick('heating')}
-          className={cn(
-            "flex flex-col items-center justify-center w-14 h-12 rounded-xl transition-all active:scale-95 touch-manipulation",
-            isHeatingActive ? "text-amber-600 font-bold" : "text-stone-400 hover:text-stone-600"
-          )}
-          aria-label="Heizlast-Rechner"
-        >
-          <Flame className={cn("w-5 h-5 transition-transform", isHeatingActive && "scale-110")} />
-          <span className="text-[10px] mt-0.5 tracking-tight font-semibold">Heizung</span>
-        </button>
-
-        <button
-          onClick={() => handleNavClick('water')}
-          className={cn(
-            "flex flex-col items-center justify-center w-14 h-12 rounded-xl transition-all active:scale-95 touch-manipulation",
-            isWaterActive ? "text-cyan-600 font-bold" : "text-stone-400 hover:text-stone-600"
-          )}
-          aria-label="Wasser-Planer"
-        >
-          <Droplets className={cn("w-5 h-5 transition-transform", isWaterActive && "scale-110")} />
-          <span className="text-[10px] mt-0.5 tracking-tight font-semibold">Wasser</span>
-        </button>
-
-        <button
-          onClick={() => handleNavClick('profile')}
-          className={cn(
-            "flex flex-col items-center justify-center w-14 h-12 rounded-xl transition-all active:scale-95 touch-manipulation",
-            isProfileOpen ? "text-indigo-600 font-bold" : "text-stone-400 hover:text-stone-600"
-          )}
-          aria-label="Mein Profil"
-        >
-          <User className={cn("w-5 h-5 transition-transform", isProfileOpen && "scale-110")} />
-          <span className="text-[10px] mt-0.5 tracking-tight font-semibold">Profil</span>
-        </button>
-      </nav>
 
       {/* Floating Action Button (FAB) (visible on screens < 768px on planner page) */}
       {pathname === '/elektrik-planung' && (
@@ -144,7 +96,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-6">
           <div className="bg-white rounded-[2.5rem] w-full max-w-sm flex flex-col shadow-2xl overflow-hidden relative animate-scale-up border border-stone-200">
             {/* Background pattern */}
-            <div className="h-28 bg-gradient-to-tr from-emerald-600 to-teal-500 relative flex items-end px-6 pb-4">
+            <div className="h-28 bg-stone-800 relative flex items-end px-6 pb-4">
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.15),transparent)] pointer-events-none" />
               <button
                 onClick={() => setIsProfileOpen(false)}
@@ -157,8 +109,8 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
 
             {/* Profile Avatar & Title */}
             <div className="px-6 pb-6 relative flex flex-col items-center">
-              <div className="w-24 h-24 rounded-full border-[6px] border-white bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-4xl shadow-md -mt-12 z-10 select-none">
-                🏕️
+              <div className="w-24 h-24 rounded-full border-[6px] border-white bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-md -mt-12 z-10 select-none text-white">
+                <User className="w-10 h-10" />
               </div>
               
               <h3 className="font-black text-xl text-stone-800 mt-3 flex items-center gap-1.5">
@@ -166,7 +118,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
                 <Award className="w-5 h-5 text-amber-500 fill-amber-500" />
               </h3>
               <span className="text-[10px] uppercase tracking-widest font-black text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-full px-2.5 py-0.5 mt-1">
-                Senior Ausbauer 🌿
+                Senior Ausbauer
               </span>
 
               <div className="w-full grid grid-cols-2 gap-3 mt-6">

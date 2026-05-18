@@ -7,6 +7,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { Package, Zap, ScanSearch, LayoutGrid, Camera, Sun, Snowflake } from 'lucide-react';
 import { usePlannerStore } from '../../store/usePlannerStore';
 import { useShallow } from 'zustand/react/shallow';
 import { useAppStore } from '../../lib/store';
@@ -24,7 +25,7 @@ function NavigationSection({
   setViewMode: (mode: 'electric' | 'water') => void;
 }) {
   return (
-    <div className="flex items-center gap-1 pointer-events-auto">
+    <div className="flex items-center gap-1">
       <Button
         variant={viewMode === 'electric' ? 'default' : 'ghost'}
         size="sm"
@@ -94,23 +95,23 @@ function ActionsSection({
   }, []);
 
   return (
-    <div className="pointer-events-auto flex items-center gap-4 flex-wrap">
+    <div className="flex items-center gap-4 flex-wrap">
       {/* Segmented Action Buttons */}
       <div className="flex bg-stone-100/50 p-1 rounded-lg border border-stone-200/60 backdrop-blur-sm gap-1">
-        <Button variant="ghost" size="sm" onClick={handleExportBOM} className="text-orange-700 hover:bg-white hover:shadow-sm">
-          📦 Stückliste
+        <Button variant="ghost" size="sm" onClick={handleExportBOM} className="gap-1.5 text-orange-700 hover:bg-white hover:shadow-sm">
+          <Package className="w-4 h-4" /> Stückliste
         </Button>
-        <Button variant="ghost" size="sm" onClick={() => autoWireSystem(fitView)} className="text-yellow-700 hover:bg-white hover:shadow-sm">
-          ⚡ Auto-Wire
+        <Button variant="ghost" size="sm" onClick={() => autoWireSystem(fitView)} className="gap-1.5 text-yellow-700 hover:bg-white hover:shadow-sm">
+          <Zap className="w-4 h-4" /> Auto-Wire
         </Button>
-        <Button variant="ghost" size="sm" onClick={checkSchematic} className="text-red-700 hover:bg-white hover:shadow-sm">
-          🔍 KI-Check
+        <Button variant="ghost" size="sm" onClick={checkSchematic} className="gap-1.5 text-red-700 hover:bg-white hover:shadow-sm">
+          <ScanSearch className="w-4 h-4" /> KI-Check
         </Button>
-        <Button variant="ghost" size="sm" onClick={() => onLayout(fitView)} className="text-indigo-700 hover:bg-white hover:shadow-sm">
-          🧹 Aufräumen
+        <Button variant="ghost" size="sm" onClick={() => onLayout(fitView)} className="gap-1.5 text-indigo-700 hover:bg-white hover:shadow-sm">
+          <LayoutGrid className="w-4 h-4" /> Aufräumen
         </Button>
-        <Button variant="ghost" size="sm" onClick={onExportImage} className="text-green-700 hover:bg-white hover:shadow-sm">
-          📸 Bild Export
+        <Button variant="ghost" size="sm" onClick={onExportImage} className="gap-1.5 text-green-700 hover:bg-white hover:shadow-sm">
+          <Camera className="w-4 h-4" /> Bild Export
         </Button>
       </div>
 
@@ -120,17 +121,17 @@ function ActionsSection({
           variant={season === 'summer' ? 'default' : 'ghost'}
           size="sm"
           onClick={() => setSeason('summer')}
-          className={`min-h-[48px] md:min-h-0 ${season === 'summer' ? 'bg-yellow-400 text-yellow-900 shadow-sm' : ''}`}
+          className={`gap-1.5 min-h-[48px] md:min-h-0 ${season === 'summer' ? 'bg-yellow-400 text-yellow-900 shadow-sm' : ''}`}
         >
-          ☀️ Sommer
+          <Sun className="w-4 h-4" /> Sommer
         </Button>
         <Button
           variant={season === 'winter' ? 'default' : 'ghost'}
           size="sm"
           onClick={() => setSeason('winter')}
-          className={`min-h-[48px] md:min-h-0 ${season === 'winter' ? 'bg-blue-400 text-blue-900 shadow-sm' : ''}`}
+          className={`gap-1.5 min-h-[48px] md:min-h-0 ${season === 'winter' ? 'bg-blue-400 text-blue-900 shadow-sm' : ''}`}
         >
-          ❄️ Winter
+          <Snowflake className="w-4 h-4" /> Winter
         </Button>
       </div>
     </div>
@@ -145,7 +146,7 @@ function ProModeSection({
   toggleProMode: () => void;
 }) {
   return (
-    <div className="ml-auto pointer-events-auto pl-3 border-l border-border flex items-center">
+    <div className="ml-auto pl-3 border-l border-border flex items-center">
       <Button
         variant={isProMode ? 'default' : 'outline'}
         size="sm"
@@ -191,7 +192,7 @@ export function PlannerDashboard() {
   const warnings = useLiveValidation(nodes, edges);
 
   return (
-    <div className="absolute top-4 left-4 z-10 flex flex-col gap-2 pointer-events-none w-[calc(100%-2rem)]">
+    <div className="flex flex-wrap gap-2 bg-card border-b border-border p-2 shrink-0 w-full">
       <div className="flex flex-wrap gap-3 bg-card shadow-lg rounded-lg p-3 border border-border">
         <NavigationSection viewMode={viewMode} setViewMode={setViewMode} />
 
@@ -209,7 +210,7 @@ export function PlannerDashboard() {
       </div>
 
       {warnings.length > 0 && (
-        <div className="flex flex-col gap-2 pointer-events-auto">
+        <div className="flex flex-col gap-2">
           {warnings.map((w) => (
             <div key={w.id} className={`p-3 rounded-lg shadow-md border text-sm font-semibold max-w-md ${
               w.type === 'critical' ? 'bg-red-50 text-red-800 border-red-200' :
