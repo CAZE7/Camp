@@ -93,13 +93,13 @@ describe('CableEdge', () => {
     // calculatedA = (10 * (5 * 2)) / (58 * 0.24) = 100 / 13.92 = 7.18
     // minRequiredA = max(1.5, 7.18) = 7.18
     // VDE_SIZES = [1.5, 2.5, 4.0, 6.0, 10.0, 16.0, ...], first size >= 7.18 is 10.0
-    // cs = 10.0 => mf = 70
+    // cs = 10.0 => mf = 35
 
     const { getByText } = render(<CableEdge {...defaultProps} />);
 
     expect(getByText('10 mm²')).toBeInTheDocument();
-    // NEU-HIGH-B: New derated FUSE_MAP value for 10mm² in camper conditions = 50A (was 60A)
-    expect(getByText('Max: 50A')).toBeInTheDocument();
+    // NEU-HIGH-B: New derated FUSE_MAP value for 10mm² in camper conditions = 35A (was 50A)
+    expect(getByText('Max: 35A')).toBeInTheDocument();
   });
 
   it('calculates crossSection and maxFuse when target is charger', () => {
@@ -113,13 +113,13 @@ describe('CableEdge', () => {
 
     // calculatedA = (30 * (5 * 2)) / (58 * 0.24) = 300 / 13.92 = 21.55
     // VDE_SIZES = [... 16.0, 25.0, ...], first size >= 21.55 is 25.0
-    // cs = 25.0 => mf = 130
+    // cs = 25.0 => mf = 60
 
     const { getByText } = render(<CableEdge {...defaultProps} />);
 
     expect(getByText('25 mm²')).toBeInTheDocument();
-    // NEU-HIGH-B: New derated FUSE_MAP value for 25mm² in camper conditions = 90A (was 130A)
-    expect(getByText('Max: 90A')).toBeInTheDocument();
+    // NEU-HIGH-B: New derated FUSE_MAP value for 25mm² in camper conditions = 60A (was 90A)
+    expect(getByText('Max: 60A')).toBeInTheDocument();
   });
 
   it('uses fallback logic to calculate total watts from all consumers when no source/target match', () => {
@@ -133,13 +133,13 @@ describe('CableEdge', () => {
 
     // calculatedA = (15 * (5 * 2)) / 13.92 = 150 / 13.92 = 10.77
     // VDE_SIZES = [... 10.0, 16.0, ...], first size >= 10.77 is 16.0
-    // cs = 16.0 => mf = 100
+    // cs = 16.0 => mf = 40
 
     const { getByText } = render(<CableEdge {...defaultProps} />);
 
     expect(getByText('16 mm²')).toBeInTheDocument();
-    // NEU-HIGH-B: New derated FUSE_MAP value for 16mm² in camper conditions = 70A (was 100A)
-    expect(getByText('Max: 70A')).toBeInTheDocument();
+    // NEU-HIGH-B: New derated FUSE_MAP value for 16mm² in camper conditions = 40A (was 70A)
+    expect(getByText('Max: 40A')).toBeInTheDocument();
   });
 
   it('renders selected state with #f97316 stroke', () => {

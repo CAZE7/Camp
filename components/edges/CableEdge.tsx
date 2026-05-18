@@ -187,7 +187,9 @@ const CableEdge = function ({
   }
 
   if (edgeDomain !== 'AC_230V' && isPlus) {
-    if (!data?.fuseSize) {
+    if (maxFuse === 0) {
+      errors.push('Keine Empfehlung möglich / Querschnitt prüfen');
+    } else if (!data?.fuseSize) {
       errors.push('Sicherung fehlt!');
     } else {
       if (data.fuseSize > maxFuse) {
