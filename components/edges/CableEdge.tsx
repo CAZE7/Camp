@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { BaseEdge, EdgeProps, EdgeLabelRenderer, useReactFlow, Node } from 'reactflow';
 import { useAppStore } from '../../lib/store';
 import { usePlannerStore } from '../../store/usePlannerStore';
@@ -85,6 +85,7 @@ const CableEdge = function ({
 }: CableEdgeProps) {
   const { getNode, getNodes } = useReactFlow();
   const isProMode = useAppStore(state => state.isProMode);
+  const [isHovered, setIsHovered] = useState(false);
 
   // Subscribe to connected nodes and total consumption for reactivity
   const { sNodeData, tNodeData, systemLoad, cumulativeDrop } = usePlannerStore(useShallow(state => {
@@ -130,7 +131,10 @@ const CableEdge = function ({
     const sourceNode = getNode(source);
     const targetNode = getNode(target);
 
-    const edgeDomain = data?.edgeDomain || getEdgeDomain(sourceNode?.type, targetNode?.type, sourceHandle);
+    let edgeDomain = data?.edgeDomain || getEdgeDomain(sourceNode?.type, targetNode?.type, sourceHandle);
+    if (sourceNode?.type === 'solar' || targetNode?.type === 'solar' || sourceNode?.type === 'roofSolar' || targetNode?.type === 'roofSolar') {
+      edgeDomain = 'Solar' as any;
+    }
 
     if (edgeDomain === 'AC_230V') {
       const cs = Math.max(1.5, data?.crossSection || 0);
@@ -181,7 +185,17 @@ const CableEdge = function ({
     }
   }
 
-  let stroke = selected ? '#f97316' : '#9ca3af';
+  let stroke = selected ? '#9ca3af' : (edgeDomain === 'AC_230V' ? '#ef4444' : (edgeDomain === 'Solar' as any ? '#f59e0b' : '#3b82f6'));
+  if (selected) {
+    stroke = '#9ca3af';
+  } else if (edgeDomain === 'AC_230V') {
+    stroke = '#ef4444'; // Rot/Gelb gestreift theoretisch, aber wir nutzen Warn-Rot laut Spezifikation
+  } else if (edgeDomain === 'Solar' as any) {
+    stroke = '#f59e0b';
+  } else {
+    stroke = '#3b82f6';
+  }
+
   if (edgeDomain !== 'AC_230V' && totalDropPercentage > 2) {
     stroke = '#ef4444'; // strict red for > 2%
   }
@@ -245,13 +259,13 @@ const CableEdge = function ({
           }}
           className="nodrag nopan"
         >
-          <span>{length.toFixed(2)} m</span>
-          {edgeDomain === 'AC_230V' ? (
+          { (selected || isHovered) && <span>{length.toFixed(2)} m</span> }
+          {(selected || isHovered) && edgeDomain === 'AC_230V' ? (
             <>
               <span style={{ color: '#16a34a', fontSize: '10px' }}>3-adrig (L, N, PE)</span>
               <span style={{ background: '#0284c7', color: 'white', padding: '1px 4px', borderRadius: '4px', fontSize: '10px', marginTop: '2px' }}>RCBO (FI/LS) empfohlen</span>
             </>
-          ) : (
+          ) : (selected || isHovered) ? (
             <>
               <span>{crossSection} mm²</span>
               {maxFuse > 0 && <span style={{ color: 'red', fontSize: '10px' }}>Max: {maxFuse}A</span>}
@@ -260,7 +274,7 @@ const CableEdge = function ({
                 <span key={idx} style={{ background: 'red', color: 'white', padding: '1px 4px', borderRadius: '4px', fontSize: '10px', marginTop: '2px' }}>{err}</span>
               ))}
             </>
-          )}
+          ) : null}
         </div>
       </EdgeLabelRenderer>
 
@@ -271,6 +285,8 @@ const CableEdge = function ({
         strokeOpacity={0}
         strokeWidth={20}
         style={{ cursor: 'pointer' }}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
       >
         <title>{`${length.toFixed(2)}m | ${crossSection}mm²`}</title>
       </path>

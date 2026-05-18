@@ -1,9 +1,36 @@
 "use client";
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Handle, Position, useNodes } from 'reactflow';
+import { usePlannerStore } from '../../store/usePlannerStore';
 import { CommonNodeData } from './types';
 
 const InverterNode = function({ id, data, isConnectable, selected }: any) {
+  const updateNodeData = usePlannerStore((state) => state.updateNodeData);
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [tempValue, setTempValue] = useState<string>('');
+
+  const handleDoubleClick = (field: string, currentValue: any) => {
+    setEditingField(field);
+    setTempValue(String(currentValue));
+  };
+
+  const handleBlur = () => {
+    if (editingField) {
+      let finalValue: any = tempValue;
+      if (editingField !== 'label' && editingField !== 'chemistry') {
+        finalValue = Number(tempValue) || 0;
+      }
+      updateNodeData(id, { [editingField]: finalValue });
+    }
+    setEditingField(null);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleBlur();
+    }
+  };
+
   const nodes = useNodes<CommonNodeData>();
 
   const overloadStats = useMemo(() => {
@@ -27,7 +54,18 @@ const InverterNode = function({ id, data, isConnectable, selected }: any) {
 
   return (
     <div className={`hover:scale-105 transition-all custom-drag-handle bg-white border-2 rounded-md p-3 shadow-md w-48 ${overloadStats.isOverloaded ? "border-red-500 bg-red-50" : "border-teal-500"} ${selected ? (overloadStats.isOverloaded ? "ring-4 ring-red-500 shadow-[0_0_15px_rgba(239,68,68,0.6)]" : "ring-4 ring-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.6)]") : ""}`}>
-      <div className="font-bold mb-2 text-sm text-center">{data.label || 'Wechselrichter'}</div>
+      {editingField === 'label' ? (
+        <input
+          autoFocus
+          className="font-bold mb-2 text-sm text-center w-full border border-blue-500 rounded px-1"
+          value={tempValue}
+          onChange={(e) => setTempValue(e.target.value)}
+          onBlur={handleBlur}
+          onKeyDown={handleKeyDown}
+        />
+      ) : (
+        <div className="font-bold mb-2 text-sm text-center cursor-text" onDoubleClick={() => handleDoubleClick('label', data.label || 'Wechselrichter')}>{data.label || 'Wechselrichter'}</div>
+      )}
       <div className="flex flex-col gap-1 text-xs text-gray-600">
         <div>12V in / 230V out</div>
         <div>Effizienz: 85%</div>

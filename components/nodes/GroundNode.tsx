@@ -1,8 +1,35 @@
 "use client";
-import React from 'react';
+import React, { useState } from 'react';
 import { Handle, Position } from 'reactflow';
+import { usePlannerStore } from '../../store/usePlannerStore';
 
 const GroundNode = function({ id, data, isConnectable, selected }: any) {
+  const updateNodeData = usePlannerStore((state) => state.updateNodeData);
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [tempValue, setTempValue] = useState<string>('');
+
+  const handleDoubleClick = (field: string, currentValue: any) => {
+    setEditingField(field);
+    setTempValue(String(currentValue));
+  };
+
+  const handleBlur = () => {
+    if (editingField) {
+      let finalValue: any = tempValue;
+      if (editingField !== 'label' && editingField !== 'chemistry') {
+        finalValue = Number(tempValue) || 0;
+      }
+      updateNodeData(id, { [editingField]: finalValue });
+    }
+    setEditingField(null);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleBlur();
+    }
+  };
+
   return (
     <div className={`hover:scale-105 transition-all custom-drag-handle bg-gray-100 border-2 border-gray-600 rounded-md p-3 shadow-md w-32 flex flex-col items-center ${selected ? " ring-4 ring-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.6)]" : ""}`}>
       <div className="font-bold mb-1 text-sm text-center">{data.label || 'Massepunkt'}</div>
