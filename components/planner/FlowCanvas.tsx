@@ -14,6 +14,7 @@ import WaterPipeEdge from '../edges/WaterPipeEdge';
 import { NODE_TYPES, EDGE_TYPES } from './constants';
 import { usePlannerStore } from '../../store/usePlannerStore';
 import { useAppStore } from '../../lib/store';
+import { FloatingMetricsCard } from './ui/FloatingMetricsCard';
 import { useDashboardMetrics } from './hooks/useDashboardMetrics';
 import { BOMModal } from './BOMModal';
 import { useSequentialTapConnect } from './hooks/useSequentialTapConnect';
@@ -81,7 +82,8 @@ export function FlowCanvas() {
           {waterWarning}
         </div>
       )}
-    <ReactFlow
+    <FloatingMetricsCard />
+      <ReactFlow
       style={{ willChange: 'transform', backfaceVisibility: 'hidden' }}
         nodes={viewMode === 'water' ? waterNodes : nodes}
         edges={viewMode === 'water' ? waterEdges : edges}
@@ -106,32 +108,7 @@ export function FlowCanvas() {
         <Controls className="rounded-lg overflow-hidden border border-border shadow-sm" />
         <MiniMap className="rounded-lg overflow-hidden border border-border shadow-sm" />
 
-        {viewMode === 'electric' && (
-          <Panel position="top-center" className="bg-card p-4 rounded-lg shadow-lg border border-border text-sm w-80">
-            <h3 className="font-bold mb-2 border-b border-border pb-1">System Berechnungen</h3>
-            <div className="flex flex-col gap-2">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Täglicher Gesamtverbrauch:</span>
-                <span className="font-semibold">{metrics.dailyConsumptionAh.toFixed(1)} Ah</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Batterie-Autarkie (ohne Laden):</span>
-                <span className="font-semibold">{metrics.autarkyStr}</span>
-              </div>
-              {metrics.solarNodesCount > 0 && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Solar-Array Output:</span>
-                  <span className="font-semibold">{metrics.totalSolarVoltage}V / {metrics.totalSolarAmps.toFixed(1)}A</span>
-                </div>
-              )}
-              {metrics.hasDirectBatteryToConsumer && (
-                <div className="mt-2 p-2 bg-red-100 text-red-800 text-xs rounded-md border border-red-200">
-                  Warnung: Verbraucher ist direkt mit der Batterie verbunden. Ein Sicherungsknoten fehlt!
-                </div>
-              )}
-            </div>
-          </Panel>
-        )}
+
 
         {viewMode === 'electric' && calculatedSolarWatts > 0 && (
           <Panel position="bottom-center" className="bg-blue-50 p-3 rounded-lg shadow-sm border border-blue-200 text-blue-800 text-sm mb-4">

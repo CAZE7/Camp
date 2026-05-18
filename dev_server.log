@@ -1,0 +1,20 @@
+▲ Next.js 16.2.4 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.0.2:3000
+✓ Ready in 542ms
+
+
+warn - The class `ease-[cubic-bezier(0.16,1,0.3,1)]` is ambiguous and matches multiple utilities.
+warn - If this is content and not a class, replace it with `ease-&lsqb;cubic-bezier(0.16,1,0.3,1)&rsqb;` to silence this warning.
+
+warn - The class `ease-[cubic-bezier(0.34,1.56,0.64,1)]` is ambiguous and matches multiple utilities.
+warn - If this is content and not a class, replace it with `ease-&lsqb;cubic-bezier(0.34,1.56,0.64,1)&rsqb;` to silence this warning.
+○ Compiling /_not-found/page ...
+ GET /elektrik-planung/ 404 in 5.0s (next.js: 4.7s, application-code: 339ms)
+ GET / 404 in 87ms (next.js: 8ms, application-code: 79ms)
+ GET /elektrik-planung/ 404 in 65ms (next.js: 5ms, application-code: 60ms)
+ GET /elektrik-planung/ 404 in 75ms (next.js: 6ms, application-code: 70ms)
+ GET / 404 in 67ms (next.js: 6ms, application-code: 61ms)
+ GET /elektrik-planung/ 200 in 2.3s (next.js: 2.2s, application-code: 51ms)
+[browser] [React Flow]: It looks like you've created a new nodeTypes or edgeTypes object. If this wasn't on purpose please define the nodeTypes/edgeTypes outside of the component or memoize them. Help: https://reactflow.dev/error#002
+[browser] [React Flow]: It looks like you've created a new nodeTypes or edgeTypes object. If this wasn't on purpose please define the nodeTypes/edgeTypes outside of the component or memoize them. Help: https://reactflow.dev/error#002
