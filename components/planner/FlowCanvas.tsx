@@ -120,7 +120,15 @@ export function FlowCanvas() {
         <MiniMap className="rounded-lg overflow-hidden border border-border shadow-sm" />
 
         {((viewMode === 'electric' && nodes.length === 0) || (viewMode === 'water' && waterNodes.length === 0)) && (
-          <EmptyState onAdd={() => usePlannerStore.getState().addNode()} />
+          <EmptyState
+            onAdd={() => {
+              if (viewMode === 'water') {
+                usePlannerStore.getState().addNode('freshWaterTank', 'Frischwassertank', { x: 250, y: 250 });
+              } else {
+                usePlannerStore.getState().addNode('battery', 'Batterie', { x: 250, y: 250 });
+              }
+            }}
+          />
         )}
 
         {viewMode === 'electric' && (
