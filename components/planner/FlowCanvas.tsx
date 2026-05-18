@@ -11,6 +11,7 @@ import { useShallow } from 'zustand/react/shallow';
 
 import WaterNode from '../nodes/WaterNode';
 import WaterPipeEdge from '../edges/WaterPipeEdge';
+import { EmptyState } from '../ui/EmptyState';
 import { NODE_TYPES, EDGE_TYPES } from './constants';
 import { usePlannerStore } from '../../store/usePlannerStore';
 import { useAppStore } from '../../lib/store';
@@ -22,6 +23,15 @@ import { usePlannerDragDrop } from './hooks/usePlannerDragDrop';
 
 export function FlowCanvas() {
   const { screenToFlowPosition, fitView } = useReactFlow();
+
+  const [isMobile, setIsMobile] = React.useState(false);
+
+  React.useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const {
     viewMode,
@@ -103,6 +113,9 @@ export function FlowCanvas() {
         onlyRenderVisibleElements={true}
         elementsSelectable={true}
         translateExtent={[[-2000, -2000], [4000, 4000]]}
+        zoomOnScroll={!isMobile}
+        zoomOnPinch={isMobile}
+        panOnDrag={isMobile ? true : [1, 2]}
       >
         <Background color="hsl(var(--border))" gap={16} />
         <Controls className="rounded-lg overflow-hidden border border-border shadow-sm" />

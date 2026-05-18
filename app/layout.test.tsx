@@ -41,10 +41,10 @@ describe('RootLayout', () => {
     expect(bodyElement.props.className).toContain('mocked-inter-class');
     expect(bodyElement.props.className).toContain('bg-stone-50');
 
-    // NavigationSidebar and main container are rendered inside body
-    const mainElement = bodyElement.props.children.find((c: any) => c.type === 'main');
-    expect(mainElement).toBeDefined();
-    const childElement = mainElement.props.children;
+    // MainLayout container is rendered inside body
+    const mainLayoutElement = bodyElement.props.children.find((c: any) => c && c.type && typeof c.type !== 'string');
+    expect(mainLayoutElement).toBeDefined();
+    const childElement = mainLayoutElement.props.children;
     expect(childElement.props['data-testid']).toBe('child');
     expect(childElement.props.children).toBe('Test Child');
   });

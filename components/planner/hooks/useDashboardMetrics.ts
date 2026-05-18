@@ -191,7 +191,7 @@ function calculateAutarky(usableCapacityAh: number, dailyConsumptionAh: number):
   const autarkyDays =
     autarkyHours === Infinity ? 'Unendlich' : Math.floor(autarkyHours / 24);
   const autarkyRemainderHours =
-    autarkyHours === Infinity ? 0 : Math.round(autarkyHours % 24);
+    autarkyHours === Infinity ? 0 : Math.floor(autarkyHours % 24);
 
   return autarkyHours === Infinity
       ? 'Unendlich'

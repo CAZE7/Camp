@@ -9,6 +9,7 @@ import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
+import { StepperSlider } from '@/components/ui/StepperSlider';
 import Link from 'next/link';
 import { cn } from "@/lib/utils";
 import { Outfit } from 'next/font/google';
@@ -236,17 +237,14 @@ function TemperatureInputs({
               <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-sm font-bold text-emerald-600/60 pointer-events-none">°C</span>
             </div>
           </div>
-          <Slider
+          <StepperSlider
             min={5}
             max={30}
-            step={1}
-            value={[tempInside]}
-            onValueChange={(val) => {
-              if (val !== undefined) {
-                setTempInside(Array.isArray(val) ? val[0] : val);
-              }
-            }}
-            className="[&_[role=slider]]:border-emerald-600"
+            step={0.5}
+            value={tempInside}
+            onChange={setTempInside}
+            unit="°C"
+            className="mt-2"
           />
         </CardContent>
       </Card>
@@ -272,17 +270,14 @@ function TemperatureInputs({
               <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-sm font-bold text-sky-600/60 pointer-events-none">°C</span>
             </div>
           </div>
-          <Slider
+          <StepperSlider
             min={-30}
             max={15}
-            step={1}
-            value={[tempOutside]}
-            onValueChange={(val) => {
-              if (val !== undefined) {
-                setTempOutside(Array.isArray(val) ? val[0] : val);
-              }
-            }}
-            className="[&_[role=slider]]:border-sky-600"
+            step={0.5}
+            value={tempOutside}
+            onChange={setTempOutside}
+            unit="°C"
+            className="mt-2"
           />
         </CardContent>
       </Card>
@@ -369,16 +364,14 @@ function AdvancedParameters({
               <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-sm font-bold text-stone-400 pointer-events-none">m²</span>
             </div>
           </div>
-          <Slider
+          <StepperSlider
             min={0}
             max={5}
             step={0.1}
-            value={[windowArea]}
-            onValueChange={(val) => {
-              if (val !== undefined) {
-                setWindowArea(Array.isArray(val) ? val[0] : val);
-              }
-            }}
+            value={windowArea}
+            onChange={setWindowArea}
+            unit=" m²"
+            className="mt-2"
           />
         </div>
 
@@ -400,16 +393,14 @@ function AdvancedParameters({
               <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-sm font-bold text-stone-400 pointer-events-none">%</span>
             </div>
           </div>
-          <Slider
+          <StepperSlider
             min={50}
             max={100}
             step={1}
-            value={[insulationCoverage]}
-            onValueChange={(val) => {
-              if (val !== undefined) {
-                setInsulationCoverage(Array.isArray(val) ? val[0] : val);
-              }
-            }}
+            value={insulationCoverage}
+            onChange={setInsulationCoverage}
+            unit="%"
+            className="mt-2"
           />
         </div>
 

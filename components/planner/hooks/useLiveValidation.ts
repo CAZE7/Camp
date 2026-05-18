@@ -43,7 +43,7 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
 
     if (solarNodes.length > 0 && chargers.length > 0) {
       const totalSolarWatts = solarNodes.reduce((acc, node) => acc + (Number(node.data.watts) || 0), 0);
-      const mpptCapacity = chargers.reduce((acc, node) => acc + (Number(node.data.amps) || 0), 0) * 12; // roughly Max Watts
+      const mpptCapacity = (chargers.reduce((acc, node) => acc + (Number(node.data.amps) || 0), 0) * 12) / 0.85; // roughly Max Watts
 
       if (totalSolarWatts > mpptCapacity) {
         warnings.push({
