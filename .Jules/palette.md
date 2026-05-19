@@ -28,3 +28,7 @@
 ## 2026-05-16 - Add ARIA Attributes to Custom Accordion
 **Learning:** Custom implementations of interactive components like accordions often lack built-in accessibility. It is crucial to manually link the toggle button state and the content container using `aria-expanded` and `aria-controls`, paired with an `id` on the content wrapper, so screen readers can interpret the relationship and state changes correctly.
 **Action:** Always verify custom interactive components (dropdowns, accordions, tabs) for appropriate ARIA state and linking attributes (`aria-expanded`, `aria-controls`, `id`) during implementation and code reviews.
+
+## 2024-05-19 - Interactive Element Screen Reader States
+**Learning:** For interactive UI elements that toggle visibility (like a sidebar) or act as toggleable filters, generic ARIA labels like "Toggle Sidebar" aren't fully descriptive because screen reader users don't know the *current state*. We must use stateful attributes (`aria-expanded` and `aria-pressed`) to convey whether a panel is currently open/closed or if a filter is active/inactive, allowing users to understand the result of their interaction before clicking.
+**Action:** When implementing any toggleable panel or filter buttons, dynamically set `aria-expanded` and `aria-pressed` based on the component's state variable, and dynamically translate the `aria-label` where applicable (e.g., "ausklappen" vs "einklappen") instead of static nouns. Always accompany these with `focus-visible` outline styles for keyboard navigation visibility.
