@@ -101,7 +101,7 @@ const CableEdge = function ({
     
     // CRIT-02 Fix: Call calculatePathVoltageDrop inside the selector so it re-evaluates
     // reactively whenever state.edges or state.nodes change, instead of reading stale getState().
-    const cumulativeDrop = state.calculatePathVoltageDrop(source);
+    const cumulativeDrop = state.calculatePathVoltageDrop(source, state.nodes, state.edges);
     
     return { 
       sNodeData: s?.data, 

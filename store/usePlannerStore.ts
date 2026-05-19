@@ -55,7 +55,7 @@ interface PlannerState {
   onCustomDrop: (event: Event, screenToFlowPosition: (client: {x: number, y: number}) => {x: number, y: number}) => void;
   addNode: (type: string, label: string, position: {x: number, y: number}, watts?: number) => void;
   applyTemplate: (templateId: string) => void;
-  calculatePathVoltageDrop: (targetNodeId: string) => number;
+  calculatePathVoltageDrop: (targetNodeId: string, customNodes?: Node[], customEdges?: Edge[]) => number;
   isLayoutPending: boolean;
   setIsLayoutPending: (pending: boolean) => void;
 }
@@ -745,8 +745,9 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
     })
   })),
 
-  calculatePathVoltageDrop: (targetNodeId) => {
-    const { edges, nodes } = get();
+  calculatePathVoltageDrop: (targetNodeId, customNodes, customEdges) => {
+    const edges = customEdges || get().edges;
+    const nodes = customNodes || get().nodes;
 
     const getI = (sourceNode: Node | undefined, targetNode: Node | undefined) => {
       const sData = sourceNode?.data;
