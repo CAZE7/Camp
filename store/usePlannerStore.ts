@@ -222,13 +222,14 @@ function wireInverters(
   inverters: Node[],
   busbarNode: Node,
   newEdges: Edge[],
-  edgeIdRef: { counter: number }
+  edgeIdRef: { counter: number },
+  batteryVoltage: number
 ) {
   const invertersLen = inverters.length;
   for (let i = 0; i < invertersLen; i++) {
     const inverter = inverters[i];
     const inverterWatts = Number(inverter.data.watts) || 1000;
-    const inverterAmps = inverterWatts / 12 / 0.85;
+    const inverterAmps = inverterWatts / batteryVoltage / 0.85;
     connectEdges(newEdges, edgeIdRef, busbarNode.id, inverter.id, inverterAmps, 1);
   }
 }
@@ -266,11 +267,11 @@ function performAutoWiring(initialNodes: Node[]): { nodes: Node[], edges: Edge[]
   const shuntNode = ensureNode(currentNodes, nodesByType, nodesByLabel, batteryNode, 'shunt', 'Smart Shunt', 150, 0);
 
   const batteryCapacity = Number(batteryNode.data.capacity) || 100;
-  const maxDischargeA = batteryCapacity;
+  const maxDischargeA = batteryCapacity * 0.5;
   connectEdges(newEdges, edgeIdRef, batteryNode.id, shuntNode.id, maxDischargeA, 0.5);
   connectEdges(newEdges, edgeIdRef, shuntNode.id, busbarNode.id, maxDischargeA, 0.5);
 
-  wireInverters(nodesByType['inverter'] || [], busbarNode, newEdges, edgeIdRef);
+  wireInverters(nodesByType['inverter'] || [], busbarNode, newEdges, edgeIdRef, Number(batteryNode.data.voltage) || 12);
   connectEdges(newEdges, edgeIdRef, busbarNode.id, fuseBoxNode.id, Number(fuseBoxNode.data.rating) || 100, 1);
 
   const solars = [
@@ -322,7 +323,7 @@ function performAutoWiring(initialNodes: Node[]): { nodes: Node[], edges: Edge[]
         source: busbarNode.id,
         target: mainGround.id,
         sourceHandle: 'minus',
-        targetHandle: 'plus',
+        targetHandle: 'minus',
         type: 'cableEdge',
         data: { length: 1, crossSection: 16, edgeDomain: 'DC_12V' },
       });
@@ -451,6 +452,12 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
 
   handleChangeLength: (id, length) => set((state) => ({
     edges: state.edges.map((e) => {
+      if (e.id === id) {
+        return { ...e, data: { ...e.data!, length } };
+      }
+      return e;
+    }),
+    waterEdges: state.waterEdges.map((e) => {
       if (e.id === id) {
         return { ...e, data: { ...e.data!, length } };
       }
@@ -723,7 +730,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
     } else if (type === 'consumer230v') {
       newNode.data = { ...newNode.data, watts: 1000, hours: 0.5 };
     } else if (type === 'solar') {
-      newNode.data = { ...newNode.data, voltage: 18, amps: 5 };
+      newNode.data = { ...newNode.data, voltage: 18, amps: 5, watts: 90 };
     }
 
     const { viewMode } = get();
@@ -797,9 +804,8 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
         const length = edge.data?.length || 1;
         const cs = edge.data?.crossSection || 2.5;
         const voltageDrop = (I * (length * 2)) / (58 * cs);
-        const dropPercentage = (voltageDrop / 12) * 100;
         
-        dfs(edge.source, currentDrop + dropPercentage, new Set(visited));
+        dfs(edge.source, currentDrop + voltageDrop, new Set(visited));
       }
     };
 
