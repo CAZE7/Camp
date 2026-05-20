@@ -35,6 +35,12 @@ export function FlowCanvas() {
     return () => { window.removeEventListener('resize', debounced); clearTimeout(t); };
   }, []);
 
+  React.useEffect(() => {
+    const handleFitView = () => fitView({ duration: 400, padding: 0.15 });
+    window.addEventListener('planner-fit-view', handleFitView);
+    return () => window.removeEventListener('planner-fit-view', handleFitView);
+  }, [fitView]);
+
   const {
     viewMode,
     nodes,

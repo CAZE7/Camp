@@ -49,6 +49,9 @@ export function OnboardingWizard() {
   const handleApplyTemplate = (templateId: string) => {
     if (applyTemplate) {
       applyTemplate(templateId);
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('planner-fit-view'));
+      }, 50);
     }
     setHasOnboarded(true);
   };
