@@ -482,33 +482,32 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
       if (sourceNode?.type === 'grayWaterTank' && targetNode?.type === 'sink') {
         return false;
       }
-      return true;
-    }
+    } else {
+      // Strict AC vs. DC domain separation
+      const sourceDomain = getHandleDomain(sourceNode?.type, connection.sourceHandle, 'source');
+      const targetDomain = getHandleDomain(targetNode?.type, connection.targetHandle, 'target');
+      if (sourceDomain !== targetDomain) {
+        return false; // Blocker!
+      }
 
-    // Strict AC vs. DC domain separation
-    const sourceDomain = getHandleDomain(sourceNode?.type, connection.sourceHandle, 'source');
-    const targetDomain = getHandleDomain(targetNode?.type, connection.targetHandle, 'target');
-    if (sourceDomain !== targetDomain) {
-      return false; // Blocker!
-    }
+      // Pre-check for polarity matching
+      const sHandle = connection.sourceHandle || '';
+      const tHandle = connection.targetHandle || '';
 
-    // Pre-check for polarity matching
-    const sHandle = connection.sourceHandle || '';
-    const tHandle = connection.targetHandle || '';
+      const sIsPlus = sHandle.includes('plus');
+      const tIsPlus = tHandle.includes('plus');
+      const sIsMinus = sHandle.includes('minus');
+      const tIsMinus = tHandle.includes('minus');
 
-    const sIsPlus = sHandle.includes('plus');
-    const tIsPlus = tHandle.includes('plus');
-    const sIsMinus = sHandle.includes('minus');
-    const tIsMinus = tHandle.includes('minus');
+      // Exception for series connection between batteries or solars
+      const isSeriesException =
+        (sourceNode?.type === 'battery' && targetNode?.type === 'battery') ||
+        (sourceNode?.type === 'solar' && targetNode?.type === 'solar');
 
-    // Exception for series connection between batteries or solars
-    const isSeriesException =
-      (sourceNode?.type === 'battery' && targetNode?.type === 'battery') ||
-      (sourceNode?.type === 'solar' && targetNode?.type === 'solar');
-
-    if (!isSeriesException) {
-      if ((sIsPlus && !tIsPlus) || (sIsMinus && !tIsMinus)) {
-        return false; // Polarity mismatch strict block
+      if (!isSeriesException) {
+        if ((sIsPlus && !tIsPlus) || (sIsMinus && !tIsMinus)) {
+          return false; // Polarity mismatch strict block
+        }
       }
     }
 
