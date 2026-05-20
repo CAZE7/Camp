@@ -53,27 +53,19 @@ export const calculateCrossSection = (
   dataCrossSection?: number,
   domain: 'DC_12V' | 'AC_230V' = 'DC_12V'
 ): number => {
-  if (domain === 'AC_230V') {
-    const dropAreaAC = (I * length * 2) / (58 * 4.6); // 2% max drop of 230V
-    const thermalAreaAC = lookupThermalCrossSection(I);
-    const rawMax = Math.max(1.5, dropAreaAC, thermalAreaAC, dataCrossSection || 0);
-    return VDE_SIZES.find(size => size >= rawMax) || 70.0;
-  }
-
-  // Schritt A: Mindestquerschnitt nach Spannungsfall (max 2% allowed drop of 12V = 0.24V)
-  const dropArea = (I * (length * 2)) / (58 * 0.24);
+  // Schritt A: Mindestquerschnitt nach Spannungsfall (max 2% allowed drop)
+  // 12V -> 0.24V, 230V -> 4.6V
+  const allowedDrop = domain === 'AC_230V' ? 4.6 : 0.24;
+  const dropArea = (I * (length * 2)) / (58 * allowedDrop);
 
   // Schritt B: Mindestquerschnitt nach thermischer Belastbarkeit (VDE Lookup mit Derating)
   const thermalArea = lookupThermalCrossSection(I);
 
-  // Finaler Querschnitt: Maximum aus beiden Kriterien
-  const calculatedA = Math.max(dropArea, thermalArea);
+  // Finaler Querschnitt: Maximum aus beiden Kriterien und eventuellem manuellen Querschnitt
+  const rawMax = Math.max(1.5, dropArea, thermalArea, dataCrossSection || 0);
 
   // Aufgerundet auf die nächste VDE-Normgröße
-  const minRequiredA = Math.max(1.5, calculatedA);
-  const autoSize = VDE_SIZES.find(size => size >= minRequiredA) || 70.0;
-
-  return Math.max(autoSize, dataCrossSection || 0);
+  return VDE_SIZES.find(size => size >= rawMax) || 70.0;
 };
 
 export const calculateStrokeWidth = (cs: number): number => {
