@@ -76,6 +76,17 @@ describe('electrical safety refactoring tests', () => {
     // DC handles or unrelated handles should return DC_12V
     expect(getEdgeDomain('inverter', 'battery', 'minus')).toBe('DC_12V');
     expect(getEdgeDomain('inverter', 'battery', 'ground')).toBe('DC_12V');
+
+    // Test target AC handles
+    expect(getEdgeDomain('battery', 'inverter', null, 'ac_out')).toBe('AC_230V');
+    expect(getEdgeDomain('battery', 'inverter', null, 'plus')).toBe('AC_230V');
+    expect(getEdgeDomain('battery', 'inverter', null, 'L')).toBe('AC_230V');
+    expect(getEdgeDomain('battery', 'inverter', null, 'ac')).toBe('AC_230V');
+    expect(getEdgeDomain('battery', 'inverter', null, 'output')).toBe('AC_230V');
+
+    // Test target non-AC handles
+    expect(getEdgeDomain('battery', 'inverter', null, 'minus')).toBe('DC_12V');
+    expect(getEdgeDomain('battery', 'inverter', null, 'ground')).toBe('DC_12V');
   });
 
   it('should identify inverter AC handles correctly in getHandleDomain', () => {

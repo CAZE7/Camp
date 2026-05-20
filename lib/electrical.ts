@@ -38,8 +38,6 @@ export const calculateMaxFuse = (crossSection: number): number => {
   return FUSE_MAP[crossSection] || 0;
 };
 
-// 3. Fix lookupThermalCrossSection:
-// Ersetze den statischen Faktor 1.35 durch (1 / DERATE_FACTOR).
 export const lookupThermalCrossSection = (I: number): number => {
   const requiredAmpacity = I * (1 / DERATE_FACTOR);
   const size = VDE_SIZES.find(s => VDE_AMPACITY[s] >= requiredAmpacity);
@@ -53,27 +51,19 @@ export const calculateCrossSection = (
   dataCrossSection?: number,
   domain: 'DC_12V' | 'AC_230V' = 'DC_12V'
 ): number => {
-  if (domain === 'AC_230V') {
-    const dropAreaAC = (I * length * 2) / (58 * 4.6); // 2% max drop of 230V
-    const thermalAreaAC = lookupThermalCrossSection(I);
-    const rawMax = Math.max(1.5, dropAreaAC, thermalAreaAC, dataCrossSection || 0);
-    return VDE_SIZES.find(size => size >= rawMax) || 70.0;
-  }
-
-  // Schritt A: Mindestquerschnitt nach Spannungsfall (max 2% allowed drop of 12V = 0.24V)
-  const dropArea = (I * (length * 2)) / (58 * 0.24);
+  // Schritt A: Mindestquerschnitt nach Spannungsfall (max 2% allowed drop)
+  // 12V -> 0.24V, 230V -> 4.6V
+  const allowedDrop = domain === 'AC_230V' ? 4.6 : 0.24;
+  const dropArea = (I * (length * 2)) / (58 * allowedDrop);
 
   // Schritt B: Mindestquerschnitt nach thermischer Belastbarkeit (VDE Lookup mit Derating)
   const thermalArea = lookupThermalCrossSection(I);
 
-  // Finaler Querschnitt: Maximum aus beiden Kriterien
-  const calculatedA = Math.max(dropArea, thermalArea);
+  // Finaler Querschnitt: Maximum aus beiden Kriterien und eventuellem manuellen Querschnitt
+  const rawMax = Math.max(1.5, dropArea, thermalArea, dataCrossSection || 0);
 
   // Aufgerundet auf die nächste VDE-Normgröße
-  const minRequiredA = Math.max(1.5, calculatedA);
-  const autoSize = VDE_SIZES.find(size => size >= minRequiredA) || 70.0;
-
-  return Math.max(autoSize, dataCrossSection || 0);
+  return VDE_SIZES.find(size => size >= rawMax) || 70.0;
 };
 
 export const calculateStrokeWidth = (cs: number): number => {
@@ -88,13 +78,17 @@ export const calculateStrokeWidth = (cs: number): number => {
 export const getEdgeDomain = (
   sourceNodeType: string | undefined,
   targetNodeType: string | undefined,
-  sourceHandle: string | null | undefined
+  sourceHandle: string | null | undefined,
+  targetHandle?: string | null | undefined
 ): 'DC_12V' | 'AC_230V' => {
   if (sourceNodeType === 'shorePower' || targetNodeType === 'shorePower') return 'AC_230V';
   if (sourceNodeType === 'consumer230v' || targetNodeType === 'consumer230v') return 'AC_230V';
   
   const AC_HANDLES = ['plus', 'ac_out', 'L', 'ac', 'output'];
   if (sourceNodeType === 'inverter' && sourceHandle && AC_HANDLES.includes(sourceHandle)) {
+    return 'AC_230V';
+  }
+  if (targetNodeType === 'inverter' && targetHandle && AC_HANDLES.includes(targetHandle)) {
     return 'AC_230V';
   }
   return 'DC_12V';

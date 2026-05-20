@@ -246,6 +246,16 @@ describe('useDashboardMetrics', () => {
       expect(result.current.chargingTimeStr).toBe('10.3 Stunden');
     });
 
+    it('should calculate metrics when only calculatedSolarWatts is provided in winter', () => {
+      const nodes: Node[] = [
+        { id: 'b1', type: 'battery', data: { capacity: 100, chemistry: 'LiFePO4' }, position: { x: 0, y: 0 } },
+      ];
+      const { result } = renderHook(() =>
+        useDashboardMetrics(nodes, [], 'winter', 120)
+      );
+      expect(result.current.chargingTimeStr).toBe('29.6 Stunden');
+    });
+
     it('should handle series solar connection missing data properly', () => {
       const solarNodes: Node[] = [
         { id: 's1', type: 'solar', data: {}, position: { x: 0, y: 0 } },

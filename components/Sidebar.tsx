@@ -160,8 +160,10 @@ export function Sidebar({ mode = 'electric', onMobileAdd }: SidebarProps) {
       {!isCollapsed && (
         <div className="p-4 border-b border-stone-200/50 space-y-3">
           <div className="relative group flex items-center">
+            <label htmlFor="search-input" className="sr-only">Suchen</label>
             <Search size={16} className="absolute left-3 text-stone-400" />
             <input
+              id="search-input"
               type="text"
               placeholder="Suchen..."
               value={searchTerm}
