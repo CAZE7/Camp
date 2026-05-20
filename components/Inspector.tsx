@@ -156,7 +156,11 @@ export default function Inspector({
 
           <div className="mt-auto pt-4">
             <button
-              onClick={onDelete}
+              onClick={() => {
+                if (window.confirm("Wirklich löschen?")) {
+                  if (onDelete) onDelete();
+                }
+              }}
               aria-label="Ausgewählte Komponente löschen"
               className="w-full bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded shadow transition-colors"
             >

@@ -3,6 +3,28 @@ import { Button } from '@/components/ui/button';
 import { usePlannerStore } from '../../store/usePlannerStore';
 
 export function BOMModal() {
+  const typeLabels: Record<string, string> = {
+    battery: 'Batterie',
+    consumer: '12V Verbraucher',
+    charger: 'Ladegerät / Booster',
+    fuse: 'Sicherung',
+    shorePower: 'Landstrom',
+    inverter: 'Wechselrichter',
+    consumer230v: '230V Verbraucher',
+    solar: 'Solarpanel (Planer)',
+    roofWindow: 'Dachfenster',
+    roofSolar: 'Dach-Solarpanel',
+    conduit: 'Kabelkanal',
+    busbar: 'Sammelschiene',
+    shunt: 'Mess-Shunt',
+    freshWaterTank: 'Frischwassertank',
+    grayWaterTank: 'Abwassertank',
+    pump: 'Wasserpumpe',
+    accumulator: 'Druckausgleichsgefäß',
+    preFilter: 'Vorfilter',
+    sink: 'Spülbecken',
+    shower: 'Dusche',
+  };
 
 
   const [showBOM, setShowBOM] = useState(false);
@@ -30,8 +52,19 @@ export function BOMModal() {
       setShowBOM(true);
     };
     window.addEventListener('show-bom-modal', handleShowBom);
-    return () => window.removeEventListener('show-bom-modal', handleShowBom);
-  }, []);
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowBOM(false);
+    };
+    if (showBOM) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+
+    return () => {
+      window.removeEventListener('show-bom-modal', handleShowBom);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [showBOM]);
 
   const bomCountsEntries = useMemo(() => {
     return bomData?.counts ? Object.entries(bomData.counts) : [];
@@ -44,15 +77,15 @@ export function BOMModal() {
   if (!showBOM || !bomData) return null;
 
   return (
-    <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-50 pointer-events-auto">
-      <div className="bg-card p-6 rounded-lg shadow-lg w-96 max-h-[80vh] overflow-y-auto border border-border">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 pointer-events-auto" onClick={() => setShowBOM(false)}>
+      <div className="bg-card p-6 rounded-lg shadow-lg w-96 max-h-[80vh] overflow-y-auto border border-border" onClick={(e) => e.stopPropagation()}>
         <h2 className="text-xl font-bold mb-4 border-b border-border pb-2">Stückliste (BOM)</h2>
 
         <div className="mb-4">
           <h3 className="font-semibold mb-2 text-muted-foreground">Komponenten:</h3>
           <ul className="list-disc pl-5 text-sm space-y-1">
             {bomCountsEntries.map(([type, count]) => (
-              <li key={type} className="capitalize">{count}x {type}</li>
+              <li key={type} className="capitalize">{count}x {typeLabels[type] || type}</li>
             ))}
           </ul>
         </div>

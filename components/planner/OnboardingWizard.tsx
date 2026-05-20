@@ -27,8 +27,17 @@ const TEMPLATES = [
 
 export function OnboardingWizard() {
   const [step, setStep] = useState(1);
+  const [direction, setDirection] = useState<'forward' | 'backward'>('forward');
   const [sources, setSources] = useState<Record<string, boolean>>({});
   const [consumers, setConsumers] = useState<Record<string, boolean>>({});
+
+  const goToStep = (newStep: number) => {
+    setDirection(newStep > step ? 'forward' : 'backward');
+    setStep(newStep);
+  };
+
+  const totalSelected = Object.values(sources).filter(Boolean).length + Object.values(consumers).filter(Boolean).length;
+  const recommendedId = totalSelected >= 5 ? 'autark' : totalSelected >= 3 ? 'allrounder' : 'minimalist';
 
   const setHasOnboarded = useAppStore((state) => state.setHasOnboarded);
   const applyTemplate = usePlannerStore((state) => (state as any).applyTemplate);
@@ -55,7 +64,7 @@ export function OnboardingWizard() {
         </div>
 
         {step === 1 && (
-          <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-right-4">
+          <div className={`flex flex-col gap-4 animate-in fade-in ${direction === 'forward' ? 'slide-in-from-right-4' : 'slide-in-from-left-4'}`}>
             <h3 className="text-lg font-semibold">Schritt 1: Woher kommt dein Strom?</h3>
             <div className="flex flex-col gap-3">
               {STROMQUELLEN.map((src) => (
@@ -71,13 +80,13 @@ export function OnboardingWizard() {
               ))}
             </div>
             <div className="flex justify-end mt-4">
-              <Button onClick={() => setStep(2)} className="min-h-[44px] px-6">Weiter</Button>
+              <Button onClick={() => goToStep(2)} className="min-h-[44px] px-6">Weiter</Button>
             </div>
           </div>
         )}
 
         {step === 2 && (
-          <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-right-4">
+          <div className={`flex flex-col gap-4 animate-in fade-in ${direction === 'forward' ? 'slide-in-from-right-4' : 'slide-in-from-left-4'}`}>
             <h3 className="text-lg font-semibold">Schritt 2: Welche Verbraucher planst du?</h3>
             <div className="flex flex-col gap-2 max-h-60 overflow-y-auto pr-2">
               {VERBRAUCHER.map((cons) => (
@@ -93,30 +102,37 @@ export function OnboardingWizard() {
               ))}
             </div>
             <div className="flex justify-between mt-4">
-              <Button variant="outline" onClick={() => setStep(1)} className="min-h-[44px] px-6">Zurück</Button>
-              <Button onClick={() => setStep(3)} className="min-h-[44px] px-6">Weiter</Button>
+              <Button variant="outline" onClick={() => goToStep(1)} className="min-h-[44px] px-6">Zurück</Button>
+              <Button onClick={() => goToStep(3)} className="min-h-[44px] px-6">Weiter</Button>
             </div>
           </div>
         )}
 
         {step === 3 && (
-          <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-right-4">
+          <div className={`flex flex-col gap-4 animate-in fade-in ${direction === 'forward' ? 'slide-in-from-right-4' : 'slide-in-from-left-4'}`}>
             <h3 className="text-lg font-semibold">Schritt 3: Wähle deine Basis-Vorlage</h3>
             <p className="text-sm text-gray-500">Basierend auf deinen Angaben empfehlen wir dir eine dieser Vorlagen. Du kannst später alles anpassen.</p>
             <div className="flex flex-col gap-3">
-              {TEMPLATES.map((tmpl) => (
+              {[...TEMPLATES].sort((a, b) => (a.id === recommendedId ? -1 : b.id === recommendedId ? 1 : 0)).map((tmpl) => (
                 <button
                   key={tmpl.id}
                   onClick={() => handleApplyTemplate(tmpl.id)}
-                  className="flex flex-col items-start gap-1 p-4 border rounded-lg text-left hover:border-emerald-500 hover:bg-emerald-50 transition-colors touch-manipulation"
+                  className={`flex flex-col items-start gap-1 p-4 border rounded-lg text-left transition-colors touch-manipulation ${tmpl.id === recommendedId ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-500 ring-offset-1' : 'hover:border-emerald-500 hover:bg-emerald-50'}`}
                 >
-                  <span className="font-semibold text-gray-800">{tmpl.label}</span>
+                  <span className="font-semibold text-gray-800">
+                    {tmpl.label}
+                    {tmpl.id === recommendedId && (
+                      <span className="ml-2 text-[10px] uppercase font-bold bg-emerald-500 text-white px-2 py-0.5 rounded-full">
+                        Empfohlen
+                      </span>
+                    )}
+                  </span>
                   <span className="text-sm text-gray-600">{tmpl.desc}</span>
                 </button>
               ))}
             </div>
             <div className="flex justify-between mt-4">
-              <Button variant="outline" onClick={() => setStep(2)} className="min-h-[44px] px-6">Zurück</Button>
+              <Button variant="outline" onClick={() => goToStep(2)} className="min-h-[44px] px-6">Zurück</Button>
             </div>
           </div>
         )}

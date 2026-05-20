@@ -88,7 +88,7 @@ export function FlowCanvas() {
   return (
     <>
       {waterWarning && (
-        <div className="absolute top-20 left-1/2 -translate-x-1/2 z-50 bg-yellow-100 text-yellow-800 border border-yellow-300 p-4 rounded-lg shadow-lg font-semibold">
+        <div className="absolute top-28 left-1/2 -translate-x-1/2 z-50 bg-yellow-100 text-yellow-800 border border-yellow-300 p-4 rounded-lg shadow-lg font-semibold w-[90%] md:w-auto text-center">
           {waterWarning}
         </div>
       )}

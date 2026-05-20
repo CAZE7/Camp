@@ -12,6 +12,7 @@ export function PlannerInspector() {
 
   const {
     nodes,
+    waterNodes,
     edges,
     season,
     selectedNodes,
@@ -22,6 +23,7 @@ export function PlannerInspector() {
     updateNodeData,
   } = usePlannerStore(useShallow((state) => ({
     nodes: state.nodes,
+    waterNodes: state.waterNodes,
     edges: state.edges,
     season: state.season,
     selectedNodes: state.selectedNodes,
@@ -38,7 +40,7 @@ export function PlannerInspector() {
   const selectedNodeId = selectedNodes.length > 0 ? selectedNodes[0].id : null;
 
   const selectedEdge = edges.find((e) => e.id === selectedEdgeId) || null;
-  const selectedNode = nodes.find((n) => n.id === selectedNodeId) || null;
+  const selectedNode = nodes.find((n) => n.id === selectedNodeId) || waterNodes.find((n) => n.id === selectedNodeId) || null;
 
   const metrics = useDashboardMetrics(nodes, edges, season, calculatedSolarWatts);
 
@@ -48,7 +50,7 @@ export function PlannerInspector() {
         variant="outline"
         size="icon"
         onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)}
-        className="absolute top-1/2 -translate-y-1/2 z-30 shadow-md transition-all duration-300 h-8 w-8 hidden md:flex items-center justify-center"
+        className="absolute top-1/2 -translate-y-1/2 z-50 shadow-md transition-all duration-300 h-10 w-10 md:h-8 md:w-8 flex items-center justify-center bg-white border-gray-200"
         style={{ right: isRightSidebarOpen ? 'calc(250px + 0.75rem)' : '0.75rem' }}
         title={isRightSidebarOpen ? "Inspector einklappen" : "Inspector ausklappen"}
         aria-label={isRightSidebarOpen ? "Rechte Sidebar einklappen" : "Rechte Sidebar ausklappen"}
