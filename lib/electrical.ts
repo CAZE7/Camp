@@ -16,20 +16,18 @@ export const VDE_AMPACITY: Record<number, number> = {
 // 1. Einheitlicher Sicherheitsfaktor (Derating)
 export const DERATE_FACTOR = 0.70;
 
-// 2. Fix FUSE_MAP (Thermische Sicherungsgrenzen):
-// Sie dürfen niemals VDE_AMPACITY[size] * DERATE_FACTOR überschreiten.
-// Zielwerte abgerundet auf Standard-Sicherungen.
+// DIN VDE 0298-4: max fuse ratings per conductor cross-section
 export const FUSE_MAP: Record<number, number> = {
-  1.5: 10,
-  2.5: 15,
-  4.0: 20,
-  6.0: 25,
-  10.0: 35,
-  16.0: 40,
-  25.0: 60,
-  35.0: 70,
-  50.0: 100,
-  70.0: 125,
+  1.5: 16,
+  2.5: 20,
+  4.0: 25,
+  6.0: 32,
+  10.0: 50,
+  16.0: 63,
+  25.0: 80,
+  35.0: 100,
+  50.0: 125,
+  70.0: 160,
 };
 
 // 6. Fix calculateMaxFuse Fallback:
@@ -51,9 +49,10 @@ export const calculateCrossSection = (
   dataCrossSection?: number,
   domain: 'DC_12V' | 'AC_230V' = 'DC_12V'
 ): number => {
-  // Schritt A: Mindestquerschnitt nach Spannungsfall (max 2% allowed drop)
-  // 12V -> 0.24V, 230V -> 4.6V
-  const allowedDrop = domain === 'AC_230V' ? 4.6 : 0.24;
+  // Schritt A: Mindestquerschnitt nach Spannungsfall
+  // DC 12V: 3% von 12V = 0.36V (DIN VDE 0298-4)
+  // AC 230V: 3% von 230V = 6.9V → 4.6V (2% conservative)
+  const allowedDrop = domain === 'AC_230V' ? 4.6 : 0.36;
   const dropArea = (I * (length * 2)) / (58 * allowedDrop);
 
   // Schritt B: Mindestquerschnitt nach thermischer Belastbarkeit (VDE Lookup mit Derating)

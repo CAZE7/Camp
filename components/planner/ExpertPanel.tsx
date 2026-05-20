@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo, useEffect } from "react";
 import { usePlannerStore } from "../../store/usePlannerStore";
+import { calculateCrossSection, calculateMaxFuse } from "../../lib/electrical";
 import { cn } from "@/lib/utils";
 
 /* ─── Knowledge Database ─── */
@@ -347,23 +348,10 @@ export function ExpertPanel() {
               isFallback = false;
             }
 
-            // DIN VDE 0298-4: 3% voltage drop = 0.36V at 12V
-            const calculatedA = (I * (length * 2)) / (58 * 0.36);
-            const minRequiredA = Math.max(1.5, calculatedA);
-            const VDE_SIZES = [1.5, 2.5, 4.0, 6.0, 10.0, 16.0, 25.0, 35.0, 50.0, 70.0];
-            const crossSection = VDE_SIZES.find(size => size >= minRequiredA) || 70.0;
-            
-            // DIN VDE 0298-4 fuse ratings
-            let fuseSize = 250;
-            if (crossSection <= 1.5) fuseSize = 16;
-            else if (crossSection <= 2.5) fuseSize = 20;
-            else if (crossSection <= 4.0) fuseSize = 25;
-            else if (crossSection <= 6.0) fuseSize = 32;
-            else if (crossSection <= 10.0) fuseSize = 50;
-            else if (crossSection <= 16.0) fuseSize = 100;
-            else if (crossSection <= 25.0) fuseSize = 130;
-            else if (crossSection <= 35.0) fuseSize = 150;
-            else if (crossSection <= 50.0) fuseSize = 200;
+            // Determine domain for cross-section calculation
+            const domain: 'DC_12V' | 'AC_230V' = node.type === 'consumer230v' ? 'AC_230V' : 'DC_12V';
+            const crossSection = calculateCrossSection(I, length, undefined, domain);
+            const fuseSize = calculateMaxFuse(crossSection);
 
             if (I > 0) {
               return (
