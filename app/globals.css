@@ -29,7 +29,7 @@
     --ring: #f97316;
     --info: #3b82f6;
     --success: #22c55e;
-    --warning: #ef4444;
+    --warning: #f59e0b;
     --radius: 0.625rem;
     --sidebar: #f8fafc;
     --sidebar-foreground: #0f172a;
@@ -38,6 +38,33 @@
     --sidebar-accent: #f1f5f9;
     --sidebar-accent-foreground: #0f172a;
     --sidebar-border: #e2e8f0;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --background: #171614;
+      --foreground: #e8e6e1;
+      --card: #1c1b19;
+      --card-foreground: #e8e6e1;
+      --popover: #201f1d;
+      --popover-foreground: #e8e6e1;
+      --primary: #fb923c;
+      --primary-foreground: #1a0a00;
+      --secondary: #292724;
+      --secondary-foreground: #e2ddd6;
+      --muted: #292724;
+      --muted-foreground: #9c9891;
+      --accent: #292724;
+      --accent-foreground: #e2ddd6;
+      --destructive: #f87171;
+      --destructive-foreground: #1a0000;
+      --warning: #fbbf24;
+      --border: #3a3835;
+      --input: #3a3835;
+      --ring: #fb923c;
+      --sidebar: #141312;
+      --sidebar-foreground: #e2ddd6;
+      --sidebar-border: #2e2c2a;
+    }
   }
   * {
     @apply border-border;
@@ -48,9 +75,10 @@
   html {
     @apply font-sans;
   }
-  h1, h2, h3, h4, h5, h6 {
-    @apply font-extrabold tracking-tight;
-  }
+  h1 { @apply font-black tracking-tight; }
+  h2 { @apply font-extrabold tracking-tight; }
+  h3 { @apply font-bold tracking-tight; }
+  h4, h5, h6 { @apply font-semibold; }
   .stat, .number {
     @apply font-mono;
   }
