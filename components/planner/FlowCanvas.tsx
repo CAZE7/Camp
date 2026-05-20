@@ -9,7 +9,7 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import { useShallow } from 'zustand/react/shallow';
 
-import WaterNode from '../nodes/WaterNode';
+
 import WaterPipeEdge from '../edges/WaterPipeEdge';
 import { EmptyState } from '../ui/EmptyState';
 import { NODE_TYPES, EDGE_TYPES } from './constants';
@@ -29,8 +29,10 @@ export function FlowCanvas() {
   React.useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
     checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+    let t: ReturnType<typeof setTimeout>;
+    const debounced = () => { clearTimeout(t); t = setTimeout(checkMobile, 150); };
+    window.addEventListener('resize', debounced);
+    return () => { window.removeEventListener('resize', debounced); clearTimeout(t); };
   }, []);
 
   const {
@@ -72,16 +74,7 @@ export function FlowCanvas() {
   useSequentialTapConnect();
 
   const edgeTypes = useMemo(() => ({ ...EDGE_TYPES, waterPipe: WaterPipeEdge }), []);
-  const nodeTypes = useMemo(() => ({
-    ...NODE_TYPES,
-    freshWaterTank: WaterNode,
-    grayWaterTank: WaterNode,
-    pump: WaterNode,
-    accumulator: WaterNode,
-    preFilter: WaterNode,
-    sink: WaterNode,
-    shower: WaterNode
-  }), []);
+  const nodeTypes = useMemo(() => ({ ...NODE_TYPES }), []);
 
   const metrics = useDashboardMetrics(nodes, edges, season, calculatedSolarWatts);
 
@@ -93,6 +86,12 @@ export function FlowCanvas() {
         </div>
       )}
     <FloatingMetricsCard />
+      {viewMode === 'electric' && nodes.length === 0 && (
+        <EmptyState title="Noch keine Komponenten" description="Ziehe Komponenten aus der linken Sidebar auf die Zeichenfläche." />
+      )}
+      {viewMode === 'water' && waterNodes.length === 0 && (
+        <EmptyState title="Noch kein Wassersystem" description="Ziehe Komponenten aus der Sidebar um dein Wassersystem zu planen." />
+      )}
       <ReactFlow
       style={{ willChange: 'transform', backfaceVisibility: 'hidden' }}
         nodes={viewMode === 'water' ? waterNodes : nodes}
@@ -108,7 +107,7 @@ export function FlowCanvas() {
         onDrop={onDrop}
         fitView
         snapToGrid={true}
-        snapGrid={[10, 10]}
+        snapGrid={[16, 16]}
         deleteKeyCode={['Backspace', 'Delete']}
         onlyRenderVisibleElements={true}
         elementsSelectable={true}

@@ -12,6 +12,7 @@ import GroundNode from '../nodes/GroundNode';
 import ConduitNode from '../nodes/ConduitNode';
 import BusbarNode from '../nodes/BusbarNode';
 import ShuntNode from '../nodes/ShuntNode';
+import WaterNode from '../nodes/WaterNode';
 
 export const NODE_TYPES = {
   battery: BatteryNode,
@@ -26,6 +27,13 @@ export const NODE_TYPES = {
   conduit: ConduitNode,
   busbar: BusbarNode,
   shunt: ShuntNode,
+  freshWaterTank: WaterNode,
+  grayWaterTank: WaterNode,
+  pump: WaterNode,
+  accumulator: WaterNode,
+  preFilter: WaterNode,
+  sink: WaterNode,
+  shower: WaterNode,
 };
 
 export const EDGE_TYPES = { cableEdge: CableEdge };
