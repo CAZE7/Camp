@@ -440,6 +440,12 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
         return { ...n, data: { ...n.data, ...data } };
       }
       return n;
+    }),
+    waterNodes: state.waterNodes.map((n) => {
+      if (n.id === id) {
+        return { ...n, data: { ...n.data, ...data } };
+      }
+      return n;
     })
   })),
 
@@ -504,8 +510,9 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
     // adding this new edge will create a cycle.
     const outgoersMap = new Map<string, string[]>();
 
-    for (let i = 0; i < edges.length; i++) {
-      const edge = edges[i];
+    const currentEdges = viewMode === 'water' ? get().waterEdges : edges;
+    for (let i = 0; i < currentEdges.length; i++) {
+      const edge = currentEdges[i];
       let targets = outgoersMap.get(edge.source);
       if (!targets) {
         targets = [];
@@ -558,13 +565,6 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
       };
       set((state) => ({ waterEdges: addEdge(newEdge, state.waterEdges) }));
       
-      if (!get().isLayoutPending) {
-        get().setIsLayoutPending(true);
-        setTimeout(() => {
-          get().onLayout();
-          get().setIsLayoutPending(false);
-        }, 50);
-      }
       return;
     }
 
@@ -588,13 +588,6 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
     };
     set((state) => ({ edges: addEdge(newEdge, state.edges) as Edge<CableEdgeData>[] }));
     
-    if (!get().isLayoutPending) {
-      get().setIsLayoutPending(true);
-      setTimeout(() => {
-        get().onLayout();
-        get().setIsLayoutPending(false);
-      }, 50);
-    }
   },
 
   autoWireSystem: (fitView) => {
@@ -653,9 +646,10 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
   },
 
   exportBOM: () => {
-    const { nodes, edges } = get();
+    const { nodes, waterNodes, edges, waterEdges } = get();
     const counts: Record<string, number> = {};
-    nodes.forEach(n => {
+    const allNodes = [...nodes, ...waterNodes];
+    allNodes.forEach(n => {
       counts[n.type!] = (counts[n.type!] || 0) + 1;
     });
 
@@ -663,6 +657,10 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
     edges.forEach(e => {
       const cs = e.data?.crossSection || 2.5;
       cableLengths[cs] = (cableLengths[cs] || 0) + (e.data?.length || 3);
+    });
+    waterEdges.forEach(e => {
+      const pipeType = e.data?.pipeType || 'water';
+      cableLengths[pipeType] = (cableLengths[pipeType] || 0) + (e.data?.length || 2);
     });
 
     const bom = { counts, cableLengths };

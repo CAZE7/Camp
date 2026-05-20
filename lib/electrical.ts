@@ -84,7 +84,7 @@ export const getEdgeDomain = (
   if (sourceNodeType === 'shorePower' || targetNodeType === 'shorePower') return 'AC_230V';
   if (sourceNodeType === 'consumer230v' || targetNodeType === 'consumer230v') return 'AC_230V';
   
-  const AC_HANDLES = ['plus', 'ac_out', 'L', 'ac', 'output'];
+  const AC_HANDLES = ['plus', 'ac_out', 'L', 'ac', 'output', 'ac_in'];
   if (sourceNodeType === 'inverter' && sourceHandle && AC_HANDLES.includes(sourceHandle)) {
     return 'AC_230V';
   }
@@ -105,8 +105,8 @@ export const getHandleDomain = (
     return 'AC_230V';
   }
   if (nodeType === 'inverter') {
-    const AC_HANDLES = ['plus', 'ac_out', 'L', 'ac', 'output'];
-    if (handleType === 'source' && handleId && AC_HANDLES.includes(handleId)) {
+    const AC_HANDLES = ['plus', 'ac_out', 'L', 'ac', 'output', 'ac_in'];
+    if (handleId && AC_HANDLES.includes(handleId)) {
       return 'AC_230V';
     }
     return 'DC_12V';

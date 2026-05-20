@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 
 interface AppState {
   isProMode: boolean;
@@ -10,18 +9,11 @@ interface AppState {
   setHasOnboarded: (val: boolean) => void;
 }
 
-export const useAppStore = create<AppState>()(
-  persist(
-    (set) => ({
-      isProMode: true,
-      toggleProMode: () => set((state) => ({ isProMode: !state.isProMode })),
-      calculatedSolarWatts: 0,
-      setCalculatedSolarWatts: (watts) => set({ calculatedSolarWatts: watts }),
-      hasOnboarded: false,
-      setHasOnboarded: (val) => set({ hasOnboarded: val }),
-    }),
-    {
-      name: 'camper-app-storage',
-    }
-  )
-);
+export const useAppStore = create<AppState>()((set) => ({
+  isProMode: true,
+  toggleProMode: () => set((state) => ({ isProMode: !state.isProMode })),
+  calculatedSolarWatts: 0,
+  setCalculatedSolarWatts: (watts) => set({ calculatedSolarWatts: watts }),
+  hasOnboarded: false,
+  setHasOnboarded: (val) => set({ hasOnboarded: val }),
+}));
