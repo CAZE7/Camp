@@ -135,8 +135,9 @@ export function Sidebar({ mode = 'electric', onMobileAdd }: SidebarProps) {
       {/* Collapse Toggle Button */}
       <button
         onClick={() => setIsCollapsed(!isCollapsed)}
-        className="absolute -right-3 top-14 z-10 bg-white border border-stone-200 rounded-full p-0.5 shadow-sm hover:bg-stone-50 transition-colors text-stone-500 hidden md:flex items-center justify-center"
-        aria-label="Toggle Sidebar"
+        className="absolute -right-3 top-14 z-10 bg-white border border-stone-200 rounded-full p-0.5 shadow-sm hover:bg-stone-50 transition-colors text-stone-500 hidden md:flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+        aria-expanded={!isCollapsed}
+        aria-label={isCollapsed ? "Sidebar ausklappen" : "Sidebar einklappen"}
       >
         {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
       </button>
@@ -172,7 +173,7 @@ export function Sidebar({ mode = 'electric', onMobileAdd }: SidebarProps) {
             {searchTerm && (
               <button
                 onClick={() => setSearchTerm('')}
-                className="absolute right-2 text-stone-400 hover:text-rose-500 transition-colors focus:outline-none"
+                className="absolute right-2 text-stone-400 hover:text-rose-500 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-1 rounded-full"
                 aria-label="Filter zurücksetzen"
               >
                 <XCircle size={16} />
@@ -186,7 +187,8 @@ export function Sidebar({ mode = 'electric', onMobileAdd }: SidebarProps) {
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-colors border ${selectedCategory === cat ? 'bg-emerald-500 text-white border-emerald-600' : 'bg-white text-stone-600 border-stone-200 hover:border-emerald-300 hover:bg-emerald-50'}`}
+                aria-pressed={selectedCategory === cat}
+                className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-colors border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1 ${selectedCategory === cat ? 'bg-emerald-500 text-white border-emerald-600' : 'bg-white text-stone-600 border-stone-200 hover:border-emerald-300 hover:bg-emerald-50'}`}
               >
                 {cat}
               </button>
