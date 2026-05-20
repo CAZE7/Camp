@@ -54,6 +54,7 @@ function ActionsSection({
   autoWireSystem,
   checkSchematic,
   onLayout,
+  onExportError,
 }: {
   fitView: (options?: any) => void;
   season: 'summer' | 'winter';
@@ -62,6 +63,7 @@ function ActionsSection({
   autoWireSystem: (fitView: (options?: any) => void) => void;
   checkSchematic: () => void;
   onLayout: (fitView: (options?: any) => void) => void;
+  onExportError: (msg: string) => void;
 }) {
   const handleExportBOM = useCallback(() => {
     exportBOM();
@@ -91,8 +93,9 @@ function ActionsSection({
       link.click();
     }).catch((err) => {
       console.error('Failed to export image', err);
+      onExportError('Bild-Export fehlgeschlagen. Bitte versuche es erneut.');
     });
-  }, []);
+  }, [onExportError]);
 
   return (
     <div className="flex items-center gap-4 flex-wrap">
@@ -163,6 +166,7 @@ function ProModeSection({
 
 export function PlannerDashboard() {
   const { fitView } = useReactFlow();
+  const [exportError, setExportError] = useState<string | null>(null);
 
   const {
     viewMode,
@@ -175,6 +179,8 @@ export function PlannerDashboard() {
     onLayout,
     nodes,
     edges,
+    waterNodes,
+    waterEdges,
   } = usePlannerStore(useShallow((state) => ({
     viewMode: state.viewMode,
     setViewMode: state.setViewMode,
@@ -186,10 +192,12 @@ export function PlannerDashboard() {
     onLayout: state.onLayout,
     nodes: state.nodes,
     edges: state.edges,
+    waterNodes: state.waterNodes,
+    waterEdges: state.waterEdges,
   })));
 
   const { isProMode, toggleProMode } = useAppStore();
-  const warnings = useLiveValidation(nodes, edges);
+  const warnings = useLiveValidation(nodes, edges, waterNodes, waterEdges);
 
   return (
     <div className="flex flex-wrap gap-2 bg-card border-b border-border p-2 shrink-0 w-full">
@@ -204,10 +212,17 @@ export function PlannerDashboard() {
           autoWireSystem={autoWireSystem}
           checkSchematic={checkSchematic}
           onLayout={onLayout}
+          onExportError={(msg) => { setExportError(msg); setTimeout(() => setExportError(null), 5000); }}
         />
 
         <ProModeSection isProMode={isProMode} toggleProMode={toggleProMode} />
       </div>
+
+      {exportError && (
+        <div className="w-full p-3 rounded-lg bg-red-50 text-red-800 border border-red-200 text-sm font-semibold">
+          🚨 {exportError}
+        </div>
+      )}
 
       {warnings.length > 0 && (
         <div className="flex flex-col gap-2">

@@ -8,7 +8,12 @@ export interface ValidationWarning {
   message: string;
 }
 
-export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
+export function useLiveValidation(
+  nodes: Node[],
+  edges: Edge<CableEdgeData>[],
+  waterNodes?: Node[],
+  waterEdges?: Edge[]
+) {
   return useMemo(() => {
     const warnings: ValidationWarning[] = [];
 
@@ -23,7 +28,7 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
         const targetNode = nodes.find(n => n.id === edge.target);
 
         const isHighPowerSource = sourceNode?.type === 'battery' || sourceNode?.type === 'inverter' || sourceNode?.type === 'charger';
-        const isNotFuseBoxTarget = targetNode?.type !== 'fuse' && targetNode?.type !== 'busbar';
+        const isNotFuseBoxTarget = targetNode?.type !== 'fuse' && targetNode?.type !== 'busbar' && targetNode?.type !== 'shunt';
 
         if (isHighPowerSource && isNotFuseBoxTarget) {
           if (!edge.data?.fuseSize) {
@@ -43,7 +48,7 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
 
     if (solarNodes.length > 0 && chargers.length > 0) {
       const totalSolarWatts = solarNodes.reduce((acc, node) => acc + (Number(node.data.watts) || 0), 0);
-      const mpptCapacity = (chargers.reduce((acc, node) => acc + (Number(node.data.amps) || 0), 0) * 12) / 0.85; // roughly Max Watts
+      const mpptCapacity = chargers.reduce((acc, node) => acc + (Number(node.data.amps) || 0), 0) * 12; // MPPT capacity in Watts (amps × system voltage)
 
       if (totalSolarWatts > mpptCapacity) {
         warnings.push({
@@ -64,7 +69,7 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
       // Calculate daily Ah consumption assuming 12V and average usage
       const totalDailyAh = consumers.reduce((acc, node) => {
         const watts = Number(node.data.watts) || 0;
-        const hours = Number(node.data.hours) || 4; // default to 4 hours if not set
+        const hours = Number(node.data.hours) || 0; // 0 hours if not defined — no phantom consumption
         return acc + ((watts * hours) / 12);
       }, 0);
 
@@ -77,6 +82,27 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
       }
     }
 
+    // --- Rule D: Direct Battery → Consumer/Inverter Without Protection ---
+    edges.forEach((edge) => {
+      const sourceNode = nodes.find(n => n.id === edge.source);
+      const targetNode = nodes.find(n => n.id === edge.target);
+      if (!sourceNode || !targetNode) return;
+
+      const isBattery = sourceNode.type === 'battery';
+      const isUnprotectedTarget =
+        targetNode.type === 'consumer' ||
+        targetNode.type === 'consumer230v' ||
+        targetNode.type === 'inverter';
+
+      if (isBattery && isUnprotectedTarget) {
+        warnings.push({
+          id: `direct-battery-${edge.id}`,
+          type: 'critical',
+          message: `⚠️ Kritisch: Verbraucher direkt an Batterie ohne Sicherung!`,
+        });
+      }
+    });
+
     return warnings;
-  }, [nodes, edges]);
+  }, [nodes, edges, waterNodes, waterEdges]);
 }

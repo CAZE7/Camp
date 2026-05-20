@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { usePlannerStore } from "../../store/usePlannerStore";
 import { cn } from "@/lib/utils";
 
@@ -276,6 +276,11 @@ export function ExpertPanel() {
     return EXPERT_KNOWLEDGE[nodeType] || DEFAULT_TIP;
   }, [selectedNodes]);
 
+  // Reset expanded tip when the knowledge context changes
+  useEffect(() => {
+    setExpandedTip(0);
+  }, [currentKnowledge]);
+
   return (
     <div
       className={cn(
@@ -330,7 +335,7 @@ export function ExpertPanel() {
             let I = 0;
             if (node.type === 'inverter') I = (Number(node.data.watts) || 1000) / 12 / 0.85;
             else if (node.type === 'solar') I = (Number(node.data.watts) || 100) / 18;
-            else if (node.type === 'consumer230v') I = (Number(node.data.watts) || 0) / 12 / 0.85;
+            else if (node.type === 'consumer230v') I = (Number(node.data.watts) || 0) / 230; // AC current at 230V
             else if (node.data?.watts) I = Number(node.data.watts) / 12;
             else if (node.data?.amps) I = Number(node.data.amps);
             
@@ -342,17 +347,19 @@ export function ExpertPanel() {
               isFallback = false;
             }
 
-            const calculatedA = (I * (length * 2)) / (58 * 0.24);
+            // DIN VDE 0298-4: 3% voltage drop = 0.36V at 12V
+            const calculatedA = (I * (length * 2)) / (58 * 0.36);
             const minRequiredA = Math.max(1.5, calculatedA);
             const VDE_SIZES = [1.5, 2.5, 4.0, 6.0, 10.0, 16.0, 25.0, 35.0, 50.0, 70.0];
             const crossSection = VDE_SIZES.find(size => size >= minRequiredA) || 70.0;
             
+            // DIN VDE 0298-4 fuse ratings
             let fuseSize = 250;
             if (crossSection <= 1.5) fuseSize = 16;
-            else if (crossSection <= 2.5) fuseSize = 25;
-            else if (crossSection <= 4.0) fuseSize = 32;
-            else if (crossSection <= 6.0) fuseSize = 50;
-            else if (crossSection <= 10.0) fuseSize = 60;
+            else if (crossSection <= 2.5) fuseSize = 20;
+            else if (crossSection <= 4.0) fuseSize = 25;
+            else if (crossSection <= 6.0) fuseSize = 32;
+            else if (crossSection <= 10.0) fuseSize = 50;
             else if (crossSection <= 16.0) fuseSize = 100;
             else if (crossSection <= 25.0) fuseSize = 130;
             else if (crossSection <= 35.0) fuseSize = 150;

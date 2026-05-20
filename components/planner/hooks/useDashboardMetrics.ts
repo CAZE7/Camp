@@ -18,7 +18,10 @@ export function useDashboardMetrics(
       return (
         n.id !== prev.id ||
         n.type !== prev.type ||
-        JSON.stringify(n.data) !== JSON.stringify(prev.data)
+        n.data?.watts !== prev.data?.watts ||
+        n.data?.capacity !== prev.data?.capacity ||
+        n.data?.amps !== prev.data?.amps ||
+        n.data?.hours !== prev.data?.hours
       );
     });
 
@@ -153,12 +156,8 @@ function calculateDailyConsumption(
     const label = String(n.data?.label || '').toLowerCase();
     const isHeater = n.type === 'heater' || label.includes('heiz') || label.includes('heater') || label.includes('autoterm');
     
-    if (isHeater) {
-      if (season === 'winter') {
-        consumption *= 2;
-      } else {
-        consumption *= 1.5;
-      }
+    if (isHeater && season === 'winter') {
+      consumption *= 2;
     }
     
     return acc + consumption;
@@ -265,7 +264,8 @@ function calculateChargingTime(
   // The roof planner solar (effectiveSolarWatts) must apply it here.
   const seasonFactor = season === 'winter' ? 0.35 : 1;
   // Validated calculation step.
-  const roofSolarAmps = (effectiveSolarWatts / 12) * seasonFactor;
+  // Solar panels output at Vmp ≈ 18V, not 12V
+  const roofSolarAmps = (effectiveSolarWatts / 18) * seasonFactor;
 
   const totalChargerAmps =
     chargers.reduce((acc, n) => acc + (((n.data as ChargerNodeData)?.amps || 0) * (((n.data as ChargerNodeData)?.efficiency ?? 100) / 100)), 0) +
