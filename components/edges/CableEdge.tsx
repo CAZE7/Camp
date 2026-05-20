@@ -13,7 +13,7 @@ export type CableEdgeData = {
   edgeDomain?: 'DC_12V' | 'AC_230V';
 };
 
-type CableEdgeProps = EdgeProps<CableEdgeData> & { sourceHandle?: string | null };
+type CableEdgeProps = EdgeProps<CableEdgeData> & { sourceHandle?: string | null, targetHandle?: string | null };
 
 export const calculateCurrent = (
   sourceNode: Node | undefined,
@@ -82,6 +82,7 @@ const CableEdge = function ({
   markerEnd,
   selected,
   sourceHandle,
+  targetHandle,
 }: CableEdgeProps) {
   const { getNode, getNodes } = useReactFlow();
   const isProMode = useAppStore(state => state.isProMode);
@@ -131,7 +132,7 @@ const CableEdge = function ({
     const sourceNode = getNode(source);
     const targetNode = getNode(target);
 
-    let edgeDomain = data?.edgeDomain || getEdgeDomain(sourceNode?.type, targetNode?.type, sourceHandle);
+    let edgeDomain = data?.edgeDomain || getEdgeDomain(sourceNode?.type, targetNode?.type, sourceHandle, targetHandle);
     if (sourceNode?.type === 'solar' || targetNode?.type === 'solar' || sourceNode?.type === 'roofSolar' || targetNode?.type === 'roofSolar') {
       edgeDomain = 'Solar' as any;
     }
@@ -173,7 +174,7 @@ const CableEdge = function ({
       edgeDomain,
     };
     // Dependencies include node data, system load, and coordinates to force re-calc when anything relevant changes including moves
-  }, [getNode, getNodes, data?.length, data?.crossSection, data?.edgeDomain, source, target, sNodeData, tNodeData, systemLoad, sourceX, sourceY, targetX, targetY, sourceHandle]);
+  }, [getNode, getNodes, data?.length, data?.crossSection, data?.edgeDomain, source, target, sNodeData, tNodeData, systemLoad, sourceX, sourceY, targetX, targetY, sourceHandle, targetHandle]);
 
   const totalDropPercentage = dropPercentage + cumulativeDrop;
 

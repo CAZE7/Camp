@@ -80,13 +80,17 @@ export const calculateStrokeWidth = (cs: number): number => {
 export const getEdgeDomain = (
   sourceNodeType: string | undefined,
   targetNodeType: string | undefined,
-  sourceHandle: string | null | undefined
+  sourceHandle: string | null | undefined,
+  targetHandle?: string | null | undefined
 ): 'DC_12V' | 'AC_230V' => {
   if (sourceNodeType === 'shorePower' || targetNodeType === 'shorePower') return 'AC_230V';
   if (sourceNodeType === 'consumer230v' || targetNodeType === 'consumer230v') return 'AC_230V';
   
   const AC_HANDLES = ['plus', 'ac_out', 'L', 'ac', 'output'];
   if (sourceNodeType === 'inverter' && sourceHandle && AC_HANDLES.includes(sourceHandle)) {
+    return 'AC_230V';
+  }
+  if (targetNodeType === 'inverter' && targetHandle && AC_HANDLES.includes(targetHandle)) {
     return 'AC_230V';
   }
   return 'DC_12V';
