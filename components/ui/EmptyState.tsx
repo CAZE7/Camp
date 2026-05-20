@@ -1,14 +1,14 @@
 "use client";
 
 import React from 'react';
-import { Compass, Plus } from 'lucide-react';
-import { Button } from './button';
+import { Compass } from 'lucide-react';
 
 interface EmptyStateProps {
-  onAdd: () => void;
+  title: string;
+  description: string;
 }
 
-export function EmptyState({ onAdd }: EmptyStateProps) {
+export function EmptyState({ title, description }: EmptyStateProps) {
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center z-10 pointer-events-none">
       <div className="bg-card/80 backdrop-blur-sm border border-border p-8 rounded-3xl shadow-2xl flex flex-col items-center max-w-sm text-center pointer-events-auto">
@@ -16,15 +16,11 @@ export function EmptyState({ onAdd }: EmptyStateProps) {
           <Compass className="w-10 h-10 text-primary" strokeWidth={1.5} />
         </div>
         <h2 className="text-2xl font-extrabold tracking-tight text-foreground mb-3">
-          Dein System ist noch leer.
+          {title}
         </h2>
-        <p className="text-muted-foreground mb-8">
-          Beginne dein Abenteuer, indem du erste Komponenten zu deiner Planung hinzufügst.
+        <p className="text-muted-foreground">
+          {description}
         </p>
-        <Button onClick={onAdd} className="w-full gap-2 text-primary-foreground font-bold" size="lg">
-          <Plus className="w-5 h-5" />
-          Erste Komponente hinzufügen
-        </Button>
       </div>
     </div>
   );
