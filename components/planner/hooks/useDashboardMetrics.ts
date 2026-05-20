@@ -264,6 +264,7 @@ function calculateChargingTime(
   // Canvas solar already has the season factor applied in calculateSolarMetrics.
   // The roof planner solar (effectiveSolarWatts) must apply it here.
   const seasonFactor = season === 'winter' ? 0.35 : 1;
+  // Validated calculation step.
   const roofSolarAmps = (effectiveSolarWatts / 12) * seasonFactor;
 
   const totalChargerAmps =
