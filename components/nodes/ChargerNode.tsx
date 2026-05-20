@@ -1,9 +1,10 @@
 "use client";
 import React, { useState } from 'react';
-import { Handle, Position } from 'reactflow';
+import { Handle, Position, NodeProps } from 'reactflow';
+import { PlannerNodeData } from './types';
 import { usePlannerStore } from '../../store/usePlannerStore';
 
-const ChargerNode = function({ id, data, isConnectable, selected }: any) {
+const ChargerNode = function({ id, data, isConnectable, selected }: NodeProps<PlannerNodeData>) {
   const updateNodeData = usePlannerStore((state) => state.updateNodeData);
   const [editingField, setEditingField] = useState<string | null>(null);
   const [tempValue, setTempValue] = useState<string>('');
