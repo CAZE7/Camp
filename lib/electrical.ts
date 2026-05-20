@@ -38,8 +38,6 @@ export const calculateMaxFuse = (crossSection: number): number => {
   return FUSE_MAP[crossSection] || 0;
 };
 
-// 3. Fix lookupThermalCrossSection:
-// Ersetze den statischen Faktor 1.35 durch (1 / DERATE_FACTOR).
 export const lookupThermalCrossSection = (I: number): number => {
   const requiredAmpacity = I * (1 / DERATE_FACTOR);
   const size = VDE_SIZES.find(s => VDE_AMPACITY[s] >= requiredAmpacity);
