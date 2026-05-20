@@ -39,15 +39,19 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   const isWaterActive = pathname === '/elektrik-planung' && viewMode === 'water';
   const isHeatingActive = pathname === '/tools/heizung';
 
+  const isPlannerRoute = pathname.startsWith('/elektrik-planung') || pathname.startsWith('/tools');
+
   return (
     <div className="min-h-screen w-full relative">
       {/* Desktop Sidebar (visible on screens >= 768px) */}
-      <div className="hidden md:block">
-        <NavigationSidebar isCollapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
-      </div>
+      {isPlannerRoute && (
+        <div className="hidden md:block">
+          <NavigationSidebar isCollapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
+        </div>
+      )}
 
       {/* Main content wrapper */}
-      <main className={`${sidebarCollapsed ? 'md:pl-14' : 'md:pl-[17rem]'} min-h-screen transition-all duration-300 relative z-10 pb-20 md:pb-0`}>
+      <main className={`${isPlannerRoute ? (sidebarCollapsed ? 'md:pl-14' : 'md:pl-[17rem]') : ''} min-h-screen transition-all duration-300 relative z-10 pb-20 md:pb-0`}>
         {children}
       </main>
 

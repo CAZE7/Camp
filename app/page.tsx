@@ -232,16 +232,6 @@ function HeroSection() {
             Neues Projekt starten
           </Link>
         </Button>
-        <Button
-          asChild
-          variant="outline"
-          size="lg"
-          className="rounded-2xl px-8 py-6 text-base font-bold border-stone-200 text-stone-600 hover:bg-stone-50 hover:border-stone-300 transition-all"
-        >
-          <Link href="/guides/camper-ausbauguide">
-            Ausbau-Guide lesen
-          </Link>
-        </Button>
       </div>
 
       {/* Stats ribbon */}
@@ -419,57 +409,27 @@ function ToolGrid() {
 /* ─── Guides Section ─── */
 function GuidesSection() {
   return (
-    <section className="max-w-5xl w-full mt-16 relative z-10">
-      <Card className="border-0 rounded-[2rem] bg-white/95 backdrop-blur-sm shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden">
-        <CardHeader className="px-8 sm:px-10 pt-8 pb-2">
-          <div className="flex items-center gap-3">
-            <div className="bg-stone-100 p-2.5 rounded-xl text-stone-700 border border-stone-200 shadow-inner flex items-center justify-center">
-              <BookOpen size={24} />
-            </div>
-            <CardTitle
-              className={cn(
-                "text-2xl sm:text-3xl font-black text-stone-800",
-                outfit.className
-              )}
-            >
-              Ausbau-Guides &amp; Wissen
-            </CardTitle>
-          </div>
-          <CardDescription className="mt-1 text-stone-500 text-sm font-medium">
-            Fundiertes Wissen von der Entkernung bis zur TÜV-Abnahme.
-          </CardDescription>
-        </CardHeader>
-
-        <CardContent className="px-8 sm:px-10 pb-8 pt-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {guides.map((guide) => (
-              <Link
-                key={guide.href}
-                href={guide.href}
-                className={cn(
-                  "group flex items-center justify-between p-5 rounded-2xl",
-                  "bg-stone-50 border border-stone-200",
-                  "hover:border-emerald-400 hover:shadow-md hover:bg-emerald-50/30",
-                  "transition-all duration-200",
-                  guide.span
-                )}
-              >
-                <span
-                  className={cn(
-                    "font-bold text-stone-700 group-hover:text-emerald-700 transition-colors text-base",
-                    outfit.className
-                  )}
-                >
-                  {guide.title}
-                </span>
-                <span className="text-emerald-500 group-hover:translate-x-1 transition-transform flex-shrink-0 ml-3">
-                  ➔
-                </span>
-              </Link>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+    <section className="max-w-5xl w-full mt-16 mb-12 relative z-10 flex flex-col items-center opacity-80 hover:opacity-100 transition-opacity">
+      <div className="flex flex-col items-center text-center mb-6">
+        <h3 className={cn("text-lg font-bold text-stone-500 flex items-center gap-2", outfit.className)}>
+          <BookOpen size={18} />
+          Ausbau-Guides &amp; Wissen
+        </h3>
+      </div>
+      <div className="flex flex-wrap justify-center gap-3">
+        {guides.map((guide) => (
+          <Link
+            key={guide.href}
+            href={guide.href}
+            className="group flex items-center gap-2 px-4 py-2 rounded-full bg-stone-100 text-stone-600 hover:bg-stone-200 hover:text-stone-900 transition-colors text-sm font-medium"
+          >
+            {guide.title}
+            <span className="text-stone-400 group-hover:text-stone-600 transition-colors text-xs">
+              ➔
+            </span>
+          </Link>
+        ))}
+      </div>
     </section>
   );
 }
