@@ -6,6 +6,7 @@ import { PlannerInspector } from './PlannerInspector';
 // Mock usePlannerStore
 const mockPlannerStoreState = {
   nodes: [{ id: 'node-1', data: { label: 'Node 1' } }, { id: 'node-2', data: { label: 'Node 2' } }],
+  waterNodes: [],
   edges: [{ id: 'edge-1', source: 'node-1', target: 'node-2' }],
   season: 'summer',
   selectedNodes: [{ id: 'node-1' }],
