@@ -42,7 +42,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   const isPlannerRoute = pathname.startsWith('/elektrik-planung') || pathname.startsWith('/tools');
 
   return (
-    <div className="min-h-screen w-full relative">
+    <div className="min-h-[100dvh] w-full relative flex flex-col">
       {/* Desktop Sidebar (visible on screens >= 768px) */}
       {isPlannerRoute && (
         <div className="hidden md:block">
@@ -51,7 +51,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
       )}
 
       {/* Main content wrapper */}
-      <main className={`${isPlannerRoute ? (sidebarCollapsed ? 'md:pl-14' : 'md:pl-[17rem]') : ''} min-h-screen transition-all duration-300 relative z-10 pb-20 md:pb-0`}>
+      <main className={`${isPlannerRoute ? (sidebarCollapsed ? 'md:pl-14' : 'md:pl-[17rem]') : ''} flex-1 flex flex-col transition-all duration-300 relative z-10 pb-20 md:pb-0 min-h-0`}>
         {children}
       </main>
 
