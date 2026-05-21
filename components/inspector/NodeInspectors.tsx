@@ -1,6 +1,7 @@
 import React from 'react';
 import { Node, Edge } from 'reactflow';
 import { CableEdgeData } from '../edges/CableEdge';
+import { ValidatingNumberInput } from '../ui/ValidatingNumberInput';
 
 export interface BaseNodeInspectorProps {
   node: Node;
@@ -39,12 +40,12 @@ export function BatteryInspector({
           </div>
         )}
         <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider" htmlFor={`${node.id}-capacity`}>Kapazität (Ah)</label>
-        <input id={`${node.id}-capacity`}
-          type="number"
+        <ValidatingNumberInput id={`${node.id}-capacity`}
           min="0"
-          value={node.data?.capacity || 0}
-          onChange={(e) => onUpdateNodeData?.(node.id, { capacity: Number(e.target.value) })}
-          className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow"
+          required={true}
+          value={node.data?.capacity ?? null}
+          onChange={(val) => onUpdateNodeData?.(node.id, { capacity: val })}
+          className="border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow"
         />
       </div>
       <div className="flex flex-col">
@@ -67,23 +68,23 @@ export function ConsumerInspector({ node, onUpdateNodeData }: BaseNodeInspectorP
     <>
       <div className="flex flex-col">
         <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider" htmlFor={`${node.id}-watts`}>Leistung (W)</label>
-        <input id={`${node.id}-watts`}
-          type="number"
+        <ValidatingNumberInput id={`${node.id}-watts`}
           min="0"
-          value={node.data?.watts || 0}
-          onChange={(e) => onUpdateNodeData?.(node.id, { watts: Number(e.target.value) })}
-          className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow"
+          required={true}
+          value={node.data?.watts ?? null}
+          onChange={(val) => onUpdateNodeData?.(node.id, { watts: val })}
+          className="border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow"
         />
       </div>
       <div className="flex flex-col">
         <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider" htmlFor={`${node.id}-hours`}>Nutzung (h/Tag)</label>
-        <input id={`${node.id}-hours`}
-          type="number"
+        <ValidatingNumberInput id={`${node.id}-hours`}
           min="0"
           max="24"
-          value={node.data?.hours || 0}
-          onChange={(e) => onUpdateNodeData?.(node.id, { hours: Number(e.target.value) })}
-          className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow"
+          required={true}
+          value={node.data?.hours ?? null}
+          onChange={(val) => onUpdateNodeData?.(node.id, { hours: val })}
+          className="border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow"
         />
       </div>
     </>
@@ -95,23 +96,23 @@ export function ChargerInspector({ node, onUpdateNodeData }: BaseNodeInspectorPr
     <>
       <div className="flex flex-col">
         <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider" htmlFor={`${node.id}-amps`}>Ladeleistung (A)</label>
-        <input id={`${node.id}-amps`}
-          type="number"
+        <ValidatingNumberInput id={`${node.id}-amps`}
           min="0"
-          value={node.data?.amps || 0}
-          onChange={(e) => onUpdateNodeData?.(node.id, { amps: Number(e.target.value) })}
-          className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow"
+          required={true}
+          value={node.data?.amps ?? null}
+          onChange={(val) => onUpdateNodeData?.(node.id, { amps: val })}
+          className="border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow"
         />
       </div>
       <div className="flex flex-col">
         <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider" htmlFor={`${node.id}-efficiency`}>Effizienz in %</label>
-        <input id={`${node.id}-efficiency`}
-          type="number"
+        <ValidatingNumberInput id={`${node.id}-efficiency`}
           min="0"
           max="100"
-          value={node.data?.efficiency ?? 100}
-          onChange={(e) => onUpdateNodeData?.(node.id, { efficiency: Number(e.target.value) })}
-          className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow"
+          required={true}
+          value={node.data?.efficiency ?? null}
+          onChange={(val) => onUpdateNodeData?.(node.id, { efficiency: val })}
+          className="border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow"
         />
       </div>
     </>
@@ -122,12 +123,12 @@ export function FuseInspector({ node, onUpdateNodeData }: BaseNodeInspectorProps
   return (
     <div className="flex flex-col">
       <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider" htmlFor={`${node.id}-rating`}>Sicherung (A)</label>
-        <input id={`${node.id}-rating`}
-        type="number"
+        <ValidatingNumberInput id={`${node.id}-rating`}
         min="0"
-        value={node.data?.rating || 0}
-        onChange={(e) => onUpdateNodeData?.(node.id, { rating: Number(e.target.value) })}
-        className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow"
+        required={true}
+        value={node.data?.rating ?? null}
+        onChange={(val) => onUpdateNodeData?.(node.id, { rating: val })}
+        className="border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow"
       />
     </div>
   );
@@ -167,12 +168,12 @@ export function InverterInspector({
     <>
       <div className="flex flex-col">
         <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider" htmlFor={`${node.id}-continuousPower`}>Dauerleistung (W)</label>
-        <input id={`${node.id}-continuousPower`}
-          type="number"
+        <ValidatingNumberInput id={`${node.id}-continuousPower`}
           min="0"
-          value={node.data?.continuousPower || 0}
-          onChange={(e) => onUpdateNodeData?.(node.id, { continuousPower: Number(e.target.value) })}
-          className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow"
+          required={true}
+          value={node.data?.continuousPower ?? null}
+          onChange={(val) => onUpdateNodeData?.(node.id, { continuousPower: val })}
+          className="border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow"
         />
       </div>
       <div className="flex flex-col mt-4">
@@ -209,23 +210,23 @@ export function Consumer230VInspector({ node, onUpdateNodeData }: BaseNodeInspec
     <>
       <div className="flex flex-col">
         <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider" htmlFor={`${node.id}-watts230`}>Leistung 230V (W)</label>
-        <input id={`${node.id}-watts230`}
-          type="number"
+        <ValidatingNumberInput id={`${node.id}-watts230`}
           min="0"
-          value={node.data?.watts || 0}
-          onChange={(e) => onUpdateNodeData?.(node.id, { watts: Number(e.target.value) })}
-          className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow"
+          required={true}
+          value={node.data?.watts ?? null}
+          onChange={(val) => onUpdateNodeData?.(node.id, { watts: val })}
+          className="border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow"
         />
       </div>
       <div className="flex flex-col">
         <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider" htmlFor={`${node.id}-hours230`}>Nutzung (h/Tag)</label>
-        <input id={`${node.id}-hours230`}
-          type="number"
+        <ValidatingNumberInput id={`${node.id}-hours230`}
           min="0"
           max="24"
-          value={node.data?.hours || 0}
-          onChange={(e) => onUpdateNodeData?.(node.id, { hours: Number(e.target.value) })}
-          className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow"
+          required={true}
+          value={node.data?.hours ?? null}
+          onChange={(val) => onUpdateNodeData?.(node.id, { hours: val })}
+          className="border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow"
         />
       </div>
     </>
@@ -237,24 +238,24 @@ export function SolarInspector({ node, onUpdateNodeData }: BaseNodeInspectorProp
     <>
       <div className="flex flex-col">
         <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider" htmlFor={`${node.id}-voltage`}>Arbeitsspannung (V)</label>
-        <input id={`${node.id}-voltage`}
-          type="number"
+        <ValidatingNumberInput id={`${node.id}-voltage`}
           min="0"
           step="0.1"
-          value={node.data?.voltage || 0}
-          onChange={(e) => onUpdateNodeData?.(node.id, { voltage: Number(e.target.value) })}
-          className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow"
+          required={true}
+          value={node.data?.voltage ?? null}
+          onChange={(val) => onUpdateNodeData?.(node.id, { voltage: val })}
+          className="border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow"
         />
       </div>
       <div className="flex flex-col">
         <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider" htmlFor={`${node.id}-ampsSolar`}>Strom (A)</label>
-        <input id={`${node.id}-ampsSolar`}
-          type="number"
+        <ValidatingNumberInput id={`${node.id}-ampsSolar`}
           min="0"
           step="0.1"
-          value={node.data?.amps || 0}
-          onChange={(e) => onUpdateNodeData?.(node.id, { amps: Number(e.target.value) })}
-          className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow"
+          required={true}
+          value={node.data?.amps ?? null}
+          onChange={(val) => onUpdateNodeData?.(node.id, { amps: val })}
+          className="border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow"
         />
       </div>
     </>
@@ -266,22 +267,22 @@ export function RoofWindowInspector({ node, onUpdateNodeData }: BaseNodeInspecto
     <>
       <div className="flex flex-col">
         <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider" htmlFor={`${node.id}-width`}>Breite (cm)</label>
-        <input id={`${node.id}-width`}
-          type="number"
+        <ValidatingNumberInput id={`${node.id}-width`}
           min="1"
-          value={node.data?.width || 0}
-          onChange={(e) => onUpdateNodeData?.(node.id, { width: Number(e.target.value) })}
-          className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow"
+          required={true}
+          value={node.data?.width ?? null}
+          onChange={(val) => onUpdateNodeData?.(node.id, { width: val })}
+          className="border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow"
         />
       </div>
       <div className="flex flex-col">
         <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider" htmlFor={`${node.id}-height`}>Länge (cm)</label>
-        <input id={`${node.id}-height`}
-          type="number"
+        <ValidatingNumberInput id={`${node.id}-height`}
           min="1"
-          value={node.data?.height || 0}
-          onChange={(e) => onUpdateNodeData?.(node.id, { height: Number(e.target.value) })}
-          className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow"
+          required={true}
+          value={node.data?.height ?? null}
+          onChange={(val) => onUpdateNodeData?.(node.id, { height: val })}
+          className="border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow"
         />
       </div>
     </>
@@ -293,32 +294,32 @@ export function RoofSolarInspector({ node, onUpdateNodeData }: BaseNodeInspector
     <>
       <div className="flex flex-col">
         <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider" htmlFor={`${node.id}-width2`}>Breite (cm)</label>
-        <input id={`${node.id}-width2`}
-          type="number"
+        <ValidatingNumberInput id={`${node.id}-width2`}
           min="1"
-          value={node.data?.width || 0}
-          onChange={(e) => onUpdateNodeData?.(node.id, { width: Number(e.target.value) })}
-          className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow"
+          required={true}
+          value={node.data?.width ?? null}
+          onChange={(val) => onUpdateNodeData?.(node.id, { width: val })}
+          className="border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow"
         />
       </div>
       <div className="flex flex-col">
         <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider" htmlFor={`${node.id}-height2`}>Länge (cm)</label>
-        <input id={`${node.id}-height2`}
-          type="number"
+        <ValidatingNumberInput id={`${node.id}-height2`}
           min="1"
-          value={node.data?.height || 0}
-          onChange={(e) => onUpdateNodeData?.(node.id, { height: Number(e.target.value) })}
-          className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow"
+          required={true}
+          value={node.data?.height ?? null}
+          onChange={(val) => onUpdateNodeData?.(node.id, { height: val })}
+          className="border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow"
         />
       </div>
       <div className="flex flex-col">
         <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider" htmlFor={`${node.id}-wattsRoof`}>Leistung (Wp)</label>
-        <input id={`${node.id}-wattsRoof`}
-          type="number"
+        <ValidatingNumberInput id={`${node.id}-wattsRoof`}
           min="0"
-          value={node.data?.watts || 0}
-          onChange={(e) => onUpdateNodeData?.(node.id, { watts: Number(e.target.value) })}
-          className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow"
+          required={true}
+          value={node.data?.watts ?? null}
+          onChange={(val) => onUpdateNodeData?.(node.id, { watts: val })}
+          className="border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow"
         />
       </div>
     </>
