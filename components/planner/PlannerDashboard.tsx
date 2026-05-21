@@ -30,7 +30,7 @@ function NavigationSection({
         variant={viewMode === 'electric' ? 'default' : 'ghost'}
         size="sm"
         onClick={() => setViewMode('electric')}
-        className={`min-h-[48px] md:min-h-0 ${viewMode === 'electric' ? 'bg-orange-500 hover:bg-orange-600' : ''}`}
+        className={viewMode === 'electric' ? 'bg-orange-500 hover:bg-orange-600' : ''}
       >
         Elektrik-Schaltplan
       </Button>
@@ -38,7 +38,7 @@ function NavigationSection({
         variant={viewMode === 'water' ? 'default' : 'ghost'}
         size="sm"
         onClick={() => setViewMode('water')}
-        className={`min-h-[48px] md:min-h-0 ${viewMode === 'water' ? 'bg-cyan-500 hover:bg-cyan-600' : ''}`}
+        className={viewMode === 'water' ? 'bg-cyan-500 hover:bg-cyan-600' : ''}
       >
         Wasser & Sanitär
       </Button>
@@ -98,7 +98,7 @@ function ActionsSection({
   }, [onExportError]);
 
   return (
-    <div className="flex items-center gap-4 flex-wrap">
+    <div className="flex items-center gap-4 flex-nowrap">
       {/* Segmented Action Buttons */}
       <div className="flex bg-stone-100/50 p-1 rounded-lg border border-stone-200/60 backdrop-blur-sm gap-1">
         <Button variant="ghost" size="sm" onClick={handleExportBOM} className="gap-1.5 text-orange-700 hover:bg-white hover:shadow-sm">
@@ -124,7 +124,7 @@ function ActionsSection({
           variant={season === 'summer' ? 'default' : 'ghost'}
           size="sm"
           onClick={() => setSeason('summer')}
-          className={`gap-1.5 min-h-[48px] md:min-h-0 ${season === 'summer' ? 'bg-yellow-400 text-yellow-900 shadow-sm' : ''}`}
+          className={`gap-1.5 ${season === 'summer' ? 'bg-yellow-400 text-yellow-900 shadow-sm' : ''}`}
         >
           <Sun className="w-4 h-4" /> Sommer
         </Button>
@@ -132,7 +132,7 @@ function ActionsSection({
           variant={season === 'winter' ? 'default' : 'ghost'}
           size="sm"
           onClick={() => setSeason('winter')}
-          className={`gap-1.5 min-h-[48px] md:min-h-0 ${season === 'winter' ? 'bg-blue-400 text-blue-900 shadow-sm' : ''}`}
+          className={`gap-1.5 ${season === 'winter' ? 'bg-blue-400 text-blue-900 shadow-sm' : ''}`}
         >
           <Snowflake className="w-4 h-4" /> Winter
         </Button>
@@ -154,7 +154,7 @@ function ProModeSection({
         variant={isProMode ? 'default' : 'outline'}
         size="sm"
         onClick={toggleProMode}
-        className={`min-h-[48px] md:min-h-0 ${isProMode ? 'bg-blue-500 hover:bg-blue-600' : ''}`}
+        className={isProMode ? 'bg-blue-500 hover:bg-blue-600' : ''}
       >
         {isProMode ? 'Profi-Modus An' : 'Profi-Modus Aus'}
       </Button>
@@ -200,8 +200,8 @@ export function PlannerDashboard() {
   const warnings = useLiveValidation(nodes, edges, waterNodes, waterEdges);
 
   return (
-    <div className="flex flex-wrap gap-2 bg-card border-b border-border p-2 shrink-0 w-full">
-      <div className="flex flex-wrap gap-3 bg-card shadow-lg rounded-lg p-3 border border-border">
+    <div className="flex items-center gap-2 bg-card border-b border-border px-3 py-1.5 shrink-0 w-full overflow-x-auto">
+      <div className="flex items-center gap-2 flex-nowrap">
         <NavigationSection viewMode={viewMode} setViewMode={setViewMode} />
 
         <ActionsSection
