@@ -3,6 +3,12 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import Planner from './Planner';
 
+// Mock next/navigation
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  usePathname: () => '/elektrik-planung',
+}));
+
 // Mock the child components to simplify testing
 vi.mock('./planner/PlannerSidebar', () => ({
   PlannerSidebar: () => <div data-testid="planner-sidebar">PlannerSidebar</div>,
@@ -55,7 +61,7 @@ describe('Planner Component', () => {
         const sidebar = screen.getByTestId('planner-sidebar');
         // The sidebar is wrapped in a container that has the md:flex classes
         const mainContainer = sidebar.parentElement?.parentElement;
-        expect(mainContainer).toHaveClass('flex', 'flex-col', 'md:flex-row', 'h-screen', 'w-full', 'bg-background', 'overflow-hidden');
+        expect(mainContainer).toHaveClass('flex', 'flex-col', 'md:flex-row', 'flex-1', 'min-h-0', 'w-full', 'bg-background', 'overflow-hidden');
     });
   });
 });

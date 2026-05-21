@@ -17,7 +17,7 @@ describe('ElektrikPlanung Page', () => {
 
     // Check for the specific CSS classes
     expect(mainElement?.className).toContain('w-full');
-    expect(mainElement?.className).toContain('h-screen');
+    expect(mainElement?.className).toContain('flex-1');
     expect(mainElement?.className).toContain('relative');
   });
 

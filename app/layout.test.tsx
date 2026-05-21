@@ -33,13 +33,12 @@ describe('RootLayout', () => {
 
     expect(element.type).toBe('html');
     expect(element.props.lang).toBe('de');
-    expect(element.props.className).toContain('font-sans');
     expect(element.props.className).toContain('mocked-geist-variable');
 
     const bodyElement = element.props.children;
     expect(bodyElement.type).toBe('body');
-    expect(bodyElement.props.className).toContain('mocked-inter-class');
     expect(bodyElement.props.className).toContain('bg-stone-50');
+    expect(bodyElement.props.className).toContain('font-sans');
 
     // MainLayout container is rendered inside body
     // Since we removed the ambient background div, bodyElement.props.children is no longer an array

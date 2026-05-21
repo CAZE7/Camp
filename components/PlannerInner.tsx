@@ -25,7 +25,7 @@ export default function PlannerInner() {
   };
 
   return (
-    <div className="flex flex-col md:flex-row h-screen w-full bg-background overflow-hidden font-sans relative planner-mobile-container">
+    <div className="flex flex-col md:flex-row flex-1 min-h-0 w-full bg-background overflow-hidden font-sans relative planner-mobile-container">
       {!hasOnboarded && <OnboardingWizard />}
 
       {/* Sidebar Area */}
