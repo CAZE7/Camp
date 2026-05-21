@@ -6,8 +6,12 @@ import { PoolClient } from 'pg';
 
 dotenv.config();
 
+if (!process.env.OPENAI_API_KEY) {
+  throw new Error("OPENAI_API_KEY environment variable is required.");
+}
+
 const openai = createOpenAI({
-  apiKey: process.env.OPENAI_API_KEY || 'dummy_key',
+  apiKey: process.env.OPENAI_API_KEY,
 });
 
 const guides = [
@@ -111,47 +115,27 @@ async function setupDatabase(client: PoolClient) {
 async function seedKnowledgeChunks(client: PoolClient) {
   // 3. Generate embeddings and insert into Knowledge_Chunks
   logger.info("Generating embeddings...");
-  if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'dummy_key') {
-    const { embeddings } = await embedMany({
-      model: openai.embedding('text-embedding-3-small'),
-      values: guides.map(g => g.content),
-    });
+  const { embeddings } = await embedMany({
+    model: openai.embedding('text-embedding-3-small'),
+    values: guides.map(g => g.content),
+  });
 
-    logger.info("Inserting knowledge chunks...");
-    if (guides.length > 0) {
-      const values: any[] = [];
-      const placeholders: string[] = [];
-      let paramIndex = 1;
+  logger.info("Inserting knowledge chunks...");
+  if (guides.length > 0) {
+    const values: any[] = [];
+    const placeholders: string[] = [];
+    let paramIndex = 1;
 
-      for (let i = 0; i < guides.length; i++) {
-        const guide = guides[i];
-        const embedding = embeddings[i];
-        placeholders.push(`($${paramIndex}, $${paramIndex + 1}::vector, $${paramIndex + 2})`);
-        values.push(guide.content, JSON.stringify(embedding), guide.metadata);
-        paramIndex += 3;
-      }
-
-      const query = `INSERT INTO Knowledge_Chunks (content, embedding, metadata) VALUES ${placeholders.join(', ')}`;
-      await client.query(query, values);
+    for (let i = 0; i < guides.length; i++) {
+      const guide = guides[i];
+      const embedding = embeddings[i];
+      placeholders.push(`($${paramIndex}, $${paramIndex + 1}::vector, $${paramIndex + 2})`);
+      values.push(guide.content, JSON.stringify(embedding), guide.metadata);
+      paramIndex += 3;
     }
-  } else {
-      logger.warn("OPENAI_API_KEY is not set. Skipping real embeddings, using mock vectors...");
-      if (guides.length > 0) {
-        const values: any[] = [];
-        const placeholders: string[] = [];
-        let paramIndex = 1;
 
-        for (let i = 0; i < guides.length; i++) {
-            const guide = guides[i];
-            const mockEmbedding = new Array(1536).fill(0).map(() => Math.random());
-            placeholders.push(`($${paramIndex}, $${paramIndex + 1}::vector, $${paramIndex + 2})`);
-            values.push(guide.content, JSON.stringify(mockEmbedding), guide.metadata);
-            paramIndex += 3;
-        }
-
-        const query = `INSERT INTO Knowledge_Chunks (content, embedding, metadata) VALUES ${placeholders.join(', ')}`;
-        await client.query(query, values);
-      }
+    const query = `INSERT INTO Knowledge_Chunks (content, embedding, metadata) VALUES ${placeholders.join(', ')}`;
+    await client.query(query, values);
   }
 }
 
