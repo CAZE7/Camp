@@ -654,20 +654,28 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
   exportBOM: () => {
     const { nodes, waterNodes, edges, waterEdges } = get();
     const counts: Record<string, number> = {};
-    const allNodes = [...nodes, ...waterNodes];
-    allNodes.forEach(n => {
-      counts[n.type!] = (counts[n.type!] || 0) + 1;
-    });
+
+    for (let i = 0; i < nodes.length; i++) {
+      const type = nodes[i].type!;
+      counts[type] = (counts[type] || 0) + 1;
+    }
+    for (let i = 0; i < waterNodes.length; i++) {
+      const type = waterNodes[i].type!;
+      counts[type] = (counts[type] || 0) + 1;
+    }
 
     const cableLengths: Record<string, number> = {};
-    edges.forEach(e => {
+
+    for (let i = 0; i < edges.length; i++) {
+      const e = edges[i];
       const cs = e.data?.crossSection || 2.5;
       cableLengths[cs] = (cableLengths[cs] || 0) + (e.data?.length || 3);
-    });
-    waterEdges.forEach(e => {
+    }
+    for (let i = 0; i < waterEdges.length; i++) {
+      const e = waterEdges[i];
       const pipeType = e.data?.pipeType || 'water';
       cableLengths[pipeType] = (cableLengths[pipeType] || 0) + (e.data?.length || 2);
-    });
+    }
 
     const bom = { counts, cableLengths };
 
