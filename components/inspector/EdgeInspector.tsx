@@ -1,6 +1,7 @@
 import React from 'react';
 import { Edge } from 'reactflow';
 import { CableEdgeData } from '../edges/CableEdge';
+import { ValidatingInput, COMMON_RULES } from '../ui/ValidatingInput';
 
 export interface EdgeInspectorProps {
   edge: Edge<CableEdgeData>;
@@ -15,18 +16,15 @@ export function EdgeInspector({ edge, onChangeLength }: EdgeInspectorProps) {
         <label className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider" htmlFor="length-input">
           Länge (m)
         </label>
-        <input
+        <ValidatingInput
           id="length-input"
           type="number"
           min="0.1"
           step="0.1"
+          isFloat={true}
           value={edge.data?.length ?? 3}
-          onChange={(e) => {
-            const val = parseFloat(e.target.value);
-            if (!isNaN(val)) {
-              onChangeLength(edge.id, val);
-            }
-          }}
+          rules={[COMMON_RULES.strictlyPositive]}
+          onValidChange={(val) => onChangeLength(edge.id, val)}
           className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow"
         />
       </div>
