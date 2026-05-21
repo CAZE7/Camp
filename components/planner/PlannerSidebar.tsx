@@ -15,9 +15,9 @@ export function PlannerSidebar({ onMobileAdd }: PlannerSidebarProps) {
   return (
     <>
       <div
-        className={`transition-all duration-300 ease-in-out relative z-40 h-full w-full md:w-64 ${!isLeftSidebarOpen ? 'md:w-0' : ''} flex-shrink-0 shadow-lg bg-card border-r border-border overflow-hidden`}
+        className={`transition-all duration-300 ease-in-out relative z-40 h-full min-w-0 ${isLeftSidebarOpen ? 'md:w-64' : 'w-0'} flex-shrink-0 shadow-lg bg-card border-r border-border overflow-hidden`}
       >
-        <div className="w-full md:w-64 h-full max-w-full">
+        <div className="w-full h-full">
           <Sidebar mode={viewMode} onMobileAdd={onMobileAdd} />
         </div>
       </div>
