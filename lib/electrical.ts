@@ -18,16 +18,16 @@ export const DERATE_FACTOR = 0.70;
 
 // DIN VDE 0298-4: max fuse ratings per conductor cross-section
 export const FUSE_MAP: Record<number, number> = {
-  1.5: 16,
-  2.5: 20,
-  4.0: 25,
-  6.0: 32,
-  10.0: 50,
-  16.0: 63,
-  25.0: 80,
-  35.0: 100,
-  50.0: 125,
-  70.0: 160,
+  1.5: 10,
+  2.5: 15,
+  4.0: 20,
+  6.0: 25,
+  10.0: 35,
+  16.0: 40,
+  25.0: 60,
+  35.0: 70,
+  50.0: 100,
+  70.0: 125,
 };
 
 export const calculateMaxFuse = (crossSection: number): number => {
