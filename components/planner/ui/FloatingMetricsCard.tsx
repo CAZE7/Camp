@@ -22,18 +22,22 @@ export function FloatingMetricsCard() {
 
   return (
     <div
-      className="absolute top-4 right-4 z-50 transition-all duration-300 ease-in-out cursor-pointer overflow-hidden backdrop-blur-xl bg-white/80 border border-white/50 shadow-2xl rounded-2xl"
+      className="absolute top-24 right-4 z-50 transition-all duration-300 ease-in-out overflow-hidden backdrop-blur-xl bg-white/80 border border-white/50 shadow-2xl rounded-2xl pointer-events-none"
       style={{
         boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
         width: expanded ? '320px' : '200px'
       }}
-      onClick={() => setExpanded(!expanded)}
     >
-      <div className="p-4">
-        <div className="flex justify-between items-center mb-1">
+      <div className="p-4 pointer-events-auto">
+        <button
+          type="button"
+          onClick={() => setExpanded(!expanded)}
+          aria-expanded={expanded}
+          className="w-full flex justify-between items-center mb-1 cursor-pointer min-h-[48px]"
+        >
           <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Live Status</span>
           <span className="text-xs font-bold text-slate-400">{expanded ? 'Verkleinern' : 'Details'}</span>
-        </div>
+        </button>
 
         <div className="flex flex-col gap-2">
           <div className="flex justify-between items-center">
@@ -58,8 +62,8 @@ export function FloatingMetricsCard() {
                   <span className="text-sm text-slate-600">Solar Output:</span>
                   <span className="text-sm font-bold text-amber-600">
                     {metrics.solarNodesCount > 0
-                      ? `\${metrics.totalSolarVoltage}V / \${metrics.totalSolarAmps.toFixed(1)}A`
-                      : `\${calculatedSolarWatts}W`
+                      ? `${metrics.totalSolarVoltage}V / ${metrics.totalSolarAmps.toFixed(1)}A`
+                      : `${calculatedSolarWatts}W`
                     }
                   </span>
                 </div>
