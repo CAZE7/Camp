@@ -15,16 +15,16 @@ describe('electrical safety refactoring tests', () => {
   });
 
   it('should have VDE safety-compliant values in FUSE_MAP', () => {
-    expect(FUSE_MAP[1.5]).toBe(10);
-    expect(FUSE_MAP[2.5]).toBe(15);
-    expect(FUSE_MAP[4.0]).toBe(20);
-    expect(FUSE_MAP[6.0]).toBe(25);
-    expect(FUSE_MAP[10.0]).toBe(35);
-    expect(FUSE_MAP[16.0]).toBe(40);
-    expect(FUSE_MAP[25.0]).toBe(60);
-    expect(FUSE_MAP[35.0]).toBe(70);
-    expect(FUSE_MAP[50.0]).toBe(100);
-    expect(FUSE_MAP[70.0]).toBe(125);
+    expect(FUSE_MAP[1.5]).toBe(16);
+    expect(FUSE_MAP[2.5]).toBe(20);
+    expect(FUSE_MAP[4.0]).toBe(25);
+    expect(FUSE_MAP[6.0]).toBe(32);
+    expect(FUSE_MAP[10.0]).toBe(50);
+    expect(FUSE_MAP[16.0]).toBe(63);
+    expect(FUSE_MAP[25.0]).toBe(80);
+    expect(FUSE_MAP[35.0]).toBe(100);
+    expect(FUSE_MAP[50.0]).toBe(125);
+    expect(FUSE_MAP[70.0]).toBe(160);
   });
 
   it('should return 0 fallback for non-existing cross sections in calculateMaxFuse', () => {

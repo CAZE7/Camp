@@ -30,8 +30,6 @@ export const FUSE_MAP: Record<number, number> = {
   70.0: 160,
 };
 
-// 6. Fix calculateMaxFuse Fallback:
-// Entferne den gefährlichen 250A Fallback.
 export const calculateMaxFuse = (crossSection: number): number => {
   return FUSE_MAP[crossSection] || 0;
 };
