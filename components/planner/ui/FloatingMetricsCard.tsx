@@ -62,8 +62,8 @@ export function FloatingMetricsCard() {
                   <span className="text-sm text-slate-600">Solar Output:</span>
                   <span className="text-sm font-bold text-amber-600">
                     {metrics.solarNodesCount > 0
-                      ? `\${metrics.totalSolarVoltage}V / \${metrics.totalSolarAmps.toFixed(1)}A`
-                      : `\${calculatedSolarWatts}W`
+                      ? `${metrics.totalSolarVoltage}V / ${metrics.totalSolarAmps.toFixed(1)}A`
+                      : `${calculatedSolarWatts}W`
                     }
                   </span>
                 </div>
