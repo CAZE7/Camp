@@ -91,7 +91,6 @@ export function FlowCanvas() {
           {waterWarning}
         </div>
       )}
-    <FloatingMetricsCard />
       {viewMode === 'electric' && nodes.length === 0 && (
         <EmptyState title="Noch keine Komponenten" description="Ziehe Komponenten aus der linken Sidebar auf die Zeichenfläche." />
       )}
@@ -99,6 +98,7 @@ export function FlowCanvas() {
         <EmptyState title="Noch kein Wassersystem" description="Ziehe Komponenten aus der Sidebar um dein Wassersystem zu planen." />
       )}
       <div className="flex-1 h-full w-full relative">
+        <FloatingMetricsCard />
         <ReactFlow
           nodes={viewMode === 'water' ? waterNodes : nodes}
           edges={viewMode === 'water' ? waterEdges : edges}
@@ -127,18 +127,17 @@ export function FlowCanvas() {
             backgroundColor: 'var(--canvas-bg, hsl(220 14% 96%))',
           }}
         >
-        <Background color="hsl(var(--border))" gap={16} />
-        <Controls className="rounded-lg overflow-hidden border border-border shadow-sm" />
-        <MiniMap className="rounded-lg overflow-hidden border border-border shadow-sm" />
+          <Background color="hsl(var(--border))" gap={16} />
+          <Controls className="rounded-lg overflow-hidden border border-border shadow-sm" />
+          <MiniMap className="rounded-lg overflow-hidden border border-border shadow-sm" />
 
-
-
-        {viewMode === 'electric' && calculatedSolarWatts > 0 && (
-          <Panel position="bottom-center" className="bg-blue-50 p-3 rounded-lg shadow-sm border border-blue-200 text-blue-800 text-sm mb-4">
-            <strong>Dachplaner-Daten erkannt:</strong> {calculatedSolarWatts} W Solarleistung verfügbar. Du kannst nun deinen MPPT-Regler entsprechend dimensionieren.
-          </Panel>
-        )}
-      </ReactFlow>
+          {viewMode === 'electric' && calculatedSolarWatts > 0 && (
+            <Panel position="bottom-center" className="bg-blue-50 p-3 rounded-lg shadow-sm border border-blue-200 text-blue-800 text-sm mb-4">
+              <strong>Dachplaner-Daten erkannt:</strong> {calculatedSolarWatts} W Solarleistung verfügbar. Du kannst nun deinen MPPT-Regler entsprechend dimensionieren.
+            </Panel>
+          )}
+        </ReactFlow>
+      </div>
 
       <BOMModal />
     </>
