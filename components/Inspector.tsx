@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Edge, Node } from 'reactflow';
 import { MousePointerClick } from 'lucide-react';
 import { CableEdgeData } from './edges/CableEdge';
@@ -130,6 +130,12 @@ export default function Inspector({
   nodes,
 }: InspectorProps) {
   const hasSelection = selectedEdge || selectedNode;
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  useEffect(() => {
+    // Reset confirmation state when selection changes
+    setConfirmDelete(false);
+  }, [selectedEdge, selectedNode]);
 
   return (
     <div className={`absolute right-0 top-0 h-full w-full md:w-[250px] bg-white border-l border-gray-200 p-4 flex flex-col shadow-2xl z-50 transition-transform duration-300 ease-in-out ${hasSelection ? "translate-x-0" : "translate-x-full"}`}>
@@ -157,14 +163,23 @@ export default function Inspector({
           <div className="mt-auto pt-4">
             <button
               onClick={() => {
-                if (window.confirm("Wirklich löschen?")) {
+                if (!confirmDelete) {
+                  setConfirmDelete(true);
+                  // Optional: reset after 3 seconds
+                  setTimeout(() => setConfirmDelete(false), 3000);
+                } else {
                   if (onDelete) onDelete();
+                  setConfirmDelete(false);
                 }
               }}
               aria-label="Ausgewählte Komponente löschen"
-              className="w-full bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded shadow transition-colors"
+              className={`w-full font-semibold py-2 px-4 rounded shadow transition-colors ${
+                confirmDelete 
+                  ? 'bg-red-700 hover:bg-red-800 text-white animate-pulse' 
+                  : 'bg-red-500 hover:bg-red-600 text-white'
+              }`}
             >
-              Löschen
+              {confirmDelete ? "Sicher? (Klick zum Bestätigen)" : "Löschen"}
             </button>
           </div>
         </div>

@@ -445,7 +445,7 @@ describe('usePlannerStore', () => {
         source: 'bat',
         target: 'inv',
         sourceHandle: 'plus',
-        targetHandle: 'plus' // Left side target DC input
+        targetHandle: 'in-plus' // Left side target DC input
       });
       expect(valid).toBe(true);
     });

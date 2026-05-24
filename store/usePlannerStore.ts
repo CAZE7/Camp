@@ -11,6 +11,13 @@ interface PlannerState {
   viewMode: 'electric' | 'water';
   setViewMode: (mode: 'electric' | 'water') => void;
 
+  isSidebarOpen: boolean;
+  setSidebarOpen: (isOpen: boolean) => void;
+  toggleSidebar: () => void;
+
+  systemMessage: string | null;
+  setSystemMessage: (msg: string | null) => void;
+
   nodes: Node[];
   edges: Edge<CableEdgeData>[];
   setNodes: (nodes: Node[] | ((nds: Node[]) => Node[])) => void;
@@ -347,6 +354,13 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
   viewMode: 'electric',
   setViewMode: (mode) => set({ viewMode: mode }),
 
+  isSidebarOpen: true,
+  setSidebarOpen: (isOpen) => set({ isSidebarOpen: isOpen }),
+  toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
+
+  systemMessage: null,
+  setSystemMessage: (msg) => set({ systemMessage: msg }),
+
   nodes: initialNodes,
   edges: initialEdges,
   setNodes: (update) => set({ nodes: typeof update === 'function' ? update(get().nodes) : update }),
@@ -601,7 +615,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
 
     const result = performAutoWiring(nodes);
     if (!result) {
-      alert('Bitte zuerst eine Batterie platzieren');
+      get().setSystemMessage('Bitte zuerst eine Batterie platzieren, bevor Komponenten verbunden werden.');
       return;
     }
 

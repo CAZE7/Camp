@@ -98,7 +98,7 @@ function ActionsSection({
   }, [onExportError]);
 
   return (
-    <div className="flex items-center gap-4 flex-nowrap">
+    <div className="flex flex-wrap items-center gap-2">
       {/* Segmented Action Buttons */}
       <div className="flex bg-stone-100/50 p-1 rounded-lg border border-stone-200/60 backdrop-blur-sm gap-1">
         <Button variant="ghost" size="sm" onClick={handleExportBOM} className="gap-1.5 text-orange-700 hover:bg-white hover:shadow-sm">
@@ -177,6 +177,8 @@ export function PlannerDashboard() {
     autoWireSystem,
     checkSchematic,
     onLayout,
+    systemMessage,
+    setSystemMessage,
     nodes,
     edges,
     waterNodes,
@@ -190,6 +192,8 @@ export function PlannerDashboard() {
     autoWireSystem: state.autoWireSystem,
     checkSchematic: state.checkSchematic,
     onLayout: state.onLayout,
+    systemMessage: state.systemMessage,
+    setSystemMessage: state.setSystemMessage,
     nodes: state.nodes,
     edges: state.edges,
     waterNodes: state.waterNodes,
@@ -200,8 +204,8 @@ export function PlannerDashboard() {
   const warnings = useLiveValidation(nodes, edges, waterNodes, waterEdges);
 
   return (
-    <div className="flex items-center gap-2 bg-card border-b border-border px-3 py-1.5 shrink-0 w-full overflow-x-auto">
-      <div className="flex items-center gap-2 flex-nowrap">
+    <div className="relative flex flex-wrap items-center gap-2 bg-card border-b border-border px-2 py-1 shrink-0 w-full overflow-visible">
+      <div className="flex flex-wrap items-center gap-2 flex-grow">
         <NavigationSection viewMode={viewMode} setViewMode={setViewMode} />
 
         <ActionsSection
@@ -219,15 +223,22 @@ export function PlannerDashboard() {
       </div>
 
       {exportError && (
-        <div className="w-full p-3 rounded-lg bg-red-50 text-red-800 border border-red-200 text-sm font-semibold">
+        <div className="absolute top-full mt-2 left-4 z-50 p-3 rounded-lg bg-red-50 text-red-800 border border-red-200 text-sm font-semibold shadow-lg animate-in fade-in slide-in-from-top-2">
           🚨 {exportError}
         </div>
       )}
 
+      {systemMessage && (
+        <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 z-50 flex items-center gap-4 p-3 rounded-lg bg-blue-50 text-blue-800 border border-blue-200 text-sm font-semibold shadow-lg animate-in fade-in slide-in-from-top-2">
+          <span>ℹ️ {systemMessage}</span>
+          <Button variant="ghost" size="sm" onClick={() => setSystemMessage(null)} className="h-6 px-2 hover:bg-blue-100 text-blue-800">OK</Button>
+        </div>
+      )}
+
       {warnings.length > 0 && (
-        <div className="flex flex-col gap-2">
+        <div className="absolute top-full mt-2 right-4 z-50 flex flex-col gap-2">
           {warnings.map((w) => (
-            <div key={w.id} className={`p-3 rounded-lg shadow-md border text-sm font-semibold max-w-md ${
+            <div key={w.id} className={`p-3 rounded-lg shadow-lg border text-sm font-semibold max-w-md animate-in fade-in slide-in-from-right-2 ${
               w.category === 'safety' ? 'bg-red-50 text-red-800 border-red-200' :
               w.category === 'topology' ? 'bg-orange-50 text-orange-800 border-orange-200' :
               w.category === 'monitoring' ? 'bg-blue-50 text-blue-800 border-blue-200' :

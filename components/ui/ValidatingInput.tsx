@@ -73,7 +73,7 @@ export function ValidatingInput({ value, onValidChange, rules = [], isFloat = fa
         value={localValue}
         onChange={handleChange}
         onBlur={handleBlur}
-        className={`${className || ''} ${error ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : ''}`}
+        className={`${className || ''} ${error ? 'border-red-500 bg-red-50 focus:ring-red-500 focus:border-red-500' : ''}`}
       />
       {error && <span className="text-red-500 text-xs mt-1 font-medium">{error}</span>}
     </div>
