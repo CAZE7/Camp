@@ -125,7 +125,7 @@ export function FlowCanvas() {
             backgroundColor: 'var(--canvas-bg, #f4f5f7)',
           }}
         >
-          <Background color="hsl(var(--border))" gap={16} />
+          <Background color="var(--border)" gap={16} />
           <Controls className="rounded-lg overflow-hidden border border-border shadow-sm" />
           <MiniMap className="rounded-lg overflow-hidden border border-border shadow-sm" />
 
