@@ -99,7 +99,6 @@ export function FlowCanvas() {
         <EmptyState title="Noch kein Wassersystem" description="Ziehe Komponenten aus der Sidebar um dein Wassersystem zu planen." />
       )}
       <ReactFlow
-      style={{ willChange: 'transform', backfaceVisibility: 'hidden' }}
         nodes={viewMode === 'water' ? waterNodes : nodes}
         edges={viewMode === 'water' ? waterEdges : edges}
         nodeTypes={nodeTypes}
