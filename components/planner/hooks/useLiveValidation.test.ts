@@ -31,8 +31,9 @@ describe('useLiveValidation', () => {
       expect(result.current).toHaveLength(1);
       expect(result.current[0]).toEqual(expect.objectContaining({
         id: 'missing-fuse-e1-2',
+        category: 'safety',
         type: 'critical',
-        message: expect.stringContaining('Sicherung fehlt an Verbindung von Battery')
+        message: expect.stringContaining('Quellschutz fehlt')
       }));
     });
 
@@ -86,7 +87,7 @@ describe('useLiveValidation', () => {
       ];
 
       const { result } = renderHook(() => useLiveValidation(nodes, edges));
-      expect(result.current).toEqual([]);
+      expect(result.current.filter(w => w.id.includes('missing-fuse'))).toEqual([]);
     });
 
     it('should not generate warning if source handle is not positive', () => {
@@ -116,6 +117,7 @@ describe('useLiveValidation', () => {
       expect(result.current).toHaveLength(1);
       expect(result.current[0]).toEqual(expect.objectContaining({
         id: 'solar-overload',
+        category: 'estimation',
         type: 'warning',
         message: expect.stringContaining('Solarregler unterdimensioniert')
       }));
@@ -145,6 +147,7 @@ describe('useLiveValidation', () => {
       expect(result.current).toHaveLength(1);
       expect(result.current[0]).toEqual(expect.objectContaining({
         id: 'battery-capacity',
+        category: 'estimation',
         type: 'info',
         message: expect.stringContaining('Deine Batterie könnte knapp werden')
       }));
@@ -171,6 +174,7 @@ describe('useLiveValidation', () => {
           expect(result.current).toHaveLength(1);
           expect(result.current[0]).toEqual(expect.objectContaining({
             id: 'battery-capacity',
+            category: 'estimation',
             type: 'info',
             message: expect.stringContaining('Deine Batterie könnte knapp werden')
           }));
@@ -223,23 +227,29 @@ describe('useLiveValidation', () => {
         { id: '1', type: 'battery', data: {}, position: { x: 0, y: 0 } },
         { id: '2', type: 'inverter', data: {}, position: { x: 0, y: 0 } }
       ];
+      // Note: testing both unprotected and missing minus
       const edges: Edge<CableEdgeData>[] = [
         { id: 'e1', source: '1', target: '2', targetHandle: 'plus-in', data: { fuseSize: undefined } }
       ];
       const { result } = renderHook(() => useLiveValidation(nodes, edges));
       expect(result.current.filter(w => w.id.includes('inverter-unprotected'))).toHaveLength(1);
+      expect(result.current.find(w => w.id.includes('inverter-unprotected'))?.category).toBe('safety');
+      expect(result.current.filter(w => w.id.includes('inverter-no-minus'))).toHaveLength(1);
+      expect(result.current.find(w => w.id.includes('inverter-no-minus'))?.category).toBe('topology');
     });
 
-    it('should not warn if inverter has fuse on edge', () => {
+    it('should not warn if inverter has fuse on edge and has minus', () => {
       const nodes: Node[] = [
         { id: '1', type: 'battery', data: {}, position: { x: 0, y: 0 } },
         { id: '2', type: 'inverter', data: {}, position: { x: 0, y: 0 } }
       ];
       const edges: Edge<CableEdgeData>[] = [
-        { id: 'e1', source: '1', target: '2', targetHandle: 'plus-in', data: { fuseSize: 200 } }
+        { id: 'e1', source: '1', target: '2', targetHandle: 'plus-in', data: { fuseSize: 200 } },
+        { id: 'e2', source: '1', target: '2', targetHandle: 'minus-in', data: {} }
       ];
       const { result } = renderHook(() => useLiveValidation(nodes, edges));
       expect(result.current.filter(w => w.id.includes('inverter-unprotected'))).toHaveLength(0);
+      expect(result.current.filter(w => w.id.includes('inverter-no-minus'))).toHaveLength(0);
     });
   });
 });

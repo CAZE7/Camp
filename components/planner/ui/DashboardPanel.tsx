@@ -40,9 +40,12 @@ export function DashboardPanel({
         <div className="flex flex-col gap-2.5">
           <div className="flex justify-between items-center bg-stone-50 p-2 rounded-lg">
             <span className="text-stone-600 font-medium">Tagesverbrauch:</span>
-            <span className="font-bold text-stone-900 bg-white px-2 py-1 rounded shadow-sm border border-stone-100">
-              {dailyConsumptionAh.toFixed(1)} Ah
-            </span>
+            <div className="flex flex-col items-end">
+              <span className="text-sm font-bold text-stone-900 bg-white px-2 py-0.5 rounded shadow-sm border border-stone-100">
+                ~{dailyConsumptionAh.toFixed(1)} Ah
+              </span>
+              <span className="text-[10px] text-stone-400">(geschätzt)</span>
+            </div>
           </div>
           <div className="flex justify-between items-center bg-emerald-50/50 p-2 rounded-lg">
             <span className="text-stone-600 font-medium">Batterie-Autarkie:</span>

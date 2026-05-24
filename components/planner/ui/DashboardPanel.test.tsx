@@ -26,7 +26,7 @@ describe('DashboardPanel', () => {
     render(<DashboardPanel metrics={defaultMetrics} calculatedSolarWatts={0} />);
 
     expect(screen.getByText(/System Berechnungen/)).toBeInTheDocument();
-    expect(screen.getByText('50.5 Ah')).toBeInTheDocument();
+    expect(screen.getByText('~50.5 Ah')).toBeInTheDocument();
     expect(screen.getByText('2 days')).toBeInTheDocument();
     expect(screen.getByText('4 hours')).toBeInTheDocument();
 

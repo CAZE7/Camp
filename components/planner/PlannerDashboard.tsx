@@ -228,9 +228,10 @@ export function PlannerDashboard() {
         <div className="flex flex-col gap-2">
           {warnings.map((w) => (
             <div key={w.id} className={`p-3 rounded-lg shadow-md border text-sm font-semibold max-w-md ${
-              w.type === 'critical' ? 'bg-red-50 text-red-800 border-red-200' :
-              w.type === 'warning' ? 'bg-orange-50 text-orange-800 border-orange-200' :
-              'bg-blue-50 text-blue-800 border-blue-200'
+              w.category === 'safety' ? 'bg-red-50 text-red-800 border-red-200' :
+              w.category === 'topology' ? 'bg-orange-50 text-orange-800 border-orange-200' :
+              w.category === 'monitoring' ? 'bg-blue-50 text-blue-800 border-blue-200' :
+              'bg-purple-50 text-purple-800 border-purple-200'
             }`}>
               {w.message}
             </div>

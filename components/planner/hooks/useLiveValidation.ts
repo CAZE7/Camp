@@ -2,8 +2,11 @@ import { useMemo } from 'react';
 import { Node, Edge } from 'reactflow';
 import { CableEdgeData } from '../../edges/CableEdge';
 
+import { getSystemVoltage } from '../utils/voltage';
+
 export interface ValidationWarning {
   id: string;
+  category: 'safety' | 'topology' | 'monitoring' | 'estimation';
   type: 'critical' | 'warning' | 'info';
   message: string;
 }
@@ -19,7 +22,7 @@ export function useLiveValidation(
 
     if (!nodes || !edges) return warnings;
 
-    // --- Rule A: Missing Fuse on High Power Component ---
+    // --- Rule A: Quellschutz-Regel ---
     // Look for edges coming from battery, inverter, solar charger on positive line
     edges.forEach((edge) => {
       if (edge.data?.edgeDomain === 'AC_230V') return; // Skip DC fuse warning for AC edges
@@ -28,19 +31,22 @@ export function useLiveValidation(
         const targetNode = nodes.find(n => n.id === edge.target);
 
         const isHighPowerSource = sourceNode?.type === 'battery' || sourceNode?.type === 'inverter' || ['charger', 'mpptController', 'dcdcCharger', 'acBatteryCharger'].includes(sourceNode?.type as string);
-        const isNotFuseBoxTarget = targetNode?.type !== 'fuse';
+        const isProtectedTarget = targetNode?.type === 'fuse';
 
-        if (isHighPowerSource && isNotFuseBoxTarget) {
+        if (isHighPowerSource && !isProtectedTarget) {
           if (!edge.data?.fuseSize) {
              warnings.push({
                id: `missing-fuse-${edge.id}`,
+               category: 'safety',
                type: 'critical',
-               message: `⚠️ Kritisch: Sicherung fehlt an Verbindung von ${sourceNode?.data?.label || sourceNode?.type}!`,
+               message: `⚠️ Kritisch: Quellschutz fehlt! Die Leitung von ${sourceNode?.data?.label || sourceNode?.type} muss direkt am Anfang abgesichert werden (Kabel-Sicherung oder Sicherungsblock).`,
              });
           }
         }
       }
     });
+
+    const sysVoltage = getSystemVoltage(nodes);
 
     // --- Rule B: Overloaded Solar Regulator ---
     const solarNodes = nodes.filter(n => n.type === 'solar');
@@ -48,13 +54,14 @@ export function useLiveValidation(
 
     if (solarNodes.length > 0 && chargers.length > 0) {
       const totalSolarWatts = solarNodes.reduce((acc, node) => acc + (Number(node.data.watts) || 0), 0);
-      const mpptCapacity = chargers.reduce((acc, node) => acc + (Number(node.data.amps) || 0), 0) * 12; // MPPT capacity in Watts (amps × system voltage)
+      const mpptCapacity = chargers.reduce((acc, node) => acc + (Number(node.data.amps) || 0), 0) * sysVoltage;
 
       if (totalSolarWatts > mpptCapacity) {
         warnings.push({
           id: 'solar-overload',
+          category: 'estimation',
           type: 'warning',
-          message: `⚠️ Hinweis: Solarregler unterdimensioniert (Solar: ${totalSolarWatts}W, MPPT max: ~${mpptCapacity}W).`,
+          message: `⚠️ Hinweis: Solarregler unterdimensioniert (Solar: ~${totalSolarWatts}W, MPPT max: ~${Math.round(mpptCapacity)}W).`,
         });
       }
     }
@@ -66,28 +73,39 @@ export function useLiveValidation(
     if (batteries.length > 0 && consumers.length > 0) {
       const totalBatteryAh = batteries.reduce((acc, node) => acc + (Number(node.data.capacity) || 0), 0);
 
-      // Calculate daily Ah consumption assuming 12V and average usage
+      // Calculate daily Ah consumption using dynamic system voltage
       const totalDailyAh = consumers.reduce((acc, node) => {
         const watts = Number(node.data.watts) || 0;
         const hours = Number(node.data.hours) || 4; // default to 4 hours
-        return acc + ((watts * hours) / 12);
+        return acc + ((watts * hours) / sysVoltage);
       }, 0);
 
       if (totalDailyAh > totalBatteryAh) {
         warnings.push({
           id: 'battery-capacity',
+          category: 'estimation',
           type: 'info',
-          message: `💡 Tipp: Deine Batterie könnte knapp werden. Verbrauch: ~${Math.round(totalDailyAh)}Ah/Tag, Batterie: ${totalBatteryAh}Ah.`,
+          message: `💡 Tipp: Deine Batterie könnte knapp werden. Verbrauch: ~${Math.round(totalDailyAh)}Ah/Tag (geschätzt), Batterie: ${totalBatteryAh}Ah.`,
         });
       }
     }
 
-    // --- Rule D (Replaced by Rule G): Inverter Protection ---
+    // --- Rule G: Inverter Protection ---
     const inverters = nodes.filter(n => n.type === 'inverter');
     inverters.forEach(inverter => {
-      const incomingEdges = edges.filter(e => e.target === inverter.id && e.targetHandle?.includes('plus'));
+      const incomingPlusEdges = edges.filter(e => e.target === inverter.id && e.targetHandle?.includes('plus'));
+      const incomingMinusEdges = edges.filter(e => e.target === inverter.id && e.targetHandle?.includes('minus'));
       
-      incomingEdges.forEach(edge => {
+      if (incomingMinusEdges.length === 0) {
+        warnings.push({
+          id: `inverter-no-minus-${inverter.id}`,
+          category: 'topology',
+          type: 'warning',
+          message: `⚠️ Hinweis: Dem Wechselrichter fehlt die Rückleitung (Minuspol).`,
+        });
+      }
+
+      incomingPlusEdges.forEach(edge => {
         let isProtected = false;
         if (edge.data?.fuseSize) {
           isProtected = true;
@@ -101,8 +119,9 @@ export function useLiveValidation(
         if (!isProtected) {
           warnings.push({
             id: `inverter-unprotected-${edge.id}`,
+            category: 'safety',
             type: 'critical',
-            message: `⚠️ Kritisch: Der Wechselrichter muss zwingend über eine Sicherung (Kabel-Sicherung oder Sicherungs-Element) abgesichert sein!`,
+            message: `⚠️ Kritisch: Direkter Batterie-zu-Inverter-Pfad! Der Wechselrichter muss zwingend über eine eigene Sicherung abgesichert sein.`,
           });
         }
       });
@@ -117,8 +136,9 @@ export function useLiveValidation(
       if (!hasInput || !hasOutput) {
         warnings.push({
           id: `dcdc-unconnected-${charger.id}`,
+          category: 'topology',
           type: 'warning',
-          message: `💡 Hinweis: Der Ladebooster (DC-DC) scheint nicht vollständig angeschlossen zu sein (Eingang zur Starterbatterie / Ausgang zur Aufbaubatterie prüfen).`,
+          message: `💡 Hinweis: Der Ladebooster (DC-DC) scheint nicht vollständig angeschlossen zu sein. Bitte Starterseite (Eingang) und Aufbaubatterie-Pfad (Ausgang) prüfen.`,
         });
       }
     });
@@ -139,8 +159,9 @@ export function useLiveValidation(
           if (otherNode && otherNode.type !== 'shunt' && otherNode.type !== 'battery') {
              warnings.push({
                id: `shunt-bypass-${edge.id}`,
+               category: 'monitoring',
                type: 'critical',
-               message: `⚠️ Kritisch: Smart Shunt wird umgangen! Das Gerät "${otherNode.data?.label || otherNode.type}" ist direkt am Batterie-Minuspol angeschlossen.`,
+               message: `⚠️ Kritisch: Smart Shunt Bypass! Relevante Minus-Verbindungen (wie von ${otherNode.data?.label || otherNode.type}) dürfen nicht am Shunt vorbei direkt an Batterie-Minus hängen.`,
              });
           }
         }

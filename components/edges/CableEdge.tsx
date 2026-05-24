@@ -5,6 +5,7 @@ import { usePlannerStore } from '../../store/usePlannerStore';
 import { useShallow } from 'zustand/react/shallow';
 import { calculateEdgePath } from './utils/pathUtils';
 import { calculateCrossSection, calculateMaxFuse, calculateStrokeWidth, getEdgeDomain } from '../../lib/electrical';
+import { getSystemVoltage } from '../planner/utils/voltage';
 
 export type CableEdgeData = {
   length: number;
@@ -30,26 +31,28 @@ export const calculateCurrent = (
   if (sData?.amps !== undefined && sourceNode?.type !== 'battery') return Number(sData.amps);
   if (tData?.amps !== undefined && targetNode?.type !== 'battery') return Number(tData.amps);
 
-  // 2. Specific Node Types
-  if (sourceNode?.type === 'consumer') return (Number(sData?.watts) || 0) / 12;
-  if (targetNode?.type === 'consumer') return (Number(tData?.watts) || 0) / 12;
+  const nodes = getNodes();
+  const sysVoltage = getSystemVoltage(nodes);
 
-  if (sourceNode?.type === 'inverter') return (Number(sData?.watts) || 0) / 12 / 0.85;
-  if (targetNode?.type === 'inverter') return (Number(tData?.watts) || 0) / 12 / 0.85;
+  // 2. Specific Node Types
+  if (sourceNode?.type === 'consumer') return (Number(sData?.watts) || 0) / sysVoltage;
+  if (targetNode?.type === 'consumer') return (Number(tData?.watts) || 0) / sysVoltage;
+
+  if (sourceNode?.type === 'inverter') return (Number(sData?.watts) || 0) / sysVoltage / 0.85;
+  if (targetNode?.type === 'inverter') return (Number(tData?.watts) || 0) / sysVoltage / 0.85;
 
   if (sourceNode?.type === 'solar') return (Number(sData?.watts) || 0) / 18; // Typical Vmp
   if (targetNode?.type === 'solar') return (Number(tData?.watts) || 0) / 18;
 
   // 3. Fallback: Main lines
-  const nodes = getNodes();
   let totalConsumerAmps = 0;
   let totalChargerAmps = 0;
   for (let i = 0; i < nodes.length; i++) {
     const n = nodes[i];
     if (n.type === 'consumer') {
-      totalConsumerAmps += (Number(n.data.watts) || 0) / 12;
+      totalConsumerAmps += (Number(n.data.watts) || 0) / sysVoltage;
     } else if (n.type === 'inverter') {
-      totalConsumerAmps += (Number(n.data.watts) || 0) / 12 / 0.85;
+      totalConsumerAmps += (Number(n.data.watts) || 0) / sysVoltage / 0.85;
     } else if (['charger', 'mpptController', 'dcdcCharger', 'acBatteryCharger'].includes(n.type as string)) {
       totalChargerAmps += Number(n.data.amps) || 0;
     } else if (n.type === 'solar') {
@@ -160,7 +163,8 @@ const CableEdge = function ({
     const dur = calculateAnimationDuration(I);
 
     const voltageDrop = (I * (length * 2)) / (58 * cs);
-    const dropPercentage = (voltageDrop / 12) * 100;
+    const sysVoltage = getSystemVoltage(getNodes());
+    const dropPercentage = (voltageDrop / sysVoltage) * 100;
 
     return {
       length,

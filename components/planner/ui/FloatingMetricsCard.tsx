@@ -47,7 +47,10 @@ export function FloatingMetricsCard() {
 
           <div className="flex justify-between items-center">
             <span className="text-sm font-medium text-slate-700">Verbrauch:</span>
-            <span className="text-sm font-bold text-slate-800">{metrics.dailyConsumptionAh.toFixed(1)} Ah</span>
+            <div className="flex flex-col items-end">
+              <span className="text-sm font-bold text-slate-800">~{metrics.dailyConsumptionAh.toFixed(1)} Ah</span>
+              <span className="text-[10px] text-slate-400">(geschätzt)</span>
+            </div>
           </div>
 
           {expanded && (

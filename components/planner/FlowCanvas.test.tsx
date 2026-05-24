@@ -302,7 +302,7 @@ describe('FlowCanvas', () => {
 
       expect(screen.getByText('Live Status')).toBeInTheDocument();
       // removed check
-      expect(screen.getByText('100.5 Ah')).toBeInTheDocument();
+      expect(screen.getByText('~100.5 Ah')).toBeInTheDocument();
       // removed check
       expect(screen.getByText('2 Tage')).toBeInTheDocument();
       // expect(screen.getByText('Solar-Array Output:')).toBeInTheDocument();

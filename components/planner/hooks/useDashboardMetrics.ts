@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { BatteryNodeData, ConsumerNodeData, SolarNodeData, ChargerNodeData } from '@/components/nodes/types';
 import { Node, Edge } from 'reactflow';
+import { getSystemVoltage } from '../utils/voltage';
 
 export function useDashboardMetrics(
   nodes: Node[],
@@ -48,6 +49,8 @@ export function useDashboardMetrics(
   }, [nodes, edges, debouncedNodes, debouncedEdges]);
 
   return useMemo(() => {
+    const sysVoltage = getSystemVoltage(debouncedNodes);
+
     const categories = categorizeNodes(debouncedNodes);
 
     const usableCapacityAh = calculateUsableCapacity(categories.batteries);
@@ -56,7 +59,8 @@ export function useDashboardMetrics(
       categories.consumers,
       categories.consumers230v,
       categories.hasInverter,
-      season
+      season,
+      sysVoltage
     );
 
     const autarkyStr = calculateAutarky(usableCapacityAh, dailyConsumptionAh);
@@ -145,12 +149,13 @@ function calculateDailyConsumption(
   consumers: Node[],
   consumers230v: Node[],
   hasInverter: boolean,
-  season: 'summer' | 'winter'
+  season: 'summer' | 'winter',
+  sysVoltage: number
 ): number {
   let dailyConsumptionAh = consumers.reduce((acc, n) => {
     const w = (n.data as ConsumerNodeData)?.watts || 0;
     const h = (n.data as ConsumerNodeData)?.hours || 0;
-    let consumption = (w / 12) * h;
+    let consumption = (w / sysVoltage) * h;
     
     // Seasonal adjustment only for heaters
     const label = String(n.data?.label || '').toLowerCase();
@@ -166,9 +171,9 @@ function calculateDailyConsumption(
   const inverterConsumptionAh = consumers230v.reduce((acc, n) => {
     const w = (n.data as ConsumerNodeData)?.watts || 0;
     const h = (n.data as ConsumerNodeData)?.hours || 0;
-    // Inverter takes 12V from battery, loses 15% efficiency (0.85)
-    // Ah = (W / 12V) * h / 0.85
-    return acc + ((w / 12) * h) / 0.85;
+    // Inverter takes system voltage from battery, loses 15% efficiency (0.85)
+    // Ah = (W / sysVoltage) * h / 0.85
+    return acc + ((w / sysVoltage) * h) / 0.85;
   }, 0);
   dailyConsumptionAh += inverterConsumptionAh;
 
