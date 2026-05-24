@@ -28,12 +28,26 @@ describe('useLiveValidation', () => {
 
       const { result } = renderHook(() => useLiveValidation(nodes, edges));
 
-      expect(result.current).toHaveLength(2);
-      expect(result.current).toContainEqual(expect.objectContaining({
+      expect(result.current).toHaveLength(1);
+      expect(result.current[0]).toEqual(expect.objectContaining({
         id: 'missing-fuse-e1-2',
         type: 'critical',
         message: expect.stringContaining('Sicherung fehlt an Verbindung von Battery')
       }));
+    });
+
+    it('should generate critical warning if target is a busbar without fuse on edge', () => {
+      const nodes: Node[] = [
+        { id: '1', type: 'battery', data: { label: 'Battery' }, position: { x: 0, y: 0 } },
+        { id: '2', type: 'busbar', data: { label: 'Busbar' }, position: { x: 100, y: 0 } }
+      ];
+      const edges: Edge<CableEdgeData>[] = [
+        { id: 'e1-2', source: '1', target: '2', sourceHandle: 'plus-out', data: { fuseSize: undefined } }
+      ];
+
+      const { result } = renderHook(() => useLiveValidation(nodes, edges));
+      expect(result.current).toHaveLength(1);
+      expect(result.current[0].id).toBe('missing-fuse-e1-2');
     });
 
     it('should not generate warning if fuse size is set', () => {
@@ -160,6 +174,72 @@ describe('useLiveValidation', () => {
             type: 'info',
             message: expect.stringContaining('Deine Batterie könnte knapp werden')
           }));
+    });
+  });
+
+  describe('Rule E: DC-DC Charger Connection', () => {
+    it('should warn if dcdcCharger is missing input or output', () => {
+      const nodes: Node[] = [
+        { id: '1', type: 'dcdcCharger', data: { label: 'Booster' }, position: { x: 0, y: 0 } }
+      ];
+      const { result } = renderHook(() => useLiveValidation(nodes, []));
+      expect(result.current).toHaveLength(1);
+      expect(result.current[0].id).toBe('dcdc-unconnected-1');
+    });
+
+    it('should not warn if dcdcCharger has input and output', () => {
+      const nodes: Node[] = [
+        { id: '1', type: 'battery', data: {}, position: { x: 0, y: 0 } },
+        { id: '2', type: 'dcdcCharger', data: {}, position: { x: 0, y: 0 } },
+        { id: '3', type: 'battery', data: {}, position: { x: 0, y: 0 } }
+      ];
+      const edges: Edge<CableEdgeData>[] = [
+        { id: 'e1', source: '1', target: '2', data: {} },
+        { id: 'e2', source: '2', target: '3', data: {} }
+      ];
+      const { result } = renderHook(() => useLiveValidation(nodes, edges));
+      expect(result.current.filter(w => w.id.includes('dcdc-unconnected'))).toHaveLength(0);
+    });
+  });
+
+  describe('Rule F: Smart Shunt Bypass', () => {
+    it('should warn if a non-shunt is connected directly to battery minus when a shunt exists', () => {
+      const nodes: Node[] = [
+        { id: '1', type: 'battery', data: {}, position: { x: 0, y: 0 } },
+        { id: '2', type: 'consumer', data: {}, position: { x: 0, y: 0 } },
+        { id: '3', type: 'shunt', data: {}, position: { x: 0, y: 0 } }
+      ];
+      const edges: Edge<CableEdgeData>[] = [
+        { id: 'e1', source: '2', target: '1', targetHandle: 'minus-in', data: {} }
+      ];
+      const { result } = renderHook(() => useLiveValidation(nodes, edges));
+      expect(result.current.filter(w => w.id.includes('shunt-bypass'))).toHaveLength(1);
+    });
+  });
+
+  describe('Rule G: Inverter Protection', () => {
+    it('should warn if inverter has no fuse on positive edge and source is not fuse', () => {
+      const nodes: Node[] = [
+        { id: '1', type: 'battery', data: {}, position: { x: 0, y: 0 } },
+        { id: '2', type: 'inverter', data: {}, position: { x: 0, y: 0 } }
+      ];
+      const edges: Edge<CableEdgeData>[] = [
+        { id: 'e1', source: '1', target: '2', targetHandle: 'plus-in', data: { fuseSize: undefined } }
+      ];
+      const { result } = renderHook(() => useLiveValidation(nodes, edges));
+      expect(result.current.filter(w => w.id.includes('inverter-unprotected'))).toHaveLength(1);
+    });
+
+    it('should not warn if inverter has fuse on edge', () => {
+      const nodes: Node[] = [
+        { id: '1', type: 'battery', data: {}, position: { x: 0, y: 0 } },
+        { id: '2', type: 'inverter', data: {}, position: { x: 0, y: 0 } }
+      ];
+      const edges: Edge<CableEdgeData>[] = [
+        { id: 'e1', source: '1', target: '2', targetHandle: 'plus-in', data: { fuseSize: 200 } }
+      ];
+      const { result } = renderHook(() => useLiveValidation(nodes, edges));
+      expect(result.current.filter(w => w.id.includes('inverter-unprotected'))).toHaveLength(0);
     });
   });
 });

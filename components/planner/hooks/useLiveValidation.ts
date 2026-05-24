@@ -28,7 +28,7 @@ export function useLiveValidation(
         const targetNode = nodes.find(n => n.id === edge.target);
 
         const isHighPowerSource = sourceNode?.type === 'battery' || sourceNode?.type === 'inverter' || ['charger', 'mpptController', 'dcdcCharger', 'acBatteryCharger'].includes(sourceNode?.type as string);
-        const isNotFuseBoxTarget = targetNode?.type !== 'fuse' && targetNode?.type !== 'busbar' && targetNode?.type !== 'shunt';
+        const isNotFuseBoxTarget = targetNode?.type !== 'fuse';
 
         if (isHighPowerSource && isNotFuseBoxTarget) {
           if (!edge.data?.fuseSize) {
@@ -82,26 +82,70 @@ export function useLiveValidation(
       }
     }
 
-    // --- Rule D: Direct Battery → Consumer/Inverter Without Protection ---
-    edges.forEach((edge) => {
-      const sourceNode = nodes.find(n => n.id === edge.source);
-      const targetNode = nodes.find(n => n.id === edge.target);
-      if (!sourceNode || !targetNode) return;
+    // --- Rule D (Replaced by Rule G): Inverter Protection ---
+    const inverters = nodes.filter(n => n.type === 'inverter');
+    inverters.forEach(inverter => {
+      const incomingEdges = edges.filter(e => e.target === inverter.id && e.targetHandle?.includes('plus'));
+      
+      incomingEdges.forEach(edge => {
+        let isProtected = false;
+        if (edge.data?.fuseSize) {
+          isProtected = true;
+        } else {
+          const sourceNode = nodes.find(n => n.id === edge.source);
+          if (sourceNode?.type === 'fuse') {
+             isProtected = true;
+          }
+        }
+        
+        if (!isProtected) {
+          warnings.push({
+            id: `inverter-unprotected-${edge.id}`,
+            type: 'critical',
+            message: `⚠️ Kritisch: Der Wechselrichter muss zwingend über eine Sicherung (Kabel-Sicherung oder Sicherungs-Element) abgesichert sein!`,
+          });
+        }
+      });
+    });
 
-      const isBattery = sourceNode.type === 'battery';
-      const isUnprotectedTarget =
-        targetNode.type === 'consumer' ||
-        targetNode.type === 'consumer230v' ||
-        targetNode.type === 'inverter';
-
-      if (isBattery && isUnprotectedTarget && !edge.data?.fuseSize) {
+    // --- Rule E: DC-DC Charger Connection ---
+    const dcdcChargers = nodes.filter(n => n.type === 'dcdcCharger');
+    dcdcChargers.forEach(charger => {
+      const hasInput = edges.some(e => e.target === charger.id);
+      const hasOutput = edges.some(e => e.source === charger.id);
+      
+      if (!hasInput || !hasOutput) {
         warnings.push({
-          id: `direct-battery-${edge.id}`,
-          type: 'critical',
-          message: `⚠️ Kritisch: Verbraucher direkt an Batterie ohne Sicherung!`,
+          id: `dcdc-unconnected-${charger.id}`,
+          type: 'warning',
+          message: `💡 Hinweis: Der Ladebooster (DC-DC) scheint nicht vollständig angeschlossen zu sein (Eingang zur Starterbatterie / Ausgang zur Aufbaubatterie prüfen).`,
         });
       }
     });
+
+    // --- Rule F: Smart Shunt Bypass ---
+    const shunts = nodes.filter(n => n.type === 'shunt');
+    if (shunts.length > 0) {
+      edges.forEach(edge => {
+        const targetNode = nodes.find(n => n.id === edge.target);
+        const sourceNode = nodes.find(n => n.id === edge.source);
+        
+        const isBatteryMinusConnection = 
+          (targetNode?.type === 'battery' && edge.targetHandle?.includes('minus')) ||
+          (sourceNode?.type === 'battery' && edge.sourceHandle?.includes('minus'));
+          
+        if (isBatteryMinusConnection) {
+          const otherNode = sourceNode?.type === 'battery' ? targetNode : sourceNode;
+          if (otherNode && otherNode.type !== 'shunt' && otherNode.type !== 'battery') {
+             warnings.push({
+               id: `shunt-bypass-${edge.id}`,
+               type: 'critical',
+               message: `⚠️ Kritisch: Smart Shunt wird umgangen! Das Gerät "${otherNode.data?.label || otherNode.type}" ist direkt am Batterie-Minuspol angeschlossen.`,
+             });
+          }
+        }
+      });
+    }
 
     return warnings;
   }, [nodes, edges, waterNodes, waterEdges]);
