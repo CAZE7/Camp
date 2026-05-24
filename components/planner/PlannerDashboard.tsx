@@ -12,7 +12,6 @@ import { usePlannerStore } from '../../store/usePlannerStore';
 import { useShallow } from 'zustand/react/shallow';
 import { useAppStore } from '../../lib/store';
 import { toPng } from 'html-to-image';
-import { useReactFlow } from 'reactflow';
 import { useLiveValidation } from './hooks/useLiveValidation';
 
 // --- Subcomponents ---
@@ -47,7 +46,6 @@ function NavigationSection({
 }
 
 function ActionsSection({
-  fitView,
   season,
   setSeason,
   exportBOM,
@@ -56,13 +54,12 @@ function ActionsSection({
   onLayout,
   onExportError,
 }: {
-  fitView: (options?: any) => void;
   season: 'summer' | 'winter';
   setSeason: (season: 'summer' | 'winter') => void;
   exportBOM: () => void;
-  autoWireSystem: (fitView: (options?: any) => void) => void;
+  autoWireSystem: () => void;
   checkSchematic: () => void;
-  onLayout: (fitView: (options?: any) => void) => void;
+  onLayout: () => void;
   onExportError: (msg: string) => void;
 }) {
   const handleExportBOM = useCallback(() => {
@@ -104,13 +101,13 @@ function ActionsSection({
         <Button variant="ghost" size="sm" onClick={handleExportBOM} className="gap-1.5 text-orange-700 hover:bg-white hover:shadow-sm">
           <Package className="w-4 h-4" /> Stückliste
         </Button>
-        <Button variant="ghost" size="sm" onClick={() => autoWireSystem(fitView)} className="gap-1.5 text-yellow-700 hover:bg-white hover:shadow-sm">
+        <Button variant="ghost" size="sm" onClick={() => autoWireSystem()} className="gap-1.5 text-yellow-700 hover:bg-white hover:shadow-sm">
           <Zap className="w-4 h-4" /> Auto-Wire
         </Button>
         <Button variant="ghost" size="sm" onClick={checkSchematic} className="gap-1.5 text-red-700 hover:bg-white hover:shadow-sm">
           <ScanSearch className="w-4 h-4" /> KI-Check
         </Button>
-        <Button variant="ghost" size="sm" onClick={() => onLayout(fitView)} className="gap-1.5 text-indigo-700 hover:bg-white hover:shadow-sm">
+        <Button variant="ghost" size="sm" onClick={() => onLayout()} className="gap-1.5 text-indigo-700 hover:bg-white hover:shadow-sm">
           <LayoutGrid className="w-4 h-4" /> Aufräumen
         </Button>
         <Button variant="ghost" size="sm" onClick={onExportImage} className="gap-1.5 text-green-700 hover:bg-white hover:shadow-sm">
@@ -165,7 +162,6 @@ function ProModeSection({
 // --- Main Component ---
 
 export function PlannerDashboard() {
-  const { fitView } = useReactFlow();
   const [exportError, setExportError] = useState<string | null>(null);
 
   const {
@@ -204,12 +200,11 @@ export function PlannerDashboard() {
   const warnings = useLiveValidation(nodes, edges, waterNodes, waterEdges);
 
   return (
-    <div className="relative flex flex-wrap items-center gap-2 bg-card border-b border-border px-2 py-1 shrink-0 w-full overflow-visible">
-      <div className="flex flex-wrap items-center gap-2 flex-grow">
+    <div className="relative flex flex-nowrap items-center gap-2 bg-card border-b border-border px-2 py-1 shrink-0 w-full overflow-x-auto">
+      <div className="flex flex-nowrap items-center gap-2 flex-grow">
         <NavigationSection viewMode={viewMode} setViewMode={setViewMode} />
 
         <ActionsSection
-          fitView={fitView}
           season={season}
           setSeason={setSeason}
           exportBOM={exportBOM}

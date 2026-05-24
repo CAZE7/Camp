@@ -4,9 +4,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { PlannerSidebar } from './PlannerSidebar';
 
 // Mock usePlannerStore
+const mockToggleSidebar = vi.fn();
 vi.mock('../../store/usePlannerStore', () => ({
   usePlannerStore: vi.fn((selector) => {
-    const state = { viewMode: 'electric' };
+    const state = { viewMode: 'electric', isSidebarOpen: true, toggleSidebar: mockToggleSidebar };
     return selector(state);
   })
 }));
@@ -37,27 +38,19 @@ describe('PlannerSidebar', () => {
 
     const toggleButton = screen.getByRole('button');
 
-    // Initially open
+    // Initially open (isSidebarOpen=true in mock)
     expect(toggleButton).toHaveAttribute('title', 'Sidebar einklappen');
 
-    // Click to close
+    // Clicking should call toggleSidebar from store
     fireEvent.click(toggleButton);
-
-    // Should now be closed
-    expect(toggleButton).toHaveAttribute('title', 'Sidebar ausklappen');
-
-    // Click to open again
-    fireEvent.click(toggleButton);
-
-    // Should be open again
-    expect(toggleButton).toHaveAttribute('title', 'Sidebar einklappen');
+    expect(mockToggleSidebar).toHaveBeenCalledTimes(1);
   });
 
   it('passes the correct viewMode from store to Sidebar', async () => {
     // Change mock to return 'water' mode
     const { usePlannerStore } = await import('../../store/usePlannerStore');
     vi.mocked(usePlannerStore).mockImplementation((selector: any) => {
-      return selector({ viewMode: 'water' });
+      return selector({ viewMode: 'water', isSidebarOpen: true, toggleSidebar: vi.fn() });
     });
 
     render(<PlannerSidebar />);

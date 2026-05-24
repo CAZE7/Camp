@@ -13,7 +13,7 @@ vi.mock('html-to-image', () => ({
   toPng: vi.fn().mockResolvedValue('data:image/png;base64,mocked')
 }));
 
-// Mock React Flow
+// Mock React Flow (no longer used in PlannerDashboard, kept for safety)
 const mockFitView = vi.fn();
 vi.mock('reactflow', () => ({
   useReactFlow: () => ({
@@ -40,8 +40,12 @@ vi.mock('../../store/usePlannerStore', () => ({
       autoWireSystem: mockAutoWireSystem,
       checkSchematic: mockCheckSchematic,
       onLayout: mockOnLayout,
+      systemMessage: null,
+      setSystemMessage: vi.fn(),
       nodes: [],
       edges: [],
+      waterNodes: [],
+      waterEdges: [],
     };
     return selector(state);
   })
@@ -130,12 +134,13 @@ describe('PlannerDashboard - Action Buttons', () => {
     expect(event.type).toBe('show-bom-modal');
   });
 
-  it('calls autoWireSystem with fitView when clicking Automatisch Verkabeln', () => {
+  it('calls autoWireSystem with no args when clicking Auto-Wire', () => {
     render(<PlannerDashboard />);
 
     fireEvent.click(screen.getByText(/Auto-Wire/));
 
-    expect(mockAutoWireSystem).toHaveBeenCalledWith(mockFitView);
+    expect(mockAutoWireSystem).toHaveBeenCalledTimes(1);
+    expect(mockAutoWireSystem).toHaveBeenCalledWith();
   });
 
   it('calls checkSchematic when clicking KI-Check', () => {
@@ -146,12 +151,13 @@ describe('PlannerDashboard - Action Buttons', () => {
     expect(mockCheckSchematic).toHaveBeenCalledTimes(1);
   });
 
-  it('calls onLayout with fitView when clicking Aufräumen', () => {
+  it('calls onLayout with no args when clicking Aufräumen', () => {
     render(<PlannerDashboard />);
 
     fireEvent.click(screen.getByText(/Aufräumen/));
 
-    expect(mockOnLayout).toHaveBeenCalledWith(mockFitView);
+    expect(mockOnLayout).toHaveBeenCalledTimes(1);
+    expect(mockOnLayout).toHaveBeenCalledWith();
   });
 });
 

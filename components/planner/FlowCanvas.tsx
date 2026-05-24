@@ -122,9 +122,7 @@ export function FlowCanvas() {
           zoomOnPinch={isMobile}
           panOnDrag={isMobile ? true : [1, 2]}
           style={{
-            willChange: 'transform',
-            backfaceVisibility: 'hidden',
-            backgroundColor: 'var(--canvas-bg, hsl(220 14% 96%))',
+            backgroundColor: 'var(--canvas-bg, #f4f5f7)',
           }}
         >
           <Background color="hsl(var(--border))" gap={16} />

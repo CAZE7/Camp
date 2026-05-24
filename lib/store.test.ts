@@ -38,7 +38,7 @@ describe('useAppStore', () => {
     expect(result.current.calculatedSolarWatts).toBe(400);
   });
 
-  it('should persist state to localStorage', () => {
+  it('should retain state changes in memory across calls', () => {
     const { result } = renderHook(() => useAppStore());
 
     act(() => {
@@ -46,8 +46,8 @@ describe('useAppStore', () => {
       result.current.toggleProMode();
     });
 
-    const storedState = JSON.parse(window.localStorage.getItem('camper-app-storage') || '{}');
-    expect(storedState.state.calculatedSolarWatts).toBe(400);
-    expect(storedState.state.isProMode).toBe(true);
+    // Store has no persist middleware — state lives in memory only
+    expect(result.current.calculatedSolarWatts).toBe(400);
+    expect(result.current.isProMode).toBe(true);
   });
 });

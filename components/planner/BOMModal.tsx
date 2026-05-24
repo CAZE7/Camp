@@ -9,7 +9,7 @@ export function BOMModal() {
     dcdcCharger: 'Ladebooster (DC-DC)',
     acBatteryCharger: 'Ladegerät (230V)',
     consumer: '12V Verbraucher',
-    charger: 'Ladegerät / Booster',
+    charger: 'Ladegerät (veraltet)',
     fuse: 'Sicherung',
     shorePower: 'Landstrom',
     inverter: 'Wechselrichter',

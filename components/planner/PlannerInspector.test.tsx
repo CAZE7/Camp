@@ -4,6 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { PlannerInspector } from './PlannerInspector';
 
 // Mock usePlannerStore
+const mockToggleInspector = vi.fn();
 const mockPlannerStoreState = {
   nodes: [{ id: 'node-1', data: { label: 'Node 1' } }, { id: 'node-2', data: { label: 'Node 2' } }],
   waterNodes: [],
@@ -15,6 +16,8 @@ const mockPlannerStoreState = {
   handleChangeCrossSection: vi.fn(),
   deleteSelected: vi.fn(),
   updateNodeData: vi.fn(),
+  isInspectorOpen: true,
+  toggleInspector: mockToggleInspector,
 };
 
 vi.mock('../../store/usePlannerStore', () => ({
@@ -72,20 +75,12 @@ describe('PlannerInspector', () => {
 
     const toggleButton = screen.getByRole('button');
 
-    // Initially open
+    // Initially open (isInspectorOpen=true in mock)
     expect(toggleButton).toHaveAttribute('title', 'Inspector einklappen');
 
-    // Click to close
+    // Click should call store toggleInspector
     fireEvent.click(toggleButton);
-
-    // Should now be closed
-    expect(toggleButton).toHaveAttribute('title', 'Inspector ausklappen');
-
-    // Click to open again
-    fireEvent.click(toggleButton);
-
-    // Should be open again
-    expect(toggleButton).toHaveAttribute('title', 'Inspector einklappen');
+    expect(mockToggleInspector).toHaveBeenCalledTimes(1);
   });
 
   it('passes the correct props to the Inspector component', () => {

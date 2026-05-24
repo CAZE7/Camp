@@ -89,7 +89,7 @@
 /* ─── Performance & Mobile Touch: Layout Containment ─── */
 /* Isolate the React Flow canvas so reflows don't propagate to sidebar/inspector */
 .react-flow {
-  contain: layout paint;
+  contain: layout style paint;
   touch-action: none;
   overscroll-behavior: none;
 }
@@ -132,9 +132,6 @@
 
 /* React Flow Nodes Performance */
 .react-flow__node {
-  will-change: transform;
-  backface-visibility: hidden;
-  transform: translateZ(0); /* force3D */
   color: var(--card-foreground);
   background: var(--card);
 }

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Inspector from '../Inspector';
@@ -8,8 +8,6 @@ import { useAppStore } from '../../lib/store';
 import { useDashboardMetrics } from './hooks/useDashboardMetrics';
 
 export function PlannerInspector() {
-  const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(true);
-
   const {
     nodes,
     waterNodes,
@@ -21,6 +19,8 @@ export function PlannerInspector() {
     handleChangeCrossSection,
     deleteSelected,
     updateNodeData,
+    isInspectorOpen,
+    toggleInspector,
   } = usePlannerStore(useShallow((state) => ({
     nodes: state.nodes,
     waterNodes: state.waterNodes,
@@ -32,6 +32,8 @@ export function PlannerInspector() {
     handleChangeCrossSection: state.handleChangeCrossSection,
     deleteSelected: state.deleteSelected,
     updateNodeData: state.updateNodeData,
+    isInspectorOpen: state.isInspectorOpen,
+    toggleInspector: state.toggleInspector,
   })));
 
   const calculatedSolarWatts = useAppStore((state) => state.calculatedSolarWatts);
@@ -49,17 +51,19 @@ export function PlannerInspector() {
       <Button
         variant="outline"
         size="icon"
-        onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)}
+        onClick={toggleInspector}
         className="absolute top-1/2 -translate-y-1/2 z-50 shadow-md transition-all duration-300 h-10 w-10 md:h-8 md:w-8 flex items-center justify-center bg-white border-gray-200"
-        style={{ right: isRightSidebarOpen ? 'calc(250px + 0.75rem)' : '0.75rem' }}
-        title={isRightSidebarOpen ? "Inspector einklappen" : "Inspector ausklappen"}
-        aria-label={isRightSidebarOpen ? "Rechte Sidebar einklappen" : "Rechte Sidebar ausklappen"}
+        style={{ right: isInspectorOpen ? 'calc(250px + 0.75rem)' : '0.75rem' }}
+        title={isInspectorOpen ? "Inspector einklappen" : "Inspector ausklappen"}
+        aria-label={isInspectorOpen ? "Rechte Sidebar einklappen" : "Rechte Sidebar ausklappen"}
       >
-        {isRightSidebarOpen ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+        {isInspectorOpen ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
       </Button>
 
       <div
-        className={`transition-all duration-300 ease-in-out relative z-40 h-full min-w-0 ${isRightSidebarOpen ? 'md:w-[250px]' : 'w-0'} flex-shrink-0 shadow-lg bg-card border-l border-border overflow-hidden`}
+        className={`transition-all duration-300 ease-in-out relative z-40 h-full flex-shrink-0 shadow-lg bg-card border-l border-border overflow-hidden ${
+          isInspectorOpen ? 'w-[250px]' : 'w-0'
+        }`}
       >
         <div className="w-full h-full">
           <Inspector

@@ -15,6 +15,10 @@ interface PlannerState {
   setSidebarOpen: (isOpen: boolean) => void;
   toggleSidebar: () => void;
 
+  isInspectorOpen: boolean;
+  setInspectorOpen: (isOpen: boolean) => void;
+  toggleInspector: () => void;
+
   systemMessage: string | null;
   setSystemMessage: (msg: string | null) => void;
 
@@ -54,8 +58,8 @@ interface PlannerState {
 
   isValidConnection: (connection: Connection) => boolean;
   onConnect: (connection: Connection) => void;
-  autoWireSystem: (fitView?: (options?: any) => void) => void;
-  onLayout: (fitView?: (options?: any) => void) => void;
+  autoWireSystem: () => void;
+  onLayout: () => void;
   checkSchematic: () => void;
   exportBOM: () => void;
   onDrop: (event: React.DragEvent, screenToFlowPosition: (client: {x: number, y: number}) => {x: number, y: number}) => void;
@@ -181,7 +185,7 @@ function wireSolars(
 ) {
   const solarsLen = solars.length;
   if (solarsLen > 0) {
-    const mpptNode = ensureNode(currentNodes, nodesByType, nodesByLabel, batteryNode, 'charger', 'MPPT Laderegler', 150, -200, {
+    const mpptNode = ensureNode(currentNodes, nodesByType, nodesByLabel, batteryNode, 'mpptController', 'MPPT Laderegler', 150, -200, {
       amps: 30,
     });
     for (let i = 0; i < solarsLen; i++) {
@@ -286,7 +290,13 @@ function performAutoWiring(initialNodes: Node[]): { nodes: Node[], edges: Edge[]
     ...(nodesByType['roofsolar'] || [])
   ];
   wireSolars(solars, busbarNode, currentNodes, nodesByType, nodesByLabel, batteryNode, newEdges, edgeIdRef);
-  wireChargers(nodesByType['charger'] || [], busbarNode, newEdges, edgeIdRef);
+  const allChargers = [
+    ...(nodesByType['charger'] || []),         // legacy
+    ...(nodesByType['mpptController'] || []),
+    ...(nodesByType['dcdcCharger'] || []),
+    ...(nodesByType['acBatteryCharger'] || []),
+  ];
+  wireChargers(allChargers, busbarNode, newEdges, edgeIdRef);
   wireConsumers(nodesByType['consumer'] || [], fuseBoxNode, newEdges, edgeIdRef);
 
   function wire230VAndGround(
@@ -357,6 +367,10 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
   isSidebarOpen: true,
   setSidebarOpen: (isOpen) => set({ isSidebarOpen: isOpen }),
   toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
+
+  isInspectorOpen: true,
+  setInspectorOpen: (isOpen) => set({ isInspectorOpen: isOpen }),
+  toggleInspector: () => set((state) => ({ isInspectorOpen: !state.isInspectorOpen })),
 
   systemMessage: null,
   setSystemMessage: (msg) => set({ systemMessage: msg }),
@@ -610,7 +624,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
     
   },
 
-  autoWireSystem: (fitView) => {
+  autoWireSystem: () => {
     const { nodes } = get();
 
     const result = performAutoWiring(nodes);
@@ -627,14 +641,14 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
 
     set({ nodes: [...layoutedNodes], edges: [...layoutedEdges] });
 
-    if (fitView && typeof window !== 'undefined') {
+    if (typeof window !== 'undefined') {
       window.requestAnimationFrame(() => {
-        fitView({ duration: 800 });
+        window.dispatchEvent(new CustomEvent('planner-fit-view'));
       });
     }
   },
 
-  onLayout: (fitView) => {
+  onLayout: () => {
     const { nodes, edges } = get();
     const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
       nodes,
@@ -642,6 +656,11 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
       'LR'
     );
     set({ nodes: [...layoutedNodes], edges: [...layoutedEdges] });
+    if (typeof window !== 'undefined') {
+      window.requestAnimationFrame(() => {
+        window.dispatchEvent(new CustomEvent('planner-fit-view'));
+      });
+    }
   },
 
   checkSchematic: () => {
@@ -742,7 +761,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
       newNode.data = { ...newNode.data, capacity: 100, chemistry: 'LiFePO4' };
     } else if (type === 'consumer') {
       newNode.data = { ...newNode.data, watts: 50, hours: 2 };
-    } else if (type === 'charger') {
+    } else if (type === 'charger' || type === 'mpptController' || type === 'dcdcCharger' || type === 'acBatteryCharger') {
       newNode.data = { ...newNode.data, amps: 10 };
     } else if (type === 'fuse') {
       newNode.data = { ...newNode.data, rating: 30 };
