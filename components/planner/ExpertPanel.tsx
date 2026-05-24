@@ -272,8 +272,14 @@ export function ExpertPanel() {
 
   const currentKnowledge = useMemo(() => {
     if (selectedNodes.length === 0) return DEFAULT_TIP;
-    const nodeType = selectedNodes[0].type;
+    let nodeType = selectedNodes[0].type;
     if (!nodeType) return DEFAULT_TIP;
+    
+    // Map new charger types to the general charger knowledge
+    if (['mpptController', 'dcdcCharger', 'acBatteryCharger'].includes(nodeType)) {
+      nodeType = 'charger';
+    }
+
     return EXPERT_KNOWLEDGE[nodeType] || DEFAULT_TIP;
   }, [selectedNodes]);
 

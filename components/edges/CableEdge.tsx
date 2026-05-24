@@ -50,7 +50,7 @@ export const calculateCurrent = (
       totalConsumerAmps += (Number(n.data.watts) || 0) / 12;
     } else if (n.type === 'inverter') {
       totalConsumerAmps += (Number(n.data.watts) || 0) / 12 / 0.85;
-    } else if (n.type === 'charger') {
+    } else if (['charger', 'mpptController', 'dcdcCharger', 'acBatteryCharger'].includes(n.type as string)) {
       totalChargerAmps += Number(n.data.amps) || 0;
     } else if (n.type === 'solar') {
       totalChargerAmps += (Number(n.data.watts) || 0) / 18;

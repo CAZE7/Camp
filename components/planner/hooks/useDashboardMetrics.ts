@@ -124,7 +124,7 @@ function categorizeNodes(nodes: Node[]) {
       result.hasInverter = true;
     } else if (type === 'solar') {
       result.solarNodes.push(n);
-    } else if (type === 'charger') {
+    } else if (['charger', 'mpptController', 'dcdcCharger', 'acBatteryCharger'].includes(type as string)) {
       result.chargers.push(n);
     }
   }

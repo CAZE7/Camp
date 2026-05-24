@@ -184,7 +184,7 @@ describe('FlowCanvas', () => {
       });
 
       expect(screen.getByText('Stückliste (BOM)')).toBeInTheDocument();
-      expect(screen.getByText('1x battery')).toBeInTheDocument();
+      expect(screen.getByText('1x Batterie')).toBeInTheDocument();
       expect(screen.getByText('5.0 Meter 4 mm² Kabel')).toBeInTheDocument();
 
       // Close modal

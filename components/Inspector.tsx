@@ -78,7 +78,7 @@ function NodeInspectorRenderer({
         <ConsumerInspector node={selectedNode} onUpdateNodeData={onUpdateNodeData} />
       )}
 
-      {selectedNode.type === 'charger' && (
+      {['charger', 'mpptController', 'dcdcCharger', 'acBatteryCharger'].includes(selectedNode.type as string) && (
         <ChargerInspector node={selectedNode} onUpdateNodeData={onUpdateNodeData} />
       )}
 

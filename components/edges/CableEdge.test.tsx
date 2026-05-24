@@ -90,36 +90,34 @@ describe('CableEdge', () => {
       getNodes: vi.fn().mockReturnValue([]),
     });
 
-    // calculatedA = (10 * (5 * 2)) / (58 * 0.24) = 100 / 13.92 = 7.18
-    // minRequiredA = max(1.5, 7.18) = 7.18
-    // VDE_SIZES = [1.5, 2.5, 4.0, 6.0, 10.0, 16.0, ...], first size >= 7.18 is 10.0
-    // cs = 10.0 => mf = 35
+    // calculatedA = (10 * (5 * 2)) / (58 * 0.36) = 100 / 20.88 = 4.79
+    // minRequiredA = max(1.5, 4.79) = 4.79
+    // VDE_SIZES = [1.5, 2.5, 4.0, 6.0, 10.0, 16.0, ...], first size >= 4.79 is 6.0
+    // cs = 6.0 => mf = 25
 
     const { getByText } = render(<CableEdge {...defaultProps} selected={true} />);
 
-    expect(getByText('10 mm²')).toBeInTheDocument();
-    // NEU-HIGH-B: New derated FUSE_MAP value for 10mm² in camper conditions = 35A (was 50A)
-    expect(getByText('Max: 35A')).toBeInTheDocument();
+    expect(getByText('6 mm²')).toBeInTheDocument();
+    expect(getByText('Max: 25A')).toBeInTheDocument();
   });
 
-  it('calculates crossSection and maxFuse when target is charger', () => {
+  it('calculates crossSection and maxFuse when target is mpptController', () => {
     (useReactFlow as any).mockReturnValue({
       getNode: vi.fn((id) => {
-        if (id === '2') return { id: '2', type: 'charger', data: { amps: 30 } }; // I = 30A
+        if (id === '2') return { id: '2', type: 'mpptController', data: { amps: 30 } }; // I = 30A
         return null;
       }),
       getNodes: vi.fn().mockReturnValue([]),
     });
 
-    // calculatedA = (30 * (5 * 2)) / (58 * 0.24) = 300 / 13.92 = 21.55
-    // VDE_SIZES = [... 16.0, 25.0, ...], first size >= 21.55 is 25.0
-    // cs = 25.0 => mf = 60
+    // calculatedA = (30 * (5 * 2)) / (58 * 0.36) = 300 / 20.88 = 14.36
+    // VDE_SIZES = [... 10.0, 16.0, 25.0, ...], first size >= 14.36 is 16.0
+    // cs = 16.0 => mf = 40
 
     const { getByText } = render(<CableEdge {...defaultProps} selected={true} />);
 
-    expect(getByText('25 mm²')).toBeInTheDocument();
-    // NEU-HIGH-B: New derated FUSE_MAP value for 25mm² in camper conditions = 60A (was 90A)
-    expect(getByText('Max: 60A')).toBeInTheDocument();
+    expect(getByText('16 mm²')).toBeInTheDocument();
+    expect(getByText('Max: 40A')).toBeInTheDocument();
   });
 
   it('uses fallback logic to calculate total watts from all consumers when no source/target match', () => {

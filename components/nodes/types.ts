@@ -29,6 +29,12 @@ export interface RoofNodeData extends CommonNodeData {
 export interface BatteryNodeData extends CommonNodeData {
   capacity?: number;
   chemistry?: string;
+  nominalVoltage?: number;
+  hasInternalBms?: boolean;
+  hasExternalBms?: boolean;
+  bmsContinuousDischarge?: number;
+  bmsPeakDischarge?: number;
+  bmsContinuousCharge?: number;
 }
 
 export interface ConsumerNodeData extends CommonNodeData {
@@ -45,10 +51,33 @@ export interface ChargerNodeData extends CommonNodeData {
   efficiency?: number;
 }
 
+export interface MpptControllerNodeData extends CommonNodeData {
+  amps?: number;
+  efficiency?: number;
+}
+
+export interface DcdcChargerNodeData extends CommonNodeData {
+  amps?: number;
+  efficiency?: number;
+}
+
+export interface AcBatteryChargerNodeData extends CommonNodeData {
+  amps?: number;
+  efficiency?: number;
+}
+
+export interface BusbarNodeData extends CommonNodeData {
+  role?: 'positive' | 'negative';
+}
+
 export type PlannerNodeData =
   | RoofNodeData
   | BatteryNodeData
   | ConsumerNodeData
   | SolarNodeData
   | ChargerNodeData
+  | MpptControllerNodeData
+  | DcdcChargerNodeData
+  | AcBatteryChargerNodeData
+  | BusbarNodeData
   | CommonNodeData;

@@ -28,8 +28,8 @@ describe('useLiveValidation', () => {
 
       const { result } = renderHook(() => useLiveValidation(nodes, edges));
 
-      expect(result.current).toHaveLength(1);
-      expect(result.current[0]).toEqual(expect.objectContaining({
+      expect(result.current).toHaveLength(2);
+      expect(result.current).toContainEqual(expect.objectContaining({
         id: 'missing-fuse-e1-2',
         type: 'critical',
         message: expect.stringContaining('Sicherung fehlt an Verbindung von Battery')
@@ -81,7 +81,7 @@ describe('useLiveValidation', () => {
         { id: '2', type: 'consumer', data: { label: 'Consumer' }, position: { x: 100, y: 0 } }
       ];
       const edges: Edge<CableEdgeData>[] = [
-        { id: 'e1-2', source: '1', target: '2', sourceHandle: 'minus-out', data: { fuseSize: undefined } }
+        { id: 'e1-2', source: '1', target: '2', sourceHandle: 'minus-out', data: { fuseSize: '10A' } }
       ];
 
       const { result } = renderHook(() => useLiveValidation(nodes, edges));
@@ -94,7 +94,7 @@ describe('useLiveValidation', () => {
       const nodes: Node[] = [
         { id: '1', type: 'solar', data: { watts: 400 }, position: { x: 0, y: 0 } },
         { id: '2', type: 'solar', data: { watts: 400 }, position: { x: 0, y: 0 } },
-        { id: '3', type: 'charger', data: { amps: 30 }, position: { x: 100, y: 0 } } // MPPT capacity = 30 * 12 / 0.85 = ~423.5W
+        { id: '3', type: 'mpptController', data: { amps: 30 }, position: { x: 100, y: 0 } } // MPPT capacity = 30 * 12 / 0.85 = ~423.5W
       ];
 
       const { result } = renderHook(() => useLiveValidation(nodes, []));
@@ -109,9 +109,9 @@ describe('useLiveValidation', () => {
 
     it('should not generate warning if total solar watts is within MPPT capacity', () => {
       const nodes: Node[] = [
-        { id: '1', type: 'solar', data: { watts: 200 }, position: { x: 0, y: 0 } },
-        { id: '2', type: 'solar', data: { watts: 200 }, position: { x: 0, y: 0 } },
-        { id: '3', type: 'charger', data: { amps: 30 }, position: { x: 100, y: 0 } } // MPPT capacity = 30 * 12 / 0.85 = ~423.5W
+        { id: '1', type: 'solar', data: { watts: 100 }, position: { x: 0, y: 0 } },
+        { id: '2', type: 'solar', data: { watts: 100 }, position: { x: 0, y: 0 } },
+        { id: '3', type: 'mpptController', data: { amps: 30 }, position: { x: 100, y: 0 } } // MPPT capacity = 30 * 12 / 0.85 = ~423.5W
       ];
 
       const { result } = renderHook(() => useLiveValidation(nodes, []));

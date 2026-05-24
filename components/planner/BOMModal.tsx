@@ -5,6 +5,9 @@ import { usePlannerStore } from '../../store/usePlannerStore';
 export function BOMModal() {
   const typeLabels: Record<string, string> = {
     battery: 'Batterie',
+    mpptController: 'Laderegler (MPPT)',
+    dcdcCharger: 'Ladebooster (DC-DC)',
+    acBatteryCharger: 'Ladegerät (230V)',
     consumer: '12V Verbraucher',
     charger: 'Ladegerät / Booster',
     fuse: 'Sicherung',

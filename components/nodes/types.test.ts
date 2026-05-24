@@ -6,6 +6,10 @@ import type {
   ConsumerNodeData,
   SolarNodeData,
   ChargerNodeData,
+  MpptControllerNodeData,
+  DcdcChargerNodeData,
+  AcBatteryChargerNodeData,
+  BusbarNodeData,
   PlannerNodeData,
   OnNodeResize
 } from './types';
@@ -55,6 +59,12 @@ describe('components/nodes/types', () => {
     type ExpectedBatteryNodeData = CommonNodeData & {
       capacity?: number;
       chemistry?: string;
+      nominalVoltage?: number;
+      hasInternalBms?: boolean;
+      hasExternalBms?: boolean;
+      bmsContinuousDischarge?: number;
+      bmsPeakDischarge?: number;
+      bmsContinuousCharge?: number;
     };
     expectTypeOf<BatteryNodeData>().toMatchTypeOf<ExpectedBatteryNodeData>();
     expectTypeOf<ExpectedBatteryNodeData>().toMatchTypeOf<BatteryNodeData>();
@@ -86,6 +96,41 @@ describe('components/nodes/types', () => {
     expectTypeOf<ExpectedChargerNodeData>().toMatchTypeOf<ChargerNodeData>();
   });
 
+  it('MpptControllerNodeData should extend CommonNodeData with expected properties', () => {
+    type ExpectedMpptControllerNodeData = CommonNodeData & {
+      amps?: number;
+      efficiency?: number;
+    };
+    expectTypeOf<MpptControllerNodeData>().toMatchTypeOf<ExpectedMpptControllerNodeData>();
+    expectTypeOf<ExpectedMpptControllerNodeData>().toMatchTypeOf<MpptControllerNodeData>();
+  });
+
+  it('DcdcChargerNodeData should extend CommonNodeData with expected properties', () => {
+    type ExpectedDcdcChargerNodeData = CommonNodeData & {
+      amps?: number;
+      efficiency?: number;
+    };
+    expectTypeOf<DcdcChargerNodeData>().toMatchTypeOf<ExpectedDcdcChargerNodeData>();
+    expectTypeOf<ExpectedDcdcChargerNodeData>().toMatchTypeOf<DcdcChargerNodeData>();
+  });
+
+  it('AcBatteryChargerNodeData should extend CommonNodeData with expected properties', () => {
+    type ExpectedAcBatteryChargerNodeData = CommonNodeData & {
+      amps?: number;
+      efficiency?: number;
+    };
+    expectTypeOf<AcBatteryChargerNodeData>().toMatchTypeOf<ExpectedAcBatteryChargerNodeData>();
+    expectTypeOf<ExpectedAcBatteryChargerNodeData>().toMatchTypeOf<AcBatteryChargerNodeData>();
+  });
+
+  it('BusbarNodeData should extend CommonNodeData with expected properties', () => {
+    type ExpectedBusbarNodeData = CommonNodeData & {
+      role?: 'positive' | 'negative';
+    };
+    expectTypeOf<BusbarNodeData>().toMatchTypeOf<ExpectedBusbarNodeData>();
+    expectTypeOf<ExpectedBusbarNodeData>().toMatchTypeOf<BusbarNodeData>();
+  });
+
   it('PlannerNodeData should be a union of node types', () => {
     type ExpectedPlannerNodeData =
       | RoofNodeData
@@ -93,6 +138,10 @@ describe('components/nodes/types', () => {
       | ConsumerNodeData
       | SolarNodeData
       | ChargerNodeData
+      | MpptControllerNodeData
+      | DcdcChargerNodeData
+      | AcBatteryChargerNodeData
+      | BusbarNodeData
       | CommonNodeData;
     expectTypeOf<PlannerNodeData>().toMatchTypeOf<ExpectedPlannerNodeData>();
     expectTypeOf<ExpectedPlannerNodeData>().toMatchTypeOf<PlannerNodeData>();

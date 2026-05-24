@@ -17,7 +17,10 @@ import WaterNode from '../nodes/WaterNode';
 export const NODE_TYPES = {
   battery: BatteryNode,
   consumer: ConsumerNode,
-  charger: ChargerNode,
+  charger: ChargerNode, // kept for backwards compatibility
+  mpptController: ChargerNode,
+  dcdcCharger: ChargerNode,
+  acBatteryCharger: ChargerNode,
   fuse: FuseNode,
   shorePower: ShorePowerNode,
   consumer230v: Consumer230VNode,
@@ -59,8 +62,8 @@ export const initialNodes: Node[] = [
     data: { watts: 60, hours: 12 },
   },
   {
-    id: 'charger-1',
-    type: 'charger',
+    id: 'mppt-1',
+    type: 'mpptController',
     position: { x: 100, y: 300 },
     data: { amps: 30 },
   },
@@ -88,8 +91,8 @@ export const initialEdges: Edge<CableEdgeData>[] = [
     },
   },
   {
-    id: 'e-charger-battery',
-    source: 'charger-1',
+    id: 'e-mppt-battery',
+    source: 'mppt-1',
     target: 'battery',
     type: 'cableEdge',
     data: {

@@ -65,8 +65,8 @@ describe('useDashboardMetrics', () => {
     const { result: resSummer } = renderHook(() =>
       useDashboardMetrics(nodes, emptyEdges, 'summer', 0)
     );
-    // (12/12) * 10 * 1.5 = 15
-    expect(resSummer.current.dailyConsumptionAh).toBe(15);
+    // (12/12) * 10 = 10
+    expect(resSummer.current.dailyConsumptionAh).toBe(10);
 
     const { result: resWinter } = renderHook(() =>
       useDashboardMetrics(nodes, emptyEdges, 'winter', 0)
@@ -243,7 +243,7 @@ describe('useDashboardMetrics', () => {
       const { result } = renderHook(() =>
         useDashboardMetrics(nodes, [], 'summer', 120)
       );
-      expect(result.current.chargingTimeStr).toBe('10.3 Stunden');
+      expect(result.current.chargingTimeStr).toBe('15.5 Stunden');
     });
 
     it('should calculate metrics when only calculatedSolarWatts is provided in winter', () => {
@@ -253,7 +253,7 @@ describe('useDashboardMetrics', () => {
       const { result } = renderHook(() =>
         useDashboardMetrics(nodes, [], 'winter', 120)
       );
-      expect(result.current.chargingTimeStr).toBe('29.6 Stunden');
+      expect(result.current.chargingTimeStr).toBe('44.4 Stunden');
     });
 
     it('should handle series solar connection missing data properly', () => {

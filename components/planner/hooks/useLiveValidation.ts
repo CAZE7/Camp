@@ -27,7 +27,7 @@ export function useLiveValidation(
         const sourceNode = nodes.find(n => n.id === edge.source);
         const targetNode = nodes.find(n => n.id === edge.target);
 
-        const isHighPowerSource = sourceNode?.type === 'battery' || sourceNode?.type === 'inverter' || sourceNode?.type === 'charger';
+        const isHighPowerSource = sourceNode?.type === 'battery' || sourceNode?.type === 'inverter' || ['charger', 'mpptController', 'dcdcCharger', 'acBatteryCharger'].includes(sourceNode?.type as string);
         const isNotFuseBoxTarget = targetNode?.type !== 'fuse' && targetNode?.type !== 'busbar' && targetNode?.type !== 'shunt';
 
         if (isHighPowerSource && isNotFuseBoxTarget) {
@@ -44,7 +44,7 @@ export function useLiveValidation(
 
     // --- Rule B: Overloaded Solar Regulator ---
     const solarNodes = nodes.filter(n => n.type === 'solar');
-    const chargers = nodes.filter(n => n.type === 'charger');
+    const chargers = nodes.filter(n => ['charger', 'mpptController'].includes(n.type as string));
 
     if (solarNodes.length > 0 && chargers.length > 0) {
       const totalSolarWatts = solarNodes.reduce((acc, node) => acc + (Number(node.data.watts) || 0), 0);
@@ -69,7 +69,7 @@ export function useLiveValidation(
       // Calculate daily Ah consumption assuming 12V and average usage
       const totalDailyAh = consumers.reduce((acc, node) => {
         const watts = Number(node.data.watts) || 0;
-        const hours = Number(node.data.hours) || 0; // 0 hours if not defined — no phantom consumption
+        const hours = Number(node.data.hours) || 4; // default to 4 hours
         return acc + ((watts * hours) / 12);
       }, 0);
 
@@ -94,7 +94,7 @@ export function useLiveValidation(
         targetNode.type === 'consumer230v' ||
         targetNode.type === 'inverter';
 
-      if (isBattery && isUnprotectedTarget) {
+      if (isBattery && isUnprotectedTarget && !edge.data?.fuseSize) {
         warnings.push({
           id: `direct-battery-${edge.id}`,
           type: 'critical',
