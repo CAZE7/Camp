@@ -31,6 +31,7 @@
     --success: #22c55e;
     --warning: #f59e0b;
     --radius: 0.625rem;
+    --canvas-bg: #f4f5f7;
     --sidebar: #f8fafc;
     --sidebar-foreground: #0f172a;
     --sidebar-primary: #f97316;
@@ -64,6 +65,7 @@
       --sidebar: #141312;
       --sidebar-foreground: #e2ddd6;
       --sidebar-border: #2e2c2a;
+      --canvas-bg: #1e2027;
     }
   }
   * {
@@ -87,7 +89,7 @@
 /* ─── Performance & Mobile Touch: Layout Containment ─── */
 /* Isolate the React Flow canvas so reflows don't propagate to sidebar/inspector */
 .react-flow {
-  contain: layout style paint;
+  contain: layout paint;
   touch-action: none;
   overscroll-behavior: none;
 }
@@ -133,6 +135,8 @@
   will-change: transform;
   backface-visibility: hidden;
   transform: translateZ(0); /* force3D */
+  color: var(--card-foreground);
+  background: var(--card);
 }
 
 /* ─── Mobile Optimizations & Animations ─── */

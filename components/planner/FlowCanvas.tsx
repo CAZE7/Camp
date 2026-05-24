@@ -98,29 +98,35 @@ export function FlowCanvas() {
       {viewMode === 'water' && waterNodes.length === 0 && (
         <EmptyState title="Noch kein Wassersystem" description="Ziehe Komponenten aus der Sidebar um dein Wassersystem zu planen." />
       )}
-      <ReactFlow
-        nodes={viewMode === 'water' ? waterNodes : nodes}
-        edges={viewMode === 'water' ? waterEdges : edges}
-        nodeTypes={nodeTypes}
-        edgeTypes={edgeTypes}
-        onNodesChange={viewMode === 'water' ? onWaterNodesChange : onNodesChange}
-        onEdgesChange={viewMode === 'water' ? onWaterEdgesChange : onEdgesChange}
-        onConnect={onConnect}
-        isValidConnection={isValidConnection}
-        onSelectionChange={onSelectionChange}
-        onDragOver={onDragOver}
-        onDrop={onDrop}
-        fitView
-        snapToGrid={true}
-        snapGrid={[16, 16]}
-        deleteKeyCode={['Backspace', 'Delete']}
-        onlyRenderVisibleElements={true}
-        elementsSelectable={true}
-        translateExtent={[[-2000, -2000], [4000, 4000]]}
-        zoomOnScroll={!isMobile}
-        zoomOnPinch={isMobile}
-        panOnDrag={isMobile ? true : [1, 2]}
-      >
+      <div className="flex-1 h-full w-full relative">
+        <ReactFlow
+          nodes={viewMode === 'water' ? waterNodes : nodes}
+          edges={viewMode === 'water' ? waterEdges : edges}
+          nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
+          onNodesChange={viewMode === 'water' ? onWaterNodesChange : onNodesChange}
+          onEdgesChange={viewMode === 'water' ? onWaterEdgesChange : onEdgesChange}
+          onConnect={onConnect}
+          isValidConnection={isValidConnection}
+          onSelectionChange={onSelectionChange}
+          onDragOver={onDragOver}
+          onDrop={onDrop}
+          fitView
+          snapToGrid={true}
+          snapGrid={[16, 16]}
+          deleteKeyCode={['Backspace', 'Delete']}
+          onlyRenderVisibleElements={true}
+          elementsSelectable={true}
+          translateExtent={[[-2000, -2000], [4000, 4000]]}
+          zoomOnScroll={!isMobile}
+          zoomOnPinch={isMobile}
+          panOnDrag={isMobile ? true : [1, 2]}
+          style={{
+            willChange: 'transform',
+            backfaceVisibility: 'hidden',
+            backgroundColor: 'var(--canvas-bg, hsl(220 14% 96%))',
+          }}
+        >
         <Background color="hsl(var(--border))" gap={16} />
         <Controls className="rounded-lg overflow-hidden border border-border shadow-sm" />
         <MiniMap className="rounded-lg overflow-hidden border border-border shadow-sm" />

@@ -34,7 +34,7 @@ export default function PlannerInner() {
       </div>
 
       {/* Main Canvas Area */}
-      <div className={`md:flex flex-1 h-full flex-col ${activeTab === 'canvas' ? 'flex' : 'hidden md:flex'}`}>
+      <div className={`md:flex flex-1 flex-col ${activeTab === 'canvas' ? 'flex' : 'hidden md:flex'}`}>
         <PlannerDashboard />
         <div className="flex flex-col flex-1 h-full overflow-hidden relative">
           <React.Suspense fallback={<div className="flex-1 flex items-center justify-center bg-stone-50"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div></div>}>
