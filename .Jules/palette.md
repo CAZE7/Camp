@@ -35,3 +35,7 @@
 ## 2024-05-18 - FloatingMetricsCard UX Fix
 **Learning:** Overlapping absolutely positioned overlay cards (`z-50`) on top of a React Flow canvas blocks pointer events from reaching interactive nodes and edges underneath, even if the user intends to drag them.
 **Action:** Implemented a non-blocking UI overlay strategy: applied `pointer-events-none` to the root absolute container and `pointer-events-auto` exclusively to the interactive children (`.p-4`). Converted the click handler toggling the card from the root div to a semantic `<button>` in the header section, fulfilling accessibility and preventing accidental collapses during canvas interactions.
+
+## 2026-05-26 - Range Input Accessibility
+**Learning:** Custom UI components wrapping native HTML inputs (like `<input type="range">`) often fail to expose ARIA label props to consumers, causing them to be inaccessible to screen readers since they typically don't have associated `<label>` elements by default.
+**Action:** Always ensure custom wrapper components for inputs expose an `ariaLabel` prop and pass it down to the underlying native input element.
