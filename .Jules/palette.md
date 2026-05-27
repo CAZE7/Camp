@@ -35,3 +35,7 @@
 ## 2024-05-18 - FloatingMetricsCard UX Fix
 **Learning:** Overlapping absolutely positioned overlay cards (`z-50`) on top of a React Flow canvas blocks pointer events from reaching interactive nodes and edges underneath, even if the user intends to drag them.
 **Action:** Implemented a non-blocking UI overlay strategy: applied `pointer-events-none` to the root absolute container and `pointer-events-auto` exclusively to the interactive children (`.p-4`). Converted the click handler toggling the card from the root div to a semantic `<button>` in the header section, fulfilling accessibility and preventing accidental collapses during canvas interactions.
+
+## 2026-05-18 - Missing aria-expanded on Togglable Sidebars
+**Learning:** Togglable sidebar buttons in `PlannerSidebar` and `PlannerInspector` had `aria-label` but lacked `aria-expanded`. Without `aria-expanded`, screen reader users cannot know the current visibility state (open/closed) of the panel they control.
+**Action:** Always add `aria-expanded={isOpenState}` to toggle buttons that control the visibility of a sidebar, panel, or overlay to convey its current state.
