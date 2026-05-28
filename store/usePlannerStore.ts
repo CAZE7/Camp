@@ -479,16 +479,14 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
       edgeIdsSet.add(state.selectedEdges[i].id);
     }
 
-    // NEU-CRIT-A Fix: Also filter waterNodes and waterEdges to avoid ghost/invisible edges in memory.
+    const filterNode = (n: Node) => !nodeIdsSet.has(n.id);
+    const filterEdge = (e: Edge) => !nodeIdsSet.has(e.source) && !nodeIdsSet.has(e.target) && !edgeIdsSet.has(e.id);
+
     return {
-      nodes: state.nodes.filter((n) => !nodeIdsSet.has(n.id)),
-      edges: state.edges.filter(
-        (e) => !nodeIdsSet.has(e.source) && !nodeIdsSet.has(e.target) && !edgeIdsSet.has(e.id)
-      ),
-      waterNodes: state.waterNodes.filter((n) => !nodeIdsSet.has(n.id)),
-      waterEdges: state.waterEdges.filter(
-        (e) => !nodeIdsSet.has(e.source) && !nodeIdsSet.has(e.target) && !edgeIdsSet.has(e.id)
-      ),
+      nodes: state.nodes.filter(filterNode),
+      edges: state.edges.filter(filterEdge),
+      waterNodes: state.waterNodes.filter(filterNode),
+      waterEdges: state.waterEdges.filter(filterEdge),
       selectedNodes: [],
       selectedEdges: [],
     };
