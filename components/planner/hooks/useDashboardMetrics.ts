@@ -245,7 +245,8 @@ function calculateSolarMetrics(
 
     // Seasonal yield reduction for solar
     if (season === 'winter') {
-      totalSolarAmps *= 0.35; // Significant reduction in winter (increased to 0.35 per BUG-10/15 requirement)
+      const winterReductionFactor = 0.35;
+      totalSolarAmps *= winterReductionFactor;
     }
   }
 
