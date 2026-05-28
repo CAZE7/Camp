@@ -33,11 +33,11 @@ interface InspectorProps {
 function EmptySelection() {
   return (
     <div className="text-gray-500 text-sm flex-1 flex flex-col items-center justify-center text-center p-4">
-      <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center mb-3">
+      <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-3">
         <MousePointerClick className="w-6 h-6 text-gray-400" aria-hidden="true" />
       </div>
-      <p className="font-medium text-gray-700 mb-1">Kein Element ausgewählt</p>
-      <p className="text-xs text-gray-400">
+      <p className="font-medium text-foreground mb-1">Kein Element ausgewählt</p>
+      <p className="text-xs text-muted-foreground">
         Klicke auf eine Komponente oder Verbindung im Schaltplan, um Details zu bearbeiten.
       </p>
     </div>
@@ -138,7 +138,7 @@ export default function Inspector({
   }, [selectedEdge, selectedNode]);
 
   return (
-    <div className={`absolute right-0 top-0 h-full w-full md:w-[250px] bg-white border-l border-gray-200 p-4 flex flex-col shadow-2xl z-50 transition-transform duration-300 ease-in-out ${hasSelection ? "translate-x-0" : "translate-x-full"}`}>
+    <div className={`absolute right-0 top-0 h-full w-full md:w-[250px] bg-card border-l border-border p-4 flex flex-col shadow-2xl z-50 transition-transform duration-300 ease-in-out ${hasSelection ? "translate-x-0" : "translate-x-full"}`}>
       <h2 className="text-lg font-semibold mb-4 text-gray-800">Inspector</h2>
 
       {!hasSelection ? (

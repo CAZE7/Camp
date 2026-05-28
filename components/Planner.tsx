@@ -7,7 +7,7 @@ import dynamic from 'next/dynamic';
 
 const DynamicPlannerInner = dynamic(() => import('./PlannerInner'), {
   ssr: false,
-  loading: () => <div className="flex items-center justify-center h-screen w-full bg-stone-50"><div className="animate-spin rounded-full h-32 w-32 border-b-2 border-emerald-500"></div></div>
+  loading: () => <div className="flex items-center justify-center h-screen w-full bg-background"><div className="animate-spin rounded-full h-32 w-32 border-b-2 border-emerald-500"></div></div>
 });
 
 export default function Planner() {
