@@ -40,18 +40,17 @@ export const lookupThermalCrossSection = (I: number): number => {
   return size || 70.0;
 };
 
-// 4. Fix AC_230V Querschnitts-Kalkul:
 export const calculateCrossSection = (
   I: number,
   length: number,
   dataCrossSection?: number,
-  domain: 'DC_12V' | 'AC_230V' = 'DC_12V'
+  electricalDomain: 'DC_12V' | 'AC_230V' = 'DC_12V'
 ): number => {
   // Schritt A: Mindestquerschnitt nach Spannungsfall
   // DC 12V: 3% von 12V = 0.36V (DIN VDE 0298-4)
   // AC 230V: 3% von 230V = 6.9V → 4.6V (2% conservative)
-  const allowedDrop = domain === 'AC_230V' ? 4.6 : 0.36;
-  const dropArea = (I * (length * 2)) / (58 * allowedDrop);
+  const maxAllowedVoltageDrop = electricalDomain === 'AC_230V' ? 4.6 : 0.36;
+  const dropArea = (I * (length * 2)) / (58 * maxAllowedVoltageDrop);
 
   // Schritt B: Mindestquerschnitt nach thermischer Belastbarkeit (VDE Lookup mit Derating)
   const thermalArea = lookupThermalCrossSection(I);
