@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { BaseEdge, EdgeProps, EdgeLabelRenderer, useReactFlow, Node } from 'reactflow';
 import { useAppStore } from '../../lib/store';
-import { usePlannerStore } from '../../store/usePlannerStore';
+import { usePlannerStore, getDerivedSystemState } from '../../store/usePlannerStore';
 import { useShallow } from 'zustand/react/shallow';
 import { calculateEdgePath } from './utils/pathUtils';
 import { calculateCrossSection, calculateMaxFuse, calculateStrokeWidth, getEdgeDomain } from '../../lib/electrical';
@@ -93,15 +93,10 @@ const CableEdge = function ({
 
   // Subscribe to connected nodes and total consumption for reactivity
   const { sNodeData, tNodeData, systemLoad, cumulativeDrop } = usePlannerStore(useShallow(state => {
-    const s = state.nodes.find(n => n.id === source) || state.waterNodes.find(n => n.id === source);
-    const t = state.nodes.find(n => n.id === target) || state.waterNodes.find(n => n.id === target);
+    const { nodesMap, waterNodesMap, totalWatts } = getDerivedSystemState(state.nodes, state.waterNodes);
     
-    const totalWatts = state.nodes.reduce((acc, n) => {
-      if (n.type === 'consumer' || n.type === 'consumer230v' || n.type === 'inverter') {
-        return acc + (Number(n.data.watts) || 0);
-      }
-      return acc;
-    }, 0);
+    const s = nodesMap.get(source) || waterNodesMap.get(source);
+    const t = nodesMap.get(target) || waterNodesMap.get(target);
     
     // CRIT-02 Fix: Call calculatePathVoltageDrop inside the selector so it re-evaluates
     // reactively whenever state.edges or state.nodes change, instead of reading stale getState().
