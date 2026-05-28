@@ -13,6 +13,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { useAppStore } from '../../lib/store';
 import { toPng } from 'html-to-image';
 import { useLiveValidation } from './hooks/useLiveValidation';
+import { Node } from 'reactflow';
 
 // --- Subcomponents ---
 
@@ -53,6 +54,7 @@ function ActionsSection({
   checkSchematic,
   onLayout,
   onExportError,
+  nodes,
 }: {
   season: 'summer' | 'winter';
   setSeason: (season: 'summer' | 'winter') => void;
@@ -61,6 +63,7 @@ function ActionsSection({
   checkSchematic: () => void;
   onLayout: () => void;
   onExportError: (msg: string) => void;
+  nodes: Node[];
 }) {
   const handleExportBOM = useCallback(() => {
     exportBOM();
@@ -90,9 +93,17 @@ function ActionsSection({
       link.click();
     }).catch((err) => {
       console.error('Failed to export image', err);
-      onExportError('Bild-Export fehlgeschlagen. Bitte versuche es erneut.');
+      let msg = 'Bild-Export fehlgeschlagen.';
+      if (err?.name === 'SecurityError') {
+        msg = 'Export blockiert: Canvas enthält Cross-Origin-Inhalte. Lade die Seite neu ohne externe Bilder.';
+      } else if (nodes.length === 0) {
+        msg = 'Nichts zu exportieren — platziere zuerst Komponenten auf dem Plan.';
+      } else {
+        msg = 'Bild-Export fehlgeschlagen. Reduziere die Plan-Größe oder versuche es mit Firefox/Chrome.';
+      }
+      onExportError(msg);
     });
-  }, [onExportError]);
+  }, [onExportError, nodes]);
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -212,6 +223,7 @@ export function PlannerDashboard() {
           checkSchematic={checkSchematic}
           onLayout={onLayout}
           onExportError={(msg) => { setExportError(msg); setTimeout(() => setExportError(null), 5000); }}
+          nodes={nodes}
         />
 
         <ProModeSection isProMode={isProMode} toggleProMode={toggleProMode} />
