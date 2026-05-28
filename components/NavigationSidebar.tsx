@@ -102,6 +102,48 @@ const navLinks = [
   },
 ];
 
+type SidebarLinkProps = {
+  link: { href: string; label: string; icon: React.ReactNode };
+  isActive: boolean;
+  isCollapsed: boolean;
+  onClick: () => void;
+};
+
+const SidebarLink = React.forwardRef<HTMLAnchorElement, SidebarLinkProps>(
+  ({ link, isActive, isCollapsed, onClick }, ref) => {
+    return (
+      <Link
+        href={link.href}
+        title={isCollapsed ? link.label : undefined}
+        onClick={onClick}
+        ref={ref}
+        className={cn(
+          "relative z-10 flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 group",
+          isActive
+            ? "bg-emerald-600/20 text-emerald-400 shadow-inner shadow-emerald-900/10"
+            : "text-stone-400 hover:text-amber-200 hover:bg-stone-700/50"
+        )}
+      >
+        <span
+          className={cn(
+            "flex-shrink-0 p-1.5 rounded-lg transition-colors",
+            isActive
+              ? "bg-emerald-600/30 text-emerald-400"
+              : "bg-stone-700/50 text-stone-500 group-hover:text-amber-300 group-hover:bg-stone-700"
+          )}
+        >
+          {link.icon}
+        </span>
+        <span className="truncate">{!isCollapsed && link.label}</span>
+        {isActive && !isCollapsed && (
+          <span className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+        )}
+      </Link>
+    );
+  }
+);
+SidebarLink.displayName = "SidebarLink";
+
 export default function NavigationSidebar({ isCollapsed = false, onToggle }: { isCollapsed?: boolean; onToggle?: () => void }) {
   const pathname = usePathname();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -300,39 +342,18 @@ export default function NavigationSidebar({ isCollapsed = false, onToggle }: { i
             <p className="relative z-10 text-[10px] uppercase tracking-[0.2em] text-stone-500 font-bold px-3 mb-3">Werkzeuge</p>
           )}
 
-          {navLinks.slice(0, 5).map((link, idx) => {
-            const isActive = pathname === link.href;
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                title={isCollapsed ? link.label : undefined}
-                ref={(el) => { linkRefs.current[idx] = el; }}
-                onClick={() => setIsOpen(false)}
-                className={cn(
-                  "relative z-10 flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 group",
-                  isActive
-                    ? "bg-emerald-600/20 text-emerald-400 shadow-inner shadow-emerald-900/10"
-                    : "text-stone-400 hover:text-amber-200 hover:bg-stone-700/50"
-                )}
-              >
-                <span
-                  className={cn(
-                    "flex-shrink-0 p-1.5 rounded-lg transition-colors",
-                    isActive
-                      ? "bg-emerald-600/30 text-emerald-400"
-                      : "bg-stone-700/50 text-stone-500 group-hover:text-amber-300 group-hover:bg-stone-700"
-                  )}
-                >
-                  {link.icon}
-                </span>
-                <span className="truncate">{!isCollapsed && link.label}</span>
-                {isActive && !isCollapsed && (
-                  <span className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                )}
-              </Link>
-            );
-          })}
+          {navLinks.slice(0, 5).map((link, idx) => (
+            <SidebarLink
+              key={link.href}
+              link={link}
+              isActive={pathname === link.href}
+              isCollapsed={isCollapsed}
+              onClick={() => setIsOpen(false)}
+              ref={(el) => {
+                linkRefs.current[idx] = el;
+              }}
+            />
+          ))}
 
           {!isCollapsed && (
             <p className="relative z-10 text-[10px] uppercase tracking-[0.2em] text-stone-500 font-bold px-3 mb-3 mt-6">Guides & Wissen</p>
@@ -340,36 +361,17 @@ export default function NavigationSidebar({ isCollapsed = false, onToggle }: { i
 
           {navLinks.slice(5).map((link, idx) => {
             const index = idx + 5;
-            const isActive = pathname === link.href;
             return (
-              <Link
+              <SidebarLink
                 key={link.href}
-                href={link.href}
-                title={isCollapsed ? link.label : undefined}
-                ref={(el) => { linkRefs.current[index] = el; }}
+                link={link}
+                isActive={pathname === link.href}
+                isCollapsed={isCollapsed}
                 onClick={() => setIsOpen(false)}
-                className={cn(
-                  "relative z-10 flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 group",
-                  isActive
-                    ? "bg-emerald-600/20 text-emerald-400 shadow-inner shadow-emerald-900/10"
-                    : "text-stone-400 hover:text-amber-200 hover:bg-stone-700/50"
-                )}
-              >
-                <span
-                  className={cn(
-                    "flex-shrink-0 p-1.5 rounded-lg transition-colors",
-                    isActive
-                      ? "bg-emerald-600/30 text-emerald-400"
-                      : "bg-stone-700/50 text-stone-500 group-hover:text-amber-300 group-hover:bg-stone-700"
-                  )}
-                >
-                  {link.icon}
-                </span>
-                <span className="truncate">{!isCollapsed && link.label}</span>
-                {isActive && !isCollapsed && (
-                  <span className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                )}
-              </Link>
+                ref={(el) => {
+                  linkRefs.current[index] = el;
+                }}
+              />
             );
           })}
         </nav>
