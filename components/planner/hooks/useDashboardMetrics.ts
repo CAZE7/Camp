@@ -264,10 +264,9 @@ function calculateChargingTime(
   const effectiveSolarWatts = solarNodesCount > 0 ? 0 : calculatedSolarWatts;
   const effectiveSolarAmps = solarNodesCount > 0 ? totalSolarAmps : 0;
 
-  // NEU-CRIT-C Fix: Apply winter season factor (0.35) to roof planner solar contribution.
-  // Canvas solar already has the season factor applied in calculateSolarMetrics.
-  // The roof planner solar (effectiveSolarWatts) must apply it here.
+  // The roof planner solar (effectiveSolarWatts) must apply a winter reduction to match canvas logic.
   const seasonFactor = season === 'winter' ? 0.35 : 1;
+
   // Validated calculation step.
   // Solar panels output at Vmp ≈ 18V, not 12V
   const roofSolarAmps = (effectiveSolarWatts / 18) * seasonFactor;
