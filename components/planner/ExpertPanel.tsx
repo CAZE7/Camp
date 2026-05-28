@@ -4,6 +4,8 @@ import React, { useState, useMemo, useEffect } from "react";
 import { usePlannerStore } from "../../store/usePlannerStore";
 import { calculateCrossSection, calculateMaxFuse } from "../../lib/electrical";
 import { cn } from "@/lib/utils";
+import { Node, Edge } from 'reactflow';
+
 
 /* ─── Knowledge Database ─── */
 
@@ -262,6 +264,58 @@ const DEFAULT_TIP: ExpertTip = {
 
 /* ─── Component ─── */
 
+function LiveRecommendationCard({ node, edges }: { node: Node; edges: Edge[] }) {
+  if (!node || !(node.data?.watts || node.data?.amps || node.type === 'inverter' || node.type === 'solar')) return null;
+
+            let I = 0;
+            if (node.type === 'inverter') I = (Number(node.data.watts) || 1000) / 12 / 0.85;
+            else if (node.type === 'solar') I = (Number(node.data.watts) || 100) / 18;
+            else if (node.type === 'consumer230v') I = (Number(node.data.watts) || 0) / 230; // AC current at 230V
+            else if (node.data?.watts) I = Number(node.data.watts) / 12;
+            else if (node.data?.amps) I = Number(node.data.amps);
+
+            const connectedEdges = edges.filter(e => e.source === node.id || e.target === node.id);
+            let length = 2; // Default assumption 2 meters
+            let isFallback = true;
+            if (connectedEdges.length > 0) {
+              length = Math.max(...connectedEdges.map(e => (e.data as any)?.length || 2));
+              isFallback = false;
+            }
+
+            // Determine domain for cross-section calculation
+            const domain: 'DC_12V' | 'AC_230V' = node.type === 'consumer230v' ? 'AC_230V' : 'DC_12V';
+            const crossSection = calculateCrossSection(I, length, undefined, domain);
+            const fuseSize = calculateMaxFuse(crossSection);
+
+            if (I > 0) {
+              return (
+                <div className="mx-4 mt-4 p-4 rounded-xl bg-gradient-to-br from-white/60 to-white/30 border border-white/50 shadow-[0_8px_32px_rgba(31,38,135,0.07)] backdrop-blur-md relative overflow-hidden">
+                  <div className="absolute -right-4 -top-4 w-16 h-16 bg-blue-500/10 rounded-full blur-xl pointer-events-none" />
+                  <div className="absolute -left-4 -bottom-4 w-16 h-16 bg-emerald-500/10 rounded-full blur-xl pointer-events-none" />
+                  <h4 className="text-xs font-bold text-stone-700 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
+                    Live-Empfehlung <span className="text-[10px] font-normal text-stone-400 normal-case">{isFallback ? "(Berechnung basiert auf 2m Fallback – bitte Kabel verbinden!)" : `(bei ${length.toFixed(1)}m Kabel)`}</span>
+                  </h4>
+                  <div className="grid grid-cols-2 gap-3 relative z-10">
+                    <div className="flex flex-col bg-white/60 rounded-lg p-2.5 border border-white">
+                      <span className="text-[10px] text-stone-500 font-semibold mb-1">Kabelquerschnitt</span>
+                      <span className="text-lg font-black text-stone-800">{crossSection} <span className="text-xs font-bold text-stone-500">mm²</span></span>
+                    </div>
+                    <div className="flex flex-col bg-white/60 rounded-lg p-2.5 border border-white">
+                      <span className="text-[10px] text-stone-500 font-semibold mb-1">Max. Sicherung</span>
+                      <span className="text-lg font-black text-stone-800">{fuseSize} <span className="text-xs font-bold text-stone-500">A</span></span>
+                    </div>
+                    <div className="col-span-2 flex justify-between items-center bg-white/40 rounded-lg p-2 border border-white/50">
+                      <span className="text-[10px] text-stone-600 font-semibold">Erwarteter Strom:</span>
+                      <span className="text-sm font-bold text-stone-800">{I.toFixed(1)} A</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+  return null;
+}
+
 export function ExpertPanel() {
   const [isOpen, setIsOpen] = useState(false);
   const [expandedTip, setExpandedTip] = useState<number | null>(0);
@@ -337,56 +391,7 @@ export function ExpertPanel() {
           </div>
 
           {/* Dynamic Calculation Card */}
-          {selectedNodes.length > 0 && (selectedNodes[0].data?.watts || selectedNodes[0].data?.amps || selectedNodes[0].type === 'inverter' || selectedNodes[0].type === 'solar') && (() => {
-            const node = selectedNodes[0];
-            let I = 0;
-            if (node.type === 'inverter') I = (Number(node.data.watts) || 1000) / 12 / 0.85;
-            else if (node.type === 'solar') I = (Number(node.data.watts) || 100) / 18;
-            else if (node.type === 'consumer230v') I = (Number(node.data.watts) || 0) / 230; // AC current at 230V
-            else if (node.data?.watts) I = Number(node.data.watts) / 12;
-            else if (node.data?.amps) I = Number(node.data.amps);
-            
-            const connectedEdges = edges.filter(e => e.source === node.id || e.target === node.id);
-            let length = 2; // Default assumption 2 meters
-            let isFallback = true;
-            if (connectedEdges.length > 0) {
-              length = Math.max(...connectedEdges.map(e => e.data?.length || 2));
-              isFallback = false;
-            }
-
-            // Determine domain for cross-section calculation
-            const domain: 'DC_12V' | 'AC_230V' = node.type === 'consumer230v' ? 'AC_230V' : 'DC_12V';
-            const crossSection = calculateCrossSection(I, length, undefined, domain);
-            const fuseSize = calculateMaxFuse(crossSection);
-
-            if (I > 0) {
-              return (
-                <div className="mx-4 mt-4 p-4 rounded-xl bg-gradient-to-br from-white/60 to-white/30 border border-white/50 shadow-[0_8px_32px_rgba(31,38,135,0.07)] backdrop-blur-md relative overflow-hidden">
-                  <div className="absolute -right-4 -top-4 w-16 h-16 bg-blue-500/10 rounded-full blur-xl pointer-events-none" />
-                  <div className="absolute -left-4 -bottom-4 w-16 h-16 bg-emerald-500/10 rounded-full blur-xl pointer-events-none" />
-                  <h4 className="text-xs font-bold text-stone-700 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
-                    Live-Empfehlung <span className="text-[10px] font-normal text-stone-400 normal-case">{isFallback ? "(Berechnung basiert auf 2m Fallback – bitte Kabel verbinden!)" : `(bei ${length.toFixed(1)}m Kabel)`}</span>
-                  </h4>
-                  <div className="grid grid-cols-2 gap-3 relative z-10">
-                    <div className="flex flex-col bg-white/60 rounded-lg p-2.5 border border-white">
-                      <span className="text-[10px] text-stone-500 font-semibold mb-1">Kabelquerschnitt</span>
-                      <span className="text-lg font-black text-stone-800">{crossSection} <span className="text-xs font-bold text-stone-500">mm²</span></span>
-                    </div>
-                    <div className="flex flex-col bg-white/60 rounded-lg p-2.5 border border-white">
-                      <span className="text-[10px] text-stone-500 font-semibold mb-1">Max. Sicherung</span>
-                      <span className="text-lg font-black text-stone-800">{fuseSize} <span className="text-xs font-bold text-stone-500">A</span></span>
-                    </div>
-                    <div className="col-span-2 flex justify-between items-center bg-white/40 rounded-lg p-2 border border-white/50">
-                      <span className="text-[10px] text-stone-600 font-semibold">Erwarteter Strom:</span>
-                      <span className="text-sm font-bold text-stone-800">{I.toFixed(1)} A</span>
-                    </div>
-                  </div>
-                </div>
-              );
-            }
-            return null;
-          })()}
+          {selectedNodes.length > 0 && <LiveRecommendationCard node={selectedNodes[0]} edges={edges} />}
 
           {/* Tip Accordion */}
           <div className="max-h-[40vh] overflow-y-auto overscroll-contain mt-2">
