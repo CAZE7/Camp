@@ -22,13 +22,18 @@ export function useLiveValidation(
 
     if (!nodes || !edges) return warnings;
 
+    const nodeMap = new Map<string, Node>();
+    for (let i = 0; i < nodes.length; i++) {
+      nodeMap.set(nodes[i].id, nodes[i]);
+    }
+
     // --- Rule A: Quellschutz-Regel ---
     // Look for edges coming from battery, inverter, solar charger on positive line
     edges.forEach((edge) => {
       if (edge.data?.edgeDomain === 'AC_230V') return; // Skip DC fuse warning for AC edges
       if (edge.sourceHandle?.includes('plus')) {
-        const sourceNode = nodes.find(n => n.id === edge.source);
-        const targetNode = nodes.find(n => n.id === edge.target);
+        const sourceNode = nodeMap.get(edge.source);
+        const targetNode = nodeMap.get(edge.target);
 
         const isHighPowerSource = sourceNode?.type === 'battery' || sourceNode?.type === 'inverter' || ['charger', 'mpptController', 'dcdcCharger', 'acBatteryCharger'].includes(sourceNode?.type as string);
         const isProtectedTarget = targetNode?.type === 'fuse';
@@ -110,7 +115,7 @@ export function useLiveValidation(
         if (edge.data?.fuseSize) {
           isProtected = true;
         } else {
-          const sourceNode = nodes.find(n => n.id === edge.source);
+          const sourceNode = nodeMap.get(edge.source);
           if (sourceNode?.type === 'fuse') {
              isProtected = true;
           }
@@ -147,8 +152,8 @@ export function useLiveValidation(
     const shunts = nodes.filter(n => n.type === 'shunt');
     if (shunts.length > 0) {
       edges.forEach(edge => {
-        const targetNode = nodes.find(n => n.id === edge.target);
-        const sourceNode = nodes.find(n => n.id === edge.source);
+        const targetNode = nodeMap.get(edge.target);
+        const sourceNode = nodeMap.get(edge.source);
         
         const isBatteryMinusConnection = 
           (targetNode?.type === 'battery' && edge.targetHandle?.includes('minus')) ||
