@@ -245,7 +245,8 @@ function calculateSolarMetrics(
 
     // Seasonal yield reduction for solar
     if (season === 'winter') {
-      totalSolarAmps *= 0.35; // Significant reduction in winter (increased to 0.35 per BUG-10/15 requirement)
+      const winterReductionFactor = 0.35;
+      totalSolarAmps *= winterReductionFactor;
     }
   }
 
@@ -260,14 +261,13 @@ function calculateChargingTime(
   solarNodesCount: number,
   season: 'summer' | 'winter'
 ): string {
-  // BUG-15 Fix: Priority 1: Canvas Solar, Priority 2: Roof Planner Solar
-  const effectiveSolarWatts = solarNodesCount > 0 ? 0 : calculatedSolarWatts;
-  const effectiveSolarAmps = solarNodesCount > 0 ? totalSolarAmps : 0;
+  const hasCanvasSolar = solarNodesCount > 0;
+  const effectiveSolarWatts = hasCanvasSolar ? 0 : calculatedSolarWatts;
+  const effectiveSolarAmps = hasCanvasSolar ? totalSolarAmps : 0;
 
-  // NEU-CRIT-C Fix: Apply winter season factor (0.35) to roof planner solar contribution.
-  // Canvas solar already has the season factor applied in calculateSolarMetrics.
-  // The roof planner solar (effectiveSolarWatts) must apply it here.
+  // The roof planner solar (effectiveSolarWatts) must apply a winter reduction to match canvas logic.
   const seasonFactor = season === 'winter' ? 0.35 : 1;
+
   // Validated calculation step.
   // Solar panels output at Vmp ≈ 18V, not 12V
   const roofSolarAmps = (effectiveSolarWatts / 18) * seasonFactor;

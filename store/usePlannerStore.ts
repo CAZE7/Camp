@@ -74,15 +74,46 @@ interface PlannerState {
 import { TEMPLATES_DICT } from '../components/planner/templates';
 import { calculateCrossSection, calculateMaxFuse, getEdgeDomain, getHandleDomain } from '../lib/electrical';
 
+const nodesMapCache = new WeakMap<Node[], Map<string, Node>>();
+const waterNodesMapCache = new WeakMap<Node[], Map<string, Node>>();
+const totalWattsCache = new WeakMap<Node[], number>();
+
+export function getDerivedSystemState(nodes: Node[], waterNodes: Node[]) {
+  let nodesMap = nodesMapCache.get(nodes);
+  let totalWatts = totalWattsCache.get(nodes);
+
+  if (!nodesMap || totalWatts === undefined) {
+    nodesMap = new Map();
+    totalWatts = 0;
+    for (let i = 0; i < nodes.length; i++) {
+      const n = nodes[i];
+      nodesMap.set(n.id, n);
+      if (n.type === 'consumer' || n.type === 'consumer230v' || n.type === 'inverter') {
+        totalWatts += (Number(n.data.watts) || 0);
+      }
+    }
+    nodesMapCache.set(nodes, nodesMap);
+    totalWattsCache.set(nodes, totalWatts);
+  }
+
+  let waterNodesMap = waterNodesMapCache.get(waterNodes);
+  if (!waterNodesMap) {
+    waterNodesMap = new Map();
+    for (let i = 0; i < waterNodes.length; i++) {
+      const n = waterNodes[i];
+      waterNodesMap.set(n.id, n);
+    }
+    waterNodesMapCache.set(waterNodes, waterNodesMap);
+  }
+
+  return { nodesMap, waterNodesMap, totalWatts };
+}
+
 function getNodeMap(currentNodes: Node[], currentWaterNodes: Node[]): Map<string, Node> {
-  const map = new Map<string, Node>();
-  for (let i = 0, len = currentNodes.length; i < len; i++) {
-    map.set(currentNodes[i].id, currentNodes[i]);
-  }
-  for (let i = 0, len = currentWaterNodes.length; i < len; i++) {
-    map.set(currentWaterNodes[i].id, currentWaterNodes[i]);
-  }
-  return map;
+  const { nodesMap, waterNodesMap } = getDerivedSystemState(currentNodes, currentWaterNodes);
+  const combined = new Map(nodesMap);
+  waterNodesMap.forEach((node, id) => combined.set(id, node));
+  return combined;
 }
 
 function buildDictionaries(currentNodes: Node[]) {
@@ -188,11 +219,11 @@ function wireSolars(
     const mpptNode = ensureNode(currentNodes, nodesByType, nodesByLabel, batteryNode, 'mpptController', 'MPPT Laderegler', 150, -200, {
       amps: 30,
     });
+    const vmpVoltage = 18;
     for (let i = 0; i < solarsLen; i++) {
       const solar = solars[i];
       const solarWatts = Number(solar.data.watts) || 100;
-      // NEU-CRIT-B Fix: Use Vmp (18V) not 12V — must match calculateCurrent() in CableEdge.tsx
-      const solarAmps = solarWatts / 18;
+      const solarAmps = solarWatts / vmpVoltage;
       connectEdges(newEdges, edgeIdRef, solar.id, mpptNode.id, solarAmps, 5);
     }
     connectEdges(newEdges, edgeIdRef, mpptNode.id, busbarNode.id, Number(mpptNode.data.amps) || 30, 2);
@@ -448,16 +479,14 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
       edgeIdsSet.add(state.selectedEdges[i].id);
     }
 
-    // NEU-CRIT-A Fix: Also filter waterNodes and waterEdges to avoid ghost/invisible edges in memory.
+    const filterNode = (n: Node) => !nodeIdsSet.has(n.id);
+    const filterEdge = (e: Edge) => !nodeIdsSet.has(e.source) && !nodeIdsSet.has(e.target) && !edgeIdsSet.has(e.id);
+
     return {
-      nodes: state.nodes.filter((n) => !nodeIdsSet.has(n.id)),
-      edges: state.edges.filter(
-        (e) => !nodeIdsSet.has(e.source) && !nodeIdsSet.has(e.target) && !edgeIdsSet.has(e.id)
-      ),
-      waterNodes: state.waterNodes.filter((n) => !nodeIdsSet.has(n.id)),
-      waterEdges: state.waterEdges.filter(
-        (e) => !nodeIdsSet.has(e.source) && !nodeIdsSet.has(e.target) && !edgeIdsSet.has(e.id)
-      ),
+      nodes: state.nodes.filter(filterNode),
+      edges: state.edges.filter(filterEdge),
+      waterNodes: state.waterNodes.filter(filterNode),
+      waterEdges: state.waterEdges.filter(filterEdge),
       selectedNodes: [],
       selectedEdges: [],
     };
@@ -498,10 +527,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
     const allNodes = [...nodes, ...waterNodes];
 
     // Create a node map for O(1) lookups
-    const nodesMap = new Map<string, import('reactflow').Node>();
-    for (let i = 0; i < allNodes.length; i++) {
-      nodesMap.set(allNodes[i].id, allNodes[i]);
-    }
+    const { nodesMap } = getDerivedSystemState(allNodes, []);
 
     const sourceNode = nodesMap.get(connection.source || '');
     const targetNode = nodesMap.get(connection.target || '');
@@ -579,9 +605,9 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
     const { viewMode, waterNodes, nodes } = get();
 
     if (viewMode === 'water') {
-      const nodesMap = getNodeMap(nodes, waterNodes);
-      const sourceNode = nodesMap.get(connection.source || '');
-      const targetNode = nodesMap.get(connection.target || '');
+      const { nodesMap, waterNodesMap } = getDerivedSystemState(nodes, waterNodes);
+      const sourceNode = nodesMap.get(connection.source || '') || waterNodesMap.get(connection.source || '');
+      const targetNode = nodesMap.get(connection.target || '') || waterNodesMap.get(connection.target || '');
 
       if (sourceNode?.type === 'pump' && targetNode?.type === 'sink') {
         get().setWaterWarning("Ein Accumulator schont die Pumpe und verhindert stotternden Wasserfluss.");
@@ -602,7 +628,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
       return;
     }
 
-    const nodesMap = getNodeMap(nodes, []);
+    const { nodesMap } = getDerivedSystemState(nodes, []);
     const sourceNode = nodesMap.get(connection.source || '');
     const targetNode = nodesMap.get(connection.target || '');
     const edgeDomain = getEdgeDomain(sourceNode?.type, targetNode?.type, connection.sourceHandle);

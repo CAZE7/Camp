@@ -35,6 +35,7 @@ export function PlannerSidebar({ onMobileAdd }: PlannerSidebarProps) {
         style={{ left: isSidebarOpen ? '17.5rem' : '0.75rem' }}
         title={isSidebarOpen ? "Sidebar einklappen" : "Sidebar ausklappen"}
         aria-label={isSidebarOpen ? "Linke Sidebar einklappen" : "Linke Sidebar ausklappen"}
+        aria-expanded={isSidebarOpen}
       >
         {isSidebarOpen ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
       </Button>
