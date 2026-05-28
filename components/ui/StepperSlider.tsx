@@ -12,6 +12,7 @@ interface StepperSliderProps {
   onChange: (value: number) => void;
   className?: string;
   unit?: string;
+  ariaLabel?: string;
 }
 
 export function StepperSlider({
@@ -22,6 +23,7 @@ export function StepperSlider({
   onChange,
   className,
   unit = '',
+  ariaLabel = 'Wert anpassen',
 }: StepperSliderProps) {
   const handleDecrement = () => {
     const newValue = Math.max(min, value - step);
@@ -57,6 +59,7 @@ export function StepperSlider({
           step={step}
           value={value}
           onChange={handleSliderChange}
+          aria-label={ariaLabel}
           className="w-full h-2 bg-stone-200 rounded-full appearance-none cursor-pointer accent-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-500/40"
         />
         <span className="text-xs font-mono font-bold text-stone-700 bg-white border border-stone-200/50 rounded-lg px-2.5 py-0.5 mt-1 shadow-sm select-none">

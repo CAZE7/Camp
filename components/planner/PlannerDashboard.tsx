@@ -226,7 +226,7 @@ export function PlannerDashboard() {
       {systemMessage && (
         <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 z-50 flex items-center gap-4 p-3 rounded-lg bg-blue-50 text-blue-800 border border-blue-200 text-sm font-semibold shadow-lg animate-in fade-in slide-in-from-top-2">
           <span>ℹ️ {systemMessage}</span>
-          <Button variant="ghost" size="sm" onClick={() => setSystemMessage(null)} className="h-6 px-2 hover:bg-blue-100 text-blue-800">OK</Button>
+          <Button variant="ghost" size="sm" onClick={() => setSystemMessage(null)} className="h-6 px-2 hover:bg-blue-100 text-blue-800" aria-label="Systemnachricht schließen">OK</Button>
         </div>
       )}
 

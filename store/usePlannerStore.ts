@@ -219,11 +219,11 @@ function wireSolars(
     const mpptNode = ensureNode(currentNodes, nodesByType, nodesByLabel, batteryNode, 'mpptController', 'MPPT Laderegler', 150, -200, {
       amps: 30,
     });
+    const vmpVoltage = 18;
     for (let i = 0; i < solarsLen; i++) {
       const solar = solars[i];
       const solarWatts = Number(solar.data.watts) || 100;
-      // NEU-CRIT-B Fix: Use Vmp (18V) not 12V — must match calculateCurrent() in CableEdge.tsx
-      const solarAmps = solarWatts / 18;
+      const solarAmps = solarWatts / vmpVoltage;
       connectEdges(newEdges, edgeIdRef, solar.id, mpptNode.id, solarAmps, 5);
     }
     connectEdges(newEdges, edgeIdRef, mpptNode.id, busbarNode.id, Number(mpptNode.data.amps) || 30, 2);

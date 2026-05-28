@@ -40,18 +40,17 @@ export const lookupThermalCrossSection = (I: number): number => {
   return size || 70.0;
 };
 
-// 4. Fix AC_230V Querschnitts-Kalkul:
 export const calculateCrossSection = (
   I: number,
   length: number,
   dataCrossSection?: number,
-  domain: 'DC_12V' | 'AC_230V' = 'DC_12V'
+  electricalDomain: 'DC_12V' | 'AC_230V' = 'DC_12V'
 ): number => {
   // Schritt A: Mindestquerschnitt nach Spannungsfall
   // DC 12V: 3% von 12V = 0.36V (DIN VDE 0298-4)
   // AC 230V: 3% von 230V = 6.9V → 4.6V (2% conservative)
-  const allowedDrop = domain === 'AC_230V' ? 4.6 : 0.36;
-  const dropArea = (I * (length * 2)) / (58 * allowedDrop);
+  const maxAllowedVoltageDrop = electricalDomain === 'AC_230V' ? 4.6 : 0.36;
+  const dropArea = (I * (length * 2)) / (58 * maxAllowedVoltageDrop);
 
   // Schritt B: Mindestquerschnitt nach thermischer Belastbarkeit (VDE Lookup mit Derating)
   const thermalArea = lookupThermalCrossSection(I);
@@ -70,22 +69,22 @@ export const calculateStrokeWidth = (cs: number): number => {
   return 10;
 };
 
-// 5. Fix Inverter Handle-Erkennung (getEdgeDomain):
-// Erweitere die Erkennung für AC-Ausgänge mit AC_HANDLES.
 export const getEdgeDomain = (
   sourceNodeType: string | undefined,
   targetNodeType: string | undefined,
   sourceHandle: string | null | undefined,
   targetHandle?: string | null | undefined
 ): 'DC_12V' | 'AC_230V' => {
-  if (sourceNodeType === 'shorePower' || targetNodeType === 'shorePower') return 'AC_230V';
-  if (sourceNodeType === 'consumer230v' || targetNodeType === 'consumer230v') return 'AC_230V';
-  
-  const AC_HANDLES = ['plus', 'ac_out', 'L', 'ac', 'output', 'ac_in'];
-  if (sourceNodeType === 'inverter' && sourceHandle && AC_HANDLES.includes(sourceHandle)) {
+  const isAcNode = (type: string | undefined) => type === 'shorePower' || type === 'consumer230v';
+  if (isAcNode(sourceNodeType) || isAcNode(targetNodeType)) {
     return 'AC_230V';
   }
-  if (targetNodeType === 'inverter' && targetHandle && AC_HANDLES.includes(targetHandle)) {
+
+  const AC_HANDLES = ['plus', 'ac_out', 'L', 'ac', 'output', 'ac_in'];
+  const hasAcHandle = (nodeType: string | undefined, handle: string | null | undefined) =>
+    nodeType === 'inverter' && handle && AC_HANDLES.includes(handle);
+
+  if (hasAcHandle(sourceNodeType, sourceHandle) || hasAcHandle(targetNodeType, targetHandle)) {
     return 'AC_230V';
   }
   return 'DC_12V';
