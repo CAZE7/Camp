@@ -246,6 +246,13 @@ export async function POST(req: Request) {
     });
   }
 
+  if (!body || typeof body !== 'object' || !Array.isArray(body.messages) || body.messages.length === 0) {
+    return new Response(JSON.stringify({ error: 'messages must be a non-empty array' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
   const { messages }: { messages: Message[] } = body;
 
   const validationError = validateMessages(messages);
