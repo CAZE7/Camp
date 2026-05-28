@@ -239,6 +239,7 @@ export default function NavigationSidebar({ isCollapsed = false, onToggle }: { i
         onClick={() => setIsOpen(!isOpen)}
         className="fixed top-4 left-4 z-[60] lg:hidden bg-stone-800/90 text-amber-100 p-4 rounded-2xl border border-stone-700 hover:bg-stone-700 transition-all"
         aria-label="Navigation öffnen"
+        aria-expanded={isOpen}
       >
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
           {isOpen ? (
@@ -382,6 +383,7 @@ export default function NavigationSidebar({ isCollapsed = false, onToggle }: { i
             onClick={() => onToggle && onToggle()}
             className="p-1.5 rounded-lg text-stone-500 hover:text-amber-300 hover:bg-stone-700/50 transition-colors focus:outline-none"
             aria-label={isCollapsed ? "Sidebar ausklappen" : "Sidebar einklappen"}
+            aria-expanded={!isCollapsed}
           >
             {isCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
           </button>
