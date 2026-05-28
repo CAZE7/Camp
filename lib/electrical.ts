@@ -69,22 +69,22 @@ export const calculateStrokeWidth = (cs: number): number => {
   return 10;
 };
 
-// 5. Fix Inverter Handle-Erkennung (getEdgeDomain):
-// Erweitere die Erkennung für AC-Ausgänge mit AC_HANDLES.
 export const getEdgeDomain = (
   sourceNodeType: string | undefined,
   targetNodeType: string | undefined,
   sourceHandle: string | null | undefined,
   targetHandle?: string | null | undefined
 ): 'DC_12V' | 'AC_230V' => {
-  if (sourceNodeType === 'shorePower' || targetNodeType === 'shorePower') return 'AC_230V';
-  if (sourceNodeType === 'consumer230v' || targetNodeType === 'consumer230v') return 'AC_230V';
-  
-  const AC_HANDLES = ['plus', 'ac_out', 'L', 'ac', 'output', 'ac_in'];
-  if (sourceNodeType === 'inverter' && sourceHandle && AC_HANDLES.includes(sourceHandle)) {
+  const isAcNode = (type: string | undefined) => type === 'shorePower' || type === 'consumer230v';
+  if (isAcNode(sourceNodeType) || isAcNode(targetNodeType)) {
     return 'AC_230V';
   }
-  if (targetNodeType === 'inverter' && targetHandle && AC_HANDLES.includes(targetHandle)) {
+
+  const AC_HANDLES = ['plus', 'ac_out', 'L', 'ac', 'output', 'ac_in'];
+  const hasAcHandle = (nodeType: string | undefined, handle: string | null | undefined) =>
+    nodeType === 'inverter' && handle && AC_HANDLES.includes(handle);
+
+  if (hasAcHandle(sourceNodeType, sourceHandle) || hasAcHandle(targetNodeType, targetHandle)) {
     return 'AC_230V';
   }
   return 'DC_12V';
