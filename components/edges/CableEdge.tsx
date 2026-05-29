@@ -98,10 +98,11 @@ const CableEdge = function ({
     const s = nodesMap.get(source) || waterNodesMap.get(source);
     const t = nodesMap.get(target) || waterNodesMap.get(target);
     
-    // Ensure we capture reactive copies of the graph for the calculation
-    const currentNodes = state.nodes;
-    const currentEdges = state.edges;
-    const cumulativeDrop = state.calculatePathVoltageDrop(source, currentNodes, currentEdges);
+    // CRIT-02 Fix: Call calculatePathVoltageDrop inside the selector so it re-evaluates
+    // reactively whenever state.edges or state.nodes change, instead of reading stale getState().
+    const activeNodes = state.nodes;
+    const activeEdges = state.edges;
+    const cumulativeDrop = state.calculatePathVoltageDrop(source, activeNodes, activeEdges);
     
     return { 
       sNodeData: s?.data, 
