@@ -39,3 +39,7 @@
 ## 2026-05-18 - Missing aria-expanded on Togglable Sidebars
 **Learning:** Togglable sidebar buttons in `PlannerSidebar` and `PlannerInspector` had `aria-label` but lacked `aria-expanded`. Without `aria-expanded`, screen reader users cannot know the current visibility state (open/closed) of the panel they control.
 **Action:** Always add `aria-expanded={isOpenState}` to toggle buttons that control the visibility of a sidebar, panel, or overlay to convey its current state.
+
+## 2025-05-18 - Missing aria-expanded on NavigationSidebar
+**Learning:** The toggle buttons for `NavigationSidebar` lacked `aria-expanded` attributes, making it impossible for screen reader users to know if the menu was open or closed.
+**Action:** Always add `aria-expanded={isOpenState}` to toggle buttons that control the visibility of a sidebar, panel, or overlay to convey its current state.
