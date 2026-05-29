@@ -53,9 +53,19 @@ export function useLiveValidation(
 
     const sysVoltage = getSystemVoltage(nodes);
 
+    // Group nodes by type in a single pass for O(1) lookups
+    const nodesByType: Record<string, Node[]> = {};
+    for (let i = 0; i < nodes.length; i++) {
+      const type = nodes[i].type || 'unknown';
+      if (!nodesByType[type]) {
+        nodesByType[type] = [];
+      }
+      nodesByType[type].push(nodes[i]);
+    }
+
     // --- Rule B: Overloaded Solar Regulator ---
-    const solarNodes = nodes.filter(n => n.type === 'solar');
-    const chargers = nodes.filter(n => ['charger', 'mpptController'].includes(n.type as string));
+    const solarNodes = nodesByType['solar'] || [];
+    const chargers = [...(nodesByType['charger'] || []), ...(nodesByType['mpptController'] || [])];
 
     if (solarNodes.length > 0 && chargers.length > 0) {
       const totalSolarWatts = solarNodes.reduce((acc, node) => acc + (Number(node.data.watts) || 0), 0);
@@ -72,8 +82,8 @@ export function useLiveValidation(
     }
 
     // --- Rule C: Battery Capacity Alert ---
-    const batteries = nodes.filter(n => n.type === 'battery');
-    const consumers = nodes.filter(n => n.type === 'consumer' || n.type === 'consumer230v');
+    const batteries = nodesByType['battery'] || [];
+    const consumers = [...(nodesByType['consumer'] || []), ...(nodesByType['consumer230v'] || [])];
 
     if (batteries.length > 0 && consumers.length > 0) {
       const totalBatteryAh = batteries.reduce((acc, node) => acc + (Number(node.data.capacity) || 0), 0);
@@ -96,7 +106,7 @@ export function useLiveValidation(
     }
 
     // --- Rule G: Inverter Protection ---
-    const inverters = nodes.filter(n => n.type === 'inverter');
+    const inverters = nodesByType['inverter'] || [];
     inverters.forEach(inverter => {
       const incomingPlusEdges = edges.filter(e => e.target === inverter.id && e.targetHandle?.includes('plus'));
       const incomingMinusEdges = edges.filter(e => e.target === inverter.id && e.targetHandle?.includes('minus'));
@@ -133,7 +143,7 @@ export function useLiveValidation(
     });
 
     // --- Rule E: DC-DC Charger Connection ---
-    const dcdcChargers = nodes.filter(n => n.type === 'dcdcCharger');
+    const dcdcChargers = nodesByType['dcdcCharger'] || [];
     dcdcChargers.forEach(charger => {
       const hasInput = edges.some(e => e.target === charger.id);
       const hasOutput = edges.some(e => e.source === charger.id);
@@ -149,7 +159,7 @@ export function useLiveValidation(
     });
 
     // --- Rule F: Smart Shunt Bypass ---
-    const shunts = nodes.filter(n => n.type === 'shunt');
+    const shunts = nodesByType['shunt'] || [];
     if (shunts.length > 0) {
       edges.forEach(edge => {
         const targetNode = nodeMap.get(edge.target);
