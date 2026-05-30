@@ -43,3 +43,7 @@
 ## 2025-05-18 - Missing aria-expanded on NavigationSidebar
 **Learning:** The toggle buttons for `NavigationSidebar` lacked `aria-expanded` attributes, making it impossible for screen reader users to know if the menu was open or closed.
 **Action:** Always add `aria-expanded={isOpenState}` to toggle buttons that control the visibility of a sidebar, panel, or overlay to convey its current state.
+
+## 2025-05-30 - Form Validation Screen Reader Accessibility
+**Learning:** In custom validation input components (like `ValidatingInput`), displaying visual error messages is insufficient for accessibility. Screen readers need explicit attributes (`aria-invalid` and `aria-errormessage`) linked to the input's `id` to announce when a field is invalid and read the corresponding error text. The error container itself should also use `role="alert"` so changes are announced immediately.
+**Action:** Always link visual error messages to their corresponding inputs using `aria-errormessage` and an explicit `id`, set `aria-invalid={true}` when errors are present, and use `useId()` in React to ensure IDs remain robust and unique across multiple instances.
