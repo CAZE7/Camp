@@ -43,3 +43,7 @@
 ## 2025-05-18 - Missing aria-expanded on NavigationSidebar
 **Learning:** The toggle buttons for `NavigationSidebar` lacked `aria-expanded` attributes, making it impossible for screen reader users to know if the menu was open or closed.
 **Action:** Always add `aria-expanded={isOpenState}` to toggle buttons that control the visibility of a sidebar, panel, or overlay to convey its current state.
+
+## 2026-05-18 - Linking Validation Errors to Inputs
+**Learning:** Visual error messages for form inputs (like in `ValidatingInput`) are completely missed by screen readers if they aren't explicitly associated with the input field. The input gets announced, but the validation failure message directly below it does not, leaving the user unaware of why the form is invalid.
+**Action:** Always link visual error messages to their corresponding inputs by generating a unique ID (e.g., using `useId()`), applying `aria-invalid` and `aria-errormessage={errorId}` to the input, and setting `role="alert"` on the error message container.
