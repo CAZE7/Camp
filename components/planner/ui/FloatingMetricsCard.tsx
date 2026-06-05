@@ -33,6 +33,7 @@ export function FloatingMetricsCard() {
           type="button"
           onClick={() => setExpanded(!expanded)}
           aria-expanded={expanded}
+          aria-controls="metrics-details"
           className="w-full flex justify-between items-center mb-1 cursor-pointer min-h-[48px]"
         >
           <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Live Status</span>
@@ -54,7 +55,7 @@ export function FloatingMetricsCard() {
           </div>
 
           {expanded && (
-            <div className="mt-3 pt-3 border-t border-slate-200/60 flex flex-col gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
+            <div id="metrics-details" className="mt-3 pt-3 border-t border-slate-200/60 flex flex-col gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
               <div className="flex justify-between items-center">
                 <span className="text-sm text-slate-600">Ladezeit (0-100%):</span>
                 <span className="text-sm font-bold text-blue-600">{metrics.chargingTimeStr}</span>
