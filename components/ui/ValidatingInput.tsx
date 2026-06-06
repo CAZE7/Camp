@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useId } from 'react';
 
 export type ValidationRule = {
   validate: (val: number) => boolean;
@@ -22,6 +22,9 @@ interface ValidatingInputProps extends Omit<React.InputHTMLAttributes<HTMLInputE
 export function ValidatingInput({ value, onValidChange, rules = [], isFloat = false, className, ...props }: ValidatingInputProps) {
   const [localValue, setLocalValue] = useState(String(value));
   const [error, setError] = useState<string | null>(null);
+  const fallbackId = useId();
+  const inputId = props.id || fallbackId;
+  const errorId = `${inputId}-error`;
 
   useEffect(() => {
     const valStr = String(value);
@@ -70,12 +73,15 @@ export function ValidatingInput({ value, onValidChange, rules = [], isFloat = fa
     <div className="flex flex-col w-full">
       <input
         {...props}
+        id={inputId}
         value={localValue}
         onChange={handleChange}
         onBlur={handleBlur}
+        aria-invalid={!!error}
+        aria-errormessage={error ? errorId : undefined}
         className={`${className || ''} ${error ? 'border-red-500 bg-red-50 focus:ring-red-500 focus:border-red-500' : ''}`}
       />
-      {error && <span className="text-red-500 text-xs mt-1 font-medium">{error}</span>}
+      {error && <span id={errorId} className="text-red-500 text-xs mt-1 font-medium" role="alert">{error}</span>}
     </div>
   );
 }
