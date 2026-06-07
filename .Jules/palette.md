@@ -43,3 +43,7 @@
 ## 2025-05-18 - Missing aria-expanded on NavigationSidebar
 **Learning:** The toggle buttons for `NavigationSidebar` lacked `aria-expanded` attributes, making it impossible for screen reader users to know if the menu was open or closed.
 **Action:** Always add `aria-expanded={isOpenState}` to toggle buttons that control the visibility of a sidebar, panel, or overlay to convey its current state.
+
+## 2025-05-19 - Missing aria-pressed on Segmented Controls & Toggles
+**Learning:** Segmented controls (like View Mode or Season toggle) and standalone toggle buttons (like Pro-Mode) in the Dashboard lacked `aria-pressed` attributes. Without this, screen readers announce them merely as generic buttons, leaving users unaware of which option is currently active.
+**Action:** Always ensure any toggle button or segmented control button visually showing an "active" or "pressed" state is accompanied by a matching `aria-pressed={stateVariable === 'value'}` or `aria-pressed={booleanState}` attribute to communicate that state to assistive technologies.
