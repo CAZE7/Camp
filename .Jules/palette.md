@@ -43,3 +43,7 @@
 ## 2025-05-18 - Missing aria-expanded on NavigationSidebar
 **Learning:** The toggle buttons for `NavigationSidebar` lacked `aria-expanded` attributes, making it impossible for screen reader users to know if the menu was open or closed.
 **Action:** Always add `aria-expanded={isOpenState}` to toggle buttons that control the visibility of a sidebar, panel, or overlay to convey its current state.
+
+## 2026-05-18 - Missing Validating Input Attributes
+**Learning:** In the `ValidatingInput` component, visual error messages were shown for invalid inputs but lacked explicit programmatic linkage to the inputs via attributes like `aria-invalid` and `aria-errormessage`. This made it hard for screen reader users to understand if the input was invalid and what the error meant.
+**Action:** Always verify that input components provide explicit ARIA linkage for errors by assigning a stable `id` to the error message (using React `useId`), setting `aria-invalid={true}`, and assigning `aria-errormessage={errorId}` on the input when invalid. Also ensure the error element has `role="alert"`.
