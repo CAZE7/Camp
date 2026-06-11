@@ -45,8 +45,31 @@ jobs:
           # If source files changed but packages didn't, rebuild from a prior cache.
           restore-keys: |
             ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json', '**/yarn.lock') }}-
-      - name: Install dependencies
-        run: npm ci
+      - name: Verify npm cache
+        run: |
+          echo "Verifying npm cache"
+          npm cache verify || npm cache clean --force || true
+
+      - name: Install dependencies (npm ci with retries, fallback to npm install)
+        run: |
+          set -euo pipefail
+          echo "Attempting npm ci (up to 3 retries), will fall back to npm install if it keeps failing"
+          n=0
+          until [ "$n" -ge 3 ]
+          do
+            if npm ci; then
+              echo "npm ci succeeded"
+              break
+            fi
+            n=$((n+1))
+            echo "npm ci attempt $n failed — cleaning cache and retrying"
+            npm cache clean --force || true
+            sleep 2
+          done
+          if [ "$n" -ge 3 ]; then
+            echo "npm ci failed after 3 attempts, falling back to npm install"
+            npm install
+          fi
       - name: Build with Next.js
         run: npx next build
       - name: Optimize Artifact (Remove Source Maps)
