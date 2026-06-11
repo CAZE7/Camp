@@ -67,8 +67,9 @@ jobs:
             sleep 2
           done
           if [ "$n" -ge 3 ]; then
-            echo "npm ci failed after 3 attempts, falling back to npm install"
-            npm install
+            echo "npm ci failed after 3 attempts, switching to npm install fallback"
+            rm -f package-lock.json
+            npm install --no-audit --no-fund
           fi
       - name: Build with Next.js
         run: npx next build

@@ -14,8 +14,7 @@ import ReactFlow, {
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { DachSidebar } from "./DachSidebar";
-import { DachCanvas } from "./DachCanvas";
-import { Inspector } from "@/components/Inspector";
+import Inspector from "@/components/Inspector";
 import { DachNode } from "@/components/DachNode";
 import { initialNodes, initialEdges } from "../data/initialData";
 
@@ -30,7 +29,7 @@ export function DachPlanerFlow() {
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [selectedEdge, setSelectedEdge] = useState<Edge | null>(null);
   const [selectedVehicleId, setSelectedVehicleId] = useState("vehicle-001");
-  const [activeTab, setActiveTab] = useState<"sidebar" | "canvas">("sidebar");
+  const [activeTab, setActiveTab] = useState<"sidebar" | "canvas" | "inspector">("sidebar");
 
   const onConnect = useCallback(
     (connection: Connection) => {

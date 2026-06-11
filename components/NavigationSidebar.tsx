@@ -268,7 +268,7 @@ export default function NavigationSidebar({ isCollapsed = false, onToggle }: { i
         });
       }
     });
-  }, { dependencies: [pathname], scope: containerRef });
+  }, [pathname]);
 
   return (
     <aside

@@ -1,6 +1,6 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import Chat from './Chat';
-import * as chatHook from '@/hooks/useChat';
+import * as chatHook from '@ai-sdk/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const mockSendMessage = vi.fn();
@@ -61,7 +61,7 @@ describe('Chat Component', () => {
       fireEvent.click(sendButton);
 
       await waitFor(() => {
-        expect(mockSendMessage).toHaveBeenCalledWith('Test message');
+        expect(mockSendMessage).toHaveBeenCalledWith({ text: 'Test message' });
       });
     });
   });

@@ -1,10 +1,8 @@
 "use client";
 
 import React from 'react';
-import { ReactFlowProvider } from 'reactflow';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { DachPlanerFlow } from './components/DachPlanerFlow';
 import { cn } from "@/lib/utils";
 import { Outfit } from 'next/font/google';
 
@@ -38,11 +36,17 @@ export default function DachPlanerPage() {
         </div>
       </div>
 
-      {/* Flow */}
-      <div className="flex-1 relative overflow-hidden bg-stone-100/50">
-        <ReactFlowProvider>
-          <DachPlanerFlow />
-        </ReactFlowProvider>
+      <div className="flex-1 relative overflow-hidden bg-stone-100/50 flex items-center justify-center p-6">
+        <div className="max-w-2xl w-full rounded-3xl border border-stone-200 bg-white p-10 shadow-sm">
+          <h2 className="text-3xl font-black text-stone-900 mb-4">Dach-Planer</h2>
+          <p className="text-base text-stone-600 mb-6">
+            Dieses Feature ist momentan nicht verfügbar. Bitte nutze eine andere Seite oder
+            kehre später zurück.
+          </p>
+          <Link href="/">
+            <Button variant="secondary" size="sm">Zurück zur Startseite</Button>
+          </Link>
+        </div>
       </div>
     </div>
   );

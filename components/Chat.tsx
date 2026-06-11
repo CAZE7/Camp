@@ -3,7 +3,8 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useChat } from "@/hooks/useChat";
+import { useChat } from "@ai-sdk/react";
+import { UIMessage } from "ai";
 import { Send, X } from "lucide-react";
 
 interface ChatMessage {
@@ -44,6 +45,13 @@ const ChatInputForm = ({
   </form>
 );
 
+const getMessageText = (message: UIMessage) => {
+  return (
+    message.parts?.find((part) => part?.type === "text" || part?.type === "reasoning")?.text ??
+    ""
+  );
+};
+
 export default function Chat({ defaultOpen = false }: { defaultOpen?: boolean }) {
   const [input, setInput] = useState("");
   const { messages, sendMessage, status } = useChat();
@@ -55,7 +63,7 @@ export default function Chat({ defaultOpen = false }: { defaultOpen?: boolean })
     e.preventDefault();
     if (!input.trim()) return;
 
-    await sendMessage(input);
+    await sendMessage({ text: input });
     setInput("");
   };
 
@@ -95,16 +103,16 @@ export default function Chat({ defaultOpen = false }: { defaultOpen?: boolean })
           messages.map((msg) => (
             <div
               key={msg.id}
-              className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"}`}
+              className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
             >
               <div
                 className={`max-w-xs px-4 py-2 rounded-lg ${
-                  msg.sender === "user"
+                  msg.role === "user"
                     ? "bg-blue-600 text-white"
                     : "bg-gray-200 text-gray-900"
                 }`}
               >
-                {msg.text}
+                {getMessageText(msg as UIMessage)}
               </div>
             </div>
           ))
