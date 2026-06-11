@@ -8,8 +8,21 @@ import { Trash2 } from "lucide-react";
 interface InspectorProps {
   selectedNode: Node | null;
   selectedEdge: Edge | null;
+  // old names kept for backward-compat
   onDeleteNode?: (nodeId: string) => void;
   onUpdateNode?: (nodeId: string, data: any) => void;
+
+  // planner-specific props (some callers use these names)
+  onDelete?: (...args: any[]) => void;
+  onUpdateNodeData?: (...args: any[]) => void;
+  onChangeLength?: (...args: any[]) => void;
+  onChangeCrossSection?: (...args: any[]) => void;
+
+  // data props
+  edges?: Edge[];
+  nodes?: Node[];
+  chargingTimeStr?: string;
+  calculatedSolarWatts?: number;
 }
 
 const EmptySelection = () => (
@@ -124,6 +137,9 @@ export default function Inspector({
   selectedEdge,
   onDeleteNode,
   onUpdateNode,
+  // planner aliases
+  onDelete,
+  onUpdateNodeData,
 }: InspectorProps) {
   const hasSelection = selectedNode || selectedEdge;
 
@@ -136,8 +152,14 @@ export default function Inspector({
       ) : selectedNode ? (
         <NodeInspector
           node={selectedNode}
-          onDelete={onDeleteNode || (() => {})}
-          onUpdate={onUpdateNode}
+          onDelete={(id: string) => {
+            if (onDeleteNode) return onDeleteNode(id);
+            if (onDelete) return onDelete(id);
+          }}
+          onUpdate={(id: string, data: any) => {
+            if (onUpdateNode) return onUpdateNode(id, data);
+            if (onUpdateNodeData) return onUpdateNodeData(id, data);
+          }}
         />
       ) : selectedEdge ? (
         <EdgeInspector edge={selectedEdge} />
