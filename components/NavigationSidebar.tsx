@@ -237,7 +237,7 @@ export default function NavigationSidebar({ isCollapsed = false, onToggle }: { i
       {/* Mobile Toggle Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed top-4 left-4 z-[60] lg:hidden bg-stone-800/90 text-amber-100 p-4 rounded-2xl border border-stone-700 hover:bg-stone-700 transition-all"
+        className="fixed top-4 left-4 z-[60] md:hidden bg-stone-800/90 text-amber-100 p-4 rounded-2xl border border-stone-700 hover:bg-stone-700 transition-all"
         aria-label="Navigation öffnen"
         aria-expanded={isOpen}
       >
@@ -253,7 +253,7 @@ export default function NavigationSidebar({ isCollapsed = false, onToggle }: { i
       {/* Overlay for mobile */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/40 z-[45] lg:hidden"
+          className="fixed inset-0 bg-black/40 z-[45] md:hidden"
           onClick={() => setIsOpen(false)}
         />
       )}
@@ -263,12 +263,12 @@ export default function NavigationSidebar({ isCollapsed = false, onToggle }: { i
         ref={containerRef}
         className={cn(
           "fixed top-0 left-0 h-screen z-50 flex flex-col transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]",
-          "w-[85vw] max-w-sm", isCollapsed ? "lg:w-14" : "lg:w-[17rem]",
+          "w-[85vw] max-w-sm", isCollapsed ? "md:w-14" : "md:w-[17rem]",
           // Nature gradient background
           "bg-gradient-to-b from-stone-900 via-stone-800 to-[#1a2e1a]",
           "border-r border-stone-700/50",
           // Mobile: slide in/out
-          isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+          isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         )}
         style={{ isolation: "isolate", willChange: 'transform', backfaceVisibility: 'hidden' }} // Layer Isolation + Performance
       >
@@ -378,7 +378,7 @@ export default function NavigationSidebar({ isCollapsed = false, onToggle }: { i
         </nav>
 
         {/* Toggle Button for Desktop */}
-        <div className="hidden lg:flex items-center justify-end px-3 py-2">
+        <div className="hidden md:flex items-center justify-end px-3 py-2">
           <button
             onClick={() => onToggle && onToggle()}
             className="p-1.5 rounded-lg text-stone-500 hover:text-amber-300 hover:bg-stone-700/50 transition-colors focus:outline-none"

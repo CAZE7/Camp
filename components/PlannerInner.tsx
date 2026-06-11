@@ -25,16 +25,16 @@ export default function PlannerInner() {
   };
 
   return (
-    <div className="flex flex-col lg:flex-row flex-1 min-h-0 w-full bg-background overflow-hidden font-sans relative planner-mobile-container">
+    <div className="flex flex-col md:flex-row flex-1 min-h-0 w-full bg-background overflow-hidden font-sans relative planner-mobile-container">
       {!hasOnboarded && <OnboardingWizard />}
 
       {/* Sidebar Area */}
-      <div className={`lg:flex h-full w-full lg:w-auto ${activeTab === 'sidebar' ? 'block' : 'hidden lg:block'} flex-1 lg:flex-none`}>
+      <div className={`md:flex h-full w-full md:w-auto ${activeTab === 'sidebar' ? 'block' : 'hidden md:block'} flex-1 md:flex-none`}>
         <PlannerSidebar onMobileAdd={handleMobileAdd} />
       </div>
 
       {/* Main Canvas Area */}
-      <div className={`lg:flex flex-1 flex-col ${activeTab === 'canvas' ? 'flex' : 'hidden lg:flex'}`}>
+      <div className={`md:flex flex-1 flex-col ${activeTab === 'canvas' ? 'flex' : 'hidden md:flex'}`}>
         <PlannerDashboard />
         <div className="flex flex-col flex-1 h-full overflow-hidden relative">
           <React.Suspense fallback={<div className="flex-1 flex items-center justify-center bg-stone-50"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div></div>}>
@@ -46,12 +46,12 @@ export default function PlannerInner() {
       </div>
 
       {/* Inspector Area */}
-      <div className={`lg:flex h-full w-full lg:w-auto ${activeTab === 'inspector' ? 'block' : 'hidden lg:block'} flex-1 lg:flex-none`}>
+      <div className={`md:flex h-full w-full md:w-auto ${activeTab === 'inspector' ? 'block' : 'hidden md:block'} flex-1 md:flex-none`}>
         <PlannerInspector />
       </div>
 
       {/* Mobile Bottom Navigation Bar */}
-      <div className="lg:hidden flex flex-row items-center justify-around bg-card border-t border-border p-2 z-50 shrink-0">
+      <div className="md:hidden flex flex-row items-center justify-around bg-card border-t border-border p-2 z-50 shrink-0">
         <button
           onClick={() => {
             setActiveTab('canvas');

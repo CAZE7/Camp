@@ -17,10 +17,10 @@ export function PlannerSidebar({ onMobileAdd }: PlannerSidebarProps) {
   })));
 
   return (
-    <>
+    <div className="flex h-full relative z-40">
       <div
-        className={`transition-all duration-300 ease-in-out relative z-40 h-full flex-shrink-0 shadow-lg bg-card border-r border-border overflow-hidden ${
-          isSidebarOpen ? 'w-full lg:w-72 opacity-100' : 'w-0 opacity-0'
+        className={`transition-all duration-300 ease-in-out relative h-full flex-shrink-0 shadow-lg bg-card border-r border-border overflow-hidden ${
+          isSidebarOpen ? 'w-full md:w-72 opacity-100' : 'w-0 opacity-0'
         }`}
       >
         <div className="w-full h-full">
@@ -32,14 +32,13 @@ export function PlannerSidebar({ onMobileAdd }: PlannerSidebarProps) {
         variant="outline"
         size="icon"
         onClick={toggleSidebar}
-        className="absolute top-1/2 -translate-y-1/2 z-30 shadow-md transition-all duration-300 h-8 w-8 hidden lg:flex items-center justify-center bg-white"
-        style={{ left: isSidebarOpen ? '17.5rem' : '0.75rem' }}
+        className="relative z-30 shadow-md transition-all duration-300 h-8 w-8 hidden md:flex items-center justify-center bg-white border border-border shrink-0 top-1/2 -translate-y-1/2 -ml-4 rounded-full"
         title={isSidebarOpen ? "Sidebar einklappen" : "Sidebar ausklappen"}
         aria-label={isSidebarOpen ? "Linke Sidebar einklappen" : "Linke Sidebar ausklappen"}
         aria-expanded={isSidebarOpen}
       >
         {isSidebarOpen ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
       </Button>
-    </>
+    </div>
   );
 }

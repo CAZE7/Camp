@@ -47,13 +47,12 @@ export function PlannerInspector() {
   const metrics = useDashboardMetrics(nodes, edges, season, calculatedSolarWatts);
 
   return (
-    <>
+    <div className="flex h-full relative z-40">
       <Button
         variant="outline"
         size="icon"
         onClick={toggleInspector}
-        className="absolute top-1/2 -translate-y-1/2 z-50 shadow-md transition-all duration-300 h-8 w-8 hidden lg:flex items-center justify-center bg-white border-gray-200"
-        style={{ right: isInspectorOpen ? 'calc(250px + 0.75rem)' : '0.75rem' }}
+        className="relative z-50 shadow-md transition-all duration-300 h-8 w-8 hidden md:flex items-center justify-center bg-white border border-border shrink-0 top-1/2 -translate-y-1/2 -mr-4 rounded-full"
         title={isInspectorOpen ? "Inspector einklappen" : "Inspector ausklappen"}
         aria-label={isInspectorOpen ? "Rechte Sidebar einklappen" : "Rechte Sidebar ausklappen"}
         aria-expanded={isInspectorOpen}
@@ -62,8 +61,8 @@ export function PlannerInspector() {
       </Button>
 
       <div
-        className={`transition-all duration-300 ease-in-out relative z-40 h-full flex-shrink-0 shadow-lg bg-card border-l border-border overflow-hidden ${
-          isInspectorOpen ? 'w-full lg:w-[250px]' : 'w-0'
+        className={`transition-all duration-300 ease-in-out relative h-full flex-shrink-0 shadow-lg bg-card border-l border-border overflow-hidden ${
+          isInspectorOpen ? 'w-full md:w-[250px]' : 'w-0'
         }`}
       >
         <div className="w-full h-full">
@@ -81,6 +80,6 @@ export function PlannerInspector() {
           />
         </div>
       </div>
-    </>
+    </div>
   );
 }
