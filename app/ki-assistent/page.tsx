@@ -1,18 +1,16 @@
-import Chat from '../../components/Chat';
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
+import { Chat } from "@/components/Chat";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 export default function KiAssistent() {
   return (
-    <main className="w-full h-screen relative bg-stone-50 font-sans">
-      <div className="absolute top-6 left-6 z-50">
+    <main className="h-screen w-full flex flex-col">
+      <div className="p-4 border-b border-border">
         <Link href="/">
-          <Button variant="outline" size="sm" className="shadow-sm rounded-xl border-stone-200 bg-white/80 backdrop-blur-md hover:bg-stone-50">
-            ← Zurück
-          </Button>
+          <Button variant="outline">← Zurück</Button>
         </Link>
       </div>
-      <Chat />
+      <Chat defaultOpen />
     </main>
   );
 }

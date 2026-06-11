@@ -1,72 +1,35 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
-  .theme {
-    --font-heading: var(--font-sans);
-    --font-sans: var(--font-sans)
-  }
   :root {
-    --background: #f8f7f4;
-    --foreground: #020817;
-    --card: #faf9f7;
-    --card-foreground: #020817;
+    --background: #ffffff;
+    --foreground: #0f172a;
+    --card: #f8fafc;
+    --card-foreground: #0f172a;
     --popover: #ffffff;
-    --popover-foreground: #020817;
-    --primary: #f97316;
-    --primary-foreground: #fafafa;
-    --secondary: #f1f5f9;
+    --popover-foreground: #0f172a;
+    --primary: #0ea5e9;
+    --primary-foreground: #ffffff;
+    --secondary: #e2e8f0;
     --secondary-foreground: #0f172a;
-    --muted: #f1f5f9;
-    --muted-foreground: #64748b;
-    --accent: #f1f5f9;
-    --accent-foreground: #0f172a;
+    --muted: #cbd5e0;
+    --muted-foreground: #475569;
+    --accent: #0ea5e9;
+    --accent-foreground: #ffffff;
     --destructive: #ef4444;
-    --destructive-foreground: #fafafa;
+    --destructive-foreground: #ffffff;
+    --warning: #f59e0b;
     --border: #e2e8f0;
     --input: #e2e8f0;
-    --ring: #f97316;
-    --info: #3b82f6;
-    --success: #22c55e;
-    --warning: #f59e0b;
-    --radius: 0.625rem;
-    --canvas-bg: #f4f5f7;
-    --sidebar: #f8fafc;
+    --ring: #0ea5e9;
+    --sidebar: #f1f5f9;
     --sidebar-foreground: #0f172a;
-    --sidebar-primary: #f97316;
-    --sidebar-primary-foreground: #ffffff;
-    --sidebar-accent: #f1f5f9;
     --sidebar-accent-foreground: #0f172a;
     --sidebar-border: #e2e8f0;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --background: #171614;
-      --foreground: #e8e6e1;
-      --card: #1c1b19;
-      --card-foreground: #e8e6e1;
-      --popover: #201f1d;
-      --popover-foreground: #e8e6e1;
-      --primary: #fb923c;
-      --primary-foreground: #1a0a00;
-      --secondary: #292724;
-      --secondary-foreground: #e2ddd6;
-      --muted: #292724;
-      --muted-foreground: #9c9891;
-      --accent: #292724;
-      --accent-foreground: #e2ddd6;
-      --destructive: #f87171;
-      --destructive-foreground: #1a0000;
-      --warning: #fbbf24;
-      --border: #3a3835;
-      --input: #3a3835;
-      --ring: #fb923c;
-      --sidebar: #141312;
-      --sidebar-foreground: #e2ddd6;
-      --sidebar-border: #2e2c2a;
-      --canvas-bg: #1e2027;
-    }
   }
   * {
     @apply border-border;
@@ -76,105 +39,47 @@
   }
   html {
     @apply font-sans;
+    color-scheme: light;
   }
   h1 { @apply font-black tracking-tight; }
   h2 { @apply font-extrabold tracking-tight; }
   h3 { @apply font-bold tracking-tight; }
-  h4, h5, h6 { @apply font-semibold; }
-  .stat, .number {
-    @apply font-mono;
+  h4 { @apply font-semibold tracking-tight; }
+  h5 { @apply font-semibold; }
+  h6 { @apply font-medium; }
+}
+
+@layer components {
+  .text-balance {
+    text-wrap: balance;
   }
 }
 
-/* ─── Performance & Mobile Touch: Layout Containment ─── */
-/* Isolate the React Flow canvas so reflows don't propagate to sidebar/inspector */
-.react-flow {
-  contain: layout style paint;
-  touch-action: none;
-  overscroll-behavior: none;
+* {
+  box-sizing: border-box;
 }
 
-/* Isolate planner sidebar to prevent reflow cascading into the canvas */
-.planner-sidebar-container {
-  contain: layout paint;
-}
-/* --- Nature Theme Animations --- */
-.road-dashed {
-  stroke-dasharray: 4 6;
-  stroke-linecap: round;
+.react-flow__pane {
+  background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><rect fill="%23f0f0f0" width="40" height="40"/><circle cx="10" cy="10" r="1" fill="%23999999"/></svg>');
 }
 
-.nature-glow {
-  filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.4));
-}
-
-.camper-shadow {
-  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.15));
-}
-
-/* ─── Chrome Performance & GPU Acceleration ─── */
-.gpu-accelerated {
-  will-change: transform;
-  backface-visibility: hidden;
-}
-
-.speed-svg {
-  shape-rendering: optimizeSpeed;
-}
-
-/* Disable backdrop-filter, box-shadows, and filters during scrolling to avoid repaint storm in Chrome */
-.is-scrolling,
-.is-scrolling * {
-  box-shadow: none !important;
-  filter: none !important;
-  backdrop-filter: none !important;
-}
-
-/* React Flow Nodes Performance */
 .react-flow__node {
-  color: var(--card-foreground);
-  background: var(--card);
+  font-family: system-ui, -apple-system, sans-serif;
 }
 
-/* ─── Mobile Optimizations & Animations ─── */
-@media (max-width: 767px) {
-  /* Reset main layout padding */
-  main {
-    padding-left: 0 !important;
-  }
-  
-  /* Prevent horizontal overflow on mobile body */
-  body {
-    overflow-x: hidden;
-  }
+.react-flow__edge-path {
+  stroke: #cbd5e0;
 }
 
-/* Keyframes & Classes for Premium Modal Transitions */
-@keyframes slide-up {
-  from {
-    transform: translateY(100%);
-  }
-  to {
-    transform: translateY(0);
-  }
+.react-flow__handle {
+  background: #0ea5e9;
+  border: 2px solid white;
 }
 
-@keyframes scale-up {
-  from {
-    transform: scale(0.95);
-    opacity: 0;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
+.react-flow__handle.connectable {
+  background: #06b6d4;
 }
 
-.animate-slide-up {
-  animation: slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+.react-flow__handle.valid {
+  background: #10b981;
 }
-
-.animate-scale-up {
-  animation: scale-up 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
