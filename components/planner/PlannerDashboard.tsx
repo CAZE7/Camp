@@ -106,9 +106,9 @@ function ActionsSection({
   }, [onExportError, nodes]);
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-wrap lg:flex-nowrap items-center gap-2">
       {/* Segmented Action Buttons */}
-      <div className="flex bg-stone-100/50 p-1 rounded-lg border border-stone-200/60 backdrop-blur-sm gap-1">
+      <div className="flex flex-wrap lg:flex-nowrap bg-stone-100/50 p-1 rounded-lg border border-stone-200/60 backdrop-blur-sm gap-1">
         <Button variant="ghost" size="sm" onClick={handleExportBOM} className="gap-1.5 text-orange-700 hover:bg-white hover:shadow-sm">
           <Package className="w-4 h-4" /> Stückliste
         </Button>

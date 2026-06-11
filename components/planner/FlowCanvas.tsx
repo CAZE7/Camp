@@ -126,8 +126,8 @@ export function FlowCanvas() {
           }}
         >
           <Background color="var(--border)" gap={16} />
-          <Controls className="rounded-lg overflow-hidden border border-border shadow-sm" />
-          <MiniMap className="rounded-lg overflow-hidden border border-border shadow-sm" />
+          <Controls className="rounded-lg overflow-hidden border border-border shadow-sm mb-16 lg:mb-4" />
+          <MiniMap className="rounded-lg overflow-hidden border border-border shadow-sm mb-16 lg:mb-4" />
 
           {viewMode === 'electric' && calculatedSolarWatts > 0 && (
             <Panel position="bottom-center" className="bg-blue-50 p-3 rounded-lg shadow-sm border border-blue-200 text-blue-800 text-sm mb-4">

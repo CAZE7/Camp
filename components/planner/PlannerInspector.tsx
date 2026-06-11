@@ -53,7 +53,7 @@ export function PlannerInspector() {
         size="icon"
         onClick={toggleInspector}
         className="absolute top-1/2 -translate-y-1/2 z-50 shadow-md transition-all duration-300 h-8 w-8 hidden lg:flex items-center justify-center bg-white border-gray-200"
-        style={{ right: isInspectorOpen ? 'calc(250px + 0.75rem)' : '0.75rem' }}
+        style={{ right: isInspectorOpen ? 'calc(250px - 1rem)' : '0.75rem' }}
         title={isInspectorOpen ? "Inspector einklappen" : "Inspector ausklappen"}
         aria-label={isInspectorOpen ? "Rechte Sidebar einklappen" : "Rechte Sidebar ausklappen"}
         aria-expanded={isInspectorOpen}
