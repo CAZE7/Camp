@@ -1,90 +1,88 @@
 "use client";
 
-import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
-import { vehicleTemplates } from '@/lib/vehicleTemplates';
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { vehicles } from "../data/vehicles";
+
+interface DachSidebarProps {
+  selectedVehicleId: string;
+  setSelectedVehicleId: (id: string) => void;
+  onAddNode: (nodeType: string) => void;
+}
 
 export function DachSidebar({
   selectedVehicleId,
   setSelectedVehicleId,
-  onDragStart,
-  onMobileAdd
-}: {
-  selectedVehicleId: string;
-  setSelectedVehicleId: (val: string) => void;
-  onDragStart: (event: React.DragEvent, nodeType: string) => void;
-  onMobileAdd?: (nodeType: string) => void;
-}) {
-  const handleClick = (nodeType: string) => {
-    if (window.innerWidth < 768 && onMobileAdd) {
-      onMobileAdd(nodeType);
+  onAddNode,
+}: DachSidebarProps) {
+  const handleSelectChange = (value: string | null) => {
+    if (value) {
+      setSelectedVehicleId(value);
     }
   };
 
   return (
-    <div className="w-full md:w-80 bg-card border-r border-border p-6 flex flex-col gap-6 overflow-y-auto z-10 shrink-0 h-full">
+    <div className="w-full lg:w-80 bg-card border-r border-border p-6 flex flex-col gap-6 overflow-y-auto z-10 shrink-0 h-full">
       <div className="space-y-4">
         <Label className="text-xs font-black text-muted-foreground uppercase tracking-widest">Fahrzeug Modell</Label>
         <Select value={selectedVehicleId} onValueChange={(val: string | null) => val && setSelectedVehicleId(val)}>
-          <SelectTrigger className="h-12">
-            <SelectValue placeholder="Wähle dein Fahrzeug" />
+          <SelectTrigger>
+            <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {vehicleTemplates.map(v => (
-              <SelectItem key={v.id} value={v.id}>
-                {v.brand} {v.version}
+            {vehicles.map((vehicle) => (
+              <SelectItem key={vehicle.id} value={vehicle.id}>
+                {vehicle.name}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
       </div>
 
-      <div className="space-y-4">
-        <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Komponenten</p>
-        <div className="space-y-3">
-          <Card
-            className="cursor-grab hover:ring-2 hover:ring-blue-400 transition-all active:cursor-grabbing border-blue-100 bg-blue-50/20"
-            onDragStart={(event) => onDragStart(event, 'roofSolar')}
-            onClick={() => handleClick('roofSolar')}
-            draggable
+      <div className="space-y-3">
+        <Label className="text-xs font-black text-muted-foreground uppercase tracking-widest">Komponenten hinzufügen</Label>
+        <div className="grid grid-cols-2 gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => onAddNode("Batterie")}
+            className="text-xs"
           >
-            <CardContent className="flex items-center gap-4 py-3 px-4">
-              <div className="w-10 h-10 bg-blue-500 text-white rounded-lg flex items-center justify-center text-xl shadow-sm">☀️</div>
-              <div className="flex flex-col">
-                <span className="font-bold text-sm">Solarpanel</span>
-                <span className="text-[10px] uppercase tracking-widest text-blue-600/70 font-bold">Basis: 100x60cm</span>
-              </div>
-            </CardContent>
-          </Card>
-          <Card
-            className="cursor-grab hover:ring-2 hover:ring-amber-400 transition-all active:cursor-grabbing border-amber-100 bg-amber-50/20"
-            onDragStart={(event) => onDragStart(event, 'roofWindow')}
-            onClick={() => handleClick('roofWindow')}
-            draggable
+            🔋 Batterie
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => onAddNode("Solar")}
+            className="text-xs"
           >
-            <CardContent className="flex items-center gap-4 py-3 px-4">
-              <div className="w-10 h-10 bg-amber-500 text-white rounded-lg flex items-center justify-center text-xl shadow-sm">🪟</div>
-              <div className="flex flex-col">
-                <span className="font-bold text-sm">Dachfenster</span>
-                <span className="text-[10px] uppercase tracking-widest text-amber-600/70 font-bold">Basis: 40x40cm</span>
-              </div>
-            </CardContent>
-          </Card>
+            ☀️ Solar
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => onAddNode("Wechselrichter")}
+            className="text-xs"
+          >
+            ⚡ Wechselrichter
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => onAddNode("Verbraucher")}
+            className="text-xs"
+          >
+            💡 Verbraucher
+          </Button>
         </div>
       </div>
-
-      <Card className="mt-auto border-dashed">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-xs uppercase tracking-tighter text-muted-foreground">Hinweis</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-[11px] leading-relaxed text-muted-foreground">
-            Die <strong>Safe Zone</strong> berücksichtigt 15cm Front-Abstand und 5cm Seiten-Abstand. Elemente außerhalb werden rot markiert und nicht zur Leistung addiert.
-          </p>
-        </CardContent>
-      </Card>
     </div>
   );
 }

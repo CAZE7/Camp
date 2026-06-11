@@ -1,189 +1,147 @@
-import React, { useState, useEffect } from 'react';
-import { Edge, Node } from 'reactflow';
-import { MousePointerClick } from 'lucide-react';
-import { CableEdgeData } from './edges/CableEdge';
-import { EdgeInspector } from './inspector/EdgeInspector';
-import {
-  BatteryInspector,
-  ConsumerInspector,
-  ChargerInspector,
-  FuseInspector,
-  ShorePowerInspector,
-  InverterInspector,
-  Consumer230VInspector,
-  SolarInspector,
-  RoofWindowInspector,
-  RoofSolarInspector,
-  ConduitInspector,
-} from './inspector/NodeInspectors';
+"use client";
+
+import React, { useEffect, useState } from "react";
+import { Node, Edge } from "reactflow";
+import { Button } from "@/components/ui/button";
+import { Trash2 } from "lucide-react";
 
 interface InspectorProps {
-  selectedEdge: Edge<CableEdgeData> | null;
-  selectedNode?: Node | null;
-  onChangeLength: (id: string, length: number) => void;
-  onChangeCrossSection: (id: string, crossSection: number) => void;
-  onDelete?: () => void;
-  onUpdateNodeData?: (id: string, data: any) => void;
-  edges?: Edge[];
-  chargingTimeStr?: string;
-  calculatedSolarWatts?: number;
-  nodes?: Node[];
+  selectedNode: Node | null;
+  selectedEdge: Edge | null;
+  onDeleteNode?: (nodeId: string) => void;
+  onUpdateNode?: (nodeId: string, data: any) => void;
 }
 
-function EmptySelection() {
-  return (
-    <div className="text-gray-500 text-sm flex-1 flex flex-col items-center justify-center text-center p-4">
-      <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-3">
-        <MousePointerClick className="w-6 h-6 text-gray-400" aria-hidden="true" />
-      </div>
-      <p className="font-medium text-foreground mb-1">Kein Element ausgewählt</p>
-      <p className="text-xs text-muted-foreground">
-        Klicke auf eine Komponente oder Verbindung im Schaltplan, um Details zu bearbeiten.
-      </p>
-    </div>
-  );
-}
+const EmptySelection = () => (
+  <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+    <svg
+      className="w-12 h-12 mb-2 opacity-50"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.5}
+        d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.5a2 2 0 00-1 .267M7 21H5a2 2 0 01-2-2v-4a2 2 0 012-2h2.5"
+      />
+    </svg>
+    <p>Wähle ein Element zum Inspizieren</p>
+  </div>
+);
 
-interface NodeInspectorRendererProps {
-  selectedNode: Node;
-  onUpdateNodeData?: (id: string, data: any) => void;
-  chargingTimeStr?: string;
-  calculatedSolarWatts?: number;
-  nodes?: Node[];
-  edges?: Edge[];
-}
-
-function NodeInspectorRenderer({
-  selectedNode,
-  onUpdateNodeData,
-  chargingTimeStr,
-  calculatedSolarWatts,
-  nodes,
-  edges,
-}: NodeInspectorRendererProps) {
-  return (
-    <div className="flex flex-col space-y-4">
-      <h3 className="font-semibold text-gray-700 text-sm">{selectedNode.data?.label || 'Komponente'}</h3>
-
-      {selectedNode.type === 'battery' && (
-        <BatteryInspector
-          node={selectedNode}
-          onUpdateNodeData={onUpdateNodeData}
-          chargingTimeStr={chargingTimeStr}
-          calculatedSolarWatts={calculatedSolarWatts}
-        />
-      )}
-
-      {selectedNode.type === 'consumer' && (
-        <ConsumerInspector node={selectedNode} onUpdateNodeData={onUpdateNodeData} />
-      )}
-
-      {['charger', 'mpptController', 'dcdcCharger', 'acBatteryCharger'].includes(selectedNode.type as string) && (
-        <ChargerInspector node={selectedNode} onUpdateNodeData={onUpdateNodeData} />
-      )}
-
-      {selectedNode.type === 'fuse' && (
-        <FuseInspector node={selectedNode} onUpdateNodeData={onUpdateNodeData} />
-      )}
-
-      {selectedNode.type === 'shorePower' && (
-        <ShorePowerInspector node={selectedNode} onUpdateNodeData={onUpdateNodeData} />
-      )}
-
-      {selectedNode.type === 'inverter' && (
-        <InverterInspector node={selectedNode} onUpdateNodeData={onUpdateNodeData} nodes={nodes} />
-      )}
-
-      {selectedNode.type === 'consumer230v' && (
-        <Consumer230VInspector node={selectedNode} onUpdateNodeData={onUpdateNodeData} />
-      )}
-
-      {selectedNode.type === 'solar' && (
-        <SolarInspector node={selectedNode} onUpdateNodeData={onUpdateNodeData} />
-      )}
-
-      {selectedNode.type === 'roofWindow' && (
-        <RoofWindowInspector node={selectedNode} onUpdateNodeData={onUpdateNodeData} />
-      )}
-
-      {selectedNode.type === 'roofSolar' && (
-        <RoofSolarInspector node={selectedNode} onUpdateNodeData={onUpdateNodeData} />
-      )}
-
-      {selectedNode.type === 'conduit' && (
-        <ConduitInspector node={selectedNode} onUpdateNodeData={onUpdateNodeData} edges={edges} />
-      )}
-    </div>
-  );
-}
-
-export default function Inspector({
-  selectedEdge,
-  selectedNode,
-  onChangeLength,
-  onChangeCrossSection,
+const NodeInspector = ({
+  node,
   onDelete,
-  onUpdateNodeData,
-  edges = [],
-  chargingTimeStr,
-  calculatedSolarWatts,
-  nodes,
-}: InspectorProps) {
-  const hasSelection = selectedEdge || selectedNode;
-  const [confirmDelete, setConfirmDelete] = useState(false);
+  onUpdate,
+}: {
+  node: Node;
+  onDelete: (nodeId: string) => void;
+  onUpdate?: (nodeId: string, data: any) => void;
+}) => {
+  const [label, setLabel] = useState(node.data?.label || "");
 
   useEffect(() => {
-    // Reset confirmation state when selection changes
-    setConfirmDelete(false);
-  }, [selectedEdge, selectedNode]);
+    setLabel(node.data?.label || "");
+  }, [node]);
+
+  const handleLabelChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newLabel = e.target.value;
+    setLabel(newLabel);
+    if (onUpdate) {
+      onUpdate(node.id, { label: newLabel });
+    }
+  };
 
   return (
-    <div className={`absolute right-0 top-0 h-full w-full md:w-[250px] bg-card border-l border-border p-4 flex flex-col shadow-2xl z-50 transition-transform duration-300 ease-in-out ${hasSelection ? "translate-x-0" : "translate-x-full"}`}>
-      <h2 className="text-lg font-semibold mb-4 text-gray-800">Inspector</h2>
+    <div className="space-y-4">
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+        <p className="text-xs font-medium text-blue-900 mb-1">Node ID:</p>
+        <p className="text-xs text-blue-700 font-mono">{node.id}</p>
+      </div>
+
+      <div>
+        <label className="block text-xs font-medium text-foreground mb-1">
+          Label
+        </label>
+        <input
+          type="text"
+          value={label}
+          onChange={handleLabelChange}
+          className="w-full px-2 py-1 border border-border rounded text-sm"
+          placeholder="Node label"
+        />
+      </div>
+
+      <div>
+        <label className="block text-xs font-medium text-foreground mb-1">
+          Position
+        </label>
+        <p className="text-xs text-muted-foreground font-mono">
+          X: {node.position.x.toFixed(1)}, Y: {node.position.y.toFixed(1)}
+        </p>
+      </div>
+
+      <Button
+        variant="destructive"
+        size="sm"
+        onClick={() => onDelete(node.id)}
+        className="w-full gap-2"
+      >
+        <Trash2 size={16} />
+        Löschen
+      </Button>
+    </div>
+  );
+};
+
+const EdgeInspector = ({ edge }: { edge: Edge }) => (
+  <div className="space-y-4">
+    <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+      <p className="text-xs font-medium text-green-900 mb-1">Edge ID:</p>
+      <p className="text-xs text-green-700 font-mono">{edge.id}</p>
+    </div>
+
+    <div>
+      <label className="block text-xs font-medium text-foreground mb-1">
+        Von Node
+      </label>
+      <p className="text-xs text-muted-foreground font-mono">{edge.source}</p>
+    </div>
+
+    <div>
+      <label className="block text-xs font-medium text-foreground mb-1">
+        Zu Node
+      </label>
+      <p className="text-xs text-muted-foreground font-mono">{edge.target}</p>
+    </div>
+  </div>
+);
+
+export default function Inspector({
+  selectedNode,
+  selectedEdge,
+  onDeleteNode,
+  onUpdateNode,
+}: InspectorProps) {
+  const hasSelection = selectedNode || selectedEdge;
+
+  return (
+    <div className="relative h-full w-full bg-card p-4 flex flex-col text-foreground overflow-y-auto">
+      <h2 className="text-lg font-semibold mb-4 pl-10 text-gray-800">Inspector</h2>
 
       {!hasSelection ? (
         <EmptySelection />
-      ) : (
-        <div className="flex flex-col space-y-4 flex-1 overflow-y-auto">
-          {selectedEdge && (
-            <EdgeInspector edge={selectedEdge} onChangeLength={onChangeLength} />
-          )}
-
-          {selectedNode && (
-            <NodeInspectorRenderer
-              selectedNode={selectedNode}
-              onUpdateNodeData={onUpdateNodeData}
-              chargingTimeStr={chargingTimeStr}
-              calculatedSolarWatts={calculatedSolarWatts}
-              nodes={nodes}
-              edges={edges}
-            />
-          )}
-
-          <div className="mt-auto pt-4">
-            <button
-              onClick={() => {
-                if (!confirmDelete) {
-                  setConfirmDelete(true);
-                  // Optional: reset after 3 seconds
-                  setTimeout(() => setConfirmDelete(false), 3000);
-                } else {
-                  if (onDelete) onDelete();
-                  setConfirmDelete(false);
-                }
-              }}
-              aria-label="Ausgewählte Komponente löschen"
-              className={`w-full font-semibold py-2 px-4 rounded shadow transition-colors ${
-                confirmDelete 
-                  ? 'bg-red-700 hover:bg-red-800 text-white animate-pulse' 
-                  : 'bg-red-500 hover:bg-red-600 text-white'
-              }`}
-            >
-              {confirmDelete ? "Sicher? (Klick zum Bestätigen)" : "Löschen"}
-            </button>
-          </div>
-        </div>
-      )}
+      ) : selectedNode ? (
+        <NodeInspector
+          node={selectedNode}
+          onDelete={onDeleteNode || (() => {})}
+          onUpdate={onUpdateNode}
+        />
+      ) : selectedEdge ? (
+        <EdgeInspector edge={selectedEdge} />
+      ) : null}
     </div>
   );
 }
