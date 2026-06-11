@@ -842,13 +842,14 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
       return totalAmps;
     };
 
+    const nodesMap = getNodeMap(nodes, []);
     let maxCumulativeDrop = 0;
 
     const dfs = (currentNodeId: string, currentDrop: number, visited: Set<string>) => {
       if (visited.has(currentNodeId)) return;
       visited.add(currentNodeId);
 
-      const node = nodes.find(n => n.id === currentNodeId);
+      const node = nodesMap.get(currentNodeId);
       if (node?.type === 'battery' || node?.type === 'shorePower') {
         if (currentDrop > maxCumulativeDrop) {
           maxCumulativeDrop = currentDrop;
@@ -865,7 +866,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
       }
 
       for (const edge of incomingEdges) {
-        const sourceNode = nodes.find(n => n.id === edge.source);
+        const sourceNode = nodesMap.get(edge.source);
         const I = getI(sourceNode, node);
         const length = edge.data?.length || 1;
         const cs = edge.data?.crossSection || 2.5;
