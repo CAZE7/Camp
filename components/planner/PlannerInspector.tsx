@@ -52,7 +52,7 @@ export function PlannerInspector() {
         variant="outline"
         size="icon"
         onClick={toggleInspector}
-        className="absolute top-1/2 -translate-y-1/2 z-50 shadow-md transition-all duration-300 h-10 w-10 md:h-8 md:w-8 flex items-center justify-center bg-white border-gray-200"
+        className="absolute top-1/2 -translate-y-1/2 z-50 shadow-md transition-all duration-300 h-8 w-8 hidden lg:flex items-center justify-center bg-white border-gray-200"
         style={{ right: isInspectorOpen ? 'calc(250px + 0.75rem)' : '0.75rem' }}
         title={isInspectorOpen ? "Inspector einklappen" : "Inspector ausklappen"}
         aria-label={isInspectorOpen ? "Rechte Sidebar einklappen" : "Rechte Sidebar ausklappen"}
@@ -63,7 +63,7 @@ export function PlannerInspector() {
 
       <div
         className={`transition-all duration-300 ease-in-out relative z-40 h-full flex-shrink-0 shadow-lg bg-card border-l border-border overflow-hidden ${
-          isInspectorOpen ? 'w-[250px]' : 'w-0'
+          isInspectorOpen ? 'w-full lg:w-[250px]' : 'w-0'
         }`}
       >
         <div className="w-full h-full">
