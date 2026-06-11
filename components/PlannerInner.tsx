@@ -29,12 +29,12 @@ export default function PlannerInner() {
       {!hasOnboarded && <OnboardingWizard />}
 
       {/* Sidebar Area */}
-      <div className={`lg:flex h-full w-full lg:w-auto ${activeTab === 'sidebar' ? 'block' : 'hidden lg:block'} flex-1 lg:flex-none`}>
+      <div className={`lg:flex h-full w-full lg:w-auto ${activeTab === 'sidebar' ? 'flex' : 'hidden lg:flex'} flex-1 lg:flex-none`}>
         <PlannerSidebar onMobileAdd={handleMobileAdd} />
       </div>
 
       {/* Main Canvas Area */}
-      <div className={`lg:flex flex-1 flex-col ${activeTab === 'canvas' ? 'flex' : 'hidden lg:flex'}`}>
+      <div className={`lg:flex flex-1 flex-col min-w-0 ${activeTab === 'canvas' ? 'flex' : 'hidden lg:flex'}`}>
         <PlannerDashboard />
         <div className="flex flex-col flex-1 h-full overflow-hidden relative">
           <React.Suspense fallback={<div className="flex-1 flex items-center justify-center bg-stone-50"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div></div>}>
@@ -46,7 +46,7 @@ export default function PlannerInner() {
       </div>
 
       {/* Inspector Area */}
-      <div className={`lg:flex h-full w-full lg:w-auto ${activeTab === 'inspector' ? 'block' : 'hidden lg:block'} flex-1 lg:flex-none`}>
+      <div className={`lg:flex h-full w-full lg:w-auto ${activeTab === 'inspector' ? 'flex' : 'hidden lg:flex'} flex-1 lg:flex-none`}>
         <PlannerInspector />
       </div>
 

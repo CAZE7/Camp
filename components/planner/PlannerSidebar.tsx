@@ -32,8 +32,8 @@ export function PlannerSidebar({ onMobileAdd }: PlannerSidebarProps) {
         variant="outline"
         size="icon"
         onClick={toggleSidebar}
-        className="absolute top-1/2 -translate-y-1/2 z-30 shadow-md transition-all duration-300 h-8 w-8 hidden lg:flex items-center justify-center bg-white"
-        style={{ left: isSidebarOpen ? '17.5rem' : '0.75rem' }}
+        className="absolute top-1/2 -translate-y-1/2 z-50 shadow-md transition-all duration-300 h-8 w-8 hidden lg:flex items-center justify-center bg-white"
+        style={{ left: isSidebarOpen ? 'calc(18rem - 1rem)' : '0.75rem' }}
         title={isSidebarOpen ? "Sidebar einklappen" : "Sidebar ausklappen"}
         aria-label={isSidebarOpen ? "Linke Sidebar einklappen" : "Linke Sidebar ausklappen"}
         aria-expanded={isSidebarOpen}
