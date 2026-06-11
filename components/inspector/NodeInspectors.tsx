@@ -144,8 +144,9 @@ export function FuseInspector({ node, onUpdateNodeData }: BaseNodeInspectorProps
 export function ShorePowerInspector({ node, onUpdateNodeData }: BaseNodeInspectorProps) {
   return (
     <div className="flex flex-col gap-2">
-      <label className="flex items-center gap-2 text-sm text-gray-700">
+      <label htmlFor={`${node.id}-rcd`} className="flex items-center gap-2 text-sm text-gray-700">
         <input
+          id={`${node.id}-rcd`}
           type="checkbox"
           checked={node.data?.hasRcd || false}
           onChange={(e) => onUpdateNodeData?.(node.id, { hasRcd: e.target.checked })}
@@ -189,9 +190,11 @@ export function InverterInspector({
         <div className="flex flex-col gap-1 max-h-32 overflow-y-auto border border-gray-200 rounded p-1">
           {consumerNodes.map((consumer) => {
             const isChecked = (node.data?.concurrentDevices || []).includes(consumer.id);
+            const checkboxId = `${node.id}-concurrent-${consumer.id}`;
             return (
-              <label key={consumer.id} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer p-1 hover:bg-gray-50 rounded">
+              <label key={consumer.id} htmlFor={checkboxId} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer p-1 hover:bg-gray-50 rounded">
                 <input
+                  id={checkboxId}
                   type="checkbox"
                   checked={isChecked}
                   onChange={(e) => {
@@ -382,7 +385,7 @@ export function ConduitInspector({
                 const crossSection = edgeData?.crossSection || 2.5;
 
                 return (
-                  <label key={edge.id} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer p-1 hover:bg-gray-50 rounded">
+                  <label key={edge.id} htmlFor={`edge-assign-${edge.id}`} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer p-1 hover:bg-gray-50 rounded">
                     <input
                       type="checkbox"
                       id={`edge-assign-${edge.id}`}

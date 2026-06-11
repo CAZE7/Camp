@@ -47,3 +47,6 @@
 ## 2025-05-18 - Input Field Accessibility Linkage
 **Learning:** For custom input components with inline error messages (like `ValidatingInput`), it's a common accessibility gap to simply render the error text conditionally without linking it to the input field. Screen readers need `aria-invalid` and `aria-errormessage` pointing to the error container's `id`, along with a `role="alert"` so the error is announced.
 **Action:** Always use React's `useId()` inside custom input components to generate stable IDs, and apply `aria-invalid`, `aria-errormessage`, and `role="alert"` when validation fails.
+## 2026-05-18 - Checkbox Label ID Linking
+**Learning:** In custom inspector components that map or render multiple checkboxes (like `InverterInspector` and `ConduitInspector`), nested checkboxes or mapped elements must still ensure robust screen reader accessibility. Although nesting `<input>` inside `<label>` works visually, explicitly binding them with `id` and `htmlFor` prevents unpredictable screen reader behavior, ensuring users can accurately interact with them.
+**Action:** Always ensure that checkboxes, even when mapped dynamically within labels, explicitly assign `htmlFor` on the label matching a unique `id` on the `<input>`.
