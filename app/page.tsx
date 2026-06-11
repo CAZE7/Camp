@@ -173,7 +173,7 @@ function HeroSection() {
   return (
     <section className="relative max-w-4xl w-full text-center mb-16 mt-12">
       {/* Status badge */}
-      <div className="inline-flex items-center gap-2.5 px-5 py-2 rounded-full bg-stone-900/5 border border-stone-200 text-stone-600 text-xs font-bold mb-8 shadow-sm backdrop-blur-sm">
+      <div className="inline-flex items-center gap-2.5 px-5 py-2 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-800 text-xs font-bold mb-8 shadow-sm backdrop-blur-sm">
         <span className="relative flex h-2 w-2">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
           <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
@@ -213,7 +213,7 @@ function HeroSection() {
         <Button
           asChild
           size="lg"
-          className="rounded-2xl px-8 py-6 text-base font-bold bg-stone-900 hover:bg-stone-800 text-white shadow-lg transition-all hover:shadow-xl hover:-translate-y-0.5"
+          className="rounded-2xl px-8 py-6 text-base font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg transition-all hover:shadow-xl hover:-translate-y-0.5"
         >
           <Link href="/elektrik-planung">
             <svg
@@ -374,9 +374,9 @@ function ToolGrid() {
                 asChild
                 className={cn(
                   "w-full rounded-xl font-bold text-sm h-11",
-                  "bg-stone-800 hover:bg-stone-700 text-white",
+                  "bg-stone-100 hover:bg-stone-200 text-stone-800",
                   "shadow-sm hover:shadow-md transition-all",
-                  "group-hover:bg-gradient-to-r",
+                  "group-hover:bg-gradient-to-r group-hover:text-white",
                   `group-hover:${tool.accentFrom}`,
                   `group-hover:${tool.accentTo}`
                 )}

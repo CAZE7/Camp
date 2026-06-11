@@ -87,23 +87,23 @@ export function DachPanel({
         </Card>
       )}
 
-      <Card className="min-w-[260px] shadow-2xl border-none bg-slate-900 text-white rounded-2xl overflow-hidden relative">
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-500" />
+      <Card className="min-w-[260px] shadow-sm border border-stone-200 bg-white text-stone-800 rounded-2xl overflow-hidden relative">
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 to-teal-500" />
         <CardHeader className="pb-2">
-          <CardDescription className="text-blue-400 font-bold uppercase tracking-[0.2em] text-[10px]">System Check</CardDescription>
+          <CardDescription className="text-stone-400 font-bold uppercase tracking-[0.2em] text-[10px]">System Check</CardDescription>
           <CardTitle className="flex items-center justify-between text-2xl font-black">
             <span>Solarleistung</span>
-            <span className="text-orange-400">{totalRoofSolarWatts} W</span>
+            <span className="text-emerald-600">{totalRoofSolarWatts} W</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
+          <div className="h-1.5 w-full bg-stone-100 rounded-full overflow-hidden">
             <div
-              className="h-full bg-orange-500 transition-all duration-500"
+              className="h-full bg-emerald-500 transition-all duration-500"
               style={{ width: `${Math.min(100, (totalRoofSolarWatts / 1000) * 100)}%` }}
             />
           </div>
-          <p className="text-[10px] text-white/50 mt-3 font-medium">
+          <p className="text-[10px] text-stone-500 mt-3 font-medium">
             Daten werden in Echtzeit mit dem Elektrik-Planer synchronisiert.
           </p>
         </CardContent>

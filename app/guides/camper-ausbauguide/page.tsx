@@ -196,14 +196,14 @@ export default function CamperAusbauguide() {
 
             <hr className="border-stone-200/60 my-16" />
 
-            <div className="bg-stone-900 text-stone-50 p-10 md:p-16 rounded-[3rem] mt-24 text-center relative overflow-hidden shadow-2xl">
-              <img src="https://www.transparenttextures.com/patterns/wood-pattern.png" alt="Wood Pattern" loading="lazy" style={{objectFit: "cover", width: "100%", height: "100%", position: "absolute", inset: 0}} className="opacity-20" />
+            <div className="bg-emerald-50 text-stone-800 border border-emerald-100 p-10 md:p-16 rounded-[3rem] mt-24 text-center relative overflow-hidden shadow-sm">
+              <img src="https://www.transparenttextures.com/patterns/wood-pattern.png" alt="Wood Pattern" loading="lazy" style={{objectFit: "cover", width: "100%", height: "100%", position: "absolute", inset: 0}} className="opacity-[0.03]" />
               
-              <h3 className={cn("text-3xl md:text-5xl font-black mb-6 relative z-10 text-emerald-400", outfit.className)}>Bereit für den ersten Roadtrip?</h3>
-              <p className="text-stone-300 mb-10 max-w-2xl mx-auto text-lg md:text-xl relative z-10 leading-relaxed">
+              <h3 className={cn("text-3xl md:text-5xl font-black mb-6 relative z-10 text-emerald-800", outfit.className)}>Bereit für den ersten Roadtrip?</h3>
+              <p className="text-stone-600 mb-10 max-w-2xl mx-auto text-lg md:text-xl relative z-10 leading-relaxed">
                 Der Ausbau wird dich Schweiß, zerschnittene Finger und Nerven kosten. Aber der Moment, in dem du abends am Bergsee die Hecktüren öffnest und das Rauschen der Wellen hörst, ist unbezahlbar.
               </p>
-              <button className="relative z-10 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-5 px-10 rounded-full transition-all hover:scale-105 shadow-[0_0_40px_rgba(16,185,129,0.4)] text-lg">
+              <button className="relative z-10 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-5 px-10 rounded-full transition-all hover:scale-105 shadow-md text-lg">
                 Tritt unserer Vanlife Community bei
               </button>
             </div>

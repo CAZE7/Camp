@@ -80,11 +80,11 @@ describe('NavigationSidebar Component', () => {
       render(<NavigationSidebar />);
 
       const elektrikLink = screen.getByText('Elektrik-Planer').closest('a');
-      expect(elektrikLink).toHaveClass('bg-emerald-600/20');
-      expect(elektrikLink).toHaveClass('text-emerald-400');
+      expect(elektrikLink).toHaveClass('bg-emerald-50');
+      expect(elektrikLink).toHaveClass('text-emerald-700');
 
       const startseiteLink = screen.getByText('Startseite').closest('a');
-      expect(startseiteLink).not.toHaveClass('bg-emerald-600/20');
+      expect(startseiteLink).not.toHaveClass('bg-emerald-50');
     });
 
     it('renders in collapsed state', () => {
@@ -104,19 +104,19 @@ describe('NavigationSidebar Component', () => {
 
       // Initial state: menu is translated off-screen (implied by classes, but let's check basic structure)
       // The overlay shouldn't exist initially
-      expect(document.querySelector('.bg-black\\/40')).not.toBeInTheDocument();
+      expect(document.querySelector('.bg-stone-900\\/40')).not.toBeInTheDocument();
 
       // Click toggle
       fireEvent.click(toggleButton);
 
       // Overlay should now be present
-      expect(document.querySelector('.bg-black\\/40')).toBeInTheDocument();
+      expect(document.querySelector('.bg-stone-900\\/40')).toBeInTheDocument();
 
       // Click overlay to close
-      fireEvent.click(document.querySelector('.bg-black\\/40')!);
+      fireEvent.click(document.querySelector('.bg-stone-900\\/40')!);
 
       // Overlay should be gone again
-      expect(document.querySelector('.bg-black\\/40')).not.toBeInTheDocument();
+      expect(document.querySelector('.bg-stone-900\\/40')).not.toBeInTheDocument();
     });
 
     it('calls onToggle when desktop toggle button is clicked', () => {
@@ -136,14 +136,14 @@ describe('NavigationSidebar Component', () => {
       fireEvent.click(toggleButton);
 
       // Overlay present
-      expect(document.querySelector('.bg-black\\/40')).toBeInTheDocument();
+      expect(document.querySelector('.bg-stone-900\\/40')).toBeInTheDocument();
 
       // Click a link
       const link = screen.getByText('Elektrik-Planer').closest('a');
       fireEvent.click(link!);
 
       // Overlay should be gone
-      expect(document.querySelector('.bg-black\\/40')).not.toBeInTheDocument();
+      expect(document.querySelector('.bg-stone-900\\/40')).not.toBeInTheDocument();
     });
   });
 });

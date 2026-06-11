@@ -1,0 +1,26 @@
+▲ Next.js 16.2.6 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.0.2:3000
+✓ Ready in 535ms
+
+○ Compiling /_not-found/page ...
+
+warn - The class `ease-[cubic-bezier(0.16,1,0.3,1)]` is ambiguous and matches multiple utilities.
+warn - If this is content and not a class, replace it with `ease-&lsqb;cubic-bezier(0.16,1,0.3,1)&rsqb;` to silence this warning.
+
+warn - The class `ease-[cubic-bezier(0.34,1.56,0.64,1)]` is ambiguous and matches multiple utilities.
+warn - If this is content and not a class, replace it with `ease-&lsqb;cubic-bezier(0.34,1.56,0.64,1)&rsqb;` to silence this warning.
+ GET / 404 in 6.6s (next.js: 6.2s, application-code: 437ms)
+ GET /elektrik-planung/ 404 in 100ms (next.js: 6ms, application-code: 94ms)
+ GET /tools/dach/ 404 in 110ms (next.js: 25ms, application-code: 85ms)
+ GET /guides/camper-ausbauguide/ 404 in 71ms (next.js: 5ms, application-code: 66ms)
+ GET / 200 in 1243ms (next.js: 869ms, application-code: 374ms)
+ GET /elektrik-planung/ 200 in 2.7s (next.js: 2.5s, application-code: 221ms)
+[browser] [React Flow]: It looks like you've created a new nodeTypes or edgeTypes object. If this wasn't on purpose please define the nodeTypes/edgeTypes outside of the component or memoize them. Help: https://reactflow.dev/error#002
+[browser] [React Flow]: It looks like you've created a new nodeTypes or edgeTypes object. If this wasn't on purpose please define the nodeTypes/edgeTypes outside of the component or memoize them. Help: https://reactflow.dev/error#002
+○ Compiling /tools/dach ...
+ GET /tools/dach/ 200 in 3.5s (next.js: 3.2s, application-code: 300ms)
+[browser] [React Flow]: It looks like you've created a new nodeTypes or edgeTypes object. If this wasn't on purpose please define the nodeTypes/edgeTypes outside of the component or memoize them. Help: https://reactflow.dev/error#002
+[browser] [React Flow]: It looks like you've created a new nodeTypes or edgeTypes object. If this wasn't on purpose please define the nodeTypes/edgeTypes outside of the component or memoize them. Help: https://reactflow.dev/error#002
+ GET /guides/camper-ausbauguide/ 200 in 2.1s (next.js: 1579ms, application-code: 499ms)
+[?25h

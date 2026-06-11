@@ -40,34 +40,6 @@
     --sidebar-accent-foreground: #0f172a;
     --sidebar-border: #e2e8f0;
   }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --background: #171614;
-      --foreground: #e8e6e1;
-      --card: #1c1b19;
-      --card-foreground: #e8e6e1;
-      --popover: #201f1d;
-      --popover-foreground: #e8e6e1;
-      --primary: #fb923c;
-      --primary-foreground: #1a0a00;
-      --secondary: #292724;
-      --secondary-foreground: #e2ddd6;
-      --muted: #292724;
-      --muted-foreground: #9c9891;
-      --accent: #292724;
-      --accent-foreground: #e2ddd6;
-      --destructive: #f87171;
-      --destructive-foreground: #1a0000;
-      --warning: #fbbf24;
-      --border: #3a3835;
-      --input: #3a3835;
-      --ring: #fb923c;
-      --sidebar: #141312;
-      --sidebar-foreground: #e2ddd6;
-      --sidebar-border: #2e2c2a;
-      --canvas-bg: #1e2027;
-    }
-  }
   * {
     @apply border-border;
   }

@@ -70,7 +70,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
 
       {/* Node Picker Modal */}
       {isNodePickerOpen && (
-        <div className="md:hidden fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-[200] flex flex-col justify-end transition-opacity duration-300">
+        <div className="md:hidden fixed inset-0 bg-stone-900/40 backdrop-blur-sm z-[200] flex flex-col justify-end transition-opacity duration-300">
           <div className="bg-white rounded-t-[2.5rem] w-full max-h-[85vh] flex flex-col shadow-2xl relative overflow-hidden animate-slide-up">
             {/* Modal Header */}
             <div className="flex items-center justify-between px-6 pt-5 pb-3 border-b border-stone-100 shrink-0">
@@ -97,10 +97,10 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
 
       {/* Premium Profile Modal */}
       {isProfileOpen && (
-        <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-6">
+        <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-sm z-[200] flex items-center justify-center p-6">
           <div className="bg-white rounded-[2.5rem] w-full max-w-sm flex flex-col shadow-2xl overflow-hidden relative animate-scale-up border border-stone-200">
             {/* Background pattern */}
-            <div className="h-28 bg-stone-800 relative flex items-end px-6 pb-4">
+            <div className="h-28 bg-gradient-to-r from-emerald-500 to-teal-600 relative flex items-end px-6 pb-4">
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.15),transparent)] pointer-events-none" />
               <button
                 onClick={() => setIsProfileOpen(false)}

@@ -120,16 +120,16 @@ const SidebarLink = React.forwardRef<HTMLAnchorElement, SidebarLinkProps>(
         className={cn(
           "relative z-10 flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 group",
           isActive
-            ? "bg-emerald-600/20 text-emerald-400 shadow-inner shadow-emerald-900/10"
-            : "text-stone-400 hover:text-amber-200 hover:bg-stone-700/50"
+            ? "bg-emerald-50 text-emerald-700 shadow-sm border border-emerald-100"
+            : "text-stone-600 hover:text-stone-900 hover:bg-stone-100"
         )}
       >
         <span
           className={cn(
             "flex-shrink-0 p-1.5 rounded-lg transition-colors",
             isActive
-              ? "bg-emerald-600/30 text-emerald-400"
-              : "bg-stone-700/50 text-stone-500 group-hover:text-amber-300 group-hover:bg-stone-700"
+              ? "bg-emerald-100 text-emerald-600"
+              : "bg-stone-100 text-stone-500 group-hover:text-stone-800 group-hover:bg-stone-200"
           )}
         >
           {link.icon}
@@ -237,7 +237,7 @@ export default function NavigationSidebar({ isCollapsed = false, onToggle }: { i
       {/* Mobile Toggle Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed top-4 left-4 z-[60] lg:hidden bg-stone-800/90 text-amber-100 p-4 rounded-2xl border border-stone-700 hover:bg-stone-700 transition-all"
+        className="fixed top-4 left-4 z-[60] lg:hidden bg-white/90 text-stone-800 p-4 rounded-2xl border border-stone-200 hover:bg-stone-100 transition-all shadow-sm"
         aria-label="Navigation öffnen"
         aria-expanded={isOpen}
       >
@@ -253,7 +253,7 @@ export default function NavigationSidebar({ isCollapsed = false, onToggle }: { i
       {/* Overlay for mobile */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/40 z-[45] lg:hidden"
+          className="fixed inset-0 bg-stone-900/40 backdrop-blur-sm z-[45] lg:hidden"
           onClick={() => setIsOpen(false)}
         />
       )}
@@ -264,16 +264,16 @@ export default function NavigationSidebar({ isCollapsed = false, onToggle }: { i
         className={cn(
           "fixed top-0 left-0 h-screen z-50 flex flex-col transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]",
           "w-[85vw] max-w-sm", isCollapsed ? "lg:w-14" : "lg:w-[17rem]",
-          // Nature gradient background
-          "bg-gradient-to-b from-stone-900 via-stone-800 to-[#1a2e1a]",
-          "border-r border-stone-700/50",
+          // Light background
+          "bg-white",
+          "border-r border-stone-200",
           // Mobile: slide in/out
           isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
         style={{ isolation: "isolate", willChange: 'transform', backfaceVisibility: 'hidden' }} // Layer Isolation + Performance
       >
         {/* Logo / Brand Area */}
-        <div className="px-5 pt-6 pb-4 border-b border-stone-700/40">
+        <div className="px-5 pt-6 pb-4 border-b border-stone-100">
           <Link href="/" className="flex items-center gap-3 group" onClick={() => setIsOpen(false)}>
             <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-900/30 group-hover:scale-110 transition-transform">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
@@ -285,7 +285,7 @@ export default function NavigationSidebar({ isCollapsed = false, onToggle }: { i
             </div>
             {!isCollapsed && (
               <div className="flex flex-col">
-                <span className="text-amber-100 font-black text-base tracking-tight leading-none">CampCraft</span>
+                <span className="text-stone-800 font-black text-base tracking-tight leading-none">CampCraft</span>
                 <span className="text-stone-500 text-[11px] font-medium tracking-wider uppercase mt-0.5">VanLife Plattform</span>
               </div>
             )}
@@ -295,7 +295,7 @@ export default function NavigationSidebar({ isCollapsed = false, onToggle }: { i
         {/* Navigation Links */}
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1 relative" aria-label="Hauptnavigation">
           {/* Integrated Road Background */}
-          <div className="absolute left-7 top-0 bottom-0 w-8 pointer-events-none z-0 opacity-20">
+          <div className="absolute left-7 top-0 bottom-0 w-8 pointer-events-none z-0 opacity-40">
             <svg
               className="w-full h-full speed-svg"
               viewBox="0 0 40 1000"
@@ -306,11 +306,11 @@ export default function NavigationSidebar({ isCollapsed = false, onToggle }: { i
                 id="nav-road-path"
                 d="M 20 0 Q 30 100, 20 200 T 20 400 T 20 600 T 20 800 T 20 1000"
                 fill="none"
-                stroke="white"
+                stroke="currentColor"
                 strokeWidth="1"
                 strokeDasharray="4 6"
                 strokeLinecap="round"
-                className="gpu-accelerated"
+                className="gpu-accelerated text-stone-300"
                 style={{ willChange: "transform", backfaceVisibility: "hidden" }}
               />
             </svg>
@@ -325,11 +325,11 @@ export default function NavigationSidebar({ isCollapsed = false, onToggle }: { i
             <svg
               viewBox="0 0 24 24"
               fill="none"
-              stroke="#fbbf24"
+              stroke="currentColor"
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="w-4 h-4 drop-shadow-[0_0_8px_rgba(251,191,36,0.4)] speed-svg"
+              className="w-4 h-4 text-emerald-500 drop-shadow-md speed-svg"
               shapeRendering="optimizeSpeed"
             >
               <path d="M2 12h18a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2H2" />
@@ -381,7 +381,7 @@ export default function NavigationSidebar({ isCollapsed = false, onToggle }: { i
         <div className="hidden lg:flex items-center justify-end px-3 py-2">
           <button
             onClick={() => onToggle && onToggle()}
-            className="p-1.5 rounded-lg text-stone-500 hover:text-amber-300 hover:bg-stone-700/50 transition-colors focus:outline-none"
+            className="p-1.5 rounded-lg text-stone-400 hover:text-stone-800 hover:bg-stone-100 transition-colors focus:outline-none"
             aria-label={isCollapsed ? "Sidebar ausklappen" : "Sidebar einklappen"}
             aria-expanded={!isCollapsed}
           >
@@ -390,8 +390,8 @@ export default function NavigationSidebar({ isCollapsed = false, onToggle }: { i
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-4 border-t border-stone-700/40">
-          <div className="flex items-center gap-2 text-stone-600 text-[10px] font-medium">
+        <div className="px-5 py-4 border-t border-stone-100">
+          <div className="flex items-center gap-2 text-stone-500 text-[10px] font-medium">
             <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse flex-shrink-0" />
             {!isCollapsed && <span>CampCraft v1.0 — Gute Reise! 🌿</span>}
           </div>
