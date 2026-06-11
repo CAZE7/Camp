@@ -3,17 +3,18 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sidebar } from '../Sidebar';
 import { usePlannerStore } from '../../store/usePlannerStore';
+import { useShallow } from 'zustand/react/shallow';
 
 interface PlannerSidebarProps {
   onMobileAdd?: () => void;
 }
 
 export function PlannerSidebar({ onMobileAdd }: PlannerSidebarProps) {
-  const { viewMode, isSidebarOpen, toggleSidebar } = usePlannerStore((state) => ({
+  const { viewMode, isSidebarOpen, toggleSidebar } = usePlannerStore(useShallow((state) => ({
     viewMode: state.viewMode,
     isSidebarOpen: state.isSidebarOpen,
     toggleSidebar: state.toggleSidebar,
-  }));
+  })));
 
   return (
     <>
