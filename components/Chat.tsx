@@ -73,6 +73,7 @@ export default function Chat({ defaultOpen = false }: { defaultOpen?: boolean })
         onClick={() => setIsOpen(true)}
         className="fixed bottom-6 right-6 h-16 w-16 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-all flex items-center justify-center"
         aria-label="Chat öffnen"
+        aria-expanded={isOpen}
       >
         💬
       </button>
@@ -88,6 +89,7 @@ export default function Chat({ defaultOpen = false }: { defaultOpen?: boolean })
           onClick={() => setIsOpen(false)}
           className="p-1 hover:bg-blue-700 rounded transition-colors"
           aria-label="Chat schließen"
+          aria-expanded={isOpen}
         >
           <X size={20} />
         </button>
