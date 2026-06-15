@@ -47,3 +47,7 @@
 ## 2025-05-18 - Input Field Accessibility Linkage
 **Learning:** For custom input components with inline error messages (like `ValidatingInput`), it's a common accessibility gap to simply render the error text conditionally without linking it to the input field. Screen readers need `aria-invalid` and `aria-errormessage` pointing to the error container's `id`, along with a `role="alert"` so the error is announced.
 **Action:** Always use React's `useId()` inside custom input components to generate stable IDs, and apply `aria-invalid`, `aria-errormessage`, and `role="alert"` when validation fails.
+
+## 2026-06-15 - Add aria-pressed to Toggle Buttons
+**Learning:** Standalone toggle buttons and segmented controls (like View Mode or Season toggles) lack intrinsic state communication to screen readers. Without `aria-pressed`, screen reader users cannot perceive whether a button is currently active or selected, confusing navigation.
+**Action:** Always add `aria-pressed={stateCondition}` to buttons that function as state toggles or segmented controls to ensure their active state is explicitly announced.
