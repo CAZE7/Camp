@@ -1,15 +1,23 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import Chat from './Chat';
-import * as chatHook from '@ai-sdk/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const mockSendMessage = vi.fn();
-const mockUseChat = vi.spyOn(chatHook, 'useChat');
+
+vi.mock('@ai-sdk/react', () => ({
+  useChat: vi.fn(() => ({
+    messages: [],
+    sendMessage: mockSendMessage,
+    status: 'idle',
+  })),
+}));
+
+import { useChat } from '@ai-sdk/react';
 
 describe('Chat Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockUseChat.mockReturnValue({
+    vi.mocked(useChat).mockReturnValue({
       messages: [],
       sendMessage: mockSendMessage,
       status: 'idle',

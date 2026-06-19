@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useChat } from "@ai-sdk/react";
 import { UIMessage } from "ai";
-import { Send, X } from "lucide-react";
+import { Send, X, Loader2 } from "lucide-react";
 
 interface ChatMessage {
   id: string;
@@ -39,7 +39,11 @@ const ChatInputForm = ({
       size="sm"
       className="gap-2"
     >
-      <Send size={16} />
+      {isLoading ? (
+        <Loader2 size={16} className="animate-spin" />
+      ) : (
+        <Send size={16} />
+      )}
       {isLoading ? "Wird gesendet..." : "Senden"}
     </Button>
   </form>
