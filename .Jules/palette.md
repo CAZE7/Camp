@@ -32,6 +32,10 @@
 ## 2024-05-19 - Interactive Element Screen Reader States
 **Learning:** For interactive UI elements that toggle visibility (like a sidebar) or act as toggleable filters, generic ARIA labels like "Toggle Sidebar" aren't fully descriptive because screen reader users don't know the *current state*. We must use stateful attributes (`aria-expanded` and `aria-pressed`) to convey whether a panel is currently open/closed or if a filter is active/inactive, allowing users to understand the result of their interaction before clicking.
 **Action:** When implementing any toggleable panel or filter buttons, dynamically set `aria-expanded` and `aria-pressed` based on the component's state variable, and dynamically translate the `aria-label` where applicable (e.g., "ausklappen" vs "einklappen") instead of static nouns. Always accompany these with `focus-visible` outline styles for keyboard navigation visibility.
+## 2026-06-21 - Segmented Control Active State Accessibility
+**Learning:** Screen reader users cannot visually perceive when a segmented control or toggle button (like View Mode, Season, or Profi-Modus) is active if it's built using a generic button with just visual styling changes (like background colors).
+**Action:** Always add `aria-pressed={condition}` to toggle buttons and segmented controls to ensure screen readers announce their active ("pressed") state instead of presenting them as standard buttons.
+
 ## 2024-05-18 - FloatingMetricsCard UX Fix
 **Learning:** Overlapping absolutely positioned overlay cards (`z-50`) on top of a React Flow canvas blocks pointer events from reaching interactive nodes and edges underneath, even if the user intends to drag them.
 **Action:** Implemented a non-blocking UI overlay strategy: applied `pointer-events-none` to the root absolute container and `pointer-events-auto` exclusively to the interactive children (`.p-4`). Converted the click handler toggling the card from the root div to a semantic `<button>` in the header section, fulfilling accessibility and preventing accidental collapses during canvas interactions.
