@@ -30,6 +30,7 @@ function NavigationSection({
         variant={viewMode === 'electric' ? 'default' : 'ghost'}
         size="sm"
         onClick={() => setViewMode('electric')}
+        aria-pressed={viewMode === 'electric'}
         className={viewMode === 'electric' ? 'bg-orange-500 hover:bg-orange-600' : ''}
       >
         Elektrik-Schaltplan
@@ -38,6 +39,7 @@ function NavigationSection({
         variant={viewMode === 'water' ? 'default' : 'ghost'}
         size="sm"
         onClick={() => setViewMode('water')}
+        aria-pressed={viewMode === 'water'}
         className={viewMode === 'water' ? 'bg-cyan-500 hover:bg-cyan-600' : ''}
       >
         Wasser & Sanitär
@@ -132,6 +134,7 @@ function ActionsSection({
           variant={season === 'summer' ? 'default' : 'ghost'}
           size="sm"
           onClick={() => setSeason('summer')}
+          aria-pressed={season === 'summer'}
           className={`gap-1.5 ${season === 'summer' ? 'bg-yellow-400 text-yellow-900 shadow-sm' : ''}`}
         >
           <Sun className="w-4 h-4" /> Sommer
@@ -140,6 +143,7 @@ function ActionsSection({
           variant={season === 'winter' ? 'default' : 'ghost'}
           size="sm"
           onClick={() => setSeason('winter')}
+          aria-pressed={season === 'winter'}
           className={`gap-1.5 ${season === 'winter' ? 'bg-blue-400 text-blue-900 shadow-sm' : ''}`}
         >
           <Snowflake className="w-4 h-4" /> Winter
@@ -162,6 +166,7 @@ function ProModeSection({
         variant={isProMode ? 'default' : 'outline'}
         size="sm"
         onClick={toggleProMode}
+        aria-pressed={isProMode}
         className={isProMode ? 'bg-blue-500 hover:bg-blue-600' : ''}
       >
         {isProMode ? 'Profi-Modus An' : 'Profi-Modus Aus'}
