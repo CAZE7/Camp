@@ -3,8 +3,12 @@ import Chat from './Chat';
 import * as chatHook from '@ai-sdk/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+vi.mock('@ai-sdk/react', () => ({
+  useChat: vi.fn(),
+}));
+
 const mockSendMessage = vi.fn();
-const mockUseChat = vi.spyOn(chatHook, 'useChat');
+const mockUseChat = vi.mocked(chatHook.useChat);
 
 describe('Chat Component', () => {
   beforeEach(() => {
