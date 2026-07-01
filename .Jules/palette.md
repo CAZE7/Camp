@@ -47,3 +47,6 @@
 ## 2025-05-18 - Input Field Accessibility Linkage
 **Learning:** For custom input components with inline error messages (like `ValidatingInput`), it's a common accessibility gap to simply render the error text conditionally without linking it to the input field. Screen readers need `aria-invalid` and `aria-errormessage` pointing to the error container's `id`, along with a `role="alert"` so the error is announced.
 **Action:** Always use React's `useId()` inside custom input components to generate stable IDs, and apply `aria-invalid`, `aria-errormessage`, and `role="alert"` when validation fails.
+## 2026-05-18 - Missing aria-pressed on Toggle Buttons
+**Learning:** Segmented control buttons and standalone state toggles (like "View Mode", "Season Toggle", and "Profi-Modus" in `PlannerDashboard`) lacked the `aria-pressed` attribute. Without this, screen reader users only hear "Button" and have no context if the specific view or setting is currently active.
+**Action:** Always add `aria-pressed={isActiveState}` to any button that acts as a toggle or segmented control choice, ensuring the active state is explicitly communicated to assistive technologies.
