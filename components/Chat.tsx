@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useChat } from "@ai-sdk/react";
 import { UIMessage } from "ai";
-import { Send, X } from "lucide-react";
+import { Send, X, Loader2 } from "lucide-react";
 
 interface ChatMessage {
   id: string;
@@ -39,7 +39,11 @@ const ChatInputForm = ({
       size="sm"
       className="gap-2"
     >
-      <Send size={16} />
+      {isLoading ? (
+        <Loader2 className="animate-spin" size={16} />
+      ) : (
+        <Send size={16} />
+      )}
       {isLoading ? "Wird gesendet..." : "Senden"}
     </Button>
   </form>
@@ -47,12 +51,17 @@ const ChatInputForm = ({
 
 const getMessageText = (message: UIMessage) => {
   return (
-    message.parts?.find((part) => part?.type === "text" || part?.type === "reasoning")?.text ??
-    ""
+    message.parts?.find(
+      (part) => part?.type === "text" || part?.type === "reasoning",
+    )?.text ?? ""
   );
 };
 
-export default function Chat({ defaultOpen = false }: { defaultOpen?: boolean }) {
+export default function Chat({
+  defaultOpen = false,
+}: {
+  defaultOpen?: boolean;
+}) {
   const [input, setInput] = useState("");
   const { messages, sendMessage, status } = useChat();
   const [isOpen, setIsOpen] = useState(defaultOpen);
