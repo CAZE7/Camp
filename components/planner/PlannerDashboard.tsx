@@ -31,6 +31,7 @@ function NavigationSection({
         size="sm"
         onClick={() => setViewMode('electric')}
         className={viewMode === 'electric' ? 'bg-orange-500 hover:bg-orange-600' : ''}
+        aria-pressed={viewMode === 'electric'}
       >
         Elektrik-Schaltplan
       </Button>
@@ -39,6 +40,7 @@ function NavigationSection({
         size="sm"
         onClick={() => setViewMode('water')}
         className={viewMode === 'water' ? 'bg-cyan-500 hover:bg-cyan-600' : ''}
+        aria-pressed={viewMode === 'water'}
       >
         Wasser & Sanitär
       </Button>
@@ -133,6 +135,7 @@ function ActionsSection({
           size="sm"
           onClick={() => setSeason('summer')}
           className={`gap-1.5 ${season === 'summer' ? 'bg-yellow-400 text-yellow-900 shadow-sm' : ''}`}
+          aria-pressed={season === 'summer'}
         >
           <Sun className="w-4 h-4" /> Sommer
         </Button>
@@ -141,6 +144,7 @@ function ActionsSection({
           size="sm"
           onClick={() => setSeason('winter')}
           className={`gap-1.5 ${season === 'winter' ? 'bg-blue-400 text-blue-900 shadow-sm' : ''}`}
+          aria-pressed={season === 'winter'}
         >
           <Snowflake className="w-4 h-4" /> Winter
         </Button>
@@ -163,6 +167,7 @@ function ProModeSection({
         size="sm"
         onClick={toggleProMode}
         className={isProMode ? 'bg-blue-500 hover:bg-blue-600' : ''}
+        aria-pressed={isProMode}
       >
         {isProMode ? 'Profi-Modus An' : 'Profi-Modus Aus'}
       </Button>
