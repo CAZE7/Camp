@@ -1,10 +1,14 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+vi.mock('@ai-sdk/react', () => ({
+  useChat: vi.fn(),
+}));
+
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import Chat from './Chat';
-import * as chatHook from '@ai-sdk/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { useChat } from '@ai-sdk/react';
 
 const mockSendMessage = vi.fn();
-const mockUseChat = vi.spyOn(chatHook, 'useChat');
+const mockUseChat = vi.mocked(useChat);
 
 describe('Chat Component', () => {
   beforeEach(() => {
@@ -13,7 +17,7 @@ describe('Chat Component', () => {
       messages: [],
       sendMessage: mockSendMessage,
       status: 'idle',
-    });
+    } as any);
   });
 
   describe('Rendering', () => {
