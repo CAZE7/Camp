@@ -73,6 +73,8 @@ export const initialEdges: Edge<CableEdgeData>[] = [
     id: 'e-battery-fuse',
     source: 'battery',
     target: 'fuse-box',
+    sourceHandle: 'plus',
+    targetHandle: 'plus',
     type: 'cableEdge',
     data: {
       length: 3,
@@ -83,6 +85,8 @@ export const initialEdges: Edge<CableEdgeData>[] = [
     id: 'e-fuse-consumer',
     source: 'fuse-box',
     target: 'consumer-1',
+    sourceHandle: 'plus',
+    targetHandle: 'plus',
     type: 'cableEdge',
     data: {
       length: 5,
@@ -93,6 +97,8 @@ export const initialEdges: Edge<CableEdgeData>[] = [
     id: 'e-mppt-battery',
     source: 'mppt-1',
     target: 'battery',
+    sourceHandle: 'plus',
+    targetHandle: 'plus',
     type: 'cableEdge',
     data: {
       length: 2,

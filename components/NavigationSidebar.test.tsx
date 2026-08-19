@@ -8,8 +8,8 @@ vi.mock('next/navigation', () => ({
 }));
 
 vi.mock('next/link', () => ({
-  default: ({ children, href }: { children: React.ReactNode; href: string }) =>
-    <a href={href}>{children}</a>,
+  default: ({ children, href, className, onClick }: { children: React.ReactNode; href: string; className?: string; onClick?: () => void }) =>
+    <a href={href} className={className} onClick={onClick}>{children}</a>,
 }));
 
 const mockUsePathname = usePathname as ReturnType<typeof vi.fn>;
@@ -35,7 +35,7 @@ describe('NavigationSidebar Component', () => {
 
   describe('Styling', () => {
     it('highlights the active link', () => {
-      mockUsePathname.mockReturnValue('/tools/elektrik-planer');
+      mockUsePathname.mockReturnValue('/elektrik-planung');
       render(<NavigationSidebar />);
 
       const elektrikLink = screen.getByText('Elektrik-Planer').closest('a');
@@ -52,7 +52,7 @@ describe('NavigationSidebar Component', () => {
       render(<NavigationSidebar />);
 
       expect(screen.queryByLabelText('Navigation öffnen')).not.toBeInTheDocument();
-      expect(document.querySelector('.bg-black\/40')).not.toBeInTheDocument();
+      expect(document.querySelector('[class*="bg-black"]')).not.toBeInTheDocument();
     });
 
     it('calls onToggle when toggle button is clicked', () => {
@@ -72,7 +72,7 @@ describe('NavigationSidebar Component', () => {
       expect(link).toBeInTheDocument();
       fireEvent.click(link!);
 
-      expect(document.querySelector('.bg-black\/40')).not.toBeInTheDocument();
+      expect(document.querySelector('[class*="bg-black"]')).not.toBeInTheDocument();
     });
   });
 });

@@ -236,7 +236,7 @@ export function Sidebar({ mode = 'electric', onMobileAdd }: SidebarProps) {
                         "border border-emerald-200 rounded-xl cursor-grab hover:bg-emerald-100 hover:border-emerald-400 hover:scale-[1.03] hover:shadow-md transition-all duration-200 text-xs font-semibold text-emerald-900 bg-emerald-50 shadow-sm touch-none flex items-center justify-center text-center",
                         isCollapsed ? "p-3 w-8 h-8 mx-auto rounded-full" : "p-2.5 flex-col gap-1.5"
                       )}
-                      onPointerDown={(e) => handlePointerDown(e, comp)}
+                      onPointerDown={(e) => handlePointerDown(e, comp, onMobileAdd)}
                     >
                       <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 flex-shrink-0" />
                       {!isCollapsed && (

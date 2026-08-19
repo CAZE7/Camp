@@ -457,7 +457,7 @@ function ResultsView({
             <CardContent className="flex flex-col items-center justify-center py-10 text-center space-y-4">
               <span className="text-5xl">🛑</span>
               <div>
-                <p className="font-black text-rose-955 text-xl">Ungültige Fahrzeugmaße</p>
+                <p className="font-black text-rose-950 text-xl">Ungültige Fahrzeugmaße</p>
                 <p className="text-sm text-rose-800 mt-2 font-medium">
                   {error === "Ungültige Fahrzeugmaße" 
                     ? "Das Fahrzeugvolumen und die Oberfläche müssen größer als 0 sein. Bitte korrigiere die Maße unter Fahrzeug-Konfiguration."

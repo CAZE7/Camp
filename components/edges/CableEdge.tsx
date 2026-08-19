@@ -84,9 +84,13 @@ const CableEdge = function ({
   data,
   markerEnd,
   selected,
+  sourceHandleId,
+  targetHandleId,
   sourceHandle,
   targetHandle,
 }: CableEdgeProps) {
+  const resolvedSourceHandle = sourceHandle ?? sourceHandleId;
+  const resolvedTargetHandle = targetHandle ?? targetHandleId;
   const { getNode, getNodes } = useReactFlow();
   const isProMode = useAppStore(state => state.isProMode);
   const [isHovered, setIsHovered] = useState(false);
@@ -123,15 +127,15 @@ const CableEdge = function ({
     });
   }, [sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, isProMode]);
 
-  const isPlus = sourceHandle?.includes('plus');
+  const isPlus = resolvedSourceHandle?.includes('plus');
 
-  const { length, crossSection, maxFuse, strokeWidth, animationDuration, I, sourceNode, dropPercentage, edgeDomain } = useMemo(() => {
+  const { length, crossSection, maxFuse, strokeWidth, animationDuration, I, sourceNode, dropPercentage, edgeDomain, sysVoltage } = useMemo(() => {
     const physicalDistance = Math.max(1, Math.sqrt(Math.pow(targetX - sourceX, 2) + Math.pow(targetY - sourceY, 2)) / 100);
     const length = data?.length || physicalDistance;
     const sourceNode = getNode(source);
     const targetNode = getNode(target);
 
-    let edgeDomain = data?.edgeDomain || getEdgeDomain(sourceNode?.type, targetNode?.type, sourceHandle, targetHandle);
+    let edgeDomain = data?.edgeDomain || getEdgeDomain(sourceNode?.type, targetNode?.type, resolvedSourceHandle, resolvedTargetHandle);
     if (sourceNode?.type === 'solar' || targetNode?.type === 'solar' || sourceNode?.type === 'roofSolar' || targetNode?.type === 'roofSolar') {
       edgeDomain = 'Solar' as any;
     }
@@ -149,6 +153,7 @@ const CableEdge = function ({
         sourceNode,
         dropPercentage: 0,
         edgeDomain,
+        sysVoltage: 230,
       };
     }
 
@@ -172,11 +177,14 @@ const CableEdge = function ({
       sourceNode,
       dropPercentage,
       edgeDomain,
+      sysVoltage,
     };
     // Dependencies include node data, system load, and coordinates to force re-calc when anything relevant changes including moves
-  }, [getNode, getNodes, data?.length, data?.crossSection, data?.edgeDomain, source, target, sNodeData, tNodeData, systemLoad, sourceX, sourceY, targetX, targetY, sourceHandle, targetHandle]);
+  }, [getNode, getNodes, data?.length, data?.crossSection, data?.edgeDomain, source, target, sNodeData, tNodeData, systemLoad, sourceX, sourceY, targetX, targetY, resolvedSourceHandle, resolvedTargetHandle]);
 
-  const totalDropPercentage = dropPercentage + cumulativeDrop;
+  // calculatePathVoltageDrop returns volts; convert to % before adding to this edge's drop %
+  const pathDropPercentage = sysVoltage > 0 ? (cumulativeDrop / sysVoltage) * 100 : 0;
+  const totalDropPercentage = dropPercentage + pathDropPercentage;
 
   const errors: string[] = [];
   
@@ -246,7 +254,7 @@ const CableEdge = function ({
         <div
           style={{
             position: 'absolute',
-            transform: `translate(-50%, -50%) translate(${labelX}px,${labelY + (sourceHandle?.includes('minus') ? 40 : -40)}px)`,
+            transform: `translate(-50%, -50%) translate(${labelX}px,${labelY + (resolvedSourceHandle?.includes('minus') ? 40 : -40)}px)`,
             background: 'white',
             padding: '2px 6px',
             borderRadius: '4px',
