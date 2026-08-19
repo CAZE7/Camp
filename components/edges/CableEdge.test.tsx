@@ -90,15 +90,15 @@ describe('CableEdge', () => {
       getNodes: vi.fn().mockReturnValue([]),
     });
 
-    // calculatedA = (10 * (5 * 2)) / (58 * 0.36) = 100 / 20.88 = 4.79
-    // minRequiredA = max(1.5, 4.79) = 4.79
-    // VDE_SIZES = [1.5, 2.5, 4.0, 6.0, 10.0, 16.0, ...], first size >= 4.79 is 6.0
-    // cs = 6.0 => mf = 32 (VDE 0298-4)
+    // 10 A, 5 m, 12 V, 10 % max drop (1.2 V):
+    //   dropArea = 10 * 10 / (57.14 * 1.2) ≈ 1.46 mm²
+    // Thermisch: requiredAmpacity = 10 / 0.70 = 14.29 A -> 1.5 mm² (16.5 A)
+    // -> cs = 1.5 mm², max fuse = 16 A.
 
     const { getByText } = render(<CableEdge {...defaultProps} selected={true} />);
 
-    expect(getByText('6 mm²')).toBeInTheDocument();
-    expect(getByText('Max: 32A')).toBeInTheDocument();
+    expect(getByText('1.5 mm²')).toBeInTheDocument();
+    expect(getByText('Max: 16A')).toBeInTheDocument();
   });
 
   it('calculates crossSection and maxFuse when target is mpptController', () => {
@@ -110,14 +110,15 @@ describe('CableEdge', () => {
       getNodes: vi.fn().mockReturnValue([]),
     });
 
-    // calculatedA = (30 * (5 * 2)) / (58 * 0.36) = 300 / 20.88 = 14.36
-    // VDE_SIZES = [... 10.0, 16.0, 25.0, ...], first size >= 14.36 is 16.0
-    // cs = 16.0 => mf = 63 (VDE 0298-4)
+    // 30 A, 5 m, 12 V, 10 % max drop (1.2 V):
+    //   dropArea = 30 * 10 / (57.14 * 1.2) ≈ 4.38 mm²  -> 6 mm²
+    // Thermisch: requiredAmpacity = 30 / 0.70 = 42.86 A -> 10 mm² (52 A)
+    // -> cs = 10 mm², max fuse = 50 A.
 
     const { getByText } = render(<CableEdge {...defaultProps} selected={true} />);
 
-    expect(getByText('16 mm²')).toBeInTheDocument();
-    expect(getByText('Max: 63A')).toBeInTheDocument();
+    expect(getByText('10 mm²')).toBeInTheDocument();
+    expect(getByText('Max: 50A')).toBeInTheDocument();
   });
 
   it('uses fallback logic to calculate total watts from all consumers when no source/target match', () => {

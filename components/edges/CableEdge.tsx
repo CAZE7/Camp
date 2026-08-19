@@ -4,7 +4,7 @@ import { useAppStore } from '../../lib/store';
 import { usePlannerStore, getDerivedSystemState } from '../../store/usePlannerStore';
 import { useShallow } from 'zustand/react/shallow';
 import { calculateEdgePath } from './utils/pathUtils';
-import { calculateCrossSection, calculateMaxFuse, calculateStrokeWidth, getEdgeDomain } from '../../lib/electrical';
+import { calculateCrossSection, calculateMaxFuse, calculateStrokeWidth, getEdgeDomain, VDE_COPPER_CONDUCTIVITY } from '../../lib/electrical';
 import { VDE_INVERTER_EFFICIENCY, VDE_SOLAR_VMP_VOLTAGE } from '../../lib/vde-standards';
 import { getSystemVoltage } from '../planner/utils/voltage';
 
@@ -103,10 +103,17 @@ const CableEdge = function ({
     const s = nodesMap.get(source) || waterNodesMap.get(source);
     const t = nodesMap.get(target) || waterNodesMap.get(target);
     
-    // Ensure we capture reactive copies of the graph for the calculation
+    // Ensure we capture reactive copies of the graph for the calculation.
+    // Die aktuelle Kante wird von `calculatePathVoltageDrop` ausgeschlossen,
+    // damit ihr eigener Drop nicht doppelt zum Pfaddrop addiert wird.
     const currentNodes = state.nodes;
     const currentEdges = state.edges;
-    const cumulativeDrop = state.calculatePathVoltageDrop(source, currentNodes, currentEdges);
+    const cumulativeDrop = state.calculatePathVoltageDrop(
+      source,
+      currentNodes,
+      currentEdges,
+      id
+    );
     
     return { 
       sNodeData: s?.data, 
@@ -164,7 +171,7 @@ const CableEdge = function ({
     const sw = calculateStrokeWidth(cs);
     const dur = calculateAnimationDuration(I);
 
-    const voltageDrop = (I * (length * 2)) / (58 * cs);
+    const voltageDrop = (I * (length * 2)) / (VDE_COPPER_CONDUCTIVITY * cs);
     const sysVoltage = getSystemVoltage(getNodes());
     const dropPercentage = (voltageDrop / sysVoltage) * 100;
 

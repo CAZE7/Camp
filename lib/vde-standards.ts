@@ -3,26 +3,21 @@
  *
  * ZENTRALE API für alle VDE-Normen, die im Elektroplanner verwendet werden.
  *
- * Warum diese Datei?
- * =================
- * PR #299 hat die thermische Auslegung und Domain-Logik in `lib/electrical.ts`
- * zentralisiert (VDE_SIZES, VDE_AMPACITY, FUSE_MAP, DERATE_FACTOR,
- * calculateCrossSection, getEdgeDomain, getHandleDomain, …).
+ * Die thermische Basis (VDE_SIZES, VDE_AMPACITY, FUSE_MAP, calculateCrossSection,
+ * getEdgeDomain, getHandleDomain, Kupfer-/Spannungsfall-Konstanten) kommt aus
+ * `./electrical` und wird von hier aus re-exportiert. Es gibt KEINE zweite,
+ * abweichende Implementierung mehr.
  *
- * Diese Datei ergänzt das um die restlichen VDE-Werte, die noch an mehreren
- * Stellen dupliziert waren:
- *   - components/edges/CableEdge.tsx (0.85 Inverter-Effizienz, / 18 Vmp)
- *   - components/nodes/ConduitNode.tsx (CONDUIT_SIZES, CABLE_OUTER_DIAMETERS, 60%)
- *   - components/planner/hooks/useDashboardMetrics.ts (0.85, 0.35, 1.15, DoD)
- *   - components/Inspector.tsx / app/api/chat/route.ts (RCD-/VDE-Hinweise)
- *
- * Bei jedem Patch konnte eine Stelle aktualisiert und die andere vergessen
- * werden, was zu inkonsistenten Ergebnissen führte. Diese Datei ist die
- * EINZIGE Stelle, an der die erweiterten VDE-Werte definiert werden.
- * Die thermische Basis kommt unverändert aus electrical.ts (Re-Exports).
+ * Diese Datei ergänzt die Werte, die über die reine Kabeldimensionierung
+ * hinausgehen:
+ *   - Strombelastbarkeits- / Sicherungs-Vorschlagstabellen
+ *   - Leerrohr / Füllgrad (VDE 0100-520 / DIN EN 61386)
+ *   - Wechselrichter-Wirkungsgrad & -Auslastung
+ *   - RCD 30 mA Personenschutz
+ *   - Solar (Vmp, Winter-Ertrag), Lade-Derating, Batterie-DoD
+ *   - High-level Validierung (validateCableEdge, validateSchematic, …)
  *
  * Verwendete Normen (vereinfacht auf das Camper-Use-Case):
- * -------------------------------------------------------
  * - DIN VDE 0100-721: Errichten von Niederspannungsanlagen in Wohnmobilen
  * - DIN VDE 0100-520: Kabel- und Leitungsanlagen (Füllgrad, Spannungsabfall)
  * - VDE 0298-4: Strombelastbarkeit von Kabeln
@@ -37,9 +32,19 @@
 export {
   VDE_SIZES,
   VDE_SIZES as VDE_CROSS_SECTIONS,
+  VDE_AMPACITY,
   VDE_AMPACITY as VDE_AMPACITY_RAW,
   DERATE_FACTOR,
   FUSE_MAP as VDE_FUSE_MAP,
+  VDE_COPPER_RESISTIVITY,
+  VDE_COPPER_CONDUCTIVITY,
+  VDE_MAX_VOLTAGE_DROP_12V,
+  VDE_MAX_VOLTAGE_DROP_230V,
+  VDE_MAX_DROP_VOLTS_DC_12V,
+  VDE_MAX_DROP_VOLTS_AC_230V,
+  VDE_NOMINAL_DC_VOLTAGE,
+  VDE_NOMINAL_AC_VOLTAGE,
+  VDE_MIN_CROSS_SECTION,
   calculateMaxFuse as calculateMaxFuseBase,
   lookupThermalCrossSection as lookupThermalCrossSectionBase,
   calculateCrossSection as calculateCrossSectionBase,
@@ -47,7 +52,19 @@ export {
   getEdgeDomain,
   getHandleDomain,
 } from './electrical';
-import { VDE_SIZES, VDE_AMPACITY, FUSE_MAP, calculateMaxFuse } from './electrical';
+
+import {
+  VDE_SIZES,
+  VDE_AMPACITY,
+  FUSE_MAP,
+  VDE_COPPER_RESISTIVITY,
+  VDE_MAX_VOLTAGE_DROP_12V,
+  VDE_MAX_VOLTAGE_DROP_230V,
+  VDE_MAX_DROP_VOLTS_DC_12V,
+  VDE_MAX_DROP_VOLTS_AC_230V,
+  VDE_MIN_CROSS_SECTION,
+  calculateMaxFuse,
+} from './electrical';
 
 import type { Node, Edge } from 'reactflow';
 
@@ -60,6 +77,7 @@ type CableSpec = {
   length?: number;
   crossSection?: number;
   fuseSize?: number;
+  edgeDomain?: 'DC_12V' | 'AC_230V' | string;
 };
 
 // Silence unused-import warnings for symbols that exist so this module
@@ -77,9 +95,6 @@ void calculateMaxFuse;
  * Maximale Strombelastbarkeit pro Querschnitt — konservative Validierungswerte.
  * Diese Tabelle ist bewusst runder als VDE_AMPACITY (electrical.ts) und wird
  * ausschließlich für die Validierungs-API (validateCableEdge) verwendet.
- *
- * electrical.ts / VDE_AMPACITY bleibt die Quelle für die thermische Auslegung
- * (calculateCrossSection, lookupThermalCrossSection).
  */
 export const VDE_CURRENT_CAPACITY: Record<number, number> = {
   1.5: 16,
@@ -99,69 +114,46 @@ export const VDE_CURRENT_CAPACITY: Record<number, number> = {
 /**
  * Standard-Sicherungsgrößen (in A) als grobe Zuordnung zum Querschnitt.
  * Wird als Vorschlag verwendet, wenn der Nutzer eine Sicherung setzt.
+ *
+ * Jeder Wert liegt <= VDE_CURRENT_CAPACITY[cs], also wird der Leiter durch
+ * die gewählte Sicherung thermisch nicht überlastet.
  */
 export const VDE_STANDARD_FUSES: Record<number, number> = {
-  1.5: 15,
+  1.5: 16,
   2.5: 20,
-  4.0: 30,
-  6.0: 40,
-  10.0: 60,
-  16.0: 80,
-  25.0: 100,
-  35.0: 150,
-  50.0: 200,
-  70.0: 250,
-  95.0: 300,
-  120.0: 350,
+  4.0: 25,
+  6.0: 32,
+  10.0: 50,
+  16.0: 63,
+  25.0: 80,
+  35.0: 100,
+  50.0: 125,
+  70.0: 160,
+  95.0: 250,
+  120.0: 300,
 };
 
 /**
- * Konservativere Sicherungs-Vorschläge (etwa 80% der max. Strombelastbarkeit).
- * Diese sind die Standard-Empfehlungen in calculateWire.
+ * Konservativere Sicherungs-Vorschläge (kleiner als die Standardwerte, für
+ * berechnete Querschnitte in `calculateWire`). Für jeden Wert gilt:
+ * conservative <= standard <= Ampacity.
  */
 export const VDE_CONSERVATIVE_FUSES: Record<number, number> = {
   1.5: 10,
   2.5: 16,
-  4.0: 25,
-  6.0: 40,
-  10.0: 60,
-  16.0: 80,
-  25.0: 100,
-  35.0: 125,
-  50.0: 160,
-  70.0: 200,
+  4.0: 20,
+  6.0: 25,
+  10.0: 40,
+  16.0: 50,
+  25.0: 63,
+  35.0: 80,
+  50.0: 100,
+  70.0: 125,
 };
 
 // ============================================================================
 // SPANNUNGSABFALL-BERECHNUNG (mit echtem Kupferwiderstand)
 // ============================================================================
-
-/**
- * Spezifischer Widerstand von Kupfer bei 20°C in Ω·mm²/m.
- *
- * electrical.ts verwendet die Leitfähigkeit 58 m/(Ω·mm²) ≈ 1/0.01724.
- * Hier rechnen wir bewusst mit ρ = 0.0175 (etwas konservativer) und einem
- * höheren zulässigen Spannungsabfall (10% bei 12V, branchenüblich im Camper).
- *
- * R [Ω] = (ρ · L) / A
- *   ρ = 0.0175 Ω·mm²/m (Kupfer)
- *   L = Länge in m
- *   A = Querschnitt in mm²
- *
- * Spannungsabfall ΔU = R · I · 2  (Faktor 2 = Hin- und Rückleiter)
- *                   = (ρ · L · 2 · I) / A
- *
- * In 12V-Camper-Netzen sind max 10% Spannungsabfall (also 1.2V) zulässig.
- * In 230V-Netzen max 3% (6.9V) gemäß VDE 0100-520.
- */
-export const VDE_COPPER_RESISTIVITY = 0.0175; // Ω·mm²/m
-
-/**
- * Maximal zulässiger Spannungsabfall als Bruchteil der Systemspannung.
- * VDE 0100-520 erlaubt max 3% in 230V-Netzen; bei 12V sind 10% branchenüblich.
- */
-export const VDE_MAX_VOLTAGE_DROP_12V = 0.10; // 10% von 12V = 1.2V
-export const VDE_MAX_VOLTAGE_DROP_230V = 0.03; // 3% von 230V = 6.9V
 
 /**
  * Berechnet den erforderlichen Mindestquerschnitt in mm² für einen gegebenen
@@ -181,8 +173,13 @@ export function calculateMinCrossSection(
   maxVoltageDropFraction: number = VDE_MAX_VOLTAGE_DROP_12V,
   systemVoltage: number = 12
 ): number {
-  if (currentA <= 0 || lengthM <= 0) {
-    return VDE_SIZES[0]; // 1.5 mm² ist das absolute Minimum
+  if (
+    !Number.isFinite(currentA) ||
+    !Number.isFinite(lengthM) ||
+    currentA <= 0 ||
+    lengthM <= 0
+  ) {
+    return VDE_MIN_CROSS_SECTION; // 1.5 mm² ist das absolute Minimum
   }
 
   // ΔU_max = maxDrop * systemVoltage
@@ -211,9 +208,9 @@ export function roundUpToVDECrossSection(minRequired: number): number {
 export function calculateVoltageDrop(
   currentA: number,
   lengthM: number,
-  crossSection: number,
-  _systemVoltage: number = 12
+  crossSection: number
 ): number {
+  if (!Number.isFinite(currentA) || !Number.isFinite(lengthM)) return 0;
   if (crossSection <= 0) return Infinity;
   // ΔU = (ρ · L · 2 · I) / A
   return (VDE_COPPER_RESISTIVITY * lengthM * 2 * currentA) / crossSection;
@@ -258,11 +255,31 @@ export const VDE_CABLE_OUTER_DIAMETERS: Record<number, number> = {
 };
 
 /**
+ * Summiert die Kabel-Querschnittsflächen. Ungültige Querschnitte (<=0 oder
+ * nicht in der Tabelle bekannt) führen zu einem `null`-Ergebnis, statt still
+ * mit 2.5 mm² weiterzurechnen (was vorher zu klein dimensionierte Rohre
+ * empfehlen konnte).
+ */
+function sumCableAreas(cableCrossSections: number[]): number | null {
+  let totalCableArea = 0;
+  for (const cs of cableCrossSections) {
+    if (typeof cs !== 'number' || !Number.isFinite(cs) || cs <= 0) {
+      return null;
+    }
+    const outerDiam = VDE_CABLE_OUTER_DIAMETERS[cs];
+    if (!outerDiam) {
+      return null;
+    }
+    totalCableArea += Math.PI * Math.pow(outerDiam / 2, 2);
+  }
+  return totalCableArea;
+}
+
+/**
  * Berechnet den Füllgrad eines Leerrohrs bei gegebenen Kabeln.
  *
- * @param conduitType Schlüssel aus VDE_CONDUIT_INNER_DIAMETERS (z.B. 'EN 20')
- * @param cableCrossSections Liste der Querschnitte der verlegten Kabel
- * @returns Füllgrad in Prozent (0–100+)
+ * @returns Füllgrad in Prozent (0–100+) oder `null`, wenn ein Querschnitt
+ *          unbekannt ist.
  */
 export function calculateConduitFillPercent(
   conduitType: keyof typeof VDE_CONDUIT_INNER_DIAMETERS,
@@ -271,13 +288,10 @@ export function calculateConduitFillPercent(
   const innerDiameter = VDE_CONDUIT_INNER_DIAMETERS[conduitType];
   if (!innerDiameter) return 0;
 
+  const totalCableArea = sumCableAreas(cableCrossSections);
+  if (totalCableArea === null) return 0;
+
   const innerArea = Math.PI * Math.pow(innerDiameter / 2, 2);
-
-  const totalCableArea = cableCrossSections.reduce((acc, cs) => {
-    const outerDiam = VDE_CABLE_OUTER_DIAMETERS[cs] ?? VDE_CABLE_OUTER_DIAMETERS[2.5];
-    return acc + Math.PI * Math.pow(outerDiam / 2, 2);
-  }, 0);
-
   return (totalCableArea / innerArea) * 100;
 }
 
@@ -285,15 +299,15 @@ export function calculateConduitFillPercent(
  * Findet das kleinste Leerrohr, das die Kabel mit
  * <= VDE_MAX_CONDUIT_FILL_PERCENT aufnehmen kann.
  *
- * @returns Empfohlener Leerrohr-Typ oder null, wenn keiner passt
+ * @returns Empfohlener Leerrohr-Typ oder null, wenn keiner passt oder ein
+ *          Querschnitt unbekannt ist.
  */
 export function recommendConduitType(cableCrossSections: number[]): string | null {
+  const totalCableArea = sumCableAreas(cableCrossSections);
+  if (totalCableArea === null) return null;
+
   for (const [type, diameter] of Object.entries(VDE_CONDUIT_INNER_DIAMETERS)) {
     const innerArea = Math.PI * Math.pow(diameter / 2, 2);
-    const totalCableArea = cableCrossSections.reduce((acc, cs) => {
-      const outerDiam = VDE_CABLE_OUTER_DIAMETERS[cs] ?? VDE_CABLE_OUTER_DIAMETERS[2.5];
-      return acc + Math.PI * Math.pow(outerDiam / 2, 2);
-    }, 0);
     if ((totalCableArea / innerArea) * 100 <= VDE_MAX_CONDUIT_FILL_PERCENT) {
       return type;
     }
@@ -356,10 +370,11 @@ export const VDE_BATTERY_DOD: Record<string, number> = {
 };
 
 /**
- * Mindest-Kabelquerschnitt nach VDE 0100-721.
- * 1.5 mm² ist der absolute Mindestwert.
+ * Dauerhafter Entladestrom als Vielfaches der Nennkapazität (1C = 1 h).
+ * 1C ist ein konservativer, praxisüblicher Wert für die Dimensionierung der
+ * Batterie-Hauptleitung ohne Kenntnis der genauen Zellspezifikation.
  */
-export const VDE_MIN_CROSS_SECTION = 1.5;
+export const VDE_BATTERY_MAX_DISCHARGE_C_RATE = 1.0;
 
 // ============================================================================
 // HAUPTFUNKTION: Kabelberechnung
@@ -379,24 +394,36 @@ export function calculateWire(
   const minCrossSection = calculateMinCrossSection(currentA, lengthM);
   const minRequired = Math.max(VDE_MIN_CROSS_SECTION, minCrossSection);
   const crossSection = roundUpToVDECrossSection(minRequired);
-  const fuseSize = VDE_CONSERVATIVE_FUSES[crossSection] ?? VDE_STANDARD_FUSES[crossSection] ?? 15;
+  const fuseSize =
+    VDE_CONSERVATIVE_FUSES[crossSection] ??
+    VDE_STANDARD_FUSES[crossSection] ??
+    VDE_FUSE_FALLBACK;
 
   return { crossSection, fuseSize, length: lengthM, minCrossSection };
 }
+
+/** Fallback-Sicherungswert, falls für einen Querschnitt nichts gepflegt ist. */
+export const VDE_FUSE_FALLBACK = 15;
 
 // ============================================================================
 // VALIDIERUNG: Einzelne Edge / Komponente
 // ============================================================================
 
-/**
- * Ergebnis einer VDE-Validierung.
- */
 export type VDEValidationResult = {
   isValid: boolean;
   severity: 'error' | 'warning' | 'ok';
   message: string;
   code: string; // z.B. 'UNDERSIZED_CABLE', 'MISSING_RCD'
 };
+
+/**
+ * Ermittelt das Spannungsfall-Limit (in Volt) anhand der Kanten-Domäne.
+ * Unbekannte Domänen fallen auf DC_12V zurück (konservativ).
+ */
+export function maxVoltageDropForDomain(edgeDomain: string | undefined): number {
+  if (edgeDomain === 'AC_230V') return VDE_MAX_DROP_VOLTS_AC_230V; // 6.9V
+  return VDE_MAX_DROP_VOLTS_DC_12V; // 1.2V
+}
 
 /**
  * Validiert eine einzelne Kabel-Edge gegen die VDE-Norm.
@@ -438,13 +465,17 @@ export function validateCableEdge(
     };
   }
 
-  // 2. Spannungsabfall
+  // 2. Spannungsabfall — domänensensibel (1.2V bei 12V DC, 6.9V bei 230V AC).
   const voltageDrop = calculateVoltageDrop(currentA, length, crossSection);
-  if (voltageDrop > VDE_MAX_VOLTAGE_DROP_12V * 12) {
+  const maxDrop = maxVoltageDropForDomain(data.edgeDomain);
+  const dropFraction =
+    data.edgeDomain === 'AC_230V' ? VDE_MAX_VOLTAGE_DROP_230V : VDE_MAX_VOLTAGE_DROP_12V;
+  const systemVoltage = data.edgeDomain === 'AC_230V' ? 230 : 12;
+  if (voltageDrop > maxDrop) {
     return {
       isValid: false,
       severity: 'warning',
-      message: `Spannungsabfall ${voltageDrop.toFixed(2)}V überschreitet ${(VDE_MAX_VOLTAGE_DROP_12V * 100).toFixed(0)}% von 12V. Kabel evtl. zu schwach dimensioniert.`,
+      message: `Spannungsabfall ${voltageDrop.toFixed(2)}V überschreitet ${(dropFraction * 100).toFixed(0)}% von ${systemVoltage}V. Kabel evtl. zu schwach dimensioniert.`,
       code: 'HIGH_VOLTAGE_DROP',
     };
   }

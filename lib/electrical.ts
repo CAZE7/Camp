@@ -1,5 +1,29 @@
+/**
+ * lib/electrical.ts
+ *
+ * THERMISCHE & DOMÄNE-BASIS der VDE-Auslegung.
+ *
+ * Die hier definierten Konstanten sind die EINZIGE Quelle der Wahrheit für
+ * Kupferwiderstand, zulässigen Spannungsabfall und Normquerschnitte.
+ * Erweiterte Werte (Leerrohr, RCD, DoD, …) liegen in `vde-standards.ts`,
+ * das die Basiskonstanten von hier re-exportiert.
+ *
+ * Verwendete Normen (vereinfacht für das Camper-Use-Case):
+ * - DIN VDE 0100-721 (Niederspannungsanlagen in Wohnmobilen)
+ * - DIN VDE 0100-520 / VDE 0298-4 (Kabelanlagen, Spannungsfall)
+ * - DIN EN 60228 (Normquerschnitte)
+ */
+
+// ---------------------------------------------------------------------------
+// NORMQUERSCHNITTE & STROMBELASTBARKEIT
+// ---------------------------------------------------------------------------
+
 export const VDE_SIZES = [1.5, 2.5, 4.0, 6.0, 10.0, 16.0, 25.0, 35.0, 50.0, 70.0];
 
+/**
+ * Strombelastbarkeit in Ampere bei Einzelverlegung, ca. 30 °C
+ * (Ableitung VDE 0298-4, konservative Werte für die thermische Auslegung).
+ */
 export const VDE_AMPACITY: Record<number, number> = {
   1.5: 16.5,
   2.5: 23.0,
@@ -13,10 +37,13 @@ export const VDE_AMPACITY: Record<number, number> = {
   70.0: 172.0,
 };
 
-// 1. Einheitlicher Sicherheitsfaktor (Derating)
+/** Einheitlicher Sicherheitsfaktor (Derating) für gebündelte/erwärmte Leitungen. */
 export const DERATE_FACTOR = 0.70;
 
-// DIN VDE 0298-4: max fuse ratings per conductor cross-section
+/**
+ * Max. Nenn-Sicherungsstrom je Querschnitt nach VDE 0298-4.
+ * Jeder Wert ist <= VDE_AMPACITY (Schutz des Leiters vor thermischer Zerstörung).
+ */
 export const FUSE_MAP: Record<number, number> = {
   1.5: 16,
   2.5: 20,
@@ -30,36 +57,84 @@ export const FUSE_MAP: Record<number, number> = {
   70.0: 160,
 };
 
+// ---------------------------------------------------------------------------
+// KUPFER & SPANNUNGSFALL (zentrale, einheitliche Werte)
+// ---------------------------------------------------------------------------
+
+/** Spezifischer Widerstand von Kupfer bei 20 °C in Ω·mm²/m. */
+export const VDE_COPPER_RESISTIVITY = 0.0175;
+
+/** Reziprokwert (Leitwert κ in m/(Ω·mm²)) für die klassische ΔU-Formel. */
+export const VDE_COPPER_CONDUCTIVITY = 1 / VDE_COPPER_RESISTIVITY; // ≈ 57.14
+
+/** Nennspannung des DC-Bordnetzes im Camper (12 V). */
+export const VDE_NOMINAL_DC_VOLTAGE = 12;
+
+/** Nennspannung des AC-Landstromnetzes (230 V). */
+export const VDE_NOMINAL_AC_VOLTAGE = 230;
+
+/** Zulässiger Spannungsabfall (Bruchteil der Nennspannung). */
+export const VDE_MAX_VOLTAGE_DROP_12V = 0.10; // 10 % von 12 V = 1.2 V
+export const VDE_MAX_VOLTAGE_DROP_230V = 0.03; // 3 % von 230 V = 6.9 V
+
+/** Absolutes Spannungsfall-Limit in Volt, direkt in den Formeln verwendet. */
+export const VDE_MAX_DROP_VOLTS_DC_12V = VDE_MAX_VOLTAGE_DROP_12V * 12; // 1.2 V
+export const VDE_MAX_DROP_VOLTS_AC_230V = VDE_MAX_VOLTAGE_DROP_230V * 230; // 6.9 V
+
+/** Mindest-Querschnitt nach VDE 0100-721. */
+export const VDE_MIN_CROSS_SECTION = 1.5;
+
+// ---------------------------------------------------------------------------
+// THERMISCHE AUSLEGUNG
+// ---------------------------------------------------------------------------
+
 export const calculateMaxFuse = (crossSection: number): number => {
   return FUSE_MAP[crossSection] || 0;
 };
 
 export const lookupThermalCrossSection = (I: number): number => {
+  if (!Number.isFinite(I) || I <= 0) return VDE_MIN_CROSS_SECTION;
   const requiredAmpacity = I * (1 / DERATE_FACTOR);
   const size = VDE_SIZES.find(s => VDE_AMPACITY[s] >= requiredAmpacity);
-  return size || 70.0;
+  return size || VDE_SIZES[VDE_SIZES.length - 1];
 };
 
+/**
+ * Ermittelt den erforderlichen Normquerschnitt als Maximum aus
+ *   A) Spannungsfallkriterium   ΔU = I · L · 2 / (κ · ΔU_max)
+ *   B) thermischer Belastbarkeit (VDE-Lookup mit Derating)
+ *   C) optionalem manuell gesetztem Querschnitt
+ */
 export const calculateCrossSection = (
   I: number,
   length: number,
   dataCrossSection?: number,
   electricalDomain: 'DC_12V' | 'AC_230V' = 'DC_12V'
 ): number => {
-  // Schritt A: Mindestquerschnitt nach Spannungsfall
-  // DC 12V: 3% von 12V = 0.36V (DIN VDE 0298-4)
-  // AC 230V: 3% von 230V = 6.9V → 4.6V (2% conservative)
-  const maxAllowedVoltageDrop = electricalDomain === 'AC_230V' ? 4.6 : 0.36;
-  const dropArea = (I * (length * 2)) / (58 * maxAllowedVoltageDrop);
+  const safeI = Number.isFinite(I) && I > 0 ? I : 0;
+  const safeLength = Number.isFinite(length) && length > 0 ? length : 0;
 
-  // Schritt B: Mindestquerschnitt nach thermischer Belastbarkeit (VDE Lookup mit Derating)
-  const thermalArea = lookupThermalCrossSection(I);
+  // A) Spannungsfall
+  // DC 12V: 10% von 12V = 1.2V (branchenüblich im Camper)
+  // AC 230V: 3% von 230V = 6.9V (VDE 0100-520)
+  const maxAllowedVoltageDrop =
+    electricalDomain === 'AC_230V' ? VDE_MAX_DROP_VOLTS_AC_230V : VDE_MAX_DROP_VOLTS_DC_12V;
+  const dropArea =
+    maxAllowedVoltageDrop > 0
+      ? (safeI * (safeLength * 2)) / (VDE_COPPER_CONDUCTIVITY * maxAllowedVoltageDrop)
+      : 0;
 
-  // Finaler Querschnitt: Maximum aus beiden Kriterien und eventuellem manuellen Querschnitt
-  const rawMax = Math.max(1.5, dropArea, thermalArea, dataCrossSection || 0);
+  // B) Thermisch
+  const thermalArea = lookupThermalCrossSection(safeI);
 
-  // Aufgerundet auf die nächste VDE-Normgröße
-  return VDE_SIZES.find(size => size >= rawMax) || 70.0;
+  const rawMax = Math.max(
+    VDE_MIN_CROSS_SECTION,
+    dropArea,
+    thermalArea,
+    dataCrossSection || 0
+  );
+
+  return VDE_SIZES.find(size => size >= rawMax) || VDE_SIZES[VDE_SIZES.length - 1];
 };
 
 export const calculateStrokeWidth = (cs: number): number => {
@@ -69,48 +144,62 @@ export const calculateStrokeWidth = (cs: number): number => {
   return 10;
 };
 
-export const getEdgeDomain = (
-  sourceNodeType: string | undefined,
-  targetNodeType: string | undefined,
-  sourceHandle: string | null | undefined,
-  targetHandle?: string | null | undefined
-): 'DC_12V' | 'AC_230V' => {
-  const isAcNode = (type: string | undefined) => type === 'shorePower' || type === 'consumer230v';
-  if (isAcNode(sourceNodeType) || isAcNode(targetNodeType)) {
-    return 'AC_230V';
-  }
+// ---------------------------------------------------------------------------
+// DOMÄNEN-LOGIK (DC_12V vs. AC_230V)
+// ---------------------------------------------------------------------------
 
-  const AC_HANDLES = ['plus', 'ac_out', 'L', 'ac', 'output', 'ac_in'];
-  const hasAcHandle = (nodeType: string | undefined, handle: string | null | undefined) =>
-    nodeType === 'inverter' && handle && AC_HANDLES.includes(handle);
+const isAcNodeType = (type: string | undefined | null): boolean =>
+  type === 'shorePower' || type === 'consumer230v';
 
-  if (hasAcHandle(sourceNodeType, sourceHandle) || hasAcHandle(targetNodeType, targetHandle)) {
-    return 'AC_230V';
-  }
-  return 'DC_12V';
-};
+const AC_HANDLE_IDS = ['ac_out', 'L', 'ac', 'output', 'ac_in'];
 
-// Proaktiv: Auch getHandleDomain für Inverter AC-Ausgänge erweitern für Drag-and-Drop Stabilität.
+/**
+ * Klassifiziert einen einzelnen Handle als DC- oder AC-Domäne.
+ *
+ * Inverter:
+ *  - target "plus" (links)  => 12V-DC-Eingang von der Batterie
+ *  - source "plus" (rechts) => 230V-AC-Ausgang
+ *  - "ac_in" (oben)         => 230V-AC-Landstrom-Eingang
+ */
 export const getHandleDomain = (
-  nodeType: string | undefined,
+  nodeType: string | undefined | null,
   handleId: string | null | undefined,
   handleType: 'source' | 'target' | undefined
 ): 'DC_12V' | 'AC_230V' => {
   if (!nodeType) return 'DC_12V';
-  if (nodeType === 'shorePower' || nodeType === 'consumer230v') {
-    return 'AC_230V';
-  }
+  if (isAcNodeType(nodeType)) return 'AC_230V';
+
   if (nodeType === 'inverter') {
-    // Left TARGET plus/minus = 12V DC input. Right SOURCE plus / ac_* = 230V AC.
-    // 'plus' as a target is the battery-side DC terminal on InverterNode.
-    if (handleId === 'plus' && handleType === 'target') {
-      return 'DC_12V';
-    }
-    const AC_HANDLES = ['plus', 'ac_out', 'L', 'ac', 'output', 'ac_in'];
-    if (handleId && AC_HANDLES.includes(handleId)) {
-      return 'AC_230V';
-    }
+    if (handleId === 'plus' && handleType === 'target') return 'DC_12V';
+    if (handleId === 'ac_in') return 'AC_230V';
+    if (handleId && AC_HANDLE_IDS.includes(handleId)) return 'AC_230V';
+    if (handleId === 'plus' && handleType === 'source') return 'AC_230V';
     return 'DC_12V';
   }
+
+  return 'DC_12V';
+};
+
+/**
+ * Leitet die Domäne einer Kante aus den beteiligten Knoten UND Handes ab.
+ *
+ * Gegenüber der Vorgängerversion wird nun die Handle-Richtung (source/target)
+ * berücksichtigt, damit die Batterie-Zuleitung zum Inverter (target "plus")
+ * korrekt als DC_12V erkannt wird.
+ */
+export const getEdgeDomain = (
+  sourceNodeType: string | undefined | null,
+  targetNodeType: string | undefined | null,
+  sourceHandle?: string | null,
+  targetHandle?: string | null
+): 'DC_12V' | 'AC_230V' => {
+  if (isAcNodeType(sourceNodeType) || isAcNodeType(targetNodeType)) return 'AC_230V';
+
+  const sourceDomain = getHandleDomain(sourceNodeType, sourceHandle, 'source');
+  const targetDomain = getHandleDomain(targetNodeType, targetHandle, 'target');
+
+  // Eine AC-Domäne auf einer Seite macht die gesamte Kante zu AC (z. B.
+  // Inverter-AC-Ausgang oder Inverter-AC-Eingang).
+  if (sourceDomain === 'AC_230V' || targetDomain === 'AC_230V') return 'AC_230V';
   return 'DC_12V';
 };

@@ -288,7 +288,10 @@ describe('usePlannerStore - extended coverage', () => {
       expect(derived.totalWatts).toBe(400);
     });
 
-    it('caches maps/watts for the same array reference (WeakMap smoke test)', () => {
+    it('always returns deterministic, equal results (no stale cache)', () => {
+      // Der Cache wurde entfernt: Jeder Aufruf baut die Maps frisch auf, damit
+      // Mutationen am Eingabe-Array (z. B. beim Auto-Wiring) nicht zu
+      // veralteten Maps/Summen führen können.
       const nodes: Node[] = [
         { id: 'c1', type: 'consumer', position: { x: 0, y: 0 }, data: { watts: 12 } },
       ];
@@ -297,10 +300,15 @@ describe('usePlannerStore - extended coverage', () => {
       const first = getDerivedSystemState(nodes, water);
       const second = getDerivedSystemState(nodes, water);
 
-      expect(first.nodesMap).toBe(second.nodesMap);
-      expect(first.waterNodesMap).toBe(second.waterNodesMap);
-      expect(first.totalWatts).toBe(second.totalWatts);
+      expect(first.nodesMap.get('c1')?.data.watts).toBe(12);
+      expect(second.nodesMap.get('c1')?.data.watts).toBe(12);
       expect(first.totalWatts).toBe(12);
+      expect(second.totalWatts).toBe(12);
+
+      // Mutation am Quell-Array muss direkt sichtbar sein.
+      nodes.push({ id: 'c2', type: 'consumer', position: { x: 0, y: 0 }, data: { watts: 8 } });
+      const afterMutation = getDerivedSystemState(nodes, water);
+      expect(afterMutation.totalWatts).toBe(20);
     });
 
     it('recomputes when a new nodes array is passed', () => {

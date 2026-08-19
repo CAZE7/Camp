@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
 import { UIMessage } from "ai";
 import { Send, X } from "lucide-react";
 
@@ -52,9 +53,21 @@ const getMessageText = (message: UIMessage) => {
   );
 };
 
+// Der Chat-Endpunkt kann über NEXT_PUBLIC_CHAT_API_URL auf einen externen
+// Serverless-Endpoint zeigen (erforderlich, wenn die App per `output: 'export'`
+// statisch gehostet wird). Fällt auf '/api/chat' zurück, falls kein Wert
+// gesetzt ist.
+const CHAT_API_URL = process.env.NEXT_PUBLIC_CHAT_API_URL || '/api/chat';
+const CHAT_TOKEN = process.env.NEXT_PUBLIC_CHAT_TOKEN;
+
 export default function Chat({ defaultOpen = false }: { defaultOpen?: boolean }) {
   const [input, setInput] = useState("");
-  const { messages, sendMessage, status } = useChat();
+  const { messages, sendMessage, status } = useChat({
+    transport: new DefaultChatTransport({
+      api: CHAT_API_URL,
+      headers: CHAT_TOKEN ? { 'x-chat-token': CHAT_TOKEN } : undefined,
+    }),
+  });
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   const isLoading = status === "submitted" || status === "streaming";
