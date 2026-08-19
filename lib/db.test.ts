@@ -1,15 +1,30 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-// Use vi.doMock so it doesn't get hoisted and we can control when it's used with resetModules
+// Use vi.doMock so it doesn't get hoisted and we can control when it's used with resetModules.
+// Pool must be a real class because it's used with `new Pool(...)`.
 vi.doMock('pg', () => {
-  return {
-    Pool: vi.fn().mockImplementation((config) => ({
-        config,
-        connect: vi.fn(),
-        end: vi.fn(),
-        query: vi.fn(),
-    })),
-  };
+  const calls: any[] = [];
+  class Pool {
+    config: any;
+    connect: any;
+    end: any;
+    query: any;
+    constructor(config: any) {
+      this.config = config;
+      this.connect = vi.fn();
+      this.end = vi.fn();
+      this.query = vi.fn();
+      calls.push(config);
+    }
+  }
+  // Attach a spy for assertion. We can spy on the class itself.
+  const PoolSpy = vi.fn(Pool as any);
+  // Also expose the calls tracker for testing
+  (PoolSpy as any).__calls = calls;
+  // Re-bind so `new PoolSpy(...)` works as constructor.
+  // The trick: assign prototype so vi.fn instance becomes constructible.
+  PoolSpy.prototype = Pool.prototype;
+  return { Pool: PoolSpy };
 });
 
 describe('db utility', () => {

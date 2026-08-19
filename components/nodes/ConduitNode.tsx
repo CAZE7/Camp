@@ -2,29 +2,19 @@
 import React, { useMemo } from 'react';
 import { Handle, Position, useEdges } from 'reactflow';
 import { CableEdgeData } from '../edges/CableEdge';
+import {
+  VDE_CONDUIT_INNER_DIAMETERS,
+  VDE_CABLE_OUTER_DIAMETERS,
+  VDE_MAX_CONDUIT_FILL_PERCENT,
+  calculateConduitFillPercent,
+  recommendConduitType as recommendConduitTypeVDE,
+} from '../../lib/vde-standards';
 
-const CONDUIT_SIZES = {
-  'EN 20': 16.9, // mm internal diameter
-  'EN 25': 21.4,
-  'EN 32': 28.1,
-  'EN 40': 37.7,
-};
-
-const CABLE_OUTER_DIAMETERS: Record<number, number> = {
-  1.5: 2.4,
-  2.5: 3.0,
-  4.0: 3.7,
-  6.0: 4.3,
-  10.0: 6.5,
-  16.0: 8.3,
-  25.0: 10.4,
-  35.0: 11.6,
-  50.0: 13.5,
-};
+export type ConduitType = keyof typeof VDE_CONDUIT_INNER_DIAMETERS;
 
 export interface ConduitNodeData {
   label?: string;
-  conduitType?: keyof typeof CONDUIT_SIZES;
+  conduitType?: ConduitType;
   assignedEdges?: string[];
 }
 
@@ -35,39 +25,18 @@ const ConduitNode = function ({ id, data, selected }: { id: string, data: Condui
   const assignedEdgeIds = data.assignedEdges || [];
 
   const fillStats = useMemo(() => {
-    const innerDiameter = CONDUIT_SIZES[conduitType as keyof typeof CONDUIT_SIZES];
-    const innerArea = Math.PI * Math.pow(innerDiameter / 2, 2);
-
-    let totalCableArea = 0;
     const assignedEdgeIdsSet = new Set(assignedEdgeIds);
     const assignedCables = edges.filter(e => assignedEdgeIdsSet.has(e.id));
 
-    assignedCables.forEach(edge => {
-      const edgeData = edge.data as CableEdgeData;
-      const crossSection = edgeData?.crossSection || 2.5; // default fallback
-
-      // Get closest outer diameter if exact not found
-      const outerDiam = CABLE_OUTER_DIAMETERS[crossSection] || CABLE_OUTER_DIAMETERS[2.5];
-      const cableArea = Math.PI * Math.pow(outerDiam / 2, 2);
-      totalCableArea += cableArea;
-    });
-
-    const fillPercentage = (totalCableArea / innerArea) * 100;
-
-    let recommendedConduit = null;
-    if (fillPercentage > 60) {
-      for (const [type, diameter] of Object.entries(CONDUIT_SIZES)) {
-        const testArea = Math.PI * Math.pow(diameter / 2, 2);
-        if ((totalCableArea / testArea) * 100 <= 60) {
-          recommendedConduit = type;
-          break;
-        }
-      }
-    }
+    // VDE-konforme Berechnung über zentrale Quelle
+    const crossSections = assignedCables.map(e => (e.data as CableEdgeData)?.crossSection || 2.5);
+    const fillPercentage = calculateConduitFillPercent(conduitType as ConduitType, crossSections);
+    const isOverfilled = fillPercentage > VDE_MAX_CONDUIT_FILL_PERCENT;
+    const recommendedConduit = isOverfilled ? recommendConduitTypeVDE(crossSections) : null;
 
     return {
       fillPercentage,
-      isOverfilled: fillPercentage > 60,
+      isOverfilled,
       recommendedConduit
     };
   }, [conduitType, assignedEdgeIds, edges]);

@@ -5,6 +5,13 @@ import React from 'react';
 import { Node, Edge, Connection } from 'reactflow';
 import { initialNodes, initialEdges } from '../components/planner/constants';
 import { CableEdgeData } from '../components/edges/CableEdge';
+import {
+  calculateWire as calculateWireVDE,
+  VDE_INVERTER_EFFICIENCY,
+  VDE_MIN_CROSS_SECTION,
+  validateSchematic,
+  VDEValidationResult,
+} from '../lib/vde-standards';
 
 interface PlannerState {
   viewMode: 'electric' | 'water';
@@ -33,6 +40,15 @@ interface PlannerState {
   selectedEdges: Edge[];
   setSelectedNodes: (nodes: Node[]) => void;
   setSelectedEdges: (edges: Edge[]) => void;
+
+  /**
+   * Live-VDE-Validierungsergebnisse für den aktuellen Schaltplan.
+   * Wird automatisch bei jeder Änderung der nodes/edges neu berechnet.
+   * So kann das UI jederzeit Warnungen anzeigen, ohne selbst rechnen zu müssen.
+   */
+  vdeValidationResults: VDEValidationResult[];
+  /** Convenience: gibt es kritische Fehler? */
+  hasVdeErrors: () => boolean;
 
   onNodesChange: (changes: import('reactflow').NodeChange[]) => void;
   onEdgesChange: (changes: import('reactflow').EdgeChange[]) => void;
@@ -79,8 +95,20 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
 
   nodes: initialNodes,
   edges: initialEdges,
-  setNodes: (update) => set({ nodes: typeof update === 'function' ? update(get().nodes) : update }),
-  setEdges: (update) => set({ edges: typeof update === 'function' ? update(get().edges) : update }),
+  setNodes: (update) => {
+    const newNodes = typeof update === 'function' ? update(get().nodes) : update;
+    set({
+      nodes: newNodes,
+      vdeValidationResults: validateSchematic(newNodes, get().edges),
+    });
+  },
+  setEdges: (update) => {
+    const newEdges = typeof update === 'function' ? update(get().edges) : update;
+    set({
+      edges: newEdges,
+      vdeValidationResults: validateSchematic(get().nodes, newEdges),
+    });
+  },
 
   waterNodes: [],
   waterEdges: [],
@@ -101,8 +129,24 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
   setSelectedNodes: (nodes) => set({ selectedNodes: nodes }),
   setSelectedEdges: (edges) => set({ selectedEdges: edges }),
 
-  onNodesChange: (changes) => set((state) => ({ nodes: applyNodeChanges(changes, state.nodes) })),
-  onEdgesChange: (changes) => set((state) => ({ edges: applyEdgeChanges(changes, state.edges) as Edge<CableEdgeData>[] })),
+  // VDE-Validierung wird bei jeder State-Änderung automatisch neu berechnet
+  vdeValidationResults: validateSchematic(initialNodes, initialEdges),
+  hasVdeErrors: () => get().vdeValidationResults.some((r) => r.severity === 'error'),
+
+  onNodesChange: (changes) => set((state) => {
+    const nodes = applyNodeChanges(changes, state.nodes);
+    return {
+      nodes,
+      vdeValidationResults: validateSchematic(nodes, state.edges),
+    };
+  }),
+  onEdgesChange: (changes) => set((state) => {
+    const edges = applyEdgeChanges(changes, state.edges) as Edge<CableEdgeData>[];
+    return {
+      edges,
+      vdeValidationResults: validateSchematic(state.nodes, edges),
+    };
+  }),
   onWaterNodesChange: (changes) => set((state) => ({ waterNodes: applyNodeChanges(changes, state.waterNodes) })),
   onWaterEdgesChange: (changes) => set((state) => ({ waterEdges: applyEdgeChanges(changes, state.waterEdges) })),
 
@@ -112,33 +156,45 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
     const nodeIdsSet = new Set(state.selectedNodes.map((n) => n.id));
     const edgeIdsSet = new Set(state.selectedEdges.map((e) => e.id));
 
+    const nodes = state.nodes.filter((n) => !nodeIdsSet.has(n.id));
+    const edges = state.edges.filter(
+      (e) => !nodeIdsSet.has(e.source) && !nodeIdsSet.has(e.target) && !edgeIdsSet.has(e.id)
+    );
+
     return {
-      nodes: state.nodes.filter((n) => !nodeIdsSet.has(n.id)),
-      edges: state.edges.filter(
-        (e) => !nodeIdsSet.has(e.source) && !nodeIdsSet.has(e.target) && !edgeIdsSet.has(e.id)
-      ),
+      nodes,
+      edges,
       selectedNodes: [],
       selectedEdges: [],
+      vdeValidationResults: validateSchematic(nodes, edges),
     };
   }),
 
-  updateNodeData: (id, data) => set((state) => ({
-    nodes: state.nodes.map((n) => {
+  updateNodeData: (id, data) => set((state) => {
+    const nodes = state.nodes.map((n) => {
       if (n.id === id) {
         return { ...n, data: { ...n.data, ...data } };
       }
       return n;
-    })
-  })),
+    });
+    return {
+      nodes,
+      vdeValidationResults: validateSchematic(nodes, state.edges),
+    };
+  }),
 
-  handleChangeLength: (id, length) => set((state) => ({
-    edges: state.edges.map((e) => {
+  handleChangeLength: (id, length) => set((state) => {
+    const edges = state.edges.map((e) => {
       if (e.id === id) {
         return { ...e, data: { ...e.data!, length } };
       }
       return e;
-    })
-  })),
+    });
+    return {
+      edges,
+      vdeValidationResults: validateSchematic(state.nodes, edges),
+    };
+  }),
 
   isValidConnection: (connection) => {
     const { nodes, waterNodes, viewMode, edges } = get();
@@ -218,7 +274,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
   onConnect: (connection) => {
     if (!connection.source || !connection.target) return;
 
-    const { viewMode, waterNodes } = get();
+    const { viewMode, waterNodes, nodes } = get();
 
     if (viewMode === 'water') {
       const allNodes = [...waterNodes];
@@ -243,6 +299,9 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
       return;
     }
 
+    // VDE-konforme Default-Werte für neue Kabel
+    // Das Kabel wird mit dem absoluten Minimum (1.5 mm², 3m) angelegt;
+    // VDE-Validierung läuft im Hintergrund und warnt, falls nötig.
     const newEdge: Edge<CableEdgeData> = {
       source: connection.source,
       target: connection.target,
@@ -252,10 +311,16 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
       type: 'cableEdge',
       data: {
         length: 3,
-        crossSection: 2.5,
+        crossSection: VDE_MIN_CROSS_SECTION,
       },
     };
-    set((state) => ({ edges: addEdge(newEdge, state.edges) as Edge<CableEdgeData>[] }));
+    set((state) => {
+      const edges = addEdge(newEdge, state.edges) as Edge<CableEdgeData>[];
+      return {
+        edges,
+        vdeValidationResults: validateSchematic(state.nodes, edges),
+      };
+    });
   },
 
   autoWireSystem: (fitView) => {
@@ -296,27 +361,9 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
       return node;
     };
 
-    // Helper to calculate wire cross section according to VDE
+    // Helper: Berechnet Querschnitt und Sicherung nach VDE (über zentrale Quelle)
     const calculateWire = (I: number, length: number = 2) => {
-      const calculatedA = (I * (length * 2)) / (58 * 0.24);
-      const minRequiredA = Math.max(1.5, calculatedA);
-      const VDE_SIZES = [1.5, 2.5, 4.0, 6.0, 10.0, 16.0, 25.0, 35.0, 50.0, 70.0];
-      const crossSection =
-        VDE_SIZES.find((size) => size >= minRequiredA) || 70.0;
-
-      let fuseSize = 15;
-      if (crossSection === 1.5) fuseSize = 15;
-      else if (crossSection === 2.5) fuseSize = 20;
-      else if (crossSection === 4.0) fuseSize = 30;
-      else if (crossSection === 6.0) fuseSize = 40;
-      else if (crossSection === 10.0) fuseSize = 60;
-      else if (crossSection === 16.0) fuseSize = 80;
-      else if (crossSection === 25.0) fuseSize = 100;
-      else if (crossSection === 35.0) fuseSize = 150;
-      else if (crossSection === 50.0) fuseSize = 200;
-      else if (crossSection >= 70.0) fuseSize = 250;
-
-      return { crossSection, fuseSize, length };
+      return calculateWireVDE(I, length);
     };
 
     // Helper to connect two nodes with plus and minus edges
@@ -361,7 +408,8 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
     const inverters = currentNodes.filter((n) => n.type === 'inverter');
     inverters.forEach((inverter) => {
       const inverterWatts = Number(inverter.data.watts) || 1000;
-      const inverterAmps = inverterWatts / 12 / 0.85;
+      // VDE-konformer Wirkungsgrad aus vde-standards.ts
+      const inverterAmps = inverterWatts / 12 / VDE_INVERTER_EFFICIENCY;
       connect(busbarNode.id, inverter.id, inverterAmps, 1);
     });
 
@@ -433,7 +481,13 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
       'LR'
     );
 
-    set({ nodes: [...layoutedNodes], edges: [...layoutedEdges] });
+    const finalNodes = [...layoutedNodes];
+    const finalEdges = [...layoutedEdges];
+    set({
+      nodes: finalNodes,
+      edges: finalEdges,
+      vdeValidationResults: validateSchematic(finalNodes, finalEdges),
+    });
 
     if (fitView && typeof window !== 'undefined') {
       window.requestAnimationFrame(() => {
@@ -449,7 +503,13 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
       edges,
       'LR'
     );
-    set({ nodes: [...layoutedNodes], edges: [...layoutedEdges] });
+    const finalNodes = [...layoutedNodes];
+    const finalEdges = [...layoutedEdges];
+    set({
+      nodes: finalNodes,
+      edges: finalEdges,
+      vdeValidationResults: validateSchematic(finalNodes, finalEdges),
+    });
   },
 
   checkSchematic: () => {
@@ -524,7 +584,13 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
     if (viewMode === 'water') {
       set((state) => ({ waterNodes: state.waterNodes.concat(newNode) }));
     } else {
-      set((state) => ({ nodes: state.nodes.concat(newNode) }));
+      set((state) => {
+        const nodes = state.nodes.concat(newNode);
+        return {
+          nodes,
+          vdeValidationResults: validateSchematic(nodes, state.edges),
+        };
+      });
     }
   },
 
@@ -564,16 +630,26 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
     if (viewMode === 'water') {
       set((state) => ({ waterNodes: state.waterNodes.concat(newNode) }));
     } else {
-      set((state) => ({ nodes: state.nodes.concat(newNode) }));
+      set((state) => {
+        const nodes = state.nodes.concat(newNode);
+        return {
+          nodes,
+          vdeValidationResults: validateSchematic(nodes, state.edges),
+        };
+      });
     }
   },
 
-  handleChangeCrossSection: (id, crossSection) => set((state) => ({
-    edges: state.edges.map((e) => {
+  handleChangeCrossSection: (id, crossSection) => set((state) => {
+    const edges = state.edges.map((e) => {
       if (e.id === id) {
         return { ...e, data: { ...e.data!, crossSection } };
       }
       return e;
-    })
-  })),
+    });
+    return {
+      edges,
+      vdeValidationResults: validateSchematic(state.nodes, edges),
+    };
+  }),
 }));

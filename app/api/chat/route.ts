@@ -1,6 +1,7 @@
 import { createOpenAI } from '@ai-sdk/openai';
 import { streamText, embed, convertToModelMessages } from 'ai';
 import pool from '../../../lib/db';
+import { VDE_INVERTER_EFFICIENCY } from '../../../lib/vde-standards';
 
 import type { UIMessage } from 'ai';
 
@@ -250,7 +251,7 @@ Beantworte die Fragen des Nutzers basierend auf deinem Wissen und dem folgenden 
 Prüfe den Schaltplan auf folgende Fehler nach VDE-Norm:
 - Fehlt ein FI-Schutzschalter (RCD mit <= 30 mA) nach dem Landstrom-Eingang? Falls ja, warne den Nutzer, da dies nach DIN VDE 0100-721 illegal ist.
 - Werden starre NYM-Kabel verwendet? Erinnere den Nutzer, dass nur feindrähtige Leitungen im Camper erlaubt sind.
-- Prüfe, ob der Wechselrichter-Verlust von ca. 15% (Faktor 0.85) bei 230V-Geräten beachtet wurde.
+- Prüfe, ob der Wechselrichter-Verlust von ca. ${Math.round((1 - VDE_INVERTER_EFFICIENCY) * 100)}% (Faktor ${VDE_INVERTER_EFFICIENCY}) bei 230V-Geräten beachtet wurde.
 
 Formatiere dein KI-Gutachten übersichtlich und verwende Warn-Icons () bei gefundenen Fehlern.
 

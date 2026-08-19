@@ -13,7 +13,8 @@ describe('useDashboardMetrics', () => {
     );
 
     expect(result.current.dailyConsumptionAh).toBe(0);
-    expect(result.current.autarkyStr).toBe('0 Tage / 0 Stunden');
+    // No battery + no consumption => autarkyHours = Infinity => "Unendlich"
+    expect(result.current.autarkyStr).toBe('Unendlich');
     expect(result.current.chargingTimeStr).toBe('Kein Ladegerät');
     expect(result.current.totalSolarVoltage).toBe(0);
     expect(result.current.totalSolarAmps).toBe(0);

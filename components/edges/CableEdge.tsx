@@ -1,6 +1,15 @@
 import React, { useMemo } from 'react';
 import { BaseEdge, EdgeProps, getBezierPath, getSmoothStepPath, EdgeLabelRenderer, useReactFlow } from 'reactflow';
 import { useAppStore } from '../../lib/store';
+import {
+  VDE_CROSS_SECTIONS,
+  VDE_CURRENT_CAPACITY,
+  VDE_MIN_CROSS_SECTION,
+  calculateMinCrossSection,
+  roundUpToVDECrossSection,
+  calculateVoltageDrop,
+  VDE_MAX_VOLTAGE_DROP_12V,
+} from '../../lib/vde-standards';
 
 export type CableEdgeData = {
   length: number;
@@ -43,7 +52,7 @@ const CableEdge = function ({
       : getBezierPath(pathParams);
   }, [sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, isProMode]);
 
-  const { length, crossSection, maxFuse, strokeWidth, animationDuration } = useMemo(() => {
+  const { length, crossSection, maxFuse, strokeWidth, animationDuration, voltageDropWarning } = useMemo(() => {
     const nodes = getNodes();
     const length = data?.length || 3;
     let I = 0;
@@ -63,22 +72,12 @@ const CableEdge = function ({
       I = allConsumers.reduce((acc, n) => acc + ((n.data.watts || 0) / 12), 0);
     }
 
-    const calculatedA = (I * (length * 2)) / (58 * 0.24);
-    const minRequiredA = Math.max(1.5, calculatedA);
-    const VDE_SIZES = [1.5, 2.5, 4.0, 6.0, 10.0, 16.0, 25.0, 35.0, 50.0, 70.0];
-    const cs = data?.crossSection ?? (VDE_SIZES.find(size => size >= minRequiredA) || 70.0);
+    // VDE-konforme Berechnung über zentrale Quelle
+    const minRequired = calculateMinCrossSection(I, length);
+    const cs = data?.crossSection ?? roundUpToVDECrossSection(Math.max(VDE_MIN_CROSS_SECTION, minRequired));
 
-    let mf = 0;
-    if (cs === 1.5) mf = 16;
-    else if (cs === 2.5) mf = 25;
-    else if (cs === 4.0) mf = 32;
-    else if (cs === 6.0) mf = 50;
-    else if (cs === 10.0) mf = 70;
-    else if (cs === 16.0) mf = 100;
-    else if (cs === 25.0) mf = 130;
-    else if (cs === 35.0) mf = 150;
-    else if (cs === 50.0) mf = 200;
-    else if (cs >= 70.0) mf = 250;
+    // Maximal zulässige Sicherung nach VDE-Strombelastbarkeit
+    const maxAmpere = VDE_CURRENT_CAPACITY[cs] ?? 0;
 
     let sw = 2;
     if (cs <= 1.5) sw = 2;
@@ -86,12 +85,23 @@ const CableEdge = function ({
     else if (cs <= 6) sw = 6;
     else sw = 10;
 
+    // Spannungsabfall-Check nach VDE
+    const voltageDrop = calculateVoltageDrop(I, length, cs);
+    const voltageDropWarning = voltageDrop > VDE_MAX_VOLTAGE_DROP_12V * 12;
+
     const dur = Number.isNaN(I) || !isFinite(I) ? 5 : Math.max(0.5, 5 - (I / 10));
 
-    return { length, crossSection: cs, maxFuse: mf, strokeWidth: sw, animationDuration: dur };
+    return {
+      length,
+      crossSection: cs,
+      maxFuse: maxAmpere,
+      strokeWidth: sw,
+      animationDuration: dur,
+      voltageDropWarning,
+    };
   }, [getNodes, data?.length, data?.crossSection, source, target]);
 
-  const stroke = selected ? '#f97316' : '#9ca3af';
+  const stroke = selected ? '#f97316' : (voltageDropWarning ? '#ef4444' : '#9ca3af');
 
   return (
     <>
@@ -108,7 +118,7 @@ const CableEdge = function ({
         }}
       />
 
-      <circle r={strokeWidth / 2} fill="#fbbf24">
+      <circle r={strokeWidth / 2} fill={voltageDropWarning ? '#ef4444' : '#fbbf24'}>
         <animateMotion
           dur={`${animationDuration}s`}
           repeatCount="indefinite"
@@ -138,6 +148,11 @@ const CableEdge = function ({
           <span>{crossSection} mm²</span>
           {maxFuse > 0 && <span style={{ color: 'red', fontSize: '10px' }}>Max: {maxFuse}A</span>}
           {data?.fuseSize && <span style={{ background: 'red', color: 'white', padding: '1px 4px', borderRadius: '4px', fontSize: '10px', marginTop: '2px' }}>{data.fuseSize}A Sicherung</span>}
+          {voltageDropWarning && (
+            <span style={{ background: '#ef4444', color: 'white', padding: '1px 4px', borderRadius: '4px', fontSize: '10px', marginTop: '2px' }}>
+              ⚠ VDE-Spannungsabfall
+            </span>
+          )}
         </div>
       </EdgeLabelRenderer>
 
@@ -149,7 +164,7 @@ const CableEdge = function ({
         strokeWidth={20}
         style={{ cursor: 'pointer' }}
       >
-        <title>{`${length.toFixed(2)}m | ${crossSection}mm²`}</title>
+        <title>{`${length.toFixed(2)}m | ${crossSection}mm²${voltageDropWarning ? ' | ⚠ VDE-Warnung' : ''}`}</title>
       </path>
     </>
   );

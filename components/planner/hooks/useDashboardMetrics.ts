@@ -1,5 +1,10 @@
 import { useMemo, useRef } from 'react';
 import { Node, Edge } from 'reactflow';
+import {
+  VDE_INVERTER_EFFICIENCY,
+  VDE_BATTERY_DOD,
+  VDE_MAX_VOLTAGE_DROP_12V,
+} from '../../../lib/vde-standards';
 
 export function useDashboardMetrics(
   nodes: Node[],
@@ -93,7 +98,8 @@ export function useDashboardMetrics(
     // --- Calculations for Dashboard ---
     const capacityAh = (batteryNode?.data as any)?.capacity || 0;
     const chemistry = (batteryNode?.data as any)?.chemistry || 'LiFePO4';
-    const dod = chemistry === 'AGM' ? 0.5 : 0.9;
+    // VDE-konforme DoD aus zentraler Quelle
+    const dod = VDE_BATTERY_DOD[chemistry] ?? 0.5;
     const usableCapacityAh = capacityAh * dod;
 
     let dailyConsumptionAh = consumers.reduce((acc, n) => {
@@ -106,9 +112,9 @@ export function useDashboardMetrics(
       const inverterConsumptionAh = consumers230v.reduce((acc, n) => {
         const w = (n.data as any)?.watts || 0;
         const h = (n.data as any)?.hours || 0;
-        // Inverter takes 12V from battery, loses 15% efficiency (0.85)
-        // Ah = (W / 12V) * h / 0.85
-        return acc + ((w / 12) * h) / 0.85;
+        // VDE-konformer Wirkungsgrad aus vde-standards.ts
+        // Ah = (W / 12V) * h / EFFICIENCY
+        return acc + ((w / 12) * h) / VDE_INVERTER_EFFICIENCY;
       }, 0);
       dailyConsumptionAh += inverterConsumptionAh;
     }

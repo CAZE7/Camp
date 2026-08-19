@@ -1,6 +1,11 @@
 import React from 'react';
 import { Edge, Node } from 'reactflow';
 import { CableEdgeData } from './edges/CableEdge';
+import {
+  VDE_CROSS_SECTIONS,
+  VDE_RCD_MAX_TRIP_CURRENT_MA,
+  VDE_CONDUIT_INNER_DIAMETERS,
+} from '../lib/vde-standards';
 
 interface InspectorProps {
   selectedEdge: Edge<CableEdgeData> | null;
@@ -27,7 +32,8 @@ export default function Inspector({
   calculatedSolarWatts,
   nodes,
 }: InspectorProps) {
-  const crossSectionOptions = [1.5, 2.5, 4, 6, 10, 16, 25];
+  // VDE-normierte Querschnitte aus zentraler Quelle
+  const crossSectionOptions = [...VDE_CROSS_SECTIONS].filter(cs => cs <= 25);
 
   const hasSelection = selectedEdge || selectedNode;
 
@@ -190,11 +196,11 @@ export default function Inspector({
                       onChange={(e) => onUpdateNodeData?.(selectedNode.id, { hasRcd: e.target.checked })}
                       className="rounded border-gray-300 text-orange-500 focus:ring-orange-500"
                     />
-                    RCD (FI-Schalter) 30mA installiert
+                    RCD (FI-Schalter) {VDE_RCD_MAX_TRIP_CURRENT_MA}mA installiert
                   </label>
                   {!selectedNode.data?.hasRcd && (
                     <div className="p-2 bg-red-100 text-red-800 text-xs rounded border border-red-200">
-                      Ein FI-Schutzschalter (max. 30mA) ist bei Landstromanschlüssen vorgeschrieben (DIN VDE 0100-721).
+                      Ein FI-Schutzschalter (max. {VDE_RCD_MAX_TRIP_CURRENT_MA}mA) ist bei Landstromanschlüssen vorgeschrieben (DIN VDE 0100-721).
                     </div>
                   )}
                 </div>
@@ -363,10 +369,11 @@ export default function Inspector({
                       onChange={(e) => onUpdateNodeData?.(selectedNode.id, { conduitType: e.target.value })}
                       className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow bg-white"
                     >
-                      <option value="EN 20">EN 20 (16.9 mm Innen-Ø)</option>
-                      <option value="EN 25">EN 25 (21.4 mm Innen-Ø)</option>
-                      <option value="EN 32">EN 32 (28.1 mm Innen-Ø)</option>
-                      <option value="EN 40">EN 40 (37.7 mm Innen-Ø)</option>
+                      {Object.entries(VDE_CONDUIT_INNER_DIAMETERS).map(([type, diameter]) => (
+                        <option key={type} value={type}>
+                          {type} ({diameter} mm Innen-Ø)
+                        </option>
+                      ))}
                     </select>
                   </div>
 
