@@ -73,9 +73,37 @@ jobs:
           fi
       - name: Build with Next.js
         run: |
-          # Build and export a static site into ./out for GitHub Pages
+          set -euo pipefail
+
+          echo "=== Debug: next version ==="
+          npx next --version || true
+
+          echo "=== Build ==="
           npx next build
-          npx next export -o out
+
+          echo "=== Export (static) ==="
+          # Prefer modern --outdir flag, fall back to -o for older Next.js versions
+          if npx next export --outdir out 2>/dev/null; then
+            echo "Exported to ./out using --outdir"
+          else
+            echo "--outdir not supported, trying legacy -o flag"
+            if npx next export -o out 2>/dev/null; then
+              echo "Exported to ./out using -o"
+            else
+              echo "Export failed with both --outdir and -o"
+              # Show available next help for debugging
+              npx next export --help || true
+              exit 1
+            fi
+          fi
+
+          # Verify ./out exists and is not empty
+          echo "=== Verify ./out ==="
+          if [ ! -d out ] || [ -z "$(ls -A out 2>/dev/null)" ]; then
+            echo "ERROR: ./out is missing or empty — export failed"
+            ls -la || true
+            exit 1
+          fi
       - name: Optimize Artifact (Remove Source Maps)
         run: find ./out -name "*.map" -type f -delete || true
       - name: Disable Jekyll
