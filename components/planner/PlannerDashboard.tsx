@@ -1,19 +1,11 @@
-import React, { useCallback, useState } from 'react';
-import Link from 'next/link';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import React, { useCallback, useState, useRef, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
-import { Package, Zap, ScanSearch, LayoutGrid, Camera, Sun, Snowflake } from 'lucide-react';
+import { Package, Zap, ScanSearch, LayoutGrid, Camera, Sun, Snowflake, MoreHorizontal, Maximize2 } from 'lucide-react';
 import { usePlannerStore } from '../../store/usePlannerStore';
 import { useShallow } from 'zustand/react/shallow';
-import { useAppStore } from '../../lib/store';
-import { toPng } from 'html-to-image';
-import { useLiveValidation } from './hooks/useLiveValidation';
-import { Node } from 'reactflow';
+import { useLiveValidation, ValidationWarning } from './hooks/useLiveValidation';
+import { WarningCenter } from './ui/WarningCenter';
+import { Node as FlowNode } from 'reactflow';
 
 // --- Subcomponents ---
 
@@ -25,22 +17,24 @@ function NavigationSection({
   setViewMode: (mode: 'electric' | 'water') => void;
 }) {
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-1" role="tablist" aria-label="Ansicht wählen">
       <Button
         variant={viewMode === 'electric' ? 'default' : 'ghost'}
         size="sm"
+        role="tab"
+        aria-selected={viewMode === 'electric'}
         onClick={() => setViewMode('electric')}
-        className={viewMode === 'electric' ? 'bg-orange-500 hover:bg-orange-600' : ''}
       >
         Elektrik-Schaltplan
       </Button>
       <Button
         variant={viewMode === 'water' ? 'default' : 'ghost'}
         size="sm"
+        role="tab"
+        aria-selected={viewMode === 'water'}
         onClick={() => setViewMode('water')}
-        className={viewMode === 'water' ? 'bg-cyan-500 hover:bg-cyan-600' : ''}
       >
-        Wasser & Sanitär
+        Wasser &amp; Sanitär
       </Button>
     </div>
   );
@@ -63,115 +57,143 @@ function ActionsSection({
   checkSchematic: () => void;
   onLayout: () => void;
   onExportError: (msg: string) => void;
-  nodes: Node[];
+  nodes: FlowNode[];
 }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onClick);
+    return () => document.removeEventListener('mousedown', onClick);
+  }, [menuOpen]);
+
   const handleExportBOM = useCallback(() => {
     exportBOM();
     const event = new CustomEvent('show-bom-modal');
     window.dispatchEvent(event);
   }, [exportBOM]);
 
-  const onExportImage = useCallback(() => {
-    const reactFlowWrapper = document.querySelector('.react-flow') as HTMLElement;
-    if (!reactFlowWrapper) return;
+  const onFitView = useCallback(() => {
+    window.dispatchEvent(new CustomEvent('planner-fit-view'));
+  }, []);
 
-    toPng(reactFlowWrapper, {
-      filter: (node) => {
-        if (
-          node?.classList?.contains('react-flow__panel') ||
-          node?.classList?.contains('react-flow__controls') ||
-          node?.classList?.contains('react-flow__minimap')
-        ) {
-          return false;
+  const onExportImage = useCallback(() => {
+    // Lazy-load, damit html-to-image nicht im initialen Bundle landet
+    import('html-to-image').then(({ toPng }) => {
+      const reactFlowWrapper = document.querySelector('.react-flow') as HTMLElement;
+      if (!reactFlowWrapper) return;
+
+      toPng(reactFlowWrapper, {
+        filter: (node) => {
+          if (
+            node?.classList?.contains('react-flow__panel') ||
+            node?.classList?.contains('react-flow__controls') ||
+            node?.classList?.contains('react-flow__minimap')
+          ) {
+            return false;
+          }
+          return true;
+        },
+      }).then((dataUrl) => {
+        const link = document.createElement('a');
+        link.download = 'schaltplan.png';
+        link.href = dataUrl;
+        link.click();
+      }).catch((err) => {
+        console.error('Failed to export image', err);
+        let msg = 'Bild-Export fehlgeschlagen.';
+        if (err?.name === 'SecurityError') {
+          msg = 'Export blockiert: Canvas enthält Cross-Origin-Inhalte. Lade die Seite neu ohne externe Bilder.';
+        } else if (nodes.length === 0) {
+          msg = 'Nichts zu exportieren — platziere zuerst Komponenten auf dem Plan.';
+        } else {
+          msg = 'Bild-Export fehlgeschlagen. Reduziere die Plan-Größe oder versuche es mit Firefox/Chrome.';
         }
-        return true;
-      },
-    }).then((dataUrl) => {
-      const link = document.createElement('a');
-      link.download = 'schaltplan.png';
-      link.href = dataUrl;
-      link.click();
-    }).catch((err) => {
-      console.error('Failed to export image', err);
-      let msg = 'Bild-Export fehlgeschlagen.';
-      if (err?.name === 'SecurityError') {
-        msg = 'Export blockiert: Canvas enthält Cross-Origin-Inhalte. Lade die Seite neu ohne externe Bilder.';
-      } else if (nodes.length === 0) {
-        msg = 'Nichts zu exportieren — platziere zuerst Komponenten auf dem Plan.';
-      } else {
-        msg = 'Bild-Export fehlgeschlagen. Reduziere die Plan-Größe oder versuche es mit Firefox/Chrome.';
-      }
-      onExportError(msg);
+        onExportError(msg);
+      });
     });
   }, [onExportError, nodes]);
 
-  return (
-    <div className="flex flex-wrap lg:flex-nowrap items-center gap-2">
-      {/* Segmented Action Buttons */}
-      <div className="flex flex-wrap lg:flex-nowrap bg-stone-100/50 p-1 rounded-lg border border-stone-200/60 backdrop-blur-sm gap-1">
-        <Button variant="ghost" size="sm" onClick={handleExportBOM} className="gap-1.5 text-orange-700 hover:bg-white hover:shadow-sm">
-          <Package className="w-4 h-4" /> Stückliste
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => autoWireSystem()}
-          className="gap-1.5 text-yellow-700 hover:bg-white hover:shadow-sm"
-          title="Automatisch Verkabeln & Absichern — berechnet Querschnitte und Sicherungen nach VDE"
-        >
-          <Zap className="w-4 h-4" /> Auto-Wire &amp; Absichern
-        </Button>
-        <Button variant="ghost" size="sm" onClick={checkSchematic} className="gap-1.5 text-red-700 hover:bg-white hover:shadow-sm">
-          <ScanSearch className="w-4 h-4" /> KI-Check
-        </Button>
-        <Button variant="ghost" size="sm" onClick={() => onLayout()} className="gap-1.5 text-indigo-700 hover:bg-white hover:shadow-sm">
-          <LayoutGrid className="w-4 h-4" /> Aufräumen
-        </Button>
-        <Button variant="ghost" size="sm" onClick={onExportImage} className="gap-1.5 text-green-700 hover:bg-white hover:shadow-sm">
-          <Camera className="w-4 h-4" /> Bild Export
-        </Button>
-      </div>
+  const runAndClose = (fn: () => void) => () => { fn(); setMenuOpen(false); };
 
-      {/* Season Toggle */}
-      <div className="flex items-center gap-1 bg-stone-100/50 p-1 rounded-lg border border-stone-200/60 backdrop-blur-sm">
-        <Button
-          variant={season === 'summer' ? 'default' : 'ghost'}
-          size="sm"
-          onClick={() => setSeason('summer')}
-          className={`gap-1.5 ${season === 'summer' ? 'bg-yellow-400 text-yellow-900 shadow-sm' : ''}`}
-        >
-          <Sun className="w-4 h-4" /> Sommer
-        </Button>
-        <Button
-          variant={season === 'winter' ? 'default' : 'ghost'}
-          size="sm"
-          onClick={() => setSeason('winter')}
-          className={`gap-1.5 ${season === 'winter' ? 'bg-blue-400 text-blue-900 shadow-sm' : ''}`}
-        >
-          <Snowflake className="w-4 h-4" /> Winter
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-function ProModeSection({
-  isProMode,
-  toggleProMode,
-}: {
-  isProMode: boolean;
-  toggleProMode: () => void;
-}) {
   return (
-    <div className="ml-auto pl-3 border-l border-border flex items-center">
+    <div className="flex items-center gap-2">
+      {/* Primäraktion — der wichtigste erste Klick für Einsteiger */}
       <Button
-        variant={isProMode ? 'default' : 'outline'}
+        variant="default"
         size="sm"
-        onClick={toggleProMode}
-        className={isProMode ? 'bg-blue-500 hover:bg-blue-600' : ''}
+        onClick={() => autoWireSystem()}
+        className="gap-1.5"
+        title="Automatisch Verkabeln & Absichern — berechnet Querschnitte und Sicherungen nach VDE"
       >
-        {isProMode ? 'Profi-Modus An' : 'Profi-Modus Aus'}
+        <Zap className="w-4 h-4" /> Auto-Wire &amp; Absichern
       </Button>
+
+      <Button variant="outline" size="sm" onClick={onFitView} className="gap-1.5" title="Ganzen Plan einpassen">
+        <Maximize2 className="w-4 h-4" /> <span className="hidden md:inline">Übersicht</span>
+      </Button>
+
+      {/* Overflow-Menü — Sekundäraktionen & Saison */}
+      <div className="relative" ref={menuRef}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setMenuOpen((v) => !v)}
+          className="gap-1.5"
+          aria-haspopup="menu"
+          aria-expanded={menuOpen}
+          aria-label="Weitere Aktionen"
+        >
+          <MoreHorizontal className="w-4 h-4" /> Mehr
+        </Button>
+
+        {menuOpen && (
+          <div
+            role="menu"
+            className="absolute top-full right-0 mt-2 z-50 w-64 rounded-xl border border-border bg-card p-2 shadow-2xl animate-in fade-in slide-in-from-top-2"
+          >
+            <button role="menuitem" onClick={runAndClose(handleExportBOM)} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-foreground hover:bg-accent">
+              <Package className="w-4 h-4" /> Stückliste
+            </button>
+            <button role="menuitem" onClick={runAndClose(checkSchematic)} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-foreground hover:bg-accent">
+              <ScanSearch className="w-4 h-4" /> KI-Check
+            </button>
+            <button role="menuitem" onClick={runAndClose(() => onLayout())} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-foreground hover:bg-accent">
+              <LayoutGrid className="w-4 h-4" /> Aufräumen
+            </button>
+            <button role="menuitem" onClick={runAndClose(onExportImage)} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-foreground hover:bg-accent">
+              <Camera className="w-4 h-4" /> Bild Export
+            </button>
+
+            <div className="my-1 border-t border-border" />
+            <p className="px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Jahreszeit</p>
+            <div className="flex gap-1 px-2 pb-1">
+              <Button
+                variant={season === 'summer' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setSeason('summer')}
+                className="flex-1 gap-1.5"
+              >
+                <Sun className="w-4 h-4" /> Sommer
+              </Button>
+              <Button
+                variant={season === 'winter' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setSeason('winter')}
+                className="flex-1 gap-1.5"
+              >
+                <Snowflake className="w-4 h-4" /> Winter
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -192,6 +214,7 @@ export function PlannerDashboard() {
     onLayout,
     systemMessage,
     setSystemMessage,
+    focusElement,
     nodes,
     edges,
     waterNodes,
@@ -207,14 +230,20 @@ export function PlannerDashboard() {
     onLayout: state.onLayout,
     systemMessage: state.systemMessage,
     setSystemMessage: state.setSystemMessage,
+    focusElement: state.focusElement,
     nodes: state.nodes,
     edges: state.edges,
     waterNodes: state.waterNodes,
     waterEdges: state.waterEdges,
   })));
 
-  const { isProMode, toggleProMode } = useAppStore();
   const warnings = useLiveValidation(nodes, edges, waterNodes, waterEdges);
+
+  const handleFix = useCallback((w: ValidationWarning) => {
+    if (w.focusId && w.focusType && focusElement) {
+      focusElement(w.focusId, w.focusType);
+    }
+  }, [focusElement]);
 
   return (
     <div className="relative flex flex-nowrap items-center gap-2 bg-card border-b border-border px-2 py-1 shrink-0 w-full overflow-x-auto">
@@ -231,35 +260,23 @@ export function PlannerDashboard() {
           onExportError={(msg) => { setExportError(msg); setTimeout(() => setExportError(null), 5000); }}
           nodes={nodes}
         />
+      </div>
 
-        <ProModeSection isProMode={isProMode} toggleProMode={toggleProMode} />
+      {/* Gebündelte Warn-Zentrale — einziger fester Ort für alle Live-Warnungen */}
+      <div className="ml-auto pl-2 shrink-0">
+        <WarningCenter warnings={warnings} onFix={handleFix} />
       </div>
 
       {exportError && (
-        <div className="absolute top-full mt-2 left-4 z-50 p-3 rounded-lg bg-red-50 text-red-800 border border-red-200 text-sm font-semibold shadow-lg animate-in fade-in slide-in-from-top-2">
-          🚨 {exportError}
+        <div className="absolute top-full mt-2 left-4 z-50 p-3 rounded-lg bg-warn-critical-bg text-warn-critical border border-warn-critical-border text-sm font-semibold shadow-lg animate-in fade-in slide-in-from-top-2">
+          {exportError}
         </div>
       )}
 
       {systemMessage && (
-        <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 z-50 flex items-center gap-4 p-3 rounded-lg bg-blue-50 text-blue-800 border border-blue-200 text-sm font-semibold shadow-lg animate-in fade-in slide-in-from-top-2">
-          <span>ℹ️ {systemMessage}</span>
-          <Button variant="ghost" size="sm" onClick={() => setSystemMessage(null)} className="h-6 px-2 hover:bg-blue-100 text-blue-800" aria-label="Systemnachricht schließen">OK</Button>
-        </div>
-      )}
-
-      {warnings.length > 0 && (
-        <div className="absolute top-full mt-2 right-4 z-50 flex flex-col gap-2">
-          {warnings.map((w) => (
-            <div key={w.id} className={`p-3 rounded-lg shadow-lg border text-sm font-semibold max-w-md animate-in fade-in slide-in-from-right-2 ${
-              w.category === 'safety' ? 'bg-red-50 text-red-800 border-red-200' :
-              w.category === 'topology' ? 'bg-orange-50 text-orange-800 border-orange-200' :
-              w.category === 'monitoring' ? 'bg-blue-50 text-blue-800 border-blue-200' :
-              'bg-purple-50 text-purple-800 border-purple-200'
-            }`}>
-              {w.message}
-            </div>
-          ))}
+        <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 z-50 flex items-center gap-4 p-3 rounded-lg bg-warn-info-bg text-warn-info border border-warn-info-border text-sm font-semibold shadow-lg animate-in fade-in slide-in-from-top-2">
+          <span>{systemMessage}</span>
+          <Button variant="ghost" size="sm" onClick={() => setSystemMessage(null)} className="h-6 px-2" aria-label="Systemnachricht schließen">OK</Button>
         </div>
       )}
     </div>

@@ -2,6 +2,7 @@
 
 import React, { useMemo } from 'react';
 import { BaseEdge, EdgeProps, getBezierPath, useReactFlow } from 'reactflow';
+import { PIPE_COLORS } from './utils/edgeColors';
 
 export type WaterPipeEdgeData = {
   pipeType?: 'fresh' | 'gray';
@@ -46,7 +47,7 @@ const WaterPipeEdge = function ({
     if (data?.pipeType === 'gray') isGrayWater = true;
     if (data?.pipeType === 'fresh') isGrayWater = false;
 
-    return selected ? '#f97316' : (isGrayWater ? '#9ca3af' : '#3b82f6');
+    return selected ? PIPE_COLORS.selected : (isGrayWater ? PIPE_COLORS.gray : PIPE_COLORS.fresh);
   }, [getNode, source, data?.pipeType, selected]);
 
   const strokeWidth = 6;

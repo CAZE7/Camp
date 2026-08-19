@@ -43,11 +43,20 @@ interface InspectorProps {
 
 const EmptySelection = () => (
   <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-    <MousePointerClick className="w-12 h-12 mb-2 opacity-50" />
-    <p>Kein Element ausgewählt</p>
-    <p className="text-xs mt-2 text-center px-4">
-      Klicke auf eine Komponente oder Leitung im Schaltplan, um Details zu bearbeiten.
+    <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-3">
+      <MousePointerClick className="w-7 h-7 text-primary opacity-70" />
+    </div>
+    <p className="font-semibold text-foreground">Kein Element ausgewählt</p>
+    <p className="text-xs mt-2 text-center px-4 leading-relaxed">
+      Tippe eine Komponente oder Leitung im Plan an – hier erscheinen dann nur
+      die passenden Einstellungen dazu.
     </p>
+    <div className="mt-4 text-xs text-left px-5 space-y-1.5">
+      <p className="font-semibold text-foreground">So gehst du vor:</p>
+      <p>1. Bauteil aus der linken Leiste ziehen</p>
+      <p>2. Bauteile verbinden</p>
+      <p>3. Hier Werte wie Kapazität oder Länge anpassen</p>
+    </div>
   </div>
 );
 
@@ -191,7 +200,7 @@ export default function Inspector({
 
   return (
     <div className="relative h-full w-full bg-card p-4 flex flex-col text-foreground overflow-y-auto">
-      <h2 className="text-lg font-semibold mb-4 pl-10 text-gray-800">Inspector</h2>
+      <h2 className="text-lg font-semibold mb-4 pl-10 text-foreground">Details</h2>
 
       {!hasSelection ? (
         <EmptySelection />

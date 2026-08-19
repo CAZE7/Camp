@@ -76,6 +76,7 @@ const defaultPlannerStoreState = {
   onDrop: mockOnDropFromStore,
   onCustomDrop: mockOnCustomDropFromStore,
   setFirstTappedHandle: mockSetFirstTappedHandle,
+  addNode: vi.fn(),
 } as any;
 
 vi.mock('../../store/usePlannerStore', () => ({

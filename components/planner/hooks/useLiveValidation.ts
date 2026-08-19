@@ -9,7 +9,20 @@ export interface ValidationWarning {
   category: 'safety' | 'topology' | 'monitoring' | 'estimation';
   type: 'critical' | 'warning' | 'info';
   message: string;
+  /** Kurzer, laienverständlicher Titel für die Warn-Zentrale. */
+  title?: string;
+  /** ID der betroffenen Komponente/Leitung, die "Beheben" auf dem Canvas fokussiert. */
+  focusId?: string;
+  /** Ob focusId eine Node oder eine Kante (Leitung) ist. */
+  focusType?: 'node' | 'edge';
 }
+
+/** Reihenfolge der Schwere für die Sortierung in der Warn-Zentrale. */
+export const SEVERITY_ORDER: Record<ValidationWarning['type'], number> = {
+  critical: 0,
+  warning: 1,
+  info: 2,
+};
 
 export function useLiveValidation(
   nodes: Node[],
@@ -44,6 +57,9 @@ export function useLiveValidation(
                id: `missing-fuse-${edge.id}`,
                category: 'safety',
                type: 'critical',
+               title: 'Sicherung fehlt',
+               focusId: edge.id,
+               focusType: 'edge',
                message: `⚠️ Kritisch: Quellschutz fehlt! Die Leitung von ${sourceNode?.data?.label || sourceNode?.type} muss direkt am Anfang abgesichert werden (Kabel-Sicherung oder Sicherungsblock).`,
              });
           }
@@ -66,6 +82,9 @@ export function useLiveValidation(
           id: 'solar-overload',
           category: 'estimation',
           type: 'warning',
+          title: 'Solarregler zu klein',
+          focusId: chargers[0]?.id,
+          focusType: 'node',
           message: `⚠️ Hinweis: Solarregler unterdimensioniert (Solar: ~${totalSolarWatts}W, MPPT max: ~${Math.round(mpptCapacity)}W).`,
         });
       }
@@ -90,6 +109,9 @@ export function useLiveValidation(
           id: 'battery-capacity',
           category: 'estimation',
           type: 'info',
+          title: 'Batterie könnte knapp werden',
+          focusId: batteries[0]?.id,
+          focusType: 'node',
           message: `💡 Tipp: Deine Batterie könnte knapp werden. Verbrauch: ~${Math.round(totalDailyAh)}Ah/Tag (geschätzt), Batterie: ${totalBatteryAh}Ah.`,
         });
       }
@@ -106,6 +128,9 @@ export function useLiveValidation(
           id: `inverter-no-minus-${inverter.id}`,
           category: 'topology',
           type: 'warning',
+          title: 'Wechselrichter: Minus fehlt',
+          focusId: inverter.id,
+          focusType: 'node',
           message: `⚠️ Hinweis: Dem Wechselrichter fehlt die Rückleitung (Minuspol).`,
         });
       }
@@ -126,6 +151,9 @@ export function useLiveValidation(
             id: `inverter-unprotected-${edge.id}`,
             category: 'safety',
             type: 'critical',
+            title: 'Wechselrichter ohne Sicherung',
+            focusId: edge.id,
+            focusType: 'edge',
             message: `⚠️ Kritisch: Direkter Batterie-zu-Inverter-Pfad! Der Wechselrichter muss zwingend über eine eigene Sicherung abgesichert sein.`,
           });
         }
@@ -143,6 +171,9 @@ export function useLiveValidation(
           id: `dcdc-unconnected-${charger.id}`,
           category: 'topology',
           type: 'warning',
+          title: 'Ladebooster nicht komplett',
+          focusId: charger.id,
+          focusType: 'node',
           message: `💡 Hinweis: Der Ladebooster (DC-DC) scheint nicht vollständig angeschlossen zu sein. Bitte Starterseite (Eingang) und Aufbaubatterie-Pfad (Ausgang) prüfen.`,
         });
       }
@@ -166,6 +197,9 @@ export function useLiveValidation(
                id: `shunt-bypass-${edge.id}`,
                category: 'monitoring',
                type: 'critical',
+               title: 'Shunt wird umgangen',
+               focusId: edge.id,
+               focusType: 'edge',
                message: `⚠️ Kritisch: Smart Shunt Bypass! Relevante Minus-Verbindungen (wie von ${otherNode.data?.label || otherNode.type}) dürfen nicht am Shunt vorbei direkt an Batterie-Minus hängen.`,
              });
           }

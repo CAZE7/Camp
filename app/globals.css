@@ -62,6 +62,34 @@
     --sidebar-accent-foreground: var(--ink);
     --sidebar-border: var(--rule);
     --sidebar-ring: var(--ink);
+
+    /* --- Planer: Semantische Leitungs- & Warn-Kodierung ---
+       Zentral definiert, damit Canvas-Kanten, Rohre und Warnungen
+       überall dieselbe Farbsprache nutzen (keine Inline-Hexwerte). */
+    --wire-dc: #3b82f6;        /* Gleichstrom 12V/24V (blau) */
+    --wire-ac: #ef4444;        /* Wechselstrom 230V (rot) */
+    --wire-solar: #f59e0b;     /* Solar / PV (amber) */
+    --wire-selected: #9ca3af;  /* ausgewählte Leitung (neutral) */
+    --wire-error: #ef4444;     /* Leitung mit Fehler (rot) */
+
+    --pipe-fresh: #3b82f6;     /* Frischwasser (blau) */
+    --pipe-gray: #9ca3af;      /* Grauwasser (grau) */
+    --pipe-selected: #f97316;  /* ausgewähltes Rohr (orange) */
+
+    --warn-critical: #dc2626;      /* kritisch */
+    --warn-critical-bg: #fef2f2;
+    --warn-critical-border: #fecaca;
+    --warn-warning: #d97706;       /* Warnung */
+    --warn-warning-bg: #fffbeb;
+    --warn-warning-border: #fde68a;
+    --warn-info: #2563eb;          /* Hinweis */
+    --warn-info-bg: #eff6ff;
+    --warn-info-border: #bfdbfe;
+
+    /* Allgemeine Statusfarben (von Tailwind referenziert) */
+    --info: var(--warn-info);
+    --success: var(--oxide);
+    --warning: var(--warn-warning);
   }
 
   * {
