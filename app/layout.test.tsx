@@ -1,5 +1,4 @@
 
-
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
   value: vi.fn().mockImplementation(query => ({
@@ -13,15 +12,8 @@ Object.defineProperty(window, 'matchMedia', {
     dispatchEvent: vi.fn(),
   })),
 });
-import { render } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import RootLayout, { metadata } from './layout';
-
-// Mock next/font/google
-vi.mock('next/font/google', () => ({
-  Inter: () => ({ className: 'mocked-inter-class' }),
-  Geist: () => ({ variable: 'mocked-geist-variable' }),
-}));
 
 describe('RootLayout', () => {
   it('renders children correctly', () => {
@@ -33,28 +25,23 @@ describe('RootLayout', () => {
 
     expect(element.type).toBe('html');
     expect(element.props.lang).toBe('de');
-    expect(element.props.className).toContain('mocked-geist-variable');
 
     const bodyElement = element.props.children;
     expect(bodyElement.type).toBe('body');
-    expect(bodyElement.props.className).toContain('bg-stone-50');
     expect(bodyElement.props.className).toContain('font-sans');
+    expect(bodyElement.props.className).toContain('min-h-screen');
 
-    // MainLayout container is rendered inside body
-    // Since we removed the ambient background div, bodyElement.props.children is no longer an array
-    const mainLayoutElement = bodyElement.props.children;
-    expect(mainLayoutElement).toBeDefined();
-    expect(typeof mainLayoutElement.type).not.toBe('string');
-
-    const childElement = mainLayoutElement.props.children;
+    // The child is rendered directly inside <body>.
+    const childElement = bodyElement.props.children;
     expect(childElement.props['data-testid']).toBe('child');
     expect(childElement.props.children).toBe('Test Child');
   });
 
   it('exports the correct metadata', () => {
     expect(metadata).toEqual({
-      title: 'CampCraft — DIY Camper-Ausbau Plattform',
-      description: 'Plane deinen Camper-Ausbau wie ein Profi. Elektrik, Dach, Heizung und mehr — alles an einem Ort.',
+      title: 'Werft — Erst der Plan. Dann das Blech.',
+      description:
+        'Werkstatt für den Camper-Ausbau. 12V-Schaltplan, Dachfläche, Heizlast und Normen — geplant, bevor gebohrt wird.',
     });
   });
 });

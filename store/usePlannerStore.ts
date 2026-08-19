@@ -820,6 +820,15 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
     })
   })),
 
+  handleChangeFuseSize: (id, fuseSize) => set((state) => ({
+    edges: state.edges.map((e) => {
+      if (e.id === id) {
+        return { ...e, data: { ...e.data!, fuseSize } };
+      }
+      return e;
+    })
+  })),
+
   calculatePathVoltageDrop: (targetNodeId, customNodes, customEdges) => {
     const edges = customEdges || get().edges;
     const nodes = customNodes || get().nodes;

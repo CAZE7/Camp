@@ -19,7 +19,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { Outfit } from "next/font/google";
 import { vehicleTemplates } from "@/lib/vehicleTemplates";
 import { useDachNodes } from "./hooks/useDachNodes";
 import { DachPanel } from "./components/DachPanel";
@@ -28,7 +27,8 @@ import RoofSolarNode from "@/components/nodes/RoofSolarNode";
 import RoofWindowNode from "@/components/nodes/RoofWindowNode";
 import { RoofNodeData } from "@/components/nodes/types";
 
-const outfit = Outfit({ subsets: ["latin"], display: "swap" });
+// Outfit wird lokal über @fontsource-variable/outfit gebündelt (offline-fähiger Build).
+const outfit = { className: 'font-outfit' };
 
 const nodeTypes = {
   roofBackground: RoofBackgroundNode,
