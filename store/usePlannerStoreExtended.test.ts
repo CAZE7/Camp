@@ -321,3 +321,286 @@ describe('usePlannerStore - extended coverage', () => {
     });
   });
 });
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Auto-Wire Regression-Szenarien
+ *
+ * Ziel: Nach `autoWireSystem()` gilt für jede plausible Komponenten-Kombination
+ * „null Warnungen" — geprüft mit den exakt gleichen Regeln, die die App nutzt:
+ *   1. useLiveValidation (6 Regeln: Quellschutz, MPPT, Batterie, Inverter,
+ *      DC-DC-Vollständigkeit, Shunt-Bypass)
+ *   2. validateSchematic (lib/vde-standards)
+ *   3. collectEdgeErrors — die echte Kanten-Logik aus CableEdge.tsx
+ *      (Sicherung zu klein/zu groß/fehlt, Gesamt-Drop, 20-cm-Hauptsicherung)
+ * ──────────────────────────────────────────────────────────────────────────── */
+import { renderHook } from '@testing-library/react';
+import { useLiveValidation } from '../components/planner/hooks/useLiveValidation';
+import { validateSchematic, calculateEdgeCurrent, getSystemVoltage } from '../lib/vde-standards';
+import { FUSE_MAP, STANDARD_FUSE_SIZES, calculateCrossSection, calculateMaxFuse } from '../lib/electrical';
+import { collectEdgeErrors } from '../components/edges/CableEdge';
+
+function makeNode(id: string, type: string, data: Record<string, unknown> = {}): Node {
+  return { id, type, position: { x: 0, y: 0 }, data };
+}
+
+function runAutoWire(nodes: Node[], extra?: Partial<{ season: 'summer' | 'winter'; userEdges: Edge[] }>) {
+  usePlannerStore.setState({
+    viewMode: 'electric',
+    nodes,
+    edges: extra?.userEdges || [],
+    waterNodes: [],
+    waterEdges: [],
+    season: extra?.season || 'summer',
+    waterWarning: null,
+    firstTappedHandle: null,
+    selectedNodes: [],
+    selectedEdges: [],
+  });
+  act(() => {
+    usePlannerStore.getState().autoWireSystem();
+  });
+  const state = usePlannerStore.getState();
+  return { nodes: state.nodes, edges: state.edges as Edge<CableEdgeData>[], season: state.season };
+}
+
+/**
+ * Spiegelt die Kanten-Prüfung aus CableEdge.tsx mit denselben Bibliotheks-
+ * Funktionen — so testen die Szenarien exakt das, was der Nutzer sieht.
+ */
+function getEdgeErrors(nodes: Node[], edges: Edge<CableEdgeData>[], edge: Edge<CableEdgeData>): string[] {
+  const nodeMap = new Map(nodes.map((n) => [n.id, n]));
+  const sourceNode = nodeMap.get(edge.source);
+  const targetNode = nodeMap.get(edge.target);
+  const sysVoltage = getSystemVoltage(nodes);
+
+  // AC-Kanten werden von CableEdge komplett übersprungen
+  if (edge.data?.edgeDomain === 'AC_230V') return [];
+
+  const I = calculateEdgeCurrent(sourceNode, targetNode, nodes, sysVoltage);
+  const length = edge.data?.length ?? 1;
+  const cs = calculateCrossSection(I, length, edge.data?.crossSection, 'DC_12V');
+  const maxFuse = calculateMaxFuse(cs);
+  const ownDrop = (I * (length * 2)) / (58 * cs);
+  const pathDrop = usePlannerStore.getState().calculatePathVoltageDrop(edge.source, nodes, edges);
+  const totalDropPercentage = ((ownDrop + pathDrop) / sysVoltage) * 100;
+
+  return collectEdgeErrors({
+    edgeDomain: edge.data?.edgeDomain === 'AC_230V' ? 'AC_230V' : 'DC_12V',
+    data: edge.data,
+    I,
+    maxFuse,
+    isPlus: !!edge.sourceHandle?.includes('plus'),
+    sourceNodeType: sourceNode?.type,
+    length,
+    totalDropPercentage,
+  });
+}
+
+function assertZeroWarnings(nodes: Node[], edges: Edge<CableEdgeData>[]) {
+  // 1. Live-Validierung (useLiveValidation-Regeln)
+  const { result } = renderHook(() => useLiveValidation(nodes, edges));
+  expect(result.current).toEqual([]);
+
+  // 2. VDE-Validierung (validateSchematic)
+  const violations = validateSchematic(nodes, edges).filter((v) => v.severity !== 'ok');
+  expect(violations).toEqual([]);
+
+  // 3. Kanten-Logik der Anzeige (CableEdge-Errors)
+  const edgeErrors: string[] = [];
+  for (const edge of edges) {
+    edgeErrors.push(...getEdgeErrors(nodes, edges, edge));
+  }
+  expect(edgeErrors).toEqual([]);
+}
+
+function assertFusesMatchVde(edges: Edge<CableEdgeData>[]) {
+  for (const edge of edges) {
+    if (edge.data?.edgeDomain === 'AC_230V') continue;
+    if (!edge.sourceHandle?.includes('plus')) continue; // Minus ohne Sicherung (fachgerecht)
+    const fuseSize = edge.data?.fuseSize;
+    const cs = edge.data?.crossSection ?? 1.5;
+    expect(fuseSize, `Sicherung fehlt auf ${edge.id}`).toBeDefined();
+    expect(fuseSize!, `Sicherung ${fuseSize} außerhalb Normgrößen (${edge.id})`).toBeGreaterThan(0);
+    expect(STANDARD_FUSE_SIZES).toContain(fuseSize);
+    expect(fuseSize!, `Sicherung ${fuseSize}A > FUSE_MAP[${cs}] (${edge.id})`).toBeLessThanOrEqual(FUSE_MAP[cs] ?? 0);
+  }
+}
+
+function connectionKeys(edges: Edge[]): Set<string> {
+  return new Set(edges.map((e) => `${e.source}|${e.target}|${e.sourceHandle || ''}|${e.targetHandle || ''}`));
+}
+
+describe('Auto-Wire: keine Warnungen nach performAutoWiring', () => {
+  it('Szenario 1 — Minimal: nur Batterie + 1 Verbraucher', () => {
+    const nodes = [
+      makeNode('b1', 'battery', { label: 'Batterie', capacity: 100, chemistry: 'LiFePO4' }),
+      makeNode('c1', 'consumer', { label: 'LED', watts: 20, hours: 2 }),
+    ];
+    const { nodes: n, edges: e } = runAutoWire(nodes);
+
+    expect(n.some((x) => x.type === 'busbar')).toBe(true);
+    expect(n.some((x) => x.type === 'shunt')).toBe(true);
+    expect(n.some((x) => x.type === 'fuse')).toBe(true);
+
+    assertZeroWarnings(n, e);
+    assertFusesMatchVde(e);
+  });
+
+  it('Szenario 2 — Solar-Setup: 2 Panels + MPPT', () => {
+    const nodes = [
+      makeNode('b1', 'battery', { label: 'Batterie', capacity: 200, chemistry: 'LiFePO4' }),
+      makeNode('s1', 'solar', { label: 'Panel 1', watts: 100 }),
+      makeNode('s2', 'solar', { label: 'Panel 2', watts: 100 }),
+      makeNode('m1', 'mpptController', { label: 'MPPT', amps: 30 }),
+      makeNode('c1', 'consumer', { label: 'Kühlbox', watts: 60, hours: 4 }),
+    ];
+    const { nodes: n, edges: e } = runAutoWire(nodes);
+
+    const mppt = n.find((x) => x.id === 'm1');
+    expect(mppt?.data.amps).toBe(30); // vorhandener Regler reicht (200W ≤ 30A·12,8V)
+
+    assertZeroWarnings(n, e);
+    assertFusesMatchVde(e);
+  });
+
+  it('Szenario 3 — Landstrom + Wechselrichter (AC/DC strikt getrennt)', () => {
+    const nodes = [
+      makeNode('b1', 'battery', { label: 'Batterie', capacity: 200, chemistry: 'LiFePO4' }),
+      makeNode('i1', 'inverter', { label: 'Inverter', watts: 1000 }),
+      makeNode('a1', 'consumer230v', { label: 'Steckdose', watts: 300, hours: 1 }),
+      makeNode('p1', 'shorePower', { label: 'Landstrom' }),
+      makeNode('c1', 'consumer', { label: 'Pumpe', watts: 40, hours: 2 }),
+    ];
+    const { nodes: n, edges: e } = runAutoWire(nodes);
+
+    // Landstrom muss einen RCD (FI 30mA) haben — Auto-Wire setzt ihn
+    const shore = n.find((x) => x.id === 'p1');
+    expect(shore?.data.hasRcd).toBe(true);
+
+    // Keine DC-Kante zwischen Landstrom/230V-Verbraucher und DC-Welt
+    const acEdges = e.filter((x) => x.data?.edgeDomain === 'AC_230V');
+    expect(acEdges.length).toBeGreaterThan(0);
+    for (const ac of acEdges) {
+      const src = n.find((x) => x.id === ac.source)?.type;
+      const tgt = n.find((x) => x.id === ac.target)?.type;
+      expect(['shorePower', 'inverter', 'consumer230v']).toContain(src);
+      expect(['shorePower', 'inverter', 'consumer230v']).toContain(tgt);
+    }
+
+    assertZeroWarnings(n, e);
+    assertFusesMatchVde(e);
+  });
+
+  it('Szenario 4 — Volle Hütte: alle Ladequellen + DC/AC-Verbraucher', () => {
+    const nodes = [
+      makeNode('b1', 'battery', { label: 'Batterie', capacity: 200, chemistry: 'LiFePO4' }),
+      makeNode('s1', 'solar', { label: 'Panel 1', watts: 200 }),
+      makeNode('s2', 'solar', { label: 'Panel 2', watts: 200 }),
+      makeNode('m1', 'mpptController', { label: 'MPPT', amps: 10 }),
+      makeNode('d1', 'dcdcCharger', { label: 'Ladebooster', amps: 30 }),
+      makeNode('ch1', 'charger', { label: 'Ladequelle', amps: 20 }),
+      makeNode('ac1', 'acBatteryCharger', { label: '230V Ladegerät', amps: 25 }),
+      makeNode('p1', 'shorePower', { label: 'Landstrom' }),
+      makeNode('i1', 'inverter', { label: 'Inverter', watts: 1000 }),
+      makeNode('c1', 'consumer', { label: 'Kühlschrank', watts: 60, hours: 4 }),
+      makeNode('c2', 'consumer', { label: 'Pumpe', watts: 40, hours: 3 }),
+      makeNode('c3', 'consumer', { label: 'LED', watts: 40, hours: 2 }),
+      makeNode('a1', 'consumer230v', { label: 'Steckdose', watts: 300, hours: 1 }),
+      makeNode('g1', 'ground', { label: 'Massepunkt' }),
+    ];
+    const { nodes: n, edges: e } = runAutoWire(nodes);
+
+    // MPPT wird hochdimensioniert, damit 400W Solar nicht überlasten (Regel B)
+    const mppt = n.find((x) => x.id === 'm1');
+    expect(Number(mppt?.data.amps)).toBeGreaterThanOrEqual(Math.ceil(400 / 12.8));
+
+    // DC-DC-Ladebooster braucht Eingang (Starterseite) + Ausgang
+    const dcdcInput = e.some((x) => x.target === 'd1');
+    const dcdcOutput = e.some((x) => x.source === 'd1');
+    expect(dcdcInput).toBe(true);
+    expect(dcdcOutput).toBe(true);
+    // Starterbatterie wird automatisch ergänzt
+    expect(n.some((x) => x.type === 'battery' && x.data.label === 'Starterbatterie')).toBe(true);
+
+    assertZeroWarnings(n, e);
+    assertFusesMatchVde(e);
+  });
+
+  it('Szenario 5 — Winter-Saison: hohe Lasten', () => {
+    const nodes = [
+      makeNode('b1', 'battery', { label: 'Batterie', capacity: 300, chemistry: 'LiFePO4' }),
+      makeNode('i1', 'inverter', { label: 'Inverter', watts: 800 }),
+      makeNode('a1', 'consumer230v', { label: 'Heizlüfter', watts: 500, hours: 1 }),
+      makeNode('c1', 'consumer', { label: 'Standheizung', watts: 80, hours: 4 }),
+      makeNode('s1', 'solar', { label: 'Panel', watts: 200 }),
+      makeNode('m1', 'mpptController', { label: 'MPPT', amps: 30 }),
+    ];
+    const { nodes: n, edges: e, season } = runAutoWire(nodes, { season: 'winter' });
+
+    expect(season).toBe('winter');
+
+    assertZeroWarnings(n, e);
+    assertFusesMatchVde(e);
+  });
+
+  it('Idempotenz: zweimaliges Auto-Wire erzeugt keine Duplikate und keine neuen Warnungen', () => {
+    const nodes = [
+      makeNode('b1', 'battery', { label: 'Batterie', capacity: 200, chemistry: 'LiFePO4' }),
+      makeNode('s1', 'solar', { label: 'Panel', watts: 200 }),
+      makeNode('c1', 'consumer', { label: 'Kühlbox', watts: 60, hours: 4 }),
+      makeNode('i1', 'inverter', { label: 'Inverter', watts: 1000 }),
+      makeNode('a1', 'consumer230v', { label: 'Steckdose', watts: 300, hours: 1 }),
+    ];
+
+    const first = runAutoWire(nodes);
+    assertZeroWarnings(first.nodes, first.edges);
+    const firstKeys = connectionKeys(first.edges);
+
+    const second = runAutoWire(first.nodes, { userEdges: first.edges });
+    assertZeroWarnings(second.nodes, second.edges);
+
+    expect(second.nodes.length).toBe(first.nodes.length); // keine neuen Nodes
+    expect(connectionKeys(second.edges).size).toBe(firstKeys.size); // keine Duplikate
+    expect(connectionKeys(second.edges)).toEqual(firstKeys);
+  });
+
+  it('Nutzer-Kanten bleiben erhalten und werden nicht dupliziert', () => {
+    const nodes = [
+      makeNode('b1', 'battery', { label: 'Batterie', capacity: 100, chemistry: 'LiFePO4' }),
+      makeNode('c1', 'consumer', { label: 'LED', watts: 20, hours: 2 }),
+    ];
+    const userEdge: Edge<CableEdgeData> = {
+      id: 'user-edge-1',
+      source: 'b1',
+      target: 'c1',
+      sourceHandle: 'plus',
+      targetHandle: 'plus',
+      type: 'cableEdge',
+      data: { length: 2, crossSection: 2.5 },
+    };
+
+    const { edges } = runAutoWire(nodes, { userEdges: [userEdge] });
+
+    expect(edges.some((e) => e.id === 'user-edge-1')).toBe(true); // bleibt erhalten
+
+    // Die identische Verbindung wird nicht noch einmal angelegt
+    const dupes = edges.filter(
+      (e) => e.source === 'b1' && e.target === 'c1' && e.sourceHandle === 'plus' && e.targetHandle === 'plus'
+    );
+    expect(dupes.length).toBe(1);
+  });
+
+  it('Startzustand (Standard-Template): nach Auto-Wire null Warnungen', () => {
+    const { nodes: n, edges: e } = runAutoWire(initialNodes, { userEdges: initialEdges });
+
+    // Template-Kanten bleiben erhalten, Auto-Kanten kommen hinzu
+    for (const ie of initialEdges) {
+      expect(e.some((x) => x.id === ie.id)).toBe(true);
+    }
+    // keine doppelten Verbindungen
+    expect(connectionKeys(e).size).toBe(e.length);
+
+    assertZeroWarnings(n, e);
+    assertFusesMatchVde(e);
+  });
+});
