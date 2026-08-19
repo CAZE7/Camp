@@ -94,5 +94,8 @@ describe('electrical safety refactoring tests', () => {
     expect(getHandleDomain('inverter', 'plus', 'source')).toBe('AC_230V');
     expect(getHandleDomain('inverter', 'ac', 'source')).toBe('AC_230V');
     expect(getHandleDomain('inverter', 'minus', 'source')).toBe('DC_12V');
+    // InverterNode: left target plus is the 12V DC input, not the AC output
+    expect(getHandleDomain('inverter', 'plus', 'target')).toBe('DC_12V');
+    expect(getHandleDomain('inverter', 'ac_in', 'target')).toBe('AC_230V');
   });
 });

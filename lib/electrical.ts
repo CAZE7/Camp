@@ -101,6 +101,11 @@ export const getHandleDomain = (
     return 'AC_230V';
   }
   if (nodeType === 'inverter') {
+    // Left TARGET plus/minus = 12V DC input. Right SOURCE plus / ac_* = 230V AC.
+    // 'plus' as a target is the battery-side DC terminal on InverterNode.
+    if (handleId === 'plus' && handleType === 'target') {
+      return 'DC_12V';
+    }
     const AC_HANDLES = ['plus', 'ac_out', 'L', 'ac', 'output', 'ac_in'];
     if (handleId && AC_HANDLES.includes(handleId)) {
       return 'AC_230V';

@@ -55,6 +55,7 @@ interface PlannerState {
   updateNodeData: (id: string, data: Partial<PlannerNodeData>) => void;
   handleChangeLength: (id: string, length: number) => void;
   handleChangeCrossSection: (id: string, crossSection: number) => void;
+  handleChangeFuseSize: (id: string, fuseSize: number) => void;
 
   isValidConnection: (connection: Connection) => boolean;
   onConnect: (connection: Connection) => void;
@@ -358,7 +359,7 @@ function performAutoWiring(initialNodes: Node[]): { nodes: Node[], edges: Edge[]
           source: shorePowers[i].id,
           target: mainInverter.id,
           sourceHandle: 'plus',
-          targetHandle: 'plus',
+          targetHandle: 'ac_in',
           type: 'cableEdge',
           data: { length: 2, crossSection: 2.5, fuseSize: 16, edgeDomain: 'AC_230V' },
         });
@@ -558,7 +559,8 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
         (sourceNode?.type === 'battery' && targetNode?.type === 'battery') ||
         (sourceNode?.type === 'solar' && targetNode?.type === 'solar');
 
-      if (!isSeriesException) {
+      // AC uses L/N/PE, not plus/minus — skip DC polarity on AC-AC links
+      if (sourceDomain !== 'AC_230V' && !isSeriesException) {
         if ((sIsPlus && !tIsPlus) || (sIsMinus && !tIsMinus)) {
           return false; // Polarity mismatch strict block
         }
@@ -784,19 +786,21 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
     };
 
     if (type === 'battery') {
-      newNode.data = { ...newNode.data, capacity: 100, chemistry: 'LiFePO4' };
+      newNode.data = { capacity: 100, chemistry: 'LiFePO4', ...newNode.data };
     } else if (type === 'consumer') {
-      newNode.data = { ...newNode.data, watts: 50, hours: 2 };
+      newNode.data = { watts: 50, hours: 2, ...newNode.data };
     } else if (type === 'charger' || type === 'mpptController' || type === 'dcdcCharger' || type === 'acBatteryCharger') {
-      newNode.data = { ...newNode.data, amps: 10 };
+      newNode.data = { amps: 10, ...newNode.data };
     } else if (type === 'fuse') {
-      newNode.data = { ...newNode.data, rating: 30 };
+      newNode.data = { rating: 30, ...newNode.data };
     } else if (type === 'shorePower') {
-      newNode.data = { ...newNode.data, hasRcd: false };
+      newNode.data = { hasRcd: false, ...newNode.data };
     } else if (type === 'consumer230v') {
-      newNode.data = { ...newNode.data, watts: 1000, hours: 0.5 };
+      newNode.data = { watts: 1000, hours: 0.5, ...newNode.data };
     } else if (type === 'solar') {
-      newNode.data = { ...newNode.data, voltage: 18, amps: 5, watts: 90 };
+      newNode.data = { voltage: 18, amps: 5, watts: 90, ...newNode.data };
+    } else if (type === 'inverter') {
+      newNode.data = { watts: 1000, continuousPower: 1000, ...newNode.data };
     }
 
     const { viewMode } = get();
