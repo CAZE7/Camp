@@ -38,7 +38,7 @@ export default function PlannerInner() {
       <div className={`lg:flex flex-1 flex-col min-w-0 ${activeTab === 'canvas' ? 'flex' : 'hidden lg:flex'}`}>
         <PlannerDashboard />
         <div className="flex flex-col flex-1 h-full overflow-hidden relative">
-          <React.Suspense fallback={<div className="flex-1 flex items-center justify-center bg-stone-50"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div></div>}>
+          <React.Suspense fallback={<div className="flex-1 flex items-center justify-center bg-background"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div></div>}>
             <FlowCanvas />
           </React.Suspense>
           {/* Floating Expert Knowledge Panel — reads from store independently, never re-renders FlowCanvas */}
@@ -60,7 +60,7 @@ export default function PlannerInner() {
             setActiveTab('canvas');
             setViewMode('electric');
           }}
-          className={`flex flex-col items-center justify-center min-h-[48px] min-w-[48px] rounded-lg p-2 transition-colors ${(activeTab === 'canvas' || activeTab === 'sidebar') && viewMode === 'electric' ? 'text-emerald-600 bg-emerald-50' : 'text-muted-foreground hover:bg-stone-100'}`}
+          className={`flex flex-col items-center justify-center min-h-[48px] min-w-[48px] rounded-lg p-2 transition-colors ${(activeTab === 'canvas' || activeTab === 'sidebar') && viewMode === 'electric' ? 'text-primary bg-accent' : 'text-muted-foreground hover:bg-accent/60'}`}
           aria-label="Elektrik"
         >
           <Zap size={24} />
@@ -71,7 +71,7 @@ export default function PlannerInner() {
             setActiveTab('canvas');
             setViewMode('water');
           }}
-          className={`flex flex-col items-center justify-center min-h-[48px] min-w-[48px] rounded-lg p-2 transition-colors ${(activeTab === 'canvas' || activeTab === 'sidebar') && viewMode === 'water' ? 'text-cyan-600 bg-cyan-50' : 'text-muted-foreground hover:bg-stone-100'}`}
+          className={`flex flex-col items-center justify-center min-h-[48px] min-w-[48px] rounded-lg p-2 transition-colors ${(activeTab === 'canvas' || activeTab === 'sidebar') && viewMode === 'water' ? 'text-primary bg-accent' : 'text-muted-foreground hover:bg-accent/60'}`}
           aria-label="Wasser"
         >
           <Droplets size={24} />
@@ -79,7 +79,7 @@ export default function PlannerInner() {
         </button>
         <button
           onClick={() => router.push('/tools/heizung')}
-          className={`flex flex-col items-center justify-center min-h-[48px] min-w-[48px] rounded-lg p-2 transition-colors text-muted-foreground hover:bg-stone-100`}
+          className={`flex flex-col items-center justify-center min-h-[48px] min-w-[48px] rounded-lg p-2 transition-colors text-muted-foreground hover:bg-accent/60`}
           aria-label="Heizung"
         >
           <Flame size={24} />
@@ -87,7 +87,7 @@ export default function PlannerInner() {
         </button>
         <button
           onClick={() => setActiveTab('inspector')}
-          className={`flex flex-col items-center justify-center min-h-[48px] min-w-[48px] rounded-lg p-2 transition-colors ${activeTab === 'inspector' ? 'text-indigo-600 bg-indigo-50' : 'text-muted-foreground hover:bg-stone-100'}`}
+          className={`flex flex-col items-center justify-center min-h-[48px] min-w-[48px] rounded-lg p-2 transition-colors ${activeTab === 'inspector' ? 'text-primary bg-accent' : 'text-muted-foreground hover:bg-accent/60'}`}
           aria-label="Details"
         >
           <Settings2 size={24} />

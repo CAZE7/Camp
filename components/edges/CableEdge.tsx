@@ -4,6 +4,7 @@ import { useAppStore } from '../../lib/store';
 import { usePlannerStore, getDerivedSystemState } from '../../store/usePlannerStore';
 import { useShallow } from 'zustand/react/shallow';
 import { calculateEdgePath } from './utils/pathUtils';
+import { getWireColor, WireDomain } from './utils/edgeColors';
 import { calculateCrossSection, calculateMaxFuse, calculateStrokeWidth, getEdgeDomain } from '../../lib/electrical';
 import {
   VDE_INVERTER_EFFICIENCY,
@@ -221,20 +222,13 @@ const CableEdge = function ({
     totalDropPercentage,
   });
 
-  let stroke = selected ? '#9ca3af' : (edgeDomain === 'AC_230V' ? '#ef4444' : (edgeDomain === 'Solar' as any ? '#f59e0b' : '#3b82f6'));
-  if (selected) {
-    stroke = '#9ca3af';
-  } else if (edgeDomain === 'AC_230V') {
-    stroke = '#ef4444'; // Rot/Gelb gestreift theoretisch, aber wir nutzen Warn-Rot laut Spezifikation
-  } else if (edgeDomain === 'Solar' as any) {
-    stroke = '#f59e0b';
-  } else {
-    stroke = '#3b82f6';
-  }
-
-  if (edgeDomain !== 'AC_230V' && totalDropPercentage > 3) {
-    stroke = '#ef4444'; // strict red for > 3%
-  }
+  // Zentrale, token-basierte Kodierung (DC / AC / Solar / Auswahl / Fehler)
+  const hasDropError = edgeDomain !== 'AC_230V' && totalDropPercentage > 3;
+  const stroke = getWireColor({
+    selected: !!selected,
+    edgeDomain: edgeDomain as WireDomain,
+    hasError: hasDropError,
+  });
 
   return (
     <>
@@ -264,32 +258,43 @@ const CableEdge = function ({
           style={{
             position: 'absolute',
             transform: `translate(-50%, -50%) translate(${labelX}px,${labelY + (resolvedSourceHandle?.includes('minus') ? 40 : -40)}px)`,
-            background: 'white',
+            background: 'var(--bone)',
             padding: '2px 6px',
             borderRadius: '4px',
-            fontSize: '12px',
+            fontSize: '11px',
             fontWeight: 'bold',
-            border: '1px solid #ccc',
+            border: '1px solid var(--rule)',
+            color: 'var(--ink)',
             pointerEvents: 'all',
             display: 'flex',
             flexDirection: 'column',
-            alignItems: 'center'
+            alignItems: 'center',
+            lineHeight: 1.25,
           }}
           className="nodrag nopan"
         >
-          { (selected || isHovered) && <span>{length.toFixed(2)} m</span> }
+          {/* Kern-Werte immer lesbar (auch ohne Klick / auf Touch) */}
+          {edgeDomain === 'AC_230V' ? (
+            <span style={{ color: 'var(--wire-ac)' }}>230V AC</span>
+          ) : (
+            <span>
+              {data?.fuseSize ? `${data.fuseSize}A · ` : ''}{crossSection} mm²
+            </span>
+          )}
+
+          {/* Details bei Auswahl / Hover */}
+          {(selected || isHovered) && <span style={{ fontWeight: 500 }}>{length.toFixed(2)} m</span>}
           {(selected || isHovered) && edgeDomain === 'AC_230V' ? (
             <>
-              <span style={{ color: '#16a34a', fontSize: '10px' }}>3-adrig (L, N, PE)</span>
-              <span style={{ background: '#0284c7', color: 'white', padding: '1px 4px', borderRadius: '4px', fontSize: '10px', marginTop: '2px' }}>RCBO (FI/LS) empfohlen</span>
+              <span style={{ color: 'var(--success)', fontSize: '10px' }}>3-adrig (L, N, PE)</span>
+              <span style={{ background: 'var(--warn-info)', color: 'white', padding: '1px 4px', borderRadius: '4px', fontSize: '10px', marginTop: '2px' }}>RCBO (FI/LS) empfohlen</span>
             </>
           ) : (selected || isHovered) ? (
             <>
-              <span>{crossSection} mm²</span>
-              {maxFuse > 0 && <span style={{ color: 'red', fontSize: '10px' }}>Max: {maxFuse}A</span>}
-              {data?.fuseSize && <span style={{ background: 'green', color: 'white', padding: '1px 4px', borderRadius: '4px', fontSize: '10px', marginTop: '2px' }}>{data.fuseSize}A Sicherung</span>}
+              {maxFuse > 0 && <span style={{ color: 'var(--wire-error)', fontSize: '10px' }}>Max: {maxFuse}A</span>}
+              {data?.fuseSize && <span style={{ background: 'var(--success)', color: 'white', padding: '1px 4px', borderRadius: '4px', fontSize: '10px', marginTop: '2px' }}>{data.fuseSize}A Sicherung</span>}
               {errors.map((err, idx) => (
-                <span key={idx} style={{ background: 'red', color: 'white', padding: '1px 4px', borderRadius: '4px', fontSize: '10px', marginTop: '2px' }}>{err}</span>
+                <span key={idx} style={{ background: 'var(--wire-error)', color: 'white', padding: '1px 4px', borderRadius: '4px', fontSize: '10px', marginTop: '2px' }}>{err}</span>
               ))}
             </>
           ) : null}

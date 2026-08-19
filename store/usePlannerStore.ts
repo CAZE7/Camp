@@ -51,6 +51,7 @@ interface PlannerState {
   onWaterNodesChange: (changes: import('reactflow').NodeChange[]) => void;
   onWaterEdgesChange: (changes: import('reactflow').EdgeChange[]) => void;
   onSelectionChange: (params: import('reactflow').OnSelectionChangeParams) => void;
+  focusElement: (id: string, elementType: 'node' | 'edge') => void;
   deleteSelected: () => void;
   updateNodeData: (id: string, data: Partial<PlannerNodeData>) => void;
   handleChangeLength: (id: string, length: number) => void;
@@ -777,6 +778,40 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
   onWaterEdgesChange: (changes) => set((state) => ({ waterEdges: applyEdgeChanges(changes, state.waterEdges) })),
 
   onSelectionChange: (params) => set({ selectedNodes: params.nodes, selectedEdges: params.edges }),
+
+  // Fokussiert eine betroffene Komponente/Leitung ("Beheben" aus der Warn-Zentrale):
+  // markiert sie als ausgewählt (ReactFlow-Highlight + Inspector) und passt die Ansicht ein.
+  focusElement: (id, elementType) => {
+    set((state) => {
+      if (elementType === 'edge') {
+        const edges = state.edges.map((e) => ({ ...e, selected: e.id === id }));
+        const waterEdges = state.waterEdges.map((e) => ({ ...e, selected: e.id === id }));
+        const nodes = state.nodes.map((n) => (n.selected ? { ...n, selected: false } : n));
+        const target = edges.find((e) => e.id === id) || waterEdges.find((e) => e.id === id) || null;
+        return {
+          edges,
+          waterEdges,
+          nodes,
+          selectedEdges: target ? [target] : [],
+          selectedNodes: [],
+        };
+      }
+      const nodes = state.nodes.map((n) => ({ ...n, selected: n.id === id }));
+      const waterNodes = state.waterNodes.map((n) => ({ ...n, selected: n.id === id }));
+      const edges = state.edges.map((e) => (e.selected ? { ...e, selected: false } : e));
+      const target = nodes.find((n) => n.id === id) || waterNodes.find((n) => n.id === id) || null;
+      return {
+        nodes,
+        waterNodes,
+        edges,
+        selectedNodes: target ? [target] : [],
+        selectedEdges: [],
+      };
+    });
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('planner-fit-view'));
+    }
+  },
 
   deleteSelected: () => set((state) => {
     const nodeIdsSet = new Set<string>();

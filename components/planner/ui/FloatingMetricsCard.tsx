@@ -72,14 +72,8 @@ export function FloatingMetricsCard() {
                 </div>
               )}
 
-              {metrics.hasDirectBatteryToConsumer && (
-                <div className="mt-2 p-2 bg-red-50 border border-red-100 rounded-lg">
-                  <p className="text-xs text-red-600 font-medium flex items-start gap-1">
-                    <span>⚠️</span>
-                    Sicherung fehlt (Batterie direkt am Verbraucher)!
-                  </p>
-                </div>
-              )}
+              {/* Sicherheits-Warnungen erscheinen gebündelt in der Warn-Zentrale (oben),
+                  nicht mehr verstreut hier in der Metrik-Karte. */}
             </div>
           )}
         </div>

@@ -2,23 +2,13 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { PlannerDashboard } from './PlannerDashboard';
-import { usePlannerStore } from '../../store/usePlannerStore';
-import { useAppStore } from '../../lib/store';
 import { toPng } from 'html-to-image';
 
 // --- Mocks ---
 
-// Mock html-to-image
+// Mock html-to-image (lazy-imported by the dashboard)
 vi.mock('html-to-image', () => ({
   toPng: vi.fn().mockResolvedValue('data:image/png;base64,mocked')
-}));
-
-// Mock React Flow (no longer used in PlannerDashboard, kept for safety)
-const mockFitView = vi.fn();
-vi.mock('reactflow', () => ({
-  useReactFlow: () => ({
-    fitView: mockFitView
-  })
 }));
 
 // Mock Planner Store
@@ -42,6 +32,7 @@ vi.mock('../../store/usePlannerStore', () => ({
       onLayout: mockOnLayout,
       systemMessage: null,
       setSystemMessage: vi.fn(),
+      focusElement: vi.fn(),
       nodes: [],
       edges: [],
       waterNodes: [],
@@ -51,14 +42,10 @@ vi.mock('../../store/usePlannerStore', () => ({
   })
 }));
 
-// Mock App Store
-const mockToggleProMode = vi.fn();
-vi.mock('../../lib/store', () => ({
-  useAppStore: vi.fn(() => ({
-    isProMode: false,
-    toggleProMode: mockToggleProMode
-  }))
-}));
+// Helper to open the overflow ("Mehr") menu where secondary actions live
+const openMoreMenu = () => {
+  fireEvent.click(screen.getByRole('button', { name: 'Weitere Aktionen' }));
+};
 
 describe('PlannerDashboard - Core Interactions', () => {
   beforeEach(() => {
@@ -72,16 +59,23 @@ describe('PlannerDashboard - Core Interactions', () => {
   it('renders default UI elements correctly', () => {
     render(<PlannerDashboard />);
 
+    // View toggles
     expect(screen.getByText('Elektrik-Schaltplan')).toBeInTheDocument();
     expect(screen.getByText('Wasser & Sanitär')).toBeInTheDocument();
-    expect(screen.getByText(/Stückliste/)).toBeInTheDocument();
+    // Primary action is always visible
     expect(screen.getByText(/Auto-Wire/)).toBeInTheDocument();
+
+    // Secondary actions live in the overflow menu
+    openMoreMenu();
+    expect(screen.getByText(/Stückliste/)).toBeInTheDocument();
     expect(screen.getByText(/KI-Check/)).toBeInTheDocument();
     expect(screen.getByText(/Aufräumen/)).toBeInTheDocument();
     expect(screen.getByText(/Bild Export/)).toBeInTheDocument();
     expect(screen.getByText(/Sommer/)).toBeInTheDocument();
     expect(screen.getByText(/Winter/)).toBeInTheDocument();
-    expect(screen.getByText('Profi-Modus Aus')).toBeInTheDocument();
+
+    // The Pro-Mode switch has been removed entirely
+    expect(screen.queryByText(/Profi-Modus/)).not.toBeInTheDocument();
   });
 
   it('calls setViewMode when changing view mode', () => {
@@ -97,18 +91,13 @@ describe('PlannerDashboard - Core Interactions', () => {
   it('calls setSeason when changing season', () => {
     render(<PlannerDashboard />);
 
+    // Season buttons live in the overflow menu and keep it open after a click
+    openMoreMenu();
     fireEvent.click(screen.getByText(/Winter/));
     expect(mockSetSeason).toHaveBeenCalledWith('winter');
 
     fireEvent.click(screen.getByText(/Sommer/));
     expect(mockSetSeason).toHaveBeenCalledWith('summer');
-  });
-
-  it('calls toggleProMode when clicking Profi-Modus', () => {
-    render(<PlannerDashboard />);
-
-    fireEvent.click(screen.getByText('Profi-Modus Aus'));
-    expect(mockToggleProMode).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -125,6 +114,7 @@ describe('PlannerDashboard - Action Buttons', () => {
     render(<PlannerDashboard />);
     const dispatchEventSpy = vi.spyOn(window, 'dispatchEvent');
 
+    openMoreMenu();
     fireEvent.click(screen.getByText(/Stückliste/));
 
     expect(mockExportBOM).toHaveBeenCalledTimes(1);
@@ -134,7 +124,7 @@ describe('PlannerDashboard - Action Buttons', () => {
     expect(event.type).toBe('show-bom-modal');
   });
 
-  it('calls autoWireSystem with no args when clicking Auto-Wire', () => {
+  it('calls autoWireSystem with no args when clicking the primary Auto-Wire action', () => {
     render(<PlannerDashboard />);
 
     fireEvent.click(screen.getByText(/Auto-Wire/));
@@ -146,6 +136,7 @@ describe('PlannerDashboard - Action Buttons', () => {
   it('calls checkSchematic when clicking KI-Check', () => {
     render(<PlannerDashboard />);
 
+    openMoreMenu();
     fireEvent.click(screen.getByText(/KI-Check/));
 
     expect(mockCheckSchematic).toHaveBeenCalledTimes(1);
@@ -154,10 +145,21 @@ describe('PlannerDashboard - Action Buttons', () => {
   it('calls onLayout with no args when clicking Aufräumen', () => {
     render(<PlannerDashboard />);
 
+    openMoreMenu();
     fireEvent.click(screen.getByText(/Aufräumen/));
 
     expect(mockOnLayout).toHaveBeenCalledTimes(1);
     expect(mockOnLayout).toHaveBeenCalledWith();
+  });
+
+  it('dispatches planner-fit-view when clicking the Übersicht (fit view) button', () => {
+    render(<PlannerDashboard />);
+    const dispatchEventSpy = vi.spyOn(window, 'dispatchEvent');
+
+    fireEvent.click(screen.getByTitle('Ganzen Plan einpassen'));
+
+    const dispatched = dispatchEventSpy.mock.calls.map((c) => (c[0] as CustomEvent).type);
+    expect(dispatched).toContain('planner-fit-view');
   });
 });
 
@@ -200,6 +202,7 @@ describe('PlannerDashboard - Image Export', () => {
 
     render(<PlannerDashboard />);
 
+    openMoreMenu();
     fireEvent.click(screen.getByText(/Bild Export/));
 
     await waitFor(() => {
@@ -214,7 +217,7 @@ describe('PlannerDashboard - Image Export', () => {
     createElementSpy.mockRestore();
   });
 
-  it('does not export image if react flow wrapper is not found', () => {
+  it('does not export image if react flow wrapper is not found', async () => {
     const existingElements = document.querySelectorAll('.react-flow');
     existingElements.forEach(el => document.body.removeChild(el));
 
@@ -222,8 +225,11 @@ describe('PlannerDashboard - Image Export', () => {
 
     render(<PlannerDashboard />);
 
+    openMoreMenu();
     fireEvent.click(screen.getByText(/Bild Export/));
 
+    // Give the dynamic import a tick to resolve
+    await Promise.resolve();
     expect(toPng).not.toHaveBeenCalled();
   });
 
@@ -234,6 +240,7 @@ describe('PlannerDashboard - Image Export', () => {
 
     render(<PlannerDashboard />);
 
+    openMoreMenu();
     fireEvent.click(screen.getByText(/Bild Export/));
 
     await waitFor(() => {
@@ -271,6 +278,7 @@ describe('PlannerDashboard - Image Export', () => {
 
     render(<PlannerDashboard />);
 
+    openMoreMenu();
     fireEvent.click(screen.getByText(/Bild Export/));
 
     await waitFor(() => {

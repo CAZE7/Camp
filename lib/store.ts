@@ -1,8 +1,11 @@
 import { create } from 'zustand';
 
 interface AppState {
+  /**
+   * Es gibt nur noch eine (vollständige) Ansicht — kein Umschalter mehr.
+   * Das Flag bleibt als Konstante erhalten, weil der Kanten-Pfadstil es liest.
+   */
   isProMode: boolean;
-  toggleProMode: () => void;
   calculatedSolarWatts: number;
   setCalculatedSolarWatts: (watts: number) => void;
   hasOnboarded: boolean;
@@ -11,7 +14,6 @@ interface AppState {
 
 export const useAppStore = create<AppState>()((set) => ({
   isProMode: true,
-  toggleProMode: () => set((state) => ({ isProMode: !state.isProMode })),
   calculatedSolarWatts: 0,
   setCalculatedSolarWatts: (watts) => set({ calculatedSolarWatts: watts }),
   hasOnboarded: false,
