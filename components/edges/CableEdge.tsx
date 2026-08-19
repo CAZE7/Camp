@@ -5,6 +5,7 @@ import { usePlannerStore, getDerivedSystemState } from '../../store/usePlannerSt
 import { useShallow } from 'zustand/react/shallow';
 import { calculateEdgePath } from './utils/pathUtils';
 import { calculateCrossSection, calculateMaxFuse, calculateStrokeWidth, getEdgeDomain } from '../../lib/electrical';
+import { VDE_INVERTER_EFFICIENCY, VDE_SOLAR_VMP_VOLTAGE } from '../../lib/vde-standards';
 import { getSystemVoltage } from '../planner/utils/voltage';
 
 export type CableEdgeData = {
@@ -38,11 +39,11 @@ export const calculateCurrent = (
   if (sourceNode?.type === 'consumer') return (Number(sData?.watts) || 0) / sysVoltage;
   if (targetNode?.type === 'consumer') return (Number(tData?.watts) || 0) / sysVoltage;
 
-  if (sourceNode?.type === 'inverter') return (Number(sData?.watts) || 0) / sysVoltage / 0.85;
-  if (targetNode?.type === 'inverter') return (Number(tData?.watts) || 0) / sysVoltage / 0.85;
+  if (sourceNode?.type === 'inverter') return (Number(sData?.watts) || 0) / sysVoltage / VDE_INVERTER_EFFICIENCY;
+  if (targetNode?.type === 'inverter') return (Number(tData?.watts) || 0) / sysVoltage / VDE_INVERTER_EFFICIENCY;
 
-  if (sourceNode?.type === 'solar') return (Number(sData?.watts) || 0) / 18; // Typical Vmp
-  if (targetNode?.type === 'solar') return (Number(tData?.watts) || 0) / 18;
+  if (sourceNode?.type === 'solar') return (Number(sData?.watts) || 0) / VDE_SOLAR_VMP_VOLTAGE; // Typical Vmp
+  if (targetNode?.type === 'solar') return (Number(tData?.watts) || 0) / VDE_SOLAR_VMP_VOLTAGE;
 
   // 3. Fallback: Main lines
   let totalConsumerAmps = 0;
@@ -52,11 +53,11 @@ export const calculateCurrent = (
     if (n.type === 'consumer') {
       totalConsumerAmps += (Number(n.data.watts) || 0) / sysVoltage;
     } else if (n.type === 'inverter') {
-      totalConsumerAmps += (Number(n.data.watts) || 0) / sysVoltage / 0.85;
+      totalConsumerAmps += (Number(n.data.watts) || 0) / sysVoltage / VDE_INVERTER_EFFICIENCY;
     } else if (['charger', 'mpptController', 'dcdcCharger', 'acBatteryCharger'].includes(n.type as string)) {
       totalChargerAmps += Number(n.data.amps) || 0;
     } else if (n.type === 'solar') {
-      totalChargerAmps += (Number(n.data.watts) || 0) / 18;
+      totalChargerAmps += (Number(n.data.watts) || 0) / VDE_SOLAR_VMP_VOLTAGE;
     }
   }
   

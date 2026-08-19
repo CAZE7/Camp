@@ -2,6 +2,13 @@ import { useMemo, useState, useEffect } from 'react';
 import { BatteryNodeData, ConsumerNodeData, SolarNodeData, ChargerNodeData } from '@/components/nodes/types';
 import { Node, Edge } from 'reactflow';
 import { getSystemVoltage } from '../utils/voltage';
+import {
+  VDE_INVERTER_EFFICIENCY,
+  VDE_BATTERY_DOD,
+  VDE_SOLAR_WINTER_REDUCTION,
+  VDE_SOLAR_VMP_VOLTAGE,
+  VDE_CHARGE_DERATING_FACTOR,
+} from '@/lib/vde-standards';
 
 export function useDashboardMetrics(
   nodes: Node[],
@@ -140,7 +147,7 @@ function calculateUsableCapacity(batteries: Node[]): number {
   return batteries.reduce((acc, batteryNode) => {
     const capacityAh = (batteryNode?.data as BatteryNodeData)?.capacity || 0;
     const chemistry = (batteryNode?.data as BatteryNodeData)?.chemistry || 'LiFePO4';
-    const dod = chemistry === 'AGM' ? 0.5 : 0.9;
+    const dod = VDE_BATTERY_DOD[chemistry] ?? VDE_BATTERY_DOD.LiFePO4;
     return acc + capacityAh * dod;
   }, 0);
 }
@@ -171,9 +178,8 @@ function calculateDailyConsumption(
   const inverterConsumptionAh = consumers230v.reduce((acc, n) => {
     const w = (n.data as ConsumerNodeData)?.watts || 0;
     const h = (n.data as ConsumerNodeData)?.hours || 0;
-    // Inverter takes system voltage from battery, loses 15% efficiency (0.85)
-    // Ah = (W / sysVoltage) * h / 0.85
-    return acc + ((w / sysVoltage) * h) / 0.85;
+    // Inverter takes system voltage from battery, loses 15% (VDE_INVERTER_EFFICIENCY)
+    return acc + ((w / sysVoltage) * h) / VDE_INVERTER_EFFICIENCY;
   }, 0);
   dailyConsumptionAh += inverterConsumptionAh;
 
@@ -245,7 +251,7 @@ function calculateSolarMetrics(
 
     // Seasonal yield reduction for solar
     if (season === 'winter') {
-      const winterReductionFactor = 0.35;
+      const winterReductionFactor = VDE_SOLAR_WINTER_REDUCTION;
       totalSolarAmps *= winterReductionFactor;
     }
   }
@@ -266,11 +272,11 @@ function calculateChargingTime(
   const effectiveSolarAmps = hasCanvasSolar ? totalSolarAmps : 0;
 
   // The roof planner solar (effectiveSolarWatts) must apply a winter reduction to match canvas logic.
-  const seasonFactor = season === 'winter' ? 0.35 : 1;
+  const seasonFactor = season === 'winter' ? VDE_SOLAR_WINTER_REDUCTION : 1;
 
   // Validated calculation step.
-  // Solar panels output at Vmp ≈ 18V, not 12V
-  const roofSolarAmps = (effectiveSolarWatts / 18) * seasonFactor;
+  // Solar panels output at Vmp, not system voltage
+  const roofSolarAmps = (effectiveSolarWatts / VDE_SOLAR_VMP_VOLTAGE) * seasonFactor;
 
   const totalChargerAmps =
     chargers.reduce((acc, n) => acc + (((n.data as ChargerNodeData)?.amps || 0) * (((n.data as ChargerNodeData)?.efficiency ?? 100) / 100)), 0) +
@@ -279,7 +285,7 @@ function calculateChargingTime(
 
   let chargingTimeStr = 'N/A';
   if (totalChargerAmps > 0) {
-    const chargingTime = (usableCapacityAh / totalChargerAmps) * 1.15;
+    const chargingTime = (usableCapacityAh / totalChargerAmps) * VDE_CHARGE_DERATING_FACTOR;
     chargingTimeStr = `${chargingTime.toFixed(1)} Stunden`;
   } else if (
     chargers.length > 0 ||
