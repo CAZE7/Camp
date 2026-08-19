@@ -2,36 +2,22 @@
 import React, { useMemo } from 'react';
 import { Handle, Position, useEdges } from 'reactflow';
 import { CableEdgeData } from '../edges/CableEdge';
-
-const CONDUIT_SIZES = {
-  'EN 20': 16.9, // mm internal diameter
-  'EN 25': 21.4,
-  'EN 32': 28.1,
-  'EN 40': 37.7,
-};
-
-const CABLE_OUTER_DIAMETERS: Record<number, number> = {
-  1.5: 2.4,
-  2.5: 3.0,
-  4.0: 3.7,
-  6.0: 4.3,
-  10.0: 6.5,
-  16.0: 8.3,
-  25.0: 10.4,
-  35.0: 11.6,
-  50.0: 13.5,
-};
+import {
+  VDE_CONDUIT_INNER_DIAMETERS,
+  VDE_CABLE_OUTER_DIAMETERS,
+  VDE_MAX_CONDUIT_FILL_PERCENT,
+} from '@/lib/vde-standards';
 
 // Precompute areas to avoid redundant Math.PI * Math.pow calls in loops
 const CABLE_AREAS = Object.fromEntries(
-  Object.entries(CABLE_OUTER_DIAMETERS).map(([cs, diam]) => [
+  Object.entries(VDE_CABLE_OUTER_DIAMETERS).map(([cs, diam]) => [
     cs,
     Math.PI * Math.pow(diam / 2, 2),
   ])
 );
 
 const CONDUIT_AREAS = Object.fromEntries(
-  Object.entries(CONDUIT_SIZES).map(([type, diam]) => [
+  Object.entries(VDE_CONDUIT_INNER_DIAMETERS).map(([type, diam]) => [
     type,
     Math.PI * Math.pow(diam / 2, 2),
   ])
@@ -41,7 +27,7 @@ const CONDUIT_AREAS_ENTRIES = Object.entries(CONDUIT_AREAS);
 
 export interface ConduitNodeData {
   label?: string;
-  conduitType?: keyof typeof CONDUIT_SIZES;
+  conduitType?: keyof typeof VDE_CONDUIT_INNER_DIAMETERS;
   assignedEdges?: string[];
 }
 
@@ -71,10 +57,10 @@ const ConduitNode = function ({ id, data, selected }: { id: string, data: Condui
     const fillPercentage = (totalCableArea / innerArea) * 100;
 
     let recommendedConduit = null;
-    if (fillPercentage > 60) {
+    if (fillPercentage > VDE_MAX_CONDUIT_FILL_PERCENT) {
       for (let i = 0; i < CONDUIT_AREAS_ENTRIES.length; i++) {
         const [type, testArea] = CONDUIT_AREAS_ENTRIES[i];
-        if ((totalCableArea / testArea) * 100 <= 60) {
+        if ((totalCableArea / testArea) * 100 <= VDE_MAX_CONDUIT_FILL_PERCENT) {
           recommendedConduit = type;
           break;
         }
@@ -83,7 +69,7 @@ const ConduitNode = function ({ id, data, selected }: { id: string, data: Condui
 
     return {
       fillPercentage,
-      isOverfilled: fillPercentage > 60,
+      isOverfilled: fillPercentage > VDE_MAX_CONDUIT_FILL_PERCENT,
       recommendedConduit
     };
   }, [conduitType, assignedEdgeIds, edges]);
