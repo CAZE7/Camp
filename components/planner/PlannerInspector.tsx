@@ -12,11 +12,13 @@ export function PlannerInspector() {
     nodes,
     waterNodes,
     edges,
+    waterEdges,
     season,
     selectedNodes,
     selectedEdges,
     handleChangeLength,
     handleChangeCrossSection,
+    handleChangeFuseSize,
     deleteSelected,
     updateNodeData,
     isInspectorOpen,
@@ -25,11 +27,13 @@ export function PlannerInspector() {
     nodes: state.nodes,
     waterNodes: state.waterNodes,
     edges: state.edges,
+    waterEdges: state.waterEdges,
     season: state.season,
     selectedNodes: state.selectedNodes,
     selectedEdges: state.selectedEdges,
     handleChangeLength: state.handleChangeLength,
     handleChangeCrossSection: state.handleChangeCrossSection,
+    handleChangeFuseSize: state.handleChangeFuseSize,
     deleteSelected: state.deleteSelected,
     updateNodeData: state.updateNodeData,
     isInspectorOpen: state.isInspectorOpen,
@@ -41,7 +45,7 @@ export function PlannerInspector() {
   const selectedEdgeId = selectedEdges.length > 0 ? selectedEdges[0].id : null;
   const selectedNodeId = selectedNodes.length > 0 ? selectedNodes[0].id : null;
 
-  const selectedEdge = edges.find((e) => e.id === selectedEdgeId) || null;
+  const selectedEdge = edges.find((e) => e.id === selectedEdgeId) || waterEdges?.find((e) => e.id === selectedEdgeId) || null;
   const selectedNode = nodes.find((n) => n.id === selectedNodeId) || waterNodes.find((n) => n.id === selectedNodeId) || null;
 
   const metrics = useDashboardMetrics(nodes, edges, season, calculatedSolarWatts);
@@ -72,6 +76,7 @@ export function PlannerInspector() {
             selectedNode={selectedNode}
             onChangeLength={handleChangeLength}
             onChangeCrossSection={handleChangeCrossSection}
+            onChangeFuseSize={handleChangeFuseSize}
             onDelete={deleteSelected}
             onUpdateNodeData={updateNodeData}
             edges={edges}

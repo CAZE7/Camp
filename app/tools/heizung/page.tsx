@@ -12,9 +12,9 @@ import { Switch } from '@/components/ui/switch';
 import { StepperSlider } from '@/components/ui/StepperSlider';
 import Link from 'next/link';
 import { cn } from "@/lib/utils";
-import { Outfit } from 'next/font/google';
 
-const outfit = Outfit({ subsets: ['latin'], display: 'swap' });
+// Outfit wird lokal über @fontsource-variable/outfit gebündelt (offline-fähiger Build).
+const outfit = { className: 'font-outfit' };
 
 export interface HeaterModel {
   id: string;
@@ -101,8 +101,10 @@ function calculateThermodynamics(params: {
   const calcQ_trans = Math.max(0, Q_trans);
 
   // HIGH-02: Lüftungswärmeverlust (Q_luft)
-  // Dynamic airchange rate based on window area (from 0.5 to 1.0 per hour)
-  const airChangeRate = 0.5 + Math.min(0.5, A_fenster * 0.1);
+  // Dynamische Luftwechselrate: Die Fensterfläche beeinflusst den
+  // Fugen-Luftwechsel. Bei 0 m² Fenster (rein isoliert) 0,3 1/h, bei realen
+  // 0,5–1,5 m² Verglasung im Van ~0,5–0,7 1/h. Maximal 1,0 1/h.
+  const airChangeRate = Math.min(1.0, 0.3 + 0.3 * A_fenster);
   const Q_luft = 0.34 * volume * airChangeRate * calcDeltaT;
   const calcQ_luft = Math.max(0, Q_luft);
 
@@ -457,7 +459,7 @@ function ResultsView({
             <CardContent className="flex flex-col items-center justify-center py-10 text-center space-y-4">
               <span className="text-5xl">🛑</span>
               <div>
-                <p className="font-black text-rose-955 text-xl">Ungültige Fahrzeugmaße</p>
+                <p className="font-black text-rose-950 text-xl">Ungültige Fahrzeugmaße</p>
                 <p className="text-sm text-rose-800 mt-2 font-medium">
                   {error === "Ungültige Fahrzeugmaße" 
                     ? "Das Fahrzeugvolumen und die Oberfläche müssen größer als 0 sein. Bitte korrigiere die Maße unter Fahrzeug-Konfiguration."
@@ -657,48 +659,63 @@ export default function HeatingCalculatorPage() {
     }
   }, [selectedVehicle, insulationThickness, tempInside, tempOutside, windowArea, insulationCoverage, quickHeat]);
 
-  // Compute Q_total at extreme standard temperature (-10°C outside) for the "Taktung" Danger over-dimensioning check!
-  const Q_at_minus_10 = useMemo(() => {
+  // Q_total bei der tatsächlich gewählten Minimaltemperatur ist bereits
+  // `Q_total` (berechnet mit tempOutside). Für die Taktungsprüfung ist aber
+  // nicht der Extremfall relevant, sondern ein milder Betriebspunkt
+  // (Frühjahr/Herbst, +5 °C außen): Genau DANN taktet eine überdimensionierte
+  // Heizung sich tot, weil die Wärmeverluste unter die Minimal-Modulation
+  // fallen.
+  const Q_at_mild_temp = useMemo(() => {
     try {
       const res = calculateThermodynamics({
         selectedVehicle,
         insulationThickness,
         tempInside,
-        tempOutside: -10,
+        tempOutside: 5,
         windowArea,
         insulationCoverage,
-        quickHeat
+        // Im MILD-Szenario ist kein Aufheiz-Puffer nötig.
+        quickHeat: false,
       });
       return res.Q_total;
     } catch {
       return 0;
     }
-  }, [selectedVehicle, insulationThickness, tempInside, windowArea, insulationCoverage, quickHeat]);
+  }, [selectedVehicle, insulationThickness, tempInside, windowArea, insulationCoverage]);
 
   const validation = useMemo(() => {
     if (error || Q_total === 0) return { status: 'ok', message: '' };
 
-    // CRIT-02: Unterdimensioniert
+    // CRIT-02: Unterdimensioniert bei der gewählten Minimaltemperatur.
     if (Q_total > selectedHeater.maxPower) {
       return {
         status: 'critical',
-        message: `Heizung zu schwach! Das Fahrzeug erreicht bei Extremwetter nicht die Zieltemperatur. Q_total (${Q_total.toFixed(0)} W) überschreitet die maximale Heizleistung von ${selectedHeater.name} (${selectedHeater.maxPower} W).`
+        message: `Heizung zu schwach! Das Fahrzeug erreicht bei ${tempOutside}°C außen nicht die Zieltemperatur. Q_total (${Q_total.toFixed(0)} W) überschreitet die maximale Heizleistung von ${selectedHeater.name} (${selectedHeater.maxPower} W).`
       };
     }
 
-    // HIGH-01: Überdimensioniert / Taktung
-    if (Q_at_minus_10 < selectedHeater.minPower) {
+    // HIGH-01: Überdimensioniert / Taktung.
+    // Wenn selbst im milden Übergangsbetrieb (+5 °C außen) der Bedarf so weit
+    // unter der Minimalleistung liegt, dass die Heizung innerhalb von
+    // Sekunden taktet, warnen. Wir verwenden 50 % der Nenn-Minimalleistung
+    // als Schwelle: Die im Katalog angegebenen minPower-Werte sind die
+    // NENN-Minimalleistung (z. B. 800 W für Autoterm 2D), in der Praxis
+    // modulieren die Geräte noch deutlich darunter. Erst bei einem Bedarf
+    // unterhalb der Hälfte dieses Wertes ist von dauernder Taktung
+    // auszugehen.
+    const cyclingThreshold = selectedHeater.minPower * 0.5;
+    if (Q_at_mild_temp > 0 && Q_at_mild_temp < cyclingThreshold) {
       return {
         status: 'warning',
-        message: `Gefahr der Verkokung: Heizung ist stark überdimensioniert, läuft unterhalb der minimalen Modulationsgrenze und wird sich tot-takten. Selbst bei -10°C liegt der Bedarf bei nur ${Q_at_minus_10.toFixed(0)} W, was unter dem Minimum von ${selectedHeater.minPower} W liegt.`
+        message: `Gefahr der Verkokung / Taktung: Heizung ist überdimensioniert. Bereits bei +5°C außen liegt der Bedarf bei nur ${Q_at_mild_temp.toFixed(0)} W, unterhalb der halben Minimalleistung von ${selectedHeater.name} (${cyclingThreshold.toFixed(0)} W). Die Heizung taktet ständig an/aus. Wähle eine kleinere Heizung oder drossele sie.`
       };
     }
 
     return {
       status: 'ok',
-      message: `Heizgerät ${selectedHeater.name} passt perfekt für dein Setup. Es deckt deine Last ab und moduliert sicher.`
+      message: `Heizgerät ${selectedHeater.name} passt für dein Setup: Es deckt die Extrem-Last (${Q_total.toFixed(0)} W) ab und moduliert auch im Mildbetrieb sauber.`
     };
-  }, [Q_total, Q_at_minus_10, selectedHeater, error]);
+  }, [Q_total, Q_at_mild_temp, selectedHeater, error, tempOutside]);
 
   return (
     <div className="min-h-screen bg-stone-100 flex items-center justify-center p-6 md:p-12 font-sans relative overflow-hidden font-sans">

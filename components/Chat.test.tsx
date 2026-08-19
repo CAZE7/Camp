@@ -1,10 +1,14 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import Chat from './Chat';
-import * as chatHook from '@/hooks/useChat';
+import { useChat } from '@ai-sdk/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+vi.mock('@ai-sdk/react', () => ({
+  useChat: vi.fn(),
+}));
+
 const mockSendMessage = vi.fn();
-const mockUseChat = vi.spyOn(chatHook, 'useChat');
+const mockUseChat = vi.mocked(useChat);
 
 describe('Chat Component', () => {
   beforeEach(() => {
@@ -13,7 +17,7 @@ describe('Chat Component', () => {
       messages: [],
       sendMessage: mockSendMessage,
       status: 'idle',
-    });
+    } as any);
   });
 
   describe('Rendering', () => {
@@ -32,7 +36,6 @@ describe('Chat Component', () => {
 
     it('renders closed by default', () => {
       render(<Chat />);
-      // The chat window itself should not be rendered
       expect(screen.queryByText('Camper AI Assistent')).not.toBeInTheDocument();
     });
 
@@ -61,7 +64,7 @@ describe('Chat Component', () => {
       fireEvent.click(sendButton);
 
       await waitFor(() => {
-        expect(mockSendMessage).toHaveBeenCalledWith('Test message');
+        expect(mockSendMessage).toHaveBeenCalledWith({ text: 'Test message' });
       });
     });
   });

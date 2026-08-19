@@ -1,13 +1,6 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import Home from "./page";
-
-// Mock next/font/google
-vi.mock("next/font/google", () => ({
-  Outfit: () => ({
-    className: "mocked-outfit",
-  }),
-}));
 
 // Mock next/link
 vi.mock("next/link", () => ({
@@ -20,7 +13,26 @@ describe("Home Page", () => {
   it("renders the main sections", () => {
     render(<Home />);
 
-    expect(screen.getByText("Deine Werkzeuge")).toBeInTheDocument();
-    expect(screen.getByText("Ausbau-Guides & Wissen")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Camper planen", level: 1 })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Guides", level: 2 })).toBeInTheDocument();
+  });
+
+  it("renders the tool links", () => {
+    render(<Home />);
+
+    const main = screen.getByRole("main");
+    expect(within(main).getByRole("link", { name: /Schaltplan/ })).toBeInTheDocument();
+    expect(within(main).getByRole("link", { name: /Dach/ })).toBeInTheDocument();
+    expect(within(main).getByRole("link", { name: /Heizlast/ })).toBeInTheDocument();
+    expect(within(main).getByRole("link", { name: /Assistent/ })).toBeInTheDocument();
+  });
+
+  it("renders the guide links", () => {
+    render(<Home />);
+
+    const main = screen.getByRole("main");
+    expect(within(main).getByRole("link", { name: /Camper-Ausbauguide/ })).toBeInTheDocument();
+    expect(within(main).getByRole("link", { name: /Ausbau-Fahrplan/ })).toBeInTheDocument();
+    expect(within(main).getByRole("link", { name: /Holzausbau \(BEDMAS\)/ })).toBeInTheDocument();
   });
 });

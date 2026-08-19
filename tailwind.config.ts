@@ -10,7 +10,25 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ["var(--font-sans)", "ui-sans-serif", "system-ui", "sans-serif"],
+        display: ["var(--font-display)", "Georgia", "serif"],
+        mono: ["var(--font-mono)", "ui-monospace", "monospace"],
+      },
       colors: {
+        paper: "var(--paper)",
+        bone: "var(--bone)",
+        ink: "var(--ink)",
+        "ink-soft": "var(--ink-soft)",
+        clay: "var(--clay)",
+        oak: "var(--oak)",
+        copper: "var(--copper)",
+        "copper-deep": "var(--copper-deep)",
+        moss: "var(--moss)",
+        soot: "var(--soot)",
+        signal: "var(--signal)",
+        oxide: "var(--oxide)",
+        rule: "var(--rule)",
         background: "var(--background)",
         foreground: "var(--foreground)",
         card: {
@@ -57,8 +75,8 @@ const config: Config = {
       },
       borderRadius: {
         lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        md: "calc(var(--radius) - 1px)",
+        sm: "0",
       },
     },
   },

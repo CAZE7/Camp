@@ -11,6 +11,7 @@ import { Settings2, Zap, Droplets, Flame } from 'lucide-react';
 import { useAppStore } from '../lib/store';
 import { usePlannerStore } from '../store/usePlannerStore';
 import { useRouter } from 'next/navigation';
+import Chat from './Chat';
 
 export default function PlannerInner() {
   const [activeTab, setActiveTab] = useState<'sidebar' | 'canvas' | 'inspector'>('canvas');
@@ -51,6 +52,8 @@ export default function PlannerInner() {
       </div>
 
       {/* Mobile Bottom Navigation Bar */}
+      <Chat />
+
       <div className="lg:hidden flex flex-row items-center justify-around bg-card border-t border-border p-2 z-50 shrink-0">
         <button
           onClick={() => {

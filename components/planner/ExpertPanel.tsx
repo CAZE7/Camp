@@ -3,6 +3,11 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { usePlannerStore } from "../../store/usePlannerStore";
 import { calculateCrossSection, calculateMaxFuse } from "../../lib/electrical";
+import {
+  VDE_INVERTER_EFFICIENCY,
+  VDE_SOLAR_VMP_VOLTAGE,
+} from "../../lib/vde-standards";
+import { getSystemVoltage } from "./utils/voltage";
 import { cn } from "@/lib/utils";
 import { Node, Edge } from 'reactflow';
 
@@ -265,13 +270,19 @@ const DEFAULT_TIP: ExpertTip = {
 /* ─── Component ─── */
 
 function LiveRecommendationCard({ node, edges }: { node: Node; edges: Edge[] }) {
+  const nodes = usePlannerStore((s) => s.nodes);
+  const sysVoltage = getSystemVoltage(nodes);
+
   if (!node || !(node.data?.watts || node.data?.amps || node.type === 'inverter' || node.type === 'solar')) return null;
 
             let I = 0;
-            if (node.type === 'inverter') I = (Number(node.data.watts) || 1000) / 12 / 0.85;
-            else if (node.type === 'solar') I = (Number(node.data.watts) || 100) / 18;
-            else if (node.type === 'consumer230v') I = (Number(node.data.watts) || 0) / 230; // AC current at 230V
-            else if (node.data?.watts) I = Number(node.data.watts) / 12;
+            if (node.type === 'inverter')
+              I = (Number(node.data.watts) || 1000) / sysVoltage / VDE_INVERTER_EFFICIENCY;
+            else if (node.type === 'solar')
+              I = (Number(node.data.watts) || 100) / VDE_SOLAR_VMP_VOLTAGE;
+            else if (node.type === 'consumer230v')
+              I = (Number(node.data.watts) || 0) / 230; // AC current at 230V
+            else if (node.data?.watts) I = Number(node.data.watts) / sysVoltage;
             else if (node.data?.amps) I = Number(node.data.amps);
 
             const connectedEdges = edges.filter(e => e.source === node.id || e.target === node.id);

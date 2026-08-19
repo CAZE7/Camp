@@ -97,7 +97,11 @@ export function BOMModal() {
           <h3 className="font-semibold mb-2 text-muted-foreground">Kabelbedarf:</h3>
           <ul className="list-disc pl-5 text-sm space-y-1">
             {bomCableEntries.map(([cs, length]) => (
-              <li key={cs}>{length.toFixed(1)} Meter {cs} mm² Kabel</li>
+              <li key={cs}>
+                {cs === 'gray' || cs === 'fresh' || cs === 'water'
+                  ? `${length.toFixed(1)} Meter ${cs === 'gray' ? 'Abwasser' : 'Frischwasser'}-Rohr`
+                  : `${length.toFixed(1)} Meter ${cs} mm² Kabel`}
+              </li>
             ))}
           </ul>
         </div>

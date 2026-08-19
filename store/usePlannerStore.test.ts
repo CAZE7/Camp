@@ -379,6 +379,27 @@ describe('usePlannerStore', () => {
       expect(addedNode.data.watts).toBe(50); // Default for consumer
       expect(addedNode.data.hours).toBe(2);
     });
+
+    it('should keep watts from the custom drop instead of overwriting defaults', () => {
+      const { result } = renderHook(() => usePlannerStore());
+      const mockEvent = {
+        detail: {
+          clientX: 100,
+          clientY: 200,
+          type: 'consumer230v',
+          label: 'Induktion',
+          watts: 2000
+        }
+      } as any;
+
+      act(() => {
+        result.current.onCustomDrop(mockEvent, ({ x, y }) => ({ x, y }));
+      });
+
+      const addedNode = result.current.nodes[result.current.nodes.length - 1];
+      expect(addedNode.data.watts).toBe(2000);
+      expect(addedNode.data.hours).toBe(0.5);
+    });
   });
 
   describe('AC vs. DC strict separation in isValidConnection', () => {
@@ -446,6 +467,40 @@ describe('usePlannerStore', () => {
         target: 'inv',
         sourceHandle: 'plus',
         targetHandle: 'in-plus' // Left side target DC input
+      });
+      expect(valid).toBe(true);
+    });
+
+    it('should allow connecting DC battery plus to inverter target plus (actual node handle)', () => {
+      const { result } = renderHook(() => usePlannerStore());
+      act(() => {
+        result.current.setNodes([
+          { id: 'bat', type: 'battery', position: { x: 0, y: 0 }, data: {} },
+          { id: 'inv', type: 'inverter', position: { x: 100, y: 0 }, data: {} }
+        ]);
+      });
+      const valid = result.current.isValidConnection({
+        source: 'bat',
+        target: 'inv',
+        sourceHandle: 'plus',
+        targetHandle: 'plus'
+      });
+      expect(valid).toBe(true);
+    });
+
+    it('should allow connecting shore power to inverter AC input', () => {
+      const { result } = renderHook(() => usePlannerStore());
+      act(() => {
+        result.current.setNodes([
+          { id: 'shore', type: 'shorePower', position: { x: 0, y: 0 }, data: {} },
+          { id: 'inv', type: 'inverter', position: { x: 100, y: 0 }, data: {} }
+        ]);
+      });
+      const valid = result.current.isValidConnection({
+        source: 'shore',
+        target: 'inv',
+        sourceHandle: 'plus',
+        targetHandle: 'ac_in'
       });
       expect(valid).toBe(true);
     });

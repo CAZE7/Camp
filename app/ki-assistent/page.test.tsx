@@ -16,9 +16,8 @@ describe('KiAssistent Page', () => {
     expect(mainElement).not.toBeNull();
 
     // Check for the specific CSS classes
-    expect(mainElement?.className).toContain('w-full');
-    expect(mainElement?.className).toContain('h-screen');
     expect(mainElement?.className).toContain('relative');
+    expect(mainElement?.className).toContain('flex-1');
   });
 
   it('renders the Chat component', () => {

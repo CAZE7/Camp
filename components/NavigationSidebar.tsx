@@ -34,7 +34,7 @@ const navLinks: Link[] = [
     label: "Startseite",
   },
   {
-    href: "/tools/elektrik-planer",
+    href: "/elektrik-planung",
     icon: (
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -268,7 +268,7 @@ export default function NavigationSidebar({ isCollapsed = false, onToggle }: { i
         });
       }
     });
-  }, { dependencies: [pathname], scope: containerRef });
+  }, [pathname]);
 
   return (
     <aside

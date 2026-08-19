@@ -33,6 +33,9 @@ describe('POST /api/chat', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.OPENAI_API_KEY = 'test_key';
+    // DB-Pfad in der Route ist per DATABASE_URL-Gate abgesichert; Tests
+    // erwarten, dass die RAG-Pipeline durchlaufen wird.
+    process.env.DATABASE_URL = 'postgres://test';
   });
 
   it('performs a successful RAG query and calls streamText', async () => {

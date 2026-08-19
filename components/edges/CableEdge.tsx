@@ -4,7 +4,8 @@ import { useAppStore } from '../../lib/store';
 import { usePlannerStore, getDerivedSystemState } from '../../store/usePlannerStore';
 import { useShallow } from 'zustand/react/shallow';
 import { calculateEdgePath } from './utils/pathUtils';
-import { calculateCrossSection, calculateMaxFuse, calculateStrokeWidth, getEdgeDomain } from '../../lib/electrical';
+import { calculateCrossSection, calculateMaxFuse, calculateStrokeWidth, getEdgeDomain, VDE_COPPER_CONDUCTIVITY } from '../../lib/electrical';
+import { VDE_INVERTER_EFFICIENCY, VDE_SOLAR_VMP_VOLTAGE } from '../../lib/vde-standards';
 import { getSystemVoltage } from '../planner/utils/voltage';
 
 export type CableEdgeData = {
@@ -38,11 +39,11 @@ export const calculateCurrent = (
   if (sourceNode?.type === 'consumer') return (Number(sData?.watts) || 0) / sysVoltage;
   if (targetNode?.type === 'consumer') return (Number(tData?.watts) || 0) / sysVoltage;
 
-  if (sourceNode?.type === 'inverter') return (Number(sData?.watts) || 0) / sysVoltage / 0.85;
-  if (targetNode?.type === 'inverter') return (Number(tData?.watts) || 0) / sysVoltage / 0.85;
+  if (sourceNode?.type === 'inverter') return (Number(sData?.watts) || 0) / sysVoltage / VDE_INVERTER_EFFICIENCY;
+  if (targetNode?.type === 'inverter') return (Number(tData?.watts) || 0) / sysVoltage / VDE_INVERTER_EFFICIENCY;
 
-  if (sourceNode?.type === 'solar') return (Number(sData?.watts) || 0) / 18; // Typical Vmp
-  if (targetNode?.type === 'solar') return (Number(tData?.watts) || 0) / 18;
+  if (sourceNode?.type === 'solar') return (Number(sData?.watts) || 0) / VDE_SOLAR_VMP_VOLTAGE; // Typical Vmp
+  if (targetNode?.type === 'solar') return (Number(tData?.watts) || 0) / VDE_SOLAR_VMP_VOLTAGE;
 
   // 3. Fallback: Main lines
   let totalConsumerAmps = 0;
@@ -52,11 +53,11 @@ export const calculateCurrent = (
     if (n.type === 'consumer') {
       totalConsumerAmps += (Number(n.data.watts) || 0) / sysVoltage;
     } else if (n.type === 'inverter') {
-      totalConsumerAmps += (Number(n.data.watts) || 0) / sysVoltage / 0.85;
+      totalConsumerAmps += (Number(n.data.watts) || 0) / sysVoltage / VDE_INVERTER_EFFICIENCY;
     } else if (['charger', 'mpptController', 'dcdcCharger', 'acBatteryCharger'].includes(n.type as string)) {
       totalChargerAmps += Number(n.data.amps) || 0;
     } else if (n.type === 'solar') {
-      totalChargerAmps += (Number(n.data.watts) || 0) / 18;
+      totalChargerAmps += (Number(n.data.watts) || 0) / VDE_SOLAR_VMP_VOLTAGE;
     }
   }
   
@@ -84,9 +85,13 @@ const CableEdge = function ({
   data,
   markerEnd,
   selected,
+  sourceHandleId,
+  targetHandleId,
   sourceHandle,
   targetHandle,
 }: CableEdgeProps) {
+  const resolvedSourceHandle = sourceHandle ?? sourceHandleId;
+  const resolvedTargetHandle = targetHandle ?? targetHandleId;
   const { getNode, getNodes } = useReactFlow();
   const isProMode = useAppStore(state => state.isProMode);
   const [isHovered, setIsHovered] = useState(false);
@@ -98,10 +103,17 @@ const CableEdge = function ({
     const s = nodesMap.get(source) || waterNodesMap.get(source);
     const t = nodesMap.get(target) || waterNodesMap.get(target);
     
-    // Ensure we capture reactive copies of the graph for the calculation
+    // Ensure we capture reactive copies of the graph for the calculation.
+    // Die aktuelle Kante wird von `calculatePathVoltageDrop` ausgeschlossen,
+    // damit ihr eigener Drop nicht doppelt zum Pfaddrop addiert wird.
     const currentNodes = state.nodes;
     const currentEdges = state.edges;
-    const cumulativeDrop = state.calculatePathVoltageDrop(source, currentNodes, currentEdges);
+    const cumulativeDrop = state.calculatePathVoltageDrop(
+      source,
+      currentNodes,
+      currentEdges,
+      id
+    );
     
     return { 
       sNodeData: s?.data, 
@@ -123,15 +135,15 @@ const CableEdge = function ({
     });
   }, [sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, isProMode]);
 
-  const isPlus = sourceHandle?.includes('plus');
+  const isPlus = resolvedSourceHandle?.includes('plus');
 
-  const { length, crossSection, maxFuse, strokeWidth, animationDuration, I, sourceNode, dropPercentage, edgeDomain } = useMemo(() => {
+  const { length, crossSection, maxFuse, strokeWidth, animationDuration, I, sourceNode, dropPercentage, edgeDomain, sysVoltage } = useMemo(() => {
     const physicalDistance = Math.max(1, Math.sqrt(Math.pow(targetX - sourceX, 2) + Math.pow(targetY - sourceY, 2)) / 100);
     const length = data?.length || physicalDistance;
     const sourceNode = getNode(source);
     const targetNode = getNode(target);
 
-    let edgeDomain = data?.edgeDomain || getEdgeDomain(sourceNode?.type, targetNode?.type, sourceHandle, targetHandle);
+    let edgeDomain = data?.edgeDomain || getEdgeDomain(sourceNode?.type, targetNode?.type, resolvedSourceHandle, resolvedTargetHandle);
     if (sourceNode?.type === 'solar' || targetNode?.type === 'solar' || sourceNode?.type === 'roofSolar' || targetNode?.type === 'roofSolar') {
       edgeDomain = 'Solar' as any;
     }
@@ -149,6 +161,7 @@ const CableEdge = function ({
         sourceNode,
         dropPercentage: 0,
         edgeDomain,
+        sysVoltage: 230,
       };
     }
 
@@ -158,7 +171,7 @@ const CableEdge = function ({
     const sw = calculateStrokeWidth(cs);
     const dur = calculateAnimationDuration(I);
 
-    const voltageDrop = (I * (length * 2)) / (58 * cs);
+    const voltageDrop = (I * (length * 2)) / (VDE_COPPER_CONDUCTIVITY * cs);
     const sysVoltage = getSystemVoltage(getNodes());
     const dropPercentage = (voltageDrop / sysVoltage) * 100;
 
@@ -172,11 +185,14 @@ const CableEdge = function ({
       sourceNode,
       dropPercentage,
       edgeDomain,
+      sysVoltage,
     };
     // Dependencies include node data, system load, and coordinates to force re-calc when anything relevant changes including moves
-  }, [getNode, getNodes, data?.length, data?.crossSection, data?.edgeDomain, source, target, sNodeData, tNodeData, systemLoad, sourceX, sourceY, targetX, targetY, sourceHandle, targetHandle]);
+  }, [getNode, getNodes, data?.length, data?.crossSection, data?.edgeDomain, source, target, sNodeData, tNodeData, systemLoad, sourceX, sourceY, targetX, targetY, resolvedSourceHandle, resolvedTargetHandle]);
 
-  const totalDropPercentage = dropPercentage + cumulativeDrop;
+  // calculatePathVoltageDrop returns volts; convert to % before adding to this edge's drop %
+  const pathDropPercentage = sysVoltage > 0 ? (cumulativeDrop / sysVoltage) * 100 : 0;
+  const totalDropPercentage = dropPercentage + pathDropPercentage;
 
   const errors: string[] = [];
   
@@ -246,7 +262,7 @@ const CableEdge = function ({
         <div
           style={{
             position: 'absolute',
-            transform: `translate(-50%, -50%) translate(${labelX}px,${labelY + (sourceHandle?.includes('minus') ? 40 : -40)}px)`,
+            transform: `translate(-50%, -50%) translate(${labelX}px,${labelY + (resolvedSourceHandle?.includes('minus') ? 40 : -40)}px)`,
             background: 'white',
             padding: '2px 6px',
             borderRadius: '4px',

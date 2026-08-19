@@ -7,6 +7,7 @@ import { usePlannerStore } from '../../store/usePlannerStore';
 const defaultPlannerStoreState = {
   selectedNodes: [],
   edges: [],
+  nodes: [],
 };
 
 vi.mock('../../store/usePlannerStore', () => ({
@@ -43,6 +44,7 @@ describe('ExpertPanel', () => {
     const selectedState = {
       selectedNodes: [{ id: '1', type: 'battery', data: {} }],
       edges: [],
+      nodes: [],
     };
     vi.mocked(usePlannerStore).mockImplementation((selector: any) => selector(selectedState));
 
@@ -61,6 +63,7 @@ describe('ExpertPanel', () => {
     const selectedState = {
       selectedNodes: [{ id: '1', type: 'inverter', data: { watts: 1000 } }],
       edges: [{ id: 'e1', source: '1', target: '2', data: { length: 2 } }],
+      nodes: [],
     };
     vi.mocked(usePlannerStore).mockImplementation((selector: any) => selector(selectedState));
 
@@ -73,14 +76,15 @@ describe('ExpertPanel', () => {
     expect(screen.getByText(/Live-Empfehlung/)).toBeInTheDocument();
     expect(screen.getByText("Kabelquerschnitt")).toBeInTheDocument();
     expect(screen.getByText("Max. Sicherung")).toBeInTheDocument();
-    // I = 1000 / 12 / 0.85 = 98.03 A -> expected current
-    expect(screen.getByText(/98\.0 A/)).toBeInTheDocument();
+    // I = 1000 / 12.8 / 0.85 = 91.91 A (default LiFePO4 system voltage)
+    expect(screen.getByText(/91\.9 A/)).toBeInTheDocument();
   });
 
   it('calculates live recommendations for solar', () => {
     const selectedState = {
       selectedNodes: [{ id: '1', type: 'solar', data: { watts: 200 } }],
       edges: [{ id: 'e1', source: '1', target: '2', data: { length: 5 } }],
+      nodes: [],
     };
     vi.mocked(usePlannerStore).mockImplementation((selector: any) => selector(selectedState));
 
@@ -97,6 +101,7 @@ describe('ExpertPanel', () => {
     const selectedState = {
       selectedNodes: [{ id: '1', type: 'battery', data: {} }],
       edges: [],
+      nodes: [],
     };
     vi.mocked(usePlannerStore).mockImplementation((selector: any) => selector(selectedState));
 

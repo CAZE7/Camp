@@ -131,6 +131,25 @@ describe('validateRoofNodes', () => {
     });
   });
 
+  describe('Overlap Detection', () => {
+    it('marks two overlapping roof elements as invalid', () => {
+      const a = createNode('solar-a', safeMinX, safeMinY, 'roofSolar', 100, 100);
+      const b = createNode('solar-b', safeMinX + 50, safeMinY + 50, 'roofSolar', 100, 100);
+      const result = validateRoofNodes([a, b], mockVehicle);
+      expect(result.find(n => n.id === 'solar-a')?.data.isInvalid).toBe(true);
+      expect(result.find(n => n.id === 'solar-b')?.data.isInvalid).toBe(true);
+      expect(result.find(n => n.id === 'solar-a')?.data.overlapWith).toBe(true);
+    });
+
+    it('keeps disjoint elements valid', () => {
+      const a = createNode('solar-a', safeMinX, safeMinY, 'roofSolar', 80, 80);
+      const b = createNode('solar-b', safeMinX + 90, safeMinY, 'roofSolar', 80, 80);
+      const result = validateRoofNodes([a, b], mockVehicle);
+      expect(result.find(n => n.id === 'solar-a')?.data.isInvalid).toBe(false);
+      expect(result.find(n => n.id === 'solar-b')?.data.isInvalid).toBe(false);
+    });
+  });
+
   describe('State Mutation', () => {
     it('should not mutate original node object if state does not change', () => {
       const validNode = createNode('node-1', safeMinX, safeMinY, 'roofSolar', 100, 100, false);

@@ -55,6 +55,7 @@ interface PlannerState {
   updateNodeData: (id: string, data: Partial<PlannerNodeData>) => void;
   handleChangeLength: (id: string, length: number) => void;
   handleChangeCrossSection: (id: string, crossSection: number) => void;
+  handleChangeFuseSize: (id: string, fuseSize: number) => void;
 
   isValidConnection: (connection: Connection) => boolean;
   onConnect: (connection: Connection) => void;
@@ -66,44 +67,48 @@ interface PlannerState {
   onCustomDrop: (event: Event, screenToFlowPosition: (client: {x: number, y: number}) => {x: number, y: number}) => void;
   addNode: (type: string, label: string, position: {x: number, y: number}, watts?: number) => void;
   applyTemplate: (templateId: string) => void;
-  calculatePathVoltageDrop: (targetNodeId: string, customNodes?: Node[], customEdges?: Edge[]) => number;
+  calculatePathVoltageDrop: (
+    targetNodeId: string,
+    customNodes?: Node[],
+    customEdges?: Edge[],
+    excludeEdgeId?: string
+  ) => number;
   isLayoutPending: boolean;
   setIsLayoutPending: (pending: boolean) => void;
 }
 
 import { TEMPLATES_DICT } from '../components/planner/templates';
-import { calculateCrossSection, calculateMaxFuse, getEdgeDomain, getHandleDomain } from '../lib/electrical';
+import { calculateCrossSection, calculateMaxFuse, getEdgeDomain, getHandleDomain, VDE_COPPER_CONDUCTIVITY } from '../lib/electrical';
+import {
+  VDE_INVERTER_EFFICIENCY,
+  VDE_SOLAR_VMP_VOLTAGE,
+  VDE_BATTERY_MAX_DISCHARGE_C_RATE,
+  VDE_NOMINAL_DC_VOLTAGE,
+} from '../lib/vde-standards';
 
-const nodesMapCache = new WeakMap<Node[], Map<string, Node>>();
-const waterNodesMapCache = new WeakMap<Node[], Map<string, Node>>();
-const totalWattsCache = new WeakMap<Node[], number>();
-
+/**
+ * Leitet die im Planner relevanten Lookup-Strukturen aus den Knoten ab.
+ *
+ * Kein Cache mehr: Bei der vorherigen WeakMap-Lösung konnte `performAutoWiring`
+ * das Eingabe-Array mutieren, während bereits ein Cache-Eintrag bestand, was
+ * zu veralteten Maps / Summen führte. Die Kosten des Neubaus sind bei den
+ * kleinen Knotenzahlen im Planner vernachlässigbar.
+ */
 export function getDerivedSystemState(nodes: Node[], waterNodes: Node[]) {
-  let nodesMap = nodesMapCache.get(nodes);
-  let totalWatts = totalWattsCache.get(nodes);
+  const nodesMap = new Map<string, Node>();
+  const waterNodesMap = new Map<string, Node>();
+  let totalWatts = 0;
 
-  if (!nodesMap || totalWatts === undefined) {
-    nodesMap = new Map();
-    totalWatts = 0;
-    for (let i = 0; i < nodes.length; i++) {
-      const n = nodes[i];
-      nodesMap.set(n.id, n);
-      if (n.type === 'consumer' || n.type === 'consumer230v' || n.type === 'inverter') {
-        totalWatts += (Number(n.data.watts) || 0);
-      }
+  for (let i = 0; i < nodes.length; i++) {
+    const n = nodes[i];
+    nodesMap.set(n.id, n);
+    if (n.type === 'consumer' || n.type === 'consumer230v' || n.type === 'inverter') {
+      totalWatts += Number(n.data.watts) || 0;
     }
-    nodesMapCache.set(nodes, nodesMap);
-    totalWattsCache.set(nodes, totalWatts);
   }
 
-  let waterNodesMap = waterNodesMapCache.get(waterNodes);
-  if (!waterNodesMap) {
-    waterNodesMap = new Map();
-    for (let i = 0; i < waterNodes.length; i++) {
-      const n = waterNodes[i];
-      waterNodesMap.set(n.id, n);
-    }
-    waterNodesMapCache.set(waterNodes, waterNodesMap);
+  for (let i = 0; i < waterNodes.length; i++) {
+    waterNodesMap.set(waterNodes[i].id, waterNodes[i]);
   }
 
   return { nodesMap, waterNodesMap, totalWatts };
@@ -135,6 +140,32 @@ function buildDictionaries(currentNodes: Node[]) {
     }
   }
   return { nodesByType, nodesByLabel };
+}
+
+/**
+ * Summiert den erwarteten DC-Strom (A) der im Plan vorhandenen Verbraucher,
+ * Wechselrichter und Ladegeräte. Wird für die Dimensionierung der
+ * Batterie-Hauptleitungen verwendet (statt der Batterie-Nennkapazität).
+ *
+ * Annahmen: 12 V-System (üblich im Camper), Wechselrichter-Wirkungsgrad und
+ * Solar-MPP-Spannung kommen aus den zentralen VDE-Konstanten.
+ */
+function estimateSystemDCCurrent(
+  consumers: Node[],
+  inverters: Node[],
+  chargers: Node[],
+  solars: Node[],
+  batteryVoltage: number
+): number {
+  let loadA = 0;
+  for (const c of consumers) loadA += (Number(c.data.watts) || 0) / batteryVoltage;
+  for (const inv of inverters) {
+    loadA += (Number(inv.data.watts) || 0) / batteryVoltage / VDE_INVERTER_EFFICIENCY;
+  }
+  let supplyA = 0;
+  for (const ch of chargers) supplyA += Number(ch.data.amps) || 0;
+  for (const s of solars) supplyA += (Number(s.data.watts) || 0) / VDE_SOLAR_VMP_VOLTAGE;
+  return Math.max(loadA, supplyA);
 }
 
 function ensureNode(
@@ -219,11 +250,10 @@ function wireSolars(
     const mpptNode = ensureNode(currentNodes, nodesByType, nodesByLabel, batteryNode, 'mpptController', 'MPPT Laderegler', 150, -200, {
       amps: 30,
     });
-    const vmpVoltage = 18;
     for (let i = 0; i < solarsLen; i++) {
       const solar = solars[i];
       const solarWatts = Number(solar.data.watts) || 100;
-      const solarAmps = solarWatts / vmpVoltage;
+      const solarAmps = solarWatts / VDE_SOLAR_VMP_VOLTAGE;
       connectEdges(newEdges, edgeIdRef, solar.id, mpptNode.id, solarAmps, 5);
     }
     connectEdges(newEdges, edgeIdRef, mpptNode.id, busbarNode.id, Number(mpptNode.data.amps) || 30, 2);
@@ -271,7 +301,7 @@ function wireInverters(
   for (let i = 0; i < invertersLen; i++) {
     const inverter = inverters[i];
     const inverterWatts = Number(inverter.data.watts) || 1000;
-    const inverterAmps = inverterWatts / batteryVoltage / 0.85;
+    const inverterAmps = inverterWatts / batteryVoltage / VDE_INVERTER_EFFICIENCY;
     connectEdges(newEdges, edgeIdRef, busbarNode.id, inverter.id, inverterAmps, 1);
   }
 }
@@ -285,7 +315,7 @@ function wireConsumers(
   const consumersLen = consumers.length;
   for (let i = 0; i < consumersLen; i++) {
     const consumer = consumers[i];
-    const I = (Number(consumer.data.watts) || 0) / 12;
+    const I = (Number(consumer.data.watts) || 0) / VDE_NOMINAL_DC_VOLTAGE;
     connectEdges(newEdges, edgeIdRef, fuseBoxNode.id, consumer.id, I, 3);
   }
 }
@@ -308,25 +338,38 @@ function performAutoWiring(initialNodes: Node[]): { nodes: Node[], edges: Edge[]
   });
   const shuntNode = ensureNode(currentNodes, nodesByType, nodesByLabel, batteryNode, 'shunt', 'Smart Shunt', 150, 0);
 
+  const batteryVoltage = Number(batteryNode.data.voltage) || 12;
   const batteryCapacity = Number(batteryNode.data.capacity) || 100;
-  const maxDischargeA = batteryCapacity * 0.5;
-  connectEdges(newEdges, edgeIdRef, batteryNode.id, shuntNode.id, maxDischargeA, 0.5);
-  connectEdges(newEdges, edgeIdRef, shuntNode.id, busbarNode.id, maxDischargeA, 0.5);
-
-  wireInverters(nodesByType['inverter'] || [], busbarNode, newEdges, edgeIdRef, Number(batteryNode.data.voltage) || 12);
-  connectEdges(newEdges, edgeIdRef, busbarNode.id, fuseBoxNode.id, Number(fuseBoxNode.data.rating) || 100, 1);
-
   const solars = [
     ...(nodesByType['solar'] || []),
     ...(nodesByType['roofsolar'] || [])
   ];
-  wireSolars(solars, busbarNode, currentNodes, nodesByType, nodesByLabel, batteryNode, newEdges, edgeIdRef);
   const allChargers = [
     ...(nodesByType['charger'] || []),         // legacy
     ...(nodesByType['mpptController'] || []),
     ...(nodesByType['dcdcCharger'] || []),
     ...(nodesByType['acBatteryCharger'] || []),
   ];
+
+  // Die Batterie-Hauptleitung muss den Summenstrom aus Last/Wechselrichter
+  // UND die mögliche Lade-/Entladestrombelastbarkeit der Batterie tragen.
+  const systemDCCurrent = estimateSystemDCCurrent(
+    nodesByType['consumer'] || [],
+    nodesByType['inverter'] || [],
+    allChargers,
+    solars,
+    batteryVoltage
+  );
+  const batteryMaxCurrent = batteryCapacity * VDE_BATTERY_MAX_DISCHARGE_C_RATE;
+  const maxDischargeA = Math.max(systemDCCurrent, batteryMaxCurrent);
+
+  connectEdges(newEdges, edgeIdRef, batteryNode.id, shuntNode.id, maxDischargeA, 0.5);
+  connectEdges(newEdges, edgeIdRef, shuntNode.id, busbarNode.id, maxDischargeA, 0.5);
+
+  wireInverters(nodesByType['inverter'] || [], busbarNode, newEdges, edgeIdRef, batteryVoltage);
+  connectEdges(newEdges, edgeIdRef, busbarNode.id, fuseBoxNode.id, Number(fuseBoxNode.data.rating) || 100, 1);
+
+  wireSolars(solars, busbarNode, currentNodes, nodesByType, nodesByLabel, batteryNode, newEdges, edgeIdRef);
   wireChargers(allChargers, busbarNode, newEdges, edgeIdRef);
   wireConsumers(nodesByType['consumer'] || [], fuseBoxNode, newEdges, edgeIdRef);
 
@@ -358,7 +401,7 @@ function performAutoWiring(initialNodes: Node[]): { nodes: Node[], edges: Edge[]
           source: shorePowers[i].id,
           target: mainInverter.id,
           sourceHandle: 'plus',
-          targetHandle: 'plus',
+          targetHandle: 'ac_in',
           type: 'cableEdge',
           data: { length: 2, crossSection: 2.5, fuseSize: 16, edgeDomain: 'AC_230V' },
         });
@@ -558,7 +601,8 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
         (sourceNode?.type === 'battery' && targetNode?.type === 'battery') ||
         (sourceNode?.type === 'solar' && targetNode?.type === 'solar');
 
-      if (!isSeriesException) {
+      // AC uses L/N/PE, not plus/minus — skip DC polarity on AC-AC links
+      if (sourceDomain !== 'AC_230V' && !isSeriesException) {
         if ((sIsPlus && !tIsPlus) || (sIsMinus && !tIsMinus)) {
           return false; // Polarity mismatch strict block
         }
@@ -631,7 +675,12 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
     const { nodesMap } = getDerivedSystemState(nodes, []);
     const sourceNode = nodesMap.get(connection.source || '');
     const targetNode = nodesMap.get(connection.target || '');
-    const edgeDomain = getEdgeDomain(sourceNode?.type, targetNode?.type, connection.sourceHandle);
+    const edgeDomain = getEdgeDomain(
+      sourceNode?.type,
+      targetNode?.type,
+      connection.sourceHandle,
+      connection.targetHandle
+    );
 
     const newEdge: Edge<CableEdgeData> = {
       source: connection.source,
@@ -784,19 +833,21 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
     };
 
     if (type === 'battery') {
-      newNode.data = { ...newNode.data, capacity: 100, chemistry: 'LiFePO4' };
+      newNode.data = { capacity: 100, chemistry: 'LiFePO4', ...newNode.data };
     } else if (type === 'consumer') {
-      newNode.data = { ...newNode.data, watts: 50, hours: 2 };
+      newNode.data = { watts: 50, hours: 2, ...newNode.data };
     } else if (type === 'charger' || type === 'mpptController' || type === 'dcdcCharger' || type === 'acBatteryCharger') {
-      newNode.data = { ...newNode.data, amps: 10 };
+      newNode.data = { amps: 10, ...newNode.data };
     } else if (type === 'fuse') {
-      newNode.data = { ...newNode.data, rating: 30 };
+      newNode.data = { rating: 30, ...newNode.data };
     } else if (type === 'shorePower') {
-      newNode.data = { ...newNode.data, hasRcd: false };
+      newNode.data = { hasRcd: false, ...newNode.data };
     } else if (type === 'consumer230v') {
-      newNode.data = { ...newNode.data, watts: 1000, hours: 0.5 };
+      newNode.data = { watts: 1000, hours: 0.5, ...newNode.data };
     } else if (type === 'solar') {
-      newNode.data = { ...newNode.data, voltage: 18, amps: 5, watts: 90 };
+      newNode.data = { voltage: 18, amps: 5, watts: 90, ...newNode.data };
+    } else if (type === 'inverter') {
+      newNode.data = { watts: 1000, continuousPower: 1000, ...newNode.data };
     }
 
     const { viewMode } = get();
@@ -816,9 +867,25 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
     })
   })),
 
-  calculatePathVoltageDrop: (targetNodeId, customNodes, customEdges) => {
+  handleChangeFuseSize: (id, fuseSize) => set((state) => ({
+    edges: state.edges.map((e) => {
+      if (e.id === id) {
+        return { ...e, data: { ...e.data!, fuseSize } };
+      }
+      return e;
+    })
+  })),
+
+  calculatePathVoltageDrop: (targetNodeId, customNodes, customEdges, excludeEdgeId) => {
     const edges = customEdges || get().edges;
     const nodes = customNodes || get().nodes;
+
+    // Die aufrufende Kante soll nicht doppelt gezählt werden: CableEdge
+    // addiert bereits den Spannungsabfall der eigenen Kante und fragt hier
+    // nur den Drop *vor* dieser Kante an.
+    const relevantEdges = excludeEdgeId
+      ? edges.filter(e => e.id !== excludeEdgeId)
+      : edges;
 
     const getI = (sourceNode: Node | undefined, targetNode: Node | undefined) => {
       const sData = sourceNode?.data;
@@ -827,17 +894,22 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
       if (tData?.totalAmps !== undefined) return Number(tData.totalAmps);
       if (sData?.amps !== undefined && sourceNode?.type !== 'battery') return Number(sData.amps);
       if (tData?.amps !== undefined && targetNode?.type !== 'battery') return Number(tData.amps);
-      if (sourceNode?.type === 'consumer') return (Number(sData?.watts) || 0) / 12;
-      if (targetNode?.type === 'consumer') return (Number(tData?.watts) || 0) / 12;
-      if (sourceNode?.type === 'inverter') return (Number(sData?.watts) || 0) / 12 / 0.85;
-      if (targetNode?.type === 'inverter') return (Number(tData?.watts) || 0) / 12 / 0.85;
-      if (sourceNode?.type === 'solar') return (Number(sData?.watts) || 0) / 18;
-      if (targetNode?.type === 'solar') return (Number(tData?.watts) || 0) / 18;
+      if (sourceNode?.type === 'consumer') return (Number(sData?.watts) || 0) / VDE_NOMINAL_DC_VOLTAGE;
+      if (targetNode?.type === 'consumer') return (Number(tData?.watts) || 0) / VDE_NOMINAL_DC_VOLTAGE;
+      if (sourceNode?.type === 'inverter')
+        return (Number(sData?.watts) || 0) / VDE_NOMINAL_DC_VOLTAGE / VDE_INVERTER_EFFICIENCY;
+      if (targetNode?.type === 'inverter')
+        return (Number(tData?.watts) || 0) / VDE_NOMINAL_DC_VOLTAGE / VDE_INVERTER_EFFICIENCY;
+      if (sourceNode?.type === 'solar')
+        return (Number(sData?.watts) || 0) / VDE_SOLAR_VMP_VOLTAGE;
+      if (targetNode?.type === 'solar')
+        return (Number(tData?.watts) || 0) / VDE_SOLAR_VMP_VOLTAGE;
       let totalAmps = 0;
       for (let i = 0; i < nodes.length; i++) {
         const n = nodes[i];
-        if (n.type === 'consumer') totalAmps += (Number(n.data.watts) || 0) / 12;
-        else if (n.type === 'consumer230v') totalAmps += (Number(n.data.watts) || 0) / 12 / 0.85;
+        if (n.type === 'consumer') totalAmps += (Number(n.data.watts) || 0) / VDE_NOMINAL_DC_VOLTAGE;
+        else if (n.type === 'consumer230v')
+          totalAmps += (Number(n.data.watts) || 0) / VDE_NOMINAL_DC_VOLTAGE / VDE_INVERTER_EFFICIENCY;
       }
       return totalAmps;
     };
@@ -845,23 +917,28 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
     const nodesMap = getNodeMap(nodes, []);
     let maxCumulativeDrop = 0;
 
+    // DFS über eingehende Kanten. Pro Knoten merken wir uns das längste
+    // (also schlechteste) kumulierte ΔU, damit parallele Pfade nicht doppelt
+    // addiert werden (shortest-path bzgl. Spannungsqualität = max Drop).
+    const bestDrop = new Map<string, number>();
+
     const dfs = (currentNodeId: string, currentDrop: number, visited: Set<string>) => {
       if (visited.has(currentNodeId)) return;
       visited.add(currentNodeId);
 
+      const prev = bestDrop.get(currentNodeId);
+      if (prev !== undefined && prev >= currentDrop) return;
+      bestDrop.set(currentNodeId, currentDrop);
+
       const node = nodesMap.get(currentNodeId);
       if (node?.type === 'battery' || node?.type === 'shorePower') {
-        if (currentDrop > maxCumulativeDrop) {
-          maxCumulativeDrop = currentDrop;
-        }
+        if (currentDrop > maxCumulativeDrop) maxCumulativeDrop = currentDrop;
         return;
       }
 
-      const incomingEdges = edges.filter(e => e.target === currentNodeId);
+      const incomingEdges = relevantEdges.filter(e => e.target === currentNodeId);
       if (incomingEdges.length === 0) {
-        if (currentDrop > maxCumulativeDrop) {
-          maxCumulativeDrop = currentDrop;
-        }
+        if (currentDrop > maxCumulativeDrop) maxCumulativeDrop = currentDrop;
         return;
       }
 
@@ -870,8 +947,9 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
         const I = getI(sourceNode, node);
         const length = edge.data?.length || 1;
         const cs = edge.data?.crossSection || 2.5;
-        const voltageDrop = (I * (length * 2)) / (58 * cs);
-        
+        if (cs <= 0) continue;
+        const voltageDrop = (I * (length * 2)) / (VDE_COPPER_CONDUCTIVITY * cs);
+
         dfs(edge.source, currentDrop + voltageDrop, new Set(visited));
       }
     };

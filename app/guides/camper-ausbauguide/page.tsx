@@ -1,9 +1,9 @@
 import React from "react";
 import RoadTripAnimation from "./RoadTripAnimation";
-import { Outfit } from 'next/font/google';
 import { cn } from "@/lib/utils";
 
-const outfit = Outfit({ subsets: ['latin'], display: 'swap' });
+// Outfit wird lokal über @fontsource-variable/outfit gebündelt (offline-fähiger Build).
+const outfit = { className: 'font-outfit' };
 
 export const metadata = {
   title: "Der ultimative Camper Ausbauguide",
