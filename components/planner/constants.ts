@@ -77,8 +77,9 @@ export const initialEdges: Edge<CableEdgeData>[] = [
     targetHandle: 'plus',
     type: 'cableEdge',
     data: {
-      length: 3,
+      length: 0.2, // Hauptsicherung direkt an der Batterie (max. 20 cm)
       crossSection: 6,
+      fuseSize: 5,
     },
   },
   {
@@ -89,8 +90,9 @@ export const initialEdges: Edge<CableEdgeData>[] = [
     targetHandle: 'plus',
     type: 'cableEdge',
     data: {
-      length: 5,
+      length: 3,
       crossSection: 2.5,
+      fuseSize: 5,
     },
   },
   {
@@ -103,6 +105,7 @@ export const initialEdges: Edge<CableEdgeData>[] = [
     data: {
       length: 2,
       crossSection: 10,
+      fuseSize: 50,
     },
   },
 ];

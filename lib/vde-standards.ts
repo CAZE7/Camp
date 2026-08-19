@@ -362,6 +362,109 @@ export const VDE_BATTERY_DOD: Record<string, number> = {
 export const VDE_MIN_CROSS_SECTION = 1.5;
 
 // ============================================================================
+// SYSTEMSPANNUNG & KANTENSTRÖME (EINZIGE QUELLE FÜR STROM-BERECHNUNGEN)
+// ============================================================================
+
+/**
+ * Ermittelt die nominale Systemspannung anhand der Batterien im Plan.
+ * Default 12.8V (typisch LiFePO4) ohne explizite Angabe.
+ */
+export function getSystemVoltage(nodes: Node[]): number {
+  const batteries = nodes.filter((n) => n.type === 'battery');
+  if (batteries.length === 0) return 12.8;
+
+  // Explizite nominalVoltage an einer beliebigen Batterie gewinnt
+  for (const b of batteries) {
+    const nominalVoltage = (b.data as { nominalVoltage?: number })?.nominalVoltage;
+    if (nominalVoltage) {
+      return Number(nominalVoltage);
+    }
+  }
+
+  // Fallback: chemiebasierte Schätzung der ersten Batterie
+  const chemistry = String((batteries[0].data as { chemistry?: string })?.chemistry || '').toLowerCase();
+  if (chemistry === 'agm' || chemistry === 'lead' || chemistry === 'gel') {
+    return 12.0;
+  }
+
+  // Default für LiFePO4 und unbekannte Chemien
+  return 12.8;
+}
+
+/**
+ * Berechnet den Nennstrom einer Kante aus den verbundenen Komponenten.
+ *
+ * DIESE Funktion ist die EINZIGE Strom-Quelle für Kabel-Dimensionierung und
+ * Live-Validierung (CableEdge, calculatePathVoltageDrop, Auto-Wire). Dadurch
+ * kann Auto-Wire exakt die Ströme dimensionieren, die die Validierung später
+ * verwendet — Abweichungen (z.B. "Sicherung zu klein") sind damit
+ * ausgeschlossen, solange die Komponentendaten unverändert bleiben.
+ *
+ * Prioritäten (physikalische Begründung):
+ *   1. totalAmps — explizit gesetzter Gesamtstrom (z.B. Hauptleitungen)
+ *   2. Solar-Kante: Panel-Strom (watts / Vmp). Die Zuleitung vom Panel zum
+ *      Laderegler trägt den PANEL-Strom, nicht die Nennleistung des Reglers.
+ *   3. 12V-Verbraucher: watts / Systemspannung
+ *   4. Wechselrichter (DC-Seite): watts / Systemspannung / Wirkungsgrad
+ *   5. Generische amps-Angabe (Laderegler, Booster, AC-Ladegeräte)
+ *   6. Fallback: Summe aller Verbraucher- bzw. Ladequellen-Ströme
+ */
+export function calculateEdgeCurrent(
+  sourceNode: Node | undefined,
+  targetNode: Node | undefined,
+  nodes: Node[],
+  sysVoltage?: number
+): number {
+  const sData = sourceNode?.data as { totalAmps?: number; amps?: number; watts?: number } | undefined;
+  const tData = targetNode?.data as { totalAmps?: number; amps?: number; watts?: number } | undefined;
+  const voltage = sysVoltage ?? getSystemVoltage(nodes);
+
+  // 1. Expliziter Gesamtstrom (manuell gesetzt oder von Auto-Wire berechnet)
+  if (sData?.totalAmps !== undefined) return Number(sData.totalAmps);
+  if (tData?.totalAmps !== undefined) return Number(tData.totalAmps);
+
+  const isSolarType = (type: string | undefined): boolean => type === 'solar' || type === 'roofSolar';
+
+  // 2. Solar-Zuleitung: trägt den Panel-Strom, nicht die Regler-Nennleistung
+  if (isSolarType(sourceNode?.type)) return (Number(sData?.watts) || 0) / VDE_SOLAR_VMP_VOLTAGE;
+  if (isSolarType(targetNode?.type)) return (Number(tData?.watts) || 0) / VDE_SOLAR_VMP_VOLTAGE;
+
+  // 3. 12V-Verbraucher
+  if (sourceNode?.type === 'consumer') return (Number(sData?.watts) || 0) / voltage;
+  if (targetNode?.type === 'consumer') return (Number(tData?.watts) || 0) / voltage;
+
+  // 4. Wechselrichter (DC-Eingangsstrom inkl. Verlusten)
+  if (sourceNode?.type === 'inverter') return (Number(sData?.watts) || 0) / voltage / VDE_INVERTER_EFFICIENCY;
+  if (targetNode?.type === 'inverter') return (Number(tData?.watts) || 0) / voltage / VDE_INVERTER_EFFICIENCY;
+
+  // 5. Generische Ampere-Angabe (Laderegler, Booster, AC-Ladegeräte)
+  if (sData?.amps !== undefined && sourceNode?.type !== 'battery') return Number(sData.amps);
+  if (tData?.amps !== undefined && targetNode?.type !== 'battery') return Number(tData.amps);
+
+  // 6. Fallback: Systemaggregate über alle Komponenten
+  let totalConsumerAmps = 0;
+  let totalChargerAmps = 0;
+  for (let i = 0; i < nodes.length; i++) {
+    const n = nodes[i];
+    const nData = n.data as { watts?: number; amps?: number } | undefined;
+    if (n.type === 'consumer') {
+      totalConsumerAmps += (Number(nData?.watts) || 0) / voltage;
+    } else if (n.type === 'inverter') {
+      totalConsumerAmps += (Number(nData?.watts) || 0) / voltage / VDE_INVERTER_EFFICIENCY;
+    } else if (['charger', 'mpptController', 'dcdcCharger', 'acBatteryCharger'].includes(n.type as string)) {
+      totalChargerAmps += Number(nData?.amps) || 0;
+    } else if (isSolarType(n.type)) {
+      totalChargerAmps += (Number(nData?.watts) || 0) / VDE_SOLAR_VMP_VOLTAGE;
+    }
+  }
+
+  if (sourceNode?.type === 'battery') return totalConsumerAmps;
+  if (targetNode?.type === 'battery') return totalChargerAmps;
+
+  return Math.max(totalConsumerAmps, totalChargerAmps);
+}
+
+// ============================================================================
 // HAUPTFUNKTION: Kabelberechnung
 // ============================================================================
 

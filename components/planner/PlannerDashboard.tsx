@@ -112,8 +112,14 @@ function ActionsSection({
         <Button variant="ghost" size="sm" onClick={handleExportBOM} className="gap-1.5 text-orange-700 hover:bg-white hover:shadow-sm">
           <Package className="w-4 h-4" /> Stückliste
         </Button>
-        <Button variant="ghost" size="sm" onClick={() => autoWireSystem()} className="gap-1.5 text-yellow-700 hover:bg-white hover:shadow-sm">
-          <Zap className="w-4 h-4" /> Auto-Wire
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => autoWireSystem()}
+          className="gap-1.5 text-yellow-700 hover:bg-white hover:shadow-sm"
+          title="Automatisch Verkabeln & Absichern — berechnet Querschnitte und Sicherungen nach VDE"
+        >
+          <Zap className="w-4 h-4" /> Auto-Wire &amp; Absichern
         </Button>
         <Button variant="ghost" size="sm" onClick={checkSchematic} className="gap-1.5 text-red-700 hover:bg-white hover:shadow-sm">
           <ScanSearch className="w-4 h-4" /> KI-Check

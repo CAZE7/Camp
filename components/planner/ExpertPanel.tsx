@@ -3,6 +3,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { usePlannerStore } from "../../store/usePlannerStore";
 import { calculateCrossSection, calculateMaxFuse } from "../../lib/electrical";
+import { VDE_INVERTER_EFFICIENCY, VDE_SOLAR_VMP_VOLTAGE } from "../../lib/vde-standards";
 import { cn } from "@/lib/utils";
 import { Node, Edge } from 'reactflow';
 
@@ -268,8 +269,8 @@ function LiveRecommendationCard({ node, edges }: { node: Node; edges: Edge[] }) 
   if (!node || !(node.data?.watts || node.data?.amps || node.type === 'inverter' || node.type === 'solar')) return null;
 
             let I = 0;
-            if (node.type === 'inverter') I = (Number(node.data.watts) || 1000) / 12 / 0.85;
-            else if (node.type === 'solar') I = (Number(node.data.watts) || 100) / 18;
+            if (node.type === 'inverter') I = (Number(node.data.watts) || 1000) / 12 / VDE_INVERTER_EFFICIENCY;
+            else if (node.type === 'solar') I = (Number(node.data.watts) || 100) / VDE_SOLAR_VMP_VOLTAGE;
             else if (node.type === 'consumer230v') I = (Number(node.data.watts) || 0) / 230; // AC current at 230V
             else if (node.data?.watts) I = Number(node.data.watts) / 12;
             else if (node.data?.amps) I = Number(node.data.amps);
@@ -319,10 +320,23 @@ function LiveRecommendationCard({ node, edges }: { node: Node; edges: Edge[] }) 
 export function ExpertPanel() {
   const [isOpen, setIsOpen] = useState(false);
   const [expandedTip, setExpandedTip] = useState<number | null>(0);
+  const [autoWireSummary, setAutoWireSummary] = useState<{ edgeCount: number } | null>(null);
 
   // Read-only subscription to selection state
   const selectedNodes = usePlannerStore((s) => s.selectedNodes);
   const edges = usePlannerStore((s) => s.edges);
+
+  // Öffnet das Panel automatisch, sobald Auto-Wire abgeschlossen wurde,
+  // und bestätigt das Ergebnis sichtbar („nach Auto-Wire ist alles perfekt").
+  useEffect(() => {
+    const onAutoWired = (event: Event) => {
+      const detail = (event as CustomEvent<{ edgeCount?: number }>).detail;
+      setIsOpen(true);
+      setAutoWireSummary({ edgeCount: Number(detail?.edgeCount) || 0 });
+    };
+    window.addEventListener('planner-auto-wired', onAutoWired);
+    return () => window.removeEventListener('planner-auto-wired', onAutoWired);
+  }, []);
 
   const currentKnowledge = useMemo(() => {
     if (selectedNodes.length === 0) return DEFAULT_TIP;
@@ -348,7 +362,7 @@ export function ExpertPanel() {
         "absolute bottom-20 md:bottom-4 right-4 z-50 transition-all duration-400 ease-out",
         "pointer-events-auto"
       )}
-      style={{ maxWidth: isOpen ? 380 : 56 }}
+      style={{ maxWidth: isOpen ? 380 : 240 }}
     >
       {/* Expanded Panel */}
       {isOpen && (
@@ -365,8 +379,12 @@ export function ExpertPanel() {
               <h3 className="text-sm font-black text-white truncate">
                 {currentKnowledge.title}
               </h3>
-              <p className="text-[10px] text-stone-400 font-medium uppercase tracking-wider">
-                Kontextuelles Lernen
+              <p className="text-[10px] text-emerald-300 font-bold uppercase tracking-wider flex items-center gap-1.5">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400" />
+                </span>
+                Live
               </p>
             </div>
             <button
@@ -389,6 +407,32 @@ export function ExpertPanel() {
               </svg>
             </button>
           </div>
+
+          {/* Auto-Wire Erfolgs-Bestätigung */}
+          {autoWireSummary && (
+            <div className="mx-4 mt-4 p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 shadow-[0_6px_20px_rgba(16,185,129,0.15)] animate-in slide-in-from-top-2 fade-in duration-300">
+              <div className="flex items-start gap-2.5">
+                <span className="text-lg leading-none mt-0.5">✅</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-black text-emerald-900">Auto-Wire abgeschlossen</p>
+                  <p className="text-[11px] text-emerald-800 leading-snug mt-1">
+                    {autoWireSummary.edgeCount} Kabel verlegt · alle Sicherungen &amp; Querschnitte berechnet
+                    (DIN VDE 0298-4 / 0100-721). Klicke auf eine Komponente für Details.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setAutoWireSummary(null)}
+                  className="text-emerald-400 hover:text-emerald-700 transition-colors p-0.5 rounded-md hover:bg-emerald-100"
+                  aria-label="Auto-Wire Zusammenfassung schließen"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+                    <path d="M18 6 6 18" />
+                    <path d="m6 6 12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Dynamic Calculation Card */}
           {selectedNodes.length > 0 && <LiveRecommendationCard node={selectedNodes[0]} edges={edges} />}
@@ -481,44 +525,52 @@ export function ExpertPanel() {
         </div>
       )}
 
-      {/* FAB Toggle Button */}
+      {/* FAB Toggle Button — bewusst groß & auffällig („Experten-Wissen") */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
           className={cn(
-            "w-14 h-14 rounded-2xl flex items-center justify-center",
-            "bg-gradient-to-br from-stone-800 to-stone-700",
-            "text-white shadow-[0_8px_25px_rgba(0,0,0,0.25)]",
-            "hover:shadow-[0_12px_35px_rgba(0,0,0,0.35)] hover:scale-105",
+            "group flex items-center gap-2.5 pl-3 pr-4 py-3 rounded-2xl",
+            "bg-gradient-to-br from-emerald-600 via-emerald-700 to-stone-800",
+            "text-white shadow-[0_10px_30px_rgba(16,185,129,0.35)]",
+            "hover:shadow-[0_14px_40px_rgba(16,185,129,0.5)] hover:scale-[1.04]",
             "transition-all duration-200",
-            "border border-stone-600/50",
-            "relative group"
+            "border border-emerald-300/40",
+            "relative"
           )}
           aria-label="Experten-Wissen öffnen"
-          title="Experten-Wissen"
+          title="Experten-Wissen öffnen"
         >
           {/* Pulse ring when a component is selected */}
           {selectedNodes.length > 0 && (
-            <span className="absolute inset-0 rounded-2xl animate-ping bg-emerald-400/20 pointer-events-none" />
+            <span className="absolute inset-0 rounded-2xl animate-ping bg-emerald-400/30 pointer-events-none" />
           )}
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="w-6 h-6"
-          >
-            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
-            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
-          </svg>
+          <span className="relative flex items-center justify-center w-8 h-8 rounded-xl bg-white/15 border border-white/20 group-hover:bg-white/25 transition-colors">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="w-5 h-5"
+            >
+              <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+              <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+            </svg>
+          </span>
+          <span className="relative flex flex-col items-start text-left">
+            <span className="text-sm font-black leading-tight">Experten-Wissen</span>
+            <span className="text-[10px] font-bold text-emerald-200 leading-tight">
+              {selectedNodes.length > 0 ? 'Tipps für deine Auswahl' : 'Tipps & VDE-Normen'}
+            </span>
+          </span>
 
           {/* Notification dot */}
           {selectedNodes.length > 0 && (
-            <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border-2 border-white flex items-center justify-center">
-              <span className="text-[8px] font-black text-white">!</span>
+            <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-emerald-400 border-2 border-white flex items-center justify-center animate-pulse shadow-md">
+              <span className="text-[9px] font-black text-emerald-950">i</span>
             </span>
           )}
         </button>
