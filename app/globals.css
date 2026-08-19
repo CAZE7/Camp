@@ -1,85 +1,109 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: #ffffff;
-    --foreground: #0f172a;
-    --card: #f8fafc;
-    --card-foreground: #0f172a;
-    --popover: #ffffff;
-    --popover-foreground: #0f172a;
-    --primary: #0ea5e9;
-    --primary-foreground: #ffffff;
-    --secondary: #e2e8f0;
-    --secondary-foreground: #0f172a;
-    --muted: #cbd5e0;
-    --muted-foreground: #475569;
-    --accent: #0ea5e9;
-    --accent-foreground: #ffffff;
-    --destructive: #ef4444;
-    --destructive-foreground: #ffffff;
-    --warning: #f59e0b;
-    --border: #e2e8f0;
-    --input: #e2e8f0;
-    --ring: #0ea5e9;
-    --sidebar: #f1f5f9;
-    --sidebar-foreground: #0f172a;
-    --sidebar-accent-foreground: #0f172a;
-    --sidebar-border: #e2e8f0;
+    --font-display: "Fraunces", Georgia, "Times New Roman", serif;
+    --font-sans: "Source Sans 3", "Source Sans Pro", ui-sans-serif, system-ui, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+    --font-heading: var(--font-display);
+
+    --paper: #f6f1e8;
+    --bone: #fffdf9;
+    --ink: #14110e;
+    --ink-soft: #2a241e;
+    --muted-ink: #3f3831;
+    --clay: #8f7d68;
+    --oak: #5c4024;
+    --copper: #7a3218;
+    --copper-deep: #5c2410;
+    --moss: #2d3d28;
+    --soot: #14110e;
+    --signal: #7a2418;
+    --oxide: #1a4338;
+    --rule: #8f7d68;
+
+    --background: var(--paper);
+    --foreground: var(--ink);
+    --card: var(--bone);
+    --card-foreground: var(--ink);
+    --popover: var(--bone);
+    --popover-foreground: var(--ink);
+    --primary: var(--ink);
+    --primary-foreground: var(--bone);
+    --secondary: #e7ddd0;
+    --secondary-foreground: var(--ink);
+    --muted: #e7ddd0;
+    --muted-foreground: var(--muted-ink);
+    --accent: #ebe3d6;
+    --accent-foreground: var(--ink);
+    --destructive: var(--signal);
+    --destructive-foreground: var(--bone);
+    --border: var(--rule);
+    --input: var(--rule);
+    --ring: var(--ink);
+    --chart-1: var(--copper);
+    --chart-2: var(--oak);
+    --chart-3: var(--moss);
+    --chart-4: var(--ink-soft);
+    --chart-5: var(--clay);
+    --radius: 0.125rem;
+    --sidebar: var(--bone);
+    --sidebar-foreground: var(--ink);
+    --sidebar-primary: var(--ink);
+    --sidebar-primary-foreground: var(--bone);
+    --sidebar-accent: #ebe3d6;
+    --sidebar-accent-foreground: var(--ink);
+    --sidebar-border: var(--rule);
+    --sidebar-ring: var(--ink);
   }
+
   * {
     @apply border-border;
   }
-  body {
-    @apply bg-background text-foreground;
-  }
+
   html {
     @apply font-sans;
-    color-scheme: light;
+    scroll-behavior: smooth;
   }
-  h1 { @apply font-black tracking-tight; }
-  h2 { @apply font-extrabold tracking-tight; }
-  h3 { @apply font-bold tracking-tight; }
-  h4 { @apply font-semibold tracking-tight; }
-  h5 { @apply font-semibold; }
-  h6 { @apply font-medium; }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    background-color: var(--paper);
+    color: var(--ink);
+  }
+
+  ::selection {
+    background: #d8c4a8;
+    color: var(--ink);
+  }
 }
 
 @layer components {
-  .text-balance {
-    text-wrap: balance;
+  .rule {
+    height: 1px;
+    background: var(--rule);
   }
-}
 
-* {
-  box-sizing: border-box;
-}
+  .index-label {
+    font-family: var(--font-mono), ui-monospace, monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--copper);
+    font-weight: 500;
+  }
 
-.react-flow__pane {
-  background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><rect fill="%23f0f0f0" width="40" height="40"/><circle cx="10" cy="10" r="1" fill="%23999999"/></svg>');
-}
+  .display {
+    font-family: var(--font-display);
+    font-weight: 500;
+    letter-spacing: -0.03em;
+    line-height: 0.95;
+  }
 
-.react-flow__node {
-  font-family: system-ui, -apple-system, sans-serif;
-}
-
-.react-flow__edge-path {
-  stroke: #cbd5e0;
-}
-
-.react-flow__handle {
-  background: #0ea5e9;
-  border: 2px solid white;
-}
-
-.react-flow__handle.connectable {
-  background: #06b6d4;
-}
-
-.react-flow__handle.valid {
-  background: #10b981;
+  .measure {
+    font-family: var(--font-mono), ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+  }
 }
