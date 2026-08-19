@@ -6,13 +6,13 @@ import AusbauFahrplanPage from './page';
 describe('AusbauFahrplanPage', () => {
   it('renders the main title', () => {
     render(<AusbauFahrplanPage />);
-    const mainTitle = screen.getByRole('heading', { name: /Der ultimative Camper-Ausbau Fahrplan/i, level: 1 });
+    const mainTitle = screen.getByRole('heading', { name: /Ausbau-Fahrplan/i, level: 1 });
     expect(mainTitle).toBeInTheDocument();
   });
 
-  it('renders the sticky sidebar with Inhaltsverzeichnis', () => {
+  it('renders the sticky sidebar with Inhalt', () => {
     render(<AusbauFahrplanPage />);
-    const sidebarHeading = screen.getByRole('heading', { name: /Inhaltsverzeichnis/i, level: 2 });
+    const sidebarHeading = screen.getByRole('heading', { name: /Inhalt/i, level: 2 });
     expect(sidebarHeading).toBeInTheDocument();
 
     // Check for some navigation links

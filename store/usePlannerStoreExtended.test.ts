@@ -2,7 +2,7 @@
  * Additional tests for usePlannerStore covering unique functions
  * that are NOT covered by store/usePlannerStore.test.ts:
  *   - onLayout
- *   - handleChangeLength / handleChangeCrossSection
+ *   - handleChangeLength / handleChangeCrossSection / handleChangeFuseSize
  *   - setWaterNodes / setWaterEdges (array + function updater)
  *   - onWaterNodesChange / onWaterEdgesChange
  *   - setWaterWarning
@@ -146,6 +146,45 @@ describe('usePlannerStore - extended coverage', () => {
       usePlannerStore.getState().handleChangeCrossSection('nonexistent', 6);
 
       expect(usePlannerStore.getState().edges[0].data?.crossSection).toBe(2.5);
+    });
+  });
+
+  describe('handleChangeFuseSize', () => {
+    it('should update the fuseSize field on the matching edge', () => {
+      const edge: Edge<CableEdgeData> = {
+        id: 'e1',
+        source: 'a',
+        target: 'b',
+        data: { length: 3, crossSection: 2.5, fuseSize: 16 },
+      };
+      usePlannerStore.setState({ edges: [edge] });
+
+      usePlannerStore.getState().handleChangeFuseSize('e1', 25);
+
+      expect(usePlannerStore.getState().edges[0].data?.fuseSize).toBe(25);
+      expect(usePlannerStore.getState().edges[0].data?.length).toBe(3);
+      expect(usePlannerStore.getState().edges[0].data?.crossSection).toBe(2.5);
+    });
+
+    it('should not touch other edges when updating one', () => {
+      const e1: Edge<CableEdgeData> = { id: 'e1', source: 'a', target: 'b', data: { length: 3, crossSection: 2.5 } };
+      const e2: Edge<CableEdgeData> = { id: 'e2', source: 'c', target: 'd', data: { length: 5, crossSection: 4, fuseSize: 30 } };
+      usePlannerStore.setState({ edges: [e1, e2] });
+
+      usePlannerStore.getState().handleChangeFuseSize('e2', 20);
+
+      const state = usePlannerStore.getState();
+      expect(state.edges.find(e => e.id === 'e1')?.data?.fuseSize).toBeUndefined();
+      expect(state.edges.find(e => e.id === 'e2')?.data?.fuseSize).toBe(20);
+    });
+
+    it('should be a no-op if no edge matches the id', () => {
+      const edge: Edge<CableEdgeData> = { id: 'e1', source: 'a', target: 'b', data: { length: 3, crossSection: 2.5, fuseSize: 16 } };
+      usePlannerStore.setState({ edges: [edge] });
+
+      usePlannerStore.getState().handleChangeFuseSize('nonexistent', 40);
+
+      expect(usePlannerStore.getState().edges[0].data?.fuseSize).toBe(16);
     });
   });
 

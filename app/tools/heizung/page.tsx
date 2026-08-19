@@ -12,9 +12,9 @@ import { Switch } from '@/components/ui/switch';
 import { StepperSlider } from '@/components/ui/StepperSlider';
 import Link from 'next/link';
 import { cn } from "@/lib/utils";
-import { Outfit } from 'next/font/google';
 
-const outfit = Outfit({ subsets: ['latin'], display: 'swap' });
+// Outfit wird lokal über @fontsource-variable/outfit gebündelt (offline-fähiger Build).
+const outfit = { className: 'font-outfit' };
 
 export interface HeaterModel {
   id: string;

@@ -7,6 +7,7 @@ import '@fontsource/source-sans-3/500.css';
 import '@fontsource/source-sans-3/600.css';
 import '@fontsource/ibm-plex-mono/400.css';
 import '@fontsource/ibm-plex-mono/500.css';
+import '@fontsource-variable/outfit';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
