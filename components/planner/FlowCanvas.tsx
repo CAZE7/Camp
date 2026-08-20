@@ -21,7 +21,9 @@ import { FloatingMetricsCard } from './ui/FloatingMetricsCard';
 import { BOMModal } from './BOMModal';
 import { useSequentialTapConnect } from './hooks/useSequentialTapConnect';
 import { usePlannerDragDrop } from './hooks/usePlannerDragDrop';
-import { applyNeighborhoodFocus } from './utils/focusHighlight';
+import { applyFocusHighlight } from './utils/focusHighlight';
+import { applyDomainFilter, DOMAINS, DOMAIN_COLORS, DOMAIN_LABELS, Domain, nodeMinimapColor } from './utils/domainFilter';
+import { markErrorEdgesZIndex } from './utils/errorEdges';
 
 function useAccessibleHandles() {
   React.useEffect(() => {
@@ -121,6 +123,8 @@ export function FlowCanvas() {
     viewMode, nodes, edges, waterNodes, waterEdges, waterWarning,
     onNodesChange, onEdgesChange, onWaterNodesChange, onWaterEdgesChange,
     onConnect, isValidConnection, onSelectionChange, addNode, firstTappedHandle, selectedNodes,
+    highlightedNodeId, highlightedEdgeId, setHighlightedNodeId, setHighlightedEdgeId,
+    trunkMode, setTrunkMode,
   } = usePlannerStore(useShallow((state) => ({
     viewMode: state.viewMode,
     nodes: state.nodes,
@@ -138,6 +142,12 @@ export function FlowCanvas() {
     addNode: state.addNode,
     firstTappedHandle: state.firstTappedHandle,
     selectedNodes: state.selectedNodes,
+    highlightedNodeId: state.highlightedNodeId,
+    highlightedEdgeId: state.highlightedEdgeId,
+    setHighlightedNodeId: state.setHighlightedNodeId,
+    setHighlightedEdgeId: state.setHighlightedEdgeId,
+    trunkMode: state.trunkMode,
+    setTrunkMode: state.setTrunkMode,
   })));
 
   React.useEffect(() => {
@@ -174,14 +184,56 @@ export function FlowCanvas() {
   const nodeTypes = useMemo(() => ({ ...NODE_TYPES }), []);
   const rawNodes = viewMode === 'water' ? waterNodes : nodes;
   const rawEdges = viewMode === 'water' ? waterEdges : edges;
-  const focusedNodeId = selectedNodes?.length === 1 ? selectedNodes[0].id : null;
-  const { nodes: displayedNodes, edges: displayedEdges } = useMemo(
-    () => applyNeighborhoodFocus(rawNodes, rawEdges, focusedNodeId),
-    [rawNodes, rawEdges, focusedNodeId]
-  );
+
+  // Domänen-Filter (nur Elektrik): alle Domänen standardmäßig aktiv.
+  const [activeDomains, setActiveDomains] = useState<Set<Domain>>(() => new Set(DOMAINS));
+  const toggleDomain = React.useCallback((domain: Domain) => {
+    setActiveDomains((prev) => {
+      const next = new Set(prev);
+      if (next.has(domain)) {
+        if (next.size === 1) return prev; // mindestens eine Domäne aktiv lassen
+        next.delete(domain);
+      } else {
+        next.add(domain);
+      }
+      return next;
+    });
+  }, []);
+
+  // Hover- und Selektions-Hervorhebung. Beim Hover einer Kante werden deren
+  // Endknoten als Seeds verwendet, damit alle verbundenen Kabel hervorgehoben werden.
+  const hoverSeedIds = React.useMemo(() => {
+    if (highlightedEdgeId) {
+      const edge = [...edges, ...waterEdges].find((e) => e.id === highlightedEdgeId);
+      if (edge) return [edge.source, edge.target];
+    }
+    if (highlightedNodeId) return [highlightedNodeId];
+    return null;
+  }, [highlightedEdgeId, highlightedNodeId, edges, waterEdges]);
+
+  const focusSeedIds = selectedNodes?.length === 1 ? [selectedNodes[0].id] : hoverSeedIds;
+
+  const { nodes: displayedNodes, edges: displayedEdges } = useMemo(() => {
+    const focused = applyFocusHighlight(rawNodes, rawEdges, focusSeedIds);
+    let outNodes = focused.nodes;
+    let outEdges = focused.edges;
+
+    if (viewMode === 'electric') {
+      const filtered = applyDomainFilter(outNodes, outEdges, activeDomains);
+      outNodes = filtered.nodes;
+      outEdges = filtered.edges;
+      // Fehler-Kanten oberhalb der Nodes rendern.
+      outEdges = markErrorEdgesZIndex(
+        outEdges,
+        rawNodes,
+        (sourceId) => usePlannerStore.getState().calculatePathVoltageDrop(sourceId, nodes, edges)
+      );
+    }
+
+    return { nodes: outNodes, edges: outEdges };
+  }, [rawNodes, rawEdges, focusSeedIds, viewMode, activeDomains, nodes, edges]);
   const isOverview = zoom < PLANNER_OVERVIEW_ZOOM;
   const minimapColors = useMemo(() => ({
-    node: cssToken('--ink', '#14110e'),
     mask: cssToken('--canvas-minimap-mask', 'rgba(20, 17, 14, 0.14)'),
     background: cssToken('--bone', '#fffdf9'),
   }), []);
@@ -243,6 +295,10 @@ export function FlowCanvas() {
           }}
           isValidConnection={isValidConnection}
           onSelectionChange={onSelectionChange}
+          onNodeMouseEnter={(_, node) => setHighlightedNodeId(node.id)}
+          onNodeMouseLeave={() => setHighlightedNodeId(null)}
+          onEdgeMouseEnter={(_, edge) => setHighlightedEdgeId(edge.id)}
+          onEdgeMouseLeave={() => setHighlightedEdgeId(null)}
           onDragOver={onDragOver}
           onDrop={onDrop}
           fitView
@@ -269,7 +325,7 @@ export function FlowCanvas() {
           <MiniMap
             className="mb-16 overflow-hidden rounded-lg border border-border shadow-sm lg:mb-4"
             ariaLabel="Miniaturübersicht des Plans"
-            nodeColor={minimapColors.node}
+            nodeColor={(node) => nodeMinimapColor(node)}
             maskColor={minimapColors.mask}
             style={{ backgroundColor: minimapColors.background }}
           />
@@ -280,6 +336,46 @@ export function FlowCanvas() {
               <span className="ml-2 text-muted-foreground">Anschluss antippen, dann Ziel antippen – oder mit der Maus ziehen.</span>
             </div>
           </Panel>
+
+          {viewMode === 'electric' && (
+            <Panel position="top-right" className="m-3">
+              <div
+                className="flex flex-wrap gap-1.5 rounded-lg border border-border bg-card/95 p-1.5 shadow-sm"
+                role="group"
+                aria-label="Domänen-Filter"
+              >
+                {DOMAINS.map((domain) => {
+                  const active = activeDomains.has(domain);
+                  return (
+                    <button
+                      key={domain}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => toggleDomain(domain)}
+                      className={`rounded-md px-2.5 py-1 text-xs font-semibold transition-colors ${
+                        active ? 'text-white' : 'text-muted-foreground opacity-60 hover:opacity-100'
+                      }`}
+                      style={active ? { backgroundColor: DOMAIN_COLORS[domain] } : undefined}
+                    >
+                      {DOMAIN_LABELS[domain]}
+                    </button>
+                  );
+                })}
+                <span className="mx-0.5 h-5 w-px bg-border" aria-hidden="true" />
+                <button
+                  type="button"
+                  aria-pressed={trunkMode}
+                  onClick={() => setTrunkMode(!trunkMode)}
+                  title="Hauptrouten (Batterie → Sicherungskasten → Verteilung) hervorheben"
+                  className={`rounded-md px-2.5 py-1 text-xs font-semibold transition-colors ${
+                    trunkMode ? 'bg-ink text-bone' : 'text-muted-foreground opacity-60 hover:opacity-100'
+                  }`}
+                >
+                  Trassen
+                </button>
+              </div>
+            </Panel>
+          )}
 
           {viewMode === 'electric' && calculatedSolarWatts > 0 && (
             <Panel position="bottom-center" className="mb-4 rounded-lg border border-oxide/40 bg-oxide/10 p-3 text-sm text-oxide shadow-sm">

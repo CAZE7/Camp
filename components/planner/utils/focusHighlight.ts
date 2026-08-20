@@ -16,11 +16,25 @@ export function applyNeighborhoodFocus<N extends FocusableNode, E extends Focusa
   edges: E[],
   focusedNodeId: string | null | undefined
 ): { nodes: N[]; edges: E[] } {
-  if (!focusedNodeId) return { nodes, edges };
+  return applyFocusHighlight(nodes, edges, focusedNodeId ? [focusedNodeId] : null);
+}
 
-  const keep = new Set<string>([focusedNodeId]);
+/**
+ * Generalisierte Fokus-Hervorhebung für einen oder mehrere Seed-Nodes
+ * (Selektion oder Hover). Alle Kanten, die einen Seed-Node berühren, bleiben
+ * aktiv; alles andere wird gedimmt. Pure Darstellung ohne Store-Mutation.
+ */
+export function applyFocusHighlight<N extends FocusableNode, E extends FocusableEdge>(
+  nodes: N[],
+  edges: E[],
+  seedNodeIds: string[] | null | undefined
+): { nodes: N[]; edges: E[] } {
+  if (!seedNodeIds || seedNodeIds.length === 0) return { nodes, edges };
+
+  const seeds = new Set<string>(seedNodeIds);
+  const keep = new Set<string>(seeds);
   for (const edge of edges) {
-    if (edge.source === focusedNodeId || edge.target === focusedNodeId) {
+    if (seeds.has(edge.source) || seeds.has(edge.target)) {
       keep.add(edge.source);
       keep.add(edge.target);
     }
@@ -35,7 +49,7 @@ export function applyNeighborhoodFocus<N extends FocusableNode, E extends Focusa
       ...edge,
       className: withFlag(
         edge.className,
-        edge.source === focusedNodeId || edge.target === focusedNodeId ? ACTIVE : DIM
+        seeds.has(edge.source) || seeds.has(edge.target) ? ACTIVE : DIM
       ),
     })),
   };

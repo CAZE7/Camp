@@ -53,11 +53,15 @@ describe('CableEdge', () => {
     // expect(getByText('5.00 m')).toBeInTheDocument(); // Smart labeling hides this
   });
 
-  it('uses orthogonal SmoothStep routing', () => {
+  it('uses orthogonal routing with rounded corners (no bezier)', () => {
     const { getByTestId } = render(<CableEdge {...defaultProps} />);
 
     const baseEdge = getByTestId('base-edge');
-    expect(baseEdge).toHaveAttribute('d', 'smooth-step-path');
+    const d = baseEdge.getAttribute('d') || '';
+    // Rechtwinkliger Pfad: beginnt mit M, nutzt Q für abgerundete Ecken.
+    expect(d.startsWith('M')).toBe(true);
+    expect(d).toContain('Q');
+    expect(d).not.toContain('C'); // keine Bezier-Kurven
   });
 
   it('calculates crossSection and maxFuse when source is consumer', () => {
@@ -76,7 +80,7 @@ describe('CableEdge', () => {
 
     const { getByText } = render(<CableEdge {...defaultProps} selected={true} />);
 
-    expect(getByText('6 mm²')).toBeInTheDocument();
+    expect(getByText(/6 mm²/)).toBeInTheDocument();
     expect(getByText('Max: 32A')).toBeInTheDocument();
   });
 
@@ -95,7 +99,7 @@ describe('CableEdge', () => {
 
     const { getByText } = render(<CableEdge {...defaultProps} selected={true} />);
 
-    expect(getByText('16 mm²')).toBeInTheDocument();
+    expect(getByText(/16 mm²/)).toBeInTheDocument();
     expect(getByText('Max: 63A')).toBeInTheDocument();
   });
 
@@ -119,20 +123,31 @@ describe('CableEdge', () => {
     // expect(getByText('Max: 70A')).toBeInTheDocument(); // Smart labeling hides this
   });
 
-  it('renders selected state with the selected wire token stroke', () => {
-    const { getByTestId } = render(<CableEdge {...defaultProps} selected={true} />);
-
-    const baseEdge = getByTestId('base-edge');
-    // --wire-selected === #9ca3af (siehe globals.css)
-    expect(baseEdge).toHaveStyle({ stroke: 'var(--wire-selected)' });
+  it('renders DC plus with the red plus token', () => {
+    const { getByTestId } = render(<CableEdge {...defaultProps} sourceHandle="plus" />);
+    expect(getByTestId('base-edge')).toHaveStyle({ stroke: 'var(--wire-dc)' });
   });
 
-  it('renders unselected DC state with the DC wire token stroke', () => {
-    const { getByTestId } = render(<CableEdge {...defaultProps} selected={false} />);
+  it('renders DC minus with the dark minus token', () => {
+    const { getByTestId } = render(<CableEdge {...defaultProps} sourceHandle="minus" />);
+    expect(getByTestId('base-edge')).toHaveStyle({ stroke: 'var(--wire-dc-minus)' });
+  });
 
-    const baseEdge = getByTestId('base-edge');
-    // --wire-dc === #3b82f6 (siehe globals.css)
-    expect(baseEdge).toHaveStyle({ stroke: 'var(--wire-dc)' });
+  it('keeps the domain color when selected (selection is glow, not a color swap)', () => {
+    const { getByTestId } = render(<CableEdge {...defaultProps} sourceHandle="plus" selected={true} />);
+    expect(getByTestId('base-edge')).toHaveStyle({ stroke: 'var(--wire-dc)' });
+  });
+
+  it('renders AC edges with the blue AC token', () => {
+    (useReactFlow as any).mockReturnValue({
+      getNode: vi.fn((id) => (id === '1' ? { id: '1', type: 'shorePower', data: {} } : null)),
+      getNodes: vi.fn().mockReturnValue([]),
+    });
+
+    const { getByTestId } = render(
+      <CableEdge {...defaultProps} sourceHandle="plus" data={{ length: 5, edgeDomain: 'AC_230V' }} />
+    );
+    expect(getByTestId('base-edge')).toHaveStyle({ stroke: 'var(--wire-ac)' });
   });
 
   it('renders fuseSize if provided in data', () => {

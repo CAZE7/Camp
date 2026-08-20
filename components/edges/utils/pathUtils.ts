@@ -6,6 +6,8 @@ export const MINUS_PATH_OFFSET = 32;
 export const PLUS_LABEL_NUDGE = -40;
 export const MINUS_LABEL_NUDGE = 40;
 export const PARALLEL_LABEL_SPREAD = 22;
+/** Vertikaler Abstand zwischen gebündelten Leitungen derselben Trasse. */
+export const PARALLEL_LANE_SPREAD = 18;
 
 export interface PathParams {
   sourceX: number;
@@ -58,6 +60,36 @@ export type LabelEdgeRef = {
   id: string;
   source: string;
   target: string;
+  sourceHandle?: string | null;
+};
+
+const sharePair = (a: LabelEdgeRef, b: LabelEdgeRef): boolean =>
+  (a.source === b.source && a.target === b.target) ||
+  (a.source === b.target && a.target === b.source);
+
+/** Plus zuerst, dann Minus, dann alphabetisch nach id — deterministisch. */
+const polarityRank = (edge: LabelEdgeRef): number =>
+  edge.sourceHandle?.includes('minus') ? 1 : 0;
+
+/**
+ * Paralleler Versatz (Lane) für gebündelte Leitungen. Kanten, die dasselbe
+ * Node-Paar verbinden, bekommen jeweils einen eigenen Versatz, damit sie als
+ * Trasse nebeneinander liegen statt übereinander. Plus liegt dabei näher am
+ * Node als Minus (wie bisher), weitere Leitungen reihen sich darunter ein.
+ */
+export const parallelLaneOffset = (input: {
+  edgeId: string;
+  source: string;
+  target: string;
+  sourceHandle?: string | null;
+  siblingEdges: LabelEdgeRef[];
+}): number => {
+  const group = input.siblingEdges
+    .filter((edge) => sharePair(edge, { id: input.edgeId, source: input.source, target: input.target }))
+    .sort((a, b) => polarityRank(a) - polarityRank(b) || a.id.localeCompare(b.id));
+  if (group.length <= 1) return polarityPathOffset(input.sourceHandle);
+  const idx = Math.max(0, group.findIndex((edge) => edge.id === input.edgeId));
+  return PLUS_PATH_OFFSET + idx * PARALLEL_LANE_SPREAD;
 };
 
 /**

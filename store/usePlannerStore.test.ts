@@ -105,6 +105,52 @@ describe('usePlannerStore', () => {
     });
   });
 
+  describe('Hover Highlighting', () => {
+    it('defaults highlight ids to null', () => {
+      const { result } = renderHook(() => usePlannerStore());
+      expect(result.current.highlightedNodeId).toBeNull();
+      expect(result.current.highlightedEdgeId).toBeNull();
+    });
+
+    it('sets and clears the highlighted node id', () => {
+      const { result } = renderHook(() => usePlannerStore());
+      act(() => {
+        result.current.setHighlightedNodeId('battery');
+      });
+      expect(result.current.highlightedNodeId).toBe('battery');
+
+      act(() => {
+        result.current.setHighlightedNodeId(null);
+      });
+      expect(result.current.highlightedNodeId).toBeNull();
+    });
+
+    it('sets and clears the highlighted edge id', () => {
+      const { result } = renderHook(() => usePlannerStore());
+      act(() => {
+        result.current.setHighlightedEdgeId('e1');
+      });
+      expect(result.current.highlightedEdgeId).toBe('e1');
+
+      act(() => {
+        result.current.setHighlightedEdgeId(null);
+      });
+      expect(result.current.highlightedEdgeId).toBeNull();
+    });
+  });
+
+  describe('Trunk Mode', () => {
+    it('defaults to off and can be toggled', () => {
+      const { result } = renderHook(() => usePlannerStore());
+      expect(result.current.trunkMode).toBe(false);
+
+      act(() => {
+        result.current.setTrunkMode(true);
+      });
+      expect(result.current.trunkMode).toBe(true);
+    });
+  });
+
   describe('Nodes and Edges Management', () => {
     it('should handle onNodesChange', () => {
       const { result } = renderHook(() => usePlannerStore());

@@ -64,6 +64,7 @@ const config: Config = {
         warning: "var(--warning)",
         wire: {
           dc: "var(--wire-dc)",
+          "dc-minus": "var(--wire-dc-minus)",
           ac: "var(--wire-ac)",
           solar: "var(--wire-solar)",
           selected: "var(--wire-selected)",

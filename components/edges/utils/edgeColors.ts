@@ -7,7 +7,8 @@
  */
 
 export const WIRE_COLORS = {
-  dc: 'var(--wire-dc)',
+  dcPlus: 'var(--wire-dc)',
+  dcMinus: 'var(--wire-dc-minus)',
   ac: 'var(--wire-ac)',
   solar: 'var(--wire-solar)',
   selected: 'var(--wire-selected)',
@@ -30,18 +31,16 @@ export function cssToken(name: string, fallback: string): string {
 }
 
 /**
- * Liefert die konsistente Leitungsfarbe für eine Kante anhand von
- * Auswahl-Status, Spannungsdomäne und Spannungsfall.
+ * Liefert die Leitungsfarbe primär aus der Domäne (12V DC Plus/Minus,
+ * 230V AC, Solar). Der Selektionszustand wird bewusst NICHT als Farbe
+ * kodiert (er bleibt ein Glow/Dicken-Effekt); Fehler-Kanten werden separat
+ * in CableEdge auf die Fehlerfarbe gesetzt (mit animiertem Dash).
  */
 export function getWireColor(input: {
-  selected?: boolean;
   edgeDomain: WireDomain;
-  hasError?: boolean;
+  isPlus?: boolean;
 }): string {
-  const { selected, edgeDomain, hasError } = input;
-  if (selected) return WIRE_COLORS.selected;
-  if (hasError) return WIRE_COLORS.error;
-  if (edgeDomain === 'AC_230V') return WIRE_COLORS.ac;
-  if (edgeDomain === 'Solar') return WIRE_COLORS.solar;
-  return WIRE_COLORS.dc;
+  if (input.edgeDomain === 'AC_230V') return WIRE_COLORS.ac;
+  if (input.edgeDomain === 'Solar') return WIRE_COLORS.solar;
+  return input.isPlus ? WIRE_COLORS.dcPlus : WIRE_COLORS.dcMinus;
 }

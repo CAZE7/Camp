@@ -69,12 +69,14 @@
     --canvas-bg: #f4f5f7;
     --canvas-grid: #6b6258;
     --canvas-dim: 0.32;
+    --canvas-domain-dim: 0.18;
     --canvas-minimap-mask: rgba(20, 17, 14, 0.14);
-    --wire-dc: #1d4ed8;        /* Gleichstrom 12V/24V (blau) */
-    --wire-ac: #b91c1c;        /* Wechselstrom 230V (rot) */
-    --wire-solar: #92400e;     /* Solar / PV (dunkles Amber) */
-    --wire-selected: #374151;  /* ausgewählte Leitung (neutral) */
-    --wire-error: #b91c1c;     /* Leitung mit Fehler (rot) */
+    --wire-dc: #dc2626;        /* Gleichstrom 12V/24V Plus (rot) */
+    --wire-dc-minus: #1f2937;  /* Gleichstrom 12V/24V Minus (schwarz) */
+    --wire-ac: #2563eb;        /* Wechselstrom 230V (blau) */
+    --wire-solar: #d97706;     /* Solar / PV (gelb/orange) */
+    --wire-selected: #374151;  /* Fokus-Ring für ausgewählte Leitung (kein Füll) */
+    --wire-error: #ef4444;     /* Leitung mit Fehler (rot, animiertes Dash) */
 
     --pipe-fresh: #1d4ed8;     /* Frischwasser (blau) */
     --pipe-gray: #4b5563;      /* Grauwasser (grau) */
@@ -258,6 +260,22 @@
   .react-flow__node.planner-focus-dim,
   .react-flow__edge.planner-focus-dim {
     opacity: var(--canvas-dim);
+  }
+
+  .react-flow__node.planner-domain-dim,
+  .react-flow__edge.planner-domain-dim {
+    opacity: var(--canvas-domain-dim);
+  }
+
+  /* Fehler-Kabel: "marschierende" gestrichelte Linie als zusätzliches Signal. */
+  .planner-edge-error-dash {
+    animation: wire-error-dash 1s linear infinite;
+  }
+
+  @keyframes wire-error-dash {
+    to {
+      stroke-dashoffset: -28;
+    }
   }
 
   .roof-dot-grid {
