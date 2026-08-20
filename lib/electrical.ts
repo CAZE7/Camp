@@ -31,7 +31,11 @@ export const FUSE_MAP: Record<number, number> = {
 };
 
 export const calculateMaxFuse = (crossSection: number): number => {
-  return FUSE_MAP[crossSection] || 0;
+  const maxFuse = FUSE_MAP[crossSection];
+  if (maxFuse === undefined) {
+    throw new RangeError(`Unbekannter Querschnitt: ${crossSection}mm²`);
+  }
+  return maxFuse;
 };
 
 /**
