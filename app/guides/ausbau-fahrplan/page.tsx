@@ -1,6 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { SiteHeader } from '@/components/brand/SiteHeader';
+import { SiteFooter } from '@/components/brand/SiteFooter';
 
 interface StepData {
   id: string;
@@ -29,17 +30,17 @@ const StepModule = ({ step }: { step: StepData }) => (
 
     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
       <div>
-        <h3 className="font-mono text-[0.65rem] uppercase tracking-[0.16em] text-copper mb-2">Ziel</h3>
+        <h3 className="label-eyebrow text-copper mb-2">Ziel</h3>
         <p className="text-ink-soft leading-relaxed">{step.ziel}</p>
       </div>
       <div>
-        <h3 className="font-mono text-[0.65rem] uppercase tracking-[0.16em] text-moss mb-2">Warum jetzt?</h3>
+        <h3 className="label-eyebrow text-moss mb-2">Warum jetzt?</h3>
         <p className="text-ink-soft leading-relaxed">{step.warumJetzt}</p>
       </div>
     </div>
 
     <div className="mb-8">
-      <h3 className="font-mono text-[0.65rem] uppercase tracking-[0.16em] text-ink mb-3">Werkzeug & Material</h3>
+      <h3 className="label-eyebrow text-ink mb-3">Werkzeug & Material</h3>
       <ul className="list-disc pl-5 space-y-1 text-ink-soft">
         {step.werkzeugMaterial.map((item, index) => (
           <li key={index}>{item}</li>
@@ -48,7 +49,7 @@ const StepModule = ({ step }: { step: StepData }) => (
     </div>
 
     <div className="mb-8">
-      <h3 className="font-mono text-[0.65rem] uppercase tracking-[0.16em] text-ink mb-3">Schritt für Schritt</h3>
+      <h3 className="label-eyebrow text-ink mb-3">Schritt für Schritt</h3>
       <ol className="list-decimal pl-5 space-y-2 text-ink-soft marker:font-medium marker:text-ink">
         {step.schrittFuerSchritt.map((item, index) => (
           <li key={index} className="pl-1">{item}</li>
@@ -58,14 +59,14 @@ const StepModule = ({ step }: { step: StepData }) => (
 
     {step.zusatzInfo && (
       <div className="mb-8 p-4 bg-bone border-l-2 border-copper">
-        <h3 className="font-mono text-[0.65rem] uppercase tracking-[0.16em] text-copper mb-1">Zusatzinfo</h3>
+        <h3 className="label-eyebrow text-copper mb-1">Zusatzinfo</h3>
         <p className="text-ink-soft text-sm leading-relaxed">{step.zusatzInfo}</p>
       </div>
     )}
 
     {step.comparison && (
       <div className="mb-8">
-        <h3 className="font-mono text-[0.65rem] uppercase tracking-[0.16em] text-ink mb-4">{step.comparison.title}</h3>
+        <h3 className="label-eyebrow text-ink mb-4">{step.comparison.title}</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px bg-rule border border-rule">
           {step.comparison.items.map((item, index) => (
             <div key={index} className="bg-paper p-5">
@@ -89,7 +90,7 @@ const StepModule = ({ step }: { step: StepData }) => (
 
     {step.kaufhilfe && (
       <div className="p-5 bg-bone border border-rule">
-        <h3 className="font-mono text-[0.65rem] uppercase tracking-[0.16em] text-ink mb-2">Kaufhilfe</h3>
+        <h3 className="label-eyebrow text-ink mb-2">Kaufhilfe</h3>
         <p className="text-ink-soft text-sm">{step.kaufhilfe}</p>
       </div>
     )}
@@ -260,31 +261,31 @@ const stepsData: StepData[] = [
 
 export default function AusbauFahrplanPage() {
   return (
-    <div className="min-h-screen bg-paper text-ink">
+    <div className="flex min-h-screen flex-col bg-paper text-ink">
       <SiteHeader />
-      <div className="mx-auto max-w-5xl flex flex-col md:flex-row">
-        <aside className="w-full md:w-56 flex-shrink-0 border-b md:border-b-0 md:border-r border-rule">
+      <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col md:flex-row">
+        <aside className="w-full flex-shrink-0 border-b border-rule md:w-56 md:border-b-0 md:border-r" aria-label="Kapitel">
           <div className="sticky top-0 p-5">
             <h2 className="text-sm font-medium">Inhalt</h2>
-            <nav className="mt-3 space-y-1">
+            <nav className="mt-3 space-y-1" aria-label="Sprungmarken">
               {stepsData.map((step) => (
                 <a
                   key={step.id}
                   href={`#${step.id}`}
-                  className="block text-sm text-ink-soft hover:text-ink py-1"
+                  className="flex min-h-11 items-center py-1 text-sm text-ink-soft hover:text-ink"
                 >
                   {step.title}
                 </a>
               ))}
             </nav>
-            <Link href="/guides/holzausbau" className="mt-6 inline-block text-sm text-copper">
+            <Link href="/guides/holzausbau" className="mt-6 inline-flex min-h-11 items-center text-sm text-copper">
               Holzausbau →
             </Link>
           </div>
         </aside>
 
-        <main className="flex-1 px-5 py-8 md:px-10 md:py-10">
-          <h1 className="text-2xl font-semibold tracking-tight">
+        <main id="main" className="flex-1 px-5 py-8 md:px-10 md:py-10">
+          <h1 className="font-display text-2xl font-semibold tracking-tight md:text-3xl">
             Ausbau-Fahrplan
           </h1>
           <p className="mt-2 max-w-2xl text-sm text-ink-soft">
@@ -297,6 +298,7 @@ export default function AusbauFahrplanPage() {
           </div>
         </main>
       </div>
+      <SiteFooter />
     </div>
   );
 }

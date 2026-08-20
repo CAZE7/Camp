@@ -5,21 +5,28 @@ import { NodeResizer } from 'reactflow';
 import { cn } from '@/lib/utils';
 import { RoofNodeData } from './types';
 
-const RoofWindowNode = function({ id, data, selected }: { id: string, data: RoofNodeData, selected: boolean }) {
+const RoofWindowNode = function ({
+  id,
+  data,
+  selected,
+}: {
+  id: string;
+  data: RoofNodeData;
+  selected: boolean;
+}) {
   const width = data.width || 40;
   const height = data.height || 40;
   const isInvalid = data.isInvalid || false;
   const onNodeResize = data.onNodeResize;
 
-  // Scale: 1cm = 2px
   return (
     <>
       <NodeResizer
         minWidth={30}
         minHeight={30}
         isVisible={selected}
-        lineClassName="border-blue-500"
-        handleClassName="h-3 w-3 bg-white border-2 border-blue-500 rounded-full"
+        lineClassName="!border-warn-info"
+        handleClassName="!h-5 !w-5 !bg-bone !border-2 !border-warn-info rounded-full"
         onResize={(event, params) => {
           if (onNodeResize) {
             onNodeResize(event, { id, ...params });
@@ -27,23 +34,37 @@ const RoofWindowNode = function({ id, data, selected }: { id: string, data: Roof
         }}
       />
       <div
+        role="group"
+        aria-label={`Dachfenster ${Math.round(width)} mal ${Math.round(height)} Zentimeter${isInvalid ? ', ragt aus der Safe Zone' : ''}`}
+        aria-invalid={isInvalid || undefined}
         className={cn(
-          "bg-blue-100/50 backdrop-blur-sm border-2 rounded-sm shadow-sm flex items-center justify-center relative overflow-hidden transition-colors",
-          selected ? "ring-4 ring-blue-500 shadow-xl" : "",
-          isInvalid ? "border-red-500 bg-red-950/40" : "border-blue-700"
+          'relative flex h-full w-full items-center justify-center overflow-hidden border-2 bg-warn-info-bg text-warn-info transition-colors',
+          selected ? 'ring-2 ring-warn-info ring-offset-2 ring-offset-paper' : '',
+          isInvalid ? 'border-warn-critical bg-warn-critical-bg text-warn-critical' : 'border-warn-info'
         )}
         style={{ width: '100%', height: '100%' }}
       >
-        <div className="hover:scale-105 transition-all custom-drag-handle absolute inset-2 border border-blue-300/50 rounded-sm pointer-events-none"></div>
-        <div className="font-semibold text-xs text-blue-800 text-center drop-shadow-sm px-1">
-          {data.label || 'Dachfenster'}<br/>
-          <span className="text-xs opacity-80">{Math.round(width)}x{Math.round(height)}cm</span>
+        <div
+          aria-hidden="true"
+          className="custom-drag-handle pointer-events-none absolute inset-2 border border-warn-info/50"
+        />
+        <div className="px-1 text-center text-xs font-semibold">
+          {data.label || 'Dachfenster'}
+          <br />
+          <span className="caption-xs opacity-80">
+            {Math.round(width)}x{Math.round(height)}cm
+          </span>
         </div>
         {isInvalid && (
-          <div className="absolute inset-0 border-4 border-red-500/50 pointer-events-none animate-pulse"></div>
+          <>
+            <div className="pointer-events-none absolute inset-0 border-4 border-warn-critical" aria-hidden="true" />
+            <div className="absolute left-1 top-1 z-10 rounded-full bg-warn-critical px-2 py-0.5 caption-xs font-bold text-paper" aria-hidden="true">
+              !
+            </div>
+          </>
         )}
       </div>
     </>
   );
-}
+};
 export default React.memo(RoofWindowNode);

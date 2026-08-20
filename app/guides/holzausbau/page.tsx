@@ -1,6 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { SiteHeader } from '@/components/brand/SiteHeader';
+import { SiteFooter } from '@/components/brand/SiteFooter';
 
 const STEPS = [
   {
@@ -43,14 +44,14 @@ const STEPS = [
 
 export default function HolzausbauGuide() {
   return (
-    <div className="min-h-screen bg-paper text-ink">
+    <div className="flex min-h-screen flex-col bg-paper text-ink">
       <SiteHeader />
 
-      <main className="mx-auto max-w-3xl px-5 py-8 md:py-10">
-        <Link href="/guides/ausbau-fahrplan" className="text-sm text-ink-soft hover:text-ink">
+      <main id="main" className="mx-auto w-full max-w-3xl flex-1 px-5 py-8 md:py-10">
+        <Link href="/guides/ausbau-fahrplan" className="inline-flex min-h-11 items-center text-sm text-ink-soft hover:text-ink">
           ← Ausbau-Fahrplan
         </Link>
-        <h1 className="mt-4 text-2xl font-semibold tracking-tight">
+        <h1 className="mt-4 font-display text-2xl font-semibold tracking-tight md:text-3xl">
           Holzausbau nach BEDMAS
         </h1>
         <p className="mt-2 text-sm text-ink-soft">
@@ -68,6 +69,7 @@ export default function HolzausbauGuide() {
           ))}
         </div>
       </main>
+      <SiteFooter />
     </div>
   );
 }

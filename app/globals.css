@@ -121,9 +121,33 @@
     background: var(--rule);
   }
 
+  /* --- Typo-Tokens: ersetzt ad-hoc text-[10px]/text-[0.65rem] etc. ---
+     Regel: kein Body-/Label-Text unter 12 px (0.75rem) für Lesbarkeit. */
+  .caption-xs {
+    font-size: 0.75rem;    /* 12 px */
+    line-height: 1rem;
+    letter-spacing: 0.02em;
+  }
+  .caption-sm {
+    font-size: 0.8125rem;  /* 13 px */
+    line-height: 1.125rem;
+  }
+  .label-eyebrow {
+    font-family: var(--font-mono), ui-monospace, monospace;
+    font-size: 0.75rem;    /* 12 px – ersetzt text-[0.65rem]/text-[10px] */
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+  .wordmark {
+    font-size: 1rem;       /* 16 px – ersetzt text-[1.05rem] Sonderfall Mark */
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
   .index-label {
     font-family: var(--font-mono), ui-monospace, monospace;
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     letter-spacing: 0.14em;
     text-transform: uppercase;
     color: var(--copper);
@@ -140,6 +164,45 @@
   .measure {
     font-family: var(--font-mono), ui-monospace, monospace;
     font-variant-numeric: tabular-nums;
+  }
+
+  /* Warn-Card-Muster – nutzt zentrale Tokens statt Rose/Amber/Emerald-Salat. */
+  .warn-card {
+    border-width: 2px;
+    border-style: solid;
+    border-radius: 1rem;
+    padding: 1rem 1.25rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+  .warn-card-critical {
+    background: var(--warn-critical-bg);
+    border-color: var(--warn-critical-border);
+    color: var(--warn-critical);
+  }
+  .warn-card-warning {
+    background: var(--warn-warning-bg);
+    border-color: var(--warn-warning-border);
+    color: var(--warn-warning);
+  }
+  .warn-card-ok {
+    background: #ecfdf5;
+    border-color: #a7f3d0;
+    color: var(--oxide);
+  }
+  .warn-card-info {
+    background: var(--warn-info-bg);
+    border-color: var(--warn-info-border);
+    color: var(--warn-info);
+  }
+
+  /* iOS Home-Indicator Safe-Area für schwebende UI (Chat, DachPanel). */
+  .safe-pb {
+    padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+  }
+  .safe-bottom {
+    bottom: max(1.5rem, env(safe-area-inset-bottom));
   }
 
   /* Große, sichtbare Anschlussflächen für Touch und Tastatur. */
@@ -207,5 +270,13 @@
 
   .planner-flow-particle {
     display: none;
+  }
+
+  /* GSAP-Timelines respektieren dies nicht automatisch — die Client-
+     Komponente RoadTripAnimation prüft matchMedia zusätzlich und rendert
+     dann statisch. Hier verstecken wir den fahrenden Camper zur Sicherheit. */
+  .road-trip-animation .road-trip-camper {
+    opacity: 0 !important;
+    transform: none !important;
   }
 }

@@ -11,12 +11,15 @@ export function Mark({
   return (
     <Link
       href="/"
-      className={cn('inline-flex items-center no-underline', className)}
-      aria-label="WERFT Startseite"
+      className={cn(
+        'inline-flex min-h-11 items-center px-1 no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink',
+        className
+      )}
+      aria-label="Werft Startseite"
     >
       <span
         className={cn(
-          'text-[1.05rem] font-semibold tracking-tight',
+          'wordmark',
           inverted ? 'text-paper' : 'text-ink'
         )}
       >
