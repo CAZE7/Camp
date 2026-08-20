@@ -17,7 +17,7 @@
 |---|---|---|
 | `npm test` | ✅ 594/594 grün | Behauptet waren 577 — um 17 Tests gewachsen (kein Befund, nur Stand konservativ) |
 | `tsc -p tsconfig.typecheck.json` | ✅ 0 Fehler | |
-| `npm run build` | ✅ 13 statische Seiten | **aber** `/api/chat` als `ƒ (Dynamic)` deklariert — siehe ARCH-001 |
+| `npm run build` | ✅ 10 statische Routen (11 Seiten) | 100% Static Export, `/api/chat` und KI-Assistent vollständig entfernt (ARCH-001 behoben) |
 | Keine `.skip`/`.only`/gelockerten Tests | ✅ | Keine aufgeweichten Assertions gefunden |
 | Hardcoded VDE-Magic-Numbers | ✅ `vde-consistency.test.ts` grün | |
 
