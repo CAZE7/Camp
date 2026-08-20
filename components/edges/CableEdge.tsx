@@ -2,8 +2,11 @@ import React, { useMemo, useState } from 'react';
 import { BaseEdge, EdgeProps, EdgeLabelRenderer, useReactFlow, Node } from 'reactflow';
 import { usePlannerStore, getDerivedSystemState } from '../../store/usePlannerStore';
 import { useShallow } from 'zustand/react/shallow';
-import { calculateEdgePath, edgeLabelNudge, polarityPathOffset } from './utils/pathUtils';
-import { getWireColor, WireDomain } from './utils/edgeColors';
+import { edgeLabelNudge, parallelLaneOffset } from './utils/pathUtils';
+import { buildOrthogonalPath, nodesToObstacles } from './utils/orthogonalRouting';
+import { isBackboneConnection } from '../planner/utils/backbone';
+import { getWireColor, WIRE_COLORS, WireDomain } from './utils/edgeColors';
+import { hasVoltageDropError } from './utils/voltageDrop';
 import { calculateCrossSection, calculateMaxFuse, calculateStrokeWidth, getEdgeDomain } from '../../lib/electrical';
 import {
   VDE_INVERTER_EFFICIENCY,
@@ -142,18 +145,28 @@ const CableEdge = function ({
   }));
 
   const siblingEdges = usePlannerStore((state) => state.edges);
+  const allNodes = usePlannerStore((state) => state.nodes);
+  const trunkMode = usePlannerStore((state) => state.trunkMode);
 
-  const [edgePath, labelX, labelY] = useMemo(() => {
-    return calculateEdgePath({
+  const { path: edgePath, labelX, labelY } = useMemo(() => {
+    const obstacles = nodesToObstacles(allNodes, new Set([source, target]));
+    return buildOrthogonalPath({
       sourceX,
       sourceY,
       sourcePosition,
       targetX,
       targetY,
       targetPosition,
-      offset: polarityPathOffset(resolvedSourceHandle),
+      offset: parallelLaneOffset({
+        edgeId: id,
+        source,
+        target,
+        sourceHandle: resolvedSourceHandle,
+        siblingEdges,
+      }),
+      obstacles,
     });
-  }, [sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, resolvedSourceHandle]);
+  }, [sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, resolvedSourceHandle, siblingEdges, allNodes, source, target, id]);
 
   const labelNudgeY = useMemo(
     () =>
@@ -169,7 +182,7 @@ const CableEdge = function ({
 
   const isPlus = !!resolvedSourceHandle?.includes('plus');
 
-  const { length, crossSection, maxFuse, strokeWidth, animationDuration, I, sourceNode, dropPercentage, edgeDomain, sysVoltage } = useMemo(() => {
+  const { length, crossSection, maxFuse, strokeWidth, animationDuration, I, sourceNode, edgeDomain, sysVoltage } = useMemo(() => {
     const physicalDistance = Math.max(1, Math.sqrt(Math.pow(targetX - sourceX, 2) + Math.pow(targetY - sourceY, 2)) / 100);
     const length = data?.length || physicalDistance;
     const sourceNode = getNode(source);
@@ -191,7 +204,6 @@ const CableEdge = function ({
         animationDuration: 3,
         I: 0,
         sourceNode,
-        dropPercentage: 0,
         edgeDomain,
         sysVoltage: 230,
       };
@@ -203,9 +215,7 @@ const CableEdge = function ({
     const sw = calculateStrokeWidth(cs);
     const dur = calculateAnimationDuration(I);
 
-    const voltageDrop = (I * (length * 2)) / (58 * cs);
     const sysVoltage = getSystemVoltage(getNodes());
-    const dropPercentage = (voltageDrop / sysVoltage) * 100;
 
     return {
       length,
@@ -215,16 +225,21 @@ const CableEdge = function ({
       animationDuration: dur,
       I,
       sourceNode,
-      dropPercentage,
       edgeDomain,
       sysVoltage,
     };
     // Dependencies include node data, system load, and coordinates to force re-calc when anything relevant changes including moves
   }, [getNode, getNodes, data?.length, data?.crossSection, data?.edgeDomain, source, target, sNodeData, tNodeData, systemLoad, sourceX, sourceY, targetX, targetY, resolvedSourceHandle, resolvedTargetHandle]);
 
-  // calculatePathVoltageDrop returns volts; convert to % before adding to this edge's drop %
-  const pathDropPercentage = sysVoltage > 0 ? (cumulativeDrop / sysVoltage) * 100 : 0;
-  const totalDropPercentage = dropPercentage + pathDropPercentage;
+  // Kumulierter Spannungsfall — einheitlich über die Shared-Helper berechnet.
+  const { totalDropPercentage, hasDropError } = hasVoltageDropError({
+    isAC: edgeDomain === 'AC_230V',
+    I,
+    length,
+    crossSection,
+    sysVoltage,
+    cumulativeDropVolts: cumulativeDrop,
+  });
 
   const errors = collectEdgeErrors({
     edgeDomain,
@@ -236,14 +251,24 @@ const CableEdge = function ({
     length,
     totalDropPercentage,
   });
-
-  // Zentrale, token-basierte Kodierung (DC / AC / Solar / Auswahl / Fehler)
-  const hasDropError = edgeDomain !== 'AC_230V' && totalDropPercentage > 3;
-  const stroke = getWireColor({
-    selected: !!selected,
-    edgeDomain: edgeDomain as WireDomain,
-    hasError: hasDropError,
-  });
+  const stroke = hasDropError
+    ? WIRE_COLORS.error
+    : getWireColor({ edgeDomain: edgeDomain as WireDomain, isPlus });
+  const emphasized = selected || isHovered;
+  const isBackbone = useMemo(
+    () =>
+      isBackboneConnection(
+        allNodes.find((n) => n.id === source)?.type,
+        allNodes.find((n) => n.id === target)?.type
+      ),
+    [allNodes, source, target]
+  );
+  // Trassen-Modus: Hauptrouten dick, Abgänge dünn; sonst nur Hover/Selektion betonen.
+  const renderedStrokeWidth = trunkMode
+    ? isBackbone
+      ? strokeWidth + 2
+      : Math.max(1, strokeWidth - 2)
+    : strokeWidth + (emphasized ? 2 : 0);
 
   return (
     <>
@@ -253,15 +278,34 @@ const CableEdge = function ({
         markerEnd={markerEnd}
         style={{
           ...style,
-          strokeWidth,
+          strokeWidth: renderedStrokeWidth,
           stroke,
-          strokeDasharray: edgeDomain === 'AC_230V' ? '10 6' : edgeDomain === 'Solar' ? '3 5' : undefined,
+          strokeDasharray: hasDropError
+            ? undefined
+            : edgeDomain === 'AC_230V'
+              ? '10 6'
+              : edgeDomain === 'Solar'
+                ? '3 5'
+                : undefined,
+          filter: emphasized ? 'drop-shadow(0 0 4px rgba(20, 17, 14, 0.45))' : undefined,
           transition: 'stroke-width 0.3s ease, stroke 0.3s ease',
           cursor: 'pointer',
         }}
       />
 
-      <circle className="planner-flow-particle" r={strokeWidth / 2} fill="var(--wire-solar)" aria-hidden="true">
+      {hasDropError && (
+        <path
+          className="planner-edge-error-dash"
+          d={edgePath}
+          fill="none"
+          stroke={WIRE_COLORS.error}
+          strokeWidth={renderedStrokeWidth}
+          strokeDasharray="8 6"
+          aria-hidden="true"
+        />
+      )}
+
+      <circle className="planner-flow-particle" r={strokeWidth / 2} fill={stroke} aria-hidden="true">
         <animateMotion
           dur={`${animationDuration}s`}
           repeatCount="indefinite"
@@ -289,26 +333,21 @@ const CableEdge = function ({
           }}
           className="nodrag nopan edge-label"
         >
-          {/* Kern-Werte immer lesbar (auch ohne Klick / auf Touch) */}
-          {edgeDomain === 'AC_230V' ? (
-            <span style={{ color: 'var(--wire-ac)' }}>230 V AC · gestrichelt</span>
-          ) : (
-            <span>
-              {edgeDomain === 'Solar' ? 'Solar · ' : 'DC · '}{data?.fuseSize ? `${data.fuseSize} A · ` : ''}<span>{crossSection} mm²</span>
-            </span>
-          )}
+          {/* Kompaktes Kern-Label: Querschnitt + Länge, immer sichtbar. */}
+          <span className="edge-label-main" style={{ color: stroke }}>
+            {crossSection} mm² · {length.toFixed(1)} m
+          </span>
 
           {/* Details bei Auswahl / Hover */}
-          {(selected || isHovered) && <span style={{ fontWeight: 500 }}>{length.toFixed(2)} m</span>}
-          {(selected || isHovered) && edgeDomain === 'AC_230V' ? (
+          {emphasized && edgeDomain === 'AC_230V' ? (
             <>
               <span style={{ color: 'var(--success)', fontSize: '12px' }}>3-adrig (L, N, PE)</span>
               <span style={{ background: 'var(--warn-info)', color: 'white', padding: '1px 4px', borderRadius: '4px', fontSize: '12px', marginTop: '2px' }}>RCBO (FI/LS) empfohlen</span>
             </>
-          ) : (selected || isHovered) ? (
+          ) : emphasized ? (
             <>
-              {maxFuse > 0 && <span style={{ color: 'var(--wire-error)', fontSize: '12px' }}>Max: {maxFuse}A</span>}
               {data?.fuseSize && <span style={{ background: 'var(--success)', color: 'white', padding: '1px 4px', borderRadius: '4px', fontSize: '12px', marginTop: '2px' }}>{data.fuseSize}A Sicherung</span>}
+              {maxFuse > 0 && <span style={{ color: 'var(--wire-error)', fontSize: '12px' }}>Max: {maxFuse}A</span>}
               {errors.map((err, idx) => (
                 <span key={idx} style={{ background: 'var(--wire-error)', color: 'white', padding: '1px 4px', borderRadius: '4px', fontSize: '12px', marginTop: '2px' }}>{err}</span>
               ))}

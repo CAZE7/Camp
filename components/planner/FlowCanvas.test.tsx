@@ -82,6 +82,13 @@ const defaultPlannerStoreState = {
   onCustomDrop: mockOnCustomDropFromStore,
   setFirstTappedHandle: mockSetFirstTappedHandle,
   addNode: vi.fn(),
+  highlightedNodeId: null,
+  highlightedEdgeId: null,
+  setHighlightedNodeId: vi.fn(),
+  setHighlightedEdgeId: vi.fn(),
+  trunkMode: false,
+  setTrunkMode: vi.fn(),
+  calculatePathVoltageDrop: vi.fn(() => 0),
 } as any;
 
 vi.mock('../../store/usePlannerStore', () => ({
@@ -117,6 +124,43 @@ describe('FlowCanvas', () => {
   it('renders correctly', () => {
     render(<FlowCanvas />);
     expect(screen.getByTestId('react-flow-mock')).toBeInTheDocument();
+  });
+
+  it('renders domain filter chips in electric mode', () => {
+    render(<FlowCanvas />);
+    expect(screen.getByRole('button', { name: '12V' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '230V' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Solar' })).toBeInTheDocument();
+  });
+
+  it('toggles a domain filter chip off and on', () => {
+    render(<FlowCanvas />);
+    const solarChip = screen.getByRole('button', { name: 'Solar' });
+    expect(solarChip).toHaveAttribute('aria-pressed', 'true');
+
+    fireEvent.click(solarChip);
+    expect(screen.getByRole('button', { name: 'Solar' })).toHaveAttribute('aria-pressed', 'false');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Solar' }));
+    expect(screen.getByRole('button', { name: 'Solar' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('renders a trunk-mode toggle and flips it', () => {
+    render(<FlowCanvas />);
+    const trunkToggle = screen.getByRole('button', { name: 'Trassen' });
+    expect(trunkToggle).toHaveAttribute('aria-pressed', 'false');
+
+    fireEvent.click(trunkToggle);
+    expect(defaultPlannerStoreState.setTrunkMode).toHaveBeenCalledWith(true);
+  });
+
+  it('does not render domain filter chips in water mode', () => {
+    Object.assign(usePlannerStore, { getState: () => defaultPlannerStoreState });
+    vi.mocked(usePlannerStore).mockImplementation((selector: any) =>
+      selector({ ...defaultPlannerStoreState, viewMode: 'water' })
+    );
+    render(<FlowCanvas />);
+    expect(screen.queryByRole('button', { name: '12V' })).not.toBeInTheDocument();
   });
 
   it('passes electric nodes and edges when viewMode is electric', () => {

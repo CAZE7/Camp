@@ -53,6 +53,14 @@ interface PlannerState {
   setSelectedNodes: (nodes: Node[]) => void;
   setSelectedEdges: (edges: Edge[]) => void;
 
+  highlightedNodeId: string | null;
+  highlightedEdgeId: string | null;
+  setHighlightedNodeId: (id: string | null) => void;
+  setHighlightedEdgeId: (id: string | null) => void;
+
+  trunkMode: boolean;
+  setTrunkMode: (enabled: boolean) => void;
+
   onNodesChange: (changes: import('reactflow').NodeChange[]) => void;
   onEdgesChange: (changes: import('reactflow').EdgeChange[]) => void;
   onWaterNodesChange: (changes: import('reactflow').NodeChange[]) => void;
@@ -247,6 +255,14 @@ export const usePlannerStore = create<PlannerState>()(
   selectedEdges: [],
   setSelectedNodes: (nodes) => set({ selectedNodes: nodes }),
   setSelectedEdges: (edges) => set({ selectedEdges: edges }),
+
+  highlightedNodeId: null,
+  highlightedEdgeId: null,
+  setHighlightedNodeId: (id) => set({ highlightedNodeId: id }),
+  setHighlightedEdgeId: (id) => set({ highlightedEdgeId: id }),
+
+  trunkMode: false,
+  setTrunkMode: (enabled) => set({ trunkMode: enabled }),
 
   onNodesChange: (changes) => set((state) => {
     const newNodes = applyNodeChanges(changes, state.nodes);
