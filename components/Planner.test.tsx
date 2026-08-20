@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
+import PlannerInner from './PlannerInner';
 import Planner from './Planner';
 
 // Mock next/navigation
@@ -9,18 +10,9 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/elektrik-planung',
 }));
 
-// Mock next/dynamic to resolve component lazily with Suspense in test environment
+// Mock next/dynamic to return PlannerInner directly in test environment
 vi.mock('next/dynamic', () => ({
-  default: (loadComponent: () => Promise<any>) => {
-    const Component = React.lazy(loadComponent);
-    return function DynamicMock(props: any) {
-      return (
-        <React.Suspense fallback={<div>Loading...</div>}>
-          <Component {...props} />
-        </React.Suspense>
-      );
-    };
-  },
+  default: () => PlannerInner,
 }));
 
 // Mock the child components to simplify testing
