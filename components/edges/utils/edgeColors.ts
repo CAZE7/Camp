@@ -22,6 +22,13 @@ export const PIPE_COLORS = {
 
 export type WireDomain = 'DC_12V' | 'AC_230V' | 'Solar';
 
+/** Resolve a CSS custom property for canvas APIs that cannot use `var(...)`. */
+export function cssToken(name: string, fallback: string): string {
+  if (typeof window === 'undefined') return fallback;
+  const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return value || fallback;
+}
+
 /**
  * Liefert die konsistente Leitungsfarbe für eine Kante anhand von
  * Auswahl-Status, Spannungsdomäne und Spannungsfall.

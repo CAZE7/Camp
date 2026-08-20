@@ -19,7 +19,12 @@ vi.mock('reactflow', async () => {
     useReactFlow: () => ({
       fitView: mockFitView,
       screenToFlowPosition: mockScreenToFlowPosition,
+      getViewport: () => ({ x: 0, y: 0, zoom: 1 }),
+      setViewport: vi.fn(),
+      getNode: vi.fn(),
+      setCenter: vi.fn(),
     }),
+    useStore: (selector: (state: { transform: [number, number, number] }) => unknown) => selector({ transform: [0, 0, 1] }),
     Background: () => <div data-testid="rf-background" />,
     Controls: () => <div data-testid="rf-controls" />,
     MiniMap: () => <div data-testid="rf-minimap" />,

@@ -1,9 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { BaseEdge, EdgeProps, EdgeLabelRenderer, useReactFlow, Node } from 'reactflow';
-import { useAppStore } from '../../lib/store';
 import { usePlannerStore, getDerivedSystemState } from '../../store/usePlannerStore';
 import { useShallow } from 'zustand/react/shallow';
-import { calculateEdgePath } from './utils/pathUtils';
+import { calculateEdgePath, edgeLabelNudge, polarityPathOffset } from './utils/pathUtils';
 import { getWireColor, WireDomain } from './utils/edgeColors';
 import { calculateCrossSection, calculateMaxFuse, calculateStrokeWidth, getEdgeDomain } from '../../lib/electrical';
 import {
@@ -120,7 +119,6 @@ const CableEdge = function ({
   const resolvedSourceHandle = sourceHandle ?? sourceHandleId;
   const resolvedTargetHandle = targetHandle ?? targetHandleId;
   const { getNode, getNodes } = useReactFlow();
-  const isProMode = useAppStore(state => state.isProMode);
   const [isHovered, setIsHovered] = useState(false);
 
   // Subscribe to connected nodes and total consumption for reactivity
@@ -143,6 +141,8 @@ const CableEdge = function ({
     };
   }));
 
+  const siblingEdges = usePlannerStore((state) => state.edges);
+
   const [edgePath, labelX, labelY] = useMemo(() => {
     return calculateEdgePath({
       sourceX,
@@ -151,9 +151,21 @@ const CableEdge = function ({
       targetX,
       targetY,
       targetPosition,
-      isProMode,
+      offset: polarityPathOffset(resolvedSourceHandle),
     });
-  }, [sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, isProMode]);
+  }, [sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, resolvedSourceHandle]);
+
+  const labelNudgeY = useMemo(
+    () =>
+      edgeLabelNudge({
+        edgeId: id,
+        source,
+        target,
+        sourceHandle: resolvedSourceHandle,
+        siblingEdges,
+      }),
+    [id, source, target, resolvedSourceHandle, siblingEdges]
+  );
 
   const isPlus = !!resolvedSourceHandle?.includes('plus');
 
@@ -261,7 +273,7 @@ const CableEdge = function ({
         <div
           style={{
             position: 'absolute',
-            transform: `translate(-50%, -50%) translate(${labelX}px,${labelY + (resolvedSourceHandle?.includes('minus') ? 40 : -40)}px)`,
+            transform: `translate(-50%, -50%) translate(${labelX}px,${labelY + labelNudgeY}px)`,
             background: 'var(--bone)',
             padding: '2px 6px',
             borderRadius: '4px',
@@ -275,7 +287,7 @@ const CableEdge = function ({
             alignItems: 'center',
             lineHeight: 1.25,
           }}
-          className="nodrag nopan"
+          className="nodrag nopan edge-label"
         >
           {/* Kern-Werte immer lesbar (auch ohne Klick / auf Touch) */}
           {edgeDomain === 'AC_230V' ? (

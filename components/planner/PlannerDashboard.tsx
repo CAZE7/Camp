@@ -163,8 +163,8 @@ function ActionsSection({
       <Button variant="outline" onClick={() => window.dispatchEvent(new CustomEvent('planner-fit-view'))} className="min-h-11 gap-1.5" title="Ganzen Plan einpassen">
         <Maximize2 className="h-4 w-4" /><span className="hidden lg:inline">Übersicht</span>
       </Button>
-      <Button variant="outline" onClick={runLayout} disabled={busy !== null} className="hidden min-h-11 gap-1.5 md:inline-flex" title="Plan automatisch anordnen">
-        <LayoutGrid className="h-4 w-4" /><span className="hidden xl:inline">Anordnen</span>
+      <Button variant="outline" onClick={runLayout} disabled={busy !== null} className="min-h-11 gap-1.5" title="Plan automatisch anordnen">
+        <LayoutGrid className="h-4 w-4" /><span className="hidden sm:inline">Aufräumen</span>
       </Button>
 
       <div className="relative" ref={menuRef}>
@@ -175,7 +175,6 @@ function ActionsSection({
           <div role="menu" className="absolute right-0 top-full z-50 mt-2 w-72 rounded-xl border border-border bg-card p-2 shadow-2xl">
             <button role="menuitem" onClick={handleExportBOM} className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-sm text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Package className="h-4 w-4" />Stückliste</button>
             <button role="menuitem" onClick={runCheck} className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-sm text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><ScanSearch className="h-4 w-4" />Plan lokal prüfen</button>
-            <button role="menuitem" onClick={runLayout} className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-sm text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:hidden"><LayoutGrid className="h-4 w-4" />Plan automatisch anordnen</button>
             <button role="menuitem" onClick={onExportImage} className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-sm text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{busy === 'export' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}Bild exportieren</button>
 
             <div className="my-2 border-t border-border" />

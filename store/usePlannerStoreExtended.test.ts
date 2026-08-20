@@ -70,6 +70,21 @@ describe('usePlannerStore - extended coverage', () => {
       expect(usePlannerStore.getState().nodes[0].position).toEqual({ x: 10, y: 20 });
     });
 
+    it('layouts water nodes when viewMode is water', () => {
+      const node: Node = { id: 'w1', type: 'freshWaterTank', position: { x: 0, y: 0 }, data: {} };
+      usePlannerStore.setState({ viewMode: 'water', waterNodes: [node], waterEdges: [], nodes: [], edges: [] });
+
+      act(() => {
+        usePlannerStore.getState().onLayout();
+      });
+
+      expect(layoutUtils.getLayoutedElements).toHaveBeenCalled();
+      const args = vi.mocked(layoutUtils.getLayoutedElements).mock.calls[0];
+      expect(args[0]).toEqual([node]);
+      expect(usePlannerStore.getState().waterNodes[0].position).toEqual({ x: 10, y: 20 });
+      expect(usePlannerStore.getState().nodes).toEqual([]);
+    });
+
     it('should dispatch planner-fit-view via requestAnimationFrame', () => {
       const raf = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => {
         cb(0);

@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useMemo } from 'react';
-import { BaseEdge, EdgeLabelRenderer, EdgeProps, getBezierPath, useReactFlow } from 'reactflow';
+import { BaseEdge, EdgeLabelRenderer, EdgeProps, useReactFlow } from 'reactflow';
 import { PIPE_COLORS } from './utils/edgeColors';
 import { usePlannerStore } from '../../store/usePlannerStore';
+import { calculateEdgePath, edgeLabelNudge } from './utils/pathUtils';
 
 export type WaterPipeEdgeData = {
   pipeType?: 'fresh' | 'gray';
@@ -11,14 +12,26 @@ export type WaterPipeEdgeData = {
 };
 
 const WaterPipeEdge = function ({
-  id, source, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition,
+  id, source, target, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition,
   style = {}, data, markerEnd, selected,
 }: EdgeProps<WaterPipeEdgeData>) {
   const { getNode } = useReactFlow();
+  const siblingEdges = usePlannerStore((state) => state.waterEdges);
 
-  const [edgePath, labelX, labelY] = useMemo(() => getBezierPath({
+  const [edgePath, labelX, labelY] = useMemo(() => calculateEdgePath({
     sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition,
   }), [sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition]);
+
+  const labelNudgeY = useMemo(
+    () =>
+      edgeLabelNudge({
+        edgeId: id,
+        source,
+        target: target || '',
+        siblingEdges,
+      }),
+    [id, source, target, siblingEdges]
+  );
 
   const isGrayWater = useMemo(() => {
     const sourceNode = getNode(source);
@@ -51,8 +64,8 @@ const WaterPipeEdge = function ({
       </circle>
       <EdgeLabelRenderer>
         <div
-          className="nodrag nopan rounded border border-border bg-card px-2 py-1 text-xs font-bold text-foreground shadow-sm"
-          style={{ position: 'absolute', transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`, pointerEvents: 'all' }}
+          className="nodrag nopan edge-label rounded border border-border bg-card px-2 py-1 text-xs font-bold text-foreground shadow-sm"
+          style={{ position: 'absolute', transform: `translate(-50%, -50%) translate(${labelX}px,${labelY + labelNudgeY}px)`, pointerEvents: 'all' }}
         >
           {label}{data?.length ? ` · ${data.length.toFixed(1)} m` : ''}
         </div>

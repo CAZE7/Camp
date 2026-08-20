@@ -41,6 +41,12 @@ export const NODE_TYPES = {
 
 export const EDGE_TYPES = { cableEdge: CableEdge };
 
+export const PLANNER_MIN_ZOOM = 0.25;
+export const PLANNER_MAX_ZOOM = 2;
+export const PLANNER_FIT_PADDING = 0.2;
+export const PLANNER_SNAP_GRID: [number, number] = [16, 16];
+export const PLANNER_OVERVIEW_ZOOM = 0.7;
+
 export const initialNodes: Node[] = [
   {
     id: 'battery',

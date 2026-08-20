@@ -68,6 +68,8 @@
        überall dieselbe Farbsprache nutzen (keine Inline-Hexwerte). */
     --canvas-bg: #f4f5f7;
     --canvas-grid: #6b6258;
+    --canvas-dim: 0.32;
+    --canvas-minimap-mask: rgba(20, 17, 14, 0.14);
     --wire-dc: #1d4ed8;        /* Gleichstrom 12V/24V (blau) */
     --wire-ac: #b91c1c;        /* Wechselstrom 230V (rot) */
     --wire-solar: #92400e;     /* Solar / PV (dunkles Amber) */
@@ -243,6 +245,19 @@
   .react-flow__handle[data-handleid*="ac"] > div {
     border-radius: 2px !important;
     transform: rotate(45deg);
+  }
+
+  .planner-zoom-overview .node-details {
+    display: none;
+  }
+
+  .planner-zoom-overview .edge-label {
+    display: none !important;
+  }
+
+  .react-flow__node.planner-focus-dim,
+  .react-flow__edge.planner-focus-dim {
+    opacity: var(--canvas-dim);
   }
 
   .roof-dot-grid {

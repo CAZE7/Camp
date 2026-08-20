@@ -62,14 +62,14 @@ describe('CableEdge', () => {
     // expect(getByText('5.00 m')).toBeInTheDocument(); // Smart labeling hides this
   });
 
-  it('uses SmoothStepPath when isProMode is true', () => {
+  it('uses orthogonal SmoothStep routing regardless of isProMode', () => {
     const { getByTestId } = render(<CableEdge {...defaultProps} />);
 
     const baseEdge = getByTestId('base-edge');
     expect(baseEdge).toHaveAttribute('d', 'smooth-step-path');
   });
 
-  it('uses BezierPath when isProMode is false', () => {
+  it('keeps SmoothStep routing when isProMode is false', () => {
     (useAppStore as any).mockImplementation((selector: any) => {
       const state = { isProMode: false };
       return selector(state);
@@ -78,7 +78,7 @@ describe('CableEdge', () => {
     const { getByTestId } = render(<CableEdge {...defaultProps} />);
 
     const baseEdge = getByTestId('base-edge');
-    expect(baseEdge).toHaveAttribute('d', 'bezier-path');
+    expect(baseEdge).toHaveAttribute('d', 'smooth-step-path');
   });
 
   it('calculates crossSection and maxFuse when source is consumer', () => {
