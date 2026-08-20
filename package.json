@@ -10,7 +10,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "check": "npm run typecheck && npm run test",
-    "postinstall": "git config core.hooksPath scripts/git-hooks 2>/dev/null || true"
+    "postinstall": "node -e \"try { require('child_process').execSync('git config core.hooksPath scripts/git-hooks') } catch {}\""
   },
   "engines": {
     "node": ">=20.9.0"
