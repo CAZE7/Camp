@@ -513,13 +513,22 @@ export const usePlannerStore = create<PlannerState>()(
   },
 
   onLayout: () => {
-    const { nodes, edges } = get();
-    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
-      nodes,
-      edges,
-      'LR'
-    );
-    set((state) => withHistory(state, { nodes: [...layoutedNodes], edges: [...layoutedEdges] }));
+    const { viewMode, nodes, edges, waterNodes, waterEdges } = get();
+    if (viewMode === 'water') {
+      const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
+        waterNodes,
+        waterEdges,
+        'LR'
+      );
+      set((state) => withHistory(state, { waterNodes: [...layoutedNodes], waterEdges: [...layoutedEdges] }));
+    } else {
+      const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
+        nodes,
+        edges,
+        'LR'
+      );
+      set((state) => withHistory(state, { nodes: [...layoutedNodes], edges: [...layoutedEdges] }));
+    }
     if (typeof window !== 'undefined') {
       window.requestAnimationFrame(() => {
         window.dispatchEvent(new CustomEvent('planner-fit-view'));

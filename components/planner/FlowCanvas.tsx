@@ -1,17 +1,27 @@
 import React, { useMemo, useRef, useState } from 'react';
-import ReactFlow, { Background, Controls, MiniMap, Panel, useReactFlow, Connection } from 'reactflow';
+import ReactFlow, { Background, Controls, MiniMap, Panel, useReactFlow, useStore, Connection, Viewport } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { useShallow } from 'zustand/react/shallow';
 
 import WaterPipeEdge from '../edges/WaterPipeEdge';
+import { cssToken } from '../edges/utils/edgeColors';
 import { EmptyState } from '../ui/EmptyState';
-import { NODE_TYPES, EDGE_TYPES } from './constants';
+import {
+  NODE_TYPES,
+  EDGE_TYPES,
+  PLANNER_MIN_ZOOM,
+  PLANNER_MAX_ZOOM,
+  PLANNER_FIT_PADDING,
+  PLANNER_SNAP_GRID,
+  PLANNER_OVERVIEW_ZOOM,
+} from './constants';
 import { usePlannerStore } from '../../store/usePlannerStore';
 import { useAppStore } from '../../lib/store';
 import { FloatingMetricsCard } from './ui/FloatingMetricsCard';
 import { BOMModal } from './BOMModal';
 import { useSequentialTapConnect } from './hooks/useSequentialTapConnect';
 import { usePlannerDragDrop } from './hooks/usePlannerDragDrop';
+import { applyNeighborhoodFocus } from './utils/focusHighlight';
 
 function useAccessibleHandles() {
   React.useEffect(() => {
@@ -45,7 +55,10 @@ function useAccessibleHandles() {
 }
 
 export function FlowCanvas() {
-  const { screenToFlowPosition, fitView, getNode, setCenter } = useReactFlow();
+  const { screenToFlowPosition, fitView, getNode, setCenter, getViewport, setViewport } = useReactFlow();
+  const zoom = useStore((state) => state.transform[2]);
+  const viewportsRef = useRef<Partial<Record<'electric' | 'water', Viewport>>>({});
+  const previousViewMode = useRef<'electric' | 'water' | null>(null);
   const [isMobile, setIsMobile] = useState(false);
   const [connectionFeedback, setConnectionFeedback] = useState<string | null>(null);
   const connectionAttempt = useRef(false);
@@ -76,7 +89,7 @@ export function FlowCanvas() {
   }, []);
 
   React.useEffect(() => {
-    const handleFitView = () => fitView({ duration: 400, padding: 0.15 });
+    const handleFitView = () => fitView({ duration: 400, padding: PLANNER_FIT_PADDING });
     const handleFocusElement = (event: Event) => {
       const { id, elementType } = (event as CustomEvent<{ id: string; elementType: 'node' | 'edge' }>).detail;
       if (elementType === 'node') {
@@ -107,7 +120,7 @@ export function FlowCanvas() {
   const {
     viewMode, nodes, edges, waterNodes, waterEdges, waterWarning,
     onNodesChange, onEdgesChange, onWaterNodesChange, onWaterEdgesChange,
-    onConnect, isValidConnection, onSelectionChange, addNode, firstTappedHandle,
+    onConnect, isValidConnection, onSelectionChange, addNode, firstTappedHandle, selectedNodes,
   } = usePlannerStore(useShallow((state) => ({
     viewMode: state.viewMode,
     nodes: state.nodes,
@@ -124,7 +137,23 @@ export function FlowCanvas() {
     onSelectionChange: state.onSelectionChange,
     addNode: state.addNode,
     firstTappedHandle: state.firstTappedHandle,
+    selectedNodes: state.selectedNodes,
   })));
+
+  React.useEffect(() => {
+    if (previousViewMode.current === null) {
+      previousViewMode.current = viewMode;
+      return;
+    }
+    if (previousViewMode.current === viewMode) return;
+    viewportsRef.current[previousViewMode.current] = getViewport();
+    const saved = viewportsRef.current[viewMode];
+    previousViewMode.current = viewMode;
+    window.requestAnimationFrame(() => {
+      if (saved) setViewport(saved, { duration: 200 });
+      else fitView({ duration: 400, padding: PLANNER_FIT_PADDING });
+    });
+  }, [viewMode, fitView, getViewport, setViewport]);
 
   const calculatedSolarWatts = useAppStore((state) => state.calculatedSolarWatts);
   const { onDragOver, onDrop } = usePlannerDragDrop(screenToFlowPosition);
@@ -143,8 +172,19 @@ export function FlowCanvas() {
 
   const edgeTypes = useMemo(() => ({ ...EDGE_TYPES, waterPipe: WaterPipeEdge }), []);
   const nodeTypes = useMemo(() => ({ ...NODE_TYPES }), []);
-  const displayedNodes = viewMode === 'water' ? waterNodes : nodes;
-  const displayedEdges = viewMode === 'water' ? waterEdges : edges;
+  const rawNodes = viewMode === 'water' ? waterNodes : nodes;
+  const rawEdges = viewMode === 'water' ? waterEdges : edges;
+  const focusedNodeId = selectedNodes?.length === 1 ? selectedNodes[0].id : null;
+  const { nodes: displayedNodes, edges: displayedEdges } = useMemo(
+    () => applyNeighborhoodFocus(rawNodes, rawEdges, focusedNodeId),
+    [rawNodes, rawEdges, focusedNodeId]
+  );
+  const isOverview = zoom < PLANNER_OVERVIEW_ZOOM;
+  const minimapColors = useMemo(() => ({
+    node: cssToken('--ink', '#14110e'),
+    mask: cssToken('--canvas-minimap-mask', 'rgba(20, 17, 14, 0.14)'),
+    background: cssToken('--bone', '#fffdf9'),
+  }), []);
 
   const handleConnect = React.useCallback((connection: Connection) => {
     connectionAttempt.current = false;
@@ -206,25 +246,33 @@ export function FlowCanvas() {
           onDragOver={onDragOver}
           onDrop={onDrop}
           fitView
-          minZoom={0.5}
-          maxZoom={2}
+          fitViewOptions={{ padding: PLANNER_FIT_PADDING }}
+          minZoom={PLANNER_MIN_ZOOM}
+          maxZoom={PLANNER_MAX_ZOOM}
           snapToGrid
-          snapGrid={[16, 16]}
+          snapGrid={PLANNER_SNAP_GRID}
           deleteKeyCode={null}
           onlyRenderVisibleElements
           elementsSelectable
           nodesFocusable
           edgesFocusable
-          translateExtent={[[ -2000, -2000 ], [4000, 4000]]}
+          translateExtent={[[ -3000, -3000 ], [6000, 6000]]}
           zoomOnScroll={!isMobile}
           zoomOnPinch
           panOnDrag={isMobile ? true : [1, 2]}
           aria-label={`${viewMode === 'water' ? 'Wasserplan' : 'Elektrik-Schaltplan'} Arbeitsfläche`}
           style={{ backgroundColor: 'var(--canvas-bg)' }}
+          className={isOverview ? 'planner-zoom-overview' : 'planner-zoom-detail'}
         >
-          <Background color="var(--canvas-grid)" gap={16} />
+          <Background color="var(--canvas-grid)" gap={PLANNER_SNAP_GRID[0]} style={{ opacity: 0.35 }} />
           <Controls className="mb-16 overflow-hidden rounded-lg border border-border shadow-sm lg:mb-4" />
-          <MiniMap className="mb-16 overflow-hidden rounded-lg border border-border shadow-sm lg:mb-4" ariaLabel="Miniaturübersicht des Plans" />
+          <MiniMap
+            className="mb-16 overflow-hidden rounded-lg border border-border shadow-sm lg:mb-4"
+            ariaLabel="Miniaturübersicht des Plans"
+            nodeColor={minimapColors.node}
+            maskColor={minimapColors.mask}
+            style={{ backgroundColor: minimapColors.background }}
+          />
 
           <Panel position="top-left" className="m-3 max-w-sm">
             <div className="rounded-lg border border-border bg-card/95 px-3 py-2 text-xs text-foreground shadow-sm">

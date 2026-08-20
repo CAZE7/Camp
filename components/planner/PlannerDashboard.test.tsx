@@ -69,7 +69,7 @@ describe('PlannerDashboard - Core Interactions', () => {
     openMoreMenu();
     expect(screen.getByText(/Stückliste/)).toBeInTheDocument();
     expect(screen.getByText(/Plan lokal prüfen/)).toBeInTheDocument();
-    expect(screen.getByText(/Plan automatisch anordnen/)).toBeInTheDocument();
+    expect(screen.getByText(/Aufräumen/)).toBeInTheDocument();
     expect(screen.getByText(/Bild exportieren/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Sommer' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Winter' })).toBeInTheDocument();
@@ -145,8 +145,7 @@ describe('PlannerDashboard - Action Buttons', () => {
   it('calls onLayout with no args when clicking Aufräumen', () => {
     render(<PlannerDashboard />);
 
-    openMoreMenu();
-    fireEvent.click(screen.getByText(/Plan automatisch anordnen/));
+    fireEvent.click(screen.getByText(/Aufräumen/));
 
     expect(mockOnLayout).toHaveBeenCalledTimes(1);
     expect(mockOnLayout).toHaveBeenCalledWith();
