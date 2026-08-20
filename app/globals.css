@@ -209,6 +209,89 @@
     bottom: max(1.5rem, env(safe-area-inset-bottom));
   }
 
+  /* --- Planer-Layout: feste Spaltenbreiten als Variablen -------------
+     Damit kennen auch absolut positionierte Bedienelemente (die Ein-/
+     Ausklapp-Pfeile) die exakte Spaltenbreite, ohne dass Zahlen doppelt
+     im JSX stehen. Breakpoints identisch zu Tailwind md/xl/2xl. */
+  .planner-shell {
+    --planner-sidebar-w: 260px;
+    --planner-inspector-w: 320px;
+  }
+  @media (min-width: 1280px) {
+    .planner-shell {
+      --planner-sidebar-w: 280px;
+      --planner-inspector-w: 288px;
+    }
+  }
+  @media (min-width: 1536px) {
+    .planner-shell {
+      --planner-inspector-w: 320px;
+    }
+  }
+  .planner-sidebar-toggle--open {
+    left: calc(var(--planner-sidebar-w) - 1rem);
+  }
+  .planner-inspector-toggle--open {
+    right: calc(var(--planner-inspector-w) - 1rem);
+  }
+
+  /* Bottom-Navigation: iOS-Home-Indicator darf nichts verdecken.
+     Die Leiste ist ein Flex-Geschwister (nicht fixed) und überlagert den
+     Canvas deshalb nie — die Safe-Area kommt zusätzlich als Innenabstand. */
+  .planner-bottom-nav {
+    padding-bottom: max(0.25rem, env(safe-area-inset-bottom));
+  }
+
+  /* --- Touch: Drag-Griff am Bauteil --------------------------------
+     Die Hülle nutzt display:contents, erzeugt also keine eigene Box —
+     React Flow misst weiterhin exakt die Node-Komponente. */
+  .node-drag-shell {
+    display: contents;
+  }
+  .node-drag-handle {
+    position: absolute;
+    top: -10px;
+    left: -10px;
+    z-index: 20;
+    display: flex;
+    /* 44x44 CSS-Pixel Touch-Target (WCAG 2.5.5 / Apple HIG). */
+    width: 44px;
+    height: 44px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    border: 1px solid var(--rule);
+    background: var(--bone);
+    color: var(--muted-ink);
+    box-shadow: 0 1px 3px rgba(20, 17, 14, 0.25);
+    touch-action: none; /* Der Griff zieht — er scrollt nicht. */
+    cursor: grab;
+  }
+  .node-drag-handle:active {
+    cursor: grabbing;
+  }
+  /* Mit Maus ist der ganze Node greifbar — dann stört der Griff nur. */
+  @media (pointer: fine) {
+    .node-drag-handle {
+      display: none;
+    }
+  }
+  /* Per Long-Press scharfgeschalteter Node: sichtbar „entsperrt“. */
+  .react-flow__node.node-drag-armed {
+    outline: 2px dashed var(--copper);
+    outline-offset: 4px;
+  }
+
+  /* Kabel-Labels auf schmalen Displays ausblenden — sie verdecken dort mehr
+     Plan als sie erklären. Sichtbar bleiben sie bei Auswahl und nach Tap
+     (CableEdge steuert das per State, hier nur der Zoom-Fall). */
+  @media (max-width: 767px) {
+    .planner-zoom-detail .edge-label {
+      font-size: 11px;
+      padding: 1px 4px;
+    }
+  }
+
   /* Große, sichtbare Anschlussflächen für Touch und Tastatur. */
   .react-flow__handle {
     width: 44px !important;

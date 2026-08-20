@@ -10,6 +10,12 @@ import {
   nodesToObstacles,
   sourceExitVector,
   targetEntryVector,
+  segmentsIntersect,
+  countCrossings,
+  waypointsToSegments,
+  edgesToCrossingSegments,
+  MAX_ACCEPTABLE_CROSSINGS,
+  Segment,
 } from './orthogonalRouting';
 
 describe('direction vectors', () => {
@@ -167,5 +173,126 @@ describe('nodesToObstacles', () => {
     expect(rects).toHaveLength(1);
     expect(rects[0].x).toBe(200);
     expect(rects[0].width).toBeGreaterThan(0);
+  });
+});
+
+describe('Kreuzungs-Erkennung', () => {
+  it('detects crossing segments and ignores parallel ones', () => {
+    expect(segmentsIntersect([{ x: 0, y: 0 }, { x: 10, y: 0 }], [{ x: 5, y: -5 }, { x: 5, y: 5 }])).toBe(true);
+    expect(segmentsIntersect([{ x: 0, y: 0 }, { x: 10, y: 0 }], [{ x: 0, y: 8 }, { x: 10, y: 8 }])).toBe(false);
+  });
+
+  it('counts every crossing of a polyline', () => {
+    const route = [
+      { x: 0, y: 0 },
+      { x: 100, y: 0 },
+      { x: 100, y: 100 },
+    ];
+    const others: Segment[] = [
+      [{ x: 20, y: -10 }, { x: 20, y: 10 }],
+      [{ x: 60, y: -10 }, { x: 60, y: 10 }],
+      [{ x: 90, y: 50 }, { x: 110, y: 50 }],
+      [{ x: 0, y: 500 }, { x: 100, y: 500 }],
+    ];
+    expect(countCrossings(route, others)).toBe(3);
+    expect(countCrossings(route, [])).toBe(0);
+  });
+
+  it('turns waypoints into segments', () => {
+    expect(waypointsToSegments([{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }])).toHaveLength(2);
+  });
+});
+
+describe('buildOrthogonalPath — Ausweichroute bei Kabelknäuel', () => {
+  const base = {
+    sourceX: 0,
+    sourceY: 0,
+    sourcePosition: Position.Right,
+    targetX: 400,
+    targetY: 0,
+    targetPosition: Position.Left,
+    offset: 20,
+  };
+
+  it('keeps the standard lane when there is nothing to gain', () => {
+    const withoutOthers = buildOrthogonalPath(base);
+    expect(withoutOthers.crossings).toBe(0);
+    expect(withoutOthers.path.startsWith('M')).toBe(true);
+  });
+
+  it('keeps the standard lane at three or fewer crossings (no nervous re-routing)', () => {
+    const others: Segment[] = [40, 120, 200].map((x) => [
+      { x, y: -80 },
+      { x, y: 80 },
+    ] as Segment);
+    const result = buildOrthogonalPath({ ...base, crossingSegments: others });
+    const reference = buildOrthogonalPath(base);
+    expect(result.crossings).toBeLessThanOrEqual(MAX_ACCEPTABLE_CROSSINGS);
+    expect(result.path).toBe(reference.path);
+  });
+
+  it('picks a wider lane when more than three cables are crossed', () => {
+    // Vier kurze Sperren genau auf der Standard-Lane (y = +20 nach Offset),
+    // die eine um 32 px versetzte Route nicht mehr trifft.
+    const others: Segment[] = [60, 120, 180, 240].map((x) => [
+      { x, y: 12 },
+      { x, y: 28 },
+    ] as Segment);
+
+    const standard = buildOrthogonalPath(base);
+    const rerouted = buildOrthogonalPath({ ...base, crossingSegments: others });
+
+    expect(countCrossings([{ x: 0, y: 20 }, { x: 400, y: 20 }], others)).toBe(4);
+    expect(rerouted.crossings).toBeLessThan(4);
+    expect(rerouted.path).not.toBe(standard.path);
+  });
+});
+
+describe('edgesToCrossingSegments', () => {
+  const nodes = [
+    { id: 'a', position: { x: 0, y: 0 }, width: 100, height: 100, data: {} },
+    { id: 'b', position: { x: 300, y: 0 }, width: 100, height: 100, data: {} },
+    { id: 'c', position: { x: 300, y: 300 }, width: 100, height: 100, data: {} },
+  ] as any;
+
+  it('approximates other edges by their node centres', () => {
+    const segments = edgesToCrossingSegments(
+      [
+        { id: 'e1', source: 'a', target: 'b' },
+        { id: 'e2', source: 'a', target: 'c' },
+      ],
+      nodes,
+      (edge) => edge.id === 'e1'
+    );
+    expect(segments).toHaveLength(1);
+    expect(segments[0]).toEqual([
+      { x: 50, y: 50 },
+      { x: 350, y: 350 },
+    ]);
+  });
+
+  it('skips edges whose nodes are unknown', () => {
+    const segments = edgesToCrossingSegments([{ id: 'x', source: 'a', target: 'ghost' }], nodes, () => false);
+    expect(segments).toHaveLength(0);
+  });
+});
+
+describe('parallele Lanes bleiben geometrisch getrennt (A5)', () => {
+  it('places three lanes 16 px apart on the straight section', () => {
+    const lanes = [20, 36, 52].map((offset) =>
+      routeWaypoints({
+        sourceX: 0,
+        sourceY: 0,
+        sourcePosition: Position.Right,
+        targetX: 400,
+        targetY: 0,
+        targetPosition: Position.Left,
+        offset,
+      })
+    );
+    const ys = lanes.map((points) => points[0].y);
+    expect(Math.abs(ys[1] - ys[0])).toBe(16);
+    expect(Math.abs(ys[2] - ys[1])).toBe(16);
+    expect(new Set(ys).size).toBe(3);
   });
 });

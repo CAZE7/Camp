@@ -1,9 +1,11 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { BaseEdge, EdgeProps, EdgeLabelRenderer, useReactFlow, Node } from 'reactflow';
 import { usePlannerStore, getDerivedSystemState } from '../../store/usePlannerStore';
 import { useShallow } from 'zustand/react/shallow';
 import { edgeLabelNudge, parallelLaneOffset } from './utils/pathUtils';
-import { buildOrthogonalPath, nodesToObstacles } from './utils/orthogonalRouting';
+import { buildOrthogonalPath, edgesToCrossingSegments, nodesToObstacles } from './utils/orthogonalRouting';
+import { cableStrokeWidth } from './utils/cableStyle';
+import { useCoarsePointer, useMediaQuery, MOBILE_QUERY } from '../planner/hooks/useMediaCapabilities';
 import { isBackboneConnection } from '../planner/utils/backbone';
 import { getWireColor, WIRE_COLORS, WireDomain } from './utils/edgeColors';
 import { hasVoltageDropError } from './utils/voltageDrop';
@@ -14,6 +16,12 @@ import {
   calculateEdgeCurrent,
   getSystemVoltage,
 } from '../../lib/vde-standards';
+
+/** Ab so vielen Kanten wird die Kreuzungsprüfung übersprungen (Performance). */
+export const CROSSING_SCAN_EDGE_LIMIT = 120;
+
+/** Wie lange ein angetipptes Kabel sein Label als Tooltip zeigt (Touch). */
+export const TAP_LABEL_TIMEOUT_MS = 5000;
 
 export type CableEdgeData = {
   length: number;
@@ -123,6 +131,23 @@ const CableEdge = function ({
   const resolvedTargetHandle = targetHandle ?? targetHandleId;
   const { getNode, getNodes } = useReactFlow();
   const [isHovered, setIsHovered] = useState(false);
+  // Auf schmalen Displays sind Kabel-Labels der größte Störfaktor: sie
+  // überdecken bei 375 px mehr Fläche als der Plan selbst. Deshalb dort
+  // ausgeblendet und erst bei Tap auf das Kabel als Tooltip eingeblendet.
+  const isCompact = useMediaQuery(MOBILE_QUERY);
+  const coarsePointer = useCoarsePointer();
+  const [tapRevealed, setTapRevealed] = useState(false);
+  const tapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const revealLabel = React.useCallback(() => {
+    setTapRevealed(true);
+    if (tapTimer.current) clearTimeout(tapTimer.current);
+    tapTimer.current = setTimeout(() => setTapRevealed(false), TAP_LABEL_TIMEOUT_MS);
+  }, []);
+
+  React.useEffect(() => () => {
+    if (tapTimer.current) clearTimeout(tapTimer.current);
+  }, []);
 
   // Subscribe to connected nodes and total consumption for reactivity
   const { sNodeData, tNodeData, systemLoad, cumulativeDrop } = usePlannerStore(useShallow(state => {
@@ -148,6 +173,23 @@ const CableEdge = function ({
   const allNodes = usePlannerStore((state) => state.nodes);
   const trunkMode = usePlannerStore((state) => state.trunkMode);
 
+  // Fremde Leitungen als grobe Strecken — Grundlage der Kreuzungszählung.
+  // Kanten desselben Node-Paars sind ausgenommen: die liegen bereits sauber
+  // als parallele Lanes nebeneinander und dürfen die Route nicht aufblähen.
+  // Ab CROSSING_SCAN_EDGE_LIMIT Kanten wird die Prüfung übersprungen (O(E) je
+  // Kante ⇒ O(E²) gesamt); sehr große Pläne bleiben so flüssig.
+  const crossingSegments = useMemo(() => {
+    if (siblingEdges.length > CROSSING_SCAN_EDGE_LIMIT) return [];
+    return edgesToCrossingSegments(
+      siblingEdges as unknown as { id: string; source: string; target: string }[],
+      allNodes,
+      (edge) =>
+        edge.id === id ||
+        (edge.source === source && edge.target === target) ||
+        (edge.source === target && edge.target === source)
+    );
+  }, [siblingEdges, allNodes, id, source, target]);
+
   const { path: edgePath, labelX, labelY } = useMemo(() => {
     const obstacles = nodesToObstacles(allNodes, new Set([source, target]));
     return buildOrthogonalPath({
@@ -165,8 +207,9 @@ const CableEdge = function ({
         siblingEdges,
       }),
       obstacles,
+      crossingSegments,
     });
-  }, [sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, resolvedSourceHandle, siblingEdges, allNodes, source, target, id]);
+  }, [sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, resolvedSourceHandle, siblingEdges, allNodes, source, target, id, crossingSegments]);
 
   const labelNudgeY = useMemo(
     () =>
@@ -182,7 +225,7 @@ const CableEdge = function ({
 
   const isPlus = !!resolvedSourceHandle?.includes('plus');
 
-  const { length, crossSection, maxFuse, strokeWidth, animationDuration, I, sourceNode, edgeDomain, sysVoltage } = useMemo(() => {
+  const { length, crossSection, maxFuse, animationDuration, I, sourceNode, edgeDomain, sysVoltage } = useMemo(() => {
     const physicalDistance = Math.max(1, Math.sqrt(Math.pow(targetX - sourceX, 2) + Math.pow(targetY - sourceY, 2)) / 100);
     const length = data?.length || physicalDistance;
     const sourceNode = getNode(source);
@@ -263,12 +306,14 @@ const CableEdge = function ({
       ),
     [allNodes, source, target]
   );
-  // Trassen-Modus: Hauptrouten dick, Abgänge dünn; sonst nur Hover/Selektion betonen.
-  const renderedStrokeWidth = trunkMode
-    ? isBackbone
-      ? strokeWidth + 2
-      : Math.max(1, strokeWidth - 2)
-    : strokeWidth + (emphasized ? 2 : 0);
+  // Linienstärke kodiert die Rolle der Leitung (Backbone 3 px / normal 2 px),
+  // nicht mehr den Querschnitt — der steht im Label. Siehe utils/cableStyle.ts.
+  const renderedStrokeWidth = cableStrokeWidth({ isBackbone, emphasized, trunkMode });
+
+  // Sichtbarkeit des Labels: kompakt = nur bei Auswahl oder nach Tap.
+  const labelVisible = !isCompact || selected || tapRevealed;
+  // Fingerbreite Trefferzone auf Touch, schlanke Zone für die Maus.
+  const interactionStrokeWidth = coarsePointer ? 36 : 20;
 
   return (
     <>
@@ -305,7 +350,7 @@ const CableEdge = function ({
         />
       )}
 
-      <circle className="planner-flow-particle" r={strokeWidth / 2} fill={stroke} aria-hidden="true">
+      <circle className="planner-flow-particle" r={Math.max(2, renderedStrokeWidth)} fill={stroke} aria-hidden="true">
         <animateMotion
           dur={`${animationDuration}s`}
           repeatCount="indefinite"
@@ -313,6 +358,8 @@ const CableEdge = function ({
         />
       </circle>
 
+      {/* Label: am Desktop immer sichtbar, auf Handy nur bei Auswahl/Tap. */}
+      {labelVisible && (
       <EdgeLabelRenderer>
         <div
           style={{
@@ -355,21 +402,26 @@ const CableEdge = function ({
           ) : null}
         </div>
       </EdgeLabelRenderer>
+      )}
 
       <path
         id={id + '_interaction'}
         d={edgePath}
         fill="none"
         strokeOpacity={0}
-        strokeWidth={20}
+        strokeWidth={interactionStrokeWidth}
         style={{ cursor: 'pointer' }}
         role="button"
         tabIndex={0}
         aria-label={`${edgeDomain === 'AC_230V' ? '230 Volt Wechselstromleitung' : edgeDomain === 'Solar' ? 'Solarleitung' : 'Gleichstromleitung'}, ${crossSection} Quadratmillimeter, ${length.toFixed(1)} Meter`}
-        onClick={() => usePlannerStore.getState().focusElement(id, 'edge')}
+        onClick={() => {
+          revealLabel();
+          usePlannerStore.getState().focusElement(id, 'edge');
+        }}
         onKeyDown={(event) => {
           if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault();
+            revealLabel();
             usePlannerStore.getState().focusElement(id, 'edge');
           }
         }}

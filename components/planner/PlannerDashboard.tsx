@@ -28,6 +28,30 @@ function NavigationSection({ viewMode, setViewMode }: { viewMode: 'electric' | '
 
 interface ActionFeedback { type: 'success' | 'error' | 'info'; message: string }
 
+const SHORTCUTS: { keys: string; label: string }[] = [
+  { keys: 'Strg+Z', label: 'Rückgängig' },
+  { keys: 'Entf', label: 'Löschen' },
+  { keys: 'Strg+S', label: 'Speichern' },
+];
+
+/**
+ * Sichtbare Tastaturkürzel in der Toolbar (WCAG 3.3.5 „Hilfe“).
+ * Nur ab 1280 px eingeblendet — darunter fehlt der Platz, und Touch-Geräte
+ * haben in der Regel keine Tastatur.
+ */
+function KeyboardShortcutHints() {
+  return (
+    <ul className="hidden items-center gap-1 xl:flex" aria-label="Tastaturkürzel">
+      {SHORTCUTS.map((shortcut) => (
+        <li key={shortcut.keys} className="flex items-center gap-1 text-xs text-muted-foreground">
+          <kbd className="rounded border border-border bg-accent px-1.5 py-0.5 font-mono text-xs text-foreground">{shortcut.keys}</kbd>
+          <span className="hidden 2xl:inline">{shortcut.label}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function ActionsSection({
   season, setSeason, exportBOM, autoWireSystem, checkSchematic, onLayout,
   nodes, warnings, setFeedback, undo, redo, canUndo, canRedo, onRequestReset,
@@ -259,6 +283,14 @@ export function PlannerDashboard() {
     if (warning.focusId && warning.focusType) focusElement(warning.focusId, warning.focusType);
   }, [focusElement]);
 
+  // Ctrl+S wird in PlannerInner abgefangen (kein Browser-Speichern-Dialog) und
+  // hier sichtbar bestätigt — der Plan liegt ohnehin laufend im Local Storage.
+  useEffect(() => {
+    const onSave = () => setFeedback({ type: 'success', message: 'Plan gespeichert: Änderungen liegen automatisch in diesem Browser.' });
+    window.addEventListener('planner-save', onSave);
+    return () => window.removeEventListener('planner-save', onSave);
+  }, []);
+
   useEffect(() => {
     if (!feedback) return;
     const timer = setTimeout(() => setFeedback(null), 5000);
@@ -288,7 +320,10 @@ export function PlannerDashboard() {
           />
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-2 pl-2">
-          <span className="hidden items-center gap-1 text-xs font-semibold text-muted-foreground xl:flex" title="Änderungen werden automatisch in diesem Browser gespeichert"><Save className="h-4 w-4 text-success" />Automatisch gespeichert</span>
+          {/* Tastaturkürzel sichtbar machen (Desktop): Nutzer sollen sie nicht
+              raten müssen. Auf Touch-Geräten ohne Tastatur wird nichts angezeigt. */}
+          <KeyboardShortcutHints />
+          <span className="hidden items-center gap-1 text-xs font-semibold text-muted-foreground 2xl:flex" title="Änderungen werden automatisch in diesem Browser gespeichert"><Save className="h-4 w-4 text-success" />Automatisch gespeichert</span>
           <span className="hidden rounded-full border border-border bg-accent px-2 py-1 text-xs font-semibold text-foreground sm:inline" title="Die Jahreszeit beeinflusst Solarertrag und Heizverbrauch">{season === 'summer' ? '☀ Sommer' : '❄ Winter'}</span>
           <WarningCenter warnings={warnings} onFix={handleFix} />
         </div>

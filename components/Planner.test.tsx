@@ -60,14 +60,18 @@ describe('Planner Component', () => {
   });
 
   it('has the correct layout structure', async () => {
-    const { container } = render(<Planner />);
+    render(<Planner />);
 
     // Because of dynamic loading, we need to wait for the inner div to appear.
     await waitFor(() => {
         const sidebar = screen.getByTestId('planner-sidebar');
-        // The sidebar is wrapped in a container that has the lg:flex classes
+        // The sidebar is wrapped in a container that carries the responsive classes.
         const mainContainer = sidebar.parentElement?.parentElement;
-        expect(mainContainer).toHaveClass('flex', 'flex-col', 'lg:flex-row', 'flex-1', 'min-h-0', 'w-full', 'bg-background', 'overflow-hidden');
+        // Mobile: Spalte mit Bottom-Tabs. Ab 768 px (Tablet) nebeneinander —
+        // bewusst `md:flex-row` statt `lg:flex-row`, damit das iPad hochkant
+        // bereits Sidebar + Canvas zeigt (Akzeptanzkriterium A2).
+        expect(mainContainer).toHaveClass('flex', 'flex-col', 'md:flex-row', 'flex-1', 'min-h-0', 'w-full', 'bg-background', 'overflow-hidden');
+        expect(mainContainer).toHaveClass('planner-shell', 'h-dvh');
     });
   });
 });

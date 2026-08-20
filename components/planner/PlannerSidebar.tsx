@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sidebar } from '../Sidebar';
@@ -9,6 +9,17 @@ interface PlannerSidebarProps {
   onMobileAdd?: () => void;
 }
 
+/**
+ * Linke Spalte: Bauteil-Katalog.
+ *
+ * Breiten sind fix und breakpoint-genau statt `w-auto`:
+ *   Handy   : volle Breite (eigener Tab)
+ *   Tablet  : 260 px, einklappbar auf 0
+ *   Desktop : 280 px, einklappbar auf 0
+ * Der Umschalter liegt außerhalb des Panels, damit er im eingeklappten
+ * Zustand erreichbar bleibt; seine Position folgt der CSS-Variablen
+ * `--planner-sidebar-w` (siehe globals.css), die dieselben Breakpoints kennt.
+ */
 export function PlannerSidebar({ onMobileAdd }: PlannerSidebarProps) {
   const { viewMode, isSidebarOpen, toggleSidebar } = usePlannerStore(useShallow((state) => ({
     viewMode: state.viewMode,
@@ -19,11 +30,13 @@ export function PlannerSidebar({ onMobileAdd }: PlannerSidebarProps) {
   return (
     <>
       <div
-        className={`transition-all duration-300 ease-in-out relative z-40 h-full flex-shrink-0 shadow-lg bg-card border-r border-border overflow-hidden ${
-          isSidebarOpen ? 'w-full opacity-100 lg:w-72' : 'w-full opacity-100 lg:w-0 lg:opacity-0'
+        className={`relative z-40 h-full flex-shrink-0 overflow-hidden border-r border-border bg-card shadow-lg transition-all duration-300 ease-in-out motion-reduce:transition-none ${
+          isSidebarOpen
+            ? 'w-full opacity-100 md:w-[260px] xl:w-[280px]'
+            : 'w-full opacity-100 md:w-0 md:opacity-0'
         }`}
       >
-        <div className="w-full h-full">
+        <div className="h-full w-full">
           <Sidebar mode={viewMode} onMobileAdd={onMobileAdd} />
         </div>
       </div>
@@ -32,8 +45,9 @@ export function PlannerSidebar({ onMobileAdd }: PlannerSidebarProps) {
         variant="outline"
         size="icon"
         onClick={toggleSidebar}
-        className="absolute top-1/2 z-50 hidden h-11 w-11 -translate-y-1/2 items-center justify-center bg-card shadow-md transition-all duration-300 lg:flex"
-        style={{ left: isSidebarOpen ? 'calc(18rem - 1rem)' : '0.75rem' }}
+        className={`planner-sidebar-toggle absolute top-1/2 z-50 hidden h-11 w-11 -translate-y-1/2 items-center justify-center bg-card shadow-md transition-all duration-300 motion-reduce:transition-none md:flex ${
+          isSidebarOpen ? 'planner-sidebar-toggle--open' : 'left-3'
+        }`}
         title={isSidebarOpen ? "Sidebar einklappen" : "Sidebar ausklappen"}
         aria-label={isSidebarOpen ? "Linke Sidebar einklappen" : "Linke Sidebar ausklappen"}
         aria-expanded={isSidebarOpen}
