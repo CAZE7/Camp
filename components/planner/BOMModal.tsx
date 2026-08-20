@@ -68,8 +68,7 @@ export function BOMModal() {
   const pipeEntries = useMemo(() => Object.entries(bomData.pipeLengths), [bomData.pipeLengths]);
   const empty = componentEntries.length === 0 && cableEntries.length === 0 && pipeEntries.length === 0;
 
-  // BOM als JSON für den KI-Assistenten (dieses Format erkennt der Chat als
-  // Stückliste und reichert Produktvorschläge an).
+  // BOM als JSON für die Zwischenablage.
   const bomJson = useMemo(() => {
     const cables = cableEntries.map(([crossSection, length]) => ({
       crossSection: Number(crossSection),
@@ -81,7 +80,7 @@ export function BOMModal() {
 
   const [copied, setCopied] = useState(false);
   const copyBomForChat = async () => {
-    const message = `Hier ist meine Stückliste aus dem Schaltplan:\n\n\`\`\`json\n${bomJson}\n\`\`\`\n\nWelche Produkte und Kabelquerschnitte empfehlst du?`;
+    const message = `Stückliste aus dem Schaltplan:\n\n\`\`\`json\n${bomJson}\n\`\`\``;
     try {
       await navigator.clipboard.writeText(message);
       setCopied(true);
@@ -156,7 +155,7 @@ export function BOMModal() {
           className="min-h-11 gap-2"
         >
           <ClipboardCopy className="h-4 w-4" aria-hidden="true" />
-          {copied ? 'Kopiert – im KI-Chat einfügen' : 'Für KI-Assistent kopieren'}
+          {copied ? 'Kopiert!' : 'Stückliste kopieren'}
         </Button>
         <Button onClick={() => setOpen(false)} className="min-h-11 flex-1">Schließen</Button>
       </div>

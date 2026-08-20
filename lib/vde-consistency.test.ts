@@ -9,7 +9,6 @@
  *   - components/edges/CableEdge.tsx
  *   - components/nodes/ConduitNode.tsx
  *   - components/Inspector.tsx
- *   - app/api/chat/route.ts
  *
  * Verbotene Patterns (außerhalb von Kommentaren):
  *   - [/]\s*0\.85\b     Inverter-Effizienz
@@ -30,7 +29,6 @@ const FILES_TO_SCAN = [
   'components/edges/CableEdge.tsx',
   'components/nodes/ConduitNode.tsx',
   'components/Inspector.tsx',
-  'app/api/chat/route.ts',
 ] as const;
 
 const FORBIDDEN_PATTERNS: Array<{ name: string; pattern: RegExp; hint: string }> = [

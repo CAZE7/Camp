@@ -315,6 +315,7 @@ export function FlowCanvas() {
           translateExtent={[[ -3000, -3000 ], [6000, 6000]]}
           zoomOnScroll={!isMobile}
           zoomOnPinch
+          connectionRadius={isMobile ? 30 : 20}
           panOnDrag={isMobile ? true : [1, 2]}
           aria-label={`${viewMode === 'water' ? 'Wasserplan' : 'Elektrik-Schaltplan'} Arbeitsfläche`}
           style={{ backgroundColor: 'var(--canvas-bg)' }}

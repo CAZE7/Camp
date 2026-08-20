@@ -11,7 +11,7 @@ import { Settings2, Zap, Droplets, Flame, Plus } from 'lucide-react';
 import { useAppStore } from '../lib/store';
 import { usePlannerStore } from '../store/usePlannerStore';
 import { useRouter } from 'next/navigation';
-import Chat from './Chat';
+
 
 export default function PlannerInner() {
   const [activeTab, setActiveTab] = useState<'sidebar' | 'canvas' | 'inspector'>('canvas');
@@ -68,7 +68,7 @@ export default function PlannerInner() {
         <PlannerInspector />
       </div>
 
-      <div className="hidden lg:block"><Chat /></div>
+
 
       <nav className="z-50 flex shrink-0 items-center justify-around border-t border-border bg-card p-1 lg:hidden" aria-label="Planerbereiche">
         <button type="button" onClick={() => setActiveTab('sidebar')} className={navClass(activeTab === 'sidebar')} aria-current={activeTab === 'sidebar' ? 'page' : undefined}>
