@@ -10,9 +10,18 @@ const NAV = [
   { href: '/elektrik-planung', label: 'Schaltplan' },
   { href: '/tools/dach', label: 'Dach' },
   { href: '/tools/heizung', label: 'Heizlast' },
-  { href: '/ki-assistent', label: 'Assistent' },
+  { href: '/ki-assistent', label: 'KI-Assistent' },
   { href: '/guides/ausbau-fahrplan', label: 'Guides' },
 ];
+
+function isActive(pathname: string | null, href: string): boolean {
+  if (!pathname) return false;
+  // Guides-Tab ist aktiv für alle /guides/*-Pfade
+  if (href === '/guides/ausbau-fahrplan') {
+    return pathname.startsWith('/guides');
+  }
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
 
 export function SiteHeader({
   tone = 'paper',
@@ -37,20 +46,18 @@ export function SiteHeader({
 
         <nav className="hidden items-center gap-1 sm:flex" aria-label="Hauptnavigation">
           {NAV.map((item) => {
-            const active =
-              pathname === item.href ||
-              pathname?.startsWith(`${item.href}/`) ||
-              (item.href === '/guides/ausbau-fahrplan' && pathname?.startsWith('/guides'));
+            const active = isActive(pathname, item.href);
             return (
               <Link
                 key={item.href}
                 href={item.href}
+                aria-current={active ? 'page' : undefined}
                 className={cn(
-                  'px-2.5 py-1 text-sm',
+                  'inline-flex min-h-11 items-center px-3 text-sm',
                   inverted
                     ? active
-                      ? 'text-paper'
-                      : 'text-paper/55 hover:text-paper'
+                      ? 'text-paper font-medium'
+                      : 'text-paper/70 hover:text-paper'
                     : active
                       ? 'text-ink font-medium'
                       : 'text-ink-soft hover:text-ink'
@@ -64,37 +71,55 @@ export function SiteHeader({
 
         <button
           type="button"
-          className="sm:hidden flex flex-col gap-[5px] p-2"
+          className={cn(
+            'sm:hidden inline-flex min-h-11 min-w-11 flex-col items-center justify-center gap-[5px] p-2',
+            inverted ? 'text-paper' : 'text-ink'
+          )}
           aria-label={open ? 'Menü schließen' : 'Menü öffnen'}
           aria-expanded={open}
+          aria-controls="site-mobile-nav"
           onClick={() => setOpen((v) => !v)}
         >
-          <span className={cn('block h-px w-5', inverted ? 'bg-paper' : 'bg-ink')} />
-          <span className={cn('block h-px w-5', inverted ? 'bg-paper' : 'bg-ink')} />
-          <span className={cn('block h-px w-5', inverted ? 'bg-paper' : 'bg-ink')} />
+          <span className={cn('block h-px w-6', inverted ? 'bg-paper' : 'bg-ink')} />
+          <span className={cn('block h-px w-6', inverted ? 'bg-paper' : 'bg-ink')} />
+          <span className={cn('block h-px w-6', inverted ? 'bg-paper' : 'bg-ink')} />
         </button>
       </div>
 
       {open && (
         <nav
+          id="site-mobile-nav"
           className={cn(
             'border-t sm:hidden',
             inverted ? 'border-white/10 bg-soot' : 'border-rule bg-paper'
           )}
           aria-label="Mobilnavigation"
         >
-          <ul className="flex flex-col px-5 py-2">
-            {NAV.map((item) => (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  onClick={() => setOpen(false)}
-                  className="block py-2.5 text-sm"
-                >
-                  {item.label}
-                </Link>
-              </li>
-            ))}
+          <ul className="flex flex-col px-3 py-2">
+            {NAV.map((item) => {
+              const active = isActive(pathname, item.href);
+              return (
+                <li key={item.href}>
+                  <Link
+                    href={item.href}
+                    onClick={() => setOpen(false)}
+                    aria-current={active ? 'page' : undefined}
+                    className={cn(
+                      'flex min-h-11 items-center rounded-none px-3 py-3 text-sm',
+                      inverted
+                        ? active
+                          ? 'bg-white/10 text-paper font-medium'
+                          : 'text-paper/80 hover:bg-white/5'
+                        : active
+                          ? 'bg-bone text-ink font-medium'
+                          : 'text-ink-soft hover:bg-bone hover:text-ink'
+                    )}
+                  >
+                    {item.label}
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         </nav>
       )}

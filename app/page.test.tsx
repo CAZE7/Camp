@@ -13,8 +13,8 @@ describe("Home Page", () => {
   it("renders the main sections", () => {
     render(<Home />);
 
-    expect(screen.getByRole("heading", { name: "Camper planen", level: 1 })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Guides", level: 2 })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Camper planen/i, level: 1 })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Guides/i, level: 2 })).toBeInTheDocument();
   });
 
   it("renders the tool links", () => {
@@ -32,7 +32,8 @@ describe("Home Page", () => {
 
     const main = screen.getByRole("main");
     expect(within(main).getByRole("link", { name: /Camper-Ausbauguide/ })).toBeInTheDocument();
-    expect(within(main).getByRole("link", { name: /Ausbau-Fahrplan/ })).toBeInTheDocument();
+    // "Ausbau-Fahrplan" erscheint als Empfehlung UND als Guide-Link — mindestens 1×.
+    expect(within(main).getAllByRole("link", { name: /Ausbau-Fahrplan/ }).length).toBeGreaterThan(0);
     expect(within(main).getByRole("link", { name: /Holzausbau \(BEDMAS\)/ })).toBeInTheDocument();
   });
 });
