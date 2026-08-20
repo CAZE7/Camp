@@ -137,7 +137,7 @@ const EXPERT_KNOWLEDGE: Record<string, ExpertTip> = {
     tips: [
       {
         heading: "Richtige Reihenfolge",
-        body: "Batterie → Hauptsicherung (ANL) → Shunt → Busbar → Sicherungskasten (Einzelsicherungen) → Verbraucher. Die Hauptsicherung kommt VOR dem Shunt!",
+        body: "Batterie+ → Hauptsicherung (ANL, ≤20 cm) → Plus-Busbar → Sicherungskasten → Verbraucher. Batterie- → Smart Shunt → Minus-Busbar. Der Shunt sitzt nur im Minus, die Hauptsicherung nur im Plus.",
       },
       {
         heading: "Sicherungstypen",

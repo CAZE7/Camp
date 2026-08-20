@@ -53,7 +53,7 @@ export const calculateAnimationDuration = (I: number): number => {
  * Regeln (DC-Leitungen):
  *  - Spannungsfall inkl. Vorschaltpfad max. 3% (VDE 0298-4: 0,36 V bei 12 V)
  *  - Plus-Leitung braucht eine Sicherung: Nennstrom ≤ Sicherung ≤ Kabel-Max.
- *  - Hauptsicherung max. 20 cm nach der Batterie
+ *  - Unabgesicherte Batterie-Plusleitung max. 20 cm (Sicherung sitzt am Pol)
  */
 export const collectEdgeErrors = (input: {
   edgeDomain: 'DC_12V' | 'AC_230V' | 'Solar';
@@ -87,7 +87,10 @@ export const collectEdgeErrors = (input: {
         errors.push('Sicherung zu klein!');
       }
     }
-    if (sourceNodeType === 'battery' && length > 0.2) {
+    // 20-cm-Regel gilt für die Lage der Sicherung am Batteriepol.
+    // Ist die Leitung bereits abgesichert, gilt die Sicherung als am Pol sitzend;
+    // die Strecke danach (z. B. Starterbatterie → Ladebooster) darf länger sein.
+    if (sourceNodeType === 'battery' && length > 0.2 && !data?.fuseSize) {
       errors.push('Hauptsicherung nach Batterie max 20cm!');
     }
   }
