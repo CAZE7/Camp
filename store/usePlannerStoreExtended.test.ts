@@ -338,6 +338,7 @@ import { useLiveValidation } from '../components/planner/hooks/useLiveValidation
 import { validateSchematic, calculateEdgeCurrent, getSystemVoltage } from '../lib/vde-standards';
 import { FUSE_MAP, STANDARD_FUSE_SIZES, calculateCrossSection, calculateMaxFuse } from '../lib/electrical';
 import { collectEdgeErrors } from '../components/edges/CableEdge';
+import { TEMPLATE_MINIMALIST, TEMPLATE_ALLROUNDER, TEMPLATE_AUTARK } from '../components/planner/templates';
 
 function makeNode(id: string, type: string, data: Record<string, unknown> = {}): Node {
   return { id, type, position: { x: 0, y: 0 }, data };
@@ -564,7 +565,7 @@ describe('Auto-Wire: keine Warnungen nach performAutoWiring', () => {
     expect(connectionKeys(second.edges)).toEqual(firstKeys);
   });
 
-  it('Nutzer-Kanten bleiben erhalten und werden nicht dupliziert', () => {
+  it('Nutzer-Kanten bleiben erhalten; Direktverbindung Batterie→Verbraucher wird über den Sicherungskasten geführt', () => {
     const nodes = [
       makeNode('b1', 'battery', { label: 'Batterie', capacity: 100, chemistry: 'LiFePO4' }),
       makeNode('c1', 'consumer', { label: 'LED', watts: 20, hours: 2 }),
@@ -582,10 +583,13 @@ describe('Auto-Wire: keine Warnungen nach performAutoWiring', () => {
     const { edges } = runAutoWire(nodes, { userEdges: [userEdge] });
 
     expect(edges.some((e) => e.id === 'user-edge-1')).toBe(true); // bleibt erhalten
+    const healed = edges.find((e) => e.id === 'user-edge-1');
+    expect(healed?.target).toBe('c1');
+    expect(healed?.source).not.toBe('b1'); // nicht mehr direkt an der Batterie
 
-    // Die identische Verbindung wird nicht noch einmal angelegt
+    // Keine doppelte Plus-Zuleitung zum Verbraucher
     const dupes = edges.filter(
-      (e) => e.source === 'b1' && e.target === 'c1' && e.sourceHandle === 'plus' && e.targetHandle === 'plus'
+      (e) => e.target === 'c1' && e.sourceHandle === 'plus' && e.targetHandle === 'plus'
     );
     expect(dupes.length).toBe(1);
   });
@@ -602,5 +606,229 @@ describe('Auto-Wire: keine Warnungen nach performAutoWiring', () => {
 
     assertZeroWarnings(n, e);
     assertFusesMatchVde(e);
+  });
+});
+
+function assertNoSafetyWarnings(nodes: Node[], edges: Edge<CableEdgeData>[]) {
+  const { result } = renderHook(() => useLiveValidation(nodes, edges));
+  expect(result.current.filter((w) => w.category !== 'estimation')).toEqual([]);
+
+  const violations = validateSchematic(nodes, edges).filter((v) => v.severity !== 'ok');
+  expect(violations).toEqual([]);
+
+  const edgeErrors: string[] = [];
+  for (const edge of edges) {
+    edgeErrors.push(...getEdgeErrors(nodes, edges, edge));
+  }
+  expect(edgeErrors).toEqual([]);
+}
+
+describe('Auto-Wire: Topologie-Heilung & reale Templates', () => {
+  it('Szenario Minimalist-Template: Shunt-Bypass wird geheilt, Masse über Shunt', () => {
+    const { nodes: n, edges: e } = runAutoWire(TEMPLATE_MINIMALIST.nodes, {
+      userEdges: TEMPLATE_MINIMALIST.edges,
+    });
+
+    expect(n.filter((x) => x.type === 'busbar').length).toBe(1);
+    expect(n.some((x) => x.type === 'shunt')).toBe(true);
+
+    const house = n.find((x) => x.id === 'battery-1');
+    const shunt = n.find((x) => x.type === 'shunt');
+    expect(house).toBeDefined();
+    expect(shunt).toBeDefined();
+
+    const batteryMinusBypass = e.filter(
+      (x) =>
+        x.source === 'battery-1' &&
+        x.sourceHandle === 'minus' &&
+        x.target !== shunt!.id
+    );
+    expect(batteryMinusBypass).toEqual([]);
+
+    const groundFeed = e.find((x) => x.target === 'ground-1' && x.targetHandle === 'minus');
+    expect(groundFeed?.source).toBe(shunt!.id);
+
+    assertNoSafetyWarnings(n, e);
+    assertFusesMatchVde(e);
+  });
+
+  it('Szenario Allrounder-Template: Plus/Minus-Busbars werden wiederverwendet (keine dritte Schiene)', () => {
+    const { nodes: n, edges: e } = runAutoWire(TEMPLATE_ALLROUNDER.nodes, {
+      userEdges: TEMPLATE_ALLROUNDER.edges,
+    });
+
+    expect(n.filter((x) => x.type === 'busbar').length).toBe(2);
+    expect(n.some((x) => x.data.label === 'Main Busbar')).toBe(false);
+
+    const dcdcMinus = e.some(
+      (x) => x.source === 'starter-1' && x.target === 'charger-2' && x.sourceHandle === 'minus'
+    );
+    const dcdcPlus = e.some(
+      (x) => x.source === 'starter-1' && x.target === 'charger-2' && x.sourceHandle === 'plus'
+    );
+    expect(dcdcPlus).toBe(true);
+    expect(dcdcMinus).toBe(true);
+
+    assertNoSafetyWarnings(n, e);
+    assertFusesMatchVde(e);
+  });
+
+  it('Szenario Autark-Template: Landstrom-RCD, Busbars wiederverwendet, kein Shunt-Bypass', () => {
+    const { nodes: n, edges: e } = runAutoWire(TEMPLATE_AUTARK.nodes, {
+      userEdges: TEMPLATE_AUTARK.edges,
+    });
+
+    const shore = n.find((x) => x.id === 'shore-1');
+    expect(shore?.data.hasRcd).toBe(true);
+    expect(n.filter((x) => x.type === 'busbar').length).toBe(2);
+    expect(n.some((x) => x.data.label === 'Main Busbar')).toBe(false);
+
+    // 2000W-Inverter bei 12V sprengt FUSE_MAP/70mm² — Kanten-Warnungen dort sind physikalisch.
+    // Live-Validierung (Shunt-Bypass, RCD, Topologie) muss trotzdem sauber sein.
+    const { result } = renderHook(() => useLiveValidation(n, e));
+    expect(result.current.filter((w) => w.category !== 'estimation')).toEqual([]);
+    const violations = validateSchematic(n, e).filter((v) => v.severity === 'error');
+    expect(violations).toEqual([]);
+  });
+
+  it('Legacy-Laderegler (type charger) wird als MPPT wiederverwendet', () => {
+    const nodes = [
+      makeNode('b1', 'battery', { label: 'Batterie', capacity: 200, chemistry: 'LiFePO4' }),
+      makeNode('s1', 'solar', { label: 'Panel', watts: 200 }),
+      makeNode('ch1', 'charger', { label: 'PWM-Regler', amps: 30 }),
+    ];
+    const { nodes: n, edges: e } = runAutoWire(nodes);
+
+    expect(n.filter((x) => x.type === 'mpptController')).toHaveLength(0);
+    expect(n.filter((x) => x.type === 'charger')).toHaveLength(1);
+    expect(e.some((x) => x.source === 's1' && x.target === 'ch1')).toBe(true);
+
+    assertZeroWarnings(n, e);
+    assertFusesMatchVde(e);
+  });
+
+  it('Zweite Aufbaubatterie wird parallel auf Schiene und Shunt gelegt, nicht als Starter missbraucht', () => {
+    const nodes = [
+      makeNode('b1', 'battery', { label: 'Batterie 1', capacity: 100, chemistry: 'LiFePO4' }),
+      makeNode('b2', 'battery', { label: 'Batterie 2', capacity: 100, chemistry: 'LiFePO4' }),
+      makeNode('c1', 'consumer', { label: 'LED', watts: 20, hours: 2 }),
+    ];
+    const { nodes: n, edges: e } = runAutoWire(nodes);
+
+    expect(n.some((x) => x.data.label === 'Starterbatterie')).toBe(false);
+    const shunt = n.find((x) => x.type === 'shunt');
+    const busbar = n.find((x) => x.type === 'busbar');
+    expect(shunt).toBeDefined();
+    expect(busbar).toBeDefined();
+
+    expect(e.some((x) => x.source === 'b2' && x.target === busbar!.id && x.sourceHandle === 'plus')).toBe(true);
+    expect(e.some((x) => x.source === 'b2' && x.target === shunt!.id && x.sourceHandle === 'minus')).toBe(true);
+
+    assertZeroWarnings(n, e);
+    assertFusesMatchVde(e);
+  });
+
+  it('erkennt Startbatterie (ohne „er“) und legt keine zweite Starterbatterie an', () => {
+    const nodes = [
+      makeNode('b1', 'battery', { label: 'Aufbau', capacity: 200, chemistry: 'LiFePO4' }),
+      makeNode('b2', 'battery', { label: 'Startbatterie', capacity: 90, chemistry: 'AGM' }),
+      makeNode('d1', 'dcdcCharger', { label: 'Booster', amps: 30 }),
+    ];
+    const { nodes: n, edges: e } = runAutoWire(nodes);
+
+    expect(n.filter((x) => x.type === 'battery')).toHaveLength(2);
+    expect(n.some((x) => x.data.label === 'Starterbatterie')).toBe(false);
+    expect(e.some((x) => x.source === 'b2' && x.target === 'd1' && x.sourceHandle === 'plus')).toBe(true);
+    expect(e.some((x) => x.source === 'b2' && x.target === 'd1' && x.sourceHandle === 'minus')).toBe(true);
+
+    assertZeroWarnings(n, e);
+  });
+
+  it('nutzt vorhandene AGM als Starter, wenn ein Ladebooster da ist', () => {
+    const nodes = [
+      makeNode('b1', 'battery', { label: 'Lithium', capacity: 200, chemistry: 'LiFePO4' }),
+      makeNode('b2', 'battery', { label: 'Bord AGM', capacity: 80, chemistry: 'AGM' }),
+      makeNode('d1', 'dcdcCharger', { label: 'Booster', amps: 30 }),
+    ];
+    const { nodes: n, edges: e } = runAutoWire(nodes);
+
+    expect(n.filter((x) => x.type === 'battery')).toHaveLength(2);
+    expect(e.some((x) => x.source === 'b2' && x.target === 'd1')).toBe(true);
+    const shunt = n.find((x) => x.type === 'shunt');
+    expect(e.some((x) => x.source === 'b2' && x.target === shunt?.id)).toBe(false);
+
+    assertZeroWarnings(n, e);
+  });
+
+  it('legt zweite AGM parallel, wenn kein Ladebooster vorhanden ist', () => {
+    const nodes = [
+      makeNode('b1', 'battery', { label: 'Lithium', capacity: 200, chemistry: 'LiFePO4' }),
+      makeNode('b2', 'battery', { label: 'AGM Reserve', capacity: 80, chemistry: 'AGM' }),
+      makeNode('c1', 'consumer', { label: 'LED', watts: 20, hours: 2 }),
+    ];
+    const { nodes: n, edges: e } = runAutoWire(nodes);
+
+    expect(n.some((x) => x.data.label === 'Starterbatterie')).toBe(false);
+    const shunt = n.find((x) => x.type === 'shunt');
+    const busbar = n.find((x) => x.type === 'busbar');
+    expect(e.some((x) => x.source === 'b2' && x.target === busbar!.id && x.sourceHandle === 'plus')).toBe(true);
+    expect(e.some((x) => x.source === 'b2' && x.target === shunt!.id && x.sourceHandle === 'minus')).toBe(true);
+  });
+
+  it('legt keine zweite Starterbatterie an, wenn nur eine Startbatterie existiert', () => {
+    const nodes = [
+      makeNode('b1', 'battery', { label: 'Startbatterie', capacity: 80, chemistry: 'AGM' }),
+      makeNode('d1', 'dcdcCharger', { label: 'Booster', amps: 30 }),
+    ];
+    const { nodes: n } = runAutoWire(nodes);
+    expect(n.filter((x) => x.type === 'battery')).toHaveLength(1);
+  });
+
+  it('Unterdimensionierte Nutzer-Sicherung wird angehoben', () => {
+    const nodes = [
+      makeNode('b1', 'battery', { label: 'Batterie', capacity: 200, chemistry: 'LiFePO4' }),
+      makeNode('c1', 'consumer', { label: 'Kühlbox', watts: 60, hours: 4 }),
+    ];
+    const userEdge: Edge<CableEdgeData> = {
+      id: 'tiny-fuse',
+      source: 'b1',
+      target: 'c1',
+      sourceHandle: 'plus',
+      targetHandle: 'plus',
+      type: 'cableEdge',
+      data: { length: 3, crossSection: 1.5, fuseSize: 1 },
+    };
+    const { edges } = runAutoWire(nodes, { userEdges: [userEdge] });
+    const healed = edges.find((x) => x.id === 'tiny-fuse');
+    expect(healed?.data?.fuseSize).toBeGreaterThan(1);
+    expect(healed?.data?.fuseSize).toBeGreaterThanOrEqual(60 / 12.8);
+  });
+
+  it('lange abgesicherte Batterie-Leitung erzeugt keine 20cm-Warnung', () => {
+    const errors = collectEdgeErrors({
+      edgeDomain: 'DC_12V',
+      data: { length: 5, fuseSize: 60, crossSection: 16 },
+      I: 30,
+      maxFuse: 63,
+      isPlus: true,
+      sourceNodeType: 'battery',
+      length: 5,
+      totalDropPercentage: 1,
+    });
+    expect(errors.filter((err) => err.includes('20cm'))).toEqual([]);
+  });
+
+  it('unabgesicherte lange Batterie-Leitung warnt weiterhin (20cm-Regel)', () => {
+    const errors = collectEdgeErrors({
+      edgeDomain: 'DC_12V',
+      data: { length: 5, crossSection: 16 },
+      I: 30,
+      maxFuse: 63,
+      isPlus: true,
+      sourceNodeType: 'battery',
+      length: 5,
+      totalDropPercentage: 1,
+    });
+    expect(errors.some((err) => err.includes('20cm'))).toBe(true);
   });
 });

@@ -219,6 +219,23 @@ describe('useLiveValidation', () => {
       const { result } = renderHook(() => useLiveValidation(nodes, edges));
       expect(result.current.filter(w => w.id.includes('shunt-bypass'))).toHaveLength(1);
     });
+
+    it('does not flag starter-battery minus to DC-DC when the shunt sits on the house battery', () => {
+      const nodes: Node[] = [
+        { id: 'house', type: 'battery', data: { label: 'Aufbau' }, position: { x: 0, y: 0 } },
+        { id: 'starter', type: 'battery', data: { label: 'Startbatterie' }, position: { x: 0, y: 0 } },
+        { id: 'shunt', type: 'shunt', data: {}, position: { x: 0, y: 0 } },
+        { id: 'booster', type: 'dcdcCharger', data: { label: 'Booster' }, position: { x: 0, y: 0 } },
+      ];
+      const edges: Edge<CableEdgeData>[] = [
+        { id: 'e-house-shunt', source: 'house', target: 'shunt', sourceHandle: 'minus', targetHandle: 'minus', data: {} },
+        { id: 'e-starter-plus', source: 'starter', target: 'booster', sourceHandle: 'plus', targetHandle: 'plus', data: { fuseSize: 40 } },
+        { id: 'e-starter-minus', source: 'starter', target: 'booster', sourceHandle: 'minus', targetHandle: 'minus', data: {} },
+        { id: 'e-booster-out', source: 'booster', target: 'house', sourceHandle: 'plus', targetHandle: 'plus', data: { fuseSize: 40 } },
+      ];
+      const { result } = renderHook(() => useLiveValidation(nodes, edges));
+      expect(result.current.filter(w => w.id.includes('shunt-bypass'))).toHaveLength(0);
+    });
   });
 
   describe('Rule G: Inverter Protection', () => {

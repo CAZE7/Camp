@@ -3,6 +3,7 @@ import { Node, Edge } from 'reactflow';
 import { CableEdgeData } from '../../edges/CableEdge';
 
 import { getSystemVoltage } from '../utils/voltage';
+import { isStarterBatteryLabel } from '../../../lib/autoWire';
 
 export interface ValidationWarning {
   id: string;
@@ -70,7 +71,7 @@ export function useLiveValidation(
     const sysVoltage = getSystemVoltage(nodes);
 
     // --- Rule B: Overloaded Solar Regulator ---
-    const solarNodes = nodes.filter(n => n.type === 'solar');
+    const solarNodes = nodes.filter(n => n.type === 'solar' || n.type === 'roofSolar');
     const chargers = nodes.filter(n => ['charger', 'mpptController'].includes(n.type as string));
 
     if (solarNodes.length > 0 && chargers.length > 0) {
@@ -180,18 +181,39 @@ export function useLiveValidation(
     });
 
     // --- Rule F: Smart Shunt Bypass ---
+    // Nur die Aufbaubatterie, an der der Shunt hängt. Die Starterbatterie
+    // des Ladeboosters führt Minus fachgerecht direkt und ist kein Bypass.
     const shunts = nodes.filter(n => n.type === 'shunt');
     if (shunts.length > 0) {
+      const shuntBatteryIds = new Set<string>();
+      for (const shunt of shunts) {
+        for (const edge of edges) {
+          if (edge.source !== shunt.id && edge.target !== shunt.id) continue;
+          const otherId = edge.source === shunt.id ? edge.target : edge.source;
+          if (nodeMap.get(otherId)?.type === 'battery') {
+            shuntBatteryIds.add(otherId);
+          }
+        }
+      }
+      const isStarterBatteryNode = (n: Node | undefined) =>
+        /starter/i.test(String(n?.data?.label || ''));
+      const isMonitoredBattery = (n: Node | undefined) => {
+        if (!n || n.type !== 'battery' || isStarterBatteryNode(n)) return false;
+        if (shuntBatteryIds.size === 0) return true;
+        return shuntBatteryIds.has(n.id);
+      };
+
       edges.forEach(edge => {
         const targetNode = nodeMap.get(edge.target);
         const sourceNode = nodeMap.get(edge.source);
-        
-        const isBatteryMinusConnection = 
-          (targetNode?.type === 'battery' && edge.targetHandle?.includes('minus')) ||
-          (sourceNode?.type === 'battery' && edge.sourceHandle?.includes('minus'));
-          
-        if (isBatteryMinusConnection) {
-          const otherNode = sourceNode?.type === 'battery' ? targetNode : sourceNode;
+
+        const sourceIsMonitoredMinus =
+          isMonitoredBattery(sourceNode) && !!edge.sourceHandle?.includes('minus');
+        const targetIsMonitoredMinus =
+          isMonitoredBattery(targetNode) && !!edge.targetHandle?.includes('minus');
+
+        if (sourceIsMonitoredMinus || targetIsMonitoredMinus) {
+          const otherNode = sourceIsMonitoredMinus ? targetNode : sourceNode;
           if (otherNode && otherNode.type !== 'shunt' && otherNode.type !== 'battery') {
              warnings.push({
                id: `shunt-bypass-${edge.id}`,

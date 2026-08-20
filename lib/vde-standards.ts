@@ -407,7 +407,8 @@ export function getSystemVoltage(nodes: Node[]): number {
  *   3. 12V-Verbraucher: watts / Systemspannung
  *   4. Wechselrichter (DC-Seite): watts / Systemspannung / Wirkungsgrad
  *   5. Generische amps-Angabe (Laderegler, Booster, AC-Ladegeräte)
- *   6. Fallback: Summe aller Verbraucher- bzw. Ladequellen-Ströme
+ *   6. Fallback: max(Last, Ladung) — Batterie-Hauptleitungen führen
+ *      bidirektionalen Strom; Panel-Strom zählt nur ohne Laderegler
  */
 export function calculateEdgeCurrent(
   sourceNode: Node | undefined,
@@ -442,8 +443,11 @@ export function calculateEdgeCurrent(
   if (tData?.amps !== undefined && targetNode?.type !== 'battery') return Number(tData.amps);
 
   // 6. Fallback: Systemaggregate über alle Komponenten
+  // Batterie-Hauptleitungen führen bidirektionalen Strom → max(Last, Ladung).
+  // Panel-Strom zählt nur, wenn kein Laderegler die Leistung bereits abbildet.
   let totalConsumerAmps = 0;
   let totalChargerAmps = 0;
+  const hasMppt = nodes.some((n) => n.type === 'mpptController' || n.type === 'charger');
   for (let i = 0; i < nodes.length; i++) {
     const n = nodes[i];
     const nData = n.data as { watts?: number; amps?: number } | undefined;
@@ -453,13 +457,10 @@ export function calculateEdgeCurrent(
       totalConsumerAmps += (Number(nData?.watts) || 0) / voltage / VDE_INVERTER_EFFICIENCY;
     } else if (['charger', 'mpptController', 'dcdcCharger', 'acBatteryCharger'].includes(n.type as string)) {
       totalChargerAmps += Number(nData?.amps) || 0;
-    } else if (isSolarType(n.type)) {
+    } else if (isSolarType(n.type) && !hasMppt) {
       totalChargerAmps += (Number(nData?.watts) || 0) / VDE_SOLAR_VMP_VOLTAGE;
     }
   }
-
-  if (sourceNode?.type === 'battery') return totalConsumerAmps;
-  if (targetNode?.type === 'battery') return totalChargerAmps;
 
   return Math.max(totalConsumerAmps, totalChargerAmps);
 }
