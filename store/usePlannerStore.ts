@@ -51,10 +51,12 @@ interface PlannerState {
   onWaterNodesChange: (changes: import('reactflow').NodeChange[]) => void;
   onWaterEdgesChange: (changes: import('reactflow').EdgeChange[]) => void;
   onSelectionChange: (params: import('reactflow').OnSelectionChangeParams) => void;
+  focusElement: (id: string, elementType: 'node' | 'edge') => void;
   deleteSelected: () => void;
   updateNodeData: (id: string, data: Partial<PlannerNodeData>) => void;
   handleChangeLength: (id: string, length: number) => void;
   handleChangeCrossSection: (id: string, crossSection: number) => void;
+  handleChangeFuseSize: (id: string, fuseSize: number) => void;
 
   isValidConnection: (connection: Connection) => boolean;
   onConnect: (connection: Connection) => void;
@@ -62,9 +64,9 @@ interface PlannerState {
   onLayout: () => void;
   checkSchematic: () => void;
   exportBOM: () => void;
-  onDrop: (event: React.DragEvent, screenToFlowPosition: (client: { x: number, y: number }) => { x: number, y: number }) => void;
-  onCustomDrop: (event: Event, screenToFlowPosition: (client: { x: number, y: number }) => { x: number, y: number }) => void;
-  addNode: (type: string, label: string, position: { x: number, y: number }, watts?: number) => void;
+  onDrop: (event: React.DragEvent, screenToFlowPosition: (client: {x: number, y: number}) => {x: number, y: number}) => void;
+  onCustomDrop: (event: Event, screenToFlowPosition: (client: {x: number, y: number}) => {x: number, y: number}) => void;
+  addNode: (type: string, label: string, position: {x: number, y: number}, watts?: number) => void;
   applyTemplate: (templateId: string) => void;
   calculatePathVoltageDrop: (targetNodeId: string, customNodes?: Node[], customEdges?: Edge[]) => number;
   isLayoutPending: boolean;
@@ -72,7 +74,15 @@ interface PlannerState {
 }
 
 import { TEMPLATES_DICT } from '../components/planner/templates';
-import { calculateCrossSection, calculateMaxFuse, getEdgeDomain, getHandleDomain } from '../lib/electrical';
+import {
+  VDE_SIZES,
+  calculateCrossSection,
+  getEdgeDomain,
+  getHandleDomain,
+  lookupThermalCrossSection,
+  selectFuseSize,
+} from '../lib/electrical';
+import { calculateEdgeCurrent, getSystemVoltage } from '../lib/vde-standards';
 
 const nodesMapCache = new WeakMap<Node[], Map<string, Node>>();
 const waterNodesMapCache = new WeakMap<Node[], Map<string, Node>>();
@@ -174,221 +184,524 @@ function ensureNode(
   return node;
 }
 
-function connectEdges(
-  newEdges: Edge[],
+const AUTO_EDGE_PREFIX = 'e-auto-';
+
+// VDE 0298-4 / 0100-520: max. 3% Spannungsfall auf 12-V-Strecken
+// (0,36 V bei 12 V — skaliert mit der tatsächlichen Systemspannung).
+// Pro Einzelstrecke max. 2%, damit mehrstufige Pfade (Batterie → Shunt →
+// Busbar → Sicherungskasten → Verbraucher) sicher im 3%-Gesamtbudget bleiben.
+const VDE_MAX_DC_DROP_FRACTION = 0.03;
+const VDE_MAX_DC_DROP_PER_EDGE_FRACTION = 0.02;
+
+/** Eindeutiger Schlüssel einer Verbindung (für Duplikat-Erkennung). */
+const connectionKey = (e: {
+  source: string;
+  target: string;
+  sourceHandle?: string | null;
+  targetHandle?: string | null;
+}): string => `${e.source}|${e.target}|${e.sourceHandle || ''}|${e.targetHandle || ''}`;
+
+/**
+ * Knoten, an denen die Spannungsfall-Rückwärtssuche endet: Spannungsquellen
+ * (Batterie, Landstrom, Solar) und Ladequellen (MPPT, Booster, Ladegeräte).
+ * Der Spannungsfall eines Verbraucher-Pfads umfasst nur dessen Versorgungs-
+ * strecke — parallele Ladezweige fließen nicht in die Last-Bilanz ein.
+ */
+const isVoltageDropStopType = (type: string | undefined): boolean =>
+  type === 'battery' ||
+  type === 'shorePower' ||
+  type === 'solar' ||
+  type === 'roofSolar' ||
+  type === 'charger' ||
+  type === 'mpptController' ||
+  type === 'dcdcCharger' ||
+  type === 'acBatteryCharger';
+
+/**
+ * Legt eine DC-Kante (Plus oder Minus) an, sofern nicht bereits eine
+ * identische Verbindung existiert (Idempotenz, Erhalt von Nutzer-Kanten).
+ * Die Dimensionierung (Querschnitt/Sicherung) erfolgt später zentral über
+ * sizeDcEdges + applyFuseSizes.
+ */
+function addDcEdge(
+  newEdges: Edge<CableEdgeData>[],
+  dcEdges: Edge<CableEdgeData>[],
   edgeIdRef: { counter: number },
+  existingConnections: Set<string>,
   sourceId: string,
   targetId: string,
-  I: number = 0,
-  length: number = 2
-) {
-  const crossSection = calculateCrossSection(I, length, undefined, 'DC_12V');
-  const fuseSize = calculateMaxFuse(crossSection);
-  newEdges.push({
+  handle: 'plus' | 'minus',
+  length: number
+): Edge<CableEdgeData> | null {
+  const key = `${sourceId}|${targetId}|${handle}|${handle}`;
+  if (existingConnections.has(key)) return null;
+  existingConnections.add(key);
+  const edge: Edge<CableEdgeData> = {
     id: `e-auto-${edgeIdRef.counter++}`,
     source: sourceId,
     target: targetId,
-    sourceHandle: 'plus',
-    targetHandle: 'plus',
+    sourceHandle: handle,
+    targetHandle: handle,
     type: 'cableEdge',
-    data: { length, crossSection, fuseSize, edgeDomain: 'DC_12V' },
-  });
-  newEdges.push({
-    id: `e-auto-${edgeIdRef.counter++}`,
-    source: sourceId,
-    target: targetId,
-    sourceHandle: 'minus',
-    targetHandle: 'minus',
-    type: 'cableEdge',
-    data: { length, crossSection, edgeDomain: 'DC_12V' },
-  });
+    data: { length, edgeDomain: 'DC_12V' },
+  };
+  newEdges.push(edge);
+  dcEdges.push(edge);
+  return edge;
 }
 
-function wireSolars(
-  solars: Node[],
-  busbarNode: Node,
-  currentNodes: Node[],
-  nodesByType: Record<string, Node[]>,
-  nodesByLabel: Map<string, Node>,
-  batteryNode: Node,
-  newEdges: Edge[],
-  edgeIdRef: { counter: number }
-) {
-  const solarsLen = solars.length;
-  if (solarsLen > 0) {
-    const mpptNode = ensureNode(currentNodes, nodesByType, nodesByLabel, batteryNode, 'mpptController', 'MPPT Laderegler', 150, -200, {
-      amps: 30,
-    });
-    const vmpVoltage = 18;
-    for (let i = 0; i < solarsLen; i++) {
-      const solar = solars[i];
-      const solarWatts = Number(solar.data.watts) || 100;
-      const solarAmps = solarWatts / vmpVoltage;
-      connectEdges(newEdges, edgeIdRef, solar.id, mpptNode.id, solarAmps, 5);
-    }
-    connectEdges(newEdges, edgeIdRef, mpptNode.id, busbarNode.id, Number(mpptNode.data.amps) || 30, 2);
-  }
-}
-
-function wireChargers(
-  chargers: Node[],
-  busbarNode: Node,
-  newEdges: Edge[],
-  edgeIdRef: { counter: number }
-) {
-  const chargersLen = chargers.length;
-  const boosters: Node[] = [];
-  const plainChargers: Node[] = [];
-  for (let i = 0; i < chargersLen; i++) {
-    const c = chargers[i];
-    const lbl = (c.data?.label as string)?.toLowerCase() || '';
-    if (lbl.includes('ladequelle')) {
-      boosters.push(c);
-    } else if (!lbl.includes('mppt')) {
-      plainChargers.push(c);
-    }
-  }
-
-  const boostersLen = boosters.length;
-  for (let i = 0; i < boostersLen; i++) {
-    connectEdges(newEdges, edgeIdRef, boosters[i].id, busbarNode.id, Number(boosters[i].data.amps) || 30, 3);
-  }
-
-  const plainChargersLen = plainChargers.length;
-  for (let i = 0; i < plainChargersLen; i++) {
-    connectEdges(newEdges, edgeIdRef, plainChargers[i].id, busbarNode.id, Number(plainChargers[i].data.amps) || 30, 3);
-  }
-}
-
-function wireInverters(
-  inverters: Node[],
-  busbarNode: Node,
-  newEdges: Edge[],
+/** Legt eine 230-V-Kante an (feste Dimensionierung, kein Sicherungswert). */
+function addAcEdge(
+  newEdges: Edge<CableEdgeData>[],
   edgeIdRef: { counter: number },
-  batteryVoltage: number
-) {
-  const invertersLen = inverters.length;
-  for (let i = 0; i < invertersLen; i++) {
-    const inverter = inverters[i];
-    const inverterWatts = Number(inverter.data.watts) || 1000;
-    const inverterAmps = inverterWatts / batteryVoltage / 0.85;
-    connectEdges(newEdges, edgeIdRef, busbarNode.id, inverter.id, inverterAmps, 1);
+  existingConnections: Set<string>,
+  sourceId: string,
+  targetId: string,
+  sourceHandle: string,
+  targetHandle: string,
+  length: number,
+  crossSection: number
+): void {
+  const key = `${sourceId}|${targetId}|${sourceHandle}|${targetHandle}`;
+  if (existingConnections.has(key)) return;
+  existingConnections.add(key);
+  newEdges.push({
+    id: `e-auto-ac-${edgeIdRef.counter++}`,
+    source: sourceId,
+    target: targetId,
+    sourceHandle,
+    targetHandle,
+    type: 'cableEdge',
+    data: { length, crossSection, edgeDomain: 'AC_230V' },
+  });
+}
+
+/**
+ * Ergebnis der Spannungsfall-Rückwärtssuche für einen Knoten:
+ *  - supply: max. Drop über Pfade, die an einer Versorgungsquelle enden
+ *    (Batterie/Landstrom) — die physikalische Versorgungsstrecke einer Last
+ *  - any:    max. Drop über ALLE Pfade (inkl. paralleler Ladezweige)
+ *  - hasSupplyPath: ob mindestens ein Versorgungspfad existiert
+ */
+type PathDropResult = { supply: number; any: number; hasSupplyPath: boolean };
+
+/**
+ * Berechnet den kumulierten Spannungsfall einer Kante — das exakte
+ * Spiegelbild von calculatePathVoltageDrop, damit Auto-Wire genau die Werte
+ * dimensioniert, die die Kanten-Anzeige später prüft.
+ *
+ * Für Lastleitungen zählt der Versorgungspfad (Batterie/Landstrom); parallele
+ * Ladezweige (Solar, MPPT, Booster) fließen nicht in die Last-Bilanz ein.
+ * Nur Zweige ohne Versorgungspfad (reine Ladezweige) werden über ihren
+ * eigenen Pfad geprüft.
+ */
+function cumulativeDropAt(
+  nodeId: string,
+  nodeMap: Map<string, Node>,
+  edges: Edge<CableEdgeData>[],
+  nodes: Node[],
+  sysVoltage: number,
+  visited: Set<string>
+): PathDropResult {
+  if (visited.has(nodeId)) return { supply: 0, any: 0, hasSupplyPath: false };
+  const node = nodeMap.get(nodeId);
+  if (!node) return { supply: 0, any: 0, hasSupplyPath: false };
+  if (node.type === 'battery' || node.type === 'shorePower') {
+    return { supply: 0, any: 0, hasSupplyPath: true };
+  }
+  if (isVoltageDropStopType(node.type)) {
+    return { supply: 0, any: 0, hasSupplyPath: false };
+  }
+
+  const nextVisited = new Set(visited).add(nodeId);
+  let supplyMax = 0;
+  let anyMax = 0;
+  let hasSupply = false;
+  let hasIncoming = false;
+  for (const edge of edges) {
+    if (edge.target !== nodeId) continue;
+    hasIncoming = true;
+    const sourceNode = nodeMap.get(edge.source);
+    const I = calculateEdgeCurrent(sourceNode, node, nodes, sysVoltage);
+    const length = edge.data?.length || 1;
+    const cs = edge.data?.crossSection || 2.5;
+    const ownDrop = (I * (length * 2)) / (58 * cs);
+    const sub = cumulativeDropAt(edge.source, nodeMap, edges, nodes, sysVoltage, nextVisited);
+
+    const cumAny = ownDrop + sub.any;
+    if (cumAny > anyMax) anyMax = cumAny;
+    if (sub.hasSupplyPath) {
+      hasSupply = true;
+      const cumSupply = ownDrop + sub.supply;
+      if (cumSupply > supplyMax) supplyMax = cumSupply;
+    }
+  }
+  if (!hasIncoming) return { supply: 0, any: 0, hasSupplyPath: false };
+  return { supply: supplyMax, any: anyMax, hasSupplyPath: hasSupply };
+}
+
+/** Liefert den relevanten kumulierten Drop (Versorgungspfad bevorzugt). */
+function relevantCumulativeDrop(nodeId: string, nodeMap: Map<string, Node>, edges: Edge<CableEdgeData>[], nodes: Node[], sysVoltage: number): number {
+  const result = cumulativeDropAt(nodeId, nodeMap, edges, nodes, sysVoltage, new Set());
+  return result.hasSupplyPath ? result.supply : result.any;
+}
+
+/**
+ * Dimensioniert alle DC-Kanten nach thermischer Belastbarkeit (VDE 0298-4,
+ * mit Derating) und Spannungsfall (max. 3% Gesamtpfad, max. 2% pro Strecke).
+ *
+ * Phase 1: Grunddimensionierung jeder Kante (eigener Spannungsfall ≤ 2%).
+ * Phase 2: Fixpunkt — nur Kanten, deren kumulierter Pfad-Drop das 3%-Budget
+ *          überschreitet, werden eine VDE-Normstufe angehoben (monoton,
+ *          endlich). Dadurch gibt es kein Überschwingen auf Maximalquerschnitte.
+ */
+function sizeDcEdges(
+  dcEdges: Edge<CableEdgeData>[],
+  nodes: Node[],
+  allEdges: Edge<CableEdgeData>[],
+  sysVoltage: number
+): void {
+  const dropLimit = VDE_MAX_DC_DROP_FRACTION * sysVoltage;
+  const perEdgeCap = VDE_MAX_DC_DROP_PER_EDGE_FRACTION * sysVoltage;
+  const nodeMap = new Map(nodes.map((n) => [n.id, n]));
+
+  const sizeEdge = (edge: Edge<CableEdgeData>, allowedOwn: number): number => {
+    const sourceNode = nodeMap.get(edge.source);
+    const targetNode = nodeMap.get(edge.target);
+    const I = calculateEdgeCurrent(sourceNode, targetNode, nodes, sysVoltage);
+    const length = edge.data?.length || 1;
+    const currentCs = edge.data?.crossSection || 1.5;
+
+    let requiredCs = 70;
+    if (allowedOwn > 0) {
+      const dropArea = (I * (length * 2)) / (58 * allowedOwn);
+      requiredCs = VDE_SIZES.find((s) => s >= Math.max(1.5, dropArea)) || 70;
+    }
+    const thermalCs = lookupThermalCrossSection(Math.max(I, 0));
+    return Math.max(requiredCs, thermalCs, currentCs, 1.5);
+  };
+
+  // Phase 1: Grunddimensionierung (eigener Spannungsfall ≤ 2%, thermisch)
+  for (const edge of dcEdges) {
+    edge.data!.crossSection = sizeEdge(edge, perEdgeCap);
+  }
+
+  // Phase 2: Nur echte Budget-Überschreitungen des Gesamtpfads anheben
+  for (let iteration = 0; iteration < 20; iteration++) {
+    let changed = false;
+    for (const edge of dcEdges) {
+      const sourceNode = nodeMap.get(edge.source);
+      const targetNode = nodeMap.get(edge.target);
+      const I = calculateEdgeCurrent(sourceNode, targetNode, nodes, sysVoltage);
+      const length = edge.data?.length || 1;
+      const currentCs = edge.data?.crossSection || 1.5;
+      const cumAtSource = relevantCumulativeDrop(edge.source, nodeMap, allEdges, nodes, sysVoltage);
+      const ownDrop = (I * (length * 2)) / (58 * currentCs);
+
+      if (cumAtSource + ownDrop <= dropLimit) continue;
+
+      const allowedOwn = Math.min(Math.max(dropLimit - cumAtSource, 0), perEdgeCap);
+      const finalCs = sizeEdge(edge, allowedOwn);
+      if (finalCs > currentCs) {
+        edge.data!.crossSection = finalCs;
+        changed = true;
+      }
+    }
+    if (!changed) break;
   }
 }
 
-function wireConsumers(
-  consumers: Node[],
-  fuseBoxNode: Node,
-  newEdges: Edge[],
-  edgeIdRef: { counter: number }
-) {
-  const consumersLen = consumers.length;
-  for (let i = 0; i < consumersLen; i++) {
-    const consumer = consumers[i];
-    const I = (Number(consumer.data.watts) || 0) / 12;
-    connectEdges(newEdges, edgeIdRef, fuseBoxNode.id, consumer.id, I, 3);
+/**
+ * Setzt für jede Plus-DC-Kante die berechnete Sicherung:
+ * Verbraucher-Nennstrom ≤ Sicherung ≤ Kabel-Maximalsicherung (FUSE_MAP).
+ * Minus-Leitungen werden nicht abgesichert (fachgerecht).
+ */
+function applyFuseSizes(dcEdges: Edge<CableEdgeData>[], nodes: Node[], sysVoltage: number): void {
+  const nodeMap = new Map(nodes.map((n) => [n.id, n]));
+  for (const edge of dcEdges) {
+    if (edge.sourceHandle !== 'plus') continue;
+    const sourceNode = nodeMap.get(edge.source);
+    const targetNode = nodeMap.get(edge.target);
+    const I = calculateEdgeCurrent(sourceNode, targetNode, nodes, sysVoltage);
+    const cs = edge.data?.crossSection || 1.5;
+    edge.data!.fuseSize = selectFuseSize(I, cs);
   }
 }
 
-function performAutoWiring(initialNodes: Node[]): { nodes: Node[], edges: Edge[] } | null {
-  let currentNodes = [...initialNodes];
-  let newEdges: Edge[] = [];
-  let edgeIdRef = { counter: 1 };
+/**
+ * Ergänzt bei bestehenden Nutzer-Kanten die fehlende Absicherung
+ * („Absichern"): fehlende Sicherungswerte werden berechnet und gesetzt,
+ * Hauptsicherungs-Strecken ab Batterie auf max. 20 cm begrenzt, und
+ * unterdimensionierte Querschnitte werden nur dann angehoben, wenn der
+ * VDE-Spannungsfall-Budget (3% Gesamtpfad) verletzt ist.
+ * Ausreichend dimensionierte Nutzer-Werte bleiben unangetastet.
+ */
+function normalizeUserDcEdges(
+  userEdges: Edge<CableEdgeData>[],
+  nodes: Node[],
+  allEdges: Edge<CableEdgeData>[],
+  sysVoltage: number
+): void {
+  const dropLimit = VDE_MAX_DC_DROP_FRACTION * sysVoltage;
+  const perEdgeCap = VDE_MAX_DC_DROP_PER_EDGE_FRACTION * sysVoltage;
+  const nodeMap = new Map(nodes.map((n) => [n.id, n]));
+
+  // Fixpunkt: Querschnitt-Anhebungen einer Kante verringern nur die Drops
+  // nachgelagerter Pfade → monoton, endlich.
+  for (let iteration = 0; iteration < 10; iteration++) {
+    let changed = false;
+    for (const edge of userEdges) {
+      if (!edge.data || !edge.sourceHandle?.includes('plus')) continue;
+      const sourceNode = nodeMap.get(edge.source);
+      const targetNode = nodeMap.get(edge.target);
+      const domain = edge.data.edgeDomain || getEdgeDomain(sourceNode?.type, targetNode?.type, edge.sourceHandle, edge.targetHandle);
+      if (domain === 'AC_230V') continue;
+
+      const I = calculateEdgeCurrent(sourceNode, targetNode, nodes, sysVoltage);
+      const length = edge.data.length || 1;
+
+      // 1. Fehlende Sicherung ergänzen (vorhandene Werte bleiben)
+      if (!edge.data.fuseSize) {
+        const effectiveCs = calculateCrossSection(I, length, edge.data.crossSection, 'DC_12V');
+        edge.data.fuseSize = selectFuseSize(I, effectiveCs);
+      }
+
+      // 2. Hauptsicherung direkt an der Batterie (VDE 0100-721, max. 20 cm)
+      if (sourceNode?.type === 'battery' && (edge.data.length || 1) > 0.2) {
+        edge.data.length = 0.2;
+      }
+
+      // 3. Querschnitt nur anheben, wenn der Gesamtpfad-Drop das Budget bricht
+      const currentCs = edge.data.crossSection || 1.5;
+      const ownDrop = (I * (length * 2)) / (58 * currentCs);
+      const cumAtSource = relevantCumulativeDrop(edge.source, nodeMap, allEdges, nodes, sysVoltage);
+      if (cumAtSource + ownDrop > dropLimit) {
+        const allowedOwn = Math.min(Math.max(dropLimit - cumAtSource, 0), perEdgeCap);
+        let requiredCs = 70;
+        if (allowedOwn > 0) {
+          const dropArea = (I * (length * 2)) / (58 * allowedOwn);
+          requiredCs = VDE_SIZES.find((s) => s >= Math.max(1.5, dropArea)) || 70;
+        }
+        const finalCs = Math.max(requiredCs, currentCs, 1.5);
+        if (finalCs > currentCs) {
+          edge.data.crossSection = finalCs;
+          changed = true;
+        }
+      }
+    }
+    if (!changed) break;
+  }
+}
+
+/**
+ * Verdrahtet das komplette System VDE-konform und abgesichert:
+ *
+ *  - Vollständige Topologie: Batterie → Shunt → Busbar → Sicherungskasten →
+ *    Verbraucher; Solar → MPPT → Busbar; Ladequellen → Busbar;
+ *    Wechselrichter/230-V strikt getrennt (AC/DC); Landstrom mit RCD 30 mA;
+ *    Massepunkt über 16 mm² Hauptschutzleiter.
+ *  - Fehlende Schutz-/Verteiler-Komponenten werden ergänzt (Main Busbar,
+ *    Smart Shunt, Sicherungskasten, MPPT, ggf. Starterbatterie für den
+ *    DC-DC-Ladebooster).
+ *  - Jede DC-Kante wird mit dem exakt gleichen Strommodell dimensioniert,
+ *    das auch die Live-Validierung verwendet (calculateEdgeCurrent) — nach
+ *    dem Auto-Wire treten dadurch keine Sicherungs-/Drop-Warnungen mehr auf.
+ *  - Sicherungen werden berechnet, nicht geraten (selectFuseSize).
+ *  - Nutzer-Kanten bleiben erhalten und werden nur um fehlende Absicherung
+ *    ergänzt (normalizeUserDcEdges).
+ *
+ * @param initialNodes  Aktuelle Komponenten des Plans
+ * @param existingEdges Aktuelle Kanten (Nutzer-Kanten bleiben erhalten;
+ *                      Auto-Kanten früherer Läufe werden ersetzt)
+ */
+function performAutoWiring(
+  initialNodes: Node[],
+  existingEdges: Edge<CableEdgeData>[] = []
+): { nodes: Node[]; edges: Edge<CableEdgeData>[] } | null {
+  // Tiefe Kopie der Nodes, damit bestehende Store-Objekte nicht mutiert werden
+  const currentNodes = initialNodes.map((n) => ({ ...n, data: { ...(n.data || {}) } }));
+  // Tiefe Kopie der Nutzer-Kanten (nur diese werden zurückgegeben)
+  const userEdges: Edge<CableEdgeData>[] = existingEdges
+    .filter((e) => !e.id.startsWith(AUTO_EDGE_PREFIX))
+    .map((e) => ({
+      ...e,
+      data: {
+        length: e.data?.length ?? 1,
+        crossSection: e.data?.crossSection,
+        fuseSize: e.data?.fuseSize,
+        edgeDomain: e.data?.edgeDomain,
+      },
+    }));
+  const newEdges: Edge<CableEdgeData>[] = [];
+  const dcEdges: Edge<CableEdgeData>[] = [];
+  const edgeIdRef = { counter: 1 };
+
+  // Nutzer-Verbindungen merken → nichts doppelt anlegen (Idempotenz)
+  const existingConnections = new Set<string>();
+  for (const e of userEdges) {
+    existingConnections.add(connectionKey(e));
+  }
 
   const { nodesByType, nodesByLabel } = buildDictionaries(currentNodes);
 
   const batteryNode = nodesByType['battery']?.[0];
-  if (!batteryNode) {
-    return null;
+  if (!batteryNode) return null;
+
+  const sysVoltage = getSystemVoltage(currentNodes);
+  const autoCreatedNodeIds = new Set<string>();
+
+  /** Nutzer-Komponente wiederverwenden (Typ eindeutig) oder neu anlegen. */
+  const ensureAutoNode = (
+    type: string,
+    label: string,
+    offsetX: number,
+    offsetY: number,
+    extraData: Record<string, unknown> = {},
+    opts: { reuseUniqueType?: boolean } = { reuseUniqueType: true }
+  ): Node => {
+    const typeNodes = nodesByType[type] || [];
+    const byLabel = nodesByLabel.get(`${type}-${label}`);
+    const candidate = byLabel || (opts.reuseUniqueType && typeNodes.length === 1 ? typeNodes[0] : undefined);
+    if (candidate) return candidate;
+    const node = ensureNode(currentNodes, nodesByType, nodesByLabel, batteryNode, type, label, offsetX, offsetY, extraData);
+    autoCreatedNodeIds.add(node.id);
+    return node;
+  };
+
+  const busbarNode = ensureAutoNode('busbar', 'Main Busbar', 300, 0);
+  const fuseBoxNode = ensureAutoNode('fuse', '12V Sicherungskasten', 300, 200, { rating: 100 });
+  const shuntNode = ensureAutoNode('shunt', 'Smart Shunt', 150, 0);
+
+  const solars = [...(nodesByType['solar'] || []), ...(nodesByType['roofSolar'] || [])];
+
+  // ── MPPT: fehlenden Laderegler ergänzen und passend dimensionieren ──
+  let mpptNode: Node | undefined;
+  if (solars.length > 0) {
+    mpptNode = ensureAutoNode('mpptController', 'MPPT Laderegler', 150, -200, { amps: 30 });
+    const totalSolarWatts = solars.reduce((sum, n) => sum + (Number(n.data.watts) || 0), 0);
+    const requiredAmps = Math.ceil(totalSolarWatts / sysVoltage);
+    if ((Number(mpptNode.data.amps) || 0) < requiredAmps) {
+      // Regel B: Solarregler darf durch die Panel-Leistung nicht überlastet sein
+      mpptNode.data.amps = requiredAmps;
+    }
   }
 
-  const busbarNode = ensureNode(currentNodes, nodesByType, nodesByLabel, batteryNode, 'busbar', 'Main Busbar', 300, 0);
-  const fuseBoxNode = ensureNode(currentNodes, nodesByType, nodesByLabel, batteryNode, 'fuse', '12V Sicherungskasten', 300, 200, {
-    rating: 100,
-  });
-  const shuntNode = ensureNode(currentNodes, nodesByType, nodesByLabel, batteryNode, 'shunt', 'Smart Shunt', 150, 0);
+  // ── DC-DC-Ladebooster: Starterseite (Eingang) sicherstellen ──
+  const dcdcChargers = nodesByType['dcdcCharger'] || [];
+  const starterBatteryNode =
+    dcdcChargers.length > 0 && (nodesByType['battery'] || []).length < 2
+      ? ensureAutoNode(
+          'battery',
+          'Starterbatterie',
+          -150,
+          250,
+          { capacity: 80, chemistry: 'AGM' },
+          { reuseUniqueType: false }
+        )
+      : (nodesByType['battery'] || [])[1];
 
-  const batteryCapacity = Number(batteryNode.data.capacity) || 100;
-  const maxDischargeA = batteryCapacity * 0.5;
-  connectEdges(newEdges, edgeIdRef, batteryNode.id, shuntNode.id, maxDischargeA, 0.5);
-  connectEdges(newEdges, edgeIdRef, shuntNode.id, busbarNode.id, maxDischargeA, 0.5);
+  // ── Topologie: Batterie → Shunt → Busbar → Sicherungskasten ──
+  // Hauptsicherung direkt an der Batterie (max. 20 cm, VDE 0100-721)
+  addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, batteryNode.id, shuntNode.id, 'plus', 0.2);
+  addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, batteryNode.id, shuntNode.id, 'minus', 0.2);
+  addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, shuntNode.id, busbarNode.id, 'plus', 0.5);
+  addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, shuntNode.id, busbarNode.id, 'minus', 0.5);
+  addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, busbarNode.id, fuseBoxNode.id, 'plus', 1);
+  addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, busbarNode.id, fuseBoxNode.id, 'minus', 1);
 
-  wireInverters(nodesByType['inverter'] || [], busbarNode, newEdges, edgeIdRef, Number(batteryNode.data.voltage) || 12);
-  connectEdges(newEdges, edgeIdRef, busbarNode.id, fuseBoxNode.id, Number(fuseBoxNode.data.rating) || 100, 1);
+  // ── Verbraucher: jeder 12-V-Verbraucher abgesichert über den Sicherungskasten ──
+  for (const consumer of nodesByType['consumer'] || []) {
+    addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, fuseBoxNode.id, consumer.id, 'plus', 3);
+    addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, fuseBoxNode.id, consumer.id, 'minus', 3);
+  }
 
-  const solars = [
-    ...(nodesByType['solar'] || []),
-    ...(nodesByType['roofsolar'] || [])
-  ];
-  wireSolars(solars, busbarNode, currentNodes, nodesByType, nodesByLabel, batteryNode, newEdges, edgeIdRef);
+  // ── Wechselrichter: abgesicherte DC-Versorgung über die Busbar ──
+  const inverters = nodesByType['inverter'] || [];
+  for (const inverter of inverters) {
+    addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, busbarNode.id, inverter.id, 'plus', 1);
+    addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, busbarNode.id, inverter.id, 'minus', 1);
+  }
+
+  // ── Solar: Panel → MPPT (Panel-Strom) und MPPT → Busbar ──
+  if (solars.length > 0 && mpptNode) {
+    for (const solar of solars) {
+      addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, solar.id, mpptNode.id, 'plus', 5);
+      addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, solar.id, mpptNode.id, 'minus', 5);
+    }
+    addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, mpptNode.id, busbarNode.id, 'plus', 2);
+    addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, mpptNode.id, busbarNode.id, 'minus', 2);
+  }
+
+  // ── Weitere Ladequellen (Booster, AC-Ladegeräte, weitere MPPTs) ──
   const allChargers = [
-    ...(nodesByType['charger'] || []),         // legacy
+    ...(nodesByType['charger'] || []),
     ...(nodesByType['mpptController'] || []),
     ...(nodesByType['dcdcCharger'] || []),
     ...(nodesByType['acBatteryCharger'] || []),
   ];
-  wireChargers(allChargers, busbarNode, newEdges, edgeIdRef);
-  wireConsumers(nodesByType['consumer'] || [], fuseBoxNode, newEdges, edgeIdRef);
+  for (const charger of allChargers) {
+    if (mpptNode && charger.id === mpptNode.id) continue; // MPPT bereits über Solar-Zweig angebunden
+    addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, charger.id, busbarNode.id, 'plus', 3);
+    addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, charger.id, busbarNode.id, 'minus', 3);
+  }
 
-  function wire230VAndGround(
-    inverters: Node[],
-    consumers230v: Node[],
-    shorePowers: Node[],
-    grounds: Node[],
-    busbarNode: Node,
-    newEdges: Edge[],
-    edgeIdRef: { counter: number }
-  ) {
-    if (inverters.length > 0) {
-      const mainInverter = inverters[0];
-      for (let i = 0; i < consumers230v.length; i++) {
-        newEdges.push({
-          id: `e-auto-ac-${edgeIdRef.counter++}`,
-          source: mainInverter.id,
-          target: consumers230v[i].id,
-          sourceHandle: 'plus',
-          targetHandle: 'plus',
-          type: 'cableEdge',
-          data: { length: 2, crossSection: 1.5, fuseSize: 16, edgeDomain: 'AC_230V' },
-        });
-      }
-      for (let i = 0; i < shorePowers.length; i++) {
-        newEdges.push({
-          id: `e-auto-ac-in-${edgeIdRef.counter++}`,
-          source: shorePowers[i].id,
-          target: mainInverter.id,
-          sourceHandle: 'plus',
-          targetHandle: 'plus',
-          type: 'cableEdge',
-          data: { length: 2, crossSection: 2.5, fuseSize: 16, edgeDomain: 'AC_230V' },
-        });
-      }
-    }
-    if (grounds.length > 0 && busbarNode) {
-      const mainGround = grounds[0];
-      newEdges.push({
-        id: `e-auto-gnd-${edgeIdRef.counter++}`,
-        source: busbarNode.id,
-        target: mainGround.id,
-        sourceHandle: 'minus',
-        targetHandle: 'minus',
-        type: 'cableEdge',
-        data: { length: 1, crossSection: 16, edgeDomain: 'DC_12V' },
-      });
+  // ── DC-DC-Ladebooster Eingang: Starterbatterie → Booster (abgesichert) ──
+  if (starterBatteryNode) {
+    for (const booster of dcdcChargers) {
+      addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, starterBatteryNode.id, booster.id, 'plus', 0.2);
     }
   }
 
-  wire230VAndGround(
-    nodesByType['inverter'] || [],
-    nodesByType['consumer230v'] || [],
-    nodesByType['shorePower'] || [],
-    nodesByType['ground'] || [],
-    busbarNode,
-    newEdges,
-    edgeIdRef
-  );
+  // ── 230-V-Welt (strikt getrennt von DC) ──
+  const shorePowers = nodesByType['shorePower'] || [];
+  for (const sp of shorePowers) {
+    // RCD/FI 30 mA nach VDE 0100-721 ist bei Landstrom Pflicht
+    sp.data.hasRcd = true;
+  }
+  const consumers230v = nodesByType['consumer230v'] || [];
+  if (inverters.length > 0) {
+    const mainInverter = inverters[0];
+    for (const c of consumers230v) {
+      addAcEdge(newEdges, edgeIdRef, existingConnections, mainInverter.id, c.id, 'plus', 'plus', 2, 1.5);
+    }
+    for (const sp of shorePowers) {
+      addAcEdge(newEdges, edgeIdRef, existingConnections, sp.id, mainInverter.id, 'plus', 'ac_in', 2, 2.5);
+    }
+  } else {
+    // Ohne Wechselrichter versorgt der Landstrom die 230-V-Verbraucher direkt
+    for (const sp of shorePowers) {
+      for (const c of consumers230v) {
+        addAcEdge(newEdges, edgeIdRef, existingConnections, sp.id, c.id, 'plus', 'plus', 2, 1.5);
+      }
+    }
+  }
 
-  return { nodes: currentNodes, edges: newEdges };
+  // ── Massepunkt: 16 mm² Hauptschutzleiter (VDE 0100-540) ──
+  const grounds = nodesByType['ground'] || [];
+  if (grounds.length > 0) {
+    const groundEdge = addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, busbarNode.id, grounds[0].id, 'minus', 1);
+    if (groundEdge) {
+      groundEdge.data!.crossSection = 16; // Mindestquerschnitt; das Sizing erhöht nur
+    }
+  }
+
+  // ── Dimensionierung: Querschnitt & Sicherung pro DC-Kante ──
+  sizeDcEdges(dcEdges, currentNodes, newEdges, sysVoltage);
+  applyFuseSizes(dcEdges, currentNodes, sysVoltage);
+
+  // ── Bestehende Nutzer-Kanten um fehlende Absicherung ergänzen ──
+  normalizeUserDcEdges(userEdges, currentNodes, [...userEdges, ...newEdges], sysVoltage);
+
+  // Sicherungskasten-Nennwert = Sicherung der Einspeisung (nur wenn Auto-Wire
+  // den Kasten selbst angelegt hat)
+  const fuseBoxFeed = dcEdges.find(
+    (e) => e.source === busbarNode.id && e.target === fuseBoxNode.id && e.sourceHandle === 'plus'
+  );
+  if (fuseBoxFeed && autoCreatedNodeIds.has(fuseBoxNode.id) && fuseBoxFeed.data?.fuseSize) {
+    fuseBoxNode.data.rating = fuseBoxFeed.data.fuseSize;
+  }
+
+  return { nodes: currentNodes, edges: [...userEdges, ...newEdges] };
 }
 
 export const usePlannerStore = create<PlannerState>((set, get) => ({
@@ -465,6 +778,40 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
   onWaterEdgesChange: (changes) => set((state) => ({ waterEdges: applyEdgeChanges(changes, state.waterEdges) })),
 
   onSelectionChange: (params) => set({ selectedNodes: params.nodes, selectedEdges: params.edges }),
+
+  // Fokussiert eine betroffene Komponente/Leitung ("Beheben" aus der Warn-Zentrale):
+  // markiert sie als ausgewählt (ReactFlow-Highlight + Inspector) und passt die Ansicht ein.
+  focusElement: (id, elementType) => {
+    set((state) => {
+      if (elementType === 'edge') {
+        const edges = state.edges.map((e) => ({ ...e, selected: e.id === id }));
+        const waterEdges = state.waterEdges.map((e) => ({ ...e, selected: e.id === id }));
+        const nodes = state.nodes.map((n) => (n.selected ? { ...n, selected: false } : n));
+        const target = edges.find((e) => e.id === id) || waterEdges.find((e) => e.id === id) || null;
+        return {
+          edges,
+          waterEdges,
+          nodes,
+          selectedEdges: target ? [target] : [],
+          selectedNodes: [],
+        };
+      }
+      const nodes = state.nodes.map((n) => ({ ...n, selected: n.id === id }));
+      const waterNodes = state.waterNodes.map((n) => ({ ...n, selected: n.id === id }));
+      const edges = state.edges.map((e) => (e.selected ? { ...e, selected: false } : e));
+      const target = nodes.find((n) => n.id === id) || waterNodes.find((n) => n.id === id) || null;
+      return {
+        nodes,
+        waterNodes,
+        edges,
+        selectedNodes: target ? [target] : [],
+        selectedEdges: [],
+      };
+    });
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('planner-fit-view'));
+    }
+  },
 
   deleteSelected: () => set((state) => {
     const nodeIdsSet = new Set<string>();
@@ -558,7 +905,8 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
         (sourceNode?.type === 'battery' && targetNode?.type === 'battery') ||
         (sourceNode?.type === 'solar' && targetNode?.type === 'solar');
 
-      if (!isSeriesException) {
+      // AC uses L/N/PE, not plus/minus — skip DC polarity on AC-AC links
+      if (sourceDomain !== 'AC_230V' && !isSeriesException) {
         if ((sIsPlus && !tIsPlus) || (sIsMinus && !tIsMinus)) {
           return false; // Polarity mismatch strict block
         }
@@ -624,7 +972,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
         data: {}
       };
       set((state) => ({ waterEdges: addEdge(newEdge, state.waterEdges) }));
-
+      
       return;
     }
 
@@ -647,18 +995,20 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
       },
     };
     set((state) => ({ edges: addEdge(newEdge, state.edges) as Edge<CableEdgeData>[] }));
-
+    
   },
 
   autoWireSystem: () => {
-    const { nodes } = get();
+    const { nodes, edges } = get();
 
-    const result = performAutoWiring(nodes);
+    const result = performAutoWiring(nodes, edges);
     if (!result) {
       get().setSystemMessage('Bitte zuerst eine Batterie platzieren, bevor Komponenten verbunden werden.');
       return;
     }
 
+    // Nutzer-Kanten bleiben erhalten; nur Auto-Kanten früherer Läufe
+    // werden durch die frisch berechneten ersetzt (Idempotenz).
     const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
       result.nodes,
       result.edges,
@@ -667,9 +1017,10 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
 
     set({ nodes: [...layoutedNodes], edges: [...layoutedEdges] });
 
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
       window.requestAnimationFrame(() => {
         window.dispatchEvent(new CustomEvent('planner-fit-view'));
+        window.dispatchEvent(new CustomEvent('planner-auto-wired', { detail: { edgeCount: result.edges.length } }));
       });
     }
   },
@@ -784,19 +1135,21 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
     };
 
     if (type === 'battery') {
-      newNode.data = { ...newNode.data, capacity: 100, chemistry: 'LiFePO4' };
+      newNode.data = { capacity: 100, chemistry: 'LiFePO4', ...newNode.data };
     } else if (type === 'consumer') {
-      newNode.data = { ...newNode.data, watts: 50, hours: 2 };
+      newNode.data = { watts: 50, hours: 2, ...newNode.data };
     } else if (type === 'charger' || type === 'mpptController' || type === 'dcdcCharger' || type === 'acBatteryCharger') {
-      newNode.data = { ...newNode.data, amps: 10 };
+      newNode.data = { amps: 10, ...newNode.data };
     } else if (type === 'fuse') {
-      newNode.data = { ...newNode.data, rating: 30 };
+      newNode.data = { rating: 30, ...newNode.data };
     } else if (type === 'shorePower') {
-      newNode.data = { ...newNode.data, hasRcd: false };
+      newNode.data = { hasRcd: false, ...newNode.data };
     } else if (type === 'consumer230v') {
-      newNode.data = { ...newNode.data, watts: 1000, hours: 0.5 };
+      newNode.data = { watts: 1000, hours: 0.5, ...newNode.data };
     } else if (type === 'solar') {
-      newNode.data = { ...newNode.data, voltage: 18, amps: 5, watts: 90 };
+      newNode.data = { voltage: 18, amps: 5, watts: 90, ...newNode.data };
+    } else if (type === 'inverter') {
+      newNode.data = { watts: 1000, continuousPower: 1000, ...newNode.data };
     }
 
     const { viewMode } = get();
@@ -816,66 +1169,23 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
     })
   })),
 
+  handleChangeFuseSize: (id, fuseSize) => set((state) => ({
+    edges: state.edges.map((e) => {
+      if (e.id === id) {
+        return { ...e, data: { ...e.data!, fuseSize } };
+      }
+      return e;
+    })
+  })),
+
   calculatePathVoltageDrop: (targetNodeId, customNodes, customEdges) => {
     const edges = customEdges || get().edges;
     const nodes = customNodes || get().nodes;
+    const sysVoltage = getSystemVoltage(nodes);
 
-    const getI = (sourceNode: Node | undefined, targetNode: Node | undefined) => {
-      const sData = sourceNode?.data;
-      const tData = targetNode?.data;
-      if (sData?.totalAmps !== undefined) return Number(sData.totalAmps);
-      if (tData?.totalAmps !== undefined) return Number(tData.totalAmps);
-      if (sData?.amps !== undefined && sourceNode?.type !== 'battery') return Number(sData.amps);
-      if (tData?.amps !== undefined && targetNode?.type !== 'battery') return Number(tData.amps);
-      if (sourceNode?.type === 'consumer') return (Number(sData?.watts) || 0) / 12;
-      if (targetNode?.type === 'consumer') return (Number(tData?.watts) || 0) / 12;
-      if (sourceNode?.type === 'inverter') return (Number(sData?.watts) || 0) / 12 / 0.85;
-      if (targetNode?.type === 'inverter') return (Number(tData?.watts) || 0) / 12 / 0.85;
-      if (sourceNode?.type === 'solar') return (Number(sData?.watts) || 0) / 18;
-      if (targetNode?.type === 'solar') return (Number(tData?.watts) || 0) / 18;
-      let totalAmps = 0;
-      for (let i = 0; i < nodes.length; i++) {
-        const n = nodes[i];
-        if (n.type === 'consumer') totalAmps += (Number(n.data.watts) || 0) / 12;
-        else if (n.type === 'consumer230v') totalAmps += (Number(n.data.watts) || 0) / 12 / 0.85;
-      }
-      return totalAmps;
-    };
-
-    let maxCumulativeDrop = 0;
-
-    const dfs = (currentNodeId: string, currentDrop: number, visited: Set<string>) => {
-      if (visited.has(currentNodeId)) return;
-      visited.add(currentNodeId);
-
-      const node = nodes.find(n => n.id === currentNodeId);
-      if (node?.type === 'battery' || node?.type === 'shorePower') {
-        if (currentDrop > maxCumulativeDrop) {
-          maxCumulativeDrop = currentDrop;
-        }
-        return;
-      }
-
-      const incomingEdges = edges.filter(e => e.target === currentNodeId);
-      if (incomingEdges.length === 0) {
-        if (currentDrop > maxCumulativeDrop) {
-          maxCumulativeDrop = currentDrop;
-        }
-        return;
-      }
-
-      for (const edge of incomingEdges) {
-        const sourceNode = nodes.find(n => n.id === edge.source);
-        const I = getI(sourceNode, node);
-        const length = edge.data?.length || 1;
-        const cs = edge.data?.crossSection || 2.5;
-        const voltageDrop = (I * (length * 2)) / (58 * cs);
-
-        dfs(edge.source, currentDrop + voltageDrop, new Set(visited));
-      }
-    };
-
-    dfs(targetNodeId, 0, new Set<string>());
-    return maxCumulativeDrop;
+    // Identische Logik wie die Auto-Wire-Dimensionierung (cumulativeDropAt):
+    // Versorgungspfad (Batterie/Landstrom) bevorzugt, sonst bester Ladezweig.
+    const nodesMap = getNodeMap(nodes, []);
+    return relevantCumulativeDrop(targetNodeId, nodesMap, edges, nodes, sysVoltage);
   },
 }));

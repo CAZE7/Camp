@@ -34,6 +34,44 @@ export const calculateMaxFuse = (crossSection: number): number => {
   return FUSE_MAP[crossSection] || 0;
 };
 
+/**
+ * Übliche Norm-Sicherungsgrößen in Ampere (Blade ATO/ATC, MIDI, ANL).
+ * Wird von Auto-Wire und der Live-Validierung verwendet, damit die gewählte
+ * Sicherung immer einem real verfügbaren Sicherungswert entspricht.
+ */
+export const STANDARD_FUSE_SIZES = [
+  5, 7.5, 10, 15, 16, 20, 25, 30, 32, 40, 50, 60, 63, 80, 100, 125, 160,
+  200, 250, 300, 350, 400,
+];
+
+/**
+ * Berechnet die passende Sicherungsgröße für eine Leitung:
+ *
+ *   Verbraucher-Nennstrom ≤ Sicherungsnennstrom ≤ Kabel-Maximalsicherung
+ *
+ * Es wird die kleinste Norm-Sicherung gewählt, die den Nennstrom trägt und
+ * den durch den Kabelquerschnitt erlaubten Maximalwert (FUSE_MAP nach
+ * DIN VDE 0298-4) nicht überschreitet. Dadurch schützt die Sicherung das
+ * Kabel und löst bei Überlast zuverlässig aus, ohne im Normalbetrieb
+ * ungewollt auszulösen.
+ *
+ * @param currentA      Nennstrom der Leitung in Ampere
+ * @param crossSection  Kabelquerschnitt in mm²
+ * @returns             Sicherungsgröße in Ampere
+ */
+export const selectFuseSize = (currentA: number, crossSection: number): number => {
+  const maxFuse = calculateMaxFuse(crossSection);
+  const minFuse = Math.max(1, Math.ceil(currentA));
+  for (const size of STANDARD_FUSE_SIZES) {
+    if (size >= minFuse && size <= maxFuse) {
+      return size;
+    }
+  }
+  // Fallback: kleinste Norm-Sicherung über dem Nennstrom (nur erreichbar,
+  // wenn selbst der größte Querschnitt den Strom nicht tragen kann).
+  return STANDARD_FUSE_SIZES.find((s) => s >= minFuse) || maxFuse || STANDARD_FUSE_SIZES[STANDARD_FUSE_SIZES.length - 1];
+};
+
 export const lookupThermalCrossSection = (I: number): number => {
   const requiredAmpacity = I * (1 / DERATE_FACTOR);
   const size = VDE_SIZES.find(s => VDE_AMPACITY[s] >= requiredAmpacity);
@@ -101,6 +139,11 @@ export const getHandleDomain = (
     return 'AC_230V';
   }
   if (nodeType === 'inverter') {
+    // Left TARGET plus/minus = 12V DC input. Right SOURCE plus / ac_* = 230V AC.
+    // 'plus' as a target is the battery-side DC terminal on InverterNode.
+    if (handleId === 'plus' && handleType === 'target') {
+      return 'DC_12V';
+    }
     const AC_HANDLES = ['plus', 'ac_out', 'L', 'ac', 'output', 'ac_in'];
     if (handleId && AC_HANDLES.includes(handleId)) {
       return 'AC_230V';

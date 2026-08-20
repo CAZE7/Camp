@@ -45,13 +45,13 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     <div className="min-h-[100dvh] w-full relative flex flex-col">
       {/* Desktop Sidebar (visible on screens >= 768px) */}
       {isPlannerRoute && (
-        <div className="hidden md:block">
+        <div className="hidden lg:block">
           <NavigationSidebar isCollapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
         </div>
       )}
 
       {/* Main content wrapper */}
-      <main className={`${isPlannerRoute ? (sidebarCollapsed ? 'md:pl-14' : 'md:pl-[17rem]') : ''} flex-1 flex flex-col transition-all duration-300 relative z-10 pb-20 md:pb-0 min-h-0`}>
+      <main className={`${isPlannerRoute ? (sidebarCollapsed ? 'lg:pl-14' : 'lg:pl-[17rem]') : ''} flex-1 flex flex-col transition-all duration-300 relative z-10 pb-20 lg:pb-0 min-h-0`}>
         {children}
       </main>
 
@@ -61,7 +61,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
       {pathname === '/elektrik-planung' && (
         <button
           onClick={() => setIsNodePickerOpen(true)}
-          className="md:hidden fixed bottom-20 right-6 z-[110] w-14 h-14 bg-gradient-to-br from-emerald-500 to-teal-600 text-white rounded-full flex items-center justify-center shadow-lg shadow-emerald-950/20 active:scale-90 hover:scale-105 transition-all touch-manipulation"
+          className="lg:hidden fixed bottom-20 right-6 z-[110] w-14 h-14 bg-gradient-to-br from-emerald-500 to-teal-600 text-white rounded-full flex items-center justify-center shadow-lg shadow-emerald-950/20 active:scale-90 hover:scale-105 transition-all touch-manipulation"
           aria-label="Komponente hinzufügen"
         >
           <Plus className="w-7 h-7" />
@@ -70,7 +70,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
 
       {/* Node Picker Modal */}
       {isNodePickerOpen && (
-        <div className="md:hidden fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-[200] flex flex-col justify-end transition-opacity duration-300">
+        <div className="lg:hidden fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-[200] flex flex-col justify-end transition-opacity duration-300">
           <div className="bg-white rounded-t-[2.5rem] w-full max-h-[85vh] flex flex-col shadow-2xl relative overflow-hidden animate-slide-up">
             {/* Modal Header */}
             <div className="flex items-center justify-between px-6 pt-5 pb-3 border-b border-stone-100 shrink-0">

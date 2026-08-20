@@ -13,29 +13,29 @@ on:
         default: "false"
         type: boolean
 
-# ── Permissions ─────────────────────────────────────────────────────────────
+# ── Permissions ───────────────────────────────────────────────────────────────
 permissions:
   contents: read
   pages: write
   id-token: write
-  pull-requests: write   # allows posting PR comments with build size report
+  pull-requests: write
 
-# ── Concurrency ─────────────────────────────────────────────────────────────
+# ── Concurrency ───────────────────────────────────────────────────────────────
 concurrency:
   group: "pages-${{ github.ref }}"
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
-# ── Environment ──────────────────────────────────────────────────────────────
+# ── Global Environment ────────────────────────────────────────────────────────
 env:
   NODE_VERSION: "20"
   NEXT_TELEMETRY_DISABLED: 1
 
 jobs:
-  # ╔══════════════════════════════════════════════════════════════╗
-  # ║  JOB 1: Type Check + Lint (parallel with tests)             ║
-  # ╚══════════════════════════════════════════════════════════════╝
+  # ╔═══════════════════════════════════════════════════════════════╗
+  # ║  JOB 1: TypeScript Check  (runs in parallel with tests)      ║
+  # ╚═══════════════════════════════════════════════════════════════╝
   typecheck:
-    name: 🔎 TypeScript & Lint
+    name: 🔎 TypeScript Check
     runs-on: ubuntu-latest
     steps:
       - name: ⬇️ Checkout
@@ -52,11 +52,10 @@ jobs:
 
       - name: 🔎 TypeScript check
         run: npx tsc --noEmit
-        continue-on-error: false
 
-  # ╔══════════════════════════════════════════════════════════════╗
-  # ║  JOB 2: Unit Tests (parallel with typecheck)                ║
-  # ╚══════════════════════════════════════════════════════════════╝
+  # ╔═══════════════════════════════════════════════════════════════╗
+  # ║  JOB 2: Unit Tests  (runs in parallel with typecheck)        ║
+  # ╚═══════════════════════════════════════════════════════════════╝
   test:
     name: 🧪 Unit Tests
     runs-on: ubuntu-latest
@@ -77,14 +76,17 @@ jobs:
       - name: 🧪 Run tests
         run: npm test -- --reporter=verbose
 
-  # ╔══════════════════════════════════════════════════════════════╗
-  # ║  JOB 3: Production Build (runs after quality gates pass)    ║
-  # ╚══════════════════════════════════════════════════════════════╝
+  # ╔═══════════════════════════════════════════════════════════════╗
+  # ║  JOB 3: Production Build  (waits for quality gates)          ║
+  # ╚═══════════════════════════════════════════════════════════════╝
   build:
     name: 🏗️ Build
     runs-on: ubuntu-latest
     needs: [typecheck, test]
-    if: always() && needs.typecheck.result == 'success' && (needs.test.result == 'success' || needs.test.result == 'skipped')
+    if: |
+      always() &&
+      needs.typecheck.result == 'success' &&
+      (needs.test.result == 'success' || needs.test.result == 'skipped')
     outputs:
       artifact_size: ${{ steps.size.outputs.size }}
       page_count: ${{ steps.size.outputs.pages }}
@@ -108,8 +110,25 @@ jobs:
             ${{ runner.os }}-nextjs-${{ hashFiles('package-lock.json') }}-
             ${{ runner.os }}-nextjs-
 
-      - name: 📦 Install dependencies
-        run: npm ci --prefer-offline
+      - name: 📦 Install dependencies (with retry fallback)
+        run: |
+          set -euo pipefail
+          n=0
+          until [ "$n" -ge 3 ]; do
+            if npm ci --prefer-offline; then
+              echo "✅ npm ci succeeded"
+              break
+            fi
+            n=$((n+1))
+            echo "⚠️  npm ci attempt $n failed — cleaning cache and retrying"
+            npm cache clean --force || true
+            sleep 2
+          done
+          if [ "$n" -ge 3 ]; then
+            echo "🔄 npm ci failed after 3 attempts, falling back to npm install"
+            rm -f package-lock.json
+            npm install --no-audit --no-fund
+          fi
 
       - name: 🏗️ Configure Pages
         uses: actions/configure-pages@v5
@@ -121,7 +140,7 @@ jobs:
         env:
           NEXT_TELEMETRY_DISABLED: 1
 
-      - name: 🚫 Disable Jekyll (place .nojekyll in out/)
+      - name: 🚫 Disable Jekyll
         run: touch ./out/.nojekyll
 
       - name: 🗺️ Strip source maps
@@ -147,9 +166,9 @@ jobs:
         with:
           path: ./out
 
-  # ╔══════════════════════════════════════════════════════════════╗
-  # ║  JOB 4: Deploy (only on main/master push)                   ║
-  # ╚══════════════════════════════════════════════════════════════╝
+  # ╔═══════════════════════════════════════════════════════════════╗
+  # ║  JOB 4: Deploy  (only on main/master push — never on PRs)    ║
+  # ╚═══════════════════════════════════════════════════════════════╝
   deploy:
     name: 🌍 Deploy to GitHub Pages
     runs-on: ubuntu-latest
@@ -176,4 +195,3 @@ jobs:
           echo "| 📦 Size | ${{ needs.build.outputs.artifact_size }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 📄 Pages | ${{ needs.build.outputs.page_count }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 🔀 Commit | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
-

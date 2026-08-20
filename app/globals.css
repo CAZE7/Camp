@@ -2,179 +2,141 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Outfit (lokal über @fontsource-variable/outfit gebündelt) */
+.font-outfit {
+  font-family: 'Outfit Variable', 'Outfit', ui-sans-serif, system-ui, sans-serif;
+}
+
 @layer base {
-  .theme {
-    --font-heading: var(--font-sans);
-    --font-sans: var(--font-sans)
-  }
   :root {
-    --background: #f8f7f4;
-    --foreground: #020817;
-    --card: #faf9f7;
-    --card-foreground: #020817;
-    --popover: #ffffff;
-    --popover-foreground: #020817;
-    --primary: #f97316;
-    --primary-foreground: #fafafa;
-    --secondary: #f1f5f9;
-    --secondary-foreground: #0f172a;
-    --muted: #f1f5f9;
-    --muted-foreground: #64748b;
-    --accent: #f1f5f9;
-    --accent-foreground: #0f172a;
-    --destructive: #ef4444;
-    --destructive-foreground: #fafafa;
-    --border: #e2e8f0;
-    --input: #e2e8f0;
-    --ring: #f97316;
-    --info: #3b82f6;
-    --success: #22c55e;
-    --warning: #f59e0b;
-    --radius: 0.625rem;
-    --canvas-bg: #f4f5f7;
-    --sidebar: #f8fafc;
-    --sidebar-foreground: #0f172a;
-    --sidebar-primary: #f97316;
-    --sidebar-primary-foreground: #ffffff;
-    --sidebar-accent: #f1f5f9;
-    --sidebar-accent-foreground: #0f172a;
-    --sidebar-border: #e2e8f0;
+    --font-display: "Fraunces", Georgia, "Times New Roman", serif;
+    --font-sans: "Source Sans 3", "Source Sans Pro", ui-sans-serif, system-ui, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+    --font-heading: var(--font-display);
+
+    --paper: #f6f1e8;
+    --bone: #fffdf9;
+    --ink: #14110e;
+    --ink-soft: #2a241e;
+    --muted-ink: #3f3831;
+    --clay: #8f7d68;
+    --oak: #5c4024;
+    --copper: #7a3218;
+    --copper-deep: #5c2410;
+    --moss: #2d3d28;
+    --soot: #14110e;
+    --signal: #7a2418;
+    --oxide: #1a4338;
+    --rule: #8f7d68;
+
+    --background: var(--paper);
+    --foreground: var(--ink);
+    --card: var(--bone);
+    --card-foreground: var(--ink);
+    --popover: var(--bone);
+    --popover-foreground: var(--ink);
+    --primary: var(--ink);
+    --primary-foreground: var(--bone);
+    --secondary: #e7ddd0;
+    --secondary-foreground: var(--ink);
+    --muted: #e7ddd0;
+    --muted-foreground: var(--muted-ink);
+    --accent: #ebe3d6;
+    --accent-foreground: var(--ink);
+    --destructive: var(--signal);
+    --destructive-foreground: var(--bone);
+    --border: var(--rule);
+    --input: var(--rule);
+    --ring: var(--ink);
+    --chart-1: var(--copper);
+    --chart-2: var(--oak);
+    --chart-3: var(--moss);
+    --chart-4: var(--ink-soft);
+    --chart-5: var(--clay);
+    --radius: 0.125rem;
+    --sidebar: var(--bone);
+    --sidebar-foreground: var(--ink);
+    --sidebar-primary: var(--ink);
+    --sidebar-primary-foreground: var(--bone);
+    --sidebar-accent: #ebe3d6;
+    --sidebar-accent-foreground: var(--ink);
+    --sidebar-border: var(--rule);
+    --sidebar-ring: var(--ink);
+
+    /* --- Planer: Semantische Leitungs- & Warn-Kodierung ---
+       Zentral definiert, damit Canvas-Kanten, Rohre und Warnungen
+       überall dieselbe Farbsprache nutzen (keine Inline-Hexwerte). */
+    --wire-dc: #3b82f6;        /* Gleichstrom 12V/24V (blau) */
+    --wire-ac: #ef4444;        /* Wechselstrom 230V (rot) */
+    --wire-solar: #f59e0b;     /* Solar / PV (amber) */
+    --wire-selected: #9ca3af;  /* ausgewählte Leitung (neutral) */
+    --wire-error: #ef4444;     /* Leitung mit Fehler (rot) */
+
+    --pipe-fresh: #3b82f6;     /* Frischwasser (blau) */
+    --pipe-gray: #9ca3af;      /* Grauwasser (grau) */
+    --pipe-selected: #f97316;  /* ausgewähltes Rohr (orange) */
+
+    --warn-critical: #dc2626;      /* kritisch */
+    --warn-critical-bg: #fef2f2;
+    --warn-critical-border: #fecaca;
+    --warn-warning: #d97706;       /* Warnung */
+    --warn-warning-bg: #fffbeb;
+    --warn-warning-border: #fde68a;
+    --warn-info: #2563eb;          /* Hinweis */
+    --warn-info-bg: #eff6ff;
+    --warn-info-border: #bfdbfe;
+
+    /* Allgemeine Statusfarben (von Tailwind referenziert) */
+    --info: var(--warn-info);
+    --success: var(--oxide);
+    --warning: var(--warn-warning);
   }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --background: #171614;
-      --foreground: #e8e6e1;
-      --card: #1c1b19;
-      --card-foreground: #e8e6e1;
-      --popover: #201f1d;
-      --popover-foreground: #e8e6e1;
-      --primary: #fb923c;
-      --primary-foreground: #1a0a00;
-      --secondary: #292724;
-      --secondary-foreground: #e2ddd6;
-      --muted: #292724;
-      --muted-foreground: #9c9891;
-      --accent: #292724;
-      --accent-foreground: #e2ddd6;
-      --destructive: #f87171;
-      --destructive-foreground: #1a0000;
-      --warning: #fbbf24;
-      --border: #3a3835;
-      --input: #3a3835;
-      --ring: #fb923c;
-      --sidebar: #141312;
-      --sidebar-foreground: #e2ddd6;
-      --sidebar-border: #2e2c2a;
-      --canvas-bg: #1e2027;
-    }
-  }
+
   * {
     @apply border-border;
   }
-  body {
-    @apply bg-background text-foreground;
-  }
+
   html {
     @apply font-sans;
+    scroll-behavior: smooth;
   }
-  h1 { @apply font-black tracking-tight; }
-  h2 { @apply font-extrabold tracking-tight; }
-  h3 { @apply font-bold tracking-tight; }
-  h4, h5, h6 { @apply font-semibold; }
-  .stat, .number {
-    @apply font-mono;
-  }
-}
 
-/* ─── Performance & Mobile Touch: Layout Containment ─── */
-/* Isolate the React Flow canvas so reflows don't propagate to sidebar/inspector */
-.react-flow {
-  contain: layout style paint;
-  touch-action: none;
-  overscroll-behavior: none;
-}
-
-/* Isolate planner sidebar to prevent reflow cascading into the canvas */
-.planner-sidebar-container {
-  contain: layout paint;
-}
-/* --- Nature Theme Animations --- */
-.road-dashed {
-  stroke-dasharray: 4 6;
-  stroke-linecap: round;
-}
-
-.nature-glow {
-  filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.4));
-}
-
-.camper-shadow {
-  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.15));
-}
-
-/* ─── Chrome Performance & GPU Acceleration ─── */
-.gpu-accelerated {
-  will-change: transform;
-  backface-visibility: hidden;
-}
-
-.speed-svg {
-  shape-rendering: optimizeSpeed;
-}
-
-/* Disable backdrop-filter, box-shadows, and filters during scrolling to avoid repaint storm in Chrome */
-.is-scrolling,
-.is-scrolling * {
-  box-shadow: none !important;
-  filter: none !important;
-  backdrop-filter: none !important;
-}
-
-/* React Flow Nodes Performance */
-.react-flow__node {
-  color: var(--card-foreground);
-  background: var(--card);
-}
-
-/* ─── Mobile Optimizations & Animations ─── */
-@media (max-width: 767px) {
-  /* Reset main layout padding */
-  main {
-    padding-left: 0 !important;
-  }
-  
-  /* Prevent horizontal overflow on mobile body */
   body {
-    overflow-x: hidden;
+    @apply bg-background text-foreground antialiased;
+    background-color: var(--paper);
+    color: var(--ink);
+  }
+
+  ::selection {
+    background: #d8c4a8;
+    color: var(--ink);
   }
 }
 
-/* Keyframes & Classes for Premium Modal Transitions */
-@keyframes slide-up {
-  from {
-    transform: translateY(100%);
+@layer components {
+  .rule {
+    height: 1px;
+    background: var(--rule);
   }
-  to {
-    transform: translateY(0);
+
+  .index-label {
+    font-family: var(--font-mono), ui-monospace, monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--copper);
+    font-weight: 500;
+  }
+
+  .display {
+    font-family: var(--font-display);
+    font-weight: 500;
+    letter-spacing: -0.03em;
+    line-height: 0.95;
+  }
+
+  .measure {
+    font-family: var(--font-mono), ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
   }
 }
-
-@keyframes scale-up {
-  from {
-    transform: scale(0.95);
-    opacity: 0;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-.animate-slide-up {
-  animation: slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-.animate-scale-up {
-  animation: scale-up 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-

@@ -140,18 +140,20 @@ describe('CableEdge', () => {
     // expect(getByText('Max: 70A')).toBeInTheDocument(); // Smart labeling hides this
   });
 
-  it('renders selected state with #9ca3af stroke', () => {
+  it('renders selected state with the selected wire token stroke', () => {
     const { getByTestId } = render(<CableEdge {...defaultProps} selected={true} />);
 
     const baseEdge = getByTestId('base-edge');
-    expect(baseEdge).toHaveStyle({ stroke: '#9ca3af' });
+    // --wire-selected === #9ca3af (siehe globals.css)
+    expect(baseEdge).toHaveStyle({ stroke: 'var(--wire-selected)' });
   });
 
-  it('renders unselected state with #3b82f6 stroke', () => {
+  it('renders unselected DC state with the DC wire token stroke', () => {
     const { getByTestId } = render(<CableEdge {...defaultProps} selected={false} />);
 
     const baseEdge = getByTestId('base-edge');
-    expect(baseEdge).toHaveStyle({ stroke: '#3b82f6' });
+    // --wire-dc === #3b82f6 (siehe globals.css)
+    expect(baseEdge).toHaveStyle({ stroke: 'var(--wire-dc)' });
   });
 
   it('renders fuseSize if provided in data', () => {

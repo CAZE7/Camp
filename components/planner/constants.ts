@@ -73,30 +73,39 @@ export const initialEdges: Edge<CableEdgeData>[] = [
     id: 'e-battery-fuse',
     source: 'battery',
     target: 'fuse-box',
+    sourceHandle: 'plus',
+    targetHandle: 'plus',
     type: 'cableEdge',
     data: {
-      length: 3,
+      length: 0.2, // Hauptsicherung direkt an der Batterie (max. 20 cm)
       crossSection: 6,
+      fuseSize: 5,
     },
   },
   {
     id: 'e-fuse-consumer',
     source: 'fuse-box',
     target: 'consumer-1',
+    sourceHandle: 'plus',
+    targetHandle: 'plus',
     type: 'cableEdge',
     data: {
-      length: 5,
+      length: 3,
       crossSection: 2.5,
+      fuseSize: 5,
     },
   },
   {
     id: 'e-mppt-battery',
     source: 'mppt-1',
     target: 'battery',
+    sourceHandle: 'plus',
+    targetHandle: 'plus',
     type: 'cableEdge',
     data: {
       length: 2,
       crossSection: 10,
+      fuseSize: 50,
     },
   },
 ];

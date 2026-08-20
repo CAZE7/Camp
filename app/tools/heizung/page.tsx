@@ -12,9 +12,9 @@ import { Switch } from '@/components/ui/switch';
 import { StepperSlider } from '@/components/ui/StepperSlider';
 import Link from 'next/link';
 import { cn } from "@/lib/utils";
-import { Outfit } from 'next/font/google';
 
-const outfit = Outfit({ subsets: ['latin'], display: 'swap' });
+// Outfit wird lokal über @fontsource-variable/outfit gebündelt (offline-fähiger Build).
+const outfit = { className: 'font-outfit' };
 
 export interface HeaterModel {
   id: string;
@@ -457,7 +457,7 @@ function ResultsView({
             <CardContent className="flex flex-col items-center justify-center py-10 text-center space-y-4">
               <span className="text-5xl">🛑</span>
               <div>
-                <p className="font-black text-rose-955 text-xl">Ungültige Fahrzeugmaße</p>
+                <p className="font-black text-rose-950 text-xl">Ungültige Fahrzeugmaße</p>
                 <p className="text-sm text-rose-800 mt-2 font-medium">
                   {error === "Ungültige Fahrzeugmaße" 
                     ? "Das Fahrzeugvolumen und die Oberfläche müssen größer als 0 sein. Bitte korrigiere die Maße unter Fahrzeug-Konfiguration."

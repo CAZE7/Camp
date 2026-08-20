@@ -17,6 +17,7 @@ const nextConfig: NextConfig = {
   basePath: basePath || undefined,
   assetPrefix: basePath ? `${basePath}/` : undefined,
   trailingSlash: true,
+  allowedDevOrigins: ['*.e2b.app', 'localhost'],
   images: {
     unoptimized: true,
   },

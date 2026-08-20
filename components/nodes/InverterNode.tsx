@@ -69,6 +69,7 @@ const InverterNode = function({ id, data, isConnectable, selected }: NodeProps<P
       )}
       <div className="flex flex-col gap-1 text-xs text-gray-600">
         <div>12V in / 230V out</div>
+        <div className="text-[10px] text-gray-400">AC-In oben</div>
         <div>Effizienz: 85%</div>
         {overloadStats.continuousPower > 0 && (
           <div>Leistung: {overloadStats.continuousPower} W</div>
@@ -81,6 +82,9 @@ const InverterNode = function({ id, data, isConnectable, selected }: NodeProps<P
         </div>
       )}
 
+      <Handle type="target" position={Position.Top} id="ac_in" isConnectable={isConnectable} style={{ background: 'transparent', border: 'none', width: '24px', height: '24px', zIndex: 10, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#ef4444', pointerEvents: 'none' }} />
+      </Handle>
       <Handle type="target" position={Position.Left} id="plus" isConnectable={isConnectable} style={{ background: 'transparent', border: 'none', width: '24px', height: '24px', zIndex: 10, display: 'flex', justifyContent: 'center', alignItems: 'center', top: '30%' }}>
         <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'red', pointerEvents: 'none' }} />
       </Handle>

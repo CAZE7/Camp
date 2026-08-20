@@ -94,18 +94,22 @@ describe('InverterNode Component', () => {
   it('renders Handle components with correct props', () => {
     render(<InverterNode id="1" data={{}} isConnectable={true} />);
     const handles = screen.getAllByTestId('react-flow-handle');
-    expect(handles).toHaveLength(3);
+    expect(handles).toHaveLength(4);
 
-    // Target plus
+    // Target AC in (Landstrom)
     expect(handles[0]).toHaveAttribute('type', 'target');
-    expect(handles[0]).toHaveAttribute('id', 'plus');
+    expect(handles[0]).toHaveAttribute('id', 'ac_in');
+
+    // Target plus (12V DC)
+    expect(handles[1]).toHaveAttribute('type', 'target');
+    expect(handles[1]).toHaveAttribute('id', 'plus');
 
     // Target minus
-    expect(handles[1]).toHaveAttribute('type', 'target');
-    expect(handles[1]).toHaveAttribute('id', 'minus');
+    expect(handles[2]).toHaveAttribute('type', 'target');
+    expect(handles[2]).toHaveAttribute('id', 'minus');
 
-    // Source plus
-    expect(handles[2]).toHaveAttribute('type', 'source');
-    expect(handles[2]).toHaveAttribute('id', 'plus');
+    // Source plus (230V AC out)
+    expect(handles[3]).toHaveAttribute('type', 'source');
+    expect(handles[3]).toHaveAttribute('id', 'plus');
   });
 });

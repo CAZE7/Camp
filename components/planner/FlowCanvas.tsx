@@ -55,7 +55,8 @@ export function FlowCanvas() {
     onWaterEdgesChange,
     onConnect,
     isValidConnection,
-    onSelectionChange
+    onSelectionChange,
+    addNode
   } = usePlannerStore(useShallow((state) => ({
     viewMode: state.viewMode,
     nodes: state.nodes,
@@ -71,6 +72,7 @@ export function FlowCanvas() {
     onConnect: state.onConnect,
     isValidConnection: state.isValidConnection,
     onSelectionChange: state.onSelectionChange,
+    addNode: state.addNode,
   })));
 
   const calculatedSolarWatts = useAppStore((state) => state.calculatedSolarWatts);
@@ -92,10 +94,28 @@ export function FlowCanvas() {
         </div>
       )}
       {viewMode === 'electric' && nodes.length === 0 && (
-        <EmptyState title="Noch keine Komponenten" description="Ziehe Komponenten aus der linken Sidebar auf die Zeichenfläche." />
+        <EmptyState
+          title="Fang mit deiner Batterie an"
+          description="Jede Anlage startet mit der Aufbaubatterie. Füge sie zuerst hinzu – danach kannst du Laderegler, Sicherungen und Verbraucher anschließen."
+          actionLabel="Batterie hinzufügen"
+          onAction={() => {
+            addNode('battery', 'Batterie', { x: 0, y: 0 });
+            window.dispatchEvent(new CustomEvent('planner-fit-view'));
+          }}
+          hint="Oder ziehe Komponenten aus der linken Leiste auf die Fläche."
+        />
       )}
       {viewMode === 'water' && waterNodes.length === 0 && (
-        <EmptyState title="Noch kein Wassersystem" description="Ziehe Komponenten aus der Sidebar um dein Wassersystem zu planen." />
+        <EmptyState
+          title="Starte mit dem Frischwassertank"
+          description="Dein Wassersystem beginnt beim Frischwassertank. Füge ihn zuerst hinzu – dann folgen Pumpe, Filter und Verbraucher."
+          actionLabel="Frischwassertank hinzufügen"
+          onAction={() => {
+            addNode('freshWaterTank', 'Frischwassertank', { x: 0, y: 0 });
+            window.dispatchEvent(new CustomEvent('planner-fit-view'));
+          }}
+          hint="Oder ziehe Komponenten aus der linken Leiste auf die Fläche."
+        />
       )}
       <div className="flex-1 h-full w-full relative">
         <FloatingMetricsCard />
@@ -126,8 +146,8 @@ export function FlowCanvas() {
           }}
         >
           <Background color="var(--border)" gap={16} />
-          <Controls className="rounded-lg overflow-hidden border border-border shadow-sm" />
-          <MiniMap className="rounded-lg overflow-hidden border border-border shadow-sm" />
+          <Controls className="rounded-lg overflow-hidden border border-border shadow-sm mb-16 lg:mb-4" />
+          <MiniMap className="rounded-lg overflow-hidden border border-border shadow-sm mb-16 lg:mb-4" />
 
           {viewMode === 'electric' && calculatedSolarWatts > 0 && (
             <Panel position="bottom-center" className="bg-blue-50 p-3 rounded-lg shadow-sm border border-blue-200 text-blue-800 text-sm mb-4">

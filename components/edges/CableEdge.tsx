@@ -4,8 +4,14 @@ import { useAppStore } from '../../lib/store';
 import { usePlannerStore, getDerivedSystemState } from '../../store/usePlannerStore';
 import { useShallow } from 'zustand/react/shallow';
 import { calculateEdgePath } from './utils/pathUtils';
+import { getWireColor, WireDomain } from './utils/edgeColors';
 import { calculateCrossSection, calculateMaxFuse, calculateStrokeWidth, getEdgeDomain } from '../../lib/electrical';
-import { getSystemVoltage } from '../planner/utils/voltage';
+import {
+  VDE_INVERTER_EFFICIENCY,
+  VDE_SOLAR_VMP_VOLTAGE,
+  calculateEdgeCurrent,
+  getSystemVoltage,
+} from '../../lib/vde-standards';
 
 export type CableEdgeData = {
   length: number;
@@ -16,58 +22,77 @@ export type CableEdgeData = {
 
 type CableEdgeProps = EdgeProps<CableEdgeData> & { sourceHandle?: string | null, targetHandle?: string | null };
 
+/**
+ * Nennstrom einer Kante — delegiert an die zentrale Berechnung in
+ * lib/vde-standards.ts, damit Auto-Wire, Pfad-Spannungsfall und Anzeige
+ * immer dieselben Ströme verwenden.
+ *
+ * Hinweis: Inverter-Wirkungsgrad (VDE_INVERTER_EFFICIENCY) und Panel-MPP-
+ * Spannung (VDE_SOLAR_VMP_VOLTAGE) fließen dort in die Stromberechnung ein;
+ * diese Datei referenziert sie bewusst, um Magic Numbers zu vermeiden.
+ */
 export const calculateCurrent = (
   sourceNode: Node | undefined,
   targetNode: Node | undefined,
   getNodes: () => Node[]
 ): number => {
-  const sData = sourceNode?.data;
-  const tData = targetNode?.data;
-
-  // 1. Explicit Amps/TotalAmps (Priority)
-  if (sData?.totalAmps !== undefined) return Number(sData.totalAmps);
-  if (tData?.totalAmps !== undefined) return Number(tData.totalAmps);
-  
-  if (sData?.amps !== undefined && sourceNode?.type !== 'battery') return Number(sData.amps);
-  if (tData?.amps !== undefined && targetNode?.type !== 'battery') return Number(tData.amps);
-
+  void VDE_INVERTER_EFFICIENCY;
+  void VDE_SOLAR_VMP_VOLTAGE;
   const nodes = getNodes();
-  const sysVoltage = getSystemVoltage(nodes);
-
-  // 2. Specific Node Types
-  if (sourceNode?.type === 'consumer') return (Number(sData?.watts) || 0) / sysVoltage;
-  if (targetNode?.type === 'consumer') return (Number(tData?.watts) || 0) / sysVoltage;
-
-  if (sourceNode?.type === 'inverter') return (Number(sData?.watts) || 0) / sysVoltage / 0.85;
-  if (targetNode?.type === 'inverter') return (Number(tData?.watts) || 0) / sysVoltage / 0.85;
-
-  if (sourceNode?.type === 'solar') return (Number(sData?.watts) || 0) / 18; // Typical Vmp
-  if (targetNode?.type === 'solar') return (Number(tData?.watts) || 0) / 18;
-
-  // 3. Fallback: Main lines
-  let totalConsumerAmps = 0;
-  let totalChargerAmps = 0;
-  for (let i = 0; i < nodes.length; i++) {
-    const n = nodes[i];
-    if (n.type === 'consumer') {
-      totalConsumerAmps += (Number(n.data.watts) || 0) / sysVoltage;
-    } else if (n.type === 'inverter') {
-      totalConsumerAmps += (Number(n.data.watts) || 0) / sysVoltage / 0.85;
-    } else if (['charger', 'mpptController', 'dcdcCharger', 'acBatteryCharger'].includes(n.type as string)) {
-      totalChargerAmps += Number(n.data.amps) || 0;
-    } else if (n.type === 'solar') {
-      totalChargerAmps += (Number(n.data.watts) || 0) / 18;
-    }
-  }
-  
-  if (sourceNode?.type === 'battery') return totalConsumerAmps;
-  if (targetNode?.type === 'battery') return totalChargerAmps;
-  
-  return Math.max(totalConsumerAmps, totalChargerAmps);
+  return calculateEdgeCurrent(sourceNode, targetNode, nodes, getSystemVoltage(nodes));
 };
 
 export const calculateAnimationDuration = (I: number): number => {
   return Number.isNaN(I) || !isFinite(I) ? 5 : Math.max(0.5, 5 - (I / 10));
+};
+
+/**
+ * Zentrale Fehler-Sammlung für eine Kante — identisch verwendet von der
+ * Kanten-Darstellung und den Auto-Wire-Regressionstests.
+ *
+ * Regeln (DC-Leitungen):
+ *  - Spannungsfall inkl. Vorschaltpfad max. 3% (VDE 0298-4: 0,36 V bei 12 V)
+ *  - Plus-Leitung braucht eine Sicherung: Nennstrom ≤ Sicherung ≤ Kabel-Max.
+ *  - Hauptsicherung max. 20 cm nach der Batterie
+ */
+export const collectEdgeErrors = (input: {
+  edgeDomain: 'DC_12V' | 'AC_230V' | 'Solar';
+  data?: CableEdgeData;
+  I: number;
+  maxFuse: number;
+  isPlus: boolean;
+  sourceNodeType?: string;
+  length: number;
+  totalDropPercentage: number;
+}): string[] => {
+  const { edgeDomain, data, I, maxFuse, isPlus, sourceNodeType, length, totalDropPercentage } = input;
+  const errors: string[] = [];
+
+  if (edgeDomain !== 'AC_230V') {
+    if (totalDropPercentage > 3) {
+      errors.push(`Gesamt-Drop! (${totalDropPercentage.toFixed(1)}% > 3%)`);
+    }
+  }
+
+  if (edgeDomain !== 'AC_230V' && isPlus) {
+    if (maxFuse === 0) {
+      errors.push('Keine Empfehlung möglich / Querschnitt prüfen');
+    } else if (!data?.fuseSize) {
+      errors.push('Sicherung fehlt!');
+    } else {
+      if (data.fuseSize > maxFuse) {
+        errors.push('Sicherung zu groß!');
+      }
+      if (data.fuseSize < I) {
+        errors.push('Sicherung zu klein!');
+      }
+    }
+    if (sourceNodeType === 'battery' && length > 0.2) {
+      errors.push('Hauptsicherung nach Batterie max 20cm!');
+    }
+  }
+
+  return errors;
 };
 
 const CableEdge = function ({
@@ -84,9 +109,13 @@ const CableEdge = function ({
   data,
   markerEnd,
   selected,
+  sourceHandleId,
+  targetHandleId,
   sourceHandle,
   targetHandle,
 }: CableEdgeProps) {
+  const resolvedSourceHandle = sourceHandle ?? sourceHandleId;
+  const resolvedTargetHandle = targetHandle ?? targetHandleId;
   const { getNode, getNodes } = useReactFlow();
   const isProMode = useAppStore(state => state.isProMode);
   const [isHovered, setIsHovered] = useState(false);
@@ -123,15 +152,15 @@ const CableEdge = function ({
     });
   }, [sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, isProMode]);
 
-  const isPlus = sourceHandle?.includes('plus');
+  const isPlus = !!resolvedSourceHandle?.includes('plus');
 
-  const { length, crossSection, maxFuse, strokeWidth, animationDuration, I, sourceNode, dropPercentage, edgeDomain } = useMemo(() => {
+  const { length, crossSection, maxFuse, strokeWidth, animationDuration, I, sourceNode, dropPercentage, edgeDomain, sysVoltage } = useMemo(() => {
     const physicalDistance = Math.max(1, Math.sqrt(Math.pow(targetX - sourceX, 2) + Math.pow(targetY - sourceY, 2)) / 100);
     const length = data?.length || physicalDistance;
     const sourceNode = getNode(source);
     const targetNode = getNode(target);
 
-    let edgeDomain = data?.edgeDomain || getEdgeDomain(sourceNode?.type, targetNode?.type, sourceHandle, targetHandle);
+    let edgeDomain = data?.edgeDomain || getEdgeDomain(sourceNode?.type, targetNode?.type, resolvedSourceHandle, resolvedTargetHandle);
     if (sourceNode?.type === 'solar' || targetNode?.type === 'solar' || sourceNode?.type === 'roofSolar' || targetNode?.type === 'roofSolar') {
       edgeDomain = 'Solar' as any;
     }
@@ -149,10 +178,11 @@ const CableEdge = function ({
         sourceNode,
         dropPercentage: 0,
         edgeDomain,
+        sysVoltage: 230,
       };
     }
 
-    const I = calculateCurrent(sourceNode, targetNode, getNodes);
+    const I = calculateEdgeCurrent(sourceNode, targetNode, getNodes(), getSystemVoltage(getNodes()));
     const cs = calculateCrossSection(I, length, data?.crossSection, 'DC_12V');
     const mf = calculateMaxFuse(cs);
     const sw = calculateStrokeWidth(cs);
@@ -172,52 +202,33 @@ const CableEdge = function ({
       sourceNode,
       dropPercentage,
       edgeDomain,
+      sysVoltage,
     };
     // Dependencies include node data, system load, and coordinates to force re-calc when anything relevant changes including moves
-  }, [getNode, getNodes, data?.length, data?.crossSection, data?.edgeDomain, source, target, sNodeData, tNodeData, systemLoad, sourceX, sourceY, targetX, targetY, sourceHandle, targetHandle]);
+  }, [getNode, getNodes, data?.length, data?.crossSection, data?.edgeDomain, source, target, sNodeData, tNodeData, systemLoad, sourceX, sourceY, targetX, targetY, resolvedSourceHandle, resolvedTargetHandle]);
 
-  const totalDropPercentage = dropPercentage + cumulativeDrop;
+  // calculatePathVoltageDrop returns volts; convert to % before adding to this edge's drop %
+  const pathDropPercentage = sysVoltage > 0 ? (cumulativeDrop / sysVoltage) * 100 : 0;
+  const totalDropPercentage = dropPercentage + pathDropPercentage;
 
-  const errors: string[] = [];
-  
-  if (edgeDomain !== 'AC_230V') {
-    if (totalDropPercentage > 2) {
-      errors.push(`Gesamt-Drop! (${totalDropPercentage.toFixed(1)}% > 2%)`);
-    }
-  }
+  const errors = collectEdgeErrors({
+    edgeDomain,
+    data,
+    I,
+    maxFuse,
+    isPlus,
+    sourceNodeType: sourceNode?.type,
+    length,
+    totalDropPercentage,
+  });
 
-  let stroke = selected ? '#9ca3af' : (edgeDomain === 'AC_230V' ? '#ef4444' : (edgeDomain === 'Solar' as any ? '#f59e0b' : '#3b82f6'));
-  if (selected) {
-    stroke = '#9ca3af';
-  } else if (edgeDomain === 'AC_230V') {
-    stroke = '#ef4444'; // Rot/Gelb gestreift theoretisch, aber wir nutzen Warn-Rot laut Spezifikation
-  } else if (edgeDomain === 'Solar' as any) {
-    stroke = '#f59e0b';
-  } else {
-    stroke = '#3b82f6';
-  }
-
-  if (edgeDomain !== 'AC_230V' && totalDropPercentage > 2) {
-    stroke = '#ef4444'; // strict red for > 2%
-  }
-
-  if (edgeDomain !== 'AC_230V' && isPlus) {
-    if (maxFuse === 0) {
-      errors.push('Keine Empfehlung möglich / Querschnitt prüfen');
-    } else if (!data?.fuseSize) {
-      errors.push('Sicherung fehlt!');
-    } else {
-      if (data.fuseSize > maxFuse) {
-        errors.push('Sicherung zu groß!');
-      }
-      if (data.fuseSize < I) {
-        errors.push('Sicherung zu klein!');
-      }
-    }
-    if (sourceNode?.type === 'battery' && length > 0.2) {
-      errors.push('Hauptsicherung nach Batterie max 20cm!');
-    }
-  }
+  // Zentrale, token-basierte Kodierung (DC / AC / Solar / Auswahl / Fehler)
+  const hasDropError = edgeDomain !== 'AC_230V' && totalDropPercentage > 3;
+  const stroke = getWireColor({
+    selected: !!selected,
+    edgeDomain: edgeDomain as WireDomain,
+    hasError: hasDropError,
+  });
 
   return (
     <>
@@ -246,33 +257,44 @@ const CableEdge = function ({
         <div
           style={{
             position: 'absolute',
-            transform: `translate(-50%, -50%) translate(${labelX}px,${labelY + (sourceHandle?.includes('minus') ? 40 : -40)}px)`,
-            background: 'white',
+            transform: `translate(-50%, -50%) translate(${labelX}px,${labelY + (resolvedSourceHandle?.includes('minus') ? 40 : -40)}px)`,
+            background: 'var(--bone)',
             padding: '2px 6px',
             borderRadius: '4px',
-            fontSize: '12px',
+            fontSize: '11px',
             fontWeight: 'bold',
-            border: '1px solid #ccc',
+            border: '1px solid var(--rule)',
+            color: 'var(--ink)',
             pointerEvents: 'all',
             display: 'flex',
             flexDirection: 'column',
-            alignItems: 'center'
+            alignItems: 'center',
+            lineHeight: 1.25,
           }}
           className="nodrag nopan"
         >
-          { (selected || isHovered) && <span>{length.toFixed(2)} m</span> }
+          {/* Kern-Werte immer lesbar (auch ohne Klick / auf Touch) */}
+          {edgeDomain === 'AC_230V' ? (
+            <span style={{ color: 'var(--wire-ac)' }}>230V AC</span>
+          ) : (
+            <span>
+              {data?.fuseSize ? `${data.fuseSize}A · ` : ''}{crossSection} mm²
+            </span>
+          )}
+
+          {/* Details bei Auswahl / Hover */}
+          {(selected || isHovered) && <span style={{ fontWeight: 500 }}>{length.toFixed(2)} m</span>}
           {(selected || isHovered) && edgeDomain === 'AC_230V' ? (
             <>
-              <span style={{ color: '#16a34a', fontSize: '10px' }}>3-adrig (L, N, PE)</span>
-              <span style={{ background: '#0284c7', color: 'white', padding: '1px 4px', borderRadius: '4px', fontSize: '10px', marginTop: '2px' }}>RCBO (FI/LS) empfohlen</span>
+              <span style={{ color: 'var(--success)', fontSize: '10px' }}>3-adrig (L, N, PE)</span>
+              <span style={{ background: 'var(--warn-info)', color: 'white', padding: '1px 4px', borderRadius: '4px', fontSize: '10px', marginTop: '2px' }}>RCBO (FI/LS) empfohlen</span>
             </>
           ) : (selected || isHovered) ? (
             <>
-              <span>{crossSection} mm²</span>
-              {maxFuse > 0 && <span style={{ color: 'red', fontSize: '10px' }}>Max: {maxFuse}A</span>}
-              {data?.fuseSize && <span style={{ background: 'green', color: 'white', padding: '1px 4px', borderRadius: '4px', fontSize: '10px', marginTop: '2px' }}>{data.fuseSize}A Sicherung</span>}
+              {maxFuse > 0 && <span style={{ color: 'var(--wire-error)', fontSize: '10px' }}>Max: {maxFuse}A</span>}
+              {data?.fuseSize && <span style={{ background: 'var(--success)', color: 'white', padding: '1px 4px', borderRadius: '4px', fontSize: '10px', marginTop: '2px' }}>{data.fuseSize}A Sicherung</span>}
               {errors.map((err, idx) => (
-                <span key={idx} style={{ background: 'red', color: 'white', padding: '1px 4px', borderRadius: '4px', fontSize: '10px', marginTop: '2px' }}>{err}</span>
+                <span key={idx} style={{ background: 'var(--wire-error)', color: 'white', padding: '1px 4px', borderRadius: '4px', fontSize: '10px', marginTop: '2px' }}>{err}</span>
               ))}
             </>
           ) : null}

@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from 'react';
-import { XCircle, ChevronLeft, ChevronRight, Search, Leaf } from 'lucide-react';
+import { XCircle, Search, Leaf, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePlannerStore } from '../store/usePlannerStore';
 
@@ -43,6 +43,12 @@ const deviceAssistant = [
   { type: 'consumer', label: 'Handyladegerät', watts: 18, category: 'Laden' },
   { type: 'consumer', label: 'Wasserpumpe', watts: 40, category: 'Allgemein' },
 ];
+
+// Die relevanteste Kategorie ist beim ersten Öffnen ausgeklappt, der Rest zu.
+const DEFAULT_OPEN_CATEGORY: Record<'electric' | 'water', string> = {
+  electric: 'Laden',
+  water: 'Wasser',
+};
 
 const handlePointerDown = (e: React.PointerEvent, comp: { type: string, label: string, watts?: number }, onMobileAdd?: () => void) => {
   e.preventDefault();
@@ -102,153 +108,181 @@ interface SidebarProps {
   onMobileAdd?: () => void;
 }
 
+type Comp = { type: string; label: string; category: string; watts?: number };
+
+function ComponentTile({
+  comp,
+  onMobileAdd,
+  accent,
+}: {
+  comp: Comp;
+  onMobileAdd?: () => void;
+  accent: 'default' | 'device';
+}) {
+  return (
+    <div
+      className={cn(
+        'border rounded-xl cursor-grab hover:scale-[1.03] hover:shadow-md transition-all duration-200 text-xs font-semibold shadow-sm touch-none flex flex-col items-center justify-center text-center gap-1.5 p-2.5',
+        accent === 'device'
+          ? 'border-accent-foreground/20 bg-accent text-accent-foreground hover:bg-accent/80'
+          : 'border-border/70 bg-card/90 text-foreground hover:bg-accent/60 hover:border-primary/30'
+      )}
+      onPointerDown={(e) => handlePointerDown(e, comp, onMobileAdd)}
+    >
+      <span className={cn('w-2.5 h-2.5 rounded-full flex-shrink-0', accent === 'device' ? 'bg-copper' : 'bg-moss')} />
+      <span className="line-clamp-2 leading-tight">{comp.label}</span>
+      {comp.watts !== undefined && (
+        <span className="text-[10px] font-mono bg-card px-1.5 py-0.5 rounded text-copper border border-border/50">{comp.watts}W</span>
+      )}
+    </div>
+  );
+}
+
+function CategorySection({
+  title,
+  items,
+  open,
+  onToggle,
+  onMobileAdd,
+  accent,
+}: {
+  title: string;
+  items: Comp[];
+  open: boolean;
+  onToggle: () => void;
+  onMobileAdd?: () => void;
+  accent: 'default' | 'device';
+}) {
+  if (items.length === 0) return null;
+  return (
+    <div className="border border-border/50 rounded-xl overflow-hidden bg-card/40">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        className="w-full flex items-center justify-between px-3 py-2.5 min-h-[44px] text-left hover:bg-accent/40 transition-colors"
+      >
+        <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+          {title} <span className="text-muted-foreground/60">({items.length})</span>
+        </span>
+        <ChevronDown className={cn('w-4 h-4 text-muted-foreground transition-transform', open ? '' : '-rotate-90')} />
+      </button>
+      {open && (
+        <div className="grid grid-cols-2 gap-2 p-3 pt-1">
+          {items.map((comp, index) => (
+            <ComponentTile key={`${comp.type}-${comp.label}-${index}`} comp={comp} onMobileAdd={onMobileAdd} accent={accent} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function Sidebar({ mode = 'electric', onMobileAdd }: SidebarProps) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('Alle');
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [manualOpen, setManualOpen] = useState<Record<string, boolean>>({});
 
   const activeComponents = mode === 'water' ? waterComponents : components;
-  
-  const allCategories = ['Alle', ...Array.from(new Set([
-    ...activeComponents.map(c => c.category),
-    ...(mode === 'electric' ? deviceAssistant.map(c => c.category) : [])
-  ]))];
+  const isSearching = searchTerm.trim().length > 0;
 
-  const filteredComponents = activeComponents.filter(c => {
-    const matchesSearch = c.label.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCat = selectedCategory === 'Alle' || c.category === selectedCategory;
-    return matchesSearch && matchesCat;
-  });
+  const matches = (label: string) => label.toLowerCase().includes(searchTerm.toLowerCase());
 
-  const filteredDevices = mode === 'electric' ? deviceAssistant.filter(c => {
-    const matchesSearch = c.label.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCat = selectedCategory === 'Alle' || c.category === selectedCategory;
-    return matchesSearch && matchesCat;
-  }) : [];
+  const filteredComponents = activeComponents.filter(c => matches(c.label));
+  const filteredDevices = mode === 'electric' ? deviceAssistant.filter(c => matches(c.label)) : [];
+
+  // Bauteile nach Kategorie gruppieren (Reihenfolge des ersten Auftretens)
+  const componentCategories: string[] = [];
+  const componentsByCategory: Record<string, Comp[]> = {};
+  for (const c of filteredComponents) {
+    if (!componentsByCategory[c.category]) {
+      componentsByCategory[c.category] = [];
+      componentCategories.push(c.category);
+    }
+    componentsByCategory[c.category].push(c);
+  }
+
+  const defaultOpen = DEFAULT_OPEN_CATEGORY[mode];
+
+  // Beim Suchen sind alle Treffer sichtbar; sonst nur die relevanteste Kategorie
+  // plus alles, was der Nutzer manuell aufgeklappt hat.
+  const isCatOpen = (cat: string) => {
+    if (isSearching) return true;
+    if (cat in manualOpen) return manualOpen[cat];
+    return cat === defaultOpen;
+  };
+
+  const toggleCat = (cat: string) =>
+    setManualOpen(prev => ({ ...prev, [cat]: !(cat in prev ? prev[cat] : cat === defaultOpen) }));
+
+  const devicesOpen = isSearching ? true : (manualOpen['__devices'] ?? false);
+  const hasAnyResult = filteredComponents.length > 0 || filteredDevices.length > 0;
 
   return (
     <aside
-      className={cn(
-        "bg-gradient-to-b from-stone-50 to-amber-50/30 border-r border-border/80 flex flex-col h-full transition-all duration-300 relative",
-        isCollapsed ? "w-full md:w-12" : "w-full md:w-64"
-      )}
+      className="bg-gradient-to-b from-paper to-accent/30 border-r border-border/80 flex flex-col h-full w-full md:w-64 transition-all duration-300 relative"
       style={{ willChange: 'transform', backfaceVisibility: 'hidden' }}
     >
-      {/* Collapse Toggle Button */}
-      <button
-        onClick={() => setIsCollapsed(!isCollapsed)}
-        className="absolute -right-3 top-14 z-10 bg-card border border-border rounded-full p-0.5 shadow-sm hover:bg-stone-50 transition-colors text-muted-foreground hidden md:flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
-        aria-expanded={!isCollapsed}
-        aria-label={isCollapsed ? "Sidebar ausklappen" : "Sidebar einklappen"}
-      >
-        {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
-      </button>
-
-      <div className={cn("border-b border-border/60 bg-gradient-to-r from-stone-100 to-emerald-50/40", isCollapsed ? "p-2 flex justify-center" : "p-4")}>
+      <div className="border-b border-border/60 bg-gradient-to-r from-accent/60 to-accent/20 p-4">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-sm flex-shrink-0">
+          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-moss to-oxide flex items-center justify-center shadow-sm flex-shrink-0">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" className="w-4 h-4">
               <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z" />
             </svg>
           </div>
-          {!isCollapsed && (
-            <h2 className="text-base font-black text-card-foreground tracking-tight">
-              Komponenten
-            </h2>
+          <h2 className="text-base font-black text-card-foreground tracking-tight">
+            Komponenten
+          </h2>
+        </div>
+      </div>
+
+      <div className="p-4 border-b border-border/50">
+        <div className="relative group flex items-center">
+          <label htmlFor="search-input" className="sr-only">Suchen</label>
+          <Search size={16} className="absolute left-3 text-muted-foreground" />
+          <input
+            id="search-input"
+            type="text"
+            placeholder="Suchen..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full border border-border rounded-xl pl-9 pr-8 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40 focus:border-ring transition-all bg-card/80 text-foreground placeholder:text-muted-foreground shadow-sm"
+          />
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm('')}
+              className="absolute right-2 text-muted-foreground hover:text-destructive transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-full"
+              aria-label="Filter zurücksetzen"
+            >
+              <XCircle size={16} />
+            </button>
           )}
         </div>
       </div>
 
-      {!isCollapsed && (
-        <div className="p-4 border-b border-border/50 space-y-3">
-          <div className="relative group flex items-center">
-            <label htmlFor="search-input" className="sr-only">Suchen</label>
-            <Search size={16} className="absolute left-3 text-stone-400" />
-            <input
-              id="search-input"
-              type="text"
-              placeholder="Suchen..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full border border-border rounded-xl pl-9 pr-8 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-400 transition-all bg-card/80 text-stone-700 placeholder:text-stone-400 shadow-sm"
-            />
-            {searchTerm && (
-              <button
-                onClick={() => setSearchTerm('')}
-                className="absolute right-2 text-stone-400 hover:text-rose-500 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-1 rounded-full"
-                aria-label="Filter zurücksetzen"
-              >
-                <XCircle size={16} />
-              </button>
-            )}
-          </div>
-          
-          {/* Category Filter */}
-          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-            {allCategories.map(cat => (
-              <button
+      <div className="flex-1 overflow-y-auto pb-4 pt-4 px-4">
+        {hasAnyResult ? (
+          <div className="flex flex-col gap-3">
+            {componentCategories.map((cat) => (
+              <CategorySection
                 key={cat}
-                onClick={() => setSelectedCategory(cat)}
-                aria-pressed={selectedCategory === cat}
-                className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-colors border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1 ${selectedCategory === cat ? 'bg-emerald-500 text-white border-emerald-600' : 'bg-card text-foreground border-border hover:border-emerald-300 hover:bg-emerald-50'}`}
-              >
-                {cat}
-              </button>
+                title={cat}
+                items={componentsByCategory[cat]}
+                open={isCatOpen(cat)}
+                onToggle={() => toggleCat(cat)}
+                onMobileAdd={onMobileAdd}
+                accent="default"
+              />
             ))}
-          </div>
-        </div>
-      )}
-
-      <div className={cn("flex-1 overflow-y-auto pb-4 pt-4", isCollapsed ? "px-1.5" : "px-4")}>
-        {filteredComponents.length > 0 || filteredDevices.length > 0 ? (
-          <div className="flex flex-col gap-6">
-            {filteredComponents.length > 0 && (
-              <div>
-                {!isCollapsed && <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Bauteile</h3>}
-                <div className={cn("grid gap-2", isCollapsed ? "grid-cols-1" : "grid-cols-2")}>
-                  {filteredComponents.map((comp, index) => (
-                    <div
-                      key={index}
-                      title={isCollapsed ? comp.label : undefined}
-                      className={cn(
-                        "border border-border/70 rounded-xl cursor-grab hover:bg-accent/60 hover:border-primary/30 hover:scale-[1.03] hover:shadow-md transition-all duration-200 text-xs font-semibold text-stone-700 bg-card/90 shadow-sm touch-none flex items-center justify-center text-center",
-                        isCollapsed ? "p-3 w-8 h-8 mx-auto rounded-full" : "p-2.5 flex-col gap-1.5"
-                      )}
-                      onPointerDown={(e) => handlePointerDown(e, comp, onMobileAdd)}
-                    >
-                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 flex-shrink-0" />
-                      {!isCollapsed && <span className="line-clamp-2">{comp.label}</span>}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
 
             {mode === 'electric' && filteredDevices.length > 0 && (
-              <div>
-                {!isCollapsed && <h3 className="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-3">Verbraucher</h3>}
-                <div className={cn("grid gap-2", isCollapsed ? "grid-cols-1" : "grid-cols-2")}>
-                  {filteredDevices.map((comp, index) => (
-                    <div
-                      key={`device-${index}`}
-                      title={isCollapsed ? `${comp.label} (${comp.watts}W)` : undefined}
-                      className={cn(
-                        "border border-emerald-200 rounded-xl cursor-grab hover:bg-emerald-100 hover:border-emerald-400 hover:scale-[1.03] hover:shadow-md transition-all duration-200 text-xs font-semibold text-emerald-900 bg-emerald-50 shadow-sm touch-none flex items-center justify-center text-center",
-                        isCollapsed ? "p-3 w-8 h-8 mx-auto rounded-full" : "p-2.5 flex-col gap-1.5"
-                      )}
-                      onPointerDown={(e) => handlePointerDown(e, comp)}
-                    >
-                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 flex-shrink-0" />
-                      {!isCollapsed && (
-                        <>
-                          <span className="line-clamp-2 leading-tight">{comp.label}</span>
-                          <span className="text-[10px] font-mono bg-card px-1.5 py-0.5 rounded text-emerald-700 border border-emerald-100">{comp.watts}W</span>
-                        </>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <CategorySection
+                title="Verbraucher"
+                items={filteredDevices}
+                open={devicesOpen}
+                onToggle={() => setManualOpen(prev => ({ ...prev, __devices: !(prev['__devices'] ?? false) }))}
+                onMobileAdd={onMobileAdd}
+                accent="device"
+              />
             )}
           </div>
         ) : (
@@ -256,8 +290,8 @@ export function Sidebar({ mode = 'electric', onMobileAdd }: SidebarProps) {
             <div className="text-3xl">🌿</div>
             <p>Keine Treffer für &quot;{searchTerm}&quot;</p>
             <button
-              onClick={() => { setSearchTerm(''); setSelectedCategory('Alle'); }}
-              className="text-emerald-700 hover:text-emerald-800 font-semibold text-xs border border-emerald-200 hover:border-emerald-300 bg-emerald-50 hover:bg-emerald-100 rounded-lg px-3 py-1.5 transition-all"
+              onClick={() => { setSearchTerm(''); }}
+              className="text-oxide hover:text-moss font-semibold text-xs border border-border hover:border-moss/40 bg-accent hover:bg-accent/70 rounded-lg px-3 py-1.5 transition-all"
             >
               Filter zurücksetzen
             </button>
@@ -265,10 +299,10 @@ export function Sidebar({ mode = 'electric', onMobileAdd }: SidebarProps) {
         )}
       </div>
 
-      <div className={cn("border-t border-border/60 bg-gradient-to-r from-emerald-50/40 to-amber-50/40 flex justify-center", isCollapsed ? "py-3 px-1" : "px-4 py-3")}>
-        <div className="text-[10px] text-stone-400 font-medium flex items-center gap-2">
-          <Leaf size={isCollapsed ? 18 : 14} className="text-emerald-500" />
-          {!isCollapsed && <span>Ziehe Komponenten auf die Arbeitsfläche</span>}
+      <div className="border-t border-border/60 bg-gradient-to-r from-accent/40 to-accent/20 flex justify-center px-4 py-3">
+        <div className="text-[10px] text-muted-foreground font-medium flex items-center gap-2">
+          <Leaf size={14} className="text-moss" />
+          <span>Ziehe Komponenten auf die Arbeitsfläche</span>
         </div>
       </div>
     </aside>

@@ -10,20 +10,20 @@ describe('HolzausbauGuide Component', () => {
     // Check if the main h1 heading is present
     const mainHeading = screen.getByRole('heading', { level: 1 });
     expect(mainHeading).toBeInTheDocument();
-    expect(mainHeading).toHaveTextContent('Camper Holzausbau nach dem BEDMAS-Prinzip');
+    expect(mainHeading).toHaveTextContent('Holzausbau nach BEDMAS');
   });
 
   it('renders all 6 BEDMAS section headings', () => {
     render(<HolzausbauGuide />);
 
-    // Define the expected section headings
+    // Define the expected section headings (number + German step title)
     const expectedHeadings = [
-      '1. Bulkhead removal and base prep (Trennwand entfernen, Rost behandeln)',
-      '2. Electrical planning and rough-in (Kabel ziehen vor der Isolation)',
-      '3. Doors, windows, and roof vents (Löcher in die Karosserie schneiden)',
-      '4. More metalwork and mounting points (Verstärkungen für schwere Möbel anbringen)',
-      '5. Appliances and plumbing systems (Wassertanks und Geräte installieren)',
-      '6. Structure, walls, and interior finish (Wandverkleidung und Möbelbau)'
+      '01 Trennwand entfernen, Rost behandeln',
+      '02 Kabel ziehen vor der Isolation',
+      '03 Löcher in die Karosserie schneiden',
+      '04 Verstärkungen für schwere Möbel anbringen',
+      '05 Wassertanks und Geräte installieren',
+      '06 Wandverkleidung und Möbelbau',
     ];
 
     // Check if all expected h2 headings are present
@@ -42,7 +42,7 @@ describe('HolzausbauGuide Component', () => {
     render(<HolzausbauGuide />);
 
     // Check if the intro text is present
-    const introText = screen.getByText(/Ein professioneller und effizienter Camper-Ausbau erfordert eine gut durchdachte Reihenfolge/i);
+    const introText = screen.getByText(/Reihenfolge: entkernen, Kabel, Luken, Verankerung, Wasser, dann Holz/i);
     expect(introText).toBeInTheDocument();
   });
 });

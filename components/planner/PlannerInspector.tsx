@@ -12,11 +12,13 @@ export function PlannerInspector() {
     nodes,
     waterNodes,
     edges,
+    waterEdges,
     season,
     selectedNodes,
     selectedEdges,
     handleChangeLength,
     handleChangeCrossSection,
+    handleChangeFuseSize,
     deleteSelected,
     updateNodeData,
     isInspectorOpen,
@@ -25,11 +27,13 @@ export function PlannerInspector() {
     nodes: state.nodes,
     waterNodes: state.waterNodes,
     edges: state.edges,
+    waterEdges: state.waterEdges,
     season: state.season,
     selectedNodes: state.selectedNodes,
     selectedEdges: state.selectedEdges,
     handleChangeLength: state.handleChangeLength,
     handleChangeCrossSection: state.handleChangeCrossSection,
+    handleChangeFuseSize: state.handleChangeFuseSize,
     deleteSelected: state.deleteSelected,
     updateNodeData: state.updateNodeData,
     isInspectorOpen: state.isInspectorOpen,
@@ -41,7 +45,7 @@ export function PlannerInspector() {
   const selectedEdgeId = selectedEdges.length > 0 ? selectedEdges[0].id : null;
   const selectedNodeId = selectedNodes.length > 0 ? selectedNodes[0].id : null;
 
-  const selectedEdge = edges.find((e) => e.id === selectedEdgeId) || null;
+  const selectedEdge = edges.find((e) => e.id === selectedEdgeId) || waterEdges?.find((e) => e.id === selectedEdgeId) || null;
   const selectedNode = nodes.find((n) => n.id === selectedNodeId) || waterNodes.find((n) => n.id === selectedNodeId) || null;
 
   const metrics = useDashboardMetrics(nodes, edges, season, calculatedSolarWatts);
@@ -52,8 +56,8 @@ export function PlannerInspector() {
         variant="outline"
         size="icon"
         onClick={toggleInspector}
-        className="absolute top-1/2 -translate-y-1/2 z-50 shadow-md transition-all duration-300 h-10 w-10 md:h-8 md:w-8 flex items-center justify-center bg-white border-gray-200"
-        style={{ right: isInspectorOpen ? 'calc(250px + 0.75rem)' : '0.75rem' }}
+        className="absolute top-1/2 -translate-y-1/2 z-50 shadow-md transition-all duration-300 h-8 w-8 hidden lg:flex items-center justify-center bg-white border-gray-200"
+        style={{ right: isInspectorOpen ? 'calc(250px - 1rem)' : '0.75rem' }}
         title={isInspectorOpen ? "Inspector einklappen" : "Inspector ausklappen"}
         aria-label={isInspectorOpen ? "Rechte Sidebar einklappen" : "Rechte Sidebar ausklappen"}
         aria-expanded={isInspectorOpen}
@@ -63,7 +67,7 @@ export function PlannerInspector() {
 
       <div
         className={`transition-all duration-300 ease-in-out relative z-40 h-full flex-shrink-0 shadow-lg bg-card border-l border-border overflow-hidden ${
-          isInspectorOpen ? 'w-[250px]' : 'w-0'
+          isInspectorOpen ? 'w-full lg:w-[250px]' : 'w-0'
         }`}
       >
         <div className="w-full h-full">
@@ -72,6 +76,7 @@ export function PlannerInspector() {
             selectedNode={selectedNode}
             onChangeLength={handleChangeLength}
             onChangeCrossSection={handleChangeCrossSection}
+            onChangeFuseSize={handleChangeFuseSize}
             onDelete={deleteSelected}
             onUpdateNodeData={updateNodeData}
             edges={edges}
