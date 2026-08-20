@@ -385,7 +385,7 @@ function getEdgeErrors(nodes: Node[], edges: Edge<CableEdgeData>[], edge: Edge<C
   const totalDropPercentage = ((ownDrop + pathDrop) / sysVoltage) * 100;
 
   return collectEdgeErrors({
-    edgeDomain: edge.data?.edgeDomain === 'AC_230V' ? 'AC_230V' : 'DC_12V',
+    edgeDomain: (edge.data?.edgeDomain as string) === 'AC_230V' ? 'AC_230V' : 'DC_12V',
     data: edge.data,
     I,
     maxFuse,

@@ -51,7 +51,7 @@ jobs:
         run: npm ci --prefer-offline
 
       - name: 🔎 TypeScript check
-        run: npx tsc --noEmit
+        run: npx tsc --noEmit -p tsconfig.typecheck.json
 
   # ╔═══════════════════════════════════════════════════════════════╗
   # ║  JOB 2: Unit Tests  (runs in parallel with typecheck)        ║
