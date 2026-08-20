@@ -9,6 +9,14 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/elektrik-planung',
 }));
 
+// Mock next/dynamic to resolve PlannerInner synchronously in test environment
+vi.mock('next/dynamic', () => ({
+  default: () => {
+    const PlannerInner = require('./PlannerInner').default;
+    return PlannerInner;
+  },
+}));
+
 // Mock the child components to simplify testing
 vi.mock('./planner/PlannerSidebar', () => ({
   PlannerSidebar: () => <div data-testid="planner-sidebar">PlannerSidebar</div>,
