@@ -29,9 +29,9 @@ describe('electrical safety refactoring tests', () => {
     expect(FUSE_MAP[70.0]).toBe(160);
   });
 
-  it('should return 0 fallback for non-existing cross sections in calculateMaxFuse', () => {
-    expect(calculateMaxFuse(99.0)).toBe(0);
-    expect(calculateMaxFuse(12.0)).toBe(0);
+  it('should throw RangeError for unknown cross sections in calculateMaxFuse', () => {
+    expect(() => calculateMaxFuse(99.0)).toThrow(RangeError);
+    expect(() => calculateMaxFuse(12.0)).toThrow(RangeError);
   });
 
   it('should calculate lookupThermalCrossSection using (1 / DERATE_FACTOR)', () => {
