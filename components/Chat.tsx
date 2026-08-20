@@ -1,131 +1,65 @@
 "use client";
 
-import React, { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { useChat } from "@ai-sdk/react";
-import { UIMessage } from "ai";
-import { Send, X } from "lucide-react";
+import React, { useEffect, useRef, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { useChat } from '@ai-sdk/react';
+import { UIMessage } from 'ai';
+import { Send, X, MessageCircle } from 'lucide-react';
 
-interface ChatMessage {
-  id: string;
-  text: string;
-  sender: "user" | "assistant";
-  timestamp: Date;
-}
-
-const ChatInputForm = ({
-  input,
-  setInput,
-  onSubmit,
-  isLoading,
-}: {
-  input: string;
-  setInput: (value: string) => void;
-  onSubmit: (e: React.FormEvent) => void;
-  isLoading: boolean;
-}) => (
-  <form onSubmit={onSubmit} className="flex gap-2 p-4 border-t border-border">
-    <Input
-      value={input}
-      onChange={(e) => setInput(e.target.value)}
-      placeholder="Schreib deine Nachricht..."
-      disabled={isLoading}
-      className="flex-1"
-    />
-    <Button
-      type="submit"
-      disabled={isLoading || !input.trim()}
-      size="sm"
-      className="gap-2"
-    >
-      <Send size={16} />
-      {isLoading ? "Wird gesendet..." : "Senden"}
-    </Button>
-  </form>
-);
-
-const getMessageText = (message: UIMessage) => {
-  return (
-    message.parts?.find((part) => part?.type === "text" || part?.type === "reasoning")?.text ??
-    ""
-  );
-};
+const getMessageText = (message: UIMessage) => message.parts?.find((part) => part?.type === 'text' || part?.type === 'reasoning')?.text ?? '';
 
 export default function Chat({ defaultOpen = false }: { defaultOpen?: boolean }) {
-  const [input, setInput] = useState("");
-  const { messages, sendMessage, status } = useChat();
+  const [input, setInput] = useState('');
+  const { messages, sendMessage, status, error } = useChat();
   const [isOpen, setIsOpen] = useState(defaultOpen);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const isLoading = status === 'submitted' || status === 'streaming';
 
-  const isLoading = status === "submitted" || status === "streaming";
+  useEffect(() => {
+    if (isOpen) closeRef.current?.focus();
+  }, [isOpen]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
     if (!input.trim()) return;
-
     await sendMessage({ text: input });
-    setInput("");
+    setInput('');
   };
 
   if (!isOpen) {
     return (
-      <button
-        onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 h-16 w-16 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-all flex items-center justify-center"
-        aria-label="Chat öffnen"
-      >
-        💬
+      <button ref={triggerRef} type="button" onClick={() => setIsOpen(true)} className="fixed bottom-6 left-6 z-40 flex h-14 min-w-14 items-center justify-center gap-2 rounded-full bg-blue-800 px-4 text-white shadow-lg transition-colors hover:bg-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" aria-label="KI-Hilfe öffnen">
+        <MessageCircle className="h-6 w-6" /><span className="hidden xl:inline">KI-Hilfe</span>
       </button>
     );
   }
 
   return (
-    <div className="fixed bottom-6 right-6 w-96 h-[600px] bg-white rounded-lg shadow-2xl flex flex-col border border-border z-50">
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-border bg-blue-600 text-white rounded-t-lg">
-        <h2 className="font-semibold">Camper AI Assistent</h2>
-        <button
-          onClick={() => setIsOpen(false)}
-          className="p-1 hover:bg-blue-700 rounded transition-colors"
-          aria-label="Chat schließen"
-        >
-          <X size={20} />
-        </button>
-      </div>
+    <section role="dialog" aria-label="KI-Hilfe" className="fixed bottom-6 left-6 z-50 flex h-[min(600px,80vh)] w-96 max-w-[calc(100vw-2rem)] flex-col rounded-lg border border-border bg-card shadow-2xl">
+      <header className="flex items-center justify-between rounded-t-lg border-b border-blue-900 bg-blue-800 p-4 text-white">
+        <div><h2 className="font-semibold">Camper-KI-Hilfe</h2><p className="text-xs text-blue-100">Allgemeine Hilfe – keine Elektrofreigabe</p></div>
+        <button ref={closeRef} type="button" onClick={() => { setIsOpen(false); window.requestAnimationFrame(() => triggerRef.current?.focus()); }} className="flex h-11 w-11 items-center justify-center rounded hover:bg-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white" aria-label="KI-Hilfe schließen"><X className="h-5 w-5" /></button>
+      </header>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 space-y-4 overflow-y-auto p-4" aria-live="polite">
         {messages.length === 0 ? (
-          <div className="h-full flex items-center justify-center text-muted-foreground text-center">
-            <p>Starte eine Konversation mit dem AI-Assistenten!</p>
+          <div className="flex h-full items-center justify-center text-center text-muted-foreground"><p>Stelle eine Frage zu deinem Ausbau. Sicherheitswarnungen findest du in der Planprüfung.</p></div>
+        ) : messages.map((message) => (
+          <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+            <div className={`max-w-xs rounded-lg px-4 py-2 ${message.role === 'user' ? 'bg-blue-800 text-white' : 'bg-accent text-foreground'}`}>{getMessageText(message as UIMessage)}</div>
           </div>
-        ) : (
-          messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-            >
-              <div
-                className={`max-w-xs px-4 py-2 rounded-lg ${
-                  msg.role === "user"
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-200 text-gray-900"
-                }`}
-              >
-                {getMessageText(msg as UIMessage)}
-              </div>
-            </div>
-          ))
-        )}
+        ))}
+        {isLoading && <p role="status" className="text-sm text-muted-foreground">Antwort wird erstellt …</p>}
+        {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm font-semibold text-red-900">Die KI-Hilfe ist gerade nicht erreichbar. Versuche es später erneut.</p>}
       </div>
 
-      {/* Input */}
-      <ChatInputForm
-        input={input}
-        setInput={setInput}
-        onSubmit={handleSubmit}
-        isLoading={isLoading}
-      />
-    </div>
+      <form onSubmit={handleSubmit} className="flex gap-2 border-t border-border p-4">
+        <label htmlFor="planner-chat-input" className="sr-only">Nachricht an die KI-Hilfe</label>
+        <Input id="planner-chat-input" value={input} onChange={(event) => setInput(event.target.value)} placeholder="Deine Frage …" disabled={isLoading} className="min-h-11 flex-1" />
+        <Button type="submit" disabled={isLoading || !input.trim()} className="min-h-11 gap-2"><Send className="h-4 w-4" /><span className="sr-only sm:not-sr-only">Senden</span></Button>
+      </form>
+    </section>
   );
 }

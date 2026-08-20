@@ -1,56 +1,35 @@
 "use client";
 
 import React, { useMemo } from 'react';
-import { BaseEdge, EdgeProps, getBezierPath, useReactFlow } from 'reactflow';
+import { BaseEdge, EdgeLabelRenderer, EdgeProps, getBezierPath, useReactFlow } from 'reactflow';
 import { PIPE_COLORS } from './utils/edgeColors';
+import { usePlannerStore } from '../../store/usePlannerStore';
 
 export type WaterPipeEdgeData = {
   pipeType?: 'fresh' | 'gray';
+  length?: number;
 };
 
 const WaterPipeEdge = function ({
-  id,
-  source,
-  target,
-  sourceX,
-  sourceY,
-  targetX,
-  targetY,
-  sourcePosition,
-  targetPosition,
-  style = {},
-  data,
-  markerEnd,
-  selected,
+  id, source, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition,
+  style = {}, data, markerEnd, selected,
 }: EdgeProps<WaterPipeEdgeData>) {
   const { getNode } = useReactFlow();
 
-  const [edgePath] = useMemo(() => {
-    return getBezierPath({
-      sourceX,
-      sourceY,
-      sourcePosition,
-      targetX,
-      targetY,
-      targetPosition,
-    });
-  }, [sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition]);
+  const [edgePath, labelX, labelY] = useMemo(() => getBezierPath({
+    sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition,
+  }), [sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition]);
 
-  const strokeColor = useMemo(() => {
+  const isGrayWater = useMemo(() => {
     const sourceNode = getNode(source);
+    if (data?.pipeType === 'gray') return true;
+    if (data?.pipeType === 'fresh') return false;
+    return sourceNode?.type === 'sink' || sourceNode?.type === 'shower' || sourceNode?.type === 'grayWaterTank';
+  }, [getNode, source, data?.pipeType]);
 
-    let isGrayWater = false;
-    if (sourceNode?.type === 'sink' || sourceNode?.type === 'shower' || sourceNode?.type === 'grayWaterTank') {
-      isGrayWater = true;
-    }
-
-    if (data?.pipeType === 'gray') isGrayWater = true;
-    if (data?.pipeType === 'fresh') isGrayWater = false;
-
-    return selected ? PIPE_COLORS.selected : (isGrayWater ? PIPE_COLORS.gray : PIPE_COLORS.fresh);
-  }, [getNode, source, data?.pipeType, selected]);
-
+  const strokeColor = selected ? PIPE_COLORS.selected : (isGrayWater ? PIPE_COLORS.gray : PIPE_COLORS.fresh);
   const strokeWidth = 6;
+  const label = isGrayWater ? 'Abwasser →' : 'Frischwasser →';
 
   return (
     <>
@@ -62,26 +41,40 @@ const WaterPipeEdge = function ({
           ...style,
           strokeWidth,
           stroke: strokeColor,
+          strokeDasharray: isGrayWater ? '10 6' : undefined,
           transition: 'stroke-width 0.3s ease, stroke 0.3s ease',
           cursor: 'pointer',
         }}
       />
-      <circle r={strokeWidth / 2} fill="#ffffff" opacity={0.7}>
-        <animateMotion
-          dur="2s"
-          repeatCount="indefinite"
-          path={edgePath}
-        />
+      <circle className="planner-flow-particle" r={strokeWidth / 2} fill="var(--bone)" opacity={0.85} aria-hidden="true">
+        <animateMotion dur="2s" repeatCount="indefinite" path={edgePath} />
       </circle>
+      <EdgeLabelRenderer>
+        <div
+          className="nodrag nopan rounded border border-border bg-card px-2 py-1 text-xs font-bold text-foreground shadow-sm"
+          style={{ position: 'absolute', transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`, pointerEvents: 'all' }}
+        >
+          {label}{data?.length ? ` · ${data.length.toFixed(1)} m` : ''}
+        </div>
+      </EdgeLabelRenderer>
       <path
-        id={id + '_interaction'}
+        id={`${id}_interaction`}
         d={edgePath}
         fill="none"
         strokeOpacity={0}
-        strokeWidth={20}
+        strokeWidth={24}
         style={{ cursor: 'pointer' }}
-      >
-      </path>
+        role="button"
+        tabIndex={0}
+        aria-label={`${label.replace(' →', '')}-Rohr${data?.length ? `, ${data.length.toFixed(1)} Meter` : ''}`}
+        onClick={() => usePlannerStore.getState().focusElement(id, 'edge')}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            usePlannerStore.getState().focusElement(id, 'edge');
+          }
+        }}
+      />
     </>
   );
 };

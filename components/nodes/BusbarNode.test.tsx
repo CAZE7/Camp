@@ -40,7 +40,7 @@ describe('BusbarNode Component', () => {
 
   it('renders default label when no label is provided', () => {
     render(<BusbarNode id="1" data={{}} />);
-    expect(screen.getByText('Main Busbar')).toBeInTheDocument();
+    expect(screen.getByText('Sammelschiene')).toBeInTheDocument();
   });
 
   it('renders custom label when provided in data', () => {
@@ -140,7 +140,7 @@ describe('BusbarNode Component', () => {
       expect(mockUpdateNodeData).toHaveBeenCalledWith('test-1', { rating: 300 });
     });
 
-    it('updates data to 0 for rating on blur if input is not a number', () => {
+    it('rejects an invalid rating on blur', () => {
       render(<BusbarNode id="test-1" data={{ rating: 100 }} isConnectable={true} />);
 
       const ratingDiv = screen.getByText('Max Strom: 100 A');
@@ -151,7 +151,7 @@ describe('BusbarNode Component', () => {
       fireEvent.change(input, { target: { value: 'invalid' } });
       fireEvent.blur(input);
 
-      expect(mockUpdateNodeData).toHaveBeenCalledWith('test-1', { rating: 0 });
+      expect(mockUpdateNodeData).not.toHaveBeenCalled();
     });
   });
 });

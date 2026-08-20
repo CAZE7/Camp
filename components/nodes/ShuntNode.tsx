@@ -18,7 +18,14 @@ const ShuntNode = function({ id, data, isConnectable, selected }: NodeProps<Plan
     if (editingField) {
       let finalValue: any = tempValue;
       if (editingField !== 'label' && editingField !== 'chemistry') {
-        finalValue = Number(tempValue) || 0;
+        const parsed = Number(tempValue);
+        const allowsZero = editingField === 'hours';
+        if (!Number.isFinite(parsed) || parsed < 0 || (!allowsZero && parsed === 0)) {
+          window.dispatchEvent(new CustomEvent('planner-input-error', { detail: allowsZero ? 'Gib eine Zahl ab 0 ein.' : 'Der Wert muss größer als 0 sein.' }));
+          setEditingField(null);
+          return;
+        }
+        finalValue = parsed;
       }
       updateNodeData(id, { [editingField]: finalValue });
     }
@@ -32,18 +39,18 @@ const ShuntNode = function({ id, data, isConnectable, selected }: NodeProps<Plan
   };
 
   return (
-    <div className={`hover:scale-105 transition-all custom-drag-handle bg-white border-2 border-stone-500 rounded-md p-3 shadow-md w-48 ${selected ? " ring-4 ring-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.6)]" : ""}`}>
+    <div role="group" aria-label={`${data.label || 'Batteriemonitor mit Shunt'}. Komponente im Plan.`} className={`hover:scale-105 transition-all custom-drag-handle bg-white border-2 border-stone-500 rounded-md p-3 shadow-md w-48 ${selected ? " ring-4 ring-blue-500 shadow-xl" : ""}`}>
       {editingField === 'label' ? (
         <input
           autoFocus
-          className="font-bold mb-2 text-sm text-center w-full border border-blue-500 rounded px-1"
+          className="min-h-11 font-bold mb-2 text-sm text-center w-full border border-blue-500 rounded px-1"
           value={tempValue}
           onChange={(e) => setTempValue(e.target.value)}
           onBlur={handleBlur}
           onKeyDown={handleKeyDown}
         />
       ) : (
-        <div className="font-bold mb-2 text-sm text-center cursor-text" onDoubleClick={() => handleDoubleClick('label', data.label || 'Smart Shunt')}>{data.label || 'Smart Shunt'}</div>
+        <div className="font-bold mb-2 text-sm text-center cursor-text" onDoubleClick={() => handleDoubleClick('label', data.label || 'Batteriemonitor (Shunt)')}>{data.label || 'Batteriemonitor (Shunt)'}</div>
       )}
       <div className="flex flex-col gap-1 text-xs text-gray-600">
         <div>Batteriemonitor</div>

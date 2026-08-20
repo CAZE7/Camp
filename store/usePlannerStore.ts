@@ -1,11 +1,18 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { addEdge, applyNodeChanges, applyEdgeChanges } from 'reactflow';
 import { getLayoutedElements } from '../components/planner/utils/layout';
 import React from 'react';
 import { Node, Edge, Connection } from 'reactflow';
-import { initialNodes, initialEdges } from '../components/planner/constants';
 import { CableEdgeData } from '../components/edges/CableEdge';
 import { PlannerNodeData } from '../components/nodes/types';
+
+type GraphSnapshot = {
+  nodes: Node[];
+  edges: Edge<CableEdgeData>[];
+  waterNodes: Node[];
+  waterEdges: Edge[];
+};
 
 interface PlannerState {
   viewMode: 'electric' | 'water';
@@ -71,6 +78,14 @@ interface PlannerState {
   calculatePathVoltageDrop: (targetNodeId: string, customNodes?: Node[], customEdges?: Edge[]) => number;
   isLayoutPending: boolean;
   setIsLayoutPending: (pending: boolean) => void;
+
+  historyPast: GraphSnapshot[];
+  historyFuture: GraphSnapshot[];
+  undo: () => void;
+  redo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
+  clearPlan: () => void;
 }
 
 import { TEMPLATES_DICT } from '../components/planner/templates';
@@ -120,30 +135,62 @@ function getNodeMap(currentNodes: Node[], currentWaterNodes: Node[]): Map<string
   return combined;
 }
 
-export const usePlannerStore = create<PlannerState>((set, get) => ({
+const HISTORY_LIMIT = 50;
+
+function graphSnapshot(state: Pick<PlannerState, 'nodes' | 'edges' | 'waterNodes' | 'waterEdges'>): GraphSnapshot {
+  return {
+    nodes: state.nodes,
+    edges: state.edges,
+    waterNodes: state.waterNodes,
+    waterEdges: state.waterEdges,
+  };
+}
+
+function withHistory<T extends Partial<PlannerState>>(state: PlannerState, update: T): T & Pick<PlannerState, 'historyPast' | 'historyFuture' | 'canUndo' | 'canRedo'> {
+  return {
+    ...update,
+    historyPast: [...state.historyPast.slice(-(HISTORY_LIMIT - 1)), graphSnapshot(state)],
+    historyFuture: [],
+    canUndo: true,
+    canRedo: false,
+  };
+}
+
+export const usePlannerStore = create<PlannerState>()(
+  persist(
+    (set, get) => ({
   viewMode: 'electric',
-  setViewMode: (mode) => set({ viewMode: mode }),
+  setViewMode: (mode) => set((state) => ({
+    viewMode: mode,
+    selectedNodes: [],
+    selectedEdges: [],
+    firstTappedHandle: null,
+    nodes: state.nodes.map((node) => node.selected ? { ...node, selected: false } : node),
+    edges: state.edges.map((edge) => edge.selected ? { ...edge, selected: false } : edge),
+    waterNodes: state.waterNodes.map((node) => node.selected ? { ...node, selected: false } : node),
+    waterEdges: state.waterEdges.map((edge) => edge.selected ? { ...edge, selected: false } : edge),
+  })),
 
   isSidebarOpen: true,
   setSidebarOpen: (isOpen) => set({ isSidebarOpen: isOpen }),
   toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
 
-  isInspectorOpen: true,
+  isInspectorOpen: false,
   setInspectorOpen: (isOpen) => set({ isInspectorOpen: isOpen }),
   toggleInspector: () => set((state) => ({ isInspectorOpen: !state.isInspectorOpen })),
 
   systemMessage: null,
   setSystemMessage: (msg) => set({ systemMessage: msg }),
 
-  nodes: initialNodes,
-  edges: initialEdges,
-  setNodes: (update) => set({ nodes: typeof update === 'function' ? update(get().nodes) : update }),
-  setEdges: (update) => set({ edges: typeof update === 'function' ? update(get().edges) : update }),
+  nodes: [],
+  edges: [],
+  setNodes: (update) => set((state) => withHistory(state, { nodes: typeof update === 'function' ? update(state.nodes) : update })),
+  setEdges: (update) => set((state) => withHistory(state, { edges: typeof update === 'function' ? update(state.edges) : update })),
 
   waterNodes: [],
   waterEdges: [],
-  setWaterNodes: (update) => set({ waterNodes: typeof update === 'function' ? update(get().waterNodes) : update }),
-  setWaterEdges: (update) => set({ waterEdges: typeof update === 'function' ? update(get().waterEdges) : update }),
+  setWaterNodes: (update) => set((state) => withHistory(state, { waterNodes: typeof update === 'function' ? update(state.waterNodes) : update })),
+  setWaterEdges: (update) => set((state) => withHistory(state, { waterEdges: typeof update === 'function' ? update(state.waterEdges) : update })),
 
   season: 'summer',
   setSeason: (season) => set({ season }),
@@ -157,6 +204,11 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
   isLayoutPending: false,
   setIsLayoutPending: (pending) => set({ isLayoutPending: pending }),
 
+  historyPast: [],
+  historyFuture: [],
+  canUndo: false,
+  canRedo: false,
+
   selectedNodes: [],
   selectedEdges: [],
   setSelectedNodes: (nodes) => set({ selectedNodes: nodes }),
@@ -169,14 +221,19 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
       if (change.type === 'remove') deletedNodeIds.add(change.id);
     }
     if (deletedNodeIds.size > 0) {
-      return {
+      return withHistory(state, {
         nodes: newNodes,
         edges: state.edges.filter(e => !deletedNodeIds.has(e.source) && !deletedNodeIds.has(e.target))
-      };
+      });
     }
-    return { nodes: newNodes };
+    // Während des Ziehens nicht jeden Pixel als eigenen Undo-Schritt speichern.
+    const shouldCheckpoint = changes.some((change) => change.type === 'remove' || (change.type === 'position' && !change.dragging));
+    return shouldCheckpoint ? withHistory(state, { nodes: newNodes }) : { nodes: newNodes };
   }),
-  onEdgesChange: (changes) => set((state) => ({ edges: applyEdgeChanges(changes, state.edges) as Edge<CableEdgeData>[] })),
+  onEdgesChange: (changes) => set((state) => {
+    const nextEdges = applyEdgeChanges(changes, state.edges) as Edge<CableEdgeData>[];
+    return changes.some((change) => change.type === 'remove') ? withHistory(state, { edges: nextEdges }) : { edges: nextEdges };
+  }),
   onWaterNodesChange: (changes) => set((state) => {
     const newWaterNodes = applyNodeChanges(changes, state.waterNodes);
     const deletedNodeIds = new Set<string>();
@@ -184,14 +241,18 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
       if (change.type === 'remove') deletedNodeIds.add(change.id);
     }
     if (deletedNodeIds.size > 0) {
-      return {
+      return withHistory(state, {
         waterNodes: newWaterNodes,
         waterEdges: state.waterEdges.filter(e => !deletedNodeIds.has(e.source) && !deletedNodeIds.has(e.target))
-      };
+      });
     }
-    return { waterNodes: newWaterNodes };
+    const shouldCheckpoint = changes.some((change) => change.type === 'remove' || (change.type === 'position' && !change.dragging));
+    return shouldCheckpoint ? withHistory(state, { waterNodes: newWaterNodes }) : { waterNodes: newWaterNodes };
   }),
-  onWaterEdgesChange: (changes) => set((state) => ({ waterEdges: applyEdgeChanges(changes, state.waterEdges) })),
+  onWaterEdgesChange: (changes) => set((state) => {
+    const nextEdges = applyEdgeChanges(changes, state.waterEdges);
+    return changes.some((change) => change.type === 'remove') ? withHistory(state, { waterEdges: nextEdges }) : { waterEdges: nextEdges };
+  }),
 
   onSelectionChange: (params) => set({ selectedNodes: params.nodes, selectedEdges: params.edges }),
 
@@ -225,7 +286,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
       };
     });
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('planner-fit-view'));
+      window.dispatchEvent(new CustomEvent('planner-focus-element', { detail: { id, elementType } }));
     }
   },
 
@@ -245,17 +306,17 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
     const filterNode = (n: Node) => !nodeIdsSet.has(n.id);
     const filterEdge = (e: Edge) => !nodeIdsSet.has(e.source) && !nodeIdsSet.has(e.target) && !edgeIdsSet.has(e.id);
 
-    return {
+    return withHistory(state, {
       nodes: state.nodes.filter(filterNode),
       edges: state.edges.filter(filterEdge),
       waterNodes: state.waterNodes.filter(filterNode),
       waterEdges: state.waterEdges.filter(filterEdge),
       selectedNodes: [],
       selectedEdges: [],
-    };
+    });
   }),
 
-  updateNodeData: (id, data) => set((state) => ({
+  updateNodeData: (id, data) => set((state) => withHistory(state, {
     nodes: state.nodes.map((n) => {
       if (n.id === id) {
         return { ...n, data: { ...n.data, ...data } };
@@ -270,7 +331,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
     })
   })),
 
-  handleChangeLength: (id, length) => set((state) => ({
+  handleChangeLength: (id, length) => set((state) => withHistory(state, {
     edges: state.edges.map((e) => {
       if (e.id === id) {
         return { ...e, data: { ...e.data!, length } };
@@ -328,6 +389,16 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
         }
       }
     }
+
+    // Bereits vorhandene identische Verbindung nicht stillschweigend ignorieren.
+    const activeEdges = viewMode === 'water' ? get().waterEdges : edges;
+    const duplicate = activeEdges.some((edge) =>
+      edge.source === connection.source &&
+      edge.target === connection.target &&
+      edge.sourceHandle === connection.sourceHandle &&
+      edge.targetHandle === connection.targetHandle
+    );
+    if (duplicate) return false;
 
     // Check for cycles
     // If there is already a path from the connection's target back to the connection's source,
@@ -387,8 +458,8 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
         type: 'waterPipe',
         data: {}
       };
-      set((state) => ({ waterEdges: addEdge(newEdge, state.waterEdges) }));
-      
+      set((state) => withHistory(state, { waterEdges: addEdge(newEdge, state.waterEdges) }));
+
       return;
     }
 
@@ -410,8 +481,8 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
         edgeDomain,
       },
     };
-    set((state) => ({ edges: addEdge(newEdge, state.edges) as Edge<CableEdgeData>[] }));
-    
+    set((state) => withHistory(state, { edges: addEdge(newEdge, state.edges) as Edge<CableEdgeData>[] }));
+
   },
 
   autoWireSystem: () => {
@@ -431,7 +502,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
       'LR'
     );
 
-    set({ nodes: [...layoutedNodes], edges: [...layoutedEdges] });
+    set((state) => withHistory(state, { nodes: [...layoutedNodes], edges: [...layoutedEdges] }));
 
     if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
       window.requestAnimationFrame(() => {
@@ -448,7 +519,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
       edges,
       'LR'
     );
-    set({ nodes: [...layoutedNodes], edges: [...layoutedEdges] });
+    set((state) => withHistory(state, { nodes: [...layoutedNodes], edges: [...layoutedEdges] }));
     if (typeof window !== 'undefined') {
       window.requestAnimationFrame(() => {
         window.dispatchEvent(new CustomEvent('planner-fit-view'));
@@ -468,12 +539,14 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
   applyTemplate: (templateId: string) => {
     const template = TEMPLATES_DICT[templateId];
     if (template) {
-      set({
+      set((state) => withHistory(state, {
         nodes: [...template.nodes],
         edges: [...template.edges],
         waterNodes: [],
         waterEdges: [],
-      });
+        selectedNodes: [],
+        selectedEdges: [],
+      }));
     }
   },
 
@@ -570,13 +643,13 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
 
     const { viewMode } = get();
     if (viewMode === 'water') {
-      set((state) => ({ waterNodes: state.waterNodes.concat(newNode) }));
+      set((state) => withHistory(state, { waterNodes: state.waterNodes.concat(newNode) }));
     } else {
-      set((state) => ({ nodes: state.nodes.concat(newNode) }));
+      set((state) => withHistory(state, { nodes: state.nodes.concat(newNode) }));
     }
   },
 
-  handleChangeCrossSection: (id, crossSection) => set((state) => ({
+  handleChangeCrossSection: (id, crossSection) => set((state) => withHistory(state, {
     edges: state.edges.map((e) => {
       if (e.id === id) {
         return { ...e, data: { ...e.data!, crossSection } };
@@ -585,13 +658,57 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
     })
   })),
 
-  handleChangeFuseSize: (id, fuseSize) => set((state) => ({
+  handleChangeFuseSize: (id, fuseSize) => set((state) => withHistory(state, {
     edges: state.edges.map((e) => {
       if (e.id === id) {
         return { ...e, data: { ...e.data!, fuseSize } };
       }
       return e;
     })
+  })),
+
+  undo: () => set((state) => {
+    const previous = state.historyPast[state.historyPast.length - 1];
+    if (!previous) return state;
+    const nextPast = state.historyPast.slice(0, -1);
+    const nextFuture = [graphSnapshot(state), ...state.historyFuture].slice(0, HISTORY_LIMIT);
+    return {
+      ...previous,
+      selectedNodes: [],
+      selectedEdges: [],
+      firstTappedHandle: null,
+      historyPast: nextPast,
+      historyFuture: nextFuture,
+      canUndo: nextPast.length > 0,
+      canRedo: true,
+    };
+  }),
+
+  redo: () => set((state) => {
+    const next = state.historyFuture[0];
+    if (!next) return state;
+    const nextPast = [...state.historyPast, graphSnapshot(state)].slice(-HISTORY_LIMIT);
+    const nextFuture = state.historyFuture.slice(1);
+    return {
+      ...next,
+      selectedNodes: [],
+      selectedEdges: [],
+      firstTappedHandle: null,
+      historyPast: nextPast,
+      historyFuture: nextFuture,
+      canUndo: true,
+      canRedo: nextFuture.length > 0,
+    };
+  }),
+
+  clearPlan: () => set((state) => withHistory(state, {
+    nodes: [],
+    edges: [],
+    waterNodes: [],
+    waterEdges: [],
+    selectedNodes: [],
+    selectedEdges: [],
+    firstTappedHandle: null,
   })),
 
   calculatePathVoltageDrop: (targetNodeId, customNodes, customEdges) => {
@@ -604,4 +721,20 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
     const nodesMap = getNodeMap(nodes, []);
     return relevantCumulativeDrop(targetNodeId, nodesMap, edges, nodes, sysVoltage);
   },
-}));
+}),
+    {
+      name: 'werft-planner-v1',
+      partialize: (state) => ({
+        viewMode: state.viewMode,
+        season: state.season,
+        nodes: state.nodes,
+        edges: state.edges,
+        waterNodes: state.waterNodes,
+        waterEdges: state.waterEdges,
+        isSidebarOpen: state.isSidebarOpen,
+        isInspectorOpen: state.isInspectorOpen,
+      }),
+      version: 1,
+    }
+  )
+);

@@ -17,18 +17,18 @@ const RoofBackgroundNode = function({ data }: { data: RoofNodeData }) {
 
   return (
     <div 
-      className="border-2 border-red-500 border-dashed bg-gray-100/30 rounded-[40px] relative shadow-inner"
+      className="border-2 border-red-500 border-dashed bg-gray-100/30 rounded-3xl relative shadow-inner"
       style={{ width: pxWidth, height: pxHeight, pointerEvents: 'none' }}
     >
       {/* Front Indicator (Windshield) */}
       <div className="absolute -top-12 left-1/2 -translate-x-1/2 flex flex-col items-center">
         <div className="w-32 h-8 bg-slate-400 rounded-t-full opacity-40"></div>
-        <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-1">Fahrtrichtung</span>
+        <span className="text-xs font-black text-slate-600 uppercase tracking-widest mt-1">Fahrtrichtung</span>
       </div>
 
       {/* Safe Zone Boundary */}
       <div 
-        className="absolute border-2 border-dashed border-blue-400/40 rounded-[30px] flex items-center justify-center"
+        className="absolute border-2 border-dashed border-blue-700/40 rounded-3xl flex items-center justify-center"
         style={{
           top: marginFront,
           bottom: marginRear,
@@ -36,16 +36,16 @@ const RoofBackgroundNode = function({ data }: { data: RoofNodeData }) {
           right: marginRight
         }}
       >
-        <div className="text-blue-400/30 font-black text-2xl uppercase tracking-[0.5em] select-none rotate-90 md:rotate-0">
+        <div className="text-blue-400/30 font-black text-2xl uppercase tracking-widest select-none rotate-90 md:rotate-0">
           Safe Zone
         </div>
       </div>
 
       {/* Rulers / Grid */}
-      <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#000_1px,transparent_1px)] bg-[size:20px_20px]"></div>
+      <div className="absolute inset-0 opacity-10 roof-dot-grid"></div>
       
       {/* Dimensions Info */}
-      <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 text-[10px] font-bold text-slate-500 whitespace-nowrap">
+      <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 text-xs font-bold text-slate-700 whitespace-nowrap">
         Nutzbare Dachfläche: {width}cm x {height}cm
       </div>
     </div>

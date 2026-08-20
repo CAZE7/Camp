@@ -2,54 +2,52 @@ import { useEffect } from 'react';
 import { usePlannerStore } from '../../../store/usePlannerStore';
 import { Connection } from 'reactflow';
 
-export function useSequentialTapConnect() {
+export function useSequentialTapConnect(onFeedback?: (message: string, timeout?: number) => void) {
   const onConnect = usePlannerStore((state) => state.onConnect);
   const isValidConnection = usePlannerStore((state) => state.isValidConnection);
   const setFirstTappedHandle = usePlannerStore((state) => state.setFirstTappedHandle);
 
   useEffect(() => {
-    const handleGlobalClick = (e: MouseEvent | TouchEvent) => {
-      const target = e.target as HTMLElement;
-      const handleEl = target.closest('.react-flow__handle');
-      if (handleEl) {
-        const nodeId = handleEl.getAttribute('data-nodeid');
-        const handleId = handleEl.getAttribute('data-handleid');
-        const handleType = handleEl.classList.contains('source') ? 'source' : 'target';
+    const handleGlobalClick = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      const handleElement = target.closest<HTMLElement>('.react-flow__handle');
+      if (handleElement) {
+        const nodeId = handleElement.getAttribute('data-nodeid');
+        const handleId = handleElement.getAttribute('data-handleid');
+        const handleType = handleElement.classList.contains('source') ? 'source' : 'target';
+        if (!nodeId || !handleId) return;
 
-        if (nodeId && handleId) {
-          setFirstTappedHandle((prev) => {
-            if (!prev) {
-               // First tap
-               return { nodeId, handleId, handleType };
-            } else {
-               // Second tap
-               if (prev.nodeId === nodeId && prev.handleId === handleId) {
-                  return null; // Cancel if same handle tapped twice
-               }
+        setFirstTappedHandle((previous) => {
+          if (!previous) {
+            onFeedback?.('Erster Anschluss gewählt. Wähle jetzt den zweiten Anschluss.', 0);
+            return { nodeId, handleId, handleType };
+          }
+          if (previous.nodeId === nodeId && previous.handleId === handleId) {
+            onFeedback?.('Verbindung abgebrochen.', 1800);
+            return null;
+          }
 
-               // Attempt connection
-               const connection: Connection = {
-                 source: prev.handleType === 'source' ? prev.nodeId : nodeId,
-                 target: prev.handleType === 'target' ? prev.nodeId : nodeId,
-                 sourceHandle: prev.handleType === 'source' ? prev.handleId : handleId,
-                 targetHandle: prev.handleType === 'target' ? prev.handleId : handleId,
-               };
+          const connection: Connection = {
+            source: previous.handleType === 'source' ? previous.nodeId : nodeId,
+            target: previous.handleType === 'target' ? previous.nodeId : nodeId,
+            sourceHandle: previous.handleType === 'source' ? previous.handleId : handleId,
+            targetHandle: previous.handleType === 'target' ? previous.handleId : handleId,
+          };
 
-               if (isValidConnection(connection)) {
-                 onConnect(connection);
-               }
-
-               return null; // Reset after attempt
-            }
-          });
-        }
-      } else {
-        // Clicked somewhere else, reset tap connect
+          if (isValidConnection(connection)) {
+            onConnect(connection);
+            onFeedback?.('Verbindung erstellt.', 2200);
+          } else {
+            onFeedback?.('Diese Verbindung ist nicht möglich. Prüfe Spannung, Polung und Richtung; möglicherweise besteht die Verbindung bereits.', 4000);
+          }
+          return null;
+        });
+      } else if (!target.closest('button, input, select, textarea, [role="dialog"]')) {
         setFirstTappedHandle(null);
       }
     };
 
     document.addEventListener('click', handleGlobalClick);
     return () => document.removeEventListener('click', handleGlobalClick);
-  }, [isValidConnection, onConnect, setFirstTappedHandle]);
+  }, [isValidConnection, onConnect, onFeedback, setFirstTappedHandle]);
 }

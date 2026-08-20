@@ -22,7 +22,7 @@ vi.mock('reactflow', async () => {
 describe('ShuntNode Component', () => {
   it('renders default label when no label is provided', () => {
     render(<ShuntNode id="1" data={{}} />);
-    expect(screen.getByText('Smart Shunt')).toBeInTheDocument();
+    expect(screen.getByText('Batteriemonitor (Shunt)')).toBeInTheDocument();
   });
 
   it('renders custom label when provided in data', () => {

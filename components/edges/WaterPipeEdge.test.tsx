@@ -11,6 +11,7 @@ vi.mock('reactflow', async () => {
     BaseEdge: vi.fn(({ id, path, style, markerEnd }) => (
       <path data-testid="base-edge" id={id} d={path} style={style} markerEnd={markerEnd} />
     )),
+    EdgeLabelRenderer: vi.fn(({ children }) => <div data-testid="edge-label-renderer">{children}</div>),
     getBezierPath: vi.fn(() => ['bezier-path', 0, 0]),
     useReactFlow: vi.fn(),
   };
@@ -136,7 +137,7 @@ describe('WaterPipeEdge', () => {
     const interactionPath = container.querySelector('#e1-2_interaction');
     expect(interactionPath).toBeInTheDocument();
     expect(interactionPath).toHaveAttribute('d', 'bezier-path');
-    expect(interactionPath).toHaveAttribute('stroke-width', '20');
+    expect(interactionPath).toHaveAttribute('stroke-width', '24');
     expect(interactionPath).toHaveStyle({ cursor: 'pointer' });
   });
 });

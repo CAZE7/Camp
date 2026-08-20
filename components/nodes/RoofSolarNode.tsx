@@ -19,8 +19,8 @@ const RoofSolarNode = function({ id, data, selected }: { id: string, data: RoofN
         minWidth={30}
         minHeight={30}
         isVisible={selected}
-        lineClassName="border-orange-500"
-        handleClassName="h-3 w-3 bg-white border-2 border-orange-500 rounded-full"
+        lineClassName="border-orange-700"
+        handleClassName="h-3 w-3 bg-white border-2 border-orange-700 rounded-full"
         onResize={(event, params) => {
           if (onNodeResize) {
             onNodeResize(event, { id, ...params });
@@ -30,19 +30,19 @@ const RoofSolarNode = function({ id, data, selected }: { id: string, data: RoofN
       <div
         className={cn(
           "bg-slate-800 border-2 rounded-sm shadow-md flex items-center justify-center relative overflow-hidden group transition-colors",
-          selected ? "ring-4 ring-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.6)]" : "",
+          selected ? "ring-4 ring-orange-500 shadow-xl" : "",
           isInvalid ? "border-red-500 bg-red-950/40" : "border-slate-600"
         )}
         style={{ width: '100%', height: '100%' }}
       >
         {/* Grid lines to look like solar panel */}
-        <div className="hover:scale-105 transition-all custom-drag-handle absolute inset-0 bg-[linear-gradient(to_right,#475569_1px,transparent_1px),linear-gradient(to_bottom,#475569_1px,transparent_1px)] bg-[size:10px_10px] opacity-30 pointer-events-none"></div>
+        <div className="hover:scale-105 transition-all custom-drag-handle absolute inset-0 roof-solar-grid opacity-30 pointer-events-none"></div>
 
         <div className="font-bold text-xs text-white text-center z-10 px-1 bg-slate-900/60 rounded py-1">
           {data.label || 'Solarpanel'}<br/>
-          <span className="text-[10px] text-orange-400">{watts} W</span>
+          <span className="text-xs text-orange-400">{watts} W</span>
           <br/>
-          <span className="text-[9px] text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity">
+          <span className="text-xs text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity">
             {Math.round(width)}x{Math.round(height)}cm
           </span>
         </div>

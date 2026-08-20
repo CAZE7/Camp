@@ -29,15 +29,15 @@ const RoofWindowNode = function({ id, data, selected }: { id: string, data: Roof
       <div
         className={cn(
           "bg-blue-100/50 backdrop-blur-sm border-2 rounded-sm shadow-sm flex items-center justify-center relative overflow-hidden transition-colors",
-          selected ? "ring-4 ring-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.6)]" : "",
-          isInvalid ? "border-red-500 bg-red-950/40" : "border-blue-400"
+          selected ? "ring-4 ring-blue-500 shadow-xl" : "",
+          isInvalid ? "border-red-500 bg-red-950/40" : "border-blue-700"
         )}
         style={{ width: '100%', height: '100%' }}
       >
         <div className="hover:scale-105 transition-all custom-drag-handle absolute inset-2 border border-blue-300/50 rounded-sm pointer-events-none"></div>
         <div className="font-semibold text-xs text-blue-800 text-center drop-shadow-sm px-1">
           {data.label || 'Dachfenster'}<br/>
-          <span className="text-[10px] opacity-80">{Math.round(width)}x{Math.round(height)}cm</span>
+          <span className="text-xs opacity-80">{Math.round(width)}x{Math.round(height)}cm</span>
         </div>
         {isInvalid && (
           <div className="absolute inset-0 border-4 border-red-500/50 pointer-events-none animate-pulse"></div>
