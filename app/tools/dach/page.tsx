@@ -108,6 +108,11 @@ function DachPlanerInner() {
     [nodes]
   );
 
+  const overlappingNodes = useMemo(
+    () => nodes.filter((n) => n.data?.isOverlapping && (n.type === "roofSolar" || n.type === "roofWindow")),
+    [nodes]
+  );
+
   const placementCount = useMemo(
     () => nodes.filter((n) => n.type === "roofSolar" || n.type === "roofWindow").length,
     [nodes]
@@ -356,11 +361,30 @@ function DachPlanerInner() {
               </div>
             )}
 
+            {/* Überlappungswarnung */}
+            {overlappingNodes.length > 0 && (
+              <div className="mt-4 space-y-2">
+                <Label className="label-eyebrow text-warn-warning">Überlappung</Label>
+                <ul className="space-y-2" role="alert">
+                  {overlappingNodes.map((n) => (
+                    <li key={n.id} className="warn-card warn-card-warning text-sm">
+                      <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+                      <span>
+                        {n.data.label || (n.type === 'roofSolar' ? 'Solarpanel' : 'Dachfenster')} überlappt
+                        sich mit einem anderen Element. Verschiebe es, damit keine Abschattung oder
+                        Kollision entsteht.
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             {/* Empfehlungshinweis */}
-            {placementCount > 0 && invalidNodes.length === 0 && (
+            {placementCount > 0 && invalidNodes.length === 0 && overlappingNodes.length === 0 && (
               <div className="warn-card warn-card-ok mt-6 text-sm">
                 <Sparkles className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
-                <span>Alle Elemente liegen sicher in der Safe Zone.</span>
+                <span>Alle Elemente liegen sicher und ohne Überlappung in der Safe Zone.</span>
               </div>
             )}
 

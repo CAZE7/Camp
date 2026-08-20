@@ -74,8 +74,7 @@ describe('PlannerDashboard - Core Interactions', () => {
     expect(screen.getByRole('button', { name: 'Sommer' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Winter' })).toBeInTheDocument();
 
-    // The Pro-Mode switch has been removed entirely
-    expect(screen.getByText(/Profi-Details/)).toBeInTheDocument();
+    // Der Pro-Modus-Schalter wurde entfernt; Fachdetails sind immer sichtbar.
   });
 
   it('calls setViewMode when changing view mode', () => {

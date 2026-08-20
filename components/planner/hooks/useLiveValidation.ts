@@ -70,6 +70,22 @@ export function useLiveValidation(
 
     const sysVoltage = getSystemVoltage(nodes);
 
+    // --- Rule A2: RCD / FI-Pflicht an Landstrom (DIN VDE 0100-721) ---
+    const shorePowerNodes = nodes.filter(n => n.type === 'shorePower');
+    shorePowerNodes.forEach(sp => {
+      if (!sp.data?.hasRcd) {
+        warnings.push({
+          id: `missing-rcd-${sp.id}`,
+          category: 'safety',
+          type: 'critical',
+          title: 'FI-Schutzschalter fehlt',
+          focusId: sp.id,
+          focusType: 'node',
+          message: `⚠️ Kritisch: Am Landstromanschluss „${sp.data?.label || 'Landstrom'}" fehlt ein FI-Schutzschalter (RCD ≤ 30 mA). Nach DIN VDE 0100-721 ist dieser zwingend vorgeschrieben — Stromschlaggefahr!`,
+        });
+      }
+    });
+
     // --- Rule B: Overloaded Solar Regulator ---
     const solarNodes = nodes.filter(n => n.type === 'solar' || n.type === 'roofSolar');
     const chargers = nodes.filter(n => ['charger', 'mpptController'].includes(n.type as string));

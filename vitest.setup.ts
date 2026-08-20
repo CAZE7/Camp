@@ -1,6 +1,11 @@
 import '@testing-library/jest-dom';
 import { vi } from 'vitest';
 
+// In der Test-Umgebung gilt der KI-Chat als angebunden (sonst deaktiviert sich
+// der Client im Static-Export ohne NEXT_PUBLIC_CHAT_API und Input/Button
+// werden disabled).
+process.env.NEXT_PUBLIC_CHAT_API = process.env.NEXT_PUBLIC_CHAT_API || 'http://localhost/api/chat';
+
 // Mock matchMedia for GSAP and Radix UI in jsdom
 Object.defineProperty(window, 'matchMedia', {
   writable: true,

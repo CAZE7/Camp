@@ -269,4 +269,25 @@ describe('useLiveValidation', () => {
       expect(result.current.filter(w => w.id.includes('inverter-no-minus'))).toHaveLength(0);
     });
   });
+
+  describe('RCD / FI-Schutz (DIN VDE 0100-721)', () => {
+    it('warnt kritisch, wenn ein Landstromanschluss keinen RCD hat', () => {
+      const nodes: Node[] = [
+        { id: '1', type: 'shorePower', data: { label: 'Landstrom', hasRcd: false }, position: { x: 0, y: 0 } },
+      ];
+      const { result } = renderHook(() => useLiveValidation(nodes, []));
+      const rcd = result.current.find((w) => w.id === 'missing-rcd-1');
+      expect(rcd).toBeDefined();
+      expect(rcd?.type).toBe('critical');
+      expect(rcd?.message).toContain('FI-Schutzschalter');
+    });
+
+    it('warnt nicht, wenn der Landstromanschluss einen RCD hat', () => {
+      const nodes: Node[] = [
+        { id: '1', type: 'shorePower', data: { label: 'Landstrom', hasRcd: true }, position: { x: 0, y: 0 } },
+      ];
+      const { result } = renderHook(() => useLiveValidation(nodes, []));
+      expect(result.current.find((w) => w.id === 'missing-rcd-1')).toBeUndefined();
+    });
+  });
 });

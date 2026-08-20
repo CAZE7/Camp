@@ -18,6 +18,7 @@ export interface RoofNodeData extends CommonNodeData {
   height?: number;
   onNodeResize?: OnNodeResize;
   isInvalid?: boolean;
+  isOverlapping?: boolean;
   safeMargins?: {
     front?: number;
     rear?: number;

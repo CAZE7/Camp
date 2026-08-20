@@ -80,9 +80,9 @@ export function ValidatingInput({ value, onValidChange, rules = [], isFloat = fa
         onBlur={handleBlur}
         aria-invalid={error ? "true" : undefined}
         aria-errormessage={error ? errorId : undefined}
-        className={`min-h-11 ${className || ''} ${error ? 'border-red-700 bg-red-50 focus:ring-red-700 focus:border-red-700' : ''}`}
+        className={`min-h-11 ${className || ''} ${error ? 'border-signal bg-signal/5 focus:ring-signal focus:border-signal' : ''}`}
       />
-      {error && <span id={errorId} role="alert" className="mt-1 text-xs font-semibold text-red-800">{error}</span>}
+      {error && <span id={errorId} role="alert" className="mt-1 text-xs font-semibold text-signal">{error}</span>}
     </div>
   );
 }

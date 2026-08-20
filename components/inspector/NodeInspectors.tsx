@@ -56,9 +56,9 @@ export function BatteryInspector({
     <>
       <div className="flex flex-col">
         {(chargingTimeStr || calculatedSolarWatts !== undefined) && (
-          <div className="mb-4 p-3 bg-blue-50 border border-blue-100 rounded-lg">
-            <h4 className="text-xs font-bold text-blue-900 mb-2 uppercase tracking-wider">Lade-Informationen</h4>
-            <div className="flex flex-col gap-1 text-sm text-blue-800">
+          <div className="warn-card warn-card-info mb-4 flex-col gap-2 p-3">
+            <h4 className="label-eyebrow text-warn-info">Lade-Informationen</h4>
+            <div className="flex flex-col gap-1 text-sm text-ink-soft">
               {chargingTimeStr && (
                 <div className="flex justify-between">
                   <span>Ladezeit:</span>
@@ -189,7 +189,7 @@ export function ShorePowerInspector({ node, onUpdateNodeData }: BaseNodeInspecto
         RCD (FI-Schalter) 30mA installiert
       </label>
       {!node.data?.hasRcd && (
-        <div className="p-2 bg-red-100 text-red-800 text-xs rounded border border-red-200">
+        <div className="warn-card warn-card-critical text-xs p-2">
           Ein FI-Schutzschalter (max. 30mA) ist bei Landstromanschlüssen vorgeschrieben (DIN VDE 0100-721).
         </div>
       )}
@@ -221,11 +221,11 @@ export function InverterInspector({
       </div>
       <div className="flex flex-col mt-4">
         <label className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider">Gleichzeitige 230V Geräte</label>
-        <div className="flex flex-col gap-1 max-h-32 overflow-y-auto border border-gray-200 rounded p-1">
+        <div className="flex flex-col gap-1 max-h-32 overflow-y-auto border border-rule rounded p-1">
           {consumerNodes.map((consumer) => {
             const isChecked = (node.data?.concurrentDevices || []).includes(consumer.id);
             return (
-              <label key={consumer.id} className="flex items-center gap-2 text-sm text-foreground cursor-pointer p-1 hover:bg-gray-50 rounded">
+              <label key={consumer.id} className="flex items-center gap-2 text-sm text-foreground cursor-pointer p-1 hover:bg-paper rounded">
                 <input
                   type="checkbox"
                   checked={isChecked}
@@ -406,7 +406,7 @@ export function ConduitInspector({
       <div className="flex flex-col mt-4">
         <label className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">Zugewiesene Kabel</label>
         {edges && edges.length > 0 ? (
-          <div className="flex flex-col gap-2 max-h-48 overflow-y-auto p-2 border border-gray-200 rounded">
+          <div className="flex flex-col gap-2 max-h-48 overflow-y-auto p-2 border border-rule rounded">
             {(() => {
               const assignedEdges = node.data?.assignedEdges || [];
               const assignedEdgesSet = new Set(assignedEdges);
@@ -417,7 +417,7 @@ export function ConduitInspector({
                 const crossSection = edgeData?.crossSection || 2.5;
 
                 return (
-                  <label key={edge.id} className="flex items-center gap-2 text-sm text-foreground cursor-pointer p-1 hover:bg-gray-50 rounded">
+                  <label key={edge.id} className="flex items-center gap-2 text-sm text-foreground cursor-pointer p-1 hover:bg-paper rounded">
                     <input
                       type="checkbox"
                       id={`edge-assign-${edge.id}`}
@@ -443,7 +443,7 @@ export function ConduitInspector({
             })()}
           </div>
         ) : (
-          <div className="text-xs text-muted-foreground italic p-2 bg-gray-50 rounded border border-gray-100">
+          <div className="text-xs text-muted-foreground italic p-2 bg-paper rounded border border-rule">
             Keine Kabel im Plan vorhanden.
           </div>
         )}

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { AccessibleDialog } from '@/components/ui/AccessibleDialog';
 import { usePlannerStore } from '../../store/usePlannerStore';
+import { ClipboardCopy } from 'lucide-react';
 
 type BomData = {
   counts: Record<string, number>;
@@ -67,6 +68,29 @@ export function BOMModal() {
   const pipeEntries = useMemo(() => Object.entries(bomData.pipeLengths), [bomData.pipeLengths]);
   const empty = componentEntries.length === 0 && cableEntries.length === 0 && pipeEntries.length === 0;
 
+  // BOM als JSON für den KI-Assistenten (dieses Format erkennt der Chat als
+  // Stückliste und reichert Produktvorschläge an).
+  const bomJson = useMemo(() => {
+    const cables = cableEntries.map(([crossSection, length]) => ({
+      crossSection: Number(crossSection),
+      length: Number(length.toFixed(1)),
+    }));
+    const components = componentEntries.map(([type, count]) => ({ type, count }));
+    return JSON.stringify({ cables, components }, null, 2);
+  }, [cableEntries, componentEntries]);
+
+  const [copied, setCopied] = useState(false);
+  const copyBomForChat = async () => {
+    const message = `Hier ist meine Stückliste aus dem Schaltplan:\n\n\`\`\`json\n${bomJson}\n\`\`\`\n\nWelche Produkte und Kabelquerschnitte empfehlst du?`;
+    try {
+      await navigator.clipboard.writeText(message);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2500);
+    } catch {
+      setCopied(false);
+    }
+  };
+
   return (
     <AccessibleDialog
       open={open}
@@ -124,8 +148,17 @@ export function BOMModal() {
           </>
         )}
       </div>
-      <div className="border-t border-border p-4">
-        <Button onClick={() => setOpen(false)} className="min-h-11 w-full">Schließen</Button>
+      <div className="flex flex-col gap-2 border-t border-border p-4 sm:flex-row">
+        <Button
+          variant="outline"
+          onClick={copyBomForChat}
+          disabled={empty}
+          className="min-h-11 gap-2"
+        >
+          <ClipboardCopy className="h-4 w-4" aria-hidden="true" />
+          {copied ? 'Kopiert – im KI-Chat einfügen' : 'Für KI-Assistent kopieren'}
+        </Button>
+        <Button onClick={() => setOpen(false)} className="min-h-11 flex-1">Schließen</Button>
       </div>
     </AccessibleDialog>
   );

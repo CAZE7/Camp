@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { addEdge, applyNodeChanges, applyEdgeChanges } from 'reactflow';
 import { getLayoutedElements } from '../components/planner/utils/layout';
 import React from 'react';
@@ -133,6 +133,40 @@ function getNodeMap(currentNodes: Node[], currentWaterNodes: Node[]): Map<string
   const combined = new Map(nodesMap);
   waterNodesMap.forEach((node, id) => combined.set(id, node));
   return combined;
+}
+
+const PLANNER_STORAGE_VERSION = 1;
+
+/**
+ * Defensive Migration für den Planner-Store. Alte localStorage-Stände können
+ * Felder in anderem Shape oder teilkorrupte Knoten/Kanten enthalten. Diese
+ * Funktion normalisiert, bevor Zustand den Stand merged — so lösen veraltete
+ * Stände keine Laufzeitfehler in Berechnungen aus.
+ */
+function isNodeArray(value: unknown): value is Node[] {
+  return Array.isArray(value) && value.every((n) => n && typeof n === 'object' && 'id' in n && 'position' in n);
+}
+
+function isEdgeArray(value: unknown): value is Edge[] {
+  return Array.isArray(value) && value.every((e) => e && typeof e === 'object' && 'id' in e && 'source' in e && 'target' in e);
+}
+
+function migratePlannerPersisted(persisted: unknown, version: number): Partial<PlannerState> {
+  const p = (persisted ?? {}) as Partial<PlannerState>;
+  const safe: Partial<PlannerState> = {};
+
+  if (p.viewMode === 'electric' || p.viewMode === 'water') safe.viewMode = p.viewMode;
+  if (p.season === 'summer' || p.season === 'winter') safe.season = p.season;
+  if (typeof p.isSidebarOpen === 'boolean') safe.isSidebarOpen = p.isSidebarOpen;
+  if (typeof p.isInspectorOpen === 'boolean') safe.isInspectorOpen = p.isInspectorOpen;
+  if (isNodeArray(p.nodes)) safe.nodes = p.nodes;
+  if (isEdgeArray(p.edges)) safe.edges = p.edges as Edge<CableEdgeData>[];
+  if (isNodeArray(p.waterNodes)) safe.waterNodes = p.waterNodes;
+  if (isEdgeArray(p.waterEdges)) safe.waterEdges = p.waterEdges;
+
+  // Version 0 → 1: keine Feldumbenennungen, nur Validierung.
+  void version;
+  return safe;
 }
 
 const HISTORY_LIMIT = 50;
@@ -733,6 +767,9 @@ export const usePlannerStore = create<PlannerState>()(
 }),
     {
       name: 'werft-planner-v1',
+      version: PLANNER_STORAGE_VERSION,
+      storage: createJSONStorage(() => localStorage),
+      migrate: (persisted, version) => migratePlannerPersisted(persisted, version) as PlannerState,
       partialize: (state) => ({
         viewMode: state.viewMode,
         season: state.season,
@@ -743,7 +780,6 @@ export const usePlannerStore = create<PlannerState>()(
         isSidebarOpen: state.isSidebarOpen,
         isInspectorOpen: state.isInspectorOpen,
       }),
-      version: 1,
     }
   )
 );

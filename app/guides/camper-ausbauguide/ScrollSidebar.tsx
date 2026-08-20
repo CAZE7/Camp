@@ -56,12 +56,12 @@ export default function ScrollSidebar({ headings }: ScrollSidebarProps) {
 
   return (
     <div className="sticky top-24 w-full">
-      <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400 mb-6 px-4">
+      <h3 className="text-sm font-bold uppercase tracking-wider text-muted-ink mb-6 px-4">
         Inhalt
       </h3>
       <div className="relative pl-6">
         {/* Fine dashed line / road */}
-        <div className="absolute left-1 top-0 bottom-0 w-px border-l border-dashed border-slate-300 z-0" />
+        <div className="absolute left-1 top-0 bottom-0 w-px border-l border-dashed border-rule z-0" />
         
         {/* The Camper Icon */}
         <div
@@ -75,7 +75,7 @@ export default function ScrollSidebar({ headings }: ScrollSidebarProps) {
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
-            className="w-4 h-4 text-emerald-600 drop-shadow-sm bg-white rounded-full"
+            className="w-4 h-4 text-moss drop-shadow-sm bg-bone rounded-full"
           >
             <path d="M2 12h18a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2H2" />
             <path d="M4 12V8a2 2 0 0 1 2-2h8l3 4h3" />
@@ -92,8 +92,8 @@ export default function ScrollSidebar({ headings }: ScrollSidebarProps) {
               className={cn(
                 "py-2 px-3 rounded-xl transition-all duration-300 cursor-pointer text-sm font-medium h-[44px] flex items-center group/item",
                 activeId === heading.id
-                  ? "text-emerald-700 bg-emerald-50/50 shadow-sm"
-                  : "text-slate-500 hover:text-slate-900 hover:bg-slate-50/80",
+                  ? "text-moss bg-moss/5 shadow-sm"
+                  : "text-ink-soft hover:text-ink hover:bg-paper",
                 heading.level === 3 ? "ml-4 text-xs" : ""
               )}
             >

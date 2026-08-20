@@ -50,8 +50,6 @@ function ActionsSection({
   const [menuOpen, setMenuOpen] = useState(false);
   const [busy, setBusy] = useState<'export' | 'wire' | 'layout' | 'check' | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const isProMode = useAppStore((state) => state.isProMode);
-  const setIsProMode = useAppStore((state) => state.setIsProMode);
   const setHasOnboarded = useAppStore((state) => state.setHasOnboarded);
 
   useEffect(() => {
@@ -185,14 +183,8 @@ function ActionsSection({
             </div>
             <p className="px-3 pb-2 text-xs text-muted-foreground">Winter berücksichtigt weniger Solarertrag und höheren Heizbedarf.</p>
 
-            <div className="border-t border-border p-2">
-              <label className="flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-lg px-1">
-                <span><span className="flex items-center gap-1 font-semibold text-foreground"><Wrench className="h-4 w-4" />Profi-Details</span><span className="block text-xs text-muted-foreground">Zusätzliche VDE- und Leitungsdetails</span></span>
-                <input type="checkbox" checked={isProMode} onChange={(event) => setIsProMode(event.target.checked)} className="h-5 w-5 accent-primary" />
-              </label>
-            </div>
             <button role="menuitem" onClick={() => { setMenuOpen(false); setHasOnboarded(false); }} className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-sm text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Wrench className="h-4 w-4" />Einführung erneut öffnen</button>
-            <button role="menuitem" onClick={() => { setMenuOpen(false); onRequestReset(); }} className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-sm font-semibold text-destructive hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Trash2 className="h-4 w-4" />Neuen leeren Plan starten</button>
+            <button role="menuitem" onClick={() => { setMenuOpen(false); onRequestReset(); }} className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-sm font-semibold text-destructive hover:bg-signal/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Trash2 className="h-4 w-4" />Neuen leeren Plan starten</button>
           </div>
         )}
       </div>
@@ -306,7 +298,7 @@ export function PlannerDashboard() {
             role={feedback.type === 'error' ? 'alert' : 'status'}
             aria-live={feedback.type === 'error' ? 'assertive' : 'polite'}
             className={`fixed left-1/2 top-16 z-50 w-11/12 max-w-md -translate-x-1/2 rounded-lg border p-3 text-sm font-semibold shadow-lg ${
-              feedback.type === 'error' ? 'border-red-700 bg-red-50 text-red-900' : feedback.type === 'success' ? 'border-emerald-700 bg-emerald-50 text-emerald-950' : 'border-blue-700 bg-blue-50 text-blue-950'
+              feedback.type === 'error' ? 'border-signal bg-signal/5 text-signal' : feedback.type === 'success' ? 'border-moss bg-moss/10 text-moss' : 'border-oxide bg-oxide/10 text-oxide'
             }`}
           >
             {feedback.message}

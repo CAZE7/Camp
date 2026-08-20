@@ -62,7 +62,7 @@ export const TEMPLATE_AUTARK = {
     { id: 'charger-1', type: 'mpptController', position: { x: 300, y: 100 }, data: { label: 'MPPT Solarregler', amps: 30 } },
     { id: 'charger-2', type: 'dcdcCharger', position: { x: 300, y: 200 }, data: { label: 'DC-DC Ladebooster', amps: 30 } },
     { id: 'starter-1', type: 'battery', position: { x: 100, y: 200 }, data: { label: 'Starterbatterie', capacity: 90, chemistry: 'AGM' } },
-    { id: 'shore-1', type: 'shorePower', position: { x: 100, y: 300 }, data: { label: 'Landstrom' } },
+    { id: 'shore-1', type: 'shorePower', position: { x: 100, y: 300 }, data: { label: 'Landstrom', hasRcd: true } },
     { id: 'inverter-1', type: 'inverter', position: { x: 500, y: 500 }, data: { label: '2000W Inverter', watts: 2000 } },
     { id: 'cons-fridge', type: 'consumer', position: { x: 700, y: 100 }, data: { label: 'Kompressorkühlschrank', watts: 60 } },
     { id: 'cons-heat', type: 'consumer', position: { x: 700, y: 200 }, data: { label: 'Standheizung', watts: 40 } },

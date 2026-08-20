@@ -47,7 +47,7 @@ describe('WaterPipeEdge', () => {
     const baseEdge = getByTestId('base-edge');
     expect(baseEdge).toBeInTheDocument();
     expect(baseEdge).toHaveAttribute('d', 'smooth-step-path');
-    expect(baseEdge).toHaveStyle({ stroke: 'var(--pipe-fresh)' }); // --pipe-fresh === #3b82f6
+    expect(baseEdge).toHaveStyle({ stroke: 'var(--pipe-fresh)' }); // --pipe-fresh = #1d4ed8
   });
 
   it('renders as gray water when source node is sink', () => {
@@ -61,7 +61,7 @@ describe('WaterPipeEdge', () => {
     const { getByTestId } = render(<WaterPipeEdge {...defaultProps} />);
 
     const baseEdge = getByTestId('base-edge');
-    expect(baseEdge).toHaveStyle({ stroke: 'var(--pipe-gray)' }); // --pipe-gray === #9ca3af
+    expect(baseEdge).toHaveStyle({ stroke: 'var(--pipe-gray)' }); // --pipe-gray = #4b5563
   });
 
   it('renders as gray water when source node is shower', () => {
@@ -75,7 +75,7 @@ describe('WaterPipeEdge', () => {
     const { getByTestId } = render(<WaterPipeEdge {...defaultProps} />);
 
     const baseEdge = getByTestId('base-edge');
-    expect(baseEdge).toHaveStyle({ stroke: 'var(--pipe-gray)' }); // --pipe-gray === #9ca3af
+    expect(baseEdge).toHaveStyle({ stroke: 'var(--pipe-gray)' }); // --pipe-gray = #4b5563
   });
 
   it('renders as gray water when source node is grayWaterTank', () => {
@@ -89,7 +89,7 @@ describe('WaterPipeEdge', () => {
     const { getByTestId } = render(<WaterPipeEdge {...defaultProps} />);
 
     const baseEdge = getByTestId('base-edge');
-    expect(baseEdge).toHaveStyle({ stroke: 'var(--pipe-gray)' }); // --pipe-gray === #9ca3af
+    expect(baseEdge).toHaveStyle({ stroke: 'var(--pipe-gray)' }); // --pipe-gray = #4b5563
   });
 
   it('renders as gray water when data.pipeType is gray, overriding source node type', () => {
@@ -105,7 +105,7 @@ describe('WaterPipeEdge', () => {
     );
 
     const baseEdge = getByTestId('base-edge');
-    expect(baseEdge).toHaveStyle({ stroke: 'var(--pipe-gray)' }); // --pipe-gray === #9ca3af
+    expect(baseEdge).toHaveStyle({ stroke: 'var(--pipe-gray)' }); // --pipe-gray = #4b5563
   });
 
   it('renders as fresh water when data.pipeType is fresh, overriding source node type', () => {
@@ -121,14 +121,14 @@ describe('WaterPipeEdge', () => {
     );
 
     const baseEdge = getByTestId('base-edge');
-    expect(baseEdge).toHaveStyle({ stroke: 'var(--pipe-fresh)' }); // --pipe-fresh === #3b82f6
+    expect(baseEdge).toHaveStyle({ stroke: 'var(--pipe-fresh)' }); // --pipe-fresh = #1d4ed8
   });
 
-  it('renders selected state with #f97316 stroke', () => {
+  it('renders selected state with var(--pipe-selected) stroke', () => {
     const { getByTestId } = render(<WaterPipeEdge {...defaultProps} selected={true} />);
 
     const baseEdge = getByTestId('base-edge');
-    expect(baseEdge).toHaveStyle({ stroke: 'var(--pipe-selected)' }); // --pipe-selected === #f97316
+    expect(baseEdge).toHaveStyle({ stroke: 'var(--pipe-selected)' }); // --pipe-selected = #c2410c
   });
 
   it('renders interaction path correctly', () => {
