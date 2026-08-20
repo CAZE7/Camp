@@ -9,11 +9,17 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/elektrik-planung',
 }));
 
-// Mock next/dynamic to resolve PlannerInner synchronously in test environment
+// Mock next/dynamic to resolve component lazily with Suspense in test environment
 vi.mock('next/dynamic', () => ({
-  default: () => {
-    const PlannerInner = require('./PlannerInner').default;
-    return PlannerInner;
+  default: (loadComponent: () => Promise<any>) => {
+    const Component = React.lazy(loadComponent);
+    return function DynamicMock(props: any) {
+      return (
+        <React.Suspense fallback={<div>Loading...</div>}>
+          <Component {...props} />
+        </React.Suspense>
+      );
+    };
   },
 }));
 
