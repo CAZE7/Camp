@@ -15,62 +15,91 @@ Ein halbfertiges Ergebnis gilt als FEHLGESCHLAGEN.
 Du gibst erst dann ein finales Ergebnis aus, wenn du jeden Punkt der
 Definition of Done persönlich verifiziert hast.
 
-## SCOPE-ENTSCHEIDUNG: KI-CHAT WIRD ENTFERNT
+## STATUS nach PR #314 (gemergt 2026-08-20) — NICHT erneut implementieren
 
-Der Chat (/api/chat, components/Chat.tsx) funktioniert im Static Export
-ohnehin nicht (bekannter Defekt ARCH-001). Statt Reparatur:
+Bereits ERLEDIGT und verbindlich:
 
-- components/Chat.tsx, Chat.test.tsx, /api/chat, lib/chatConfig.ts
-  und ALLE Referenzen (Imports, UI-Einbindung in PlannerInner.tsx,
-  Env-Variablen, Doku) vollständig löschen.
-- Keine toten Buttons, keine ausgegrauten Platzhalter, keine
-  "coming soon"-Hinweise. Der Chat existiert danach nicht mehr.
-- Die freigewordene Fläche im Layout gehört dem Canvas.
+- D2 RESPONSIVE LAYOUT: md:flex-row statt lg:flex-row, w-auto entfernt,
+  Spaltenbreiten als CSS-Variablen (--planner-sidebar-w,
+  --planner-inspector-w). Verbindliche Auflösung der früheren
+  Anforderungs-Konflikte:
+  - Inspector dockt erst ab 1280px an (bei 1024px: 1024-280-320=424px
+    Canvas < 600px Minimum → dort Slide-over)
+  - Inspector-Breite: 288px zwischen 1280–1535px, 320px ab 1536px
+  - Canvas-Anteil bei 1440px: 60,6% (erfüllt >=60%)
+- D3 TOUCH-KONFIGURATION: components/planner/utils/flowInteraction.ts
+  ist die EINZIGE Quelle für React-Flow-Interaktions-Props. Auswahl via
+  matchMedia('(pointer: coarse)'), NICHT über Fensterbreite.
+  Node-Drag via dragHandle '.node-drag-handle' (44px, nur bei
+  pointer:coarse sichtbar, display:contents-Hülle), 200ms Long-Press
+  entsperrt zusätzlich (Vibration + Hinweis). connectionRadius:
+  40px Touch / 20px Maus.
+- D4 KABEL (großteils): Lane-Offset 16px, Lane-Sortierung nach Typ
+  (Plus → Minus → 230V → Rest), Backbone 3px / Standard 2px /
+  Trassen-Abgang 1,5px, Hover/Auswahl +1px. Kreuzungszählung mit
+  Ausweichrouten (±32/±64px) ab >3 Kreuzungen. Kabel-Labels unter
+  640px ausgeblendet, Tap zeigt 5s-Tooltip. Trefferzone Touch 36px.
+- V5/V6 weitgehend: Touch-Targets >=44px, aria-label/aria-expanded/
+  aria-current, Kontextmenü mit role=menu + Escape + Fokus.
+- MiniMap unter 640px ausgeblendet (bewusste Entscheidung, beibehalten).
+- viewportFit:'cover' im Root-Layout (safe-area-inset funktioniert).
+- Rechtsklick-Kontextmenü Desktop, sichtbare Shortcuts (Strg+Z/Entf/
+  Strg+S) in der Toolbar, Strg+S zeigt Autosave-Status.
 
-## BEKANNTE DEFEKTE (aus AUDIT.md + Code-Inspektion)
+Akzeptierte Trade-offs aus PR #314 (NICHT "zurückbauen"):
+- Long-Press entsperrt nur, zieht nicht im selben Fingerkontakt
+  (d3-drag-Limitation; Griff ist der primäre Weg)
+- Strichstärke kodiert die Rolle (Backbone/normal), NICHT mehr den
+  Querschnitt — Querschnitt steht im Label
+- Slide-over ohne Animation (hidden statt translate), sonst
+  horizontales Scrollen am Tablet
+- Kreuzungszählung ist Näherung (Mittelpunkt-Mittelpunkt, O(E²)),
+  wird ab 120 Kanten übersprungen
 
-- D1 KRITISCH — Chat entfernen (siehe Scope-Entscheidung oben).
-  Danach prüfen: Build darf keine /api/chat-Route mehr enthalten,
-  kein Import darf ins Leere zeigen, Env-Beispiele bereinigen.
-- D2 Layout nicht desktop-tauglich: PlannerInner.tsx nutzt
-  lg:flex-row mit lg:w-auto → unvorhersehbare Breiten, Canvas gequetscht.
-- D3 Kein Touch-Handling im FlowCanvas: panOnDrag, zoomOnPinch,
-  connectionRadius sind nicht gesetzt → Handy/Tablet fühlt sich kaputt an.
-- D4 Kabel unübersichtlich: orthogonalRouting.ts + parallelLaneOffset
-  existieren, aber Kreuzungen, enge Lanes, keine visuelle Hierarchie.
-- D5 Testabdeckung autoWire prüfen: lib/autoWire.ts (~750 Zeilen
+Neue Test-Baseline: 664 Tests grün (vorher 613), tsc --noEmit sauber,
+next build sauber. Neue Suiten: flowInteraction.test.ts (15),
+PlannerInner.test.tsx (8), useLongPressNodeDrag.test.tsx (6),
+NodeDragHandle.test.tsx (4), cableStyle.test.ts (4).
+
+## REST-MISSION — das ist noch zu tun
+
+- R1 CHAT-ENTFERNUNG VERIFIZIEREN (kritisch): components/Chat.tsx wurde
+  laut PR #314 upstream entfernt. ZU PRÜFEN und ggf. zu löschen:
+  app/api/chat (Route), lib/chatConfig.ts + chatConfig.test.ts,
+  Env-Referenzen in .env.example, Doku-Erwähnungen, verwaiste Imports.
+  next build darf KEINE /api/chat-Route mehr ausgeben. Ein toter
+  Button oder eine tote Route ist INAKZEPTABEL.
+- R2 PHASE-1-INVENTUR als Artefakt nachliefern: docs/INVENTORY.md —
+  Tabelle JEDES interaktiven Elements (Element | Aktion | Status |
+  Maßnahme): Sidebar-Bauteile, Dashboard-Menü (Stückliste, Plan lokal
+  prüfen, Bild exportieren), View-Mode-Switch, OnboardingWizard,
+  Inspector-Aktionen, MiniMap, Controls, Tabs, Kontextmenü, Gesten,
+  Tastenkombinationen. Ein Element ohne Zeile = Fehlschlag.
+- R3 D5 AUTO-WIRE-TESTABDECKUNG: lib/autoWire.ts (~750 Zeilen
   VDE-Sicherheitslogik) — verifiziere, dass JEDE öffentliche Funktion
   dedizierte Unit-Tests hat (performAutoWiring, cumulativeDropAt,
   sizeDcEdges, applyFuseSizes, healUserEdges, resolveRails).
-- D6 Weitere Audit-Befunde mitprüfen: A11Y-001, ELEC-001/002/003,
+- R4 D6 AUDIT-RESTE aus AUDIT.md: A11Y-001, ELEC-001/002/003,
   SEC-001, DEAD-001 (toter Code entfernen).
+- R5 V4 LEERE ZUSTÄNDE: leerer Plan, leere Suche, leere Stückliste —
+  jeder leere Zustand erklärt dem Nutzer den nächsten Schritt.
+- R6 LIGHTHOUSE-MESSUNG: Accessibility-Score >=95 auf Mobile MESSEN
+  (in der bisherigen Agent-Umgebung nicht möglich) und Beleg
+  (Report oder Screenshot) im PR ablegen.
+- R7 D4-REST (optional, nur falls sichtbar unruhig): exakte
+  Segment-Schnittprüfung statt Mittelpunkt-Näherung.
 
 ## ARBEITSWEISE — 4 PHASEN, KEINE ÜBERSPRINGEN
 
-### PHASE 1 — FUNKTIONS-INVENTUR (kein Code!)
+### PHASE 1 — INVENTUR (R2) + VERIFIKATION (R1), kein Code
 
-Liste JEDES interaktive Element der App auf (NACH Chat-Entfernung):
-
-- Jeder Button (Sidebar-Bauteile, Dashboard-Menü: Stückliste,
-  "Plan lokal prüfen", Bild exportieren, View-Mode-Switch
-  Elektro/Wasser, OnboardingWizard-Buttons, Inspector-Aktionen,
-  MiniMap, Controls, Tabs)
-- Jede Geste (Drag, Drop, Tap, Pinch, Connect, Löschen)
-- Jede Tastenkombination
-
-Format: Tabelle mit Element | Aktion | Status (funktioniert/kaputt/
-unklar) | geplante Maßnahme. Ein Element ohne Zeile = Fehlschlag.
+Erst docs/INVENTORY.md und die Chat-Reste-Bestandsaufnahme.
 
 ### PHASE 2 — ARCHITEKTUR-ENTSCHEIDUNGEN (noch kein Code)
 
-Dokumentiere jede fundamentale Änderung, die du für nötig hältst:
-
-- Layout-System (Grid statt verschachtelte Flex-Hacks?)
-- State-Aufteilung (usePlannerStore ist ~30 kB — aufteilen?)
-- Routing-Ansatz für Kabel (behalten + verbessern oder ersetzen?)
-- Freigewordene Chat-Fläche im Desktop-Layout sinnvoll nutzen
-
-Pro Entscheidung: Problem → Optionen → Wahl → Begründung in 2 Sätzen.
+Dokumentiere jede fundamentale Änderung: Problem → Optionen → Wahl →
+Begründung in 2 Sätzen. State-Aufteilung usePlannerStore (~30 kB)
+nur anfassen, wenn ein konkreter Defekt es erfordert.
 
 ### PHASE 3 — UMSETZUNG
 
@@ -79,101 +108,54 @@ Komplette Dateien, keine Schnipsel. Jede Änderung kommentiert
 
 ### PHASE 4 — VERIFIKATION (3 Pässe, ALLE im Output zeigen)
 
-PASS 1 — SELBSTPRÜFUNG:
-Gehe die Funktions-Inventur aus Phase 1 Zeile für Zeile durch und
-beweise pro Zeile, dass das Element jetzt funktioniert (Code-Stelle
-nennen). Dann alle Viewports: 375px, 768px, 1024px, 1440px, 1920px —
-pro Viewport ein Satz zum Layout + Bestätigung "kein Overflow".
+PASS 1 — SELBSTPRÜFUNG: Inventur-Tabelle Zeile für Zeile durchgehen,
+pro Zeile Code-Stelle nennen. Viewports 375/768/1024/1440/1920
+bestätigen (Ist-Zustand aus PR #314 als Ausgangslage respektieren).
 
-PASS 2 — ADVERSARIALE PRÜFUNG:
-Wechsle die Rolle: Du bist jetzt ein feindseliger QA-Tester, der
-die App kaputtmachen will. Führe gedanklich (und wo möglich echt) aus:
-
+PASS 2 — ADVERSARIALE PRÜFUNG: feindseliger QA-Tester:
 - 20 Nodes platzieren, wild verbinden, löschen, rückgängig
-- Auf iPhone SE (375px) mit dicken Fingern bedienen
-- Verbindung zwischen inkompatiblen Handles versuchen
-- Seite neu laden — ist der Plan noch da?
+- iPhone SE (375px) mit dicken Fingern
+- inkompatible Handles verbinden versuchen
+- Reload — Plan noch da?
 - 3+ Kabel zwischen denselben Nodes — getrennt sichtbar?
-- Offline nutzen — alles muss weiter funktionieren (kein Chat
-  mehr = keine Server-Abhängigkeit)
-
-Jedes gefundene Problem: SOFORT fixen, dann Pass 2 von vorn.
-Mindestens 5 echte Probleme finden — findest du keine, suchst du
-nicht gründlich genug.
+- Offline — alles funktioniert ohne Server?
+Jedes Problem: SOFORT fixen, Pass 2 von vorn. Mindestens 5 echte
+Probleme finden — keine gefunden = nicht gründlich gesucht.
 
 PASS 3 — REGRESSIONS-ABNAHME:
-
-- npm test: alle bisherigen Tests müssen grün bleiben
-  (Chat-Tests entfallen durch Löschung; angepasste Tests nur
-  mit Begründung)
+- npm test: alle 664+ Tests grün (angepasste Tests nur mit Begründung)
 - tsc -p tsconfig.typecheck.json: 0 Fehler
-- npm run build: erfolgreich, /api/chat darf NICHT mehr
-  im Build-Output erscheinen
-- Liste jede Test-Datei, die deine Änderungen berühren, und
-  erkläre, warum sie weiterhin grün ist
+- npm run build: erfolgreich, KEINE /api/chat-Route im Output
+- Jede berührte Test-Datei auflisten + begründen, warum grün
 
 ## VISUELLE KLARHEIT — NICHT VERHANDELBAR
 
-- V1: Jedes Element ist ohne Vorwissen erkennbar: Buttons haben
-  Icon + Textlabel (kein Icon-only ohne aria-label + Tooltip)
-- V2: Kabel-Farbsystem konsistent (DC rot, AC blau, Wasser cyan),
-  Backbone 3px, Standard 2px, parallele Kabel 16px Lane-Abstand
-- V3: Maximal 2 Verschachtelungsebenen im UI — keine Panels in Panels
-- V4: Leere Zustände überall: leerer Plan, leere Suche —
-  jeder leere Zustand erklärt dem Nutzer den nächsten Schritt
-- V5: Touch-Targets >= 44x44px auf Touch-Geräten
-- V6: Kontraste WCAG AA (4.5:1 Text), Fokus-Ringe sichtbar
-
-## RESPONSIVE ANFORDERUNGEN
-
-### Handy (360–430px)
-
-- Bottom-Tab-Navigation: Bauteile | Canvas | Eigenschaften
-- Canvas: One-Finger-Pan auf leerer Fläche, Zwei-Finger-Pinch-Zoom,
-  Node-Drag NUR bei langem Druck (200ms) oder dediziertem Drag-Handle
-- Tap-to-Connect bleibt Standard (kein Drag-to-Connect auf Touch)
-- Alle Buttons mindestens 44x44px Touch-Target
-- Bottom-Navigation überlappt nie den Canvas-Inhalt (safe-area-inset)
-
-### Tablet (768–1023px)
-
-- 2-Spalten: Sidebar (260px, einklappbar) + Canvas (flex-1)
-- Inspector als Slide-Over von rechts (320px), öffnet bei Node-Auswahl
-- Gleiche Touch-Regeln wie Handy
-
-### Desktop (>= 1024px, optimiert für 1440px)
-
-- Festes 3-Spalten-Layout, KEIN w-auto:
-  Sidebar 280px | Canvas flex-1 (min 600px) | Inspector 320px
-- Maus: Drag-to-Connect, Scroll-Zoom
-- Kein horizontaler Overflow bei 1024px
-
-### React Flow Touch-Konfiguration
-
-Explizit setzen, abhängig von matchMedia('(pointer: coarse)'):
-panOnDrag, zoomOnPinch, zoomOnScroll, panOnScroll, connectionRadius
-(Touch: 40px, Maus: 20px), deleteKeyCode, multiSelectionKeyCode.
-Begründe jede Prop-Wahl in einem Kommentar.
+- V1: Buttons mit Icon + Textlabel (kein Icon-only ohne aria-label
+  + Tooltip)
+- V2: Kabel-Farben konsistent (DC rot, AC blau, Wasser cyan),
+  Rollen-Strichstärken aus PR #314 beibehalten, 16px Lanes
+- V3: Maximal 2 Verschachtelungsebenen im UI
+- V4: Leere Zustände erklären den nächsten Schritt (siehe R5)
+- V5: Touch-Targets >= 44x44px
+- V6: Kontraste WCAG AA (4.5:1), Fokus-Ringe sichtbar
 
 ## DEFINITION OF DONE — ALLE Punkte, keine Ausnahme
 
-- [ ] Chat vollständig entfernt (Code, Route, Referenzen, Env, Doku)
-- [ ] Funktions-Inventur: 100% der Elemente geprüft, 0 "unklar"
-- [ ] Handy (375px), Tablet (768px), Desktop (1440px): je ein
-  voll funktionsfähiges Layout ohne Overflow
-- [ ] Touch: Pan/Zoom/Drag/Connect kollidieren nicht
-- [ ] Kabel: keine ungewollten Überlappungen, Kreuzungen minimiert,
-  Hierarchie sichtbar
-- [ ] Jeder Button produziert sichtbares Feedback (Aktion, Toast,
-  Loading-State oder ehrliche Fehlermeldung)
-- [ ] Tests grün (minus entfernte Chat-Tests), Typecheck grün,
-  Build grün ohne /api/chat
+- [ ] R1: Chat-Reste verifiziert/entfernt, Build ohne /api/chat
+- [ ] R2: docs/INVENTORY.md vollständig, 0 "unklar"
+- [ ] R3: autoWire-Funktionen mit dedizierten Tests
+- [ ] R4: Audit-Reste A11Y-001, ELEC-001/002/003, SEC-001, DEAD-001
+- [ ] R5: Leere Zustände mit nächstem-Schritt-Hinweis
+- [ ] R6: Lighthouse Accessibility >=95 gemessen + Beleg
+- [ ] Responsive-Verhalten aus PR #314 unverändert intakt
+- [ ] Tests grün (>=664 minus entfernte Chat-Tests), Typecheck 0,
+  Build grün
 - [ ] Kein toter Code, keine auskommentierten Blöcke, keine TODOs
 - [ ] Alle 3 Verifikations-Pässe im Output dokumentiert
 
 ## OUTPUT-FORMAT
 
-1. Phase-1-Tabelle (Funktions-Inventur)
+1. docs/INVENTORY.md (R2) + Chat-Bestandsaufnahme (R1)
 2. Phase-2-Entscheidungen
 3. Alle geänderten/neuen/gelöschten Dateien komplett, mit Pfad
 4. Alle 3 Verifikations-Pässe mit Ergebnissen
@@ -183,6 +165,8 @@ Begründe jede Prop-Wahl in einem Kommentar.
 
 ## VERBOTEN
 
+- Bereits gelöste Punkte aus dem STATUS-Abschnitt erneut implementieren
+  oder deren Trade-offs ohne Anlass zurückbauen
 - Schnipsel statt kompletter Dateien
 - "Das sollte jetzt funktionieren" ohne Verifikations-Nachweis
 - Neue Abhängigkeiten ohne Begründung
