@@ -16,18 +16,7 @@ npm run build
 Die Produktionskonfiguration nutzt `output: 'export'` und ist für GitHub Pages
 vorbereitet (`next.config.ts`, `.github/workflows/deploy.yml`).
 
-Wichtig: Ein statischer Export kann keine Next.js-API-Routen ausliefern. Der
-eingebaute Chat-Endpunkt `app/api/chat/route.ts` existiert zwar für eine
-Node/Edge-Laufzeit, im `out/`-Export aber **nicht**. Deshalb ist der
-Chat-Client über Umgebungsvariablen konfigurierbar:
-
-- `NEXT_PUBLIC_CHAT_API` — absolute oder pfadbezogene URL des Chat-Backends.
-  Beispiele: `https://api.example.com/chat` oder `/Camp/api/chat`.
-- `NEXT_PUBLIC_CHAT_ENABLED=false` — blendet den KI-Assistenten aus, wenn
-  in einer statischen Veröffentlichung kein Backend angebunden ist.
-
-Ohne `NEXT_PUBLIC_CHAT_API` deaktiviert der Client Eingabe und Senden und zeigt
-eine ehrliche Hinweiskarte statt einer kryptischen Netzwerkfehler-Meldung.
+Die App benötigt kein Backend — alle Daten werden lokal im Browser gespeichert.
 
 ## Daten im Browser
 
