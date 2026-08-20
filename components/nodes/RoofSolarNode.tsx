@@ -18,6 +18,8 @@ const RoofSolarNode = function ({
   const height = data.height || 60;
   const watts = data.watts || 100;
   const isInvalid = data.isInvalid || false;
+  const isOverlapping = data.isOverlapping || false;
+  const state = isInvalid ? 'invalid' : isOverlapping ? 'overlap' : 'ok';
   const onNodeResize = data.onNodeResize;
 
   return (
@@ -36,12 +38,14 @@ const RoofSolarNode = function ({
       />
       <div
         role="group"
-        aria-label={`Solarpanel ${Math.round(width)} mal ${Math.round(height)} Zentimeter, ${watts} Watt${isInvalid ? ', ragt aus der Safe Zone' : ''}`}
-        aria-invalid={isInvalid || undefined}
+        aria-label={`Solarpanel ${Math.round(width)} mal ${Math.round(height)} Zentimeter, ${watts} Watt${isInvalid ? ', ragt aus der Safe Zone' : ''}${isOverlapping ? ', überlappt ein anderes Element' : ''}`}
+        aria-invalid={isInvalid || isOverlapping || undefined}
         className={cn(
           'relative flex h-full w-full items-center justify-center overflow-hidden border-2 bg-soot text-paper transition-colors',
           selected ? 'ring-2 ring-copper ring-offset-2 ring-offset-paper' : '',
-          isInvalid ? 'border-warn-critical bg-warn-critical-bg text-warn-critical' : 'border-ink'
+          state === 'invalid' && 'border-warn-critical bg-warn-critical-bg text-warn-critical',
+          state === 'overlap' && 'border-warn-warning ring-2 ring-warn-warning/40',
+          state === 'ok' && 'border-ink'
         )}
         style={{ width: '100%', height: '100%' }}
       >
@@ -58,12 +62,18 @@ const RoofSolarNode = function ({
         </div>
 
         {isInvalid && (
-          <>
-            <div className="pointer-events-none absolute inset-0 border-4 border-warn-critical" aria-hidden="true" />
-            <div className="absolute left-1 top-1 z-10 rounded-full bg-warn-critical px-2 py-0.5 caption-xs font-bold text-paper" aria-hidden="true">
-              !
-            </div>
-          </>
+          <div className="pointer-events-none absolute inset-0 border-4 border-warn-critical" aria-hidden="true" />
+        )}
+        {(isInvalid || isOverlapping) && (
+          <div
+            className={cn(
+              'absolute left-1 top-1 z-10 rounded-full px-2 py-0.5 caption-xs font-bold text-paper',
+              isInvalid ? 'bg-warn-critical' : 'bg-warn-warning'
+            )}
+            aria-hidden="true"
+          >
+            !
+          </div>
         )}
       </div>
     </>

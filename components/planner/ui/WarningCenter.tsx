@@ -92,7 +92,7 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
   }, [open]);
 
   if (warnings.length === 0) {
-    return <span className="hidden xl:inline-flex min-h-11 items-center gap-1 rounded-lg border border-emerald-700 bg-emerald-50 px-3 text-xs font-semibold text-emerald-950"><Check className="h-4 w-4" />Keine Hinweise</span>;
+    return <span className="hidden xl:inline-flex min-h-11 items-center gap-1 rounded-lg border border-moss bg-moss/10 px-3 text-xs font-semibold text-moss"><Check className="h-4 w-4" />Keine Hinweise</span>;
   }
 
   const topType: ValidationWarning['type'] = counts.critical > 0 ? 'critical' : counts.warning > 0 ? 'warning' : 'info';

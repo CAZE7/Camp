@@ -4,8 +4,9 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useChat } from '@ai-sdk/react';
-import { UIMessage } from 'ai';
+import { DefaultChatTransport, UIMessage } from 'ai';
 import { Send, X, MessageCircle, StopCircle, AlertTriangle } from 'lucide-react';
+import { getChatApiUrl, hasChatBackend, isChatEnabled } from '@/lib/chatConfig';
 
 const MAX_CHARS = 10000;
 
@@ -73,14 +74,37 @@ function mapErrorMessage(error: Error | undefined): string | null {
     return 'Deine Nachricht war zu lang. Kürze sie auf unter 10 000 Zeichen.';
   }
   if (raw.includes('failed to fetch') || raw.includes('networkerror') || raw.includes('network')) {
+    if (!hasChatBackend()) {
+      return 'Der KI-Assistent ist in dieser statischen Veröffentlichung nicht verfügbar. Bitte konfiguriere NEXT_PUBLIC_CHAT_API (siehe README).';
+    }
     return 'Keine Verbindung. Prüfe deine Internetverbindung und versuche es erneut.';
   }
   return 'Die KI-Hilfe hatte ein Problem: ' + error.message;
 }
 
+/** Meldung, wenn in diesem Build bewusst kein Chat-Backend konfiguriert ist. */
+function ChatUnavailableNotice() {
+  return (
+    <div role="alert" className="warn-card warn-card-warning m-4 text-sm">
+      <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+      <p>
+        Der KI-Assistent ist in dieser statischen Veröffentlichung nicht verfügbar.
+        Für die Funktion muss ein Backend konfiguriert und über die Umgebungsvariable
+        <code className="mx-1 rounded bg-bone px-1 py-0.5 font-mono text-[11px]">NEXT_PUBLIC_CHAT_API</code>
+        bekannt gemacht werden.
+      </p>
+    </div>
+  );
+}
+
 export default function Chat({ defaultOpen = false }: { defaultOpen?: boolean }) {
   const [input, setInput] = useState('');
-  const { messages, sendMessage, status, error, stop } = useChat();
+  const chatApi = useMemo(() => getChatApiUrl(), []);
+  const backendAvailable = useMemo(() => hasChatBackend(), []);
+  const chatEnabled = isChatEnabled();
+  const { messages, sendMessage, status, error, stop } = useChat({
+    transport: new DefaultChatTransport({ api: chatApi }),
+  });
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const closeRef = useRef<HTMLButtonElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -94,6 +118,20 @@ export default function Chat({ defaultOpen = false }: { defaultOpen?: boolean })
 
   useEffect(() => {
     if (isOpen) closeRef.current?.focus();
+  }, [isOpen]);
+
+  // Escape schließt den Dialog (WCAG 2.1.2 / Tastaturbedienbarkeit).
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.stopPropagation();
+        setIsOpen(false);
+        window.requestAnimationFrame(() => triggerRef.current?.focus());
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
   }, [isOpen]);
 
   const submit = async (text: string) => {
@@ -112,6 +150,9 @@ export default function Chat({ defaultOpen = false }: { defaultOpen?: boolean })
     setInput(prompt);
     inputRef.current?.focus();
   };
+
+  // Chat ist explizit deaktiviert (z. B. auf statischen Spiegeln ohne Backend).
+  if (!chatEnabled) return null;
 
   if (!isOpen) {
     return (
@@ -135,6 +176,7 @@ export default function Chat({ defaultOpen = false }: { defaultOpen?: boolean })
   return (
     <section
       role="dialog"
+      aria-modal="true"
       aria-label="KI-Assistent"
       className="fixed left-6 z-50 flex h-[min(600px,80vh)] w-96 max-w-[calc(100vw-2rem)] flex-col border border-rule bg-bone shadow-2xl safe-bottom"
     >
@@ -158,6 +200,7 @@ export default function Chat({ defaultOpen = false }: { defaultOpen?: boolean })
       </header>
 
       <div className="flex-1 overflow-y-auto p-4" role="log" aria-label="Chat-Verlauf">
+        {!backendAvailable && <ChatUnavailableNotice />}
         {messages.length === 0 ? (
           <div className="space-y-4">
             <p className="text-sm text-ink">
@@ -180,7 +223,7 @@ export default function Chat({ defaultOpen = false }: { defaultOpen?: boolean })
               </ul>
             </div>
             <p className="caption-xs text-ink-soft">
-              Tipp: Beziehe deine Stückliste über das Schaltplan-Werkzeug.
+              Tipp: Du kannst eine Stückliste als <code className="font-mono">```json … ```</code>-Block einfügen.
             </p>
           </div>
         ) : (
@@ -236,8 +279,8 @@ export default function Chat({ defaultOpen = false }: { defaultOpen?: boolean })
             id="planner-chat-input"
             value={input}
             onChange={(event) => setInput(event.target.value.slice(0, MAX_CHARS))}
-            placeholder="Deine Frage …"
-            disabled={isLoading}
+            placeholder={backendAvailable ? 'Deine Frage …' : 'KI-Assistent in dieser Version nicht verfügbar'}
+            disabled={isLoading || !backendAvailable}
             maxLength={MAX_CHARS}
             aria-describedby="planner-chat-hint"
             className="min-h-11 flex-1"
@@ -256,7 +299,7 @@ export default function Chat({ defaultOpen = false }: { defaultOpen?: boolean })
           ) : (
             <Button
               type="submit"
-              disabled={!input.trim() || charLimitReached}
+              disabled={!input.trim() || charLimitReached || !backendAvailable}
               className="min-h-11 gap-2"
             >
               <Send className="h-4 w-4" aria-hidden="true" />

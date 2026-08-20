@@ -138,14 +138,14 @@ export function OnboardingWizard() {
                     onClick={() => handleApplyTemplate(template.id)}
                     className={`flex min-h-11 w-full flex-col items-start gap-1 rounded-lg border p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                       template.id === recommendedId
-                        ? 'border-emerald-700 bg-emerald-50 ring-1 ring-emerald-700'
+                        ? 'border-moss bg-moss/10 ring-1 ring-moss'
                         : 'border-border hover:bg-accent'
                     }`}
                   >
                     <span className="font-semibold text-foreground">
                       {template.label}
                       {template.id === recommendedId && (
-                        <span className="ml-2 rounded-full bg-emerald-800 px-2 py-1 text-xs font-bold uppercase text-white">Empfohlen</span>
+                        <span className="ml-2 rounded-full bg-moss px-2 py-1 text-xs font-bold uppercase text-white">Empfohlen</span>
                       )}
                     </span>
                     <span className="text-sm text-muted-foreground">{template.desc}</span>

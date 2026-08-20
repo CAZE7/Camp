@@ -55,9 +55,16 @@ export const STANDARD_FUSE_SIZES = [
  * Kabel und löst bei Überlast zuverlässig aus, ohne im Normalbetrieb
  * ungewollt auszulösen.
  *
+ * WICHTIG: Wenn selbst die größte zulässige Sicherung für das Kabel den
+ * Nennstrom nicht tragen kann, wird `maxFuse` zurückgegeben (niemals ein
+ * Wert darüber). So kann die Funktion nie eine überdimensionierte Sicherung
+ * empfehlen, die das Kabel im Kurzschlussfall nicht schützt. In diesem Fall
+ * ist der Rückgabewert kleiner als der Nennstrom — ein Signal, dass der
+ * Querschnitt vergrößert werden muss.
+ *
  * @param currentA      Nennstrom der Leitung in Ampere
  * @param crossSection  Kabelquerschnitt in mm²
- * @returns             Sicherungsgröße in Ampere
+ * @returns             Sicherungsgröße in Ampere (≤ FUSE_MAP[crossSection])
  */
 export const selectFuseSize = (currentA: number, crossSection: number): number => {
   const maxFuse = calculateMaxFuse(crossSection);
@@ -67,9 +74,21 @@ export const selectFuseSize = (currentA: number, crossSection: number): number =
       return size;
     }
   }
-  // Fallback: kleinste Norm-Sicherung über dem Nennstrom (nur erreichbar,
-  // wenn selbst der größte Querschnitt den Strom nicht tragen kann).
-  return STANDARD_FUSE_SIZES.find((s) => s >= minFuse) || maxFuse || STANDARD_FUSE_SIZES[STANDARD_FUSE_SIZES.length - 1];
+  // Keine Norm-Sicherung erfüllt minFuse ≤ size ≤ maxFuse. Statt eine
+  // zu große Sicherung über dem Kabel-Maximum zu wählen, wird der
+  // Kabel-Höchstwert zurückgegeben — der Querschnitt ist zu klein.
+  return maxFuse || STANDARD_FUSE_SIZES[0];
+};
+
+/**
+ * Prüft, ob ein Kabelquerschnitt für den Nennstrom ausreicht, also
+ * eine zulässige Sicherung gefunden werden kann, die ≥ Nennstrom und
+ * ≤ Kabel-Maximalsicherung ist.
+ */
+export const isFuseFeasible = (currentA: number, crossSection: number): boolean => {
+  const maxFuse = calculateMaxFuse(crossSection);
+  const minFuse = Math.max(1, Math.ceil(currentA));
+  return minFuse <= maxFuse;
 };
 
 export const lookupThermalCrossSection = (I: number): number => {
@@ -113,7 +132,8 @@ export const getEdgeDomain = (
   sourceHandle: string | null | undefined,
   targetHandle?: string | null | undefined
 ): 'DC_12V' | 'AC_230V' => {
-  const isAcNode = (type: string | undefined) => type === 'shorePower' || type === 'consumer230v';
+  const isAcNode = (type: string | undefined) =>
+    type === 'shorePower' || type === 'consumer230v' || type === 'acBatteryCharger';
   if (isAcNode(sourceNodeType) || isAcNode(targetNodeType)) {
     return 'AC_230V';
   }
@@ -135,7 +155,7 @@ export const getHandleDomain = (
   handleType: 'source' | 'target' | undefined
 ): 'DC_12V' | 'AC_230V' => {
   if (!nodeType) return 'DC_12V';
-  if (nodeType === 'shorePower' || nodeType === 'consumer230v') {
+  if (nodeType === 'shorePower' || nodeType === 'consumer230v' || nodeType === 'acBatteryCharger') {
     return 'AC_230V';
   }
   if (nodeType === 'inverter') {

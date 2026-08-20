@@ -195,7 +195,7 @@ export function FlowCanvas() {
   return (
     <>
       {waterWarning && (
-        <div role="status" aria-live="polite" className="absolute left-1/2 top-24 z-50 w-11/12 -translate-x-1/2 rounded-lg border border-yellow-700 bg-yellow-100 p-3 text-center font-semibold text-yellow-900 shadow-lg md:w-auto">
+        <div role="status" aria-live="polite" className="absolute left-1/2 top-24 z-50 w-11/12 -translate-x-1/2 rounded-lg border border-warn-warning bg-warn-warning-bg p-3 text-center font-semibold text-warn-warning shadow-lg md:w-auto">
           {waterWarning}
         </div>
       )}
@@ -282,7 +282,7 @@ export function FlowCanvas() {
           </Panel>
 
           {viewMode === 'electric' && calculatedSolarWatts > 0 && (
-            <Panel position="bottom-center" className="mb-4 rounded-lg border border-blue-300 bg-blue-50 p-3 text-sm text-blue-900 shadow-sm">
+            <Panel position="bottom-center" className="mb-4 rounded-lg border border-oxide/40 bg-oxide/10 p-3 text-sm text-oxide shadow-sm">
               <strong>Dachplaner-Daten erkannt:</strong> {calculatedSolarWatts} W Solarleistung verfügbar. Der Solar-Laderegler (MPPT) muss dafür passend dimensioniert sein.
             </Panel>
           )}

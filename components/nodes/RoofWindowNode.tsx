@@ -17,6 +17,8 @@ const RoofWindowNode = function ({
   const width = data.width || 40;
   const height = data.height || 40;
   const isInvalid = data.isInvalid || false;
+  const isOverlapping = data.isOverlapping || false;
+  const state = isInvalid ? 'invalid' : isOverlapping ? 'overlap' : 'ok';
   const onNodeResize = data.onNodeResize;
 
   return (
@@ -35,12 +37,14 @@ const RoofWindowNode = function ({
       />
       <div
         role="group"
-        aria-label={`Dachfenster ${Math.round(width)} mal ${Math.round(height)} Zentimeter${isInvalid ? ', ragt aus der Safe Zone' : ''}`}
-        aria-invalid={isInvalid || undefined}
+        aria-label={`Dachfenster ${Math.round(width)} mal ${Math.round(height)} Zentimeter${isInvalid ? ', ragt aus der Safe Zone' : ''}${isOverlapping ? ', überlappt ein anderes Element' : ''}`}
+        aria-invalid={isInvalid || isOverlapping || undefined}
         className={cn(
           'relative flex h-full w-full items-center justify-center overflow-hidden border-2 bg-warn-info-bg text-warn-info transition-colors',
           selected ? 'ring-2 ring-warn-info ring-offset-2 ring-offset-paper' : '',
-          isInvalid ? 'border-warn-critical bg-warn-critical-bg text-warn-critical' : 'border-warn-info'
+          state === 'invalid' && 'border-warn-critical bg-warn-critical-bg text-warn-critical',
+          state === 'overlap' && 'border-warn-warning ring-2 ring-warn-warning/40',
+          state === 'ok' && 'border-warn-info'
         )}
         style={{ width: '100%', height: '100%' }}
       >
@@ -56,12 +60,18 @@ const RoofWindowNode = function ({
           </span>
         </div>
         {isInvalid && (
-          <>
-            <div className="pointer-events-none absolute inset-0 border-4 border-warn-critical" aria-hidden="true" />
-            <div className="absolute left-1 top-1 z-10 rounded-full bg-warn-critical px-2 py-0.5 caption-xs font-bold text-paper" aria-hidden="true">
-              !
-            </div>
-          </>
+          <div className="pointer-events-none absolute inset-0 border-4 border-warn-critical" aria-hidden="true" />
+        )}
+        {(isInvalid || isOverlapping) && (
+          <div
+            className={cn(
+              'absolute left-1 top-1 z-10 rounded-full px-2 py-0.5 caption-xs font-bold text-paper',
+              isInvalid ? 'bg-warn-critical' : 'bg-warn-warning'
+            )}
+            aria-hidden="true"
+          >
+            !
+          </div>
         )}
       </div>
     </>

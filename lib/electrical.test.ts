@@ -6,7 +6,9 @@ import {
   lookupThermalCrossSection,
   calculateCrossSection,
   getEdgeDomain,
-  getHandleDomain
+  getHandleDomain,
+  selectFuseSize,
+  isFuseFeasible,
 } from './electrical';
 
 describe('electrical safety refactoring tests', () => {
@@ -97,5 +99,27 @@ describe('electrical safety refactoring tests', () => {
     // InverterNode: left target plus is the 12V DC input, not the AC output
     expect(getHandleDomain('inverter', 'plus', 'target')).toBe('DC_12V');
     expect(getHandleDomain('inverter', 'ac_in', 'target')).toBe('AC_230V');
+  });
+
+  it('selectFuseSize never exceeds the cable maximum (FUSE_MAP)', () => {
+    // 1,5 mm² darf max. 16 A abgesichert werden. Bei 17 A Nennstrom
+    // darf KEINE 20-A-Sicherung empfohlen werden (Brandgefahr).
+    expect(selectFuseSize(17, 1.5)).toBeLessThanOrEqual(FUSE_MAP[1.5]);
+    expect(selectFuseSize(17, 1.5)).toBe(16);
+
+    // 2,5 mm² max 20 A.
+    expect(selectFuseSize(21, 2.5)).toBeLessThanOrEqual(FUSE_MAP[2.5]);
+    expect(selectFuseSize(21, 2.5)).toBe(20);
+
+    // Normalfall: kleinste passende Norm-Sicherung.
+    expect(selectFuseSize(10, 2.5)).toBe(10);
+    expect(selectFuseSize(16, 1.5)).toBe(16);
+  });
+
+  it('isFuseFeasible indicates whether a cable can carry the current', () => {
+    expect(isFuseFeasible(10, 1.5)).toBe(true);
+    expect(isFuseFeasible(16, 1.5)).toBe(true);
+    expect(isFuseFeasible(17, 1.5)).toBe(false);
+    expect(isFuseFeasible(0, 1.5)).toBe(true);
   });
 });

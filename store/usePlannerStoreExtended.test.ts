@@ -484,12 +484,14 @@ describe('Auto-Wire: keine Warnungen nach performAutoWiring', () => {
       makeNode('b1', 'battery', { label: 'Batterie', capacity: 200, chemistry: 'LiFePO4' }),
       makeNode('i1', 'inverter', { label: 'Inverter', watts: 1000 }),
       makeNode('a1', 'consumer230v', { label: 'Steckdose', watts: 300, hours: 1 }),
-      makeNode('p1', 'shorePower', { label: 'Landstrom' }),
+      makeNode('p1', 'shorePower', { label: 'Landstrom', hasRcd: true }),
       makeNode('c1', 'consumer', { label: 'Pumpe', watts: 40, hours: 2 }),
     ];
     const { nodes: n, edges: e } = runAutoWire(nodes);
 
-    // Landstrom muss einen RCD (FI 30mA) haben — Auto-Wire setzt ihn
+    // Landstrom muss vorschriftsgemäß einen RCD (FI ≤30 mA) haben — das ist
+    // eine Eigenschaft des Bauteils und wird von Auto-Wire nicht mehr
+    // pauschal gesetzt (sonst würde ein fehlender FI verschleiert).
     const shore = n.find((x) => x.id === 'p1');
     expect(shore?.data.hasRcd).toBe(true);
 
@@ -516,7 +518,7 @@ describe('Auto-Wire: keine Warnungen nach performAutoWiring', () => {
       makeNode('d1', 'dcdcCharger', { label: 'Ladebooster', amps: 30 }),
       makeNode('ch1', 'charger', { label: 'Ladequelle', amps: 20 }),
       makeNode('ac1', 'acBatteryCharger', { label: '230V Ladegerät', amps: 25 }),
-      makeNode('p1', 'shorePower', { label: 'Landstrom' }),
+      makeNode('p1', 'shorePower', { label: 'Landstrom', hasRcd: true }),
       makeNode('i1', 'inverter', { label: 'Inverter', watts: 1000 }),
       makeNode('c1', 'consumer', { label: 'Kühlschrank', watts: 60, hours: 4 }),
       makeNode('c2', 'consumer', { label: 'Pumpe', watts: 40, hours: 3 }),

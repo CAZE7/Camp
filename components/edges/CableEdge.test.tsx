@@ -2,7 +2,6 @@ import { render } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import CableEdge from './CableEdge';
 import { useReactFlow } from 'reactflow';
-import { useAppStore } from '../../lib/store';
 
 // Mock reactflow
 vi.mock('reactflow', async () => {
@@ -20,10 +19,6 @@ vi.mock('reactflow', async () => {
 });
 
 // Mock store
-vi.mock('../../lib/store', () => ({
-  useAppStore: vi.fn(),
-}));
-
 describe('CableEdge', () => {
   const defaultProps = {
     id: 'e1-2',
@@ -42,10 +37,6 @@ describe('CableEdge', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    (useAppStore as any).mockImplementation((selector: any) => {
-      const state = { isProMode: true };
-      return selector(state);
-    });
     (useReactFlow as any).mockReturnValue({
       getNode: vi.fn(),
       getNodes: vi.fn().mockReturnValue([]),
@@ -62,19 +53,7 @@ describe('CableEdge', () => {
     // expect(getByText('5.00 m')).toBeInTheDocument(); // Smart labeling hides this
   });
 
-  it('uses orthogonal SmoothStep routing regardless of isProMode', () => {
-    const { getByTestId } = render(<CableEdge {...defaultProps} />);
-
-    const baseEdge = getByTestId('base-edge');
-    expect(baseEdge).toHaveAttribute('d', 'smooth-step-path');
-  });
-
-  it('keeps SmoothStep routing when isProMode is false', () => {
-    (useAppStore as any).mockImplementation((selector: any) => {
-      const state = { isProMode: false };
-      return selector(state);
-    });
-
+  it('uses orthogonal SmoothStep routing', () => {
     const { getByTestId } = render(<CableEdge {...defaultProps} />);
 
     const baseEdge = getByTestId('base-edge');

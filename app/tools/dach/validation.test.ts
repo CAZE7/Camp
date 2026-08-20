@@ -145,4 +145,22 @@ describe('validateRoofNodes', () => {
       expect(result[0].data.isInvalid).toBe(true);
     });
   });
+
+  describe('Overlap Detection', () => {
+    it('marks two overlapping solar panels', () => {
+      const a = createNode('a', safeMinX, safeMinY, 'roofSolar', 100, 100);
+      const b = createNode('b', safeMinX + 50, safeMinY + 50, 'roofSolar', 100, 100);
+      const result = validateRoofNodes([a, b], mockVehicle);
+      expect(result.find((n) => n.id === 'a')?.data.isOverlapping).toBe(true);
+      expect(result.find((n) => n.id === 'b')?.data.isOverlapping).toBe(true);
+    });
+
+    it('does not mark side-by-side non-overlapping panels', () => {
+      const a = createNode('a', safeMinX, safeMinY, 'roofSolar', 80, 80);
+      const b = createNode('b', safeMinX + 90, safeMinY, 'roofSolar', 80, 80);
+      const result = validateRoofNodes([a, b], mockVehicle);
+      expect(result.find((n) => n.id === 'a')?.data.isOverlapping).toBeFalsy();
+      expect(result.find((n) => n.id === 'b')?.data.isOverlapping).toBeFalsy();
+    });
+  });
 });

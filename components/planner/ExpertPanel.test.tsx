@@ -3,7 +3,6 @@ import { render, screen, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ExpertPanel } from './ExpertPanel';
 import { usePlannerStore } from '../../store/usePlannerStore';
-import { useAppStore } from '../../lib/store';
 
 const defaultPlannerStoreState = {
   selectedNodes: [],
@@ -17,7 +16,6 @@ vi.mock('../../store/usePlannerStore', () => ({
 describe('ExpertPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    useAppStore.setState({ isProMode: true });
   });
 
   it('renders closed state by default with FAB button', () => {

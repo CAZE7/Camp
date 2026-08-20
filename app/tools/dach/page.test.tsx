@@ -6,7 +6,6 @@ import { useAppStore } from '@/lib/store';
 // Mock Zustand store
 vi.mock('@/lib/store', () => {
   let storeState = {
-    isProMode: true,
     calculatedSolarWatts: 0,
     setCalculatedSolarWatts: vi.fn((watts) => {
       storeState.calculatedSolarWatts = watts;

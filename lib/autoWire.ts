@@ -25,6 +25,7 @@ import {
   calculateCrossSection,
   lookupThermalCrossSection,
   selectFuseSize,
+  isFuseFeasible,
 } from './electrical';
 import { calculateEdgeCurrent, getSystemVoltage } from './vde-standards';
 
@@ -315,7 +316,18 @@ function applyFuseSizes(dcEdges: CableEdge[], nodes: Node[], sysVoltage: number)
     const sourceNode = nodeMap.get(edge.source);
     const targetNode = nodeMap.get(edge.target);
     const I = calculateEdgeCurrent(sourceNode, targetNode, nodes, sysVoltage);
-    const cs = edge.data?.crossSection || 1.5;
+    let cs = edge.data?.crossSection || 1.5;
+
+    // Wenn der Nennstrom die zulässige Sicherung für den Querschnitt
+    // übersteigt, muss das Kabel hochdimensioniert werden (thermisch).
+    // Eine Sicherung über dem Kabel-Maximalwert wäre Brandgefahr.
+    if (!isFuseFeasible(I, cs)) {
+      const larger = VDE_SIZES.find((s) => s > cs && isFuseFeasible(I, s));
+      if (larger) {
+        cs = larger;
+        edge.data!.crossSection = cs;
+      }
+    }
     edge.data!.fuseSize = selectFuseSize(I, cs);
   }
 }
@@ -710,10 +722,11 @@ export function performAutoWiring(
     }
   }
 
+  // Landstromanschlüsse werden NICHT pauschal als RCD-geschützt markiert.
+  // Ob ein 30-mA-FI (RCD) vorhanden ist, muss am Bauteil gepflegt und von der
+  // Live-Validierung nach DIN VDE 0100-721 angemahnt werden. Ein automatisches
+  // Setzen würde einen fehlenden FI verschleiern (Stromschlaggefahr).
   const shorePowers = nodesByType['shorePower'] || [];
-  for (const sp of shorePowers) {
-    sp.data.hasRcd = true;
-  }
   const consumers230v = nodesByType['consumer230v'] || [];
   if (inverters.length > 0) {
     const mainInverter = inverters[0];
