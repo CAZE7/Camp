@@ -6,8 +6,12 @@ export const MINUS_PATH_OFFSET = 32;
 export const PLUS_LABEL_NUDGE = -40;
 export const MINUS_LABEL_NUDGE = 40;
 export const PARALLEL_LABEL_SPREAD = 22;
-/** Vertikaler Abstand zwischen gebündelten Leitungen derselben Trasse. */
-export const PARALLEL_LANE_SPREAD = 18;
+/**
+ * Abstand zwischen gebündelten Leitungen derselben Trasse.
+ * 16 px entsprechen bei Zoom 1 gut zwei Kabeldurchmessern — nah genug, damit
+ * die Bündelung als Trasse lesbar bleibt, weit genug für saubere Trennung.
+ */
+export const PARALLEL_LANE_SPREAD = 16;
 
 export interface PathParams {
   sourceX: number;
