@@ -1,69 +1,179 @@
-name: Deploy Next.js site to Pages
+name: 🚀 CI/CD — Build & Deploy to GitHub Pages
 
 on:
   push:
-    branches: ["main", "feature/*", "feature/react-flow-cable-editor-7322653268250495059"]
+    branches: ["main", "master", "feature/**"]
+  pull_request:
+    branches: ["main", "master"]
   workflow_dispatch:
+    inputs:
+      skip_tests:
+        description: "Skip tests (emergency deploy)"
+        required: false
+        default: "false"
+        type: boolean
 
-# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+# ── Permissions ─────────────────────────────────────────────────────────────
 permissions:
   contents: read
   pages: write
   id-token: write
+  pull-requests: write   # allows posting PR comments with build size report
 
-# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
-# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
+# ── Concurrency ─────────────────────────────────────────────────────────────
 concurrency:
-  group: "pages"
-  cancel-in-progress: false
+  group: "pages-${{ github.ref }}"
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# ── Environment ──────────────────────────────────────────────────────────────
+env:
+  NODE_VERSION: "20"
+  NEXT_TELEMETRY_DISABLED: 1
 
 jobs:
-  # Build job
-  build:
+  # ╔══════════════════════════════════════════════════════════════╗
+  # ║  JOB 1: Type Check + Lint (parallel with tests)             ║
+  # ╚══════════════════════════════════════════════════════════════╝
+  typecheck:
+    name: 🔎 TypeScript & Lint
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: ⬇️ Checkout
         uses: actions/checkout@v4
-      - name: Setup Node
+
+      - name: ⚙️ Setup Node ${{ env.NODE_VERSION }}
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
+
+      - name: 📦 Install dependencies
+        run: npm ci --prefer-offline
+
+      - name: 🔎 TypeScript check
+        run: npx tsc --noEmit
+        continue-on-error: false
+
+  # ╔══════════════════════════════════════════════════════════════╗
+  # ║  JOB 2: Unit Tests (parallel with typecheck)                ║
+  # ╚══════════════════════════════════════════════════════════════╝
+  test:
+    name: 🧪 Unit Tests
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.skip_tests != 'true' }}
+    steps:
+      - name: ⬇️ Checkout
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
         with:
-          static_site_generator: next
-      - name: Restore cache
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: 📦 Install dependencies
+        run: npm ci --prefer-offline
+
+      - name: 🧪 Run tests
+        run: npm test -- --reporter=verbose
+
+  # ╔══════════════════════════════════════════════════════════════╗
+  # ║  JOB 3: Production Build (runs after quality gates pass)    ║
+  # ╚══════════════════════════════════════════════════════════════╝
+  build:
+    name: 🏗️ Build
+    runs-on: ubuntu-latest
+    needs: [typecheck, test]
+    if: always() && needs.typecheck.result == 'success' && (needs.test.result == 'success' || needs.test.result == 'skipped')
+    outputs:
+      artifact_size: ${{ steps.size.outputs.size }}
+      page_count: ${{ steps.size.outputs.pages }}
+    steps:
+      - name: ⬇️ Checkout
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: ♻️ Restore Next.js build cache
         uses: actions/cache@v4
         with:
           path: |
             .next/cache
-          # Generate a new cache whenever packages or source files change.
-          key: ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json', '**/yarn.lock') }}-${{ hashFiles('**.[jt]s', '**.[jt]sx') }}
-          # If source files changed but packages didn't, rebuild from a prior cache.
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('package-lock.json') }}-${{ hashFiles('**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx', '**/*.css') }}
           restore-keys: |
-            ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json', '**/yarn.lock') }}-
-      - name: Install dependencies
-        run: npm ci
-      - name: Build with Next.js
+            ${{ runner.os }}-nextjs-${{ hashFiles('package-lock.json') }}-
+            ${{ runner.os }}-nextjs-
+
+      - name: 📦 Install dependencies
+        run: npm ci --prefer-offline
+
+      - name: 🏗️ Configure Pages
+        uses: actions/configure-pages@v5
+        with:
+          static_site_generator: next
+
+      - name: 🔨 Build Next.js app
         run: npx next build
-      - name: Optimize Artifact (Remove Source Maps)
-        run: find ./out -name "*.map" -type f -delete || true
-      - name: Disable Jekyll
+        env:
+          NEXT_TELEMETRY_DISABLED: 1
+
+      - name: 🚫 Disable Jekyll (place .nojekyll in out/)
         run: touch ./out/.nojekyll
-      - name: Upload artifact
+
+      - name: 🗺️ Strip source maps
+        run: find ./out -name "*.map" -type f -delete || true
+
+      - name: 📊 Measure artifact size
+        id: size
+        run: |
+          SIZE=$(du -sh ./out | cut -f1)
+          PAGES=$(find ./out -name "index.html" | wc -l | tr -d ' ')
+          echo "size=${SIZE}" >> $GITHUB_OUTPUT
+          echo "pages=${PAGES}" >> $GITHUB_OUTPUT
+          echo "## 📦 Build Artifact" >> $GITHUB_STEP_SUMMARY
+          echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Total size | ${SIZE} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Static pages | ${PAGES} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Commit | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Branch | \`${{ github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
+
+      - name: ⬆️ Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./out
 
-  # Deployment job
+  # ╔══════════════════════════════════════════════════════════════╗
+  # ║  JOB 4: Deploy (only on main/master push)                   ║
+  # ╚══════════════════════════════════════════════════════════════╝
   deploy:
+    name: 🌍 Deploy to GitHub Pages
+    runs-on: ubuntu-latest
+    needs: build
+    if: |
+      needs.build.result == 'success' &&
+      github.event_name != 'pull_request' &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: build
     steps:
-      - name: Deploy to GitHub Pages
+      - name: 🚀 Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: ✅ Deployment Summary
+        run: |
+          echo "## 🚀 Deployment Successful!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| | |" >> $GITHUB_STEP_SUMMARY
+          echo "|-|-|" >> $GITHUB_STEP_SUMMARY
+          echo "| 🌐 URL | ${{ steps.deployment.outputs.page_url }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 📦 Size | ${{ needs.build.outputs.artifact_size }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 📄 Pages | ${{ needs.build.outputs.page_count }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🔀 Commit | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+

@@ -62,9 +62,9 @@ interface PlannerState {
   onLayout: () => void;
   checkSchematic: () => void;
   exportBOM: () => void;
-  onDrop: (event: React.DragEvent, screenToFlowPosition: (client: {x: number, y: number}) => {x: number, y: number}) => void;
-  onCustomDrop: (event: Event, screenToFlowPosition: (client: {x: number, y: number}) => {x: number, y: number}) => void;
-  addNode: (type: string, label: string, position: {x: number, y: number}, watts?: number) => void;
+  onDrop: (event: React.DragEvent, screenToFlowPosition: (client: { x: number, y: number }) => { x: number, y: number }) => void;
+  onCustomDrop: (event: Event, screenToFlowPosition: (client: { x: number, y: number }) => { x: number, y: number }) => void;
+  addNode: (type: string, label: string, position: { x: number, y: number }, watts?: number) => void;
   applyTemplate: (templateId: string) => void;
   calculatePathVoltageDrop: (targetNodeId: string, customNodes?: Node[], customEdges?: Edge[]) => number;
   isLayoutPending: boolean;
@@ -624,7 +624,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
         data: {}
       };
       set((state) => ({ waterEdges: addEdge(newEdge, state.waterEdges) }));
-      
+
       return;
     }
 
@@ -647,7 +647,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
       },
     };
     set((state) => ({ edges: addEdge(newEdge, state.edges) as Edge<CableEdgeData>[] }));
-    
+
   },
 
   autoWireSystem: () => {
@@ -870,7 +870,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
         const length = edge.data?.length || 1;
         const cs = edge.data?.crossSection || 2.5;
         const voltageDrop = (I * (length * 2)) / (58 * cs);
-        
+
         dfs(edge.source, currentDrop + voltageDrop, new Set(visited));
       }
     };
