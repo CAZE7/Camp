@@ -217,7 +217,10 @@ export const usePlannerStore = create<PlannerState>()(
   setSidebarOpen: (isOpen) => set({ isSidebarOpen: isOpen }),
   toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
 
-  isInspectorOpen: false,
+  // Standardmäßig sichtbar: ab 1280 px ist der Inspector die dritte Spalte des
+  // festen Desktop-Layouts. Auf Tablet/Handy steuert das Layout selbst, ob
+  // daraus ein Slide-over oder ein Tab wird.
+  isInspectorOpen: true,
   setInspectorOpen: (isOpen) => set({ isInspectorOpen: isOpen }),
   toggleInspector: () => set((state) => ({ isInspectorOpen: !state.isInspectorOpen })),
 

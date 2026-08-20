@@ -10,6 +10,9 @@ import {
   PLUS_LABEL_NUDGE,
   MINUS_LABEL_NUDGE,
   PARALLEL_LABEL_SPREAD,
+  PARALLEL_LANE_SPREAD,
+  parallelLaneOffset,
+  cableLaneType,
 } from './pathUtils';
 import { Position } from 'reactflow';
 import * as reactflow from 'reactflow';
@@ -123,5 +126,75 @@ describe('edgeLabelNudge', () => {
     expect(minus - plus).toBeGreaterThan(PARALLEL_LABEL_SPREAD);
     expect(plus).toBe(PLUS_LABEL_NUDGE - PARALLEL_LABEL_SPREAD / 2);
     expect(minus).toBe(MINUS_LABEL_NUDGE + PARALLEL_LABEL_SPREAD / 2);
+  });
+});
+
+describe('parallelLaneOffset (Trassen-Bündelung)', () => {
+  const pair = { source: 'a', target: 'b' };
+
+  it('keeps a single edge on its polarity stub', () => {
+    expect(
+      parallelLaneOffset({
+        edgeId: 'e1',
+        ...pair,
+        sourceHandle: 'plus',
+        siblingEdges: [{ id: 'e1', ...pair, sourceHandle: 'plus' }],
+      })
+    ).toBe(PLUS_PATH_OFFSET);
+  });
+
+  it('separates three parallel cables by exactly 16 px each (A5)', () => {
+    const siblings = [
+      { id: 'c', ...pair, sourceHandle: 'plus' },
+      { id: 'a', ...pair, sourceHandle: 'plus' },
+      { id: 'b', ...pair, sourceHandle: 'minus' },
+    ];
+    const offsets = siblings
+      .map((edge) =>
+        parallelLaneOffset({ edgeId: edge.id, ...pair, sourceHandle: edge.sourceHandle, siblingEdges: siblings })
+      )
+      .sort((x, y) => x - y);
+
+    expect(offsets).toEqual([PLUS_PATH_OFFSET, PLUS_PATH_OFFSET + 16, PLUS_PATH_OFFSET + 32]);
+    expect(PARALLEL_LANE_SPREAD).toBe(16);
+    expect(offsets[1] - offsets[0]).toBe(16);
+    expect(offsets[2] - offsets[1]).toBe(16);
+  });
+
+  it('groups identical cable types next to each other, regardless of edge id', () => {
+    // ids sind absichtlich so gewählt, dass alphabetisch Minus zwischen die
+    // beiden Plus-Leitungen fiele.
+    const siblings = [
+      { id: 'a-plus', ...pair, sourceHandle: 'plus' },
+      { id: 'm-minus', ...pair, sourceHandle: 'minus' },
+      { id: 'z-plus', ...pair, sourceHandle: 'plus' },
+    ];
+    const offsetOf = (id: string, handle: string) =>
+      parallelLaneOffset({ edgeId: id, ...pair, sourceHandle: handle, siblingEdges: siblings });
+
+    const plusA = offsetOf('a-plus', 'plus');
+    const plusZ = offsetOf('z-plus', 'plus');
+    const minus = offsetOf('m-minus', 'minus');
+
+    // Beide Plus-Leitungen liegen direkt nebeneinander, Minus danach.
+    expect(Math.abs(plusZ - plusA)).toBe(PARALLEL_LANE_SPREAD);
+    expect(minus).toBeGreaterThan(Math.max(plusA, plusZ));
+  });
+
+  it('recognises the cable type from the source handle', () => {
+    expect(cableLaneType('battery-plus')).toBe('dc-plus');
+    expect(cableLaneType('busbar-minus')).toBe('dc-minus');
+    expect(cableLaneType('ac-out')).toBe('ac');
+    expect(cableLaneType(null)).toBe('signal');
+  });
+
+  it('is deterministic — same input, same lane', () => {
+    const siblings = [
+      { id: 'e1', ...pair, sourceHandle: 'plus' },
+      { id: 'e2', ...pair, sourceHandle: 'plus' },
+    ];
+    const first = parallelLaneOffset({ edgeId: 'e2', ...pair, sourceHandle: 'plus', siblingEdges: siblings });
+    const second = parallelLaneOffset({ edgeId: 'e2', ...pair, sourceHandle: 'plus', siblingEdges: [...siblings].reverse() });
+    expect(first).toBe(second);
   });
 });

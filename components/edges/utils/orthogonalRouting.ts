@@ -323,15 +323,21 @@ export function segmentsIntersect(s1: Segment, s2: Segment): boolean {
   return false;
 }
 
-/** Zählt, wie oft eine Route fremde Segmente kreuzt. */
+/**
+ * Zählt, wie viele fremde Leitungen eine Route kreuzt.
+ *
+ * Gezählt werden *fremde Segmente*, nicht Segment-Paare: Läuft eine Kante
+ * durch die Ecke unserer Route, ist das eine Kreuzung — nicht zwei, nur weil
+ * dort zwei eigene Segmente aneinanderstoßen.
+ */
 export function countCrossings(waypoints: Point[], others: Segment[]): number {
   if (others.length === 0 || waypoints.length < 2) return 0;
-  const own = waypointsToSegments(waypoints);
+  const own = waypointsToSegments(dedupe(waypoints)).filter(
+    ([a, b]) => a.x !== b.x || a.y !== b.y
+  );
   let count = 0;
-  for (const segment of own) {
-    for (const other of others) {
-      if (segmentsIntersect(segment, other)) count++;
-    }
+  for (const other of others) {
+    if (own.some((segment) => segmentsIntersect(segment, other))) count++;
   }
   return count;
 }
@@ -376,7 +382,7 @@ export function buildOrthogonalPath(input: OrthogonalPathInput): OrthogonalPathR
   const crossingSegments = input.crossingSegments ?? [];
 
   const route = (offset: number): Point[] =>
-    avoidObstacles(routeWaypoints({ ...input, offset }), obstacles);
+    dedupe(avoidObstacles(routeWaypoints({ ...input, offset }), obstacles));
 
   let best = route(baseOffset);
   let bestCrossings = countCrossings(best, crossingSegments);

@@ -8,12 +8,23 @@ import '@fontsource/source-sans-3/600.css';
 import '@fontsource/ibm-plex-mono/400.css';
 import '@fontsource/ibm-plex-mono/500.css';
 import '@fontsource-variable/outfit';
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 
 export const metadata: Metadata = {
   title: 'Werft — Erst der Plan. Dann das Blech.',
   description:
     'Werkstatt für den Camper-Ausbau. 12V-Schaltplan, Dachfläche, Heizlast und Normen — geplant, bevor gebohrt wird.',
+};
+
+/**
+ * `viewportFit: 'cover'` ist Voraussetzung dafür, dass `env(safe-area-inset-*)`
+ * überhaupt Werte liefert — ohne das bliebe die Bottom-Navigation des Planers
+ * auf iPhones unter dem Home-Indicator hängen.
+ */
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({

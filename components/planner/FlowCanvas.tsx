@@ -21,6 +21,11 @@ import { FloatingMetricsCard } from './ui/FloatingMetricsCard';
 import { BOMModal } from './BOMModal';
 import { useSequentialTapConnect } from './hooks/useSequentialTapConnect';
 import { usePlannerDragDrop } from './hooks/usePlannerDragDrop';
+import { useCoarsePointer } from './hooks/useMediaCapabilities';
+import { useLongPressNodeDrag } from './hooks/useLongPressNodeDrag';
+import { getFlowInteractionProps, pointerModeFromCoarse, NODE_DRAG_HANDLE_SELECTOR } from './utils/flowInteraction';
+import { withNodeDragHandles } from './ui/NodeDragHandle';
+import { CanvasContextMenu, ContextMenuState } from './ui/CanvasContextMenu';
 import { applyFocusHighlight } from './utils/focusHighlight';
 import { applyDomainFilter, DOMAINS, DOMAIN_COLORS, DOMAIN_LABELS, Domain, nodeMinimapColor } from './utils/domainFilter';
 import { markErrorEdgesZIndex } from './utils/errorEdges';
@@ -61,7 +66,15 @@ export function FlowCanvas() {
   const zoom = useStore((state) => state.transform[2]);
   const viewportsRef = useRef<Partial<Record<'electric' | 'water', Viewport>>>({});
   const previousViewMode = useRef<'electric' | 'water' | null>(null);
-  const [isMobile, setIsMobile] = useState(false);
+  // Zeigerklasse statt Fensterbreite: ein iPad quer ist 1024 px breit und
+  // trotzdem Touch. Alle Interaktions-Props hängen hieran, nicht am Layout.
+  const coarsePointer = useCoarsePointer();
+  const interaction = useMemo(
+    () => getFlowInteractionProps(pointerModeFromCoarse(coarsePointer)),
+    [coarsePointer]
+  );
+  const armedNodeId = useLongPressNodeDrag(interaction.requiresDragHandle);
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [connectionFeedback, setConnectionFeedback] = useState<string | null>(null);
   const connectionAttempt = useRef(false);
   const feedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -74,21 +87,15 @@ export function FlowCanvas() {
 
   React.useEffect(() => {
     const onInputError = (event: Event) => showConnectionFeedback((event as CustomEvent<string>).detail || 'Ungültiger Wert.');
+    const onNodeArmed = (event: Event) => showConnectionFeedback((event as CustomEvent<string>).detail, 3000);
     window.addEventListener('planner-input-error', onInputError);
+    window.addEventListener('planner-node-armed', onNodeArmed);
     return () => {
       window.removeEventListener('planner-input-error', onInputError);
+      window.removeEventListener('planner-node-armed', onNodeArmed);
       if (feedbackTimer.current) clearTimeout(feedbackTimer.current);
     };
   }, [showConnectionFeedback]);
-
-  React.useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 1024);
-    checkMobile();
-    let timer: ReturnType<typeof setTimeout>;
-    const debounced = () => { clearTimeout(timer); timer = setTimeout(checkMobile, 150); };
-    window.addEventListener('resize', debounced);
-    return () => { window.removeEventListener('resize', debounced); clearTimeout(timer); };
-  }, []);
 
   React.useEffect(() => {
     const handleFitView = () => fitView({ duration: 400, padding: PLANNER_FIT_PADDING });
@@ -181,7 +188,12 @@ export function FlowCanvas() {
   }, [firstTappedHandle]);
 
   const edgeTypes = useMemo(() => ({ ...EDGE_TYPES, waterPipe: WaterPipeEdge }), []);
-  const nodeTypes = useMemo(() => ({ ...NODE_TYPES }), []);
+  // Auf Touch bekommt jede Node-Komponente einen Griff (display:contents-Hülle,
+  // kein Layout-Einfluss). Am Desktop bleibt die Original-Map unverändert.
+  const nodeTypes = useMemo(
+    () => (coarsePointer ? withNodeDragHandles(NODE_TYPES) : { ...NODE_TYPES }),
+    [coarsePointer]
+  );
   const rawNodes = viewMode === 'water' ? waterNodes : nodes;
   const rawEdges = viewMode === 'water' ? waterEdges : edges;
 
@@ -232,6 +244,46 @@ export function FlowCanvas() {
 
     return { nodes: outNodes, edges: outEdges };
   }, [rawNodes, rawEdges, focusSeedIds, viewMode, activeDomains, nodes, edges]);
+  /**
+   * Touch: jeder Node bekommt `dragHandle`, ist also nur am Griff zu ziehen —
+   * Wischen über dem Node-Körper pannt die Karte (A4: keine Kollision).
+   * Ausnahme: der per Long-Press scharfgeschaltete Node ist komplett greifbar.
+   * Maus: unverändert durchreichen (identische Referenz, keine Re-Renders).
+   */
+  const interactiveNodes = useMemo(() => {
+    if (!interaction.requiresDragHandle) return displayedNodes;
+    return displayedNodes.map((node) =>
+      node.id === armedNodeId
+        ? { ...node, dragHandle: undefined, className: `${node.className || ''} node-drag-armed`.trim() }
+        : { ...node, dragHandle: NODE_DRAG_HANDLE_SELECTOR }
+    );
+  }, [displayedNodes, interaction.requiresDragHandle, armedNodeId]);
+
+  const openContextMenu = React.useCallback(
+    (event: React.MouseEvent, targetType: ContextMenuState['targetType'], targetId?: string, label?: string) => {
+      // Nur für präzise Zeiger: auf Touch löst „langes Drücken“ im Browser
+      // ebenfalls contextmenu aus und würde mit dem Long-Press-Drag kollidieren.
+      if (coarsePointer) return;
+      event.preventDefault();
+      setContextMenu({ x: event.clientX, y: event.clientY, targetType, targetId, label });
+    },
+    [coarsePointer]
+  );
+
+  const handleNodeContextMenu = React.useCallback(
+    (event: React.MouseEvent, node: { id: string; data?: { label?: string } }) =>
+      openContextMenu(event, 'node', node.id, String(node.data?.label || 'Bauteil')),
+    [openContextMenu]
+  );
+  const handleEdgeContextMenu = React.useCallback(
+    (event: React.MouseEvent, edge: { id: string }) => openContextMenu(event, 'edge', edge.id, 'Leitung'),
+    [openContextMenu]
+  );
+  const handlePaneContextMenu = React.useCallback(
+    (event: React.MouseEvent | MouseEvent) => openContextMenu(event as React.MouseEvent, 'pane'),
+    [openContextMenu]
+  );
+
   const isOverview = zoom < PLANNER_OVERVIEW_ZOOM;
   const minimapColors = useMemo(() => ({
     mask: cssToken('--canvas-minimap-mask', 'rgba(20, 17, 14, 0.14)'),
@@ -278,7 +330,7 @@ export function FlowCanvas() {
       <div className="relative h-full w-full flex-1">
         <FloatingMetricsCard />
         <ReactFlow
-          nodes={displayedNodes}
+          nodes={interactiveNodes}
           edges={displayedEdges}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
@@ -307,34 +359,54 @@ export function FlowCanvas() {
           maxZoom={PLANNER_MAX_ZOOM}
           snapToGrid
           snapGrid={PLANNER_SNAP_GRID}
-          deleteKeyCode={null}
+          deleteKeyCode={interaction.deleteKeyCode}
           onlyRenderVisibleElements
           elementsSelectable
           nodesFocusable
           edgesFocusable
           translateExtent={[[ -3000, -3000 ], [6000, 6000]]}
-          zoomOnScroll={!isMobile}
-          zoomOnPinch
-          connectionRadius={isMobile ? 30 : 20}
-          panOnDrag={isMobile ? true : [1, 2]}
+          /* --- Zeiger-abhängige Interaktion, jede Prop begründet in
+                 planner/utils/flowInteraction.ts --- */
+          panOnDrag={interaction.panOnDrag}
+          panOnScroll={interaction.panOnScroll}
+          zoomOnScroll={interaction.zoomOnScroll}
+          zoomOnPinch={interaction.zoomOnPinch}
+          zoomOnDoubleClick={interaction.zoomOnDoubleClick}
+          preventScrolling={interaction.preventScrolling}
+          connectionRadius={interaction.connectionRadius}
+          nodesDraggable={interaction.nodesDraggable}
+          nodeDragThreshold={interaction.nodeDragThreshold}
+          selectionOnDrag={interaction.selectionOnDrag}
+          selectionKeyCode={interaction.selectionKeyCode}
+          multiSelectionKeyCode={interaction.multiSelectionKeyCode}
+          panActivationKeyCode={interaction.panActivationKeyCode}
+          onNodeContextMenu={handleNodeContextMenu}
+          onEdgeContextMenu={handleEdgeContextMenu}
+          onPaneContextMenu={handlePaneContextMenu}
+          onNodeDragStop={() => setContextMenu(null)}
+          onPaneClick={() => setContextMenu(null)}
           aria-label={`${viewMode === 'water' ? 'Wasserplan' : 'Elektrik-Schaltplan'} Arbeitsfläche`}
           style={{ backgroundColor: 'var(--canvas-bg)' }}
           className={isOverview ? 'planner-zoom-overview' : 'planner-zoom-detail'}
         >
           <Background color="var(--canvas-grid)" gap={PLANNER_SNAP_GRID[0]} style={{ opacity: 0.35 }} />
-          <Controls className="mb-16 overflow-hidden rounded-lg border border-border shadow-sm lg:mb-4" />
+          <Controls className="mb-20 overflow-hidden rounded-lg border border-border shadow-sm md:mb-4" />
           <MiniMap
-            className="mb-16 overflow-hidden rounded-lg border border-border shadow-sm lg:mb-4"
+            className="hidden mb-20 overflow-hidden rounded-lg border border-border shadow-sm sm:block md:mb-4"
             ariaLabel="Miniaturübersicht des Plans"
             nodeColor={(node) => nodeMinimapColor(node)}
             maskColor={minimapColors.mask}
             style={{ backgroundColor: minimapColors.background }}
           />
 
-          <Panel position="top-left" className="m-3 max-w-sm">
+          <Panel position="top-left" className="m-2 max-w-[min(20rem,calc(100vw-6rem))] md:m-3">
             <div className="rounded-lg border border-border bg-card/95 px-3 py-2 text-xs text-foreground shadow-sm">
               <strong>{viewMode === 'water' ? 'Wasserplan' : 'Elektrikplan'}</strong>
-              <span className="ml-2 text-muted-foreground">Anschluss antippen, dann Ziel antippen – oder mit der Maus ziehen.</span>
+              <span className="ml-2 text-muted-foreground">
+                {coarsePointer
+                  ? 'Anschluss antippen, dann Ziel antippen. Bauteil am Griff ziehen, Karte mit einem Finger schieben.'
+                  : 'Anschluss anklicken oder ziehen. Rechtsklick öffnet das Kontextmenü.'}
+              </span>
             </div>
           </Panel>
 
@@ -386,13 +458,15 @@ export function FlowCanvas() {
         </ReactFlow>
       </div>
 
-      <div className="pointer-events-none absolute bottom-20 left-1/2 z-50 w-11/12 -translate-x-1/2 text-center lg:bottom-6" aria-live="polite" role="status">
+      <div className="pointer-events-none absolute bottom-24 left-1/2 z-50 w-11/12 -translate-x-1/2 text-center md:bottom-6" aria-live="polite" role="status">
         {(firstTappedHandle || connectionFeedback) && (
           <span className="inline-block rounded-lg bg-ink px-4 py-3 text-sm font-semibold text-bone shadow-lg">
             {firstTappedHandle ? 'Erster Anschluss gewählt. Wähle jetzt den zweiten Anschluss; erneut tippen bricht ab.' : connectionFeedback}
           </span>
         )}
       </div>
+
+      {contextMenu && <CanvasContextMenu state={contextMenu} onClose={() => setContextMenu(null)} />}
 
       <BOMModal />
     </>
