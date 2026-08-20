@@ -18,7 +18,14 @@ const GroundNode = function({ id, data, isConnectable, selected }: NodeProps<Pla
     if (editingField) {
       let finalValue: any = tempValue;
       if (editingField !== 'label' && editingField !== 'chemistry') {
-        finalValue = Number(tempValue) || 0;
+        const parsed = Number(tempValue);
+        const allowsZero = editingField === 'hours';
+        if (!Number.isFinite(parsed) || parsed < 0 || (!allowsZero && parsed === 0)) {
+          window.dispatchEvent(new CustomEvent('planner-input-error', { detail: allowsZero ? 'Gib eine Zahl ab 0 ein.' : 'Der Wert muss größer als 0 sein.' }));
+          setEditingField(null);
+          return;
+        }
+        finalValue = parsed;
       }
       updateNodeData(id, { [editingField]: finalValue });
     }
@@ -32,7 +39,7 @@ const GroundNode = function({ id, data, isConnectable, selected }: NodeProps<Pla
   };
 
   return (
-    <div className={`hover:scale-105 transition-all custom-drag-handle bg-gray-100 border-2 border-gray-600 rounded-md p-3 shadow-md w-32 flex flex-col items-center ${selected ? " ring-4 ring-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.6)]" : ""}`}>
+    <div role="group" aria-label={`${data.label || 'Massepunkt'}. Komponente im Plan.`} className={`hover:scale-105 transition-all custom-drag-handle bg-gray-100 border-2 border-gray-600 rounded-md p-3 shadow-md w-32 flex flex-col items-center ${selected ? " ring-4 ring-blue-500 shadow-xl" : ""}`}>
       <div className="font-bold mb-1 text-sm text-center">{data.label || 'Massepunkt'}</div>
       <div className="text-xs text-gray-500 mb-2">(Karosserie)</div>
 

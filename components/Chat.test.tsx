@@ -23,41 +23,41 @@ describe('Chat Component', () => {
   describe('Rendering', () => {
     it('renders chat button when closed', () => {
       render(<Chat />);
-      const button = screen.getByLabelText('Chat öffnen');
+      const button = screen.getByLabelText('KI-Hilfe öffnen');
       expect(button).toBeInTheDocument();
     });
 
     it('opens chat when button is clicked', () => {
       render(<Chat />);
-      const button = screen.getByLabelText('Chat öffnen');
+      const button = screen.getByLabelText('KI-Hilfe öffnen');
       fireEvent.click(button);
-      expect(screen.getByText('Camper AI Assistent')).toBeInTheDocument();
+      expect(screen.getByText('Camper-KI-Hilfe')).toBeInTheDocument();
     });
 
     it('renders closed by default', () => {
       render(<Chat />);
-      expect(screen.queryByText('Camper AI Assistent')).not.toBeInTheDocument();
+      expect(screen.queryByText('Camper-KI-Hilfe')).not.toBeInTheDocument();
     });
 
     it('renders open when defaultOpen is provided', () => {
       render(<Chat defaultOpen />);
 
-      expect(screen.getByText('Camper AI Assistent')).toBeInTheDocument();
-      expect(screen.queryByLabelText('Chat öffnen')).not.toBeInTheDocument();
+      expect(screen.getByText('Camper-KI-Hilfe')).toBeInTheDocument();
+      expect(screen.queryByLabelText('KI-Hilfe öffnen')).not.toBeInTheDocument();
     });
   });
 
   describe('Interactions', () => {
     it('closes chat when close button is clicked', () => {
       render(<Chat defaultOpen />);
-      const closeButton = screen.getByLabelText('Chat schließen');
+      const closeButton = screen.getByLabelText('KI-Hilfe schließen');
       fireEvent.click(closeButton);
-      expect(screen.queryByText('Camper AI Assistent')).not.toBeInTheDocument();
+      expect(screen.queryByText('Camper-KI-Hilfe')).not.toBeInTheDocument();
     });
 
     it('sends message when form is submitted', async () => {
       render(<Chat defaultOpen />);
-      const input = screen.getByPlaceholderText('Schreib deine Nachricht...');
+      const input = screen.getByPlaceholderText('Deine Frage …');
       const sendButton = screen.getByText('Senden');
 
       fireEvent.change(input, { target: { value: 'Test message' } });

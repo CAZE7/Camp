@@ -12,7 +12,7 @@ export interface ValidationWarning {
   message: string;
   /** Kurzer, laienverständlicher Titel für die Warn-Zentrale. */
   title?: string;
-  /** ID der betroffenen Komponente/Leitung, die "Beheben" auf dem Canvas fokussiert. */
+  /** ID der betroffenen Komponente/Leitung, die "Beheben" im Plan fokussiert. */
   focusId?: string;
   /** Ob focusId eine Node oder eine Kante (Leitung) ist. */
   focusType?: 'node' | 'edge';
@@ -180,7 +180,7 @@ export function useLiveValidation(
       }
     });
 
-    // --- Rule F: Smart Shunt Bypass ---
+    // --- Rule F: Der Shunt wird umgangen ---
     // Nur die Aufbaubatterie, an der der Shunt hängt. Die Starterbatterie
     // des Ladeboosters führt Minus fachgerecht direkt und ist kein Bypass.
     const shunts = nodes.filter(n => n.type === 'shunt');
@@ -222,7 +222,7 @@ export function useLiveValidation(
                title: 'Shunt wird umgangen',
                focusId: edge.id,
                focusType: 'edge',
-               message: `⚠️ Kritisch: Smart Shunt Bypass! Relevante Minus-Verbindungen (wie von ${otherNode.data?.label || otherNode.type}) dürfen nicht am Shunt vorbei direkt an Batterie-Minus hängen.`,
+               message: `⚠️ Kritisch: Der Shunt wird umgangen! Relevante Minus-Verbindungen (wie von ${otherNode.data?.label || otherNode.type}) dürfen nicht am Shunt vorbei direkt an Batterie-Minus hängen.`,
              });
           }
         }

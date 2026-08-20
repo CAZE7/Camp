@@ -48,7 +48,7 @@ describe('WaterNode Component', () => {
     const { container } = render(<WaterNode id="1" data={{}} />);
     const mainDiv = container.firstChild as HTMLElement;
     expect(mainDiv.className).toContain('bg-blue-50');
-    expect(mainDiv.className).toContain('border-blue-400');
+    expect(mainDiv.className).toContain('border-blue-700');
   });
 
   it('applies correct colors for grayWaterTank type', () => {
@@ -69,21 +69,21 @@ describe('WaterNode Component', () => {
     const { container } = render(<WaterNode id="1" data={{}} type="pump" />);
     const mainDiv = container.firstChild as HTMLElement;
     expect(mainDiv.className).toContain('bg-cyan-100');
-    expect(mainDiv.className).toContain('border-cyan-500');
+    expect(mainDiv.className).toContain('border-cyan-700');
   });
 
   it('applies correct colors for accumulator type', () => {
     const { container } = render(<WaterNode id="1" data={{}} type="accumulator" />);
     const mainDiv = container.firstChild as HTMLElement;
     expect(mainDiv.className).toContain('bg-indigo-100');
-    expect(mainDiv.className).toContain('border-indigo-400');
+    expect(mainDiv.className).toContain('border-indigo-700');
   });
 
   it('applies correct colors for preFilter type', () => {
     const { container } = render(<WaterNode id="1" data={{}} type="preFilter" />);
     const mainDiv = container.firstChild as HTMLElement;
     expect(mainDiv.className).toContain('bg-teal-100');
-    expect(mainDiv.className).toContain('border-teal-400');
+    expect(mainDiv.className).toContain('border-teal-700');
   });
 
   it('applies selected styling when selected is true', () => {
@@ -91,7 +91,7 @@ describe('WaterNode Component', () => {
     const mainDiv = container.firstChild as HTMLElement;
     expect(mainDiv.className).toContain('ring-4');
     expect(mainDiv.className).toContain('ring-blue-500');
-    expect(mainDiv.className).toContain('shadow-[0_0_15px_rgba(59,130,246,0.6)]');
+    expect(mainDiv.className).toContain('shadow-xl');
   });
 
   it('does not apply selected styling when selected is false', () => {
@@ -99,6 +99,6 @@ describe('WaterNode Component', () => {
     const mainDiv = container.firstChild as HTMLElement;
     expect(mainDiv.className).not.toContain('ring-4');
     expect(mainDiv.className).not.toContain('ring-blue-500');
-    expect(mainDiv.className).not.toContain('shadow-[0_0_15px_rgba(59,130,246,0.6)]');
+    expect(mainDiv.className).not.toContain('shadow-xl');
   });
 });

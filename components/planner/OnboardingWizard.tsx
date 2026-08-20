@@ -4,11 +4,12 @@ import React, { useState } from 'react';
 import { useAppStore } from '../../lib/store';
 import { usePlannerStore } from '../../store/usePlannerStore';
 import { Button } from '@/components/ui/button';
+import { AccessibleDialog } from '@/components/ui/AccessibleDialog';
 
 const STROMQUELLEN = [
   { id: 'solar', label: 'Solar' },
-  { id: 'booster', label: 'Lichtmaschine / Ladebooster' },
-  { id: 'landstrom', label: 'Landstrom' },
+  { id: 'booster', label: 'Lichtmaschine mit Ladebooster' },
+  { id: 'landstrom', label: 'Landstrom vom Campingplatz' },
 ];
 
 const VERBRAUCHER = [
@@ -20,126 +21,144 @@ const VERBRAUCHER = [
 ];
 
 const TEMPLATES = [
-  { id: 'minimalist', label: 'Der Minimalist (12V Basic)', desc: '12V Battery, Fuse Box, USB Outlets, LED Lights, small Coolbox' },
-  { id: 'allrounder', label: 'Der Allrounder (Standard Setup)', desc: '100Ah Lithium Battery, 150W Solar, Ladebooster, 500W Inverter, Fridge, etc.' },
-  { id: 'autark', label: 'Der Autarke (Heavy-Duty Setup)', desc: '200Ah Lithium, 400W Solar, 2000W Inverter, Induction Cooktop, Water Heater' },
+  { id: 'minimalist', label: 'Minimal – einfache 12-V-Anlage', desc: 'Batterie, Sicherungskasten, USB-Anschlüsse, LED-Licht und kleine Kühlbox.' },
+  { id: 'allrounder', label: 'Allround – ausgewogene Standardanlage', desc: '100-Ah-Lithium-Batterie, 150 W Solar, Ladebooster, 500-W-Wechselrichter und Kühlschrank.' },
+  { id: 'autark', label: 'Autark – hoher Energiebedarf', desc: '200-Ah-Lithium-Batterie, 400 W Solar, 2000-W-Wechselrichter, Kochfeld und Warmwasser.' },
 ];
 
 export function OnboardingWizard() {
   const [step, setStep] = useState(1);
-  const [direction, setDirection] = useState<'forward' | 'backward'>('forward');
   const [sources, setSources] = useState<Record<string, boolean>>({});
   const [consumers, setConsumers] = useState<Record<string, boolean>>({});
-
-  const goToStep = (newStep: number) => {
-    setDirection(newStep > step ? 'forward' : 'backward');
-    setStep(newStep);
-  };
 
   const totalSelected = Object.values(sources).filter(Boolean).length + Object.values(consumers).filter(Boolean).length;
   const recommendedId = totalSelected >= 5 ? 'autark' : totalSelected >= 3 ? 'allrounder' : 'minimalist';
 
   const setHasOnboarded = useAppStore((state) => state.setHasOnboarded);
-  const applyTemplate = usePlannerStore((state) => (state as any).applyTemplate);
+  const applyTemplate = usePlannerStore((state) => state.applyTemplate);
+  const clearPlan = usePlannerStore((state) => state.clearPlan);
 
-  const handleSkip = () => {
+  const startEmpty = () => {
+    const state = usePlannerStore.getState();
+    if ((state.nodes.length > 0 || state.waterNodes.length > 0) && !window.confirm('Der aktuelle Plan wird geleert. Du kannst das anschließend rückgängig machen. Fortfahren?')) return;
+    clearPlan();
     setHasOnboarded(true);
+    window.requestAnimationFrame(() => window.dispatchEvent(new CustomEvent('planner-fit-view')));
   };
 
   const handleApplyTemplate = (templateId: string) => {
-    if (applyTemplate) {
-      applyTemplate(templateId);
-      setTimeout(() => {
-        window.dispatchEvent(new CustomEvent('planner-fit-view'));
-      }, 50);
-    }
+    const state = usePlannerStore.getState();
+    if ((state.nodes.length > 0 || state.waterNodes.length > 0) && !window.confirm('Die Vorlage ersetzt den aktuellen Plan. Du kannst das anschließend rückgängig machen. Fortfahren?')) return;
+    applyTemplate(templateId);
     setHasOnboarded(true);
+    window.setTimeout(() => window.dispatchEvent(new CustomEvent('planner-fit-view')), 50);
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6 flex flex-col gap-6">
-        <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-bold text-gray-800">Camper Elektrik Planer</h2>
-          <Button variant="ghost" onClick={handleSkip} className="text-gray-500 hover:text-gray-800 p-0 h-auto">
-            Überspringen
-          </Button>
-        </div>
+    <AccessibleDialog
+      open
+      onClose={startEmpty}
+      title="Dein Camper-Energieplan"
+      description="In drei kurzen Schritten findest du eine passende Basis. Oder starte direkt mit einem leeren Plan."
+      showClose={false}
+      closeOnBackdrop={false}
+    >
+      <div className="flex items-center gap-2 px-5 pt-4" aria-label={`Schritt ${step} von 3`}>
+        {[1, 2, 3].map((value) => (
+          <span
+            key={value}
+            className={`h-2 flex-1 rounded-full ${value <= step ? 'bg-primary' : 'bg-muted'}`}
+            aria-hidden="true"
+          />
+        ))}
+      </div>
 
+      <div className="flex-1 overflow-y-auto p-5">
         {step === 1 && (
-          <div className={`flex flex-col gap-4 animate-in fade-in ${direction === 'forward' ? 'slide-in-from-right-4' : 'slide-in-from-left-4'}`}>
-            <h3 className="text-lg font-semibold">Schritt 1: Woher kommt dein Strom?</h3>
-            <div className="flex flex-col gap-3">
-              {STROMQUELLEN.map((src) => (
-                <label key={src.id} className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 touch-manipulation">
+          <section aria-labelledby="onboarding-source-title" className="space-y-4">
+            <h3 id="onboarding-source-title" className="text-lg font-semibold">1. Woher kommt dein Strom?</h3>
+            <div className="space-y-2">
+              {STROMQUELLEN.map((source) => (
+                <label key={source.id} className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border border-border p-3 hover:bg-accent">
                   <input
                     type="checkbox"
-                    className="w-5 h-5"
-                    checked={sources[src.id] || false}
-                    onChange={(e) => setSources({ ...sources, [src.id]: e.target.checked })}
+                    className="h-5 w-5 accent-primary"
+                    checked={sources[source.id] || false}
+                    onChange={(event) => setSources({ ...sources, [source.id]: event.target.checked })}
                   />
-                  <span className="text-base">{src.label}</span>
+                  <span>{source.label}</span>
                 </label>
               ))}
             </div>
-            <div className="flex justify-end mt-4">
-              <Button onClick={() => goToStep(2)} className="min-h-[44px] px-6">Weiter</Button>
+            <div className="flex flex-wrap justify-between gap-3 pt-3">
+              <Button variant="ghost" onClick={startEmpty} className="min-h-11">Leeren Plan starten</Button>
+              <Button onClick={() => setStep(2)} className="min-h-11 px-6">Weiter</Button>
             </div>
-          </div>
+          </section>
         )}
 
         {step === 2 && (
-          <div className={`flex flex-col gap-4 animate-in fade-in ${direction === 'forward' ? 'slide-in-from-right-4' : 'slide-in-from-left-4'}`}>
-            <h3 className="text-lg font-semibold">Schritt 2: Welche Verbraucher planst du?</h3>
-            <div className="flex flex-col gap-2 max-h-60 overflow-y-auto pr-2">
-              {VERBRAUCHER.map((cons) => (
-                <label key={cons.id} className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 touch-manipulation">
+          <section aria-labelledby="onboarding-consumer-title" className="space-y-4">
+            <h3 id="onboarding-consumer-title" className="text-lg font-semibold">2. Welche Geräte planst du?</h3>
+            <div className="space-y-2">
+              {VERBRAUCHER.map((consumer) => (
+                <label key={consumer.id} className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border border-border p-3 hover:bg-accent">
                   <input
                     type="checkbox"
-                    className="w-5 h-5"
-                    checked={consumers[cons.id] || false}
-                    onChange={(e) => setConsumers({ ...consumers, [cons.id]: e.target.checked })}
+                    className="h-5 w-5 accent-primary"
+                    checked={consumers[consumer.id] || false}
+                    onChange={(event) => setConsumers({ ...consumers, [consumer.id]: event.target.checked })}
                   />
-                  <span className="text-base">{cons.label}</span>
+                  <span>{consumer.label}</span>
                 </label>
               ))}
             </div>
-            <div className="flex justify-between mt-4">
-              <Button variant="outline" onClick={() => goToStep(1)} className="min-h-[44px] px-6">Zurück</Button>
-              <Button onClick={() => goToStep(3)} className="min-h-[44px] px-6">Weiter</Button>
+            <div className="flex justify-between gap-3 pt-3">
+              <Button variant="outline" onClick={() => setStep(1)} className="min-h-11 px-6">Zurück</Button>
+              <Button onClick={() => setStep(3)} className="min-h-11 px-6">Weiter</Button>
             </div>
-          </div>
+          </section>
         )}
 
         {step === 3 && (
-          <div className={`flex flex-col gap-4 animate-in fade-in ${direction === 'forward' ? 'slide-in-from-right-4' : 'slide-in-from-left-4'}`}>
-            <h3 className="text-lg font-semibold">Schritt 3: Wähle deine Basis-Vorlage</h3>
-            <p className="text-sm text-gray-500">Basierend auf deinen Angaben empfehlen wir dir eine dieser Vorlagen. Du kannst später alles anpassen.</p>
-            <div className="flex flex-col gap-3">
-              {[...TEMPLATES].sort((a, b) => (a.id === recommendedId ? -1 : b.id === recommendedId ? 1 : 0)).map((tmpl) => (
-                <button
-                  key={tmpl.id}
-                  onClick={() => handleApplyTemplate(tmpl.id)}
-                  className={`flex flex-col items-start gap-1 p-4 border rounded-lg text-left transition-colors touch-manipulation ${tmpl.id === recommendedId ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-500 ring-offset-1' : 'hover:border-emerald-500 hover:bg-emerald-50'}`}
-                >
-                  <span className="font-semibold text-gray-800">
-                    {tmpl.label}
-                    {tmpl.id === recommendedId && (
-                      <span className="ml-2 text-[10px] uppercase font-bold bg-emerald-500 text-white px-2 py-0.5 rounded-full">
-                        Empfohlen
-                      </span>
-                    )}
-                  </span>
-                  <span className="text-sm text-gray-600">{tmpl.desc}</span>
-                </button>
-              ))}
+          <section aria-labelledby="onboarding-template-title" className="space-y-4">
+            <div>
+              <h3 id="onboarding-template-title" className="text-lg font-semibold">3. Wähle deine Basis</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Die Empfehlung richtet sich nach dem Umfang deiner Auswahl. Alle Werte lassen sich später anpassen.
+              </p>
             </div>
-            <div className="flex justify-between mt-4">
-              <Button variant="outline" onClick={() => goToStep(2)} className="min-h-[44px] px-6">Zurück</Button>
+            <div className="space-y-3">
+              {[...TEMPLATES]
+                .sort((a, b) => (a.id === recommendedId ? -1 : b.id === recommendedId ? 1 : 0))
+                .map((template) => (
+                  <button
+                    type="button"
+                    key={template.id}
+                    onClick={() => handleApplyTemplate(template.id)}
+                    className={`flex min-h-11 w-full flex-col items-start gap-1 rounded-lg border p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                      template.id === recommendedId
+                        ? 'border-emerald-700 bg-emerald-50 ring-1 ring-emerald-700'
+                        : 'border-border hover:bg-accent'
+                    }`}
+                  >
+                    <span className="font-semibold text-foreground">
+                      {template.label}
+                      {template.id === recommendedId && (
+                        <span className="ml-2 rounded-full bg-emerald-800 px-2 py-1 text-xs font-bold uppercase text-white">Empfohlen</span>
+                      )}
+                    </span>
+                    <span className="text-sm text-muted-foreground">{template.desc}</span>
+                  </button>
+                ))}
             </div>
-          </div>
+            <div className="flex flex-wrap justify-between gap-3 pt-3">
+              <Button variant="outline" onClick={() => setStep(2)} className="min-h-11 px-6">Zurück</Button>
+              <Button variant="ghost" onClick={startEmpty} className="min-h-11">Ohne Vorlage starten</Button>
+            </div>
+          </section>
         )}
       </div>
-    </div>
+    </AccessibleDialog>
   );
 }

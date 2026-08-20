@@ -44,7 +44,7 @@ export function DashboardPanel({
               <span className="text-sm font-bold text-stone-900 bg-white px-2 py-0.5 rounded shadow-sm border border-stone-100">
                 ~{dailyConsumptionAh.toFixed(1)} Ah
               </span>
-              <span className="text-[10px] text-stone-400">(geschätzt)</span>
+              <span className="text-xs text-stone-600">(geschätzt)</span>
             </div>
           </div>
           <div className="flex justify-between items-center bg-emerald-50/50 p-2 rounded-lg">

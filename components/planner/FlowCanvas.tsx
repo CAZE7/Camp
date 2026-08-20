@@ -1,14 +1,7 @@
-import React, { useMemo, Suspense } from 'react';
-import ReactFlow, {
-  Background,
-  Controls,
-  MiniMap,
-  Panel,
-  useReactFlow,
-} from 'reactflow';
+import React, { useMemo, useRef, useState } from 'react';
+import ReactFlow, { Background, Controls, MiniMap, Panel, useReactFlow, Connection } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { useShallow } from 'zustand/react/shallow';
-
 
 import WaterPipeEdge from '../edges/WaterPipeEdge';
 import { EmptyState } from '../ui/EmptyState';
@@ -16,47 +9,105 @@ import { NODE_TYPES, EDGE_TYPES } from './constants';
 import { usePlannerStore } from '../../store/usePlannerStore';
 import { useAppStore } from '../../lib/store';
 import { FloatingMetricsCard } from './ui/FloatingMetricsCard';
-import { useDashboardMetrics } from './hooks/useDashboardMetrics';
 import { BOMModal } from './BOMModal';
 import { useSequentialTapConnect } from './hooks/useSequentialTapConnect';
 import { usePlannerDragDrop } from './hooks/usePlannerDragDrop';
 
-export function FlowCanvas() {
-  const { screenToFlowPosition, fitView } = useReactFlow();
+function useAccessibleHandles() {
+  React.useEffect(() => {
+    const enhance = () => {
+      document.querySelectorAll<HTMLElement>('.react-flow__handle').forEach((handle) => {
+        handle.tabIndex = 0;
+        handle.setAttribute('role', 'button');
+        const id = handle.dataset.handleid || '';
+        const direction = handle.classList.contains('source') ? 'Ausgang' : 'Eingang';
+        const name = id.includes('plus') ? 'Plus' : id.includes('minus') ? 'Minus' : id.includes('ac') ? '230 Volt' : id === 'in' ? 'Wassereingang' : id === 'out' ? 'Wasserausgang' : id;
+        handle.setAttribute('aria-label', `${direction}: ${name}. Enter drücken, um die Verbindung zu beginnen oder abzuschließen.`);
+      });
+    };
+    enhance();
+    const observer = new MutationObserver(enhance);
+    const root = document.querySelector('.react-flow');
+    if (root) observer.observe(root, { childList: true, subtree: true });
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      const handle = (event.target as HTMLElement)?.closest<HTMLElement>('.react-flow__handle');
+      if (!handle) return;
+      event.preventDefault();
+      handle.click();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      observer.disconnect();
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, []);
+}
 
-  const [isMobile, setIsMobile] = React.useState(false);
+export function FlowCanvas() {
+  const { screenToFlowPosition, fitView, getNode, setCenter } = useReactFlow();
+  const [isMobile, setIsMobile] = useState(false);
+  const [connectionFeedback, setConnectionFeedback] = useState<string | null>(null);
+  const connectionAttempt = useRef(false);
+  const feedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showConnectionFeedback = React.useCallback((message: string, timeout = 4000) => {
+    setConnectionFeedback(message);
+    if (feedbackTimer.current) clearTimeout(feedbackTimer.current);
+    if (timeout > 0) feedbackTimer.current = setTimeout(() => setConnectionFeedback(null), timeout);
+  }, []);
 
   React.useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    const onInputError = (event: Event) => showConnectionFeedback((event as CustomEvent<string>).detail || 'Ungültiger Wert.');
+    window.addEventListener('planner-input-error', onInputError);
+    return () => {
+      window.removeEventListener('planner-input-error', onInputError);
+      if (feedbackTimer.current) clearTimeout(feedbackTimer.current);
+    };
+  }, [showConnectionFeedback]);
+
+  React.useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 1024);
     checkMobile();
-    let t: ReturnType<typeof setTimeout>;
-    const debounced = () => { clearTimeout(t); t = setTimeout(checkMobile, 150); };
+    let timer: ReturnType<typeof setTimeout>;
+    const debounced = () => { clearTimeout(timer); timer = setTimeout(checkMobile, 150); };
     window.addEventListener('resize', debounced);
-    return () => { window.removeEventListener('resize', debounced); clearTimeout(t); };
+    return () => { window.removeEventListener('resize', debounced); clearTimeout(timer); };
   }, []);
 
   React.useEffect(() => {
     const handleFitView = () => fitView({ duration: 400, padding: 0.15 });
+    const handleFocusElement = (event: Event) => {
+      const { id, elementType } = (event as CustomEvent<{ id: string; elementType: 'node' | 'edge' }>).detail;
+      if (elementType === 'node') {
+        const node = getNode(id);
+        if (node) {
+          const width = node.width || 200;
+          const height = node.height || 120;
+          setCenter(node.position.x + width / 2, node.position.y + height / 2, { zoom: 1.15, duration: 450 });
+        }
+        return;
+      }
+      const state = usePlannerStore.getState();
+      const edge = [...state.edges, ...state.waterEdges].find((item) => item.id === id);
+      const source = edge ? getNode(edge.source) : undefined;
+      const target = edge ? getNode(edge.target) : undefined;
+      if (source && target) {
+        setCenter((source.position.x + target.position.x) / 2 + 100, (source.position.y + target.position.y) / 2 + 60, { zoom: 1.05, duration: 450 });
+      }
+    };
     window.addEventListener('planner-fit-view', handleFitView);
-    return () => window.removeEventListener('planner-fit-view', handleFitView);
-  }, [fitView]);
+    window.addEventListener('planner-focus-element', handleFocusElement);
+    return () => {
+      window.removeEventListener('planner-fit-view', handleFitView);
+      window.removeEventListener('planner-focus-element', handleFocusElement);
+    };
+  }, [fitView, getNode, setCenter]);
 
   const {
-    viewMode,
-    nodes,
-    edges,
-    waterNodes,
-    waterEdges,
-    waterWarning,
-    season,
-    onNodesChange,
-    onEdgesChange,
-    onWaterNodesChange,
-    onWaterEdgesChange,
-    onConnect,
-    isValidConnection,
-    onSelectionChange,
-    addNode
+    viewMode, nodes, edges, waterNodes, waterEdges, waterWarning,
+    onNodesChange, onEdgesChange, onWaterNodesChange, onWaterEdgesChange,
+    onConnect, isValidConnection, onSelectionChange, addNode, firstTappedHandle,
   } = usePlannerStore(useShallow((state) => ({
     viewMode: state.viewMode,
     nodes: state.nodes,
@@ -64,7 +115,6 @@ export function FlowCanvas() {
     waterNodes: state.waterNodes,
     waterEdges: state.waterEdges,
     waterWarning: state.waterWarning,
-    season: state.season,
     onNodesChange: state.onNodesChange,
     onEdgesChange: state.onEdgesChange,
     onWaterNodesChange: state.onWaterNodesChange,
@@ -73,88 +123,130 @@ export function FlowCanvas() {
     isValidConnection: state.isValidConnection,
     onSelectionChange: state.onSelectionChange,
     addNode: state.addNode,
+    firstTappedHandle: state.firstTappedHandle,
   })));
 
   const calculatedSolarWatts = useAppStore((state) => state.calculatedSolarWatts);
-
-  // Use extracted hooks for logic
   const { onDragOver, onDrop } = usePlannerDragDrop(screenToFlowPosition);
-  useSequentialTapConnect();
+  useSequentialTapConnect(showConnectionFeedback);
+  useAccessibleHandles();
+
+  React.useEffect(() => {
+    document.querySelectorAll('.react-flow__handle.tap-connect-selected').forEach((element) => element.classList.remove('tap-connect-selected'));
+    if (!firstTappedHandle) return;
+    document.querySelectorAll<HTMLElement>('.react-flow__handle').forEach((handle) => {
+      if (handle.dataset.nodeid === firstTappedHandle.nodeId && handle.dataset.handleid === firstTappedHandle.handleId) {
+        handle.classList.add('tap-connect-selected');
+      }
+    });
+  }, [firstTappedHandle]);
 
   const edgeTypes = useMemo(() => ({ ...EDGE_TYPES, waterPipe: WaterPipeEdge }), []);
   const nodeTypes = useMemo(() => ({ ...NODE_TYPES }), []);
+  const displayedNodes = viewMode === 'water' ? waterNodes : nodes;
+  const displayedEdges = viewMode === 'water' ? waterEdges : edges;
 
-  const metrics = useDashboardMetrics(nodes, edges, season, calculatedSolarWatts);
+  const handleConnect = React.useCallback((connection: Connection) => {
+    connectionAttempt.current = false;
+    onConnect(connection);
+    showConnectionFeedback('Verbindung erstellt.', 2200);
+  }, [onConnect, showConnectionFeedback]);
 
   return (
     <>
       {waterWarning && (
-        <div className="absolute top-28 left-1/2 -translate-x-1/2 z-50 bg-yellow-100 text-yellow-800 border border-yellow-300 p-4 rounded-lg shadow-lg font-semibold w-[90%] md:w-auto text-center">
+        <div role="status" aria-live="polite" className="absolute left-1/2 top-24 z-50 w-11/12 -translate-x-1/2 rounded-lg border border-yellow-700 bg-yellow-100 p-3 text-center font-semibold text-yellow-900 shadow-lg md:w-auto">
           {waterWarning}
         </div>
       )}
+
       {viewMode === 'electric' && nodes.length === 0 && (
         <EmptyState
           title="Fang mit deiner Batterie an"
-          description="Jede Anlage startet mit der Aufbaubatterie. Füge sie zuerst hinzu – danach kannst du Laderegler, Sicherungen und Verbraucher anschließen."
+          description="Jede Anlage startet mit der Aufbaubatterie. Danach führt dich der Planer Schritt für Schritt weiter."
           actionLabel="Batterie hinzufügen"
           onAction={() => {
             addNode('battery', 'Batterie', { x: 0, y: 0 });
             window.dispatchEvent(new CustomEvent('planner-fit-view'));
           }}
-          hint="Oder ziehe Komponenten aus der linken Leiste auf die Fläche."
         />
       )}
       {viewMode === 'water' && waterNodes.length === 0 && (
         <EmptyState
           title="Starte mit dem Frischwassertank"
-          description="Dein Wassersystem beginnt beim Frischwassertank. Füge ihn zuerst hinzu – dann folgen Pumpe, Filter und Verbraucher."
+          description="Dein Wassersystem beginnt beim Frischwassertank. Danach folgen Pumpe, Filter und Entnahmestellen."
           actionLabel="Frischwassertank hinzufügen"
           onAction={() => {
             addNode('freshWaterTank', 'Frischwassertank', { x: 0, y: 0 });
             window.dispatchEvent(new CustomEvent('planner-fit-view'));
           }}
-          hint="Oder ziehe Komponenten aus der linken Leiste auf die Fläche."
         />
       )}
-      <div className="flex-1 h-full w-full relative">
+
+      <div className="relative h-full w-full flex-1">
         <FloatingMetricsCard />
         <ReactFlow
-          nodes={viewMode === 'water' ? waterNodes : nodes}
-          edges={viewMode === 'water' ? waterEdges : edges}
+          nodes={displayedNodes}
+          edges={displayedEdges}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           onNodesChange={viewMode === 'water' ? onWaterNodesChange : onNodesChange}
           onEdgesChange={viewMode === 'water' ? onWaterEdgesChange : onEdgesChange}
-          onConnect={onConnect}
+          onConnect={handleConnect}
+          onConnectStart={() => {
+            connectionAttempt.current = true;
+            showConnectionFeedback('Verbindung gestartet: Ziehe zum passenden Anschluss oder tippe ihn an.', 0);
+          }}
+          onConnectEnd={() => {
+            if (connectionAttempt.current) showConnectionFeedback('Diese Verbindung ist nicht möglich. Prüfe Spannung, Polung und Richtung; möglicherweise besteht die Verbindung bereits.');
+            connectionAttempt.current = false;
+          }}
           isValidConnection={isValidConnection}
           onSelectionChange={onSelectionChange}
           onDragOver={onDragOver}
           onDrop={onDrop}
           fitView
-          snapToGrid={true}
+          minZoom={0.5}
+          maxZoom={2}
+          snapToGrid
           snapGrid={[16, 16]}
-          deleteKeyCode={['Backspace', 'Delete']}
-          onlyRenderVisibleElements={true}
-          elementsSelectable={true}
-          translateExtent={[[-2000, -2000], [4000, 4000]]}
+          deleteKeyCode={null}
+          onlyRenderVisibleElements
+          elementsSelectable
+          nodesFocusable
+          edgesFocusable
+          translateExtent={[[ -2000, -2000 ], [4000, 4000]]}
           zoomOnScroll={!isMobile}
-          zoomOnPinch={isMobile}
+          zoomOnPinch
           panOnDrag={isMobile ? true : [1, 2]}
-          style={{
-            backgroundColor: 'var(--canvas-bg, #f4f5f7)',
-          }}
+          aria-label={`${viewMode === 'water' ? 'Wasserplan' : 'Elektrik-Schaltplan'} Arbeitsfläche`}
+          style={{ backgroundColor: 'var(--canvas-bg)' }}
         >
-          <Background color="var(--border)" gap={16} />
-          <Controls className="rounded-lg overflow-hidden border border-border shadow-sm mb-16 lg:mb-4" />
-          <MiniMap className="rounded-lg overflow-hidden border border-border shadow-sm mb-16 lg:mb-4" />
+          <Background color="var(--canvas-grid)" gap={16} />
+          <Controls className="mb-16 overflow-hidden rounded-lg border border-border shadow-sm lg:mb-4" />
+          <MiniMap className="mb-16 overflow-hidden rounded-lg border border-border shadow-sm lg:mb-4" ariaLabel="Miniaturübersicht des Plans" />
+
+          <Panel position="top-left" className="m-3 max-w-sm">
+            <div className="rounded-lg border border-border bg-card/95 px-3 py-2 text-xs text-foreground shadow-sm">
+              <strong>{viewMode === 'water' ? 'Wasserplan' : 'Elektrikplan'}</strong>
+              <span className="ml-2 text-muted-foreground">Anschluss antippen, dann Ziel antippen – oder mit der Maus ziehen.</span>
+            </div>
+          </Panel>
 
           {viewMode === 'electric' && calculatedSolarWatts > 0 && (
-            <Panel position="bottom-center" className="bg-blue-50 p-3 rounded-lg shadow-sm border border-blue-200 text-blue-800 text-sm mb-4">
-              <strong>Dachplaner-Daten erkannt:</strong> {calculatedSolarWatts} W Solarleistung verfügbar. Du kannst nun deinen MPPT-Regler entsprechend dimensionieren.
+            <Panel position="bottom-center" className="mb-4 rounded-lg border border-blue-300 bg-blue-50 p-3 text-sm text-blue-900 shadow-sm">
+              <strong>Dachplaner-Daten erkannt:</strong> {calculatedSolarWatts} W Solarleistung verfügbar. Der Solar-Laderegler (MPPT) muss dafür passend dimensioniert sein.
             </Panel>
           )}
         </ReactFlow>
+      </div>
+
+      <div className="pointer-events-none absolute bottom-20 left-1/2 z-50 w-11/12 -translate-x-1/2 text-center lg:bottom-6" aria-live="polite" role="status">
+        {(firstTappedHandle || connectionFeedback) && (
+          <span className="inline-block rounded-lg bg-ink px-4 py-3 text-sm font-semibold text-bone shadow-lg">
+            {firstTappedHandle ? 'Erster Anschluss gewählt. Wähle jetzt den zweiten Anschluss; erneut tippen bricht ab.' : connectionFeedback}
+          </span>
+        )}
       </div>
 
       <BOMModal />

@@ -3,6 +3,7 @@ import { render, screen, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ExpertPanel } from './ExpertPanel';
 import { usePlannerStore } from '../../store/usePlannerStore';
+import { useAppStore } from '../../lib/store';
 
 const defaultPlannerStoreState = {
   selectedNodes: [],
@@ -16,6 +17,7 @@ vi.mock('../../store/usePlannerStore', () => ({
 describe('ExpertPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    useAppStore.setState({ isProMode: true });
   });
 
   it('renders closed state by default with FAB button', () => {
@@ -23,7 +25,7 @@ describe('ExpertPanel', () => {
     render(<ExpertPanel />);
 
     // The panel should be closed initially and show the FAB
-    const toggleBtn = screen.getByRole('button', { name: /experten-wissen öffnen/i });
+    const toggleBtn = screen.getByRole('button', { name: /hilfe und fachwissen öffnen/i });
     expect(toggleBtn).toBeInTheDocument();
   });
 
@@ -31,11 +33,11 @@ describe('ExpertPanel', () => {
     vi.mocked(usePlannerStore).mockImplementation((selector: any) => selector(defaultPlannerStoreState));
     render(<ExpertPanel />);
 
-    const toggleBtn = screen.getByRole('button', { name: /experten-wissen öffnen/i });
+    const toggleBtn = screen.getByRole('button', { name: /hilfe und fachwissen öffnen/i });
     fireEvent.click(toggleBtn);
 
     // Panel should now be open, showing default tip
-    expect(screen.getByText("Experten-Wissen")).toBeInTheDocument();
+    expect(screen.getByText("Fachwissen")).toBeInTheDocument();
     expect(screen.getByText("So funktioniert's")).toBeInTheDocument();
   });
 
@@ -49,11 +51,11 @@ describe('ExpertPanel', () => {
     render(<ExpertPanel />);
 
     // Open the panel
-    const toggleBtn = screen.getByRole('button', { name: /experten-wissen öffnen/i });
+    const toggleBtn = screen.getByRole('button', { name: /hilfe und fachwissen öffnen/i });
     fireEvent.click(toggleBtn);
 
     // Should show battery knowledge
-    expect(screen.getByText("Batterie — Experten-Wissen")).toBeInTheDocument();
+    expect(screen.getByText("Batterie — Fachwissen")).toBeInTheDocument();
     expect(screen.getByText("LiFePO4 vs. AGM")).toBeInTheDocument();
   });
 
@@ -67,10 +69,10 @@ describe('ExpertPanel', () => {
     render(<ExpertPanel />);
 
     // Open the panel
-    const toggleBtn = screen.getByRole('button', { name: /experten-wissen öffnen/i });
+    const toggleBtn = screen.getByRole('button', { name: /hilfe und fachwissen öffnen/i });
     fireEvent.click(toggleBtn);
 
-    expect(screen.getByText(/Live-Empfehlung/)).toBeInTheDocument();
+    expect(screen.getByText(/Aktuelle Empfehlung/)).toBeInTheDocument();
     expect(screen.getByText("Kabelquerschnitt")).toBeInTheDocument();
     expect(screen.getByText("Max. Sicherung")).toBeInTheDocument();
     // I = 1000 / 12 / 0.85 = 98.03 A -> expected current
@@ -86,7 +88,7 @@ describe('ExpertPanel', () => {
 
     render(<ExpertPanel />);
 
-    const toggleBtn = screen.getByRole('button', { name: /experten-wissen öffnen/i });
+    const toggleBtn = screen.getByRole('button', { name: /hilfe und fachwissen öffnen/i });
     fireEvent.click(toggleBtn);
 
     // I = 200 / 18 = 11.11A
@@ -102,12 +104,12 @@ describe('ExpertPanel', () => {
 
     render(<ExpertPanel />);
 
-    const toggleBtn = screen.getByRole('button', { name: /experten-wissen öffnen/i });
+    const toggleBtn = screen.getByRole('button', { name: /hilfe und fachwissen öffnen/i });
     fireEvent.click(toggleBtn);
 
     // The first tip should be expanded by default (index 0)
     // We should see its body text
-    expect(screen.getByText("LiFePO4-Akkus haben eine nutzbare Kapazität von ca. 95% (DoD), AGM nur ~50%. Eine 100Ah LiFePO4 ersetzt also eine 200Ah AGM.")).toBeInTheDocument();
+    expect(screen.getByText("LiFePO4-Akkus haben eine nutzbare Kapazität von ca. 95 % Entladetiefe (DoD), AGM nur ~50%. Eine 100Ah LiFePO4 ersetzt also eine 200Ah AGM.")).toBeInTheDocument();
 
     // Click the second tip
     const secondTipHeading = screen.getByText("Kabelquerschnitt zur Batterie");

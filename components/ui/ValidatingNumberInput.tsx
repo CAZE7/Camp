@@ -57,15 +57,15 @@ export function ValidatingNumberInput({
         aria-invalid={isInvalid ? "true" : "false"}
         aria-errormessage={isInvalid ? `${id}-error` : undefined}
         className={cn(
-          "border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:border-transparent transition-shadow",
+          "min-h-11 border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:border-transparent transition-shadow",
           isInvalid
-            ? "border-red-500 focus:ring-red-500 bg-red-50/10"
-            : "border-gray-300 focus:ring-orange-500",
+            ? "border-red-700 focus:ring-red-700 bg-red-50"
+            : "border-border focus:ring-ring",
           className
         )}
       />
       {isInvalid && (
-        <span id={`${id}-error`} className="text-red-500 text-xs mt-1 font-medium" role="alert">
+        <span id={`${id}-error`} className="mt-1 text-xs font-semibold text-red-800" role="alert">
           {errorMessage}
         </span>
       )}

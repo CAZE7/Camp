@@ -184,15 +184,15 @@ describe('FlowCanvas', () => {
         window.dispatchEvent(bomEvent);
       });
 
-      expect(screen.getByText('Stückliste (BOM)')).toBeInTheDocument();
-      expect(screen.getByText('1x Batterie')).toBeInTheDocument();
-      expect(screen.getByText('5.0 Meter 4 mm² Kabel')).toBeInTheDocument();
+      expect(screen.getByText('Stückliste')).toBeInTheDocument();
+      expect(screen.getByText('Batterie')).toBeInTheDocument();
+      expect(screen.getByText('5.0 m Kabel mit 4 mm²')).toBeInTheDocument();
 
       // Close modal
       act(() => {
         fireEvent.click(screen.getByText('Schließen'));
       });
-      expect(screen.queryByText('Stückliste (BOM)')).not.toBeInTheDocument();
+      expect(screen.queryByText('Stückliste')).not.toBeInTheDocument();
     });
 
     it('handles sequential tap connections', () => {
@@ -301,9 +301,9 @@ describe('FlowCanvas', () => {
     it('displays electric system calculations panel when viewMode is electric', () => {
       render(<FlowCanvas />);
 
-      expect(screen.getByText('Live Status')).toBeInTheDocument();
+      expect(screen.getByText('Aktueller Status')).toBeInTheDocument();
       // removed check
-      expect(screen.getByText('~100.5 Ah')).toBeInTheDocument();
+      expect(screen.getByText(/100\.5 Ah/)).toBeInTheDocument();
       // removed check
       expect(screen.getByText('2 Tage')).toBeInTheDocument();
       // expect(screen.getByText('Solar-Array Output:')).toBeInTheDocument();

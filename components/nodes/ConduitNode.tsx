@@ -77,7 +77,7 @@ const ConduitNode = function ({ id, data, selected }: { id: string, data: Condui
   return (
     <div className={`hover:scale-105 transition-all custom-drag-handle bg-white border-2 rounded-md p-3 shadow-md w-64 ${
       fillStats.isOverfilled ? "border-red-500 bg-red-50" : "border-gray-400"
-    } ${selected ? (fillStats.isOverfilled ? "ring-4 ring-red-500 shadow-[0_0_15px_rgba(239,68,68,0.6)]" : "ring-4 ring-gray-400 shadow-[0_0_15px_rgba(156,163,175,0.6)]") : ""}`}>
+    } ${selected ? (fillStats.isOverfilled ? "ring-4 ring-red-500 shadow-xl" : "ring-4 ring-gray-400 shadow-xl") : ""}`}>
 
       <div className="font-bold mb-2 text-sm text-center text-gray-800">
         {data.label || 'Leerrohr'} ({conduitType})
@@ -87,9 +87,9 @@ const ConduitNode = function ({ id, data, selected }: { id: string, data: Condui
         Zugewiesene Kabel: {assignedEdgeIds.length}
       </div>
 
-      <div className="w-full bg-gray-200 rounded-full h-2.5 mb-2 overflow-hidden border border-gray-300">
+      <div className="w-full bg-gray-200 rounded-full h-2.5 mb-2 overflow-hidden border border-gray-600">
         <div
-          className={`h-2.5 rounded-full transition-all duration-300 ${fillStats.isOverfilled ? 'bg-red-500' : 'bg-green-500'}`}
+          className={`h-2.5 rounded-full transition-all duration-300 ${fillStats.isOverfilled ? 'bg-red-500' : 'bg-green-700'}`}
           style={{ width: `${Math.min(fillStats.fillPercentage, 100)}%` }}
         />
       </div>
@@ -99,7 +99,7 @@ const ConduitNode = function ({ id, data, selected }: { id: string, data: Condui
       </div>
 
       {fillStats.isOverfilled && (
-        <div className="mt-2 p-2 bg-red-500 text-white text-xs font-bold rounded leading-tight">
+        <div className="mt-2 p-2 bg-red-700 text-white text-xs font-bold rounded leading-tight">
           Kanal überfüllt! Gefahr durch Hitzestau in der Kabelbündelung.
           {fillStats.recommendedConduit ? (
             <span className="block mt-1">Bitte mindestens {fillStats.recommendedConduit} Rohr verwenden.</span>

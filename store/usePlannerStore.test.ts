@@ -23,6 +23,10 @@ describe('usePlannerStore', () => {
       firstTappedHandle: null,
       selectedNodes: [],
       selectedEdges: [],
+      historyPast: [],
+      historyFuture: [],
+      canUndo: false,
+      canRedo: false,
     });
   });
 
@@ -210,6 +214,41 @@ describe('usePlannerStore', () => {
       });
 
       expect(result.current.edges).toContainEqual(mockEdge);
+    });
+  });
+
+  describe('History and data safety', () => {
+    it('can undo and redo a graph change', () => {
+      const originalNodes = usePlannerStore.getState().nodes;
+      const addedNode = { id: 'history-node', type: 'battery', position: { x: 0, y: 0 }, data: { label: 'Test' } };
+
+      act(() => usePlannerStore.getState().setNodes([...originalNodes, addedNode]));
+      expect(usePlannerStore.getState().canUndo).toBe(true);
+      expect(usePlannerStore.getState().nodes).toContainEqual(addedNode);
+
+      act(() => usePlannerStore.getState().undo());
+      expect(usePlannerStore.getState().nodes).toEqual(originalNodes);
+      expect(usePlannerStore.getState().canRedo).toBe(true);
+
+      act(() => usePlannerStore.getState().redo());
+      expect(usePlannerStore.getState().nodes).toContainEqual(addedNode);
+    });
+
+    it('clears both plan domains and keeps the action undoable', () => {
+      usePlannerStore.setState({
+        nodes: initialNodes,
+        edges: initialEdges,
+        waterNodes: [{ id: 'water', type: 'freshWaterTank', position: { x: 0, y: 0 }, data: {} }],
+        waterEdges: [],
+      });
+
+      act(() => usePlannerStore.getState().clearPlan());
+      expect(usePlannerStore.getState().nodes).toEqual([]);
+      expect(usePlannerStore.getState().waterNodes).toEqual([]);
+
+      act(() => usePlannerStore.getState().undo());
+      expect(usePlannerStore.getState().nodes).toEqual(initialNodes);
+      expect(usePlannerStore.getState().waterNodes).toHaveLength(1);
     });
   });
 

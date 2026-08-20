@@ -5,13 +5,12 @@ import { useAppStore } from './store';
 describe('useAppStore', () => {
   beforeEach(() => {
     window.localStorage.clear();
-    useAppStore.setState({ calculatedSolarWatts: 0 });
+    useAppStore.setState({ calculatedSolarWatts: 0, isProMode: false, hasOnboarded: false });
   });
 
   it('should initialize with default values', () => {
     const { result } = renderHook(() => useAppStore());
-    // Es gibt nur noch eine vollständige Ansicht (kein Umschalter mehr).
-    expect(result.current.isProMode).toBe(true);
+    expect(result.current.isProMode).toBe(false);
     expect(result.current.calculatedSolarWatts).toBe(0);
   });
 
@@ -32,7 +31,18 @@ describe('useAppStore', () => {
       result.current.setCalculatedSolarWatts(400);
     });
 
-    // Store has no persist middleware — state lives in memory only
     expect(result.current.calculatedSolarWatts).toBe(400);
+    expect(window.localStorage.getItem('werft-app-preferences-v1')).toContain('400');
+  });
+
+  it('persists onboarding and display preferences', () => {
+    const { result } = renderHook(() => useAppStore());
+    act(() => {
+      result.current.setHasOnboarded(true);
+      result.current.setIsProMode(true);
+    });
+    const saved = window.localStorage.getItem('werft-app-preferences-v1');
+    expect(saved).toContain('"hasOnboarded":true');
+    expect(saved).toContain('"isProMode":true');
   });
 });

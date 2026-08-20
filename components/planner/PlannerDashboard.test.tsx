@@ -60,31 +60,31 @@ describe('PlannerDashboard - Core Interactions', () => {
     render(<PlannerDashboard />);
 
     // View toggles
-    expect(screen.getByText('Elektrik-Schaltplan')).toBeInTheDocument();
-    expect(screen.getByText('Wasser & Sanitär')).toBeInTheDocument();
+    expect(screen.getByText('Elektrik')).toBeInTheDocument();
+    expect(screen.getByText('Wasser')).toBeInTheDocument();
     // Primary action is always visible
-    expect(screen.getByText(/Auto-Wire/)).toBeInTheDocument();
+    expect(screen.getByText(/Automatisch verbinden/)).toBeInTheDocument();
 
     // Secondary actions live in the overflow menu
     openMoreMenu();
     expect(screen.getByText(/Stückliste/)).toBeInTheDocument();
-    expect(screen.getByText(/KI-Check/)).toBeInTheDocument();
-    expect(screen.getByText(/Aufräumen/)).toBeInTheDocument();
-    expect(screen.getByText(/Bild Export/)).toBeInTheDocument();
-    expect(screen.getByText(/Sommer/)).toBeInTheDocument();
-    expect(screen.getByText(/Winter/)).toBeInTheDocument();
+    expect(screen.getByText(/Plan lokal prüfen/)).toBeInTheDocument();
+    expect(screen.getByText(/Plan automatisch anordnen/)).toBeInTheDocument();
+    expect(screen.getByText(/Bild exportieren/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Sommer' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Winter' })).toBeInTheDocument();
 
     // The Pro-Mode switch has been removed entirely
-    expect(screen.queryByText(/Profi-Modus/)).not.toBeInTheDocument();
+    expect(screen.getByText(/Profi-Details/)).toBeInTheDocument();
   });
 
   it('calls setViewMode when changing view mode', () => {
     render(<PlannerDashboard />);
 
-    fireEvent.click(screen.getByText('Wasser & Sanitär'));
+    fireEvent.click(screen.getByText('Wasser'));
     expect(mockSetViewMode).toHaveBeenCalledWith('water');
 
-    fireEvent.click(screen.getByText('Elektrik-Schaltplan'));
+    fireEvent.click(screen.getByText('Elektrik'));
     expect(mockSetViewMode).toHaveBeenCalledWith('electric');
   });
 
@@ -93,10 +93,10 @@ describe('PlannerDashboard - Core Interactions', () => {
 
     // Season buttons live in the overflow menu and keep it open after a click
     openMoreMenu();
-    fireEvent.click(screen.getByText(/Winter/));
+    fireEvent.click(screen.getByRole('button', { name: 'Winter' }));
     expect(mockSetSeason).toHaveBeenCalledWith('winter');
 
-    fireEvent.click(screen.getByText(/Sommer/));
+    fireEvent.click(screen.getByRole('button', { name: 'Sommer' }));
     expect(mockSetSeason).toHaveBeenCalledWith('summer');
   });
 });
@@ -124,10 +124,10 @@ describe('PlannerDashboard - Action Buttons', () => {
     expect(event.type).toBe('show-bom-modal');
   });
 
-  it('calls autoWireSystem with no args when clicking the primary Auto-Wire action', () => {
+  it('calls autoWireSystem with no args when clicking the primary automatic wiring action', () => {
     render(<PlannerDashboard />);
 
-    fireEvent.click(screen.getByText(/Auto-Wire/));
+    fireEvent.click(screen.getByText(/Automatisch verbinden/));
 
     expect(mockAutoWireSystem).toHaveBeenCalledTimes(1);
     expect(mockAutoWireSystem).toHaveBeenCalledWith();
@@ -137,7 +137,7 @@ describe('PlannerDashboard - Action Buttons', () => {
     render(<PlannerDashboard />);
 
     openMoreMenu();
-    fireEvent.click(screen.getByText(/KI-Check/));
+    fireEvent.click(screen.getByText(/Plan lokal prüfen/));
 
     expect(mockCheckSchematic).toHaveBeenCalledTimes(1);
   });
@@ -146,7 +146,7 @@ describe('PlannerDashboard - Action Buttons', () => {
     render(<PlannerDashboard />);
 
     openMoreMenu();
-    fireEvent.click(screen.getByText(/Aufräumen/));
+    fireEvent.click(screen.getByText(/Plan automatisch anordnen/));
 
     expect(mockOnLayout).toHaveBeenCalledTimes(1);
     expect(mockOnLayout).toHaveBeenCalledWith();
@@ -203,12 +203,12 @@ describe('PlannerDashboard - Image Export', () => {
     render(<PlannerDashboard />);
 
     openMoreMenu();
-    fireEvent.click(screen.getByText(/Bild Export/));
+    fireEvent.click(screen.getByText(/Bild exportieren/));
 
     await waitFor(() => {
       expect(toPng).toHaveBeenCalledWith(mockReactFlowElem, expect.any(Object));
       expect(createElementSpy).toHaveBeenCalledWith('a');
-      expect(mockLink.download).toBe('schaltplan.png');
+      expect(mockLink.download).toBe('werft-schaltplan.png');
       expect(mockLink.href).toBe('data:image/png;base64,mocked');
       expect(mockLink.click).toHaveBeenCalledTimes(1);
     });
@@ -226,7 +226,7 @@ describe('PlannerDashboard - Image Export', () => {
     render(<PlannerDashboard />);
 
     openMoreMenu();
-    fireEvent.click(screen.getByText(/Bild Export/));
+    fireEvent.click(screen.getByText(/Bild exportieren/));
 
     // Give the dynamic import a tick to resolve
     await Promise.resolve();
@@ -241,7 +241,7 @@ describe('PlannerDashboard - Image Export', () => {
     render(<PlannerDashboard />);
 
     openMoreMenu();
-    fireEvent.click(screen.getByText(/Bild Export/));
+    fireEvent.click(screen.getByText(/Bild exportieren/));
 
     await waitFor(() => {
       expect(toPng).toHaveBeenCalled();
@@ -279,7 +279,7 @@ describe('PlannerDashboard - Image Export', () => {
     render(<PlannerDashboard />);
 
     openMoreMenu();
-    fireEvent.click(screen.getByText(/Bild Export/));
+    fireEvent.click(screen.getByText(/Bild exportieren/));
 
     await waitFor(() => {
       expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to export image', expect.any(Error));

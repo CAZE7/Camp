@@ -9,7 +9,7 @@ export const COMMON_RULES = {
   positive: { validate: (v: number) => v >= 0, message: 'Wert darf nicht negativ sein.' },
   strictlyPositive: { validate: (v: number) => v > 0, message: 'Wert muss größer als 0 sein.' },
   hours: { validate: (v: number) => v >= 0 && v <= 24, message: 'Stunden müssen zwischen 0 und 24 liegen.' },
-  efficiency: { validate: (v: number) => v >= 0 && v <= 100, message: 'Effizienz muss zwischen 0 und 100 liegen.' },
+  efficiency: { validate: (v: number) => v > 0 && v <= 100, message: 'Effizienz muss größer als 0 und höchstens 100 Prozent sein.' },
 };
 
 interface ValidatingInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'value'> {
@@ -80,9 +80,9 @@ export function ValidatingInput({ value, onValidChange, rules = [], isFloat = fa
         onBlur={handleBlur}
         aria-invalid={error ? "true" : undefined}
         aria-errormessage={error ? errorId : undefined}
-        className={`${className || ''} ${error ? 'border-red-500 bg-red-50 focus:ring-red-500 focus:border-red-500' : ''}`}
+        className={`min-h-11 ${className || ''} ${error ? 'border-red-700 bg-red-50 focus:ring-red-700 focus:border-red-700' : ''}`}
       />
-      {error && <span id={errorId} role="alert" className="text-red-500 text-xs mt-1 font-medium">{error}</span>}
+      {error && <span id={errorId} role="alert" className="mt-1 text-xs font-semibold text-red-800">{error}</span>}
     </div>
   );
 }

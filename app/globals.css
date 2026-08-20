@@ -66,20 +66,22 @@
     /* --- Planer: Semantische Leitungs- & Warn-Kodierung ---
        Zentral definiert, damit Canvas-Kanten, Rohre und Warnungen
        überall dieselbe Farbsprache nutzen (keine Inline-Hexwerte). */
-    --wire-dc: #3b82f6;        /* Gleichstrom 12V/24V (blau) */
-    --wire-ac: #ef4444;        /* Wechselstrom 230V (rot) */
-    --wire-solar: #f59e0b;     /* Solar / PV (amber) */
-    --wire-selected: #9ca3af;  /* ausgewählte Leitung (neutral) */
-    --wire-error: #ef4444;     /* Leitung mit Fehler (rot) */
+    --canvas-bg: #f4f5f7;
+    --canvas-grid: #6b6258;
+    --wire-dc: #1d4ed8;        /* Gleichstrom 12V/24V (blau) */
+    --wire-ac: #b91c1c;        /* Wechselstrom 230V (rot) */
+    --wire-solar: #92400e;     /* Solar / PV (dunkles Amber) */
+    --wire-selected: #374151;  /* ausgewählte Leitung (neutral) */
+    --wire-error: #b91c1c;     /* Leitung mit Fehler (rot) */
 
-    --pipe-fresh: #3b82f6;     /* Frischwasser (blau) */
-    --pipe-gray: #9ca3af;      /* Grauwasser (grau) */
-    --pipe-selected: #f97316;  /* ausgewähltes Rohr (orange) */
+    --pipe-fresh: #1d4ed8;     /* Frischwasser (blau) */
+    --pipe-gray: #4b5563;      /* Grauwasser (grau) */
+    --pipe-selected: #c2410c;  /* ausgewähltes Rohr (orange) */
 
-    --warn-critical: #dc2626;      /* kritisch */
+    --warn-critical: #b91c1c;      /* kritisch */
     --warn-critical-bg: #fef2f2;
     --warn-critical-border: #fecaca;
-    --warn-warning: #d97706;       /* Warnung */
+    --warn-warning: #92400e;       /* Warnung */
     --warn-warning-bg: #fffbeb;
     --warn-warning-border: #fde68a;
     --warn-info: #2563eb;          /* Hinweis */
@@ -138,5 +140,72 @@
   .measure {
     font-family: var(--font-mono), ui-monospace, monospace;
     font-variant-numeric: tabular-nums;
+  }
+
+  /* Große, sichtbare Anschlussflächen für Touch und Tastatur. */
+  .react-flow__handle {
+    width: 44px !important;
+    height: 44px !important;
+    border: 0 !important;
+    background: transparent !important;
+  }
+
+  .react-flow__handle > div {
+    width: 14px !important;
+    height: 14px !important;
+    border: 2px solid var(--bone);
+    box-shadow: 0 0 0 1px var(--ink);
+  }
+
+  .react-flow__handle:focus-visible > div,
+  .react-flow__handle.connecting > div,
+  .react-flow__handle.tap-connect-selected > div {
+    box-shadow: 0 0 0 4px var(--bone), 0 0 0 7px var(--wire-selected);
+  }
+
+  .react-flow__handle.valid > div {
+    box-shadow: 0 0 0 4px var(--bone), 0 0 0 7px var(--success);
+  }
+
+  .react-flow__handle[data-handleid*="plus"] > div,
+  .react-flow__handle[data-handleid="in"] > div {
+    border-radius: 9999px !important;
+  }
+
+  .react-flow__handle[data-handleid*="minus"] > div,
+  .react-flow__handle[data-handleid="out"] > div {
+    border-radius: 2px !important;
+  }
+
+  .react-flow__handle[data-handleid*="ac"] > div {
+    border-radius: 2px !important;
+    transform: rotate(45deg);
+  }
+
+  .roof-dot-grid {
+    background-image: radial-gradient(var(--ink) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+
+  .roof-solar-grid {
+    background-image: linear-gradient(to right, var(--muted-ink) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--muted-ink) 1px, transparent 1px);
+    background-size: 10px 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .planner-flow-particle {
+    display: none;
   }
 }

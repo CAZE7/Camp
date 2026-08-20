@@ -163,9 +163,9 @@ const CableEdge = function ({
     const sourceNode = getNode(source);
     const targetNode = getNode(target);
 
-    let edgeDomain = data?.edgeDomain || getEdgeDomain(sourceNode?.type, targetNode?.type, resolvedSourceHandle, resolvedTargetHandle);
+    let edgeDomain: 'DC_12V' | 'AC_230V' | 'Solar' = (data?.edgeDomain || getEdgeDomain(sourceNode?.type, targetNode?.type, resolvedSourceHandle, resolvedTargetHandle)) as 'DC_12V' | 'AC_230V';
     if (sourceNode?.type === 'solar' || targetNode?.type === 'solar' || sourceNode?.type === 'roofSolar' || targetNode?.type === 'roofSolar') {
-      edgeDomain = 'Solar' as any;
+      edgeDomain = 'Solar';
     }
 
     if (edgeDomain === 'AC_230V') {
@@ -243,12 +243,13 @@ const CableEdge = function ({
           ...style,
           strokeWidth,
           stroke,
+          strokeDasharray: edgeDomain === 'AC_230V' ? '10 6' : edgeDomain === 'Solar' ? '3 5' : undefined,
           transition: 'stroke-width 0.3s ease, stroke 0.3s ease',
           cursor: 'pointer',
         }}
       />
 
-      <circle r={strokeWidth / 2} fill="#fbbf24">
+      <circle className="planner-flow-particle" r={strokeWidth / 2} fill="var(--wire-solar)" aria-hidden="true">
         <animateMotion
           dur={`${animationDuration}s`}
           repeatCount="indefinite"
@@ -264,7 +265,7 @@ const CableEdge = function ({
             background: 'var(--bone)',
             padding: '2px 6px',
             borderRadius: '4px',
-            fontSize: '11px',
+            fontSize: '12px',
             fontWeight: 'bold',
             border: '1px solid var(--rule)',
             color: 'var(--ink)',
@@ -278,10 +279,10 @@ const CableEdge = function ({
         >
           {/* Kern-Werte immer lesbar (auch ohne Klick / auf Touch) */}
           {edgeDomain === 'AC_230V' ? (
-            <span style={{ color: 'var(--wire-ac)' }}>230V AC</span>
+            <span style={{ color: 'var(--wire-ac)' }}>230 V AC · gestrichelt</span>
           ) : (
             <span>
-              {data?.fuseSize ? `${data.fuseSize}A · ` : ''}{crossSection} mm²
+              {edgeDomain === 'Solar' ? 'Solar · ' : 'DC · '}{data?.fuseSize ? `${data.fuseSize} A · ` : ''}<span>{crossSection} mm²</span>
             </span>
           )}
 
@@ -289,15 +290,15 @@ const CableEdge = function ({
           {(selected || isHovered) && <span style={{ fontWeight: 500 }}>{length.toFixed(2)} m</span>}
           {(selected || isHovered) && edgeDomain === 'AC_230V' ? (
             <>
-              <span style={{ color: 'var(--success)', fontSize: '10px' }}>3-adrig (L, N, PE)</span>
-              <span style={{ background: 'var(--warn-info)', color: 'white', padding: '1px 4px', borderRadius: '4px', fontSize: '10px', marginTop: '2px' }}>RCBO (FI/LS) empfohlen</span>
+              <span style={{ color: 'var(--success)', fontSize: '12px' }}>3-adrig (L, N, PE)</span>
+              <span style={{ background: 'var(--warn-info)', color: 'white', padding: '1px 4px', borderRadius: '4px', fontSize: '12px', marginTop: '2px' }}>RCBO (FI/LS) empfohlen</span>
             </>
           ) : (selected || isHovered) ? (
             <>
-              {maxFuse > 0 && <span style={{ color: 'var(--wire-error)', fontSize: '10px' }}>Max: {maxFuse}A</span>}
-              {data?.fuseSize && <span style={{ background: 'var(--success)', color: 'white', padding: '1px 4px', borderRadius: '4px', fontSize: '10px', marginTop: '2px' }}>{data.fuseSize}A Sicherung</span>}
+              {maxFuse > 0 && <span style={{ color: 'var(--wire-error)', fontSize: '12px' }}>Max: {maxFuse}A</span>}
+              {data?.fuseSize && <span style={{ background: 'var(--success)', color: 'white', padding: '1px 4px', borderRadius: '4px', fontSize: '12px', marginTop: '2px' }}>{data.fuseSize}A Sicherung</span>}
               {errors.map((err, idx) => (
-                <span key={idx} style={{ background: 'var(--wire-error)', color: 'white', padding: '1px 4px', borderRadius: '4px', fontSize: '10px', marginTop: '2px' }}>{err}</span>
+                <span key={idx} style={{ background: 'var(--wire-error)', color: 'white', padding: '1px 4px', borderRadius: '4px', fontSize: '12px', marginTop: '2px' }}>{err}</span>
               ))}
             </>
           ) : null}
@@ -311,6 +312,16 @@ const CableEdge = function ({
         strokeOpacity={0}
         strokeWidth={20}
         style={{ cursor: 'pointer' }}
+        role="button"
+        tabIndex={0}
+        aria-label={`${edgeDomain === 'AC_230V' ? '230 Volt Wechselstromleitung' : edgeDomain === 'Solar' ? 'Solarleitung' : 'Gleichstromleitung'}, ${crossSection} Quadratmillimeter, ${length.toFixed(1)} Meter`}
+        onClick={() => usePlannerStore.getState().focusElement(id, 'edge')}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            usePlannerStore.getState().focusElement(id, 'edge');
+          }
+        }}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >

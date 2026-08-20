@@ -1,118 +1,132 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { AccessibleDialog } from '@/components/ui/AccessibleDialog';
 import { usePlannerStore } from '../../store/usePlannerStore';
 
+type BomData = {
+  counts: Record<string, number>;
+  cableLengths: Record<string, number>;
+  pipeLengths: Record<string, number>;
+};
+
+const TYPE_INFO: Record<string, { label: string; purpose: string }> = {
+  battery: { label: 'Batterie', purpose: 'Speichert Energie für die Bordelektrik.' },
+  mpptController: { label: 'Solar-Laderegler (MPPT)', purpose: 'Regelt die Ladung der Batterie durch Solarmodule.' },
+  dcdcCharger: { label: 'Ladebooster (DC-DC)', purpose: 'Lädt die Aufbaubatterie während der Fahrt.' },
+  acBatteryCharger: { label: '230-V-Ladegerät', purpose: 'Lädt die Batterie über Landstrom.' },
+  consumer: { label: '12-V-Gerät', purpose: 'Verbraucher im Gleichstromnetz.' },
+  charger: { label: 'Ladegerät', purpose: 'Lädt die Aufbaubatterie.' },
+  fuse: { label: 'Sicherungskasten', purpose: 'Schützt und verteilt elektrische Stromkreise.' },
+  shorePower: { label: 'Landstromanschluss', purpose: 'Verbindet den Camper mit dem 230-V-Netz.' },
+  inverter: { label: 'Wechselrichter', purpose: 'Erzeugt 230 V aus der Batteriespannung.' },
+  consumer230v: { label: '230-V-Gerät', purpose: 'Verbraucher im Wechselstromnetz.' },
+  solar: { label: 'Solarmodul', purpose: 'Erzeugt Energie aus Sonnenlicht.' },
+  conduit: { label: 'Leerrohr', purpose: 'Schützt Leitungen vor Scheuern und Hitze.' },
+  busbar: { label: 'Sammelschiene', purpose: 'Verteilt Plus oder Minus auf mehrere Leitungen.' },
+  shunt: { label: 'Batteriemonitor mit Shunt', purpose: 'Misst ein- und ausgehende Batterieströme.' },
+  ground: { label: 'Massepunkt', purpose: 'Stellt einen gemeinsamen Minusanschluss bereit.' },
+  freshWaterTank: { label: 'Frischwassertank', purpose: 'Speichert sauberes Wasser.' },
+  grayWaterTank: { label: 'Abwassertank', purpose: 'Sammelt gebrauchtes Wasser.' },
+  pump: { label: 'Wasserpumpe', purpose: 'Fördert Wasser und erzeugt Leitungsdruck.' },
+  accumulator: { label: 'Druckausgleichsgefäß', purpose: 'Beruhigt den Wasserfluss und schont die Pumpe.' },
+  preFilter: { label: 'Vorfilter', purpose: 'Schützt die Pumpe vor Schmutz.' },
+  sink: { label: 'Spüle', purpose: 'Entnahmestelle für Frischwasser.' },
+  shower: { label: 'Dusche', purpose: 'Entnahmestelle für Frischwasser.' },
+};
+
 export function BOMModal() {
-  const typeLabels: Record<string, string> = {
-    battery: 'Batterie',
-    mpptController: 'Laderegler (MPPT)',
-    dcdcCharger: 'Ladebooster (DC-DC)',
-    acBatteryCharger: 'Ladegerät (230V)',
-    consumer: '12V Verbraucher',
-    charger: 'Ladegerät (veraltet)',
-    fuse: 'Sicherung',
-    shorePower: 'Landstrom',
-    inverter: 'Wechselrichter',
-    consumer230v: '230V Verbraucher',
-    solar: 'Solarpanel (Planer)',
-    roofWindow: 'Dachfenster',
-    roofSolar: 'Dach-Solarpanel',
-    conduit: 'Kabelkanal',
-    busbar: 'Sammelschiene',
-    shunt: 'Mess-Shunt',
-    freshWaterTank: 'Frischwassertank',
-    grayWaterTank: 'Abwassertank',
-    pump: 'Wasserpumpe',
-    accumulator: 'Druckausgleichsgefäß',
-    preFilter: 'Vorfilter',
-    sink: 'Spülbecken',
-    shower: 'Dusche',
-  };
-
-
-  const [showBOM, setShowBOM] = useState(false);
-  const [bomData, setBomData] = useState<{ counts: Record<string, number>, cableLengths: Record<string, number> } | null>(null);
+  const [open, setOpen] = useState(false);
+  const [bomData, setBomData] = useState<BomData>({ counts: {}, cableLengths: {}, pipeLengths: {} });
 
   useEffect(() => {
     const handleShowBom = () => {
-      // Re-calculate directly to match original local state flow
-      const { nodes, edges } = (usePlannerStore as any).getState();
+      const { nodes, edges, waterNodes, waterEdges } = usePlannerStore.getState();
       const counts: Record<string, number> = {};
-      for (let i = 0, len = nodes.length; i < len; i++) {
-        const type = nodes[i].type;
-        if (type) {
-          counts[type] = (counts[type] || 0) + 1;
-        }
-      }
-
+      [...nodes, ...waterNodes].forEach((node) => {
+        if (node.type) counts[node.type] = (counts[node.type] || 0) + 1;
+      });
       const cableLengths: Record<string, number> = {};
-      for (let i = 0, len = edges.length; i < len; i++) {
-        const data = edges[i].data;
-        const cs = data?.crossSection || 2.5;
-        cableLengths[cs] = (cableLengths[cs] || 0) + (data?.length || 3);
-      }
-      setBomData({ counts, cableLengths });
-      setShowBOM(true);
+      edges.forEach((edge) => {
+        const crossSection = String(edge.data?.crossSection || 2.5);
+        cableLengths[crossSection] = (cableLengths[crossSection] || 0) + (edge.data?.length || 3);
+      });
+      const pipeLengths: Record<string, number> = {};
+      waterEdges.forEach((edge) => {
+        const type = String(edge.data?.pipeType || 'fresh');
+        pipeLengths[type] = (pipeLengths[type] || 0) + (edge.data?.length || 2);
+      });
+      setBomData({ counts, cableLengths, pipeLengths });
+      setOpen(true);
     };
     window.addEventListener('show-bom-modal', handleShowBom);
+    return () => window.removeEventListener('show-bom-modal', handleShowBom);
+  }, []);
 
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setShowBOM(false);
-    };
-    if (showBOM) {
-      window.addEventListener('keydown', handleKeyDown);
-    }
-
-    return () => {
-      window.removeEventListener('show-bom-modal', handleShowBom);
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [showBOM]);
-
-  const bomCountsEntries = useMemo(() => {
-    return bomData?.counts ? Object.entries(bomData.counts) : [];
-  }, [bomData?.counts]);
-
-  const bomCableEntries = useMemo(() => {
-    return bomData?.cableLengths ? Object.entries(bomData.cableLengths) : [];
-  }, [bomData?.cableLengths]);
-
-  if (!showBOM || !bomData) return null;
+  const componentEntries = useMemo(() => Object.entries(bomData.counts), [bomData.counts]);
+  const cableEntries = useMemo(() => Object.entries(bomData.cableLengths), [bomData.cableLengths]);
+  const pipeEntries = useMemo(() => Object.entries(bomData.pipeLengths), [bomData.pipeLengths]);
+  const empty = componentEntries.length === 0 && cableEntries.length === 0 && pipeEntries.length === 0;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 pointer-events-auto" onClick={() => setShowBOM(false)}>
-      <div className="bg-card p-6 rounded-lg shadow-lg w-96 max-h-[80vh] overflow-y-auto border border-border" onClick={(e) => e.stopPropagation()}>
-        <h2 className="text-xl font-bold mb-4 border-b border-border pb-2">Stückliste (BOM)</h2>
+    <AccessibleDialog
+      open={open}
+      onClose={() => setOpen(false)}
+      title="Stückliste"
+      description="Das brauchst du für den aktuellen Plan. Längen sind Planwerte – rechne für die Montage eine Reserve hinzu."
+      className="max-w-2xl"
+    >
+      <div className="flex-1 space-y-6 overflow-y-auto p-5">
+        {empty ? (
+          <div className="rounded-lg border border-border bg-accent p-6 text-center">
+            <p className="font-semibold">Dein Plan ist noch leer.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Füge zuerst Komponenten hinzu; danach entsteht hier deine Einkaufsliste.</p>
+          </div>
+        ) : (
+          <>
+            {componentEntries.length > 0 && (
+              <section aria-labelledby="bom-components">
+                <h3 id="bom-components" className="mb-2 font-semibold">Bauteile</h3>
+                <ul className="divide-y divide-border rounded-lg border border-border">
+                  {componentEntries.map(([type, count]) => {
+                    const info = TYPE_INFO[type] || { label: type, purpose: 'Bauteil aus deinem Plan.' };
+                    return (
+                      <li key={type} className="flex gap-3 p-3">
+                        <span className="min-w-10 font-mono font-bold">{count} ×</span>
+                        <span><strong>{info.label}</strong><span className="block text-sm text-muted-foreground">{info.purpose}</span></span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
+            )}
 
-        <div className="mb-4">
-          <h3 className="font-semibold mb-2 text-muted-foreground">Komponenten:</h3>
-          <ul className="list-disc pl-5 text-sm space-y-1">
-            {bomCountsEntries.map(([type, count]) => (
-              <li key={type} className="capitalize">{count}x {typeLabels[type] || type}</li>
-            ))}
-          </ul>
-        </div>
+            {cableEntries.length > 0 && (
+              <section aria-labelledby="bom-cables">
+                <h3 id="bom-cables" className="mb-2 font-semibold">Elektrische Leitungen</h3>
+                <ul className="space-y-2 rounded-lg border border-border p-3">
+                  {cableEntries.map(([crossSection, length]) => (
+                    <li key={crossSection}><strong>{length.toFixed(1)} m Kabel mit {crossSection} mm²</strong><span className="block text-sm text-muted-foreground">Für die im Plan verbundenen Stromkreise; Montageweg und Reserve vor Kauf prüfen.</span></li>
+                  ))}
+                </ul>
+              </section>
+            )}
 
-        <div className="mb-6">
-          <h3 className="font-semibold mb-2 text-muted-foreground">Kabelbedarf:</h3>
-          <ul className="list-disc pl-5 text-sm space-y-1">
-            {bomCableEntries.map(([cs, length]) => (
-              <li key={cs}>
-                {cs === 'gray' || cs === 'fresh' || cs === 'water'
-                  ? `${length.toFixed(1)} Meter ${cs === 'gray' ? 'Abwasser' : 'Frischwasser'}-Rohr`
-                  : `${length.toFixed(1)} Meter ${cs} mm² Kabel`}
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <Button
-          onClick={() => setShowBOM(false)}
-          className="w-full"
-        >
-          Schließen
-        </Button>
+            {pipeEntries.length > 0 && (
+              <section aria-labelledby="bom-pipes">
+                <h3 id="bom-pipes" className="mb-2 font-semibold">Wasserleitungen</h3>
+                <ul className="space-y-2 rounded-lg border border-border p-3">
+                  {pipeEntries.map(([type, length]) => (
+                    <li key={type}><strong>{length.toFixed(1)} m {type === 'gray' ? 'Abwasserrohr' : 'Frischwasserrohr'}</strong><span className="block text-sm text-muted-foreground">Durchmesser, Anschlüsse und Reserve passend zu deinen Bauteilen ergänzen.</span></li>
+                  ))}
+                </ul>
+              </section>
+            )}
+          </>
+        )}
       </div>
-    </div>
+      <div className="border-t border-border p-4">
+        <Button onClick={() => setOpen(false)} className="min-h-11 w-full">Schließen</Button>
+      </div>
+    </AccessibleDialog>
   );
 }

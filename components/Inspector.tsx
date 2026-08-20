@@ -18,7 +18,9 @@ import {
   RoofWindowInspector,
   ShorePowerInspector,
   SolarInspector,
+  ComponentInfoInspector,
 } from "./inspector/NodeInspectors";
+import { WaterPipeInspector } from "./inspector/WaterPipeInspector";
 
 interface InspectorProps {
   selectedNode?: Node | null;
@@ -108,8 +110,19 @@ function TypeSpecificInspector({
       return <RoofSolarInspector node={node} onUpdateNodeData={onUpdateNodeData} />;
     case "conduit":
       return <ConduitInspector node={node} onUpdateNodeData={onUpdateNodeData} edges={edges} />;
+    case "busbar":
+    case "shunt":
+    case "ground":
+    case "freshWaterTank":
+    case "grayWaterTank":
+    case "pump":
+    case "accumulator":
+    case "preFilter":
+    case "sink":
+    case "shower":
+      return <ComponentInfoInspector node={node} onUpdateNodeData={onUpdateNodeData} />;
     default:
-      return null;
+      return <ComponentInfoInspector node={node} onUpdateNodeData={onUpdateNodeData} />;
   }
 }
 
@@ -136,12 +149,9 @@ const NodeInspector = ({
     setLabel(node.data?.label || "");
   }, [node]);
 
-  const handleLabelChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newLabel = e.target.value;
-    setLabel(newLabel);
-    if (onUpdate) {
-      onUpdate(node.id, { label: newLabel });
-    }
+  const handleLabelChange = (e: React.ChangeEvent<HTMLInputElement>) => setLabel(e.target.value);
+  const commitLabel = () => {
+    if (onUpdate && label !== (node.data?.label || '')) onUpdate(node.id, { label });
   };
 
   return (
@@ -155,7 +165,9 @@ const NodeInspector = ({
           type="text"
           value={label}
           onChange={handleLabelChange}
-          className="w-full px-2 py-1 border border-border rounded text-sm"
+          onBlur={commitLabel}
+          onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur(); }}
+          className="min-h-11 w-full rounded border border-border px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           placeholder="Bezeichnung"
         />
       </div>
@@ -172,7 +184,9 @@ const NodeInspector = ({
       <Button
         variant="destructive"
         size="sm"
-        onClick={() => onDelete(node.id)}
+        onClick={() => {
+          if (window.confirm(`„${node.data?.label || node.type || 'Komponente'}“ wirklich löschen? Du kannst die Aktion anschließend rückgängig machen.`)) onDelete(node.id);
+        }}
         className="w-full gap-2"
       >
         <Trash2 size={16} />
@@ -222,16 +236,22 @@ export default function Inspector({
         />
       ) : selectedEdge ? (
         <div className="space-y-4">
-          <EdgeInspector
-            edge={selectedEdge}
-            onChangeLength={onChangeLength || (() => {})}
-            onChangeFuseSize={onChangeFuseSize}
-          />
+          {selectedEdge.type === 'waterPipe' ? (
+            <WaterPipeInspector edge={selectedEdge} onChangeLength={onChangeLength || (() => {})} />
+          ) : (
+            <EdgeInspector
+              edge={selectedEdge}
+              onChangeLength={onChangeLength || (() => {})}
+              onChangeFuseSize={onChangeFuseSize}
+            />
+          )}
           {onDelete && (
             <Button
               variant="destructive"
               size="sm"
-              onClick={() => onDelete()}
+              onClick={() => {
+                if (window.confirm('Diese Leitung wirklich löschen? Du kannst die Aktion anschließend rückgängig machen.')) onDelete();
+              }}
               className="w-full gap-2"
             >
               <Trash2 size={16} />

@@ -25,7 +25,7 @@ describe('FloatingMetricsCard', () => {
 
     // Default planner store state
     mockPlannerStore.mockReturnValue({
-      nodes: [],
+      nodes: [{ id: 'battery', type: 'battery', data: {} }],
       edges: [],
       season: 'summer',
       viewMode: 'electric',
@@ -62,11 +62,11 @@ describe('FloatingMetricsCard', () => {
     render(<FloatingMetricsCard />);
 
     // Expand the card
-    fireEvent.click(screen.getByText('Details'));
+    fireEvent.click(screen.getByRole('button', { name: /Aktueller Status/ }));
 
-    expect(screen.getByText('Solar Output:')).toBeInTheDocument();
+    expect(screen.getByText('Solarleistung')).toBeInTheDocument();
     // It should render "24V / 15.5A" and NOT literal "${metrics.totalSolarVoltage}V..."
-    expect(screen.getByText('24V / 15.5A')).toBeInTheDocument();
+    expect(screen.getByText('24 V / 15.5 A')).toBeInTheDocument();
   });
 
   it('renders correct solar output when only roof planner solar wattage exists', () => {
@@ -87,10 +87,10 @@ describe('FloatingMetricsCard', () => {
     render(<FloatingMetricsCard />);
 
     // Expand the card
-    fireEvent.click(screen.getByText('Details'));
+    fireEvent.click(screen.getByRole('button', { name: /Aktueller Status/ }));
 
-    expect(screen.getByText('Solar Output:')).toBeInTheDocument();
+    expect(screen.getByText('Solarleistung')).toBeInTheDocument();
     // It should render "450W" and NOT literal "${calculatedSolarWatts}W"
-    expect(screen.getByText('450W')).toBeInTheDocument();
+    expect(screen.getByText('450 W')).toBeInTheDocument();
   });
 });

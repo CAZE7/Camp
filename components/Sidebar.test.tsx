@@ -11,7 +11,9 @@ describe('Sidebar Component', () => {
     it('renders electric components by default', () => {
       render(<Sidebar />);
       expect(screen.getByText('Batterie')).toBeInTheDocument();
-      expect(screen.getByText('Smart Shunt')).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: /Strom verteilen/ }));
+      expect(screen.getByText('Batteriemonitor (Shunt)')).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: /Strom laden/ }));
       expect(screen.getByText('Solarmodul')).toBeInTheDocument();
       expect(screen.queryByText('Frischwassertank')).not.toBeInTheDocument();
     });
@@ -19,6 +21,7 @@ describe('Sidebar Component', () => {
     it('renders water components when mode is water', () => {
       render(<Sidebar mode="water" />);
       expect(screen.getByText('Frischwassertank')).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: /Fördern & filtern/ }));
       expect(screen.getByText('Wasserpumpe')).toBeInTheDocument();
       expect(screen.queryByText('Batterie')).not.toBeInTheDocument();
     });
