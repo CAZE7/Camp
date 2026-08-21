@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="360 -260 700 480" width="700" height="480" role="img" aria-label="Umschlossene Quelle">
+  <rect x="-100000" y="-100000" width="200000" height="200000" fill="#0f172a"/>
+  <text x="372" y="-232" fill="#e2e8f0" font-family="monospace" font-size="16">21-source-enclosed — Umschlossene Quelle</text>
+  <rect x="420" y="-160" width="320" height="320" fill="#1e293b" stroke="#64748b" stroke-width="2" rx="8"/>
+  <path d="M 500 0 L 740 0 Q 750 0 760 0 L 1000 0" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="500" cy="0" r="7" fill="#22c55e"/>
+  <circle cx="1000" cy="0" r="7" fill="#f97316"/>
+</svg>
