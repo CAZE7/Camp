@@ -1,10 +1,10 @@
 "use client";
 import React, { useState } from 'react';
-import { Handle, Position, NodeProps } from 'reactflow';
-import { PlannerNodeData } from './types';
+import {Handle, Position } from 'reactflow';
+import { PlannerNodeData, PlannerNodeProps } from './types';
 import { usePlannerStore } from '../../store/usePlannerStore';
 
-const BusbarNode = function({ id, data, isConnectable, selected }: NodeProps<PlannerNodeData>) {
+const BusbarNode = function({ id, data, isConnectable, selected }: PlannerNodeProps<PlannerNodeData>) {
   const updateNodeData = usePlannerStore((state) => state.updateNodeData);
   const [editingField, setEditingField] = useState<string | null>(null);
   const [tempValue, setTempValue] = useState<string>('');

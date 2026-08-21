@@ -6,11 +6,41 @@ export interface CommonNodeData {
   [key: string]: any;
 }
 
-import { ResizeDragEvent } from 'reactflow';
+import { ResizeDragEvent, type NodeProps } from 'reactflow';
 
+/**
+ * Props einer Planer-Node-Komponente.
+ *
+ * React Flow reicht `NodeProps` vollständig durch, unsere Komponenten nutzen
+ * davon aber nur `id`, `data` und gelegentlich `selected`/`isConnectable`.
+ * Dieser Typ sagt genau das: Pflicht ist, was gebraucht wird, der Rest ist
+ * optional. Zwei Vorteile:
+ *
+ *   1. Die Signatur beschreibt die tatsächliche Abhängigkeit.
+ *   2. Tests können eine Node mit `id` und `data` rendern, ohne acht
+ *      irrelevante React-Flow-Felder zu erfinden — und werden dadurch
+ *      überhaupt erst typprüfbar (siehe tsconfig.tests.json).
+ */
+export type PlannerNodeProps<TData = CommonNodeData> = Pick<NodeProps<TData>, 'id' | 'data'> &
+  Partial<Omit<NodeProps<TData>, 'id' | 'data'>>;
+
+/**
+ * Resize-Callback der Dachplanung.
+ *
+ * React Flow reicht neben Größe auch Position und Zugrichtung durch; beides
+ * ist optional, weil nur Breite und Höhe ausgewertet werden. Ohne diese
+ * Felder ließ sich der Aufruf in Tests nicht typkorrekt nachstellen.
+ */
 export type OnNodeResize = (
   event: React.MouseEvent | React.TouchEvent | MouseEvent | TouchEvent | ResizeDragEvent,
-  params: { id: string; width: number; height: number }
+  params: {
+    id: string;
+    width: number;
+    height: number;
+    x?: number;
+    y?: number;
+    direction?: number[];
+  }
 ) => void;
 
 export interface RoofNodeData extends CommonNodeData {

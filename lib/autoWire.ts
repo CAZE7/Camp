@@ -16,6 +16,15 @@
  * Nutzer-Kanten bleiben erhalten, unsichere Pfade (Shunt-Bypass,
  * Direktverbindung Batterie→Verbraucher, Laderegler direkt auf die Batterie)
  * werden in die Ziel-Topologie eingefädelt statt parallel verdoppelt.
+ *
+ * Einheiten (seit K1c)
+ * ====================
+ * Ströme, Spannungen, Längen und Querschnitte sind Branded Types aus
+ * `lib/units.ts`. Vertauschte Argumente (`sizeDcEdges(…, length, current)`)
+ * sind damit Compilezeit-Fehler. Die Kanten-Daten selbst (`edge.data.length`,
+ * `edge.data.crossSection`) bleiben primitive Zahlen, weil sie serialisiert
+ * und von React Flow durchgereicht werden; gelesen wird an genau einer Stelle
+ * geprüft (`edgeLength`, `edgeCrossSection`).
  */
 
 import type { Node, Edge } from 'reactflow';
@@ -28,12 +37,82 @@ import {
   isFuseFeasible,
 } from './electrical';
 import { calculateEdgeCurrent, getSystemVoltage } from './vde-standards';
+import {
+  addVolts,
+  amps,
+  currentFromPower,
+  divideAmps,
+  maxAmps,
+  meters,
+  mm2,
+  quantityOr,
+  scaleVolts,
+  volts,
+  watts,
+  ZERO_AMPS,
+  ZERO_VOLTS,
+  ZERO_WATTS,
+  type Amps,
+  type Meters,
+  type Mm2,
+  type Scalar,
+  type Volts,
+} from './units';
 
 export const AUTO_EDGE_PREFIX = 'e-auto-';
 
-const VDE_MAX_DC_DROP_FRACTION = 0.03;
-const VDE_MAX_DC_DROP_PER_EDGE_FRACTION = 0.02;
+const VDE_MAX_DC_DROP_FRACTION: Scalar = 0.03;
+const VDE_MAX_DC_DROP_PER_EDGE_FRACTION: Scalar = 0.02;
+/** Leitfähigkeit von Kupfer in m/(Ω·mm²) — Kehrwert des spez. Widerstands. */
 const COPPER_CONDUCTIVITY = 58;
+
+/** Standardlänge einer Kante ohne gespeicherte Länge. */
+const DEFAULT_EDGE_LENGTH: Meters = meters(1);
+/** Standardquerschnitt einer Kante ohne gespeicherten Querschnitt. */
+const DEFAULT_EDGE_CROSS_SECTION: Mm2 = mm2(2.5);
+/** Kleinster zulässiger Querschnitt (VDE-Normreihe beginnt hier). */
+const MIN_CROSS_SECTION: Mm2 = mm2(1.5);
+/** Größter Querschnitt der Normreihe. */
+const MAX_CROSS_SECTION: Mm2 = mm2(70);
+
+/**
+ * Persistenzgrenze: Länge einer Kante aus `edge.data` lesen.
+ * Fehlende, negative oder unlesbare Werte ergeben den Ersatzwert.
+ */
+const edgeLength = (edge: CableEdge, fallback: Meters = DEFAULT_EDGE_LENGTH): Meters =>
+  quantityOr(edge.data?.length, meters, fallback);
+
+/** Persistenzgrenze: Querschnitt einer Kante aus `edge.data` lesen. */
+const edgeCrossSection = (edge: CableEdge, fallback: Mm2 = DEFAULT_EDGE_CROSS_SECTION): Mm2 =>
+  quantityOr(edge.data?.crossSection, mm2, fallback);
+
+/**
+ * Spannungsfall einer einzelnen Leitung inklusive Rückleiter:
+ *
+ *     ΔU = I · 2L / (κ · A)
+ *
+ * Bewusst als eine benannte Funktion statt als Formel an fünf Stellen —
+ * und der einzige Ort in dieser Datei, an dem aus Zahlen wieder Volt werden.
+ */
+const edgeVoltageDrop = (current: Amps, length: Meters, crossSection: Mm2): Volts =>
+  volts((current * (length * 2)) / (COPPER_CONDUCTIVITY * crossSection));
+
+/**
+ * Kleinster Querschnitt, der bei gegebenem Strom und gegebener Länge den
+ * erlaubten Spannungsfall einhält (Umkehrung von `edgeVoltageDrop`).
+ *
+ * Bei 0 A ist der rechnerische Bedarf 0 mm² — das ist kein Leiter. Deshalb
+ * wird auf das Normminimum von 1.5 mm² angehoben, exakt wie zuvor über
+ * `Math.max(1.5, dropArea)`.
+ */
+const crossSectionForDrop = (current: Amps, length: Meters, allowedDrop: Volts): Mm2 => {
+  const required = (current * (length * 2)) / (COPPER_CONDUCTIVITY * allowedDrop);
+  return required > MIN_CROSS_SECTION ? mm2(required) : MIN_CROSS_SECTION;
+};
+
+/** Nächstgrößerer Normquerschnitt (oder der größte verfügbare). */
+const nextStandardCrossSection = (required: Mm2): Mm2 =>
+  mm2(VDE_SIZES.find((size) => size >= required) ?? MAX_CROSS_SECTION);
 const CHARGER_TYPES = ['charger', 'mpptController', 'dcdcCharger', 'acBatteryCharger'] as const;
 
 type CableEdge = Edge<CableEdgeData>;
@@ -130,7 +209,7 @@ function addDcEdge(
   sourceId: string,
   targetId: string,
   handle: 'plus' | 'minus',
-  length: number
+  length: Meters
 ): CableEdge | null {
   const key = `${sourceId}|${targetId}|${handle}|${handle}`;
   if (existingConnections.has(key)) return null;
@@ -157,8 +236,8 @@ function addAcEdge(
   targetId: string,
   sourceHandle: string,
   targetHandle: string,
-  length: number,
-  crossSection: number
+  length: Meters,
+  crossSection: Mm2
 ): void {
   const key = `${sourceId}|${targetId}|${sourceHandle}|${targetHandle}`;
   if (existingConnections.has(key)) return;
@@ -174,7 +253,9 @@ function addAcEdge(
   });
 }
 
-type PathDropResult = { supply: number; any: number; hasSupplyPath: boolean };
+type PathDropResult = { supply: Volts; any: Volts; hasSupplyPath: boolean };
+
+const NO_DROP: PathDropResult = { supply: ZERO_VOLTS, any: ZERO_VOLTS, hasSupplyPath: false };
 
 /**
  * Kumulierter Spannungsfall — Spiegelbild von calculatePathVoltageDrop.
@@ -189,22 +270,22 @@ export function cumulativeDropAt(
   nodeMap: Map<string, Node>,
   edges: CableEdge[],
   nodes: Node[],
-  sysVoltage: number,
+  sysVoltage: Volts,
   visited: Set<string>
 ): PathDropResult {
-  if (visited.has(nodeId)) return { supply: 0, any: 0, hasSupplyPath: false };
+  if (visited.has(nodeId)) return NO_DROP;
   const node = nodeMap.get(nodeId);
-  if (!node) return { supply: 0, any: 0, hasSupplyPath: false };
+  if (!node) return NO_DROP;
   if (node.type === 'battery' || node.type === 'shorePower') {
-    return { supply: 0, any: 0, hasSupplyPath: true };
+    return { supply: ZERO_VOLTS, any: ZERO_VOLTS, hasSupplyPath: true };
   }
   if (isVoltageDropStopType(node.type)) {
-    return { supply: 0, any: 0, hasSupplyPath: false };
+    return NO_DROP;
   }
 
   const nextVisited = new Set(visited).add(nodeId);
-  let supplyMax = 0;
-  let anyMax = 0;
+  let supplyMax: Volts = ZERO_VOLTS;
+  let anyMax: Volts = ZERO_VOLTS;
   let hasSupply = false;
   let hasIncoming = false;
   for (const edge of edges) {
@@ -213,20 +294,18 @@ export function cumulativeDropAt(
     hasIncoming = true;
     const sourceNode = nodeMap.get(edge.source);
     const I = calculateEdgeCurrent(sourceNode, node, nodes, sysVoltage);
-    const length = edge.data?.length || 1;
-    const cs = edge.data?.crossSection || 2.5;
-    const ownDrop = (I * (length * 2)) / (COPPER_CONDUCTIVITY * cs);
+    const ownDrop = edgeVoltageDrop(I, edgeLength(edge), edgeCrossSection(edge));
     const sub = cumulativeDropAt(edge.source, nodeMap, edges, nodes, sysVoltage, nextVisited);
 
-    const cumAny = ownDrop + sub.any;
+    const cumAny = addVolts(ownDrop, sub.any);
     if (cumAny > anyMax) anyMax = cumAny;
     if (sub.hasSupplyPath) {
       hasSupply = true;
-      const cumSupply = ownDrop + sub.supply;
+      const cumSupply = addVolts(ownDrop, sub.supply);
       if (cumSupply > supplyMax) supplyMax = cumSupply;
     }
   }
-  if (!hasIncoming) return { supply: 0, any: 0, hasSupplyPath: false };
+  if (!hasIncoming) return NO_DROP;
   return { supply: supplyMax, any: anyMax, hasSupplyPath: hasSupply };
 }
 
@@ -235,8 +314,8 @@ export function relevantCumulativeDrop(
   nodeMap: Map<string, Node>,
   edges: CableEdge[],
   nodes: Node[],
-  sysVoltage: number
-): number {
+  sysVoltage: Volts
+): Volts {
   const result = cumulativeDropAt(nodeId, nodeMap, edges, nodes, sysVoltage, new Set());
   return result.hasSupplyPath ? result.supply : result.any;
 }
@@ -262,27 +341,26 @@ export function sizeDcEdges(
   dcEdges: CableEdge[],
   nodes: Node[],
   allEdges: CableEdge[],
-  sysVoltage: number
+  sysVoltage: Volts
 ): void {
-  const dropLimit = VDE_MAX_DC_DROP_FRACTION * sysVoltage;
-  const perEdgeCap = VDE_MAX_DC_DROP_PER_EDGE_FRACTION * sysVoltage;
+  const dropLimit = scaleVolts(sysVoltage, VDE_MAX_DC_DROP_FRACTION);
+  const perEdgeCap = scaleVolts(sysVoltage, VDE_MAX_DC_DROP_PER_EDGE_FRACTION);
   const nodeMap = new Map(nodes.map((n) => [n.id, n]));
 
-  const sizeEdge = (edge: CableEdge, allowedOwn: number): number => {
+  const sizeEdge = (edge: CableEdge, allowedOwn: Volts): Mm2 => {
     const sourceNode = nodeMap.get(edge.source);
     const targetNode = nodeMap.get(edge.target);
     const I = calculateEdgeCurrent(sourceNode, targetNode, nodes, sysVoltage);
-    const length = edge.data?.length || 1;
-    const currentCs = edge.data?.crossSection || 1.5;
+    const length = edgeLength(edge);
+    const currentCs = edgeCrossSection(edge, MIN_CROSS_SECTION);
 
-    let requiredCs = 70;
+    let requiredCs: Mm2 = MAX_CROSS_SECTION;
     if (allowedOwn > 0) {
-      const dropArea = (I * (length * 2)) / (COPPER_CONDUCTIVITY * allowedOwn);
-      requiredCs = VDE_SIZES.find((s) => s >= Math.max(1.5, dropArea)) || 70;
+      requiredCs = nextStandardCrossSection(crossSectionForDrop(I, length, allowedOwn));
     }
-    const thermalCs = lookupThermalCrossSection(Math.max(I, 0));
-    const raw = Math.max(requiredCs, thermalCs, currentCs, 1.5);
-    return VDE_SIZES.find((s) => s >= raw) || 70;
+    const thermalCs = mm2(lookupThermalCrossSection(maxAmps(I, ZERO_AMPS)));
+    const raw = mm2(Math.max(requiredCs, thermalCs, currentCs, MIN_CROSS_SECTION));
+    return nextStandardCrossSection(raw);
   };
 
   for (const edge of dcEdges) {
@@ -295,14 +373,14 @@ export function sizeDcEdges(
       const sourceNode = nodeMap.get(edge.source);
       const targetNode = nodeMap.get(edge.target);
       const I = calculateEdgeCurrent(sourceNode, targetNode, nodes, sysVoltage);
-      const length = edge.data?.length || 1;
-      const currentCs = edge.data?.crossSection || 1.5;
+      const currentCs = edgeCrossSection(edge, MIN_CROSS_SECTION);
       const cumAtSource = relevantCumulativeDrop(edge.source, nodeMap, allEdges, nodes, sysVoltage);
-      const ownDrop = (I * (length * 2)) / (COPPER_CONDUCTIVITY * currentCs);
+      const ownDrop = edgeVoltageDrop(I, edgeLength(edge), currentCs);
 
       if (cumAtSource + ownDrop <= dropLimit) continue;
 
-      const allowedOwn = Math.min(Math.max(dropLimit - cumAtSource, 0), perEdgeCap);
+      const remaining = volts(Math.max(dropLimit - cumAtSource, 0));
+      const allowedOwn = remaining < perEdgeCap ? remaining : perEdgeCap;
       const finalCs = sizeEdge(edge, allowedOwn);
       if (finalCs > currentCs) {
         edge.data!.crossSection = finalCs;
@@ -314,22 +392,22 @@ export function sizeDcEdges(
 }
 
 /** @internal für Unit-Tests exportiert. */
-export function applyFuseSizes(dcEdges: CableEdge[], nodes: Node[], sysVoltage: number): void {
+export function applyFuseSizes(dcEdges: CableEdge[], nodes: Node[], sysVoltage: Volts): void {
   const nodeMap = new Map(nodes.map((n) => [n.id, n]));
   for (const edge of dcEdges) {
     if (!edge.sourceHandle?.includes('plus')) continue;
     const sourceNode = nodeMap.get(edge.source);
     const targetNode = nodeMap.get(edge.target);
     const I = calculateEdgeCurrent(sourceNode, targetNode, nodes, sysVoltage);
-    let cs = edge.data?.crossSection || 1.5;
+    let cs: Mm2 = edgeCrossSection(edge, MIN_CROSS_SECTION);
 
     // Wenn der Nennstrom die zulässige Sicherung für den Querschnitt
     // übersteigt, muss das Kabel hochdimensioniert werden (thermisch).
     // Eine Sicherung über dem Kabel-Maximalwert wäre Brandgefahr.
     if (!isFuseFeasible(I, cs)) {
       const larger = VDE_SIZES.find((s) => s > cs && isFuseFeasible(I, s));
-      if (larger) {
-        cs = larger;
+      if (larger !== undefined) {
+        cs = mm2(larger);
         edge.data!.crossSection = cs;
       }
     }
@@ -337,13 +415,30 @@ export function applyFuseSizes(dcEdges: CableEdge[], nodes: Node[], sysVoltage: 
   }
 }
 
-function acCurrentA(sourceNode: Node | undefined, targetNode: Node | undefined): number {
-  if (targetNode?.type === 'consumer230v') return (Number(targetNode.data?.watts) || 0) / 230;
-  if (sourceNode?.type === 'consumer230v') return (Number(sourceNode.data?.watts) || 0) / 230;
-  const inverter = sourceNode?.type === 'inverter' ? sourceNode : targetNode?.type === 'inverter' ? targetNode : undefined;
-  if (inverter) return (Number(inverter.data?.watts) || 0) / 230;
-  if (sourceNode?.type === 'shorePower' || targetNode?.type === 'shorePower') return 16;
-  return 0;
+/** Netzspannung im 230-V-Zweig. */
+const AC_VOLTAGE: Volts = volts(230);
+/** Übliche Absicherung eines Landstromanschlusses. */
+const SHORE_POWER_CURRENT: Amps = amps(16);
+/** Standardlänge einer AC-Leitung ohne gespeicherte Länge. */
+const DEFAULT_AC_LENGTH: Meters = meters(2);
+
+function acCurrentA(sourceNode: Node | undefined, targetNode: Node | undefined): Amps {
+  const loadOf = (node: Node | undefined): Amps =>
+    currentFromPower(quantityOr(node?.data?.watts, watts, ZERO_WATTS), AC_VOLTAGE);
+
+  if (targetNode?.type === 'consumer230v') return loadOf(targetNode);
+  if (sourceNode?.type === 'consumer230v') return loadOf(sourceNode);
+  const inverter =
+    sourceNode?.type === 'inverter'
+      ? sourceNode
+      : targetNode?.type === 'inverter'
+        ? targetNode
+        : undefined;
+  if (inverter) return loadOf(inverter);
+  if (sourceNode?.type === 'shorePower' || targetNode?.type === 'shorePower') {
+    return SHORE_POWER_CURRENT;
+  }
+  return ZERO_AMPS;
 }
 
 function sizeAcEdges(edges: CableEdge[], nodes: Node[]): void {
@@ -351,7 +446,7 @@ function sizeAcEdges(edges: CableEdge[], nodes: Node[]): void {
   for (const edge of edges) {
     if (edge.data?.edgeDomain !== 'AC_230V') continue;
     const I = acCurrentA(nodeMap.get(edge.source), nodeMap.get(edge.target));
-    const length = edge.data?.length || 2;
+    const length = edgeLength(edge, DEFAULT_AC_LENGTH);
     edge.data.crossSection = calculateCrossSection(I, length, edge.data.crossSection, 'AC_230V');
   }
 }
@@ -672,23 +767,23 @@ export function performAutoWiring(
   );
 
   // ── Backbone: Batterie+ → Plus-Schiene, Batterie- → Shunt → Minus-Schiene ──
-  addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, batteryNode.id, rails.plus.id, 'plus', 0.2);
-  addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, batteryNode.id, shuntNode.id, 'minus', 0.2);
-  addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, shuntNode.id, rails.minus.id, 'minus', 0.5);
-  addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, rails.plus.id, fuseBoxNode.id, 'plus', 1);
-  addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, rails.minus.id, fuseBoxNode.id, 'minus', 1);
+  addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, batteryNode.id, rails.plus.id, 'plus', meters(0.2));
+  addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, batteryNode.id, shuntNode.id, 'minus', meters(0.2));
+  addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, shuntNode.id, rails.minus.id, 'minus', meters(0.5));
+  addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, rails.plus.id, fuseBoxNode.id, 'plus', meters(1));
+  addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, rails.minus.id, fuseBoxNode.id, 'minus', meters(1));
 
   // Weitere Aufbaubatterien parallel auf dieselben Schienen (nicht die Starterbatterie)
   for (const extra of batteries) {
     if (extra.id === batteryNode.id) continue;
     if (starterBatteryNode && extra.id === starterBatteryNode.id) continue;
-    addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, extra.id, rails.plus.id, 'plus', 0.2);
-    addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, extra.id, shuntNode.id, 'minus', 0.2);
+    addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, extra.id, rails.plus.id, 'plus', meters(0.2));
+    addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, extra.id, shuntNode.id, 'minus', meters(0.2));
   }
 
   for (const consumer of nodesByType['consumer'] || []) {
-    addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, fuseBoxNode.id, consumer.id, 'plus', 3);
-    addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, rails.minus.id, consumer.id, 'minus', 3);
+    addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, fuseBoxNode.id, consumer.id, 'plus', meters(3));
+    addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, rails.minus.id, consumer.id, 'minus', meters(3));
   }
 
   const inverters = nodesByType['inverter'] || [];
@@ -696,17 +791,17 @@ export function performAutoWiring(
     if (!inverter.data.continuousPower && inverter.data.watts) {
       inverter.data.continuousPower = inverter.data.watts;
     }
-    addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, rails.plus.id, inverter.id, 'plus', 1);
-    addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, rails.minus.id, inverter.id, 'minus', 1);
+    addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, rails.plus.id, inverter.id, 'plus', meters(1));
+    addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, rails.minus.id, inverter.id, 'minus', meters(1));
   }
 
   if (solars.length > 0 && mpptNode) {
     for (const solar of solars) {
-      addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, solar.id, mpptNode.id, 'plus', 5);
-      addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, solar.id, mpptNode.id, 'minus', 5);
+      addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, solar.id, mpptNode.id, 'plus', meters(5));
+      addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, solar.id, mpptNode.id, 'minus', meters(5));
     }
-    addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, mpptNode.id, rails.plus.id, 'plus', 2);
-    addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, mpptNode.id, rails.minus.id, 'minus', 2);
+    addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, mpptNode.id, rails.plus.id, 'plus', meters(2));
+    addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, mpptNode.id, rails.minus.id, 'minus', meters(2));
   }
 
   const allChargers = [
@@ -717,15 +812,15 @@ export function performAutoWiring(
   ];
   for (const charger of allChargers) {
     if (mpptNode && charger.id === mpptNode.id) continue;
-    addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, charger.id, rails.plus.id, 'plus', 3);
-    addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, charger.id, rails.minus.id, 'minus', 3);
+    addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, charger.id, rails.plus.id, 'plus', meters(3));
+    addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, charger.id, rails.minus.id, 'minus', meters(3));
   }
 
   if (starterBatteryNode) {
     for (const booster of dcdcChargers) {
       // Lange Strecke Starter→Booster ist fachgerecht (Motorraum); Sicherung sitzt am Plus.
-      addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, starterBatteryNode.id, booster.id, 'plus', 3);
-      addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, starterBatteryNode.id, booster.id, 'minus', 3);
+      addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, starterBatteryNode.id, booster.id, 'plus', meters(3));
+      addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, starterBatteryNode.id, booster.id, 'minus', meters(3));
     }
   }
 
@@ -738,22 +833,22 @@ export function performAutoWiring(
   if (inverters.length > 0) {
     const mainInverter = inverters[0];
     for (const c of consumers230v) {
-      addAcEdge(newEdges, edgeIdRef, existingConnections, mainInverter.id, c.id, 'plus', 'plus', 2, 1.5);
+      addAcEdge(newEdges, edgeIdRef, existingConnections, mainInverter.id, c.id, 'plus', 'plus', meters(2), mm2(1.5));
     }
     for (const sp of shorePowers) {
-      addAcEdge(newEdges, edgeIdRef, existingConnections, sp.id, mainInverter.id, 'plus', 'ac_in', 2, 2.5);
+      addAcEdge(newEdges, edgeIdRef, existingConnections, sp.id, mainInverter.id, 'plus', 'ac_in', meters(2), mm2(2.5));
     }
   } else {
     for (const sp of shorePowers) {
       for (const c of consumers230v) {
-        addAcEdge(newEdges, edgeIdRef, existingConnections, sp.id, c.id, 'plus', 'plus', 2, 1.5);
+        addAcEdge(newEdges, edgeIdRef, existingConnections, sp.id, c.id, 'plus', 'plus', meters(2), mm2(1.5));
       }
     }
   }
 
   for (const acCharger of nodesByType['acBatteryCharger'] || []) {
     for (const sp of shorePowers) {
-      addAcEdge(newEdges, edgeIdRef, existingConnections, sp.id, acCharger.id, 'plus', 'plus', 2, 2.5);
+      addAcEdge(newEdges, edgeIdRef, existingConnections, sp.id, acCharger.id, 'plus', 'plus', meters(2), mm2(2.5));
     }
   }
 
@@ -774,10 +869,11 @@ export function performAutoWiring(
         rails.minus.id,
         groundId,
         'minus',
-        1
+        meters(1)
       );
       if (groundEdge) {
-        groundEdge.data!.crossSection = 16;
+        // Massepunkt: 16 mm² als Mindestanbindung an die Karosserie.
+        groundEdge.data!.crossSection = mm2(16);
       }
     }
   }
@@ -787,6 +883,19 @@ export function performAutoWiring(
   const nodeMapForDomain = new Map(currentNodes.map((n) => [n.id, n]));
   const userDcEdges = userEdges.filter((e) => !isAcEdge(e, nodeMapForDomain));
   const allDcEdges = [...userDcEdges, ...dcEdges];
+
+  // Nutzer-Kanten ohne gespeicherte Domäne, die topologisch AC sind
+  // (Landstrom/230-V-Gerät/AC-Ladegerät), bekommen die Markierung hier.
+  // Ohne sie fielen sie aus der DC-Dimensionierung heraus (isAcEdge = true),
+  // wurden aber von sizeAcEdges übersprungen (kein edgeDomain-Marker) und
+  // blieben damit vollständig ohne Querschnitt — eine 230-V-Leitung ohne
+  // Auslegung. Gefunden durch die Property "jede Kante ist dimensioniert"
+  // (lib/vde-properties.test.ts).
+  for (const edge of userEdges) {
+    if (edge.data && edge.data.edgeDomain === undefined && isAcEdge(edge, nodeMapForDomain)) {
+      edge.data.edgeDomain = 'AC_230V';
+    }
+  }
 
   sizeDcEdges(allDcEdges, currentNodes, allEdges, sysVoltage);
   applyFuseSizes(allDcEdges, currentNodes, sysVoltage);

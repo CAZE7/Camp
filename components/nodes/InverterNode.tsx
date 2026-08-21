@@ -1,11 +1,11 @@
 "use client";
 import React, { useMemo, useState } from 'react';
-import { Handle, Position, useNodes, NodeProps } from 'reactflow';
-import { PlannerNodeData } from './types';
+import {Handle, Position, useNodes } from 'reactflow';
+import { PlannerNodeData, PlannerNodeProps } from './types';
 import { usePlannerStore } from '../../store/usePlannerStore';
 import { CommonNodeData } from './types';
 
-const InverterNode = function({ id, data, isConnectable, selected }: NodeProps<PlannerNodeData>) {
+const InverterNode = function({ id, data, isConnectable, selected }: PlannerNodeProps<PlannerNodeData>) {
   const updateNodeData = usePlannerStore((state) => state.updateNodeData);
   const [editingField, setEditingField] = useState<string | null>(null);
   const [tempValue, setTempValue] = useState<string>('');

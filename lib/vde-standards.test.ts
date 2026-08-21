@@ -31,7 +31,12 @@ import {
   validateShorePowerNode,
   validateInverterNode,
   validateSchematic,
+  getSystemVoltage,
+  calculateEdgeCurrent,
+  DEFAULT_SYSTEM_VOLTAGE,
+  LEAD_SYSTEM_VOLTAGE,
 } from './vde-standards';
+import { amps, meters, mm2, volts, watts, type Amps, type Mm2 } from './units';
 import type { Edge, Node } from 'reactflow';
 
 describe('VDE Standards - Zentrale Konstanten', () => {
@@ -186,85 +191,103 @@ describe('VDE Standards - Zentrale Konstanten', () => {
 describe('VDE Berechnungsfunktionen', () => {
   describe('calculateMinCrossSection', () => {
     it('gibt das Minimum (1.5 mm²) zurück bei 0A Strom', () => {
-      expect(calculateMinCrossSection(0, 5)).toBe(1.5);
+      expect(calculateMinCrossSection(amps(0), meters(5))).toBe(1.5);
     });
 
     it('gibt das Minimum (1.5 mm²) zurück bei 0m Länge', () => {
-      expect(calculateMinCrossSection(10, 0)).toBe(1.5);
+      expect(calculateMinCrossSection(amps(10), meters(0))).toBe(1.5);
     });
 
-    it('gibt das Minimum zurück bei negativem Strom', () => {
-      expect(calculateMinCrossSection(-5, 3)).toBe(1.5);
+    // Seit K1 ist ein negativer Strom nicht mehr konstruierbar: die Prüfung
+    // sitzt im Konstruktor statt in einer defensiven Verzweigung. Der
+    // Schutzzweig in der Funktion bleibt für untypisierte Aufrufer bestehen
+    // und wird hier ebenfalls belegt.
+    it('lehnt negativen Strom ab und bleibt für untypisierte Aufrufer defensiv', () => {
+      expect(() => amps(-5)).toThrow(RangeError);
+      expect(calculateMinCrossSection(-5 as unknown as Amps, meters(3))).toBe(1.5);
     });
 
     it('berechnet den Mindestquerschnitt für 10A bei 3m Länge (12V, 10% drop)', () => {
       // A_min = (0.0175 * 3 * 2 * 10) / (0.1 * 12) = 1.05 / 1.2 = 0.875 mm²
-      const result = calculateMinCrossSection(10, 3);
+      const result = calculateMinCrossSection(amps(10), meters(3));
       expect(result).toBeCloseTo(0.875, 3);
     });
 
     it('rundet calculateWire auf 1.5 mm² auf, da Minimum das VDE-Limit ist', () => {
-      const result = calculateWire(10, 3);
+      const result = calculateWire(amps(10), meters(3));
       expect(result.crossSection).toBe(1.5);
     });
 
     it('berechnet größeren Querschnitt für hohen Strom über lange Strecke', () => {
       // 50A über 10m: A_min = (0.0175 * 10 * 2 * 50) / 1.2 = 17.5 / 1.2 = 14.58 mm²
-      const result = calculateMinCrossSection(50, 10);
+      const result = calculateMinCrossSection(amps(50), meters(10));
       expect(result).toBeGreaterThan(10);
       expect(result).toBeCloseTo(14.583, 2);
     });
 
     it('verwendet den übergebenen maxVoltageDropFraction Parameter', () => {
-      const at10pct = calculateMinCrossSection(20, 5, 0.10);
-      const at5pct = calculateMinCrossSection(20, 5, 0.05);
+      const at10pct = calculateMinCrossSection(amps(20), meters(5), 0.10);
+      const at5pct = calculateMinCrossSection(amps(20), meters(5), 0.05);
       expect(at5pct).toBeGreaterThan(at10pct);
     });
   });
 
   describe('roundUpToVDECrossSection', () => {
     it('rundet 1.0 auf 1.5 auf', () => {
-      expect(roundUpToVDECrossSection(1.0)).toBe(1.5);
+      expect(roundUpToVDECrossSection(mm2(1.0))).toBe(1.5);
     });
 
     it('rundet 1.5 auf 1.5 (exakter Treffer)', () => {
-      expect(roundUpToVDECrossSection(1.5)).toBe(1.5);
+      expect(roundUpToVDECrossSection(mm2(1.5))).toBe(1.5);
     });
 
     it('rundet 1.6 auf 2.5 auf', () => {
-      expect(roundUpToVDECrossSection(1.6)).toBe(2.5);
+      expect(roundUpToVDECrossSection(mm2(1.6))).toBe(2.5);
     });
 
     it('rundet 5.0 auf 6.0 auf', () => {
-      expect(roundUpToVDECrossSection(5.0)).toBe(6.0);
+      expect(roundUpToVDECrossSection(mm2(5.0))).toBe(6.0);
     });
 
     it('gibt den größten Wert zurück, wenn die Anforderung > 70 mm² ist', () => {
-      expect(roundUpToVDECrossSection(500)).toBe(70);
+      expect(roundUpToVDECrossSection(mm2(500))).toBe(70);
     });
   });
 
   describe('calculateVoltageDrop', () => {
     it('gibt 0V zurück bei 0A', () => {
-      expect(calculateVoltageDrop(0, 5, 2.5)).toBe(0);
+      expect(calculateVoltageDrop(amps(0), meters(5), mm2(2.5))).toBe(0);
     });
 
     it('berechnet 0.7V für 10A, 5m, 2.5mm² (Kupfer 0.0175)', () => {
       // ΔU = (0.0175 * 5 * 2 * 10) / 2.5 = 1.75 / 2.5 = 0.7V
-      expect(calculateVoltageDrop(10, 5, 2.5)).toBeCloseTo(0.7, 5);
+      expect(calculateVoltageDrop(amps(10), meters(5), mm2(2.5))).toBeCloseTo(0.7, 5);
     });
 
     it('max 1.2V bei 12V ist die 10%-Grenze', () => {
       expect(VDE_MAX_VOLTAGE_DROP_12V * 12).toBeCloseTo(1.2, 5);
     });
 
-    it('gibt Infinity zurück bei 0mm² (Division durch 0 verhindert)', () => {
-      expect(calculateVoltageDrop(10, 5, 0)).toBe(Infinity);
+    // Vertragsänderung durch K1b (Branded Types), bewusst verschärft:
+    // Früher lieferte 0 mm² den Sentinel `Infinity`, der stillschweigend
+    // durch Vergleiche wanderte ("Infinity > Grenze" → Warnung). Jetzt ist
+    // 0 mm² kein konstruierbarer Wert mehr; wird der Typ zur Laufzeit
+    // umgangen, schlägt die Berechnung sichtbar fehl.
+    it('lehnt 0 mm² ab, statt Infinity zurückzugeben', () => {
+      expect(() => mm2(0)).toThrow(RangeError);
+      expect(() => calculateVoltageDrop(amps(10), meters(5), 0 as unknown as Mm2)).toThrow(
+        RangeError
+      );
+    });
+
+    it('meldet bei sehr kleinem Querschnitt einen entsprechend großen Abfall', () => {
+      // 10 A, 5 m, 0.5 mm² → ΔU = (0.0175 * 10 * 2 * 10) / 0.5 = 3.5 V
+      expect(calculateVoltageDrop(amps(10), meters(5), mm2(0.5))).toBeCloseTo(3.5, 5);
     });
 
     it('verwendet korrekte Kupferwerte', () => {
       // 100A über 2m bei 50mm²: ΔU = (0.0175 * 2 * 2 * 100) / 50 = 7 / 50 = 0.14V
-      expect(calculateVoltageDrop(100, 2, 50)).toBeCloseTo(0.14, 5);
+      expect(calculateVoltageDrop(amps(100), meters(2), mm2(50))).toBeCloseTo(0.14, 5);
     });
   });
 
@@ -274,11 +297,14 @@ describe('VDE Berechnungsfunktionen', () => {
     });
 
     it('gibt 0% zurück für unbekannten Leerrohr-Typ', () => {
-      expect(calculateConduitFillPercent('XXX' as any, [2.5])).toBe(0);
+      // Unbekannter Leerrohr-Typ: bewusst ein ungültiger Schlüssel, deshalb
+      // die Typzusicherung — der Querschnitt selbst bleibt typsicher.
+      const unknownType = 'XXX' as keyof typeof VDE_CONDUIT_INNER_DIAMETERS;
+      expect(calculateConduitFillPercent(unknownType, [mm2(2.5)])).toBe(0);
     });
 
     it('berechnet einen niedrigen Füllgrad für ein einzelnes dünnes Kabel', () => {
-      const fill = calculateConduitFillPercent('EN 20', [2.5]);
+      const fill = calculateConduitFillPercent('EN 20', [mm2(2.5)]);
       // EN 20: Innen-Ø 16.9mm → Fläche 224.16 mm²
       // 2.5mm²: Außen-Ø 3.0mm → Fläche 7.07 mm²
       // Fill = 7.07 / 224.16 = 3.15%
@@ -286,31 +312,31 @@ describe('VDE Berechnungsfunktionen', () => {
     });
 
     it('zeigt Überfüllung bei zu vielen Kabeln', () => {
-      const fill = calculateConduitFillPercent('EN 20', Array(10).fill(25));
+      const fill = calculateConduitFillPercent('EN 20', Array(10).fill(mm2(25)));
       expect(fill).toBeGreaterThan(VDE_MAX_CONDUIT_FILL_PERCENT);
     });
   });
 
   describe('recommendConduitType', () => {
     it('gibt EN 20 für ein einzelnes dünnes Kabel zurück', () => {
-      expect(recommendConduitType([2.5])).toBe('EN 20');
+      expect(recommendConduitType([mm2(2.5)])).toBe('EN 20');
     });
 
     it('gibt ein größeres Rohr für mehr Kabel', () => {
-      const rec = recommendConduitType(Array(5).fill(10));
+      const rec = recommendConduitType(Array(5).fill(mm2(10)));
       expect(rec).not.toBe('EN 20');
       expect(rec).toBeTruthy();
     });
 
     it('gibt null zurück wenn kein Rohr groß genug ist', () => {
-      const rec = recommendConduitType(Array(50).fill(50));
+      const rec = recommendConduitType(Array(50).fill(mm2(50)));
       expect(rec).toBeNull();
     });
   });
 
   describe('calculateWire', () => {
     it('gibt Minimum-Querschnitt für sehr kleine Lasten', () => {
-      const result = calculateWire(1, 1);
+      const result = calculateWire(amps(1), meters(1));
       expect(result.crossSection).toBe(1.5);
       expect(result.fuseSize).toBeGreaterThan(0);
       expect(result.fuseSize).toBeLessThanOrEqual(VDE_CURRENT_CAPACITY[1.5]);
@@ -319,18 +345,18 @@ describe('VDE Berechnungsfunktionen', () => {
     it('rundet auf den nächstgrößeren normierten Querschnitt auf', () => {
       // 20A über 5m: A_min = (0.0175 * 5 * 2 * 20) / 1.2 = 3.5 / 1.2 = 2.92 mm²
       // → 4.0 mm²
-      const result = calculateWire(20, 5);
+      const result = calculateWire(amps(20), meters(5));
       expect(result.crossSection).toBe(4.0);
     });
 
     it('Sicherung passt zum gewählten Querschnitt (max Ampere)', () => {
-      const result = calculateWire(20, 5);
+      const result = calculateWire(amps(20), meters(5));
       const maxAmpere = VDE_CURRENT_CAPACITY[result.crossSection];
       expect(result.fuseSize).toBeLessThanOrEqual(maxAmpere);
     });
 
     it('enthält minCrossSection für Validierungszwecke', () => {
-      const result = calculateWire(20, 5);
+      const result = calculateWire(amps(20), meters(5));
       expect(result.minCrossSection).toBeGreaterThan(0);
       expect(result.crossSection).toBeGreaterThanOrEqual(result.minCrossSection);
     });
@@ -349,14 +375,14 @@ describe('VDE Validator', () => {
   describe('validateCableEdge', () => {
     it('gibt Fehler zurück wenn Edge keine Daten hat (NO_DATA)', () => {
       const edge = { id: 'e1', source: 'a', target: 'b', data: undefined } as any;
-      const result = validateCableEdge(edge, undefined, undefined, 5);
+      const result = validateCableEdge(edge, undefined, undefined, amps(5));
       expect(result.isValid).toBe(false);
       expect(result.code).toBe('NO_DATA');
     });
 
     it('gibt Fehler zurück bei Querschnitt unter VDE-Mindestmaß (UNDERSIZED_CABLE)', () => {
       const edge = makeEdge('e1', 'a', 'b', { length: 3, crossSection: 1.0 });
-      const result = validateCableEdge(edge, undefined, undefined, 5);
+      const result = validateCableEdge(edge, undefined, undefined, amps(5));
       expect(result.isValid).toBe(false);
       expect(result.code).toBe('UNDERSIZED_CABLE');
     });
@@ -364,14 +390,14 @@ describe('VDE Validator', () => {
     it('gibt Warnung bei hohem Spannungsabfall (HIGH_VOLTAGE_DROP)', () => {
       // 100A über 5m bei 1.5mm²: ΔU = (0.0175 * 5 * 2 * 100) / 1.5 = 11.67V (zu hoch)
       const edge = makeEdge('e1', 'a', 'b', { length: 5, crossSection: 1.5 });
-      const result = validateCableEdge(edge, undefined, undefined, 100);
+      const result = validateCableEdge(edge, undefined, undefined, amps(100));
       expect(result.severity).toBe('warning');
       expect(result.code).toBe('HIGH_VOLTAGE_DROP');
     });
 
     it('gibt Fehler bei zu großer Sicherung (OVERSIZED_FUSE)', () => {
       const edge = makeEdge('e1', 'a', 'b', { length: 3, crossSection: 1.5, fuseSize: 30 });
-      const result = validateCableEdge(edge, undefined, undefined, 5);
+      const result = validateCableEdge(edge, undefined, undefined, amps(5));
       expect(result.isValid).toBe(false);
       expect(result.code).toBe('OVERSIZED_FUSE');
       expect(result.message).toContain('Brandgefahr');
@@ -379,14 +405,14 @@ describe('VDE Validator', () => {
 
     it('gibt Warnung bei nicht-normiertem Querschnitt (NON_STANDARD_CROSS_SECTION)', () => {
       const edge = makeEdge('e1', 'a', 'b', { length: 3, crossSection: 3.0 });
-      const result = validateCableEdge(edge, undefined, undefined, 5);
+      const result = validateCableEdge(edge, undefined, undefined, amps(5));
       expect(result.severity).toBe('warning');
       expect(result.code).toBe('NON_STANDARD_CROSS_SECTION');
     });
 
     it('gibt OK für korrekt dimensioniertes Kabel zurück', () => {
       const edge = makeEdge('e1', 'a', 'b', { length: 3, crossSection: 4.0, fuseSize: 25 });
-      const result = validateCableEdge(edge, undefined, undefined, 10);
+      const result = validateCableEdge(edge, undefined, undefined, amps(10));
       expect(result.isValid).toBe(true);
       expect(result.severity).toBe('ok');
       expect(result.code).toBe('OK');
@@ -479,5 +505,137 @@ describe('VDE Validator', () => {
       const results = validateSchematic([shorePower, battery], [edge]);
       expect(results.length).toBeGreaterThanOrEqual(2);
     });
+  });
+});
+
+/**
+ * K1b — Migration auf Branded Types (lib/units.ts).
+ *
+ * Diese Tests halten fest, was sich durch die Typisierung *fachlich* ändert:
+ * die Behandlung unbrauchbarer Werte an der Persistenzgrenze. Der eigentliche
+ * Compilezeit-Beweis liegt in lib/units.typecheck.test.ts.
+ */
+describe('VDE-Standards mit typsicheren Einheiten (K1b)', () => {
+  describe('getSystemVoltage', () => {
+    const battery = (data: Record<string, unknown>): Node =>
+      ({ id: 'b1', type: 'battery', position: { x: 0, y: 0 }, data }) as Node;
+
+    it('liefert die Default-Spannung ohne Batterie', () => {
+      expect(getSystemVoltage([])).toBe(DEFAULT_SYSTEM_VOLTAGE);
+      expect(getSystemVoltage([])).toBe(12.8);
+    });
+
+    it('liefert 12.0 V für Blei-Chemien', () => {
+      expect(getSystemVoltage([battery({ chemistry: 'AGM' })])).toBe(LEAD_SYSTEM_VOLTAGE);
+      expect(getSystemVoltage([battery({ chemistry: 'gel' })])).toBe(12.0);
+    });
+
+    it('übernimmt eine explizite nominalVoltage', () => {
+      expect(getSystemVoltage([battery({ nominalVoltage: 24 })])).toBe(24);
+      expect(getSystemVoltage([battery({ nominalVoltage: '24' })])).toBe(24);
+    });
+
+    it('ignoriert unbrauchbare nominalVoltage-Werte aus dem Speicher', () => {
+      // Vorher wurde -12 bzw. NaN unverändert weitergereicht und hätte den
+      // Spannungsfall in allen Folgerechnungen verfälscht.
+      expect(getSystemVoltage([battery({ nominalVoltage: -12 })])).toBe(DEFAULT_SYSTEM_VOLTAGE);
+      expect(getSystemVoltage([battery({ nominalVoltage: 'zwölf' })])).toBe(DEFAULT_SYSTEM_VOLTAGE);
+      expect(getSystemVoltage([battery({ nominalVoltage: 0 })])).toBe(DEFAULT_SYSTEM_VOLTAGE);
+      expect(getSystemVoltage([battery({ nominalVoltage: null })])).toBe(DEFAULT_SYSTEM_VOLTAGE);
+    });
+  });
+
+  describe('calculateEdgeCurrent', () => {
+    const node = (type: string, data: Record<string, unknown>): Node =>
+      ({ id: `${type}-1`, type, position: { x: 0, y: 0 }, data }) as Node;
+
+    it('rechnet Verbraucherleistung mit der Systemspannung in Strom um', () => {
+      const consumer = node('consumer', { watts: 60 });
+      expect(calculateEdgeCurrent(undefined, consumer, [consumer], volts(12))).toBeCloseTo(5, 10);
+    });
+
+    it('behandelt negative oder unlesbare Leistungsangaben als 0 W', () => {
+      const broken = node('consumer', { watts: -60 });
+      expect(calculateEdgeCurrent(undefined, broken, [broken], volts(12))).toBe(0);
+
+      const text = node('consumer', { watts: 'viel' });
+      expect(calculateEdgeCurrent(undefined, text, [text], volts(12))).toBe(0);
+    });
+
+    it('rechnet den Wechselrichter-Eingangsstrom bit-identisch zur Division', () => {
+      const inverter = node('inverter', { watts: 1000 });
+      const expected = 1000 / 12.8 / VDE_INVERTER_EFFICIENCY;
+      expect(calculateEdgeCurrent(inverter, undefined, [inverter], volts(12.8))).toBe(expected);
+    });
+
+    it('nutzt die Solar-Vmp-Spannung für Panel-Zuleitungen', () => {
+      const panel = node('solar', { watts: 180 });
+      expect(calculateEdgeCurrent(panel, undefined, [panel], volts(12.8))).toBeCloseTo(10, 10);
+      expect(VDE_SOLAR_VMP_VOLTAGE).toBe(18);
+    });
+
+    it('liefert nie einen negativen Strom', () => {
+      const consumers = [
+        node('consumer', { watts: -100 }),
+        node('inverter', { watts: -500 }),
+        node('charger', { amps: -30 }),
+      ];
+      expect(calculateEdgeCurrent(undefined, undefined, consumers, volts(12))).toBeGreaterThanOrEqual(0);
+    });
+  });
+
+  describe('typisierte Berechnungen', () => {
+    it('calculateMinCrossSection akzeptiert Ampere und Meter', () => {
+      expect(calculateMinCrossSection(amps(10), meters(3))).toBeCloseTo(0.875, 3);
+      expect(calculateMinCrossSection(amps(0), meters(5))).toBe(VDE_MIN_CROSS_SECTION);
+    });
+
+    it('calculateVoltageDrop rechnet über R = ρ·2L/A und U = R·I', () => {
+      expect(calculateVoltageDrop(amps(10), meters(5), mm2(2.5))).toBeCloseTo(0.7, 10);
+      expect(calculateVoltageDrop(amps(100), meters(2), mm2(50))).toBeCloseTo(0.14, 10);
+    });
+
+    it('calculateWire liefert Querschnitt, Sicherung und Länge in ihren Einheiten', () => {
+      const result = calculateWire(amps(20), meters(5));
+      expect(result.crossSection).toBe(roundUpToVDECrossSection(result.minCrossSection as Mm2));
+      expect(result.length).toBe(5);
+      expect(result.fuseSize).toBeGreaterThan(0);
+    });
+
+    it('calculateConduitFillPercent arbeitet mit mm²-Größen', () => {
+      expect(calculateConduitFillPercent('EN 20', [mm2(2.5)])).toBeCloseTo(3.15, 1);
+      expect(calculateConduitFillPercent('EN 20', [])).toBe(0);
+    });
+
+    it('VDE_MIN_CROSS_SECTION ist eine geprüfte mm²-Größe', () => {
+      expect(VDE_MIN_CROSS_SECTION).toBe(1.5);
+      expect(VDE_MIN_CROSS_SECTION).toBe(mm2(1.5));
+    });
+
+    it('validateCableEdge meldet fehlenden Querschnitt statt zu rechnen', () => {
+      const edge = { id: 'e1', source: 'a', target: 'b', data: { length: 3 } } as Edge<{
+        length?: number;
+        crossSection?: number;
+      }>;
+      const result = validateCableEdge(edge, undefined, undefined, amps(10));
+      expect(result.code).toBe('UNDERSIZED_CABLE');
+      expect(result.severity).toBe('error');
+    });
+
+    it('validateCableEdge verträgt unbrauchbare Längen aus dem Speicher', () => {
+      const edge = { id: 'e1', source: 'a', target: 'b', data: { length: -3, crossSection: 6 } } as Edge<{
+        length?: number;
+        crossSection?: number;
+      }>;
+      const result = validateCableEdge(edge, undefined, undefined, amps(10));
+      // Länge -3 m ist unbrauchbar → 0 m; damit kein Spannungsfall, aber auch
+      // kein Absturz und keine erfundene Warnung.
+      expect(result.code).toBe('OK');
+    });
+  });
+
+  it('watts/amps-Konstruktoren sind in Tests dieselbe Quelle wie im Code', () => {
+    expect(watts(60)).toBe(60);
+    expect(amps(5)).toBe(5);
   });
 });

@@ -1,14 +1,16 @@
 import { describe, it, expect } from 'vitest';
-import { applyDomainFilter, edgeDomainOf, nodeDomains, nodeMinimapColor, DOMAINS } from './domainFilter';
+import type { Edge, Node } from 'reactflow';
+import type { CableEdgeData } from '../../edges/CableEdge';
+import { applyDomainFilter, edgeDomainOf, nodeDomains, nodeMinimapColor, DOMAINS, type Domain } from './domainFilter';
 
-const nodes = [
+const nodes: Node[] = [
   { id: 'bat', type: 'battery', position: { x: 0, y: 0 }, data: {} },
   { id: 'fuse', type: 'fuse', position: { x: 100, y: 0 }, data: {} },
   { id: 'ac', type: 'consumer230v', position: { x: 200, y: 0 }, data: {} },
   { id: 'solar', type: 'solar', position: { x: 300, y: 0 }, data: {} },
 ];
 
-const edges = [
+const edges: Edge<CableEdgeData>[] = [
   { id: 'e-dc', source: 'bat', target: 'fuse', data: { edgeDomain: 'DC_12V' } },
   { id: 'e-ac', source: 'fuse', target: 'ac', data: { edgeDomain: 'AC_230V' } },
 ];
@@ -39,7 +41,7 @@ describe('applyDomainFilter', () => {
   });
 
   it('dims AC edges and their exclusive nodes when AC is disabled', () => {
-    const result = applyDomainFilter(nodes, edges, new Set(['DC_12V', 'Solar']));
+    const result = applyDomainFilter(nodes, edges, new Set<Domain>(['DC_12V', 'Solar']));
 
     const dcEdge = result.edges.find((e) => e.id === 'e-dc')!;
     const acEdge = result.edges.find((e) => e.id === 'e-ac')!;
@@ -54,7 +56,7 @@ describe('applyDomainFilter', () => {
   });
 
   it('dims unlinked solar nodes when Solar is disabled', () => {
-    const result = applyDomainFilter(nodes, edges, new Set(['DC_12V', 'AC_230V']));
+    const result = applyDomainFilter(nodes, edges, new Set<Domain>(['DC_12V', 'AC_230V']));
     const solarNode = result.nodes.find((n) => n.id === 'solar')!;
     expect(solarNode.className).toContain('planner-domain-dim');
   });
