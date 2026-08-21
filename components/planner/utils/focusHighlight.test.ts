@@ -1,16 +1,15 @@
 import { describe, it, expect } from 'vitest';
+import type { Edge, Node } from 'reactflow';
 import { applyNeighborhoodFocus, applyFocusHighlight } from './focusHighlight';
 
 describe('applyNeighborhoodFocus', () => {
-  const nodes = [
-    { id: 'bat', className: 'keep-me' },
-    { id: 'fuse' },
-    { id: 'lamp' },
-  ];
-  const edges = [
-    { id: 'e1', source: 'bat', target: 'fuse' },
-    { id: 'e2', source: 'fuse', target: 'lamp' },
-  ];
+  const node = (id: string, className?: string): Node =>
+    ({ id, position: { x: 0, y: 0 }, data: {}, className }) as Node;
+  const edge = (id: string, source: string, target: string): Edge =>
+    ({ id, source, target }) as Edge;
+
+  const nodes: Node[] = [node('bat', 'keep-me'), node('fuse'), node('lamp')];
+  const edges: Edge[] = [edge('e1', 'bat', 'fuse'), edge('e2', 'fuse', 'lamp')];
 
   it('returns the graph unchanged without a focused node', () => {
     expect(applyNeighborhoodFocus(nodes, edges, null)).toEqual({ nodes, edges });

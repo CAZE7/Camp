@@ -25,10 +25,14 @@ export const BaseNode: React.FC<BaseNodeProps> = ({
   subtitle,
   icon: Icon,
   children,
-  className
+  className,
 }) => {
   return (
     <div
+      // Stabiler E2E-Selektor. Der Bauteiltyp kommt aus der React-Flow-Klasse
+      // am Wrapper (`.react-flow__node-battery`), die hier nicht bekannt ist.
+      data-testid="planner-node"
+      data-node-id={id}
       className={cn(
         "relative min-w-52 rounded-2xl p-4 transition-all duration-300",
         "bg-card/80 backdrop-blur-md border border-border shadow-lg",

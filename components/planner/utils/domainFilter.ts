@@ -1,6 +1,7 @@
 import type { Node, Edge } from 'reactflow';
 import type { CableEdgeData } from '../../edges/CableEdge';
 import { getEdgeDomain } from '../../../lib/electrical';
+import { getComponentSpec } from '../../registry';
 import { cssToken } from '../../edges/utils/edgeColors';
 
 /**
@@ -28,54 +29,54 @@ export const DOMAIN_COLORS: Record<Domain, string> = {
   Solar: 'var(--wire-solar)',
 };
 
-/** Node-Typ → Wire-Token für die Minimap (signaturbildende Domäne). */
-const MINIMAP_NODE_TOKEN: Record<string, { token: string; fallback: string }> = {
-  battery: { token: '--wire-dc', fallback: '#dc2626' },
-  consumer: { token: '--wire-dc', fallback: '#dc2626' },
-  fuse: { token: '--wire-dc', fallback: '#dc2626' },
-  busbar: { token: '--wire-dc', fallback: '#dc2626' },
-  shunt: { token: '--wire-dc', fallback: '#dc2626' },
-  ground: { token: '--wire-dc', fallback: '#dc2626' },
-  conduit: { token: '--wire-dc', fallback: '#dc2626' },
-  charger: { token: '--wire-dc', fallback: '#dc2626' },
-  dcdcCharger: { token: '--wire-dc', fallback: '#dc2626' },
-  shorePower: { token: '--wire-ac', fallback: '#2563eb' },
-  consumer230v: { token: '--wire-ac', fallback: '#2563eb' },
-  acBatteryCharger: { token: '--wire-ac', fallback: '#2563eb' },
-  inverter: { token: '--wire-ac', fallback: '#2563eb' },
-  solar: { token: '--wire-solar', fallback: '#d97706' },
-  roofSolar: { token: '--wire-solar', fallback: '#d97706' },
-  mpptController: { token: '--wire-solar', fallback: '#d97706' },
+/**
+ * Node-Typ → Wire-Token für die Minimap.
+ *
+ * Seit K4 aus der Registry abgeleitet (`components/registry`): die
+ * signaturbildende Domäne eines Bauteils bestimmt die Farbe. Vorher war das
+ * eine dritte, von Hand gepflegte Typ-Tabelle.
+ *
+ * Reihenfolge der Signatur: Solar schlägt AC schlägt DC — ein MPPT ist in der
+ * Minimap eine Solar-Komponente, ein Wechselrichter eine AC-Komponente.
+ */
+const DOMAIN_TOKEN: Record<Domain, { token: string; fallback: string }> = {
+  Solar: { token: '--wire-solar', fallback: '#d97706' },
+  AC_230V: { token: '--wire-ac', fallback: '#2563eb' },
+  DC_12V: { token: '--wire-dc', fallback: '#dc2626' },
 };
+
+const SIGNATURE_ORDER: Domain[] = ['Solar', 'AC_230V', 'DC_12V'];
+
+/** Elektrische Domänen eines Bauteiltyps laut Registry. */
+function specDomains(type: string | undefined): Domain[] {
+  const spec = getComponentSpec(type);
+  if (!spec) return [];
+  return spec.domains.filter((domain): domain is Domain => domain !== 'WATER');
+}
+
+function minimapEntry(type: string | undefined): { token: string; fallback: string } | undefined {
+  const domains = specDomains(type);
+  const signature = SIGNATURE_ORDER.find((domain) => domains.includes(domain));
+  return signature ? DOMAIN_TOKEN[signature] : undefined;
+}
 
 /** Domänenfarbe eines Nodes für die Minimap (aufgelöst, für SVG-fill geeignet). */
 export function nodeMinimapColor(node: Node): string {
-  const entry = node.type ? MINIMAP_NODE_TOKEN[node.type] : undefined;
+  // Dachaufbauten (roofSolar) sind keine Planer-Bauteile, tauchen aber als
+  // Nodes auf — sie behalten ihre Solar-Signatur.
+  if (node.type === 'roofSolar') return cssToken('--wire-solar', '#d97706');
+  const entry = minimapEntry(node.type);
   return entry ? cssToken(entry.token, entry.fallback) : cssToken('--ink', '#14110e');
 }
 
-/** Primäre Domäne(n) eines Node-Typs (für Nodes ohne Kanten). */
-const NODE_DOMAINS: Record<string, Domain[]> = {
-  battery: ['DC_12V'],
-  consumer: ['DC_12V'],
-  fuse: ['DC_12V'],
-  busbar: ['DC_12V'],
-  shunt: ['DC_12V'],
-  ground: ['DC_12V'],
-  conduit: ['DC_12V'],
-  charger: ['DC_12V'],
-  dcdcCharger: ['DC_12V'],
-  mpptController: ['DC_12V', 'Solar'],
-  acBatteryCharger: ['DC_12V', 'AC_230V'],
-  shorePower: ['AC_230V'],
-  consumer230v: ['AC_230V'],
-  inverter: ['DC_12V', 'AC_230V'],
-  solar: ['Solar'],
-  roofSolar: ['Solar'],
-};
-
+/**
+ * Primäre Domäne(n) eines Node-Typs (für Nodes ohne Kanten).
+ * Quelle ist die Registry; `roofSolar` ist ein Dach-Element ohne Bauteil-Spec.
+ */
 export function nodeDomains(node: Node): Domain[] {
-  return node.type ? NODE_DOMAINS[node.type] ?? ['DC_12V'] : ['DC_12V'];
+  if (node.type === 'roofSolar') return ['Solar'];
+  const domains = specDomains(node.type);
+  return domains.length > 0 ? domains : ['DC_12V'];
 }
 
 /** Domäne einer Kante — identisch zur Anzeige in CableEdge (inkl. Solar-Override). */

@@ -57,7 +57,7 @@ describe('useLiveValidation', () => {
         { id: '2', type: 'consumer', data: { label: 'Consumer' }, position: { x: 100, y: 0 } }
       ];
       const edges: Edge<CableEdgeData>[] = [
-        { id: 'e1-2', source: '1', target: '2', sourceHandle: 'plus-out', data: { fuseSize: '100A' } }
+        { id: 'e1-2', source: '1', target: '2', sourceHandle: 'plus-out', data: { fuseSize: 100 } }
       ];
 
       const { result } = renderHook(() => useLiveValidation(nodes, edges));
@@ -96,7 +96,7 @@ describe('useLiveValidation', () => {
         { id: '2', type: 'consumer', data: { label: 'Consumer' }, position: { x: 100, y: 0 } }
       ];
       const edges: Edge<CableEdgeData>[] = [
-        { id: 'e1-2', source: '1', target: '2', sourceHandle: 'minus-out', data: { fuseSize: '10A' } }
+        { id: 'e1-2', source: '1', target: '2', sourceHandle: 'minus-out', data: { fuseSize: 10 } }
       ];
 
       const { result } = renderHook(() => useLiveValidation(nodes, edges));

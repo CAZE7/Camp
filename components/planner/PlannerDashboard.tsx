@@ -12,6 +12,7 @@ import { getNodesBounds, getViewportForBounds } from 'reactflow';
 import { useLiveValidation, ValidationWarning } from './hooks/useLiveValidation';
 import { WarningCenter } from './ui/WarningCenter';
 import { calculateConduitFillPercent, VDE_MAX_CONDUIT_FILL_PERCENT } from '../../lib/vde-standards';
+import { mm2, quantityOr } from '../../lib/units';
 
 function NavigationSection({ viewMode, setViewMode }: { viewMode: 'electric' | 'water'; setViewMode: (mode: 'electric' | 'water') => void }) {
   return (
@@ -174,7 +175,7 @@ function ActionsSection({
 
   return (
     <div className="flex items-center gap-1.5">
-      <Button onClick={runAutoWire} disabled={busy !== null} className="min-h-11 gap-1.5" title="Verbindungen, Querschnitte und Sicherungen automatisch berechnen">
+      <Button data-testid="action-autowire" onClick={runAutoWire} disabled={busy !== null} className="min-h-11 gap-1.5" title="Verbindungen, Querschnitte und Sicherungen automatisch berechnen">
         {busy === 'wire' ? <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" /> : <Zap className="h-4 w-4" />}
         <span>Automatisch verbinden</span>
       </Button>
@@ -190,13 +191,13 @@ function ActionsSection({
       </Button>
 
       <div className="relative" ref={menuRef}>
-        <Button variant="outline" onClick={() => setMenuOpen((value) => !value)} className="min-h-11 gap-1.5" aria-haspopup="menu" aria-expanded={menuOpen} aria-label="Weitere Aktionen">
+        <Button data-testid="action-more" variant="outline" onClick={() => setMenuOpen((value) => !value)} className="min-h-11 gap-1.5" aria-haspopup="menu" aria-expanded={menuOpen} aria-label="Weitere Aktionen">
           <MoreHorizontal className="h-4 w-4" /><span className="hidden sm:inline">Mehr</span>
         </Button>
         {menuOpen && (
           <div role="menu" className="absolute right-0 top-full z-50 mt-2 w-72 rounded-xl border border-border bg-card p-2 shadow-2xl">
-            <button role="menuitem" onClick={handleExportBOM} className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-sm text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Package className="h-4 w-4" />Stückliste</button>
-            <button role="menuitem" onClick={runCheck} className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-sm text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><ScanSearch className="h-4 w-4" />Plan lokal prüfen</button>
+            <button role="menuitem" data-testid="action-bom" onClick={handleExportBOM} className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-sm text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Package className="h-4 w-4" />Stückliste</button>
+            <button role="menuitem" data-testid="action-check" onClick={runCheck} className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-sm text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><ScanSearch className="h-4 w-4" />Plan lokal prüfen</button>
             <button role="menuitem" onClick={onExportImage} className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-sm text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{busy === 'export' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}Bild exportieren</button>
 
             <div className="my-2 border-t border-border" />
@@ -265,7 +266,11 @@ export function PlannerDashboard() {
     nodes.filter((node) => node.type === 'conduit').forEach((node) => {
       const conduitType = String(node.data?.conduitType || 'EN 20');
       const assigned = new Set<string>(node.data?.assignedEdges || []);
-      const crossSections = edges.filter((edge) => assigned.has(edge.id)).map((edge) => Number(edge.data?.crossSection || 2.5));
+      // Persistenzgrenze: `edge.data.crossSection` kommt aus dem Store und
+      // wird hier geprüft in mm² überführt (Standardkabel 2.5 mm² als Ersatz).
+      const crossSections = edges
+        .filter((edge) => assigned.has(edge.id))
+        .map((edge) => quantityOr(edge.data?.crossSection, mm2, mm2(2.5)));
       const fill = calculateConduitFillPercent(conduitType, crossSections);
       if (fill > VDE_MAX_CONDUIT_FILL_PERCENT) supplemental.push({
         id: `conduit-overfill-${node.id}`, category: 'safety', type: 'warning', title: 'Leerrohr zu voll', focusId: node.id, focusType: 'node',

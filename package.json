@@ -9,8 +9,14 @@
     "typecheck": "tsc -p tsconfig.typecheck.json --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check": "npm run typecheck && npm run test",
-    "postinstall": "node -e \"try { require('child_process').execSync('git config core.hooksPath scripts/git-hooks') } catch {}\""
+    "check": "npm run typecheck && npm run typecheck:tests && npm run test",
+    "ci:verify-lockfile-gate": "node scripts/ci/verify-lockfile-gate.mjs",
+    "postinstall": "node -e \"try { require('child_process').execSync('git config core.hooksPath scripts/git-hooks') } catch {}\"",
+    "routing:gallery": "tsx scripts/routing/generate-gallery.ts",
+    "e2e": "playwright test",
+    "e2e:install": "playwright install --with-deps chromium",
+    "e2e:build": "npm run build && playwright test",
+    "typecheck:tests": "tsc -p tsconfig.tests.json --noEmit"
   },
   "engines": {
     "node": ">=20.9.0"
@@ -52,14 +58,18 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
+    "@types/js-yaml": "^4.0.9",
     "@types/node": "^25.6.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
     "@vitest/coverage-v8": "^4.1.5",
     "autoprefixer": "^10.5.0",
+    "fast-check": "^4.9.0",
+    "js-yaml": "^5.3.0",
     "jsdom": "^29.1.1",
     "postcss": "^8.5.14",
     "tailwindcss": "^3.4.19",

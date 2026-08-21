@@ -165,50 +165,125 @@ function detourAround(a: Point, b: Point, r: Rect, margin: number): Point[] | nu
   ];
 }
 
+/** Liegt ein Punkt echt innerhalb einer Box? */
+const containsPoint = (r: Rect, p: Point): boolean =>
+  p.x > r.x && p.x < r.x + r.width && p.y > r.y && p.y < r.y + r.height;
+
+/**
+ * Liegt `candidate` auf derselben Achse wie das Segment a→b und *hinter*
+ * dem Punkt `end`, also entgegen der Fahrtrichtung?
+ *
+ * Solche Punkte entstehen, wenn ein Detour über das ursprüngliche
+ * Segmentende hinausführt (das Hindernis ist breiter als das Segment).
+ * Ohne diese Prüfung liefe der Pfad zurück in das gerade umfahrene
+ * Hindernis — und würde im nächsten Durchlauf erneut umfahren. Genau so
+ * entstand die beobachtete Zickzack-Schleife.
+ */
+function isBehind(a: Point, b: Point, end: Point, candidate: Point): boolean {
+  if (a.y === b.y && candidate.y === a.y && end.y === a.y) {
+    const direction = Math.sign(b.x - a.x) || 1;
+    return (candidate.x - end.x) * direction < 0;
+  }
+  if (a.x === b.x && candidate.x === a.x && end.x === a.x) {
+    const direction = Math.sign(b.y - a.y) || 1;
+    return (candidate.y - end.y) * direction < 0;
+  }
+  return false;
+}
+
+/**
+ * Stellt sicher, dass aufeinanderfolgende Punkte achsenparallel verbunden
+ * sind. Nötig, weil beim Verwerfen überholter Wegpunkte (siehe `isBehind`)
+ * zwei Punkte nebeneinander landen können, die weder x noch y teilen.
+ * Der eingefügte Ellbogen ist deterministisch: erst waagerecht, dann
+ * senkrecht.
+ */
+function enforceOrthogonal(points: Point[]): Point[] {
+  const out: Point[] = [];
+  for (const point of points) {
+    const last = out[out.length - 1];
+    if (last && last.x !== point.x && last.y !== point.y) {
+      out.push({ x: point.x, y: last.y });
+    }
+    out.push(point);
+  }
+  return out;
+}
+
 /**
  * Legt einen Detour um das erste kreuzende Hindernis und wiederholt das
  * iterativ, bis keine Kreuzung mehr besteht (max. begrenzte Durchläufe).
+ *
+ * Zwei Regeln machen das Verfahren stabil:
+ *
+ *  1. Hindernisse, die den Start- oder Zielpunkt enthalten, werden ignoriert.
+ *     Eine Leitung zu einem Bauteil *in* einer Box muss diese Box betreten;
+ *     ein Ausweichversuch wäre endlos (dokumentierte Ausnahme, siehe
+ *     `routingScenarios.ts`, Fälle 20/21).
+ *  2. Führt ein Detour über das Segmentende hinaus, werden die dadurch
+ *     überholten Wegpunkte verworfen statt rückwärts angefahren. Der
+ *     Zielpunkt bleibt dabei immer erhalten.
  */
 export function avoidObstacles(
   waypoints: Point[],
   obstacles: Rect[],
   margin: number = OBSTACLE_MARGIN
 ): Point[] {
-  if (obstacles.length === 0) return waypoints;
+  if (obstacles.length === 0 || waypoints.length < 2) return waypoints;
+
+  const start = waypoints[0];
+  const finish = waypoints[waypoints.length - 1];
+  const relevant = obstacles.filter(
+    (obstacle) => !containsPoint(obstacle, start) && !containsPoint(obstacle, finish)
+  );
+  if (relevant.length === 0) return waypoints;
 
   let current = waypoints;
   for (let iteration = 0; iteration < 12; iteration++) {
     let changed = false;
     const next: Point[] = [];
+
     for (let i = 0; i < current.length - 1; i++) {
       const a = current[i];
       const b = current[i + 1];
       next.push(a);
 
       let detoured = false;
-      for (const obstacle of obstacles) {
+      for (const obstacle of relevant) {
         const replacement = detourAround(a, b, obstacle, margin);
-        if (replacement) {
-          for (const p of replacement) next.push(p);
-          detoured = true;
-          changed = true;
-          break;
+        if (!replacement) continue;
+
+        for (const p of replacement) next.push(p);
+        detoured = true;
+        changed = true;
+
+        // Rest anhängen — aber ohne die Punkte, die der Detour bereits
+        // überholt hat (sonst Rückwärtsfahrt ins Hindernis).
+        const end = replacement[replacement.length - 1];
+        for (let j = i + 1; j < current.length; j++) {
+          const isLast = j === current.length - 1;
+          if (!isLast && isBehind(a, b, end, current[j])) continue;
+          next.push(current[j]);
         }
-      }
-      if (detoured) {
-        // Rest des aktuellen Pfades anhängen (der Detour endet bei b).
-        for (let j = i + 1; j < current.length; j++) next.push(current[j]);
         break;
       }
+      if (detoured) break;
     }
-    current = dedupe(next);
+
+    if (!changed) {
+      // Kein Detour in diesem Durchlauf: die Schleife oben hat nur die
+      // Segment-Anfänge übernommen, der Zielpunkt fehlt noch.
+      next.push(current[current.length - 1]);
+    }
+
+    current = dedupe(enforceOrthogonal(next));
     if (!changed) break;
   }
   return current;
 }
 
 /** Entfernt aufeinanderfolgende Duplikate (Punkt direkt hinter Punkt). */
-function dedupe(points: Point[]): Point[] {
+export function dedupe(points: Point[]): Point[] {
   const out: Point[] = [];
   for (const p of points) {
     const last = out[out.length - 1];
@@ -375,8 +450,26 @@ export type OrthogonalPathResult = {
  * Bei Gleichstand gewinnt die Route, die am nächsten an der Standard-Lane liegt —
  * so bleibt das Bild ruhig, wenn ohnehin nichts zu gewinnen ist.
  */
-export function buildOrthogonalPath(input: OrthogonalPathInput): OrthogonalPathResult {
-  const radius = input.borderRadius ?? ROUTE_BORDER_RADIUS;
+export type OrthogonalWaypointResult = {
+  /** Wegpunkte der gewählten Route, Duplikate entfernt. */
+  waypoints: Point[];
+  /** Kreuzungen der gewählten Route mit fremden Leitungen. */
+  crossings: number;
+  /** Tatsächlich verwendeter Lane-Offset (kann von `input.offset` abweichen). */
+  offset: number;
+};
+
+/**
+ * Wählt die Route und liefert die reinen Wegpunkte.
+ *
+ * Ausgelagert aus `buildOrthogonalPath`, damit die Routing-Invarianten
+ * (Orthogonalität, Hindernisfreiheit, Pfadlänge, Determinismus) direkt auf
+ * der Geometrie geprüft werden können und nicht über das Parsen eines
+ * SVG-Strings. `buildOrthogonalPath` ist seitdem nur noch die Formatierung.
+ *
+ * Rein: die Eingabe wird nicht verändert.
+ */
+export function orthogonalWaypoints(input: OrthogonalPathInput): OrthogonalWaypointResult {
   const baseOffset = input.offset ?? 0;
   const obstacles = input.obstacles ?? [];
   const crossingSegments = input.crossingSegments ?? [];
@@ -386,6 +479,7 @@ export function buildOrthogonalPath(input: OrthogonalPathInput): OrthogonalPathR
 
   let best = route(baseOffset);
   let bestCrossings = countCrossings(best, crossingSegments);
+  let bestOffset = baseOffset;
 
   if (crossingSegments.length > 0 && bestCrossings > MAX_ACCEPTABLE_CROSSINGS) {
     const candidateOffsets = [
@@ -400,20 +494,28 @@ export function buildOrthogonalPath(input: OrthogonalPathInput): OrthogonalPathR
       if (crossings < bestCrossings) {
         best = candidate;
         bestCrossings = crossings;
+        bestOffset = offset;
         if (bestCrossings <= MAX_ACCEPTABLE_CROSSINGS) break;
       }
     }
   }
 
-  const path = waypointsToPath(best, radius);
-  const midpoint = polylineMidpoint(best);
+  return { waypoints: best, crossings: bestCrossings, offset: bestOffset };
+}
+
+export function buildOrthogonalPath(input: OrthogonalPathInput): OrthogonalPathResult {
+  const radius = input.borderRadius ?? ROUTE_BORDER_RADIUS;
+  const { waypoints, crossings } = orthogonalWaypoints(input);
+
+  const path = waypointsToPath(waypoints, radius);
+  const midpoint = polylineMidpoint(waypoints);
   return {
     path,
     labelX: midpoint.x,
     labelY: midpoint.y,
     offsetX: 0,
     offsetY: 0,
-    crossings: bestCrossings,
+    crossings,
   };
 }
 

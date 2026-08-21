@@ -1,0 +1,164 @@
+name: Quality Gate
+
+# Wiederverwendbarer Qualitäts-Workflow.
+#
+# Diese Datei ist die EINZIGE Stelle, an der Typecheck, Tests und Build
+# definiert werden. `ci.yml` (Pull Requests) und `deploy.yml` (GitHub Pages)
+# rufen sie über `workflow_call` auf. Dadurch kann ein Deploy nicht mit einer
+# anderen (schwächeren) Prüfung laufen als ein Pull Request.
+#
+# Regeln (AGENTS.md K6):
+#   - `npm ci` mit vorhandenem Lockfile, KEIN Fallback auf `npm install`,
+#     kein Löschen von package-lock.json.
+#   - Node-Version kommt aus `.nvmrc`.
+#   - Minimale Berechtigungen: nur Lesezugriff auf den Inhalt.
+
+on:
+  workflow_call:
+    inputs:
+      upload-build:
+        description: "Build-Ausgabe (./out) als Artefakt hochladen"
+        required: false
+        default: false
+        type: boolean
+    outputs:
+      artifact-size:
+        description: "Größe des Static Exports"
+        value: ${{ jobs.quality.outputs.artifact-size }}
+
+# Minimaler Berechtigungsumfang für den gesamten Workflow.
+permissions:
+  contents: read
+
+env:
+  NEXT_TELEMETRY_DISABLED: 1
+
+jobs:
+  quality:
+    name: Typecheck, Tests & Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    outputs:
+      artifact-size: ${{ steps.size.outputs.size }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Node (Version aus .nvmrc)
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Lockfile vorhanden?
+        # `npm ci` ohne Lockfile wäre ein stiller Fallback auf ein
+        # unreproduzierbares Abhängigkeits-Set. Lieber sofort scheitern.
+        run: |
+          test -f package-lock.json || {
+            echo "::error file=package-lock.json::package-lock.json fehlt - reproduzierbare Installation nicht möglich"
+            exit 1
+          }
+
+      - name: Install (reproduzierbar)
+        # Bewusst ohne Retry-/Fallback-Logik: schlägt `npm ci` fehl, ist das
+        # Lockfile kaputt oder die Registry nicht erreichbar. Beides muss
+        # sichtbar scheitern statt heimlich ein anderes Ergebnis zu bauen.
+        run: npm ci
+
+      - name: Lockfile unverändert?
+        # `npm ci` darf package-lock.json niemals anfassen. Tut es das doch,
+        # war das Lockfile nicht synchron zu package.json.
+        run: git diff --exit-code -- package-lock.json package.json
+
+      - name: Typecheck (Produktionscode)
+        run: npm run typecheck
+
+      - name: Typecheck (inklusive Tests)
+        # Ohne diesen Schritt gälten die typsicheren Einheiten nur im
+        # Produktionscode — Tests könnten Ampere und Volt vertauschen.
+        run: npm run typecheck:tests
+
+      - name: Unit- und Komponententests
+        run: npm test
+
+      - name: Build (Static Export)
+        run: npm run build
+
+      - name: Static Export vorhanden?
+        run: |
+          test -f ./out/index.html || {
+            echo "::error::Static Export unvollständig - ./out/index.html fehlt"
+            exit 1
+          }
+
+      - name: Artefaktgröße messen
+        id: size
+        run: |
+          SIZE=$(du -sh ./out | cut -f1)
+          PAGES=$(find ./out -name "index.html" | wc -l | tr -d ' ')
+          echo "size=${SIZE}" >> "$GITHUB_OUTPUT"
+          {
+            echo "## Quality Gate"
+            echo ""
+            echo "| Metrik | Wert |"
+            echo "|--------|------|"
+            echo "| Node | \`$(node -v)\` |"
+            echo "| Static Export | ${SIZE} |"
+            echo "| HTML-Seiten | ${PAGES} |"
+            echo "| Commit | \`${{ github.sha }}\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Build-Ausgabe hochladen
+        if: ${{ inputs.upload-build }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: static-export
+          path: ./out
+          retention-days: 7
+
+  # ── End-to-End gegen den gebauten Static Export ─────────────────────────────
+  e2e:
+    name: End-to-End (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Node (Version aus .nvmrc)
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install (reproduzierbar)
+        run: npm ci
+
+      - name: Playwright-Browser installieren
+        # Nur Chromium: die Suite prüft Anwendungsverhalten, keine
+        # Browser-Unterschiede. Das hält die Laufzeit des Gates niedrig.
+        run: npx playwright install --with-deps chromium
+
+      - name: Build (Static Export)
+        run: npm run build
+
+      - name: E2E-Tests
+        run: npx playwright test
+
+      - name: Report hochladen
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report
+            test-results
+          retention-days: 7

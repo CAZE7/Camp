@@ -24,7 +24,13 @@ export const CROSSING_SCAN_EDGE_LIMIT = 120;
 export const TAP_LABEL_TIMEOUT_MS = 5000;
 
 export type CableEdgeData = {
-  length: number;
+  /**
+   * Leitungslänge in Metern. Optional, weil Kanten aus älteren gespeicherten
+   * Plänen, Vorlagen und Importen sie nicht zwingend mitbringen. Jeder
+   * Lesezugriff in der Fachlogik hat deshalb einen benannten Ersatzwert
+   * (`edgeLength` in lib/autoWire.ts, `quantityOr` in lib/vde-standards.ts).
+   */
+  length?: number;
   crossSection?: number;
   fuseSize?: number;
   edgeDomain?: 'DC_12V' | 'AC_230V';

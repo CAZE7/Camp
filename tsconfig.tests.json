@@ -1,0 +1,10 @@
+{
+  "//": "Typecheck INKLUSIVE Tests. Die Branded Types aus lib/units.ts wirken nur dort, wo tsc hinschaut — Testdateien waren bisher ausgenommen und konnten Einheiten beliebig vertauschen. tsconfig.typecheck.json bleibt der schnelle Produktionscode-Check; dieses Profil ist der vollständige.",
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "incremental": false,
+    "noEmit": true
+  },
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx"],
+  "exclude": ["node_modules", ".next", "out", "coverage", "playwright-report", "test-results"]
+}

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-60 -260 860 480" width="860" height="480" role="img" aria-label="Umschlossenes Ziel">
+  <rect x="-100000" y="-100000" width="200000" height="200000" fill="#0f172a"/>
+  <text x="-48" y="-232" fill="#e2e8f0" font-family="monospace" font-size="16">20-enclosed-target — Umschlossenes Ziel</text>
+  <rect x="420" y="-160" width="320" height="320" fill="#1e293b" stroke="#64748b" stroke-width="2" rx="8"/>
+  <path d="M 0 0 L 240 0 Q 250 0 260 0 L 500 0" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="0" cy="0" r="7" fill="#22c55e"/>
+  <circle cx="500" cy="0" r="7" fill="#f97316"/>
+</svg>

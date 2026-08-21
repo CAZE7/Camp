@@ -8,7 +8,9 @@ import {
   applyFuseSizes,
   healUserEdges,
   resolveRails,
+  relevantCumulativeDrop,
 } from './autoWire';
+import { volts } from './units';
 import type { CableEdgeData } from '../components/edges/CableEdge';
 import { FUSE_MAP } from './electrical';
 
@@ -163,14 +165,14 @@ describe('autoWire — cumulativeDropAt', () => {
   it('liefert 0 für eine Batterie (Startknoten)', () => {
     const nodes = [n('b1', 'battery', {})];
     const nodeMap = new Map(nodes.map((nn) => [nn.id, nn]));
-    const result = cumulativeDropAt('b1', nodeMap, [], nodes, 12.8, new Set());
+    const result = cumulativeDropAt('b1', nodeMap, [], nodes, volts(12.8), new Set());
     expect(result.supply).toBe(0);
     expect(result.any).toBe(0);
     expect(result.hasSupplyPath).toBe(true);
   });
 
   it('liefert 0 für einen nicht vorhandenen Knoten', () => {
-    const result = cumulativeDropAt('missing', new Map(), [], [], 12.8, new Set());
+    const result = cumulativeDropAt('missing', new Map(), [], [], volts(12.8), new Set());
     expect(result.supply).toBe(0);
     expect(result.any).toBe(0);
     expect(result.hasSupplyPath).toBe(false);
@@ -188,7 +190,7 @@ describe('autoWire — cumulativeDropAt', () => {
       e({ id: 'u2', source: 'f1', target: 'c1', sourceHandle: 'plus', targetHandle: 'plus', data: { length: 1, crossSection: 2.5, edgeDomain: 'DC_12V' } }),
     ];
     const nodeMap = new Map(nodes.map((nn) => [nn.id, nn]));
-    const result = cumulativeDropAt('c1', nodeMap, edges, nodes, 12.8, new Set());
+    const result = cumulativeDropAt('c1', nodeMap, edges, nodes, volts(12.8), new Set());
     expect(result.hasSupplyPath).toBe(true);
     expect(result.supply).toBeGreaterThan(0);
   });
@@ -203,7 +205,7 @@ describe('autoWire — cumulativeDropAt', () => {
       e({ id: 'ac1', source: 'sp1', target: 'a1', sourceHandle: 'plus', targetHandle: 'plus', data: { length: 2, crossSection: 1.5, edgeDomain: 'AC_230V' } }),
     ];
     const nodeMap = new Map(nodes.map((nn) => [nn.id, nn]));
-    const result = cumulativeDropAt('a1', nodeMap, edges, nodes, 12.8, new Set());
+    const result = cumulativeDropAt('a1', nodeMap, edges, nodes, volts(12.8), new Set());
     // AC wird ignoriert → kein eigener DC-Pfad, kein Incoming
     expect(result.hasSupplyPath).toBe(false);
     expect(result.supply).toBe(0);
@@ -221,7 +223,7 @@ describe('autoWire — cumulativeDropAt', () => {
     ];
     const nodeMap = new Map(nodes.map((nn) => [nn.id, nn]));
     // Darf nicht endlos rekursiv laufen.
-    expect(() => cumulativeDropAt('x1', nodeMap, edges, nodes, 12.8, new Set())).not.toThrow();
+    expect(() => cumulativeDropAt('x1', nodeMap, edges, nodes, volts(12.8), new Set())).not.toThrow();
   });
 });
 
@@ -237,7 +239,7 @@ describe('autoWire — sizeDcEdges', () => {
     const edges: Edge<CableEdgeData>[] = [
       e({ id: 'd1', source: 'b1', target: 'c1', data: { length: 3 } }),
     ];
-    sizeDcEdges(edges, nodes, edges, 12.8);
+    sizeDcEdges(edges, nodes, edges, volts(12.8));
     for (const edge of edges) {
       expect(edge.data?.crossSection).toBeGreaterThanOrEqual(1.5);
     }
@@ -251,7 +253,7 @@ describe('autoWire — sizeDcEdges', () => {
     const edges: Edge<CableEdgeData>[] = [
       e({ id: 'd1', source: 'b1', target: 'i1', data: { length: 2 } }),
     ];
-    sizeDcEdges(edges, nodes, edges, 12.8);
+    sizeDcEdges(edges, nodes, edges, volts(12.8));
     // 2000 W / 12,8 V / 0,85 ≈ 184 A → großer Querschnitt
     expect(edges[0].data?.crossSection).toBeGreaterThanOrEqual(25);
   });
@@ -264,7 +266,7 @@ describe('autoWire — sizeDcEdges', () => {
     const edges: Edge<CableEdgeData>[] = [
       e({ id: 'd1', source: 'b1', target: 'c1', data: { length: 2, crossSection: 16 } }),
     ];
-    sizeDcEdges(edges, nodes, edges, 12.8);
+    sizeDcEdges(edges, nodes, edges, volts(12.8));
     expect(edges[0].data?.crossSection).toBe(16);
   });
 });
@@ -281,7 +283,7 @@ describe('autoWire — applyFuseSizes', () => {
     const edges: Edge<CableEdgeData>[] = [
       e({ id: 'f1', source: 'b1', target: 'c1', data: { length: 2, crossSection: 2.5, edgeDomain: 'DC_12V' } }),
     ];
-    applyFuseSizes(edges, nodes, 12.8);
+    applyFuseSizes(edges, nodes, volts(12.8));
     const fuse = edges[0].data?.fuseSize;
     expect(fuse).toBeDefined();
     expect(fuse!).toBeLessThanOrEqual(FUSE_MAP[2.5]);
@@ -298,7 +300,7 @@ describe('autoWire — applyFuseSizes', () => {
     const edges: Edge<CableEdgeData>[] = [
       e({ id: 'f1', source: 'b1', target: 'i1', data: { length: 1, crossSection: 2.5, edgeDomain: 'DC_12V' } }),
     ];
-    applyFuseSizes(edges, nodes, 12.8);
+    applyFuseSizes(edges, nodes, volts(12.8));
     const cs = edges[0].data?.crossSection!;
     const fuse = edges[0].data?.fuseSize!;
     expect(fuse).toBeLessThanOrEqual(FUSE_MAP[cs] ?? Infinity);
@@ -313,7 +315,7 @@ describe('autoWire — applyFuseSizes', () => {
     const edges: Edge<CableEdgeData>[] = [
       e({ id: 'm1', source: 'c1', target: 'b1', sourceHandle: 'minus', targetHandle: 'minus', data: { length: 2, crossSection: 2.5, edgeDomain: 'DC_12V' } }),
     ];
-    applyFuseSizes(edges, nodes, 12.8);
+    applyFuseSizes(edges, nodes, volts(12.8));
     expect(edges[0].data?.fuseSize).toBeUndefined();
   });
 });
@@ -441,5 +443,99 @@ describe('autoWire — resolveRails', () => {
     const rails = resolveRails(currentNodes, nodesByType, nodesByLabel, battery, created);
     expect(rails.plus.id).toBe('x1');
     expect(rails.minus.id).toBe('x2');
+  });
+});
+
+/**
+ * K1c — Migration auf Branded Types (lib/units.ts).
+ *
+ * Geprüft wird das Laufzeitverhalten an den Persistenzgrenzen: Kantendaten
+ * kommen aus localStorage und können alles Mögliche enthalten. Vorher wurde
+ * daraus stillschweigend `NaN` weitergerechnet, jetzt greifen benannte
+ * Ersatzwerte (`edgeLength`, `edgeCrossSection`).
+ */
+describe('autoWire mit typsicheren Einheiten (K1c)', () => {
+  const battery = n('b1', 'battery', { label: 'Aufbau', capacity: 100, chemistry: 'LiFePO4' });
+  const consumer = n('c1', 'consumer', { label: 'Kühlbox', watts: 60 });
+
+  it('verkraftet unbrauchbare Längen und Querschnitte in edge.data', () => {
+    const nodes = [battery, consumer];
+    const broken = [
+      e({ source: 'b1', target: 'c1', data: { length: -5, crossSection: 0 } as CableEdgeData }),
+    ];
+    const out = performAutoWiring(nodes, broken);
+    expect(out).not.toBeNull();
+    for (const edge of out!.edges) {
+      if (edge.data?.edgeDomain === 'AC_230V') continue;
+      expect(Number.isFinite(edge.data?.crossSection ?? 0)).toBe(true);
+      expect(edge.data?.crossSection ?? 0).toBeGreaterThanOrEqual(1.5);
+    }
+  });
+
+  it('erzeugt niemals NaN-Querschnitte oder NaN-Sicherungen', () => {
+    const nodes = [
+      battery,
+      n('c1', 'consumer', { label: 'Defekt', watts: 'kaputt' }),
+      n('c2', 'consumer', { label: 'Negativ', watts: -100 }),
+      n('i1', 'inverter', { label: 'WR', watts: 2000 }),
+    ];
+    const out = performAutoWiring(nodes)!;
+    for (const edge of out.edges) {
+      expect(Number.isNaN(edge.data?.crossSection ?? 0)).toBe(false);
+      expect(Number.isNaN(edge.data?.fuseSize ?? 0)).toBe(false);
+    }
+  });
+
+  it('cumulativeDropAt liefert einen nicht-negativen Spannungsfall in Volt', () => {
+    const nodes = [battery, consumer];
+    const out = performAutoWiring(nodes)!;
+    const nodeMap = new Map(out.nodes.map((node) => [node.id, node]));
+    const drop = cumulativeDropAt('c1', nodeMap, out.edges, out.nodes, volts(12.8), new Set());
+    expect(drop.supply).toBeGreaterThanOrEqual(0);
+    expect(drop.any).toBeGreaterThanOrEqual(0);
+    expect(Number.isFinite(drop.supply)).toBe(true);
+  });
+
+  it('hält den 3%-Spannungsfall über den gesamten Versorgungspfad ein', () => {
+    const nodes = [
+      n('b1', 'battery', { label: 'Aufbau', capacity: 200, chemistry: 'LiFePO4' }),
+      n('c1', 'consumer', { label: 'Große Last', watts: 600 }),
+    ];
+    const out = performAutoWiring(nodes)!;
+    const nodeMap = new Map(out.nodes.map((node) => [node.id, node]));
+    const drop = relevantCumulativeDrop('c1', nodeMap, out.edges, out.nodes, volts(12.8));
+    expect(drop).toBeLessThanOrEqual(12.8 * 0.03 + 1e-9);
+  });
+
+  it('dimensioniert unverändert zur Referenz vor der Migration', () => {
+    // Regressionsanker: dieselbe Eingabe muss dieselben Querschnitte liefern
+    // wie vor der Umstellung auf Branded Types.
+    const nodes = [
+      n('b1', 'battery', { label: 'Aufbau', capacity: 200, chemistry: 'LiFePO4' }),
+      n('c1', 'consumer', { label: 'Kühlbox', watts: 60 }),
+    ];
+    const out = performAutoWiring(nodes)!;
+    const sections = out.edges
+      .filter((edge) => edge.data?.edgeDomain !== 'AC_230V')
+      .map((edge) => edge.data?.crossSection)
+      .sort((a, b) => (a ?? 0) - (b ?? 0));
+    expect(sections.every((value) => value !== undefined)).toBe(true);
+    expect(sections.every((value) => [1.5, 2.5, 4, 6, 10, 16, 25, 35, 50, 70].includes(value as number))).toBe(true);
+  });
+
+  it('AC-Kanten bekommen Strom aus 230 V statt aus der Systemspannung', () => {
+    const nodes = [
+      battery,
+      n('sp1', 'shorePower', { label: 'Landstrom' }),
+      n('c230', 'consumer230v', { label: 'Kochfeld', watts: 2000 }),
+    ];
+    const out = performAutoWiring(nodes)!;
+    const acEdges = out.edges.filter((edge) => edge.data?.edgeDomain === 'AC_230V');
+    expect(acEdges.length).toBeGreaterThan(0);
+    for (const edge of acEdges) {
+      expect(edge.data?.crossSection).toBeGreaterThanOrEqual(1.5);
+      // 2000 W / 230 V ≈ 8.7 A → kein 25-mm²-Kabel nötig
+      expect(edge.data?.crossSection).toBeLessThanOrEqual(6);
+    }
   });
 });

@@ -83,7 +83,12 @@ interface PlannerState {
   onCustomDrop: (event: Event, screenToFlowPosition: (client: {x: number, y: number}) => {x: number, y: number}) => void;
   addNode: (type: string, label: string, position: {x: number, y: number}, watts?: number) => void;
   applyTemplate: (templateId: string) => void;
-  calculatePathVoltageDrop: (targetNodeId: string, customNodes?: Node[], customEdges?: Edge[]) => number;
+  /**
+   * Kumulierter Spannungsfall bis zu einem Knoten — in Volt (typsicher).
+   * Aufrufer, die weiterhin mit `number` rechnen, funktionieren unverändert,
+   * weil `Volts` zur Laufzeit eine Zahl ist.
+   */
+  calculatePathVoltageDrop: (targetNodeId: string, customNodes?: Node[], customEdges?: Edge[]) => Volts;
   isLayoutPending: boolean;
   setIsLayoutPending: (pending: boolean) => void;
 
@@ -99,6 +104,7 @@ interface PlannerState {
 import { TEMPLATES_DICT } from '../components/planner/templates';
 import { getEdgeDomain, getHandleDomain } from '../lib/electrical';
 import { getSystemVoltage } from '../lib/vde-standards';
+import type { Volts } from '../lib/units';
 import { performAutoWiring, relevantCumulativeDrop } from '../lib/autoWire';
 
 const nodesMapCache = new WeakMap<Node[], Map<string, Node>>();
