@@ -39,6 +39,72 @@ fachlich beweisbarer, typ-sicherer, erweiterbarer und reproduzierbar
 werden. Keine Aufgabe darf bestehende elektrische Sicherheitslogik
 verschlechtern.
 
+### Stand 2026-08-21 — K1 bis K7 umgesetzt
+
+| Aufgabe | Status | Beleg |
+|---------|--------|-------|
+| K1 Einheiten | abgeschlossen (a, b, c getrennt) | `lib/units.ts`, 33 Tests inkl. echter `tsc`-Läufe |
+| K2 Property-Tests | abgeschlossen | `lib/vde-properties.test.ts`, `docs/PROPERTY-TESTS.md` |
+| K3 Routing | abgeschlossen | `docs/ROUTING-INVARIANTS.md`, `docs/routing-gallery/` (25 Szenarien) |
+| K4 Registry | abgeschlossen | `components/registry/`, `docs/COMPONENT-REGISTRY.md` |
+| K5 Playwright | Code vollständig, **Läufe stehen aus** | `docs/E2E-TESTS.md` Abschnitt 6 |
+| K6 CI-Gate | abgeschlossen | `docs/CI.md`, `scripts/ci/` |
+| K7 Dokumentation | abgeschlossen | `README.md`, `docs/adr/0001`–`0004` |
+
+**Baseline nach Mission 2:** 1051 Tests in 81 Dateien grün, Typecheck
+0 Fehler, Build erfolgreich (`./out`, 4,2 MB, 11 HTML-Seiten).
+Vorher: 685 Tests.
+
+**Gefundene und behobene Fehler** (alle mit Regressionstest):
+
+1. **Undimensionierte 230-V-Leitung** (K2): eine Nutzer-Kante zwischen
+   Landstrom und 230-V-Gerät ohne Domänen-Markierung fiel zwischen
+   `sizeDcEdges` und `sizeAcEdges` hindurch und blieb ohne Querschnitt.
+2. **Zickzack-Routing** (K3): ein Hindernis auf der Ideallinie erzeugte einen
+   51-Punkt-Pfad, der das Bauteil am Ende trotzdem kreuzte.
+3. **Verlorener Zielpunkt** (K3): ein Durchlauf ohne Detour verlor den letzten
+   Wegpunkt — latent, bisher von Fehler 2 verdeckt.
+4. **Eingefrorener Sidebar-Katalog** (K4): der Bauteil-Katalog wurde nur beim
+   Laden des Moduls gelesen.
+5. **Tests waren vom Typecheck ausgenommen** (Nachtrag zu K1): `tsconfig.typecheck.json`
+   schließt `**/*.test.ts(x)` aus — die Branded Types wirkten dort also nicht.
+   Behoben mit `tsconfig.tests.json` + `npm run typecheck:tests` (auch im
+   CI-Gate). 157 dabei gefundene Typfehler sind bereinigt, darunter 41 echte
+   Einheiten-Verstöße in Tests. Beleg: eine absichtlich vertauschte Einheit in
+   einem Test wird jetzt als `TS2345: Argument of type 'Meters' is not
+   assignable to parameter of type 'Amps'` gemeldet.
+
+**Nicht erbracht:** Die drei geforderten grünen Playwright-Läufe. Der
+Browser-Download war in der Arbeitsumgebung blockiert (`cdn.playwright.dev`
+nicht erreichbar, kein System-Chromium). Ersatzweise lokal belegt: statischer
+Server gegen den echten Export, Selektoren im gebauten Bundle, Selektor-
+Vertrag als Vitest-Test. Details in `docs/E2E-TESTS.md`.
+
+### Verbindliche Entscheidungen aus Mission 2
+
+- `lib/units.ts` ist die einzige Quelle für physikalische Einheiten.
+  Fachlogik rechnet mit Branded Types; Persistenzgrenzen lesen mit
+  `parseQuantity` / `quantityOr`.
+- Ein Skalierungsfaktor ist `Scalar`, niemals `number` — sonst ließe sich
+  Ampere mit Volt multiplizieren.
+- `orthogonalWaypoints` liefert die Geometrie, `buildOrthogonalPath` nur die
+  Formatierung. Invarianten R1–R7 gelten und sind getestet.
+- Hindernisse, die Quelle oder Ziel enthalten, werden nicht umfahren
+  (dokumentierte Ausnahme).
+- `docs/routing-gallery/gallery.json` ist Referenz. Änderungen nur mit
+  `npm run routing:gallery` **und** Begründung im PR.
+- Bauteildefinitionen stehen in `components/registry/`. Die elektrische
+  Fachlogik (`lib/electrical.ts`, `lib/autoWire.ts`) bleibt davon unabhängig.
+- `quality.yml` ist die einzige Definition der Qualitätsprüfung; `ci.yml` und
+  `deploy.yml` rufen sie auf. Kein `npm install`, kein Löschen des Lockfiles,
+  kein `skip_tests`.
+- Property-Tests laufen mit festem Seed 20260821 und 1.000 Läufen je Gesetz.
+- Der Typecheck umfasst Tests (`npm run typecheck:tests`). Node-Komponenten
+  deklarieren `PlannerNodeProps` statt `NodeProps`, damit Tests eine Node mit
+  `id` und `data` typkorrekt rendern können.
+- `CableEdgeData.length` ist optional: ältere gespeicherte Pläne und Vorlagen
+  bringen sie nicht mit; jeder Lesezugriff hat einen benannten Ersatzwert.
+
 ### Arbeitsregeln für Mission 2
 
 1. Arbeite auf einem neuen Branch pro Aufgabe oder logisch getrenntem PR.
@@ -58,7 +124,7 @@ verschlechtern.
    verbindliche Entscheidungen ergänzen. Eine veraltete AGENTS.md gilt
    als Fehler.
 
-## K1 — Typ-sichere physikalische Einheiten
+## K1 — Typ-sichere physikalische Einheiten — abgeschlossen
 
 Führe in `lib/units.ts` Branded Types für `Watts`, `Amps`, `Volts`,
 `Mm2`, `Meters` und `Millivolts` ein.
@@ -78,7 +144,7 @@ Führe in `lib/units.ts` Branded Types für `Watts`, `Amps`, `Volts`,
 Abnahme: Typecheck 0 Fehler, 685+ Tests grün, mindestens 10 Unit-Tests
 für Konstruktoren, Konvertierungen und ungültige Werte.
 
-## K2 — Property-Based Testing der VDE-Logik
+## K2 — Property-Based Testing der VDE-Logik — abgeschlossen
 
 Führe `fast-check` nur ein, wenn der Nutzen gegenüber vorhandenen Tests
 begründet ist. Ergänze Property-Tests für:
@@ -97,7 +163,7 @@ Regressionstests erhalten bleiben.
 Abnahme: reproduzierbare Tests, dokumentierte Gesetze, keine bloßen
 Snapshot- oder Beispieltests.
 
-## K3 — Routing-Invarianten und visuelle Regression
+## K3 — Routing-Invarianten und visuelle Regression — abgeschlossen
 
 Behandle `buildOrthogonalPath` als deterministische, reine Routing-Funktion.
 Dokumentiere und teste:
@@ -115,7 +181,7 @@ Stressszene. Kein visueller Snapshot darf ohne Begründung geändert werden.
 Abnahme: Property-/Unit-Tests, dokumentierte Invarianten und mindestens
 20 reproduzierbare Routing-Szenarien.
 
-## K4 — Plugin-/Registry-Architektur für Bauteile
+## K4 — Plugin-/Registry-Architektur für Bauteile — abgeschlossen
 
 Untersuche zunächst die aktuelle Verteilung der Bauteildefinitionen.
 Entwickle nur dann eine Registry, wenn sie die Komplexität tatsächlich
@@ -135,7 +201,7 @@ Abnahme: mindestens ein neues Test-Bauteil, keine Regressionen, klare
 Liste aller Kernänderungen und Beweis, dass die Erweiterung wirklich
 isoliert möglich ist.
 
-## K5 — Playwright-End-to-End-Tests
+## K5 — Playwright-End-to-End-Tests — Code vollständig, Läufe offen
 
 Führe Playwright gegen den gebauten Static Export aus, nicht nur gegen
 Mocks oder eine idealisierte Entwicklungsumgebung.
@@ -155,7 +221,7 @@ Assertions.
 Abnahme: drei aufeinanderfolgende grüne Läufe lokal/CI und Dokumentation
 bekannter Grenzen echter Geräteemulation.
 
-## K6 — Reproduzierbares CI-Gate
+## K6 — Reproduzierbares CI-Gate — abgeschlossen
 
 Prüfe `.github/workflows/deploy.yml` und ergänze einen klaren PR-Check.
 
@@ -170,7 +236,7 @@ Prüfe `.github/workflows/deploy.yml` und ergänze einen klaren PR-Check.
 Abnahme: Workflow-Syntax validiert, Branch-Protection-Anleitung,
 reproduzierbarer Fehler bei kaputtem Lockfile und erfolgreicher grüner CI.
 
-## K7 — Technische Dokumentation und Portfolio-Qualität
+## K7 — Technische Dokumentation und Portfolio-Qualität — abgeschlossen
 
 Überarbeite `README.md` faktenbasiert:
 
@@ -202,12 +268,21 @@ Aufgaben dürfen parallelisiert werden, wenn sie keine gemeinsamen Dateien
 
 ## Globale Definition of Done
 
-- [ ] Mission-1-Funktionen bleiben unverändert funktionsfähig.
-- [ ] Keine Sicherheits- oder VDE-Regressions.
-- [ ] Tests grün, Typecheck 0 Fehler, Build erfolgreich.
-- [ ] Neue Qualitätsbehauptungen haben reproduzierbare Belege.
-- [ ] Keine toten Dateien, keine stillen Fallbacks, keine Suppressions.
-- [ ] Jede Aufgabe hat einen eigenen nachvollziehbaren PR mit
-      Problem, Lösung, Tests, Trade-offs und Rest-Risiken.
-- [ ] Diese Datei wurde nach jedem gemergten K-PR aktualisiert.
-- [ ] Unlösbare oder nicht messbare Punkte werden ausdrücklich benannt.
+- [x] Mission-1-Funktionen bleiben unverändert funktionsfähig
+      (alle 685 Alt-Tests laufen weiter, nur ein Vertrag wurde bewusst
+      verschärft: `calculateVoltageDrop` wirft bei 0 mm² statt `Infinity`
+      zu liefern — dokumentiert im Test).
+- [x] Keine Sicherheits- oder VDE-Regressions; drei Sicherheitslücken
+      wurden geschlossen (siehe Fehlerliste oben).
+- [x] Tests grün (1051), Typecheck 0 Fehler, Build erfolgreich.
+- [x] Neue Qualitätsbehauptungen haben reproduzierbare Belege
+      (`docs/CI.md`, `docs/PROPERTY-TESTS.md`, `docs/ROUTING-INVARIANTS.md`,
+      `docs/COMPONENT-REGISTRY.md`, `docs/E2E-TESTS.md`).
+- [x] Keine toten Dateien, keine stillen Fallbacks, keine Suppressions.
+- [~] Ein PR pro Aufgabe war nicht möglich: die Arbeitsumgebung ist an genau
+      einen Branch gebunden. Ersatz: ein Commit je Aufgabe (K6, K1a, K1b,
+      K1c, K2, K3, K5, K4, K7), einzeln reviewbar.
+- [x] Diese Datei wurde im selben Commit aktualisiert.
+- [x] Unlösbare oder nicht messbare Punkte sind benannt: Playwright-Läufe
+      (Browser-Download blockiert), Lighthouse-Wert stammt unverändert aus
+      Mission 1.
