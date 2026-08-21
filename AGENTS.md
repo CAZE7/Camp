@@ -52,6 +52,11 @@ verschlechtern.
    analysieren, Code oder Anforderung korrigieren und den Fall behalten.
 8. Nach jeder Aufgabe müssen alle bisherigen Tests, Typecheck und Build
    erfolgreich laufen.
+9. Nach jedem gemergten K-PR muss diese Datei im selben oder im nächsten
+   Commit aktualisiert werden: erledigte Aufgabe als abgeschlossen
+   markieren, neue Baseline (Testanzahl, Belege) eintragen, getroffene
+   verbindliche Entscheidungen ergänzen. Eine veraltete AGENTS.md gilt
+   als Fehler.
 
 ## K1 — Typ-sichere physikalische Einheiten
 
@@ -60,8 +65,11 @@ Führe in `lib/units.ts` Branded Types für `Watts`, `Amps`, `Volts`,
 
 - Sichere Konstruktoren und explizite UI-Grenzkonvertierungen.
 - Physikalisch sinnvolle Operationen typisieren, z. B. `P = U * I`.
-- `lib/vde-standards.ts`, `lib/autoWire.ts` und
-  `calculatePathVoltageDrop` schrittweise migrieren.
+- Migration in MAXIMAL 3 kleinen, einzeln reviewbaren Teil-PRs:
+  a) `lib/units.ts` + Unit-Tests (ohne Migration bestehender Dateien),
+  b) `lib/vde-standards.ts` migrieren,
+  c) `lib/autoWire.ts` + `calculatePathVoltageDrop` migrieren.
+  Ein einzelner Groß-PR für K1 gilt als Fehlschlag.
 - Bestehende JSON-/React-Flow-Daten dürfen an Persistenzgrenzen primitive
   Werte verwenden; die Fachlogik darf Einheiten nicht verwechseln können.
 - Beweis: absichtlich falsche Einheiten müssen als TypeScript-Fehler
@@ -201,4 +209,5 @@ Aufgaben dürfen parallelisiert werden, wenn sie keine gemeinsamen Dateien
 - [ ] Keine toten Dateien, keine stillen Fallbacks, keine Suppressions.
 - [ ] Jede Aufgabe hat einen eigenen nachvollziehbaren PR mit
       Problem, Lösung, Tests, Trade-offs und Rest-Risiken.
+- [ ] Diese Datei wurde nach jedem gemergten K-PR aktualisiert.
 - [ ] Unlösbare oder nicht messbare Punkte werden ausdrücklich benannt.
