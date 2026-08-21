@@ -1,0 +1,26 @@
+name: CI
+
+# Pflicht-Check für Pull Requests und Branch-Pushes.
+# Die eigentliche Prüfung liegt in `quality.yml`, damit PR und Deploy
+# garantiert dieselbe Messlatte verwenden.
+
+on:
+  pull_request:
+    branches: ["**"]
+  push:
+    branches-ignore: ["gh-pages"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  quality:
+    name: Quality Gate
+    uses: ./.github/workflows/quality.yml
+    permissions:
+      contents: read
