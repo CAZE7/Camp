@@ -36,9 +36,72 @@ export function useLiveValidation(
 
     if (!nodes || !edges) return warnings;
 
+    // Single-pass node classification and indexing O(N) to avoid 8x nodes.filter scans
     const nodeMap = new Map<string, Node>();
+    const shorePowerNodes: Node[] = [];
+    const solarNodes: Node[] = [];
+    const chargers: Node[] = [];
+    const batteries: Node[] = [];
+    const consumers: Node[] = [];
+    const inverters: Node[] = [];
+    const dcdcChargers: Node[] = [];
+    const shunts: Node[] = [];
+
     for (let i = 0; i < nodes.length; i++) {
-      nodeMap.set(nodes[i].id, nodes[i]);
+      const node = nodes[i];
+      nodeMap.set(node.id, node);
+
+      switch (node.type) {
+        case 'shorePower':
+          shorePowerNodes.push(node);
+          break;
+        case 'solar':
+        case 'roofSolar':
+          solarNodes.push(node);
+          break;
+        case 'charger':
+        case 'mpptController':
+          chargers.push(node);
+          break;
+        case 'battery':
+          batteries.push(node);
+          break;
+        case 'consumer':
+        case 'consumer230v':
+          consumers.push(node);
+          break;
+        case 'inverter':
+          inverters.push(node);
+          break;
+        case 'dcdcCharger':
+          dcdcChargers.push(node);
+          break;
+        case 'shunt':
+          shunts.push(node);
+          break;
+      }
+    }
+
+    // Pre-build target and source edge maps O(E) to eliminate O(N*E) nested array scans
+    const edgesByTarget = new Map<string, Edge<CableEdgeData>[]>();
+    const edgesBySource = new Map<string, Edge<CableEdgeData>[]>();
+
+    for (let i = 0; i < edges.length; i++) {
+      const edge = edges[i];
+
+      let targetList = edgesByTarget.get(edge.target);
+      if (!targetList) {
+        targetList = [];
+        edgesByTarget.set(edge.target, targetList);
+      }
+      targetList.push(edge);
+
+      let sourceList = edgesBySource.get(edge.source);
+      if (!sourceList) {
+        sourceList = [];
+        edgesBySource.set(edge.source, sourceList);
+      }
+      sourceList.push(edge);
     }
 
     // --- Rule A: Quellschutz-Regel ---
@@ -71,7 +134,6 @@ export function useLiveValidation(
     const sysVoltage = getSystemVoltage(nodes);
 
     // --- Rule A2: RCD / FI-Pflicht an Landstrom (DIN VDE 0100-721) ---
-    const shorePowerNodes = nodes.filter(n => n.type === 'shorePower');
     shorePowerNodes.forEach(sp => {
       if (!sp.data?.hasRcd) {
         warnings.push({
@@ -87,9 +149,6 @@ export function useLiveValidation(
     });
 
     // --- Rule B: Overloaded Solar Regulator ---
-    const solarNodes = nodes.filter(n => n.type === 'solar' || n.type === 'roofSolar');
-    const chargers = nodes.filter(n => ['charger', 'mpptController'].includes(n.type as string));
-
     if (solarNodes.length > 0 && chargers.length > 0) {
       const totalSolarWatts = solarNodes.reduce((acc, node) => acc + (Number(node.data.watts) || 0), 0);
       const mpptCapacity = chargers.reduce((acc, node) => acc + (Number(node.data.amps) || 0), 0) * sysVoltage;
@@ -108,9 +167,6 @@ export function useLiveValidation(
     }
 
     // --- Rule C: Battery Capacity Alert ---
-    const batteries = nodes.filter(n => n.type === 'battery');
-    const consumers = nodes.filter(n => n.type === 'consumer' || n.type === 'consumer230v');
-
     if (batteries.length > 0 && consumers.length > 0) {
       const totalBatteryAh = batteries.reduce((acc, node) => acc + (Number(node.data.capacity) || 0), 0);
 
@@ -135,10 +191,10 @@ export function useLiveValidation(
     }
 
     // --- Rule G: Inverter Protection ---
-    const inverters = nodes.filter(n => n.type === 'inverter');
     inverters.forEach(inverter => {
-      const incomingPlusEdges = edges.filter(e => e.target === inverter.id && e.targetHandle?.includes('plus'));
-      const incomingMinusEdges = edges.filter(e => e.target === inverter.id && e.targetHandle?.includes('minus'));
+      const targetEdges = edgesByTarget.get(inverter.id) || [];
+      const incomingPlusEdges = targetEdges.filter(e => e.targetHandle?.includes('plus'));
+      const incomingMinusEdges = targetEdges.filter(e => e.targetHandle?.includes('minus'));
       
       if (incomingMinusEdges.length === 0) {
         warnings.push({
@@ -178,10 +234,9 @@ export function useLiveValidation(
     });
 
     // --- Rule E: DC-DC Charger Connection ---
-    const dcdcChargers = nodes.filter(n => n.type === 'dcdcCharger');
     dcdcChargers.forEach(charger => {
-      const hasInput = edges.some(e => e.target === charger.id);
-      const hasOutput = edges.some(e => e.source === charger.id);
+      const hasInput = (edgesByTarget.get(charger.id)?.length ?? 0) > 0;
+      const hasOutput = (edgesBySource.get(charger.id)?.length ?? 0) > 0;
       
       if (!hasInput || !hasOutput) {
         warnings.push({
@@ -199,12 +254,14 @@ export function useLiveValidation(
     // --- Rule F: Der Shunt wird umgangen ---
     // Nur die Aufbaubatterie, an der der Shunt hängt. Die Starterbatterie
     // des Ladeboosters führt Minus fachgerecht direkt und ist kein Bypass.
-    const shunts = nodes.filter(n => n.type === 'shunt');
     if (shunts.length > 0) {
       const shuntBatteryIds = new Set<string>();
       for (const shunt of shunts) {
-        for (const edge of edges) {
-          if (edge.source !== shunt.id && edge.target !== shunt.id) continue;
+        const connectedEdges = [
+          ...(edgesByTarget.get(shunt.id) || []),
+          ...(edgesBySource.get(shunt.id) || []),
+        ];
+        for (const edge of connectedEdges) {
           const otherId = edge.source === shunt.id ? edge.target : edge.source;
           if (nodeMap.get(otherId)?.type === 'battery') {
             shuntBatteryIds.add(otherId);
