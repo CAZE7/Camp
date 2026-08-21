@@ -14,7 +14,7 @@
  *   - components/edges/CableEdge.tsx (0.85 Inverter-Effizienz, / 18 Vmp)
  *   - components/nodes/ConduitNode.tsx (CONDUIT_SIZES, CABLE_OUTER_DIAMETERS, 60%)
  *   - components/planner/hooks/useDashboardMetrics.ts (0.85, 0.35, 1.15, DoD)
- *   - components/Inspector.tsx / app/api/chat/route.ts (RCD-/VDE-Hinweise)
+ *   - components/Inspector.tsx (RCD-/VDE-Hinweise)
  *
  * Bei jedem Patch konnte eine Stelle aktualisiert und die andere vergessen
  * werden, was zu inkonsistenten Ergebnissen führte. Diese Datei ist die

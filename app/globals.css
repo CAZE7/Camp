@@ -201,7 +201,7 @@
     color: var(--warn-info);
   }
 
-  /* iOS Home-Indicator Safe-Area für schwebende UI (Chat, DachPanel). */
+  /* iOS Home-Indicator Safe-Area für schwebende UI (DachPanel etc.). */
   .safe-pb {
     padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
   }

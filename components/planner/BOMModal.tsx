@@ -79,7 +79,9 @@ export function BOMModal() {
   }, [cableEntries, componentEntries]);
 
   const [copied, setCopied] = useState(false);
-  const copyBomForChat = async () => {
+  // Kopiert die Stückliste als JSON in die Zwischenablage — ohne jeden Bezug
+  // zu einem entfernten KI-Chat (der im Static-Export nicht existiert, R1).
+  const copyBomToClipboard = async () => {
     const message = `Stückliste aus dem Schaltplan:\n\n\`\`\`json\n${bomJson}\n\`\`\``;
     try {
       await navigator.clipboard.writeText(message);
@@ -150,7 +152,7 @@ export function BOMModal() {
       <div className="flex flex-col gap-2 border-t border-border p-4 sm:flex-row">
         <Button
           variant="outline"
-          onClick={copyBomForChat}
+          onClick={copyBomToClipboard}
           disabled={empty}
           className="min-h-11 gap-2"
         >
