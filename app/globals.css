@@ -250,8 +250,9 @@
   }
   .node-drag-handle {
     position: absolute;
-    top: -10px;
-    left: -10px;
+    top: -22px;
+    left: 50%;
+    transform: translateX(-50%);
     z-index: 20;
     display: flex;
     /* 44x44 CSS-Pixel Touch-Target (WCAG 2.5.5 / Apple HIG). */
@@ -332,12 +333,100 @@
     transform: rotate(45deg);
   }
 
-  .planner-zoom-overview .node-details {
-    display: none;
+  /* --- Drei Zoom-Detailstufen (M3.9) ------------------------------- */
+  .node-presentation-shell {
+    position: relative;
+    display: block;
   }
-
+  .node-visual-content,
+  .node-medium-card,
+  .node-overview-marker {
+    transition: opacity 180ms ease, transform 180ms ease;
+  }
+  .node-medium-card,
+  .node-overview-marker {
+    pointer-events: none;
+    position: absolute;
+    visibility: hidden;
+    opacity: 0;
+  }
+  .node-medium-card {
+    inset: 0;
+    align-items: center;
+    gap: 0.75rem;
+    overflow: hidden;
+    border: 2px solid;
+    border-radius: 0.5rem;
+    background: var(--bone);
+    padding: 0.75rem;
+    box-shadow: 0 2px 8px rgba(20, 17, 14, 0.18);
+  }
+  .node-overview-marker {
+    left: 50%;
+    top: 50%;
+    width: 72px;
+    height: 72px;
+    transform: translate(-50%, -50%) scale(0.9);
+    align-items: center;
+    justify-content: center;
+    border: 4px solid var(--bone);
+    border-radius: 1rem;
+    box-shadow: 0 2px 10px rgba(20, 17, 14, 0.28);
+  }
+  /* 0.5–1.5: only synthetic label + component type; real handles stay active. */
+  .planner-zoom-standard .node-visual-content,
+  .planner-zoom-overview .node-visual-content {
+    visibility: hidden;
+    opacity: 0;
+  }
+  .planner-zoom-standard .node-visual-content .react-flow__handle,
+  .planner-zoom-overview .node-visual-content .react-flow__handle {
+    visibility: visible !important;
+  }
+  .planner-zoom-standard .node-medium-card {
+    display: flex;
+    visibility: visible;
+    opacity: 1;
+  }
+  /* <0.5: compact colour + registry icon, no textual label. */
+  .planner-zoom-overview .node-overview-marker {
+    display: flex;
+    visibility: visible;
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
   .planner-zoom-overview .edge-label {
     display: none !important;
+  }
+  /* >1.5: reveal the complete legacy component card and all values. */
+  .planner-zoom-full .node-visual-content {
+    visibility: visible;
+    opacity: 1;
+  }
+
+  /* Auto-layout animates position changes; collision resolution uses the same
+     short transform transition and announces itself via a red outline. */
+  .react-flow__node:not(.dragging),
+  .planner-layout-animating .react-flow__node,
+  .react-flow__node.planner-node-collision {
+    transition: transform 300ms ease, opacity 180ms ease;
+  }
+  .react-flow__node.planner-node-collision {
+    outline: 3px solid var(--wire-error);
+    outline-offset: 5px;
+  }
+  .react-flow__node.planner-backbone-group-node {
+    pointer-events: none !important;
+    z-index: -10 !important;
+  }
+
+  .react-flow__node.planner-trace-dim,
+  .react-flow__edge.planner-trace-dim {
+    opacity: 0.2;
+  }
+  .react-flow__node.planner-trace-active,
+  .react-flow__edge.planner-trace-active {
+    opacity: 1;
   }
 
   .react-flow__node.planner-focus-dim,

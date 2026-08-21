@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { AccessibleDialog } from '@/components/ui/AccessibleDialog';
 import {
   Package, Zap, ScanSearch, LayoutGrid, Camera, Sun, Snowflake, MoreHorizontal,
-  Maximize2, Undo2, Redo2, Save, Loader2, Trash2, Wrench,
+  Maximize2, Undo2, Redo2, Loader2, Trash2, Wrench, Check, Circle,
 } from 'lucide-react';
 import { usePlannerStore } from '../../store/usePlannerStore';
 import { useAppStore } from '../../lib/store';
@@ -27,7 +27,64 @@ function NavigationSection({ viewMode, setViewMode }: { viewMode: 'electric' | '
   );
 }
 
-interface ActionFeedback { type: 'success' | 'error' | 'info'; message: string }
+interface ActionFeedback {
+  type: 'success' | 'error' | 'info';
+  message: string;
+  actionLabel?: string;
+  onAction?: () => void;
+}
+
+function relativeSaveTime(date: Date | null): string {
+  if (!date) return 'noch nicht in dieser Sitzung';
+  const minutes = Math.floor((Date.now() - date.getTime()) / 60_000);
+  if (minutes < 1) return 'gerade eben';
+  return `vor ${minutes} Minute${minutes === 1 ? '' : 'n'}`;
+}
+
+function SaveIndicator({ revision }: { revision: unknown[] }) {
+  const [saved, setSaved] = useState(true);
+  const [savedAt, setSavedAt] = useState<Date | null>(null);
+  const first = useRef(true);
+  const [, forceMinuteUpdate] = useState(0);
+
+  useEffect(() => {
+    if (first.current) {
+      first.current = false;
+      setSavedAt(new Date());
+      return;
+    }
+    setSaved(false);
+    const timer = window.setTimeout(() => {
+      setSaved(true);
+      setSavedAt(new Date());
+    }, 450);
+    return () => window.clearTimeout(timer);
+  // The four graph references are the persisted planner revision.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, revision);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => forceMinuteUpdate((value) => value + 1), 60_000);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  const detail = saved ? `Zuletzt gespeichert: ${relativeSaveTime(savedAt)}` : 'Ungespeicherte Änderungen';
+  return (
+    <span
+      data-testid="save-indicator"
+      role="status"
+      aria-live="polite"
+      aria-label={detail}
+      title={detail}
+      className={`flex h-11 min-w-11 items-center justify-center gap-1 rounded-full border px-2 text-xs font-semibold ${
+        saved ? 'border-success/40 bg-success/10 text-success' : 'border-copper/50 bg-copper/10 text-copper'
+      }`}
+    >
+      {saved ? <Check className="h-4 w-4" aria-hidden="true" /> : <Circle className="h-3 w-3 fill-current" aria-hidden="true" />}
+      <span className="hidden 2xl:inline">{saved ? 'Gespeichert' : 'Ungespeichert'}</span>
+    </span>
+  );
+}
 
 const SHORTCUTS: { keys: string; label: string }[] = [
   { keys: 'Strg+Z', label: 'Rückgängig' },
@@ -42,7 +99,7 @@ const SHORTCUTS: { keys: string; label: string }[] = [
  */
 function KeyboardShortcutHints() {
   return (
-    <ul className="hidden items-center gap-1 xl:flex" aria-label="Tastaturkürzel">
+    <ul className="hidden items-center gap-1 2xl:flex" aria-label="Tastaturkürzel">
       {SHORTCUTS.map((shortcut) => (
         <li key={shortcut.keys} className="flex items-center gap-1 text-xs text-muted-foreground">
           <kbd className="rounded border border-border bg-accent px-1.5 py-0.5 font-mono text-xs text-foreground">{shortcut.keys}</kbd>
@@ -108,7 +165,8 @@ function ActionsSection({
   const runLayout = () => {
     setBusy('layout');
     onLayout();
-    setFeedback({ type: 'success', message: 'Plan automatisch angeordnet.' });
+    setMenuOpen(false);
+    setFeedback({ type: 'success', message: 'Plan in drei Funktionsspalten aufgeräumt. Rückgängig ist möglich.' });
     window.setTimeout(() => setBusy(null), 350);
   };
 
@@ -174,28 +232,39 @@ function ActionsSection({
   }, [nodes, setFeedback]);
 
   return (
-    <div className="flex items-center gap-1.5">
-      <Button data-testid="action-autowire" onClick={runAutoWire} disabled={busy !== null} className="min-h-11 gap-1.5" title="Verbindungen, Querschnitte und Sicherungen automatisch berechnen">
+    <div className="flex min-w-0 items-center gap-1.5">
+      <Button
+        data-testid="action-autowire"
+        onClick={runAutoWire}
+        disabled={busy !== null}
+        className="min-h-11 min-w-11 gap-1.5 px-3"
+        title="Verbindungen, Querschnitte und Sicherungen automatisch berechnen"
+        aria-label="Automatisch verbinden"
+      >
         {busy === 'wire' ? <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" /> : <Zap className="h-4 w-4" />}
-        <span>Automatisch verbinden</span>
+        <span className="hidden lg:inline">Automatisch verbinden</span>
       </Button>
 
-      <Button variant="outline" size="icon" onClick={undo} disabled={!canUndo} className="h-11 w-11" aria-label="Rückgängig" title="Rückgängig"><Undo2 className="h-4 w-4" /></Button>
-      <Button variant="outline" size="icon" onClick={redo} disabled={!canRedo} className="hidden h-11 w-11 sm:inline-flex" aria-label="Wiederholen" title="Wiederholen"><Redo2 className="h-4 w-4" /></Button>
+      {/* Unter 768 px stehen die runden Canvas-Aktionen direkt über der
+          Bottom-Navigation; ab Tablet bleiben beide History-Richtungen hier. */}
+      <Button data-testid="toolbar-undo" variant="outline" size="icon" onClick={undo} disabled={!canUndo} className="hidden h-11 w-11 md:inline-flex" aria-label="Rückgängig" title="Rückgängig"><Undo2 className="h-4 w-4" /></Button>
+      <Button data-testid="toolbar-redo" variant="outline" size="icon" onClick={redo} disabled={!canRedo} className="hidden h-11 w-11 md:inline-flex" aria-label="Wiederholen" title="Wiederholen"><Redo2 className="h-4 w-4" /></Button>
 
-      <Button variant="outline" onClick={() => window.dispatchEvent(new CustomEvent('planner-fit-view'))} className="min-h-11 gap-1.5" title="Ganzen Plan einpassen">
-        <Maximize2 className="h-4 w-4" /><span className="hidden lg:inline">Übersicht</span>
+      <Button variant="outline" onClick={() => window.dispatchEvent(new CustomEvent('planner-fit-view'))} className="hidden min-h-11 gap-1.5 lg:inline-flex" title="Ganzen Plan einpassen">
+        <Maximize2 className="h-4 w-4" /><span>Übersicht</span>
       </Button>
-      <Button variant="outline" onClick={runLayout} disabled={busy !== null} className="min-h-11 gap-1.5" title="Plan automatisch anordnen">
-        <LayoutGrid className="h-4 w-4" /><span className="hidden sm:inline">Aufräumen</span>
+      <Button variant="outline" onClick={runLayout} disabled={busy !== null} className="hidden min-h-11 gap-1.5 lg:inline-flex" title="Plan automatisch anordnen">
+        <LayoutGrid className="h-4 w-4" /><span>Aufräumen</span>
       </Button>
 
       <div className="relative" ref={menuRef}>
-        <Button data-testid="action-more" variant="outline" onClick={() => setMenuOpen((value) => !value)} className="min-h-11 gap-1.5" aria-haspopup="menu" aria-expanded={menuOpen} aria-label="Weitere Aktionen">
-          <MoreHorizontal className="h-4 w-4" /><span className="hidden sm:inline">Mehr</span>
+        <Button data-testid="action-more" variant="outline" size="icon" onClick={() => setMenuOpen((value) => !value)} className="h-11 w-11" aria-haspopup="menu" aria-expanded={menuOpen} aria-label="Weitere Aktionen">
+          <MoreHorizontal className="h-4 w-4" />
         </Button>
         {menuOpen && (
-          <div role="menu" className="absolute right-0 top-full z-50 mt-2 w-72 rounded-xl border border-border bg-card p-2 shadow-2xl">
+          <div role="menu" className="absolute left-0 top-full z-[70] mt-2 w-72 rounded-xl border border-border bg-card p-2 shadow-2xl sm:left-auto sm:right-0">
+            <button role="menuitem" onClick={() => { window.dispatchEvent(new CustomEvent('planner-fit-view')); setMenuOpen(false); }} className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-sm text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Maximize2 className="h-4 w-4" />Übersicht</button>
+            <button role="menuitem" data-testid="action-layout" onClick={runLayout} disabled={busy !== null} className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-sm text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"><LayoutGrid className="h-4 w-4" />Aufräumen</button>
             <button role="menuitem" data-testid="action-bom" onClick={handleExportBOM} className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-sm text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Package className="h-4 w-4" />Stückliste</button>
             <button role="menuitem" data-testid="action-check" onClick={runCheck} className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-sm text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><ScanSearch className="h-4 w-4" />Plan lokal prüfen</button>
             <button role="menuitem" onClick={onExportImage} className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-sm text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{busy === 'export' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}Bild exportieren</button>
@@ -328,8 +397,8 @@ export function PlannerDashboard() {
           {/* Tastaturkürzel sichtbar machen (Desktop): Nutzer sollen sie nicht
               raten müssen. Auf Touch-Geräten ohne Tastatur wird nichts angezeigt. */}
           <KeyboardShortcutHints />
-          <span className="hidden items-center gap-1 text-xs font-semibold text-muted-foreground 2xl:flex" title="Änderungen werden automatisch in diesem Browser gespeichert"><Save className="h-4 w-4 text-success" />Automatisch gespeichert</span>
-          <span className="hidden rounded-full border border-border bg-accent px-2 py-1 text-xs font-semibold text-foreground sm:inline" title="Die Jahreszeit beeinflusst Solarertrag und Heizverbrauch">{season === 'summer' ? '☀ Sommer' : '❄ Winter'}</span>
+          <SaveIndicator revision={[nodes, edges, waterNodes, waterEdges]} />
+          <span className="hidden rounded-full border border-border bg-accent px-2 py-1 text-xs font-semibold text-foreground xl:inline" title="Die Jahreszeit beeinflusst Solarertrag und Heizverbrauch">{season === 'summer' ? '☀ Sommer' : '❄ Winter'}</span>
           <WarningCenter warnings={warnings} onFix={handleFix} />
         </div>
 
@@ -341,7 +410,23 @@ export function PlannerDashboard() {
               feedback.type === 'error' ? 'border-signal bg-signal/5 text-signal' : feedback.type === 'success' ? 'border-moss bg-moss/10 text-moss' : 'border-oxide bg-oxide/10 text-oxide'
             }`}
           >
-            {feedback.message}
+            <div className="flex items-center justify-between gap-3">
+              <span>{feedback.message}</span>
+              {feedback.actionLabel && feedback.onAction && (
+                <Button
+                  data-testid="feedback-action"
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0 border-current bg-card"
+                  onClick={() => {
+                    feedback.onAction?.();
+                    setFeedback(null);
+                  }}
+                >
+                  {feedback.actionLabel}
+                </Button>
+              )}
+            </div>
           </div>
         )}
       </header>
@@ -350,12 +435,21 @@ export function PlannerDashboard() {
         open={resetOpen}
         onClose={() => setResetOpen(false)}
         title="Neuen leeren Plan starten?"
-        description="Alle Komponenten und Leitungen werden entfernt. Du kannst diesen Schritt anschließend einmal rückgängig machen."
+        description="Alle Komponenten und Leitungen werden entfernt. Du kannst die Aktion mit Strg+Z oder dem Rückgängig-Button rückgängig machen."
         className="max-w-md"
       >
         <div className="flex flex-col-reverse gap-3 p-5 sm:flex-row sm:justify-end">
           <Button variant="outline" onClick={() => setResetOpen(false)} className="min-h-11">Abbrechen</Button>
-          <Button variant="destructive" onClick={() => { clearPlan?.(); setResetOpen(false); setFeedback({ type: 'success', message: 'Leerer Plan gestartet. Rückgängig ist weiterhin möglich.' }); }} className="min-h-11">Plan leeren</Button>
+          <Button variant="destructive" onClick={() => {
+            clearPlan?.();
+            setResetOpen(false);
+            setFeedback({
+              type: 'success',
+              message: 'Leerer Plan gestartet.',
+              actionLabel: 'Rückgängig',
+              onAction: undo,
+            });
+          }} className="min-h-11">Plan leeren</Button>
         </div>
       </AccessibleDialog>
     </>

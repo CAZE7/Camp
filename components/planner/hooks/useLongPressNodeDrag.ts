@@ -85,16 +85,31 @@ export function useLongPressNodeDrag(enabled: boolean): string | null {
     };
 
     const onPointerUp = () => clearTimer();
+    const onContextOpen = () => clearTimer();
+    const onArmFromMenu = (event: Event) => {
+      const nodeId = (event as CustomEvent<string>).detail;
+      if (!nodeId) return;
+      setArmedNodeId(nodeId);
+      disarmLater();
+      navigator.vibrate?.(15);
+      window.dispatchEvent(new CustomEvent<string>('planner-node-armed', {
+        detail: 'Verschieben aktiv: Bauteil jetzt ziehen oder den Griff oben links nutzen.',
+      }));
+    };
 
     document.addEventListener('pointerdown', onPointerDown, true);
     document.addEventListener('pointermove', onPointerMove, true);
     document.addEventListener('pointerup', onPointerUp, true);
     document.addEventListener('pointercancel', onPointerUp, true);
+    window.addEventListener('planner-touch-context-open', onContextOpen);
+    window.addEventListener('planner-arm-node', onArmFromMenu as EventListener);
     return () => {
       document.removeEventListener('pointerdown', onPointerDown, true);
       document.removeEventListener('pointermove', onPointerMove, true);
       document.removeEventListener('pointerup', onPointerUp, true);
       document.removeEventListener('pointercancel', onPointerUp, true);
+      window.removeEventListener('planner-touch-context-open', onContextOpen);
+      window.removeEventListener('planner-arm-node', onArmFromMenu as EventListener);
       clearTimer();
       if (disarmTimerRef.current) clearTimeout(disarmTimerRef.current);
     };

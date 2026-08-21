@@ -1,5 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react';
-import ReactFlow, { Background, Controls, MiniMap, Panel, useReactFlow, useStore, Connection, Viewport } from 'reactflow';
+import ReactFlow, { Background, Controls, MiniMap, Panel, useReactFlow, useStore, Connection, Viewport, Node } from 'reactflow';
+import { Map as MapIcon } from 'lucide-react';
 import 'reactflow/dist/style.css';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -14,6 +15,7 @@ import {
   PLANNER_FIT_PADDING,
   PLANNER_SNAP_GRID,
   PLANNER_OVERVIEW_ZOOM,
+  PLANNER_FULL_DETAIL_ZOOM,
 } from './constants';
 import { usePlannerStore } from '../../store/usePlannerStore';
 import { useAppStore } from '../../lib/store';
@@ -29,6 +31,12 @@ import { CanvasContextMenu, ContextMenuState } from './ui/CanvasContextMenu';
 import { applyFocusHighlight } from './utils/focusHighlight';
 import { applyDomainFilter, DOMAINS, DOMAIN_COLORS, DOMAIN_LABELS, Domain, nodeMinimapColor } from './utils/domainFilter';
 import { markErrorEdgesZIndex } from './utils/errorEdges';
+import { useTouchContextMenu } from './hooks/useTouchContextMenu';
+import { applyCircuitTrace, circuitTraceLabel, traceCircuit } from './utils/circuitTrace';
+import { collidingNodeIds, findNearestFreePosition } from './utils/collision';
+import { withBackboneGroup } from './utils/backboneGroup';
+import { BackboneGroupNode } from './ui/BackboneGroupNode';
+import { withNodePresentations } from './ui/NodePresentation';
 
 function useAccessibleHandles() {
   React.useEffect(() => {
@@ -75,6 +83,7 @@ export function FlowCanvas() {
   );
   const armedNodeId = useLongPressNodeDrag(interaction.requiresDragHandle);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+  const [collidingNodeId, setCollidingNodeId] = useState<string | null>(null);
   const [connectionFeedback, setConnectionFeedback] = useState<string | null>(null);
   const connectionAttempt = useRef(false);
   const feedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -84,6 +93,11 @@ export function FlowCanvas() {
     if (feedbackTimer.current) clearTimeout(feedbackTimer.current);
     if (timeout > 0) feedbackTimer.current = setTimeout(() => setConnectionFeedback(null), timeout);
   }, []);
+
+  const openTouchContextMenu = React.useCallback((state: ContextMenuState) => {
+    setContextMenu(state);
+  }, []);
+  useTouchContextMenu(coarsePointer, openTouchContextMenu);
 
   React.useEffect(() => {
     const onInputError = (event: Event) => showConnectionFeedback((event as CustomEvent<string>).detail || 'Ungültiger Wert.');
@@ -129,9 +143,10 @@ export function FlowCanvas() {
   const {
     viewMode, nodes, edges, waterNodes, waterEdges, waterWarning,
     onNodesChange, onEdgesChange, onWaterNodesChange, onWaterEdgesChange,
-    onConnect, isValidConnection, onSelectionChange, addNode, firstTappedHandle, selectedNodes,
+    onConnect, isValidConnection, onSelectionChange, addNode, firstTappedHandle, selectedNodes, selectedEdges,
+    setSelectedNodes, setSelectedEdges,
     highlightedNodeId, highlightedEdgeId, setHighlightedNodeId, setHighlightedEdgeId,
-    trunkMode, setTrunkMode,
+    trunkMode, setTrunkMode, backboneGrouping, setBackboneGrouping, isLayoutPending,
   } = usePlannerStore(useShallow((state) => ({
     viewMode: state.viewMode,
     nodes: state.nodes,
@@ -149,12 +164,18 @@ export function FlowCanvas() {
     addNode: state.addNode,
     firstTappedHandle: state.firstTappedHandle,
     selectedNodes: state.selectedNodes,
+    selectedEdges: state.selectedEdges,
+    setSelectedNodes: state.setSelectedNodes,
+    setSelectedEdges: state.setSelectedEdges,
     highlightedNodeId: state.highlightedNodeId,
     highlightedEdgeId: state.highlightedEdgeId,
     setHighlightedNodeId: state.setHighlightedNodeId,
     setHighlightedEdgeId: state.setHighlightedEdgeId,
     trunkMode: state.trunkMode,
     setTrunkMode: state.setTrunkMode,
+    backboneGrouping: state.backboneGrouping,
+    setBackboneGrouping: state.setBackboneGrouping,
+    isLayoutPending: state.isLayoutPending,
   })));
 
   React.useEffect(() => {
@@ -188,12 +209,13 @@ export function FlowCanvas() {
   }, [firstTappedHandle]);
 
   const edgeTypes = useMemo(() => ({ ...EDGE_TYPES, waterPipe: WaterPipeEdge }), []);
-  // Auf Touch bekommt jede Node-Komponente einen Griff (display:contents-Hülle,
-  // kein Layout-Einfluss). Am Desktop bleibt die Original-Map unverändert.
-  const nodeTypes = useMemo(
-    () => (coarsePointer ? withNodeDragHandles(NODE_TYPES) : { ...NODE_TYPES }),
-    [coarsePointer]
-  );
+  // Every component receives the same three zoom-level presentation. Touch
+  // additionally gets the dedicated drag handle; the visual group never does.
+  const nodeTypes = useMemo(() => {
+    const presented = withNodePresentations(NODE_TYPES);
+    const interactive = coarsePointer ? withNodeDragHandles(presented) : presented;
+    return { ...interactive, backboneGroup: BackboneGroupNode };
+  }, [coarsePointer]);
   const rawNodes = viewMode === 'water' ? waterNodes : nodes;
   const rawEdges = viewMode === 'water' ? waterEdges : edges;
 
@@ -223,10 +245,17 @@ export function FlowCanvas() {
     return null;
   }, [highlightedEdgeId, highlightedNodeId, edges, waterEdges]);
 
-  const focusSeedIds = selectedNodes?.length === 1 ? [selectedNodes[0].id] : hoverSeedIds;
+  const selectedTrace = useMemo(() => {
+    if (selectedEdges?.length === 1) return traceCircuit(rawNodes, rawEdges, { edgeId: selectedEdges[0].id });
+    if (selectedNodes?.length === 1) return traceCircuit(rawNodes, rawEdges, { nodeId: selectedNodes[0].id });
+    return null;
+  }, [rawNodes, rawEdges, selectedNodes, selectedEdges]);
+  const focusSeedIds = selectedTrace ? null : hoverSeedIds;
 
   const { nodes: displayedNodes, edges: displayedEdges } = useMemo(() => {
-    const focused = applyFocusHighlight(rawNodes, rawEdges, focusSeedIds);
+    const focused = selectedTrace
+      ? applyCircuitTrace(rawNodes, rawEdges, selectedTrace)
+      : applyFocusHighlight(rawNodes, rawEdges, focusSeedIds);
     let outNodes = focused.nodes;
     let outEdges = focused.edges;
 
@@ -243,21 +272,29 @@ export function FlowCanvas() {
     }
 
     return { nodes: outNodes, edges: outEdges };
-  }, [rawNodes, rawEdges, focusSeedIds, viewMode, activeDomains, nodes, edges]);
-  /**
-   * Touch: jeder Node bekommt `dragHandle`, ist also nur am Griff zu ziehen —
-   * Wischen über dem Node-Körper pannt die Karte (A4: keine Kollision).
-   * Ausnahme: der per Long-Press scharfgeschaltete Node ist komplett greifbar.
-   * Maus: unverändert durchreichen (identische Referenz, keine Re-Renders).
-   */
+  }, [rawNodes, rawEdges, selectedTrace, focusSeedIds, viewMode, activeDomains, nodes, edges]);
+
+  const traceLabel = useMemo(
+    () => selectedTrace ? circuitTraceLabel(rawNodes, selectedTrace) : null,
+    [rawNodes, selectedTrace]
+  );
+
+  /** Adds visual grouping, collision state and touch drag semantics. */
   const interactiveNodes = useMemo(() => {
-    if (!interaction.requiresDragHandle) return displayedNodes;
-    return displayedNodes.map((node) =>
-      node.id === armedNodeId
-        ? { ...node, dragHandle: undefined, className: `${node.className || ''} node-drag-armed`.trim() }
-        : { ...node, dragHandle: NODE_DRAG_HANDLE_SELECTOR }
-    );
-  }, [displayedNodes, interaction.requiresDragHandle, armedNodeId]);
+    const grouped = viewMode === 'electric'
+      ? withBackboneGroup(displayedNodes, backboneGrouping)
+      : displayedNodes;
+    return grouped.map((node) => {
+      if (node.type === 'backboneGroup') return node;
+      const collisionClass = node.id === collidingNodeId ? 'planner-node-collision' : '';
+      if (!interaction.requiresDragHandle) {
+        return collisionClass ? { ...node, className: `${node.className || ''} ${collisionClass}`.trim() } : node;
+      }
+      return node.id === armedNodeId
+        ? { ...node, dragHandle: undefined, className: `${node.className || ''} node-drag-armed ${collisionClass}`.trim() }
+        : { ...node, dragHandle: NODE_DRAG_HANDLE_SELECTOR, className: `${node.className || ''} ${collisionClass}`.trim() };
+    });
+  }, [displayedNodes, viewMode, backboneGrouping, collidingNodeId, interaction.requiresDragHandle, armedNodeId]);
 
   const openContextMenu = React.useCallback(
     (event: React.MouseEvent, targetType: ContextMenuState['targetType'], targetId?: string, label?: string) => {
@@ -283,6 +320,33 @@ export function FlowCanvas() {
     (event: React.MouseEvent | MouseEvent) => openContextMenu(event as React.MouseEvent, 'pane'),
     [openContextMenu]
   );
+
+  const handleNodeDrag = React.useCallback((_event: React.MouseEvent, node: Node) => {
+    if (node.type === 'backboneGroup') return;
+    const domainNodes = viewMode === 'water' ? usePlannerStore.getState().waterNodes : usePlannerStore.getState().nodes;
+    setCollidingNodeId(collidingNodeIds(node, domainNodes).length > 0 ? node.id : null);
+  }, [viewMode]);
+
+  const handleNodeDragStop = React.useCallback((_event: React.MouseEvent, node: Node) => {
+    setContextMenu(null);
+    if (node.type === 'backboneGroup') return;
+    const state = usePlannerStore.getState();
+    const domainNodes = viewMode === 'water' ? state.waterNodes : state.nodes;
+    const current = domainNodes.find((candidate) => candidate.id === node.id);
+    if (!current) {
+      setCollidingNodeId(null);
+      return;
+    }
+    const moved = { ...current, position: node.position, width: node.width, height: node.height };
+    if (collidingNodeIds(moved, domainNodes).length > 0) {
+      const position = findNearestFreePosition(moved, domainNodes);
+      const change = [{ type: 'position' as const, id: node.id, position, dragging: false }];
+      if (viewMode === 'water') state.onWaterNodesChange(change);
+      else state.onNodesChange(change);
+      showConnectionFeedback('Überlappung aufgelöst: Bauteil am nächsten freien Rasterpunkt platziert.', 3000);
+    }
+    setCollidingNodeId(null);
+  }, [viewMode, showConnectionFeedback]);
 
   const isOverview = zoom < PLANNER_OVERVIEW_ZOOM;
   const minimapColors = useMemo(() => ({
@@ -360,7 +424,6 @@ export function FlowCanvas() {
           snapToGrid
           snapGrid={PLANNER_SNAP_GRID}
           deleteKeyCode={interaction.deleteKeyCode}
-          onlyRenderVisibleElements
           elementsSelectable
           nodesFocusable
           edgesFocusable
@@ -383,11 +446,16 @@ export function FlowCanvas() {
           onNodeContextMenu={handleNodeContextMenu}
           onEdgeContextMenu={handleEdgeContextMenu}
           onPaneContextMenu={handlePaneContextMenu}
-          onNodeDragStop={() => setContextMenu(null)}
-          onPaneClick={() => setContextMenu(null)}
+          onNodeDrag={handleNodeDrag}
+          onNodeDragStop={handleNodeDragStop}
+          onPaneClick={() => {
+            setContextMenu(null);
+            setSelectedNodes([]);
+            setSelectedEdges([]);
+          }}
           aria-label={`${viewMode === 'water' ? 'Wasserplan' : 'Elektrik-Schaltplan'} Arbeitsfläche`}
           style={{ backgroundColor: 'var(--canvas-bg)' }}
-          className={isOverview ? 'planner-zoom-overview' : 'planner-zoom-detail'}
+          className={`${isOverview ? 'planner-zoom-overview' : zoom > PLANNER_FULL_DETAIL_ZOOM ? 'planner-zoom-full' : 'planner-zoom-standard'} ${isLayoutPending ? 'planner-layout-animating' : ''}`}
         >
           <Background color="var(--canvas-grid)" gap={PLANNER_SNAP_GRID[0]} style={{ opacity: 0.35 }} />
           <Controls className="mb-20 overflow-hidden rounded-lg border border-border shadow-sm md:mb-4" />
@@ -399,12 +467,12 @@ export function FlowCanvas() {
             style={{ backgroundColor: minimapColors.background }}
           />
 
-          <Panel position="top-left" className="m-2 max-w-[min(20rem,calc(100vw-6rem))] md:m-3">
+          <Panel position="top-left" className="m-2 hidden max-w-[min(20rem,calc(100vw-6rem))] sm:block md:m-3">
             <div className="rounded-lg border border-border bg-card/95 px-3 py-2 text-xs text-foreground shadow-sm">
               <strong>{viewMode === 'water' ? 'Wasserplan' : 'Elektrikplan'}</strong>
               <span className="ml-2 text-muted-foreground">
                 {coarsePointer
-                  ? 'Anschluss antippen, dann Ziel antippen. Bauteil am Griff ziehen, Karte mit einem Finger schieben.'
+                  ? 'Anschluss antippen, dann Ziel antippen. Am Griff ziehen; 500 ms halten öffnet das Kontextmenü.'
                   : 'Anschluss anklicken oder ziehen. Rechtsklick öffnet das Kontextmenü.'}
               </span>
             </div>
@@ -446,7 +514,40 @@ export function FlowCanvas() {
                 >
                   Trassen
                 </button>
+                <button
+                  type="button"
+                  aria-pressed={backboneGrouping}
+                  onClick={() => setBackboneGrouping(!backboneGrouping)}
+                  title="Rahmen und Label für den Hauptstromkreis ein- oder ausblenden"
+                  className={`rounded-md px-2.5 py-1 text-xs font-semibold transition-colors ${
+                    backboneGrouping ? 'bg-copper text-bone' : 'text-muted-foreground opacity-60 hover:opacity-100'
+                  }`}
+                >
+                  Hauptstromkreis
+                </button>
               </div>
+            </Panel>
+          )}
+
+          {traceLabel && (
+            <Panel position="bottom-left" className="mb-20 max-w-[min(36rem,calc(100vw-2rem))] md:mb-4">
+              <div data-testid="circuit-trace-info" role="status" className="rounded-lg border border-copper/50 bg-card/95 px-3 py-2 text-sm font-semibold text-foreground shadow-lg">
+                <span className="mr-2 text-copper">Strompfad:</span>{traceLabel}
+              </div>
+            </Panel>
+          )}
+
+          {rawNodes.length > 8 && (
+            <Panel position="bottom-right" className="mb-20 md:hidden">
+              <button
+                type="button"
+                data-testid="mobile-overview"
+                onClick={() => fitView({ duration: 400, padding: PLANNER_FIT_PADDING })}
+                className="flex min-h-12 items-center gap-2 rounded-full border border-border bg-card px-4 text-sm font-semibold text-foreground shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label="Planübersicht anzeigen"
+              >
+                <MapIcon className="h-5 w-5" aria-hidden="true" />Übersicht
+              </button>
             </Panel>
           )}
 

@@ -76,6 +76,41 @@ test.describe('Touch-Bedienung', () => {
     expect(await edgeCount(page)).toBe(before);
   });
 
+  test('M3.4: Long-Press öffnet auf Touch dasselbe Kontextmenü', async ({ page }) => {
+    await openPlanner(page);
+    await addComponent(page, 'battery');
+    await showCanvas(page);
+    const card = page.locator('.react-flow__node-battery [role="group"]').first();
+    const box = await card.boundingBox();
+    expect(box).not.toBeNull();
+    await card.dispatchEvent('pointerdown', {
+      pointerType: 'touch',
+      isPrimary: true,
+      clientX: box!.x + box!.width / 2,
+      clientY: box!.y + box!.height / 2,
+    });
+    await expect(page.getByRole('menu', { name: 'Kontextmenü der Arbeitsfläche' })).toBeVisible();
+    await card.dispatchEvent('pointerup', { pointerType: 'touch', isPrimary: true });
+  });
+
+  test('M3.1: Undo und Redo funktionieren auf 375 px ohne Tastatur', async ({ page }) => {
+    await openPlanner(page);
+    await addComponent(page, 'battery');
+    await showCanvas(page);
+    expect(await nodeCount(page)).toBe(1);
+
+    const undo = page.getByTestId('mobile-undo');
+    const redo = page.getByTestId('mobile-redo');
+    await expect(undo).toBeVisible();
+    await expect(undo).toBeEnabled();
+    await undo.tap();
+    await expect.poll(async () => nodeCount(page)).toBe(0);
+
+    await expect(redo).toBeEnabled();
+    await redo.tap();
+    await expect.poll(async () => nodeCount(page)).toBe(1);
+  });
+
   test('Auto-Wire funktioniert auch mit Touch', async ({ page }) => {
     await openPlanner(page);
     await addComponent(page, 'battery');

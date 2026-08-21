@@ -21,8 +21,12 @@ export const MOUSE_CONNECTION_RADIUS = 20;
 /** CSS-Selektor des dedizierten Drag-Griffs (siehe BaseNode). */
 export const NODE_DRAG_HANDLE_SELECTOR = '.node-drag-handle';
 
-/** Dauer, ab der ein Druck auf den Node-Körper als „Verschieben“ gilt. */
-export const LONG_PRESS_MS = 200;
+/**
+ * Fallback-Dauer zum Entsperren des Node-Körpers. Das Touch-Kontextmenü öffnet
+ * bereits nach 500 ms und bricht diesen Timer ab; Verschieben wird dort gezielt
+ * gewählt oder direkt über den Griff ausgeführt.
+ */
+export const LONG_PRESS_MS = 750;
 
 /** Wegstrecke, die einen langen Druck als Pan-Geste verwirft. */
 export const LONG_PRESS_MOVE_TOLERANCE = 10;

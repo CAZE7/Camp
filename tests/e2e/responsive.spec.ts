@@ -56,6 +56,16 @@ test.describe('Responsives Layout', () => {
     expect(box!.width).toBeGreaterThanOrEqual(minimum);
   });
 
+  test('M3.5: Tablet erreicht Auto-Wire, Undo/Redo und Mehr ohne Overflow', async ({ page }) => {
+    await openPlanner(page);
+    const width = page.viewportSize()?.width ?? 0;
+    test.skip(width !== 768, 'Gilt exakt für das Tablet-Projekt.');
+    for (const id of ['action-autowire', 'toolbar-undo', 'toolbar-redo', 'action-more']) {
+      await expect(page.getByTestId(id)).toBeVisible();
+    }
+    await expectNoHorizontalOverflow(page);
+  });
+
   test('Touch-Ziele der Navigation sind mindestens 44 px hoch', async ({ page }) => {
     await openPlanner(page);
     const width = page.viewportSize()?.width ?? 0;

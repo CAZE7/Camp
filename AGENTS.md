@@ -61,7 +61,24 @@ im Branch `arena/01a02388-camp` implementiert (ein Commit je Aufgabe).
 3. Branch Protection einrichten (`docs/CI.md`, Abschnitt 4).
 4. Diesen Abschnitt auf "abgeschlossen" setzen.
 
-## Mission 3: UI/UX-Perfektion — KEIN neuer Scope
+## Mission 3: UI/UX-Perfektion — UI-Aufgaben abgeschlossen auf diesem Branch
+
+**Status (21.08.2026): M3.1–M3.12 umgesetzt, M3.13 lokal verifiziert.** Die vier
+Playwright-Specs liefen in allen vier Projekten dreimal hintereinander ohne
+Fehler (44 bestanden, 28 erwartete geräteabhängige Skips je Lauf). Typecheck,
+Test-Typecheck, Static Build und 1069 Unit-/Property-Tests sind grün.
+Die Workflow-Aktivierung bleibt bewusst außerhalb dieses PRs; die vorbereiteten
+Dateien liegen weiterhin unter `docs/ci/workflows/`.
+
+### Umsetzungsübersicht
+
+- Touch-Undo/Redo, bestätigtes Löschen und 500-ms-Kontextmenü sind auf 375 px erreichbar.
+- Speicherstatus, Tablet-Toolbar und Undo-Toast geben sichtbares Feedback.
+- Drei-Spalten-Aufräumen, Kollisionsauflösung und drei Zoomstufen halten große Pläne lesbar.
+- Circuit-Tracing, Handy-Übersicht und konfigurierbarer Hauptstromkreis-Rahmen sind aktiv.
+- Die M2-Playwright-Suite wurde lokal vollständig verifiziert.
+
+### Ursprünglicher Scope — KEIN neuer Scope
 
 Ziel: Die BESTEHENDEN Funktionen werden auf Handy, Tablet und Desktop
 gleichermaßen perfekt bedienbar, und der Plan bleibt bei jeder Größe
@@ -201,10 +218,10 @@ aktiv.
 
 ### Definition of Done — Mission 3
 
-- [ ] M3.1–M3.6: Touch-Bedienbarkeit auf 375 px vollständig
-- [ ] M3.7–M3.9: Plan bleibt bei 20+ Nodes übersichtlich
-- [ ] M3.10–M3.12: Strompfade und Struktur visuell erkennbar
-- [ ] M3.13: E2E-Suite läuft in CI, dreimal grün
-- [ ] Alle Änderungen auf 375/768/1440 px getestet
-- [ ] Bestehende 1051+ Tests bleiben grün
-- [ ] Keine neuen Features außerhalb der M3-Liste
+- [x] M3.1–M3.6: Touch-Bedienbarkeit auf 375 px vollständig
+- [x] M3.7–M3.9: Plan bleibt bei 20+ Nodes übersichtlich
+- [x] M3.10–M3.12: Strompfade und Struktur visuell erkennbar
+- [ ] M3.13: E2E dreimal lokal grün; CI-Aktivierung bewusst aus diesem PR ausgenommen
+- [x] Alle Änderungen auf 375/768/1440 px getestet
+- [x] Bestehende 1051+ Tests bleiben grün (aktuell 1069)
+- [x] Keine neuen Features außerhalb der M3-Liste

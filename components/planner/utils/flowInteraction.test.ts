@@ -89,6 +89,6 @@ describe('constants', () => {
 
   it('exposes the drag-handle selector and long-press duration', () => {
     expect(NODE_DRAG_HANDLE_SELECTOR).toBe('.node-drag-handle');
-    expect(LONG_PRESS_MS).toBe(200);
+    expect(LONG_PRESS_MS).toBe(750);
   });
 });

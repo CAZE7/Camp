@@ -19,8 +19,10 @@ export const PLANNER_URL = '/elektrik-planung/';
 /** Öffnet den Planer und wartet, bis der Canvas montiert ist. */
 export async function openPlanner(page: Page): Promise<void> {
   await page.goto(PLANNER_URL);
-  await dismissOnboarding(page);
+  // The planner is dynamically imported. Waiting for its shell first prevents
+  // a race where the onboarding dialog mounts just after a zero-count check.
   await expect(page.getByTestId('planner-shell')).toBeVisible();
+  await dismissOnboarding(page);
 }
 
 /**
@@ -108,7 +110,7 @@ export async function addComponent(page: Page, componentType: string): Promise<v
 
 /** Anzahl der Knoten im Plan — aus dem DOM, nicht aus dem Store. */
 export async function nodeCount(page: Page): Promise<number> {
-  return page.locator('.react-flow__node').count();
+  return page.locator('.react-flow__node:not(.react-flow__node-backboneGroup)').count();
 }
 
 /** Anzahl der Kanten im Plan. */

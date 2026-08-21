@@ -18,6 +18,9 @@ const mockExportBOM = vi.fn();
 const mockAutoWireSystem = vi.fn();
 const mockCheckSchematic = vi.fn();
 const mockOnLayout = vi.fn();
+const mockUndo = vi.fn();
+const mockRedo = vi.fn();
+const mockClearPlan = vi.fn();
 
 vi.mock('../../store/usePlannerStore', () => ({
   usePlannerStore: vi.fn((selector) => {
@@ -37,6 +40,12 @@ vi.mock('../../store/usePlannerStore', () => ({
       edges: [],
       waterNodes: [],
       waterEdges: [],
+      waterWarning: null,
+      undo: mockUndo,
+      redo: mockRedo,
+      canUndo: true,
+      canRedo: true,
+      clearPlan: mockClearPlan,
     };
     return selector(state);
   })
@@ -69,7 +78,7 @@ describe('PlannerDashboard - Core Interactions', () => {
     openMoreMenu();
     expect(screen.getByText(/Stückliste/)).toBeInTheDocument();
     expect(screen.getByText(/Plan lokal prüfen/)).toBeInTheDocument();
-    expect(screen.getByText(/Aufräumen/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Aufräumen/).length).toBeGreaterThan(0);
     expect(screen.getByText(/Bild exportieren/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Sommer' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Winter' })).toBeInTheDocument();
@@ -158,6 +167,34 @@ describe('PlannerDashboard - Action Buttons', () => {
 
     const dispatched = dispatchEventSpy.mock.calls.map((c) => (c[0] as CustomEvent).type);
     expect(dispatched).toContain('planner-fit-view');
+  });
+});
+
+describe('PlannerDashboard - Mission 3 feedback', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('shows tablet undo/redo controls with explicit disabled-capable targets', () => {
+    render(<PlannerDashboard />);
+    expect(screen.getByTestId('toolbar-undo')).toHaveClass('md:inline-flex');
+    expect(screen.getByTestId('toolbar-redo')).toHaveClass('md:inline-flex');
+  });
+
+  it('shows a saved indicator on every viewport', () => {
+    render(<PlannerDashboard />);
+    const indicator = screen.getByTestId('save-indicator');
+    expect(indicator).toHaveAttribute('role', 'status');
+    expect(indicator.getAttribute('aria-label')).toMatch(/Zuletzt gespeichert/);
+    expect(indicator.className).not.toContain('hidden');
+  });
+
+  it('offers a five-second undo action after clearing the plan', () => {
+    render(<PlannerDashboard />);
+    openMoreMenu();
+    fireEvent.click(screen.getByText('Neuen leeren Plan starten'));
+    fireEvent.click(screen.getByRole('button', { name: 'Plan leeren' }));
+    expect(mockClearPlan).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByTestId('feedback-action'));
+    expect(mockUndo).toHaveBeenCalledTimes(1);
   });
 });
 

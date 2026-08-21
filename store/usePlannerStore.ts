@@ -60,6 +60,8 @@ interface PlannerState {
 
   trunkMode: boolean;
   setTrunkMode: (enabled: boolean) => void;
+  backboneGrouping: boolean;
+  setBackboneGrouping: (enabled: boolean) => void;
 
   onNodesChange: (changes: import('reactflow').NodeChange[]) => void;
   onEdgesChange: (changes: import('reactflow').EdgeChange[]) => void;
@@ -173,6 +175,7 @@ function migratePlannerPersisted(persisted: unknown, version: number): Partial<P
   if (p.season === 'summer' || p.season === 'winter') safe.season = p.season;
   if (typeof p.isSidebarOpen === 'boolean') safe.isSidebarOpen = p.isSidebarOpen;
   if (typeof p.isInspectorOpen === 'boolean') safe.isInspectorOpen = p.isInspectorOpen;
+  if (typeof p.backboneGrouping === 'boolean') safe.backboneGrouping = p.backboneGrouping;
   if (isNodeArray(p.nodes)) safe.nodes = p.nodes;
   if (isEdgeArray(p.edges)) safe.edges = p.edges as Edge<CableEdgeData>[];
   if (isNodeArray(p.waterNodes)) safe.waterNodes = p.waterNodes;
@@ -272,6 +275,8 @@ export const usePlannerStore = create<PlannerState>()(
 
   trunkMode: false,
   setTrunkMode: (enabled) => set({ trunkMode: enabled }),
+  backboneGrouping: true,
+  setBackboneGrouping: (enabled) => set({ backboneGrouping: enabled }),
 
   onNodesChange: (changes) => set((state) => {
     const newNodes = applyNodeChanges(changes, state.nodes);
@@ -579,19 +584,30 @@ export const usePlannerStore = create<PlannerState>()(
         waterEdges,
         'LR'
       );
-      set((state) => withHistory(state, { waterNodes: [...layoutedNodes], waterEdges: [...layoutedEdges] }));
+      set((state) => withHistory(state, {
+        waterNodes: [...layoutedNodes],
+        waterEdges: [...layoutedEdges],
+        isLayoutPending: true,
+      }));
     } else {
       const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
         nodes,
         edges,
         'LR'
       );
-      set((state) => withHistory(state, { nodes: [...layoutedNodes], edges: [...layoutedEdges] }));
+      set((state) => withHistory(state, {
+        nodes: [...layoutedNodes],
+        edges: [...layoutedEdges],
+        isLayoutPending: true,
+      }));
     }
     if (typeof window !== 'undefined') {
       window.requestAnimationFrame(() => {
         window.dispatchEvent(new CustomEvent('planner-fit-view'));
+        window.setTimeout(() => set({ isLayoutPending: false }), 300);
       });
+    } else {
+      set({ isLayoutPending: false });
     }
   },
 
@@ -804,6 +820,7 @@ export const usePlannerStore = create<PlannerState>()(
         waterEdges: state.waterEdges,
         isSidebarOpen: state.isSidebarOpen,
         isInspectorOpen: state.isInspectorOpen,
+        backboneGrouping: state.backboneGrouping,
       }),
     }
   )

@@ -68,9 +68,19 @@ const DEFAULT_OPEN_CATEGORY: Record<'electric' | 'water', string> = {
 };
 
 function addAtVisibleCenter(comp: Comp, onMobileAdd?: () => void) {
-  usePlannerStore.getState().addNode(comp.type, comp.label, { x: 0, y: 0 }, comp.watts);
+  const state = usePlannerStore.getState();
+  const count = state.viewMode === 'water' ? state.waterNodes.length : state.nodes.length;
+  // New touch-added cards start on a roomy two-column grid instead of all at
+  // (0,0). This keeps their handles reachable before the user ever drags them.
+  const position = { x: (count % 2) * 160, y: count * 160 };
+  state.addNode(comp.type, comp.label, position, comp.watts);
   onMobileAdd?.();
-  window.requestAnimationFrame(() => window.dispatchEvent(new CustomEvent('planner-fit-view')));
+  // React Flow updates its measured-node map one frame after the Zustand
+  // render. Fit on the following frame so a newly added off-screen card is
+  // included instead of being left unreachable with visible-elements culling.
+  window.requestAnimationFrame(() => {
+    window.requestAnimationFrame(() => window.dispatchEvent(new CustomEvent('planner-fit-view')));
+  });
 }
 
 const handlePointerDown = (event: React.PointerEvent, comp: Comp, onMobileAdd?: () => void) => {
