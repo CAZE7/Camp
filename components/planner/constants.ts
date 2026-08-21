@@ -1,43 +1,16 @@
 import { Node, Edge } from 'reactflow';
 import CableEdge, { CableEdgeData } from '../edges/CableEdge';
-import BatteryNode from '../nodes/BatteryNode';
-import ConsumerNode from '../nodes/ConsumerNode';
-import ChargerNode from '../nodes/ChargerNode';
-import FuseNode from '../nodes/FuseNode';
-import ShorePowerNode from '../nodes/ShorePowerNode';
-import Consumer230VNode from '../nodes/Consumer230VNode';
-import InverterNode from '../nodes/InverterNode';
-import SolarNode from '../nodes/SolarNode';
-import GroundNode from '../nodes/GroundNode';
-import ConduitNode from '../nodes/ConduitNode';
-import BusbarNode from '../nodes/BusbarNode';
-import ShuntNode from '../nodes/ShuntNode';
-import WaterNode from '../nodes/WaterNode';
+import { buildNodeTypes } from '../registry';
 
-export const NODE_TYPES = {
-  battery: BatteryNode,
-  consumer: ConsumerNode,
-  charger: ChargerNode, // kept for backwards compatibility
-  mpptController: ChargerNode,
-  dcdcCharger: ChargerNode,
-  acBatteryCharger: ChargerNode,
-  fuse: FuseNode,
-  shorePower: ShorePowerNode,
-  consumer230v: Consumer230VNode,
-  inverter: InverterNode,
-  solar: SolarNode,
-  ground: GroundNode,
-  conduit: ConduitNode,
-  busbar: BusbarNode,
-  shunt: ShuntNode,
-  freshWaterTank: WaterNode,
-  grayWaterTank: WaterNode,
-  pump: WaterNode,
-  accumulator: WaterNode,
-  preFilter: WaterNode,
-  sink: WaterNode,
-  shower: WaterNode,
-};
+/**
+ * Typ → React-Komponente für React Flow.
+ *
+ * Seit K4 aus der Bauteil-Registry abgeleitet (`components/registry`).
+ * Ein neues Bauteil wird dort registriert und ist damit automatisch
+ * darstellbar — diese Datei muss dafür nicht mehr angefasst werden.
+ */
+export const NODE_TYPES = buildNodeTypes();
+
 
 export const EDGE_TYPES = { cableEdge: CableEdge };
 

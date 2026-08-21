@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { AccessibleDialog } from '@/components/ui/AccessibleDialog';
 import { usePlannerStore } from '../../store/usePlannerStore';
 import { ClipboardCopy } from 'lucide-react';
+import { getComponentSpec } from '../registry';
 
 type BomData = {
   counts: Record<string, number>;
@@ -10,30 +11,19 @@ type BomData = {
   pipeLengths: Record<string, number>;
 };
 
-const TYPE_INFO: Record<string, { label: string; purpose: string }> = {
-  battery: { label: 'Batterie', purpose: 'Speichert Energie für die Bordelektrik.' },
-  mpptController: { label: 'Solar-Laderegler (MPPT)', purpose: 'Regelt die Ladung der Batterie durch Solarmodule.' },
-  dcdcCharger: { label: 'Ladebooster (DC-DC)', purpose: 'Lädt die Aufbaubatterie während der Fahrt.' },
-  acBatteryCharger: { label: '230-V-Ladegerät', purpose: 'Lädt die Batterie über Landstrom.' },
-  consumer: { label: '12-V-Gerät', purpose: 'Verbraucher im Gleichstromnetz.' },
-  charger: { label: 'Ladegerät', purpose: 'Lädt die Aufbaubatterie.' },
-  fuse: { label: 'Sicherungskasten', purpose: 'Schützt und verteilt elektrische Stromkreise.' },
-  shorePower: { label: 'Landstromanschluss', purpose: 'Verbindet den Camper mit dem 230-V-Netz.' },
-  inverter: { label: 'Wechselrichter', purpose: 'Erzeugt 230 V aus der Batteriespannung.' },
-  consumer230v: { label: '230-V-Gerät', purpose: 'Verbraucher im Wechselstromnetz.' },
-  solar: { label: 'Solarmodul', purpose: 'Erzeugt Energie aus Sonnenlicht.' },
-  conduit: { label: 'Leerrohr', purpose: 'Schützt Leitungen vor Scheuern und Hitze.' },
-  busbar: { label: 'Sammelschiene', purpose: 'Verteilt Plus oder Minus auf mehrere Leitungen.' },
-  shunt: { label: 'Batteriemonitor mit Shunt', purpose: 'Misst ein- und ausgehende Batterieströme.' },
-  ground: { label: 'Massepunkt', purpose: 'Stellt einen gemeinsamen Minusanschluss bereit.' },
-  freshWaterTank: { label: 'Frischwassertank', purpose: 'Speichert sauberes Wasser.' },
-  grayWaterTank: { label: 'Abwassertank', purpose: 'Sammelt gebrauchtes Wasser.' },
-  pump: { label: 'Wasserpumpe', purpose: 'Fördert Wasser und erzeugt Leitungsdruck.' },
-  accumulator: { label: 'Druckausgleichsgefäß', purpose: 'Beruhigt den Wasserfluss und schont die Pumpe.' },
-  preFilter: { label: 'Vorfilter', purpose: 'Schützt die Pumpe vor Schmutz.' },
-  sink: { label: 'Spüle', purpose: 'Entnahmestelle für Frischwasser.' },
-  shower: { label: 'Dusche', purpose: 'Entnahmestelle für Frischwasser.' },
-};
+/**
+ * Bauteil-Bezeichnungen kommen aus der Registry (K4).
+ *
+ * Vorher stand hier eine zweite Label-Tabelle — sie war bereits von der
+ * Sidebar abgewichen („Batteriemonitor mit Shunt“ vs. „Batteriemonitor
+ * (Shunt)“). Unbekannte Typen (z. B. aus einem alten gespeicherten Plan)
+ * bekommen einen ehrlichen Platzhalter statt `undefined`.
+ */
+function typeInfo(type: string): { label: string; purpose: string } {
+  const spec = getComponentSpec(type);
+  if (spec) return { label: spec.label, purpose: spec.purpose };
+  return { label: type, purpose: 'Unbekannter Bauteiltyp aus einem älteren Plan.' };
+}
 
 export function BOMModal() {
   const [open, setOpen] = useState(false);
@@ -113,7 +103,7 @@ export function BOMModal() {
                 <h3 id="bom-components" className="mb-2 font-semibold">Bauteile</h3>
                 <ul className="divide-y divide-border rounded-lg border border-border">
                   {componentEntries.map(([type, count]) => {
-                    const info = TYPE_INFO[type] || { label: type, purpose: 'Bauteil aus deinem Plan.' };
+                    const info = typeInfo(type);
                     return (
                       <li key={type} className="flex gap-3 p-3">
                         <span className="min-w-10 font-mono font-bold">{count} ×</span>

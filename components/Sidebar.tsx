@@ -2,13 +2,12 @@
 
 import React, { useState } from 'react';
 import {
-  Battery, Search, XCircle, ChevronDown, Gauge, Network, Sun, RefreshCw,
-  PlugZap, Zap, Lightbulb, Shield, Earth, Cable, Droplets, Waves, Filter,
-  ShowerHead, CookingPot, Coffee, Refrigerator, Flame, Fan, Laptop, Smartphone,
-  Box, CircleGauge,
+  Search, XCircle, ChevronDown, Lightbulb, Droplets,
+  CookingPot, Coffee, Refrigerator, Flame, Fan, Laptop, Smartphone, Box,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePlannerStore } from '../store/usePlannerStore';
+import { listSelectableSpecs, type ComponentSpec } from './registry';
 
 type Comp = {
   type: string;
@@ -19,33 +18,37 @@ type Comp = {
   watts?: number;
 };
 
-const components: Comp[] = [
-  { type: 'battery', label: 'Batterie', category: 'Strom speichern', description: 'Speichert Energie für alle Geräte.', icon: Battery },
-  { type: 'shunt', label: 'Batteriemonitor (Shunt)', category: 'Strom verteilen', description: 'Misst zuverlässig, wie voll die Batterie ist.', icon: Gauge },
-  { type: 'busbar', label: 'Sammelschiene', category: 'Strom verteilen', description: 'Verteilt Plus oder Minus auf mehrere Leitungen.', icon: Network },
-  { type: 'mpptController', label: 'Solar-Laderegler (MPPT)', category: 'Strom laden', description: 'Passt Solarstrom sicher an die Batterie an.', icon: Sun },
-  { type: 'dcdcCharger', label: 'Ladebooster (DC-DC)', category: 'Strom laden', description: 'Lädt während der Fahrt über die Lichtmaschine.', icon: RefreshCw },
-  { type: 'acBatteryCharger', label: '230-V-Ladegerät', category: 'Strom laden', description: 'Lädt die Batterie über Landstrom.', icon: PlugZap },
-  { type: 'solar', label: 'Solarmodul', category: 'Strom laden', description: 'Erzeugt unterwegs Energie aus Sonnenlicht.', icon: Sun },
-  { type: 'inverter', label: 'Wechselrichter', category: '230 Volt', description: 'Wandelt Batteriespannung in 230 V um.', icon: RefreshCw },
-  { type: 'shorePower', label: 'Landstromanschluss', category: '230 Volt', description: 'Verbindet den Camper mit dem Campingplatznetz.', icon: PlugZap },
-  { type: 'consumer', label: '12-V-Gerät', category: 'Geräte', description: 'Allgemeines Gerät für das 12-V-Bordnetz.', icon: Lightbulb },
-  { type: 'consumer230v', label: '230-V-Gerät', category: 'Geräte', description: 'Gerät, das 230 V Wechselspannung benötigt.', icon: Zap },
-  { type: 'fuse', label: 'Sicherungskasten', category: 'Schutz & Einbau', description: 'Schützt Leitungen und verteilt abgesicherte Stromkreise.', icon: Shield },
-  { type: 'ground', label: 'Massepunkt', category: 'Schutz & Einbau', description: 'Gemeinsamer Minus- oder Karosserieanschluss.', icon: Earth },
-  { type: 'conduit', label: 'Leerrohr', category: 'Schutz & Einbau', description: 'Schützt Kabel vor Scheuern und Hitze.', icon: Cable },
-];
+/**
+ * Bauteil-Katalog aus der Registry (K4).
+ *
+ * Vorher standen Label, Kategorie, Beschreibung und Icon hier — und dieselben
+ * Labels nochmal in der Stückliste. Jetzt gibt es eine Quelle:
+ * `components/registry`. Ein dort registriertes Bauteil erscheint
+ * automatisch in dieser Liste.
+ */
+const toComp = (spec: ComponentSpec): Comp => ({
+  type: spec.id,
+  label: spec.label,
+  category: spec.category,
+  description: spec.description,
+  icon: spec.icon,
+});
 
-const waterComponents: Comp[] = [
-  { type: 'freshWaterTank', label: 'Frischwassertank', category: 'Speichern', description: 'Speichert sauberes Wasser.', icon: Droplets },
-  { type: 'grayWaterTank', label: 'Abwassertank', category: 'Speichern', description: 'Sammelt gebrauchtes Wasser.', icon: Waves },
-  { type: 'pump', label: 'Wasserpumpe', category: 'Fördern & filtern', description: 'Baut Druck auf und fördert Frischwasser.', icon: CircleGauge },
-  { type: 'accumulator', label: 'Druckausgleichsgefäß', category: 'Fördern & filtern', description: 'Beruhigt den Wasserfluss und schont die Pumpe.', icon: Gauge },
-  { type: 'preFilter', label: 'Vorfilter', category: 'Fördern & filtern', description: 'Hält Schmutz vor der Pumpe zurück.', icon: Filter },
-  { type: 'sink', label: 'Spüle', category: 'Entnahmestellen', description: 'Entnahmestelle mit Frisch- und Abwasser.', icon: Droplets },
-  { type: 'shower', label: 'Dusche', category: 'Entnahmestellen', description: 'Wasserentnahme mit Abwasserleitung.', icon: ShowerHead },
-];
+/**
+ * Der Katalog wird bei jedem Rendern aus der Registry gelesen, nicht einmalig
+ * beim Laden des Moduls. Sonst wäre ein nachträglich registriertes Bauteil
+ * (Plugin, Test, künftige Lazy-Registrierung) unsichtbar — genau das hat der
+ * Registry-Test aufgedeckt.
+ */
+const useComponentCatalog = (mode: 'electric' | 'water'): Comp[] =>
+  React.useMemo(() => listSelectableSpecs(mode).map(toComp), [mode]);
 
+/**
+ * Geräte-Vorlagen sind KEINE eigenen Bauteiltypen, sondern vorbelegte
+ * Varianten vorhandener Typen (gleicher `type`, anderer Name und Wattwert).
+ * Sie bleiben deshalb bewusst eine eigene Liste — eine Registrierung als
+ * Bauteil würde doppelte IDs erzeugen.
+ */
 const deviceAssistant: Comp[] = [
   { type: 'consumer230v', label: 'Induktionskochfeld', watts: 2000, category: 'Geräte-Vorlagen', description: 'Typischer starker 230-V-Verbraucher.', icon: CookingPot },
   { type: 'consumer230v', label: 'Kaffeemaschine', watts: 1500, category: 'Geräte-Vorlagen', description: 'Typischer kurzzeitiger 230-V-Verbraucher.', icon: Coffee },
@@ -124,6 +127,12 @@ function ComponentTile({ comp, onMobileAdd, accent }: { comp: Comp; onMobileAdd?
   return (
     <button
       type="button"
+      // Stabile Selektoren für die E2E-Tests (docs/E2E-TESTS.md).
+      // Der Typ steht als eigenes Attribut, weil dieselbe Komponente auch
+      // als Geräte-Vorlage mehrfach vorkommt (z. B. mehrere consumer230v).
+      data-testid="sidebar-item"
+      data-component-type={comp.type}
+      data-component-label={comp.label}
       className={cn(
         'flex min-h-24 w-full touch-manipulation flex-col items-center justify-center gap-1 rounded-xl border p-2 text-center text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 lg:cursor-grab',
         accent === 'device'
@@ -179,7 +188,7 @@ function CategorySection({ title, items, open, onToggle, onMobileAdd, accent }: 
 export function Sidebar({ mode = 'electric', onMobileAdd }: SidebarProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [manualOpen, setManualOpen] = useState<Record<string, boolean>>({});
-  const activeComponents = mode === 'water' ? waterComponents : components;
+  const activeComponents = useComponentCatalog(mode);
   const isSearching = searchTerm.trim().length > 0;
   const matches = (label: string, description: string) => `${label} ${description}`.toLowerCase().includes(searchTerm.toLowerCase());
   const filteredComponents = activeComponents.filter((item) => matches(item.label, item.description));
@@ -205,7 +214,7 @@ export function Sidebar({ mode = 'electric', onMobileAdd }: SidebarProps) {
   const hasAnyResult = filteredComponents.length > 0 || filteredDevices.length > 0;
 
   return (
-    <aside className="flex h-full w-full flex-col border-r border-border bg-paper lg:w-72" aria-label={mode === 'water' ? 'Wasser-Komponenten' : 'Elektrik-Komponenten'}>
+    <aside data-testid="sidebar" className="flex h-full w-full flex-col border-r border-border bg-paper lg:w-72" aria-label={mode === 'water' ? 'Wasser-Komponenten' : 'Elektrik-Komponenten'}>
       <div className="border-b border-border bg-accent p-4">
         <h2 className="text-base font-black text-foreground">Komponenten</h2>
         <p className="mt-1 text-xs text-muted-foreground">Antippen oder per Tastatur hinzufügen; am Desktop auch ziehen.</p>
@@ -217,6 +226,7 @@ export function Sidebar({ mode = 'electric', onMobileAdd }: SidebarProps) {
           <Search className="absolute left-3 h-4 w-4 text-muted-foreground" aria-hidden="true" />
           <input
             id="component-search"
+            data-testid="sidebar-search"
             type="search"
             placeholder="Suchen..."
             value={searchTerm}
