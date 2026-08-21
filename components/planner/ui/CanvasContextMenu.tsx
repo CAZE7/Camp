@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Crosshair, Maximize2, Trash2, XCircle } from 'lucide-react';
+import { Crosshair, Maximize2, Trash2, XCircle, Move } from 'lucide-react';
 import { usePlannerStore } from '../../../store/usePlannerStore';
 
 export type ContextMenuState = {
@@ -16,9 +16,8 @@ const ITEM_CLASS =
   'flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-left text-sm text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
 
 /**
- * Rechtsklick-Kontextmenü (nur Maus/Trackpad — Touch-Geräte lösen kein
- * contextmenu-Event mit sinnvoller Position aus und haben stattdessen den
- * Inspector als Slide-over).
+ * Gemeinsames Kontextmenü: Rechtsklick mit Maus/Trackpad oder stationärer
+ * 500-ms-Long-Press auf Touch. Beide Wege nutzen dieselben Aktionen.
  *
  * Positionierung per `fixed` an den Cursor, mit Clamping an den Viewport,
  * damit das Menü am rechten/unteren Rand nicht abgeschnitten wird.
@@ -53,6 +52,8 @@ export function CanvasContextMenu({
   }, []);
 
   const deleteTarget = () => {
+    const targetLabel = state.targetType === 'node' ? state.label || 'Dieses Bauteil' : 'Diese Leitung';
+    if (!window.confirm(`${targetLabel} wirklich löschen? Du kannst die Aktion anschließend mit Rückgängig wiederherstellen.`)) return;
     const store = usePlannerStore.getState();
     if (state.targetType === 'node' && state.targetId) {
       const node =
@@ -98,6 +99,20 @@ export function CanvasContextMenu({
 
       {state.targetType !== 'pane' && (
         <>
+          {state.targetType === 'node' && state.targetId && (
+            <button
+              type="button"
+              role="menuitem"
+              className={ITEM_CLASS}
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('planner-arm-node', { detail: state.targetId }));
+                onClose();
+              }}
+            >
+              <Move className="h-4 w-4" aria-hidden="true" />
+              Verschieben aktivieren
+            </button>
+          )}
           <button type="button" role="menuitem" className={ITEM_CLASS} onClick={focusTarget}>
             <Crosshair className="h-4 w-4" aria-hidden="true" />
             Ansehen und markieren

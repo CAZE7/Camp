@@ -11,128 +11,86 @@ import {
 } from './layout';
 import { Node, Edge } from 'reactflow';
 
-describe('getNodeLayoutRank', () => {
-  it('places charge sources left of the battery core and loads right', () => {
-    expect(getNodeLayoutRank({ id: 's', type: 'solar', position: { x: 0, y: 0 }, data: {} })).toBe(0);
-    expect(getNodeLayoutRank({ id: 'm', type: 'mpptController', position: { x: 0, y: 0 }, data: {} })).toBe(1);
-    expect(getNodeLayoutRank({ id: 'b', type: 'battery', position: { x: 0, y: 0 }, data: { label: 'Aufbau' } })).toBe(2);
-    expect(getNodeLayoutRank({ id: 'f', type: 'fuse', position: { x: 0, y: 0 }, data: {} })).toBe(3);
-    expect(getNodeLayoutRank({ id: 'c', type: 'consumer', position: { x: 0, y: 0 }, data: {} })).toBe(4);
-  });
-
-  it('treats a starter battery as a source, not as the house battery', () => {
-    expect(
-      getNodeLayoutRank({ id: 'st', type: 'battery', position: { x: 0, y: 0 }, data: { label: 'Starterbatterie' } })
-    ).toBe(0);
-  });
+const node = (id: string, type: string, data: Record<string, unknown> = {}): Node => ({
+  id, type, position: { x: 0, y: 0 }, data,
 });
 
-describe('getNodeLayoutSize', () => {
-  it('prefers measured dimensions over the type fallback', () => {
-    expect(
-      getNodeLayoutSize({ id: 'g', type: 'ground', position: { x: 0, y: 0 }, data: {}, width: 300, height: 40 })
-    ).toEqual({ width: 300, height: 40 });
+describe('three-column cleanup layout', () => {
+  it('classifies sources, distribution and consumers into exactly three ranks', () => {
+    for (const type of ['solar', 'battery', 'shorePower']) expect(getNodeLayoutRank(node(type, type))).toBe(0);
+    for (const type of ['mpptController', 'shunt', 'busbar', 'fuse']) expect(getNodeLayoutRank(node(type, type))).toBe(1);
+    for (const type of ['consumer', 'consumer230v', 'inverter']) expect(getNodeLayoutRank(node(type, type))).toBe(2);
   });
 
-  it('uses type-specific sizes for ground and conduit', () => {
-    expect(getNodeLayoutSize({ id: 'g', type: 'ground', position: { x: 0, y: 0 }, data: {} })).toEqual({
-      width: 128,
-      height: 88,
-    });
-    expect(getNodeLayoutSize({ id: 'c', type: 'conduit', position: { x: 0, y: 0 }, data: {} })).toEqual({
-      width: 256,
-      height: 148,
-    });
+  it('prefers measured dimensions and otherwise uses type/default fallbacks', () => {
+    expect(getNodeLayoutSize({ ...node('g', 'ground'), width: 300, height: 40 })).toEqual({ width: 300, height: 40 });
+    expect(getNodeLayoutSize(node('g', 'ground'))).toEqual({ width: 128, height: 88 });
+    expect(getNodeLayoutSize(node('c', 'conduit'))).toEqual({ width: 256, height: 148 });
+    expect(getNodeLayoutSize(node('b', 'battery'))).toEqual({ width: DEFAULT_NODE_WIDTH, height: DEFAULT_NODE_HEIGHT });
   });
 
-  it('falls back to the default 192×120 card', () => {
-    expect(getNodeLayoutSize({ id: 'b', type: 'battery', position: { x: 0, y: 0 }, data: {} })).toEqual({
-      width: DEFAULT_NODE_WIDTH,
-      height: DEFAULT_NODE_HEIGHT,
-    });
-  });
-});
-
-describe('getLayoutedElements', () => {
-  it('should handle empty nodes and edges', () => {
-    const { nodes, edges } = getLayoutedElements([], []);
-    expect(nodes).toEqual([]);
-    expect(edges).toEqual([]);
+  it('handles an empty graph and preserves edge identities', () => {
+    expect(getLayoutedElements([], [])).toEqual({ nodes: [], edges: [] });
+    const nodes = [node('battery', 'battery'), node('load', 'consumer')];
+    const edges: Edge[] = [{ id: 'edge', source: 'battery', target: 'load' }];
+    expect(getLayoutedElements(nodes, edges).edges).toBe(edges);
   });
 
-  it('should layout a single node', () => {
-    const inputNodes: Node[] = [{ id: '1', position: { x: 0, y: 0 }, data: {} }];
-    const { nodes, edges } = getLayoutedElements(inputNodes, []);
-
-    expect(nodes.length).toBe(1);
-    expect(nodes[0].id).toBe('1');
-    expect(typeof nodes[0].position.x).toBe('number');
-    expect(typeof nodes[0].position.y).toBe('number');
-    expect(edges).toEqual([]);
+  it('places source, distribution and load left-to-right with 180 px clear gaps', () => {
+    const input = [node('solar', 'solar'), node('fuse', 'fuse'), node('load', 'consumer')];
+    const { nodes } = getLayoutedElements(input, []);
+    const solar = nodes.find((item) => item.id === 'solar')!;
+    const fuse = nodes.find((item) => item.id === 'fuse')!;
+    const load = nodes.find((item) => item.id === 'load')!;
+    expect(solar.position.x).toBe(LAYOUT_MARGIN);
+    expect(fuse.position.x - (solar.position.x + DEFAULT_NODE_WIDTH)).toBe(LAYOUT_RANKSEP);
+    expect(load.position.x - (fuse.position.x + DEFAULT_NODE_WIDTH)).toBe(LAYOUT_RANKSEP);
   });
 
-  it('should layout two connected nodes in LR direction', () => {
-    const inputNodes: Node[] = [
-      { id: '1', type: 'battery', position: { x: 0, y: 0 }, data: {} },
-      { id: '2', type: 'consumer', position: { x: 0, y: 0 }, data: {} },
+  it('sorts vertically by type hierarchy and leaves 120 px between cards', () => {
+    const input = [
+      node('fuse', 'fuse'),
+      node('mppt', 'mpptController'),
+      node('busbar', 'busbar'),
+      node('shunt', 'shunt'),
     ];
-    const inputEdges: Edge[] = [{ id: 'e1-2', source: '1', target: '2' }];
-
-    const { nodes, edges } = getLayoutedElements(inputNodes, inputEdges, 'LR');
-
-    expect(nodes.length).toBe(2);
-    expect(edges.length).toBe(1);
-
-    const node1 = nodes.find((n) => n.id === '1')!;
-    const node2 = nodes.find((n) => n.id === '2')!;
-
-    expect(node2.position.x).toBeGreaterThan(node1.position.x);
+    const { nodes } = getLayoutedElements(input, []);
+    const ordered = [...nodes].sort((a, b) => a.position.y - b.position.y);
+    expect(ordered.map((item) => item.id)).toEqual(['mppt', 'shunt', 'busbar', 'fuse']);
+    for (let index = 1; index < ordered.length; index += 1) {
+      const previous = ordered[index - 1];
+      expect(ordered[index].position.y - (previous.position.y + getNodeLayoutSize(previous).height)).toBe(LAYOUT_NODESEP);
+    }
   });
 
-  it('snaps functional ranks even without edges: sources, core, loads', () => {
-    const inputNodes: Node[] = [
-      { id: 'solar', type: 'solar', position: { x: 800, y: 0 }, data: {} },
-      { id: 'bat', type: 'battery', position: { x: 0, y: 0 }, data: { label: 'Batterie' } },
-      { id: 'load', type: 'consumer', position: { x: 10, y: 0 }, data: {} },
+  it('does not overlap differently sized nodes in any column', () => {
+    const input = [
+      { ...node('solar', 'solar'), width: 320, height: 160 },
+      { ...node('battery', 'battery'), width: 180, height: 100 },
+      { ...node('conduit', 'conduit'), width: 400, height: 200 },
+      { ...node('load', 'consumer'), width: 280, height: 180 },
     ];
-    const { nodes } = getLayoutedElements(inputNodes, []);
-    const solar = nodes.find((n) => n.id === 'solar')!;
-    const bat = nodes.find((n) => n.id === 'bat')!;
-    const load = nodes.find((n) => n.id === 'load')!;
-    expect(solar.position.x).toBeLessThan(bat.position.x);
-    expect(bat.position.x).toBeLessThan(load.position.x);
-    expect(bat.position.x - solar.position.x).toBeGreaterThanOrEqual(LAYOUT_RANKSEP);
+    const { nodes } = getLayoutedElements(input, []);
+    for (let a = 0; a < nodes.length; a += 1) {
+      for (let b = a + 1; b < nodes.length; b += 1) {
+        const one = nodes[a];
+        const two = nodes[b];
+        const s1 = getNodeLayoutSize(one);
+        const s2 = getNodeLayoutSize(two);
+        const overlap = one.position.x < two.position.x + s2.width && one.position.x + s1.width > two.position.x &&
+          one.position.y < two.position.y + s2.height && one.position.y + s1.height > two.position.y;
+        expect(overlap).toBe(false);
+      }
+    }
   });
 
-  it('stacks same-rank nodes with nodesep so parallel cables have room', () => {
-    const inputNodes: Node[] = [
-      { id: 'c1', type: 'consumer', position: { x: 0, y: 0 }, data: {} },
-      { id: 'c2', type: 'consumer', position: { x: 0, y: 0 }, data: {} },
-    ];
-    const { nodes } = getLayoutedElements(inputNodes, []);
-    const dy = Math.abs(nodes[0].position.y - nodes[1].position.y);
-    expect(dy).toBeGreaterThanOrEqual(LAYOUT_NODESEP);
-  });
-
-  it('does not emit dummy rank nodes', () => {
-    const inputNodes: Node[] = [
-      { id: 'bat', type: 'battery', position: { x: 0, y: 0 }, data: {} },
-      { id: 'load', type: 'consumer', position: { x: 0, y: 0 }, data: {} },
-    ];
-    const { nodes } = getLayoutedElements(inputNodes, []);
-    expect(nodes.every((n) => !n.id.startsWith('__rank'))).toBe(true);
-    expect(nodes.map((n) => n.id).sort()).toEqual(['bat', 'load']);
-  });
-
-  it('keeps water tanks left of taps', () => {
-    const inputNodes: Node[] = [
-      { id: 'tap', type: 'sink', position: { x: 0, y: 0 }, data: {} },
-      { id: 'tank', type: 'freshWaterTank', position: { x: 0, y: 0 }, data: {} },
-    ];
-    const { nodes } = getLayoutedElements(inputNodes, []);
-    const tank = nodes.find((n) => n.id === 'tank')!;
-    const tap = nodes.find((n) => n.id === 'tap')!;
-    expect(tank.position.x).toBeLessThan(tap.position.x);
-    expect(tank.position.x).toBe(LAYOUT_MARGIN);
+  it('uses the same three-column model for water', () => {
+    const { nodes } = getLayoutedElements([
+      node('tank', 'freshWaterTank'), node('pump', 'pump'), node('sink', 'sink'),
+    ], []);
+    expect(nodes.find((item) => item.id === 'tank')!.position.x)
+      .toBeLessThan(nodes.find((item) => item.id === 'pump')!.position.x);
+    expect(nodes.find((item) => item.id === 'pump')!.position.x)
+      .toBeLessThan(nodes.find((item) => item.id === 'sink')!.position.x);
   });
 });

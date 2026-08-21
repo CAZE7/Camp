@@ -18,6 +18,7 @@ import { defineConfig, devices } from '@playwright/test';
 
 const PORT = Number(process.env.E2E_PORT ?? 4173);
 const BASE_URL = process.env.E2E_BASE_URL ?? `http://127.0.0.1:${PORT}`;
+const CHROMIUM_EXECUTABLE_PATH = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH;
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -42,6 +43,9 @@ export default defineConfig({
     // der Umgebung, keine Animationen in Screenshots.
     locale: 'de-DE',
     timezoneId: 'Europe/Berlin',
+    launchOptions: CHROMIUM_EXECUTABLE_PATH
+      ? { executablePath: CHROMIUM_EXECUTABLE_PATH }
+      : undefined,
   },
 
   projects: [

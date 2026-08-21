@@ -70,7 +70,9 @@ describe('Planner Component', () => {
         // Mobile: Spalte mit Bottom-Tabs. Ab 768 px (Tablet) nebeneinander —
         // bewusst `md:flex-row` statt `lg:flex-row`, damit das iPad hochkant
         // bereits Sidebar + Canvas zeigt (Akzeptanzkriterium A2).
-        expect(mainContainer).toHaveClass('flex', 'flex-col', 'md:flex-row', 'flex-1', 'min-h-0', 'w-full', 'bg-background', 'overflow-hidden');
+        expect(mainContainer).toHaveClass('flex', 'flex-col', 'md:flex-row', 'shrink-0', 'min-h-0', 'w-full', 'bg-background', 'overflow-hidden');
+        // `shrink-0` is essential: flex-1's zero basis collapsed the dvh shell
+        // to the toolbar + bottom nav in a parent with automatic height.
         expect(mainContainer).toHaveClass('planner-shell', 'h-dvh');
     });
   });

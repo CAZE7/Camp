@@ -29,11 +29,12 @@ vi.mock('reactflow', async () => {
     Controls: () => <div data-testid="rf-controls" />,
     MiniMap: () => <div data-testid="rf-minimap" />,
     Panel: ({ children, position, className }: any) => <div data-testid={`rf-panel-${position}`} className={className}>{children}</div>,
-    default: ({ children, nodes, edges, onNodesChange, onEdgesChange, onConnect, isValidConnection, onSelectionChange, onDragOver, onDrop }: any) => (
+    default: ({ children, nodes, edges, onDragOver, onDrop, className }: any) => (
       <div
         data-testid="react-flow-mock"
         data-nodes={JSON.stringify(nodes)}
         data-edges={JSON.stringify(edges)}
+        className={className}
         onDragOver={onDragOver}
         onDrop={onDrop}
       >
@@ -88,6 +89,13 @@ const defaultPlannerStoreState = {
   setHighlightedEdgeId: vi.fn(),
   trunkMode: false,
   setTrunkMode: vi.fn(),
+  backboneGrouping: true,
+  setBackboneGrouping: vi.fn(),
+  isLayoutPending: false,
+  selectedNodes: [],
+  selectedEdges: [],
+  setSelectedNodes: vi.fn(),
+  setSelectedEdges: vi.fn(),
   calculatePathVoltageDrop: vi.fn(() => 0),
 } as any;
 
@@ -152,6 +160,29 @@ describe('FlowCanvas', () => {
 
     fireEvent.click(trunkToggle);
     expect(defaultPlannerStoreState.setTrunkMode).toHaveBeenCalledWith(true);
+  });
+
+  it('toggles the configurable main-circuit grouping', () => {
+    render(<FlowCanvas />);
+    const toggle = screen.getByRole('button', { name: 'Hauptstromkreis' });
+    expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(toggle);
+    expect(defaultPlannerStoreState.setBackboneGrouping).toHaveBeenCalledWith(false);
+  });
+
+  it('uses the standard 0.5–1.5 zoom presentation at zoom 1', () => {
+    render(<FlowCanvas />);
+    expect(screen.getByTestId('react-flow-mock')).toHaveClass('planner-zoom-standard');
+  });
+
+  it('shows a mobile overview action only for more than eight nodes', () => {
+    vi.mocked(usePlannerStore).mockImplementation((selector: any) => selector({
+      ...defaultPlannerStoreState,
+      nodes: Array.from({ length: 9 }, (_, index) => ({ id: `n${index}`, type: 'consumer', position: { x: index * 20, y: 0 }, data: {} })),
+    }));
+    render(<FlowCanvas />);
+    fireEvent.click(screen.getByTestId('mobile-overview'));
+    expect(mockFitView).toHaveBeenCalledWith({ duration: 400, padding: 0.2 });
   });
 
   it('does not render domain filter chips in water mode', () => {

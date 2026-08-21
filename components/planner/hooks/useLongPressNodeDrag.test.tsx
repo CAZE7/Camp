@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen, act, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useLongPressNodeDrag } from './useLongPressNodeDrag';
+import { LONG_PRESS_MS } from '../utils/flowInteraction';
 
 function Probe({ enabled }: { enabled: boolean }) {
   const armed = useLongPressNodeDrag(enabled);
@@ -37,13 +38,13 @@ describe('useLongPressNodeDrag', () => {
     document.body.innerHTML = '';
   });
 
-  it('arms a node after 200 ms of holding still', () => {
+  it('arms a node after the fallback hold duration', () => {
     const { body } = makeNode('battery-1');
     render(<Probe enabled />);
 
     act(() => {
       pointerDown(body, 100, 100);
-      vi.advanceTimersByTime(199);
+      vi.advanceTimersByTime(LONG_PRESS_MS - 1);
     });
     expect(screen.getByTestId('armed')).toHaveTextContent('none');
 
@@ -84,7 +85,7 @@ describe('useLongPressNodeDrag', () => {
 
     act(() => {
       pointerDown(body, 100, 100);
-      vi.advanceTimersByTime(250);
+      vi.advanceTimersByTime(LONG_PRESS_MS + 1);
     });
     expect(screen.getByTestId('armed')).toHaveTextContent('battery-1');
 
@@ -105,7 +106,7 @@ describe('useLongPressNodeDrag', () => {
 
     act(() => {
       pointerDown(body, 100, 100);
-      vi.advanceTimersByTime(250);
+      vi.advanceTimersByTime(LONG_PRESS_MS + 1);
     });
 
     expect(listener).toHaveBeenCalledTimes(1);

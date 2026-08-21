@@ -38,6 +38,8 @@ const plannerState: Record<string, unknown> = {
   selectedEdges: [],
   undo: vi.fn(),
   redo: vi.fn(),
+  canUndo: false,
+  canRedo: false,
   deleteSelected: vi.fn(),
 };
 
@@ -61,6 +63,8 @@ describe('PlannerInner — responsives Layout', () => {
     plannerState.isInspectorOpen = true;
     plannerState.selectedNodes = [];
     plannerState.selectedEdges = [];
+    plannerState.canUndo = false;
+    plannerState.canRedo = false;
   });
 
   it('A1 (375 px): Bottom-Tabs mit ≥44 px Touch-Targets und Safe-Area', () => {
@@ -80,6 +84,23 @@ describe('PlannerInner — responsives Layout', () => {
       expect(button.className).toContain('min-h-14');
       expect(button.className).toContain('min-w-14');
     });
+  });
+
+  it('M3.1 (375 px): bietet Touch-Undo/Redo mit sichtbarem Disabled-State', () => {
+    const { rerender } = render(<PlannerInner />);
+    const undoButton = screen.getByTestId('mobile-undo');
+    const redoButton = screen.getByTestId('mobile-redo');
+    expect(undoButton).toBeDisabled();
+    expect(redoButton).toBeDisabled();
+    expect(undoButton).toHaveClass('h-12', 'w-12');
+
+    plannerState.canUndo = true;
+    plannerState.canRedo = true;
+    rerender(<PlannerInner />);
+    fireEvent.click(screen.getByTestId('mobile-undo'));
+    fireEvent.click(screen.getByTestId('mobile-redo'));
+    expect(plannerState.undo).toHaveBeenCalledTimes(1);
+    expect(plannerState.redo).toHaveBeenCalledTimes(1);
   });
 
   it('A1: der Canvas ist der Standard-Tab und lässt sich umschalten', () => {

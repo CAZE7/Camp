@@ -7,7 +7,7 @@ import { PlannerDashboard } from './planner/PlannerDashboard';
 import { FlowCanvas } from './planner/FlowCanvas';
 import { ExpertPanel } from './planner/ExpertPanel';
 import { OnboardingWizard } from './planner/OnboardingWizard';
-import { Settings2, Zap, Droplets, Flame, Plus, X } from 'lucide-react';
+import { Settings2, Zap, Droplets, Flame, Plus, X, Undo2, Redo2 } from 'lucide-react';
 import { useAppStore } from '../lib/store';
 import { usePlannerStore } from '../store/usePlannerStore';
 import { useRouter } from 'next/navigation';
@@ -40,6 +40,10 @@ export default function PlannerInner() {
   const selectionCount = usePlannerStore(
     (state) => state.selectedNodes.length + state.selectedEdges.length
   );
+  const canUndo = usePlannerStore((state) => state.canUndo);
+  const canRedo = usePlannerStore((state) => state.canRedo);
+  const undo = usePlannerStore((state) => state.undo);
+  const redo = usePlannerStore((state) => state.redo);
   const router = useRouter();
 
   // Auswahl öffnet den Inspector, Klick auf leere Fläche (= Auswahl leer)
@@ -104,14 +108,14 @@ export default function PlannerInner() {
   ].join(' ');
 
   return (
-    <div data-testid="planner-shell" className="planner-shell relative flex h-dvh min-h-0 w-full flex-1 flex-col overflow-hidden bg-background font-sans md:flex-row">
+    <div data-testid="planner-shell" className="planner-shell relative flex h-dvh min-h-0 w-full shrink-0 flex-col overflow-hidden bg-background font-sans md:flex-row">
       {!hasOnboarded && <OnboardingWizard />}
 
       {/* Kein `w-auto`: die exakte Spaltenbreite (260 px Tablet / 280 px Desktop)
           setzt das einklappbare Panel selbst, damit „eingeklappt“ auch wirklich
           0 px Spaltenbreite bedeutet. */}
       <div
-        className={`min-h-0 w-full flex-1 md:flex md:flex-none ${activeTab === 'sidebar' ? 'flex' : 'hidden'}`}
+        className={`min-h-0 w-full flex-1 md:w-fit md:flex md:flex-none ${activeTab === 'sidebar' ? 'flex' : 'hidden'}`}
       >
         <PlannerSidebar onMobileAdd={handleMobileAdd} />
       </div>
@@ -155,6 +159,36 @@ export default function PlannerInner() {
         </div>
         <PlannerInspector />
       </aside>
+
+      {/* Touch-Undo/Redo bleibt über dem Canvas erreichbar, ohne die fünf
+          Bottom-Tabs auf 375 px zusammenzuquetschen. Sichtbar deaktivierte
+          Zustände spiegeln die History des Stores unmittelbar. */}
+      {activeTab === 'canvas' && (
+        <div className="absolute bottom-20 right-3 z-50 flex gap-2 md:hidden" role="group" aria-label="Änderungen rückgängig machen oder wiederholen">
+          <button
+            type="button"
+            data-testid="mobile-undo"
+            onClick={undo}
+            disabled={!canUndo}
+            className="flex h-12 w-12 items-center justify-center rounded-full border border-border bg-card text-foreground shadow-lg transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
+            aria-label="Rückgängig"
+            title="Rückgängig"
+          >
+            <Undo2 size={20} aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            data-testid="mobile-redo"
+            onClick={redo}
+            disabled={!canRedo}
+            className="flex h-12 w-12 items-center justify-center rounded-full border border-border bg-card text-foreground shadow-lg transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
+            aria-label="Wiederholen"
+            title="Wiederholen"
+          >
+            <Redo2 size={20} aria-hidden="true" />
+          </button>
+        </div>
+      )}
 
       {/* Bottom-Navigation: nur Handy. `planner-bottom-nav` ergänzt die
           iOS-Safe-Area, damit der Home-Indicator nichts überdeckt. */}

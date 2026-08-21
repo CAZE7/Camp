@@ -19,7 +19,7 @@ export function FloatingMetricsCard() {
   if (viewMode !== 'electric' || nodes.length === 0) return null;
 
   return (
-    <aside className={`pointer-events-none absolute right-3 top-24 z-40 overflow-hidden rounded-2xl border border-border bg-card/95 shadow-xl transition-all ${expanded ? 'w-80' : 'w-56'}`} aria-label="Aktuelle Kennzahlen des Elektrikplans">
+    <aside className={`pointer-events-none absolute right-3 top-24 z-40 hidden overflow-hidden sm:block rounded-2xl border border-border bg-card/95 shadow-xl transition-all ${expanded ? 'w-80' : 'w-56'}`} aria-label="Aktuelle Kennzahlen des Elektrikplans">
       <div className="pointer-events-auto p-4">
         <button type="button" onClick={() => setExpanded((value) => !value)} aria-expanded={expanded} className="mb-2 flex min-h-11 w-full items-center justify-between rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
           <span><span className="block text-xs font-bold uppercase tracking-wider text-ink-soft">Aktueller Status</span><span className="text-xs text-muted-ink">{season === 'summer' ? 'Sommerannahme' : 'Winterannahme'}</span></span>

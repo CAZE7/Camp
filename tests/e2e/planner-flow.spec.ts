@@ -48,7 +48,7 @@ test.describe('Planer-Grundablauf', () => {
 
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();
-    await expect(dialog.getByText('Stückliste')).toBeVisible();
+    await expect(dialog.getByRole('heading', { name: 'Stückliste' })).toBeVisible();
     await expect(dialog.getByText('Bauteile')).toBeVisible();
     await expect(dialog.getByText(/Batterie/i).first()).toBeVisible();
     await expect(dialog.getByText('Elektrische Leitungen')).toBeVisible();
