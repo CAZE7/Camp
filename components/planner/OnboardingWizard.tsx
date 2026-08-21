@@ -63,7 +63,13 @@ export function OnboardingWizard() {
       showClose={false}
       closeOnBackdrop={false}
     >
-      <div className="flex items-center gap-2 px-5 pt-4" aria-label={`Schritt ${step} von 3`}>
+      {/* Fortschrittsanzeige mit role=img, damit das aria-label auf einem
+          <div> erlaubt ist (Lighthouse aria-prohibited-attr). */}
+      <div
+        className="flex items-center gap-2 px-5 pt-4"
+        role="img"
+        aria-label={`Schritt ${step} von 3`}
+      >
         {[1, 2, 3].map((value) => (
           <span
             key={value}

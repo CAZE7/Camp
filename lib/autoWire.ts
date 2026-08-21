@@ -180,8 +180,11 @@ type PathDropResult = { supply: number; any: number; hasSupplyPath: boolean };
  * Kumulierter Spannungsfall — Spiegelbild von calculatePathVoltageDrop.
  * Versorgungspfad (Batterie/Landstrom) bevorzugt, parallele Ladezweige
  * fließen nicht in die Last-Bilanz.
+ *
+ * `@internal` — für Unit-Tests in `autoWire.test.ts` exportiert, um die
+ * Rekursion gezielt gegen einen kleinen Fixture-Graphen prüfen zu können.
  */
-function cumulativeDropAt(
+export function cumulativeDropAt(
   nodeId: string,
   nodeMap: Map<string, Node>,
   edges: CableEdge[],
@@ -254,7 +257,8 @@ function isAcEdge(edge: CableEdge, nodeMap: Map<string, Node>): boolean {
   return false;
 }
 
-function sizeDcEdges(
+/** @internal für Unit-Tests exportiert. */
+export function sizeDcEdges(
   dcEdges: CableEdge[],
   nodes: Node[],
   allEdges: CableEdge[],
@@ -309,7 +313,8 @@ function sizeDcEdges(
   }
 }
 
-function applyFuseSizes(dcEdges: CableEdge[], nodes: Node[], sysVoltage: number): void {
+/** @internal für Unit-Tests exportiert. */
+export function applyFuseSizes(dcEdges: CableEdge[], nodes: Node[], sysVoltage: number): void {
   const nodeMap = new Map(nodes.map((n) => [n.id, n]));
   for (const edge of dcEdges) {
     if (!edge.sourceHandle?.includes('plus')) continue;
@@ -353,7 +358,8 @@ function sizeAcEdges(edges: CableEdge[], nodes: Node[]): void {
 
 type Rails = { plus: Node; minus: Node };
 
-function resolveRails(
+/** @internal für Unit-Tests exportiert. */
+export function resolveRails(
   currentNodes: Node[],
   nodesByType: Record<string, Node[]>,
   nodesByLabel: Map<string, Node>,
@@ -453,7 +459,8 @@ function retargetEdge(
  *
  * Kanten, die nach dem Umlegen doppelt wären, entfallen (kein paralleler Pfad).
  */
-function healUserEdges(
+/** @internal für Unit-Tests exportiert. */
+export function healUserEdges(
   userEdges: CableEdge[],
   nodeMap: Map<string, Node>,
   houseBatteryId: string,
