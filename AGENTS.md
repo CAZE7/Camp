@@ -1,174 +1,204 @@
-# MISSION: TOTAL-ÜBERHOLUNG ELEKTRIKPLANER — NULL KOMPROMISSE
+# Elektrikplaner — Agentenleitfaden
 
-## ROLLE
+## Mission 1: Produktionsqualität — abgeschlossen
 
-Du bist Staff-Level Frontend-Architekt + UX-Engineer + Elektro-Domänenexperte.
-Du arbeitest an einem Elektrikplaner für Camper (Next.js 14 App Router,
-React Flow, Zustand, Tailwind, Vitest, Deploy: GitHub Pages, Static Export).
+Mission 1 wurde durch die gemergten PRs **#314** und **#315** abgeschlossen.
 
-## GRUNDPRINZIP
+### Erledigt
 
-Qualität ist die EINZIGE Priorität. Geschwindigkeit ist irrelevant.
-Umfang der Änderungen ist irrelevant. Du darfst JEDE Datei ändern,
-löschen oder neu schreiben, wenn das Ergebnis dadurch besser wird.
-Ein halbfertiges Ergebnis gilt als FEHLGESCHLAGEN.
-Du gibst erst dann ein finales Ergebnis aus, wenn du jeden Punkt der
-Definition of Done persönlich verifiziert hast.
+- Responsives Layout für Handy, Tablet und Desktop.
+- Explizite Touch-/Maus-Konfiguration für React Flow.
+- Touch-Drag-Handle, Long-Press, Tap-to-Connect und responsive Inspector-Logik.
+- Übersichtlichere orthogonale Kabelführung mit 16-px-Lanes,
+  Kabeltyp-Gruppierung, Backbone-Hierarchie und Ausweichrouten.
+- Chat-/API-Reste entfernt; der Static Export enthält keine `/api/chat`-Route.
+- Vollständige interaktive Inventur in `docs/INVENTORY.md`.
+- REST-Missionsbericht in `docs/RESTMISSION-REPORT.md`.
+- AutoWire-Testabdeckung erweitert.
+- Leere Zustände für Plan, BOM, Suche und Inspector.
+- Lighthouse Accessibility 100/100 laut `lighthouse-report/`.
+- Baseline nach Mission 1: 685 Tests grün, Typecheck und Build erfolgreich.
 
-## STATUS nach PR #314 (gemergt 2026-08-20) — NICHT erneut implementieren
+### Verbindliche Entscheidungen aus Mission 1
 
-Bereits ERLEDIGT und verbindlich:
+- Inspector: Slide-over bis 1279 px; Docking ab 1280 px.
+- Inspector-Breite: 288 px zwischen 1280–1535 px, 320 px ab 1536 px.
+- `components/planner/utils/flowInteraction.ts` ist die zentrale Quelle
+  für React-Flow-Interaktions-Props.
+- Touch-Connection-Radius: 40 px; Maus: 20 px.
+- Node-Drag auf Touch primär über `.node-drag-handle`.
+- Lane-Offset: 16 px; Backbone 3 px; normale Kabel 2 px.
+- MiniMap unter 640 px ausgeblendet.
+- Bestehende Trade-offs aus PR #314 bleiben erhalten, sofern kein
+  reproduzierbarer Fehler sie widerlegt.
 
-- D2 RESPONSIVE LAYOUT: md:flex-row statt lg:flex-row, w-auto entfernt,
-  Spaltenbreiten als CSS-Variablen (--planner-sidebar-w,
-  --planner-inspector-w). Verbindliche Auflösung der früheren
-  Anforderungs-Konflikte:
-  - Inspector dockt erst ab 1280px an (bei 1024px: 1024-280-320=424px
-    Canvas < 600px Minimum → dort Slide-over)
-  - Inspector-Breite: 288px zwischen 1280–1535px, 320px ab 1536px
-  - Canvas-Anteil bei 1440px: 60,6% (erfüllt >=60%)
-- D3 TOUCH-KONFIGURATION: components/planner/utils/flowInteraction.ts
-  ist die EINZIGE Quelle für React-Flow-Interaktions-Props. Auswahl via
-  matchMedia('(pointer: coarse)'), NICHT über Fensterbreite.
-  Node-Drag via dragHandle '.node-drag-handle' (44px, nur bei
-  pointer:coarse sichtbar, display:contents-Hülle), 200ms Long-Press
-  entsperrt zusätzlich (Vibration + Hinweis). connectionRadius:
-  40px Touch / 20px Maus.
-- D4 KABEL (großteils): Lane-Offset 16px, Lane-Sortierung nach Typ
-  (Plus → Minus → 230V → Rest), Backbone 3px / Standard 2px /
-  Trassen-Abgang 1,5px, Hover/Auswahl +1px. Kreuzungszählung mit
-  Ausweichrouten (±32/±64px) ab >3 Kreuzungen. Kabel-Labels unter
-  640px ausgeblendet, Tap zeigt 5s-Tooltip. Trefferzone Touch 36px.
-- V5/V6 weitgehend: Touch-Targets >=44px, aria-label/aria-expanded/
-  aria-current, Kontextmenü mit role=menu + Escape + Fokus.
-- MiniMap unter 640px ausgeblendet (bewusste Entscheidung, beibehalten).
-- viewportFit:'cover' im Root-Layout (safe-area-inset funktioniert).
-- Rechtsklick-Kontextmenü Desktop, sichtbare Shortcuts (Strg+Z/Entf/
-  Strg+S) in der Toolbar, Strg+S zeigt Autosave-Status.
+## Mission 2: Engineering auf außergewöhnlichem Niveau
 
-Akzeptierte Trade-offs aus PR #314 (NICHT "zurückbauen"):
-- Long-Press entsperrt nur, zieht nicht im selben Fingerkontakt
-  (d3-drag-Limitation; Griff ist der primäre Weg)
-- Strichstärke kodiert die Rolle (Backbone/normal), NICHT mehr den
-  Querschnitt — Querschnitt steht im Label
-- Slide-over ohne Animation (hidden statt translate), sonst
-  horizontales Scrollen am Tablet
-- Kreuzungszählung ist Näherung (Mittelpunkt-Mittelpunkt, O(E²)),
-  wird ab 120 Kanten übersprungen
+Ziel: Der Code soll nicht nur viele Funktionen besitzen, sondern
+fachlich beweisbarer, typ-sicherer, erweiterbarer und reproduzierbar
+werden. Keine Aufgabe darf bestehende elektrische Sicherheitslogik
+verschlechtern.
 
-Neue Test-Baseline: 664 Tests grün (vorher 613), tsc --noEmit sauber,
-next build sauber. Neue Suiten: flowInteraction.test.ts (15),
-PlannerInner.test.tsx (8), useLongPressNodeDrag.test.tsx (6),
-NodeDragHandle.test.tsx (4), cableStyle.test.ts (4).
+### Arbeitsregeln für Mission 2
 
-## REST-MISSION — das ist noch zu tun
+1. Arbeite auf einem neuen Branch pro Aufgabe oder logisch getrenntem PR.
+2. Lies zuerst die betroffenen Dateien und vorhandenen Tests.
+3. Ändere keine öffentliche API ohne dokumentierten Migrationsplan.
+4. Keine `any`-Casts, kein `@ts-ignore`, keine abgeschwächten Assertions.
+5. Jede Codeänderung braucht Tests.
+6. Jede Behauptung über Qualität muss durch einen echten Test-, Build-,
+   Benchmark- oder Lighthouse-Beleg gestützt werden.
+7. Bei einem Gegenbeispiel wird der Test nicht abgeschwächt: Ursache
+   analysieren, Code oder Anforderung korrigieren und den Fall behalten.
+8. Nach jeder Aufgabe müssen alle bisherigen Tests, Typecheck und Build
+   erfolgreich laufen.
 
-- R1 CHAT-ENTFERNUNG VERIFIZIEREN (kritisch): components/Chat.tsx wurde
-  laut PR #314 upstream entfernt. ZU PRÜFEN und ggf. zu löschen:
-  app/api/chat (Route), lib/chatConfig.ts + chatConfig.test.ts,
-  Env-Referenzen in .env.example, Doku-Erwähnungen, verwaiste Imports.
-  next build darf KEINE /api/chat-Route mehr ausgeben. Ein toter
-  Button oder eine tote Route ist INAKZEPTABEL.
-- R2 PHASE-1-INVENTUR als Artefakt nachliefern: docs/INVENTORY.md —
-  Tabelle JEDES interaktiven Elements (Element | Aktion | Status |
-  Maßnahme): Sidebar-Bauteile, Dashboard-Menü (Stückliste, Plan lokal
-  prüfen, Bild exportieren), View-Mode-Switch, OnboardingWizard,
-  Inspector-Aktionen, MiniMap, Controls, Tabs, Kontextmenü, Gesten,
-  Tastenkombinationen. Ein Element ohne Zeile = Fehlschlag.
-- R3 D5 AUTO-WIRE-TESTABDECKUNG: lib/autoWire.ts (~750 Zeilen
-  VDE-Sicherheitslogik) — verifiziere, dass JEDE öffentliche Funktion
-  dedizierte Unit-Tests hat (performAutoWiring, cumulativeDropAt,
-  sizeDcEdges, applyFuseSizes, healUserEdges, resolveRails).
-- R4 D6 AUDIT-RESTE aus AUDIT.md: A11Y-001, ELEC-001/002/003,
-  SEC-001, DEAD-001 (toter Code entfernen).
-- R5 V4 LEERE ZUSTÄNDE: leerer Plan, leere Suche, leere Stückliste —
-  jeder leere Zustand erklärt dem Nutzer den nächsten Schritt.
-- R6 LIGHTHOUSE-MESSUNG: Accessibility-Score >=95 auf Mobile MESSEN
-  (in der bisherigen Agent-Umgebung nicht möglich) und Beleg
-  (Report oder Screenshot) im PR ablegen.
-- R7 D4-REST (optional, nur falls sichtbar unruhig): exakte
-  Segment-Schnittprüfung statt Mittelpunkt-Näherung.
+## K1 — Typ-sichere physikalische Einheiten
 
-## ARBEITSWEISE — 4 PHASEN, KEINE ÜBERSPRINGEN
+Führe in `lib/units.ts` Branded Types für `Watts`, `Amps`, `Volts`,
+`Mm2`, `Meters` und `Millivolts` ein.
 
-### PHASE 1 — INVENTUR (R2) + VERIFIKATION (R1), kein Code
+- Sichere Konstruktoren und explizite UI-Grenzkonvertierungen.
+- Physikalisch sinnvolle Operationen typisieren, z. B. `P = U * I`.
+- `lib/vde-standards.ts`, `lib/autoWire.ts` und
+  `calculatePathVoltageDrop` schrittweise migrieren.
+- Bestehende JSON-/React-Flow-Daten dürfen an Persistenzgrenzen primitive
+  Werte verwenden; die Fachlogik darf Einheiten nicht verwechseln können.
+- Beweis: absichtlich falsche Einheiten müssen als TypeScript-Fehler
+  abgelehnt werden, ohne `any` oder Suppressions.
 
-Erst docs/INVENTORY.md und die Chat-Reste-Bestandsaufnahme.
+Abnahme: Typecheck 0 Fehler, 685+ Tests grün, mindestens 10 Unit-Tests
+für Konstruktoren, Konvertierungen und ungültige Werte.
 
-### PHASE 2 — ARCHITEKTUR-ENTSCHEIDUNGEN (noch kein Code)
+## K2 — Property-Based Testing der VDE-Logik
 
-Dokumentiere jede fundamentale Änderung: Problem → Optionen → Wahl →
-Begründung in 2 Sätzen. State-Aufteilung usePlannerStore (~30 kB)
-nur anfassen, wenn ein konkreter Defekt es erfordert.
+Führe `fast-check` nur ein, wenn der Nutzen gegenüber vorhandenen Tests
+begründet ist. Ergänze Property-Tests für:
 
-### PHASE 3 — UMSETZUNG
+- Sicherungs-Sandwich: Laststrom ≤ Sicherung ≤ zulässige Kabelgrenze.
+- Monotonie der Sicherungsauswahl.
+- Monotonie des Spannungsfalls bei größerer Leitungslänge.
+- Monotonie der Querschnittsauswahl bei größerem Strom.
+- Idempotenz von `performAutoWiring`.
+- AC/DC-Trennung jeder generierten Verbindung.
 
-Komplette Dateien, keine Schnipsel. Jede Änderung kommentiert
-(Warum, nicht Was). Toter Code wird gelöscht, nicht auskommentiert.
+Generatoren müssen realistische Wertebereiche abdecken und mindestens
+1.000 Runs pro Property ausführen. Shrinking-Gegenbeispiele müssen als
+Regressionstests erhalten bleiben.
 
-### PHASE 4 — VERIFIKATION (3 Pässe, ALLE im Output zeigen)
+Abnahme: reproduzierbare Tests, dokumentierte Gesetze, keine bloßen
+Snapshot- oder Beispieltests.
 
-PASS 1 — SELBSTPRÜFUNG: Inventur-Tabelle Zeile für Zeile durchgehen,
-pro Zeile Code-Stelle nennen. Viewports 375/768/1024/1440/1920
-bestätigen (Ist-Zustand aus PR #314 als Ausgangslage respektieren).
+## K3 — Routing-Invarianten und visuelle Regression
 
-PASS 2 — ADVERSARIALE PRÜFUNG: feindseliger QA-Tester:
-- 20 Nodes platzieren, wild verbinden, löschen, rückgängig
-- iPhone SE (375px) mit dicken Fingern
-- inkompatible Handles verbinden versuchen
-- Reload — Plan noch da?
-- 3+ Kabel zwischen denselben Nodes — getrennt sichtbar?
-- Offline — alles funktioniert ohne Server?
-Jedes Problem: SOFORT fixen, Pass 2 von vorn. Mindestens 5 echte
-Probleme finden — keine gefunden = nicht gründlich gesucht.
+Behandle `buildOrthogonalPath` als deterministische, reine Routing-Funktion.
+Dokumentiere und teste:
 
-PASS 3 — REGRESSIONS-ABNAHME:
-- npm test: alle 664+ Tests grün (angepasste Tests nur mit Begründung)
-- tsc -p tsconfig.typecheck.json: 0 Fehler
-- npm run build: erfolgreich, KEINE /api/chat-Route im Output
-- Jede berührte Test-Datei auflisten + begründen, warum grün
+- Exakte Start-/Endpunkte.
+- Keine Segmentkollision mit Hindernissen.
+- Nur orthogonale Segmente.
+- Begrenzte Pfadlänge oder nachvollziehbare Ausnahme bei blockierten Zielen.
+- Determinismus bei identischer Eingabe.
 
-## VISUELLE KLARHEIT — NICHT VERHANDELBAR
+Erstelle eine kleine Routing-Galerie mit reproduzierbaren SVG-/JSON-Fällen:
+Labyrinth, parallele Kabel, diagonale Quelle/Ziel, umschlossenes Ziel und
+Stressszene. Kein visueller Snapshot darf ohne Begründung geändert werden.
 
-- V1: Buttons mit Icon + Textlabel (kein Icon-only ohne aria-label
-  + Tooltip)
-- V2: Kabel-Farben konsistent (DC rot, AC blau, Wasser cyan),
-  Rollen-Strichstärken aus PR #314 beibehalten, 16px Lanes
-- V3: Maximal 2 Verschachtelungsebenen im UI
-- V4: Leere Zustände erklären den nächsten Schritt (siehe R5)
-- V5: Touch-Targets >= 44x44px
-- V6: Kontraste WCAG AA (4.5:1), Fokus-Ringe sichtbar
+Abnahme: Property-/Unit-Tests, dokumentierte Invarianten und mindestens
+20 reproduzierbare Routing-Szenarien.
 
-## DEFINITION OF DONE — ALLE Punkte, keine Ausnahme
+## K4 — Plugin-/Registry-Architektur für Bauteile
 
-- [ ] R1: Chat-Reste verifiziert/entfernt, Build ohne /api/chat
-- [ ] R2: docs/INVENTORY.md vollständig, 0 "unklar"
-- [ ] R3: autoWire-Funktionen mit dedizierten Tests
-- [ ] R4: Audit-Reste A11Y-001, ELEC-001/002/003, SEC-001, DEAD-001
-- [ ] R5: Leere Zustände mit nächstem-Schritt-Hinweis
-- [ ] R6: Lighthouse Accessibility >=95 gemessen + Beleg
-- [ ] Responsive-Verhalten aus PR #314 unverändert intakt
-- [ ] Tests grün (>=664 minus entfernte Chat-Tests), Typecheck 0,
-  Build grün
-- [ ] Kein toter Code, keine auskommentierten Blöcke, keine TODOs
-- [ ] Alle 3 Verifikations-Pässe im Output dokumentiert
+Untersuche zunächst die aktuelle Verteilung der Bauteildefinitionen.
+Entwickle nur dann eine Registry, wenn sie die Komplexität tatsächlich
+senkt.
 
-## OUTPUT-FORMAT
+Zielarchitektur:
 
-1. docs/INVENTORY.md (R2) + Chat-Bestandsaufnahme (R1)
-2. Phase-2-Entscheidungen
-3. Alle geänderten/neuen/gelöschten Dateien komplett, mit Pfad
-4. Alle 3 Verifikations-Pässe mit Ergebnissen
-5. Definition of Done als abgehakte Checkliste
-6. "Was ich NICHT lösen konnte" — ehrliche Liste (leer = verdächtig,
-   begründe dann, warum leer)
+- `ComponentSpec` für Typ, Domäne, Handles, Darstellung und Validierung.
+- Registry mit eindeutigen IDs und Laufzeitvalidierung.
+- Sidebar und Verbindungsvalidierung beziehen Definitionen aus einer
+  gemeinsamen Quelle.
+- Ein neues Bauteil soll ohne Änderung an zentralem Routing-/UI-Code
+  registrierbar sein.
+- Bestehende Spezialkomponenten dürfen bleiben, wenn das begründet wird.
 
-## VERBOTEN
+Abnahme: mindestens ein neues Test-Bauteil, keine Regressionen, klare
+Liste aller Kernänderungen und Beweis, dass die Erweiterung wirklich
+isoliert möglich ist.
 
-- Bereits gelöste Punkte aus dem STATUS-Abschnitt erneut implementieren
-  oder deren Trade-offs ohne Anlass zurückbauen
-- Schnipsel statt kompletter Dateien
-- "Das sollte jetzt funktionieren" ohne Verifikations-Nachweis
-- Neue Abhängigkeiten ohne Begründung
-- Features verstecken statt reparieren (oder sauber entfernen)
-- Aufhören, bevor die Definition of Done komplett abgehakt ist
+## K5 — Playwright-End-to-End-Tests
+
+Führe Playwright gegen den gebauten Static Export aus, nicht nur gegen
+Mocks oder eine idealisierte Entwicklungsumgebung.
+
+Pflichtszenarien:
+
+- Batterie → Sicherung → Verbraucher → Verbindung → Prüfung/BOM.
+- Responsive Layout bei 375, 768 und 1440 px ohne horizontalen Overflow.
+- Reload-Persistenz von Nodes und Kanten.
+- Touch-/Tap-Interaktion, soweit im Browser automatisierbar.
+
+Regeln: stabile `data-testid`- oder semantische Selektoren, kein
+`waitForTimeout`, isolierte Browser-Kontexte, Retry nur als Diagnose.
+Screenshots und Traces nur als CI-Artefakte, nicht als Ersatz für
+Assertions.
+
+Abnahme: drei aufeinanderfolgende grüne Läufe lokal/CI und Dokumentation
+bekannter Grenzen echter Geräteemulation.
+
+## K6 — Reproduzierbares CI-Gate
+
+Prüfe `.github/workflows/deploy.yml` und ergänze einen klaren PR-Check.
+
+- `npm ci` mit vorhandenem Lockfile.
+- Typecheck, Tests, Build und vorhandene Qualitätschecks.
+- Kein Löschen des Lockfiles und kein Fallback auf unkontrolliertes
+  `npm install`.
+- Node-Version aus `.nvmrc` verwenden.
+- Deploy nur bei erfolgreicher Qualitätsprüfung.
+- Sicherheits- und Berechtigungsumfang der Actions minimieren.
+
+Abnahme: Workflow-Syntax validiert, Branch-Protection-Anleitung,
+reproduzierbarer Fehler bei kaputtem Lockfile und erfolgreicher grüner CI.
+
+## K7 — Technische Dokumentation und Portfolio-Qualität
+
+Überarbeite `README.md` faktenbasiert:
+
+- Klare Produktbeschreibung und Zielgruppe.
+- Verifizierte Feature-Liste.
+- Architekturdiagramm: Sidebar → Store → Canvas → AutoWire → VDE-Prüfung.
+- Tech-Stack und wichtige Verzeichnisse.
+- Getting Started mit `npm ci`, Dev-Server, Tests und Build.
+- Test-, Typecheck-, Build- und Lighthouse-Status nur mit aktuellem
+  Beleg nennen.
+- Demo-/Screenshot-Platzhalter klar markieren, nichts erfinden.
+- Kurze ADRs für zentrale Entscheidungen wie Static Export,
+  React Flow, Routing und VDE-Modell ergänzen.
+
+Abnahme: Ein neuer Entwickler versteht in 30 Sekunden Zweck, Start,
+Architektur und Qualitätsnachweise.
+
+## Reihenfolge und Abhängigkeiten
+
+1. K6 CI-Gate als Sicherheitsnetz.
+2. K1 Einheiten, danach K2 Property-Tests.
+3. K3 Routing-Invarianten.
+4. K5 Playwright.
+5. K4 Registry erst nach der Analyse.
+6. K7 Dokumentation nach den technischen Änderungen.
+
+Aufgaben dürfen parallelisiert werden, wenn sie keine gemeinsamen Dateien
+ändern. Bei Konflikten gilt die Reihenfolge oben.
+
+## Globale Definition of Done
+
+- [ ] Mission-1-Funktionen bleiben unverändert funktionsfähig.
+- [ ] Keine Sicherheits- oder VDE-Regressions.
+- [ ] Tests grün, Typecheck 0 Fehler, Build erfolgreich.
+- [ ] Neue Qualitätsbehauptungen haben reproduzierbare Belege.
+- [ ] Keine toten Dateien, keine stillen Fallbacks, keine Suppressions.
+- [ ] Jede Aufgabe hat einen eigenen nachvollziehbaren PR mit
+      Problem, Lösung, Tests, Trade-offs und Rest-Risiken.
+- [ ] Unlösbare oder nicht messbare Punkte werden ausdrücklich benannt.
