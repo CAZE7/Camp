@@ -144,7 +144,7 @@ export default function PlannerInner() {
         />
       )}
 
-      <aside data-testid="inspector-panel" className={inspectorClass} aria-label="Eigenschaften">
+      <aside id="planner-inspector-panel" data-testid="inspector-panel" className={inspectorClass} aria-label="Eigenschaften">
         {/* Schließen-Knopf gehört zum Overlay, nicht zur Spalte. */}
         <div className="hidden shrink-0 items-center justify-between border-b border-border px-3 py-2 md:flex xl:hidden">
           <span className="text-sm font-semibold text-foreground">Eigenschaften</span>
