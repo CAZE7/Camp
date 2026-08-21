@@ -104,7 +104,7 @@ export default function PlannerInner() {
   ].join(' ');
 
   return (
-    <div className="planner-shell relative flex h-dvh min-h-0 w-full flex-1 flex-col overflow-hidden bg-background font-sans md:flex-row">
+    <div data-testid="planner-shell" className="planner-shell relative flex h-dvh min-h-0 w-full flex-1 flex-col overflow-hidden bg-background font-sans md:flex-row">
       {!hasOnboarded && <OnboardingWizard />}
 
       {/* Kein `w-auto`: die exakte Spaltenbreite (260 px Tablet / 280 px Desktop)
@@ -116,7 +116,7 @@ export default function PlannerInner() {
         <PlannerSidebar onMobileAdd={handleMobileAdd} />
       </div>
 
-      <div className={`min-w-0 flex-1 flex-col md:flex xl:min-w-[600px] ${activeTab === 'canvas' ? 'flex' : 'hidden'}`}>
+      <div data-testid="planner-canvas-column" className={`min-w-0 flex-1 flex-col md:flex xl:min-w-[600px] ${activeTab === 'canvas' ? 'flex' : 'hidden'}`}>
         <PlannerDashboard />
         <div className="relative flex h-full flex-1 flex-col overflow-hidden">
           <React.Suspense fallback={<div className="flex flex-1 items-center justify-center bg-background" role="status" aria-label="Planer wird geladen"><div className="h-12 w-12 animate-spin rounded-full border-b-2 border-primary motion-reduce:animate-none" /></div>}>
@@ -140,7 +140,7 @@ export default function PlannerInner() {
         />
       )}
 
-      <aside className={inspectorClass} aria-label="Eigenschaften">
+      <aside data-testid="inspector-panel" className={inspectorClass} aria-label="Eigenschaften">
         {/* Schließen-Knopf gehört zum Overlay, nicht zur Spalte. */}
         <div className="hidden shrink-0 items-center justify-between border-b border-border px-3 py-2 md:flex xl:hidden">
           <span className="text-sm font-semibold text-foreground">Eigenschaften</span>
@@ -158,20 +158,20 @@ export default function PlannerInner() {
 
       {/* Bottom-Navigation: nur Handy. `planner-bottom-nav` ergänzt die
           iOS-Safe-Area, damit der Home-Indicator nichts überdeckt. */}
-      <nav className="planner-bottom-nav z-50 flex shrink-0 items-center justify-around border-t border-border bg-card p-1 md:hidden" aria-label="Planerbereiche">
-        <button type="button" onClick={() => setActiveTab('sidebar')} className={navClass(activeTab === 'sidebar')} aria-current={activeTab === 'sidebar' ? 'page' : undefined}>
+      <nav data-testid="planner-bottom-nav" className="planner-bottom-nav z-50 flex shrink-0 items-center justify-around border-t border-border bg-card p-1 md:hidden" aria-label="Planerbereiche">
+        <button type="button" data-testid="nav-tab-sidebar" onClick={() => setActiveTab('sidebar')} className={navClass(activeTab === 'sidebar')} aria-current={activeTab === 'sidebar' ? 'page' : undefined}>
           <Plus size={22} aria-hidden="true" />
           <span>Bauteile</span>
         </button>
-        <button type="button" onClick={() => { setActiveTab('canvas'); setViewMode('electric'); }} className={navClass(activeTab === 'canvas' && viewMode === 'electric')} aria-current={activeTab === 'canvas' && viewMode === 'electric' ? 'page' : undefined}>
+        <button type="button" data-testid="nav-tab-electric" onClick={() => { setActiveTab('canvas'); setViewMode('electric'); }} className={navClass(activeTab === 'canvas' && viewMode === 'electric')} aria-current={activeTab === 'canvas' && viewMode === 'electric' ? 'page' : undefined}>
           <Zap size={22} aria-hidden="true" />
           <span>Elektrik</span>
         </button>
-        <button type="button" onClick={() => { setActiveTab('canvas'); setViewMode('water'); }} className={navClass(activeTab === 'canvas' && viewMode === 'water')} aria-current={activeTab === 'canvas' && viewMode === 'water' ? 'page' : undefined}>
+        <button type="button" data-testid="nav-tab-water" onClick={() => { setActiveTab('canvas'); setViewMode('water'); }} className={navClass(activeTab === 'canvas' && viewMode === 'water')} aria-current={activeTab === 'canvas' && viewMode === 'water' ? 'page' : undefined}>
           <Droplets size={22} aria-hidden="true" />
           <span>Wasser</span>
         </button>
-        <button type="button" onClick={() => setActiveTab('inspector')} className={navClass(activeTab === 'inspector')} aria-current={activeTab === 'inspector' ? 'page' : undefined}>
+        <button type="button" data-testid="nav-tab-inspector" onClick={() => setActiveTab('inspector')} className={navClass(activeTab === 'inspector')} aria-current={activeTab === 'inspector' ? 'page' : undefined}>
           <Settings2 size={22} aria-hidden="true" />
           <span>Details</span>
         </button>
