@@ -3,9 +3,10 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { usePlannerStore } from "../../store/usePlannerStore";
 import { calculateCrossSection, calculateMaxFuse } from "../../lib/electrical";
-import { VDE_INVERTER_EFFICIENCY, VDE_SOLAR_VMP_VOLTAGE } from "../../lib/vde-standards";
+import { VDE_INVERTER_EFFICIENCY, VDE_SOLAR_VMP_VOLTAGE, getSystemVoltage } from "../../lib/vde-standards";
 import { cn } from "@/lib/utils";
 import { Node, Edge } from 'reactflow';
+import type { CableEdgeData } from '../edges/CableEdge';
 
 
 /* ─── Knowledge Database ─── */
@@ -284,30 +285,38 @@ const DEFAULT_TIP: ExpertTip = {
 
 /* ─── Component ─── */
 
-function LiveRecommendationCard({ node, edges }: { node: Node; edges: Edge[] }) {
+function LiveRecommendationCard({ node, nodes, edges }: { node: Node; nodes: Node[]; edges: Edge<CableEdgeData>[] }) {
   if (!node || !(node.data?.watts || node.data?.amps || node.type === 'inverter' || node.type === 'solar')) return null;
 
-            let I = 0;
-            if (node.type === 'inverter') I = (Number(node.data.watts) || 1000) / 12 / VDE_INVERTER_EFFICIENCY;
-            else if (node.type === 'solar') I = (Number(node.data.watts) || 100) / VDE_SOLAR_VMP_VOLTAGE;
-            else if (node.type === 'consumer230v') I = (Number(node.data.watts) || 0) / 230; // AC current at 230V
-            else if (node.data?.watts) I = Number(node.data.watts) / 12;
-            else if (node.data?.amps) I = Number(node.data.amps);
+  // Dieselbe Systemspannung wie in Kabel-Label und Auto-Wire (12,8 V LiFePO4,
+  // 12,0 V Blei, explizite nominalVoltage) — vorher wurde hart mit 12 V
+  // gerechnet und die Karte widersprach damit der Kantenbeschriftung.
+  const sysVoltage = getSystemVoltage(nodes);
+  const isAC = node.type === 'consumer230v';
 
-            const connectedEdges = edges.filter(e => e.source === node.id || e.target === node.id);
-            let length = 2; // Default assumption 2 meters
-            let isStandardwert = true;
-            if (connectedEdges.length > 0) {
-              length = Math.max(...connectedEdges.map(e => (e.data as any)?.length || 2));
-              isStandardwert = false;
-            }
+  let I = 0;
+  if (node.type === 'inverter') I = (Number(node.data.watts) || 1000) / sysVoltage / VDE_INVERTER_EFFICIENCY;
+  else if (node.type === 'solar') I = (Number(node.data.watts) || 100) / VDE_SOLAR_VMP_VOLTAGE;
+  else if (isAC) I = (Number(node.data.watts) || 0) / 230; // AC current at 230V
+  else if (node.data?.watts) I = Number(node.data.watts) / sysVoltage;
+  else if (node.data?.amps) I = Number(node.data.amps);
 
-            // Determine domain for cross-section calculation
-            const domain: 'DC_12V' | 'AC_230V' = node.type === 'consumer230v' ? 'AC_230V' : 'DC_12V';
-            const crossSection = calculateCrossSection(I, length, undefined, domain);
-            const fuseSize = calculateMaxFuse(crossSection);
+  const connectedEdges = edges.filter(e => e.source === node.id || e.target === node.id);
+  let length = 2; // Default assumption 2 meters
+  let isStandardwert = true;
+  if (connectedEdges.length > 0) {
+    length = Math.max(...connectedEdges.map(e => e.data?.length || 2));
+    isStandardwert = false;
+  }
 
-            if (I > 0) {
+  // Determine domain for cross-section calculation
+  const domain: 'DC_12V' | 'AC_230V' = isAC ? 'AC_230V' : 'DC_12V';
+  const crossSection = calculateCrossSection(I, length, undefined, domain);
+  // 230-V-Leitungen werden nicht über die DC-FUSE_MAP abgesichert, sondern
+  // über einen FI/LS (RCBO) — die DC-Tabelle wäre hier irreführend.
+  const fuseLabel = isAC ? '16 A RCBO' : `${calculateMaxFuse(crossSection)} A`;
+
+  if (I > 0) {
               return (
                 <div className="mx-4 mt-4 p-4 rounded-xl bg-gradient-to-br from-bone/60 to-bone/30 border border-rule/50 shadow-lg backdrop-blur-md relative overflow-hidden">
                   <div className="absolute -right-4 -top-4 w-16 h-16 bg-copper/10 rounded-full blur-xl pointer-events-none" />
@@ -322,8 +331,8 @@ function LiveRecommendationCard({ node, edges }: { node: Node; edges: Edge[] }) 
                       <span className="text-lg font-black text-ink">{crossSection} <span className="text-xs font-bold text-muted-ink">mm²</span></span>
                     </div>
                     <div className="flex flex-col bg-bone/60 rounded-lg p-2.5 border border-rule/50">
-                      <span className="text-xs text-muted-ink font-semibold mb-1">Max. Sicherung</span>
-                      <span className="text-lg font-black text-ink">{fuseSize} <span className="text-xs font-bold text-muted-ink">A</span></span>
+                      <span className="text-xs text-muted-ink font-semibold mb-1">Sicherung</span>
+                      <span className="text-lg font-black text-ink">{fuseLabel}</span>
                     </div>
                     <div className="col-span-2 flex justify-between items-center bg-bone/40 rounded-lg p-2 border border-rule/40">
                       <span className="text-xs text-ink-soft font-semibold">Erwarteter Strom:</span>
@@ -344,6 +353,7 @@ export function ExpertPanel() {
   // Read-only subscription to selection state
   const selectedNodes = usePlannerStore((s) => s.selectedNodes);
   const edges = usePlannerStore((s) => s.edges);
+  const nodes = usePlannerStore((s) => s.nodes);
 
   // Öffnet das Panel automatisch, sobald Automatische Verbindung abgeschlossen wurde,
   // und bestätigt das Ergebnis sichtbar („nach Automatische Verbindung ist alles perfekt").
@@ -402,7 +412,7 @@ export function ExpertPanel() {
                 {currentKnowledge.title}
               </h3>
               <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-paper/70">
-                'Fachwissen & Normen'
+                Fachwissen &amp; Normen
               </p>
             </div>
             <button
@@ -453,7 +463,7 @@ export function ExpertPanel() {
           )}
 
           {/* Dynamic Calculation Card */}
-          {selectedNodes.length > 0 && <LiveRecommendationCard node={selectedNodes[0]} edges={edges} />}
+          {selectedNodes.length > 0 && <LiveRecommendationCard node={selectedNodes[0]} nodes={nodes} edges={edges} />}
 
           {/* Tip Accordion */}
           <div className="max-h-96 overflow-y-auto overscroll-contain mt-2">

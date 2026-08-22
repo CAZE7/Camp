@@ -111,14 +111,12 @@ function KeyboardShortcutHints() {
 }
 
 function ActionsSection({
-  season, setSeason, exportBOM, autoWireSystem, checkSchematic, onLayout,
+  season, setSeason, autoWireSystem, onLayout,
   nodes, warnings, setFeedback, undo, redo, canUndo, canRedo, onRequestReset,
 }: {
   season: 'summer' | 'winter';
   setSeason: (season: 'summer' | 'winter') => void;
-  exportBOM: () => void;
   autoWireSystem: () => void;
-  checkSchematic: () => void;
   onLayout: () => void;
   nodes: import('reactflow').Node[];
   warnings: ValidationWarning[];
@@ -149,10 +147,10 @@ function ActionsSection({
   }, [menuOpen]);
 
   const handleExportBOM = useCallback(() => {
-    exportBOM();
+    // Das BOMModal liest den Store selbst und öffnet sich über dieses Event.
     window.dispatchEvent(new CustomEvent('show-bom-modal'));
     setMenuOpen(false);
-  }, [exportBOM]);
+  }, []);
 
   const runAutoWire = () => {
     setBusy('wire');
@@ -172,7 +170,9 @@ function ActionsSection({
 
   const runCheck = () => {
     setBusy('check');
-    checkSchematic();
+    // Die Prüfung läuft live (useLiveValidation); der Button öffnet nur die
+    // Warn-Zentrale. Der frühere 'check-schematic'-Dispatch hatte keinen
+    // Listener und wurde entfernt.
     if (warnings.length > 0) {
       window.dispatchEvent(new CustomEvent('open-warning-center'));
       setFeedback({ type: 'info', message: `${warnings.length} Hinweis${warnings.length === 1 ? '' : 'e'} gefunden. Die Prüfliste wurde geöffnet.` });
@@ -291,17 +291,15 @@ export function PlannerDashboard() {
   const [resetOpen, setResetOpen] = useState(false);
 
   const {
-    viewMode, setViewMode, season, setSeason, exportBOM, autoWireSystem,
-    checkSchematic, onLayout, focusElement, nodes, edges, waterNodes, waterEdges,
+    viewMode, setViewMode, season, setSeason, autoWireSystem,
+    onLayout, focusElement, nodes, edges, waterNodes, waterEdges,
     waterWarning, undo, redo, canUndo, canRedo, clearPlan,
   } = usePlannerStore(useShallow((state) => ({
     viewMode: state.viewMode,
     setViewMode: state.setViewMode,
     season: state.season,
     setSeason: state.setSeason,
-    exportBOM: state.exportBOM,
     autoWireSystem: state.autoWireSystem,
-    checkSchematic: state.checkSchematic,
     onLayout: state.onLayout,
     focusElement: state.focusElement,
     nodes: state.nodes,
@@ -316,7 +314,7 @@ export function PlannerDashboard() {
     clearPlan: state.clearPlan,
   })));
 
-  const liveWarnings = useLiveValidation(nodes, edges, waterNodes, waterEdges);
+  const liveWarnings = useLiveValidation(nodes, edges);
   const warnings = useMemo(() => {
     const supplemental: ValidationWarning[] = [];
     nodes.filter((node) => node.type === 'shorePower' && !node.data?.hasRcd).forEach((node) => supplemental.push({
@@ -379,9 +377,7 @@ export function PlannerDashboard() {
           <ActionsSection
             season={season}
             setSeason={setSeason}
-            exportBOM={exportBOM}
             autoWireSystem={autoWireSystem}
-            checkSchematic={checkSchematic}
             onLayout={onLayout}
             nodes={viewMode === 'water' ? waterNodes : nodes}
             warnings={warnings}

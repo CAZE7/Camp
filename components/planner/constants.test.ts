@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { NODE_TYPES, EDGE_TYPES, initialNodes, initialEdges } from './constants';
+import { NODE_TYPES, EDGE_TYPES } from './constants';
 
 describe('components/planner/constants', () => {
   it('exports NODE_TYPES with expected node types', () => {
@@ -16,19 +16,9 @@ describe('components/planner/constants', () => {
     expect(Object.keys(EDGE_TYPES)).toContain('cableEdge');
   });
 
-  it('exports initialNodes as an array with items', () => {
-    expect(Array.isArray(initialNodes)).toBe(true);
-    expect(initialNodes.length).toBeGreaterThan(0);
-    expect(initialNodes[0]).toHaveProperty('id');
-    expect(initialNodes[0]).toHaveProperty('type');
-    expect(initialNodes[0]).toHaveProperty('position');
-  });
-
-  it('exports initialEdges as an array with items', () => {
-    expect(Array.isArray(initialEdges)).toBe(true);
-    expect(initialEdges.length).toBeGreaterThan(0);
-    expect(initialEdges[0]).toHaveProperty('id');
-    expect(initialEdges[0]).toHaveProperty('source');
-    expect(initialEdges[0]).toHaveProperty('target');
+  it('exports keine Demo-Fixtures mehr (initialNodes/initialEdges entfernt)', () => {
+    // Mission 4: Die Fixtures waren toter Code — der Plan startet leer bzw.
+    // über Templates/Onboarding. Das Modul ist jetzt rein deklarativ.
+    expect(Object.keys({ NODE_TYPES, EDGE_TYPES }).sort()).toEqual(['EDGE_TYPES', 'NODE_TYPES']);
   });
 });

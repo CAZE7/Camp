@@ -14,9 +14,7 @@ vi.mock('html-to-image', () => ({
 // Mock Planner Store
 const mockSetViewMode = vi.fn();
 const mockSetSeason = vi.fn();
-const mockExportBOM = vi.fn();
 const mockAutoWireSystem = vi.fn();
-const mockCheckSchematic = vi.fn();
 const mockOnLayout = vi.fn();
 const mockUndo = vi.fn();
 const mockRedo = vi.fn();
@@ -29,9 +27,7 @@ vi.mock('../../store/usePlannerStore', () => ({
       setViewMode: mockSetViewMode,
       season: 'summer',
       setSeason: mockSetSeason,
-      exportBOM: mockExportBOM,
       autoWireSystem: mockAutoWireSystem,
-      checkSchematic: mockCheckSchematic,
       onLayout: mockOnLayout,
       systemMessage: null,
       setSystemMessage: vi.fn(),
@@ -118,14 +114,12 @@ describe('PlannerDashboard - Action Buttons', () => {
     vi.restoreAllMocks();
   });
 
-  it('dispatches show-bom-modal and calls exportBOM when clicking Stückliste', async () => {
+  it('dispatches show-bom-modal when clicking Stückliste (BOM liest den Store selbst)', async () => {
     render(<PlannerDashboard />);
     const dispatchEventSpy = vi.spyOn(window, 'dispatchEvent');
 
     openMoreMenu();
     fireEvent.click(screen.getByText(/Stückliste/));
-
-    expect(mockExportBOM).toHaveBeenCalledTimes(1);
 
     expect(dispatchEventSpy).toHaveBeenCalledTimes(1);
     const event = dispatchEventSpy.mock.calls[0][0] as CustomEvent;
@@ -141,13 +135,16 @@ describe('PlannerDashboard - Action Buttons', () => {
     expect(mockAutoWireSystem).toHaveBeenCalledWith();
   });
 
-  it('calls checkSchematic when clicking KI-Check', () => {
+  it('öffnet die Warn-Zentrale bei vorhandenen Hinweisen statt eines toten Events', () => {
     render(<PlannerDashboard />);
+    const dispatchEventSpy = vi.spyOn(window, 'dispatchEvent');
 
     openMoreMenu();
     fireEvent.click(screen.getByText(/Plan lokal prüfen/));
 
-    expect(mockCheckSchematic).toHaveBeenCalledTimes(1);
+    // Kein 'check-schematic'-Dispatch mehr (hatte nie einen Listener).
+    const types = dispatchEventSpy.mock.calls.map((call) => (call[0] as CustomEvent).type);
+    expect(types).not.toContain('check-schematic');
   });
 
   it('calls onLayout with no args when clicking Aufräumen', () => {

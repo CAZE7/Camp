@@ -225,3 +225,68 @@ aktiv.
 - [x] Alle Änderungen auf 375/768/1440 px getestet
 - [x] Bestehende 1051+ Tests bleiben grün (aktuell 1069)
 - [x] Keine neuen Features außerhalb der M3-Liste
+
+## Mission 4: Audit-Befunde behoben — abgeschlossen auf diesem Branch
+
+**Status (21.08.2026):** Alle in der Audit-Runde gemeldeten Fehler aus den
+Bereichen Logik, UI/UX und Code Health sind behoben. Gate grün: Typecheck,
+Test-Typecheck, 1023 Unit-/Property-Tests, Static Build (Next 16.3.2),
+`npm audit` 0 Schwachstellen, Lockfile-Gate grün.
+
+### Logik
+
+- **LOG-01** `getEdgeDomain` verwechselt den 12-V-DC-Eingang des
+  Wechselrichters nicht mehr mit 230 V: `plus` als Ziel-Handle ist DC,
+  nur `ac_in` ist AC. Der falsche Testfall in `electrical.test.ts` wurde
+  korrigiert.
+- **LOG-02** Alle drei Templates laden ohne Fehlkanten (verifiziert per
+  Skript gegen `collectEdgeErrors`, 0 Fehler): Minimalist-Hauptsicherung
+  (0,2 m, 10 A), Autark auf 1500-W-Wechselrichter umgestellt, damit der
+  Strom (138 A) mit der Normreihe absicherbar bleibt; Onboarding-Text
+  angepasst.
+- **LOG-03** Tote zweite Validierungs-API entfernt (`validateSchematic`,
+  `validateCableEdge`, `calculateWire`, …) samt der drei parallelen
+  Sicherungstabellen (`VDE_CURRENT_CAPACITY`, `VDE_STANDARD_FUSES`,
+  `VDE_CONSERVATIVE_FUSES`). Einzige Quellen: `selectFuseSize` + `FUSE_MAP`.
+- **LOG-04** `collectEdgeErrors` deckt sich mit Rule A der
+  Live-Validierung: „Sicherung fehlt!“ nur noch bei Hochstromquellen
+  (Batterie/Wechselrichter/Ladequellen), nicht auf Sicherungskasten-
+  Abgängen oder Solarzuleitungen.
+- **LOG-05** Generische Zyklusprüfung in `isValidConnection` entfernt —
+  sie blockierte den Minus-Rückleiter (richtung-/reihenfolgeabhängig).
+  Regressionstests für beide Zeichenreihenfolgen vorhanden.
+- **LOG-06** `EdgeInspector` crasht nicht mehr bei Nicht-Normquerschnitten
+  aus alten Plänen (sicherer `FUSE_MAP`-Lookup statt werfendem
+  `calculateMaxFuse`).
+- **LOG-07** Tote Store-Aktionen/Events entfernt: `checkSchematic`
+  (`check-schematic`-Dispatch ohne Listener), `exportBOM`
+  (`export-bom`-Dispatch ohne Listener), ungenutzte
+  `waterNodes`/`waterEdges`-Parameter in `useLiveValidation`,
+  `initialNodes`/`initialEdges`-Fixtures, tote `handleChangeCrossSection`-
+  Prop-Kette.
+- **LOG-08** `ExpertPanel` rechnet mit der Systemspannung (nicht hart /12),
+  typisierte Kantendaten ohne `as any`, RCBO-Label statt DC-Tabelle für
+  230 V.
+
+### UI/UX
+
+- **UX-01** Toter Long-Press-Drag-Pfad entfernt (das 500-ms-Kontextmenü
+  brach den 750-ms-Timer immer ab). Halten = Kontextmenü, „Verschieben
+  aktivieren“ aus dem Menü schaltet frei.
+- **UX-02** `translateExtent` wächst mit dem Planinhalt (Bounds + 2 000 px
+  Rand) statt fester Grenze — große Pläne bleiben erreichbar.
+- **UX-03** Signatur-basierter Cache für den kumulierten Spannungsfall
+  (`plannerGraphSignature`): Positionen zählen nicht zur Signatur, daher
+  bleiben Knoten-Drags flüssig.
+- **UX-04** Sichtbare `'…'`-Anführungszeichen im ExpertPanel entfernt;
+  Escape hebt jetzt die Auswahl auf (Inspector schließt über den
+  Auswahl-Effekt), statt am Desktop die Spalte einzuklappen.
+
+### Code Health
+
+- **CH-01** `ConduitNode` rechnet über `calculateConduitFillPercent`/
+  `recommendConduitType` (dritte lokale Tabellen-Kopie entfernt) und nutzt
+  Warn-/UI-Tokens statt roher Tailwind-Farben.
+- **CH-02** `WaterNode` typisiert statt `any`.
+- **CH-03** `npm audit fix`: 0 Schwachstellen (next 16.3.2, postcss 8.5.23,
+  nanoid 3.3.18, sharp 0.35.3, undici 7.29.0); Lockfile-Gate grün.

@@ -72,15 +72,12 @@ interface PlannerState {
   deleteSelected: () => void;
   updateNodeData: (id: string, data: Partial<PlannerNodeData>) => void;
   handleChangeLength: (id: string, length: number) => void;
-  handleChangeCrossSection: (id: string, crossSection: number) => void;
   handleChangeFuseSize: (id: string, fuseSize: number) => void;
 
   isValidConnection: (connection: Connection) => boolean;
   onConnect: (connection: Connection) => void;
   autoWireSystem: () => void;
   onLayout: () => void;
-  checkSchematic: () => void;
-  exportBOM: () => void;
   onDrop: (event: React.DragEvent, screenToFlowPosition: (client: {x: number, y: number}) => {x: number, y: number}) => void;
   onCustomDrop: (event: Event, screenToFlowPosition: (client: {x: number, y: number}) => {x: number, y: number}) => void;
   addNode: (type: string, label: string, position: {x: number, y: number}, watts?: number) => void;
@@ -187,6 +184,49 @@ function migratePlannerPersisted(persisted: unknown, version: number): Partial<P
 }
 
 const HISTORY_LIMIT = 50;
+
+/**
+ * Cache für den kumulierten Spannungsfall (UX-Performance).
+ *
+ * `calculatePathVoltageDrop` wird pro Kante und pro Store-Update aufgerufen
+ * (CableEdge-Selector, Fehler-zIndex). Ohne Cache wäre das O(E²·N) pro Update.
+ * Der Spannungsfall hängt nur von Topologie, Längen, Querschnitten und
+ * elektrischen Daten ab — NICHT von Positionen. Die Signatur ignoriert
+ * Positionsfelder bewusst, damit der Cache Knoten-Drags übersteht.
+ */
+type DropMapEntry = { signature: string; nodes: Node[]; map: Map<string, Volts> };
+const pathDropCache = new WeakMap<Edge[], DropMapEntry>();
+let signatureNodesRef: Node[] | undefined;
+let signatureEdgesRef: Edge[] | undefined;
+let lastPlannerGraphSignature = '';
+
+/** @internal für Tests exportiert. */
+export function plannerGraphSignature(nodes: Node[], edges: Edge[]): string {
+  if (nodes === signatureNodesRef && edges === signatureEdgesRef) return lastPlannerGraphSignature;
+  const nodeSig = nodes
+    .map((n) =>
+      [n.id, n.type, n.data?.watts, n.data?.amps, n.data?.totalAmps, n.data?.nominalVoltage, n.data?.chemistry].join('|')
+    )
+    .join('~');
+  const edgeSig = edges
+    .map((e) =>
+      [
+        e.id,
+        e.source,
+        e.target,
+        e.sourceHandle ?? '',
+        e.targetHandle ?? '',
+        e.data?.length ?? '',
+        e.data?.crossSection ?? '',
+        e.data?.edgeDomain ?? '',
+      ].join('|')
+    )
+    .join('~');
+  lastPlannerGraphSignature = `${nodeSig}#${edgeSig}`;
+  signatureNodesRef = nodes;
+  signatureEdgesRef = edges;
+  return lastPlannerGraphSignature;
+}
 
 function graphSnapshot(state: Pick<PlannerState, 'nodes' | 'edges' | 'waterNodes' | 'waterEdges'>): GraphSnapshot {
   return {
@@ -464,36 +504,12 @@ export const usePlannerStore = create<PlannerState>()(
     );
     if (duplicate) return false;
 
-    // Check for cycles
-    // If there is already a path from the connection's target back to the connection's source,
-    // adding this new edge will create a cycle.
-    const outgoersMap = new Map<string, string[]>();
-
-    const currentEdges = viewMode === 'water' ? get().waterEdges : edges;
-    for (let i = 0; i < currentEdges.length; i++) {
-      const edge = currentEdges[i];
-      let targets = outgoersMap.get(edge.source);
-      if (!targets) {
-        targets = [];
-        outgoersMap.set(edge.source, targets);
-      }
-      targets.push(edge.target);
-    }
-
-    const hasPath = (fromNode: string, toNode: string, visited = new Set<string>()): boolean => {
-      if (fromNode === toNode) return true;
-      if (visited.has(fromNode)) return false;
-      visited.add(fromNode);
-      const outgoers = outgoersMap.get(fromNode) || [];
-      for (let i = 0; i < outgoers.length; i++) {
-        if (hasPath(outgoers[i], toNode, visited)) return true;
-      }
-      return false;
-    };
-
-    if (connection.source && connection.target && hasPath(connection.target, connection.source)) {
-      return false;
-    }
+    // Bewusst KEINE generische Zyklusprüfung: Ein funktionierender Stromkreis
+    // ist topologisch immer ein Zyklus (Plus-Leitung hin, Minus-Rückleitung
+    // zurück). Die Prüfung blockierte den Rückleiter consumer− → battery−,
+    // sobald die Plus-Leitung battery+ → consumer+ existierte — und je nach
+    // Zeichenreihenfolge umgekehrt. Der Spannungsfall-Walk (cumulativeDropAt)
+    // und das Tracing sind gegen echte Zyklen abgesichert (visited-Mengen).
 
     return true;
   },
@@ -611,17 +627,7 @@ export const usePlannerStore = create<PlannerState>()(
     }
   },
 
-  checkSchematic: () => {
-    const { nodes, edges } = get();
-    const schematic = { nodes, edges };
-    if (typeof window !== 'undefined') {
-      const event = new CustomEvent('check-schematic', { detail: schematic });
-      window.dispatchEvent(event);
-    }
-  },
-
-  applyTemplate: (templateId: string) => {
-    const template = TEMPLATES_DICT[templateId];
+  applyTemplate: (templateId: string) => {    const template = TEMPLATES_DICT[templateId];
     if (template) {
       set((state) => withHistory(state, {
         nodes: [...template.nodes],
@@ -631,40 +637,6 @@ export const usePlannerStore = create<PlannerState>()(
         selectedNodes: [],
         selectedEdges: [],
       }));
-    }
-  },
-
-  exportBOM: () => {
-    const { nodes, waterNodes, edges, waterEdges } = get();
-    const counts: Record<string, number> = {};
-
-    for (let i = 0; i < nodes.length; i++) {
-      const type = nodes[i].type!;
-      counts[type] = (counts[type] || 0) + 1;
-    }
-    for (let i = 0; i < waterNodes.length; i++) {
-      const type = waterNodes[i].type!;
-      counts[type] = (counts[type] || 0) + 1;
-    }
-
-    const cableLengths: Record<string, number> = {};
-
-    for (let i = 0; i < edges.length; i++) {
-      const e = edges[i];
-      const cs = e.data?.crossSection || 2.5;
-      cableLengths[cs] = (cableLengths[cs] || 0) + (e.data?.length || 3);
-    }
-    for (let i = 0; i < waterEdges.length; i++) {
-      const e = waterEdges[i];
-      const pipeType = e.data?.pipeType || 'water';
-      cableLengths[pipeType] = (cableLengths[pipeType] || 0) + (e.data?.length || 2);
-    }
-
-    const bom = { counts, cableLengths };
-
-    if (typeof window !== 'undefined') {
-      const event = new CustomEvent('export-bom', { detail: bom });
-      window.dispatchEvent(event);
     }
   },
 
@@ -733,15 +705,6 @@ export const usePlannerStore = create<PlannerState>()(
     }
   },
 
-  handleChangeCrossSection: (id, crossSection) => set((state) => withHistory(state, {
-    edges: state.edges.map((e) => {
-      if (e.id === id) {
-        return { ...e, data: { ...e.data!, crossSection } };
-      }
-      return e;
-    })
-  })),
-
   handleChangeFuseSize: (id, fuseSize) => set((state) => withHistory(state, {
     edges: state.edges.map((e) => {
       if (e.id === id) {
@@ -798,12 +761,23 @@ export const usePlannerStore = create<PlannerState>()(
   calculatePathVoltageDrop: (targetNodeId, customNodes, customEdges) => {
     const edges = customEdges || get().edges;
     const nodes = customNodes || get().nodes;
-    const sysVoltage = getSystemVoltage(nodes);
+    const signature = plannerGraphSignature(nodes, edges);
+
+    let entry = pathDropCache.get(edges);
+    if (!entry || entry.signature !== signature) {
+      entry = { signature, nodes, map: new Map() };
+      pathDropCache.set(edges, entry);
+    }
+    const cached = entry.map.get(targetNodeId);
+    if (cached !== undefined) return cached;
 
     // Identische Logik wie die Auto-Wire-Dimensionierung (cumulativeDropAt):
     // Versorgungspfad (Batterie/Landstrom) bevorzugt, sonst bester Ladezweig.
+    const sysVoltage = getSystemVoltage(nodes);
     const nodesMap = getNodeMap(nodes, []);
-    return relevantCumulativeDrop(targetNodeId, nodesMap, edges, nodes, sysVoltage);
+    const value = relevantCumulativeDrop(targetNodeId, nodesMap, edges, nodes, sysVoltage);
+    entry.map.set(targetNodeId, value);
+    return value;
   },
 }),
     {

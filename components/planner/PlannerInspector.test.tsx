@@ -13,7 +13,6 @@ const mockPlannerStoreState = {
   selectedNodes: [{ id: 'node-1' }],
   selectedEdges: [],
   handleChangeLength: vi.fn(),
-  handleChangeCrossSection: vi.fn(),
   deleteSelected: vi.fn(),
   updateNodeData: vi.fn(),
   isInspectorOpen: true,

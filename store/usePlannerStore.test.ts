@@ -1,13 +1,25 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { usePlannerStore } from './usePlannerStore';
-import { initialNodes, initialEdges } from '../components/planner/constants';
+import { Node, Edge } from 'reactflow';
 import * as layoutUtils from '../components/planner/utils/layout';
 
 // Mock the layout utility so it doesn't try to use dagre in tests
 vi.mock('../components/planner/utils/layout', () => ({
   getLayoutedElements: vi.fn((nodes, edges) => ({ nodes, edges })),
 }));
+
+// Lokale Fixtures (die früheren initialNodes/initialEdges aus
+// planner/constants waren toter Code und wurden entfernt).
+const initialNodes: Node[] = [
+  { id: 'battery', type: 'battery', position: { x: 100, y: 100 }, data: { capacity: 100, chemistry: 'LiFePO4' } },
+  { id: 'fuse-box', type: 'fuse', position: { x: 400, y: 100 }, data: { label: 'Sicherungskasten', rating: 100 } },
+  { id: 'consumer-1', type: 'consumer', position: { x: 700, y: 50 }, data: { watts: 60, hours: 12 } },
+];
+const initialEdges: Edge[] = [
+  { id: 'e-battery-fuse', source: 'battery', target: 'fuse-box', sourceHandle: 'plus', targetHandle: 'plus', type: 'cableEdge', data: { length: 0.2, crossSection: 6, fuseSize: 5 } },
+  { id: 'e-fuse-consumer', source: 'fuse-box', target: 'consumer-1', sourceHandle: 'plus', targetHandle: 'plus', type: 'cableEdge', data: { length: 3, crossSection: 2.5, fuseSize: 5 } },
+];
 
 describe('usePlannerStore', () => {
   beforeEach(() => {
@@ -298,83 +310,45 @@ describe('usePlannerStore', () => {
     });
   });
 
-  describe('checkSchematic', () => {
-    it('should dispatch check-schematic event with nodes and edges', () => {
+  describe('isValidConnection — Rückleiter statt Zyklusprüfung', () => {
+    const nodes = [
+      { id: 'bat', type: 'battery', position: { x: 0, y: 0 }, data: {} },
+      { id: 'cons', type: 'consumer', position: { x: 100, y: 0 }, data: {} },
+    ];
+    const plusEdge = { id: 'e-plus', source: 'bat', sourceHandle: 'plus', target: 'cons', targetHandle: 'plus', type: 'cableEdge', data: {} };
+
+    it('erlaubt den Minus-Rückleiter consumer→battery, wenn die Plus-Leitung existiert', () => {
       const { result } = renderHook(() => usePlannerStore());
-      const mockNode = { id: '1', type: 'battery', position: { x: 0, y: 0 }, data: { label: 'Battery' } };
-      const mockEdge = { id: 'e1', source: '1', target: '2', type: 'cableEdge', data: { length: 3, crossSection: 2.5 } };
-
       act(() => {
-        result.current.setNodes([mockNode]);
-        result.current.setEdges([mockEdge]);
+        result.current.setNodes(nodes);
+        result.current.setEdges([plusEdge]);
       });
-
-      let dispatchedEvent: Event | null = null;
-      const listener = (e: Event) => {
-        dispatchedEvent = e;
-      };
-
-      window.addEventListener('check-schematic', listener);
-
-      act(() => {
-        result.current.checkSchematic();
-      });
-
-      window.removeEventListener('check-schematic', listener);
-
-      expect(dispatchedEvent).not.toBeNull();
-      expect((dispatchedEvent as unknown as CustomEvent)?.detail).toEqual({
-        nodes: [mockNode],
-        edges: [mockEdge]
-      });
+      // Ein geschlossener Stromkreis ist topologisch ein Zyklus — die frühere
+      // generische Zyklusprüfung hat genau diese Rückleitung blockiert.
+      const back = result.current.isValidConnection({ source: 'cons', sourceHandle: 'minus', target: 'bat', targetHandle: 'minus' });
+      expect(back).toBe(true);
     });
-  });
 
-  describe('exportBOM', () => {
-    it('should dispatch export-bom event with counts and cableLengths', () => {
+    it('erlaubt die Plus-Leitung, wenn der Minus-Rückleiter zuerst gezeichnet wurde', () => {
       const { result } = renderHook(() => usePlannerStore());
-
-      const mockNodes = [
-        { id: '1', type: 'battery', position: { x: 0, y: 0 }, data: {} },
-        { id: '2', type: 'battery', position: { x: 0, y: 0 }, data: {} },
-        { id: '3', type: 'solar', position: { x: 0, y: 0 }, data: {} }
-      ];
-
-      const mockEdges = [
-        { id: 'e1', source: '1', target: '2', type: 'cableEdge', data: { length: 5, crossSection: 2.5 } },
-        { id: 'e2', source: '2', target: '3', type: 'cableEdge', data: { length: 2, crossSection: 4 } },
-        { id: 'e3', source: '1', target: '3', type: 'cableEdge', data: { length: 1, crossSection: 2.5 } }
-      ];
-
       act(() => {
-        result.current.setNodes(mockNodes);
-        result.current.setEdges(mockEdges);
+        result.current.setNodes(nodes);
+        result.current.setEdges([
+          { id: 'e-minus', source: 'cons', sourceHandle: 'minus', target: 'bat', targetHandle: 'minus', type: 'cableEdge', data: {} },
+        ]);
       });
+      const plus = result.current.isValidConnection({ source: 'bat', sourceHandle: 'plus', target: 'cons', targetHandle: 'plus' });
+      expect(plus).toBe(true);
+    });
 
-      let dispatchedEvent: Event | null = null;
-      const listener = (e: Event) => {
-        dispatchedEvent = e;
-      };
-
-      window.addEventListener('export-bom', listener);
-
+    it('blockiert weiterhin eine identische Duplikat-Verbindung', () => {
+      const { result } = renderHook(() => usePlannerStore());
       act(() => {
-        result.current.exportBOM();
+        result.current.setNodes(nodes);
+        result.current.setEdges([plusEdge]);
       });
-
-      window.removeEventListener('export-bom', listener);
-
-      expect(dispatchedEvent).not.toBeNull();
-      expect((dispatchedEvent as unknown as CustomEvent)?.detail).toEqual({
-        counts: {
-          battery: 2,
-          solar: 1
-        },
-        cableLengths: {
-          '2.5': 6,
-          '4': 2
-        }
-      });
+      const duplicate = result.current.isValidConnection({ source: 'bat', sourceHandle: 'plus', target: 'cons', targetHandle: 'plus' });
+      expect(duplicate).toBe(false);
     });
   });
 

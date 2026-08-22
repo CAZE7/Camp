@@ -5,7 +5,6 @@ import {
   MOUSE_CONNECTION_RADIUS,
   TOUCH_CONNECTION_RADIUS,
   NODE_DRAG_HANDLE_SELECTOR,
-  LONG_PRESS_MS,
 } from './flowInteraction';
 
 describe('getFlowInteractionProps (coarse pointer / Touch)', () => {
@@ -87,8 +86,7 @@ describe('constants', () => {
     expect(pointerModeFromCoarse(false)).toBe('fine');
   });
 
-  it('exposes the drag-handle selector and long-press duration', () => {
+  it('exposes the drag-handle selector', () => {
     expect(NODE_DRAG_HANDLE_SELECTOR).toBe('.node-drag-handle');
-    expect(LONG_PRESS_MS).toBe(750);
   });
 });

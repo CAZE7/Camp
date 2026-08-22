@@ -72,17 +72,17 @@ describe('ConduitNode Component', () => {
     // Check recommendation text
     expect(screen.getByText(/Bitte mindestens EN 25 Rohr verwenden./i)).toBeInTheDocument();
 
-    // Check if the overfill css class is present
+    // Check if the overfill token classes are present
     const mainDiv = container.firstChild as HTMLElement;
-    expect(mainDiv.className).toContain('bg-red-50');
-    expect(mainDiv.className).toContain('border-red-500');
+    expect(mainDiv.className).toContain('bg-warn-critical-bg');
+    expect(mainDiv.className).toContain('border-warn-critical');
   });
 
   it('applies selected styling when selected is true and not overfilled', () => {
     const { container } = render(<ConduitNode id="1" data={{}} selected={true} />);
     const mainDiv = container.firstChild as HTMLElement;
     expect(mainDiv.className).toContain('ring-4');
-    expect(mainDiv.className).toContain('ring-gray-400');
+    expect(mainDiv.className).toContain('ring-border');
   });
 
   it('renders Handle components properly', () => {

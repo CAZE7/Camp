@@ -219,6 +219,36 @@ export function FlowCanvas() {
   const rawNodes = viewMode === 'water' ? waterNodes : nodes;
   const rawEdges = viewMode === 'water' ? waterEdges : edges;
 
+  // Pan-Begrenzung wächst mit dem Planinhalt. Die frühere feste Grenze
+  // [[-3000,-3000],[6000,6000]] machte große Pläne unerreichbar: Auto-Layout
+  // und Touch-Hinzufügen stapeln Nodes bei y > 3000, dort war kein Pan mehr
+  // möglich. Der Rand von 2000 px lässt weiterhin Platz zum Rangieren, ohne
+  // dass man den Plan „verlieren“ kann. Nodes ohne Positionsangabe (teil-
+  // korrupte gespeicherte Pläne) werden defensiv übersprungen.
+  const translateExtent = useMemo(() => {
+    if (rawNodes.length === 0) return undefined;
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    for (const node of rawNodes) {
+      const position = (node as Partial<Node> | null)?.position;
+      if (!position || typeof position.x !== 'number' || typeof position.y !== 'number') continue;
+      const width = node.width || 192;
+      const height = node.height || 120;
+      minX = Math.min(minX, position.x);
+      minY = Math.min(minY, position.y);
+      maxX = Math.max(maxX, position.x + width);
+      maxY = Math.max(maxY, position.y + height);
+    }
+    if (!Number.isFinite(minX)) return undefined;
+    const margin = 2000;
+    return [
+      [minX - margin, minY - margin],
+      [maxX + margin, maxY + margin],
+    ] as [[number, number], [number, number]];
+  }, [rawNodes]);
+
   // Domänen-Filter (nur Elektrik): alle Domänen standardmäßig aktiv.
   const [activeDomains, setActiveDomains] = useState<Set<Domain>>(() => new Set(DOMAINS));
   const toggleDomain = React.useCallback((domain: Domain) => {
@@ -427,7 +457,7 @@ export function FlowCanvas() {
           elementsSelectable
           nodesFocusable
           edgesFocusable
-          translateExtent={[[ -3000, -3000 ], [6000, 6000]]}
+          translateExtent={translateExtent}
           /* --- Zeiger-abhängige Interaktion, jede Prop begründet in
                  planner/utils/flowInteraction.ts --- */
           panOnDrag={interaction.panOnDrag}

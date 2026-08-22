@@ -75,7 +75,14 @@ export default function PlannerInner() {
         // Ein offener Dialog (Stückliste, Reset-Rückfrage, Onboarding) hat
         // Vorrang — sonst würden zwei Ebenen gleichzeitig schließen.
         if (document.querySelector('[role="dialog"]')) return;
-        usePlannerStore.getState().setInspectorOpen(false);
+        // Escape hebt zuerst die Auswahl auf (Standard-Bedeutung). Der
+        // Inspector schließt dadurch auf allen Geräteklassen über den
+        // Auswahl-Effekt — die dritte Spalte selbst bleibt am Desktop als
+        // Layout erhalten, statt als Ganzes einzuklappen.
+        const state = usePlannerStore.getState();
+        state.setSelectedNodes([]);
+        state.setSelectedEdges([]);
+        state.setInspectorOpen(false);
       } else if (event.key === 'Delete' || event.key === 'Backspace') {
         const state = usePlannerStore.getState();
         if (state.selectedNodes.length > 0 || state.selectedEdges.length > 0) {

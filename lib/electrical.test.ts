@@ -79,14 +79,16 @@ describe('electrical safety refactoring tests', () => {
     expect(getEdgeDomain('inverter', 'battery', 'minus')).toBe('DC_12V');
     expect(getEdgeDomain('inverter', 'battery', 'ground')).toBe('DC_12V');
 
-    // Test target AC handles
-    expect(getEdgeDomain('battery', 'inverter', null, 'ac_out')).toBe('AC_230V');
-    expect(getEdgeDomain('battery', 'inverter', null, 'plus')).toBe('AC_230V');
-    expect(getEdgeDomain('battery', 'inverter', null, 'L')).toBe('AC_230V');
-    expect(getEdgeDomain('battery', 'inverter', null, 'ac')).toBe('AC_230V');
-    expect(getEdgeDomain('battery', 'inverter', null, 'output')).toBe('AC_230V');
-
-    // Test target non-AC handles
+    // Ziel-Handles am Wechselrichter: 'plus' (links) ist der 12-V-DC-Eingang,
+    // nur 'ac_in' (oben) ist der 230-V-Eingang — konsistent mit getHandleDomain
+    // und der Registry (builtinComponents.ts). Eine Batterie-Plus-Kante auf den
+    // Inverter-'plus'-Ziel-Handle ist deshalb DC, keine 230-V-Leitung.
+    expect(getEdgeDomain('battery', 'inverter', null, 'ac_in')).toBe('AC_230V');
+    expect(getEdgeDomain('battery', 'inverter', null, 'plus')).toBe('DC_12V');
+    expect(getEdgeDomain('battery', 'inverter', null, 'ac_out')).toBe('DC_12V');
+    expect(getEdgeDomain('battery', 'inverter', null, 'L')).toBe('DC_12V');
+    expect(getEdgeDomain('battery', 'inverter', null, 'ac')).toBe('DC_12V');
+    expect(getEdgeDomain('battery', 'inverter', null, 'output')).toBe('DC_12V');
     expect(getEdgeDomain('battery', 'inverter', null, 'minus')).toBe('DC_12V');
     expect(getEdgeDomain('battery', 'inverter', null, 'ground')).toBe('DC_12V');
   });

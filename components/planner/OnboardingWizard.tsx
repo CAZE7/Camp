@@ -23,7 +23,7 @@ const VERBRAUCHER = [
 const TEMPLATES = [
   { id: 'minimalist', label: 'Minimal – einfache 12-V-Anlage', desc: 'Batterie, Sicherungskasten, USB-Anschlüsse, LED-Licht und kleine Kühlbox.' },
   { id: 'allrounder', label: 'Allround – ausgewogene Standardanlage', desc: '100-Ah-Lithium-Batterie, 150 W Solar, Ladebooster, 500-W-Wechselrichter und Kühlschrank.' },
-  { id: 'autark', label: 'Autark – hoher Energiebedarf', desc: '200-Ah-Lithium-Batterie, 400 W Solar, 2000-W-Wechselrichter, Kochfeld und Warmwasser.' },
+  { id: 'autark', label: 'Autark – hoher Energiebedarf', desc: '200-Ah-Lithium-Batterie, 400 W Solar, 1500-W-Wechselrichter, Kochfeld und Warmwasser.' },
 ];
 
 export function OnboardingWizard() {

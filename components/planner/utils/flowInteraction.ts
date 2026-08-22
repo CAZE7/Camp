@@ -22,13 +22,11 @@ export const MOUSE_CONNECTION_RADIUS = 20;
 export const NODE_DRAG_HANDLE_SELECTOR = '.node-drag-handle';
 
 /**
- * Fallback-Dauer zum Entsperren des Node-Körpers. Das Touch-Kontextmenü öffnet
- * bereits nach 500 ms und bricht diesen Timer ab; Verschieben wird dort gezielt
- * gewählt oder direkt über den Griff ausgeführt.
+ * Wegstrecke, die einen langen Druck als Pan-Geste verwirft.
+ * (Der frühere LONG_PRESS_MS-Timer zum Entsperren des Node-Körpers wurde
+ * entfernt: Halten öffnet das 500-ms-Kontextmenü, dessen Menüpunkt
+ * „Verschieben aktivieren“ das Entsperren übernimmt.)
  */
-export const LONG_PRESS_MS = 750;
-
-/** Wegstrecke, die einen langen Druck als Pan-Geste verwirft. */
 export const LONG_PRESS_MOVE_TOLERANCE = 10;
 
 export type FlowInteractionProps = {

@@ -2,7 +2,7 @@
  * Additional tests for usePlannerStore covering unique functions
  * that are NOT covered by store/usePlannerStore.test.ts:
  *   - onLayout
- *   - handleChangeLength / handleChangeCrossSection / handleChangeFuseSize
+ *   - handleChangeLength / handleChangeFuseSize
  *   - setWaterNodes / setWaterEdges (array + function updater)
  *   - onWaterNodesChange / onWaterEdgesChange
  *   - setWaterWarning
@@ -12,7 +12,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { act } from '@testing-library/react';
 import { usePlannerStore, getDerivedSystemState } from './usePlannerStore';
-import { initialNodes, initialEdges } from '../components/planner/constants';
+import { TEMPLATE_MINIMALIST } from '../components/planner/templates';
 import * as layoutUtils from '../components/planner/utils/layout';
 import type { Node, Edge } from 'reactflow';
 import { CableEdgeData } from '../components/edges/CableEdge';
@@ -31,8 +31,8 @@ describe('usePlannerStore - extended coverage', () => {
   beforeEach(() => {
     usePlannerStore.setState({
       viewMode: 'electric',
-      nodes: initialNodes,
-      edges: initialEdges,
+      nodes: TEMPLATE_MINIMALIST.nodes,
+      edges: TEMPLATE_MINIMALIST.edges,
       waterNodes: [],
       waterEdges: [],
       season: 'summer',
@@ -135,32 +135,6 @@ describe('usePlannerStore - extended coverage', () => {
       const state = usePlannerStore.getState();
       expect(state.edges.find(e => e.id === 'e1')?.data?.length).toBe(9);
       expect(state.edges.find(e => e.id === 'e2')?.data?.length).toBe(5);
-    });
-  });
-
-  describe('handleChangeCrossSection', () => {
-    it('should update the crossSection field on the matching edge', () => {
-      const edge: Edge<CableEdgeData> = {
-        id: 'e1',
-        source: 'a',
-        target: 'b',
-        data: { length: 3, crossSection: 2.5 },
-      };
-      usePlannerStore.setState({ edges: [edge] });
-
-      usePlannerStore.getState().handleChangeCrossSection('e1', 6);
-
-      expect(usePlannerStore.getState().edges[0].data?.crossSection).toBe(6);
-      expect(usePlannerStore.getState().edges[0].data?.length).toBe(3);
-    });
-
-    it('should be a no-op if no edge matches the id', () => {
-      const edge: Edge<CableEdgeData> = { id: 'e1', source: 'a', target: 'b', data: { length: 3, crossSection: 2.5 } };
-      usePlannerStore.setState({ edges: [edge] });
-
-      usePlannerStore.getState().handleChangeCrossSection('nonexistent', 6);
-
-      expect(usePlannerStore.getState().edges[0].data?.crossSection).toBe(2.5);
     });
   });
 
@@ -344,16 +318,15 @@ describe('usePlannerStore - extended coverage', () => {
  * „null Warnungen" — geprüft mit den exakt gleichen Regeln, die die App nutzt:
  *   1. useLiveValidation (6 Regeln: Quellschutz, MPPT, Batterie, Inverter,
  *      DC-DC-Vollständigkeit, Shunt-Bypass)
- *   2. validateSchematic (lib/vde-standards)
- *   3. collectEdgeErrors — die echte Kanten-Logik aus CableEdge.tsx
+ *   2. collectEdgeErrors — die echte Kanten-Logik aus CableEdge.tsx
  *      (Sicherung zu klein/zu groß/fehlt, Gesamt-Drop, 20-cm-Hauptsicherung)
  * ──────────────────────────────────────────────────────────────────────────── */
 import { renderHook } from '@testing-library/react';
 import { useLiveValidation } from '../components/planner/hooks/useLiveValidation';
-import { validateSchematic, calculateEdgeCurrent, getSystemVoltage } from '../lib/vde-standards';
+import { calculateEdgeCurrent, getSystemVoltage } from '../lib/vde-standards';
 import { FUSE_MAP, STANDARD_FUSE_SIZES, calculateCrossSection, calculateMaxFuse } from '../lib/electrical';
 import { collectEdgeErrors } from '../components/edges/CableEdge';
-import { TEMPLATE_MINIMALIST, TEMPLATE_ALLROUNDER, TEMPLATE_AUTARK } from '../components/planner/templates';
+import { TEMPLATE_ALLROUNDER, TEMPLATE_AUTARK } from '../components/planner/templates';
 
 function makeNode(id: string, type: string, data: Record<string, unknown> = {}): Node {
   return { id, type, position: { x: 0, y: 0 }, data };
@@ -417,15 +390,11 @@ function assertZeroWarnings(nodes: Node[], edges: Edge<CableEdgeData>[]) {
   const { result } = renderHook(() => useLiveValidation(nodes, edges));
   expect(result.current).toEqual([]);
 
-  // 2. VDE-Validierung (validateSchematic)
-  const violations = validateSchematic(nodes, edges).filter((v) => v.severity !== 'ok');
-  expect(violations).toEqual([]);
-
-  // 3. Kanten-Logik der Anzeige (CableEdge-Errors)
+  // 2. Kanten-Logik der Anzeige (CableEdge-Errors)
   const edgeErrors: string[] = [];
   for (const edge of edges) {
     edgeErrors.push(...getEdgeErrors(nodes, edges, edge));
-  }
+}
   expect(edgeErrors).toEqual([]);
 }
 
@@ -612,10 +581,10 @@ describe('Auto-Wire: keine Warnungen nach performAutoWiring', () => {
   });
 
   it('Startzustand (Standard-Template): nach Auto-Wire null Warnungen', () => {
-    const { nodes: n, edges: e } = runAutoWire(initialNodes, { userEdges: initialEdges });
+    const { nodes: n, edges: e } = runAutoWire(TEMPLATE_MINIMALIST.nodes, { userEdges: TEMPLATE_MINIMALIST.edges });
 
     // Template-Kanten bleiben erhalten, Auto-Kanten kommen hinzu
-    for (const ie of initialEdges) {
+    for (const ie of TEMPLATE_MINIMALIST.edges) {
       expect(e.some((x) => x.id === ie.id)).toBe(true);
     }
     // keine doppelten Verbindungen
@@ -629,9 +598,6 @@ describe('Auto-Wire: keine Warnungen nach performAutoWiring', () => {
 function assertNoSafetyWarnings(nodes: Node[], edges: Edge<CableEdgeData>[]) {
   const { result } = renderHook(() => useLiveValidation(nodes, edges));
   expect(result.current.filter((w) => w.category !== 'estimation')).toEqual([]);
-
-  const violations = validateSchematic(nodes, edges).filter((v) => v.severity !== 'ok');
-  expect(violations).toEqual([]);
 
   const edgeErrors: string[] = [];
   for (const edge of edges) {
@@ -700,12 +666,11 @@ describe('Auto-Wire: Topologie-Heilung & reale Templates', () => {
     expect(n.filter((x) => x.type === 'busbar').length).toBe(2);
     expect(n.some((x) => x.data.label === 'Main Busbar')).toBe(false);
 
-    // 2000W-Inverter bei 12V sprengt FUSE_MAP/70mm² — Kanten-Warnungen dort sind physikalisch.
-    // Live-Validierung (Shunt-Bypass, RCD, Topologie) muss trotzdem sauber sein.
-    const { result } = renderHook(() => useLiveValidation(n, e));
-    expect(result.current.filter((w) => w.category !== 'estimation')).toEqual([]);
-    const violations = validateSchematic(n, e).filter((v) => v.severity === 'error');
-    expect(violations).toEqual([]);
+    // Mission 4: Das Template nutzt einen 1500-W-Wechselrichter, damit sich
+    // der Strom mit der Normreihe fehlerfrei absichern lässt. Deshalb gilt
+    // hier die volle Prüfung — ohne die frühere Sonderbehandlung für 2000 W.
+    assertNoSafetyWarnings(n, e);
+    assertFusesMatchVde(e);
   });
 
   it('Legacy-Laderegler (type charger) wird als MPPT wiederverwendet', () => {

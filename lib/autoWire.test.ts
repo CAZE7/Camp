@@ -5,9 +5,11 @@ import {
   isStarterBatteryLabel,
   cumulativeDropAt,
   sizeDcEdges,
+  sizeAcEdges,
   applyFuseSizes,
   healUserEdges,
   resolveRails,
+  pickHouseBattery,
   relevantCumulativeDrop,
 } from './autoWire';
 import { volts } from './units';
@@ -272,6 +274,99 @@ describe('autoWire — sizeDcEdges', () => {
 });
 
 // ---------------------------------------------------------------------------
+// sizeAcEdges — 230-V-Leitungen (AUTO-001: bisher nur indirekt getestet)
+// ---------------------------------------------------------------------------
+describe('autoWire — sizeAcEdges', () => {
+  it('dimensioniert Landstrom → 230-V-Gerät nach Last und Länge (230 V, 3 %)', () => {
+    const nodes = [
+      n('sp', 'shorePower', {}),
+      n('c1', 'consumer230v', { watts: 3680 }),
+    ];
+    const edges: Edge<CableEdgeData>[] = [
+      e({ id: 'ac1', source: 'sp', target: 'c1', sourceHandle: 'plus', targetHandle: 'plus', data: { length: 30, edgeDomain: 'AC_230V' } }),
+    ];
+    sizeAcEdges(edges, nodes);
+    // 3680 W / 230 V = 16 A → Spannungsfall dominiert bei 30 m:
+    // A = (16 A · 2 · 30 m) / (58 · 4,6 V) = 3,60 mm² → 4 mm² Normquerschnitt.
+    expect(edges[0].data?.crossSection).toBe(4);
+  });
+
+  it('nutzt die Last des 230-V-Geräts, nicht die Wechselrichter-Nennleistung', () => {
+    // Die AC-Leitung Wechselrichter → Gerät trägt den Gerätestrom. Eine
+    // Auslegung nach Wechselrichter-Nennleistung (5000 W → 6 mm²) wäre falsch.
+    const nodes = [
+      n('i1', 'inverter', { watts: 5000 }),
+      n('c1', 'consumer230v', { watts: 3680 }),
+    ];
+    const edges: Edge<CableEdgeData>[] = [
+      e({ id: 'ac1', source: 'i1', target: 'c1', sourceHandle: 'plus', targetHandle: 'plus', data: { length: 30, edgeDomain: 'AC_230V' } }),
+    ];
+    sizeAcEdges(edges, nodes);
+    // 3680 W / 230 V = 16 A bei 30 m → Spannungsfall dominiert → 4 mm².
+    expect(edges[0].data?.crossSection).toBe(4);
+  });
+
+  it('rechnet Landstrom-Leitungen mit 16 A (CEE)', () => {
+    const nodes = [
+      n('sp', 'shorePower', {}),
+      n('ch', 'acBatteryCharger', { amps: 20 }),
+    ];
+    const edges: Edge<CableEdgeData>[] = [
+      e({ id: 'ac1', source: 'sp', target: 'ch', sourceHandle: 'plus', targetHandle: 'plus', data: { length: 2, edgeDomain: 'AC_230V' } }),
+    ];
+    sizeAcEdges(edges, nodes);
+    // 16 A bei 2 m: thermisch 2,5 mm², Spannungsfall vernachlässigbar.
+    expect(edges[0].data?.crossSection).toBe(2.5);
+  });
+
+  it('unterschreitet einen vorhandenen Querschnitt nie (Nutzerwert ist Untergrenze)', () => {
+    const nodes = [
+      n('sp', 'shorePower', {}),
+      n('c1', 'consumer230v', { watts: 230 }),
+    ];
+    const edges: Edge<CableEdgeData>[] = [
+      e({ id: 'ac1', source: 'sp', target: 'c1', sourceHandle: 'plus', targetHandle: 'plus', data: { length: 2, crossSection: 10, edgeDomain: 'AC_230V' } }),
+    ];
+    sizeAcEdges(edges, nodes);
+    expect(edges[0].data?.crossSection).toBe(10);
+  });
+
+  it('lässt Kanten ohne AC-Markierung unangetastet', () => {
+    const nodes = [
+      n('b1', 'battery', {}),
+      n('c1', 'consumer', { watts: 24 }),
+    ];
+    const edges: Edge<CableEdgeData>[] = [
+      e({ id: 'dc1', source: 'b1', target: 'c1', data: { length: 2, crossSection: 4, edgeDomain: 'DC_12V' } }),
+      e({ id: 'no-data', source: 'b1', target: 'c1' }),
+    ];
+    sizeAcEdges(edges, nodes);
+    expect(edges[0].data?.crossSection).toBe(4);
+    expect(edges[1].data).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// pickHouseBattery — Wahl der Aufbaubatterie (AUTO-001: bisher nur indirekt)
+// ---------------------------------------------------------------------------
+describe('autoWire — pickHouseBattery', () => {
+  it('bevorzugt eine Nicht-Starterbatterie, auch wenn sie später im Array steht', () => {
+    const starter = n('s1', 'battery', { label: 'Starterbatterie' });
+    const house = n('h1', 'battery', { label: 'Aufbaubatterie' });
+    expect(pickHouseBattery([starter, house])?.id).toBe('h1');
+  });
+
+  it('fällt auf die erste Batterie zurück, wenn alle wie Starter aussehen', () => {
+    const only = n('s1', 'battery', { label: 'Starterbatterie' });
+    expect(pickHouseBattery([only])?.id).toBe('s1');
+  });
+
+  it('liefert undefined für eine leere Batterieliste', () => {
+    expect(pickHouseBattery([])).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
 // applyFuseSizes — Sicherungsauswahl (R3, ELEC-001)
 // ---------------------------------------------------------------------------
 describe('autoWire — applyFuseSizes', () => {
@@ -340,6 +435,23 @@ describe('autoWire — healUserEdges', () => {
     const connections = new Set(userEdges.map((ee) => `${ee.source}|${ee.target}|${ee.sourceHandle || ''}|${ee.targetHandle || ''}`));
     const healed = healUserEdges(userEdges, makeNodeMap(nodes), 'b1', 'sh', 'plusRail', 'minusRail', 'fuseBox', connections);
     expect(healed[0].source).toBe('sh');
+  });
+
+  it('legt Minus-Rückleiter zur Batterie über den Shunt um (target-Handle)', () => {
+    // Verbraucher-Minus zurück zur Batterie ist der klassische Shunt-Bypass in
+    // Gegenrichtung: der Ziel-Handle hängt am Batterie-Minus.
+    const nodes = [
+      n('b1', 'battery', {}),
+      n('sh', 'shunt', {}),
+      n('c1', 'consumer', { watts: 24 }),
+    ];
+    const userEdges: Edge<CableEdgeData>[] = [
+      e({ id: 'ret', source: 'c1', target: 'b1', sourceHandle: 'minus', targetHandle: 'minus', data: { length: 2, edgeDomain: 'DC_12V' } }),
+    ];
+    const connections = new Set(userEdges.map((ee) => `${ee.source}|${ee.target}|${ee.sourceHandle || ''}|${ee.targetHandle || ''}`));
+    const healed = healUserEdges(userEdges, makeNodeMap(nodes), 'b1', 'sh', 'plusRail', 'minusRail', 'fuseBox', connections);
+    expect(healed[0].target).toBe('sh');
+    expect(healed[0].source).toBe('c1');
   });
 
   it('legt Batterie-Plus auf einen Verbraucher über den Sicherungskasten', () => {
@@ -443,6 +555,19 @@ describe('autoWire — resolveRails', () => {
     const rails = resolveRails(currentNodes, nodesByType, nodesByLabel, battery, created);
     expect(rails.plus.id).toBe('x1');
     expect(rails.minus.id).toBe('x2');
+  });
+
+  it('nutzt eine einzelne vorhandene Busbar für Plus und Minus', () => {
+    const battery = n('b1', 'battery', {});
+    const single = n('x1', 'busbar', { label: 'Main Busbar' });
+    const currentNodes = [battery, single];
+    const nodesByType: Record<string, Node[]> = { busbar: [single] };
+    const nodesByLabel = new Map<string, Node>();
+    const created = new Set<string>();
+    const rails = resolveRails(currentNodes, nodesByType, nodesByLabel, battery, created);
+    expect(rails.plus.id).toBe('x1');
+    expect(rails.minus.id).toBe('x1');
+    expect(created.size).toBe(0);
   });
 });
 
