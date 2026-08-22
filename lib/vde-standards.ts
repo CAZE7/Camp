@@ -54,10 +54,12 @@ import { VDE_SIZES } from './electrical';
 import type { Node, Edge } from 'reactflow';
 import {
   addAmps,
+  addWatts,
   amps,
   currentFromPower,
   divideAmps,
   maxAmps,
+  maxWatts,
   parseQuantity,
   quantityOr,
   volts,
@@ -205,22 +207,33 @@ export const VDE_BATTERY_DOD: Record<string, number> = {
 export const DEFAULT_SYSTEM_VOLTAGE: Volts = volts(12.8);
 export const LEAD_SYSTEM_VOLTAGE: Volts = volts(12.0);
 
-export function getSystemVoltage(nodes: Node[]): Volts {
+export function getSystemVoltage(nodes: Node[], preferredBatteryId?: string): Volts {
   const batteries = nodes.filter((n) => n.type === 'battery');
   if (batteries.length === 0) return DEFAULT_SYSTEM_VOLTAGE;
 
-  // Explizite nominalVoltage an einer beliebigen Batterie gewinnt.
+  // Die Aufbaubatterie (Auto-Wire) hat Vorrang; mit mehreren Batterien wäre
+  // sonst die nominale Spannung einer irrelevanten/parallelgeschalteten
+  // Batterie (z. B. einer 24-V-Zweitbatterie) Auslegungsgrundlage.
+  const ordered = preferredBatteryId
+    ? [
+        ...batteries.filter((b) => b.id === preferredBatteryId),
+        ...batteries.filter((b) => b.id !== preferredBatteryId),
+      ]
+    : batteries;
+
+  // Explizite nominalVoltage an der Vorrangbatterie gewinnt.
   // `node.data` stammt aus localStorage/JSON — daher geprüft einlesen und
   // unbrauchbare Werte (0, negativ, Text) überspringen statt sie zu übernehmen.
-  for (const b of batteries) {
+  for (const b of ordered) {
     const nominalVoltage = parseQuantity((b.data as { nominalVoltage?: unknown })?.nominalVoltage, volts);
     if (nominalVoltage !== null && nominalVoltage > 0) {
       return nominalVoltage;
     }
   }
 
-  // Fallback: chemiebasierte Schätzung der ersten Batterie
-  const chemistry = String((batteries[0].data as { chemistry?: string })?.chemistry || '').toLowerCase();
+  // Fallback: chemiebasierte Schätzung der Vorrangbatterie
+  const first = ordered[0];
+  const chemistry = String((first.data as { chemistry?: string })?.chemistry || '').toLowerCase();
   if (chemistry === 'agm' || chemistry === 'lead' || chemistry === 'gel') {
     return LEAD_SYSTEM_VOLTAGE;
   }
@@ -284,11 +297,31 @@ export function calculateEdgeCurrent(
   if (targetNode?.type === 'consumer') return currentAt(loadOf(tData), voltage);
 
   // 4. Wechselrichter (DC-Eingangsstrom inkl. Verlusten)
+  // Die DC-Zuleitung trägt den tatsächlichen 230-V-Laststrom, nicht die
+  // (oft nur Nenn-)Leistung des Inverters: max(Nennlast des WR,
+  // Summe aller angeschlossenen 230-V-Verbraucher). `continuousPower` ist
+  // die relevante Dauerleistung, `watts` nur der Fallback für alte Pläne.
+  const acConsumerLoad = (): Watts => {
+    let total: Watts = ZERO_WATTS;
+    for (const n of nodes) {
+      if (n.type === 'consumer230v') {
+        total = addWatts(
+          total,
+          quantityOr((n.data as Record<string, unknown>)?.watts, watts, ZERO_WATTS)
+        );
+      }
+    }
+    return total;
+  };
+  const inverterLoad = (data: Record<string, unknown> | undefined): Watts => {
+    const own = quantityOr(data?.continuousPower || data?.watts, watts, ZERO_WATTS);
+    return maxWatts(own, acConsumerLoad());
+  };
   if (sourceNode?.type === 'inverter') {
-    return divideAmps(currentAt(loadOf(sData), voltage), VDE_INVERTER_EFFICIENCY);
+    return divideAmps(currentAt(inverterLoad(sData), voltage), VDE_INVERTER_EFFICIENCY);
   }
   if (targetNode?.type === 'inverter') {
-    return divideAmps(currentAt(loadOf(tData), voltage), VDE_INVERTER_EFFICIENCY);
+    return divideAmps(currentAt(inverterLoad(tData), voltage), VDE_INVERTER_EFFICIENCY);
   }
 
   // 5. Generische Ampere-Angabe (Laderegler, Booster, AC-Ladegeräte)

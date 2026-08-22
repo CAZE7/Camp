@@ -612,7 +612,14 @@ describe('Auto-Wire: Topologie-Heilung & reale Templates', () => {
       userEdges: TEMPLATE_MINIMALIST.edges,
     });
 
-    expect(n.filter((x) => x.type === 'busbar').length).toBe(1);
+    // Plus- und Minus-Schiene müssen getrennte Knoten sein (sonst Kurzschluss).
+    const busbars = n.filter((x) => x.type === 'busbar');
+    const plus = busbars.find((x) => x.data?.role === 'positive');
+    const minus = busbars.find((x) => x.data?.role === 'negative');
+    expect(busbars.length).toBeGreaterThanOrEqual(2);
+    expect(plus).toBeDefined();
+    expect(minus).toBeDefined();
+    expect(plus!.id).not.toBe(minus!.id);
     expect(n.some((x) => x.type === 'shunt')).toBe(true);
 
     const house = n.find((x) => x.id === 'battery-1');
@@ -742,7 +749,7 @@ describe('Auto-Wire: Topologie-Heilung & reale Templates', () => {
     assertZeroWarnings(n, e);
   });
 
-  it('legt zweite AGM parallel, wenn kein Ladebooster vorhanden ist', () => {
+  it('legt gleichartige AGM-Batterien parallel, aber unterschiedliche Chemien nicht', () => {
     const nodes = [
       makeNode('b1', 'battery', { label: 'Lithium', capacity: 200, chemistry: 'LiFePO4' }),
       makeNode('b2', 'battery', { label: 'AGM Reserve', capacity: 80, chemistry: 'AGM' }),
@@ -751,19 +758,27 @@ describe('Auto-Wire: Topologie-Heilung & reale Templates', () => {
     const { nodes: n, edges: e } = runAutoWire(nodes);
 
     expect(n.some((x) => x.data.label === 'Starterbatterie')).toBe(false);
+    // LiFePO4 + AGM am selben Bus ist fachlich unzulässig (andere Ladespannung).
+    // Die AGM-Remote-Batterie wird deshalb NICHT auf die 12-V-Sammelschiene
+    // gelegt, statt eine gefährliche Mischchemie-Parallelschaltung zu bauen.
     const shunt = n.find((x) => x.type === 'shunt');
     const busbar = n.find((x) => x.type === 'busbar');
-    expect(e.some((x) => x.source === 'b2' && x.target === busbar!.id && x.sourceHandle === 'plus')).toBe(true);
-    expect(e.some((x) => x.source === 'b2' && x.target === shunt!.id && x.sourceHandle === 'minus')).toBe(true);
+    expect(e.some((x) => x.source === 'b2' && x.target === busbar!.id && x.sourceHandle === 'plus')).toBe(false);
+    expect(e.some((x) => x.source === 'b2' && x.target === shunt!.id && x.sourceHandle === 'minus')).toBe(false);
   });
 
-  it('legt keine zweite Starterbatterie an, wenn nur eine Startbatterie existiert', () => {
+  it('erzeugt bei nur Startbatterie + Booster eine Aufbaubatterie (keine zweite Starterbatterie)', () => {
     const nodes = [
       makeNode('b1', 'battery', { label: 'Startbatterie', capacity: 80, chemistry: 'AGM' }),
       makeNode('d1', 'dcdcCharger', { label: 'Booster', amps: 30 }),
     ];
     const { nodes: n } = runAutoWire(nodes);
-    expect(n.filter((x) => x.type === 'battery')).toHaveLength(1);
+    const batteries = n.filter((x) => x.type === 'battery');
+    // Ein Booster braucht eine getrennte Aufbaubatterie; er darf nicht auf
+    // dieselbe Schiene wie die einzige Starterbatterie verdrahtet werden.
+    expect(batteries).toHaveLength(2);
+    expect(batteries.some((x) => String(x.data?.label ?? '').match(/start/i))).toBe(true);
+    expect(batteries.some((x) => !String(x.data?.label ?? '').match(/start/i))).toBe(true);
   });
 
   it('Unterdimensionierte Nutzer-Sicherung wird angehoben', () => {

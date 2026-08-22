@@ -119,8 +119,12 @@ export const calculateCrossSection = (
   // Finaler Querschnitt: Maximum aus beiden Kriterien und eventuellem manuellen Querschnitt
   const rawMax = Math.max(1.5, dropArea, thermalArea, dataCrossSection || 0);
 
-  // Aufgerundet auf die nächste VDE-Normgröße
-  return VDE_SIZES.find(size => size >= rawMax) || 70.0;
+  // Aufgerundet auf die nächste VDE-Normgröße. Über 70 mm² hinaus gibt es in
+  // der Normreihe keine Stufe mehr; ein vorhandener Nutzer-/importierter
+  // Querschnitt (z. B. 95 mm²) darf dabei nie auf 70 mm² heruntergerundet
+  // werden — das würde eine bereits größere Leitung stillschweigend schwächen.
+  const fallback = dataCrossSection ? Math.max(rawMax, dataCrossSection) : 70.0;
+  return VDE_SIZES.find(size => size >= rawMax) || fallback;
 };
 
 export const calculateStrokeWidth = (cs: number): number => {
