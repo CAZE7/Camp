@@ -7,6 +7,16 @@ import * as StoreModule from '../../store/usePlannerStore';
 import { useAppStore } from '../../lib/store';
 import { useDashboardMetrics } from './hooks/useDashboardMetrics';
 
+// next/dynamic wird im Test synchron aufgelöst, damit der per next/dynamic
+// nachgeladene BOMModal (ssr:false) deterministisch hydriert statt in einer
+// nie auflösenden Suspense zu hängen.
+vi.mock('next/dynamic', async () => {
+  const { BOMModal } = await import('./BOMModal');
+  return {
+    default: () => BOMModal,
+  };
+});
+
 // --- Mocks ---
 
 // Mock React Flow
@@ -256,7 +266,7 @@ describe('FlowCanvas', () => {
       expect(mockOnCustomDropFromStore).toHaveBeenCalledWith(expect.anything(), mockScreenToFlowPosition);
     });
 
-    it('listens to show-bom-modal and displays the BOM data', () => {
+    it('listens to show-bom-modal and displays the BOM data', async () => {
       render(<FlowCanvas />);
 
       const bomEvent = new CustomEvent('show-bom-modal');
@@ -264,7 +274,10 @@ describe('FlowCanvas', () => {
         window.dispatchEvent(bomEvent);
       });
 
-      expect(screen.getByText('Stückliste')).toBeInTheDocument();
+      // BOMModal wird per next/dynamic (ssr:false) nachgeladen — der Lade-
+      // Zustand ist `null`, daher warten wir auf das eingeblendete Dialog-
+      // Fenster, statt es synchron zu erwarten.
+      expect(await screen.findByText('Stückliste')).toBeInTheDocument();
       expect(screen.getByText('Batterie')).toBeInTheDocument();
       expect(screen.getByText('5.0 m Kabel mit 4 mm²')).toBeInTheDocument();
 

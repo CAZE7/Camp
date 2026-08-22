@@ -20,7 +20,6 @@ import {
 import { usePlannerStore } from '../../store/usePlannerStore';
 import { useAppStore } from '../../lib/store';
 import { FloatingMetricsCard } from './ui/FloatingMetricsCard';
-import { BOMModal } from './BOMModal';
 import { useSequentialTapConnect } from './hooks/useSequentialTapConnect';
 import { usePlannerDragDrop } from './hooks/usePlannerDragDrop';
 import { useCoarsePointer } from './hooks/useMediaCapabilities';
@@ -37,6 +36,18 @@ import { collidingNodeIds, findNearestFreePosition } from './utils/collision';
 import { withBackboneGroup } from './utils/backboneGroup';
 import { BackboneGroupNode } from './ui/BackboneGroupNode';
 import { withNodePresentations } from './ui/NodePresentation';
+import dynamic from 'next/dynamic';
+
+// Die Stückliste öffnet nur auf Knopfdruck (planner-show-bom-Event) und zieht
+// AccessibleDialog + Registry nach. Als separater lazy Chunk landet sie nicht
+// im initialen Planner-Code (PERF-06 / Bundle).
+const DynamicBOMModal = dynamic(() =>
+  import('./BOMModal').then((mod) => mod.BOMModal),
+  {
+    ssr: false,
+    loading: () => null,
+  }
+);
 
 function useAccessibleHandles() {
   React.useEffect(() => {
@@ -458,6 +469,11 @@ export function FlowCanvas() {
           nodesFocusable
           edgesFocusable
           translateExtent={translateExtent}
+          // Nur sichtbare Elemente rendern (PERF-N3): Bei großen Plänen (100+
+          // Knoten) hält React Flow sonst alle Nodes/Kanten im DOM, obwohl nur
+          // ein Ausschnitt sichtbar ist. Das beschleunigt Rendering UND Dragging
+          // (während eines Drags re-routen nur noch die sichtbaren Kanten).
+          onlyRenderVisibleElements
           /* --- Zeiger-abhängige Interaktion, jede Prop begründet in
                  planner/utils/flowInteraction.ts --- */
           panOnDrag={interaction.panOnDrag}
@@ -599,7 +615,7 @@ export function FlowCanvas() {
 
       {contextMenu && <CanvasContextMenu state={contextMenu} onClose={() => setContextMenu(null)} />}
 
-      <BOMModal />
+      <DynamicBOMModal />
     </>
   );
 }

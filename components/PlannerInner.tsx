@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
+import { ReactFlowProvider } from 'reactflow';
+import 'reactflow/dist/style.css';
 import { PlannerSidebar } from './planner/PlannerSidebar';
 import { PlannerInspector } from './planner/PlannerInspector';
 import { PlannerDashboard } from './planner/PlannerDashboard';
@@ -115,6 +117,7 @@ export default function PlannerInner() {
   ].join(' ');
 
   return (
+    <ReactFlowProvider>
     <div data-testid="planner-shell" className="planner-shell relative flex h-dvh min-h-0 w-full shrink-0 flex-col overflow-hidden bg-background font-sans md:flex-row">
       {!hasOnboarded && <OnboardingWizard />}
 
@@ -222,5 +225,6 @@ export default function PlannerInner() {
         </button>
       </nav>
     </div>
+    </ReactFlowProvider>
   );
 }
