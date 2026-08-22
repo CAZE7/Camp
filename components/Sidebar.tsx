@@ -105,26 +105,33 @@ const handlePointerDown = (event: React.PointerEvent, comp: Comp, onMobileAdd?: 
     clone.style.top = `${moveEvent.clientY - target.offsetHeight / 2}px`;
   };
 
-  const onPointerUp = (upEvent: PointerEvent) => {
+  const cleanup = () => {
     document.removeEventListener('pointermove', onPointerMove);
     document.removeEventListener('pointerup', onPointerUp);
+    document.removeEventListener('pointercancel', cleanup);
     clone.remove();
+  };
+
+  const onPointerUp = (upEvent: PointerEvent) => {
     const isOverCanvas = document.elementsFromPoint(upEvent.clientX, upEvent.clientY)
       .some((element) => element.classList.contains('react-flow__pane'));
-    if (!isOverCanvas) return;
-    window.dispatchEvent(new CustomEvent('custom-node-drop', {
-      detail: {
-        clientX: upEvent.clientX,
-        clientY: upEvent.clientY,
-        type: comp.type,
-        label: comp.label,
-        watts: comp.watts,
-      },
-    }));
+    if (isOverCanvas) {
+      window.dispatchEvent(new CustomEvent('custom-node-drop', {
+        detail: {
+          clientX: upEvent.clientX,
+          clientY: upEvent.clientY,
+          type: comp.type,
+          label: comp.label,
+          watts: comp.watts,
+        },
+      }));
+    }
+    cleanup();
   };
 
   document.addEventListener('pointermove', onPointerMove);
   document.addEventListener('pointerup', onPointerUp);
+  document.addEventListener('pointercancel', cleanup);
 };
 
 interface SidebarProps {
@@ -186,8 +193,8 @@ function CategorySection({ title, items, open, onToggle, onMobileAdd, accent }: 
       </button>
       {open && (
         <div className="grid grid-cols-2 gap-2 p-3 pt-1">
-          {items.map((comp, index) => (
-            <ComponentTile key={`${comp.type}-${comp.label}-${index}`} comp={comp} onMobileAdd={onMobileAdd} accent={accent} />
+          {items.map((comp) => (
+            <ComponentTile key={`${comp.type}-${comp.label}`} comp={comp} onMobileAdd={onMobileAdd} accent={accent} />
           ))}
         </div>
       )}

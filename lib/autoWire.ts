@@ -360,11 +360,11 @@ export function sizeDcEdges(
   dcEdges: CableEdge[],
   nodes: Node[],
   allEdges: CableEdge[],
-  sysVoltage: Volts
+  sysVoltage: Volts,
+  nodeMap: Map<string, Node> = new Map(nodes.map((n) => [n.id, n]))
 ): void {
   const dropLimit = scaleVolts(sysVoltage, VDE_MAX_DC_DROP_FRACTION);
   const perEdgeCap = scaleVolts(sysVoltage, VDE_MAX_DC_DROP_PER_EDGE_FRACTION);
-  const nodeMap = new Map(nodes.map((n) => [n.id, n]));
 
   const sizeEdge = (edge: CableEdge, allowedOwn: Volts): Mm2 => {
     const sourceNode = nodeMap.get(edge.source);
@@ -419,8 +419,12 @@ export function sizeDcEdges(
 }
 
 /** @internal für Unit-Tests exportiert. */
-export function applyFuseSizes(dcEdges: CableEdge[], nodes: Node[], sysVoltage: Volts): void {
-  const nodeMap = new Map(nodes.map((n) => [n.id, n]));
+export function applyFuseSizes(
+  dcEdges: CableEdge[],
+  nodes: Node[],
+  sysVoltage: Volts,
+  nodeMap: Map<string, Node> = new Map(nodes.map((n) => [n.id, n]))
+): void {
   for (const edge of dcEdges) {
     if (!edge.sourceHandle?.includes('plus')) continue;
     if (!edge.data) edge.data = {};
@@ -552,10 +556,9 @@ export function resolveRails(
   ): Node => {
     const byRole = role === 'positive' ? plusByRole : minusByRole;
     if (byRole && byRole.id !== excludeId) return byRole;
-    const fallback = busbars.find((b) => b.id !== excludeId);
-    if (fallback && fallback.id !== (role === 'positive' ? minusByRole?.id : plusByRole?.id)) {
-      return fallback;
-    }
+    const oppositeRoleId = role === 'positive' ? minusByRole?.id : plusByRole?.id;
+    const fallback = busbars.find((b) => b.id !== excludeId && b.id !== oppositeRoleId);
+    if (fallback) return fallback;
     const created = ensureNode(
       currentNodes,
       nodesByType,
@@ -1026,8 +1029,7 @@ export function performAutoWiring(
 
   // Nutzer-DC-Kanten mitdimensionieren (thermisch + Spannungsfall, Sicherungen korrigieren)
   const allEdges = [...userEdges, ...newEdges];
-  const nodeMapForDomain = new Map(currentNodes.map((n) => [n.id, n]));
-  const userDcEdges = userEdges.filter((e) => !isAcEdge(e, nodeMapForDomain));
+  const userDcEdges = userEdges.filter((e) => !isAcEdge(e, nodeMap));
   const allDcEdges = [...userDcEdges, ...dcEdges];
 
   // Nutzer-Kanten ohne gespeicherte Domäne werden hier eindeutig markiert:
@@ -1037,12 +1039,12 @@ export function performAutoWiring(
   // DC- und AC-Dimensionierung durch (Property „jede Kante ist dimensioniert“).
   for (const edge of userEdges) {
     if (edge.data && edge.data.edgeDomain === undefined) {
-      edge.data.edgeDomain = isAcEdge(edge, nodeMapForDomain) ? 'AC_230V' : 'DC_12V';
+      edge.data.edgeDomain = isAcEdge(edge, nodeMap) ? 'AC_230V' : 'DC_12V';
     }
   }
 
-  sizeDcEdges(allDcEdges, currentNodes, allEdges, sysVoltage);
-  applyFuseSizes(allDcEdges, currentNodes, sysVoltage);
+  sizeDcEdges(allDcEdges, currentNodes, allEdges, sysVoltage, nodeMap);
+  applyFuseSizes(allDcEdges, currentNodes, sysVoltage, nodeMap);
   sizeAcEdges(allEdges, currentNodes);
 
   const fuseBoxFeed = allDcEdges.find(
