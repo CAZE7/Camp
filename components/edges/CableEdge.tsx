@@ -3,7 +3,8 @@ import { BaseEdge, EdgeProps, EdgeLabelRenderer, useReactFlow, Node } from 'reac
 import { usePlannerStore, getDerivedSystemState } from '../../store/usePlannerStore';
 import { useShallow } from 'zustand/react/shallow';
 import { edgeLabelNudge, parallelLaneOffset } from './utils/pathUtils';
-import { buildOrthogonalPath, edgesToCrossingSegments, nodesToObstacles } from './utils/orthogonalRouting';
+import { buildOrthogonalPath } from './utils/orthogonalRouting';
+import { obstaclesExcluding, crossingSegmentsExcluding } from './utils/routingCache';
 import { cableStrokeWidth } from './utils/cableStyle';
 import { useCoarsePointer, useMediaQuery, MOBILE_QUERY } from '../planner/hooks/useMediaCapabilities';
 import { isBackboneConnection } from '../planner/utils/backbone';
@@ -203,22 +204,20 @@ const CableEdge = function ({
   // Fremde Leitungen als grobe Strecken — Grundlage der Kreuzungszählung.
   // Kanten desselben Node-Paars sind ausgenommen: die liegen bereits sauber
   // als parallele Lanes nebeneinander und dürfen die Route nicht aufblähen.
-  // Ab CROSSING_SCAN_EDGE_LIMIT Kanten wird die Prüfung übersprungen (O(E) je
-  // Kante ⇒ O(E²) gesamt); sehr große Pläne bleiben so flüssig.
+  // Ab CROSSING_SCAN_EDGE_LIMIT Kanten wird die Prüfung übersprungen.
+  // Die Basis (Node-Zentren + Segmente aller Kanten) wird im Cache einmal je
+  // Frame gebaut; pro Kante bleibt nur der O(E)-Filter (PERF-04).
   const crossingSegments = useMemo(() => {
     if (siblingEdges.length > CROSSING_SCAN_EDGE_LIMIT) return [];
-    return edgesToCrossingSegments(
-      siblingEdges as unknown as { id: string; source: string; target: string }[],
+    return crossingSegmentsExcluding(
       allNodes,
-      (edge) =>
-        edge.id === id ||
-        (edge.source === source && edge.target === target) ||
-        (edge.source === target && edge.target === source)
+      siblingEdges as unknown as { id: string; source: string; target: string }[],
+      { id, source, target }
     );
   }, [siblingEdges, allNodes, id, source, target]);
 
   const { path: edgePath, labelX, labelY } = useMemo(() => {
-    const obstacles = nodesToObstacles(allNodes, new Set([source, target]));
+    const obstacles = obstaclesExcluding(allNodes, new Set([source, target]));
     return buildOrthogonalPath({
       sourceX,
       sourceY,

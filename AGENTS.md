@@ -290,3 +290,63 @@ Test-Typecheck, 1023 Unit-/Property-Tests, Static Build (Next 16.3.2),
 - **CH-02** `WaterNode` typisiert statt `any`.
 - **CH-03** `npm audit fix`: 0 Schwachstellen (next 16.3.2, postcss 8.5.23,
   nanoid 3.3.18, sharp 0.35.3, undici 7.29.0); Lockfile-Gate grün.
+
+## Mission 5: Performance — umgesetzt
+
+**Status (22.08.2026):** Audit + Umsetzung der sicheren, messbaren
+Optimierungen. Resultat: Typecheck, Test-Typecheck, ~88 Testdateien grün,
+Static Build grün, Lockfile-Gate grün, `npm audit` 0 Schwachstellen.
+Details und Messwerte in `docs/PERFORMANCE.md`.
+
+### Erledigt
+
+- **PERF-01** Debounced Persistenz: `store/storage.ts` (`createDebouncedStorage`)
+  fasst schnelle `persist`-Schreibfolgen (Knoten-Drag) zu einem Schreibvorgang
+  zusammen und flusht bei `pagehide`/`beforeunload`. Nur der Planer-Store nutzt
+  den Adapter; `getItem`/`removeItem` bleiben unverzögert.
+- **PERF-02** Geteilter Hindernis-Cache: `components/edges/utils/routingCache.ts`
+  (`getObstacleMap`/`obstaclesExcluding`) statt `nodesToObstacles` je Kante.
+  N Rechtecke werden je Frame einmal gebaut (WeakMap auf Array-Referenz) statt
+  O(E·N); Semantik identisch.
+- **PERF-03** Ungenutzte Abhängigkeiten entfernt: `dagre` + `@types/dagre`
+  (seit der dreispaltigen Eigen-Layout-Implementierung nicht mehr importiert);
+  veralteter Test-Kommentar in `store/usePlannerStore.test.ts` korrigiert.
+- **PERF-04** Geteilte Kreuzungs-Scan-Basis: `crossingSegmentsExcluding` statt
+  `edgesToCrossingSegments` je Kante. Zentren + Segmente werden einmal je Frame
+  gebaut (WeakMap), pro Kante nur noch der O(E)-Filter. ×3.3–3.6 im aktiven
+  Bereich (≤ 120 Kanten).
+- **PERF-05** React Flow aus dem Initial-Pfad: `ReactFlowProvider` + React-Flow-
+  CSS von der statisch importierten `Planner.tsx` in den lazy `PlannerInner`
+  verschoben. Die Planer-Route lädt ~131 KB weniger Initial-JS (~726 → ~595 KB).
+- **PERF-06** Stückliste lazy: `BOMModal` per `next/dynamic` (ssr:false) in
+  einem separaten Chunk (nur auf Knopfdruck).
+- **PERF-07** Viewport-Culling für große Pläne: `onlyRenderVisibleElements`
+  im `<ReactFlow>` — React Flow rendert nur noch sichtbare Nodes/Edges.
+  Größter Einzelhebel für 100+ Knoten (PERF-N3).
+- Mess-Harness `benchmarks/edgeRoutingPerf.bench.ts` für den
+  Kanten-Render-Durchlauf.
+
+### Messung (Kanten-Render-Durchlauf, Worst Case)
+
+| Plan | vorher | nachher | Speedup |
+|------|--------|---------|---------|
+| 8 Nodes / 13 Kanten | 0.73 ms | 0.28 ms | ×2.7 |
+| 24 Nodes / 66 Kanten | 5.75 ms | 5.08 ms | ×1.1 |
+| 60 Nodes / 230 Kanten | 4.97 ms | 5.06 ms | ×1.0 |
+| 120 Nodes / 585 Kanten | 19.64 ms | 19.51 ms | ×1.0 |
+
+**Kreuzungs-Scan (PERF-04, ≤ 120 Kanten):** 8/13 Kanten ×3.3, 24/66 Kanten ×3.6.
+
+### Bewertung der zuvor offenen Punkte
+
+- **PERF-N3 (große Pläne 100+)** — **umgesetzt** über PERF-07
+  (`onlyRenderVisibleElements`). Der Pfadbau skaliert jetzt mit der Zahl der
+  *sichtbaren* statt aller Kanten.
+- **PERF-N2 (Kanten-Re-Render/Store beim Drag)** — **bewertet, bewusst minimal
+  gehalten.** Gemessen ~0,2 ms/Frame für die Store-Helfer; `useShallow` +
+  stabile Node-`data`-Referenzen verhindern die Re-Renders bereits. Eine
+  positions-unabhängige Cache-Umstellung wurde geprüft, aber wegen
+  Stale-Position-Risiko in einer sicherheitskritischen Elektro-Planung bei
+  <0,2 ms Gewinn bewusst NICHT umgesetzt.
+- **Lighthouse-Performance-Lauf** — Browser-Download war blockiert; die
+  Initial-JS-Reduktion ist statisch über die Chunk-Inspizierung belegt.

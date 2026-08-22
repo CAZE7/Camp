@@ -1,8 +1,6 @@
 "use client";
 
 import React from 'react';
-import { ReactFlowProvider } from 'reactflow';
-import 'reactflow/dist/style.css';
 import dynamic from 'next/dynamic';
 
 const DynamicPlannerInner = dynamic(() => import('./PlannerInner'), {
@@ -11,9 +9,5 @@ const DynamicPlannerInner = dynamic(() => import('./PlannerInner'), {
 });
 
 export default function Planner() {
-  return (
-    <ReactFlowProvider>
-      <DynamicPlannerInner />
-    </ReactFlowProvider>
-  );
+  return <DynamicPlannerInner />;
 }

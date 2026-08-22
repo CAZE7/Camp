@@ -105,6 +105,7 @@ import { getEdgeDomain, getHandleDomain } from '../lib/electrical';
 import { getSystemVoltage } from '../lib/vde-standards';
 import type { Volts } from '../lib/units';
 import { performAutoWiring, relevantCumulativeDrop } from '../lib/autoWire';
+import { plannerDebouncedStorage } from './storage';
 
 const nodesMapCache = new WeakMap<Node[], Map<string, Node>>();
 const waterNodesMapCache = new WeakMap<Node[], Map<string, Node>>();
@@ -783,7 +784,7 @@ export const usePlannerStore = create<PlannerState>()(
     {
       name: 'werft-planner-v1',
       version: PLANNER_STORAGE_VERSION,
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => plannerDebouncedStorage),
       migrate: (persisted, version) => migratePlannerPersisted(persisted, version) as PlannerState,
       partialize: (state) => ({
         viewMode: state.viewMode,

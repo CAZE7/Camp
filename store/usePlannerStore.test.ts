@@ -4,7 +4,8 @@ import { usePlannerStore } from './usePlannerStore';
 import { Node, Edge } from 'reactflow';
 import * as layoutUtils from '../components/planner/utils/layout';
 
-// Mock the layout utility so it doesn't try to use dagre in tests
+// Mock the layout utility so Auto-Layout-Aufrufe im Store deterministisch
+// bleiben (kein echtes Layout im Test).
 vi.mock('../components/planner/utils/layout', () => ({
   getLayoutedElements: vi.fn((nodes, edges) => ({ nodes, edges })),
 }));
