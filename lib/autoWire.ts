@@ -477,19 +477,7 @@ export function resolveRails(
     return { plus: busbars[0], minus: busbars[1] };
   }
   if (busbars.length === 1) {
-    const minus = ensureNode(
-      currentNodes,
-      nodesByType,
-      nodesByLabel,
-      batteryNode,
-      'busbar',
-      'Minus-Busbar',
-      300,
-      0,
-      { role: 'negative' }
-    );
-    autoCreatedNodeIds.add(minus.id);
-    return { plus: busbars[0], minus };
+    return { plus: busbars[0], minus: busbars[0] };
   }
 
   const created = ensureNode(
@@ -503,19 +491,7 @@ export function resolveRails(
     0
   );
   autoCreatedNodeIds.add(created.id);
-  const minus = ensureNode(
-    currentNodes,
-    nodesByType,
-    nodesByLabel,
-    batteryNode,
-    'busbar',
-    'Minus-Busbar',
-    300,
-    0,
-    { role: 'negative' }
-  );
-  autoCreatedNodeIds.add(minus.id);
-  return { plus: created, minus };
+  return { plus: created, minus: created };
 }
 
 function findOrCreate(
