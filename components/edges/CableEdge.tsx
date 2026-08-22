@@ -35,6 +35,8 @@ export type CableEdgeData = {
   crossSection?: number;
   fuseSize?: number;
   edgeDomain?: 'DC_12V' | 'AC_230V';
+  /** Gesetzt, wenn selbst der größte Normquerschnitt den Laststrom nicht absichern kann. */
+  fuseWarning?: boolean;
 };
 
 type CableEdgeProps = EdgeProps<CableEdgeData> & { sourceHandle?: string | null, targetHandle?: string | null };

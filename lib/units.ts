@@ -318,10 +318,47 @@ export const scaleAmps = (value: Amps, factor: Scalar): Amps =>
   construct('Amps', value * scaleFactor('scaleAmps', factor));
 
 export const addVolts = (a: Volts, b: Volts): Volts => construct('Volts', a + b);
+export const subtractVolts = (a: Volts, b: Volts): Volts => construct('Volts', a - b);
 export const sumVolts = (values: readonly Volts[]): Volts =>
   construct('Volts', values.reduce<number>((total, value) => total + value, 0));
 export const scaleVolts = (value: Volts, factor: Scalar): Volts =>
   construct('Volts', value * scaleFactor('scaleVolts', factor));
+
+/**
+ * Spannungsfall einer Hin- und Rückleitung: ΔU = I · 2L / (κ · A).
+ * Der einzige benannte Ort, an dem aus Strom/Länge/Querschnitt wieder Volt
+ * entstehen — so bleiben Einheiten an der Typgrenze sichtbar und nachprüfbar.
+ */
+export const voltageDrop = (
+  current: Amps,
+  length: Meters,
+  crossSection: Mm2,
+  conductivity: Scalar
+): Volts => {
+  if (!Number.isFinite(conductivity) || conductivity <= 0) {
+    throw new RangeError(`voltageDrop: κ muss > 0 sein, war ${conductivity}`);
+  }
+  return construct('Volts', (current * (length * 2)) / (conductivity * crossSection));
+};
+
+/**
+ * Kleinster Querschnitt, der bei Strom/Länge/κ den Spannungsfall ΔU einhält:
+ * A = I · 2L / (κ · ΔU).
+ */
+export const crossSectionForVoltageDrop = (
+  current: Amps,
+  length: Meters,
+  allowedDrop: Volts,
+  conductivity: Scalar
+): Mm2 => {
+  if (!Number.isFinite(conductivity) || conductivity <= 0) {
+    throw new RangeError(`crossSectionForVoltageDrop: κ muss > 0 sein, war ${conductivity}`);
+  }
+  if (allowedDrop <= 0) {
+    throw new RangeError('crossSectionForVoltageDrop: ΔU muss > 0 sein');
+  }
+  return construct('Mm2', (current * (length * 2)) / (conductivity * allowedDrop));
+};
 
 export const addMeters = (a: Meters, b: Meters): Meters => construct('Meters', a + b);
 export const sumMeters = (values: readonly Meters[]): Meters =>

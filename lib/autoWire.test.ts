@@ -306,7 +306,7 @@ describe('autoWire — sizeAcEdges', () => {
     expect(edges[0].data?.crossSection).toBe(4);
   });
 
-  it('rechnet Landstrom-Leitungen mit 16 A (CEE)', () => {
+  it('dimensioniert Landstrom-Leitungen nach dem Ladegerät (min. 16 A CEE)', () => {
     const nodes = [
       n('sp', 'shorePower', {}),
       n('ch', 'acBatteryCharger', { amps: 20 }),
@@ -315,8 +315,9 @@ describe('autoWire — sizeAcEdges', () => {
       e({ id: 'ac1', source: 'sp', target: 'ch', sourceHandle: 'plus', targetHandle: 'plus', data: { length: 2, edgeDomain: 'AC_230V' } }),
     ];
     sizeAcEdges(edges, nodes);
-    // 16 A bei 2 m: thermisch 2,5 mm², Spannungsfall vernachlässigbar.
-    expect(edges[0].data?.crossSection).toBe(2.5);
+    // 20 A bei 2 m (Derating 0,7): thermisch 4 mm²; die Leitung darf nicht am
+    // 16-A-Landstromanschluss vorbeigehen und den 20-A-Lader unterdimensionieren.
+    expect(edges[0].data?.crossSection).toBe(4);
   });
 
   it('unterschreitet einen vorhandenen Querschnitt nie (Nutzerwert ist Untergrenze)', () => {
@@ -531,7 +532,7 @@ describe('autoWire — resolveRails', () => {
     expect(created.size).toBe(0);
   });
 
-  it('erzeugt eine gemeinsame Busbar, wenn keine existiert', () => {
+  it('erzeugt zwei getrennte Busbars, wenn keine existiert', () => {
     const battery = n('b1', 'battery', {});
     const currentNodes: Node[] = [battery];
     const nodesByType: Record<string, Node[]> = {};
@@ -540,8 +541,9 @@ describe('autoWire — resolveRails', () => {
     const rails = resolveRails(currentNodes, nodesByType, nodesByLabel, battery, created);
     expect(rails.plus.type).toBe('busbar');
     expect(rails.minus.type).toBe('busbar');
-    expect(rails.plus.id).toBe(rails.minus.id);
+    expect(rails.plus.id).not.toBe(rails.minus.id);
     expect(created.has(rails.plus.id)).toBe(true);
+    expect(created.has(rails.minus.id)).toBe(true);
   });
 
   it('nutzt die ersten zwei Busbars, wenn Rollen nicht unterscheidbar sind', () => {
@@ -557,7 +559,7 @@ describe('autoWire — resolveRails', () => {
     expect(rails.minus.id).toBe('x2');
   });
 
-  it('nutzt eine einzelne vorhandene Busbar für Plus und Minus', () => {
+  it('nutzt eine einzelne vorhandene Busbar für Plus und erzeugt eine getrennte Minus-Schiene', () => {
     const battery = n('b1', 'battery', {});
     const single = n('x1', 'busbar', { label: 'Main Busbar' });
     const currentNodes = [battery, single];
@@ -566,8 +568,23 @@ describe('autoWire — resolveRails', () => {
     const created = new Set<string>();
     const rails = resolveRails(currentNodes, nodesByType, nodesByLabel, battery, created);
     expect(rails.plus.id).toBe('x1');
+    expect(rails.minus.id).not.toBe('x1');
+    expect(created.has(rails.minus.id)).toBe(true);
+  });
+
+  it('respektiert Rollen, auch wenn nur eine Schiene explizit markiert ist', () => {
+    // Die positive Schiene steht im Array hinter einer unmarkierten Schiene.
+    // Ohne Rollen-Auswahl würde sie fälschlich als Minus-Schiene verwendet.
+    const battery = n('b1', 'battery', {});
+    const unlabeled = n('x1', 'busbar', { label: 'BB1' });
+    const positive = n('x2', 'busbar', { role: 'positive', label: 'Plus-Schiene' });
+    const currentNodes = [battery, unlabeled, positive];
+    const nodesByType: Record<string, Node[]> = { busbar: [unlabeled, positive] };
+    const nodesByLabel = new Map<string, Node>();
+    const created = new Set<string>();
+    const rails = resolveRails(currentNodes, nodesByType, nodesByLabel, battery, created);
+    expect(rails.plus.id).toBe('x2');
     expect(rails.minus.id).toBe('x1');
-    expect(created.size).toBe(0);
   });
 });
 
@@ -662,5 +679,108 @@ describe('autoWire mit typsicheren Einheiten (K1c)', () => {
       // 2000 W / 230 V ≈ 8.7 A → kein 25-mm²-Kabel nötig
       expect(edge.data?.crossSection).toBeLessThanOrEqual(6);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Regressionstests für die Audit-Fehler (aus dem Deep-Audit von lib/autoWire.ts)
+// ---------------------------------------------------------------------------
+describe('autoWire — behobene Audit-Fehler', () => {
+  it('erzeugt getrennte Plus-/Minus-Schienen (kein Kurzschluss am Standardplan)', () => {
+    const nodes = [
+      n('b1', 'battery', { label: 'Aufbau', capacity: 100, chemistry: 'LiFePO4' }),
+      n('c1', 'consumer', { label: 'LED', watts: 20 }),
+    ];
+    const out = performAutoWiring(nodes)!;
+    const busbars = out.nodes.filter((x) => x.type === 'busbar');
+    const plus = out.nodes.find((x) => x.type === 'busbar' && x.data?.role === 'positive');
+    const minus = out.nodes.find((x) => x.type === 'busbar' && x.data?.role === 'negative');
+    expect(busbars.length).toBeGreaterThanOrEqual(2);
+    expect(plus).toBeDefined();
+    expect(minus).toBeDefined();
+    expect(plus!.id).not.toBe(minus!.id);
+    expect(out.edges.some((x) => x.source === 'b1' && x.target === plus!.id && x.sourceHandle === 'plus')).toBe(true);
+    expect(out.edges.some((x) => x.target === minus!.id && x.sourceHandle === 'minus' && x.source !== 'b1')).toBe(true);
+  });
+
+  it('legt Batterien unterschiedlicher Chemie/Nennspannung nicht parallel', () => {
+    const out = performAutoWiring([
+      n('b1', 'battery', { label: 'Aufbau', capacity: 100, chemistry: 'LiFePO4', nominalVoltage: 12.8 }),
+      n('b2', 'battery', { label: 'Zweit', capacity: 100, chemistry: 'AGM', nominalVoltage: 24 }),
+      n('c1', 'consumer', { label: 'LED', watts: 20 }),
+    ])!;
+    const plus = out.nodes.find((x) => x.type === 'busbar' && x.data?.role === 'positive');
+    expect(out.edges.some((x) => x.source === 'b2' && x.target === plus!.id)).toBe(false);
+  });
+
+  it('erzwingt 16 mm² Masseanbindung, obwohl eine Nutzerkante Masse→Verbraucher existiert', () => {
+    const out = performAutoWiring(
+      [
+        n('b1', 'battery', { label: 'Aufbau', capacity: 100, chemistry: 'LiFePO4' }),
+        n('g1', 'ground', { label: 'Masse' }),
+        n('c1', 'consumer', { label: 'LED', watts: 50 }),
+      ],
+      [e({ id: 'u-g', source: 'g1', target: 'c1', sourceHandle: 'minus', targetHandle: 'minus', data: { length: 2 } })]
+    )!;
+    const minus = out.nodes.find((x) => x.type === 'busbar' && x.data?.role === 'negative');
+    const bond = out.edges.find((x) => x.source === minus!.id && x.target === 'g1' && x.sourceHandle === 'minus');
+    expect(bond).toBeDefined();
+    expect(bond!.data?.crossSection).toBe(16);
+  });
+
+  it('dimensioniert die Inverter-Zuleitung nach der 230-V-Gerätelast', () => {
+    const out = performAutoWiring([
+      n('b1', 'battery', { label: 'Aufbau', capacity: 200, chemistry: 'LiFePO4' }),
+      n('i1', 'inverter', { label: 'WR', continuousPower: 5000 }),
+      n('a1', 'consumer230v', { label: 'Kochfeld', watts: 5000 }),
+    ])!;
+    const edge = out.edges.find((x) => x.target === 'i1' && x.sourceHandle === 'plus');
+    expect(edge).toBeDefined();
+    expect(edge!.data?.crossSection).toBeGreaterThanOrEqual(16);
+  });
+
+  it('verkleinert einen vorhandenen Querschnitt über 70 mm² nicht', () => {
+    const nodes = [
+      n('b1', 'battery', {}),
+      n('c1', 'consumer', { watts: 5 }),
+    ];
+    const edges: Edge<CableEdgeData>[] = [
+      e({ id: 'd1', source: 'b1', target: 'c1', data: { length: 1, crossSection: 95, edgeDomain: 'DC_12V' } }),
+    ];
+    sizeDcEdges(edges, nodes, edges, volts(12.8));
+    expect(edges[0].data?.crossSection).toBe(95);
+    expect(() => applyFuseSizes(edges, nodes, volts(12.8))).not.toThrow();
+  });
+
+  it('erzeugt bei nur Starterbatterie + Booster eine Aufbaubatterie statt Selbstschleife', () => {
+    const out = performAutoWiring([
+      n('b1', 'battery', { label: 'Starterbatterie', chemistry: 'AGM' }),
+      n('d1', 'dcdcCharger', { label: 'Booster', amps: 30 }),
+    ])!;
+    const house = out.nodes.find((x) => x.type === 'battery' && !String(x.data?.label ?? '').match(/start/i));
+    expect(house).toBeDefined();
+    // Der Booster wird an Starter UND Schiene angelegt, nie nur an die Batterie.
+    const boosterToStarter = out.edges.find((x) => x.source === 'b1' && x.target === 'd1');
+    expect(boosterToStarter).toBeDefined();
+  });
+
+  it('markiert unmarkierte Nutzer-DC-Kanten mit DC_12V', () => {
+    const out = performAutoWiring(
+      [n('b1', 'battery', {}), n('c1', 'consumer', { watts: 20 })],
+      [e({ id: 'u-dc', source: 'b1', target: 'c1', data: { length: 2 } })]
+    )!;
+    const userEdge = out.edges.find((x) => x.id === 'u-dc')!;
+    expect(userEdge.data?.edgeDomain).toBe('DC_12V');
+  });
+
+  it('versorgt jeden Wechselrichter mit Landstrom-Eingang', () => {
+    const out = performAutoWiring([
+      n('b1', 'battery', { label: 'Aufbau', capacity: 200, chemistry: 'LiFePO4' }),
+      n('i1', 'inverter', { label: 'WR1', watts: 1000 }),
+      n('i2', 'inverter', { label: 'WR2', watts: 1000 }),
+      n('sp1', 'shorePower', { label: 'Landstrom' }),
+    ])!;
+    expect(out.edges.some((x) => x.source === 'sp1' && x.target === 'i1' && x.targetHandle === 'ac_in')).toBe(true);
+    expect(out.edges.some((x) => x.source === 'sp1' && x.target === 'i2' && x.targetHandle === 'ac_in')).toBe(true);
   });
 });
