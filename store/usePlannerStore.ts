@@ -451,6 +451,10 @@ export const usePlannerStore = create<PlannerState>()(
     })
   })),
 
+  handleChangeFuseSize: (id, fuseSize) => set((state) => withHistory(state, {
+    edges: state.edges.map((e) => e.id === id ? { ...e, data: { ...e.data!, fuseSize } } : e)
+  })),
+
   isValidConnection: (connection) => {
     const { nodes, waterNodes, viewMode, edges } = get();
     const allNodes = [...nodes, ...waterNodes];
@@ -705,15 +709,6 @@ export const usePlannerStore = create<PlannerState>()(
       set((state) => withHistory(state, { nodes: state.nodes.concat(newNode) }));
     }
   },
-
-  handleChangeFuseSize: (id, fuseSize) => set((state) => withHistory(state, {
-    edges: state.edges.map((e) => {
-      if (e.id === id) {
-        return { ...e, data: { ...e.data!, fuseSize } };
-      }
-      return e;
-    })
-  })),
 
   undo: () => set((state) => {
     const previous = state.historyPast[state.historyPast.length - 1];
