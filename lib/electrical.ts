@@ -142,11 +142,17 @@ export const getEdgeDomain = (
     return 'AC_230V';
   }
 
-  const AC_HANDLES = ['plus', 'ac_out', 'L', 'ac', 'output', 'ac_in'];
-  const hasAcHandle = (nodeType: string | undefined, handle: string | null | undefined) =>
-    nodeType === 'inverter' && handle && AC_HANDLES.includes(handle);
+  // Wechselrichter: Die Plus-Quelle ist der 230-V-Ausgang, der Plus-Eingang
+  // (target) ist dagegen der 12-V-DC-Anschluss — nur 'ac_in' ist ein AC-Ziel.
+  // Exakt dieselbe Zuordnung steht in der Registry
+  // (components/registry/builtinComponents.ts) und in getHandleDomain.
+  const AC_SOURCE_HANDLES = ['plus', 'ac_out', 'L', 'ac', 'output'];
+  const AC_TARGET_HANDLES = ['ac_in'];
 
-  if (hasAcHandle(sourceNodeType, sourceHandle) || hasAcHandle(targetNodeType, targetHandle)) {
+  if (sourceNodeType === 'inverter' && sourceHandle && AC_SOURCE_HANDLES.includes(sourceHandle)) {
+    return 'AC_230V';
+  }
+  if (targetNodeType === 'inverter' && targetHandle && AC_TARGET_HANDLES.includes(targetHandle)) {
     return 'AC_230V';
   }
   return 'DC_12V';

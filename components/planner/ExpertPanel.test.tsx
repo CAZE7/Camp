@@ -6,6 +6,7 @@ import { usePlannerStore } from '../../store/usePlannerStore';
 
 const defaultPlannerStoreState = {
   selectedNodes: [],
+  nodes: [],
   edges: [],
 };
 
@@ -42,6 +43,7 @@ describe('ExpertPanel', () => {
   it('shows specific knowledge when a node is selected', () => {
     const selectedState = {
       selectedNodes: [{ id: '1', type: 'battery', data: {} }],
+      nodes: [],
       edges: [],
     };
     vi.mocked(usePlannerStore).mockImplementation((selector: any) => selector(selectedState));
@@ -60,6 +62,7 @@ describe('ExpertPanel', () => {
   it('calculates live recommendations for inverter', () => {
     const selectedState = {
       selectedNodes: [{ id: '1', type: 'inverter', data: { watts: 1000 } }],
+      nodes: [],
       edges: [{ id: 'e1', source: '1', target: '2', data: { length: 2 } }],
     };
     vi.mocked(usePlannerStore).mockImplementation((selector: any) => selector(selectedState));
@@ -72,14 +75,15 @@ describe('ExpertPanel', () => {
 
     expect(screen.getByText(/Aktuelle Empfehlung/)).toBeInTheDocument();
     expect(screen.getByText("Kabelquerschnitt")).toBeInTheDocument();
-    expect(screen.getByText("Max. Sicherung")).toBeInTheDocument();
-    // I = 1000 / 12 / 0.85 = 98.03 A -> expected current
-    expect(screen.getByText(/98\.0 A/)).toBeInTheDocument();
+    expect(screen.getByText("Sicherung")).toBeInTheDocument();
+    // I = 1000 / 12.8 / 0.85 = 91.91 A (Systemspannung statt hartem /12)
+    expect(screen.getByText(/91\.9 A/)).toBeInTheDocument();
   });
 
   it('calculates live recommendations for solar', () => {
     const selectedState = {
       selectedNodes: [{ id: '1', type: 'solar', data: { watts: 200 } }],
+      nodes: [],
       edges: [{ id: 'e1', source: '1', target: '2', data: { length: 5 } }],
     };
     vi.mocked(usePlannerStore).mockImplementation((selector: any) => selector(selectedState));
@@ -96,6 +100,7 @@ describe('ExpertPanel', () => {
   it('toggles tip sections', () => {
     const selectedState = {
       selectedNodes: [{ id: '1', type: 'battery', data: {} }],
+      nodes: [],
       edges: [],
     };
     vi.mocked(usePlannerStore).mockImplementation((selector: any) => selector(selectedState));

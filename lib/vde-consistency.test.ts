@@ -40,7 +40,7 @@ const FORBIDDEN_PATTERNS: Array<{ name: string; pattern: RegExp; hint: string }>
   {
     name: 'hardcoded copper formula 58 * 0.x',
     pattern: /58\s*\*\s*0\.\d+/,
-    hint: 'Ersetze 58 * 0.xx durch calculateVoltageDrop / VDE_COPPER_RESISTIVITY aus vde-standards.',
+    hint: 'Ersetze 58 * 0.xx durch hasVoltageDropError (components/edges/utils/voltageDrop.ts) bzw. edgeVoltageDrop (lib/autoWire.ts).',
   },
   {
     name: 'hardcoded 60% conduit fill',
@@ -119,12 +119,12 @@ describe('VDE-Konsistenz: keine hardcoded Magic-Numbers', () => {
     expect(content).not.toMatch(/[\/]\s*0\.85\b/);
   });
 
-  it('ConduitNode.tsx definiert keine lokalen CONDUIT_SIZES / CABLE_OUTER_DIAMETERS', () => {
+  it('ConduitNode.tsx rechnet über die zentrale Füllgrad-Funktion statt mit eigenen Tabellen', () => {
     const content = fs.readFileSync(path.join(REPO_ROOT, 'components/nodes/ConduitNode.tsx'), 'utf-8');
     expect(content).not.toMatch(/const\s+CONDUIT_SIZES\s*=/);
     expect(content).not.toMatch(/const\s+CABLE_OUTER_DIAMETERS\s*=/);
-    expect(content).toMatch(/VDE_CONDUIT_INNER_DIAMETERS/);
-    expect(content).toMatch(/VDE_CABLE_OUTER_DIAMETERS/);
+    expect(content).toMatch(/calculateConduitFillPercent/);
+    expect(content).toMatch(/recommendConduitType/);
     expect(content).toMatch(/VDE_MAX_CONDUIT_FILL_PERCENT/);
   });
 });
@@ -142,40 +142,41 @@ describe('VDE-Konsistenz: vde-standards exportiert alle wichtigen Konstanten', (
     'calculateStrokeWidth',
     'getEdgeDomain',
     'getHandleDomain',
-    'VDE_CURRENT_CAPACITY',
-    'VDE_STANDARD_FUSES',
-    'VDE_CONSERVATIVE_FUSES',
-    'VDE_COPPER_RESISTIVITY',
-    'VDE_MAX_VOLTAGE_DROP_12V',
-    'VDE_MAX_VOLTAGE_DROP_230V',
     'VDE_CONDUIT_INNER_DIAMETERS',
     'VDE_MAX_CONDUIT_FILL_PERCENT',
     'VDE_CABLE_OUTER_DIAMETERS',
     'VDE_INVERTER_EFFICIENCY',
-    'VDE_INVERTER_MAX_LOAD_FRACTION',
-    'VDE_RCD_MAX_TRIP_CURRENT_MA',
-    'VDE_230V_PERSON_PROTECTION_MA',
     'VDE_SOLAR_WINTER_REDUCTION',
     'VDE_SOLAR_VMP_VOLTAGE',
     'VDE_CHARGE_DERATING_FACTOR',
     'VDE_BATTERY_DOD',
-    'VDE_MIN_CROSS_SECTION',
-    'calculateMinCrossSection',
-    'roundUpToVDECrossSection',
-    'calculateVoltageDrop',
     'calculateConduitFillPercent',
     'recommendConduitType',
-    'calculateWire',
-    'validateCableEdge',
-    'validateBatteryNode',
-    'validateShorePowerNode',
-    'validateInverterNode',
-    'validateSchematic',
   ] as const;
 
   it('exportiert alle erforderlichen Konstanten und Funktionen', () => {
     const missing = requiredExports.filter((name) => (vde as Record<string, unknown>)[name] === undefined);
     expect(missing).toEqual([]);
+  });
+
+  it('exportiert die entfernte Legacy-Validierungs-API nicht mehr (Mission 4)', () => {
+    // Die zweite Validierungs-API und die parallelen Sicherungstabellen waren
+    // toter Code und widersprachen der aktiven Logik (selectFuseSize/FUSE_MAP).
+    const removed = [
+      'VDE_CURRENT_CAPACITY',
+      'VDE_STANDARD_FUSES',
+      'VDE_CONSERVATIVE_FUSES',
+      'calculateWire',
+      'calculateMinCrossSection',
+      'calculateVoltageDrop',
+      'validateSchematic',
+      'validateCableEdge',
+      'validateBatteryNode',
+      'validateShorePowerNode',
+      'validateInverterNode',
+    ];
+    const present = removed.filter((name) => (vde as Record<string, unknown>)[name] !== undefined);
+    expect(present).toEqual([]);
   });
 });
 

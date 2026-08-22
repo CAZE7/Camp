@@ -11,7 +11,12 @@ export const TEMPLATE_MINIMALIST = {
     { id: 'ground-1', type: 'ground', position: { x: 100, y: 500 }, data: { label: 'Massepunkt' } },
   ] as Node[],
   edges: [
-    { id: 'e-batt-fuse', source: 'battery-1', sourceHandle: 'plus', target: 'fusebox-1', targetHandle: 'plus', type: 'cableEdge', data: { length: 1, crossSection: 10 } },
+    // Hauptsicherung sitzt direkt am Batteriepol (≤ 20 cm) und trägt den
+    // Gesamtstrom der drei Verbraucher (~8,4 A bei 12 V) → 10 A ATO.
+    // Die Minus-Rückleitungen ergänzt „Automatisch verbinden“ fachgerecht
+    // (Batterie → Shunt → Minusschiene → Verbraucher); doppelte Rückleiter
+    // im Template würden parallele Minuspfade erzeugen.
+    { id: 'e-batt-fuse', source: 'battery-1', sourceHandle: 'plus', target: 'fusebox-1', targetHandle: 'plus', type: 'cableEdge', data: { length: 0.2, crossSection: 10, fuseSize: 10 } },
     { id: 'e-batt-gnd', source: 'battery-1', sourceHandle: 'minus', target: 'ground-1', targetHandle: 'minus', type: 'cableEdge', data: { length: 1, crossSection: 10 } },
     { id: 'e-fuse-light', source: 'fusebox-1', sourceHandle: 'plus', target: 'cons-light', targetHandle: 'plus', type: 'cableEdge', data: { length: 5, crossSection: 2.5 } },
     { id: 'e-fuse-usb', source: 'fusebox-1', sourceHandle: 'plus', target: 'cons-usb', targetHandle: 'plus', type: 'cableEdge', data: { length: 3, crossSection: 2.5 } },
@@ -63,25 +68,29 @@ export const TEMPLATE_AUTARK = {
     { id: 'charger-2', type: 'dcdcCharger', position: { x: 300, y: 200 }, data: { label: 'DC-DC Ladebooster', amps: 30 } },
     { id: 'starter-1', type: 'battery', position: { x: 100, y: 200 }, data: { label: 'Starterbatterie', capacity: 90, chemistry: 'AGM' } },
     { id: 'shore-1', type: 'shorePower', position: { x: 100, y: 300 }, data: { label: 'Landstrom', hasRcd: true } },
-    { id: 'inverter-1', type: 'inverter', position: { x: 500, y: 500 }, data: { label: '2000W Inverter', watts: 2000 } },
+    // 1500 W Wechselrichter: ~138 A DC-Eingangsstrom bei 12,8 V — das lässt
+    // sich mit der Normreihe (max. 70 mm² / 160 A Sicherung) fehlerfrei
+    // absichern. Ein 2000-W-Wechselrichter (~184 A) läge über jeder
+    // zulässigen Sicherung der Normreihe und zeigte dauerhaft Fehler.
+    { id: 'inverter-1', type: 'inverter', position: { x: 500, y: 500 }, data: { label: '1500W Inverter', watts: 1500, continuousPower: 1500 } },
     { id: 'cons-fridge', type: 'consumer', position: { x: 700, y: 100 }, data: { label: 'Kompressorkühlschrank', watts: 60 } },
     { id: 'cons-heat', type: 'consumer', position: { x: 700, y: 200 }, data: { label: 'Standheizung', watts: 40 } },
     { id: 'cons-fan', type: 'consumer', position: { x: 700, y: 300 }, data: { label: 'MaxxFan', watts: 40 } },
-    { id: 'cons-induct', type: 'consumer230v', position: { x: 800, y: 500 }, data: { label: 'Induktionskochfeld', watts: 1500 } },
+    { id: 'cons-induct', type: 'consumer230v', position: { x: 800, y: 500 }, data: { label: 'Induktionskochfeld', watts: 1200 } },
   ] as Node[],
   edges: [
-    { id: 'e-batt-plus', source: 'battery-1', sourceHandle: 'plus', target: 'busbar-plus', targetHandle: 'plus', type: 'cableEdge', data: { length: 0.5, crossSection: 50, fuseSize: 200 } },
-    { id: 'e-batt-minus', source: 'battery-1', sourceHandle: 'minus', target: 'busbar-minus', targetHandle: 'minus', type: 'cableEdge', data: { length: 0.5, crossSection: 50 } },
+    { id: 'e-batt-plus', source: 'battery-1', sourceHandle: 'plus', target: 'busbar-plus', targetHandle: 'plus', type: 'cableEdge', data: { length: 0.5, crossSection: 70, fuseSize: 160 } },
+    { id: 'e-batt-minus', source: 'battery-1', sourceHandle: 'minus', target: 'busbar-minus', targetHandle: 'minus', type: 'cableEdge', data: { length: 0.5, crossSection: 70 } },
     { id: 'e-solar-charger', source: 'solar-1', sourceHandle: 'plus', target: 'charger-1', targetHandle: 'plus', type: 'cableEdge', data: { length: 4, crossSection: 6 } },
     { id: 'e-charger-busbar', source: 'charger-1', sourceHandle: 'plus', target: 'busbar-plus', targetHandle: 'plus', type: 'cableEdge', data: { length: 1, crossSection: 10, fuseSize: 40 } },
     { id: 'e-starter-dcdc', source: 'starter-1', sourceHandle: 'plus', target: 'charger-2', targetHandle: 'plus', type: 'cableEdge', data: { length: 5, crossSection: 16, fuseSize: 60 } },
     { id: 'e-dcdc-busbar', source: 'charger-2', sourceHandle: 'plus', target: 'busbar-plus', targetHandle: 'plus', type: 'cableEdge', data: { length: 1, crossSection: 16, fuseSize: 50 } },
-    { id: 'e-busbar-fuse', source: 'busbar-plus', sourceHandle: 'plus', target: 'fusebox-1', targetHandle: 'plus', type: 'cableEdge', data: { length: 1, crossSection: 16 } },
+    { id: 'e-busbar-fuse', source: 'busbar-plus', sourceHandle: 'plus', target: 'fusebox-1', targetHandle: 'plus', type: 'cableEdge', data: { length: 1, crossSection: 70, fuseSize: 160 } },
     { id: 'e-fuse-fridge', source: 'fusebox-1', sourceHandle: 'plus', target: 'cons-fridge', targetHandle: 'plus', type: 'cableEdge', data: { length: 3, crossSection: 4 } },
     { id: 'e-fuse-heat', source: 'fusebox-1', sourceHandle: 'plus', target: 'cons-heat', targetHandle: 'plus', type: 'cableEdge', data: { length: 4, crossSection: 4 } },
     { id: 'e-fuse-fan', source: 'fusebox-1', sourceHandle: 'plus', target: 'cons-fan', targetHandle: 'plus', type: 'cableEdge', data: { length: 5, crossSection: 2.5 } },
-    { id: 'e-busbar-inv-plus', source: 'busbar-plus', sourceHandle: 'plus', target: 'inverter-1', targetHandle: 'plus', type: 'cableEdge', data: { length: 1, crossSection: 50, fuseSize: 200 } },
-    { id: 'e-busbar-inv-minus', source: 'busbar-minus', sourceHandle: 'minus', target: 'inverter-1', targetHandle: 'minus', type: 'cableEdge', data: { length: 1, crossSection: 50 } },
+    { id: 'e-busbar-inv-plus', source: 'busbar-plus', sourceHandle: 'plus', target: 'inverter-1', targetHandle: 'plus', type: 'cableEdge', data: { length: 1, crossSection: 70, fuseSize: 160 } },
+    { id: 'e-busbar-inv-minus', source: 'busbar-minus', sourceHandle: 'minus', target: 'inverter-1', targetHandle: 'minus', type: 'cableEdge', data: { length: 1, crossSection: 70 } },
     { id: 'e-inv-induct', source: 'inverter-1', sourceHandle: 'plus', target: 'cons-induct', targetHandle: 'plus', type: 'cableEdge', data: { length: 2, crossSection: 2.5, edgeDomain: 'AC_230V' } },
     { id: 'e-shore-inv', source: 'shore-1', sourceHandle: 'plus', target: 'inverter-1', targetHandle: 'ac_in', type: 'cableEdge', data: { length: 2, crossSection: 2.5, fuseSize: 16, edgeDomain: 'AC_230V' } },
   ] as Edge<CableEdgeData>[],

@@ -29,6 +29,8 @@ vi.mock('./planner/OnboardingWizard', () => ({
 
 // --- Stores -------------------------------------------------------------
 const setInspectorOpen = vi.fn();
+const setSelectedNodes = vi.fn();
+const setSelectedEdges = vi.fn();
 const plannerState: Record<string, unknown> = {
   viewMode: 'electric',
   setViewMode: vi.fn(),
@@ -36,6 +38,8 @@ const plannerState: Record<string, unknown> = {
   setInspectorOpen,
   selectedNodes: [],
   selectedEdges: [],
+  setSelectedNodes,
+  setSelectedEdges,
   undo: vi.fn(),
   redo: vi.fn(),
   canUndo: false,
@@ -173,7 +177,7 @@ describe('PlannerInner — responsives Layout', () => {
     expect(setInspectorOpen).toHaveBeenLastCalledWith(false);
   });
 
-  it('schließt das Overlay per Backdrop und per Escape', () => {
+  it('schließt das Overlay per Backdrop und per Escape (inkl. Auswahl aufheben)', () => {
     render(<PlannerInner />);
 
     fireEvent.click(screen.getByTestId('inspector-backdrop'));
@@ -184,6 +188,10 @@ describe('PlannerInner — responsives Layout', () => {
       fireEvent.keyDown(document, { key: 'Escape' });
     });
     expect(setInspectorOpen).toHaveBeenCalledWith(false);
+    // Escape hebt die Auswahl auf — der Inspector schließt dann über den
+    // Auswahl-Effekt, statt am Desktop die Spalte als Ganzes einzuklappen.
+    expect(setSelectedNodes).toHaveBeenCalledWith([]);
+    expect(setSelectedEdges).toHaveBeenCalledWith([]);
   });
 
   it('blendet den Inspector aus, wenn er geschlossen ist — ohne Overflow zu erzeugen', () => {

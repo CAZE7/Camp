@@ -14,9 +14,10 @@ import {
   getEdgeDomain,
   getHandleDomain,
 } from './electrical';
-import { calculateVoltageDrop, calculateMinCrossSection, getSystemVoltage } from './vde-standards';
+import { getSystemVoltage } from './vde-standards';
+import { hasVoltageDropError } from '../components/edges/utils/voltageDrop';
 import { performAutoWiring } from './autoWire';
-import { amps, meters, mm2, volts } from './units';
+import { volts } from './units';
 
 /**
  * lib/vde-properties.test.ts — Property-Based Tests der VDE-Logik (AGENTS.md K2).
@@ -137,20 +138,25 @@ describe('G2 — Monotonie der Sicherungsauswahl', () => {
   });
 });
 
-describe('G3 — Monotonie des Spannungsfalls', () => {
+describe('G3 — Monotonie des Spannungsfalls (Live-Formel aus components/edges/utils/voltageDrop.ts)', () => {
+  // Die App rechnet den Spannungsfall über hasVoltageDropError (κ = 58).
+  // Die früheren ρ=0.0175-Helfer wurden mit der toten Validierungs-API
+  // entfernt — die Gesetze prüfen jetzt genau die Funktion, die rendert.
+  const dropPercent = (current: number, length: number, section: number): number =>
+    hasVoltageDropError({
+      isAC: false,
+      I: current,
+      length,
+      crossSection: section,
+      sysVoltage: 12.8,
+      cumulativeDropVolts: 0,
+    }).totalDropPercentage;
+
   it('längere Leitung ⇒ nie kleinerer Spannungsfall', () => {
     fc.assert(
       fc.property(currentA, lengthM, lengthM, crossSection, (current, l1, l2, section) => {
-        const shortDrop = calculateVoltageDrop(
-          amps(current),
-          meters(Math.min(l1, l2)),
-          mm2(section)
-        );
-        const longDrop = calculateVoltageDrop(
-          amps(current),
-          meters(Math.max(l1, l2)),
-          mm2(section)
-        );
+        const shortDrop = dropPercent(current, Math.min(l1, l2), section);
+        const longDrop = dropPercent(current, Math.max(l1, l2), section);
         expect(longDrop).toBeGreaterThanOrEqual(shortDrop);
       }),
       propertyConfig
@@ -160,8 +166,8 @@ describe('G3 — Monotonie des Spannungsfalls', () => {
   it('größerer Querschnitt ⇒ nie größerer Spannungsfall', () => {
     fc.assert(
       fc.property(currentA, lengthM, crossSection, crossSection, (current, length, s1, s2) => {
-        const thin = calculateVoltageDrop(amps(current), meters(length), mm2(Math.min(s1, s2)));
-        const thick = calculateVoltageDrop(amps(current), meters(length), mm2(Math.max(s1, s2)));
+        const thin = dropPercent(current, length, Math.min(s1, s2));
+        const thick = dropPercent(current, length, Math.max(s1, s2));
         expect(thick).toBeLessThanOrEqual(thin);
       }),
       propertyConfig
@@ -176,22 +182,11 @@ describe('G3 — Monotonie des Spannungsfalls', () => {
         lengthM,
         crossSection,
         (current, factor, length, section) => {
-          const single = calculateVoltageDrop(amps(current), meters(length), mm2(section));
-          const scaled = calculateVoltageDrop(amps(current * factor), meters(length), mm2(section));
+          const single = dropPercent(current, length, section);
+          const scaled = dropPercent(current * factor, length, section);
           expect(scaled).toBeCloseTo(single * factor, 6);
         }
       ),
-      propertyConfig
-    );
-  });
-
-  it('der Mindestquerschnitt wächst monoton mit Strom und Länge', () => {
-    fc.assert(
-      fc.property(currentA, currentA, lengthM, (a, b, length) => {
-        const low = calculateMinCrossSection(amps(Math.min(a, b)), meters(length));
-        const high = calculateMinCrossSection(amps(Math.max(a, b)), meters(length));
-        expect(high).toBeGreaterThanOrEqual(low);
-      }),
       propertyConfig
     );
   });

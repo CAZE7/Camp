@@ -70,7 +70,23 @@ export const calculateAnimationDuration = (I: number): number => {
  *  - Spannungsfall inkl. Vorschaltpfad max. 3% (VDE 0298-4: 0,36 V bei 12 V)
  *  - Plus-Leitung braucht eine Sicherung: Nennstrom ≤ Sicherung ≤ Kabel-Max.
  *  - Unabgesicherte Batterie-Plusleitung max. 20 cm (Sicherung sitzt am Pol)
+ *
+ * Die „Sicherung fehlt!“-Regel deckt sich bewusst mit Rule A der
+ * Live-Validierung (useLiveValidation): Nur Hochstromquellen (Batterie,
+ * Wechselrichter, Ladequellen) brauchen zwingend eine eigene Sicherung am
+ * Kabel. Abgänge ab dem Sicherungskasten und Solarzuleitungen sind über ihre
+ * Quelle geschützt und melden hier keinen Fehler — sonst widersprechen sich
+ * Kanten-Chips und Warn-Zentrale.
  */
+const HIGH_POWER_SOURCE_TYPES = new Set([
+  'battery',
+  'inverter',
+  'charger',
+  'mpptController',
+  'dcdcCharger',
+  'acBatteryCharger',
+]);
+
 export const collectEdgeErrors = (input: {
   edgeDomain: 'DC_12V' | 'AC_230V' | 'Solar';
   data?: CableEdgeData;
@@ -78,10 +94,11 @@ export const collectEdgeErrors = (input: {
   maxFuse: number;
   isPlus: boolean;
   sourceNodeType?: string;
+  targetNodeType?: string;
   length: number;
   totalDropPercentage: number;
 }): string[] => {
-  const { edgeDomain, data, I, maxFuse, isPlus, sourceNodeType, length, totalDropPercentage } = input;
+  const { edgeDomain, data, I, maxFuse, isPlus, sourceNodeType, targetNodeType, length, totalDropPercentage } = input;
   const errors: string[] = [];
 
   if (edgeDomain !== 'AC_230V') {
@@ -94,7 +111,11 @@ export const collectEdgeErrors = (input: {
     if (maxFuse === 0) {
       errors.push('Keine Empfehlung möglich / Querschnitt prüfen');
     } else if (!data?.fuseSize) {
-      errors.push('Sicherung fehlt!');
+      const needsSourceFuse =
+        HIGH_POWER_SOURCE_TYPES.has(sourceNodeType || '') && targetNodeType !== 'fuse';
+      if (needsSourceFuse) {
+        errors.push('Sicherung fehlt!');
+      }
     } else {
       if (data.fuseSize > maxFuse) {
         errors.push('Sicherung zu groß!');
@@ -231,7 +252,7 @@ const CableEdge = function ({
 
   const isPlus = !!resolvedSourceHandle?.includes('plus');
 
-  const { length, crossSection, maxFuse, animationDuration, I, sourceNode, edgeDomain, sysVoltage } = useMemo(() => {
+  const { length, crossSection, maxFuse, animationDuration, I, sourceNode, targetNode, edgeDomain, sysVoltage } = useMemo(() => {
     const physicalDistance = Math.max(1, Math.sqrt(Math.pow(targetX - sourceX, 2) + Math.pow(targetY - sourceY, 2)) / 100);
     const length = data?.length || physicalDistance;
     const sourceNode = getNode(source);
@@ -253,6 +274,7 @@ const CableEdge = function ({
         animationDuration: 3,
         I: 0,
         sourceNode,
+        targetNode,
         edgeDomain,
         sysVoltage: 230,
       };
@@ -274,6 +296,7 @@ const CableEdge = function ({
       animationDuration: dur,
       I,
       sourceNode,
+      targetNode,
       edgeDomain,
       sysVoltage,
     };
@@ -297,6 +320,7 @@ const CableEdge = function ({
     maxFuse,
     isPlus,
     sourceNodeType: sourceNode?.type,
+    targetNodeType: targetNode?.type,
     length,
     totalDropPercentage,
   });

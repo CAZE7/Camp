@@ -33,7 +33,6 @@ interface InspectorProps {
   onDelete?: (...args: any[]) => void;
   onUpdateNodeData?: (...args: any[]) => void;
   onChangeLength?: (id: string, length: number) => void;
-  onChangeCrossSection?: (id: string, crossSection: number) => void;
   onChangeFuseSize?: (id: string, fuseSize: number) => void;
 
   // data props

@@ -7,7 +7,6 @@ import { CableEdgeData } from './edges/CableEdge';
 
 describe('Inspector Component', () => {
   const mockOnChangeLength = vi.fn();
-  const mockOnChangeCrossSection = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -19,7 +18,6 @@ describe('Inspector Component', () => {
         <Inspector
           selectedEdge={null}
           onChangeLength={mockOnChangeLength}
-          onChangeCrossSection={mockOnChangeCrossSection}
         />
       );
 
@@ -40,7 +38,6 @@ describe('Inspector Component', () => {
         <Inspector
           selectedEdge={mockEdge}
           onChangeLength={mockOnChangeLength}
-          onChangeCrossSection={mockOnChangeCrossSection}
         />
       );
 
@@ -63,7 +60,6 @@ describe('Inspector Component', () => {
         <Inspector
           selectedEdge={mockEdge}
           onChangeLength={mockOnChangeLength}
-          onChangeCrossSection={mockOnChangeCrossSection}
         />
       );
 
@@ -86,7 +82,6 @@ describe('Inspector Component', () => {
         <Inspector
           selectedEdge={mockEdge}
           onChangeLength={mockOnChangeLength}
-          onChangeCrossSection={mockOnChangeCrossSection}
         />
       );
 
@@ -106,7 +101,6 @@ describe('Inspector Component', () => {
         <Inspector
           selectedEdge={mockEdge}
           onChangeLength={mockOnChangeLength}
-          onChangeCrossSection={mockOnChangeCrossSection}
         />
       );
 

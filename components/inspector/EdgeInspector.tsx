@@ -2,7 +2,7 @@ import React from 'react';
 import { Edge } from 'reactflow';
 import { CableEdgeData } from '../edges/CableEdge';
 import { ValidatingInput, COMMON_RULES } from '../ui/ValidatingInput';
-import { calculateMaxFuse } from '../../lib/electrical';
+import { FUSE_MAP } from '../../lib/electrical';
 
 export interface EdgeInspectorProps {
   edge: Edge<CableEdgeData>;
@@ -13,7 +13,10 @@ export interface EdgeInspectorProps {
 export function EdgeInspector({ edge, onChangeLength, onChangeFuseSize }: EdgeInspectorProps) {
   const isAc = edge.data?.edgeDomain === 'AC_230V';
   const storedCs = edge.data?.crossSection;
-  const maxFuse = storedCs ? calculateMaxFuse(storedCs) : 0;
+  // Bewusst kein calculateMaxFuse: das wirft für Nicht-Normquerschnitte aus
+  // alten gespeicherten Plänen (z. B. 3 mm²) einen RangeError und ließ den
+  // Inspector crashen. Unbekannte Werte ergeben 0 → kein Hinweis, kein Absturz.
+  const maxFuse = typeof storedCs === 'number' && FUSE_MAP[storedCs] !== undefined ? FUSE_MAP[storedCs] : 0;
 
   return (
     <div className="flex flex-col space-y-4">

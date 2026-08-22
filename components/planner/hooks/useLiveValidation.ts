@@ -25,12 +25,7 @@ export const SEVERITY_ORDER: Record<ValidationWarning['type'], number> = {
   info: 2,
 };
 
-export function useLiveValidation(
-  nodes: Node[],
-  edges: Edge<CableEdgeData>[],
-  waterNodes?: Node[],
-  waterEdges?: Edge[]
-) {
+export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
   return useMemo(() => {
     const warnings: ValidationWarning[] = [];
 
@@ -303,5 +298,5 @@ export function useLiveValidation(
     }
 
     return warnings;
-  }, [nodes, edges, waterNodes, waterEdges]);
+  }, [nodes, edges]);
 }

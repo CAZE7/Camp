@@ -441,7 +441,8 @@ function acCurrentA(sourceNode: Node | undefined, targetNode: Node | undefined):
   return ZERO_AMPS;
 }
 
-function sizeAcEdges(edges: CableEdge[], nodes: Node[]): void {
+/** @internal für Unit-Tests exportiert. */
+export function sizeAcEdges(edges: CableEdge[], nodes: Node[]): void {
   const nodeMap = new Map(nodes.map((n) => [n.id, n]));
   for (const edge of edges) {
     if (edge.data?.edgeDomain !== 'AC_230V') continue;
@@ -623,7 +624,8 @@ export function healUserEdges(
   return userEdges.filter((e) => !dropIds.has(e.id));
 }
 
-function pickHouseBattery(batteries: Node[]): Node | undefined {
+/** @internal für Unit-Tests exportiert. */
+export function pickHouseBattery(batteries: Node[]): Node | undefined {
   if (batteries.length === 0) return undefined;
   return batteries.find((b) => !isStarterBattery(b)) || batteries[0];
 }
