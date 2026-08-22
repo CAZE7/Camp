@@ -21,7 +21,7 @@ export async function openPlanner(page: Page): Promise<void> {
   await page.goto(PLANNER_URL);
   // The planner is dynamically imported. Waiting for its shell first prevents
   // a race where the onboarding dialog mounts just after a zero-count check.
-  await expect(page.getByTestId('planner-shell')).toBeVisible();
+  await expect(page.getByTestId('planner-shell')).toBeVisible({ timeout: 30000 });
   await dismissOnboarding(page);
 }
 

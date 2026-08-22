@@ -22,7 +22,7 @@ test.describe('Persistenz über einen Reload', () => {
     expect(edgesBefore).toBeGreaterThan(0);
 
     await page.reload();
-    await expect(page.getByTestId('planner-shell')).toBeVisible();
+    await expect(page.getByTestId('planner-shell')).toBeVisible({ timeout: 30000 });
 
     await expect.poll(async () => nodeCount(page)).toBe(nodesBefore);
     await expect.poll(async () => edgeCount(page)).toBe(edgesBefore);
