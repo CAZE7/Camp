@@ -21,7 +21,7 @@ import { load } from 'js-yaml';
  * `docs/CI.md`, Abschnitt „Aktivierung". Der Test prüft dieselben
  * Invarianten wie am Zielort.
  */
-const WORKFLOW_DIR = join(process.cwd(), 'docs', 'ci', 'workflows');
+const WORKFLOW_DIR = join(process.cwd(), '.github', 'workflows');
 
 type Step = {
   name?: string;
@@ -84,17 +84,6 @@ function needsOf(job: Job): string[] {
 const WORKFLOW_FILES = ['quality.yml', 'ci.yml', 'deploy.yml'];
 
 describe('GitHub-Actions-Workflows', () => {
-  it('die Dateien liegen am dokumentierten Übergangsort', () => {
-    // Solange die Workflows unter docs/ci/workflows/ liegen, ist das Gate
-    // NICHT aktiv. Dieser Test hält fest, dass der Zustand bewusst ist und
-    // dokumentiert wird — er darf erst entfernt werden, wenn die Dateien
-    // nach .github/workflows/ umgezogen sind.
-    expect(existsSync(WORKFLOW_DIR)).toBe(true);
-    const guide = readFileSync(join(process.cwd(), 'docs', 'CI.md'), 'utf8');
-    expect(guide).toMatch(/docs\/ci\/workflows/);
-    expect(guide).toMatch(/Aktivierung/);
-  });
-
   it('alle Workflow-Dateien sind syntaktisch gültiges YAML mit jobs', () => {
     for (const file of WORKFLOW_FILES) {
       expect(existsSync(join(WORKFLOW_DIR, file)), `${file} fehlt`).toBe(true);
