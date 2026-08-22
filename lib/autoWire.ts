@@ -544,42 +544,28 @@ export function resolveRails(
   const plusByRole = busbars.find(looksLikePlusBusbar);
   const minusByRole = busbars.find(looksLikeMinusBusbar);
 
-  // Rollen/labels haben Vorrang. Eine einzelne vorhandene Schiene wird für die
-  // passende Seite wiederverwendet, die andere Seite wird als eigener Knoten
-  // erzeugt. Niemals plus/minus auf denselben Knoten legen (Kurzschluss).
-  const rail = (
-    role: 'positive' | 'negative',
-    label: string,
-    offsetX: number,
-    offsetY: number,
-    excludeId?: string
-  ): Node => {
-    const byRole = role === 'positive' ? plusByRole : minusByRole;
-    if (byRole && byRole.id !== excludeId) return byRole;
-    const oppositeRoleId = role === 'positive' ? minusByRole?.id : plusByRole?.id;
-    const fallback = busbars.find((b) => b.id !== excludeId && b.id !== oppositeRoleId);
-    if (fallback) return fallback;
-    const created = ensureNode(
-      currentNodes,
-      nodesByType,
-      nodesByLabel,
-      batteryNode,
-      'busbar',
-      label,
-      offsetX,
-      offsetY,
-      { role }
-    );
-    autoCreatedNodeIds.add(created.id);
-    return created;
-  };
-
-  let plus = rail('positive', 'Plus-Rail', 300, 0);
-  let minus = rail('negative', 'Minus-Rail', 300, 140, plus.id);
-  if (minus.id === plus.id) {
-    minus = rail('negative', 'Minus-Rail-2', 300, -160, plus.id);
+  if (plusByRole && minusByRole && plusByRole.id !== minusByRole.id) {
+    return { plus: plusByRole, minus: minusByRole };
   }
-  return { plus, minus };
+  if (busbars.length >= 2) {
+    return { plus: busbars[0], minus: busbars[1] };
+  }
+  if (busbars.length === 1) {
+    return { plus: busbars[0], minus: busbars[0] };
+  }
+
+  const created = ensureNode(
+    currentNodes,
+    nodesByType,
+    nodesByLabel,
+    batteryNode,
+    'busbar',
+    'Main Busbar',
+    300,
+    0
+  );
+  autoCreatedNodeIds.add(created.id);
+  return { plus: created, minus: created };
 }
 
 function findOrCreate(
