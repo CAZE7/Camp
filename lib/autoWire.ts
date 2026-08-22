@@ -544,28 +544,46 @@ export function resolveRails(
   const plusByRole = busbars.find(looksLikePlusBusbar);
   const minusByRole = busbars.find(looksLikeMinusBusbar);
 
-  if (plusByRole && minusByRole && plusByRole.id !== minusByRole.id) {
-    return { plus: plusByRole, minus: minusByRole };
-  }
-  if (busbars.length >= 2) {
-    return { plus: busbars[0], minus: busbars[1] };
-  }
-  if (busbars.length === 1) {
-    return { plus: busbars[0], minus: busbars[0] };
-  }
+  // A busbar is a conductor, not a combined plus/minus distribution block.
+  // Reusing one node for both rails would directly connect the battery poles
+  // through the generated backbone. Always select or create *two* nodes.
+  const createRail = (role: 'positive' | 'negative'): Node => {
+    const node = ensureNode(
+      currentNodes,
+      nodesByType,
+      nodesByLabel,
+      batteryNode,
+      'busbar',
+      role === 'positive' ? 'Plus-Schiene' : 'Minus-Schiene',
+      300,
+      role === 'positive' ? -80 : 80,
+      { role }
+    );
+    autoCreatedNodeIds.add(node.id);
+    return node;
+  };
 
-  const created = ensureNode(
-    currentNodes,
-    nodesByType,
-    nodesByLabel,
-    batteryNode,
-    'busbar',
-    'Main Busbar',
-    300,
-    0
-  );
-  autoCreatedNodeIds.add(created.id);
-  return { plus: created, minus: created };
+  let plus = plusByRole;
+  let minus = minusByRole;
+  // A legacy label can accidentally contain both terms; it must still not
+  // turn one physical conductor into both polarities.
+  if (plus?.id === minus?.id) minus = undefined;
+
+  // An explicitly identified rail takes precedence over its array position.
+  // Use a different unambiguous/generic rail for the other polarity whenever
+  // possible before adding a new node.
+  if (!plus) plus = busbars.find((node) => node.id !== minus?.id);
+  if (!minus) minus = busbars.find((node) => node.id !== plus?.id);
+
+  if (!plus) plus = createRail('positive');
+  if (!minus) minus = createRail('negative');
+
+  // Persist the inferred role too. This makes a subsequent auto-wire run
+  // deterministic and lets the UI distinguish the two existing rails.
+  plus.data = { ...plus.data, role: 'positive' };
+  minus.data = { ...minus.data, role: 'negative' };
+
+  return { plus, minus };
 }
 
 function findOrCreate(
