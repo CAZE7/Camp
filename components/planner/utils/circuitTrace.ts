@@ -11,43 +11,64 @@ export type CircuitTrace = {
   referenceEdge?: Edge;
 };
 
-const incomingTo = (edges: Edge[], id: string) => edges.filter((edge) => edge.target === id);
-const outgoingFrom = (edges: Edge[], id: string) => edges.filter((edge) => edge.source === id);
+// BOLT OPTIMIZATION:
+// Pre-building adjacency maps (incoming/outgoing edge lookups) and a validNodeIds set
+// reduces circuit trace graph traversal from O(V * E) down to O(V + E) complexity.
 
-function collectUpstream(id: string, edges: Edge[], nodeIds: Set<string>, edgeIds: Set<string>): void {
+function collectUpstream(
+  id: string,
+  incomingEdgesMap: Map<string, Edge[]>,
+  nodeIds: Set<string>,
+  edgeIds: Set<string>
+): void {
   if (nodeIds.has(id)) return;
   nodeIds.add(id);
-  for (const edge of incomingTo(edges, id)) {
+  const incoming = incomingEdgesMap.get(id) || [];
+  for (const edge of incoming) {
     edgeIds.add(edge.id);
-    collectUpstream(edge.source, edges, nodeIds, edgeIds);
+    collectUpstream(edge.source, incomingEdgesMap, nodeIds, edgeIds);
   }
 }
 
-function collectDownstream(id: string, edges: Edge[], nodeIds: Set<string>, edgeIds: Set<string>): void {
+function collectDownstream(
+  id: string,
+  outgoingEdgesMap: Map<string, Edge[]>,
+  nodeIds: Set<string>,
+  edgeIds: Set<string>
+): void {
   if (nodeIds.has(id)) return;
   nodeIds.add(id);
-  for (const edge of outgoingFrom(edges, id)) {
+  const outgoing = outgoingEdgesMap.get(id) || [];
+  for (const edge of outgoing) {
     edgeIds.add(edge.id);
-    collectDownstream(edge.target, edges, nodeIds, edgeIds);
+    collectDownstream(edge.target, outgoingEdgesMap, nodeIds, edgeIds);
   }
 }
 
 /** One deterministic source → seed path for the textual overlay. */
-function primaryUpstream(id: string, edges: Edge[], seen = new Set<string>()): string[] {
+function primaryUpstream(
+  id: string,
+  incomingEdgesMap: Map<string, Edge[]>,
+  seen = new Set<string>()
+): string[] {
   if (seen.has(id)) return [id];
   seen.add(id);
-  const incoming = incomingTo(edges, id).slice().sort((a, b) => a.id.localeCompare(b.id));
+  const incoming = (incomingEdgesMap.get(id) || []).slice().sort((a, b) => a.id.localeCompare(b.id));
   if (incoming.length === 0) return [id];
-  return [...primaryUpstream(incoming[0].source, edges, seen), id];
+  return [...primaryUpstream(incoming[0].source, incomingEdgesMap, seen), id];
 }
 
 /** One deterministic seed → consumer path for the textual overlay. */
-function primaryDownstream(id: string, edges: Edge[], seen = new Set<string>()): string[] {
+function primaryDownstream(
+  id: string,
+  outgoingEdgesMap: Map<string, Edge[]>,
+  seen = new Set<string>()
+): string[] {
   if (seen.has(id)) return [id];
   seen.add(id);
-  const outgoing = outgoingFrom(edges, id).slice().sort((a, b) => a.id.localeCompare(b.id));
+  const outgoing = (outgoingEdgesMap.get(id) || []).slice().sort((a, b) => a.id.localeCompare(b.id));
   if (outgoing.length === 0) return [id];
-  return [id, ...primaryDownstream(outgoing[0].target, edges, seen)];
+  return [id, ...primaryDownstream(outgoing[0].target, outgoingEdgesMap, seen)];
 }
 
 /**
@@ -56,10 +77,35 @@ function primaryDownstream(id: string, edges: Edge[], seen = new Set<string>()):
  * voltage, determines the circuit.
  */
 export function traceCircuit(nodes: Node[], edges: Edge[], seed: TraceSeed): CircuitTrace | null {
+  const validNodeIds = new Set<string>();
+  for (const node of nodes) {
+    validNodeIds.add(node.id);
+  }
+
   const selectedEdge = 'edgeId' in seed ? edges.find((edge) => edge.id === seed.edgeId) : undefined;
   const requestedNodeId = 'nodeId' in seed ? seed.nodeId : undefined;
-  const selectedNodeId = requestedNodeId && nodes.some((node) => node.id === requestedNodeId) ? requestedNodeId : undefined;
+  const selectedNodeId = requestedNodeId && validNodeIds.has(requestedNodeId) ? requestedNodeId : undefined;
   if (!selectedEdge && !selectedNodeId) return null;
+
+  // Build adjacency maps once per trace execution
+  const incomingEdgesMap = new Map<string, Edge[]>();
+  const outgoingEdgesMap = new Map<string, Edge[]>();
+
+  for (const edge of edges) {
+    let inc = incomingEdgesMap.get(edge.target);
+    if (!inc) {
+      inc = [];
+      incomingEdgesMap.set(edge.target, inc);
+    }
+    inc.push(edge);
+
+    let out = outgoingEdgesMap.get(edge.source);
+    if (!out) {
+      out = [];
+      outgoingEdgesMap.set(edge.source, out);
+    }
+    out.push(edge);
+  }
 
   const nodeIds = new Set<string>();
   const edgeIds = new Set<string>();
@@ -68,30 +114,29 @@ export function traceCircuit(nodes: Node[], edges: Edge[], seed: TraceSeed): Cir
   if (selectedEdge) {
     const upstreamNodes = new Set<string>();
     const downstreamNodes = new Set<string>();
-    collectUpstream(selectedEdge.source, edges, upstreamNodes, edgeIds);
-    collectDownstream(selectedEdge.target, edges, downstreamNodes, edgeIds);
+    collectUpstream(selectedEdge.source, incomingEdgesMap, upstreamNodes, edgeIds);
+    collectDownstream(selectedEdge.target, outgoingEdgesMap, downstreamNodes, edgeIds);
     upstreamNodes.forEach((id) => nodeIds.add(id));
     downstreamNodes.forEach((id) => nodeIds.add(id));
     edgeIds.add(selectedEdge.id);
     pathNodeIds = [
-      ...primaryUpstream(selectedEdge.source, edges),
-      ...primaryDownstream(selectedEdge.target, edges),
+      ...primaryUpstream(selectedEdge.source, incomingEdgesMap),
+      ...primaryDownstream(selectedEdge.target, outgoingEdgesMap),
     ];
   } else {
     const id = selectedNodeId!;
     const upstreamNodes = new Set<string>();
     const downstreamNodes = new Set<string>();
-    collectUpstream(id, edges, upstreamNodes, edgeIds);
-    collectDownstream(id, edges, downstreamNodes, edgeIds);
+    collectUpstream(id, incomingEdgesMap, upstreamNodes, edgeIds);
+    collectDownstream(id, outgoingEdgesMap, downstreamNodes, edgeIds);
     upstreamNodes.forEach((nodeId) => nodeIds.add(nodeId));
     downstreamNodes.forEach((nodeId) => nodeIds.add(nodeId));
-    const upstreamPath = primaryUpstream(id, edges);
-    const downstreamPath = primaryDownstream(id, edges);
+    const upstreamPath = primaryUpstream(id, incomingEdgesMap);
+    const downstreamPath = primaryDownstream(id, outgoingEdgesMap);
     pathNodeIds = [...upstreamPath, ...downstreamPath.slice(1)];
   }
 
   // Ignore dangling IDs from malformed persisted edges.
-  const validNodeIds = new Set(nodes.map((node) => node.id));
   for (const id of Array.from(nodeIds)) if (!validNodeIds.has(id)) nodeIds.delete(id);
   pathNodeIds = pathNodeIds.filter((id, index) => validNodeIds.has(id) && pathNodeIds.indexOf(id) === index);
 
