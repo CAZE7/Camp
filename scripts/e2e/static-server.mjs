@@ -73,6 +73,26 @@ const server = createServer((request, response) => {
     file = `${file}.html`;
   }
 
+  // Fallback für GitHub Actions / GitHub Pages `basePath` (z. B. `/Camp/_next/...` -> `/_next/...`):
+  // Wenn die Datei mit Prefix nicht existiert, den ersten Pfad-Segment streichen.
+  if (!existsSync(file) && pathname.slice(1).includes('/')) {
+    const strippedPathname = '/' + pathname.slice(1).split('/').slice(1).join('/');
+    const strippedTarget = safeJoin(root, strippedPathname);
+    if (strippedTarget) {
+      let candidate = strippedTarget;
+      if (existsSync(candidate) && statSync(candidate).isDirectory()) {
+        if (strippedPathname.endsWith('/')) {
+          candidate = join(candidate, 'index.html');
+        }
+      } else if (!existsSync(candidate) && existsSync(`${candidate}.html`)) {
+        candidate = `${candidate}.html`;
+      }
+      if (existsSync(candidate) && !statSync(candidate).isDirectory()) {
+        file = candidate;
+      }
+    }
+  }
+
   if (!existsSync(file) || statSync(file).isDirectory()) {
     const notFound = join(root, '404.html');
     if (existsSync(notFound)) {

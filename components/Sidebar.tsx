@@ -150,6 +150,7 @@ function ComponentTile({ comp, onMobileAdd, accent }: { comp: Comp; onMobileAdd?
       data-testid="sidebar-item"
       data-component-type={comp.type}
       data-component-label={comp.label}
+      data-accent={accent}
       className={cn(
         'flex min-h-24 w-full touch-manipulation flex-col items-center justify-center gap-1 rounded-xl border p-2 text-center text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 lg:cursor-grab',
         accent === 'device'

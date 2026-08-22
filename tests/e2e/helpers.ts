@@ -59,7 +59,7 @@ export async function showCanvas(page: Page): Promise<void> {
 /** Kachel eines Bauteiltyps in der Sidebar. */
 export function sidebarItem(page: Page, componentType: string): Locator {
   return page
-    .locator(`section:not(:has-text("Geräte-Vorlagen")) [data-testid="sidebar-item"][data-component-type="${componentType}"]`)
+    .locator(`[data-testid="sidebar-item"][data-component-type="${componentType}"][data-accent="default"]`)
     .first();
 }
 
@@ -72,12 +72,13 @@ export function sidebarItem(page: Page, componentType: string): Locator {
  */
 export async function expandAllCategories(page: Page): Promise<void> {
   const sidebar = page.getByTestId('sidebar');
-  const collapsed = sidebar.locator('button[aria-expanded="false"]');
-  const count = await collapsed.count();
+  const headers = sidebar.locator('button[aria-expanded]');
+  const count = await headers.count();
   for (let index = 0; index < count; index++) {
-    const button = collapsed.first();
-    if (await button.isVisible()) {
-      await button.click();
+    const header = headers.nth(index);
+    if ((await header.getAttribute('aria-expanded')) === 'false') {
+      await header.click();
+      await expect(header).toHaveAttribute('aria-expanded', 'true');
     }
   }
 }
