@@ -473,7 +473,7 @@ export function FlowCanvas() {
           // Knoten) hält React Flow sonst alle Nodes/Kanten im DOM, obwohl nur
           // ein Ausschnitt sichtbar ist. Das beschleunigt Rendering UND Dragging
           // (während eines Drags re-routen nur noch die sichtbaren Kanten).
-          onlyRenderVisibleElements
+          onlyRenderVisibleElements={rawNodes.length > 50}
           /* --- Zeiger-abhängige Interaktion, jede Prop begründet in
                  planner/utils/flowInteraction.ts --- */
           panOnDrag={interaction.panOnDrag}

@@ -58,7 +58,9 @@ export async function showCanvas(page: Page): Promise<void> {
 
 /** Kachel eines Bauteiltyps in der Sidebar. */
 export function sidebarItem(page: Page, componentType: string): Locator {
-  return page.locator(`[data-testid="sidebar-item"][data-component-type="${componentType}"]`).first();
+  return page
+    .locator(`[data-testid="sidebar-item"][data-component-type="${componentType}"][data-accent="default"]`)
+    .first();
 }
 
 /**
@@ -70,11 +72,15 @@ export function sidebarItem(page: Page, componentType: string): Locator {
  */
 export async function expandAllCategories(page: Page): Promise<void> {
   const sidebar = page.getByTestId('sidebar');
-  const collapsed = sidebar.locator('button[aria-expanded="false"]');
-  for (let index = (await collapsed.count()) - 1; index >= 0; index--) {
-    await collapsed.nth(index).click();
+  const headers = sidebar.locator('button[aria-expanded]');
+  const count = await headers.count();
+  for (let index = 0; index < count; index++) {
+    const header = headers.nth(index);
+    if ((await header.getAttribute('aria-expanded')) === 'false') {
+      await header.click();
+      await expect(header).toHaveAttribute('aria-expanded', 'true');
+    }
   }
-  await expect(sidebar.locator('button[aria-expanded="false"]')).toHaveCount(0);
 }
 
 /**
@@ -91,10 +97,11 @@ export async function addComponent(page: Page, componentType: string): Promise<v
   await showSidebar(page);
   await expandAllCategories(page);
   const before = await nodeCount(page);
+  const wide = await page.evaluate(() => window.innerWidth >= 1024);
   const tile = sidebarItem(page, componentType);
+
   await expect(tile).toBeVisible();
 
-  const wide = await page.evaluate(() => window.innerWidth >= 1024);
   if (wide) {
     await tile.focus();
     await tile.press('Enter');
