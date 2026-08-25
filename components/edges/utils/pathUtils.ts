@@ -111,13 +111,13 @@ export const parallelLaneOffset = (input: {
   const group = input.siblingEdges
     .filter((edge) => sharePair(edge, { id: input.edgeId, source: input.source, target: input.target }))
     .sort((a, b) => cableTypeRank(a) - cableTypeRank(b) || a.id.localeCompare(b.id));
-  if (group.length <= 1) return polarityPathOffset(input.sourceHandle);
+  if (group.length <= 1) return 0;
   const idx = Math.max(0, group.findIndex((edge) => edge.id === input.edgeId));
-  return PLUS_PATH_OFFSET + idx * PARALLEL_LANE_SPREAD;
+  return (idx - (group.length - 1) / 2) * PARALLEL_LANE_SPREAD;
 };
 
 /**
- * Keeps plus/minus labels apart and spreads labels when several edges share a node pair.
+ * Keeps labels apart and spreads labels when several edges share a node pair and handle.
  */
 export const edgeLabelNudge = (input: {
   edgeId: string;
@@ -126,14 +126,18 @@ export const edgeLabelNudge = (input: {
   sourceHandle?: string | null;
   siblingEdges: LabelEdgeRef[];
 }): number => {
-  const polarity = polarityLabelNudge(input.sourceHandle);
   const group = input.siblingEdges.filter(
     (edge) =>
       (edge.source === input.source && edge.target === input.target) ||
       (edge.source === input.target && edge.target === input.source)
   );
-  if (group.length <= 1) return polarity;
-  const idx = Math.max(0, group.findIndex((edge) => edge.id === input.edgeId));
-  const spread = (idx - (group.length - 1) / 2) * PARALLEL_LABEL_SPREAD;
-  return polarity + spread;
+  if (group.length <= 1) return 0;
+  const sameHandleGroup = group.filter(
+    (edge) =>
+      (edge.sourceHandle && edge.sourceHandle === input.sourceHandle) ||
+      (!edge.sourceHandle && !input.sourceHandle)
+  );
+  if (sameHandleGroup.length <= 1) return 0;
+  const idx = Math.max(0, sameHandleGroup.findIndex((edge) => edge.id === input.edgeId));
+  return (idx - (sameHandleGroup.length - 1) / 2) * PARALLEL_LABEL_SPREAD;
 };

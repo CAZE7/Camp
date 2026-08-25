@@ -555,8 +555,8 @@ export function resolveRails(
       batteryNode,
       'busbar',
       role === 'positive' ? 'Plus-Schiene' : 'Minus-Schiene',
-      300,
-      role === 'positive' ? -80 : 80,
+      role === 'positive' ? 280 : 560,
+      role === 'positive' ? -120 : 80,
       { role }
     );
     autoCreatedNodeIds.add(node.id);
@@ -794,8 +794,8 @@ export function performAutoWiring(
       batteryNode,
       'battery',
       'Aufbaubatterie',
-      150,
-      -220,
+      0,
+      -200,
       { capacity: 100, chemistry: 'LiFePO4' }
     );
     autoCreatedNodeIds.add(batteryNode.id);
@@ -812,8 +812,8 @@ export function performAutoWiring(
     autoCreatedNodeIds,
     'fuse',
     '12V Sicherungskasten',
-    300,
-    200,
+    560,
+    -120,
     { rating: 100 },
     /sicherung/i
   );
@@ -825,8 +825,8 @@ export function performAutoWiring(
     autoCreatedNodeIds,
     'shunt',
     'Smart Shunt',
-    150,
-    0
+    280,
+    80
   );
 
   const solars = [...(nodesByType['solar'] || []), ...(nodesByType['roofSolar'] || [])];
@@ -845,8 +845,8 @@ export function performAutoWiring(
         autoCreatedNodeIds,
         'mpptController',
         'MPPT Laderegler',
-        150,
-        -200,
+        280,
+        -280,
         { amps: 30 }
       );
     }
@@ -870,8 +870,8 @@ export function performAutoWiring(
       batteryNode,
       'battery',
       'Starterbatterie',
-      -150,
-      250,
+      -280,
+      160,
       { capacity: 80, chemistry: 'AGM' }
     );
     autoCreatedNodeIds.add(starterBatteryNode.id);

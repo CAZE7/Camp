@@ -3,12 +3,12 @@ import { CableEdgeData } from '../edges/CableEdge';
 
 export const TEMPLATE_MINIMALIST = {
   nodes: [
-    { id: 'battery-1', type: 'battery', position: { x: 100, y: 300 }, data: { label: '12V Batterie', capacity: 100, chemistry: 'AGM' } },
-    { id: 'fusebox-1', type: 'fuse', position: { x: 400, y: 300 }, data: { label: 'Sicherungskasten' } },
-    { id: 'cons-light', type: 'consumer', position: { x: 700, y: 200 }, data: { label: 'LED-Beleuchtung', watts: 20 } },
-    { id: 'cons-usb', type: 'consumer', position: { x: 700, y: 300 }, data: { label: 'USB Steckdosen', watts: 36 } },
-    { id: 'cons-cool', type: 'consumer', position: { x: 700, y: 400 }, data: { label: 'Kühlbox', watts: 45 } },
-    { id: 'ground-1', type: 'ground', position: { x: 100, y: 500 }, data: { label: 'Massepunkt' } },
+    { id: 'battery-1', type: 'battery', position: { x: 80, y: 160 }, data: { label: '12V Batterie', capacity: 100, chemistry: 'AGM' } },
+    { id: 'ground-1', type: 'ground', position: { x: 80, y: 360 }, data: { label: 'Massepunkt' } },
+    { id: 'fusebox-1', type: 'fuse', position: { x: 380, y: 160 }, data: { label: 'Sicherungskasten' } },
+    { id: 'cons-light', type: 'consumer', position: { x: 680, y: 60 }, data: { label: 'LED-Beleuchtung', watts: 20 } },
+    { id: 'cons-usb', type: 'consumer', position: { x: 680, y: 220 }, data: { label: 'USB Steckdosen', watts: 36 } },
+    { id: 'cons-cool', type: 'consumer', position: { x: 680, y: 380 }, data: { label: 'Kühlbox', watts: 45 } },
   ] as Node[],
   edges: [
     // Hauptsicherung sitzt direkt am Batteriepol (≤ 20 cm) und trägt den
@@ -26,19 +26,19 @@ export const TEMPLATE_MINIMALIST = {
 
 export const TEMPLATE_ALLROUNDER = {
   nodes: [
-    { id: 'battery-1', type: 'battery', position: { x: 100, y: 400 }, data: { label: '100Ah Lithium', capacity: 100, chemistry: 'LiFePO4' } },
-    { id: 'busbar-plus', type: 'busbar', position: { x: 300, y: 300 }, data: { label: 'Plus Busbar' } },
-    { id: 'busbar-minus', type: 'busbar', position: { x: 300, y: 500 }, data: { label: 'Minus Busbar' } },
-    { id: 'fusebox-1', type: 'fuse', position: { x: 500, y: 200 }, data: { label: 'Sicherungskasten' } },
-    { id: 'solar-1', type: 'solar', position: { x: 100, y: 100 }, data: { label: '150W Solar', watts: 150 } },
-    { id: 'charger-1', type: 'mpptController', position: { x: 300, y: 100 }, data: { label: 'MPPT Solarregler', amps: 30 } },
-    { id: 'charger-2', type: 'dcdcCharger', position: { x: 300, y: 200 }, data: { label: 'DC-DC Ladebooster', amps: 30 } },
-    { id: 'starter-1', type: 'battery', position: { x: 100, y: 200 }, data: { label: 'Starterbatterie', capacity: 90, chemistry: 'AGM' } },
-    { id: 'inverter-1', type: 'inverter', position: { x: 500, y: 400 }, data: { label: '500W Inverter', watts: 500 } },
-    { id: 'cons-fridge', type: 'consumer', position: { x: 700, y: 100 }, data: { label: 'Kompressorkühlschrank', watts: 60 } },
-    { id: 'cons-pump', type: 'consumer', position: { x: 700, y: 200 }, data: { label: 'Wasserpumpe', watts: 40 } },
-    { id: 'cons-light', type: 'consumer', position: { x: 700, y: 300 }, data: { label: 'LED-Beleuchtung', watts: 20 } },
-    { id: 'cons-230v', type: 'consumer230v', position: { x: 800, y: 400 }, data: { label: '230V Steckdose', watts: 300 } },
+    { id: 'solar-1', type: 'solar', position: { x: 80, y: 60 }, data: { label: '150W Solar', watts: 150 } },
+    { id: 'starter-1', type: 'battery', position: { x: 80, y: 240 }, data: { label: 'Starterbatterie', capacity: 90, chemistry: 'AGM' } },
+    { id: 'battery-1', type: 'battery', position: { x: 80, y: 440 }, data: { label: '100Ah Lithium', capacity: 100, chemistry: 'LiFePO4' } },
+    { id: 'charger-1', type: 'mpptController', position: { x: 380, y: 60 }, data: { label: 'MPPT Solarregler', amps: 30 } },
+    { id: 'charger-2', type: 'dcdcCharger', position: { x: 380, y: 240 }, data: { label: 'DC-DC Ladebooster', amps: 30 } },
+    { id: 'busbar-plus', type: 'busbar', position: { x: 380, y: 440 }, data: { label: 'Plus Busbar' } },
+    { id: 'busbar-minus', type: 'busbar', position: { x: 380, y: 620 }, data: { label: 'Minus Busbar' } },
+    { id: 'fusebox-1', type: 'fuse', position: { x: 680, y: 200 }, data: { label: 'Sicherungskasten' } },
+    { id: 'inverter-1', type: 'inverter', position: { x: 680, y: 440 }, data: { label: '500W Inverter', watts: 500 } },
+    { id: 'cons-fridge', type: 'consumer', position: { x: 980, y: 60 }, data: { label: 'Kompressorkühlschrank', watts: 60 } },
+    { id: 'cons-pump', type: 'consumer', position: { x: 980, y: 220 }, data: { label: 'Wasserpumpe', watts: 40 } },
+    { id: 'cons-light', type: 'consumer', position: { x: 980, y: 380 }, data: { label: 'LED-Beleuchtung', watts: 20 } },
+    { id: 'cons-230v', type: 'consumer230v', position: { x: 980, y: 540 }, data: { label: '230V Steckdose', watts: 300 } },
   ] as Node[],
   edges: [
     { id: 'e-batt-plus', source: 'battery-1', sourceHandle: 'plus', target: 'busbar-plus', targetHandle: 'plus', type: 'cableEdge', data: { length: 0.5, crossSection: 35, fuseSize: 100 } },
@@ -59,24 +59,24 @@ export const TEMPLATE_ALLROUNDER = {
 
 export const TEMPLATE_AUTARK = {
   nodes: [
-    { id: 'battery-1', type: 'battery', position: { x: 100, y: 500 }, data: { label: '200Ah Lithium', capacity: 200, chemistry: 'LiFePO4' } },
-    { id: 'busbar-plus', type: 'busbar', position: { x: 300, y: 400 }, data: { label: 'Plus Busbar' } },
-    { id: 'busbar-minus', type: 'busbar', position: { x: 300, y: 600 }, data: { label: 'Minus Busbar' } },
-    { id: 'fusebox-1', type: 'fuse', position: { x: 500, y: 200 }, data: { label: 'Sicherungskasten' } },
-    { id: 'solar-1', type: 'solar', position: { x: 100, y: 100 }, data: { label: '400W Solar', watts: 400 } },
-    { id: 'charger-1', type: 'mpptController', position: { x: 300, y: 100 }, data: { label: 'MPPT Solarregler', amps: 30 } },
-    { id: 'charger-2', type: 'dcdcCharger', position: { x: 300, y: 200 }, data: { label: 'DC-DC Ladebooster', amps: 30 } },
-    { id: 'starter-1', type: 'battery', position: { x: 100, y: 200 }, data: { label: 'Starterbatterie', capacity: 90, chemistry: 'AGM' } },
-    { id: 'shore-1', type: 'shorePower', position: { x: 100, y: 300 }, data: { label: 'Landstrom', hasRcd: true } },
+    { id: 'solar-1', type: 'solar', position: { x: 80, y: 60 }, data: { label: '400W Solar', watts: 400 } },
+    { id: 'starter-1', type: 'battery', position: { x: 80, y: 240 }, data: { label: 'Starterbatterie', capacity: 90, chemistry: 'AGM' } },
+    { id: 'shore-1', type: 'shorePower', position: { x: 80, y: 420 }, data: { label: 'Landstrom', hasRcd: true } },
+    { id: 'battery-1', type: 'battery', position: { x: 80, y: 600 }, data: { label: '200Ah Lithium', capacity: 200, chemistry: 'LiFePO4' } },
+    { id: 'charger-1', type: 'mpptController', position: { x: 380, y: 60 }, data: { label: 'MPPT Solarregler', amps: 30 } },
+    { id: 'charger-2', type: 'dcdcCharger', position: { x: 380, y: 240 }, data: { label: 'DC-DC Ladebooster', amps: 30 } },
+    { id: 'busbar-plus', type: 'busbar', position: { x: 380, y: 500 }, data: { label: 'Plus Busbar' } },
+    { id: 'busbar-minus', type: 'busbar', position: { x: 380, y: 680 }, data: { label: 'Minus Busbar' } },
+    { id: 'fusebox-1', type: 'fuse', position: { x: 680, y: 200 }, data: { label: 'Sicherungskasten' } },
     // 1500 W Wechselrichter: ~138 A DC-Eingangsstrom bei 12,8 V — das lässt
     // sich mit der Normreihe (max. 70 mm² / 160 A Sicherung) fehlerfrei
     // absichern. Ein 2000-W-Wechselrichter (~184 A) läge über jeder
     // zulässigen Sicherung der Normreihe und zeigte dauerhaft Fehler.
-    { id: 'inverter-1', type: 'inverter', position: { x: 500, y: 500 }, data: { label: '1500W Inverter', watts: 1500, continuousPower: 1500 } },
-    { id: 'cons-fridge', type: 'consumer', position: { x: 700, y: 100 }, data: { label: 'Kompressorkühlschrank', watts: 60 } },
-    { id: 'cons-heat', type: 'consumer', position: { x: 700, y: 200 }, data: { label: 'Standheizung', watts: 40 } },
-    { id: 'cons-fan', type: 'consumer', position: { x: 700, y: 300 }, data: { label: 'MaxxFan', watts: 40 } },
-    { id: 'cons-induct', type: 'consumer230v', position: { x: 800, y: 500 }, data: { label: 'Induktionskochfeld', watts: 1200 } },
+    { id: 'inverter-1', type: 'inverter', position: { x: 680, y: 480 }, data: { label: '1500W Inverter', watts: 1500, continuousPower: 1500 } },
+    { id: 'cons-fridge', type: 'consumer', position: { x: 980, y: 60 }, data: { label: 'Kompressorkühlschrank', watts: 60 } },
+    { id: 'cons-heat', type: 'consumer', position: { x: 980, y: 220 }, data: { label: 'Standheizung', watts: 40 } },
+    { id: 'cons-fan', type: 'consumer', position: { x: 980, y: 380 }, data: { label: 'MaxxFan', watts: 40 } },
+    { id: 'cons-induct', type: 'consumer230v', position: { x: 980, y: 540 }, data: { label: 'Induktionskochfeld', watts: 1200 } },
   ] as Node[],
   edges: [
     { id: 'e-batt-plus', source: 'battery-1', sourceHandle: 'plus', target: 'busbar-plus', targetHandle: 'plus', type: 'cableEdge', data: { length: 0.5, crossSection: 70, fuseSize: 160 } },
@@ -88,7 +88,7 @@ export const TEMPLATE_AUTARK = {
     { id: 'e-busbar-fuse', source: 'busbar-plus', sourceHandle: 'plus', target: 'fusebox-1', targetHandle: 'plus', type: 'cableEdge', data: { length: 1, crossSection: 70, fuseSize: 160 } },
     { id: 'e-fuse-fridge', source: 'fusebox-1', sourceHandle: 'plus', target: 'cons-fridge', targetHandle: 'plus', type: 'cableEdge', data: { length: 3, crossSection: 4 } },
     { id: 'e-fuse-heat', source: 'fusebox-1', sourceHandle: 'plus', target: 'cons-heat', targetHandle: 'plus', type: 'cableEdge', data: { length: 4, crossSection: 4 } },
-    { id: 'e-fuse-fan', source: 'fusebox-1', sourceHandle: 'plus', target: 'cons-fan', targetHandle: 'plus', type: 'cableEdge', data: { length: 5, crossSection: 2.5 } },
+    { id: 'e-fuse-fan', source: 'fusebox-1', sourceHandle: 'plus', target: 'cons-fan', targetHandle: 'plus', type: 'cableEdge', data: { length: 3, crossSection: 2.5 } },
     { id: 'e-busbar-inv-plus', source: 'busbar-plus', sourceHandle: 'plus', target: 'inverter-1', targetHandle: 'plus', type: 'cableEdge', data: { length: 1, crossSection: 70, fuseSize: 160 } },
     { id: 'e-busbar-inv-minus', source: 'busbar-minus', sourceHandle: 'minus', target: 'inverter-1', targetHandle: 'minus', type: 'cableEdge', data: { length: 1, crossSection: 70 } },
     { id: 'e-inv-induct', source: 'inverter-1', sourceHandle: 'plus', target: 'cons-induct', targetHandle: 'plus', type: 'cableEdge', data: { length: 2, crossSection: 2.5, edgeDomain: 'AC_230V' } },

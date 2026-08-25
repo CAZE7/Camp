@@ -6,7 +6,7 @@
   <line x1="300" y1="-200" x2="300" y2="-200" stroke="#475569" stroke-width="2" stroke-dasharray="6 6"/>
   <line x1="400" y1="-200" x2="400" y2="-200" stroke="#475569" stroke-width="2" stroke-dasharray="6 6"/>
   <line x1="500" y1="-200" x2="500" y2="-200" stroke="#475569" stroke-width="2" stroke-dasharray="6 6"/>
-  <path d="M 0 0 L 290 0 Q 300 0 310 0 L 600 0" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
+  <path d="M 0 0 L 600 0" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
   <circle cx="0" cy="0" r="7" fill="#22c55e"/>
   <circle cx="600" cy="0" r="7" fill="#f97316"/>
 </svg>

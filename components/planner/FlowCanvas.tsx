@@ -506,7 +506,7 @@ export function FlowCanvas() {
           <Background color="var(--canvas-grid)" gap={PLANNER_SNAP_GRID[0]} style={{ opacity: 0.35 }} />
           <Controls className="mb-20 overflow-hidden rounded-lg border border-border shadow-sm md:mb-4" />
           <MiniMap
-            className="hidden mb-20 overflow-hidden rounded-lg border border-border shadow-sm sm:block md:mb-4"
+            className="hidden mb-24 overflow-hidden rounded-lg border border-border shadow-sm sm:block md:mb-24"
             ariaLabel="Miniaturübersicht des Plans"
             nodeColor={(node) => nodeMinimapColor(node)}
             maskColor={minimapColors.mask}
@@ -576,7 +576,7 @@ export function FlowCanvas() {
           )}
 
           {traceLabel && (
-            <Panel position="bottom-left" className="mb-20 max-w-[min(36rem,calc(100vw-2rem))] md:mb-4">
+            <Panel position="bottom-left" className="mb-20 ml-14 max-w-[min(36rem,calc(100vw-6rem))] md:mb-4 md:ml-14">
               <div data-testid="circuit-trace-info" role="status" className="rounded-lg border border-copper/50 bg-card/95 px-3 py-2 text-sm font-semibold text-foreground shadow-lg">
                 <span className="mr-2 text-copper">Strompfad:</span>{traceLabel}
               </div>
@@ -584,7 +584,7 @@ export function FlowCanvas() {
           )}
 
           {rawNodes.length > 8 && (
-            <Panel position="bottom-right" className="mb-20 md:hidden">
+            <Panel position="bottom-left" className="mb-36 ml-2 md:hidden">
               <button
                 type="button"
                 data-testid="mobile-overview"

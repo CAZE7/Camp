@@ -213,7 +213,7 @@ export default function Inspector({
 
   return (
     <div className="relative h-full w-full bg-card p-4 flex flex-col text-foreground overflow-y-auto">
-      <h2 className="text-lg font-semibold mb-4 pl-10 text-foreground">Details</h2>
+      <h2 className="text-base font-black mb-4 text-foreground">Details</h2>
 
       {!hasSelection ? (
         <EmptySelection />

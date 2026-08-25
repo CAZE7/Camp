@@ -2,7 +2,7 @@
   <rect x="-100000" y="-100000" width="200000" height="200000" fill="#0f172a"/>
   <text x="-48" y="-132" fill="#e2e8f0" font-family="monospace" font-size="16">23-obstacle-touching-source — Hindernis direkt an der Quelle</text>
   <rect x="30" y="-60" width="192" height="120" fill="#1e293b" stroke="#64748b" stroke-width="2" rx="8"/>
-  <path d="M 0 0 L 8 0 Q 16 0 16 8 L 16 64 Q 16 74 26 74 L 226 74 Q 236 74 236 64 L 236 10 Q 236 0 246 0 L 290 0 Q 300 0 310 0 L 600 0" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
+  <path d="M 0 0 L 8 0 Q 16 0 16 8 L 16 64 Q 16 74 26 74 L 226 74 Q 236 74 236 64 L 236 10 Q 236 0 246 0 L 600 0" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
   <circle cx="0" cy="0" r="7" fill="#22c55e"/>
   <circle cx="600" cy="0" r="7" fill="#f97316"/>
 </svg>

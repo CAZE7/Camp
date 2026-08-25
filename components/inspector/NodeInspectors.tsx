@@ -283,6 +283,17 @@ export function SolarInspector({ node, onUpdateNodeData }: BaseNodeInspectorProp
   return (
     <>
       <div className="flex flex-col">
+        <label className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider" htmlFor={`${node.id}-wattsSolar`}>Leistung (W)</label>
+        <ValidatingInput id={`${node.id}-wattsSolar`}
+          type="number"
+          min="0"
+          value={node.data?.watts || 0}
+          rules={[COMMON_RULES.strictlyPositive]}
+          onValidChange={(val) => onUpdateNodeData?.(node.id, { watts: val })}
+          className="border border-border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-shadow"
+        />
+      </div>
+      <div className="flex flex-col">
         <label className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider" htmlFor={`${node.id}-voltage`}>Arbeitsspannung (V)</label>
         <ValidatingInput id={`${node.id}-voltage`}
           type="number"

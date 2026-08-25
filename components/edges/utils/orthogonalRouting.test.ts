@@ -7,6 +7,7 @@ import {
   polylineMidpoint,
   segmentCrossesRect,
   buildOrthogonalPath,
+  orthogonalWaypoints,
   nodesToObstacles,
   sourceExitVector,
   targetEntryVector,
@@ -50,7 +51,7 @@ describe('routeWaypoints', () => {
     }
   });
 
-  it('applies a perpendicular offset for parallel lanes', () => {
+  it('applies lane offset to intermediate corridor', () => {
     const base = routeWaypoints({
       sourceX: 0,
       sourceY: 0,
@@ -60,7 +61,9 @@ describe('routeWaypoints', () => {
       targetPosition: Position.Left,
       offset: 20,
     });
-    expect(base[0].y).toBe(20);
+    expect(base[0]).toEqual({ x: 0, y: 0 });
+    expect(base[base.length - 1]).toEqual({ x: 100, y: 100 });
+    expect(base[1].x).toBe(70); // (0+100)/2 + 20
   });
 
   it('routes around (loop) when target is behind the source', () => {
@@ -209,9 +212,9 @@ describe('buildOrthogonalPath — Ausweichroute bei Kabelknäuel', () => {
     sourceY: 0,
     sourcePosition: Position.Right,
     targetX: 400,
-    targetY: 0,
+    targetY: 100,
     targetPosition: Position.Left,
-    offset: 20,
+    offset: 0,
   };
 
   it('keeps the standard lane when there is nothing to gain', () => {
@@ -221,9 +224,9 @@ describe('buildOrthogonalPath — Ausweichroute bei Kabelknäuel', () => {
   });
 
   it('keeps the standard lane at three or fewer crossings (no nervous re-routing)', () => {
-    const others: Segment[] = [40, 120, 200].map((x) => [
-      { x, y: -80 },
-      { x, y: 80 },
+    const others: Segment[] = [40, 120, 160].map((y) => [
+      { x: 150, y },
+      { x: 250, y },
     ] as Segment);
     const result = buildOrthogonalPath({ ...base, crossingSegments: others });
     const reference = buildOrthogonalPath(base);
@@ -232,17 +235,18 @@ describe('buildOrthogonalPath — Ausweichroute bei Kabelknäuel', () => {
   });
 
   it('picks a wider lane when more than three cables are crossed', () => {
-    // Vier kurze Sperren genau auf der Standard-Lane (y = +20 nach Offset),
-    // die eine um 32 px versetzte Route nicht mehr trifft.
-    const others: Segment[] = [60, 120, 180, 240].map((x) => [
-      { x, y: 12 },
-      { x, y: 28 },
+    // Vier kurze Sperren genau auf dem vertikalen Standard-Korridor (x = 200),
+    // die eine um 32 px versetzte Route (x = 232) nicht mehr trifft.
+    const others: Segment[] = [20, 40, 60, 80].map((y) => [
+      { x: 190, y },
+      { x: 210, y },
     ] as Segment);
 
     const standard = buildOrthogonalPath(base);
+    const standardCrossings = countCrossings(orthogonalWaypoints(base).waypoints, others);
     const rerouted = buildOrthogonalPath({ ...base, crossingSegments: others });
 
-    expect(countCrossings([{ x: 0, y: 20 }, { x: 400, y: 20 }], others)).toBe(4);
+    expect(standardCrossings).toBe(4);
     expect(rerouted.crossings).toBeLessThan(4);
     expect(rerouted.path).not.toBe(standard.path);
   });
@@ -278,21 +282,24 @@ describe('edgesToCrossingSegments', () => {
 });
 
 describe('parallele Lanes bleiben geometrisch getrennt (A5)', () => {
-  it('places three lanes 16 px apart on the straight section', () => {
-    const lanes = [20, 36, 52].map((offset) =>
+  it('places three lanes 16 px apart on the vertical corridor', () => {
+    const lanes = [-16, 0, 16].map((offset) =>
       routeWaypoints({
         sourceX: 0,
         sourceY: 0,
         sourcePosition: Position.Right,
         targetX: 400,
-        targetY: 0,
+        targetY: 200,
         targetPosition: Position.Left,
         offset,
       })
     );
-    const ys = lanes.map((points) => points[0].y);
-    expect(Math.abs(ys[1] - ys[0])).toBe(16);
-    expect(Math.abs(ys[2] - ys[1])).toBe(16);
-    expect(new Set(ys).size).toBe(3);
+    const xs = lanes.map((points) => points[1].x);
+    expect(xs[0]).toBe(200 - 16);
+    expect(xs[1]).toBe(200);
+    expect(xs[2]).toBe(200 + 16);
+    expect(Math.abs(xs[1] - xs[0])).toBe(16);
+    expect(Math.abs(xs[2] - xs[1])).toBe(16);
+    expect(new Set(xs).size).toBe(3);
   });
 });

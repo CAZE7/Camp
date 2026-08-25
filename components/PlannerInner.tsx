@@ -174,7 +174,7 @@ export default function PlannerInner() {
           Bottom-Tabs auf 375 px zusammenzuquetschen. Sichtbar deaktivierte
           Zustände spiegeln die History des Stores unmittelbar. */}
       {activeTab === 'canvas' && (
-        <div className="absolute bottom-20 right-3 z-50 flex gap-2 md:hidden" role="group" aria-label="Änderungen rückgängig machen oder wiederholen">
+        <div className="absolute bottom-20 left-3 z-50 flex gap-2 md:hidden" role="group" aria-label="Änderungen rückgängig machen oder wiederholen">
           <button
             type="button"
             data-testid="mobile-undo"

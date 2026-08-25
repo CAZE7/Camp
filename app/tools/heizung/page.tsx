@@ -949,12 +949,12 @@ export default function HeatingCalculatorPage() {
               recommendedName={recommendedHeater?.name ?? null}
             />
 
-            {/* Bridge zu KI-Assistent */}
+            {/* Bridge zu weiteren Tools */}
             <div className="warn-card warn-card-info">
               <Info className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
               <div className="text-sm">
-                Unsicher, ob dein Setup zu deiner Fahrweise passt?{' '}
-                <Link href="/ki-assistent" className="underline">Frag den KI-Assistenten</Link> — er kennt die typischen Fallen bei Standheizungen.
+                Bereit für den nächsten Schritt?{' '}
+                <Link href="/elektrik-planung" className="underline">Plane die Stromversorgung im Schaltplan</Link> — dort werden Heizung und Verbraucher automatisch abgesichert und verkabelt.
               </div>
             </div>
           </div>
