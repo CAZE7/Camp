@@ -16,11 +16,11 @@ import { mm2, quantityOr } from '../../lib/units';
 
 function NavigationSection({ viewMode, setViewMode }: { viewMode: 'electric' | 'water'; setViewMode: (mode: 'electric' | 'water') => void }) {
   return (
-    <div className="hidden items-center gap-1 lg:flex" role="tablist" aria-label="Planbereich wählen">
-      <Button variant={viewMode === 'electric' ? 'default' : 'ghost'} size="sm" role="tab" aria-selected={viewMode === 'electric'} onClick={() => setViewMode('electric')} className="min-h-11">
+    <div className="hidden items-center gap-1 lg:flex" role="group" aria-label="Planbereich wählen">
+      <Button variant={viewMode === 'electric' ? 'default' : 'ghost'} size="sm" aria-pressed={viewMode === 'electric'} onClick={() => setViewMode('electric')} className="min-h-11">
         <Zap className="mr-1 h-4 w-4" aria-hidden="true" />Elektrik
       </Button>
-      <Button variant={viewMode === 'water' ? 'default' : 'ghost'} size="sm" role="tab" aria-selected={viewMode === 'water'} onClick={() => setViewMode('water')} className="min-h-11">
+      <Button variant={viewMode === 'water' ? 'default' : 'ghost'} size="sm" aria-pressed={viewMode === 'water'} onClick={() => setViewMode('water')} className="min-h-11">
         Wasser
       </Button>
     </div>
@@ -272,8 +272,8 @@ function ActionsSection({
             <div className="my-2 border-t border-border" />
             <p className="px-3 py-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Jahreszeit</p>
             <div className="flex gap-1 px-2 pb-2">
-              <Button variant={season === 'summer' ? 'default' : 'ghost'} onClick={() => setSeason('summer')} className="min-h-11 flex-1 gap-1"><Sun className="h-4 w-4" />Sommer</Button>
-              <Button variant={season === 'winter' ? 'default' : 'ghost'} onClick={() => setSeason('winter')} className="min-h-11 flex-1 gap-1"><Snowflake className="h-4 w-4" />Winter</Button>
+              <Button aria-pressed={season === 'summer'} variant={season === 'summer' ? 'default' : 'ghost'} onClick={() => setSeason('summer')} className="min-h-11 flex-1 gap-1"><Sun className="h-4 w-4" />Sommer</Button>
+              <Button aria-pressed={season === 'winter'} variant={season === 'winter' ? 'default' : 'ghost'} onClick={() => setSeason('winter')} className="min-h-11 flex-1 gap-1"><Snowflake className="h-4 w-4" />Winter</Button>
             </div>
             <p className="px-3 pb-2 text-xs text-muted-foreground">Winter berücksichtigt weniger Solarertrag und höheren Heizbedarf.</p>
 
