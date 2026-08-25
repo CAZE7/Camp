@@ -3,7 +3,7 @@
   <text x="-48" y="-212" fill="#e2e8f0" font-family="monospace" font-size="16">10-labyrinth-vertical-gap — Labyrinth mit engem Durchlass</text>
   <rect x="300" y="-140" width="192" height="120" fill="#1e293b" stroke="#64748b" stroke-width="2" rx="8"/>
   <rect x="300" y="180" width="192" height="120" fill="#1e293b" stroke="#64748b" stroke-width="2" rx="8"/>
-  <path d="M 0 100 L 340 100 Q 350 100 360 100 L 700 100" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
+  <path d="M 0 100 L 700 100" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
   <circle cx="0" cy="100" r="7" fill="#22c55e"/>
   <circle cx="700" cy="100" r="7" fill="#f97316"/>
 </svg>

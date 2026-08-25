@@ -40,13 +40,6 @@ export const targetEntryVector = (position?: Position): Point => {
   return { x: -d.x || 0, y: -d.y || 0 };
 };
 
-const perpendicular = (d: Point): Point => ({ x: -d.y, y: d.x });
-
-const offsetPoint = (p: Point, d: Point, offset: number): Point => {
-  const q = perpendicular(d);
-  return { x: p.x + q.x * offset, y: p.y + q.y * offset };
-};
-
 const isHorizontal = (d: Point): boolean => Math.abs(d.x) === 1;
 
 /**
@@ -66,30 +59,48 @@ export function routeWaypoints(input: {
   const ds = sourceExitVector(input.sourcePosition);
   const dt = targetEntryVector(input.targetPosition);
   const offset = input.offset ?? 0;
-  const S = offsetPoint({ x: input.sourceX, y: input.sourceY }, ds, offset);
-  const T = offsetPoint({ x: input.targetX, y: input.targetY }, dt, offset);
+  const S: Point = { x: input.sourceX, y: input.sourceY };
+  const T: Point = { x: input.targetX, y: input.targetY };
 
   const points: Point[] = [S];
 
   if (isHorizontal(ds) && isHorizontal(dt)) {
     if (ds.x === dt.x) {
-      // Gleiche Richtung: Ziel liegt "vor" der Kante → einfacher Z-Weg.
-      const midX = (S.x + T.x) / 2;
+      // Gleiche Richtung: Ziel liegt in Fahrtrichtung vor der Kante
+      if (S.x === T.x && S.y === T.y) {
+        return [S];
+      }
+      if (S.y === T.y && offset === 0 && ((ds.x > 0 && T.x >= S.x) || (ds.x < 0 && T.x <= S.x))) {
+        // Exakt waagerechte Gerade ohne Versatz
+        points.push(T);
+        return points;
+      }
+      const midX = (S.x + T.x) / 2 + offset;
       points.push({ x: midX, y: S.y });
       points.push({ x: midX, y: T.y });
     } else {
       // Gegenrichtung: Ziel liegt "hinter" der Kante → Schlaufe aussen herum.
-      const loopX = Math.max(S.x, T.x) + ROUTE_MIN_STUB * 2;
+      const dir = ds.x > 0 ? 1 : -1;
+      const loopX = (dir > 0 ? Math.max(S.x, T.x) : Math.min(S.x, T.x)) + dir * (ROUTE_MIN_STUB * 2 + Math.abs(offset));
       points.push({ x: loopX, y: S.y });
       points.push({ x: loopX, y: T.y });
     }
   } else if (!isHorizontal(ds) && !isHorizontal(dt)) {
     if (ds.y === dt.y) {
-      const midY = (S.y + T.y) / 2;
+      if (S.x === T.x && S.y === T.y) {
+        return [S];
+      }
+      if (S.x === T.x && offset === 0 && ((ds.y > 0 && T.y >= S.y) || (ds.y < 0 && T.y <= S.y))) {
+        // Exakt senkrechte Gerade ohne Versatz
+        points.push(T);
+        return points;
+      }
+      const midY = (S.y + T.y) / 2 + offset;
       points.push({ x: S.x, y: midY });
       points.push({ x: T.x, y: midY });
     } else {
-      const loopY = Math.max(S.y, T.y) + ROUTE_MIN_STUB * 2;
+      const dir = ds.y > 0 ? 1 : -1;
+      const loopY = (dir > 0 ? Math.max(S.y, T.y) : Math.min(S.y, T.y)) + dir * (ROUTE_MIN_STUB * 2 + Math.abs(offset));
       points.push({ x: S.x, y: loopY });
       points.push({ x: T.x, y: loopY });
     }

@@ -25,7 +25,7 @@ Dadurch prüfen die Tests die Geometrie direkt statt einen SVG-String zu parsen.
 
 | ID | Invariante | Geprüft in |
 |----|------------|------------|
-| **R1** | Ohne Lane-Offset beginnt der Pfad **exakt** am Quellpunkt und endet exakt am Zielpunkt. Mit Offset *o* sind beide Enden genau um *o* senkrecht zur Austritts-/Eintrittsrichtung verschoben. | 25 Szenarien + 1.000 Zufallsfälle |
+| **R1** | Der Pfad beginnt **immer exakt** am Quell-Anschlusspunkt und endet immer exakt am Ziel-Anschlusspunkt. Ein Lane-Offset *o* versetzt den Zwischenkorridor (Bündelung als Trasse), ohne die Enden vom Bauteil-Anschluss zu trennen. | 25 Szenarien + 1.000 Zufallsfälle |
 | **R2** | Jedes Segment ist achsenparallel — keine Diagonalen. | 25 Szenarien + 1.000 Zufallsfälle |
 | **R3** | Kein Segment schneidet eine Hindernis-Box. Ausnahme nur, wenn Quelle oder Ziel **innerhalb** der Box liegt (Fälle 20/21) — dann ist ein kollisionsfreier Pfad geometrisch unmöglich. | 25 Szenarien + gezielte Zufallsgeometrie |
 | **R4** | Pfadlänge ≤ `maxDetourRatio` × Manhattan-Distanz. Der Faktor steht pro Szenario in `routingScenarios.ts`, typisch 1.05 (gerade Strecke) bis 4 (Stressszene). | 25 Szenarien |

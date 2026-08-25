@@ -53,6 +53,9 @@ const SolarNode = function({ id, data, isConnectable, selected }: PlannerNodePro
         <div className="font-bold mb-2 text-sm text-center cursor-text" onDoubleClick={() => handleDoubleClick('label', data.label || 'Solarmodul')}>{data.label || 'Solarmodul'}</div>
       )}
       <div className="flex flex-col gap-1 text-xs text-gray-600">
+        {data.watts !== undefined && (
+          <div className="font-semibold text-orange-800">Leistung: {data.watts} W</div>
+        )}
         {editingField === 'voltage' ? (
           <div className="flex items-center gap-1">
             <span>Spannung:</span>

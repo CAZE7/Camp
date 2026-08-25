@@ -64,12 +64,6 @@ function exitVector(position?: Position): Point {
   }
 }
 
-/** Erwarteter Startpunkt inklusive Lane-Offset. */
-function expectedEndpoint(point: Point, direction: Point, offset: number): Point {
-  const perpendicular = { x: -direction.y, y: direction.x };
-  return { x: point.x + perpendicular.x * offset, y: point.y + perpendicular.y * offset };
-}
-
 /** Tiefes Einfrieren, um Reinheit (R6) beweisbar zu machen. */
 function deepFreeze<T>(value: T): T {
   if (value && typeof value === 'object') {
@@ -104,24 +98,11 @@ describe('R1–R4 — Invarianten über alle 25 Szenarien', () => {
       const input = deepFreeze({ ...scenario.input }) as OrthogonalPathInput;
       const { waypoints } = orthogonalWaypoints(input);
 
-      it('R1: beginnt und endet exakt an den (ggf. versetzten) Anschlusspunkten', () => {
-        const offset = input.offset ?? 0;
-        const start = expectedEndpoint(
-          { x: input.sourceX, y: input.sourceY },
-          exitVector(input.sourcePosition),
-          offset
-        );
-        const entry = exitVector(input.targetPosition);
-        const end = expectedEndpoint(
-          { x: input.targetX, y: input.targetY },
-          { x: -entry.x || 0, y: -entry.y || 0 },
-          offset
-        );
-
-        expect(waypoints[0].x).toBeCloseTo(start.x, 9);
-        expect(waypoints[0].y).toBeCloseTo(start.y, 9);
-        expect(waypoints[waypoints.length - 1].x).toBeCloseTo(end.x, 9);
-        expect(waypoints[waypoints.length - 1].y).toBeCloseTo(end.y, 9);
+      it('R1: beginnt und endet exakt an den Anschlusspunkten', () => {
+        expect(waypoints[0].x).toBeCloseTo(input.sourceX, 9);
+        expect(waypoints[0].y).toBeCloseTo(input.sourceY, 9);
+        expect(waypoints[waypoints.length - 1].x).toBeCloseTo(input.targetX, 9);
+        expect(waypoints[waypoints.length - 1].y).toBeCloseTo(input.targetY, 9);
       });
 
       it('R2: alle Segmente sind achsenparallel', () => {
@@ -278,7 +259,7 @@ describe('R2/R5/R6/R7 — Eigenschaften über zufällige Geometrie', () => {
     );
   });
 
-  it('R1: Start und Ende liegen bei Offset 0 exakt auf den Anschlusspunkten', () => {
+  it('R1: Start und Ende liegen für jede Eingabe exakt auf den Anschlusspunkten', () => {
     fc.assert(
       fc.property(
         fc.record({
@@ -288,10 +269,11 @@ describe('R2/R5/R6/R7 — Eigenschaften über zufällige Geometrie', () => {
           targetX: coordinate,
           targetY: coordinate,
           targetPosition: position,
+          offset: lane,
           obstacles: fc.array(rect, { maxLength: 3 }),
         }),
         (input) => {
-          const { waypoints } = orthogonalWaypoints({ ...input, offset: 0 });
+          const { waypoints } = orthogonalWaypoints(input);
           expect(waypoints[0]).toEqual({ x: input.sourceX, y: input.sourceY });
           expect(waypoints[waypoints.length - 1]).toEqual({
             x: input.targetX,

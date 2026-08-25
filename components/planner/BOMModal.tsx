@@ -4,6 +4,8 @@ import { AccessibleDialog } from '@/components/ui/AccessibleDialog';
 import { usePlannerStore } from '../../store/usePlannerStore';
 import { ClipboardCopy } from 'lucide-react';
 import { getComponentSpec } from '../registry';
+import { calculateCrossSection } from '../../lib/electrical';
+import { calculateEdgeCurrent, getSystemVoltage } from '../../lib/vde-standards';
 
 type BomData = {
   counts: Record<string, number>;
@@ -37,9 +39,24 @@ export function BOMModal() {
         if (node.type) counts[node.type] = (counts[node.type] || 0) + 1;
       });
       const cableLengths: Record<string, number> = {};
+      const nodesMap = new Map(nodes.map((n) => [n.id, n]));
+      const sysVoltage = getSystemVoltage(nodes);
       edges.forEach((edge) => {
-        const crossSection = String(edge.data?.crossSection || 2.5);
-        cableLengths[crossSection] = (cableLengths[crossSection] || 0) + (edge.data?.length || 3);
+        const s = nodesMap.get(edge.source);
+        const t = nodesMap.get(edge.target);
+        const isAc = edge.data?.edgeDomain === 'AC_230V';
+        let cs = edge.data?.crossSection;
+        if (!cs) {
+          if (isAc) {
+            cs = 2.5;
+          } else {
+            const I = calculateEdgeCurrent(s, t, nodes, sysVoltage);
+            const len = edge.data?.length || 1;
+            cs = calculateCrossSection(I, len, undefined, 'DC_12V');
+          }
+        }
+        const crossSection = String(cs || 2.5);
+        cableLengths[crossSection] = (cableLengths[crossSection] || 0) + (edge.data?.length || 1);
       });
       const pipeLengths: Record<string, number> = {};
       waterEdges.forEach((edge) => {

@@ -92,7 +92,7 @@ describe('polarity helpers', () => {
 });
 
 describe('edgeLabelNudge', () => {
-  it('returns only the polarity nudge for a single edge', () => {
+  it('returns 0 for a single edge', () => {
     expect(
       edgeLabelNudge({
         edgeId: 'e1',
@@ -101,38 +101,36 @@ describe('edgeLabelNudge', () => {
         sourceHandle: 'plus',
         siblingEdges: [{ id: 'e1', source: 'a', target: 'b' }],
       })
-    ).toBe(PLUS_LABEL_NUDGE);
+    ).toBe(0);
   });
 
-  it('spreads labels of parallel edges between the same pair', () => {
+  it('spreads labels of parallel edges on the same handle', () => {
     const siblings = [
-      { id: 'plus', source: 'a', target: 'b' },
-      { id: 'minus', source: 'a', target: 'b' },
+      { id: 'plus-1', source: 'a', target: 'b', sourceHandle: 'plus' },
+      { id: 'plus-2', source: 'a', target: 'b', sourceHandle: 'plus' },
     ];
-    const plus = edgeLabelNudge({
-      edgeId: 'plus',
+    const plus1 = edgeLabelNudge({
+      edgeId: 'plus-1',
       source: 'a',
       target: 'b',
       sourceHandle: 'plus',
       siblingEdges: siblings,
     });
-    const minus = edgeLabelNudge({
-      edgeId: 'minus',
+    const plus2 = edgeLabelNudge({
+      edgeId: 'plus-2',
       source: 'a',
       target: 'b',
-      sourceHandle: 'minus',
+      sourceHandle: 'plus',
       siblingEdges: siblings,
     });
-    expect(minus - plus).toBeGreaterThan(PARALLEL_LABEL_SPREAD);
-    expect(plus).toBe(PLUS_LABEL_NUDGE - PARALLEL_LABEL_SPREAD / 2);
-    expect(minus).toBe(MINUS_LABEL_NUDGE + PARALLEL_LABEL_SPREAD / 2);
+    expect(plus2 - plus1).toBe(PARALLEL_LABEL_SPREAD);
   });
 });
 
 describe('parallelLaneOffset (Trassen-Bündelung)', () => {
   const pair = { source: 'a', target: 'b' };
 
-  it('keeps a single edge on its polarity stub', () => {
+  it('keeps a single edge centered (offset 0)', () => {
     expect(
       parallelLaneOffset({
         edgeId: 'e1',
@@ -140,7 +138,7 @@ describe('parallelLaneOffset (Trassen-Bündelung)', () => {
         sourceHandle: 'plus',
         siblingEdges: [{ id: 'e1', ...pair, sourceHandle: 'plus' }],
       })
-    ).toBe(PLUS_PATH_OFFSET);
+    ).toBe(0);
   });
 
   it('separates three parallel cables by exactly 16 px each (A5)', () => {
@@ -155,7 +153,7 @@ describe('parallelLaneOffset (Trassen-Bündelung)', () => {
       )
       .sort((x, y) => x - y);
 
-    expect(offsets).toEqual([PLUS_PATH_OFFSET, PLUS_PATH_OFFSET + 16, PLUS_PATH_OFFSET + 32]);
+    expect(offsets).toEqual([-16, 0, 16]);
     expect(PARALLEL_LANE_SPREAD).toBe(16);
     expect(offsets[1] - offsets[0]).toBe(16);
     expect(offsets[2] - offsets[1]).toBe(16);
