@@ -15,15 +15,15 @@ Legende Status:
 
 ---
 
-## 1. Sidebar-Bauteile (`components/Sidebar.tsx` + `PlannerSidebar.tsx`)
+## 1. Sidebar-Bauteile (`components/Sidebar.tsx` + `components/sidebar/*` + `PlannerSidebar.tsx`)
 
 | Element | Aktion | Status | Maßnahme / Code-Stelle |
 |---|---|---|---|
-| Suchfeld „Suchen…“ | filtert Komponenten & Vorlagen live | ✅ | `Sidebar.tsx` `<input id="component-search">`, `min-h-11`, Label sr-only. |
-| Suchfeld Löschen (X) | leert Suchterm | ✅ | `Sidebar.tsx` `h-11 w-11`, `aria-label="Filter zurücksetzen"`. |
-| Kategorie-Kopf (z. B. „Strom speichern (4)“) | klappt Kategorie auf/zu | ✅ | `CategorySection` Button `min-h-11`, `aria-expanded`. |
-| Komponente-Kachel (Batterie, MPPT, …) | Klick = Hinzufügen; Desktop = Drag auf Canvas | ✅ | `ComponentTile`, `min-h-24`, `aria-label` mit Beschreibung, `onPointerDown`-Ghost-Drag. |
-| Geräte-Vorlagen (Kühlschrank, Kaffeemaschine, …) | wie Komponente, mit Watt voreingestellt | ✅ | `deviceAssistant[]`, gleiche Kachelkomponente. |
+| Suchfeld „Suchen…“ | filtert Komponenten & Vorlagen live | ✅ | `sidebar/SidebarSearch.tsx` `<input id="component-search">`, `min-h-11`, Label sr-only. |
+| Suchfeld Löschen (X) | leert Suchterm | ✅ | `sidebar/SidebarSearch.tsx` `h-11 w-11`, `aria-label="Filter zurücksetzen"`. |
+| Kategorie-Kopf (z. B. „Strom speichern (4)“) | klappt Kategorie auf/zu | ✅ | `sidebar/CategorySection.tsx` Button `min-h-11`, `aria-expanded`. |
+| Komponente-Kachel (Batterie, MPPT, …) | Klick = Hinzufügen; Desktop = Drag auf Canvas | ✅ | `sidebar/ComponentTile.tsx`, `min-h-24`, `aria-label` mit Beschreibung, `onPointerDown`-Ghost-Drag (`sidebar/drag.ts`). |
+| Geräte-Vorlagen (Kühlschrank, Kaffeemaschine, …) | wie Komponente, mit Watt voreingestellt | ✅ | `deviceAssistant[]` in `sidebar/catalog.ts`, gleiche Kachelkomponente. |
 | Sidebar-Einklapp-Pfeil (Desktop/Tablet) | klappt die linke Spalte ein/aus | ✅ | `PlannerSidebar.tsx`, `aria-expanded`, 44×44 px. |
 | Leere-Suche | „Keine Treffer“ + Reset-Button | ✅ R5 | `Sidebar.tsx` — kein leerer Bildschirm, nächster Schritt „Filter zurücksetzen“. |
 
@@ -113,7 +113,7 @@ Legende Status:
 | Touch: Ein-Finger-Wisch auf Canvas | pan | ✅ | `panOnDrag` nur für Nicht-Handle-Touches via `flowInteraction.ts` |
 | Maus: Rechtsklick | Kontextmenü | ✅ | `CanvasContextMenu` |
 | Maus: Doppelklick auf Node-Wert | Feld bearbeiten | ✅ | in den Node-Komponenten |
-| Maus: Drag von Sidebar-Kachel | Ghost-Drag + Drop | ✅ | `handlePointerDown` + `usePlannerDragDrop` |
+| Maus: Drag von Sidebar-Kachel | Ghost-Drag + Drop | ✅ | `handlePointerDown` in `sidebar/drag.ts` + `usePlannerDragDrop` |
 | Pinch-to-zoom Touch | zoomen | ✅ | `zoomOnPinch` in `flowInteraction.ts` |
 
 ## 7. Sonstige Seiten (zum vollständigen Audit)

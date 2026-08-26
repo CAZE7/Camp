@@ -79,7 +79,7 @@ components/registry/
 - **Geräte-Vorlagen** („Induktionskochfeld“, 2000 W). Das sind keine
   Bauteiltypen, sondern vorbelegte Varianten von `consumer` / `consumer230v`.
   Als Specs registriert hätten sie doppelte IDs. Sie bleiben eine eigene
-  Liste in `Sidebar.tsx`.
+  Liste in `components/sidebar/catalog.ts` (`deviceAssistant`).
 - **`charger`** bleibt als Alt-Typ registriert (`selectable: false`): alte
   gespeicherte Pläne enthalten ihn, er muss darstellbar und benennbar bleiben,
   aber nicht mehr angeboten werden.
