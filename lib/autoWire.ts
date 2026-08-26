@@ -37,7 +37,8 @@ import {
   selectFuseSize,
   isFuseFeasible,
 } from './electrical';
-import { calculateEdgeCurrent, getSystemVoltage } from './vde-standards';
+import { calculateEdgeCurrent, getSystemVoltage, isStarterBatteryLabel } from './vde-standards';
+export { isStarterBatteryLabel };
 import {
   addVolts,
   addWatts,
@@ -148,10 +149,6 @@ const isVoltageDropStopType = (type: string | undefined): boolean =>
 
 const labelOf = (node: Node | undefined): string => String(node?.data?.label || '');
 
-/** Startbatterie / Starterbatterie / Starter battery — nicht die Aufbaubatterie. */
-export const isStarterBatteryLabel = (label: unknown): boolean =>
-  /start/i.test(String(label || ''));
-
 const isStarterBattery = (node: Node): boolean => isStarterBatteryLabel(labelOf(node));
 
 const isLeadChemistry = (node: Node): boolean =>
@@ -221,7 +218,8 @@ function addDcEdge(
   sourceId: string,
   targetId: string,
   handle: 'plus' | 'minus',
-  length: Meters
+  length: Meters,
+  domain: 'DC_12V' | 'Solar' = 'DC_12V'
 ): CableEdge | null {
   const key = `${sourceId}|${targetId}|${handle}|${handle}`;
   if (existingConnections.has(key)) return null;
@@ -233,7 +231,7 @@ function addDcEdge(
     sourceHandle: handle,
     targetHandle: handle,
     type: 'cableEdge',
-    data: { length, edgeDomain: 'DC_12V' },
+    data: { length, edgeDomain: domain },
   };
   newEdges.push(edge);
   dcEdges.push(edge);
@@ -330,6 +328,13 @@ export function relevantCumulativeDrop(
 ): Volts {
   const result = cumulativeDropAt(nodeId, nodeMap, edges, nodes, sysVoltage, new Set());
   return result.hasSupplyPath ? result.supply : result.any;
+}
+
+/** Solar-Zuleitung (Panel → Laderegler): eigene Domäne, kein 12-V-Kreis. */
+function isSolarEdge(edge: CableEdge, nodeMap: Map<string, Node>): boolean {
+  const s = nodeMap.get(edge.source)?.type;
+  const t = nodeMap.get(edge.target)?.type;
+  return s === 'solar' || s === 'roofSolar' || t === 'solar' || t === 'roofSolar';
 }
 
 function isAcEdge(edge: CableEdge, nodeMap: Map<string, Node>): boolean {
@@ -931,8 +936,8 @@ export function performAutoWiring(
 
   if (solars.length > 0 && mpptNode) {
     for (const solar of solars) {
-      addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, solar.id, mpptNode.id, 'plus', meters(5));
-      addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, solar.id, mpptNode.id, 'minus', meters(5));
+      addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, solar.id, mpptNode.id, 'plus', meters(5), 'Solar');
+      addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, solar.id, mpptNode.id, 'minus', meters(5), 'Solar');
     }
     addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, mpptNode.id, rails.plus.id, 'plus', meters(2));
     addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, mpptNode.id, rails.minus.id, 'minus', meters(2));
@@ -1037,13 +1042,17 @@ export function performAutoWiring(
   const allDcEdges = [...userDcEdges, ...dcEdges];
 
   // Nutzer-Kanten ohne gespeicherte Domäne werden hier eindeutig markiert:
-  // topologisch AC (Landstrom/230-V-Gerät/AC-Ladegerät) → 'AC_230V', alle
-  // übrigen DC-Kanten → 'DC_12V'. Ohne die DC-Markierung blieben Nutzer-DC-
-  // Kanten im Ergebnis domänenlos; ohne die AC-Markierung fielen sie zwischen
-  // DC- und AC-Dimensionierung durch (Property „jede Kante ist dimensioniert“).
+  // topologisch AC (Landstrom/230-V-Gerät/AC-Ladegerät) → 'AC_230V',
+  // Solar-Zuleitungen → 'Solar', alle übrigen DC-Kanten → 'DC_12V'. Ohne die
+  // Markierungen blieben Nutzer-Kanten domänenlos und fielen zwischen DC- und
+  // AC-Dimensionierung durch (Property „jede Kante ist dimensioniert“).
   for (const edge of userEdges) {
     if (edge.data && edge.data.edgeDomain === undefined) {
-      edge.data.edgeDomain = isAcEdge(edge, nodeMap) ? 'AC_230V' : 'DC_12V';
+      edge.data.edgeDomain = isAcEdge(edge, nodeMap)
+        ? 'AC_230V'
+        : isSolarEdge(edge, nodeMap)
+          ? 'Solar'
+          : 'DC_12V';
     }
   }
 

@@ -112,10 +112,15 @@ describe('VDE-Konsistenz: keine hardcoded Magic-Numbers', () => {
     expect(content).toMatch(/VDE_CHARGE_DERATING_FACTOR/);
   });
 
-  it('CableEdge.tsx importiert VDE_INVERTER_EFFICIENCY und VDE_SOLAR_VMP_VOLTAGE', () => {
+  it('CableEdge.tsx bezieht alle Ströme aus den zentralen Funktionen (DC + AC)', () => {
+    // Seit der AC-Strom-Berechnung braucht CableEdge die Konstanten nicht
+    // mehr selbst zu importieren — es delegiert an calculateEdgeCurrent (DC)
+    // und calculateAcEdgeCurrent (230 V) aus lib/vde-standards.ts. Genau
+    // diese Delegation wird hier erzwungen, damit keine Magic Numbers
+    // (0.85, 18 V, 230 V) in die Anzeige zurückwandern.
     const content = fs.readFileSync(path.join(REPO_ROOT, 'components/edges/CableEdge.tsx'), 'utf-8');
-    expect(content).toMatch(/VDE_INVERTER_EFFICIENCY/);
-    expect(content).toMatch(/VDE_SOLAR_VMP_VOLTAGE/);
+    expect(content).toMatch(/calculateEdgeCurrent/);
+    expect(content).toMatch(/calculateAcEdgeCurrent/);
     expect(content).not.toMatch(/[\/]\s*0\.85\b/);
   });
 

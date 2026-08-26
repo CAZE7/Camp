@@ -374,7 +374,7 @@ function getEdgeErrors(nodes: Node[], edges: Edge<CableEdgeData>[], edge: Edge<C
   const totalDropPercentage = ((ownDrop + pathDrop) / sysVoltage) * 100;
 
   return collectEdgeErrors({
-    edgeDomain: (edge.data?.edgeDomain as string) === 'AC_230V' ? 'AC_230V' : 'DC_12V',
+    edgeDomain: edge.data?.edgeDomain ?? 'DC_12V',
     data: edge.data,
     I,
     maxFuse,
@@ -827,5 +827,52 @@ describe('Auto-Wire: Topologie-Heilung & reale Templates', () => {
       totalDropPercentage: 1,
     });
     expect(errors.some((err) => err.includes('20cm'))).toBe(true);
+  });
+
+  it('20cm-Regel gilt auch, wenn die Batterie ZIEL der Leitung ist (Bug 18)', () => {
+    // z. B. Laderegler → Batterie: Die Batterie kann über eine ungesicherte
+    // Ladeleitung Kurzschlussstrom in ein defektes Kabel liefern.
+    const errors = collectEdgeErrors({
+      edgeDomain: 'DC_12V',
+      data: { length: 5, crossSection: 16 },
+      I: 30,
+      maxFuse: 63,
+      isPlus: true,
+      targetNodeType: 'battery',
+      length: 5,
+      totalDropPercentage: 1,
+    });
+    expect(errors.some((err) => err.includes('20cm'))).toBe(true);
+  });
+
+  it('fuseSize=0 löst weder „Sicherung zu klein“ noch „Sicherung zu groß“ aus (Bug 7)', () => {
+    // 0 ist falsy → die Kante fällt in den „Sicherung fehlt?“-Zweig; der
+    // Vergleich `fuseSize < I` darf für 0 nie laufen. Regressionstest für
+    // die behauptete, aber nicht reproduzierbare Fehlermeldung.
+    const errors = collectEdgeErrors({
+      edgeDomain: 'DC_12V',
+      data: { length: 3, crossSection: 4, fuseSize: 0 },
+      I: 30,
+      maxFuse: 25,
+      isPlus: true,
+      sourceNodeType: 'consumer',
+      length: 3,
+      totalDropPercentage: 1,
+    });
+    expect(errors.some((err) => err.includes('zu klein'))).toBe(false);
+    expect(errors.some((err) => err.includes('zu groß'))).toBe(false);
+  });
+
+  it('AC-Kante mit hohem Spannungsfall meldet Gesamt-Drop (Bug 10)', () => {
+    const errors = collectEdgeErrors({
+      edgeDomain: 'AC_230V',
+      data: { length: 50, crossSection: 1.5 },
+      I: 10,
+      maxFuse: 0,
+      isPlus: true,
+      length: 50,
+      totalDropPercentage: 5,
+    });
+    expect(errors.some((err) => err.includes('Gesamt-Drop'))).toBe(true);
   });
 });
