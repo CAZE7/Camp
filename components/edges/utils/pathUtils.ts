@@ -117,7 +117,18 @@ export const parallelLaneOffset = (input: {
 };
 
 /**
- * Keeps labels apart and spreads labels when several edges share a node pair and handle.
+ * Keeps labels apart and spreads labels when several edges share a node pair
+ * and handle.
+ *
+ * Wichtig: Die Gruppe wird EXAKT so sortiert wie parallelLaneOffset (Kabeltyp,
+ * dann id). Vorher wurde in Store-Reihenfolge indexiert — die Label-Reihen-
+ * folge konnte dadurch gegenüber der Lane-Reihenfolge der Kabel gespiegelt
+ * sein (Label von Kabel A lag neben Kabel B), sobald die Kanten-Reihenfolge
+ * im Store von der Lane-Sortierung abwich.
+ *
+ * Handle-Vergleich mit `?? null`-Normalisierung: React Flow liefert
+ * `sourceHandle` je nach Entstehung der Kante als `null` oder `undefined`;
+ * beide müssen als „kein Handle“ zusammenpassen.
  */
 export const edgeLabelNudge = (input: {
   edgeId: string;
@@ -126,17 +137,17 @@ export const edgeLabelNudge = (input: {
   sourceHandle?: string | null;
   siblingEdges: LabelEdgeRef[];
 }): number => {
+  const inputHandle = input.sourceHandle ?? null;
   const group = input.siblingEdges.filter(
     (edge) =>
       (edge.source === input.source && edge.target === input.target) ||
       (edge.source === input.target && edge.target === input.source)
   );
   if (group.length <= 1) return 0;
-  const sameHandleGroup = group.filter(
-    (edge) =>
-      (edge.sourceHandle && edge.sourceHandle === input.sourceHandle) ||
-      (!edge.sourceHandle && !input.sourceHandle)
+  const sorted = [...group].sort(
+    (a, b) => cableTypeRank(a) - cableTypeRank(b) || a.id.localeCompare(b.id)
   );
+  const sameHandleGroup = sorted.filter((edge) => (edge.sourceHandle ?? null) === inputHandle);
   if (sameHandleGroup.length <= 1) return 0;
   const idx = Math.max(0, sameHandleGroup.findIndex((edge) => edge.id === input.edgeId));
   return (idx - (sameHandleGroup.length - 1) / 2) * PARALLEL_LABEL_SPREAD;

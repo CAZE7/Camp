@@ -16,11 +16,12 @@ import {
   recommendConduitType,
   getSystemVoltage,
   calculateEdgeCurrent,
+  calculateAcEdgeCurrent,
   DEFAULT_SYSTEM_VOLTAGE,
   LEAD_SYSTEM_VOLTAGE,
 } from './vde-standards';
 import { amps, meters, mm2, volts, watts } from './units';
-import type { Node } from 'reactflow';
+import type { Node, Edge } from 'reactflow';
 
 describe('VDE Standards - Zentrale Konstanten', () => {
   describe('Kabelquerschnitte', () => {
@@ -177,8 +178,8 @@ describe('VDE Berechnungsfunktionen', () => {
 
 describe('VDE-Standards mit typsicheren Einheiten (K1b)', () => {
   describe('getSystemVoltage', () => {
-    const battery = (data: Record<string, unknown>): Node =>
-      ({ id: 'b1', type: 'battery', position: { x: 0, y: 0 }, data }) as Node;
+    const battery = (id: string = 'b1', data: Record<string, unknown> = {}): Node =>
+      ({ id, type: 'battery', position: { x: 0, y: 0 }, data }) as Node;
 
     it('liefert die Default-Spannung ohne Batterie', () => {
       expect(getSystemVoltage([])).toBe(DEFAULT_SYSTEM_VOLTAGE);
@@ -186,22 +187,37 @@ describe('VDE-Standards mit typsicheren Einheiten (K1b)', () => {
     });
 
     it('liefert 12.0 V für Blei-Chemien', () => {
-      expect(getSystemVoltage([battery({ chemistry: 'AGM' })])).toBe(LEAD_SYSTEM_VOLTAGE);
-      expect(getSystemVoltage([battery({ chemistry: 'gel' })])).toBe(12.0);
+      expect(getSystemVoltage([battery('b1', { chemistry: 'AGM' })])).toBe(LEAD_SYSTEM_VOLTAGE);
+      expect(getSystemVoltage([battery('b1', { chemistry: 'gel' })])).toBe(12.0);
     });
 
     it('übernimmt eine explizite nominalVoltage', () => {
-      expect(getSystemVoltage([battery({ nominalVoltage: 24 })])).toBe(24);
-      expect(getSystemVoltage([battery({ nominalVoltage: '24' })])).toBe(24);
+      expect(getSystemVoltage([battery('b1', { nominalVoltage: 24 })])).toBe(24);
+      expect(getSystemVoltage([battery('b1', { nominalVoltage: '24' })])).toBe(24);
     });
 
     it('ignoriert unbrauchbare nominalVoltage-Werte aus dem Speicher', () => {
       // Vorher wurde -12 bzw. NaN unverändert weitergereicht und hätte den
       // Spannungsfall in allen Folgerechnungen verfälscht.
-      expect(getSystemVoltage([battery({ nominalVoltage: -12 })])).toBe(DEFAULT_SYSTEM_VOLTAGE);
-      expect(getSystemVoltage([battery({ nominalVoltage: 'zwölf' })])).toBe(DEFAULT_SYSTEM_VOLTAGE);
-      expect(getSystemVoltage([battery({ nominalVoltage: 0 })])).toBe(DEFAULT_SYSTEM_VOLTAGE);
-      expect(getSystemVoltage([battery({ nominalVoltage: null })])).toBe(DEFAULT_SYSTEM_VOLTAGE);
+      expect(getSystemVoltage([battery('b1', { nominalVoltage: -12 })])).toBe(DEFAULT_SYSTEM_VOLTAGE);
+      expect(getSystemVoltage([battery('b1', { nominalVoltage: 'zwölf' })])).toBe(DEFAULT_SYSTEM_VOLTAGE);
+      expect(getSystemVoltage([battery('b1', { nominalVoltage: 0 })])).toBe(DEFAULT_SYSTEM_VOLTAGE);
+      expect(getSystemVoltage([battery('b1', { nominalVoltage: null })])).toBe(DEFAULT_SYSTEM_VOLTAGE);
+    });
+
+    it('bevorzugt ohne preferredBatteryId die Aufbaubatterie vor der Starterbatterie', () => {
+      // Bug 11: Die 24-V-Starterbatterie steht in der Node-Reihenfolge vor der
+      // 12-V-Aufbaubatterie — ohne Fix würde ALLES mit 24 V gerechnet.
+      const starter = battery('s1', { label: 'Starterbatterie', nominalVoltage: 24 });
+      const house = battery('h1', { label: 'Aufbaubatterie', nominalVoltage: 12 });
+      expect(getSystemVoltage([starter, house])).toBe(12);
+      expect(getSystemVoltage([house, starter])).toBe(12);
+    });
+
+    it('preferredBatteryId schlägt die Label-Priorität', () => {
+      const starter = battery('s1', { label: 'Starterbatterie', nominalVoltage: 24 });
+      const house = battery('h1', { label: 'Aufbaubatterie', nominalVoltage: 12 });
+      expect(getSystemVoltage([house, starter], 's1')).toBe(24);
     });
   });
 
@@ -241,6 +257,91 @@ describe('VDE-Standards mit typsicheren Einheiten (K1b)', () => {
         node('charger', { amps: -30 }),
       ];
       expect(calculateEdgeCurrent(undefined, undefined, consumers, volts(12))).toBeGreaterThanOrEqual(0);
+    });
+
+    it('nutzt im Fallback-Pfad continuousPower des Wechselrichters (Bug 9)', () => {
+      // Batterie-Hauptleitung → Fallback-Pfad (Priorität 6). Der Wechsel-
+      // richter trägt dort seine Dauerleistung (continuousPower), nicht nur
+      // die veraltete watts-Angabe — sonst wird die Leitung zu dünn.
+      const house = node('battery', {});
+      const busbar = node('busbar', {});
+      const inv = node('inverter', { watts: 100, continuousPower: 1000 });
+      const nodes = [house, busbar, inv];
+      const I = calculateEdgeCurrent(house, busbar, nodes, volts(12.8));
+      expect(I).toBeCloseTo(1000 / 12.8 / VDE_INVERTER_EFFICIENCY, 10);
+    });
+
+    it('nutzt im Fallback-Pfad die 230-V-Last des Wechselrichters (acConsumerLoad)', () => {
+      const house = node('battery', {});
+      const busbar = node('busbar', {});
+      const inv = node('inverter', { watts: 100 });
+      const consumer230 = node('consumer230v', { watts: 2300 });
+      const nodes = [house, busbar, inv, consumer230];
+      const I = calculateEdgeCurrent(house, busbar, nodes, volts(12.8));
+      // max(100 W, 2300 W) / 12,8 V / 0,85
+      expect(I).toBeCloseTo(2300 / 12.8 / VDE_INVERTER_EFFICIENCY, 10);
+    });
+  });
+
+  describe('calculateAcEdgeCurrent (Bug 3)', () => {
+    const node = (id: string, type: string, data: Record<string, unknown>): Node =>
+      ({ id, type, position: { x: 0, y: 0 }, data }) as Node;
+    const edge = (
+      id: string,
+      source: string,
+      target: string,
+      data: Record<string, unknown> = {},
+      sourceHandle?: string,
+      targetHandle?: string
+    ): Edge =>
+      ({ id, source, target, sourceHandle, targetHandle, type: 'cableEdge', data }) as Edge;
+
+    it('dimensioniert die Landstrom-Zuleitung über alle erreichbaren 230-V-Verbraucher', () => {
+      const nodes = [
+        node('sp', 'shorePower', {}),
+        node('c1', 'consumer230v', { watts: 1150 }),
+        node('c2', 'consumer230v', { watts: 1150 }),
+      ];
+      const edges = [
+        edge('e1', 'sp', 'c1', { edgeDomain: 'AC_230V' }, 'plus', 'plus'),
+        edge('e2', 'sp', 'c2', { edgeDomain: 'AC_230V' }, 'plus', 'plus'),
+      ];
+      expect(calculateAcEdgeCurrent('sp', nodes, edges)).toBeCloseTo(10, 10);
+    });
+
+    it('dimensioniert eine Wechselrichter-Abzweigleitung nur mit deren eigenen Verbrauchern', () => {
+      const nodes = [
+        node('inv', 'inverter', {}),
+        node('c1', 'consumer230v', { watts: 2300 }),
+        node('sp2', 'shorePower', {}),
+        node('other', 'consumer230v', { watts: 23000 }), // anderer Kreis, nicht erreichbar
+      ];
+      const edges = [
+        edge('e1', 'inv', 'c1', {}, 'ac_out', 'plus'),
+        edge('e2', 'sp2', 'other', { edgeDomain: 'AC_230V' }, 'plus', 'plus'),
+      ];
+      // Nur c1 hängt hinter dem Wechselrichter — der fremde 23-kW-Kreis an
+      // sp2 darf die Abzweigleitung nicht aufblähen.
+      expect(calculateAcEdgeCurrent('inv', nodes, edges)).toBeCloseTo(10, 10);
+    });
+
+    it('ignoriert DC-Kanten mit expliziter DC_12V-Domäne', () => {
+      const nodes = [
+        node('inv', 'inverter', {}),
+        node('c1', 'consumer230v', { watts: 2300 }),
+      ];
+      const edges = [
+        // data.edgeDomain sagt DC_12V — der BFS darf diese Kante NICHT als
+        // AC-Pfad nutzen (getEdgeDomain würde wegen consumer230v AC sagen).
+        edge('e1', 'inv', 'c1', { edgeDomain: 'DC_12V' }, 'plus', 'plus'),
+      ];
+      expect(calculateAcEdgeCurrent('inv', nodes, edges)).toBe(0);
+    });
+
+    it('liefert 0 A ohne erreichbare 230-V-Last', () => {
+      const nodes = [node('inv', 'inverter', {})];
+      expect(calculateAcEdgeCurrent('inv', nodes, [])).toBe(0);
+      expect(calculateAcEdgeCurrent(undefined, nodes, [])).toBe(0);
     });
   });
 

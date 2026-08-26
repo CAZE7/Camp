@@ -490,6 +490,11 @@ describe('G6 — AC/DC-Trennung jeder erzeugten Verbindung', () => {
           if (domain === 'DC_12V') {
             expect(AC_ONLY_TYPES.has(source!.type as string)).toBe(false);
             expect(AC_ONLY_TYPES.has(target!.type as string)).toBe(false);
+          } else if (domain === 'Solar') {
+            // Eine Solar-Kante braucht einen Solar-Endpunkt (Panel/roofSolar).
+            const solarCapable = (type: string | undefined): boolean =>
+              type === 'solar' || type === 'roofSolar';
+            expect(solarCapable(source?.type) || solarCapable(target?.type)).toBe(true);
           } else {
             // Eine AC-Kante muss mindestens einen AC-fähigen Endpunkt haben.
             const acCapable = (type: string | undefined): boolean =>

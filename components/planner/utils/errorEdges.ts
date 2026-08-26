@@ -18,7 +18,7 @@ export function markErrorEdgesZIndex(
 
   return edges.map((edge) => {
     if (edge.type === 'waterPipe') return edge;
-    const inputs = edgeDropInputs(edge, nodeMap.get(edge.source), nodeMap.get(edge.target), nodes);
+    const inputs = edgeDropInputs(edge, nodeMap.get(edge.source), nodeMap.get(edge.target), nodes, edges);
     const { hasDropError } = hasVoltageDropError({
       ...inputs,
       cumulativeDropVolts: cumulativeDropVolts(edge.source),

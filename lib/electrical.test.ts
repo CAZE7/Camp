@@ -93,6 +93,20 @@ describe('electrical safety refactoring tests', () => {
     expect(getEdgeDomain('battery', 'inverter', null, 'ground')).toBe('DC_12V');
   });
 
+  it('erkennt Solar-Kanten (solar/roofSolar) als Solar — in beiden Richtungen', () => {
+    expect(getEdgeDomain('solar', 'mpptController', 'plus')).toBe('Solar');
+    expect(getEdgeDomain('mpptController', 'solar', undefined, 'plus')).toBe('Solar');
+    expect(getEdgeDomain('roofSolar', 'charger', 'plus')).toBe('Solar');
+    expect(getEdgeDomain('charger', 'roofSolar', undefined, 'minus')).toBe('Solar');
+    // Solar schlägt auch dann, wenn ein Handle AC-typisch aussähe.
+    expect(getEdgeDomain('solar', 'consumer230v', 'plus')).toBe('Solar');
+  });
+
+  it('behält AC/DC-Zuordnung für Nicht-Solar-Kanten', () => {
+    expect(getEdgeDomain('shorePower', 'consumer230v', 'plus')).toBe('AC_230V');
+    expect(getEdgeDomain('battery', 'consumer', 'plus')).toBe('DC_12V');
+  });
+
   it('should identify inverter AC handles correctly in getHandleDomain', () => {
     expect(getHandleDomain('inverter', 'ac_out', 'source')).toBe('AC_230V');
     expect(getHandleDomain('inverter', 'plus', 'source')).toBe('AC_230V');

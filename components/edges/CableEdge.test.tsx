@@ -1,7 +1,21 @@
 import { render } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import CableEdge from './CableEdge';
-import { useReactFlow } from 'reactflow';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import CableEdge, { calculateAnimationDuration } from './CableEdge';
+import { useReactFlow, Position } from 'reactflow';
+import { usePlannerStore } from '../../store/usePlannerStore';
+
+describe('calculateAnimationDuration (Bug 14)', () => {
+  it('liefert 0 für stromlose Leitungen (I = 0, NaN, Infinity)', () => {
+    expect(calculateAnimationDuration(0)).toBe(0);
+    expect(calculateAnimationDuration(NaN)).toBe(0);
+    expect(calculateAnimationDuration(Infinity)).toBe(0);
+  });
+
+  it('skaliert die Dauer mit dem Strom und bleibt ≥ 0,5 s', () => {
+    expect(calculateAnimationDuration(10)).toBe(4);
+    expect(calculateAnimationDuration(100)).toBe(0.5);
+  });
+});
 
 // Mock reactflow
 vi.mock('reactflow', async () => {
@@ -41,6 +55,13 @@ describe('CableEdge', () => {
       getNode: vi.fn(),
       getNodes: vi.fn().mockReturnValue([]),
     });
+    // Der echte Store startet ohne Kanten; Tests, die den Store füllen,
+    // setzen den Zustand in afterEach zurück.
+    usePlannerStore.setState({ edges: [] });
+  });
+
+  afterEach(() => {
+    usePlannerStore.setState({ nodes: [], edges: [], waterNodes: [], waterEdges: [] });
   });
 
   it('renders correctly with default props', () => {
@@ -180,5 +201,104 @@ describe('CableEdge', () => {
     // expect(getByText('3-adrig (L, N, PE)')).toBeInTheDocument(); // Smart labeling hides this
     // expect(getByText('RCBO (FI/LS) empfohlen')).toBeInTheDocument(); // Smart labeling hides this
     expect(queryByText('Sicherung fehlt!')).toBeNull();
+  });
+
+  it('dimensioniert AC-Kanten nach der 230-V-Last statt pauschal 1,5 mm² (Bug 3)', () => {
+    // Landstrom speist eine 2300-W-Steckdose über 50 m Kabel.
+    // I = 2300 W / 230 V = 10 A → dropArea = 10 * 100 / (58 * 4,6) = 3,75 mm²
+    // → Normquerschnitt 4,0 mm² (vorher immer 1,5 mm²).
+    usePlannerStore.setState({
+      edges: [
+        {
+          id: 'e1-2',
+          source: '1',
+          target: '2',
+          sourceHandle: 'plus',
+          targetHandle: 'plus',
+          type: 'cableEdge',
+          data: { length: 50, edgeDomain: 'AC_230V' },
+        },
+      ] as any,
+    });
+    (useReactFlow as any).mockReturnValue({
+      getNode: vi.fn((id) =>
+        id === '1'
+          ? { id: '1', type: 'shorePower', data: {} }
+          : { id: '2', type: 'consumer230v', data: { watts: 2300 } }
+      ),
+      getNodes: vi.fn().mockReturnValue([
+        { id: '1', type: 'shorePower', data: {} },
+        { id: '2', type: 'consumer230v', data: { watts: 2300 } },
+      ]),
+    });
+
+    const { getByText } = render(
+      <CableEdge {...defaultProps} selected={true} data={{ length: 50, edgeDomain: 'AC_230V' }} />
+    );
+    expect(getByText(/4 mm² · 50\.0 m/)).toBeInTheDocument();
+  });
+
+  it('rendert Fehler-Kanten als EINEN animierten Dash-Pfad mit Label-Chip (Bug 4)', () => {
+    // Zwei 5-m-Kanten hintereinander (Batterie → Sicherung → Verbraucher 120 W):
+    // Der kumulierte Spannungsfall der zweiten Kante überschreitet 3 %.
+    const nodes = [
+      { id: '1', type: 'battery', position: { x: 0, y: 0 }, data: {} },
+      { id: '2', type: 'fuse', position: { x: 150, y: 0 }, data: {} },
+      { id: '3', type: 'consumer', position: { x: 300, y: 0 }, data: { watts: 120 } },
+    ];
+    const edges = [
+      { id: 'e1-2', source: '1', target: '2', sourceHandle: 'plus', targetHandle: 'plus', type: 'cableEdge', data: { length: 5, crossSection: 1.5, edgeDomain: 'DC_12V' } },
+      { id: 'e2-3', source: '2', target: '3', sourceHandle: 'plus', targetHandle: 'plus', type: 'cableEdge', data: { length: 5, crossSection: 1.5, edgeDomain: 'DC_12V' } },
+    ] as any;
+    usePlannerStore.setState({ nodes, edges } as any);
+    (useReactFlow as any).mockReturnValue({
+      getNode: vi.fn((id) => nodes.find((n) => n.id === id)),
+      getNodes: vi.fn().mockReturnValue(nodes),
+    });
+
+    const { getByTestId, getByText, container } = render(
+      <CableEdge
+        id="e2-3"
+        source="2"
+        target="3"
+        sourceX={150}
+        sourceY={0}
+        targetX={300}
+        targetY={0}
+        sourcePosition={Position.Right}
+        targetPosition={Position.Left}
+        selected={true}
+        data={{ length: 5, crossSection: 1.5, edgeDomain: 'DC_12V' }}
+        sourceHandle="plus"
+      />
+    );
+    const baseEdge = getByTestId('base-edge');
+    // EIN Pfad mit Fehlerfarbe, Dash und Laufanimation — kein Doppel-Pfad mehr.
+    expect(baseEdge.style.stroke).toBe('var(--wire-error)');
+    expect(baseEdge.style.strokeDasharray).toBe('8 6');
+    expect(baseEdge.style.animation).toBe('wire-error-dash 1s linear infinite');
+    expect(container.querySelectorAll('.planner-edge-error-dash')).toHaveLength(0);
+    expect(getByText(/Gesamt-Drop/)).toBeInTheDocument();
+  });
+
+  it('rendert keinen Strom-Partikel auf stromlosen Leitungen (I = 0, Bug 14)', () => {
+    // Solar-Panel ohne eingetragene Watt → I = 0 → keine Animation.
+    (useReactFlow as any).mockReturnValue({
+      getNode: vi.fn((id) => (id === '1' ? { id: '1', type: 'solar', data: {} } : null)),
+      getNodes: vi.fn().mockReturnValue([{ id: '1', type: 'solar', data: {} }]),
+    });
+
+    const { container } = render(<CableEdge {...defaultProps} sourceHandle="plus" />);
+    expect(container.querySelector('.planner-flow-particle')).toBeNull();
+  });
+
+  it('rendert den Strom-Partikel auf belasteten Leitungen', () => {
+    (useReactFlow as any).mockReturnValue({
+      getNode: vi.fn((id) => (id === '1' ? { id: '1', type: 'consumer', data: { watts: 120 } } : null)),
+      getNodes: vi.fn().mockReturnValue([]),
+    });
+
+    const { container } = render(<CableEdge {...defaultProps} sourceHandle="plus" />);
+    expect(container.querySelector('.planner-flow-particle')).not.toBeNull();
   });
 });

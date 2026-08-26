@@ -139,7 +139,18 @@ export const getEdgeDomain = (
   targetNodeType: string | undefined,
   sourceHandle: string | null | undefined,
   targetHandle?: string | null | undefined
-): 'DC_12V' | 'AC_230V' => {
+): 'DC_12V' | 'AC_230V' | 'Solar' => {
+  // Solar hat Vorrang: Panel-Zuleitungen sind weder 12-V- noch 230-V-Kreise,
+  // sondern führen Panel-Strom auf MPP-Spannung. Vorher fehlte der Fall ganz —
+  // Solar-Kanten wurden als DC_12V gespeichert und verloren beim Nachladen
+  // ihre Domäne (falsche Farbe/Fehlerbehandlung in Code, der nur auf
+  // `data.edgeDomain` schaut, z. B. edgeDropInputs).
+  const isSolarNode = (type: string | undefined) =>
+    type === 'solar' || type === 'roofSolar';
+  if (isSolarNode(sourceNodeType) || isSolarNode(targetNodeType)) {
+    return 'Solar';
+  }
+
   const isAcNode = (type: string | undefined) =>
     type === 'shorePower' || type === 'consumer230v' || type === 'acBatteryCharger';
   if (isAcNode(sourceNodeType) || isAcNode(targetNodeType)) {

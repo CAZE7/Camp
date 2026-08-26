@@ -85,8 +85,9 @@ export function edgeDomainOf(
   sourceNode?: Node,
   targetNode?: Node
 ): Domain {
-  const fromData = edge.data?.edgeDomain as Domain | undefined;
-  const inferred = fromData || getEdgeDomain(sourceNode?.type, targetNode?.type, edge.sourceHandle, edge.targetHandle);
+  // getEdgeDomain kennt seit dem Fix 'Solar'; data.edgeDomain ist über
+  // CableEdgeData entsprechend typisiert — keine Casts mehr nötig.
+  const inferred = edge.data?.edgeDomain ?? getEdgeDomain(sourceNode?.type, targetNode?.type, edge.sourceHandle, edge.targetHandle);
   if (
     sourceNode?.type === 'solar' ||
     targetNode?.type === 'solar' ||
@@ -95,7 +96,7 @@ export function edgeDomainOf(
   ) {
     return 'Solar';
   }
-  return inferred as Domain;
+  return inferred;
 }
 
 const DIM = 'planner-domain-dim';

@@ -125,6 +125,51 @@ describe('edgeLabelNudge', () => {
     });
     expect(plus2 - plus1).toBe(PARALLEL_LABEL_SPREAD);
   });
+
+  it('ordnet Labels konsistent zu den Lanes, auch bei invertierter Store-Reihenfolge (Bug 8)', () => {
+    // Store-Reihenfolge z-plus VOR a-plus; die Lane-Sortierung stellt
+    // alphabetisch um. Die Labels müssen derselben Sortierung folgen —
+    // vorher wurden sie in Store-Reihenfolge indexiert und lagen gespiegelt
+    // zu ihren Lanes.
+    const siblings = [
+      { id: 'z-plus', source: 'a', target: 'b', sourceHandle: 'plus' },
+      { id: 'a-plus', source: 'a', target: 'b', sourceHandle: 'plus' },
+    ];
+    const nudgeOf = (edgeId: string) =>
+      edgeLabelNudge({ edgeId, source: 'a', target: 'b', sourceHandle: 'plus', siblingEdges: siblings });
+    const laneOf = (edgeId: string) =>
+      parallelLaneOffset({ edgeId, source: 'a', target: 'b', sourceHandle: 'plus', siblingEdges: siblings });
+
+    // a-plus liegt in beiden Ordnungen vor z-plus → kleineres Label-Nudge.
+    expect(nudgeOf('a-plus')).toBeLessThan(nudgeOf('z-plus'));
+    expect(laneOf('a-plus')).toBeLessThan(laneOf('z-plus'));
+    // Konsistenz: Label-Reihenfolge == Lane-Reihenfolge.
+    expect(Math.sign(nudgeOf('z-plus') - nudgeOf('a-plus'))).toBe(
+      Math.sign(laneOf('z-plus') - laneOf('a-plus'))
+    );
+  });
+
+  it('behandelt null und undefined sourceHandle identisch (Bug 16)', () => {
+    const siblings = [
+      { id: 'e1', source: 'a', target: 'b', sourceHandle: null },
+      { id: 'e2', source: 'a', target: 'b' }, // undefined
+    ];
+    const n1 = edgeLabelNudge({
+      edgeId: 'e1',
+      source: 'a',
+      target: 'b',
+      sourceHandle: undefined,
+      siblingEdges: siblings,
+    });
+    const n2 = edgeLabelNudge({
+      edgeId: 'e2',
+      source: 'a',
+      target: 'b',
+      sourceHandle: null,
+      siblingEdges: siblings,
+    });
+    expect(Math.abs(n1 - n2)).toBe(PARALLEL_LABEL_SPREAD);
+  });
 });
 
 describe('parallelLaneOffset (Trassen-Bündelung)', () => {

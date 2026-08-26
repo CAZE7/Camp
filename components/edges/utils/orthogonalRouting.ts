@@ -37,7 +37,10 @@ export const sourceExitVector = (position?: Position): Point => {
 /** Richtung, in der eine Kante in den Target-Node eintritt. */
 export const targetEntryVector = (position?: Position): Point => {
   const d = sourceExitVector(position);
-  return { x: -d.x || 0, y: -d.y || 0 };
+  // Explizite 0-Normalisierung: `-0` ist in JavaScript falsy UND ungleich 0
+  // (Object.is), was toEqual-Assertions und potenzielle Pfadlogik brechen
+  // würde. Das frühere `-d.x || 0` erzeugte zwar 0, verdeckte die Absicht.
+  return { x: d.x === 0 ? 0 : -d.x, y: d.y === 0 ? 0 : -d.y };
 };
 
 const isHorizontal = (d: Point): boolean => Math.abs(d.x) === 1;
@@ -541,8 +544,12 @@ export function nodesToObstacles(
     const width = node.width || NODE_FALLBACK_WIDTH;
     const height = node.height || NODE_FALLBACK_HEIGHT;
     rects.push({
-      x: node.position.x,
-      y: node.position.y,
+      // positionAbsolute statt position: React Flow liefert für Kindknoten
+      // einer Gruppe (parentId) die Position relativ zum Parent; geroutet
+      // wird im Canvas-Koordinatensystem. Aktuell vergibt die App keine
+      // parentId — der Fix ist defensiv für zukünftige Gruppen.
+      x: node.positionAbsolute?.x ?? node.position.x,
+      y: node.positionAbsolute?.y ?? node.position.y,
       width,
       height,
     });

@@ -106,6 +106,18 @@ describe('autoWire — performAutoWiring', () => {
     expect(acEdges.length).toBeGreaterThan(0);
   });
 
+  it('stempelt Auto-Solar-Kanten (Panel→MPPT) als Solar statt DC_12V', () => {
+    const out = performAutoWiring([
+      n('b1', 'battery', { label: 'Aufbau', capacity: 100, chemistry: 'LiFePO4' }),
+      n('s1', 'solar', { label: 'Panel', watts: 300 }),
+    ])!;
+    const solarEdges = out.edges.filter((x) => x.source === 's1');
+    expect(solarEdges.length).toBeGreaterThan(0);
+    for (const edge of solarEdges) {
+      expect(edge.data?.edgeDomain).toBe('Solar');
+    }
+  });
+
   it('stempelt NICHT pauschal hasRcd=true auf Landstrom (VDE 0100-721)', () => {
     const nodes = [
       n('b1', 'battery', { label: 'Batterie', capacity: 100, chemistry: 'LiFePO4' }),

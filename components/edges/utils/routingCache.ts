@@ -27,9 +27,13 @@ export function getObstacleMap(nodes: Node[]): Map<string, Rect> {
     map = new Map<string, Rect>();
     for (const node of nodes) {
       if (!node) continue;
+      // positionAbsolute statt position: für Kindknoten einer Gruppe
+      // (parentId) liefert React Flow die Position relativ zum Parent —
+      // Hindernis-Rechtecke lägen dann an der falschen Canvas-Stelle.
+      // Aktuell vergibt die App keine parentId; der Fix ist defensiv.
       map.set(node.id, {
-        x: node.position.x,
-        y: node.position.y,
+        x: node.positionAbsolute?.x ?? node.position.x,
+        y: node.positionAbsolute?.y ?? node.position.y,
         width: node.width || NODE_FALLBACK_WIDTH,
         height: node.height || NODE_FALLBACK_HEIGHT,
       });
@@ -90,9 +94,11 @@ function buildCrossingBase(nodes: Node[], edges: CrossingEdgeRef[]): CrossingBas
   const centers = new Map<string, Point>();
   for (const node of nodes) {
     if (!node) continue;
+    // positionAbsolute (siehe getObstacleMap): Gruppen-Kinder routen im
+    // Canvas-Koordinatensystem, ihre position wäre relativ zum Parent.
     centers.set(node.id, {
-      x: node.position.x + (node.width || NODE_FALLBACK_WIDTH) / 2,
-      y: node.position.y + (node.height || NODE_FALLBACK_HEIGHT) / 2,
+      x: (node.positionAbsolute?.x ?? node.position.x) + (node.width || NODE_FALLBACK_WIDTH) / 2,
+      y: (node.positionAbsolute?.y ?? node.position.y) + (node.height || NODE_FALLBACK_HEIGHT) / 2,
     });
   }
 

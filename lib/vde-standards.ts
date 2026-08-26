@@ -49,7 +49,7 @@ export {
   getEdgeDomain,
   getHandleDomain,
 } from './electrical';
-import { VDE_SIZES } from './electrical';
+import { VDE_SIZES, getEdgeDomain } from './electrical';
 
 import type { Node, Edge } from 'reactflow';
 import {
@@ -201,12 +201,27 @@ export const VDE_BATTERY_DOD: Record<string, number> = {
 // ============================================================================
 
 /**
+ * Startbatterie / Starterbatterie / Starter battery — nicht die Aufbaubatterie.
+ *
+ * Lebt hier (statt in lib/autoWire.ts), damit getSystemVoltage dieselbe
+ * Label-Priorität wie pickHouseBattery verwenden kann, ohne dass
+ * lib/vde-standards.ts von lib/autoWire.ts abhängt (Zirkularität).
+ * lib/autoWire.ts re-exportiert die Funktion unverändert.
+ */
+export const isStarterBatteryLabel = (label: unknown): boolean =>
+  /start/i.test(String(label || ''));
+
+/**
+ * Nominale Netzspannung des 230-V-Kreises (DIN VDE 0100-721).
+ */
+export const AC_SYSTEM_VOLTAGE: Volts = volts(230);
+
+/**
  * Ermittelt die nominale Systemspannung anhand der Batterien im Plan.
  * Default 12.8V (typisch LiFePO4) ohne explizite Angabe.
  */
 export const DEFAULT_SYSTEM_VOLTAGE: Volts = volts(12.8);
 export const LEAD_SYSTEM_VOLTAGE: Volts = volts(12.0);
-
 export function getSystemVoltage(nodes: Node[], preferredBatteryId?: string): Volts {
   const batteries = nodes.filter((n) => n.type === 'battery');
   if (batteries.length === 0) return DEFAULT_SYSTEM_VOLTAGE;
@@ -219,7 +234,16 @@ export function getSystemVoltage(nodes: Node[], preferredBatteryId?: string): Vo
         ...batteries.filter((b) => b.id === preferredBatteryId),
         ...batteries.filter((b) => b.id !== preferredBatteryId),
       ]
-    : batteries;
+    : [
+        // Ohne explizite Vorwahl gilt die Aufbaubatterie als Auslegungs-
+        // grundlage — exakt dieselbe Priorität wie pickHouseBattery in
+        // lib/autoWire.ts. Vorher entschied die Node-Reihenfolge: stand eine
+        // 24-V-Starterbatterie vor der 12-V-Aufbaubatterie, wurden ALLE
+        // DC-Berechnungen (Anzeige, Live-Validierung, Spannungsfall) mit der
+        // falschen Spannung geführt.
+        ...batteries.filter((b) => !isStarterBatteryLabel((b.data as { label?: unknown })?.label)),
+        ...batteries.filter((b) => isStarterBatteryLabel((b.data as { label?: unknown })?.label)),
+      ];
 
   // Explizite nominalVoltage an der Vorrangbatterie gewinnt.
   // `node.data` stammt aus localStorage/JSON — daher geprüft einlesen und
@@ -340,9 +364,14 @@ export function calculateEdgeCurrent(
     if (n.type === 'consumer') {
       totalConsumerAmps = addAmps(totalConsumerAmps, currentAt(loadOf(nData), voltage));
     } else if (n.type === 'inverter') {
+      // Derselbe Lastansatz wie im Direktpfad (Priorität 4): max(Nennlast des
+      // Wechselrichters, Summe aller 230-V-Verbraucher) — `continuousPower`
+      // ist die relevante Dauerleistung, `watts` nur der Fallback für alte
+      // Pläne. Vorher wurde hier nur `watts` gelesen; Batterie-Hauptleitungen
+      // wurden dadurch bei `continuousPower > watts` zu gering dimensioniert.
       totalConsumerAmps = addAmps(
         totalConsumerAmps,
-        divideAmps(currentAt(loadOf(nData), voltage), VDE_INVERTER_EFFICIENCY)
+        divideAmps(currentAt(inverterLoad(nData), voltage), VDE_INVERTER_EFFICIENCY)
       );
     } else if (['charger', 'mpptController', 'dcdcCharger', 'acBatteryCharger'].includes(n.type as string)) {
       totalChargerAmps = addAmps(totalChargerAmps, currentOf(nData));
@@ -352,4 +381,75 @@ export function calculateEdgeCurrent(
   }
 
   return maxAmps(totalConsumerAmps, totalChargerAmps);
+}
+
+/**
+ * Nennstrom einer 230-V-Kante in Ampere.
+ *
+ * Die AC-Seite wird nicht über die Batterie-Systemspannung dimensioniert,
+ * sondern über die 230-V-Verbraucher (consumer230v) *hinter der Quelle der
+ * Kante*: Landstrom (shorePower) bzw. Wechselrichter-AC-Ausgang. Dazu wird
+ * der Graph entlang der AC-Kanten ab der Quell-Node ungerichtet durchlaufen
+ * (BFS) — ungerichtet, damit auch umgekehrt gezeichnete Kanten (Verbraucher
+ * → Quelle) den Kreis korrekt finden. Eine Abzweigleitung trägt damit nur
+ * ihre eigene Last, nicht pauschal den Gesamtplan. Ohne erreichbare 230-V-
+ * Last ergibt sich 0 A (Mindestquerschnitt 1,5 mm² bleibt bestehen).
+ *
+ * Eine Kante gilt als AC, wenn ihre gespeicherte Domäne AC ist oder die
+ * Topologie (getEdgeDomain) sie als AC ausweist — exakt die Zuordnung, die
+ * auch Anzeige und Validierung verwenden.
+ */
+export function calculateAcEdgeCurrent(
+  sourceId: string | undefined,
+  nodes: Node[],
+  edges: Edge[]
+): Amps {
+  const nodeMap = new Map<string, Node>();
+  for (const node of nodes) {
+    if (node) nodeMap.set(node.id, node);
+  }
+
+  const isAcEdge = (edge: Edge): boolean => {
+    if (edge.data?.edgeDomain === 'AC_230V') return true;
+    if (edge.data?.edgeDomain === 'DC_12V') return false;
+    const s = nodeMap.get(edge.source)?.type;
+    const t = nodeMap.get(edge.target)?.type;
+    return getEdgeDomain(s, t, edge.sourceHandle, edge.targetHandle) === 'AC_230V';
+  };
+
+  // Ungerichtete Adjazenz über AC-Kanten.
+  const acAdjacency = new Map<string, string[]>();
+  const addLink = (from: string, to: string): void => {
+    const list = acAdjacency.get(from) ?? [];
+    list.push(to);
+    acAdjacency.set(from, list);
+  };
+  for (const edge of edges) {
+    if (!isAcEdge(edge)) continue;
+    addLink(edge.source, edge.target);
+    addLink(edge.target, edge.source);
+  }
+
+  const visited = new Set<string>();
+  const queue: string[] = sourceId ? [sourceId] : [];
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    if (visited.has(current)) continue;
+    visited.add(current);
+    for (const next of acAdjacency.get(current) ?? []) {
+      if (!visited.has(next)) queue.push(next);
+    }
+  }
+
+  let total: Watts = ZERO_WATTS;
+  visited.forEach((id) => {
+    const node = nodeMap.get(id);
+    if (node?.type === 'consumer230v') {
+      total = addWatts(
+        total,
+        quantityOr((node.data as Record<string, unknown>)?.watts, watts, ZERO_WATTS)
+      );
+    }
+  });
+  return currentFromPower(total, AC_SYSTEM_VOLTAGE);
 }

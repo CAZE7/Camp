@@ -8,12 +8,12 @@ import { obstaclesExcluding, crossingSegmentsExcluding } from './utils/routingCa
 import { cableStrokeWidth } from './utils/cableStyle';
 import { useCoarsePointer, useMediaQuery, MOBILE_QUERY } from '../planner/hooks/useMediaCapabilities';
 import { isBackboneConnection } from '../planner/utils/backbone';
-import { getWireColor, WIRE_COLORS, WireDomain } from './utils/edgeColors';
+import { getWireColor, WIRE_COLORS } from './utils/edgeColors';
 import { hasVoltageDropError } from './utils/voltageDrop';
 import { calculateCrossSection, calculateMaxFuse, calculateStrokeWidth, getEdgeDomain } from '../../lib/electrical';
 import {
-  VDE_INVERTER_EFFICIENCY,
-  VDE_SOLAR_VMP_VOLTAGE,
+  AC_SYSTEM_VOLTAGE,
+  calculateAcEdgeCurrent,
   calculateEdgeCurrent,
   getSystemVoltage,
 } from '../../lib/vde-standards';
@@ -34,7 +34,13 @@ export type CableEdgeData = {
   length?: number;
   crossSection?: number;
   fuseSize?: number;
-  edgeDomain?: 'DC_12V' | 'AC_230V';
+  /**
+   * Elektrische Domäne der Leitung. 'Solar' ist bewusst Teil des Typs:
+   * Solar-Zuleitungen werden beim Verbinden (Store) und bei Auto-Wire als
+   * 'Solar' gespeichert — sonst ginge die Domäne beim Speichern/Laden
+   * verloren und die Leitung würde als DC_12V behandelt.
+   */
+  edgeDomain?: 'DC_12V' | 'AC_230V' | 'Solar';
   /** Gesetzt, wenn selbst der größte Normquerschnitt den Laststrom nicht absichern kann. */
   fuseWarning?: boolean;
 };
@@ -42,37 +48,29 @@ export type CableEdgeData = {
 type CableEdgeProps = EdgeProps<CableEdgeData> & { sourceHandle?: string | null, targetHandle?: string | null };
 
 /**
- * Nennstrom einer Kante — delegiert an die zentrale Berechnung in
- * lib/vde-standards.ts, damit Auto-Wire, Pfad-Spannungsfall und Anzeige
- * immer dieselben Ströme verwenden.
- *
- * Hinweis: Inverter-Wirkungsgrad (VDE_INVERTER_EFFICIENCY) und Panel-MPP-
- * Spannung (VDE_SOLAR_VMP_VOLTAGE) fließen dort in die Stromberechnung ein;
- * diese Datei referenziert sie bewusst, um Magic Numbers zu vermeiden.
+ * Animationsdauer des Strom-Partikels (Sekunden pro Umlauf).
+ * 0 = keine Animation: Auf stromlosen Leitungen (I = 0, z. B. Solar ohne
+ * eingetragene Watt oder unbelastete AC-Leitungen) darf kein Partikel
+ * „fließen“ — vorher lief er mit der 5-s-Default-Periode weiter, als ob
+ * Strom flösse.
  */
-export const calculateCurrent = (
-  sourceNode: Node | undefined,
-  targetNode: Node | undefined,
-  getNodes: () => Node[]
-): number => {
-  void VDE_INVERTER_EFFICIENCY;
-  void VDE_SOLAR_VMP_VOLTAGE;
-  const nodes = getNodes();
-  return calculateEdgeCurrent(sourceNode, targetNode, nodes, getSystemVoltage(nodes));
-};
-
 export const calculateAnimationDuration = (I: number): number => {
-  return Number.isNaN(I) || !isFinite(I) ? 5 : Math.max(0.5, 5 - (I / 10));
+  if (!Number.isFinite(I) || I <= 0) return 0;
+  return Math.max(0.5, 5 - (I / 10));
 };
 
 /**
  * Zentrale Fehler-Sammlung für eine Kante — identisch verwendet von der
  * Kanten-Darstellung und den Auto-Wire-Regressionstests.
  *
- * Regeln (DC-Leitungen):
- *  - Spannungsfall inkl. Vorschaltpfad max. 3% (VDE 0298-4: 0,36 V bei 12 V)
+ * Regeln (DC- und AC-Leitungen):
+ *  - Spannungsfall inkl. Vorschaltpfad max. 3% (VDE 0298-4: 0,36 V bei 12 V,
+ *    6,9 V bei 230 V)
  *  - Plus-Leitung braucht eine Sicherung: Nennstrom ≤ Sicherung ≤ Kabel-Max.
  *  - Unabgesicherte Batterie-Plusleitung max. 20 cm (Sicherung sitzt am Pol)
+ *    — unabhängig davon, ob die Batterie Quelle ODER Ziel der Leitung ist
+ *    (die Batterie kann auch über eine ungesicherte Ladeleitung Kurzschluss-
+ *    strom in ein defektes Kabel liefern).
  *
  * Die „Sicherung fehlt!“-Regel deckt sich bewusst mit Rule A der
  * Live-Validierung (useLiveValidation): Nur Hochstromquellen (Batterie,
@@ -104,10 +102,10 @@ export const collectEdgeErrors = (input: {
   const { edgeDomain, data, I, maxFuse, isPlus, sourceNodeType, targetNodeType, length, totalDropPercentage } = input;
   const errors: string[] = [];
 
-  if (edgeDomain !== 'AC_230V') {
-    if (totalDropPercentage > 3) {
-      errors.push(`Gesamt-Drop! (${totalDropPercentage.toFixed(1)}% > 3%)`);
-    }
+  // Spannungsfall gilt für DC- UND AC-Leitungen (3 % von 230 V = 6,9 V).
+  // Nur die Sicherungslogik darunter ist DC-spezifisch.
+  if (totalDropPercentage > 3) {
+    errors.push(`Gesamt-Drop! (${totalDropPercentage.toFixed(1)}% > 3%)`);
   }
 
   if (edgeDomain !== 'AC_230V' && isPlus) {
@@ -127,10 +125,12 @@ export const collectEdgeErrors = (input: {
         errors.push('Sicherung zu klein!');
       }
     }
-    // 20-cm-Regel gilt für die Lage der Sicherung am Batteriepol.
-    // Ist die Leitung bereits abgesichert, gilt die Sicherung als am Pol sitzend;
-    // die Strecke danach (z. B. Starterbatterie → Ladebooster) darf länger sein.
-    if (sourceNodeType === 'battery' && length > 0.2 && !data?.fuseSize) {
+    // 20-cm-Regel gilt für die Lage der Sicherung am Batteriepol —
+    // unabhängig von der Flussrichtung der Kante. Ist die Leitung bereits
+    // abgesichert, gilt die Sicherung als am Pol sitzend; die Strecke danach
+    // (z. B. Starterbatterie → Ladebooster) darf länger sein.
+    const batteryAtEnd = sourceNodeType === 'battery' || targetNodeType === 'battery';
+    if (batteryAtEnd && length > 0.2 && !data?.fuseSize) {
       errors.push('Hauptsicherung nach Batterie max 20cm!');
     }
   }
@@ -254,30 +254,43 @@ const CableEdge = function ({
   const isPlus = !!resolvedSourceHandle?.includes('plus');
 
   const { length, crossSection, maxFuse, animationDuration, I, sourceNode, targetNode, edgeDomain, sysVoltage } = useMemo(() => {
-    const physicalDistance = Math.max(1, Math.sqrt(Math.pow(targetX - sourceX, 2) + Math.pow(targetY - sourceY, 2)) / 100);
-    const length = data?.length || physicalDistance;
+    // Pixel/100 als physische Näherung, OHNE 1-m-Mindestclamp: Der frühere
+    // Math.max(1, …) machte jede Verbindung unter 1 m zu „1,0 m“ — falsch für
+    // kurze Stichleitungen. `??` statt `||`, damit ein gespeichertes
+    // `length: 0` (z. B. Sammelschiene) nicht stillschweigend durch den
+    // Schätzwert ersetzt wird.
+    const physicalDistance = Math.sqrt(Math.pow(targetX - sourceX, 2) + Math.pow(targetY - sourceY, 2)) / 100;
+    const length = data?.length ?? physicalDistance;
     const sourceNode = getNode(source);
     const targetNode = getNode(target);
 
-    let edgeDomain: 'DC_12V' | 'AC_230V' | 'Solar' = (data?.edgeDomain || getEdgeDomain(sourceNode?.type, targetNode?.type, resolvedSourceHandle, resolvedTargetHandle)) as 'DC_12V' | 'AC_230V';
+    // Gespeicherte Domäne gewinnt; sonst topologisch ableiten (getEdgeDomain
+    // kennt seit dem Fix auch 'Solar'). Der Solar-Override darunter bleibt
+    // für Alt-Pläne, die Solar-Kanten noch als DC_12V gespeichert haben.
+    let edgeDomain = data?.edgeDomain ?? getEdgeDomain(sourceNode?.type, targetNode?.type, resolvedSourceHandle, resolvedTargetHandle);
     if (sourceNode?.type === 'solar' || targetNode?.type === 'solar' || sourceNode?.type === 'roofSolar' || targetNode?.type === 'roofSolar') {
       edgeDomain = 'Solar';
     }
 
     if (edgeDomain === 'AC_230V') {
-      const cs = Math.max(1.5, data?.crossSection || 0);
+      // 230-V-Leitungen tragen den AC-Laststrom (Summe der 230-V-Verbraucher
+      // hinter der Quelle), nicht 0 A. Ohne die Berechnung zeigte jede
+      // AC-Leitung pauschal 1,5 mm² an — auch eine, die 3000 W führt.
+      const I = calculateAcEdgeCurrent(source, getNodes(), siblingEdges);
+      const cs = calculateCrossSection(I, length, data?.crossSection, 'AC_230V');
       const sw = calculateStrokeWidth(cs);
+      const dur = calculateAnimationDuration(I);
       return {
         length,
         crossSection: cs,
         maxFuse: 0,
         strokeWidth: sw,
-        animationDuration: 3,
-        I: 0,
+        animationDuration: dur,
+        I,
         sourceNode,
         targetNode,
         edgeDomain,
-        sysVoltage: 230,
+        sysVoltage: AC_SYSTEM_VOLTAGE,
       };
     }
 
@@ -302,7 +315,7 @@ const CableEdge = function ({
       sysVoltage,
     };
     // Dependencies include node data, system load, and coordinates to force re-calc when anything relevant changes including moves
-  }, [getNode, getNodes, data?.length, data?.crossSection, data?.edgeDomain, source, target, sNodeData, tNodeData, systemLoad, sourceX, sourceY, targetX, targetY, resolvedSourceHandle, resolvedTargetHandle]);
+  }, [getNode, getNodes, data?.length, data?.crossSection, data?.edgeDomain, source, target, sNodeData, tNodeData, systemLoad, sourceX, sourceY, targetX, targetY, resolvedSourceHandle, resolvedTargetHandle, siblingEdges]);
 
   // Kumulierter Spannungsfall — einheitlich über die Shared-Helper berechnet.
   const { totalDropPercentage, hasDropError } = hasVoltageDropError({
@@ -327,7 +340,7 @@ const CableEdge = function ({
   });
   const stroke = hasDropError
     ? WIRE_COLORS.error
-    : getWireColor({ edgeDomain: edgeDomain as WireDomain, isPlus });
+    : getWireColor({ edgeDomain, isPlus });
   const emphasized = selected || isHovered;
   const isBackbone = useMemo(
     () =>
@@ -356,38 +369,38 @@ const CableEdge = function ({
           ...style,
           strokeWidth: renderedStrokeWidth,
           stroke,
+          // Fehler-Kanten bekommen ihr Dash direkt hier; der frühere zusätz-
+          // liche .planner-edge-error-dash-Pfad lag doppelt über dem BaseEdge
+          // (durchgezogene Fehlerfarbe + gestrichelte Fehlerfarbe) und ließ
+          // die Leitung optisch doppelt/verbreitert erscheinen. Die Lauf-
+          // animation der alten Klasse (wire-error-dash) bleibt über die
+          // inline-Animation erhalten — BaseEdge akzeptiert kein className.
           strokeDasharray: hasDropError
-            ? undefined
+            ? '8 6'
             : edgeDomain === 'AC_230V'
               ? '10 6'
               : edgeDomain === 'Solar'
                 ? '3 5'
                 : undefined,
+          animation: hasDropError ? 'wire-error-dash 1s linear infinite' : undefined,
           filter: emphasized ? 'drop-shadow(0 0 4px rgba(20, 17, 14, 0.45))' : undefined,
           transition: 'stroke-width 0.3s ease, stroke 0.3s ease',
           cursor: 'pointer',
         }}
       />
 
-      {hasDropError && (
-        <path
-          className="planner-edge-error-dash"
-          d={edgePath}
-          fill="none"
-          stroke={WIRE_COLORS.error}
-          strokeWidth={renderedStrokeWidth}
-          strokeDasharray="8 6"
-          aria-hidden="true"
-        />
+      {/* Strom-Partikel nur auf belasteten Leitungen: animationDuration ist 0,
+          wenn kein Strom fließt (I = 0), und der Kreis wird dann gar nicht
+          erst gerendert. */}
+      {animationDuration > 0 && (
+        <circle className="planner-flow-particle" r={Math.max(2, renderedStrokeWidth)} fill={stroke} aria-hidden="true">
+          <animateMotion
+            dur={`${animationDuration}s`}
+            repeatCount="indefinite"
+            path={edgePath}
+          />
+        </circle>
       )}
-
-      <circle className="planner-flow-particle" r={Math.max(2, renderedStrokeWidth)} fill={stroke} aria-hidden="true">
-        <animateMotion
-          dur={`${animationDuration}s`}
-          repeatCount="indefinite"
-          path={edgePath}
-        />
-      </circle>
 
       {/* Label: am Desktop immer sichtbar, auf Handy nur bei Auswahl/Tap. */}
       {labelVisible && (
@@ -421,6 +434,10 @@ const CableEdge = function ({
             <>
               <span style={{ color: 'var(--success)', fontSize: '12px' }}>3-adrig (L, N, PE)</span>
               <span style={{ background: 'var(--warn-info)', color: 'white', padding: '1px 4px', borderRadius: '4px', fontSize: '12px', marginTop: '2px' }}>RCBO (FI/LS) empfohlen</span>
+              {/* Auch AC-Kanten zeigen ihren Spannungsfall-Fehler (Bug 10). */}
+              {errors.map((err, idx) => (
+                <span key={idx} style={{ background: 'var(--wire-error)', color: 'white', padding: '1px 4px', borderRadius: '4px', fontSize: '12px', marginTop: '2px' }}>{err}</span>
+              ))}
             </>
           ) : emphasized ? (
             <>
