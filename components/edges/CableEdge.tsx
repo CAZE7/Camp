@@ -8,10 +8,11 @@ import { obstaclesExcluding, crossingSegmentsExcluding } from './utils/routingCa
 import { cableStrokeWidth } from './utils/cableStyle';
 import { useCoarsePointer, useMediaQuery, MOBILE_QUERY } from '../planner/hooks/useMediaCapabilities';
 import { isBackboneConnection } from '../planner/utils/backbone';
-import { getWireColor, WIRE_COLORS, WireDomain } from './utils/edgeColors';
+import { getWireColor, WIRE_COLORS } from './utils/edgeColors';
 import { hasVoltageDropError } from './utils/voltageDrop';
 import { calculateCrossSection, calculateMaxFuse, calculateStrokeWidth, getEdgeDomain } from '../../lib/electrical';
 import {
+  AC_SYSTEM_VOLTAGE,
   calculateAcEdgeCurrent,
   calculateEdgeCurrent,
   getSystemVoltage,
@@ -289,7 +290,7 @@ const CableEdge = function ({
         sourceNode,
         targetNode,
         edgeDomain,
-        sysVoltage: 230,
+        sysVoltage: AC_SYSTEM_VOLTAGE,
       };
     }
 
@@ -339,7 +340,7 @@ const CableEdge = function ({
   });
   const stroke = hasDropError
     ? WIRE_COLORS.error
-    : getWireColor({ edgeDomain: edgeDomain as WireDomain, isPlus });
+    : getWireColor({ edgeDomain, isPlus });
   const emphasized = selected || isHovered;
   const isBackbone = useMemo(
     () =>
@@ -371,7 +372,9 @@ const CableEdge = function ({
           // Fehler-Kanten bekommen ihr Dash direkt hier; der frühere zusätz-
           // liche .planner-edge-error-dash-Pfad lag doppelt über dem BaseEdge
           // (durchgezogene Fehlerfarbe + gestrichelte Fehlerfarbe) und ließ
-          // die Leitung optisch doppelt/verbreitert erscheinen.
+          // die Leitung optisch doppelt/verbreitert erscheinen. Die Lauf-
+          // animation der alten Klasse (wire-error-dash) bleibt über die
+          // inline-Animation erhalten — BaseEdge akzeptiert kein className.
           strokeDasharray: hasDropError
             ? '8 6'
             : edgeDomain === 'AC_230V'
@@ -379,6 +382,7 @@ const CableEdge = function ({
               : edgeDomain === 'Solar'
                 ? '3 5'
                 : undefined,
+          animation: hasDropError ? 'wire-error-dash 1s linear infinite' : undefined,
           filter: emphasized ? 'drop-shadow(0 0 4px rgba(20, 17, 14, 0.45))' : undefined,
           transition: 'stroke-width 0.3s ease, stroke 0.3s ease',
           cursor: 'pointer',
@@ -430,6 +434,10 @@ const CableEdge = function ({
             <>
               <span style={{ color: 'var(--success)', fontSize: '12px' }}>3-adrig (L, N, PE)</span>
               <span style={{ background: 'var(--warn-info)', color: 'white', padding: '1px 4px', borderRadius: '4px', fontSize: '12px', marginTop: '2px' }}>RCBO (FI/LS) empfohlen</span>
+              {/* Auch AC-Kanten zeigen ihren Spannungsfall-Fehler (Bug 10). */}
+              {errors.map((err, idx) => (
+                <span key={idx} style={{ background: 'var(--wire-error)', color: 'white', padding: '1px 4px', borderRadius: '4px', fontSize: '12px', marginTop: '2px' }}>{err}</span>
+              ))}
             </>
           ) : emphasized ? (
             <>

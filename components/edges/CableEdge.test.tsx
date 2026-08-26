@@ -1,7 +1,7 @@
 import { render } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import CableEdge, { calculateAnimationDuration } from './CableEdge';
-import { useReactFlow } from 'reactflow';
+import { useReactFlow, Position } from 'reactflow';
 import { usePlannerStore } from '../../store/usePlannerStore';
 
 describe('calculateAnimationDuration (Bug 14)', () => {
@@ -61,7 +61,7 @@ describe('CableEdge', () => {
   });
 
   afterEach(() => {
-    usePlannerStore.setState({ edges: [] });
+    usePlannerStore.setState({ nodes: [], edges: [], waterNodes: [], waterEdges: [] });
   });
 
   it('renders correctly with default props', () => {
@@ -236,6 +236,49 @@ describe('CableEdge', () => {
       <CableEdge {...defaultProps} selected={true} data={{ length: 50, edgeDomain: 'AC_230V' }} />
     );
     expect(getByText(/4 mm² · 50\.0 m/)).toBeInTheDocument();
+  });
+
+  it('rendert Fehler-Kanten als EINEN animierten Dash-Pfad mit Label-Chip (Bug 4)', () => {
+    // Zwei 5-m-Kanten hintereinander (Batterie → Sicherung → Verbraucher 120 W):
+    // Der kumulierte Spannungsfall der zweiten Kante überschreitet 3 %.
+    const nodes = [
+      { id: '1', type: 'battery', position: { x: 0, y: 0 }, data: {} },
+      { id: '2', type: 'fuse', position: { x: 150, y: 0 }, data: {} },
+      { id: '3', type: 'consumer', position: { x: 300, y: 0 }, data: { watts: 120 } },
+    ];
+    const edges = [
+      { id: 'e1-2', source: '1', target: '2', sourceHandle: 'plus', targetHandle: 'plus', type: 'cableEdge', data: { length: 5, crossSection: 1.5, edgeDomain: 'DC_12V' } },
+      { id: 'e2-3', source: '2', target: '3', sourceHandle: 'plus', targetHandle: 'plus', type: 'cableEdge', data: { length: 5, crossSection: 1.5, edgeDomain: 'DC_12V' } },
+    ] as any;
+    usePlannerStore.setState({ nodes, edges } as any);
+    (useReactFlow as any).mockReturnValue({
+      getNode: vi.fn((id) => nodes.find((n) => n.id === id)),
+      getNodes: vi.fn().mockReturnValue(nodes),
+    });
+
+    const { getByTestId, getByText, container } = render(
+      <CableEdge
+        id="e2-3"
+        source="2"
+        target="3"
+        sourceX={150}
+        sourceY={0}
+        targetX={300}
+        targetY={0}
+        sourcePosition={Position.Right}
+        targetPosition={Position.Left}
+        selected={true}
+        data={{ length: 5, crossSection: 1.5, edgeDomain: 'DC_12V' }}
+        sourceHandle="plus"
+      />
+    );
+    const baseEdge = getByTestId('base-edge');
+    // EIN Pfad mit Fehlerfarbe, Dash und Laufanimation — kein Doppel-Pfad mehr.
+    expect(baseEdge.style.stroke).toBe('var(--wire-error)');
+    expect(baseEdge.style.strokeDasharray).toBe('8 6');
+    expect(baseEdge.style.animation).toBe('wire-error-dash 1s linear infinite');
+    expect(container.querySelectorAll('.planner-edge-error-dash')).toHaveLength(0);
+    expect(getByText(/Gesamt-Drop/)).toBeInTheDocument();
   });
 
   it('rendert keinen Strom-Partikel auf stromlosen Leitungen (I = 0, Bug 14)', () => {

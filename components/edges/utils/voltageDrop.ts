@@ -1,7 +1,7 @@
 import type { Node, Edge } from 'reactflow';
 import type { CableEdgeData } from '../CableEdge';
 import { calculateCrossSection, getEdgeDomain } from '../../../lib/electrical';
-import { calculateAcEdgeCurrent, calculateEdgeCurrent, getSystemVoltage } from '../../../lib/vde-standards';
+import { AC_SYSTEM_VOLTAGE, calculateAcEdgeCurrent, calculateEdgeCurrent, getSystemVoltage } from '../../../lib/vde-standards';
 
 /**
  * Einheitliche Spannungsfall-Berechnung für Kabel-Kanten.
@@ -51,7 +51,7 @@ export function edgeDropInputs(
       I,
       length,
       crossSection: calculateCrossSection(I, length, edge.data?.crossSection, 'AC_230V'),
-      sysVoltage: 230,
+      sysVoltage: AC_SYSTEM_VOLTAGE,
     };
   }
 

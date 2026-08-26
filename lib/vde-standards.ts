@@ -389,10 +389,11 @@ export function calculateEdgeCurrent(
  * Die AC-Seite wird nicht über die Batterie-Systemspannung dimensioniert,
  * sondern über die 230-V-Verbraucher (consumer230v) *hinter der Quelle der
  * Kante*: Landstrom (shorePower) bzw. Wechselrichter-AC-Ausgang. Dazu wird
- * der Graph entlang der AC-Kanten ab der Quell-Node gerichtet durchlaufen
- * (BFS), damit eine Abzweigleitung nur ihre eigene Last trägt und nicht
- * pauschal den Gesamtplan. Ohne erreichbare 230-V-Last ergibt sich 0 A
- * (Mindestquerschnitt 1,5 mm² bleibt bestehen).
+ * der Graph entlang der AC-Kanten ab der Quell-Node ungerichtet durchlaufen
+ * (BFS) — ungerichtet, damit auch umgekehrt gezeichnete Kanten (Verbraucher
+ * → Quelle) den Kreis korrekt finden. Eine Abzweigleitung trägt damit nur
+ * ihre eigene Last, nicht pauschal den Gesamtplan. Ohne erreichbare 230-V-
+ * Last ergibt sich 0 A (Mindestquerschnitt 1,5 mm² bleibt bestehen).
  *
  * Eine Kante gilt als AC, wenn ihre gespeicherte Domäne AC ist oder die
  * Topologie (getEdgeDomain) sie als AC ausweist — exakt die Zuordnung, die
@@ -416,13 +417,17 @@ export function calculateAcEdgeCurrent(
     return getEdgeDomain(s, t, edge.sourceHandle, edge.targetHandle) === 'AC_230V';
   };
 
-  // Gerichtete Adjazenz nur über AC-Kanten (source → target).
+  // Ungerichtete Adjazenz über AC-Kanten.
   const acAdjacency = new Map<string, string[]>();
+  const addLink = (from: string, to: string): void => {
+    const list = acAdjacency.get(from) ?? [];
+    list.push(to);
+    acAdjacency.set(from, list);
+  };
   for (const edge of edges) {
     if (!isAcEdge(edge)) continue;
-    const from = acAdjacency.get(edge.source) ?? [];
-    from.push(edge.target);
-    acAdjacency.set(edge.source, from);
+    addLink(edge.source, edge.target);
+    addLink(edge.target, edge.source);
   }
 
   const visited = new Set<string>();
