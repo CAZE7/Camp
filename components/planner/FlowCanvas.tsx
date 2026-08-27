@@ -1,5 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react';
 import ReactFlow, {
+  BackgroundVariant,
   Background,
   Controls,
   MiniMap,
@@ -31,6 +32,7 @@ import {
 import { usePlannerStore } from '../../store/usePlannerStore';
 import { useAppStore } from '../../lib/store';
 import { FloatingMetricsCard } from './ui/FloatingMetricsCard';
+import { PlannerStatusBar } from './ui/PlannerStatusBar';
 import { useSequentialTapConnect } from './hooks/useSequentialTapConnect';
 import { usePlannerDragDrop } from './hooks/usePlannerDragDrop';
 import { useCoarsePointer } from './hooks/useMediaCapabilities';
@@ -615,7 +617,21 @@ export function FlowCanvas() {
           className={`${isOverview ? 'planner-zoom-overview' : zoom > PLANNER_FULL_DETAIL_ZOOM ? 'planner-zoom-full' : 'planner-zoom-standard'} ${isLayoutPending ? 'planner-layout-animating' : ''}`}
         >
           <CableRouteSync />
-          <Background color="var(--canvas-grid)" gap={PLANNER_SNAP_GRID[0]} style={{ opacity: 0.35 }} />
+
+          {/* M7-3: Statuszeile (Koordinaten/Zoom/Umfang) — ab md; auf
+              Touch-Geräten steht die Bottom-Navigation im Weg. */}
+          <Panel position="bottom-center" className="pointer-events-none hidden md:block">
+            <PlannerStatusBar zoom={zoom} />
+          </Panel>
+          {/* M7-3: Punkt-Raster statt Linienraster — ingenieursüblich und
+              weniger visuelles Rauschen unter großen Netzen. */}
+          <Background
+            variant={BackgroundVariant.Dots}
+            color="var(--canvas-grid)"
+            gap={PLANNER_SNAP_GRID[0]}
+            size={2}
+            style={{ opacity: 0.35 }}
+          />
           <Controls className="mb-20 overflow-hidden rounded-lg border border-border shadow-sm md:mb-4" />
           <MiniMap
             className="hidden mb-24 overflow-hidden rounded-lg border border-border shadow-sm sm:block md:mb-24"

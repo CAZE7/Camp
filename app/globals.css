@@ -74,7 +74,7 @@
     --wire-dc: #dc2626; /* Gleichstrom 12V/24V Plus (technisches Rot) */
     --wire-dc-minus: #374151; /* Gleichstrom 12V/24V Minus (Schiefergrau) */
     --wire-ac: #2563eb; /* Wechselstrom 230V (Signalblau) */
-    --wire-solar: #d97706; /* Solar / PV (Bronze/Amber) */
+    --wire-solar: #b45309; /* Solar / PV (Amber, auf hellem Grund >= 3:1 nach WCAG 1.4.11) */
     --wire-selected: #1f2937; /* Fokus-Ring für ausgewählte Leitung */
     --wire-error: #b42318; /* Leitung mit Fehler (Norm-Warnrot mit gestricheltem Signal) */
     --wire-error-bg: rgba(180, 35, 24, 0.1);
@@ -97,6 +97,127 @@
     --info: var(--warn-info);
     --success: var(--oxide);
     --warning: var(--warn-warning);
+
+    /* --- Mission 7 (M7-1): Planer-Design-Tokens, helle Werte ------------
+       Eine semantische Schicht, die der `.dark`-Block komplett spiegelt:
+       der Planer hängt an diesen Namen, das Theme biegt nur Werte um.
+       Radius: --radius = 0.125rem (2 px) erfüllt „≤ 4 px" für die
+       Ingenieurs-Oberfläche. Das missionsseitig geforderte Akzent-Token für
+       die Selektions-Linie heißt hier --accent-line, damit der shadcn-Hover-
+       Token --accent (Fläche!) frei bleibt. */
+    --surface-0: #f4f5f7; /* Canvas-Grundfläche (= --canvas-bg) */
+    --surface-1: var(--bone); /* Karten, Bauteile, Panels */
+    --surface-2: #ece4d6; /* Hover, Insets, Statuszeile */
+    --text-high: var(--ink); /* Primärtext */
+    --text-med: #57534e; /* Sekundärtext, Labels */
+    --text-low: #6b6258; /* Randleisten, Gitter-Text */
+    --accent-line: var(--copper); /* Selektion 1 px, Fokus-Akzent */
+    --ok: var(--oxide);
+    --warn: var(--warn-warning);
+    --error: #b42318; /* = --wire-error */
+    --danger: var(--error); /* Alias — CableEdge referenziert --danger */
+  }
+
+  /* --- Mission 7 (M7-1): Engineering Dark Theme ------------------------
+     Die `dark`-Klasse setzt usePlannerDarkMode() ausschließlich auf dem
+     .planner-shell-Wrapper — die Marketing-Seiten bleiben immer hell.
+     Da alle Planer-Komponenten über Tokens steuern (shadcn-Rollen +
+     Marken-var), genügt das Umbiegen der Werte; im JSX ändert sich kein
+     Selektor. `color-scheme` stimmt Scrollbars/Formular-Autofill ab. */
+  .dark {
+    color-scheme: dark;
+
+    /* Flächen & Text */
+    --surface-0: #12151b;
+    --surface-1: #171b22;
+    --surface-2: #21262f;
+    --text-high: #eef1f5;
+    --text-med: #b9bfc9;
+    --text-low: #949cab;
+    --accent-line: #8fb4ff;
+    --ok: #7ee2a8;
+    --warn: #f2c14e;
+    --error: #ff8f84;
+    --danger: var(--error);
+
+    /* Marken-Tokens im Planer-Scope mitbiegen (text-ink, bg-card, …) */
+    --ink: #eef1f5;
+    --ink-soft: #c9cfd9;
+    --muted-ink: #b9bfc9;
+    --bone: #171b22;
+    --paper: #12151b;
+    --clay: #949cab;
+    --rule: #2c313a;
+    --moss: #7ee2a8;
+    --oak: #d8a15e;
+    --copper: #e0a370;
+    --copper-deep: #e0a370;
+    --soot: #12151b;
+    --signal: #ff8f84;
+    --oxide: #7ee2a8;
+
+    /* shadcn-Rollen auf dunkle Flächen */
+    --background: var(--surface-0);
+    --foreground: var(--text-high);
+    --card: var(--surface-1);
+    --card-foreground: var(--text-high);
+    --popover: var(--surface-1);
+    --popover-foreground: var(--text-high);
+    --primary: #e7ebf1;
+    --primary-foreground: #12151b;
+    --secondary: var(--surface-2);
+    --secondary-foreground: var(--text-high);
+    --muted: var(--surface-2);
+    --muted-foreground: var(--text-med);
+    --accent: #232a36;
+    --accent-foreground: var(--text-high);
+    --destructive: var(--error);
+    --destructive-foreground: #12151b;
+    --border: #2c313a;
+    --input: #2c313a;
+    --ring: var(--accent-line);
+    --sidebar: var(--surface-1);
+    --sidebar-foreground: var(--text-high);
+    --sidebar-primary: #e7ebf1;
+    --sidebar-primary-foreground: #12151b;
+    --sidebar-accent: #232a36;
+    --sidebar-accent-foreground: var(--text-high);
+    --sidebar-border: #2c313a;
+    --sidebar-ring: var(--accent-line);
+
+    /* Canvas & Leitungen: Signal-Farben bleiben Signalfarben — auf dunklem
+       Grund heller, damit sie ≥ 3:1 (grafisches Objekt) zur Fläche halten. */
+    --canvas-bg: #12151b;
+    --canvas-grid: #94a3b8;
+    --canvas-dim: 0.5;
+    --canvas-domain-dim: 0.3;
+    --canvas-minimap-mask: rgba(0, 0, 0, 0.55);
+    --wire-dc: #f87171;
+    --wire-dc-minus: #cbd5e1;
+    --wire-ac: #7aa2f7;
+    --wire-solar: #fbbf24;
+    --wire-selected: #e5e7eb;
+    --wire-error: #ff8f84;
+    --wire-error-bg: rgba(255, 143, 132, 0.14);
+
+    --pipe-fresh: #60a5fa;
+    --pipe-gray: #94a3b8;
+    --pipe-selected: #fb923c;
+
+    --warn-critical: #ff8f84;
+    --warn-critical-bg: rgba(255, 143, 132, 0.12);
+    --warn-critical-border: rgba(255, 143, 132, 0.4);
+    --warn-warning: #f2c14e;
+    --warn-warning-bg: rgba(242, 193, 78, 0.12);
+    --warn-warning-border: rgba(242, 193, 78, 0.4);
+    --warn-info: #8fb4ff;
+    --warn-info-bg: rgba(143, 180, 255, 0.14);
+    --warn-info-border: rgba(143, 180, 255, 0.4);
+
+    ::selection {
+      background: #35415e;
+      color: var(--text-high);
+    }
   }
 
   * {
@@ -554,4 +675,54 @@
     opacity: 0 !important;
     transform: none !important;
   }
+}
+
+/* --- Mission 7 (M7-2/M7-3/M7-4): Planer-Schrift, Dichte, Statuszeile --- */
+
+/* M7-2 Fonts: Der Planer läuft auf Inter (gebündelt wie gehabt — keine
+   externen Font-CDNs); Werte in IBM Plex Mono mit tabular-nums. Fraunces
+   bleibt den Marketing-Seiten: display/heading biegen im Planer-Scope auf
+   die UI-Schrift um, damit CardTitle & Co. dort nicht serifern. */
+.planner-shell {
+  --font-sans: 'Inter Variable', 'Source Sans 3', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Inter Variable', 'Source Sans 3', ui-sans-serif, system-ui, sans-serif;
+  --font-heading: 'Inter Variable', 'Source Sans 3', ui-sans-serif, system-ui, sans-serif;
+}
+
+.font-mono {
+  font-variant-numeric: tabular-nums;
+}
+
+/* M7-4 Dichte: 4-px-Spacing-Raster. Die React-Flow-Controls (Standard:
+   26 px) rücken auf 32 px — Oberkante des erlaubten Fensters 28–32 px —
+   und treffen damit die Touch-Zielgröße des Planers. */
+.planner-shell .react-flow__controls-button {
+  width: 2rem;
+  height: 2rem;
+}
+
+/* Inspector-Werte: Ziffern rechtsbündig in Plex Mono, damit Einheiten
+   (im Label bzw. Suffix) und Stellenwerte spaltenrein stehen. */
+.planner-shell input[type='number'] {
+  text-align: right;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* M7-3 Statuszeile: Cursor-Koordinaten, Zoom, Planumfang — dezent am
+   unteren Rand, Mono-Text auf surface-2. */
+.planner-statusbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.25rem 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  line-height: 1rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-med);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 2px;
 }

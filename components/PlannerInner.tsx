@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { ReactFlowProvider } from 'reactflow';
+import { usePlannerDarkMode } from './planner/hooks/usePlannerTheme';
 import 'reactflow/dist/style.css';
 import { PlannerSidebar } from './planner/PlannerSidebar';
 import { PlannerInspector } from './planner/PlannerInspector';
@@ -120,11 +121,15 @@ export default function PlannerInner() {
       : 'xl:static xl:flex xl:w-0 xl:flex-none xl:overflow-hidden xl:border-l-0 xl:shadow-none',
   ].join(' ');
 
+  const isDarkPlanner = usePlannerDarkMode();
+
   return (
     <ReactFlowProvider>
       <div
         data-testid="planner-shell"
-        className="planner-shell relative flex h-dvh min-h-0 w-full shrink-0 flex-col overflow-hidden bg-background font-sans md:flex-row"
+        className={`planner-shell relative flex h-dvh min-h-0 w-full shrink-0 flex-col overflow-hidden bg-background font-sans md:flex-row${
+          isDarkPlanner ? ' dark' : ''
+        }`}
       >
         {!hasOnboarded && <OnboardingWizard />}
 

@@ -37,7 +37,7 @@ export const BaseNode: React.FC<BaseNodeProps> = ({
         'relative min-w-52 rounded-2xl p-4 transition-all duration-300',
         'bg-card/80 backdrop-blur-md border border-border shadow-lg',
         'hover:shadow-xl hover:-translate-y-0.5',
-        selected && 'ring-2 ring-primary shadow-primary/20',
+        selected && 'ring-1 ring-[color:var(--accent-line)] shadow-primary/20',
         (error || warning) && 'animate-pulse ring-2 ring-destructive shadow-xl border-destructive',
         className
       )}

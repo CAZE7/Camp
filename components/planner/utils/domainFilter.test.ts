@@ -77,7 +77,7 @@ describe('nodeMinimapColor', () => {
     expect(nodeMinimapColor({ id: 'b', type: 'battery', position: { x: 0, y: 0 }, data: {} })).toBe(
       '#dc2626'
     );
-    expect(nodeMinimapColor({ id: 's', type: 'solar', position: { x: 0, y: 0 }, data: {} })).toBe('#d97706');
+    expect(nodeMinimapColor({ id: 's', type: 'solar', position: { x: 0, y: 0 }, data: {} })).toBe('#b45309');
   });
 
   it('falls back to ink for unknown types', () => {

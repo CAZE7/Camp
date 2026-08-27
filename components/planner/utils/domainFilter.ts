@@ -40,7 +40,7 @@ export const DOMAIN_COLORS: Record<Domain, string> = {
  * Minimap eine Solar-Komponente, ein Wechselrichter eine AC-Komponente.
  */
 const DOMAIN_TOKEN: Record<Domain, { token: string; fallback: string }> = {
-  Solar: { token: '--wire-solar', fallback: '#d97706' },
+  Solar: { token: '--wire-solar', fallback: '#b45309' },
   AC_230V: { token: '--wire-ac', fallback: '#2563eb' },
   DC_12V: { token: '--wire-dc', fallback: '#dc2626' },
 };
@@ -64,7 +64,7 @@ function minimapEntry(type: string | undefined): { token: string; fallback: stri
 export function nodeMinimapColor(node: Node): string {
   // Dachaufbauten (roofSolar) sind keine Planer-Bauteile, tauchen aber als
   // Nodes auf — sie behalten ihre Solar-Signatur.
-  if (node.type === 'roofSolar') return cssToken('--wire-solar', '#d97706');
+  if (node.type === 'roofSolar') return cssToken('--wire-solar', '#b45309');
   const entry = minimapEntry(node.type);
   return entry ? cssToken(entry.token, entry.fallback) : cssToken('--ink', '#14110e');
 }

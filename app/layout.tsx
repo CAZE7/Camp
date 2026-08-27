@@ -8,6 +8,7 @@ import '@fontsource/source-sans-3/600.css';
 import '@fontsource/ibm-plex-mono/400.css';
 import '@fontsource/ibm-plex-mono/500.css';
 import '@fontsource-variable/outfit';
+import '@fontsource-variable/inter';
 import type { Metadata, Viewport } from 'next';
 
 export const metadata: Metadata = {
