@@ -4,6 +4,7 @@ import {Handle, Position, useNodes } from 'reactflow';
 import { PlannerNodeData, PlannerNodeProps } from './types';
 import { usePlannerStore } from '../../store/usePlannerStore';
 import { CommonNodeData } from './types';
+import { NodeSymbol } from './NodeSymbol';
 
 const InverterNode = function({ id, data, isConnectable, selected }: PlannerNodeProps<PlannerNodeData>) {
   const updateNodeData = usePlannerStore((state) => state.updateNodeData);
@@ -62,6 +63,7 @@ const InverterNode = function({ id, data, isConnectable, selected }: PlannerNode
 
   return (
     <div role="group" aria-label={`${data.label || 'Wechselrichter'}. Komponente im Plan.`} className={`hover:scale-105 transition-all custom-drag-handle bg-white border-2 rounded-md p-3 shadow-md w-48 ${overloadStats.isOverloaded ? "border-red-500 bg-red-50" : "border-teal-700"} ${selected ? (overloadStats.isOverloaded ? "ring-4 ring-red-500 shadow-xl" : "ring-4 ring-blue-500 shadow-xl") : ""}`}>
+      <NodeSymbol kind="inverter" />
       {editingField === 'label' ? (
         <input
           autoFocus

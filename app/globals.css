@@ -268,6 +268,40 @@
     touch-action: none; /* Der Griff zieht — er scrollt nicht. */
     cursor: grab;
   }
+
+  .node-symbol {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin: -0.15rem -0.15rem 0.7rem;
+    padding: 0.45rem 0.55rem;
+    border-bottom: 1px solid currentColor;
+    color: var(--node-symbol-color, var(--ink));
+    background: var(--node-symbol-bg, #f4f5f7);
+    border-radius: 0.2rem;
+  }
+  .node-symbol__icon {
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    border: 1px solid currentColor;
+    border-radius: 50%;
+  }
+  .node-symbol__code {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+  }
+  .node-symbol--dc { --node-symbol-color: #b42318; --node-symbol-bg: #fff1f0; }
+  .node-symbol--ac { --node-symbol-color: #175cd3; --node-symbol-bg: #eff8ff; }
+  .node-symbol--solar { --node-symbol-color: #b54708; --node-symbol-bg: #fffaeb; }
+  .node-symbol--load { --node-symbol-color: #087443; --node-symbol-bg: #ecfdf3; }
+  .node-symbol--protect { --node-symbol-color: #b42318; --node-symbol-bg: #fff1f0; }
+  .node-symbol--ground { --node-symbol-color: #475467; --node-symbol-bg: #f2f4f7; }
+  .node-symbol--measure { --node-symbol-color: #6941c6; --node-symbol-bg: #f9f5ff; }
   .node-drag-handle:active {
     cursor: grabbing;
   }

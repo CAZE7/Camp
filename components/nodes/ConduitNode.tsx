@@ -9,6 +9,7 @@ import {
   recommendConduitType,
 } from '@/lib/vde-standards';
 import { mm2, quantityOr } from '@/lib/units';
+import { NodeSymbol } from './NodeSymbol';
 
 export interface ConduitNodeData {
   label?: string;
@@ -47,6 +48,7 @@ const ConduitNode = function ({ id, data, selected }: { id: string, data: Condui
     <div className={`hover:scale-105 transition-all custom-drag-handle bg-card border-2 rounded-md p-3 shadow-md w-64 ${
       fillStats.isOverfilled ? "border-warn-critical bg-warn-critical-bg" : "border-border"
     } ${selected ? (fillStats.isOverfilled ? "ring-4 ring-warn-critical shadow-xl" : "ring-4 ring-border shadow-xl") : ""}`}>
+      <NodeSymbol kind="conduit" />
 
       <div className="font-bold mb-2 text-sm text-center text-foreground">
         {data.label || 'Leerrohr'} ({conduitType})

@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import {Handle, Position } from 'reactflow';
 import { PlannerNodeData, PlannerNodeProps } from './types';
 import { usePlannerStore } from '../../store/usePlannerStore';
+import { NodeSymbol } from './NodeSymbol';
 
 const ShorePowerNode = function({ id, data, isConnectable, selected }: PlannerNodeProps<PlannerNodeData>) {
   const updateNodeData = usePlannerStore((state) => state.updateNodeData);
@@ -40,6 +41,7 @@ const ShorePowerNode = function({ id, data, isConnectable, selected }: PlannerNo
 
   return (
     <div role="group" aria-label={`${data.label || 'Landstromanschluss'}. Komponente im Plan.`} className={`hover:scale-105 transition-all custom-drag-handle bg-white border-2 border-indigo-500 rounded-md p-3 shadow-md w-48 ${selected ? " ring-4 ring-blue-500 shadow-xl" : ""}`}>
+      <NodeSymbol kind="shore" />
       {editingField === 'label' ? (
         <input
           autoFocus

@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import {Handle, Position } from 'reactflow';
 import { PlannerNodeData, PlannerNodeProps } from './types';
 import { usePlannerStore } from '../../store/usePlannerStore';
+import { NodeSymbol } from './NodeSymbol';
 
 const Consumer230VNode = function({ id, data, isConnectable, selected }: PlannerNodeProps<PlannerNodeData>) {
   const updateNodeData = usePlannerStore((state) => state.updateNodeData);
@@ -40,6 +41,7 @@ const Consumer230VNode = function({ id, data, isConnectable, selected }: Planner
 
   return (
     <div role="group" aria-label={`${data.label || '230-V-Gerät'}. Komponente im Plan.`} className={`hover:scale-105 transition-all custom-drag-handle bg-white border-2 border-purple-500 rounded-md p-3 shadow-md w-48 ${selected ? " ring-4 ring-blue-500 shadow-xl" : ""}`}>
+      <NodeSymbol kind="consumer-ac" />
       {editingField === 'label' ? (
         <input
           autoFocus
