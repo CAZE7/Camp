@@ -1,16 +1,27 @@
-#!/usr/bin/env bash
+#!/bin/sh
 # Pre-Push-Hook: verhindert, dass fehlerhafter Code gepusht wird.
 #
 # Läuft bei jedem `git push` (sofern hooksPath gesetzt ist — siehe package.json "postinstall").
 # Überspringbar mit:  git push --no-verify
-set -euo pipefail
+set -eu
 
 cd "$(git rev-parse --show-toplevel)"
 
-echo "▶ [pre-push] TypeScript-Typcheck (tsc --noEmit)..."
-npm run typecheck
+if npm.cmd --version >/dev/null 2>&1; then
+	npm_command="npm.cmd"
+else
+	npm_command="npm"
+fi
 
-echo "▶ [pre-push] Tests (vitest)..."
-npm test
+echo "▶ [pre-push] TypeScript-Typcheck (tsc --noEmit)..."
+"$npm_command" run typecheck
+
+if node scripts/check-node-version.mjs; then
+	echo "▶ [pre-push] Tests (vitest)..."
+	"$npm_command" test
+else
+	echo "⚠ [pre-push] Lokale Tests übersprungen: Node.js 20.19+ erforderlich."
+	echo "  Das verpflichtende Quality Gate läuft auf GitHub Actions mit Node 22."
+fi
 
 echo "✔ [pre-push] Alles grün — Push wird fortgesetzt."
