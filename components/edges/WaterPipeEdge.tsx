@@ -3,6 +3,7 @@
 import React, { useMemo } from 'react';
 import { BaseEdge, EdgeProps, useReactFlow } from 'reactflow';
 import { findCablePath, nodesToObstacles } from './utils/pathfinding';
+import { useCableRoute } from './utils/cableRouteStore';
 
 export type WaterPipeEdgeData = {
   pipeType?: 'fresh' | 'gray';
@@ -24,8 +25,10 @@ const WaterPipeEdge = function ({
   selected,
 }: EdgeProps<WaterPipeEdgeData>) {
   const { getNodes } = useReactFlow();
+  const globalRoute = useCableRoute(id);
 
   const edgePath = useMemo(() => {
+    if (globalRoute) return globalRoute.path;
     const nodes = getNodes();
     return findCablePath({
       sourceX,
@@ -36,7 +39,7 @@ const WaterPipeEdge = function ({
       targetPosition,
       obstacles: nodesToObstacles(nodes, new Set([source, target])),
     }).path;
-  }, [sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, getNodes, source, target]);
+  }, [globalRoute, sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, getNodes, source, target]);
 
   const strokeColor = useMemo(() => {
     const nodes = getNodes();

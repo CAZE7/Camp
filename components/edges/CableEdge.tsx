@@ -11,6 +11,7 @@ import {
 } from '../../lib/vde-standards';
 import { findCablePath, nodesToObstacles, edgesToCrossingSegments } from './utils/pathfinding';
 import { polarityPathOffset, parallelLaneOffset, edgeLabelNudge } from './utils/pathUtils';
+import { useCableRoute } from './utils/cableRouteStore';
 
 export type CableEdgeData = {
   length: number;
@@ -38,17 +39,30 @@ const CableEdge = function ({
   sourceHandle,
 }: CableEdgeProps) {
   const { getNodes, getEdges } = useReactFlow();
+  const globalRoute = useCableRoute(id);
 
   const [edgePath, labelX, labelY] = useMemo(() => {
     const nodes = getNodes();
     const edges = getEdges();
-    const obstacles = nodesToObstacles(nodes, new Set([source, target]));
     const siblingEdges = edges.map((edge) => ({
       id: edge.id,
       source: edge.source,
       target: edge.target,
       sourceHandle: edge.sourceHandle,
     }));
+    const nudge = edgeLabelNudge({
+      edgeId: id,
+      source,
+      target,
+      sourceHandle,
+      siblingEdges,
+    });
+
+    if (globalRoute) {
+      return [globalRoute.path, globalRoute.labelX, globalRoute.labelY + nudge] as const;
+    }
+
+    const obstacles = nodesToObstacles(nodes, new Set([source, target]));
     const lane = parallelLaneOffset({
       edgeId: id,
       source,
@@ -70,15 +84,8 @@ const CableEdge = function ({
           ? []
           : edgesToCrossingSegments(edges, nodes, (edge) => edge.id === id),
     });
-    const nudge = edgeLabelNudge({
-      edgeId: id,
-      source,
-      target,
-      sourceHandle,
-      siblingEdges,
-    });
     return [routed.path, routed.labelX, routed.labelY + nudge] as const;
-  }, [sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, getNodes, getEdges, source, target, id, sourceHandle]);
+  }, [globalRoute, sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, getNodes, getEdges, source, target, id, sourceHandle]);
 
   const { length, crossSection, maxFuse, strokeWidth, animationDuration, voltageDropWarning, cableFunction } = useMemo(() => {
     const nodes = getNodes();

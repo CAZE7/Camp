@@ -18,6 +18,7 @@ import { useAppStore } from '../../lib/store';
 import { useDashboardMetrics } from './hooks/useDashboardMetrics';
 import { BOMModal } from './ui/BOMModal';
 import { Button } from '@/components/ui/button';
+import { CableRouteSync } from '../edges/utils/cableRouteStore';
 
 export function FlowCanvas() {
   const { screenToFlowPosition, fitView } = useReactFlow();
