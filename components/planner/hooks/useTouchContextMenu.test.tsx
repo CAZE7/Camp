@@ -2,8 +2,9 @@ import React from 'react';
 import { act, fireEvent, render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TOUCH_CONTEXT_MENU_MS, useTouchContextMenu } from './useTouchContextMenu';
+import type { ContextMenuState } from '../ui/CanvasContextMenu';
 
-function Probe({ enabled, onOpen }: { enabled: boolean; onOpen: (state: any) => void }) {
+function Probe({ enabled, onOpen }: { enabled: boolean; onOpen: (state: ContextMenuState) => void }) {
   useTouchContextMenu(enabled, onOpen);
   return null;
 }

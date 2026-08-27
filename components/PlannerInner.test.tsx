@@ -49,13 +49,15 @@ const plannerState: Record<string, unknown> = {
 
 vi.mock('../store/usePlannerStore', () => ({
   usePlannerStore: Object.assign(
-    vi.fn((selector: any) => selector(plannerState)),
+    vi.fn((selector: (state: typeof plannerState) => unknown) => selector(plannerState)),
     { getState: () => plannerState }
   ),
 }));
 
 vi.mock('../lib/store', () => ({
-  useAppStore: vi.fn((selector: any) => selector({ hasOnboarded: true })),
+  useAppStore: vi.fn((selector: (state: { hasOnboarded: boolean }) => unknown) =>
+    selector({ hasOnboarded: true })
+  ),
 }));
 
 const shell = () => document.querySelector('.planner-shell') as HTMLElement;

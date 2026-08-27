@@ -1,6 +1,7 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import RoofWindowNode from './RoofWindowNode';
+import { asDivProps, type MockNodeResizerProps } from '../../test-helpers/reactflowMocks';
 
 vi.mock('reactflow', async () => {
   const actual = await vi.importActual('reactflow');
@@ -15,16 +16,16 @@ vi.mock('reactflow', async () => {
       lineClassName,
       handleClassName,
       ...props
-    }: any) => (
+    }: MockNodeResizerProps) => (
       <div
         data-testid={testId || 'node-resizer'}
         data-is-visible={isVisible}
         onClick={(e) => {
           if (onResize) {
-            onResize(e as any, { width: 50, height: 60 });
+            onResize(e, { width: 50, height: 60 });
           }
         }}
-        {...props}
+        {...asDivProps(props)}
       />
     ),
   };

@@ -1,17 +1,18 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import RoofSolarNode from './RoofSolarNode';
+import type { MockNodeResizerProps } from '../../test-helpers/reactflowMocks';
 
 // Mock reactflow NodeResizer
 vi.mock('reactflow', async () => {
   const actual = await vi.importActual('reactflow');
   return {
     ...actual,
-    NodeResizer: ({ isVisible, onResize }: any) => (
+    NodeResizer: ({ isVisible, onResize }: MockNodeResizerProps) => (
       <div
         data-testid="node-resizer"
         data-isvisible={isVisible?.toString()}
-        onClick={(event) => onResize?.(event as any, { width: 120, height: 80 })}
+        onClick={(event) => onResize?.(event, { width: 120, height: 80 })}
       />
     ),
   };

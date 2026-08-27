@@ -5,7 +5,8 @@ import { WaterPipeInspector } from './WaterPipeInspector';
 
 const setWaterEdges = vi.fn();
 vi.mock('../../store/usePlannerStore', () => ({
-  usePlannerStore: (selector: any) => selector({ setWaterEdges }),
+  usePlannerStore: (selector: (state: { setWaterEdges: typeof setWaterEdges }) => unknown) =>
+    selector({ setWaterEdges }),
 }));
 
 describe('WaterPipeInspector', () => {

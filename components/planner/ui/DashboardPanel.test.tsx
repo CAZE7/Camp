@@ -4,7 +4,15 @@ import { DashboardPanel } from './DashboardPanel';
 import React from 'react';
 
 vi.mock('reactflow', () => ({
-  Panel: ({ children, position, className }: any) => (
+  Panel: ({
+    children,
+    position,
+    className,
+  }: {
+    children?: React.ReactNode;
+    position?: string;
+    className?: string;
+  }) => (
     <div data-testid={`panel-${position}`} className={className}>
       {children}
     </div>

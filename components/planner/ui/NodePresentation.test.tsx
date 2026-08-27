@@ -11,7 +11,13 @@ describe('NodePresentation', () => {
   it('provides overview icon, standard label/type and mounted full details', () => {
     const Presented = withNodePresentations({ battery: FakeNode }).battery;
     render(
-      <Presented {...({ id: 'battery-1', type: 'battery', data: { label: 'Aufbaubatterie' } } as any)} />
+      <Presented
+        {...({
+          id: 'battery-1',
+          type: 'battery',
+          data: { label: 'Aufbaubatterie' },
+        } as unknown as React.ComponentProps<typeof Presented>)}
+      />
     );
     expect(screen.getByTestId('full-details')).toBeInTheDocument();
     expect(screen.getByText('Aufbaubatterie')).toHaveClass('block');

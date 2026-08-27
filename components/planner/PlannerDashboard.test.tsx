@@ -281,7 +281,8 @@ describe('PlannerDashboard - Image Export', () => {
       expect(toPng).toHaveBeenCalled();
     });
 
-    const filterFunc = (toPng as unknown as any).mock.calls[0][1].filter;
+    const [, pngOptions] = vi.mocked(toPng).mock.calls[0];
+    const filterFunc = (pngOptions as { filter?: (el: HTMLElement) => boolean }).filter!;
 
     const validNode = document.createElement('div');
     expect(filterFunc(validNode)).toBe(true);

@@ -30,7 +30,7 @@ describe('useDachNodes', () => {
     mockSetCalculatedSolarWatts = vi.fn();
     vi.mocked(useAppStore).mockReturnValue({
       setCalculatedSolarWatts: mockSetCalculatedSolarWatts,
-    } as any);
+    } as unknown as ReturnType<typeof useAppStore>);
   });
 
   it('should initialize with background and one solar node', () => {
@@ -78,7 +78,7 @@ describe('useDachNodes', () => {
     const { result } = renderHook(() => useDachNodes(mockVehicle));
 
     act(() => {
-      result.current.onNodeResize(null as any, {
+      result.current.onNodeResize(null as unknown as MouseEvent, {
         id: 'solar-1',
         width: 300,
         height: 200,

@@ -1,9 +1,13 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
+import type { NodeProps } from 'reactflow';
 import { NodeDragHandle, withNodeDragHandle, withNodeDragHandles } from './NodeDragHandle';
 
-const DummyNode = ({ id }: any) => <div data-testid="dummy">Node {id}</div>;
+const DummyNode = ({ id }: { id: string }) => <div data-testid="dummy">Node {id}</div>;
+
+/** Der Dummy braucht nur `id`; für die Wrapper-Signatur auf NodeProps mappen. */
+const dummyAsNode = DummyNode as unknown as React.ComponentType<NodeProps>;
 
 describe('NodeDragHandle', () => {
   it('renders a 44 px touch target that React Flow can target via dragHandle', () => {
@@ -20,8 +24,8 @@ describe('NodeDragHandle', () => {
 
 describe('withNodeDragHandle', () => {
   it('keeps the original node output and adds the handle', () => {
-    const Wrapped = withNodeDragHandle(DummyNode as any);
-    const { container } = render(<Wrapped id="battery-1" {...({} as any)} />);
+    const Wrapped = withNodeDragHandle(dummyAsNode);
+    const { container } = render(<Wrapped {...({ id: 'battery-1', data: {} } as NodeProps)} />);
 
     expect(screen.getByTestId('dummy')).toHaveTextContent('Node battery-1');
     expect(container.querySelector('.node-drag-handle')).toBeTruthy();
@@ -30,13 +34,13 @@ describe('withNodeDragHandle', () => {
   });
 
   it('wraps every entry of a nodeTypes map and keeps the keys', () => {
-    const wrapped = withNodeDragHandles({ battery: DummyNode as any, fuse: DummyNode as any });
+    const wrapped = withNodeDragHandles({ battery: dummyAsNode, fuse: dummyAsNode });
     expect(Object.keys(wrapped)).toEqual(['battery', 'fuse']);
     expect(wrapped.battery).not.toBe(DummyNode);
   });
 
   it('keeps a readable displayName for React DevTools', () => {
-    const Wrapped = withNodeDragHandle(DummyNode as any);
-    expect((Wrapped as any).displayName).toContain('DummyNode');
+    const Wrapped = withNodeDragHandle(dummyAsNode);
+    expect((Wrapped as { displayName?: string }).displayName).toContain('DummyNode');
   });
 });

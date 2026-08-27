@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import ConduitNode from './ConduitNode';
+import type { MockHandleProps } from '../../test-helpers/reactflowMocks';
 
 const mockUseEdges = vi.fn();
 
@@ -9,7 +10,7 @@ vi.mock('reactflow', async () => {
   const actual = await vi.importActual('reactflow');
   return {
     ...actual,
-    Handle: ({ 'data-testid': testId, isConnectable, ...props }: any) => {
+    Handle: ({ 'data-testid': testId, isConnectable, ...props }: MockHandleProps) => {
       const { type, position, id, style } = props;
       return (
         <div

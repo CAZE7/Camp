@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 
-interface AppState {
+export interface AppState {
   calculatedSolarWatts: number;
   setCalculatedSolarWatts: (watts: number) => void;
   hasOnboarded: boolean;

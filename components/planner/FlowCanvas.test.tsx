@@ -3,8 +3,29 @@ import { render, screen, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { FlowCanvas } from './FlowCanvas';
 import { usePlannerStore } from '../../store/usePlannerStore';
-import { useAppStore } from '../../lib/store';
+import { useAppStore, type AppState } from '../../lib/store';
 import { useDashboardMetrics } from './hooks/useDashboardMetrics';
+import { withSelector } from '../../test-helpers/reactflowMocks';
+import type { PlannerState } from '../../store/usePlannerStore';
+
+type MockPanelProps = {
+  children?: React.ReactNode;
+  position?: string;
+  className?: string;
+};
+type MockReactFlowProps = {
+  children?: React.ReactNode;
+  nodes?: unknown[];
+  edges?: unknown[];
+  onDragOver?: React.DragEventHandler;
+  onDrop?: React.DragEventHandler;
+  className?: string;
+};
+/** DOM-DragEvent mit den Attributen, die der FlowCanvas-Handler liest. */
+type DragEventish = MouseEvent & {
+  dataTransfer?: { dropEffect: string };
+  preventDefault: () => void;
+};
 
 // next/dynamic wird im Test synchron aufgelöst, damit der per next/dynamic
 // nachgeladene BOMModal (ssr:false) deterministisch hydriert statt in einer
@@ -38,12 +59,12 @@ vi.mock('reactflow', async () => {
     Background: () => <div data-testid="rf-background" />,
     Controls: () => <div data-testid="rf-controls" />,
     MiniMap: () => <div data-testid="rf-minimap" />,
-    Panel: ({ children, position, className }: any) => (
+    Panel: ({ children, position, className }: MockPanelProps) => (
       <div data-testid={`rf-panel-${position}`} className={className}>
         {children}
       </div>
     ),
-    default: ({ children, nodes, edges, onDragOver, onDrop, className }: any) => (
+    default: ({ children, nodes, edges, onDragOver, onDrop, className }: MockReactFlowProps) => (
       <div
         data-testid="react-flow-mock"
         data-nodes={JSON.stringify(nodes)}
@@ -123,7 +144,7 @@ const defaultPlannerStoreState = {
   setSelectedNodes: vi.fn(),
   setSelectedEdges: vi.fn(),
   calculatePathVoltageDrop: vi.fn(() => 0),
-} as any;
+} as unknown as PlannerState;
 
 vi.mock('../../store/usePlannerStore', () => ({
   usePlannerStore: vi.fn((selector) => {
@@ -133,7 +154,7 @@ vi.mock('../../store/usePlannerStore', () => ({
 
 const defaultAppStoreState = {
   calculatedSolarWatts: 0,
-} as any;
+} as unknown as AppState;
 
 vi.mock('../../lib/store', () => ({
   useAppStore: vi.fn((selector) => {
@@ -202,8 +223,8 @@ describe('FlowCanvas', () => {
   });
 
   it('shows a mobile overview action only for more than eight nodes', () => {
-    vi.mocked(usePlannerStore).mockImplementation((selector: any) =>
-      selector({
+    vi.mocked(usePlannerStore).mockImplementation(
+      withSelector({
         ...defaultPlannerStoreState,
         nodes: Array.from({ length: 9 }, (_, index) => ({
           id: `n${index}`,
@@ -211,7 +232,7 @@ describe('FlowCanvas', () => {
           position: { x: index * 20, y: 0 },
           data: {},
         })),
-      })
+      }) as typeof usePlannerStore
     );
     render(<FlowCanvas />);
     fireEvent.click(screen.getByTestId('mobile-overview'));
@@ -220,8 +241,8 @@ describe('FlowCanvas', () => {
 
   it('does not render domain filter chips in water mode', () => {
     Object.assign(usePlannerStore, { getState: () => defaultPlannerStoreState });
-    vi.mocked(usePlannerStore).mockImplementation((selector: any) =>
-      selector({ ...defaultPlannerStoreState, viewMode: 'water' })
+    vi.mocked(usePlannerStore).mockImplementation(
+      withSelector({ ...defaultPlannerStoreState, viewMode: 'water' }) as typeof usePlannerStore
     );
     render(<FlowCanvas />);
     expect(screen.queryByRole('button', { name: '12V' })).not.toBeInTheDocument();
@@ -238,12 +259,12 @@ describe('FlowCanvas', () => {
 
   it('passes water nodes and edges when viewMode is water', () => {
     Object.assign(usePlannerStore, { getState: () => defaultPlannerStoreState });
-    vi.mocked(usePlannerStore).mockImplementation((selector: any) => {
-      return selector({
+    vi.mocked(usePlannerStore).mockImplementation(
+      withSelector({
         ...defaultPlannerStoreState,
         viewMode: 'water',
-      });
-    });
+      }) as typeof usePlannerStore
+    );
 
     render(<FlowCanvas />);
     const reactFlowElement = screen.getByTestId('react-flow-mock');
@@ -263,7 +284,7 @@ describe('FlowCanvas', () => {
       const reactFlowElement = screen.getByTestId('react-flow-mock');
 
       // Create a proper event object for drag over
-      const event = new MouseEvent('dragover', { bubbles: true }) as any;
+      const event = new MouseEvent('dragover', { bubbles: true }) as unknown as DragEventish;
       event.dataTransfer = { dropEffect: 'none' };
       event.preventDefault = vi.fn();
 
@@ -405,13 +426,13 @@ describe('FlowCanvas', () => {
   describe('Metrics & Warnings', () => {
     it('displays water warning when viewMode is water and warning exists', () => {
       Object.assign(usePlannerStore, { getState: () => defaultPlannerStoreState });
-      vi.mocked(usePlannerStore).mockImplementation((selector: any) => {
-        return selector({
+      vi.mocked(usePlannerStore).mockImplementation(
+        withSelector({
           ...defaultPlannerStoreState,
           viewMode: 'water',
           waterWarning: 'Test Water Warning',
-        });
-      });
+        }) as typeof usePlannerStore
+      );
 
       render(<FlowCanvas />);
 
@@ -438,7 +459,7 @@ describe('FlowCanvas', () => {
         totalSolarVoltage: 0,
         totalSolarAmps: 0,
         hasDirectBatteryToConsumer: true,
-      } as any);
+      } as unknown as ReturnType<typeof useDashboardMetrics>);
 
       render(<FlowCanvas />);
 

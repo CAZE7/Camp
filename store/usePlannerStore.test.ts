@@ -1,3 +1,4 @@
+import type React from 'react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { usePlannerStore } from './usePlannerStore';
@@ -459,7 +460,7 @@ describe('usePlannerStore', () => {
         },
         clientX: 100,
         clientY: 200,
-      } as any;
+      } as unknown as React.DragEvent<HTMLDivElement>;
 
       const mockScreenToFlowPosition = ({ x, y }: { x: number; y: number }) => ({ x: x - 10, y: y - 20 });
 
@@ -488,7 +489,7 @@ describe('usePlannerStore', () => {
         },
         clientX: 100,
         clientY: 200,
-      } as any;
+      } as unknown as React.DragEvent<HTMLDivElement>;
 
       const mockScreenToFlowPosition = ({ x, y }: { x: number; y: number }) => ({ x, y });
 
@@ -512,7 +513,7 @@ describe('usePlannerStore', () => {
           type: 'consumer',
           label: 'My Consumer',
         },
-      } as any;
+      } as unknown as CustomEvent;
 
       const mockScreenToFlowPosition = ({ x, y }: { x: number; y: number }) => ({ x: x - 10, y: y - 20 });
 
@@ -540,7 +541,7 @@ describe('usePlannerStore', () => {
           label: 'Induktion',
           watts: 2000,
         },
-      } as any;
+      } as unknown as CustomEvent;
 
       act(() => {
         result.current.onCustomDrop(mockEvent, ({ x, y }) => ({ x, y }));

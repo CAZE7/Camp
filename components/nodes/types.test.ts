@@ -23,7 +23,7 @@ describe('components/nodes/types', () => {
       watts?: number;
       concurrentDevices?: string[];
       continuousPower?: number;
-      [key: string]: any;
+      [key: string]: unknown;
     };
     expectTypeOf<CommonNodeData>().toMatchTypeOf<ExpectedCommonNodeData>();
     expectTypeOf<ExpectedCommonNodeData>().toMatchTypeOf<CommonNodeData>();

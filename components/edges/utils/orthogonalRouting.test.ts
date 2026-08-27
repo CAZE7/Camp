@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { Position } from 'reactflow';
+import { Position, type Node } from 'reactflow';
 import {
   routeWaypoints,
   avoidObstacles,
@@ -306,11 +306,11 @@ describe('buildOrthogonalPath — Ausweichroute bei Kabelknäuel', () => {
 });
 
 describe('edgesToCrossingSegments', () => {
-  const nodes = [
+  const nodes: Node[] = [
     { id: 'a', position: { x: 0, y: 0 }, width: 100, height: 100, data: {} },
     { id: 'b', position: { x: 300, y: 0 }, width: 100, height: 100, data: {} },
     { id: 'c', position: { x: 300, y: 300 }, width: 100, height: 100, data: {} },
-  ] as any;
+  ];
 
   it('approximates other edges by their node centres', () => {
     const segments = edgesToCrossingSegments(

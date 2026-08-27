@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ExpertPanel } from './ExpertPanel';
 import { usePlannerStore } from '../../store/usePlannerStore';
+import { withSelector } from '../../test-helpers/reactflowMocks';
 
 const defaultPlannerStoreState = {
   selectedNodes: [],
@@ -20,7 +21,9 @@ describe('ExpertPanel', () => {
   });
 
   it('renders closed state by default with FAB button', () => {
-    vi.mocked(usePlannerStore).mockImplementation((selector: any) => selector(defaultPlannerStoreState));
+    vi.mocked(usePlannerStore).mockImplementation(
+      withSelector(defaultPlannerStoreState) as typeof usePlannerStore
+    );
     render(<ExpertPanel />);
 
     // The panel should be closed initially and show the FAB
@@ -29,7 +32,9 @@ describe('ExpertPanel', () => {
   });
 
   it('opens panel and displays default tip when no node is selected', () => {
-    vi.mocked(usePlannerStore).mockImplementation((selector: any) => selector(defaultPlannerStoreState));
+    vi.mocked(usePlannerStore).mockImplementation(
+      withSelector(defaultPlannerStoreState) as typeof usePlannerStore
+    );
     render(<ExpertPanel />);
 
     const toggleBtn = screen.getByRole('button', { name: /hilfe und fachwissen öffnen/i });
@@ -46,7 +51,7 @@ describe('ExpertPanel', () => {
       nodes: [],
       edges: [],
     };
-    vi.mocked(usePlannerStore).mockImplementation((selector: any) => selector(selectedState));
+    vi.mocked(usePlannerStore).mockImplementation(withSelector(selectedState) as typeof usePlannerStore);
 
     render(<ExpertPanel />);
 
@@ -65,7 +70,7 @@ describe('ExpertPanel', () => {
       nodes: [],
       edges: [{ id: 'e1', source: '1', target: '2', data: { length: 2 } }],
     };
-    vi.mocked(usePlannerStore).mockImplementation((selector: any) => selector(selectedState));
+    vi.mocked(usePlannerStore).mockImplementation(withSelector(selectedState) as typeof usePlannerStore);
 
     render(<ExpertPanel />);
 
@@ -86,7 +91,7 @@ describe('ExpertPanel', () => {
       nodes: [],
       edges: [{ id: 'e1', source: '1', target: '2', data: { length: 5 } }],
     };
-    vi.mocked(usePlannerStore).mockImplementation((selector: any) => selector(selectedState));
+    vi.mocked(usePlannerStore).mockImplementation(withSelector(selectedState) as typeof usePlannerStore);
 
     render(<ExpertPanel />);
 
@@ -103,7 +108,7 @@ describe('ExpertPanel', () => {
       nodes: [],
       edges: [],
     };
-    vi.mocked(usePlannerStore).mockImplementation((selector: any) => selector(selectedState));
+    vi.mocked(usePlannerStore).mockImplementation(withSelector(selectedState) as typeof usePlannerStore);
 
     render(<ExpertPanel />);
 

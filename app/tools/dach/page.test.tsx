@@ -41,10 +41,10 @@ vi.mock('reactflow', async () => {
         data-testid="react-flow-wrapper"
         className="react-flow-mock"
         onDrop={(e) => {
-          if (onDrop) onDrop(e as any);
+          if (onDrop) onDrop(e as unknown as React.DragEvent<HTMLDivElement>);
         }}
         onDragOver={(e) => {
-          if (onDragOver) onDragOver(e as any);
+          if (onDragOver) onDragOver(e as unknown as React.DragEvent<HTMLDivElement>);
         }}
       >
         {children}
@@ -53,7 +53,7 @@ vi.mock('reactflow', async () => {
     Background: () => <div data-testid="rf-background" />,
     Controls: () => <div data-testid="rf-controls" />,
     Panel: ({ children }: { children: React.ReactNode }) => <div data-testid="rf-panel">{children}</div>,
-    useNodesState: (initialNodes: any) => {
+    useNodesState: (initialNodes: unknown[] | (() => unknown[])) => {
       // Some React Flow functions like applyNodeChanges need an actual instance, but we can do a dummy hook
       const [nodes, setNodes] = React.useState(
         typeof initialNodes === 'function' ? initialNodes() : initialNodes
@@ -65,7 +65,7 @@ vi.mock('reactflow', async () => {
 
       return [nodes, setNodes, onNodesChange];
     },
-    applyNodeChanges: (changes: any, nodes: any) => nodes,
+    applyNodeChanges: (changes: unknown[], nodes: unknown[]) => nodes,
     ReactFlowProvider: ({ children }: { children: React.ReactNode }) => (
       <div data-testid="rf-provider">{children}</div>
     ),

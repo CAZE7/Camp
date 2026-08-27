@@ -27,13 +27,13 @@ if (typeof window !== 'undefined' && !window.PointerEvent) {
   class PointerEvent extends Event {
     button: number;
     ctrlKey: boolean;
-    constructor(type: string, params: any = {}) {
+    constructor(type: string, params: { button?: number; ctrlKey?: boolean } & EventInit = {}) {
       super(type, params);
       this.button = params.button || 0;
       this.ctrlKey = params.ctrlKey || false;
     }
   }
-  (window as any).PointerEvent = PointerEvent as any;
+  (window as unknown as { PointerEvent: unknown }).PointerEvent = PointerEvent;
 }
 
 describe('HeatingCalculatorPage', () => {

@@ -2,6 +2,7 @@ import { renderHook } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useSequentialTapConnect } from './useSequentialTapConnect';
 import { usePlannerStore } from '../../../store/usePlannerStore';
+import { withSelector } from '../../../test-helpers/reactflowMocks';
 
 // Mock the store
 vi.mock('../../../store/usePlannerStore', () => ({
@@ -9,11 +10,12 @@ vi.mock('../../../store/usePlannerStore', () => ({
 }));
 
 describe('useSequentialTapConnect', () => {
-  let mockOnConnect: any;
-  let mockIsValidConnection: any;
-  let mockSetFirstTappedHandle: any;
+  let mockOnConnect: ReturnType<typeof vi.fn>;
+  let mockIsValidConnection: ReturnType<typeof vi.fn>;
+  let mockSetFirstTappedHandle: ReturnType<typeof vi.fn>;
 
-  let currentFirstTappedHandle: { nodeId: string; handleId: string; handleType: string } | null = null;
+  type FirstTapped = { nodeId: string; handleId: string; handleType: string };
+  let currentFirstTappedHandle: FirstTapped | null = null;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -21,23 +23,26 @@ describe('useSequentialTapConnect', () => {
 
     mockOnConnect = vi.fn();
     mockIsValidConnection = vi.fn().mockReturnValue(true);
-    mockSetFirstTappedHandle = vi.fn().mockImplementation((update) => {
-      if (typeof update === 'function') {
-        currentFirstTappedHandle = update(currentFirstTappedHandle);
-      } else {
-        currentFirstTappedHandle = update;
-      }
-    });
+    mockSetFirstTappedHandle = vi
+      .fn()
+      .mockImplementation(
+        (update: FirstTapped | null | ((prev: FirstTapped | null) => FirstTapped | null)) => {
+          if (typeof update === 'function') {
+            currentFirstTappedHandle = update(currentFirstTappedHandle);
+          } else {
+            currentFirstTappedHandle = update;
+          }
+        }
+      );
 
     // Mock implementation of usePlannerStore to return our mock functions based on the selector
-    (usePlannerStore as unknown as any).mockImplementation((selector: any) => {
-      const mockState = {
+    vi.mocked(usePlannerStore).mockImplementation(
+      withSelector({
         onConnect: mockOnConnect,
         isValidConnection: mockIsValidConnection,
         setFirstTappedHandle: mockSetFirstTappedHandle,
-      };
-      return selector(mockState);
-    });
+      }) as typeof usePlannerStore
+    );
   });
 
   afterEach(() => {

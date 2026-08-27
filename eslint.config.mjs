@@ -68,16 +68,6 @@ export default tseslint.config(
   },
 
   {
-    // Test-Dateien: `vi.fn()`-Mocks sind ohne generische Signatur oft unsauber
-    // typisiert; dort erlaubt der React-Flow-Store Selektoren mit `any`-Shape.
-    // Der Produktionscode bleibt strikt. (M6-7 typisiert Mocks nach und nach.)
-    files: ['**/*.test.{ts,tsx}', 'tests/**', 'components/e2eSelectors.test.tsx'],
-    rules: {
-      '@typescript-eslint/no-explicit-any': 'off',
-    },
-  },
-
-  {
     // Skripte/Config-Dateien laufen unter Node, ohne React.
     files: ['*.config.{ts,mts,mjs,js}', 'playwright.config.ts'],
     rules: {
