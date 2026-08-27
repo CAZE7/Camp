@@ -17,12 +17,13 @@ Drei Workflows, eine einzige Quelle für die Qualitätsprüfung
 |-------|----------|-------|
 | `.github/workflows/quality.yml` | `workflow_call` | **Einzige** Definition von Install, Typecheck, Tests, Build |
 | `.github/workflows/ci.yml` | Pull Request, Push (außer `gh-pages`), manuell | Pflicht-Check |
-| `.github/workflows/deploy.yml` | Push auf `main`/`master`, manuell | Pages-Build + Deploy, **nach** dem Quality Gate |
+| `.github/workflows/deploy.yml` | Push auf den GitHub-Default-Branch, manuell | Pages-Build + Deploy, **nach** dem Quality Gate |
 
 ```
 pull_request ─► ci.yml ─────► quality.yml (npm ci → typecheck → test → build)
 
-push main ────► deploy.yml ─► quality.yml
+push ─────────► deploy.yml ─► quality.yml
+                 (nur Default-Branch)
                               └─► build (Pages, basePath) ─► deploy
 ```
 

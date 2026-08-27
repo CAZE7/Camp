@@ -23,6 +23,7 @@ type Step = {
 };
 
 type Job = {
+  if?: string;
   name?: string;
   uses?: string;
   needs?: string | string[];
@@ -170,10 +171,15 @@ describe('GitHub-Actions-Workflows', () => {
     expect(raw).not.toMatch(/always\(\)/);
   });
 
-  it('Deploy läuft nur auf main/master oder manuell', () => {
+  it('Deploy reagiert auf Pushes und überspringt nur den Pages-Ausgabe-Branch', () => {
     const workflow = readWorkflow('deploy.yml');
-    const push = (workflow.on as { push?: { branches?: string[] } }).push;
-    expect(push?.branches).toEqual(['main', 'master']);
+    const push = (workflow.on as { push?: { 'branches-ignore'?: string[] } }).push;
+    expect(push?.['branches-ignore']).toEqual(['gh-pages']);
+    for (const jobId of ['quality', 'build', 'deploy']) {
+      expect(workflow.jobs[jobId]?.if, `${jobId} ohne Default-Branch-Schutz`).toBe(
+        "github.ref == format('refs/heads/{0}', github.event.repository.default_branch)"
+      );
+    }
   });
 
   it('Pages-Build verwendet den von configure-pages gelieferten Basepath', () => {
