@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useMemo } from 'react';
-import { BaseEdge, EdgeProps, getBezierPath, useReactFlow } from 'reactflow';
+import { BaseEdge, EdgeProps, useReactFlow } from 'reactflow';
+import { findCablePath, nodesToObstacles } from './utils/pathfinding';
 
 export type WaterPipeEdgeData = {
   pipeType?: 'fresh' | 'gray';
@@ -24,16 +25,18 @@ const WaterPipeEdge = function ({
 }: EdgeProps<WaterPipeEdgeData>) {
   const { getNodes } = useReactFlow();
 
-  const [edgePath] = useMemo(() => {
-    return getBezierPath({
+  const edgePath = useMemo(() => {
+    const nodes = getNodes();
+    return findCablePath({
       sourceX,
       sourceY,
       sourcePosition,
       targetX,
       targetY,
       targetPosition,
-    });
-  }, [sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition]);
+      obstacles: nodesToObstacles(nodes, new Set([source, target])),
+    }).path;
+  }, [sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, getNodes, source, target]);
 
   const strokeColor = useMemo(() => {
     const nodes = getNodes();

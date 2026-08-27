@@ -1,6 +1,5 @@
 import React, { useMemo } from 'react';
-import { BaseEdge, EdgeProps, getBezierPath, getSmoothStepPath, EdgeLabelRenderer, useReactFlow } from 'reactflow';
-import { useAppStore } from '../../lib/store';
+import { BaseEdge, EdgeProps, EdgeLabelRenderer, useReactFlow } from 'reactflow';
 import {
   VDE_CROSS_SECTIONS,
   VDE_CURRENT_CAPACITY,
@@ -10,6 +9,8 @@ import {
   calculateVoltageDrop,
   VDE_MAX_VOLTAGE_DROP_12V,
 } from '../../lib/vde-standards';
+import { findCablePath, nodesToObstacles, edgesToCrossingSegments } from './utils/pathfinding';
+import { polarityPathOffset, parallelLaneOffset, edgeLabelNudge } from './utils/pathUtils';
 
 export type CableEdgeData = {
   length: number;
@@ -36,22 +37,45 @@ const CableEdge = function ({
   selected,
   sourceHandle,
 }: CableEdgeProps) {
-  const { getNodes } = useReactFlow();
-  const isProMode = useAppStore(state => state.isProMode);
+  const { getNodes, getEdges } = useReactFlow();
 
   const [edgePath, labelX, labelY] = useMemo(() => {
-    const pathParams = {
+    const nodes = getNodes();
+    const edges = getEdges();
+    const obstacles = nodesToObstacles(nodes, new Set([source, target]));
+    const siblingEdges = edges.map((edge) => ({
+      id: edge.id,
+      source: edge.source,
+      target: edge.target,
+      sourceHandle: edge.sourceHandle,
+    }));
+    const lane = parallelLaneOffset({
+      edgeId: id,
+      source,
+      target,
+      sourceHandle,
+      siblingEdges,
+    });
+    const routed = findCablePath({
       sourceX,
       sourceY,
       sourcePosition,
       targetX,
       targetY,
       targetPosition,
-    };
-    return isProMode
-      ? getSmoothStepPath({ ...pathParams, borderRadius: 10 })
-      : getBezierPath(pathParams);
-  }, [sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, isProMode]);
+      offset: polarityPathOffset(sourceHandle) + lane,
+      obstacles,
+      crossingSegments: edgesToCrossingSegments(edges, nodes, (edge) => edge.id === id),
+    });
+    const nudge = edgeLabelNudge({
+      edgeId: id,
+      source,
+      target,
+      sourceHandle,
+      siblingEdges,
+    });
+    return [routed.path, routed.labelX, routed.labelY + nudge] as const;
+  }, [sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, getNodes, getEdges, source, target, id, sourceHandle]);
 
   const { length, crossSection, maxFuse, strokeWidth, animationDuration, voltageDropWarning, cableFunction } = useMemo(() => {
     const nodes = getNodes();
