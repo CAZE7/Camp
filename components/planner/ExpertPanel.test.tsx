@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ExpertPanel } from './ExpertPanel';
 import { usePlannerStore } from '../../store/usePlannerStore';
@@ -36,7 +36,7 @@ describe('ExpertPanel', () => {
     fireEvent.click(toggleBtn);
 
     // Panel should now be open, showing default tip
-    expect(screen.getByText("Fachwissen")).toBeInTheDocument();
+    expect(screen.getByText('Fachwissen')).toBeInTheDocument();
     expect(screen.getByText("So funktioniert's")).toBeInTheDocument();
   });
 
@@ -55,8 +55,8 @@ describe('ExpertPanel', () => {
     fireEvent.click(toggleBtn);
 
     // Should show battery knowledge
-    expect(screen.getByText("Batterie — Fachwissen")).toBeInTheDocument();
-    expect(screen.getByText("LiFePO4 vs. AGM")).toBeInTheDocument();
+    expect(screen.getByText('Batterie — Fachwissen')).toBeInTheDocument();
+    expect(screen.getByText('LiFePO4 vs. AGM')).toBeInTheDocument();
   });
 
   it('calculates live recommendations for inverter', () => {
@@ -74,8 +74,8 @@ describe('ExpertPanel', () => {
     fireEvent.click(toggleBtn);
 
     expect(screen.getByText(/Aktuelle Empfehlung/)).toBeInTheDocument();
-    expect(screen.getByText("Kabelquerschnitt")).toBeInTheDocument();
-    expect(screen.getByText("Sicherung")).toBeInTheDocument();
+    expect(screen.getByText('Kabelquerschnitt')).toBeInTheDocument();
+    expect(screen.getByText('Sicherung')).toBeInTheDocument();
     // I = 1000 / 12.8 / 0.85 = 91.91 A (Systemspannung statt hartem /12)
     expect(screen.getByText(/91\.9 A/)).toBeInTheDocument();
   });
@@ -112,13 +112,19 @@ describe('ExpertPanel', () => {
 
     // The first tip should be expanded by default (index 0)
     // We should see its body text
-    expect(screen.getByText("LiFePO4-Akkus haben eine nutzbare Kapazität von ca. 95 % Entladetiefe (DoD), AGM nur ~50%. Eine 100Ah LiFePO4 ersetzt also eine 200Ah AGM.")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'LiFePO4-Akkus haben eine nutzbare Kapazität von ca. 95 % Entladetiefe (DoD), AGM nur ~50%. Eine 100Ah LiFePO4 ersetzt also eine 200Ah AGM.'
+      )
+    ).toBeInTheDocument();
 
     // Click the second tip
-    const secondTipHeading = screen.getByText("Kabelquerschnitt zur Batterie");
+    const secondTipHeading = screen.getByText('Kabelquerschnitt zur Batterie');
     fireEvent.click(secondTipHeading);
 
     // Should now see the second tip body
-    expect(screen.getByText(/Die Zuleitung zur Batterie muss den maximalen Entladestrom tragen/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Die Zuleitung zur Batterie muss den maximalen Entladestrom tragen/)
+    ).toBeInTheDocument();
   });
 });

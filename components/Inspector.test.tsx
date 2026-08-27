@@ -14,12 +14,7 @@ describe('Inspector Component', () => {
 
   describe('Empty Selection', () => {
     it('renders "Kein Element ausgewählt" when no edge or node is selected', () => {
-      render(
-        <Inspector
-          selectedEdge={null}
-          onChangeLength={mockOnChangeLength}
-        />
-      );
+      render(<Inspector selectedEdge={null} onChangeLength={mockOnChangeLength} />);
 
       expect(screen.getByText('Kein Element ausgewählt')).toBeInTheDocument();
     });
@@ -34,12 +29,7 @@ describe('Inspector Component', () => {
         data: { length: 5 },
       };
 
-      render(
-        <Inspector
-          selectedEdge={mockEdge}
-          onChangeLength={mockOnChangeLength}
-        />
-      );
+      render(<Inspector selectedEdge={mockEdge} onChangeLength={mockOnChangeLength} />);
 
       expect(screen.queryByText('Kein Kabel ausgewählt')).not.toBeInTheDocument();
 
@@ -56,12 +46,7 @@ describe('Inspector Component', () => {
         data: { length: 5 },
       };
 
-      render(
-        <Inspector
-          selectedEdge={mockEdge}
-          onChangeLength={mockOnChangeLength}
-        />
-      );
+      render(<Inspector selectedEdge={mockEdge} onChangeLength={mockOnChangeLength} />);
 
       const lengthInput = screen.getByLabelText(/Länge \(m\)/i);
       fireEvent.change(lengthInput, { target: { value: '7.5' } });
@@ -78,12 +63,7 @@ describe('Inspector Component', () => {
         // Missing data
       };
 
-      render(
-        <Inspector
-          selectedEdge={mockEdge}
-          onChangeLength={mockOnChangeLength}
-        />
-      );
+      render(<Inspector selectedEdge={mockEdge} onChangeLength={mockOnChangeLength} />);
 
       const lengthInput = screen.getByLabelText(/Länge \(m\)/i);
       expect(lengthInput).toHaveValue(3); // Default length is 3
@@ -97,12 +77,7 @@ describe('Inspector Component', () => {
         data: { length: 5, crossSection: 4 },
       };
 
-      render(
-        <Inspector
-          selectedEdge={mockEdge}
-          onChangeLength={mockOnChangeLength}
-        />
-      );
+      render(<Inspector selectedEdge={mockEdge} onChangeLength={mockOnChangeLength} />);
 
       const lengthInput = screen.getByLabelText(/Länge \(m\)/i);
       fireEvent.change(lengthInput, { target: { value: '' } });

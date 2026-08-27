@@ -26,7 +26,14 @@ vi.mock('reactflow', async () => {
  */
 type ReactFlowMock = {
   getNode: (id: string) => { id: string; type?: string } | null;
-  getNodes: () => Array<{ id: string; type?: string; position: { x: number; y: number }; width?: number; height?: number; measured?: { width?: number; height?: number } }>;
+  getNodes: () => Array<{
+    id: string;
+    type?: string;
+    position: { x: number; y: number };
+    width?: number;
+    height?: number;
+    measured?: { width?: number; height?: number };
+  }>;
 };
 
 const mockReactFlow = (overrides: Partial<ReactFlowMock> = {}): void => {
@@ -106,9 +113,7 @@ describe('WaterPipeEdge', () => {
     // Not gray water by default — pipeType override wins.
     mockReactFlow({ getNode: nodeById('1', 'freshWaterTank') });
 
-    const { getByTestId } = render(
-      <WaterPipeEdge {...defaultProps} data={{ pipeType: 'gray' }} />
-    );
+    const { getByTestId } = render(<WaterPipeEdge {...defaultProps} data={{ pipeType: 'gray' }} />);
 
     const baseEdge = getByTestId('base-edge');
     expect(baseEdge).toHaveStyle({ stroke: 'var(--pipe-gray)' }); // --pipe-gray = #4b5563
@@ -118,9 +123,7 @@ describe('WaterPipeEdge', () => {
     // Gray water by default — pipeType override wins.
     mockReactFlow({ getNode: nodeById('1', 'sink') });
 
-    const { getByTestId } = render(
-      <WaterPipeEdge {...defaultProps} data={{ pipeType: 'fresh' }} />
-    );
+    const { getByTestId } = render(<WaterPipeEdge {...defaultProps} data={{ pipeType: 'fresh' }} />);
 
     const baseEdge = getByTestId('base-edge');
     expect(baseEdge).toHaveStyle({ stroke: 'var(--pipe-fresh)' }); // --pipe-fresh = #1d4ed8

@@ -80,14 +80,12 @@ export function nodeDomains(node: Node): Domain[] {
 }
 
 /** Domäne einer Kante — identisch zur Anzeige in CableEdge (inkl. Solar-Override). */
-export function edgeDomainOf(
-  edge: Edge<CableEdgeData>,
-  sourceNode?: Node,
-  targetNode?: Node
-): Domain {
+export function edgeDomainOf(edge: Edge<CableEdgeData>, sourceNode?: Node, targetNode?: Node): Domain {
   // getEdgeDomain kennt seit dem Fix 'Solar'; data.edgeDomain ist über
   // CableEdgeData entsprechend typisiert — keine Casts mehr nötig.
-  const inferred = edge.data?.edgeDomain ?? getEdgeDomain(sourceNode?.type, targetNode?.type, edge.sourceHandle, edge.targetHandle);
+  const inferred =
+    edge.data?.edgeDomain ??
+    getEdgeDomain(sourceNode?.type, targetNode?.type, edge.sourceHandle, edge.targetHandle);
   if (
     sourceNode?.type === 'solar' ||
     targetNode?.type === 'solar' ||
@@ -132,7 +130,8 @@ export function applyDomainFilter<N extends Node, E extends Edge<CableEdgeData>>
 
   return {
     nodes: nodes.map((node) => {
-      const hasEdges = nodeMap.has(node.id) && edges.some((e) => e.source === node.id || e.target === node.id);
+      const hasEdges =
+        nodeMap.has(node.id) && edges.some((e) => e.source === node.id || e.target === node.id);
       const active = hasEdges
         ? nodeHasActiveEdge.get(node.id) === true
         : nodeDomains(node).some((d) => activeDomains.has(d));

@@ -43,9 +43,7 @@ export default defineConfig({
     // der Umgebung, keine Animationen in Screenshots.
     locale: 'de-DE',
     timezoneId: 'Europe/Berlin',
-    launchOptions: CHROMIUM_EXECUTABLE_PATH
-      ? { executablePath: CHROMIUM_EXECUTABLE_PATH }
-      : undefined,
+    launchOptions: CHROMIUM_EXECUTABLE_PATH ? { executablePath: CHROMIUM_EXECUTABLE_PATH } : undefined,
   },
 
   projects: [

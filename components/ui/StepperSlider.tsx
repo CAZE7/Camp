@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import React from 'react';
 import { Minus, Plus } from 'lucide-react';
@@ -40,7 +40,12 @@ export function StepperSlider({
   };
 
   return (
-    <div className={cn("flex items-center gap-3 w-full bg-paper/80 p-3 rounded-2xl border border-border/80 shadow-sm", className)}>
+    <div
+      className={cn(
+        'flex items-center gap-3 w-full bg-paper/80 p-3 rounded-2xl border border-border/80 shadow-sm',
+        className
+      )}
+    >
       <button
         type="button"
         onClick={handleDecrement}
@@ -63,7 +68,8 @@ export function StepperSlider({
           className="w-full h-2 bg-rule/40 rounded-full appearance-none cursor-pointer accent-moss focus:outline-none focus:ring-1 focus:ring-moss/40"
         />
         <span className="text-xs font-mono font-bold text-ink-soft bg-bone border border-border/50 rounded-lg px-2.5 py-0.5 mt-1 shadow-sm select-none">
-          {value.toFixed(step < 1 ? 1 : 0)}{unit}
+          {value.toFixed(step < 1 ? 1 : 0)}
+          {unit}
         </span>
       </div>
 

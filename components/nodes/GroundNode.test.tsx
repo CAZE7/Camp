@@ -49,8 +49,8 @@ describe('GroundNode Component', () => {
     const handles = screen.getAllByTestId('react-flow-handle');
     expect(handles.length).toBe(2);
 
-    const targetHandle = handles.find(h => h.getAttribute('type') === 'target');
-    const sourceHandle = handles.find(h => h.getAttribute('type') === 'source');
+    const targetHandle = handles.find((h) => h.getAttribute('type') === 'target');
+    const sourceHandle = handles.find((h) => h.getAttribute('type') === 'source');
 
     expect(targetHandle).toBeInTheDocument();
     expect(targetHandle).toHaveAttribute('id', 'minus');

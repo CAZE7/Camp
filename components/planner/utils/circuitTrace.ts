@@ -140,11 +140,15 @@ export function traceCircuit(nodes: Node[], edges: Edge[], seed: TraceSeed): Cir
   for (const id of Array.from(nodeIds)) if (!validNodeIds.has(id)) nodeIds.delete(id);
   pathNodeIds = pathNodeIds.filter((id, index) => validNodeIds.has(id) && pathNodeIds.indexOf(id) === index);
 
-  return { nodeIds, edgeIds, pathNodeIds, referenceEdge: selectedEdge ?? edges.find((edge) => edgeIds.has(edge.id)) };
+  return {
+    nodeIds,
+    edgeIds,
+    pathNodeIds,
+    referenceEdge: selectedEdge ?? edges.find((edge) => edgeIds.has(edge.id)),
+  };
 }
 
-const addClass = (className: string | undefined, flag: string) =>
-  [className, flag].filter(Boolean).join(' ');
+const addClass = (className: string | undefined, flag: string) => [className, flag].filter(Boolean).join(' ');
 
 export function applyCircuitTrace<N extends Node, E extends Edge>(
   nodes: N[],
@@ -164,7 +168,7 @@ export function applyCircuitTrace<N extends Node, E extends Edge>(
   };
 }
 
-const format = (value: number): string => Number.isInteger(value) ? String(value) : value.toFixed(1);
+const format = (value: number): string => (Number.isInteger(value) ? String(value) : value.toFixed(1));
 
 export function circuitTraceLabel(nodes: Node[], trace: CircuitTrace): string {
   const nodeMap = new Map(nodes.map((node) => [node.id, node]));

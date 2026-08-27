@@ -52,6 +52,9 @@ export function CableRouteSync() {
   const routes = useMemo(() => {
     const state = store.getState();
     return routeAllCables(state.getNodes(), state.edges as RouteEdgeRef[]);
+    // nodeVersion/edgeVersion sind Hashes aus dem externen Store und lösen das
+    // Re-Memoing aus; im Body wird bewusst direkt getState() gelesen.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nodeVersion, edgeVersion, store]);
 
   useLayoutEffect(() => {

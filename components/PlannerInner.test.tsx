@@ -119,9 +119,13 @@ describe('PlannerInner — responsives Layout', () => {
     const sidebarColumn = column('planner-sidebar');
     expect(sidebarColumn.className).toContain('flex');
     // Jetzt ist der Canvas auf dem Handy ausgeblendet …
-    expect((screen.getByTestId('planner-dashboard').parentElement as HTMLElement).className).toContain('hidden');
+    expect((screen.getByTestId('planner-dashboard').parentElement as HTMLElement).className).toContain(
+      'hidden'
+    );
     // … bleibt ab Tablet aber sichtbar.
-    expect((screen.getByTestId('planner-dashboard').parentElement as HTMLElement).className).toContain('md:flex');
+    expect((screen.getByTestId('planner-dashboard').parentElement as HTMLElement).className).toContain(
+      'md:flex'
+    );
   });
 
   it('A2 (768 px): Sidebar + Canvas nebeneinander, Inspector als Overlay', () => {
@@ -132,7 +136,9 @@ describe('PlannerInner — responsives Layout', () => {
 
     // Sidebar und Canvas sind ab md beide sichtbar.
     expect(column('planner-sidebar').className).toContain('md:flex');
-    expect((screen.getByTestId('planner-dashboard').parentElement as HTMLElement).className).toContain('md:flex');
+    expect((screen.getByTestId('planner-dashboard').parentElement as HTMLElement).className).toContain(
+      'md:flex'
+    );
 
     // Inspector liegt zwischen 768 und 1279 px als Overlay über dem Canvas …
     const aside = screen.getByRole('complementary', { name: 'Eigenschaften' });

@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import React from 'react';
 import { Compass } from 'lucide-react';
@@ -23,20 +23,14 @@ export function EmptyState({ title, description, actionLabel, onAction, icon, hi
         <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-6">
           {icon ?? <Compass className="w-10 h-10 text-primary" strokeWidth={1.5} />}
         </div>
-        <h2 className="text-2xl font-extrabold tracking-tight text-foreground mb-3">
-          {title}
-        </h2>
-        <p className="text-muted-foreground">
-          {description}
-        </p>
+        <h2 className="text-2xl font-extrabold tracking-tight text-foreground mb-3">{title}</h2>
+        <p className="text-muted-foreground">{description}</p>
         {actionLabel && onAction && (
           <Button onClick={onAction} className="mt-6 min-h-[44px] px-6" size="lg">
             {actionLabel}
           </Button>
         )}
-        {hint && (
-          <p className="text-xs text-muted-foreground mt-3">{hint}</p>
-        )}
+        {hint && <p className="text-xs text-muted-foreground mt-3">{hint}</p>}
       </div>
     </div>
   );

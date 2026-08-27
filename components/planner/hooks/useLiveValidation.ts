@@ -3,7 +3,6 @@ import { Node, Edge } from 'reactflow';
 import { CableEdgeData } from '../../edges/CableEdge';
 
 import { getSystemVoltage } from '../utils/voltage';
-import { isStarterBatteryLabel } from '../../../lib/autoWire';
 
 export interface ValidationWarning {
   id: string;
@@ -107,20 +106,25 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
         const sourceNode = nodeMap.get(edge.source);
         const targetNode = nodeMap.get(edge.target);
 
-        const isHighPowerSource = sourceNode?.type === 'battery' || sourceNode?.type === 'inverter' || ['charger', 'mpptController', 'dcdcCharger', 'acBatteryCharger'].includes(sourceNode?.type as string);
+        const isHighPowerSource =
+          sourceNode?.type === 'battery' ||
+          sourceNode?.type === 'inverter' ||
+          ['charger', 'mpptController', 'dcdcCharger', 'acBatteryCharger'].includes(
+            sourceNode?.type as string
+          );
         const isProtectedTarget = targetNode?.type === 'fuse';
 
         if (isHighPowerSource && !isProtectedTarget) {
           if (!edge.data?.fuseSize) {
-             warnings.push({
-               id: `missing-fuse-${edge.id}`,
-               category: 'safety',
-               type: 'critical',
-               title: 'Sicherung fehlt',
-               focusId: edge.id,
-               focusType: 'edge',
-               message: `⚠️ Kritisch: Quellschutz fehlt! Die Leitung von ${sourceNode?.data?.label || sourceNode?.type} muss direkt am Anfang abgesichert werden (Kabel-Sicherung oder Sicherungsblock).`,
-             });
+            warnings.push({
+              id: `missing-fuse-${edge.id}`,
+              category: 'safety',
+              type: 'critical',
+              title: 'Sicherung fehlt',
+              focusId: edge.id,
+              focusType: 'edge',
+              message: `⚠️ Kritisch: Quellschutz fehlt! Die Leitung von ${sourceNode?.data?.label || sourceNode?.type} muss direkt am Anfang abgesichert werden (Kabel-Sicherung oder Sicherungsblock).`,
+            });
           }
         }
       }
@@ -129,7 +133,7 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
     const sysVoltage = getSystemVoltage(nodes);
 
     // --- Rule A2: RCD / FI-Pflicht an Landstrom (DIN VDE 0100-721) ---
-    shorePowerNodes.forEach(sp => {
+    shorePowerNodes.forEach((sp) => {
       if (!sp.data?.hasRcd) {
         warnings.push({
           id: `missing-rcd-${sp.id}`,
@@ -146,7 +150,8 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
     // --- Rule B: Overloaded Solar Regulator ---
     if (solarNodes.length > 0 && chargers.length > 0) {
       const totalSolarWatts = solarNodes.reduce((acc, node) => acc + (Number(node.data.watts) || 0), 0);
-      const mpptCapacity = chargers.reduce((acc, node) => acc + (Number(node.data.amps) || 0), 0) * sysVoltage;
+      const mpptCapacity =
+        chargers.reduce((acc, node) => acc + (Number(node.data.amps) || 0), 0) * sysVoltage;
 
       if (totalSolarWatts > mpptCapacity) {
         warnings.push({
@@ -169,7 +174,7 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
       const totalDailyAh = consumers.reduce((acc, node) => {
         const watts = Number(node.data.watts) || 0;
         const hours = Number(node.data.hours) || 4; // default to 4 hours
-        return acc + ((watts * hours) / sysVoltage);
+        return acc + (watts * hours) / sysVoltage;
       }, 0);
 
       if (totalDailyAh > totalBatteryAh) {
@@ -186,11 +191,11 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
     }
 
     // --- Rule G: Inverter Protection ---
-    inverters.forEach(inverter => {
+    inverters.forEach((inverter) => {
       const targetEdges = edgesByTarget.get(inverter.id) || [];
-      const incomingPlusEdges = targetEdges.filter(e => e.targetHandle?.includes('plus'));
-      const incomingMinusEdges = targetEdges.filter(e => e.targetHandle?.includes('minus'));
-      
+      const incomingPlusEdges = targetEdges.filter((e) => e.targetHandle?.includes('plus'));
+      const incomingMinusEdges = targetEdges.filter((e) => e.targetHandle?.includes('minus'));
+
       if (incomingMinusEdges.length === 0) {
         warnings.push({
           id: `inverter-no-minus-${inverter.id}`,
@@ -203,17 +208,17 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
         });
       }
 
-      incomingPlusEdges.forEach(edge => {
+      incomingPlusEdges.forEach((edge) => {
         let isProtected = false;
         if (edge.data?.fuseSize) {
           isProtected = true;
         } else {
           const sourceNode = nodeMap.get(edge.source);
           if (sourceNode?.type === 'fuse') {
-             isProtected = true;
+            isProtected = true;
           }
         }
-        
+
         if (!isProtected) {
           warnings.push({
             id: `inverter-unprotected-${edge.id}`,
@@ -229,10 +234,10 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
     });
 
     // --- Rule E: DC-DC Charger Connection ---
-    dcdcChargers.forEach(charger => {
+    dcdcChargers.forEach((charger) => {
       const hasInput = (edgesByTarget.get(charger.id)?.length ?? 0) > 0;
       const hasOutput = (edgesBySource.get(charger.id)?.length ?? 0) > 0;
-      
+
       if (!hasInput || !hasOutput) {
         warnings.push({
           id: `dcdc-unconnected-${charger.id}`,
@@ -263,15 +268,14 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
           }
         }
       }
-      const isStarterBatteryNode = (n: Node | undefined) =>
-        /starter/i.test(String(n?.data?.label || ''));
+      const isStarterBatteryNode = (n: Node | undefined) => /starter/i.test(String(n?.data?.label || ''));
       const isMonitoredBattery = (n: Node | undefined) => {
         if (!n || n.type !== 'battery' || isStarterBatteryNode(n)) return false;
         if (shuntBatteryIds.size === 0) return true;
         return shuntBatteryIds.has(n.id);
       };
 
-      edges.forEach(edge => {
+      edges.forEach((edge) => {
         const targetNode = nodeMap.get(edge.target);
         const sourceNode = nodeMap.get(edge.source);
 
@@ -283,15 +287,15 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
         if (sourceIsMonitoredMinus || targetIsMonitoredMinus) {
           const otherNode = sourceIsMonitoredMinus ? targetNode : sourceNode;
           if (otherNode && otherNode.type !== 'shunt' && otherNode.type !== 'battery') {
-             warnings.push({
-               id: `shunt-bypass-${edge.id}`,
-               category: 'monitoring',
-               type: 'critical',
-               title: 'Shunt wird umgangen',
-               focusId: edge.id,
-               focusType: 'edge',
-               message: `⚠️ Kritisch: Der Shunt wird umgangen! Relevante Minus-Verbindungen (wie von ${otherNode.data?.label || otherNode.type}) dürfen nicht am Shunt vorbei direkt an Batterie-Minus hängen.`,
-             });
+            warnings.push({
+              id: `shunt-bypass-${edge.id}`,
+              category: 'monitoring',
+              type: 'critical',
+              title: 'Shunt wird umgangen',
+              focusId: edge.id,
+              focusType: 'edge',
+              message: `⚠️ Kritisch: Der Shunt wird umgangen! Relevante Minus-Verbindungen (wie von ${otherNode.data?.label || otherNode.type}) dürfen nicht am Shunt vorbei direkt an Batterie-Minus hängen.`,
+            });
           }
         }
       });

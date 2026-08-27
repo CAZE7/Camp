@@ -9,12 +9,12 @@ vi.mock('../../store/usePlannerStore', () => ({
   usePlannerStore: vi.fn((selector) => {
     const state = { viewMode: 'electric', isSidebarOpen: true, toggleSidebar: mockToggleSidebar };
     return selector(state);
-  })
+  }),
 }));
 
 // Mock Sidebar component
 vi.mock('../Sidebar', () => ({
-  Sidebar: ({ mode }: { mode: string }) => <div data-testid="sidebar-mock">Sidebar Mode: {mode}</div>
+  Sidebar: ({ mode }: { mode: string }) => <div data-testid="sidebar-mock">Sidebar Mode: {mode}</div>,
 }));
 
 describe('PlannerSidebar', () => {

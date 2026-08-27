@@ -129,9 +129,7 @@ describe('G2 — Monotonie der Sicherungsauswahl', () => {
       fc.property(currentA, crossSection, crossSection, (current, s1, s2) => {
         const small = Math.min(s1, s2);
         const large = Math.max(s1, s2);
-        expect(selectFuseSize(current, large)).toBeGreaterThanOrEqual(
-          selectFuseSize(current, small)
-        );
+        expect(selectFuseSize(current, large)).toBeGreaterThanOrEqual(selectFuseSize(current, small));
       }),
       propertyConfig
     );
@@ -226,17 +224,14 @@ describe('G4 — Monotonie der Querschnittsauswahl', () => {
 
   it('der thermische Querschnitt trägt den Strom inklusive Derating', () => {
     fc.assert(
-      fc.property(
-        fc.double({ min: 0.1, max: 120, noNaN: true, noDefaultInfinity: true }),
-        (current) => {
-          const section = lookupThermalCrossSection(current);
-          // Größter Querschnitt ist die Obergrenze: darüber kann die Reihe
-          // den Strom nicht mehr abdecken, das meldet die Validierung separat.
-          if (section < VDE_SIZES[VDE_SIZES.length - 1]) {
-            expect(VDE_AMPACITY[section] * DERATE_FACTOR).toBeGreaterThanOrEqual(current - 1e-9);
-          }
+      fc.property(fc.double({ min: 0.1, max: 120, noNaN: true, noDefaultInfinity: true }), (current) => {
+        const section = lookupThermalCrossSection(current);
+        // Größter Querschnitt ist die Obergrenze: darüber kann die Reihe
+        // den Strom nicht mehr abdecken, das meldet die Validierung separat.
+        if (section < VDE_SIZES[VDE_SIZES.length - 1]) {
+          expect(VDE_AMPACITY[section] * DERATE_FACTOR).toBeGreaterThanOrEqual(current - 1e-9);
         }
-      ),
+      }),
       propertyConfig
     );
   });
@@ -383,7 +378,19 @@ const planArbitrary = fc
   });
 
 /** Vergleichbare Signatur eines Verdrahtungsergebnisses. */
-function signature(result: { nodes: Node[]; edges: ReturnType<typeof performAutoWiring> extends null ? never : { id: string; source: string; target: string; sourceHandle?: string | null; targetHandle?: string | null; data?: { crossSection?: number; fuseSize?: number; length?: number; edgeDomain?: string } }[] }) {
+function signature(result: {
+  nodes: Node[];
+  edges: ReturnType<typeof performAutoWiring> extends null
+    ? never
+    : {
+        id: string;
+        source: string;
+        target: string;
+        sourceHandle?: string | null;
+        targetHandle?: string | null;
+        data?: { crossSection?: number; fuseSize?: number; length?: number; edgeDomain?: string };
+      }[];
+}) {
   return {
     nodeTypes: result.nodes
       .map((node) => `${node.type}`)
@@ -541,10 +548,7 @@ describe('G6 — AC/DC-Trennung jeder erzeugten Verbindung', () => {
         if (result === null) return;
         for (const edge of result.edges) {
           const section = edge.data?.crossSection;
-          expect(
-            section,
-            `Kante ${edge.id} (${edge.source}→${edge.target}) ohne Querschnitt`
-          ).toBeDefined();
+          expect(section, `Kante ${edge.id} (${edge.source}→${edge.target}) ohne Querschnitt`).toBeDefined();
           expect(section).toBeGreaterThanOrEqual(1.5);
           expect(VDE_SIZES).toContain(section);
         }
@@ -667,9 +671,24 @@ describe('Shrinking-Anker (gemeldete Gegenbeispiele)', () => {
     // undefined. Gemeldet, als isAcEdge testweise immer false lieferte:
     // die 230-V-Leitung wäre als 12-V-Leitung dimensioniert worden.
     const nodes: Node[] = [
-      { id: 'battery-1', type: 'battery', position: { x: 0, y: 0 }, data: { label: 'Aufbau', capacity: 50 } } as Node,
-      { id: 'shore-0', type: 'shorePower', position: { x: 200, y: 0 }, data: { label: 'Landstrom', hasRcd: false } } as Node,
-      { id: 'c230-1', type: 'consumer230v', position: { x: 400, y: 120 }, data: { label: 'Gerät', watts: 5 } } as Node,
+      {
+        id: 'battery-1',
+        type: 'battery',
+        position: { x: 0, y: 0 },
+        data: { label: 'Aufbau', capacity: 50 },
+      } as Node,
+      {
+        id: 'shore-0',
+        type: 'shorePower',
+        position: { x: 200, y: 0 },
+        data: { label: 'Landstrom', hasRcd: false },
+      } as Node,
+      {
+        id: 'c230-1',
+        type: 'consumer230v',
+        position: { x: 400, y: 120 },
+        data: { label: 'Gerät', watts: 5 },
+      } as Node,
     ];
     const userEdge = {
       id: 'user-0',
@@ -690,9 +709,19 @@ describe('Shrinking-Anker (gemeldete Gegenbeispiele)', () => {
     // fiel zwischen DC-Dimensionierung (isAcEdge = true) und AC-Dimensionierung
     // (kein edgeDomain-Marker) hindurch.
     const nodes: Node[] = [
-      { id: 'b1', type: 'battery', position: { x: 0, y: 0 }, data: { label: 'Aufbau', capacity: 100 } } as Node,
+      {
+        id: 'b1',
+        type: 'battery',
+        position: { x: 0, y: 0 },
+        data: { label: 'Aufbau', capacity: 100 },
+      } as Node,
       { id: 'sp1', type: 'shorePower', position: { x: 300, y: 0 }, data: { label: 'Landstrom' } } as Node,
-      { id: 'c230', type: 'consumer230v', position: { x: 600, y: 0 }, data: { label: 'Kochfeld', watts: 2000 } } as Node,
+      {
+        id: 'c230',
+        type: 'consumer230v',
+        position: { x: 600, y: 0 },
+        data: { label: 'Kochfeld', watts: 2000 },
+      } as Node,
     ];
     const userEdge = {
       id: 'user-1',
@@ -719,7 +748,12 @@ describe('Shrinking-Anker (gemeldete Gegenbeispiele)', () => {
     // (usePlannerStore.isValidConnection + getEdgeDomain), er kann nur aus
     // beschädigten oder manuell importierten Daten stammen.
     const nodes: Node[] = [
-      { id: 'b1', type: 'battery', position: { x: 0, y: 0 }, data: { label: 'Aufbau', capacity: 100 } } as Node,
+      {
+        id: 'b1',
+        type: 'battery',
+        position: { x: 0, y: 0 },
+        data: { label: 'Aufbau', capacity: 100 },
+      } as Node,
       { id: 'x1', type: 'consumer230v', position: { x: 200, y: 0 }, data: { label: 'A', watts: 5 } } as Node,
       { id: 'x2', type: 'consumer230v', position: { x: 400, y: 0 }, data: { label: 'B', watts: 5 } } as Node,
     ];

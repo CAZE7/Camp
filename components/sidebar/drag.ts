@@ -30,7 +30,7 @@ export function addAtVisibleCenter(comp: Comp, onMobileAdd?: () => void) {
  * (Klick-Logik der Kachel), damit ein Scrollversuch in der Liste nicht
  * versehentlich etwas hinzufügt.
  */
-export const handlePointerDown = (event: React.PointerEvent, comp: Comp, onMobileAdd?: () => void) => {
+export const handlePointerDown = (event: React.PointerEvent, comp: Comp, _onMobileAdd?: () => void) => {
   if (window.innerWidth < 1024) return;
   event.preventDefault();
 
@@ -58,18 +58,21 @@ export const handlePointerDown = (event: React.PointerEvent, comp: Comp, onMobil
   };
 
   const onPointerUp = (upEvent: PointerEvent) => {
-    const isOverCanvas = document.elementsFromPoint(upEvent.clientX, upEvent.clientY)
+    const isOverCanvas = document
+      .elementsFromPoint(upEvent.clientX, upEvent.clientY)
       .some((element) => element.classList.contains('react-flow__pane'));
     if (isOverCanvas) {
-      window.dispatchEvent(new CustomEvent('custom-node-drop', {
-        detail: {
-          clientX: upEvent.clientX,
-          clientY: upEvent.clientY,
-          type: comp.type,
-          label: comp.label,
-          watts: comp.watts,
-        },
-      }));
+      window.dispatchEvent(
+        new CustomEvent('custom-node-drop', {
+          detail: {
+            clientX: upEvent.clientX,
+            clientY: upEvent.clientY,
+            type: comp.type,
+            label: comp.label,
+            watts: comp.watts,
+          },
+        })
+      );
     }
     cleanup();
   };

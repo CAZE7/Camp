@@ -75,7 +75,7 @@ import {
 
 // Keep a typed local alias so consumers can write `VDECrossSection`.
 // electrical.ts does not mark VDE_SIZES `as const`, so this is `number`.
-export type VDECrossSection = typeof VDE_SIZES[number];
+export type VDECrossSection = (typeof VDE_SIZES)[number];
 
 // ============================================================================
 // LEERROHR / KABELKANAL (60% Maximum nach VDE 0100-520)
@@ -208,8 +208,7 @@ export const VDE_BATTERY_DOD: Record<string, number> = {
  * lib/vde-standards.ts von lib/autoWire.ts abhängt (Zirkularität).
  * lib/autoWire.ts re-exportiert die Funktion unverändert.
  */
-export const isStarterBatteryLabel = (label: unknown): boolean =>
-  /start/i.test(String(label || ''));
+export const isStarterBatteryLabel = (label: unknown): boolean => /start/i.test(String(label || ''));
 
 /**
  * Nominale Netzspannung des 230-V-Kreises (DIN VDE 0100-721).
@@ -329,10 +328,7 @@ export function calculateEdgeCurrent(
     let total: Watts = ZERO_WATTS;
     for (const n of nodes) {
       if (n.type === 'consumer230v') {
-        total = addWatts(
-          total,
-          quantityOr((n.data as Record<string, unknown>)?.watts, watts, ZERO_WATTS)
-        );
+        total = addWatts(total, quantityOr((n.data as Record<string, unknown>)?.watts, watts, ZERO_WATTS));
       }
     }
     return total;
@@ -399,11 +395,7 @@ export function calculateEdgeCurrent(
  * Topologie (getEdgeDomain) sie als AC ausweist — exakt die Zuordnung, die
  * auch Anzeige und Validierung verwenden.
  */
-export function calculateAcEdgeCurrent(
-  sourceId: string | undefined,
-  nodes: Node[],
-  edges: Edge[]
-): Amps {
+export function calculateAcEdgeCurrent(sourceId: string | undefined, nodes: Node[], edges: Edge[]): Amps {
   const nodeMap = new Map<string, Node>();
   for (const node of nodes) {
     if (node) nodeMap.set(node.id, node);
@@ -445,10 +437,7 @@ export function calculateAcEdgeCurrent(
   visited.forEach((id) => {
     const node = nodeMap.get(id);
     if (node?.type === 'consumer230v') {
-      total = addWatts(
-        total,
-        quantityOr((node.data as Record<string, unknown>)?.watts, watts, ZERO_WATTS)
-      );
+      total = addWatts(total, quantityOr((node.data as Record<string, unknown>)?.watts, watts, ZERO_WATTS));
     }
   });
   return currentFromPower(total, AC_SYSTEM_VOLTAGE);

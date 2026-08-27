@@ -54,16 +54,16 @@ describe('ShuntNode Component', () => {
     const handles = screen.getAllByTestId('react-flow-handle');
     expect(handles.length).toBe(4);
 
-    const targetHandles = handles.filter(h => h.getAttribute('type') === 'target');
-    const sourceHandles = handles.filter(h => h.getAttribute('type') === 'source');
+    const targetHandles = handles.filter((h) => h.getAttribute('type') === 'target');
+    const sourceHandles = handles.filter((h) => h.getAttribute('type') === 'source');
 
     expect(targetHandles.length).toBe(2);
     expect(sourceHandles.length).toBe(2);
 
-    expect(targetHandles.find(h => h.getAttribute('id') === 'plus')).toBeInTheDocument();
-    expect(targetHandles.find(h => h.getAttribute('id') === 'minus')).toBeInTheDocument();
+    expect(targetHandles.find((h) => h.getAttribute('id') === 'plus')).toBeInTheDocument();
+    expect(targetHandles.find((h) => h.getAttribute('id') === 'minus')).toBeInTheDocument();
 
-    expect(sourceHandles.find(h => h.getAttribute('id') === 'plus')).toBeInTheDocument();
-    expect(sourceHandles.find(h => h.getAttribute('id') === 'minus')).toBeInTheDocument();
+    expect(sourceHandles.find((h) => h.getAttribute('id') === 'plus')).toBeInTheDocument();
+    expect(sourceHandles.find((h) => h.getAttribute('id') === 'minus')).toBeInTheDocument();
   });
 });

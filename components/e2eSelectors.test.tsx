@@ -97,9 +97,7 @@ describe('E2E-Selektoren — Vertrag mit tests/e2e', () => {
 
     expect(used.size, 'Die E2E-Suite verwendet keine testids?').toBeGreaterThan(5);
     const unknown = Array.from(used).filter((id) => !sources.includes(`data-testid="${id}"`));
-    expect(unknown, `In tests/e2e verwendet, aber nirgends gerendert: ${unknown.join(', ')}`).toEqual(
-      []
-    );
+    expect(unknown, `In tests/e2e verwendet, aber nirgends gerendert: ${unknown.join(', ')}`).toEqual([]);
   });
 
   it('die E2E-Suite verwendet kein waitForTimeout', () => {

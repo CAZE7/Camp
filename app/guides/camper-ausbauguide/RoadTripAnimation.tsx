@@ -1,13 +1,13 @@
-"use client";
+'use client';
 
-import React, { useRef } from "react";
-import gsap from "gsap";
-import { useGSAP } from "@gsap/react";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { MotionPathPlugin } from "gsap/MotionPathPlugin";
+import React, { useRef } from 'react';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { MotionPathPlugin } from 'gsap/MotionPathPlugin';
 
 // Register plugins & performance optimization
-if (typeof window !== "undefined") {
+if (typeof window !== 'undefined') {
   gsap.registerPlugin(ScrollTrigger, MotionPathPlugin, useGSAP);
   gsap.ticker.lagSmoothing(0);
 }
@@ -16,146 +16,160 @@ export default function RoadTripAnimation() {
   const containerRef = useRef<HTMLDivElement>(null);
   const camperRef = useRef<HTMLDivElement>(null);
 
-  useGSAP(() => {
-    // Reduced Motion respektieren: GSAP-Timelines mit scrub werden von der
-    // CSS-Media-Query nicht abgeschaltet, daher hier explizit prüfen.
-    const prefersReducedMotion =
-      typeof window !== "undefined" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  useGSAP(
+    () => {
+      // Reduced Motion respektieren: GSAP-Timelines mit scrub werden von der
+      // CSS-Media-Query nicht abgeschaltet, daher hier explizit prüfen.
+      const prefersReducedMotion =
+        typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    if (prefersReducedMotion) {
-      if (camperRef.current) {
-        camperRef.current.style.opacity = "0";
+      if (prefersReducedMotion) {
+        if (camperRef.current) {
+          camperRef.current.style.opacity = '0';
+        }
+        return;
       }
-      return;
-    }
 
-    const path = document.querySelector("#road-path") as SVGPathElement;
-    const pageWrapper = document.querySelector("#ausbau-page");
+      const path = document.querySelector('#road-path') as SVGPathElement;
+      const pageWrapper = document.querySelector('#ausbau-page');
 
-    if (!path || !camperRef.current || !pageWrapper) return;
+      if (!path || !camperRef.current || !pageWrapper) return;
 
-    // Dynamic will-change for performance (Lighthouse optimization)
-    let scrollTimeout: ReturnType<typeof setTimeout>;
-    const handleScroll = () => {
-      if (containerRef.current) {
-        containerRef.current.style.willChange = "transform";
-        containerRef.current.classList.add("is-scrolling");
-      }
-      if (camperRef.current) camperRef.current.style.willChange = "transform";
-      
-      clearTimeout(scrollTimeout);
-      scrollTimeout = setTimeout(() => {
+      // Dynamic will-change for performance (Lighthouse optimization)
+      let scrollTimeout: ReturnType<typeof setTimeout>;
+      const handleScroll = () => {
         if (containerRef.current) {
-          containerRef.current.style.willChange = "auto";
-          containerRef.current.classList.remove("is-scrolling");
+          containerRef.current.style.willChange = 'transform';
+          containerRef.current.classList.add('is-scrolling');
         }
-        if (camperRef.current) camperRef.current.style.willChange = "auto";
-      }, 100);
-    };
+        if (camperRef.current) camperRef.current.style.willChange = 'transform';
 
-    window.addEventListener("scroll", handleScroll, { passive: true });
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(() => {
+          if (containerRef.current) {
+            containerRef.current.style.willChange = 'auto';
+            containerRef.current.classList.remove('is-scrolling');
+          }
+          if (camperRef.current) camperRef.current.style.willChange = 'auto';
+        }, 100);
+      };
 
-    // SVG Path length for building effect
-    const pathLength = path.getTotalLength();
-    gsap.set(path, { strokeDasharray: pathLength, strokeDashoffset: pathLength });
+      window.addEventListener('scroll', handleScroll, { passive: true });
 
-    // Snapping points based on H2/H3 elements
-    const chapters = Array.from(pageWrapper.querySelectorAll("h2, h3"));
-    const snapPoints = chapters.map((_, i) => i / (chapters.length - 1 || 1));
+      // SVG Path length for building effect
+      const pathLength = path.getTotalLength();
+      gsap.set(path, { strokeDasharray: pathLength, strokeDashoffset: pathLength });
 
-    // Animate the camper along the SVG path
-    const tl = gsap.timeline({
-      scrollTrigger: {
-        trigger: pageWrapper,
-        start: "top top",
-        end: "bottom bottom",
-        scrub: 2,
-        snap: {
-          snapTo: snapPoints,
-          duration: { min: 0.2, max: 0.5 },
-          delay: 0.1,
-          ease: "power2.inOut"
+      // Snapping points based on H2/H3 elements
+      const chapters = Array.from(pageWrapper.querySelectorAll('h2, h3'));
+      const snapPoints = chapters.map((_, i) => i / (chapters.length - 1 || 1));
+
+      // Animate the camper along the SVG path
+      const tl = gsap.timeline({
+        scrollTrigger: {
+          trigger: pageWrapper,
+          start: 'top top',
+          end: 'bottom bottom',
+          scrub: 2,
+          snap: {
+            snapTo: snapPoints,
+            duration: { min: 0.2, max: 0.5 },
+            delay: 0.1,
+            ease: 'power2.inOut',
+          },
+          onUpdate: (self) => {
+            const progress = self.progress;
+
+            // Road building effect
+            gsap.set(path, { strokeDashoffset: pathLength * (1 - progress) });
+
+            // Evening Mode (Headlights)
+            const headlights = document.querySelectorAll('.camper-headlight');
+            gsap.to(headlights, { opacity: progress > 0.7 ? 1 : 0, duration: 0.3, force3D: true });
+
+            // Landmarks fade in
+            const landmarks = document.querySelectorAll('.landmark');
+            landmarks.forEach((landmark) => {
+              const pos = parseFloat(landmark.getAttribute('data-pos') || '0');
+              gsap.to(landmark, { opacity: progress > pos ? 1 : 0, duration: 0.5, force3D: true });
+            });
+          },
         },
-        onUpdate: (self) => {
-          const progress = self.progress;
-          
-          // Road building effect
-          gsap.set(path, { strokeDashoffset: pathLength * (1 - progress) });
-
-          // Evening Mode (Headlights)
-          const headlights = document.querySelectorAll(".camper-headlight");
-          gsap.to(headlights, { opacity: progress > 0.7 ? 1 : 0, duration: 0.3, force3D: true });
-
-          // Landmarks fade in
-          const landmarks = document.querySelectorAll(".landmark");
-          landmarks.forEach((landmark) => {
-            const pos = parseFloat(landmark.getAttribute("data-pos") || "0");
-            gsap.to(landmark, { opacity: progress > pos ? 1 : 0, duration: 0.5, force3D: true });
-          });
-        }
-      }
-    });
-
-    // Camper scale animation when passing chapters
-    chapters.forEach((chapter, i) => {
-      ScrollTrigger.create({
-        trigger: chapter,
-        start: "top center",
-        onEnter: () => {
-          gsap.to(camperRef.current, { scale: 1.2, duration: 0.2, yoyo: true, repeat: 1, force3D: true });
-        },
-        onEnterBack: () => {
-          gsap.to(camperRef.current, { scale: 1.2, duration: 0.2, yoyo: true, repeat: 1, force3D: true });
-        }
       });
-    });
 
-    tl.to(camperRef.current, {
-      motionPath: {
-        path: path,
-        align: path,
-        alignOrigin: [0.5, 0.5],
-        autoRotate: 90,
-      },
-      ease: "none",
-      duration: 1,
-      force3D: true,
-    }, 0);
+      // Camper scale animation when passing chapters
+      chapters.forEach((chapter) => {
+        ScrollTrigger.create({
+          trigger: chapter,
+          start: 'top center',
+          onEnter: () => {
+            gsap.to(camperRef.current, { scale: 1.2, duration: 0.2, yoyo: true, repeat: 1, force3D: true });
+          },
+          onEnterBack: () => {
+            gsap.to(camperRef.current, { scale: 1.2, duration: 0.2, yoyo: true, repeat: 1, force3D: true });
+          },
+        });
+      });
 
-    // Ambient UI Interpolation
-    tl.to(document.documentElement, {
-      "--ambient-bg": "#fffdf9",
-      "--ambient-glow": "rgba(255,253,249,0.5)",
-      ease: "none",
-      duration: 0.5,
-      force3D: true
-    }, 0);
+      tl.to(
+        camperRef.current,
+        {
+          motionPath: {
+            path: path,
+            align: path,
+            alignOrigin: [0.5, 0.5],
+            autoRotate: 90,
+          },
+          ease: 'none',
+          duration: 1,
+          force3D: true,
+        },
+        0
+      );
 
-    tl.to(document.documentElement, {
-      "--ambient-bg": "#f6f1e8",
-      "--ambient-glow": "rgba(246,241,232,0.5)",
-      ease: "none",
-      duration: 0.5,
-      force3D: true
-    }, 0.5);
-    
-    // Reveal the camper
-    if (camperRef.current) {
-      gsap.to(camperRef.current, { opacity: 1, duration: 0.5, force3D: true });
-    }
+      // Ambient UI Interpolation
+      tl.to(
+        document.documentElement,
+        {
+          '--ambient-bg': '#fffdf9',
+          '--ambient-glow': 'rgba(255,253,249,0.5)',
+          ease: 'none',
+          duration: 0.5,
+          force3D: true,
+        },
+        0
+      );
 
-    return () => {
-      window.removeEventListener("scroll", handleScroll);
-    };
-  }, { scope: containerRef });
+      tl.to(
+        document.documentElement,
+        {
+          '--ambient-bg': '#f6f1e8',
+          '--ambient-glow': 'rgba(246,241,232,0.5)',
+          ease: 'none',
+          duration: 0.5,
+          force3D: true,
+        },
+        0.5
+      );
+
+      // Reveal the camper
+      if (camperRef.current) {
+        gsap.to(camperRef.current, { opacity: 1, duration: 0.5, force3D: true });
+      }
+
+      return () => {
+        window.removeEventListener('scroll', handleScroll);
+      };
+    },
+    { scope: containerRef }
+  );
 
   return (
     <div
       ref={containerRef}
       aria-hidden="true"
       className="road-trip-animation fixed left-0 top-0 w-24 md:w-32 lg:w-48 h-screen pointer-events-none z-10 opacity-0 lg:opacity-100 gpu-accelerated"
-      style={{ isolation: "isolate", willChange: "transform", backfaceVisibility: "hidden" }} // Layer Isolation + GPU
+      style={{ isolation: 'isolate', willChange: 'transform', backfaceVisibility: 'hidden' }} // Layer Isolation + GPU
     >
       <svg
         className="w-full h-full speed-svg"
@@ -174,7 +188,7 @@ export default function RoadTripAnimation() {
           opacity="0.1"
           strokeDasharray="4 4"
           className="gpu-accelerated"
-          style={{ willChange: "transform", backfaceVisibility: "hidden" }}
+          style={{ willChange: 'transform', backfaceVisibility: 'hidden' }}
         />
 
         {/* The Road - Animated building path */}
@@ -187,7 +201,7 @@ export default function RoadTripAnimation() {
           strokeDasharray="8 10"
           strokeLinecap="round"
           className="gpu-accelerated"
-          style={{ willChange: "transform", backfaceVisibility: "hidden" }}
+          style={{ willChange: 'transform', backfaceVisibility: 'hidden' }}
         />
 
         {/* Landmarks */}
@@ -197,7 +211,7 @@ export default function RoadTripAnimation() {
           <path d="M 142 315 L 150 295 L 158 315 Z" fill="#065f46" />
           <rect x="148" y="315" width="4" height="6" fill="#78350f" />
         </g>
-        
+
         <g className="landmark" data-pos="0.6" style={{ opacity: 0 }}>
           {/* Mountain Symbol */}
           <path d="M 30 600 L 50 560 L 70 600 Z" fill="#44403c" />
@@ -213,20 +227,35 @@ export default function RoadTripAnimation() {
       <div
         ref={camperRef}
         className="road-trip-camper absolute w-12 h-12 flex items-center justify-center bg-bone rounded-xl border-2 border-moss text-moss gpu-accelerated"
-        style={{ top: 0, left: 0, opacity: 0, willChange: "transform", backfaceVisibility: "hidden" }}
+        style={{ top: 0, left: 0, opacity: 0, willChange: 'transform', backfaceVisibility: 'hidden' }}
       >
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-8 h-8 relative">
-           <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/>
-           <circle cx="7" cy="17" r="2.5" fill="#2d3d28" stroke="none" />
-           <path d="M9 17h6"/>
-           <circle cx="17" cy="17" r="2.5" fill="#2d3d28" stroke="none" />
-           
-           {/* Headlights (Evening Mode) */}
-           <circle className="camper-headlight" cx="21" cy="13" r="1.5" fill="#fbbf24" style={{ opacity: 0 }} />
-           <circle className="camper-headlight" cx="21" cy="15" r="1" fill="#fbbf24" style={{ opacity: 0 }} />
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="w-8 h-8 relative"
+        >
+          <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2" />
+          <circle cx="7" cy="17" r="2.5" fill="#2d3d28" stroke="none" />
+          <path d="M9 17h6" />
+          <circle cx="17" cy="17" r="2.5" fill="#2d3d28" stroke="none" />
+
+          {/* Headlights (Evening Mode) */}
+          <circle
+            className="camper-headlight"
+            cx="21"
+            cy="13"
+            r="1.5"
+            fill="#fbbf24"
+            style={{ opacity: 0 }}
+          />
+          <circle className="camper-headlight" cx="21" cy="15" r="1" fill="#fbbf24" style={{ opacity: 0 }} />
         </svg>
       </div>
     </div>
-
   );
 }

@@ -65,7 +65,7 @@ describe('CableEdge', () => {
   });
 
   it('renders correctly with default props', () => {
-    const { getByTestId, getByText } = render(<CableEdge {...defaultProps} />);
+    const { getByTestId } = render(<CableEdge {...defaultProps} />);
 
     expect(getByTestId('base-edge')).toBeInTheDocument();
     expect(getByTestId('edge-label-renderer')).toBeInTheDocument();
@@ -129,7 +129,7 @@ describe('CableEdge', () => {
       getNode: vi.fn(),
       getNodes: vi.fn().mockReturnValue([
         { type: 'consumer', data: { watts: 120 } }, // 10A
-        { type: 'consumer', data: { watts: 60 } },  // 5A
+        { type: 'consumer', data: { watts: 60 } }, // 5A
       ]), // Total I = 15A
     });
 
@@ -137,7 +137,7 @@ describe('CableEdge', () => {
     // VDE_SIZES = [... 10.0, 16.0, ...], first size >= 10.77 is 16.0
     // cs = 16.0 => mf = 40
 
-    const { getByText } = render(<CableEdge {...defaultProps} selected={true} />);
+    render(<CableEdge {...defaultProps} selected={true} />);
 
     // expect(getByText('16 mm²')).toBeInTheDocument(); // Smart labeling hides this
     // NEU-HIGH-B: New derated FUSE_MAP value for 16mm² in camper conditions = 70A (was 100A)
@@ -172,7 +172,7 @@ describe('CableEdge', () => {
   });
 
   it('renders fuseSize if provided in data', () => {
-    const { getByText } = render(<CableEdge {...defaultProps} data={{ length: 5, fuseSize: 40 }} />);
+    render(<CableEdge {...defaultProps} data={{ length: 5, fuseSize: 40 }} />);
 
     // expect(getByText('40A Sicherung')).toBeInTheDocument(); // Smart labeling hides this
   });
@@ -194,7 +194,7 @@ describe('CableEdge', () => {
       getNodes: vi.fn().mockReturnValue([]),
     });
 
-    const { getByText, queryByText } = render(
+    const { queryByText } = render(
       <CableEdge {...defaultProps} data={{ length: 5, edgeDomain: 'AC_230V' }} />
     );
 
@@ -247,8 +247,24 @@ describe('CableEdge', () => {
       { id: '3', type: 'consumer', position: { x: 300, y: 0 }, data: { watts: 120 } },
     ];
     const edges = [
-      { id: 'e1-2', source: '1', target: '2', sourceHandle: 'plus', targetHandle: 'plus', type: 'cableEdge', data: { length: 5, crossSection: 1.5, edgeDomain: 'DC_12V' } },
-      { id: 'e2-3', source: '2', target: '3', sourceHandle: 'plus', targetHandle: 'plus', type: 'cableEdge', data: { length: 5, crossSection: 1.5, edgeDomain: 'DC_12V' } },
+      {
+        id: 'e1-2',
+        source: '1',
+        target: '2',
+        sourceHandle: 'plus',
+        targetHandle: 'plus',
+        type: 'cableEdge',
+        data: { length: 5, crossSection: 1.5, edgeDomain: 'DC_12V' },
+      },
+      {
+        id: 'e2-3',
+        source: '2',
+        target: '3',
+        sourceHandle: 'plus',
+        targetHandle: 'plus',
+        type: 'cableEdge',
+        data: { length: 5, crossSection: 1.5, edgeDomain: 'DC_12V' },
+      },
     ] as any;
     usePlannerStore.setState({ nodes, edges } as any);
     (useReactFlow as any).mockReturnValue({

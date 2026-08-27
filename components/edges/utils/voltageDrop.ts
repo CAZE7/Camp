@@ -1,7 +1,12 @@
 import type { Node, Edge } from 'reactflow';
 import type { CableEdgeData } from '../CableEdge';
 import { calculateCrossSection, getEdgeDomain } from '../../../lib/electrical';
-import { AC_SYSTEM_VOLTAGE, calculateAcEdgeCurrent, calculateEdgeCurrent, getSystemVoltage } from '../../../lib/vde-standards';
+import {
+  AC_SYSTEM_VOLTAGE,
+  calculateAcEdgeCurrent,
+  calculateEdgeCurrent,
+  getSystemVoltage,
+} from '../../../lib/vde-standards';
 
 /**
  * Einheitliche Spannungsfall-Berechnung für Kabel-Kanten.
@@ -79,9 +84,11 @@ export function edgeDropInputs(
  * (DIN VDE 0298-4). Früher wurden AC-Leitungen hier pauschal übersprungen —
  * lange, hoch belastete 230-V-Leitungen blieben ohne Fehleranzeige.
  */
-export function hasVoltageDropError(input: EdgeDropInputs & {
-  cumulativeDropVolts: number;
-}): { totalDropPercentage: number; hasDropError: boolean } {
+export function hasVoltageDropError(
+  input: EdgeDropInputs & {
+    cumulativeDropVolts: number;
+  }
+): { totalDropPercentage: number; hasDropError: boolean } {
   const { I, length, crossSection, sysVoltage, cumulativeDropVolts } = input;
   const ownDrop = (I * (length * 2)) / (COPPER_CONDUCTIVITY * crossSection);
   const ownPct = sysVoltage > 0 ? (ownDrop / sysVoltage) * 100 : 0;

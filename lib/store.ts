@@ -23,7 +23,11 @@ function migrateAppPersisted(persisted: unknown, version: number): Partial<AppSt
   const p = (persisted ?? {}) as Partial<AppState>;
   const safe: Partial<AppState> = {};
 
-  if (typeof p.calculatedSolarWatts === 'number' && Number.isFinite(p.calculatedSolarWatts) && p.calculatedSolarWatts >= 0) {
+  if (
+    typeof p.calculatedSolarWatts === 'number' &&
+    Number.isFinite(p.calculatedSolarWatts) &&
+    p.calculatedSolarWatts >= 0
+  ) {
     safe.calculatedSolarWatts = p.calculatedSolarWatts;
   }
   if (typeof p.hasOnboarded === 'boolean') safe.hasOnboarded = p.hasOnboarded;

@@ -13,7 +13,7 @@ describe('useSequentialTapConnect', () => {
   let mockIsValidConnection: any;
   let mockSetFirstTappedHandle: any;
 
-  let currentFirstTappedHandle: { nodeId: string, handleId: string, handleType: string } | null = null;
+  let currentFirstTappedHandle: { nodeId: string; handleId: string; handleType: string } | null = null;
 
   beforeEach(() => {
     vi.clearAllMocks();

@@ -108,7 +108,9 @@ describe('avoidObstacles', () => {
 
     // Der Pfad darf das aufgeblähte Hindernis nicht mehr kreuzen.
     for (let i = 0; i < routed.length - 1; i++) {
-      expect(segmentCrossesRect(routed[i], routed[i + 1], { x: 70, y: 70, width: 60, height: 60 })).toBe(false);
+      expect(segmentCrossesRect(routed[i], routed[i + 1], { x: 70, y: 70, width: 60, height: 60 })).toBe(
+        false
+      );
     }
     expect(routed.length).toBeGreaterThan(2);
   });
@@ -142,7 +144,12 @@ describe('waypointsToPath', () => {
 
 describe('polylineMidpoint', () => {
   it('returns the middle of a straight line', () => {
-    expect(polylineMidpoint([{ x: 0, y: 0 }, { x: 100, y: 0 }])).toEqual({ x: 50, y: 0 });
+    expect(
+      polylineMidpoint([
+        { x: 0, y: 0 },
+        { x: 100, y: 0 },
+      ])
+    ).toEqual({ x: 50, y: 0 });
   });
 });
 
@@ -181,8 +188,30 @@ describe('nodesToObstacles', () => {
 
 describe('Kreuzungs-Erkennung', () => {
   it('detects crossing segments and ignores parallel ones', () => {
-    expect(segmentsIntersect([{ x: 0, y: 0 }, { x: 10, y: 0 }], [{ x: 5, y: -5 }, { x: 5, y: 5 }])).toBe(true);
-    expect(segmentsIntersect([{ x: 0, y: 0 }, { x: 10, y: 0 }], [{ x: 0, y: 8 }, { x: 10, y: 8 }])).toBe(false);
+    expect(
+      segmentsIntersect(
+        [
+          { x: 0, y: 0 },
+          { x: 10, y: 0 },
+        ],
+        [
+          { x: 5, y: -5 },
+          { x: 5, y: 5 },
+        ]
+      )
+    ).toBe(true);
+    expect(
+      segmentsIntersect(
+        [
+          { x: 0, y: 0 },
+          { x: 10, y: 0 },
+        ],
+        [
+          { x: 0, y: 8 },
+          { x: 10, y: 8 },
+        ]
+      )
+    ).toBe(false);
   });
 
   it('counts every crossing of a polyline', () => {
@@ -192,17 +221,35 @@ describe('Kreuzungs-Erkennung', () => {
       { x: 100, y: 100 },
     ];
     const others: Segment[] = [
-      [{ x: 20, y: -10 }, { x: 20, y: 10 }],
-      [{ x: 60, y: -10 }, { x: 60, y: 10 }],
-      [{ x: 90, y: 50 }, { x: 110, y: 50 }],
-      [{ x: 0, y: 500 }, { x: 100, y: 500 }],
+      [
+        { x: 20, y: -10 },
+        { x: 20, y: 10 },
+      ],
+      [
+        { x: 60, y: -10 },
+        { x: 60, y: 10 },
+      ],
+      [
+        { x: 90, y: 50 },
+        { x: 110, y: 50 },
+      ],
+      [
+        { x: 0, y: 500 },
+        { x: 100, y: 500 },
+      ],
     ];
     expect(countCrossings(route, others)).toBe(3);
     expect(countCrossings(route, [])).toBe(0);
   });
 
   it('turns waypoints into segments', () => {
-    expect(waypointsToSegments([{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }])).toHaveLength(2);
+    expect(
+      waypointsToSegments([
+        { x: 0, y: 0 },
+        { x: 1, y: 0 },
+        { x: 1, y: 1 },
+      ])
+    ).toHaveLength(2);
   });
 });
 
@@ -224,10 +271,13 @@ describe('buildOrthogonalPath — Ausweichroute bei Kabelknäuel', () => {
   });
 
   it('keeps the standard lane at three or fewer crossings (no nervous re-routing)', () => {
-    const others: Segment[] = [40, 120, 160].map((y) => [
-      { x: 150, y },
-      { x: 250, y },
-    ] as Segment);
+    const others: Segment[] = [40, 120, 160].map(
+      (y) =>
+        [
+          { x: 150, y },
+          { x: 250, y },
+        ] as Segment
+    );
     const result = buildOrthogonalPath({ ...base, crossingSegments: others });
     const reference = buildOrthogonalPath(base);
     expect(result.crossings).toBeLessThanOrEqual(MAX_ACCEPTABLE_CROSSINGS);
@@ -237,10 +287,13 @@ describe('buildOrthogonalPath — Ausweichroute bei Kabelknäuel', () => {
   it('picks a wider lane when more than three cables are crossed', () => {
     // Vier kurze Sperren genau auf dem vertikalen Standard-Korridor (x = 200),
     // die eine um 32 px versetzte Route (x = 232) nicht mehr trifft.
-    const others: Segment[] = [20, 40, 60, 80].map((y) => [
-      { x: 190, y },
-      { x: 210, y },
-    ] as Segment);
+    const others: Segment[] = [20, 40, 60, 80].map(
+      (y) =>
+        [
+          { x: 190, y },
+          { x: 210, y },
+        ] as Segment
+    );
 
     const standard = buildOrthogonalPath(base);
     const standardCrossings = countCrossings(orthogonalWaypoints(base).waypoints, others);

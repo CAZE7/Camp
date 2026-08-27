@@ -22,13 +22,7 @@ const ITEM_CLASS =
  * Positionierung per `fixed` an den Cursor, mit Clamping an den Viewport,
  * damit das Menü am rechten/unteren Rand nicht abgeschnitten wird.
  */
-export function CanvasContextMenu({
-  state,
-  onClose,
-}: {
-  state: ContextMenuState;
-  onClose: () => void;
-}) {
+export function CanvasContextMenu({ state, onClose }: { state: ContextMenuState; onClose: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -53,7 +47,12 @@ export function CanvasContextMenu({
 
   const deleteTarget = () => {
     const targetLabel = state.targetType === 'node' ? state.label || 'Dieses Bauteil' : 'Diese Leitung';
-    if (!window.confirm(`${targetLabel} wirklich löschen? Du kannst die Aktion anschließend mit Rückgängig wiederherstellen.`)) return;
+    if (
+      !window.confirm(
+        `${targetLabel} wirklich löschen? Du kannst die Aktion anschließend mit Rückgängig wiederherstellen.`
+      )
+    )
+      return;
     const store = usePlannerStore.getState();
     if (state.targetType === 'node' && state.targetId) {
       const node =
@@ -78,11 +77,15 @@ export function CanvasContextMenu({
   };
 
   const focusTarget = () => {
-    if (state.targetId) usePlannerStore.getState().focusElement(state.targetId, state.targetType === 'edge' ? 'edge' : 'node');
+    if (state.targetId)
+      usePlannerStore.getState().focusElement(state.targetId, state.targetType === 'edge' ? 'edge' : 'node');
     onClose();
   };
 
-  const clampedLeft = Math.min(state.x, (typeof window !== 'undefined' ? window.innerWidth : 1024) - MENU_WIDTH - 8);
+  const clampedLeft = Math.min(
+    state.x,
+    (typeof window !== 'undefined' ? window.innerWidth : 1024) - MENU_WIDTH - 8
+  );
   const clampedTop = Math.min(state.y, (typeof window !== 'undefined' ? window.innerHeight : 768) - 200);
 
   return (
@@ -94,7 +97,9 @@ export function CanvasContextMenu({
       style={{ left: Math.max(8, clampedLeft), top: Math.max(8, clampedTop), width: MENU_WIDTH }}
     >
       {state.label && (
-        <p className="px-3 py-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{state.label}</p>
+        <p className="px-3 py-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          {state.label}
+        </p>
       )}
 
       {state.targetType !== 'pane' && (
@@ -117,7 +122,12 @@ export function CanvasContextMenu({
             <Crosshair className="h-4 w-4" aria-hidden="true" />
             Ansehen und markieren
           </button>
-          <button type="button" role="menuitem" className={`${ITEM_CLASS} text-destructive`} onClick={deleteTarget}>
+          <button
+            type="button"
+            role="menuitem"
+            className={`${ITEM_CLASS} text-destructive`}
+            onClick={deleteTarget}
+          >
             <Trash2 className="h-4 w-4" aria-hidden="true" />
             Löschen
           </button>

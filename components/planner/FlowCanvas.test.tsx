@@ -1,9 +1,8 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { FlowCanvas } from './FlowCanvas';
 import { usePlannerStore } from '../../store/usePlannerStore';
-import * as StoreModule from '../../store/usePlannerStore';
 import { useAppStore } from '../../lib/store';
 import { useDashboardMetrics } from './hooks/useDashboardMetrics';
 
@@ -34,11 +33,16 @@ vi.mock('reactflow', async () => {
       getNode: vi.fn(),
       setCenter: vi.fn(),
     }),
-    useStore: (selector: (state: { transform: [number, number, number] }) => unknown) => selector({ transform: [0, 0, 1] }),
+    useStore: (selector: (state: { transform: [number, number, number] }) => unknown) =>
+      selector({ transform: [0, 0, 1] }),
     Background: () => <div data-testid="rf-background" />,
     Controls: () => <div data-testid="rf-controls" />,
     MiniMap: () => <div data-testid="rf-minimap" />,
-    Panel: ({ children, position, className }: any) => <div data-testid={`rf-panel-${position}`} className={className}>{children}</div>,
+    Panel: ({ children, position, className }: any) => (
+      <div data-testid={`rf-panel-${position}`} className={className}>
+        {children}
+      </div>
+    ),
     default: ({ children, nodes, edges, onDragOver, onDrop, className }: any) => (
       <div
         data-testid="react-flow-mock"
@@ -198,10 +202,17 @@ describe('FlowCanvas', () => {
   });
 
   it('shows a mobile overview action only for more than eight nodes', () => {
-    vi.mocked(usePlannerStore).mockImplementation((selector: any) => selector({
-      ...defaultPlannerStoreState,
-      nodes: Array.from({ length: 9 }, (_, index) => ({ id: `n${index}`, type: 'consumer', position: { x: index * 20, y: 0 }, data: {} })),
-    }));
+    vi.mocked(usePlannerStore).mockImplementation((selector: any) =>
+      selector({
+        ...defaultPlannerStoreState,
+        nodes: Array.from({ length: 9 }, (_, index) => ({
+          id: `n${index}`,
+          type: 'consumer',
+          position: { x: index * 20, y: 0 },
+          data: {},
+        })),
+      })
+    );
     render(<FlowCanvas />);
     fireEvent.click(screen.getByTestId('mobile-overview'));
     expect(mockFitView).toHaveBeenCalledWith({ duration: 400, padding: 0.2 });
@@ -238,8 +249,12 @@ describe('FlowCanvas', () => {
     const reactFlowElement = screen.getByTestId('react-flow-mock');
 
     // In water mode, nodes and edges should correspond to defaultPlannerStoreState.waterNodes/waterEdges
-    expect(reactFlowElement.getAttribute('data-nodes')).toBe(JSON.stringify(defaultPlannerStoreState.waterNodes));
-    expect(reactFlowElement.getAttribute('data-edges')).toBe(JSON.stringify(defaultPlannerStoreState.waterEdges));
+    expect(reactFlowElement.getAttribute('data-nodes')).toBe(
+      JSON.stringify(defaultPlannerStoreState.waterNodes)
+    );
+    expect(reactFlowElement.getAttribute('data-edges')).toBe(
+      JSON.stringify(defaultPlannerStoreState.waterEdges)
+    );
   });
 
   describe('User Interactions', () => {
@@ -390,7 +405,7 @@ describe('FlowCanvas', () => {
   describe('Metrics & Warnings', () => {
     it('displays water warning when viewMode is water and warning exists', () => {
       Object.assign(usePlannerStore, { getState: () => defaultPlannerStoreState });
-    vi.mocked(usePlannerStore).mockImplementation((selector: any) => {
+      vi.mocked(usePlannerStore).mockImplementation((selector: any) => {
         return selector({
           ...defaultPlannerStoreState,
           viewMode: 'water',

@@ -4,12 +4,12 @@ Stand: 2026-08-21 · Betrifft AGENTS.md **K2** · Datei: `lib/vde-properties.tes
 
 ## 1. Warum fast-check?
 
-Die vorhandenen Tests prüfen Beispiele: *„20 A auf 5 m ergibt 6 mm².“* Sie
+Die vorhandenen Tests prüfen Beispiele: _„20 A auf 5 m ergibt 6 mm².“_ Sie
 belegen einzelne Punkte, aber keine Regel. Bei sicherheitsrelevanter
 Auslegung ist aber genau die Regel interessant:
 
 > Eine Sicherung darf **niemals** größer sein als das, was das Kabel aushält —
-> für *jeden* Strom und *jeden* Querschnitt.
+> für _jeden_ Strom und _jeden_ Querschnitt.
 
 `fast-check` (4.9.0, devDependency) erzeugt dafür tausende Eingaben aus
 definierten Wertebereichen, schrumpft ein gefundenes Gegenbeispiel auf den
@@ -20,15 +20,15 @@ Fehler, den die Property-Tests gefunden haben und der behoben wurde.
 
 ## 2. Die geprüften Gesetze
 
-| ID | Gesetz | Läufe |
-|----|--------|-------|
-| G1 | Sicherungs-Sandwich: Laststrom ≤ Sicherung ≤ `FUSE_MAP[Querschnitt]` | 1.000 |
-| G2 | Monotonie der Sicherungsauswahl (Strom ↑ ⇒ Sicherung nie ↓, Querschnitt ↑ ⇒ Sicherung nie ↓) | 1.000 |
-| G3 | Monotonie des Spannungsfalls (Länge ↑ ⇒ Abfall nie ↓, Querschnitt ↑ ⇒ Abfall nie ↑) + Linearität im Strom | 1.000 |
-| G4 | Monotonie der Querschnittsauswahl (Strom ↑ ⇒ Querschnitt nie ↓) + Ergebnis immer aus der Normreihe | 1.000 |
-| G5 | Idempotenz von `performAutoWiring` (2. Lauf identisch, 3. Lauf ebenfalls) | 1.000 / 200 |
-| G6 | AC/DC-Trennung jeder erzeugten Verbindung, Domänen-Markierung, Polgleichheit, „kein Kabel ohne Querschnitt“ | 1.000 |
-| — | Systemspannung: immer positiv, endlich, reihenfolgeunabhängig | 1.000 |
+| ID  | Gesetz                                                                                                      | Läufe       |
+| --- | ----------------------------------------------------------------------------------------------------------- | ----------- |
+| G1  | Sicherungs-Sandwich: Laststrom ≤ Sicherung ≤ `FUSE_MAP[Querschnitt]`                                        | 1.000       |
+| G2  | Monotonie der Sicherungsauswahl (Strom ↑ ⇒ Sicherung nie ↓, Querschnitt ↑ ⇒ Sicherung nie ↓)                | 1.000       |
+| G3  | Monotonie des Spannungsfalls (Länge ↑ ⇒ Abfall nie ↓, Querschnitt ↑ ⇒ Abfall nie ↑) + Linearität im Strom   | 1.000       |
+| G4  | Monotonie der Querschnittsauswahl (Strom ↑ ⇒ Querschnitt nie ↓) + Ergebnis immer aus der Normreihe          | 1.000       |
+| G5  | Idempotenz von `performAutoWiring` (2. Lauf identisch, 3. Lauf ebenfalls)                                   | 1.000 / 200 |
+| G6  | AC/DC-Trennung jeder erzeugten Verbindung, Domänen-Markierung, Polgleichheit, „kein Kabel ohne Querschnitt“ | 1.000       |
+| —   | Systemspannung: immer positiv, endlich, reihenfolgeunabhängig                                               | 1.000       |
 
 Zusätzlich prüft G1 die Tabellen-Invariante `FUSE_MAP[A] ≤ VDE_AMPACITY[A]`
 für die gesamte Normreihe.
@@ -40,13 +40,13 @@ exakt wiederholbar, ein Gegenbeispiel damit reproduzierbar.
 
 Realistische Wertebereiche statt „alles was `number` kann“:
 
-| Generator | Bereich | Begründung |
-|-----------|---------|------------|
-| `currentA` | 0.1 – 250 A | LED-Streifen bis Wechselrichter-Einspeisung |
-| `lengthM` | 0.1 – 15 m | Batterie→Shunt bis Heck→Fahrerhaus |
-| `crossSection` | VDE-Normreihe 1.5 – 70 mm² | nur real beschaffbare Querschnitte |
-| `wattage` | 5 – 3000 W | USB-Ladegerät bis Induktionskochfeld |
-| `planArbitrary` | 1 Batterie + 0–6 Komponenten | typische Camper-Pläne |
+| Generator                    | Bereich                      | Begründung                                              |
+| ---------------------------- | ---------------------------- | ------------------------------------------------------- |
+| `currentA`                   | 0.1 – 250 A                  | LED-Streifen bis Wechselrichter-Einspeisung             |
+| `lengthM`                    | 0.1 – 15 m                   | Batterie→Shunt bis Heck→Fahrerhaus                      |
+| `crossSection`               | VDE-Normreihe 1.5 – 70 mm²   | nur real beschaffbare Querschnitte                      |
+| `wattage`                    | 5 – 3000 W                   | USB-Ladegerät bis Induktionskochfeld                    |
+| `planArbitrary`              | 1 Batterie + 0–6 Komponenten | typische Camper-Pläne                                   |
 | `planWithUserEdgesArbitrary` | zusätzlich 0–4 Nutzer-Kanten | Pläne, in die der Nutzer schon selbst Kabel gezogen hat |
 
 Der Kantengenerator bildet die Regeln der UI nach: er erzeugt nur
@@ -58,7 +58,7 @@ entstehen können.
 
 ## 4. Echter Fund: undimensionierte 230-V-Leitung
 
-**Symptom.** Das Gesetz *„jede Kante ist nach der Verdrahtung dimensioniert“*
+**Symptom.** Das Gesetz _„jede Kante ist nach der Verdrahtung dimensioniert“_
 schlug fehl, sobald der Plan eine Nutzer-Kante zwischen Landstrom und einem
 230-V-Gerät ohne gespeicherte Domänen-Markierung enthielt.
 
@@ -82,13 +82,13 @@ AC sind, werden vor der Dimensionierung als `AC_230V` markiert. Danach:
 Ein grüner Property-Test beweist nichts, wenn er auch bei kaputtem Code grün
 bliebe. Drei gezielte Verfälschungen der Produktionslogik:
 
-| # | Mutation | Ergebnis | Geshrinktes Gegenbeispiel |
-|---|----------|----------|---------------------------|
-| 1 | `selectFuseSize` sucht ohne Obergrenze (`size >= minFuse`) | **3 Tests rot** (G1) | `[16.000000000000004, 1.5]` |
-| 2 | `calculateCrossSection` fällt auf 1.5 statt 70 mm² zurück | **1 Test rot** (G4) | `[1.044000000000002, 48.72000000000009, 15]` |
-| 3 | `isAcEdge` liefert immer `false` | zunächst **grün** → Lücke! | — |
+| #   | Mutation                                                   | Ergebnis                   | Geshrinktes Gegenbeispiel                    |
+| --- | ---------------------------------------------------------- | -------------------------- | -------------------------------------------- |
+| 1   | `selectFuseSize` sucht ohne Obergrenze (`size >= minFuse`) | **3 Tests rot** (G1)       | `[16.000000000000004, 1.5]`                  |
+| 2   | `calculateCrossSection` fällt auf 1.5 statt 70 mm² zurück  | **1 Test rot** (G4)        | `[1.044000000000002, 48.72000000000009, 15]` |
+| 3   | `isAcEdge` liefert immer `false`                           | zunächst **grün** → Lücke! | —                                            |
 
-Mutation 3 deckte eine Schwäche der *Tests* auf: der ursprüngliche Generator
+Mutation 3 deckte eine Schwäche der _Tests_ auf: der ursprüngliche Generator
 erzeugte keine Nutzer-Kanten, also wurde `isAcEdge` nie erreicht. Nach
 Ergänzung von `planWithUserEdgesArbitrary` meldet G6 den Mutanten mit dem
 Gegenbeispiel `shorePower-0 → consumer230v-1, edgeDomain: undefined`.

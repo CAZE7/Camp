@@ -6,7 +6,7 @@ const numDevices = 500;
 const nodes = Array.from({ length: numNodes }, (_, i) => ({
   id: `node-${i}`,
   type: i % 10 === 0 ? 'consumer230v' : 'other',
-  data: { watts: 100 }
+  data: { watts: 100 },
 }));
 
 const concurrentDevices = Array.from({ length: numDevices }, (_, i) => `node-${i * 20}`);
@@ -15,7 +15,7 @@ const concurrentDevices = Array.from({ length: numDevices }, (_, i) => `node-${i
 const startBaseline = performance.now();
 for (let j = 0; j < 1000; j++) {
   let totalWatts = 0;
-  nodes.forEach(n => {
+  nodes.forEach((n) => {
     if (n.type === 'consumer230v' && concurrentDevices.includes(n.id)) {
       totalWatts += n.data?.watts || 0;
     }

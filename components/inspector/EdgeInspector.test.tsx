@@ -9,7 +9,7 @@ describe('EdgeInspector Component', () => {
     id: 'edge-1',
     source: 'node-1',
     target: 'node-2',
-    data: {}
+    data: {},
   };
 
   beforeEach(() => {

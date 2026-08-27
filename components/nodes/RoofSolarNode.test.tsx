@@ -73,9 +73,10 @@ describe('RoofSolarNode Component', () => {
     fireEvent.click(resizer);
 
     expect(mockOnNodeResize).toHaveBeenCalledTimes(1);
-    expect(mockOnNodeResize).toHaveBeenCalledWith(
-      expect.any(Object),
-      { id: 'test-id', width: 120, height: 80 }
-    );
+    expect(mockOnNodeResize).toHaveBeenCalledWith(expect.any(Object), {
+      id: 'test-id',
+      width: 120,
+      height: 80,
+    });
   });
 });

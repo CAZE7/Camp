@@ -1,5 +1,15 @@
 import React, { useMemo, useRef, useState } from 'react';
-import ReactFlow, { Background, Controls, MiniMap, Panel, useReactFlow, useStore, Connection, Viewport, Node } from 'reactflow';
+import ReactFlow, {
+  Background,
+  Controls,
+  MiniMap,
+  Panel,
+  useReactFlow,
+  useStore,
+  Connection,
+  Viewport,
+  Node,
+} from 'reactflow';
 import { Map as MapIcon } from 'lucide-react';
 import 'reactflow/dist/style.css';
 import { useShallow } from 'zustand/react/shallow';
@@ -25,11 +35,22 @@ import { useSequentialTapConnect } from './hooks/useSequentialTapConnect';
 import { usePlannerDragDrop } from './hooks/usePlannerDragDrop';
 import { useCoarsePointer } from './hooks/useMediaCapabilities';
 import { useLongPressNodeDrag } from './hooks/useLongPressNodeDrag';
-import { getFlowInteractionProps, pointerModeFromCoarse, NODE_DRAG_HANDLE_SELECTOR } from './utils/flowInteraction';
+import {
+  getFlowInteractionProps,
+  pointerModeFromCoarse,
+  NODE_DRAG_HANDLE_SELECTOR,
+} from './utils/flowInteraction';
 import { withNodeDragHandles } from './ui/NodeDragHandle';
 import { CanvasContextMenu, ContextMenuState } from './ui/CanvasContextMenu';
 import { applyFocusHighlight } from './utils/focusHighlight';
-import { applyDomainFilter, DOMAINS, DOMAIN_COLORS, DOMAIN_LABELS, Domain, nodeMinimapColor } from './utils/domainFilter';
+import {
+  applyDomainFilter,
+  DOMAINS,
+  DOMAIN_COLORS,
+  DOMAIN_LABELS,
+  Domain,
+  nodeMinimapColor,
+} from './utils/domainFilter';
 import { markErrorEdgesZIndex } from './utils/errorEdges';
 import { useTouchContextMenu } from './hooks/useTouchContextMenu';
 import { applyCircuitTrace, circuitTraceLabel, traceCircuit } from './utils/circuitTrace';
@@ -42,13 +63,10 @@ import dynamic from 'next/dynamic';
 // Die Stückliste öffnet nur auf Knopfdruck (planner-show-bom-Event) und zieht
 // AccessibleDialog + Registry nach. Als separater lazy Chunk landet sie nicht
 // im initialen Planner-Code (PERF-06 / Bundle).
-const DynamicBOMModal = dynamic(() =>
-  import('./BOMModal').then((mod) => mod.BOMModal),
-  {
-    ssr: false,
-    loading: () => null,
-  }
-);
+const DynamicBOMModal = dynamic(() => import('./BOMModal').then((mod) => mod.BOMModal), {
+  ssr: false,
+  loading: () => null,
+});
 
 function useAccessibleHandles() {
   React.useEffect(() => {
@@ -58,8 +76,21 @@ function useAccessibleHandles() {
         handle.setAttribute('role', 'button');
         const id = handle.dataset.handleid || '';
         const direction = handle.classList.contains('source') ? 'Ausgang' : 'Eingang';
-        const name = id.includes('plus') ? 'Plus' : id.includes('minus') ? 'Minus' : id.includes('ac') ? '230 Volt' : id === 'in' ? 'Wassereingang' : id === 'out' ? 'Wasserausgang' : id;
-        handle.setAttribute('aria-label', `${direction}: ${name}. Enter drücken, um die Verbindung zu beginnen oder abzuschließen.`);
+        const name = id.includes('plus')
+          ? 'Plus'
+          : id.includes('minus')
+            ? 'Minus'
+            : id.includes('ac')
+              ? '230 Volt'
+              : id === 'in'
+                ? 'Wassereingang'
+                : id === 'out'
+                  ? 'Wasserausgang'
+                  : id;
+        handle.setAttribute(
+          'aria-label',
+          `${direction}: ${name}. Enter drücken, um die Verbindung zu beginnen oder abzuschließen.`
+        );
       });
     };
     enhance();
@@ -112,7 +143,8 @@ export function FlowCanvas() {
   useTouchContextMenu(coarsePointer, openTouchContextMenu);
 
   React.useEffect(() => {
-    const onInputError = (event: Event) => showConnectionFeedback((event as CustomEvent<string>).detail || 'Ungültiger Wert.');
+    const onInputError = (event: Event) =>
+      showConnectionFeedback((event as CustomEvent<string>).detail || 'Ungültiger Wert.');
     const onNodeArmed = (event: Event) => showConnectionFeedback((event as CustomEvent<string>).detail, 3000);
     window.addEventListener('planner-input-error', onInputError);
     window.addEventListener('planner-node-armed', onNodeArmed);
@@ -141,7 +173,11 @@ export function FlowCanvas() {
       const source = edge ? getNode(edge.source) : undefined;
       const target = edge ? getNode(edge.target) : undefined;
       if (source && target) {
-        setCenter((source.position.x + target.position.x) / 2 + 100, (source.position.y + target.position.y) / 2 + 60, { zoom: 1.05, duration: 450 });
+        setCenter(
+          (source.position.x + target.position.x) / 2 + 100,
+          (source.position.y + target.position.y) / 2 + 60,
+          { zoom: 1.05, duration: 450 }
+        );
       }
     };
     window.addEventListener('planner-fit-view', handleFitView);
@@ -153,42 +189,66 @@ export function FlowCanvas() {
   }, [fitView, getNode, setCenter]);
 
   const {
-    viewMode, nodes, edges, waterNodes, waterEdges, waterWarning,
-    onNodesChange, onEdgesChange, onWaterNodesChange, onWaterEdgesChange,
-    onConnect, isValidConnection, onSelectionChange, addNode, firstTappedHandle, selectedNodes, selectedEdges,
-    setSelectedNodes, setSelectedEdges,
-    highlightedNodeId, highlightedEdgeId, setHighlightedNodeId, setHighlightedEdgeId,
-    trunkMode, setTrunkMode, backboneGrouping, setBackboneGrouping, isLayoutPending,
-  } = usePlannerStore(useShallow((state) => ({
-    viewMode: state.viewMode,
-    nodes: state.nodes,
-    edges: state.edges,
-    waterNodes: state.waterNodes,
-    waterEdges: state.waterEdges,
-    waterWarning: state.waterWarning,
-    onNodesChange: state.onNodesChange,
-    onEdgesChange: state.onEdgesChange,
-    onWaterNodesChange: state.onWaterNodesChange,
-    onWaterEdgesChange: state.onWaterEdgesChange,
-    onConnect: state.onConnect,
-    isValidConnection: state.isValidConnection,
-    onSelectionChange: state.onSelectionChange,
-    addNode: state.addNode,
-    firstTappedHandle: state.firstTappedHandle,
-    selectedNodes: state.selectedNodes,
-    selectedEdges: state.selectedEdges,
-    setSelectedNodes: state.setSelectedNodes,
-    setSelectedEdges: state.setSelectedEdges,
-    highlightedNodeId: state.highlightedNodeId,
-    highlightedEdgeId: state.highlightedEdgeId,
-    setHighlightedNodeId: state.setHighlightedNodeId,
-    setHighlightedEdgeId: state.setHighlightedEdgeId,
-    trunkMode: state.trunkMode,
-    setTrunkMode: state.setTrunkMode,
-    backboneGrouping: state.backboneGrouping,
-    setBackboneGrouping: state.setBackboneGrouping,
-    isLayoutPending: state.isLayoutPending,
-  })));
+    viewMode,
+    nodes,
+    edges,
+    waterNodes,
+    waterEdges,
+    waterWarning,
+    onNodesChange,
+    onEdgesChange,
+    onWaterNodesChange,
+    onWaterEdgesChange,
+    onConnect,
+    isValidConnection,
+    onSelectionChange,
+    addNode,
+    firstTappedHandle,
+    selectedNodes,
+    selectedEdges,
+    setSelectedNodes,
+    setSelectedEdges,
+    highlightedNodeId,
+    highlightedEdgeId,
+    setHighlightedNodeId,
+    setHighlightedEdgeId,
+    trunkMode,
+    setTrunkMode,
+    backboneGrouping,
+    setBackboneGrouping,
+    isLayoutPending,
+  } = usePlannerStore(
+    useShallow((state) => ({
+      viewMode: state.viewMode,
+      nodes: state.nodes,
+      edges: state.edges,
+      waterNodes: state.waterNodes,
+      waterEdges: state.waterEdges,
+      waterWarning: state.waterWarning,
+      onNodesChange: state.onNodesChange,
+      onEdgesChange: state.onEdgesChange,
+      onWaterNodesChange: state.onWaterNodesChange,
+      onWaterEdgesChange: state.onWaterEdgesChange,
+      onConnect: state.onConnect,
+      isValidConnection: state.isValidConnection,
+      onSelectionChange: state.onSelectionChange,
+      addNode: state.addNode,
+      firstTappedHandle: state.firstTappedHandle,
+      selectedNodes: state.selectedNodes,
+      selectedEdges: state.selectedEdges,
+      setSelectedNodes: state.setSelectedNodes,
+      setSelectedEdges: state.setSelectedEdges,
+      highlightedNodeId: state.highlightedNodeId,
+      highlightedEdgeId: state.highlightedEdgeId,
+      setHighlightedNodeId: state.setHighlightedNodeId,
+      setHighlightedEdgeId: state.setHighlightedEdgeId,
+      trunkMode: state.trunkMode,
+      setTrunkMode: state.setTrunkMode,
+      backboneGrouping: state.backboneGrouping,
+      setBackboneGrouping: state.setBackboneGrouping,
+      isLayoutPending: state.isLayoutPending,
+    }))
+  );
 
   React.useEffect(() => {
     if (previousViewMode.current === null) {
@@ -211,10 +271,15 @@ export function FlowCanvas() {
   useAccessibleHandles();
 
   React.useEffect(() => {
-    document.querySelectorAll('.react-flow__handle.tap-connect-selected').forEach((element) => element.classList.remove('tap-connect-selected'));
+    document
+      .querySelectorAll('.react-flow__handle.tap-connect-selected')
+      .forEach((element) => element.classList.remove('tap-connect-selected'));
     if (!firstTappedHandle) return;
     document.querySelectorAll<HTMLElement>('.react-flow__handle').forEach((handle) => {
-      if (handle.dataset.nodeid === firstTappedHandle.nodeId && handle.dataset.handleid === firstTappedHandle.handleId) {
+      if (
+        handle.dataset.nodeid === firstTappedHandle.nodeId &&
+        handle.dataset.handleid === firstTappedHandle.handleId
+      ) {
         handle.classList.add('tap-connect-selected');
       }
     });
@@ -306,10 +371,8 @@ export function FlowCanvas() {
       outNodes = filtered.nodes;
       outEdges = filtered.edges;
       // Fehler-Kanten oberhalb der Nodes rendern.
-      outEdges = markErrorEdgesZIndex(
-        outEdges,
-        rawNodes,
-        (sourceId) => usePlannerStore.getState().calculatePathVoltageDrop(sourceId, nodes, edges)
+      outEdges = markErrorEdgesZIndex(outEdges, rawNodes, (sourceId) =>
+        usePlannerStore.getState().calculatePathVoltageDrop(sourceId, nodes, edges)
       );
     }
 
@@ -317,29 +380,50 @@ export function FlowCanvas() {
   }, [rawNodes, rawEdges, selectedTrace, focusSeedIds, viewMode, activeDomains, nodes, edges]);
 
   const traceLabel = useMemo(
-    () => selectedTrace ? circuitTraceLabel(rawNodes, selectedTrace) : null,
+    () => (selectedTrace ? circuitTraceLabel(rawNodes, selectedTrace) : null),
     [rawNodes, selectedTrace]
   );
 
   /** Adds visual grouping, collision state and touch drag semantics. */
   const interactiveNodes = useMemo(() => {
-    const grouped = viewMode === 'electric'
-      ? withBackboneGroup(displayedNodes, backboneGrouping)
-      : displayedNodes;
+    const grouped =
+      viewMode === 'electric' ? withBackboneGroup(displayedNodes, backboneGrouping) : displayedNodes;
     return grouped.map((node) => {
       if (node.type === 'backboneGroup') return node;
       const collisionClass = node.id === collidingNodeId ? 'planner-node-collision' : '';
       if (!interaction.requiresDragHandle) {
-        return collisionClass ? { ...node, className: `${node.className || ''} ${collisionClass}`.trim() } : node;
+        return collisionClass
+          ? { ...node, className: `${node.className || ''} ${collisionClass}`.trim() }
+          : node;
       }
       return node.id === armedNodeId
-        ? { ...node, dragHandle: undefined, className: `${node.className || ''} node-drag-armed ${collisionClass}`.trim() }
-        : { ...node, dragHandle: NODE_DRAG_HANDLE_SELECTOR, className: `${node.className || ''} ${collisionClass}`.trim() };
+        ? {
+            ...node,
+            dragHandle: undefined,
+            className: `${node.className || ''} node-drag-armed ${collisionClass}`.trim(),
+          }
+        : {
+            ...node,
+            dragHandle: NODE_DRAG_HANDLE_SELECTOR,
+            className: `${node.className || ''} ${collisionClass}`.trim(),
+          };
     });
-  }, [displayedNodes, viewMode, backboneGrouping, collidingNodeId, interaction.requiresDragHandle, armedNodeId]);
+  }, [
+    displayedNodes,
+    viewMode,
+    backboneGrouping,
+    collidingNodeId,
+    interaction.requiresDragHandle,
+    armedNodeId,
+  ]);
 
   const openContextMenu = React.useCallback(
-    (event: React.MouseEvent, targetType: ContextMenuState['targetType'], targetId?: string, label?: string) => {
+    (
+      event: React.MouseEvent,
+      targetType: ContextMenuState['targetType'],
+      targetId?: string,
+      label?: string
+    ) => {
       // Nur für präzise Zeiger: auf Touch löst „langes Drücken“ im Browser
       // ebenfalls contextmenu aus und würde mit dem Long-Press-Drag kollidieren.
       if (coarsePointer) return;
@@ -363,49 +447,69 @@ export function FlowCanvas() {
     [openContextMenu]
   );
 
-  const handleNodeDrag = React.useCallback((_event: React.MouseEvent, node: Node) => {
-    if (node.type === 'backboneGroup') return;
-    const domainNodes = viewMode === 'water' ? usePlannerStore.getState().waterNodes : usePlannerStore.getState().nodes;
-    setCollidingNodeId(collidingNodeIds(node, domainNodes).length > 0 ? node.id : null);
-  }, [viewMode]);
+  const handleNodeDrag = React.useCallback(
+    (_event: React.MouseEvent, node: Node) => {
+      if (node.type === 'backboneGroup') return;
+      const domainNodes =
+        viewMode === 'water' ? usePlannerStore.getState().waterNodes : usePlannerStore.getState().nodes;
+      setCollidingNodeId(collidingNodeIds(node, domainNodes).length > 0 ? node.id : null);
+    },
+    [viewMode]
+  );
 
-  const handleNodeDragStop = React.useCallback((_event: React.MouseEvent, node: Node) => {
-    setContextMenu(null);
-    if (node.type === 'backboneGroup') return;
-    const state = usePlannerStore.getState();
-    const domainNodes = viewMode === 'water' ? state.waterNodes : state.nodes;
-    const current = domainNodes.find((candidate) => candidate.id === node.id);
-    if (!current) {
+  const handleNodeDragStop = React.useCallback(
+    (_event: React.MouseEvent, node: Node) => {
+      setContextMenu(null);
+      if (node.type === 'backboneGroup') return;
+      const state = usePlannerStore.getState();
+      const domainNodes = viewMode === 'water' ? state.waterNodes : state.nodes;
+      const current = domainNodes.find((candidate) => candidate.id === node.id);
+      if (!current) {
+        setCollidingNodeId(null);
+        return;
+      }
+      const moved = { ...current, position: node.position, width: node.width, height: node.height };
+      if (collidingNodeIds(moved, domainNodes).length > 0) {
+        const position = findNearestFreePosition(moved, domainNodes);
+        const change = [{ type: 'position' as const, id: node.id, position, dragging: false }];
+        if (viewMode === 'water') state.onWaterNodesChange(change);
+        else state.onNodesChange(change);
+        showConnectionFeedback(
+          'Überlappung aufgelöst: Bauteil am nächsten freien Rasterpunkt platziert.',
+          3000
+        );
+      }
       setCollidingNodeId(null);
-      return;
-    }
-    const moved = { ...current, position: node.position, width: node.width, height: node.height };
-    if (collidingNodeIds(moved, domainNodes).length > 0) {
-      const position = findNearestFreePosition(moved, domainNodes);
-      const change = [{ type: 'position' as const, id: node.id, position, dragging: false }];
-      if (viewMode === 'water') state.onWaterNodesChange(change);
-      else state.onNodesChange(change);
-      showConnectionFeedback('Überlappung aufgelöst: Bauteil am nächsten freien Rasterpunkt platziert.', 3000);
-    }
-    setCollidingNodeId(null);
-  }, [viewMode, showConnectionFeedback]);
+    },
+    [viewMode, showConnectionFeedback]
+  );
 
   const isOverview = zoom < PLANNER_OVERVIEW_ZOOM;
-  const minimapColors = useMemo(() => ({
-    mask: cssToken('--canvas-minimap-mask', 'rgba(20, 17, 14, 0.14)'),
-    background: cssToken('--bone', '#fffdf9'),
-  }), []);
+  const minimapColors = useMemo(
+    () => ({
+      mask: cssToken('--canvas-minimap-mask', 'rgba(20, 17, 14, 0.14)'),
+      background: cssToken('--bone', '#fffdf9'),
+    }),
+    []
+  );
 
-  const handleConnect = React.useCallback((connection: Connection) => {
-    connectionAttempt.current = false;
-    onConnect(connection);
-    showConnectionFeedback('Verbindung erstellt.', 2200);
-  }, [onConnect, showConnectionFeedback]);
+  const handleConnect = React.useCallback(
+    (connection: Connection) => {
+      connectionAttempt.current = false;
+      onConnect(connection);
+      showConnectionFeedback('Verbindung erstellt.', 2200);
+    },
+    [onConnect, showConnectionFeedback]
+  );
 
   return (
     <>
       {waterWarning && (
-        <div role="status" aria-live="polite" className="absolute left-1/2 top-24 z-50 w-11/12 -translate-x-1/2 rounded-lg border border-warn-warning bg-warn-warning-bg p-3 text-center font-semibold text-warn-warning shadow-lg md:w-auto">
+        <div
+          role="status"
+          aria-live="polite"
+          className="absolute left-1/2 top-24 z-50 w-11/12 -translate-x-1/2 rounded-lg border border-warn-warning bg-warn-warning-bg p-3 text-center font-semibold text-warn-warning shadow-lg md:w-auto"
+        >
           {waterWarning}
         </div>
       )}
@@ -445,10 +549,16 @@ export function FlowCanvas() {
           onConnect={handleConnect}
           onConnectStart={() => {
             connectionAttempt.current = true;
-            showConnectionFeedback('Verbindung gestartet: Ziehe zum passenden Anschluss oder tippe ihn an.', 0);
+            showConnectionFeedback(
+              'Verbindung gestartet: Ziehe zum passenden Anschluss oder tippe ihn an.',
+              0
+            );
           }}
           onConnectEnd={() => {
-            if (connectionAttempt.current) showConnectionFeedback('Diese Verbindung ist nicht möglich. Prüfe Spannung, Polung und Richtung; möglicherweise besteht die Verbindung bereits.');
+            if (connectionAttempt.current)
+              showConnectionFeedback(
+                'Diese Verbindung ist nicht möglich. Prüfe Spannung, Polung und Richtung; möglicherweise besteht die Verbindung bereits.'
+              );
             connectionAttempt.current = false;
           }}
           isValidConnection={isValidConnection}
@@ -515,7 +625,10 @@ export function FlowCanvas() {
             style={{ backgroundColor: minimapColors.background }}
           />
 
-          <Panel position="top-left" className="m-2 hidden max-w-[min(20rem,calc(100vw-6rem))] sm:block md:m-3">
+          <Panel
+            position="top-left"
+            className="m-2 hidden max-w-[min(20rem,calc(100vw-6rem))] sm:block md:m-3"
+          >
             <div className="rounded-lg border border-border bg-card/95 px-3 py-2 text-xs text-foreground shadow-sm">
               <strong>{viewMode === 'water' ? 'Wasserplan' : 'Elektrikplan'}</strong>
               <span className="ml-2 text-muted-foreground">
@@ -568,7 +681,9 @@ export function FlowCanvas() {
                   onClick={() => setBackboneGrouping(!backboneGrouping)}
                   title="Rahmen und Label für den Hauptstromkreis ein- oder ausblenden"
                   className={`rounded-md px-2.5 py-1 text-xs font-semibold transition-colors ${
-                    backboneGrouping ? 'bg-copper text-bone' : 'text-muted-foreground opacity-60 hover:opacity-100'
+                    backboneGrouping
+                      ? 'bg-copper text-bone'
+                      : 'text-muted-foreground opacity-60 hover:opacity-100'
                   }`}
                 >
                   Hauptstromkreis
@@ -578,9 +693,17 @@ export function FlowCanvas() {
           )}
 
           {traceLabel && (
-            <Panel position="bottom-left" className="mb-20 ml-14 max-w-[min(36rem,calc(100vw-6rem))] md:mb-4 md:ml-14">
-              <div data-testid="circuit-trace-info" role="status" className="rounded-lg border border-copper/50 bg-card/95 px-3 py-2 text-sm font-semibold text-foreground shadow-lg">
-                <span className="mr-2 text-copper">Strompfad:</span>{traceLabel}
+            <Panel
+              position="bottom-left"
+              className="mb-20 ml-14 max-w-[min(36rem,calc(100vw-6rem))] md:mb-4 md:ml-14"
+            >
+              <div
+                data-testid="circuit-trace-info"
+                role="status"
+                className="rounded-lg border border-copper/50 bg-card/95 px-3 py-2 text-sm font-semibold text-foreground shadow-lg"
+              >
+                <span className="mr-2 text-copper">Strompfad:</span>
+                {traceLabel}
               </div>
             </Panel>
           )}
@@ -594,23 +717,34 @@ export function FlowCanvas() {
                 className="flex min-h-12 items-center gap-2 rounded-full border border-border bg-card px-4 text-sm font-semibold text-foreground shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 aria-label="Planübersicht anzeigen"
               >
-                <MapIcon className="h-5 w-5" aria-hidden="true" />Übersicht
+                <MapIcon className="h-5 w-5" aria-hidden="true" />
+                Übersicht
               </button>
             </Panel>
           )}
 
           {viewMode === 'electric' && calculatedSolarWatts > 0 && (
-            <Panel position="bottom-center" className="mb-4 rounded-lg border border-oxide/40 bg-oxide/10 p-3 text-sm text-oxide shadow-sm">
-              <strong>Dachplaner-Daten erkannt:</strong> {calculatedSolarWatts} W Solarleistung verfügbar. Der Solar-Laderegler (MPPT) muss dafür passend dimensioniert sein.
+            <Panel
+              position="bottom-center"
+              className="mb-4 rounded-lg border border-oxide/40 bg-oxide/10 p-3 text-sm text-oxide shadow-sm"
+            >
+              <strong>Dachplaner-Daten erkannt:</strong> {calculatedSolarWatts} W Solarleistung verfügbar. Der
+              Solar-Laderegler (MPPT) muss dafür passend dimensioniert sein.
             </Panel>
           )}
         </ReactFlow>
       </div>
 
-      <div className="pointer-events-none absolute bottom-24 left-1/2 z-50 w-11/12 -translate-x-1/2 text-center md:bottom-6" aria-live="polite" role="status">
+      <div
+        className="pointer-events-none absolute bottom-24 left-1/2 z-50 w-11/12 -translate-x-1/2 text-center md:bottom-6"
+        aria-live="polite"
+        role="status"
+      >
         {(firstTappedHandle || connectionFeedback) && (
           <span className="inline-block rounded-lg bg-ink px-4 py-3 text-sm font-semibold text-bone shadow-lg">
-            {firstTappedHandle ? 'Erster Anschluss gewählt. Wähle jetzt den zweiten Anschluss; erneut tippen bricht ab.' : connectionFeedback}
+            {firstTappedHandle
+              ? 'Erster Anschluss gewählt. Wähle jetzt den zweiten Anschluss; erneut tippen bricht ab.'
+              : connectionFeedback}
           </span>
         )}
       </div>

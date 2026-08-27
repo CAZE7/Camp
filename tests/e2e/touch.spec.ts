@@ -53,7 +53,12 @@ test.describe('Touch-Bedienung', () => {
 
     await batteryPlus.tap();
     // Nach dem ersten Tap meldet der Planer den gewählten Anschluss.
-    await expect(page.getByRole('status').filter({ hasText: /Anschluss/i }).first()).toBeVisible();
+    await expect(
+      page
+        .getByRole('status')
+        .filter({ hasText: /Anschluss/i })
+        .first()
+    ).toBeVisible();
 
     await busbarPlus.tap();
     await expect.poll(async () => edgeCount(page)).toBeGreaterThan(before);
@@ -72,7 +77,12 @@ test.describe('Touch-Bedienung', () => {
     await handle.tap();
     await handle.tap();
 
-    await expect(page.getByRole('status').filter({ hasText: /abgebrochen/i }).first()).toBeVisible();
+    await expect(
+      page
+        .getByRole('status')
+        .filter({ hasText: /abgebrochen/i })
+        .first()
+    ).toBeVisible();
     expect(await edgeCount(page)).toBe(before);
   });
 

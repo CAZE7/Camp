@@ -13,11 +13,11 @@ Workflow-Test prüft den aktiven Zielort.
 Drei Workflows, eine einzige Quelle für die Qualitätsprüfung
 (Pfade nach der Aktivierung):
 
-| Datei | Auslöser | Zweck |
-|-------|----------|-------|
-| `.github/workflows/quality.yml` | `workflow_call` | **Einzige** Definition von Install, Typecheck, Tests, Build |
-| `.github/workflows/ci.yml` | Pull Request, Push (außer `gh-pages`), manuell | Pflicht-Check |
-| `.github/workflows/deploy.yml` | Push auf den GitHub-Default-Branch, manuell | Pages-Build + Deploy, **nach** dem Quality Gate |
+| Datei                           | Auslöser                                       | Zweck                                                       |
+| ------------------------------- | ---------------------------------------------- | ----------------------------------------------------------- |
+| `.github/workflows/quality.yml` | `workflow_call`                                | **Einzige** Definition von Install, Typecheck, Tests, Build |
+| `.github/workflows/ci.yml`      | Pull Request, Push (außer `gh-pages`), manuell | Pflicht-Check                                               |
+| `.github/workflows/deploy.yml`  | Push auf den GitHub-Default-Branch, manuell    | Pages-Build + Deploy, **nach** dem Quality Gate             |
 
 ```
 pull_request ─► ci.yml ─────► quality.yml (npm ci → typecheck → test → build)
@@ -32,16 +32,16 @@ kann ein Deploy nicht mit einer schwächeren Prüfung laufen als ein PR.
 
 ## 2. Härtungen gegenüber dem Vorgängerstand
 
-| Vorher (`deploy.yml` alt) | Jetzt | Warum |
-|---------------------------|-------|-------|
-| `npm ci` mit 3 Retries, danach `rm -f package-lock.json && npm install` | Nur `npm ci` | Der Fallback baute im Fehlerfall ein **anderes** Abhängigkeits-Set — der Build war nicht mehr reproduzierbar |
-| `NODE_VERSION: "20"` hartkodiert, `.nvmrc` sagte `22` | `node-version-file: .nvmrc` | CI und lokale Entwicklung liefen auf verschiedenen Major-Versionen |
-| `workflow_dispatch` mit `skip_tests` | Kein Notausgang | „Deploy nur bei erfolgreicher Qualitätsprüfung“ |
-| `if: always() && needs.test.result == 'skipped'` erlaubt | Kein `always()` | Übersprungene Tests galten als bestanden |
-| Kein Build-Schritt im PR | Build im Quality Gate | Build-Fehler fielen erst beim Deploy auf |
-| Top-Level `pages: write`, `id-token: write`, `pull-requests: write` für **alle** Jobs | Top-Level `contents: read`, Schreibrechte nur in `build`/`deploy` | Minimaler Berechtigungsumfang |
-| `actions/checkout` mit Standard-Credentials | `persist-credentials: false` | Kein GITHUB_TOKEN im Runner-Git-Config |
-| Kein Zeitlimit | `timeout-minutes: 30` | Hängende Läufe blockieren das Gate nicht dauerhaft |
+| Vorher (`deploy.yml` alt)                                                             | Jetzt                                                             | Warum                                                                                                        |
+| ------------------------------------------------------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `npm ci` mit 3 Retries, danach `rm -f package-lock.json && npm install`               | Nur `npm ci`                                                      | Der Fallback baute im Fehlerfall ein **anderes** Abhängigkeits-Set — der Build war nicht mehr reproduzierbar |
+| `NODE_VERSION: "20"` hartkodiert, `.nvmrc` sagte `22`                                 | `node-version-file: .nvmrc`                                       | CI und lokale Entwicklung liefen auf verschiedenen Major-Versionen                                           |
+| `workflow_dispatch` mit `skip_tests`                                                  | Kein Notausgang                                                   | „Deploy nur bei erfolgreicher Qualitätsprüfung“                                                              |
+| `if: always() && needs.test.result == 'skipped'` erlaubt                              | Kein `always()`                                                   | Übersprungene Tests galten als bestanden                                                                     |
+| Kein Build-Schritt im PR                                                              | Build im Quality Gate                                             | Build-Fehler fielen erst beim Deploy auf                                                                     |
+| Top-Level `pages: write`, `id-token: write`, `pull-requests: write` für **alle** Jobs | Top-Level `contents: read`, Schreibrechte nur in `build`/`deploy` | Minimaler Berechtigungsumfang                                                                                |
+| `actions/checkout` mit Standard-Credentials                                           | `persist-credentials: false`                                      | Kein GITHUB_TOKEN im Runner-Git-Config                                                                       |
+| Kein Zeitlimit                                                                        | `timeout-minutes: 30`                                             | Hängende Läufe blockieren das Gate nicht dauerhaft                                                           |
 
 Zusätzliche Schritte im Quality Gate:
 
@@ -108,16 +108,16 @@ eingetragen werden. Einmalig auf GitHub (Repo-Admin nötig):
 
 **Weg A — Web-UI**
 
-1. *Settings → Branches → Add branch ruleset* (oder *Add rule* bei
+1. _Settings → Branches → Add branch ruleset_ (oder _Add rule_ bei
    klassischer Branch Protection).
 2. Target: `main` (und `master`, falls genutzt).
 3. Aktivieren:
-   - *Require a pull request before merging* (mindestens 1 Approval)
-   - *Require status checks to pass before merging*
+   - _Require a pull request before merging_ (mindestens 1 Approval)
+   - _Require status checks to pass before merging_
      → Check auswählen: **`CI / Quality Gate / Typecheck, Tests & Build`**
-   - *Require branches to be up to date before merging*
-   - *Block force pushes* und *Restrict deletions*
-4. Optional: *Require conversation resolution before merging*.
+   - _Require branches to be up to date before merging_
+   - _Block force pushes_ und _Restrict deletions_
+4. Optional: _Require conversation resolution before merging_.
 
 Der Check-Name entsteht aus `ci.yml` (Workflow `CI`) → Job `quality`
 (Anzeigename `Quality Gate`) → Job in `quality.yml`

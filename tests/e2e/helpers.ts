@@ -131,7 +131,9 @@ export async function autoWire(page: Page): Promise<void> {
   const button = page.getByTestId('action-autowire');
   await expect(button).toBeEnabled();
   await button.click();
-  await expect.poll(async () => edgeCount(page), { message: 'Auto-Wire erzeugte keine Kanten' }).toBeGreaterThan(0);
+  await expect
+    .poll(async () => edgeCount(page), { message: 'Auto-Wire erzeugte keine Kanten' })
+    .toBeGreaterThan(0);
 }
 
 /** Öffnet einen Eintrag aus dem „Mehr“-Menü der Kopfzeile. */
@@ -154,10 +156,6 @@ export async function expectNoHorizontalOverflow(page: Page): Promise<void> {
     };
   });
   // 1 px Toleranz für subpixel-gerundete Layouts.
-  expect(overflow.scrollWidth, 'html scrollt horizontal').toBeLessThanOrEqual(
-    overflow.clientWidth + 1
-  );
-  expect(overflow.bodyScrollWidth, 'body scrollt horizontal').toBeLessThanOrEqual(
-    overflow.clientWidth + 1
-  );
+  expect(overflow.scrollWidth, 'html scrollt horizontal').toBeLessThanOrEqual(overflow.clientWidth + 1);
+  expect(overflow.bodyScrollWidth, 'body scrollt horizontal').toBeLessThanOrEqual(overflow.clientWidth + 1);
 }

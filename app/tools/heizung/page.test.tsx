@@ -6,9 +6,9 @@ import HeatingCalculatorPage from './page';
 // Mock Next.js Link component to avoid errors
 vi.mock('next/link', () => {
   return {
-    default: ({ children, href }: { children: React.ReactNode, href: string }) => {
+    default: ({ children, href }: { children: React.ReactNode; href: string }) => {
       return <a href={href}>{children}</a>;
-    }
+    },
   };
 });
 
@@ -36,7 +36,6 @@ if (typeof window !== 'undefined' && !window.PointerEvent) {
   (window as any).PointerEvent = PointerEvent as any;
 }
 
-
 describe('HeatingCalculatorPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -62,8 +61,12 @@ describe('HeatingCalculatorPage', () => {
 
     // Get the temperature inputs
     // We can identify them by their associated labels or their role/id
-    const tempInsideInput = screen.getByLabelText(/Temperatur/i, { selector: '#temp-inside' }) as HTMLInputElement;
-    const tempOutsideInput = screen.getByLabelText(/Temperatur/i, { selector: '#temp-outside' }) as HTMLInputElement;
+    const tempInsideInput = screen.getByLabelText(/Temperatur/i, {
+      selector: '#temp-inside',
+    }) as HTMLInputElement;
+    const tempOutsideInput = screen.getByLabelText(/Temperatur/i, {
+      selector: '#temp-outside',
+    }) as HTMLInputElement;
 
     // Check default values
     expect(tempInsideInput.value).toBe('20');
@@ -83,7 +86,7 @@ describe('HeatingCalculatorPage', () => {
 
     // Default 19mm is selected (we can't easily check 'default' variant directly but we can click others)
     const btn6mm = screen.getByRole('button', { name: /6\s*mm/i });
-    const btn32mm = screen.getByRole('button', { name: /32\s*mm/i });
+    expect(screen.getByRole('button', { name: /32\s*mm/i })).toBeInTheDocument();
 
     // Click 6mm button
     fireEvent.click(btn6mm);

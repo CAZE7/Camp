@@ -42,7 +42,11 @@ describe('useTouchContextMenu', () => {
 
     act(() => vi.advanceTimersByTime(1));
     expect(onOpen).toHaveBeenCalledWith({
-      x: 80, y: 120, targetType: 'node', targetId: 'battery-1', label: 'Batterie',
+      x: 80,
+      y: 120,
+      targetType: 'node',
+      targetId: 'battery-1',
+      label: 'Batterie',
     });
     expect(vibrate).toHaveBeenCalledWith(15);
   });

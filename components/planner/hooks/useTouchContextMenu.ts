@@ -5,10 +5,7 @@ import type { ContextMenuState } from '../ui/CanvasContextMenu';
 export const TOUCH_CONTEXT_MENU_MS = 500;
 
 /** Opens the desktop context menu after a stationary 500 ms touch hold. */
-export function useTouchContextMenu(
-  enabled: boolean,
-  onOpen: (state: ContextMenuState) => void
-): void {
+export function useTouchContextMenu(enabled: boolean, onOpen: (state: ContextMenuState) => void): void {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const start = useRef<{ x: number; y: number } | null>(null);
 
@@ -24,7 +21,11 @@ export function useTouchContextMenu(
     const onPointerDown = (event: PointerEvent) => {
       if (!event.isPrimary) return;
       const target = event.target as HTMLElement | null;
-      if (!target || target.closest('button, input, select, textarea, .react-flow__handle, .node-drag-handle')) return;
+      if (
+        !target ||
+        target.closest('button, input, select, textarea, .react-flow__handle, .node-drag-handle')
+      )
+        return;
 
       const node = target.closest<HTMLElement>('.react-flow__node:not(.planner-backbone-group-node)');
       const edge = target.closest<HTMLElement>('.react-flow__edge');
@@ -38,7 +39,8 @@ export function useTouchContextMenu(
       if (timer.current) clearTimeout(timer.current);
       timer.current = setTimeout(() => {
         const label = node
-          ? node.querySelector<HTMLElement>('[role="group"]')?.getAttribute('aria-label')?.split('.')[0] || 'Bauteil'
+          ? node.querySelector<HTMLElement>('[role="group"]')?.getAttribute('aria-label')?.split('.')[0] ||
+            'Bauteil'
           : 'Leitung';
         navigator.vibrate?.(15);
         window.dispatchEvent(new CustomEvent('planner-touch-context-open'));
@@ -49,7 +51,11 @@ export function useTouchContextMenu(
 
     const onPointerMove = (event: PointerEvent) => {
       if (!start.current || !timer.current) return;
-      if (Math.hypot(event.clientX - start.current.x, event.clientY - start.current.y) > LONG_PRESS_MOVE_TOLERANCE) cancel();
+      if (
+        Math.hypot(event.clientX - start.current.x, event.clientY - start.current.y) >
+        LONG_PRESS_MOVE_TOLERANCE
+      )
+        cancel();
     };
 
     const preventNativeMenu = (event: MouseEvent) => {

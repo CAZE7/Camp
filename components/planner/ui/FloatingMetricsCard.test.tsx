@@ -6,17 +6,17 @@ import React from 'react';
 // Mock the stores and hooks
 const mockPlannerStore = vi.fn();
 vi.mock('../../../store/usePlannerStore', () => ({
-  usePlannerStore: (selector: any) => selector(mockPlannerStore())
+  usePlannerStore: (selector: any) => selector(mockPlannerStore()),
 }));
 
 const mockAppStore = vi.fn();
 vi.mock('../../../lib/store', () => ({
-  useAppStore: (selector: any) => selector(mockAppStore())
+  useAppStore: (selector: any) => selector(mockAppStore()),
 }));
 
 const mockDashboardMetrics = vi.fn();
 vi.mock('../hooks/useDashboardMetrics', () => ({
-  useDashboardMetrics: () => mockDashboardMetrics()
+  useDashboardMetrics: () => mockDashboardMetrics(),
 }));
 
 describe('FloatingMetricsCard', () => {

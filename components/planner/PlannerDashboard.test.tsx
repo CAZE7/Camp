@@ -8,7 +8,7 @@ import { toPng } from 'html-to-image';
 
 // Mock html-to-image (lazy-imported by the dashboard)
 vi.mock('html-to-image', () => ({
-  toPng: vi.fn().mockResolvedValue('data:image/png;base64,mocked')
+  toPng: vi.fn().mockResolvedValue('data:image/png;base64,mocked'),
 }));
 
 // Mock Planner Store
@@ -44,7 +44,7 @@ vi.mock('../../store/usePlannerStore', () => ({
       clearPlan: mockClearPlan,
     };
     return selector(state);
-  })
+  }),
 }));
 
 // Helper to open the overflow ("Mehr") menu where secondary actions live
@@ -216,21 +216,23 @@ describe('PlannerDashboard - Image Export', () => {
     };
 
     const originalCreateElement = document.createElement.bind(document);
-    const createElementSpy = vi.spyOn(document, 'createElement').mockImplementation((tagName: string, options?: ElementCreationOptions) => {
-      const el = originalCreateElement(tagName, options);
-      if (tagName === 'a') {
-        Object.defineProperty(el, 'download', {
-          get: () => mockLink.download,
-          set: (val) => mockLink.download = val,
-        });
-        Object.defineProperty(el, 'href', {
-          get: () => mockLink.href,
-          set: (val) => mockLink.href = val,
-        });
-        el.click = mockLink.click;
-      }
-      return el;
-    });
+    const createElementSpy = vi
+      .spyOn(document, 'createElement')
+      .mockImplementation((tagName: string, options?: ElementCreationOptions) => {
+        const el = originalCreateElement(tagName, options);
+        if (tagName === 'a') {
+          Object.defineProperty(el, 'download', {
+            get: () => mockLink.download,
+            set: (val) => (mockLink.download = val),
+          });
+          Object.defineProperty(el, 'href', {
+            get: () => mockLink.href,
+            set: (val) => (mockLink.href = val),
+          });
+          el.click = mockLink.click;
+        }
+        return el;
+      });
 
     render(<PlannerDashboard />);
 
@@ -251,7 +253,7 @@ describe('PlannerDashboard - Image Export', () => {
 
   it('does not export image if react flow wrapper is not found', async () => {
     const existingElements = document.querySelectorAll('.react-flow');
-    existingElements.forEach(el => document.body.removeChild(el));
+    existingElements.forEach((el) => document.body.removeChild(el));
 
     vi.mocked(toPng).mockClear();
 

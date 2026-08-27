@@ -293,8 +293,7 @@ describe('VDE-Standards mit typsicheren Einheiten (K1b)', () => {
       data: Record<string, unknown> = {},
       sourceHandle?: string,
       targetHandle?: string
-    ): Edge =>
-      ({ id, source, target, sourceHandle, targetHandle, type: 'cableEdge', data }) as Edge;
+    ): Edge => ({ id, source, target, sourceHandle, targetHandle, type: 'cableEdge', data }) as Edge;
 
     it('dimensioniert die Landstrom-Zuleitung über alle erreichbaren 230-V-Verbraucher', () => {
       const nodes = [
@@ -326,10 +325,7 @@ describe('VDE-Standards mit typsicheren Einheiten (K1b)', () => {
     });
 
     it('ignoriert DC-Kanten mit expliziter DC_12V-Domäne', () => {
-      const nodes = [
-        node('inv', 'inverter', {}),
-        node('c1', 'consumer230v', { watts: 2300 }),
-      ];
+      const nodes = [node('inv', 'inverter', {}), node('c1', 'consumer230v', { watts: 2300 })];
       const edges = [
         // data.edgeDomain sagt DC_12V — der BFS darf diese Kante NICHT als
         // AC-Pfad nutzen (getEdgeDomain würde wegen consumer230v AC sagen).

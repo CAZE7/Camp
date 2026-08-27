@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import React from 'react';
 import { Panel, Node } from 'reactflow';
@@ -135,9 +135,7 @@ export function DachPanel({
 
       <Card className="w-72 max-w-full rounded-none border border-rule bg-soot text-paper shadow-xl ring-0">
         <CardHeader className="pb-2">
-          <CardDescription className="label-eyebrow text-paper/70">
-            Live-Sync
-          </CardDescription>
+          <CardDescription className="label-eyebrow text-paper/70">Live-Sync</CardDescription>
           <CardTitle className="flex items-center justify-between text-lg font-semibold text-paper">
             <span>Solarleistung</span>
             <span className="measure text-copper">{totalRoofSolarWatts} W</span>
@@ -157,9 +155,7 @@ export function DachPanel({
               style={{ width: `${Math.min(100, (totalRoofSolarWatts / 1000) * 100)}%` }}
             />
           </div>
-          <p className="caption-xs mt-3 text-paper/70">
-            Wird in Echtzeit an den Schaltplan übergeben.
-          </p>
+          <p className="caption-xs mt-3 text-paper/70">Wird in Echtzeit an den Schaltplan übergeben.</p>
         </CardContent>
       </Card>
     </Panel>

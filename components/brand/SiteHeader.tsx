@@ -23,11 +23,7 @@ function isActive(pathname: string | null, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function SiteHeader({
-  tone = 'paper',
-}: {
-  tone?: 'paper' | 'soot';
-}) {
+export function SiteHeader({ tone = 'paper' }: { tone?: 'paper' | 'soot' }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const inverted = tone === 'soot';
@@ -36,9 +32,7 @@ export function SiteHeader({
     <header
       className={cn(
         'relative z-40 border-b',
-        inverted
-          ? 'bg-soot text-paper border-white/10'
-          : 'bg-paper text-ink border-rule'
+        inverted ? 'bg-soot text-paper border-white/10' : 'bg-paper text-ink border-rule'
       )}
     >
       <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-5 py-3">
@@ -89,10 +83,7 @@ export function SiteHeader({
       {open && (
         <nav
           id="site-mobile-nav"
-          className={cn(
-            'border-t sm:hidden',
-            inverted ? 'border-white/10 bg-soot' : 'border-rule bg-paper'
-          )}
+          className={cn('border-t sm:hidden', inverted ? 'border-white/10 bg-soot' : 'border-rule bg-paper')}
           aria-label="Mobilnavigation"
         >
           <ul className="flex flex-col px-3 py-2">

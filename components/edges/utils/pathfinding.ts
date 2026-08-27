@@ -41,8 +41,7 @@ const CACHE_LIMIT = 256;
 
 export const quantize = (n: number): number => Math.round(n * QUANT) / QUANT;
 
-export const manhattan = (a: Point, b: Point): number =>
-  Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+export const manhattan = (a: Point, b: Point): number => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
 
 export const inflateRect = (r: Rect, margin: number): Rect => ({
   x: r.x - margin,
@@ -186,9 +185,7 @@ export function simplifyWaypoints(points: Point[]): Point[] {
       const vertical = Math.abs(a.x - b.x) <= EPS && Math.abs(b.x - c.x) <= EPS;
       const horizontal = Math.abs(a.y - b.y) <= EPS && Math.abs(b.y - c.y) <= EPS;
       if (vertical || horizontal) {
-        const sameDir = vertical
-          ? (b.y - a.y) * (c.y - b.y) >= -EPS
-          : (b.x - a.x) * (c.x - b.x) >= -EPS;
+        const sameDir = vertical ? (b.y - a.y) * (c.y - b.y) >= -EPS : (b.x - a.x) * (c.x - b.x) >= -EPS;
         if (sameDir) {
           collapsed[collapsed.length - 1] = c;
           continue;
@@ -383,8 +380,7 @@ export function catalogWaypoints(input: {
       }
     } else {
       const sameRow = Math.abs(S2.y - T2.y) <= EPS;
-      const facing =
-        (ds.x > 0 && T2.x >= S2.x - EPS) || (ds.x < 0 && T2.x <= S2.x + EPS);
+      const facing = (ds.x > 0 && T2.x >= S2.x - EPS) || (ds.x < 0 && T2.x <= S2.x + EPS);
       if (sameRow && facing && offset === 0) {
         // gerade
       } else if (facing && offset === 0) {
@@ -411,8 +407,7 @@ export function catalogWaypoints(input: {
       points.push({ x: T2.x, y: midY });
     } else {
       const sameCol = Math.abs(S2.x - T2.x) <= EPS;
-      const facing =
-        (ds.y > 0 && T2.y >= S2.y - EPS) || (ds.y < 0 && T2.y <= S2.y + EPS);
+      const facing = (ds.y > 0 && T2.y >= S2.y - EPS) || (ds.y < 0 && T2.y <= S2.y + EPS);
       if (sameCol && facing && offset === 0) {
         // gerade
       } else if (facing && offset === 0) {
@@ -505,8 +500,7 @@ export function catalogCandidates(input: {
   return unique;
 }
 
-const scoreCatalog = (points: Point[]): number =>
-  pathLength(points) + BEND_COST * countBends(points);
+const scoreCatalog = (points: Point[]): number => pathLength(points) + BEND_COST * countBends(points);
 
 export function bestFreeCatalog(
   input: {
@@ -598,18 +592,8 @@ function hananAStar(
   extraYs: number[],
   clip?: { minX: number; maxX: number; minY: number; maxY: number }
 ): Point[] | null {
-  let xs = uniqueSorted([
-    start.x,
-    goal.x,
-    ...extraXs,
-    ...obstacles.flatMap((r) => [r.x, r.x + r.width]),
-  ]);
-  let ys = uniqueSorted([
-    start.y,
-    goal.y,
-    ...extraYs,
-    ...obstacles.flatMap((r) => [r.y, r.y + r.height]),
-  ]);
+  let xs = uniqueSorted([start.x, goal.x, ...extraXs, ...obstacles.flatMap((r) => [r.x, r.x + r.width])]);
+  let ys = uniqueSorted([start.y, goal.y, ...extraYs, ...obstacles.flatMap((r) => [r.y, r.y + r.height])]);
 
   if (clip) {
     const keepX = (x: number) => x >= clip.minX && x <= clip.maxX;
@@ -939,15 +923,7 @@ function searchOnce(
     extraYs.push(minY - 16, maxY + 16);
   }
 
-  const inner = hananAStar(
-    S2,
-    T2,
-    headingFromDir(ds),
-    headingFromDir(dt),
-    obstacles,
-    extraXs,
-    extraYs
-  );
+  const inner = hananAStar(S2, T2, headingFromDir(ds), headingFromDir(dt), obstacles, extraXs, extraYs);
 
   if (inner && inner.length >= 1) {
     const full = stitchOrthogonal([S, ...inner, T]);
@@ -968,9 +944,7 @@ export function findCablePath(input: PathRequest): PathResult {
   const allObstacles = input.obstacles ?? [];
   const start: Point = { x: input.sourceX, y: input.sourceY };
   const end: Point = { x: input.targetX, y: input.targetY };
-  const obstacles = relevantObstacles(allObstacles, start, end).map((r) =>
-    inflateRect(r, OBSTACLE_MARGIN)
-  );
+  const obstacles = relevantObstacles(allObstacles, start, end).map((r) => inflateRect(r, OBSTACLE_MARGIN));
   const crossingSegments = input.crossingSegments ?? [];
   const key = requestKey(input, obstacles);
 

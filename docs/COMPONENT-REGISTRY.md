@@ -7,14 +7,14 @@ Stand: 2026-08-21 · Betrifft AGENTS.md **K4**
 AGENTS.md verlangt ausdrücklich, erst zu prüfen, ob eine Registry die
 Komplexität tatsächlich senkt. Die Bestandsaufnahme:
 
-| # | Ort | Was dort stand |
-|---|-----|----------------|
-| 1 | `components/Sidebar.tsx` | Label, Kategorie, Beschreibung, Icon (3 Arrays: Elektrik, Wasser, Geräte-Vorlagen) |
-| 2 | `components/planner/constants.ts` | `NODE_TYPES`: Typ → React-Komponente (22 Einträge, 15 Imports) |
-| 3 | `components/planner/BOMModal.tsx` | `TYPE_INFO`: Label **nochmal** + Zweck (22 Einträge) |
-| 4 | `components/planner/utils/domainFilter.ts` | `MINIMAP_NODE_TOKEN` (17 Einträge) und `NODE_DOMAINS` (17 Einträge) |
-| 5 | `lib/electrical.ts` | AC-Typlisten in `getEdgeDomain` / `getHandleDomain` |
-| 6 | `store/usePlannerStore.ts` | Standardwerte und Verbindungsregeln je Typ |
+| #   | Ort                                        | Was dort stand                                                                     |
+| --- | ------------------------------------------ | ---------------------------------------------------------------------------------- |
+| 1   | `components/Sidebar.tsx`                   | Label, Kategorie, Beschreibung, Icon (3 Arrays: Elektrik, Wasser, Geräte-Vorlagen) |
+| 2   | `components/planner/constants.ts`          | `NODE_TYPES`: Typ → React-Komponente (22 Einträge, 15 Imports)                     |
+| 3   | `components/planner/BOMModal.tsx`          | `TYPE_INFO`: Label **nochmal** + Zweck (22 Einträge)                               |
+| 4   | `components/planner/utils/domainFilter.ts` | `MINIMAP_NODE_TOKEN` (17 Einträge) und `NODE_DOMAINS` (17 Einträge)                |
+| 5   | `lib/electrical.ts`                        | AC-Typlisten in `getEdgeDomain` / `getHandleDomain`                                |
+| 6   | `store/usePlannerStore.ts`                 | Standardwerte und Verbindungsregeln je Typ                                         |
 
 **Ein neues Bauteil erforderte also Änderungen an bis zu sechs Dateien.**
 
@@ -22,9 +22,9 @@ Komplexität tatsächlich senkt. Die Bestandsaufnahme:
 
 Die Tabellen waren bereits auseinandergelaufen:
 
-| Bauteil | Sidebar | Stückliste |
-|---------|---------|------------|
-| Shunt | „Batteriemonitor (Shunt)“ | „Batteriemonitor mit Shunt“ |
+| Bauteil | Sidebar                   | Stückliste                  |
+| ------- | ------------------------- | --------------------------- |
+| Shunt   | „Batteriemonitor (Shunt)“ | „Batteriemonitor mit Shunt“ |
 
 Zwei Namen für dasselbe Bauteil in derselben Anwendung — genau der Drift, den
 eine gemeinsame Quelle verhindert. Das ist der sachliche Grund für die
@@ -56,12 +56,12 @@ components/registry/
 
 ### Umgestellte Konsumenten
 
-| Datei | vorher | jetzt |
-|-------|--------|-------|
-| `Sidebar.tsx` | zwei Arrays mit 21 Einträgen | `listSelectableSpecs(mode)` |
-| `planner/constants.ts` | 15 Imports + 22-Zeilen-Map | `buildNodeTypes()` |
-| `planner/BOMModal.tsx` | `TYPE_INFO` mit 22 Einträgen | `getComponentSpec(type)` |
-| `planner/utils/domainFilter.ts` | zwei Typ-Tabellen mit je 17 Einträgen | Domänen aus der Spec |
+| Datei                           | vorher                                | jetzt                       |
+| ------------------------------- | ------------------------------------- | --------------------------- |
+| `Sidebar.tsx`                   | zwei Arrays mit 21 Einträgen          | `listSelectableSpecs(mode)` |
+| `planner/constants.ts`          | 15 Imports + 22-Zeilen-Map            | `buildNodeTypes()`          |
+| `planner/BOMModal.tsx`          | `TYPE_INFO` mit 22 Einträgen          | `getComponentSpec(type)`    |
+| `planner/utils/domainFilter.ts` | zwei Typ-Tabellen mit je 17 Einträgen | Domänen aus der Spec        |
 
 ### Bewusst NICHT umgestellt
 
@@ -69,7 +69,7 @@ components/registry/
   **`lib/autoWire.ts`.** Dort steht elektrische Sicherheitslogik. Sie darf
   nicht davon abhängen, ob jemand ein Bauteil korrekt registriert hat: eine
   vergessene Registrierung würde sonst die AC/DC-Trennung aushebeln. Die
-  Registry beschreibt, *was* ein Bauteil ist — nicht, wie daraus ein sicherer
+  Registry beschreibt, _was_ ein Bauteil ist — nicht, wie daraus ein sicherer
   Stromkreis wird. Die `handles`-Angaben der Spec sind Dokumentation und
   Prüfgrundlage, keine Laufzeitquelle für die Validierung.
 - **Die Node-Komponenten selbst.** Batterie, Wechselrichter und Leerrohr haben
@@ -103,14 +103,14 @@ Fehlermeldungen nennen immer die betroffene ID (`ComponentSpecError`).
 Bauteil `testHeatPump`, das im Produktionscode **nirgends** vorkommt, und
 prüft danach:
 
-| Konsument | Erwartung | Ergebnis |
-|-----------|-----------|----------|
-| Sidebar | Kachel mit Label und `data-component-type` erscheint | ✓ |
-| `buildNodeTypes()` | Typ ist in der React-Flow-Tabelle | ✓ |
-| Domänen-Filter | `nodeDomains()` liefert die Spec-Domäne | ✓ |
-| Minimap | Farbe entspricht der Domäne, nicht einer Typ-Tabelle | ✓ |
-| Stückliste | Label und Zweck aus der Spec | ✓ |
-| Deregistrierung | überall wieder verschwunden | ✓ |
+| Konsument          | Erwartung                                            | Ergebnis |
+| ------------------ | ---------------------------------------------------- | -------- |
+| Sidebar            | Kachel mit Label und `data-component-type` erscheint | ✓        |
+| `buildNodeTypes()` | Typ ist in der React-Flow-Tabelle                    | ✓        |
+| Domänen-Filter     | `nodeDomains()` liefert die Spec-Domäne              | ✓        |
+| Minimap            | Farbe entspricht der Domäne, nicht einer Typ-Tabelle | ✓        |
+| Stückliste         | Label und Zweck aus der Spec                         | ✓        |
+| Deregistrierung    | überall wieder verschwunden                          | ✓        |
 
 **Keine dieser Dateien wurde für das Testbauteil angefasst.**
 

@@ -48,33 +48,19 @@ describe('EmptyState Component', () => {
 
   it('does not render action button if actionLabel or onAction is missing', () => {
     const { rerender } = render(
-      <EmptyState
-        title="Keine Daten"
-        description="Beschreibung"
-        actionLabel="Neu erstellen"
-      />
+      <EmptyState title="Keine Daten" description="Beschreibung" actionLabel="Neu erstellen" />
     );
 
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
 
-    rerender(
-      <EmptyState
-        title="Keine Daten"
-        description="Beschreibung"
-        onAction={vi.fn()}
-      />
-    );
+    rerender(<EmptyState title="Keine Daten" description="Beschreibung" onAction={vi.fn()} />);
 
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 
   it('renders hint text when hint prop is provided', () => {
     render(
-      <EmptyState
-        title="Keine Daten"
-        description="Beschreibung"
-        hint="Tipp: Nutzen Sie die Vorlagen"
-      />
+      <EmptyState title="Keine Daten" description="Beschreibung" hint="Tipp: Nutzen Sie die Vorlagen" />
     );
 
     expect(screen.getByText('Tipp: Nutzen Sie die Vorlagen')).toBeInTheDocument();

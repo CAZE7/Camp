@@ -24,16 +24,18 @@ Ausdrücklich **kein** A*/Dijkstra auf einem Gitter.
 ## Konsequenzen
 
 **Gut**
+
 - O(Segmente × Hindernisse) statt Graphsuche — schnell genug für jedes Frame.
 - Deterministisch und rein: gleiche Eingabe, gleicher Pfad. Das macht die
   eingecheckte Routing-Galerie als Regressionsschutz überhaupt erst möglich.
 - Die Invarianten R1–R7 sind prüfbar formuliert und getestet.
 
 **Schlecht / Preis**
+
 - **Keine Optimalität.** In dichten Szenen kann eine kürzere Route existieren.
   Garantiert werden Korrektheit (orthogonal, kollisionsfrei, begrenzt) und
   Stabilität, nicht die beste Lösung.
-- Liegt ein Ziel *innerhalb* einer Box, gibt es keinen kollisionsfreien Pfad.
+- Liegt ein Ziel _innerhalb_ einer Box, gibt es keinen kollisionsfreien Pfad.
   Solche Hindernisse werden bewusst ignoriert statt endlos umfahren
   (Szenarien 20/21 der Galerie).
 - Die Iterationsgrenze von 12 ist eine Sicherung gegen Endlosschleifen, kein

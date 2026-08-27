@@ -34,7 +34,7 @@ const FILES_TO_SCAN = [
 const FORBIDDEN_PATTERNS: Array<{ name: string; pattern: RegExp; hint: string }> = [
   {
     name: 'hardcoded inverter efficiency 0.85',
-    pattern: /[\/]\s*0\.85\b/,
+    pattern: /[/]\s*0\.85\b/,
     hint: 'Ersetze / 0.85 durch / VDE_INVERTER_EFFICIENCY (aus @/lib/vde-standards).',
   },
   {
@@ -44,7 +44,7 @@ const FORBIDDEN_PATTERNS: Array<{ name: string; pattern: RegExp; hint: string }>
   },
   {
     name: 'hardcoded 60% conduit fill',
-    pattern: />\s*60\s*[\);,]/,
+    pattern: />\s*60\s*[);,]/,
     hint: 'Ersetze > 60 durch > VDE_MAX_CONDUIT_FILL_PERCENT (aus @/lib/vde-standards).',
   },
 ];
@@ -70,7 +70,7 @@ function findViolations(relPath: string): Array<{ line: number; text: string; na
     const line = lines[i];
     if (isCommentOrStringOnly(line)) continue;
     // Skip template-string prompt lines in route.ts (Faktor 0.85 in Fließtext)
-    if (line.includes('Faktor 0.85') && !/[\/]\s*0\.85\b/.test(line.replace(/Faktor 0\.85/g, ''))) {
+    if (line.includes('Faktor 0.85') && !/[/]\s*0\.85\b/.test(line.replace(/Faktor 0\.85/g, ''))) {
       // still run other patterns
     }
     for (const { name, pattern, hint } of FORBIDDEN_PATTERNS) {
@@ -92,19 +92,22 @@ describe('VDE-Konsistenz: keine hardcoded Magic-Numbers', () => {
     const violations = findViolations(relPath);
     if (violations.length > 0) {
       const details = violations
-        .map(v => `  ${relPath}:${v.line}  [${v.name}]\n    ${v.text}\n    → ${v.hint}`)
+        .map((v) => `  ${relPath}:${v.line}  [${v.name}]\n    ${v.text}\n    → ${v.hint}`)
         .join('\n');
       throw new Error(
         `Hardcoded VDE-Wert in ${relPath} gefunden.\n` +
-        `Alle VDE-Werte MÜSSEN in lib/vde-standards.ts definiert und von dort importiert werden.\n\n` +
-        details
+          `Alle VDE-Werte MÜSSEN in lib/vde-standards.ts definiert und von dort importiert werden.\n\n` +
+          details
       );
     }
     expect(violations).toEqual([]);
   });
 
   it('useDashboardMetrics.ts importiert die zentralen VDE-Konstanten', () => {
-    const content = fs.readFileSync(path.join(REPO_ROOT, 'components/planner/hooks/useDashboardMetrics.ts'), 'utf-8');
+    const content = fs.readFileSync(
+      path.join(REPO_ROOT, 'components/planner/hooks/useDashboardMetrics.ts'),
+      'utf-8'
+    );
     expect(content).toMatch(/VDE_INVERTER_EFFICIENCY/);
     expect(content).toMatch(/VDE_BATTERY_DOD/);
     expect(content).toMatch(/VDE_SOLAR_WINTER_REDUCTION/);
@@ -121,7 +124,7 @@ describe('VDE-Konsistenz: keine hardcoded Magic-Numbers', () => {
     const content = fs.readFileSync(path.join(REPO_ROOT, 'components/edges/CableEdge.tsx'), 'utf-8');
     expect(content).toMatch(/calculateEdgeCurrent/);
     expect(content).toMatch(/calculateAcEdgeCurrent/);
-    expect(content).not.toMatch(/[\/]\s*0\.85\b/);
+    expect(content).not.toMatch(/[/]\s*0\.85\b/);
   });
 
   it('ConduitNode.tsx rechnet über die zentrale Füllgrad-Funktion statt mit eigenen Tabellen', () => {
@@ -205,7 +208,7 @@ describe('VDE-Konsistenz: Re-Exports aus electrical.ts', () => {
 
   it('DERATE_FACTOR stimmt mit electrical.ts überein', () => {
     expect(vde.DERATE_FACTOR).toBe(electrical.DERATE_FACTOR);
-    expect(vde.DERATE_FACTOR).toBe(0.70);
+    expect(vde.DERATE_FACTOR).toBe(0.7);
   });
 
   it('calculateMaxFuseBase delegiert an electrical.calculateMaxFuse', () => {

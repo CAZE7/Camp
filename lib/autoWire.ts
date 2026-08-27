@@ -45,7 +45,6 @@ import {
   amps,
   crossSectionForVoltageDrop,
   currentFromPower,
-  divideAmps,
   maxAmps,
   meters,
   mm2,
@@ -479,11 +478,7 @@ const SHORE_POWER_CURRENT: Amps = amps(16);
 /** Standardlänge einer AC-Leitung ohne gespeicherte Länge. */
 const DEFAULT_AC_LENGTH: Meters = meters(2);
 
-function acCurrentA(
-  sourceNode: Node | undefined,
-  targetNode: Node | undefined,
-  nodes: Node[] = []
-): Amps {
+function acCurrentA(sourceNode: Node | undefined, targetNode: Node | undefined, nodes: Node[] = []): Amps {
   const loadOf = (node: Node | undefined): Amps =>
     currentFromPower(quantityOr(node?.data?.watts, watts, ZERO_WATTS), AC_VOLTAGE);
 
@@ -501,16 +496,17 @@ function acCurrentA(
   if (targetNode?.type === 'consumer230v') return loadOf(targetNode);
   if (sourceNode?.type === 'consumer230v') return loadOf(sourceNode);
   const inverter =
-    sourceNode?.type === 'inverter'
-      ? sourceNode
-      : targetNode?.type === 'inverter'
-        ? targetNode
-        : undefined;
+    sourceNode?.type === 'inverter' ? sourceNode : targetNode?.type === 'inverter' ? targetNode : undefined;
   if (inverter) {
     // Die AC-Zuleitung (Landstrom→ac_in bzw. WR→Gerät) trägt den tatsächlichen
     // 230-V-Laststrom. Bei mehreren 230-V-Verbrauchern ist der WR nur Nennlast;
     // die Summe der Geräte ist maßgeblich, sonst wird die Leitung zu dünn.
-    const ownLoad = quantityOr((inverter.data as Record<string, unknown>)?.continuousPower || (inverter.data as Record<string, unknown>)?.watts, watts, ZERO_WATTS);
+    const ownLoad = quantityOr(
+      (inverter.data as Record<string, unknown>)?.continuousPower ||
+        (inverter.data as Record<string, unknown>)?.watts,
+      watts,
+      ZERO_WATTS
+    );
     const connectedLoad = total230vLoad();
     const load = ownLoad > connectedLoad ? ownLoad : connectedLoad;
     return currentFromPower(load, AC_VOLTAGE);
@@ -673,10 +669,8 @@ export function healUserEdges(
   for (const edge of userEdges) {
     const sourceNode = nodeMap.get(edge.source);
     const targetNode = nodeMap.get(edge.target);
-    const sourceIsHouseMinus =
-      edge.source === houseBatteryId && !!edge.sourceHandle?.includes('minus');
-    const targetIsHouseMinus =
-      edge.target === houseBatteryId && !!edge.targetHandle?.includes('minus');
+    const sourceIsHouseMinus = edge.source === houseBatteryId && !!edge.sourceHandle?.includes('minus');
+    const targetIsHouseMinus = edge.target === houseBatteryId && !!edge.targetHandle?.includes('minus');
 
     if (sourceIsHouseMinus && edge.target !== shuntId && targetNode?.type !== 'battery') {
       if (retargetEdge(edge, { source: shuntId }, existingConnections) === 'drop') {
@@ -691,8 +685,7 @@ export function healUserEdges(
       continue;
     }
 
-    const sourceIsHousePlus =
-      edge.source === houseBatteryId && !!edge.sourceHandle?.includes('plus');
+    const sourceIsHousePlus = edge.source === houseBatteryId && !!edge.sourceHandle?.includes('plus');
     if (sourceIsHousePlus) {
       if (targetNode?.type === 'consumer') {
         if (retargetEdge(edge, { source: fuseBoxId }, existingConnections) === 'drop') {
@@ -838,9 +831,7 @@ export function performAutoWiring(
 
   let mpptNode: Node | undefined;
   if (solars.length > 0) {
-    mpptNode =
-      (nodesByType['mpptController'] || [])[0] ||
-      (nodesByType['charger'] || [])[0];
+    mpptNode = (nodesByType['mpptController'] || [])[0] || (nodesByType['charger'] || [])[0];
     if (!mpptNode) {
       mpptNode = findOrCreate(
         currentNodes,
@@ -895,11 +886,56 @@ export function performAutoWiring(
   );
 
   // ── Backbone: Batterie+ → Plus-Schiene, Batterie- → Shunt → Minus-Schiene ──
-  addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, batteryNode.id, rails.plus.id, 'plus', meters(0.2));
-  addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, batteryNode.id, shuntNode.id, 'minus', meters(0.2));
-  addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, shuntNode.id, rails.minus.id, 'minus', meters(0.5));
-  addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, rails.plus.id, fuseBoxNode.id, 'plus', meters(1));
-  addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, rails.minus.id, fuseBoxNode.id, 'minus', meters(1));
+  addDcEdge(
+    newEdges,
+    dcEdges,
+    edgeIdRef,
+    existingConnections,
+    batteryNode.id,
+    rails.plus.id,
+    'plus',
+    meters(0.2)
+  );
+  addDcEdge(
+    newEdges,
+    dcEdges,
+    edgeIdRef,
+    existingConnections,
+    batteryNode.id,
+    shuntNode.id,
+    'minus',
+    meters(0.2)
+  );
+  addDcEdge(
+    newEdges,
+    dcEdges,
+    edgeIdRef,
+    existingConnections,
+    shuntNode.id,
+    rails.minus.id,
+    'minus',
+    meters(0.5)
+  );
+  addDcEdge(
+    newEdges,
+    dcEdges,
+    edgeIdRef,
+    existingConnections,
+    rails.plus.id,
+    fuseBoxNode.id,
+    'plus',
+    meters(1)
+  );
+  addDcEdge(
+    newEdges,
+    dcEdges,
+    edgeIdRef,
+    existingConnections,
+    rails.minus.id,
+    fuseBoxNode.id,
+    'minus',
+    meters(1)
+  );
 
   // Weitere Aufbaubatterien parallel auf dieselben Schienen (nicht die Starterbatterie).
   // Parallelschaltung unterschiedlicher Chemien/Nennspannungen ist fachlich
@@ -916,13 +952,49 @@ export function performAutoWiring(
     if (extra.id === batteryNode.id) continue;
     if (starterBatteryNode && extra.id === starterBatteryNode.id) continue;
     if (!safeToParallel(batteryNode, extra)) continue;
-    addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, extra.id, rails.plus.id, 'plus', meters(0.2));
-    addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, extra.id, shuntNode.id, 'minus', meters(0.2));
+    addDcEdge(
+      newEdges,
+      dcEdges,
+      edgeIdRef,
+      existingConnections,
+      extra.id,
+      rails.plus.id,
+      'plus',
+      meters(0.2)
+    );
+    addDcEdge(
+      newEdges,
+      dcEdges,
+      edgeIdRef,
+      existingConnections,
+      extra.id,
+      shuntNode.id,
+      'minus',
+      meters(0.2)
+    );
   }
 
   for (const consumer of nodesByType['consumer'] || []) {
-    addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, fuseBoxNode.id, consumer.id, 'plus', meters(3));
-    addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, rails.minus.id, consumer.id, 'minus', meters(3));
+    addDcEdge(
+      newEdges,
+      dcEdges,
+      edgeIdRef,
+      existingConnections,
+      fuseBoxNode.id,
+      consumer.id,
+      'plus',
+      meters(3)
+    );
+    addDcEdge(
+      newEdges,
+      dcEdges,
+      edgeIdRef,
+      existingConnections,
+      rails.minus.id,
+      consumer.id,
+      'minus',
+      meters(3)
+    );
   }
 
   const inverters = nodesByType['inverter'] || [];
@@ -930,17 +1002,73 @@ export function performAutoWiring(
     if (!inverter.data.continuousPower && inverter.data.watts) {
       inverter.data.continuousPower = inverter.data.watts;
     }
-    addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, rails.plus.id, inverter.id, 'plus', meters(1));
-    addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, rails.minus.id, inverter.id, 'minus', meters(1));
+    addDcEdge(
+      newEdges,
+      dcEdges,
+      edgeIdRef,
+      existingConnections,
+      rails.plus.id,
+      inverter.id,
+      'plus',
+      meters(1)
+    );
+    addDcEdge(
+      newEdges,
+      dcEdges,
+      edgeIdRef,
+      existingConnections,
+      rails.minus.id,
+      inverter.id,
+      'minus',
+      meters(1)
+    );
   }
 
   if (solars.length > 0 && mpptNode) {
     for (const solar of solars) {
-      addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, solar.id, mpptNode.id, 'plus', meters(5), 'Solar');
-      addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, solar.id, mpptNode.id, 'minus', meters(5), 'Solar');
+      addDcEdge(
+        newEdges,
+        dcEdges,
+        edgeIdRef,
+        existingConnections,
+        solar.id,
+        mpptNode.id,
+        'plus',
+        meters(5),
+        'Solar'
+      );
+      addDcEdge(
+        newEdges,
+        dcEdges,
+        edgeIdRef,
+        existingConnections,
+        solar.id,
+        mpptNode.id,
+        'minus',
+        meters(5),
+        'Solar'
+      );
     }
-    addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, mpptNode.id, rails.plus.id, 'plus', meters(2));
-    addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, mpptNode.id, rails.minus.id, 'minus', meters(2));
+    addDcEdge(
+      newEdges,
+      dcEdges,
+      edgeIdRef,
+      existingConnections,
+      mpptNode.id,
+      rails.plus.id,
+      'plus',
+      meters(2)
+    );
+    addDcEdge(
+      newEdges,
+      dcEdges,
+      edgeIdRef,
+      existingConnections,
+      mpptNode.id,
+      rails.minus.id,
+      'minus',
+      meters(2)
+    );
   }
 
   const allChargers = [
@@ -951,15 +1079,51 @@ export function performAutoWiring(
   ];
   for (const charger of allChargers) {
     if (mpptNode && charger.id === mpptNode.id) continue;
-    addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, charger.id, rails.plus.id, 'plus', meters(3));
-    addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, charger.id, rails.minus.id, 'minus', meters(3));
+    addDcEdge(
+      newEdges,
+      dcEdges,
+      edgeIdRef,
+      existingConnections,
+      charger.id,
+      rails.plus.id,
+      'plus',
+      meters(3)
+    );
+    addDcEdge(
+      newEdges,
+      dcEdges,
+      edgeIdRef,
+      existingConnections,
+      charger.id,
+      rails.minus.id,
+      'minus',
+      meters(3)
+    );
   }
 
   if (starterBatteryNode) {
     for (const booster of dcdcChargers) {
       // Lange Strecke Starter→Booster ist fachgerecht (Motorraum); Sicherung sitzt am Plus.
-      addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, starterBatteryNode.id, booster.id, 'plus', meters(3));
-      addDcEdge(newEdges, dcEdges, edgeIdRef, existingConnections, starterBatteryNode.id, booster.id, 'minus', meters(3));
+      addDcEdge(
+        newEdges,
+        dcEdges,
+        edgeIdRef,
+        existingConnections,
+        starterBatteryNode.id,
+        booster.id,
+        'plus',
+        meters(3)
+      );
+      addDcEdge(
+        newEdges,
+        dcEdges,
+        edgeIdRef,
+        existingConnections,
+        starterBatteryNode.id,
+        booster.id,
+        'minus',
+        meters(3)
+      );
     }
   }
 
@@ -972,13 +1136,33 @@ export function performAutoWiring(
   if (inverters.length > 0) {
     const mainInverter = inverters[0];
     for (const c of consumers230v) {
-      addAcEdge(newEdges, edgeIdRef, existingConnections, mainInverter.id, c.id, 'plus', 'plus', meters(2), mm2(1.5));
+      addAcEdge(
+        newEdges,
+        edgeIdRef,
+        existingConnections,
+        mainInverter.id,
+        c.id,
+        'plus',
+        'plus',
+        meters(2),
+        mm2(1.5)
+      );
     }
     // Jeder Wechselrichter bekommt den Landstrom-Eingang; die 230-V-Verbraucher
     // hängen am ersten WR, damit nicht zwei WR parallel einen Kreis speisen.
     for (const inverter of inverters) {
       for (const sp of shorePowers) {
-        addAcEdge(newEdges, edgeIdRef, existingConnections, sp.id, inverter.id, 'plus', 'ac_in', meters(2), mm2(2.5));
+        addAcEdge(
+          newEdges,
+          edgeIdRef,
+          existingConnections,
+          sp.id,
+          inverter.id,
+          'plus',
+          'ac_in',
+          meters(2),
+          mm2(2.5)
+        );
       }
     }
   } else {
@@ -991,7 +1175,17 @@ export function performAutoWiring(
 
   for (const acCharger of nodesByType['acBatteryCharger'] || []) {
     for (const sp of shorePowers) {
-      addAcEdge(newEdges, edgeIdRef, existingConnections, sp.id, acCharger.id, 'plus', 'plus', meters(2), mm2(2.5));
+      addAcEdge(
+        newEdges,
+        edgeIdRef,
+        existingConnections,
+        sp.id,
+        acCharger.id,
+        'plus',
+        'plus',
+        meters(2),
+        mm2(2.5)
+      );
     }
   }
 
@@ -1003,7 +1197,7 @@ export function performAutoWiring(
     // KEIN Erdanschluss und darf die automatische Masseverlegung nicht
     // unterdrücken (vorheriger False-Positive).
     const connectsToMinusSystem = (e: CableEdge): boolean =>
-      (e.sourceHandle?.includes('minus') === true) &&
+      e.sourceHandle?.includes('minus') === true &&
       ((e.source === rails.minus.id && e.target === groundId) ||
         (e.target === rails.minus.id && e.source === groundId) ||
         (e.source === shuntNode.id && e.target === groundId) ||

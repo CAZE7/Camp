@@ -1,7 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import type { Edge, Node } from 'reactflow';
 import type { CableEdgeData } from '../../edges/CableEdge';
-import { applyDomainFilter, edgeDomainOf, nodeDomains, nodeMinimapColor, DOMAINS, type Domain } from './domainFilter';
+import {
+  applyDomainFilter,
+  edgeDomainOf,
+  nodeDomains,
+  nodeMinimapColor,
+  DOMAINS,
+  type Domain,
+} from './domainFilter';
 
 const nodes: Node[] = [
   { id: 'bat', type: 'battery', position: { x: 0, y: 0 }, data: {} },
@@ -21,7 +28,9 @@ describe('edgeDomainOf', () => {
   });
 
   it('overrides to Solar when a solar node is involved', () => {
-    expect(edgeDomainOf({ id: 'e', source: 'bat', target: 'solar', data: {} }, nodes[0], nodes[3])).toBe('Solar');
+    expect(edgeDomainOf({ id: 'e', source: 'bat', target: 'solar', data: {} }, nodes[0], nodes[3])).toBe(
+      'Solar'
+    );
   });
 });
 
@@ -65,11 +74,15 @@ describe('applyDomainFilter', () => {
 describe('nodeMinimapColor', () => {
   it('maps electric node types to a domain token', () => {
     // In jsdom ohne CSS-Variablen fällt die Auflösung auf den Fallback zurück.
-    expect(nodeMinimapColor({ id: 'b', type: 'battery', position: { x: 0, y: 0 }, data: {} })).toBe('#dc2626');
+    expect(nodeMinimapColor({ id: 'b', type: 'battery', position: { x: 0, y: 0 }, data: {} })).toBe(
+      '#dc2626'
+    );
     expect(nodeMinimapColor({ id: 's', type: 'solar', position: { x: 0, y: 0 }, data: {} })).toBe('#d97706');
   });
 
   it('falls back to ink for unknown types', () => {
-    expect(nodeMinimapColor({ id: 'u', type: 'unknown', position: { x: 0, y: 0 }, data: {} })).toBe('#14110e');
+    expect(nodeMinimapColor({ id: 'u', type: 'unknown', position: { x: 0, y: 0 }, data: {} })).toBe(
+      '#14110e'
+    );
   });
 });

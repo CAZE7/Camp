@@ -67,8 +67,8 @@ describe('ChargerNode Component', () => {
     expect(handles.length).toBe(4);
 
     // Check types
-    const sourceHandles = handles.filter(h => h.getAttribute('type') === 'source');
-    const targetHandles = handles.filter(h => h.getAttribute('type') === 'target');
+    const sourceHandles = handles.filter((h) => h.getAttribute('type') === 'source');
+    const targetHandles = handles.filter((h) => h.getAttribute('type') === 'target');
     expect(sourceHandles.length).toBe(2);
     expect(targetHandles.length).toBe(2);
 

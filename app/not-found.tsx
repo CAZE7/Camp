@@ -21,8 +21,8 @@ export default function NotFound() {
           Diese Seite gibt es (noch) nicht.
         </h1>
         <p className="mt-3 text-base text-ink-soft">
-          Die aufgerufene Adresse führt ins Leere. Vielleicht war der Link
-          veraltet oder du hast dich vertippt. Wähle unten, wo es weitergehen soll.
+          Die aufgerufene Adresse führt ins Leere. Vielleicht war der Link veraltet oder du hast dich
+          vertippt. Wähle unten, wo es weitergehen soll.
         </p>
 
         <ul className="mt-8 divide-y divide-rule border border-rule bg-bone">
@@ -33,7 +33,9 @@ export default function NotFound() {
                 className="flex min-h-14 items-center justify-between px-5 py-3 text-sm hover:bg-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-inset"
               >
                 <span className="font-medium text-ink">{link.label}</span>
-                <span aria-hidden="true" className="text-copper">→</span>
+                <span aria-hidden="true" className="text-copper">
+                  →
+                </span>
               </Link>
             </li>
           ))}

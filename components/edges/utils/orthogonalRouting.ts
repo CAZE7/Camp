@@ -26,11 +26,15 @@ export const NODE_FALLBACK_HEIGHT = 120;
 /** Richtung, in der eine Kante den Source-Node verlässt. */
 export const sourceExitVector = (position?: Position): Point => {
   switch (position) {
-    case Position.Left: return { x: -1, y: 0 };
-    case Position.Top: return { x: 0, y: -1 };
-    case Position.Bottom: return { x: 0, y: 1 };
+    case Position.Left:
+      return { x: -1, y: 0 };
+    case Position.Top:
+      return { x: 0, y: -1 };
+    case Position.Bottom:
+      return { x: 0, y: 1 };
     case Position.Right:
-    default: return { x: 1, y: 0 };
+    default:
+      return { x: 1, y: 0 };
   }
 };
 
@@ -84,7 +88,8 @@ export function routeWaypoints(input: {
     } else {
       // Gegenrichtung: Ziel liegt "hinter" der Kante → Schlaufe aussen herum.
       const dir = ds.x > 0 ? 1 : -1;
-      const loopX = (dir > 0 ? Math.max(S.x, T.x) : Math.min(S.x, T.x)) + dir * (ROUTE_MIN_STUB * 2 + Math.abs(offset));
+      const loopX =
+        (dir > 0 ? Math.max(S.x, T.x) : Math.min(S.x, T.x)) + dir * (ROUTE_MIN_STUB * 2 + Math.abs(offset));
       points.push({ x: loopX, y: S.y });
       points.push({ x: loopX, y: T.y });
     }
@@ -103,7 +108,8 @@ export function routeWaypoints(input: {
       points.push({ x: T.x, y: midY });
     } else {
       const dir = ds.y > 0 ? 1 : -1;
-      const loopY = (dir > 0 ? Math.max(S.y, T.y) : Math.min(S.y, T.y)) + dir * (ROUTE_MIN_STUB * 2 + Math.abs(offset));
+      const loopY =
+        (dir > 0 ? Math.max(S.y, T.y) : Math.min(S.y, T.y)) + dir * (ROUTE_MIN_STUB * 2 + Math.abs(offset));
       points.push({ x: S.x, y: loopY });
       points.push({ x: T.x, y: loopY });
     }
@@ -157,8 +163,7 @@ function detourAround(a: Point, b: Point, r: Rect, margin: number): Point[] | nu
   if (a.x === b.x) {
     // Vertikales Segment → links oder rechts vorbei (nähere Seite wählen).
     const x = a.x;
-    const detourX =
-      x < inflated.x + inflated.width / 2 ? inflated.x : inflated.x + inflated.width;
+    const detourX = x < inflated.x + inflated.width / 2 ? inflated.x : inflated.x + inflated.width;
     return [
       { x, y: inflated.y },
       { x: detourX, y: inflated.y },
@@ -169,8 +174,7 @@ function detourAround(a: Point, b: Point, r: Rect, margin: number): Point[] | nu
 
   // Horizontales Segment → oben oder unten vorbei (nähere Seite wählen).
   const y = a.y;
-  const detourY =
-    y < inflated.y + inflated.height / 2 ? inflated.y : inflated.y + inflated.height;
+  const detourY = y < inflated.y + inflated.height / 2 ? inflated.y : inflated.y + inflated.height;
   return [
     { x: inflated.x, y },
     { x: inflated.x, y: detourY },
@@ -309,8 +313,7 @@ export function dedupe(points: Point[]): Point[] {
 
 const fmt = (n: number): string => (Math.round(n * 100) / 100).toString();
 
-const distance = (a: Point, b: Point): number =>
-  Math.hypot(b.x - a.x, b.y - a.y);
+const distance = (a: Point, b: Point): number => Math.hypot(b.x - a.x, b.y - a.y);
 
 /** Punkt auf der Strecke a→b im Abstand `d` von `a`. */
 const toward = (a: Point, b: Point, d: number): Point => {
@@ -421,9 +424,7 @@ export function segmentsIntersect(s1: Segment, s2: Segment): boolean {
  */
 export function countCrossings(waypoints: Point[], others: Segment[]): number {
   if (others.length === 0 || waypoints.length < 2) return 0;
-  const own = waypointsToSegments(dedupe(waypoints)).filter(
-    ([a, b]) => a.x !== b.x || a.y !== b.y
-  );
+  const own = waypointsToSegments(dedupe(waypoints)).filter(([a, b]) => a.x !== b.x || a.y !== b.y);
   let count = 0;
   for (const other of others) {
     if (own.some((segment) => segmentsIntersect(segment, other))) count++;
@@ -534,10 +535,7 @@ export function buildOrthogonalPath(input: OrthogonalPathInput): OrthogonalPathR
 }
 
 /** Erstellt Sperr-Rechtecke aus Nodes (ohne Source/Target). */
-export function nodesToObstacles(
-  nodes: Node[],
-  excludeIds: Set<string>
-): Rect[] {
+export function nodesToObstacles(nodes: Node[], excludeIds: Set<string>): Rect[] {
   const rects: Rect[] = [];
   for (const node of nodes) {
     if (!node || excludeIds.has(node.id)) continue;

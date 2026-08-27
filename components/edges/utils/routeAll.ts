@@ -50,9 +50,7 @@ export function resolveHandlePoint(
   }
   const originX = node.positionAbsolute?.x ?? node.position.x;
   const originY = node.positionAbsolute?.y ?? node.position.y;
-  const group =
-    node.handleBounds?.[kind] ??
-    node.handleBounds?.[kind === 'source' ? 'target' : 'source'];
+  const group = node.handleBounds?.[kind] ?? node.handleBounds?.[kind === 'source' ? 'target' : 'source'];
   const wanted = handleId ?? null;
   const hb = group?.find((h) => (h.id ?? null) === wanted) ?? group?.[0];
   if (hb) {
@@ -98,8 +96,7 @@ export function routeAllCables(nodes: Node[], edges: RouteEdgeRef[]): Map<string
   for (let i = 0; i < nodes.length; i++) nodeById.set(nodes[i].id, nodes[i]);
 
   const allObstacles = nodesToObstacles(nodes, new Set());
-  const crossingAll =
-    edges.length > 120 ? [] : edgesToCrossingSegments(edges, nodes, () => false);
+  const crossingAll = edges.length > 120 ? [] : edgesToCrossingSegments(edges, nodes, () => false);
 
   const siblingEdges = edges.map((edge) => ({
     id: edge.id,
@@ -134,9 +131,8 @@ export function routeAllCables(nodes: Node[], edges: RouteEdgeRef[]): Map<string
       targetPosition: tgt.position,
       offset: polarityPathOffset(edge.sourceHandle) + lane,
       obstacles,
-      crossingSegments: edges.length > 120
-        ? []
-        : edgesToCrossingSegments(edges, nodes, (other) => other.id === edge.id),
+      crossingSegments:
+        edges.length > 120 ? [] : edgesToCrossingSegments(edges, nodes, (other) => other.id === edge.id),
     });
     raw.push({ id: edge.id, waypoints: result.waypoints, result });
   }

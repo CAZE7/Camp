@@ -9,9 +9,9 @@
 
 @layer base {
   :root {
-    --font-display: "Fraunces", Georgia, "Times New Roman", serif;
-    --font-sans: "Source Sans 3", "Source Sans Pro", ui-sans-serif, system-ui, sans-serif;
-    --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+    --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
+    --font-sans: 'Source Sans 3', 'Source Sans Pro', ui-sans-serif, system-ui, sans-serif;
+    --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
     --font-heading: var(--font-display);
 
     --paper: #f6f1e8;
@@ -71,25 +71,25 @@
     --canvas-dim: 0.32;
     --canvas-domain-dim: 0.18;
     --canvas-minimap-mask: rgba(20, 17, 14, 0.14);
-    --wire-dc: #dc2626;        /* Gleichstrom 12V/24V Plus (technisches Rot) */
-    --wire-dc-minus: #374151;  /* Gleichstrom 12V/24V Minus (Schiefergrau) */
-    --wire-ac: #2563eb;        /* Wechselstrom 230V (Signalblau) */
-    --wire-solar: #d97706;     /* Solar / PV (Bronze/Amber) */
-    --wire-selected: #1f2937;  /* Fokus-Ring für ausgewählte Leitung */
-    --wire-error: #b42318;     /* Leitung mit Fehler (Norm-Warnrot mit gestricheltem Signal) */
+    --wire-dc: #dc2626; /* Gleichstrom 12V/24V Plus (technisches Rot) */
+    --wire-dc-minus: #374151; /* Gleichstrom 12V/24V Minus (Schiefergrau) */
+    --wire-ac: #2563eb; /* Wechselstrom 230V (Signalblau) */
+    --wire-solar: #d97706; /* Solar / PV (Bronze/Amber) */
+    --wire-selected: #1f2937; /* Fokus-Ring für ausgewählte Leitung */
+    --wire-error: #b42318; /* Leitung mit Fehler (Norm-Warnrot mit gestricheltem Signal) */
     --wire-error-bg: rgba(180, 35, 24, 0.1);
 
-    --pipe-fresh: #1d4ed8;     /* Frischwasser (blau) */
-    --pipe-gray: #4b5563;      /* Grauwasser (grau) */
-    --pipe-selected: #c2410c;  /* ausgewähltes Rohr (orange) */
+    --pipe-fresh: #1d4ed8; /* Frischwasser (blau) */
+    --pipe-gray: #4b5563; /* Grauwasser (grau) */
+    --pipe-selected: #c2410c; /* ausgewähltes Rohr (orange) */
 
-    --warn-critical: #b91c1c;      /* kritisch */
+    --warn-critical: #b91c1c; /* kritisch */
     --warn-critical-bg: #fef2f2;
     --warn-critical-border: #fecaca;
-    --warn-warning: #92400e;       /* Warnung */
+    --warn-warning: #92400e; /* Warnung */
     --warn-warning-bg: #fffbeb;
     --warn-warning-border: #fde68a;
-    --warn-info: #2563eb;          /* Hinweis */
+    --warn-info: #2563eb; /* Hinweis */
     --warn-info-bg: #eff6ff;
     --warn-info-border: #bfdbfe;
 
@@ -129,23 +129,23 @@
   /* --- Typo-Tokens: ersetzt ad-hoc text-[10px]/text-[0.65rem] etc. ---
      Regel: kein Body-/Label-Text unter 12 px (0.75rem) für Lesbarkeit. */
   .caption-xs {
-    font-size: 0.75rem;    /* 12 px */
+    font-size: 0.75rem; /* 12 px */
     line-height: 1rem;
     letter-spacing: 0.02em;
   }
   .caption-sm {
-    font-size: 0.8125rem;  /* 13 px */
+    font-size: 0.8125rem; /* 13 px */
     line-height: 1.125rem;
   }
   .label-eyebrow {
     font-family: var(--font-mono), ui-monospace, monospace;
-    font-size: 0.75rem;    /* 12 px – ersetzt text-[0.65rem]/text-[10px] */
+    font-size: 0.75rem; /* 12 px – ersetzt text-[0.65rem]/text-[10px] */
     letter-spacing: 0.16em;
     text-transform: uppercase;
     font-weight: 500;
   }
   .wordmark {
-    font-size: 1rem;       /* 16 px – ersetzt text-[1.05rem] Sonderfall Mark */
+    font-size: 1rem; /* 16 px – ersetzt text-[1.05rem] Sonderfall Mark */
     font-weight: 600;
     letter-spacing: -0.01em;
   }
@@ -296,13 +296,34 @@
     font-weight: 600;
     letter-spacing: 0.12em;
   }
-  .node-symbol--dc { --node-symbol-color: #b42318; --node-symbol-bg: #fff1f0; }
-  .node-symbol--ac { --node-symbol-color: #175cd3; --node-symbol-bg: #eff8ff; }
-  .node-symbol--solar { --node-symbol-color: #b54708; --node-symbol-bg: #fffaeb; }
-  .node-symbol--load { --node-symbol-color: #087443; --node-symbol-bg: #ecfdf3; }
-  .node-symbol--protect { --node-symbol-color: #b42318; --node-symbol-bg: #fff1f0; }
-  .node-symbol--ground { --node-symbol-color: #475467; --node-symbol-bg: #f2f4f7; }
-  .node-symbol--measure { --node-symbol-color: #6941c6; --node-symbol-bg: #f9f5ff; }
+  .node-symbol--dc {
+    --node-symbol-color: #b42318;
+    --node-symbol-bg: #fff1f0;
+  }
+  .node-symbol--ac {
+    --node-symbol-color: #175cd3;
+    --node-symbol-bg: #eff8ff;
+  }
+  .node-symbol--solar {
+    --node-symbol-color: #b54708;
+    --node-symbol-bg: #fffaeb;
+  }
+  .node-symbol--load {
+    --node-symbol-color: #087443;
+    --node-symbol-bg: #ecfdf3;
+  }
+  .node-symbol--protect {
+    --node-symbol-color: #b42318;
+    --node-symbol-bg: #fff1f0;
+  }
+  .node-symbol--ground {
+    --node-symbol-color: #475467;
+    --node-symbol-bg: #f2f4f7;
+  }
+  .node-symbol--measure {
+    --node-symbol-color: #6941c6;
+    --node-symbol-bg: #f9f5ff;
+  }
   .node-drag-handle:active {
     cursor: grabbing;
   }
@@ -346,24 +367,28 @@
   .react-flow__handle:focus-visible > div,
   .react-flow__handle.connecting > div,
   .react-flow__handle.tap-connect-selected > div {
-    box-shadow: 0 0 0 4px var(--bone), 0 0 0 7px var(--wire-selected);
+    box-shadow:
+      0 0 0 4px var(--bone),
+      0 0 0 7px var(--wire-selected);
   }
 
   .react-flow__handle.valid > div {
-    box-shadow: 0 0 0 4px var(--bone), 0 0 0 7px var(--success);
+    box-shadow:
+      0 0 0 4px var(--bone),
+      0 0 0 7px var(--success);
   }
 
-  .react-flow__handle[data-handleid*="plus"] > div,
-  .react-flow__handle[data-handleid="in"] > div {
+  .react-flow__handle[data-handleid*='plus'] > div,
+  .react-flow__handle[data-handleid='in'] > div {
     border-radius: 9999px !important;
   }
 
-  .react-flow__handle[data-handleid*="minus"] > div,
-  .react-flow__handle[data-handleid="out"] > div {
+  .react-flow__handle[data-handleid*='minus'] > div,
+  .react-flow__handle[data-handleid='out'] > div {
     border-radius: 2px !important;
   }
 
-  .react-flow__handle[data-handleid*="ac"] > div {
+  .react-flow__handle[data-handleid*='ac'] > div {
     border-radius: 2px !important;
     transform: rotate(45deg);
   }
@@ -376,7 +401,9 @@
   .node-visual-content,
   .node-medium-card,
   .node-overview-marker {
-    transition: opacity 180ms ease, transform 180ms ease;
+    transition:
+      opacity 180ms ease,
+      transform 180ms ease;
   }
   .node-medium-card,
   .node-overview-marker {
@@ -447,7 +474,9 @@
   .react-flow__node:not(.dragging),
   .planner-layout-animating .react-flow__node,
   .react-flow__node.planner-node-collision {
-    transition: transform 300ms ease, opacity 180ms ease;
+    transition:
+      transform 300ms ease,
+      opacity 180ms ease;
   }
   .react-flow__node.planner-node-collision {
     outline: 3px solid var(--wire-error);
@@ -494,7 +523,8 @@
   }
 
   .roof-solar-grid {
-    background-image: linear-gradient(to right, var(--muted-ink) 1px, transparent 1px),
+    background-image:
+      linear-gradient(to right, var(--muted-ink) 1px, transparent 1px),
       linear-gradient(to bottom, var(--muted-ink) 1px, transparent 1px);
     background-size: 10px 10px;
   }
@@ -505,7 +535,9 @@
     scroll-behavior: auto;
   }
 
-  *, *::before, *::after {
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;

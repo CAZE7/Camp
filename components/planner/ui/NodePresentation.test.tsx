@@ -10,7 +10,9 @@ function FakeNode() {
 describe('NodePresentation', () => {
   it('provides overview icon, standard label/type and mounted full details', () => {
     const Presented = withNodePresentations({ battery: FakeNode }).battery;
-    render(<Presented {...({ id: 'battery-1', type: 'battery', data: { label: 'Aufbaubatterie' } } as any)} />);
+    render(
+      <Presented {...({ id: 'battery-1', type: 'battery', data: { label: 'Aufbaubatterie' } } as any)} />
+    );
     expect(screen.getByTestId('full-details')).toBeInTheDocument();
     expect(screen.getByText('Aufbaubatterie')).toHaveClass('block');
     expect(screen.getByText('Batterie')).toBeInTheDocument();

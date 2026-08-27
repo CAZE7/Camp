@@ -51,18 +51,6 @@ function polylineLength(points: Point[]): number {
 }
 
 /** Richtungsvektor beim Verlassen der Quelle (Spiegel der Produktionslogik). */
-function exitVector(position?: Position): Point {
-  switch (position) {
-    case Position.Left:
-      return { x: -1, y: 0 };
-    case Position.Top:
-      return { x: 0, y: -1 };
-    case Position.Bottom:
-      return { x: 0, y: 1 };
-    default:
-      return { x: 1, y: 0 };
-  }
-}
 
 /** Tiefes Einfrieren, um Reinheit (R6) beweisbar zu machen. */
 function deepFreeze<T>(value: T): T {
@@ -135,8 +123,7 @@ describe('R1–R4 — Invarianten über alle 25 Szenarien', () => {
                   point.y < rect.y + rect.height
               );
             expect(
-              inside({ x: input.sourceX, y: input.sourceY }) ||
-                inside({ x: input.targetX, y: input.targetY })
+              inside({ x: input.sourceX, y: input.sourceY }) || inside({ x: input.targetX, y: input.targetY })
             ).toBe(true);
           }
         }

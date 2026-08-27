@@ -12,23 +12,33 @@ import {
 import { Node, Edge } from 'reactflow';
 
 const node = (id: string, type: string, data: Record<string, unknown> = {}): Node => ({
-  id, type, position: { x: 0, y: 0 }, data,
+  id,
+  type,
+  position: { x: 0, y: 0 },
+  data,
 });
 
 describe('three-column cleanup layout', () => {
   it('classifies components into 5 E-CAD industry pipeline ranks', () => {
     for (const type of ['solar', 'shorePower']) expect(getNodeLayoutRank(node(type, type))).toBe(0);
     for (const type of ['mpptController', 'dcdcCharger']) expect(getNodeLayoutRank(node(type, type))).toBe(1);
-    for (const type of ['battery', 'shunt', 'busbar', 'fuse']) expect(getNodeLayoutRank(node(type, type))).toBe(2);
+    for (const type of ['battery', 'shunt', 'busbar', 'fuse'])
+      expect(getNodeLayoutRank(node(type, type))).toBe(2);
     for (const type of ['inverter']) expect(getNodeLayoutRank(node(type, type))).toBe(3);
     for (const type of ['consumer', 'consumer230v']) expect(getNodeLayoutRank(node(type, type))).toBe(4);
   });
 
   it('prefers measured dimensions and otherwise uses type/default fallbacks', () => {
-    expect(getNodeLayoutSize({ ...node('g', 'ground'), width: 300, height: 40 })).toEqual({ width: 300, height: 40 });
+    expect(getNodeLayoutSize({ ...node('g', 'ground'), width: 300, height: 40 })).toEqual({
+      width: 300,
+      height: 40,
+    });
     expect(getNodeLayoutSize(node('g', 'ground'))).toEqual({ width: 128, height: 88 });
     expect(getNodeLayoutSize(node('c', 'conduit'))).toEqual({ width: 256, height: 148 });
-    expect(getNodeLayoutSize(node('b', 'battery'))).toEqual({ width: DEFAULT_NODE_WIDTH, height: DEFAULT_NODE_HEIGHT });
+    expect(getNodeLayoutSize(node('b', 'battery'))).toEqual({
+      width: DEFAULT_NODE_WIDTH,
+      height: DEFAULT_NODE_HEIGHT,
+    });
   });
 
   it('handles an empty graph and preserves edge identities', () => {
@@ -50,17 +60,15 @@ describe('three-column cleanup layout', () => {
   });
 
   it('sorts vertically by type hierarchy and leaves 120 px between cards', () => {
-    const input = [
-      node('fuse', 'fuse'),
-      node('busbar', 'busbar'),
-      node('shunt', 'shunt'),
-    ];
+    const input = [node('fuse', 'fuse'), node('busbar', 'busbar'), node('shunt', 'shunt')];
     const { nodes } = getLayoutedElements(input, []);
     const ordered = [...nodes].sort((a, b) => a.position.y - b.position.y);
     expect(ordered.map((item) => item.id)).toEqual(['shunt', 'busbar', 'fuse']);
     for (let index = 1; index < ordered.length; index += 1) {
       const previous = ordered[index - 1];
-      expect(ordered[index].position.y - (previous.position.y + getNodeLayoutSize(previous).height)).toBe(LAYOUT_NODESEP);
+      expect(ordered[index].position.y - (previous.position.y + getNodeLayoutSize(previous).height)).toBe(
+        LAYOUT_NODESEP
+      );
     }
   });
 
@@ -78,20 +86,26 @@ describe('three-column cleanup layout', () => {
         const two = nodes[b];
         const s1 = getNodeLayoutSize(one);
         const s2 = getNodeLayoutSize(two);
-        const overlap = one.position.x < two.position.x + s2.width && one.position.x + s1.width > two.position.x &&
-          one.position.y < two.position.y + s2.height && one.position.y + s1.height > two.position.y;
+        const overlap =
+          one.position.x < two.position.x + s2.width &&
+          one.position.x + s1.width > two.position.x &&
+          one.position.y < two.position.y + s2.height &&
+          one.position.y + s1.height > two.position.y;
         expect(overlap).toBe(false);
       }
     }
   });
 
   it('uses the same three-column model for water', () => {
-    const { nodes } = getLayoutedElements([
-      node('tank', 'freshWaterTank'), node('pump', 'pump'), node('sink', 'sink'),
-    ], []);
-    expect(nodes.find((item) => item.id === 'tank')!.position.x)
-      .toBeLessThan(nodes.find((item) => item.id === 'pump')!.position.x);
-    expect(nodes.find((item) => item.id === 'pump')!.position.x)
-      .toBeLessThan(nodes.find((item) => item.id === 'sink')!.position.x);
+    const { nodes } = getLayoutedElements(
+      [node('tank', 'freshWaterTank'), node('pump', 'pump'), node('sink', 'sink')],
+      []
+    );
+    expect(nodes.find((item) => item.id === 'tank')!.position.x).toBeLessThan(
+      nodes.find((item) => item.id === 'pump')!.position.x
+    );
+    expect(nodes.find((item) => item.id === 'pump')!.position.x).toBeLessThan(
+      nodes.find((item) => item.id === 'sink')!.position.x
+    );
   });
 });

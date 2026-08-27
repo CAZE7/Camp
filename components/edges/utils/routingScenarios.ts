@@ -354,8 +354,7 @@ export const ROUTING_SCENARIOS: readonly RoutingScenario[] = [
   {
     id: '20-enclosed-target',
     title: 'Umschlossenes Ziel',
-    rationale:
-      'Das Ziel liegt in einer Box, die es vollständig umschließt (z. B. Node im Leerrohr-Rahmen).',
+    rationale: 'Das Ziel liegt in einer Box, die es vollständig umschließt (z. B. Node im Leerrohr-Rahmen).',
     input: {
       sourceX: 0,
       sourceY: 0,
@@ -369,8 +368,7 @@ export const ROUTING_SCENARIOS: readonly RoutingScenario[] = [
     // hindernisfreier Pfad existiert nicht — die Leitung muss die Box
     // betreten. Der Router darf hier nicht endlos ausweichen.
     obstacleFree: false,
-    exception:
-      'Ziel liegt innerhalb der Hindernis-Box; ein kollisionsfreier Pfad ist geometrisch unmöglich.',
+    exception: 'Ziel liegt innerhalb der Hindernis-Box; ein kollisionsfreier Pfad ist geometrisch unmöglich.',
     maxDetourRatio: 4,
   },
   {

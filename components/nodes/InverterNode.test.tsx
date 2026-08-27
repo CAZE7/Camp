@@ -59,7 +59,7 @@ describe('InverterNode Component', () => {
 
   it('does not show overload warning when under continuous power limit', () => {
     vi.mocked(useNodes).mockReturnValue([
-      { id: 'c1', type: 'consumer230v', data: { watts: 1000 }, position: { x: 0, y: 0 } }
+      { id: 'c1', type: 'consumer230v', data: { watts: 1000 }, position: { x: 0, y: 0 } },
     ] as any);
     render(<InverterNode id="1" data={{ continuousPower: 1500, concurrentDevices: ['c1'] }} />);
     expect(screen.queryByText(/Überlastung!/)).not.toBeInTheDocument();
@@ -67,9 +67,11 @@ describe('InverterNode Component', () => {
 
   it('shows overload warning and red styling when over continuous power limit', () => {
     vi.mocked(useNodes).mockReturnValue([
-      { id: 'c1', type: 'consumer230v', data: { watts: 2000 }, position: { x: 0, y: 0 } }
+      { id: 'c1', type: 'consumer230v', data: { watts: 2000 }, position: { x: 0, y: 0 } },
     ] as any);
-    const { container } = render(<InverterNode id="1" data={{ continuousPower: 1500, concurrentDevices: ['c1'] }} />);
+    const { container } = render(
+      <InverterNode id="1" data={{ continuousPower: 1500, concurrentDevices: ['c1'] }} />
+    );
     expect(screen.getByText(/Überlastung!/)).toBeInTheDocument();
 
     const mainDiv = container.firstChild as HTMLElement;
@@ -79,9 +81,11 @@ describe('InverterNode Component', () => {
 
   it('applies selected styling and overload styling together correctly', () => {
     vi.mocked(useNodes).mockReturnValue([
-      { id: 'c1', type: 'consumer230v', data: { watts: 2000 }, position: { x: 0, y: 0 } }
+      { id: 'c1', type: 'consumer230v', data: { watts: 2000 }, position: { x: 0, y: 0 } },
     ] as any);
-    const { container } = render(<InverterNode id="1" data={{ continuousPower: 1500, concurrentDevices: ['c1'] }} selected={true} />);
+    const { container } = render(
+      <InverterNode id="1" data={{ continuousPower: 1500, concurrentDevices: ['c1'] }} selected={true} />
+    );
 
     const mainDiv = container.firstChild as HTMLElement;
     expect(mainDiv.className).toContain('border-red-500');

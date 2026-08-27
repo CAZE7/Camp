@@ -1,45 +1,27 @@
-"use client";
+'use client';
 
-import React, { useCallback, useMemo, useRef, useState, useEffect } from "react";
-import Link from "next/link";
-import ReactFlow, {
-  Background,
-  Controls,
-  ReactFlowProvider,
-  Node,
-} from "reactflow";
-import "reactflow/dist/style.css";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { cn } from "@/lib/utils";
-import { vehicleTemplates } from "@/lib/vehicleTemplates";
-import { useDachNodes } from "./hooks/useDachNodes";
-import { DachPanel } from "./components/DachPanel";
-import RoofBackgroundNode from "@/components/nodes/RoofBackgroundNode";
-import RoofSolarNode from "@/components/nodes/RoofSolarNode";
-import RoofWindowNode from "@/components/nodes/RoofWindowNode";
-import { RoofNodeData } from "@/components/nodes/types";
-import { SAFE_MARGINS } from "./validation";
-import { SiteHeader } from "@/components/brand/SiteHeader";
-import { SiteFooter } from "@/components/brand/SiteFooter";
-import {
-  Plus,
-  AlertTriangle,
-  Sparkles,
-  ArrowRight,
-  Info,
-  X as XIcon,
-} from "lucide-react";
+import React, { useCallback, useMemo, useRef, useState, useEffect } from 'react';
+import Link from 'next/link';
+import ReactFlow, { Background, Controls, ReactFlowProvider, Node } from 'reactflow';
+import 'reactflow/dist/style.css';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { cn } from '@/lib/utils';
+import { vehicleTemplates } from '@/lib/vehicleTemplates';
+import { useDachNodes } from './hooks/useDachNodes';
+import { DachPanel } from './components/DachPanel';
+import RoofBackgroundNode from '@/components/nodes/RoofBackgroundNode';
+import RoofSolarNode from '@/components/nodes/RoofSolarNode';
+import RoofWindowNode from '@/components/nodes/RoofWindowNode';
+import { RoofNodeData } from '@/components/nodes/types';
+import { SAFE_MARGINS } from './validation';
+import { SiteHeader } from '@/components/brand/SiteHeader';
+import { SiteFooter } from '@/components/brand/SiteFooter';
+import { Plus, AlertTriangle, Sparkles, ArrowRight, Info, X as XIcon } from 'lucide-react';
 
 // Outfit wird lokal über @fontsource-variable/outfit gebündelt.
-const outfit = { className: "font-outfit" };
+const outfit = { className: 'font-outfit' };
 
 const nodeTypes = {
   roofBackground: RoofBackgroundNode,
@@ -50,13 +32,9 @@ const nodeTypes = {
 /** Berechnet einen laienverständlichen Text, wenn ein Node außerhalb der Safe
  *  Zone liegt. Rein anzeigend – die Regel-Logik in validation.ts bleibt
  *  unverändert. */
-function describeOverrun(
-  node: Node<RoofNodeData>,
-  roofWidthCm: number,
-  roofHeightCm: number
-): string | null {
+function describeOverrun(node: Node<RoofNodeData>, roofWidthCm: number, roofHeightCm: number): string | null {
   if (!node.data?.isInvalid) return null;
-  if (node.type !== "roofSolar" && node.type !== "roofWindow") return null;
+  if (node.type !== 'roofSolar' && node.type !== 'roofWindow') return null;
 
   const xCm = Math.round(node.position.x / 2);
   const yCm = Math.round(node.position.y / 2);
@@ -65,7 +43,8 @@ function describeOverrun(
 
   const overruns: string[] = [];
   const overFront = SAFE_MARGINS.front - yCm;
-  if (overFront > 0) overruns.push(`${overFront} cm über die vordere Kante (min. ${SAFE_MARGINS.front} cm Abstand)`);
+  if (overFront > 0)
+    overruns.push(`${overFront} cm über die vordere Kante (min. ${SAFE_MARGINS.front} cm Abstand)`);
   const overRear = yCm + heightCm - (roofHeightCm - SAFE_MARGINS.rear);
   if (overRear > 0) overruns.push(`${overRear} cm über die hintere Kante (min. ${SAFE_MARGINS.rear} cm)`);
   const overLeft = SAFE_MARGINS.left - xCm;
@@ -73,9 +52,9 @@ function describeOverrun(
   const overRight = xCm + widthCm - (roofWidthCm - SAFE_MARGINS.right);
   if (overRight > 0) overruns.push(`${overRight} cm über die rechte Kante (min. ${SAFE_MARGINS.right} cm)`);
 
-  if (overruns.length === 0) return "liegt außerhalb der Safe Zone";
-  const label = node.data.label || (node.type === "roofSolar" ? "Solarpanel" : "Dachfenster");
-  return `${label} ragt ${overruns.join(", ")}.`;
+  if (overruns.length === 0) return 'liegt außerhalb der Safe Zone';
+  const label = node.data.label || (node.type === 'roofSolar' ? 'Solarpanel' : 'Dachfenster');
+  return `${label} ragt ${overruns.join(', ')}.`;
 }
 
 function DachPlanerInner() {
@@ -104,17 +83,17 @@ function DachPlanerInner() {
   const roofHeightCm = selectedVehicle.roofLength * 100;
 
   const invalidNodes = useMemo(
-    () => nodes.filter((n) => n.data?.isInvalid && (n.type === "roofSolar" || n.type === "roofWindow")),
+    () => nodes.filter((n) => n.data?.isInvalid && (n.type === 'roofSolar' || n.type === 'roofWindow')),
     [nodes]
   );
 
   const overlappingNodes = useMemo(
-    () => nodes.filter((n) => n.data?.isOverlapping && (n.type === "roofSolar" || n.type === "roofWindow")),
+    () => nodes.filter((n) => n.data?.isOverlapping && (n.type === 'roofSolar' || n.type === 'roofWindow')),
     [nodes]
   );
 
   const placementCount = useMemo(
-    () => nodes.filter((n) => n.type === "roofSolar" || n.type === "roofWindow").length,
+    () => nodes.filter((n) => n.type === 'roofSolar' || n.type === 'roofWindow').length,
     [nodes]
   );
 
@@ -124,8 +103,8 @@ function DachPlanerInner() {
   }, [placementCount]);
 
   const addNode = useCallback(
-    (type: "roofSolar" | "roofWindow") => {
-      const isSolar = type === "roofSolar";
+    (type: 'roofSolar' | 'roofWindow') => {
+      const isSolar = type === 'roofSolar';
       const widthPx = isSolar ? 200 : 80;
       const heightPx = isSolar ? 120 : 80;
       // Freie Position innerhalb der Safe Zone finden — einfacher Offset pro
@@ -143,7 +122,7 @@ function DachPlanerInner() {
         height: heightPx,
         style: { width: widthPx, height: heightPx },
         data: {
-          label: isSolar ? "Solarpanel" : "Dachfenster",
+          label: isSolar ? 'Solarpanel' : 'Dachfenster',
           watts: isSolar ? 200 : undefined,
           width: isSolar ? 100 : 40,
           height: isSolar ? 60 : 40,
@@ -157,22 +136,22 @@ function DachPlanerInner() {
 
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
-    event.dataTransfer.dropEffect = "move";
+    event.dataTransfer.dropEffect = 'move';
   }, []);
 
   const onDrop = useCallback(
     (event: React.DragEvent) => {
       event.preventDefault();
-      const type = event.dataTransfer.getData("application/reactflow");
+      const type = event.dataTransfer.getData('application/reactflow');
       if (!type) return;
 
       const bounds = reactFlowWrapper.current?.getBoundingClientRect();
       const position = {
-        x: Math.max(40, (event.clientX - (bounds?.left || 0)) - 40),
-        y: Math.max(40, (event.clientY - (bounds?.top || 0)) - 40),
+        x: Math.max(40, event.clientX - (bounds?.left || 0) - 40),
+        y: Math.max(40, event.clientY - (bounds?.top || 0) - 40),
       };
 
-      const isSolar = type === "roofSolar";
+      const isSolar = type === 'roofSolar';
       const widthPx = isSolar ? 200 : 80;
       const heightPx = isSolar ? 120 : 80;
       const newNode: Node<RoofNodeData> = {
@@ -183,7 +162,7 @@ function DachPlanerInner() {
         height: heightPx,
         style: { width: widthPx, height: heightPx },
         data: {
-          label: isSolar ? "Solarpanel" : "Dachfenster",
+          label: isSolar ? 'Solarpanel' : 'Dachfenster',
           watts: isSolar ? 200 : undefined,
           width: isSolar ? 100 : 40,
           height: isSolar ? 60 : 40,
@@ -197,8 +176,8 @@ function DachPlanerInner() {
   );
 
   const onDragStart = (event: React.DragEvent, nodeType: string) => {
-    event.dataTransfer.setData("application/reactflow", nodeType);
-    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData('application/reactflow', nodeType);
+    event.dataTransfer.effectAllowed = 'move';
   };
 
   return (
@@ -216,7 +195,7 @@ function DachPlanerInner() {
                 ← Zurück
               </Link>
               <span aria-hidden="true" className="h-6 w-px bg-rule" />
-              <h1 className={cn("font-display text-xl font-semibold text-ink md:text-2xl", outfit.className)}>
+              <h1 className={cn('font-display text-xl font-semibold text-ink md:text-2xl', outfit.className)}>
                 Dach-Planer
               </h1>
             </div>
@@ -248,8 +227,14 @@ function DachPlanerInner() {
                   <p className="font-semibold">So planst du dein Dach in 3 Schritten:</p>
                   <ol className="mt-1 list-decimal pl-5">
                     <li>Fahrzeug links auswählen.</li>
-                    <li>Solarpanel oder Dachfenster hinzufügen (Button „+ Aufs Dach") oder auf die Fläche ziehen.</li>
-                    <li>Position, Größe und Watt rechts anpassen — Gesamt-Watt wandert automatisch in den Schaltplan.</li>
+                    <li>
+                      Solarpanel oder Dachfenster hinzufügen (Button „+ Aufs Dach") oder auf die Fläche
+                      ziehen.
+                    </li>
+                    <li>
+                      Position, Größe und Watt rechts anpassen — Gesamt-Watt wandert automatisch in den
+                      Schaltplan.
+                    </li>
                   </ol>
                 </div>
               </div>
@@ -283,7 +268,10 @@ function DachPlanerInner() {
                 </SelectContent>
               </Select>
               <p className="caption-xs text-ink-soft">
-                Nutzbare Dachfläche: <strong className="text-ink">{roofWidthCm} × {roofHeightCm} cm</strong>
+                Nutzbare Dachfläche:{' '}
+                <strong className="text-ink">
+                  {roofWidthCm} × {roofHeightCm} cm
+                </strong>
               </p>
             </div>
 
@@ -294,7 +282,7 @@ function DachPlanerInner() {
               <div
                 className="cursor-grab border border-rule bg-paper p-3 text-sm font-medium text-ink transition-colors hover:border-copper"
                 draggable
-                onDragStart={(e) => onDragStart(e, "roofSolar")}
+                onDragStart={(e) => onDragStart(e, 'roofSolar')}
               >
                 <div className="flex items-center justify-between gap-2">
                   <div>
@@ -305,7 +293,7 @@ function DachPlanerInner() {
                     type="button"
                     size="sm"
                     variant="outline"
-                    onClick={() => addNode("roofSolar")}
+                    onClick={() => addNode('roofSolar')}
                     aria-label="Solarpanel aufs Dach setzen"
                     className="min-h-11 gap-1 border-copper text-copper hover:bg-paper"
                   >
@@ -313,14 +301,16 @@ function DachPlanerInner() {
                     Aufs Dach
                   </Button>
                 </div>
-                <p className="caption-xs mt-2 text-ink-soft">Ziehen oder tippen — auf Mobilgeräten nur der Button.</p>
+                <p className="caption-xs mt-2 text-ink-soft">
+                  Ziehen oder tippen — auf Mobilgeräten nur der Button.
+                </p>
               </div>
 
               {/* Dachfenster-Karte */}
               <div
                 className="cursor-grab border border-rule bg-paper p-3 text-sm font-medium text-ink transition-colors hover:border-warn-info"
                 draggable
-                onDragStart={(e) => onDragStart(e, "roofWindow")}
+                onDragStart={(e) => onDragStart(e, 'roofWindow')}
               >
                 <div className="flex items-center justify-between gap-2">
                   <div>
@@ -331,7 +321,7 @@ function DachPlanerInner() {
                     type="button"
                     size="sm"
                     variant="outline"
-                    onClick={() => addNode("roofWindow")}
+                    onClick={() => addNode('roofWindow')}
                     aria-label="Dachfenster aufs Dach setzen"
                     className="min-h-11 gap-1 border-warn-info text-warn-info hover:bg-paper"
                   >
@@ -371,8 +361,8 @@ function DachPlanerInner() {
                       <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
                       <span>
                         {n.data.label || (n.type === 'roofSolar' ? 'Solarpanel' : 'Dachfenster')} überlappt
-                        sich mit einem anderen Element. Verschiebe es, damit keine Abschattung oder
-                        Kollision entsteht.
+                        sich mit einem anderen Element. Verschiebe es, damit keine Abschattung oder Kollision
+                        entsteht.
                       </span>
                     </li>
                   ))}

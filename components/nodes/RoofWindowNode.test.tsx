@@ -6,7 +6,16 @@ vi.mock('reactflow', async () => {
   const actual = await vi.importActual('reactflow');
   return {
     ...actual,
-    NodeResizer: ({ onResize, isVisible, 'data-testid': testId, minWidth, minHeight, lineClassName, handleClassName, ...props }: any) => (
+    NodeResizer: ({
+      onResize,
+      isVisible,
+      'data-testid': testId,
+      minWidth,
+      minHeight,
+      lineClassName,
+      handleClassName,
+      ...props
+    }: any) => (
       <div
         data-testid={testId || 'node-resizer'}
         data-is-visible={isVisible}
@@ -29,7 +38,9 @@ describe('RoofWindowNode Component', () => {
   });
 
   it('renders custom label and dimensions when provided in data', () => {
-    render(<RoofWindowNode id="1" data={{ label: 'Custom Window', width: 60, height: 80 }} selected={false} />);
+    render(
+      <RoofWindowNode id="1" data={{ label: 'Custom Window', width: 60, height: 80 }} selected={false} />
+    );
     expect(screen.getByText('Custom Window')).toBeInTheDocument();
     expect(screen.getByText(/60.*80.*cm/i)).toBeInTheDocument();
   });
@@ -62,9 +73,6 @@ describe('RoofWindowNode Component', () => {
     fireEvent.click(resizer);
 
     expect(onNodeResizeMock).toHaveBeenCalledTimes(1);
-    expect(onNodeResizeMock).toHaveBeenCalledWith(
-      expect.any(Object),
-      { id: '1', width: 50, height: 60 }
-    );
+    expect(onNodeResizeMock).toHaveBeenCalledWith(expect.any(Object), { id: '1', width: 50, height: 60 });
   });
 });

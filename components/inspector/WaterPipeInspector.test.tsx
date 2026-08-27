@@ -10,7 +10,18 @@ vi.mock('../../store/usePlannerStore', () => ({
 
 describe('WaterPipeInspector', () => {
   it('shows water-specific fields without electrical fuse fields', () => {
-    render(<WaterPipeInspector edge={{ id: 'w1', source: 'a', target: 'b', type: 'waterPipe', data: { pipeType: 'fresh', length: 2 } }} onChangeLength={vi.fn()} />);
+    render(
+      <WaterPipeInspector
+        edge={{
+          id: 'w1',
+          source: 'a',
+          target: 'b',
+          type: 'waterPipe',
+          data: { pipeType: 'fresh', length: 2 },
+        }}
+        onChangeLength={vi.fn()}
+      />
+    );
     expect(screen.getByText('Wasserleitung')).toBeInTheDocument();
     expect(screen.getByLabelText('Leitungsart')).toHaveValue('fresh');
     expect(screen.queryByText(/Sicherung/)).not.toBeInTheDocument();
@@ -19,7 +30,12 @@ describe('WaterPipeInspector', () => {
 
   it('updates the pipe length with a positive value', () => {
     const onChangeLength = vi.fn();
-    render(<WaterPipeInspector edge={{ id: 'w1', source: 'a', target: 'b', type: 'waterPipe', data: { length: 2 } }} onChangeLength={onChangeLength} />);
+    render(
+      <WaterPipeInspector
+        edge={{ id: 'w1', source: 'a', target: 'b', type: 'waterPipe', data: { length: 2 } }}
+        onChangeLength={onChangeLength}
+      />
+    );
     fireEvent.change(screen.getByLabelText('Länge in Metern'), { target: { value: '3.5' } });
     expect(onChangeLength).toHaveBeenCalledWith('w1', 3.5);
   });

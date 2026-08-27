@@ -42,7 +42,11 @@ export function ComponentTile({ comp, onMobileAdd, accent }: ComponentTileProps)
     >
       <Icon className="h-5 w-5 shrink-0 text-copper" aria-hidden="true" />
       <span className="line-clamp-2 font-semibold leading-tight">{comp.label}</span>
-      {comp.watts !== undefined && <span className="rounded border border-border bg-card px-1.5 py-0.5 font-mono text-xs text-copper">{comp.watts} W</span>}
+      {comp.watts !== undefined && (
+        <span className="rounded border border-border bg-card px-1.5 py-0.5 font-mono text-xs text-copper">
+          {comp.watts} W
+        </span>
+      )}
     </button>
   );
 }

@@ -36,10 +36,7 @@ export function cssToken(name: string, fallback: string): string {
  * kodiert (er bleibt ein Glow/Dicken-Effekt); Fehler-Kanten werden separat
  * in CableEdge auf die Fehlerfarbe gesetzt (mit animiertem Dash).
  */
-export function getWireColor(input: {
-  edgeDomain: WireDomain;
-  isPlus?: boolean;
-}): string {
+export function getWireColor(input: { edgeDomain: WireDomain; isPlus?: boolean }): string {
   if (input.edgeDomain === 'AC_230V') return WIRE_COLORS.ac;
   if (input.edgeDomain === 'Solar') return WIRE_COLORS.solar;
   return input.isPlus ? WIRE_COLORS.dcPlus : WIRE_COLORS.dcMinus;

@@ -1,11 +1,11 @@
-"use client";
+'use client';
 import React, { useState } from 'react';
-import {Handle, Position } from 'reactflow';
+import { Handle, Position } from 'reactflow';
 import { PlannerNodeData, PlannerNodeProps } from './types';
 import { usePlannerStore } from '../../store/usePlannerStore';
 import { NodeSymbol } from './NodeSymbol';
 
-const BusbarNode = function({ id, data, isConnectable, selected }: PlannerNodeProps<PlannerNodeData>) {
+const BusbarNode = function ({ id, data, isConnectable, selected }: PlannerNodeProps<PlannerNodeData>) {
   const updateNodeData = usePlannerStore((state) => state.updateNodeData);
   const [editingField, setEditingField] = useState<string | null>(null);
   const [tempValue, setTempValue] = useState<string>('');
@@ -22,7 +22,11 @@ const BusbarNode = function({ id, data, isConnectable, selected }: PlannerNodePr
         const parsed = Number(tempValue);
         const allowsZero = editingField === 'hours';
         if (!Number.isFinite(parsed) || parsed < 0 || (!allowsZero && parsed === 0)) {
-          window.dispatchEvent(new CustomEvent('planner-input-error', { detail: allowsZero ? 'Gib eine Zahl ab 0 ein.' : 'Der Wert muss größer als 0 sein.' }));
+          window.dispatchEvent(
+            new CustomEvent('planner-input-error', {
+              detail: allowsZero ? 'Gib eine Zahl ab 0 ein.' : 'Der Wert muss größer als 0 sein.',
+            })
+          );
           setEditingField(null);
           return;
         }
@@ -40,7 +44,11 @@ const BusbarNode = function({ id, data, isConnectable, selected }: PlannerNodePr
   };
 
   return (
-    <div role="group" aria-label={`${data.label || 'Sammelschiene'}. Komponente im Plan.`} className={`hover:scale-105 transition-all custom-drag-handle bg-white border-2 border-slate-700 rounded-md p-3 shadow-md w-48 ${selected ? " ring-4 ring-blue-500 shadow-xl" : ""}`}>
+    <div
+      role="group"
+      aria-label={`${data.label || 'Sammelschiene'}. Komponente im Plan.`}
+      className={`hover:scale-105 transition-all custom-drag-handle bg-white border-2 border-slate-700 rounded-md p-3 shadow-md w-48 ${selected ? ' ring-4 ring-blue-500 shadow-xl' : ''}`}
+    >
       <NodeSymbol kind="busbar" />
       {editingField === 'label' ? (
         <input
@@ -52,7 +60,12 @@ const BusbarNode = function({ id, data, isConnectable, selected }: PlannerNodePr
           onKeyDown={handleKeyDown}
         />
       ) : (
-        <div className="font-bold mb-2 text-sm text-center cursor-text" onDoubleClick={() => handleDoubleClick('label', data.label || 'Sammelschiene')}>{data.label || 'Sammelschiene'}</div>
+        <div
+          className="font-bold mb-2 text-sm text-center cursor-text"
+          onDoubleClick={() => handleDoubleClick('label', data.label || 'Sammelschiene')}
+        >
+          {data.label || 'Sammelschiene'}
+        </div>
       )}
       <div className="flex flex-col gap-1 text-xs text-gray-600">
         {editingField === 'rating' ? (
@@ -70,22 +83,120 @@ const BusbarNode = function({ id, data, isConnectable, selected }: PlannerNodePr
             <span>A</span>
           </div>
         ) : (
-          <div className="cursor-text" onDoubleClick={() => handleDoubleClick('rating', data.rating || 250)}>Max Strom: {data.rating || 250} A</div>
+          <div className="cursor-text" onDoubleClick={() => handleDoubleClick('rating', data.rating || 250)}>
+            Max Strom: {data.rating || 250} A
+          </div>
         )}
       </div>
-      <Handle type="target" position={Position.Left} id="plus" isConnectable={isConnectable} style={{ background: 'transparent', border: 'none', width: '24px', height: '24px', zIndex: 10, display: 'flex', justifyContent: 'center', alignItems: 'center', top: '30%' }}>
-        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'red', pointerEvents: 'none' }} />
+      <Handle
+        type="target"
+        position={Position.Left}
+        id="plus"
+        isConnectable={isConnectable}
+        style={{
+          background: 'transparent',
+          border: 'none',
+          width: '24px',
+          height: '24px',
+          zIndex: 10,
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          top: '30%',
+        }}
+      >
+        <div
+          style={{
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            background: 'red',
+            pointerEvents: 'none',
+          }}
+        />
       </Handle>
-      <Handle type="target" position={Position.Left} id="minus" isConnectable={isConnectable} style={{ background: 'transparent', border: 'none', width: '24px', height: '24px', zIndex: 10, display: 'flex', justifyContent: 'center', alignItems: 'center', top: '70%' }}>
-        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'black', pointerEvents: 'none' }} />
+      <Handle
+        type="target"
+        position={Position.Left}
+        id="minus"
+        isConnectable={isConnectable}
+        style={{
+          background: 'transparent',
+          border: 'none',
+          width: '24px',
+          height: '24px',
+          zIndex: 10,
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          top: '70%',
+        }}
+      >
+        <div
+          style={{
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            background: 'black',
+            pointerEvents: 'none',
+          }}
+        />
       </Handle>
-      <Handle type="source" position={Position.Right} id="plus" isConnectable={isConnectable} style={{ background: 'transparent', border: 'none', width: '24px', height: '24px', zIndex: 10, display: 'flex', justifyContent: 'center', alignItems: 'center', top: '30%' }}>
-        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'red', pointerEvents: 'none' }} />
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="plus"
+        isConnectable={isConnectable}
+        style={{
+          background: 'transparent',
+          border: 'none',
+          width: '24px',
+          height: '24px',
+          zIndex: 10,
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          top: '30%',
+        }}
+      >
+        <div
+          style={{
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            background: 'red',
+            pointerEvents: 'none',
+          }}
+        />
       </Handle>
-      <Handle type="source" position={Position.Right} id="minus" isConnectable={isConnectable} style={{ background: 'transparent', border: 'none', width: '24px', height: '24px', zIndex: 10, display: 'flex', justifyContent: 'center', alignItems: 'center', top: '70%' }}>
-        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'black', pointerEvents: 'none' }} />
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="minus"
+        isConnectable={isConnectable}
+        style={{
+          background: 'transparent',
+          border: 'none',
+          width: '24px',
+          height: '24px',
+          zIndex: 10,
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          top: '70%',
+        }}
+      >
+        <div
+          style={{
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            background: 'black',
+            pointerEvents: 'none',
+          }}
+        />
       </Handle>
     </div>
   );
-}
+};
 export default React.memo(BusbarNode);

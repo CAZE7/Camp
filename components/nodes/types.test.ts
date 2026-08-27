@@ -11,7 +11,7 @@ import type {
   AcBatteryChargerNodeData,
   BusbarNodeData,
   PlannerNodeData,
-  OnNodeResize
+  OnNodeResize,
 } from './types';
 import type { ResizeDragEvent } from 'reactflow';
 import type React from 'react';

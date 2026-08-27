@@ -1,4 +1,4 @@
-"use client";
+'use client';
 import React from 'react';
 
 import { NodeResizer } from 'reactflow';
@@ -60,7 +60,10 @@ const RoofWindowNode = function ({
           </span>
         </div>
         {isInvalid && (
-          <div className="pointer-events-none absolute inset-0 border-4 border-warn-critical" aria-hidden="true" />
+          <div
+            className="pointer-events-none absolute inset-0 border-4 border-warn-critical"
+            aria-hidden="true"
+          />
         )}
         {(isInvalid || isOverlapping) && (
           <div

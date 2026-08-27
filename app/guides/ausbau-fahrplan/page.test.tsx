@@ -25,10 +25,14 @@ describe('AusbauFahrplanPage', () => {
 
     // Check headings for some steps
     expect(screen.getByRole('heading', { name: '1. Planung', level: 2 })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: '2. Rostschutz & Hohlraumversiegelung', level: 2 })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: '2. Rostschutz & Hohlraumversiegelung', level: 2 })
+    ).toBeInTheDocument();
 
     // Check that some step content is rendered
-    expect(screen.getByText(/Einen detaillierten Grundriss und eine realistische Budgetkalkulation erstellen/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Einen detaillierten Grundriss und eine realistische Budgetkalkulation erstellen/i)
+    ).toBeInTheDocument();
 
     // Check that the standard sections for steps are present
     const werkzeugHeadings = screen.getAllByRole('heading', { name: /Werkzeug & Material/i, level: 3 });
@@ -53,7 +57,9 @@ describe('AusbauFahrplanPage', () => {
     expect(screen.getByRole('heading', { name: /Zusatzinfo/i, level: 3 })).toBeInTheDocument();
 
     // Check for comparison sections
-    expect(screen.getByRole('heading', { name: /Vergleich: Fenster & Lüftung/i, level: 3 })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: /Vergleich: Fenster & Lüftung/i, level: 3 })
+    ).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /Vergleich: Dämmstoffe/i, level: 3 })).toBeInTheDocument();
   });
 });

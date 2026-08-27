@@ -19,7 +19,7 @@ const mockVehicle: VehicleTemplate = {
   length: 5,
   width: 2,
   height: 2,
-  roofLength: 4,  // 800px width equivalent
+  roofLength: 4, // 800px width equivalent
   roofWidth: 1.5, // 300px height equivalent
 };
 
@@ -56,7 +56,7 @@ describe('useDachNodes', () => {
       const node = result.current.nodes[1];
       result.current.setNodes([
         result.current.nodes[0],
-        { ...node, data: { ...node.data, watts: 300, isInvalid: false } }
+        { ...node, data: { ...node.data, watts: 300, isInvalid: false } },
       ]);
     });
 
@@ -67,7 +67,7 @@ describe('useDachNodes', () => {
       const node = result.current.nodes[1];
       result.current.setNodes([
         result.current.nodes[0],
-        { ...node, data: { ...node.data, watts: 300, isInvalid: true } }
+        { ...node, data: { ...node.data, watts: 300, isInvalid: true } },
       ]);
     });
 
@@ -84,11 +84,11 @@ describe('useDachNodes', () => {
         height: 200,
         x: 0,
         y: 0,
-        direction: [1, 1]
+        direction: [1, 1],
       });
     });
 
-    const resizedNode = result.current.nodes.find(n => n.id === 'solar-1');
+    const resizedNode = result.current.nodes.find((n) => n.id === 'solar-1');
     expect(resizedNode?.width).toBe(300);
     expect(resizedNode?.height).toBe(200);
     expect(resizedNode?.data.width).toBe(150); // px / 2
@@ -102,7 +102,7 @@ describe('useDachNodes', () => {
 
     act(() => {
       result.current.setNodes((nodes: Node<RoofNodeData>[]) =>
-        nodes.map(n => n.id === 'solar-1' ? { ...n, selected: true } : n)
+        nodes.map((n) => (n.id === 'solar-1' ? { ...n, selected: true } : n))
       );
     });
 
@@ -115,7 +115,7 @@ describe('useDachNodes', () => {
     // First select the node
     act(() => {
       result.current.setNodes((nodes: Node<RoofNodeData>[]) =>
-        nodes.map(n => n.id === 'solar-1' ? { ...n, selected: true } : n)
+        nodes.map((n) => (n.id === 'solar-1' ? { ...n, selected: true } : n))
       );
     });
 
@@ -123,7 +123,7 @@ describe('useDachNodes', () => {
       result.current.updateSelectedNodeWatts(400);
     });
 
-    const node = result.current.nodes.find(n => n.id === 'solar-1');
+    const node = result.current.nodes.find((n) => n.id === 'solar-1');
     expect(node?.data.watts).toBe(400);
   });
 
@@ -132,7 +132,7 @@ describe('useDachNodes', () => {
 
     act(() => {
       result.current.setNodes((nodes: Node<RoofNodeData>[]) =>
-        nodes.map(n => n.id === 'solar-1' ? { ...n, selected: true } : n)
+        nodes.map((n) => (n.id === 'solar-1' ? { ...n, selected: true } : n))
       );
     });
 
@@ -140,7 +140,7 @@ describe('useDachNodes', () => {
       result.current.updateSelectedNodeWidth(120); // 120cm
     });
 
-    const node = result.current.nodes.find(n => n.id === 'solar-1');
+    const node = result.current.nodes.find((n) => n.id === 'solar-1');
     expect(node?.width).toBe(240); // 120 * 2
     expect(node?.data.width).toBe(120);
   });
@@ -150,7 +150,7 @@ describe('useDachNodes', () => {
 
     act(() => {
       result.current.setNodes((nodes: Node<RoofNodeData>[]) =>
-        nodes.map(n => n.id === 'solar-1' ? { ...n, selected: true } : n)
+        nodes.map((n) => (n.id === 'solar-1' ? { ...n, selected: true } : n))
       );
     });
 
@@ -158,7 +158,7 @@ describe('useDachNodes', () => {
       result.current.updateSelectedNodeHeight(80); // 80cm
     });
 
-    const node = result.current.nodes.find(n => n.id === 'solar-1');
+    const node = result.current.nodes.find((n) => n.id === 'solar-1');
     expect(node?.height).toBe(160); // 80 * 2
     expect(node?.data.height).toBe(80);
   });
@@ -173,12 +173,12 @@ describe('useDachNodes', () => {
           type: 'position',
           id: 'solar-1',
           position: { x: -100, y: -100 },
-        }
+        },
       ];
       result.current.onNodesChange(changes);
     });
 
-    const node = result.current.nodes.find(n => n.id === 'solar-1');
+    const node = result.current.nodes.find((n) => n.id === 'solar-1');
     expect(node?.position.x).toBe(-100);
     expect(node?.data.isInvalid).toBe(true);
   });

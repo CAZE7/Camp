@@ -11,7 +11,15 @@ vi.mock('reactflow', async () => {
     ...actual,
     Handle: ({ 'data-testid': testId, isConnectable, ...props }: any) => {
       const { type, position, id, style } = props;
-      return <div data-testid={testId || 'react-flow-handle'} data-type={type} data-position={position} data-id={id} style={style} />;
+      return (
+        <div
+          data-testid={testId || 'react-flow-handle'}
+          data-type={type}
+          data-position={position}
+          data-id={id}
+          style={style}
+        />
+      );
     },
     Position: {
       Left: 'left',
@@ -48,9 +56,7 @@ describe('ConduitNode Component', () => {
   });
 
   it('calculates fill correctly with assigned cables', () => {
-    mockUseEdges.mockReturnValue([
-      { id: 'edge-1', data: { crossSection: 1.5 } }
-    ]);
+    mockUseEdges.mockReturnValue([{ id: 'edge-1', data: { crossSection: 1.5 } }]);
 
     render(<ConduitNode id="1" data={{ assignedEdges: ['edge-1'] }} />);
     expect(screen.getByText('Zugewiesene Kabel: 1')).toBeInTheDocument();
@@ -61,14 +67,14 @@ describe('ConduitNode Component', () => {
   it('shows overfill warning when capacity exceeds 60%', () => {
     // EN 20 area ~224.3, 60% = ~134.5
     // 50mm2 cable outer diam = 13.5 (area ~143.1). 143.1 / 224.3 = 63.8%
-    mockUseEdges.mockReturnValue([
-      { id: 'edge-1', data: { crossSection: 50.0 } }
-    ]);
+    mockUseEdges.mockReturnValue([{ id: 'edge-1', data: { crossSection: 50.0 } }]);
 
     const { container } = render(<ConduitNode id="1" data={{ assignedEdges: ['edge-1'] }} />);
 
     // Check main warning text
-    expect(screen.getByText('Kanal überfüllt! Gefahr durch Hitzestau in der Kabelbündelung.')).toBeInTheDocument();
+    expect(
+      screen.getByText('Kanal überfüllt! Gefahr durch Hitzestau in der Kabelbündelung.')
+    ).toBeInTheDocument();
     // Check recommendation text
     expect(screen.getByText(/Bitte mindestens EN 25 Rohr verwenden./i)).toBeInTheDocument();
 

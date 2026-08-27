@@ -1,10 +1,5 @@
 import type { Point, Rect } from './pathfinding';
-import {
-  isOrthogonalPath,
-  pathHitsObstacles,
-  containsPoint,
-  stitchOrthogonal,
-} from './pathfinding';
+import { isOrthogonalPath, pathHitsObstacles, containsPoint, stitchOrthogonal } from './pathfinding';
 
 /**
  * Globales orthogonales Nudging (libavoid-Phase 2).
@@ -221,8 +216,7 @@ export function nudgeOrthogonalPaths(
     const repaired = changed ? stitchOrthogonal(clones[i]) : originals[i];
     const relevant = obstaclesForPath(obstacles, start, end);
     const ok =
-      isOrthogonalPath(repaired) &&
-      (relevant.length === 0 || !pathHitsObstacles(repaired, relevant));
+      isOrthogonalPath(repaired) && (relevant.length === 0 || !pathHitsObstacles(repaired, relevant));
     out.set(id, ok ? repaired : originals[i]);
   }
   return out;

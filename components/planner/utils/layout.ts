@@ -23,21 +23,18 @@ export const NODE_SIZE_BY_TYPE: Record<string, { width: number; height: number }
  * Rank 3: Inverters & Sub-distribution (Inverter)
  * Rank 4: End Consumers & Ground (12V & 230V Loads, Sinks, Showers, Ground)
  */
-const PRIMARY_SOURCE_TYPES = new Set([
-  'solar', 'roofSolar', 'shorePower', 'freshWaterTank',
-]);
+const PRIMARY_SOURCE_TYPES = new Set(['solar', 'roofSolar', 'shorePower', 'freshWaterTank']);
 const CHARGER_CONVERTER_TYPES = new Set([
-  'mpptController', 'dcdcCharger', 'acBatteryCharger', 'charger', 'preFilter', 'pump',
+  'mpptController',
+  'dcdcCharger',
+  'acBatteryCharger',
+  'charger',
+  'preFilter',
+  'pump',
 ]);
-const CORE_DISTRIBUTION_TYPES = new Set([
-  'battery', 'shunt', 'busbar', 'fuse', 'conduit', 'accumulator',
-]);
-const INVERTER_TYPES = new Set([
-  'inverter',
-]);
-const CONSUMER_TYPES = new Set([
-  'consumer', 'consumer230v', 'sink', 'shower', 'grayWaterTank', 'ground',
-]);
+const CORE_DISTRIBUTION_TYPES = new Set(['battery', 'shunt', 'busbar', 'fuse', 'conduit', 'accumulator']);
+const INVERTER_TYPES = new Set(['inverter']);
+const CONSUMER_TYPES = new Set(['consumer', 'consumer230v', 'sink', 'shower', 'grayWaterTank', 'ground']);
 
 export const LAYOUT_TYPE_ORDER: Record<string, number> = {
   solar: 0,
@@ -86,8 +83,7 @@ export const getNodeLayoutSize = (node: Node): { width: number; height: number }
   };
 };
 
-const hierarchyOrder = (node: Node): number =>
-  node.type ? LAYOUT_TYPE_ORDER[node.type] ?? 999 : 999;
+const hierarchyOrder = (node: Node): number => (node.type ? (LAYOUT_TYPE_ORDER[node.type] ?? 999) : 999);
 
 /**
  * Deterministic E-CAD industry pipeline layout. Horizontal and vertical constants

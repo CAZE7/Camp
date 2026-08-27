@@ -32,7 +32,9 @@ describe('DashboardPanel', () => {
 
     // Ensure optional sections are not rendered
     expect(screen.queryByText('PV-Output:')).not.toBeInTheDocument();
-    expect(screen.queryByText(/Warnung: Verbraucher ist direkt mit der Batterie verbunden/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/Warnung: Verbraucher ist direkt mit der Batterie verbunden/)
+    ).not.toBeInTheDocument();
     expect(screen.queryByText(/☀️ Dach-Solar:/)).not.toBeInTheDocument();
   });
 
@@ -56,7 +58,9 @@ describe('DashboardPanel', () => {
     };
     render(<DashboardPanel metrics={metrics} calculatedSolarWatts={0} />);
 
-    expect(screen.getByText(/Warnung: Verbraucher ist direkt mit der Batterie verbunden/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Warnung: Verbraucher ist direkt mit der Batterie verbunden/)
+    ).toBeInTheDocument();
   });
 
   it('renders Dachplaner-Daten panel when calculatedSolarWatts > 0', () => {
@@ -78,7 +82,9 @@ describe('DashboardPanel', () => {
 
     expect(screen.getByText('PV-Output:')).toBeInTheDocument();
     expect(screen.getByText('12V / 10.0A')).toBeInTheDocument();
-    expect(screen.getByText(/Warnung: Verbraucher ist direkt mit der Batterie verbunden/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Warnung: Verbraucher ist direkt mit der Batterie verbunden/)
+    ).toBeInTheDocument();
     expect(screen.getByText(/☀️ Dach-Solar:/)).toBeInTheDocument();
   });
 });

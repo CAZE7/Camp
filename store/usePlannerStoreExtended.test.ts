@@ -72,7 +72,13 @@ describe('usePlannerStore - extended coverage', () => {
 
     it('layouts water nodes when viewMode is water', () => {
       const node: Node = { id: 'w1', type: 'freshWaterTank', position: { x: 0, y: 0 }, data: {} };
-      usePlannerStore.setState({ viewMode: 'water', waterNodes: [node], waterEdges: [], nodes: [], edges: [] });
+      usePlannerStore.setState({
+        viewMode: 'water',
+        waterNodes: [node],
+        waterEdges: [],
+        nodes: [],
+        edges: [],
+      });
 
       act(() => {
         usePlannerStore.getState().onLayout();
@@ -98,8 +104,8 @@ describe('usePlannerStore - extended coverage', () => {
 
       expect(raf).toHaveBeenCalled();
       const fitEvents = dispatchSpy.mock.calls
-        .map(c => c[0] as Event)
-        .filter(e => e.type === 'planner-fit-view');
+        .map((c) => c[0] as Event)
+        .filter((e) => e.type === 'planner-fit-view');
       expect(fitEvents.length).toBeGreaterThanOrEqual(1);
 
       raf.mockRestore();
@@ -126,15 +132,25 @@ describe('usePlannerStore - extended coverage', () => {
     });
 
     it('should not change other edges when updating one', () => {
-      const e1: Edge<CableEdgeData> = { id: 'e1', source: 'a', target: 'b', data: { length: 3, crossSection: 2.5 } };
-      const e2: Edge<CableEdgeData> = { id: 'e2', source: 'c', target: 'd', data: { length: 5, crossSection: 4 } };
+      const e1: Edge<CableEdgeData> = {
+        id: 'e1',
+        source: 'a',
+        target: 'b',
+        data: { length: 3, crossSection: 2.5 },
+      };
+      const e2: Edge<CableEdgeData> = {
+        id: 'e2',
+        source: 'c',
+        target: 'd',
+        data: { length: 5, crossSection: 4 },
+      };
       usePlannerStore.setState({ edges: [e1, e2] });
 
       usePlannerStore.getState().handleChangeLength('e1', 9);
 
       const state = usePlannerStore.getState();
-      expect(state.edges.find(e => e.id === 'e1')?.data?.length).toBe(9);
-      expect(state.edges.find(e => e.id === 'e2')?.data?.length).toBe(5);
+      expect(state.edges.find((e) => e.id === 'e1')?.data?.length).toBe(9);
+      expect(state.edges.find((e) => e.id === 'e2')?.data?.length).toBe(5);
     });
   });
 
@@ -156,19 +172,34 @@ describe('usePlannerStore - extended coverage', () => {
     });
 
     it('should not touch other edges when updating one', () => {
-      const e1: Edge<CableEdgeData> = { id: 'e1', source: 'a', target: 'b', data: { length: 3, crossSection: 2.5 } };
-      const e2: Edge<CableEdgeData> = { id: 'e2', source: 'c', target: 'd', data: { length: 5, crossSection: 4, fuseSize: 30 } };
+      const e1: Edge<CableEdgeData> = {
+        id: 'e1',
+        source: 'a',
+        target: 'b',
+        data: { length: 3, crossSection: 2.5 },
+      };
+      const e2: Edge<CableEdgeData> = {
+        id: 'e2',
+        source: 'c',
+        target: 'd',
+        data: { length: 5, crossSection: 4, fuseSize: 30 },
+      };
       usePlannerStore.setState({ edges: [e1, e2] });
 
       usePlannerStore.getState().handleChangeFuseSize('e2', 20);
 
       const state = usePlannerStore.getState();
-      expect(state.edges.find(e => e.id === 'e1')?.data?.fuseSize).toBeUndefined();
-      expect(state.edges.find(e => e.id === 'e2')?.data?.fuseSize).toBe(20);
+      expect(state.edges.find((e) => e.id === 'e1')?.data?.fuseSize).toBeUndefined();
+      expect(state.edges.find((e) => e.id === 'e2')?.data?.fuseSize).toBe(20);
     });
 
     it('should be a no-op if no edge matches the id', () => {
-      const edge: Edge<CableEdgeData> = { id: 'e1', source: 'a', target: 'b', data: { length: 3, crossSection: 2.5, fuseSize: 16 } };
+      const edge: Edge<CableEdgeData> = {
+        id: 'e1',
+        source: 'a',
+        target: 'b',
+        data: { length: 3, crossSection: 2.5, fuseSize: 16 },
+      };
       usePlannerStore.setState({ edges: [edge] });
 
       usePlannerStore.getState().handleChangeFuseSize('nonexistent', 40);
@@ -235,9 +266,7 @@ describe('usePlannerStore - extended coverage', () => {
       usePlannerStore.setState({ waterNodes: [n1] });
 
       act(() => {
-        usePlannerStore.getState().onWaterNodesChange([
-          { type: 'remove', id: 'w1' },
-        ]);
+        usePlannerStore.getState().onWaterNodesChange([{ type: 'remove', id: 'w1' }]);
       });
 
       expect(usePlannerStore.getState().waterNodes).toEqual([]);
@@ -248,9 +277,7 @@ describe('usePlannerStore - extended coverage', () => {
       usePlannerStore.setState({ waterEdges: [e1] });
 
       act(() => {
-        usePlannerStore.getState().onWaterEdgesChange([
-          { type: 'remove', id: 'we1' },
-        ]);
+        usePlannerStore.getState().onWaterEdgesChange([{ type: 'remove', id: 'we1' }]);
       });
 
       expect(usePlannerStore.getState().waterEdges).toEqual([]);
@@ -265,9 +292,7 @@ describe('usePlannerStore - extended coverage', () => {
         { id: 'i1', type: 'inverter', position: { x: 2, y: 0 }, data: { watts: 300 } },
         { id: 'a1', type: 'consumer230v', position: { x: 3, y: 0 }, data: { watts: 40 } },
       ];
-      const waterNodes: Node[] = [
-        { id: 'w1', type: 'pump', position: { x: 0, y: 0 }, data: {} },
-      ];
+      const waterNodes: Node[] = [{ id: 'w1', type: 'pump', position: { x: 0, y: 0 }, data: {} }];
 
       const derived = getDerivedSystemState(nodes, waterNodes);
 
@@ -278,9 +303,7 @@ describe('usePlannerStore - extended coverage', () => {
     });
 
     it('caches maps/watts for the same array reference (WeakMap smoke test)', () => {
-      const nodes: Node[] = [
-        { id: 'c1', type: 'consumer', position: { x: 0, y: 0 }, data: { watts: 12 } },
-      ];
+      const nodes: Node[] = [{ id: 'c1', type: 'consumer', position: { x: 0, y: 0 }, data: { watts: 12 } }];
       const water: Node[] = [];
 
       const first = getDerivedSystemState(nodes, water);
@@ -293,9 +316,7 @@ describe('usePlannerStore - extended coverage', () => {
     });
 
     it('recomputes when a new nodes array is passed', () => {
-      const nodesA: Node[] = [
-        { id: 'c1', type: 'consumer', position: { x: 0, y: 0 }, data: { watts: 10 } },
-      ];
+      const nodesA: Node[] = [{ id: 'c1', type: 'consumer', position: { x: 0, y: 0 }, data: { watts: 10 } }];
       const nodesB: Node[] = [
         { id: 'c1', type: 'consumer', position: { x: 0, y: 0 }, data: { watts: 10 } },
         { id: 'c2', type: 'consumer', position: { x: 1, y: 0 }, data: { watts: 25 } },
@@ -394,7 +415,7 @@ function assertZeroWarnings(nodes: Node[], edges: Edge<CableEdgeData>[]) {
   const edgeErrors: string[] = [];
   for (const edge of edges) {
     edgeErrors.push(...getEdgeErrors(nodes, edges, edge));
-}
+  }
   expect(edgeErrors).toEqual([]);
 }
 
@@ -407,7 +428,9 @@ function assertFusesMatchVde(edges: Edge<CableEdgeData>[]) {
     expect(fuseSize, `Sicherung fehlt auf ${edge.id}`).toBeDefined();
     expect(fuseSize!, `Sicherung ${fuseSize} außerhalb Normgrößen (${edge.id})`).toBeGreaterThan(0);
     expect(STANDARD_FUSE_SIZES).toContain(fuseSize);
-    expect(fuseSize!, `Sicherung ${fuseSize}A > FUSE_MAP[${cs}] (${edge.id})`).toBeLessThanOrEqual(FUSE_MAP[cs] ?? 0);
+    expect(fuseSize!, `Sicherung ${fuseSize}A > FUSE_MAP[${cs}] (${edge.id})`).toBeLessThanOrEqual(
+      FUSE_MAP[cs] ?? 0
+    );
   }
 }
 
@@ -581,7 +604,9 @@ describe('Auto-Wire: keine Warnungen nach performAutoWiring', () => {
   });
 
   it('Startzustand (Standard-Template): nach Auto-Wire null Warnungen', () => {
-    const { nodes: n, edges: e } = runAutoWire(TEMPLATE_MINIMALIST.nodes, { userEdges: TEMPLATE_MINIMALIST.edges });
+    const { nodes: n, edges: e } = runAutoWire(TEMPLATE_MINIMALIST.nodes, {
+      userEdges: TEMPLATE_MINIMALIST.edges,
+    });
 
     // Template-Kanten bleiben erhalten, Auto-Kanten kommen hinzu
     for (const ie of TEMPLATE_MINIMALIST.edges) {
@@ -628,10 +653,7 @@ describe('Auto-Wire: Topologie-Heilung & reale Templates', () => {
     expect(shunt).toBeDefined();
 
     const batteryMinusBypass = e.filter(
-      (x) =>
-        x.source === 'battery-1' &&
-        x.sourceHandle === 'minus' &&
-        x.target !== shunt!.id
+      (x) => x.source === 'battery-1' && x.sourceHandle === 'minus' && x.target !== shunt!.id
     );
     expect(batteryMinusBypass).toEqual([]);
 
@@ -710,8 +732,12 @@ describe('Auto-Wire: Topologie-Heilung & reale Templates', () => {
     expect(shunt).toBeDefined();
     expect(busbar).toBeDefined();
 
-    expect(e.some((x) => x.source === 'b2' && x.target === busbar!.id && x.sourceHandle === 'plus')).toBe(true);
-    expect(e.some((x) => x.source === 'b2' && x.target === shunt!.id && x.sourceHandle === 'minus')).toBe(true);
+    expect(e.some((x) => x.source === 'b2' && x.target === busbar!.id && x.sourceHandle === 'plus')).toBe(
+      true
+    );
+    expect(e.some((x) => x.source === 'b2' && x.target === shunt!.id && x.sourceHandle === 'minus')).toBe(
+      true
+    );
 
     assertZeroWarnings(n, e);
     assertFusesMatchVde(e);
@@ -763,8 +789,12 @@ describe('Auto-Wire: Topologie-Heilung & reale Templates', () => {
     // gelegt, statt eine gefährliche Mischchemie-Parallelschaltung zu bauen.
     const shunt = n.find((x) => x.type === 'shunt');
     const busbar = n.find((x) => x.type === 'busbar');
-    expect(e.some((x) => x.source === 'b2' && x.target === busbar!.id && x.sourceHandle === 'plus')).toBe(false);
-    expect(e.some((x) => x.source === 'b2' && x.target === shunt!.id && x.sourceHandle === 'minus')).toBe(false);
+    expect(e.some((x) => x.source === 'b2' && x.target === busbar!.id && x.sourceHandle === 'plus')).toBe(
+      false
+    );
+    expect(e.some((x) => x.source === 'b2' && x.target === shunt!.id && x.sourceHandle === 'minus')).toBe(
+      false
+    );
   });
 
   it('erzeugt bei nur Startbatterie + Booster eine Aufbaubatterie (keine zweite Starterbatterie)', () => {

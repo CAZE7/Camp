@@ -230,7 +230,9 @@ describe('GitHub-Actions-Workflows', () => {
       const workflow = readWorkflow(file);
       const checkouts = allSteps(workflow).filter((step) => step.uses?.startsWith('actions/checkout'));
       for (const step of checkouts) {
-        expect(step.with?.['persist-credentials'], `${file}: Checkout ohne persist-credentials:false`).toBe(false);
+        expect(step.with?.['persist-credentials'], `${file}: Checkout ohne persist-credentials:false`).toBe(
+          false
+        );
       }
     }
   });
