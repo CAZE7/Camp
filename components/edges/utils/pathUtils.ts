@@ -138,16 +138,11 @@ export const edgeLabelNudge = (input: {
   siblingEdges: LabelEdgeRef[];
 }): number => {
   const inputHandle = input.sourceHandle ?? null;
-  const group = input.siblingEdges.filter(
-    (edge) =>
-      (edge.source === input.source && edge.target === input.target) ||
-      (edge.source === input.target && edge.target === input.source)
-  );
+  const group = input.siblingEdges
+    .filter((edge) => sharePair(edge, { id: input.edgeId, source: input.source, target: input.target }))
+    .sort((a, b) => cableTypeRank(a) - cableTypeRank(b) || a.id.localeCompare(b.id));
   if (group.length <= 1) return 0;
-  const sorted = [...group].sort(
-    (a, b) => cableTypeRank(a) - cableTypeRank(b) || a.id.localeCompare(b.id)
-  );
-  const sameHandleGroup = sorted.filter((edge) => (edge.sourceHandle ?? null) === inputHandle);
+  const sameHandleGroup = group.filter((edge) => (edge.sourceHandle ?? null) === inputHandle);
   if (sameHandleGroup.length <= 1) return 0;
   const idx = Math.max(0, sameHandleGroup.findIndex((edge) => edge.id === input.edgeId));
   return (idx - (sameHandleGroup.length - 1) / 2) * PARALLEL_LABEL_SPREAD;

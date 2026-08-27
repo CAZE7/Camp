@@ -259,55 +259,33 @@ const CableEdge = function ({
     // kurze Stichleitungen. `??` statt `||`, damit ein gespeichertes
     // `length: 0` (z. B. Sammelschiene) nicht stillschweigend durch den
     // Schätzwert ersetzt wird.
-    const physicalDistance = Math.sqrt(Math.pow(targetX - sourceX, 2) + Math.pow(targetY - sourceY, 2)) / 100;
+    const physicalDistance = Math.hypot(targetX - sourceX, targetY - sourceY) / 100;
     const length = data?.length ?? physicalDistance;
     const sourceNode = getNode(source);
     const targetNode = getNode(target);
 
-    // Gespeicherte Domäne gewinnt; sonst topologisch ableiten (getEdgeDomain
-    // kennt seit dem Fix auch 'Solar'). Der Solar-Override darunter bleibt
-    // für Alt-Pläne, die Solar-Kanten noch als DC_12V gespeichert haben.
     let edgeDomain = data?.edgeDomain ?? getEdgeDomain(sourceNode?.type, targetNode?.type, resolvedSourceHandle, resolvedTargetHandle);
-    if (sourceNode?.type === 'solar' || targetNode?.type === 'solar' || sourceNode?.type === 'roofSolar' || targetNode?.type === 'roofSolar') {
+    if (['solar', 'roofSolar'].includes(sourceNode?.type || '') || ['solar', 'roofSolar'].includes(targetNode?.type || '')) {
       edgeDomain = 'Solar';
     }
 
-    if (edgeDomain === 'AC_230V') {
-      // 230-V-Leitungen tragen den AC-Laststrom (Summe der 230-V-Verbraucher
-      // hinter der Quelle), nicht 0 A. Ohne die Berechnung zeigte jede
-      // AC-Leitung pauschal 1,5 mm² an — auch eine, die 3000 W führt.
-      const I = calculateAcEdgeCurrent(source, getNodes(), siblingEdges);
-      const cs = calculateCrossSection(I, length, data?.crossSection, 'AC_230V');
-      const sw = calculateStrokeWidth(cs);
-      const dur = calculateAnimationDuration(I);
-      return {
-        length,
-        crossSection: cs,
-        maxFuse: 0,
-        strokeWidth: sw,
-        animationDuration: dur,
-        I,
-        sourceNode,
-        targetNode,
-        edgeDomain,
-        sysVoltage: AC_SYSTEM_VOLTAGE,
-      };
-    }
+    const isAC = edgeDomain === 'AC_230V';
+    const sysVoltage = isAC ? AC_SYSTEM_VOLTAGE : getSystemVoltage(getNodes());
+    const I = isAC
+      ? calculateAcEdgeCurrent(source, getNodes(), siblingEdges)
+      : calculateEdgeCurrent(sourceNode, targetNode, getNodes(), sysVoltage);
 
-    const I = calculateEdgeCurrent(sourceNode, targetNode, getNodes(), getSystemVoltage(getNodes()));
-    const cs = calculateCrossSection(I, length, data?.crossSection, 'DC_12V');
-    const mf = calculateMaxFuse(cs);
-    const sw = calculateStrokeWidth(cs);
-    const dur = calculateAnimationDuration(I);
-
-    const sysVoltage = getSystemVoltage(getNodes());
+    const crossSection = calculateCrossSection(I, length, data?.crossSection, isAC ? 'AC_230V' : 'DC_12V');
+    const maxFuse = isAC ? 0 : calculateMaxFuse(crossSection);
+    const strokeWidth = calculateStrokeWidth(crossSection);
+    const animationDuration = calculateAnimationDuration(I);
 
     return {
       length,
-      crossSection: cs,
-      maxFuse: mf,
-      strokeWidth: sw,
-      animationDuration: dur,
+      crossSection,
+      maxFuse,
+      strokeWidth,
+      animationDuration,
       I,
       sourceNode,
       targetNode,
