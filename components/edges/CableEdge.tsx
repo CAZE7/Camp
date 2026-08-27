@@ -13,8 +13,9 @@ import {
 
 export type CableEdgeData = {
   length: number;
-  crossSection?: number; // Made optional as it's computed now
+  crossSection?: number;
   fuseSize?: number;
+  cableFunction?: 'positive' | 'negative' | 'ground' | 'solar' | 'main' | 'secondary' | 'shore' | 'inverter' | 'charging' | 'consumer' | 'busbar';
 };
 
 type CableEdgeProps = EdgeProps<CableEdgeData> & { sourceHandle?: string | null };
@@ -29,7 +30,7 @@ const CableEdge = function ({
   targetY,
   sourcePosition,
   targetPosition,
-  style = {},
+  style,
   data,
   markerEnd,
   selected,
@@ -52,7 +53,7 @@ const CableEdge = function ({
       : getBezierPath(pathParams);
   }, [sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, isProMode]);
 
-  const { length, crossSection, maxFuse, strokeWidth, animationDuration, voltageDropWarning } = useMemo(() => {
+  const { length, crossSection, maxFuse, strokeWidth, animationDuration, voltageDropWarning, cableFunction } = useMemo(() => {
     const nodes = getNodes();
     const length = data?.length || 3;
     let I = 0;
@@ -72,11 +73,9 @@ const CableEdge = function ({
       I = allConsumers.reduce((acc, n) => acc + ((n.data.watts || 0) / 12), 0);
     }
 
-    // VDE-konforme Berechnung über zentrale Quelle
     const minRequired = calculateMinCrossSection(I, length);
     const cs = data?.crossSection ?? roundUpToVDECrossSection(Math.max(VDE_MIN_CROSS_SECTION, minRequired));
 
-    // Maximal zulässige Sicherung nach VDE-Strombelastbarkeit
     const maxAmpere = VDE_CURRENT_CAPACITY[cs] ?? 0;
 
     let sw = 2;
@@ -85,88 +84,199 @@ const CableEdge = function ({
     else if (cs <= 6) sw = 6;
     else sw = 10;
 
-    // Spannungsabfall-Check nach VDE
     const voltageDrop = calculateVoltageDrop(I, length, cs);
     const voltageDropWarning = voltageDrop > VDE_MAX_VOLTAGE_DROP_12V * 12;
 
-    const dur = Number.isNaN(I) || !isFinite(I) ? 5 : Math.max(0.5, 5 - (I / 10));
+    let func: CableEdgeData['cableFunction'] = 'secondary';
+    const srcType = sourceNode?.type;
+    const tgtType = targetNode?.type;
+
+    const hasPlusSrc = sourceNode?.data?.label?.includes('Batterie') || sourceNode?.data?.label?.includes('Sicherung') || sourceNode?.data?.label?.includes('Verbraucher');
+    const hasPlusTgt = targetNode?.data?.label?.includes('Batterie') || targetNode?.data?.label?.includes('Sicherung') || targetNode?.data?.label?.includes('Verbraucher');
+
+    if (srcType === 'battery' && (tgtType === 'consumer' || tgtType === 'inverter')) {
+      func = 'positive';
+    } else if (tgtType === 'battery' && (srcType === 'consumer' || srcType === 'inverter')) {
+      func = 'negative';
+    } else if (srcType === 'solar' || tgtType === 'solar') {
+      func = 'solar';
+    } else if (srcType === 'shorePower' || tgtType === 'shorePower') {
+      func = 'shore';
+    } else if (srcType === 'inverter' || tgtType === 'inverter') {
+      func = 'inverter';
+    } else if (srcType === 'fuse' || tgtType === 'fuse') {
+      func = 'main';
+    } else if (I >= 20) {
+      func = 'main';
+    } else if (I >= 10) {
+      func = 'secondary';
+    } else {
+      func = 'secondary';
+    }
+
+    const isChargingSrc = sourceNode?.type === 'charger' && (sourceNode.data.label as string)?.toLowerCase().includes('mppt');
+    const isChargingTgt = targetNode?.type === 'charger' && (targetNode.data.label as string)?.toLowerCase().includes('mppt');
+    if (isChargingSrc || isChargingTgt) {
+      func = 'charging';
+    }
+
+    if (srcType === 'solar' || tgtType === 'solar') {
+      func = 'solar';
+    }
 
     return {
       length,
       crossSection: cs,
       maxFuse: maxAmpere,
       strokeWidth: sw,
-      animationDuration: dur,
+      animationDuration: Math.max(0.5, 5 - (I / 10)),
       voltageDropWarning,
+      cableFunction: func,
     };
   }, [getNodes, data?.length, data?.crossSection, source, target]);
 
-  const stroke = selected ? '#f97316' : (voltageDropWarning ? '#ef4444' : '#9ca3af');
+  const cableColorMap: Record<string, string> = {
+    positive: '#dc2626',
+    negative: '#18181b',
+    ground: '#10b981',
+    solar: '#f59e0b',
+    shore: '#3b82f6',
+    inverter: '#a855f7',
+    charging: '#ec4899',
+    main: '#dc2626',
+    secondary: '#6b7280',
+  };
+
+  const color = cableColorMap[cableFunction] || '#6b7280';
+  const effectiveStrokeWidth = cableFunction === 'main' ? Math.max(strokeWidth, 4) : strokeWidth;
+  const stroke = selected ? '#f97316' : (voltageDropWarning ? '#ef4444' : color);
+  const isMainCable = cableFunction === 'main' || cableFunction === 'positive';
+
+  // Build label lines
+  const labelLines: string[] = [
+    `${length.toFixed(2)} m`,
+    `${crossSection} mm²`,
+  ];
+  if (maxFuse > 0) {
+    labelLines.push(`Max: ${maxFuse}A`);
+  }
+  if (data?.fuseSize) {
+    labelLines.push(`${data.fuseSize}A Sicherung`);
+  }
+  if (voltageDropWarning) {
+    labelLines.push('⚠ VDE-Spannungsabfall');
+  }
+  if (cableFunction) {
+    labelLines.push(cableFunction);
+  }
+
+  // Determine if we should render the main cable highlight
+  const showMainHighlight = isMainCable;
+
+  // Build the main cable path if needed
+  const mainCablePath = showMainHighlight ? (
+    <path
+      id={id + '_main-cable'}
+      d={edgePath}
+      fill="none"
+      stroke={color}
+      strokeWidth={6}
+      strokeLinecap="round"
+      strokeMiterlimit="4"
+    />
+  ) : null;
+
+  // Build the main circle animation
+  const mainCircle = (
+    <circle
+      r={effectiveStrokeWidth / 2}
+      fill={voltageDropWarning ? '#ef4444' : '#fbbf24'}
+    >
+      <animateMotion
+        dur={`${animationDuration}s`}
+        repeatCount="infinite"
+        path={edgePath}
+      />
+    </circle>
+  );
+
+  // Build label content
+  const labelContent = (
+    <EdgeLabelRenderer>
+      <div
+        style={{
+          position: 'absolute',
+          transform: `translate(-50%, -50%) translate(${labelX}px,${labelY + (sourceHandle?.includes('minus') ? 40 : -40)}px)`,
+          background: 'white',
+          padding: '2px 8px',
+          borderRadius: '4px',
+          fontSize: '11px',
+          fontWeight: 'bold',
+          border: '1px solid #ccc',
+          pointerEvents: 'all',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center'
+        }}
+        className="nodrag nopan"
+      >
+        {labelLines.map((line, idx) => (
+          <span key={idx} style={{ display: 'block' }}>
+            {line}{idx < labelLines.length - 1 && ' '}
+        </span>
+        ))}
+        {cableFunction && (
+          <span style={{ marginLeft: '4px', fontSize: '9px', textTransform: 'uppercase' }}>{cableFunction}</span>
+        )}
+      </div>
+    </EdgeLabelRenderer>
+  );
+
+  // Build the interaction path
+  const interactionPath = (
+    <path
+      id={id + '_interaction'}
+      d={edgePath}
+      fill="none"
+      strokeOpacity={0}
+      strokeWidth={20}
+      style={{ cursor: 'pointer' }}
+    >
+      <title>
+        {`${length.toFixed(2)}m | ${crossSection}mm² | ${cableFunction}${' ' + (voltageDropWarning ? '⚠ VDE' : '')}`}
+      </title>
+    </path>
+  );
 
   return (
-    <>
+    <div>
+      {showMainHighlight && (
+        <path
+          id={id + '_main-cable'}
+          d={edgePath}
+          fill="none"
+          stroke={color}
+          strokeWidth={6}
+          strokeLinecap="round"
+          strokeMiterlimit="4"
+        />
+      )}
       <BaseEdge
         id={id}
         path={edgePath}
         markerEnd={markerEnd}
         style={{
           ...style,
-          strokeWidth,
+          strokeWidth: effectiveStrokeWidth,
           stroke,
           transition: 'stroke-width 0.3s ease, stroke 0.3s ease',
           cursor: 'pointer',
         }}
       />
-
-      <circle r={strokeWidth / 2} fill={voltageDropWarning ? '#ef4444' : '#fbbf24'}>
-        <animateMotion
-          dur={`${animationDuration}s`}
-          repeatCount="indefinite"
-          path={edgePath}
-        />
-      </circle>
-
-      <EdgeLabelRenderer>
-        <div
-          style={{
-            position: 'absolute',
-            transform: `translate(-50%, -50%) translate(${labelX}px,${labelY + (sourceHandle?.includes('minus') ? 40 : -40)}px)`,
-            background: 'white',
-            padding: '2px 6px',
-            borderRadius: '4px',
-            fontSize: '12px',
-            fontWeight: 'bold',
-            border: '1px solid #ccc',
-            pointerEvents: 'all',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center'
-          }}
-          className="nodrag nopan"
-        >
-          <span>{length.toFixed(2)} m</span>
-          <span>{crossSection} mm²</span>
-          {maxFuse > 0 && <span style={{ color: 'red', fontSize: '10px' }}>Max: {maxFuse}A</span>}
-          {data?.fuseSize && <span style={{ background: 'red', color: 'white', padding: '1px 4px', borderRadius: '4px', fontSize: '10px', marginTop: '2px' }}>{data.fuseSize}A Sicherung</span>}
-          {voltageDropWarning && (
-            <span style={{ background: '#ef4444', color: 'white', padding: '1px 4px', borderRadius: '4px', fontSize: '10px', marginTop: '2px' }}>
-              ⚠ VDE-Spannungsabfall
-            </span>
-          )}
-        </div>
-      </EdgeLabelRenderer>
-
-      <path
-        id={id + '_interaction'}
-        d={edgePath}
-        fill="none"
-        strokeOpacity={0}
-        strokeWidth={20}
-        style={{ cursor: 'pointer' }}
-      >
-        <title>{`${length.toFixed(2)}m | ${crossSection}mm²${voltageDropWarning ? ' | ⚠ VDE-Warnung' : ''}`}</title>
-      </path>
-    </>
+      {mainCircle}
+      {labelContent}
+      {interactionPath}
+    </div>
   );
 };
 

@@ -38,9 +38,12 @@ export function FlowCanvas() {
   const isValidConnection = usePlannerStore((state) => state.isValidConnection);
   const onSelectionChange = usePlannerStore((state) => state.onSelectionChange);
 
+  const setFirstTappedHandle = usePlannerStore((state) => state.setFirstTappedHandle);
+
   const onDropFromStore = usePlannerStore((state) => state.onDrop);
   const onCustomDropFromStore = usePlannerStore((state) => state.onCustomDrop);
-  const setFirstTappedHandle = usePlannerStore((state) => state.setFirstTappedHandle);
+
+  const onLayout = usePlannerStore((state) => state.onLayout);
 
   const calculatedSolarWatts = useAppStore((state) => state.calculatedSolarWatts);
 
@@ -184,26 +187,69 @@ export function FlowCanvas() {
           <Panel position="top-center" className="bg-card/95 backdrop-blur-md p-4 rounded-lg shadow-lg border border-border text-sm w-80">
             <h3 className="font-bold mb-2 border-b border-border pb-1">System Berechnungen</h3>
             <div className="flex flex-col gap-2">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Täglicher Gesamtverbrauch:</span>
-                <span className="font-semibold">{metrics.dailyConsumptionAh.toFixed(1)} Ah</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Batterie-Autarkie (ohne Laden):</span>
-                <span className="font-semibold">{metrics.autarkyStr}</span>
-              </div>
-              {metrics.solarNodesCount > 0 && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Solar-Array Output:</span>
-                  <span className="font-semibold">{metrics.totalSolarVoltage}V / {metrics.totalSolarAmps.toFixed(1)}A</span>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded bg-primary"></span>
+                  <span> Positive Kabel (+12V)</span>
                 </div>
-              )}
-              {metrics.hasDirectBatteryToConsumer && (
-                <div className="mt-2 p-2 bg-red-100 text-red-800 text-xs rounded-md border border-red-200">
-                  Warnung: Verbraucher ist direkt mit der Batterie verbunden. Ein Sicherungsknoten fehlt!
+                <div className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded bg-negative"></span>
+                  <span> Negative Kabel (Return)</span>
                 </div>
-              )}
+                <div className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded bg-ground"></span>
+                  <span> Ground/PE Kabel</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded bg-solar"></span>
+                  <span> Solar-Kabel</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded bg-shore"></span>
+                  <span> Landstrom (230V)</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded bg-main"></span>
+                  <span> Hauptkabel</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded bg-secondary"></span>
+                  <span> Zweitär/Kleinstrom</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded bg-charging"></span>
+                  <span> MPPT/Laderegler</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded bg-inverter"></span>
+                  <span> Wechselrichter</span>
+                </div>
+              </div>
+              <hr className="my-3 border-border" />
+              <div className="flex flex-col gap-1 text-muted-foreground">
+                <span>↻</span>
+                <span>Layout anwenden - Knoten automatisch nach logischer Reihenfolge anordnen</span>
+              </div>
             </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Täglicher Gesamtverbrauch:</span>
+              <span className="font-semibold">{metrics.dailyConsumptionAh.toFixed(1)} Ah</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Batterie-Autarkie (ohne Laden):</span>
+              <span className="font-semibold">{metrics.autarkyStr}</span>
+            </div>
+            {metrics.solarNodesCount > 0 && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Solar-Array Output:</span>
+                <span className="font-semibold">{metrics.totalSolarVoltage}V / {metrics.totalSolarAmps.toFixed(1)}A</span>
+              </div>
+            )}
+            {metrics.hasDirectBatteryToConsumer && (
+              <div className="mt-2 p-2 bg-red-100 text-red-800 text-xs rounded-md border border-red-200">
+                Warnung: Verbraucher ist direkt mit der Batterie verbunden. Ein Sicherungsknoten fehlt!
+              </div>
+            )}
           </Panel>
         )}
 
@@ -235,6 +281,14 @@ export function FlowCanvas() {
                   <li key={cs}>{length.toFixed(1)} Meter {cs} mm² Kabel</li>
                 ))}
               </ul>
+              {/* Cable function breakdown */}
+              {bomData.counts && (
+                <div className="mt-3 pt-3 border-t border-border text-xs text-muted-foreground">
+                  <strong>Bestand:</strong> {Object.entries(bomData.counts)
+                    .filter(([type]) => type.includes('cable') || type === 'consumer' || type === 'battery' || type === 'inverter' || type === 'solar' || type === 'shunt' || type === 'fuse' || type === 'shorePower')
+                    .map(([type, count]) => `${count}x ${type}`).join(' | ')}
+                </div>
+              )}
             </div>
 
             <Button
