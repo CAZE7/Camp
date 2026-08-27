@@ -64,6 +64,8 @@ export function BOMModal() {
         pipeLengths[type] = (pipeLengths[type] || 0) + (edge.data?.length || 2);
       });
       setBomData({ counts, cableLengths, pipeLengths });
+      setCopied(false);
+      setCopyError(null);
       setOpen(true);
     };
     window.addEventListener('show-bom-modal', handleShowBom);
@@ -86,16 +88,28 @@ export function BOMModal() {
   }, [cableEntries, componentEntries]);
 
   const [copied, setCopied] = useState(false);
+  // M6-4: Ein stiller catch warf den Fehler weg; Nutzer sahen nur "kein Effekt".
+  // Die Fehlerursache bleibt erhalten (console.warn für Diagnose), sichtbar
+  // gemacht wird eine handlungsorientierte Meldung im Dialog selbst.
+  const [copyError, setCopyError] = useState<string | null>(null);
   // Kopiert die Stückliste als JSON in die Zwischenablage — ohne jeden Bezug
   // zu einem entfernten KI-Chat (der im Static-Export nicht existiert, R1).
   const copyBomToClipboard = async () => {
     const message = `Stückliste aus dem Schaltplan:\n\n\`\`\`json\n${bomJson}\n\`\`\``;
     try {
+      if (!navigator.clipboard) {
+        throw new Error('Clipboard API steht in diesem Browser/Kontext nicht zur Verfügung.');
+      }
       await navigator.clipboard.writeText(message);
       setCopied(true);
+      setCopyError(null);
       window.setTimeout(() => setCopied(false), 2500);
-    } catch {
+    } catch (error) {
       setCopied(false);
+      setCopyError(
+        'Kopieren nicht möglich – der Browser hat den Zugriff abgelehnt oder die Seite ist unsicher.'
+      );
+      console.warn('[BOMModal] Zwischenablage-Zugriff fehlgeschlagen:', error);
     }
   };
 
@@ -181,14 +195,32 @@ export function BOMModal() {
           </>
         )}
       </div>
-      <div className="flex flex-col gap-2 border-t border-border p-4 sm:flex-row">
-        <Button variant="outline" onClick={copyBomToClipboard} disabled={empty} className="min-h-11 gap-2">
-          <ClipboardCopy className="h-4 w-4" aria-hidden="true" />
-          {copied ? 'Kopiert!' : 'Stückliste kopieren'}
-        </Button>
-        <Button onClick={() => setOpen(false)} className="min-h-11 flex-1">
-          Schließen
-        </Button>
+      <div className="flex flex-col gap-2 border-t border-border p-4">
+        {copyError && (
+          <div role="alert" className="warn-card warn-card-warning p-3 text-sm">
+            <p className="font-semibold">{copyError}</p>
+            <label htmlFor="bom-json-fallback" className="mt-2 block text-xs text-muted-foreground">
+              Alternativ zum manuellen Kopieren (bereits vorausgewählt):
+            </label>
+            <textarea
+              id="bom-json-fallback"
+              readOnly
+              value={`Stückliste aus dem Schaltplan:\n${bomJson}`}
+              rows={4}
+              onFocus={(e) => e.currentTarget.select()}
+              className="mt-1 w-full rounded border border-border bg-card p-2 font-mono text-xs"
+            />
+          </div>
+        )}
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Button variant="outline" onClick={copyBomToClipboard} disabled={empty} className="min-h-11 gap-2">
+            <ClipboardCopy className="h-4 w-4" aria-hidden="true" />
+            {copied ? 'Kopiert!' : 'Stückliste kopieren'}
+          </Button>
+          <Button onClick={() => setOpen(false)} className="min-h-11 flex-1">
+            Schließen
+          </Button>
+        </div>
       </div>
     </AccessibleDialog>
   );

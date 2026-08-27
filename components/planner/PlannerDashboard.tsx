@@ -289,13 +289,16 @@ function ActionsSection({
       link.click();
       setFeedback({ type: 'success', message: 'Bild in hoher Auflösung exportiert.' });
     } catch (error) {
-      console.error('Failed to export image', error);
+      // M6-4: statt console.error (vom Nutzer unsichtbar) zeigt das Dashboard
+      // die Ursache direkt; die Fehlerklasse bleibt im Meldungstext erhalten.
       const message =
         nodes.length === 0
           ? 'Nichts zu exportieren – platziere zuerst Komponenten.'
           : error instanceof Error && error.name === 'SecurityError'
             ? 'Export blockiert: Der Plan enthält externe Inhalte.'
-            : 'Bild-Export fehlgeschlagen. Passe die Ansicht an und versuche es erneut.';
+            : `Bild-Export fehlgeschlagen${
+                error instanceof Error && error.name ? ` (${error.name})` : ''
+              }. Passe die Ansicht an und versuche es erneut.`;
       setFeedback({ type: 'error', message });
     } finally {
       setBusy(null);

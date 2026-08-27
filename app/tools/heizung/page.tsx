@@ -93,6 +93,21 @@ export const HEATER_CATALOG: HeaterModel[] = [
 ];
 
 // --- Extracted Calculation Logic (unverändert – keine Logik-Änderung erlaubt) ---
+// M6-4: Fehler sind Teil des Returns (discriminated Result), nichtexceptions.
+// Ein stiller `catch → 0`-Pfad kann nicht mehr entstehen.
+export type Thermodynamics = {
+  area: number;
+  volume: number;
+  airChangeRate: number;
+  U_mix: number;
+  deltaT: number;
+  Q_trans: number;
+  Q_luft: number;
+  Q_total: number;
+};
+export type ThermodynamicsResult =
+  ({ ok: true } & Thermodynamics) | { ok: false; reason: 'invalid-vehicle-dimensions' };
+
 function calculateThermodynamics(params: {
   selectedVehicle: { length: number | string; width: number | string; height: number | string };
   insulationThickness: number;
@@ -101,7 +116,7 @@ function calculateThermodynamics(params: {
   windowArea: number;
   insulationCoverage: number;
   quickHeat: boolean;
-}) {
+}): ThermodynamicsResult {
   const {
     selectedVehicle,
     insulationThickness,
@@ -121,7 +136,7 @@ function calculateThermodynamics(params: {
   const calcArea = l > 0 && w > 0 && h > 0 ? 2 * (l * h + w * h + l * w) : 0;
 
   if (volume <= 0 || calcArea <= 0) {
-    throw new Error('Ungültige Fahrzeugmaße');
+    return { ok: false, reason: 'invalid-vehicle-dimensions' };
   }
 
   const A_fenster = Math.max(0, Math.min(Number(windowArea) || 0, calcArea));
@@ -163,6 +178,7 @@ function calculateThermodynamics(params: {
   const finalQ_total = calcQ_total <= 0 ? 1 : calcQ_total;
 
   return {
+    ok: true,
     area: calcArea,
     volume,
     airChangeRate,
@@ -910,31 +926,31 @@ export default function HeatingCalculatorPage() {
     [selectedHeaterId]
   );
 
-  const { area, volume, airChangeRate, U_mix, Q_trans, Q_luft, Q_total, error } = useMemo(() => {
-    try {
-      const res = calculateThermodynamics({
-        selectedVehicle,
-        insulationThickness,
-        tempInside,
-        tempOutside,
-        windowArea,
-        insulationCoverage,
-        quickHeat,
-      });
-      return { ...res, error: null };
-    } catch (e) {
-      return {
-        area: 0,
-        volume: 0,
-        airChangeRate: 0.5,
-        U_mix: 0,
-        deltaT: 0,
-        Q_trans: 0,
-        Q_luft: 0,
-        Q_total: 0,
-        error: e instanceof Error && e.message ? e.message : 'Ungültige Fahrzeugmaße',
-      };
-    }
+  const calc = useMemo(() => {
+    const main = calculateThermodynamics({
+      selectedVehicle,
+      insulationThickness,
+      tempInside,
+      tempOutside,
+      windowArea,
+      insulationCoverage,
+      quickHeat,
+    });
+    if (!main.ok) return { ok: false as const, reason: main.reason };
+    // Referenzlast bei −10 °C Außentemperatur. Gleiche Fahrzeugmaße, daher
+    // kann dieser Aufruf nicht mehr am Volumen scheitern; der `else`-Zweig
+    // ist defensive Gleichhaltung für die Typen (kein stiller 0-Fallback —
+    // die -10-Last fällt nie unter die Hauptlast hinaus).
+    const minus10 = calculateThermodynamics({
+      selectedVehicle,
+      insulationThickness,
+      tempInside,
+      tempOutside: -10,
+      windowArea,
+      insulationCoverage,
+      quickHeat,
+    });
+    return { ok: true as const, main, minus10Q: minus10.ok ? minus10.Q_total : main.Q_total };
   }, [
     selectedVehicle,
     insulationThickness,
@@ -945,22 +961,19 @@ export default function HeatingCalculatorPage() {
     quickHeat,
   ]);
 
-  const Q_at_minus_10 = useMemo(() => {
-    try {
-      const res = calculateThermodynamics({
-        selectedVehicle,
-        insulationThickness,
-        tempInside,
-        tempOutside: -10,
-        windowArea,
-        insulationCoverage,
-        quickHeat,
-      });
-      return res.Q_total;
-    } catch {
-      return 0;
-    }
-  }, [selectedVehicle, insulationThickness, tempInside, windowArea, insulationCoverage, quickHeat]);
+  const { area, volume, airChangeRate, U_mix, Q_trans, Q_luft, Q_total, Q_at_minus_10, error } = calc.ok
+    ? { ...calc.main, Q_at_minus_10: calc.minus10Q, error: null as string | null }
+    : {
+        area: 0,
+        volume: 0,
+        airChangeRate: 0.5,
+        U_mix: 0,
+        Q_trans: 0,
+        Q_luft: 0,
+        Q_total: 0,
+        Q_at_minus_10: 0,
+        error: 'Ungültige Fahrzeugmaße' as string | null,
+      };
 
   const validation = useMemo(() => {
     if (error || Q_total === 0) return { status: 'ok', message: '' };

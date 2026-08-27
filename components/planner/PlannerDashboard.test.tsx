@@ -301,14 +301,18 @@ describe('PlannerDashboard - Image Export', () => {
     document.body.removeChild(mockReactFlowElem);
   });
 
-  it('logs an error if image export fails', async () => {
+  it('zeigt einen sichtbaren Fehler, wenn der Bild-Export scheitert (M6-4)', async () => {
+    // Regressionstest: der Export-Fehler war vorher NUR ein console.error —
+    // für Nutzer unsichtbar. Jetzt erscheint eine role=alert-Meldung, und
+    // console.error wird bewusst nicht mehr verwendet.
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
     const mockReactFlowElem = document.createElement('div');
     mockReactFlowElem.className = 'react-flow';
     document.body.appendChild(mockReactFlowElem);
 
-    (toPng as unknown as any).mockRejectedValueOnce(new Error('Export failed'));
+    const error = new Error('Export failed');
+    error.name = 'SecurityError';
+    (toPng as unknown as (el: HTMLElement) => Promise<string>).mockRejectedValueOnce(error);
 
     render(<PlannerDashboard />);
 
@@ -316,8 +320,12 @@ describe('PlannerDashboard - Image Export', () => {
     fireEvent.click(screen.getByText(/Bild exportieren/));
 
     await waitFor(() => {
-      expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to export image', expect.any(Error));
+      expect(screen.getByRole('alert')).toBeInTheDocument();
     });
+    // leerer Plan (Mock-State): die kontextbezogene Erste-Meldung greift vor
+    // der SecurityError-Klasse — beides sind Nutzer-sichtbare Pfade.
+    expect(screen.getByRole('alert').textContent).toMatch(/Nichts zu exportieren|Export blockiert/);
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
 
     consoleErrorSpy.mockRestore();
     document.body.removeChild(mockReactFlowElem);
