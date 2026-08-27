@@ -514,9 +514,13 @@ describe('autoWire — healUserEdges', () => {
     expect(healed[0].source).toBe('sh');
   });
 
-  it('legt Minus-Rückleiter zur Batterie über den Shunt um (target-Handle)', () => {
+  it('legt Minus-Rückleiter zur Batterie auf die Minus-Schiene (kein Shunt-Bypass)', () => {
     // Verbraucher-Minus zurück zur Batterie ist der klassische Shunt-Bypass in
-    // Gegenrichtung: der Ziel-Handle hängt am Batterie-Minus.
+    // Gegenrichtung: der Ziel-Handle hängt am Batterie-Minus. Die Heilung darf
+    // ihn NICHT auf den Target-Pin des Shunts (Batterie-Seite!) legen — sonst
+    // misst der Shunt den Rücklaufstrom nicht (AUDIT-AUTOWIRE Issue 1). Sie
+    // landet normalisiert auf der Minus-Schiene und dedupliziert dort gegen
+    // die Auto-Kante (Schiene → Verbraucher, minus|minus).
     const nodes = [n('b1', 'battery', {}), n('sh', 'shunt', {}), n('c1', 'consumer', { watts: 24 })];
     const userEdges: Edge<CableEdgeData>[] = [
       e({
@@ -541,8 +545,10 @@ describe('autoWire — healUserEdges', () => {
       'fuseBox',
       connections
     );
-    expect(healed[0].target).toBe('sh');
-    expect(healed[0].source).toBe('c1');
+    expect(healed[0].target).toBe('c1');
+    expect(healed[0].source).toBe('minusRail');
+    expect(healed[0].sourceHandle).toBe('minus');
+    expect(healed[0].targetHandle).toBe('minus');
   });
 
   it('legt Batterie-Plus auf einen Verbraucher über den Sicherungskasten', () => {
@@ -960,5 +966,249 @@ describe('autoWire — behobene Audit-Fehler', () => {
     expect(out.edges.some((x) => x.source === 'sp1' && x.target === 'i2' && x.targetHandle === 'ac_in')).toBe(
       true
     );
+  });
+});
+
+// ── M6-8 — AUDIT-Testgruppen (AUDIT-AUTOWIRE.md, Issues 1–8) ───────────────
+//
+// Diese Gruppen fehlen laut Audit (Issue 9) und würden die behobenen Fehler
+// 1–8 bei Regression sofort wieder einfangen. Nummern = Audit-Issue.
+
+describe('M6-8 — AUDIT-Testgruppen', () => {
+  const nodeMapOf = (nodes: Node[]) => new Map(nodes.map((x) => [x.id, x]));
+
+  // Gruppe 1 (Issue 2) ── 3+ Batterien, paarweise Kompatibilität ───────────
+  it('verdrahtet eine inkompatible Zweitbatterie nicht auf die 12-V-Schiene (Issue 2)', () => {
+    const nodes = [
+      n('h', 'battery', { label: 'Aufbau', chemistry: 'LiFePO4' }),
+      n('x1', 'battery', { label: 'Zweit', chemistry: 'LiFePO4', nominalVoltage: 12.8 }),
+      n('x2', 'battery', { label: 'Dritt', chemistry: 'LiFePO4', nominalVoltage: 24 }),
+    ];
+    const res = performAutoWiring(nodes);
+    expect(res).not.toBeNull();
+    expect(res!.edges.filter((ed) => ed.source === 'x2' || ed.target === 'x2')).toHaveLength(0);
+    expect(res!.edges.filter((ed) => ed.source === 'x1').length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('legt zwei verträgliche Batterien parallel auf Schiene und Shunt (Issue 2)', () => {
+    const nodes = [
+      n('h', 'battery', { label: 'Aufbau', chemistry: 'LiFePO4' }),
+      n('x1', 'battery', { label: 'Zweit', chemistry: 'LiFePO4' }),
+    ];
+    const res = performAutoWiring(nodes)!;
+    const plusRail = res.nodes.find((nd) => nd.type === 'busbar' && nd.data?.role === 'positive')!;
+    const shunt = res.nodes.find((nd) => nd.type === 'shunt')!;
+    const targets = res.edges.filter((ed) => ed.source === 'x1').map((ed) => ed.target);
+    expect(targets).toContain(plusRail.id);
+    expect(targets).toContain(shunt.id);
+  });
+
+  // Gruppe 2 (Issue 3) ── tiefe Ketten + Unrealisierbar-Marker ──────────────
+  it('verdickt in tiefen Verteilerketten auch vorgelagerte Kanten (Issue 3)', () => {
+    const nodes: Node[] = [
+      n('b', 'battery', { label: 'Aufbau', nominalVoltage: 12.8 }),
+      ...([1, 2, 3, 4] as const).map((i) => n(`c${i}`, 'consumer', { watts: 96 })),
+    ];
+    const chain: Edge<CableEdgeData>[] = [
+      e({ id: 'k1', source: 'b', target: 'c1', data: { length: 2 } }),
+      e({ id: 'k2', source: 'c1', target: 'c2', data: { length: 2 } }),
+      e({ id: 'k3', source: 'c2', target: 'c3', data: { length: 2 } }),
+      e({ id: 'k4', source: 'c3', target: 'c4', data: { length: 2 } }),
+    ];
+    sizeDcEdges(chain, nodes, chain, volts(12.8));
+    const budget = 12.8 * 0.03;
+    expect(relevantCumulativeDrop('c4', nodeMapOf(nodes), chain, nodes, volts(12.8))).toBeLessThanOrEqual(
+      budget + 1e-9
+    );
+    expect(chain.every((x) => !x.data?.dropWarning)).toBe(true);
+  });
+
+  it('markiert physikalisch unrealisierbare Pfade mit dropWarning (Issue 3)', () => {
+    const nodes: Node[] = [
+      n('b', 'battery', { label: 'Aufbau', nominalVoltage: 12.8 }),
+      n('c', 'consumer', { watts: 2560 }), // 200 A — über 30 m ist selbst 70 mm² chancenlos
+    ];
+    const chain: Edge<CableEdgeData>[] = [e({ id: 'big', source: 'b', target: 'c', data: { length: 30 } })];
+    sizeDcEdges(chain, nodes, chain, volts(12.8));
+    expect(chain[0].data!.crossSection).toBe(70);
+    expect(chain[0].data!.dropWarning).toBe(true);
+  });
+
+  // Gruppe 3 (Issue 4) ── acBatteryCharger-Mischdomäne ──────────────────────
+  it('dimensioniert die DC-Ausgangsleitung des 230-V-Ladegeräts als DC (Issue 4)', () => {
+    const nodes = [
+      n('b1', 'battery', { label: 'Aufbau' }),
+      n('sp', 'shorePower', {}),
+      n('ac', 'acBatteryCharger', { amps: 40 }),
+    ];
+    const res = performAutoWiring(nodes)!;
+    const outputs = res.edges.filter((ed) => ed.source === 'ac');
+    expect(outputs.length).toBeGreaterThan(0);
+    for (const ed of outputs) {
+      expect(ed.data?.edgeDomain).toBe('DC_12V');
+    }
+    const supply = outputs.find((ed) => ed.sourceHandle === 'plus')!;
+    expect(supply.data?.crossSection ?? 0).toBeGreaterThanOrEqual(6);
+    expect(supply.data?.fuseSize ?? 0).toBeGreaterThanOrEqual(40);
+    const feed = res.edges.find((ed) => ed.source === 'sp' && ed.target === 'ac')!;
+    expect(feed.data?.edgeDomain).toBe('AC_230V');
+  });
+
+  // Gruppe 4 (Issue 5) ── Heal-Zweige Batterie-Plus ─────────────────────────
+  it('entfernt eine Batterie-Plus-Direktspeisung einer 230-V-Dose ohne Wechselrichter (Issue 5a)', () => {
+    const nodes = [n('b1', 'battery', { label: 'Aufbau' }), n('c', 'consumer230v', { watts: 500 })];
+    const res = performAutoWiring(nodes, [e({ id: 'bad', source: 'b1', target: 'c', data: {} })] as never)!;
+    expect(res.edges.find((x) => x.id === 'bad')).toBeUndefined();
+  });
+
+  it('hängt eine Batterie-Plus-zu-230-V-Kante an den Wechselrichter-Ausgang (Issue 5a)', () => {
+    const nodes = [
+      n('b1', 'battery', { label: 'Aufbau' }),
+      n('inv', 'inverter', { watts: 600 }),
+      n('c', 'consumer230v', { watts: 500 }),
+    ];
+    const res = performAutoWiring(nodes, [e({ id: 'bad', source: 'b1', target: 'c', data: {} })] as never)!;
+    const edge = res.edges.find((x) => x.id === 'bad')!;
+    expect(edge.source).toBe('inv');
+    expect(edge.target).toBe('c');
+    expect(edge.data?.edgeDomain).toBe('AC_230V');
+  });
+
+  it('normalisiert einen Ladegerät-Direktabgang an Batterie-Plus auf die Schiene (Issue 5b)', () => {
+    const nodes = [n('b1', 'battery', { label: 'Aufbau' }), n('ch', 'charger', { amps: 20 })];
+    const user = [e({ id: 'dup', source: 'b1', target: 'ch', data: { length: 2, edgeDomain: 'DC_12V' } })];
+    const res = performAutoWiring(nodes, user as never)!;
+    const plusRail = res.nodes.find((nd) => nd.type === 'busbar' && nd.data?.role === 'positive')!;
+    expect(res.edges.some((x) => x.source === 'b1' && x.target === 'ch')).toBe(false);
+    expect(res.edges.filter((x) => x.source === 'ch' && x.target === plusRail.id)).toHaveLength(1);
+  });
+
+  it('fängt verdeckte Shunt-Bypass-Kanten auf den Batterie-Pin ab (Issue 1)', () => {
+    const nodes = [n('b1', 'battery', {}), n('sh', 'shunt', {}), n('c1', 'consumer', { watts: 24 })];
+    const userEdges: Edge<CableEdgeData>[] = [
+      e({
+        id: 'hid',
+        source: 'c1',
+        target: 'sh',
+        sourceHandle: 'minus',
+        targetHandle: 'minus',
+        data: { length: 2, edgeDomain: 'DC_12V' },
+      }),
+    ];
+    const connections = new Set(
+      userEdges.map((x) => `${x.source}|${x.target}|${x.sourceHandle || ''}|${x.targetHandle || ''}`)
+    );
+    const healed = healUserEdges(
+      userEdges,
+      nodeMapOf(nodes),
+      'b1',
+      'sh',
+      'plusRail',
+      'minusRail',
+      'fuseBox',
+      connections
+    );
+    expect(healed).toHaveLength(1);
+    expect(healed[0].source).toBe('minusRail');
+    expect(healed[0].target).toBe('c1');
+  });
+
+  // Gruppe 5 (Issue 9) ── Busbar-Fallbacks ──────────────────────────────────
+  it('nutzt eine eindeutig als Minus erkennbare Busbar als Minus-Schiene', () => {
+    const nodes = [n('b1', 'battery', { label: 'Aufbau' }), n('bb', 'busbar', { label: 'Minus-Schiene' })];
+    const res = performAutoWiring(nodes)!;
+    expect(res.nodes.find((nd) => nd.id === 'bb')?.data?.role).toBe('negative');
+    const plus = res.nodes.find((nd) => nd.type === 'busbar' && nd.data?.role === 'positive');
+    expect(plus).toBeDefined();
+    expect(plus!.id).not.toBe('bb');
+    expect(res.edges.some((x) => x.source === x.target)).toBe(false);
+  });
+
+  it('verteidigt sich gegen zwei Busbars mit Plus-Beschriftung', () => {
+    const nodes = [
+      n('b1', 'battery', { label: 'Aufbau' }),
+      n('bb1', 'busbar', { label: 'Plus-Schiene' }),
+      n('bb2', 'busbar', { label: 'Plus' }),
+    ];
+    const res = performAutoWiring(nodes)!;
+    const roles = res.nodes.filter((nd) => nd.type === 'busbar').map((nd) => nd.data?.role);
+    expect(new Set(roles)).toEqual(new Set(['positive', 'negative']));
+    expect(res.edges.some((x) => x.source === x.target)).toBe(false);
+  });
+
+  // Gruppe 6 (Issue 9) ── mehrere Solarmodule ohne MPPT ─────────────────────
+  it('erzeugt genau einen MPPT für mehrere Solarmodule und hängt alle an ihn', () => {
+    const nodes = [
+      n('b1', 'battery', { label: 'Aufbau' }),
+      n('s1', 'solar', { watts: 200 }),
+      n('s2', 'solar', { watts: 200 }),
+      n('s3', 'solar', { watts: 200 }),
+    ];
+    const res = performAutoWiring(nodes)!;
+    const mppts = res.nodes.filter((nd) => nd.type === 'mpptController');
+    expect(mppts).toHaveLength(1);
+    for (const solar of ['s1', 's2', 's3']) {
+      expect(
+        res.edges.some(
+          (x) => x.source === solar && x.target === mppts[0].id && x.data?.edgeDomain === 'Solar'
+        )
+      ).toBe(true);
+    }
+  });
+
+  // Gruppe 7 (Issue 7) ── Ground-Bonds ───────────────────────────────────────
+  it('ergänzt keine Doppel-Masse, wenn der Schienen-Bond schon existiert', () => {
+    const first = performAutoWiring([n('b1', 'battery', { label: 'Aufbau' }), n('g1', 'ground', {})])!;
+    const minusRail = first.nodes.find((nd) => nd.type === 'busbar' && nd.data?.role === 'negative')!;
+    const bond = e({
+      id: 'bond',
+      source: minusRail.id,
+      target: 'g1',
+      sourceHandle: 'minus',
+      targetHandle: 'minus',
+      data: { length: 1 },
+    });
+    const second = performAutoWiring(first.nodes, [bond] as never)!;
+    const bonds = second.edges.filter(
+      (x) =>
+        (x.source === minusRail.id && x.target === 'g1') || (x.source === 'g1' && x.target === minusRail.id)
+    );
+    expect(bonds).toHaveLength(1);
+  });
+
+  it('erzwingt 16 mm² auch auf Bond-Kanten ohne Handle-Markierung (Issue 7)', () => {
+    const first = performAutoWiring([n('b1', 'battery', { label: 'Aufbau' }), n('g1', 'ground', {})])!;
+    const minusRail = first.nodes.find((nd) => nd.type === 'busbar' && nd.data?.role === 'negative')!;
+    const autoBond = first.edges.find((x) => x.source === minusRail.id && x.target === 'g1')!;
+    expect(autoBond.data?.crossSection).toBe(16);
+    const second = performAutoWiring(first.nodes, [
+      {
+        ...autoBond,
+        id: 'imp',
+        sourceHandle: null,
+        targetHandle: null,
+        data: { length: 1, crossSection: 1.5 },
+      },
+    ] as never)!;
+    const imp = second.edges.find((x) => x.source === minusRail.id && x.target === 'g1')!;
+    expect(imp.id).toBe('imp');
+    expect(imp.data?.crossSection).toBe(16);
+    expect(second.edges.filter((x) => x.source === minusRail.id && x.target === 'g1')).toHaveLength(1);
+  });
+
+  // Gruppe 8 (Issue 9) ── Konvergenz der Dimensionierung ────────────────────
+  it('zweiter sizeDcEdges-Durchlauf verändert nichts mehr (Konvergenz)', () => {
+    const nodes = [
+      n('b', 'battery', { label: 'Aufbau', nominalVoltage: 12.8 }),
+      n('c1', 'consumer', { watts: 300 }),
+      n('c2', 'consumer', { watts: 400 }),
+    ];
+    const res = performAutoWiring(nodes)!;
+    const sig = (list: Edge<CableEdgeData>[]) =>
+      list.map((x) => `${x.id}:${x.data?.crossSection ?? '-'}:${x.data?.dropWarning ? 'W' : '-'}`).join('|');
+    const dc = res.edges.filter((x) => x.data?.edgeDomain !== 'AC_230V');
+    const before = sig(dc);
+    sizeDcEdges(dc, res.nodes, res.edges, volts(12.8));
+    expect(sig(dc)).toBe(before);
   });
 });

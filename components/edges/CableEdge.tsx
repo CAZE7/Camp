@@ -47,6 +47,13 @@ export type CableEdgeData = {
    * verloren und die Leitung würde als DC_12V behandelt.
    */
   edgeDomain?: 'DC_12V' | 'AC_230V' | 'Solar';
+  /**
+   * Von `sizeDcEdges` gesetzt, wenn der Versorgungspfad trotz 70-mm²-Obergrenze
+   * das 3-%-Spannungsfall-Budget reißt — die Leitung ist fachlich nicht
+   * ausführbar dimensionierbar (AUDIT-AUTOWIRE Issue 3). Datenmarkierung;
+   * die Anzeige erfolgt über die vorhandene Spannungsfall-Logik.
+   */
+  dropWarning?: boolean;
   /** Gesetzt, wenn selbst der größte Normquerschnitt den Laststrom nicht absichern kann. */
   fuseWarning?: boolean;
 };

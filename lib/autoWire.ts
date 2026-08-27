@@ -48,6 +48,8 @@ import {
   watts,
   ZERO_VOLTS,
   ZERO_WATTS,
+  type Meters,
+  type Volts,
 } from './units';
 import {
   AUTO_EDGE_PREFIX,
@@ -86,12 +88,26 @@ export function performAutoWiring(
   existingEdges: CableEdge[] = []
 ): { nodes: Node[]; edges: CableEdge[] } | null {
   const currentNodes = initialNodes.map((n) => ({ ...n, data: { ...(n.data || {}) } }));
+  // Issue 6: Eine fehlende Nutzerkanten-Länge wurde pauschal als 1 m
+  // festgeschrieben — bei Importen mit langer realer Strecke zu dünn
+  // dimensioniert und auf dem Canvas unsichtbar (der Renderer-Fallback auf
+  // die Geometrie wurde durch den gespeicherten Wert abgeschaltet). Neu:
+  // Schätzung aus der Knotengeometrie (100 px = 1 m, konsistent mit der
+  // Anzeigeebene); ohne Positionen bleibt der Wert undefined und jeder
+  // Lesezugriff nutzt seinen definierten Fallback.
+  const nodePositions = new Map(initialNodes.map((nd) => [nd.id, nd.position]));
+  const geometricLength = (e: { source: string; target: string }): Meters | undefined => {
+    const a = nodePositions.get(e.source);
+    const b = nodePositions.get(e.target);
+    if (!a || !b) return undefined;
+    return meters(Math.max(1, Math.hypot((b.x ?? 0) - (a.x ?? 0), (b.y ?? 0) - (a.y ?? 0)) / 100));
+  };
   let userEdges: CableEdge[] = existingEdges
     .filter((e) => !e.id.startsWith(AUTO_EDGE_PREFIX))
     .map((e) => ({
       ...e,
       data: {
-        length: e.data?.length ?? 1,
+        length: e.data?.length ?? geometricLength(e),
         crossSection: e.data?.crossSection,
         fuseSize: e.data?.fuseSize,
         edgeDomain: e.data?.edgeDomain,
@@ -275,16 +291,21 @@ export function performAutoWiring(
   // unzulässig (Lade-/Entladeprofile, Innenwiderstände, Spannungsfenster).
   // Solche Batterien werden NICHT auf die Schiene gelegt, statt eine
   // gefährliche 24-V-auf-12-V- bzw. AGM-auf-LiFePO4-Verbindung zu erzeugen.
-  const safeToParallel = (a: Node, b: Node): boolean => {
-    const va = quantityOr((a.data as Record<string, unknown>)?.nominalVoltage, volts, ZERO_VOLTS);
-    const vb = quantityOr((b.data as Record<string, unknown>)?.nominalVoltage, volts, ZERO_VOLTS);
-    if (va > ZERO_VOLTS && vb > ZERO_VOLTS && va !== vb) return false;
-    return isLeadChemistry(a) === isLeadChemistry(b);
-  };
+  // Issue 2: Ein fehlender nominalVoltage war bisher ein stiller
+  // Freifahrtschein (Haustür-Vergleich house↔extra, extras untereinander
+  // ungeprüft — 24 V landeten auf der 12-V-Schiene). Fehlende Werte werden
+  // auf die aufgelöste Systemspannung normiert und jeder Kandidat gegen
+  // JEDE bereits akzeptierte Batterie geprüft.
+  const voltageOf = (b: Node): Volts =>
+    quantityOr((b.data as Record<string, unknown>)?.nominalVoltage, volts, sysVoltage);
+  const safeToParallel = (a: Node, b: Node): boolean =>
+    voltageOf(a) === voltageOf(b) && isLeadChemistry(a) === isLeadChemistry(b);
+  const acceptedParallel: Node[] = [batteryNode];
   for (const extra of batteries) {
     if (extra.id === batteryNode.id) continue;
     if (starterBatteryNode && extra.id === starterBatteryNode.id) continue;
-    if (!safeToParallel(batteryNode, extra)) continue;
+    if (!acceptedParallel.every((a) => safeToParallel(a, extra))) continue;
+    acceptedParallel.push(extra);
     addDcEdge(
       newEdges,
       dcEdges,
@@ -529,8 +550,12 @@ export function performAutoWiring(
     // zählt als bereits geerdet. Eine Nutzerkante „Masse → Verbraucher“ ist
     // KEIN Erdanschluss und darf die automatische Masseverlegung nicht
     // unterdrücken (vorheriger False-Positive).
+    // Issue 7: Importpläne führen Bonds oft ohne Handle-Ids. Ein fehlender
+    // Handle an einer rail/shunt↔ground-Kante ist die Minusseite (Plus Bonds
+    // zur Karosserie sind per Definition ausgeschlossen); ohne Toleranz
+    // entstand ein Doppel-Bond UND der Nutzer-Bond entkam der 16-mm²-Pflicht.
     const connectsToMinusSystem = (e: CableEdge): boolean =>
-      e.sourceHandle?.includes('minus') === true &&
+      (!e.sourceHandle || e.sourceHandle.includes('minus')) &&
       ((e.source === rails.minus.id && e.target === groundId) ||
         (e.target === rails.minus.id && e.source === groundId) ||
         (e.source === shuntNode.id && e.target === groundId) ||

@@ -16,7 +16,7 @@ import {
 } from './electrical';
 import { getSystemVoltage } from './vde-standards';
 import { hasVoltageDropError } from '../components/edges/utils/voltageDrop';
-import { performAutoWiring } from './autoWire';
+import { performAutoWiring, sizeDcEdges } from './autoWire';
 import { volts } from './units';
 
 /**
@@ -261,6 +261,12 @@ const nodeSpec: fc.Arbitrary<NodeSpec> = fc.oneof(
     data: fc.record({ amps: fc.integer({ min: 10, max: 60 }) }),
   }),
   fc.record({ type: fc.constant('shorePower'), data: fc.record({ hasRcd: fc.boolean() }) }),
+  // Mischdomänengerät (Issue 4): ohne acBatteryCharger + shorePower sah G6
+  // nie die problematische Kombination AC-Zulauf/DC-Ablauf.
+  fc.record({
+    type: fc.constant('acBatteryCharger'),
+    data: fc.record({ amps: fc.integer({ min: 5, max: 40 }) }),
+  }),
   fc.record({ type: fc.constant('ground'), data: fc.constant({}) })
 );
 
@@ -438,7 +444,11 @@ describe('G5 — Idempotenz von performAutoWiring', () => {
 });
 
 describe('G6 — AC/DC-Trennung jeder erzeugten Verbindung', () => {
-  const AC_ONLY_TYPES = new Set(['shorePower', 'consumer230v', 'acBatteryCharger']);
+  // acBatteryCharger ist KEIN "AC_ONLY"-Typ: gemischte Domäne (AC-Eingang,
+  // DC-Ladeausgang, AUDIT-AUTOWIRE Issue 4). Als rein AC klassifiziert würde
+  // das Gesetz die legitime DC-Ausgangsleitung verbieten; die AC-Seite wird
+  // über den shorePower-Endpunkt geprüft.
+  const AC_ONLY_TYPES = new Set(['shorePower', 'consumer230v']);
   const DC_ONLY_TYPES = new Set([
     'battery',
     'busbar',
@@ -643,6 +653,26 @@ describe('Systemspannung — Eigenschaften statt Einzelfälle', () => {
  *       blieb ohne Querschnitt. Der Fehler wurde in lib/autoWire.ts behoben,
  *       der Fall bleibt als Regressionstest.
  */
+describe('G7 — sizeDcEdges-Konvergenz (AUDIT-AUTOWIRE Issue 3/9)', () => {
+  it('sizeDcEdges(sizeDcEdges(x)) == sizeDcEdges(x) — Nacherschleife terminiert', () => {
+    fc.assert(
+      fc.property(planWithUserEdgesArbitrary, ({ nodes, edges }) => {
+        const result = performAutoWiring(nodes, edges as never);
+        if (!result) return;
+        const sig = (list: typeof result.edges) =>
+          list
+            .map((x) => `${x.id}:${x.data?.crossSection ?? '-'}:${x.data?.dropWarning ? 'W' : '-'}`)
+            .join('|');
+        const dc = result.edges.filter((x) => x.data?.edgeDomain !== 'AC_230V');
+        const before = sig(dc);
+        sizeDcEdges(dc as never, result.nodes, result.edges as never, getSystemVoltage(result.nodes));
+        expect(sig(dc)).toBe(before);
+      }),
+      { ...propertyConfig, numRuns: 300 }
+    );
+  });
+});
+
 describe('Shrinking-Anker (gemeldete Gegenbeispiele)', () => {
   it('(a) 16.000000000000004 A auf 1.5 mm²: Sicherung bleibt bei 16 A', () => {
     // fast-check, Seed 20260821 → Counterexample: [16.000000000000004, 1.5]

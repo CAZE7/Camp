@@ -150,9 +150,13 @@ export function sizeDcEdges(
 
   // Direkte Aufrufe dieser Funktion (Unit-Tests, Validierung) dürfen Kanten
   // ohne `data` nicht mit `edge.data!` crashen lassen.
+  // dropWarning wird zurückgesetzt: ein geänderter Plan kann eine früher
+  // unrealisierbare Kette wieder lösbar machen; der Marker darf nicht
+  // veralten.
   for (const edge of dcEdges) {
     if (!edge.data) edge.data = {};
     edge.data.crossSection = sizeEdge(edge, perEdgeCap);
+    edge.data.dropWarning = false;
   }
 
   for (let iteration = 0; iteration < 20; iteration++) {
@@ -176,6 +180,70 @@ export function sizeDcEdges(
       }
     }
     if (!changed) break;
+  }
+
+  // Nacherschleife (AUDIT Issue 3): Das lokale Gate oben verdickt nur die
+  // Kante selbst — Vorgelagertes bleibt dünn, und auf tiefen Ketten kann die
+  // 3-%-Budgetverletzung bestehen bleiben, obwohl eine konforme Dimensionierung
+  // existiert. Deshalb: Verletzung am Lastknoten auflösen, indem auf dessen
+  // Versorgungspfad jeweils die Kante mit dem größten Eigenanteil um einen
+  // Normschritt dicker wird. Ist jede Pfadkante bei MAX_CROSS_SECTION und das
+  // Budget bleibt gerissen, markiert `dropWarning` den Pfad als fachlich
+  // unrealisierbar, statt stillschweigend zu violating weiterzumachen.
+  const chainOf = (nodeId: string, visited: Set<string>): CableEdge[] => {
+    const node = nodeMap.get(nodeId);
+    if (!node || visited.has(nodeId)) return [];
+    if (node.type === 'battery' || node.type === 'shorePower' || isVoltageDropStopType(node.type)) {
+      return [];
+    }
+    visited.add(nodeId);
+    const chain: CableEdge[] = [];
+    for (const edge of allEdges) {
+      if (edge.target !== nodeId) continue;
+      if (edge.data?.edgeDomain === 'AC_230V') continue;
+      chain.push(edge);
+      chain.push(...chainOf(edge.source, visited));
+    }
+    return chain;
+  };
+
+  for (const loadNode of nodes) {
+    if (loadNode.type !== 'consumer' && loadNode.type !== 'inverter') continue;
+    if (relevantCumulativeDrop(loadNode.id, nodeMap, allEdges, nodes, sysVoltage) <= dropLimit) continue;
+    const chain = chainOf(loadNode.id, new Set<string>());
+    if (chain.length === 0) continue;
+    // Termination: jede Iteration hebt genau eine Kante um einen Normschritt;
+    // mehr als Kanten × Stufen ist unmöglich.
+    const guardMax = dcEdges.length * VDE_SIZES.length + 1;
+    for (let guard = 0; guard < guardMax; guard++) {
+      if (relevantCumulativeDrop(loadNode.id, nodeMap, allEdges, nodes, sysVoltage) <= dropLimit) break;
+      let victim: CableEdge | undefined;
+      let victimDrop: Volts = ZERO_VOLTS;
+      for (const edge of chain) {
+        if (!edge.data) edge.data = {};
+        const cs = edgeCrossSection(edge, MIN_CROSS_SECTION);
+        if (cs >= MAX_CROSS_SECTION) continue;
+        const own = edgeVoltageDrop(
+          calculateEdgeCurrent(nodeMap.get(edge.source), nodeMap.get(edge.target), nodes, sysVoltage),
+          edgeLength(edge),
+          cs
+        );
+        if (!victim || own > victimDrop) {
+          victim = edge;
+          victimDrop = own;
+        }
+      }
+      if (!victim) {
+        for (const edge of chain) {
+          if (!edge.data) edge.data = {};
+          edge.data.dropWarning = true;
+        }
+        break;
+      }
+      victim.data!.crossSection = nextStandardCrossSection(
+        mm2(edgeCrossSection(victim, MIN_CROSS_SECTION) + 0.1)
+      );
+    }
   }
 }
 
@@ -257,8 +325,12 @@ export function acCurrentA(
   };
 
   // WR→Gerät: nur die Gerätelast zählt (WR-Nennleistung wäre eine Über-
-  // dimensionierung). Gerät→Gerät: beide Geräte werden berücksichtigt.
-  if (targetNode?.type === 'consumer230v') return loadOf(targetNode);
+  // dimensionierung). Gerät→Gerät (Import-Daisy-Chain): das vorgelagerte
+  // Gerät trägt auch die Nachbarnlast — Issue 8.
+  if (targetNode?.type === 'consumer230v') {
+    if (sourceNode?.type === 'consumer230v') return maxAmps(loadOf(sourceNode), loadOf(targetNode));
+    return loadOf(targetNode);
+  }
   if (sourceNode?.type === 'consumer230v') return loadOf(sourceNode);
   const inverter =
     sourceNode?.type === 'inverter' ? sourceNode : targetNode?.type === 'inverter' ? targetNode : undefined;

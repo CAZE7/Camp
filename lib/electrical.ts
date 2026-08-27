@@ -149,8 +149,12 @@ export const getEdgeDomain = (
     return 'Solar';
   }
 
-  const isAcNode = (type: string | undefined) =>
-    type === 'shorePower' || type === 'consumer230v' || type === 'acBatteryCharger';
+  // acBatteryCharger ist bewusst NICHT in dieser Liste: gemischte Domäne —
+  // AC-Eingang (Landstrom), DC-Ausgang (Ladestrom auf die Schiene). Eine
+  // Pauschale klassifizierte seine DC-Ausgangsleitung als AC und entzog sie
+  // der DC-Dimensionierung (AUDIT-AUTOWIRE Issue 4). Die AC-Seite wird über
+  // den shorePower-Endpunkt erkannt, die DC-Seite bleibt DC.
+  const isAcNode = (type: string | undefined) => type === 'shorePower' || type === 'consumer230v';
   if (isAcNode(sourceNodeType) || isAcNode(targetNodeType)) {
     return 'AC_230V';
   }
@@ -178,8 +182,14 @@ export const getHandleDomain = (
   handleType: 'source' | 'target' | undefined
 ): 'DC_12V' | 'AC_230V' => {
   if (!nodeType) return 'DC_12V';
-  if (nodeType === 'shorePower' || nodeType === 'consumer230v' || nodeType === 'acBatteryCharger') {
+  if (nodeType === 'shorePower' || nodeType === 'consumer230v') {
     return 'AC_230V';
+  }
+  if (nodeType === 'acBatteryCharger') {
+    // Mischdomäne (Issue 4): Die Landstrom-Zuweisung kommt als Kante
+    // shorePower.plus -> Charger-'plus'-TARGET an; alle SOURCE-Handles
+    // (plus/minus) sind der DC_12V-Ladeausgang.
+    return handleId === 'plus' && handleType === 'target' ? 'AC_230V' : 'DC_12V';
   }
   if (nodeType === 'inverter') {
     // Left TARGET plus/minus = 12V DC input. Right SOURCE plus / ac_* = 230V AC.

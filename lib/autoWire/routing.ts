@@ -43,8 +43,10 @@ export function ensureNode(
       id: crypto.randomUUID(),
       type,
       position: {
-        x: batteryNode.position.x + offsetX,
-        y: batteryNode.position.y + offsetY,
+        // Issue 11: importierte Knoten können ohne Position eintreffen;
+        // Auto-Wire härtet gegen 0 statt mit TypeError abzubrechen.
+        x: (batteryNode.position?.x ?? 0) + offsetX,
+        y: (batteryNode.position?.y ?? 0) + offsetY,
       },
       data: { label, ...extraData },
     };
@@ -225,7 +227,9 @@ export function retargetEdge(
 /**
  * Fädelt unsichere Nutzer-Kanten in die Ziel-Topologie ein:
  *  - Batterie-Minus → X  wird zu  Shunt-Minus → X  (kein Shunt-Bypass)
- *  - Batterie-Plus → Verbraucher/Inverter  wird über Sicherungskasten/Plus-Schiene geführt
+ *  - X-Minus → Batterie/Shunt-Batteriepin  landet normalisiert auf der Minus-Schiene
+ *  - Batterie-Plus → Verbraucher  führt über den Sicherungskasten; → Inverter/Lader
+ *    über die Plus-Schiene; → 230-V-Seite  an den Wechselrichter-Ausgang oder entfällt
  *  - Ladequellen direkt auf die Batterie  werden auf die Plus-/Minus-Schiene gelegt
  *
  * Kanten, die nach dem Umlegen doppelt wären, entfallen (kein paralleler Pfad).
@@ -258,7 +262,34 @@ export function healUserEdges(
       continue;
     }
     if (targetIsHouseMinus && edge.source !== shuntId && sourceNode?.type !== 'battery') {
-      if (retargetEdge(edge, { target: shuntId }, existingConnections) === 'drop') {
+      // Issue 1: Der Minus-Port auf der TARGET-Seite des Shunts ist die
+      // BATTERIESITE — dort zu landen wäre erneut ein Shunt-Bypass. Rückleiter
+      // landen auf der Minus-SCHIENE, Richtung normalisiert (Schiene -> X),
+      // damit die Kante mit der Auto-Kante dedupliziert statt parallel zu
+      // stehen (key: rail|X|minus|minus, identisch zu addDcEdge).
+      if (retargetEdge(edge, { source: minusRailId, target: edge.source }, existingConnections) === 'drop') {
+        dropIds.add(edge.id);
+      }
+      continue;
+    }
+
+    // Issue 1, Fall 2: Kanten, die direkt auf den Batterie-Pin des Shunts
+    // zeigen (target:shunt, targetHandle:minus), waren ein unentdeckter
+    // Bypass, weil kein Zweig sie fing.
+    if (
+      edge.target === shuntId &&
+      !!edge.targetHandle?.includes('minus') &&
+      sourceNode?.type !== 'battery' &&
+      edge.source !== shuntId
+    ) {
+      if (edge.source === minusRailId) {
+        // Schiene -> Shunt-Batteriepin umgeht alle Lasten; die korrekte
+        // Shunt->Schiene-Kante stellt das Auto-Wiring. Diese Kante entfällt.
+        existingConnections.delete(connectionKey(edge));
+        dropIds.add(edge.id);
+        continue;
+      }
+      if (retargetEdge(edge, { source: minusRailId, target: edge.source }, existingConnections) === 'drop') {
         dropIds.add(edge.id);
       }
       continue;
@@ -280,6 +311,35 @@ export function healUserEdges(
       }
       if (targetNode?.type === 'fuse' && edge.target !== plusRailId) {
         if (retargetEdge(edge, { source: plusRailId }, existingConnections) === 'drop') {
+          dropIds.add(edge.id);
+        }
+        continue;
+      }
+      // Issue 5b: Ladegeräte hängen nie direkt an der Batterie-Plus-Klemme.
+      // Richtung normalisieren (charger -> Plus-Schiene); dedupliziert gegen
+      // die Auto-Zuleitung, statt sie parallel zu verdoppeln.
+      if (targetNode && chargerTypeSet.has(targetNode.type || '')) {
+        if (retargetEdge(edge, { source: edge.target, target: plusRailId }, existingConnections) === 'drop') {
+          dropIds.add(edge.id);
+        }
+        continue;
+      }
+      // Issue 5a: Eine 12-V-Batterie speist nie direkt eine 230-V-Seite.
+      // Existiert ein Wechselrichter, hängt die Kante an dessen AC-Ausgang;
+      // sonst entfällt sie — als Direktabgang war sie fachlich nie zulässig,
+      // und eine erhaltene Leiche würde die Validierung nur verwirren.
+      if (
+        targetNode?.type === 'consumer230v' ||
+        targetNode?.type === 'shorePower' ||
+        targetNode?.type === 'acBatteryCharger'
+      ) {
+        const inverter = [...nodeMap.values()].find((nd) => nd.type === 'inverter');
+        if (inverter) {
+          if (retargetEdge(edge, { source: inverter.id }, existingConnections) === 'drop') {
+            dropIds.add(edge.id);
+          }
+        } else {
+          existingConnections.delete(connectionKey(edge));
           dropIds.add(edge.id);
         }
         continue;
