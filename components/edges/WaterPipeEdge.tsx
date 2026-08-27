@@ -5,6 +5,8 @@ import { BaseEdge, EdgeLabelRenderer, EdgeProps, useReactFlow } from 'reactflow'
 import { PIPE_COLORS } from './utils/edgeColors';
 import { usePlannerStore } from '../../store/usePlannerStore';
 import { calculateEdgePath, edgeLabelNudge } from './utils/pathUtils';
+import { findCablePath, nodesToObstacles } from './utils/pathfinding';
+import { useCableRoute } from './utils/cableRouteStore';
 
 export type WaterPipeEdgeData = {
   pipeType?: 'fresh' | 'gray';
@@ -15,12 +17,29 @@ const WaterPipeEdge = function ({
   id, source, target, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition,
   style = {}, data, markerEnd, selected,
 }: EdgeProps<WaterPipeEdgeData>) {
-  const { getNode } = useReactFlow();
+  const { getNode, getNodes } = useReactFlow();
   const siblingEdges = usePlannerStore((state) => state.waterEdges);
+  const globalRoute = useCableRoute(id);
 
-  const [edgePath, labelX, labelY] = useMemo(() => calculateEdgePath({
-    sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition,
-  }), [sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition]);
+  const [edgePath, labelX, labelY] = useMemo(() => {
+    if (globalRoute) return [globalRoute.path, globalRoute.labelX, globalRoute.labelY] as const;
+    const nodes = getNodes();
+    if (nodes.length > 0) {
+      const routed = findCablePath({
+        sourceX,
+        sourceY,
+        sourcePosition,
+        targetX,
+        targetY,
+        targetPosition,
+        obstacles: nodesToObstacles(nodes, new Set([source, target])),
+      });
+      return [routed.path, routed.labelX, routed.labelY] as const;
+    }
+    return calculateEdgePath({
+      sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition,
+    });
+  }, [globalRoute, sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, getNodes, source, target]);
 
   const labelNudgeY = useMemo(
     () =>

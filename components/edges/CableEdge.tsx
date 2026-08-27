@@ -2,9 +2,10 @@ import React, { useMemo, useRef, useState } from 'react';
 import { BaseEdge, EdgeProps, EdgeLabelRenderer, useReactFlow, Node } from 'reactflow';
 import { usePlannerStore, getDerivedSystemState } from '../../store/usePlannerStore';
 import { useShallow } from 'zustand/react/shallow';
-import { edgeLabelNudge, parallelLaneOffset } from './utils/pathUtils';
-import { buildOrthogonalPath } from './utils/orthogonalRouting';
-import { obstaclesExcluding, crossingSegmentsExcluding } from './utils/routingCache';
+import { edgeLabelNudge, parallelLaneOffset, polarityPathOffset } from './utils/pathUtils';
+import { findCablePath, nodesToObstacles } from './utils/pathfinding';
+import { useCableRoute } from './utils/cableRouteStore';
+import { crossingSegmentsExcluding } from './utils/routingCache';
 import { cableStrokeWidth } from './utils/cableStyle';
 import { useCoarsePointer, useMediaQuery, MOBILE_QUERY } from '../planner/hooks/useMediaCapabilities';
 import { isBackboneConnection } from '../planner/utils/backbone';
@@ -202,6 +203,7 @@ const CableEdge = function ({
   const siblingEdges = usePlannerStore((state) => state.edges);
   const allNodes = usePlannerStore((state) => state.nodes);
   const trunkMode = usePlannerStore((state) => state.trunkMode);
+  const globalRoute = useCableRoute(id);
 
   // Fremde Leitungen als grobe Strecken — Grundlage der Kreuzungszählung.
   // Kanten desselben Node-Paars sind ausgenommen: die liegen bereits sauber
@@ -219,25 +221,31 @@ const CableEdge = function ({
   }, [siblingEdges, allNodes, id, source, target]);
 
   const { path: edgePath, labelX, labelY } = useMemo(() => {
-    const obstacles = obstaclesExcluding(allNodes, new Set([source, target]));
-    return buildOrthogonalPath({
+    if (globalRoute) {
+      return { path: globalRoute.path, labelX: globalRoute.labelX, labelY: globalRoute.labelY };
+    }
+    const obstacles = nodesToObstacles(allNodes, new Set([source, target]));
+    const routed = findCablePath({
       sourceX,
       sourceY,
       sourcePosition,
       targetX,
       targetY,
       targetPosition,
-      offset: parallelLaneOffset({
-        edgeId: id,
-        source,
-        target,
-        sourceHandle: resolvedSourceHandle,
-        siblingEdges,
-      }),
+      offset:
+        polarityPathOffset(resolvedSourceHandle) +
+        parallelLaneOffset({
+          edgeId: id,
+          source,
+          target,
+          sourceHandle: resolvedSourceHandle,
+          siblingEdges,
+        }),
       obstacles,
       crossingSegments,
     });
-  }, [sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, resolvedSourceHandle, siblingEdges, allNodes, source, target, id, crossingSegments]);
+    return { path: routed.path, labelX: routed.labelX, labelY: routed.labelY };
+  }, [globalRoute, sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, resolvedSourceHandle, siblingEdges, allNodes, source, target, id, crossingSegments]);
 
   const labelNudgeY = useMemo(
     () =>

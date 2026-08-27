@@ -503,6 +503,7 @@ export function FlowCanvas() {
           style={{ backgroundColor: 'var(--canvas-bg)' }}
           className={`${isOverview ? 'planner-zoom-overview' : zoom > PLANNER_FULL_DETAIL_ZOOM ? 'planner-zoom-full' : 'planner-zoom-standard'} ${isLayoutPending ? 'planner-layout-animating' : ''}`}
         >
+          <CableRouteSync />
           <Background color="var(--canvas-grid)" gap={PLANNER_SNAP_GRID[0]} style={{ opacity: 0.35 }} />
           <Controls className="mb-20 overflow-hidden rounded-lg border border-border shadow-sm md:mb-4" />
           <MiniMap
