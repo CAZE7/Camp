@@ -27,7 +27,8 @@ const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 /** Führt `npm ci --dry-run` in `cwd` aus und liefert Exit-Code + Ausgabe. */
 function npmCiDryRun(cwd) {
   try {
-    const stdout = execFileSync('npm', ['ci', '--dry-run', '--no-audit', '--no-fund'], {
+    const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+    const stdout = execFileSync(npmCommand, ['ci', '--dry-run', '--no-audit', '--no-fund'], {
       cwd,
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe'],

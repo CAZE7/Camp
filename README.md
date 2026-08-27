@@ -174,6 +174,10 @@ npm run routing:gallery     # Routing-Galerie neu erzeugen
 npm run ci:verify-lockfile-gate
 ```
 
+Für Tests und E2E wird Node.js 20.19+ benötigt; empfohlen ist die Version
+aus `.nvmrc` (Node.js 22). Bei einer älteren lokalen Version bricht npm jetzt
+mit einer verständlichen Meldung ab.
+
 **CI:** Jeder Pull Request durchläuft `.github/workflows/ci.yml` →
 `quality.yml` (npm ci · Typecheck · Tests · Build · E2E). Der Deploy nach
 GitHub Pages läuft ausschließlich nach grünem Gate. Einrichtung der
