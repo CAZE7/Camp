@@ -3,6 +3,7 @@ import {
   VDE_SIZES,
   FUSE_MAP,
   calculateCrossSection,
+  calculateMaxFuse,
   lookupThermalCrossSection,
   selectFuseSize,
   isFuseFeasible,
@@ -276,22 +277,48 @@ export function acCurrentA(
     return currentFromPower(load, AC_VOLTAGE);
   }
   if (sourceNode?.type === 'shorePower' || targetNode?.type === 'shorePower') {
-    const other = sourceNode?.type === 'shorePower' ? targetNode : sourceNode;
+    const supply = sourceNode?.type === 'shorePower' ? sourceNode : targetNode;
+    const other = supply === sourceNode ? targetNode : sourceNode;
+    // ELEC-003: Der Anschlusswert wird modelliert gepflegt (shorePower.rating
+    // in A). Nur wenn er fehlt, greift der Modell-Default von 16 A.
+    const modeled = shoreSupplyRating(supply);
     const chargerAmps = quantityOr((other?.data as Record<string, unknown>)?.amps, amps, ZERO_AMPS);
-    return maxAmps(SHORE_POWER_CURRENT, chargerAmps);
+    return maxAmps(modeled ?? SHORE_POWER_CURRENT, chargerAmps);
   }
   return ZERO_AMPS;
 }
 
 /** @internal für Unit-Tests exportiert. */
 
+/**
+ * Modellierter Absicherungswert einer Landstromdose in A (ELEC-003).
+ * `rating` ist bewusst als Absicherung/Anschlusswert definiert; fehlt er,
+ * liefert die Funktion undefined und der Aufrufer entscheidet über Defaults.
+ */
+function shoreSupplyRating(node: Node | undefined): Amps | undefined {
+  if (!node || node.type !== 'shorePower') return undefined;
+  const rating = Number((node.data as Record<string, unknown>)?.rating);
+  if (!Number.isFinite(rating) || rating <= 0) return undefined;
+  return amps(rating);
+}
+
 export function sizeAcEdges(edges: CableEdge[], nodes: Node[]): void {
   const nodeMap = new Map(nodes.map((n) => [n.id, n]));
   for (const edge of edges) {
     if (edge.data?.edgeDomain !== 'AC_230V') continue;
     if (!edge.data) edge.data = {};
-    const I = acCurrentA(nodeMap.get(edge.source), nodeMap.get(edge.target), nodes);
+    const sourceNode = nodeMap.get(edge.source);
+    const targetNode = nodeMap.get(edge.target);
+    const I = acCurrentA(sourceNode, targetNode, nodes);
     const length = edgeLength(edge, DEFAULT_AC_LENGTH);
     edge.data.crossSection = calculateCrossSection(I, length, edge.data.crossSection, 'AC_230V');
+    // ELEC-003: AC-Zweige waren ungesichert dimensioniert. Die Sicherung ist
+    // der kleinere Wert aus modellierter Dosen-Absicherung (sonst Normwert
+    // ≥ Astlast) und der Kabelträgigkeit — selectFuseSize kapselt beides.
+    const rating = shoreSupplyRating(sourceNode) ?? shoreSupplyRating(targetNode);
+    edge.data.fuseSize =
+      rating !== undefined && rating <= calculateMaxFuse(edge.data.crossSection)
+        ? rating
+        : selectFuseSize(I, edge.data.crossSection);
   }
 }
