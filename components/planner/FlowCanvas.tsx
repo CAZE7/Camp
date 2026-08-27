@@ -5,6 +5,7 @@ import 'reactflow/dist/style.css';
 import { useShallow } from 'zustand/react/shallow';
 
 import WaterPipeEdge from '../edges/WaterPipeEdge';
+import { CableRouteSync } from '../edges/utils/cableRouteStore';
 import { cssToken } from '../edges/utils/edgeColors';
 import { EmptyState } from '../ui/EmptyState';
 import {

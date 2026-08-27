@@ -1,5 +1,6 @@
 import { render } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { Position } from 'reactflow';
 import WaterPipeEdge from './WaterPipeEdge';
 import { useReactFlow } from 'reactflow';
 
@@ -18,6 +19,32 @@ vi.mock('reactflow', async () => {
   };
 });
 
+/**
+ * Typisierter Mock-Factory: liefert stets einen vollständigen
+ * `useReactFlow`-Rückgabe-Wert (getNode/getNodes), damit neue React-Flow-APIs,
+ * die die Edge-Komponente nutzt, nicht zu `TypeError`s in Tests führen.
+ */
+type ReactFlowMock = {
+  getNode: (id: string) => { id: string; type?: string } | null;
+  getNodes: () => Array<{ id: string; type?: string; position: { x: number; y: number }; width?: number; height?: number; measured?: { width?: number; height?: number } }>;
+};
+
+const mockReactFlow = (overrides: Partial<ReactFlowMock> = {}): void => {
+  vi.mocked(useReactFlow).mockReturnValue({
+    getNode: (id: string) => {
+      void id;
+      return null;
+    },
+    getNodes: () => [],
+    ...overrides,
+  } as unknown as ReturnType<typeof useReactFlow>);
+};
+
+const nodeById =
+  (id: string, type: string) =>
+  (lookup: string): { id: string; type: string } | null =>
+    lookup === id ? { id, type } : null;
+
 describe('WaterPipeEdge', () => {
   const defaultProps = {
     id: 'e1-2',
@@ -27,8 +54,8 @@ describe('WaterPipeEdge', () => {
     sourceY: 0,
     targetX: 100,
     targetY: 100,
-    sourcePosition: 'right' as any,
-    targetPosition: 'left' as any,
+    sourcePosition: Position.Right,
+    targetPosition: Position.Left,
     data: {},
     selected: false,
     sourceHandle: null,
@@ -36,9 +63,7 @@ describe('WaterPipeEdge', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    (useReactFlow as any).mockReturnValue({
-      getNode: vi.fn(),
-    });
+    mockReactFlow();
   });
 
   it('renders correctly with default props (fresh water)', () => {
@@ -51,12 +76,7 @@ describe('WaterPipeEdge', () => {
   });
 
   it('renders as gray water when source node is sink', () => {
-    (useReactFlow as any).mockReturnValue({
-      getNode: vi.fn((id) => {
-        if (id === '1') return { id: '1', type: 'sink' };
-        return null;
-      }),
-    });
+    mockReactFlow({ getNode: nodeById('1', 'sink') });
 
     const { getByTestId } = render(<WaterPipeEdge {...defaultProps} />);
 
@@ -65,12 +85,7 @@ describe('WaterPipeEdge', () => {
   });
 
   it('renders as gray water when source node is shower', () => {
-    (useReactFlow as any).mockReturnValue({
-      getNode: vi.fn((id) => {
-        if (id === '1') return { id: '1', type: 'shower' };
-        return null;
-      }),
-    });
+    mockReactFlow({ getNode: nodeById('1', 'shower') });
 
     const { getByTestId } = render(<WaterPipeEdge {...defaultProps} />);
 
@@ -79,12 +94,7 @@ describe('WaterPipeEdge', () => {
   });
 
   it('renders as gray water when source node is grayWaterTank', () => {
-    (useReactFlow as any).mockReturnValue({
-      getNode: vi.fn((id) => {
-        if (id === '1') return { id: '1', type: 'grayWaterTank' };
-        return null;
-      }),
-    });
+    mockReactFlow({ getNode: nodeById('1', 'grayWaterTank') });
 
     const { getByTestId } = render(<WaterPipeEdge {...defaultProps} />);
 
@@ -93,12 +103,8 @@ describe('WaterPipeEdge', () => {
   });
 
   it('renders as gray water when data.pipeType is gray, overriding source node type', () => {
-    (useReactFlow as any).mockReturnValue({
-      getNode: vi.fn((id) => {
-        if (id === '1') return { id: '1', type: 'freshWaterTank' }; // Not gray water by default
-        return null;
-      }),
-    });
+    // Not gray water by default — pipeType override wins.
+    mockReactFlow({ getNode: nodeById('1', 'freshWaterTank') });
 
     const { getByTestId } = render(
       <WaterPipeEdge {...defaultProps} data={{ pipeType: 'gray' }} />
@@ -109,12 +115,8 @@ describe('WaterPipeEdge', () => {
   });
 
   it('renders as fresh water when data.pipeType is fresh, overriding source node type', () => {
-    (useReactFlow as any).mockReturnValue({
-      getNode: vi.fn((id) => {
-        if (id === '1') return { id: '1', type: 'sink' }; // Gray water by default
-        return null;
-      }),
-    });
+    // Gray water by default — pipeType override wins.
+    mockReactFlow({ getNode: nodeById('1', 'sink') });
 
     const { getByTestId } = render(
       <WaterPipeEdge {...defaultProps} data={{ pipeType: 'fresh' }} />

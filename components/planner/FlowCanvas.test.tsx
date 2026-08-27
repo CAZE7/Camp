@@ -54,6 +54,18 @@ vi.mock('reactflow', async () => {
   };
 });
 
+// Der CableRouteSync rendert als Kind von <ReactFlow> und liest den echten
+// React-Flow-Store (useStoreApi/useStore). Im Test ist ReactFlow gemockt,
+// daher wird der Routing-Sync als No-Op gestubbt — geroutete Pfade werden
+// hier nicht geprüft (dafür existieren CableEdge/WaterPipeEdge-Tests).
+vi.mock('../edges/utils/cableRouteStore', () => ({
+  CableRouteSync: () => null,
+  useCableRoute: () => undefined,
+  publishCableRoutes: vi.fn(),
+  clearCableRoutes: vi.fn(),
+  getCableRoute: () => undefined,
+}));
+
 // Mock hooks
 vi.mock('./hooks/useDashboardMetrics', () => ({
   useDashboardMetrics: vi.fn(() => ({
