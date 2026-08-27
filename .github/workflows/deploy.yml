@@ -66,11 +66,14 @@ jobs:
         run: npm ci
 
       - name: Pages konfigurieren
+        id: pages
         uses: actions/configure-pages@v5
         with:
           static_site_generator: next
 
       - name: Build (Static Export)
+        env:
+          NEXT_PUBLIC_BASE_PATH: ${{ steps.pages.outputs.base_path }}
         run: npm run build
 
       - name: Jekyll deaktivieren

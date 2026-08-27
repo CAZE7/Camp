@@ -11,23 +11,15 @@ import { load } from 'js-yaml';
  * Test fehl, statt dass ein ungeprüfter Deploy durchrutscht.
  */
 
-/**
- * Die geprüften Workflow-Dateien liegen unter `docs/ci/workflows/`.
- *
- * Grund: Der Agent, der diesen Branch erstellt hat, darf `.github/workflows/`
- * nicht schreiben (GitHub verweigert Pushes einer App ohne
- * `workflows`-Berechtigung). Die Dateien sind deshalb reviewbar hier abgelegt
- * und werden beim Merge nach `.github/workflows/` kopiert — siehe
- * `docs/CI.md`, Abschnitt „Aktivierung". Der Test prüft dieselben
- * Invarianten wie am Zielort.
- */
 const WORKFLOW_DIR = join(process.cwd(), '.github', 'workflows');
 
 type Step = {
+  id?: string;
   name?: string;
   uses?: string;
   run?: string;
   with?: Record<string, unknown>;
+  env?: Record<string, string>;
 };
 
 type Job = {
@@ -182,6 +174,19 @@ describe('GitHub-Actions-Workflows', () => {
     const workflow = readWorkflow('deploy.yml');
     const push = (workflow.on as { push?: { branches?: string[] } }).push;
     expect(push?.branches).toEqual(['main', 'master']);
+  });
+
+  it('Pages-Build verwendet den von configure-pages gelieferten Basepath', () => {
+    const workflow = readWorkflow('deploy.yml');
+    const buildSteps = workflow.jobs.build?.steps ?? [];
+    const configurePages = buildSteps.find((step) => step.uses === 'actions/configure-pages@v5');
+    const staticBuild = buildSteps.find((step) => step.run?.trim() === 'npm run build');
+
+    expect(configurePages?.id).toBe('pages');
+    expect(staticBuild?.with).toBeUndefined();
+    expect(staticBuild?.env).toEqual({
+      NEXT_PUBLIC_BASE_PATH: '${{ steps.pages.outputs.base_path }}',
+    });
   });
 
   it('Berechtigungen sind minimal: Standard nur contents:read', () => {

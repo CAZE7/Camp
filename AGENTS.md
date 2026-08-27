@@ -45,21 +45,18 @@ im Branch `arena/01a02388-camp` implementiert (ein Commit je Aufgabe).
 - **K4** Bauteil-Registry (`components/registry/`) statt 4 doppelter Tabellen.
 - **K5** Playwright-Suite geschrieben — **Läufe stehen aus** (Browser-Download
   war blockiert). Muss nach Merge lokal/CI verifiziert werden.
-- **K6** CI-Gate gehärtet — **Workflows liegen unter `docs/ci/workflows/`
-  und müssen manuell nach `.github/workflows/` kopiert werden** (siehe
-  `docs/CI.md`, Abschnitt 0). Erst dann ist das Gate aktiv.
+- **K6** CI-Gate gehärtet und unter `.github/workflows/` aktiviert; die
+  reviewbaren Referenzen liegen synchron unter `docs/ci/workflows/`.
 - **K7** README + 4 ADRs.
 - 5 echte Bugs gefunden und mit Regressionstests behoben.
 - Neue Baseline: 1051 Tests, Typecheck 0 Fehler (inkl. Tests), Build sauber.
 
 ### Nach dem Merge von PR #316
 
-1. CI-Workflows aktivieren: `cp docs/ci/workflows/*.yml .github/workflows/`
-   + `WORKFLOW_DIR` in `scripts/ci/workflows.test.ts` umstellen.
-2. Playwright lokal laufen lassen: `npx playwright install chromium`,
+1. Playwright lokal laufen lassen: `npx playwright install chromium`,
    `npm run build`, `npm run e2e` — drei grüne Läufe erbringen.
-3. Branch Protection einrichten (`docs/CI.md`, Abschnitt 4).
-4. Diesen Abschnitt auf "abgeschlossen" setzen.
+2. Branch Protection einrichten (`docs/CI.md`, Abschnitt 4).
+3. Diesen Abschnitt auf "abgeschlossen" setzen.
 
 ## Mission 3: UI/UX-Perfektion — UI-Aufgaben abgeschlossen auf diesem Branch
 
@@ -67,8 +64,8 @@ im Branch `arena/01a02388-camp` implementiert (ein Commit je Aufgabe).
 Playwright-Specs liefen in allen vier Projekten dreimal hintereinander ohne
 Fehler (44 bestanden, 28 erwartete geräteabhängige Skips je Lauf). Typecheck,
 Test-Typecheck, Static Build und 1069 Unit-/Property-Tests sind grün.
-Die Workflow-Aktivierung bleibt bewusst außerhalb dieses PRs; die vorbereiteten
-Dateien liegen weiterhin unter `docs/ci/workflows/`.
+Die Workflow-Dateien sind unter `.github/workflows/` aktiviert; die Referenzen
+liegen weiterhin unter `docs/ci/workflows/`.
 
 ### Umsetzungsübersicht
 

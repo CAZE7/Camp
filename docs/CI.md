@@ -2,33 +2,11 @@
 
 Stand: 2026-08-21 · Betrifft AGENTS.md **K6**
 
-## 0. Aktivierung — ein manueller Schritt nötig
+## 0. Aktivierung — aktiv
 
-> **Die Workflow-Dateien liegen in diesem Branch unter `docs/ci/workflows/`,
-> nicht unter `.github/workflows/`.**
->
-> Grund: GitHub verweigert Pushes einer App ohne `workflows`-Berechtigung
-> („refusing to allow a GitHub App to create or update workflow … without
-> `workflows` permission"). Die Dateien sind deshalb hier abgelegt —
-> vollständig reviewbar im Diff, inhaltlich unverändert.
->
-> **Damit ist das Gate noch nicht aktiv.** Zum Aktivieren genügt:
->
-> ```bash
-> cp docs/ci/workflows/ci.yml      .github/workflows/ci.yml
-> cp docs/ci/workflows/quality.yml .github/workflows/quality.yml
-> cp docs/ci/workflows/deploy.yml  .github/workflows/deploy.yml
-> git add .github/workflows && git commit -m "CI-Gate aktivieren"
-> ```
->
-> Danach in `scripts/ci/workflows.test.ts` `WORKFLOW_DIR` auf
-> `.github/workflows` umstellen und den Test „die Dateien liegen am
-> dokumentierten Übergangsort" entfernen. Alternativ der Arena-App die
-> Berechtigung *Workflows: Read and write* erteilen — dann kann der Agent die
-> Dateien direkt am Zielort ablegen.
->
-> Bis dahin gilt weiterhin der alte `deploy.yml`-Stand: Build und Deploy
-> laufen, aber ohne das gehärtete Gate aus Abschnitt 2.
+Die aktiven Workflow-Dateien liegen unter `.github/workflows/`. Die Kopien
+unter `docs/ci/workflows/` bleiben als reviewbare Referenz synchron. Der
+Workflow-Test prüft den aktiven Zielort.
 
 ## 1. Aufbau
 
