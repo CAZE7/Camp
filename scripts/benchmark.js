@@ -38,7 +38,9 @@ async function runBenchmark() {
 
   console.log(`Sync time: ${syncTime.toFixed(2)} ms`);
   console.log(`Async time (sequential): ${asyncTime.toFixed(2)} ms`);
-  console.log(`Performance improvement (blocking vs non-blocking overhead): ${((syncTime - asyncTime) / syncTime * 100).toFixed(2)}%`);
+  console.log(
+    `Performance improvement (blocking vs non-blocking overhead): ${(((syncTime - asyncTime) / syncTime) * 100).toFixed(2)}%`
+  );
 
   // Cleanup
   if (fs.existsSync(TEMP_PATH_SYNC)) fs.unlinkSync(TEMP_PATH_SYNC);

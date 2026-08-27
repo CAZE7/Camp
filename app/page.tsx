@@ -32,8 +32,16 @@ const TOOLS = [
 ];
 
 const GUIDES = [
-  { title: 'Camper-Ausbauguide', body: 'Wissen: Karosserie, Dämmung, Elektrik, TÜV.', href: '/guides/camper-ausbauguide' },
-  { title: 'Ausbau-Fahrplan', body: 'Reihenfolge der Gewerke — was kommt wann?', href: '/guides/ausbau-fahrplan' },
+  {
+    title: 'Camper-Ausbauguide',
+    body: 'Wissen: Karosserie, Dämmung, Elektrik, TÜV.',
+    href: '/guides/camper-ausbauguide',
+  },
+  {
+    title: 'Ausbau-Fahrplan',
+    body: 'Reihenfolge der Gewerke — was kommt wann?',
+    href: '/guides/ausbau-fahrplan',
+  },
   { title: 'Holzausbau (BEDMAS)', body: 'Sechs Schritte für den Möbelbau.', href: '/guides/holzausbau' },
 ];
 
@@ -47,16 +55,15 @@ export default function Home() {
           Camper planen — erst der Plan, dann das Blech.
         </h1>
         <p className="mt-3 max-w-xl text-base text-ink-soft">
-          Dach, Elektrik, Heizung und Sicherheit an einem Ort. Für Heimwerker
-          ohne Fachwissen — mit Zahlen, die auch für den TÜV funktionieren.
+          Dach, Elektrik, Heizung und Sicherheit an einem Ort. Für Heimwerker ohne Fachwissen — mit Zahlen,
+          die auch für den TÜV funktionieren.
         </p>
         <p className="caption-xs mt-4 text-ink-soft">
-          Empfohlene Reihenfolge: Fahrplan lesen → Dach planen → Schaltplan zeichnen → Heizlast prüfen → KI fragen.
+          Empfohlene Reihenfolge: Fahrplan lesen → Dach planen → Schaltplan zeichnen → Heizlast prüfen → KI
+          fragen.
         </p>
 
-        <h2 className="mt-10 text-sm font-semibold uppercase tracking-widest text-ink-soft">
-          Werkzeuge
-        </h2>
+        <h2 className="mt-10 text-sm font-semibold uppercase tracking-widest text-ink-soft">Werkzeuge</h2>
         <ul className="mt-3 divide-y divide-rule border border-rule bg-bone">
           {TOOLS.map((tool) => (
             <li key={tool.href}>
@@ -83,9 +90,7 @@ export default function Home() {
           ))}
         </ul>
 
-        <h2 className="mt-12 text-sm font-semibold uppercase tracking-widest text-ink-soft">
-          Guides
-        </h2>
+        <h2 className="mt-12 text-sm font-semibold uppercase tracking-widest text-ink-soft">Guides</h2>
         <ul className="mt-3 divide-y divide-rule border border-rule bg-bone">
           {GUIDES.map((guide) => (
             <li key={guide.href}>
@@ -97,7 +102,9 @@ export default function Home() {
                   <div className="font-medium text-ink">{guide.title}</div>
                   <p className="caption-xs mt-0.5 text-ink-soft">{guide.body}</p>
                 </div>
-                <span aria-hidden="true" className="text-copper">→</span>
+                <span aria-hidden="true" className="text-copper">
+                  →
+                </span>
               </Link>
             </li>
           ))}

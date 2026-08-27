@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import type React from 'react';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { usePlannerStore } from './usePlannerStore';
 import { Node, Edge } from 'reactflow';
-import * as layoutUtils from '../components/planner/utils/layout';
 
 // Mock the layout utility so Auto-Layout-Aufrufe im Store deterministisch
 // bleiben (kein echtes Layout im Test).
@@ -13,13 +13,39 @@ vi.mock('../components/planner/utils/layout', () => ({
 // Lokale Fixtures (die früheren initialNodes/initialEdges aus
 // planner/constants waren toter Code und wurden entfernt).
 const initialNodes: Node[] = [
-  { id: 'battery', type: 'battery', position: { x: 100, y: 100 }, data: { capacity: 100, chemistry: 'LiFePO4' } },
-  { id: 'fuse-box', type: 'fuse', position: { x: 400, y: 100 }, data: { label: 'Sicherungskasten', rating: 100 } },
+  {
+    id: 'battery',
+    type: 'battery',
+    position: { x: 100, y: 100 },
+    data: { capacity: 100, chemistry: 'LiFePO4' },
+  },
+  {
+    id: 'fuse-box',
+    type: 'fuse',
+    position: { x: 400, y: 100 },
+    data: { label: 'Sicherungskasten', rating: 100 },
+  },
   { id: 'consumer-1', type: 'consumer', position: { x: 700, y: 50 }, data: { watts: 60, hours: 12 } },
 ];
 const initialEdges: Edge[] = [
-  { id: 'e-battery-fuse', source: 'battery', target: 'fuse-box', sourceHandle: 'plus', targetHandle: 'plus', type: 'cableEdge', data: { length: 0.2, crossSection: 6, fuseSize: 5 } },
-  { id: 'e-fuse-consumer', source: 'fuse-box', target: 'consumer-1', sourceHandle: 'plus', targetHandle: 'plus', type: 'cableEdge', data: { length: 3, crossSection: 2.5, fuseSize: 5 } },
+  {
+    id: 'e-battery-fuse',
+    source: 'battery',
+    target: 'fuse-box',
+    sourceHandle: 'plus',
+    targetHandle: 'plus',
+    type: 'cableEdge',
+    data: { length: 0.2, crossSection: 6, fuseSize: 5 },
+  },
+  {
+    id: 'e-fuse-consumer',
+    source: 'fuse-box',
+    target: 'consumer-1',
+    sourceHandle: 'plus',
+    targetHandle: 'plus',
+    type: 'cableEdge',
+    data: { length: 3, crossSection: 2.5, fuseSize: 5 },
+  },
 ];
 
 describe('usePlannerStore', () => {
@@ -95,7 +121,7 @@ describe('usePlannerStore', () => {
       });
 
       act(() => {
-        result.current.setFirstTappedHandle((prev) => handle2);
+        result.current.setFirstTappedHandle(() => handle2);
       });
 
       expect(result.current.firstTappedHandle).toEqual(handle2);
@@ -169,7 +195,12 @@ describe('usePlannerStore', () => {
       const { result } = renderHook(() => usePlannerStore());
       const initialNodeCount = result.current.nodes.length;
 
-      const newNode = { id: 'test-node', type: 'battery', position: { x: 10, y: 10 }, data: { label: 'Test' } };
+      const newNode = {
+        id: 'test-node',
+        type: 'battery',
+        position: { x: 10, y: 10 },
+        data: { label: 'Test' },
+      };
       act(() => {
         result.current.setNodes([...result.current.nodes, newNode]);
       });
@@ -178,7 +209,7 @@ describe('usePlannerStore', () => {
 
       const change = { type: 'remove', id: 'test-node' };
       act(() => {
-        // @ts-ignore - testing reactflow internal types is tricky without importing them, but the shape matches
+        // @ts-expect-error bewusst Rohform ohne reactflow-Typen getestet — das Shape matcht
         result.current.onNodesChange([change]);
       });
 
@@ -189,7 +220,13 @@ describe('usePlannerStore', () => {
       const { result } = renderHook(() => usePlannerStore());
       const initialEdgeCount = result.current.edges.length;
 
-      const newEdge = { id: 'test-edge', source: '1', target: '2', type: 'cableEdge', data: { length: 3, crossSection: 2.5 } };
+      const newEdge = {
+        id: 'test-edge',
+        source: '1',
+        target: '2',
+        type: 'cableEdge',
+        data: { length: 3, crossSection: 2.5 },
+      };
       act(() => {
         result.current.setEdges([...result.current.edges, newEdge]);
       });
@@ -198,7 +235,7 @@ describe('usePlannerStore', () => {
 
       const change = { type: 'remove', id: 'test-edge' };
       act(() => {
-        // @ts-ignore
+        // @ts-expect-error bewusst Rohform ohne reactflow-Typen getestet — das Shape matcht
         result.current.onEdgesChange([change]);
       });
 
@@ -210,8 +247,20 @@ describe('usePlannerStore', () => {
 
       const mockNode1 = { id: '1', type: 'custom', position: { x: 0, y: 0 }, data: {} };
       const mockNode2 = { id: '2', type: 'custom', position: { x: 0, y: 0 }, data: {} };
-      const mockEdge1 = { id: 'e1', source: '1', target: '2', type: 'cableEdge', data: { length: 3, crossSection: 2.5 } };
-      const mockEdge2 = { id: 'e2', source: '2', target: '3', type: 'cableEdge', data: { length: 3, crossSection: 2.5 } };
+      const mockEdge1 = {
+        id: 'e1',
+        source: '1',
+        target: '2',
+        type: 'cableEdge',
+        data: { length: 3, crossSection: 2.5 },
+      };
+      const mockEdge2 = {
+        id: 'e2',
+        source: '2',
+        target: '3',
+        type: 'cableEdge',
+        data: { length: 3, crossSection: 2.5 },
+      };
 
       act(() => {
         result.current.setNodes([mockNode1, mockNode2]);
@@ -249,7 +298,7 @@ describe('usePlannerStore', () => {
         result.current.updateNodeData('test-node', { label: 'New', value: 10 });
       });
 
-      const updatedNode = result.current.nodes.find(n => n.id === 'test-node');
+      const updatedNode = result.current.nodes.find((n) => n.id === 'test-node');
       expect(updatedNode?.data).toEqual({ label: 'New', value: 10 });
     });
 
@@ -266,7 +315,13 @@ describe('usePlannerStore', () => {
 
     it('should handle setEdges with function', () => {
       const { result } = renderHook(() => usePlannerStore());
-      const mockEdge = { id: 'e1', source: '1', target: '2', type: 'cableEdge', data: { length: 3, crossSection: 2.5 } };
+      const mockEdge = {
+        id: 'e1',
+        source: '1',
+        target: '2',
+        type: 'cableEdge',
+        data: { length: 3, crossSection: 2.5 },
+      };
 
       act(() => {
         result.current.setEdges((prev) => [...prev, mockEdge]);
@@ -279,7 +334,12 @@ describe('usePlannerStore', () => {
   describe('History and data safety', () => {
     it('can undo and redo a graph change', () => {
       const originalNodes = usePlannerStore.getState().nodes;
-      const addedNode = { id: 'history-node', type: 'battery', position: { x: 0, y: 0 }, data: { label: 'Test' } };
+      const addedNode = {
+        id: 'history-node',
+        type: 'battery',
+        position: { x: 0, y: 0 },
+        data: { label: 'Test' },
+      };
 
       act(() => usePlannerStore.getState().setNodes([...originalNodes, addedNode]));
       expect(usePlannerStore.getState().canUndo).toBe(true);
@@ -316,7 +376,15 @@ describe('usePlannerStore', () => {
       { id: 'bat', type: 'battery', position: { x: 0, y: 0 }, data: {} },
       { id: 'cons', type: 'consumer', position: { x: 100, y: 0 }, data: {} },
     ];
-    const plusEdge = { id: 'e-plus', source: 'bat', sourceHandle: 'plus', target: 'cons', targetHandle: 'plus', type: 'cableEdge', data: {} };
+    const plusEdge = {
+      id: 'e-plus',
+      source: 'bat',
+      sourceHandle: 'plus',
+      target: 'cons',
+      targetHandle: 'plus',
+      type: 'cableEdge',
+      data: {},
+    };
 
     it('erlaubt den Minus-Rückleiter consumer→battery, wenn die Plus-Leitung existiert', () => {
       const { result } = renderHook(() => usePlannerStore());
@@ -326,7 +394,12 @@ describe('usePlannerStore', () => {
       });
       // Ein geschlossener Stromkreis ist topologisch ein Zyklus — die frühere
       // generische Zyklusprüfung hat genau diese Rückleitung blockiert.
-      const back = result.current.isValidConnection({ source: 'cons', sourceHandle: 'minus', target: 'bat', targetHandle: 'minus' });
+      const back = result.current.isValidConnection({
+        source: 'cons',
+        sourceHandle: 'minus',
+        target: 'bat',
+        targetHandle: 'minus',
+      });
       expect(back).toBe(true);
     });
 
@@ -335,10 +408,23 @@ describe('usePlannerStore', () => {
       act(() => {
         result.current.setNodes(nodes);
         result.current.setEdges([
-          { id: 'e-minus', source: 'cons', sourceHandle: 'minus', target: 'bat', targetHandle: 'minus', type: 'cableEdge', data: {} },
+          {
+            id: 'e-minus',
+            source: 'cons',
+            sourceHandle: 'minus',
+            target: 'bat',
+            targetHandle: 'minus',
+            type: 'cableEdge',
+            data: {},
+          },
         ]);
       });
-      const plus = result.current.isValidConnection({ source: 'bat', sourceHandle: 'plus', target: 'cons', targetHandle: 'plus' });
+      const plus = result.current.isValidConnection({
+        source: 'bat',
+        sourceHandle: 'plus',
+        target: 'cons',
+        targetHandle: 'plus',
+      });
       expect(plus).toBe(true);
     });
 
@@ -348,7 +434,12 @@ describe('usePlannerStore', () => {
         result.current.setNodes(nodes);
         result.current.setEdges([plusEdge]);
       });
-      const duplicate = result.current.isValidConnection({ source: 'bat', sourceHandle: 'plus', target: 'cons', targetHandle: 'plus' });
+      const duplicate = result.current.isValidConnection({
+        source: 'bat',
+        sourceHandle: 'plus',
+        target: 'cons',
+        targetHandle: 'plus',
+      });
       expect(duplicate).toBe(false);
     });
   });
@@ -365,13 +456,13 @@ describe('usePlannerStore', () => {
             if (key === 'application/reactflow') return 'battery';
             if (key === 'application/reactflow-label') return 'My Battery';
             return '';
-          }
+          },
         },
         clientX: 100,
-        clientY: 200
-      } as any;
+        clientY: 200,
+      } as unknown as React.DragEvent<HTMLDivElement>;
 
-      const mockScreenToFlowPosition = ({ x, y }: { x: number, y: number }) => ({ x: x - 10, y: y - 20 });
+      const mockScreenToFlowPosition = ({ x, y }: { x: number; y: number }) => ({ x: x - 10, y: y - 20 });
 
       act(() => {
         result.current.onDrop(mockEvent, mockScreenToFlowPosition);
@@ -394,13 +485,13 @@ describe('usePlannerStore', () => {
       const mockEvent = {
         preventDefault: () => {},
         dataTransfer: {
-          getData: () => ''
+          getData: () => '',
         },
         clientX: 100,
-        clientY: 200
-      } as any;
+        clientY: 200,
+      } as unknown as React.DragEvent<HTMLDivElement>;
 
-      const mockScreenToFlowPosition = ({ x, y }: { x: number, y: number }) => ({ x, y });
+      const mockScreenToFlowPosition = ({ x, y }: { x: number; y: number }) => ({ x, y });
 
       act(() => {
         result.current.onDrop(mockEvent, mockScreenToFlowPosition);
@@ -420,11 +511,11 @@ describe('usePlannerStore', () => {
           clientX: 100,
           clientY: 200,
           type: 'consumer',
-          label: 'My Consumer'
-        }
-      } as any;
+          label: 'My Consumer',
+        },
+      } as unknown as CustomEvent;
 
-      const mockScreenToFlowPosition = ({ x, y }: { x: number, y: number }) => ({ x: x - 10, y: y - 20 });
+      const mockScreenToFlowPosition = ({ x, y }: { x: number; y: number }) => ({ x: x - 10, y: y - 20 });
 
       act(() => {
         result.current.onCustomDrop(mockEvent, mockScreenToFlowPosition);
@@ -448,9 +539,9 @@ describe('usePlannerStore', () => {
           clientY: 200,
           type: 'consumer230v',
           label: 'Induktion',
-          watts: 2000
-        }
-      } as any;
+          watts: 2000,
+        },
+      } as unknown as CustomEvent;
 
       act(() => {
         result.current.onCustomDrop(mockEvent, ({ x, y }) => ({ x, y }));
@@ -468,14 +559,14 @@ describe('usePlannerStore', () => {
       act(() => {
         result.current.setNodes([
           { id: 'bat', type: 'battery', position: { x: 0, y: 0 }, data: {} },
-          { id: 'cons', type: 'consumer', position: { x: 100, y: 0 }, data: {} }
+          { id: 'cons', type: 'consumer', position: { x: 100, y: 0 }, data: {} },
         ]);
       });
       const valid = result.current.isValidConnection({
         source: 'bat',
         target: 'cons',
         sourceHandle: 'plus',
-        targetHandle: 'plus'
+        targetHandle: 'plus',
       });
       expect(valid).toBe(true);
     });
@@ -485,14 +576,14 @@ describe('usePlannerStore', () => {
       act(() => {
         result.current.setNodes([
           { id: 'bat', type: 'battery', position: { x: 0, y: 0 }, data: {} },
-          { id: 'ac_cons', type: 'consumer230v', position: { x: 100, y: 0 }, data: {} }
+          { id: 'ac_cons', type: 'consumer230v', position: { x: 100, y: 0 }, data: {} },
         ]);
       });
       const valid = result.current.isValidConnection({
         source: 'bat',
         target: 'ac_cons',
         sourceHandle: 'plus',
-        targetHandle: 'plus'
+        targetHandle: 'plus',
       });
       expect(valid).toBe(false);
     });
@@ -502,14 +593,14 @@ describe('usePlannerStore', () => {
       act(() => {
         result.current.setNodes([
           { id: 'inv', type: 'inverter', position: { x: 0, y: 0 }, data: {} },
-          { id: 'ac_cons', type: 'consumer230v', position: { x: 100, y: 0 }, data: {} }
+          { id: 'ac_cons', type: 'consumer230v', position: { x: 100, y: 0 }, data: {} },
         ]);
       });
       const valid = result.current.isValidConnection({
         source: 'inv',
         target: 'ac_cons',
         sourceHandle: 'plus', // Right side source AC output
-        targetHandle: 'plus'
+        targetHandle: 'plus',
       });
       expect(valid).toBe(true);
     });
@@ -519,14 +610,14 @@ describe('usePlannerStore', () => {
       act(() => {
         result.current.setNodes([
           { id: 'bat', type: 'battery', position: { x: 0, y: 0 }, data: {} },
-          { id: 'inv', type: 'inverter', position: { x: 100, y: 0 }, data: {} }
+          { id: 'inv', type: 'inverter', position: { x: 100, y: 0 }, data: {} },
         ]);
       });
       const valid = result.current.isValidConnection({
         source: 'bat',
         target: 'inv',
         sourceHandle: 'plus',
-        targetHandle: 'in-plus' // Left side target DC input
+        targetHandle: 'in-plus', // Left side target DC input
       });
       expect(valid).toBe(true);
     });
@@ -536,14 +627,14 @@ describe('usePlannerStore', () => {
       act(() => {
         result.current.setNodes([
           { id: 'bat', type: 'battery', position: { x: 0, y: 0 }, data: {} },
-          { id: 'inv', type: 'inverter', position: { x: 100, y: 0 }, data: {} }
+          { id: 'inv', type: 'inverter', position: { x: 100, y: 0 }, data: {} },
         ]);
       });
       const valid = result.current.isValidConnection({
         source: 'bat',
         target: 'inv',
         sourceHandle: 'plus',
-        targetHandle: 'plus'
+        targetHandle: 'plus',
       });
       expect(valid).toBe(true);
     });
@@ -553,14 +644,14 @@ describe('usePlannerStore', () => {
       act(() => {
         result.current.setNodes([
           { id: 'shore', type: 'shorePower', position: { x: 0, y: 0 }, data: {} },
-          { id: 'inv', type: 'inverter', position: { x: 100, y: 0 }, data: {} }
+          { id: 'inv', type: 'inverter', position: { x: 100, y: 0 }, data: {} },
         ]);
       });
       const valid = result.current.isValidConnection({
         source: 'shore',
         target: 'inv',
         sourceHandle: 'plus',
-        targetHandle: 'ac_in'
+        targetHandle: 'ac_in',
       });
       expect(valid).toBe(true);
     });

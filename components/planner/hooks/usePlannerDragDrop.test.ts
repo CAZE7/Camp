@@ -2,6 +2,7 @@ import { renderHook } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { usePlannerDragDrop } from './usePlannerDragDrop';
 import { usePlannerStore } from '../../../store/usePlannerStore';
+import { withSelector } from '../../../test-helpers/reactflowMocks';
 
 // Mock the store
 vi.mock('../../../store/usePlannerStore', () => ({
@@ -17,13 +18,9 @@ describe('usePlannerDragDrop', () => {
     vi.clearAllMocks();
 
     // Mock implementation of usePlannerStore to return our mock functions based on the selector
-    (usePlannerStore as unknown as any).mockImplementation((selector: any) => {
-      const mockState = {
-        onDrop: mockOnDrop,
-        onCustomDrop: mockOnCustomDrop,
-      };
-      return selector(mockState);
-    });
+    vi.mocked(usePlannerStore).mockImplementation(
+      withSelector({ onDrop: mockOnDrop, onCustomDrop: mockOnCustomDrop }) as typeof usePlannerStore
+    );
   });
 
   it('should initialize and return onDragOver and onDrop handlers', () => {

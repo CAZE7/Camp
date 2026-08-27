@@ -281,9 +281,18 @@ describe('findCablePath — invariants', () => {
 
   it('picks a less-crossing alternative when the default is congested', () => {
     const traffic: [Point, Point][] = [
-      [{ x: 80, y: -40 }, { x: 80, y: 160 }],
-      [{ x: 100, y: -40 }, { x: 100, y: 160 }],
-      [{ x: 120, y: -40 }, { x: 120, y: 160 }],
+      [
+        { x: 80, y: -40 },
+        { x: 80, y: 160 },
+      ],
+      [
+        { x: 100, y: -40 },
+        { x: 100, y: 160 },
+      ],
+      [
+        { x: 120, y: -40 },
+        { x: 120, y: 160 },
+      ],
     ];
     const result = route(0, 40, 220, 40, [], { crossingSegments: traffic });
     expect(result.crossings).toBeLessThanOrEqual(3);
@@ -403,18 +412,36 @@ describe('nodesToObstacles / cache / svg', () => {
     const a = findCablePath({
       ...base,
       crossingSegments: [
-        [{ x: 80, y: -40 }, { x: 80, y: 160 }],
-        [{ x: 100, y: -40 }, { x: 100, y: 160 }],
-        [{ x: 120, y: -40 }, { x: 120, y: 160 }],
+        [
+          { x: 80, y: -40 },
+          { x: 80, y: 160 },
+        ],
+        [
+          { x: 100, y: -40 },
+          { x: 100, y: 160 },
+        ],
+        [
+          { x: 120, y: -40 },
+          { x: 120, y: 160 },
+        ],
       ],
     });
     clearPathfindingCache();
     const b = findCablePath({
       ...base,
       crossingSegments: [
-        [{ x: 10, y: 40 }, { x: 190, y: 40 }],
-        [{ x: 10, y: 41 }, { x: 190, y: 41 }],
-        [{ x: 10, y: 42 }, { x: 190, y: 42 }],
+        [
+          { x: 10, y: 40 },
+          { x: 190, y: 40 },
+        ],
+        [
+          { x: 10, y: 41 },
+          { x: 190, y: 41 },
+        ],
+        [
+          { x: 10, y: 42 },
+          { x: 190, y: 42 },
+        ],
       ],
     });
     expect(a.crossings).not.toBe(b.crossings);
@@ -454,7 +481,12 @@ describe('nodesToObstacles / cache / svg', () => {
       { x: 10, y: 0 },
       { x: 10, y: 10 },
     ];
-    const others: [Point, Point][] = [[{ x: 10, y: -5 }, { x: 10, y: 5 }]];
+    const others: [Point, Point][] = [
+      [
+        { x: 10, y: -5 },
+        { x: 10, y: 5 },
+      ],
+    ];
     expect(countCrossings(path, others)).toBe(1);
   });
 });
@@ -465,8 +497,20 @@ describe('lane helpers', () => {
       { id: 'e1', source: 'a', target: 'b', sourceHandle: 'plus' },
       { id: 'e2', source: 'a', target: 'b', sourceHandle: 'minus' },
     ];
-    const o1 = parallelLaneOffset({ edgeId: 'e1', source: 'a', target: 'b', sourceHandle: 'plus', siblingEdges: siblings });
-    const o2 = parallelLaneOffset({ edgeId: 'e2', source: 'a', target: 'b', sourceHandle: 'minus', siblingEdges: siblings });
+    const o1 = parallelLaneOffset({
+      edgeId: 'e1',
+      source: 'a',
+      target: 'b',
+      sourceHandle: 'plus',
+      siblingEdges: siblings,
+    });
+    const o2 = parallelLaneOffset({
+      edgeId: 'e2',
+      source: 'a',
+      target: 'b',
+      sourceHandle: 'minus',
+      siblingEdges: siblings,
+    });
     expect(o1).toBeCloseTo(-o2);
     expect(o1).not.toBe(0);
   });
@@ -481,8 +525,20 @@ describe('lane helpers', () => {
       { id: 'e2', source: 'a', target: 'b', sourceHandle: 'plus' },
       { id: 'e3', source: 'a', target: 'b', sourceHandle: 'minus' },
     ];
-    const n1 = edgeLabelNudge({ edgeId: 'e1', source: 'a', target: 'b', sourceHandle: 'plus', siblingEdges: siblings });
-    const n3 = edgeLabelNudge({ edgeId: 'e3', source: 'a', target: 'b', sourceHandle: 'minus', siblingEdges: siblings });
+    const n1 = edgeLabelNudge({
+      edgeId: 'e1',
+      source: 'a',
+      target: 'b',
+      sourceHandle: 'plus',
+      siblingEdges: siblings,
+    });
+    const n3 = edgeLabelNudge({
+      edgeId: 'e3',
+      source: 'a',
+      target: 'b',
+      sourceHandle: 'minus',
+      siblingEdges: siblings,
+    });
     expect(n1).not.toBe(0);
     expect(n3).toBe(0);
   });

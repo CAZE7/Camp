@@ -9,9 +9,7 @@ const nextConfig: NextConfig = {
   trailingSlash: true,
   // Nur im Development relevant (für Sandbox-Previews). Im Produktions-Build
   // hat diese Option keine Wirkung und Wildcards gehören nicht committet.
-  ...(process.env.NODE_ENV !== 'production'
-    ? { allowedDevOrigins: ['*.e2b.app', 'localhost'] }
-    : {}),
+  ...(process.env.NODE_ENV !== 'production' ? { allowedDevOrigins: ['*.e2b.app', 'localhost'] } : {}),
   images: {
     unoptimized: true,
   },

@@ -1,11 +1,10 @@
 import '@testing-library/jest-dom';
 import { vi } from 'vitest';
 
-
 // Mock matchMedia for GSAP and Radix UI in jsdom
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
-  value: vi.fn().mockImplementation(query => ({
+  value: vi.fn().mockImplementation((query) => ({
     matches: false,
     media: query,
     onchange: null,
@@ -38,7 +37,7 @@ if (typeof window.PointerEvent === 'undefined') {
       this.isPrimary = params.isPrimary || false;
     }
   }
-  (window as any).PointerEvent = PointerEvent;
+  (window as unknown as { PointerEvent: unknown }).PointerEvent = PointerEvent;
 }
 
 // Mock HTMLElement.prototype.hasPointerCapture
@@ -52,5 +51,5 @@ if (typeof window.HTMLElement.prototype.hasPointerCapture === 'undefined') {
 vi.mock('next/font/google', () => ({
   Inter: () => ({ className: 'inter-mock', variable: '--inter-mock' }),
   Geist: () => ({ className: 'geist-mock', variable: '--geist-mock' }),
-  Outfit: () => ({ className: 'outfit-mock', variable: '--outfit-mock' })
+  Outfit: () => ({ className: 'outfit-mock', variable: '--outfit-mock' }),
 }));

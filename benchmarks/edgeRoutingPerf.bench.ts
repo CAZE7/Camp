@@ -46,7 +46,13 @@ function buildPlan(nodeCount: number, edgesPerNode: number) {
     for (let j = 0; j < edgesPerNode; j++) {
       const target = i - 1 - j;
       if (target < 0) break;
-      edges.push({ id: `e${edges.length}`, source: `n${target}`, target: `n${i}`, sourceHandle: 'plus', targetHandle: 'plus' });
+      edges.push({
+        id: `e${edges.length}`,
+        source: `n${target}`,
+        target: `n${i}`,
+        sourceHandle: 'plus',
+        targetHandle: 'plus',
+      });
     }
   }
   return { nodes, edges };
@@ -66,9 +72,7 @@ function renderEdges(nodes: Node[], edges: any[], refs: any[], cached: boolean) 
     const source = centers.get(edge.source)!;
     const target = centers.get(edge.target)!;
     const exclude = new Set([edge.source, edge.target]);
-    const obstacles = cached
-      ? obstaclesExcluding(nodes, exclude)
-      : nodesToObstacles(nodes, exclude);
+    const obstacles = cached ? obstaclesExcluding(nodes, exclude) : nodesToObstacles(nodes, exclude);
     const crossingSegments =
       edges.length > CROSSING_SCAN_EDGE_LIMIT
         ? []
@@ -82,7 +86,13 @@ function renderEdges(nodes: Node[], edges: any[], refs: any[], cached: boolean) 
                 (e.source === edge.source && e.target === edge.target) ||
                 (e.source === edge.target && e.target === edge.source)
             );
-    const offset = parallelLaneOffset({ edgeId: edge.id, source: edge.source, target: edge.target, sourceHandle: edge.sourceHandle, siblingEdges: edges });
+    const offset = parallelLaneOffset({
+      edgeId: edge.id,
+      source: edge.source,
+      target: edge.target,
+      sourceHandle: edge.sourceHandle,
+      siblingEdges: edges,
+    });
     const { path } = buildOrthogonalPath({
       sourceX: source.x,
       sourceY: source.y,
@@ -120,7 +130,9 @@ function bench(label: string, nodeCount: number, edgesPerNode: number, revolutio
   );
 }
 
-console.log('Kanten-Render-Durchlauf: vorher (je Kante neu bauen) vs. nachher (Frame-Cache, PERF-01/02/05)\n');
+console.log(
+  'Kanten-Render-Durchlauf: vorher (je Kante neu bauen) vs. nachher (Frame-Cache, PERF-01/02/05)\n'
+);
 bench('Klein', 8, 2);
 bench('Mittel', 24, 3);
 bench('Groß', 60, 4);

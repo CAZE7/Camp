@@ -10,7 +10,9 @@ describe('ValidatingNumberInput', () => {
   });
 
   it('renders empty string for null and undefined values', () => {
-    const { rerender } = render(<ValidatingNumberInput value={null} onChange={() => {}} aria-label="num-input" />);
+    const { rerender } = render(
+      <ValidatingNumberInput value={null} onChange={() => {}} aria-label="num-input" />
+    );
     const input = screen.getByLabelText('num-input') as HTMLInputElement;
     expect(input.value).toBe('');
 
@@ -59,13 +61,7 @@ describe('ValidatingNumberInput', () => {
 
   it('does not display error message when valid or not required', () => {
     render(
-      <ValidatingNumberInput
-        id="test-field"
-        value={5}
-        required
-        onChange={() => {}}
-        aria-label="num-input"
-      />
+      <ValidatingNumberInput id="test-field" value={5} required onChange={() => {}} aria-label="num-input" />
     );
 
     const input = screen.getByLabelText('num-input');

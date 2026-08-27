@@ -14,10 +14,7 @@ interface DashboardPanelProps {
   calculatedSolarWatts: number;
 }
 
-export function DashboardPanel({
-  metrics,
-  calculatedSolarWatts,
-}: DashboardPanelProps) {
+export function DashboardPanel({ metrics, calculatedSolarWatts }: DashboardPanelProps) {
   const {
     dailyConsumptionAh,
     autarkyStr,
@@ -59,7 +56,7 @@ export function DashboardPanel({
               {chargingTimeStr}
             </span>
           </div>
-          
+
           {calculatedSolarWatts > 0 && (
             <div className="flex justify-between items-center bg-warn-warning-bg p-2 rounded-lg mt-1 border border-warn-warning-border/50">
               <span className="text-warn-warning font-medium flex items-center gap-1">☀️ Dach-Solar:</span>
@@ -78,8 +75,10 @@ export function DashboardPanel({
           )}
           {hasDirectBatteryToConsumer && (
             <div className="mt-2 p-3 bg-signal/5 text-signal text-xs rounded-lg border border-signal/30 font-medium flex items-start gap-2 shadow-sm">
-              <span className="text-lg leading-none">⚠️</span> 
-              <span>Warnung: Verbraucher ist direkt mit der Batterie verbunden. Ein Sicherungsknoten fehlt!</span>
+              <span className="text-lg leading-none">⚠️</span>
+              <span>
+                Warnung: Verbraucher ist direkt mit der Batterie verbunden. Ein Sicherungsknoten fehlt!
+              </span>
             </div>
           )}
         </div>

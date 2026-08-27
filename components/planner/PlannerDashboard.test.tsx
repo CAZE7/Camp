@@ -8,7 +8,7 @@ import { toPng } from 'html-to-image';
 
 // Mock html-to-image (lazy-imported by the dashboard)
 vi.mock('html-to-image', () => ({
-  toPng: vi.fn().mockResolvedValue('data:image/png;base64,mocked')
+  toPng: vi.fn().mockResolvedValue('data:image/png;base64,mocked'),
 }));
 
 // Mock Planner Store
@@ -44,7 +44,7 @@ vi.mock('../../store/usePlannerStore', () => ({
       clearPlan: mockClearPlan,
     };
     return selector(state);
-  })
+  }),
 }));
 
 // Helper to open the overflow ("Mehr") menu where secondary actions live
@@ -216,21 +216,23 @@ describe('PlannerDashboard - Image Export', () => {
     };
 
     const originalCreateElement = document.createElement.bind(document);
-    const createElementSpy = vi.spyOn(document, 'createElement').mockImplementation((tagName: string, options?: ElementCreationOptions) => {
-      const el = originalCreateElement(tagName, options);
-      if (tagName === 'a') {
-        Object.defineProperty(el, 'download', {
-          get: () => mockLink.download,
-          set: (val) => mockLink.download = val,
-        });
-        Object.defineProperty(el, 'href', {
-          get: () => mockLink.href,
-          set: (val) => mockLink.href = val,
-        });
-        el.click = mockLink.click;
-      }
-      return el;
-    });
+    const createElementSpy = vi
+      .spyOn(document, 'createElement')
+      .mockImplementation((tagName: string, options?: ElementCreationOptions) => {
+        const el = originalCreateElement(tagName, options);
+        if (tagName === 'a') {
+          Object.defineProperty(el, 'download', {
+            get: () => mockLink.download,
+            set: (val) => (mockLink.download = val),
+          });
+          Object.defineProperty(el, 'href', {
+            get: () => mockLink.href,
+            set: (val) => (mockLink.href = val),
+          });
+          el.click = mockLink.click;
+        }
+        return el;
+      });
 
     render(<PlannerDashboard />);
 
@@ -251,7 +253,7 @@ describe('PlannerDashboard - Image Export', () => {
 
   it('does not export image if react flow wrapper is not found', async () => {
     const existingElements = document.querySelectorAll('.react-flow');
-    existingElements.forEach(el => document.body.removeChild(el));
+    existingElements.forEach((el) => document.body.removeChild(el));
 
     vi.mocked(toPng).mockClear();
 
@@ -279,7 +281,8 @@ describe('PlannerDashboard - Image Export', () => {
       expect(toPng).toHaveBeenCalled();
     });
 
-    const filterFunc = (toPng as unknown as any).mock.calls[0][1].filter;
+    const [, pngOptions] = vi.mocked(toPng).mock.calls[0];
+    const filterFunc = (pngOptions as { filter?: (el: HTMLElement) => boolean }).filter!;
 
     const validNode = document.createElement('div');
     expect(filterFunc(validNode)).toBe(true);
@@ -299,14 +302,18 @@ describe('PlannerDashboard - Image Export', () => {
     document.body.removeChild(mockReactFlowElem);
   });
 
-  it('logs an error if image export fails', async () => {
+  it('zeigt einen sichtbaren Fehler, wenn der Bild-Export scheitert (M6-4)', async () => {
+    // Regressionstest: der Export-Fehler war vorher NUR ein console.error —
+    // für Nutzer unsichtbar. Jetzt erscheint eine role=alert-Meldung, und
+    // console.error wird bewusst nicht mehr verwendet.
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
     const mockReactFlowElem = document.createElement('div');
     mockReactFlowElem.className = 'react-flow';
     document.body.appendChild(mockReactFlowElem);
 
-    (toPng as unknown as any).mockRejectedValueOnce(new Error('Export failed'));
+    const error = new Error('Export failed');
+    error.name = 'SecurityError';
+    vi.mocked(toPng).mockRejectedValueOnce(error);
 
     render(<PlannerDashboard />);
 
@@ -314,8 +321,12 @@ describe('PlannerDashboard - Image Export', () => {
     fireEvent.click(screen.getByText(/Bild exportieren/));
 
     await waitFor(() => {
-      expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to export image', expect.any(Error));
+      expect(screen.getByRole('alert')).toBeInTheDocument();
     });
+    // leerer Plan (Mock-State): die kontextbezogene Erste-Meldung greift vor
+    // der SecurityError-Klasse — beides sind Nutzer-sichtbare Pfade.
+    expect(screen.getByRole('alert').textContent).toMatch(/Nichts zu exportieren|Export blockiert/);
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
 
     consoleErrorSpy.mockRestore();
     document.body.removeChild(mockReactFlowElem);

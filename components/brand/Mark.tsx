@@ -1,13 +1,7 @@
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 
-export function Mark({
-  className,
-  inverted = false,
-}: {
-  className?: string;
-  inverted?: boolean;
-}) {
+export function Mark({ className, inverted = false }: { className?: string; inverted?: boolean }) {
   return (
     <Link
       href="/"
@@ -17,14 +11,7 @@ export function Mark({
       )}
       aria-label="Werft Startseite"
     >
-      <span
-        className={cn(
-          'wordmark',
-          inverted ? 'text-paper' : 'text-ink'
-        )}
-      >
-        Werft
-      </span>
+      <span className={cn('wordmark', inverted ? 'text-paper' : 'text-ink')}>Werft</span>
     </Link>
   );
 }

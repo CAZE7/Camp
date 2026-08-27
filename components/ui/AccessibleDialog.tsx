@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import React, { useEffect, useId, useRef } from 'react';
 import { X } from 'lucide-react';
@@ -107,9 +107,13 @@ export function AccessibleDialog({
       >
         <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
           <div>
-            <h2 id={titleId} className="text-xl font-bold text-foreground">{title}</h2>
+            <h2 id={titleId} className="text-xl font-bold text-foreground">
+              {title}
+            </h2>
             {description && (
-              <p id={descriptionId} className="mt-1 text-sm text-muted-foreground">{description}</p>
+              <p id={descriptionId} className="mt-1 text-sm text-muted-foreground">
+                {description}
+              </p>
             )}
           </div>
           {showClose && (

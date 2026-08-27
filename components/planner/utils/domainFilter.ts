@@ -40,7 +40,7 @@ export const DOMAIN_COLORS: Record<Domain, string> = {
  * Minimap eine Solar-Komponente, ein Wechselrichter eine AC-Komponente.
  */
 const DOMAIN_TOKEN: Record<Domain, { token: string; fallback: string }> = {
-  Solar: { token: '--wire-solar', fallback: '#d97706' },
+  Solar: { token: '--wire-solar', fallback: '#b45309' },
   AC_230V: { token: '--wire-ac', fallback: '#2563eb' },
   DC_12V: { token: '--wire-dc', fallback: '#dc2626' },
 };
@@ -64,7 +64,7 @@ function minimapEntry(type: string | undefined): { token: string; fallback: stri
 export function nodeMinimapColor(node: Node): string {
   // Dachaufbauten (roofSolar) sind keine Planer-Bauteile, tauchen aber als
   // Nodes auf — sie behalten ihre Solar-Signatur.
-  if (node.type === 'roofSolar') return cssToken('--wire-solar', '#d97706');
+  if (node.type === 'roofSolar') return cssToken('--wire-solar', '#b45309');
   const entry = minimapEntry(node.type);
   return entry ? cssToken(entry.token, entry.fallback) : cssToken('--ink', '#14110e');
 }
@@ -80,14 +80,12 @@ export function nodeDomains(node: Node): Domain[] {
 }
 
 /** Domäne einer Kante — identisch zur Anzeige in CableEdge (inkl. Solar-Override). */
-export function edgeDomainOf(
-  edge: Edge<CableEdgeData>,
-  sourceNode?: Node,
-  targetNode?: Node
-): Domain {
+export function edgeDomainOf(edge: Edge<CableEdgeData>, sourceNode?: Node, targetNode?: Node): Domain {
   // getEdgeDomain kennt seit dem Fix 'Solar'; data.edgeDomain ist über
   // CableEdgeData entsprechend typisiert — keine Casts mehr nötig.
-  const inferred = edge.data?.edgeDomain ?? getEdgeDomain(sourceNode?.type, targetNode?.type, edge.sourceHandle, edge.targetHandle);
+  const inferred =
+    edge.data?.edgeDomain ??
+    getEdgeDomain(sourceNode?.type, targetNode?.type, edge.sourceHandle, edge.targetHandle);
   if (
     sourceNode?.type === 'solar' ||
     targetNode?.type === 'solar' ||
@@ -132,7 +130,8 @@ export function applyDomainFilter<N extends Node, E extends Edge<CableEdgeData>>
 
   return {
     nodes: nodes.map((node) => {
-      const hasEdges = nodeMap.has(node.id) && edges.some((e) => e.source === node.id || e.target === node.id);
+      const hasEdges =
+        nodeMap.has(node.id) && edges.some((e) => e.source === node.id || e.target === node.id);
       const active = hasEdges
         ? nodeHasActiveEdge.get(node.id) === true
         : nodeDomains(node).some((d) => activeDomains.has(d));

@@ -43,7 +43,11 @@ function withNodePresentation(
             <span className="block truncate text-xs text-muted-foreground">{typeLabel}</span>
           </div>
         </div>
-        <div className="node-overview-marker" style={{ backgroundColor: color }} aria-label={`${label}, ${typeLabel}`}>
+        <div
+          className="node-overview-marker"
+          style={{ backgroundColor: color }}
+          aria-label={`${label}, ${typeLabel}`}
+        >
           {Icon && <Icon className="h-7 w-7 text-white" aria-hidden="true" />}
         </div>
       </div>

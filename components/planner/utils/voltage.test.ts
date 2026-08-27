@@ -66,9 +66,7 @@ describe('getSystemVoltage', () => {
   });
 
   it('should return 12.8V when chemistry is undefined and no explicit voltage is set', () => {
-    const nodes: Node[] = [
-      { id: '1', type: 'battery', data: {}, position: { x: 0, y: 0 } },
-    ];
+    const nodes: Node[] = [{ id: '1', type: 'battery', data: {}, position: { x: 0, y: 0 } }];
     expect(getSystemVoltage(nodes)).toBe(12.8);
   });
 });

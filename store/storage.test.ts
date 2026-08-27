@@ -31,13 +31,16 @@ describe('createDebouncedStorage', () => {
 
   it('schreibt nach der Debounce-Zeit den Wert', () => {
     const writes: string[] = [];
-    const storage = createDebouncedStorage(() => ({
-      getItem: () => null,
-      setItem: (_k, v) => {
-        writes.push(v);
-      },
-      removeItem: () => undefined,
-    }), 100);
+    const storage = createDebouncedStorage(
+      () => ({
+        getItem: () => null,
+        setItem: (_k, v) => {
+          writes.push(v);
+        },
+        removeItem: () => undefined,
+      }),
+      100
+    );
     storage.setItem('k', 'a');
     expect(writes).toHaveLength(0);
     vi.advanceTimersByTime(50);

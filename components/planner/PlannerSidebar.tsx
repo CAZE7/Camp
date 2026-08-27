@@ -21,11 +21,13 @@ interface PlannerSidebarProps {
  * `--planner-sidebar-w` (siehe globals.css), die dieselben Breakpoints kennt.
  */
 export function PlannerSidebar({ onMobileAdd }: PlannerSidebarProps) {
-  const { viewMode, isSidebarOpen, toggleSidebar } = usePlannerStore(useShallow((state) => ({
-    viewMode: state.viewMode,
-    isSidebarOpen: state.isSidebarOpen,
-    toggleSidebar: state.toggleSidebar,
-  })));
+  const { viewMode, isSidebarOpen, toggleSidebar } = usePlannerStore(
+    useShallow((state) => ({
+      viewMode: state.viewMode,
+      isSidebarOpen: state.isSidebarOpen,
+      toggleSidebar: state.toggleSidebar,
+    }))
+  );
 
   return (
     <>
@@ -48,8 +50,8 @@ export function PlannerSidebar({ onMobileAdd }: PlannerSidebarProps) {
         className={`planner-sidebar-toggle absolute top-1/2 z-50 hidden h-11 w-11 -translate-y-1/2 items-center justify-center bg-card shadow-md transition-all duration-300 motion-reduce:transition-none md:flex ${
           isSidebarOpen ? 'planner-sidebar-toggle--open' : 'left-3'
         }`}
-        title={isSidebarOpen ? "Sidebar einklappen" : "Sidebar ausklappen"}
-        aria-label={isSidebarOpen ? "Linke Sidebar einklappen" : "Linke Sidebar ausklappen"}
+        title={isSidebarOpen ? 'Sidebar einklappen' : 'Sidebar ausklappen'}
+        aria-label={isSidebarOpen ? 'Linke Sidebar einklappen' : 'Linke Sidebar ausklappen'}
         aria-expanded={isSidebarOpen}
       >
         {isSidebarOpen ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}

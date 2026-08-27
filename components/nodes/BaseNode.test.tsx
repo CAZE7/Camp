@@ -67,8 +67,9 @@ describe('BaseNode Component', () => {
     render(<BaseNode id="node-1" title="Test Node" selected={true} />);
 
     const element = screen.getByTestId('planner-node');
-    expect(element.className).toContain('ring-2');
-    expect(element.className).toContain('ring-primary');
+    // M7-3: Selektion ist 1 px in der Akzent-Linie (kein breiter Primär-Ring)
+    expect(element.className).toContain('ring-1');
+    expect(element.className).toContain('ring-[color:var(--accent-line)]');
   });
 
   it('applies error and warning classes when error or warning is true', () => {

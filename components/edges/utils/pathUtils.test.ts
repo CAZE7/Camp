@@ -194,7 +194,12 @@ describe('parallelLaneOffset (Trassen-Bündelung)', () => {
     ];
     const offsets = siblings
       .map((edge) =>
-        parallelLaneOffset({ edgeId: edge.id, ...pair, sourceHandle: edge.sourceHandle, siblingEdges: siblings })
+        parallelLaneOffset({
+          edgeId: edge.id,
+          ...pair,
+          sourceHandle: edge.sourceHandle,
+          siblingEdges: siblings,
+        })
       )
       .sort((x, y) => x - y);
 
@@ -237,7 +242,12 @@ describe('parallelLaneOffset (Trassen-Bündelung)', () => {
       { id: 'e2', ...pair, sourceHandle: 'plus' },
     ];
     const first = parallelLaneOffset({ edgeId: 'e2', ...pair, sourceHandle: 'plus', siblingEdges: siblings });
-    const second = parallelLaneOffset({ edgeId: 'e2', ...pair, sourceHandle: 'plus', siblingEdges: [...siblings].reverse() });
+    const second = parallelLaneOffset({
+      edgeId: 'e2',
+      ...pair,
+      sourceHandle: 'plus',
+      siblingEdges: [...siblings].reverse(),
+    });
     expect(first).toBe(second);
   });
 });

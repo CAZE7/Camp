@@ -60,11 +60,7 @@ function boundsOf(waypoints: Point[], obstacles: Rect[], wires: Segment[]): Boun
 }
 
 const escapeXml = (value: string): string =>
-  value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+  value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 function renderSvg(scenarioIndex: number): string {
   const scenario = ROUTING_SCENARIOS[scenarioIndex];

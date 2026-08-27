@@ -19,11 +19,7 @@ import type { NodeProps } from 'reactflow';
  */
 export function NodeDragHandle() {
   return (
-    <div
-      className="node-drag-handle nopan"
-      title="Zum Verschieben hier ziehen"
-      aria-hidden="true"
-    >
+    <div className="node-drag-handle nopan" title="Zum Verschieben hier ziehen" aria-hidden="true">
       <GripVertical size={18} strokeWidth={2} />
     </div>
   );
@@ -48,13 +44,21 @@ export function withNodeDragHandle<P extends NodeProps>(
   return Wrapped;
 }
 
-/** Wendet den Griff auf eine komplette nodeTypes-Map an (memoisierbar). */
-export function withNodeDragHandles<T extends Record<string, React.ComponentType<any>>>(
+/**
+ * Wendet den Griff auf eine komplette nodeTypes-Map an (memoisierbar).
+ *
+ * Die Map-Einträge sind React-Flow-Node-Komponenten (Props ⊇ NodeProps, je
+ * nach Datenunion schmäler typisiert als NodeTypesObject). `T extends
+ * Record<string, unknown>` akzeptiert alle Kandidaten ohne `any`-Aufweichung;
+ * die einzige Type-Ausweitung ist der bewusste Cast pro Eintrag auf die
+ * React-Flow-Vertragsprops.
+ */
+export function withNodeDragHandles<T extends Record<string, unknown>>(
   nodeTypes: T
-): T {
-  const out: Record<string, React.ComponentType<any>> = {};
-  for (const [key, Component] of Object.entries(nodeTypes)) {
-    out[key] = withNodeDragHandle(Component as React.ComponentType<NodeProps>);
+): Record<keyof T, React.ComponentType<NodeProps>> & T {
+  const out = {} as Record<keyof T, React.ComponentType<NodeProps>>;
+  for (const key of Object.keys(nodeTypes) as Array<keyof T>) {
+    out[key] = withNodeDragHandle(nodeTypes[key] as React.ComponentType<NodeProps>);
   }
-  return out as T;
+  return out as Record<keyof T, React.ComponentType<NodeProps>> & T;
 }

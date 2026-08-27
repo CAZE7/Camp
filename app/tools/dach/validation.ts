@@ -4,9 +4,9 @@ import { VehicleTemplate } from '@/lib/vehicleTemplates';
 
 export const SAFE_MARGINS = {
   front: 15, // cm
-  rear: 5,   // cm
-  left: 5,   // cm
-  right: 5,  // cm
+  rear: 5, // cm
+  left: 5, // cm
+  right: 5, // cm
 };
 
 type RoofNode = Node<RoofNodeData>;
@@ -31,17 +31,14 @@ function rectsOverlap(
  * gegenseitige Überlappung. Setzt `isInvalid`, wenn eine Komponente
  * außerhalb liegt, und `isOverlapping`, wenn sie eine andere schneidet.
  */
-export const validateRoofNodes = (
-  nds: RoofNode[],
-  selectedVehicle: VehicleTemplate
-): RoofNode[] => {
+export const validateRoofNodes = (nds: RoofNode[], selectedVehicle: VehicleTemplate): RoofNode[] => {
   const roofW_px = selectedVehicle.roofWidth * 200;
   const roofH_px = selectedVehicle.roofLength * 200;
 
   const safeMinX = SAFE_MARGINS.left * 2;
-  const safeMaxX = roofW_px - (SAFE_MARGINS.right * 2);
+  const safeMaxX = roofW_px - SAFE_MARGINS.right * 2;
   const safeMinY = SAFE_MARGINS.front * 2;
-  const safeMaxY = roofH_px - (SAFE_MARGINS.rear * 2);
+  const safeMaxY = roofH_px - SAFE_MARGINS.rear * 2;
 
   const relevant = nds.filter((node) => node.id !== 'background');
   const rects = new Map(relevant.map((node) => [node.id, nodeRect(node)]));
@@ -65,10 +62,7 @@ export const validateRoofNodes = (
 
     const rect = rects.get(node.id)!;
     const isOutside =
-      rect.x < safeMinX ||
-      rect.y < safeMinY ||
-      rect.x + rect.w > safeMaxX ||
-      rect.y + rect.h > safeMaxY;
+      rect.x < safeMinX || rect.y < safeMinY || rect.x + rect.w > safeMaxX || rect.y + rect.h > safeMaxY;
     const isOverlapping = overlapping.has(node.id);
 
     const nextData = { ...node.data };

@@ -1,12 +1,16 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
+import { withSelector } from '../../test-helpers/reactflowMocks';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { PlannerInspector } from './PlannerInspector';
 
 // Mock usePlannerStore
 const mockToggleInspector = vi.fn();
 const mockPlannerStoreState = {
-  nodes: [{ id: 'node-1', data: { label: 'Node 1' } }, { id: 'node-2', data: { label: 'Node 2' } }],
+  nodes: [
+    { id: 'node-1', data: { label: 'Node 1' } },
+    { id: 'node-2', data: { label: 'Node 2' } },
+  ],
   waterNodes: [],
   edges: [{ id: 'edge-1', source: 'node-1', target: 'node-2' }],
   season: 'summer',
@@ -39,9 +43,18 @@ vi.mock('./hooks/useDashboardMetrics', () => ({
   })),
 }));
 
+type InspectorMockProps = {
+  selectedNode?: { id: string } | null;
+  selectedEdge?: { id: string } | null;
+  chargingTimeStr?: string;
+  calculatedSolarWatts?: number;
+  nodes?: unknown[];
+  edges?: unknown[];
+};
+
 // Mock Inspector component
 vi.mock('../Inspector', () => ({
-  default: (props: any) => (
+  default: (props: InspectorMockProps) => (
     <div data-testid="inspector-mock">
       <span data-testid="prop-selectedNodeId">{props.selectedNode?.id || 'none'}</span>
       <span data-testid="prop-selectedEdgeId">{props.selectedEdge?.id || 'none'}</span>
@@ -104,13 +117,13 @@ describe('PlannerInspector', () => {
   it('updates selectedEdge prop when store changes', async () => {
     // Update the store state for this specific test
     const { usePlannerStore } = await import('../../store/usePlannerStore');
-    vi.mocked(usePlannerStore).mockImplementation((selector: any) => {
-      return selector({
+    vi.mocked(usePlannerStore).mockImplementation(
+      withSelector({
         ...mockPlannerStoreState,
         selectedNodes: [],
         selectedEdges: [{ id: 'edge-1' }],
-      });
-    });
+      }) as typeof usePlannerStore
+    );
 
     render(<PlannerInspector />);
 

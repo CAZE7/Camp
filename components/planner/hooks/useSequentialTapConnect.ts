@@ -38,7 +38,10 @@ export function useSequentialTapConnect(onFeedback?: (message: string, timeout?:
             onConnect(connection);
             onFeedback?.('Verbindung erstellt.', 2200);
           } else {
-            onFeedback?.('Diese Verbindung ist nicht möglich. Prüfe Spannung, Polung und Richtung; möglicherweise besteht die Verbindung bereits.', 4000);
+            onFeedback?.(
+              'Diese Verbindung ist nicht möglich. Prüfe Spannung, Polung und Richtung; möglicherweise besteht die Verbindung bereits.',
+              4000
+            );
           }
           return null;
         });

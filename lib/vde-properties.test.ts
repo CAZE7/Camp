@@ -16,7 +16,7 @@ import {
 } from './electrical';
 import { getSystemVoltage } from './vde-standards';
 import { hasVoltageDropError } from '../components/edges/utils/voltageDrop';
-import { performAutoWiring } from './autoWire';
+import { performAutoWiring, sizeDcEdges } from './autoWire';
 import { volts } from './units';
 
 /**
@@ -129,9 +129,7 @@ describe('G2 — Monotonie der Sicherungsauswahl', () => {
       fc.property(currentA, crossSection, crossSection, (current, s1, s2) => {
         const small = Math.min(s1, s2);
         const large = Math.max(s1, s2);
-        expect(selectFuseSize(current, large)).toBeGreaterThanOrEqual(
-          selectFuseSize(current, small)
-        );
+        expect(selectFuseSize(current, large)).toBeGreaterThanOrEqual(selectFuseSize(current, small));
       }),
       propertyConfig
     );
@@ -226,17 +224,14 @@ describe('G4 — Monotonie der Querschnittsauswahl', () => {
 
   it('der thermische Querschnitt trägt den Strom inklusive Derating', () => {
     fc.assert(
-      fc.property(
-        fc.double({ min: 0.1, max: 120, noNaN: true, noDefaultInfinity: true }),
-        (current) => {
-          const section = lookupThermalCrossSection(current);
-          // Größter Querschnitt ist die Obergrenze: darüber kann die Reihe
-          // den Strom nicht mehr abdecken, das meldet die Validierung separat.
-          if (section < VDE_SIZES[VDE_SIZES.length - 1]) {
-            expect(VDE_AMPACITY[section] * DERATE_FACTOR).toBeGreaterThanOrEqual(current - 1e-9);
-          }
+      fc.property(fc.double({ min: 0.1, max: 120, noNaN: true, noDefaultInfinity: true }), (current) => {
+        const section = lookupThermalCrossSection(current);
+        // Größter Querschnitt ist die Obergrenze: darüber kann die Reihe
+        // den Strom nicht mehr abdecken, das meldet die Validierung separat.
+        if (section < VDE_SIZES[VDE_SIZES.length - 1]) {
+          expect(VDE_AMPACITY[section] * DERATE_FACTOR).toBeGreaterThanOrEqual(current - 1e-9);
         }
-      ),
+      }),
       propertyConfig
     );
   });
@@ -266,6 +261,12 @@ const nodeSpec: fc.Arbitrary<NodeSpec> = fc.oneof(
     data: fc.record({ amps: fc.integer({ min: 10, max: 60 }) }),
   }),
   fc.record({ type: fc.constant('shorePower'), data: fc.record({ hasRcd: fc.boolean() }) }),
+  // Mischdomänengerät (Issue 4): ohne acBatteryCharger + shorePower sah G6
+  // nie die problematische Kombination AC-Zulauf/DC-Ablauf.
+  fc.record({
+    type: fc.constant('acBatteryCharger'),
+    data: fc.record({ amps: fc.integer({ min: 5, max: 40 }) }),
+  }),
   fc.record({ type: fc.constant('ground'), data: fc.constant({}) })
 );
 
@@ -383,7 +384,19 @@ const planArbitrary = fc
   });
 
 /** Vergleichbare Signatur eines Verdrahtungsergebnisses. */
-function signature(result: { nodes: Node[]; edges: ReturnType<typeof performAutoWiring> extends null ? never : { id: string; source: string; target: string; sourceHandle?: string | null; targetHandle?: string | null; data?: { crossSection?: number; fuseSize?: number; length?: number; edgeDomain?: string } }[] }) {
+function signature(result: {
+  nodes: Node[];
+  edges: ReturnType<typeof performAutoWiring> extends null
+    ? never
+    : {
+        id: string;
+        source: string;
+        target: string;
+        sourceHandle?: string | null;
+        targetHandle?: string | null;
+        data?: { crossSection?: number; fuseSize?: number; length?: number; edgeDomain?: string };
+      }[];
+}) {
   return {
     nodeTypes: result.nodes
       .map((node) => `${node.type}`)
@@ -431,7 +444,11 @@ describe('G5 — Idempotenz von performAutoWiring', () => {
 });
 
 describe('G6 — AC/DC-Trennung jeder erzeugten Verbindung', () => {
-  const AC_ONLY_TYPES = new Set(['shorePower', 'consumer230v', 'acBatteryCharger']);
+  // acBatteryCharger ist KEIN "AC_ONLY"-Typ: gemischte Domäne (AC-Eingang,
+  // DC-Ladeausgang, AUDIT-AUTOWIRE Issue 4). Als rein AC klassifiziert würde
+  // das Gesetz die legitime DC-Ausgangsleitung verbieten; die AC-Seite wird
+  // über den shorePower-Endpunkt geprüft.
+  const AC_ONLY_TYPES = new Set(['shorePower', 'consumer230v']);
   const DC_ONLY_TYPES = new Set([
     'battery',
     'busbar',
@@ -541,10 +558,7 @@ describe('G6 — AC/DC-Trennung jeder erzeugten Verbindung', () => {
         if (result === null) return;
         for (const edge of result.edges) {
           const section = edge.data?.crossSection;
-          expect(
-            section,
-            `Kante ${edge.id} (${edge.source}→${edge.target}) ohne Querschnitt`
-          ).toBeDefined();
+          expect(section, `Kante ${edge.id} (${edge.source}→${edge.target}) ohne Querschnitt`).toBeDefined();
           expect(section).toBeGreaterThanOrEqual(1.5);
           expect(VDE_SIZES).toContain(section);
         }
@@ -639,6 +653,26 @@ describe('Systemspannung — Eigenschaften statt Einzelfälle', () => {
  *       blieb ohne Querschnitt. Der Fehler wurde in lib/autoWire.ts behoben,
  *       der Fall bleibt als Regressionstest.
  */
+describe('G7 — sizeDcEdges-Konvergenz (AUDIT-AUTOWIRE Issue 3/9)', () => {
+  it('sizeDcEdges(sizeDcEdges(x)) == sizeDcEdges(x) — Nacherschleife terminiert', () => {
+    fc.assert(
+      fc.property(planWithUserEdgesArbitrary, ({ nodes, edges }) => {
+        const result = performAutoWiring(nodes, edges as never);
+        if (!result) return;
+        const sig = (list: typeof result.edges) =>
+          list
+            .map((x) => `${x.id}:${x.data?.crossSection ?? '-'}:${x.data?.dropWarning ? 'W' : '-'}`)
+            .join('|');
+        const dc = result.edges.filter((x) => x.data?.edgeDomain !== 'AC_230V');
+        const before = sig(dc);
+        sizeDcEdges(dc as never, result.nodes, result.edges as never, getSystemVoltage(result.nodes));
+        expect(sig(dc)).toBe(before);
+      }),
+      { ...propertyConfig, numRuns: 300 }
+    );
+  });
+});
+
 describe('Shrinking-Anker (gemeldete Gegenbeispiele)', () => {
   it('(a) 16.000000000000004 A auf 1.5 mm²: Sicherung bleibt bei 16 A', () => {
     // fast-check, Seed 20260821 → Counterexample: [16.000000000000004, 1.5]
@@ -667,9 +701,24 @@ describe('Shrinking-Anker (gemeldete Gegenbeispiele)', () => {
     // undefined. Gemeldet, als isAcEdge testweise immer false lieferte:
     // die 230-V-Leitung wäre als 12-V-Leitung dimensioniert worden.
     const nodes: Node[] = [
-      { id: 'battery-1', type: 'battery', position: { x: 0, y: 0 }, data: { label: 'Aufbau', capacity: 50 } } as Node,
-      { id: 'shore-0', type: 'shorePower', position: { x: 200, y: 0 }, data: { label: 'Landstrom', hasRcd: false } } as Node,
-      { id: 'c230-1', type: 'consumer230v', position: { x: 400, y: 120 }, data: { label: 'Gerät', watts: 5 } } as Node,
+      {
+        id: 'battery-1',
+        type: 'battery',
+        position: { x: 0, y: 0 },
+        data: { label: 'Aufbau', capacity: 50 },
+      } as Node,
+      {
+        id: 'shore-0',
+        type: 'shorePower',
+        position: { x: 200, y: 0 },
+        data: { label: 'Landstrom', hasRcd: false },
+      } as Node,
+      {
+        id: 'c230-1',
+        type: 'consumer230v',
+        position: { x: 400, y: 120 },
+        data: { label: 'Gerät', watts: 5 },
+      } as Node,
     ];
     const userEdge = {
       id: 'user-0',
@@ -690,9 +739,19 @@ describe('Shrinking-Anker (gemeldete Gegenbeispiele)', () => {
     // fiel zwischen DC-Dimensionierung (isAcEdge = true) und AC-Dimensionierung
     // (kein edgeDomain-Marker) hindurch.
     const nodes: Node[] = [
-      { id: 'b1', type: 'battery', position: { x: 0, y: 0 }, data: { label: 'Aufbau', capacity: 100 } } as Node,
+      {
+        id: 'b1',
+        type: 'battery',
+        position: { x: 0, y: 0 },
+        data: { label: 'Aufbau', capacity: 100 },
+      } as Node,
       { id: 'sp1', type: 'shorePower', position: { x: 300, y: 0 }, data: { label: 'Landstrom' } } as Node,
-      { id: 'c230', type: 'consumer230v', position: { x: 600, y: 0 }, data: { label: 'Kochfeld', watts: 2000 } } as Node,
+      {
+        id: 'c230',
+        type: 'consumer230v',
+        position: { x: 600, y: 0 },
+        data: { label: 'Kochfeld', watts: 2000 },
+      } as Node,
     ];
     const userEdge = {
       id: 'user-1',
@@ -719,7 +778,12 @@ describe('Shrinking-Anker (gemeldete Gegenbeispiele)', () => {
     // (usePlannerStore.isValidConnection + getEdgeDomain), er kann nur aus
     // beschädigten oder manuell importierten Daten stammen.
     const nodes: Node[] = [
-      { id: 'b1', type: 'battery', position: { x: 0, y: 0 }, data: { label: 'Aufbau', capacity: 100 } } as Node,
+      {
+        id: 'b1',
+        type: 'battery',
+        position: { x: 0, y: 0 },
+        data: { label: 'Aufbau', capacity: 100 },
+      } as Node,
       { id: 'x1', type: 'consumer230v', position: { x: 200, y: 0 }, data: { label: 'A', watts: 5 } } as Node,
       { id: 'x2', type: 'consumer230v', position: { x: 400, y: 0 }, data: { label: 'B', watts: 5 } } as Node,
     ];

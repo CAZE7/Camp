@@ -1,8 +1,16 @@
 import { render } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import CableEdge, { calculateAnimationDuration } from './CableEdge';
-import { useReactFlow, Position } from 'reactflow';
+import CableEdge, { calculateAnimationDuration, type CableEdgeData } from './CableEdge';
+import { useReactFlow, Position, type Edge, type Node } from 'reactflow';
 import { usePlannerStore } from '../../store/usePlannerStore';
+
+/**
+ * Typisierter Helfer für den `useReactFlow`-Mock (M6-7): Die Tests brauchen
+ * nur einen Bruchteil der React-Flow-Instanz; das Partial wird zentral
+ * gecastet statt pro Aufruf `as any`.
+ */
+const mockReactFlow = (partial: object) =>
+  vi.mocked(useReactFlow).mockReturnValue(partial as unknown as ReturnType<typeof useReactFlow>);
 
 describe('calculateAnimationDuration (Bug 14)', () => {
   it('liefert 0 für stromlose Leitungen (I = 0, NaN, Infinity)', () => {
@@ -42,8 +50,8 @@ describe('CableEdge', () => {
     sourceY: 0,
     targetX: 100,
     targetY: 100,
-    sourcePosition: 'right' as any,
-    targetPosition: 'left' as any,
+    sourcePosition: Position.Right,
+    targetPosition: Position.Left,
     data: { length: 5 },
     selected: false,
     sourceHandle: null,
@@ -51,7 +59,7 @@ describe('CableEdge', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    (useReactFlow as any).mockReturnValue({
+    mockReactFlow({
       getNode: vi.fn(),
       getNodes: vi.fn().mockReturnValue([]),
     });
@@ -65,7 +73,7 @@ describe('CableEdge', () => {
   });
 
   it('renders correctly with default props', () => {
-    const { getByTestId, getByText } = render(<CableEdge {...defaultProps} />);
+    const { getByTestId } = render(<CableEdge {...defaultProps} />);
 
     expect(getByTestId('base-edge')).toBeInTheDocument();
     expect(getByTestId('edge-label-renderer')).toBeInTheDocument();
@@ -86,8 +94,8 @@ describe('CableEdge', () => {
   });
 
   it('calculates crossSection and maxFuse when source is consumer', () => {
-    (useReactFlow as any).mockReturnValue({
-      getNode: vi.fn((id) => {
+    mockReactFlow({
+      getNode: vi.fn((id: string) => {
         if (id === '1') return { id: '1', type: 'consumer', data: { watts: 120 } }; // I = 10A
         return null;
       }),
@@ -106,8 +114,8 @@ describe('CableEdge', () => {
   });
 
   it('calculates crossSection and maxFuse when target is mpptController', () => {
-    (useReactFlow as any).mockReturnValue({
-      getNode: vi.fn((id) => {
+    mockReactFlow({
+      getNode: vi.fn((id: string) => {
         if (id === '2') return { id: '2', type: 'mpptController', data: { amps: 30 } }; // I = 30A
         return null;
       }),
@@ -125,11 +133,11 @@ describe('CableEdge', () => {
   });
 
   it('uses fallback logic to calculate total watts from all consumers when no source/target match', () => {
-    (useReactFlow as any).mockReturnValue({
+    mockReactFlow({
       getNode: vi.fn(),
       getNodes: vi.fn().mockReturnValue([
         { type: 'consumer', data: { watts: 120 } }, // 10A
-        { type: 'consumer', data: { watts: 60 } },  // 5A
+        { type: 'consumer', data: { watts: 60 } }, // 5A
       ]), // Total I = 15A
     });
 
@@ -137,7 +145,7 @@ describe('CableEdge', () => {
     // VDE_SIZES = [... 10.0, 16.0, ...], first size >= 10.77 is 16.0
     // cs = 16.0 => mf = 40
 
-    const { getByText } = render(<CableEdge {...defaultProps} selected={true} />);
+    render(<CableEdge {...defaultProps} selected={true} />);
 
     // expect(getByText('16 mm²')).toBeInTheDocument(); // Smart labeling hides this
     // NEU-HIGH-B: New derated FUSE_MAP value for 16mm² in camper conditions = 70A (was 100A)
@@ -160,8 +168,8 @@ describe('CableEdge', () => {
   });
 
   it('renders AC edges with the blue AC token', () => {
-    (useReactFlow as any).mockReturnValue({
-      getNode: vi.fn((id) => (id === '1' ? { id: '1', type: 'shorePower', data: {} } : null)),
+    mockReactFlow({
+      getNode: vi.fn((id: string) => (id === '1' ? { id: '1', type: 'shorePower', data: {} } : null)),
       getNodes: vi.fn().mockReturnValue([]),
     });
 
@@ -172,7 +180,7 @@ describe('CableEdge', () => {
   });
 
   it('renders fuseSize if provided in data', () => {
-    const { getByText } = render(<CableEdge {...defaultProps} data={{ length: 5, fuseSize: 40 }} />);
+    render(<CableEdge {...defaultProps} data={{ length: 5, fuseSize: 40 }} />);
 
     // expect(getByText('40A Sicherung')).toBeInTheDocument(); // Smart labeling hides this
   });
@@ -186,15 +194,15 @@ describe('CableEdge', () => {
   });
 
   it('renders AC edges with standard AC layout and RCBO recommendations', () => {
-    (useReactFlow as any).mockReturnValue({
-      getNode: vi.fn((id) => {
+    mockReactFlow({
+      getNode: vi.fn((id: string) => {
         if (id === '1') return { id: '1', type: 'shorePower', data: {} };
         return null;
       }),
       getNodes: vi.fn().mockReturnValue([]),
     });
 
-    const { getByText, queryByText } = render(
+    const { queryByText } = render(
       <CableEdge {...defaultProps} data={{ length: 5, edgeDomain: 'AC_230V' }} />
     );
 
@@ -218,10 +226,10 @@ describe('CableEdge', () => {
           type: 'cableEdge',
           data: { length: 50, edgeDomain: 'AC_230V' },
         },
-      ] as any,
+      ],
     });
-    (useReactFlow as any).mockReturnValue({
-      getNode: vi.fn((id) =>
+    mockReactFlow({
+      getNode: vi.fn((id: string) =>
         id === '1'
           ? { id: '1', type: 'shorePower', data: {} }
           : { id: '2', type: 'consumer230v', data: { watts: 2300 } }
@@ -241,18 +249,34 @@ describe('CableEdge', () => {
   it('rendert Fehler-Kanten als EINEN animierten Dash-Pfad mit Label-Chip (Bug 4)', () => {
     // Zwei 5-m-Kanten hintereinander (Batterie → Sicherung → Verbraucher 120 W):
     // Der kumulierte Spannungsfall der zweiten Kante überschreitet 3 %.
-    const nodes = [
+    const nodes: Node[] = [
       { id: '1', type: 'battery', position: { x: 0, y: 0 }, data: {} },
       { id: '2', type: 'fuse', position: { x: 150, y: 0 }, data: {} },
       { id: '3', type: 'consumer', position: { x: 300, y: 0 }, data: { watts: 120 } },
     ];
-    const edges = [
-      { id: 'e1-2', source: '1', target: '2', sourceHandle: 'plus', targetHandle: 'plus', type: 'cableEdge', data: { length: 5, crossSection: 1.5, edgeDomain: 'DC_12V' } },
-      { id: 'e2-3', source: '2', target: '3', sourceHandle: 'plus', targetHandle: 'plus', type: 'cableEdge', data: { length: 5, crossSection: 1.5, edgeDomain: 'DC_12V' } },
-    ] as any;
-    usePlannerStore.setState({ nodes, edges } as any);
-    (useReactFlow as any).mockReturnValue({
-      getNode: vi.fn((id) => nodes.find((n) => n.id === id)),
+    const edges: Edge<CableEdgeData>[] = [
+      {
+        id: 'e1-2',
+        source: '1',
+        target: '2',
+        sourceHandle: 'plus',
+        targetHandle: 'plus',
+        type: 'cableEdge',
+        data: { length: 5, crossSection: 1.5, edgeDomain: 'DC_12V' },
+      },
+      {
+        id: 'e2-3',
+        source: '2',
+        target: '3',
+        sourceHandle: 'plus',
+        targetHandle: 'plus',
+        type: 'cableEdge',
+        data: { length: 5, crossSection: 1.5, edgeDomain: 'DC_12V' },
+      },
+    ];
+    usePlannerStore.setState({ nodes, edges });
+    mockReactFlow({
+      getNode: vi.fn((id: string) => nodes.find((n) => n.id === id)),
       getNodes: vi.fn().mockReturnValue(nodes),
     });
 
@@ -283,8 +307,8 @@ describe('CableEdge', () => {
 
   it('rendert keinen Strom-Partikel auf stromlosen Leitungen (I = 0, Bug 14)', () => {
     // Solar-Panel ohne eingetragene Watt → I = 0 → keine Animation.
-    (useReactFlow as any).mockReturnValue({
-      getNode: vi.fn((id) => (id === '1' ? { id: '1', type: 'solar', data: {} } : null)),
+    mockReactFlow({
+      getNode: vi.fn((id: string) => (id === '1' ? { id: '1', type: 'solar', data: {} } : null)),
       getNodes: vi.fn().mockReturnValue([{ id: '1', type: 'solar', data: {} }]),
     });
 
@@ -293,8 +317,10 @@ describe('CableEdge', () => {
   });
 
   it('rendert den Strom-Partikel auf belasteten Leitungen', () => {
-    (useReactFlow as any).mockReturnValue({
-      getNode: vi.fn((id) => (id === '1' ? { id: '1', type: 'consumer', data: { watts: 120 } } : null)),
+    mockReactFlow({
+      getNode: vi.fn((id: string) =>
+        id === '1' ? { id: '1', type: 'consumer', data: { watts: 120 } } : null
+      ),
       getNodes: vi.fn().mockReturnValue([]),
     });
 

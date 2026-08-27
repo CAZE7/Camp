@@ -35,7 +35,8 @@ function getEntry(query: string): Entry | null {
     listeners,
     cleanup: () => {
       if (typeof mql.removeEventListener === 'function') mql.removeEventListener('change', notify);
-      else if (typeof (mql as MediaQueryList).removeListener === 'function') (mql as MediaQueryList).removeListener(notify);
+      else if (typeof (mql as MediaQueryList).removeListener === 'function')
+        (mql as MediaQueryList).removeListener(notify);
     },
   };
   registry.set(query, entry);

@@ -185,10 +185,7 @@ type Parser<Q extends PhysicalQuantity> = (value: number) => Q;
  * Akzeptiert Zahlen und Zahl-Strings (`"12.5"`, `"12,5"`), aber weder
  * leere Strings noch `null`, `undefined`, Booleans oder Objekte.
  */
-export function parseQuantity<Q extends PhysicalQuantity>(
-  input: unknown,
-  parser: Parser<Q>
-): Q | null {
+export function parseQuantity<Q extends PhysicalQuantity>(input: unknown, parser: Parser<Q>): Q | null {
   let raw: number;
   if (typeof input === 'number') {
     raw = input;
@@ -207,11 +204,7 @@ export function parseQuantity<Q extends PhysicalQuantity>(
 }
 
 /** `parseQuantity` mit Ersatzwert statt `null`. */
-export function quantityOr<Q extends PhysicalQuantity>(
-  input: unknown,
-  parser: Parser<Q>,
-  fallback: Q
-): Q {
+export function quantityOr<Q extends PhysicalQuantity>(input: unknown, parser: Parser<Q>, fallback: Q): Q {
   return parseQuantity(input, parser) ?? fallback;
 }
 
@@ -220,8 +213,7 @@ export function quantityOr<Q extends PhysicalQuantity>(
 // ============================================================================
 
 /** P = U · I */
-export const power = (voltage: Volts, current: Amps): Watts =>
-  construct('Watts', voltage * current);
+export const power = (voltage: Volts, current: Amps): Watts => construct('Watts', voltage * current);
 
 /** I = P / U. Wirft bei U = 0 (kein sinnvoller Strom definierbar). */
 export const currentFromPower = (load: Watts, voltage: Volts): Amps => {
@@ -250,11 +242,7 @@ export const voltageFromResistance = (resistance: Ohms, current: Amps): Volts =>
  * @param crossSection Querschnitt
  * @param resistivity  Spezifischer Widerstand in Ω·mm²/m (Kupfer ≈ 0.0175)
  */
-export const conductorResistance = (
-  length: Meters,
-  crossSection: Mm2,
-  resistivity: Scalar
-): Ohms => {
+export const conductorResistance = (length: Meters, crossSection: Mm2, resistivity: Scalar): Ohms => {
   if (!Number.isFinite(resistivity) || resistivity <= 0) {
     throw new RangeError(`conductorResistance: ρ muss > 0 sein, war ${resistivity}`);
   }
@@ -262,12 +250,10 @@ export const conductorResistance = (
 };
 
 /** 1 V = 1000 mV. */
-export const voltsToMillivolts = (value: Volts): Millivolts =>
-  construct('Millivolts', value * 1000);
+export const voltsToMillivolts = (value: Volts): Millivolts => construct('Millivolts', value * 1000);
 
 /** 1000 mV = 1 V. */
-export const millivoltsToVolts = (value: Millivolts): Volts =>
-  construct('Volts', value / 1000);
+export const millivoltsToVolts = (value: Millivolts): Volts => construct('Volts', value / 1000);
 
 /**
  * Anteil eines Spannungsfalls an der Systemspannung (0…1, dimensionslos).
@@ -281,8 +267,7 @@ export const dropFraction = (drop: Volts, system: Volts): number => {
 };
 
 /** Anteil in Prozent (0…100). */
-export const dropPercent = (drop: Volts, system: Volts): number =>
-  dropFraction(drop, system) * 100;
+export const dropPercent = (drop: Volts, system: Volts): number => dropFraction(drop, system) * 100;
 
 // ── Additionen und Skalierungen (einheitenerhaltend) ────────────────────────
 
@@ -307,20 +292,29 @@ const divisorOf = (name: string, divisor: Scalar): number => {
 
 export const addWatts = (a: Watts, b: Watts): Watts => construct('Watts', a + b);
 export const sumWatts = (values: readonly Watts[]): Watts =>
-  construct('Watts', values.reduce<number>((total, value) => total + value, 0));
+  construct(
+    'Watts',
+    values.reduce<number>((total, value) => total + value, 0)
+  );
 export const scaleWatts = (value: Watts, factor: Scalar): Watts =>
   construct('Watts', value * scaleFactor('scaleWatts', factor));
 
 export const addAmps = (a: Amps, b: Amps): Amps => construct('Amps', a + b);
 export const sumAmps = (values: readonly Amps[]): Amps =>
-  construct('Amps', values.reduce<number>((total, value) => total + value, 0));
+  construct(
+    'Amps',
+    values.reduce<number>((total, value) => total + value, 0)
+  );
 export const scaleAmps = (value: Amps, factor: Scalar): Amps =>
   construct('Amps', value * scaleFactor('scaleAmps', factor));
 
 export const addVolts = (a: Volts, b: Volts): Volts => construct('Volts', a + b);
 export const subtractVolts = (a: Volts, b: Volts): Volts => construct('Volts', a - b);
 export const sumVolts = (values: readonly Volts[]): Volts =>
-  construct('Volts', values.reduce<number>((total, value) => total + value, 0));
+  construct(
+    'Volts',
+    values.reduce<number>((total, value) => total + value, 0)
+  );
 export const scaleVolts = (value: Volts, factor: Scalar): Volts =>
   construct('Volts', value * scaleFactor('scaleVolts', factor));
 
@@ -362,7 +356,10 @@ export const crossSectionForVoltageDrop = (
 
 export const addMeters = (a: Meters, b: Meters): Meters => construct('Meters', a + b);
 export const sumMeters = (values: readonly Meters[]): Meters =>
-  construct('Meters', values.reduce<number>((total, value) => total + value, 0));
+  construct(
+    'Meters',
+    values.reduce<number>((total, value) => total + value, 0)
+  );
 export const scaleMeters = (value: Meters, factor: Scalar): Meters =>
   construct('Meters', value * scaleFactor('scaleMeters', factor));
 

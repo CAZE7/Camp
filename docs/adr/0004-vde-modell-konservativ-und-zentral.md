@@ -32,6 +32,7 @@ Fachpublikum — die Vorschläge müssen auf der sicheren Seite liegen.
 ## Konsequenzen
 
 **Gut**
+
 - Auslegung und Live-Validierung rechnen mit denselben Werten; „Sicherung zu
   klein“-Widersprüche zwischen Auto-Wire und Prüfung sind ausgeschlossen.
 - Falsche Einheiten kompilieren nicht.
@@ -39,6 +40,7 @@ Fachpublikum — die Vorschläge müssen auf der sicheren Seite liegen.
   Grenzen abgefangen statt als `NaN` durch die Rechnung zu laufen.
 
 **Schlecht / Preis**
+
 - Konservative Werte führen gelegentlich zu einem größeren Querschnitt als
   nötig — bewusst in Kauf genommen.
 - Zwei Tabellensätze (thermisch vs. Validierung) sind erklärungsbedürftig;

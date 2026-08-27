@@ -1,7 +1,8 @@
-"use client";
+'use client';
 
 import React, { useEffect, useState } from 'react';
 import { ReactFlowProvider } from 'reactflow';
+import { usePlannerDarkMode } from './planner/hooks/usePlannerTheme';
 import 'reactflow/dist/style.css';
 import { PlannerSidebar } from './planner/PlannerSidebar';
 import { PlannerInspector } from './planner/PlannerInspector';
@@ -39,9 +40,7 @@ export default function PlannerInner() {
   const viewMode = usePlannerStore((state) => state.viewMode);
   const isInspectorOpen = usePlannerStore((state) => state.isInspectorOpen);
   const setInspectorOpen = usePlannerStore((state) => state.setInspectorOpen);
-  const selectionCount = usePlannerStore(
-    (state) => state.selectedNodes.length + state.selectedEdges.length
-  );
+  const selectionCount = usePlannerStore((state) => state.selectedNodes.length + state.selectedEdges.length);
   const canUndo = usePlannerStore((state) => state.canUndo);
   const canRedo = usePlannerStore((state) => state.canRedo);
   const undo = usePlannerStore((state) => state.undo);
@@ -89,7 +88,12 @@ export default function PlannerInner() {
         const state = usePlannerStore.getState();
         if (state.selectedNodes.length > 0 || state.selectedEdges.length > 0) {
           event.preventDefault();
-          if (window.confirm('Ausgewählte Elemente wirklich löschen? Du kannst die Aktion anschließend rückgängig machen.')) state.deleteSelected();
+          if (
+            window.confirm(
+              'Ausgewählte Elemente wirklich löschen? Du kannst die Aktion anschließend rückgängig machen.'
+            )
+          )
+            state.deleteSelected();
         }
       }
     };
@@ -100,7 +104,8 @@ export default function PlannerInner() {
   const handleMobileAdd = () => setActiveTab('canvas');
 
   // 56 px Kantenlänge – deutlich über den geforderten 44 px Touch-Target.
-  const navClass = (active: boolean) => `flex min-h-14 min-w-14 flex-col items-center justify-center rounded-lg px-2 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${active ? 'bg-accent text-primary' : 'text-muted-foreground hover:bg-accent'}`;
+  const navClass = (active: boolean) =>
+    `flex min-h-14 min-w-14 flex-col items-center justify-center rounded-lg px-2 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${active ? 'bg-accent text-primary' : 'text-muted-foreground hover:bg-accent'}`;
 
   const inspectorClass = [
     // Handy: vollflächiger Tab-Bereich.
@@ -116,115 +121,173 @@ export default function PlannerInner() {
       : 'xl:static xl:flex xl:w-0 xl:flex-none xl:overflow-hidden xl:border-l-0 xl:shadow-none',
   ].join(' ');
 
+  const isDarkPlanner = usePlannerDarkMode();
+
   return (
     <ReactFlowProvider>
-    <div data-testid="planner-shell" className="planner-shell relative flex h-dvh min-h-0 w-full shrink-0 flex-col overflow-hidden bg-background font-sans md:flex-row">
-      {!hasOnboarded && <OnboardingWizard />}
+      <div
+        data-testid="planner-shell"
+        className={`planner-shell relative flex h-dvh min-h-0 w-full shrink-0 flex-col overflow-hidden bg-background font-sans md:flex-row${
+          isDarkPlanner ? ' dark' : ''
+        }`}
+      >
+        {!hasOnboarded && <OnboardingWizard />}
 
-      {/* Kein `w-auto`: die exakte Spaltenbreite (260 px Tablet / 280 px Desktop)
+        {/* Kein `w-auto`: die exakte Spaltenbreite (260 px Tablet / 280 px Desktop)
           setzt das einklappbare Panel selbst, damit „eingeklappt“ auch wirklich
           0 px Spaltenbreite bedeutet. */}
-      <div
-        className={`min-h-0 w-full flex-1 md:w-fit md:flex md:flex-none ${activeTab === 'sidebar' ? 'flex' : 'hidden'}`}
-      >
-        <PlannerSidebar onMobileAdd={handleMobileAdd} />
-      </div>
-
-      <div data-testid="planner-canvas-column" className={`min-w-0 flex-1 flex-col md:flex xl:min-w-[600px] ${activeTab === 'canvas' ? 'flex' : 'hidden'}`}>
-        <PlannerDashboard />
-        <div className="relative flex h-full flex-1 flex-col overflow-hidden">
-          <React.Suspense fallback={<div className="flex flex-1 items-center justify-center bg-background" role="status" aria-label="Planer wird geladen"><div className="h-12 w-12 animate-spin rounded-full border-b-2 border-primary motion-reduce:animate-none" /></div>}>
-            <FlowCanvas />
-          </React.Suspense>
-          <ExpertPanel />
-        </div>
-      </div>
-
-      {/* Backdrop nur im Slide-over-Bereich (768–1279 px). Ab 1280 px ist der
-          Inspector eine normale Spalte und darf den Canvas nicht abdecken. */}
-      {isInspectorOpen && (
-        // Reine Zeiger-Affordanz: `aria-hidden`, damit Screenreader nicht zwei
-        // gleichnamige „Schließen“-Elemente ansagen. Der barrierefreie Weg sind
-        // der Schließen-Knopf im Panel und die Escape-Taste.
         <div
-          data-testid="inspector-backdrop"
-          aria-hidden="true"
-          onClick={() => setInspectorOpen(false)}
-          className="fixed inset-0 z-30 hidden bg-ink/25 md:block xl:hidden"
-        />
-      )}
-
-      <aside data-testid="inspector-panel" className={inspectorClass} aria-label="Eigenschaften">
-        {/* Schließen-Knopf gehört zum Overlay, nicht zur Spalte. */}
-        <div className="hidden shrink-0 items-center justify-between border-b border-border px-3 py-2 md:flex xl:hidden">
-          <span className="text-sm font-semibold text-foreground">Eigenschaften</span>
-          <button
-            type="button"
-            onClick={() => setInspectorOpen(false)}
-            className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            aria-label="Eigenschaften schließen"
-          >
-            <X size={20} aria-hidden="true" />
-          </button>
+          className={`min-h-0 w-full flex-1 md:w-fit md:flex md:flex-none ${activeTab === 'sidebar' ? 'flex' : 'hidden'}`}
+        >
+          <PlannerSidebar onMobileAdd={handleMobileAdd} />
         </div>
-        <PlannerInspector />
-      </aside>
 
-      {/* Touch-Undo/Redo bleibt über dem Canvas erreichbar, ohne die fünf
+        <div
+          data-testid="planner-canvas-column"
+          className={`min-w-0 flex-1 flex-col md:flex xl:min-w-[600px] ${activeTab === 'canvas' ? 'flex' : 'hidden'}`}
+        >
+          <PlannerDashboard />
+          <div className="relative flex h-full flex-1 flex-col overflow-hidden">
+            <React.Suspense
+              fallback={
+                <div
+                  className="flex flex-1 items-center justify-center bg-background"
+                  role="status"
+                  aria-label="Planer wird geladen"
+                >
+                  <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-primary motion-reduce:animate-none" />
+                </div>
+              }
+            >
+              <FlowCanvas />
+            </React.Suspense>
+            <ExpertPanel />
+          </div>
+        </div>
+
+        {/* Backdrop nur im Slide-over-Bereich (768–1279 px). Ab 1280 px ist der
+          Inspector eine normale Spalte und darf den Canvas nicht abdecken. */}
+        {isInspectorOpen && (
+          // Reine Zeiger-Affordanz: `aria-hidden`, damit Screenreader nicht zwei
+          // gleichnamige „Schließen“-Elemente ansagen. Der barrierefreie Weg sind
+          // der Schließen-Knopf im Panel und die Escape-Taste.
+          <div
+            data-testid="inspector-backdrop"
+            aria-hidden="true"
+            onClick={() => setInspectorOpen(false)}
+            className="fixed inset-0 z-30 hidden bg-ink/25 md:block xl:hidden"
+          />
+        )}
+
+        <aside data-testid="inspector-panel" className={inspectorClass} aria-label="Eigenschaften">
+          {/* Schließen-Knopf gehört zum Overlay, nicht zur Spalte. */}
+          <div className="hidden shrink-0 items-center justify-between border-b border-border px-3 py-2 md:flex xl:hidden">
+            <span className="text-sm font-semibold text-foreground">Eigenschaften</span>
+            <button
+              type="button"
+              onClick={() => setInspectorOpen(false)}
+              className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label="Eigenschaften schließen"
+            >
+              <X size={20} aria-hidden="true" />
+            </button>
+          </div>
+          <PlannerInspector />
+        </aside>
+
+        {/* Touch-Undo/Redo bleibt über dem Canvas erreichbar, ohne die fünf
           Bottom-Tabs auf 375 px zusammenzuquetschen. Sichtbar deaktivierte
           Zustände spiegeln die History des Stores unmittelbar. */}
-      {activeTab === 'canvas' && (
-        <div className="absolute bottom-20 left-3 z-50 flex gap-2 md:hidden" role="group" aria-label="Änderungen rückgängig machen oder wiederholen">
-          <button
-            type="button"
-            data-testid="mobile-undo"
-            onClick={undo}
-            disabled={!canUndo}
-            className="flex h-12 w-12 items-center justify-center rounded-full border border-border bg-card text-foreground shadow-lg transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
-            aria-label="Rückgängig"
-            title="Rückgängig"
+        {activeTab === 'canvas' && (
+          <div
+            className="absolute bottom-20 left-3 z-50 flex gap-2 md:hidden"
+            role="group"
+            aria-label="Änderungen rückgängig machen oder wiederholen"
           >
-            <Undo2 size={20} aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            data-testid="mobile-redo"
-            onClick={redo}
-            disabled={!canRedo}
-            className="flex h-12 w-12 items-center justify-center rounded-full border border-border bg-card text-foreground shadow-lg transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
-            aria-label="Wiederholen"
-            title="Wiederholen"
-          >
-            <Redo2 size={20} aria-hidden="true" />
-          </button>
-        </div>
-      )}
+            <button
+              type="button"
+              data-testid="mobile-undo"
+              onClick={undo}
+              disabled={!canUndo}
+              className="flex h-12 w-12 items-center justify-center rounded-full border border-border bg-card text-foreground shadow-lg transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
+              aria-label="Rückgängig"
+              title="Rückgängig"
+            >
+              <Undo2 size={20} aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              data-testid="mobile-redo"
+              onClick={redo}
+              disabled={!canRedo}
+              className="flex h-12 w-12 items-center justify-center rounded-full border border-border bg-card text-foreground shadow-lg transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
+              aria-label="Wiederholen"
+              title="Wiederholen"
+            >
+              <Redo2 size={20} aria-hidden="true" />
+            </button>
+          </div>
+        )}
 
-      {/* Bottom-Navigation: nur Handy. `planner-bottom-nav` ergänzt die
+        {/* Bottom-Navigation: nur Handy. `planner-bottom-nav` ergänzt die
           iOS-Safe-Area, damit der Home-Indicator nichts überdeckt. */}
-      <nav data-testid="planner-bottom-nav" className="planner-bottom-nav z-50 flex shrink-0 items-center justify-around border-t border-border bg-card p-1 md:hidden" aria-label="Planerbereiche">
-        <button type="button" data-testid="nav-tab-sidebar" onClick={() => setActiveTab('sidebar')} className={navClass(activeTab === 'sidebar')} aria-current={activeTab === 'sidebar' ? 'page' : undefined}>
-          <Plus size={22} aria-hidden="true" />
-          <span>Bauteile</span>
-        </button>
-        <button type="button" data-testid="nav-tab-electric" onClick={() => { setActiveTab('canvas'); setViewMode('electric'); }} className={navClass(activeTab === 'canvas' && viewMode === 'electric')} aria-current={activeTab === 'canvas' && viewMode === 'electric' ? 'page' : undefined}>
-          <Zap size={22} aria-hidden="true" />
-          <span>Elektrik</span>
-        </button>
-        <button type="button" data-testid="nav-tab-water" onClick={() => { setActiveTab('canvas'); setViewMode('water'); }} className={navClass(activeTab === 'canvas' && viewMode === 'water')} aria-current={activeTab === 'canvas' && viewMode === 'water' ? 'page' : undefined}>
-          <Droplets size={22} aria-hidden="true" />
-          <span>Wasser</span>
-        </button>
-        <button type="button" data-testid="nav-tab-inspector" onClick={() => setActiveTab('inspector')} className={navClass(activeTab === 'inspector')} aria-current={activeTab === 'inspector' ? 'page' : undefined}>
-          <Settings2 size={22} aria-hidden="true" />
-          <span>Details</span>
-        </button>
-        <button type="button" onClick={() => router.push('/tools/heizung')} className={navClass(false)}>
-          <Flame size={22} aria-hidden="true" />
-          <span>Heizung</span>
-        </button>
-      </nav>
-    </div>
+        <nav
+          data-testid="planner-bottom-nav"
+          className="planner-bottom-nav z-50 flex shrink-0 items-center justify-around border-t border-border bg-card p-1 md:hidden"
+          aria-label="Planerbereiche"
+        >
+          <button
+            type="button"
+            data-testid="nav-tab-sidebar"
+            onClick={() => setActiveTab('sidebar')}
+            className={navClass(activeTab === 'sidebar')}
+            aria-current={activeTab === 'sidebar' ? 'page' : undefined}
+          >
+            <Plus size={22} aria-hidden="true" />
+            <span>Bauteile</span>
+          </button>
+          <button
+            type="button"
+            data-testid="nav-tab-electric"
+            onClick={() => {
+              setActiveTab('canvas');
+              setViewMode('electric');
+            }}
+            className={navClass(activeTab === 'canvas' && viewMode === 'electric')}
+            aria-current={activeTab === 'canvas' && viewMode === 'electric' ? 'page' : undefined}
+          >
+            <Zap size={22} aria-hidden="true" />
+            <span>Elektrik</span>
+          </button>
+          <button
+            type="button"
+            data-testid="nav-tab-water"
+            onClick={() => {
+              setActiveTab('canvas');
+              setViewMode('water');
+            }}
+            className={navClass(activeTab === 'canvas' && viewMode === 'water')}
+            aria-current={activeTab === 'canvas' && viewMode === 'water' ? 'page' : undefined}
+          >
+            <Droplets size={22} aria-hidden="true" />
+            <span>Wasser</span>
+          </button>
+          <button
+            type="button"
+            data-testid="nav-tab-inspector"
+            onClick={() => setActiveTab('inspector')}
+            className={navClass(activeTab === 'inspector')}
+            aria-current={activeTab === 'inspector' ? 'page' : undefined}
+          >
+            <Settings2 size={22} aria-hidden="true" />
+            <span>Details</span>
+          </button>
+          <button type="button" onClick={() => router.push('/tools/heizung')} className={navClass(false)}>
+            <Flame size={22} aria-hidden="true" />
+            <span>Heizung</span>
+          </button>
+        </nav>
+      </div>
     </ReactFlowProvider>
   );
 }

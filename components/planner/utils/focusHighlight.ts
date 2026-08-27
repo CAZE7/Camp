@@ -47,10 +47,7 @@ export function applyFocusHighlight<N extends FocusableNode, E extends Focusable
     })),
     edges: edges.map((edge) => ({
       ...edge,
-      className: withFlag(
-        edge.className,
-        seeds.has(edge.source) || seeds.has(edge.target) ? ACTIVE : DIM
-      ),
+      className: withFlag(edge.className, seeds.has(edge.source) || seeds.has(edge.target) ? ACTIVE : DIM),
     })),
   };
 }

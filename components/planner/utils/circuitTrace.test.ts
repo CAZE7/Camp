@@ -34,22 +34,33 @@ describe('circuit tracing', () => {
   it('dims unrelated elements to 0.2 via presentation classes', () => {
     const trace = traceCircuit(nodes, edges, { edgeId: 'e3' })!;
     const displayed = applyCircuitTrace(nodes, edges, trace);
-    expect(displayed.nodes.find((node) => node.id === 'battery')?.className).toContain('planner-trace-active');
+    expect(displayed.nodes.find((node) => node.id === 'battery')?.className).toContain(
+      'planner-trace-active'
+    );
     expect(displayed.nodes.find((node) => node.id === 'unrelated')?.className).toContain('planner-trace-dim');
     expect(displayed.edges.find((edge) => edge.id === 'e4')?.className).toContain('planner-trace-dim');
   });
 
   it('builds a readable path overlay with electrical values', () => {
     const trace = traceCircuit(nodes, edges, { edgeId: 'e3' })!;
-    expect(circuitTraceLabel(nodes, trace)).toBe('Batterie → Shunt → Sicherung → Kühlbox (12 V, 5 A, 2.5 mm²)');
+    expect(circuitTraceLabel(nodes, trace)).toBe(
+      'Batterie → Shunt → Sicherung → Kühlbox (12 V, 5 A, 2.5 mm²)'
+    );
   });
 
   it('supports AC topology and rejects missing seeds', () => {
     const acNodes: Node[] = [
       { id: 'shore', type: 'shorePower', position: { x: 0, y: 0 }, data: { label: 'Landstrom' } },
-      { id: 'socket', type: 'consumer230v', position: { x: 0, y: 0 }, data: { label: 'Steckdose', watts: 2300 } },
+      {
+        id: 'socket',
+        type: 'consumer230v',
+        position: { x: 0, y: 0 },
+        data: { label: 'Steckdose', watts: 2300 },
+      },
     ];
-    const acEdges: Edge[] = [{ id: 'ac', source: 'shore', target: 'socket', data: { edgeDomain: 'AC_230V', crossSection: 1.5 } }];
+    const acEdges: Edge[] = [
+      { id: 'ac', source: 'shore', target: 'socket', data: { edgeDomain: 'AC_230V', crossSection: 1.5 } },
+    ];
     const trace = traceCircuit(acNodes, acEdges, { edgeId: 'ac' })!;
     expect(circuitTraceLabel(acNodes, trace)).toContain('(230 V, 10 A, 1.5 mm²)');
     expect(traceCircuit(nodes, edges, { nodeId: 'missing' })).toBeNull();

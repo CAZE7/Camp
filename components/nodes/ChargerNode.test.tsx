@@ -1,14 +1,15 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import ChargerNode from './ChargerNode';
+import { asDivProps, type MockHandleProps } from '../../test-helpers/reactflowMocks';
 
 // Mock reactflow Handle since it might need a context provider
 vi.mock('reactflow', async () => {
   const actual = await vi.importActual('reactflow');
   return {
     ...actual,
-    Handle: ({ 'data-testid': testId, isConnectable, ...props }: any) => (
-      <div data-testid={testId || 'react-flow-handle'} {...props} />
+    Handle: ({ 'data-testid': testId, isConnectable, ...props }: MockHandleProps) => (
+      <div data-testid={testId || 'react-flow-handle'} {...asDivProps(props)} />
     ),
     Position: {
       Left: 'left',
@@ -67,8 +68,8 @@ describe('ChargerNode Component', () => {
     expect(handles.length).toBe(4);
 
     // Check types
-    const sourceHandles = handles.filter(h => h.getAttribute('type') === 'source');
-    const targetHandles = handles.filter(h => h.getAttribute('type') === 'target');
+    const sourceHandles = handles.filter((h) => h.getAttribute('type') === 'source');
+    const targetHandles = handles.filter((h) => h.getAttribute('type') === 'target');
     expect(sourceHandles.length).toBe(2);
     expect(targetHandles.length).toBe(2);
 

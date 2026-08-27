@@ -48,7 +48,10 @@ export default function HolzausbauGuide() {
       <SiteHeader />
 
       <main id="main" className="mx-auto w-full max-w-3xl flex-1 px-5 py-8 md:py-10">
-        <Link href="/guides/ausbau-fahrplan" className="inline-flex min-h-11 items-center text-sm text-ink-soft hover:text-ink">
+        <Link
+          href="/guides/ausbau-fahrplan"
+          className="inline-flex min-h-11 items-center text-sm text-ink-soft hover:text-ink"
+        >
           ← Ausbau-Fahrplan
         </Link>
         <h1 className="mt-4 font-display text-2xl font-semibold tracking-tight md:text-3xl">

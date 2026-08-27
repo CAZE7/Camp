@@ -13,7 +13,7 @@ import {
 
 describe('electrical safety refactoring tests', () => {
   it('should have the correct DERATE_FACTOR', () => {
-    expect(DERATE_FACTOR).toBe(0.70);
+    expect(DERATE_FACTOR).toBe(0.7);
   });
 
   it('should have VDE safety-compliant values in FUSE_MAP', () => {

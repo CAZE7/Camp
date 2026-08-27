@@ -11,21 +11,21 @@ Mocks, keine idealisierte Entwicklungsumgebung.
 Ausgeliefert wird der Export von `scripts/e2e/static-server.mjs` — ein
 abhängigkeitsfreier Server, der sich bewusst wie GitHub Pages verhält:
 
-| Anfrage | Antwort |
-|---------|---------|
+| Anfrage              | Antwort                                 |
+| -------------------- | --------------------------------------- |
 | `/elektrik-planung/` | `out/elektrik-planung/index.html` (200) |
-| `/elektrik-planung` | 308 auf `/elektrik-planung/` |
-| unbekannter Pfad | `out/404.html` (404) |
-| `../` im Pfad | 403/404, kein Ausbruch aus `out/` |
+| `/elektrik-planung`  | 308 auf `/elektrik-planung/`            |
+| unbekannter Pfad     | `out/404.html` (404)                    |
+| `../` im Pfad        | 403/404, kein Ausbruch aus `out/`       |
 
 ## 2. Pflichtszenarien
 
-| Datei | Szenario |
-|-------|----------|
-| `tests/e2e/planner-flow.spec.ts` | Batterie → Sicherung → Verbraucher → Auto-Wire → Prüfung → Stückliste; leerer Plan zeigt keinen erfundenen Inhalt |
-| `tests/e2e/responsive.spec.ts` | 375 / 768 / 1440 px ohne horizontalen Overflow, sichtbare Bereiche je Breakpoint, Canvas ≥ 600 px ab 1280 px, Touch-Ziele ≥ 44 px |
-| `tests/e2e/persistence.spec.ts` | Knoten und Kanten überleben `reload()`; frischer Kontext startet leer; persistierter Stand ist versioniert |
-| `tests/e2e/touch.spec.ts` | Tap fügt Bauteil hinzu, Bottom-Tabs, Tap-to-Connect zweier Anschlüsse, Abbruch durch zweiten Tap auf denselben Anschluss |
+| Datei                            | Szenario                                                                                                                          |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `tests/e2e/planner-flow.spec.ts` | Batterie → Sicherung → Verbraucher → Auto-Wire → Prüfung → Stückliste; leerer Plan zeigt keinen erfundenen Inhalt                 |
+| `tests/e2e/responsive.spec.ts`   | 375 / 768 / 1440 px ohne horizontalen Overflow, sichtbare Bereiche je Breakpoint, Canvas ≥ 600 px ab 1280 px, Touch-Ziele ≥ 44 px |
+| `tests/e2e/persistence.spec.ts`  | Knoten und Kanten überleben `reload()`; frischer Kontext startet leer; persistierter Stand ist versioniert                        |
+| `tests/e2e/touch.spec.ts`        | Tap fügt Bauteil hinzu, Bottom-Tabs, Tap-to-Connect zweier Anschlüsse, Abbruch durch zweiten Tap auf denselben Anschluss          |
 
 Projekte (Viewports) aus `playwright.config.ts`:
 `desktop-1440`, `tablet-768`, `mobile-375`, `touch-pixel5` (echte Touch-Emulation).
@@ -92,13 +92,13 @@ CI-Lauf des Pull Requests erbracht werden.
 
 Was **lokal verifiziert** wurde:
 
-| Prüfung | Ergebnis |
-|---------|----------|
-| Static Server gegen echten Export | `/` 200, `/elektrik-planung/` 200, `/elektrik-planung` → 308, unbekannter Pfad → 404, `../package.json` → kein Ausbruch |
-| Selektoren im gebauten Bundle | alle 7 Stichproben (`planner-shell`, `sidebar-item`, `action-autowire`, `action-bom`, `nav-tab-electric`, `planner-node`, `sidebar-search`) im JS-Chunk enthalten |
-| Selektor-Vertrag | `components/e2eSelectors.test.tsx`, 5 Tests grün |
-| Typecheck der Specs | `npm run typecheck` schließt `tests/e2e/**` ein, 0 Fehler |
-| Vitest greift nicht auf die Specs zu | `vitest.config.ts` schließt `tests/e2e/**` aus |
+| Prüfung                              | Ergebnis                                                                                                                                                          |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Static Server gegen echten Export    | `/` 200, `/elektrik-planung/` 200, `/elektrik-planung` → 308, unbekannter Pfad → 404, `../package.json` → kein Ausbruch                                           |
+| Selektoren im gebauten Bundle        | alle 7 Stichproben (`planner-shell`, `sidebar-item`, `action-autowire`, `action-bom`, `nav-tab-electric`, `planner-node`, `sidebar-search`) im JS-Chunk enthalten |
+| Selektor-Vertrag                     | `components/e2eSelectors.test.tsx`, 5 Tests grün                                                                                                                  |
+| Typecheck der Specs                  | `npm run typecheck` schließt `tests/e2e/**` ein, 0 Fehler                                                                                                         |
+| Vitest greift nicht auf die Specs zu | `vitest.config.ts` schließt `tests/e2e/**` aus                                                                                                                    |
 
 ## 7. Grenzen echter Geräteemulation
 

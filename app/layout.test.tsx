@@ -1,7 +1,6 @@
-
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
-  value: vi.fn().mockImplementation(query => ({
+  value: vi.fn().mockImplementation((query) => ({
     matches: false,
     media: query,
     onchange: null,
@@ -34,11 +33,14 @@ describe('RootLayout', () => {
 
     // Body enthält den Skip-Link (a) und die Children.
     const bodyChildren = React.Children.toArray(bodyElement.props.children);
-    const skipLink = bodyChildren[0] as any;
+    const skipLink = bodyChildren[0] as React.ReactElement<{ href: string }>;
     expect(skipLink.type).toBe('a');
     expect(skipLink.props.href).toBe('#main');
 
-    const childElement = bodyChildren[1] as any;
+    const childElement = bodyChildren[1] as React.ReactElement<{
+      'data-testid': string;
+      children: string;
+    }>;
     expect(childElement.props['data-testid']).toBe('child');
     expect(childElement.props.children).toBe('Test Child');
   });

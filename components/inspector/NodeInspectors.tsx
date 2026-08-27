@@ -2,19 +2,32 @@ import React from 'react';
 import { Node, Edge } from 'reactflow';
 import { CableEdgeData } from '../edges/CableEdge';
 import { ValidatingInput, COMMON_RULES } from '../ui/ValidatingInput';
+import { NodeDataPatch, PlannerNodeType, TypedNode } from '../nodes/types';
+
+/**
+ * Die Inspectors lesen/schreiben Node-Daten typisiert über die Registry
+ * (`TypedNode<K>`, AGENTS.md M6-3): `node.data.capacity` ist eine Zahl oder
+ * undefined, nicht `any`. Die Zuweisung des konkreten `type`-Literals passiert
+ * zentral im `Inspector` (single boundary cast nach dem type-Switch).
+ */
+export type InspectorNode<K extends PlannerNodeType> = TypedNode<K>;
+export type InspectorUpdate = (id: string, patch: NodeDataPatch) => void;
 
 export interface BaseNodeInspectorProps {
   node: Node;
-  onUpdateNodeData?: (id: string, data: any) => void;
+  onUpdateNodeData?: InspectorUpdate;
 }
 
 const COMPONENT_HELP: Record<string, string> = {
-  shunt: 'Der Batteriemonitor mit Shunt wird in die Minusleitung eingebaut und misst alle ein- und ausgehenden Ströme.',
-  ground: 'Der Massepunkt bündelt Minusverbindungen. Korrosionsschutz und fachgerechter Kabelquerschnitt sind wichtig.',
+  shunt:
+    'Der Batteriemonitor mit Shunt wird in die Minusleitung eingebaut und misst alle ein- und ausgehenden Ströme.',
+  ground:
+    'Der Massepunkt bündelt Minusverbindungen. Korrosionsschutz und fachgerechter Kabelquerschnitt sind wichtig.',
   freshWaterTank: 'Speichert sauberes Wasser und speist die Pumpe über den Ausgang.',
   grayWaterTank: 'Sammelt Abwasser von Spüle und Dusche.',
   pump: 'Fördert Frischwasser. Ein Vorfilter vor der Pumpe schützt sie vor Schmutz.',
-  accumulator: 'Das Druckausgleichsgefäß beruhigt den Wasserfluss und reduziert das häufige Ein- und Ausschalten der Pumpe.',
+  accumulator:
+    'Das Druckausgleichsgefäß beruhigt den Wasserfluss und reduziert das häufige Ein- und Ausschalten der Pumpe.',
   preFilter: 'Der Vorfilter sitzt vor der Pumpe und muss für die Reinigung erreichbar bleiben.',
   sink: 'Die Spüle benötigt einen Frischwasser-Zulauf und einen getrennten Abwasser-Ablauf.',
   shower: 'Die Dusche benötigt einen Frischwasser-Zulauf und einen getrennten Abwasser-Ablauf.',
@@ -24,9 +37,14 @@ export function ComponentInfoInspector({ node, onUpdateNodeData }: BaseNodeInspe
   if (node.type === 'busbar') {
     return (
       <div className="space-y-3">
-        <p className="rounded-lg bg-accent p-3 text-sm text-foreground">Die Sammelschiene verteilt Plus oder Minus auf mehrere Leitungen. Ihr Nennstrom muss mindestens dem maximalen Gesamtstrom entsprechen.</p>
+        <p className="rounded-lg bg-accent p-3 text-sm text-foreground">
+          Die Sammelschiene verteilt Plus oder Minus auf mehrere Leitungen. Ihr Nennstrom muss mindestens dem
+          maximalen Gesamtstrom entsprechen.
+        </p>
         <div>
-          <label htmlFor={`${node.id}-rating`} className="mb-1 block text-sm font-medium text-foreground">Maximaler Strom in Ampere</label>
+          <label htmlFor={`${node.id}-rating`} className="mb-1 block text-sm font-medium text-foreground">
+            Maximaler Strom in Ampere
+          </label>
           <ValidatingInput
             id={`${node.id}-rating`}
             type="number"
@@ -40,7 +58,11 @@ export function ComponentInfoInspector({ node, onUpdateNodeData }: BaseNodeInspe
       </div>
     );
   }
-  return <p className="rounded-lg bg-accent p-3 text-sm leading-relaxed text-foreground">{COMPONENT_HELP[node.type || ''] || 'Für dieses Bauteil sind keine weiteren Werte erforderlich.'}</p>;
+  return (
+    <p className="rounded-lg bg-accent p-3 text-sm leading-relaxed text-foreground">
+      {COMPONENT_HELP[node.type || ''] || 'Für dieses Bauteil sind keine weiteren Werte erforderlich.'}
+    </p>
+  );
 }
 
 export function BatteryInspector({
@@ -48,7 +70,9 @@ export function BatteryInspector({
   onUpdateNodeData,
   chargingTimeStr,
   calculatedSolarWatts,
-}: BaseNodeInspectorProps & {
+}: {
+  node: InspectorNode<'battery'>;
+  onUpdateNodeData?: InspectorUpdate;
   chargingTimeStr?: string;
   calculatedSolarWatts?: number;
 }) {
@@ -74,8 +98,14 @@ export function BatteryInspector({
             </div>
           </div>
         )}
-        <label className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider" htmlFor={`${node.id}-capacity`}>Kapazität (Ah)</label>
-        <ValidatingInput id={`${node.id}-capacity`}
+        <label
+          className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider"
+          htmlFor={`${node.id}-capacity`}
+        >
+          Kapazität (Ah)
+        </label>
+        <ValidatingInput
+          id={`${node.id}-capacity`}
           type="number"
           min="0"
           value={node.data?.capacity || 0}
@@ -85,8 +115,14 @@ export function BatteryInspector({
         />
       </div>
       <div className="flex flex-col">
-        <label className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider" htmlFor={`${node.id}-chemistry`}>Zellchemie</label>
-        <select id={`${node.id}-chemistry`}
+        <label
+          className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider"
+          htmlFor={`${node.id}-chemistry`}
+        >
+          Zellchemie
+        </label>
+        <select
+          id={`${node.id}-chemistry`}
           value={node.data?.chemistry || 'LiFePO4'}
           onChange={(e) => onUpdateNodeData?.(node.id, { chemistry: e.target.value })}
           className="border border-border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-shadow"
@@ -99,12 +135,24 @@ export function BatteryInspector({
   );
 }
 
-export function ConsumerInspector({ node, onUpdateNodeData }: BaseNodeInspectorProps) {
+export function ConsumerInspector({
+  node,
+  onUpdateNodeData,
+}: {
+  node: InspectorNode<'consumer'>;
+  onUpdateNodeData?: InspectorUpdate;
+}) {
   return (
     <>
       <div className="flex flex-col">
-        <label className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider" htmlFor={`${node.id}-watts`}>Leistung (W)</label>
-        <ValidatingInput id={`${node.id}-watts`}
+        <label
+          className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider"
+          htmlFor={`${node.id}-watts`}
+        >
+          Leistung (W)
+        </label>
+        <ValidatingInput
+          id={`${node.id}-watts`}
           type="number"
           min="0"
           value={node.data?.watts || 0}
@@ -114,8 +162,14 @@ export function ConsumerInspector({ node, onUpdateNodeData }: BaseNodeInspectorP
         />
       </div>
       <div className="flex flex-col">
-        <label className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider" htmlFor={`${node.id}-hours`}>Nutzung (h/Tag)</label>
-        <ValidatingInput id={`${node.id}-hours`}
+        <label
+          className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider"
+          htmlFor={`${node.id}-hours`}
+        >
+          Nutzung (h/Tag)
+        </label>
+        <ValidatingInput
+          id={`${node.id}-hours`}
           type="number"
           min="0"
           max="24"
@@ -130,12 +184,24 @@ export function ConsumerInspector({ node, onUpdateNodeData }: BaseNodeInspectorP
   );
 }
 
-export function ChargerInspector({ node, onUpdateNodeData }: BaseNodeInspectorProps) {
+export function ChargerInspector({
+  node,
+  onUpdateNodeData,
+}: {
+  node: InspectorNode<'charger' | 'mpptController' | 'dcdcCharger' | 'acBatteryCharger'>;
+  onUpdateNodeData?: InspectorUpdate;
+}) {
   return (
     <>
       <div className="flex flex-col">
-        <label className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider" htmlFor={`${node.id}-amps`}>Ladeleistung (A)</label>
-        <ValidatingInput id={`${node.id}-amps`}
+        <label
+          className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider"
+          htmlFor={`${node.id}-amps`}
+        >
+          Ladeleistung (A)
+        </label>
+        <ValidatingInput
+          id={`${node.id}-amps`}
           type="number"
           min="0"
           value={node.data?.amps || 0}
@@ -145,8 +211,14 @@ export function ChargerInspector({ node, onUpdateNodeData }: BaseNodeInspectorPr
         />
       </div>
       <div className="flex flex-col">
-        <label className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider" htmlFor={`${node.id}-efficiency`}>Effizienz in %</label>
-        <ValidatingInput id={`${node.id}-efficiency`}
+        <label
+          className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider"
+          htmlFor={`${node.id}-efficiency`}
+        >
+          Effizienz in %
+        </label>
+        <ValidatingInput
+          id={`${node.id}-efficiency`}
           type="number"
           min="0"
           max="100"
@@ -160,23 +232,41 @@ export function ChargerInspector({ node, onUpdateNodeData }: BaseNodeInspectorPr
   );
 }
 
-export function FuseInspector({ node, onUpdateNodeData }: BaseNodeInspectorProps) {
+export function FuseInspector({
+  node,
+  onUpdateNodeData,
+}: {
+  node: InspectorNode<'fuse'>;
+  onUpdateNodeData?: InspectorUpdate;
+}) {
   return (
     <div className="flex flex-col">
-      <label className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider" htmlFor={`${node.id}-rating`}>Sicherung (A)</label>
-        <ValidatingInput id={`${node.id}-rating`}
+      <label
+        className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider"
+        htmlFor={`${node.id}-rating`}
+      >
+        Sicherung (A)
+      </label>
+      <ValidatingInput
+        id={`${node.id}-rating`}
         type="number"
         min="0"
         value={node.data?.rating || 0}
-          rules={[COMMON_RULES.strictlyPositive]}
-          onValidChange={(val) => onUpdateNodeData?.(node.id, { rating: val })}
+        rules={[COMMON_RULES.strictlyPositive]}
+        onValidChange={(val) => onUpdateNodeData?.(node.id, { rating: val })}
         className="border border-border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-shadow"
       />
     </div>
   );
 }
 
-export function ShorePowerInspector({ node, onUpdateNodeData }: BaseNodeInspectorProps) {
+export function ShorePowerInspector({
+  node,
+  onUpdateNodeData,
+}: {
+  node: InspectorNode<'shorePower'>;
+  onUpdateNodeData?: InspectorUpdate;
+}) {
   return (
     <div className="flex flex-col gap-2">
       <label className="flex items-center gap-2 text-sm text-foreground">
@@ -201,7 +291,11 @@ export function InverterInspector({
   node,
   onUpdateNodeData,
   nodes,
-}: BaseNodeInspectorProps & { nodes?: Node[] }) {
+}: {
+  node: InspectorNode<'inverter'>;
+  onUpdateNodeData?: InspectorUpdate;
+  nodes?: Node[];
+}) {
   const consumerNodes = React.useMemo(() => {
     return nodes?.filter((n) => n.type === 'consumer230v') || [];
   }, [nodes]);
@@ -209,8 +303,14 @@ export function InverterInspector({
   return (
     <>
       <div className="flex flex-col">
-        <label className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider" htmlFor={`${node.id}-continuousPower`}>Dauerleistung (W)</label>
-        <ValidatingInput id={`${node.id}-continuousPower`}
+        <label
+          className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider"
+          htmlFor={`${node.id}-continuousPower`}
+        >
+          Dauerleistung (W)
+        </label>
+        <ValidatingInput
+          id={`${node.id}-continuousPower`}
           type="number"
           min="0"
           value={node.data?.continuousPower || 0}
@@ -220,18 +320,25 @@ export function InverterInspector({
         />
       </div>
       <div className="flex flex-col mt-4">
-        <label className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider">Gleichzeitige 230V Geräte</label>
+        <label className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider">
+          Gleichzeitige 230V Geräte
+        </label>
         <div className="flex flex-col gap-1 max-h-32 overflow-y-auto border border-rule rounded p-1">
           {consumerNodes.map((consumer) => {
             const isChecked = (node.data?.concurrentDevices || []).includes(consumer.id);
             return (
-              <label key={consumer.id} className="flex items-center gap-2 text-sm text-foreground cursor-pointer p-1 hover:bg-paper rounded">
+              <label
+                key={consumer.id}
+                className="flex items-center gap-2 text-sm text-foreground cursor-pointer p-1 hover:bg-paper rounded"
+              >
                 <input
                   type="checkbox"
                   checked={isChecked}
                   onChange={(e) => {
                     const curr = node.data?.concurrentDevices || [];
-                    const next = e.target.checked ? [...curr, consumer.id] : curr.filter((id: string) => id !== consumer.id);
+                    const next = e.target.checked
+                      ? [...curr, consumer.id]
+                      : curr.filter((id: string) => id !== consumer.id);
                     onUpdateNodeData?.(node.id, { concurrentDevices: next });
                   }}
                   className="rounded border-rule text-primary focus:ring-ring"
@@ -248,12 +355,24 @@ export function InverterInspector({
   );
 }
 
-export function Consumer230VInspector({ node, onUpdateNodeData }: BaseNodeInspectorProps) {
+export function Consumer230VInspector({
+  node,
+  onUpdateNodeData,
+}: {
+  node: InspectorNode<'consumer230v'>;
+  onUpdateNodeData?: InspectorUpdate;
+}) {
   return (
     <>
       <div className="flex flex-col">
-        <label className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider" htmlFor={`${node.id}-watts230`}>Leistung 230V (W)</label>
-        <ValidatingInput id={`${node.id}-watts230`}
+        <label
+          className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider"
+          htmlFor={`${node.id}-watts230`}
+        >
+          Leistung 230V (W)
+        </label>
+        <ValidatingInput
+          id={`${node.id}-watts230`}
           type="number"
           min="0"
           value={node.data?.watts || 0}
@@ -263,8 +382,14 @@ export function Consumer230VInspector({ node, onUpdateNodeData }: BaseNodeInspec
         />
       </div>
       <div className="flex flex-col">
-        <label className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider" htmlFor={`${node.id}-hours230`}>Nutzung (h/Tag)</label>
-        <ValidatingInput id={`${node.id}-hours230`}
+        <label
+          className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider"
+          htmlFor={`${node.id}-hours230`}
+        >
+          Nutzung (h/Tag)
+        </label>
+        <ValidatingInput
+          id={`${node.id}-hours230`}
           type="number"
           min="0"
           max="24"
@@ -279,12 +404,24 @@ export function Consumer230VInspector({ node, onUpdateNodeData }: BaseNodeInspec
   );
 }
 
-export function SolarInspector({ node, onUpdateNodeData }: BaseNodeInspectorProps) {
+export function SolarInspector({
+  node,
+  onUpdateNodeData,
+}: {
+  node: InspectorNode<'solar'>;
+  onUpdateNodeData?: InspectorUpdate;
+}) {
   return (
     <>
       <div className="flex flex-col">
-        <label className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider" htmlFor={`${node.id}-wattsSolar`}>Leistung (W)</label>
-        <ValidatingInput id={`${node.id}-wattsSolar`}
+        <label
+          className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider"
+          htmlFor={`${node.id}-wattsSolar`}
+        >
+          Leistung (W)
+        </label>
+        <ValidatingInput
+          id={`${node.id}-wattsSolar`}
           type="number"
           min="0"
           value={node.data?.watts || 0}
@@ -294,8 +431,14 @@ export function SolarInspector({ node, onUpdateNodeData }: BaseNodeInspectorProp
         />
       </div>
       <div className="flex flex-col">
-        <label className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider" htmlFor={`${node.id}-voltage`}>Arbeitsspannung (V)</label>
-        <ValidatingInput id={`${node.id}-voltage`}
+        <label
+          className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider"
+          htmlFor={`${node.id}-voltage`}
+        >
+          Arbeitsspannung (V)
+        </label>
+        <ValidatingInput
+          id={`${node.id}-voltage`}
           type="number"
           min="0"
           step="0.1"
@@ -307,8 +450,14 @@ export function SolarInspector({ node, onUpdateNodeData }: BaseNodeInspectorProp
         />
       </div>
       <div className="flex flex-col">
-        <label className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider" htmlFor={`${node.id}-ampsSolar`}>Strom (A)</label>
-        <ValidatingInput id={`${node.id}-ampsSolar`}
+        <label
+          className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider"
+          htmlFor={`${node.id}-ampsSolar`}
+        >
+          Strom (A)
+        </label>
+        <ValidatingInput
+          id={`${node.id}-ampsSolar`}
           type="number"
           min="0"
           step="0.1"
@@ -323,12 +472,24 @@ export function SolarInspector({ node, onUpdateNodeData }: BaseNodeInspectorProp
   );
 }
 
-export function RoofWindowInspector({ node, onUpdateNodeData }: BaseNodeInspectorProps) {
+export function RoofWindowInspector({
+  node,
+  onUpdateNodeData,
+}: {
+  node: InspectorNode<'roofWindow'>;
+  onUpdateNodeData?: InspectorUpdate;
+}) {
   return (
     <>
       <div className="flex flex-col">
-        <label className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider" htmlFor={`${node.id}-width`}>Breite (cm)</label>
-        <ValidatingInput id={`${node.id}-width`}
+        <label
+          className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider"
+          htmlFor={`${node.id}-width`}
+        >
+          Breite (cm)
+        </label>
+        <ValidatingInput
+          id={`${node.id}-width`}
           type="number"
           min="1"
           value={node.data?.width || 0}
@@ -338,8 +499,14 @@ export function RoofWindowInspector({ node, onUpdateNodeData }: BaseNodeInspecto
         />
       </div>
       <div className="flex flex-col">
-        <label className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider" htmlFor={`${node.id}-height`}>Länge (cm)</label>
-        <ValidatingInput id={`${node.id}-height`}
+        <label
+          className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider"
+          htmlFor={`${node.id}-height`}
+        >
+          Länge (cm)
+        </label>
+        <ValidatingInput
+          id={`${node.id}-height`}
           type="number"
           min="1"
           value={node.data?.height || 0}
@@ -352,12 +519,24 @@ export function RoofWindowInspector({ node, onUpdateNodeData }: BaseNodeInspecto
   );
 }
 
-export function RoofSolarInspector({ node, onUpdateNodeData }: BaseNodeInspectorProps) {
+export function RoofSolarInspector({
+  node,
+  onUpdateNodeData,
+}: {
+  node: InspectorNode<'roofSolar'>;
+  onUpdateNodeData?: InspectorUpdate;
+}) {
   return (
     <>
       <div className="flex flex-col">
-        <label className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider" htmlFor={`${node.id}-width2`}>Breite (cm)</label>
-        <ValidatingInput id={`${node.id}-width2`}
+        <label
+          className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider"
+          htmlFor={`${node.id}-width2`}
+        >
+          Breite (cm)
+        </label>
+        <ValidatingInput
+          id={`${node.id}-width2`}
           type="number"
           min="1"
           value={node.data?.width || 0}
@@ -367,8 +546,14 @@ export function RoofSolarInspector({ node, onUpdateNodeData }: BaseNodeInspector
         />
       </div>
       <div className="flex flex-col">
-        <label className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider" htmlFor={`${node.id}-height2`}>Länge (cm)</label>
-        <ValidatingInput id={`${node.id}-height2`}
+        <label
+          className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider"
+          htmlFor={`${node.id}-height2`}
+        >
+          Länge (cm)
+        </label>
+        <ValidatingInput
+          id={`${node.id}-height2`}
           type="number"
           min="1"
           value={node.data?.height || 0}
@@ -378,8 +563,14 @@ export function RoofSolarInspector({ node, onUpdateNodeData }: BaseNodeInspector
         />
       </div>
       <div className="flex flex-col">
-        <label className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider" htmlFor={`${node.id}-wattsRoof`}>Leistung (Wp)</label>
-        <ValidatingInput id={`${node.id}-wattsRoof`}
+        <label
+          className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider"
+          htmlFor={`${node.id}-wattsRoof`}
+        >
+          Leistung (Wp)
+        </label>
+        <ValidatingInput
+          id={`${node.id}-wattsRoof`}
           type="number"
           min="0"
           value={node.data?.watts || 0}
@@ -396,11 +587,20 @@ export function ConduitInspector({
   node,
   onUpdateNodeData,
   edges,
-}: BaseNodeInspectorProps & { edges?: Edge[] }) {
+}: {
+  node: InspectorNode<'conduit'>;
+  onUpdateNodeData?: InspectorUpdate;
+  edges?: Edge[];
+}) {
   return (
     <>
       <div className="flex flex-col">
-        <label className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider" htmlFor="conduit-type-select">Rohrtyp</label>
+        <label
+          className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider"
+          htmlFor="conduit-type-select"
+        >
+          Rohrtyp
+        </label>
         <select
           id="conduit-type-select"
           value={node.data?.conduitType || 'EN 20'}
@@ -415,7 +615,9 @@ export function ConduitInspector({
       </div>
 
       <div className="flex flex-col mt-4">
-        <label className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">Zugewiesene Kabel</label>
+        <label className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">
+          Zugewiesene Kabel
+        </label>
         {edges && edges.length > 0 ? (
           <div className="flex flex-col gap-2 max-h-48 overflow-y-auto p-2 border border-rule rounded">
             {(() => {
@@ -428,7 +630,10 @@ export function ConduitInspector({
                 const crossSection = edgeData?.crossSection || 2.5;
 
                 return (
-                  <label key={edge.id} className="flex items-center gap-2 text-sm text-foreground cursor-pointer p-1 hover:bg-paper rounded">
+                  <label
+                    key={edge.id}
+                    className="flex items-center gap-2 text-sm text-foreground cursor-pointer p-1 hover:bg-paper rounded"
+                  >
                     <input
                       type="checkbox"
                       id={`edge-assign-${edge.id}`}

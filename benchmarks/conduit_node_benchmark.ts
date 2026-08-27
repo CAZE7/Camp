@@ -6,10 +6,7 @@ const CONDUIT_SIZES = {
 };
 
 const CONDUIT_AREAS = Object.fromEntries(
-  Object.entries(CONDUIT_SIZES).map(([type, diam]) => [
-    type,
-    Math.PI * Math.pow(diam / 2, 2),
-  ])
+  Object.entries(CONDUIT_SIZES).map(([type, diam]) => [type, Math.PI * Math.pow(diam / 2, 2)])
 );
 
 const CONDUIT_AREAS_ENTRIES = Object.entries(CONDUIT_AREAS);

@@ -16,8 +16,6 @@ import { volts } from './units';
 import type { CableEdgeData } from '../components/edges/CableEdge';
 import { FUSE_MAP } from './electrical';
 
-type TestNode = Partial<Node> & { id: string; type: string; data: Record<string, unknown>; position?: { x: number; y: number } };
-
 function n(id: string, type: string, data: Record<string, unknown> = {}, position = { x: 0, y: 0 }): Node {
   return { id, type, position, data } as Node;
 }
@@ -62,7 +60,8 @@ describe('autoWire — performAutoWiring', () => {
     const first = performAutoWiring(nodes)!;
     const second = performAutoWiring(first.nodes, first.edges)!;
     expect(second.nodes.length).toBe(first.nodes.length);
-    const keys = (edges: Edge[]) => new Set(edges.map((x) => `${x.source}|${x.target}|${x.sourceHandle}|${x.targetHandle}`));
+    const keys = (edges: Edge[]) =>
+      new Set(edges.map((x) => `${x.source}|${x.target}|${x.sourceHandle}|${x.targetHandle}`));
     expect(keys(second.edges)).toEqual(keys(first.edges));
   });
 
@@ -71,7 +70,12 @@ describe('autoWire — performAutoWiring', () => {
       n('b1', 'battery', { label: 'Batterie', capacity: 100, chemistry: 'LiFePO4' }),
       n('c1', 'consumer', { label: 'LED', watts: 20 }),
     ];
-    const user = e({ id: 'user-keep', source: 'b1', target: 'c1', data: { length: 2, crossSection: 2.5, edgeDomain: 'DC_12V' } });
+    const user = e({
+      id: 'user-keep',
+      source: 'b1',
+      target: 'c1',
+      data: { length: 2, crossSection: 2.5, edgeDomain: 'DC_12V' },
+    });
     const out = performAutoWiring(nodes, [user])!;
     expect(out.edges.some((x) => x.id === 'user-keep')).toBe(true);
   });
@@ -200,8 +204,22 @@ describe('autoWire — cumulativeDropAt', () => {
       n('c1', 'consumer', { watts: 96 }), // 96 W / 12,8 V = 7,5 A Last an c1
     ];
     const edges: Edge<CableEdgeData>[] = [
-      e({ id: 'u1', source: 'b1', target: 'f1', sourceHandle: 'plus', targetHandle: 'plus', data: { length: 1, crossSection: 2.5, edgeDomain: 'DC_12V' } }),
-      e({ id: 'u2', source: 'f1', target: 'c1', sourceHandle: 'plus', targetHandle: 'plus', data: { length: 1, crossSection: 2.5, edgeDomain: 'DC_12V' } }),
+      e({
+        id: 'u1',
+        source: 'b1',
+        target: 'f1',
+        sourceHandle: 'plus',
+        targetHandle: 'plus',
+        data: { length: 1, crossSection: 2.5, edgeDomain: 'DC_12V' },
+      }),
+      e({
+        id: 'u2',
+        source: 'f1',
+        target: 'c1',
+        sourceHandle: 'plus',
+        targetHandle: 'plus',
+        data: { length: 1, crossSection: 2.5, edgeDomain: 'DC_12V' },
+      }),
     ];
     const nodeMap = new Map(nodes.map((nn) => [nn.id, nn]));
     const result = cumulativeDropAt('c1', nodeMap, edges, nodes, volts(12.8), new Set());
@@ -216,7 +234,14 @@ describe('autoWire — cumulativeDropAt', () => {
       n('a1', 'consumer230v', { watts: 300 }),
     ];
     const edges: Edge<CableEdgeData>[] = [
-      e({ id: 'ac1', source: 'sp1', target: 'a1', sourceHandle: 'plus', targetHandle: 'plus', data: { length: 2, crossSection: 1.5, edgeDomain: 'AC_230V' } }),
+      e({
+        id: 'ac1',
+        source: 'sp1',
+        target: 'a1',
+        sourceHandle: 'plus',
+        targetHandle: 'plus',
+        data: { length: 2, crossSection: 1.5, edgeDomain: 'AC_230V' },
+      }),
     ];
     const nodeMap = new Map(nodes.map((nn) => [nn.id, nn]));
     const result = cumulativeDropAt('a1', nodeMap, edges, nodes, volts(12.8), new Set());
@@ -232,8 +257,18 @@ describe('autoWire — cumulativeDropAt', () => {
       n('x2', 'consumer', { watts: 12 }),
     ];
     const edges: Edge<CableEdgeData>[] = [
-      e({ id: 'cyc-a', source: 'x1', target: 'x2', data: { length: 1, crossSection: 2.5, edgeDomain: 'DC_12V' } }),
-      e({ id: 'cyc-b', source: 'x2', target: 'x1', data: { length: 1, crossSection: 2.5, edgeDomain: 'DC_12V' } }),
+      e({
+        id: 'cyc-a',
+        source: 'x1',
+        target: 'x2',
+        data: { length: 1, crossSection: 2.5, edgeDomain: 'DC_12V' },
+      }),
+      e({
+        id: 'cyc-b',
+        source: 'x2',
+        target: 'x1',
+        data: { length: 1, crossSection: 2.5, edgeDomain: 'DC_12V' },
+      }),
     ];
     const nodeMap = new Map(nodes.map((nn) => [nn.id, nn]));
     // Darf nicht endlos rekursiv laufen.
@@ -246,13 +281,8 @@ describe('autoWire — cumulativeDropAt', () => {
 // ---------------------------------------------------------------------------
 describe('autoWire — sizeDcEdges', () => {
   it('setzt einen Querschnitt ≥ 1,5 mm² auf jeder Kante', () => {
-    const nodes = [
-      n('b1', 'battery', {}),
-      n('c1', 'consumer', { watts: 24 }),
-    ];
-    const edges: Edge<CableEdgeData>[] = [
-      e({ id: 'd1', source: 'b1', target: 'c1', data: { length: 3 } }),
-    ];
+    const nodes = [n('b1', 'battery', {}), n('c1', 'consumer', { watts: 24 })];
+    const edges: Edge<CableEdgeData>[] = [e({ id: 'd1', source: 'b1', target: 'c1', data: { length: 3 } })];
     sizeDcEdges(edges, nodes, edges, volts(12.8));
     for (const edge of edges) {
       expect(edge.data?.crossSection).toBeGreaterThanOrEqual(1.5);
@@ -260,23 +290,15 @@ describe('autoWire — sizeDcEdges', () => {
   });
 
   it('dimensioniert eine hohe Last hoch (keine zu dünne Leitung)', () => {
-    const nodes = [
-      n('b1', 'battery', {}),
-      n('i1', 'inverter', { watts: 2000 }),
-    ];
-    const edges: Edge<CableEdgeData>[] = [
-      e({ id: 'd1', source: 'b1', target: 'i1', data: { length: 2 } }),
-    ];
+    const nodes = [n('b1', 'battery', {}), n('i1', 'inverter', { watts: 2000 })];
+    const edges: Edge<CableEdgeData>[] = [e({ id: 'd1', source: 'b1', target: 'i1', data: { length: 2 } })];
     sizeDcEdges(edges, nodes, edges, volts(12.8));
     // 2000 W / 12,8 V / 0,85 ≈ 184 A → großer Querschnitt
     expect(edges[0].data?.crossSection).toBeGreaterThanOrEqual(25);
   });
 
   it('überschreibt vorhandene Querschnitte nicht mit kleineren Werten', () => {
-    const nodes = [
-      n('b1', 'battery', {}),
-      n('c1', 'consumer', { watts: 12 }),
-    ];
+    const nodes = [n('b1', 'battery', {}), n('c1', 'consumer', { watts: 12 })];
     const edges: Edge<CableEdgeData>[] = [
       e({ id: 'd1', source: 'b1', target: 'c1', data: { length: 2, crossSection: 16 } }),
     ];
@@ -290,12 +312,16 @@ describe('autoWire — sizeDcEdges', () => {
 // ---------------------------------------------------------------------------
 describe('autoWire — sizeAcEdges', () => {
   it('dimensioniert Landstrom → 230-V-Gerät nach Last und Länge (230 V, 3 %)', () => {
-    const nodes = [
-      n('sp', 'shorePower', {}),
-      n('c1', 'consumer230v', { watts: 3680 }),
-    ];
+    const nodes = [n('sp', 'shorePower', {}), n('c1', 'consumer230v', { watts: 3680 })];
     const edges: Edge<CableEdgeData>[] = [
-      e({ id: 'ac1', source: 'sp', target: 'c1', sourceHandle: 'plus', targetHandle: 'plus', data: { length: 30, edgeDomain: 'AC_230V' } }),
+      e({
+        id: 'ac1',
+        source: 'sp',
+        target: 'c1',
+        sourceHandle: 'plus',
+        targetHandle: 'plus',
+        data: { length: 30, edgeDomain: 'AC_230V' },
+      }),
     ];
     sizeAcEdges(edges, nodes);
     // 3680 W / 230 V = 16 A → Spannungsfall dominiert bei 30 m:
@@ -306,12 +332,16 @@ describe('autoWire — sizeAcEdges', () => {
   it('nutzt die Last des 230-V-Geräts, nicht die Wechselrichter-Nennleistung', () => {
     // Die AC-Leitung Wechselrichter → Gerät trägt den Gerätestrom. Eine
     // Auslegung nach Wechselrichter-Nennleistung (5000 W → 6 mm²) wäre falsch.
-    const nodes = [
-      n('i1', 'inverter', { watts: 5000 }),
-      n('c1', 'consumer230v', { watts: 3680 }),
-    ];
+    const nodes = [n('i1', 'inverter', { watts: 5000 }), n('c1', 'consumer230v', { watts: 3680 })];
     const edges: Edge<CableEdgeData>[] = [
-      e({ id: 'ac1', source: 'i1', target: 'c1', sourceHandle: 'plus', targetHandle: 'plus', data: { length: 30, edgeDomain: 'AC_230V' } }),
+      e({
+        id: 'ac1',
+        source: 'i1',
+        target: 'c1',
+        sourceHandle: 'plus',
+        targetHandle: 'plus',
+        data: { length: 30, edgeDomain: 'AC_230V' },
+      }),
     ];
     sizeAcEdges(edges, nodes);
     // 3680 W / 230 V = 16 A bei 30 m → Spannungsfall dominiert → 4 mm².
@@ -319,12 +349,16 @@ describe('autoWire — sizeAcEdges', () => {
   });
 
   it('dimensioniert Landstrom-Leitungen nach dem Ladegerät (min. 16 A CEE)', () => {
-    const nodes = [
-      n('sp', 'shorePower', {}),
-      n('ch', 'acBatteryCharger', { amps: 20 }),
-    ];
+    const nodes = [n('sp', 'shorePower', {}), n('ch', 'acBatteryCharger', { amps: 20 })];
     const edges: Edge<CableEdgeData>[] = [
-      e({ id: 'ac1', source: 'sp', target: 'ch', sourceHandle: 'plus', targetHandle: 'plus', data: { length: 2, edgeDomain: 'AC_230V' } }),
+      e({
+        id: 'ac1',
+        source: 'sp',
+        target: 'ch',
+        sourceHandle: 'plus',
+        targetHandle: 'plus',
+        data: { length: 2, edgeDomain: 'AC_230V' },
+      }),
     ];
     sizeAcEdges(edges, nodes);
     // 20 A bei 2 m (Derating 0,7): thermisch 4 mm²; die Leitung darf nicht am
@@ -333,24 +367,30 @@ describe('autoWire — sizeAcEdges', () => {
   });
 
   it('unterschreitet einen vorhandenen Querschnitt nie (Nutzerwert ist Untergrenze)', () => {
-    const nodes = [
-      n('sp', 'shorePower', {}),
-      n('c1', 'consumer230v', { watts: 230 }),
-    ];
+    const nodes = [n('sp', 'shorePower', {}), n('c1', 'consumer230v', { watts: 230 })];
     const edges: Edge<CableEdgeData>[] = [
-      e({ id: 'ac1', source: 'sp', target: 'c1', sourceHandle: 'plus', targetHandle: 'plus', data: { length: 2, crossSection: 10, edgeDomain: 'AC_230V' } }),
+      e({
+        id: 'ac1',
+        source: 'sp',
+        target: 'c1',
+        sourceHandle: 'plus',
+        targetHandle: 'plus',
+        data: { length: 2, crossSection: 10, edgeDomain: 'AC_230V' },
+      }),
     ];
     sizeAcEdges(edges, nodes);
     expect(edges[0].data?.crossSection).toBe(10);
   });
 
   it('lässt Kanten ohne AC-Markierung unangetastet', () => {
-    const nodes = [
-      n('b1', 'battery', {}),
-      n('c1', 'consumer', { watts: 24 }),
-    ];
+    const nodes = [n('b1', 'battery', {}), n('c1', 'consumer', { watts: 24 })];
     const edges: Edge<CableEdgeData>[] = [
-      e({ id: 'dc1', source: 'b1', target: 'c1', data: { length: 2, crossSection: 4, edgeDomain: 'DC_12V' } }),
+      e({
+        id: 'dc1',
+        source: 'b1',
+        target: 'c1',
+        data: { length: 2, crossSection: 4, edgeDomain: 'DC_12V' },
+      }),
       e({ id: 'no-data', source: 'b1', target: 'c1' }),
     ];
     sizeAcEdges(edges, nodes);
@@ -384,12 +424,14 @@ describe('autoWire — pickHouseBattery', () => {
 // ---------------------------------------------------------------------------
 describe('autoWire — applyFuseSizes', () => {
   it('setzt eine Sicherung ≤ Kabel-Max (FUSE_MAP)', () => {
-    const nodes = [
-      n('b1', 'battery', {}),
-      n('c1', 'consumer', { watts: 60 }),
-    ];
+    const nodes = [n('b1', 'battery', {}), n('c1', 'consumer', { watts: 60 })];
     const edges: Edge<CableEdgeData>[] = [
-      e({ id: 'f1', source: 'b1', target: 'c1', data: { length: 2, crossSection: 2.5, edgeDomain: 'DC_12V' } }),
+      e({
+        id: 'f1',
+        source: 'b1',
+        target: 'c1',
+        data: { length: 2, crossSection: 2.5, edgeDomain: 'DC_12V' },
+      }),
     ];
     applyFuseSizes(edges, nodes, volts(12.8));
     const fuse = edges[0].data?.fuseSize;
@@ -401,27 +443,35 @@ describe('autoWire — applyFuseSizes', () => {
     // 1000 W / 12,8 V / 0,85 ≈ 92 A an 2,5 mm² ist unzulässig — die
     // Funktion muss das Kabel hochtreiben, statt eine Sicherung über
     // FUSE_MAP[2.5] (=20 A) zu setzen (ELEC-001).
-    const nodes = [
-      n('b1', 'battery', {}),
-      n('i1', 'inverter', { watts: 1000 }),
-    ];
+    const nodes = [n('b1', 'battery', {}), n('i1', 'inverter', { watts: 1000 })];
     const edges: Edge<CableEdgeData>[] = [
-      e({ id: 'f1', source: 'b1', target: 'i1', data: { length: 1, crossSection: 2.5, edgeDomain: 'DC_12V' } }),
+      e({
+        id: 'f1',
+        source: 'b1',
+        target: 'i1',
+        data: { length: 1, crossSection: 2.5, edgeDomain: 'DC_12V' },
+      }),
     ];
     applyFuseSizes(edges, nodes, volts(12.8));
-    const cs = edges[0].data?.crossSection!;
-    const fuse = edges[0].data?.fuseSize!;
+    const data = edges[0].data;
+    expect(data).toBeDefined();
+    const cs = data?.crossSection ?? 0;
+    const fuse = data?.fuseSize ?? 0;
     expect(fuse).toBeLessThanOrEqual(FUSE_MAP[cs] ?? Infinity);
     expect(cs).toBeGreaterThan(2.5);
   });
 
   it('fasst Minus-Kanten nicht an (Sicherungen sitzen im Pluspfad)', () => {
-    const nodes = [
-      n('b1', 'battery', {}),
-      n('c1', 'consumer', { watts: 24 }),
-    ];
+    const nodes = [n('b1', 'battery', {}), n('c1', 'consumer', { watts: 24 })];
     const edges: Edge<CableEdgeData>[] = [
-      e({ id: 'm1', source: 'c1', target: 'b1', sourceHandle: 'minus', targetHandle: 'minus', data: { length: 2, crossSection: 2.5, edgeDomain: 'DC_12V' } }),
+      e({
+        id: 'm1',
+        source: 'c1',
+        target: 'b1',
+        sourceHandle: 'minus',
+        targetHandle: 'minus',
+        data: { length: 2, crossSection: 2.5, edgeDomain: 'DC_12V' },
+      }),
     ];
     applyFuseSizes(edges, nodes, volts(12.8));
     expect(edges[0].data?.fuseSize).toBeUndefined();
@@ -437,90 +487,189 @@ describe('autoWire — healUserEdges', () => {
   }
 
   it('legt Batterie-Minus-Kanten über den Shunt um (kein Bypass)', () => {
-    const nodes = [
-      n('b1', 'battery', {}),
-      n('sh', 'shunt', {}),
-      n('c1', 'consumer', { watts: 24 }),
-    ];
+    const nodes = [n('b1', 'battery', {}), n('sh', 'shunt', {}), n('c1', 'consumer', { watts: 24 })];
     const userEdges: Edge<CableEdgeData>[] = [
-      e({ id: 'bad', source: 'b1', target: 'c1', sourceHandle: 'minus', targetHandle: 'minus', data: { length: 2, edgeDomain: 'DC_12V' } }),
+      e({
+        id: 'bad',
+        source: 'b1',
+        target: 'c1',
+        sourceHandle: 'minus',
+        targetHandle: 'minus',
+        data: { length: 2, edgeDomain: 'DC_12V' },
+      }),
     ];
-    const connections = new Set(userEdges.map((ee) => `${ee.source}|${ee.target}|${ee.sourceHandle || ''}|${ee.targetHandle || ''}`));
-    const healed = healUserEdges(userEdges, makeNodeMap(nodes), 'b1', 'sh', 'plusRail', 'minusRail', 'fuseBox', connections);
+    const connections = new Set(
+      userEdges.map((ee) => `${ee.source}|${ee.target}|${ee.sourceHandle || ''}|${ee.targetHandle || ''}`)
+    );
+    const healed = healUserEdges(
+      userEdges,
+      makeNodeMap(nodes),
+      'b1',
+      'sh',
+      'plusRail',
+      'minusRail',
+      'fuseBox',
+      connections
+    );
     expect(healed[0].source).toBe('sh');
   });
 
-  it('legt Minus-Rückleiter zur Batterie über den Shunt um (target-Handle)', () => {
+  it('legt Minus-Rückleiter zur Batterie auf die Minus-Schiene (kein Shunt-Bypass)', () => {
     // Verbraucher-Minus zurück zur Batterie ist der klassische Shunt-Bypass in
-    // Gegenrichtung: der Ziel-Handle hängt am Batterie-Minus.
-    const nodes = [
-      n('b1', 'battery', {}),
-      n('sh', 'shunt', {}),
-      n('c1', 'consumer', { watts: 24 }),
-    ];
+    // Gegenrichtung: der Ziel-Handle hängt am Batterie-Minus. Die Heilung darf
+    // ihn NICHT auf den Target-Pin des Shunts (Batterie-Seite!) legen — sonst
+    // misst der Shunt den Rücklaufstrom nicht (AUDIT-AUTOWIRE Issue 1). Sie
+    // landet normalisiert auf der Minus-Schiene und dedupliziert dort gegen
+    // die Auto-Kante (Schiene → Verbraucher, minus|minus).
+    const nodes = [n('b1', 'battery', {}), n('sh', 'shunt', {}), n('c1', 'consumer', { watts: 24 })];
     const userEdges: Edge<CableEdgeData>[] = [
-      e({ id: 'ret', source: 'c1', target: 'b1', sourceHandle: 'minus', targetHandle: 'minus', data: { length: 2, edgeDomain: 'DC_12V' } }),
+      e({
+        id: 'ret',
+        source: 'c1',
+        target: 'b1',
+        sourceHandle: 'minus',
+        targetHandle: 'minus',
+        data: { length: 2, edgeDomain: 'DC_12V' },
+      }),
     ];
-    const connections = new Set(userEdges.map((ee) => `${ee.source}|${ee.target}|${ee.sourceHandle || ''}|${ee.targetHandle || ''}`));
-    const healed = healUserEdges(userEdges, makeNodeMap(nodes), 'b1', 'sh', 'plusRail', 'minusRail', 'fuseBox', connections);
-    expect(healed[0].target).toBe('sh');
-    expect(healed[0].source).toBe('c1');
+    const connections = new Set(
+      userEdges.map((ee) => `${ee.source}|${ee.target}|${ee.sourceHandle || ''}|${ee.targetHandle || ''}`)
+    );
+    const healed = healUserEdges(
+      userEdges,
+      makeNodeMap(nodes),
+      'b1',
+      'sh',
+      'plusRail',
+      'minusRail',
+      'fuseBox',
+      connections
+    );
+    expect(healed[0].target).toBe('c1');
+    expect(healed[0].source).toBe('minusRail');
+    expect(healed[0].sourceHandle).toBe('minus');
+    expect(healed[0].targetHandle).toBe('minus');
   });
 
   it('legt Batterie-Plus auf einen Verbraucher über den Sicherungskasten', () => {
-    const nodes = [
-      n('b1', 'battery', {}),
-      n('fb', 'fuse', {}),
-      n('c1', 'consumer', { watts: 24 }),
-    ];
+    const nodes = [n('b1', 'battery', {}), n('fb', 'fuse', {}), n('c1', 'consumer', { watts: 24 })];
     const userEdges: Edge<CableEdgeData>[] = [
-      e({ id: 'bad', source: 'b1', target: 'c1', sourceHandle: 'plus', targetHandle: 'plus', data: { length: 2, edgeDomain: 'DC_12V' } }),
+      e({
+        id: 'bad',
+        source: 'b1',
+        target: 'c1',
+        sourceHandle: 'plus',
+        targetHandle: 'plus',
+        data: { length: 2, edgeDomain: 'DC_12V' },
+      }),
     ];
-    const connections = new Set(userEdges.map((ee) => `${ee.source}|${ee.target}|${ee.sourceHandle || ''}|${ee.targetHandle || ''}`));
-    const healed = healUserEdges(userEdges, makeNodeMap(nodes), 'b1', 'sh', 'plusRail', 'minusRail', 'fb', connections);
+    const connections = new Set(
+      userEdges.map((ee) => `${ee.source}|${ee.target}|${ee.sourceHandle || ''}|${ee.targetHandle || ''}`)
+    );
+    const healed = healUserEdges(
+      userEdges,
+      makeNodeMap(nodes),
+      'b1',
+      'sh',
+      'plusRail',
+      'minusRail',
+      'fb',
+      connections
+    );
     expect(healed[0].source).toBe('fb');
   });
 
   it('legt Batterie-Plus auf einen Inverter auf die Plus-Schiene um', () => {
-    const nodes = [
-      n('b1', 'battery', {}),
-      n('i1', 'inverter', { watts: 300 }),
-    ];
+    const nodes = [n('b1', 'battery', {}), n('i1', 'inverter', { watts: 300 })];
     const userEdges: Edge<CableEdgeData>[] = [
-      e({ id: 'bad', source: 'b1', target: 'i1', sourceHandle: 'plus', targetHandle: 'plus', data: { length: 1, edgeDomain: 'DC_12V' } }),
+      e({
+        id: 'bad',
+        source: 'b1',
+        target: 'i1',
+        sourceHandle: 'plus',
+        targetHandle: 'plus',
+        data: { length: 1, edgeDomain: 'DC_12V' },
+      }),
     ];
-    const connections = new Set(userEdges.map((ee) => `${ee.source}|${ee.target}|${ee.sourceHandle || ''}|${ee.targetHandle || ''}`));
-    const healed = healUserEdges(userEdges, makeNodeMap(nodes), 'b1', 'sh', 'plusRail', 'minusRail', 'fb', connections);
+    const connections = new Set(
+      userEdges.map((ee) => `${ee.source}|${ee.target}|${ee.sourceHandle || ''}|${ee.targetHandle || ''}`)
+    );
+    const healed = healUserEdges(
+      userEdges,
+      makeNodeMap(nodes),
+      'b1',
+      'sh',
+      'plusRail',
+      'minusRail',
+      'fb',
+      connections
+    );
     expect(healed[0].source).toBe('plusRail');
   });
 
   it('entfernt Kanten, die nach dem Umlegen duplikat wären', () => {
-    const nodes = [
-      n('b1', 'battery', {}),
-      n('sh', 'shunt', {}),
-      n('c1', 'consumer', { watts: 24 }),
-    ];
+    const nodes = [n('b1', 'battery', {}), n('sh', 'shunt', {}), n('c1', 'consumer', { watts: 24 })];
     // Zwei Kanten würden nach dem Umlegen beide auf sh→c1 zeigen.
     const userEdges: Edge<CableEdgeData>[] = [
-      e({ id: 'a', source: 'b1', target: 'c1', sourceHandle: 'minus', targetHandle: 'minus', data: { length: 2, edgeDomain: 'DC_12V' } }),
-      e({ id: 'b', source: 'sh', target: 'c1', sourceHandle: 'minus', targetHandle: 'minus', data: { length: 2, edgeDomain: 'DC_12V' } }),
+      e({
+        id: 'a',
+        source: 'b1',
+        target: 'c1',
+        sourceHandle: 'minus',
+        targetHandle: 'minus',
+        data: { length: 2, edgeDomain: 'DC_12V' },
+      }),
+      e({
+        id: 'b',
+        source: 'sh',
+        target: 'c1',
+        sourceHandle: 'minus',
+        targetHandle: 'minus',
+        data: { length: 2, edgeDomain: 'DC_12V' },
+      }),
     ];
-    const connections = new Set(userEdges.map((ee) => `${ee.source}|${ee.target}|${ee.sourceHandle || ''}|${ee.targetHandle || ''}`));
-    const healed = healUserEdges(userEdges, makeNodeMap(nodes), 'b1', 'sh', 'plusRail', 'minusRail', 'fb', connections);
+    const connections = new Set(
+      userEdges.map((ee) => `${ee.source}|${ee.target}|${ee.sourceHandle || ''}|${ee.targetHandle || ''}`)
+    );
+    const healed = healUserEdges(
+      userEdges,
+      makeNodeMap(nodes),
+      'b1',
+      'sh',
+      'plusRail',
+      'minusRail',
+      'fb',
+      connections
+    );
     // Genau eine der Kanten fällt weg.
     expect(healed.length).toBe(1);
   });
 
   it('lässt Batterie-zu-Batterie-Kanten unangetastet (Parallelschaltung)', () => {
-    const nodes = [
-      n('b1', 'battery', {}),
-      n('b2', 'battery', {}),
-    ];
+    const nodes = [n('b1', 'battery', {}), n('b2', 'battery', {})];
     const userEdges: Edge<CableEdgeData>[] = [
-      e({ id: 'ok', source: 'b1', target: 'b2', sourceHandle: 'minus', targetHandle: 'minus', data: { length: 1, edgeDomain: 'DC_12V' } }),
+      e({
+        id: 'ok',
+        source: 'b1',
+        target: 'b2',
+        sourceHandle: 'minus',
+        targetHandle: 'minus',
+        data: { length: 1, edgeDomain: 'DC_12V' },
+      }),
     ];
-    const connections = new Set(userEdges.map((ee) => `${ee.source}|${ee.target}|${ee.sourceHandle || ''}|${ee.targetHandle || ''}`));
-    const healed = healUserEdges(userEdges, makeNodeMap(nodes), 'b1', 'sh', 'plusRail', 'minusRail', 'fb', connections);
+    const connections = new Set(
+      userEdges.map((ee) => `${ee.source}|${ee.target}|${ee.sourceHandle || ''}|${ee.targetHandle || ''}`)
+    );
+    const healed = healUserEdges(
+      userEdges,
+      makeNodeMap(nodes),
+      'b1',
+      'sh',
+      'plusRail',
+      'minusRail',
+      'fb',
+      connections
+    );
     expect(healed.length).toBe(1);
     expect(healed[0].source).toBe('b1');
   });
@@ -674,7 +823,9 @@ describe('autoWire mit typsicheren Einheiten (K1c)', () => {
       .map((edge) => edge.data?.crossSection)
       .sort((a, b) => (a ?? 0) - (b ?? 0));
     expect(sections.every((value) => value !== undefined)).toBe(true);
-    expect(sections.every((value) => [1.5, 2.5, 4, 6, 10, 16, 25, 35, 50, 70].includes(value as number))).toBe(true);
+    expect(
+      sections.every((value) => [1.5, 2.5, 4, 6, 10, 16, 25, 35, 50, 70].includes(value as number))
+    ).toBe(true);
   });
 
   it('AC-Kanten bekommen Strom aus 230 V statt aus der Systemspannung', () => {
@@ -711,8 +862,12 @@ describe('autoWire — behobene Audit-Fehler', () => {
     expect(plus).toBeDefined();
     expect(minus).toBeDefined();
     expect(plus!.id).not.toBe(minus!.id);
-    expect(out.edges.some((x) => x.source === 'b1' && x.target === plus!.id && x.sourceHandle === 'plus')).toBe(true);
-    expect(out.edges.some((x) => x.target === minus!.id && x.sourceHandle === 'minus' && x.source !== 'b1')).toBe(true);
+    expect(
+      out.edges.some((x) => x.source === 'b1' && x.target === plus!.id && x.sourceHandle === 'plus')
+    ).toBe(true);
+    expect(
+      out.edges.some((x) => x.target === minus!.id && x.sourceHandle === 'minus' && x.source !== 'b1')
+    ).toBe(true);
   });
 
   it('legt Batterien unterschiedlicher Chemie/Nennspannung nicht parallel', () => {
@@ -732,10 +887,21 @@ describe('autoWire — behobene Audit-Fehler', () => {
         n('g1', 'ground', { label: 'Masse' }),
         n('c1', 'consumer', { label: 'LED', watts: 50 }),
       ],
-      [e({ id: 'u-g', source: 'g1', target: 'c1', sourceHandle: 'minus', targetHandle: 'minus', data: { length: 2 } })]
+      [
+        e({
+          id: 'u-g',
+          source: 'g1',
+          target: 'c1',
+          sourceHandle: 'minus',
+          targetHandle: 'minus',
+          data: { length: 2 },
+        }),
+      ]
     )!;
     const minus = out.nodes.find((x) => x.type === 'busbar' && x.data?.role === 'negative');
-    const bond = out.edges.find((x) => x.source === minus!.id && x.target === 'g1' && x.sourceHandle === 'minus');
+    const bond = out.edges.find(
+      (x) => x.source === minus!.id && x.target === 'g1' && x.sourceHandle === 'minus'
+    );
     expect(bond).toBeDefined();
     expect(bond!.data?.crossSection).toBe(16);
   });
@@ -752,12 +918,14 @@ describe('autoWire — behobene Audit-Fehler', () => {
   });
 
   it('verkleinert einen vorhandenen Querschnitt über 70 mm² nicht', () => {
-    const nodes = [
-      n('b1', 'battery', {}),
-      n('c1', 'consumer', { watts: 5 }),
-    ];
+    const nodes = [n('b1', 'battery', {}), n('c1', 'consumer', { watts: 5 })];
     const edges: Edge<CableEdgeData>[] = [
-      e({ id: 'd1', source: 'b1', target: 'c1', data: { length: 1, crossSection: 95, edgeDomain: 'DC_12V' } }),
+      e({
+        id: 'd1',
+        source: 'b1',
+        target: 'c1',
+        data: { length: 1, crossSection: 95, edgeDomain: 'DC_12V' },
+      }),
     ];
     sizeDcEdges(edges, nodes, edges, volts(12.8));
     expect(edges[0].data?.crossSection).toBe(95);
@@ -792,7 +960,255 @@ describe('autoWire — behobene Audit-Fehler', () => {
       n('i2', 'inverter', { label: 'WR2', watts: 1000 }),
       n('sp1', 'shorePower', { label: 'Landstrom' }),
     ])!;
-    expect(out.edges.some((x) => x.source === 'sp1' && x.target === 'i1' && x.targetHandle === 'ac_in')).toBe(true);
-    expect(out.edges.some((x) => x.source === 'sp1' && x.target === 'i2' && x.targetHandle === 'ac_in')).toBe(true);
+    expect(out.edges.some((x) => x.source === 'sp1' && x.target === 'i1' && x.targetHandle === 'ac_in')).toBe(
+      true
+    );
+    expect(out.edges.some((x) => x.source === 'sp1' && x.target === 'i2' && x.targetHandle === 'ac_in')).toBe(
+      true
+    );
+  });
+});
+
+// ── M6-8 — AUDIT-Testgruppen (AUDIT-AUTOWIRE.md, Issues 1–8) ───────────────
+//
+// Diese Gruppen fehlen laut Audit (Issue 9) und würden die behobenen Fehler
+// 1–8 bei Regression sofort wieder einfangen. Nummern = Audit-Issue.
+
+describe('M6-8 — AUDIT-Testgruppen', () => {
+  const nodeMapOf = (nodes: Node[]) => new Map(nodes.map((x) => [x.id, x]));
+
+  // Gruppe 1 (Issue 2) ── 3+ Batterien, paarweise Kompatibilität ───────────
+  it('verdrahtet eine inkompatible Zweitbatterie nicht auf die 12-V-Schiene (Issue 2)', () => {
+    const nodes = [
+      n('h', 'battery', { label: 'Aufbau', chemistry: 'LiFePO4' }),
+      n('x1', 'battery', { label: 'Zweit', chemistry: 'LiFePO4', nominalVoltage: 12.8 }),
+      n('x2', 'battery', { label: 'Dritt', chemistry: 'LiFePO4', nominalVoltage: 24 }),
+    ];
+    const res = performAutoWiring(nodes);
+    expect(res).not.toBeNull();
+    expect(res!.edges.filter((ed) => ed.source === 'x2' || ed.target === 'x2')).toHaveLength(0);
+    expect(res!.edges.filter((ed) => ed.source === 'x1').length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('legt zwei verträgliche Batterien parallel auf Schiene und Shunt (Issue 2)', () => {
+    const nodes = [
+      n('h', 'battery', { label: 'Aufbau', chemistry: 'LiFePO4' }),
+      n('x1', 'battery', { label: 'Zweit', chemistry: 'LiFePO4' }),
+    ];
+    const res = performAutoWiring(nodes)!;
+    const plusRail = res.nodes.find((nd) => nd.type === 'busbar' && nd.data?.role === 'positive')!;
+    const shunt = res.nodes.find((nd) => nd.type === 'shunt')!;
+    const targets = res.edges.filter((ed) => ed.source === 'x1').map((ed) => ed.target);
+    expect(targets).toContain(plusRail.id);
+    expect(targets).toContain(shunt.id);
+  });
+
+  // Gruppe 2 (Issue 3) ── tiefe Ketten + Unrealisierbar-Marker ──────────────
+  it('verdickt in tiefen Verteilerketten auch vorgelagerte Kanten (Issue 3)', () => {
+    const nodes: Node[] = [
+      n('b', 'battery', { label: 'Aufbau', nominalVoltage: 12.8 }),
+      ...([1, 2, 3, 4] as const).map((i) => n(`c${i}`, 'consumer', { watts: 96 })),
+    ];
+    const chain: Edge<CableEdgeData>[] = [
+      e({ id: 'k1', source: 'b', target: 'c1', data: { length: 2 } }),
+      e({ id: 'k2', source: 'c1', target: 'c2', data: { length: 2 } }),
+      e({ id: 'k3', source: 'c2', target: 'c3', data: { length: 2 } }),
+      e({ id: 'k4', source: 'c3', target: 'c4', data: { length: 2 } }),
+    ];
+    sizeDcEdges(chain, nodes, chain, volts(12.8));
+    const budget = 12.8 * 0.03;
+    expect(relevantCumulativeDrop('c4', nodeMapOf(nodes), chain, nodes, volts(12.8))).toBeLessThanOrEqual(
+      budget + 1e-9
+    );
+    expect(chain.every((x) => !x.data?.dropWarning)).toBe(true);
+  });
+
+  it('markiert physikalisch unrealisierbare Pfade mit dropWarning (Issue 3)', () => {
+    const nodes: Node[] = [
+      n('b', 'battery', { label: 'Aufbau', nominalVoltage: 12.8 }),
+      n('c', 'consumer', { watts: 2560 }), // 200 A — über 30 m ist selbst 70 mm² chancenlos
+    ];
+    const chain: Edge<CableEdgeData>[] = [e({ id: 'big', source: 'b', target: 'c', data: { length: 30 } })];
+    sizeDcEdges(chain, nodes, chain, volts(12.8));
+    expect(chain[0].data!.crossSection).toBe(70);
+    expect(chain[0].data!.dropWarning).toBe(true);
+  });
+
+  // Gruppe 3 (Issue 4) ── acBatteryCharger-Mischdomäne ──────────────────────
+  it('dimensioniert die DC-Ausgangsleitung des 230-V-Ladegeräts als DC (Issue 4)', () => {
+    const nodes = [
+      n('b1', 'battery', { label: 'Aufbau' }),
+      n('sp', 'shorePower', {}),
+      n('ac', 'acBatteryCharger', { amps: 40 }),
+    ];
+    const res = performAutoWiring(nodes)!;
+    const outputs = res.edges.filter((ed) => ed.source === 'ac');
+    expect(outputs.length).toBeGreaterThan(0);
+    for (const ed of outputs) {
+      expect(ed.data?.edgeDomain).toBe('DC_12V');
+    }
+    const supply = outputs.find((ed) => ed.sourceHandle === 'plus')!;
+    expect(supply.data?.crossSection ?? 0).toBeGreaterThanOrEqual(6);
+    expect(supply.data?.fuseSize ?? 0).toBeGreaterThanOrEqual(40);
+    const feed = res.edges.find((ed) => ed.source === 'sp' && ed.target === 'ac')!;
+    expect(feed.data?.edgeDomain).toBe('AC_230V');
+  });
+
+  // Gruppe 4 (Issue 5) ── Heal-Zweige Batterie-Plus ─────────────────────────
+  it('entfernt eine Batterie-Plus-Direktspeisung einer 230-V-Dose ohne Wechselrichter (Issue 5a)', () => {
+    const nodes = [n('b1', 'battery', { label: 'Aufbau' }), n('c', 'consumer230v', { watts: 500 })];
+    const res = performAutoWiring(nodes, [e({ id: 'bad', source: 'b1', target: 'c', data: {} })] as never)!;
+    expect(res.edges.find((x) => x.id === 'bad')).toBeUndefined();
+  });
+
+  it('hängt eine Batterie-Plus-zu-230-V-Kante an den Wechselrichter-Ausgang (Issue 5a)', () => {
+    const nodes = [
+      n('b1', 'battery', { label: 'Aufbau' }),
+      n('inv', 'inverter', { watts: 600 }),
+      n('c', 'consumer230v', { watts: 500 }),
+    ];
+    const res = performAutoWiring(nodes, [e({ id: 'bad', source: 'b1', target: 'c', data: {} })] as never)!;
+    const edge = res.edges.find((x) => x.id === 'bad')!;
+    expect(edge.source).toBe('inv');
+    expect(edge.target).toBe('c');
+    expect(edge.data?.edgeDomain).toBe('AC_230V');
+  });
+
+  it('normalisiert einen Ladegerät-Direktabgang an Batterie-Plus auf die Schiene (Issue 5b)', () => {
+    const nodes = [n('b1', 'battery', { label: 'Aufbau' }), n('ch', 'charger', { amps: 20 })];
+    const user = [e({ id: 'dup', source: 'b1', target: 'ch', data: { length: 2, edgeDomain: 'DC_12V' } })];
+    const res = performAutoWiring(nodes, user as never)!;
+    const plusRail = res.nodes.find((nd) => nd.type === 'busbar' && nd.data?.role === 'positive')!;
+    expect(res.edges.some((x) => x.source === 'b1' && x.target === 'ch')).toBe(false);
+    expect(res.edges.filter((x) => x.source === 'ch' && x.target === plusRail.id)).toHaveLength(1);
+  });
+
+  it('fängt verdeckte Shunt-Bypass-Kanten auf den Batterie-Pin ab (Issue 1)', () => {
+    const nodes = [n('b1', 'battery', {}), n('sh', 'shunt', {}), n('c1', 'consumer', { watts: 24 })];
+    const userEdges: Edge<CableEdgeData>[] = [
+      e({
+        id: 'hid',
+        source: 'c1',
+        target: 'sh',
+        sourceHandle: 'minus',
+        targetHandle: 'minus',
+        data: { length: 2, edgeDomain: 'DC_12V' },
+      }),
+    ];
+    const connections = new Set(
+      userEdges.map((x) => `${x.source}|${x.target}|${x.sourceHandle || ''}|${x.targetHandle || ''}`)
+    );
+    const healed = healUserEdges(
+      userEdges,
+      nodeMapOf(nodes),
+      'b1',
+      'sh',
+      'plusRail',
+      'minusRail',
+      'fuseBox',
+      connections
+    );
+    expect(healed).toHaveLength(1);
+    expect(healed[0].source).toBe('minusRail');
+    expect(healed[0].target).toBe('c1');
+  });
+
+  // Gruppe 5 (Issue 9) ── Busbar-Fallbacks ──────────────────────────────────
+  it('nutzt eine eindeutig als Minus erkennbare Busbar als Minus-Schiene', () => {
+    const nodes = [n('b1', 'battery', { label: 'Aufbau' }), n('bb', 'busbar', { label: 'Minus-Schiene' })];
+    const res = performAutoWiring(nodes)!;
+    expect(res.nodes.find((nd) => nd.id === 'bb')?.data?.role).toBe('negative');
+    const plus = res.nodes.find((nd) => nd.type === 'busbar' && nd.data?.role === 'positive');
+    expect(plus).toBeDefined();
+    expect(plus!.id).not.toBe('bb');
+    expect(res.edges.some((x) => x.source === x.target)).toBe(false);
+  });
+
+  it('verteidigt sich gegen zwei Busbars mit Plus-Beschriftung', () => {
+    const nodes = [
+      n('b1', 'battery', { label: 'Aufbau' }),
+      n('bb1', 'busbar', { label: 'Plus-Schiene' }),
+      n('bb2', 'busbar', { label: 'Plus' }),
+    ];
+    const res = performAutoWiring(nodes)!;
+    const roles = res.nodes.filter((nd) => nd.type === 'busbar').map((nd) => nd.data?.role);
+    expect(new Set(roles)).toEqual(new Set(['positive', 'negative']));
+    expect(res.edges.some((x) => x.source === x.target)).toBe(false);
+  });
+
+  // Gruppe 6 (Issue 9) ── mehrere Solarmodule ohne MPPT ─────────────────────
+  it('erzeugt genau einen MPPT für mehrere Solarmodule und hängt alle an ihn', () => {
+    const nodes = [
+      n('b1', 'battery', { label: 'Aufbau' }),
+      n('s1', 'solar', { watts: 200 }),
+      n('s2', 'solar', { watts: 200 }),
+      n('s3', 'solar', { watts: 200 }),
+    ];
+    const res = performAutoWiring(nodes)!;
+    const mppts = res.nodes.filter((nd) => nd.type === 'mpptController');
+    expect(mppts).toHaveLength(1);
+    for (const solar of ['s1', 's2', 's3']) {
+      expect(
+        res.edges.some(
+          (x) => x.source === solar && x.target === mppts[0].id && x.data?.edgeDomain === 'Solar'
+        )
+      ).toBe(true);
+    }
+  });
+
+  // Gruppe 7 (Issue 7) ── Ground-Bonds ───────────────────────────────────────
+  it('ergänzt keine Doppel-Masse, wenn der Schienen-Bond schon existiert', () => {
+    const first = performAutoWiring([n('b1', 'battery', { label: 'Aufbau' }), n('g1', 'ground', {})])!;
+    const minusRail = first.nodes.find((nd) => nd.type === 'busbar' && nd.data?.role === 'negative')!;
+    const bond = e({
+      id: 'bond',
+      source: minusRail.id,
+      target: 'g1',
+      sourceHandle: 'minus',
+      targetHandle: 'minus',
+      data: { length: 1 },
+    });
+    const second = performAutoWiring(first.nodes, [bond] as never)!;
+    const bonds = second.edges.filter(
+      (x) =>
+        (x.source === minusRail.id && x.target === 'g1') || (x.source === 'g1' && x.target === minusRail.id)
+    );
+    expect(bonds).toHaveLength(1);
+  });
+
+  it('erzwingt 16 mm² auch auf Bond-Kanten ohne Handle-Markierung (Issue 7)', () => {
+    const first = performAutoWiring([n('b1', 'battery', { label: 'Aufbau' }), n('g1', 'ground', {})])!;
+    const minusRail = first.nodes.find((nd) => nd.type === 'busbar' && nd.data?.role === 'negative')!;
+    const autoBond = first.edges.find((x) => x.source === minusRail.id && x.target === 'g1')!;
+    expect(autoBond.data?.crossSection).toBe(16);
+    const second = performAutoWiring(first.nodes, [
+      {
+        ...autoBond,
+        id: 'imp',
+        sourceHandle: null,
+        targetHandle: null,
+        data: { length: 1, crossSection: 1.5 },
+      },
+    ] as never)!;
+    const imp = second.edges.find((x) => x.source === minusRail.id && x.target === 'g1')!;
+    expect(imp.id).toBe('imp');
+    expect(imp.data?.crossSection).toBe(16);
+    expect(second.edges.filter((x) => x.source === minusRail.id && x.target === 'g1')).toHaveLength(1);
+  });
+
+  // Gruppe 8 (Issue 9) ── Konvergenz der Dimensionierung ────────────────────
+  it('zweiter sizeDcEdges-Durchlauf verändert nichts mehr (Konvergenz)', () => {
+    const nodes = [
+      n('b', 'battery', { label: 'Aufbau', nominalVoltage: 12.8 }),
+      n('c1', 'consumer', { watts: 300 }),
+      n('c2', 'consumer', { watts: 400 }),
+    ];
+    const res = performAutoWiring(nodes)!;
+    const sig = (list: Edge<CableEdgeData>[]) =>
+      list.map((x) => `${x.id}:${x.data?.crossSection ?? '-'}:${x.data?.dropWarning ? 'W' : '-'}`).join('|');
+    const dc = res.edges.filter((x) => x.data?.edgeDomain !== 'AC_230V');
+    const before = sig(dc);
+    sizeDcEdges(dc, res.nodes, res.edges, volts(12.8));
+    expect(sig(dc)).toBe(before);
   });
 });

@@ -1,14 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardAction,
-  CardContent,
-  CardFooter,
-} from './card';
+import { Card, CardHeader, CardTitle, CardDescription, CardAction, CardContent, CardFooter } from './card';
 
 describe('Card Component Suite', () => {
   describe('Card', () => {
@@ -23,13 +15,21 @@ describe('Card Component Suite', () => {
     });
 
     it('applies custom size prop', () => {
-      render(<Card data-testid="card-sm" size="sm">Small Card</Card>);
+      render(
+        <Card data-testid="card-sm" size="sm">
+          Small Card
+        </Card>
+      );
       const card = screen.getByTestId('card-sm');
       expect(card).toHaveAttribute('data-size', 'sm');
     });
 
     it('merges custom className properly', () => {
-      render(<Card data-testid="card" className="custom-card-class">Content</Card>);
+      render(
+        <Card data-testid="card" className="custom-card-class">
+          Content
+        </Card>
+      );
       const card = screen.getByTestId('card');
       expect(card).toHaveClass('custom-card-class');
       expect(card).toHaveClass('bg-card');
@@ -38,7 +38,11 @@ describe('Card Component Suite', () => {
 
   describe('CardHeader', () => {
     it('renders with data-slot and custom className', () => {
-      render(<CardHeader data-testid="header" className="custom-header">Header Content</CardHeader>);
+      render(
+        <CardHeader data-testid="header" className="custom-header">
+          Header Content
+        </CardHeader>
+      );
       const header = screen.getByTestId('header');
       expect(header).toBeInTheDocument();
       expect(header).toHaveAttribute('data-slot', 'card-header');
@@ -49,7 +53,11 @@ describe('Card Component Suite', () => {
 
   describe('CardTitle', () => {
     it('renders title element with proper styling classes and attributes', () => {
-      render(<CardTitle data-testid="title" className="custom-title">Card Title</CardTitle>);
+      render(
+        <CardTitle data-testid="title" className="custom-title">
+          Card Title
+        </CardTitle>
+      );
       const title = screen.getByTestId('title');
       expect(title).toBeInTheDocument();
       expect(title).toHaveAttribute('data-slot', 'card-title');
@@ -60,7 +68,11 @@ describe('Card Component Suite', () => {
 
   describe('CardDescription', () => {
     it('renders description with text-muted-foreground class', () => {
-      render(<CardDescription data-testid="desc" className="custom-desc">Description text</CardDescription>);
+      render(
+        <CardDescription data-testid="desc" className="custom-desc">
+          Description text
+        </CardDescription>
+      );
       const desc = screen.getByTestId('desc');
       expect(desc).toBeInTheDocument();
       expect(desc).toHaveAttribute('data-slot', 'card-description');
@@ -71,7 +83,11 @@ describe('Card Component Suite', () => {
 
   describe('CardAction', () => {
     it('renders card action container', () => {
-      render(<CardAction data-testid="action" className="custom-action">Action Button</CardAction>);
+      render(
+        <CardAction data-testid="action" className="custom-action">
+          Action Button
+        </CardAction>
+      );
       const action = screen.getByTestId('action');
       expect(action).toBeInTheDocument();
       expect(action).toHaveAttribute('data-slot', 'card-action');
@@ -82,7 +98,11 @@ describe('Card Component Suite', () => {
 
   describe('CardContent', () => {
     it('renders content container correctly', () => {
-      render(<CardContent data-testid="content" className="custom-content">Body content</CardContent>);
+      render(
+        <CardContent data-testid="content" className="custom-content">
+          Body content
+        </CardContent>
+      );
       const content = screen.getByTestId('content');
       expect(content).toBeInTheDocument();
       expect(content).toHaveAttribute('data-slot', 'card-content');
@@ -93,7 +113,11 @@ describe('Card Component Suite', () => {
 
   describe('CardFooter', () => {
     it('renders footer container with default styling and data-slot', () => {
-      render(<CardFooter data-testid="footer" className="custom-footer">Footer Content</CardFooter>);
+      render(
+        <CardFooter data-testid="footer" className="custom-footer">
+          Footer Content
+        </CardFooter>
+      );
       const footer = screen.getByTestId('footer');
       expect(footer).toBeInTheDocument();
       expect(footer).toHaveAttribute('data-slot', 'card-footer');
@@ -109,7 +133,9 @@ describe('Card Component Suite', () => {
           <CardHeader>
             <CardTitle>Title</CardTitle>
             <CardDescription>Subtext</CardDescription>
-            <CardAction><button>Action</button></CardAction>
+            <CardAction>
+              <button>Action</button>
+            </CardAction>
           </CardHeader>
           <CardContent>
             <p>Main details go here</p>

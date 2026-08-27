@@ -69,8 +69,7 @@ export type LabelEdgeRef = {
 };
 
 const sharePair = (a: LabelEdgeRef, b: LabelEdgeRef): boolean =>
-  (a.source === b.source && a.target === b.target) ||
-  (a.source === b.target && a.target === b.source);
+  (a.source === b.source && a.target === b.target) || (a.source === b.target && a.target === b.source);
 
 /**
  * Kabeltyp einer Leitung, abgeleitet aus dem Quell-Anschluss.
@@ -113,7 +112,10 @@ export const parallelLaneOffset = (input: {
     .filter((edge) => sharePair(edge, { id: input.edgeId, source: input.source, target: input.target }))
     .sort((a, b) => cableTypeRank(a) - cableTypeRank(b) || a.id.localeCompare(b.id));
   if (group.length <= 1) return 0;
-  const idx = Math.max(0, group.findIndex((edge) => edge.id === input.edgeId));
+  const idx = Math.max(
+    0,
+    group.findIndex((edge) => edge.id === input.edgeId)
+  );
   return (idx - (group.length - 1) / 2) * PARALLEL_LANE_SPREAD;
 };
 
@@ -145,14 +147,16 @@ export const edgeLabelNudge = (input: {
   if (group.length <= 1) return 0;
   const sameHandleGroup = group.filter((edge) => (edge.sourceHandle ?? null) === inputHandle);
   if (sameHandleGroup.length <= 1) return 0;
-  const idx = Math.max(0, sameHandleGroup.findIndex((edge) => edge.id === input.edgeId));
+  const idx = Math.max(
+    0,
+    sameHandleGroup.findIndex((edge) => edge.id === input.edgeId)
+  );
   return (idx - (sameHandleGroup.length - 1) / 2) * PARALLEL_LABEL_SPREAD;
 };
 
 const fmt = (n: number): string => (Math.round(n * 100) / 100).toString();
 
-export const distance = (a: Point, b: Point): number =>
-  Math.abs(b.x - a.x) + Math.abs(b.y - a.y);
+export const distance = (a: Point, b: Point): number => Math.abs(b.x - a.x) + Math.abs(b.y - a.y);
 
 const euclid = (a: Point, b: Point): number => Math.hypot(b.x - a.x, b.y - a.y);
 

@@ -1,14 +1,15 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import FuseNode from './FuseNode';
+import { asDivProps, type MockHandleProps } from '../../test-helpers/reactflowMocks';
 
 // Mock reactflow Handle since it might need a context provider
 vi.mock('reactflow', async () => {
   const actual = await vi.importActual('reactflow');
   return {
     ...actual,
-    Handle: ({ 'data-testid': testId, isConnectable, ...props }: any) => (
-      <div data-testid={testId || 'react-flow-handle'} {...props} />
+    Handle: ({ 'data-testid': testId, isConnectable, ...props }: MockHandleProps) => (
+      <div data-testid={testId || 'react-flow-handle'} {...asDivProps(props)} />
     ),
     Position: {
       Left: 'left',
@@ -60,19 +61,27 @@ describe('FuseNode Component', () => {
     const handles = screen.getAllByTestId('react-flow-handle');
     expect(handles).toHaveLength(4);
 
-    const targetPlus = handles.find(h => h.getAttribute('type') === 'target' && h.getAttribute('id') === 'plus');
+    const targetPlus = handles.find(
+      (h) => h.getAttribute('type') === 'target' && h.getAttribute('id') === 'plus'
+    );
     expect(targetPlus).toBeInTheDocument();
     expect(targetPlus).toHaveAttribute('position', 'left');
 
-    const targetMinus = handles.find(h => h.getAttribute('type') === 'target' && h.getAttribute('id') === 'minus');
+    const targetMinus = handles.find(
+      (h) => h.getAttribute('type') === 'target' && h.getAttribute('id') === 'minus'
+    );
     expect(targetMinus).toBeInTheDocument();
     expect(targetMinus).toHaveAttribute('position', 'left');
 
-    const sourcePlus = handles.find(h => h.getAttribute('type') === 'source' && h.getAttribute('id') === 'plus');
+    const sourcePlus = handles.find(
+      (h) => h.getAttribute('type') === 'source' && h.getAttribute('id') === 'plus'
+    );
     expect(sourcePlus).toBeInTheDocument();
     expect(sourcePlus).toHaveAttribute('position', 'right');
 
-    const sourceMinus = handles.find(h => h.getAttribute('type') === 'source' && h.getAttribute('id') === 'minus');
+    const sourceMinus = handles.find(
+      (h) => h.getAttribute('type') === 'source' && h.getAttribute('id') === 'minus'
+    );
     expect(sourceMinus).toBeInTheDocument();
     expect(sourceMinus).toHaveAttribute('position', 'right');
   });

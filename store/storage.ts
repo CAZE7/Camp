@@ -18,10 +18,7 @@ type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
  * nie. Es wird pro Storage-Key nur der jeweils letzte ausstehende Wert
  * gehalten, sodass kein Zwischenzustand durchsickert.
  */
-export function createDebouncedStorage(
-  getStorage: () => StorageLike,
-  delayMs = 200
-): StateStorage {
+export function createDebouncedStorage(getStorage: () => StorageLike, delayMs = 200): StateStorage {
   const pending = new Map<string, string>();
   let timer: ReturnType<typeof setTimeout> | null = null;
 

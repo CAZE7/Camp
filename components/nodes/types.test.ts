@@ -11,7 +11,7 @@ import type {
   AcBatteryChargerNodeData,
   BusbarNodeData,
   PlannerNodeData,
-  OnNodeResize
+  OnNodeResize,
 } from './types';
 import type { ResizeDragEvent } from 'reactflow';
 import type React from 'react';
@@ -23,7 +23,7 @@ describe('components/nodes/types', () => {
       watts?: number;
       concurrentDevices?: string[];
       continuousPower?: number;
-      [key: string]: any;
+      [key: string]: unknown;
     };
     expectTypeOf<CommonNodeData>().toMatchTypeOf<ExpectedCommonNodeData>();
     expectTypeOf<ExpectedCommonNodeData>().toMatchTypeOf<CommonNodeData>();

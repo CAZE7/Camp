@@ -8,6 +8,7 @@ import '@fontsource/source-sans-3/600.css';
 import '@fontsource/ibm-plex-mono/400.css';
 import '@fontsource/ibm-plex-mono/500.css';
 import '@fontsource-variable/outfit';
+import '@fontsource-variable/inter';
 import type { Metadata, Viewport } from 'next';
 
 export const metadata: Metadata = {
@@ -27,11 +28,7 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="de">
       <body className="min-h-screen font-sans">

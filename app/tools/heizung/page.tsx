@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import React, { useState, useMemo } from 'react';
 import { vehicleTemplates } from '@/lib/vehicleTemplates';
@@ -12,7 +12,7 @@ import { StepperSlider } from '@/components/ui/StepperSlider';
 import { SiteHeader } from '@/components/brand/SiteHeader';
 import { SiteFooter } from '@/components/brand/SiteFooter';
 import Link from 'next/link';
-import { cn } from "@/lib/utils";
+import { cn } from '@/lib/utils';
 import {
   AlertOctagon,
   AlertTriangle,
@@ -41,15 +41,73 @@ export interface HeaterModel {
 }
 
 export const HEATER_CATALOG: HeaterModel[] = [
-  { id: 'autoterm-2d', name: 'Autoterm Air 2D (Diesel)', type: 'Diesel', minPower: 800, maxPower: 2000, description: 'Der bewährte Klassiker für kompakte bis mittlere Vans. Zuverlässig und sehr sparsam.' },
-  { id: 'autoterm-4d', name: 'Autoterm Air 4D (Diesel)', type: 'Diesel', minPower: 1000, maxPower: 4000, description: 'Leistungsstarke Heizung für große Transporter und LKW. Neigt bei Unterforderung zum Verrußen.' },
-  { id: 'truma-combi-4', name: 'Truma Combi 4 (Gas)', type: 'Gas', minPower: 2000, maxPower: 4000, description: 'Kombinierte Gasheizung mit integriertem Warmwasserboiler.' },
-  { id: 'truma-combi-6', name: 'Truma Combi 6 (Gas)', type: 'Gas', minPower: 2000, maxPower: 6000, description: 'Maximale Gasleistung für größte Liner und extreme Winterbedingungen.' },
-  { id: 'china-2kw', name: 'Standard 2kW Air Heater', type: 'Diesel', minPower: 900, maxPower: 2000, description: 'Preisgünstiger 2 kW-Standardheizer.' },
-  { id: 'china-5kw', name: 'Standard 5kW Air Heater', type: 'Diesel', minPower: 1500, maxPower: 5000, description: 'Sehr hohe Leistung, benötigt viel Raumvolumen, um Tot-Taktung zu vermeiden.' },
+  {
+    id: 'autoterm-2d',
+    name: 'Autoterm Air 2D (Diesel)',
+    type: 'Diesel',
+    minPower: 800,
+    maxPower: 2000,
+    description: 'Der bewährte Klassiker für kompakte bis mittlere Vans. Zuverlässig und sehr sparsam.',
+  },
+  {
+    id: 'autoterm-4d',
+    name: 'Autoterm Air 4D (Diesel)',
+    type: 'Diesel',
+    minPower: 1000,
+    maxPower: 4000,
+    description:
+      'Leistungsstarke Heizung für große Transporter und LKW. Neigt bei Unterforderung zum Verrußen.',
+  },
+  {
+    id: 'truma-combi-4',
+    name: 'Truma Combi 4 (Gas)',
+    type: 'Gas',
+    minPower: 2000,
+    maxPower: 4000,
+    description: 'Kombinierte Gasheizung mit integriertem Warmwasserboiler.',
+  },
+  {
+    id: 'truma-combi-6',
+    name: 'Truma Combi 6 (Gas)',
+    type: 'Gas',
+    minPower: 2000,
+    maxPower: 6000,
+    description: 'Maximale Gasleistung für größte Liner und extreme Winterbedingungen.',
+  },
+  {
+    id: 'china-2kw',
+    name: 'Standard 2kW Air Heater',
+    type: 'Diesel',
+    minPower: 900,
+    maxPower: 2000,
+    description: 'Preisgünstiger 2 kW-Standardheizer.',
+  },
+  {
+    id: 'china-5kw',
+    name: 'Standard 5kW Air Heater',
+    type: 'Diesel',
+    minPower: 1500,
+    maxPower: 5000,
+    description: 'Sehr hohe Leistung, benötigt viel Raumvolumen, um Tot-Taktung zu vermeiden.',
+  },
 ];
 
 // --- Extracted Calculation Logic (unverändert – keine Logik-Änderung erlaubt) ---
+// M6-4: Fehler sind Teil des Returns (discriminated Result), nichtexceptions.
+// Ein stiller `catch → 0`-Pfad kann nicht mehr entstehen.
+export type Thermodynamics = {
+  area: number;
+  volume: number;
+  airChangeRate: number;
+  U_mix: number;
+  deltaT: number;
+  Q_trans: number;
+  Q_luft: number;
+  Q_total: number;
+};
+export type ThermodynamicsResult =
+  ({ ok: true } & Thermodynamics) | { ok: false; reason: 'invalid-vehicle-dimensions' };
+
 function calculateThermodynamics(params: {
   selectedVehicle: { length: number | string; width: number | string; height: number | string };
   insulationThickness: number;
@@ -58,7 +116,7 @@ function calculateThermodynamics(params: {
   windowArea: number;
   insulationCoverage: number;
   quickHeat: boolean;
-}) {
+}): ThermodynamicsResult {
   const {
     selectedVehicle,
     insulationThickness,
@@ -66,7 +124,7 @@ function calculateThermodynamics(params: {
     tempOutside,
     windowArea,
     insulationCoverage,
-    quickHeat
+    quickHeat,
   } = params;
 
   const { length, width, height } = selectedVehicle;
@@ -75,10 +133,10 @@ function calculateThermodynamics(params: {
   const h = Number(height) || 0;
 
   const volume = l * w * h;
-  const calcArea = (l > 0 && w > 0 && h > 0) ? 2 * (l * h + w * h + l * w) : 0;
+  const calcArea = l > 0 && w > 0 && h > 0 ? 2 * (l * h + w * h + l * w) : 0;
 
   if (volume <= 0 || calcArea <= 0) {
-    throw new Error("Ungültige Fahrzeugmaße");
+    return { ok: false, reason: 'invalid-vehicle-dimensions' };
   }
 
   const A_fenster = Math.max(0, Math.min(Number(windowArea) || 0, calcArea));
@@ -86,7 +144,7 @@ function calculateThermodynamics(params: {
 
   const A_remaining = Math.max(0, calcArea - A_fenster);
   const A_isoliert = A_remaining * (coverage / 100);
-  const A_blank = A_remaining * (1 - (coverage / 100));
+  const A_blank = A_remaining * (1 - coverage / 100);
 
   const U_fenster = 3.0;
   const U_blank = 5.88;
@@ -104,7 +162,7 @@ function calculateThermodynamics(params: {
   const R_total = R_base + R_insulation;
   const U_isoliert = 1 / R_total;
 
-  const calcU_mix = ((U_fenster * A_fenster) + (U_isoliert * A_isoliert) + (U_blank * A_blank)) / calcArea;
+  const calcU_mix = (U_fenster * A_fenster + U_isoliert * A_isoliert + U_blank * A_blank) / calcArea;
   const calcDeltaT = tempInside - tempOutside;
 
   const Q_trans = (U_fenster * A_fenster + U_isoliert * A_isoliert + U_blank * A_blank) * calcDeltaT;
@@ -114,12 +172,13 @@ function calculateThermodynamics(params: {
   const Q_luft = 0.34 * volume * airChangeRate * calcDeltaT;
   const calcQ_luft = Math.max(0, Q_luft);
 
-  const buffer = quickHeat ? 1.30 : 1.0;
+  const buffer = quickHeat ? 1.3 : 1.0;
   const calcQ_total = isNaN(calcQ_trans + calcQ_luft) ? 0 : (calcQ_trans + calcQ_luft) * buffer;
 
   const finalQ_total = calcQ_total <= 0 ? 1 : calcQ_total;
 
   return {
+    ok: true,
     area: calcArea,
     volume,
     airChangeRate,
@@ -127,7 +186,7 @@ function calculateThermodynamics(params: {
     deltaT: calcDeltaT,
     Q_trans: calcQ_trans,
     Q_luft: calcQ_luft,
-    Q_total: finalQ_total
+    Q_total: finalQ_total,
   };
 }
 
@@ -157,7 +216,9 @@ function SectionAnchor({ id, label, icon }: { id: string; label: string; icon: R
       href={`#${id}`}
       className="flex min-h-11 items-center gap-2 border border-rule bg-bone px-3 py-2 text-xs font-medium text-ink hover:bg-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink"
     >
-      <span aria-hidden="true" className="text-copper">{icon}</span>
+      <span aria-hidden="true" className="text-copper">
+        {icon}
+      </span>
       {label}
     </a>
   );
@@ -167,13 +228,16 @@ function SectionAnchor({ id, label, icon }: { id: string; label: string; icon: R
 
 function VehicleConfiguration({
   selectedVehicleId,
-  setSelectedVehicleId
+  setSelectedVehicleId,
 }: {
   selectedVehicleId: string;
   setSelectedVehicleId: (id: string) => void;
 }) {
   return (
-    <Card className="scroll-mt-24 rounded-none border border-rule bg-bone shadow-none ring-0" id="section-fahrzeug">
+    <Card
+      className="scroll-mt-24 rounded-none border border-rule bg-bone shadow-none ring-0"
+      id="section-fahrzeug"
+    >
       <CardHeader>
         <CardTitle className="flex items-center gap-2 label-eyebrow text-ink-soft">
           <Home className="h-4 w-4" aria-hidden="true" />
@@ -184,16 +248,20 @@ function VehicleConfiguration({
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <Label htmlFor="vehicle" className="sr-only">Fahrzeug</Label>
+        <Label htmlFor="vehicle" className="sr-only">
+          Fahrzeug
+        </Label>
         <Select value={selectedVehicleId} onValueChange={(val) => val && setSelectedVehicleId(val)}>
           <SelectTrigger id="vehicle" className="h-12 border-rule bg-bone text-base font-medium">
             <SelectValue placeholder="Wähle dein Fahrzeug" />
           </SelectTrigger>
           <SelectContent className="border-rule">
-            {vehicleTemplates.map(v => (
+            {vehicleTemplates.map((v) => (
               <SelectItem key={v.id} value={v.id} className="cursor-pointer py-3 px-4 focus:bg-paper">
                 <div className="flex flex-col">
-                  <span className="font-medium text-ink">{v.brand} {v.model}</span>
+                  <span className="font-medium text-ink">
+                    {v.brand} {v.model}
+                  </span>
                   <span className="text-xs text-ink-soft">{v.version}</span>
                 </div>
               </SelectItem>
@@ -214,9 +282,12 @@ function HeaterSelection({
   setSelectedHeaterId: (id: string) => void;
   recommendedHeaterId: string | null;
 }) {
-  const selected = HEATER_CATALOG.find(h => h.id === selectedHeaterId);
+  const selected = HEATER_CATALOG.find((h) => h.id === selectedHeaterId);
   return (
-    <Card className="scroll-mt-24 rounded-none border border-rule bg-bone shadow-none ring-0" id="section-heizgeraet">
+    <Card
+      className="scroll-mt-24 rounded-none border border-rule bg-bone shadow-none ring-0"
+      id="section-heizgeraet"
+    >
       <CardHeader>
         <CardTitle className="flex items-center gap-2 label-eyebrow text-ink-soft">
           <Flame className="h-4 w-4" aria-hidden="true" />
@@ -224,20 +295,28 @@ function HeaterSelection({
         </CardTitle>
         <CardDescription className="text-sm text-ink-soft">
           {recommendedHeaterId ? (
-            <>Empfohlen für dein Setup: <strong className="text-oxide">{HEATER_CATALOG.find(h => h.id === recommendedHeaterId)?.name}</strong>.</>
+            <>
+              Empfohlen für dein Setup:{' '}
+              <strong className="text-oxide">
+                {HEATER_CATALOG.find((h) => h.id === recommendedHeaterId)?.name}
+              </strong>
+              .
+            </>
           ) : (
             <>Wähle ein Modell — die Empfehlung erscheint, sobald deine Eingaben vollständig sind.</>
           )}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Label htmlFor="heater" className="sr-only">Heizgerät</Label>
+        <Label htmlFor="heater" className="sr-only">
+          Heizgerät
+        </Label>
         <Select value={selectedHeaterId} onValueChange={(val) => val && setSelectedHeaterId(val)}>
           <SelectTrigger id="heater" className="h-12 border-rule bg-bone text-base font-medium">
             <SelectValue placeholder="Wähle dein Heizgerät" />
           </SelectTrigger>
           <SelectContent className="border-rule">
-            {HEATER_CATALOG.map(h => (
+            {HEATER_CATALOG.map((h) => (
               <SelectItem key={h.id} value={h.id} className="cursor-pointer py-3 px-4 focus:bg-paper">
                 <div className="flex flex-col">
                   <span className="font-medium text-ink">
@@ -258,9 +337,7 @@ function HeaterSelection({
         </Select>
 
         {selected && (
-          <div className="border border-rule bg-paper p-3 text-sm text-ink-soft">
-            {selected.description}
-          </div>
+          <div className="border border-rule bg-paper p-3 text-sm text-ink-soft">{selected.description}</div>
         )}
 
         {recommendedHeaterId && recommendedHeaterId !== selectedHeaterId && (
@@ -271,7 +348,7 @@ function HeaterSelection({
             className="w-full gap-2 border-oxide/40 text-oxide hover:bg-paper"
           >
             <Sparkles className="h-4 w-4" aria-hidden="true" />
-            Empfehlung übernehmen: {HEATER_CATALOG.find(h => h.id === recommendedHeaterId)?.name}
+            Empfehlung übernehmen: {HEATER_CATALOG.find((h) => h.id === recommendedHeaterId)?.name}
           </Button>
         )}
       </CardContent>
@@ -283,7 +360,7 @@ function TemperatureInputs({
   tempInside,
   setTempInside,
   tempOutside,
-  setTempOutside
+  setTempOutside,
 }: {
   tempInside: number;
   setTempInside: (val: number) => void;
@@ -298,11 +375,15 @@ function TemperatureInputs({
             <Thermometer className="h-4 w-4 text-copper" aria-hidden="true" />
             Wunsch-Temperatur
           </CardTitle>
-          <CardDescription className="text-sm text-ink-soft">Gemütliche Innenraum-Temperatur.</CardDescription>
+          <CardDescription className="text-sm text-ink-soft">
+            Gemütliche Innenraum-Temperatur.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between gap-3">
-            <Label htmlFor="temp-inside" className="text-sm font-medium text-ink">Temperatur</Label>
+            <Label htmlFor="temp-inside" className="text-sm font-medium text-ink">
+              Temperatur
+            </Label>
             <div className="relative">
               <Input
                 id="temp-inside"
@@ -314,7 +395,12 @@ function TemperatureInputs({
                 className="h-11 w-24 border-rule bg-paper pr-9 text-center text-lg font-semibold text-ink"
                 aria-describedby="temp-inside-unit"
               />
-              <span id="temp-inside-unit" className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-sm font-semibold text-ink-soft">°C</span>
+              <span
+                id="temp-inside-unit"
+                className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-sm font-semibold text-ink-soft"
+              >
+                °C
+              </span>
             </div>
           </div>
           <StepperSlider
@@ -335,11 +421,15 @@ function TemperatureInputs({
             <Snowflake className="h-4 w-4 text-warn-info" aria-hidden="true" />
             Außen-Temperatur
           </CardTitle>
-          <CardDescription className="text-sm text-ink-soft">Extremwert für den Auslegungsfall.</CardDescription>
+          <CardDescription className="text-sm text-ink-soft">
+            Extremwert für den Auslegungsfall.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between gap-3">
-            <Label htmlFor="temp-outside" className="text-sm font-medium text-ink">Temperatur</Label>
+            <Label htmlFor="temp-outside" className="text-sm font-medium text-ink">
+              Temperatur
+            </Label>
             <div className="relative">
               <Input
                 id="temp-outside"
@@ -351,7 +441,12 @@ function TemperatureInputs({
                 className="h-11 w-24 border-rule bg-paper pr-9 text-center text-lg font-semibold text-ink"
                 aria-describedby="temp-outside-unit"
               />
-              <span id="temp-outside-unit" className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-sm font-semibold text-ink-soft">°C</span>
+              <span
+                id="temp-outside-unit"
+                className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-sm font-semibold text-ink-soft"
+              >
+                °C
+              </span>
             </div>
           </div>
           <StepperSlider
@@ -371,13 +466,16 @@ function TemperatureInputs({
 
 function InsulationInputs({
   insulationThickness,
-  setInsulationThickness
+  setInsulationThickness,
 }: {
   insulationThickness: number;
   setInsulationThickness: (val: number) => void;
 }) {
   return (
-    <Card className="scroll-mt-24 rounded-none border border-rule bg-bone shadow-none ring-0" id="section-daemmung">
+    <Card
+      className="scroll-mt-24 rounded-none border border-rule bg-bone shadow-none ring-0"
+      id="section-daemmung"
+    >
       <CardHeader>
         <CardTitle className="flex items-center gap-2 label-eyebrow text-ink-soft">
           <Ruler className="h-4 w-4" aria-hidden="true" />
@@ -394,12 +492,12 @@ function InsulationInputs({
             return (
               <Button
                 key={val}
-                variant={active ? "default" : "outline"}
+                variant={active ? 'default' : 'outline'}
                 onClick={() => setInsulationThickness(val)}
                 aria-pressed={active}
                 className={cn(
-                  "flex h-14 flex-col items-center justify-center gap-0.5 border-rule",
-                  active && "bg-ink text-paper hover:bg-soot"
+                  'flex h-14 flex-col items-center justify-center gap-0.5 border-rule',
+                  active && 'bg-ink text-paper hover:bg-soot'
                 )}
               >
                 <span className="text-lg font-semibold leading-none">{val}</span>
@@ -421,7 +519,7 @@ function AdvancedParameters({
   quickHeat,
   setQuickHeat,
   tempOutside,
-  tempInside
+  tempInside,
 }: {
   windowArea: number;
   setWindowArea: (val: number) => void;
@@ -433,22 +531,30 @@ function AdvancedParameters({
   tempInside: number;
 }) {
   return (
-    <Card className="scroll-mt-24 rounded-none border border-rule bg-bone shadow-none ring-0" id="section-erweitert">
+    <Card
+      className="scroll-mt-24 rounded-none border border-rule bg-bone shadow-none ring-0"
+      id="section-erweitert"
+    >
       <CardHeader>
         <CardTitle className="flex items-center gap-2 label-eyebrow text-ink-soft">
           <Wind className="h-4 w-4" aria-hidden="true" />
           Erweiterte Parameter
         </CardTitle>
-        <CardDescription className="text-sm text-ink-soft">Feinjustierung — die Voreinstellungen liefern realistische Werte.</CardDescription>
+        <CardDescription className="text-sm text-ink-soft">
+          Feinjustierung — die Voreinstellungen liefern realistische Werte.
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-8">
         {/* Fensterfläche */}
         <div className="space-y-4">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-              <Label htmlFor="window-area" className="text-sm font-medium text-ink">Fensterfläche</Label>
+              <Label htmlFor="window-area" className="text-sm font-medium text-ink">
+                Fensterfläche
+              </Label>
               <InfoHint title="Fensterfläche">
-                Summe aller verglasten Flächen. Faustregel: kleines Heckfenster ≈ 0,3 m², große Seitenscheibe ≈ 0,8 m².
+                Summe aller verglasten Flächen. Faustregel: kleines Heckfenster ≈ 0,3 m², große Seitenscheibe
+                ≈ 0,8 m².
               </InfoHint>
             </div>
             <div className="relative">
@@ -463,7 +569,12 @@ function AdvancedParameters({
                 className="h-11 w-24 border-rule bg-paper pr-9 text-center text-lg font-semibold text-ink"
                 aria-describedby="window-area-unit"
               />
-              <span id="window-area-unit" className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-sm font-semibold text-ink-soft">m²</span>
+              <span
+                id="window-area-unit"
+                className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-sm font-semibold text-ink-soft"
+              >
+                m²
+              </span>
             </div>
           </div>
           <StepperSlider
@@ -482,9 +593,12 @@ function AdvancedParameters({
           <div className="flex items-center justify-between gap-3">
             <div className="flex-1">
               <div className="flex items-center gap-2">
-                <Label htmlFor="insulation-coverage" className="text-sm font-medium text-ink">Abdeckungsgrad der Dämmung</Label>
+                <Label htmlFor="insulation-coverage" className="text-sm font-medium text-ink">
+                  Abdeckungsgrad der Dämmung
+                </Label>
                 <InfoHint title="Abdeckungsgrad">
-                  Wie viel Prozent der Innenwand tatsächlich mit Armaflex belegt sind. 100 % schafft niemand — Holme, Türrahmen und Fensterausschnitte fressen 10–15 %.
+                  Wie viel Prozent der Innenwand tatsächlich mit Armaflex belegt sind. 100 % schafft niemand —
+                  Holme, Türrahmen und Fensterausschnitte fressen 10–15 %.
                 </InfoHint>
               </div>
               <p className="caption-xs mt-1 text-ink-soft">Realistisch: 80–90 %.</p>
@@ -500,7 +614,12 @@ function AdvancedParameters({
                 className="h-11 w-24 border-rule bg-paper pr-9 text-center text-lg font-semibold text-ink"
                 aria-describedby="insulation-coverage-unit"
               />
-              <span id="insulation-coverage-unit" className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-sm font-semibold text-ink-soft">%</span>
+              <span
+                id="insulation-coverage-unit"
+                className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-sm font-semibold text-ink-soft"
+              >
+                %
+              </span>
             </div>
           </div>
           <StepperSlider
@@ -517,8 +636,13 @@ function AdvancedParameters({
         {/* Aufheizzuschlag */}
         <div className="flex items-start justify-between gap-4 border-t border-rule pt-4">
           <div className="flex-1">
-            <Label htmlFor="quick-heat" className="text-sm font-semibold text-ink">Aufheizzuschlag (schnelles Warmwerden)</Label>
-            <p className="caption-xs mt-1 text-ink-soft">Gibt extra Power, damit der Van nicht Stunden braucht, um von {tempOutside}°C auf {tempInside}°C zu kommen (+30 % Reserve).</p>
+            <Label htmlFor="quick-heat" className="text-sm font-semibold text-ink">
+              Aufheizzuschlag (schnelles Warmwerden)
+            </Label>
+            <p className="caption-xs mt-1 text-ink-soft">
+              Gibt extra Power, damit der Van nicht Stunden braucht, um von {tempOutside}°C auf {tempInside}°C
+              zu kommen (+30 % Reserve).
+            </p>
           </div>
           <Switch
             id="quick-heat"
@@ -559,7 +683,10 @@ function Metric({
   );
 }
 
-function ValidationCard({ validation, recommendedName }: {
+function ValidationCard({
+  validation,
+  recommendedName,
+}: {
   validation: { status: string; message: string };
   recommendedName: string | null;
 }) {
@@ -568,12 +695,8 @@ function ValidationCard({ validation, recommendedName }: {
       <div className="warn-card warn-card-critical" role="alert">
         <AlertOctagon className="mt-0.5 h-6 w-6 shrink-0" aria-hidden="true" />
         <div>
-          <p className="text-base font-semibold">
-            Fehler: Heizung zu schwach (unterdimensioniert)
-          </p>
-          <p className="mt-1 text-sm leading-relaxed">
-            {validation.message}
-          </p>
+          <p className="text-base font-semibold">Fehler: Heizung zu schwach (unterdimensioniert)</p>
+          <p className="mt-1 text-sm leading-relaxed">{validation.message}</p>
           {recommendedName && (
             <p className="mt-2 text-sm">
               <strong>Lösung:</strong> Wähle {recommendedName} — deckt deine Last sicher ab.
@@ -588,12 +711,8 @@ function ValidationCard({ validation, recommendedName }: {
       <div className="warn-card warn-card-warning" role="alert">
         <AlertTriangle className="mt-0.5 h-6 w-6 shrink-0" aria-hidden="true" />
         <div>
-          <p className="text-base font-semibold">
-            Warnung: Verkokungsgefahr (überdimensioniert – Taktung)
-          </p>
-          <p className="mt-1 text-sm leading-relaxed">
-            {validation.message}
-          </p>
+          <p className="text-base font-semibold">Warnung: Verkokungsgefahr (überdimensioniert – Taktung)</p>
+          <p className="mt-1 text-sm leading-relaxed">{validation.message}</p>
           {recommendedName && (
             <p className="mt-2 text-sm">
               <strong>Lösung:</strong> Kleinere Heizung wie {recommendedName} moduliert sauberer.
@@ -622,7 +741,6 @@ function ResultsView({
   Q_trans,
   Q_luft,
   Q_total,
-  selectedHeater,
   validation,
   error,
   recommendedName,
@@ -654,9 +772,18 @@ function ResultsView({
             <div>
               <p className="text-base font-semibold">Ungültige Fahrzeugmaße</p>
               <p className="mt-1 text-sm leading-relaxed">
-                {error === "Ungültige Fahrzeugmaße"
-                  ? <>Das Fahrzeugvolumen und die Oberfläche müssen größer als 0 sein. Bitte korrigiere die Maße unter <a href="#section-fahrzeug" className="underline">Fahrzeug-Konfiguration</a>.</>
-                  : error}
+                {error === 'Ungültige Fahrzeugmaße' ? (
+                  <>
+                    Das Fahrzeugvolumen und die Oberfläche müssen größer als 0 sein. Bitte korrigiere die Maße
+                    unter{' '}
+                    <a href="#section-fahrzeug" className="underline">
+                      Fahrzeug-Konfiguration
+                    </a>
+                    .
+                  </>
+                ) : (
+                  error
+                )}
               </p>
             </div>
           </div>
@@ -683,7 +810,8 @@ function ResultsView({
                 unit="/h"
                 hint={
                   <InfoHint title="Luftwechselrate">
-                    Wie oft die komplette Innenluft pro Stunde ausgetauscht wird. 0,5 = dicht, 1,0 = viele Fenster/Ritzen.
+                    Wie oft die komplette Innenluft pro Stunde ausgetauscht wird. 0,5 = dicht, 1,0 = viele
+                    Fenster/Ritzen.
                   </InfoHint>
                 }
               />
@@ -694,7 +822,8 @@ function ResultsView({
                 unit="W/m²K"
                 hint={
                   <InfoHint title="U-Wert">
-                    Wie schnell Wärme durch die Wand verloren geht. 0,5 = sehr gut gedämmt, 2,0 = kaum gedämmt.
+                    Wie schnell Wärme durch die Wand verloren geht. 0,5 = sehr gut gedämmt, 2,0 = kaum
+                    gedämmt.
                   </InfoHint>
                 }
               />
@@ -749,9 +878,17 @@ function ResultsView({
             <div className="border border-rule bg-paper p-4">
               <p className="label-eyebrow text-ink-soft">Referenzwerte</p>
               <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-ink-soft">
-                <li><strong className="text-ink">≤ 2 200 W:</strong> Ideal für kompakte 2 kW-Standheizungen.</li>
-                <li><strong className="text-ink">2 200 – 4 500 W:</strong> Erfordert eine 4 kW-Heizung oder zusätzliche Isolierung.</li>
-                <li><strong className="text-ink">&gt; 4 500 W:</strong> Extrem hoher Bedarf. Überprüfe Wärmebrücken oder nutze zwei getrennte Heizungen.</li>
+                <li>
+                  <strong className="text-ink">≤ 2 200 W:</strong> Ideal für kompakte 2 kW-Standheizungen.
+                </li>
+                <li>
+                  <strong className="text-ink">2 200 – 4 500 W:</strong> Erfordert eine 4 kW-Heizung oder
+                  zusätzliche Isolierung.
+                </li>
+                <li>
+                  <strong className="text-ink">&gt; 4 500 W:</strong> Extrem hoher Bedarf. Überprüfe
+                  Wärmebrücken oder nutze zwei getrennte Heizungen.
+                </li>
               </ul>
             </div>
           </>
@@ -779,59 +916,64 @@ export default function HeatingCalculatorPage() {
   const [quickHeat, setQuickHeat] = useState<boolean>(false);
   const [selectedHeaterId, setSelectedHeaterId] = useState<string>(HEATER_CATALOG[0].id);
 
-  const selectedVehicle = useMemo(() =>
-    vehicleTemplates.find(v => v.id === selectedVehicleId) || vehicleTemplates[0],
+  const selectedVehicle = useMemo(
+    () => vehicleTemplates.find((v) => v.id === selectedVehicleId) || vehicleTemplates[0],
     [selectedVehicleId]
   );
 
-  const selectedHeater = useMemo(() =>
-    HEATER_CATALOG.find(h => h.id === selectedHeaterId) || HEATER_CATALOG[0],
+  const selectedHeater = useMemo(
+    () => HEATER_CATALOG.find((h) => h.id === selectedHeaterId) || HEATER_CATALOG[0],
     [selectedHeaterId]
   );
 
-  const { area, volume, airChangeRate, U_mix, deltaT, Q_trans, Q_luft, Q_total, error } = useMemo(() => {
-    try {
-      const res = calculateThermodynamics({
-        selectedVehicle,
-        insulationThickness,
-        tempInside,
-        tempOutside,
-        windowArea,
-        insulationCoverage,
-        quickHeat
-      });
-      return { ...res, error: null };
-    } catch (e: any) {
-      return {
+  const calc = useMemo(() => {
+    const main = calculateThermodynamics({
+      selectedVehicle,
+      insulationThickness,
+      tempInside,
+      tempOutside,
+      windowArea,
+      insulationCoverage,
+      quickHeat,
+    });
+    if (!main.ok) return { ok: false as const, reason: main.reason };
+    // Referenzlast bei −10 °C Außentemperatur. Gleiche Fahrzeugmaße, daher
+    // kann dieser Aufruf nicht mehr am Volumen scheitern; der `else`-Zweig
+    // ist defensive Gleichhaltung für die Typen (kein stiller 0-Fallback —
+    // die -10-Last fällt nie unter die Hauptlast hinaus).
+    const minus10 = calculateThermodynamics({
+      selectedVehicle,
+      insulationThickness,
+      tempInside,
+      tempOutside: -10,
+      windowArea,
+      insulationCoverage,
+      quickHeat,
+    });
+    return { ok: true as const, main, minus10Q: minus10.ok ? minus10.Q_total : main.Q_total };
+  }, [
+    selectedVehicle,
+    insulationThickness,
+    tempInside,
+    tempOutside,
+    windowArea,
+    insulationCoverage,
+    quickHeat,
+  ]);
+
+  const { area, volume, airChangeRate, U_mix, Q_trans, Q_luft, Q_total, Q_at_minus_10, error } = calc.ok
+    ? { ...calc.main, Q_at_minus_10: calc.minus10Q, error: null as string | null }
+    : {
         area: 0,
         volume: 0,
         airChangeRate: 0.5,
         U_mix: 0,
-        deltaT: 0,
         Q_trans: 0,
         Q_luft: 0,
         Q_total: 0,
-        error: e.message || "Ungültige Fahrzeugmaße"
+        Q_at_minus_10: 0,
+        error: 'Ungültige Fahrzeugmaße' as string | null,
       };
-    }
-  }, [selectedVehicle, insulationThickness, tempInside, tempOutside, windowArea, insulationCoverage, quickHeat]);
-
-  const Q_at_minus_10 = useMemo(() => {
-    try {
-      const res = calculateThermodynamics({
-        selectedVehicle,
-        insulationThickness,
-        tempInside,
-        tempOutside: -10,
-        windowArea,
-        insulationCoverage,
-        quickHeat
-      });
-      return res.Q_total;
-    } catch {
-      return 0;
-    }
-  }, [selectedVehicle, insulationThickness, tempInside, windowArea, insulationCoverage, quickHeat]);
 
   const validation = useMemo(() => {
     if (error || Q_total === 0) return { status: 'ok', message: '' };
@@ -839,20 +981,20 @@ export default function HeatingCalculatorPage() {
     if (Q_total > selectedHeater.maxPower) {
       return {
         status: 'critical',
-        message: `Heizung zu schwach! Das Fahrzeug erreicht bei Extremwetter nicht die Zieltemperatur. Q_total (${Q_total.toFixed(0)} W) überschreitet die maximale Heizleistung von ${selectedHeater.name} (${selectedHeater.maxPower} W).`
+        message: `Heizung zu schwach! Das Fahrzeug erreicht bei Extremwetter nicht die Zieltemperatur. Q_total (${Q_total.toFixed(0)} W) überschreitet die maximale Heizleistung von ${selectedHeater.name} (${selectedHeater.maxPower} W).`,
       };
     }
 
     if (Q_at_minus_10 < selectedHeater.minPower) {
       return {
         status: 'warning',
-        message: `Gefahr der Verkokung: Heizung ist stark überdimensioniert, läuft unterhalb der minimalen Modulationsgrenze und wird sich tot-takten. Selbst bei -10°C liegt der Bedarf bei nur ${Q_at_minus_10.toFixed(0)} W, was unter dem Minimum von ${selectedHeater.minPower} W liegt.`
+        message: `Gefahr der Verkokung: Heizung ist stark überdimensioniert, läuft unterhalb der minimalen Modulationsgrenze und wird sich tot-takten. Selbst bei -10°C liegt der Bedarf bei nur ${Q_at_minus_10.toFixed(0)} W, was unter dem Minimum von ${selectedHeater.minPower} W liegt.`,
       };
     }
 
     return {
       status: 'ok',
-      message: `Heizgerät ${selectedHeater.name} passt perfekt für dein Setup. Es deckt deine Last ab und moduliert sicher.`
+      message: `Heizgerät ${selectedHeater.name} passt perfekt für dein Setup. Es deckt deine Last ab und moduliert sicher.`,
     };
   }, [Q_total, Q_at_minus_10, selectedHeater, error]);
 
@@ -860,9 +1002,7 @@ export default function HeatingCalculatorPage() {
   // UND dessen minPower auch bei Q_at_minus_10 unterschritten werden kann.
   const recommendedHeater = useMemo(() => {
     if (error || Q_total <= 1) return null;
-    const candidates = HEATER_CATALOG.filter(
-      (h) => Q_total <= h.maxPower && Q_at_minus_10 >= h.minPower
-    );
+    const candidates = HEATER_CATALOG.filter((h) => Q_total <= h.maxPower && Q_at_minus_10 >= h.minPower);
     if (candidates.length === 0) return null;
     candidates.sort((a, b) => a.maxPower - b.maxPower);
     return candidates[0];
@@ -882,19 +1022,32 @@ export default function HeatingCalculatorPage() {
           {/* Header */}
           <div>
             <p className="label-eyebrow text-copper">Werkzeug</p>
-            <h1 className={cn("mt-2 font-display text-3xl font-semibold tracking-tight text-ink md:text-4xl", outfit.className)}>
+            <h1
+              className={cn(
+                'mt-2 font-display text-3xl font-semibold tracking-tight text-ink md:text-4xl',
+                outfit.className
+              )}
+            >
               Heizlast-Rechner
             </h1>
             <p className="mt-2 max-w-xl text-sm text-ink-soft">
-              Berechne die benötigte Heizleistung aus Fahrzeug, Dämmung und Wunschtemperatur — inklusive Empfehlung, welches Modell passt.
+              Berechne die benötigte Heizleistung aus Fahrzeug, Dämmung und Wunschtemperatur — inklusive
+              Empfehlung, welches Modell passt.
             </p>
           </div>
 
           {/* Sticky TOC */}
-          <nav aria-label="Abschnitte" className="sticky top-2 z-20 mt-6 -mx-2 flex gap-2 overflow-x-auto rounded-none border border-rule bg-bone/95 p-2 backdrop-blur">
+          <nav
+            aria-label="Abschnitte"
+            className="sticky top-2 z-20 mt-6 -mx-2 flex gap-2 overflow-x-auto rounded-none border border-rule bg-bone/95 p-2 backdrop-blur"
+          >
             <SectionAnchor id="section-fahrzeug" label="Fahrzeug" icon={<Home className="h-4 w-4" />} />
             <SectionAnchor id="section-heizgeraet" label="Heizgerät" icon={<Flame className="h-4 w-4" />} />
-            <SectionAnchor id="section-temperatur" label="Temperatur" icon={<Thermometer className="h-4 w-4" />} />
+            <SectionAnchor
+              id="section-temperatur"
+              label="Temperatur"
+              icon={<Thermometer className="h-4 w-4" />}
+            />
             <SectionAnchor id="section-daemmung" label="Dämmung" icon={<Ruler className="h-4 w-4" />} />
             <SectionAnchor id="section-erweitert" label="Erweitert" icon={<Wind className="h-4 w-4" />} />
             <SectionAnchor id="section-ergebnis" label="Ergebnis" icon={<Sparkles className="h-4 w-4" />} />
@@ -954,7 +1107,10 @@ export default function HeatingCalculatorPage() {
               <Info className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
               <div className="text-sm">
                 Bereit für den nächsten Schritt?{' '}
-                <Link href="/elektrik-planung" className="underline">Plane die Stromversorgung im Schaltplan</Link> — dort werden Heizung und Verbraucher automatisch abgesichert und verkabelt.
+                <Link href="/elektrik-planung" className="underline">
+                  Plane die Stromversorgung im Schaltplan
+                </Link>{' '}
+                — dort werden Heizung und Verbraucher automatisch abgesichert und verkabelt.
               </div>
             </div>
           </div>

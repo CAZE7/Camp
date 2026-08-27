@@ -158,7 +158,15 @@ export const BUILTIN_COMPONENT_SPECS: readonly ComponentSpec[] = [
     domains: ['DC_12V', 'AC_230V'],
     icon: PlugZap,
     node: ChargerNode,
-    handles: dcPassThrough,
+    // Mischdomäne (AUDIT Issue 4): AC-Eingang ist das plus-TARGET, der
+    // Ladeausgang (plus/minus SOURCE) ist DC_12V. Deckungsgleich mit
+    // getHandleDomain in lib/electrical.ts.
+    handles: [
+      { id: 'plus', type: 'target', domain: 'AC_230V' },
+      { id: 'minus', type: 'target', domain: 'DC_12V' },
+      { id: 'plus', type: 'source', domain: 'DC_12V' },
+      { id: 'minus', type: 'source', domain: 'DC_12V' },
+    ],
     defaults: { amps: 20 },
   },
   {

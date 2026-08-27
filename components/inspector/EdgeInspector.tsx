@@ -22,7 +22,10 @@ export function EdgeInspector({ edge, onChangeLength, onChangeFuseSize }: EdgeIn
     <div className="flex flex-col space-y-4">
       <h3 className="font-semibold text-foreground text-sm">Kabel</h3>
       <div className="flex flex-col">
-        <label className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider" htmlFor="length-input">
+        <label
+          className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider"
+          htmlFor="length-input"
+        >
           Länge (m)
         </label>
         <ValidatingInput
@@ -39,7 +42,10 @@ export function EdgeInspector({ edge, onChangeLength, onChangeFuseSize }: EdgeIn
       </div>
       {!isAc && onChangeFuseSize && (
         <div className="flex flex-col">
-          <label className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider" htmlFor="fuse-input">
+          <label
+            className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider"
+            htmlFor="fuse-input"
+          >
             Sicherung (A)
           </label>
           <ValidatingInput
@@ -58,7 +64,10 @@ export function EdgeInspector({ edge, onChangeLength, onChangeFuseSize }: EdgeIn
           )}
         </div>
       )}
-      <p className="text-xs text-muted-foreground mt-2">Der Kabelquerschnitt wird automatisch nach VDE 0100-721 berechnet und an der Leitung im Planer angezeigt.</p>
+      <p className="text-xs text-muted-foreground mt-2">
+        Der Kabelquerschnitt wird automatisch nach VDE 0100-721 berechnet und an der Leitung im Planer
+        angezeigt.
+      </p>
     </div>
   );
 }

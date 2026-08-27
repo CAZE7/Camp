@@ -13,7 +13,7 @@ describe('validateRoofNodes', () => {
     length: 5,
     width: 2,
     height: 2,
-    roofLength: 4,  // 800px
+    roofLength: 4, // 800px
     roofWidth: 1.5, // 300px
   };
 
@@ -21,9 +21,9 @@ describe('validateRoofNodes', () => {
   const roofH_px = mockVehicle.roofLength * 200; // 800
 
   const safeMinX = SAFE_MARGINS.left * 2; // 10
-  const safeMaxX = roofW_px - (SAFE_MARGINS.right * 2); // 300 - 10 = 290
+  const safeMaxX = roofW_px - SAFE_MARGINS.right * 2; // 300 - 10 = 290
   const safeMinY = SAFE_MARGINS.front * 2; // 30
-  const safeMaxY = roofH_px - (SAFE_MARGINS.rear * 2); // 800 - 10 = 790
+  const safeMaxY = roofH_px - SAFE_MARGINS.rear * 2; // 800 - 10 = 790
 
   const createNode = (
     id: string,
@@ -43,7 +43,7 @@ describe('validateRoofNodes', () => {
       width: width / 2,
       height: height / 2,
       isInvalid,
-      onNodeResize: () => {}
+      onNodeResize: () => {},
     },
     selected: false,
     draggable: true,
@@ -104,7 +104,7 @@ describe('validateRoofNodes', () => {
         data: {
           width: 100,
           height: 60,
-          onNodeResize: () => {}
+          onNodeResize: () => {},
         },
         selected: false,
         draggable: true,
@@ -121,7 +121,7 @@ describe('validateRoofNodes', () => {
         data: {
           width: 100,
           height: 60,
-          onNodeResize: () => {}
+          onNodeResize: () => {},
         },
         selected: false,
         draggable: true,

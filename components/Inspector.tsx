@@ -1,11 +1,11 @@
-"use client";
+'use client';
 
-import React, { useEffect, useState } from "react";
-import { Node, Edge } from "reactflow";
-import { Button } from "@/components/ui/button";
-import { MousePointerClick, Trash2 } from "lucide-react";
-import { CableEdgeData } from "./edges/CableEdge";
-import { EdgeInspector } from "./inspector/EdgeInspector";
+import React, { useEffect, useState } from 'react';
+import { Node, Edge } from 'reactflow';
+import { Button } from '@/components/ui/button';
+import { MousePointerClick, Trash2 } from 'lucide-react';
+import { CableEdgeData } from './edges/CableEdge';
+import { EdgeInspector } from './inspector/EdgeInspector';
 import {
   BatteryInspector,
   ChargerInspector,
@@ -19,19 +19,30 @@ import {
   ShorePowerInspector,
   SolarInspector,
   ComponentInfoInspector,
-} from "./inspector/NodeInspectors";
-import { WaterPipeInspector } from "./inspector/WaterPipeInspector";
+} from './inspector/NodeInspectors';
+import { WaterPipeInspector } from './inspector/WaterPipeInspector';
+import { NodeDataPatch, PlannerNodeType, TypedNode } from './nodes/types';
+
+/**
+ * React Flow liefert Nodes lose (`data: Record<string, any>`). Der Switch auf
+ * `node.type` garantiert das Typ-Literal; diese einzige Engstelle schneidet
+ * die diskriminierte Registry-Form (`TypedNode<K>`) heraus — alle Inspektoren
+ * arbeiten danach datengetypisch statt mit `any`.
+ */
+function typedAs<K extends PlannerNodeType>(node: Node, _type: K): TypedNode<K> {
+  return node as unknown as TypedNode<K>;
+}
 
 interface InspectorProps {
   selectedNode?: Node | null;
   selectedEdge?: Edge<CableEdgeData> | null;
   // old names kept for backward-compat
   onDeleteNode?: (nodeId: string) => void;
-  onUpdateNode?: (nodeId: string, data: any) => void;
+  onUpdateNode?: (nodeId: string, data: NodeDataPatch) => void;
 
   // planner-specific props (some callers use these names)
-  onDelete?: (...args: any[]) => void;
-  onUpdateNodeData?: (...args: any[]) => void;
+  onDelete?: (nodeId?: string) => void;
+  onUpdateNodeData?: (nodeId: string, data: NodeDataPatch) => void;
   onChangeLength?: (id: string, length: number) => void;
   onChangeFuseSize?: (id: string, fuseSize: number) => void;
 
@@ -49,8 +60,8 @@ const EmptySelection = () => (
     </div>
     <p className="font-semibold text-foreground">Kein Element ausgewählt</p>
     <p className="text-xs mt-2 text-center px-4 leading-relaxed">
-      Tippe eine Komponente oder Leitung im Plan an – hier erscheinen dann nur
-      die passenden Einstellungen dazu.
+      Tippe eine Komponente oder Leitung im Plan an – hier erscheinen dann nur die passenden Einstellungen
+      dazu.
     </p>
     <div className="mt-4 text-xs text-left px-5 space-y-1.5">
       <p className="font-semibold text-foreground">So gehst du vor:</p>
@@ -70,55 +81,65 @@ function TypeSpecificInspector({
   calculatedSolarWatts,
 }: {
   node: Node;
-  onUpdateNodeData?: (id: string, data: any) => void;
+  onUpdateNodeData?: (id: string, patch: NodeDataPatch) => void;
   nodes?: Node[];
   edges?: Edge[];
   chargingTimeStr?: string;
   calculatedSolarWatts?: number;
 }) {
   switch (node.type) {
-    case "battery":
+    case 'battery':
       return (
         <BatteryInspector
-          node={node}
+          node={typedAs(node, 'battery')}
           onUpdateNodeData={onUpdateNodeData}
           chargingTimeStr={chargingTimeStr}
           calculatedSolarWatts={calculatedSolarWatts}
         />
       );
-    case "consumer":
-      return <ConsumerInspector node={node} onUpdateNodeData={onUpdateNodeData} />;
-    case "charger":
-    case "mpptController":
-    case "dcdcCharger":
-    case "acBatteryCharger":
-      return <ChargerInspector node={node} onUpdateNodeData={onUpdateNodeData} />;
-    case "fuse":
-      return <FuseInspector node={node} onUpdateNodeData={onUpdateNodeData} />;
-    case "shorePower":
-      return <ShorePowerInspector node={node} onUpdateNodeData={onUpdateNodeData} />;
-    case "inverter":
-      return <InverterInspector node={node} onUpdateNodeData={onUpdateNodeData} nodes={nodes} />;
-    case "consumer230v":
-      return <Consumer230VInspector node={node} onUpdateNodeData={onUpdateNodeData} />;
-    case "solar":
-      return <SolarInspector node={node} onUpdateNodeData={onUpdateNodeData} />;
-    case "roofWindow":
-      return <RoofWindowInspector node={node} onUpdateNodeData={onUpdateNodeData} />;
-    case "roofSolar":
-      return <RoofSolarInspector node={node} onUpdateNodeData={onUpdateNodeData} />;
-    case "conduit":
-      return <ConduitInspector node={node} onUpdateNodeData={onUpdateNodeData} edges={edges} />;
-    case "busbar":
-    case "shunt":
-    case "ground":
-    case "freshWaterTank":
-    case "grayWaterTank":
-    case "pump":
-    case "accumulator":
-    case "preFilter":
-    case "sink":
-    case "shower":
+    case 'consumer':
+      return <ConsumerInspector node={typedAs(node, 'consumer')} onUpdateNodeData={onUpdateNodeData} />;
+    case 'charger':
+    case 'mpptController':
+    case 'dcdcCharger':
+    case 'acBatteryCharger':
+      return <ChargerInspector node={typedAs(node, 'charger')} onUpdateNodeData={onUpdateNodeData} />;
+    case 'fuse':
+      return <FuseInspector node={typedAs(node, 'fuse')} onUpdateNodeData={onUpdateNodeData} />;
+    case 'shorePower':
+      return <ShorePowerInspector node={typedAs(node, 'shorePower')} onUpdateNodeData={onUpdateNodeData} />;
+    case 'inverter':
+      return (
+        <InverterInspector
+          node={typedAs(node, 'inverter')}
+          onUpdateNodeData={onUpdateNodeData}
+          nodes={nodes}
+        />
+      );
+    case 'consumer230v':
+      return (
+        <Consumer230VInspector node={typedAs(node, 'consumer230v')} onUpdateNodeData={onUpdateNodeData} />
+      );
+    case 'solar':
+      return <SolarInspector node={typedAs(node, 'solar')} onUpdateNodeData={onUpdateNodeData} />;
+    case 'roofWindow':
+      return <RoofWindowInspector node={typedAs(node, 'roofWindow')} onUpdateNodeData={onUpdateNodeData} />;
+    case 'roofSolar':
+      return <RoofSolarInspector node={typedAs(node, 'roofSolar')} onUpdateNodeData={onUpdateNodeData} />;
+    case 'conduit':
+      return (
+        <ConduitInspector node={typedAs(node, 'conduit')} onUpdateNodeData={onUpdateNodeData} edges={edges} />
+      );
+    case 'busbar':
+    case 'shunt':
+    case 'ground':
+    case 'freshWaterTank':
+    case 'grayWaterTank':
+    case 'pump':
+    case 'accumulator':
+    case 'preFilter':
+    case 'sink':
+    case 'shower':
       return <ComponentInfoInspector node={node} onUpdateNodeData={onUpdateNodeData} />;
     default:
       return <ComponentInfoInspector node={node} onUpdateNodeData={onUpdateNodeData} />;
@@ -136,16 +157,16 @@ const NodeInspector = ({
 }: {
   node: Node;
   onDelete: (nodeId: string) => void;
-  onUpdate?: (nodeId: string, data: any) => void;
+  onUpdate?: (nodeId: string, data: NodeDataPatch) => void;
   nodes?: Node[];
   edges?: Edge[];
   chargingTimeStr?: string;
   calculatedSolarWatts?: number;
 }) => {
-  const [label, setLabel] = useState(node.data?.label || "");
+  const [label, setLabel] = useState(node.data?.label || '');
 
   useEffect(() => {
-    setLabel(node.data?.label || "");
+    setLabel(node.data?.label || '');
   }, [node]);
 
   const handleLabelChange = (e: React.ChangeEvent<HTMLInputElement>) => setLabel(e.target.value);
@@ -165,7 +186,9 @@ const NodeInspector = ({
           value={label}
           onChange={handleLabelChange}
           onBlur={commitLabel}
-          onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur(); }}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') event.currentTarget.blur();
+          }}
           className="min-h-11 w-full rounded border border-border px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           placeholder="Bezeichnung"
         />
@@ -184,7 +207,12 @@ const NodeInspector = ({
         variant="destructive"
         size="sm"
         onClick={() => {
-          if (window.confirm(`„${node.data?.label || node.type || 'Komponente'}“ wirklich löschen? Du kannst die Aktion anschließend rückgängig machen.`)) onDelete(node.id);
+          if (
+            window.confirm(
+              `„${node.data?.label || node.type || 'Komponente'}“ wirklich löschen? Du kannst die Aktion anschließend rückgängig machen.`
+            )
+          )
+            onDelete(node.id);
         }}
         className="w-full gap-2"
       >
@@ -224,7 +252,7 @@ export default function Inspector({
             if (onDeleteNode) return onDeleteNode(id);
             if (onDelete) return onDelete(id);
           }}
-          onUpdate={(id: string, data: any) => {
+          onUpdate={(id: string, data: NodeDataPatch) => {
             if (onUpdateNode) return onUpdateNode(id, data);
             if (onUpdateNodeData) return onUpdateNodeData(id, data);
           }}
@@ -249,7 +277,12 @@ export default function Inspector({
               variant="destructive"
               size="sm"
               onClick={() => {
-                if (window.confirm('Diese Leitung wirklich löschen? Du kannst die Aktion anschließend rückgängig machen.')) onDelete();
+                if (
+                  window.confirm(
+                    'Diese Leitung wirklich löschen? Du kannst die Aktion anschließend rückgängig machen.'
+                  )
+                )
+                  onDelete();
               }}
               className="w-full gap-2"
             >

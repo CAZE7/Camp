@@ -1,4 +1,4 @@
-"use client";
+'use client';
 import React from 'react';
 
 import { NodeResizer } from 'reactflow';
@@ -49,7 +49,10 @@ const RoofSolarNode = function ({
         )}
         style={{ width: '100%', height: '100%' }}
       >
-        <div className="custom-drag-handle roof-solar-grid pointer-events-none absolute inset-0 opacity-25" aria-hidden="true" />
+        <div
+          className="custom-drag-handle roof-solar-grid pointer-events-none absolute inset-0 opacity-25"
+          aria-hidden="true"
+        />
 
         <div className="z-10 rounded-none bg-black/40 px-2 py-1 text-center text-xs font-semibold text-paper">
           {data.label || 'Solarpanel'}
@@ -62,7 +65,10 @@ const RoofSolarNode = function ({
         </div>
 
         {isInvalid && (
-          <div className="pointer-events-none absolute inset-0 border-4 border-warn-critical" aria-hidden="true" />
+          <div
+            className="pointer-events-none absolute inset-0 border-4 border-warn-critical"
+            aria-hidden="true"
+          />
         )}
         {(isInvalid || isOverlapping) && (
           <div

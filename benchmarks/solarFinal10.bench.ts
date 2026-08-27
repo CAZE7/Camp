@@ -40,12 +40,12 @@ function checkHasSeriesConnectionArrayFind(nodes: Node[], edges: Edge[]): boolea
 
     if (hasCorrectHandles) {
       // Find source and target nodes using array methods as suggested
-      const s = nodes.find(n => n.id === e.source);
+      const s = nodes.find((n) => n.id === e.source);
       if (s && s.type === 'solar') {
-          const t = nodes.find(n => n.id === e.target);
-          if (t && t.type === 'solar') {
-              return true;
-          }
+        const t = nodes.find((n) => n.id === e.target);
+        if (t && t.type === 'solar') {
+          return true;
+        }
       }
     }
   }

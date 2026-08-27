@@ -17,6 +17,7 @@ Die Interaktions-Props sind an einer Stelle gebündelt
 ## Konsequenzen
 
 **Gut**
+
 - Knoten sind gewöhnliches React: Inspector-Felder, Warnfarben und
   Barrierefreiheit funktionieren mit den üblichen Mitteln.
 - Handles bringen Verbindungslogik, Hit-Targets und Datenattribute mit
@@ -24,6 +25,7 @@ Die Interaktions-Props sind an einer Stelle gebündelt
 - Zoom, Pan, Auswahl und Minimap mussten nicht selbst gebaut werden.
 
 **Schlecht / Preis**
+
 - Eine Kante kennt nur ihre eigenen Handle-Koordinaten. Die Kreuzungszählung
   des Routings arbeitet deshalb mit genäherten Mittelpunkt-Strecken
   (siehe `docs/ROUTING-INVARIANTS.md`).

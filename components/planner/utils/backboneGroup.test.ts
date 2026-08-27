@@ -3,11 +3,20 @@ import type { Node } from 'reactflow';
 import { BACKBONE_GROUP_ID, withBackboneGroup } from './backboneGroup';
 
 const node = (id: string, type: string, x: number, y: number): Node => ({
-  id, type, position: { x, y }, width: 192, height: 120, data: {},
+  id,
+  type,
+  position: { x, y },
+  width: 192,
+  height: 120,
+  data: {},
 });
 
 describe('backbone visual grouping', () => {
-  const nodes = [node('battery', 'battery', 100, 100), node('shunt', 'shunt', 400, 240), node('load', 'consumer', 800, 100)];
+  const nodes = [
+    node('battery', 'battery', 100, 100),
+    node('shunt', 'shunt', 400, 240),
+    node('load', 'consumer', 800, 100),
+  ];
 
   it('adds a non-interactive frame around core nodes only', () => {
     const grouped = withBackboneGroup(nodes, true);

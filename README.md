@@ -33,21 +33,21 @@ gespeichert (`localStorage`, versioniert mit Migration).
 
 ## Funktionen (verifiziert)
 
-| Funktion | Wo im Code | Beleg |
-|----------|------------|-------|
-| Bauteil-Katalog mit Suche und Kategorien | `components/Sidebar.tsx`, `components/registry/` | `Sidebar.test.tsx`, `componentRegistry.test.tsx` |
-| Schaltplan mit Zoom, Pan, Auswahl, Minimap | `components/planner/FlowCanvas.tsx` | `FlowCanvas.test.tsx` |
-| Automatische Verdrahtung (Backbone, Sicherungen, Querschnitte) | `lib/autoWire.ts` | `autoWire.test.ts`, `vde-properties.test.ts` |
-| Querschnitt nach Strombelastbarkeit **und** Spannungsfall | `lib/electrical.ts`, `lib/vde-standards.ts` | `electrical.test.ts`, `vde-standards.test.ts` |
-| Sicherungsauswahl, die nie über die Kabelgrenze geht | `lib/electrical.ts` (`selectFuseSize`) | Gesetz G1 in `vde-properties.test.ts` |
-| Live-Prüfung mit Warn-Center (RCD, Überlast, Leerrohr-Füllgrad) | `components/planner/hooks/useLiveValidation.ts` | `useLiveValidation.test.ts` |
-| Orthogonales Kabel-Routing mit Hindernisvermeidung | `components/edges/utils/orthogonalRouting.ts` | 25 Szenarien in `docs/routing-gallery/` |
-| Stückliste mit Bauteilen und Leitungslängen | `components/planner/BOMModal.tsx` | E2E `planner-flow.spec.ts` |
-| Bild-Export des Plans (PNG) | `components/planner/PlannerDashboard.tsx` | `PlannerDashboard.test.tsx` |
-| Undo/Redo, Auto-Layout, Vorlagen | `store/usePlannerStore.ts` | `usePlannerStore.test.ts` |
-| Wassermodus (Tanks, Pumpe, Entnahmestellen) | `components/nodes/WaterNode.tsx` | `WaterPipeEdge.test.tsx` |
-| Dachplaner und Heizlast-Rechner | `app/tools/dach/`, `app/tools/heizung/` | `page.test.tsx`, `validation.test.ts` |
-| Bedienung auf Handy, Tablet und Desktop | `components/PlannerInner.tsx` | `PlannerInner.test.tsx`, E2E `responsive.spec.ts` |
+| Funktion                                                        | Wo im Code                                       | Beleg                                             |
+| --------------------------------------------------------------- | ------------------------------------------------ | ------------------------------------------------- |
+| Bauteil-Katalog mit Suche und Kategorien                        | `components/Sidebar.tsx`, `components/registry/` | `Sidebar.test.tsx`, `componentRegistry.test.tsx`  |
+| Schaltplan mit Zoom, Pan, Auswahl, Minimap                      | `components/planner/FlowCanvas.tsx`              | `FlowCanvas.test.tsx`                             |
+| Automatische Verdrahtung (Backbone, Sicherungen, Querschnitte)  | `lib/autoWire.ts`                                | `autoWire.test.ts`, `vde-properties.test.ts`      |
+| Querschnitt nach Strombelastbarkeit **und** Spannungsfall       | `lib/electrical.ts`, `lib/vde-standards.ts`      | `electrical.test.ts`, `vde-standards.test.ts`     |
+| Sicherungsauswahl, die nie über die Kabelgrenze geht            | `lib/electrical.ts` (`selectFuseSize`)           | Gesetz G1 in `vde-properties.test.ts`             |
+| Live-Prüfung mit Warn-Center (RCD, Überlast, Leerrohr-Füllgrad) | `components/planner/hooks/useLiveValidation.ts`  | `useLiveValidation.test.ts`                       |
+| Orthogonales Kabel-Routing mit Hindernisvermeidung              | `components/edges/utils/orthogonalRouting.ts`    | 25 Szenarien in `docs/routing-gallery/`           |
+| Stückliste mit Bauteilen und Leitungslängen                     | `components/planner/BOMModal.tsx`                | E2E `planner-flow.spec.ts`                        |
+| Bild-Export des Plans (PNG)                                     | `components/planner/PlannerDashboard.tsx`        | `PlannerDashboard.test.tsx`                       |
+| Undo/Redo, Auto-Layout, Vorlagen                                | `store/usePlannerStore.ts`                       | `usePlannerStore.test.ts`                         |
+| Wassermodus (Tanks, Pumpe, Entnahmestellen)                     | `components/nodes/WaterNode.tsx`                 | `WaterPipeEdge.test.tsx`                          |
+| Dachplaner und Heizlast-Rechner                                 | `app/tools/dach/`, `app/tools/heizung/`          | `page.test.tsx`, `validation.test.ts`             |
+| Bedienung auf Handy, Tablet und Desktop                         | `components/PlannerInner.tsx`                    | `PlannerInner.test.tsx`, E2E `responsive.spec.ts` |
 
 ---
 
@@ -96,16 +96,16 @@ zurück in den Store** (Querschnitte, Sicherungen, Warnungen).
 
 ## Tech-Stack
 
-| Bereich | Wahl | Version |
-|---------|------|---------|
-| Framework | Next.js (App Router, `output: 'export'`) | 16 |
-| UI | React 19, Tailwind CSS 3, Radix Primitives, lucide-react | — |
-| Canvas | React Flow | 11 |
-| State | Zustand mit `persist` | 5 |
-| Tests | Vitest + Testing Library, fast-check (Property-Tests) | 4 / 4.9 |
-| E2E | Playwright (Chromium, 4 Viewport-Projekte) | 1.62 |
-| Sprache | TypeScript `strict` | 5.9 |
-| Node | siehe `.nvmrc` (22) | — |
+| Bereich   | Wahl                                                     | Version |
+| --------- | -------------------------------------------------------- | ------- |
+| Framework | Next.js (App Router, `output: 'export'`)                 | 16      |
+| UI        | React 19, Tailwind CSS 3, Radix Primitives, lucide-react | —       |
+| Canvas    | React Flow                                               | 11      |
+| State     | Zustand mit `persist`                                    | 5       |
+| Tests     | Vitest + Testing Library, fast-check (Property-Tests)    | 4 / 4.9 |
+| E2E       | Playwright (Chromium, 4 Viewport-Projekte)               | 1.62    |
+| Sprache   | TypeScript `strict`                                      | 5.9     |
+| Node      | siehe `.nvmrc` (22)                                      | —       |
 
 ## Verzeichnisse
 
@@ -135,17 +135,17 @@ docs/                   Architektur-Entscheidungen und Nachweise
 Alle Angaben stammen aus Läufen auf dem aktuellen Stand
 (Commit-Reihe K1–K7, 2026-08-21, Node 22.22.3).
 
-| Prüfung | Befehl | Ergebnis |
-|---------|--------|----------|
-| Typecheck (Produktionscode) | `npm run typecheck` | **0 Fehler** |
-| Typecheck (inkl. Tests) | `npm run typecheck:tests` | **0 Fehler** — Einheiten gelten auch in Tests |
-| Unit-/Komponententests | `npm test` | **1051 Tests, 81 Dateien, grün** |
-| Property-Tests (VDE) | `npx vitest run lib/vde-properties.test.ts` | 30 Tests, ~17.000 generierte Fälle |
-| Routing-Invarianten | `npx vitest run components/edges/utils` | 25 Szenarien × 7 Invarianten |
-| Build | `npm run build` | erfolgreich, `./out` 4,2 MB, 11 HTML-Seiten |
-| Lockfile-Gate | `npm run ci:verify-lockfile-gate` | greift (npm ci scheitert bei Drift) |
-| Lighthouse Accessibility | Report vom 2026-08-20, Lighthouse 13.4.1 | **100 / 100** (Mobile und Desktop) |
-| End-to-End | `npm run e2e` | **steht aus** — siehe unten |
+| Prüfung                     | Befehl                                      | Ergebnis                                      |
+| --------------------------- | ------------------------------------------- | --------------------------------------------- |
+| Typecheck (Produktionscode) | `npm run typecheck`                         | **0 Fehler**                                  |
+| Typecheck (inkl. Tests)     | `npm run typecheck:tests`                   | **0 Fehler** — Einheiten gelten auch in Tests |
+| Unit-/Komponententests      | `npm test`                                  | **1051 Tests, 81 Dateien, grün**              |
+| Property-Tests (VDE)        | `npx vitest run lib/vde-properties.test.ts` | 30 Tests, ~17.000 generierte Fälle            |
+| Routing-Invarianten         | `npx vitest run components/edges/utils`     | 25 Szenarien × 7 Invarianten                  |
+| Build                       | `npm run build`                             | erfolgreich, `./out` 4,2 MB, 11 HTML-Seiten   |
+| Lockfile-Gate               | `npm run ci:verify-lockfile-gate`           | greift (npm ci scheitert bei Drift)           |
+| Lighthouse Accessibility    | Report vom 2026-08-20, Lighthouse 13.4.1    | **100 / 100** (Mobile und Desktop)            |
+| End-to-End                  | `npm run e2e`                               | **steht aus** — siehe unten                   |
 
 **Offener Punkt (ehrlich benannt):** Die Playwright-Suite ist vollständig
 geschrieben und in CI eingebunden, wurde aber noch **nicht ausgeführt**: der
@@ -187,12 +187,12 @@ Branch Protection: `docs/CI.md`.
 
 ## Architektur-Entscheidungen (ADRs)
 
-| ADR | Thema | Kurzfassung |
-|-----|-------|-------------|
-| [0001](docs/adr/0001-static-export-ohne-backend.md) | Static Export ohne Backend | Keine Server, Daten bleiben im Browser — Preis: kein Geräteabgleich |
-| [0002](docs/adr/0002-react-flow-als-canvas.md) | React Flow als Canvas | Knoten sind React — Preis: Kanten kennen fremde Handles nicht |
-| [0003](docs/adr/0003-orthogonales-routing-statt-wegfindung.md) | Routing ohne Wegfindung | Deterministisch und schnell — Preis: nicht optimal |
-| [0004](docs/adr/0004-vde-modell-konservativ-und-zentral.md) | VDE-Modell | Eine Quelle, konservative Werte, typsichere Einheiten |
+| ADR                                                            | Thema                      | Kurzfassung                                                         |
+| -------------------------------------------------------------- | -------------------------- | ------------------------------------------------------------------- |
+| [0001](docs/adr/0001-static-export-ohne-backend.md)            | Static Export ohne Backend | Keine Server, Daten bleiben im Browser — Preis: kein Geräteabgleich |
+| [0002](docs/adr/0002-react-flow-als-canvas.md)                 | React Flow als Canvas      | Knoten sind React — Preis: Kanten kennen fremde Handles nicht       |
+| [0003](docs/adr/0003-orthogonales-routing-statt-wegfindung.md) | Routing ohne Wegfindung    | Deterministisch und schnell — Preis: nicht optimal                  |
+| [0004](docs/adr/0004-vde-modell-konservativ-und-zentral.md)    | VDE-Modell                 | Eine Quelle, konservative Werte, typsichere Einheiten               |
 
 ## Weitere Nachweise
 

@@ -32,9 +32,8 @@ export default function ImpressumPage() {
         <section className="mt-6 space-y-2 text-sm text-ink-soft">
           <h2 className="text-base font-semibold text-ink">Haftungshinweis</h2>
           <p>
-            Werft ist ein Planungswerkzeug für den Camper-Ausbau. Berechnungen
-            (Heizlast, Kabelquerschnitt, Solarleistung) sind Näherungen und
-            ersetzen keine Elektrofachkraft. Für Landstrom-Anlagen ist eine
+            Werft ist ein Planungswerkzeug für den Camper-Ausbau. Berechnungen (Heizlast, Kabelquerschnitt,
+            Solarleistung) sind Näherungen und ersetzen keine Elektrofachkraft. Für Landstrom-Anlagen ist eine
             Prüfung durch qualifiziertes Personal nach DIN VDE 0100-721 Pflicht.
           </p>
         </section>

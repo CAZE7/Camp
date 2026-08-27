@@ -22,29 +22,33 @@ export function PlannerInspector() {
     updateNodeData,
     isInspectorOpen,
     toggleInspector,
-  } = usePlannerStore(useShallow((state) => ({
-    nodes: state.nodes,
-    waterNodes: state.waterNodes,
-    edges: state.edges,
-    waterEdges: state.waterEdges,
-    season: state.season,
-    selectedNodes: state.selectedNodes,
-    selectedEdges: state.selectedEdges,
-    handleChangeLength: state.handleChangeLength,
-    handleChangeFuseSize: state.handleChangeFuseSize,
-    deleteSelected: state.deleteSelected,
-    updateNodeData: state.updateNodeData,
-    isInspectorOpen: state.isInspectorOpen,
-    toggleInspector: state.toggleInspector,
-  })));
+  } = usePlannerStore(
+    useShallow((state) => ({
+      nodes: state.nodes,
+      waterNodes: state.waterNodes,
+      edges: state.edges,
+      waterEdges: state.waterEdges,
+      season: state.season,
+      selectedNodes: state.selectedNodes,
+      selectedEdges: state.selectedEdges,
+      handleChangeLength: state.handleChangeLength,
+      handleChangeFuseSize: state.handleChangeFuseSize,
+      deleteSelected: state.deleteSelected,
+      updateNodeData: state.updateNodeData,
+      isInspectorOpen: state.isInspectorOpen,
+      toggleInspector: state.toggleInspector,
+    }))
+  );
 
   const calculatedSolarWatts = useAppStore((state) => state.calculatedSolarWatts);
 
   const selectedEdgeId = selectedEdges.length > 0 ? selectedEdges[0].id : null;
   const selectedNodeId = selectedNodes.length > 0 ? selectedNodes[0].id : null;
 
-  const selectedEdge = edges.find((e) => e.id === selectedEdgeId) || waterEdges?.find((e) => e.id === selectedEdgeId) || null;
-  const selectedNode = nodes.find((n) => n.id === selectedNodeId) || waterNodes.find((n) => n.id === selectedNodeId) || null;
+  const selectedEdge =
+    edges.find((e) => e.id === selectedEdgeId) || waterEdges?.find((e) => e.id === selectedEdgeId) || null;
+  const selectedNode =
+    nodes.find((n) => n.id === selectedNodeId) || waterNodes.find((n) => n.id === selectedNodeId) || null;
 
   const metrics = useDashboardMetrics(nodes, edges, season, calculatedSolarWatts);
 
@@ -60,8 +64,8 @@ export function PlannerInspector() {
         className={`planner-inspector-toggle absolute top-1/2 z-50 hidden h-11 w-11 -translate-y-1/2 items-center justify-center border-border bg-card shadow-md transition-all duration-300 motion-reduce:transition-none xl:flex ${
           isInspectorOpen ? 'planner-inspector-toggle--open' : 'right-3'
         }`}
-        title={isInspectorOpen ? "Inspector einklappen" : "Inspector ausklappen"}
-        aria-label={isInspectorOpen ? "Rechte Sidebar einklappen" : "Rechte Sidebar ausklappen"}
+        title={isInspectorOpen ? 'Inspector einklappen' : 'Inspector ausklappen'}
+        aria-label={isInspectorOpen ? 'Rechte Sidebar einklappen' : 'Rechte Sidebar ausklappen'}
         aria-expanded={isInspectorOpen}
       >
         {isInspectorOpen ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}

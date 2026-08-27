@@ -85,7 +85,14 @@ describe('edgeDropInputs', () => {
       { id: 'c1', type: 'consumer230v', position: { x: 100, y: 0 }, data: { watts: 2300 } },
     ] as Node[];
     const edges = [
-      { id: 'e1', source: 'sp', target: 'c1', sourceHandle: 'plus', targetHandle: 'plus', data: { edgeDomain: 'AC_230V' } },
+      {
+        id: 'e1',
+        source: 'sp',
+        target: 'c1',
+        sourceHandle: 'plus',
+        targetHandle: 'plus',
+        data: { edgeDomain: 'AC_230V' },
+      },
     ] as Edge<CableEdgeData>[];
     const inputs = edgeDropInputs(edges[0], nodes[0], nodes[1], nodes, edges);
     // I = 2300 W / 230 V = 10 A; Länge 1 m (Pixelabstand 100 px → 1 m ohne Clamp)

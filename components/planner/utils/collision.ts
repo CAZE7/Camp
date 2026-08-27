@@ -56,8 +56,8 @@ export function findNearestFreePosition(
       candidates.push({ x: origin.x - ring * grid[0], y: origin.y + dy * grid[1] });
       candidates.push({ x: origin.x + ring * grid[0], y: origin.y + dy * grid[1] });
     }
-    candidates.sort((a, b) =>
-      Math.hypot(a.x - origin.x, a.y - origin.y) - Math.hypot(b.x - origin.x, b.y - origin.y)
+    candidates.sort(
+      (a, b) => Math.hypot(a.x - origin.x, a.y - origin.y) - Math.hypot(b.x - origin.x, b.y - origin.y)
     );
     const free = candidates.find((position) => collidingNodeIds(node, nodes, position).length === 0);
     if (free) return free;

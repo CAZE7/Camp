@@ -14,7 +14,7 @@ export const VDE_AMPACITY: Record<number, number> = {
 };
 
 // 1. Einheitlicher Sicherheitsfaktor (Derating)
-export const DERATE_FACTOR = 0.70;
+export const DERATE_FACTOR = 0.7;
 
 // DIN VDE 0298-4: max fuse ratings per conductor cross-section
 export const FUSE_MAP: Record<number, number> = {
@@ -44,8 +44,7 @@ export const calculateMaxFuse = (crossSection: number): number => {
  * Sicherung immer einem real verfügbaren Sicherungswert entspricht.
  */
 export const STANDARD_FUSE_SIZES = [
-  5, 7.5, 10, 15, 16, 20, 25, 30, 32, 40, 50, 60, 63, 80, 100, 125, 160,
-  200, 250, 300, 350, 400,
+  5, 7.5, 10, 15, 16, 20, 25, 30, 32, 40, 50, 60, 63, 80, 100, 125, 160, 200, 250, 300, 350, 400,
 ];
 
 /**
@@ -97,7 +96,7 @@ export const isFuseFeasible = (currentA: number, crossSection: number): boolean 
 
 export const lookupThermalCrossSection = (I: number): number => {
   const requiredAmpacity = I * (1 / DERATE_FACTOR);
-  const size = VDE_SIZES.find(s => VDE_AMPACITY[s] >= requiredAmpacity);
+  const size = VDE_SIZES.find((s) => VDE_AMPACITY[s] >= requiredAmpacity);
   return size || 70.0;
 };
 
@@ -124,7 +123,7 @@ export const calculateCrossSection = (
   // Querschnitt (z. B. 95 mm²) darf dabei nie auf 70 mm² heruntergerundet
   // werden — das würde eine bereits größere Leitung stillschweigend schwächen.
   const fallback = dataCrossSection ? Math.max(rawMax, dataCrossSection) : 70.0;
-  return VDE_SIZES.find(size => size >= rawMax) || fallback;
+  return VDE_SIZES.find((size) => size >= rawMax) || fallback;
 };
 
 export const calculateStrokeWidth = (cs: number): number => {
@@ -145,14 +144,17 @@ export const getEdgeDomain = (
   // Solar-Kanten wurden als DC_12V gespeichert und verloren beim Nachladen
   // ihre Domäne (falsche Farbe/Fehlerbehandlung in Code, der nur auf
   // `data.edgeDomain` schaut, z. B. edgeDropInputs).
-  const isSolarNode = (type: string | undefined) =>
-    type === 'solar' || type === 'roofSolar';
+  const isSolarNode = (type: string | undefined) => type === 'solar' || type === 'roofSolar';
   if (isSolarNode(sourceNodeType) || isSolarNode(targetNodeType)) {
     return 'Solar';
   }
 
-  const isAcNode = (type: string | undefined) =>
-    type === 'shorePower' || type === 'consumer230v' || type === 'acBatteryCharger';
+  // acBatteryCharger ist bewusst NICHT in dieser Liste: gemischte Domäne —
+  // AC-Eingang (Landstrom), DC-Ausgang (Ladestrom auf die Schiene). Eine
+  // Pauschale klassifizierte seine DC-Ausgangsleitung als AC und entzog sie
+  // der DC-Dimensionierung (AUDIT-AUTOWIRE Issue 4). Die AC-Seite wird über
+  // den shorePower-Endpunkt erkannt, die DC-Seite bleibt DC.
+  const isAcNode = (type: string | undefined) => type === 'shorePower' || type === 'consumer230v';
   if (isAcNode(sourceNodeType) || isAcNode(targetNodeType)) {
     return 'AC_230V';
   }
@@ -180,8 +182,14 @@ export const getHandleDomain = (
   handleType: 'source' | 'target' | undefined
 ): 'DC_12V' | 'AC_230V' => {
   if (!nodeType) return 'DC_12V';
-  if (nodeType === 'shorePower' || nodeType === 'consumer230v' || nodeType === 'acBatteryCharger') {
+  if (nodeType === 'shorePower' || nodeType === 'consumer230v') {
     return 'AC_230V';
+  }
+  if (nodeType === 'acBatteryCharger') {
+    // Mischdomäne (Issue 4): Die Landstrom-Zuweisung kommt als Kante
+    // shorePower.plus -> Charger-'plus'-TARGET an; alle SOURCE-Handles
+    // (plus/minus) sind der DC_12V-Ladeausgang.
+    return handleId === 'plus' && handleType === 'target' ? 'AC_230V' : 'DC_12V';
   }
   if (nodeType === 'inverter') {
     // Left TARGET plus/minus = 12V DC input. Right SOURCE plus / ac_* = 230V AC.

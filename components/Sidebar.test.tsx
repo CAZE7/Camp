@@ -59,10 +59,10 @@ describe('Sidebar Component', () => {
       render(<Sidebar />);
 
       // Mock document.elementsFromPoint to simulate dropping over the canvas
-      const mockElementsFromPoint = vi.fn().mockReturnValue([
-        { classList: { contains: (cls: string) => cls === 'react-flow__pane' } }
-      ]);
-      document.elementsFromPoint = mockElementsFromPoint as any;
+      const mockElementsFromPoint = vi
+        .fn()
+        .mockReturnValue([{ classList: { contains: (cls: string) => cls === 'react-flow__pane' } }]);
+      document.elementsFromPoint = mockElementsFromPoint as unknown as typeof document.elementsFromPoint;
 
       // Spy on window.dispatchEvent
       const dispatchEventSpy = vi.spyOn(window, 'dispatchEvent');
@@ -91,7 +91,7 @@ describe('Sidebar Component', () => {
         clientX: 100,
         clientY: 100,
         type: 'battery',
-        label: 'Batterie'
+        label: 'Batterie',
       });
     });
 
@@ -99,10 +99,8 @@ describe('Sidebar Component', () => {
       render(<Sidebar />);
 
       // Mock document.elementsFromPoint to simulate dropping outside the canvas
-      const mockElementsFromPoint = vi.fn().mockReturnValue([
-        { classList: { contains: () => false } }
-      ]);
-      document.elementsFromPoint = mockElementsFromPoint as any;
+      const mockElementsFromPoint = vi.fn().mockReturnValue([{ classList: { contains: () => false } }]);
+      document.elementsFromPoint = mockElementsFromPoint as unknown as typeof document.elementsFromPoint;
 
       // Spy on window.dispatchEvent
       const dispatchEventSpy = vi.spyOn(window, 'dispatchEvent');

@@ -1,17 +1,6 @@
-"use client";
+'use client';
 
-import {
-  Battery,
-  Cable,
-  Earth,
-  Gauge,
-  Lightbulb,
-  Network,
-  PlugZap,
-  Shield,
-  Sun,
-  Zap,
-} from 'lucide-react';
+import { Battery, Cable, Earth, Gauge, Lightbulb, Network, PlugZap, Shield, Sun, Zap } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
@@ -50,7 +39,9 @@ export function NodeSymbol({ kind }: { kind: NodeSymbolKind }) {
 
   return (
     <div className={cn('node-symbol', tone)} aria-hidden="true">
-      <span className="node-symbol__icon"><Icon size={21} strokeWidth={2.2} /></span>
+      <span className="node-symbol__icon">
+        <Icon size={21} strokeWidth={2.2} />
+      </span>
       <span className="node-symbol__code">{code}</span>
     </div>
   );

@@ -36,9 +36,7 @@ type GalleryEntry = {
 
 function loadGallery(): GalleryEntry[] {
   const file = join(GALLERY, 'gallery.json');
-  expect(existsSync(file), 'docs/routing-gallery/gallery.json fehlt — npm run routing:gallery').toBe(
-    true
-  );
+  expect(existsSync(file), 'docs/routing-gallery/gallery.json fehlt — npm run routing:gallery').toBe(true);
   return (JSON.parse(readFileSync(file, 'utf8')) as { scenarios: GalleryEntry[] }).scenarios;
 }
 

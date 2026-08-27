@@ -1,4 +1,4 @@
-"use client";
+'use client';
 import React from 'react';
 import { RoofNodeData } from './types';
 
@@ -35,9 +35,7 @@ const RoofBackgroundNode = function ({ data }: { data: RoofNodeData }) {
           right: marginRight,
         }}
       >
-        <div className="label-eyebrow select-none rotate-90 text-oxide md:rotate-0">
-          Safe Zone
-        </div>
+        <div className="label-eyebrow select-none rotate-90 text-oxide md:rotate-0">Safe Zone</div>
       </div>
 
       {/* Dot grid */}

@@ -1,14 +1,15 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import ShuntNode from './ShuntNode';
+import { asDivProps, type MockHandleProps } from '../../test-helpers/reactflowMocks';
 
 // Mock reactflow Handle since it might need a context provider
 vi.mock('reactflow', async () => {
   const actual = await vi.importActual('reactflow');
   return {
     ...actual,
-    Handle: ({ 'data-testid': testId, isConnectable, ...props }: any) => (
-      <div data-testid={testId || 'react-flow-handle'} {...props} />
+    Handle: ({ 'data-testid': testId, isConnectable, ...props }: MockHandleProps) => (
+      <div data-testid={testId || 'react-flow-handle'} {...asDivProps(props)} />
     ),
     Position: {
       Left: 'left',
@@ -54,16 +55,16 @@ describe('ShuntNode Component', () => {
     const handles = screen.getAllByTestId('react-flow-handle');
     expect(handles.length).toBe(4);
 
-    const targetHandles = handles.filter(h => h.getAttribute('type') === 'target');
-    const sourceHandles = handles.filter(h => h.getAttribute('type') === 'source');
+    const targetHandles = handles.filter((h) => h.getAttribute('type') === 'target');
+    const sourceHandles = handles.filter((h) => h.getAttribute('type') === 'source');
 
     expect(targetHandles.length).toBe(2);
     expect(sourceHandles.length).toBe(2);
 
-    expect(targetHandles.find(h => h.getAttribute('id') === 'plus')).toBeInTheDocument();
-    expect(targetHandles.find(h => h.getAttribute('id') === 'minus')).toBeInTheDocument();
+    expect(targetHandles.find((h) => h.getAttribute('id') === 'plus')).toBeInTheDocument();
+    expect(targetHandles.find((h) => h.getAttribute('id') === 'minus')).toBeInTheDocument();
 
-    expect(sourceHandles.find(h => h.getAttribute('id') === 'plus')).toBeInTheDocument();
-    expect(sourceHandles.find(h => h.getAttribute('id') === 'minus')).toBeInTheDocument();
+    expect(sourceHandles.find((h) => h.getAttribute('id') === 'plus')).toBeInTheDocument();
+    expect(sourceHandles.find((h) => h.getAttribute('id') === 'minus')).toBeInTheDocument();
   });
 });
