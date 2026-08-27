@@ -312,7 +312,7 @@ describe('PlannerDashboard - Image Export', () => {
 
     const error = new Error('Export failed');
     error.name = 'SecurityError';
-    (toPng as unknown as (el: HTMLElement) => Promise<string>).mockRejectedValueOnce(error);
+    vi.mocked(toPng).mockRejectedValueOnce(error);
 
     render(<PlannerDashboard />);
 
