@@ -115,6 +115,59 @@ export function countBends(points: Point[]): number {
   return bends;
 }
 
+/** Fügt einen Ellbogen ein, falls zwei aufeinanderfolgende Punkte diagonal liegen. */
+export function stitchOrthogonal(points: Point[]): Point[] {
+  const out: Point[] = [];
+  for (let i = 0; i < points.length; i++) {
+    const p = points[i];
+    const last = out[out.length - 1];
+    if (last && Math.abs(last.x - p.x) > EPS && Math.abs(last.y - p.y) > EPS) {
+      out.push({ x: p.x, y: last.y });
+    }
+    out.push({ x: p.x, y: p.y });
+  }
+  return simplifyWaypoints(out);
+}
+
+/**
+ * Zulässige Restkostenschätzung: Manhattan plus Mindestknicke.
+ * Nie höher als die echten Restkosten — A* bleibt optimal.
+ */
+export function remainingCostLowerBound(
+  x: number,
+  y: number,
+  hd: number,
+  gx: number,
+  gy: number,
+  gh: number
+): number {
+  const dx = gx - x;
+  const dy = gy - y;
+  const len = Math.abs(dx) + Math.abs(dy);
+  if (len <= EPS) {
+    if (hd === gh) return 0;
+    if (((hd + 2) & 3) === gh) return Math.min(U_TURN_COST, 2 * BEND_COST);
+    return BEND_COST;
+  }
+  const needX = Math.abs(dx) > EPS;
+  const needY = Math.abs(dy) > EPS;
+  const hx = hd === 0 ? 1 : hd === 2 ? -1 : 0;
+  const hy = hd === 3 ? 1 : hd === 1 ? -1 : 0;
+  let bends = 0;
+  if (needX && needY) {
+    const matchX = (dx > 0 && hx > 0) || (dx < 0 && hx < 0);
+    const matchY = (dy > 0 && hy > 0) || (dy < 0 && hy < 0);
+    bends = matchX || matchY ? 1 : 2;
+  } else if (needX) {
+    const matchX = (dx > 0 && hx > 0) || (dx < 0 && hx < 0);
+    if (!matchX) bends = 1;
+  } else {
+    const matchY = (dy > 0 && hy > 0) || (dy < 0 && hy < 0);
+    if (!matchY) bends = 1;
+  }
+  return len + bends * BEND_COST;
+}
+
 export function simplifyWaypoints(points: Point[]): Point[] {
   if (points.length <= 2) return points.map((p) => ({ x: p.x, y: p.y }));
   const out: Point[] = [{ x: points[0].x, y: points[0].y }];
@@ -321,15 +374,22 @@ export function catalogWaypoints(input: {
 
   if (horizS && horizT) {
     if (ds.x === dt.x) {
-      const midX = quantize((S2.x + T2.x) / 2 + offset);
-      points.push({ x: midX, y: S2.y });
-      points.push({ x: midX, y: T2.y });
+      if (offset === 0 && Math.abs(S2.y - T2.y) > EPS) {
+        points.push({ x: S2.x, y: T2.y });
+      } else {
+        const midX = quantize((S2.x + T2.x) / 2 + offset);
+        points.push({ x: midX, y: S2.y });
+        points.push({ x: midX, y: T2.y });
+      }
     } else {
       const sameRow = Math.abs(S2.y - T2.y) <= EPS;
       const facing =
         (ds.x > 0 && T2.x >= S2.x - EPS) || (ds.x < 0 && T2.x <= S2.x + EPS);
       if (sameRow && facing && offset === 0) {
         // gerade
+      } else if (facing && offset === 0) {
+        // L, das in den Ziel-Stub mündet: ein Knick statt zwei.
+        points.push({ x: S2.x, y: T2.y });
       } else if (facing) {
         const midX = quantize((S2.x + T2.x) / 2 + offset);
         points.push({ x: midX, y: S2.y });
@@ -355,6 +415,8 @@ export function catalogWaypoints(input: {
         (ds.y > 0 && T2.y >= S2.y - EPS) || (ds.y < 0 && T2.y <= S2.y + EPS);
       if (sameCol && facing && offset === 0) {
         // gerade
+      } else if (facing && offset === 0) {
+        points.push({ x: T2.x, y: S2.y });
       } else if (facing) {
         const midY = quantize((S2.y + T2.y) / 2 + offset);
         points.push({ x: S2.x, y: midY });
@@ -377,6 +439,100 @@ export function catalogWaypoints(input: {
 
   points.push(T2, T);
   return simplifyWaypoints(points);
+}
+
+const withElbow = (S: Point, S2: Point, elbow: Point, T2: Point, T: Point): Point[] =>
+  simplifyWaypoints([S, S2, elbow, T2, T]);
+
+/**
+ * Alle billigen, port-treuen Katalogpfade. A* läuft nur, wenn keiner frei ist.
+ * Beide L-Varianten sind manhattan-optimal; Z nur, wenn ein Lane-Offset nötig ist.
+ */
+export function catalogCandidates(input: {
+  sourceX: number;
+  sourceY: number;
+  sourcePosition?: Position;
+  targetX: number;
+  targetY: number;
+  targetPosition?: Position;
+  offset?: number;
+}): Point[][] {
+  const primary = catalogWaypoints(input);
+  const ds = sourceExitVector(input.sourcePosition);
+  const dt = targetEntryVector(input.targetPosition);
+  const offset = input.offset ?? 0;
+  const stub = ROUTE_MIN_STUB + Math.abs(offset) * 0.15;
+  const S: Point = { x: input.sourceX, y: input.sourceY };
+  const T: Point = { x: input.targetX, y: input.targetY };
+  const S2 = stubPoint(S, ds, stub);
+  const T2 = stubPoint(T, { x: -dt.x, y: -dt.y }, stub);
+
+  const out: Point[][] = [primary];
+  out.push(withElbow(S, S2, { x: T2.x, y: S2.y }, T2, T));
+  out.push(withElbow(S, S2, { x: S2.x, y: T2.y }, T2, T));
+
+  if (offset !== 0) {
+    out.push(
+      simplifyWaypoints([
+        S,
+        S2,
+        { x: quantize((S2.x + T2.x) / 2 + offset), y: S2.y },
+        { x: quantize((S2.x + T2.x) / 2 + offset), y: T2.y },
+        T2,
+        T,
+      ])
+    );
+    out.push(
+      simplifyWaypoints([
+        S,
+        S2,
+        { x: S2.x, y: quantize((S2.y + T2.y) / 2 + offset) },
+        { x: T2.x, y: quantize((S2.y + T2.y) / 2 + offset) },
+        T2,
+        T,
+      ])
+    );
+  }
+
+  const seen = new Set<string>();
+  const unique: Point[][] = [];
+  for (let i = 0; i < out.length; i++) {
+    const key = out[i].map((p) => `${p.x},${p.y}`).join('|');
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push(out[i]);
+  }
+  return unique;
+}
+
+const scoreCatalog = (points: Point[]): number =>
+  pathLength(points) + BEND_COST * countBends(points);
+
+export function bestFreeCatalog(
+  input: {
+    sourceX: number;
+    sourceY: number;
+    sourcePosition?: Position;
+    targetX: number;
+    targetY: number;
+    targetPosition?: Position;
+    offset?: number;
+  },
+  obstacles: Rect[]
+): Point[] | null {
+  const candidates = catalogCandidates(input);
+  let best: Point[] | null = null;
+  let bestScore = Infinity;
+  for (let i = 0; i < candidates.length; i++) {
+    const pts = candidates[i];
+    if (!isOrthogonalPath(pts) || pathHitsObstacles(pts, obstacles)) continue;
+    const score = scoreCatalog(pts);
+    if (score < bestScore - EPS) {
+      best = pts;
+      bestScore = score;
+    }
+  }
+  return best;
 }
 
 const orientation = (a: Point, b: Point, c: Point): number => {
@@ -461,12 +617,25 @@ function hananAStar(
     xs = uniqueSorted([start.x, goal.x, ...xs.filter(keepX)]);
     ys = uniqueSorted([start.y, goal.y, ...ys.filter(keepY)]);
   } else if (xs.length * ys.length > 20_000) {
-    const pad = 120;
+    // Envelope aller Hindernisse, nicht nur Start–Ziel ±120 px:
+    // sonst kann der Umweg um ein großes Bauteil aus dem Fenster fallen.
+    let minX = Math.min(start.x, goal.x);
+    let maxX = Math.max(start.x, goal.x);
+    let minY = Math.min(start.y, goal.y);
+    let maxY = Math.max(start.y, goal.y);
+    for (let i = 0; i < obstacles.length; i++) {
+      const r = obstacles[i];
+      minX = Math.min(minX, r.x);
+      maxX = Math.max(maxX, r.x + r.width);
+      minY = Math.min(minY, r.y);
+      maxY = Math.max(maxY, r.y + r.height);
+    }
+    const pad = 32;
     return hananAStar(start, goal, startHeading, goalHeading, obstacles, extraXs, extraYs, {
-      minX: Math.min(start.x, goal.x) - pad,
-      maxX: Math.max(start.x, goal.x) + pad,
-      minY: Math.min(start.y, goal.y) - pad,
-      maxY: Math.max(start.y, goal.y) + pad,
+      minX: minX - pad,
+      maxX: maxX + pad,
+      minY: minY - pad,
+      maxY: maxY + pad,
     });
   }
 
@@ -477,9 +646,16 @@ function hananAStar(
   const gix = snapIndex(xs, goal.x);
   const giy = snapIndex(ys, goal.y);
 
+  const solids: Rect[] = [];
+  for (let i = 0; i < obstacles.length; i++) {
+    const r = obstacles[i];
+    if (containsPoint(r, start) || containsPoint(r, goal)) continue;
+    solids.push(r);
+  }
+
   const blocked = new Uint8Array(nx * ny);
-  for (let o = 0; o < obstacles.length; o++) {
-    const r = obstacles[o];
+  for (let o = 0; o < solids.length; o++) {
+    const r = solids[o];
     for (let iy = 0; iy < ny; iy++) {
       const y = ys[iy];
       if (y <= r.y + EPS || y >= r.y + r.height - EPS) continue;
@@ -493,19 +669,49 @@ function hananAStar(
   blocked[siy * nx + six] = 0;
   blocked[giy * nx + gix] = 0;
 
-  const pack = (ix: number, iy: number, hd: number): number => ((iy * nx + ix) << 2) | hd;
+  const hOpen = new Uint8Array(ny * Math.max(0, nx - 1));
+  const vOpen = new Uint8Array(nx * Math.max(0, ny - 1));
+  if (nx > 1) {
+    for (let iy = 0; iy < ny; iy++) {
+      const y = ys[iy];
+      const row = iy * (nx - 1);
+      for (let ix = 0; ix < nx - 1; ix++) {
+        if (blocked[iy * nx + ix] || blocked[iy * nx + ix + 1]) continue;
+        if (!segmentHitsAny({ x: xs[ix], y }, { x: xs[ix + 1], y }, solids)) hOpen[row + ix] = 1;
+      }
+    }
+  }
+  if (ny > 1) {
+    for (let ix = 0; ix < nx; ix++) {
+      const x = xs[ix];
+      const col = ix * (ny - 1);
+      for (let iy = 0; iy < ny - 1; iy++) {
+        if (blocked[iy * nx + ix] || blocked[(iy + 1) * nx + ix]) continue;
+        if (!segmentHitsAny({ x, y: ys[iy] }, { x, y: ys[iy + 1] }, solids)) vOpen[col + iy] = 1;
+      }
+    }
+  }
+
+  const pack = (ix: number, iy: number, hd: number): number => (iy * nx + ix) * 4 + hd;
   const gScore = new Map<number, number>();
   const parent = new Map<number, number>();
 
   const startKey = pack(six, siy, startHeading);
   gScore.set(startKey, 0);
   const heap = new MinHeap();
-  const h0 = Math.abs(xs[six] - xs[gix]) + Math.abs(ys[siy] - ys[giy]);
+  const h0 = remainingCostLowerBound(xs[six], ys[siy], startHeading, xs[gix], ys[giy], goalHeading);
   heap.push({ f: h0, g: 0, h: h0, ix: six, iy: siy, hd: startHeading });
 
   let expansions = 0;
   let bestGoalKey = -1;
   let bestGoalG = Infinity;
+
+  const canStep = (ix: number, iy: number, nd: number): boolean => {
+    if (nd === 0) return ix + 1 < nx && hOpen[iy * (nx - 1) + ix] === 1;
+    if (nd === 2) return ix - 1 >= 0 && hOpen[iy * (nx - 1) + (ix - 1)] === 1;
+    if (nd === 3) return iy + 1 < ny && vOpen[ix * (ny - 1) + iy] === 1;
+    return iy - 1 >= 0 && vOpen[ix * (ny - 1) + (iy - 1)] === 1;
+  };
 
   while (heap.size > 0) {
     const cur = heap.pop()!;
@@ -529,18 +735,10 @@ function hananAStar(
     if (cur.g + cur.h >= bestGoalG) continue;
 
     for (let nd = 0; nd < 4; nd++) {
-      const dix = DIR[nd].x;
-      const diy = DIR[nd].y;
-      const nix = cur.ix + dix;
-      const niy = cur.iy + diy;
-      if (nix < 0 || niy < 0 || nix >= nx || niy >= ny) continue;
-      if (blocked[niy * nx + nix]) continue;
-
-      const a: Point = { x: xs[cur.ix], y: ys[cur.iy] };
-      const b: Point = { x: xs[nix], y: ys[niy] };
-      if (segmentHitsAny(a, b, obstacles)) continue;
-
-      const step = Math.abs(b.x - a.x) + Math.abs(b.y - a.y);
+      if (!canStep(cur.ix, cur.iy, nd)) continue;
+      const nix = cur.ix + DIR[nd].x;
+      const niy = cur.iy + DIR[nd].y;
+      const step = Math.abs(xs[nix] - xs[cur.ix]) + Math.abs(ys[niy] - ys[cur.iy]);
       if (step <= EPS) continue;
       const g = cur.g + step + turnCost(cur.hd, nd);
       const nkey = pack(nix, niy, nd);
@@ -548,7 +746,7 @@ function hananAStar(
       if (prev !== undefined && g >= prev - EPS) continue;
       gScore.set(nkey, g);
       parent.set(nkey, key);
-      const h = Math.abs(xs[nix] - xs[gix]) + Math.abs(ys[niy] - ys[giy]);
+      const h = remainingCostLowerBound(xs[nix], ys[niy], nd, xs[gix], ys[giy], goalHeading);
       heap.push({ f: g + h, g, h, ix: nix, iy: niy, hd: nd });
     }
   }
@@ -561,7 +759,7 @@ function hananAStar(
   while (true) {
     if (seen.has(k)) break;
     seen.add(k);
-    const cell = k >> 2;
+    const cell = (k / 4) | 0;
     const ix = cell % nx;
     const iy = (cell / nx) | 0;
     pts.push({ x: xs[ix], y: ys[iy] });
@@ -626,11 +824,21 @@ const obstacleKey = (obstacles: Rect[]): string => {
   return s;
 };
 
+const segmentsKey = (segments: Segment[] | undefined): string => {
+  if (!segments || segments.length === 0) return '0';
+  let h = segments.length | 0;
+  for (let i = 0; i < segments.length; i++) {
+    const [a, b] = segments[i];
+    h = (Math.imul(h, 31) + (quantize(a.x) * 2 + quantize(a.y) + quantize(b.x) + quantize(b.y))) | 0;
+  }
+  return `${segments.length}:${h}`;
+};
+
 const requestKey = (input: PathRequest, obstacles: Rect[]): string =>
   `${quantize(input.sourceX)},${quantize(input.sourceY)},${input.sourcePosition ?? ''},` +
   `${quantize(input.targetX)},${quantize(input.targetY)},${input.targetPosition ?? ''},` +
   `${input.offset ?? 0},${input.borderRadius ?? ROUTE_BORDER_RADIUS},` +
-  `${obstacleKey(obstacles)},${input.crossingSegments?.length ?? 0}`;
+  `${obstacleKey(obstacles)},${segmentsKey(input.crossingSegments)}`;
 
 const cacheGet = (key: string): PathResult | undefined => {
   const hit = cache.get(key);
@@ -689,31 +897,32 @@ function searchOnce(
   obstacles: Rect[],
   offset: number
 ): { waypoints: Point[]; usedSearch: PathResult['usedSearch'] } {
-  const catalog = catalogWaypoints({ ...input, offset });
-  if (!pathHitsObstacles(catalog, obstacles)) {
-    return { waypoints: catalog, usedSearch: 'catalog' };
+  const freeCatalog = bestFreeCatalog({ ...input, offset }, obstacles);
+  if (freeCatalog) {
+    return { waypoints: freeCatalog, usedSearch: 'catalog' };
   }
 
+  const catalog = catalogWaypoints({ ...input, offset });
   const ds = sourceExitVector(input.sourcePosition);
   const dt = targetEntryVector(input.targetPosition);
-  const S: Point = { x: quantize(input.sourceX), y: quantize(input.sourceY) };
-  const T: Point = { x: quantize(input.targetX), y: quantize(input.targetY) };
+  const S: Point = { x: input.sourceX, y: input.sourceY };
+  const T: Point = { x: input.targetX, y: input.targetY };
 
   const pickStub = (from: Point, dir: Point): Point => {
     let stub = ROUTE_MIN_STUB + Math.abs(offset) * 0.15;
-    let p = stubPoint(from, dir, stub);
-    while (stub > 4 && (segmentHitsAny(from, p, obstacles) || obstacles.some((r) => containsPoint(r, p)))) {
+    let pt = stubPoint(from, dir, stub);
+    while (stub > 4 && (segmentHitsAny(from, pt, obstacles) || obstacles.some((r) => containsPoint(r, pt)))) {
       stub *= 0.5;
-      p = stubPoint(from, dir, stub);
+      pt = stubPoint(from, dir, stub);
     }
-    return p;
+    return pt;
   };
 
   const S2 = pickStub(S, ds);
   const T2 = pickStub(T, { x: -dt.x, y: -dt.y });
 
-  const extraXs = [S2.x, T2.x, (S2.x + T2.x) / 2 + offset];
-  const extraYs = [S2.y, T2.y, (S2.y + T2.y) / 2 + offset];
+  const extraXs = [S2.x, T2.x, (S2.x + T2.x) / 2 + offset, S.x, T.x];
+  const extraYs = [S2.y, T2.y, (S2.y + T2.y) / 2 + offset, S.y, T.y];
   if (obstacles.length > 0) {
     let minX = Infinity;
     let maxX = -Infinity;
@@ -741,10 +950,9 @@ function searchOnce(
   );
 
   if (inner && inner.length >= 1) {
-    const full = simplifyWaypoints([S, ...inner, T]);
-    if (!pathHitsObstacles(full, obstacles) || !pathHitsObstacles(catalog, obstacles)) {
-      const hits = pathHitsObstacles(full, obstacles);
-      if (!hits) return { waypoints: full, usedSearch: 'astar' };
+    const full = stitchOrthogonal([S, ...inner, T]);
+    if (!pathHitsObstacles(full, obstacles)) {
+      return { waypoints: full, usedSearch: 'astar' };
     }
   }
 
@@ -773,6 +981,15 @@ export function findCablePath(input: PathRequest): PathResult {
 
   const baseOffset = input.offset ?? 0;
   let best = searchOnce(input, obstacles, baseOffset);
+  if (best.usedSearch === 'fallback' && pathHitsObstacles(best.waypoints, obstacles)) {
+    const tight = relevantObstacles(allObstacles, start, end).map((r) =>
+      inflateRect(r, Math.max(2, OBSTACLE_MARGIN / 2))
+    );
+    const retry = searchOnce(input, tight, baseOffset);
+    if (!pathHitsObstacles(retry.waypoints, tight)) {
+      best = retry;
+    }
+  }
   let bestCross = countCrossings(best.waypoints, crossingSegments);
   let bestScore = scorePath(best.waypoints, bestCross);
 

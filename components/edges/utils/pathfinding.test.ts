@@ -3,6 +3,7 @@ import { Position } from 'reactflow';
 import {
   findCablePath,
   catalogWaypoints,
+  catalogCandidates,
   simplifyWaypoints,
   isOrthogonalPath,
   pathHitsObstacles,
@@ -15,6 +16,7 @@ import {
   countCrossings,
   nodesToObstacles,
   clearPathfindingCache,
+  remainingCostLowerBound,
   BEND_COST,
   OBSTACLE_MARGIN,
   type Point,
@@ -121,6 +123,33 @@ describe('catalog (obstacle-free)', () => {
     expect(pts[pts.length - 1]).toEqual({ x: 200, y: 0 });
   });
 
+  it('prefers an L over a Z when handles face each other', () => {
+    const pts = catalogWaypoints({
+      sourceX: 0,
+      sourceY: 0,
+      targetX: 200,
+      targetY: 80,
+      ...rightLeft,
+    });
+    // Port-Stubs erzwingen zwei Ecken; ein Z hätte drei.
+    expect(countBends(pts)).toBe(2);
+    expect(pts.some((p) => Math.abs(p.x - 24) < 1e-6 && Math.abs(p.y - 80) < 1e-6)).toBe(true);
+    expect(pathLength(pts)).toBeGreaterThanOrEqual(manhattan({ x: 0, y: 0 }, { x: 200, y: 80 }));
+  });
+
+  it('offers both L-shapes as catalog candidates', () => {
+    const candidates = catalogCandidates({
+      sourceX: 0,
+      sourceY: 0,
+      targetX: 200,
+      targetY: 80,
+      ...rightLeft,
+    });
+    const elbows = candidates.map((pts) => pts.map((p) => `${p.x},${p.y}`).join('>'));
+    expect(elbows.some((s) => s.includes('176,0') || s.includes('200,0'))).toBe(true);
+    expect(candidates.length).toBeGreaterThanOrEqual(2);
+  });
+
   it('uses an L when handles are perpendicular', () => {
     const pts = catalogWaypoints({
       sourceX: 0,
@@ -162,6 +191,28 @@ describe('findCablePath — invariants', () => {
     const result = route(0, 50, 300, 50);
     expect(result.usedSearch).toBe('catalog');
     expect(pathHitsObstacles(result.waypoints, [])).toBe(false);
+  });
+
+  it('takes the free L when the other L is blocked', () => {
+    // Blockt die waagerechte Trasse auf y=0, die senkrechte bei x=24 bleibt frei.
+    const wall: Rect = { x: 80, y: -20, width: 24, height: 40 };
+    const result = route(0, 0, 220, 100, [wall]);
+    expect(result.usedSearch).toBe('catalog');
+    const inflated = [inflateRect(wall, OBSTACLE_MARGIN)];
+    expect(pathHitsObstacles(result.waypoints, inflated)).toBe(false);
+    expect(countBends(result.waypoints)).toBeLessThanOrEqual(2);
+  });
+
+  it('still goes around a tall wall when many far-away obstacles would clip a naive window', () => {
+    const wall: Rect = { x: 90, y: -220, width: 24, height: 440 };
+    const dummies: Rect[] = [];
+    for (let i = 0; i < 80; i++) {
+      dummies.push({ x: 800 + i * 12, y: 800 + i * 12, width: 4, height: 4 });
+    }
+    const result = route(0, 0, 240, 0, [wall, ...dummies]);
+    const inflated = [inflateRect(wall, OBSTACLE_MARGIN)];
+    expect(pathHitsObstacles(result.waypoints, inflated)).toBe(false);
+    expect(result.waypoints.some((p) => p.y < -220 || p.y > 220)).toBe(true);
   });
 
   it('goes around a blocking rectangle instead of through it', () => {
@@ -333,6 +384,40 @@ describe('nodesToObstacles / cache / svg', () => {
     );
     expect(rects).toHaveLength(1);
     expect(rects[0].x).toBe(50);
+  });
+
+  it('heuristic never exceeds a known optimal remaining cost', () => {
+    expect(remainingCostLowerBound(0, 0, 0, 10, 0, 0)).toBe(10);
+    expect(remainingCostLowerBound(0, 0, 0, 10, 5, 0)).toBe(15 + BEND_COST);
+  });
+
+  it('cache distinguishes different crossing geometries, not just their count', () => {
+    const base = {
+      sourceX: 0,
+      sourceY: 40,
+      targetX: 200,
+      targetY: 40,
+      ...rightLeft,
+      obstacles: [] as Rect[],
+    };
+    const a = findCablePath({
+      ...base,
+      crossingSegments: [
+        [{ x: 80, y: -40 }, { x: 80, y: 160 }],
+        [{ x: 100, y: -40 }, { x: 100, y: 160 }],
+        [{ x: 120, y: -40 }, { x: 120, y: 160 }],
+      ],
+    });
+    clearPathfindingCache();
+    const b = findCablePath({
+      ...base,
+      crossingSegments: [
+        [{ x: 10, y: 40 }, { x: 190, y: 40 }],
+        [{ x: 10, y: 41 }, { x: 190, y: 41 }],
+        [{ x: 10, y: 42 }, { x: 190, y: 42 }],
+      ],
+    });
+    expect(a.crossings).not.toBe(b.crossings);
   });
 
   it('cache returns the same object on identical requests', () => {

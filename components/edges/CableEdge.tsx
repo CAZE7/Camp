@@ -65,7 +65,10 @@ const CableEdge = function ({
       targetPosition,
       offset: polarityPathOffset(sourceHandle) + lane,
       obstacles,
-      crossingSegments: edgesToCrossingSegments(edges, nodes, (edge) => edge.id === id),
+      crossingSegments:
+        edges.length > 120
+          ? []
+          : edgesToCrossingSegments(edges, nodes, (edge) => edge.id === id),
     });
     const nudge = edgeLabelNudge({
       edgeId: id,
