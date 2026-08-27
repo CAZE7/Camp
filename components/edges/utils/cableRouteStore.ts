@@ -52,7 +52,6 @@ export function CableRouteSync() {
   const routes = useMemo(() => {
     const state = store.getState();
     return routeAllCables(state.getNodes(), state.edges as RouteEdgeRef[]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nodeVersion, edgeVersion, store]);
 
   useLayoutEffect(() => {

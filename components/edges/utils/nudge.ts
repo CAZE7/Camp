@@ -1,12 +1,17 @@
 import type { Point, Rect } from './pathfinding';
-import { isOrthogonalPath, pathHitsObstacles } from './pathfinding';
+import {
+  isOrthogonalPath,
+  pathHitsObstacles,
+  containsPoint,
+  stitchOrthogonal,
+} from './pathfinding';
 
 /**
  * Globales orthogonales Nudging (libavoid-Phase 2).
  *
- * Nach dem Einzel-Routing liegen parallele Innenstücke oft auf derselben
- * Trasse. Diese Phase schiebt sie deterministisch auseinander, ohne
- * Handle-Punkte zu bewegen und ohne die Orthogonalität zu brechen.
+ * Parallele Innenstücke werden deterministisch auf Lanes verteilt.
+ * Handle-Punkte bleiben. Wo ein Stub nicht mitwandern darf, setzt
+ * `stitchOrthogonal` einen Ellbogen — der Pfad bleibt rechtwinklig.
  */
 
 export const NUDGE_GAP = 16;
@@ -32,12 +37,17 @@ const clonePaths = (paths: NudgePath[]): Point[][] =>
 const rangesOverlap = (aLo: number, aHi: number, bLo: number, bHi: number): boolean =>
   aHi >= bLo + NUDGE_MIN_OVERLAP && bHi >= aLo + NUDGE_MIN_OVERLAP;
 
+/**
+ * Segmente zwischen Stub und Gegen-Stub (i = 1 .. n-3).
+ * Der lange Lauf eines 5-Punkt-L (Elbow→T2) ist damit dabei.
+ * Handles (0, n-1) bleiben unangetastet.
+ */
 const collectInterior = (pts: Point[], axis: 'h' | 'v'): Seg[] => {
   const n = pts.length;
-  // Bewegliche Punkte: 2 .. n-3 (nicht Start, Stub, Ziel-Stub, Ziel).
-  if (n < 6) return [];
+  if (n < 4) return [];
   const segs: Seg[] = [];
-  for (let i = 2; i <= n - 4; i++) {
+  const last = n - 3;
+  for (let i = 1; i <= last; i++) {
     const a = pts[i];
     const b = pts[i + 1];
     if (axis === 'h') {
@@ -100,6 +110,9 @@ const clustersOf = (segs: Seg[]): number[][] => {
   return Array.from(buckets.values()).filter((g) => g.length > 1);
 };
 
+/** Nur echte Innenpunkte verschieben — Stubs bekommen später einen Ellbogen. */
+const isFreeVertex = (index: number, n: number): boolean => index >= 2 && index <= n - 3;
+
 const applyAxis = (
   clones: Point[][],
   originals: Point[][],
@@ -119,38 +132,65 @@ const applyAxis = (
 
   const groups = clustersOf(segs);
   for (let g = 0; g < groups.length; g++) {
-    const idxs = groups[g].slice().sort((a, b) => {
-      const da = segs[a].perp - segs[b].perp;
+    const byPath = new Map<number, number[]>();
+    for (let t = 0; t < groups[g].length; t++) {
+      const si = groups[g][t];
+      const p = segs[si].path;
+      const list = byPath.get(p);
+      if (list) list.push(si);
+      else byPath.set(p, [si]);
+    }
+    if (byPath.size < 2) continue;
+
+    const pathOrder = Array.from(byPath.keys()).sort((pa, pb) => {
+      const da = segs[byPath.get(pa)![0]].perp - segs[byPath.get(pb)![0]].perp;
       if (Math.abs(da) > EPS) return da;
-      const id = pathIds[segs[a].path].localeCompare(pathIds[segs[b].path]);
-      if (id !== 0) return id;
-      return segs[a].i0 - segs[b].i0;
+      return pathIds[pa].localeCompare(pathIds[pb]);
     });
 
     let mean = 0;
-    for (let i = 0; i < idxs.length; i++) mean += segs[idxs[i]].perp;
-    mean /= idxs.length;
+    for (let i = 0; i < pathOrder.length; i++) {
+      mean += segs[byPath.get(pathOrder[i])![0]].perp;
+    }
+    mean /= pathOrder.length;
 
-    for (let k = 0; k < idxs.length; k++) {
-      const seg = segs[idxs[k]];
-      const target = mean + (k - (idxs.length - 1) / 2) * gap;
-      const delta = target - seg.perp;
+    for (let k = 0; k < pathOrder.length; k++) {
+      const p = pathOrder[k];
+      const target = mean + (k - (pathOrder.length - 1) / 2) * gap;
+      const delta = target - segs[byPath.get(p)![0]].perp;
       if (Math.abs(delta) < EPS) continue;
-      const pts = clones[seg.path];
-      if (axis === 'h') {
-        pts[seg.i0].y += delta;
-        pts[seg.i1].y += delta;
-      } else {
-        pts[seg.i0].x += delta;
-        pts[seg.i1].x += delta;
+      const pts = clones[p];
+      const n = pts.length;
+      const moved = new Set<number>();
+      const list = byPath.get(p)!;
+      for (let s = 0; s < list.length; s++) {
+        const seg = segs[list[s]];
+        const ends = [seg.i0, seg.i1];
+        for (let e = 0; e < 2; e++) {
+          const idx = ends[e];
+          if (moved.has(idx) || !isFreeVertex(idx, n)) continue;
+          moved.add(idx);
+          if (axis === 'h') pts[idx].y += delta;
+          else pts[idx].x += delta;
+        }
       }
     }
   }
 };
 
+const obstaclesForPath = (obstacles: Rect[], start: Point, end: Point): Rect[] => {
+  const out: Rect[] = [];
+  for (let i = 0; i < obstacles.length; i++) {
+    const r = obstacles[i];
+    if (containsPoint(r, start) || containsPoint(r, end)) continue;
+    out.push(r);
+  }
+  return out;
+};
+
 /**
  * Schiebt parallele Innenstücke auseinander. Start- und Zielpunkte bleiben.
- * Pfade, die danach ein Hindernis schneiden, werden auf das Original zurückgesetzt.
+ * Pfade, die danach ein fremdes Hindernis schneiden, fallen auf das Original zurück.
  */
 export function nudgeOrthogonalPaths(
   paths: NudgePath[],
@@ -175,11 +215,15 @@ export function nudgeOrthogonalPaths(
     clones[i][0] = { x: start.x, y: start.y };
     clones[i][clones[i].length - 1] = { x: end.x, y: end.y };
 
-    const candidate = clones[i];
+    const changed = clones[i].some(
+      (p, j) => Math.abs(p.x - originals[i][j].x) > EPS || Math.abs(p.y - originals[i][j].y) > EPS
+    );
+    const repaired = changed ? stitchOrthogonal(clones[i]) : originals[i];
+    const relevant = obstaclesForPath(obstacles, start, end);
     const ok =
-      isOrthogonalPath(candidate) &&
-      (obstacles.length === 0 || !pathHitsObstacles(candidate, obstacles));
-    out.set(id, ok ? candidate : originals[i]);
+      isOrthogonalPath(repaired) &&
+      (relevant.length === 0 || !pathHitsObstacles(repaired, relevant));
+    out.set(id, ok ? repaired : originals[i]);
   }
   return out;
 }

@@ -12,7 +12,6 @@ import {
   type Point,
   type PathResult,
   type Rect,
-  type Segment,
 } from './pathfinding';
 import { polylineMidpoint, waypointsToPath, polarityPathOffset, parallelLaneOffset } from './pathUtils';
 import { nudgeOrthogonalPaths } from './nudge';
@@ -99,7 +98,7 @@ export function routeAllCables(nodes: Node[], edges: RouteEdgeRef[]): Map<string
   for (let i = 0; i < nodes.length; i++) nodeById.set(nodes[i].id, nodes[i]);
 
   const allObstacles = nodesToObstacles(nodes, new Set());
-  const crossingAll: Segment[] =
+  const crossingAll =
     edges.length > 120 ? [] : edgesToCrossingSegments(edges, nodes, () => false);
 
   const siblingEdges = edges.map((edge) => ({
@@ -109,7 +108,7 @@ export function routeAllCables(nodes: Node[], edges: RouteEdgeRef[]): Map<string
     sourceHandle: edge.sourceHandle,
   }));
 
-  const raw: { id: string; waypoints: Point[]; result: PathResult; obstacles: Rect[] }[] = [];
+  const raw: { id: string; waypoints: Point[]; result: PathResult }[] = [];
 
   for (let i = 0; i < edges.length; i++) {
     const edge = edges[i];
@@ -135,9 +134,11 @@ export function routeAllCables(nodes: Node[], edges: RouteEdgeRef[]): Map<string
       targetPosition: tgt.position,
       offset: polarityPathOffset(edge.sourceHandle) + lane,
       obstacles,
-      crossingSegments: crossingAll,
+      crossingSegments: edges.length > 120
+        ? []
+        : edgesToCrossingSegments(edges, nodes, (other) => other.id === edge.id),
     });
-    raw.push({ id: edge.id, waypoints: result.waypoints, result, obstacles });
+    raw.push({ id: edge.id, waypoints: result.waypoints, result });
   }
 
   const inflated: Rect[] = allObstacles.map((r) => inflateRect(r, OBSTACLE_MARGIN));
@@ -154,6 +155,3 @@ export function routeAllCables(nodes: Node[], edges: RouteEdgeRef[]): Map<string
   }
   return out;
 }
-
-// Re-export so tests can inflate consistently if needed.
-export { relevantObstaclesForExport };

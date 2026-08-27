@@ -35,13 +35,41 @@ describe('nudgeOrthogonalPaths', () => {
     expect(wb[wb.length - 1]).toEqual(b.waypoints[b.waypoints.length - 1]);
   });
 
+  const longRunY = (wp: Point[]): number => {
+    for (let i = 1; i < wp.length - 1; i++) {
+      if (Math.abs(wp[i].y - wp[i + 1].y) < 1e-6 && Math.abs(wp[i].x - wp[i + 1].x) > 40) {
+        return wp[i].y;
+      }
+    }
+    return wp[2].y;
+  };
+
   it('spreads coincident interior runs by NUDGE_GAP', () => {
     const out = nudgeOrthogonalPaths([z('a', 40), z('b', 40)]);
-    const ya = out.get('a')![2].y;
-    const yb = out.get('b')![2].y;
-    expect(Math.abs(ya - yb)).toBeCloseTo(NUDGE_GAP, 5);
+    expect(Math.abs(longRunY(out.get('a')!) - longRunY(out.get('b')!))).toBeCloseTo(NUDGE_GAP, 5);
     expect(isOrthogonalPath(out.get('a')!)).toBe(true);
     expect(isOrthogonalPath(out.get('b')!)).toBe(true);
+  });
+
+  it('spreads the long run of a 5-point L without moving handles', () => {
+    const l = (id: string): { id: string; waypoints: Point[] } => ({
+      id,
+      waypoints: [
+        { x: 0, y: 0 },
+        { x: 24, y: 0 },
+        { x: 24, y: 80 },
+        { x: 176, y: 80 },
+        { x: 200, y: 80 },
+      ],
+    });
+    const out = nudgeOrthogonalPaths([l('a'), l('b')]);
+    const a = out.get('a')!;
+    const b = out.get('b')!;
+    expect(a[0]).toEqual({ x: 0, y: 0 });
+    expect(a[a.length - 1]).toEqual({ x: 200, y: 80 });
+    expect(isOrthogonalPath(a)).toBe(true);
+    expect(isOrthogonalPath(b)).toBe(true);
+    expect(Math.abs(longRunY(a) - longRunY(b))).toBeCloseTo(NUDGE_GAP, 5);
   });
 
   it('is deterministic (id order, not input order)', () => {
@@ -63,6 +91,13 @@ describe('nudgeOrthogonalPaths', () => {
     };
     const out = nudgeOrthogonalPaths([short, { ...short, id: 't' }]);
     expect(out.get('s')).toEqual(short.waypoints);
+  });
+
+  it('does not treat the connected nodes as obstacles for the path that owns them', () => {
+    const src: Rect = { x: -10, y: -10, width: 30, height: 30 };
+    const dst: Rect = { x: 190, y: 70, width: 30, height: 30 };
+    const out = nudgeOrthogonalPaths([z('a', 40), z('b', 40)], { obstacles: [src, dst] });
+    expect(Math.abs(longRunY(out.get('a')!) - longRunY(out.get('b')!))).toBeCloseTo(NUDGE_GAP, 5);
   });
 
   it('reverts a path that would cut an obstacle after the shift', () => {
