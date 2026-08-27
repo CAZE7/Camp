@@ -26,30 +26,30 @@ Next.js-App (TypeScript, Tailwind, React Flow, Zustand) zur Planung von Camper-E
 
 ## Mission 5: Betrieb & Hygiene
 
-- [ ] M5-1 Playwright verifizieren: 4 Specs × 4 Projekte lokal/CI grün (Nachzug zu K5).
-- [ ] M5-2 PR #316 (Mission 2, K1–K7) mergen oder schließen.
-- [ ] M5-3 Paketmanager festlegen: `package-lock.json` ODER `pnpm-lock.yaml` entfernen.
-- [ ] M5-4 Veraltete Branches löschen (`arena/*`, `add-*-tests-*`).
-- [ ] M5-5 Token-Budget: AGENTS.md ≤ 1.200 Tokens halten, bei jedem PR prüfen.
+- [x] M5-1 Playwright verifizieren: 4 Specs × 4 Projekte lokal/CI grün (Nachzug zu K5).
+- [x] M5-2 PR #316 (Mission 2, K1–K7) mergen oder schließen.
+- [x] M5-3 Paketmanager festlegen: `package-lock.json` ODER `pnpm-lock.yaml` entfernen.
+- [x] M5-4 Veraltete Branches löschen (`arena/*`, `add-*-tests-*`).
+- [x] M5-5 Token-Budget: AGENTS.md ≤ 1.200 Tokens halten, bei jedem PR prüfen.
 
 ## Mission 6: Industriestandard Code
 
-- [ ] M6-1 ESLint + Prettier einrichten (`no-explicit-any`, `no-console`, `react-hooks`); in `check`-Script + CI einhängen.
-- [ ] M6-2 `useInlineNodeEditing`-Hook bauen; Copy-Paste-Edit-Block aus 11 Node-Komponenten migrieren (Battery, Inverter, Solar, Charger, Fuse, Busbar, Shunt, ShorePower, Consumer, Consumer230V, Ground).
-- [ ] M6-3 NodeData als Discriminated Union; `any` aus `Inspector.tsx`, `NodeInspectors.tsx` und Node-Props entfernen.
-- [ ] M6-4 Fehlerbehandlung: Result-Typ in `app/tools/heizung/page.tsx` (kein stiller `return 0`), Fehler-Feedback im BOMModal, `console.error` in PlannerDashboard ersetzen.
-- [ ] M6-5 `store/usePlannerStore.ts` in Zustand-Slices zerlegen (nodes / edges / ui / persist).
-- [ ] M6-6 `lib/autoWire.ts` modularisieren (sizing / routing / validation).
-- [ ] M6-7 Test-Mocks typisieren: `vi.mocked()` + typisierte Factories statt `as any` (19 Dateien).
-- [ ] M6-8 Audit-Reste: `NodeJS.Timeout` → `ReturnType<typeof setTimeout>` (RoadTripAnimation.tsx), stale Kommentare in WaterPipeEdge.test.tsx, 8 offene autoWire-Testgruppen (AUDIT-AUTOWIRE.md), ELEC-003 AC-Absicherung, CI-`skip_tests` restriktiv handhaben.
+- [x] M6-1 ESLint + Prettier einrichten (`no-explicit-any`, `no-console`, `react-hooks`); in `check`-Script + CI einhängen.
+- [x] M6-2 `useInlineNodeEditing`-Hook bauen; Copy-Paste-Edit-Block aus 11 Node-Komponenten migrieren (Battery, Inverter, Solar, Charger, Fuse, Busbar, Shunt, ShorePower, Consumer, Consumer230V, Ground).
+- [x] M6-3 NodeData als Discriminated Union; `any` aus `Inspector.tsx`, `NodeInspectors.tsx` und Node-Props entfernen.
+- [x] M6-4 Fehlerbehandlung: Result-Typ in `app/tools/heizung/page.tsx` (kein stiller `return 0`), Fehler-Feedback im BOMModal, `console.error` in PlannerDashboard ersetzen.
+- [x] M6-5 `store/usePlannerStore.ts` in Zustand-Slices zerlegen (nodes / edges / ui / persist).
+- [x] M6-6 `lib/autoWire.ts` modularisieren (sizing / routing / validation).
+- [x] M6-7 Test-Mocks typisieren: `vi.mocked()` + typisierte Factories statt `as any` (19 Dateien).
+- [x] M6-8 Audit-Reste: `NodeJS.Timeout` → `ReturnType<typeof setTimeout>` (RoadTripAnimation.tsx), stale Kommentare in WaterPipeEdge.test.tsx, 8 offene autoWire-Testgruppen (AUDIT-AUTOWIRE.md), ELEC-003 AC-Absicherung, CI-`skip_tests` restriktiv handhaben.
 
 ## Mission 7: Engineering Dark Theme (Planner)
 
-- [ ] M7-1 Design-Tokens: `.dark`-Block in globals.css (surface-0..2, border, text-high/med/low, accent, ok/warn/error, radius ≤ 4 px).
-- [ ] M7-2 Fonts: Planner auf Inter/IBM Plex Sans; Werte in IBM Plex Mono mit `tabular-nums`; Fraunces nur Marketing-Seiten.
-- [ ] M7-3 Canvas: Punkt-Raster, Statuszeile (Koordinaten/Zoom), Selektion 1 px in `--accent`.
-- [ ] M7-4 Density: 4-px-Spacing-Grid, Controls 28–32 px, Inspector-Werte rechtsbündig mit Einheit.
-- [ ] M7-5 Kontraste WCAG ≥ 4,5:1 prüfen; Lighthouse Accessibility 100 halten.
+- [x] M7-1 Design-Tokens: `.dark`-Block in globals.css (surface-0..2, border, text-high/med/low, accent, ok/warn/error, radius ≤ 4 px).
+- [x] M7-2 Fonts: Planner auf Inter/IBM Plex Sans; Werte in IBM Plex Mono mit `tabular-nums`; Fraunces nur Marketing-Seiten.
+- [x] M7-3 Canvas: Punkt-Raster, Statuszeile (Koordinaten/Zoom), Selektion 1 px in `--accent`.
+- [x] M7-4 Density: 4-px-Spacing-Grid, Controls 28–32 px, Inspector-Werte rechtsbündig mit Einheit.
+- [x] M7-5 Kontraste WCAG ≥ 4,5:1 prüfen; Lighthouse Accessibility 100 halten.
 
 ## Kontext
 
