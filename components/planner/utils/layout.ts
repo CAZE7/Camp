@@ -16,52 +16,66 @@ export const NODE_SIZE_BY_TYPE: Record<string, { width: number; height: number }
 };
 
 /**
- * Exactly three functional columns:
- * 0 sources | 1 distribution/conversion | 2 consumers.
- *
- * Components not explicitly listed are deliberately put in the middle. This
- * is the safest fallback: an extension can neither masquerade as a source nor
- * get pushed behind the loads without declaring its role here.
+ * 5-stage E-CAD industry pipeline classification (EPLAN / DIN EN 61082 standard):
+ * Rank 0: Primary sources (Solar, Shore Power, Water Tank)
+ * Rank 1: Chargers & Converters (MPPT, DCDC Booster, AC Charger, Pumps)
+ * Rank 2: Storage & Main Distribution Backbone (House Battery, Shunt, Plus/Minus Busbars, Fuse Box)
+ * Rank 3: Inverters & Sub-distribution (Inverter)
+ * Rank 4: End Consumers & Ground (12V & 230V Loads, Sinks, Showers, Ground)
  */
-const SOURCE_TYPES = new Set([
-  'solar', 'roofSolar', 'battery', 'shorePower', 'freshWaterTank',
+const PRIMARY_SOURCE_TYPES = new Set([
+  'solar', 'roofSolar', 'shorePower', 'freshWaterTank',
+]);
+const CHARGER_CONVERTER_TYPES = new Set([
+  'mpptController', 'dcdcCharger', 'acBatteryCharger', 'charger', 'preFilter', 'pump',
+]);
+const CORE_DISTRIBUTION_TYPES = new Set([
+  'battery', 'shunt', 'busbar', 'fuse', 'conduit', 'accumulator',
+]);
+const INVERTER_TYPES = new Set([
+  'inverter',
 ]);
 const CONSUMER_TYPES = new Set([
-  'consumer', 'consumer230v', 'inverter', 'sink', 'shower', 'grayWaterTank', 'ground',
+  'consumer', 'consumer230v', 'sink', 'shower', 'grayWaterTank', 'ground',
 ]);
 
 export const LAYOUT_TYPE_ORDER: Record<string, number> = {
   solar: 0,
   roofSolar: 1,
   shorePower: 2,
-  battery: 3,
-  freshWaterTank: 4,
+  freshWaterTank: 3,
 
   mpptController: 10,
   dcdcCharger: 11,
   acBatteryCharger: 12,
   charger: 13,
-  shunt: 14,
-  busbar: 15,
-  fuse: 16,
-  conduit: 17,
-  preFilter: 18,
-  pump: 19,
-  accumulator: 20,
+  preFilter: 14,
+  pump: 15,
+
+  battery: 20,
+  shunt: 21,
+  busbar: 22,
+  fuse: 23,
+  conduit: 24,
+  accumulator: 25,
 
   inverter: 30,
-  consumer230v: 31,
-  consumer: 32,
-  sink: 33,
-  shower: 34,
-  grayWaterTank: 35,
-  ground: 36,
+
+  consumer230v: 40,
+  consumer: 41,
+  sink: 42,
+  shower: 43,
+  grayWaterTank: 44,
+  ground: 45,
 };
 
 export const getNodeLayoutRank = (node: Node): number => {
-  if (node.type && SOURCE_TYPES.has(node.type)) return 0;
-  if (node.type && CONSUMER_TYPES.has(node.type)) return 2;
-  return 1;
+  if (node.type && PRIMARY_SOURCE_TYPES.has(node.type)) return 0;
+  if (node.type && CHARGER_CONVERTER_TYPES.has(node.type)) return 1;
+  if (node.type && CORE_DISTRIBUTION_TYPES.has(node.type)) return 2;
+  if (node.type && INVERTER_TYPES.has(node.type)) return 3;
+  if (node.type && CONSUMER_TYPES.has(node.type)) return 4;
+  return 2; // Default to distribution layer
 };
 
 export const getNodeLayoutSize = (node: Node): { width: number; height: number } => {
@@ -76,22 +90,27 @@ const hierarchyOrder = (node: Node): number =>
   node.type ? LAYOUT_TYPE_ORDER[node.type] ?? 999 : 999;
 
 /**
- * Pure, deterministic three-column layout. Horizontal and vertical constants
- * are gaps between bounding boxes, not centre distances, so differently sized
- * cards cannot overlap. Position changes are animated by FlowCanvas for 300 ms.
+ * Deterministic E-CAD industry pipeline layout. Horizontal and vertical constants
+ * are gaps between bounding boxes, so cards cannot overlap. Position changes
+ * are animated by FlowCanvas for 300 ms.
  */
 export const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'LR') => {
   if (direction !== 'LR') {
-    // The planner exposes only left-to-right cleanup. Keeping this argument for
-    // API compatibility avoids silently producing a different column model.
     direction = 'LR';
   }
   void direction;
 
-  const columns: Node[][] = [[], [], []];
-  for (const node of nodes) columns[getNodeLayoutRank(node)].push(node);
+  // Group nodes into 5 possible pipeline ranks
+  const rawRanks: Node[][] = [[], [], [], [], []];
+  for (const node of nodes) {
+    const rank = getNodeLayoutRank(node);
+    rawRanks[rank].push(node);
+  }
 
-  for (const column of columns) {
+  // Filter out empty ranks to dynamically compact active columns
+  const activeColumns = rawRanks.filter((col) => col.length > 0);
+
+  for (const column of activeColumns) {
     column.sort((a, b) => {
       const byType = hierarchyOrder(a) - hierarchyOrder(b);
       if (byType !== 0) return byType;
@@ -100,20 +119,23 @@ export const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'L
     });
   }
 
-  const columnWidths = columns.map((column) =>
+  // Calculate X positions for active columns
+  const columnWidths = activeColumns.map((column) =>
     column.reduce((max, node) => Math.max(max, getNodeLayoutSize(node).width), DEFAULT_NODE_WIDTH)
   );
-  const columnX = [
-    LAYOUT_MARGIN,
-    LAYOUT_MARGIN + columnWidths[0] + LAYOUT_RANKSEP,
-    LAYOUT_MARGIN + columnWidths[0] + LAYOUT_RANKSEP + columnWidths[1] + LAYOUT_RANKSEP,
-  ];
+
+  const columnX: number[] = [];
+  let currentX = LAYOUT_MARGIN;
+  for (let i = 0; i < activeColumns.length; i++) {
+    columnX.push(currentX);
+    currentX += columnWidths[i] + LAYOUT_RANKSEP;
+  }
 
   const placed = new Map<string, Node>();
-  columns.forEach((column, rank) => {
+  activeColumns.forEach((column, colIdx) => {
     let y = LAYOUT_MARGIN;
     for (const node of column) {
-      placed.set(node.id, { ...node, position: { x: columnX[rank], y } });
+      placed.set(node.id, { ...node, position: { x: columnX[colIdx], y } });
       y += getNodeLayoutSize(node).height + LAYOUT_NODESEP;
     }
   });

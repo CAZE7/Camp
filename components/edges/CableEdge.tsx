@@ -403,30 +403,23 @@ const CableEdge = function ({
           }}
           className="nodrag nopan edge-label"
         >
-          {/* Kompaktes Kern-Label: Kabeltyp-Badge + Querschnitt + Länge, immer sichtbar. */}
-          <span className="edge-label-main" style={{ display: 'flex', alignItems: 'center', gap: '5px', color: stroke }}>
-            {/* Kabeltyp-Badge: Form + Farbe orientiert sich an den Handle-Symbolen */}
+          {/* Kompaktes Kern-Label: Typ-Kürzel + Querschnitt + Länge */}
+          <span className="edge-label-main" style={{ display: 'flex', alignItems: 'center', gap: '4px', color: stroke }}>
             <span
-              aria-label={edgeDomain === 'AC_230V' ? 'Wechselstrom 230V' : edgeDomain === 'Solar' ? 'Solarleitung' : isPlus ? 'Gleichstrom Plus' : 'Gleichstrom Minus'}
               style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '16px',
-                height: '16px',
-                borderRadius: edgeDomain === 'AC_230V' ? '2px' : edgeDomain === 'Solar' ? '50%' : isPlus ? '50%' : '2px',
-                transform: edgeDomain === 'AC_230V' ? 'rotate(45deg)' : 'none',
-                background: stroke,
-                fontSize: '8px',
-                fontWeight: 900,
-                color: 'white',
-                flexShrink: 0,
-                lineHeight: 1,
+                fontFamily: 'var(--font-mono)',
+                fontSize: '10px',
+                fontWeight: 700,
+                letterSpacing: '0.04em',
+                opacity: 0.85,
               }}
             >
-              {edgeDomain === 'AC_230V' ? '' : edgeDomain === 'Solar' ? '☀' : isPlus ? '+' : '−'}
+              {edgeDomain === 'AC_230V' ? '230V' : edgeDomain === 'Solar' ? 'SOLAR' : isPlus ? 'DC+' : 'DC−'}
             </span>
-            {crossSection} mm² · {length.toFixed(1)} m
+            <span>·</span>
+            <span>{crossSection} mm²</span>
+            <span>·</span>
+            <span>{length.toFixed(1)} m</span>
           </span>
 
           {/* Details bei Auswahl / Hover */}

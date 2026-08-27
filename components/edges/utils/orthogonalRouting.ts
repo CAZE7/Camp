@@ -15,7 +15,7 @@ import { Position, Node } from 'reactflow';
 export type Point = { x: number; y: number };
 export type Rect = { x: number; y: number; width: number; height: number };
 
-export const ROUTE_BORDER_RADIUS = 14;
+export const ROUTE_BORDER_RADIUS = 10;
 export const ROUTE_MIN_STUB = 24;
 export const OBSTACLE_MARGIN = 14;
 

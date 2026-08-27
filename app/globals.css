@@ -71,13 +71,13 @@
     --canvas-dim: 0.32;
     --canvas-domain-dim: 0.18;
     --canvas-minimap-mask: rgba(20, 17, 14, 0.14);
-    --wire-dc: #dc2626;        /* Gleichstrom 12V/24V Plus (rot) */
-    --wire-dc-minus: #374151;  /* Gleichstrom 12V/24V Minus (dunkelgrau, besser sichtbar) */
-    --wire-ac: #2563eb;        /* Wechselstrom 230V (blau) */
-    --wire-solar: #d97706;     /* Solar / PV (gelb/orange) */
-    --wire-selected: #374151;  /* Fokus-Ring für ausgewählte Leitung (kein Füll) */
-    --wire-error: #c026d3;     /* Leitung mit Fehler (magenta — klar trennbar von Rot/Orange/Blau) */
-    --wire-error-bg: rgba(192, 38, 211, 0.12); /* Fehler-Kabel Hintergrund-Tint */
+    --wire-dc: #dc2626;        /* Gleichstrom 12V/24V Plus (technisches Rot) */
+    --wire-dc-minus: #374151;  /* Gleichstrom 12V/24V Minus (Schiefergrau) */
+    --wire-ac: #2563eb;        /* Wechselstrom 230V (Signalblau) */
+    --wire-solar: #d97706;     /* Solar / PV (Bronze/Amber) */
+    --wire-selected: #1f2937;  /* Fokus-Ring für ausgewählte Leitung */
+    --wire-error: #b42318;     /* Leitung mit Fehler (Norm-Warnrot mit gestricheltem Signal) */
+    --wire-error-bg: rgba(180, 35, 24, 0.1);
 
     --pipe-fresh: #1d4ed8;     /* Frischwasser (blau) */
     --pipe-gray: #4b5563;      /* Grauwasser (grau) */

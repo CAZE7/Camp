@@ -16,10 +16,12 @@ const node = (id: string, type: string, data: Record<string, unknown> = {}): Nod
 });
 
 describe('three-column cleanup layout', () => {
-  it('classifies sources, distribution and consumers into exactly three ranks', () => {
-    for (const type of ['solar', 'battery', 'shorePower']) expect(getNodeLayoutRank(node(type, type))).toBe(0);
-    for (const type of ['mpptController', 'shunt', 'busbar', 'fuse']) expect(getNodeLayoutRank(node(type, type))).toBe(1);
-    for (const type of ['consumer', 'consumer230v', 'inverter']) expect(getNodeLayoutRank(node(type, type))).toBe(2);
+  it('classifies components into 5 E-CAD industry pipeline ranks', () => {
+    for (const type of ['solar', 'shorePower']) expect(getNodeLayoutRank(node(type, type))).toBe(0);
+    for (const type of ['mpptController', 'dcdcCharger']) expect(getNodeLayoutRank(node(type, type))).toBe(1);
+    for (const type of ['battery', 'shunt', 'busbar', 'fuse']) expect(getNodeLayoutRank(node(type, type))).toBe(2);
+    for (const type of ['inverter']) expect(getNodeLayoutRank(node(type, type))).toBe(3);
+    for (const type of ['consumer', 'consumer230v']) expect(getNodeLayoutRank(node(type, type))).toBe(4);
   });
 
   it('prefers measured dimensions and otherwise uses type/default fallbacks', () => {
