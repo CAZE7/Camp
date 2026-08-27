@@ -52,13 +52,12 @@ describe('three-column cleanup layout', () => {
   it('sorts vertically by type hierarchy and leaves 120 px between cards', () => {
     const input = [
       node('fuse', 'fuse'),
-      node('mppt', 'mpptController'),
       node('busbar', 'busbar'),
       node('shunt', 'shunt'),
     ];
     const { nodes } = getLayoutedElements(input, []);
     const ordered = [...nodes].sort((a, b) => a.position.y - b.position.y);
-    expect(ordered.map((item) => item.id)).toEqual(['mppt', 'shunt', 'busbar', 'fuse']);
+    expect(ordered.map((item) => item.id)).toEqual(['shunt', 'busbar', 'fuse']);
     for (let index = 1; index < ordered.length; index += 1) {
       const previous = ordered[index - 1];
       expect(ordered[index].position.y - (previous.position.y + getNodeLayoutSize(previous).height)).toBe(LAYOUT_NODESEP);

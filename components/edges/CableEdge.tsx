@@ -416,10 +416,7 @@ const CableEdge = function ({
             >
               {edgeDomain === 'AC_230V' ? '230V' : edgeDomain === 'Solar' ? 'SOLAR' : isPlus ? 'DC+' : 'DC−'}
             </span>
-            <span>·</span>
-            <span>{crossSection} mm²</span>
-            <span>·</span>
-            <span>{length.toFixed(1)} m</span>
+            <span>· {crossSection} mm² · {length.toFixed(1)} m</span>
           </span>
 
           {/* Details bei Auswahl / Hover */}
