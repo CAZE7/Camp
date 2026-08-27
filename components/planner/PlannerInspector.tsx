@@ -63,6 +63,7 @@ export function PlannerInspector() {
         title={isInspectorOpen ? "Inspector einklappen" : "Inspector ausklappen"}
         aria-label={isInspectorOpen ? "Rechte Sidebar einklappen" : "Rechte Sidebar ausklappen"}
         aria-expanded={isInspectorOpen}
+        aria-controls="planner-inspector-panel"
       >
         {isInspectorOpen ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
       </Button>

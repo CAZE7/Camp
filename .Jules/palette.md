@@ -51,3 +51,7 @@
 ## 2026-08-25 - Missing aria-pressed on Segmented Toggle Buttons
 **Learning:** Standalone toggle buttons and segmented controls acting as pseudo-radio groups (like the 'Sommer'/'Winter' toggles) must convey which option is currently active to assistive technologies. Without this, screen reader users cannot perceive the current state or understand the result of their selection.
 **Action:** Always add `aria-pressed={condition}` to any button that visually toggles between active and inactive states.
+
+## 2026-08-27 - Link sidebar toggle buttons to panels with aria-controls
+**Learning:** When using `aria-expanded` on toggle buttons that control sidebars or sliding panels, they must explicitly specify `aria-controls="[panel-id]"` linking them to the target container's `id` so screen readers can correctly identify and associate the structural relationship.
+**Action:** Always add an explicit `id` to the target panel and use `aria-controls` on the button when adding `aria-expanded` to a toggle button for a collapsible area.
