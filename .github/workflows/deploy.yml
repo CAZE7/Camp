@@ -15,7 +15,9 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: false
+  # Bei mehreren Pushes ist nur der neueste Stand veröffentlichungswürdig.
+  # Alte Builds dürfen keine 30-Minuten-Läufe hintereinander aufstauen.
+  cancel-in-progress: true
 
 env:
   NEXT_TELEMETRY_DISABLED: 1

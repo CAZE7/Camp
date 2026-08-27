@@ -36,6 +36,7 @@ type Job = {
 type Workflow = {
   name?: string;
   on?: Record<string, unknown>;
+  concurrency?: Record<string, unknown>;
   permissions?: Record<string, string> | string;
   jobs: Record<string, Job>;
 };
@@ -180,6 +181,14 @@ describe('GitHub-Actions-Workflows', () => {
         "github.ref == format('refs/heads/{0}', github.event.repository.default_branch)"
       );
     }
+  });
+
+  it('Deploy bricht veraltete Läufe bei neuen Pushes ab', () => {
+    const workflow = readWorkflow('deploy.yml');
+    expect(workflow.concurrency).toEqual({
+      group: 'pages',
+      'cancel-in-progress': true,
+    });
   });
 
   it('Pages-Build verwendet den von configure-pages gelieferten Basepath', () => {
