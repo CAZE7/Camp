@@ -1,58 +1,81 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Inspector from '../Inspector';
 import { usePlannerStore } from '../../store/usePlannerStore';
+import { useShallow } from 'zustand/react/shallow';
 import { useAppStore } from '../../lib/store';
 import { useDashboardMetrics } from './hooks/useDashboardMetrics';
 
 export function PlannerInspector() {
-  const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(true);
-
-  const nodes = usePlannerStore((state) => state.nodes);
-  const edges = usePlannerStore((state) => state.edges);
-  const season = usePlannerStore((state) => state.season);
-  const selectedNodes = usePlannerStore((state) => state.selectedNodes);
-  const selectedEdges = usePlannerStore((state) => state.selectedEdges);
-
-  const handleChangeLength = usePlannerStore((state) => state.handleChangeLength);
-  const handleChangeCrossSection = usePlannerStore((state) => state.handleChangeCrossSection);
-  const deleteSelected = usePlannerStore((state) => state.deleteSelected);
-  const updateNodeData = usePlannerStore((state) => state.updateNodeData);
+  const {
+    nodes,
+    waterNodes,
+    edges,
+    waterEdges,
+    season,
+    selectedNodes,
+    selectedEdges,
+    handleChangeLength,
+    handleChangeFuseSize,
+    deleteSelected,
+    updateNodeData,
+    isInspectorOpen,
+    toggleInspector,
+  } = usePlannerStore(useShallow((state) => ({
+    nodes: state.nodes,
+    waterNodes: state.waterNodes,
+    edges: state.edges,
+    waterEdges: state.waterEdges,
+    season: state.season,
+    selectedNodes: state.selectedNodes,
+    selectedEdges: state.selectedEdges,
+    handleChangeLength: state.handleChangeLength,
+    handleChangeFuseSize: state.handleChangeFuseSize,
+    deleteSelected: state.deleteSelected,
+    updateNodeData: state.updateNodeData,
+    isInspectorOpen: state.isInspectorOpen,
+    toggleInspector: state.toggleInspector,
+  })));
 
   const calculatedSolarWatts = useAppStore((state) => state.calculatedSolarWatts);
 
   const selectedEdgeId = selectedEdges.length > 0 ? selectedEdges[0].id : null;
   const selectedNodeId = selectedNodes.length > 0 ? selectedNodes[0].id : null;
 
-  const selectedEdge = edges.find((e) => e.id === selectedEdgeId) || null;
-  const selectedNode = nodes.find((n) => n.id === selectedNodeId) || null;
+  const selectedEdge = edges.find((e) => e.id === selectedEdgeId) || waterEdges?.find((e) => e.id === selectedEdgeId) || null;
+  const selectedNode = nodes.find((n) => n.id === selectedNodeId) || waterNodes.find((n) => n.id === selectedNodeId) || null;
 
   const metrics = useDashboardMetrics(nodes, edges, season, calculatedSolarWatts);
 
   return (
     <>
+      {/* Ein-/Ausklappen der dritten Spalte — nur ab 1280 px, wo der Inspector
+          tatsächlich andockt. Darunter ist er ein Slide-over mit eigenem
+          Schließen-Knopf (siehe PlannerInner). */}
       <Button
         variant="outline"
         size="icon"
-        onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)}
-        className="absolute top-1/2 -translate-y-1/2 z-30 shadow-md transition-all duration-300 h-8 w-8"
-        style={{ right: isRightSidebarOpen ? 'calc(250px + 0.75rem)' : '0.75rem' }}
-        title={isRightSidebarOpen ? "Inspector einklappen" : "Inspector ausklappen"}
-        aria-label={isRightSidebarOpen ? "Rechte Sidebar einklappen" : "Rechte Sidebar ausklappen"}
+        onClick={toggleInspector}
+        className={`planner-inspector-toggle absolute top-1/2 z-50 hidden h-11 w-11 -translate-y-1/2 items-center justify-center border-border bg-card shadow-md transition-all duration-300 motion-reduce:transition-none xl:flex ${
+          isInspectorOpen ? 'planner-inspector-toggle--open' : 'right-3'
+        }`}
+        title={isInspectorOpen ? "Inspector einklappen" : "Inspector ausklappen"}
+        aria-label={isInspectorOpen ? "Rechte Sidebar einklappen" : "Rechte Sidebar ausklappen"}
+        aria-expanded={isInspectorOpen}
       >
-        {isRightSidebarOpen ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+        {isInspectorOpen ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
       </Button>
 
-      <div
-        className={`transition-all duration-300 ease-in-out absolute right-0 md:relative z-40 h-full ${isRightSidebarOpen ? 'w-[250px] translate-x-0' : 'w-0 translate-x-full'} flex-shrink-0 shadow-lg bg-card border-l border-border max-w-[calc(100vw-2rem)]`}
-      >
-        <div className="w-[250px] h-full max-w-full">
+      {/* Die Spaltenbreite setzt der Container in PlannerInner (Slide-over vs.
+          Spalte); hier füllt das Panel nur noch den zugewiesenen Platz. */}
+      <div className="relative z-40 flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden bg-card">
+        <div className="h-full w-full">
           <Inspector
             selectedEdge={selectedEdge}
             selectedNode={selectedNode}
             onChangeLength={handleChangeLength}
-            onChangeCrossSection={handleChangeCrossSection}
+            onChangeFuseSize={handleChangeFuseSize}
             onDelete={deleteSelected}
             onUpdateNodeData={updateNodeData}
             edges={edges}

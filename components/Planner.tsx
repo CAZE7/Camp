@@ -1,31 +1,13 @@
 "use client";
 
 import React from 'react';
-import { ReactFlowProvider } from 'reactflow';
-import 'reactflow/dist/style.css';
+import dynamic from 'next/dynamic';
 
-import { PlannerSidebar } from './planner/PlannerSidebar';
-import { PlannerInspector } from './planner/PlannerInspector';
-import { PlannerDashboard } from './planner/PlannerDashboard';
-import { FlowCanvas } from './planner/FlowCanvas';
-
-function PlannerInner() {
-  return (
-    <div className="flex h-screen w-full bg-background overflow-hidden font-sans relative">
-      <PlannerSidebar />
-      <div className="flex-1 h-full relative overflow-hidden flex flex-col">
-        <PlannerDashboard />
-        <FlowCanvas />
-      </div>
-      <PlannerInspector />
-    </div>
-  );
-}
+const DynamicPlannerInner = dynamic(() => import('./PlannerInner'), {
+  ssr: false,
+  loading: () => <div className="flex items-center justify-center h-screen w-full bg-background"><div className="animate-spin rounded-full h-32 w-32 border-b-2 border-moss"></div></div>
+});
 
 export default function Planner() {
-  return (
-    <ReactFlowProvider>
-      <PlannerInner />
-    </ReactFlowProvider>
-  );
+  return <DynamicPlannerInner />;
 }

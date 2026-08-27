@@ -1,5 +1,10 @@
 import { performance } from 'perf_hooks';
 
+const logger = {
+  info: (...args: any[]) => process.stdout.write(args.join(' ') + '\n'),
+  error: (...args: any[]) => process.stderr.write(args.join(' ') + '\n'),
+};
+
 const nodeCount = 100;
 const edgeCount = 200;
 const iterations = 1000;
@@ -43,11 +48,11 @@ function isNodesEqual(a: any[], b: any[]) {
 
 // But wait, the point is to avoid JSON.stringify altogether.
 
-console.log(`Running benchmark with ${nodeCount} nodes and ${edgeCount} edges, ${iterations} iterations...`);
+logger.info(`Running benchmark with ${nodeCount} nodes and ${edgeCount} edges, ${iterations} iterations...`);
 
 const start = performance.now();
 for (let i = 0; i < iterations; i++) {
   original();
 }
 const end = performance.now();
-console.log(`Original (JSON.stringify): ${(end - start).toFixed(2)}ms total, ${((end - start) / iterations).toFixed(4)}ms per call`);
+logger.info(`Original (JSON.stringify): ${(end - start).toFixed(2)}ms total, ${((end - start) / iterations).toFixed(4)}ms per call`);

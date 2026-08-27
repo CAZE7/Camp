@@ -1,4 +1,4 @@
-import { Position } from 'reactflow';
+import { Position, getSmoothStepPath } from 'reactflow';
 import type { Point } from './pathfinding';
 
 export const SMOOTH_STEP_BORDER_RADIUS = 10;
@@ -7,8 +7,48 @@ export const MINUS_PATH_OFFSET = 38;
 export const PLUS_LABEL_NUDGE = -48;
 export const MINUS_LABEL_NUDGE = 48;
 export const PARALLEL_LABEL_SPREAD = 24;
-/** Abstand zwischen gebündelten Leitungen derselben Trasse. */
+/**
+ * Abstand zwischen gebündelten Leitungen derselben Trasse.
+ * 20 px entsprechen bei Zoom 1 gut zwei Kabeldurchmessern und halten
+ * parallele Leitungen klar trennbar, ohne die Trasse optisch aufzusprengen.
+ */
 export const PARALLEL_LANE_SPREAD = 20;
+
+export interface PathParams {
+  sourceX: number;
+  sourceY: number;
+  sourcePosition?: Position;
+  targetX: number;
+  targetY: number;
+  targetPosition?: Position;
+  /** First/last orthogonal stub length. Plus/Minus use different values so pairs do not share a corner. */
+  offset?: number;
+}
+
+/**
+ * Orthogonal schematic routing — the only path used for cables and pipes.
+ * Bezier curves (and the old isProMode branch) are intentionally gone.
+ */
+export const calculateEdgePath = ({
+  sourceX,
+  sourceY,
+  sourcePosition,
+  targetX,
+  targetY,
+  targetPosition,
+  offset = PLUS_PATH_OFFSET,
+}: PathParams): [string, number, number, number, number] => {
+  return getSmoothStepPath({
+    sourceX,
+    sourceY,
+    sourcePosition,
+    targetX,
+    targetY,
+    targetPosition,
+    borderRadius: SMOOTH_STEP_BORDER_RADIUS,
+    offset,
+  });
+};
 
 export const polarityPathOffset = (sourceHandle?: string | null): number => {
   if (sourceHandle?.includes('minus')) return MINUS_PATH_OFFSET;
@@ -32,6 +72,11 @@ const sharePair = (a: LabelEdgeRef, b: LabelEdgeRef): boolean =>
   (a.source === b.source && a.target === b.target) ||
   (a.source === b.target && a.target === b.source);
 
+/**
+ * Kabeltyp einer Leitung, abgeleitet aus dem Quell-Anschluss.
+ * Reihenfolge = Sortierrang der Lanes: gleiche Typen liegen dadurch
+ * zwangsläufig nebeneinander im Bündel ("gleiche Kabeltypen gruppieren").
+ */
 export const CABLE_TYPE_ORDER = ['dc-plus', 'dc-minus', 'ac', 'signal'] as const;
 export type CableLaneType = (typeof CABLE_TYPE_ORDER)[number];
 
@@ -43,12 +88,19 @@ export const cableLaneType = (sourceHandle?: string | null): CableLaneType => {
   return 'signal';
 };
 
+/** Plus zuerst, dann Minus, dann 230 V, dann Rest — deterministisch. */
 const cableTypeRank = (edge: LabelEdgeRef): number =>
   CABLE_TYPE_ORDER.indexOf(cableLaneType(edge.sourceHandle));
 
 /**
- * Paralleler Versatz für gebündelte Leitungen zwischen demselben Node-Paar.
- * Sortierung: Kabeltyp, dann id — deterministisch.
+ * Paralleler Versatz (Lane) für gebündelte Leitungen. Kanten, die dasselbe
+ * Node-Paar verbinden, bekommen jeweils einen eigenen Versatz, damit sie als
+ * Trasse nebeneinander liegen statt übereinander.
+ *
+ * Sortiert wird nach Kabeltyp (Plus → Minus → 230 V → Rest) und erst danach
+ * nach id. Zwei Plus-Leitungen liegen damit immer direkt nebeneinander, auch
+ * wenn ihre ids alphabetisch auseinanderfallen. Der Abstand beträgt
+ * PARALLEL_LANE_SPREAD (16 px) je Lane.
  */
 export const parallelLaneOffset = (input: {
   edgeId: string;
@@ -65,6 +117,20 @@ export const parallelLaneOffset = (input: {
   return (idx - (group.length - 1) / 2) * PARALLEL_LANE_SPREAD;
 };
 
+/**
+ * Keeps labels apart and spreads labels when several edges share a node pair
+ * and handle.
+ *
+ * Wichtig: Die Gruppe wird EXAKT so sortiert wie parallelLaneOffset (Kabeltyp,
+ * dann id). Vorher wurde in Store-Reihenfolge indexiert — die Label-Reihen-
+ * folge konnte dadurch gegenüber der Lane-Reihenfolge der Kabel gespiegelt
+ * sein (Label von Kabel A lag neben Kabel B), sobald die Kanten-Reihenfolge
+ * im Store von der Lane-Sortierung abwich.
+ *
+ * Handle-Vergleich mit `?? null`-Normalisierung: React Flow liefert
+ * `sourceHandle` je nach Entstehung der Kante als `null` oder `undefined`;
+ * beide müssen als „kein Handle“ zusammenpassen.
+ */
 export const edgeLabelNudge = (input: {
   edgeId: string;
   source: string;
@@ -136,5 +202,3 @@ export function polylineMidpoint(waypoints: Point[]): Point {
   }
   return { x: waypoints[waypoints.length - 1].x, y: waypoints[waypoints.length - 1].y };
 }
-
-export { Position };

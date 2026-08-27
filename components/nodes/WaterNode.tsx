@@ -1,10 +1,16 @@
 "use client";
 import React from 'react';
 import { Handle, Position } from 'reactflow';
+import { PlannerNodeProps, CommonNodeData } from './types';
 
-const WaterNode = function({ id, data, isConnectable, selected, type }: any) {
+interface WaterNodeData extends CommonNodeData {
+  /** Unterscheidet die Wasser-Bauteile für die Farbkodierung. */
+  kind?: 'fresh' | 'gray';
+}
+
+const WaterNode = function({ id, data, isConnectable, selected, type }: PlannerNodeProps<WaterNodeData>) {
   let bgColor = 'bg-blue-50';
-  let borderColor = 'border-blue-400';
+  let borderColor = 'border-blue-700';
 
   if (type === 'grayWaterTank') {
     bgColor = 'bg-gray-200';
@@ -14,17 +20,17 @@ const WaterNode = function({ id, data, isConnectable, selected, type }: any) {
     borderColor = 'border-blue-500';
   } else if (type === 'pump') {
     bgColor = 'bg-cyan-100';
-    borderColor = 'border-cyan-500';
+    borderColor = 'border-cyan-700';
   } else if (type === 'accumulator') {
     bgColor = 'bg-indigo-100';
-    borderColor = 'border-indigo-400';
+    borderColor = 'border-indigo-700';
   } else if (type === 'preFilter') {
     bgColor = 'bg-teal-100';
-    borderColor = 'border-teal-400';
+    borderColor = 'border-teal-700';
   }
 
   return (
-    <div className={`hover:scale-105 transition-all custom-drag-handle border-2 rounded-md p-3 shadow-md w-48 ${bgColor} ${borderColor} ${selected ? 'ring-4 ring-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.6)]' : ''}`}>
+    <div role="group" aria-label={`${data.label || 'Wasser-Komponente'}. Komponente im Plan.`} className={`hover:scale-105 transition-all custom-drag-handle border-2 rounded-md p-3 shadow-md w-48 ${bgColor} ${borderColor} ${selected ? 'ring-4 ring-blue-500 shadow-xl' : ''}`}>
       <div className="font-bold mb-2 text-sm text-center">{data.label || 'Wasser-Komponente'}</div>
 
       {/* Target handle (Input) */}

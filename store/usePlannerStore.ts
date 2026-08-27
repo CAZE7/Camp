@@ -1,21 +1,33 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { addEdge, applyNodeChanges, applyEdgeChanges } from 'reactflow';
 import { getLayoutedElements } from '../components/planner/utils/layout';
 import React from 'react';
 import { Node, Edge, Connection } from 'reactflow';
-import { initialNodes, initialEdges } from '../components/planner/constants';
 import { CableEdgeData } from '../components/edges/CableEdge';
-import {
-  calculateWire as calculateWireVDE,
-  VDE_INVERTER_EFFICIENCY,
-  VDE_MIN_CROSS_SECTION,
-  validateSchematic,
-  VDEValidationResult,
-} from '../lib/vde-standards';
+import { PlannerNodeData } from '../components/nodes/types';
+
+type GraphSnapshot = {
+  nodes: Node[];
+  edges: Edge<CableEdgeData>[];
+  waterNodes: Node[];
+  waterEdges: Edge[];
+};
 
 interface PlannerState {
   viewMode: 'electric' | 'water';
   setViewMode: (mode: 'electric' | 'water') => void;
+
+  isSidebarOpen: boolean;
+  setSidebarOpen: (isOpen: boolean) => void;
+  toggleSidebar: () => void;
+
+  isInspectorOpen: boolean;
+  setInspectorOpen: (isOpen: boolean) => void;
+  toggleInspector: () => void;
+
+  systemMessage: string | null;
+  setSystemMessage: (msg: string | null) => void;
 
   nodes: Node[];
   edges: Edge<CableEdgeData>[];
@@ -41,79 +53,239 @@ interface PlannerState {
   setSelectedNodes: (nodes: Node[]) => void;
   setSelectedEdges: (edges: Edge[]) => void;
 
-  /**
-   * Live-VDE-Validierungsergebnisse für den aktuellen Schaltplan.
-   * Wird automatisch bei jeder Änderung der nodes/edges neu berechnet.
-   * So kann das UI jederzeit Warnungen anzeigen, ohne selbst rechnen zu müssen.
-   */
-  vdeValidationResults: VDEValidationResult[];
-  /** Convenience: gibt es kritische Fehler? */
-  hasVdeErrors: () => boolean;
+  highlightedNodeId: string | null;
+  highlightedEdgeId: string | null;
+  setHighlightedNodeId: (id: string | null) => void;
+  setHighlightedEdgeId: (id: string | null) => void;
+
+  trunkMode: boolean;
+  setTrunkMode: (enabled: boolean) => void;
+  backboneGrouping: boolean;
+  setBackboneGrouping: (enabled: boolean) => void;
 
   onNodesChange: (changes: import('reactflow').NodeChange[]) => void;
   onEdgesChange: (changes: import('reactflow').EdgeChange[]) => void;
   onWaterNodesChange: (changes: import('reactflow').NodeChange[]) => void;
   onWaterEdgesChange: (changes: import('reactflow').EdgeChange[]) => void;
   onSelectionChange: (params: import('reactflow').OnSelectionChangeParams) => void;
+  focusElement: (id: string, elementType: 'node' | 'edge') => void;
   deleteSelected: () => void;
-  updateNodeData: (id: string, data: any) => void;
+  updateNodeData: (id: string, data: Partial<PlannerNodeData>) => void;
   handleChangeLength: (id: string, length: number) => void;
-  handleChangeCrossSection: (id: string, crossSection: number) => void;
+  handleChangeFuseSize: (id: string, fuseSize: number) => void;
 
   isValidConnection: (connection: Connection) => boolean;
   onConnect: (connection: Connection) => void;
-  autoWireSystem: (fitView?: (options?: any) => void) => void;
-  onLayout: (fitView?: (options?: any) => void) => void;
-  checkSchematic: () => void;
-  exportBOM: () => void;
+  autoWireSystem: () => void;
+  onLayout: () => void;
   onDrop: (event: React.DragEvent, screenToFlowPosition: (client: {x: number, y: number}) => {x: number, y: number}) => void;
   onCustomDrop: (event: Event, screenToFlowPosition: (client: {x: number, y: number}) => {x: number, y: number}) => void;
+  addNode: (type: string, label: string, position: {x: number, y: number}, watts?: number) => void;
+  applyTemplate: (templateId: string) => void;
+  /**
+   * Kumulierter Spannungsfall bis zu einem Knoten — in Volt (typsicher).
+   * Aufrufer, die weiterhin mit `number` rechnen, funktionieren unverändert,
+   * weil `Volts` zur Laufzeit eine Zahl ist.
+   */
+  calculatePathVoltageDrop: (targetNodeId: string, customNodes?: Node[], customEdges?: Edge[]) => Volts;
+  isLayoutPending: boolean;
+  setIsLayoutPending: (pending: boolean) => void;
+
+  historyPast: GraphSnapshot[];
+  historyFuture: GraphSnapshot[];
+  undo: () => void;
+  redo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
+  clearPlan: () => void;
 }
 
-let cachedNodesRef: Node[] | null = null;
-let cachedWaterNodesRef: Node[] | null = null;
-let cachedNodeMap = new Map<string, Node>();
+import { TEMPLATES_DICT } from '../components/planner/templates';
+import { getEdgeDomain, getHandleDomain } from '../lib/electrical';
+import { getSystemVoltage } from '../lib/vde-standards';
+import type { Volts } from '../lib/units';
+import { performAutoWiring, relevantCumulativeDrop } from '../lib/autoWire';
+import { plannerDebouncedStorage } from './storage';
+
+const nodesMapCache = new WeakMap<Node[], Map<string, Node>>();
+const waterNodesMapCache = new WeakMap<Node[], Map<string, Node>>();
+const totalWattsCache = new WeakMap<Node[], number>();
+
+export function getDerivedSystemState(nodes: Node[], waterNodes: Node[]) {
+  let nodesMap = nodesMapCache.get(nodes);
+  let totalWatts = totalWattsCache.get(nodes);
+
+  if (!nodesMap || totalWatts === undefined) {
+    nodesMap = new Map();
+    totalWatts = 0;
+    for (let i = 0; i < nodes.length; i++) {
+      const n = nodes[i];
+      nodesMap.set(n.id, n);
+      if (n.type === 'consumer' || n.type === 'consumer230v' || n.type === 'inverter') {
+        totalWatts += (Number(n.data.watts) || 0);
+      }
+    }
+    nodesMapCache.set(nodes, nodesMap);
+    totalWattsCache.set(nodes, totalWatts);
+  }
+
+  let waterNodesMap = waterNodesMapCache.get(waterNodes);
+  if (!waterNodesMap) {
+    waterNodesMap = new Map();
+    for (let i = 0; i < waterNodes.length; i++) {
+      const n = waterNodes[i];
+      waterNodesMap.set(n.id, n);
+    }
+    waterNodesMapCache.set(waterNodes, waterNodesMap);
+  }
+
+  return { nodesMap, waterNodesMap, totalWatts };
+}
 
 function getNodeMap(currentNodes: Node[], currentWaterNodes: Node[]): Map<string, Node> {
-  if (currentNodes !== cachedNodesRef || currentWaterNodes !== cachedWaterNodesRef) {
-    cachedNodeMap.clear();
-    for (let i = 0, len = currentNodes.length; i < len; i++) {
-      cachedNodeMap.set(currentNodes[i].id, currentNodes[i]);
-    }
-    for (let i = 0, len = currentWaterNodes.length; i < len; i++) {
-      cachedNodeMap.set(currentWaterNodes[i].id, currentWaterNodes[i]);
-    }
-    cachedNodesRef = currentNodes;
-    cachedWaterNodesRef = currentWaterNodes;
-  }
-  return cachedNodeMap;
+  const { nodesMap, waterNodesMap } = getDerivedSystemState(currentNodes, currentWaterNodes);
+  const combined = new Map(nodesMap);
+  waterNodesMap.forEach((node, id) => combined.set(id, node));
+  return combined;
 }
 
-export const usePlannerStore = create<PlannerState>((set, get) => ({
-  viewMode: 'electric',
-  setViewMode: (mode) => set({ viewMode: mode }),
+const PLANNER_STORAGE_VERSION = 1;
 
-  nodes: initialNodes,
-  edges: initialEdges,
-  setNodes: (update) => {
-    const newNodes = typeof update === 'function' ? update(get().nodes) : update;
-    set({
-      nodes: newNodes,
-      vdeValidationResults: validateSchematic(newNodes, get().edges),
-    });
-  },
-  setEdges: (update) => {
-    const newEdges = typeof update === 'function' ? update(get().edges) : update;
-    set({
-      edges: newEdges,
-      vdeValidationResults: validateSchematic(get().nodes, newEdges),
-    });
-  },
+/**
+ * Defensive Migration für den Planner-Store. Alte localStorage-Stände können
+ * Felder in anderem Shape oder teilkorrupte Knoten/Kanten enthalten. Diese
+ * Funktion normalisiert, bevor Zustand den Stand merged — so lösen veraltete
+ * Stände keine Laufzeitfehler in Berechnungen aus.
+ */
+function isNodeArray(value: unknown): value is Node[] {
+  return Array.isArray(value) && value.every((n) => n && typeof n === 'object' && 'id' in n && 'position' in n);
+}
+
+function isEdgeArray(value: unknown): value is Edge[] {
+  return Array.isArray(value) && value.every((e) => e && typeof e === 'object' && 'id' in e && 'source' in e && 'target' in e);
+}
+
+function migratePlannerPersisted(persisted: unknown, version: number): Partial<PlannerState> {
+  const p = (persisted ?? {}) as Partial<PlannerState>;
+  const safe: Partial<PlannerState> = {};
+
+  if (p.viewMode === 'electric' || p.viewMode === 'water') safe.viewMode = p.viewMode;
+  if (p.season === 'summer' || p.season === 'winter') safe.season = p.season;
+  if (typeof p.isSidebarOpen === 'boolean') safe.isSidebarOpen = p.isSidebarOpen;
+  if (typeof p.isInspectorOpen === 'boolean') safe.isInspectorOpen = p.isInspectorOpen;
+  if (typeof p.backboneGrouping === 'boolean') safe.backboneGrouping = p.backboneGrouping;
+  if (isNodeArray(p.nodes)) safe.nodes = p.nodes;
+  if (isEdgeArray(p.edges)) safe.edges = p.edges as Edge<CableEdgeData>[];
+  if (isNodeArray(p.waterNodes)) safe.waterNodes = p.waterNodes;
+  if (isEdgeArray(p.waterEdges)) safe.waterEdges = p.waterEdges;
+
+  // Version 0 → 1: keine Feldumbenennungen, nur Validierung.
+  void version;
+  return safe;
+}
+
+const HISTORY_LIMIT = 50;
+
+/**
+ * Cache für den kumulierten Spannungsfall (UX-Performance).
+ *
+ * `calculatePathVoltageDrop` wird pro Kante und pro Store-Update aufgerufen
+ * (CableEdge-Selector, Fehler-zIndex). Ohne Cache wäre das O(E²·N) pro Update.
+ * Der Spannungsfall hängt nur von Topologie, Längen, Querschnitten und
+ * elektrischen Daten ab — NICHT von Positionen. Die Signatur ignoriert
+ * Positionsfelder bewusst, damit der Cache Knoten-Drags übersteht.
+ */
+type DropMapEntry = { signature: string; nodes: Node[]; map: Map<string, Volts> };
+const pathDropCache = new WeakMap<Edge[], DropMapEntry>();
+let signatureNodesRef: Node[] | undefined;
+let signatureEdgesRef: Edge[] | undefined;
+let lastPlannerGraphSignature = '';
+
+/** @internal für Tests exportiert. */
+export function plannerGraphSignature(nodes: Node[], edges: Edge[]): string {
+  if (nodes === signatureNodesRef && edges === signatureEdgesRef) return lastPlannerGraphSignature;
+  const nodeSig = nodes
+    .map((n) =>
+      [n.id, n.type, n.data?.watts, n.data?.amps, n.data?.totalAmps, n.data?.nominalVoltage, n.data?.chemistry].join('|')
+    )
+    .join('~');
+  const edgeSig = edges
+    .map((e) =>
+      [
+        e.id,
+        e.source,
+        e.target,
+        e.sourceHandle ?? '',
+        e.targetHandle ?? '',
+        e.data?.length ?? '',
+        e.data?.crossSection ?? '',
+        e.data?.edgeDomain ?? '',
+      ].join('|')
+    )
+    .join('~');
+  lastPlannerGraphSignature = `${nodeSig}#${edgeSig}`;
+  signatureNodesRef = nodes;
+  signatureEdgesRef = edges;
+  return lastPlannerGraphSignature;
+}
+
+function graphSnapshot(state: Pick<PlannerState, 'nodes' | 'edges' | 'waterNodes' | 'waterEdges'>): GraphSnapshot {
+  return {
+    nodes: state.nodes,
+    edges: state.edges,
+    waterNodes: state.waterNodes,
+    waterEdges: state.waterEdges,
+  };
+}
+
+function withHistory<T extends Partial<PlannerState>>(state: PlannerState, update: T): T & Pick<PlannerState, 'historyPast' | 'historyFuture' | 'canUndo' | 'canRedo'> {
+  return {
+    ...update,
+    historyPast: [...state.historyPast.slice(-(HISTORY_LIMIT - 1)), graphSnapshot(state)],
+    historyFuture: [],
+    canUndo: true,
+    canRedo: false,
+  };
+}
+
+export const usePlannerStore = create<PlannerState>()(
+  persist(
+    (set, get) => ({
+  viewMode: 'electric',
+  setViewMode: (mode) => set((state) => ({
+    viewMode: mode,
+    selectedNodes: [],
+    selectedEdges: [],
+    firstTappedHandle: null,
+    nodes: state.nodes.map((node) => node.selected ? { ...node, selected: false } : node),
+    edges: state.edges.map((edge) => edge.selected ? { ...edge, selected: false } : edge),
+    waterNodes: state.waterNodes.map((node) => node.selected ? { ...node, selected: false } : node),
+    waterEdges: state.waterEdges.map((edge) => edge.selected ? { ...edge, selected: false } : edge),
+  })),
+
+  isSidebarOpen: true,
+  setSidebarOpen: (isOpen) => set({ isSidebarOpen: isOpen }),
+  toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
+
+  // Standardmäßig sichtbar: ab 1280 px ist der Inspector die dritte Spalte des
+  // festen Desktop-Layouts. Auf Tablet/Handy steuert das Layout selbst, ob
+  // daraus ein Slide-over oder ein Tab wird.
+  isInspectorOpen: true,
+  setInspectorOpen: (isOpen) => set({ isInspectorOpen: isOpen }),
+  toggleInspector: () => set((state) => ({ isInspectorOpen: !state.isInspectorOpen })),
+
+  systemMessage: null,
+  setSystemMessage: (msg) => set({ systemMessage: msg }),
+
+  nodes: [],
+  edges: [],
+  setNodes: (update) => set((state) => withHistory(state, { nodes: typeof update === 'function' ? update(state.nodes) : update })),
+  setEdges: (update) => set((state) => withHistory(state, { edges: typeof update === 'function' ? update(state.edges) : update })),
 
   waterNodes: [],
   waterEdges: [],
-  setWaterNodes: (update) => set({ waterNodes: typeof update === 'function' ? update(get().waterNodes) : update }),
-  setWaterEdges: (update) => set({ waterEdges: typeof update === 'function' ? update(get().waterEdges) : update }),
+  setWaterNodes: (update) => set((state) => withHistory(state, { waterNodes: typeof update === 'function' ? update(state.waterNodes) : update })),
+  setWaterEdges: (update) => set((state) => withHistory(state, { waterEdges: typeof update === 'function' ? update(state.waterEdges) : update })),
 
   season: 'summer',
   setSeason: (season) => set({ season }),
@@ -124,87 +296,171 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
   firstTappedHandle: null,
   setFirstTappedHandle: (update) => set({ firstTappedHandle: typeof update === 'function' ? update(get().firstTappedHandle) : update }),
 
+  isLayoutPending: false,
+  setIsLayoutPending: (pending) => set({ isLayoutPending: pending }),
+
+  historyPast: [],
+  historyFuture: [],
+  canUndo: false,
+  canRedo: false,
+
   selectedNodes: [],
   selectedEdges: [],
   setSelectedNodes: (nodes) => set({ selectedNodes: nodes }),
   setSelectedEdges: (edges) => set({ selectedEdges: edges }),
 
-  // VDE-Validierung wird bei jeder State-Änderung automatisch neu berechnet
-  vdeValidationResults: validateSchematic(initialNodes, initialEdges),
-  hasVdeErrors: () => get().vdeValidationResults.some((r) => r.severity === 'error'),
+  highlightedNodeId: null,
+  highlightedEdgeId: null,
+  setHighlightedNodeId: (id) => set({ highlightedNodeId: id }),
+  setHighlightedEdgeId: (id) => set({ highlightedEdgeId: id }),
+
+  trunkMode: false,
+  setTrunkMode: (enabled) => set({ trunkMode: enabled }),
+  backboneGrouping: true,
+  setBackboneGrouping: (enabled) => set({ backboneGrouping: enabled }),
 
   onNodesChange: (changes) => set((state) => {
-    const nodes = applyNodeChanges(changes, state.nodes);
-    return {
-      nodes,
-      vdeValidationResults: validateSchematic(nodes, state.edges),
-    };
+    const newNodes = applyNodeChanges(changes, state.nodes);
+    const deletedNodeIds = new Set<string>();
+    for (const change of changes) {
+      if (change.type === 'remove') deletedNodeIds.add(change.id);
+    }
+    if (deletedNodeIds.size > 0) {
+      return withHistory(state, {
+        nodes: newNodes,
+        edges: state.edges.filter(e => !deletedNodeIds.has(e.source) && !deletedNodeIds.has(e.target))
+      });
+    }
+    // Während des Ziehens nicht jeden Pixel als eigenen Undo-Schritt speichern.
+    const shouldCheckpoint = changes.some((change) => change.type === 'remove' || (change.type === 'position' && !change.dragging));
+    return shouldCheckpoint ? withHistory(state, { nodes: newNodes }) : { nodes: newNodes };
   }),
   onEdgesChange: (changes) => set((state) => {
-    const edges = applyEdgeChanges(changes, state.edges) as Edge<CableEdgeData>[];
-    return {
-      edges,
-      vdeValidationResults: validateSchematic(state.nodes, edges),
-    };
+    const nextEdges = applyEdgeChanges(changes, state.edges) as Edge<CableEdgeData>[];
+    return changes.some((change) => change.type === 'remove') ? withHistory(state, { edges: nextEdges }) : { edges: nextEdges };
   }),
-  onWaterNodesChange: (changes) => set((state) => ({ waterNodes: applyNodeChanges(changes, state.waterNodes) })),
-  onWaterEdgesChange: (changes) => set((state) => ({ waterEdges: applyEdgeChanges(changes, state.waterEdges) })),
+  onWaterNodesChange: (changes) => set((state) => {
+    const newWaterNodes = applyNodeChanges(changes, state.waterNodes);
+    const deletedNodeIds = new Set<string>();
+    for (const change of changes) {
+      if (change.type === 'remove') deletedNodeIds.add(change.id);
+    }
+    if (deletedNodeIds.size > 0) {
+      return withHistory(state, {
+        waterNodes: newWaterNodes,
+        waterEdges: state.waterEdges.filter(e => !deletedNodeIds.has(e.source) && !deletedNodeIds.has(e.target))
+      });
+    }
+    const shouldCheckpoint = changes.some((change) => change.type === 'remove' || (change.type === 'position' && !change.dragging));
+    return shouldCheckpoint ? withHistory(state, { waterNodes: newWaterNodes }) : { waterNodes: newWaterNodes };
+  }),
+  onWaterEdgesChange: (changes) => set((state) => {
+    const nextEdges = applyEdgeChanges(changes, state.waterEdges);
+    return changes.some((change) => change.type === 'remove') ? withHistory(state, { waterEdges: nextEdges }) : { waterEdges: nextEdges };
+  }),
 
   onSelectionChange: (params) => set({ selectedNodes: params.nodes, selectedEdges: params.edges }),
 
+  // Fokussiert eine betroffene Komponente/Leitung ("Beheben" aus der Warn-Zentrale):
+  // markiert sie als ausgewählt (ReactFlow-Highlight + Inspector) und passt die Ansicht ein.
+  focusElement: (id, elementType) => {
+    set((state) => {
+      if (elementType === 'edge') {
+        const edges = state.edges.map((e) => ({ ...e, selected: e.id === id }));
+        const waterEdges = state.waterEdges.map((e) => ({ ...e, selected: e.id === id }));
+        const nodes = state.nodes.map((n) => (n.selected ? { ...n, selected: false } : n));
+        const target = edges.find((e) => e.id === id) || waterEdges.find((e) => e.id === id) || null;
+        return {
+          edges,
+          waterEdges,
+          nodes,
+          selectedEdges: target ? [target] : [],
+          selectedNodes: [],
+        };
+      }
+      const nodes = state.nodes.map((n) => ({ ...n, selected: n.id === id }));
+      const waterNodes = state.waterNodes.map((n) => ({ ...n, selected: n.id === id }));
+      const edges = state.edges.map((e) => (e.selected ? { ...e, selected: false } : e));
+      const target = nodes.find((n) => n.id === id) || waterNodes.find((n) => n.id === id) || null;
+      return {
+        nodes,
+        waterNodes,
+        edges,
+        selectedNodes: target ? [target] : [],
+        selectedEdges: [],
+      };
+    });
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('planner-focus-element', { detail: { id, elementType } }));
+    }
+  },
+
   deleteSelected: () => set((state) => {
-    const nodeIdsSet = new Set(state.selectedNodes.map((n) => n.id));
-    const edgeIdsSet = new Set(state.selectedEdges.map((e) => e.id));
+    const nodeIdsSet = new Set<string>();
+    const selectedNodesLen = state.selectedNodes.length;
+    for (let i = 0; i < selectedNodesLen; i++) {
+      nodeIdsSet.add(state.selectedNodes[i].id);
+    }
 
-    const nodes = state.nodes.filter((n) => !nodeIdsSet.has(n.id));
-    const edges = state.edges.filter(
-      (e) => !nodeIdsSet.has(e.source) && !nodeIdsSet.has(e.target) && !edgeIdsSet.has(e.id)
-    );
+    const edgeIdsSet = new Set<string>();
+    const selectedEdgesLen = state.selectedEdges.length;
+    for (let i = 0; i < selectedEdgesLen; i++) {
+      edgeIdsSet.add(state.selectedEdges[i].id);
+    }
 
-    return {
-      nodes,
-      edges,
+    const filterNode = (n: Node) => !nodeIdsSet.has(n.id);
+    const filterEdge = (e: Edge) => !nodeIdsSet.has(e.source) && !nodeIdsSet.has(e.target) && !edgeIdsSet.has(e.id);
+
+    return withHistory(state, {
+      nodes: state.nodes.filter(filterNode),
+      edges: state.edges.filter(filterEdge),
+      waterNodes: state.waterNodes.filter(filterNode),
+      waterEdges: state.waterEdges.filter(filterEdge),
       selectedNodes: [],
       selectedEdges: [],
-      vdeValidationResults: validateSchematic(nodes, edges),
-    };
+    });
   }),
 
-  updateNodeData: (id, data) => set((state) => {
-    const nodes = state.nodes.map((n) => {
+  updateNodeData: (id, data) => set((state) => withHistory(state, {
+    nodes: state.nodes.map((n) => {
       if (n.id === id) {
         return { ...n, data: { ...n.data, ...data } };
       }
       return n;
-    });
-    return {
-      nodes,
-      vdeValidationResults: validateSchematic(nodes, state.edges),
-    };
-  }),
+    }),
+    waterNodes: state.waterNodes.map((n) => {
+      if (n.id === id) {
+        return { ...n, data: { ...n.data, ...data } };
+      }
+      return n;
+    })
+  })),
 
-  handleChangeLength: (id, length) => set((state) => {
-    const edges = state.edges.map((e) => {
+  handleChangeLength: (id, length) => set((state) => withHistory(state, {
+    edges: state.edges.map((e) => {
       if (e.id === id) {
         return { ...e, data: { ...e.data!, length } };
       }
       return e;
-    });
-    return {
-      edges,
-      vdeValidationResults: validateSchematic(state.nodes, edges),
-    };
-  }),
+    }),
+    waterEdges: state.waterEdges.map((e) => {
+      if (e.id === id) {
+        return { ...e, data: { ...e.data!, length } };
+      }
+      return e;
+    })
+  })),
+
+  handleChangeFuseSize: (id, fuseSize) => set((state) => withHistory(state, {
+    edges: state.edges.map((e) => e.id === id ? { ...e, data: { ...e.data!, fuseSize } } : e)
+  })),
 
   isValidConnection: (connection) => {
     const { nodes, waterNodes, viewMode, edges } = get();
     const allNodes = [...nodes, ...waterNodes];
 
     // Create a node map for O(1) lookups
-    const nodesMap = new Map<string, import('reactflow').Node>();
-    for (let i = 0; i < allNodes.length; i++) {
-      nodesMap.set(allNodes[i].id, allNodes[i]);
-    }
+    const { nodesMap } = getDerivedSystemState(allNodes, []);
 
     const sourceNode = nodesMap.get(connection.source || '');
     const targetNode = nodesMap.get(connection.target || '');
@@ -213,60 +469,52 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
       if (sourceNode?.type === 'grayWaterTank' && targetNode?.type === 'sink') {
         return false;
       }
-      return true;
-    }
+    } else {
+      // Strict AC vs. DC domain separation
+      const sourceDomain = getHandleDomain(sourceNode?.type, connection.sourceHandle, 'source');
+      const targetDomain = getHandleDomain(targetNode?.type, connection.targetHandle, 'target');
+      if (sourceDomain !== targetDomain) {
+        return false; // Blocker!
+      }
 
-    // Pre-check for polarity matching
-    const sHandle = connection.sourceHandle || '';
-    const tHandle = connection.targetHandle || '';
+      // Pre-check for polarity matching
+      const sHandle = connection.sourceHandle || '';
+      const tHandle = connection.targetHandle || '';
 
-    const sIsPlus = sHandle.includes('plus');
-    const tIsPlus = tHandle.includes('plus');
-    const sIsMinus = sHandle.includes('minus');
-    const tIsMinus = tHandle.includes('minus');
+      const sIsPlus = sHandle.includes('plus');
+      const tIsPlus = tHandle.includes('plus');
+      const sIsMinus = sHandle.includes('minus');
+      const tIsMinus = tHandle.includes('minus');
 
-    // Exception for series connection between batteries or solars
-    const isSeriesException =
-      (sourceNode?.type === 'battery' && targetNode?.type === 'battery') ||
-      (sourceNode?.type === 'solar' && targetNode?.type === 'solar');
+      // Exception for series connection between batteries or solars
+      const isSeriesException =
+        (sourceNode?.type === 'battery' && targetNode?.type === 'battery') ||
+        (sourceNode?.type === 'solar' && targetNode?.type === 'solar');
 
-    if (!isSeriesException) {
-      if ((sIsPlus && tIsMinus) || (sIsMinus && tIsPlus)) {
-        return false; // Polarity mismatch
+      // AC uses L/N/PE, not plus/minus — skip DC polarity on AC-AC links
+      if (sourceDomain !== 'AC_230V' && !isSeriesException) {
+        if ((sIsPlus && !tIsPlus) || (sIsMinus && !tIsMinus)) {
+          return false; // Polarity mismatch strict block
+        }
       }
     }
 
-    // Check for cycles
-    const target = targetNode;
+    // Bereits vorhandene identische Verbindung nicht stillschweigend ignorieren.
+    const activeEdges = viewMode === 'water' ? get().waterEdges : edges;
+    const duplicate = activeEdges.some((edge) =>
+      edge.source === connection.source &&
+      edge.target === connection.target &&
+      edge.sourceHandle === connection.sourceHandle &&
+      edge.targetHandle === connection.targetHandle
+    );
+    if (duplicate) return false;
 
-    const outgoersMap = new Map<string, string[]>();
-
-    for (let i = 0; i < edges.length; i++) {
-      const edge = edges[i];
-      let targets = outgoersMap.get(edge.source);
-      if (!targets) {
-        targets = [];
-        outgoersMap.set(edge.source, targets);
-      }
-      targets.push(edge.target);
-    }
-
-    const hasCycle = (nodeId: string, visited = new Set<string>()) => {
-      if (visited.has(nodeId)) return false;
-
-      visited.add(nodeId);
-
-      const outgoers = outgoersMap.get(nodeId) || [];
-      for (let i = 0; i < outgoers.length; i++) {
-        const outgoerId = outgoers[i];
-        if (outgoerId === connection.source) return true;
-        if (hasCycle(outgoerId, visited)) return true;
-      }
-      return false;
-    };
-
-    if (target?.id === connection.source) return false;
-    if (target) return !hasCycle(target.id);
+    // Bewusst KEINE generische Zyklusprüfung: Ein funktionierender Stromkreis
+    // ist topologisch immer ein Zyklus (Plus-Leitung hin, Minus-Rückleitung
+    // zurück). Die Prüfung blockierte den Rückleiter consumer− → battery−,
+    // sobald die Plus-Leitung battery+ → consumer+ existierte — und je nach
+    // Zeichenreihenfolge umgekehrt. Der Spannungsfall-Walk (cumulativeDropAt)
+    // und das Tracing sind gegen echte Zyklen abgesichert (visited-Mengen).
 
     return true;
   },
@@ -277,9 +525,9 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
     const { viewMode, waterNodes, nodes } = get();
 
     if (viewMode === 'water') {
-      const allNodes = [...waterNodes];
-      const sourceNode = allNodes.find((n) => n.id === connection.source);
-      const targetNode = allNodes.find((n) => n.id === connection.target);
+      const { nodesMap, waterNodesMap } = getDerivedSystemState(nodes, waterNodes);
+      const sourceNode = nodesMap.get(connection.source || '') || waterNodesMap.get(connection.source || '');
+      const targetNode = nodesMap.get(connection.target || '') || waterNodesMap.get(connection.target || '');
 
       if (sourceNode?.type === 'pump' && targetNode?.type === 'sink') {
         get().setWaterWarning("Ein Accumulator schont die Pumpe und verhindert stotternden Wasserfluss.");
@@ -295,13 +543,16 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
         type: 'waterPipe',
         data: {}
       };
-      set((state) => ({ waterEdges: addEdge(newEdge, state.waterEdges) }));
+      set((state) => withHistory(state, { waterEdges: addEdge(newEdge, state.waterEdges) }));
+
       return;
     }
 
-    // VDE-konforme Default-Werte für neue Kabel
-    // Das Kabel wird mit dem absoluten Minimum (1.5 mm², 3m) angelegt;
-    // VDE-Validierung läuft im Hintergrund und warnt, falls nötig.
+    const { nodesMap } = getDerivedSystemState(nodes, []);
+    const sourceNode = nodesMap.get(connection.source || '');
+    const targetNode = nodesMap.get(connection.target || '');
+    const edgeDomain = getEdgeDomain(sourceNode?.type, targetNode?.type, connection.sourceHandle);
+
     const newEdge: Edge<CableEdgeData> = {
       source: connection.source,
       target: connection.target,
@@ -311,234 +562,86 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
       type: 'cableEdge',
       data: {
         length: 3,
-        crossSection: VDE_MIN_CROSS_SECTION,
+        crossSection: edgeDomain === 'AC_230V' ? 1.5 : 2.5,
+        edgeDomain,
       },
     };
-    set((state) => {
-      const edges = addEdge(newEdge, state.edges) as Edge<CableEdgeData>[];
-      return {
-        edges,
-        vdeValidationResults: validateSchematic(state.nodes, edges),
-      };
-    });
+    set((state) => withHistory(state, { edges: addEdge(newEdge, state.edges) as Edge<CableEdgeData>[] }));
+
   },
 
-  autoWireSystem: (fitView) => {
+  autoWireSystem: () => {
     const { nodes, edges } = get();
-    const batteryNode = nodes.find((n) => n.type === 'battery');
-    if (!batteryNode) {
-      alert('Bitte zuerst eine Batterie platzieren');
+
+    const result = performAutoWiring(nodes, edges);
+    if (!result) {
+      get().setSystemMessage('Bitte zuerst eine Batterie platzieren, bevor Komponenten verbunden werden.');
       return;
     }
 
-    let currentNodes = [...nodes];
-    let newEdges: Edge[] = [];
-    let edgeIdCounter = 1;
-
-    // Helper to generate missing nodes
-    const ensureNode = (
-      type: string,
-      label: string,
-      offsetX: number,
-      offsetY: number,
-      extraData: any = {}
-    ) => {
-      let node = currentNodes.find(
-        (n) => n.type === type && n.data?.label === label
-      );
-      if (!node) {
-        node = {
-          id: crypto.randomUUID(),
-          type,
-          position: {
-            x: batteryNode.position.x + offsetX,
-            y: batteryNode.position.y + offsetY,
-          },
-          data: { label, ...extraData },
-        };
-        currentNodes.push(node);
-      }
-      return node;
-    };
-
-    // Helper: Berechnet Querschnitt und Sicherung nach VDE (über zentrale Quelle)
-    const calculateWire = (I: number, length: number = 2) => {
-      return calculateWireVDE(I, length);
-    };
-
-    // Helper to connect two nodes with plus and minus edges
-    const connect = (
-      sourceId: string,
-      targetId: string,
-      I: number = 0,
-      length: number = 2
-    ) => {
-      const { crossSection, fuseSize } = calculateWire(I, length);
-      newEdges.push({
-        id: `e-auto-${edgeIdCounter++}`,
-        source: sourceId,
-        target: targetId,
-        sourceHandle: 'plus',
-        targetHandle: 'plus',
-        type: 'cableEdge',
-        data: { length, crossSection, fuseSize },
-      });
-      newEdges.push({
-        id: `e-auto-${edgeIdCounter++}`,
-        source: sourceId,
-        target: targetId,
-        sourceHandle: 'minus',
-        targetHandle: 'minus',
-        type: 'cableEdge',
-        data: { length, crossSection },
-      });
-    };
-
-    const busbarNode = ensureNode('busbar', 'Main Busbar', 300, 0);
-    const fuseBoxNode = ensureNode('fuse', '12V Sicherungskasten', 300, 200, {
-      rating: 100,
-    });
-    const shuntNode = ensureNode('shunt', 'Smart Shunt', 150, 0);
-
-    const batteryCapacity = Number(batteryNode.data.capacity) || 100;
-    const maxDischargeA = batteryCapacity;
-    connect(batteryNode.id, shuntNode.id, maxDischargeA, 0.5);
-    connect(shuntNode.id, busbarNode.id, maxDischargeA, 0.5);
-
-    const inverters = currentNodes.filter((n) => n.type === 'inverter');
-    inverters.forEach((inverter) => {
-      const inverterWatts = Number(inverter.data.watts) || 1000;
-      // VDE-konformer Wirkungsgrad aus vde-standards.ts
-      const inverterAmps = inverterWatts / 12 / VDE_INVERTER_EFFICIENCY;
-      connect(busbarNode.id, inverter.id, inverterAmps, 1);
-    });
-
-    connect(
-      busbarNode.id,
-      fuseBoxNode.id,
-      Number(fuseBoxNode.data.rating) || 100,
-      1
-    );
-
-    const solars = currentNodes.filter(
-      (n) => n.type === 'solar' || n.type === 'roofsolar'
-    );
-    if (solars.length > 0) {
-      const mpptNode = ensureNode('charger', 'MPPT Laderegler', 150, -200, {
-        amps: 30,
-      });
-      solars.forEach((solar) => {
-        const solarWatts = Number(solar.data.watts) || 100;
-        const solarAmps = solarWatts / 12;
-        connect(solar.id, mpptNode.id, solarAmps, 5);
-      });
-      connect(
-        mpptNode.id,
-        busbarNode.id,
-        Number(mpptNode.data.amps) || 30,
-        2
-      );
-    }
-
-    const boosters = currentNodes.filter(
-      (n) =>
-        n.type === 'charger' &&
-        (n.data.label as string)?.toLowerCase().includes('ladequelle')
-    );
-    boosters.forEach((booster) => {
-      connect(
-        booster.id,
-        busbarNode.id,
-        Number(booster.data.amps) || 30,
-        3
-      );
-    });
-
-    const plainChargers = currentNodes.filter(
-      (n) =>
-        n.type === 'charger' &&
-        !(n.data.label as string)?.toLowerCase().includes('mppt') &&
-        !(n.data.label as string)?.toLowerCase().includes('ladequelle')
-    );
-    plainChargers.forEach((charger) => {
-      connect(
-        charger.id,
-        busbarNode.id,
-        Number(charger.data.amps) || 30,
-        3
-      );
-    });
-
-    const consumers = currentNodes.filter((n) => n.type === 'consumer');
-    consumers.forEach((consumer) => {
-      const I = (Number(consumer.data.watts) || 0) / 12;
-      connect(fuseBoxNode.id, consumer.id, I, 3);
-    });
-
+    // Nutzer-Kanten bleiben erhalten; nur Auto-Kanten früherer Läufe
+    // werden durch die frisch berechneten ersetzt (Idempotenz).
     const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
-      currentNodes,
-      newEdges,
+      result.nodes,
+      result.edges,
       'LR'
     );
 
-    const finalNodes = [...layoutedNodes];
-    const finalEdges = [...layoutedEdges];
-    set({
-      nodes: finalNodes,
-      edges: finalEdges,
-      vdeValidationResults: validateSchematic(finalNodes, finalEdges),
-    });
+    set((state) => withHistory(state, { nodes: [...layoutedNodes], edges: [...layoutedEdges] }));
 
-    if (fitView && typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
       window.requestAnimationFrame(() => {
-        fitView({ duration: 800 });
+        window.dispatchEvent(new CustomEvent('planner-fit-view'));
+        window.dispatchEvent(new CustomEvent('planner-auto-wired', { detail: { edgeCount: result.edges.length } }));
       });
     }
   },
 
-  onLayout: (fitView) => {
-    const { nodes, edges } = get();
-    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
-      nodes,
-      edges,
-      'LR'
-    );
-    const finalNodes = [...layoutedNodes];
-    const finalEdges = [...layoutedEdges];
-    set({
-      nodes: finalNodes,
-      edges: finalEdges,
-      vdeValidationResults: validateSchematic(finalNodes, finalEdges),
-    });
-  },
-
-  checkSchematic: () => {
-    const { nodes, edges } = get();
-    const schematic = { nodes, edges };
+  onLayout: () => {
+    const { viewMode, nodes, edges, waterNodes, waterEdges } = get();
+    if (viewMode === 'water') {
+      const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
+        waterNodes,
+        waterEdges,
+        'LR'
+      );
+      set((state) => withHistory(state, {
+        waterNodes: [...layoutedNodes],
+        waterEdges: [...layoutedEdges],
+        isLayoutPending: true,
+      }));
+    } else {
+      const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
+        nodes,
+        edges,
+        'LR'
+      );
+      set((state) => withHistory(state, {
+        nodes: [...layoutedNodes],
+        edges: [...layoutedEdges],
+        isLayoutPending: true,
+      }));
+    }
     if (typeof window !== 'undefined') {
-      const event = new CustomEvent('check-schematic', { detail: schematic });
-      window.dispatchEvent(event);
+      window.requestAnimationFrame(() => {
+        window.dispatchEvent(new CustomEvent('planner-fit-view'));
+        window.setTimeout(() => set({ isLayoutPending: false }), 300);
+      });
+    } else {
+      set({ isLayoutPending: false });
     }
   },
 
-  exportBOM: () => {
-    const { nodes, edges } = get();
-    const counts: Record<string, number> = {};
-    nodes.forEach(n => {
-      counts[n.type!] = (counts[n.type!] || 0) + 1;
-    });
-
-    const cableLengths: Record<string, number> = {};
-    edges.forEach(e => {
-      const cs = e.data?.crossSection || 2.5;
-      cableLengths[cs] = (cableLengths[cs] || 0) + (e.data?.length || 3);
-    });
-
-    const bom = { counts, cableLengths };
-
-    if (typeof window !== 'undefined') {
-      const event = new CustomEvent('export-bom', { detail: bom });
-      window.dispatchEvent(event);
+  applyTemplate: (templateId: string) => {    const template = TEMPLATES_DICT[templateId];
+    if (template) {
+      set((state) => withHistory(state, {
+        nodes: [...template.nodes],
+        edges: [...template.edges],
+        waterNodes: [],
+        waterEdges: [],
+        selectedNodes: [],
+        selectedEdges: [],
+      }));
     }
   },
 
@@ -547,6 +650,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
 
     const type = event.dataTransfer.getData('application/reactflow');
     const label = event.dataTransfer.getData('application/reactflow-label');
+    const wattsStr = event.dataTransfer.getData('application/reactflow-watts');
 
     if (typeof type === 'undefined' || !type) {
       return;
@@ -557,99 +661,137 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
       y: event.clientY,
     });
 
-    const newNode: Node = {
-      id: crypto.randomUUID(),
-      type,
-      position,
-      data: { label: label },
-    };
-
-    if (type === 'battery') {
-      newNode.data = { ...newNode.data, capacity: 100, chemistry: 'LiFePO4' };
-    } else if (type === 'consumer') {
-      newNode.data = { ...newNode.data, watts: 50, hours: 2 };
-    } else if (type === 'charger') {
-      newNode.data = { ...newNode.data, amps: 10 };
-    } else if (type === 'fuse') {
-      newNode.data = { ...newNode.data, rating: 30 };
-    } else if (type === 'shorePower') {
-      newNode.data = { ...newNode.data, hasRcd: false };
-    } else if (type === 'consumer230v') {
-      newNode.data = { ...newNode.data, watts: 1000, hours: 0.5 };
-    } else if (type === 'solar') {
-      newNode.data = { ...newNode.data, voltage: 18, amps: 5 };
-    }
-
-    const { viewMode } = get();
-    if (viewMode === 'water') {
-      set((state) => ({ waterNodes: state.waterNodes.concat(newNode) }));
-    } else {
-      set((state) => {
-        const nodes = state.nodes.concat(newNode);
-        return {
-          nodes,
-          vdeValidationResults: validateSchematic(nodes, state.edges),
-        };
-      });
-    }
+    get().addNode(type, label, position, wattsStr ? Number(wattsStr) : undefined);
   },
 
   onCustomDrop: (event, screenToFlowPosition) => {
     const customEvent = event as CustomEvent;
-    const { clientX, clientY, type, label } = customEvent.detail;
+    const { clientX, clientY, type, label, watts } = customEvent.detail;
 
     const position = screenToFlowPosition({
       x: clientX,
       y: clientY,
     });
 
+    get().addNode(type, label, position, watts);
+  },
+
+  addNode: (type, label, position, watts?: number) => {
     const newNode: Node = {
-      id: crypto.randomUUID(),
+      id: `${type}-${crypto.randomUUID()}`,
       type,
       position,
-      data: { label: label },
+      data: { label, ...(watts !== undefined ? { watts } : {}) },
     };
 
     if (type === 'battery') {
-      newNode.data = { ...newNode.data, capacity: 100, chemistry: 'LiFePO4' };
+      newNode.data = { capacity: 100, chemistry: 'LiFePO4', ...newNode.data };
     } else if (type === 'consumer') {
-      newNode.data = { ...newNode.data, watts: 50, hours: 2 };
-    } else if (type === 'charger') {
-      newNode.data = { ...newNode.data, amps: 10 };
+      newNode.data = { watts: 50, hours: 2, ...newNode.data };
+    } else if (type === 'charger' || type === 'mpptController' || type === 'dcdcCharger' || type === 'acBatteryCharger') {
+      newNode.data = { amps: 10, ...newNode.data };
     } else if (type === 'fuse') {
-      newNode.data = { ...newNode.data, rating: 30 };
+      newNode.data = { rating: 30, ...newNode.data };
     } else if (type === 'shorePower') {
-      newNode.data = { ...newNode.data, hasRcd: false };
+      newNode.data = { hasRcd: false, ...newNode.data };
     } else if (type === 'consumer230v') {
-      newNode.data = { ...newNode.data, watts: 1000, hours: 0.5 };
+      newNode.data = { watts: 1000, hours: 0.5, ...newNode.data };
     } else if (type === 'solar') {
-      newNode.data = { ...newNode.data, voltage: 18, amps: 5 };
+      newNode.data = { voltage: 18, amps: 5, watts: 90, ...newNode.data };
+    } else if (type === 'inverter') {
+      newNode.data = { watts: 1000, continuousPower: 1000, ...newNode.data };
     }
 
     const { viewMode } = get();
     if (viewMode === 'water') {
-      set((state) => ({ waterNodes: state.waterNodes.concat(newNode) }));
+      set((state) => withHistory(state, { waterNodes: state.waterNodes.concat(newNode) }));
     } else {
-      set((state) => {
-        const nodes = state.nodes.concat(newNode);
-        return {
-          nodes,
-          vdeValidationResults: validateSchematic(nodes, state.edges),
-        };
-      });
+      set((state) => withHistory(state, { nodes: state.nodes.concat(newNode) }));
     }
   },
 
-  handleChangeCrossSection: (id, crossSection) => set((state) => {
-    const edges = state.edges.map((e) => {
-      if (e.id === id) {
-        return { ...e, data: { ...e.data!, crossSection } };
-      }
-      return e;
-    });
+  undo: () => set((state) => {
+    const previous = state.historyPast[state.historyPast.length - 1];
+    if (!previous) return state;
+    const nextPast = state.historyPast.slice(0, -1);
+    const nextFuture = [graphSnapshot(state), ...state.historyFuture].slice(0, HISTORY_LIMIT);
     return {
-      edges,
-      vdeValidationResults: validateSchematic(state.nodes, edges),
+      ...previous,
+      selectedNodes: [],
+      selectedEdges: [],
+      firstTappedHandle: null,
+      historyPast: nextPast,
+      historyFuture: nextFuture,
+      canUndo: nextPast.length > 0,
+      canRedo: true,
     };
   }),
-}));
+
+  redo: () => set((state) => {
+    const next = state.historyFuture[0];
+    if (!next) return state;
+    const nextPast = [...state.historyPast, graphSnapshot(state)].slice(-HISTORY_LIMIT);
+    const nextFuture = state.historyFuture.slice(1);
+    return {
+      ...next,
+      selectedNodes: [],
+      selectedEdges: [],
+      firstTappedHandle: null,
+      historyPast: nextPast,
+      historyFuture: nextFuture,
+      canUndo: true,
+      canRedo: nextFuture.length > 0,
+    };
+  }),
+
+  clearPlan: () => set((state) => withHistory(state, {
+    nodes: [],
+    edges: [],
+    waterNodes: [],
+    waterEdges: [],
+    selectedNodes: [],
+    selectedEdges: [],
+    firstTappedHandle: null,
+  })),
+
+  calculatePathVoltageDrop: (targetNodeId, customNodes, customEdges) => {
+    const edges = customEdges || get().edges;
+    const nodes = customNodes || get().nodes;
+    const signature = plannerGraphSignature(nodes, edges);
+
+    let entry = pathDropCache.get(edges);
+    if (!entry || entry.signature !== signature) {
+      entry = { signature, nodes, map: new Map() };
+      pathDropCache.set(edges, entry);
+    }
+    const cached = entry.map.get(targetNodeId);
+    if (cached !== undefined) return cached;
+
+    // Identische Logik wie die Auto-Wire-Dimensionierung (cumulativeDropAt):
+    // Versorgungspfad (Batterie/Landstrom) bevorzugt, sonst bester Ladezweig.
+    const sysVoltage = getSystemVoltage(nodes);
+    const nodesMap = getNodeMap(nodes, []);
+    const value = relevantCumulativeDrop(targetNodeId, nodesMap, edges, nodes, sysVoltage);
+    entry.map.set(targetNodeId, value);
+    return value;
+  },
+}),
+    {
+      name: 'werft-planner-v1',
+      version: PLANNER_STORAGE_VERSION,
+      storage: createJSONStorage(() => plannerDebouncedStorage),
+      migrate: (persisted, version) => migratePlannerPersisted(persisted, version) as PlannerState,
+      partialize: (state) => ({
+        viewMode: state.viewMode,
+        season: state.season,
+        nodes: state.nodes,
+        edges: state.edges,
+        waterNodes: state.waterNodes,
+        waterEdges: state.waterEdges,
+        isSidebarOpen: state.isSidebarOpen,
+        isInspectorOpen: state.isInspectorOpen,
+        backboneGrouping: state.backboneGrouping,
+      }),
+    }
+  )
+);
