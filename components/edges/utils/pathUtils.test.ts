@@ -186,7 +186,7 @@ describe('parallelLaneOffset (Trassen-Bündelung)', () => {
     ).toBe(0);
   });
 
-  it('separates three parallel cables by exactly 16 px each (A5)', () => {
+  it('separates three parallel cables by exactly 20 px each (A5)', () => {
     const siblings = [
       { id: 'c', ...pair, sourceHandle: 'plus' },
       { id: 'a', ...pair, sourceHandle: 'plus' },
@@ -198,10 +198,10 @@ describe('parallelLaneOffset (Trassen-Bündelung)', () => {
       )
       .sort((x, y) => x - y);
 
-    expect(offsets).toEqual([-16, 0, 16]);
-    expect(PARALLEL_LANE_SPREAD).toBe(16);
-    expect(offsets[1] - offsets[0]).toBe(16);
-    expect(offsets[2] - offsets[1]).toBe(16);
+    expect(offsets).toEqual([-20, 0, 20]);
+    expect(PARALLEL_LANE_SPREAD).toBe(20);
+    expect(offsets[1] - offsets[0]).toBe(20);
+    expect(offsets[2] - offsets[1]).toBe(20);
   });
 
   it('groups identical cable types next to each other, regardless of edge id', () => {

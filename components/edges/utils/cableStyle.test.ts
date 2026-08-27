@@ -7,19 +7,19 @@ import {
 } from './cableStyle';
 
 describe('cableStrokeWidth', () => {
-  it('draws backbone cables at 3 px and normal cables at 2 px', () => {
-    expect(cableStrokeWidth({ isBackbone: true })).toBe(3);
-    expect(cableStrokeWidth({ isBackbone: false })).toBe(2);
-    expect(BACKBONE_STROKE_WIDTH).toBe(3);
-    expect(NORMAL_STROKE_WIDTH).toBe(2);
+  it('draws backbone cables at 4 px and normal cables at 2.5 px', () => {
+    expect(cableStrokeWidth({ isBackbone: true })).toBe(4);
+    expect(cableStrokeWidth({ isBackbone: false })).toBe(2.5);
+    expect(BACKBONE_STROKE_WIDTH).toBe(4);
+    expect(NORMAL_STROKE_WIDTH).toBe(2.5);
   });
 
   it('adds one pixel on hover/selection as pointer-independent feedback', () => {
-    expect(cableStrokeWidth({ isBackbone: false, emphasized: true })).toBe(3);
-    expect(cableStrokeWidth({ isBackbone: true, emphasized: true })).toBe(4);
+    expect(cableStrokeWidth({ isBackbone: false, emphasized: true })).toBe(3.5);
+    expect(cableStrokeWidth({ isBackbone: true, emphasized: true })).toBe(5);
   });
 
-  it('thins out branches in trunk mode while keeping the backbone at 3 px', () => {
+  it('thins out branches in trunk mode while keeping the backbone at 4 px', () => {
     expect(cableStrokeWidth({ isBackbone: false, trunkMode: true })).toBe(TRUNK_BRANCH_STROKE_WIDTH);
     expect(cableStrokeWidth({ isBackbone: true, trunkMode: true })).toBe(BACKBONE_STROKE_WIDTH);
   });

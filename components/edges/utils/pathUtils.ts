@@ -1,17 +1,17 @@
 import { Position, getSmoothStepPath } from 'reactflow';
 
 export const SMOOTH_STEP_BORDER_RADIUS = 10;
-export const PLUS_PATH_OFFSET = 20;
-export const MINUS_PATH_OFFSET = 32;
-export const PLUS_LABEL_NUDGE = -40;
-export const MINUS_LABEL_NUDGE = 40;
-export const PARALLEL_LABEL_SPREAD = 22;
+export const PLUS_PATH_OFFSET = 24;
+export const MINUS_PATH_OFFSET = 38;
+export const PLUS_LABEL_NUDGE = -48;
+export const MINUS_LABEL_NUDGE = 48;
+export const PARALLEL_LABEL_SPREAD = 24;
 /**
  * Abstand zwischen gebündelten Leitungen derselben Trasse.
- * 16 px entsprechen bei Zoom 1 gut zwei Kabeldurchmessern — nah genug, damit
- * die Bündelung als Trasse lesbar bleibt, weit genug für saubere Trennung.
+ * 20 px entsprechen bei Zoom 1 gut zwei Kabeldurchmessern und halten
+ * parallele Leitungen klar trennbar, ohne die Trasse optisch aufzusprengen.
  */
-export const PARALLEL_LANE_SPREAD = 16;
+export const PARALLEL_LANE_SPREAD = 20;
 
 export interface PathParams {
   sourceX: number;

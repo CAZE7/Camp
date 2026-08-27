@@ -15,7 +15,7 @@ import { Position, Node } from 'reactflow';
 export type Point = { x: number; y: number };
 export type Rect = { x: number; y: number; width: number; height: number };
 
-export const ROUTE_BORDER_RADIUS = 10;
+export const ROUTE_BORDER_RADIUS = 14;
 export const ROUTE_MIN_STUB = 24;
 export const OBSTACLE_MARGIN = 14;
 
@@ -372,10 +372,10 @@ export function polylineMidpoint(waypoints: Point[]): Point {
 export type Segment = [Point, Point];
 
 /** Ab dieser Zahl an Kreuzungen wird eine Alternativroute gesucht. */
-export const MAX_ACCEPTABLE_CROSSINGS = 3;
+export const MAX_ACCEPTABLE_CROSSINGS = 2;
 
 /** Zusätzlicher Abstand je Ausweich-Versuch (ein Vielfaches der Lane-Breite). */
-export const ALTERNATIVE_ROUTE_GAP = 32;
+export const ALTERNATIVE_ROUTE_GAP = 40;
 
 /** Zerlegt eine Polylinie in einzelne Segmente. */
 export function waypointsToSegments(points: Point[]): Segment[] {

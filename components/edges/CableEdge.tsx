@@ -414,18 +414,40 @@ const CableEdge = function ({
             borderRadius: '4px',
             fontSize: '12px',
             fontWeight: 'bold',
-            border: '1px solid var(--rule)',
+            border: `1px solid ${hasDropError ? 'var(--wire-error)' : 'var(--rule)'}`,
             color: 'var(--ink)',
             pointerEvents: 'all',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             lineHeight: 1.25,
+            boxShadow: hasDropError ? '0 0 0 1px var(--wire-error-bg, rgba(192,38,211,0.12))' : undefined,
           }}
           className="nodrag nopan edge-label"
         >
-          {/* Kompaktes Kern-Label: Querschnitt + Länge, immer sichtbar. */}
-          <span className="edge-label-main" style={{ color: stroke }}>
+          {/* Kompaktes Kern-Label: Kabeltyp-Badge + Querschnitt + Länge, immer sichtbar. */}
+          <span className="edge-label-main" style={{ display: 'flex', alignItems: 'center', gap: '5px', color: stroke }}>
+            {/* Kabeltyp-Badge: Form + Farbe orientiert sich an den Handle-Symbolen */}
+            <span
+              aria-label={edgeDomain === 'AC_230V' ? 'Wechselstrom 230V' : edgeDomain === 'Solar' ? 'Solarleitung' : isPlus ? 'Gleichstrom Plus' : 'Gleichstrom Minus'}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '16px',
+                height: '16px',
+                borderRadius: edgeDomain === 'AC_230V' ? '2px' : edgeDomain === 'Solar' ? '50%' : isPlus ? '50%' : '2px',
+                transform: edgeDomain === 'AC_230V' ? 'rotate(45deg)' : 'none',
+                background: stroke,
+                fontSize: '8px',
+                fontWeight: 900,
+                color: 'white',
+                flexShrink: 0,
+                lineHeight: 1,
+              }}
+            >
+              {edgeDomain === 'AC_230V' ? '' : edgeDomain === 'Solar' ? '☀' : isPlus ? '+' : '−'}
+            </span>
             {crossSection} mm² · {length.toFixed(1)} m
           </span>
 
