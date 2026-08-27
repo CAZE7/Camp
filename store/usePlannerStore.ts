@@ -5,7 +5,7 @@ import { getLayoutedElements } from '../components/planner/utils/layout';
 import React from 'react';
 import { Node, Edge, Connection } from 'reactflow';
 import { CableEdgeData } from '../components/edges/CableEdge';
-import { PlannerNodeData } from '../components/nodes/types';
+import { NodeDataPatch } from '../components/nodes/types';
 
 type GraphSnapshot = {
   nodes: Node[];
@@ -77,7 +77,7 @@ interface PlannerState {
   onSelectionChange: (params: import('reactflow').OnSelectionChangeParams) => void;
   focusElement: (id: string, elementType: 'node' | 'edge') => void;
   deleteSelected: () => void;
-  updateNodeData: (id: string, data: Partial<PlannerNodeData>) => void;
+  updateNodeData: (id: string, data: NodeDataPatch) => void;
   handleChangeLength: (id: string, length: number) => void;
   handleChangeFuseSize: (id: string, fuseSize: number) => void;
 

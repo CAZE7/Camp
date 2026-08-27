@@ -1,12 +1,7 @@
 'use client';
 import React from 'react';
 import { Handle, Position } from 'reactflow';
-import { PlannerNodeProps, CommonNodeData } from './types';
-
-interface WaterNodeData extends CommonNodeData {
-  /** Unterscheidet die Wasser-Bauteile für die Farbkodierung. */
-  kind?: 'fresh' | 'gray';
-}
+import { PlannerNodeProps, WaterNodeData } from './types';
 
 const WaterNode = function ({ data, isConnectable, selected, type }: PlannerNodeProps<WaterNodeData>) {
   let bgColor = 'bg-blue-50';

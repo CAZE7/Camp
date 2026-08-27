@@ -1,10 +1,10 @@
 'use client';
 import React from 'react';
 import { Handle, Position } from 'reactflow';
-import { PlannerNodeData, PlannerNodeProps } from './types';
+import { GroundNodeData, PlannerNodeProps } from './types';
 import { NodeSymbol } from './NodeSymbol';
 
-const GroundNode = function ({ data, isConnectable, selected }: PlannerNodeProps<PlannerNodeData>) {
+const GroundNode = function ({ data, isConnectable, selected }: PlannerNodeProps<GroundNodeData>) {
   return (
     <div
       role="group"

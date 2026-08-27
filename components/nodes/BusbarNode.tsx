@@ -1,11 +1,11 @@
 'use client';
 import React from 'react';
 import { Handle, Position } from 'reactflow';
-import { PlannerNodeData, PlannerNodeProps } from './types';
+import { BusbarNodeData, PlannerNodeProps } from './types';
 import { useInlineNodeEditing } from './hooks/useInlineNodeEditing';
 import { NodeSymbol } from './NodeSymbol';
 
-const BusbarNode = function ({ id, data, isConnectable, selected }: PlannerNodeProps<PlannerNodeData>) {
+const BusbarNode = function ({ id, data, isConnectable, selected }: PlannerNodeProps<BusbarNodeData>) {
   const { editingField, tempValue, setTempValue, handleDoubleClick, handleBlur, handleKeyDown } =
     useInlineNodeEditing(id);
 

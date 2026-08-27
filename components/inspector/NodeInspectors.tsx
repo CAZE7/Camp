@@ -2,10 +2,20 @@ import React from 'react';
 import { Node, Edge } from 'reactflow';
 import { CableEdgeData } from '../edges/CableEdge';
 import { ValidatingInput, COMMON_RULES } from '../ui/ValidatingInput';
+import { NodeDataPatch, PlannerNodeType, TypedNode } from '../nodes/types';
+
+/**
+ * Die Inspectors lesen/schreiben Node-Daten typisiert über die Registry
+ * (`TypedNode<K>`, AGENTS.md M6-3): `node.data.capacity` ist eine Zahl oder
+ * undefined, nicht `any`. Die Zuweisung des konkreten `type`-Literals passiert
+ * zentral im `Inspector` (single boundary cast nach dem type-Switch).
+ */
+export type InspectorNode<K extends PlannerNodeType> = TypedNode<K>;
+export type InspectorUpdate = (id: string, patch: NodeDataPatch) => void;
 
 export interface BaseNodeInspectorProps {
   node: Node;
-  onUpdateNodeData?: (id: string, data: any) => void;
+  onUpdateNodeData?: InspectorUpdate;
 }
 
 const COMPONENT_HELP: Record<string, string> = {
@@ -60,7 +70,9 @@ export function BatteryInspector({
   onUpdateNodeData,
   chargingTimeStr,
   calculatedSolarWatts,
-}: BaseNodeInspectorProps & {
+}: {
+  node: InspectorNode<'battery'>;
+  onUpdateNodeData?: InspectorUpdate;
   chargingTimeStr?: string;
   calculatedSolarWatts?: number;
 }) {
@@ -123,7 +135,13 @@ export function BatteryInspector({
   );
 }
 
-export function ConsumerInspector({ node, onUpdateNodeData }: BaseNodeInspectorProps) {
+export function ConsumerInspector({
+  node,
+  onUpdateNodeData,
+}: {
+  node: InspectorNode<'consumer'>;
+  onUpdateNodeData?: InspectorUpdate;
+}) {
   return (
     <>
       <div className="flex flex-col">
@@ -166,7 +184,13 @@ export function ConsumerInspector({ node, onUpdateNodeData }: BaseNodeInspectorP
   );
 }
 
-export function ChargerInspector({ node, onUpdateNodeData }: BaseNodeInspectorProps) {
+export function ChargerInspector({
+  node,
+  onUpdateNodeData,
+}: {
+  node: InspectorNode<'charger' | 'mpptController' | 'dcdcCharger' | 'acBatteryCharger'>;
+  onUpdateNodeData?: InspectorUpdate;
+}) {
   return (
     <>
       <div className="flex flex-col">
@@ -208,7 +232,13 @@ export function ChargerInspector({ node, onUpdateNodeData }: BaseNodeInspectorPr
   );
 }
 
-export function FuseInspector({ node, onUpdateNodeData }: BaseNodeInspectorProps) {
+export function FuseInspector({
+  node,
+  onUpdateNodeData,
+}: {
+  node: InspectorNode<'fuse'>;
+  onUpdateNodeData?: InspectorUpdate;
+}) {
   return (
     <div className="flex flex-col">
       <label
@@ -230,7 +260,13 @@ export function FuseInspector({ node, onUpdateNodeData }: BaseNodeInspectorProps
   );
 }
 
-export function ShorePowerInspector({ node, onUpdateNodeData }: BaseNodeInspectorProps) {
+export function ShorePowerInspector({
+  node,
+  onUpdateNodeData,
+}: {
+  node: InspectorNode<'shorePower'>;
+  onUpdateNodeData?: InspectorUpdate;
+}) {
   return (
     <div className="flex flex-col gap-2">
       <label className="flex items-center gap-2 text-sm text-foreground">
@@ -255,7 +291,11 @@ export function InverterInspector({
   node,
   onUpdateNodeData,
   nodes,
-}: BaseNodeInspectorProps & { nodes?: Node[] }) {
+}: {
+  node: InspectorNode<'inverter'>;
+  onUpdateNodeData?: InspectorUpdate;
+  nodes?: Node[];
+}) {
   const consumerNodes = React.useMemo(() => {
     return nodes?.filter((n) => n.type === 'consumer230v') || [];
   }, [nodes]);
@@ -315,7 +355,13 @@ export function InverterInspector({
   );
 }
 
-export function Consumer230VInspector({ node, onUpdateNodeData }: BaseNodeInspectorProps) {
+export function Consumer230VInspector({
+  node,
+  onUpdateNodeData,
+}: {
+  node: InspectorNode<'consumer230v'>;
+  onUpdateNodeData?: InspectorUpdate;
+}) {
   return (
     <>
       <div className="flex flex-col">
@@ -358,7 +404,13 @@ export function Consumer230VInspector({ node, onUpdateNodeData }: BaseNodeInspec
   );
 }
 
-export function SolarInspector({ node, onUpdateNodeData }: BaseNodeInspectorProps) {
+export function SolarInspector({
+  node,
+  onUpdateNodeData,
+}: {
+  node: InspectorNode<'solar'>;
+  onUpdateNodeData?: InspectorUpdate;
+}) {
   return (
     <>
       <div className="flex flex-col">
@@ -420,7 +472,13 @@ export function SolarInspector({ node, onUpdateNodeData }: BaseNodeInspectorProp
   );
 }
 
-export function RoofWindowInspector({ node, onUpdateNodeData }: BaseNodeInspectorProps) {
+export function RoofWindowInspector({
+  node,
+  onUpdateNodeData,
+}: {
+  node: InspectorNode<'roofWindow'>;
+  onUpdateNodeData?: InspectorUpdate;
+}) {
   return (
     <>
       <div className="flex flex-col">
@@ -461,7 +519,13 @@ export function RoofWindowInspector({ node, onUpdateNodeData }: BaseNodeInspecto
   );
 }
 
-export function RoofSolarInspector({ node, onUpdateNodeData }: BaseNodeInspectorProps) {
+export function RoofSolarInspector({
+  node,
+  onUpdateNodeData,
+}: {
+  node: InspectorNode<'roofSolar'>;
+  onUpdateNodeData?: InspectorUpdate;
+}) {
   return (
     <>
       <div className="flex flex-col">
@@ -523,7 +587,11 @@ export function ConduitInspector({
   node,
   onUpdateNodeData,
   edges,
-}: BaseNodeInspectorProps & { edges?: Edge[] }) {
+}: {
+  node: InspectorNode<'conduit'>;
+  onUpdateNodeData?: InspectorUpdate;
+  edges?: Edge[];
+}) {
   return (
     <>
       <div className="flex flex-col">

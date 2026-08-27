@@ -1,6 +1,7 @@
 'use client';
 import React, { useMemo } from 'react';
 import { Handle, Position, useEdges } from 'reactflow';
+import type { ConduitNodeData } from './types';
 import { CableEdgeData } from '../edges/CableEdge';
 import {
   VDE_CONDUIT_INNER_DIAMETERS,
@@ -10,12 +11,6 @@ import {
 } from '@/lib/vde-standards';
 import { mm2, quantityOr } from '@/lib/units';
 import { NodeSymbol } from './NodeSymbol';
-
-export interface ConduitNodeData {
-  label?: string;
-  conduitType?: keyof typeof VDE_CONDUIT_INNER_DIAMETERS;
-  assignedEdges?: string[];
-}
 
 /**
  * Füllgrad-Anzeige auf Basis der zentralen Füllgrad-Funktion

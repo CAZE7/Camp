@@ -1,11 +1,11 @@
 'use client';
 import React from 'react';
 import { Handle, Position } from 'reactflow';
-import { PlannerNodeData, PlannerNodeProps } from './types';
+import { FuseNodeData, PlannerNodeProps } from './types';
 import { useInlineNodeEditing } from './hooks/useInlineNodeEditing';
 import { NodeSymbol } from './NodeSymbol';
 
-const FuseNode = function ({ id, data, isConnectable, selected }: PlannerNodeProps<PlannerNodeData>) {
+const FuseNode = function ({ id, data, isConnectable, selected }: PlannerNodeProps<FuseNodeData>) {
   const { editingField, tempValue, setTempValue, handleDoubleClick, handleBlur, handleKeyDown } =
     useInlineNodeEditing(id);
 

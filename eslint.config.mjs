@@ -85,32 +85,6 @@ export default tseslint.config(
     },
   },
 
-  {
-    // TEMPORÄRE Reichweite bis M6-3: Die 11 Node-Komponenten, types.ts und die
-    // Inspector nutzen `any` für node.data, bis NodeData eine diskriminierte
-    // Union ist. Mit Einführung der Union (M6-3) wird dieser Block gelöscht —
-    // kein neuer Code darf hier aufgenommen werden.
-    files: [
-      'components/nodes/BatteryNode.tsx',
-      'components/nodes/BusbarNode.tsx',
-      'components/nodes/ChargerNode.tsx',
-      'components/nodes/Consumer230VNode.tsx',
-      'components/nodes/ConsumerNode.tsx',
-      'components/nodes/FuseNode.tsx',
-      'components/nodes/GroundNode.tsx',
-      'components/nodes/InverterNode.tsx',
-      'components/nodes/ShorePowerNode.tsx',
-      'components/nodes/ShuntNode.tsx',
-      'components/nodes/SolarNode.tsx',
-      'components/nodes/types.ts',
-      'components/Inspector.tsx',
-      'components/inspector/NodeInspectors.tsx',
-    ],
-    rules: {
-      '@typescript-eslint/no-explicit-any': 'off',
-    },
-  },
-
   // Formatierungsregeln überlässt ESLint komplett Prettier.
   prettierConfig
 );

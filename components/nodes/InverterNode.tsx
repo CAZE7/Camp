@@ -1,12 +1,12 @@
 'use client';
 import React, { useMemo } from 'react';
 import { Handle, Position, useNodes } from 'reactflow';
-import { PlannerNodeData, PlannerNodeProps } from './types';
+import { InverterNodeData, PlannerNodeProps } from './types';
 import { useInlineNodeEditing } from './hooks/useInlineNodeEditing';
 import { CommonNodeData } from './types';
 import { NodeSymbol } from './NodeSymbol';
 
-const InverterNode = function ({ id, data, isConnectable, selected }: PlannerNodeProps<PlannerNodeData>) {
+const InverterNode = function ({ id, data, isConnectable, selected }: PlannerNodeProps<InverterNodeData>) {
   const { editingField, tempValue, setTempValue, handleDoubleClick, handleBlur, handleKeyDown } =
     useInlineNodeEditing(id);
 

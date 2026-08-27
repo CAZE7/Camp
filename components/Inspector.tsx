@@ -21,17 +21,28 @@ import {
   ComponentInfoInspector,
 } from './inspector/NodeInspectors';
 import { WaterPipeInspector } from './inspector/WaterPipeInspector';
+import { NodeDataPatch, PlannerNodeType, TypedNode } from './nodes/types';
+
+/**
+ * React Flow liefert Nodes lose (`data: Record<string, any>`). Der Switch auf
+ * `node.type` garantiert das Typ-Literal; diese einzige Engstelle schneidet
+ * die diskriminierte Registry-Form (`TypedNode<K>`) heraus — alle Inspektoren
+ * arbeiten danach datengetypisch statt mit `any`.
+ */
+function typedAs<K extends PlannerNodeType>(node: Node, _type: K): TypedNode<K> {
+  return node as unknown as TypedNode<K>;
+}
 
 interface InspectorProps {
   selectedNode?: Node | null;
   selectedEdge?: Edge<CableEdgeData> | null;
   // old names kept for backward-compat
   onDeleteNode?: (nodeId: string) => void;
-  onUpdateNode?: (nodeId: string, data: any) => void;
+  onUpdateNode?: (nodeId: string, data: NodeDataPatch) => void;
 
   // planner-specific props (some callers use these names)
-  onDelete?: (...args: any[]) => void;
-  onUpdateNodeData?: (...args: any[]) => void;
+  onDelete?: (nodeId?: string) => void;
+  onUpdateNodeData?: (nodeId: string, data: NodeDataPatch) => void;
   onChangeLength?: (id: string, length: number) => void;
   onChangeFuseSize?: (id: string, fuseSize: number) => void;
 
@@ -70,7 +81,7 @@ function TypeSpecificInspector({
   calculatedSolarWatts,
 }: {
   node: Node;
-  onUpdateNodeData?: (id: string, data: any) => void;
+  onUpdateNodeData?: (id: string, patch: NodeDataPatch) => void;
   nodes?: Node[];
   edges?: Edge[];
   chargingTimeStr?: string;
@@ -80,35 +91,45 @@ function TypeSpecificInspector({
     case 'battery':
       return (
         <BatteryInspector
-          node={node}
+          node={typedAs(node, 'battery')}
           onUpdateNodeData={onUpdateNodeData}
           chargingTimeStr={chargingTimeStr}
           calculatedSolarWatts={calculatedSolarWatts}
         />
       );
     case 'consumer':
-      return <ConsumerInspector node={node} onUpdateNodeData={onUpdateNodeData} />;
+      return <ConsumerInspector node={typedAs(node, 'consumer')} onUpdateNodeData={onUpdateNodeData} />;
     case 'charger':
     case 'mpptController':
     case 'dcdcCharger':
     case 'acBatteryCharger':
-      return <ChargerInspector node={node} onUpdateNodeData={onUpdateNodeData} />;
+      return <ChargerInspector node={typedAs(node, 'charger')} onUpdateNodeData={onUpdateNodeData} />;
     case 'fuse':
-      return <FuseInspector node={node} onUpdateNodeData={onUpdateNodeData} />;
+      return <FuseInspector node={typedAs(node, 'fuse')} onUpdateNodeData={onUpdateNodeData} />;
     case 'shorePower':
-      return <ShorePowerInspector node={node} onUpdateNodeData={onUpdateNodeData} />;
+      return <ShorePowerInspector node={typedAs(node, 'shorePower')} onUpdateNodeData={onUpdateNodeData} />;
     case 'inverter':
-      return <InverterInspector node={node} onUpdateNodeData={onUpdateNodeData} nodes={nodes} />;
+      return (
+        <InverterInspector
+          node={typedAs(node, 'inverter')}
+          onUpdateNodeData={onUpdateNodeData}
+          nodes={nodes}
+        />
+      );
     case 'consumer230v':
-      return <Consumer230VInspector node={node} onUpdateNodeData={onUpdateNodeData} />;
+      return (
+        <Consumer230VInspector node={typedAs(node, 'consumer230v')} onUpdateNodeData={onUpdateNodeData} />
+      );
     case 'solar':
-      return <SolarInspector node={node} onUpdateNodeData={onUpdateNodeData} />;
+      return <SolarInspector node={typedAs(node, 'solar')} onUpdateNodeData={onUpdateNodeData} />;
     case 'roofWindow':
-      return <RoofWindowInspector node={node} onUpdateNodeData={onUpdateNodeData} />;
+      return <RoofWindowInspector node={typedAs(node, 'roofWindow')} onUpdateNodeData={onUpdateNodeData} />;
     case 'roofSolar':
-      return <RoofSolarInspector node={node} onUpdateNodeData={onUpdateNodeData} />;
+      return <RoofSolarInspector node={typedAs(node, 'roofSolar')} onUpdateNodeData={onUpdateNodeData} />;
     case 'conduit':
-      return <ConduitInspector node={node} onUpdateNodeData={onUpdateNodeData} edges={edges} />;
+      return (
+        <ConduitInspector node={typedAs(node, 'conduit')} onUpdateNodeData={onUpdateNodeData} edges={edges} />
+      );
     case 'busbar':
     case 'shunt':
     case 'ground':
@@ -136,7 +157,7 @@ const NodeInspector = ({
 }: {
   node: Node;
   onDelete: (nodeId: string) => void;
-  onUpdate?: (nodeId: string, data: any) => void;
+  onUpdate?: (nodeId: string, data: NodeDataPatch) => void;
   nodes?: Node[];
   edges?: Edge[];
   chargingTimeStr?: string;
@@ -231,7 +252,7 @@ export default function Inspector({
             if (onDeleteNode) return onDeleteNode(id);
             if (onDelete) return onDelete(id);
           }}
-          onUpdate={(id: string, data: any) => {
+          onUpdate={(id: string, data: NodeDataPatch) => {
             if (onUpdateNode) return onUpdateNode(id, data);
             if (onUpdateNodeData) return onUpdateNodeData(id, data);
           }}
