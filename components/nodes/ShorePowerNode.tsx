@@ -1,47 +1,13 @@
 'use client';
-import React, { useState } from 'react';
+import React from 'react';
 import { Handle, Position } from 'reactflow';
 import { PlannerNodeData, PlannerNodeProps } from './types';
-import { usePlannerStore } from '../../store/usePlannerStore';
+import { useInlineNodeEditing } from './hooks/useInlineNodeEditing';
 import { NodeSymbol } from './NodeSymbol';
 
 const ShorePowerNode = function ({ id, data, isConnectable, selected }: PlannerNodeProps<PlannerNodeData>) {
-  const updateNodeData = usePlannerStore((state) => state.updateNodeData);
-  const [editingField, setEditingField] = useState<string | null>(null);
-  const [tempValue, setTempValue] = useState<string>('');
-
-  const handleDoubleClick = (field: string, currentValue: any) => {
-    setEditingField(field);
-    setTempValue(String(currentValue));
-  };
-
-  const handleBlur = () => {
-    if (editingField) {
-      let finalValue: any = tempValue;
-      if (editingField !== 'label' && editingField !== 'chemistry') {
-        const parsed = Number(tempValue);
-        const allowsZero = editingField === 'hours';
-        if (!Number.isFinite(parsed) || parsed < 0 || (!allowsZero && parsed === 0)) {
-          window.dispatchEvent(
-            new CustomEvent('planner-input-error', {
-              detail: allowsZero ? 'Gib eine Zahl ab 0 ein.' : 'Der Wert muss größer als 0 sein.',
-            })
-          );
-          setEditingField(null);
-          return;
-        }
-        finalValue = parsed;
-      }
-      updateNodeData(id, { [editingField]: finalValue });
-    }
-    setEditingField(null);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleBlur();
-    }
-  };
+  const { editingField, tempValue, setTempValue, handleDoubleClick, handleBlur, handleKeyDown } =
+    useInlineNodeEditing(id);
 
   return (
     <div
