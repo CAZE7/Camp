@@ -57,7 +57,7 @@ const RoofSolarNode = function ({
         <div className="z-10 rounded-none bg-black/40 px-2 py-1 text-center text-xs font-semibold text-paper">
           {data.label || 'Solarpanel'}
           <br />
-          <span className="measure text-copper">{watts} W</span>
+          <span className="measure text-amber-300">{watts} W</span>
           <br />
           <span className="caption-xs opacity-80">
             {Math.round(width)}x{Math.round(height)}cm

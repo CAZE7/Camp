@@ -252,12 +252,21 @@ function DachPlanerInner() {
 
         <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
           {/* Sidebar */}
-          <aside className="w-full shrink-0 overflow-y-auto border-b border-rule bg-bone p-5 lg:w-72 lg:border-b-0 lg:border-r">
+          <aside
+            tabIndex={0}
+            className="w-full shrink-0 overflow-y-auto border-b border-rule bg-bone p-5 lg:w-72 lg:border-b-0 lg:border-r"
+          >
             <div className="space-y-3">
-              <Label className="label-eyebrow text-ink-soft">Fahrzeug Modell</Label>
+              <Label htmlFor="dach-vehicle-select" className="label-eyebrow text-ink-soft">
+                Fahrzeug Modell
+              </Label>
               <Select value={selectedVehicleId} onValueChange={(val) => val && setSelectedVehicleId(val)}>
-                <SelectTrigger className="h-12 border-rule bg-bone text-sm font-medium">
-                  <SelectValue />
+                <SelectTrigger
+                  id="dach-vehicle-select"
+                  aria-label="Fahrzeug Modell"
+                  className="h-12 border-rule bg-bone text-sm font-medium"
+                >
+                  <SelectValue placeholder="Fahrzeug auswählen" />
                 </SelectTrigger>
                 <SelectContent className="border-rule">
                   {vehicleTemplates.map((vehicle) => (

@@ -138,7 +138,7 @@ export function DachPanel({
           <CardDescription className="label-eyebrow text-paper/70">Live-Sync</CardDescription>
           <CardTitle className="flex items-center justify-between text-lg font-semibold text-paper">
             <span>Solarleistung</span>
-            <span className="measure text-copper">{totalRoofSolarWatts} W</span>
+            <span className="measure text-amber-300">{totalRoofSolarWatts} W</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
