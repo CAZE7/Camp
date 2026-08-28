@@ -4,9 +4,9 @@ Next.js-App (TypeScript, Tailwind, React Flow, Zustand) zur Planung von Camper-E
 
 ## Befehle
 
-- `npm run dev` · `npm run build` · `npm test` (Vitest) · `npm run typecheck`
+- `npm run dev` · `npm run build` · `npm test` (Vitest) · `npm run typecheck` · `npm run lint`
 - E2E: einmalig `npm run e2e:install`, dann `npm run e2e`
-- Gate vor jedem Commit: `typecheck` + `test` grün.
+- Gate vor jedem Commit: `npm run check` (lint + format + typecheck + tests) grün.
 
 ## Arbeitsweise
 
@@ -24,34 +24,25 @@ Next.js-App (TypeScript, Tailwind, React Flow, Zustand) zur Planung von Camper-E
 - Ein Commit pro Aufgabe; jeder Bugfix mit Regressionstest.
 - Trade-offs aus PR #314 bleiben, bis ein reproduzierbarer Fehler sie widerlegt.
 
-## Mission 5: Betrieb & Hygiene
+## Abgeschlossen
 
-- [x] M5-1 Playwright verifizieren: 4 Specs × 4 Projekte lokal/CI grün (Nachzug zu K5).
-- [x] M5-2 PR #316 (Mission 2, K1–K7) mergen oder schließen.
-- [x] M5-3 Paketmanager festlegen: `package-lock.json` ODER `pnpm-lock.yaml` entfernen.
-- [x] M5-4 Veraltete Branches löschen (`arena/*`, `add-*-tests-*`).
-- [x] M5-5 Token-Budget: AGENTS.md ≤ 1.200 Tokens halten, bei jedem PR prüfen.
+- M1–M4: Produktionsqualität (#314/#315), Engineering (#316), UI/UX, Audit (bis 21.08.2026).
+- M5 Betrieb & Hygiene, M6 Industriestandard Code, M7 Dark Theme: PRs #346 + #348 (27./28.08.). Details: Git-Log, ADR 0005/0006.
 
-## Mission 6: Industriestandard Code
+## Mission 8: Bugfix-Runde (Nutzer-Feedback 28.08.)
 
-- [x] M6-1 ESLint + Prettier einrichten (`no-explicit-any`, `no-console`, `react-hooks`); in `check`-Script + CI einhängen.
-- [x] M6-2 `useInlineNodeEditing`-Hook bauen; Copy-Paste-Edit-Block aus 11 Node-Komponenten migrieren (Battery, Inverter, Solar, Charger, Fuse, Busbar, Shunt, ShorePower, Consumer, Consumer230V, Ground).
-- [x] M6-3 NodeData als Discriminated Union; `any` aus `Inspector.tsx`, `NodeInspectors.tsx` und Node-Props entfernen.
-- [x] M6-4 Fehlerbehandlung: Result-Typ in `app/tools/heizung/page.tsx` (kein stiller `return 0`), Fehler-Feedback im BOMModal, `console.error` in PlannerDashboard ersetzen.
-- [x] M6-5 `store/usePlannerStore.ts` in Zustand-Slices zerlegen (nodes / edges / ui / persist).
-- [x] M6-6 `lib/autoWire.ts` modularisieren (sizing / routing / validation).
-- [x] M6-7 Test-Mocks typisieren: `vi.mocked()` + typisierte Factories statt `as any` (19 Dateien).
-- [x] M6-8 Audit-Reste: `NodeJS.Timeout` → `ReturnType<typeof setTimeout>` (RoadTripAnimation.tsx), stale Kommentare in WaterPipeEdge.test.tsx, 8 offene autoWire-Testgruppen (AUDIT-AUTOWIRE.md), ELEC-003 AC-Absicherung, CI-`skip_tests` restriktiv handhaben.
+- [ ] M8-1 Zoom-Stufen abschaffen: Symbole/Details ändern sich beim Zoomen nicht mehr. `PLANNER_OVERVIEW_ZOOM`/`PLANNER_FULL_DETAIL_ZOOM` (constants.ts), `isOverview`-Logik (FlowCanvas.tsx), Zoom-CSS-Klassen und Tier-Overlays (NodePresentation.tsx) entfernen; Nodes rendern immer Full-Detail. Abnahme: Zoom 0,25–2 identische Darstellung; Tests/Galerie angepasst.
+- [ ] M8-2 Fachwissen-Panel (ExpertPanel.tsx): Schließen-Button unsichtbar seit Token-Umstellung (`text-paper/70` auf hellem Header). Auf Token-Farben umstellen; Panel als Slide-over mit sticky Header; Überlappung mit MiniMap / „Übersicht"-Button / Statuszeile beseitigen (Position + z-Index). Abnahme: X auf 375/768/1440 px sichtbar und klickbar, keine Control-Überlappung.
+- [ ] M8-3 Schrift-Überlappungen: seit Inter-Umstellung (M7-2) breitere Glyphen → Texte in Node-Cards/Labels kollidieren. Fix: `min-width`/Overflow-Regeln in Node-Karten, Label-Kollision bei parallelen Kanten prüfen (`PARALLEL_LABEL_SPREAD`, pathUtils.ts). Abnahme: keine überlappenden Texte im Standardplan (25-Szenarien-Galerie visuell), inkl. 375 px.
 
-## Mission 7: Engineering Dark Theme (Planner)
+## Mission 9: Repo & Release-Hygiene
 
-- [x] M7-1 Design-Tokens: `.dark`-Block in globals.css (surface-0..2, border, text-high/med/low, accent, ok/warn/error, radius ≤ 4 px).
-- [x] M7-2 Fonts: Planner auf Inter/IBM Plex Sans; Werte in IBM Plex Mono mit `tabular-nums`; Fraunces nur Marketing-Seiten.
-- [x] M7-3 Canvas: Punkt-Raster, Statuszeile (Koordinaten/Zoom), Selektion 1 px in `--accent`.
-- [x] M7-4 Density: 4-px-Spacing-Grid, Controls 28–32 px, Inspector-Werte rechtsbündig mit Einheit.
-- [x] M7-5 Kontraste WCAG ≥ 4,5:1 prüfen; Lighthouse Accessibility 100 halten.
+- [ ] M9-1 Dependabot-Triage: dev-Gruppe #354 bei grünem CI mergen; Major-Bumps (#356 TS 7, #360 Tailwind 4, #357 lucide, #358 jsdom, #359 jest-dom, #361 knip) einzeln prüfen oder schließen — nie blind mergen. (Erledigt: #355 mit Next.js 16.3.3 Security-Fixes gemergt.)
+- [ ] M9-2 Jules-PR-Triage: #332 + #345 nach PR #348 auf Überschneidungen prüfen, rebasen oder schließen. (Erledigt: #330 als Duplikat geschlossen.)
+- [ ] M9-3 CI-Patches aus `docs/patches/` in `.github/workflows/` anwenden (Agenten-App hat keine workflows-Permission → manuell oder mit PAT).
+- [ ] M9-4 `main` zum Default-Branch machen, Feature-Branch einmergen; danach 254 verifiziert gemergte Branches löschen (`docs/merged-branch-candidates.txt`).
+- [ ] M9-5 Visual Regression: Playwright-Screenshots für den Planner (hell+dunkel, 375 + 1280 px) gegen Baseline im CI.
 
 ## Kontext
 
-- Abgeschlossen: M1 Produktionsqualität (#314/#315), M3 UI/UX, M4 Audit (21.08.2026). Historie: Git-Log.
-- Details: `AUDIT.md`, `AUDIT-AUTOWIRE.md`, `docs/` (ADRs, CI-Referenzen unter `docs/ci/workflows/`).
+- Details: `AUDIT.md`, `AUDIT-AUTOWIRE.md`, `docs/` (ADRs, CI-Referenzen unter `docs/ci/workflows/`). Historie: Git-Log.
