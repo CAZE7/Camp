@@ -44,7 +44,7 @@ export function ValidatingNumberInput({
   const isInvalid = required && localValue === '';
 
   return (
-    <div className="flex flex-col w-full">
+    <div className="flex w-full flex-col">
       <input
         id={id}
         type="number"
@@ -62,8 +62,8 @@ export function ValidatingNumberInput({
         aria-invalid={isInvalid ? 'true' : 'false'}
         aria-errormessage={isInvalid ? `${id}-error` : undefined}
         className={cn(
-          'min-h-11 border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:border-transparent transition-shadow',
-          isInvalid ? 'border-signal focus:ring-signal bg-signal/5' : 'border-border focus:ring-ring',
+          'min-h-11 rounded border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2',
+          isInvalid ? 'bg-signal/5 border-signal focus:ring-signal' : 'border-border focus:ring-ring',
           className
         )}
       />

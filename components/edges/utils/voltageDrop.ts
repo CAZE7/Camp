@@ -7,6 +7,7 @@ import {
   calculateEdgeCurrent,
   getSystemVoltage,
 } from '../../../lib/vde-standards';
+import { PX_PER_METER } from '../../../lib/units';
 
 /**
  * Einheitliche Spannungsfall-Berechnung für Kabel-Kanten.
@@ -69,7 +70,7 @@ export function edgeDropInputs(
       ? Math.hypot(
           targetNode.position.x - sourceNode.position.x,
           targetNode.position.y - sourceNode.position.y
-        ) / 100
+        ) / PX_PER_METER
       : 1;
   const length = edge.data?.length ?? physical;
   const crossSection = calculateCrossSection(I, length, edge.data?.crossSection, 'DC_12V');

@@ -3,7 +3,7 @@ import React from 'react';
 
 import { NodeResizer } from 'reactflow';
 import { cn } from '@/lib/utils';
-import { RoofNodeData } from './types';
+import { type RoofNodeData } from './types';
 
 const RoofSolarNode = function ({
   id,
@@ -39,12 +39,12 @@ const RoofSolarNode = function ({
       <div
         role="group"
         aria-label={`Solarpanel ${Math.round(width)} mal ${Math.round(height)} Zentimeter, ${watts} Watt${isInvalid ? ', ragt aus der Safe Zone' : ''}${isOverlapping ? ', überlappt ein anderes Element' : ''}`}
-        aria-invalid={isInvalid || isOverlapping || undefined}
+
         className={cn(
           'relative flex h-full w-full items-center justify-center overflow-hidden border-2 bg-soot text-paper transition-colors',
           selected ? 'ring-2 ring-copper ring-offset-2 ring-offset-paper' : '',
           state === 'invalid' && 'border-warn-critical bg-warn-critical-bg text-warn-critical',
-          state === 'overlap' && 'border-warn-warning ring-2 ring-warn-warning/40',
+          state === 'overlap' && 'ring-warn-warning/40 border-warn-warning ring-2',
           state === 'ok' && 'border-ink'
         )}
         style={{ width: '100%', height: '100%' }}
@@ -73,7 +73,7 @@ const RoofSolarNode = function ({
         {(isInvalid || isOverlapping) && (
           <div
             className={cn(
-              'absolute left-1 top-1 z-10 rounded-full px-2 py-0.5 caption-xs font-bold text-paper',
+              'caption-xs absolute left-1 top-1 z-10 rounded-full px-2 py-0.5 font-bold text-paper',
               isInvalid ? 'bg-warn-critical' : 'bg-warn-warning'
             )}
             aria-hidden="true"

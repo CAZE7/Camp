@@ -47,6 +47,13 @@ export const STANDARD_FUSE_SIZES = [
   5, 7.5, 10, 15, 16, 20, 25, 30, 32, 40, 50, 60, 63, 80, 100, 125, 160, 200, 250, 300, 350, 400,
 ];
 
+/** Kleinste Norm-Sicherung — Listenerste Element, einmal bewiesen (noUncheckedIndexedAccess). */
+export const MIN_STANDARD_FUSE: number = (() => {
+  const first = STANDARD_FUSE_SIZES[0];
+  if (first === undefined) throw new Error('STANDARD_FUSE_SIZES ist leer — MIN_STANDARD_FUSE ungültig');
+  return first;
+})();
+
 /**
  * Berechnet die passende Sicherungsgröße für eine Leitung:
  *
@@ -80,7 +87,7 @@ export const selectFuseSize = (currentA: number, crossSection: number): number =
   // Keine Norm-Sicherung erfüllt minFuse ≤ size ≤ maxFuse. Statt eine
   // zu große Sicherung über dem Kabel-Maximum zu wählen, wird der
   // Kabel-Höchstwert zurückgegeben — der Querschnitt ist zu klein.
-  return maxFuse || STANDARD_FUSE_SIZES[0];
+  return maxFuse || MIN_STANDARD_FUSE;
 };
 
 /**
@@ -96,7 +103,7 @@ export const isFuseFeasible = (currentA: number, crossSection: number): boolean 
 
 export const lookupThermalCrossSection = (I: number): number => {
   const requiredAmpacity = I * (1 / DERATE_FACTOR);
-  const size = VDE_SIZES.find((s) => VDE_AMPACITY[s] >= requiredAmpacity);
+  const size = VDE_SIZES.find((s) => (VDE_AMPACITY[s] ?? 0) >= requiredAmpacity);
   return size || 70.0;
 };
 

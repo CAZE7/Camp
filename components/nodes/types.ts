@@ -1,4 +1,4 @@
-import { ResizeDragEvent, type Node, type NodeProps } from 'reactflow';
+import { type ResizeDragEvent, type Node, type NodeProps } from 'reactflow';
 
 /**
  * Typmodell der Planer-Nodes (AGENTS.md M6-3).

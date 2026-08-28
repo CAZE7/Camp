@@ -1,4 +1,4 @@
-import { Node, Edge } from 'reactflow';
+import { type Node, type Edge } from 'reactflow';
 import type { Volts } from '../../lib/units';
 import type { GraphSnapshot, PlannerState } from './types';
 
@@ -21,8 +21,7 @@ export function getDerivedSystemState(nodes: Node[], waterNodes: Node[]) {
   if (!nodesMap || totalWatts === undefined) {
     nodesMap = new Map();
     totalWatts = 0;
-    for (let i = 0; i < nodes.length; i++) {
-      const n = nodes[i];
+    for (const n of nodes) {
       nodesMap.set(n.id, n);
       if (n.type === 'consumer' || n.type === 'consumer230v' || n.type === 'inverter') {
         totalWatts += Number(n.data.watts) || 0;
@@ -35,8 +34,7 @@ export function getDerivedSystemState(nodes: Node[], waterNodes: Node[]) {
   let waterNodesMap = waterNodesMapCache.get(waterNodes);
   if (!waterNodesMap) {
     waterNodesMap = new Map();
-    for (let i = 0; i < waterNodes.length; i++) {
-      const n = waterNodes[i];
+    for (const n of waterNodes) {
       waterNodesMap.set(n.id, n);
     }
     waterNodesMapCache.set(waterNodes, waterNodesMap);

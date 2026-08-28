@@ -25,8 +25,8 @@ describe('createDebouncedStorage', () => {
     expect(writes).toHaveLength(0);
     vi.advanceTimersByTime(200);
     expect(writes).toHaveLength(1);
-    expect(writes[0][0]).toBe('plan');
-    expect(writes[0][1]).toBe('{v:3}');
+    expect(writes[0]![0]).toBe('plan');
+    expect(writes[0]![1]).toBe('{v:3}');
   });
 
   it('schreibt nach der Debounce-Zeit den Wert', () => {

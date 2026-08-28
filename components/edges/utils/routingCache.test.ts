@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { Node } from 'reactflow';
+import { type Node } from 'reactflow';
 import { getObstacleMap, obstaclesExcluding, crossingSegmentsExcluding } from './routingCache';
 
 const makeNode = (id: string, x: number, y: number, width?: number, height?: number): Node =>

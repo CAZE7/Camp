@@ -1,6 +1,6 @@
 import type { Node } from 'reactflow';
 import { type Meters, type Mm2 } from '../units';
-import { CHARGER_TYPES, CableEdge, connectionKey, isLeadChemistry, labelOf } from './primitives';
+import { CHARGER_TYPES, type CableEdge, connectionKey, isLeadChemistry, labelOf } from './primitives';
 import { isStarterBattery, looksLikeMinusBusbar, looksLikePlusBusbar } from './validation';
 
 // lib/autoWire/routing.ts — Rails, Node-/Edge-Erzeugung, Nutzerkanten-Heilung (M6-6).
@@ -187,7 +187,10 @@ export function findOrCreate(
     const byRe = typeNodes.find((n) => labelRegex.test(labelOf(n)));
     if (byRe) return byRe;
   }
-  if (typeNodes.length === 1) return typeNodes[0];
+  if (typeNodes.length === 1) {
+    const only = typeNodes[0];
+    if (only) return only;
+  }
   const created = ensureNode(
     currentNodes,
     nodesByType,
@@ -235,17 +238,22 @@ export function retargetEdge(
  * Kanten, die nach dem Umlegen doppelt wären, entfallen (kein paralleler Pfad).
  */
 /** @internal für Unit-Tests exportiert. */
+export interface HealContext {
+  nodeMap: Map<string, Node>;
+  houseBatteryId: string;
+  shuntId: string;
+  plusRailId: string;
+  minusRailId: string;
+  fuseBoxId: string;
+  existingConnections: Set<string>;
+}
 
-export function healUserEdges(
-  userEdges: CableEdge[],
-  nodeMap: Map<string, Node>,
-  houseBatteryId: string,
-  shuntId: string,
-  plusRailId: string,
-  minusRailId: string,
-  fuseBoxId: string,
-  existingConnections: Set<string>
-): CableEdge[] {
+export function healUserEdges(userEdges: CableEdge[], ctx: HealContext): CableEdge[] {
+  // Kontext einmal benannt in lokale Konstanten legen — der Rumpf arbeitet
+  // unverändert weiter (die acht Positional-Parameter waren 1:1
+  // fehleranfällig in der Aufrufreihenfolge: shuntId/plusRailId ließen sich
+  // ohne Compiler-Hinweis vertauschen).
+  const { nodeMap, houseBatteryId, shuntId, plusRailId, minusRailId, fuseBoxId, existingConnections } = ctx;
   const dropIds = new Set<string>();
   const chargerTypeSet = new Set<string>(CHARGER_TYPES);
 

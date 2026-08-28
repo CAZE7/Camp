@@ -46,8 +46,8 @@ import {
   quantityOr,
   volts,
   watts,
-  ZERO_VOLTS,
   ZERO_WATTS,
+  PX_PER_METER,
   type Meters,
   type Volts,
 } from './units';
@@ -92,7 +92,7 @@ export function performAutoWiring(
   // festgeschrieben — bei Importen mit langer realer Strecke zu dünn
   // dimensioniert und auf dem Canvas unsichtbar (der Renderer-Fallback auf
   // die Geometrie wurde durch den gespeicherten Wert abgeschaltet). Neu:
-  // Schätzung aus der Knotengeometrie (100 px = 1 m, konsistent mit der
+  // Schätzung aus der Knotengeometrie (PX_PER_METER, konsistent mit der
   // Anzeigeebene); ohne Positionen bleibt der Wert undefined und jeder
   // Lesezugriff nutzt seinen definierten Fallback.
   const nodePositions = new Map(initialNodes.map((nd) => [nd.id, nd.position]));
@@ -100,7 +100,7 @@ export function performAutoWiring(
     const a = nodePositions.get(e.source);
     const b = nodePositions.get(e.target);
     if (!a || !b) return undefined;
-    return meters(Math.max(1, Math.hypot((b.x ?? 0) - (a.x ?? 0), (b.y ?? 0) - (a.y ?? 0)) / 100));
+    return meters(Math.max(1, Math.hypot((b.x ?? 0) - (a.x ?? 0), (b.y ?? 0) - (a.y ?? 0)) / PX_PER_METER));
   };
   let userEdges: CableEdge[] = existingEdges
     .filter((e) => !e.id.startsWith(AUTO_EDGE_PREFIX))
@@ -223,16 +223,15 @@ export function performAutoWiring(
   }
 
   const nodeMap = new Map(currentNodes.map((n) => [n.id, n]));
-  userEdges = healUserEdges(
-    userEdges,
+  userEdges = healUserEdges(userEdges, {
     nodeMap,
-    batteryNode.id,
-    shuntNode.id,
-    rails.plus.id,
-    rails.minus.id,
-    fuseBoxNode.id,
-    existingConnections
-  );
+    houseBatteryId: batteryNode.id,
+    shuntId: shuntNode.id,
+    plusRailId: rails.plus.id,
+    minusRailId: rails.minus.id,
+    fuseBoxId: fuseBoxNode.id,
+    existingConnections,
+  });
 
   // ── Backbone: Batterie+ → Plus-Schiene, Batterie- → Shunt → Minus-Schiene ──
   addDcEdge(
@@ -487,8 +486,8 @@ export function performAutoWiring(
   // Setzen würde einen fehlenden FI verschleiern (Stromschlaggefahr).
   const shorePowers = nodesByType['shorePower'] || [];
   const consumers230v = nodesByType['consumer230v'] || [];
-  if (inverters.length > 0) {
-    const mainInverter = inverters[0];
+  const mainInverter = inverters.at(0);
+  if (mainInverter) {
     for (const c of consumers230v) {
       addAcEdge(
         newEdges,

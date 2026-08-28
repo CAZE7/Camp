@@ -1,6 +1,6 @@
 'use client';
 import React from 'react';
-import { RoofNodeData } from './types';
+import { type RoofNodeData } from './types';
 
 const RoofBackgroundNode = function ({ data }: { data: RoofNodeData }) {
   const { width, height, safeMargins } = data;
@@ -16,7 +16,7 @@ const RoofBackgroundNode = function ({ data }: { data: RoofNodeData }) {
   return (
     <div
       aria-label={`Dachfläche ${width} mal ${height} Zentimeter`}
-      className="relative border-2 border-dashed border-copper bg-paper/40"
+      className="bg-paper/40 relative border-2 border-dashed border-copper"
       style={{ width: pxWidth, height: pxHeight, pointerEvents: 'none' }}
     >
       {/* Front Indicator (Windshield) */}
@@ -35,14 +35,14 @@ const RoofBackgroundNode = function ({ data }: { data: RoofNodeData }) {
           right: marginRight,
         }}
       >
-        <div className="label-eyebrow select-none rotate-90 text-oxide md:rotate-0">Safe Zone</div>
+        <div className="label-eyebrow rotate-90 select-none text-oxide md:rotate-0">Safe Zone</div>
       </div>
 
       {/* Dot grid */}
       <div className="roof-dot-grid absolute inset-0 opacity-10" aria-hidden="true" />
 
       {/* Dimensions Info */}
-      <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 whitespace-nowrap caption-xs font-semibold text-ink">
+      <div className="caption-xs absolute -bottom-10 left-1/2 -translate-x-1/2 whitespace-nowrap font-semibold text-ink">
         Nutzbare Dachfläche: {width}cm x {height}cm
       </div>
     </div>

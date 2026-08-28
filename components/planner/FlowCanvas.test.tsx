@@ -87,7 +87,6 @@ vi.mock('../edges/utils/cableRouteStore', () => ({
   CableRouteSync: () => null,
   useCableRoute: () => undefined,
   publishCableRoutes: vi.fn(),
-  clearCableRoutes: vi.fn(),
   getCableRoute: () => undefined,
 }));
 
@@ -358,7 +357,7 @@ describe('FlowCanvas', () => {
       // Inside setFirstTappedHandle, state updater is called
       expect(mockSetFirstTappedHandle).toHaveBeenCalledTimes(1);
 
-      const updater1 = mockSetFirstTappedHandle.mock.calls[0][0];
+      const updater1 = mockSetFirstTappedHandle.mock.calls[0]![0];
       const newState1 = updater1(null); // Previous state is null
       expect(newState1).toEqual({ nodeId: 'nodeA', handleId: 'handleA', handleType: 'source' });
 
@@ -366,7 +365,7 @@ describe('FlowCanvas', () => {
       fireEvent.click(handle2);
       expect(mockSetFirstTappedHandle).toHaveBeenCalledTimes(2);
 
-      const updater2 = mockSetFirstTappedHandle.mock.calls[1][0];
+      const updater2 = mockSetFirstTappedHandle.mock.calls[1]![0];
       const newState2 = updater2({ nodeId: 'nodeA', handleId: 'handleA', handleType: 'source' }); // Mocking previous state
 
       expect(newState2).toBeNull(); // It resets after attempt
@@ -399,7 +398,7 @@ describe('FlowCanvas', () => {
       // Click handle
       fireEvent.click(handle);
 
-      const updater = mockSetFirstTappedHandle.mock.calls[0][0];
+      const updater = mockSetFirstTappedHandle.mock.calls[0]![0];
       // Try to update with the same state again
       const newState = updater({ nodeId: 'nodeA', handleId: 'handleA', handleType: 'source' });
 

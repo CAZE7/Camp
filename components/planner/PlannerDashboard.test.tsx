@@ -122,7 +122,7 @@ describe('PlannerDashboard - Action Buttons', () => {
     fireEvent.click(screen.getByText(/Stückliste/));
 
     expect(dispatchEventSpy).toHaveBeenCalledTimes(1);
-    const event = dispatchEventSpy.mock.calls[0][0] as CustomEvent;
+    const event = dispatchEventSpy.mock.calls[0]![0] as CustomEvent;
     expect(event.type).toBe('show-bom-modal');
   });
 
@@ -281,7 +281,7 @@ describe('PlannerDashboard - Image Export', () => {
       expect(toPng).toHaveBeenCalled();
     });
 
-    const [, pngOptions] = vi.mocked(toPng).mock.calls[0];
+    const [, pngOptions] = vi.mocked(toPng).mock.calls[0]!;
     const filterFunc = (pngOptions as { filter?: (el: HTMLElement) => boolean }).filter!;
 
     const validNode = document.createElement('div');

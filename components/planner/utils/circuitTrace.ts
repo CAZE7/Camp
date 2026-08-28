@@ -54,8 +54,9 @@ function primaryUpstream(
   if (seen.has(id)) return [id];
   seen.add(id);
   const incoming = (incomingEdgesMap.get(id) || []).slice().sort((a, b) => a.id.localeCompare(b.id));
-  if (incoming.length === 0) return [id];
-  return [...primaryUpstream(incoming[0].source, incomingEdgesMap, seen), id];
+  const first = incoming.at(0);
+  if (!first) return [id];
+  return [...primaryUpstream(first.source, incomingEdgesMap, seen), id];
 }
 
 /** One deterministic seed → consumer path for the textual overlay. */
@@ -67,8 +68,9 @@ function primaryDownstream(
   if (seen.has(id)) return [id];
   seen.add(id);
   const outgoing = (outgoingEdgesMap.get(id) || []).slice().sort((a, b) => a.id.localeCompare(b.id));
-  if (outgoing.length === 0) return [id];
-  return [id, ...primaryDownstream(outgoing[0].target, outgoingEdgesMap, seen)];
+  const first = outgoing.at(0);
+  if (!first) return [id];
+  return [id, ...primaryDownstream(first.target, outgoingEdgesMap, seen)];
 }
 
 /**

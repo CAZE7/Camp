@@ -11,7 +11,7 @@ export default function ImpressumPage() {
       <SiteHeader />
       <main id="main" className="mx-auto w-full max-w-2xl flex-1 px-5 py-12">
         <h1 className="font-display text-3xl font-semibold tracking-tight">Impressum</h1>
-        <p className="mt-2 caption-sm text-ink-soft">Angaben gemäß § 5 TMG.</p>
+        <p className="caption-sm mt-2 text-ink-soft">Angaben gemäß § 5 TMG.</p>
 
         <section className="mt-8 space-y-2 text-sm text-ink-soft">
           <h2 className="text-base font-semibold text-ink">Anbieter</h2>

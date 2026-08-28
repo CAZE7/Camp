@@ -11,56 +11,50 @@
  */
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import postcss from 'postcss';
 import { describe, expect, it } from 'vitest';
 
 const css = readFileSync(resolve(process.cwd(), 'app/globals.css'), 'utf8');
+// Echte CSS-Grammatik (postcss) statt handgezählter Klammern/Regex: Werte
+// dürfen '{'/'}' in Strings, Kommentare und Semikolons in Deklarationen
+// enthalten, ohne den Token-Scan durcheinanderzubringen.
+const ast = postcss.parse(css, { from: 'app/globals.css' });
 
-/** Body eines Blocks `anchorName { ... }` mit Verschachtelungs-Zähler. */
-function blockBody(openAt: number): string {
-  let depth = 0;
-  for (let i = openAt; i < css.length; i++) {
-    if (css[i] === '{') depth++;
-    else if (css[i] === '}') {
-      depth--;
-      if (depth === 0) return css.slice(openAt + 1, i);
-    }
-  }
-  throw new Error('unbalancierte Klammer in globals.css');
-}
-function blockBySelector(selector: RegExp): string {
-  const m = css.match(selector);
-  if (!m || m.index === undefined) throw new Error(`Block nicht gefunden: ${selector}`);
-  return blockBody(css.indexOf('{', m.index));
-}
-
-const rootBlock = blockBySelector(/:root\s*\{/);
-const darkBlock = blockBySelector(/(^|\n)\s*\.dark\s*\{/);
-
-function tokens(block: string): Map<string, string> {
+/** Custom Properties (--name: wert) des Blocks mit exakt diesem Selector. */
+function tokensBySelector(selector: ':root' | '.dark'): Map<string, string> {
   const map = new Map<string, string>();
-  for (const m of block.matchAll(/--([\w-]+)\s*:\s*([^;]+);/g)) {
-    if (!map.has(m[1])) map.set(m[1], m[2].trim()); // erste Def = letzte Kaskade hier nicht nötig
-  }
+  ast.walkRules((rule) => {
+    if (rule.selector !== selector) return;
+    rule.walkDecls((decl) => {
+      if (!decl.prop.startsWith('--')) return;
+      const name = decl.prop.slice(2);
+      // erste Definition gewinnt — innerhalb eines Blocks keine Kaskade nötig
+      if (!map.has(name)) map.set(name, decl.value.trim());
+    });
+  });
+  if (map.size === 0) throw new Error(`kein ${selector}-Block in globals.css gefunden`);
   return map;
 }
-const rootTokens = tokens(rootBlock);
-const darkTokens = tokens(darkBlock);
+
+const rootTokens = tokensBySelector(':root');
+const darkTokens = tokensBySelector('.dark');
 
 /** löst hex-|var()-Ketten innerhalb eines Blocks (Rückfall: `:root`). */
 function colorOf(block: Map<string, string>, name: string): string {
-  let value = block.get(name) ?? rootTokens.get(name);
+  let value: string | undefined = block.get(name) ?? rootTokens.get(name);
   if (!value) throw new Error(`Token --${name} fehlt`);
   for (let i = 0; i < 10; i++) {
-    const ref: RegExpMatchArray | null = value.match(/^var\(--([\w-]+)\)$/);
-    if (ref) {
-      value = block.get(ref[1]) ?? rootTokens.get(ref[1]) ?? '';
+    const refMatch: RegExpMatchArray | null = value.match(/^var\(--([\w-]+)\)$/);
+    const refName: string | undefined = refMatch?.[1] ?? undefined;
+    if (refName !== undefined) {
+      value = block.get(refName) ?? rootTokens.get(refName) ?? '';
       continue;
     }
     break;
   }
-  const hex = value.match(/^#([0-9a-fA-F]{6})$/);
-  if (!hex) throw new Error(`--${name} = "${value}" ist kein 6er-Hex`);
-  return hex[1];
+  const hexValue = value.match(/^#([0-9a-fA-F]{6})$/)?.[1];
+  if (hexValue === undefined) throw new Error(`--${name} = "${value}" ist kein 6er-Hex`);
+  return hexValue;
 }
 
 function channelLuminance(c8: number): number {
@@ -72,7 +66,9 @@ function contrastRatio(fg: string, bg: string): number {
     0.2126 * channelLuminance(parseInt(hex.slice(0, 2), 16)) +
     0.7152 * channelLuminance(parseInt(hex.slice(2, 4), 16)) +
     0.0722 * channelLuminance(parseInt(hex.slice(4, 6), 16));
-  const [a, b] = [lum(fg), lum(bg)].sort((x, y) => y - x);
+  const sorted = [lum(fg), lum(bg)].sort((x, y) => y - x);
+  const a = sorted[0] ?? 0;
+  const b = sorted[1] ?? 0;
   return (a + 0.05) / (b + 0.05);
 }
 
@@ -98,8 +94,8 @@ describe('M7-1 — Planer-Design-Tokens', () => {
 
   it('hält den Radius der Ingenieurs-Oberfläche ≤ 4 px', () => {
     const radius = rootTokens.get('radius') ?? '';
-    const rem = radius.match(/^([\d.]+)rem$/);
-    const px = rem ? parseFloat(rem[1]) * 16 : parseFloat(radius);
+    const rem = radius.match(/^([\d.]+)rem$/)?.[1];
+    const px = rem !== undefined ? parseFloat(rem) * 16 : parseFloat(radius);
     expect(Number.isFinite(px)).toBe(true);
     expect(px).toBeLessThanOrEqual(4);
   });
@@ -166,8 +162,8 @@ describe('M7 — Struktur der Planer-Oberfläche', () => {
   it('hält die React-Flow-Controls im Dichte-Fenster 28–32 px (M7-4)', () => {
     const rule = css.match(/\.planner-shell \.react-flow__controls-button\s*\{([^}]*)\}/);
     expect(rule).not.toBeNull();
-    const sizes = [...rule![1].matchAll(/(?:width|height):\s*([\d.]+)rem/g)].map(
-      (m) => parseFloat(m[1]) * 16
+    const sizes = [...(rule?.[1] ?? '').matchAll(/(?:width|height):\s*([\d.]+)rem/g)].map(
+      (m) => parseFloat(m[1] ?? '0') * 16
     );
     expect(sizes).toHaveLength(2);
     for (const size of sizes) expect(size).toBeGreaterThanOrEqual(28);

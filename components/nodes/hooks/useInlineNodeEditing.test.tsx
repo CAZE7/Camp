@@ -92,7 +92,7 @@ describe('useInlineNodeEditing', () => {
     expect(mockUpdateNodeData).not.toHaveBeenCalled();
     expect(result.current.editingField).toBeNull();
     expect(errorEvents).toHaveLength(1);
-    expect(errorEvents[0].detail).toBe('Der Wert muss größer als 0 sein.');
+    expect(errorEvents[0]!.detail).toBe('Der Wert muss größer als 0 sein.');
   });
 
   it('lehnt 0 für Nicht-Null-Felder ab', () => {

@@ -94,7 +94,7 @@ describe('edgeDropInputs', () => {
         data: { edgeDomain: 'AC_230V' },
       },
     ] as Edge<CableEdgeData>[];
-    const inputs = edgeDropInputs(edges[0], nodes[0], nodes[1], nodes, edges);
+    const inputs = edgeDropInputs(edges[0]!, nodes[0]!, nodes[1]!, nodes, edges);
     // I = 2300 W / 230 V = 10 A; Länge 1 m (Pixelabstand 100 px → 1 m ohne Clamp)
     expect(inputs.isAC).toBe(true);
     expect(inputs.I).toBeCloseTo(10, 10);

@@ -9,7 +9,7 @@ import {
   LAYOUT_RANKSEP,
   LAYOUT_MARGIN,
 } from './layout';
-import { Node, Edge } from 'reactflow';
+import { type Node, type Edge } from 'reactflow';
 
 const node = (id: string, type: string, data: Record<string, unknown> = {}): Node => ({
   id,
@@ -65,8 +65,9 @@ describe('three-column cleanup layout', () => {
     const ordered = [...nodes].sort((a, b) => a.position.y - b.position.y);
     expect(ordered.map((item) => item.id)).toEqual(['shunt', 'busbar', 'fuse']);
     for (let index = 1; index < ordered.length; index += 1) {
-      const previous = ordered[index - 1];
-      expect(ordered[index].position.y - (previous.position.y + getNodeLayoutSize(previous).height)).toBe(
+      const previous = ordered[index - 1]!;
+      const current = ordered[index]!;
+      expect(current.position.y - (previous.position.y + getNodeLayoutSize(previous).height)).toBe(
         LAYOUT_NODESEP
       );
     }
@@ -82,8 +83,8 @@ describe('three-column cleanup layout', () => {
     const { nodes } = getLayoutedElements(input, []);
     for (let a = 0; a < nodes.length; a += 1) {
       for (let b = a + 1; b < nodes.length; b += 1) {
-        const one = nodes[a];
-        const two = nodes[b];
+        const one = nodes[a]!;
+        const two = nodes[b]!;
         const s1 = getNodeLayoutSize(one);
         const s2 = getNodeLayoutSize(two);
         const overlap =

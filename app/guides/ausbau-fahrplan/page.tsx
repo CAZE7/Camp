@@ -24,22 +24,22 @@ interface StepData {
 
 const StepModule = ({ step }: { step: StepData }) => (
   <section id={step.id} className="scroll-mt-24 border-t border-rule py-12 first:border-t-0 first:pt-0">
-    <h2 className="text-lg font-semibold text-ink mb-6">{step.title}</h2>
+    <h2 className="mb-6 text-lg font-semibold text-ink">{step.title}</h2>
 
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+    <div className="mb-8 grid grid-cols-1 gap-8 md:grid-cols-2">
       <div>
-        <h3 className="label-eyebrow text-copper mb-2">Ziel</h3>
-        <p className="text-ink-soft leading-relaxed">{step.ziel}</p>
+        <h3 className="label-eyebrow mb-2 text-copper">Ziel</h3>
+        <p className="leading-relaxed text-ink-soft">{step.ziel}</p>
       </div>
       <div>
-        <h3 className="label-eyebrow text-moss mb-2">Warum jetzt?</h3>
-        <p className="text-ink-soft leading-relaxed">{step.warumJetzt}</p>
+        <h3 className="label-eyebrow mb-2 text-moss">Warum jetzt?</h3>
+        <p className="leading-relaxed text-ink-soft">{step.warumJetzt}</p>
       </div>
     </div>
 
     <div className="mb-8">
-      <h3 className="label-eyebrow text-ink mb-3">Werkzeug & Material</h3>
-      <ul className="list-disc pl-5 space-y-1 text-ink-soft">
+      <h3 className="label-eyebrow mb-3 text-ink">Werkzeug & Material</h3>
+      <ul className="list-disc space-y-1 pl-5 text-ink-soft">
         {step.werkzeugMaterial.map((item, index) => (
           <li key={index}>{item}</li>
         ))}
@@ -47,8 +47,8 @@ const StepModule = ({ step }: { step: StepData }) => (
     </div>
 
     <div className="mb-8">
-      <h3 className="label-eyebrow text-ink mb-3">Schritt für Schritt</h3>
-      <ol className="list-decimal pl-5 space-y-2 text-ink-soft marker:font-medium marker:text-ink">
+      <h3 className="label-eyebrow mb-3 text-ink">Schritt für Schritt</h3>
+      <ol className="list-decimal space-y-2 pl-5 text-ink-soft marker:font-medium marker:text-ink">
         {step.schrittFuerSchritt.map((item, index) => (
           <li key={index} className="pl-1">
             {item}
@@ -58,29 +58,29 @@ const StepModule = ({ step }: { step: StepData }) => (
     </div>
 
     {step.zusatzInfo && (
-      <div className="mb-8 p-4 bg-bone border-l-2 border-copper">
-        <h3 className="label-eyebrow text-copper mb-1">Zusatzinfo</h3>
-        <p className="text-ink-soft text-sm leading-relaxed">{step.zusatzInfo}</p>
+      <div className="mb-8 border-l-2 border-copper bg-bone p-4">
+        <h3 className="label-eyebrow mb-1 text-copper">Zusatzinfo</h3>
+        <p className="text-sm leading-relaxed text-ink-soft">{step.zusatzInfo}</p>
       </div>
     )}
 
     {step.comparison && (
       <div className="mb-8">
-        <h3 className="label-eyebrow text-ink mb-4">{step.comparison.title}</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px bg-rule border border-rule">
+        <h3 className="label-eyebrow mb-4 text-ink">{step.comparison.title}</h3>
+        <div className="grid grid-cols-1 gap-px border border-rule bg-rule sm:grid-cols-2 lg:grid-cols-3">
           {step.comparison.items.map((item, index) => (
             <div key={index} className="bg-paper p-5">
-              <h4 className="font-display text-lg tracking-[-0.02em] text-ink mb-2">{item.name}</h4>
-              <p className="text-sm text-ink-soft leading-relaxed">{item.description}</p>
+              <h4 className="mb-2 font-display text-lg tracking-[-0.02em] text-ink">{item.name}</h4>
+              <p className="text-sm leading-relaxed text-ink-soft">{item.description}</p>
             </div>
           ))}
         </div>
       </div>
     )}
 
-    <div className="mb-8 rounded-r-lg border-l-2 border-signal bg-copper/10 p-5">
-      <h3 className="text-sm font-medium text-signal mb-2 flex items-center">
-        <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+    <div className="bg-copper/10 mb-8 rounded-r-lg border-l-2 border-signal p-5">
+      <h3 className="mb-2 flex items-center text-sm font-medium text-signal">
+        <svg className="mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
           <path
             fillRule="evenodd"
             d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
@@ -93,9 +93,9 @@ const StepModule = ({ step }: { step: StepData }) => (
     </div>
 
     {step.kaufhilfe && (
-      <div className="p-5 bg-bone border border-rule">
-        <h3 className="label-eyebrow text-ink mb-2">Kaufhilfe</h3>
-        <p className="text-ink-soft text-sm">{step.kaufhilfe}</p>
+      <div className="border border-rule bg-bone p-5">
+        <h3 className="label-eyebrow mb-2 text-ink">Kaufhilfe</h3>
+        <p className="text-sm text-ink-soft">{step.kaufhilfe}</p>
       </div>
     )}
   </section>

@@ -51,7 +51,7 @@ export default function Home() {
       <SiteHeader />
 
       <main id="main" className="mx-auto w-full max-w-3xl flex-1 px-5 py-12 md:py-16">
-        <h1 className="font-display text-3xl md:text-4xl font-semibold tracking-tight text-ink">
+        <h1 className="font-display text-3xl font-semibold tracking-tight text-ink md:text-4xl">
           Camper planen — erst der Plan, dann das Blech.
         </h1>
         <p className="mt-3 max-w-xl text-base text-ink-soft">
@@ -69,13 +69,13 @@ export default function Home() {
             <li key={tool.href}>
               <Link
                 href={tool.href}
-                className="flex min-h-16 items-center justify-between gap-6 px-5 py-4 hover:bg-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-inset"
+                className="flex min-h-16 items-center justify-between gap-6 px-5 py-4 hover:bg-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ink"
               >
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-ink">{tool.title}</span>
                     {tool.recommended && (
-                      <span className="caption-xs inline-flex items-center rounded-full border border-copper/40 bg-paper px-2 py-0.5 font-semibold uppercase tracking-wider text-copper">
+                      <span className="caption-xs border-copper/40 inline-flex items-center rounded-full border bg-paper px-2 py-0.5 font-semibold uppercase tracking-wider text-copper">
                         Starte hier
                       </span>
                     )}
@@ -96,7 +96,7 @@ export default function Home() {
             <li key={guide.href}>
               <Link
                 href={guide.href}
-                className="flex min-h-14 items-center justify-between gap-4 px-5 py-3 text-sm hover:bg-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-inset"
+                className="flex min-h-14 items-center justify-between gap-4 px-5 py-3 text-sm hover:bg-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ink"
               >
                 <div>
                   <div className="font-medium text-ink">{guide.title}</div>

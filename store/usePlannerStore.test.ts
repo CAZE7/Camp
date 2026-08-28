@@ -2,7 +2,7 @@ import type React from 'react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { usePlannerStore } from './usePlannerStore';
-import { Node, Edge } from 'reactflow';
+import { type Node, type Edge } from 'reactflow';
 
 // Mock the layout utility so Auto-Layout-Aufrufe im Store deterministisch
 // bleiben (kein echtes Layout im Test).
@@ -469,7 +469,8 @@ describe('usePlannerStore', () => {
       });
 
       expect(result.current.nodes.length).toBe(initialNodeCount + 1);
-      const addedNode = result.current.nodes[result.current.nodes.length - 1];
+      const addedNode = result.current.nodes.at(-1);
+      if (!addedNode) throw new Error('addNode hat keinen Knoten angelegt');
 
       expect(addedNode.type).toBe('battery');
       expect(addedNode.position).toEqual({ x: 90, y: 180 });
@@ -522,7 +523,8 @@ describe('usePlannerStore', () => {
       });
 
       expect(result.current.nodes.length).toBe(initialNodeCount + 1);
-      const addedNode = result.current.nodes[result.current.nodes.length - 1];
+      const addedNode = result.current.nodes.at(-1);
+      if (!addedNode) throw new Error('addNode hat keinen Knoten angelegt');
 
       expect(addedNode.type).toBe('consumer');
       expect(addedNode.position).toEqual({ x: 90, y: 180 });
@@ -547,7 +549,8 @@ describe('usePlannerStore', () => {
         result.current.onCustomDrop(mockEvent, ({ x, y }) => ({ x, y }));
       });
 
-      const addedNode = result.current.nodes[result.current.nodes.length - 1];
+      const addedNode = result.current.nodes.at(-1);
+      if (!addedNode) throw new Error('addNode hat keinen Knoten angelegt');
       expect(addedNode.data.watts).toBe(2000);
       expect(addedNode.data.hours).toBe(0.5);
     });
@@ -654,6 +657,34 @@ describe('usePlannerStore', () => {
         targetHandle: 'ac_in',
       });
       expect(valid).toBe(true);
+    });
+  });
+
+  describe('onConnect — Selbstschleifen-Guard', () => {
+    it('verwirft eine Kante von einem Knoten auf sich selbst (Elektrik)', () => {
+      const { result } = renderHook(() => usePlannerStore());
+      const edgeCountBefore = result.current.edges.length;
+      act(() => {
+        result.current.onConnect({
+          source: 'consumer-1',
+          target: 'consumer-1',
+          sourceHandle: 'plus',
+          targetHandle: 'in-plus',
+        });
+      });
+      expect(result.current.edges).toHaveLength(edgeCountBefore);
+    });
+
+    it('verwirft eine Selbstschleife im Wassermodus', () => {
+      const { result } = renderHook(() => usePlannerStore());
+      act(() => {
+        result.current.setViewMode('water');
+        result.current.setWaterNodes([{ id: 'p1', type: 'pump', position: { x: 0, y: 0 }, data: {} }]);
+      });
+      act(() => {
+        result.current.onConnect({ source: 'p1', target: 'p1', sourceHandle: null, targetHandle: null });
+      });
+      expect(result.current.waterEdges).toHaveLength(0);
     });
   });
 });

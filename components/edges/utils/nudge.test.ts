@@ -37,11 +37,11 @@ describe('nudgeOrthogonalPaths', () => {
 
   const longRunY = (wp: Point[]): number => {
     for (let i = 1; i < wp.length - 1; i++) {
-      if (Math.abs(wp[i].y - wp[i + 1].y) < 1e-6 && Math.abs(wp[i].x - wp[i + 1].x) > 40) {
-        return wp[i].y;
+      if (Math.abs(wp[i]!.y - wp[i + 1]!.y) < 1e-6 && Math.abs(wp[i]!.x - wp[i + 1]!.x) > 40) {
+        return wp[i]!.y;
       }
     }
-    return wp[2].y;
+    return wp[2]!.y;
   };
 
   it('spreads coincident interior runs by NUDGE_GAP', () => {
@@ -129,8 +129,8 @@ describe('routeAllCables', () => {
     expect(routes.size).toBe(2);
     const a = routes.get('e1')!;
     const b = routes.get('e2')!;
-    expect(a.waypoints[0].x).toBeGreaterThanOrEqual(0);
-    expect(b.waypoints[0].x).toBeGreaterThanOrEqual(0);
+    expect(a.waypoints[0]!.x).toBeGreaterThanOrEqual(0);
+    expect(b.waypoints[0]!.x).toBeGreaterThanOrEqual(0);
     expect(isOrthogonalPath(a.waypoints)).toBe(true);
     expect(isOrthogonalPath(b.waypoints)).toBe(true);
   });
@@ -144,8 +144,8 @@ describe('routeAllCables', () => {
       { id: 'e', source: 's', target: 't', sourceHandle: 'plus', targetHandle: 'plus' },
     ]);
     const wp = routes.get('e')!.waypoints;
-    expect(wp[0].x).toBe(110);
-    expect(wp[wp.length - 1].x).toBe(300);
+    expect(wp[0]!.x).toBe(110);
+    expect(wp[wp.length - 1]!.x).toBe(300);
   });
 });
 
@@ -158,7 +158,7 @@ describe('resolveHandlePoint via routeAll', () => {
     const wp = routeAllCables(nodes, [
       { id: 'e', source: 's', target: 't', sourceHandle: 'plus', targetHandle: 'plus' },
     ]).get('e')!.waypoints;
-    expect(wp[1].x).toBeGreaterThan(wp[0].x);
+    expect(wp[1]!.x).toBeGreaterThan(wp[0]!.x);
     expect(Position.Right).toBe('right');
   });
 });

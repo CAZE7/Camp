@@ -1,7 +1,7 @@
 import type { Node } from 'reactflow';
 import { isStarterBatteryLabel } from '../vde-standards';
 import { getEdgeDomain } from '../electrical';
-import { CableEdge, labelOf } from './primitives';
+import { type CableEdge, labelOf } from './primitives';
 
 // lib/autoWire/validation.ts — Topologie-Klassifikation: Starterbatterie, Busbars,
 // Solar-/AC-Kanten. Wird von sizing UND routing gebraucht (M6-6).

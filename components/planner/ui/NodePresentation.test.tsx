@@ -10,6 +10,7 @@ function FakeNode() {
 describe('NodePresentation', () => {
   it('provides overview icon, standard label/type and mounted full details', () => {
     const Presented = withNodePresentations({ battery: FakeNode }).battery;
+    if (!Presented) throw new Error('withNodePresentations lieferte kein battery-Preset');
     render(
       <Presented
         {...({

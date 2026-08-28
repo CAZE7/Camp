@@ -47,6 +47,18 @@ export default tseslint.config(
       'react-hooks/exhaustive-deps': 'error',
 
       // Übliche Härten daneben:
+      // Type-Imports separat: hilft isolatedModules/Verbatim-nahen Setups und
+      // macht Typ- vs. Wert-Abhängigkeit im Diff sofort sichtbar.
+      '@typescript-eslint/consistent-type-imports': [
+        'error',
+        {
+          prefer: 'type-imports',
+          fixStyle: 'inline-type-imports',
+          // import('…')-Typen bleiben erlaubt: die Slice-Fassade in
+          // store/slices/types.ts nutzt sie als Lazy-Referenzen.
+          disallowTypeAnnotations: false,
+        },
+      ],
       '@typescript-eslint/no-unused-vars': [
         'error',
         {
@@ -66,6 +78,13 @@ export default tseslint.config(
       // window.confirm (AUDIT.md "Leere/Lade/destruktive Zustände" ✅).
     },
   },
+
+  // Hinweis a11y: eslint-plugin-jsx-a11y hängt an eslint<=9 (Peer-Range) und
+  // würde jede Installation dauerhaft in legacy-peer-deps zwingen. Der
+  // erzwingbare a11y-Riegel liegt deshalb bei axe im gebauten Export
+  // (tests/e2e/a11y.spec.ts) — stärker als statische JSX-Regeln, weil er das
+  // echte, gerenderte DOM im Browser bewertet. Die zuvor gefundenen Befunde
+  // bleiben behoben (Gruppen-Labels, aria-invalid an group, Backdrop-Pattern).
 
   {
     // Skripte/Config-Dateien laufen unter Node, ohne React.

@@ -32,7 +32,7 @@ export function SiteHeader({ tone = 'paper' }: { tone?: 'paper' | 'soot' }) {
     <header
       className={cn(
         'relative z-40 border-b',
-        inverted ? 'bg-soot text-paper border-white/10' : 'bg-paper text-ink border-rule'
+        inverted ? 'border-white/10 bg-soot text-paper' : 'border-rule bg-paper text-ink'
       )}
     >
       <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-5 py-3">
@@ -50,10 +50,10 @@ export function SiteHeader({ tone = 'paper' }: { tone?: 'paper' | 'soot' }) {
                   'inline-flex min-h-11 items-center px-3 text-sm',
                   inverted
                     ? active
-                      ? 'text-paper font-medium'
+                      ? 'font-medium text-paper'
                       : 'text-paper/70 hover:text-paper'
                     : active
-                      ? 'text-ink font-medium'
+                      ? 'font-medium text-ink'
                       : 'text-ink-soft hover:text-ink'
                 )}
               >
@@ -66,7 +66,7 @@ export function SiteHeader({ tone = 'paper' }: { tone?: 'paper' | 'soot' }) {
         <button
           type="button"
           className={cn(
-            'sm:hidden inline-flex min-h-11 min-w-11 flex-col items-center justify-center gap-[5px] p-2',
+            'inline-flex min-h-11 min-w-11 flex-col items-center justify-center gap-[5px] p-2 sm:hidden',
             inverted ? 'text-paper' : 'text-ink'
           )}
           aria-label={open ? 'Menü schließen' : 'Menü öffnen'}
@@ -99,10 +99,10 @@ export function SiteHeader({ tone = 'paper' }: { tone?: 'paper' | 'soot' }) {
                       'flex min-h-11 items-center rounded-none px-3 py-3 text-sm',
                       inverted
                         ? active
-                          ? 'bg-white/10 text-paper font-medium'
+                          ? 'bg-white/10 font-medium text-paper'
                           : 'text-paper/80 hover:bg-white/5'
                         : active
-                          ? 'bg-bone text-ink font-medium'
+                          ? 'bg-bone font-medium text-ink'
                           : 'text-ink-soft hover:bg-bone hover:text-ink'
                     )}
                   >

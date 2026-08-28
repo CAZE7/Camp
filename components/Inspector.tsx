@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Node, Edge } from 'reactflow';
+import { type Node, type Edge } from 'reactflow';
 import { Button } from '@/components/ui/button';
 import { MousePointerClick, Trash2 } from 'lucide-react';
-import { CableEdgeData } from './edges/CableEdge';
+import { type CableEdgeData } from './edges/CableEdge';
 import { EdgeInspector } from './inspector/EdgeInspector';
 import {
   BatteryInspector,
@@ -21,7 +21,7 @@ import {
   ComponentInfoInspector,
 } from './inspector/NodeInspectors';
 import { WaterPipeInspector } from './inspector/WaterPipeInspector';
-import { NodeDataPatch, PlannerNodeType, TypedNode } from './nodes/types';
+import { type NodeDataPatch, type PlannerNodeType, type TypedNode } from './nodes/types';
 
 /**
  * React Flow liefert Nodes lose (`data: Record<string, any>`). Der Switch auf
@@ -54,16 +54,16 @@ interface InspectorProps {
 }
 
 const EmptySelection = () => (
-  <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-    <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-3">
-      <MousePointerClick className="w-7 h-7 text-primary opacity-70" />
+  <div className="flex h-full flex-col items-center justify-center text-muted-foreground">
+    <div className="bg-primary/10 mb-3 flex h-14 w-14 items-center justify-center rounded-full">
+      <MousePointerClick className="h-7 w-7 text-primary opacity-70" />
     </div>
     <p className="font-semibold text-foreground">Kein Element ausgewählt</p>
-    <p className="text-xs mt-2 text-center px-4 leading-relaxed">
+    <p className="mt-2 px-4 text-center text-xs leading-relaxed">
       Tippe eine Komponente oder Leitung im Plan an – hier erscheinen dann nur die passenden Einstellungen
       dazu.
     </p>
-    <div className="mt-4 text-xs text-left px-5 space-y-1.5">
+    <div className="mt-4 space-y-1.5 px-5 text-left text-xs">
       <p className="font-semibold text-foreground">So gehst du vor:</p>
       <p>1. Bauteil aus der linken Leiste ziehen</p>
       <p>2. Bauteile verbinden</p>
@@ -177,7 +177,7 @@ const NodeInspector = ({
   return (
     <div className="space-y-4">
       <div>
-        <label className="block text-xs font-medium text-foreground mb-1" htmlFor={`${node.id}-label`}>
+        <label className="mb-1 block text-xs font-medium text-foreground" htmlFor={`${node.id}-label`}>
           Bezeichnung
         </label>
         <input
@@ -240,8 +240,8 @@ export default function Inspector({
   const hasSelection = selectedNode || selectedEdge;
 
   return (
-    <div className="relative h-full w-full bg-card p-4 flex flex-col text-foreground overflow-y-auto">
-      <h2 className="text-base font-black mb-4 text-foreground">Details</h2>
+    <div className="relative flex h-full w-full flex-col overflow-y-auto bg-card p-4 text-foreground">
+      <h2 className="mb-4 text-base font-black text-foreground">Details</h2>
 
       {!hasSelection ? (
         <EmptySelection />

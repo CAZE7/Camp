@@ -1,10 +1,16 @@
 import { useMemo, useState, useEffect } from 'react';
-import { BatteryNodeData, ConsumerNodeData, SolarNodeData, ChargerNodeData } from '@/components/nodes/types';
-import { Node, Edge } from 'reactflow';
+import {
+  type BatteryNodeData,
+  type ConsumerNodeData,
+  type SolarNodeData,
+  type ChargerNodeData,
+} from '@/components/nodes/types';
+import { type Node, type Edge } from 'reactflow';
 import { getSystemVoltage } from '../utils/voltage';
 import {
   VDE_INVERTER_EFFICIENCY,
   VDE_BATTERY_DOD,
+  VDE_DOD_REFERENCE,
   VDE_SOLAR_WINTER_REDUCTION,
   VDE_SOLAR_VMP_VOLTAGE,
   VDE_CHARGE_DERATING_FACTOR,
@@ -120,8 +126,7 @@ function categorizeNodes(nodes: Node[]) {
     chargers: [] as Node[],
   };
 
-  for (let i = 0, len = nodes.length; i < len; i++) {
-    const n = nodes[i];
+  for (const n of nodes) {
     result.nodeTypeMap[n.id] = n.type;
     const type = n.type;
 
@@ -148,7 +153,7 @@ function calculateUsableCapacity(batteries: Node[]): number {
   return batteries.reduce((acc, batteryNode) => {
     const capacityAh = (batteryNode?.data as BatteryNodeData)?.capacity || 0;
     const chemistry = (batteryNode?.data as BatteryNodeData)?.chemistry || 'LiFePO4';
-    const dod = VDE_BATTERY_DOD[chemistry] ?? VDE_BATTERY_DOD.LiFePO4;
+    const dod = VDE_BATTERY_DOD[chemistry] ?? VDE_DOD_REFERENCE;
     return acc + capacityAh * dod;
   }, 0);
 }

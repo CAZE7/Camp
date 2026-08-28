@@ -63,7 +63,9 @@ describe('RoofSolarNode Component', () => {
     const { container } = render(<RoofSolarNode id="1" data={{ isInvalid: true }} selected={false} />);
     const mainDiv = container.querySelector('[role="group"]') as HTMLElement;
     expect(mainDiv.className).toContain('border-warn-critical');
-    expect(mainDiv.getAttribute('aria-invalid')).toBe('true');
+    // Der Fehlerzustand kommt bei Sprachausgabe über das aria-label an
+    // (aria-invalid ist an role="group" nicht zulässig — jsx-a11y-Riegel).
+    expect(mainDiv.getAttribute('aria-label')).toContain('ragt aus der Safe Zone');
   });
 
   it('calls onNodeResize callback when NodeResizer triggers onResize', () => {

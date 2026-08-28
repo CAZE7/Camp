@@ -98,7 +98,7 @@ describe('G1 — Sicherungs-Sandwich (Laststrom ≤ Sicherung ≤ Kabelgrenze)',
         fc.double({ min: 0.1, max: 5_000, noNaN: true, noDefaultInfinity: true }),
         crossSection,
         (current, section) => {
-          expect(selectFuseSize(current, section)).toBeLessThanOrEqual(FUSE_MAP[section]);
+          expect(selectFuseSize(current, section)).toBeLessThanOrEqual(FUSE_MAP[section]!);
         }
       ),
       propertyConfig
@@ -107,7 +107,7 @@ describe('G1 — Sicherungs-Sandwich (Laststrom ≤ Sicherung ≤ Kabelgrenze)',
 
   it('die Kabelgrenze selbst bleibt unter der derateten Strombelastbarkeit', () => {
     for (const section of VDE_SIZES) {
-      expect(FUSE_MAP[section]).toBeLessThanOrEqual(VDE_AMPACITY[section]);
+      expect(FUSE_MAP[section]!).toBeLessThanOrEqual(VDE_AMPACITY[section]!);
     }
   });
 });
@@ -228,8 +228,8 @@ describe('G4 — Monotonie der Querschnittsauswahl', () => {
         const section = lookupThermalCrossSection(current);
         // Größter Querschnitt ist die Obergrenze: darüber kann die Reihe
         // den Strom nicht mehr abdecken, das meldet die Validierung separat.
-        if (section < VDE_SIZES[VDE_SIZES.length - 1]) {
-          expect(VDE_AMPACITY[section] * DERATE_FACTOR).toBeGreaterThanOrEqual(current - 1e-9);
+        if (section < VDE_SIZES.at(-1)!) {
+          expect(VDE_AMPACITY[section]! * DERATE_FACTOR).toBeGreaterThanOrEqual(current - 1e-9);
         }
       }),
       propertyConfig
@@ -321,8 +321,8 @@ const planWithUserEdgesArbitrary = fc
 
     const edges = edgeSpecs
       .map((spec, index) => {
-        const source = nodes[spec.from % nodes.length];
-        const target = nodes[spec.to % nodes.length];
+        const source = nodes[spec.from % nodes.length]!;
+        const target = nodes[spec.to % nodes.length]!;
         if (source.id === target.id) return null;
         // Die UI lässt nur domänenreine Verbindungen zu
         // (usePlannerStore.isValidConnection). Der Generator bildet exakt
@@ -682,7 +682,7 @@ describe('Shrinking-Anker (gemeldete Gegenbeispiele)', () => {
     // ungeschützt.
     const current = 16.000000000000004;
     expect(selectFuseSize(current, 1.5)).toBe(16);
-    expect(selectFuseSize(current, 1.5)).toBeLessThanOrEqual(FUSE_MAP[1.5]);
+    expect(selectFuseSize(current, 1.5)).toBeLessThanOrEqual(FUSE_MAP[1.5]!);
     expect(isFuseFeasible(current, 1.5)).toBe(false);
   });
 

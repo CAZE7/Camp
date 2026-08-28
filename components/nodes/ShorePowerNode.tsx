@@ -1,7 +1,7 @@
 'use client';
 import React from 'react';
 import { Handle, Position } from 'reactflow';
-import { ShorePowerNodeData, PlannerNodeProps } from './types';
+import { type ShorePowerNodeData, type PlannerNodeProps } from './types';
 import { useInlineNodeEditing } from './hooks/useInlineNodeEditing';
 import { NodeSymbol } from './NodeSymbol';
 
@@ -18,13 +18,13 @@ const ShorePowerNode = function ({
     <div
       role="group"
       aria-label={`${data.label || 'Landstromanschluss'}. Komponente im Plan.`}
-      className={`hover:scale-105 transition-all custom-drag-handle bg-white border-2 border-indigo-500 rounded-md p-3 shadow-md w-48 ${selected ? ' ring-4 ring-blue-500 shadow-xl' : ''}`}
+      className={`custom-drag-handle w-48 rounded-md border-2 border-indigo-500 bg-white p-3 shadow-md transition-all hover:scale-105 ${selected ? 'shadow-xl ring-4 ring-blue-500' : ''}`}
     >
       <NodeSymbol kind="shore" />
       {editingField === 'label' ? (
         <input
           autoFocus
-          className="min-h-11 font-bold mb-2 text-sm text-center w-full border border-blue-500 rounded px-1"
+          className="mb-2 min-h-11 w-full rounded border border-blue-500 px-1 text-center text-sm font-bold"
           value={tempValue}
           onChange={(e) => setTempValue(e.target.value)}
           onBlur={handleBlur}
@@ -32,7 +32,7 @@ const ShorePowerNode = function ({
         />
       ) : (
         <div
-          className="font-bold mb-2 text-sm text-center cursor-text"
+          className="mb-2 cursor-text text-center text-sm font-bold"
           onDoubleClick={() => handleDoubleClick('label', data.label || 'Landstromanschluss')}
         >
           {data.label || 'Landstromanschluss'}

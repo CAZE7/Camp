@@ -63,7 +63,9 @@ describe('RoofWindowNode Component', () => {
     const { container } = render(<RoofWindowNode id="1" data={{ isInvalid: true }} selected={false} />);
     const styledElement = container.querySelector('[role="group"]');
     expect(styledElement?.className).toContain('border-warn-critical');
-    expect(styledElement?.getAttribute('aria-invalid')).toBe('true');
+    // Der Fehlerzustand kommt bei Sprachausgabe über das aria-label an
+    // (aria-invalid ist an role="group" nicht zulässig — jsx-a11y-Riegel).
+    expect(styledElement?.getAttribute('aria-label')).toContain('ragt aus der Safe Zone');
   });
 
   it('calls onNodeResize when NodeResizer triggers onResize', () => {

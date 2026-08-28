@@ -127,3 +127,11 @@ export const vehicleTemplates: VehicleTemplate[] = [
     roofWidth: 1.38,
   },
 ];
+
+/** Vorrang-Fahrzeug ('ducato-l1h1'); das Literal oben beginnt damit — hier
+ *  einmal bewiesen, statt an jeder UI-Defaultstelle zu kaschieren. */
+export const DEFAULT_VEHICLE_TEMPLATE: VehicleTemplate = (() => {
+  const first = vehicleTemplates[0];
+  if (!first) throw new Error('vehicleTemplates ist leer — Default-Fahrzeug ungültig');
+  return first;
+})();

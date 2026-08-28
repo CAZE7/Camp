@@ -64,6 +64,7 @@ const escapeXml = (value: string): string =>
 
 function renderSvg(scenarioIndex: number): string {
   const scenario = ROUTING_SCENARIOS[scenarioIndex];
+  if (!scenario) throw new RangeError(`ROUTING_SCENARIOS ohne Index ${scenarioIndex}`);
   const { waypoints } = orthogonalWaypoints(scenario.input);
   const { path } = buildOrthogonalPath(scenario.input);
   const obstacles = scenario.input.obstacles ?? [];
@@ -101,6 +102,7 @@ function renderSvg(scenarioIndex: number): string {
 
   const first = waypoints[0];
   const last = waypoints[waypoints.length - 1];
+  if (!first || !last) throw new Error(`Szenario ${scenario.id} lieferte keine Wegpunkte`);
   parts.push(`  <circle cx="${first.x}" cy="${first.y}" r="7" fill="#22c55e"/>`);
   parts.push(`  <circle cx="${last.x}" cy="${last.y}" r="7" fill="#f97316"/>`);
   parts.push('</svg>');
@@ -121,8 +123,8 @@ function main(): void {
     writeFileSync(join(OUT_DIR, `${scenario.id}.svg`), renderSvg(index));
 
     const length = waypoints.reduce((total, point, i) => {
-      if (i === 0) return 0;
-      const previous = waypoints[i - 1];
+      const previous = i > 0 ? waypoints[i - 1] : undefined;
+      if (!previous) return total;
       return total + Math.hypot(point.x - previous.x, point.y - previous.y);
     }, 0);
 

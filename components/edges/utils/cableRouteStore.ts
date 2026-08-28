@@ -20,10 +20,6 @@ export const publishCableRoutes = (routes: Map<string, PathResult>): void => {
   listeners.forEach((l) => l());
 };
 
-export const clearCableRoutes = (): void => {
-  current = new Map();
-};
-
 export function useCableRoute(id: string): PathResult | undefined {
   return useSyncExternalStore(
     subscribe,

@@ -66,9 +66,8 @@ function findViolations(relPath: string): Array<{ line: number; text: string; na
   const lines = content.split('\n');
   const violations: Array<{ line: number; text: string; name: string; hint: string }> = [];
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    if (isCommentOrStringOnly(line)) continue;
+  lines.forEach((line, i) => {
+    if (isCommentOrStringOnly(line)) return;
     // Skip template-string prompt lines in route.ts (Faktor 0.85 in Fließtext)
     if (line.includes('Faktor 0.85') && !/[/]\s*0\.85\b/.test(line.replace(/Faktor 0\.85/g, ''))) {
       // still run other patterns
@@ -83,7 +82,7 @@ function findViolations(relPath: string): Array<{ line: number; text: string; na
         });
       }
     }
-  }
+  });
   return violations;
 }
 

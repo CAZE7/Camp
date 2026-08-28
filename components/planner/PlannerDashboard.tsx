@@ -23,7 +23,7 @@ import { usePlannerStore } from '../../store/usePlannerStore';
 import { useAppStore } from '../../lib/store';
 import { useShallow } from 'zustand/react/shallow';
 import { getNodesBounds, getViewportForBounds } from 'reactflow';
-import { useLiveValidation, ValidationWarning } from './hooks/useLiveValidation';
+import { useLiveValidation, type ValidationWarning } from './hooks/useLiveValidation';
 import { WarningCenter } from './ui/WarningCenter';
 import { calculateConduitFillPercent, VDE_MAX_CONDUIT_FILL_PERCENT } from '../../lib/vde-standards';
 import { mm2, quantityOr } from '../../lib/units';
@@ -485,7 +485,7 @@ function ActionsSection({
                 setMenuOpen(false);
                 onRequestReset();
               }}
-              className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-sm font-semibold text-destructive hover:bg-signal/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="hover:bg-signal/5 flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-sm font-semibold text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <Trash2 className="h-4 w-4" />
               Neuen leeren Plan starten
@@ -676,10 +676,10 @@ export function PlannerDashboard() {
             aria-live={feedback.type === 'error' ? 'assertive' : 'polite'}
             className={`fixed left-1/2 top-16 z-50 w-11/12 max-w-md -translate-x-1/2 rounded-lg border p-3 text-sm font-semibold shadow-lg ${
               feedback.type === 'error'
-                ? 'border-signal bg-signal/5 text-signal'
+                ? 'bg-signal/5 border-signal text-signal'
                 : feedback.type === 'success'
-                  ? 'border-moss bg-moss/10 text-moss'
-                  : 'border-oxide bg-oxide/10 text-oxide'
+                  ? 'bg-moss/10 border-moss text-moss'
+                  : 'bg-oxide/10 border-oxide text-oxide'
             }`}
           >
             <div className="flex items-center justify-between gap-3">

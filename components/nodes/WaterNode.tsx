@@ -1,7 +1,7 @@
 'use client';
 import React from 'react';
 import { Handle, Position } from 'reactflow';
-import { PlannerNodeProps, WaterNodeData } from './types';
+import { type PlannerNodeProps, type WaterNodeData } from './types';
 
 const WaterNode = function ({ data, isConnectable, selected, type }: PlannerNodeProps<WaterNodeData>) {
   let bgColor = 'bg-blue-50';
@@ -28,9 +28,9 @@ const WaterNode = function ({ data, isConnectable, selected, type }: PlannerNode
     <div
       role="group"
       aria-label={`${data.label || 'Wasser-Komponente'}. Komponente im Plan.`}
-      className={`hover:scale-105 transition-all custom-drag-handle border-2 rounded-md p-3 shadow-md w-48 ${bgColor} ${borderColor} ${selected ? 'ring-4 ring-blue-500 shadow-xl' : ''}`}
+      className={`custom-drag-handle w-48 rounded-md border-2 p-3 shadow-md transition-all hover:scale-105 ${bgColor} ${borderColor} ${selected ? 'shadow-xl ring-4 ring-blue-500' : ''}`}
     >
-      <div className="font-bold mb-2 text-sm text-center">{data.label || 'Wasser-Komponente'}</div>
+      <div className="mb-2 text-center text-sm font-bold">{data.label || 'Wasser-Komponente'}</div>
 
       {/* Target handle (Input) */}
       <Handle

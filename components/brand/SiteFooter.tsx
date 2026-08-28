@@ -15,7 +15,7 @@ export function SiteFooter() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-medium text-ink">Werft</p>
-            <p className="caption-xs text-ink-soft mt-1">Erst der Plan. Dann das Blech.</p>
+            <p className="caption-xs mt-1 text-ink-soft">Erst der Plan. Dann das Blech.</p>
           </div>
           <nav aria-label="Fußnavigation">
             <ul className="flex flex-wrap items-center gap-x-4 gap-y-2">

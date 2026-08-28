@@ -8,6 +8,7 @@ import { PlannerSidebar } from './planner/PlannerSidebar';
 import { PlannerInspector } from './planner/PlannerInspector';
 import { PlannerDashboard } from './planner/PlannerDashboard';
 import { FlowCanvas } from './planner/FlowCanvas';
+import { ErrorBoundary } from './ErrorBoundary';
 import { ExpertPanel } from './planner/ExpertPanel';
 import { OnboardingWizard } from './planner/OnboardingWizard';
 import { Settings2, Zap, Droplets, Flame, Plus, X, Undo2, Redo2 } from 'lucide-react';
@@ -128,7 +129,7 @@ export default function PlannerInner() {
       <div
         data-testid="planner-shell"
         className={`planner-shell relative flex h-dvh min-h-0 w-full shrink-0 flex-col overflow-hidden bg-background font-sans md:flex-row${
-          isDarkPlanner ? ' dark' : ''
+          isDarkPlanner ? 'dark' : ''
         }`}
       >
         {!hasOnboarded && <OnboardingWizard />}
@@ -137,7 +138,7 @@ export default function PlannerInner() {
           setzt das einklappbare Panel selbst, damit „eingeklappt“ auch wirklich
           0 px Spaltenbreite bedeutet. */}
         <div
-          className={`min-h-0 w-full flex-1 md:w-fit md:flex md:flex-none ${activeTab === 'sidebar' ? 'flex' : 'hidden'}`}
+          className={`min-h-0 w-full flex-1 md:flex md:w-fit md:flex-none ${activeTab === 'sidebar' ? 'flex' : 'hidden'}`}
         >
           <PlannerSidebar onMobileAdd={handleMobileAdd} />
         </div>
@@ -159,7 +160,35 @@ export default function PlannerInner() {
                 </div>
               }
             >
-              <FlowCanvas />
+              {/* Fehlergrenze: Ein Werfen in einer Node-/Routing-Komponente
+                  reißt nicht mehr die ganze Planer-Seite. Der Plan liegt im
+                  Store/localStorage und bleibt über Katalog und Export
+                  erreichbar. */}
+              <ErrorBoundary
+                fallback={
+                  <div
+                    role="alert"
+                    className="flex flex-1 flex-col items-center justify-center gap-3 bg-background p-6 text-center"
+                  >
+                    <p className="text-sm font-semibold text-foreground">
+                      Die Planansicht konnte nicht dargestellt werden.
+                    </p>
+                    <p className="max-w-md text-xs text-muted-foreground">
+                      Dein Plan ist nicht verloren — er liegt lokal gespeichert. Prüfe ihn über die Stückliste
+                      oder exportiere ihn, dann lade die Seite neu.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => window.location.reload()}
+                      className="rounded-md border border-border bg-card px-4 py-2 text-sm text-foreground shadow-sm hover:bg-accent"
+                    >
+                      Seite neu laden
+                    </button>
+                  </div>
+                }
+              >
+                <FlowCanvas />
+              </ErrorBoundary>
             </React.Suspense>
             <ExpertPanel />
           </div>
@@ -175,7 +204,7 @@ export default function PlannerInner() {
             data-testid="inspector-backdrop"
             aria-hidden="true"
             onClick={() => setInspectorOpen(false)}
-            className="fixed inset-0 z-30 hidden bg-ink/25 md:block xl:hidden"
+            className="bg-ink/25 fixed inset-0 z-30 hidden md:block xl:hidden"
           />
         )}
 

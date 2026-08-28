@@ -2,19 +2,19 @@
 
 import React, { useCallback, useMemo, useRef, useState, useEffect } from 'react';
 import Link from 'next/link';
-import ReactFlow, { Background, Controls, ReactFlowProvider, Node } from 'reactflow';
+import ReactFlow, { Background, Controls, ReactFlowProvider, type Node } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { vehicleTemplates } from '@/lib/vehicleTemplates';
+import { vehicleTemplates, DEFAULT_VEHICLE_TEMPLATE } from '@/lib/vehicleTemplates';
 import { useDachNodes } from './hooks/useDachNodes';
 import { DachPanel } from './components/DachPanel';
 import RoofBackgroundNode from '@/components/nodes/RoofBackgroundNode';
 import RoofSolarNode from '@/components/nodes/RoofSolarNode';
 import RoofWindowNode from '@/components/nodes/RoofWindowNode';
-import { RoofNodeData } from '@/components/nodes/types';
+import { type RoofNodeData } from '@/components/nodes/types';
 import { SAFE_MARGINS } from './validation';
 import { SiteHeader } from '@/components/brand/SiteHeader';
 import { SiteFooter } from '@/components/brand/SiteFooter';
@@ -58,10 +58,10 @@ function describeOverrun(node: Node<RoofNodeData>, roofWidthCm: number, roofHeig
 }
 
 function DachPlanerInner() {
-  const [selectedVehicleId, setSelectedVehicleId] = useState(vehicleTemplates[0].id);
+  const [selectedVehicleId, setSelectedVehicleId] = useState(DEFAULT_VEHICLE_TEMPLATE.id);
   const [onboardingOpen, setOnboardingOpen] = useState(true);
   const selectedVehicle = useMemo(
-    () => vehicleTemplates.find((v) => v.id === selectedVehicleId) || vehicleTemplates[0],
+    () => vehicleTemplates.find((v) => v.id === selectedVehicleId) ?? DEFAULT_VEHICLE_TEMPLATE,
     [selectedVehicleId]
   );
 
@@ -208,7 +208,7 @@ function DachPlanerInner() {
               </div>
               <Link
                 href="/elektrik-planung"
-                className="hidden sm:inline-flex min-h-11 items-center gap-2 border border-ink bg-ink px-4 text-sm font-semibold text-paper hover:bg-soot focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2"
+                className="hidden min-h-11 items-center gap-2 border border-ink bg-ink px-4 text-sm font-semibold text-paper hover:bg-soot focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 sm:inline-flex"
               >
                 Im Schaltplan öffnen
                 <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -250,9 +250,9 @@ function DachPlanerInner() {
           </div>
         )}
 
-        <div className="flex flex-1 flex-col lg:flex-row min-h-0">
+        <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
           {/* Sidebar */}
-          <aside className="w-full shrink-0 border-b border-rule bg-bone p-5 lg:w-72 lg:border-b-0 lg:border-r overflow-y-auto">
+          <aside className="w-full shrink-0 overflow-y-auto border-b border-rule bg-bone p-5 lg:w-72 lg:border-b-0 lg:border-r">
             <div className="space-y-3">
               <Label className="label-eyebrow text-ink-soft">Fahrzeug Modell</Label>
               <Select value={selectedVehicleId} onValueChange={(val) => val && setSelectedVehicleId(val)}>
@@ -390,7 +390,7 @@ function DachPlanerInner() {
 
           {/* Canvas */}
           <div
-            className="react-flow-wrapper relative flex-1 min-h-[60vh]"
+            className="react-flow-wrapper relative min-h-[60vh] flex-1"
             ref={reactFlowWrapper}
             onDrop={onDrop}
             onDragOver={onDragOver}

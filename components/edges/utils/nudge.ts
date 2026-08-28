@@ -15,6 +15,15 @@ export const NUDGE_MIN_OVERLAP = 12;
 
 const EPS = 1e-6;
 
+/** Gebundener Lesezugriff in abgesicherten Schleifen — siehe pathfinding.at. */
+const at = <T>(arr: readonly T[], i: number): T => {
+  const v = arr[i];
+  if (v === undefined) {
+    throw new RangeError(`nudge.at: Index ${i} außerhalb (Länge ${arr.length})`);
+  }
+  return v;
+};
+
 export type NudgePath = { id: string; waypoints: Point[] };
 
 type Seg = {
@@ -43,8 +52,8 @@ const collectInterior = (pts: Point[], axis: 'h' | 'v'): Seg[] => {
   const segs: Seg[] = [];
   const last = n - 3;
   for (let i = 1; i <= last; i++) {
-    const a = pts[i];
-    const b = pts[i + 1];
+    const a = at(pts, i);
+    const b = at(pts, i + 1);
     if (axis === 'h') {
       if (Math.abs(a.y - b.y) > EPS) continue;
       segs.push({
@@ -75,9 +84,9 @@ const clustersOf = (segs: Seg[]): number[][] => {
   const parent = new Array<number>(n);
   for (let i = 0; i < n; i++) parent[i] = i;
   const find = (a: number): number => {
-    while (parent[a] !== a) {
-      parent[a] = parent[parent[a]];
-      a = parent[a];
+    while (at(parent, a) !== a) {
+      parent[a] = at(parent, at(parent, a));
+      a = at(parent, a);
     }
     return a;
   };
@@ -89,8 +98,8 @@ const clustersOf = (segs: Seg[]): number[][] => {
 
   for (let i = 0; i < n; i++) {
     for (let j = i + 1; j < n; j++) {
-      if (Math.abs(segs[i].perp - segs[j].perp) > NUDGE_THRESHOLD) continue;
-      if (!rangesOverlap(segs[i].lo, segs[i].hi, segs[j].lo, segs[j].hi)) continue;
+      if (Math.abs(at(segs, i).perp - at(segs, j).perp) > NUDGE_THRESHOLD) continue;
+      if (!rangesOverlap(at(segs, i).lo, at(segs, i).hi, at(segs, j).lo, at(segs, j).hi)) continue;
       union(i, j);
     }
   }
@@ -117,56 +126,59 @@ const applyAxis = (
 ): void => {
   const segs: Seg[] = [];
   for (let p = 0; p < originals.length; p++) {
-    const found = collectInterior(originals[p], axis);
+    const found = collectInterior(at(originals, p), axis);
     for (let k = 0; k < found.length; k++) {
-      found[k].path = p;
-      segs.push(found[k]);
+      const seg = at(found, k);
+      seg.path = p;
+      segs.push(seg);
     }
   }
   if (segs.length < 2) return;
 
   const groups = clustersOf(segs);
   for (let g = 0; g < groups.length; g++) {
+    const group = at(groups, g);
     const byPath = new Map<number, number[]>();
-    for (let t = 0; t < groups[g].length; t++) {
-      const si = groups[g][t];
-      const p = segs[si].path;
+    for (let t = 0; t < group.length; t++) {
+      const si = at(group, t);
+      const p = at(segs, si).path;
       const list = byPath.get(p);
       if (list) list.push(si);
       else byPath.set(p, [si]);
     }
     if (byPath.size < 2) continue;
 
+    const firstSegIndexOf = (pathIdx: number): number => at(byPath.get(pathIdx)!, 0);
     const pathOrder = Array.from(byPath.keys()).sort((pa, pb) => {
-      const da = segs[byPath.get(pa)![0]].perp - segs[byPath.get(pb)![0]].perp;
+      const da = at(segs, firstSegIndexOf(pa)).perp - at(segs, firstSegIndexOf(pb)).perp;
       if (Math.abs(da) > EPS) return da;
-      return pathIds[pa].localeCompare(pathIds[pb]);
+      return at(pathIds, pa).localeCompare(at(pathIds, pb));
     });
 
     let mean = 0;
     for (let i = 0; i < pathOrder.length; i++) {
-      mean += segs[byPath.get(pathOrder[i])![0]].perp;
+      mean += at(segs, firstSegIndexOf(at(pathOrder, i))).perp;
     }
     mean /= pathOrder.length;
 
     for (let k = 0; k < pathOrder.length; k++) {
-      const p = pathOrder[k];
+      const p = at(pathOrder, k);
       const target = mean + (k - (pathOrder.length - 1) / 2) * gap;
-      const delta = target - segs[byPath.get(p)![0]].perp;
+      const delta = target - at(segs, firstSegIndexOf(p)).perp;
       if (Math.abs(delta) < EPS) continue;
-      const pts = clones[p];
+      const pts = at(clones, p);
       const n = pts.length;
       const moved = new Set<number>();
       const list = byPath.get(p)!;
       for (let s = 0; s < list.length; s++) {
-        const seg = segs[list[s]];
+        const seg = at(segs, at(list, s));
         const ends = [seg.i0, seg.i1];
         for (let e = 0; e < 2; e++) {
-          const idx = ends[e];
+          const idx = at(ends, e);
           if (moved.has(idx) || !isFreeVertex(idx, n)) continue;
           moved.add(idx);
-          if (axis === 'h') pts[idx].y += delta;
-          else pts[idx].x += delta;
+          if (axis === 'h') at(pts, idx).y += delta;
+          else at(pts, idx).x += delta;
         }
       }
     }
@@ -176,7 +188,7 @@ const applyAxis = (
 const obstaclesForPath = (obstacles: Rect[], start: Point, end: Point): Rect[] => {
   const out: Rect[] = [];
   for (let i = 0; i < obstacles.length; i++) {
-    const r = obstacles[i];
+    const r = at(obstacles, i);
     if (containsPoint(r, start) || containsPoint(r, end)) continue;
     out.push(r);
   }
@@ -204,20 +216,22 @@ export function nudgeOrthogonalPaths(
   applyAxis(clones, originals, ids, 'v', gap);
 
   for (let i = 0; i < paths.length; i++) {
-    const id = ids[i];
-    const start = originals[i][0];
-    const end = originals[i][originals[i].length - 1];
-    clones[i][0] = { x: start.x, y: start.y };
-    clones[i][clones[i].length - 1] = { x: end.x, y: end.y };
+    const id = at(ids, i);
+    const orig = at(originals, i);
+    const clone = at(clones, i);
+    const start = at(orig, 0);
+    const end = at(orig, orig.length - 1);
+    clone[0] = { x: start.x, y: start.y };
+    clone[clone.length - 1] = { x: end.x, y: end.y };
 
-    const changed = clones[i].some(
-      (p, j) => Math.abs(p.x - originals[i][j].x) > EPS || Math.abs(p.y - originals[i][j].y) > EPS
+    const changed = clone.some(
+      (p, j) => Math.abs(p.x - at(orig, j).x) > EPS || Math.abs(p.y - at(orig, j).y) > EPS
     );
-    const repaired = changed ? stitchOrthogonal(clones[i]) : originals[i];
+    const repaired = changed ? stitchOrthogonal(clone) : orig;
     const relevant = obstaclesForPath(obstacles, start, end);
     const ok =
       isOrthogonalPath(repaired) && (relevant.length === 0 || !pathHitsObstacles(repaired, relevant));
-    out.set(id, ok ? repaired : originals[i]);
+    out.set(id, ok ? repaired : orig);
   }
   return out;
 }

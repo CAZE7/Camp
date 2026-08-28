@@ -5,7 +5,7 @@ import { TEMPLATES_DICT } from '../../components/planner/templates';
 import { getEdgeDomain, getHandleDomain } from '../../lib/electrical';
 import { getSystemVoltage } from '../../lib/vde-standards';
 import { performAutoWiring, relevantCumulativeDrop } from '../../lib/autoWire';
-import { CableEdgeData } from '../../components/edges/CableEdge';
+import { type CableEdgeData } from '../../components/edges/CableEdge';
 import {
   getDerivedSystemState,
   getNodeMap,
@@ -182,15 +182,13 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
   deleteSelected: () =>
     set((state) => {
       const nodeIdsSet = new Set<string>();
-      const selectedNodesLen = state.selectedNodes.length;
-      for (let i = 0; i < selectedNodesLen; i++) {
-        nodeIdsSet.add(state.selectedNodes[i].id);
+      for (const node of state.selectedNodes) {
+        nodeIdsSet.add(node.id);
       }
 
       const edgeIdsSet = new Set<string>();
-      const selectedEdgesLen = state.selectedEdges.length;
-      for (let i = 0; i < selectedEdgesLen; i++) {
-        edgeIdsSet.add(state.selectedEdges[i].id);
+      for (const edge of state.selectedEdges) {
+        edgeIdsSet.add(edge.id);
       }
 
       const filterNode = (n: Node) => !nodeIdsSet.has(n.id);
@@ -312,6 +310,11 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
   },
   onConnect: (connection) => {
     if (!connection.source || !connection.target) return;
+    // Selbstschleifen (Quelle = Ziel) lehnen auch React Flows addEdge und
+    // die Heilung nicht generell ab — sie wären aber topologisch sinnlos
+    // und ließen Spannungsfall-Rekursionen über eine Null-Länge-Kante
+    // laufen. Hier schon abfangen, statt sie später „heilen" zu müssen.
+    if (connection.source === connection.target) return;
 
     const { viewMode, waterNodes, nodes } = get();
 

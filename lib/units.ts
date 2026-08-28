@@ -156,6 +156,20 @@ export const millivolts = (value: number): Millivolts => construct('Millivolts',
 /** Widerstand in Ohm. Wirft bei NaN, Infinity oder negativen Werten. */
 export const ohms = (value: number): Ohms => construct('Ohms', value);
 
+/**
+ * Zeichenmaßstab des Planer-Canvas: so viele Pixel entsprechen einem Meter.
+ *
+ * EINZIGE Quelle für die Umrechnung Pixel ↔ Meter. Drei Stellen hängen an
+ * diesem Verhältnis und dürfen nie auseinanderlaufen:
+ *   - `lib/autoWire.ts` (geometrische Längenschätzung beim Verdrahten)
+ *   - `components/edges/CableEdge.tsx` (Längenanzeige auf der Kante)
+ *   - `components/edges/utils/voltageDrop.ts` (Längenschätzung für den
+ *     Spannungsfall-Hinweis)
+ * Ob ein Mindestwert (z. B. 1 m) erzwungen wird, ist Sache der Aufrufer —
+ * die Stellen unterscheiden sich hier bewusst (siehe Kommentare dort).
+ */
+export const PX_PER_METER = 100;
+
 // ============================================================================
 // GRENZEN ZUR AUSSENWELT (UI, JSON, React-Flow-`data`)
 // ============================================================================

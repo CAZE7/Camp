@@ -120,11 +120,11 @@ describe('electrical safety refactoring tests', () => {
   it('selectFuseSize never exceeds the cable maximum (FUSE_MAP)', () => {
     // 1,5 mm² darf max. 16 A abgesichert werden. Bei 17 A Nennstrom
     // darf KEINE 20-A-Sicherung empfohlen werden (Brandgefahr).
-    expect(selectFuseSize(17, 1.5)).toBeLessThanOrEqual(FUSE_MAP[1.5]);
+    expect(selectFuseSize(17, 1.5)).toBeLessThanOrEqual(FUSE_MAP[1.5]!);
     expect(selectFuseSize(17, 1.5)).toBe(16);
 
     // 2,5 mm² max 20 A.
-    expect(selectFuseSize(21, 2.5)).toBeLessThanOrEqual(FUSE_MAP[2.5]);
+    expect(selectFuseSize(21, 2.5)).toBeLessThanOrEqual(FUSE_MAP[2.5]!);
     expect(selectFuseSize(21, 2.5)).toBe(20);
 
     // Normalfall: kleinste passende Norm-Sicherung.

@@ -6,7 +6,7 @@ type Edge = { source: string; target: string; sourceHandle?: string; targetHandl
 function checkHasSeriesConnectionSet(nodes: Node[], edges: Edge[]): boolean {
   let solarNodeIds: Set<string> | null = null;
   for (let i = 0; i < edges.length; i++) {
-    const e = edges[i];
+    const e = edges[i]!; // Benchmark: Indexform ist Messgegenstand
     const hasCorrectHandles =
       (e.sourceHandle?.includes('plus') && e.targetHandle?.includes('minus')) ||
       (e.sourceHandle?.includes('minus') && e.targetHandle?.includes('plus'));
@@ -15,8 +15,9 @@ function checkHasSeriesConnectionSet(nodes: Node[], edges: Edge[]): boolean {
       if (solarNodeIds === null) {
         solarNodeIds = new Set<string>();
         for (let j = 0; j < nodes.length; j++) {
-          if (nodes[j].type === 'solar') {
-            solarNodeIds.add(nodes[j].id);
+          const n = nodes[j]!; // Benchmark: Indexform ist Messgegenstand
+          if (n.type === 'solar') {
+            solarNodeIds.add(n.id);
           }
         }
       }
@@ -32,7 +33,7 @@ function checkHasSeriesConnectionSet(nodes: Node[], edges: Edge[]): boolean {
 // 0 Allocation Direct Search
 function checkHasSeriesConnectionArrayFind(nodes: Node[], edges: Edge[]): boolean {
   for (let i = 0; i < edges.length; i++) {
-    const e = edges[i];
+    const e = edges[i]!; // Benchmark: Indexform ist Messgegenstand
 
     const hasCorrectHandles =
       (e.sourceHandle?.includes('plus') && e.targetHandle?.includes('minus')) ||

@@ -1,7 +1,7 @@
 'use client';
 import React from 'react';
 import { Handle, Position } from 'reactflow';
-import { GroundNodeData, PlannerNodeProps } from './types';
+import { type GroundNodeData, type PlannerNodeProps } from './types';
 import { NodeSymbol } from './NodeSymbol';
 
 const GroundNode = function ({ data, isConnectable, selected }: PlannerNodeProps<GroundNodeData>) {
@@ -9,11 +9,11 @@ const GroundNode = function ({ data, isConnectable, selected }: PlannerNodeProps
     <div
       role="group"
       aria-label={`${data.label || 'Massepunkt'}. Komponente im Plan.`}
-      className={`hover:scale-105 transition-all custom-drag-handle bg-gray-100 border-2 border-gray-600 rounded-md p-3 shadow-md w-32 flex flex-col items-center ${selected ? ' ring-4 ring-blue-500 shadow-xl' : ''}`}
+      className={`custom-drag-handle flex w-32 flex-col items-center rounded-md border-2 border-gray-600 bg-gray-100 p-3 shadow-md transition-all hover:scale-105 ${selected ? 'shadow-xl ring-4 ring-blue-500' : ''}`}
     >
       <NodeSymbol kind="ground" />
-      <div className="font-bold mb-1 text-sm text-center">{data.label || 'Massepunkt'}</div>
-      <div className="text-xs text-gray-500 mb-2">(Karosserie)</div>
+      <div className="mb-1 text-center text-sm font-bold">{data.label || 'Massepunkt'}</div>
+      <div className="mb-2 text-xs text-gray-500">(Karosserie)</div>
 
       {/* Target handle for connecting to consumers or battery */}
       <Handle

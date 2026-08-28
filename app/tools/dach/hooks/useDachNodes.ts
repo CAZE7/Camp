@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useEffect } from 'react';
-import { Node, NodeChange, OnNodesChange, applyNodeChanges, useNodesState } from 'reactflow';
-import { OnNodeResize, RoofNodeData } from '@/components/nodes/types';
-import { VehicleTemplate } from '@/lib/vehicleTemplates';
+import { type Node, type NodeChange, type OnNodesChange, applyNodeChanges, useNodesState } from 'reactflow';
+import { type OnNodeResize, type RoofNodeData } from '@/components/nodes/types';
+import { type VehicleTemplate } from '@/lib/vehicleTemplates';
 import { SAFE_MARGINS, validateRoofNodes } from '../validation';
 import { useAppStore } from '@/lib/store';
 
@@ -179,9 +179,7 @@ export function useDachNodes(selectedVehicle: VehicleTemplate) {
 
   const totalRoofSolarWatts = useMemo(() => {
     let total = 0;
-    const len = nodes.length;
-    for (let i = 0; i < len; i++) {
-      const n = nodes[i];
+    for (const n of nodes) {
       if (n.type === 'roofSolar' && !n.data.isInvalid) {
         const data = n.data as { watts?: number } | undefined;
         total += data?.watts || 0;
