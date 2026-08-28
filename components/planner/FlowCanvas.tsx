@@ -12,15 +12,16 @@ import 'reactflow/dist/style.css';
 
 import WaterNode from '../nodes/WaterNode';
 import WaterPipeEdge from '../edges/WaterPipeEdge';
-import { NODE_TYPES, EDGE_TYPES } from './constants';
+import { NODE_TYPES, EDGE_TYPES, MIN_ZOOM, MAX_ZOOM, NODE_MIN_WIDTH, EDGE_LABEL_OFFSET_Y, EDGE_LABEL_OFFSET_Y_PLUS } from './constants';
 import { usePlannerStore } from '../../store/usePlannerStore';
 import { useAppStore } from '../../lib/store';
 import { useDashboardMetrics } from './hooks/useDashboardMetrics';
 import { BOMModal } from './ui/BOMModal';
 import { Button } from '@/components/ui/button';
+import { X } from 'lucide-react';
 
 export function FlowCanvas() {
-  const { screenToFlowPosition, fitView } = useReactFlow();
+  const { screenToFlowPosition, fitView, setZoom, getZoom } = useReactFlow();
 
   const viewMode = usePlannerStore((state) => state.viewMode);
   const nodes = usePlannerStore((state) => state.nodes);
@@ -39,20 +40,41 @@ export function FlowCanvas() {
   const onSelectionChange = usePlannerStore((state) => state.onSelectionChange);
 
   const setFirstTappedHandle = usePlannerStore((state) => state.setFirstTappedHandle);
-
   const onDropFromStore = usePlannerStore((state) => state.onDrop);
   const onCustomDropFromStore = usePlannerStore((state) => state.onCustomDrop);
-
   const onLayout = usePlannerStore((state) => state.onLayout);
-
   const calculatedSolarWatts = useAppStore((state) => state.calculatedSolarWatts);
 
   const [showBOM, setShowBOM] = useState(false);
   const [bomData, setBomData] = useState<{ counts: Record<string, number>, cableLengths: Record<string, number> } | null>(null);
 
+  // M8-2: Zustand für Fachwissen-Panel (Slide-over, rechts unten).
+  // Panel wird mit einem Button unter dem Canvas geöffnet, hat einen
+  // sticky Header mit Schließen-Button und überlappt nicht mit MiniMap,
+  // Controls oder Statuszeile.
+  const [showTokenLegend, setShowTokenLegend] = useState(false);
+
+  // M8-1: Zoom clamp — klammert aktuellen Zoom auf [MIN_ZOOM, MAX_ZOOM].
+  // Statt stufenweiser Umschaltung (Mini/Compact/Full) wird jetzt einfach nur
+  // die Zoom-Grenze erzwungen; alle Nodes zeigen unabhängig vom Zoom-Level
+  // volle Details (Full-Detail).
+  useEffect(() => {
+    const intervalMs = 250;
+    const timer = setInterval(() => {
+      const current = getZoom();
+      if (current < MIN_ZOOM) {
+        setZoom(MIN_ZOOM);
+      } else if (current > MAX_ZOOM) {
+        setZoom(MAX_ZOOM);
+      }
+    }, intervalMs);
+    return () => clearInterval(timer);
+  }, [getZoom, setZoom]);
+
+  // M8-1: Event-Listener für BOM-Modal (show-bom-modal) —
+  // rechnet BOM-Daten neu, wenn der Nutzer die Aktion auslöst.
   useEffect(() => {
     const handleShowBom = () => {
-      // Re-calculate directly to match original local state flow
       const counts: Record<string, number> = {};
       for (let i = 0, len = nodes.length; i < len; i++) {
         const type = nodes[i].type;
@@ -107,15 +129,12 @@ export function FlowCanvas() {
         if (nodeId && handleId) {
           setFirstTappedHandle((prev) => {
             if (!prev) {
-               // First tap
                return { nodeId, handleId, handleType };
             } else {
-               // Second tap
                if (prev.nodeId === nodeId && prev.handleId === handleId) {
-                  return null; // Cancel if same handle tapped twice
+                  return null;
                }
 
-               // Attempt connection
                const connection = {
                  source: prev.handleType === 'source' ? prev.nodeId : nodeId,
                  target: prev.handleType === 'target' ? prev.nodeId : nodeId,
@@ -127,12 +146,11 @@ export function FlowCanvas() {
                  onConnect(connection as any);
                }
 
-               return null; // Reset after attempt
+               return null;
             }
           });
         }
       } else {
-        // Clicked somewhere else, reset tap connect
         setFirstTappedHandle(null);
       }
     };
@@ -141,7 +159,11 @@ export function FlowCanvas() {
     return () => document.removeEventListener('click', handleGlobalClick);
   }, [isValidConnection, onConnect, setFirstTappedHandle]);
 
-  const edgeTypes = useMemo(() => ({ ...EDGE_TYPES, waterPipe: WaterPipeEdge }), []);
+  const edgeTypes = useMemo(() => ({
+    ...EDGE_TYPES,
+    waterPipe: WaterPipeEdge,
+  }), []);
+
   const nodeTypes = useMemo(() => ({
     ...NODE_TYPES,
     freshWaterTank: WaterNode,
@@ -150,7 +172,7 @@ export function FlowCanvas() {
     accumulator: WaterNode,
     preFilter: WaterNode,
     sink: WaterNode,
-    shower: WaterNode
+    shower: WaterNode,
   }), []);
 
   const metrics = useDashboardMetrics(nodes, edges, season, calculatedSolarWatts);
@@ -162,6 +184,7 @@ export function FlowCanvas() {
           {waterWarning}
         </div>
       )}
+
       <ReactFlow
         nodes={viewMode === 'water' ? waterNodes : nodes}
         edges={viewMode === 'water' ? waterEdges : edges}
@@ -260,6 +283,124 @@ export function FlowCanvas() {
         )}
       </ReactFlow>
 
+      {/* M8-2: Slide-over Fachwissen-Panel mit sticky Header und Schließen-Button.
+          Rechts-unter positioniert, damit keine Überlappung mit MiniMap,
+          Controls (unten rechts), Dashboard (oben links) oder Statuszeile.
+          Der Header bleibt sticky beim Scrollen im Panel und der Nutzer
+          kann mit dem X-Button schnell schließen. */}
+      {showTokenLegend && (
+        <div
+          className="absolute bottom-4 right-4 z-40 w-80 bg-card/95 backdrop-blur-md rounded-lg shadow-lg border border-border overflow-hidden"
+        >
+          {/* Sticky Header */}
+          <div className="sticky top-0 z-10 flex items-center justify-between bg-card/95 backdrop-blur-md p-3 border-b border-border rounded-t-lg">
+            <h3 className="font-bold text-sm text-foreground">Fachwissen – Kabelfarben</h3>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowTokenLegend(false)}
+              className="h-7 w-7 shrink-0"
+              aria-label="Fachwissen-Panel schließen"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+
+          {/* Scrollbarer Content */}
+          <div className="p-3 text-sm max-h-80 overflow-y-auto">
+            <div className="flex flex-col gap-2 text-xs">
+              <div className="flex items-center gap-1">
+                <span className="w-2.5 h-2.5 rounded bg-primary"></span>
+                <span> Positive Kabel (+12V)</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="w-2.5 h-2.5 rounded bg-negative"></span>
+                <span> Negative Kabel (Return)</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="w-2.5 h-2.5 rounded bg-ground"></span>
+                <span> Ground/PE Kabel</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="w-2.5 h-2.5 rounded bg-solar"></span>
+                <span> Solar-Kabel</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="w-2.5 h-2.5 rounded bg-shore"></span>
+                <span> Landstrom (230V)</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="w-2.5 h-2.5 rounded bg-main"></span>
+                <span> Hauptkabel</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="w-2.5 h-2.5 rounded bg-secondary"></span>
+                <span> Zweitär/Kleinstrom</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="w-2.5 h-2.5 rounded bg-charging"></span>
+                <span> MPPT/Laderegler</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="w-2.5 h-2.5 rounded bg-inverter"></span>
+                <span> Wechselrichter</span>
+              </div>
+            </div>
+
+            <hr className="my-3 border-border" />
+
+            <div className="text-xs text-muted-foreground">
+              <p className="mb-1">Click auf ein Kabel zum Auswählen und Bearbeiten im Inspector.</p>
+              <p className="mb-1">↻ Layout anwenden ordnet Knoten automatisch nach logischer Reihenfolge.</p>
+            </div>
+
+            <div className="mt-3 space-y-1 text-xs">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Täglicher Gesamtverbrauch:</span>
+                <span className="font-semibold">{metrics.dailyConsumptionAh.toFixed(1)} Ah</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Batterie-Autarkie (ohne Laden):</span>
+                <span className="font-semibold">{metrics.autarkyStr}</span>
+              </div>
+              {metrics.solarNodesCount > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Solar-Array Output:</span>
+                  <span className="font-semibold">{metrics.totalSolarVoltage}V / {metrics.totalSolarAmps.toFixed(1)}A</span>
+                </div>
+              )}
+              {metrics.hasDirectBatteryToConsumer && (
+                <div className="mt-2 p-2 bg-red-100 text-red-800 text-xs rounded-md border border-red-200">
+                  Warnung: Verbraucher ist direkt mit der Batterie verbunden. Ein Sicherungsknoten fehlt!
+                </div>
+              )}
+            </div>
+
+            {viewMode === 'electric' && calculatedSolarWatts > 0 && (
+              <div className="mt-3 p-2 bg-blue-50/80 backdrop-blur-md rounded-md border border-blue-200 text-blue-800 text-xs">
+                <strong>Dachplaner-Daten erkannt:</strong> {calculatedSolarWatts} W Solarleistung verfügbar.
+                Du kannst nun deinen MPPT-Regler entsprechend dimensionieren.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* M8-2: Toggle-Button für Fachwissen-Panel — unten rechts, direkt neben
+          dem Slide-over. Damit der Nutzer das Panel sofort finden kann. */}
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => setShowTokenLegend((prev) => !prev)}
+        className="absolute bottom-4 right-20 z-30 shadow-md"
+        aria-label={showTokenLegend ? "Fachwissen-Panel schließen" : "Fachwissen-Panel öffnen"}
+        aria-expanded={showTokenLegend}
+        aria-controls="token-legend-panel"
+      >
+        Fachwissen
+      </Button>
+
+      {/* BOM-Modal */}
       {showBOM && bomData && (
         <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-50 pointer-events-auto">
           <div className="bg-card p-6 rounded-lg shadow-lg w-96 max-h-[80vh] overflow-y-auto border border-border">
@@ -281,7 +422,6 @@ export function FlowCanvas() {
                   <li key={cs}>{length.toFixed(1)} Meter {cs} mm² Kabel</li>
                 ))}
               </ul>
-              {/* Cable function breakdown */}
               {bomData.counts && (
                 <div className="mt-3 pt-3 border-t border-border text-xs text-muted-foreground">
                   <strong>Bestand:</strong> {Object.entries(bomData.counts)
@@ -291,17 +431,14 @@ export function FlowCanvas() {
               )}
             </div>
 
-            <Button
-              onClick={() => setShowBOM(false)}
-              className="w-full"
-            >
+            <Button onClick={() => setShowBOM(false)} className="w-full">
               Schließen
             </Button>
           </div>
         </div>
       )}
 
-      {/* Keeping existing BOMModal to not break any external dependencies, but the above renders first */}
+      {/* Existing BOMModal (für Cross-Component-Kompatibilität) */}
       {showBOM && bomData && <BOMModal bom={bomData} onClose={() => setShowBOM(false)} />}
     </>
   );

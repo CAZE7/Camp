@@ -25,7 +25,7 @@ const InverterNode = function({ id, data, isConnectable, selected }: any) {
   }, [nodes, data.concurrentDevices, data.continuousPower]);
 
   return (
-    <div className={`hover:scale-105 transition-all custom-drag-handle bg-white border-2 rounded-md p-3 shadow-md w-48 ${overloadStats.isOverloaded ? "border-red-500 bg-red-50" : "border-teal-500"} ${selected ? (overloadStats.isOverloaded ? "ring-4 ring-red-500 shadow-[0_0_15px_rgba(239,68,68,0.6)]" : "ring-4 ring-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.6)]") : ""}`}>
+    <div className={`hover:scale-105 transition-all custom-drag-handle bg-white border-2 rounded-md p-3 shadow-md w-48 min-w-[192px] ${overloadStats.isOverloaded ? "border-red-500 bg-red-50" : "border-teal-500"} ${selected ? (overloadStats.isOverloaded ? "ring-4 ring-red-500 shadow-[0_0_15px_rgba(239,68,68,0.6)]" : "ring-4 ring-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.6)]") : ""}`}>
       <div className="font-bold mb-2 text-sm text-center">{data.label || 'Wechselrichter'}</div>
       <div className="flex flex-col gap-1 text-xs text-gray-600">
         <div>12V in / 230V out</div>

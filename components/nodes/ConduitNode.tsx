@@ -42,7 +42,7 @@ const ConduitNode = function ({ id, data, selected }: { id: string, data: Condui
   }, [conduitType, assignedEdgeIds, edges]);
 
   return (
-    <div className={`hover:scale-105 transition-all custom-drag-handle bg-white border-2 rounded-md p-3 shadow-md w-64 ${
+    <div className={`hover:scale-105 transition-all custom-drag-handle bg-white border-2 rounded-md p-3 shadow-md w-64 min-w-[256px] ${
       fillStats.isOverfilled ? "border-red-500 bg-red-50" : "border-gray-400"
     } ${selected ? (fillStats.isOverfilled ? "ring-4 ring-red-500 shadow-[0_0_15px_rgba(239,68,68,0.6)]" : "ring-4 ring-gray-400 shadow-[0_0_15px_rgba(156,163,175,0.6)]") : ""}`}>
 

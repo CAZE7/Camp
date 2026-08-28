@@ -18,6 +18,31 @@ export type CableEdgeData = {
   cableFunction?: 'positive' | 'negative' | 'ground' | 'solar' | 'main' | 'secondary' | 'shore' | 'inverter' | 'charging' | 'consumer' | 'busbar';
 };
 
+// M8-3: Label-Kollision bei parallelen Kanten.
+// Wenn zwei Kabel denselben Weg teilen (z. B. Plus- und Minus-
+// Strang nebeneinander), würde ihr Label sonst gleichzeitig
+// an derselben Position erscheinen. Die folgende Offset-Tabelle
+// verteilt die Labels für verschiedene Kabel-Funktionen auf
+// verschiedene Y-Positionen, damit sie nicht übereinander
+// kleben.
+//
+// Der Offset wird zusätzlich zum vorhandenen ±40px vom
+// sourceHandle hinzuaddiert.
+export const CABLE_LABEL_OFFSETS: Record<string, number> = {
+  positive:  8,   // Plus-Strang: leicht nach unten
+  negative: -8,   // Minus-Strang: leicht nach oben
+  ground:    16,  // PE/Ground: deutlicher Offset
+  solar:    -16,  // Solar: oben
+  shore:     20,  // Landstrom: deutlicher Offset
+  inverter: -20,  // Wechselrichter: oben
+  charging:  12,  // Laderegler: mittlerer Offset
+  main:      4,   // Hauptkabel: leicht
+  secondary: -4,  // Zweitär: leicht
+  consumer:  0,   // kein Zusatzoffset
+  busbar:    0,
+};
+
+
 type CableEdgeProps = EdgeProps<CableEdgeData> & { sourceHandle?: string | null };
 
 const CableEdge = function ({
@@ -201,12 +226,20 @@ const CableEdge = function ({
   );
 
   // Build label content
+  // M8-3: Label-Kollision bei parallelen Kanten —
+  // Verwende einen zusätzlichen Function-Offset, damit
+  // parallele Kabel (z. B. Plus- und Minus-Strom) nicht
+  // gleichzeitig an derselben Y-Position erscheinen.
+  const baseOffset = sourceHandle?.includes('minus') ? 40 : -40;
+  const functionOffset = cableFunction ? (CABLE_LABEL_OFFSETS[cableFunction] ?? 0) : 0;
+  const finalOffset = baseOffset + functionOffset + (selected ? 5 : 0);
+
   const labelContent = (
     <EdgeLabelRenderer>
       <div
         style={{
           position: 'absolute',
-          transform: `translate(-50%, -50%) translate(${labelX}px,${labelY + (sourceHandle?.includes('minus') ? 40 : -40)}px)`,
+          transform: `translate(-50%, -50%) translate(${labelX}px,${labelY + finalOffset}px)`,
           background: 'white',
           padding: '2px 8px',
           borderRadius: '4px',
@@ -223,7 +256,7 @@ const CableEdge = function ({
         {labelLines.map((line, idx) => (
           <span key={idx} style={{ display: 'block' }}>
             {line}{idx < labelLines.length - 1 && ' '}
-        </span>
+          </span>
         ))}
         {cableFunction && (
           <span style={{ marginLeft: '4px', fontSize: '9px', textTransform: 'uppercase' }}>{cableFunction}</span>
