@@ -121,17 +121,13 @@ describe('GitHub-Actions-Workflows', () => {
     }
   });
 
-  it('quality.yml prüft Typecheck, Tests und Build', () => {
-    // HINWEIS (2026-08-28): Lint-/Format-/Coverage-Schritte sind vorbereitet,
-    // liegen aber als Patch unter docs/patches/quality-gate-lint-format-
-    // coverage.patch — die pushende GitHub-App hat keine 'workflows'-
-    // Permission, deshalb kann der Workflow-Teil aktuell nicht aus dem
-    // Agent-Branch kommen. Nach Apply des Patches diesen Test schärfen:
-    // lint, format:check UND 'npm run test:coverage' verlangen.
+  it('quality.yml prüft Lint, Format, Typecheck, Tests (mit Coverage) und Build', () => {
     const workflow = readWorkflow('quality.yml');
     const runs = allSteps(workflow).map((step) => step.run ?? '');
+    expect(runs.some((run) => run.includes('npm run lint'))).toBe(true);
+    expect(runs.some((run) => run.includes('npm run format:check'))).toBe(true);
     expect(runs.some((run) => run.includes('npm run typecheck'))).toBe(true);
-    expect(runs.some((run) => /npm (run )?test/.test(run))).toBe(true);
+    expect(runs.some((run) => run.trim() === 'npm run test:coverage')).toBe(true);
     expect(runs.some((run) => run.includes('npm run build'))).toBe(true);
     expect(runs.some((run) => run.includes('npm ci'))).toBe(true);
   });

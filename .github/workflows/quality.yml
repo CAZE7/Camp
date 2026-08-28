@@ -74,6 +74,14 @@ jobs:
         # war das Lockfile nicht synchron zu package.json.
         run: git diff --exit-code -- package-lock.json package.json
 
+      - name: Lint
+        # Muss im Gate stehen (nicht nur lokal): Ein ungenutzter Import ist
+        # auf die Base gemergt worden, weil nur typecheck/test geprüft wurden.
+        run: npm run lint
+
+      - name: Format-Check
+        run: npm run format:check
+
       - name: Typecheck (Produktionscode)
         run: npm run typecheck
 
@@ -82,8 +90,10 @@ jobs:
         # Produktionscode — Tests könnten Ampere und Volt vertauschen.
         run: npm run typecheck:tests
 
-      - name: Unit- und Komponententests
-        run: npm test
+      - name: Unit- und Komponententests (mit Coverage-Gate für lib/**)
+        # Testlauf inkl. Coverage: unterschreitet der Engine-Kern (lib/**)
+        # die Schwellen aus vitest.config.ts, scheitert das Gate hier.
+        run: npm run test:coverage
 
       - name: Build (Static Export)
         run: npm run build
