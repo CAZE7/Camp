@@ -196,7 +196,10 @@ describe('GitHub-Actions-Workflows', () => {
   it('Pages-Build verwendet den von configure-pages gelieferten Basepath', () => {
     const workflow = readWorkflow('deploy.yml');
     const buildSteps = workflow.jobs.build?.steps ?? [];
-    const configurePages = buildSteps.find((step) => step.uses === 'actions/configure-pages@v5');
+    // configure-pages ist per SHA gepinnt — suche nach dem Action-Namen ohne Ref.
+    const configurePages = buildSteps.find((step) =>
+      step.uses?.startsWith('actions/configure-pages@'),
+    );
     const staticBuild = buildSteps.find((step) => step.run?.trim() === 'npm run build');
 
     expect(configurePages?.id).toBe('pages');
@@ -223,7 +226,13 @@ describe('GitHub-Actions-Workflows', () => {
         .map(([scope]) => scope);
       if (writeScopes.length === 0) continue;
       expect(['build', 'deploy'], `Job ${jobId} hat unerwartete Schreibrechte`).toContain(jobId);
-      expect(writeScopes.sort()).toEqual(['id-token', 'pages']);
+      if (jobId === 'build') {
+        // build-Job braucht nur pages:write für upload-pages-artifact.
+        // id-token:write ist bewusst NICHT gesetzt (Least-Privilege).
+        expect(writeScopes.sort()).toEqual(['pages']);
+      } else {
+        expect(writeScopes.sort()).toEqual(['id-token', 'pages']);
+      }
     }
   });
 
@@ -235,6 +244,36 @@ describe('GitHub-Actions-Workflows', () => {
         expect(step.with?.['persist-credentials'], `${file}: Checkout ohne persist-credentials:false`).toBe(
           false
         );
+      }
+    }
+  });
+
+  it('id-token:write ist ausschließlich auf dem deploy-Job (nicht build)', () => {
+    const workflow = readWorkflow('deploy.yml');
+    for (const [jobId, job] of Object.entries(workflow.jobs)) {
+      if (job.uses) continue; // Reusable-Workflow-Aufruf: Permissions kommen vom Caller.
+      const permissions = job.permissions;
+      if (typeof permissions !== 'object' || permissions === null) continue;
+      const hasIdToken = (permissions as Record<string, string>)['id-token'] === 'write';
+      if (hasIdToken) {
+        expect(jobId, 'id-token:write darf nur auf dem deploy-Job stehen').toBe('deploy');
+      }
+    }
+  });
+
+  it('alle Actions sind per Commit-SHA gepinnt (keine reinen Tag-Referenzen)', () => {
+    // Nur Actions mit erhöhten Permissions (pages:write, id-token:write) auditieren.
+    // SHA-Format: 40 Hex-Zeichen. Reine Tags wie "@v4" sind nicht erlaubt.
+    const SHA_RE = /^[0-9a-f]{40}$/;
+    for (const file of WORKFLOW_FILES) {
+      const workflow = readWorkflow(file);
+      const steps = allSteps(workflow);
+      for (const step of steps) {
+        if (!step.uses) continue;
+        // Lokale Workflow-Referenzen (./.github/...) haben keine SHA-Pins.
+        if (step.uses.startsWith('./')) continue;
+        const [, ref] = step.uses.split('@');
+        expect(ref, `${file}: Action "${step.uses}" ist nicht per SHA gepinnt`).toMatch(SHA_RE);
       }
     }
   });

@@ -53,16 +53,17 @@ Zusätzliche Schritte im Quality Gate:
 
 ### 3.1 Workflow-Invarianten sind getestet
 
-`scripts/ci/workflows.test.ts` parst die drei YAML-Dateien und prüft 14
+`scripts/ci/workflows.test.ts` parst die drei YAML-Dateien und prüft 18
 Eigenschaften (u. a. gültiges YAML, kein `npm install`, kein Löschen des
 Lockfiles, `node-version-file: .nvmrc`, Deploy hängt transitiv am Quality
-Gate, minimale Permissions). Die Tests laufen in `npm test` mit.
+Gate, minimale Permissions, SHA-Pins auf allen Actions, `id-token:write`
+nur auf dem deploy-Job). Die Tests laufen in `npm test` mit.
 
 ```
 $ npx vitest run scripts/ci/workflows.test.ts
- ✓ scripts/ci/workflows.test.ts (14 tests)
+ ✓ scripts/ci/workflows.test.ts (18 tests)
  Test Files  1 passed (1)
-      Tests  14 passed (14)
+      Tests  18 passed (18)
 ```
 
 ### 3.2 Kaputtes Lockfile scheitert reproduzierbar
@@ -110,7 +111,9 @@ eingetragen werden. Einmalig auf GitHub (Repo-Admin nötig):
 
 1. _Settings → Branches → Add branch ruleset_ (oder _Add rule_ bei
    klassischer Branch Protection).
-2. Target: `main` (und `master`, falls genutzt).
+2. Target: `feature/react-flow-cable-editor-7322653268250495059` (der aktuelle
+   Default-Branch des Repos; **nicht** `main` oder `master` — diese Branches
+   sind divergiert bzw. veraltet).
 3. Aktivieren:
    - _Require a pull request before merging_ (mindestens 1 Approval)
    - _Require status checks to pass before merging_
@@ -149,3 +152,30 @@ gh api -X PUT repos/:owner/:repo/branches/main/protection \
   ist eine Server-Einstellung und muss wie in Abschnitt 4 gesetzt werden.
 - `npm run ci:verify-lockfile-gate` benötigt Registry-Zugriff für die
   Gegenprobe (`npm ci --dry-run` des unveränderten Paars).
+
+## 6. Rollback bei fehlerhaftem Deploy
+
+Ein fehlgeschlagener Deploy (`actions/deploy-pages@v4` → Fehler) lässt
+die zuletzt erfolgreich deployete Version live — es gibt keinen
+halbfertigen Zustand.
+
+Bei einem **erfolgreich** deployten Build mit Bug:
+
+**Option A — Rerun des letzten guten Runs** (schnellste Lösung):
+
+1. GitHub → Actions → `Deploy to GitHub Pages`
+2. Letzten grünen Run öffnen → _Re-run all jobs_
+3. Dasselbe Artefakt wird nochmals deployed.
+
+**Option B — Revert + Push**:
+
+```bash
+git revert <sha-des-fehlerhaften-commits>
+git push origin feature/react-flow-cable-editor-7322653268250495059
+```
+
+Der darauffolgende Push triggert Deploy automatisch mit dem reverted Stand.
+
+**Option C — Hotfix-Branch**:
+Bugfix auf neuem Branch, PR öffnen, mergen — Quality Gate läuft durch,
+Deploy folgt automatisch.

@@ -10,7 +10,7 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
-    "check": "npm run lint && npm run format:check && npm run typecheck && npm run typecheck:tests && npm run test",
+    "check": "npm run lint && npm run format:check && npm run typecheck && npm run typecheck:tests && npm run test:coverage",
     "ci:verify-lockfile-gate": "node scripts/ci/verify-lockfile-gate.mjs",
     "postinstall": "node -e \"try { require('child_process').execSync('git config core.hooksPath scripts/git-hooks') } catch {}\"",
     "routing:gallery": "tsx scripts/routing/generate-gallery.ts",
