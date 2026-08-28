@@ -2,9 +2,9 @@ import { renderHook, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useDachNodes } from './useDachNodes';
 import { useAppStore } from '@/lib/store';
-import { VehicleTemplate } from '@/lib/vehicleTemplates';
-import { NodeChange, Node } from 'reactflow';
-import { RoofNodeData } from '@/components/nodes/types';
+import { type VehicleTemplate } from '@/lib/vehicleTemplates';
+import { type NodeChange, type Node } from 'reactflow';
+import { type RoofNodeData } from '@/components/nodes/types';
 
 // Mock the Zustand store
 vi.mock('@/lib/store', () => ({
@@ -37,8 +37,8 @@ describe('useDachNodes', () => {
     const { result } = renderHook(() => useDachNodes(mockVehicle));
 
     expect(result.current.nodes).toHaveLength(2);
-    expect(result.current.nodes[0].type).toBe('roofBackground');
-    expect(result.current.nodes[1].type).toBe('roofSolar');
+    expect(result.current.nodes[0]!.type).toBe('roofBackground');
+    expect(result.current.nodes[1]!.type).toBe('roofSolar');
   });
 
   it('should update calculated solar watts on mount', () => {
@@ -53,9 +53,9 @@ describe('useDachNodes', () => {
 
     // Make the node valid
     act(() => {
-      const node = result.current.nodes[1];
+      const node = result.current.nodes[1]!;
       result.current.setNodes([
-        result.current.nodes[0],
+        result.current.nodes[0]!,
         { ...node, data: { ...node.data, watts: 300, isInvalid: false } },
       ]);
     });
@@ -64,9 +64,9 @@ describe('useDachNodes', () => {
 
     // Make the node invalid
     act(() => {
-      const node = result.current.nodes[1];
+      const node = result.current.nodes[1]!;
       result.current.setNodes([
-        result.current.nodes[0],
+        result.current.nodes[0]!,
         { ...node, data: { ...node.data, watts: 300, isInvalid: true } },
       ]);
     });

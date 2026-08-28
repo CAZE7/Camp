@@ -1,7 +1,7 @@
-import { Node, Edge, Connection } from 'reactflow';
+import { type Node, type Edge, type Connection } from 'reactflow';
 import type { Volts } from '../../lib/units';
-import { CableEdgeData } from '../../components/edges/CableEdge';
-import { NodeDataPatch } from '../../components/nodes/types';
+import { type CableEdgeData } from '../../components/edges/CableEdge';
+import { type NodeDataPatch } from '../../components/nodes/types';
 
 export type GraphSnapshot = {
   nodes: Node[];

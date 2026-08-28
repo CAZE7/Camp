@@ -168,11 +168,11 @@ export default function RoadTripAnimation() {
     <div
       ref={containerRef}
       aria-hidden="true"
-      className="road-trip-animation fixed left-0 top-0 w-24 md:w-32 lg:w-48 h-screen pointer-events-none z-10 opacity-0 lg:opacity-100 gpu-accelerated"
+      className="road-trip-animation gpu-accelerated pointer-events-none fixed left-0 top-0 z-10 h-screen w-24 opacity-0 md:w-32 lg:w-48 lg:opacity-100"
       style={{ isolation: 'isolate', willChange: 'transform', backfaceVisibility: 'hidden' }} // Layer Isolation + GPU
     >
       <svg
-        className="w-full h-full speed-svg"
+        className="speed-svg h-full w-full"
         viewBox="0 0 200 1000"
         preserveAspectRatio="xMidYMid slice"
         shapeRendering="optimizeSpeed"
@@ -226,7 +226,7 @@ export default function RoadTripAnimation() {
       {/* The Camper Icon */}
       <div
         ref={camperRef}
-        className="road-trip-camper absolute w-12 h-12 flex items-center justify-center bg-bone rounded-xl border-2 border-moss text-moss gpu-accelerated"
+        className="road-trip-camper gpu-accelerated absolute flex h-12 w-12 items-center justify-center rounded-xl border-2 border-moss bg-bone text-moss"
         style={{ top: 0, left: 0, opacity: 0, willChange: 'transform', backfaceVisibility: 'hidden' }}
       >
         <svg
@@ -237,7 +237,7 @@ export default function RoadTripAnimation() {
           strokeWidth="2.5"
           strokeLinecap="round"
           strokeLinejoin="round"
-          className="w-8 h-8 relative"
+          className="relative h-8 w-8"
         >
           <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2" />
           <circle cx="7" cy="17" r="2.5" fill="#2d3d28" stroke="none" />

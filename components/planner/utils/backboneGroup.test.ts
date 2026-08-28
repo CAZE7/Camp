@@ -31,7 +31,7 @@ describe('backbone visual grouping', () => {
 
   it('does nothing when disabled or fewer than two core nodes exist', () => {
     expect(withBackboneGroup(nodes, false)).toBe(nodes);
-    const oneCore = [nodes[0], nodes[2]];
+    const oneCore = [nodes[0]!, nodes[2]!];
     expect(withBackboneGroup(oneCore, true)).toBe(oneCore);
   });
 });

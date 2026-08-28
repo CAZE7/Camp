@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { usePlannerStore } from '../../../store/usePlannerStore';
-import { Connection } from 'reactflow';
+import { type Connection } from 'reactflow';
 
 export function useSequentialTapConnect(onFeedback?: (message: string, timeout?: number) => void) {
   const onConnect = usePlannerStore((state) => state.onConnect);

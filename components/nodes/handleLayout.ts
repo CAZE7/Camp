@@ -33,19 +33,3 @@ const SHELL: CSSProperties = {
 export const plusHandleStyle: CSSProperties = { ...SHELL, top: HANDLE_PLUS_TOP };
 export const minusHandleStyle: CSSProperties = { ...SHELL, top: HANDLE_MINUS_TOP };
 export const centerHandleStyle: CSSProperties = { ...SHELL, top: HANDLE_CENTER_TOP };
-
-export const plusDotStyle: CSSProperties = {
-  width: '8px',
-  height: '8px',
-  borderRadius: '50%',
-  background: 'red',
-  pointerEvents: 'none',
-};
-
-export const minusDotStyle: CSSProperties = {
-  width: '8px',
-  height: '8px',
-  borderRadius: '50%',
-  background: 'black',
-  pointerEvents: 'none',
-};

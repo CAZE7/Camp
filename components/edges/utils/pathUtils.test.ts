@@ -205,8 +205,8 @@ describe('parallelLaneOffset (Trassen-Bündelung)', () => {
 
     expect(offsets).toEqual([-20, 0, 20]);
     expect(PARALLEL_LANE_SPREAD).toBe(20);
-    expect(offsets[1] - offsets[0]).toBe(20);
-    expect(offsets[2] - offsets[1]).toBe(20);
+    expect(offsets[1]! - offsets[0]!).toBe(20);
+    expect(offsets[2]! - offsets[1]!).toBe(20);
   });
 
   it('groups identical cable types next to each other, regardless of edge id', () => {

@@ -1,4 +1,4 @@
-import { Position, Node } from 'reactflow';
+import { Position, type Node } from 'reactflow';
 
 /**
  * Orthogonales Kabel-Routing mit Hindernisvermeidung und parallelen Lanes.
@@ -22,6 +22,15 @@ export const OBSTACLE_MARGIN = 14;
 /** Fallback-Maße für Nodes ohne gemessene width/height (entspricht w-48 ~ 192px). */
 export const NODE_FALLBACK_WIDTH = 192;
 export const NODE_FALLBACK_HEIGHT = 120;
+
+/** Gebundener Lesezugriff in abgesicherten Schleifen — siehe pathfinding.at. */
+const at = <T>(arr: readonly T[], i: number): T => {
+  const v = arr[i];
+  if (v === undefined) {
+    throw new RangeError(`orthogonalRouting.at: Index ${i} außerhalb (Länge ${arr.length})`);
+  }
+  return v;
+};
 
 /** Richtung, in der eine Kante den Source-Node verlässt. */
 export const sourceExitVector = (position?: Position): Point => {
@@ -249,8 +258,8 @@ export function avoidObstacles(
 ): Point[] {
   if (obstacles.length === 0 || waypoints.length < 2) return waypoints;
 
-  const start = waypoints[0];
-  const finish = waypoints[waypoints.length - 1];
+  const start = at(waypoints, 0);
+  const finish = at(waypoints, waypoints.length - 1);
   const relevant = obstacles.filter(
     (obstacle) => !containsPoint(obstacle, start) && !containsPoint(obstacle, finish)
   );
@@ -262,8 +271,8 @@ export function avoidObstacles(
     const next: Point[] = [];
 
     for (let i = 0; i < current.length - 1; i++) {
-      const a = current[i];
-      const b = current[i + 1];
+      const a = at(current, i);
+      const b = at(current, i + 1);
       next.push(a);
 
       let detoured = false;
@@ -277,11 +286,11 @@ export function avoidObstacles(
 
         // Rest anhängen — aber ohne die Punkte, die der Detour bereits
         // überholt hat (sonst Rückwärtsfahrt ins Hindernis).
-        const end = replacement[replacement.length - 1];
+        const end = at(replacement, replacement.length - 1);
         for (let j = i + 1; j < current.length; j++) {
           const isLast = j === current.length - 1;
-          if (!isLast && isBehind(a, b, end, current[j])) continue;
-          next.push(current[j]);
+          if (!isLast && isBehind(a, b, end, at(current, j))) continue;
+          next.push(at(current, j));
         }
         break;
       }
@@ -291,7 +300,7 @@ export function avoidObstacles(
     if (!changed) {
       // Kein Detour in diesem Durchlauf: die Schleife oben hat nur die
       // Segment-Anfänge übernommen, der Zielpunkt fehlt noch.
-      next.push(current[current.length - 1]);
+      next.push(at(current, current.length - 1));
     }
 
     current = dedupe(enforceOrthogonal(next));
@@ -326,17 +335,17 @@ const toward = (a: Point, b: Point, d: number): Point => {
 /** Wandelt Wegpunkte in einen SVG-Pfad mit abgerundeten Ecken um. */
 export function waypointsToPath(waypoints: Point[], radius: number): string {
   if (waypoints.length < 2) return '';
-  let d = `M ${fmt(waypoints[0].x)} ${fmt(waypoints[0].y)}`;
+  let d = `M ${fmt(at(waypoints, 0).x)} ${fmt(at(waypoints, 0).y)}`;
   for (let i = 1; i < waypoints.length - 1; i++) {
-    const prev = waypoints[i - 1];
-    const curr = waypoints[i];
-    const next = waypoints[i + 1];
+    const prev = at(waypoints, i - 1);
+    const curr = at(waypoints, i);
+    const next = at(waypoints, i + 1);
     const r = Math.min(radius, distance(prev, curr) / 2, distance(curr, next) / 2);
     const inPt = toward(curr, prev, r);
     const outPt = toward(curr, next, r);
     d += ` L ${fmt(inPt.x)} ${fmt(inPt.y)} Q ${fmt(curr.x)} ${fmt(curr.y)} ${fmt(outPt.x)} ${fmt(outPt.y)}`;
   }
-  const last = waypoints[waypoints.length - 1];
+  const last = at(waypoints, waypoints.length - 1);
   d += ` L ${fmt(last.x)} ${fmt(last.y)}`;
   return d;
 }
@@ -344,23 +353,23 @@ export function waypointsToPath(waypoints: Point[], radius: number): string {
 /** Punkt in der Mitte der Polylinie (nach kumulierter Länge) — für das Label. */
 export function polylineMidpoint(waypoints: Point[]): Point {
   if (waypoints.length === 0) return { x: 0, y: 0 };
-  if (waypoints.length === 1) return { ...waypoints[0] };
+  if (waypoints.length === 1) return { ...at(waypoints, 0) };
 
   let total = 0;
   const lengths: number[] = [];
   for (let i = 0; i < waypoints.length - 1; i++) {
-    const len = distance(waypoints[i], waypoints[i + 1]);
+    const len = distance(at(waypoints, i), at(waypoints, i + 1));
     lengths.push(len);
     total += len;
   }
   let acc = 0;
   for (let i = 0; i < lengths.length; i++) {
-    if (acc + lengths[i] >= total / 2) {
-      return toward(waypoints[i], waypoints[i + 1], total / 2 - acc);
+    if (acc + at(lengths, i) >= total / 2) {
+      return toward(at(waypoints, i), at(waypoints, i + 1), total / 2 - acc);
     }
-    acc += lengths[i];
+    acc += at(lengths, i);
   }
-  return { ...waypoints[waypoints.length - 1] };
+  return { ...at(waypoints, waypoints.length - 1) };
 }
 
 /* ------------------------------------------------------------------ *
@@ -383,7 +392,7 @@ export const ALTERNATIVE_ROUTE_GAP = 40;
 /** Zerlegt eine Polylinie in einzelne Segmente. */
 export function waypointsToSegments(points: Point[]): Segment[] {
   const segments: Segment[] = [];
-  for (let i = 0; i < points.length - 1; i++) segments.push([points[i], points[i + 1]]);
+  for (let i = 0; i < points.length - 1; i++) segments.push([at(points, i), at(points, i + 1)]);
   return segments;
 }
 

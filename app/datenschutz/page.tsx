@@ -11,7 +11,7 @@ export default function DatenschutzPage() {
       <SiteHeader />
       <main id="main" className="mx-auto w-full max-w-2xl flex-1 px-5 py-12">
         <h1 className="font-display text-3xl font-semibold tracking-tight">Datenschutz</h1>
-        <p className="mt-2 caption-sm text-ink-soft">
+        <p className="caption-sm mt-2 text-ink-soft">
           Kurzfassung – bitte den finalen Text mit einer Rechtsberatung abgleichen.
         </p>
 

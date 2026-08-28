@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getWireColor, WIRE_COLORS, WireDomain } from './edgeColors';
+import { getWireColor, WIRE_COLORS, type WireDomain } from './edgeColors';
 
 describe('getWireColor', () => {
   it('maps 12V DC plus to the red plus token', () => {

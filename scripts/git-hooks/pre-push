@@ -3,25 +3,28 @@
 #
 # Läuft bei jedem `git push` (sofern hooksPath gesetzt ist — siehe package.json "postinstall").
 # Überspringbar mit:  git push --no-verify
+#
+# Der Hook ruft `npm run check` auf — exakt dasselbe Gate wie die CI
+# (.github/workflows/quality.yml). Ein einziges Skript für beide Seiten
+# verhindert, dass lokale und entfernte Prüfung auseinanderdriften.
 set -eu
 
 cd "$(git rev-parse --show-toplevel)"
 
 if npm.cmd --version >/dev/null 2>&1; then
-	npm_command="npm.cmd"
+    npm_command="npm.cmd"
 else
-	npm_command="npm"
+    npm_command="npm"
 fi
 
-echo "▶ [pre-push] TypeScript-Typcheck (tsc --noEmit)..."
-"$npm_command" run typecheck
-
 if node scripts/check-node-version.mjs; then
-	echo "▶ [pre-push] Tests (vitest)..."
-	"$npm_command" test
+    echo "▶ [pre-push] Vollständiges Gate (lint + format:check + typecheck + typecheck:tests + test)..."
+    "$npm_command" run check
 else
-	echo "⚠ [pre-push] Lokale Tests übersprungen: Node.js 20.19+ erforderlich."
-	echo "  Das verpflichtende Quality Gate läuft auf GitHub Actions mit Node 22."
+    echo "⚠ [pre-push] Lokale Prüfung eingeschränkt: Node.js 20.19+ erforderlich."
+    echo "  Führe nur den Typecheck aus; das verpflichtende Quality Gate läuft"
+    echo "  auf GitHub Actions mit der Node-Version aus .nvmrc."
+    "$npm_command" run typecheck
 fi
 
 echo "✔ [pre-push] Alles grün — Push wird fortgesetzt."

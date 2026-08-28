@@ -1,4 +1,4 @@
-import { Position, Node } from 'reactflow';
+import { Position, type Node } from 'reactflow';
 import { polylineMidpoint, waypointsToPath } from './pathUtils';
 
 /**
@@ -43,6 +43,22 @@ export const quantize = (n: number): number => Math.round(n * QUANT) / QUANT;
 
 export const manhattan = (a: Point, b: Point): number => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
 
+/**
+ * Gebundener Lesezugriff in beweisbar abgesicherten Schleifen
+ * (i < arr.length bzw. Heap-/Grid-Invarianten). noUncheckedIndexedAccess
+ * zwingt, das aus der Schleifenbedingung folgende Nicht-undefined
+ * auszudrücken — statt dutzender Non-Null-Assertionen im Hot Path genau
+ * diese eine Stelle, inkl. hartem Laufzeit-Riegel, falls eine Invariante
+ * je brechen sollte.
+ */
+const at = <T>(arr: readonly T[], i: number): T => {
+  const v = arr[i];
+  if (v === undefined) {
+    throw new RangeError(`pathfinding.at: Index ${i} außerhalb (Länge ${arr.length})`);
+  }
+  return v;
+};
+
 export const inflateRect = (r: Rect, margin: number): Rect => ({
   x: r.x - margin,
   y: r.y - margin,
@@ -74,22 +90,22 @@ export function segmentHitsRect(a: Point, b: Point, r: Rect): boolean {
 
 export function segmentHitsAny(a: Point, b: Point, obstacles: Rect[]): boolean {
   for (let i = 0; i < obstacles.length; i++) {
-    if (segmentHitsRect(a, b, obstacles[i])) return true;
+    if (segmentHitsRect(a, b, at(obstacles, i))) return true;
   }
   return false;
 }
 
 export function pathHitsObstacles(points: Point[], obstacles: Rect[]): boolean {
   for (let i = 0; i < points.length - 1; i++) {
-    if (segmentHitsAny(points[i], points[i + 1], obstacles)) return true;
+    if (segmentHitsAny(at(points, i), at(points, i + 1), obstacles)) return true;
   }
   return false;
 }
 
 export function isOrthogonalPath(points: Point[]): boolean {
   for (let i = 0; i < points.length - 1; i++) {
-    const a = points[i];
-    const b = points[i + 1];
+    const a = at(points, i);
+    const b = at(points, i + 1);
     if (Math.abs(a.x - b.x) > EPS && Math.abs(a.y - b.y) > EPS) return false;
   }
   return true;
@@ -97,16 +113,16 @@ export function isOrthogonalPath(points: Point[]): boolean {
 
 export function pathLength(points: Point[]): number {
   let len = 0;
-  for (let i = 0; i < points.length - 1; i++) len += manhattan(points[i], points[i + 1]);
+  for (let i = 0; i < points.length - 1; i++) len += manhattan(at(points, i), at(points, i + 1));
   return len;
 }
 
 export function countBends(points: Point[]): number {
   let bends = 0;
   for (let i = 1; i < points.length - 1; i++) {
-    const prev = points[i - 1];
-    const curr = points[i];
-    const next = points[i + 1];
+    const prev = at(points, i - 1);
+    const curr = at(points, i);
+    const next = at(points, i + 1);
     const inH = Math.abs(curr.y - prev.y) <= EPS;
     const outH = Math.abs(next.y - curr.y) <= EPS;
     if (inH !== outH) bends++;
@@ -118,8 +134,8 @@ export function countBends(points: Point[]): number {
 export function stitchOrthogonal(points: Point[]): Point[] {
   const out: Point[] = [];
   for (let i = 0; i < points.length; i++) {
-    const p = points[i];
-    const last = out[out.length - 1];
+    const p = at(points, i);
+    const last = out.at(-1);
     if (last && Math.abs(last.x - p.x) > EPS && Math.abs(last.y - p.y) > EPS) {
       out.push({ x: p.x, y: last.y });
     }
@@ -169,19 +185,19 @@ export function remainingCostLowerBound(
 
 export function simplifyWaypoints(points: Point[]): Point[] {
   if (points.length <= 2) return points.map((p) => ({ x: p.x, y: p.y }));
-  const out: Point[] = [{ x: points[0].x, y: points[0].y }];
+  const out: Point[] = [{ x: at(points, 0).x, y: at(points, 0).y }];
   for (let i = 1; i < points.length; i++) {
-    const p = points[i];
-    const last = out[out.length - 1];
+    const p = at(points, i);
+    const last = at(out, out.length - 1);
     if (Math.abs(last.x - p.x) <= EPS && Math.abs(last.y - p.y) <= EPS) continue;
     out.push({ x: p.x, y: p.y });
   }
   const collapsed: Point[] = [];
   for (let i = 0; i < out.length; i++) {
     if (collapsed.length >= 2) {
-      const a = collapsed[collapsed.length - 2];
-      const b = collapsed[collapsed.length - 1];
-      const c = out[i];
+      const a = at(collapsed, collapsed.length - 2);
+      const b = at(collapsed, collapsed.length - 1);
+      const c = at(out, i);
       const vertical = Math.abs(a.x - b.x) <= EPS && Math.abs(b.x - c.x) <= EPS;
       const horizontal = Math.abs(a.y - b.y) <= EPS && Math.abs(b.y - c.y) <= EPS;
       if (vertical || horizontal) {
@@ -192,7 +208,7 @@ export function simplifyWaypoints(points: Point[]): Point[] {
         }
       }
     }
-    collapsed.push(out[i]);
+    collapsed.push(at(out, i));
   }
   return collapsed;
 }
@@ -241,7 +257,7 @@ const lowerBound = (arr: number[], value: number): number => {
   let hi = arr.length;
   while (lo < hi) {
     const mid = (lo + hi) >> 1;
-    if (arr[mid] < value - EPS) lo = mid + 1;
+    if (at(arr, mid) < value - EPS) lo = mid + 1;
     else hi = mid;
   }
   return lo;
@@ -249,12 +265,12 @@ const lowerBound = (arr: number[], value: number): number => {
 
 const snapIndex = (arr: number[], value: number): number => {
   const i = lowerBound(arr, value);
-  if (i < arr.length && Math.abs(arr[i] - value) <= 0.51) return i;
-  if (i > 0 && Math.abs(arr[i - 1] - value) <= 0.51) return i - 1;
+  if (i < arr.length && Math.abs(at(arr, i) - value) <= 0.51) return i;
+  if (i > 0 && Math.abs(at(arr, i - 1) - value) <= 0.51) return i - 1;
   let best = 0;
   let bestD = Infinity;
   for (let k = 0; k < arr.length; k++) {
-    const d = Math.abs(arr[k] - value);
+    const d = Math.abs(at(arr, k) - value);
     if (d < bestD) {
       bestD = d;
       best = k;
@@ -301,9 +317,9 @@ class MinHeap {
     const data = this.data;
     while (i > 0) {
       const p = (i - 1) >> 1;
-      if (!this.less(data[i], data[p])) break;
-      const tmp = data[i];
-      data[i] = data[p];
+      if (!this.less(at(data, i), at(data, p))) break;
+      const tmp = at(data, i);
+      data[i] = at(data, p);
       data[p] = tmp;
       i = p;
     }
@@ -316,11 +332,11 @@ class MinHeap {
       const l = i * 2 + 1;
       const r = l + 1;
       let smallest = i;
-      if (l < n && this.less(data[l], data[smallest])) smallest = l;
-      if (r < n && this.less(data[r], data[smallest])) smallest = r;
+      if (l < n && this.less(at(data, l), at(data, smallest))) smallest = l;
+      if (r < n && this.less(at(data, r), at(data, smallest))) smallest = r;
       if (smallest === i) break;
-      const tmp = data[i];
-      data[i] = data[smallest];
+      const tmp = at(data, i);
+      data[i] = at(data, smallest);
       data[smallest] = tmp;
       i = smallest;
     }
@@ -331,8 +347,8 @@ const uniqueSorted = (values: number[]): number[] => {
   const rounded = values.map(quantize).sort((a, b) => a - b);
   const out: number[] = [];
   for (let i = 0; i < rounded.length; i++) {
-    if (out.length === 0 || Math.abs(out[out.length - 1] - rounded[i]) > 1 / QUANT / 2) {
-      out.push(rounded[i]);
+    if (out.length === 0 || Math.abs(at(out, out.length - 1) - at(rounded, i)) > 1 / QUANT / 2) {
+      out.push(at(rounded, i));
     }
   }
   return out;
@@ -492,10 +508,12 @@ export function catalogCandidates(input: {
   const seen = new Set<string>();
   const unique: Point[][] = [];
   for (let i = 0; i < out.length; i++) {
-    const key = out[i].map((p) => `${p.x},${p.y}`).join('|');
+    const key = at(out, i)
+      .map((p) => `${p.x},${p.y}`)
+      .join('|');
     if (seen.has(key)) continue;
     seen.add(key);
-    unique.push(out[i]);
+    unique.push(at(out, i));
   }
   return unique;
 }
@@ -518,7 +536,7 @@ export function bestFreeCatalog(
   let best: Point[] | null = null;
   let bestScore = Infinity;
   for (let i = 0; i < candidates.length; i++) {
-    const pts = candidates[i];
+    const pts = at(candidates, i);
     if (!isOrthogonalPath(pts) || pathHitsObstacles(pts, obstacles)) continue;
     const score = scoreCatalog(pts);
     if (score < bestScore - EPS) {
@@ -559,8 +577,8 @@ export function segmentsIntersect(s1: Segment, s2: Segment): boolean {
 export function waypointsToSegments(points: Point[]): Segment[] {
   const segments: Segment[] = [];
   for (let i = 0; i < points.length - 1; i++) {
-    if (points[i].x !== points[i + 1].x || points[i].y !== points[i + 1].y) {
-      segments.push([points[i], points[i + 1]]);
+    if (at(points, i).x !== at(points, i + 1).x || at(points, i).y !== at(points, i + 1).y) {
+      segments.push([at(points, i), at(points, i + 1)]);
     }
   }
   return segments;
@@ -571,9 +589,9 @@ export function countCrossings(waypoints: Point[], others: Segment[]): number {
   const own = waypointsToSegments(waypoints);
   let count = 0;
   for (let i = 0; i < others.length; i++) {
-    const other = others[i];
+    const other = at(others, i);
     for (let j = 0; j < own.length; j++) {
-      if (segmentsIntersect(own[j], other)) {
+      if (segmentsIntersect(at(own, j), other)) {
         count++;
         break;
       }
@@ -608,7 +626,7 @@ function hananAStar(
     let minY = Math.min(start.y, goal.y);
     let maxY = Math.max(start.y, goal.y);
     for (let i = 0; i < obstacles.length; i++) {
-      const r = obstacles[i];
+      const r = at(obstacles, i);
       minX = Math.min(minX, r.x);
       maxX = Math.max(maxX, r.x + r.width);
       minY = Math.min(minY, r.y);
@@ -632,20 +650,20 @@ function hananAStar(
 
   const solids: Rect[] = [];
   for (let i = 0; i < obstacles.length; i++) {
-    const r = obstacles[i];
+    const r = at(obstacles, i);
     if (containsPoint(r, start) || containsPoint(r, goal)) continue;
     solids.push(r);
   }
 
   const blocked = new Uint8Array(nx * ny);
   for (let o = 0; o < solids.length; o++) {
-    const r = solids[o];
+    const r = at(solids, o);
     for (let iy = 0; iy < ny; iy++) {
-      const y = ys[iy];
+      const y = at(ys, iy);
       if (y <= r.y + EPS || y >= r.y + r.height - EPS) continue;
       const row = iy * nx;
       for (let ix = 0; ix < nx; ix++) {
-        const x = xs[ix];
+        const x = at(xs, ix);
         if (x > r.x + EPS && x < r.x + r.width - EPS) blocked[row + ix] = 1;
       }
     }
@@ -657,21 +675,21 @@ function hananAStar(
   const vOpen = new Uint8Array(nx * Math.max(0, ny - 1));
   if (nx > 1) {
     for (let iy = 0; iy < ny; iy++) {
-      const y = ys[iy];
+      const y = at(ys, iy);
       const row = iy * (nx - 1);
       for (let ix = 0; ix < nx - 1; ix++) {
         if (blocked[iy * nx + ix] || blocked[iy * nx + ix + 1]) continue;
-        if (!segmentHitsAny({ x: xs[ix], y }, { x: xs[ix + 1], y }, solids)) hOpen[row + ix] = 1;
+        if (!segmentHitsAny({ x: at(xs, ix), y }, { x: at(xs, ix + 1), y }, solids)) hOpen[row + ix] = 1;
       }
     }
   }
   if (ny > 1) {
     for (let ix = 0; ix < nx; ix++) {
-      const x = xs[ix];
+      const x = at(xs, ix);
       const col = ix * (ny - 1);
       for (let iy = 0; iy < ny - 1; iy++) {
         if (blocked[iy * nx + ix] || blocked[(iy + 1) * nx + ix]) continue;
-        if (!segmentHitsAny({ x, y: ys[iy] }, { x, y: ys[iy + 1] }, solids)) vOpen[col + iy] = 1;
+        if (!segmentHitsAny({ x, y: at(ys, iy) }, { x, y: at(ys, iy + 1) }, solids)) vOpen[col + iy] = 1;
       }
     }
   }
@@ -683,7 +701,14 @@ function hananAStar(
   const startKey = pack(six, siy, startHeading);
   gScore.set(startKey, 0);
   const heap = new MinHeap();
-  const h0 = remainingCostLowerBound(xs[six], ys[siy], startHeading, xs[gix], ys[giy], goalHeading);
+  const h0 = remainingCostLowerBound(
+    at(xs, six),
+    at(ys, siy),
+    startHeading,
+    at(xs, gix),
+    at(ys, giy),
+    goalHeading
+  );
   heap.push({ f: h0, g: 0, h: h0, ix: six, iy: siy, hd: startHeading });
 
   let expansions = 0;
@@ -720,9 +745,10 @@ function hananAStar(
 
     for (let nd = 0; nd < 4; nd++) {
       if (!canStep(cur.ix, cur.iy, nd)) continue;
-      const nix = cur.ix + DIR[nd].x;
-      const niy = cur.iy + DIR[nd].y;
-      const step = Math.abs(xs[nix] - xs[cur.ix]) + Math.abs(ys[niy] - ys[cur.iy]);
+      const dir = at(DIR, nd);
+      const nix = cur.ix + dir.x;
+      const niy = cur.iy + dir.y;
+      const step = Math.abs(at(xs, nix) - at(xs, cur.ix)) + Math.abs(at(ys, niy) - at(ys, cur.iy));
       if (step <= EPS) continue;
       const g = cur.g + step + turnCost(cur.hd, nd);
       const nkey = pack(nix, niy, nd);
@@ -730,7 +756,7 @@ function hananAStar(
       if (prev !== undefined && g >= prev - EPS) continue;
       gScore.set(nkey, g);
       parent.set(nkey, key);
-      const h = remainingCostLowerBound(xs[nix], ys[niy], nd, xs[gix], ys[giy], goalHeading);
+      const h = remainingCostLowerBound(at(xs, nix), at(ys, niy), nd, at(xs, gix), at(ys, giy), goalHeading);
       heap.push({ f: g + h, g, h, ix: nix, iy: niy, hd: nd });
     }
   }
@@ -746,7 +772,7 @@ function hananAStar(
     const cell = (k / 4) | 0;
     const ix = cell % nx;
     const iy = (cell / nx) | 0;
-    pts.push({ x: xs[ix], y: ys[iy] });
+    pts.push({ x: at(xs, ix), y: at(ys, iy) });
     const p = parent.get(k);
     if (p === undefined) break;
     k = p;
@@ -754,10 +780,10 @@ function hananAStar(
   pts.reverse();
 
   if (pts.length === 0) return null;
-  if (Math.abs(pts[0].x - start.x) > EPS || Math.abs(pts[0].y - start.y) > EPS) {
+  if (Math.abs(at(pts, 0).x - start.x) > EPS || Math.abs(at(pts, 0).y - start.y) > EPS) {
     pts.unshift({ x: start.x, y: start.y });
   }
-  const last = pts[pts.length - 1];
+  const last = at(pts, pts.length - 1);
   if (Math.abs(last.x - goal.x) > EPS || Math.abs(last.y - goal.y) > EPS) {
     pts.push({ x: goal.x, y: goal.y });
   }
@@ -802,7 +828,7 @@ const obstacleKey = (obstacles: Rect[]): string => {
   if (obstacles.length === 0) return '';
   let s = `${obstacles.length}:`;
   for (let i = 0; i < obstacles.length; i++) {
-    const r = obstacles[i];
+    const r = at(obstacles, i);
     s += `${quantize(r.x)},${quantize(r.y)},${quantize(r.width)},${quantize(r.height)};`;
   }
   return s;
@@ -812,7 +838,7 @@ const segmentsKey = (segments: Segment[] | undefined): string => {
   if (!segments || segments.length === 0) return '0';
   let h = segments.length | 0;
   for (let i = 0; i < segments.length; i++) {
-    const [a, b] = segments[i];
+    const [a, b] = at(segments, i);
     h = (Math.imul(h, 31) + (quantize(a.x) * 2 + quantize(a.y) + quantize(b.x) + quantize(b.y))) | 0;
   }
   return `${segments.length}:${h}`;
@@ -844,7 +870,7 @@ const cacheSet = (key: string, value: PathResult): void => {
 const relevantObstacles = (obstacles: Rect[], start: Point, end: Point): Rect[] => {
   const out: Rect[] = [];
   for (let i = 0; i < obstacles.length; i++) {
-    const r = obstacles[i];
+    const r = at(obstacles, i);
     if (containsPoint(r, start) || containsPoint(r, end)) continue;
     out.push(r);
   }
@@ -913,7 +939,7 @@ function searchOnce(
     let minY = Infinity;
     let maxY = -Infinity;
     for (let i = 0; i < obstacles.length; i++) {
-      const r = obstacles[i];
+      const r = at(obstacles, i);
       minX = Math.min(minX, r.x);
       maxX = Math.max(maxX, r.x + r.width);
       minY = Math.min(minY, r.y);
@@ -975,7 +1001,7 @@ export function findCablePath(input: PathRequest): PathResult {
       baseOffset - ALTERNATIVE_ROUTE_GAP * 2,
     ];
     for (let i = 0; i < candidates.length; i++) {
-      const cand = searchOnce(input, obstacles, candidates[i]);
+      const cand = searchOnce(input, obstacles, at(candidates, i));
       const cross = countCrossings(cand.waypoints, crossingSegments);
       const score = scorePath(cand.waypoints, cross);
       if (score < bestScore - EPS || (Math.abs(score - bestScore) <= EPS && cross < bestCross)) {
@@ -1027,7 +1053,7 @@ export function edgesToCrossingSegments(
   }
   const segments: Segment[] = [];
   for (let i = 0; i < edges.length; i++) {
-    const edge = edges[i];
+    const edge = at(edges, i);
     if (skip(edge)) continue;
     const a = centers.get(edge.source);
     const b = centers.get(edge.target);

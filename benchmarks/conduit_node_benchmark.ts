@@ -34,7 +34,7 @@ function benchPrecomputed() {
   const start = performance.now();
   for (let i = 0; i < ITERATIONS; i++) {
     for (let j = 0; j < CONDUIT_AREAS_ENTRIES.length; j++) {
-      const [type, testArea] = CONDUIT_AREAS_ENTRIES[j];
+      const [type, testArea] = CONDUIT_AREAS_ENTRIES[j]!;
       if ((totalCableArea / testArea) * 100 <= 60) {
         recommendedConduit = type;
         break;

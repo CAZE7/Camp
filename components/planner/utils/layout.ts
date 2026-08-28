@@ -1,4 +1,4 @@
-import { Node, Edge } from 'reactflow';
+import { type Node, type Edge } from 'reactflow';
 
 /** Visual fallbacks for nodes that React Flow has not measured yet. */
 export const DEFAULT_NODE_WIDTH = 192;
@@ -7,7 +7,6 @@ export const DEFAULT_NODE_HEIGHT = 120;
 /** Mission 3 spacing: three functional columns, with clear card-to-card gaps. */
 export const LAYOUT_NODESEP = 120;
 export const LAYOUT_RANKSEP = 180;
-export const LAYOUT_EDGESEP = 48;
 export const LAYOUT_MARGIN = 48;
 
 export const NODE_SIZE_BY_TYPE: Record<string, { width: number; height: number }> = {
@@ -100,7 +99,10 @@ export const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'L
   const rawRanks: Node[][] = [[], [], [], [], []];
   for (const node of nodes) {
     const rank = getNodeLayoutRank(node);
-    rawRanks[rank].push(node);
+    const row = rawRanks[rank];
+    // Invariante der Pipeline-Ränge hart machen statt still zu verlieren.
+    if (!row) throw new RangeError(`getNodeLayoutRank lieferte ${rank} außerhalb von 0–4`);
+    row.push(node);
   }
 
   // Filter out empty ranks to dynamically compact active columns
@@ -122,16 +124,18 @@ export const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'L
 
   const columnX: number[] = [];
   let currentX = LAYOUT_MARGIN;
-  for (let i = 0; i < activeColumns.length; i++) {
+  for (const width of columnWidths) {
     columnX.push(currentX);
-    currentX += columnWidths[i] + LAYOUT_RANKSEP;
+    currentX += width + LAYOUT_RANKSEP;
   }
 
   const placed = new Map<string, Node>();
   activeColumns.forEach((column, colIdx) => {
     let y = LAYOUT_MARGIN;
     for (const node of column) {
-      placed.set(node.id, { ...node, position: { x: columnX[colIdx], y } });
+      const x = columnX[colIdx];
+      if (x === undefined) throw new RangeError(`columnX ohne Spalte ${colIdx} — Zip-Invariante gebrochen`);
+      placed.set(node.id, { ...node, position: { x, y } });
       y += getNodeLayoutSize(node).height + LAYOUT_NODESEP;
     }
   });

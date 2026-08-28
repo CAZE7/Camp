@@ -1,7 +1,7 @@
 import { createJSONStorage, type PersistOptions } from 'zustand/middleware';
-import { Node, Edge } from 'reactflow';
+import { type Node, type Edge } from 'reactflow';
 import { plannerDebouncedStorage } from '../storage';
-import { CableEdgeData } from '../../components/edges/CableEdge';
+import { type CableEdgeData } from '../../components/edges/CableEdge';
 import type { PlannerState } from './types';
 
 /**
@@ -13,16 +13,13 @@ import type { PlannerState } from './types';
  */
 export const PLANNER_STORAGE_VERSION = 1;
 
-function isNodeArray(value: unknown): value is Node[] {
-  return (
-    Array.isArray(value) && value.every((n) => n && typeof n === 'object' && 'id' in n && 'position' in n)
-  );
+function isNodeShape(value: unknown): value is Node {
+  return Boolean(value && typeof value === 'object' && 'id' in value && 'position' in value);
 }
 
-function isEdgeArray(value: unknown): value is Edge[] {
-  return (
-    Array.isArray(value) &&
-    value.every((e) => e && typeof e === 'object' && 'id' in e && 'source' in e && 'target' in e)
+function isEdgeShape(value: unknown): value is Edge {
+  return Boolean(
+    value && typeof value === 'object' && 'id' in value && 'source' in value && 'target' in value
   );
 }
 
@@ -31,6 +28,10 @@ function isEdgeArray(value: unknown): value is Edge[] {
  * Felder in anderem Shape oder teilkorrupte Knoten/Kanten enthalten. Diese
  * Funktion normalisiert, bevor Zustand den Stand merged — so lösen veraltete
  * Stände keine Laufzeitfehler in Berechnungen aus.
+ *
+ * Semantik: RETTEN statt VERWERFEN. Ein einzelnes korruptes Element darf
+ * nicht den ganzen Plan kosten — darum wird pro Element gefiltert, nicht
+ * das ganze Array verworfen (Vertragstest: slices/persistence.test.ts).
  */
 export function migratePlannerPersisted(persisted: unknown, version: number): Partial<PlannerState> {
   const p = (persisted ?? {}) as Partial<PlannerState>;
@@ -41,10 +42,10 @@ export function migratePlannerPersisted(persisted: unknown, version: number): Pa
   if (typeof p.isSidebarOpen === 'boolean') safe.isSidebarOpen = p.isSidebarOpen;
   if (typeof p.isInspectorOpen === 'boolean') safe.isInspectorOpen = p.isInspectorOpen;
   if (typeof p.backboneGrouping === 'boolean') safe.backboneGrouping = p.backboneGrouping;
-  if (isNodeArray(p.nodes)) safe.nodes = p.nodes;
-  if (isEdgeArray(p.edges)) safe.edges = p.edges as Edge<CableEdgeData>[];
-  if (isNodeArray(p.waterNodes)) safe.waterNodes = p.waterNodes;
-  if (isEdgeArray(p.waterEdges)) safe.waterEdges = p.waterEdges;
+  if (Array.isArray(p.nodes)) safe.nodes = p.nodes.filter(isNodeShape);
+  if (Array.isArray(p.edges)) safe.edges = p.edges.filter(isEdgeShape) as Edge<CableEdgeData>[];
+  if (Array.isArray(p.waterNodes)) safe.waterNodes = p.waterNodes.filter(isNodeShape);
+  if (Array.isArray(p.waterEdges)) safe.waterEdges = p.waterEdges.filter(isEdgeShape);
 
   // Version 0 → 1: keine Feldumbenennungen, nur Validierung.
   void version;

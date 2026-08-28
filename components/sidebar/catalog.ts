@@ -155,11 +155,13 @@ export const groupByCategory = (
   const categories: string[] = [];
   const byCategory: Record<string, Comp[]> = {};
   for (const component of components) {
-    if (!byCategory[component.category]) {
-      byCategory[component.category] = [];
+    const existing = byCategory[component.category];
+    if (!existing) {
+      byCategory[component.category] = [component];
       categories.push(component.category);
+    } else {
+      existing.push(component);
     }
-    byCategory[component.category].push(component);
   }
   return { categories, byCategory };
 };

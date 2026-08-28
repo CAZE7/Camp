@@ -79,20 +79,3 @@ export function useCoarsePointer(): boolean {
 
 /** Breakpoints — identisch zu Tailwinds md/xl-Grenzen im Planer-Layout. */
 export const MOBILE_QUERY = '(max-width: 767px)';
-export const TABLET_QUERY = '(min-width: 768px) and (max-width: 1279px)';
-export const DESKTOP_QUERY = '(min-width: 1280px)';
-
-export type ViewportClass = 'mobile' | 'tablet' | 'desktop';
-
-/**
- * Geräteklasse fürs Layout-Verhalten (nicht fürs Styling — das macht Tailwind
- * per CSS, damit es schon vor der Hydration stimmt). Hier nur für Logik, die
- * sich nicht in CSS ausdrücken lässt (z. B. „Inspector als Overlay öffnen“).
- */
-export function useViewportClass(): ViewportClass {
-  const isMobile = useMediaQuery(MOBILE_QUERY);
-  const isDesktop = useMediaQuery(DESKTOP_QUERY);
-  if (isMobile) return 'mobile';
-  if (isDesktop) return 'desktop';
-  return 'tablet';
-}

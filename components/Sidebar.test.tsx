@@ -49,7 +49,7 @@ describe('Sidebar Component', () => {
       const resetButtons = screen.getAllByRole('button', { name: 'Filter zurücksetzen' });
       expect(resetButtons.length).toBeGreaterThan(0);
 
-      fireEvent.click(resetButtons[resetButtons.length - 1]);
+      fireEvent.click(resetButtons[resetButtons.length - 1]!);
       expect((searchInput as HTMLInputElement).value).toBe('');
     });
   });
@@ -85,7 +85,7 @@ describe('Sidebar Component', () => {
       expect(mockElementsFromPoint).toHaveBeenCalledWith(100, 100);
 
       expect(dispatchEventSpy).toHaveBeenCalled();
-      const dispatchedEvent = dispatchEventSpy.mock.calls[0][0] as CustomEvent;
+      const dispatchedEvent = dispatchEventSpy.mock.calls[0]![0] as CustomEvent;
       expect(dispatchedEvent.type).toBe('custom-node-drop');
       expect(dispatchedEvent.detail).toEqual({
         clientX: 100,

@@ -2,9 +2,9 @@
 import React, { useMemo } from 'react';
 import { Handle, Position, useEdges } from 'reactflow';
 import type { ConduitNodeData } from './types';
-import { CableEdgeData } from '../edges/CableEdge';
+import { type CableEdgeData } from '../edges/CableEdge';
 import {
-  VDE_CONDUIT_INNER_DIAMETERS,
+  type VDE_CONDUIT_INNER_DIAMETERS,
   VDE_MAX_CONDUIT_FILL_PERCENT,
   calculateConduitFillPercent,
   recommendConduitType,
@@ -43,38 +43,38 @@ const ConduitNode = function ({ data, selected }: { id: string; data: ConduitNod
 
   return (
     <div
-      className={`hover:scale-105 transition-all custom-drag-handle bg-card border-2 rounded-md p-3 shadow-md w-64 ${
+      className={`custom-drag-handle w-64 rounded-md border-2 bg-card p-3 shadow-md transition-all hover:scale-105 ${
         fillStats.isOverfilled ? 'border-warn-critical bg-warn-critical-bg' : 'border-border'
-      } ${selected ? (fillStats.isOverfilled ? 'ring-4 ring-warn-critical shadow-xl' : 'ring-4 ring-border shadow-xl') : ''}`}
+      } ${selected ? (fillStats.isOverfilled ? 'shadow-xl ring-4 ring-warn-critical' : 'shadow-xl ring-4 ring-border') : ''}`}
     >
       <NodeSymbol kind="conduit" />
 
-      <div className="font-bold mb-2 text-sm text-center text-foreground">
+      <div className="mb-2 text-center text-sm font-bold text-foreground">
         {data.label || 'Leerrohr'} ({conduitType})
       </div>
 
-      <div className="text-xs text-muted-foreground mb-2">Zugewiesene Kabel: {assignedEdgeIds.length}</div>
+      <div className="mb-2 text-xs text-muted-foreground">Zugewiesene Kabel: {assignedEdgeIds.length}</div>
 
-      <div className="w-full bg-accent rounded-full h-2.5 mb-2 overflow-hidden border border-border">
+      <div className="mb-2 h-2.5 w-full overflow-hidden rounded-full border border-border bg-accent">
         <div
           className={`h-2.5 rounded-full transition-all duration-300 ${fillStats.isOverfilled ? 'bg-warn-critical' : 'bg-moss'}`}
           style={{ width: `${Math.min(fillStats.fillPercentage, 100)}%` }}
         />
       </div>
 
-      <div className="text-xs text-right mb-2 font-mono">
+      <div className="mb-2 text-right font-mono text-xs">
         Füllgrad: {fillStats.fillPercentage.toFixed(1)}%
       </div>
 
       {fillStats.isOverfilled && (
-        <div className="mt-2 p-2 bg-warn-critical text-white text-xs font-bold rounded leading-tight">
+        <div className="mt-2 rounded bg-warn-critical p-2 text-xs font-bold leading-tight text-white">
           Kanal überfüllt! Gefahr durch Hitzestau in der Kabelbündelung.
           {fillStats.recommendedConduit ? (
-            <span className="block mt-1">
+            <span className="mt-1 block">
               Bitte mindestens {fillStats.recommendedConduit} Rohr verwenden.
             </span>
           ) : (
-            <span className="block mt-1">Bitte ein größeres Leerrohr verwenden.</span>
+            <span className="mt-1 block">Bitte ein größeres Leerrohr verwenden.</span>
           )}
         </div>
       )}

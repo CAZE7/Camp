@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
-import { Node, Edge } from 'reactflow';
-import { CableEdgeData } from '../../edges/CableEdge';
+import { type Node, type Edge } from 'reactflow';
+import { type CableEdgeData } from '../../edges/CableEdge';
 
 import { getSystemVoltage } from '../utils/voltage';
 
@@ -41,8 +41,7 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
     const dcdcChargers: Node[] = [];
     const shunts: Node[] = [];
 
-    for (let i = 0; i < nodes.length; i++) {
-      const node = nodes[i];
+    for (const node of nodes) {
       nodeMap.set(node.id, node);
 
       switch (node.type) {
@@ -80,9 +79,7 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
     const edgesByTarget = new Map<string, Edge<CableEdgeData>[]>();
     const edgesBySource = new Map<string, Edge<CableEdgeData>[]>();
 
-    for (let i = 0; i < edges.length; i++) {
-      const edge = edges[i];
-
+    for (const edge of edges) {
       let targetList = edgesByTarget.get(edge.target);
       if (!targetList) {
         targetList = [];

@@ -113,7 +113,7 @@ describe('DachPlanerPage', () => {
 
     // Wait for the UI to be fully rendered
     const solarPanelTexts = await screen.findAllByText('Solarpanel');
-    const solarCard = solarPanelTexts[0].closest('.cursor-grab');
+    const solarCard = solarPanelTexts[0]!.closest('.cursor-grab');
     expect(solarCard).toBeInTheDocument();
 
     const setDataMock = vi.fn();

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { vehicleTemplates } from '@/lib/vehicleTemplates';
+import { vehicleTemplates, DEFAULT_VEHICLE_TEMPLATE } from '@/lib/vehicleTemplates';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
@@ -91,6 +91,13 @@ export const HEATER_CATALOG: HeaterModel[] = [
     description: 'Sehr hohe Leistung, benötigt viel Raumvolumen, um Tot-Taktung zu vermeiden.',
   },
 ];
+
+/** Vorrang-Heizgerät — Listenerstes Element, einmal bewiesen (noUncheckedIndexedAccess). */
+export const DEFAULT_HEATER: HeaterModel = (() => {
+  const first = HEATER_CATALOG[0];
+  if (!first) throw new Error('HEATER_CATALOG ist leer — Default-Heizung ungültig');
+  return first;
+})();
 
 // --- Extracted Calculation Logic (unverändert – keine Logik-Änderung erlaubt) ---
 // M6-4: Fehler sind Teil des Returns (discriminated Result), nichtexceptions.
@@ -239,7 +246,7 @@ function VehicleConfiguration({
       id="section-fahrzeug"
     >
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 label-eyebrow text-ink-soft">
+        <CardTitle className="label-eyebrow flex items-center gap-2 text-ink-soft">
           <Home className="h-4 w-4" aria-hidden="true" />
           Fahrzeug-Konfiguration
         </CardTitle>
@@ -257,7 +264,7 @@ function VehicleConfiguration({
           </SelectTrigger>
           <SelectContent className="border-rule">
             {vehicleTemplates.map((v) => (
-              <SelectItem key={v.id} value={v.id} className="cursor-pointer py-3 px-4 focus:bg-paper">
+              <SelectItem key={v.id} value={v.id} className="cursor-pointer px-4 py-3 focus:bg-paper">
                 <div className="flex flex-col">
                   <span className="font-medium text-ink">
                     {v.brand} {v.model}
@@ -289,7 +296,7 @@ function HeaterSelection({
       id="section-heizgeraet"
     >
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 label-eyebrow text-ink-soft">
+        <CardTitle className="label-eyebrow flex items-center gap-2 text-ink-soft">
           <Flame className="h-4 w-4" aria-hidden="true" />
           Heizgeräte-Katalog
         </CardTitle>
@@ -317,12 +324,12 @@ function HeaterSelection({
           </SelectTrigger>
           <SelectContent className="border-rule">
             {HEATER_CATALOG.map((h) => (
-              <SelectItem key={h.id} value={h.id} className="cursor-pointer py-3 px-4 focus:bg-paper">
+              <SelectItem key={h.id} value={h.id} className="cursor-pointer px-4 py-3 focus:bg-paper">
                 <div className="flex flex-col">
                   <span className="font-medium text-ink">
                     {h.name}
                     {h.id === recommendedHeaterId && (
-                      <span className="ml-2 inline-flex items-center gap-1 caption-xs font-semibold uppercase tracking-wider text-oxide">
+                      <span className="caption-xs ml-2 inline-flex items-center gap-1 font-semibold uppercase tracking-wider text-oxide">
                         <Sparkles className="h-3 w-3" aria-hidden="true" /> Empfohlen
                       </span>
                     )}
@@ -345,7 +352,7 @@ function HeaterSelection({
             type="button"
             variant="outline"
             onClick={() => setSelectedHeaterId(recommendedHeaterId)}
-            className="w-full gap-2 border-oxide/40 text-oxide hover:bg-paper"
+            className="border-oxide/40 w-full gap-2 text-oxide hover:bg-paper"
           >
             <Sparkles className="h-4 w-4" aria-hidden="true" />
             Empfehlung übernehmen: {HEATER_CATALOG.find((h) => h.id === recommendedHeaterId)?.name}
@@ -371,7 +378,7 @@ function TemperatureInputs({
     <div className="grid scroll-mt-24 grid-cols-1 gap-6 md:grid-cols-2" id="section-temperatur">
       <Card className="rounded-none border border-rule bg-bone shadow-none ring-0">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 label-eyebrow text-ink-soft">
+          <CardTitle className="label-eyebrow flex items-center gap-2 text-ink-soft">
             <Thermometer className="h-4 w-4 text-copper" aria-hidden="true" />
             Wunsch-Temperatur
           </CardTitle>
@@ -417,7 +424,7 @@ function TemperatureInputs({
 
       <Card className="rounded-none border border-rule bg-bone shadow-none ring-0">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 label-eyebrow text-ink-soft">
+          <CardTitle className="label-eyebrow flex items-center gap-2 text-ink-soft">
             <Snowflake className="h-4 w-4 text-warn-info" aria-hidden="true" />
             Außen-Temperatur
           </CardTitle>
@@ -477,7 +484,7 @@ function InsulationInputs({
       id="section-daemmung"
     >
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 label-eyebrow text-ink-soft">
+        <CardTitle className="label-eyebrow flex items-center gap-2 text-ink-soft">
           <Ruler className="h-4 w-4" aria-hidden="true" />
           Isolierung (Armaflex-Stärke)
         </CardTitle>
@@ -536,7 +543,7 @@ function AdvancedParameters({
       id="section-erweitert"
     >
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 label-eyebrow text-ink-soft">
+        <CardTitle className="label-eyebrow flex items-center gap-2 text-ink-soft">
           <Wind className="h-4 w-4" aria-hidden="true" />
           Erweiterte Parameter
         </CardTitle>
@@ -856,14 +863,14 @@ function ResultsView({
             </div>
 
             {/* Main Result */}
-            <div className="border-2 border-oxide/30 bg-paper p-6">
+            <div className="border-oxide/30 border-2 bg-paper p-6">
               <p className="label-eyebrow text-oxide">Benötigte Heizleistung (Q_total)</p>
               <div className="mt-3 flex flex-wrap items-baseline gap-3">
                 <p className="measure text-5xl font-semibold tracking-tight text-ink md:text-6xl">
                   {Q_total.toFixed(0)}
                 </p>
                 <div className="flex flex-col">
-                  <p className="text-lg font-semibold text-ink leading-none">Watt</p>
+                  <p className="text-lg font-semibold leading-none text-ink">Watt</p>
                   <p className="caption-xs font-semibold text-ink-soft">Max. Last</p>
                 </div>
               </div>
@@ -906,7 +913,7 @@ function ResultsView({
 
 // --- Main Page Component ---
 export default function HeatingCalculatorPage() {
-  const [selectedVehicleId, setSelectedVehicleId] = useState<string>(vehicleTemplates[0].id);
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string>(DEFAULT_VEHICLE_TEMPLATE.id);
   const [insulationThickness, setInsulationThickness] = useState<number>(19);
   const [tempInside, setTempInside] = useState<number>(20);
   const [tempOutside, setTempOutside] = useState<number>(-10);
@@ -914,15 +921,15 @@ export default function HeatingCalculatorPage() {
   const [windowArea, setWindowArea] = useState<number>(1);
   const [insulationCoverage, setInsulationCoverage] = useState<number>(85);
   const [quickHeat, setQuickHeat] = useState<boolean>(false);
-  const [selectedHeaterId, setSelectedHeaterId] = useState<string>(HEATER_CATALOG[0].id);
+  const [selectedHeaterId, setSelectedHeaterId] = useState<string>(DEFAULT_HEATER.id);
 
   const selectedVehicle = useMemo(
-    () => vehicleTemplates.find((v) => v.id === selectedVehicleId) || vehicleTemplates[0],
+    () => vehicleTemplates.find((v) => v.id === selectedVehicleId) ?? DEFAULT_VEHICLE_TEMPLATE,
     [selectedVehicleId]
   );
 
   const selectedHeater = useMemo(
-    () => HEATER_CATALOG.find((h) => h.id === selectedHeaterId) || HEATER_CATALOG[0],
+    () => HEATER_CATALOG.find((h) => h.id === selectedHeaterId) ?? DEFAULT_HEATER,
     [selectedHeaterId]
   );
 
@@ -1039,7 +1046,7 @@ export default function HeatingCalculatorPage() {
           {/* Sticky TOC */}
           <nav
             aria-label="Abschnitte"
-            className="sticky top-2 z-20 mt-6 -mx-2 flex gap-2 overflow-x-auto rounded-none border border-rule bg-bone/95 p-2 backdrop-blur"
+            className="bg-bone/95 sticky top-2 z-20 -mx-2 mt-6 flex gap-2 overflow-x-auto rounded-none border border-rule p-2 backdrop-blur"
           >
             <SectionAnchor id="section-fahrzeug" label="Fahrzeug" icon={<Home className="h-4 w-4" />} />
             <SectionAnchor id="section-heizgeraet" label="Heizgerät" icon={<Flame className="h-4 w-4" />} />

@@ -1,11 +1,11 @@
 'use client';
 
 import React from 'react';
-import { Panel, Node } from 'reactflow';
+import { Panel, type Node } from 'reactflow';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { RoofNodeData } from '@/components/nodes/types';
+import { type RoofNodeData } from '@/components/nodes/types';
 import { Sun, Home } from 'lucide-react';
 
 export function DachPanel({
@@ -95,7 +95,7 @@ export function DachPanel({
                   />
                   <span
                     id="width-unit"
-                    className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 caption-xs font-semibold text-ink-soft"
+                    className="caption-xs pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 font-semibold text-ink-soft"
                   >
                     cm
                   </span>
@@ -122,7 +122,7 @@ export function DachPanel({
                   />
                   <span
                     id="height-unit"
-                    className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 caption-xs font-semibold text-ink-soft"
+                    className="caption-xs pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 font-semibold text-ink-soft"
                   >
                     cm
                   </span>
@@ -155,7 +155,7 @@ export function DachPanel({
               style={{ width: `${Math.min(100, (totalRoofSolarWatts / 1000) * 100)}%` }}
             />
           </div>
-          <p className="caption-xs mt-3 text-paper/70">Wird in Echtzeit an den Schaltplan übergeben.</p>
+          <p className="caption-xs text-paper/70 mt-3">Wird in Echtzeit an den Schaltplan übergeben.</p>
         </CardContent>
       </Card>
     </Panel>

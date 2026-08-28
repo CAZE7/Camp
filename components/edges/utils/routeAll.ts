@@ -1,4 +1,4 @@
-import { Node, Position } from 'reactflow';
+import { type Node, Position } from 'reactflow';
 import {
   findCablePath,
   nodesToObstacles,
@@ -93,7 +93,10 @@ export function routeAllCables(nodes: Node[], edges: RouteEdgeRef[]): Map<string
   if (edges.length === 0) return out;
 
   const nodeById = new Map<string, Node>();
-  for (let i = 0; i < nodes.length; i++) nodeById.set(nodes[i].id, nodes[i]);
+  for (let i = 0; i < nodes.length; i++) {
+    const node = nodes[i];
+    if (node) nodeById.set(node.id, node);
+  }
 
   const allObstacles = nodesToObstacles(nodes, new Set());
   const crossingAll = edges.length > 120 ? [] : edgesToCrossingSegments(edges, nodes, () => false);
@@ -109,6 +112,7 @@ export function routeAllCables(nodes: Node[], edges: RouteEdgeRef[]): Map<string
 
   for (let i = 0; i < edges.length; i++) {
     const edge = edges[i];
+    if (!edge) continue;
     const srcNode = nodeById.get(edge.source);
     const tgtNode = nodeById.get(edge.target);
     const src = resolveHandlePoint(srcNode, edge.sourceHandle, 'source');
@@ -145,6 +149,7 @@ export function routeAllCables(nodes: Node[], edges: RouteEdgeRef[]): Map<string
 
   for (let i = 0; i < raw.length; i++) {
     const item = raw[i];
+    if (!item) continue;
     const wp = nudged.get(item.id) ?? item.waypoints;
     const crossings = countCrossings(wp, crossingAll);
     out.set(item.id, rebuild(wp, crossings, item.result.usedSearch));

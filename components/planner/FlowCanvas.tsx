@@ -7,9 +7,9 @@ import ReactFlow, {
   Panel,
   useReactFlow,
   useStore,
-  Connection,
-  Viewport,
-  Node,
+  type Connection,
+  type Viewport,
+  type Node,
 } from 'reactflow';
 import { Map as MapIcon } from 'lucide-react';
 import 'reactflow/dist/style.css';
@@ -43,15 +43,16 @@ import {
   NODE_DRAG_HANDLE_SELECTOR,
 } from './utils/flowInteraction';
 import { withNodeDragHandles } from './ui/NodeDragHandle';
-import { CanvasContextMenu, ContextMenuState } from './ui/CanvasContextMenu';
+import { CanvasContextMenu, type ContextMenuState } from './ui/CanvasContextMenu';
 import { applyFocusHighlight } from './utils/focusHighlight';
 import {
   applyDomainFilter,
   DOMAINS,
   DOMAIN_COLORS,
   DOMAIN_LABELS,
-  Domain,
-  nodeMinimapColor,
+  type Domain,
+  nodeMinimapColorFrom,
+  resolveMinimapPalette,
 } from './utils/domainFilter';
 import { markErrorEdgesZIndex } from './utils/errorEdges';
 import { useTouchContextMenu } from './hooks/useTouchContextMenu';
@@ -355,8 +356,14 @@ export function FlowCanvas() {
   }, [highlightedEdgeId, highlightedNodeId, edges, waterEdges]);
 
   const selectedTrace = useMemo(() => {
-    if (selectedEdges?.length === 1) return traceCircuit(rawNodes, rawEdges, { edgeId: selectedEdges[0].id });
-    if (selectedNodes?.length === 1) return traceCircuit(rawNodes, rawEdges, { nodeId: selectedNodes[0].id });
+    if (selectedEdges?.length === 1) {
+      const edgeId = selectedEdges.at(0)?.id;
+      return edgeId ? traceCircuit(rawNodes, rawEdges, { edgeId }) : null;
+    }
+    if (selectedNodes?.length === 1) {
+      const nodeId = selectedNodes.at(0)?.id;
+      return nodeId ? traceCircuit(rawNodes, rawEdges, { nodeId }) : null;
+    }
     return null;
   }, [rawNodes, rawEdges, selectedNodes, selectedEdges]);
   const focusSeedIds = selectedTrace ? null : hoverSeedIds;
@@ -487,10 +494,14 @@ export function FlowCanvas() {
   );
 
   const isOverview = zoom < PLANNER_OVERVIEW_ZOOM;
+  // Einmal pro Mount aufgelöst: getComputedStyle pro Node im
+  // Minimap-Callback war bei größeren Plänen spürbar. Die Palette hält
+  // Maske, Hintergrund und alle Domänenfarben in einem Memo.
   const minimapColors = useMemo(
     () => ({
       mask: cssToken('--canvas-minimap-mask', 'rgba(20, 17, 14, 0.14)'),
       background: cssToken('--bone', '#fffdf9'),
+      palette: resolveMinimapPalette(),
     }),
     []
   );
@@ -634,9 +645,9 @@ export function FlowCanvas() {
           />
           <Controls className="mb-20 overflow-hidden rounded-lg border border-border shadow-sm md:mb-4" />
           <MiniMap
-            className="hidden mb-24 overflow-hidden rounded-lg border border-border shadow-sm sm:block md:mb-24"
+            className="mb-24 hidden overflow-hidden rounded-lg border border-border shadow-sm sm:block md:mb-24"
             ariaLabel="Miniaturübersicht des Plans"
-            nodeColor={(node) => nodeMinimapColor(node)}
+            nodeColor={(node) => nodeMinimapColorFrom(minimapColors.palette, node)}
             maskColor={minimapColors.mask}
             style={{ backgroundColor: minimapColors.background }}
           />
@@ -645,7 +656,7 @@ export function FlowCanvas() {
             position="top-left"
             className="m-2 hidden max-w-[min(20rem,calc(100vw-6rem))] sm:block md:m-3"
           >
-            <div className="rounded-lg border border-border bg-card/95 px-3 py-2 text-xs text-foreground shadow-sm">
+            <div className="bg-card/95 rounded-lg border border-border px-3 py-2 text-xs text-foreground shadow-sm">
               <strong>{viewMode === 'water' ? 'Wasserplan' : 'Elektrikplan'}</strong>
               <span className="ml-2 text-muted-foreground">
                 {coarsePointer
@@ -658,7 +669,7 @@ export function FlowCanvas() {
           {viewMode === 'electric' && (
             <Panel position="top-right" className="m-3">
               <div
-                className="flex flex-wrap gap-1.5 rounded-lg border border-border bg-card/95 p-1.5 shadow-sm"
+                className="bg-card/95 flex flex-wrap gap-1.5 rounded-lg border border-border p-1.5 shadow-sm"
                 role="group"
                 aria-label="Domänen-Filter"
               >
@@ -716,7 +727,7 @@ export function FlowCanvas() {
               <div
                 data-testid="circuit-trace-info"
                 role="status"
-                className="rounded-lg border border-copper/50 bg-card/95 px-3 py-2 text-sm font-semibold text-foreground shadow-lg"
+                className="border-copper/50 bg-card/95 rounded-lg border px-3 py-2 text-sm font-semibold text-foreground shadow-lg"
               >
                 <span className="mr-2 text-copper">Strompfad:</span>
                 {traceLabel}
@@ -742,7 +753,7 @@ export function FlowCanvas() {
           {viewMode === 'electric' && calculatedSolarWatts > 0 && (
             <Panel
               position="bottom-center"
-              className="mb-4 rounded-lg border border-oxide/40 bg-oxide/10 p-3 text-sm text-oxide shadow-sm"
+              className="border-oxide/40 bg-oxide/10 mb-4 rounded-lg border p-3 text-sm text-oxide shadow-sm"
             >
               <strong>Dachplaner-Daten erkannt:</strong> {calculatedSolarWatts} W Solarleistung verfügbar. Der
               Solar-Laderegler (MPPT) muss dafür passend dimensioniert sein.

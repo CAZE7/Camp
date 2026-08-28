@@ -294,7 +294,7 @@ describe('autoWire — sizeDcEdges', () => {
     const edges: Edge<CableEdgeData>[] = [e({ id: 'd1', source: 'b1', target: 'i1', data: { length: 2 } })];
     sizeDcEdges(edges, nodes, edges, volts(12.8));
     // 2000 W / 12,8 V / 0,85 ≈ 184 A → großer Querschnitt
-    expect(edges[0].data?.crossSection).toBeGreaterThanOrEqual(25);
+    expect(edges[0]?.data?.crossSection).toBeGreaterThanOrEqual(25);
   });
 
   it('überschreibt vorhandene Querschnitte nicht mit kleineren Werten', () => {
@@ -303,7 +303,7 @@ describe('autoWire — sizeDcEdges', () => {
       e({ id: 'd1', source: 'b1', target: 'c1', data: { length: 2, crossSection: 16 } }),
     ];
     sizeDcEdges(edges, nodes, edges, volts(12.8));
-    expect(edges[0].data?.crossSection).toBe(16);
+    expect(edges[0]?.data?.crossSection).toBe(16);
   });
 });
 
@@ -326,7 +326,7 @@ describe('autoWire — sizeAcEdges', () => {
     sizeAcEdges(edges, nodes);
     // 3680 W / 230 V = 16 A → Spannungsfall dominiert bei 30 m:
     // A = (16 A · 2 · 30 m) / (58 · 4,6 V) = 3,60 mm² → 4 mm² Normquerschnitt.
-    expect(edges[0].data?.crossSection).toBe(4);
+    expect(edges[0]?.data?.crossSection).toBe(4);
   });
 
   it('nutzt die Last des 230-V-Geräts, nicht die Wechselrichter-Nennleistung', () => {
@@ -345,7 +345,7 @@ describe('autoWire — sizeAcEdges', () => {
     ];
     sizeAcEdges(edges, nodes);
     // 3680 W / 230 V = 16 A bei 30 m → Spannungsfall dominiert → 4 mm².
-    expect(edges[0].data?.crossSection).toBe(4);
+    expect(edges[0]?.data?.crossSection).toBe(4);
   });
 
   it('dimensioniert Landstrom-Leitungen nach dem Ladegerät (min. 16 A CEE)', () => {
@@ -363,7 +363,7 @@ describe('autoWire — sizeAcEdges', () => {
     sizeAcEdges(edges, nodes);
     // 20 A bei 2 m (Derating 0,7): thermisch 4 mm²; die Leitung darf nicht am
     // 16-A-Landstromanschluss vorbeigehen und den 20-A-Lader unterdimensionieren.
-    expect(edges[0].data?.crossSection).toBe(4);
+    expect(edges[0]?.data?.crossSection).toBe(4);
   });
 
   it('unterschreitet einen vorhandenen Querschnitt nie (Nutzerwert ist Untergrenze)', () => {
@@ -379,7 +379,7 @@ describe('autoWire — sizeAcEdges', () => {
       }),
     ];
     sizeAcEdges(edges, nodes);
-    expect(edges[0].data?.crossSection).toBe(10);
+    expect(edges[0]?.data?.crossSection).toBe(10);
   });
 
   it('lässt Kanten ohne AC-Markierung unangetastet', () => {
@@ -394,8 +394,8 @@ describe('autoWire — sizeAcEdges', () => {
       e({ id: 'no-data', source: 'b1', target: 'c1' }),
     ];
     sizeAcEdges(edges, nodes);
-    expect(edges[0].data?.crossSection).toBe(4);
-    expect(edges[1].data).toBeUndefined();
+    expect(edges[0]?.data?.crossSection).toBe(4);
+    expect(edges[1]?.data).toBeUndefined();
   });
 });
 
@@ -434,9 +434,9 @@ describe('autoWire — applyFuseSizes', () => {
       }),
     ];
     applyFuseSizes(edges, nodes, volts(12.8));
-    const fuse = edges[0].data?.fuseSize;
+    const fuse = edges[0]?.data?.fuseSize;
     expect(fuse).toBeDefined();
-    expect(fuse!).toBeLessThanOrEqual(FUSE_MAP[2.5]);
+    expect(fuse!).toBeLessThanOrEqual(FUSE_MAP[2.5]!);
   });
 
   it('stuft das Kabel hoch, wenn der Strom den Maximalwert übersteigt (keine Über-Sicherung)', () => {
@@ -453,7 +453,7 @@ describe('autoWire — applyFuseSizes', () => {
       }),
     ];
     applyFuseSizes(edges, nodes, volts(12.8));
-    const data = edges[0].data;
+    const data = edges[0]?.data;
     expect(data).toBeDefined();
     const cs = data?.crossSection ?? 0;
     const fuse = data?.fuseSize ?? 0;
@@ -474,7 +474,7 @@ describe('autoWire — applyFuseSizes', () => {
       }),
     ];
     applyFuseSizes(edges, nodes, volts(12.8));
-    expect(edges[0].data?.fuseSize).toBeUndefined();
+    expect(edges[0]?.data?.fuseSize).toBeUndefined();
   });
 });
 
@@ -501,17 +501,16 @@ describe('autoWire — healUserEdges', () => {
     const connections = new Set(
       userEdges.map((ee) => `${ee.source}|${ee.target}|${ee.sourceHandle || ''}|${ee.targetHandle || ''}`)
     );
-    const healed = healUserEdges(
-      userEdges,
-      makeNodeMap(nodes),
-      'b1',
-      'sh',
-      'plusRail',
-      'minusRail',
-      'fuseBox',
-      connections
-    );
-    expect(healed[0].source).toBe('sh');
+    const healed = healUserEdges(userEdges, {
+      nodeMap: makeNodeMap(nodes),
+      houseBatteryId: 'b1',
+      shuntId: 'sh',
+      plusRailId: 'plusRail',
+      minusRailId: 'minusRail',
+      fuseBoxId: 'fuseBox',
+      existingConnections: connections,
+    });
+    expect(healed[0]?.source).toBe('sh');
   });
 
   it('legt Minus-Rückleiter zur Batterie auf die Minus-Schiene (kein Shunt-Bypass)', () => {
@@ -535,20 +534,19 @@ describe('autoWire — healUserEdges', () => {
     const connections = new Set(
       userEdges.map((ee) => `${ee.source}|${ee.target}|${ee.sourceHandle || ''}|${ee.targetHandle || ''}`)
     );
-    const healed = healUserEdges(
-      userEdges,
-      makeNodeMap(nodes),
-      'b1',
-      'sh',
-      'plusRail',
-      'minusRail',
-      'fuseBox',
-      connections
-    );
-    expect(healed[0].target).toBe('c1');
-    expect(healed[0].source).toBe('minusRail');
-    expect(healed[0].sourceHandle).toBe('minus');
-    expect(healed[0].targetHandle).toBe('minus');
+    const healed = healUserEdges(userEdges, {
+      nodeMap: makeNodeMap(nodes),
+      houseBatteryId: 'b1',
+      shuntId: 'sh',
+      plusRailId: 'plusRail',
+      minusRailId: 'minusRail',
+      fuseBoxId: 'fuseBox',
+      existingConnections: connections,
+    });
+    expect(healed[0]?.target).toBe('c1');
+    expect(healed[0]?.source).toBe('minusRail');
+    expect(healed[0]?.sourceHandle).toBe('minus');
+    expect(healed[0]?.targetHandle).toBe('minus');
   });
 
   it('legt Batterie-Plus auf einen Verbraucher über den Sicherungskasten', () => {
@@ -566,17 +564,16 @@ describe('autoWire — healUserEdges', () => {
     const connections = new Set(
       userEdges.map((ee) => `${ee.source}|${ee.target}|${ee.sourceHandle || ''}|${ee.targetHandle || ''}`)
     );
-    const healed = healUserEdges(
-      userEdges,
-      makeNodeMap(nodes),
-      'b1',
-      'sh',
-      'plusRail',
-      'minusRail',
-      'fb',
-      connections
-    );
-    expect(healed[0].source).toBe('fb');
+    const healed = healUserEdges(userEdges, {
+      nodeMap: makeNodeMap(nodes),
+      houseBatteryId: 'b1',
+      shuntId: 'sh',
+      plusRailId: 'plusRail',
+      minusRailId: 'minusRail',
+      fuseBoxId: 'fb',
+      existingConnections: connections,
+    });
+    expect(healed[0]?.source).toBe('fb');
   });
 
   it('legt Batterie-Plus auf einen Inverter auf die Plus-Schiene um', () => {
@@ -594,17 +591,16 @@ describe('autoWire — healUserEdges', () => {
     const connections = new Set(
       userEdges.map((ee) => `${ee.source}|${ee.target}|${ee.sourceHandle || ''}|${ee.targetHandle || ''}`)
     );
-    const healed = healUserEdges(
-      userEdges,
-      makeNodeMap(nodes),
-      'b1',
-      'sh',
-      'plusRail',
-      'minusRail',
-      'fb',
-      connections
-    );
-    expect(healed[0].source).toBe('plusRail');
+    const healed = healUserEdges(userEdges, {
+      nodeMap: makeNodeMap(nodes),
+      houseBatteryId: 'b1',
+      shuntId: 'sh',
+      plusRailId: 'plusRail',
+      minusRailId: 'minusRail',
+      fuseBoxId: 'fb',
+      existingConnections: connections,
+    });
+    expect(healed[0]?.source).toBe('plusRail');
   });
 
   it('entfernt Kanten, die nach dem Umlegen duplikat wären', () => {
@@ -631,16 +627,15 @@ describe('autoWire — healUserEdges', () => {
     const connections = new Set(
       userEdges.map((ee) => `${ee.source}|${ee.target}|${ee.sourceHandle || ''}|${ee.targetHandle || ''}`)
     );
-    const healed = healUserEdges(
-      userEdges,
-      makeNodeMap(nodes),
-      'b1',
-      'sh',
-      'plusRail',
-      'minusRail',
-      'fb',
-      connections
-    );
+    const healed = healUserEdges(userEdges, {
+      nodeMap: makeNodeMap(nodes),
+      houseBatteryId: 'b1',
+      shuntId: 'sh',
+      plusRailId: 'plusRail',
+      minusRailId: 'minusRail',
+      fuseBoxId: 'fb',
+      existingConnections: connections,
+    });
     // Genau eine der Kanten fällt weg.
     expect(healed.length).toBe(1);
   });
@@ -660,18 +655,17 @@ describe('autoWire — healUserEdges', () => {
     const connections = new Set(
       userEdges.map((ee) => `${ee.source}|${ee.target}|${ee.sourceHandle || ''}|${ee.targetHandle || ''}`)
     );
-    const healed = healUserEdges(
-      userEdges,
-      makeNodeMap(nodes),
-      'b1',
-      'sh',
-      'plusRail',
-      'minusRail',
-      'fb',
-      connections
-    );
+    const healed = healUserEdges(userEdges, {
+      nodeMap: makeNodeMap(nodes),
+      houseBatteryId: 'b1',
+      shuntId: 'sh',
+      plusRailId: 'plusRail',
+      minusRailId: 'minusRail',
+      fuseBoxId: 'fb',
+      existingConnections: connections,
+    });
     expect(healed.length).toBe(1);
-    expect(healed[0].source).toBe('b1');
+    expect(healed[0]?.source).toBe('b1');
   });
 });
 
@@ -928,7 +922,7 @@ describe('autoWire — behobene Audit-Fehler', () => {
       }),
     ];
     sizeDcEdges(edges, nodes, edges, volts(12.8));
-    expect(edges[0].data?.crossSection).toBe(95);
+    expect(edges[0]?.data?.crossSection).toBe(95);
     expect(() => applyFuseSizes(edges, nodes, volts(12.8))).not.toThrow();
   });
 
@@ -1030,8 +1024,8 @@ describe('M6-8 — AUDIT-Testgruppen', () => {
     ];
     const chain: Edge<CableEdgeData>[] = [e({ id: 'big', source: 'b', target: 'c', data: { length: 30 } })];
     sizeDcEdges(chain, nodes, chain, volts(12.8));
-    expect(chain[0].data!.crossSection).toBe(70);
-    expect(chain[0].data!.dropWarning).toBe(true);
+    expect(chain[0]?.data!.crossSection).toBe(70);
+    expect(chain[0]?.data!.dropWarning).toBe(true);
   });
 
   // Gruppe 3 (Issue 4) ── acBatteryCharger-Mischdomäne ──────────────────────
@@ -1098,19 +1092,18 @@ describe('M6-8 — AUDIT-Testgruppen', () => {
     const connections = new Set(
       userEdges.map((x) => `${x.source}|${x.target}|${x.sourceHandle || ''}|${x.targetHandle || ''}`)
     );
-    const healed = healUserEdges(
-      userEdges,
-      nodeMapOf(nodes),
-      'b1',
-      'sh',
-      'plusRail',
-      'minusRail',
-      'fuseBox',
-      connections
-    );
+    const healed = healUserEdges(userEdges, {
+      nodeMap: nodeMapOf(nodes),
+      houseBatteryId: 'b1',
+      shuntId: 'sh',
+      plusRailId: 'plusRail',
+      minusRailId: 'minusRail',
+      fuseBoxId: 'fuseBox',
+      existingConnections: connections,
+    });
     expect(healed).toHaveLength(1);
-    expect(healed[0].source).toBe('minusRail');
-    expect(healed[0].target).toBe('c1');
+    expect(healed[0]?.source).toBe('minusRail');
+    expect(healed[0]?.target).toBe('c1');
   });
 
   // Gruppe 5 (Issue 9) ── Busbar-Fallbacks ──────────────────────────────────
@@ -1150,7 +1143,7 @@ describe('M6-8 — AUDIT-Testgruppen', () => {
     for (const solar of ['s1', 's2', 's3']) {
       expect(
         res.edges.some(
-          (x) => x.source === solar && x.target === mppts[0].id && x.data?.edgeDomain === 'Solar'
+          (x) => x.source === solar && x.target === mppts[0]?.id && x.data?.edgeDomain === 'Solar'
         )
       ).toBe(true);
     }

@@ -1,8 +1,8 @@
 import React from 'react';
-import { Node, Edge } from 'reactflow';
-import { CableEdgeData } from '../edges/CableEdge';
+import { type Node, type Edge } from 'reactflow';
+import { type CableEdgeData } from '../edges/CableEdge';
 import { ValidatingInput, COMMON_RULES } from '../ui/ValidatingInput';
-import { NodeDataPatch, PlannerNodeType, TypedNode } from '../nodes/types';
+import { type NodeDataPatch, type PlannerNodeType, type TypedNode } from '../nodes/types';
 
 /**
  * Die Inspectors lesen/schreiben Node-Daten typisiert über die Registry
@@ -99,7 +99,7 @@ export function BatteryInspector({
           </div>
         )}
         <label
-          className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider"
+          className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
           htmlFor={`${node.id}-capacity`}
         >
           Kapazität (Ah)
@@ -111,12 +111,12 @@ export function BatteryInspector({
           value={node.data?.capacity || 0}
           rules={[COMMON_RULES.strictlyPositive]}
           onValidChange={(val) => onUpdateNodeData?.(node.id, { capacity: val })}
-          className="border border-border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-shadow"
+          className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
         />
       </div>
       <div className="flex flex-col">
         <label
-          className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider"
+          className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
           htmlFor={`${node.id}-chemistry`}
         >
           Zellchemie
@@ -125,7 +125,7 @@ export function BatteryInspector({
           id={`${node.id}-chemistry`}
           value={node.data?.chemistry || 'LiFePO4'}
           onChange={(e) => onUpdateNodeData?.(node.id, { chemistry: e.target.value })}
-          className="border border-border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-shadow"
+          className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
         >
           <option value="LiFePO4">LiFePO4</option>
           <option value="AGM">AGM</option>
@@ -146,7 +146,7 @@ export function ConsumerInspector({
     <>
       <div className="flex flex-col">
         <label
-          className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider"
+          className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
           htmlFor={`${node.id}-watts`}
         >
           Leistung (W)
@@ -158,12 +158,12 @@ export function ConsumerInspector({
           value={node.data?.watts || 0}
           rules={[COMMON_RULES.strictlyPositive]}
           onValidChange={(val) => onUpdateNodeData?.(node.id, { watts: val })}
-          className="border border-border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-shadow"
+          className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
         />
       </div>
       <div className="flex flex-col">
         <label
-          className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider"
+          className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
           htmlFor={`${node.id}-hours`}
         >
           Nutzung (h/Tag)
@@ -177,7 +177,7 @@ export function ConsumerInspector({
           value={node.data?.hours || 0}
           rules={[COMMON_RULES.hours]}
           onValidChange={(val) => onUpdateNodeData?.(node.id, { hours: val })}
-          className="border border-border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-shadow"
+          className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
         />
       </div>
     </>
@@ -195,7 +195,7 @@ export function ChargerInspector({
     <>
       <div className="flex flex-col">
         <label
-          className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider"
+          className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
           htmlFor={`${node.id}-amps`}
         >
           Ladeleistung (A)
@@ -207,12 +207,12 @@ export function ChargerInspector({
           value={node.data?.amps || 0}
           rules={[COMMON_RULES.strictlyPositive]}
           onValidChange={(val) => onUpdateNodeData?.(node.id, { amps: val })}
-          className="border border-border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-shadow"
+          className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
         />
       </div>
       <div className="flex flex-col">
         <label
-          className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider"
+          className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
           htmlFor={`${node.id}-efficiency`}
         >
           Effizienz in %
@@ -225,7 +225,7 @@ export function ChargerInspector({
           value={node.data?.efficiency ?? 100}
           rules={[COMMON_RULES.efficiency]}
           onValidChange={(val) => onUpdateNodeData?.(node.id, { efficiency: val })}
-          className="border border-border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-shadow"
+          className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
         />
       </div>
     </>
@@ -242,7 +242,7 @@ export function FuseInspector({
   return (
     <div className="flex flex-col">
       <label
-        className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider"
+        className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
         htmlFor={`${node.id}-rating`}
       >
         Sicherung (A)
@@ -254,7 +254,7 @@ export function FuseInspector({
         value={node.data?.rating || 0}
         rules={[COMMON_RULES.strictlyPositive]}
         onValidChange={(val) => onUpdateNodeData?.(node.id, { rating: val })}
-        className="border border-border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-shadow"
+        className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
       />
     </div>
   );
@@ -279,7 +279,7 @@ export function ShorePowerInspector({
         RCD (FI-Schalter) 30mA installiert
       </label>
       {!node.data?.hasRcd && (
-        <div className="warn-card warn-card-critical text-xs p-2">
+        <div className="warn-card warn-card-critical p-2 text-xs">
           Ein FI-Schutzschalter (max. 30mA) ist bei Landstromanschlüssen vorgeschrieben (DIN VDE 0100-721).
         </div>
       )}
@@ -304,7 +304,7 @@ export function InverterInspector({
     <>
       <div className="flex flex-col">
         <label
-          className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider"
+          className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
           htmlFor={`${node.id}-continuousPower`}
         >
           Dauerleistung (W)
@@ -316,20 +316,21 @@ export function InverterInspector({
           value={node.data?.continuousPower || 0}
           rules={[COMMON_RULES.strictlyPositive]}
           onValidChange={(val) => onUpdateNodeData?.(node.id, { continuousPower: val })}
-          className="border border-border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-shadow"
+          className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
         />
       </div>
-      <div className="flex flex-col mt-4">
-        <label className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider">
+      <div className="mt-4 flex flex-col">
+        {/* Gruppenüberschrift, kein Steuerelement-Label (a11y: label bräuchte ein Control) */}
+        <span className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
           Gleichzeitige 230V Geräte
-        </label>
-        <div className="flex flex-col gap-1 max-h-32 overflow-y-auto border border-rule rounded p-1">
+        </span>
+        <div className="flex max-h-32 flex-col gap-1 overflow-y-auto rounded border border-rule p-1">
           {consumerNodes.map((consumer) => {
             const isChecked = (node.data?.concurrentDevices || []).includes(consumer.id);
             return (
               <label
                 key={consumer.id}
-                className="flex items-center gap-2 text-sm text-foreground cursor-pointer p-1 hover:bg-paper rounded"
+                className="flex cursor-pointer items-center gap-2 rounded p-1 text-sm text-foreground hover:bg-paper"
               >
                 <input
                   type="checkbox"
@@ -343,7 +344,7 @@ export function InverterInspector({
                   }}
                   className="rounded border-rule text-primary focus:ring-ring"
                 />
-                <span className="truncate flex-1">
+                <span className="flex-1 truncate">
                   {consumer.data?.label || '230V Verbraucher'} ({consumer.data?.watts || 0}W)
                 </span>
               </label>
@@ -366,7 +367,7 @@ export function Consumer230VInspector({
     <>
       <div className="flex flex-col">
         <label
-          className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider"
+          className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
           htmlFor={`${node.id}-watts230`}
         >
           Leistung 230V (W)
@@ -378,12 +379,12 @@ export function Consumer230VInspector({
           value={node.data?.watts || 0}
           rules={[COMMON_RULES.strictlyPositive]}
           onValidChange={(val) => onUpdateNodeData?.(node.id, { watts: val })}
-          className="border border-border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-shadow"
+          className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
         />
       </div>
       <div className="flex flex-col">
         <label
-          className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider"
+          className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
           htmlFor={`${node.id}-hours230`}
         >
           Nutzung (h/Tag)
@@ -397,7 +398,7 @@ export function Consumer230VInspector({
           value={node.data?.hours || 0}
           rules={[COMMON_RULES.hours]}
           onValidChange={(val) => onUpdateNodeData?.(node.id, { hours: val })}
-          className="border border-border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-shadow"
+          className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
         />
       </div>
     </>
@@ -415,7 +416,7 @@ export function SolarInspector({
     <>
       <div className="flex flex-col">
         <label
-          className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider"
+          className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
           htmlFor={`${node.id}-wattsSolar`}
         >
           Leistung (W)
@@ -427,12 +428,12 @@ export function SolarInspector({
           value={node.data?.watts || 0}
           rules={[COMMON_RULES.strictlyPositive]}
           onValidChange={(val) => onUpdateNodeData?.(node.id, { watts: val })}
-          className="border border-border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-shadow"
+          className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
         />
       </div>
       <div className="flex flex-col">
         <label
-          className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider"
+          className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
           htmlFor={`${node.id}-voltage`}
         >
           Arbeitsspannung (V)
@@ -446,12 +447,12 @@ export function SolarInspector({
           value={node.data?.voltage || 0}
           rules={[COMMON_RULES.strictlyPositive]}
           onValidChange={(val) => onUpdateNodeData?.(node.id, { voltage: val })}
-          className="border border-border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-shadow"
+          className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
         />
       </div>
       <div className="flex flex-col">
         <label
-          className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider"
+          className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
           htmlFor={`${node.id}-ampsSolar`}
         >
           Strom (A)
@@ -465,7 +466,7 @@ export function SolarInspector({
           value={node.data?.amps || 0}
           rules={[COMMON_RULES.strictlyPositive]}
           onValidChange={(val) => onUpdateNodeData?.(node.id, { amps: val })}
-          className="border border-border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-shadow"
+          className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
         />
       </div>
     </>
@@ -483,7 +484,7 @@ export function RoofWindowInspector({
     <>
       <div className="flex flex-col">
         <label
-          className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider"
+          className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
           htmlFor={`${node.id}-width`}
         >
           Breite (cm)
@@ -495,12 +496,12 @@ export function RoofWindowInspector({
           value={node.data?.width || 0}
           rules={[COMMON_RULES.strictlyPositive]}
           onValidChange={(val) => onUpdateNodeData?.(node.id, { width: val })}
-          className="border border-border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-shadow"
+          className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
         />
       </div>
       <div className="flex flex-col">
         <label
-          className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider"
+          className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
           htmlFor={`${node.id}-height`}
         >
           Länge (cm)
@@ -512,7 +513,7 @@ export function RoofWindowInspector({
           value={node.data?.height || 0}
           rules={[COMMON_RULES.strictlyPositive]}
           onValidChange={(val) => onUpdateNodeData?.(node.id, { height: val })}
-          className="border border-border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-shadow"
+          className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
         />
       </div>
     </>
@@ -530,7 +531,7 @@ export function RoofSolarInspector({
     <>
       <div className="flex flex-col">
         <label
-          className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider"
+          className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
           htmlFor={`${node.id}-width2`}
         >
           Breite (cm)
@@ -542,12 +543,12 @@ export function RoofSolarInspector({
           value={node.data?.width || 0}
           rules={[COMMON_RULES.strictlyPositive]}
           onValidChange={(val) => onUpdateNodeData?.(node.id, { width: val })}
-          className="border border-border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-shadow"
+          className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
         />
       </div>
       <div className="flex flex-col">
         <label
-          className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider"
+          className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
           htmlFor={`${node.id}-height2`}
         >
           Länge (cm)
@@ -559,12 +560,12 @@ export function RoofSolarInspector({
           value={node.data?.height || 0}
           rules={[COMMON_RULES.strictlyPositive]}
           onValidChange={(val) => onUpdateNodeData?.(node.id, { height: val })}
-          className="border border-border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-shadow"
+          className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
         />
       </div>
       <div className="flex flex-col">
         <label
-          className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider"
+          className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
           htmlFor={`${node.id}-wattsRoof`}
         >
           Leistung (Wp)
@@ -576,7 +577,7 @@ export function RoofSolarInspector({
           value={node.data?.watts || 0}
           rules={[COMMON_RULES.strictlyPositive]}
           onValidChange={(val) => onUpdateNodeData?.(node.id, { watts: val })}
-          className="border border-border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-shadow"
+          className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
         />
       </div>
     </>
@@ -596,7 +597,7 @@ export function ConduitInspector({
     <>
       <div className="flex flex-col">
         <label
-          className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider"
+          className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
           htmlFor="conduit-type-select"
         >
           Rohrtyp
@@ -605,7 +606,7 @@ export function ConduitInspector({
           id="conduit-type-select"
           value={node.data?.conduitType || 'EN 20'}
           onChange={(e) => onUpdateNodeData?.(node.id, { conduitType: e.target.value })}
-          className="border border-border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-shadow bg-card"
+          className="rounded border border-border bg-card px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
         >
           <option value="EN 20">EN 20 (16.9 mm Innen-Ø)</option>
           <option value="EN 25">EN 25 (21.4 mm Innen-Ø)</option>
@@ -614,12 +615,13 @@ export function ConduitInspector({
         </select>
       </div>
 
-      <div className="flex flex-col mt-4">
-        <label className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">
+      <div className="mt-4 flex flex-col">
+        {/* Gruppenüberschrift, kein Steuerelement-Label (a11y: label bräuchte ein Control) */}
+        <span className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
           Zugewiesene Kabel
-        </label>
+        </span>
         {edges && edges.length > 0 ? (
-          <div className="flex flex-col gap-2 max-h-48 overflow-y-auto p-2 border border-rule rounded">
+          <div className="flex max-h-48 flex-col gap-2 overflow-y-auto rounded border border-rule p-2">
             {(() => {
               const assignedEdges = node.data?.assignedEdges || [];
               const assignedEdgesSet = new Set(assignedEdges);
@@ -632,7 +634,7 @@ export function ConduitInspector({
                 return (
                   <label
                     key={edge.id}
-                    className="flex items-center gap-2 text-sm text-foreground cursor-pointer p-1 hover:bg-paper rounded"
+                    className="flex cursor-pointer items-center gap-2 rounded p-1 text-sm text-foreground hover:bg-paper"
                   >
                     <input
                       type="checkbox"
@@ -650,7 +652,7 @@ export function ConduitInspector({
                       }}
                       className="rounded border-rule text-primary focus:ring-ring"
                     />
-                    <span className="truncate flex-1">
+                    <span className="flex-1 truncate">
                       Kabel ({length}m, {crossSection}mm²)
                     </span>
                   </label>
@@ -659,7 +661,7 @@ export function ConduitInspector({
             })()}
           </div>
         ) : (
-          <div className="text-xs text-muted-foreground italic p-2 bg-paper rounded border border-rule">
+          <div className="rounded border border-rule bg-paper p-2 text-xs italic text-muted-foreground">
             Keine Kabel im Plan vorhanden.
           </div>
         )}

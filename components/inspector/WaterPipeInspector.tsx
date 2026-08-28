@@ -1,5 +1,5 @@
 import React from 'react';
-import { Edge } from 'reactflow';
+import { type Edge } from 'reactflow';
 import { ValidatingInput, COMMON_RULES } from '../ui/ValidatingInput';
 import { usePlannerStore } from '../../store/usePlannerStore';
 

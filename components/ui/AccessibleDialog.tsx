@@ -63,8 +63,9 @@ export function AccessibleDialog({
         panel.focus();
         return;
       }
-      const firstElement = focusable[0];
-      const lastElement = focusable[focusable.length - 1];
+      const firstElement = focusable.at(0);
+      const lastElement = focusable.at(-1);
+      if (!firstElement || !lastElement) return;
       if (event.shiftKey && document.activeElement === firstElement) {
         event.preventDefault();
         lastElement.focus();
@@ -87,6 +88,9 @@ export function AccessibleDialog({
   if (!open) return null;
 
   return (
+    // Backdrop-Klick ist nur ein Zeiger-Shortcut; der tastaturzugängliche Weg
+    // ist Escape (onKeyDown) plus Focus-Trap — das Dialog-Pattern (WAI-APG).
+    // Das a11y-Gate darüber liegt bei axe (tests/e2e/a11y.spec.ts).
     <div
       className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 p-4"
       onMouseDown={(event) => {

@@ -15,7 +15,7 @@ import { usePlannerStore, getDerivedSystemState } from './usePlannerStore';
 import { TEMPLATE_MINIMALIST } from '../components/planner/templates';
 import * as layoutUtils from '../components/planner/utils/layout';
 import type { Node, Edge } from 'reactflow';
-import { CableEdgeData } from '../components/edges/CableEdge';
+import { type CableEdgeData } from '../components/edges/CableEdge';
 
 vi.mock('../components/planner/utils/layout', () => ({
   getLayoutedElements: vi.fn((nodes, edges) => ({
@@ -64,10 +64,10 @@ describe('usePlannerStore - extended coverage', () => {
       });
 
       expect(layoutUtils.getLayoutedElements).toHaveBeenCalled();
-      const args = vi.mocked(layoutUtils.getLayoutedElements).mock.calls[0];
+      const args = vi.mocked(layoutUtils.getLayoutedElements).mock.calls[0]!;
       expect(Array.isArray(args[0])).toBe(true);
       expect(Array.isArray(args[1])).toBe(true);
-      expect(usePlannerStore.getState().nodes[0].position).toEqual({ x: 10, y: 20 });
+      expect(usePlannerStore.getState().nodes[0]!.position).toEqual({ x: 10, y: 20 });
     });
 
     it('layouts water nodes when viewMode is water', () => {
@@ -85,9 +85,9 @@ describe('usePlannerStore - extended coverage', () => {
       });
 
       expect(layoutUtils.getLayoutedElements).toHaveBeenCalled();
-      const args = vi.mocked(layoutUtils.getLayoutedElements).mock.calls[0];
+      const args = vi.mocked(layoutUtils.getLayoutedElements).mock.calls[0]!;
       expect(args[0]).toEqual([node]);
-      expect(usePlannerStore.getState().waterNodes[0].position).toEqual({ x: 10, y: 20 });
+      expect(usePlannerStore.getState().waterNodes[0]!.position).toEqual({ x: 10, y: 20 });
       expect(usePlannerStore.getState().nodes).toEqual([]);
     });
 
@@ -126,6 +126,7 @@ describe('usePlannerStore - extended coverage', () => {
       usePlannerStore.getState().handleChangeLength('e1', 7.5);
 
       const updated = usePlannerStore.getState().edges[0];
+      if (!updated) throw new Error('Kante e1 fehlt nach Update');
       expect(updated.id).toBe('e1');
       expect(updated.data?.length).toBe(7.5);
       expect(updated.data?.crossSection).toBe(2.5);
@@ -166,9 +167,9 @@ describe('usePlannerStore - extended coverage', () => {
 
       usePlannerStore.getState().handleChangeFuseSize('e1', 25);
 
-      expect(usePlannerStore.getState().edges[0].data?.fuseSize).toBe(25);
-      expect(usePlannerStore.getState().edges[0].data?.length).toBe(3);
-      expect(usePlannerStore.getState().edges[0].data?.crossSection).toBe(2.5);
+      expect(usePlannerStore.getState().edges[0]!.data?.fuseSize).toBe(25);
+      expect(usePlannerStore.getState().edges[0]!.data?.length).toBe(3);
+      expect(usePlannerStore.getState().edges[0]!.data?.crossSection).toBe(2.5);
     });
 
     it('should not touch other edges when updating one', () => {
@@ -204,7 +205,7 @@ describe('usePlannerStore - extended coverage', () => {
 
       usePlannerStore.getState().handleChangeFuseSize('nonexistent', 40);
 
-      expect(usePlannerStore.getState().edges[0].data?.fuseSize).toBe(16);
+      expect(usePlannerStore.getState().edges[0]!.data?.fuseSize).toBe(16);
     });
   });
 

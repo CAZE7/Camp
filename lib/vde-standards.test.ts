@@ -35,7 +35,7 @@ describe('VDE Standards - Zentrale Konstanten', () => {
 
     it('sollten aufsteigend sortiert sein', () => {
       for (let i = 1; i < VDE_SIZES.length; i++) {
-        expect(VDE_SIZES[i]).toBeGreaterThan(VDE_SIZES[i - 1]);
+        expect(VDE_SIZES[i]!).toBeGreaterThan(VDE_SIZES[i - 1]!);
       }
     });
   });
@@ -48,7 +48,7 @@ describe('VDE Standards - Zentrale Konstanten', () => {
 
     it('größerer Querschnitt = höhere Strombelastbarkeit (monoton)', () => {
       for (let i = 1; i < VDE_SIZES.length; i++) {
-        expect(VDE_AMPACITY_RAW[VDE_SIZES[i]]).toBeGreaterThan(VDE_AMPACITY_RAW[VDE_SIZES[i - 1]]);
+        expect(VDE_AMPACITY_RAW[VDE_SIZES[i]!]!).toBeGreaterThan(VDE_AMPACITY_RAW[VDE_SIZES[i - 1]!]!);
       }
     });
   });
@@ -64,7 +64,7 @@ describe('VDE Standards - Zentrale Konstanten', () => {
 
     it('die Kabelgrenze bleibt unter der derateten Strombelastbarkeit', () => {
       for (const section of VDE_SIZES) {
-        expect(VDE_FUSE_MAP[section]).toBeLessThanOrEqual(VDE_AMPACITY_RAW[section]);
+        expect(VDE_FUSE_MAP[section]!).toBeLessThanOrEqual(VDE_AMPACITY_RAW[section]!);
       }
     });
   });
@@ -119,7 +119,7 @@ describe('VDE Standards - Zentrale Konstanten', () => {
     it('Alle Leerrohre sind aufsteigend sortiert', () => {
       const diameters = Object.values(VDE_CONDUIT_INNER_DIAMETERS);
       for (let i = 1; i < diameters.length; i++) {
-        expect(diameters[i]).toBeGreaterThan(diameters[i - 1]);
+        expect(diameters[i]!).toBeGreaterThan(diameters[i - 1]!);
       }
     });
 

@@ -39,7 +39,7 @@ export function Sidebar({ mode = 'electric', onMobileAdd }: SidebarProps) {
 
   const defaultOpen = DEFAULT_OPEN_CATEGORY[mode];
   const isCatOpen = (category: string) =>
-    isSearching || (category in manualOpen ? manualOpen[category] : category === defaultOpen);
+    isSearching || (category in manualOpen ? manualOpen[category] === true : category === defaultOpen);
   const toggleCat = (category: string) =>
     setManualOpen((previous) => ({
       ...previous,
@@ -72,7 +72,7 @@ export function Sidebar({ mode = 'electric', onMobileAdd }: SidebarProps) {
               <CategorySection
                 key={category}
                 title={category}
-                items={byCategory[category]}
+                items={byCategory[category] ?? []}
                 open={isCatOpen(category)}
                 onToggle={() => toggleCat(category)}
                 onMobileAdd={onMobileAdd}

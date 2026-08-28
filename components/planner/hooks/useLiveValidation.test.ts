@@ -1,8 +1,8 @@
 import { renderHook } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { useLiveValidation } from './useLiveValidation';
-import { Node, Edge } from 'reactflow';
-import { CableEdgeData } from '../../edges/CableEdge';
+import { type Node, type Edge } from 'reactflow';
+import { type CableEdgeData } from '../../edges/CableEdge';
 
 describe('useLiveValidation', () => {
   it('should return empty warnings for empty nodes and edges', () => {
@@ -50,7 +50,7 @@ describe('useLiveValidation', () => {
 
       const { result } = renderHook(() => useLiveValidation(nodes, edges));
       expect(result.current).toHaveLength(1);
-      expect(result.current[0].id).toBe('missing-fuse-e1-2');
+      expect(result.current[0]!.id).toBe('missing-fuse-e1-2');
     });
 
     it('should not generate warning if fuse size is set', () => {
@@ -202,7 +202,7 @@ describe('useLiveValidation', () => {
       ];
       const { result } = renderHook(() => useLiveValidation(nodes, []));
       expect(result.current).toHaveLength(1);
-      expect(result.current[0].id).toBe('dcdc-unconnected-1');
+      expect(result.current[0]!.id).toBe('dcdc-unconnected-1');
     });
 
     it('should not warn if dcdcCharger has input and output', () => {

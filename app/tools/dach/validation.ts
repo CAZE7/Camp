@@ -1,6 +1,6 @@
-import { Node } from 'reactflow';
-import { RoofNodeData } from '@/components/nodes/types';
-import { VehicleTemplate } from '@/lib/vehicleTemplates';
+import { type Node } from 'reactflow';
+import { type RoofNodeData } from '@/components/nodes/types';
+import { type VehicleTemplate } from '@/lib/vehicleTemplates';
 
 export const SAFE_MARGINS = {
   front: 15, // cm
@@ -46,9 +46,11 @@ export const validateRoofNodes = (nds: RoofNode[], selectedVehicle: VehicleTempl
   const overlapping = new Set<string>();
   for (let i = 0; i < relevant.length; i++) {
     const a = relevant[i];
+    if (!a) continue;
     const ra = rects.get(a.id)!;
     for (let j = i + 1; j < relevant.length; j++) {
       const b = relevant[j];
+      if (!b) continue;
       const rb = rects.get(b.id)!;
       if (rectsOverlap(ra, rb)) {
         overlapping.add(a.id);
@@ -84,6 +86,3 @@ export const validateRoofNodes = (nds: RoofNode[], selectedVehicle: VehicleTempl
     return node;
   });
 };
-
-export const isAnyRoofNodeInvalid = (nds: RoofNode[]): boolean =>
-  nds.some((node) => node.id !== 'background' && (node.data?.isInvalid || node.data?.isOverlapping));

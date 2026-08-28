@@ -88,7 +88,7 @@ describe('E2E-Selektoren — Vertrag mit tests/e2e', () => {
     const collect = (pattern: RegExp): void => {
       let match: RegExpExecArray | null = pattern.exec(specs);
       while (match !== null) {
-        used.add(match[1]);
+        used.add(match[1]!);
         match = pattern.exec(specs);
       }
     };

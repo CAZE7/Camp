@@ -22,7 +22,7 @@ keine Abnahme durch eine Fachkraft.
 ```bash
 npm ci          # exakte Abhängigkeiten aus dem Lockfile
 npm run dev     # http://localhost:3000/elektrik-planung/
-npm run check   # Typecheck + 1051 Tests
+npm run check   # Lint + Format + Typecheck (2 Profile) + 1265 Tests
 npm run build   # Static Export nach ./out
 ```
 
@@ -135,22 +135,28 @@ docs/                   Architektur-Entscheidungen und Nachweise
 Alle Angaben stammen aus Läufen auf dem aktuellen Stand
 (Commit-Reihe K1–K7, 2026-08-21, Node 22.22.3).
 
-| Prüfung                     | Befehl                                      | Ergebnis                                      |
-| --------------------------- | ------------------------------------------- | --------------------------------------------- |
-| Typecheck (Produktionscode) | `npm run typecheck`                         | **0 Fehler**                                  |
-| Typecheck (inkl. Tests)     | `npm run typecheck:tests`                   | **0 Fehler** — Einheiten gelten auch in Tests |
-| Unit-/Komponententests      | `npm test`                                  | **1051 Tests, 81 Dateien, grün**              |
-| Property-Tests (VDE)        | `npx vitest run lib/vde-properties.test.ts` | 30 Tests, ~17.000 generierte Fälle            |
-| Routing-Invarianten         | `npx vitest run components/edges/utils`     | 25 Szenarien × 7 Invarianten                  |
-| Build                       | `npm run build`                             | erfolgreich, `./out` 4,2 MB, 11 HTML-Seiten   |
-| Lockfile-Gate               | `npm run ci:verify-lockfile-gate`           | greift (npm ci scheitert bei Drift)           |
-| Lighthouse Accessibility    | Report vom 2026-08-20, Lighthouse 13.4.1    | **100 / 100** (Mobile und Desktop)            |
-| End-to-End                  | `npm run e2e`                               | **steht aus** — siehe unten                   |
+| Prüfung                     | Befehl                                      | Ergebnis                                                          |
+| --------------------------- | ------------------------------------------- | ----------------------------------------------------------------- |
+| Typecheck (Produktionscode) | `npm run typecheck`                         | **0 Fehler**, `noUncheckedIndexedAccess` in der Basis-tsconfig    |
+| Typecheck (inkl. Tests)     | `npm run typecheck:tests`                   | **0 Fehler** — Einheiten und Indexschärfe gelten auch in Tests    |
+| Lint (ESLint 10, flat)      | `npm run lint`                              | **0 Fehler** — u. a. consistent-type-imports, Tailwind-Sortierung |
+| Format (Prettier)           | `npm run format:check`                      | sauber, inkl. Tailwind-Klassensortierung                          |
+| Unit-/Komponententests      | `npm test`                                  | **1265 Tests, 101 Dateien, grün**                                 |
+| Coverage-Gate (lib/**)      | `npm run test:coverage`                     | Schwellen: Zeilen 90, Branches 85, Funktionen 90, Statements 95   |
+| Property-Tests (VDE)        | `npx vitest run lib/vde-properties.test.ts` | 30 Tests, ~17.000 generierte Fälle                                |
+| Routing-Invarianten         | `npx vitest run components/edges/utils`     | 25 Szenarien × 7 Invarianten                                      |
+| Design-Token-Gate           | `npx vitest run lib/designTokens.test.ts`   | 46 Tests, CSS per postcss geparst, WCAG-Kontrastpaare geprüft     |
+| Build                       | `npm run build`                             | erfolgreich, `./out` Static Export                                |
+| Lockfile-Gate               | `npm run ci:verify-lockfile-gate`           | greift (npm ci scheitert bei Drift)                               |
+| Dead-Code-Audit             | `npm run audit:dead-code`                   | knip: aktuell ohne Befund (bewusst kein CI-Gate, siehe ADR 0006)  |
+| Accessibility (axe, E2E)    | `npm run e2e -- a11y`                       | axe-Scan des gebauten Exports: critical/serious = Fail            |
+| Lighthouse Accessibility    | Report vom 2026-08-20, Lighthouse 13.4.1    | **100 / 100** historisch; der laufende Gate ist axe (Zeile oben)  |
+| End-to-End (REST der Suite) | `npm run e2e`                               | Playwright vs. gebauter Export, Chromium in CI installiert        |
 
-**Offener Punkt (ehrlich benannt):** Die Playwright-Suite ist vollständig
-geschrieben und in CI eingebunden, wurde aber noch **nicht ausgeführt**: der
-Browser-Download war in der Entwicklungsumgebung blockiert. Die drei
-geforderten grünen Läufe müssen im ersten CI-Lauf erbracht werden.
+**Offener Punkt (ehrlich benannt):** Die Playwright-Suite (inklusive des
+axe-a11y-Gates `tests/e2e/a11y.spec.ts`) ist vollständig geschrieben und in
+CI eingebunden, wird aber erst im CI-Lauf bewiesen: der Browser-Download
+war in der Entwicklungsumgebung blockiert (Playwright-CDN nicht erreichbar).
 Details und die stattdessen lokal erbrachten Belege: `docs/E2E-TESTS.md`.
 
 Der Lighthouse-Wert stammt aus Mission 1 (2026-08-20) und wurde seitdem nicht
@@ -167,7 +173,10 @@ npm run typecheck           # tsc --noEmit (Produktionscode)
 npm run typecheck:tests     # tsc --noEmit inklusive aller Testdateien
 npm test                    # Vitest einmalig
 npm run test:watch          # Vitest im Watch-Modus
-npm run check               # Typecheck + Tests
+npm run lint                # ESLint (flat config, eslint 10)
+npm run format:check        # Prettier inkl. Tailwind-Sortierung
+npm run check               # Lint + Format + Typecheck (2 Profile) + Tests
+npm run audit:dead-code     # knip: tote Dateien/Exports/Deps (nicht build-blockend)
 npm run build               # Static Export nach ./out
 npm run e2e                 # Playwright (benötigt ./out und Chromium)
 npm run routing:gallery     # Routing-Galerie neu erzeugen
@@ -187,12 +196,14 @@ Branch Protection: `docs/CI.md`.
 
 ## Architektur-Entscheidungen (ADRs)
 
-| ADR                                                            | Thema                      | Kurzfassung                                                         |
-| -------------------------------------------------------------- | -------------------------- | ------------------------------------------------------------------- |
-| [0001](docs/adr/0001-static-export-ohne-backend.md)            | Static Export ohne Backend | Keine Server, Daten bleiben im Browser — Preis: kein Geräteabgleich |
-| [0002](docs/adr/0002-react-flow-als-canvas.md)                 | React Flow als Canvas      | Knoten sind React — Preis: Kanten kennen fremde Handles nicht       |
-| [0003](docs/adr/0003-orthogonales-routing-statt-wegfindung.md) | Routing ohne Wegfindung    | Deterministisch und schnell — Preis: nicht optimal                  |
-| [0004](docs/adr/0004-vde-modell-konservativ-und-zentral.md)    | VDE-Modell                 | Eine Quelle, konservative Werte, typsichere Einheiten               |
+| ADR                                                                         | Thema                      | Kurzfassung                                                                    |
+| --------------------------------------------------------------------------- | -------------------------- | ------------------------------------------------------------------------------ |
+| [0001](docs/adr/0001-static-export-ohne-backend.md)                         | Static Export ohne Backend | Keine Server, Daten bleiben im Browser — Preis: kein Geräteabgleich            |
+| [0002](docs/adr/0002-react-flow-als-canvas.md)                              | React Flow als Canvas      | Knoten sind React — Preis: Kanten kennen fremde Handles nicht                  |
+| [0003](docs/adr/0003-orthogonales-routing-statt-wegfindung.md)              | Routing ohne Wegfindung    | Deterministisch und schnell — Preis: nicht optimal                             |
+| [0004](docs/adr/0004-vde-modell-konservativ-und-zentral.md)                 | VDE-Modell                 | Eine Quelle, konservative Werte, typsichere Einheiten                          |
+| [0005](docs/adr/0005-dark-engineering-theme-als-geprueftes-token-system.md) | Dark Engineering Theme     | Tokens als einzige Farbquelle, Radius ≤ 4 px, Kontraste per Test-Gate          |
+| [0006](docs/adr/0006-planer-korrektheitskonventionen.md)                    | Korrektheitskonventionen   | PX_PER_METER-Maßstab, Selbstschleifen-Verbot, Persistenz-Rettung, NUUIA-Muster |
 
 ## Weitere Nachweise
 

@@ -1,15 +1,12 @@
-import { Node, Edge } from 'reactflow';
+import { type Node, type Edge } from 'reactflow';
 
 export function checkHasSeriesConnection(nodes: Node[], edges: Edge[]): boolean {
   const nodeMap = new Map<string, Node>();
-  for (let i = 0; i < nodes.length; i++) {
-    const n = nodes[i];
+  for (const n of nodes) {
     nodeMap.set(n.id, n);
   }
 
-  for (let i = 0; i < edges.length; i++) {
-    const e = edges[i];
-
+  for (const e of edges) {
     const hasCorrectHandles =
       (e.sourceHandle?.includes('plus') && e.targetHandle?.includes('minus')) ||
       (e.sourceHandle?.includes('minus') && e.targetHandle?.includes('plus'));

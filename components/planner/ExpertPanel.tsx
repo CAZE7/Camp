@@ -5,7 +5,7 @@ import { usePlannerStore } from '../../store/usePlannerStore';
 import { calculateCrossSection, calculateMaxFuse } from '../../lib/electrical';
 import { VDE_INVERTER_EFFICIENCY, VDE_SOLAR_VMP_VOLTAGE, getSystemVoltage } from '../../lib/vde-standards';
 import { cn } from '@/lib/utils';
-import { Node, Edge } from 'reactflow';
+import { type Node, type Edge } from 'reactflow';
 import type { CableEdgeData } from '../edges/CableEdge';
 
 /* ─── Knowledge Database ─── */
@@ -327,31 +327,31 @@ function LiveRecommendationCard({
 
   if (I > 0) {
     return (
-      <div className="mx-4 mt-4 p-4 rounded-xl bg-gradient-to-br from-bone/60 to-bone/30 border border-rule/50 shadow-lg backdrop-blur-md relative overflow-hidden">
-        <div className="absolute -right-4 -top-4 w-16 h-16 bg-copper/10 rounded-full blur-xl pointer-events-none" />
-        <div className="absolute -left-4 -bottom-4 w-16 h-16 bg-moss/10 rounded-full blur-xl pointer-events-none" />
-        <h4 className="text-xs font-bold text-ink-soft uppercase tracking-wider mb-3 flex items-center gap-1.5">
+      <div className="from-bone/60 to-bone/30 border-rule/50 relative mx-4 mt-4 overflow-hidden rounded-xl border bg-gradient-to-br p-4 shadow-lg backdrop-blur-md">
+        <div className="bg-copper/10 pointer-events-none absolute -right-4 -top-4 h-16 w-16 rounded-full blur-xl" />
+        <div className="bg-moss/10 pointer-events-none absolute -bottom-4 -left-4 h-16 w-16 rounded-full blur-xl" />
+        <h4 className="mb-3 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-ink-soft">
           <span className="h-1.5 w-1.5 rounded-full bg-copper"></span>
           Aktuelle Empfehlung{' '}
-          <span className="text-xs font-normal text-ink-soft normal-case">
+          <span className="text-xs font-normal normal-case text-ink-soft">
             {isStandardwert
               ? '(Berechnung basiert auf 2m Standardwert – bitte Kabel verbinden!)'
               : `(bei ${length.toFixed(1)}m Kabel)`}
           </span>
         </h4>
-        <div className="grid grid-cols-2 gap-3 relative z-10">
-          <div className="flex flex-col bg-bone/60 rounded-lg p-2.5 border border-rule/50">
-            <span className="text-xs text-muted-ink font-semibold mb-1">Kabelquerschnitt</span>
+        <div className="relative z-10 grid grid-cols-2 gap-3">
+          <div className="bg-bone/60 border-rule/50 flex flex-col rounded-lg border p-2.5">
+            <span className="text-muted-ink mb-1 text-xs font-semibold">Kabelquerschnitt</span>
             <span className="text-lg font-black text-ink">
-              {crossSection} <span className="text-xs font-bold text-muted-ink">mm²</span>
+              {crossSection} <span className="text-muted-ink text-xs font-bold">mm²</span>
             </span>
           </div>
-          <div className="flex flex-col bg-bone/60 rounded-lg p-2.5 border border-rule/50">
-            <span className="text-xs text-muted-ink font-semibold mb-1">Sicherung</span>
+          <div className="bg-bone/60 border-rule/50 flex flex-col rounded-lg border p-2.5">
+            <span className="text-muted-ink mb-1 text-xs font-semibold">Sicherung</span>
             <span className="text-lg font-black text-ink">{fuseLabel}</span>
           </div>
-          <div className="col-span-2 flex justify-between items-center bg-bone/40 rounded-lg p-2 border border-rule/40">
-            <span className="text-xs text-ink-soft font-semibold">Erwarteter Strom:</span>
+          <div className="bg-bone/40 border-rule/40 col-span-2 flex items-center justify-between rounded-lg border p-2">
+            <span className="text-xs font-semibold text-ink-soft">Erwarteter Strom:</span>
             <span className="text-sm font-bold text-ink">{I.toFixed(1)} A</span>
           </div>
         </div>
@@ -384,8 +384,9 @@ export function ExpertPanel() {
   }, []);
 
   const currentKnowledge = useMemo(() => {
-    if (selectedNodes.length === 0) return DEFAULT_TIP;
-    let nodeType = selectedNodes[0].type;
+    const firstSelected = selectedNodes.at(0);
+    if (!firstSelected) return DEFAULT_TIP;
+    let nodeType = firstSelected.type;
     if (!nodeType) return DEFAULT_TIP;
 
     // Map new charger types to the general charger knowledge
@@ -418,19 +419,19 @@ export function ExpertPanel() {
     >
       {/* Expanded Panel */}
       {isOpen && (
-        <div className="bg-bone/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-rule overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-300">
+        <div className="bg-bone/95 overflow-hidden rounded-2xl border border-rule shadow-2xl backdrop-blur-xl duration-300 animate-in fade-in slide-in-from-bottom-4">
           {/* Header */}
           <div className={cn('flex items-center gap-3 px-5 py-4', 'bg-ink')}>
             <span className="text-xl">{currentKnowledge.icon}</span>
-            <div className="flex-1 min-w-0">
-              <h3 className="text-sm font-black text-white truncate">{currentKnowledge.title}</h3>
-              <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-paper/70">
+            <div className="min-w-0 flex-1">
+              <h3 className="truncate text-sm font-black text-white">{currentKnowledge.title}</h3>
+              <p className="text-paper/70 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider">
                 Fachwissen &amp; Normen
               </p>
             </div>
             <button
               onClick={() => setIsOpen(false)}
-              className="flex h-11 w-11 items-center justify-center rounded-lg text-paper/70 transition-colors hover:bg-paper/10 hover:text-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-paper"
+              className="text-paper/70 hover:bg-paper/10 flex h-11 w-11 items-center justify-center rounded-lg transition-colors hover:text-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-paper"
               aria-label="Panel schließen"
             >
               <svg
@@ -441,7 +442,7 @@ export function ExpertPanel() {
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className="w-4 h-4"
+                className="h-4 w-4"
               >
                 <path d="M18 6 6 18" />
                 <path d="m6 6 12 12" />
@@ -451,19 +452,19 @@ export function ExpertPanel() {
 
           {/* Automatische Verbindung Erfolgs-Bestätigung */}
           {autoWireSummary && (
-            <div className="mx-4 mt-4 p-3.5 rounded-xl bg-moss/10 border border-moss/30 shadow-lg animate-in slide-in-from-top-2 fade-in duration-300">
+            <div className="bg-moss/10 border-moss/30 mx-4 mt-4 rounded-xl border p-3.5 shadow-lg duration-300 animate-in fade-in slide-in-from-top-2">
               <div className="flex items-start gap-2.5">
-                <span className="text-lg leading-none mt-0.5">✅</span>
-                <div className="flex-1 min-w-0">
+                <span className="mt-0.5 text-lg leading-none">✅</span>
+                <div className="min-w-0 flex-1">
                   <p className="text-xs font-black text-moss">Automatische Verbindung abgeschlossen</p>
-                  <p className="text-xs text-moss leading-snug mt-1">
+                  <p className="mt-1 text-xs leading-snug text-moss">
                     {autoWireSummary.edgeCount} Kabel verlegt · alle Sicherungen &amp; Querschnitte berechnet
                     (DIN VDE 0298-4 / 0100-721). Klicke auf eine Komponente für Details.
                   </p>
                 </div>
                 <button
                   onClick={() => setAutoWireSummary(null)}
-                  className="text-moss/60 hover:text-moss transition-colors p-0.5 rounded-md hover:bg-moss/10"
+                  className="text-moss/60 hover:bg-moss/10 rounded-md p-0.5 transition-colors hover:text-moss"
                   aria-label="Automatische Verbindung Zusammenfassung schließen"
                 >
                   <svg
@@ -474,7 +475,7 @@ export function ExpertPanel() {
                     strokeWidth="2.5"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    className="w-3.5 h-3.5"
+                    className="h-3.5 w-3.5"
                   >
                     <path d="M18 6 6 18" />
                     <path d="m6 6 12 12" />
@@ -485,16 +486,17 @@ export function ExpertPanel() {
           )}
 
           {/* Dynamic Calculation Card */}
-          {selectedNodes.length > 0 && (
-            <LiveRecommendationCard node={selectedNodes[0]} nodes={nodes} edges={edges} />
-          )}
+          {(() => {
+            const first = selectedNodes.at(0);
+            return first ? <LiveRecommendationCard node={first} nodes={nodes} edges={edges} /> : null;
+          })()}
 
           {/* Tip Accordion */}
-          <div className="max-h-96 overflow-y-auto overscroll-contain mt-2">
+          <div className="mt-2 max-h-96 overflow-y-auto overscroll-contain">
             {currentKnowledge.tips.map((tip, idx) => {
               const isExpanded = expandedTip === idx;
               return (
-                <div key={idx} className="border-b border-rule/40 last:border-b-0">
+                <div key={idx} className="border-rule/40 border-b last:border-b-0">
                   <button
                     onClick={() => setExpandedTip(isExpanded ? null : idx)}
                     className="group flex min-h-11 w-full items-center gap-3 px-5 py-3 text-left transition-colors hover:bg-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ink"
@@ -504,7 +506,7 @@ export function ExpertPanel() {
                     {/* Accent dot */}
                     <span
                       className={cn(
-                        'flex-shrink-0 w-2 h-2 rounded-full transition-all',
+                        'h-2 w-2 flex-shrink-0 rounded-full transition-all',
                         isExpanded ? currentKnowledge.color : 'bg-clay group-hover:bg-ink'
                       )}
                     />
@@ -525,7 +527,7 @@ export function ExpertPanel() {
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       className={cn(
-                        'w-4 h-4 text-ink-soft transition-transform duration-200',
+                        'h-4 w-4 text-ink-soft transition-transform duration-200',
                         isExpanded && 'rotate-180'
                       )}
                     >
@@ -537,18 +539,18 @@ export function ExpertPanel() {
                   {isExpanded && (
                     <div
                       id={`tip-content-${idx}`}
-                      className="px-5 pb-4 pl-10 animate-in slide-in-from-top-2 fade-in duration-200"
+                      className="px-5 pb-4 pl-10 duration-200 animate-in fade-in slide-in-from-top-2"
                     >
-                      <p className="text-sm text-ink-soft leading-relaxed">{tip.body}</p>
+                      <p className="text-sm leading-relaxed text-ink-soft">{tip.body}</p>
                       {tip.norm && (
-                        <span className="inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded-md bg-oxide/10 text-oxide text-xs font-bold uppercase tracking-wider border border-oxide/20">
+                        <span className="bg-oxide/10 border-oxide/20 mt-2 inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-bold uppercase tracking-wider text-oxide">
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
                             viewBox="0 0 24 24"
                             fill="none"
                             stroke="currentColor"
                             strokeWidth="2.5"
-                            className="w-3 h-3"
+                            className="h-3 w-3"
                           >
                             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                           </svg>
@@ -577,19 +579,19 @@ export function ExpertPanel() {
         <button
           onClick={() => setIsOpen(true)}
           className={cn(
-            'group flex items-center gap-2.5 pl-3 pr-4 py-3 rounded-2xl',
+            'group flex items-center gap-2.5 rounded-2xl py-3 pl-3 pr-4',
             'bg-gradient-to-br from-moss via-ink to-ink',
             'text-white shadow-xl',
             'hover:shadow-2xl',
             'transition-all duration-200',
-            'border border-moss/40',
+            'border-moss/40 border',
             'relative'
           )}
           aria-label="Hilfe und Fachwissen öffnen"
           title="Hilfe und Fachwissen öffnen"
         >
           {/* Die Auswahl wird über den Text angekündigt – ohne ablenkende Daueranimation. */}
-          <span className="relative flex items-center justify-center w-8 h-8 rounded-xl bg-white/15 border border-white/20 group-hover:bg-white/25 transition-colors">
+          <span className="relative flex h-8 w-8 items-center justify-center rounded-xl border border-white/20 bg-white/15 transition-colors group-hover:bg-white/25">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 24 24"
@@ -598,7 +600,7 @@ export function ExpertPanel() {
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="w-5 h-5"
+              className="h-5 w-5"
             >
               <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
               <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
@@ -606,7 +608,7 @@ export function ExpertPanel() {
           </span>
           <span className="relative flex flex-col items-start text-left">
             <span className="text-sm font-black leading-tight">Hilfe &amp; Fachwissen</span>
-            <span className="text-xs font-bold leading-tight text-paper/80">
+            <span className="text-paper/80 text-xs font-bold leading-tight">
               {selectedNodes.length > 0 ? 'Tipps für deine Auswahl' : 'Details und Normen'}
             </span>
           </span>

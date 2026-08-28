@@ -49,7 +49,9 @@ export {
   getEdgeDomain,
   getHandleDomain,
 } from './electrical';
-import { VDE_SIZES, getEdgeDomain } from './electrical';
+
+// Lokales Binding: der Re-Export oben bindet nichts in diesen Scope.
+import { getEdgeDomain } from './electrical';
 
 import type { Node, Edge } from 'reactflow';
 import {
@@ -72,10 +74,6 @@ import {
   type Volts,
   type Watts,
 } from './units';
-
-// Keep a typed local alias so consumers can write `VDECrossSection`.
-// electrical.ts does not mark VDE_SIZES `as const`, so this is `number`.
-export type VDECrossSection = (typeof VDE_SIZES)[number];
 
 // ============================================================================
 // LEERROHR / KABELKANAL (60% Maximum nach VDE 0100-520)
@@ -115,6 +113,22 @@ export const VDE_CABLE_OUTER_DIAMETERS: Record<number, number> = {
   120.0: 20.0,
 };
 
+// Fallback-Invariante einmal beweisen statt überall kaschieren: Die
+// Leerrohr-Rechnung fällt für unbekannte Querschnitte auf 2,5 mm² zurück —
+// ein Tabellenstand ohne diesen Eintrag wäre ein Laufzeit-Alarmsignal.
+const VDE_FALLBACK_CABLE_OUTER_DIAMETER: number = (() => {
+  const d = VDE_CABLE_OUTER_DIAMETERS[2.5];
+  if (d === undefined) {
+    throw new Error('VDE_CABLE_OUTER_DIAMETERS ohne 2.5-Eintrag — Leerrohr-Fallback ungültig');
+  }
+  return d;
+})();
+
+/** Kabelaußendurchmesser in mm; unbekannte Querschnitte fallen auf 2,5 mm² zurück. */
+export function cableOuterDiameter(cs: Mm2): number {
+  return VDE_CABLE_OUTER_DIAMETERS[cs] ?? VDE_FALLBACK_CABLE_OUTER_DIAMETER;
+}
+
 /**
  * Berechnet den Füllgrad eines Leerrohrs bei gegebenen Kabeln.
  *
@@ -132,8 +146,7 @@ export function calculateConduitFillPercent(
   const innerArea = Math.PI * Math.pow(innerDiameter / 2, 2);
 
   const totalCableArea = cableCrossSections.reduce((acc, cs) => {
-    const outerDiam = VDE_CABLE_OUTER_DIAMETERS[cs] ?? VDE_CABLE_OUTER_DIAMETERS[2.5];
-    return acc + Math.PI * Math.pow(outerDiam / 2, 2);
+    return acc + Math.PI * Math.pow(cableOuterDiameter(cs) / 2, 2);
   }, 0);
 
   return (totalCableArea / innerArea) * 100;
@@ -149,8 +162,7 @@ export function recommendConduitType(cableCrossSections: readonly Mm2[]): string
   for (const [type, diameter] of Object.entries(VDE_CONDUIT_INNER_DIAMETERS)) {
     const innerArea = Math.PI * Math.pow(diameter / 2, 2);
     const totalCableArea = cableCrossSections.reduce((acc, cs) => {
-      const outerDiam = VDE_CABLE_OUTER_DIAMETERS[cs] ?? VDE_CABLE_OUTER_DIAMETERS[2.5];
-      return acc + Math.PI * Math.pow(outerDiam / 2, 2);
+      return acc + Math.PI * Math.pow(cableOuterDiameter(cs) / 2, 2);
     }, 0);
     if ((totalCableArea / innerArea) * 100 <= VDE_MAX_CONDUIT_FILL_PERCENT) {
       return type;
@@ -195,6 +207,14 @@ export const VDE_BATTERY_DOD: Record<string, number> = {
   Gel: 0.5,
   Blei: 0.3,
 };
+
+// Referenz-Chemie (LiFePO4) einmal beweisen — die nutzbare-Kapazität-Rechnung
+// fällt für unbekannte Chemie-Strings darauf zurück (noUncheckedIndexedAccess).
+export const VDE_DOD_REFERENCE: number = (() => {
+  const reference = VDE_BATTERY_DOD.LiFePO4;
+  if (reference === undefined) throw new Error('VDE_BATTERY_DOD ohne LiFePO4-Eintrag — Referenz ungültig');
+  return reference;
+})();
 
 // ============================================================================
 // SYSTEMSPANNUNG & KANTENSTRÖME (EINZIGE QUELLE FÜR STROM-BERECHNUNGEN)
@@ -256,6 +276,7 @@ export function getSystemVoltage(nodes: Node[], preferredBatteryId?: string): Vo
 
   // Fallback: chemiebasierte Schätzung der Vorrangbatterie
   const first = ordered[0];
+  if (!first) return DEFAULT_SYSTEM_VOLTAGE;
   const chemistry = String((first.data as { chemistry?: string })?.chemistry || '').toLowerCase();
   if (chemistry === 'agm' || chemistry === 'lead' || chemistry === 'gel') {
     return LEAD_SYSTEM_VOLTAGE;
@@ -354,8 +375,7 @@ export function calculateEdgeCurrent(
   let totalConsumerAmps: Amps = ZERO_AMPS;
   let totalChargerAmps: Amps = ZERO_AMPS;
   const hasMppt = nodes.some((n) => n.type === 'mpptController' || n.type === 'charger');
-  for (let i = 0; i < nodes.length; i++) {
-    const n = nodes[i];
+  for (const n of nodes) {
     const nData = n.data as Record<string, unknown> | undefined;
     if (n.type === 'consumer') {
       totalConsumerAmps = addAmps(totalConsumerAmps, currentAt(loadOf(nData), voltage));

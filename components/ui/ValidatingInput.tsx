@@ -86,7 +86,7 @@ export function ValidatingInput({
   };
 
   return (
-    <div className="flex flex-col w-full">
+    <div className="flex w-full flex-col">
       <input
         {...props}
         id={inputId}
@@ -95,7 +95,7 @@ export function ValidatingInput({
         onBlur={handleBlur}
         aria-invalid={error ? 'true' : undefined}
         aria-errormessage={error ? errorId : undefined}
-        className={`min-h-11 ${className || ''} ${error ? 'border-signal bg-signal/5 focus:ring-signal focus:border-signal' : ''}`}
+        className={`min-h-11 ${className || ''} ${error ? 'bg-signal/5 border-signal focus:border-signal focus:ring-signal' : ''}`}
       />
       {error && (
         <span id={errorId} role="alert" className="mt-1 text-xs font-semibold text-signal">

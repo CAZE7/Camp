@@ -29,7 +29,7 @@ function originalLogic(conduitType: string, assignedCables: any[]) {
     const crossSection = edgeData?.crossSection || 2.5; // default fallback
 
     // Get closest outer diameter if exact not found
-    const outerDiam = CABLE_OUTER_DIAMETERS[crossSection] || CABLE_OUTER_DIAMETERS[2.5];
+    const outerDiam = CABLE_OUTER_DIAMETERS[crossSection] || CABLE_OUTER_DIAMETERS[2.5]!;
     const cableArea = Math.PI * Math.pow(outerDiam / 2, 2);
     totalCableArea += cableArea;
   });
@@ -64,7 +64,7 @@ const CONDUIT_AREAS = Object.fromEntries(
 );
 
 function optimizedLogic(conduitType: string, assignedCables: any[]) {
-  const innerArea = CONDUIT_AREAS[conduitType as keyof typeof CONDUIT_SIZES];
+  const innerArea = CONDUIT_AREAS[conduitType as keyof typeof CONDUIT_SIZES]!;
 
   let totalCableArea = 0;
   // USE FOR LOOP instead of forEach
@@ -72,7 +72,7 @@ function optimizedLogic(conduitType: string, assignedCables: any[]) {
     const edge = assignedCables[i];
     const edgeData = edge.data;
     const crossSection = edgeData?.crossSection || 2.5;
-    const cableArea = CABLE_AREAS[crossSection] || CABLE_AREAS[2.5];
+    const cableArea = CABLE_AREAS[crossSection] || CABLE_AREAS[2.5]!;
     totalCableArea += cableArea;
   }
 

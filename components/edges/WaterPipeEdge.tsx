@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { BaseEdge, EdgeLabelRenderer, EdgeProps, useReactFlow } from 'reactflow';
+import { BaseEdge, EdgeLabelRenderer, type EdgeProps, useReactFlow } from 'reactflow';
 import { PIPE_COLORS } from './utils/edgeColors';
 import { usePlannerStore } from '../../store/usePlannerStore';
 import { calculateEdgePath, edgeLabelNudge } from './utils/pathUtils';

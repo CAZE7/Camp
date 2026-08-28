@@ -6,6 +6,8 @@ import {
   edgeDomainOf,
   nodeDomains,
   nodeMinimapColor,
+  nodeMinimapColorFrom,
+  resolveMinimapPalette,
   DOMAINS,
   type Domain,
 } from './domainFilter';
@@ -24,7 +26,7 @@ const edges: Edge<CableEdgeData>[] = [
 
 describe('edgeDomainOf', () => {
   it('uses the data domain when present', () => {
-    expect(edgeDomainOf(edges[0], nodes[0], nodes[1])).toBe('DC_12V');
+    expect(edgeDomainOf(edges[0]!, nodes[0]!, nodes[1]!)).toBe('DC_12V');
   });
 
   it('overrides to Solar when a solar node is involved', () => {
@@ -36,9 +38,9 @@ describe('edgeDomainOf', () => {
 
 describe('nodeDomains', () => {
   it('maps types to domains', () => {
-    expect(nodeDomains(nodes[0])).toEqual(['DC_12V']);
-    expect(nodeDomains(nodes[2])).toEqual(['AC_230V']);
-    expect(nodeDomains(nodes[3])).toEqual(['Solar']);
+    expect(nodeDomains(nodes[0]!)).toEqual(['DC_12V']);
+    expect(nodeDomains(nodes[2]!)).toEqual(['AC_230V']);
+    expect(nodeDomains(nodes[3]!)).toEqual(['Solar']);
   });
 });
 
@@ -84,5 +86,32 @@ describe('nodeMinimapColor', () => {
     expect(nodeMinimapColor({ id: 'u', type: 'unknown', position: { x: 0, y: 0 }, data: {} })).toBe(
       '#14110e'
     );
+  });
+});
+
+describe('resolveMinimapPalette / nodeMinimapColorFrom', () => {
+  it('löst alle Domänen-Tokens samt ink einmal auf (jsdom: Fallbacks)', () => {
+    const palette = resolveMinimapPalette();
+    expect(palette).toEqual({
+      Solar: '#b45309',
+      AC_230V: '#2563eb',
+      DC_12V: '#dc2626',
+      ink: '#14110e',
+    });
+  });
+
+  it('liefert aus der Palette identische Farben wie der per-Node-Pfad', () => {
+    const palette = resolveMinimapPalette();
+    const cases: Array<[string, string]> = [
+      ['battery', '#dc2626'],
+      ['solar', '#b45309'],
+      ['roofSolar', '#b45309'],
+      ['unknown', '#14110e'],
+    ];
+    for (const [type, expected] of cases) {
+      const node = { id: type, type, position: { x: 0, y: 0 }, data: {} };
+      expect(nodeMinimapColorFrom(palette, node)).toBe(expected);
+      expect(nodeMinimapColorFrom(palette, node)).toBe(nodeMinimapColor(node));
+    }
   });
 });

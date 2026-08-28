@@ -16,7 +16,7 @@ import {
   waypointsToSegments,
   edgesToCrossingSegments,
   MAX_ACCEPTABLE_CROSSINGS,
-  Segment,
+  type Segment,
 } from './orthogonalRouting';
 
 describe('direction vectors', () => {
@@ -47,7 +47,7 @@ describe('routeWaypoints', () => {
     for (let i = 0; i < pts.length - 1; i++) {
       const a = pts[i];
       const b = pts[i + 1];
-      expect(a.x === b.x || a.y === b.y).toBe(true);
+      expect(a?.x === b?.x || a?.y === b?.y).toBe(true);
     }
   });
 
@@ -63,7 +63,7 @@ describe('routeWaypoints', () => {
     });
     expect(base[0]).toEqual({ x: 0, y: 0 });
     expect(base[base.length - 1]).toEqual({ x: 100, y: 100 });
-    expect(base[1].x).toBe(70); // (0+100)/2 + 20
+    expect(base[1]!.x).toBe(70); // (0+100)/2 + 20
   });
 
   it('routes around (loop) when target is behind the source', () => {
@@ -108,7 +108,7 @@ describe('avoidObstacles', () => {
 
     // Der Pfad darf das aufgeblähte Hindernis nicht mehr kreuzen.
     for (let i = 0; i < routed.length - 1; i++) {
-      expect(segmentCrossesRect(routed[i], routed[i + 1], { x: 70, y: 70, width: 60, height: 60 })).toBe(
+      expect(segmentCrossesRect(routed[i]!, routed[i + 1]!, { x: 70, y: 70, width: 60, height: 60 })).toBe(
         false
       );
     }
@@ -181,8 +181,8 @@ describe('nodesToObstacles', () => {
       new Set(['a', 'b'])
     );
     expect(rects).toHaveLength(1);
-    expect(rects[0].x).toBe(200);
-    expect(rects[0].width).toBeGreaterThan(0);
+    expect(rects[0]!.x).toBe(200);
+    expect(rects[0]!.width).toBeGreaterThan(0);
   });
 });
 
@@ -347,12 +347,12 @@ describe('parallele Lanes bleiben geometrisch getrennt (A5)', () => {
         offset,
       })
     );
-    const xs = lanes.map((points) => points[1].x);
+    const xs = lanes.map((points) => points[1]!.x);
     expect(xs[0]).toBe(200 - 16);
     expect(xs[1]).toBe(200);
     expect(xs[2]).toBe(200 + 16);
-    expect(Math.abs(xs[1] - xs[0])).toBe(16);
-    expect(Math.abs(xs[2] - xs[1])).toBe(16);
+    expect(Math.abs(xs[1]! - xs[0]!)).toBe(16);
+    expect(Math.abs(xs[2]! - xs[1]!)).toBe(16);
     expect(new Set(xs).size).toBe(3);
   });
 });

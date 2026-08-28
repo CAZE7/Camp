@@ -42,8 +42,8 @@ export function PlannerInspector() {
 
   const calculatedSolarWatts = useAppStore((state) => state.calculatedSolarWatts);
 
-  const selectedEdgeId = selectedEdges.length > 0 ? selectedEdges[0].id : null;
-  const selectedNodeId = selectedNodes.length > 0 ? selectedNodes[0].id : null;
+  const selectedEdgeId = selectedEdges.at(0)?.id ?? null;
+  const selectedNodeId = selectedNodes.at(0)?.id ?? null;
 
   const selectedEdge =
     edges.find((e) => e.id === selectedEdgeId) || waterEdges?.find((e) => e.id === selectedEdgeId) || null;

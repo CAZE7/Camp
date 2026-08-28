@@ -54,19 +54,39 @@ function specDomains(type: string | undefined): Domain[] {
   return spec.domains.filter((domain): domain is Domain => domain !== 'WATER');
 }
 
-function minimapEntry(type: string | undefined): { token: string; fallback: string } | undefined {
-  const domains = specDomains(type);
+/**
+ * Einmal pro Render aufgelöste Minimap-Farben (Token → konkreter Wert).
+ *
+ * Hintergrund: `cssToken` kostet pro Aufruf ein `getComputedStyle` — das
+ * Minimap-`nodeColor`-Callback läuft aber pro Node, also bei 40+ Bauteilen
+ * dutzende Male pro Render. Die Palette löst die wenigen Tokens einmal auf;
+ * pro Node bleibt dann nur ein Record-Zugriff.
+ */
+export type MinimapPalette = Record<Domain, string> & { ink: string };
+
+/** Löst alle Minimap-Tokens EINMAL auf (pro Palette genau ein getComputedStyle-Lauf). */
+export function resolveMinimapPalette(): MinimapPalette {
+  return {
+    Solar: cssToken(DOMAIN_TOKEN.Solar.token, DOMAIN_TOKEN.Solar.fallback),
+    AC_230V: cssToken(DOMAIN_TOKEN.AC_230V.token, DOMAIN_TOKEN.AC_230V.fallback),
+    DC_12V: cssToken(DOMAIN_TOKEN.DC_12V.token, DOMAIN_TOKEN.DC_12V.fallback),
+    ink: cssToken('--ink', '#14110e'),
+  };
+}
+
+/** Domänenfarbe eines Nodes aus einer bereits aufgelösten Palette (kein CSS-Zugriff). */
+export function nodeMinimapColorFrom(palette: MinimapPalette, node: Node): string {
+  // Dachaufbauten (roofSolar) sind keine Planer-Bauteile, tauchen aber als
+  // Nodes auf — sie behalten ihre Solar-Signatur.
+  if (node.type === 'roofSolar') return palette.Solar;
+  const domains = specDomains(node.type);
   const signature = SIGNATURE_ORDER.find((domain) => domains.includes(domain));
-  return signature ? DOMAIN_TOKEN[signature] : undefined;
+  return signature ? palette[signature] : palette.ink;
 }
 
 /** Domänenfarbe eines Nodes für die Minimap (aufgelöst, für SVG-fill geeignet). */
 export function nodeMinimapColor(node: Node): string {
-  // Dachaufbauten (roofSolar) sind keine Planer-Bauteile, tauchen aber als
-  // Nodes auf — sie behalten ihre Solar-Signatur.
-  if (node.type === 'roofSolar') return cssToken('--wire-solar', '#b45309');
-  const entry = minimapEntry(node.type);
-  return entry ? cssToken(entry.token, entry.fallback) : cssToken('--ink', '#14110e');
+  return nodeMinimapColorFrom(resolveMinimapPalette(), node);
 }
 
 /**

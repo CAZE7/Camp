@@ -1,7 +1,7 @@
 import { renderHook, act } from '@testing-library/react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { useDashboardMetrics } from './useDashboardMetrics';
-import { Node, Edge } from 'reactflow';
+import { type Node, type Edge } from 'reactflow';
 
 beforeEach(() => {
   vi.useFakeTimers();

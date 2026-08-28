@@ -3,7 +3,7 @@ import React from 'react';
 
 import { NodeResizer } from 'reactflow';
 import { cn } from '@/lib/utils';
-import { RoofNodeData } from './types';
+import { type RoofNodeData } from './types';
 
 const RoofWindowNode = function ({
   id,
@@ -38,19 +38,19 @@ const RoofWindowNode = function ({
       <div
         role="group"
         aria-label={`Dachfenster ${Math.round(width)} mal ${Math.round(height)} Zentimeter${isInvalid ? ', ragt aus der Safe Zone' : ''}${isOverlapping ? ', überlappt ein anderes Element' : ''}`}
-        aria-invalid={isInvalid || isOverlapping || undefined}
+
         className={cn(
           'relative flex h-full w-full items-center justify-center overflow-hidden border-2 bg-warn-info-bg text-warn-info transition-colors',
           selected ? 'ring-2 ring-warn-info ring-offset-2 ring-offset-paper' : '',
           state === 'invalid' && 'border-warn-critical bg-warn-critical-bg text-warn-critical',
-          state === 'overlap' && 'border-warn-warning ring-2 ring-warn-warning/40',
+          state === 'overlap' && 'ring-warn-warning/40 border-warn-warning ring-2',
           state === 'ok' && 'border-warn-info'
         )}
         style={{ width: '100%', height: '100%' }}
       >
         <div
           aria-hidden="true"
-          className="custom-drag-handle pointer-events-none absolute inset-2 border border-warn-info/50"
+          className="custom-drag-handle border-warn-info/50 pointer-events-none absolute inset-2 border"
         />
         <div className="px-1 text-center text-xs font-semibold">
           {data.label || 'Dachfenster'}
@@ -68,7 +68,7 @@ const RoofWindowNode = function ({
         {(isInvalid || isOverlapping) && (
           <div
             className={cn(
-              'absolute left-1 top-1 z-10 rounded-full px-2 py-0.5 caption-xs font-bold text-paper',
+              'caption-xs absolute left-1 top-1 z-10 rounded-full px-2 py-0.5 font-bold text-paper',
               isInvalid ? 'bg-warn-critical' : 'bg-warn-warning'
             )}
             aria-hidden="true"

@@ -32,7 +32,7 @@ import {
   type Watts,
 } from '../units';
 import {
-  CableEdge,
+  type CableEdge,
   MAX_CROSS_SECTION,
   MIN_CROSS_SECTION,
   VDE_MAX_DC_DROP_FRACTION,

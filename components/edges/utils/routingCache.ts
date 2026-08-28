@@ -1,5 +1,11 @@
-import { Node, Edge } from 'reactflow';
-import { NODE_FALLBACK_WIDTH, NODE_FALLBACK_HEIGHT, Point, Rect, Segment } from './orthogonalRouting';
+import { type Node, type Edge } from 'reactflow';
+import {
+  NODE_FALLBACK_WIDTH,
+  NODE_FALLBACK_HEIGHT,
+  type Point,
+  type Rect,
+  type Segment,
+} from './orthogonalRouting';
 
 /**
  * Caches the node bounding boxes once per `nodes` array reference.

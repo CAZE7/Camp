@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { BaseEdge, EdgeProps, EdgeLabelRenderer, useReactFlow } from 'reactflow';
+import { BaseEdge, type EdgeProps, EdgeLabelRenderer, useReactFlow } from 'reactflow';
 import { usePlannerStore, getDerivedSystemState } from '../../store/usePlannerStore';
 import { useShallow } from 'zustand/react/shallow';
 import { edgeLabelNudge, parallelLaneOffset, polarityPathOffset } from './utils/pathUtils';
@@ -23,6 +23,7 @@ import {
   calculateEdgeCurrent,
   getSystemVoltage,
 } from '../../lib/vde-standards';
+import { PX_PER_METER } from '../../lib/units';
 
 /** Ab so vielen Kanten wird die Kreuzungsprüfung übersprungen (Performance). */
 export const CROSSING_SCAN_EDGE_LIMIT = 120;
@@ -320,12 +321,12 @@ const CableEdge = function ({
     edgeDomain,
     sysVoltage,
   } = useMemo(() => {
-    // Pixel/100 als physische Näherung, OHNE 1-m-Mindestclamp: Der frühere
-    // Math.max(1, …) machte jede Verbindung unter 1 m zu „1,0 m“ — falsch für
-    // kurze Stichleitungen. `??` statt `||`, damit ein gespeichertes
-    // `length: 0` (z. B. Sammelschiene) nicht stillschweigend durch den
-    // Schätzwert ersetzt wird.
-    const physicalDistance = Math.hypot(targetX - sourceX, targetY - sourceY) / 100;
+    // Pixel/PX_PER_METER als physische Näherung, OHNE 1-m-Mindestclamp: Der
+    // frühere Math.max(1, …) machte jede Verbindung unter 1 m zu „1,0 m“ —
+    // falsch für kurze Stichleitungen. `??` statt `||`, damit ein
+    // gespeichertes `length: 0` (z. B. Sammelschiene) nicht stillschweigend
+    // durch den Schätzwert ersetzt wird.
+    const physicalDistance = Math.hypot(targetX - sourceX, targetY - sourceY) / PX_PER_METER;
     const length = data?.length ?? physicalDistance;
     const sourceNode = getNode(source);
     const targetNode = getNode(target);

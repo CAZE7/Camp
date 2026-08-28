@@ -186,7 +186,7 @@ export function OnboardingWizard() {
                     onClick={() => handleApplyTemplate(template.id)}
                     className={`flex min-h-11 w-full flex-col items-start gap-1 rounded-lg border p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                       template.id === recommendedId
-                        ? 'border-moss bg-moss/10 ring-1 ring-moss'
+                        ? 'bg-moss/10 border-moss ring-1 ring-moss'
                         : 'border-border hover:bg-accent'
                     }`}
                   >

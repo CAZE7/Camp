@@ -242,16 +242,16 @@ describe('findCablePath — invariants', () => {
   it('leaves to the right from a Right handle (first non-trivial step)', () => {
     const result = route(10, 10, 200, 80);
     const pts = result.waypoints;
-    expect(pts[1].x).toBeGreaterThan(pts[0].x);
-    expect(pts[1].y).toBe(pts[0].y);
+    expect(pts[1]!.x).toBeGreaterThan(pts[0]!.x);
+    expect(pts[1]!.y).toBe(pts[0]!.y);
   });
 
   it('arrives from the left into a Left handle', () => {
     const result = route(10, 10, 200, 80);
     const pts = result.waypoints;
     const n = pts.length;
-    expect(pts[n - 2].x).toBeLessThan(pts[n - 1].x);
-    expect(pts[n - 2].y).toBe(pts[n - 1].y);
+    expect(pts[n - 2]!.x).toBeLessThan(pts[n - 1]!.x);
+    expect(pts[n - 2]!.y).toBe(pts[n - 1]!.y);
   });
 
   it('routes a maze of three walls without collisions', () => {
@@ -392,7 +392,7 @@ describe('nodesToObstacles / cache / svg', () => {
       new Set(['a'])
     );
     expect(rects).toHaveLength(1);
-    expect(rects[0].x).toBe(50);
+    expect(rects[0]!.x).toBe(50);
   });
 
   it('heuristic never exceeds a known optimal remaining cost', () => {

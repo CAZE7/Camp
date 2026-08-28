@@ -45,7 +45,7 @@ const EPSILON = 1e-9;
 function polylineLength(points: Point[]): number {
   let total = 0;
   for (let i = 0; i < points.length - 1; i++) {
-    total += Math.hypot(points[i + 1].x - points[i].x, points[i + 1].y - points[i].y);
+    total += Math.hypot(points[i + 1]!.x - points[i]!.x, points[i + 1]!.y - points[i]!.y);
   }
   return total;
 }
@@ -87,10 +87,10 @@ describe('R1–R4 — Invarianten über alle 25 Szenarien', () => {
       const { waypoints } = orthogonalWaypoints(input);
 
       it('R1: beginnt und endet exakt an den Anschlusspunkten', () => {
-        expect(waypoints[0].x).toBeCloseTo(input.sourceX, 9);
-        expect(waypoints[0].y).toBeCloseTo(input.sourceY, 9);
-        expect(waypoints[waypoints.length - 1].x).toBeCloseTo(input.targetX, 9);
-        expect(waypoints[waypoints.length - 1].y).toBeCloseTo(input.targetY, 9);
+        expect(waypoints[0]!.x).toBeCloseTo(input.sourceX, 9);
+        expect(waypoints[0]!.y).toBeCloseTo(input.sourceY, 9);
+        expect(waypoints[waypoints.length - 1]!.x).toBeCloseTo(input.targetX, 9);
+        expect(waypoints[waypoints.length - 1]!.y).toBeCloseTo(input.targetY, 9);
       });
 
       it('R2: alle Segmente sind achsenparallel', () => {
@@ -331,8 +331,8 @@ describe('SVG-Ausgabe bleibt an die Wegpunkte gebunden', () => {
         continue;
       }
 
-      expect(path.startsWith(`M ${round(waypoints[0].x)} ${round(waypoints[0].y)}`)).toBe(true);
-      const last = waypoints[waypoints.length - 1];
+      expect(path.startsWith(`M ${round(waypoints[0]!.x)} ${round(waypoints[0]!.y)}`)).toBe(true);
+      const last = waypoints[waypoints.length - 1]!;
       expect(path.endsWith(`L ${round(last.x)} ${round(last.y)}`)).toBe(true);
     }
   });

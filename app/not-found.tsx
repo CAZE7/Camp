@@ -17,7 +17,7 @@ export default function NotFound() {
       <SiteHeader />
       <main id="main" className="mx-auto w-full max-w-2xl flex-1 px-5 py-16">
         <p className="label-eyebrow text-copper">Fehler 404</p>
-        <h1 className="mt-3 font-display text-3xl md:text-4xl font-semibold tracking-tight">
+        <h1 className="mt-3 font-display text-3xl font-semibold tracking-tight md:text-4xl">
           Diese Seite gibt es (noch) nicht.
         </h1>
         <p className="mt-3 text-base text-ink-soft">
@@ -30,7 +30,7 @@ export default function NotFound() {
             <li key={link.href}>
               <Link
                 href={link.href}
-                className="flex min-h-14 items-center justify-between px-5 py-3 text-sm hover:bg-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-inset"
+                className="flex min-h-14 items-center justify-between px-5 py-3 text-sm hover:bg-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ink"
               >
                 <span className="font-medium text-ink">{link.label}</span>
                 <span aria-hidden="true" className="text-copper">
