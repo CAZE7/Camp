@@ -197,9 +197,7 @@ describe('GitHub-Actions-Workflows', () => {
     const workflow = readWorkflow('deploy.yml');
     const buildSteps = workflow.jobs.build?.steps ?? [];
     // configure-pages ist per SHA gepinnt — suche nach dem Action-Namen ohne Ref.
-    const configurePages = buildSteps.find((step) =>
-      step.uses?.startsWith('actions/configure-pages@'),
-    );
+    const configurePages = buildSteps.find((step) => step.uses?.startsWith('actions/configure-pages@'));
     const staticBuild = buildSteps.find((step) => step.run?.trim() === 'npm run build');
 
     expect(configurePages?.id).toBe('pages');
