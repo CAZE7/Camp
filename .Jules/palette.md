@@ -67,3 +67,8 @@
 
 **Learning:** Standalone toggle buttons and segmented controls acting as pseudo-radio groups (like the 'Sommer'/'Winter' toggles) must convey which option is currently active to assistive technologies. Without this, screen reader users cannot perceive the current state or understand the result of their selection.
 **Action:** Always add `aria-pressed={condition}` to any button that visually toggles between active and inactive states.
+
+## 2026-08-28 - ARIA group roles for grouped toggle buttons
+
+**Learning:** When using segmented toggle buttons (like View Mode toggles) side-by-side, it is incorrect to use `role="tablist"` and `role="tab"` with `aria-selected` unless full keyboard arrow navigation and associated `tabpanel` structures are also implemented. Screen readers expect `tablist` to follow strict ARIA tab patterns.
+**Action:** For simple groupings of toggle buttons without custom arrow-key management, wrap them in a container with `role="group"` and use `aria-pressed` on the buttons themselves to indicate their active state.
