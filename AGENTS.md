@@ -39,7 +39,7 @@ Next.js-App (TypeScript, Tailwind, React Flow, Zustand) zur Planung von Camper-E
 
 - [ ] M9-1 Dependabot-Triage: dev-Gruppe #354 bei grünem CI mergen; Major-Bumps (#356 TS 7, #360 Tailwind 4, #357 lucide, #358 jsdom, #359 jest-dom, #361 knip) einzeln prüfen oder schließen — nie blind mergen. (Erledigt: #355 mit Next.js 16.3.3 Security-Fixes gemergt.)
 - [ ] M9-2 Jules-PR-Triage: #332 + #345 nach PR #348 auf Überschneidungen prüfen, rebasen oder schließen. (Erledigt: #330 als Duplikat geschlossen.)
-- [ ] M9-3 CI-Patches aus `docs/patches/` in `.github/workflows/` anwenden (Agenten-App hat keine workflows-Permission → manuell oder mit PAT).
+- [x] M9-3 CI-Patches aus `docs/patches/` in `.github/workflows/` anwenden (Quality Gate mit Lint/Format/Coverage, SHA-Pins, Smoke-Check integriert).
 - [ ] M9-4 `main` zum Default-Branch machen, Feature-Branch einmergen; danach 254 verifiziert gemergte Branches löschen (`docs/merged-branch-candidates.txt`).
 - [ ] M9-5 Visual Regression: Playwright-Screenshots für den Planner (hell+dunkel, 375 + 1280 px) gegen Baseline im CI.
 
