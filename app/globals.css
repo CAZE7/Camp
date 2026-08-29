@@ -460,11 +460,10 @@
     outline-offset: 4px;
   }
 
-  /* Kabel-Labels auf schmalen Displays ausblenden — sie verdecken dort mehr
-     Plan als sie erklären. Sichtbar bleiben sie bei Auswahl und nach Tap
-     (CableEdge steuert das per State, hier nur der Zoom-Fall). */
+  /* Kabel-Labels bleiben bei jedem Zoom sichtbar (M8-1). Auf schmalen
+     Displays nur die Schrift etwas dichter, nie display:none. */
   @media (max-width: 767px) {
-    .planner-zoom-detail .edge-label {
+    .edge-label {
       font-size: 11px;
       padding: 1px 4px;
     }
@@ -514,80 +513,18 @@
     transform: rotate(45deg);
   }
 
-  /* --- Drei Zoom-Detailstufen (M3.9) ------------------------------- */
+  /* M8-1: keine Zoom-Stufen mehr. Der Wrapper nimmt keinen Platz weg. */
   .node-presentation-shell {
-    position: relative;
-    display: block;
+    display: contents;
   }
-  .node-visual-content,
-  .node-medium-card,
-  .node-overview-marker {
-    transition:
-      opacity 180ms ease,
-      transform 180ms ease;
-  }
-  .node-medium-card,
-  .node-overview-marker {
-    position: absolute;
-    visibility: hidden;
-    opacity: 0;
-  }
-  .node-medium-card {
-    inset: 0;
-    align-items: center;
-    gap: 0.75rem;
+
+  /* M8-3: Karten haben eine Mindestbreite und brechen lange Inter-Texte,
+     statt sie über Nachbarn zu schieben. */
+  .react-flow__node .custom-drag-handle,
+  .react-flow__node [data-testid='planner-node'] {
+    min-width: 12rem;
     overflow: hidden;
-    border: 2px solid;
-    border-radius: 0.5rem;
-    background: var(--bone);
-    padding: 0.75rem;
-    box-shadow: 0 2px 8px rgba(20, 17, 14, 0.18);
-    cursor: grab;
-    pointer-events: auto;
-  }
-  .node-overview-marker {
-    left: 50%;
-    top: 50%;
-    width: 72px;
-    height: 72px;
-    transform: translate(-50%, -50%) scale(0.9);
-    align-items: center;
-    justify-content: center;
-    border: 4px solid var(--bone);
-    border-radius: 1rem;
-    box-shadow: 0 2px 10px rgba(20, 17, 14, 0.28);
-    cursor: grab;
-    pointer-events: auto;
-  }
-  /* 0.5–1.5: only synthetic label + component type; real handles stay active. */
-  .planner-zoom-standard .node-visual-content,
-  .planner-zoom-overview .node-visual-content {
-    visibility: hidden;
-    opacity: 0;
-  }
-  .planner-zoom-standard .node-visual-content .react-flow__handle,
-  .planner-zoom-overview .node-visual-content .react-flow__handle {
-    visibility: visible !important;
-  }
-  .planner-zoom-standard .node-medium-card {
-    display: flex;
-    visibility: visible;
-    opacity: 1;
-  }
-  /* <0.5: compact colour + registry icon, no textual label. */
-  .planner-zoom-overview .node-overview-marker {
-    display: flex;
-    visibility: visible;
-    opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
-  }
-  .planner-zoom-overview .edge-label {
-    display: none !important;
-  }
-  /* >1.5: reveal the complete legacy component card and all values. */
-  .planner-zoom-full .node-visual-content {
-    visibility: visible;
-    opacity: 1;
+    overflow-wrap: anywhere;
   }
 
   /* Auto-layout animates position changes; collision resolution uses the same
@@ -687,10 +624,31 @@
   --font-sans: 'Inter Variable', 'Source Sans 3', ui-sans-serif, system-ui, sans-serif;
   --font-display: 'Inter Variable', 'Source Sans 3', ui-sans-serif, system-ui, sans-serif;
   --font-heading: 'Inter Variable', 'Source Sans 3', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --space-1: 4px;
 }
 
 .font-mono {
   font-variant-numeric: tabular-nums;
+}
+
+/* M10-2: Hover / Active / Focus / Disabled an jedem Control, hell + dunkel. */
+.planner-shell .react-flow__controls-button:hover:not(:disabled) {
+  background-color: var(--surface-2);
+}
+.planner-shell button:active:not(:disabled) {
+  filter: brightness(0.96);
+}
+.planner-shell button:focus-visible,
+.planner-shell .react-flow__controls-button:focus-visible,
+.planner-shell a:focus-visible {
+  outline: 2px solid var(--accent-line);
+  outline-offset: 2px;
+}
+.planner-shell button:disabled,
+.planner-shell .react-flow__controls-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
 }
 
 /* M7-4 Dichte: 4-px-Spacing-Raster. Die React-Flow-Controls (Standard:

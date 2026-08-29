@@ -26,8 +26,6 @@ import {
   PLANNER_MAX_ZOOM,
   PLANNER_FIT_PADDING,
   PLANNER_SNAP_GRID,
-  PLANNER_OVERVIEW_ZOOM,
-  PLANNER_FULL_DETAIL_ZOOM,
 } from './constants';
 import { usePlannerStore } from '../../store/usePlannerStore';
 import { useAppStore } from '../../lib/store';
@@ -289,7 +287,7 @@ export function FlowCanvas() {
   }, [firstTappedHandle]);
 
   const edgeTypes = useMemo(() => ({ ...EDGE_TYPES, waterPipe: WaterPipeEdge }), []);
-  // Every component receives the same three zoom-level presentation. Touch
+  // M8-1: eine Darstellung für den gesamten Zoom-Bereich. Touch
   // additionally gets the dedicated drag handle; the visual group never does.
   const nodeTypes = useMemo(() => {
     const presented = withNodePresentations(NODE_TYPES);
@@ -493,7 +491,6 @@ export function FlowCanvas() {
     [viewMode, showConnectionFeedback]
   );
 
-  const isOverview = zoom < PLANNER_OVERVIEW_ZOOM;
   // Einmal pro Mount aufgelöst: getComputedStyle pro Node im
   // Minimap-Callback war bei größeren Plänen spürbar. Die Palette hält
   // Maske, Hintergrund und alle Domänenfarben in einem Memo.
@@ -625,7 +622,7 @@ export function FlowCanvas() {
           }}
           aria-label={`${viewMode === 'water' ? 'Wasserplan' : 'Elektrik-Schaltplan'} Arbeitsfläche`}
           style={{ backgroundColor: 'var(--canvas-bg)' }}
-          className={`${isOverview ? 'planner-zoom-overview' : zoom > PLANNER_FULL_DETAIL_ZOOM ? 'planner-zoom-full' : 'planner-zoom-standard'} ${isLayoutPending ? 'planner-layout-animating' : ''}`}
+          className={`planner-canvas ${isLayoutPending ? 'planner-layout-animating' : ''}`}
         >
           <CableRouteSync />
 
@@ -643,9 +640,9 @@ export function FlowCanvas() {
             size={2}
             style={{ opacity: 0.35 }}
           />
-          <Controls className="mb-20 overflow-hidden rounded-lg border border-border shadow-sm md:mb-4" />
+          <Controls className="planner-controls mb-20 overflow-hidden rounded-lg border border-border shadow-sm md:mb-4" />
           <MiniMap
-            className="mb-24 hidden overflow-hidden rounded-lg border border-border shadow-sm sm:block md:mb-24"
+            className="planner-minimap mb-24 hidden overflow-hidden rounded-lg border border-border shadow-sm sm:block md:mb-24"
             ariaLabel="Miniaturübersicht des Plans"
             nodeColor={(node) => nodeMinimapColorFrom(minimapColors.palette, node)}
             maskColor={minimapColors.mask}

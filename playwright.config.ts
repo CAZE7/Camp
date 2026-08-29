@@ -10,7 +10,8 @@ import { defineConfig, devices } from '@playwright/test';
  * Regeln aus AGENTS.md, die hier festgeschrieben sind:
  *   - keine Retries lokal (ein Test ist grün oder er ist kaputt);
  *     in CI genau 1 Retry, ausschließlich zur Diagnose von Flakiness.
- *   - Screenshots/Traces nur als Artefakt bei Fehlschlag, nie als Assertion.
+ *   - Traces nur als Artefakt bei Fehlschlag.
+ *   - M10-3: Screenshot-Baselines in tests/e2e/visual.spec.ts (maxDiffPixelRatio).
  *   - isolierte Browser-Kontexte (Playwright-Standard, `storageState` bleibt leer).
  *   - `expect`-Timeout großzügig genug für React-Flow-Layout, ohne
  *     `waitForTimeout` in den Tests selbst.

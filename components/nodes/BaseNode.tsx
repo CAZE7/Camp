@@ -34,7 +34,7 @@ export const BaseNode: React.FC<BaseNodeProps> = ({
       data-testid="planner-node"
       data-node-id={id}
       className={cn(
-        'relative min-w-52 rounded-2xl p-4 transition-all duration-300',
+        'relative min-w-52 overflow-hidden break-words rounded-2xl p-4 transition-all duration-300',
         'bg-card/80 border border-border shadow-lg backdrop-blur-md',
         'hover:-translate-y-0.5 hover:shadow-xl',
         selected && 'shadow-primary/20 ring-1 ring-[color:var(--accent-line)]',

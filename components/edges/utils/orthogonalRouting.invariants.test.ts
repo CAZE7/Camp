@@ -310,6 +310,7 @@ describe('R2/R5/R6/R7 — Eigenschaften über zufällige Geometrie', () => {
   });
 
   it('der Sicherheitsabstand um Hindernisse ist die dokumentierte Konstante', () => {
+    expect(OBSTACLE_MARGIN).toBeGreaterThanOrEqual(12);
     expect(OBSTACLE_MARGIN).toBe(14);
   });
 });

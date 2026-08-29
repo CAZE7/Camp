@@ -8,7 +8,7 @@ function FakeNode() {
 }
 
 describe('NodePresentation', () => {
-  it('provides overview icon, standard label/type and mounted full details', () => {
+  it('M8-1: zeigt immer die volle Karte, ohne Zoom-Overlays', () => {
     const Presented = withNodePresentations({ battery: FakeNode }).battery;
     if (!Presented) throw new Error('withNodePresentations lieferte kein battery-Preset');
     render(
@@ -21,12 +21,8 @@ describe('NodePresentation', () => {
       />
     );
     expect(screen.getByTestId('full-details')).toBeInTheDocument();
-    expect(screen.getByText('Aufbaubatterie')).toHaveClass('block');
-    expect(screen.getByText('Batterie')).toBeInTheDocument();
-    expect(document.querySelector('.node-overview-marker')).toBeInTheDocument();
-    expect(document.querySelector('.node-medium-card')).toHaveAttribute(
-      'aria-label',
-      'Aufbaubatterie, Batterie. Komponente im Plan.'
-    );
+    expect(document.querySelector('[data-node-kind="battery"]')).toBeInTheDocument();
+    expect(document.querySelector('.node-overview-marker')).not.toBeInTheDocument();
+    expect(document.querySelector('.node-medium-card')).not.toBeInTheDocument();
   });
 });

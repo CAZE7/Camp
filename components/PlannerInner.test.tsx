@@ -135,6 +135,7 @@ describe('PlannerInner — responsives Layout', () => {
 
     // Zeilenrichtung ab md statt erst ab lg.
     expect(shell().className).toContain('md:flex-row');
+    expect(shell().className).not.toContain('md:flex-rowdark');
 
     // Sidebar und Canvas sind ab md beide sichtbar.
     expect(column('planner-sidebar').className).toContain('md:flex');

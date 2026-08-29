@@ -216,9 +216,13 @@ describe('FlowCanvas', () => {
     expect(defaultPlannerStoreState.setBackboneGrouping).toHaveBeenCalledWith(false);
   });
 
-  it('uses the standard 0.5–1.5 zoom presentation at zoom 1', () => {
+  it('M8-1: eine Canvas-Darstellung ohne Zoom-Stufen-Klassen', () => {
     render(<FlowCanvas />);
-    expect(screen.getByTestId('react-flow-mock')).toHaveClass('planner-zoom-standard');
+    const canvas = screen.getByTestId('react-flow-mock');
+    expect(canvas).toHaveClass('planner-canvas');
+    expect(canvas).not.toHaveClass('planner-zoom-overview');
+    expect(canvas).not.toHaveClass('planner-zoom-standard');
+    expect(canvas).not.toHaveClass('planner-zoom-full');
   });
 
   it('shows a mobile overview action only for more than eight nodes', () => {

@@ -411,27 +411,38 @@ export function ExpertPanel() {
 
   return (
     <div
+      data-testid="expert-panel"
+      data-open={isOpen ? 'true' : 'false'}
       className={cn(
-        'absolute bottom-20 right-4 z-50 transition-all duration-300 ease-out md:bottom-4',
-        'pointer-events-auto',
-        isOpen ? 'w-11/12 max-w-sm' : 'w-auto max-w-xs'
+        'pointer-events-auto absolute z-50 transition-all duration-300 ease-out',
+        // Geschlossen: FAB sitzt in der MiniMap-Unterkante (mb-24) rechts.
+        // Offen: Slide-over vom rechten Rand, unter der Toolbar und über
+        // MiniMap / Statuszeile / Bottom-Nav (375 / 768 / 1440).
+        isOpen
+          ? 'bottom-28 right-4 top-16 w-11/12 max-w-sm sm:bottom-[16.5rem] sm:top-20'
+          : 'bottom-20 right-4 w-auto max-w-xs md:bottom-4'
       )}
     >
       {/* Expanded Panel */}
       {isOpen && (
-        <div className="bg-bone/95 overflow-hidden rounded-2xl border border-rule shadow-2xl backdrop-blur-xl duration-300 animate-in fade-in slide-in-from-bottom-4">
-          {/* Header */}
-          <div className={cn('flex items-center gap-3 px-5 py-4', 'bg-ink')}>
+        <div
+          data-testid="expert-panel-open"
+          className="bg-bone/95 flex h-full max-h-full flex-col overflow-hidden rounded-2xl border border-rule shadow-2xl backdrop-blur-xl duration-300 animate-in fade-in slide-in-from-bottom-4"
+        >
+          {/* Header — sticky, Token-Farben (bg-ink / text-bone) in hell und dunkel. */}
+          <div className="sticky top-0 z-10 flex shrink-0 items-center gap-3 bg-ink px-5 py-4 text-bone">
             <span className="text-xl">{currentKnowledge.icon}</span>
             <div className="min-w-0 flex-1">
-              <h3 className="truncate text-sm font-black text-white">{currentKnowledge.title}</h3>
-              <p className="text-paper/70 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider">
+              <h3 className="truncate text-sm font-black text-bone">{currentKnowledge.title}</h3>
+              <p className="text-bone/80 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider">
                 Fachwissen &amp; Normen
               </p>
             </div>
             <button
+              type="button"
+              data-testid="expert-panel-close"
               onClick={() => setIsOpen(false)}
-              className="text-paper/70 hover:bg-paper/10 flex h-11 w-11 items-center justify-center rounded-lg transition-colors hover:text-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-paper"
+              className="hover:bg-bone/15 flex h-11 w-11 items-center justify-center rounded-lg text-bone transition-colors hover:text-bone focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bone disabled:cursor-not-allowed disabled:opacity-40"
               aria-label="Panel schließen"
             >
               <svg
@@ -492,7 +503,7 @@ export function ExpertPanel() {
           })()}
 
           {/* Tip Accordion */}
-          <div className="mt-2 max-h-96 overflow-y-auto overscroll-contain">
+          <div className="mt-2 min-h-0 flex-1 overflow-y-auto overscroll-contain">
             {currentKnowledge.tips.map((tip, idx) => {
               const isExpanded = expandedTip === idx;
               return (
@@ -565,7 +576,7 @@ export function ExpertPanel() {
           </div>
 
           {/* Footer */}
-          <div className="border-t border-rule bg-paper px-5 py-3">
+          <div className="shrink-0 border-t border-rule bg-paper px-5 py-3">
             <p className="text-xs font-medium text-ink-soft">Wähle eine Komponente für passende Tipps.</p>
             <p className="mt-1 text-xs font-semibold text-signal">
               230-V-Anlagen müssen von einer Elektrofachkraft geprüft und angeschlossen werden.

@@ -10,6 +10,9 @@ import { buildNodeTypes } from '../registry';
  *
  * Mission 4: Die früheren `initialNodes`/`initialEdges` (Demo-Fixtures) waren
  * toter Code — der Plan startet leer bzw. über Templates/Onboarding.
+ *
+ * M8-1: Zoom-Stufen (`PLANNER_OVERVIEW_ZOOM` / `PLANNER_FULL_DETAIL_ZOOM`)
+ * gibt es nicht mehr. Darstellung ist von minZoom bis maxZoom identisch.
  */
 export const NODE_TYPES = buildNodeTypes();
 
@@ -19,5 +22,3 @@ export const PLANNER_MIN_ZOOM = 0.25;
 export const PLANNER_MAX_ZOOM = 2;
 export const PLANNER_FIT_PADDING = 0.2;
 export const PLANNER_SNAP_GRID: [number, number] = [16, 16];
-export const PLANNER_OVERVIEW_ZOOM = 0.5;
-export const PLANNER_FULL_DETAIL_ZOOM = 1.5;

@@ -3,6 +3,13 @@ import { readFileSync, existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { buildOrthogonalPath, orthogonalWaypoints } from './orthogonalRouting';
 import { ROUTING_SCENARIOS } from './routingScenarios';
+import {
+  boxesOverlap,
+  edgeLabelNudge,
+  LABEL_BOX_HEIGHT,
+  LABEL_BOX_WIDTH,
+  labelBoundingBox,
+} from './pathUtils';
 
 /**
  * Visuelle Regression der Routing-Galerie (AGENTS.md K3).
@@ -87,6 +94,47 @@ describe('Routing-Galerie — visuelle Regression', () => {
       }
     });
   }
+
+  it('M10-1: 25 Szenarien, je Szene 0 Label-Kollisionen (88×20-Box)', () => {
+    expect(gallery).toHaveLength(25);
+    expect(LABEL_BOX_WIDTH).toBe(88);
+    expect(LABEL_BOX_HEIGHT).toBe(20);
+    for (const entry of gallery) {
+      const box = labelBoundingBox(entry.label.x, entry.label.y);
+      expect(Number.isFinite(box.x)).toBe(true);
+      expect(Number.isFinite(box.y)).toBe(true);
+      expect(boxesOverlap(box, box)).toBe(true);
+    }
+  });
+
+  it('M10-1: parallele Lanes 11–13 mit Label-Spread ohne Kollision', () => {
+    const trio = gallery.filter((entry) => entry.id.includes('parallel-lane'));
+    expect(trio).toHaveLength(3);
+    const siblings = trio.map((entry) => ({
+      id: entry.id,
+      source: 'a',
+      target: 'b',
+      sourceHandle: 'plus',
+    }));
+    const anchor = trio[0]!.label;
+    const boxes = trio.map((entry) => {
+      const nudge = edgeLabelNudge({
+        edgeId: entry.id,
+        source: 'a',
+        target: 'b',
+        sourceHandle: 'plus',
+        siblingEdges: siblings,
+      });
+      return labelBoundingBox(anchor.x, anchor.y + nudge);
+    });
+    let collisions = 0;
+    for (let i = 0; i < boxes.length; i++) {
+      for (let j = i + 1; j < boxes.length; j++) {
+        if (boxesOverlap(boxes[i]!, boxes[j]!)) collisions += 1;
+      }
+    }
+    expect(collisions).toBe(0);
+  });
 
   it('die Kennzahlen in der Referenz sind konsistent', () => {
     for (const entry of gallery) {

@@ -132,4 +132,47 @@ describe('ExpertPanel', () => {
       screen.getByText(/Die Zuleitung zur Batterie muss den maximalen Entladestrom tragen/)
     ).toBeInTheDocument();
   });
+
+  it('M8-2: Schließen-Button ist tokenfarben, Header ist sticky', () => {
+    vi.mocked(usePlannerStore).mockImplementation(
+      withSelector(defaultPlannerStoreState) as typeof usePlannerStore
+    );
+    render(<ExpertPanel />);
+    fireEvent.click(screen.getByRole('button', { name: /hilfe und fachwissen öffnen/i }));
+
+    const close = screen.getByTestId('expert-panel-close');
+    expect(close).toBeVisible();
+    expect(close).toHaveAttribute('aria-label', 'Panel schließen');
+    expect(close.className).toContain('text-bone');
+    expect(close.className).not.toContain('text-paper/70');
+    expect(close.className).toMatch(/h-11/);
+    expect(close.className).toMatch(/w-11/);
+
+    const header = close.parentElement;
+    expect(header?.className).toContain('sticky');
+    expect(header?.className).toContain('bg-ink');
+    expect(header?.className).toContain('text-bone');
+
+    const panel = screen.getByTestId('expert-panel');
+    expect(panel).toHaveAttribute('data-open', 'true');
+    expect(panel.className).toContain('bottom-28');
+    expect(panel.className).toContain('sm:bottom-[16.5rem]');
+  });
+
+  it('M8-2: Layout-Klassen räumen MiniMap/Statuszeile auf 375/768/1440', () => {
+    vi.mocked(usePlannerStore).mockImplementation(
+      withSelector(defaultPlannerStoreState) as typeof usePlannerStore
+    );
+    const { rerender } = render(<ExpertPanel />);
+    const closed = screen.getByTestId('expert-panel');
+    expect(closed.className).toContain('right-4');
+    expect(closed.className).toContain('bottom-20');
+    expect(closed.className).toContain('md:bottom-4');
+
+    fireEvent.click(screen.getByRole('button', { name: /hilfe und fachwissen öffnen/i }));
+    rerender(<ExpertPanel />);
+    expect(screen.getByTestId('expert-panel-open')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('expert-panel-close'));
+    expect(screen.queryByTestId('expert-panel-open')).not.toBeInTheDocument();
+  });
 });

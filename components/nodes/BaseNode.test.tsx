@@ -11,6 +11,9 @@ describe('BaseNode Component', () => {
     const element = screen.getByTestId('planner-node');
     expect(element).toBeInTheDocument();
     expect(element).toHaveAttribute('data-node-id', 'node-1');
+    expect(element.className).toContain('min-w-52');
+    expect(element.className).toContain('overflow-hidden');
+    expect(element.className).toContain('break-words');
     expect(screen.getByText('Test Node')).toBeInTheDocument();
   });
 
