@@ -26,8 +26,6 @@ import {
   PLANNER_MAX_ZOOM,
   PLANNER_FIT_PADDING,
   PLANNER_SNAP_GRID,
-  PLANNER_OVERVIEW_ZOOM,
-  PLANNER_FULL_DETAIL_ZOOM,
 } from './constants';
 import { usePlannerStore } from '../../store/usePlannerStore';
 import { useAppStore } from '../../lib/store';
@@ -289,7 +287,7 @@ export function FlowCanvas() {
   }, [firstTappedHandle]);
 
   const edgeTypes = useMemo(() => ({ ...EDGE_TYPES, waterPipe: WaterPipeEdge }), []);
-  // Every component receives the same three zoom-level presentation. Touch
+  // M8-1: eine Darstellung für den gesamten Zoom-Bereich. Touch
   // additionally gets the dedicated drag handle; the visual group never does.
   const nodeTypes = useMemo(() => {
     const presented = withNodePresentations(NODE_TYPES);
@@ -493,7 +491,6 @@ export function FlowCanvas() {
     [viewMode, showConnectionFeedback]
   );
 
-  const isOverview = zoom < PLANNER_OVERVIEW_ZOOM;
   // Einmal pro Mount aufgelöst: getComputedStyle pro Node im
   // Minimap-Callback war bei größeren Plänen spürbar. Die Palette hält
   // Maske, Hintergrund und alle Domänenfarben in einem Memo.
@@ -625,13 +622,16 @@ export function FlowCanvas() {
           }}
           aria-label={`${viewMode === 'water' ? 'Wasserplan' : 'Elektrik-Schaltplan'} Arbeitsfläche`}
           style={{ backgroundColor: 'var(--canvas-bg)' }}
-          className={`${isOverview ? 'planner-zoom-overview' : zoom > PLANNER_FULL_DETAIL_ZOOM ? 'planner-zoom-full' : 'planner-zoom-standard'} ${isLayoutPending ? 'planner-layout-animating' : ''}`}
+          className={`planner-canvas ${isLayoutPending ? 'planner-layout-animating' : ''}`}
         >
           <CableRouteSync />
 
-          {/* M7-3: Statuszeile (Koordinaten/Zoom/Umfang) — ab md; auf
-              Touch-Geräten steht die Bottom-Navigation im Weg. */}
-          <Panel position="bottom-center" className="pointer-events-none hidden md:block">
+          {/* M7-3: Statuszeile ab lg. Auf dem 508-px-Tablet-Canvas (768 −
+              Sidebar) umbricht sie und läuft in FAB/Fachwissen. */}
+          <Panel
+            position="bottom-center"
+            className="pointer-events-none hidden max-w-[min(20rem,calc(100%-18rem))] lg:block"
+          >
             <PlannerStatusBar zoom={zoom} />
           </Panel>
           {/* M7-3: Punkt-Raster statt Linienraster — ingenieursüblich und
@@ -643,9 +643,15 @@ export function FlowCanvas() {
             size={2}
             style={{ opacity: 0.35 }}
           />
-          <Controls className="mb-20 overflow-hidden rounded-lg border border-border shadow-sm md:mb-4" />
+          {/* RF-Panel sitzt bei bottom:0 mit margin:15px — Tailwind-mb
+              verliert gegen die Shorthand. !bottom/!left mit !important.
+              Mobile: über Undo/Bottom-Nav. Ab md über der Statuszeile.
+              MiniMap erst ab lg (sonst ~200 px auf dem 508-px-Tablet-
+              Canvas) und mit !left-14 neben den Zoom-Controls. */}
+          <Controls className="planner-controls !bottom-32 overflow-hidden rounded-lg border border-border shadow-sm md:!bottom-14" />
           <MiniMap
-            className="mb-24 hidden overflow-hidden rounded-lg border border-border shadow-sm sm:block md:mb-24"
+            position="bottom-left"
+            className="planner-minimap !bottom-32 !left-14 hidden overflow-hidden rounded-lg border border-border shadow-sm lg:!bottom-14 lg:block"
             ariaLabel="Miniaturübersicht des Plans"
             nodeColor={(node) => nodeMinimapColorFrom(minimapColors.palette, node)}
             maskColor={minimapColors.mask}

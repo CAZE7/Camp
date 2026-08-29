@@ -128,9 +128,7 @@ export default function PlannerInner() {
     <ReactFlowProvider>
       <div
         data-testid="planner-shell"
-        className={`planner-shell relative flex h-dvh min-h-0 w-full shrink-0 flex-col overflow-hidden bg-background font-sans md:flex-row${
-          isDarkPlanner ? 'dark' : ''
-        }`}
+        className={`planner-shell relative flex h-dvh min-h-0 w-full shrink-0 flex-col overflow-hidden bg-background font-sans md:flex-row ${isDarkPlanner ? 'dark' : ''}`.trimEnd()}
       >
         {!hasOnboarded && <OnboardingWizard />}
 

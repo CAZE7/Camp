@@ -9,10 +9,29 @@ export const MINUS_LABEL_NUDGE = 48;
 export const PARALLEL_LABEL_SPREAD = 24;
 /**
  * Abstand zwischen gebündelten Leitungen derselben Trasse.
- * 20 px entsprechen bei Zoom 1 gut zwei Kabeldurchmessern und halten
- * parallele Leitungen klar trennbar, ohne die Trasse optisch aufzusprengen.
+ * 16 px (M10-1) halten parallele Leitungen klar trennbar, ohne die Trasse
+ * optisch aufzusprengen.
  */
-export const PARALLEL_LANE_SPREAD = 20;
+export const PARALLEL_LANE_SPREAD = 16;
+
+/** Kabel-Label-Box für Kollisionsprüfung (M8-3 / M10-1). */
+export const LABEL_BOX_WIDTH = 88;
+export const LABEL_BOX_HEIGHT = 20;
+
+export type LabelBox = { x: number; y: number; width: number; height: number };
+
+export function labelBoundingBox(centerX: number, centerY: number): LabelBox {
+  return {
+    x: centerX - LABEL_BOX_WIDTH / 2,
+    y: centerY - LABEL_BOX_HEIGHT / 2,
+    width: LABEL_BOX_WIDTH,
+    height: LABEL_BOX_HEIGHT,
+  };
+}
+
+export function boxesOverlap(a: LabelBox, b: LabelBox): boolean {
+  return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+}
 
 export interface PathParams {
   sourceX: number;
@@ -99,7 +118,7 @@ const cableTypeRank = (edge: LabelEdgeRef): number =>
  * Sortiert wird nach Kabeltyp (Plus → Minus → 230 V → Rest) und erst danach
  * nach id. Zwei Plus-Leitungen liegen damit immer direkt nebeneinander, auch
  * wenn ihre ids alphabetisch auseinanderfallen. Der Abstand beträgt
- * PARALLEL_LANE_SPREAD (16 px) je Lane.
+ * PARALLEL_LANE_SPREAD (16 px, M10-1) je Lane.
  */
 export const parallelLaneOffset = (input: {
   edgeId: string;

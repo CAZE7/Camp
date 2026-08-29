@@ -11,6 +11,10 @@ import {
   MINUS_LABEL_NUDGE,
   PARALLEL_LABEL_SPREAD,
   PARALLEL_LANE_SPREAD,
+  LABEL_BOX_WIDTH,
+  LABEL_BOX_HEIGHT,
+  labelBoundingBox,
+  boxesOverlap,
   parallelLaneOffset,
   cableLaneType,
 } from './pathUtils';
@@ -186,7 +190,7 @@ describe('parallelLaneOffset (Trassen-Bündelung)', () => {
     ).toBe(0);
   });
 
-  it('separates three parallel cables by exactly 20 px each (A5)', () => {
+  it('separates three parallel cables by exactly 16 px each (M10-1)', () => {
     const siblings = [
       { id: 'c', ...pair, sourceHandle: 'plus' },
       { id: 'a', ...pair, sourceHandle: 'plus' },
@@ -203,10 +207,10 @@ describe('parallelLaneOffset (Trassen-Bündelung)', () => {
       )
       .sort((x, y) => x - y);
 
-    expect(offsets).toEqual([-20, 0, 20]);
-    expect(PARALLEL_LANE_SPREAD).toBe(20);
-    expect(offsets[1]! - offsets[0]!).toBe(20);
-    expect(offsets[2]! - offsets[1]!).toBe(20);
+    expect(offsets).toEqual([-16, 0, 16]);
+    expect(PARALLEL_LANE_SPREAD).toBe(16);
+    expect(offsets[1]! - offsets[0]!).toBe(16);
+    expect(offsets[2]! - offsets[1]!).toBe(16);
   });
 
   it('groups identical cable types next to each other, regardless of edge id', () => {
@@ -249,5 +253,34 @@ describe('parallelLaneOffset (Trassen-Bündelung)', () => {
       siblingEdges: [...siblings].reverse(),
     });
     expect(first).toBe(second);
+  });
+});
+
+describe('M8-3 / M10-1 Label-Boxen', () => {
+  it('PARALLEL_LABEL_SPREAD hält 88×20-Boxen auseinander', () => {
+    expect(LABEL_BOX_WIDTH).toBe(88);
+    expect(LABEL_BOX_HEIGHT).toBe(20);
+    expect(PARALLEL_LABEL_SPREAD).toBeGreaterThanOrEqual(LABEL_BOX_HEIGHT);
+
+    const siblings = [
+      { id: 'e1', source: 'a', target: 'b', sourceHandle: 'plus' },
+      { id: 'e2', source: 'a', target: 'b', sourceHandle: 'plus' },
+      { id: 'e3', source: 'a', target: 'b', sourceHandle: 'plus' },
+    ];
+    const boxes = siblings.map((edge) => {
+      const nudge = edgeLabelNudge({
+        edgeId: edge.id,
+        source: 'a',
+        target: 'b',
+        sourceHandle: 'plus',
+        siblingEdges: siblings,
+      });
+      return labelBoundingBox(200, 50 + nudge);
+    });
+    for (let i = 0; i < boxes.length; i++) {
+      for (let j = i + 1; j < boxes.length; j++) {
+        expect(boxesOverlap(boxes[i]!, boxes[j]!)).toBe(false);
+      }
+    }
   });
 });

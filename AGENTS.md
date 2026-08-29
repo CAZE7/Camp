@@ -30,9 +30,9 @@ Next.js-App (TypeScript, Tailwind, React Flow, Zustand) zur Planung von Camper-E
 
 ## Mission 8: Bugfix-Runde — OFFEN (Nutzer-Feedback 28./29.08.)
 
-- [ ] M8-1 Zoom-Stufen abschaffen: Beim Rauszoomen verschwinden Inhalte zu früh und Symbole wechseln ihr Aussehen — das endet. `PLANNER_OVERVIEW_ZOOM`/`PLANNER_FULL_DETAIL_ZOOM` (constants.ts), `isOverview`-Logik (FlowCanvas.tsx), Zoom-CSS-Klassen, Tier-Overlays (NodePresentation.tsx) entfernen. Abnahme: Zoom 0,25–2 zeigt identische Darstellung, nichts verschwindet; Viewport-Culling statt Verstecken erlaubt; Tests/Galerie angepasst.
-- [ ] M8-2 Fachwissen-Panel (ExpertPanel.tsx): Schließen-Button unsichtbar (`text-paper/70` auf hellem Header) → Token-Farben; Slide-over mit sticky Header; keine Überlappung mit MiniMap / Übersicht-Button / Statuszeile. Abnahme: X auf 375/768/1440 px sichtbar/klickbar.
-- [ ] M8-3 Schrift-Überlappungen: Seit Inter-Umstellung (M7-2) kollidieren Texte in Node-Cards/Labels. `min-width`/Overflow-Regeln; Label-Kollisionen bei parallelen Kanten (PARALLEL_LABEL_SPREAD, pathUtils.ts). Abnahme: 0 überlappende Texte im Standardplan, inkl. 375 px.
+- [x] M8-1 Zoom-Stufen abschaffen: Beim Rauszoomen verschwinden Inhalte zu früh und Symbole wechseln ihr Aussehen — das endet. `PLANNER_OVERVIEW_ZOOM`/`PLANNER_FULL_DETAIL_ZOOM` (constants.ts), `isOverview`-Logik (FlowCanvas.tsx), Zoom-CSS-Klassen, Tier-Overlays (NodePresentation.tsx) entfernen. Abnahme: Zoom 0,25–2 zeigt identische Darstellung, nichts verschwindet; Viewport-Culling statt Verstecken erlaubt; Tests/Galerie angepasst.
+- [x] M8-2 Fachwissen-Panel (ExpertPanel.tsx): Schließen-Button unsichtbar (`text-paper/70` auf hellem Header) → Token-Farben; Slide-over mit sticky Header; keine Überlappung mit MiniMap / Übersicht-Button / Statuszeile. Abnahme: X auf 375/768/1440 px sichtbar/klickbar.
+- [x] M8-3 Schrift-Überlappungen: Seit Inter-Umstellung (M7-2) kollidieren Texte in Node-Cards/Labels. `min-width`/Overflow-Regeln; Label-Kollisionen bei parallelen Kanten (PARALLEL_LABEL_SPREAD, pathUtils.ts). Abnahme: 0 überlappende Texte im Standardplan, inkl. 375 px.
 
 ## Mission 9: Repo-Hygiene — Restposten
 
@@ -42,8 +42,8 @@ Next.js-App (TypeScript, Tailwind, React Flow, Zustand) zur Planung von Camper-E
 
 ## Mission 10: Perfektion — Routing, Design, visuelles Gate
 
-- [ ] M10-1 Routing-Qualität (messbar): Clearance ≥ 12 px zu fremden Knoten, keine Kanten durch Knoten; parallele Lanes konstant 16 px, Bündelung nach Quelle/Ziel; ≤ 2 Kreuzungen pro Kante im Referenzplan, einheitlicher Hop-Stil; Labels kollisionsfrei (Test: Bounding-Boxes in der 25-Szenarien-Galerie = 0 Kollisionen); Backbone optisch dominant; Determinismus-Test (gleicher Plan → identisches Routing); ≤ 16 ms im Benchmark.
-- [ ] M10-2 Design-Feinschliff Planner: alle Abstände auf 4-px-Raster; eine Akzentfarbe (--accent-line), Rest neutral; Hover/Active/Focus/Disabled an jedem Control, hell + dunkel; Zahlen durchgängig IBM Plex Mono + tabular-nums; keine Control-Überlappungen (Statuszeile/MiniMap/FAB/Toolbar) bei 375/768/1440 px.
+- [x] M10-1 Routing-Qualität (messbar): Clearance ≥ 12 px zu fremden Knoten, keine Kanten durch Knoten; parallele Lanes konstant 16 px, Bündelung nach Quelle/Ziel; ≤ 2 Kreuzungen pro Kante im Referenzplan, einheitlicher Hop-Stil; Labels kollisionsfrei (Test: Bounding-Boxes in der 25-Szenarien-Galerie = 0 Kollisionen); Backbone optisch dominant; Determinismus-Test (gleicher Plan → identisches Routing); ≤ 16 ms im Benchmark.
+- [x] M10-2 Design-Feinschliff Planner: alle Abstände auf 4-px-Raster; eine Akzentfarbe (--accent-line), Rest neutral; Hover/Active/Focus/Disabled an jedem Control, hell + dunkel; Zahlen durchgängig IBM Plex Mono + tabular-nums; keine Control-Überlappungen (Statuszeile/MiniMap/FAB/Toolbar) bei 375/768/1440 px.
 - [ ] M10-3 Visuelles Gate (übernimmt M9-5): Playwright-Screenshot-Baseline des Referenzplans (375 + 1280 px, hell + dunkel) mit Diff-Schwelle im CI; UI-PRs enthalten Pflicht-Vorher/Nachher-Bilder.
 - Detail-Spezifikation mit Wellenplan (Baseline → Zoom → Routing → Design → Gate): siehe Perfektions-Prompt (elektroplaner-perfektion-prompt.md).
 
