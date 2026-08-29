@@ -22,7 +22,9 @@ describe('Home Page', () => {
     expect(within(main).getByRole('link', { name: /Schaltplan/ })).toBeInTheDocument();
     expect(within(main).getByRole('link', { name: /Dach/ })).toBeInTheDocument();
     expect(within(main).getByRole('link', { name: /Heizlast/ })).toBeInTheDocument();
-    expect(within(main).getByRole('link', { name: /Assistent/ })).toBeInTheDocument();
+    // KI-Assistent wurde entfernt (toter Link auf /ki-assistent/, Audit D10).
+    // Negativ-Assertion hält fest, dass er nicht zurückkommt, ohne neue Seite.
+    expect(within(main).queryByRole('link', { name: /Assistent/ })).not.toBeInTheDocument();
   });
 
   it('renders the guide links', () => {

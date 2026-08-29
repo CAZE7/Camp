@@ -19,15 +19,7 @@ export default function DatenschutzPage() {
           <h2 className="text-base font-semibold text-ink">Lokale Speicherung</h2>
           <p>
             Werft speichert Konfigurationen (z. B. Dach-Layout, Ausbau-Status) im Browser (LocalStorage).
-            Diese Daten verlassen dein Gerät nicht, außer du nutzt Cloud-Funktionen aktiv.
-          </p>
-        </section>
-
-        <section className="mt-6 space-y-2 text-sm text-ink-soft">
-          <h2 className="text-base font-semibold text-ink">KI-Assistent</h2>
-          <p>
-            Wenn du Nachrichten an den KI-Assistenten sendest, werden diese an unseren API-Dienstleister
-            übermittelt. Übermittle keine personenbezogenen Daten oder Zugangsdaten.
+            Diese Daten verlassen dein Gerät nicht.
           </p>
         </section>
 

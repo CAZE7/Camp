@@ -12,6 +12,7 @@ import { load } from 'js-yaml';
  */
 
 const WORKFLOW_DIR = join(process.cwd(), '.github', 'workflows');
+const DOCS_WORKFLOW_DIR = join(process.cwd(), 'docs', 'ci', 'workflows');
 
 type Step = {
   id?: string;
@@ -41,8 +42,8 @@ type Workflow = {
   jobs: Record<string, Job>;
 };
 
-function readWorkflow(file: string): Workflow {
-  const raw = readFileSync(join(WORKFLOW_DIR, file), 'utf8');
+function readWorkflow(file: string, dir: string = WORKFLOW_DIR): Workflow {
+  const raw = readFileSync(join(dir, file), 'utf8');
   const parsed = load(raw);
   if (typeof parsed !== 'object' || parsed === null) {
     throw new Error(`${file} ist kein gültiges YAML-Objekt`);
@@ -50,8 +51,8 @@ function readWorkflow(file: string): Workflow {
   return parsed as Workflow;
 }
 
-function rawWorkflow(file: string): string {
-  return readFileSync(join(WORKFLOW_DIR, file), 'utf8');
+function rawWorkflow(file: string, dir: string = WORKFLOW_DIR): string {
+  return readFileSync(join(dir, file), 'utf8');
 }
 
 /**
@@ -59,8 +60,8 @@ function rawWorkflow(file: string): string {
  * nicht an einem Kommentar scheitern, der genau erklärt, warum es die Regel
  * gibt ("kein Fallback auf npm install").
  */
-function rawWorkflowCode(file: string): string {
-  return rawWorkflow(file)
+function rawWorkflowCode(file: string, dir: string = WORKFLOW_DIR): string {
+  return rawWorkflow(file, dir)
     .split('\n')
     .filter((line) => !line.trimStart().startsWith('#'))
     .join('\n');
@@ -80,10 +81,19 @@ const WORKFLOW_FILES = ['quality.yml', 'ci.yml', 'deploy.yml'];
 describe('GitHub-Actions-Workflows', () => {
   it('alle Workflow-Dateien sind syntaktisch gültiges YAML mit jobs', () => {
     for (const file of WORKFLOW_FILES) {
-      expect(existsSync(join(WORKFLOW_DIR, file)), `${file} fehlt`).toBe(true);
+      expect(existsSync(join(WORKFLOW_DIR, file)), `${file} fehlt in .github/workflows`).toBe(true);
+      expect(existsSync(join(DOCS_WORKFLOW_DIR, file)), `${file} fehlt in docs/ci/workflows`).toBe(true);
       const workflow = readWorkflow(file);
       expect(workflow.jobs, `${file} hat keine Jobs`).toBeTruthy();
       expect(Object.keys(workflow.jobs).length).toBeGreaterThan(0);
+    }
+  });
+
+  it('docs/ci/workflows ist 1:1 synchron zu .github/workflows (docs/CI.md §0)', () => {
+    for (const file of WORKFLOW_FILES) {
+      const active = rawWorkflow(file, WORKFLOW_DIR);
+      const docCopy = rawWorkflow(file, DOCS_WORKFLOW_DIR);
+      expect(docCopy, `${file} in docs/ci/workflows weicht von .github/workflows ab`).toBe(active);
     }
   });
 
@@ -121,17 +131,13 @@ describe('GitHub-Actions-Workflows', () => {
     }
   });
 
-  it('quality.yml prüft Typecheck, Tests und Build', () => {
-    // HINWEIS (2026-08-28): Lint-/Format-/Coverage-Schritte sind vorbereitet,
-    // liegen aber als Patch unter docs/patches/quality-gate-lint-format-
-    // coverage.patch — die pushende GitHub-App hat keine 'workflows'-
-    // Permission, deshalb kann der Workflow-Teil aktuell nicht aus dem
-    // Agent-Branch kommen. Nach Apply des Patches diesen Test schärfen:
-    // lint, format:check UND 'npm run test:coverage' verlangen.
+  it('quality.yml prüft Lint, Format, Typecheck, Tests (mit Coverage) und Build', () => {
     const workflow = readWorkflow('quality.yml');
     const runs = allSteps(workflow).map((step) => step.run ?? '');
+    expect(runs.some((run) => run.includes('npm run lint'))).toBe(true);
+    expect(runs.some((run) => run.includes('npm run format:check'))).toBe(true);
     expect(runs.some((run) => run.includes('npm run typecheck'))).toBe(true);
-    expect(runs.some((run) => /npm (run )?test/.test(run))).toBe(true);
+    expect(runs.some((run) => run.trim() === 'npm run test:coverage')).toBe(true);
     expect(runs.some((run) => run.includes('npm run build'))).toBe(true);
     expect(runs.some((run) => run.includes('npm ci'))).toBe(true);
   });
@@ -149,6 +155,13 @@ describe('GitHub-Actions-Workflows', () => {
       );
       expect(usesQuality, `${file} ruft quality.yml nicht auf`).toBe(true);
     }
+  });
+
+  it('ci.yml triggert nur auf PRs und workflow_dispatch zur Vermeidung von Doppelläufen (D07)', () => {
+    const workflow = readWorkflow('ci.yml');
+    expect(workflow.on).toHaveProperty('pull_request');
+    expect(workflow.on).toHaveProperty('workflow_dispatch');
+    expect(workflow.on).not.toHaveProperty('push');
   });
 
   it('Deploy hängt transitiv am Quality Gate', () => {
@@ -189,6 +202,15 @@ describe('GitHub-Actions-Workflows', () => {
     }
   });
 
+  it('Deploy enthält einen Post-Deploy Smoke-Check (HTTP 200) (D08)', () => {
+    const workflow = readWorkflow('deploy.yml');
+    const deploySteps = workflow.jobs.deploy?.steps ?? [];
+    const smokeStep = deploySteps.find((step) => step.name?.includes('Smoke-Check'));
+    expect(smokeStep, 'Smoke-Check-Schritt fehlt im deploy-Job').toBeDefined();
+    expect(smokeStep?.run).toContain('curl');
+    expect(smokeStep?.run).toContain('200');
+  });
+
   it('Deploy bricht veraltete Läufe bei neuen Pushes ab', () => {
     const workflow = readWorkflow('deploy.yml');
     expect(workflow.concurrency).toEqual({
@@ -200,7 +222,8 @@ describe('GitHub-Actions-Workflows', () => {
   it('Pages-Build verwendet den von configure-pages gelieferten Basepath', () => {
     const workflow = readWorkflow('deploy.yml');
     const buildSteps = workflow.jobs.build?.steps ?? [];
-    const configurePages = buildSteps.find((step) => step.uses === 'actions/configure-pages@v5');
+    // configure-pages ist per SHA gepinnt — suche nach dem Action-Namen ohne Ref.
+    const configurePages = buildSteps.find((step) => step.uses?.startsWith('actions/configure-pages@'));
     const staticBuild = buildSteps.find((step) => step.run?.trim() === 'npm run build');
 
     expect(configurePages?.id).toBe('pages');
@@ -227,7 +250,13 @@ describe('GitHub-Actions-Workflows', () => {
         .map(([scope]) => scope);
       if (writeScopes.length === 0) continue;
       expect(['build', 'deploy'], `Job ${jobId} hat unerwartete Schreibrechte`).toContain(jobId);
-      expect(writeScopes.sort()).toEqual(['id-token', 'pages']);
+      if (jobId === 'build') {
+        // build-Job braucht nur pages:write für upload-pages-artifact.
+        // id-token:write ist bewusst NICHT gesetzt (Least-Privilege).
+        expect(writeScopes.sort()).toEqual(['pages']);
+      } else {
+        expect(writeScopes.sort()).toEqual(['id-token', 'pages']);
+      }
     }
   });
 
@@ -239,6 +268,36 @@ describe('GitHub-Actions-Workflows', () => {
         expect(step.with?.['persist-credentials'], `${file}: Checkout ohne persist-credentials:false`).toBe(
           false
         );
+      }
+    }
+  });
+
+  it('id-token:write ist ausschließlich auf dem deploy-Job (nicht build)', () => {
+    const workflow = readWorkflow('deploy.yml');
+    for (const [jobId, job] of Object.entries(workflow.jobs)) {
+      if (job.uses) continue; // Reusable-Workflow-Aufruf: Permissions kommen vom Caller.
+      const permissions = job.permissions;
+      if (typeof permissions !== 'object' || permissions === null) continue;
+      const hasIdToken = (permissions as Record<string, string>)['id-token'] === 'write';
+      if (hasIdToken) {
+        expect(jobId, 'id-token:write darf nur auf dem deploy-Job stehen').toBe('deploy');
+      }
+    }
+  });
+
+  it('alle Actions sind per Commit-SHA gepinnt (keine reinen Tag-Referenzen)', () => {
+    // Nur Actions mit erhöhten Permissions (pages:write, id-token:write) auditieren.
+    // SHA-Format: 40 Hex-Zeichen. Reine Tags wie "@v4" sind nicht erlaubt.
+    const SHA_RE = /^[0-9a-f]{40}$/;
+    for (const file of WORKFLOW_FILES) {
+      const workflow = readWorkflow(file);
+      const steps = allSteps(workflow);
+      for (const step of steps) {
+        if (!step.uses) continue;
+        // Lokale Workflow-Referenzen (./.github/...) haben keine SHA-Pins.
+        if (step.uses.startsWith('./')) continue;
+        const [, ref] = step.uses.split('@');
+        expect(ref, `${file}: Action "${step.uses}" ist nicht per SHA gepinnt`).toMatch(SHA_RE);
       }
     }
   });

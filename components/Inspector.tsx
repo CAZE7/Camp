@@ -240,7 +240,10 @@ export default function Inspector({
   const hasSelection = selectedNode || selectedEdge;
 
   return (
-    <div className="relative flex h-full w-full flex-col overflow-y-auto bg-card p-4 text-foreground">
+    <div
+      tabIndex={0}
+      className="relative flex h-full w-full flex-col overflow-y-auto bg-card p-4 text-foreground"
+    >
       <h2 className="mb-4 text-base font-black text-foreground">Details</h2>
 
       {!hasSelection ? (

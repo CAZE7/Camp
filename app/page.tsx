@@ -24,11 +24,6 @@ const TOOLS = [
     body: 'Benötigte Heizleistung aus Fahrzeug, Dämmung und Wunschtemperatur.',
     href: '/tools/heizung',
   },
-  {
-    title: 'KI-Assistent',
-    body: 'Fragen zu Normen, Querschnitt und Ausbau — mit Sicherheits-Check der Stückliste.',
-    href: '/ki-assistent',
-  },
 ];
 
 const GUIDES = [
@@ -59,8 +54,7 @@ export default function Home() {
           die auch für den TÜV funktionieren.
         </p>
         <p className="caption-xs mt-4 text-ink-soft">
-          Empfohlene Reihenfolge: Fahrplan lesen → Dach planen → Schaltplan zeichnen → Heizlast prüfen → KI
-          fragen.
+          Empfohlene Reihenfolge: Fahrplan lesen → Dach planen → Schaltplan zeichnen → Heizlast prüfen.
         </p>
 
         <h2 className="mt-10 text-sm font-semibold uppercase tracking-widest text-ink-soft">Werkzeuge</h2>

@@ -16,3 +16,6 @@ public
 # Verzeichnis brauchen besondere Push-Rechte).
 .github
 docs/ci/workflows
+
+# Von Next.js automatisch generiert
+next-env.d.ts

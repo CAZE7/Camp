@@ -3,7 +3,6 @@ import Link from 'next/link';
 const FOOTER_LINKS = [
   { href: '/', label: 'Startseite' },
   { href: '/guides/ausbau-fahrplan', label: 'Ausbau-Fahrplan' },
-  { href: '/ki-assistent', label: 'KI-Assistent' },
   { href: '/impressum', label: 'Impressum' },
   { href: '/datenschutz', label: 'Datenschutz' },
 ];

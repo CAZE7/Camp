@@ -39,8 +39,9 @@ function runTsc(source: string): TscRun {
     let code = 0;
     let output = '';
     try {
+      const npxCommand = process.platform === 'win32' ? 'npx.cmd' : 'npx';
       output = execFileSync(
-        'npx',
+        npxCommand,
         [
           'tsc',
           '--noEmit',
@@ -54,7 +55,7 @@ function runTsc(source: string): TscRun {
           'bundler',
           file,
         ],
-        { cwd: process.cwd(), encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }
+        { cwd: process.cwd(), encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], shell: true }
       );
     } catch (error) {
       const failure = error as { status?: number; stdout?: string; stderr?: string };
