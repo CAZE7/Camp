@@ -12,6 +12,7 @@ import { load } from 'js-yaml';
  */
 
 const WORKFLOW_DIR = join(process.cwd(), '.github', 'workflows');
+const DOCS_WORKFLOW_DIR = join(process.cwd(), 'docs', 'ci', 'workflows');
 
 type Step = {
   id?: string;
@@ -41,8 +42,8 @@ type Workflow = {
   jobs: Record<string, Job>;
 };
 
-function readWorkflow(file: string): Workflow {
-  const raw = readFileSync(join(WORKFLOW_DIR, file), 'utf8');
+function readWorkflow(file: string, dir: string = WORKFLOW_DIR): Workflow {
+  const raw = readFileSync(join(dir, file), 'utf8');
   const parsed = load(raw);
   if (typeof parsed !== 'object' || parsed === null) {
     throw new Error(`${file} ist kein gültiges YAML-Objekt`);
@@ -50,8 +51,8 @@ function readWorkflow(file: string): Workflow {
   return parsed as Workflow;
 }
 
-function rawWorkflow(file: string): string {
-  return readFileSync(join(WORKFLOW_DIR, file), 'utf8');
+function rawWorkflow(file: string, dir: string = WORKFLOW_DIR): string {
+  return readFileSync(join(dir, file), 'utf8');
 }
 
 /**
@@ -59,8 +60,8 @@ function rawWorkflow(file: string): string {
  * nicht an einem Kommentar scheitern, der genau erklärt, warum es die Regel
  * gibt ("kein Fallback auf npm install").
  */
-function rawWorkflowCode(file: string): string {
-  return rawWorkflow(file)
+function rawWorkflowCode(file: string, dir: string = WORKFLOW_DIR): string {
+  return rawWorkflow(file, dir)
     .split('\n')
     .filter((line) => !line.trimStart().startsWith('#'))
     .join('\n');
@@ -80,10 +81,19 @@ const WORKFLOW_FILES = ['quality.yml', 'ci.yml', 'deploy.yml'];
 describe('GitHub-Actions-Workflows', () => {
   it('alle Workflow-Dateien sind syntaktisch gültiges YAML mit jobs', () => {
     for (const file of WORKFLOW_FILES) {
-      expect(existsSync(join(WORKFLOW_DIR, file)), `${file} fehlt`).toBe(true);
+      expect(existsSync(join(WORKFLOW_DIR, file)), `${file} fehlt in .github/workflows`).toBe(true);
+      expect(existsSync(join(DOCS_WORKFLOW_DIR, file)), `${file} fehlt in docs/ci/workflows`).toBe(true);
       const workflow = readWorkflow(file);
       expect(workflow.jobs, `${file} hat keine Jobs`).toBeTruthy();
       expect(Object.keys(workflow.jobs).length).toBeGreaterThan(0);
+    }
+  });
+
+  it('docs/ci/workflows ist 1:1 synchron zu .github/workflows (docs/CI.md §0)', () => {
+    for (const file of WORKFLOW_FILES) {
+      const active = rawWorkflow(file, WORKFLOW_DIR);
+      const docCopy = rawWorkflow(file, DOCS_WORKFLOW_DIR);
+      expect(docCopy, `${file} in docs/ci/workflows weicht von .github/workflows ab`).toBe(active);
     }
   });
 
@@ -147,6 +157,13 @@ describe('GitHub-Actions-Workflows', () => {
     }
   });
 
+  it('ci.yml triggert nur auf PRs und workflow_dispatch zur Vermeidung von Doppelläufen (D07)', () => {
+    const workflow = readWorkflow('ci.yml');
+    expect(workflow.on).toHaveProperty('pull_request');
+    expect(workflow.on).toHaveProperty('workflow_dispatch');
+    expect(workflow.on).not.toHaveProperty('push');
+  });
+
   it('Deploy hängt transitiv am Quality Gate', () => {
     const workflow = readWorkflow('deploy.yml');
     const qualityJobId = Object.entries(workflow.jobs).find(([, job]) =>
@@ -183,6 +200,15 @@ describe('GitHub-Actions-Workflows', () => {
         "github.ref == format('refs/heads/{0}', github.event.repository.default_branch)"
       );
     }
+  });
+
+  it('Deploy enthält einen Post-Deploy Smoke-Check (HTTP 200) (D08)', () => {
+    const workflow = readWorkflow('deploy.yml');
+    const deploySteps = workflow.jobs.deploy?.steps ?? [];
+    const smokeStep = deploySteps.find((step) => step.name?.includes('Smoke-Check'));
+    expect(smokeStep, 'Smoke-Check-Schritt fehlt im deploy-Job').toBeDefined();
+    expect(smokeStep?.run).toContain('curl');
+    expect(smokeStep?.run).toContain('200');
   });
 
   it('Deploy bricht veraltete Läufe bei neuen Pushes ab', () => {

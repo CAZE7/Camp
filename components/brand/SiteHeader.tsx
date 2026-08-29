@@ -10,7 +10,6 @@ const NAV = [
   { href: '/elektrik-planung', label: 'Schaltplan' },
   { href: '/tools/dach', label: 'Dach' },
   { href: '/tools/heizung', label: 'Heizlast' },
-  { href: '/ki-assistent', label: 'KI-Assistent' },
   { href: '/guides/ausbau-fahrplan', label: 'Guides' },
 ];
 

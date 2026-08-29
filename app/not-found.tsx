@@ -7,7 +7,6 @@ const LINKS = [
   { href: '/tools/dach', label: 'Dach-Planer' },
   { href: '/tools/heizung', label: 'Heizlast' },
   { href: '/elektrik-planung', label: 'Schaltplan' },
-  { href: '/ki-assistent', label: 'KI-Assistent' },
   { href: '/guides/ausbau-fahrplan', label: 'Ausbau-Fahrplan' },
 ];
 
