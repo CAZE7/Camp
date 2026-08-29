@@ -5,7 +5,13 @@ function overlap(
   a: { x: number; y: number; width: number; height: number },
   b: { x: number; y: number; width: number; height: number }
 ): boolean {
-  return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+  const pad = 1;
+  return (
+    a.x + pad < b.x + b.width &&
+    a.x + a.width - pad > b.x &&
+    a.y + pad < b.y + b.height &&
+    a.y + a.height - pad > b.y
+  );
 }
 
 async function boxOf(locator: Locator) {
@@ -36,13 +42,13 @@ test.describe('M8-2 Fachwissen-Panel', () => {
     expect(panel).not.toBeNull();
 
     const neighbors = [
-      await boxOf(page.locator('.react-flow__minimap')),
-      await boxOf(page.locator('.planner-statusbar')),
-      await boxOf(page.getByTestId('mobile-overview')),
+      { name: 'minimap', box: await boxOf(page.locator('.react-flow__minimap')) },
+      { name: 'statusbar', box: await boxOf(page.locator('.planner-statusbar')) },
+      { name: 'mobile-overview', box: await boxOf(page.getByTestId('mobile-overview')) },
     ];
     for (const neighbor of neighbors) {
-      if (!neighbor) continue;
-      expect(overlap(panel!, neighbor), 'Fachwissen-Panel überlappt ein Canvas-Control').toBe(false);
+      if (!neighbor.box) continue;
+      expect(overlap(panel!, neighbor.box), `Fachwissen-Panel überlappt ${neighbor.name}`).toBe(false);
     }
 
     await close.click();

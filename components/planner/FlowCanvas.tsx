@@ -628,7 +628,10 @@ export function FlowCanvas() {
 
           {/* M7-3: Statuszeile (Koordinaten/Zoom/Umfang) — ab md; auf
               Touch-Geräten steht die Bottom-Navigation im Weg. */}
-          <Panel position="bottom-center" className="pointer-events-none hidden md:block">
+          <Panel
+            position="bottom-center"
+            className="pointer-events-none hidden max-w-[min(20rem,calc(100%-18rem))] md:block"
+          >
             <PlannerStatusBar zoom={zoom} />
           </Panel>
           {/* M7-3: Punkt-Raster statt Linienraster — ingenieursüblich und
@@ -640,9 +643,15 @@ export function FlowCanvas() {
             size={2}
             style={{ opacity: 0.35 }}
           />
-          <Controls className="planner-controls mb-20 overflow-hidden rounded-lg border border-border shadow-sm md:mb-4" />
+          {/* RF-Panel sitzt bei bottom:0 mit margin:15px — Tailwind-mb
+              verliert gegen die Shorthand. !bottom/!left mit !important.
+              Mobile: über Undo/Bottom-Nav. Ab md über der Statuszeile.
+              MiniMap erst ab lg (sonst ~200 px auf dem 508-px-Tablet-
+              Canvas) und mit !left-14 neben den Zoom-Controls. */}
+          <Controls className="planner-controls !bottom-32 overflow-hidden rounded-lg border border-border shadow-sm md:!bottom-14" />
           <MiniMap
-            className="planner-minimap mb-24 hidden overflow-hidden rounded-lg border border-border shadow-sm sm:block md:mb-24"
+            position="bottom-left"
+            className="planner-minimap !bottom-32 !left-14 hidden overflow-hidden rounded-lg border border-border shadow-sm lg:!bottom-14 lg:block"
             ariaLabel="Miniaturübersicht des Plans"
             nodeColor={(node) => nodeMinimapColorFrom(minimapColors.palette, node)}
             maskColor={minimapColors.mask}

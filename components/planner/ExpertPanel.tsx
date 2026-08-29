@@ -415,19 +415,19 @@ export function ExpertPanel() {
       data-open={isOpen ? 'true' : 'false'}
       className={cn(
         'pointer-events-auto absolute z-50 transition-all duration-300 ease-out',
-        // Geschlossen: FAB sitzt in der MiniMap-Unterkante (mb-24) rechts.
-        // Offen: Slide-over vom rechten Rand, unter der Toolbar und über
-        // MiniMap / Statuszeile / Bottom-Nav (375 / 768 / 1440).
+        // Geschlossen: FAB unten rechts, ab md über der Statuszeile.
+        // Offen: wächst nach oben (kein top+bottom-Stretch), max-h hält
+        // MiniMap/Statuszeile/Bottom-Nav frei.
         isOpen
-          ? 'bottom-28 right-4 top-16 w-11/12 max-w-sm sm:bottom-[16.5rem] sm:top-20'
-          : 'bottom-20 right-4 w-auto max-w-xs md:bottom-4'
+          ? 'bottom-28 right-4 w-11/12 max-w-sm md:bottom-16'
+          : 'bottom-20 right-4 w-auto max-w-xs md:bottom-16'
       )}
     >
       {/* Expanded Panel */}
       {isOpen && (
         <div
           data-testid="expert-panel-open"
-          className="bg-bone/95 flex h-full max-h-full flex-col overflow-hidden rounded-2xl border border-rule shadow-2xl backdrop-blur-xl duration-300 animate-in fade-in slide-in-from-bottom-4"
+          className="bg-bone/95 flex max-h-[min(28rem,calc(100dvh-8rem))] flex-col overflow-hidden rounded-2xl border border-rule shadow-2xl backdrop-blur-xl duration-300 animate-in fade-in slide-in-from-bottom-4"
         >
           {/* Header — sticky, Token-Farben (bg-ink / text-bone) in hell und dunkel. */}
           <div className="sticky top-0 z-10 flex shrink-0 items-center gap-3 bg-ink px-5 py-4 text-bone">

@@ -156,7 +156,8 @@ describe('ExpertPanel', () => {
     const panel = screen.getByTestId('expert-panel');
     expect(panel).toHaveAttribute('data-open', 'true');
     expect(panel.className).toContain('bottom-28');
-    expect(panel.className).toContain('sm:bottom-[16.5rem]');
+    expect(panel.className).toContain('md:bottom-16');
+    expect(panel.className).not.toContain('top-16');
   });
 
   it('M8-2: Layout-Klassen räumen MiniMap/Statuszeile auf 375/768/1440', () => {
@@ -167,7 +168,7 @@ describe('ExpertPanel', () => {
     const closed = screen.getByTestId('expert-panel');
     expect(closed.className).toContain('right-4');
     expect(closed.className).toContain('bottom-20');
-    expect(closed.className).toContain('md:bottom-4');
+    expect(closed.className).toContain('md:bottom-16');
 
     fireEvent.click(screen.getByRole('button', { name: /hilfe und fachwissen öffnen/i }));
     rerender(<ExpertPanel />);
