@@ -626,11 +626,11 @@ export function FlowCanvas() {
         >
           <CableRouteSync />
 
-          {/* M7-3: Statuszeile (Koordinaten/Zoom/Umfang) — ab md; auf
-              Touch-Geräten steht die Bottom-Navigation im Weg. */}
+          {/* M7-3: Statuszeile ab lg. Auf dem 508-px-Tablet-Canvas (768 −
+              Sidebar) umbricht sie und läuft in FAB/Fachwissen. */}
           <Panel
             position="bottom-center"
-            className="pointer-events-none hidden max-w-[min(20rem,calc(100%-18rem))] md:block"
+            className="pointer-events-none hidden max-w-[min(20rem,calc(100%-18rem))] lg:block"
           >
             <PlannerStatusBar zoom={zoom} />
           </Panel>
