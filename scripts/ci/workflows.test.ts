@@ -307,7 +307,6 @@ describe('GitHub-Actions-Workflows', () => {
       const workflow = readWorkflow(file);
       for (const [jobId, job] of Object.entries(workflow.jobs)) {
         if (job.uses) continue; // Reusable-Workflow-Aufruf erbt sein Limit.
-        if (jobId === 'deploy') continue; // deploy-pages wartet extern auf Pages.
         expect(
           (job as unknown as { 'timeout-minutes'?: number })['timeout-minutes'],
           `${file}/${jobId} ohne timeout-minutes`

@@ -85,17 +85,34 @@ Aktivieren:
 ### 4.2 GitHub CLI Befehl für Branch Protection
 
 ```bash
-gh api -X PUT repos/:owner/:repo/branches/main/protection \
+gh api -X PUT repos/:owner/:repo/branches/feature%2Freact-flow-cable-editor-7322653268250495059/protection \
   -H "Accept: application/vnd.github+json" \
   -f 'required_status_checks[strict]=true' \
-  -f 'required_status_checks[contexts][]=CI / Quality Gate / Typecheck, Tests & Build' \
-  -f 'required_status_checks[contexts][]=CI / Quality Gate / End-to-End (Playwright)' \
+  -f 'required_status_checks[contexts][]=Quality Gate / Typecheck, Tests & Build' \
+  -f 'required_status_checks[contexts][]=Quality Gate / End-to-End (Playwright)' \
   -F 'enforce_admins=true' \
   -F 'required_pull_request_reviews[required_approving_review_count]=1' \
   -F 'restrictions=null' \
   -F 'allow_force_pushes=false' \
   -F 'allow_deletions=false'
 ```
+
+### 4.3 Runbook für Default-Branch Migration auf `main` (D03)
+
+Da `main` und der Feature-Branch divergiert sind (2 Unique Commits auf `main`: `4c21f06`, `927b4e7`), darf kein unbedachter `--ff-only` oder Force-Push auf divergiertem Stand ausgeführt werden:
+
+1. **Unique-Commits prüfen**: Die Änderungen aus `4c21f06` (VDE-Konstanten/Spannungsabfall aus PR #304) sind im aktuellen Feature-Branch bereits modularisiert in den Zustand-Slices und `lib/vdeStandards.ts` enthalten.
+2. **`main` synchronisieren**:
+   ```bash
+   git checkout main
+   git merge feature/react-flow-cable-editor-7322653268250495059 -m "Merge branch 'feature/react-flow-cable-editor-7322653268250495059' into main"
+   git push origin main
+   ```
+3. **GitHub Settings**: Default-Branch von `feature/react-flow-cable-editor-7322653268250495059` auf `main` umstellen.
+4. **UNBEDINGT gleichzeitig anpassen**:
+   - **GitHub Pages Source**: Branch auf `main` umstellen.
+   - **Environment `github-pages` Deployment Protection Rule**: Von Feature-Branch auf `main` umstellen (sonst blockiert der Deploy!).
+5. **Branch Protection (D02)**: Regeln auf `main` übertragen.
 
 ## 5. Berechtigungen & Agenten-Integration (D12)
 
