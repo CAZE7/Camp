@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Inspector from '../Inspector';
@@ -7,7 +7,11 @@ import { useAppStore } from '../../lib/store';
 import { useDashboardMetrics } from './hooks/useDashboardMetrics';
 
 export function PlannerInspector() {
-  const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(true);
+  // Inspector docks ≥1280px (CAD hard rule) and is a slide-over below that.
+  const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(false);
+  useEffect(() => {
+    setIsRightSidebarOpen(window.innerWidth >= 1280);
+  }, []);
 
   const nodes = usePlannerStore((state) => state.nodes);
   const edges = usePlannerStore((state) => state.edges);
@@ -45,7 +49,7 @@ export function PlannerInspector() {
       </Button>
 
       <div
-        className={`transition-all duration-300 ease-in-out absolute right-0 md:relative z-40 h-full ${isRightSidebarOpen ? 'w-[250px] translate-x-0' : 'w-0 translate-x-full'} flex-shrink-0 shadow-lg bg-card border-l border-border max-w-[calc(100vw-2rem)]`}
+        className={`transition-all duration-300 ease-in-out absolute right-0 md:relative z-40 h-full overflow-hidden ${isRightSidebarOpen ? 'w-[250px] translate-x-0' : 'w-0 translate-x-full'} flex-shrink-0 shadow-lg bg-toolbar border-l border-border max-w-[calc(100vw-2rem)]`}
       >
         <div className="w-[250px] h-full max-w-full">
           <Inspector

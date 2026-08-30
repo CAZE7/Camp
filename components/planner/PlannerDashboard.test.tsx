@@ -10,15 +10,15 @@ import { toPng } from 'html-to-image';
 
 // Mock html-to-image
 vi.mock('html-to-image', () => ({
-  toPng: vi.fn().mockResolvedValue('data:image/png;base64,mocked')
+  toPng: vi.fn().mockResolvedValue('data:image/png;base64,mocked'),
 }));
 
 // Mock React Flow
 const mockFitView = vi.fn();
 vi.mock('reactflow', () => ({
   useReactFlow: () => ({
-    fitView: mockFitView
-  })
+    fitView: mockFitView,
+  }),
 }));
 
 // Mock Planner Store
@@ -42,7 +42,7 @@ vi.mock('../../store/usePlannerStore', () => ({
       onLayout: mockOnLayout,
     };
     return selector(state);
-  })
+  }),
 }));
 
 // Mock App Store
@@ -50,8 +50,8 @@ const mockToggleProMode = vi.fn();
 vi.mock('../../lib/store', () => ({
   useAppStore: vi.fn(() => ({
     isProMode: false,
-    toggleProMode: mockToggleProMode
-  }))
+    toggleProMode: mockToggleProMode,
+  })),
 }));
 
 // Mock Dropdown Menu to avoid Radix UI complexities in JSDOM testing
@@ -59,11 +59,17 @@ vi.mock('@/components/ui/dropdown-menu', () => ({
   DropdownMenu: ({ children }: { children: React.ReactNode }) => <div data-testid="dropdown-menu">{children}</div>,
   DropdownMenuTrigger: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   DropdownMenuContent: ({ children }: { children: React.ReactNode }) => <div data-testid="dropdown-content">{children}</div>,
-  DropdownMenuItem: ({ children, onClick, className }: { children: React.ReactNode, onClick: () => void, className?: string }) => (
-    <button onClick={onClick} className={className} data-testid={`menu-item-${children?.toString().trim()}`}>
-      {children}
-    </button>
-  ),
+  DropdownMenuItem: ({ children, onClick, className }: { children: React.ReactNode; onClick: () => void; className?: string }) => {
+    const label = (Array.isArray(children) ? children : [children])
+      .map((c) => (typeof c === 'string' || typeof c === 'number' ? String(c) : ''))
+      .join('')
+      .trim();
+    return (
+      <button onClick={onClick} className={className} data-testid={`menu-item-${label}`}>
+        {children}
+      </button>
+    );
+  },
 }));
 
 describe('PlannerDashboard', () => {
@@ -79,22 +85,22 @@ describe('PlannerDashboard', () => {
     render(<PlannerDashboard />);
 
     // Check main buttons
-    expect(screen.getByText('← Zurück')).toBeInTheDocument();
     expect(screen.getByText('Elektrik-Schaltplan')).toBeInTheDocument();
-    expect(screen.getByText('Wasser & Sanitär')).toBeInTheDocument();
+    expect(screen.getByText('Elektrik')).toBeInTheDocument();
+    expect(screen.getByText('Wasser')).toBeInTheDocument();
     expect(screen.getByText('Aktionen')).toBeInTheDocument();
     expect(screen.getByText('Sommer')).toBeInTheDocument();
     expect(screen.getByText('Winter')).toBeInTheDocument();
-    expect(screen.getByText('Profi-Modus Aus')).toBeInTheDocument();
+    expect(screen.getByText('Standard')).toBeInTheDocument();
   });
 
   it('calls setViewMode when changing view mode', () => {
     render(<PlannerDashboard />);
 
-    fireEvent.click(screen.getByText('Wasser & Sanitär'));
+    fireEvent.click(screen.getByText('Wasser'));
     expect(mockSetViewMode).toHaveBeenCalledWith('water');
 
-    fireEvent.click(screen.getByText('Elektrik-Schaltplan'));
+    fireEvent.click(screen.getByText('Elektrik'));
     expect(mockSetViewMode).toHaveBeenCalledWith('electric');
   });
 
@@ -108,10 +114,10 @@ describe('PlannerDashboard', () => {
     expect(mockSetSeason).toHaveBeenCalledWith('summer');
   });
 
-  it('calls toggleProMode when clicking Profi-Modus', () => {
+  it('calls toggleProMode when clicking the Pro/Standard toggle', () => {
     render(<PlannerDashboard />);
 
-    fireEvent.click(screen.getByText('Profi-Modus Aus'));
+    fireEvent.click(screen.getByText('Standard'));
     expect(mockToggleProMode).toHaveBeenCalledTimes(1);
   });
 
@@ -131,7 +137,7 @@ describe('PlannerDashboard', () => {
   it('calls autoWireSystem with fitView when clicking Automatisch Verkabeln', () => {
     render(<PlannerDashboard />);
 
-    fireEvent.click(screen.getByTestId('menu-item-Automatisch Verkabeln & Absichern'));
+    fireEvent.click(screen.getByTestId('menu-item-Automatisch Verkabeln'));
 
     expect(mockAutoWireSystem).toHaveBeenCalledWith(mockFitView);
   });
@@ -139,7 +145,7 @@ describe('PlannerDashboard', () => {
   it('calls checkSchematic when clicking Schaltplan prüfen', () => {
     render(<PlannerDashboard />);
 
-    fireEvent.click(screen.getByTestId('menu-item-Schaltplan von KI prüfen lassen'));
+    fireEvent.click(screen.getByTestId('menu-item-Schaltplan prüfen lassen'));
 
     expect(mockCheckSchematic).toHaveBeenCalledTimes(1);
   });
@@ -164,19 +170,17 @@ describe('PlannerDashboard', () => {
       click: vi.fn(),
     };
 
-    // Create an actual anchor element and override its methods/properties for observation
     const originalCreateElement = document.createElement.bind(document);
     const createElementSpy = vi.spyOn(document, 'createElement').mockImplementation((tagName: string, options?: ElementCreationOptions) => {
       const el = originalCreateElement(tagName, options);
       if (tagName === 'a') {
-        // Intercept properties
         Object.defineProperty(el, 'download', {
           get: () => mockLink.download,
-          set: (val) => mockLink.download = val,
+          set: (val) => (mockLink.download = val),
         });
         Object.defineProperty(el, 'href', {
           get: () => mockLink.href,
-          set: (val) => mockLink.href = val,
+          set: (val) => (mockLink.href = val),
         });
         el.click = mockLink.click;
       }

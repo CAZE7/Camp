@@ -1,27 +1,14 @@
 "use client";
 import React from 'react';
-import { Handle, Position } from 'reactflow';
+import { NodeCard, Row } from './NodeCard';
+import { ConnectionHandles, DC_TERMINALS } from './handles';
 
-const BusbarNode = function({ id, data, isConnectable, selected }: any) {
+const BusbarNode = function({ data, isConnectable, selected }: any) {
   return (
-    <div className={`hover:scale-105 transition-all custom-drag-handle bg-white border-2 border-slate-700 rounded-md p-3 shadow-md w-48 ${selected ? " ring-4 ring-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.6)]" : ""}`}>
-      <div className="font-bold mb-2 text-sm text-center">{data.label || 'Main Busbar'}</div>
-      <div className="flex flex-col gap-1 text-xs text-gray-600">
-        <div>Max Strom: {data.rating || 250} A</div>
-      </div>
-      <Handle type="target" position={Position.Left} id="plus" isConnectable={isConnectable} style={{ background: 'transparent', border: 'none', width: '24px', height: '24px', zIndex: 10, display: 'flex', justifyContent: 'center', alignItems: 'center', top: '30%' }}>
-        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'red', pointerEvents: 'none' }} />
-      </Handle>
-      <Handle type="target" position={Position.Left} id="minus" isConnectable={isConnectable} style={{ background: 'transparent', border: 'none', width: '24px', height: '24px', zIndex: 10, display: 'flex', justifyContent: 'center', alignItems: 'center', top: '70%' }}>
-        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'black', pointerEvents: 'none' }} />
-      </Handle>
-      <Handle type="source" position={Position.Right} id="plus" isConnectable={isConnectable} style={{ background: 'transparent', border: 'none', width: '24px', height: '24px', zIndex: 10, display: 'flex', justifyContent: 'center', alignItems: 'center', top: '30%' }}>
-        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'red', pointerEvents: 'none' }} />
-      </Handle>
-      <Handle type="source" position={Position.Right} id="minus" isConnectable={isConnectable} style={{ background: 'transparent', border: 'none', width: '24px', height: '24px', zIndex: 10, display: 'flex', justifyContent: 'center', alignItems: 'center', top: '70%' }}>
-        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'black', pointerEvents: 'none' }} />
-      </Handle>
-    </div>
+    <NodeCard type="busbar" selected={selected} title={data.label} chip="Haupt" width={188}>
+      <Row label="Max. Strom" value={data.rating || 250} unit="A" />
+      <ConnectionHandles config={DC_TERMINALS} isConnectable={isConnectable} />
+    </NodeCard>
   );
-}
+};
 export default React.memo(BusbarNode);

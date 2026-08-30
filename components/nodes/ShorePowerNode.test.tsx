@@ -32,26 +32,28 @@ describe('ShorePowerNode Component', () => {
 
   it('renders RCD status correctly when hasRcd is true', () => {
     render(<ShorePowerNode id="1" data={{ hasRcd: true }} />);
-    expect(screen.getByText('RCD (30mA): Ja')).toBeInTheDocument();
+    expect(screen.getByText('RCD (30mA)')).toBeInTheDocument();
+    expect(screen.getByText('Ja')).toBeInTheDocument();
   });
 
   it('renders RCD status correctly when hasRcd is false', () => {
     render(<ShorePowerNode id="1" data={{ hasRcd: false }} />);
-    expect(screen.getByText('RCD (30mA): Nein')).toBeInTheDocument();
+    expect(screen.getByText('RCD (30mA)')).toBeInTheDocument();
+    expect(screen.getByText('Nein')).toBeInTheDocument();
   });
 
   it('applies selected styling when selected is true', () => {
     const { container } = render(<ShorePowerNode id="1" data={{}} selected={true} />);
     const mainDiv = container.firstChild as HTMLElement;
-    expect(mainDiv.className).toContain('ring-4');
-    expect(mainDiv.className).toContain('ring-blue-500');
+    expect(mainDiv.className).toContain('planner-node');
+    expect(mainDiv.className).toContain('is-selected');
   });
 
   it('does not apply selected styling when selected is false', () => {
     const { container } = render(<ShorePowerNode id="1" data={{}} selected={false} />);
     const mainDiv = container.firstChild as HTMLElement;
-    expect(mainDiv.className).not.toContain('ring-4');
-    expect(mainDiv.className).not.toContain('ring-blue-500');
+    expect(mainDiv.className).not.toContain('is-selected');
+    
   });
 
   it('renders a Handle component with correct props', () => {

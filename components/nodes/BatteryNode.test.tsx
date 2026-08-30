@@ -32,36 +32,40 @@ describe('BatteryNode Component', () => {
 
   it('renders default capacity when no capacity is provided', () => {
     render(<BatteryNode id="1" data={{}} />);
-    expect(screen.getByText('Kapazität: 0 Ah')).toBeInTheDocument();
+    expect(screen.getByText('Kapazität')).toBeInTheDocument();
+    expect(screen.getByText('0 Ah')).toBeInTheDocument();
   });
 
   it('renders custom capacity when provided in data', () => {
     render(<BatteryNode id="1" data={{ capacity: 200 }} />);
-    expect(screen.getByText('Kapazität: 200 Ah')).toBeInTheDocument();
+    expect(screen.getByText('Kapazität')).toBeInTheDocument();
+    expect(screen.getByText('200 Ah')).toBeInTheDocument();
   });
 
   it('renders default chemistry when no chemistry is provided', () => {
     render(<BatteryNode id="1" data={{}} />);
-    expect(screen.getByText('Chemie: LiFePO4')).toBeInTheDocument();
+    expect(screen.getByText('Chemie')).toBeInTheDocument();
+    expect(screen.getByText('LiFePO4')).toBeInTheDocument();
   });
 
   it('renders custom chemistry when provided in data', () => {
     render(<BatteryNode id="1" data={{ chemistry: 'AGM' }} />);
-    expect(screen.getByText('Chemie: AGM')).toBeInTheDocument();
+    expect(screen.getByText('Chemie')).toBeInTheDocument();
+    expect(screen.getByText('AGM')).toBeInTheDocument();
   });
 
   it('applies selected styling when selected is true', () => {
     const { container } = render(<BatteryNode id="1" data={{}} selected={true} />);
     const mainDiv = container.firstChild as HTMLElement;
-    expect(mainDiv.className).toContain('ring-4');
-    expect(mainDiv.className).toContain('ring-blue-500');
+    expect(mainDiv.className).toContain('planner-node');
+    expect(mainDiv.className).toContain('is-selected');
   });
 
   it('does not apply selected styling when selected is false', () => {
     const { container } = render(<BatteryNode id="1" data={{}} selected={false} />);
     const mainDiv = container.firstChild as HTMLElement;
-    expect(mainDiv.className).not.toContain('ring-4');
-    expect(mainDiv.className).not.toContain('ring-blue-500');
+    expect(mainDiv.className).not.toContain('is-selected');
+    
   });
 
   it('renders 4 Handle components with correct props', () => {
@@ -69,20 +73,20 @@ describe('BatteryNode Component', () => {
     const handles = screen.getAllByTestId('react-flow-handle');
     expect(handles).toHaveLength(4);
 
-    // Source Plus
-    expect(handles[0]).toHaveAttribute('type', 'source');
+    // Target Plus (left side input)
+    expect(handles[0]).toHaveAttribute('type', 'target');
     expect(handles[0]).toHaveAttribute('id', 'plus');
 
-    // Source Minus
-    expect(handles[1]).toHaveAttribute('type', 'source');
+    // Target Minus (left side input)
+    expect(handles[1]).toHaveAttribute('type', 'target');
     expect(handles[1]).toHaveAttribute('id', 'minus');
 
-    // Target Plus
-    expect(handles[2]).toHaveAttribute('type', 'target');
+    // Source Plus (right side output)
+    expect(handles[2]).toHaveAttribute('type', 'source');
     expect(handles[2]).toHaveAttribute('id', 'plus');
 
-    // Target Minus
-    expect(handles[3]).toHaveAttribute('type', 'target');
+    // Source Minus (right side output)
+    expect(handles[3]).toHaveAttribute('type', 'source');
     expect(handles[3]).toHaveAttribute('id', 'minus');
   });
 });

@@ -53,7 +53,7 @@ const CableEdge = function ({
       : getBezierPath(pathParams);
   }, [sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, isProMode]);
 
-  const { length, crossSection, maxFuse, strokeWidth, animationDuration, voltageDropWarning, cableFunction } = useMemo(() => {
+  const { length, crossSection, maxFuse, strokeWidth, voltageDropWarning, cableFunction } = useMemo(() => {
     const nodes = getNodes();
     const length = data?.length || 3;
     let I = 0;
@@ -79,10 +79,10 @@ const CableEdge = function ({
     const maxAmpere = VDE_CURRENT_CAPACITY[cs] ?? 0;
 
     let sw = 2;
-    if (cs <= 1.5) sw = 2;
-    else if (cs <= 4) sw = 4;
-    else if (cs <= 6) sw = 6;
-    else sw = 10;
+    if (cs <= 1.5) sw = 1.5;
+    else if (cs <= 4) sw = 2;
+    else if (cs <= 6) sw = 2.5;
+    else sw = 3;
 
     const voltageDrop = calculateVoltageDrop(I, length, cs);
     const voltageDropWarning = voltageDrop > VDE_MAX_VOLTAGE_DROP_12V * 12;
@@ -129,110 +129,43 @@ const CableEdge = function ({
       crossSection: cs,
       maxFuse: maxAmpere,
       strokeWidth: sw,
-      animationDuration: Math.max(0.5, 5 - (I / 10)),
       voltageDropWarning,
       cableFunction: func,
     };
   }, [getNodes, data?.length, data?.crossSection, source, target]);
 
   const cableColorMap: Record<string, string> = {
-    positive: '#dc2626',
-    negative: '#18181b',
-    ground: '#10b981',
-    solar: '#f59e0b',
-    shore: '#3b82f6',
-    inverter: '#a855f7',
-    charging: '#ec4899',
-    main: '#dc2626',
-    secondary: '#6b7280',
+    positive: 'var(--cable-positive)',
+    negative: 'var(--cable-negative)',
+    ground: 'var(--cable-ground)',
+    solar: 'var(--cable-solar)',
+    shore: 'var(--cable-shore)',
+    inverter: 'var(--cable-inverter)',
+    charging: 'var(--cable-charging)',
+    main: 'var(--cable-main)',
+    secondary: 'var(--cable-secondary)',
   };
 
-  const color = cableColorMap[cableFunction] || '#6b7280';
-  const effectiveStrokeWidth = cableFunction === 'main' ? Math.max(strokeWidth, 4) : strokeWidth;
-  const stroke = selected ? '#f97316' : (voltageDropWarning ? '#ef4444' : color);
-  const isMainCable = cableFunction === 'main' || cableFunction === 'positive';
+  const color = cableColorMap[cableFunction] || 'var(--cable-secondary)';
+  const effectiveStrokeWidth = cableFunction === 'main' ? Math.max(strokeWidth, 2.5) : strokeWidth;
+  const stroke = selected ? 'var(--accent)' : (voltageDropWarning ? 'var(--acc-fuse)' : color);
 
-  // Build label lines
+  // Build label lines (excluding cableFunction, which is shown as a chip above)
   const labelLines: string[] = [
     `${length.toFixed(2)} m`,
     `${crossSection} mm²`,
   ];
   if (maxFuse > 0) {
-    labelLines.push(`Max: ${maxFuse}A`);
+    labelLines.push(`Max ${maxFuse}A`);
   }
   if (data?.fuseSize) {
     labelLines.push(`${data.fuseSize}A Sicherung`);
   }
   if (voltageDropWarning) {
-    labelLines.push('⚠ VDE-Spannungsabfall');
-  }
-  if (cableFunction) {
-    labelLines.push(cableFunction);
+    labelLines.push('⚠ VDE');
   }
 
-  // Determine if we should render the main cable highlight
-  const showMainHighlight = isMainCable;
-
-  // Build the main cable path if needed
-  const mainCablePath = showMainHighlight ? (
-    <path
-      id={id + '_main-cable'}
-      d={edgePath}
-      fill="none"
-      stroke={color}
-      strokeWidth={6}
-      strokeLinecap="round"
-      strokeMiterlimit="4"
-    />
-  ) : null;
-
-  // Build the main circle animation
-  const mainCircle = (
-    <circle
-      r={effectiveStrokeWidth / 2}
-      fill={voltageDropWarning ? '#ef4444' : '#fbbf24'}
-    >
-      <animateMotion
-        dur={`${animationDuration}s`}
-        repeatCount="infinite"
-        path={edgePath}
-      />
-    </circle>
-  );
-
-  // Build label content
-  const labelContent = (
-    <EdgeLabelRenderer>
-      <div
-        style={{
-          position: 'absolute',
-          transform: `translate(-50%, -50%) translate(${labelX}px,${labelY + (sourceHandle?.includes('minus') ? 40 : -40)}px)`,
-          background: 'white',
-          padding: '2px 8px',
-          borderRadius: '4px',
-          fontSize: '11px',
-          fontWeight: 'bold',
-          border: '1px solid #ccc',
-          pointerEvents: 'all',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center'
-        }}
-        className="nodrag nopan"
-      >
-        {labelLines.map((line, idx) => (
-          <span key={idx} style={{ display: 'block' }}>
-            {line}{idx < labelLines.length - 1 && ' '}
-        </span>
-        ))}
-        {cableFunction && (
-          <span style={{ marginLeft: '4px', fontSize: '9px', textTransform: 'uppercase' }}>{cableFunction}</span>
-        )}
-      </div>
-    </EdgeLabelRenderer>
-  );
-
-  // Build the interaction path
+  // Hover highlight path (invisible hit area for interaction)
   const interactionPath = (
     <path
       id={id + '_interaction'}
@@ -248,19 +181,68 @@ const CableEdge = function ({
     </path>
   );
 
+  // Build label content (chip badge in the cable's category colour + details)
+  const labelContent = (
+    <EdgeLabelRenderer>
+      <div
+        style={{
+          position: 'absolute',
+          transform: `translate(-50%, -50%) translate(${labelX}px,${labelY + (sourceHandle?.includes('minus') ? 30 : -30)}px)`,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 2,
+          pointerEvents: 'all',
+        }}
+        className="nodrag nopan"
+      >
+        {cableFunction && (
+          <span
+            style={{
+              fontSize: '8px',
+              fontWeight: '700',
+              letterSpacing: '0.04em',
+              textTransform: 'uppercase',
+              color,
+              background: `color-mix(in oklch, ${color} 14%, transparent)`,
+              padding: '1px 6px',
+              borderRadius: 999,
+              fontFamily: 'var(--font-mono)',
+            }}
+          >
+            {cableFunction}
+          </span>
+        )}
+        <div
+          style={{
+            background: 'var(--panel)',
+            color: 'var(--foreground)',
+            padding: '2px 7px',
+            borderRadius: '6px',
+            fontSize: '10px',
+            fontWeight: '600',
+            border: '1px solid var(--node-border)',
+            boxShadow: '0 1px 3px oklch(0 0 0 / 12%)',
+            fontFamily: 'var(--font-mono)',
+            fontVariantNumeric: 'tabular-nums',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            lineHeight: 1.35,
+          }}
+        >
+          {labelLines.map((line, idx) => (
+            <span key={idx} style={{ display: 'block', whiteSpace: 'nowrap' }}>
+              {line}
+            </span>
+          ))}
+        </div>
+      </div>
+    </EdgeLabelRenderer>
+  );
+
   return (
-    <div>
-      {showMainHighlight && (
-        <path
-          id={id + '_main-cable'}
-          d={edgePath}
-          fill="none"
-          stroke={color}
-          strokeWidth={6}
-          strokeLinecap="round"
-          strokeMiterlimit="4"
-        />
-      )}
+    <>
       <BaseEdge
         id={id}
         path={edgePath}
@@ -273,10 +255,9 @@ const CableEdge = function ({
           cursor: 'pointer',
         }}
       />
-      {mainCircle}
       {labelContent}
       {interactionPath}
-    </div>
+    </>
   );
 };
 
