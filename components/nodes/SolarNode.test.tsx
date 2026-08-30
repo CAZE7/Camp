@@ -32,28 +32,32 @@ describe('SolarNode Component', () => {
 
   it('renders default voltage and amps when not provided', () => {
     render(<SolarNode id="1" data={{}} />);
-    expect(screen.getByText('Spannung: 0 V')).toBeInTheDocument();
-    expect(screen.getByText('Strom: 0 A')).toBeInTheDocument();
+    expect(screen.getByText('Spannung')).toBeInTheDocument();
+    expect(screen.getByText('0 V')).toBeInTheDocument();
+    expect(screen.getByText('Strom')).toBeInTheDocument();
+    expect(screen.getByText('0 A')).toBeInTheDocument();
   });
 
   it('renders custom voltage and amps when provided in data', () => {
     render(<SolarNode id="1" data={{ voltage: 12, amps: 5.5 }} />);
-    expect(screen.getByText('Spannung: 12 V')).toBeInTheDocument();
-    expect(screen.getByText('Strom: 5.5 A')).toBeInTheDocument();
+    expect(screen.getByText('Spannung')).toBeInTheDocument();
+    expect(screen.getByText('12 V')).toBeInTheDocument();
+    expect(screen.getByText('Strom')).toBeInTheDocument();
+    expect(screen.getByText('5.5 A')).toBeInTheDocument();
   });
 
   it('applies selected styling when selected is true', () => {
     const { container } = render(<SolarNode id="1" data={{}} selected={true} />);
     const mainDiv = container.firstChild as HTMLElement;
-    expect(mainDiv.className).toContain('ring-4');
-    expect(mainDiv.className).toContain('ring-blue-500');
+    expect(mainDiv.className).toContain('planner-node');
+    expect(mainDiv.className).toContain('is-selected');
   });
 
   it('does not apply selected styling when selected is false', () => {
     const { container } = render(<SolarNode id="1" data={{}} selected={false} />);
     const mainDiv = container.firstChild as HTMLElement;
-    expect(mainDiv.className).not.toContain('ring-4');
-    expect(mainDiv.className).not.toContain('ring-blue-500');
+    expect(mainDiv.className).not.toContain('is-selected');
+    
   });
 
   it('renders 4 Handle components with correct props', () => {

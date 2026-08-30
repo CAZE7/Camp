@@ -1,5 +1,18 @@
-import React, { useCallback, useState } from 'react';
+"use client";
+
+import React, { useCallback } from 'react';
 import Link from 'next/link';
+import {
+  ArrowLeft,
+  LayoutGrid,
+  Image as ImageIcon,
+  Sparkles,
+  Wand2,
+  CheckCircle2,
+  Droplets,
+  Zap,
+  Menu,
+} from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,6 +24,45 @@ import { usePlannerStore } from '../../store/usePlannerStore';
 import { useAppStore } from '../../lib/store';
 import { toPng } from 'html-to-image';
 import { useReactFlow } from 'reactflow';
+import { ThemeToggle } from './ThemeToggle';
+
+function Segmented<T extends string>({
+  value,
+  onChange,
+  options,
+  size = 'sm',
+}: {
+  value: T;
+  onChange: (v: T) => void;
+  options: { value: T; label: string; icon?: React.ReactNode }[];
+  size?: 'sm' | 'md';
+}) {
+  return (
+    <div role="tablist" className="inline-flex items-center gap-0.5 border border-border bg-node-muted p-0.5">
+      {options.map((opt) => {
+        const active = opt.value === value;
+        return (
+          <button
+            key={opt.value}
+            role="tab"
+            aria-selected={active}
+            onClick={() => onChange(opt.value)}
+            className={`inline-flex items-center gap-1 rounded px-2.5 font-medium transition-colors ${
+              size === 'sm' ? 'h-7 text-xs' : 'h-8 text-sm'
+            } ${
+              active
+                ? 'bg-foreground text-background'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {opt.icon}
+            {opt.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 export function PlannerDashboard() {
   const { fitView } = useReactFlow();
@@ -28,9 +80,7 @@ export function PlannerDashboard() {
 
   const handleExportBOM = useCallback(() => {
     exportBOM();
-    // Dispatch event to show the BOM Modal in FlowCanvas component instead
-    const event = new CustomEvent('show-bom-modal');
-    window.dispatchEvent(event);
+    window.dispatchEvent(new CustomEvent('show-bom-modal'));
   }, [exportBOM]);
 
   const onExportImage = useCallback(() => {
@@ -48,103 +98,97 @@ export function PlannerDashboard() {
         }
         return true;
       },
-    }).then((dataUrl) => {
-      const link = document.createElement('a');
-      link.download = 'schaltplan.png';
-      link.href = dataUrl;
-      link.click();
-    }).catch((err) => {
-      console.error('Failed to export image', err);
-    });
+    })
+      .then((dataUrl) => {
+        const link = document.createElement('a');
+        link.download = 'schaltplan.png';
+        link.href = dataUrl;
+        link.click();
+      })
+      .catch((err) => console.error('Failed to export image', err));
   }, []);
 
+  const isWater = viewMode === 'water';
+
   return (
-    <div className="absolute top-4 left-4 z-10 flex flex-wrap gap-3 bg-card/90 backdrop-blur-md shadow-lg rounded-lg p-3 pointer-events-none w-[calc(100%-2rem)] border border-border">
-      {/* Navigation & View Mode */}
-      <div className="flex items-center gap-1 pointer-events-auto">
-        <Link href="/">
-          <Button variant="ghost" size="sm" className="font-semibold">
-            ← Zurück
-          </Button>
-        </Link>
-        <div className="w-px h-6 bg-border mx-1" />
-        <Button
-          variant={viewMode === 'electric' ? 'default' : 'ghost'}
-          size="sm"
-          onClick={() => setViewMode('electric')}
-          className={viewMode === 'electric' ? 'bg-orange-500 hover:bg-orange-600' : ''}
-        >
-          Elektrik-Schaltplan
-        </Button>
-        <Button
-          variant={viewMode === 'water' ? 'default' : 'ghost'}
-          size="sm"
-          onClick={() => setViewMode('water')}
-          className={viewMode === 'water' ? 'bg-cyan-500 hover:bg-cyan-600' : ''}
-        >
-          Wasser & Sanitär
-        </Button>
+    <header className="relative z-40 flex flex-wrap items-center gap-x-1 gap-y-1 border-b border-border bg-toolbar px-2 py-1.5 text-sm">
+      {/* Back */}
+      <Link
+        href="/"
+        className="inline-flex h-7 items-center gap-1 rounded px-2 text-xs font-medium text-muted-foreground hover:bg-node-muted hover:text-foreground"
+      >
+        <ArrowLeft size={14} />
+      </Link>
+
+      {/* Title */}
+      <div className="px-2">
+        <h1 className="text-[13px] font-semibold text-foreground">{isWater ? 'Wasser & Sanitär' : 'Elektrik-Schaltplan'}</h1>
       </div>
+
+      <div className="mx-1 hidden h-6 w-px bg-border sm:block" />
+
+      {/* View mode segmented */}
+      <Segmented
+        value={viewMode}
+        onChange={setViewMode}
+        options={[
+          { value: 'electric', label: 'Elektrik', icon: <Zap size={13} /> },
+          { value: 'water', label: 'Wasser', icon: <Droplets size={13} /> },
+        ]}
+      />
 
       {/* Actions */}
-      <div className="pointer-events-auto flex items-center gap-2 flex-wrap">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="font-semibold">
-              Aktionen
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="rounded-lg min-w-52">
-            <DropdownMenuItem onClick={handleExportBOM} className="cursor-pointer text-orange-700 font-medium rounded-md">
-              Stückliste an KI senden
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => autoWireSystem(fitView)} className="cursor-pointer text-yellow-700 font-medium rounded-md">
-              Automatisch Verkabeln & Absichern
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={checkSchematic} className="cursor-pointer text-red-700 font-medium rounded-md">
-              Schaltplan von KI prüfen lassen
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onLayout(fitView)} className="cursor-pointer text-indigo-700 font-medium rounded-md">
-              Schaltplan aufräumen
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={onExportImage} className="cursor-pointer text-green-700 font-medium rounded-md">
-              Als Bild speichern
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        {/* Season Toggle */}
-        <div className="flex items-center gap-1">
-          <Button
-            variant={season === 'summer' ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => setSeason('summer')}
-            className={season === 'summer' ? 'bg-yellow-400 text-yellow-900 hover:bg-yellow-500' : ''}
-          >
-            Sommer
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" size="sm" className="h-7 gap-1.5 border-none text-xs font-medium text-muted-foreground shadow-none hover:bg-node-muted hover:text-foreground">
+            <Menu size={14} />
+            <span className="hidden md:inline">Aktionen</span>
           </Button>
-          <Button
-            variant={season === 'winter' ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => setSeason('winter')}
-            className={season === 'winter' ? 'bg-blue-400 text-blue-900 hover:bg-blue-500' : ''}
-          >
-            Winter
-          </Button>
-        </div>
-      </div>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="min-w-60 rounded-md border-border p-1">
+          <DropdownMenuItem onClick={handleExportBOM} className="cursor-pointer gap-2 rounded py-1.5 text-[13px]">
+            <Sparkles size={15} className="text-muted-foreground" /> Stückliste an KI senden
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => autoWireSystem(fitView)} className="cursor-pointer gap-2 rounded py-1.5 text-[13px]">
+            <Wand2 size={15} className="text-muted-foreground" /> Automatisch Verkabeln
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={checkSchematic} className="cursor-pointer gap-2 rounded py-1.5 text-[13px]">
+            <CheckCircle2 size={15} className="text-muted-foreground" /> Schaltplan prüfen lassen
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onLayout(fitView)} className="cursor-pointer gap-2 rounded py-1.5 text-[13px]">
+            <LayoutGrid size={15} className="text-muted-foreground" /> Schaltplan aufräumen
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={onExportImage} className="cursor-pointer gap-2 rounded py-1.5 text-[13px]">
+            <ImageIcon size={15} className="text-muted-foreground" /> Als Bild speichern
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
-      {/* Pro Mode */}
-      <div className="ml-auto pointer-events-auto pl-3 border-l border-border flex items-center">
+      {/* Season segmented */}
+      {!isWater && (
+        <Segmented
+          value={season}
+          onChange={setSeason}
+          options={[
+            { value: 'summer', label: 'Sommer' },
+            { value: 'winter', label: 'Winter' },
+          ]}
+        />
+      )}
+
+      {/* Right cluster */}
+      <div className="ml-auto flex items-center gap-1.5">
         <Button
           variant={isProMode ? 'default' : 'outline'}
           size="sm"
           onClick={toggleProMode}
-          className={isProMode ? 'bg-blue-500 hover:bg-blue-600' : ''}
+          className="h-7 gap-1.5 text-xs font-medium"
         >
-          {isProMode ? 'Profi-Modus An' : 'Profi-Modus Aus'}
+          <LayoutGrid size={14} />
+          <span className="hidden md:inline">{isProMode ? 'Profi-Modus' : 'Standard'}</span>
         </Button>
+        <ThemeToggle />
       </div>
-    </div>
+    </header>
   );
 }

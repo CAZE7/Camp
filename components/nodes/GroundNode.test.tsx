@@ -33,15 +33,15 @@ describe('GroundNode Component', () => {
   it('applies selected styling when selected is true', () => {
     const { container } = render(<GroundNode id="1" data={{}} selected={true} />);
     const mainDiv = container.firstChild as HTMLElement;
-    expect(mainDiv.className).toContain('ring-4');
-    expect(mainDiv.className).toContain('ring-blue-500');
+    expect(mainDiv.className).toContain('planner-node');
+    expect(mainDiv.className).toContain('is-selected');
   });
 
   it('does not apply selected styling when selected is false', () => {
     const { container } = render(<GroundNode id="1" data={{}} selected={false} />);
     const mainDiv = container.firstChild as HTMLElement;
-    expect(mainDiv.className).not.toContain('ring-4');
-    expect(mainDiv.className).not.toContain('ring-blue-500');
+    expect(mainDiv.className).not.toContain('is-selected');
+    
   });
 
   it('renders target and source Handle components with correct props', () => {

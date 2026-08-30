@@ -1,17 +1,21 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Sidebar from '../Sidebar';
 import { usePlannerStore } from '../../store/usePlannerStore';
 
 export function PlannerSidebar() {
-  const [isLeftSidebarOpen, setIsLeftSidebarOpen] = useState(true);
+  // The component palette is docked on ≥768px (tablet/desktop) and a slide-over below.
+  const [isLeftSidebarOpen, setIsLeftSidebarOpen] = useState(false);
+  useEffect(() => {
+    setIsLeftSidebarOpen(window.innerWidth >= 768);
+  }, []);
   const viewMode = usePlannerStore((state) => state.viewMode);
 
   return (
     <>
       <div
-        className={`transition-all duration-300 ease-in-out absolute md:relative z-40 h-full ${isLeftSidebarOpen ? 'w-64 translate-x-0' : 'w-0 -translate-x-full'} flex-shrink-0 shadow-lg bg-card border-r border-border max-w-[calc(100vw-2rem)]`}
+        className={`transition-all duration-300 ease-in-out absolute md:relative z-40 h-full overflow-hidden ${isLeftSidebarOpen ? 'w-64 translate-x-0' : 'w-0 -translate-x-full'} flex-shrink-0 shadow-lg bg-toolbar border-r border-border max-w-[calc(100vw-2rem)]`}
       >
         <div className="w-64 h-full max-w-full">
           <Sidebar mode={viewMode} />

@@ -39,10 +39,9 @@ export const initialNodes: Node[] = [
   },
   {
     id: 'fuse-box',
-    type: 'default',
+    type: 'fuse',
     position: { x: 400, y: 100 },
-    data: { label: 'Sicherungskasten' },
-    style: { border: '1px solid #777', padding: 10, borderRadius: 5, background: '#fff' }
+    data: { label: 'Sicherungskasten', rating: 60 },
   },
   {
     id: 'consumer-1',

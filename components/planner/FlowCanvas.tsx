@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState, useEffect } from 'react';
 import ReactFlow, {
   Background,
+  BackgroundVariant,
   Controls,
   MiniMap,
   Panel,
@@ -10,17 +11,50 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 
+function Legend({ color, label }: { color: string; label: string }) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: color }} />
+      <span className="text-muted-foreground">{label}</span>
+    </div>
+  );
+}
+
+function MetricRow({ k, v }: { k: string; v: string }) {
+  return (
+    <div className="flex items-center justify-between text-xs">
+      <span className="text-muted-foreground">{k}</span>
+      <span className="font-semibold tabular-nums text-foreground">{v}</span>
+    </div>
+  );
+}
+
 import WaterNode from '../nodes/WaterNode';
 import WaterPipeEdge from '../edges/WaterPipeEdge';
 import { NODE_TYPES, EDGE_TYPES } from './constants';
+
+// Hoisted to module scope so the reference never changes between renders.
+// React Flow warns (error 002) and re-processes its internals if nodeTypes /
+// edgeTypes is a new object on each render; a stable reference avoids that.
+const nodeTypes = {
+  ...NODE_TYPES,
+  freshWaterTank: WaterNode,
+  grayWaterTank: WaterNode,
+  pump: WaterNode,
+  accumulator: WaterNode,
+  preFilter: WaterNode,
+  sink: WaterNode,
+  shower: WaterNode,
+};
+
+const edgeTypes = { ...EDGE_TYPES, waterPipe: WaterPipeEdge };
 import { usePlannerStore } from '../../store/usePlannerStore';
 import { useAppStore } from '../../lib/store';
 import { useDashboardMetrics } from './hooks/useDashboardMetrics';
-import { BOMModal } from './ui/BOMModal';
 import { Button } from '@/components/ui/button';
 
 export function FlowCanvas() {
-  const { screenToFlowPosition, fitView } = useReactFlow();
+  const { screenToFlowPosition } = useReactFlow();
 
   const viewMode = usePlannerStore((state) => state.viewMode);
   const nodes = usePlannerStore((state) => state.nodes);
@@ -141,24 +175,14 @@ export function FlowCanvas() {
     return () => document.removeEventListener('click', handleGlobalClick);
   }, [isValidConnection, onConnect, setFirstTappedHandle]);
 
-  const edgeTypes = useMemo(() => ({ ...EDGE_TYPES, waterPipe: WaterPipeEdge }), []);
-  const nodeTypes = useMemo(() => ({
-    ...NODE_TYPES,
-    freshWaterTank: WaterNode,
-    grayWaterTank: WaterNode,
-    pump: WaterNode,
-    accumulator: WaterNode,
-    preFilter: WaterNode,
-    sink: WaterNode,
-    shower: WaterNode
-  }), []);
-
   const metrics = useDashboardMetrics(nodes, edges, season, calculatedSolarWatts);
+  const isWaterMode = viewMode === 'water';
 
   return (
-    <>
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="relative min-h-0 flex-1">
       {waterWarning && (
-        <div className="absolute top-20 left-1/2 -translate-x-1/2 z-50 bg-yellow-100 text-yellow-800 border border-yellow-300 p-4 rounded-lg shadow-lg font-semibold">
+        <div className="absolute top-20 left-1/2 -translate-x-1/2 z-50 rounded-lg border border-acc-charger/40 bg-acc-charger/15 p-4 font-semibold text-foreground shadow-lg backdrop-blur-md">
           {waterWarning}
         </div>
       )}
@@ -176,93 +200,73 @@ export function FlowCanvas() {
         onDrop={onDropWrapper}
         fitView
         snapToGrid={true}
-        snapGrid={[10, 10]}
+        snapGrid={[16, 16]}
         deleteKeyCode={['Backspace', 'Delete']}
       >
-        <Background color="hsl(var(--border))" gap={16} />
-        <Controls className="rounded-lg overflow-hidden border border-border shadow-sm" />
-        <MiniMap className="rounded-lg overflow-hidden border border-border shadow-sm" />
+        <Background variant={BackgroundVariant.Dots} color="var(--canvas-grid)" gap={16} size={1.5} />
+        <Controls className="react-flow__controls" />
+        <MiniMap className="react-flow__minimap" pannable zoomable />
 
         {viewMode === 'electric' && (
-          <Panel position="top-center" className="bg-card/95 backdrop-blur-md p-4 rounded-lg shadow-lg border border-border text-sm w-80">
-            <h3 className="font-bold mb-2 border-b border-border pb-1">System Berechnungen</h3>
-            <div className="flex flex-col gap-2">
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded bg-primary"></span>
-                  <span> Positive Kabel (+12V)</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded bg-negative"></span>
-                  <span> Negative Kabel (Return)</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded bg-ground"></span>
-                  <span> Ground/PE Kabel</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded bg-solar"></span>
-                  <span> Solar-Kabel</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded bg-shore"></span>
-                  <span> Landstrom (230V)</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded bg-main"></span>
-                  <span> Hauptkabel</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded bg-secondary"></span>
-                  <span> Zweitär/Kleinstrom</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded bg-charging"></span>
-                  <span> MPPT/Laderegler</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded bg-inverter"></span>
-                  <span> Wechselrichter</span>
-                </div>
-              </div>
-              <hr className="my-3 border-border" />
-              <div className="flex flex-col gap-1 text-muted-foreground">
-                <span>↻</span>
-                <span>Layout anwenden - Knoten automatisch nach logischer Reihenfolge anordnen</span>
-              </div>
+          <Panel position="top-center" className="rounded-md border border-border bg-panel/95 px-3 py-2.5 shadow-sm backdrop-blur-md text-sm w-[20rem] max-w-[calc(100vw-2rem)]">
+            <div className="mb-2 flex items-center justify-between border-b border-border pb-1.5">
+              <h3 className="text-[12px] font-semibold text-foreground">Systemberechung</h3>
+              <span className="text-[9px] font-mono uppercase tracking-wider text-muted-foreground">VDE 0100-721</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Täglicher Gesamtverbrauch:</span>
-              <span className="font-semibold">{metrics.dailyConsumptionAh.toFixed(1)} Ah</span>
+
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+              <Legend color="var(--cable-positive)" label="+12V" />
+              <Legend color="var(--cable-negative)" label="Return" />
+              <Legend color="var(--cable-ground)" label="Ground/PE" />
+              <Legend color="var(--cable-solar)" label="Solar" />
+              <Legend color="var(--cable-shore)" label="Landstrom" />
+              <Legend color="var(--cable-main)" label="Hauptkabel" />
+              <Legend color="var(--cable-charging)" label="MPPT/Laden" />
+              <Legend color="var(--cable-inverter)" label="Wechselrichter" />
             </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Batterie-Autarkie (ohne Laden):</span>
-              <span className="font-semibold">{metrics.autarkyStr}</span>
+
+            <div className="mt-2 border-t border-border pt-2">
+              <MetricRow k="Verbrauch/Tag" v={`${metrics.dailyConsumptionAh.toFixed(1)} Ah`} />
+              <MetricRow k="Autarkie" v={metrics.autarkyStr} />
+              {metrics.solarNodesCount > 0 && (
+                <MetricRow k="Solar-Array" v={`${metrics.totalSolarVoltage}V / ${metrics.totalSolarAmps.toFixed(1)}A`} />
+              )}
             </div>
-            {metrics.solarNodesCount > 0 && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Solar-Array Output:</span>
-                <span className="font-semibold">{metrics.totalSolarVoltage}V / {metrics.totalSolarAmps.toFixed(1)}A</span>
-              </div>
-            )}
+
             {metrics.hasDirectBatteryToConsumer && (
-              <div className="mt-2 p-2 bg-red-100 text-red-800 text-xs rounded-md border border-red-200">
-                Warnung: Verbraucher ist direkt mit der Batterie verbunden. Ein Sicherungsknoten fehlt!
+              <div className="mt-2 rounded border border-acc-fuse/40 bg-acc-fuse/10 p-2 text-[11px] font-medium text-foreground">
+                Warnung: Verbraucher direkt mit Batterie verbunden — Sicherung fehlt!
               </div>
             )}
           </Panel>
         )}
 
         {viewMode === 'electric' && calculatedSolarWatts > 0 && (
-          <Panel position="bottom-center" className="bg-blue-50/90 backdrop-blur-md p-3 rounded-lg shadow-sm border border-blue-200 text-blue-800 text-sm mb-4">
-            <strong>Dachplaner-Daten erkannt:</strong> {calculatedSolarWatts} W Solarleistung verfügbar. Du kannst nun deinen MPPT-Regler entsprechend dimensionieren.
+          <Panel position="bottom-center" className="mb-6 rounded-md border border-border bg-panel/95 p-2.5 text-xs text-foreground shadow-sm backdrop-blur-md">
+            <strong>Dachplaner:</strong> {calculatedSolarWatts} W verfügbar. MPPT-Regler entsprechend dimensionieren.
           </Panel>
         )}
       </ReactFlow>
+      </div>
+
+      {/* CAD-style status bar */}
+      <div className="cad-status overflow-x-auto">
+        <span className="cad-status__cell">Bauteile <b>{viewMode === 'water' ? waterNodes.length : nodes.length}</b></span>
+        <span className="cad-status__cell">Kabel <b>{viewMode === 'water' ? waterEdges.length : edges.length}</b></span>
+        <span className="cad-status__cell">
+          <span className="dot" style={{ background: viewMode === 'water' ? 'var(--acc-water)' : 'var(--pol-plus)' }} />
+          {isWaterMode ? 'Wasser' : 'Elektrik'}
+        </span>
+        <span className="cad-status__cell hidden sm:inline-flex">Raster <b>16 px</b></span>
+        <span className="cad-status__cell hidden md:inline-flex">Saison <b>{season === 'summer' ? 'Sommer' : 'Winter'}</b></span>
+        <span className="cad-status__cell hidden lg:inline-flex ml-auto font-medium text-muted-foreground">
+          {isWaterMode ? 'Wasser & Sanitär' : 'Elektrik-Schaltplan'}
+        </span>
+      </div>
 
       {showBOM && bomData && (
         <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-50 pointer-events-auto">
-          <div className="bg-card p-6 rounded-lg shadow-lg w-96 max-h-[80vh] overflow-y-auto border border-border">
+          <div className="bg-panel p-6 rounded-xl shadow-lg w-96 max-h-[80vh] overflow-y-auto border border-border">
             <h2 className="text-xl font-bold mb-4 border-b border-border pb-2">Stückliste (BOM)</h2>
 
             <div className="mb-4">
@@ -300,9 +304,6 @@ export function FlowCanvas() {
           </div>
         </div>
       )}
-
-      {/* Keeping existing BOMModal to not break any external dependencies, but the above renders first */}
-      {showBOM && bomData && <BOMModal bom={bomData} onClose={() => setShowBOM(false)} />}
-    </>
+    </div>
   );
 }
