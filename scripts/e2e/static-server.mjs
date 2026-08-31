@@ -75,7 +75,10 @@ const server = createServer((request, response) => {
 
   // Fallback für GitHub Actions / GitHub Pages `basePath` (z. B. `/Camp/_next/...` -> `/_next/...`):
   // Wenn die Datei mit Prefix nicht existiert, den ersten Pfad-Segment streichen.
-  if (!existsSync(file) && pathname.slice(1).includes('/')) {
+  // Nur bei >= 2 Segmenten: Ein einzelnes Segment (z. B. `/gibt-es-nicht/`) ist
+  // eine unbekannte Route und muss den 404-Pfad nehmen, nicht die Wurzel treffen.
+  const segments = pathname.slice(1).split('/').filter(Boolean);
+  if (!existsSync(file) && segments.length >= 2) {
     const strippedPathname = '/' + pathname.slice(1).split('/').slice(1).join('/');
     const strippedTarget = safeJoin(root, strippedPathname);
     if (strippedTarget) {

@@ -44,7 +44,7 @@ const RoofSolarNode = function ({
           'relative flex h-full w-full items-center justify-center overflow-hidden border-2 bg-soot text-paper transition-colors',
           selected ? 'ring-2 ring-copper ring-offset-2 ring-offset-paper' : '',
           state === 'invalid' && 'border-warn-critical bg-warn-critical-bg text-warn-critical',
-          state === 'overlap' && 'ring-warn-warning/40 border-warn-warning ring-2',
+          state === 'overlap' && 'border-warn-warning ring-2 ring-warn-warning/40',
           state === 'ok' && 'border-ink'
         )}
         style={{ width: '100%', height: '100%' }}

@@ -22,7 +22,7 @@ export function FloatingMetricsCard() {
 
   return (
     <aside
-      className={`bg-card/95 pointer-events-none absolute right-3 top-28 z-40 hidden overflow-hidden rounded-2xl border border-border shadow-xl transition-all sm:block ${expanded ? 'w-80' : 'w-56'}`}
+      className={`pointer-events-none absolute right-3 top-28 z-40 hidden overflow-hidden rounded-2xl border border-border bg-card/95 shadow-xl transition-all sm:block ${expanded ? 'w-80' : 'w-56'}`}
       aria-label="Aktuelle Kennzahlen des Elektrikplans"
     >
       <div className="pointer-events-auto p-4">
@@ -48,7 +48,7 @@ export function FloatingMetricsCard() {
         <dl className="space-y-2">
           <div className="flex items-center justify-between gap-3">
             <dt className="text-sm font-medium text-ink-soft">Autarkie</dt>
-            <dd className="bg-moss/10 rounded-full px-2 py-1 text-sm font-bold text-moss">
+            <dd className="rounded-full bg-moss/10 px-2 py-1 text-sm font-bold text-moss">
               {metrics.autarkyStr}
             </dd>
           </div>
@@ -61,7 +61,7 @@ export function FloatingMetricsCard() {
           </div>
           {expanded && (
             <>
-              <div className="border-rule/50 border-t pt-2" />
+              <div className="border-t border-rule/50 pt-2" />
               <div className="flex items-center justify-between gap-3">
                 <dt className="text-sm text-ink-soft">Ladezeit 0–100 %</dt>
                 <dd className="text-right text-sm font-bold text-oxide">{metrics.chargingTimeStr}</dd>

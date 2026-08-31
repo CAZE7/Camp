@@ -662,7 +662,7 @@ export function FlowCanvas() {
             position="top-left"
             className="m-2 hidden max-w-[min(20rem,calc(100vw-6rem))] sm:block md:m-3"
           >
-            <div className="bg-card/95 rounded-lg border border-border px-3 py-2 text-xs text-foreground shadow-sm">
+            <div className="rounded-lg border border-border bg-card/95 px-3 py-2 text-xs text-foreground shadow-sm">
               <strong>{viewMode === 'water' ? 'Wasserplan' : 'Elektrikplan'}</strong>
               <span className="ml-2 text-muted-foreground">
                 {coarsePointer
@@ -675,7 +675,7 @@ export function FlowCanvas() {
           {viewMode === 'electric' && (
             <Panel position="top-right" className="m-3">
               <div
-                className="bg-card/95 flex flex-wrap gap-1.5 rounded-lg border border-border p-1.5 shadow-sm"
+                className="flex flex-wrap gap-1.5 rounded-lg border border-border bg-card/95 p-1.5 shadow-sm"
                 role="group"
                 aria-label="Domänen-Filter"
               >
@@ -733,7 +733,7 @@ export function FlowCanvas() {
               <div
                 data-testid="circuit-trace-info"
                 role="status"
-                className="border-copper/50 bg-card/95 rounded-lg border px-3 py-2 text-sm font-semibold text-foreground shadow-lg"
+                className="rounded-lg border border-copper/50 bg-card/95 px-3 py-2 text-sm font-semibold text-foreground shadow-lg"
               >
                 <span className="mr-2 text-copper">Strompfad:</span>
                 {traceLabel}
@@ -759,7 +759,7 @@ export function FlowCanvas() {
           {viewMode === 'electric' && calculatedSolarWatts > 0 && (
             <Panel
               position="bottom-center"
-              className="border-oxide/40 bg-oxide/10 mb-4 rounded-lg border p-3 text-sm text-oxide shadow-sm"
+              className="mb-4 rounded-lg border border-oxide/40 bg-oxide/10 p-3 text-sm text-oxide shadow-sm"
             >
               <strong>Dachplaner-Daten erkannt:</strong> {calculatedSolarWatts} W Solarleistung verfügbar. Der
               Solar-Laderegler (MPPT) muss dafür passend dimensioniert sein.

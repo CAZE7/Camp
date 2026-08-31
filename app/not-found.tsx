@@ -1,6 +1,11 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { SiteHeader } from '@/components/brand/SiteHeader';
 import { SiteFooter } from '@/components/brand/SiteFooter';
+
+export const metadata: Metadata = {
+  title: 'Seite nicht gefunden — Werft',
+};
 
 const LINKS = [
   { href: '/', label: 'Zur Startseite' },

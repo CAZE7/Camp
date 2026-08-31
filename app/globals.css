@@ -63,6 +63,31 @@
     --sidebar-border: var(--rule);
     --sidebar-ring: var(--ink);
 
+    /* --- RGB-Tripletts für Alpha-Modifier (bg-bone/95, text-paper/70, …) ---
+       Tailwind kann Opacity-Modifier nur auf rgb()-Farben anwenden; die Config
+       referenziert deshalb rgb(var(--x-rgb) / <alpha-value>). Werte = aufgelöste
+       Hex-Tripletts der Token oben. */
+    --bone-rgb: 255 253 249;
+    --border-rgb: 143 125 104;
+    --card-rgb: 255 253 249;
+    --copper-rgb: 122 50 24;
+    --destructive-rgb: 122 36 24;
+    --foreground-rgb: 20 17 14;
+    --ink-rgb: 20 17 14;
+    --input-rgb: 143 125 104;
+    --moss-rgb: 45 61 40;
+    --muted-rgb: 231 221 208;
+    --oxide-rgb: 26 67 56;
+    --paper-rgb: 246 241 232;
+    --primary-rgb: 20 17 14;
+    --ring-rgb: 20 17 14;
+    --rule-rgb: 143 125 104;
+    --secondary-rgb: 231 221 208;
+    --signal-rgb: 122 36 24;
+    --success-rgb: 26 67 56;
+    --warn-info-rgb: 37 99 235;
+    --warn-warning-rgb: 146 64 14;
+
     /* --- Planer: Semantische Leitungs- & Warn-Kodierung ---
        Zentral definiert, damit Canvas-Kanten, Rohre und Warnungen
        überall dieselbe Farbsprache nutzen (keine Inline-Hexwerte). */
@@ -189,6 +214,28 @@
     --sidebar-border: #2c313a;
     --sidebar-ring: var(--accent-line);
 
+    /* RGB-Tripletts (dunkle Werte) für Alpha-Modifier — spiegelbildlich zu :root */
+    --bone-rgb: 23 27 34;
+    --border-rgb: 44 49 58;
+    --card-rgb: 23 27 34;
+    --copper-rgb: 224 163 112;
+    --destructive-rgb: 255 143 132;
+    --foreground-rgb: 238 241 245;
+    --ink-rgb: 238 241 245;
+    --input-rgb: 44 49 58;
+    --moss-rgb: 126 226 168;
+    --muted-rgb: 33 38 47;
+    --oxide-rgb: 126 226 168;
+    --paper-rgb: 18 21 27;
+    --primary-rgb: 231 235 241;
+    --ring-rgb: 143 180 255;
+    --rule-rgb: 44 49 58;
+    --secondary-rgb: 33 38 47;
+    --signal-rgb: 255 143 132;
+    --success-rgb: 126 226 168;
+    --warn-info-rgb: 143 180 255;
+    --warn-warning-rgb: 242 193 78;
+
     /* Canvas & Leitungen: Signal-Farben bleiben Signalfarben — auf dunklem
        Grund heller, damit sie ≥ 3:1 (grafisches Objekt) zur Fläche halten. */
     --canvas-bg: #12151b;
@@ -300,7 +347,7 @@
   .warn-card {
     border-width: 2px;
     border-style: solid;
-    border-radius: 1rem;
+    border-radius: 0.75rem;
     padding: 1rem 1.25rem;
     display: flex;
     align-items: flex-start;
@@ -317,8 +364,8 @@
     color: var(--warn-warning);
   }
   .warn-card-ok {
-    background: #ecfdf5;
-    border-color: #a7f3d0;
+    background: var(--ok-bg);
+    border-color: var(--ok-border);
     color: var(--oxide);
   }
   .warn-card-info {
@@ -333,6 +380,27 @@
   }
   .safe-bottom {
     bottom: max(1.5rem, env(safe-area-inset-bottom));
+  }
+
+  /* StepperSlider: Touch-Ziel 44 px auch am Range-Thumb (WCAG 2.5.8),
+     damit das Widget nicht nur über die Stepper-Buttons das App-Ziel erreicht. */
+  .stepper-slider::-webkit-slider-thumb {
+    appearance: none;
+    width: 44px;
+    height: 44px;
+    margin-top: -18px; /* (44 px − 8 px Track) / 2 */
+    border: 1px solid var(--rule);
+    border-radius: 9999px;
+    background: var(--bone);
+    box-shadow: 0 1px 3px rgba(20, 17, 14, 0.25);
+  }
+  .stepper-slider::-moz-range-thumb {
+    width: 44px;
+    height: 44px;
+    border: 1px solid var(--rule);
+    border-radius: 9999px;
+    background: var(--bone);
+    box-shadow: 0 1px 3px rgba(20, 17, 14, 0.25);
   }
 
   /* --- Planer-Layout: feste Spaltenbreiten als Variablen -------------
@@ -658,7 +726,8 @@
 /* M7-4 Dichte: 4-px-Spacing-Raster. Die React-Flow-Controls (Standard:
    26 px) rücken auf 32 px — Oberkante des erlaubten Fensters 28–32 px —
    und treffen damit die Touch-Zielgröße des Planers. */
-.planner-shell .react-flow__controls-button {
+.planner-shell .react-flow__controls-button,
+.tools-dach .react-flow__controls-button {
   width: 2rem;
   height: 2rem;
 }

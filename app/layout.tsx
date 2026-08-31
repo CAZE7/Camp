@@ -15,6 +15,14 @@ export const metadata: Metadata = {
   title: 'Werft — Erst der Plan. Dann das Blech.',
   description:
     'Werkstatt für den Camper-Ausbau. 12V-Schaltplan, Dachfläche, Heizlast und Normen — geplant, bevor gebohrt wird.',
+  icons: [{ rel: 'icon', url: '/icon.svg', type: 'image/svg+xml' }],
+  openGraph: {
+    title: 'Werft — Erst der Plan. Dann das Blech.',
+    description: 'Werkstatt für den Camper-Ausbau: 12V-Schaltplan, Dachfläche, Heizlast und Normen.',
+    type: 'website',
+    locale: 'de_DE',
+    siteName: 'Werft',
+  },
 };
 
 /**

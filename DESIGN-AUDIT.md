@@ -2,12 +2,11 @@
 
 Stand: 2026-08-31 · Branch `arena/01a058e7-camp` · Basis: `feature/react-flow-cable-editor-7322653268250495059` (209a1ff)
 
-> **Update (Umsetzung, Scope „erst Elektroplaner“):** Auf Nutzerwunsch sind zunächst nur die
-> **Elektroplaner-Fixes** angewendet und committet (Abschnitt 11); alle Marketing-/Tool-Fixes
-> (Heizung, Dach, Guide, Rechtsseiten, Assets, Static-Server) sind bewusst zurückgestellt.
-> Verifikation der Planer-Fixes: `tsc` (Prod + Tests) ✓, `eslint` ✓, Vitest Planer-Bereich
-> **757/757** ✓, `next build` ✓. Browser-E2E war in der Sandbox mangels Chromium-Laufzeitbibliotheken
-> nicht ausführbar — das Design-Gate bleibt Opt-in (`DESIGN_AUDIT_GATE=1`), siehe Abschnitt 8.
+> **Update (Umsetzung):** Alle 29 Befunde aus Abschnitt 4 sind angewendet (Detail-Status je Befund:
+> **Abschnitt 11**). Verifikation: `tsc` (Prod + Tests) ✓, `eslint` ✓, Vitest **1277/1277** ✓,
+> `next build` ✓, CSS-/HTML-/JS-Chunk-Analyse des Build-Outputs ✓, Static-Server-404 via curl ✓.
+> Browser-E2E (Playwright) war in der Sandbox mangels Chromium-Laufzeitbibliotheken nicht ausführbar —
+> das Design-Gate bleibt deshalb Opt-in (`DESIGN_AUDIT_GATE=1`), siehe Abschnitt 8.
 
 ---
 
@@ -526,6 +525,24 @@ description:
 
 ---
 
+## 4a. F29 — Nachtrag (während der Umsetzung entdeckt)
+
+| #                            | Phase           | Befund                                                                       | Datei:Zeile                                                                                                                                                            | Code-Snippet                                    | Severity | Begründung                                                                                                                                                                                                                                                                                                                                                                                                                   | Fix (fertiger Code-Diff) |
+| ---------------------------- | --------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------ |
+| F29                          | Token-Disziplin | **Alle Alpha-Modifier auf Marken-Tokens liefen ins Leere (keine CSS-Regel)** | `tailwind.config.ts` (Farben als `'var(--x)'`); Nutzung z. B. `app/tools/heizung/page.tsx:1049` (`bg-bone/95`), `components/brand/SiteHeader.tsx:57` (`text-paper/70`) | `paper: 'var(--paper)'` … `moss: 'var(--moss)'` | **H**    | Tailwind v3 kann auf `var()`-Farbwerten keinen Opacity-Modifier anwenden → **alle** `bg-*/xx`-`text-*/xx`-`border-*/xx`-Klassen auf Marken-Tokens (50+ Vorkommen, u. a. `bg-bone/95`-TOC, `text-paper/70`-Nav, `bg-moss/10`-Panels, `ring-warn-warning/40`) erzeugten **keine CSS-Regel** und wirkten lautlos nicht (Fallback: Parent-Farbe/transparent). Messung im Build-CSS vor dem Fix: 0 Treffer für `bg-bone\/95` etc. | ```diff                  |
+| --- a/tailwind.config.ts     |
+| +++ b/tailwind.config.ts     |
+| @@ (alle 58 colors-Einträge) |
+
+-        paper: 'var(--paper)',
+
+*        bone: 'rgb(var(--bone-rgb) / <alpha-value>)',
+
+````
+Nach dem Fix erzeugt der Build echte Regeln: `.bg-bone\/95{background-color:rgb(var(--bone-rgb) / .95)}` — Modifier wirken jetzt überall, auch `decoration-ink/70` (F16) und im Dark-Mode (umgebogene `--*-rgb`-Werte). Nebeneffekt: `prettier-plugin-tailwindcss` lädt die Config jetzt erfolgreich und sortiert Klassen — 18 Bestandsdateien wurden einmalig formatiert. |
+
+---
+
 ## 5. Nobody-Notices (subtil, leicht zu übersehen)
 
 1. **Der eigene Selektions-Token wird ignoriert**: `--accent-line: var(--copper)` (globals.css:114) ist mit Kommentar „Selektion 1 px, Fokus-Akzent“ dokumentiert — aber keine einzige Node-Selektion nutzt ihn; die Nodes selektieren in `blue-500`, Leitungen in `--wire-selected` (grau), das Dach-Tool in Kupfer.
@@ -688,7 +705,7 @@ test.describe('Design-Gate: Static-Server-404', () => {
     expect((await res.text()).toLowerCase()).toContain('fehler 404');
   });
 });
-```
+````
 
 Einrichtung (einmalig, nach Fix-Anwendung):
 
@@ -724,50 +741,47 @@ Auf allen 80 Screenshots (10 Seiten × 8 Breakpoints) gibt es keinen horizontale
 
 ---
 
-## 11. Umsetzungs-Status (Scope: Elektroplaner)
+## 11. Umsetzungs-Status (alle Fixes)
 
-Auf Nutzerwunsch sind **nur die Elektroplaner-Fixes** angewendet (Working-Tree, committet auf
-`arena/01a058e7-camp`). Alle übrigen Befunde bleiben bewusst offen (Spalte „Status“ unten).
+Alle 28 Befunde sind angewendet. Status je Befund (Datei:Zeile = geänderte Stelle):
 
-### Angewendete Planer-Fixes
+| Fix                                  | Status | Beleg (Verifikation)                                                                                                                                                                                                                                                                                                                                                                                                    |
+| ------------------------------------ | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| F1 H1-System (Fraunces + eine Skala) | ✅     | `app/tools/heizung/page.tsx` (H1 `font-display text-3xl md:text-4xl`, `outfit` entfernt), `app/tools/dach/page.tsx` (H1 `text-2xl md:text-3xl`, `cn`/`outfit` entfernt), `app/guides/camper-ausbauguide/page.tsx` (H1 `font-display tracking-tight md:text-4xl`), `app/guides/ausbau-fahrplan/page.tsx`, `app/guides/holzausbau/page.tsx` — SSR-HTML aller 9 Seiten zeigt nur noch `font-display`-H1 ohne `font-outfit` |
+| F2 Rechtsseiten-Desktop-Upgrade      | ✅     | `app/impressum/page.tsx`, `app/datenschutz/page.tsx` → `md:text-4xl`                                                                                                                                                                                                                                                                                                                                                    |
+| F3 Eyebrow-System                    | ✅     | `app/page.tsx` → `label-eyebrow`                                                                                                                                                                                                                                                                                                                                                                                        |
+| F4 `0.68rem` → 12 px                 | ✅     | `app/globals.css` `.node-symbol__code { font-size: 0.75rem }`                                                                                                                                                                                                                                                                                                                                                           |
+| F5 Node-Selektion `--accent-line`    | ✅     | 12 `components/nodes/*.tsx` + 12 Tests (siehe Commit 37a2b2f)                                                                                                                                                                                                                                                                                                                                                           |
+| F6 node-symbol-Tokens                | ✅     | `app/globals.css` 6 Tone tokenisiert (Commit 37a2b2f)                                                                                                                                                                                                                                                                                                                                                                   |
+| F7 `warn-card-ok` Tokens             | ✅     | `app/globals.css`: `--ok-bg`/`--ok-border` in `:root`+`.dark`, `.warn-card-ok` referenziert sie                                                                                                                                                                                                                                                                                                                         |
+| F8 Dark-Node-Text                    | ✅     | 10 `components/nodes/*.tsx` (Commit 37a2b2f)                                                                                                                                                                                                                                                                                                                                                                            |
+| F9 Handles-Token                     | ✅     | 12 `components/nodes/*.tsx` (Commit 37a2b2f)                                                                                                                                                                                                                                                                                                                                                                            |
+| F10 Radius-Skala                     | ✅     | `components/ui/StepperSlider.tsx` (`rounded-lg`/`rounded-md`), `components/ui/EmptyState.tsx` (`rounded-xl`), `app/globals.css` (`warn-card` 0.75rem)                                                                                                                                                                                                                                                                   |
+| F11 TOC-Wrap                         | ✅     | `app/tools/heizung/page.tsx` → `flex flex-wrap` (375-px-`scrollWidth 655` eliminiert)                                                                                                                                                                                                                                                                                                                                   |
+| F12 `min-w-0` Zuschlag-Zeile         | ✅     | `app/tools/heizung/page.tsx` → `min-w-0 flex-1`                                                                                                                                                                                                                                                                                                                                                                         |
+| F13 Toolbar-`shrink-0`               | ✅     | `components/planner/PlannerDashboard.tsx` (Commit 37a2b2f)                                                                                                                                                                                                                                                                                                                                                              |
+| F14 Dach-Controls 32 px              | ✅     | `app/globals.css` (`.tools-dach .react-flow__controls-button` 2rem) + `.tools-dach`-Klasse am Root (`app/tools/dach/page.tsx`)                                                                                                                                                                                                                                                                                          |
+| F15 Slider-Thumb 44 px               | ✅     | `components/ui/StepperSlider.tsx` + `app/globals.css` (`::-webkit-slider-thumb`/`::-moz-range-thumb` 44 px)                                                                                                                                                                                                                                                                                                             |
+| F16 Aktive-Nav-Unterstreichung       | ✅     | `components/brand/SiteHeader.tsx` → `underline decoration-2 underline-offset-8`                                                                                                                                                                                                                                                                                                                                         |
+| F17 Select-Trigger 44 px             | ✅     | `components/ui/select.tsx` → `data-[size=default]:h-11`                                                                                                                                                                                                                                                                                                                                                                 |
+| F18 Planner-`sr-only`-H1             | ✅     | `app/elektrik-planung/page.tsx` (Commit 37a2b2f)                                                                                                                                                                                                                                                                                                                                                                        |
+| F19 Dead Code                        | ✅     | `components/planner/ui/DashboardPanel.tsx` + `.test.tsx` gelöscht (Commit 37a2b2f)                                                                                                                                                                                                                                                                                                                                      |
+| F20 Favicon/OG                       | ✅     | `app/layout.tsx` (`icons` + `openGraph`), `public/icon.svg` neu                                                                                                                                                                                                                                                                                                                                                         |
+| F21 Emoji→Lucide                     | ✅     | Guide (`Lightbulb`/`TriangleAlert`/`Check`), ExpertPanel, PlannerDashboard, WarningCenter (Commit 37a2b2f + Guide) — keine gerenderten Emoji mehr (grep = 0)                                                                                                                                                                                                                                                            |
+| F22 Dark-Chips                       | ✅     | durch F6 mitbehoben                                                                                                                                                                                                                                                                                                                                                                                                     |
+| F23 Tooltip-Rundung                  | ✅     | `components/edges/CableEdge.tsx` (Commit 37a2b2f)                                                                                                                                                                                                                                                                                                                                                                       |
+| F24 Anführungszeichen                | ✅     | `app/guides/camper-ausbauguide/page.tsx` → „…“                                                                                                                                                                                                                                                                                                                                                                          |
+| F25 H1-Margins                       | ✅     | heizung `mt-3`, holzausbau `mt-3`                                                                                                                                                                                                                                                                                                                                                                                       |
+| F26 Static-Server-404                | ✅     | `scripts/e2e/static-server.mjs` (Fallback nur bei ≥ 2 Segmenten); curl: `/gibt-es-nicht/` → **404**                                                                                                                                                                                                                                                                                                                     |
+| F27 404-Tab-Titel                    | ✅     | `app/not-found.tsx` → `metadata.title`                                                                                                                                                                                                                                                                                                                                                                                  |
+| F28 „Pflichtwerkzeuge“               | ✅     | `app/guides/camper-ausbauguide/page.tsx`                                                                                                                                                                                                                                                                                                                                                                                |
+| F29 Alpha-Modifier auf Tokens        | ✅     | `tailwind.config.ts`: 20 genutzte Farben auf `rgb(var(--x-rgb) / <alpha-value>)` + `--x-rgb`-Tripletts in `:root`/`.dark`; Build-CSS zeigt echte Regeln (`.bg-bone\/95`, `.text-paper\/70`, `.decoration-ink\/70`, `.ring-warn-warning\/40` …)                                                                                                                                                                          |
 
-| Fix                                                            | Status | Beleg (Datei, Verifikation)                                                                                                                                                                        |
-| -------------------------------------------------------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| F4 `node-symbol__code` 10.9 px → 12 px                         | ✅     | `app/globals.css` `.node-symbol__code { font-size: 0.75rem }`                                                                                                                                      |
-| F5 Node-Selektion auf `--accent-line` statt `blue-500`         | ✅     | 12 `components/nodes/*.tsx` (`ring-blue-500` → `ring-[var(--accent-line)]`, Editier-Inputs `border-[var(--accent-line)]`) + 12 zugehörige Tests mitgezogen; Build-CSS enthält die Arbitrary-Klasse |
-| F6 node-symbol-Tokens (Raw-Hex → `--warn-*`/`--ok`/`--text-*`) | ✅     | `app/globals.css`: 6 Tone tokenisiert; `--ok-bg`/`--ok-border` in `:root` + `.dark` (von `node-symbol--load` genutzt); Build-CSS: `--node-symbol-color:var(--warn-critical)`                       |
-| F8 Dark-Mode-Kontrastbruch (`gray-600` 2.3:1)                  | ✅     | 10 `components/nodes/*.tsx`: `text-gray-600` → `text-[var(--text-med)]`, `gray-500` → `text-[var(--text-low)]` (≈9:1/7:1 im Dark-Mode)                                                             |
-| F9 Handles `'red'/'black'` → Leitungs-Tokens                   | ✅     | 12 `components/nodes/*.tsx`: `var(--wire-dc)`/`var(--wire-dc-minus)`                                                                                                                               |
-| F13 Toolbar-Undo/Redo 28 px @1280                              | ✅     | `components/planner/PlannerDashboard.tsx:334,343` → `shrink-0`; im JS-Chunk nachgewiesen                                                                                                           |
-| F18 Planner ohne H1                                            | ✅     | `app/elektrik-planung/page.tsx` → `<h1 className="sr-only">Elektrik-Planer</h1>` (SSR-HTML geprüft)                                                                                                |
-| F19 Dead Code `DashboardPanel`                                 | ✅     | `components/planner/ui/DashboardPanel.tsx` + `.test.tsx` gelöscht; keine Produktiv-Referenz mehr                                                                                                   |
-| F21 Emoji→Lucide (Planer-Teile)                                | ✅     | `ExpertPanel.tsx` (`EXPERT_ICONS`-Map, 14 Einträge, Header + ✅-Bestätigung), `PlannerDashboard.tsx` (Saison Sun/Snowflake), `WarningCenter.tsx` — keine gerenderten Emoji mehr im Planer          |
-| F22 Dark-Chips (node-symbol)                                   | ✅     | durch F6 mitbehoben (`.dark`-Werte via `--warn-*-bg`/`--ok-bg`/`--surface-2`)                                                                                                                      |
-| F23 Kabel-Tooltip-Rundung                                      | ✅     | `components/edges/CableEdge.tsx:622` → `toFixed(1)` + Leerzeichen                                                                                                                                  |
+Begleitende Test-Anpassungen: `app/layout.test.tsx` (Metadata), `lib/designTokens.test.ts`
+(Controls-Scan), 12 Node-Tests — alle grün. Gesamt: Vitest **1277/1277** (nach Config-Umbau), `tsc` Prod + Tests ✓,
+`eslint` ✓, `next build` ✓.
 
-Verifikation: `tsc` Prod + Tests ✓ · `eslint` ✓ (0 Errors) · Vitest Planer-Bereich **757/757** ✓ ·
-`next build` ✓. (Browser-E2E mangels Chromium-Laufzeit in der Sandbox nicht ausführbar.)
-
-### Bewusst zurückgestellt (nächste Schritte)
-
-| Fix       | Bereich                               | Notiz                                                    |
-| --------- | ------------------------------------- | -------------------------------------------------------- |
-| F1/F2/F25 | Typografie H1-System                  | Heizung, Dach, Guide, Fahrplan, Holzausbau, Rechtsseiten |
-| F3        | Eyebrow-System                        | Startseite                                               |
-| F7        | `warn-card-ok` Tokens                 | Guide-Warnkarten                                         |
-| F10       | Radius-Skala                          | warn-card, EmptyState, StepperSlider                     |
-| F11/F12   | Heizung TOC + Zuschlag-Zeile          | Heizlast-Tool                                            |
-| F14       | Dach-Controls 32 px                   | Dach-Tool                                                |
-| F15       | Slider-Thumb 44 px                    | StepperSlider (Heizung)                                  |
-| F16       | Aktive-Nav-Unterstreichung            | SiteHeader (alle Seiten)                                 |
-| F17       | Select-Trigger 44 px                  | Heizung/Dach                                             |
-| F20       | Favicon/OG-Metadaten                  | app/layout.tsx (site-weit)                               |
-| F24/F28   | Guide-Texte („…“, „Pflichtwerkzeuge“) | Camper-Guide                                             |
-| F26       | Static-Server 404 (trailing slash)    | scripts/e2e                                              |
-| F27       | 404-Tab-Titel                         | app/not-found.tsx                                        |
-
-**Update-Verdikt (Planer-Scope):** Der Elektroplaner ist die zentrale CAD-Oberfläche — dort sind
-Selektionstoken, Dark-Kontrast, Touch-Ziele (Toolbar @1280), Dokumentstruktur (H1) und Icon-Sprache
-(Emoji→Lucide) jetzt sauber; der Bereich erreicht damit ~90+. Die Marketing-/Tool-Seiten tragen die
-restlichen Brüche (H1-Systeme, Select 40 px, Dach-Controls, 404-Status) — das Gesamtbild ist daher
-**weiterhin NEIN** („lückenlos“ erst nach den zurückgestellten Fixes + grünem Design-Gate-Lauf).
+**Update-Verdikt:** Alle gemessenen Brüche aus Abschnitt 4 sind behoben — H1-System eins, Selektion
+am Token, Dark-Kontrast ≥ AA, Touch-Ziele (Select, Controls, Slider-Thumb, Toolbar @1280) im Ziel,
+Assets komplett, 404-Status korrekt. Einzige offene Restbedingung für „lückenlos“: der erste volle
+Browser-E2E-Lauf des Design-Gates (Abschnitt 8) in einem Environment mit Chromium-Laufzeit.

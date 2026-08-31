@@ -43,14 +43,14 @@ const RoofWindowNode = function ({
           'relative flex h-full w-full items-center justify-center overflow-hidden border-2 bg-warn-info-bg text-warn-info transition-colors',
           selected ? 'ring-2 ring-warn-info ring-offset-2 ring-offset-paper' : '',
           state === 'invalid' && 'border-warn-critical bg-warn-critical-bg text-warn-critical',
-          state === 'overlap' && 'ring-warn-warning/40 border-warn-warning ring-2',
+          state === 'overlap' && 'border-warn-warning ring-2 ring-warn-warning/40',
           state === 'ok' && 'border-warn-info'
         )}
         style={{ width: '100%', height: '100%' }}
       >
         <div
           aria-hidden="true"
-          className="custom-drag-handle border-warn-info/50 pointer-events-none absolute inset-2 border"
+          className="custom-drag-handle pointer-events-none absolute inset-2 border border-warn-info/50"
         />
         <div className="px-1 text-center text-xs font-semibold">
           {data.label || 'Dachfenster'}

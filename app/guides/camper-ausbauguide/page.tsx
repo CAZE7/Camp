@@ -4,6 +4,7 @@ import RoadTripAnimation from './RoadTripAnimation';
 import { SiteHeader } from '@/components/brand/SiteHeader';
 import { SiteFooter } from '@/components/brand/SiteFooter';
 import { cn } from '@/lib/utils';
+import { Check, Lightbulb, TriangleAlert } from 'lucide-react';
 
 // Outfit wird lokal über @fontsource-variable/outfit gebündelt (offline-fähiger Build).
 const outfit = { className: 'font-outfit' };
@@ -33,10 +34,7 @@ export default function CamperAusbauguide() {
           {/* Paper-like container */}
           <div className="border border-rule bg-bone p-8 shadow-sm md:p-12">
             <h1
-              className={cn(
-                'mb-6 text-3xl font-semibold leading-tight text-ink md:text-5xl',
-                outfit.className
-              )}
+              className={cn('mb-6 font-display text-3xl font-semibold tracking-tight text-ink md:text-4xl')}
             >
               Der ultimative Camper-Ausbau-Guide:
               <br />
@@ -130,19 +128,15 @@ export default function CamperAusbauguide() {
 
               <div className="warn-card warn-card-warning my-10 flex-col">
                 <div className="flex items-start gap-3">
-                  <span aria-hidden="true" className="mt-0.5 text-lg">
-                    💡
-                  </span>
+                  <Lightbulb aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-warn-warning" />
                   <p className="text-base leading-relaxed text-warn-warning">
-                    <strong>Profi-Tipp:</strong> Mach dir einen digitalen &quot;Schattenriss&quot; deines Vans
-                    (z. B. in SketchUp oder Vanspace3D) und plane jeden Millimeter, besonders die Kabelwege
-                    und Leerrohre.
+                    <strong>Profi-Tipp:</strong> Mach dir einen digitalen „Schattenriss“ deines Vans (z. B. in
+                    SketchUp oder Vanspace3D) und plane jeden Millimeter, besonders die Kabelwege und
+                    Leerrohre.
                   </p>
                 </div>
                 <div className="mt-3 flex items-start gap-3">
-                  <span aria-hidden="true" className="mt-0.5 text-lg">
-                    ⚠️
-                  </span>
+                  <TriangleAlert aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-warn-warning" />
                   <p className="text-base leading-relaxed text-warn-warning">
                     <strong>Häufiger Anfängerfehler:</strong> Kabel lose in der Dämmung verlegen. Später
                     willst du einen Schrank anschrauben, triffst ein unsichtbares Kabel und darfst die halbe
@@ -172,7 +166,7 @@ export default function CamperAusbauguide() {
                 <li>
                   <strong>Breite:</strong> Fiat Ducato / Peugeot Boxer / Citroën Jumper sind die einzigen
                   gängigen Kastenwagen, die Querbetten für Menschen bis 1,85m zulassen, ohne dass man die
-                  Karosserie mit seitlichen GfK-Verbreiterungen (&quot;Flares&quot;) aufschneiden muss.
+                  Karosserie mit seitlichen GfK-Verbreiterungen („Flares“) aufschneiden muss.
                 </li>
               </ul>
 
@@ -198,47 +192,37 @@ export default function CamperAusbauguide() {
               <div className="mb-12 mt-8 grid gap-8 md:grid-cols-2">
                 <div className="border border-rule bg-paper p-6">
                   <h4 className={cn('mb-4 text-lg font-semibold text-oxide', outfit.className)}>
-                    Must-Have Werkzeuge
+                    Pflichtwerkzeuge
                   </h4>
                   <ul className="space-y-3 text-base text-ink-soft">
                     <li className="flex gap-3">
-                      <span aria-hidden="true" className="text-oxide">
-                        ✓
-                      </span>
+                      <Check aria-hidden="true" className="h-5 w-5 text-oxide" />
                       <span>
                         <strong>Blechknabber / Nibbler:</strong> Für saubere Fensterausschnitte ohne
                         Blechverzug.
                       </span>
                     </li>
                     <li className="flex gap-3">
-                      <span aria-hidden="true" className="text-oxide">
-                        ✓
-                      </span>
+                      <Check aria-hidden="true" className="h-5 w-5 text-oxide" />
                       <span>
                         <strong>Crimpzange (hydraulisch, 16–50 mm²):</strong> Unerlässlich für dicke
                         Batteriekabel.
                       </span>
                     </li>
                     <li className="flex gap-3">
-                      <span aria-hidden="true" className="text-oxide">
-                        ✓
-                      </span>
+                      <Check aria-hidden="true" className="h-5 w-5 text-oxide" />
                       <span>
                         <strong>Crimpzange (0,5–6 mm²):</strong> Für Flachsteckerhülsen (niemals löten!).
                       </span>
                     </li>
                     <li className="flex gap-3">
-                      <span aria-hidden="true" className="text-oxide">
-                        ✓
-                      </span>
+                      <Check aria-hidden="true" className="h-5 w-5 text-oxide" />
                       <span>
                         <strong>Nietmutternzange (M4–M8):</strong> Gewinde sicher im Blech verankern.
                       </span>
                     </li>
                     <li className="flex gap-3">
-                      <span aria-hidden="true" className="text-oxide">
-                        ✓
-                      </span>
+                      <Check aria-hidden="true" className="h-5 w-5 text-oxide" />
                       <span>
                         <strong>Multimeter:</strong> Für Elektrik-Checks und Fehlersuche.
                       </span>
@@ -316,9 +300,7 @@ export default function CamperAusbauguide() {
               </ul>
 
               <div className="warn-card warn-card-warning my-8">
-                <span aria-hidden="true" className="mt-0.5 text-lg">
-                  ⚠️
-                </span>
+                <TriangleAlert aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-warn-warning" />
                 <p className="text-base leading-relaxed text-warn-warning">
                   <strong>Häufiger Anfängerfehler:</strong> Den Holz-Hilfsrahmen vergessen. Das Blech ist nur
                   ~1 mm dick, Fensterklemmen brauchen aber oft 26–34 mm. Klebe einen passenden Holzrahmen von
@@ -384,9 +366,7 @@ export default function CamperAusbauguide() {
               </p>
 
               <div className="warn-card warn-card-warning my-10">
-                <span aria-hidden="true" className="mt-0.5 text-lg">
-                  💡
-                </span>
+                <Lightbulb aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-warn-warning" />
                 <p className="text-base leading-relaxed text-warn-warning">
                   <strong>Profi-Tipp:</strong> Setze Sicherungen so nah wie möglich an die Batterie. Die
                   Sicherung schützt das KABEL vor dem Durchschmoren, nicht das Endgerät!
@@ -444,7 +424,7 @@ export default function CamperAusbauguide() {
                 <h3 className={cn('mb-4 text-2xl font-semibold text-paper md:text-3xl', outfit.className)}>
                   Bereit für den ersten Roadtrip?
                 </h3>
-                <p className="text-paper/80 mx-auto mb-8 max-w-2xl text-base leading-relaxed md:text-lg">
+                <p className="mx-auto mb-8 max-w-2xl text-base leading-relaxed text-paper/80 md:text-lg">
                   Der Ausbau kostet Schweiß, zerschnittene Finger und Nerven. Aber der Moment, in dem du
                   abends am Bergsee die Hecktüren öffnest und das Rauschen der Wellen hörst, ist unbezahlbar.
                 </p>

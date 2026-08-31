@@ -160,9 +160,17 @@ describe('M7 — Struktur der Planer-Oberfläche', () => {
   });
 
   it('hält die React-Flow-Controls im Dichte-Fenster 28–32 px (M7-4)', () => {
-    const rule = css.match(/\.planner-shell \.react-flow__controls-button\s*\{([^}]*)\}/);
-    expect(rule).not.toBeNull();
-    const sizes = [...(rule?.[1] ?? '').matchAll(/(?:width|height):\s*([\d.]+)rem/g)].map(
+    // Seit dem Design-Audit-Fix gilt die Regel auch für die Dach-Tool-Controls
+    // (gemeinsame Selektorenliste vor der öffnenden Klammer). Gescannt wird
+    // deshalb über alle `.react-flow__controls-button`-Regeln hinweg; die
+    // maßgebliche ist die erste mit width+height und muss den Planer-Selektor tragen.
+    const sized = [...css.matchAll(/[^{}]*\.react-flow__controls-button[^{]*\{([^}]*)\}/g)].filter(
+      (m) => /width\s*:/.test(m[1] ?? '') && /height\s*:/.test(m[1] ?? '')
+    );
+    expect(sized.length).toBeGreaterThan(0);
+    const rule = sized[0]!;
+    expect(rule[0]).toContain('.planner-shell');
+    const sizes = [...(rule[1] ?? '').matchAll(/(?:width|height):\s*([\d.]+)rem/g)].map(
       (m) => parseFloat(m[1] ?? '0') * 16
     );
     expect(sizes).toHaveLength(2);

@@ -28,9 +28,6 @@ import {
   Sparkles,
 } from 'lucide-react';
 
-// Outfit wird lokal über @fontsource-variable/outfit gebündelt (offline-fähiger Build).
-const outfit = { className: 'font-outfit' };
-
 export interface HeaterModel {
   id: string;
   name: string;
@@ -352,7 +349,7 @@ function HeaterSelection({
             type="button"
             variant="outline"
             onClick={() => setSelectedHeaterId(recommendedHeaterId)}
-            className="border-oxide/40 w-full gap-2 text-oxide hover:bg-paper"
+            className="w-full gap-2 border-oxide/40 text-oxide hover:bg-paper"
           >
             <Sparkles className="h-4 w-4" aria-hidden="true" />
             Empfehlung übernehmen: {HEATER_CATALOG.find((h) => h.id === recommendedHeaterId)?.name}
@@ -642,7 +639,7 @@ function AdvancedParameters({
 
         {/* Aufheizzuschlag */}
         <div className="flex items-start justify-between gap-4 border-t border-rule pt-4">
-          <div className="flex-1">
+          <div className="min-w-0 flex-1">
             <Label htmlFor="quick-heat" className="text-sm font-semibold text-ink">
               Aufheizzuschlag (schnelles Warmwerden)
             </Label>
@@ -863,7 +860,7 @@ function ResultsView({
             </div>
 
             {/* Main Result */}
-            <div className="border-oxide/30 border-2 bg-paper p-6">
+            <div className="border-2 border-oxide/30 bg-paper p-6">
               <p className="label-eyebrow text-oxide">Benötigte Heizleistung (Q_total)</p>
               <div className="mt-3 flex flex-wrap items-baseline gap-3">
                 <p className="measure text-5xl font-semibold tracking-tight text-ink md:text-6xl">
@@ -1029,12 +1026,7 @@ export default function HeatingCalculatorPage() {
           {/* Header */}
           <div>
             <p className="label-eyebrow text-copper">Werkzeug</p>
-            <h1
-              className={cn(
-                'mt-2 font-display text-3xl font-semibold tracking-tight text-ink md:text-4xl',
-                outfit.className
-              )}
-            >
+            <h1 className="mt-3 font-display text-3xl font-semibold tracking-tight text-ink md:text-4xl">
               Heizlast-Rechner
             </h1>
             <p className="mt-2 max-w-xl text-sm text-ink-soft">
@@ -1046,7 +1038,7 @@ export default function HeatingCalculatorPage() {
           {/* Sticky TOC */}
           <nav
             aria-label="Abschnitte"
-            className="bg-bone/95 sticky top-2 z-20 -mx-2 mt-6 flex gap-2 overflow-x-auto rounded-none border border-rule p-2 backdrop-blur"
+            className="sticky top-2 z-20 -mx-2 mt-6 flex flex-wrap gap-2 rounded-none border border-rule bg-bone/95 p-2 backdrop-blur"
           >
             <SectionAnchor id="section-fahrzeug" label="Fahrzeug" icon={<Home className="h-4 w-4" />} />
             <SectionAnchor id="section-heizgeraet" label="Heizgerät" icon={<Flame className="h-4 w-4" />} />

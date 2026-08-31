@@ -57,7 +57,7 @@ export default function Home() {
           Empfohlene Reihenfolge: Fahrplan lesen → Dach planen → Schaltplan zeichnen → Heizlast prüfen.
         </p>
 
-        <h2 className="mt-10 text-sm font-semibold uppercase tracking-widest text-ink-soft">Werkzeuge</h2>
+        <h2 className="label-eyebrow mt-10 text-ink-soft">Werkzeuge</h2>
         <ul className="mt-3 divide-y divide-rule border border-rule bg-bone">
           {TOOLS.map((tool) => (
             <li key={tool.href}>
@@ -69,7 +69,7 @@ export default function Home() {
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-ink">{tool.title}</span>
                     {tool.recommended && (
-                      <span className="caption-xs border-copper/40 inline-flex items-center rounded-full border bg-paper px-2 py-0.5 font-semibold uppercase tracking-wider text-copper">
+                      <span className="caption-xs inline-flex items-center rounded-full border border-copper/40 bg-paper px-2 py-0.5 font-semibold uppercase tracking-wider text-copper">
                         Starte hier
                       </span>
                     )}
@@ -84,7 +84,7 @@ export default function Home() {
           ))}
         </ul>
 
-        <h2 className="mt-12 text-sm font-semibold uppercase tracking-widest text-ink-soft">Guides</h2>
+        <h2 className="label-eyebrow mt-12 text-ink-soft">Guides</h2>
         <ul className="mt-3 divide-y divide-rule border border-rule bg-bone">
           {GUIDES.map((guide) => (
             <li key={guide.href}>

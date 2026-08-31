@@ -42,7 +42,7 @@ export function StepperSlider({
   return (
     <div
       className={cn(
-        'bg-paper/80 border-border/80 flex w-full items-center gap-3 rounded-2xl border p-3 shadow-sm',
+        'flex w-full items-center gap-3 rounded-lg border border-border/80 bg-paper/80 p-3 shadow-sm',
         className
       )}
     >
@@ -50,7 +50,7 @@ export function StepperSlider({
         type="button"
         onClick={handleDecrement}
         disabled={value <= min}
-        className="hover:bg-moss/10 flex h-11 min-h-11 w-11 min-w-11 touch-manipulation items-center justify-center rounded-xl border border-border bg-bone text-ink-soft shadow-sm transition-all hover:text-moss active:scale-95 disabled:opacity-40 disabled:hover:bg-bone disabled:hover:text-ink-soft"
+        className="flex h-11 min-h-11 w-11 min-w-11 touch-manipulation items-center justify-center rounded-md border border-border bg-bone text-ink-soft shadow-sm transition-all hover:bg-moss/10 hover:text-moss active:scale-95 disabled:opacity-40 disabled:hover:bg-bone disabled:hover:text-ink-soft"
         aria-label="Wert verringern"
       >
         <Minus size={18} />
@@ -65,9 +65,9 @@ export function StepperSlider({
           value={value}
           onChange={handleSliderChange}
           aria-label={ariaLabel}
-          className="bg-rule/40 focus:ring-moss/40 h-2 w-full cursor-pointer appearance-none rounded-full accent-moss focus:outline-none focus:ring-1"
+          className="stepper-slider h-2 w-full cursor-pointer appearance-none rounded-full bg-rule/40 accent-moss focus:outline-none focus:ring-1 focus:ring-moss/40"
         />
-        <span className="border-border/50 mt-1 select-none rounded-lg border bg-bone px-2.5 py-0.5 font-mono text-xs font-bold text-ink-soft shadow-sm">
+        <span className="mt-1 select-none rounded-lg border border-border/50 bg-bone px-2.5 py-0.5 font-mono text-xs font-bold text-ink-soft shadow-sm">
           {value.toFixed(step < 1 ? 1 : 0)}
           {unit}
         </span>
@@ -77,7 +77,7 @@ export function StepperSlider({
         type="button"
         onClick={handleIncrement}
         disabled={value >= max}
-        className="hover:bg-moss/10 flex h-11 min-h-11 w-11 min-w-11 touch-manipulation items-center justify-center rounded-xl border border-border bg-bone text-ink-soft shadow-sm transition-all hover:text-moss active:scale-95 disabled:opacity-40 disabled:hover:bg-bone disabled:hover:text-ink-soft"
+        className="flex h-11 min-h-11 w-11 min-w-11 touch-manipulation items-center justify-center rounded-md border border-border bg-bone text-ink-soft shadow-sm transition-all hover:bg-moss/10 hover:text-moss active:scale-95 disabled:opacity-40 disabled:hover:bg-bone disabled:hover:text-ink-soft"
         aria-label="Wert erhöhen"
       >
         <Plus size={18} />

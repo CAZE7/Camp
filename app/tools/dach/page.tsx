@@ -7,7 +7,6 @@ import 'reactflow/dist/style.css';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { cn } from '@/lib/utils';
 import { vehicleTemplates, DEFAULT_VEHICLE_TEMPLATE } from '@/lib/vehicleTemplates';
 import { useDachNodes } from './hooks/useDachNodes';
 import { DachPanel } from './components/DachPanel';
@@ -19,9 +18,6 @@ import { SAFE_MARGINS } from './validation';
 import { SiteHeader } from '@/components/brand/SiteHeader';
 import { SiteFooter } from '@/components/brand/SiteFooter';
 import { Plus, AlertTriangle, Sparkles, ArrowRight, Info, X as XIcon } from 'lucide-react';
-
-// Outfit wird lokal über @fontsource-variable/outfit gebündelt.
-const outfit = { className: 'font-outfit' };
 
 const nodeTypes = {
   roofBackground: RoofBackgroundNode,
@@ -181,7 +177,7 @@ function DachPlanerInner() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-paper text-ink">
+    <div className="tools-dach flex min-h-screen flex-col bg-paper text-ink">
       <SiteHeader />
       <main id="main" className="flex flex-1 flex-col">
         {/* Sub-Header mit Titel + Watt-KPI */}
@@ -195,7 +191,7 @@ function DachPlanerInner() {
                 ← Zurück
               </Link>
               <span aria-hidden="true" className="h-6 w-px bg-rule" />
-              <h1 className={cn('font-display text-xl font-semibold text-ink md:text-2xl', outfit.className)}>
+              <h1 className="font-display text-2xl font-semibold tracking-tight text-ink md:text-3xl">
                 Dach-Planer
               </h1>
             </div>

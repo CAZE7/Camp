@@ -362,9 +362,9 @@ function LiveRecommendationCard({
 
   if (I > 0) {
     return (
-      <div className="from-bone/60 to-bone/30 border-rule/50 relative mx-4 mt-4 overflow-hidden rounded-xl border bg-gradient-to-br p-4 shadow-lg backdrop-blur-md">
-        <div className="bg-copper/10 pointer-events-none absolute -right-4 -top-4 h-16 w-16 rounded-full blur-xl" />
-        <div className="bg-moss/10 pointer-events-none absolute -bottom-4 -left-4 h-16 w-16 rounded-full blur-xl" />
+      <div className="relative mx-4 mt-4 overflow-hidden rounded-xl border border-rule/50 bg-gradient-to-br from-bone/60 to-bone/30 p-4 shadow-lg backdrop-blur-md">
+        <div className="pointer-events-none absolute -right-4 -top-4 h-16 w-16 rounded-full bg-copper/10 blur-xl" />
+        <div className="pointer-events-none absolute -bottom-4 -left-4 h-16 w-16 rounded-full bg-moss/10 blur-xl" />
         <h4 className="mb-3 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-ink-soft">
           <span className="h-1.5 w-1.5 rounded-full bg-copper"></span>
           Aktuelle Empfehlung{' '}
@@ -375,17 +375,17 @@ function LiveRecommendationCard({
           </span>
         </h4>
         <div className="relative z-10 grid grid-cols-2 gap-3">
-          <div className="bg-bone/60 border-rule/50 flex flex-col rounded-lg border p-2.5">
+          <div className="flex flex-col rounded-lg border border-rule/50 bg-bone/60 p-2.5">
             <span className="text-muted-ink mb-1 text-xs font-semibold">Kabelquerschnitt</span>
             <span className="text-lg font-black text-ink">
               {crossSection} <span className="text-muted-ink text-xs font-bold">mm²</span>
             </span>
           </div>
-          <div className="bg-bone/60 border-rule/50 flex flex-col rounded-lg border p-2.5">
+          <div className="flex flex-col rounded-lg border border-rule/50 bg-bone/60 p-2.5">
             <span className="text-muted-ink mb-1 text-xs font-semibold">Sicherung</span>
             <span className="text-lg font-black text-ink">{fuseLabel}</span>
           </div>
-          <div className="bg-bone/40 border-rule/40 col-span-2 flex items-center justify-between rounded-lg border p-2">
+          <div className="col-span-2 flex items-center justify-between rounded-lg border border-rule/40 bg-bone/40 p-2">
             <span className="text-xs font-semibold text-ink-soft">Erwarteter Strom:</span>
             <span className="text-sm font-bold text-ink">{I.toFixed(1)} A</span>
           </div>
@@ -462,7 +462,7 @@ export function ExpertPanel() {
       {isOpen && (
         <div
           data-testid="expert-panel-open"
-          className="bg-bone/95 flex max-h-[min(28rem,calc(100dvh-8rem))] flex-col overflow-hidden rounded-2xl border border-rule shadow-2xl backdrop-blur-xl duration-300 animate-in fade-in slide-in-from-bottom-4"
+          className="flex max-h-[min(28rem,calc(100dvh-8rem))] flex-col overflow-hidden rounded-2xl border border-rule bg-bone/95 shadow-2xl backdrop-blur-xl duration-300 animate-in fade-in slide-in-from-bottom-4"
         >
           {/* Header — sticky, Token-Farben (bg-ink / text-bone) in hell und dunkel. */}
           <div className="sticky top-0 z-10 flex shrink-0 items-center gap-3 bg-ink px-5 py-4 text-bone">
@@ -472,7 +472,7 @@ export function ExpertPanel() {
             })()}
             <div className="min-w-0 flex-1">
               <h3 className="truncate text-sm font-black text-bone">{currentKnowledge.title}</h3>
-              <p className="text-bone/80 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider">
+              <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-bone/80">
                 Fachwissen &amp; Normen
               </p>
             </div>
@@ -480,7 +480,7 @@ export function ExpertPanel() {
               type="button"
               data-testid="expert-panel-close"
               onClick={() => setIsOpen(false)}
-              className="hover:bg-bone/15 flex h-11 w-11 items-center justify-center rounded-lg text-bone transition-colors hover:text-bone focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bone disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex h-11 w-11 items-center justify-center rounded-lg text-bone transition-colors hover:bg-bone/15 hover:text-bone focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bone disabled:cursor-not-allowed disabled:opacity-40"
               aria-label="Panel schließen"
             >
               <svg
@@ -501,7 +501,7 @@ export function ExpertPanel() {
 
           {/* Automatische Verbindung Erfolgs-Bestätigung */}
           {autoWireSummary && (
-            <div className="bg-moss/10 border-moss/30 mx-4 mt-4 rounded-xl border p-3.5 shadow-lg duration-300 animate-in fade-in slide-in-from-top-2">
+            <div className="mx-4 mt-4 rounded-xl border border-moss/30 bg-moss/10 p-3.5 shadow-lg duration-300 animate-in fade-in slide-in-from-top-2">
               <div className="flex items-start gap-2.5">
                 <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-moss" aria-hidden="true" />
                 <div className="min-w-0 flex-1">
@@ -513,7 +513,7 @@ export function ExpertPanel() {
                 </div>
                 <button
                   onClick={() => setAutoWireSummary(null)}
-                  className="text-moss/60 hover:bg-moss/10 rounded-md p-0.5 transition-colors hover:text-moss"
+                  className="rounded-md p-0.5 text-moss/60 transition-colors hover:bg-moss/10 hover:text-moss"
                   aria-label="Automatische Verbindung Zusammenfassung schließen"
                 >
                   <svg
@@ -545,7 +545,7 @@ export function ExpertPanel() {
             {currentKnowledge.tips.map((tip, idx) => {
               const isExpanded = expandedTip === idx;
               return (
-                <div key={idx} className="border-rule/40 border-b last:border-b-0">
+                <div key={idx} className="border-b border-rule/40 last:border-b-0">
                   <button
                     onClick={() => setExpandedTip(isExpanded ? null : idx)}
                     className="group flex min-h-11 w-full items-center gap-3 px-5 py-3 text-left transition-colors hover:bg-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ink"
@@ -592,7 +592,7 @@ export function ExpertPanel() {
                     >
                       <p className="text-sm leading-relaxed text-ink-soft">{tip.body}</p>
                       {tip.norm && (
-                        <span className="bg-oxide/10 border-oxide/20 mt-2 inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-bold uppercase tracking-wider text-oxide">
+                        <span className="mt-2 inline-flex items-center gap-1 rounded-md border border-oxide/20 bg-oxide/10 px-2 py-0.5 text-xs font-bold uppercase tracking-wider text-oxide">
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
                             viewBox="0 0 24 24"
@@ -633,7 +633,7 @@ export function ExpertPanel() {
             'text-white shadow-xl',
             'hover:shadow-2xl',
             'transition-all duration-200',
-            'border-moss/40 border',
+            'border border-moss/40',
             'relative'
           )}
           aria-label="Hilfe und Fachwissen öffnen"
@@ -657,7 +657,7 @@ export function ExpertPanel() {
           </span>
           <span className="relative flex flex-col items-start text-left">
             <span className="text-sm font-black leading-tight">Hilfe &amp; Fachwissen</span>
-            <span className="text-paper/80 text-xs font-bold leading-tight">
+            <span className="text-xs font-bold leading-tight text-paper/80">
               {selectedNodes.length > 0 ? 'Tipps für deine Auswahl' : 'Details und Normen'}
             </span>
           </span>

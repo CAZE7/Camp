@@ -155,7 +155,7 @@ export function DachPanel({
               style={{ width: `${Math.min(100, (totalRoofSolarWatts / 1000) * 100)}%` }}
             />
           </div>
-          <p className="caption-xs text-paper/70 mt-3">Wird in Echtzeit an den Schaltplan übergeben.</p>
+          <p className="caption-xs mt-3 text-paper/70">Wird in Echtzeit an den Schaltplan übergeben.</p>
         </CardContent>
       </Card>
     </Panel>

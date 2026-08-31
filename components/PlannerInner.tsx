@@ -202,7 +202,7 @@ export default function PlannerInner() {
             data-testid="inspector-backdrop"
             aria-hidden="true"
             onClick={() => setInspectorOpen(false)}
-            className="bg-ink/25 fixed inset-0 z-30 hidden md:block xl:hidden"
+            className="fixed inset-0 z-30 hidden bg-ink/25 md:block xl:hidden"
           />
         )}
 

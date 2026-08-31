@@ -117,7 +117,7 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
 
   if (warnings.length === 0) {
     return (
-      <span className="bg-moss/10 hidden min-h-11 items-center gap-1 rounded-lg border border-moss px-3 text-xs font-semibold text-moss xl:inline-flex">
+      <span className="hidden min-h-11 items-center gap-1 rounded-lg border border-moss bg-moss/10 px-3 text-xs font-semibold text-moss xl:inline-flex">
         <Check className="h-4 w-4" />
         Keine Hinweise
       </span>

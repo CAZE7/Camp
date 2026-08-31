@@ -54,7 +54,7 @@ export default function HolzausbauGuide() {
         >
           ← Ausbau-Fahrplan
         </Link>
-        <h1 className="mt-4 font-display text-2xl font-semibold tracking-tight md:text-3xl">
+        <h1 className="mt-3 font-display text-3xl font-semibold tracking-tight md:text-4xl">
           Holzausbau nach BEDMAS
         </h1>
         <p className="mt-2 text-sm text-ink-soft">

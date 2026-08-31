@@ -46,13 +46,13 @@ export function SiteHeader({ tone = 'paper' }: { tone?: 'paper' | 'soot' }) {
                 href={item.href}
                 aria-current={active ? 'page' : undefined}
                 className={cn(
-                  'inline-flex min-h-11 items-center px-3 text-sm',
+                  'inline-flex min-h-11 items-center px-3 text-sm underline-offset-8',
                   inverted
                     ? active
-                      ? 'font-medium text-paper'
+                      ? 'font-medium text-paper underline decoration-paper/70 decoration-2'
                       : 'text-paper/70 hover:text-paper'
                     : active
-                      ? 'font-medium text-ink'
+                      ? 'font-medium text-ink underline decoration-ink/70 decoration-2'
                       : 'text-ink-soft hover:text-ink'
                 )}
               >
