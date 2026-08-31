@@ -40,14 +40,14 @@ describe('ShuntNode Component', () => {
     const { container } = render(<ShuntNode id="1" data={{}} selected={true} />);
     const mainDiv = container.firstChild as HTMLElement;
     expect(mainDiv.className).toContain('ring-4');
-    expect(mainDiv.className).toContain('ring-blue-500');
+    expect(mainDiv.className).toContain('ring-[var(--accent-line)]');
   });
 
   it('does not apply selected styling when selected is false', () => {
     const { container } = render(<ShuntNode id="1" data={{}} selected={false} />);
     const mainDiv = container.firstChild as HTMLElement;
     expect(mainDiv.className).not.toContain('ring-4');
-    expect(mainDiv.className).not.toContain('ring-blue-500');
+    expect(mainDiv.className).not.toContain('ring-[var(--accent-line)]');
   });
 
   it('renders target and source Handle components with correct props', () => {

@@ -9,11 +9,11 @@ const GroundNode = function ({ data, isConnectable, selected }: PlannerNodeProps
     <div
       role="group"
       aria-label={`${data.label || 'Massepunkt'}. Komponente im Plan.`}
-      className={`custom-drag-handle flex w-32 flex-col items-center rounded-md border-2 border-gray-600 bg-gray-100 p-3 shadow-md transition-all hover:scale-105 ${selected ? 'shadow-xl ring-4 ring-blue-500' : ''}`}
+      className={`custom-drag-handle flex w-32 flex-col items-center rounded-md border-2 border-gray-600 bg-gray-100 p-3 shadow-md transition-all hover:scale-105 ${selected ? 'shadow-xl ring-4 ring-[var(--accent-line)]' : ''}`}
     >
       <NodeSymbol kind="ground" />
       <div className="mb-1 text-center text-sm font-bold">{data.label || 'Massepunkt'}</div>
-      <div className="mb-2 text-xs text-gray-500">(Karosserie)</div>
+      <div className="mb-2 text-xs text-[var(--text-low)]">(Karosserie)</div>
 
       {/* Target handle for connecting to consumers or battery */}
       <Handle
@@ -38,7 +38,7 @@ const GroundNode = function ({ data, isConnectable, selected }: PlannerNodeProps
             width: '8px',
             height: '8px',
             borderRadius: '50%',
-            background: 'black',
+            background: 'var(--wire-dc-minus)',
             pointerEvents: 'none',
           }}
         />
@@ -66,7 +66,7 @@ const GroundNode = function ({ data, isConnectable, selected }: PlannerNodeProps
             width: '8px',
             height: '8px',
             borderRadius: '50%',
-            background: 'black',
+            background: 'var(--wire-dc-minus)',
             pointerEvents: 'none',
           }}
         />

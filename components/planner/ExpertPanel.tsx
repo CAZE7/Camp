@@ -5,6 +5,23 @@ import { usePlannerStore } from '../../store/usePlannerStore';
 import { calculateCrossSection, calculateMaxFuse } from '../../lib/electrical';
 import { VDE_INVERTER_EFFICIENCY, VDE_SOLAR_VMP_VOLTAGE, getSystemVoltage } from '../../lib/vde-standards';
 import { cn } from '@/lib/utils';
+import {
+  BarChart3,
+  Battery,
+  CheckCircle2,
+  Compass,
+  Droplets,
+  Lightbulb,
+  Link2,
+  Plug,
+  RefreshCw,
+  Shield,
+  Sun,
+  Tent,
+  Wrench,
+  Zap,
+  type LucideIcon,
+} from 'lucide-react';
 import { type Node, type Edge } from 'reactflow';
 import type { CableEdgeData } from '../edges/CableEdge';
 
@@ -12,7 +29,7 @@ import type { CableEdgeData } from '../edges/CableEdge';
 
 interface ExpertTip {
   title: string;
-  icon: string;
+  icon: string; // Schlüssel in EXPERT_ICONS
   color: string; // tailwind bg color
   tips: {
     heading: string;
@@ -20,6 +37,24 @@ interface ExpertTip {
     norm?: string;
   }[];
 }
+
+/** Emoji-Schlüssel der Knowledge-Datenbank → Lucide-Icons (plattformunabhängig, token-färbbar). */
+const EXPERT_ICONS: Record<string, LucideIcon> = {
+  '🔋': Battery,
+  '⚡': Zap,
+  '☀️': Sun,
+  '💡': Lightbulb,
+  '🔌': Plug,
+  '🛡️': Shield,
+  '🔄': RefreshCw,
+  '📊': BarChart3,
+  '🔗': Link2,
+  '🏕️': Tent,
+  '💧': Droplets,
+  '🔧': Wrench,
+  '🧭': Compass,
+  '✅': CheckCircle2,
+};
 
 const EXPERT_KNOWLEDGE: Record<string, ExpertTip> = {
   battery: {
@@ -431,7 +466,10 @@ export function ExpertPanel() {
         >
           {/* Header — sticky, Token-Farben (bg-ink / text-bone) in hell und dunkel. */}
           <div className="sticky top-0 z-10 flex shrink-0 items-center gap-3 bg-ink px-5 py-4 text-bone">
-            <span className="text-xl">{currentKnowledge.icon}</span>
+            {(() => {
+              const Icon = EXPERT_ICONS[currentKnowledge.icon] ?? Lightbulb;
+              return <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />;
+            })()}
             <div className="min-w-0 flex-1">
               <h3 className="truncate text-sm font-black text-bone">{currentKnowledge.title}</h3>
               <p className="text-bone/80 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider">
@@ -465,7 +503,7 @@ export function ExpertPanel() {
           {autoWireSummary && (
             <div className="bg-moss/10 border-moss/30 mx-4 mt-4 rounded-xl border p-3.5 shadow-lg duration-300 animate-in fade-in slide-in-from-top-2">
               <div className="flex items-start gap-2.5">
-                <span className="mt-0.5 text-lg leading-none">✅</span>
+                <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-moss" aria-hidden="true" />
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-black text-moss">Automatische Verbindung abgeschlossen</p>
                   <p className="mt-1 text-xs leading-snug text-moss">

@@ -97,6 +97,8 @@
     --info: var(--warn-info);
     --success: var(--oxide);
     --warning: var(--warn-warning);
+    --ok-bg: #ecfdf5;
+    --ok-border: #a7f3d0;
 
     /* --- Mission 7 (M7-1): Planer-Design-Tokens, helle Werte ------------
        Eine semantische Schicht, die der `.dark`-Block komplett spiegelt:
@@ -155,6 +157,8 @@
     --soot: #12151b;
     --signal: #ff8f84;
     --oxide: #7ee2a8;
+    --ok-bg: rgba(126, 226, 168, 0.12);
+    --ok-border: rgba(126, 226, 168, 0.4);
 
     /* shadcn-Rollen auf dunkle Flächen */
     --background: var(--surface-0);
@@ -413,37 +417,37 @@
   }
   .node-symbol__code {
     font-family: var(--font-mono);
-    font-size: 0.68rem;
+    font-size: 0.75rem;
     font-weight: 600;
     letter-spacing: 0.12em;
   }
   .node-symbol--dc {
-    --node-symbol-color: #b42318;
-    --node-symbol-bg: #fff1f0;
+    --node-symbol-color: var(--warn-critical);
+    --node-symbol-bg: var(--warn-critical-bg);
   }
   .node-symbol--ac {
-    --node-symbol-color: #175cd3;
-    --node-symbol-bg: #eff8ff;
+    --node-symbol-color: var(--warn-info);
+    --node-symbol-bg: var(--warn-info-bg);
   }
   .node-symbol--solar {
-    --node-symbol-color: #b54708;
-    --node-symbol-bg: #fffaeb;
+    --node-symbol-color: var(--warn-warning);
+    --node-symbol-bg: var(--warn-warning-bg);
   }
   .node-symbol--load {
-    --node-symbol-color: #087443;
-    --node-symbol-bg: #ecfdf3;
+    --node-symbol-color: var(--ok);
+    --node-symbol-bg: var(--ok-bg);
   }
   .node-symbol--protect {
-    --node-symbol-color: #b42318;
-    --node-symbol-bg: #fff1f0;
+    --node-symbol-color: var(--warn-critical);
+    --node-symbol-bg: var(--warn-critical-bg);
   }
   .node-symbol--ground {
-    --node-symbol-color: #475467;
-    --node-symbol-bg: #f2f4f7;
+    --node-symbol-color: var(--text-low);
+    --node-symbol-bg: var(--surface-2);
   }
   .node-symbol--measure {
-    --node-symbol-color: #6941c6;
-    --node-symbol-bg: #f9f5ff;
+    --node-symbol-color: var(--muted-ink);
+    --node-symbol-bg: var(--surface-2);
   }
   .node-drag-handle:active {
     cursor: grabbing;

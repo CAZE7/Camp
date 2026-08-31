@@ -619,7 +619,7 @@ const CableEdge = function ({
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
-        <title>{`${length.toFixed(2)}m | ${crossSection}mm²`}</title>
+        <title>{`${length.toFixed(1)} m | ${crossSection} mm²`}</title>
       </path>
     </>
   );

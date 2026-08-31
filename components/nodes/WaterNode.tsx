@@ -28,7 +28,7 @@ const WaterNode = function ({ data, isConnectable, selected, type }: PlannerNode
     <div
       role="group"
       aria-label={`${data.label || 'Wasser-Komponente'}. Komponente im Plan.`}
-      className={`custom-drag-handle w-48 rounded-md border-2 p-3 shadow-md transition-all hover:scale-105 ${bgColor} ${borderColor} ${selected ? 'shadow-xl ring-4 ring-blue-500' : ''}`}
+      className={`custom-drag-handle w-48 rounded-md border-2 p-3 shadow-md transition-all hover:scale-105 ${bgColor} ${borderColor} ${selected ? 'shadow-xl ring-4 ring-[var(--accent-line)]' : ''}`}
     >
       <div className="mb-2 text-center text-sm font-bold">{data.label || 'Wasser-Komponente'}</div>
 
@@ -55,7 +55,7 @@ const WaterNode = function ({ data, isConnectable, selected, type }: PlannerNode
             width: '8px',
             height: '8px',
             borderRadius: '50%',
-            background: 'red',
+            background: 'var(--wire-dc)',
             pointerEvents: 'none',
           }}
         />
@@ -84,7 +84,7 @@ const WaterNode = function ({ data, isConnectable, selected, type }: PlannerNode
             width: '8px',
             height: '8px',
             borderRadius: '50%',
-            background: 'black',
+            background: 'var(--wire-dc-minus)',
             pointerEvents: 'none',
           }}
         />

@@ -331,7 +331,7 @@ function ActionsSection({
         size="icon"
         onClick={undo}
         disabled={!canUndo}
-        className="hidden h-11 w-11 md:inline-flex"
+        className="hidden h-11 w-11 shrink-0 md:inline-flex"
         aria-label="Rückgängig"
         title="Rückgängig"
       >
@@ -343,7 +343,7 @@ function ActionsSection({
         size="icon"
         onClick={redo}
         disabled={!canRedo}
-        className="hidden h-11 w-11 md:inline-flex"
+        className="hidden h-11 w-11 shrink-0 md:inline-flex"
         aria-label="Wiederholen"
         title="Wiederholen"
       >
@@ -665,7 +665,14 @@ export function PlannerDashboard() {
             className="hidden rounded-full border border-border bg-accent px-2 py-1 text-xs font-semibold text-foreground xl:inline"
             title="Die Jahreszeit beeinflusst Solarertrag und Heizverbrauch"
           >
-            {season === 'summer' ? '☀ Sommer' : '❄ Winter'}
+            <>
+              {season === 'summer' ? (
+                <Sun className="h-4 w-4" aria-hidden="true" />
+              ) : (
+                <Snowflake className="h-4 w-4" aria-hidden="true" />
+              )}
+              <span>{season === 'summer' ? 'Sommer' : 'Winter'}</span>
+            </>
           </span>
           <WarningCenter warnings={warnings} onFix={handleFix} />
         </div>

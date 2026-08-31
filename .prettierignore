@@ -19,3 +19,6 @@ docs/ci/workflows
 
 # Von Next.js automatisch generiert
 next-env.d.ts
+
+# Design-Audit-Screenshot-Belege (generiert, 20 MB)
+.screenshots

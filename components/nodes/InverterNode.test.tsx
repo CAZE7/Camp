@@ -48,14 +48,14 @@ describe('InverterNode Component', () => {
     const { container } = render(<InverterNode id="1" data={{ continuousPower: 1500 }} selected={true} />);
     const mainDiv = container.firstChild as HTMLElement;
     expect(mainDiv.className).toContain('ring-4');
-    expect(mainDiv.className).toContain('ring-blue-500');
+    expect(mainDiv.className).toContain('ring-[var(--accent-line)]');
   });
 
   it('does not apply selected styling when selected is false', () => {
     const { container } = render(<InverterNode id="1" data={{ continuousPower: 1500 }} selected={false} />);
     const mainDiv = container.firstChild as HTMLElement;
     expect(mainDiv.className).not.toContain('ring-4');
-    expect(mainDiv.className).not.toContain('ring-blue-500');
+    expect(mainDiv.className).not.toContain('ring-[var(--accent-line)]');
   });
 
   it('does not show overload warning when under continuous power limit', () => {
@@ -93,7 +93,7 @@ describe('InverterNode Component', () => {
     expect(mainDiv.className).toContain('bg-red-50');
     expect(mainDiv.className).toContain('ring-4');
     expect(mainDiv.className).toContain('ring-red-500');
-    expect(mainDiv.className).not.toContain('ring-blue-500');
+    expect(mainDiv.className).not.toContain('ring-[var(--accent-line)]');
   });
 
   it('renders Handle components with correct props', () => {
