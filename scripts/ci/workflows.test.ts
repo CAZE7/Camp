@@ -211,10 +211,10 @@ describe('GitHub-Actions-Workflows', () => {
     expect(smokeStep?.run).toContain('200');
   });
 
-  it('Deploy bricht veraltete Läufe bei neuen Pushes ab', () => {
+  it('Deploy bricht veraltete Läufe bei neuen Pushes ab (gescopt auf Default-Branch)', () => {
     const workflow = readWorkflow('deploy.yml');
     expect(workflow.concurrency).toEqual({
-      group: 'pages',
+      group: "pages-${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}",
       'cancel-in-progress': true,
     });
   });
