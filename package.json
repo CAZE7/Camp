@@ -82,7 +82,7 @@
     "fast-check": "^4.9.0",
     "js-yaml": "^5.3.0",
     "jsdom": "^29.1.1",
-    "knip": "^5.88.1",
+    "knip": "^6.32.3",
     "postcss": "^8.5.26",
     "prettier": "^3.9.6",
     "prettier-plugin-tailwindcss": "^0.8.1",
