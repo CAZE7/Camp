@@ -1,4 +1,22 @@
+# Dependencies
 node_modules/
+
+# Next.js build output & cache
 .next/
-.next
 out/
+*.tsbuildinfo
+next.pid
+
+# Testing
+coverage/
+
+# Env (niemals Secrets committen)
+.env
+.env.*
+!.env.example
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/

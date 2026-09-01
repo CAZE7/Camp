@@ -1,14 +1,15 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import GroundNode from './GroundNode';
+import { asDivProps, type MockHandleProps } from '../../test-helpers/reactflowMocks';
 
 // Mock reactflow Handle since it might need a context provider
 vi.mock('reactflow', async () => {
   const actual = await vi.importActual('reactflow');
   return {
     ...actual,
-    Handle: ({ 'data-testid': testId, isConnectable, ...props }: any) => (
-      <div data-testid={testId || 'react-flow-handle'} {...props} />
+    Handle: ({ 'data-testid': testId, isConnectable, ...props }: MockHandleProps) => (
+      <div data-testid={testId || 'react-flow-handle'} {...asDivProps(props)} />
     ),
     Position: {
       Left: 'left',
@@ -49,8 +50,8 @@ describe('GroundNode Component', () => {
     const handles = screen.getAllByTestId('react-flow-handle');
     expect(handles.length).toBe(2);
 
-    const targetHandle = handles.find(h => h.getAttribute('type') === 'target');
-    const sourceHandle = handles.find(h => h.getAttribute('type') === 'source');
+    const targetHandle = handles.find((h) => h.getAttribute('type') === 'target');
+    const sourceHandle = handles.find((h) => h.getAttribute('type') === 'source');
 
     expect(targetHandle).toBeInTheDocument();
     expect(targetHandle).toHaveAttribute('id', 'minus');

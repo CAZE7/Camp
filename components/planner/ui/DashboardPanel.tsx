@@ -14,10 +14,7 @@ interface DashboardPanelProps {
   calculatedSolarWatts: number;
 }
 
-export function DashboardPanel({
-  metrics,
-  calculatedSolarWatts,
-}: DashboardPanelProps) {
+export function DashboardPanel({ metrics, calculatedSolarWatts }: DashboardPanelProps) {
   const {
     dailyConsumptionAh,
     autarkyStr,
@@ -32,59 +29,60 @@ export function DashboardPanel({
     <>
       <Panel
         position="top-center"
-        className="bg-white/80 backdrop-blur-md p-4 rounded-xl shadow-xl border border-gray-200 text-sm w-80"
+        className="bg-bone/95 border-rule/50 w-96 rounded-2xl border p-5 text-sm shadow-2xl backdrop-blur-xl transition-all duration-300"
       >
-        <h3 className="font-bold text-gray-800 mb-2 border-b pb-1">
-          System Berechnungen
+        <h3 className="border-rule/40 mb-3 border-b pb-2 text-center text-xs font-black uppercase tracking-wider text-ink">
+          🔋 System Berechnungen
         </h3>
-        <div className="flex flex-col gap-2">
-          <div className="flex justify-between">
-            <span className="text-gray-600">Täglicher Gesamtverbrauch:</span>
-            <span className="font-semibold text-gray-900">
-              {dailyConsumptionAh.toFixed(1)} Ah
+        <div className="flex flex-col gap-2.5">
+          <div className="flex items-center justify-between rounded-lg bg-paper p-2">
+            <span className="font-medium text-ink-soft">Tagesverbrauch:</span>
+            <div className="flex flex-col items-end">
+              <span className="border-rule/40 rounded border bg-bone px-2 py-0.5 text-sm font-bold text-ink shadow-sm">
+                ~{dailyConsumptionAh.toFixed(1)} Ah
+              </span>
+              <span className="text-xs text-ink-soft">(geschätzt)</span>
+            </div>
+          </div>
+          <div className="bg-moss/5 flex items-center justify-between rounded-lg p-2">
+            <span className="font-medium text-ink-soft">Batterie-Autarkie:</span>
+            <span className="border-moss/20 rounded border bg-bone px-2 py-1 font-bold text-moss shadow-sm">
+              {autarkyStr}
             </span>
           </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">Batterie-Autarkie (ohne Laden):</span>
-            <span className="font-semibold text-gray-900">{autarkyStr}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">Ladezeit (komplett leer bis voll):</span>
-            <span className="font-semibold text-gray-900">
+          <div className="bg-oxide/5 flex items-center justify-between rounded-lg p-2">
+            <span className="font-medium text-ink-soft">Ladezeit (0-100%):</span>
+            <span className="border-oxide/20 rounded border bg-bone px-2 py-1 font-bold text-oxide shadow-sm">
               {chargingTimeStr}
             </span>
           </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">Eingehende Ladeleistung (Dach):</span>
-            <span className="font-semibold text-gray-900">
-              {calculatedSolarWatts} W
-            </span>
-          </div>
+
+          {calculatedSolarWatts > 0 && (
+            <div className="border-warn-warning-border/50 mt-1 flex items-center justify-between rounded-lg border bg-warn-warning-bg p-2">
+              <span className="flex items-center gap-1 font-medium text-warn-warning">☀️ Dach-Solar:</span>
+              <span className="rounded border border-warn-warning-border bg-bone px-2 py-1 font-bold text-warn-warning shadow-sm">
+                {calculatedSolarWatts} W
+              </span>
+            </div>
+          )}
           {solarNodesCount > 0 && (
-            <div className="flex justify-between">
-              <span className="text-gray-600">Solar-Array Output:</span>
-              <span className="font-semibold text-gray-900">
+            <div className="mt-1 flex items-center justify-between rounded-lg bg-paper p-2">
+              <span className="flex items-center gap-1 font-medium text-ink-soft">PV-Output:</span>
+              <span className="border-rule/40 rounded border bg-bone px-2 py-1 font-bold text-ink shadow-sm">
                 {totalSolarVoltage}V / {totalSolarAmps.toFixed(1)}A
               </span>
             </div>
           )}
           {hasDirectBatteryToConsumer && (
-            <div className="mt-2 p-2 bg-red-100 text-red-800 text-xs rounded border border-red-200">
-              ⚠️ Warnung: Verbraucher ist direkt mit der Batterie verbunden. Ein Sicherungsknoten fehlt!
+            <div className="bg-signal/5 border-signal/30 mt-2 flex items-start gap-2 rounded-lg border p-3 text-xs font-medium text-signal shadow-sm">
+              <span className="text-lg leading-none">⚠️</span>
+              <span>
+                Warnung: Verbraucher ist direkt mit der Batterie verbunden. Ein Sicherungsknoten fehlt!
+              </span>
             </div>
           )}
         </div>
       </Panel>
-
-      {calculatedSolarWatts > 0 && (
-        <Panel
-          position="bottom-center"
-          className="bg-blue-50/90 backdrop-blur-md p-3 rounded-xl shadow border border-blue-200 text-blue-800 text-sm mb-4"
-        >
-          <strong>Dachplaner-Daten erkannt:</strong> {calculatedSolarWatts} W Solarleistung
-          verfügbar. Du kannst nun deinen MPPT-Regler entsprechend dimensionieren.
-        </Panel>
-      )}
     </>
   );
 }

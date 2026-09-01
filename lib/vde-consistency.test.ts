@@ -1,284 +1,231 @@
 /**
  * lib/vde-consistency.test.ts
  *
- * Diese Tests sind die VERSICHERUNG, dass die VDE-Standards im gesamten
- * Elektroplanner konsistent bleiben — egal wer was patched.
+ * KRITISCH: Verhindert, dass VDE-Magic-Numbers wieder in die Module
+ * zurückwandern, die auf vde-standards.ts umgestellt wurden.
  *
- * Das Problem, das diese Tests verhindern:
- * =========================================
- * Vorher waren VDE-Werte an mehreren Stellen dupliziert:
- *   - store/usePlannerStore.ts (calculateWire)
- *   - components/edges/CableEdge.tsx (eigene VDE-Berechnung)
- *   - components/nodes/ConduitNode.tsx (CONDUIT_SIZES, CABLE_OUTER_DIAMETERS)
- *   - components/planner/hooks/useDashboardMetrics.ts (0.85 Inverter-Effizienz)
+ * Geprüfte Dateien:
+ *   - components/planner/hooks/useDashboardMetrics.ts
+ *   - components/edges/CableEdge.tsx
+ *   - components/nodes/ConduitNode.tsx
+ *   - components/Inspector.tsx
  *
- * Folge: Bei jedem Patch konnte eine Stelle aktualisiert und die andere
- * vergessen werden → inkonsistente Ergebnisse.
- *
- * Was diese Tests prüfen:
- * =======================
- * 1. Jede Datei, die VDE-Werte nutzt, MUSS aus vde-standards importieren
- * 2. Es darf keine inline-VDE-Konstanten in anderen Dateien geben
- * 3. Die importierten Werte MÜSSEN mit vde-standards übereinstimmen
- * 4. Berechnungen in unterschiedlichen Dateien MÜSSEN zum gleichen Ergebnis führen
+ * Verbotene Patterns (außerhalb von Kommentaren):
+ *   - [/]\s*0\.85\b     Inverter-Effizienz
+ *   - 58\s*\*\s*0\.\d+  Kupfer-Leitfähigkeit * Drop-Konstante
+ *   - >\s*60\s*[\);,]   Leerrohr-Füllgrad 60%
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as vde from './vde-standards';
+import * as electrical from './electrical';
 
-describe('VDE-Konsistenz: Single Source of Truth', () => {
-  /**
-   * Liest eine Datei und gibt den Inhalt als String zurück.
-   */
-  function readFile(relPath: string): string {
-    const fullPath = path.join(__dirname, '..', relPath);
-    return fs.readFileSync(fullPath, 'utf-8');
+const REPO_ROOT = path.join(__dirname, '..');
+
+const FILES_TO_SCAN = [
+  'components/planner/hooks/useDashboardMetrics.ts',
+  'components/edges/CableEdge.tsx',
+  'components/nodes/ConduitNode.tsx',
+  'components/Inspector.tsx',
+] as const;
+
+const FORBIDDEN_PATTERNS: Array<{ name: string; pattern: RegExp; hint: string }> = [
+  {
+    name: 'hardcoded inverter efficiency 0.85',
+    pattern: /[/]\s*0\.85\b/,
+    hint: 'Ersetze / 0.85 durch / VDE_INVERTER_EFFICIENCY (aus @/lib/vde-standards).',
+  },
+  {
+    name: 'hardcoded copper formula 58 * 0.x',
+    pattern: /58\s*\*\s*0\.\d+/,
+    hint: 'Ersetze 58 * 0.xx durch hasVoltageDropError (components/edges/utils/voltageDrop.ts) bzw. edgeVoltageDrop (lib/autoWire.ts).',
+  },
+  {
+    name: 'hardcoded 60% conduit fill',
+    pattern: />\s*60\s*[);,]/,
+    hint: 'Ersetze > 60 durch > VDE_MAX_CONDUIT_FILL_PERCENT (aus @/lib/vde-standards).',
+  },
+];
+
+function isCommentOrStringOnly(line: string): boolean {
+  const trimmed = line.trim();
+  if (trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*')) {
+    return true;
   }
+  return false;
+}
 
-  /**
-   * Sucht nach VDE-relevanten Konstanten in einer Datei und gibt alle Treffer zurück.
-   * Diese Konstanten sollten NUR in vde-standards.ts vorkommen.
-   */
-  function findVDEConstantsInFile(content: string): string[] {
-    const findings: string[] = [];
+function findViolations(relPath: string): Array<{ line: number; text: string; name: string; hint: string }> {
+  const fullPath = path.join(REPO_ROOT, relPath);
+  if (!fs.existsSync(fullPath)) {
+    throw new Error(`Konsistenz-Test: Datei fehlt: ${relPath}`);
+  }
+  const content = fs.readFileSync(fullPath, 'utf-8');
+  const lines = content.split('\n');
+  const violations: Array<{ line: number; text: string; name: string; hint: string }> = [];
 
-    // Hardcoded VDE sizes (sollte nicht außerhalb von vde-standards vorkommen)
-    const vdeSizeMatches = content.match(/\[1\.5,\s*2\.5,\s*4\.0/);
-    if (vdeSizeMatches) {
-      findings.push('hardcoded VDE_SIZES array');
+  lines.forEach((line, i) => {
+    if (isCommentOrStringOnly(line)) return;
+    // Skip template-string prompt lines in route.ts (Faktor 0.85 in Fließtext)
+    if (line.includes('Faktor 0.85') && !/[/]\s*0\.85\b/.test(line.replace(/Faktor 0\.85/g, ''))) {
+      // still run other patterns
     }
-
-    // Hardcoded Spannungsabfall-Formel mit 58 * 0.24
-    if (/58\s*\*\s*0\.24|0\.0175\s*\*/.test(content)) {
-      findings.push('hardcoded copper resistivity formula');
-    }
-
-    // Hardcoded 60% conduit fill
-    if (/fillPercentage\s*>\s*60|>60/.test(content)) {
-      findings.push('hardcoded 60% conduit fill limit');
-    }
-
-    // Hardcoded 0.85 inverter efficiency (ohne Kommentar)
-    if (/0\.85/.test(content) && !/VDE_INVERTER_EFFICIENCY/.test(content)) {
-      // Genauer prüfen: ist es in einem Kommentar oder tatsächlich eine Berechnung?
-      if (/[/]\s*12\s*[/]\s*0\.85|\/\s*0\.85/.test(content)) {
-        findings.push('hardcoded 0.85 inverter efficiency in calculation');
+    for (const { name, pattern, hint } of FORBIDDEN_PATTERNS) {
+      if (pattern.test(line) && !line.includes('VDE_')) {
+        violations.push({
+          line: i + 1,
+          text: line.trim(),
+          name,
+          hint,
+        });
       }
     }
+  });
+  return violations;
+}
 
-    return findings;
-  }
+describe('VDE-Konsistenz: keine hardcoded Magic-Numbers', () => {
+  it.each(FILES_TO_SCAN)('%s enthält keine hardcoded VDE-Magic-Numbers (0.85, 58*0.x, >60)', (relPath) => {
+    const violations = findViolations(relPath);
+    if (violations.length > 0) {
+      const details = violations
+        .map((v) => `  ${relPath}:${v.line}  [${v.name}]\n    ${v.text}\n    → ${v.hint}`)
+        .join('\n');
+      throw new Error(
+        `Hardcoded VDE-Wert in ${relPath} gefunden.\n` +
+          `Alle VDE-Werte MÜSSEN in lib/vde-standards.ts definiert und von dort importiert werden.\n\n` +
+          details
+      );
+    }
+    expect(violations).toEqual([]);
+  });
 
-  describe('vde-standards.ts ist die einzige Quelle', () => {
-    const filesToCheck = [
-      'store/usePlannerStore.ts',
-      'components/edges/CableEdge.tsx',
-      'components/nodes/ConduitNode.tsx',
-      'components/planner/hooks/useDashboardMetrics.ts',
-      'app/api/chat/route.ts',
-      'components/Inspector.tsx',
+  it('useDashboardMetrics.ts importiert die zentralen VDE-Konstanten', () => {
+    const content = fs.readFileSync(
+      path.join(REPO_ROOT, 'components/planner/hooks/useDashboardMetrics.ts'),
+      'utf-8'
+    );
+    expect(content).toMatch(/VDE_INVERTER_EFFICIENCY/);
+    expect(content).toMatch(/VDE_BATTERY_DOD/);
+    expect(content).toMatch(/VDE_SOLAR_WINTER_REDUCTION/);
+    expect(content).toMatch(/VDE_SOLAR_VMP_VOLTAGE/);
+    expect(content).toMatch(/VDE_CHARGE_DERATING_FACTOR/);
+  });
+
+  it('CableEdge.tsx bezieht alle Ströme aus den zentralen Funktionen (DC + AC)', () => {
+    // Seit der AC-Strom-Berechnung braucht CableEdge die Konstanten nicht
+    // mehr selbst zu importieren — es delegiert an calculateEdgeCurrent (DC)
+    // und calculateAcEdgeCurrent (230 V) aus lib/vde-standards.ts. Genau
+    // diese Delegation wird hier erzwungen, damit keine Magic Numbers
+    // (0.85, 18 V, 230 V) in die Anzeige zurückwandern.
+    const content = fs.readFileSync(path.join(REPO_ROOT, 'components/edges/CableEdge.tsx'), 'utf-8');
+    expect(content).toMatch(/calculateEdgeCurrent/);
+    expect(content).toMatch(/calculateAcEdgeCurrent/);
+    expect(content).not.toMatch(/[/]\s*0\.85\b/);
+  });
+
+  it('ConduitNode.tsx rechnet über die zentrale Füllgrad-Funktion statt mit eigenen Tabellen', () => {
+    const content = fs.readFileSync(path.join(REPO_ROOT, 'components/nodes/ConduitNode.tsx'), 'utf-8');
+    expect(content).not.toMatch(/const\s+CONDUIT_SIZES\s*=/);
+    expect(content).not.toMatch(/const\s+CABLE_OUTER_DIAMETERS\s*=/);
+    expect(content).toMatch(/calculateConduitFillPercent/);
+    expect(content).toMatch(/recommendConduitType/);
+    expect(content).toMatch(/VDE_MAX_CONDUIT_FILL_PERCENT/);
+  });
+});
+
+describe('VDE-Konsistenz: vde-standards exportiert alle wichtigen Konstanten', () => {
+  const requiredExports = [
+    'VDE_SIZES',
+    'VDE_CROSS_SECTIONS',
+    'VDE_AMPACITY_RAW',
+    'DERATE_FACTOR',
+    'VDE_FUSE_MAP',
+    'calculateMaxFuseBase',
+    'lookupThermalCrossSectionBase',
+    'calculateCrossSectionBase',
+    'calculateStrokeWidth',
+    'getEdgeDomain',
+    'getHandleDomain',
+    'VDE_CONDUIT_INNER_DIAMETERS',
+    'VDE_MAX_CONDUIT_FILL_PERCENT',
+    'VDE_CABLE_OUTER_DIAMETERS',
+    'VDE_INVERTER_EFFICIENCY',
+    'VDE_SOLAR_WINTER_REDUCTION',
+    'VDE_SOLAR_VMP_VOLTAGE',
+    'VDE_CHARGE_DERATING_FACTOR',
+    'VDE_BATTERY_DOD',
+    'calculateConduitFillPercent',
+    'recommendConduitType',
+  ] as const;
+
+  it('exportiert alle erforderlichen Konstanten und Funktionen', () => {
+    const missing = requiredExports.filter((name) => (vde as Record<string, unknown>)[name] === undefined);
+    expect(missing).toEqual([]);
+  });
+
+  it('exportiert die entfernte Legacy-Validierungs-API nicht mehr (Mission 4)', () => {
+    // Die zweite Validierungs-API und die parallelen Sicherungstabellen waren
+    // toter Code und widersprachen der aktiven Logik (selectFuseSize/FUSE_MAP).
+    const removed = [
+      'VDE_CURRENT_CAPACITY',
+      'VDE_STANDARD_FUSES',
+      'VDE_CONSERVATIVE_FUSES',
+      'calculateWire',
+      'calculateMinCrossSection',
+      'calculateVoltageDrop',
+      'validateSchematic',
+      'validateCableEdge',
+      'validateBatteryNode',
+      'validateShorePowerNode',
+      'validateInverterNode',
     ];
+    const present = removed.filter((name) => (vde as Record<string, unknown>)[name] !== undefined);
+    expect(present).toEqual([]);
+  });
+});
 
-    filesToCheck.forEach((relPath) => {
-      it(`${relPath} sollte keine hardcoded VDE-Konstanten enthalten`, () => {
-        // Skip wenn Datei nicht existiert
-        if (!fs.existsSync(path.join(__dirname, '..', relPath))) {
-          return;
-        }
-
-        const content = readFile(relPath);
-        const findings = findVDEConstantsInFile(content);
-
-        // ConduitNode's empty-state 'EN 20' default ist OK
-        // Wir wollen nur die mathematischen Konstanten prüfen
-        const realFindings = findings.filter(f =>
-          !f.includes('hardcoded 60% conduit fill') ||
-          // 60 als fill limit ist im Inspector in einem anderen Kontext
-          !content.includes('Tragen Sie das Kabel')
-        );
-
-        expect(realFindings).toEqual([]);
-      });
-    });
+describe('VDE-Konsistenz: Re-Exports aus electrical.ts', () => {
+  it('VDE_SIZES ist dieselbe Referenz wie in electrical.ts', () => {
+    expect(vde.VDE_SIZES).toBe(electrical.VDE_SIZES);
   });
 
-  describe('VDE-Werte sind zwischen Dateien konsistent', () => {
-    it('Inverter-Effizienz wird einheitlich aus vde-standards importiert', async () => {
-      // Wenn jemand in store den Wert 0.85 manuell eintippt statt zu importieren,
-      // soll dieser Test fehlschlagen.
-      const storeContent = readFile('store/usePlannerStore.ts');
-      const apiContent = readFile('app/api/chat/route.ts');
-      const metricsContent = readFile('components/planner/hooks/useDashboardMetrics.ts');
-
-      // Alle drei sollten die zentrale Konstante importieren ODER gar nicht verwenden
-      const storeUsesImport = storeContent.includes('VDE_INVERTER_EFFICIENCY');
-      const apiUsesImport = apiContent.includes('VDE_INVERTER_EFFICIENCY');
-      const metricsUsesImport = metricsContent.includes('VDE_INVERTER_EFFICIENCY');
-
-      // Mindestens store und metrics sollten es importieren
-      expect(storeUsesImport).toBe(true);
-      expect(metricsUsesImport).toBe(true);
-
-      // Wenn API es erwähnt, sollte es importiert sein
-      if (apiContent.includes('0.85') && !apiContent.includes('//')) {
-        expect(apiUsesImport).toBe(true);
-      }
-    });
-
-    it('Kabelquerschnitte werden einheitlich aus vde-standards verwendet', () => {
-      const storeContent = readFile('store/usePlannerStore.ts');
-      const cableEdgeContent = readFile('components/edges/CableEdge.tsx');
-      const inspectorContent = readFile('components/Inspector.tsx');
-
-      // Die Dateien sollten VDE_CROSS_SECTIONS oder die Symbole daraus verwenden
-      const usesCentralCrossSection =
-        storeContent.includes('VDE_CROSS_SECTIONS') ||
-        storeContent.includes('VDE_MIN_CROSS_SECTION') ||
-        storeContent.includes('roundUpToVDECrossSection');
-
-      const cableEdgeUsesCentral =
-        cableEdgeContent.includes('VDE_CROSS_SECTIONS') ||
-        cableEdgeContent.includes('VDE_MIN_CROSS_SECTION') ||
-        cableEdgeContent.includes('roundUpToVDECrossSection');
-
-      const inspectorUsesCentral =
-        inspectorContent.includes('VDE_CROSS_SECTIONS') ||
-        inspectorContent.includes('VDE_CONDUIT_INNER_DIAMETERS');
-
-      expect(usesCentralCrossSection).toBe(true);
-      expect(cableEdgeUsesCentral).toBe(true);
-      expect(inspectorUsesCentral).toBe(true);
-    });
-
-    it('Conduit-Werte werden zentral definiert', () => {
-      const conduitNodeContent = readFile('components/nodes/ConduitNode.tsx');
-      const inspectorContent = readFile('components/Inspector.tsx');
-
-      // ConduitNode sollte nicht mehr eigene CONDUIT_SIZES definieren
-      expect(conduitNodeContent).not.toMatch(/const\s+CONDUIT_SIZES\s*=/);
-      expect(conduitNodeContent).not.toMatch(/const\s+CABLE_OUTER_DIAMETERS\s*=/);
-
-      // Es sollte die zentrale Quelle nutzen
-      expect(conduitNodeContent).toMatch(/VDE_CONDUIT_INNER_DIAMETERS/);
-
-      // Inspector sollte die zentrale Quelle nutzen
-      expect(inspectorContent).toMatch(/VDE_CONDUIT_INNER_DIAMETERS/);
-    });
+  it('VDE_CROSS_SECTIONS ist ein Alias für electrical.VDE_SIZES', () => {
+    expect(vde.VDE_CROSS_SECTIONS).toBe(electrical.VDE_SIZES);
+    expect(vde.VDE_CROSS_SECTIONS).toEqual(electrical.VDE_SIZES);
   });
 
-  describe('Berechnungen liefern konsistente Ergebnisse über Module hinweg', () => {
-    it('calculateWire aus vde-standards und usePlannerStore.calculateWire geben das gleiche Ergebnis', async () => {
-      // Setze den Store in einen definierten Zustand
-      const { usePlannerStore } = await import('../store/usePlannerStore');
-      usePlannerStore.setState({
-        nodes: [
-          { id: 'b1', type: 'battery', position: { x: 0, y: 0 }, data: { label: 'B', capacity: 100, chemistry: 'LiFePO4' } },
-        ],
-        edges: [],
-      });
-
-      // Indirekter Test: nach autoWireSystem sollten die berechneten Querschnitte
-      // mit dem übereinstimmen, was calculateWire aus vde-standards liefert.
-      const before = vi.spyOn(window, 'alert').mockImplementation(() => {});
-      const raf = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => {
-        cb(0);
-        return 0;
-      });
-
-      usePlannerStore.getState().autoWireSystem();
-
-      const state = usePlannerStore.getState();
-      // Es sollten 2+ Kanten zur Batterie → Shunt → Busbar existieren (jeweils plus+minus = 2 Edges pro Pfad)
-      expect(state.edges.length).toBeGreaterThan(0);
-
-      // Jeder berechnete Querschnitt sollte in VDE_CROSS_SECTIONS enthalten sein
-      for (const edge of state.edges) {
-        const cs = edge.data?.crossSection;
-        if (cs !== undefined) {
-          expect(vde.VDE_CROSS_SECTIONS).toContain(cs);
-        }
-      }
-
-      before.mockRestore();
-      raf.mockRestore();
-    });
-
-    it('Spannungsabfall-Berechnung in CableEdge und vde-standards liefern das gleiche Ergebnis', () => {
-      // Symbolischer Test: Wenn die Spannungsabfall-Funktion existiert und auf
-      // beide angewendet wird, müssen die Werte gleich sein.
-      const currentA = 10;
-      const lengthM = 5;
-      const crossSection = 2.5;
-      const systemVoltage = 12;
-
-      // Erwartung: 0.7V (aus unseren vde-standards-Tests verifiziert)
-      const vdeVoltageDrop = vde.calculateVoltageDrop(currentA, lengthM, crossSection, systemVoltage);
-      // ΔU = (0.0175 * 5 * 2 * 10) / 2.5 = 1.75 / 2.5 = 0.7V
-      expect(vdeVoltageDrop).toBeCloseTo(0.7, 5);
-
-      // Wert ist positiv und endlich
-      expect(vdeVoltageDrop).toBeGreaterThan(0);
-      expect(vdeVoltageDrop).toBeLessThan(systemVoltage);
-    });
+  it('VDE_AMPACITY_RAW ist dieselbe Referenz wie VDE_AMPACITY', () => {
+    expect(vde.VDE_AMPACITY_RAW).toBe(electrical.VDE_AMPACITY);
   });
 
-  describe('Schutz vor zukünftigen Regressionen', () => {
-    it('wenn jemand eine neue VDE-Konstante in einer anderen Datei hinzufügt, schlägt der Test fehl', () => {
-      // Dieser Test selbst prüft nichts — er ist ein Platzhalter für die
-      // "Vertragstreue": Wenn du in einer anderen Datei eine VDE-Konstante
-      // einführst, MUSS du sie in vde-standards.ts ergänzen und in den
-      // findVDEConstantsInFile-Checks oben aufnehmen.
+  it('VDE_FUSE_MAP ist dieselbe Referenz wie FUSE_MAP', () => {
+    expect(vde.VDE_FUSE_MAP).toBe(electrical.FUSE_MAP);
+  });
 
-      // Wir dokumentieren hier, welche Konstanten "verboten" sind:
-      const forbiddenOutsideVDEStandards = [
-        { name: 'VDE_SIZES', pattern: /\[1\.5,\s*2\.5,\s*4\.0/ },
-        { name: 'Copper Resistivity Formula', pattern: /58\s*\*\s*0\.24/ },
-        { name: '0.85 Inverter Efficiency', pattern: /\/\s*0\.85|\/\s*12\s*\/.*0\.85/ },
-        { name: '60% Conduit Fill', pattern: />\s*60\s*[\);]/ },
-      ];
+  it('DERATE_FACTOR stimmt mit electrical.ts überein', () => {
+    expect(vde.DERATE_FACTOR).toBe(electrical.DERATE_FACTOR);
+    expect(vde.DERATE_FACTOR).toBe(0.7);
+  });
 
-      const filesToCheck = [
-        'store/usePlannerStore.ts',
-        'components/edges/CableEdge.tsx',
-        'components/nodes/ConduitNode.tsx',
-        'components/planner/hooks/useDashboardMetrics.ts',
-        'components/Inspector.tsx',
-      ];
+  it('calculateMaxFuseBase delegiert an electrical.calculateMaxFuse', () => {
+    expect(vde.calculateMaxFuseBase(2.5)).toBe(electrical.calculateMaxFuse(2.5));
+    expect(vde.calculateMaxFuseBase(2.5)).toBe(20);
+  });
 
-      const violations: Array<{ file: string; constant: string; line: string }> = [];
+  it('lookupThermalCrossSectionBase delegiert an electrical.lookupThermalCrossSection', () => {
+    expect(vde.lookupThermalCrossSectionBase(10)).toBe(electrical.lookupThermalCrossSection(10));
+  });
 
-      for (const relPath of filesToCheck) {
-        if (!fs.existsSync(path.join(__dirname, '..', relPath))) continue;
-        const content = readFile(relPath);
-        const lines = content.split('\n');
+  it('calculateCrossSectionBase delegiert an electrical.calculateCrossSection', () => {
+    expect(vde.calculateCrossSectionBase(10, 3)).toBe(electrical.calculateCrossSection(10, 3));
+  });
 
-        for (const { name, pattern } of forbiddenOutsideVDEStandards) {
-          for (let i = 0; i < lines.length; i++) {
-            if (pattern.test(lines[i]) && !lines[i].trim().startsWith('//')) {
-              // ConduitNode und CableEdge nutzen die Konstante in Kommentaren
-              if (lines[i].includes('//') || lines[i].includes('VDE_')) continue;
-              violations.push({
-                file: relPath,
-                constant: name,
-                line: `${i + 1}: ${lines[i].trim()}`,
-              });
-            }
-          }
-        }
-      }
-
-      if (violations.length > 0) {
-        const message = violations
-          .map(v => `${v.file}:${v.line} → ${v.constant}`)
-          .join('\n');
-        throw new Error(
-          `VDE-Konsistenz-Verletzung gefunden:\n${message}\n\n` +
-          `Alle VDE-Werte MÜSSEN in lib/vde-standards.ts definiert sein.\n` +
-          `Importiere sie stattdessen in deiner Datei.`
-        );
-      }
-    });
+  it('getEdgeDomain / getHandleDomain / calculateStrokeWidth sind Re-Exports', () => {
+    expect(vde.getEdgeDomain).toBe(electrical.getEdgeDomain);
+    expect(vde.getHandleDomain).toBe(electrical.getHandleDomain);
+    expect(vde.calculateStrokeWidth).toBe(electrical.calculateStrokeWidth);
   });
 });

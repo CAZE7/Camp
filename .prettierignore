@@ -1,0 +1,21 @@
+node_modules
+.next
+out
+coverage
+playwright-report
+test-results
+pnpm-lock.yaml
+package-lock.json
+*.tsbuildinfo
+docs/routing-gallery
+lighthouse-report
+public
+
+# Workflows werden von GitHub-Actions interpretiert; Prettier darf sie
+# nicht anfassen (Zitatstil ist dort irrelevant und Änderungen am Workflow-
+# Verzeichnis brauchen besondere Push-Rechte).
+.github
+docs/ci/workflows
+
+# Von Next.js automatisch generiert
+next-env.d.ts

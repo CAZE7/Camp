@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="40 0 120 160" width="120" height="160" role="img" aria-label="Quelle und Ziel am selben Punkt">
+  <rect x="-100000" y="-100000" width="200000" height="200000" fill="#0f172a"/>
+  <text x="52" y="28" fill="#e2e8f0" font-family="monospace" font-size="16">18-same-point — Quelle und Ziel am selben Punkt</text>
+  <circle cx="100" cy="100" r="7" fill="#22c55e"/>
+  <circle cx="100" cy="100" r="7" fill="#f97316"/>
+</svg>

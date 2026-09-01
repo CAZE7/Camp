@@ -1,5 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
+import { SiteHeader } from '@/components/brand/SiteHeader';
+import { SiteFooter } from '@/components/brand/SiteFooter';
 
 interface StepData {
   id: string;
@@ -21,25 +23,23 @@ interface StepData {
 }
 
 const StepModule = ({ step }: { step: StepData }) => (
-  <section id={step.id} className="scroll-mt-16 bg-white border border-gray-100 rounded-2xl p-6 md:p-8 shadow-sm">
-    <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-6 pb-4 border-b border-gray-200">
-      {step.title}
-    </h2>
+  <section id={step.id} className="scroll-mt-24 border-t border-rule py-12 first:border-t-0 first:pt-0">
+    <h2 className="mb-6 text-lg font-semibold text-ink">{step.title}</h2>
 
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+    <div className="mb-8 grid grid-cols-1 gap-8 md:grid-cols-2">
       <div>
-        <h3 className="text-lg font-semibold text-blue-700 mb-2">Ziel</h3>
-        <p className="text-gray-700">{step.ziel}</p>
+        <h3 className="label-eyebrow mb-2 text-copper">Ziel</h3>
+        <p className="leading-relaxed text-ink-soft">{step.ziel}</p>
       </div>
       <div>
-        <h3 className="text-lg font-semibold text-green-700 mb-2">Warum jetzt?</h3>
-        <p className="text-gray-700">{step.warumJetzt}</p>
+        <h3 className="label-eyebrow mb-2 text-moss">Warum jetzt?</h3>
+        <p className="leading-relaxed text-ink-soft">{step.warumJetzt}</p>
       </div>
     </div>
 
     <div className="mb-8">
-      <h3 className="text-lg font-semibold text-gray-900 mb-3">Werkzeug & Material</h3>
-      <ul className="list-disc pl-5 space-y-1 text-gray-700">
+      <h3 className="label-eyebrow mb-3 text-ink">Werkzeug & Material</h3>
+      <ul className="list-disc space-y-1 pl-5 text-ink-soft">
         {step.werkzeugMaterial.map((item, index) => (
           <li key={index}>{item}</li>
         ))}
@@ -47,73 +47,76 @@ const StepModule = ({ step }: { step: StepData }) => (
     </div>
 
     <div className="mb-8">
-      <h3 className="text-lg font-semibold text-gray-900 mb-3">Schritt für Schritt</h3>
-      <ol className="list-decimal pl-5 space-y-2 text-gray-700 marker:font-semibold marker:text-gray-900">
+      <h3 className="label-eyebrow mb-3 text-ink">Schritt für Schritt</h3>
+      <ol className="list-decimal space-y-2 pl-5 text-ink-soft marker:font-medium marker:text-ink">
         {step.schrittFuerSchritt.map((item, index) => (
-          <li key={index} className="pl-1">{item}</li>
+          <li key={index} className="pl-1">
+            {item}
+          </li>
         ))}
       </ol>
     </div>
 
     {step.zusatzInfo && (
-      <div className="mb-8 p-4 bg-blue-50 border-l-4 border-blue-500 rounded-r-lg">
-        <h3 className="text-md font-bold text-blue-900 mb-1">Zusatzinfo</h3>
-        <p className="text-blue-800 text-sm">{step.zusatzInfo}</p>
+      <div className="mb-8 border-l-2 border-copper bg-bone p-4">
+        <h3 className="label-eyebrow mb-1 text-copper">Zusatzinfo</h3>
+        <p className="text-sm leading-relaxed text-ink-soft">{step.zusatzInfo}</p>
       </div>
     )}
 
     {step.comparison && (
       <div className="mb-8">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">{step.comparison.title}</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <h3 className="label-eyebrow mb-4 text-ink">{step.comparison.title}</h3>
+        <div className="grid grid-cols-1 gap-px border border-rule bg-rule sm:grid-cols-2 lg:grid-cols-3">
           {step.comparison.items.map((item, index) => (
-            <div key={index} className="bg-gray-50 border border-gray-200 rounded-xl p-5 hover:shadow-md transition-shadow">
-              <h4 className="font-bold text-gray-900 mb-2">{item.name}</h4>
-              <p className="text-sm text-gray-600">{item.description}</p>
+            <div key={index} className="bg-paper p-5">
+              <h4 className="mb-2 font-display text-lg tracking-[-0.02em] text-ink">{item.name}</h4>
+              <p className="text-sm leading-relaxed text-ink-soft">{item.description}</p>
             </div>
           ))}
         </div>
       </div>
     )}
 
-    <div className="mb-8 p-5 bg-red-50 border-l-4 border-red-500 rounded-r-lg">
-      <h3 className="text-md font-bold text-red-900 mb-2 flex items-center">
-        <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+    <div className="bg-copper/10 mb-8 rounded-r-lg border-l-2 border-signal p-5">
+      <h3 className="mb-2 flex items-center text-sm font-medium text-signal">
+        <svg className="mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+          <path
+            fillRule="evenodd"
+            d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+            clipRule="evenodd"
+          />
         </svg>
         Typische Fehler
       </h3>
-      <p className="text-red-800">{step.typischeFehler}</p>
+      <p className="text-ink-soft">{step.typischeFehler}</p>
     </div>
 
     {step.kaufhilfe && (
-      <div className="p-5 bg-gray-100 rounded-xl border border-gray-200">
-        <h3 className="text-md font-semibold text-gray-900 mb-2">Kaufhilfe</h3>
-        <p className="text-gray-700 text-sm">{step.kaufhilfe}</p>
+      <div className="border border-rule bg-bone p-5">
+        <h3 className="label-eyebrow mb-2 text-ink">Kaufhilfe</h3>
+        <p className="text-sm text-ink-soft">{step.kaufhilfe}</p>
       </div>
     )}
   </section>
 );
-
-interface Step {
-  id: string;
-  title: string;
-}
 
 const stepsData: StepData[] = [
   {
     id: 'planung',
     title: '1. Planung',
     ziel: 'Einen detaillierten Grundriss und eine realistische Budgetkalkulation erstellen.',
-    warumJetzt: 'Fehler in der Planung sind später teuer und schwer zu korrigieren. Die Basis für jeden Ausbau.',
+    warumJetzt:
+      'Fehler in der Planung sind später teuer und schwer zu korrigieren. Die Basis für jeden Ausbau.',
     werkzeugMaterial: ['Papier & Stift', 'Maßband', 'Klebeband (um den Grundriss im Transporter abzukleben)'],
     schrittFuerSchritt: [
       'Ausmessen des leeren Kastenwagens',
       'Erstellen eines Grundrisses',
       'Festlegen der wichtigsten Komponenten (Bett, Küche, Bad)',
-      'Budgetplan aufstellen'
+      'Budgetplan aufstellen',
     ],
-    typischeFehler: 'Zu eng kalkuliert! Das Bett ist zu kurz oder wichtige Komponenten passen nicht nebeneinander.',
+    typischeFehler:
+      'Zu eng kalkuliert! Das Bett ist zu kurz oder wichtige Komponenten passen nicht nebeneinander.',
     kaufhilfe: 'Nutze eine 3D-Software oder Online-Planer für präzise Skizzen.',
   },
   {
@@ -121,12 +124,17 @@ const stepsData: StepData[] = [
     title: '2. Rostschutz & Hohlraumversiegelung',
     ziel: 'Das Blech vor zukünftigem Rost schützen, besonders an schwer zugänglichen Stellen.',
     warumJetzt: 'Später sind die Hohlräume von der Dämmung und Verkleidung verdeckt.',
-    werkzeugMaterial: ['Rostumwandler', 'Hohlraumversiegelung (z.B. Fluid Film)', 'Schleifpapier', 'Bremsenreiniger'],
+    werkzeugMaterial: [
+      'Rostumwandler',
+      'Hohlraumversiegelung (z.B. Fluid Film)',
+      'Schleifpapier',
+      'Bremsenreiniger',
+    ],
     schrittFuerSchritt: [
       'Komplette Reinigung des Innenraums',
       'Abschleifen von vorhandenem Rost',
       'Rostumwandler auftragen',
-      'Hohlräume großzügig versiegeln'
+      'Hohlräume großzügig versiegeln',
     ],
     typischeFehler: 'Schlechte Vorreinigung, sodass die Versiegelung nicht richtig haftet.',
     kaufhilfe: 'Fluid Film oder Mike Sanders sind bewährte Produkte für den Camper-Ausbau.',
@@ -136,45 +144,77 @@ const stepsData: StepData[] = [
     title: '3. Fenster & Dachluken',
     ziel: 'Mehr Licht und Luft in den Camper bringen, ohne dass Feuchtigkeit eindringt.',
     warumJetzt: 'Metallspäne fallen an, die man vor der Dämmung leichter wegsaugen kann.',
-    werkzeugMaterial: ['Stichsäge mit feinem Metallblatt', 'Sikaflex/Dekaseal', 'Rostschutzgrundierung', 'Feile'],
+    werkzeugMaterial: [
+      'Stichsäge mit feinem Metallblatt',
+      'Sikaflex/Dekaseal',
+      'Rostschutzgrundierung',
+      'Feile',
+    ],
     schrittFuerSchritt: [
       'Position anzeichnen und abkleben',
       'Ausschnitt sägen (Schutzbrille tragen!)',
       'Schnittkante entgratet, gereinigt und mit Rostschutz behandelt werden',
       'Holzrahmen innen anfertigen',
-      'Fenster/Dachluke lückenlos abdichten und einsetzen'
+      'Fenster/Dachluke lückenlos abdichten und einsetzen',
     ],
-    typischeFehler: 'Falsches Dichtmittel! Dekaseal 8936 bleibt dauerelastisch, Sikaflex 252 ist ein Kleber und lässt sich nie wieder lösen.',
-    zusatzInfo: 'Zusatzinfo Fensteinbau: Besonders hervorheben, dass die Schnittkante entgratet, gereinigt und mit Rostschutz behandelt werden muss und dass die Dichtung lückenlos sitzen muss, damit weder Zugluft noch Feuchtigkeit eindringen.',
+    typischeFehler:
+      'Falsches Dichtmittel! Dekaseal 8936 bleibt dauerelastisch, Sikaflex 252 ist ein Kleber und lässt sich nie wieder lösen.',
+    zusatzInfo:
+      'Zusatzinfo Fensteinbau: Besonders hervorheben, dass die Schnittkante entgratet, gereinigt und mit Rostschutz behandelt werden muss und dass die Dichtung lückenlos sitzen muss, damit weder Zugluft noch Feuchtigkeit eindringen.',
     comparison: {
       title: 'Vergleich: Fenster & Lüftung',
       items: [
-        { name: 'Fenster', description: 'Doppelt verglaste Camperfenster mit sauberer Rahmenmontage, Rostschutz an Schnittkanten und vollständiger Abdichtung hervorheben.' },
-        { name: 'Lüftung', description: 'Fenstergrößen und Position so planen, dass Durchzug möglich ist; über der Kochstelle ist eine Dachluke besonders sinnvoll (häufige Größe: 40x40 cm).' },
-      ]
-    }
+        {
+          name: 'Fenster',
+          description:
+            'Doppelt verglaste Camperfenster mit sauberer Rahmenmontage, Rostschutz an Schnittkanten und vollständiger Abdichtung hervorheben.',
+        },
+        {
+          name: 'Lüftung',
+          description:
+            'Fenstergrößen und Position so planen, dass Durchzug möglich ist; über der Kochstelle ist eine Dachluke besonders sinnvoll (häufige Größe: 40x40 cm).',
+        },
+      ],
+    },
   },
   {
     id: 'daemmung',
     title: '4. Dämmung',
     ziel: 'Kondenswasser vermeiden und angenehme Temperaturen im Sommer sowie Winter schaffen.',
     warumJetzt: 'Bevor Kabel und Wände reinkommen, muss das Blech isoliert werden.',
-    werkzeugMaterial: ['Armaflex/Kautschuk', 'Schere/Cutter', 'Bremsenreiniger zum Entfetten', 'Alubutyl (optional zur Schalldämmung)'],
+    werkzeugMaterial: [
+      'Armaflex/Kautschuk',
+      'Schere/Cutter',
+      'Bremsenreiniger zum Entfetten',
+      'Alubutyl (optional zur Schalldämmung)',
+    ],
     schrittFuerSchritt: [
       'Blech entfetten',
       'Optional: Alubutyl gegen Dröhnen kleben',
       'Dämmung vollflächig aufkleben',
-      'Stöße und Kanten abkleben'
+      'Stöße und Kanten abkleben',
     ],
     typischeFehler: 'Luftblasen unter der Dämmung, wo sich Kondenswasser sammeln und Rost bilden kann.',
     comparison: {
       title: 'Vergleich: Dämmstoffe',
       items: [
-        { name: 'Armaflex/Kautschuk', description: 'Standardempfehlung für Wände und Dach. Leicht zu verarbeiten und geschlossenzellig (nimmt keine Feuchtigkeit auf).' },
-        { name: 'Mineralwolle', description: 'Nur mit sauberer Dampfsperre verwenden! Ansonsten Gefahr von Schimmel durch Kondenswasser.' },
-        { name: 'Schafwolle', description: 'Eher für Nutzer mit Naturmaterial-Fokus. Reguliert das Raumklima gut, erfordert aber ebenfalls sorgfältige Verarbeitung.' }
-      ]
-    }
+        {
+          name: 'Armaflex/Kautschuk',
+          description:
+            'Standardempfehlung für Wände und Dach. Leicht zu verarbeiten und geschlossenzellig (nimmt keine Feuchtigkeit auf).',
+        },
+        {
+          name: 'Mineralwolle',
+          description:
+            'Nur mit sauberer Dampfsperre verwenden! Ansonsten Gefahr von Schimmel durch Kondenswasser.',
+        },
+        {
+          name: 'Schafwolle',
+          description:
+            'Eher für Nutzer mit Naturmaterial-Fokus. Reguliert das Raumklima gut, erfordert aber ebenfalls sorgfältige Verarbeitung.',
+        },
+      ],
+    },
   },
   {
     id: 'elektrik',
@@ -186,24 +226,31 @@ const stepsData: StepData[] = [
       'Verbraucher-Positionen festlegen (Licht, USB, Kühlschrank)',
       'Leerrohre verlegen',
       'Kabel einziehen',
-      'Ausreichend Kabellänge als Reserve lassen'
+      'Ausreichend Kabellänge als Reserve lassen',
     ],
     typischeFehler: 'Zu dünne Kabelquerschnitte gewählt. Das führt zu Spannungsabfall oder Brandgefahr!',
-    kaufhilfe: 'Nutze unseren 2D Elektrik-Planer zur genauen Bestimmung der Kabelquerschnitte und Komponenten.',
+    kaufhilfe:
+      'Nutze unseren 2D Elektrik-Planer zur genauen Bestimmung der Kabelquerschnitte und Komponenten.',
   },
   {
     id: 'boden',
     title: '6. Boden',
     ziel: 'Einen geraden, stabilen und isolierten Untergrund für Möbel schaffen.',
     warumJetzt: 'Die Basis für den restlichen Aufbau; Möbel müssen gerade stehen.',
-    werkzeugMaterial: ['XPS/EPS Platten', 'OSB oder Siebdruckplatten', 'Bodenbelag (z.B. PVC)', 'Holzleisten'],
+    werkzeugMaterial: [
+      'XPS/EPS Platten',
+      'OSB oder Siebdruckplatten',
+      'Bodenbelag (z.B. PVC)',
+      'Holzleisten',
+    ],
     schrittFuerSchritt: [
       'Lattengerüst auf das Bodenblech kleben',
       'Zwischenräume dämmen',
       'Bodenplatte zuschneiden und verschrauben',
-      'Bodenbelag verlegen'
+      'Bodenbelag verlegen',
     ],
-    typischeFehler: 'Bodenplatte knarrt, weil die Unterkonstruktion nicht ordentlich verklebt/verschraubt ist.',
+    typischeFehler:
+      'Bodenplatte knarrt, weil die Unterkonstruktion nicht ordentlich verklebt/verschraubt ist.',
   },
   {
     id: 'wand-decke',
@@ -215,9 +262,10 @@ const stepsData: StepData[] = [
       'Unterkonstruktion (Latten) anbringen',
       'Kabeldurchführungen markieren',
       'Holzpaneele zuschneiden und anschrauben/nageln',
-      'Holz behandeln (Ölen/Lasieren)'
+      'Holz behandeln (Ölen/Lasieren)',
     ],
-    typischeFehler: 'Keine Dehnungsfugen gelassen! Holz arbeitet und kann sich wellen, wenn es zu eng verlegt wird.',
+    typischeFehler:
+      'Keine Dehnungsfugen gelassen! Holz arbeitet und kann sich wellen, wenn es zu eng verlegt wird.',
   },
   {
     id: 'moebelbau',
@@ -229,7 +277,7 @@ const stepsData: StepData[] = [
       'Gerüst aus Konstruktionsholz bauen',
       'Verkleidung mit leichtem Holz',
       'Türen und Schubladen einpassen',
-      'Möbel fest mit der Karosserie (Unterkonstruktion) verschrauben'
+      'Möbel fest mit der Karosserie (Unterkonstruktion) verschrauben',
     ],
     typischeFehler: 'Möbel aus schwerem MDF oder Spanplatten gebaut – das kostet extrem viel Zuladung.',
     kaufhilfe: 'Pappelsperrholz (12-15mm) ist der Standard im Camperbau, da es sehr leicht ist.',
@@ -244,60 +292,72 @@ const stepsData: StepData[] = [
       'Spülbecken in Arbeitsplatte einlassen',
       'Frisch- und Abwasserkanister anschließen',
       'Kühlschrank anschließen',
-      'Kochfeld installieren'
+      'Kochfeld installieren',
     ],
-    typischeFehler: 'Kühlschrank ohne ausreichende Hinterlüftung eingebaut, was zu Hitzestau und hohem Stromverbrauch führt.',
+    typischeFehler:
+      'Kühlschrank ohne ausreichende Hinterlüftung eingebaut, was zu Hitzestau und hohem Stromverbrauch führt.',
     comparison: {
       title: 'Vergleich: Kühlschrank-Systeme',
       items: [
-        { name: 'Kompressor', description: 'Beste Allround-Lösung für starke Kühlung ohne Karosserie-Lüftungsöffnungen. Benötigt meist 12V Strom.' },
-        { name: 'Absorber', description: 'Gute Budget-/Gas-Lösung mit 230 V, 12 V und Gasbetrieb. Kühlt aber bei hohen Außentemperaturen schlechter.' },
-      ]
-    }
-  }
+        {
+          name: 'Kompressor',
+          description:
+            'Beste Allround-Lösung für starke Kühlung ohne Karosserie-Lüftungsöffnungen. Benötigt meist 12V Strom.',
+        },
+        {
+          name: 'Absorber',
+          description:
+            'Gute Budget-/Gas-Lösung mit 230 V, 12 V und Gasbetrieb. Kühlt aber bei hohen Außentemperaturen schlechter.',
+        },
+      ],
+    },
+  },
 ];
 
 export default function AusbauFahrplanPage() {
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl w-full flex flex-col md:flex-row gap-8">
-
-        {/* Sticky Sidebar */}
-        <aside className="w-full md:w-64 flex-shrink-0">
-          <div className="sticky top-8 bg-white p-6 rounded-xl shadow-md">
-            <h2 className="text-lg font-bold text-gray-900 mb-4">Inhaltsverzeichnis</h2>
-            <nav className="space-y-2">
+    <div className="flex min-h-screen flex-col bg-paper text-ink">
+      <SiteHeader />
+      <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col md:flex-row">
+        <aside
+          className="w-full flex-shrink-0 border-b border-rule md:w-56 md:border-b-0 md:border-r"
+          aria-label="Kapitel"
+        >
+          <div className="sticky top-0 p-5">
+            <h2 className="text-sm font-medium">Inhalt</h2>
+            <nav className="mt-3 space-y-1" aria-label="Sprungmarken">
               {stepsData.map((step) => (
                 <a
                   key={step.id}
                   href={`#${step.id}`}
-                  className="block text-sm text-gray-600 hover:text-blue-600 hover:bg-gray-50 px-2 py-1.5 rounded transition-colors"
+                  className="flex min-h-11 items-center py-1 text-sm text-ink-soft hover:text-ink"
                 >
                   {step.title}
                 </a>
               ))}
             </nav>
+            <Link
+              href="/guides/holzausbau"
+              className="mt-6 inline-flex min-h-11 items-center text-sm text-copper"
+            >
+              Holzausbau →
+            </Link>
           </div>
         </aside>
 
-        {/* Main Content Area */}
-        <main className="flex-1 bg-white p-8 rounded-xl shadow-md">
-          <div className="mb-12 border-b pb-8">
-            <h1 className="text-4xl tracking-tight font-extrabold text-gray-900 mb-4">
-              Der ultimative Camper-Ausbau Fahrplan
-            </h1>
-            <p className="text-lg text-gray-700 leading-relaxed">
-              Die Startseite sollte den Ausbau in der bewährten Reihenfolge zeigen: Planung, Reinigung, Hohlräume konservieren, Fenster nachrüsten, isolieren, Kabel und Leerrohre verlegen und danach den Boden aufbauen.
-            </p>
-          </div>
-
-          <div className="space-y-16">
+        <main id="main" className="flex-1 px-5 py-8 md:px-10 md:py-10">
+          <h1 className="font-display text-2xl font-semibold tracking-tight md:text-3xl">Ausbau-Fahrplan</h1>
+          <p className="mt-2 max-w-2xl text-sm text-ink-soft">
+            Planung, Rostschutz, Fenster, Dämmung, Kabel, Boden, Wände, Möbel, Küche.
+          </p>
+          <div className="mt-8">
             {stepsData.map((step) => (
               <StepModule key={step.id} step={step} />
             ))}
           </div>
         </main>
       </div>
+      <SiteFooter />
     </div>
   );
 }

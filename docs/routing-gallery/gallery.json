@@ -1,0 +1,836 @@
+{
+  "scenarios": [
+    {
+      "id": "01-direct-right-left",
+      "title": "Gerade Strecke Rechts → Links",
+      "obstacleFree": true,
+      "exception": null,
+      "waypoints": [
+        {
+          "x": 0,
+          "y": 0
+        },
+        {
+          "x": 400,
+          "y": 0
+        }
+      ],
+      "path": "M 0 0 L 400 0",
+      "crossings": 0,
+      "label": {
+        "x": 200,
+        "y": 0
+      },
+      "length": 400,
+      "manhattan": 400
+    },
+    {
+      "id": "02-vertical-offset",
+      "title": "Versatz in der Höhe",
+      "obstacleFree": true,
+      "exception": null,
+      "waypoints": [
+        {
+          "x": 0,
+          "y": 0
+        },
+        {
+          "x": 200,
+          "y": 0
+        },
+        {
+          "x": 200,
+          "y": 260
+        },
+        {
+          "x": 400,
+          "y": 260
+        }
+      ],
+      "path": "M 0 0 L 190 0 Q 200 0 200 10 L 200 250 Q 200 260 210 260 L 400 260",
+      "crossings": 0,
+      "label": {
+        "x": 200,
+        "y": 130
+      },
+      "length": 660,
+      "manhattan": 660
+    },
+    {
+      "id": "03-backwards-loop",
+      "title": "Ziel liegt hinter der Quelle",
+      "obstacleFree": true,
+      "exception": null,
+      "waypoints": [
+        {
+          "x": 400,
+          "y": 0
+        },
+        {
+          "x": 200,
+          "y": 0
+        },
+        {
+          "x": 0,
+          "y": 0
+        }
+      ],
+      "path": "M 400 0 L 210 0 Q 200 0 190 0 L 0 0",
+      "crossings": 0,
+      "label": {
+        "x": 200,
+        "y": 0
+      },
+      "length": 400,
+      "manhattan": 400
+    },
+    {
+      "id": "04-diagonal-source-target",
+      "title": "Diagonale Quelle/Ziel",
+      "obstacleFree": true,
+      "exception": null,
+      "waypoints": [
+        {
+          "x": 0,
+          "y": 0
+        },
+        {
+          "x": 0,
+          "y": 320
+        },
+        {
+          "x": 380,
+          "y": 320
+        }
+      ],
+      "path": "M 0 0 L 0 310 Q 0 320 10 320 L 380 320",
+      "crossings": 0,
+      "label": {
+        "x": 30,
+        "y": 320
+      },
+      "length": 700,
+      "manhattan": 700
+    },
+    {
+      "id": "05-vertical-stack",
+      "title": "Senkrechter Stapel",
+      "obstacleFree": true,
+      "exception": null,
+      "waypoints": [
+        {
+          "x": 100,
+          "y": 0
+        },
+        {
+          "x": 100,
+          "y": 400
+        }
+      ],
+      "path": "M 100 0 L 100 400",
+      "crossings": 0,
+      "label": {
+        "x": 100,
+        "y": 200
+      },
+      "length": 400,
+      "manhattan": 400
+    },
+    {
+      "id": "06-single-obstacle",
+      "title": "Ein Hindernis in der Bahn",
+      "obstacleFree": true,
+      "exception": null,
+      "waypoints": [
+        {
+          "x": 0,
+          "y": 0
+        },
+        {
+          "x": 206,
+          "y": 0
+        },
+        {
+          "x": 206,
+          "y": 74
+        },
+        {
+          "x": 426,
+          "y": 74
+        },
+        {
+          "x": 426,
+          "y": 0
+        },
+        {
+          "x": 600,
+          "y": 0
+        }
+      ],
+      "path": "M 0 0 L 196 0 Q 206 0 206 10 L 206 64 Q 206 74 216 74 L 416 74 Q 426 74 426 64 L 426 10 Q 426 0 436 0 L 600 0",
+      "crossings": 0,
+      "label": {
+        "x": 300,
+        "y": 74
+      },
+      "length": 748,
+      "manhattan": 600
+    },
+    {
+      "id": "07-two-obstacles",
+      "title": "Zwei Hindernisse hintereinander",
+      "obstacleFree": true,
+      "exception": null,
+      "waypoints": [
+        {
+          "x": 0,
+          "y": 0
+        },
+        {
+          "x": 186,
+          "y": 0
+        },
+        {
+          "x": 186,
+          "y": 74
+        },
+        {
+          "x": 406,
+          "y": 74
+        },
+        {
+          "x": 406,
+          "y": 0
+        },
+        {
+          "x": 546,
+          "y": 0
+        },
+        {
+          "x": 546,
+          "y": 74
+        },
+        {
+          "x": 766,
+          "y": 74
+        },
+        {
+          "x": 766,
+          "y": 0
+        },
+        {
+          "x": 900,
+          "y": 0
+        }
+      ],
+      "path": "M 0 0 L 176 0 Q 186 0 186 10 L 186 64 Q 186 74 196 74 L 396 74 Q 406 74 406 64 L 406 10 Q 406 0 416 0 L 536 0 Q 546 0 546 10 L 546 64 Q 546 74 556 74 L 756 74 Q 766 74 766 64 L 766 10 Q 766 0 776 0 L 900 0",
+      "crossings": 0,
+      "label": {
+        "x": 450,
+        "y": 0
+      },
+      "length": 1196,
+      "manhattan": 900
+    },
+    {
+      "id": "08-obstacle-above",
+      "title": "Hindernis oberhalb der Ideallinie",
+      "obstacleFree": true,
+      "exception": null,
+      "waypoints": [
+        {
+          "x": 0,
+          "y": 200
+        },
+        {
+          "x": 236,
+          "y": 200
+        },
+        {
+          "x": 236,
+          "y": 136
+        },
+        {
+          "x": 456,
+          "y": 136
+        },
+        {
+          "x": 456,
+          "y": 200
+        },
+        {
+          "x": 600,
+          "y": 200
+        }
+      ],
+      "path": "M 0 200 L 226 200 Q 236 200 236 190 L 236 146 Q 236 136 246 136 L 446 136 Q 456 136 456 146 L 456 190 Q 456 200 466 200 L 600 200",
+      "crossings": 0,
+      "label": {
+        "x": 300,
+        "y": 136
+      },
+      "length": 728,
+      "manhattan": 600
+    },
+    {
+      "id": "09-labyrinth-3-rows",
+      "title": "Labyrinth aus drei versetzten Reihen",
+      "obstacleFree": true,
+      "exception": null,
+      "waypoints": [
+        {
+          "x": 0,
+          "y": 0
+        },
+        {
+          "x": 166,
+          "y": 0
+        },
+        {
+          "x": 166,
+          "y": 54
+        },
+        {
+          "x": 386,
+          "y": 54
+        },
+        {
+          "x": 386,
+          "y": 0
+        },
+        {
+          "x": 446,
+          "y": 0
+        },
+        {
+          "x": 446,
+          "y": -54
+        },
+        {
+          "x": 666,
+          "y": -54
+        },
+        {
+          "x": 666,
+          "y": 0
+        },
+        {
+          "x": 726,
+          "y": 0
+        },
+        {
+          "x": 726,
+          "y": 54
+        },
+        {
+          "x": 946,
+          "y": 54
+        },
+        {
+          "x": 946,
+          "y": 0
+        },
+        {
+          "x": 1000,
+          "y": 0
+        }
+      ],
+      "path": "M 0 0 L 156 0 Q 166 0 166 10 L 166 44 Q 166 54 176 54 L 376 54 Q 386 54 386 44 L 386 10 Q 386 0 396 0 L 436 0 Q 446 0 446 -10 L 446 -44 Q 446 -54 456 -54 L 656 -54 Q 666 -54 666 -44 L 666 -10 Q 666 0 676 0 L 716 0 Q 726 0 726 10 L 726 44 Q 726 54 736 54 L 936 54 Q 946 54 946 44 L 946 10 Q 946 0 956 0 L 1000 0",
+      "crossings": 0,
+      "label": {
+        "x": 500,
+        "y": -54
+      },
+      "length": 1324,
+      "manhattan": 1000
+    },
+    {
+      "id": "10-labyrinth-vertical-gap",
+      "title": "Labyrinth mit engem Durchlass",
+      "obstacleFree": true,
+      "exception": null,
+      "waypoints": [
+        {
+          "x": 0,
+          "y": 100
+        },
+        {
+          "x": 700,
+          "y": 100
+        }
+      ],
+      "path": "M 0 100 L 700 100",
+      "crossings": 0,
+      "label": {
+        "x": 350,
+        "y": 100
+      },
+      "length": 700,
+      "manhattan": 700
+    },
+    {
+      "id": "11-parallel-lane-0",
+      "title": "Parallele Kabel — Lane 0",
+      "obstacleFree": true,
+      "exception": null,
+      "waypoints": [
+        {
+          "x": 0,
+          "y": 0
+        },
+        {
+          "x": 250,
+          "y": 0
+        },
+        {
+          "x": 250,
+          "y": 120
+        },
+        {
+          "x": 500,
+          "y": 120
+        }
+      ],
+      "path": "M 0 0 L 240 0 Q 250 0 250 10 L 250 110 Q 250 120 260 120 L 500 120",
+      "crossings": 0,
+      "label": {
+        "x": 250,
+        "y": 60
+      },
+      "length": 620,
+      "manhattan": 620
+    },
+    {
+      "id": "12-parallel-lane-plus-16",
+      "title": "Parallele Kabel — Lane +16 px",
+      "obstacleFree": true,
+      "exception": null,
+      "waypoints": [
+        {
+          "x": 0,
+          "y": 0
+        },
+        {
+          "x": 266,
+          "y": 0
+        },
+        {
+          "x": 266,
+          "y": 120
+        },
+        {
+          "x": 500,
+          "y": 120
+        }
+      ],
+      "path": "M 0 0 L 256 0 Q 266 0 266 10 L 266 110 Q 266 120 276 120 L 500 120",
+      "crossings": 0,
+      "label": {
+        "x": 266,
+        "y": 44
+      },
+      "length": 620,
+      "manhattan": 620
+    },
+    {
+      "id": "13-parallel-lane-minus-16",
+      "title": "Parallele Kabel — Lane −16 px",
+      "obstacleFree": true,
+      "exception": null,
+      "waypoints": [
+        {
+          "x": 0,
+          "y": 0
+        },
+        {
+          "x": 234,
+          "y": 0
+        },
+        {
+          "x": 234,
+          "y": 120
+        },
+        {
+          "x": 500,
+          "y": 120
+        }
+      ],
+      "path": "M 0 0 L 224 0 Q 234 0 234 10 L 234 110 Q 234 120 244 120 L 500 120",
+      "crossings": 0,
+      "label": {
+        "x": 234,
+        "y": 76
+      },
+      "length": 620,
+      "manhattan": 620
+    },
+    {
+      "id": "14-crossing-avoidance",
+      "title": "Ausweichen bei vielen Kreuzungen",
+      "obstacleFree": true,
+      "exception": null,
+      "waypoints": [
+        {
+          "x": 0,
+          "y": 0
+        },
+        {
+          "x": 600,
+          "y": 0
+        }
+      ],
+      "path": "M 0 0 L 600 0",
+      "crossings": 0,
+      "label": {
+        "x": 300,
+        "y": 0
+      },
+      "length": 600,
+      "manhattan": 600
+    },
+    {
+      "id": "15-crossing-dense-grid",
+      "title": "Dichtes Kreuzungsgitter",
+      "obstacleFree": true,
+      "exception": null,
+      "waypoints": [
+        {
+          "x": 0,
+          "y": 0
+        },
+        {
+          "x": 400,
+          "y": 0
+        },
+        {
+          "x": 400,
+          "y": 40
+        },
+        {
+          "x": 800,
+          "y": 40
+        }
+      ],
+      "path": "M 0 0 L 390 0 Q 400 0 400 10 L 400 30 Q 400 40 410 40 L 800 40",
+      "crossings": 10,
+      "label": {
+        "x": 400,
+        "y": 20
+      },
+      "length": 840,
+      "manhattan": 840
+    },
+    {
+      "id": "16-target-top-entry",
+      "title": "Eintritt von oben",
+      "obstacleFree": true,
+      "exception": null,
+      "waypoints": [
+        {
+          "x": 0,
+          "y": 300
+        },
+        {
+          "x": 400,
+          "y": 300
+        },
+        {
+          "x": 400,
+          "y": 0
+        }
+      ],
+      "path": "M 0 300 L 390 300 Q 400 300 400 290 L 400 0",
+      "crossings": 0,
+      "label": {
+        "x": 350,
+        "y": 300
+      },
+      "length": 700,
+      "manhattan": 700
+    },
+    {
+      "id": "17-target-bottom-entry-with-obstacle",
+      "title": "Eintritt von unten mit Hindernis",
+      "obstacleFree": true,
+      "exception": null,
+      "waypoints": [
+        {
+          "x": 0,
+          "y": 0
+        },
+        {
+          "x": 400,
+          "y": 0
+        },
+        {
+          "x": 400,
+          "y": 186
+        },
+        {
+          "x": 506,
+          "y": 186
+        },
+        {
+          "x": 506,
+          "y": 334
+        },
+        {
+          "x": 400,
+          "y": 334
+        },
+        {
+          "x": 400,
+          "y": 400
+        }
+      ],
+      "path": "M 0 0 L 390 0 Q 400 0 400 10 L 400 176 Q 400 186 410 186 L 496 186 Q 506 186 506 196 L 506 324 Q 506 334 496 334 L 410 334 Q 400 334 400 344 L 400 400",
+      "crossings": 0,
+      "label": {
+        "x": 400,
+        "y": 106.00000000000001
+      },
+      "length": 1012,
+      "manhattan": 800
+    },
+    {
+      "id": "18-same-point",
+      "title": "Quelle und Ziel am selben Punkt",
+      "obstacleFree": true,
+      "exception": null,
+      "waypoints": [
+        {
+          "x": 100,
+          "y": 100
+        }
+      ],
+      "path": "",
+      "crossings": 0,
+      "label": {
+        "x": 100,
+        "y": 100
+      },
+      "length": 0,
+      "manhattan": 0
+    },
+    {
+      "id": "19-very-short-hop",
+      "title": "Sehr kurze Verbindung",
+      "obstacleFree": true,
+      "exception": null,
+      "waypoints": [
+        {
+          "x": 0,
+          "y": 0
+        },
+        {
+          "x": 24,
+          "y": 0
+        }
+      ],
+      "path": "M 0 0 L 24 0",
+      "crossings": 0,
+      "label": {
+        "x": 12,
+        "y": 0
+      },
+      "length": 24,
+      "manhattan": 24
+    },
+    {
+      "id": "20-enclosed-target",
+      "title": "Umschlossenes Ziel",
+      "obstacleFree": false,
+      "exception": "Ziel liegt innerhalb der Hindernis-Box; ein kollisionsfreier Pfad ist geometrisch unmöglich.",
+      "waypoints": [
+        {
+          "x": 0,
+          "y": 0
+        },
+        {
+          "x": 500,
+          "y": 0
+        }
+      ],
+      "path": "M 0 0 L 500 0",
+      "crossings": 0,
+      "label": {
+        "x": 250,
+        "y": 0
+      },
+      "length": 500,
+      "manhattan": 500
+    },
+    {
+      "id": "21-source-enclosed",
+      "title": "Umschlossene Quelle",
+      "obstacleFree": false,
+      "exception": "Quelle liegt innerhalb der Hindernis-Box; der Austritt kreuzt sie zwangsläufig.",
+      "waypoints": [
+        {
+          "x": 500,
+          "y": 0
+        },
+        {
+          "x": 1000,
+          "y": 0
+        }
+      ],
+      "path": "M 500 0 L 1000 0",
+      "crossings": 0,
+      "label": {
+        "x": 750,
+        "y": 0
+      },
+      "length": 500,
+      "manhattan": 500
+    },
+    {
+      "id": "22-stress-scene",
+      "title": "Stressszene: 12 Hindernisse, 12 Fremdleitungen",
+      "obstacleFree": true,
+      "exception": null,
+      "waypoints": [
+        {
+          "x": -100,
+          "y": 0
+        },
+        {
+          "x": 650,
+          "y": 0
+        },
+        {
+          "x": 650,
+          "y": 126
+        },
+        {
+          "x": 726,
+          "y": 126
+        },
+        {
+          "x": 726,
+          "y": 274
+        },
+        {
+          "x": 650,
+          "y": 274
+        },
+        {
+          "x": 1400,
+          "y": 274
+        },
+        {
+          "x": 1400,
+          "y": 200
+        }
+      ],
+      "path": "M -100 0 L 640 0 Q 650 0 650 10 L 650 116 Q 650 126 660 126 L 716 126 Q 726 126 726 136 L 726 264 Q 726 274 716 274 L 660 274 Q 650 274 660 274 L 1390 274 Q 1400 274 1400 264 L 1400 200",
+      "crossings": 12,
+      "label": {
+        "x": 726,
+        "y": 174
+      },
+      "length": 2000,
+      "manhattan": 1700
+    },
+    {
+      "id": "23-obstacle-touching-source",
+      "title": "Hindernis direkt an der Quelle",
+      "obstacleFree": true,
+      "exception": null,
+      "waypoints": [
+        {
+          "x": 0,
+          "y": 0
+        },
+        {
+          "x": 16,
+          "y": 0
+        },
+        {
+          "x": 16,
+          "y": 74
+        },
+        {
+          "x": 236,
+          "y": 74
+        },
+        {
+          "x": 236,
+          "y": 0
+        },
+        {
+          "x": 600,
+          "y": 0
+        }
+      ],
+      "path": "M 0 0 L 8 0 Q 16 0 16 8 L 16 64 Q 16 74 26 74 L 226 74 Q 236 74 236 64 L 236 10 Q 236 0 246 0 L 600 0",
+      "crossings": 0,
+      "label": {
+        "x": 236,
+        "y": 10
+      },
+      "length": 748,
+      "manhattan": 600
+    },
+    {
+      "id": "24-long-haul",
+      "title": "Lange Strecke quer durch den Plan",
+      "obstacleFree": true,
+      "exception": null,
+      "waypoints": [
+        {
+          "x": 0,
+          "y": 0
+        },
+        {
+          "x": 1200,
+          "y": 0
+        },
+        {
+          "x": 1200,
+          "y": 600
+        },
+        {
+          "x": 2400,
+          "y": 600
+        }
+      ],
+      "path": "M 0 0 L 1190 0 Q 1200 0 1200 10 L 1200 590 Q 1200 600 1210 600 L 2400 600",
+      "crossings": 0,
+      "label": {
+        "x": 1200,
+        "y": 300
+      },
+      "length": 3000,
+      "manhattan": 3000
+    },
+    {
+      "id": "25-bottom-to-top",
+      "title": "Von unten nach oben mit Gegenrichtung",
+      "obstacleFree": true,
+      "exception": null,
+      "waypoints": [
+        {
+          "x": 200,
+          "y": 400
+        },
+        {
+          "x": 200,
+          "y": 200
+        },
+        {
+          "x": 200,
+          "y": 0
+        }
+      ],
+      "path": "M 200 400 L 200 210 Q 200 200 200 190 L 200 0",
+      "crossings": 0,
+      "label": {
+        "x": 200,
+        "y": 200
+      },
+      "length": 400,
+      "manhattan": 400
+    }
+  ]
+}

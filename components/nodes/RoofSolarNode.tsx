@@ -1,56 +1,88 @@
-"use client";
+'use client';
 import React from 'react';
 
 import { NodeResizer } from 'reactflow';
 import { cn } from '@/lib/utils';
+import { type RoofNodeData } from './types';
 
-const RoofSolarNode = function({ id, data, selected }: { id: string, data: any, selected: boolean }) {
+const RoofSolarNode = function ({
+  id,
+  data,
+  selected,
+}: {
+  id: string;
+  data: RoofNodeData;
+  selected: boolean;
+}) {
   const width = data.width || 100;
   const height = data.height || 60;
   const watts = data.watts || 100;
   const isInvalid = data.isInvalid || false;
+  const isOverlapping = data.isOverlapping || false;
+  const state = isInvalid ? 'invalid' : isOverlapping ? 'overlap' : 'ok';
   const onNodeResize = data.onNodeResize;
 
-  // Scale: 1cm = 2px
   return (
     <>
       <NodeResizer
-        minWidth={40}
-        minHeight={40}
+        minWidth={30}
+        minHeight={30}
         isVisible={selected}
-        lineClassName="border-orange-500"
-        handleClassName="h-3 w-3 bg-white border-2 border-orange-500 rounded-full"
-        onResize={(event: any, params: { width: number, height: number }) => {
+        lineClassName="!border-copper"
+        handleClassName="!h-5 !w-5 !bg-bone !border-2 !border-copper rounded-full"
+        onResize={(event, params) => {
           if (onNodeResize) {
             onNodeResize(event, { id, ...params });
           }
         }}
       />
       <div
+        role="group"
+        aria-label={`Solarpanel ${Math.round(width)} mal ${Math.round(height)} Zentimeter, ${watts} Watt${isInvalid ? ', ragt aus der Safe Zone' : ''}${isOverlapping ? ', überlappt ein anderes Element' : ''}`}
+
         className={cn(
-          "bg-slate-800 border-2 rounded-sm shadow-md flex items-center justify-center relative overflow-hidden group transition-colors",
-          selected ? "ring-4 ring-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.6)]" : "",
-          isInvalid ? "border-red-500 bg-red-950/40" : "border-slate-600"
+          'relative flex h-full w-full items-center justify-center overflow-hidden border-2 bg-soot text-paper transition-colors',
+          selected ? 'ring-2 ring-copper ring-offset-2 ring-offset-paper' : '',
+          state === 'invalid' && 'border-warn-critical bg-warn-critical-bg text-warn-critical',
+          state === 'overlap' && 'ring-warn-warning/40 border-warn-warning ring-2',
+          state === 'ok' && 'border-ink'
         )}
         style={{ width: '100%', height: '100%' }}
       >
-        {/* Grid lines to look like solar panel */}
-        <div className="hover:scale-105 transition-all custom-drag-handle absolute inset-0 bg-[linear-gradient(to_right,#475569_1px,transparent_1px),linear-gradient(to_bottom,#475569_1px,transparent_1px)] bg-[size:10px_10px] opacity-30 pointer-events-none"></div>
+        <div
+          className="custom-drag-handle roof-solar-grid pointer-events-none absolute inset-0 opacity-25"
+          aria-hidden="true"
+        />
 
-        <div className="font-bold text-xs text-white text-center z-10 px-1 bg-slate-900/60 rounded py-1">
-          {data.label || 'Solarpanel'}<br/>
-          <span className="text-[10px] text-orange-400">{watts} W</span>
-          <br/>
-          <span className="text-[9px] text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="z-10 rounded-none bg-black/40 px-2 py-1 text-center text-xs font-semibold text-paper">
+          {data.label || 'Solarpanel'}
+          <br />
+          <span className="measure text-amber-300">{watts} W</span>
+          <br />
+          <span className="caption-xs opacity-80">
             {Math.round(width)}x{Math.round(height)}cm
           </span>
         </div>
 
         {isInvalid && (
-          <div className="absolute inset-0 border-4 border-red-500/50 pointer-events-none animate-pulse"></div>
+          <div
+            className="pointer-events-none absolute inset-0 border-4 border-warn-critical"
+            aria-hidden="true"
+          />
+        )}
+        {(isInvalid || isOverlapping) && (
+          <div
+            className={cn(
+              'caption-xs absolute left-1 top-1 z-10 rounded-full px-2 py-0.5 font-bold text-paper',
+              isInvalid ? 'bg-warn-critical' : 'bg-warn-warning'
+            )}
+            aria-hidden="true"
+          >
+            !
+          </div>
         )}
       </div>
     </>
   );
-}
+};
 export default React.memo(RoofSolarNode);

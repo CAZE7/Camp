@@ -2,85 +2,685 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Outfit (lokal über @fontsource-variable/outfit gebündelt) */
+.font-outfit {
+  font-family: 'Outfit Variable', 'Outfit', ui-sans-serif, system-ui, sans-serif;
+}
+
 @layer base {
-  .theme {
-    --font-heading: var(--font-sans);
-    --font-sans: var(--font-sans)
-  }
   :root {
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.205 0 0);
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
-    --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.708 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --radius: 0.625rem;
-    --sidebar: oklch(0.985 0 0);
-    --sidebar-foreground: oklch(0.145 0 0);
-    --sidebar-primary: oklch(0.205 0 0);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.97 0 0);
-    --sidebar-accent-foreground: oklch(0.205 0 0);
-    --sidebar-border: oklch(0.922 0 0);
-    --sidebar-ring: oklch(0.708 0 0)
+    --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
+    --font-sans: 'Source Sans 3', 'Source Sans Pro', ui-sans-serif, system-ui, sans-serif;
+    --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+    --font-heading: var(--font-display);
+
+    --paper: #f6f1e8;
+    --bone: #fffdf9;
+    --ink: #14110e;
+    --ink-soft: #2a241e;
+    --muted-ink: #3f3831;
+    --clay: #8f7d68;
+    --oak: #5c4024;
+    --copper: #7a3218;
+    --copper-deep: #5c2410;
+    --moss: #2d3d28;
+    --soot: #14110e;
+    --signal: #7a2418;
+    --oxide: #1a4338;
+    --rule: #8f7d68;
+
+    --background: var(--paper);
+    --foreground: var(--ink);
+    --card: var(--bone);
+    --card-foreground: var(--ink);
+    --popover: var(--bone);
+    --popover-foreground: var(--ink);
+    --primary: var(--ink);
+    --primary-foreground: var(--bone);
+    --secondary: #e7ddd0;
+    --secondary-foreground: var(--ink);
+    --muted: #e7ddd0;
+    --muted-foreground: var(--muted-ink);
+    --accent: #ebe3d6;
+    --accent-foreground: var(--ink);
+    --destructive: var(--signal);
+    --destructive-foreground: var(--bone);
+    --border: var(--rule);
+    --input: var(--rule);
+    --ring: var(--ink);
+    --chart-1: var(--copper);
+    --chart-2: var(--oak);
+    --chart-3: var(--moss);
+    --chart-4: var(--ink-soft);
+    --chart-5: var(--clay);
+    --radius: 0.125rem;
+    --sidebar: var(--bone);
+    --sidebar-foreground: var(--ink);
+    --sidebar-primary: var(--ink);
+    --sidebar-primary-foreground: var(--bone);
+    --sidebar-accent: #ebe3d6;
+    --sidebar-accent-foreground: var(--ink);
+    --sidebar-border: var(--rule);
+    --sidebar-ring: var(--ink);
+
+    /* --- Planer: Semantische Leitungs- & Warn-Kodierung ---
+       Zentral definiert, damit Canvas-Kanten, Rohre und Warnungen
+       überall dieselbe Farbsprache nutzen (keine Inline-Hexwerte). */
+    --canvas-bg: #f4f5f7;
+    --canvas-grid: #6b6258;
+    --canvas-dim: 0.32;
+    --canvas-domain-dim: 0.18;
+    --canvas-minimap-mask: rgba(20, 17, 14, 0.14);
+    --wire-dc: #dc2626; /* Gleichstrom 12V/24V Plus (technisches Rot) */
+    --wire-dc-minus: #374151; /* Gleichstrom 12V/24V Minus (Schiefergrau) */
+    --wire-ac: #2563eb; /* Wechselstrom 230V (Signalblau) */
+    --wire-solar: #b45309; /* Solar / PV (Amber, auf hellem Grund >= 3:1 nach WCAG 1.4.11) */
+    --wire-selected: #1f2937; /* Fokus-Ring für ausgewählte Leitung */
+    --wire-error: #b42318; /* Leitung mit Fehler (Norm-Warnrot mit gestricheltem Signal) */
+    --wire-error-bg: rgba(180, 35, 24, 0.1);
+
+    --pipe-fresh: #1d4ed8; /* Frischwasser (blau) */
+    --pipe-gray: #4b5563; /* Grauwasser (grau) */
+    --pipe-selected: #c2410c; /* ausgewähltes Rohr (orange) */
+
+    --warn-critical: #b91c1c; /* kritisch */
+    --warn-critical-bg: #fef2f2;
+    --warn-critical-border: #fecaca;
+    --warn-warning: #92400e; /* Warnung */
+    --warn-warning-bg: #fffbeb;
+    --warn-warning-border: #fde68a;
+    --warn-info: #2563eb; /* Hinweis */
+    --warn-info-bg: #eff6ff;
+    --warn-info-border: #bfdbfe;
+
+    /* Allgemeine Statusfarben (von Tailwind referenziert) */
+    --info: var(--warn-info);
+    --success: var(--oxide);
+    --warning: var(--warn-warning);
+
+    /* --- Mission 7 (M7-1): Planer-Design-Tokens, helle Werte ------------
+       Eine semantische Schicht, die der `.dark`-Block komplett spiegelt:
+       der Planer hängt an diesen Namen, das Theme biegt nur Werte um.
+       Radius: --radius = 0.125rem (2 px) erfüllt „≤ 4 px" für die
+       Ingenieurs-Oberfläche. Das missionsseitig geforderte Akzent-Token für
+       die Selektions-Linie heißt hier --accent-line, damit der shadcn-Hover-
+       Token --accent (Fläche!) frei bleibt. */
+    --surface-0: #f4f5f7; /* Canvas-Grundfläche (= --canvas-bg) */
+    --surface-1: var(--bone); /* Karten, Bauteile, Panels */
+    --surface-2: #ece4d6; /* Hover, Insets, Statuszeile */
+    --text-high: var(--ink); /* Primärtext */
+    --text-med: #57534e; /* Sekundärtext, Labels */
+    --text-low: #6b6258; /* Randleisten, Gitter-Text */
+    --accent-line: var(--copper); /* Selektion 1 px, Fokus-Akzent */
+    --ok: var(--oxide);
+    --warn: var(--warn-warning);
+    --error: #b42318; /* = --wire-error */
+    --danger: var(--error); /* Alias — CableEdge referenziert --danger */
   }
+
+  /* --- Mission 7 (M7-1): Engineering Dark Theme ------------------------
+     Die `dark`-Klasse setzt usePlannerDarkMode() ausschließlich auf dem
+     .planner-shell-Wrapper — die Marketing-Seiten bleiben immer hell.
+     Da alle Planer-Komponenten über Tokens steuern (shadcn-Rollen +
+     Marken-var), genügt das Umbiegen der Werte; im JSX ändert sich kein
+     Selektor. `color-scheme` stimmt Scrollbars/Formular-Autofill ab. */
   .dark {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.205 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.922 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.556 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --sidebar: oklch(0.205 0 0);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.488 0.243 264.376);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.269 0 0);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.556 0 0)
+    color-scheme: dark;
+
+    /* Flächen & Text */
+    --surface-0: #12151b;
+    --surface-1: #171b22;
+    --surface-2: #21262f;
+    --text-high: #eef1f5;
+    --text-med: #b9bfc9;
+    --text-low: #949cab;
+    --accent-line: #8fb4ff;
+    --ok: #7ee2a8;
+    --warn: #f2c14e;
+    --error: #ff8f84;
+    --danger: var(--error);
+
+    /* Marken-Tokens im Planer-Scope mitbiegen (text-ink, bg-card, …) */
+    --ink: #eef1f5;
+    --ink-soft: #c9cfd9;
+    --muted-ink: #b9bfc9;
+    --bone: #171b22;
+    --paper: #12151b;
+    --clay: #949cab;
+    --rule: #2c313a;
+    --moss: #7ee2a8;
+    --oak: #d8a15e;
+    --copper: #e0a370;
+    --copper-deep: #e0a370;
+    --soot: #12151b;
+    --signal: #ff8f84;
+    --oxide: #7ee2a8;
+
+    /* shadcn-Rollen auf dunkle Flächen */
+    --background: var(--surface-0);
+    --foreground: var(--text-high);
+    --card: var(--surface-1);
+    --card-foreground: var(--text-high);
+    --popover: var(--surface-1);
+    --popover-foreground: var(--text-high);
+    --primary: #e7ebf1;
+    --primary-foreground: #12151b;
+    --secondary: var(--surface-2);
+    --secondary-foreground: var(--text-high);
+    --muted: var(--surface-2);
+    --muted-foreground: var(--text-med);
+    --accent: #232a36;
+    --accent-foreground: var(--text-high);
+    --destructive: var(--error);
+    --destructive-foreground: #12151b;
+    --border: #2c313a;
+    --input: #2c313a;
+    --ring: var(--accent-line);
+    --sidebar: var(--surface-1);
+    --sidebar-foreground: var(--text-high);
+    --sidebar-primary: #e7ebf1;
+    --sidebar-primary-foreground: #12151b;
+    --sidebar-accent: #232a36;
+    --sidebar-accent-foreground: var(--text-high);
+    --sidebar-border: #2c313a;
+    --sidebar-ring: var(--accent-line);
+
+    /* Canvas & Leitungen: Signal-Farben bleiben Signalfarben — auf dunklem
+       Grund heller, damit sie ≥ 3:1 (grafisches Objekt) zur Fläche halten. */
+    --canvas-bg: #12151b;
+    --canvas-grid: #94a3b8;
+    --canvas-dim: 0.5;
+    --canvas-domain-dim: 0.3;
+    --canvas-minimap-mask: rgba(0, 0, 0, 0.55);
+    --wire-dc: #f87171;
+    --wire-dc-minus: #cbd5e1;
+    --wire-ac: #7aa2f7;
+    --wire-solar: #fbbf24;
+    --wire-selected: #e5e7eb;
+    --wire-error: #ff8f84;
+    --wire-error-bg: rgba(255, 143, 132, 0.14);
+
+    --pipe-fresh: #60a5fa;
+    --pipe-gray: #94a3b8;
+    --pipe-selected: #fb923c;
+
+    --warn-critical: #ff8f84;
+    --warn-critical-bg: rgba(255, 143, 132, 0.12);
+    --warn-critical-border: rgba(255, 143, 132, 0.4);
+    --warn-warning: #f2c14e;
+    --warn-warning-bg: rgba(242, 193, 78, 0.12);
+    --warn-warning-border: rgba(242, 193, 78, 0.4);
+    --warn-info: #8fb4ff;
+    --warn-info-bg: rgba(143, 180, 255, 0.14);
+    --warn-info-border: rgba(143, 180, 255, 0.4);
+
+    ::selection {
+      background: #35415e;
+      color: var(--text-high);
+    }
   }
+
   * {
     @apply border-border;
   }
-  body {
-    @apply bg-background text-foreground;
-  }
+
   html {
     @apply font-sans;
+    scroll-behavior: smooth;
   }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    background-color: var(--paper);
+    color: var(--ink);
+  }
+
+  ::selection {
+    background: #d8c4a8;
+    color: var(--ink);
+  }
+}
+
+@layer components {
+  .rule {
+    height: 1px;
+    background: var(--rule);
+  }
+
+  /* --- Typo-Tokens: ersetzt ad-hoc text-[10px]/text-[0.65rem] etc. ---
+     Regel: kein Body-/Label-Text unter 12 px (0.75rem) für Lesbarkeit. */
+  .caption-xs {
+    font-size: 0.75rem; /* 12 px */
+    line-height: 1rem;
+    letter-spacing: 0.02em;
+  }
+  .caption-sm {
+    font-size: 0.8125rem; /* 13 px */
+    line-height: 1.125rem;
+  }
+  .label-eyebrow {
+    font-family: var(--font-mono), ui-monospace, monospace;
+    font-size: 0.75rem; /* 12 px – ersetzt text-[0.65rem]/text-[10px] */
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+  .wordmark {
+    font-size: 1rem; /* 16 px – ersetzt text-[1.05rem] Sonderfall Mark */
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .index-label {
+    font-family: var(--font-mono), ui-monospace, monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--copper);
+    font-weight: 500;
+  }
+
+  .display {
+    font-family: var(--font-display);
+    font-weight: 500;
+    letter-spacing: -0.03em;
+    line-height: 0.95;
+  }
+
+  .measure {
+    font-family: var(--font-mono), ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Warn-Card-Muster – nutzt zentrale Tokens statt Rose/Amber/Emerald-Salat. */
+  .warn-card {
+    border-width: 2px;
+    border-style: solid;
+    border-radius: 1rem;
+    padding: 1rem 1.25rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+  .warn-card-critical {
+    background: var(--warn-critical-bg);
+    border-color: var(--warn-critical-border);
+    color: var(--warn-critical);
+  }
+  .warn-card-warning {
+    background: var(--warn-warning-bg);
+    border-color: var(--warn-warning-border);
+    color: var(--warn-warning);
+  }
+  .warn-card-ok {
+    background: #ecfdf5;
+    border-color: #a7f3d0;
+    color: var(--oxide);
+  }
+  .warn-card-info {
+    background: var(--warn-info-bg);
+    border-color: var(--warn-info-border);
+    color: var(--warn-info);
+  }
+
+  /* iOS Home-Indicator Safe-Area für schwebende UI (DachPanel etc.). */
+  .safe-pb {
+    padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+  }
+  .safe-bottom {
+    bottom: max(1.5rem, env(safe-area-inset-bottom));
+  }
+
+  /* --- Planer-Layout: feste Spaltenbreiten als Variablen -------------
+     Damit kennen auch absolut positionierte Bedienelemente (die Ein-/
+     Ausklapp-Pfeile) die exakte Spaltenbreite, ohne dass Zahlen doppelt
+     im JSX stehen. Breakpoints identisch zu Tailwind md/xl/2xl. */
+  .planner-shell {
+    --planner-sidebar-w: 260px;
+    --planner-inspector-w: 320px;
+  }
+  @media (min-width: 1280px) {
+    .planner-shell {
+      --planner-sidebar-w: 280px;
+      --planner-inspector-w: 288px;
+    }
+  }
+  @media (min-width: 1536px) {
+    .planner-shell {
+      --planner-inspector-w: 320px;
+    }
+  }
+  .planner-sidebar-toggle--open {
+    left: calc(var(--planner-sidebar-w) - 1rem);
+  }
+  .planner-inspector-toggle--open {
+    right: calc(var(--planner-inspector-w) - 1rem);
+  }
+
+  /* Bottom-Navigation: iOS-Home-Indicator darf nichts verdecken.
+     Die Leiste ist ein Flex-Geschwister (nicht fixed) und überlagert den
+     Canvas deshalb nie — die Safe-Area kommt zusätzlich als Innenabstand. */
+  .planner-bottom-nav {
+    padding-bottom: max(0.25rem, env(safe-area-inset-bottom));
+  }
+
+  /* --- Touch: Drag-Griff am Bauteil --------------------------------
+     Die Hülle nutzt display:contents, erzeugt also keine eigene Box —
+     React Flow misst weiterhin exakt die Node-Komponente. */
+  .node-drag-shell {
+    display: contents;
+  }
+  .node-drag-handle {
+    position: absolute;
+    top: -22px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 20;
+    display: flex;
+    /* 44x44 CSS-Pixel Touch-Target (WCAG 2.5.5 / Apple HIG). */
+    width: 44px;
+    height: 44px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    border: 1px solid var(--rule);
+    background: var(--bone);
+    color: var(--muted-ink);
+    box-shadow: 0 1px 3px rgba(20, 17, 14, 0.25);
+    touch-action: none; /* Der Griff zieht — er scrollt nicht. */
+    cursor: grab;
+  }
+
+  .node-symbol {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin: -0.15rem -0.15rem 0.7rem;
+    padding: 0.45rem 0.55rem;
+    border-bottom: 1px solid currentColor;
+    color: var(--node-symbol-color, var(--ink));
+    background: var(--node-symbol-bg, #f4f5f7);
+    border-radius: 0.2rem;
+  }
+  .node-symbol__icon {
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    border: 1px solid currentColor;
+    border-radius: 50%;
+  }
+  .node-symbol__code {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+  }
+  .node-symbol--dc {
+    --node-symbol-color: #b42318;
+    --node-symbol-bg: #fff1f0;
+  }
+  .node-symbol--ac {
+    --node-symbol-color: #175cd3;
+    --node-symbol-bg: #eff8ff;
+  }
+  .node-symbol--solar {
+    --node-symbol-color: #b54708;
+    --node-symbol-bg: #fffaeb;
+  }
+  .node-symbol--load {
+    --node-symbol-color: #087443;
+    --node-symbol-bg: #ecfdf3;
+  }
+  .node-symbol--protect {
+    --node-symbol-color: #b42318;
+    --node-symbol-bg: #fff1f0;
+  }
+  .node-symbol--ground {
+    --node-symbol-color: #475467;
+    --node-symbol-bg: #f2f4f7;
+  }
+  .node-symbol--measure {
+    --node-symbol-color: #6941c6;
+    --node-symbol-bg: #f9f5ff;
+  }
+  .node-drag-handle:active {
+    cursor: grabbing;
+  }
+  /* Mit Maus ist der ganze Node greifbar — dann stört der Griff nur. */
+  @media (pointer: fine) {
+    .node-drag-handle {
+      display: none;
+    }
+  }
+  /* Per Long-Press scharfgeschalteter Node: sichtbar „entsperrt“. */
+  .react-flow__node.node-drag-armed {
+    outline: 2px dashed var(--copper);
+    outline-offset: 4px;
+  }
+
+  /* Kabel-Labels bleiben bei jedem Zoom sichtbar (M8-1). Auf schmalen
+     Displays nur die Schrift etwas dichter, nie display:none. */
+  @media (max-width: 767px) {
+    .edge-label {
+      font-size: 11px;
+      padding: 1px 4px;
+    }
+  }
+
+  /* Große, sichtbare Anschlussflächen für Touch und Tastatur. */
+  .react-flow__handle {
+    width: 44px !important;
+    height: 44px !important;
+    border: 0 !important;
+    background: transparent !important;
+  }
+
+  .react-flow__handle > div {
+    width: 14px !important;
+    height: 14px !important;
+    border: 2px solid var(--bone);
+    box-shadow: 0 0 0 1px var(--ink);
+  }
+
+  .react-flow__handle:focus-visible > div,
+  .react-flow__handle.connecting > div,
+  .react-flow__handle.tap-connect-selected > div {
+    box-shadow:
+      0 0 0 4px var(--bone),
+      0 0 0 7px var(--wire-selected);
+  }
+
+  .react-flow__handle.valid > div {
+    box-shadow:
+      0 0 0 4px var(--bone),
+      0 0 0 7px var(--success);
+  }
+
+  .react-flow__handle[data-handleid*='plus'] > div,
+  .react-flow__handle[data-handleid='in'] > div {
+    border-radius: 9999px !important;
+  }
+
+  .react-flow__handle[data-handleid*='minus'] > div,
+  .react-flow__handle[data-handleid='out'] > div {
+    border-radius: 2px !important;
+  }
+
+  .react-flow__handle[data-handleid*='ac'] > div {
+    border-radius: 2px !important;
+    transform: rotate(45deg);
+  }
+
+  /* M8-1: keine Zoom-Stufen mehr. Der Wrapper nimmt keinen Platz weg. */
+  .node-presentation-shell {
+    display: contents;
+  }
+
+  /* M8-3: Karten haben eine Mindestbreite und brechen lange Inter-Texte,
+     statt sie über Nachbarn zu schieben. */
+  .react-flow__node .custom-drag-handle,
+  .react-flow__node [data-testid='planner-node'] {
+    min-width: 12rem;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+  }
+
+  /* Auto-layout animates position changes; collision resolution uses the same
+     short transform transition and announces itself via a red outline. */
+  .react-flow__node:not(.dragging),
+  .planner-layout-animating .react-flow__node,
+  .react-flow__node.planner-node-collision {
+    transition:
+      transform 300ms ease,
+      opacity 180ms ease;
+  }
+  .react-flow__node.planner-node-collision {
+    outline: 3px solid var(--wire-error);
+    outline-offset: 5px;
+  }
+  .react-flow__node.planner-backbone-group-node {
+    pointer-events: none !important;
+    z-index: -10 !important;
+  }
+
+  .react-flow__node.planner-trace-dim,
+  .react-flow__edge.planner-trace-dim {
+    opacity: 0.2;
+  }
+  .react-flow__node.planner-trace-active,
+  .react-flow__edge.planner-trace-active {
+    opacity: 1;
+  }
+
+  .react-flow__node.planner-focus-dim,
+  .react-flow__edge.planner-focus-dim {
+    opacity: var(--canvas-dim);
+  }
+
+  .react-flow__node.planner-domain-dim,
+  .react-flow__edge.planner-domain-dim {
+    opacity: var(--canvas-domain-dim);
+  }
+
+  /* Fehler-Kabel: "marschierende" gestrichelte Linie als zusätzliches Signal. */
+  .planner-edge-error-dash {
+    animation: wire-error-dash 1s linear infinite;
+  }
+
+  @keyframes wire-error-dash {
+    to {
+      stroke-dashoffset: -28;
+    }
+  }
+
+  .roof-dot-grid {
+    background-image: radial-gradient(var(--ink) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+
+  .roof-solar-grid {
+    background-image:
+      linear-gradient(to right, var(--muted-ink) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--muted-ink) 1px, transparent 1px);
+    background-size: 10px 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .planner-flow-particle {
+    display: none;
+  }
+
+  /* GSAP-Timelines respektieren dies nicht automatisch — die Client-
+     Komponente RoadTripAnimation prüft matchMedia zusätzlich und rendert
+     dann statisch. Hier verstecken wir den fahrenden Camper zur Sicherheit. */
+  .road-trip-animation .road-trip-camper {
+    opacity: 0 !important;
+    transform: none !important;
+  }
+}
+
+/* --- Mission 7 (M7-2/M7-3/M7-4): Planer-Schrift, Dichte, Statuszeile --- */
+
+/* M7-2 Fonts: Der Planer läuft auf Inter (gebündelt wie gehabt — keine
+   externen Font-CDNs); Werte in IBM Plex Mono mit tabular-nums. Fraunces
+   bleibt den Marketing-Seiten: display/heading biegen im Planer-Scope auf
+   die UI-Schrift um, damit CardTitle & Co. dort nicht serifern. */
+.planner-shell {
+  --font-sans: 'Inter Variable', 'Source Sans 3', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Inter Variable', 'Source Sans 3', ui-sans-serif, system-ui, sans-serif;
+  --font-heading: 'Inter Variable', 'Source Sans 3', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --space-1: 4px;
+}
+
+.font-mono {
+  font-variant-numeric: tabular-nums;
+}
+
+/* M10-2: Hover / Active / Focus / Disabled an jedem Control, hell + dunkel. */
+.planner-shell .react-flow__controls-button:hover:not(:disabled) {
+  background-color: var(--surface-2);
+}
+.planner-shell button:active:not(:disabled) {
+  filter: brightness(0.96);
+}
+.planner-shell button:focus-visible,
+.planner-shell .react-flow__controls-button:focus-visible,
+.planner-shell a:focus-visible {
+  outline: 2px solid var(--accent-line);
+  outline-offset: 2px;
+}
+.planner-shell button:disabled,
+.planner-shell .react-flow__controls-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+/* M7-4 Dichte: 4-px-Spacing-Raster. Die React-Flow-Controls (Standard:
+   26 px) rücken auf 32 px — Oberkante des erlaubten Fensters 28–32 px —
+   und treffen damit die Touch-Zielgröße des Planers. */
+.planner-shell .react-flow__controls-button {
+  width: 2rem;
+  height: 2rem;
+}
+
+/* Inspector-Werte: Ziffern rechtsbündig in Plex Mono, damit Einheiten
+   (im Label bzw. Suffix) und Stellenwerte spaltenrein stehen. */
+.planner-shell input[type='number'] {
+  text-align: right;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* M7-3 Statuszeile: Cursor-Koordinaten, Zoom, Planumfang — dezent am
+   unteren Rand, Mono-Text auf surface-2. */
+.planner-statusbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.25rem 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  line-height: 1rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-med);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 2px;
 }
