@@ -22,7 +22,7 @@ workflows permission`.
       `scripts/ci/workflows.test.ts` übernommen. Dabei `branches` auf den aktuellen
       Default-Branch und `cancel-in-progress: false` beibehalten.
 - [x] **A-2 GitHub-Einstellungen geprüft:** Unter _Settings → Pages_ `GitHub
-    Actions` und aktiver Default-Branch als Quelle bestätigt.
+Actions` und aktiver Default-Branch als Quelle bestätigt.
 - [ ] **A-3 Schutzregeln prüfen:** Für den aktiven Default-Branch Pull Request,
       Review und die beiden CI-Checks verpflichtend machen. Keine Regel lockern,
       nur damit ein roter Check grün wird.
