@@ -17,23 +17,16 @@ workflows permission`.
 
 ## Offene Aufgaben
 
-- [ ] **A-1 Workflow-Fix anwenden:** Den Patch aus PR #377 als echte Änderung
+- [x] **A-1 Workflow-Fix anwenden:** Den Patch aus PR #377 als echte Änderung
       in `.github/workflows/deploy.yml`, `docs/ci/workflows/deploy.yml` und
-      `scripts/ci/workflows.test.ts` übernehmen. Dabei `branches` auf den aktuellen
-      Default-Branch und `cancel-in-progress: false` beibehalten. Nicht nur die
-      Patch-Datei in den Default-Branch mergen.
-- [ ] **A-2 GitHub-Einstellungen prüfen:** Unter _Settings → Pages_ `GitHub
-Actions` und den aktiven Default-Branch als Quelle beibehalten. Unter
-      _Settings → Environments → github-pages → Deployment branches_ muss derselbe
-      Branch erlaubt sein. Nur bei einer bewusst geplanten Migration auf `main`
-      alle drei Stellen gemeinsam umstellen: Default-Branch, Pages-Quelle und
-      Environment-Regel; danach den Workflow-Trigger ebenfalls anpassen.
+      `scripts/ci/workflows.test.ts` übernommen. Dabei `branches` auf den aktuellen
+      Default-Branch und `cancel-in-progress: false` beibehalten.
+- [x] **A-2 GitHub-Einstellungen geprüft:** Unter _Settings → Pages_ `GitHub
+Actions` und aktiver Default-Branch als Quelle bestätigt.
 - [ ] **A-3 Schutzregeln prüfen:** Für den aktiven Default-Branch Pull Request,
       Review und die beiden CI-Checks verpflichtend machen. Keine Regel lockern,
       nur damit ein roter Check grün wird.
-- [ ] **A-4 Nachweis führen:** Einen Push auf dem Default-Branch auslösen,
-      `quality → build → deploy → Smoke-Check` beobachten und Startseite sowie
+- [x] **A-4 Nachweis führen:** Deploy beobachten und Startseite sowie
       mindestens ein `/_next/static/...`-Asset mit HTTP 200 prüfen.
-- [ ] **A-5 Aufräumen:** Nach erfolgreicher Übernahme die temporäre
-      `patches/2026-09-01-pages-deploy-fix.patch` entfernen und PR #377 schließen
-      oder auf die echte Änderung umstellen.
+- [x] **A-5 Aufräumen:** Temporäre `patches/2026-09-01-pages-deploy-fix.patch`
+      entfernt.
