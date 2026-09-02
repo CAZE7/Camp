@@ -20,8 +20,8 @@ und ändere keinen Anwendungscode.
   `cancel-in-progress: true` zwei Produktiv-Runs (`33373496497` und
   `33373509862`) mit „Canceling since a higher priority waiting request for
   pages exists“.
-- Der geprüfte Fix liegt in PR [#377](https://github.com/CAZE7/Camp) als
-  `patches/2026-09-01-pages-deploy-fix.patch`. Der bisherige Agent konnte die
+- Der geprüfte Fix liegt in PR [#377](https://github.com/CAZE7/Camp/pull/377)
+  als `patches/2026-09-01-pages-deploy-fix.patch`. Der bisherige Agent konnte die
   Workflow-Datei wegen fehlender `workflows`-Berechtigung nicht pushen.
 
 ### Auftrag
