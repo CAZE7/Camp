@@ -191,10 +191,23 @@ describe('GitHub-Actions-Workflows', () => {
     expect(raw).not.toMatch(/always\(\)/);
   });
 
-  it('Deploy reagiert auf Pushes und überspringt nur den Pages-Ausgabe-Branch', () => {
+  it('Deploy triggert per Push ausschließlich auf dem Release-Branch', () => {
     const workflow = readWorkflow('deploy.yml');
-    const push = (workflow.on as { push?: { 'branches-ignore'?: string[] } }).push;
-    expect(push?.['branches-ignore']).toEqual(['gh-pages']);
+    const push = (workflow.on as { push?: { branches?: string[]; 'branches-ignore'?: string[] } }).push;
+    // Actions kann in `branches` keine Ausdrücke auswerten — die Liste muss
+    // dem Default-Branch des Repos entsprechen und bei einem Wechsel des
+    // Default-Branches manuell mitziehen (Kommentar in deploy.yml).
+    // `branches-ignore` hat zuvor auf 100+ Agent-/Dependabot-Branches Runs
+    // erzeugt, in denen alle Jobs übersprungen wurden (Skipped-Rauschen).
+    expect(push?.branches, 'Push-Trigger muss exakt den Release-Branch listen').toEqual([
+      'feature/react-flow-cable-editor-7322653268250495059',
+    ]);
+    expect(
+      push?.['branches-ignore'],
+      'branches-ignore triggert auf jedem Agent-Branch (Skipped-Rauschen)'
+    ).toBeUndefined();
+    // Der Default-Branch-Schutz an den Jobs bleibt: er fängt u. a.
+    // workflow_dispatch-Läufe von anderen Branches ab.
     for (const jobId of ['quality', 'build', 'deploy']) {
       expect(workflow.jobs[jobId]?.if, `${jobId} ohne Default-Branch-Schutz`).toBe(
         "github.ref == format('refs/heads/{0}', github.event.repository.default_branch)"
@@ -211,11 +224,17 @@ describe('GitHub-Actions-Workflows', () => {
     expect(smokeStep?.run).toContain('200');
   });
 
-  it('Deploy bricht veraltete Läufe bei neuen Pushes ab (gescopt auf Default-Branch)', () => {
+  it('laufende Produktiv-Deploys werden nie abgebrochen, neue Runs reihen sich ein', () => {
     const workflow = readWorkflow('deploy.yml');
+    // Befund aus den echten Runs: mit cancel-in-progress: true in der
+    // Default-Branch-Gruppe gingen am 31.08.2026 zwei Produktiv-Deploys
+    // nach schnell aufeinanderfolgenden Merges verloren
+    // (Runs 33373496497 / 33373509862: „Canceling since a higher priority
+    // waiting request for pages exists“). Produktiv-Deploys dürfen nicht
+    // canceln — Warteschlange statt Abbruch.
     expect(workflow.concurrency).toEqual({
-      group: "pages-${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}",
-      'cancel-in-progress': true,
+      group: 'pages',
+      'cancel-in-progress': false,
     });
   });
 
