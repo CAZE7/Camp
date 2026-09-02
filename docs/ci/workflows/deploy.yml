@@ -12,7 +12,17 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches-ignore: ["gh-pages"]
+    # Nur Pushes auf den Release-Branch lösen den Workflow aus.
+    # Vorher triggerte `branches-ignore` bei JEDEM der 100+ Agent-/
+    # Dependabot-Branches einen Run, in dem dann alle Jobs übersprungen
+    # wurden („Skipped“-Rauschen, Befund: 13 der letzten 20 Runs ohne
+    # Wirkung) und die Actions-Warteschlange belegt war.
+    # WICHTIG: `branches` kann keine Ausdrücke auswerten. Wechselt der
+    # Default-Branch des Repos, muss diese Liste manuell mitwandern —
+    # der `if`-Schutz an den Jobs (Default-Branch-Vergleich) bleibt davon
+    # unberührt und verhindert weiterhin Deploys von falschen Branches
+    # (z. B. bei workflow_dispatch).
+    branches: ["feature/react-flow-cable-editor-7322653268250495059"]
   workflow_dispatch:
 
 # Standard: nur Lesen. Schreibrechte werden pro Job vergeben.
@@ -20,12 +30,15 @@ permissions:
   contents: read
 
 concurrency:
-  group: pages-${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
-  # Concurrency nach Default-Branch gescopt: Nur echte Deploys auf dem
-  # Default-Branch (pages-true) brechen veraltete Deploy-Läufe ab.
-  # Pushes auf Feature-/Dependabot-Branches (pages-false) laufen isoliert
-  # und canceln keine aktiven Deployments.
-  cancel-in-progress: true
+  # Genau ein Deploy-Vorgang gleichzeitig. Ein laufender Produktiv-Deploy
+  # wird NIEMALS abgebrochen (cancel-in-progress: false) — Befund: mit
+  # cancel-in-progress: true gingen am 31.08.2026 zwei Deploy-Runs nach
+  # schnell aufeinanderfolgenden Merges verloren (Runs 33373496497 und
+  # 33373509862, „Canceling since a higher priority waiting request for
+  # pages exists“). Neue Runs reihen sich stattdessen in die Warteschlange
+  # ein; der jeweils neueste wartende Run ersetzt ältere wartende.
+  group: "pages"
+  cancel-in-progress: false
 
 env:
   NEXT_TELEMETRY_DISABLED: 1

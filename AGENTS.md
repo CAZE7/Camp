@@ -48,6 +48,11 @@ Next.js-App (TypeScript, Tailwind, React Flow, Zustand) zur Planung von Camper-E
 - [ ] M11-9 Stress-Budget: 100 Bauteile / 300 Kanten — Pan/Drag/Auto-Wire ≤ 16 ms/Frame; Benchmark-ADR.
 - [ ] M11-10 Fehler-Monitoring-ADR: ErrorBoundary → Reporting evaluieren (privacy-konform) oder begründet ablehnen.
 
+## Rechte-Übergabe
+
+- Offene Aufgaben, die GitHub-Admin- oder `workflows:write`-Rechte benötigen, stehen in `agent.md`.
+- Der kopierfertige Übergabe-Prompt liegt in `docs/ci/pages-deploy-handoff-prompt.md`.
+
 ## Kontext
 
 - Details: `AUDIT.md`, `AUDIT-AUTOWIRE.md`, `docs/` (ADRs, CI-Referenzen). Historie: Git-Log.

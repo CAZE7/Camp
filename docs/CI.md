@@ -1,6 +1,6 @@
 # CI-Gate — Aufbau, Belege, Branch Protection & Governance
 
-Stand: 2026-08-29 · Betrifft AGENTS.md **K6**
+Stand: 2026-09-02 · Betrifft AGENTS.md **K6**
 
 ## 0. Aktivierung — aktiv
 
@@ -43,6 +43,26 @@ kann ein Deploy nicht mit einer schwächeren Prüfung laufen als ein PR.
 | `actions/checkout` mit Standard-Credentials                                           | `persist-credentials: false`                                      | Kein GITHUB_TOKEN im Runner-Git-Config                                                                       |
 | Actions per Tag gepinnt (`@v4`, `@v5`)                                                | Strikt per 40-Zeichen Commit-SHA gepinnt                          | Schutz vor Supply-Chain-Manipulationen                                                                       |
 | Kein Zeitlimit                                                                        | `timeout-minutes: 30`                                             | Hängende Läufe blockieren das Gate nicht dauerhaft                                                           |
+| `branches-ignore: ["gh-pages"]` startete Runs auf jedem Agent-Branch                  | `on.push.branches` enthält nur den aktiven Default-Branch         | Vermeidet Skipped-Rauschen und unnötige Warteschlangen-Einträge                                              |
+| `pages-true` + `cancel-in-progress: true`                                             | gemeinsame Gruppe `pages`, `cancel-in-progress: false`            | Ein laufender Produktiv-Deploy wird bei einem neuen Merge nicht abgebrochen                                  |
+
+## 2.1 Pages-Deploy-Fix — Übergabe erforderlich
+
+Der Fix ist lokal in diesem Branch vorbereitet und durch Regressionstests
+abgesichert. GitHub hat den Push der echten Workflow-Datei mit der Meldung
+`refusing to allow a GitHub App to create or update workflow ... without
+workflows permission` abgelehnt; deshalb ist PR [#377](https://github.com/CAZE7/Camp/pull/377)
+als transportierbarer Patch vorhanden. Ein Agent oder Repo-Admin mit
+`workflows:write` muss die drei echten Dateien übernehmen. Die vollständige
+Übergabe mit den nötigen Settings-Schritten steht in `agent.md` und
+`docs/ci/pages-deploy-handoff-prompt.md`.
+
+Wichtig: Der aktuelle Default-Branch ist
+`feature/react-flow-cable-editor-7322653268250495059`. Der Workflow-Trigger ist
+absichtlich explizit auf diesen Namen begrenzt, weil GitHub-Action-Trigger keine
+Ausdrücke für `github.event.repository.default_branch` auswerten. Bei einem
+bewussten Wechsel auf `main` müssen Default-Branch, Pages-Quelle,
+`github-pages`-Environment-Regel und Workflow-Liste gemeinsam geändert werden.
 
 ## 3. Belege
 
