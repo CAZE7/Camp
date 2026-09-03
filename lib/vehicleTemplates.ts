@@ -4,10 +4,10 @@ export interface VehicleTemplate {
   model: string;
   version: string;
   length: number; // in meters (total interior length)
-  width: number;  // in meters (interior width)
+  width: number; // in meters (interior width)
   height: number; // in meters
   roofLength: number; // usable roof length in meters
-  roofWidth: number;  // usable roof width in meters
+  roofWidth: number; // usable roof width in meters
 }
 
 export const vehicleTemplates: VehicleTemplate[] = [
@@ -21,7 +21,7 @@ export const vehicleTemplates: VehicleTemplate[] = [
     width: 1.87,
     height: 1.66,
     roofLength: 2.67,
-    roofWidth: 1.40,
+    roofWidth: 1.4,
   },
   {
     id: 'ducato-l2h2',
@@ -32,18 +32,18 @@ export const vehicleTemplates: VehicleTemplate[] = [
     width: 1.87,
     height: 1.93,
     roofLength: 3.12,
-    roofWidth: 1.40,
+    roofWidth: 1.4,
   },
   {
     id: 'ducato-l3h2',
     brand: 'Fiat/PSA',
     model: 'Ducato/Boxer/Jumper',
     version: 'L3H2',
-    length: 3.70,
+    length: 3.7,
     width: 1.87,
     height: 1.93,
-    roofLength: 3.70,
-    roofWidth: 1.40,
+    roofLength: 3.7,
+    roofWidth: 1.4,
   },
   {
     id: 'ducato-l4h2',
@@ -54,7 +54,7 @@ export const vehicleTemplates: VehicleTemplate[] = [
     width: 1.87,
     height: 1.93,
     roofLength: 4.07,
-    roofWidth: 1.40,
+    roofWidth: 1.4,
   },
 
   // --- MERCEDES SPRINTER ---
@@ -63,10 +63,10 @@ export const vehicleTemplates: VehicleTemplate[] = [
     brand: 'Mercedes-Benz',
     model: 'Sprinter (906/907)',
     version: 'L1 (Compact)',
-    length: 2.60,
+    length: 2.6,
     width: 1.78,
-    height: 1.70,
-    roofLength: 2.60,
+    height: 1.7,
+    roofLength: 2.6,
     roofWidth: 1.35,
   },
   {
@@ -96,10 +96,10 @@ export const vehicleTemplates: VehicleTemplate[] = [
     brand: 'Mercedes-Benz',
     model: 'Sprinter (906/907)',
     version: 'L4 (Extra Long)',
-    length: 4.90,
+    length: 4.9,
     width: 1.78,
     height: 1.93,
-    roofLength: 4.90,
+    roofLength: 4.9,
     roofWidth: 1.35,
   },
 
@@ -120,10 +120,18 @@ export const vehicleTemplates: VehicleTemplate[] = [
     brand: 'Ford',
     model: 'Transit',
     version: 'L3H3',
-    length: 3.20,
+    length: 3.2,
     width: 1.78,
     height: 2.02,
-    roofLength: 3.20,
+    roofLength: 3.2,
     roofWidth: 1.38,
   },
 ];
+
+/** Vorrang-Fahrzeug ('ducato-l1h1'); das Literal oben beginnt damit — hier
+ *  einmal bewiesen, statt an jeder UI-Defaultstelle zu kaschieren. */
+export const DEFAULT_VEHICLE_TEMPLATE: VehicleTemplate = (() => {
+  const first = vehicleTemplates[0];
+  if (!first) throw new Error('vehicleTemplates ist leer — Default-Fahrzeug ungültig');
+  return first;
+})();

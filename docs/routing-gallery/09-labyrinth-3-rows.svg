@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-60 -180 1120 320" width="1120" height="320" role="img" aria-label="Labyrinth aus drei versetzten Reihen">
+  <rect x="-100000" y="-100000" width="200000" height="200000" fill="#0f172a"/>
+  <text x="-48" y="-152" fill="#e2e8f0" font-family="monospace" font-size="16">09-labyrinth-3-rows — Labyrinth aus drei versetzten Reihen</text>
+  <rect x="180" y="-80" width="192" height="120" fill="#1e293b" stroke="#64748b" stroke-width="2" rx="8"/>
+  <rect x="460" y="-40" width="192" height="120" fill="#1e293b" stroke="#64748b" stroke-width="2" rx="8"/>
+  <rect x="740" y="-80" width="192" height="120" fill="#1e293b" stroke="#64748b" stroke-width="2" rx="8"/>
+  <path d="M 0 0 L 156 0 Q 166 0 166 10 L 166 44 Q 166 54 176 54 L 376 54 Q 386 54 386 44 L 386 10 Q 386 0 396 0 L 436 0 Q 446 0 446 -10 L 446 -44 Q 446 -54 456 -54 L 656 -54 Q 666 -54 666 -44 L 666 -10 Q 666 0 676 0 L 716 0 Q 726 0 726 10 L 726 44 Q 726 54 736 54 L 936 54 Q 946 54 946 44 L 946 10 Q 946 0 956 0 L 1000 0" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="0" cy="0" r="7" fill="#22c55e"/>
+  <circle cx="1000" cy="0" r="7" fill="#f97316"/>
+</svg>

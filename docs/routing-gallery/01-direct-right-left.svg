@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-60 -100 520 160" width="520" height="160" role="img" aria-label="Gerade Strecke Rechts → Links">
+  <rect x="-100000" y="-100000" width="200000" height="200000" fill="#0f172a"/>
+  <text x="-48" y="-72" fill="#e2e8f0" font-family="monospace" font-size="16">01-direct-right-left — Gerade Strecke Rechts → Links</text>
+  <path d="M 0 0 L 400 0" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="0" cy="0" r="7" fill="#22c55e"/>
+  <circle cx="400" cy="0" r="7" fill="#f97316"/>
+</svg>

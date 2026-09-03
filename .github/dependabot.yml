@@ -1,0 +1,26 @@
+version: 2
+updates:
+  # npm-Abhängigkeiten wöchentlich; Major-Bumps als eigene PRs (klein halten).
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 8
+    versioning-strategy: increase
+    groups:
+      # Kleinere Schwarten gebündelt, damit das Gate nicht pro Patch läuft.
+      development-dependencies:
+        dependency-type: development
+        update-types: ["minor", "patch"]
+      production-dependencies:
+        dependency-type: production
+        update-types: ["minor", "patch"]
+    labels: ["dependencies", "npm"]
+
+  # Action-Versionen (actions/checkout, setup-node, upload-artifact, pages).
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+    labels: ["dependencies", "github-actions"]
