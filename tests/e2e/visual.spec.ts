@@ -20,6 +20,7 @@ const ROUTES: Array<{ path: string; name: string; fullPage: boolean }> = [
   { path: '/', name: 'start', fullPage: true },
   { path: '/tools/dach/', name: 'dach', fullPage: false },
   { path: '/tools/heizung/', name: 'heizung', fullPage: false },
+  { path: '/elektrik-planung/', name: 'planung', fullPage: false },
   { path: '/impressum/', name: 'impressum', fullPage: true },
 ];
 

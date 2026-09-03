@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-60 -500 1512 1160" width="1512" height="1160" role="img" aria-label="Nutzerplan: Auto-Verdrahtung">
+  <rect x="-100000" y="-100000" width="200000" height="200000" fill="#0f172a"/>
+  <text x="-48" y="-472" fill="#e2e8f0" font-family="monospace" font-size="16">nutzerplan-autowire — 12-px-Freigabe</text>
+  <path d="M 192 36 L 250.5 36 Q 260.5 36 260.5 46 L 260.5 242 Q 260.5 252 270.5 252 L 288 252" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
+  <path d="M 134.4 120 L 134.45 120 Q 134.5 120 134.5 120.05 L 134.5 344 Q 134.5 354 144.5 354 L 374 354 Q 384 354 384 364 L 384 384" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
+  <path d="M 480 468 L 535 468 Q 545 468 545 458 L 545 262 Q 545 252 555 252 L 576 252" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
+  <path d="M 480 228 L 538.5 228 Q 548.5 228 548.5 218 L 548.5 70 Q 548.5 60 558.5 60 L 576 60" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
+  <path d="M 710.4 192 L 710.45 192 Q 710.5 192 710.5 191.95 L 710.5 160 Q 710.5 150 700.5 150 L 682 150 Q 672 150 672 140 L 672 120" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
+  <path d="M 768 36 L 990 36 Q 1000 36 1000 46 L 1000 250 Q 1000 260 1010 260 L 1200 260" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
+  <path d="M 768 276 L 1008 276 Q 1016 276 1016 268 L 1016 268 Q 1016 260 1024 260 L 1200 260" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
+  <path d="M 768 36 L 990 36 Q 1000 36 1000 46 L 1000 530 Q 1000 540 1010 540 L 1200 540" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
+  <path d="M 768 276 L 1022 276 Q 1032 276 1032 286 L 1032 530 Q 1032 540 1042 540 L 1200 540" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
+  <path d="M 57.6 -280 L 57.55 -280 Q 57.5 -280 57.5 -279.95 L 57.5 -30.75 Q 57.5 -20.75 67.5 -20.75 L 381.13 -20.75 Q 384 -20.75 384 -23.62 L 384 -23.62 Q 384 -26.5 384 -23.62 L 384 0" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
+  <path d="M 134.4 -280 L 134.45 -280 Q 134.5 -280 134.5 -279.95 L 134.5 -46.75 Q 134.5 -36.75 144.5 -36.75 L 374 -36.75 Q 384 -36.75 384 -26.75 L 384 0" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
+  <path d="M 345.6 120 L 345.55 120 Q 345.5 120 345.5 120.05 L 345.5 154.5 Q 345.5 164.5 355.5 164.5 L 374 164.5 Q 384 164.5 384 174.5 L 384 192" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
+  <path d="M 480 84 L 537 84 Q 547 84 547 94 L 547 242 Q 547 252 557 252 L 576 252" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
+  <rect x="0" y="0" width="192" height="120" fill="#1e293b" stroke="#64748b" stroke-width="2" rx="8"/>
+  <text x="12" y="28" fill="#e2e8f0" font-family="monospace" font-size="14">Batterie</text>
+  <rect x="0" y="-400" width="192" height="120" fill="#1e293b" stroke="#64748b" stroke-width="2" rx="8"/>
+  <text x="12" y="-372" fill="#e2e8f0" font-family="monospace" font-size="14">Solar</text>
+  <rect x="1200" y="200" width="192" height="120" fill="#1e293b" stroke="#64748b" stroke-width="2" rx="8"/>
+  <text x="1212" y="228" fill="#e2e8f0" font-family="monospace" font-size="14">Verbraucher 1</text>
+  <rect x="1200" y="480" width="192" height="120" fill="#1e293b" stroke="#64748b" stroke-width="2" rx="8"/>
+  <text x="1212" y="508" fill="#e2e8f0" font-family="monospace" font-size="14">Verbraucher 2</text>
+  <rect x="288" y="192" width="192" height="120" fill="#1e293b" stroke="#64748b" stroke-width="2" rx="8"/>
+  <text x="300" y="220" fill="#e2e8f0" font-family="monospace" font-size="14">Plus-Schiene</text>
+  <rect x="576" y="192" width="192" height="120" fill="#1e293b" stroke="#64748b" stroke-width="2" rx="8"/>
+  <text x="588" y="220" fill="#e2e8f0" font-family="monospace" font-size="14">Minus-Schiene</text>
+  <rect x="576" y="0" width="192" height="120" fill="#1e293b" stroke="#64748b" stroke-width="2" rx="8"/>
+  <text x="588" y="28" fill="#e2e8f0" font-family="monospace" font-size="14">12V Sicherungskasten</text>
+  <rect x="288" y="384" width="192" height="120" fill="#1e293b" stroke="#64748b" stroke-width="2" rx="8"/>
+  <text x="300" y="412" fill="#e2e8f0" font-family="monospace" font-size="14">Smart Shunt</text>
+  <rect x="288" y="0" width="192" height="120" fill="#1e293b" stroke="#64748b" stroke-width="2" rx="8"/>
+  <text x="300" y="28" fill="#e2e8f0" font-family="monospace" font-size="14">MPPT Laderegler</text>
+  <circle cx="192" cy="36" r="6" fill="#22c55e"/>
+  <circle cx="288" cy="252" r="6" fill="#f97316"/>
+  <circle cx="134.39999999999998" cy="120" r="6" fill="#22c55e"/>
+  <circle cx="384" cy="384" r="6" fill="#f97316"/>
+  <circle cx="480" cy="468" r="6" fill="#22c55e"/>
+  <circle cx="576" cy="252" r="6" fill="#f97316"/>
+  <circle cx="480" cy="228" r="6" fill="#22c55e"/>
+  <circle cx="576" cy="60" r="6" fill="#f97316"/>
+  <circle cx="710.4" cy="192" r="6" fill="#22c55e"/>
+  <circle cx="672" cy="120" r="6" fill="#f97316"/>
+  <circle cx="768" cy="36" r="6" fill="#22c55e"/>
+  <circle cx="1200" cy="260" r="6" fill="#f97316"/>
+  <circle cx="768" cy="276" r="6" fill="#22c55e"/>
+  <circle cx="1200" cy="260" r="6" fill="#f97316"/>
+  <circle cx="768" cy="36" r="6" fill="#22c55e"/>
+  <circle cx="1200" cy="540" r="6" fill="#f97316"/>
+  <circle cx="768" cy="276" r="6" fill="#22c55e"/>
+  <circle cx="1200" cy="540" r="6" fill="#f97316"/>
+  <circle cx="57.599999999999994" cy="-280" r="6" fill="#22c55e"/>
+  <circle cx="384" cy="0" r="6" fill="#f97316"/>
+  <circle cx="134.39999999999998" cy="-280" r="6" fill="#22c55e"/>
+  <circle cx="384" cy="0" r="6" fill="#f97316"/>
+  <circle cx="345.6" cy="120" r="6" fill="#22c55e"/>
+  <circle cx="384" cy="192" r="6" fill="#f97316"/>
+  <circle cx="480" cy="84" r="6" fill="#22c55e"/>
+  <circle cx="576" cy="252" r="6" fill="#f97316"/>
+</svg>

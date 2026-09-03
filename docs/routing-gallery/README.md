@@ -12,6 +12,16 @@ gerechnete Route. Grün = Start, Orange = Ziel.
 schlägt der Test fehl. Die Galerie darf nur neu erzeugt werden, wenn die
 Änderung im Pull Request begründet ist (AGENTS.md K3).
 
+## Nutzerpläne
+
+Zusätzlich zu den 25 konstruierten Szenarien zeigt
+`nutzerplan-autowire.svg` einen realen Nutzerplan (Batterie, Solar,
+zwei Verbraucher) nach Auto-Verdrahtung (R-8) und Routing (R-5/R-7/
+R-10): 13 Kabel, Gesamtlänge 5771 px, 0 Clearance-Verstöße (Ziel: 0 bei 12 px).
+Er ist die „nachher“-Referenz für die Vorher/Nachher-Betrachtung des
+R-Blocks; die „vorher“-Zahlen stehen in `docs/ROUTING-INVARIANTS.md`
+(Abschnitt Qualität & Messung).
+
 | ID | Szenario | Wegpunkte | Länge | Manhattan | Hindernisfrei |
 |----|----------|-----------|-------|-----------|---------------|
 | `01-direct-right-left` | Gerade Strecke Rechts → Links | 2 | 400 | 400 | ja |
