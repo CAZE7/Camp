@@ -6,6 +6,7 @@ import {
   type Rect,
   type Segment,
 } from './orthogonalRouting';
+import { SegmentSpatialIndex } from './segmentSpatialIndex';
 
 /**
  * Caches the node bounding boxes once per `nodes` array reference.
@@ -82,6 +83,12 @@ type CrossingBase = {
   centers: Map<string, Point>;
   /** One entry per edge: the segment plus its endpoint ids (for the skip). */
   items: CrossingItem[];
+  /**
+   * R-4: Spatialer Index über alle `items`-Segmente — ersetzt die alte
+   * CROSSING_SCAN_EDGE_LIMIT-Abschaltung. Große Pläne behalten ihre
+   * Kreuzungsvermeidung, weil pro Kante nur die Umgebung abgefragt wird.
+   */
+  index: SegmentSpatialIndex;
 };
 
 type CrossingItem = {
@@ -115,7 +122,8 @@ function buildCrossingBase(nodes: Node[], edges: CrossingEdgeRef[]): CrossingBas
     if (!a || !b) continue;
     items.push({ source: edge.source, target: edge.target, segment: [a, b] });
   }
-  return { centers, items };
+  const index = new SegmentSpatialIndex(items.map((item) => item.segment));
+  return { centers, items, index };
 }
 
 function getCrossingBase(nodes: Node[], edges: CrossingEdgeRef[]): CrossingBase {
@@ -153,6 +161,36 @@ export function crossingSegmentsExcluding(
       (item.source === current.target && item.target === current.source);
     if (samePair) continue;
     included.push(item.segment);
+  }
+  return included;
+}
+
+/**
+ * R-4: Fremdleitungen in der Umgebung der eigenen Route — Nachfolger von
+ * `crossingSegmentsExcluding` für große Pläne. Statt aller Segmente
+ * (früher ab 120 Kanten komplett abgeschaltet) werden nur die Segmente im
+ * Rechteck `region` geliefert; die exakte Schnittprüfung macht der Router.
+ * Gleiche Ausschluss-Regel wie oben: eigene Kante und Kanten desselben
+ * Node-Paars sind ausgenommen.
+ */
+export function crossingSegmentsNear(
+  nodes: Node[],
+  edges: CrossingEdgeRef[],
+  current: CrossingEdgeRef,
+  region: Rect
+): Segment[] {
+  const { items, index } = getCrossingBase(nodes, edges);
+  const candidates = index.queryRect(region);
+  const included: Segment[] = [];
+  for (const candidate of candidates) {
+    for (const item of items) {
+      if (item.segment !== candidate) continue;
+      const samePair =
+        (item.source === current.source && item.target === current.target) ||
+        (item.source === current.target && item.target === current.source);
+      if (!samePair) included.push(candidate);
+      break;
+    }
   }
   return included;
 }

@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { type Node } from 'reactflow';
-import { getObstacleMap, obstaclesExcluding, crossingSegmentsExcluding } from './routingCache';
+import {
+  getObstacleMap,
+  obstaclesExcluding,
+  crossingSegmentsExcluding,
+  crossingSegmentsNear,
+} from './routingCache';
 
 const makeNode = (id: string, x: number, y: number, width?: number, height?: number): Node =>
   ({ id, type: 'consumer', position: { x, y }, width, height, data: { label: id } }) as Node;
@@ -83,5 +88,71 @@ describe('routingCache', () => {
       // Die Segmente der Basis sind Referenz-identisch (geteilter Cache).
       expect(r1[0]).toBe(r2[0]);
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// R-4: Kreuzungs-Scan bleibt in großen Plänen aktiv (Spatial-Index)
+// ---------------------------------------------------------------------------
+
+describe('crossingSegmentsNear (R-4)', () => {
+  /** 150 Knoten in einem Raster + 150 Kettenkanten — der alte Plan stieg bei 120 aus. */
+  const buildBigPlan = () => {
+    const nodes: Node[] = [];
+    const edges: { id: string; source: string; target: string }[] = [];
+    for (let i = 0; i < 150; i++) {
+      nodes.push(makeNode(`n${i}`, (i % 15) * 240, Math.floor(i / 15) * 200));
+      if (i > 0 && i % 15 !== 0) {
+        edges.push({ id: `e${i}`, source: `n${i - 1}`, target: `n${i}` });
+      }
+    }
+    return { nodes, edges };
+  };
+
+  it('liefert bei 150 Kanten noch Nachbarschafts-Segmente (früher: Abbruch bei 120)', () => {
+    const { nodes, edges } = buildBigPlan();
+    expect(edges.length).toBeGreaterThan(120);
+    const region = { x: 0, y: 0, width: 1000, height: 1000 };
+    const segs = crossingSegmentsNear(nodes, edges, { id: 'e10', source: 'n9', target: 'n10' }, region);
+    expect(segs.length).toBeGreaterThan(0);
+  });
+
+  it('stimmt mit dem Brute-Force-Ergebnis überein (gleicher Ausschluss, Region-Filter)', () => {
+    const { nodes, edges } = buildBigPlan();
+    const current = { id: 'e10', source: 'n9', target: 'n10' };
+    const region = { x: 1000, y: 0, width: 900, height: 800 };
+    const viaIndex = crossingSegmentsNear(nodes, edges, current, region);
+    const bruteForce = crossingSegmentsExcluding(nodes, edges, current).filter((seg) => {
+      const minX = Math.min(seg[0].x, seg[1].x);
+      const maxX = Math.max(seg[0].x, seg[1].x);
+      const minY = Math.min(seg[0].y, seg[1].y);
+      const maxY = Math.max(seg[0].y, seg[1].y);
+      return (
+        maxX >= region.x &&
+        minX <= region.x + region.width &&
+        maxY >= region.y &&
+        minY <= region.y + region.height
+      );
+    });
+    // Der Index ist ein grober Vorfilter auf Zellbasis: er darf leicht mehr
+    // liefern (Zellnachbarn), aber keinen Treffer der Brute-Force-Region
+    // verlieren.
+    const key = (seg: [unknown, unknown]): string => JSON.stringify(seg);
+    const indexKeys = new Set(viaIndex.map(key));
+    for (const seg of bruteForce) {
+      expect(indexKeys.has(key(seg)), `fehlend: ${key(seg)}`).toBe(true);
+    }
+  });
+
+  it('Kanten desselben Node-Paars bleiben ausgeschlossen', () => {
+    const nodes = [makeNode('a', 0, 0), makeNode('b', 200, 0), makeNode('c', 400, 0)];
+    const edges = [
+      { id: 'e1', source: 'a', target: 'b' },
+      { id: 'e2', source: 'b', target: 'a' },
+      { id: 'e3', source: 'b', target: 'c' },
+    ];
+    const region = { x: -100, y: -100, width: 800, height: 400 };
+    const segs = crossingSegmentsNear(nodes, edges, { id: 'e1', source: 'a', target: 'b' }, region);
+    expect(segs).toHaveLength(1); // nur b→c; b→a (gleiches Paar) ist ausgenommen
   });
 });
