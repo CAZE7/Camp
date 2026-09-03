@@ -66,6 +66,31 @@ test.describe('Responsives Layout', () => {
     await expectNoHorizontalOverflow(page);
   });
 
+  test('Tablet: Wasserplan und Ansichtsoptionen bleiben trotz fehlender Bottom-Navigation erreichbar', async ({
+    page,
+  }) => {
+    await openPlanner(page);
+    const width = page.viewportSize()?.width ?? 0;
+    test.skip(width !== 768, 'Gilt exakt für das Tablet-Projekt.');
+
+    // Zwischen md und lg gab es vorher keinen Weg zum Wasserplan: die
+    // Bottom-Navigation war ausgeblendet, der Desktop-Umschalter aber noch
+    // nicht sichtbar. Die kompakte Toolbar löst diesen Zwischenzustand.
+    await page.getByRole('tab', { name: 'Wasserplan anzeigen' }).click();
+    await expect(page.getByTestId('sidebar')).toHaveAttribute('aria-label', 'Wasser-Komponenten');
+
+    // Die Domänenfilter gehören ausschließlich zum Elektrikplan; zurück dort
+    // liegt ihr kompakter, beschrifteter Zugang am Canvas.
+    await page.getByRole('tab', { name: 'Elektrikplan anzeigen' }).click();
+    const displayOptions = page.getByTestId('canvas-display-options');
+    await expect(displayOptions).toBeVisible();
+    const box = await displayOptions.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box!.height).toBeGreaterThanOrEqual(44);
+    await displayOptions.click();
+    await expect(page.getByRole('group', { name: 'Anzeige und Filter' })).toBeVisible();
+  });
+
   test('Touch-Ziele der Navigation sind mindestens 44 px hoch', async ({ page }) => {
     await openPlanner(page);
     const width = page.viewportSize()?.width ?? 0;

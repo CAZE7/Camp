@@ -579,6 +579,11 @@
   .planner-shell {
     --planner-sidebar-w: 260px;
     --planner-inspector-w: 320px;
+    /* viewport-fit=cover lets the planner reach an iPhone/iPad edge. Keep
+       persistent chrome out of camera cut-outs and rounded corners. */
+    padding-top: env(safe-area-inset-top);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
   }
   @media (min-width: 1280px) {
     .planner-shell {
@@ -603,6 +608,27 @@
      Canvas deshalb nie — die Safe-Area kommt zusätzlich als Innenabstand. */
   .planner-bottom-nav {
     padding-bottom: max(0.25rem, env(safe-area-inset-bottom));
+  }
+
+  /* A 56 px navigation row becomes taller on iPhones with a Home indicator.
+     Floating canvas controls use this shared clearance instead of assuming a
+     fixed 64 px bar, so their hit areas never overlap the system gesture zone. */
+  @media (max-width: 767px) {
+    .planner-mobile-history {
+      bottom: calc(5rem + env(safe-area-inset-bottom)) !important;
+    }
+    .planner-mobile-feedback {
+      bottom: calc(6rem + env(safe-area-inset-bottom)) !important;
+    }
+    .planner-expert-panel--closed {
+      bottom: calc(5rem + env(safe-area-inset-bottom)) !important;
+    }
+    .planner-expert-panel--open {
+      bottom: calc(7rem + env(safe-area-inset-bottom)) !important;
+    }
+    .planner-shell .planner-controls {
+      bottom: calc(8rem + env(safe-area-inset-bottom)) !important;
+    }
   }
 
   /* --- Touch: Drag-Griff am Bauteil --------------------------------
@@ -908,12 +934,12 @@
   opacity: 0.4;
 }
 
-/* M7-4 Dichte: 4-px-Spacing-Raster. Die React-Flow-Controls (Standard:
-   26 px) rücken auf 32 px — Oberkante des erlaubten Fensters 28–32 px —
-   und treffen damit die Touch-Zielgröße des Planers. */
+/* Canvas zoom actions are used on phones and tablets as well as desktop.
+   Keep every button at Apple's 44 px recommendation (well above WCAG 2.5.8's
+   24 px floor) instead of React Flow's compact 26/32 px defaults. */
 .planner-shell .react-flow__controls-button {
-  width: 2rem;
-  height: 2rem;
+  width: 2.75rem;
+  height: 2.75rem;
 }
 
 /* D-4: MiniMap im Werkzeug-Stil — Panel-Fläche, 1-px-Linie, Radius 4. */

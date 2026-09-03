@@ -67,6 +67,22 @@ describe('useTouchContextMenu', () => {
     expect(onOpen).not.toHaveBeenCalled();
   });
 
+  it('does not mistake a mouse hold or a two-finger pinch for a touch context menu', () => {
+    const body = makeNode();
+    const onOpen = vi.fn();
+    render(<Probe enabled onOpen={onOpen} />);
+
+    act(() => {
+      fireEvent.pointerDown(body, { pointerType: 'mouse', isPrimary: true });
+      vi.advanceTimersByTime(TOUCH_CONTEXT_MENU_MS + 1);
+      fireEvent.pointerDown(body, { pointerType: 'touch', isPrimary: true, clientX: 10, clientY: 10 });
+      fireEvent.pointerDown(body, { pointerType: 'touch', isPrimary: false, clientX: 11, clientY: 11 });
+      vi.advanceTimersByTime(TOUCH_CONTEXT_MENU_MS + 1);
+    });
+
+    expect(onOpen).not.toHaveBeenCalled();
+  });
+
   it('does nothing for a fine pointer mode', () => {
     const body = makeNode();
     const onOpen = vi.fn();

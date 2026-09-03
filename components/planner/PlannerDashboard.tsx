@@ -4,6 +4,7 @@ import { AccessibleDialog } from '@/components/ui/AccessibleDialog';
 import {
   Package,
   Zap,
+  Droplets,
   ScanSearch,
   LayoutGrid,
   Camera,
@@ -36,17 +37,23 @@ function NavigationSection({
   setViewMode: (mode: 'electric' | 'water') => void;
 }) {
   return (
-    <div className="hidden items-center gap-1 lg:flex" role="tablist" aria-label="Planbereich wählen">
+    // Between 768 and 1023 px the bottom navigation is intentionally gone,
+    // while the full desktop labels do not fit next to the sidebar. Keeping a
+    // compact, labelled icon switcher here prevents the Wasser plan from
+    // becoming unreachable on portrait tablets.
+    <div className="hidden items-center gap-1 md:flex" role="tablist" aria-label="Planbereich wählen">
       <Button
         variant={viewMode === 'electric' ? 'default' : 'ghost'}
         size="sm"
         role="tab"
         aria-selected={viewMode === 'electric'}
         onClick={() => setViewMode('electric')}
-        className="min-h-11"
+        className="min-h-11 min-w-11 gap-1 px-3"
+        aria-label="Elektrikplan anzeigen"
+        title="Elektrikplan anzeigen"
       >
-        <Zap className="mr-1 h-4 w-4" aria-hidden="true" />
-        Elektrik
+        <Zap className="h-4 w-4" aria-hidden="true" />
+        <span className="hidden lg:inline">Elektrik</span>
       </Button>
       <Button
         variant={viewMode === 'water' ? 'default' : 'ghost'}
@@ -54,9 +61,12 @@ function NavigationSection({
         role="tab"
         aria-selected={viewMode === 'water'}
         onClick={() => setViewMode('water')}
-        className="min-h-11"
+        className="min-h-11 min-w-11 gap-1 px-3"
+        aria-label="Wasserplan anzeigen"
+        title="Wasserplan anzeigen"
       >
-        Wasser
+        <Droplets className="h-4 w-4" aria-hidden="true" />
+        <span className="hidden lg:inline">Wasser</span>
       </Button>
     </div>
   );

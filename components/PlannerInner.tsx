@@ -108,7 +108,7 @@ export default function PlannerInner() {
 
   // 56 px Kantenlänge – deutlich über den geforderten 44 px Touch-Target.
   const navClass = (active: boolean) =>
-    `flex min-h-14 min-w-14 flex-col items-center justify-center rounded-lg px-2 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${active ? 'bg-accent text-primary' : 'text-muted-foreground hover:bg-accent'}`;
+    `relative flex min-h-14 min-w-14 flex-col items-center justify-center rounded-lg px-2 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${active ? 'bg-accent text-primary' : 'text-muted-foreground hover:bg-accent'}`;
 
   const inspectorClass = [
     // Handy: vollflächiger Tab-Bereich.
@@ -221,7 +221,7 @@ export default function PlannerInner() {
           Zustände spiegeln die History des Stores unmittelbar. */}
         {activeTab === 'canvas' && (
           <div
-            className="absolute bottom-20 left-3 z-50 flex gap-2 md:hidden"
+            className="planner-mobile-history absolute bottom-20 left-3 z-50 flex gap-2 md:hidden"
             role="group"
             aria-label="Änderungen rückgängig machen oder wiederholen"
           >
@@ -299,9 +299,22 @@ export default function PlannerInner() {
             onClick={() => setActiveTab('inspector')}
             className={navClass(activeTab === 'inspector')}
             aria-current={activeTab === 'inspector' ? 'page' : undefined}
+            aria-label={
+              selectionCount > 0
+                ? `Details öffnen, ${selectionCount} Element${selectionCount === 1 ? '' : 'e'} ausgewählt`
+                : 'Details'
+            }
           >
             <Settings2 size={22} aria-hidden="true" />
             <span>Details</span>
+            {selectionCount > 0 && (
+              <span
+                className="absolute right-1 top-1 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-copper px-1 text-xs font-bold leading-none text-on-signal"
+                aria-hidden="true"
+              >
+                {selectionCount > 9 ? '9+' : selectionCount}
+              </span>
+            )}
           </button>
           <button type="button" onClick={() => router.push('/tools/heizung')} className={navClass(false)}>
             <Flame size={22} aria-hidden="true" />

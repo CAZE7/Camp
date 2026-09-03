@@ -187,15 +187,14 @@ describe('M7 — Struktur der Planer-Oberfläche', () => {
     expect(css).toMatch(/\.planner-shell input\[type='number'\]\s*\{[^}]*text-align:\s*right/);
   });
 
-  it('hält die React-Flow-Controls im Dichte-Fenster 28–32 px (M7-4)', () => {
+  it('hält die React-Flow-Controls bei mindestens 44 px für Touch (M7-4)', () => {
     const rule = css.match(/\.planner-shell \.react-flow__controls-button\s*\{([^}]*)\}/);
     expect(rule).not.toBeNull();
     const sizes = [...(rule?.[1] ?? '').matchAll(/(?:width|height):\s*([\d.]+)rem/g)].map(
       (m) => parseFloat(m[1] ?? '0') * 16
     );
     expect(sizes).toHaveLength(2);
-    for (const size of sizes) expect(size).toBeGreaterThanOrEqual(28);
-    for (const size of sizes) expect(size).toBeLessThanOrEqual(32);
+    for (const size of sizes) expect(size).toBeGreaterThanOrEqual(44);
   });
 });
 

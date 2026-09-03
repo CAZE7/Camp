@@ -20,6 +20,7 @@ type MockReactFlowProps = {
   onDragOver?: React.DragEventHandler;
   onDrop?: React.DragEventHandler;
   className?: string;
+  connectOnClick?: boolean;
 };
 /** DOM-DragEvent mit den Attributen, die der FlowCanvas-Handler liest. */
 type DragEventish = MouseEvent & {
@@ -64,11 +65,20 @@ vi.mock('reactflow', async () => {
         {children}
       </div>
     ),
-    default: ({ children, nodes, edges, onDragOver, onDrop, className }: MockReactFlowProps) => (
+    default: ({
+      children,
+      nodes,
+      edges,
+      onDragOver,
+      onDrop,
+      className,
+      connectOnClick,
+    }: MockReactFlowProps) => (
       <div
         data-testid="react-flow-mock"
         data-nodes={JSON.stringify(nodes)}
         data-edges={JSON.stringify(edges)}
+        data-connect-on-click={String(connectOnClick)}
         className={className}
         onDragOver={onDragOver}
         onDrop={onDrop}
@@ -223,6 +233,11 @@ describe('FlowCanvas', () => {
     expect(canvas).not.toHaveClass('planner-zoom-overview');
     expect(canvas).not.toHaveClass('planner-zoom-standard');
     expect(canvas).not.toHaveClass('planner-zoom-full');
+  });
+
+  it('uses one custom tap-to-connect path instead of a duplicate React Flow click connection', () => {
+    render(<FlowCanvas />);
+    expect(screen.getByTestId('react-flow-mock')).toHaveAttribute('data-connect-on-click', 'false');
   });
 
   it('shows a mobile overview action only for more than eight nodes', () => {
@@ -388,6 +403,34 @@ describe('FlowCanvas', () => {
 
       document.body.removeChild(handle1);
       document.body.removeChild(handle2);
+    });
+
+    it('keeps the first endpoint selected when a second output/input is tapped by mistake', () => {
+      render(<FlowCanvas />);
+
+      const first = document.createElement('div');
+      first.className = 'react-flow__handle source';
+      first.setAttribute('data-nodeid', 'nodeA');
+      first.setAttribute('data-handleid', 'handleA');
+      document.body.appendChild(first);
+      const second = document.createElement('div');
+      second.className = 'react-flow__handle source';
+      second.setAttribute('data-nodeid', 'nodeB');
+      second.setAttribute('data-handleid', 'handleB');
+      document.body.appendChild(second);
+
+      fireEvent.click(first);
+      fireEvent.click(second);
+      const updater = mockSetFirstTappedHandle.mock.calls[1]![0];
+      expect(updater({ nodeId: 'nodeA', handleId: 'handleA', handleType: 'source' })).toEqual({
+        nodeId: 'nodeA',
+        handleId: 'handleA',
+        handleType: 'source',
+      });
+      expect(mockOnConnect).not.toHaveBeenCalled();
+
+      document.body.removeChild(first);
+      document.body.removeChild(second);
     });
 
     it('cancels tap connection if the same handle is clicked twice', () => {

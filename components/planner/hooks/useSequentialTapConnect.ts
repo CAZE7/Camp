@@ -26,6 +26,17 @@ export function useSequentialTapConnect(onFeedback?: (message: string, timeout?:
             onFeedback?.('Verbindung abgebrochen.', 1800);
             return null;
           }
+          if (previous.handleType === handleType) {
+            onFeedback?.(
+              `Das ist ebenfalls ein ${handleType === 'source' ? 'Ausgang' : 'Eingang'}. Wähle den passenden ${
+                handleType === 'source' ? 'Eingang' : 'Ausgang'
+              }.`,
+              3000
+            );
+            // Keep the first endpoint selected: a mistap must not force the
+            // user to start the two-step connection from scratch.
+            return previous;
+          }
 
           const connection: Connection = {
             source: previous.handleType === 'source' ? previous.nodeId : nodeId,

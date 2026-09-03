@@ -19,7 +19,13 @@ export function useTouchContextMenu(enabled: boolean, onOpen: (state: ContextMen
     };
 
     const onPointerDown = (event: PointerEvent) => {
-      if (!event.isPrimary) return;
+      // A second finger means the user is starting a pinch gesture, not a
+      // context-menu hold. Mouse/trackpad keeps the normal right-click path.
+      if (!event.isPrimary) {
+        cancel();
+        return;
+      }
+      if (event.pointerType && event.pointerType !== 'touch' && event.pointerType !== 'pen') return;
       const target = event.target as HTMLElement | null;
       if (
         !target ||
