@@ -29,9 +29,34 @@ export const ROUTE_MIN_STUB = 24;
 export const OBSTACLE_MARGIN = 14;
 export const NODE_FALLBACK_WIDTH = 192;
 export const NODE_FALLBACK_HEIGHT = 120;
+
+/**
+ * Kostenmodell (R-2, agent.md): alle Kosten sind **px-äquivalent** —
+ * 1 Kosteneinheit entspricht 1 px Leitungslänge (`scorePath` addiert
+ * Länge + BEND_COST · Biegungen + 120 · Kreuzungen).
+ *
+ * - `BEND_COST = 80`: eine 90°-Biegung kostet so viel wie 80 px Extraweg.
+ *   Der Router nimmt also höchstens 80 px Detour in Kauf, um eine Ecke zu
+ *   sparen — logisch ruhige Leitungen mit wenigen Knicken schlagen kürzere
+ *   zickzackige. Muss die Leitung mehr als 80 px Umweg laufen, gewinnt die
+ *   Abkürzung. Nach unten korrigieren → mehr Biegungen, oben → mehr Länge.
+ *
+ * - `U_TURN_COST = 400` (= 5 Biegungen): eine 180°-Kehre ist teurer als
+ *   jeder Zickzack-Bogen aus bis zu 4 Ecken und wird nur gewählt, wenn die
+ *   Geometrie sie erzwingt (Ziel hinter der Quelle). Die A*-Heuristik
+ *   (`remainingCostLowerBound`) schätzt Kehren mit
+ *   `Math.min(U_TURN_COST, 2 * BEND_COST)` = 160 — damit bleibt sie
+ *   zulässig (nie höher als die echten Restkosten) und A* bleibt optimal.
+ *
+ * Geprüft wird die Ordnung in `orthogonalRouting.invariants.test.ts`
+ * (Abschnitt „Kostenmodell (R-2)“): Gerade < L < Z < Zickzack, Kehre zuletzt.
+ */
 export const BEND_COST = 80;
 export const U_TURN_COST = 400;
 export const MAX_EXPANSIONS = 48_000;
+
+/** Abstand der Rücklauflane vom Stub bei erzwungenen U-Loops (2 Lanes, R-5). */
+export const U_TURN_LANE_SPREAD = 2 * 16;
 export const MAX_ACCEPTABLE_CROSSINGS = 2;
 export const ALTERNATIVE_ROUTE_GAP = 40;
 
@@ -407,13 +432,24 @@ export function catalogWaypoints(input: {
         points.push({ x: midX, y: S2.y });
         points.push({ x: midX, y: T2.y });
       } else {
+        // U-Loop (R-2-Fix, Regression: orthogonalRouting.invariants.test.ts
+        // „U-Turn nur wenn geometrisch erzwungen“): Ziel liegt hinter der
+        // Quelle. Die Rücklaufeinstrecke darf NICHT auf der Stub-Achse
+        // liegen — früher fielen (loopX, S2.y) und (loopX, T2.y) auf
+        // denselben Punkt zusammen und die Leitung lief nach dem Stub auf
+        // derselben Linie durch den Handle zurück (Selbstüberlappung,
+        // 0 Bends). Jetzt weicht die Rückstellstrecke um
+        // U_TURN_LANE_SPREAD auf eine eigene Lane aus.
         const dir = ds.x > 0 ? 1 : -1;
         const loopX = quantize(
           (dir > 0 ? Math.max(S2.x, T2.x) : Math.min(S2.x, T2.x)) +
             dir * (ROUTE_MIN_STUB * 2 + Math.abs(offset))
         );
+        const laneSign = offset !== 0 ? Math.sign(offset) : 1;
+        const returnY = quantize(S2.y + laneSign * U_TURN_LANE_SPREAD);
         points.push({ x: loopX, y: S2.y });
-        points.push({ x: loopX, y: T2.y });
+        points.push({ x: loopX, y: returnY });
+        points.push({ x: T2.x, y: returnY });
       }
     }
   } else if (!horizS && !horizT) {
@@ -438,8 +474,13 @@ export function catalogWaypoints(input: {
           (dir > 0 ? Math.max(S2.y, T2.y) : Math.min(S2.y, T2.y)) +
             dir * (ROUTE_MIN_STUB * 2 + Math.abs(offset))
         );
+        // R-2-Fix: Rücklauf auf eigener Lane statt auf der Stub-Achse
+        // (siehe horizontalen U-Loop oben).
+        const laneSign = offset !== 0 ? Math.sign(offset) : 1;
+        const returnX = quantize(S2.x + laneSign * U_TURN_LANE_SPREAD);
         points.push({ x: S2.x, y: loopY });
-        points.push({ x: T2.x, y: loopY });
+        points.push({ x: returnX, y: loopY });
+        points.push({ x: returnX, y: T2.y });
       }
     }
   } else if (horizS) {
@@ -479,8 +520,18 @@ export function catalogCandidates(input: {
   const T2 = stubPoint(T, { x: -dt.x, y: -dt.y }, stub);
 
   const out: Point[][] = [primary];
-  out.push(withElbow(S, S2, { x: T2.x, y: S2.y }, T2, T));
-  out.push(withElbow(S, S2, { x: S2.x, y: T2.y }, T2, T));
+  // R-2-Fix: Liegt das Ziel HINTER der Quelle (nicht „facing“), läuft der
+  // X-Elbow nach dem Stub auf derselben Achse zurück — Selbstüberlappung
+  // („Kabel durch den Handle“). Solche Kandidaten erst gar nicht erzeugen;
+  // der Y-Elbow ist genau dann degeneriert, wenn sein Knick auf der
+  // Stub-Achse liegt (T2.y == S2.y).
+  const facingX = ds.x > 0 ? T2.x >= S2.x - EPS : T2.x <= S2.x + EPS;
+  if (facingX) {
+    out.push(withElbow(S, S2, { x: T2.x, y: S2.y }, T2, T));
+  }
+  if (Math.abs(T2.y - S2.y) > EPS) {
+    out.push(withElbow(S, S2, { x: S2.x, y: T2.y }, T2, T));
+  }
 
   if (offset !== 0) {
     out.push(
@@ -535,16 +586,53 @@ export function bestFreeCatalog(
   const candidates = catalogCandidates(input);
   let best: Point[] | null = null;
   let bestScore = Infinity;
+  let bestOverlaps = false;
   for (let i = 0; i < candidates.length; i++) {
     const pts = at(candidates, i);
     if (!isOrthogonalPath(pts) || pathHitsObstacles(pts, obstacles)) continue;
-    const score = scoreCatalog(pts);
-    if (score < bestScore - EPS) {
+    // R-2: selbstüberlappende Kandidaten verlieren grundsätzlich gegen
+    // überlappungsfreie — egal wie kurz sie sind.
+    const overlaps = hasSelfOverlap(pts);
+    if (best !== null && overlaps && !bestOverlaps) continue;
+    const score = scoreCatalog(pts) + (overlaps ? U_TURN_COST : 0);
+    if (best === null || score < bestScore - EPS) {
       best = pts;
       bestScore = score;
+      bestOverlaps = overlaps;
     }
   }
   return best;
+}
+
+/**
+ * Selbstüberlappung (R-2): zwei achsenparallele Segmente desselben Pfads
+ * liegen auf derselben Linie und überlappen auf einer Strecke > EPS — die
+ * Leitung läuft optisch in sich zurück („doppelte Belegung“ einer Lane).
+ * Solche Pfade sind immer ein Routing-Fehler und werden bevorzugt vermieden.
+ */
+export function hasSelfOverlap(points: Point[]): boolean {
+  const segments = waypointsToSegments(points);
+  for (let i = 0; i < segments.length; i++) {
+    for (let j = i + 2; j < segments.length; j++) {
+      const [a1, a2] = at(segments, i);
+      const [b1, b2] = at(segments, j);
+      const aHorizontal = Math.abs(a1.y - a2.y) <= EPS;
+      const bHorizontal = Math.abs(b1.y - b2.y) <= EPS;
+      if (aHorizontal !== bHorizontal) continue;
+      if (aHorizontal) {
+        if (Math.abs(a1.y - b1.y) > EPS) continue;
+        const overlap = Math.min(Math.max(a1.x, a2.x), Math.max(b1.x, b2.x)) -
+          Math.max(Math.min(a1.x, a2.x), Math.min(b1.x, b2.x));
+        if (overlap > EPS) return true;
+      } else {
+        if (Math.abs(a1.x - b1.x) > EPS) continue;
+        const overlap = Math.min(Math.max(a1.y, a2.y), Math.max(b1.y, b2.y)) -
+          Math.max(Math.min(a1.y, a2.y), Math.min(b1.y, b2.y));
+        if (overlap > EPS) return true;
+      }
+    }
+  }
+  return false;
 }
 
 const orientation = (a: Point, b: Point, c: Point): number => {
