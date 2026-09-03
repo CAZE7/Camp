@@ -2,7 +2,6 @@ import { type Node, Position } from 'reactflow';
 import {
   findCablePath,
   nodesToObstacles,
-  edgesToCrossingSegments,
   inflateRect,
   pathLength,
   countBends,
@@ -51,7 +50,9 @@ const NODE_H = 120;
 export function resolveHandlePoint(
   node: NodeWithHandles | undefined,
   handleId: string | null | undefined,
-  kind: 'source' | 'target'
+  kind: 'source' | 'target',
+  /** R-7: Flussrichtung zum Gegenüber (Zentrum → Zentrum). Optional. */
+  flow?: { x: number; y: number }
 ): { x: number; y: number; position: Position } {
   if (!node) {
     return { x: 0, y: 0, position: kind === 'source' ? Position.Right : Position.Left };
@@ -68,13 +69,25 @@ export function resolveHandlePoint(
       position: hb.position,
     };
   }
+  // R-7: Ohne gemessene Handles liegt der Anschluss auf der Seite, die der
+  // FLUSSRICHTUNG entspricht (Quelle → Verteilung → Verbraucher). Ohne
+  // Flussangabe gilt die konventionelle Seite (Quelle rechts, Ziel links).
   const w = node.width || NODE_W;
   const h = node.height || NODE_H;
   const t = handleId?.includes('minus') ? 0.7 : handleId?.includes('plus') ? 0.3 : 0.5;
-  if (kind === 'source') {
-    return { x: originX + w, y: originY + h * t, position: Position.Right };
+  const horizontal = !flow || Math.abs(flow.x) >= Math.abs(flow.y);
+  if (horizontal) {
+    // Quelle verlässt stromabwärts, Ziel wird stromaufwärts betreten —
+    // beide Anschlüsse liegen auf der Seite, die dem Flusszugewandt ist.
+    const right = flow ? flow.x > 0 : kind === 'source';
+    return right
+      ? { x: originX + w, y: originY + h * t, position: Position.Right }
+      : { x: originX, y: originY + h * t, position: Position.Left };
   }
-  return { x: originX, y: originY + h * t, position: Position.Left };
+  const down = flow.y > 0;
+  return down
+    ? { x: originX + w * t, y: originY + h, position: Position.Bottom }
+    : { x: originX + w * t, y: originY, position: Position.Top };
 }
 
 const rebuild = (waypoints: Point[], crossings: number, usedSearch: PathResult['usedSearch']): PathResult => {
@@ -92,6 +105,21 @@ const rebuild = (waypoints: Point[], crossings: number, usedSearch: PathResult['
     usedSearch,
   };
 };
+
+/** R-7: Zentrums-Differenz zweier Nodes (Flussrichtung Quelle → Ziel). */
+function centerDelta(from: Node | undefined, to: Node | undefined): { x: number; y: number } | undefined {
+  if (!from || !to) return undefined;
+  const fc = nodeCenter(from);
+  const tc = nodeCenter(to);
+  return { x: tc.x - fc.x, y: tc.y - fc.y };
+}
+
+function nodeCenter(node: Node): { x: number; y: number } {
+  return {
+    x: (node.positionAbsolute?.x ?? node.position.x) + (node.width || NODE_W) / 2,
+    y: (node.positionAbsolute?.y ?? node.position.y) + (node.height || NODE_H) / 2,
+  };
+}
 
 /** Halbe Lane (8 px) — das Halbton-Raster, auf das Korridore ausgerichtet werden. */
 const LANE_GRID = 8;
@@ -175,35 +203,44 @@ export function alignSharedCorridors(
     }
   }
 
-  // Cluster je Achse: nach Koordinate sortieren, Nachbarn ≤ Toleranz bündeln.
+  // Cluster je Achse: nach Koordinate sortieren, Nachbarn ≤ Toleranz
+  // bündeln und nur bei ausreichender Überlappung (> 32 px entlang der
+  // Achse) auf dasselbe 8-px-Raster ziehen.
+  const snapToLane = (value: number): number => Math.round(value / LANE_GRID) * LANE_GRID;
   for (const horizontal of [true, false]) {
     const axis = items.filter((item) => item.horizontal === horizontal).sort((a, b) => a.coord - b.coord);
     let cluster: Item[] = [];
     const flush = () => {
       if (cluster.length >= 2) {
-        const target = cluster[0]!.coord; // deterministisch: kleinste Koordinate
-        const perId = new Map<string, Item[]>();
-        for (const item of cluster) {
-          const list = perId.get(item.id) ?? [];
-          list.push(item);
-          perId.set(item.id, list);
-        }
-        // Nur Cluster mit ≥ 2 verschiedenen Kanten bündeln.
-        if (perId.size >= 2) {
-          for (const item of cluster) {
-            if (item.coord === target) continue;
-            const points = out.get(item.id);
-            if (!points) continue;
-            const a = points[item.segIndex];
-            const b = points[item.segIndex + 1];
-            if (!a || !b) continue;
-            const moved = horizontal ? { x: a.x, y: target } : { x: target, y: a.y };
-            const movedB = horizontal ? { x: b.x, y: target } : { x: target, y: b.y };
-            const candidate = [...points];
-            candidate[item.segIndex] = moved;
-            candidate[item.segIndex + 1] = movedB;
-            if (!pathHitsObstacles(candidate, obstacles)) {
-              out.set(item.id, candidate);
+        // Ziel-Lane: kleinste Koordinate im Cluster, auf 8 px gerastet —
+        // deterministisch unabhängig von der Eingabereihenfolge.
+        const minCoord = cluster.reduce((min, item) => Math.min(min, item.coord), Infinity);
+        const target = Math.max(minCoord, snapToLane(minCoord));
+        // Paare mit ≥ CORRIDOR_MIN_OVERLAP gemeinsamer Länge aus jeweils
+        // ZWEI verschiedenen Kanten ausrichten.
+        for (let i = 0; i < cluster.length; i++) {
+          for (let j = 0; j < cluster.length; j++) {
+            if (i === j) continue;
+            const a = cluster[i]!;
+            const b = cluster[j]!;
+            if (a.id === b.id) continue;
+            const overlap = Math.min(a.to, b.to) - Math.max(a.from, b.from);
+            if (overlap < CORRIDOR_MIN_OVERLAP) continue;
+            for (const item of [a, b]) {
+              if (item.coord === target) continue;
+              const points = out.get(item.id);
+              if (!points) continue;
+              const p1 = points[item.segIndex];
+              const p2 = points[item.segIndex + 1];
+              if (!p1 || !p2) continue;
+              const moved1 = horizontal ? { x: p1.x, y: target } : { x: target, y: p1.y };
+              const moved2 = horizontal ? { x: p2.x, y: target } : { x: target, y: p2.y };
+              const candidate = [...points];
+              candidate[item.segIndex] = moved1;
+              candidate[item.segIndex + 1] = moved2;
+              if (!pathHitsObstacles(candidate, obstacles)) {
+                out.set(item.id, candidate);
+              }
             }
           }
         }
@@ -280,12 +317,21 @@ export function routeAllCables(nodes: Node[], edges: RouteEdgeRef[]): Map<string
     sourceHandle: edge.sourceHandle,
   }));
 
-  // R-6: Port-Reihenfolge vor dem Einzel-Routing festlegen (deterministisch).
-  const portOffsets = portOrderedLaneOffsets(edges, (edge, kind) =>
-    kind === 'source'
-      ? resolveHandlePoint(nodeById.get(edge.source), edge.sourceHandle, 'source')
-      : resolveHandlePoint(nodeById.get(edge.target), edge.targetHandle, 'target')
-  );
+  // R-6/R-7: Port-Reihenfolge vor dem Einzel-Routing festlegen
+  // (deterministisch); die Handle-Seite folgt der Flussrichtung.
+  const portOffsets = portOrderedLaneOffsets(edges, (edge, kind) => {
+    const srcNode = nodeById.get(edge.source);
+    const tgtNode = nodeById.get(edge.target);
+    const flow = centerDelta(srcNode, tgtNode);
+    return kind === 'source'
+      ? resolveHandlePoint(srcNode, edge.sourceHandle, 'source', flow)
+      : resolveHandlePoint(
+          tgtNode,
+          edge.targetHandle,
+          'target',
+          flow ? { x: -flow.x, y: -flow.y } : undefined
+        );
+  });
 
   const raw: { id: string; waypoints: Point[]; result: PathResult }[] = [];
 
@@ -294,8 +340,14 @@ export function routeAllCables(nodes: Node[], edges: RouteEdgeRef[]): Map<string
     if (!edge) continue;
     const srcNode = nodeById.get(edge.source);
     const tgtNode = nodeById.get(edge.target);
-    const src = resolveHandlePoint(srcNode, edge.sourceHandle, 'source');
-    const tgt = resolveHandlePoint(tgtNode, edge.targetHandle, 'target');
+    const flow = centerDelta(srcNode, tgtNode);
+    const src = resolveHandlePoint(srcNode, edge.sourceHandle, 'source', flow);
+    const tgt = resolveHandlePoint(
+      tgtNode,
+      edge.targetHandle,
+      'target',
+      flow ? { x: -flow.x, y: -flow.y } : undefined
+    );
     const exclude = new Set([edge.source, edge.target]);
     const obstacles = nodesToObstacles(nodes, exclude);
     const lane =

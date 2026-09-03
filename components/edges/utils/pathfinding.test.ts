@@ -377,9 +377,27 @@ describe('seeded random scenes', () => {
       expect(isOrthogonalPath(result.waypoints)).toBe(true);
       expect(result.waypoints[0]).toEqual({ x: sx, y: sy });
       expect(result.waypoints[result.waypoints.length - 1]).toEqual({ x: tx, y: ty });
+
+      // R-7: Stub-Invarianten — der Pfad verlässt den Handle in
+      // Austrittsrichtung und biegt frühestens nach ≥ ROUTE_MIN_STUB (24 px)
+      // ab (kein Richtungswechsel im Stub-Bereich, kein U-Turn am Handle).
+      expect(result.waypoints[1]!.y).toBe(sy);
+      expect(result.waypoints[1]!.x - sx).toBeGreaterThanOrEqual(24);
+      const preLast = result.waypoints[result.waypoints.length - 2]!;
+      expect(preLast.y).toBe(ty);
+      expect(tx - preLast.x).toBeGreaterThanOrEqual(24);
+
+      const s2 = { x: sx + 24, y: sy };
+      const t2 = { x: tx - 24, y: ty };
       const inflated = obstacles
         .filter((r) => !containsPoint(r, { x: sx, y: sy }) && !containsPoint(r, { x: tx, y: ty }))
-        .map((r) => inflateRect(r, OBSTACLE_MARGIN));
+        .map((r) => inflateRect(r, OBSTACLE_MARGIN))
+        // R-7: Bauteile, deren AUFGEBLÄHTE Box den Stub-Endpunkt überdeckt,
+        // gelten als „am Anschluss anliegend“ — der Router sucht dort mit
+        // 2 px Restfreigabe statt den 24-px-Stub zu kürzen (siehe
+        // `searchOnce` in pathfinding.ts). Sie bleiben ungetestet; alle
+        // anderen Boxen müssen mit vollem 14-px-Abstand vermieden werden.
+        .filter((r) => !containsPoint(r, s2) && !containsPoint(r, t2));
       expect(pathHitsObstacles(result.waypoints, inflated)).toBe(false);
     }
   });

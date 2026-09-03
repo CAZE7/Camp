@@ -53,10 +53,10 @@ export const NODE_FALLBACK_HEIGHT = 120;
  */
 export const BEND_COST = 80;
 export const U_TURN_COST = 400;
-export const MAX_EXPANSIONS = 48_000;
 
-/** Abstand der Rücklauflane vom Stub bei erzwungenen U-Loops (2 Lanes, R-5). */
+/** Abstand der Rücklauflane vom Stub bei erzwungenen U-Loops (2 Parallellanes). */
 export const U_TURN_LANE_SPREAD = 2 * 16;
+export const MAX_EXPANSIONS = 48_000;
 export const MAX_ACCEPTABLE_CROSSINGS = 2;
 
 /** Ausweich-Trassen (R-5): 3 und 6 Lanes à 16 px — siehe orthogonalRouting. */
@@ -1024,18 +1024,31 @@ function searchOnce(
   const S: Point = { x: input.sourceX, y: input.sourceY };
   const T: Point = { x: input.targetX, y: input.targetY };
 
+  // R-7: Der Stub bleibt IMMER ≥ ROUTE_MIN_STUB (24 px). Früher wurde er
+  // bei Hinderniskontakt halbiert (bis 4 px) — das erzeugte Winzstummel
+  // direkt am Handle und Richtungswechsel im Stub-Bereich.
   const pickStub = (from: Point, dir: Point): Point => {
-    let stub = ROUTE_MIN_STUB + Math.abs(offset) * 0.15;
-    let pt = stubPoint(from, dir, stub);
-    while (stub > 4 && (segmentHitsAny(from, pt, obstacles) || obstacles.some((r) => containsPoint(r, pt)))) {
-      stub *= 0.5;
-      pt = stubPoint(from, dir, stub);
-    }
-    return pt;
+    const stub = ROUTE_MIN_STUB + Math.abs(offset) * 0.15;
+    return stubPoint(from, dir, stub);
   };
 
   const S2 = pickStub(S, ds);
   const T2 = pickStub(T, { x: -dt.x, y: -dt.y });
+
+  // R-7/R-10: Sitzt ein (aufgeblähtes) Hindernis so nah am Handle, dass es
+  // den vollen Stub überdeckt, wird NUR dieses Hindernis für die Suche auf
+  // 2 px Restfreigabe zurückgesetzt (Rohbox + 2 px) — der Stub kürzt nicht,
+  // und die A*-Suche startet nicht in einem blockierten Punkt. Andere
+  // Hindernisse behalten die volle OBSTACLE_MARGIN.
+  const deflated = (r: Rect): Rect => ({
+    x: r.x + OBSTACLE_MARGIN - 2,
+    y: r.y + OBSTACLE_MARGIN - 2,
+    width: Math.max(4, r.width - 2 * (OBSTACLE_MARGIN - 2)),
+    height: Math.max(4, r.height - 2 * (OBSTACLE_MARGIN - 2)),
+  });
+  const searchObstacles = obstacles.map((r) =>
+    containsPoint(r, S2) || containsPoint(r, T2) ? deflated(r) : r
+  );
 
   const extraXs = [S2.x, T2.x, (S2.x + T2.x) / 2 + offset, S.x, T.x];
   const extraYs = [S2.y, T2.y, (S2.y + T2.y) / 2 + offset, S.y, T.y];
@@ -1055,11 +1068,39 @@ function searchOnce(
     extraYs.push(minY - 16, maxY + 16);
   }
 
-  const inner = hananAStar(S2, T2, headingFromDir(ds), headingFromDir(dt), obstacles, extraXs, extraYs);
+  const inner = hananAStar(S2, T2, headingFromDir(ds), headingFromDir(dt), searchObstacles, extraXs, extraYs);
 
   if (inner && inner.length >= 1) {
     const full = stitchOrthogonal([S, ...inner, T]);
-    if (!pathHitsObstacles(full, obstacles)) {
+    if (!pathHitsObstacles(full, searchObstacles)) {
+      return { waypoints: full, usedSearch: 'astar' };
+    }
+    // Stub-Toleranz (R-7): Bleiben Verletzungen, die NUR die Stub-Segmente
+    // (S→S2 bzw. T2→T) gegen eine entzerrte Box betreffen, wird der Pfad
+    // akzeptiert — der 24-px-Stub wiegt schwerer als die letzten 12 px
+    // Inflate-Margin an einem direkt anliegenden Bauteil.
+    const sameSegment = (a: Point, b: Point, c: Point, d: Point): boolean =>
+      Math.abs(a.x - c.x) <= EPS &&
+      Math.abs(a.y - c.y) <= EPS &&
+      Math.abs(b.x - d.x) <= EPS &&
+      Math.abs(b.y - d.y) <= EPS;
+    let tolerated = true;
+    for (let i = 0; i + 1 < full.length && tolerated; i++) {
+      const a = at(full, i);
+      const b = at(full, i + 1);
+      const isStub = sameSegment(a, b, S, S2) || sameSegment(a, b, T2, T);
+      for (let k = 0; k < obstacles.length && tolerated; k++) {
+        const rFull = at(obstacles, k);
+        if (!segmentHitsAny(a, b, [rFull])) continue;
+        const rSearch = at(searchObstacles, k);
+        if (segmentHitsAny(a, b, [rSearch])) {
+          tolerated = false;
+        } else if (!isStub) {
+          tolerated = false;
+        }
+      }
+    }
+    if (tolerated) {
       return { waypoints: full, usedSearch: 'astar' };
     }
   }
@@ -1108,6 +1149,9 @@ export function findCablePath(input: PathRequest): PathResult {
     ];
     for (let i = 0; i < candidates.length; i++) {
       const cand = searchOnce(input, obstacles, at(candidates, i));
+      // R-3/R-7: Ein Fallback-Kandidat (keine Freigabe-Garantie) gewinnt
+      // nie gegen Katalog oder A* — auch nicht über weniger Kreuzungen.
+      if (cand.usedSearch === 'fallback' && best.usedSearch !== 'fallback') continue;
       const cross = countCrossings(cand.waypoints, crossingSegments);
       const score = scorePath(cand.waypoints, cross);
       if (score < bestScore - EPS || (Math.abs(score - bestScore) <= EPS && cross < bestCross)) {

@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { Position, type Node } from 'reactflow';
-import { routeAllCables, portOrderedLaneOffsets, alignSharedCorridors, type RouteEdgeRef } from './routeAll';
+import {
+  routeAllCables,
+  portOrderedLaneOffsets,
+  alignSharedCorridors,
+  resolveHandlePoint,
+  type RouteEdgeRef,
+} from './routeAll';
 import { simplifyWaypoints } from './pathfinding';
 import { dedupe, orthogonalWaypoints } from './orthogonalRouting';
 import type { Point, Rect } from './orthogonalRouting';
@@ -77,12 +83,6 @@ describe('routeAll-Nachoptimierung (R-6)', () => {
     // Drei Kanten verlassen denselben Quell-Handle (gleicher Punkt) zu
     // Zielen bei y = 0, 200, 400. Ohne Sortierung (id-Sortierung der
     // Bündel-Lanes) würde die oberste Lane zu einem tiefen Ziel laufen.
-    const nodes = [
-      makeNode('hub', 0, 0),
-      makeNode('a', 400, 0),
-      makeNode('b', 400, 200),
-      makeNode('c', 400, 400),
-    ];
     const edges: RouteEdgeRef[] = [
       { id: 'z-first', source: 'hub', target: 'c' },
       { id: 'a-second', source: 'hub', target: 'a' },
@@ -230,6 +230,55 @@ describe('simplifyWaypoints/dedupe-Verifikation (R-6)', () => {
       expect(simplified[0]).toEqual(waypoints[0]);
       expect(simplified[simplified.length - 1]).toEqual(waypoints[waypoints.length - 1]);
       expect(Math.abs(length(simplified) - length(waypoints))).toBeLessThan(1e-6);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// R-7: Handle-Seite nach Flussrichtung, Stub-Invarianten
+// ---------------------------------------------------------------------------
+
+describe('Handle-Seite nach Flussrichtung (R-7)', () => {
+  it('resolveHandlePoint ohne Handles: Seite folgt dem Fluss zum Gegenüber', () => {
+    const source = makeNode('s', 0, 0);
+    const target = makeNode('t', 600, 0);
+    // Quelle links vom Ziel → Austritt rechts; Ziel betreten von links.
+    const src = resolveHandlePoint(source, null, 'source', { x: 600, y: 0 });
+    const tgt = resolveHandlePoint(target, null, 'target', { x: -600, y: 0 });
+    expect(src.position).toBe(Position.Right);
+    expect(tgt.position).toBe(Position.Left);
+
+    // Quelle ÜBER dem Ziel (vertikaler Fluss) → Austritt unten, Eintritt oben.
+    const srcV = resolveHandlePoint(source, null, 'source', { x: 10, y: 400 });
+    const tgtV = resolveHandlePoint(target, null, 'target', { x: -10, y: -400 });
+    expect(srcV.position).toBe(Position.Bottom);
+    expect(tgtV.position).toBe(Position.Top);
+
+    // Gegenfluss (Verbraucher → Verteilung links oberhalb): Eintritt unten.
+    const back = resolveHandlePoint(target, null, 'target', { x: -5, y: 300 });
+    expect(back.position).toBe(Position.Bottom);
+
+    // Ohne Flussangabe: konventionelle Seiten (Quelle rechts, Ziel links).
+    expect(resolveHandlePoint(source, null, 'source').position).toBe(Position.Right);
+    expect(resolveHandlePoint(target, null, 'target').position).toBe(Position.Left);
+  });
+
+  it('routeAllCables: vertikaler Fluss erzeugt Top-/Bottom-Handles und stubtreue Routen', () => {
+    const nodes = [makeNode('top', 0, 0), makeNode('mid', 0, 300), makeNode('bot', 0, 600)];
+    const edges: RouteEdgeRef[] = [
+      { id: 'e-top-mid', source: 'top', target: 'mid' },
+      { id: 'e-mid-bot', source: 'mid', target: 'bot' },
+    ];
+    const routes = routeAllCables(nodes, edges);
+    for (const [, route] of routes) {
+      expect(route.usedSearch).not.toBe('fallback');
+      // Stub ≥ 24 px: erster Abschnitt verlässt den Handle in Flussrichtung.
+      const first = route.waypoints[1]!;
+      const last = route.waypoints[route.waypoints.length - 2]!;
+      const start = route.waypoints[0]!;
+      const end = route.waypoints[route.waypoints.length - 1]!;
+      expect(Math.hypot(first.x - start.x, first.y - start.y)).toBeGreaterThanOrEqual(24);
+      expect(Math.hypot(end.x - last.x, end.y - last.y)).toBeGreaterThanOrEqual(24);
     }
   });
 });
