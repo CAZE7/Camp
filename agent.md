@@ -39,34 +39,34 @@ Erweitert M11-1 aus AGENTS.md auf die gesamte Seite. Pro Aufgabe ein Commit;
 Vorher/Nachher-Screenshots (375/768/1440 px) im PR — Merge erst nach optischer
 Freigabe durch den Nutzer.
 
-- [ ] **D-1 Token-Fundament:** `app/globals.css` als einzige Farbquelle:
+- [x] **D-1 Token-Fundament:** `app/globals.css` als einzige Farbquelle:
       Surface-Skala (canvas/panel/raised), `--rule` für Linien, `--oxide` als
       Akzent, Semantik-Tokens (ok/warn/error), `.dark`-Variante. Tailwind-Theme
       mappt alle Tokens. Abnahme: Code-Suche findet keine Hex-/rgb-Werte
       außerhalb von globals.css; hell+dunkel konform zu WCAG AA.
-- [ ] **D-2 Typo- & Raster-System:** Type-Scale 12/13/14/16/20/24/32; Inter für
+- [x] **D-2 Typo- & Raster-System:** Type-Scale 12/13/14/16/20/24/32; Inter für
       UI, Outfit nur für Display-Headlines, IBM Plex Mono für Werte/Maße.
       4-px-Abstandsraster in tailwind.config.ts dokumentiert und angewendet.
-- [ ] **D-3 App-Shell:** SiteHeader als schmale Top-Bar (h-12, sticky, Mark +
+- [x] **D-3 App-Shell:** SiteHeader als schmale Top-Bar (h-12, sticky, Mark +
       Nav mit aktivem Unterstrich, Aktionen rechts), SiteFooter konsistent;
       einheitlicher Container und Seitenrhythmus über `/`, `/tools/*`,
       `/guides/*`, Impressum, Datenschutz.
-- [ ] **D-4 Planer-Canvas:** dunkle neutrale Zeichenfläche mit Punktraster;
+- [x] **D-4 Planer-Canvas:** dunkle neutrale Zeichenfläche mit Punktraster;
       Node-Cards neu (1-px-Border, Radius 4, Icon + Titel + Mono-Spec-Zeile,
       Status als 2-px-Akzentleiste); Handles 12 px mit Hover; Kanten 2 px,
       abgerundet; Selektion in Akzent; MiniMap/Controls im gleichen Stil.
-- [ ] **D-5 Panel-System:** Sidebar/Inspector/ExpertPanel/PlannerDashboard mit
+- [x] **D-5 Panel-System:** Sidebar/Inspector/ExpertPanel/PlannerDashboard mit
       einheitlichem Aufbau: Panel-Header (h-10, Label 11 px uppercase),
       Sektionen mit Divider, Padding 12/16, Buttons im Toolbar-Stil.
       Inspector-Breakpoints bleiben (Slide-over < 1280 px, Dock 288/320 px).
-- [ ] **D-6 Toolbar & Shortcuts:** Icon-Toolbar (lucide) mit Tooltips und
+- [x] **D-6 Toolbar & Shortcuts:** Icon-Toolbar (lucide) mit Tooltips und
       Shortcut-Badges; `?`-Overlay (M11-3) im gleichen Design.
-- [ ] **D-7 Startseite & Aufbau:** Hero mit klarem Nutzenversprechen, drei
+- [x] **D-7 Startseite & Aufbau:** Hero mit klarem Nutzenversprechen, drei
       Tool-Karten (Elektrik/Dach/Heizung) im selben Card-System, Guide-Teaser;
       klare Hierarchie (ein H1, konsistente CTAs, einheitliche Sektionen).
-- [ ] **D-8 Zustände & Micro-UX:** focus-visible-Ringe in Akzentfarbe,
+- [x] **D-8 Zustände & Micro-UX:** focus-visible-Ringe in Akzentfarbe,
       150-ms-Transitions, Empty-States, Skeletons, gestaltete ErrorBoundary.
-- [ ] **D-9 Visuelle Regression:** Playwright-Screenshots der Kernrouten
+- [x] **D-9 Visuelle Regression:** Playwright-Screenshots der Kernrouten
       (hell+dunkel, 375/768/1440 px) als CI-Check; Lighthouse A11y ≥ 95.
 
 ## Routing-Qualität Elektroplaner
