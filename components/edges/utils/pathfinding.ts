@@ -66,6 +66,8 @@ const EPS = 1e-6;
 const QUANT = 2; // 0.5 px
 const CACHE_LIMIT = 256;
 
+import { readHandleBounds } from './orthogonalRouting';
+
 export const quantize = (n: number): number => Math.round(n * QUANT) / QUANT;
 
 export const manhattan = (a: Point, b: Point): number => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
@@ -1011,7 +1013,9 @@ function assemble(
 function searchOnce(
   input: PathRequest,
   obstacles: Rect[],
-  offset: number
+  offset: number,
+  /** Wie weit sind `obstacles` gegenüber den Rohboxen aufgebläht? */
+  marginUsed: number = OBSTACLE_MARGIN
 ): { waypoints: Point[]; usedSearch: PathResult['usedSearch'] } {
   const freeCatalog = bestFreeCatalog({ ...input, offset }, obstacles);
   if (freeCatalog) {
@@ -1037,18 +1041,34 @@ function searchOnce(
 
   // R-7/R-10: Sitzt ein (aufgeblähtes) Hindernis so nah am Handle, dass es
   // den vollen Stub überdeckt, wird NUR dieses Hindernis für die Suche auf
-  // 2 px Restfreigabe zurückgesetzt (Rohbox + 2 px) — der Stub kürzt nicht,
-  // und die A*-Suche startet nicht in einem blockierten Punkt. Andere
-  // Hindernisse behalten die volle OBSTACLE_MARGIN.
-  const deflated = (r: Rect): Rect => ({
-    x: r.x + OBSTACLE_MARGIN - 2,
-    y: r.y + OBSTACLE_MARGIN - 2,
-    width: Math.max(4, r.width - 2 * (OBSTACLE_MARGIN - 2)),
-    height: Math.max(4, r.height - 2 * (OBSTACLE_MARGIN - 2)),
+  // das 12-px-Clearance-Ziel zurückgesetzt (Rohbox + 12) — der Stub kürzt
+  // nicht, die A*-Suche startet nicht in einem blockierten Punkt, und JEDER
+  // im entzerrten Raum akzeptierte Pfad hält trotzdem mindestens 12 px
+  // Abstand zum echten Node (inkl. Labelfläche, die in der Box liegt).
+  // Früher stand hier eine 2-px-Restfreigabe — Routen durften bis auf
+  // 10 px an einen Node heranrücken (R-10-Verstoß). Der Inset wird aus der
+  // TATSÄCHLICH verwendeten Inflation abgeleitet (der Notfall-Retry läuft
+  // mit 7 px — dort wäre ein fester 14er-Abzug die Box gewachsen).
+  const CLEARANCE_GOAL = 12;
+  const inset = Math.max(0, marginUsed - CLEARANCE_GOAL);
+  const shrink = (r: Rect, by: number): Rect => ({
+    x: r.x + by,
+    y: r.y + by,
+    width: Math.max(2 * CLEARANCE_GOAL, r.width - 2 * by),
+    height: Math.max(2 * CLEARANCE_GOAL, r.height - 2 * by),
   });
-  const searchObstacles = obstacles.map((r) =>
-    containsPoint(r, S2) || containsPoint(r, T2) ? deflated(r) : r
-  );
+  // Stufe 1: Rohbox + 12 px (R-10-Ziel). Stufe 2: Liegt der Stub-Punkt
+  // AUCH dort noch im Block, klebt das Bauteil näher am Handle als die
+  // Stub-Länge plus Ziel-Freigabe — beides (≥ 12 px UND voller Stub) ist
+  // geometrisch unmöglich. Dann weicht die Box auf Rohbox + 2 px aus
+  // („Stub-Recht"), damit A* überhaupt starten kann; die Freigabe gilt im
+  // Umgang mit an Handle geklebten Bauteilen als begründete Ausnahme.
+  const searchObstacles = obstacles.map((r) => {
+    if (!containsPoint(r, S2) && !containsPoint(r, T2)) return r;
+    const floored = shrink(r, inset);
+    if (!containsPoint(floored, S2) && !containsPoint(floored, T2)) return floored;
+    return shrink(r, marginUsed - 2);
+  });
 
   const extraXs = [S2.x, T2.x, (S2.x + T2.x) / 2 + offset, S.x, T.x];
   const extraYs = [S2.y, T2.y, (S2.y + T2.y) / 2 + offset, S.y, T.y];
@@ -1132,7 +1152,7 @@ export function findCablePath(input: PathRequest): PathResult {
     const tight = relevantObstacles(allObstacles, start, end).map((r) =>
       inflateRect(r, Math.max(2, OBSTACLE_MARGIN / 2))
     );
-    const retry = searchOnce(input, tight, baseOffset);
+    const retry = searchOnce(input, tight, baseOffset, Math.max(2, OBSTACLE_MARGIN / 2));
     if (!pathHitsObstacles(retry.waypoints, tight)) {
       best = retry;
     }
@@ -1186,14 +1206,28 @@ export function nodesToObstacles(nodes: Node[], excludeIds: Set<string>): Rect[]
   for (let i = 0; i < nodes.length; i++) {
     const node = nodes[i];
     if (!node || excludeIds.has(node.id)) continue;
-    const width = node.width || NODE_FALLBACK_WIDTH;
-    const height = node.height || NODE_FALLBACK_HEIGHT;
-    rects.push({
-      x: node.positionAbsolute?.x ?? node.position.x,
-      y: node.positionAbsolute?.y ?? node.position.y,
-      width,
-      height,
-    });
+    // R-10: Gemessene Bounds sind die Pflichtquelle (React Flow misst
+    // width/height nach dem Mount); der Fallback bleibt nur für
+    // ungemessene Knoten (Tests, erster Frame) und ist dokumentiert.
+    let x = node.positionAbsolute?.x ?? node.position.x;
+    let y = node.positionAbsolute?.y ?? node.position.y;
+    let width = node.width || NODE_FALLBACK_WIDTH;
+    let height = node.height || NODE_FALLBACK_HEIGHT;
+    // R-10: Handles (inkl. überstehender Anschlusspunkte) gehören zur
+    // belegten Fläche — die Box wächst auf die Handle-Ausdehnung.
+    const bounds = readHandleBounds(node);
+    const groups = bounds ? [...(bounds.source ?? []), ...(bounds.target ?? [])] : [];
+    for (const hb of groups) {
+      const hx = x + hb.x;
+      const hy = y + hb.y;
+      const x2 = Math.max(x + width, hx + hb.width);
+      const y2 = Math.max(y + height, hy + hb.height);
+      x = Math.min(x, hx);
+      y = Math.min(y, hy);
+      width = x2 - x;
+      height = y2 - y;
+    }
+    rects.push({ x, y, width, height });
   }
   return rects;
 }

@@ -24,8 +24,9 @@ export const AUTO_WIRE_GRID = 16;
 /** Spaltenabstand in Flussrichtung (192 px Node + 96 px Korridor). */
 export const FLOW_COLUMN_SPACING = 288;
 
-/** Zeilenabstand innerhalb einer Schicht (120 px Node + 40 px Freiraum). */
-export const FLOW_ROW_SPACING = 160;
+/** Zeilenabstand innerhalb einer Schicht (120 px Node + 72 px Korridor —
+ *  zwei Kabel mit je 12 px Freigabe haben darin Platz, siehe R-10). */
+export const FLOW_ROW_SPACING = 192;
 
 export const snapToGrid = (value: number): number => Math.round(value / AUTO_WIRE_GRID) * AUTO_WIRE_GRID;
 

@@ -15,6 +15,20 @@ import { Position, type Node } from 'reactflow';
 export type Point = { x: number; y: number };
 export type Rect = { x: number; y: number; width: number; height: number };
 
+/** Gemessene Handle-Box (React Flow intern, nicht Teil des öffentlichen Node-Typs). */
+export type HandleBox = {
+  id: string | null;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  position: unknown;
+};
+
+/** Liest node.handleBounds, ohne den (versionsabhängigen) Node-Typ zu sprengen. */
+export const readHandleBounds = (node: Node): { source?: HandleBox[]; target?: HandleBox[] } | undefined =>
+  (node as unknown as { handleBounds?: { source?: HandleBox[]; target?: HandleBox[] } }).handleBounds;
+
 export const ROUTE_BORDER_RADIUS = 10;
 export const ROUTE_MIN_STUB = 24;
 export const OBSTACLE_MARGIN = 14;
@@ -552,15 +566,33 @@ export function nodesToObstacles(nodes: Node[], excludeIds: Set<string>): Rect[]
   const rects: Rect[] = [];
   for (const node of nodes) {
     if (!node || excludeIds.has(node.id)) continue;
-    const width = node.width || NODE_FALLBACK_WIDTH;
-    const height = node.height || NODE_FALLBACK_HEIGHT;
+    // R-10: Gemessene Bounds sind die Pflichtquelle; der Fallback bleibt
+    // nur für ungemessene Knoten (Tests, erster Frame) erhalten.
+    let x = node.positionAbsolute?.x ?? node.position.x;
+    let y = node.positionAbsolute?.y ?? node.position.y;
+    // positionAbsolute statt position: React Flow liefert für Kindknoten
+    // einer Gruppe (parentId) die Position relativ zum Parent; geroutet
+    // wird im Canvas-Koordinatensystem. Aktuell vergibt die App keine
+    // parentId — der Fix ist defensiv für zukünftige Gruppen.
+    let width = node.width || NODE_FALLBACK_WIDTH;
+    let height = node.height || NODE_FALLBACK_HEIGHT;
+    // R-10: Handles (inkl. überstehender Anschlusspunkte) gehören zur
+    // belegten Fläche — die Box wächst auf die Handle-Ausdehnung.
+    const bounds = readHandleBounds(node);
+    const groups = bounds ? [...(bounds.source ?? []), ...(bounds.target ?? [])] : [];
+    for (const hb of groups) {
+      const hx = x + hb.x;
+      const hy = y + hb.y;
+      const x2 = Math.max(x + width, hx + hb.width);
+      const y2 = Math.max(y + height, hy + hb.height);
+      x = Math.min(x, hx);
+      y = Math.min(y, hy);
+      width = x2 - x;
+      height = y2 - y;
+    }
     rects.push({
-      // positionAbsolute statt position: React Flow liefert für Kindknoten
-      // einer Gruppe (parentId) die Position relativ zum Parent; geroutet
-      // wird im Canvas-Koordinatensystem. Aktuell vergibt die App keine
-      // parentId — der Fix ist defensiv für zukünftige Gruppen.
-      x: node.positionAbsolute?.x ?? node.position.x,
-      y: node.positionAbsolute?.y ?? node.position.y,
+      x,
+      y,
       width,
       height,
     });

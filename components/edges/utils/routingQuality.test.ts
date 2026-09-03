@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { Node } from 'reactflow';
 import {
   buildRoutingQualityReport,
   countUTurns,
@@ -7,6 +8,9 @@ import {
   type RoutingQualityReport,
 } from './routingQuality';
 import { ROUTING_SCENARIOS } from './routingScenarios';
+import { performAutoWiring } from '../../../lib/autoWire';
+import { routeAllCables } from './routeAll';
+import { segmentCrossesRect } from './orthogonalRouting';
 
 /**
  * R-1 (Routing-Qualität): das Mess-Dashboard.
@@ -113,5 +117,68 @@ describe('routingQuality (R-1 Dashboard)', () => {
   it('Tabelle ist stabil formatiert (PR-Nachweis)', () => {
     const table = formatQualityTable(report);
     expect(table.split('\n')).toHaveLength(report.rows.length + 1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// R-10: Hindernis-Präzision — keine Kante schneidet einen Node (inkl. Label-
+// fläche, die innerhalb der Node-Box liegt) mit Clearance ≥ 12 px.
+// ---------------------------------------------------------------------------
+
+describe('Node-Schnitt-Freiheit (R-10)', () => {
+  it('Auto-Wire-Referenzplan: jede Route hält 12 px Abstand zu fremden Nodes', () => {
+    const makeNode = (
+      id: string,
+      type: string,
+      position = { x: 0, y: 0 },
+      data: Record<string, unknown> = {}
+    ): Node => ({ id, type, position, width: 192, height: 120, data }) as unknown as Node;
+    const nodes = [
+      makeNode('bat-1', 'battery', { x: 0, y: 0 }, { capacity: 100, chemistry: 'LiFePO4' }),
+      makeNode('solar-1', 'solar', { x: 0, y: -400 }, { watts: 200 }),
+      makeNode('load-1', 'consumer', { x: 1200, y: 200 }, { watts: 60 }),
+      makeNode('load-2', 'consumer', { x: 1200, y: 480 }, { watts: 120 }),
+    ];
+    const wired = performAutoWiring(nodes, []);
+    expect(wired).not.toBeNull();
+    const routes = routeAllCables(
+      wired!.nodes,
+      wired!.edges.map((e) => ({
+        id: e.id,
+        source: e.source,
+        target: e.target,
+        sourceHandle: e.sourceHandle,
+      }))
+    );
+    const rectOf = (id: string) => {
+      const node = wired!.nodes.find((n) => n.id === id)!;
+      return { x: node.position.x, y: node.position.y, width: 192, height: 120 };
+    };
+    for (const edge of wired!.edges) {
+      const route = routes.get(edge.id);
+      if (!route) continue;
+      for (const other of wired!.nodes) {
+        if (other.id === edge.source || other.id === edge.target) continue;
+        const rect = rectOf(other.id);
+        for (let i = 0; i + 1 < route.waypoints.length; i++) {
+          const a = route.waypoints[i]!;
+          const b = route.waypoints[i + 1]!;
+          expect(segmentCrossesRect(a, b, rect), `${edge.id}: Segment ${i} schneidet Node ${other.id}`).toBe(
+            false
+          );
+          // Clearance ≥ 12 px: aufgeblähte Box darf ebenfalls nicht geschnitten werden.
+          const clearRect = {
+            x: rect.x - MIN_ROUTE_CLEARANCE,
+            y: rect.y - MIN_ROUTE_CLEARANCE,
+            width: rect.width + 2 * MIN_ROUTE_CLEARANCE,
+            height: rect.height + 2 * MIN_ROUTE_CLEARANCE,
+          };
+          expect(
+            segmentCrossesRect(a, b, clearRect),
+            `${edge.id}: Segment ${i} verletzt 12-px-Clearance an Node ${other.id}`
+          ).toBe(false);
+        }
+      }
+    }
   });
 });

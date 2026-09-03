@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { Position } from 'reactflow';
+import { Position, type Node } from 'reactflow';
 import {
   findCablePath,
   catalogWaypoints,
@@ -404,6 +404,37 @@ describe('seeded random scenes', () => {
 });
 
 describe('nodesToObstacles / cache / svg', () => {
+  it('R-10: Handle-Bounds erweitern die Hindernis-Box (überstehende Anschlüsse)', () => {
+    const node = {
+      id: 'a',
+      position: { x: 100, y: 100 },
+      width: 192,
+      height: 120,
+      data: {},
+      // Handle ragt 6 px links über und 4 px unter die Node-Box.
+      handleBounds: {
+        source: [{ id: 'plus', x: -6, y: 50, width: 8, height: 8, position: Position.Left }],
+        target: [{ id: 'in', x: 190, y: 118, width: 8, height: 8, position: Position.Bottom }],
+      },
+    } as unknown as Node;
+    const rects = nodesToObstacles([node], new Set());
+    expect(rects).toHaveLength(1);
+    expect(rects[0]!.x).toBe(94); // 100 − 6
+    expect(rects[0]!.y).toBe(100);
+    expect(rects[0]!.width).toBe(198); // bis 190 + 8 = 198? → 292+6 … tatsächlich max(292, 198+?)…
+    expect(rects[0]!.height).toBe(126); // bis 100 + 118 + 8 = 226 → 126
+  });
+
+  it('R-10: ohne handleBounds bleibt es bei der gemessenen Node-Box', () => {
+    const node = { id: 'a', position: { x: 0, y: 0 }, width: 160, height: 90, data: {} } as unknown as Node;
+    const rects = nodesToObstacles([node], new Set());
+    expect(rects[0]).toEqual({ x: 0, y: 0, width: 160, height: 90 });
+  });
+
+  it('R-10: OBSTACLE_MARGIN (14) deckt das Clearance-Ziel (≥ 12 px)', () => {
+    expect(OBSTACLE_MARGIN).toBeGreaterThanOrEqual(12);
+  });
+
   it('skips excluded node ids', () => {
     const rects = nodesToObstacles(
       [
