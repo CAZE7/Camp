@@ -496,8 +496,8 @@ export function FlowCanvas() {
   // Maske, Hintergrund und alle Domänenfarben in einem Memo.
   const minimapColors = useMemo(
     () => ({
-      mask: cssToken('--canvas-minimap-mask', 'rgba(20, 17, 14, 0.14)'),
-      background: cssToken('--bone', '#fffdf9'),
+      mask: cssToken('--canvas-minimap-mask', 'var(--canvas-minimap-mask)'),
+      background: cssToken('--bone', 'var(--bone)'),
       palette: resolveMinimapPalette(),
     }),
     []
@@ -688,7 +688,7 @@ export function FlowCanvas() {
                       aria-pressed={active}
                       onClick={() => toggleDomain(domain)}
                       className={`rounded-md px-2.5 py-1 text-xs font-semibold transition-colors ${
-                        active ? 'text-white' : 'text-muted-foreground opacity-60 hover:opacity-100'
+                        active ? 'text-on-signal' : 'text-muted-foreground opacity-60 hover:opacity-100'
                       }`}
                       style={active ? { backgroundColor: DOMAIN_COLORS[domain] } : undefined}
                     >

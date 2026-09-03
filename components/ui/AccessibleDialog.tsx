@@ -92,7 +92,7 @@ export function AccessibleDialog({
     // ist Escape (onKeyDown) plus Focus-Trap — das Dialog-Pattern (WAI-APG).
     // Das a11y-Gate darüber liegt bei axe (tests/e2e/a11y.spec.ts).
     <div
-      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 p-4"
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-scrim p-4"
       onMouseDown={(event) => {
         if (closeOnBackdrop && event.target === event.currentTarget) onClose();
       }}

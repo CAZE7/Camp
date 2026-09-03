@@ -55,7 +55,7 @@ export function Sidebar({ mode = 'electric', onMobileAdd }: SidebarProps) {
       aria-label={mode === 'water' ? 'Wasser-Komponenten' : 'Elektrik-Komponenten'}
     >
       <div className="border-b border-border bg-accent p-4">
-        <h2 className="text-base font-black text-foreground">Komponenten</h2>
+        <h2 className="panel-title">Komponenten</h2>
         <p className="mt-1 text-xs text-muted-foreground">
           Antippen oder per Tastatur hinzufügen; am Desktop auch ziehen.
         </p>

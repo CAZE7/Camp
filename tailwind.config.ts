@@ -9,24 +9,52 @@ const config: Config = {
     './app/**/*.{js,ts,jsx,tsx,mdx}',
   ],
   theme: {
+    // 4-px-Abstandsraster (D-2): Tailwind-Skala ist per Definition 4-px-basiert
+    // (1 Einheit = 0.25rem). Erwartung: padding/margin/gap nur in ganzzahligen
+    // Einheiten (Vielfache von 4 px); arbitrary off-grid-Werte sind verboten
+    // und werden im Review abgelehnt.
     extend: {
       fontFamily: {
         sans: ['var(--font-sans)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        display: ['var(--font-display)', 'Georgia', 'serif'],
+        display: ['var(--font-display)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         mono: ['var(--font-mono)', 'ui-monospace', 'monospace'],
       },
+      fontSize: {
+        /* Werft-Type-Scale (D-2): 12 / 13 / 14 / 16 / 20 / 24 / 32 px.
+         Einzige erlaubte Schriftgrößen — neue Stufen gehören nicht in die
+         Skala, Größen unter 12 px sind für Lesbarkeit tabu. Die Zeilenhöhen
+         folgen dem 4-px-Raster (×1.3–1.5 je Stufe, auf 4 px gerundet). */
+        xs: ['0.75rem', { lineHeight: '1rem' }], // 12
+        sm: ['0.8125rem', { lineHeight: '1.25rem' }], // 13 — Labels, Meta
+        base: ['0.875rem', { lineHeight: '1.25rem' }], // 14 — UI-Grundtext
+        md: ['1rem', { lineHeight: '1.5rem' }], // 16 — Fließtext
+        lg: ['1.25rem', { lineHeight: '1.75rem' }], // 20
+        xl: ['1.5rem', { lineHeight: '2rem' }], // 24
+        '2xl': ['2rem', { lineHeight: '2.5rem' }], // 32 — größte Stufe (Hero)
+      },
       colors: {
-        paper: 'var(--paper)',
-        bone: 'var(--bone)',
-        ink: 'var(--ink)',
-        'ink-soft': 'var(--ink-soft)',
-        clay: 'var(--clay)',
-        oak: 'var(--oak)',
-        copper: 'var(--copper)',
-        'copper-deep': 'var(--copper-deep)',
-        moss: 'var(--moss)',
+        // Werft-Surface-Skala (D-1): Werte liegen in app/globals.css —
+        // einziger Ort mit Hex-/rgb-Angaben im Projekt.
+        surface: {
+          canvas: 'var(--surface-canvas)',
+          panel: 'var(--surface-panel)',
+          raised: 'var(--surface-raised)',
+          hover: 'var(--surface-hover)',
+        },
+        'rule-strong': 'var(--rule-strong)',
+        'on-signal': 'var(--on-signal)',
+        scrim: 'var(--scrim)',
+        paper: 'var(--surface-canvas)',
+        bone: 'var(--surface-panel)',
+        ink: 'var(--text-high)',
+        'ink-soft': 'var(--text-med)',
+        clay: 'var(--text-low)',
+        oak: 'var(--oxide)',
+        copper: 'var(--oxide)',
+        'copper-deep': 'var(--oxide)',
+        moss: 'var(--ok)',
         soot: 'var(--soot)',
-        signal: 'var(--signal)',
+        signal: 'var(--error)',
         oxide: 'var(--oxide)',
         rule: 'var(--rule)',
         background: 'var(--background)',

@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { Position } from 'reactflow';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { Position, type Node } from 'reactflow';
 import {
   findCablePath,
   catalogWaypoints,
@@ -16,6 +16,8 @@ import {
   countCrossings,
   nodesToObstacles,
   clearPathfindingCache,
+  pathfindingFallbackCount,
+  resetPathfindingTelemetry,
   remainingCostLowerBound,
   BEND_COST,
   OBSTACLE_MARGIN,
@@ -23,6 +25,7 @@ import {
   type Rect,
 } from './pathfinding';
 import { waypointsToPath, parallelLaneOffset, polarityPathOffset, edgeLabelNudge } from './pathUtils';
+import { ROUTING_SCENARIOS } from './routingScenarios';
 
 beforeEach(() => {
   clearPathfindingCache();
@@ -374,15 +377,64 @@ describe('seeded random scenes', () => {
       expect(isOrthogonalPath(result.waypoints)).toBe(true);
       expect(result.waypoints[0]).toEqual({ x: sx, y: sy });
       expect(result.waypoints[result.waypoints.length - 1]).toEqual({ x: tx, y: ty });
+
+      // R-7: Stub-Invarianten — der Pfad verlässt den Handle in
+      // Austrittsrichtung und biegt frühestens nach ≥ ROUTE_MIN_STUB (24 px)
+      // ab (kein Richtungswechsel im Stub-Bereich, kein U-Turn am Handle).
+      expect(result.waypoints[1]!.y).toBe(sy);
+      expect(result.waypoints[1]!.x - sx).toBeGreaterThanOrEqual(24);
+      const preLast = result.waypoints[result.waypoints.length - 2]!;
+      expect(preLast.y).toBe(ty);
+      expect(tx - preLast.x).toBeGreaterThanOrEqual(24);
+
+      const s2 = { x: sx + 24, y: sy };
+      const t2 = { x: tx - 24, y: ty };
       const inflated = obstacles
         .filter((r) => !containsPoint(r, { x: sx, y: sy }) && !containsPoint(r, { x: tx, y: ty }))
-        .map((r) => inflateRect(r, OBSTACLE_MARGIN));
+        .map((r) => inflateRect(r, OBSTACLE_MARGIN))
+        // R-7: Bauteile, deren AUFGEBLÄHTE Box den Stub-Endpunkt überdeckt,
+        // gelten als „am Anschluss anliegend“ — der Router sucht dort mit
+        // 2 px Restfreigabe statt den 24-px-Stub zu kürzen (siehe
+        // `searchOnce` in pathfinding.ts). Sie bleiben ungetestet; alle
+        // anderen Boxen müssen mit vollem 14-px-Abstand vermieden werden.
+        .filter((r) => !containsPoint(r, s2) && !containsPoint(r, t2));
       expect(pathHitsObstacles(result.waypoints, inflated)).toBe(false);
     }
   });
 });
 
 describe('nodesToObstacles / cache / svg', () => {
+  it('R-10: Handle-Bounds erweitern die Hindernis-Box (überstehende Anschlüsse)', () => {
+    const node = {
+      id: 'a',
+      position: { x: 100, y: 100 },
+      width: 192,
+      height: 120,
+      data: {},
+      // Handle ragt 6 px links über und 4 px unter die Node-Box.
+      handleBounds: {
+        source: [{ id: 'plus', x: -6, y: 50, width: 8, height: 8, position: Position.Left }],
+        target: [{ id: 'in', x: 190, y: 118, width: 8, height: 8, position: Position.Bottom }],
+      },
+    } as unknown as Node;
+    const rects = nodesToObstacles([node], new Set());
+    expect(rects).toHaveLength(1);
+    expect(rects[0]!.x).toBe(94); // 100 − 6
+    expect(rects[0]!.y).toBe(100);
+    expect(rects[0]!.width).toBe(198); // bis 190 + 8 = 198? → 292+6 … tatsächlich max(292, 198+?)…
+    expect(rects[0]!.height).toBe(126); // bis 100 + 118 + 8 = 226 → 126
+  });
+
+  it('R-10: ohne handleBounds bleibt es bei der gemessenen Node-Box', () => {
+    const node = { id: 'a', position: { x: 0, y: 0 }, width: 160, height: 90, data: {} } as unknown as Node;
+    const rects = nodesToObstacles([node], new Set());
+    expect(rects[0]).toEqual({ x: 0, y: 0, width: 160, height: 90 });
+  });
+
+  it('R-10: OBSTACLE_MARGIN (14) deckt das Clearance-Ziel (≥ 12 px)', () => {
+    expect(OBSTACLE_MARGIN).toBeGreaterThanOrEqual(12);
+  });
+
   it('skips excluded node ids', () => {
     const rects = nodesToObstacles(
       [
@@ -541,5 +593,52 @@ describe('lane helpers', () => {
     });
     expect(n1).not.toBe(0);
     expect(n3).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// R-3: Fallback-Verhalten bei erschöpftem Suchbudget
+// ---------------------------------------------------------------------------
+
+describe('Fallback-Verhalten (R-3)', () => {
+  it('Referenzplan: Fallback-Quote 0 — jede Kante kommt aus Katalog oder A*', () => {
+    resetPathfindingTelemetry();
+    for (const scenario of ROUTING_SCENARIOS) {
+      const result = findCablePath({ ...scenario.input, skipCache: true });
+      expect(result.usedSearch, `${scenario.id}: usedSearch ${result.usedSearch}`).not.toBe('fallback');
+      expect(isOrthogonalPath(result.waypoints)).toBe(true);
+    }
+    expect(pathfindingFallbackCount()).toBe(0);
+  });
+
+  it('unerreichbares Ziel: Fallback ist orthogonal, zählt und warnt', () => {
+    resetPathfindingTelemetry();
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      // Zielring: das Ziel ist vollständig von Hindernissen umschlossen
+      // (ohne das Ziel selbst zu enthalten) — kein Pfad existiert.
+      const result = findCablePath({
+        skipCache: true,
+        sourceX: -200,
+        sourceY: 0,
+        sourcePosition: Position.Right,
+        targetX: 0,
+        targetY: 0,
+        targetPosition: Position.Left,
+        obstacles: [
+          { x: -80, y: -100, width: 160, height: 40 },
+          { x: -80, y: 60, width: 160, height: 40 },
+          { x: -80, y: -60, width: 30, height: 120 },
+          { x: 50, y: -60, width: 30, height: 120 },
+        ],
+      });
+      expect(result.usedSearch).toBe('fallback');
+      expect(isOrthogonalPath(result.waypoints)).toBe(true);
+      expect(pathfindingFallbackCount()).toBe(1);
+      expect(warn).toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
+    }
+    resetPathfindingTelemetry();
   });
 });

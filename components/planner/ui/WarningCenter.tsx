@@ -15,19 +15,19 @@ const TYPE_STYLES: Record<
   { badge: string; card: string; icon: React.ReactNode; label: string }
 > = {
   critical: {
-    badge: 'bg-warn-critical text-white',
+    badge: 'bg-warn-critical text-on-signal',
     card: 'bg-warn-critical-bg border-warn-critical',
     icon: <AlertTriangle className="h-5 w-5 shrink-0 text-warn-critical" />,
     label: 'Kritisch',
   },
   warning: {
-    badge: 'bg-warn-warning text-white',
+    badge: 'bg-warn-warning text-on-signal',
     card: 'bg-warn-warning-bg border-warn-warning',
     icon: <AlertCircle className="h-5 w-5 shrink-0 text-warn-warning" />,
     label: 'Warnung',
   },
   info: {
-    badge: 'bg-warn-info text-white',
+    badge: 'bg-warn-info text-on-signal',
     card: 'bg-warn-info-bg border-warn-info',
     icon: <Info className="h-5 w-5 shrink-0 text-warn-info" />,
     label: 'Hinweis',

@@ -47,15 +47,15 @@ describe('InverterNode Component', () => {
   it('applies selected styling when selected is true and not overloaded', () => {
     const { container } = render(<InverterNode id="1" data={{ continuousPower: 1500 }} selected={true} />);
     const mainDiv = container.firstChild as HTMLElement;
-    expect(mainDiv.className).toContain('ring-4');
-    expect(mainDiv.className).toContain('ring-blue-500');
+    expect(mainDiv.getAttribute('data-selected')).toBe('true');
+    expect(mainDiv.className).toContain('node-card--selected');
   });
 
   it('does not apply selected styling when selected is false', () => {
     const { container } = render(<InverterNode id="1" data={{ continuousPower: 1500 }} selected={false} />);
     const mainDiv = container.firstChild as HTMLElement;
-    expect(mainDiv.className).not.toContain('ring-4');
-    expect(mainDiv.className).not.toContain('ring-blue-500');
+    expect(mainDiv.getAttribute('data-selected')).toBeNull();
+    expect(mainDiv.className).not.toContain('ring-[color:var(--accent-line)]');
   });
 
   it('does not show overload warning when under continuous power limit', () => {
@@ -76,8 +76,8 @@ describe('InverterNode Component', () => {
     expect(screen.getByText(/Überlastung!/)).toBeInTheDocument();
 
     const mainDiv = container.firstChild as HTMLElement;
-    expect(mainDiv.className).toContain('border-red-500');
-    expect(mainDiv.className).toContain('bg-red-50');
+    expect(mainDiv.className).toContain('node-card--error');
+    expect(mainDiv.className).toContain('bg-warn-critical-bg');
   });
 
   it('applies selected styling and overload styling together correctly', () => {
@@ -89,11 +89,11 @@ describe('InverterNode Component', () => {
     );
 
     const mainDiv = container.firstChild as HTMLElement;
-    expect(mainDiv.className).toContain('border-red-500');
-    expect(mainDiv.className).toContain('bg-red-50');
-    expect(mainDiv.className).toContain('ring-4');
-    expect(mainDiv.className).toContain('ring-red-500');
-    expect(mainDiv.className).not.toContain('ring-blue-500');
+    expect(mainDiv.className).toContain('node-card--error');
+    expect(mainDiv.className).toContain('bg-warn-critical-bg');
+    expect(mainDiv.getAttribute('data-selected')).toBe('true');
+    expect(mainDiv.className).toContain('node-card--error');
+    expect(mainDiv.className).not.toContain('ring-[color:var(--accent-line)]');
   });
 
   it('renders Handle components with correct props', () => {

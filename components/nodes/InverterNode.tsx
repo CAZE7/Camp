@@ -34,14 +34,15 @@ const InverterNode = function ({ id, data, isConnectable, selected }: PlannerNod
   return (
     <div
       role="group"
+      data-selected={selected || undefined}
       aria-label={`${data.label || 'Wechselrichter'}. Komponente im Plan.`}
-      className={`custom-drag-handle w-48 rounded-md border-2 bg-white p-3 shadow-md transition-all hover:scale-105 ${overloadStats.isOverloaded ? 'border-red-500 bg-red-50' : 'border-teal-700'} ${selected ? (overloadStats.isOverloaded ? 'shadow-xl ring-4 ring-red-500' : 'shadow-xl ring-4 ring-blue-500') : ''}`}
+      className={`node-card custom-drag-handle w-48 p-3 ${overloadStats.isOverloaded ? 'node-card--error bg-warn-critical-bg' : ''} ${selected ? 'node-card--selected' : ''}`}
     >
       <NodeSymbol kind="inverter" />
       {editingField === 'label' ? (
         <input
           autoFocus
-          className="mb-2 min-h-11 w-full rounded border border-blue-500 px-1 text-center text-sm font-bold"
+          className="mb-2 min-h-11 w-full rounded border border-border px-1 text-center text-sm font-bold"
           value={tempValue}
           onChange={(e) => setTempValue(e.target.value)}
           onBlur={handleBlur}
@@ -55,15 +56,15 @@ const InverterNode = function ({ id, data, isConnectable, selected }: PlannerNod
           {data.label || 'Wechselrichter'}
         </div>
       )}
-      <div className="flex flex-col gap-1 text-xs text-gray-600">
+      <div className="measure flex flex-col gap-1 text-xs text-muted-foreground">
         <div>12 V Eingang / 230 V Ausgang</div>
-        <div className="text-xs text-gray-600">230-V-Eingang oben</div>
+        <div className="measure text-xs text-muted-foreground">230-V-Eingang oben</div>
         <div>Effizienz: 85%</div>
         {overloadStats.continuousPower > 0 && <div>Leistung: {overloadStats.continuousPower} W</div>}
       </div>
 
       {overloadStats.isOverloaded && (
-        <div className="mt-2 rounded bg-red-700 p-1 text-center text-xs font-bold leading-tight text-white">
+        <div className="mt-2 rounded bg-destructive p-1 text-center text-xs font-bold leading-tight text-on-signal">
           Überlastung! Wechselrichter zu schwach für angeschlossene AC-Geräte.
         </div>
       )}
@@ -116,7 +117,7 @@ const InverterNode = function ({ id, data, isConnectable, selected }: PlannerNod
             width: '8px',
             height: '8px',
             borderRadius: '50%',
-            background: 'red',
+            background: 'var(--wire-dc)',
             pointerEvents: 'none',
           }}
         />
@@ -143,7 +144,7 @@ const InverterNode = function ({ id, data, isConnectable, selected }: PlannerNod
             width: '8px',
             height: '8px',
             borderRadius: '50%',
-            background: 'black',
+            background: 'var(--wire-dc-minus)',
             pointerEvents: 'none',
           }}
         />
@@ -170,7 +171,7 @@ const InverterNode = function ({ id, data, isConnectable, selected }: PlannerNod
             width: '8px',
             height: '8px',
             borderRadius: '50%',
-            background: 'red',
+            background: 'var(--wire-dc)',
             pointerEvents: 'none',
           }}
         />

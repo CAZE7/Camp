@@ -346,7 +346,7 @@ export default function AusbauFahrplanPage() {
         </aside>
 
         <main id="main" className="flex-1 px-5 py-8 md:px-10 md:py-10">
-          <h1 className="font-display text-2xl font-semibold tracking-tight md:text-3xl">Ausbau-Fahrplan</h1>
+          <h1 className="font-display text-2xl font-semibold tracking-tight md:text-2xl">Ausbau-Fahrplan</h1>
           <p className="mt-2 max-w-2xl text-sm text-ink-soft">
             Planung, Rostschutz, Fenster, Dämmung, Kabel, Boden, Wände, Möbel, Küche.
           </p>

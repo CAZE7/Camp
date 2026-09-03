@@ -11,6 +11,8 @@ import { FlowCanvas } from './planner/FlowCanvas';
 import { ErrorBoundary } from './ErrorBoundary';
 import { ExpertPanel } from './planner/ExpertPanel';
 import { OnboardingWizard } from './planner/OnboardingWizard';
+import { ShortcutOverlay } from './planner/ui/ShortcutOverlay';
+import { CanvasSkeleton } from './ui/Skeleton';
 import { Settings2, Zap, Droplets, Flame, Plus, X, Undo2, Redo2 } from 'lucide-react';
 import { useAppStore } from '../lib/store';
 import { usePlannerStore } from '../store/usePlannerStore';
@@ -131,6 +133,7 @@ export default function PlannerInner() {
         className={`planner-shell relative flex h-dvh min-h-0 w-full shrink-0 flex-col overflow-hidden bg-background font-sans md:flex-row ${isDarkPlanner ? 'dark' : ''}`.trimEnd()}
       >
         {!hasOnboarded && <OnboardingWizard />}
+        <ShortcutOverlay />
 
         {/* Kein `w-auto`: die exakte Spaltenbreite (260 px Tablet / 280 px Desktop)
           setzt das einklappbare Panel selbst, damit „eingeklappt“ auch wirklich
@@ -147,17 +150,7 @@ export default function PlannerInner() {
         >
           <PlannerDashboard />
           <div className="relative flex h-full flex-1 flex-col overflow-hidden">
-            <React.Suspense
-              fallback={
-                <div
-                  className="flex flex-1 items-center justify-center bg-background"
-                  role="status"
-                  aria-label="Planer wird geladen"
-                >
-                  <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-primary motion-reduce:animate-none" />
-                </div>
-              }
-            >
+            <React.Suspense fallback={<CanvasSkeleton />}>
               {/* Fehlergrenze: Ein Werfen in einer Node-/Routing-Komponente
                   reißt nicht mehr die ganze Planer-Seite. Der Plan liegt im
                   Store/localStorage und bleibt über Katalog und Export
@@ -166,8 +159,9 @@ export default function PlannerInner() {
                 fallback={
                   <div
                     role="alert"
-                    className="flex flex-1 flex-col items-center justify-center gap-3 bg-background p-6 text-center"
+                    className="flex flex-1 flex-col items-center justify-center gap-4 bg-background p-6 text-center"
                   >
+                    <p className="panel-title">Fehler</p>
                     <p className="text-sm font-semibold text-foreground">
                       Die Planansicht konnte nicht dargestellt werden.
                     </p>
@@ -178,7 +172,7 @@ export default function PlannerInner() {
                     <button
                       type="button"
                       onClick={() => window.location.reload()}
-                      className="rounded-md border border-border bg-card px-4 py-2 text-sm text-foreground shadow-sm hover:bg-accent"
+                      className="min-h-11 border border-rule-strong bg-surface-panel px-4 py-2 text-sm text-foreground hover:bg-surface-hover"
                     >
                       Seite neu laden
                     </button>

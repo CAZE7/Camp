@@ -16,7 +16,7 @@ export default function NotFound() {
       <SiteHeader />
       <main id="main" className="mx-auto w-full max-w-2xl flex-1 px-5 py-16">
         <p className="label-eyebrow text-copper">Fehler 404</p>
-        <h1 className="mt-3 font-display text-3xl font-semibold tracking-tight md:text-4xl">
+        <h1 className="mt-3 font-display text-2xl font-semibold tracking-tight md:text-2xl">
           Diese Seite gibt es (noch) nicht.
         </h1>
         <p className="mt-3 text-base text-ink-soft">

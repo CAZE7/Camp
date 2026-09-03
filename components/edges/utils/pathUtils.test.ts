@@ -17,7 +17,9 @@ import {
   boxesOverlap,
   parallelLaneOffset,
   cableLaneType,
+  laneOffset,
 } from './pathUtils';
+import { ALTERNATIVE_ROUTE_GAP } from './pathfinding';
 import { Position } from 'reactflow';
 import * as reactflow from 'reactflow';
 
@@ -282,5 +284,30 @@ describe('M8-3 / M10-1 Label-Boxen', () => {
         expect(boxesOverlap(boxes[i]!, boxes[j]!)).toBe(false);
       }
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// R-5: Ein Lane-System — alle Quer-Versätze sind Vielfache der Lane
+// ---------------------------------------------------------------------------
+
+describe('Lane-System (R-5)', () => {
+  it('laneOffset bildet das eine Raster ab', () => {
+    expect(laneOffset(1)).toBe(PARALLEL_LANE_SPREAD);
+    expect(laneOffset(0)).toBe(0);
+    expect(laneOffset(-2)).toBe(-2 * PARALLEL_LANE_SPREAD);
+    expect(laneOffset(1.5)).toBe(24);
+  });
+
+  it('Polaritäts- und Bündel-Lanes nutzen dieselbe Logik', () => {
+    expect(PLUS_PATH_OFFSET).toBe(laneOffset(1.5));
+    expect(MINUS_PATH_OFFSET).toBe(laneOffset(2.5));
+    // Minus liegt genau eine ganze Lane unter Plus — keine 14-px-Dissonanz mehr.
+    expect(MINUS_PATH_OFFSET - PLUS_PATH_OFFSET).toBe(PARALLEL_LANE_SPREAD);
+  });
+
+  it('Ausweich-Trassen der Router liegen auf ganzzahligen Lanes', () => {
+    expect(ALTERNATIVE_ROUTE_GAP).toBe(laneOffset(3));
+    expect(ALTERNATIVE_ROUTE_GAP * 2).toBe(laneOffset(6));
   });
 });

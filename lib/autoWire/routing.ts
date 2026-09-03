@@ -19,6 +19,8 @@ export function buildDictionaries(currentNodes: Node[]) {
   return { nodesByType, nodesByLabel };
 }
 
+import { relativeGridPosition } from './placement';
+
 export function ensureNode(
   currentNodes: Node[],
   nodesByType: Record<string, Node[]>,
@@ -42,12 +44,9 @@ export function ensureNode(
     node = {
       id: crypto.randomUUID(),
       type,
-      position: {
-        // Issue 11: importierte Knoten können ohne Position eintreffen;
-        // Auto-Wire härtet gegen 0 statt mit TypeError abzubrechen.
-        x: (batteryNode.position?.x ?? 0) + offsetX,
-        y: (batteryNode.position?.y ?? 0) + offsetY,
-      },
+      // R-8 (M11-2): Platzierung in Flussrichtung auf dem 16-px-Raster —
+      // Issue 11 (Härtung gegen fehlende Position) bleibt erhalten.
+      position: relativeGridPosition(batteryNode, offsetX, offsetY),
       data: { label, ...extraData },
     };
     currentNodes.push(node);

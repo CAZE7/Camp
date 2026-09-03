@@ -34,7 +34,7 @@ export default function CamperAusbauguide() {
           <div className="border border-rule bg-bone p-8 shadow-sm md:p-12">
             <h1
               className={cn(
-                'mb-6 text-3xl font-semibold leading-tight text-ink md:text-5xl',
+                'mb-6 text-2xl font-semibold leading-tight text-ink md:text-2xl',
                 outfit.className
               )}
             >
@@ -58,7 +58,7 @@ export default function CamperAusbauguide() {
             </div>
 
             <div className="space-y-6 text-base leading-relaxed text-ink-soft md:text-lg">
-              <h2 className={cn('mb-4 mt-10 text-2xl font-semibold text-ink md:text-3xl', outfit.className)}>
+              <h2 className={cn('mb-4 mt-10 text-2xl font-semibold text-ink md:text-2xl', outfit.className)}>
                 Die Reise beginnt: Dein Traum vom Vanlife
               </h2>
               <p>
@@ -82,7 +82,7 @@ export default function CamperAusbauguide() {
 
               <hr className="my-12 border-rule" />
 
-              <h2 className={cn('mb-4 mt-12 text-2xl font-semibold text-ink md:text-3xl', outfit.className)}>
+              <h2 className={cn('mb-4 mt-12 text-2xl font-semibold text-ink md:text-2xl', outfit.className)}>
                 1. Gesamtstrategie und Bauphasen
               </h2>
               <p>
@@ -153,7 +153,7 @@ export default function CamperAusbauguide() {
 
               <hr className="my-12 border-rule" />
 
-              <h2 className={cn('mb-4 mt-12 text-2xl font-semibold text-ink md:text-3xl', outfit.className)}>
+              <h2 className={cn('mb-4 mt-12 text-2xl font-semibold text-ink md:text-2xl', outfit.className)}>
                 2. Planung, Basis & Vorbereitung
               </h2>
 
@@ -289,7 +289,7 @@ export default function CamperAusbauguide() {
 
               <hr className="my-12 border-rule" />
 
-              <h2 className={cn('mb-4 mt-12 text-2xl font-semibold text-ink md:text-3xl', outfit.className)}>
+              <h2 className={cn('mb-4 mt-12 text-2xl font-semibold text-ink md:text-2xl', outfit.className)}>
                 3. Karosserie & Außenhülle
               </h2>
               <p>
@@ -328,7 +328,7 @@ export default function CamperAusbauguide() {
 
               <hr className="my-12 border-rule" />
 
-              <h2 className={cn('mb-4 mt-12 text-2xl font-semibold text-ink md:text-3xl', outfit.className)}>
+              <h2 className={cn('mb-4 mt-12 text-2xl font-semibold text-ink md:text-2xl', outfit.className)}>
                 4. Isolierung & Dämmung
               </h2>
               <p>
@@ -353,7 +353,7 @@ export default function CamperAusbauguide() {
 
               <hr className="my-12 border-rule" />
 
-              <h2 className={cn('mb-4 mt-12 text-2xl font-semibold text-ink md:text-3xl', outfit.className)}>
+              <h2 className={cn('mb-4 mt-12 text-2xl font-semibold text-ink md:text-2xl', outfit.className)}>
                 5. Elektrik – Das Nervenzentrum
               </h2>
 
@@ -395,7 +395,7 @@ export default function CamperAusbauguide() {
 
               <hr className="my-12 border-rule" />
 
-              <h2 className={cn('mb-4 mt-12 text-2xl font-semibold text-ink md:text-3xl', outfit.className)}>
+              <h2 className={cn('mb-4 mt-12 text-2xl font-semibold text-ink md:text-2xl', outfit.className)}>
                 6. Klima & Heizung
               </h2>
               <p>
@@ -406,7 +406,7 @@ export default function CamperAusbauguide() {
 
               <hr className="my-12 border-rule" />
 
-              <h2 className={cn('mb-4 mt-12 text-2xl font-semibold text-ink md:text-3xl', outfit.className)}>
+              <h2 className={cn('mb-4 mt-12 text-2xl font-semibold text-ink md:text-2xl', outfit.className)}>
                 7. Innenausbau (Boden, Wände, Möbel)
               </h2>
               <p>
@@ -417,7 +417,7 @@ export default function CamperAusbauguide() {
 
               <hr className="my-12 border-rule" />
 
-              <h2 className={cn('mb-4 mt-12 text-2xl font-semibold text-ink md:text-3xl', outfit.className)}>
+              <h2 className={cn('mb-4 mt-12 text-2xl font-semibold text-ink md:text-2xl', outfit.className)}>
                 8. Zulassung & Sicherheit
               </h2>
               <p>
@@ -441,7 +441,7 @@ export default function CamperAusbauguide() {
               <hr className="my-12 border-rule" />
 
               <div className="mt-24 border border-rule bg-soot p-10 text-center text-paper shadow-lg md:p-14">
-                <h3 className={cn('mb-4 text-2xl font-semibold text-paper md:text-3xl', outfit.className)}>
+                <h3 className={cn('mb-4 text-2xl font-semibold text-paper md:text-2xl', outfit.className)}>
                   Bereit für den ersten Roadtrip?
                 </h3>
                 <p className="text-paper/80 mx-auto mb-8 max-w-2xl text-base leading-relaxed md:text-lg">

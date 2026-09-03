@@ -9,8 +9,8 @@ export default function ImpressumPage() {
   return (
     <div className="flex min-h-screen flex-col bg-paper text-ink">
       <SiteHeader />
-      <main id="main" className="mx-auto w-full max-w-2xl flex-1 px-5 py-12">
-        <h1 className="font-display text-3xl font-semibold tracking-tight">Impressum</h1>
+      <main id="main" className="container-page prose-measure flex-1">
+        <h1 className="font-display text-2xl font-semibold tracking-tight">Impressum</h1>
         <p className="caption-sm mt-2 text-ink-soft">Angaben gemäß § 5 TMG.</p>
 
         <section className="mt-8 space-y-2 text-sm text-ink-soft">

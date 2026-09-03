@@ -5,7 +5,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { edgeLabelNudge, parallelLaneOffset, polarityPathOffset } from './utils/pathUtils';
 import { findCablePath, nodesToObstacles } from './utils/pathfinding';
 import { useCableRoute } from './utils/cableRouteStore';
-import { crossingSegmentsExcluding } from './utils/routingCache';
+import { crossingSegmentsNear } from './utils/routingCache';
 import { cableStrokeWidth } from './utils/cableStyle';
 import { useCoarsePointer, useMediaQuery, MOBILE_QUERY } from '../planner/hooks/useMediaCapabilities';
 import { isBackboneConnection } from '../planner/utils/backbone';
@@ -24,9 +24,6 @@ import {
   getSystemVoltage,
 } from '../../lib/vde-standards';
 import { PX_PER_METER } from '../../lib/units';
-
-/** Ab so vielen Kanten wird die Kreuzungsprüfung übersprungen (Performance). */
-export const CROSSING_SCAN_EDGE_LIMIT = 120;
 
 /** Wie lange ein angetipptes Kabel sein Label als Tooltip zeigt (Touch). */
 export const TAP_LABEL_TIMEOUT_MS = 5000;
@@ -238,17 +235,23 @@ const CableEdge = function ({
   // Fremde Leitungen als grobe Strecken — Grundlage der Kreuzungszählung.
   // Kanten desselben Node-Paars sind ausgenommen: die liegen bereits sauber
   // als parallele Lanes nebeneinander und dürfen die Route nicht aufblähen.
-  // Ab CROSSING_SCAN_EDGE_LIMIT Kanten wird die Prüfung übersprungen.
-  // Die Basis (Node-Zentren + Segmente aller Kanten) wird im Cache einmal je
-  // Frame gebaut; pro Kante bleibt nur der O(E)-Filter (PERF-04).
+  // R-4: Der Scan bleibt ab NOW auch in großen Plänen aktiv — der spatiale
+  // Index liefert nur die Segmente in der Umgebung der eigenen Route
+  // (BBox + 120 px = 2 × ALTERNATIVE_ROUTE_GAP), statt alles zu vergleichen
+  // oder ab einer Kantezahl ganz zu verzichten (PERF-04, R-4).
   const crossingSegments = useMemo(() => {
-    if (siblingEdges.length > CROSSING_SCAN_EDGE_LIMIT) return [];
-    return crossingSegmentsExcluding(
+    return crossingSegmentsNear(
       allNodes,
       siblingEdges as unknown as { id: string; source: string; target: string }[],
-      { id, source, target }
+      { id, source, target },
+      {
+        x: Math.min(sourceX, targetX) - 120,
+        y: Math.min(sourceY, targetY) - 120,
+        width: Math.abs(sourceX - targetX) + 240,
+        height: Math.abs(sourceY - targetY) + 240,
+      }
     );
-  }, [siblingEdges, allNodes, id, source, target]);
+  }, [siblingEdges, allNodes, id, source, target, sourceX, sourceY, targetX, targetY]);
 
   const {
     path: edgePath,
@@ -452,7 +455,7 @@ const CableEdge = function ({
                 ? '3 5'
                 : undefined,
           animation: hasDropError ? 'wire-error-dash 1s linear infinite' : undefined,
-          filter: emphasized ? 'drop-shadow(0 0 4px rgba(20, 17, 14, 0.45))' : undefined,
+          filter: emphasized ? 'drop-shadow(0 0 4px var(--edge-glow))' : undefined,
           transition: 'stroke-width 0.3s ease, stroke 0.3s ease',
           cursor: 'pointer',
         }}
@@ -491,7 +494,7 @@ const CableEdge = function ({
               flexDirection: 'column',
               alignItems: 'center',
               lineHeight: 1.25,
-              boxShadow: hasDropError ? '0 0 0 1px var(--wire-error-bg, rgba(192,38,211,0.12))' : undefined,
+              boxShadow: hasDropError ? '0 0 0 1px var(--wire-error-bg)' : undefined,
             }}
             className="nodrag nopan edge-label"
           >
@@ -529,7 +532,7 @@ const CableEdge = function ({
                 <span
                   style={{
                     background: 'var(--warn-info)',
-                    color: 'white',
+                    color: 'var(--on-signal)',
                     padding: '1px 4px',
                     borderRadius: '4px',
                     fontSize: '12px',
@@ -544,7 +547,7 @@ const CableEdge = function ({
                     key={idx}
                     style={{
                       background: 'var(--wire-error)',
-                      color: 'white',
+                      color: 'var(--on-signal)',
                       padding: '1px 4px',
                       borderRadius: '4px',
                       fontSize: '12px',
@@ -561,7 +564,7 @@ const CableEdge = function ({
                   <span
                     style={{
                       background: 'var(--success)',
-                      color: 'white',
+                      color: 'var(--on-signal)',
                       padding: '1px 4px',
                       borderRadius: '4px',
                       fontSize: '12px',
@@ -579,7 +582,7 @@ const CableEdge = function ({
                     key={idx}
                     style={{
                       background: 'var(--wire-error)',
-                      color: 'white',
+                      color: 'var(--on-signal)',
                       padding: '1px 4px',
                       borderRadius: '4px',
                       fontSize: '12px',

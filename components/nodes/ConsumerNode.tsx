@@ -12,14 +12,15 @@ const ConsumerNode = function ({ id, data, isConnectable, selected }: PlannerNod
   return (
     <div
       role="group"
+      data-selected={selected || undefined}
       aria-label={`${data.label || '12-V-Gerät'}. Komponente im Plan.`}
-      className={`custom-drag-handle w-48 rounded-md border-2 border-green-700 bg-white p-3 shadow-md transition-all hover:scale-105 ${selected ? 'shadow-xl ring-4 ring-blue-500' : ''}`}
+      className={`node-card custom-drag-handle w-48 p-3 ${selected ? 'node-card--selected' : ''}`}
     >
       <NodeSymbol kind="consumer" />
       {editingField === 'label' ? (
         <input
           autoFocus
-          className="mb-2 min-h-11 w-full rounded border border-blue-500 px-1 text-center text-sm font-bold"
+          className="mb-2 min-h-11 w-full rounded border border-border px-1 text-center text-sm font-bold"
           value={tempValue}
           onChange={(e) => setTempValue(e.target.value)}
           onBlur={handleBlur}
@@ -33,14 +34,14 @@ const ConsumerNode = function ({ id, data, isConnectable, selected }: PlannerNod
           {data.label || 'Verbraucher'}
         </div>
       )}
-      <div className="flex flex-col gap-1 text-xs text-gray-600">
+      <div className="measure flex flex-col gap-1 text-xs text-muted-foreground">
         {editingField === 'watts' ? (
           <div className="flex items-center gap-1">
             <span>Leistung:</span>
             <input
               autoFocus
               type="text"
-              className="min-h-11 w-16 rounded border border-blue-500 px-1 text-xs"
+              className="min-h-11 w-16 rounded border border-border px-1 text-xs"
               value={tempValue}
               onChange={(e) => setTempValue(e.target.value)}
               onBlur={handleBlur}
@@ -59,7 +60,7 @@ const ConsumerNode = function ({ id, data, isConnectable, selected }: PlannerNod
             <input
               autoFocus
               type="text"
-              className="min-h-11 w-16 rounded border border-blue-500 px-1 text-xs"
+              className="min-h-11 w-16 rounded border border-border px-1 text-xs"
               value={tempValue}
               onChange={(e) => setTempValue(e.target.value)}
               onBlur={handleBlur}
@@ -95,7 +96,7 @@ const ConsumerNode = function ({ id, data, isConnectable, selected }: PlannerNod
             width: '8px',
             height: '8px',
             borderRadius: '50%',
-            background: 'red',
+            background: 'var(--wire-dc)',
             pointerEvents: 'none',
           }}
         />
@@ -122,7 +123,7 @@ const ConsumerNode = function ({ id, data, isConnectable, selected }: PlannerNod
             width: '8px',
             height: '8px',
             borderRadius: '50%',
-            background: 'black',
+            background: 'var(--wire-dc-minus)',
             pointerEvents: 'none',
           }}
         />
@@ -149,7 +150,7 @@ const ConsumerNode = function ({ id, data, isConnectable, selected }: PlannerNod
             width: '8px',
             height: '8px',
             borderRadius: '50%',
-            background: 'red',
+            background: 'var(--wire-dc)',
             pointerEvents: 'none',
           }}
         />
@@ -176,7 +177,7 @@ const ConsumerNode = function ({ id, data, isConnectable, selected }: PlannerNod
             width: '8px',
             height: '8px',
             borderRadius: '50%',
-            background: 'black',
+            background: 'var(--wire-dc-minus)',
             pointerEvents: 'none',
           }}
         />

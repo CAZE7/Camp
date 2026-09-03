@@ -1,15 +1,10 @@
 import './globals.css';
-import '@fontsource/fraunces/400.css';
-import '@fontsource/fraunces/400-italic.css';
-import '@fontsource/fraunces/600.css';
-import '@fontsource/source-sans-3/400.css';
-import '@fontsource/source-sans-3/500.css';
-import '@fontsource/source-sans-3/600.css';
+import '@fontsource-variable/inter';
+import '@fontsource-variable/outfit';
 import '@fontsource/ibm-plex-mono/400.css';
 import '@fontsource/ibm-plex-mono/500.css';
-import '@fontsource-variable/outfit';
-import '@fontsource-variable/inter';
 import type { Metadata, Viewport } from 'next';
+import { SystemThemeSync } from '@/components/theme/SystemThemeSync';
 
 export const metadata: Metadata = {
   title: 'Werft — Erst der Plan. Dann das Blech.',
@@ -30,8 +25,19 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="de">
+    <html lang="de" suppressHydrationWarning>
+      <head>
+        {/* Dark Mode vor dem ersten Paint setzen (kein Flash): Dieselbe
+            System-Politik wie usePlannerDarkMode / SystemThemeSync. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "(function(){try{if(window.matchMedia('(prefers-color-scheme: dark)').matches){document.documentElement.classList.add('dark');}}catch(e){}})();",
+          }}
+        />
+      </head>
       <body className="min-h-screen font-sans">
+        <SystemThemeSync />
         {/* Skip-Link für Tastatur- und Screen-Reader-Nutzer (WCAG 2.4.1) */}
         <a
           href="#main"

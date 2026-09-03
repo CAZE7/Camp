@@ -866,7 +866,7 @@ function ResultsView({
             <div className="border-oxide/30 border-2 bg-paper p-6">
               <p className="label-eyebrow text-oxide">Benötigte Heizleistung (Q_total)</p>
               <div className="mt-3 flex flex-wrap items-baseline gap-3">
-                <p className="measure text-5xl font-semibold tracking-tight text-ink md:text-6xl">
+                <p className="measure text-2xl font-semibold tracking-tight text-ink md:text-6xl">
                   {Q_total.toFixed(0)}
                 </p>
                 <div className="flex flex-col">
@@ -1031,7 +1031,7 @@ export default function HeatingCalculatorPage() {
             <p className="label-eyebrow text-copper">Werkzeug</p>
             <h1
               className={cn(
-                'mt-2 font-display text-3xl font-semibold tracking-tight text-ink md:text-4xl',
+                'mt-2 font-display text-2xl font-semibold tracking-tight text-ink md:text-2xl',
                 outfit.className
               )}
             >

@@ -193,7 +193,7 @@ export function OnboardingWizard() {
                     <span className="font-semibold text-foreground">
                       {template.label}
                       {template.id === recommendedId && (
-                        <span className="ml-2 rounded-full bg-moss px-2 py-1 text-xs font-bold uppercase text-white">
+                        <span className="ml-2 rounded-full bg-moss px-2 py-1 text-xs font-bold uppercase text-on-signal">
                           Empfohlen
                         </span>
                       )}

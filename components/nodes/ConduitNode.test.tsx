@@ -82,14 +82,14 @@ describe('ConduitNode Component', () => {
     // Check if the overfill token classes are present
     const mainDiv = container.firstChild as HTMLElement;
     expect(mainDiv.className).toContain('bg-warn-critical-bg');
-    expect(mainDiv.className).toContain('border-warn-critical');
+    expect(mainDiv.className).toContain('node-card--error');
   });
 
   it('applies selected styling when selected is true and not overfilled', () => {
     const { container } = render(<ConduitNode id="1" data={{}} selected={true} />);
     const mainDiv = container.firstChild as HTMLElement;
-    expect(mainDiv.className).toContain('ring-4');
-    expect(mainDiv.className).toContain('ring-border');
+    expect(mainDiv.getAttribute('data-selected')).toBe('true');
+    expect(mainDiv.className).toContain('node-card--selected');
   });
 
   it('renders Handle components properly', () => {

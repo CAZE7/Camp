@@ -29,15 +29,44 @@ export const ROUTE_MIN_STUB = 24;
 export const OBSTACLE_MARGIN = 14;
 export const NODE_FALLBACK_WIDTH = 192;
 export const NODE_FALLBACK_HEIGHT = 120;
+
+/**
+ * Kostenmodell (R-2, agent.md): alle Kosten sind **px-äquivalent** —
+ * 1 Kosteneinheit entspricht 1 px Leitungslänge (`scorePath` addiert
+ * Länge + BEND_COST · Biegungen + 120 · Kreuzungen).
+ *
+ * - `BEND_COST = 80`: eine 90°-Biegung kostet so viel wie 80 px Extraweg.
+ *   Der Router nimmt also höchstens 80 px Detour in Kauf, um eine Ecke zu
+ *   sparen — logisch ruhige Leitungen mit wenigen Knicken schlagen kürzere
+ *   zickzackige. Muss die Leitung mehr als 80 px Umweg laufen, gewinnt die
+ *   Abkürzung. Nach unten korrigieren → mehr Biegungen, oben → mehr Länge.
+ *
+ * - `U_TURN_COST = 400` (= 5 Biegungen): eine 180°-Kehre ist teurer als
+ *   jeder Zickzack-Bogen aus bis zu 4 Ecken und wird nur gewählt, wenn die
+ *   Geometrie sie erzwingt (Ziel hinter der Quelle). Die A*-Heuristik
+ *   (`remainingCostLowerBound`) schätzt Kehren mit
+ *   `Math.min(U_TURN_COST, 2 * BEND_COST)` = 160 — damit bleibt sie
+ *   zulässig (nie höher als die echten Restkosten) und A* bleibt optimal.
+ *
+ * Geprüft wird die Ordnung in `orthogonalRouting.invariants.test.ts`
+ * (Abschnitt „Kostenmodell (R-2)“): Gerade < L < Z < Zickzack, Kehre zuletzt.
+ */
 export const BEND_COST = 80;
 export const U_TURN_COST = 400;
+
+/** Abstand der Rücklauflane vom Stub bei erzwungenen U-Loops (2 Parallellanes). */
+export const U_TURN_LANE_SPREAD = 2 * 16;
 export const MAX_EXPANSIONS = 48_000;
 export const MAX_ACCEPTABLE_CROSSINGS = 2;
-export const ALTERNATIVE_ROUTE_GAP = 40;
+
+/** Ausweich-Trassen (R-5): 3 und 6 Lanes à 16 px — siehe orthogonalRouting. */
+export const ALTERNATIVE_ROUTE_GAP = 48;
 
 const EPS = 1e-6;
 const QUANT = 2; // 0.5 px
 const CACHE_LIMIT = 256;
+
+import { readHandleBounds } from './orthogonalRouting';
 
 export const quantize = (n: number): number => Math.round(n * QUANT) / QUANT;
 
@@ -407,13 +436,24 @@ export function catalogWaypoints(input: {
         points.push({ x: midX, y: S2.y });
         points.push({ x: midX, y: T2.y });
       } else {
+        // U-Loop (R-2-Fix, Regression: orthogonalRouting.invariants.test.ts
+        // „U-Turn nur wenn geometrisch erzwungen“): Ziel liegt hinter der
+        // Quelle. Die Rücklaufeinstrecke darf NICHT auf der Stub-Achse
+        // liegen — früher fielen (loopX, S2.y) und (loopX, T2.y) auf
+        // denselben Punkt zusammen und die Leitung lief nach dem Stub auf
+        // derselben Linie durch den Handle zurück (Selbstüberlappung,
+        // 0 Bends). Jetzt weicht die Rückstellstrecke um
+        // U_TURN_LANE_SPREAD auf eine eigene Lane aus.
         const dir = ds.x > 0 ? 1 : -1;
         const loopX = quantize(
           (dir > 0 ? Math.max(S2.x, T2.x) : Math.min(S2.x, T2.x)) +
             dir * (ROUTE_MIN_STUB * 2 + Math.abs(offset))
         );
+        const laneSign = offset !== 0 ? Math.sign(offset) : 1;
+        const returnY = quantize(S2.y + laneSign * U_TURN_LANE_SPREAD);
         points.push({ x: loopX, y: S2.y });
-        points.push({ x: loopX, y: T2.y });
+        points.push({ x: loopX, y: returnY });
+        points.push({ x: T2.x, y: returnY });
       }
     }
   } else if (!horizS && !horizT) {
@@ -438,8 +478,13 @@ export function catalogWaypoints(input: {
           (dir > 0 ? Math.max(S2.y, T2.y) : Math.min(S2.y, T2.y)) +
             dir * (ROUTE_MIN_STUB * 2 + Math.abs(offset))
         );
+        // R-2-Fix: Rücklauf auf eigener Lane statt auf der Stub-Achse
+        // (siehe horizontalen U-Loop oben).
+        const laneSign = offset !== 0 ? Math.sign(offset) : 1;
+        const returnX = quantize(S2.x + laneSign * U_TURN_LANE_SPREAD);
         points.push({ x: S2.x, y: loopY });
-        points.push({ x: T2.x, y: loopY });
+        points.push({ x: returnX, y: loopY });
+        points.push({ x: returnX, y: T2.y });
       }
     }
   } else if (horizS) {
@@ -479,8 +524,18 @@ export function catalogCandidates(input: {
   const T2 = stubPoint(T, { x: -dt.x, y: -dt.y }, stub);
 
   const out: Point[][] = [primary];
-  out.push(withElbow(S, S2, { x: T2.x, y: S2.y }, T2, T));
-  out.push(withElbow(S, S2, { x: S2.x, y: T2.y }, T2, T));
+  // R-2-Fix: Liegt das Ziel HINTER der Quelle (nicht „facing“), läuft der
+  // X-Elbow nach dem Stub auf derselben Achse zurück — Selbstüberlappung
+  // („Kabel durch den Handle“). Solche Kandidaten erst gar nicht erzeugen;
+  // der Y-Elbow ist genau dann degeneriert, wenn sein Knick auf der
+  // Stub-Achse liegt (T2.y == S2.y).
+  const facingX = ds.x > 0 ? T2.x >= S2.x - EPS : T2.x <= S2.x + EPS;
+  if (facingX) {
+    out.push(withElbow(S, S2, { x: T2.x, y: S2.y }, T2, T));
+  }
+  if (Math.abs(T2.y - S2.y) > EPS) {
+    out.push(withElbow(S, S2, { x: S2.x, y: T2.y }, T2, T));
+  }
 
   if (offset !== 0) {
     out.push(
@@ -535,16 +590,55 @@ export function bestFreeCatalog(
   const candidates = catalogCandidates(input);
   let best: Point[] | null = null;
   let bestScore = Infinity;
+  let bestOverlaps = false;
   for (let i = 0; i < candidates.length; i++) {
     const pts = at(candidates, i);
     if (!isOrthogonalPath(pts) || pathHitsObstacles(pts, obstacles)) continue;
-    const score = scoreCatalog(pts);
-    if (score < bestScore - EPS) {
+    // R-2: selbstüberlappende Kandidaten verlieren grundsätzlich gegen
+    // überlappungsfreie — egal wie kurz sie sind.
+    const overlaps = hasSelfOverlap(pts);
+    if (best !== null && overlaps && !bestOverlaps) continue;
+    const score = scoreCatalog(pts) + (overlaps ? U_TURN_COST : 0);
+    if (best === null || score < bestScore - EPS) {
       best = pts;
       bestScore = score;
+      bestOverlaps = overlaps;
     }
   }
   return best;
+}
+
+/**
+ * Selbstüberlappung (R-2): zwei achsenparallele Segmente desselben Pfads
+ * liegen auf derselben Linie und überlappen auf einer Strecke > EPS — die
+ * Leitung läuft optisch in sich zurück („doppelte Belegung“ einer Lane).
+ * Solche Pfade sind immer ein Routing-Fehler und werden bevorzugt vermieden.
+ */
+export function hasSelfOverlap(points: Point[]): boolean {
+  const segments = waypointsToSegments(points);
+  for (let i = 0; i < segments.length; i++) {
+    for (let j = i + 2; j < segments.length; j++) {
+      const [a1, a2] = at(segments, i);
+      const [b1, b2] = at(segments, j);
+      const aHorizontal = Math.abs(a1.y - a2.y) <= EPS;
+      const bHorizontal = Math.abs(b1.y - b2.y) <= EPS;
+      if (aHorizontal !== bHorizontal) continue;
+      if (aHorizontal) {
+        if (Math.abs(a1.y - b1.y) > EPS) continue;
+        const overlap =
+          Math.min(Math.max(a1.x, a2.x), Math.max(b1.x, b2.x)) -
+          Math.max(Math.min(a1.x, a2.x), Math.min(b1.x, b2.x));
+        if (overlap > EPS) return true;
+      } else {
+        if (Math.abs(a1.x - b1.x) > EPS) continue;
+        const overlap =
+          Math.min(Math.max(a1.y, a2.y), Math.max(b1.y, b2.y)) -
+          Math.max(Math.min(a1.y, a2.y), Math.min(b1.y, b2.y));
+        if (overlap > EPS) return true;
+      }
+    }
+  }
+  return false;
 }
 
 const orientation = (a: Point, b: Point, c: Point): number => {
@@ -820,6 +914,20 @@ export type PathResult = {
 
 const cache = new Map<string, PathResult>();
 
+/**
+ * R-3 (Routing-Fallback): Telemetrie. `fallbackCount` zählt, wie oft der
+ * Notfallpfad (roher Katalog ohne Freigabeprüfung) das Endergebnis war —
+ * Ziel im Referenzplan: Quote 0. Ein Anstieg bedeutet, dass Hindernisfeld
+ * oder Budget (MAX_EXPANSIONS) die ordentliche Suche überfordern.
+ */
+let fallbackCount = 0;
+
+export const pathfindingFallbackCount = (): number => fallbackCount;
+
+export const resetPathfindingTelemetry = (): void => {
+  fallbackCount = 0;
+};
+
 export const clearPathfindingCache = (): void => {
   cache.clear();
 };
@@ -905,7 +1013,9 @@ function assemble(
 function searchOnce(
   input: PathRequest,
   obstacles: Rect[],
-  offset: number
+  offset: number,
+  /** Wie weit sind `obstacles` gegenüber den Rohboxen aufgebläht? */
+  marginUsed: number = OBSTACLE_MARGIN
 ): { waypoints: Point[]; usedSearch: PathResult['usedSearch'] } {
   const freeCatalog = bestFreeCatalog({ ...input, offset }, obstacles);
   if (freeCatalog) {
@@ -918,18 +1028,47 @@ function searchOnce(
   const S: Point = { x: input.sourceX, y: input.sourceY };
   const T: Point = { x: input.targetX, y: input.targetY };
 
+  // R-7: Der Stub bleibt IMMER ≥ ROUTE_MIN_STUB (24 px). Früher wurde er
+  // bei Hinderniskontakt halbiert (bis 4 px) — das erzeugte Winzstummel
+  // direkt am Handle und Richtungswechsel im Stub-Bereich.
   const pickStub = (from: Point, dir: Point): Point => {
-    let stub = ROUTE_MIN_STUB + Math.abs(offset) * 0.15;
-    let pt = stubPoint(from, dir, stub);
-    while (stub > 4 && (segmentHitsAny(from, pt, obstacles) || obstacles.some((r) => containsPoint(r, pt)))) {
-      stub *= 0.5;
-      pt = stubPoint(from, dir, stub);
-    }
-    return pt;
+    const stub = ROUTE_MIN_STUB + Math.abs(offset) * 0.15;
+    return stubPoint(from, dir, stub);
   };
 
   const S2 = pickStub(S, ds);
   const T2 = pickStub(T, { x: -dt.x, y: -dt.y });
+
+  // R-7/R-10: Sitzt ein (aufgeblähtes) Hindernis so nah am Handle, dass es
+  // den vollen Stub überdeckt, wird NUR dieses Hindernis für die Suche auf
+  // das 12-px-Clearance-Ziel zurückgesetzt (Rohbox + 12) — der Stub kürzt
+  // nicht, die A*-Suche startet nicht in einem blockierten Punkt, und JEDER
+  // im entzerrten Raum akzeptierte Pfad hält trotzdem mindestens 12 px
+  // Abstand zum echten Node (inkl. Labelfläche, die in der Box liegt).
+  // Früher stand hier eine 2-px-Restfreigabe — Routen durften bis auf
+  // 10 px an einen Node heranrücken (R-10-Verstoß). Der Inset wird aus der
+  // TATSÄCHLICH verwendeten Inflation abgeleitet (der Notfall-Retry läuft
+  // mit 7 px — dort wäre ein fester 14er-Abzug die Box gewachsen).
+  const CLEARANCE_GOAL = 12;
+  const inset = Math.max(0, marginUsed - CLEARANCE_GOAL);
+  const shrink = (r: Rect, by: number): Rect => ({
+    x: r.x + by,
+    y: r.y + by,
+    width: Math.max(2 * CLEARANCE_GOAL, r.width - 2 * by),
+    height: Math.max(2 * CLEARANCE_GOAL, r.height - 2 * by),
+  });
+  // Stufe 1: Rohbox + 12 px (R-10-Ziel). Stufe 2: Liegt der Stub-Punkt
+  // AUCH dort noch im Block, klebt das Bauteil näher am Handle als die
+  // Stub-Länge plus Ziel-Freigabe — beides (≥ 12 px UND voller Stub) ist
+  // geometrisch unmöglich. Dann weicht die Box auf Rohbox + 2 px aus
+  // („Stub-Recht"), damit A* überhaupt starten kann; die Freigabe gilt im
+  // Umgang mit an Handle geklebten Bauteilen als begründete Ausnahme.
+  const searchObstacles = obstacles.map((r) => {
+    if (!containsPoint(r, S2) && !containsPoint(r, T2)) return r;
+    const floored = shrink(r, inset);
+    if (!containsPoint(floored, S2) && !containsPoint(floored, T2)) return floored;
+    return shrink(r, marginUsed - 2);
+  });
 
   const extraXs = [S2.x, T2.x, (S2.x + T2.x) / 2 + offset, S.x, T.x];
   const extraYs = [S2.y, T2.y, (S2.y + T2.y) / 2 + offset, S.y, T.y];
@@ -949,11 +1088,39 @@ function searchOnce(
     extraYs.push(minY - 16, maxY + 16);
   }
 
-  const inner = hananAStar(S2, T2, headingFromDir(ds), headingFromDir(dt), obstacles, extraXs, extraYs);
+  const inner = hananAStar(S2, T2, headingFromDir(ds), headingFromDir(dt), searchObstacles, extraXs, extraYs);
 
   if (inner && inner.length >= 1) {
     const full = stitchOrthogonal([S, ...inner, T]);
-    if (!pathHitsObstacles(full, obstacles)) {
+    if (!pathHitsObstacles(full, searchObstacles)) {
+      return { waypoints: full, usedSearch: 'astar' };
+    }
+    // Stub-Toleranz (R-7): Bleiben Verletzungen, die NUR die Stub-Segmente
+    // (S→S2 bzw. T2→T) gegen eine entzerrte Box betreffen, wird der Pfad
+    // akzeptiert — der 24-px-Stub wiegt schwerer als die letzten 12 px
+    // Inflate-Margin an einem direkt anliegenden Bauteil.
+    const sameSegment = (a: Point, b: Point, c: Point, d: Point): boolean =>
+      Math.abs(a.x - c.x) <= EPS &&
+      Math.abs(a.y - c.y) <= EPS &&
+      Math.abs(b.x - d.x) <= EPS &&
+      Math.abs(b.y - d.y) <= EPS;
+    let tolerated = true;
+    for (let i = 0; i + 1 < full.length && tolerated; i++) {
+      const a = at(full, i);
+      const b = at(full, i + 1);
+      const isStub = sameSegment(a, b, S, S2) || sameSegment(a, b, T2, T);
+      for (let k = 0; k < obstacles.length && tolerated; k++) {
+        const rFull = at(obstacles, k);
+        if (!segmentHitsAny(a, b, [rFull])) continue;
+        const rSearch = at(searchObstacles, k);
+        if (segmentHitsAny(a, b, [rSearch])) {
+          tolerated = false;
+        } else if (!isStub) {
+          tolerated = false;
+        }
+      }
+    }
+    if (tolerated) {
       return { waypoints: full, usedSearch: 'astar' };
     }
   }
@@ -985,7 +1152,7 @@ export function findCablePath(input: PathRequest): PathResult {
     const tight = relevantObstacles(allObstacles, start, end).map((r) =>
       inflateRect(r, Math.max(2, OBSTACLE_MARGIN / 2))
     );
-    const retry = searchOnce(input, tight, baseOffset);
+    const retry = searchOnce(input, tight, baseOffset, Math.max(2, OBSTACLE_MARGIN / 2));
     if (!pathHitsObstacles(retry.waypoints, tight)) {
       best = retry;
     }
@@ -1002,6 +1169,9 @@ export function findCablePath(input: PathRequest): PathResult {
     ];
     for (let i = 0; i < candidates.length; i++) {
       const cand = searchOnce(input, obstacles, at(candidates, i));
+      // R-3/R-7: Ein Fallback-Kandidat (keine Freigabe-Garantie) gewinnt
+      // nie gegen Katalog oder A* — auch nicht über weniger Kreuzungen.
+      if (cand.usedSearch === 'fallback' && best.usedSearch !== 'fallback') continue;
       const cross = countCrossings(cand.waypoints, crossingSegments);
       const score = scorePath(cand.waypoints, cross);
       if (score < bestScore - EPS || (Math.abs(score - bestScore) <= EPS && cross < bestCross)) {
@@ -1014,6 +1184,19 @@ export function findCablePath(input: PathRequest): PathResult {
   }
 
   const result = assemble(best.waypoints, bestCross, best.usedSearch, radius);
+  if (result.usedSearch === 'fallback') {
+    // R-3: Der Notfallpfad ist orthogonal, hat aber keine Freigabe-Garantie
+    // (der Wiederholungslauf mit halbiertem Margin ist oben gelaufen).
+    // Sichtbar machen statt still leiden:
+    fallbackCount += 1;
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn(
+        `[pathfinding] Fallback ohne Hindernisfreigabe: ` +
+          `(${input.sourceX},${input.sourceY}) → (${input.targetX},${input.targetY}), ` +
+          `${allObstacles.length} Hindernisse, ${crossingSegments.length} Fremdsegmente`
+      );
+    }
+  }
   if (!input.skipCache) cacheSet(key, result);
   return result;
 }
@@ -1023,14 +1206,28 @@ export function nodesToObstacles(nodes: Node[], excludeIds: Set<string>): Rect[]
   for (let i = 0; i < nodes.length; i++) {
     const node = nodes[i];
     if (!node || excludeIds.has(node.id)) continue;
-    const width = node.width || NODE_FALLBACK_WIDTH;
-    const height = node.height || NODE_FALLBACK_HEIGHT;
-    rects.push({
-      x: node.positionAbsolute?.x ?? node.position.x,
-      y: node.positionAbsolute?.y ?? node.position.y,
-      width,
-      height,
-    });
+    // R-10: Gemessene Bounds sind die Pflichtquelle (React Flow misst
+    // width/height nach dem Mount); der Fallback bleibt nur für
+    // ungemessene Knoten (Tests, erster Frame) und ist dokumentiert.
+    let x = node.positionAbsolute?.x ?? node.position.x;
+    let y = node.positionAbsolute?.y ?? node.position.y;
+    let width = node.width || NODE_FALLBACK_WIDTH;
+    let height = node.height || NODE_FALLBACK_HEIGHT;
+    // R-10: Handles (inkl. überstehender Anschlusspunkte) gehören zur
+    // belegten Fläche — die Box wächst auf die Handle-Ausdehnung.
+    const bounds = readHandleBounds(node);
+    const groups = bounds ? [...(bounds.source ?? []), ...(bounds.target ?? [])] : [];
+    for (const hb of groups) {
+      const hx = x + hb.x;
+      const hy = y + hb.y;
+      const x2 = Math.max(x + width, hx + hb.width);
+      const y2 = Math.max(y + height, hy + hb.height);
+      x = Math.min(x, hx);
+      y = Math.min(y, hy);
+      width = x2 - x;
+      height = y2 - y;
+    }
+    rects.push({ x, y, width, height });
   }
   return rects;
 }

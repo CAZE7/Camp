@@ -138,12 +138,12 @@ export function DachPanel({
           <CardDescription className="label-eyebrow text-paper/70">Live-Sync</CardDescription>
           <CardTitle className="flex items-center justify-between text-lg font-semibold text-paper">
             <span>Solarleistung</span>
-            <span className="measure text-amber-300">{totalRoofSolarWatts} W</span>
+            <span className="measure text-warn">{totalRoofSolarWatts} W</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div
-            className="h-1.5 w-full overflow-hidden bg-white/10"
+            className="bg-card/10 h-1.5 w-full overflow-hidden"
             role="progressbar"
             aria-valuemin={0}
             aria-valuemax={1000}

@@ -26,23 +26,32 @@ describe('RootLayout', () => {
     expect(element.type).toBe('html');
     expect(element.props.lang).toBe('de');
 
-    const bodyElement = element.props.children;
-    expect(bodyElement.type).toBe('body');
-    expect(bodyElement.props.className).toContain('font-sans');
-    expect(bodyElement.props.className).toContain('min-h-screen');
+    // html enthält <head> (Dark-Mode-Inline-Skript) und <body>.
+    const htmlChildren = React.Children.toArray(element.props.children);
+    const bodyElement = htmlChildren.find(
+      (child): child is React.ReactElement<{ className: string; children: React.ReactNode }> =>
+        React.isValidElement(child) && child.type === 'body'
+    );
+    expect(bodyElement).toBeDefined();
+    expect(bodyElement!.props.className).toContain('font-sans');
+    expect(bodyElement!.props.className).toContain('min-h-screen');
 
-    // Body enthält den Skip-Link (a) und die Children.
-    const bodyChildren = React.Children.toArray(bodyElement.props.children);
-    const skipLink = bodyChildren[0] as React.ReactElement<{ href: string }>;
-    expect(skipLink.type).toBe('a');
-    expect(skipLink.props.href).toBe('#main');
+    // Body enthält SystemThemeSync, den Skip-Link (a) und die Children —
+    // gesucht wird per Typ/Props, nicht per Index.
+    const bodyChildren = React.Children.toArray(bodyElement!.props.children);
+    const skipLink = bodyChildren.find(
+      (child): child is React.ReactElement<{ href: string }> =>
+        React.isValidElement(child) && child.type === 'a'
+    );
+    expect(skipLink).toBeDefined();
+    expect(skipLink?.props.href).toBe('#main');
 
-    const childElement = bodyChildren[1] as React.ReactElement<{
-      'data-testid': string;
-      children: string;
-    }>;
-    expect(childElement.props['data-testid']).toBe('child');
-    expect(childElement.props.children).toBe('Test Child');
+    const childElement = bodyChildren.find(
+      (child): child is React.ReactElement<{ 'data-testid': string; children: string }> =>
+        React.isValidElement(child) && (child.props as { 'data-testid'?: string })['data-testid'] === 'child'
+    );
+    expect(childElement).toBeDefined();
+    expect(childElement?.props.children).toBe('Test Child');
   });
 
   it('exports the correct metadata', () => {

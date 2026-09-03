@@ -59,6 +59,7 @@ import {
   type CableEdge,
 } from './autoWire/primitives';
 import { isAcEdge, isSolarEdge, isStarterBattery } from './autoWire/validation';
+import { applyFlowLayout } from './autoWire/placement';
 import { sizeDcEdges, applyFuseSizes, sizeAcEdges } from './autoWire/sizing';
 import {
   buildDictionaries,
@@ -620,6 +621,15 @@ export function performAutoWiring(
       fuseBoxNode.data.rating = fuseBoxFeed.data.fuseSize;
     }
   }
+
+  // R-8 (M11-2): Optionales Auto-Layout direkt nach dem Verdrahten —
+  // automatisch erzeugte Knoten rasten in Flussrichtung (Spalten je Schicht,
+  // deterministisch). Nutzerknoten bleiben unangetastet.
+  applyFlowLayout(
+    currentNodes,
+    allEdges.map((e) => ({ source: e.source, target: e.target })),
+    autoCreatedNodeIds
+  );
 
   return { nodes: currentNodes, edges: allEdges };
 }

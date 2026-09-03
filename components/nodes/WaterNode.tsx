@@ -4,31 +4,34 @@ import { Handle, Position } from 'reactflow';
 import { type PlannerNodeProps, type WaterNodeData } from './types';
 
 const WaterNode = function ({ data, isConnectable, selected, type }: PlannerNodeProps<WaterNodeData>) {
-  let bgColor = 'bg-blue-50';
-  let borderColor = 'border-blue-700';
+  // D-1: Tints aus Signaltokens (siehe .tint-* in globals.css) statt
+  // Tailwind-Palettenfarben — dadurch stimmen hell und dunkel automatisch.
+  let bgColor = 'bg-warn-info-bg';
+  let borderColor = 'border-[color:var(--pipe-fresh)]';
 
   if (type === 'grayWaterTank') {
-    bgColor = 'bg-gray-200';
-    borderColor = 'border-gray-500';
+    bgColor = 'tint-gray-water';
+    borderColor = 'border-[color:var(--pipe-gray)]';
   } else if (type === 'freshWaterTank') {
-    bgColor = 'bg-blue-200';
-    borderColor = 'border-blue-500';
+    bgColor = 'tint-fresh';
+    borderColor = 'border-[color:var(--pipe-fresh)]';
   } else if (type === 'pump') {
-    bgColor = 'bg-cyan-100';
-    borderColor = 'border-cyan-700';
+    bgColor = 'tint-pump';
+    borderColor = 'border-[color:var(--pipe-fresh)]';
   } else if (type === 'accumulator') {
-    bgColor = 'bg-indigo-100';
-    borderColor = 'border-indigo-700';
+    bgColor = 'tint-acc';
+    borderColor = 'border-[color:var(--wire-ac)]';
   } else if (type === 'preFilter') {
-    bgColor = 'bg-teal-100';
-    borderColor = 'border-teal-700';
+    bgColor = 'tint-filter';
+    borderColor = 'border-[color:var(--ok)]';
   }
 
   return (
     <div
       role="group"
+      data-selected={selected || undefined}
       aria-label={`${data.label || 'Wasser-Komponente'}. Komponente im Plan.`}
-      className={`custom-drag-handle w-48 rounded-md border-2 p-3 shadow-md transition-all hover:scale-105 ${bgColor} ${borderColor} ${selected ? 'shadow-xl ring-4 ring-blue-500' : ''}`}
+      className={`node-card custom-drag-handle w-48 p-3 ${bgColor} ${borderColor} ${selected ? 'node-card--selected' : ''}`}
     >
       <div className="mb-2 text-center text-sm font-bold">{data.label || 'Wasser-Komponente'}</div>
 
@@ -55,7 +58,7 @@ const WaterNode = function ({ data, isConnectable, selected, type }: PlannerNode
             width: '8px',
             height: '8px',
             borderRadius: '50%',
-            background: 'red',
+            background: 'var(--wire-dc)',
             pointerEvents: 'none',
           }}
         />
@@ -84,7 +87,7 @@ const WaterNode = function ({ data, isConnectable, selected, type }: PlannerNode
             width: '8px',
             height: '8px',
             borderRadius: '50%',
-            background: 'black',
+            background: 'var(--wire-dc-minus)',
             pointerEvents: 'none',
           }}
         />

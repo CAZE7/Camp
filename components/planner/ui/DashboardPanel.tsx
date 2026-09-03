@@ -31,9 +31,7 @@ export function DashboardPanel({ metrics, calculatedSolarWatts }: DashboardPanel
         position="top-center"
         className="bg-bone/95 border-rule/50 w-96 rounded-2xl border p-5 text-sm shadow-2xl backdrop-blur-xl transition-all duration-300"
       >
-        <h3 className="border-rule/40 mb-3 border-b pb-2 text-center text-xs font-black uppercase tracking-wider text-ink">
-          🔋 System Berechnungen
-        </h3>
+        <h3 className="panel-title text-center">🔋 System Berechnungen</h3>
         <div className="flex flex-col gap-2.5">
           <div className="flex items-center justify-between rounded-lg bg-paper p-2">
             <span className="font-medium text-ink-soft">Tagesverbrauch:</span>

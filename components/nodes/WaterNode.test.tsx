@@ -48,58 +48,58 @@ describe('WaterNode Component', () => {
   it('applies default colors when type is not provided or unknown', () => {
     const { container } = render(<WaterNode id="1" data={{}} />);
     const mainDiv = container.firstChild as HTMLElement;
-    expect(mainDiv.className).toContain('bg-blue-50');
-    expect(mainDiv.className).toContain('border-blue-700');
+    expect(mainDiv.className).toContain('bg-warn-info-bg');
+    expect(mainDiv.className).toContain('border-[color:var(--pipe-fresh)]');
   });
 
   it('applies correct colors for grayWaterTank type', () => {
     const { container } = render(<WaterNode id="1" data={{}} type="grayWaterTank" />);
     const mainDiv = container.firstChild as HTMLElement;
-    expect(mainDiv.className).toContain('bg-gray-200');
-    expect(mainDiv.className).toContain('border-gray-500');
+    expect(mainDiv.className).toContain('tint-gray-water');
+    expect(mainDiv.className).toContain('border-[color:var(--pipe-gray)]');
   });
 
   it('applies correct colors for freshWaterTank type', () => {
     const { container } = render(<WaterNode id="1" data={{}} type="freshWaterTank" />);
     const mainDiv = container.firstChild as HTMLElement;
-    expect(mainDiv.className).toContain('bg-blue-200');
-    expect(mainDiv.className).toContain('border-blue-500');
+    expect(mainDiv.className).toContain('tint-fresh');
+    expect(mainDiv.className).toContain('border-[color:var(--pipe-fresh)]');
   });
 
   it('applies correct colors for pump type', () => {
     const { container } = render(<WaterNode id="1" data={{}} type="pump" />);
     const mainDiv = container.firstChild as HTMLElement;
-    expect(mainDiv.className).toContain('bg-cyan-100');
-    expect(mainDiv.className).toContain('border-cyan-700');
+    expect(mainDiv.className).toContain('tint-pump');
+    expect(mainDiv.className).toContain('border-[color:var(--pipe-fresh)]');
   });
 
   it('applies correct colors for accumulator type', () => {
     const { container } = render(<WaterNode id="1" data={{}} type="accumulator" />);
     const mainDiv = container.firstChild as HTMLElement;
-    expect(mainDiv.className).toContain('bg-indigo-100');
-    expect(mainDiv.className).toContain('border-indigo-700');
+    expect(mainDiv.className).toContain('tint-acc');
+    expect(mainDiv.className).toContain('border-[color:var(--wire-ac)]');
   });
 
   it('applies correct colors for preFilter type', () => {
     const { container } = render(<WaterNode id="1" data={{}} type="preFilter" />);
     const mainDiv = container.firstChild as HTMLElement;
-    expect(mainDiv.className).toContain('bg-teal-100');
-    expect(mainDiv.className).toContain('border-teal-700');
+    expect(mainDiv.className).toContain('tint-filter');
+    expect(mainDiv.className).toContain('border-[color:var(--ok)]');
   });
 
   it('applies selected styling when selected is true', () => {
     const { container } = render(<WaterNode id="1" data={{}} selected={true} />);
     const mainDiv = container.firstChild as HTMLElement;
-    expect(mainDiv.className).toContain('ring-4');
-    expect(mainDiv.className).toContain('ring-blue-500');
-    expect(mainDiv.className).toContain('shadow-xl');
+    expect(mainDiv.getAttribute('data-selected')).toBe('true');
+    expect(mainDiv.className).toContain('node-card--selected');
+    expect(mainDiv.getAttribute('data-selected')).toBe('true');
   });
 
   it('does not apply selected styling when selected is false', () => {
     const { container } = render(<WaterNode id="1" data={{}} selected={false} />);
     const mainDiv = container.firstChild as HTMLElement;
-    expect(mainDiv.className).not.toContain('ring-4');
-    expect(mainDiv.className).not.toContain('ring-blue-500');
-    expect(mainDiv.className).not.toContain('shadow-xl');
+    expect(mainDiv.getAttribute('data-selected')).toBeNull();
+    expect(mainDiv.className).not.toContain('ring-[color:var(--accent-line)]');
+    expect(mainDiv.getAttribute('data-selected')).toBeNull();
   });
 });

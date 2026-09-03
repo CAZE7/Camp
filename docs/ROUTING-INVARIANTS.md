@@ -111,17 +111,60 @@ Ohne diese Schritte schlägt der Test fehl und nennt das betroffene Szenario.
 
 ## 5. Bekannte Grenzen
 
-- **Kein Wegfindungs-Algorithmus.** `avoidObstacles` ist ein iteratives
-  Ausweichverfahren mit 12 Durchläufen, kein A*. In sehr dichten Szenen kann
-  eine kürzere Route existieren; die Invarianten garantieren nur Korrektheit
-  (orthogonal, kollisionsfrei, begrenzt), nicht Optimalität.
+- **Zwei Routing-Ebenen.** `buildOrthogonalPath`/`orthogonalWaypoints` bleiben ein
+  iteratives Ausweichverfahren (12 Durchläufe, kein A*). Für automatisch
+  verdrahtete Kabel (R-5+) liegt darüber `routeAllCables` mit A*-Wegfindung
+  (`findCablePath`), Glow-Fallback und Retry — siehe Abschnitt 6. Ein
+  „Optimum“ garantiert keine der beiden Ebenen; die Invarianten garantieren
+  Korrektheit (orthogonal, kollisionsfrei, begrenzt).
 - **Fremdleitungen sind genähert.** Die Kreuzungszählung nutzt
   Mittelpunkt-zu-Mittelpunkt-Strecken, weil eine Kante die exakten
   Handle-Koordinaten fremder Kanten nicht kennt (React-Flow-Architektur).
-- **Kein Pixel-Vergleich.** Die visuelle Regression vergleicht Geometrie
-  (Wegpunkte, Pfad-String), nicht gerenderte Bilder. Ein Renderer-Wechsel
-  würde nicht auffallen — dafür ist der Test schnell, deterministisch und
-  ohne Browser-Abhängigkeit.
+- **Kein Pixel-Vergleich in der Geometrie-Galerie.** Die visuelle Regression
+  vergleicht Geometrie (Wegpunkte, Pfad-String), nicht gerenderte Bilder.
+  Gerenderte Seiten (inkl. Planner unter `/elektrik-planung/`) deckt das
+  Pixel-Gate aus D-9 (`tests/e2e/visual.spec.ts`, 375/768/1440 px) ab.
 - **`maxDetourRatio` ist pro Szenario gesetzt**, nicht global hergeleitet. Die
   Werte stammen aus den tatsächlichen Ergebnissen mit Sicherheitsaufschlag und
   sind damit eine Regressionsbremse, keine bewiesene Schranke.
+
+## 6. Qualität & Messung (R-Block)
+
+Die Routing-Qualität wird seit R-1 **gemessen**, nicht gefühlt
+(`components/edges/utils/routingQuality.ts`, Dashboard via
+`buildRoutingQualityReport`):
+
+| Metrik           | Ziel                                                     |
+| ---------------- | -------------------------------------------------------- |
+| Kabellänge       | ≤ 1,3 × Manhattan-Optimum (mehr nur mit Hindernis-Grund) |
+| Richtungswechsel | ≤ 2 Bends ohne Grund; U-Turns: 0                         |
+| Clearance        | ≥ 12 px Abstand zu fremden Nodes inkl. Label-Fläche      |
+
+**Stand nach R-10** (`npx vitest run components/edges/utils/routingQuality.test.ts`,
+Tabelle via `formatQualityTable`): worstRatio 1,33 (Szenario 07), sumUTurns 1
+(22), sumClearanceHits 4 — ausschließlich in 20/21/22, wo Quelle bzw. Ziel
+geometrisch in oder an Hindernissen liegen (dokumentierte Ausnahmen, siehe
+Invariante R3). Gegenüber der R-1-Baseline (identische Werte) ist keine
+Verschlechterung eingetreten; der reale Auto-Wire-Nutzerplan in
+`docs/routing-gallery/nutzerplan-autowire.svg` hat **0** Clearance-Verstöße.
+
+**Clearance-Modell seit R-10 (Zwei-Raum-Suche).** `findCablePath` inflatiert
+Hindernisse um `OBSTACLE_MARGIN = 14` px (≥ Clearance-Ziel 12). Handles
+(inkl. überstehender Anschlusspunkte) zählen zur Node-Box. Ein enger
+Ausnahme-Raum existiert nur für **Stub-Blocker**: Sitzt das Ziel-Bauteil so
+nah am Handle, dass Stub-Punkt plus Ziel-Freigabe die 12-px-Zone schneiden,
+darf die A*-Suche dort auf 2 px Restabstand deflationieren (`deepSet`); die
+Akzeptanz bleibt gestuft — 12-px-Pfad vorzugsweise, sonst nur, wenn
+ausschließlich Stub-Segmente im deep-Band liegen, sonst Fallback. Damit ist
+die dokumentierte Ausnahme eng: **2 px nur an an Handle geklebten Bauteilen,
+nirgendwo sonst auf der Route.**
+
+**Fallback-Semantik (bewusster Trade-off).** Der Notfall-Fallback
+(vollständig verbaute Szene) garantiert **keine** Clearance — er preferiert
+Erreichbarkeit über Abstand und ist als Ausnahme im Test markiert
+(R-3-Abweichung). Im Referenzplan und allen Regressions-Szenarien wird er
+nicht gebraucht (Fallback-Quote 0).
+
+**Layout-Kopplung.** Clearance ≥ 12 px ist nur haltbar, wenn Zeilenabstände
+zwei Kabel passen lassen: `FLOW_ROW_SPACING = 192` (72-px-Korridor) statt
+zuvor 160 (40 px — unterhalb von zwei Kabeln à 12 px plus Stub).

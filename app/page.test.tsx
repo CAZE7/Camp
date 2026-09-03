@@ -19,9 +19,10 @@ describe('Home Page', () => {
     render(<Home />);
 
     const main = screen.getByRole('main');
-    expect(within(main).getByRole('link', { name: /Schaltplan/ })).toBeInTheDocument();
-    expect(within(main).getByRole('link', { name: /Dach/ })).toBeInTheDocument();
-    expect(within(main).getByRole('link', { name: /Heizlast/ })).toBeInTheDocument();
+    // Hero-CTA und Werkzeug-Karte teilen sich das Ziel — mindestens 1× je Tool.
+    expect(within(main).getAllByRole('link', { name: /Schaltplan/ }).length).toBeGreaterThan(0);
+    expect(within(main).getAllByRole('link', { name: /Dach/ }).length).toBeGreaterThan(0);
+    expect(within(main).getAllByRole('link', { name: /Heizlast/ }).length).toBeGreaterThan(0);
     // KI-Assistent wurde entfernt (toter Link auf /ki-assistent/, Audit D10).
     // Negativ-Assertion hält fest, dass er nicht zurückkommt, ohne neue Seite.
     expect(within(main).queryByRole('link', { name: /Assistent/ })).not.toBeInTheDocument();

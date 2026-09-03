@@ -127,31 +127,6 @@ export default function RoadTripAnimation() {
         0
       );
 
-      // Ambient UI Interpolation
-      tl.to(
-        document.documentElement,
-        {
-          '--ambient-bg': '#fffdf9',
-          '--ambient-glow': 'rgba(255,253,249,0.5)',
-          ease: 'none',
-          duration: 0.5,
-          force3D: true,
-        },
-        0
-      );
-
-      tl.to(
-        document.documentElement,
-        {
-          '--ambient-bg': '#f6f1e8',
-          '--ambient-glow': 'rgba(246,241,232,0.5)',
-          ease: 'none',
-          duration: 0.5,
-          force3D: true,
-        },
-        0.5
-      );
-
       // Reveal the camper
       if (camperRef.current) {
         gsap.to(camperRef.current, { opacity: 1, duration: 0.5, force3D: true });
@@ -183,7 +158,7 @@ export default function RoadTripAnimation() {
         <path
           d="M 100 10 C 160 200, 40 350, 100 500 C 160 650, 40 800, 100 950 L 100 1000"
           fill="none"
-          stroke="#8f7d68"
+          stroke="var(--rule-strong)"
           strokeWidth="1"
           opacity="0.1"
           strokeDasharray="4 4"
@@ -196,7 +171,7 @@ export default function RoadTripAnimation() {
           id="road-path"
           d="M 100 10 C 160 200, 40 350, 100 500 C 160 650, 40 800, 100 950 L 100 1000"
           fill="none"
-          stroke="#8f7d68"
+          stroke="var(--rule-strong)"
           strokeWidth="4"
           strokeDasharray="8 10"
           strokeLinecap="round"
@@ -207,20 +182,26 @@ export default function RoadTripAnimation() {
         {/* Landmarks */}
         <g className="landmark" data-pos="0.3" style={{ opacity: 0 }}>
           {/* Fir Tree Symbol */}
-          <path d="M 140 300 L 150 280 L 160 300 Z" fill="#065f46" />
-          <path d="M 142 315 L 150 295 L 158 315 Z" fill="#065f46" />
-          <rect x="148" y="315" width="4" height="6" fill="#78350f" />
+          <path d="M 140 300 L 150 280 L 160 300 Z" fill="var(--ok)" />
+          <path d="M 142 315 L 150 295 L 158 315 Z" fill="var(--ok)" />
+          <rect x="148" y="315" width="4" height="6" fill="var(--oxide)" />
         </g>
 
         <g className="landmark" data-pos="0.6" style={{ opacity: 0 }}>
           {/* Mountain Symbol */}
-          <path d="M 30 600 L 50 560 L 70 600 Z" fill="#44403c" />
-          <path d="M 45 570 L 50 560 L 55 570 Z" fill="white" />
+          <path d="M 30 600 L 50 560 L 70 600 Z" fill="var(--text-low)" />
+          <path d="M 45 570 L 50 560 L 55 570 Z" fill="var(--surface-raised)" />
         </g>
 
         {/* The Beach Area */}
-        <path d="M 0 940 Q 100 920 200 950 L 200 1000 L 0 1000 Z" fill="#fcd34d" />
-        <path d="M 0 970 Q 100 960 200 980 L 200 1000 L 0 1000 Z" fill="#7dd3fc" />
+        <path
+          d="M 0 940 Q 100 920 200 950 L 200 1000 L 0 1000 Z"
+          fill="color-mix(in srgb, var(--warn) 38%, var(--surface-canvas))"
+        />
+        <path
+          d="M 0 970 Q 100 960 200 980 L 200 1000 L 0 1000 Z"
+          fill="color-mix(in srgb, var(--wire-ac) 32%, var(--surface-canvas))"
+        />
       </svg>
 
       {/* The Camper Icon */}
@@ -240,9 +221,9 @@ export default function RoadTripAnimation() {
           className="relative h-8 w-8"
         >
           <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2" />
-          <circle cx="7" cy="17" r="2.5" fill="#2d3d28" stroke="none" />
+          <circle cx="7" cy="17" r="2.5" fill="var(--text-high)" stroke="none" />
           <path d="M9 17h6" />
-          <circle cx="17" cy="17" r="2.5" fill="#2d3d28" stroke="none" />
+          <circle cx="17" cy="17" r="2.5" fill="var(--text-high)" stroke="none" />
 
           {/* Headlights (Evening Mode) */}
           <circle
@@ -250,10 +231,17 @@ export default function RoadTripAnimation() {
             cx="21"
             cy="13"
             r="1.5"
-            fill="#fbbf24"
+            fill="var(--warn)"
             style={{ opacity: 0 }}
           />
-          <circle className="camper-headlight" cx="21" cy="15" r="1" fill="#fbbf24" style={{ opacity: 0 }} />
+          <circle
+            className="camper-headlight"
+            cx="21"
+            cy="15"
+            r="1"
+            fill="var(--warn)"
+            style={{ opacity: 0 }}
+          />
         </svg>
       </div>
     </div>

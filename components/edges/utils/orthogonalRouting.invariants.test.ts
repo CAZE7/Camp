@@ -11,6 +11,13 @@ import {
   type Point,
   type Rect,
 } from './orthogonalRouting';
+import {
+  BEND_COST,
+  findCablePath,
+  isOrthogonalPath,
+  remainingCostLowerBound,
+  U_TURN_COST,
+} from './pathfinding';
 import { ROUTING_SCENARIOS, manhattanDistance } from './routingScenarios';
 
 /**
@@ -343,5 +350,126 @@ describe('SVG-Ausgabe bleibt an die Wegpunkte gebunden', () => {
       const { path } = buildOrthogonalPath(scenario.input);
       expect(path).not.toMatch(/NaN|Infinity/);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Kostenmodell (R-2): Gerade < L < Z < Zickzack, Kehre zuletzt
+// ---------------------------------------------------------------------------
+
+describe('Kostenmodell (R-2)', () => {
+  const cost = (result: { length: number; bends: number }): number =>
+    result.length + BEND_COST * result.bends;
+
+  const run = (input: Parameters<typeof findCablePath>[0]) => findCablePath({ skipCache: true, ...input });
+
+  it('Konstanten: Kehre kostet mehr als ein Zickzack-Bogen aus 4 Ecken', () => {
+    expect(U_TURN_COST).toBeGreaterThan(4 * BEND_COST);
+    // Heuristik-Abschlag für Kehren bleibt zulässig: min(U_TURN_COST, 2·BEND_COST).
+    expect(Math.min(U_TURN_COST, 2 * BEND_COST)).toBe(2 * BEND_COST);
+  });
+
+  it('remainingCostLowerBound am Ziel: 0 < 1 Biegung < Kehre (min[U_TURN, 2·BEND])', () => {
+    // Restkosten am Ziel (len = 0): passender Heading, 90°-Biegung, 180°-Kehre.
+    const aligned = remainingCostLowerBound(200, 100, 0, 200, 100, 0);
+    const perpendicular = remainingCostLowerBound(200, 100, 1, 200, 100, 0);
+    const uTurn = remainingCostLowerBound(200, 100, 2, 200, 100, 0);
+    expect(aligned).toBe(0);
+    expect(perpendicular).toBe(BEND_COST);
+    expect(uTurn).toBe(Math.min(U_TURN_COST, 2 * BEND_COST));
+    expect(aligned).toBeLessThan(perpendicular);
+    expect(perpendicular).toBeLessThan(uTurn);
+  });
+
+  it('remainingCostLowerBound unterwegs: matched < 1 Biegung < 2 Biegungen', () => {
+    // Quelle (0,0) → Ziel (200,100): passende Richtung spart eine Biegung.
+    const matched = remainingCostLowerBound(0, 0, 0, 200, 100, 0); // heading +x
+    const mismatched = remainingCostLowerBound(0, 0, 1, 200, 100, 0); // heading −y
+    expect(matched).toBe(300 + BEND_COST);
+    expect(mismatched).toBe(300 + 2 * BEND_COST);
+    expect(matched).toBeLessThan(mismatched);
+  });
+
+  it('Router-Präferenz: Gerade < L < Z < Zickzack (gleiche Endpunkte, Kosten ordnen)', () => {
+    // Alle Varianten: 400 px Querversatz, Hindernisse erzwingen die Form.
+    const straight = run({
+      sourceX: 0,
+      sourceY: 0,
+      sourcePosition: Position.Right,
+      targetX: 400,
+      targetY: 0,
+      targetPosition: Position.Left,
+    });
+    const lShape = run({
+      sourceX: 0,
+      sourceY: 0,
+      sourcePosition: Position.Right,
+      targetX: 400,
+      targetY: 160,
+      targetPosition: Position.Left,
+    });
+    const zShape = run({
+      sourceX: 0,
+      sourceY: 0,
+      sourcePosition: Position.Right,
+      targetX: 400,
+      targetY: 0,
+      targetPosition: Position.Left,
+      obstacles: [{ x: 150, y: 2, width: 100, height: 80 }],
+    });
+    const zigzag = run({
+      sourceX: 0,
+      sourceY: 0,
+      sourcePosition: Position.Right,
+      targetX: 400,
+      targetY: 0,
+      targetPosition: Position.Left,
+      obstacles: [
+        // A ragt von unten in die Lane → erst nach oben ausweichen.
+        { x: 120, y: 2, width: 80, height: 90 },
+        // B ragt von oben in die Lane → hinter A wieder nach unten;
+        // C verschließt den Unterlauf von A (kein gemeinsames Unterfahren).
+        { x: 280, y: -300, width: 80, height: 298 },
+        { x: 120, y: 90, width: 80, height: 200 },
+      ],
+    });
+
+    expect(straight.bends).toBe(0);
+    expect(lShape.bends).toBeGreaterThan(straight.bends);
+    expect(zShape.bends).toBeGreaterThan(lShape.bends);
+    expect(zigzag.bends).toBeGreaterThan(zShape.bends);
+
+    expect(cost(straight)).toBeLessThan(cost(lShape));
+    expect(cost(lShape)).toBeLessThan(cost(zShape));
+    expect(cost(zShape)).toBeLessThan(cost(zigzag));
+  });
+
+  it('U-Turn nur wenn geometrisch erzwungen — und dann hindernisfrei', () => {
+    // Quelle zeigt nach rechts, Ziel liegt links HINTER der Quelle und wird
+    // von rechts betreten: ohne Kehre nicht erreichbar.
+    const result = run({
+      sourceX: 0,
+      sourceY: 0,
+      sourcePosition: Position.Right,
+      targetX: -400,
+      targetY: 0,
+      targetPosition: Position.Right,
+    });
+    expect(result.usedSearch).not.toBe('fallback');
+    expect(isOrthogonalPath(result.waypoints)).toBe(true);
+    expect(result.bends).toBeGreaterThanOrEqual(3);
+  });
+
+  it('Freie Bahn: die gerade Verbindung schlägt jede gebogene Alternative', () => {
+    const free = run({
+      sourceX: 0,
+      sourceY: 0,
+      sourcePosition: Position.Right,
+      targetX: 400,
+      targetY: 0,
+      targetPosition: Position.Left,
+    });
+    expect(free.bends).toBe(0);
+    expect(free.length).toBe(400);
   });
 });

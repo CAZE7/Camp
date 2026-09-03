@@ -77,14 +77,16 @@ describe('nodeMinimapColor', () => {
   it('maps electric node types to a domain token', () => {
     // In jsdom ohne CSS-Variablen fällt die Auflösung auf den Fallback zurück.
     expect(nodeMinimapColor({ id: 'b', type: 'battery', position: { x: 0, y: 0 }, data: {} })).toBe(
-      '#dc2626'
+      'var(--wire-dc)'
     );
-    expect(nodeMinimapColor({ id: 's', type: 'solar', position: { x: 0, y: 0 }, data: {} })).toBe('#b45309');
+    expect(nodeMinimapColor({ id: 's', type: 'solar', position: { x: 0, y: 0 }, data: {} })).toBe(
+      'var(--wire-solar)'
+    );
   });
 
   it('falls back to ink for unknown types', () => {
     expect(nodeMinimapColor({ id: 'u', type: 'unknown', position: { x: 0, y: 0 }, data: {} })).toBe(
-      '#14110e'
+      'var(--ink)'
     );
   });
 });
@@ -93,20 +95,20 @@ describe('resolveMinimapPalette / nodeMinimapColorFrom', () => {
   it('löst alle Domänen-Tokens samt ink einmal auf (jsdom: Fallbacks)', () => {
     const palette = resolveMinimapPalette();
     expect(palette).toEqual({
-      Solar: '#b45309',
-      AC_230V: '#2563eb',
-      DC_12V: '#dc2626',
-      ink: '#14110e',
+      Solar: 'var(--wire-solar)',
+      AC_230V: 'var(--wire-ac)',
+      DC_12V: 'var(--wire-dc)',
+      ink: 'var(--ink)',
     });
   });
 
   it('liefert aus der Palette identische Farben wie der per-Node-Pfad', () => {
     const palette = resolveMinimapPalette();
     const cases: Array<[string, string]> = [
-      ['battery', '#dc2626'],
-      ['solar', '#b45309'],
-      ['roofSolar', '#b45309'],
-      ['unknown', '#14110e'],
+      ['battery', 'var(--wire-dc)'],
+      ['solar', 'var(--wire-solar)'],
+      ['roofSolar', 'var(--wire-solar)'],
+      ['unknown', 'var(--ink)'],
     ];
     for (const [type, expected] of cases) {
       const node = { id: type, type, position: { x: 0, y: 0 }, data: {} };

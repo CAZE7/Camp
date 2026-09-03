@@ -7,12 +7,12 @@
  * Leitung (Hauptstrang vs. Abgang), der Querschnitt steht im Label:
  *
  *  - Backbone (Batterie ↔ Sicherung ↔ Verteilung): 4 px
- *  - normale Leitung: 2,5 px
+ *  - normale Leitung: 2 px (Relaunch D-4)
  *  - Hover/Auswahl: +1 px (Hit-Feedback, ersetzt reine Hover-Farbe)
  *  - Trassen-Modus: Abgänge dünner (1,5 px), Hauptstränge bleiben 4 px
  */
 export const BACKBONE_STROKE_WIDTH = 4;
-export const NORMAL_STROKE_WIDTH = 2.5;
+export const NORMAL_STROKE_WIDTH = 2;
 export const EMPHASIS_STROKE_BONUS = 1;
 export const TRUNK_BRANCH_STROKE_WIDTH = 1.5;
 

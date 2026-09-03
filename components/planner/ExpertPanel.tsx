@@ -330,7 +330,7 @@ function LiveRecommendationCard({
       <div className="from-bone/60 to-bone/30 border-rule/50 relative mx-4 mt-4 overflow-hidden rounded-xl border bg-gradient-to-br p-4 shadow-lg backdrop-blur-md">
         <div className="bg-copper/10 pointer-events-none absolute -right-4 -top-4 h-16 w-16 rounded-full blur-xl" />
         <div className="bg-moss/10 pointer-events-none absolute -bottom-4 -left-4 h-16 w-16 rounded-full blur-xl" />
-        <h4 className="mb-3 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-ink-soft">
+        <h4 className="panel-title mb-3 flex items-center gap-1.5">
           <span className="h-1.5 w-1.5 rounded-full bg-copper"></span>
           Aktuelle Empfehlung{' '}
           <span className="text-xs font-normal normal-case text-ink-soft">
@@ -592,7 +592,7 @@ export function ExpertPanel() {
           className={cn(
             'group flex items-center gap-2.5 rounded-2xl py-3 pl-3 pr-4',
             'bg-gradient-to-br from-moss via-ink to-ink',
-            'text-white shadow-xl',
+            'text-on-signal shadow-xl',
             'hover:shadow-2xl',
             'transition-all duration-200',
             'border-moss/40 border',
@@ -602,7 +602,7 @@ export function ExpertPanel() {
           title="Hilfe und Fachwissen öffnen"
         >
           {/* Die Auswahl wird über den Text angekündigt – ohne ablenkende Daueranimation. */}
-          <span className="relative flex h-8 w-8 items-center justify-center rounded-xl border border-white/20 bg-white/15 transition-colors group-hover:bg-white/25">
+          <span className="border-on-signal/20 bg-card/15 group-hover:bg-card/25 relative flex h-8 w-8 items-center justify-center rounded-xl border transition-colors">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 24 24"

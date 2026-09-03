@@ -186,7 +186,7 @@ function DachPlanerInner() {
       <main id="main" className="flex flex-1 flex-col">
         {/* Sub-Header mit Titel + Watt-KPI */}
         <div className="border-b border-rule bg-bone px-5 py-3">
-          <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3">
+          <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <Link
                 href="/"
@@ -220,7 +220,7 @@ function DachPlanerInner() {
         {/* Onboarding */}
         {onboardingOpen && placementCount === 0 && (
           <div className="border-b border-rule bg-warn-info-bg px-5 py-3">
-            <div className="mx-auto flex max-w-6xl items-start justify-between gap-3">
+            <div className="mx-auto flex max-w-5xl items-start justify-between gap-3">
               <div className="flex items-start gap-3 text-sm text-warn-info">
                 <Info className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
                 <div>
@@ -241,7 +241,7 @@ function DachPlanerInner() {
               <button
                 type="button"
                 onClick={() => setOnboardingOpen(false)}
-                className="flex h-11 w-11 items-center justify-center text-warn-info hover:bg-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warn-info"
+                className="hover:bg-surface-raised/60 flex h-11 w-11 items-center justify-center text-warn-info focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warn-info"
                 aria-label="Anleitung schließen"
               >
                 <XIcon className="h-5 w-5" aria-hidden="true" />

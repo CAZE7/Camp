@@ -7,15 +7,15 @@ import {
 } from './cableStyle';
 
 describe('cableStrokeWidth', () => {
-  it('draws backbone cables at 4 px and normal cables at 2.5 px', () => {
+  it('draws backbone cables at 4 px and normal cables at 2 px (D-4)', () => {
     expect(cableStrokeWidth({ isBackbone: true })).toBe(4);
-    expect(cableStrokeWidth({ isBackbone: false })).toBe(2.5);
+    expect(cableStrokeWidth({ isBackbone: false })).toBe(2);
     expect(BACKBONE_STROKE_WIDTH).toBe(4);
-    expect(NORMAL_STROKE_WIDTH).toBe(2.5);
+    expect(NORMAL_STROKE_WIDTH).toBe(2);
   });
 
   it('adds one pixel on hover/selection as pointer-independent feedback', () => {
-    expect(cableStrokeWidth({ isBackbone: false, emphasized: true })).toBe(3.5);
+    expect(cableStrokeWidth({ isBackbone: false, emphasized: true })).toBe(3);
     expect(cableStrokeWidth({ isBackbone: true, emphasized: true })).toBe(5);
   });
 

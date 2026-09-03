@@ -43,9 +43,12 @@ const ConduitNode = function ({ data, selected }: { id: string; data: ConduitNod
 
   return (
     <div
-      className={`custom-drag-handle w-64 rounded-md border-2 bg-card p-3 shadow-md transition-all hover:scale-105 ${
-        fillStats.isOverfilled ? 'border-warn-critical bg-warn-critical-bg' : 'border-border'
-      } ${selected ? (fillStats.isOverfilled ? 'shadow-xl ring-4 ring-warn-critical' : 'shadow-xl ring-4 ring-border') : ''}`}
+      role="group"
+      aria-label={`${data.label || 'Leerrohr'} (${conduitType}). Komponente im Plan.`}
+      data-selected={selected || undefined}
+      className={`node-card custom-drag-handle w-64 p-3 ${
+        fillStats.isOverfilled ? 'node-card--error bg-warn-critical-bg' : ''
+      } ${selected ? 'node-card--selected' : ''}`}
     >
       <NodeSymbol kind="conduit" />
 
@@ -53,7 +56,9 @@ const ConduitNode = function ({ data, selected }: { id: string; data: ConduitNod
         {data.label || 'Leerrohr'} ({conduitType})
       </div>
 
-      <div className="mb-2 text-xs text-muted-foreground">Zugewiesene Kabel: {assignedEdgeIds.length}</div>
+      <div className="measure mb-2 text-xs text-muted-foreground">
+        Zugewiesene Kabel: {assignedEdgeIds.length}
+      </div>
 
       <div className="mb-2 h-2.5 w-full overflow-hidden rounded-full border border-border bg-accent">
         <div
@@ -67,7 +72,7 @@ const ConduitNode = function ({ data, selected }: { id: string; data: ConduitNod
       </div>
 
       {fillStats.isOverfilled && (
-        <div className="mt-2 rounded bg-warn-critical p-2 text-xs font-bold leading-tight text-white">
+        <div className="mt-2 rounded bg-warn-critical p-2 text-xs font-bold leading-tight text-on-signal">
           Kanal überfüllt! Gefahr durch Hitzestau in der Kabelbündelung.
           {fillStats.recommendedConduit ? (
             <span className="mt-1 block">

@@ -8,220 +8,274 @@
 }
 
 @layer base {
+  /* === Werft-Design-Tokens (Relaunch „Werft“, agent.md D-1) ==============
+     app/globals.css ist die EINZIGE Farbquelle des Projekts — Komponenten
+     enthalten keine Hex-/rgb-Werte. Drei Ebenen:
+       1. Primärtokens (Hex): Surface-Skala (canvas/panel/raised), --rule
+          für Linien, --oxide als einziger Akzent, Text-Stufen, Semantik.
+       2. Rollen: shadcn-Rollen (--background, --card, …) und die M7-
+          Planer-Ebene (--surface-0/1/2, --accent-line, …) referenzieren
+          Ebene 1.
+       3. Markaliase: --paper, --bone, --ink, --copper, … bleiben für
+          bestehende Klassen erhalten und referenzieren Ebene 1.
+     Die .dark-Variante definiert NUR Ebene 1 neu — alles darunter folgt
+     über var()-Ketten automatisch. WCAG-AA-Kontraste (≥ 4,5:1 Text,
+     ≥ 3:1 grafische Objekte, hell wie dunkel) bewacht
+     lib/designTokens.test.ts. */
   :root {
-    --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
-    --font-sans: 'Source Sans 3', 'Source Sans Pro', ui-sans-serif, system-ui, sans-serif;
+    color-scheme: light;
+
+    /* Werft-Typo (D-2): Inter für die gesamte UI, Outfit ausschließlich für
+       Display-Headlines, IBM Plex Mono für Werte/Maße. Die Type-Scale
+       12/13/14/16/20/24/32 liegt in tailwind.config.ts (fontSize). */
+    --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+    --font-display: 'Outfit Variable', 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
     --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
     --font-heading: var(--font-display);
 
-    --paper: #f6f1e8;
-    --bone: #fffdf9;
-    --ink: #14110e;
-    --ink-soft: #2a241e;
-    --muted-ink: #3f3831;
-    --clay: #8f7d68;
-    --oak: #5c4024;
-    --copper: #7a3218;
-    --copper-deep: #5c2410;
-    --moss: #2d3d28;
-    --soot: #14110e;
-    --signal: #7a2418;
-    --oxide: #1a4338;
-    --rule: #8f7d68;
+    /* 1 · Surface-Skala — kühle, neutrale CAD-Flächen */
+    --surface-canvas: #eceef0; /* Seiten- und Zeichenflächengrund */
+    --surface-panel: #f9fafb; /* Panels, Karten, Bauteile */
+    --surface-raised: #ffffff; /* raised: Popover, Inputs, Hover-Karten */
+    --surface-hover: #e7eaed; /* Hover/Active auf Panel */
 
-    --background: var(--paper);
-    --foreground: var(--ink);
-    --card: var(--bone);
-    --card-foreground: var(--ink);
-    --popover: var(--bone);
-    --popover-foreground: var(--ink);
-    --primary: var(--ink);
-    --primary-foreground: var(--bone);
-    --secondary: #e7ddd0;
-    --secondary-foreground: var(--ink);
-    --muted: #e7ddd0;
-    --muted-foreground: var(--muted-ink);
-    --accent: #ebe3d6;
-    --accent-foreground: var(--ink);
-    --destructive: var(--signal);
-    --destructive-foreground: var(--bone);
+    /* Linien — das 1-px-Raster */
+    --rule: #d3d7db;
+    --rule-strong: #b4bac1;
+
+    /* Der eine Akzent */
+    --oxide: #a34a24;
+
+    /* Text-Stufen */
+    --text-high: #16181a;
+    --text-med: #4a5158;
+    --text-low: #5c646b;
+
+    /* Semantik */
+    --ok: #1e6b4f;
+    --warn: #8a5a0a;
+    --error: #b3261e;
+
+    /* 2 · M7-Planer-Ebene (Namen bleiben; Werte aus der Werft-Skala).
+       Das missionsseitige Akzent-Token für die Selektions-Linie heißt
+       --accent-line, damit der shadcn-Hover-Token --accent (Fläche!)
+       frei bleibt. */
+    --surface-0: var(--surface-canvas);
+    --surface-1: var(--surface-panel);
+    --surface-2: var(--surface-raised);
+    --accent-line: var(--oxide);
+
+    /* 3 · shadcn-Rollen */
+    --background: var(--surface-canvas);
+    --foreground: var(--text-high);
+    --card: var(--surface-panel);
+    --card-foreground: var(--text-high);
+    --popover: var(--surface-raised);
+    --popover-foreground: var(--text-high);
+    --primary: var(--text-high);
+    --primary-foreground: var(--surface-panel);
+    --secondary: var(--surface-hover);
+    --secondary-foreground: var(--text-high);
+    --muted: var(--surface-hover);
+    --muted-foreground: var(--text-med);
+    --accent: var(--surface-hover);
+    --accent-foreground: var(--text-high);
+    --destructive: var(--error);
+    --destructive-foreground: #ffffff;
     --border: var(--rule);
-    --input: var(--rule);
-    --ring: var(--ink);
-    --chart-1: var(--copper);
-    --chart-2: var(--oak);
-    --chart-3: var(--moss);
-    --chart-4: var(--ink-soft);
-    --chart-5: var(--clay);
-    --radius: 0.125rem;
-    --sidebar: var(--bone);
-    --sidebar-foreground: var(--ink);
-    --sidebar-primary: var(--ink);
-    --sidebar-primary-foreground: var(--bone);
-    --sidebar-accent: #ebe3d6;
-    --sidebar-accent-foreground: var(--ink);
+    --input: var(--rule-strong);
+    --ring: var(--oxide);
+    --chart-1: var(--oxide);
+    --chart-2: var(--ok);
+    --chart-3: var(--warn);
+    --chart-4: var(--wire-ac);
+    --chart-5: var(--text-low);
+    --radius: 0.25rem;
+    --sidebar: var(--surface-panel);
+    --sidebar-foreground: var(--text-high);
+    --sidebar-primary: var(--text-high);
+    --sidebar-primary-foreground: var(--surface-panel);
+    --sidebar-accent: var(--surface-hover);
+    --sidebar-accent-foreground: var(--text-high);
     --sidebar-border: var(--rule);
-    --sidebar-ring: var(--ink);
+    --sidebar-ring: var(--oxide);
+
+    /* Markaliase (kompatibel zu bestehenden Tailwind-Klassen wie
+       bg-paper / text-ink / border-rule / text-copper) */
+    --paper: var(--surface-canvas);
+    --bone: var(--surface-panel);
+    --ink: var(--text-high);
+    --ink-soft: var(--text-med);
+    --muted-ink: var(--text-med);
+    --clay: var(--text-low);
+    --copper: var(--oxide);
+    --copper-deep: var(--oxide);
+    --oak: var(--oxide);
+    --moss: var(--ok);
+    --soot: #1a1d20; /* invertierte Fläche (z. B. Header tone="soot") */
+    --signal: var(--error);
 
     /* --- Planer: Semantische Leitungs- & Warn-Kodierung ---
        Zentral definiert, damit Canvas-Kanten, Rohre und Warnungen
        überall dieselbe Farbsprache nutzen (keine Inline-Hexwerte). */
-    --canvas-bg: #f4f5f7;
-    --canvas-grid: #6b6258;
+    --canvas-bg: var(--surface-canvas);
+    --canvas-grid: #a8aeb5;
     --canvas-dim: 0.32;
     --canvas-domain-dim: 0.18;
-    --canvas-minimap-mask: rgba(20, 17, 14, 0.14);
-    --wire-dc: #dc2626; /* Gleichstrom 12V/24V Plus (technisches Rot) */
-    --wire-dc-minus: #374151; /* Gleichstrom 12V/24V Minus (Schiefergrau) */
+    --canvas-minimap-mask: rgba(22, 24, 26, 0.14);
+    --edge-glow: rgba(22, 24, 26, 0.45); /* Schatten betonter Leitungen */
+    --scrim: rgba(16, 18, 20, 0.6); /* Dialog-Ausblendfläche */
+    --scrim-soft: rgba(16, 18, 20, 0.4);
+    --on-signal: #ffffff; /* Text AUF gesättigter Signalfarbe ( hell ) */
+    --wire-dc: #c62f21; /* Gleichstrom 12V/24V Plus (technisches Rot) */
+    --wire-dc-minus: #3f4750; /* Gleichstrom 12V/24V Minus (Schiefergrau) */
     --wire-ac: #2563eb; /* Wechselstrom 230V (Signalblau) */
-    --wire-solar: #b45309; /* Solar / PV (Amber, auf hellem Grund >= 3:1 nach WCAG 1.4.11) */
-    --wire-selected: #1f2937; /* Fokus-Ring für ausgewählte Leitung */
-    --wire-error: #b42318; /* Leitung mit Fehler (Norm-Warnrot mit gestricheltem Signal) */
-    --wire-error-bg: rgba(180, 35, 24, 0.1);
+    --wire-solar: #b45309; /* Solar / PV (Amber, >= 3:1 nach WCAG 1.4.11) */
+    --wire-selected: var(--oxide); /* Fokus-Ring für ausgewählte Leitung */
+    --wire-error: var(--error); /* Leitung mit Fehler (gestricheltes Signal) */
+    --wire-error-bg: rgba(179, 38, 30, 0.1);
 
     --pipe-fresh: #1d4ed8; /* Frischwasser (blau) */
     --pipe-gray: #4b5563; /* Grauwasser (grau) */
-    --pipe-selected: #c2410c; /* ausgewähltes Rohr (orange) */
+    --pipe-selected: var(--oxide); /* ausgewähltes Rohr */
 
-    --warn-critical: #b91c1c; /* kritisch */
-    --warn-critical-bg: #fef2f2;
-    --warn-critical-border: #fecaca;
-    --warn-warning: #92400e; /* Warnung */
-    --warn-warning-bg: #fffbeb;
-    --warn-warning-border: #fde68a;
-    --warn-info: #2563eb; /* Hinweis */
-    --warn-info-bg: #eff6ff;
-    --warn-info-border: #bfdbfe;
+    --warn-critical: var(--error); /* kritisch */
+    --warn-critical-bg: #fbeeec;
+    --warn-critical-border: #f0c7c2;
+    --warn-warning: var(--warn); /* Warnung */
+    --warn-warning-bg: #f8f1e0;
+    --warn-warning-border: #e7d5ab;
+    --warn-info: #1d4ed8; /* Hinweis (Text auf Canvas ≥ 4,5:1, bewacht) */
+    --warn-info-bg: #edf3fe;
+    --warn-info-border: #c8dcfb;
 
     /* Allgemeine Statusfarben (von Tailwind referenziert) */
     --info: var(--warn-info);
-    --success: var(--oxide);
-    --warning: var(--warn-warning);
-
-    /* --- Mission 7 (M7-1): Planer-Design-Tokens, helle Werte ------------
-       Eine semantische Schicht, die der `.dark`-Block komplett spiegelt:
-       der Planer hängt an diesen Namen, das Theme biegt nur Werte um.
-       Radius: --radius = 0.125rem (2 px) erfüllt „≤ 4 px" für die
-       Ingenieurs-Oberfläche. Das missionsseitig geforderte Akzent-Token für
-       die Selektions-Linie heißt hier --accent-line, damit der shadcn-Hover-
-       Token --accent (Fläche!) frei bleibt. */
-    --surface-0: #f4f5f7; /* Canvas-Grundfläche (= --canvas-bg) */
-    --surface-1: var(--bone); /* Karten, Bauteile, Panels */
-    --surface-2: #ece4d6; /* Hover, Insets, Statuszeile */
-    --text-high: var(--ink); /* Primärtext */
-    --text-med: #57534e; /* Sekundärtext, Labels */
-    --text-low: #6b6258; /* Randleisten, Gitter-Text */
-    --accent-line: var(--copper); /* Selektion 1 px, Fokus-Akzent */
-    --ok: var(--oxide);
-    --warn: var(--warn-warning);
-    --error: #b42318; /* = --wire-error */
+    --success: var(--ok);
+    --warning: var(--warn);
     --danger: var(--error); /* Alias — CableEdge referenziert --danger */
   }
 
-  /* --- Mission 7 (M7-1): Engineering Dark Theme ------------------------
-     Die `dark`-Klasse setzt usePlannerDarkMode() ausschließlich auf dem
-     .planner-shell-Wrapper — die Marketing-Seiten bleiben immer hell.
-     Da alle Planer-Komponenten über Tokens steuern (shadcn-Rollen +
-     Marken-var), genügt das Umbiegen der Werte; im JSX ändert sich kein
-     Selektor. `color-scheme` stimmt Scrollbars/Formular-Autofill ab. */
+  /* --- Dark Theme („Werft“ dunkel) --------------------------------------
+     Seit dem Relaunch gilt dunkel seitenweit: layout.tsx setzt die `dark`-
+     Klasse an <html> (Systemeinstellung, ohne eigenen Umschalter). Nur
+     Ebene 1 wird neu definiert — Rollen und Aliase folgen automatisch.
+     `color-scheme` stimmt Scrollbars/Formular-Autofill ab. */
   .dark {
     color-scheme: dark;
 
-    /* Flächen & Text */
-    --surface-0: #12151b;
-    --surface-1: #171b22;
-    --surface-2: #21262f;
-    --text-high: #eef1f5;
-    --text-med: #b9bfc9;
-    --text-low: #949cab;
-    --accent-line: #8fb4ff;
-    --ok: #7ee2a8;
-    --warn: #f2c14e;
-    --error: #ff8f84;
-    --danger: var(--error);
+    /* 1 · Surface-Skala */
+    --surface-canvas: #131518;
+    --surface-panel: #191c1f;
+    --surface-raised: #212529;
+    --surface-hover: #23282d;
 
-    /* Marken-Tokens im Planer-Scope mitbiegen (text-ink, bg-card, …) */
-    --ink: #eef1f5;
-    --ink-soft: #c9cfd9;
-    --muted-ink: #b9bfc9;
-    --bone: #171b22;
-    --paper: #12151b;
-    --clay: #949cab;
-    --rule: #2c313a;
-    --moss: #7ee2a8;
-    --oak: #d8a15e;
-    --copper: #e0a370;
-    --copper-deep: #e0a370;
-    --soot: #12151b;
-    --signal: #ff8f84;
-    --oxide: #7ee2a8;
+    /* Linien */
+    --rule: #2c3136;
+    --rule-strong: #3d434a;
 
-    /* shadcn-Rollen auf dunkle Flächen */
-    --background: var(--surface-0);
-    --foreground: var(--text-high);
-    --card: var(--surface-1);
-    --card-foreground: var(--text-high);
-    --popover: var(--surface-1);
-    --popover-foreground: var(--text-high);
-    --primary: #e7ebf1;
-    --primary-foreground: #12151b;
-    --secondary: var(--surface-2);
-    --secondary-foreground: var(--text-high);
-    --muted: var(--surface-2);
-    --muted-foreground: var(--text-med);
-    --accent: #232a36;
-    --accent-foreground: var(--text-high);
-    --destructive: var(--error);
-    --destructive-foreground: #12151b;
-    --border: #2c313a;
-    --input: #2c313a;
-    --ring: var(--accent-line);
-    --sidebar: var(--surface-1);
-    --sidebar-foreground: var(--text-high);
-    --sidebar-primary: #e7ebf1;
-    --sidebar-primary-foreground: #12151b;
-    --sidebar-accent: #232a36;
-    --sidebar-accent-foreground: var(--text-high);
-    --sidebar-border: #2c313a;
-    --sidebar-ring: var(--accent-line);
+    /* Akzent */
+    --oxide: #e2885f;
+
+    /* Text-Stufen */
+    --text-high: #e8ebee;
+    --text-med: #a6adb3;
+    --text-low: #8b939a;
+
+    /* Semantik */
+    --ok: #6fcf97;
+    --warn: #e5b45b;
+    --error: #f26b60;
+
+    /* M7-Planer-Ebene: explizite Spiegel (namensgleicher Guard in
+       lib/designTokens.test.ts verlangt beide Blöcke) */
+    --surface-0: var(--surface-canvas);
+    --surface-1: var(--surface-panel);
+    --surface-2: var(--surface-raised);
+    --accent-line: var(--oxide);
+    --border: var(--rule);
+
+    /* shadcn-Rollen, die in dunkel andere Fascen/Werte brauchen */
+    --primary: var(--text-high);
+    --primary-foreground: var(--surface-canvas);
+    --destructive-foreground: var(--surface-canvas);
+    --soot: #101214;
 
     /* Canvas & Leitungen: Signal-Farben bleiben Signalfarben — auf dunklem
        Grund heller, damit sie ≥ 3:1 (grafisches Objekt) zur Fläche halten. */
-    --canvas-bg: #12151b;
-    --canvas-grid: #94a3b8;
+    --canvas-bg: var(--surface-canvas);
+    --canvas-grid: #3d434a;
     --canvas-dim: 0.5;
     --canvas-domain-dim: 0.3;
     --canvas-minimap-mask: rgba(0, 0, 0, 0.55);
+    --edge-glow: rgba(0, 0, 0, 0.6);
+    --scrim: rgba(0, 0, 0, 0.65);
+    --scrim-soft: rgba(0, 0, 0, 0.5);
+    --on-signal: #131518; /* Text AUF gesättigter Signalfarbe (dunkel: hell → dunkler Text) */
     --wire-dc: #f87171;
     --wire-dc-minus: #cbd5e1;
     --wire-ac: #7aa2f7;
     --wire-solar: #fbbf24;
-    --wire-selected: #e5e7eb;
-    --wire-error: #ff8f84;
-    --wire-error-bg: rgba(255, 143, 132, 0.14);
+    --wire-selected: var(--text-high);
+    --wire-error-bg: rgba(242, 107, 96, 0.14);
 
     --pipe-fresh: #60a5fa;
     --pipe-gray: #94a3b8;
-    --pipe-selected: #fb923c;
 
-    --warn-critical: #ff8f84;
-    --warn-critical-bg: rgba(255, 143, 132, 0.12);
-    --warn-critical-border: rgba(255, 143, 132, 0.4);
-    --warn-warning: #f2c14e;
-    --warn-warning-bg: rgba(242, 193, 78, 0.12);
-    --warn-warning-border: rgba(242, 193, 78, 0.4);
-    --warn-info: #8fb4ff;
-    --warn-info-bg: rgba(143, 180, 255, 0.14);
-    --warn-info-border: rgba(143, 180, 255, 0.4);
+    --warn-critical-bg: rgba(242, 107, 96, 0.12);
+    --warn-critical-border: rgba(242, 107, 96, 0.4);
+    --warn-warning-bg: rgba(229, 180, 91, 0.12);
+    --warn-warning-border: rgba(229, 180, 91, 0.4);
+    --warn-info: var(--wire-ac); /* Hinweis: helles Blau auf dunkler Fläche */
+    --warn-info-bg: rgba(122, 162, 247, 0.14);
+    --warn-info-border: rgba(122, 162, 247, 0.4);
 
     ::selection {
-      background: #35415e;
+      background: color-mix(in srgb, var(--oxide) 30%, transparent);
       color: var(--text-high);
     }
   }
-
   * {
     @apply border-border;
+  }
+
+  /* D-8: Fokus-Ringe seitenweit in Akzentfarbe (--oxide), 150-ms-Transitions
+     an interaktiven Elementen. prefers-reduced-motion setzt die Transition
+     global auf null (siehe Block am Dateiende). */
+  a:focus-visible,
+  button:focus-visible,
+  [role='button']:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  summary:focus-visible,
+  [tabindex]:focus-visible {
+    outline: 2px solid var(--oxide);
+    outline-offset: 2px;
+  }
+
+  button:not(:disabled),
+  a,
+  [role='button']:not(:disabled) {
+    transition-property: color, background-color, border-color, box-shadow, opacity, filter;
+    transition-duration: 150ms;
+    transition-timing-function: ease;
+  }
+
+  /* D-8: Skeleton-Grundelement — flackert dezent, respektiert reduced motion. */
+  .skeleton {
+    background: color-mix(in srgb, var(--text-high) 8%, var(--surface-panel));
+    border-radius: 4px;
+    animation: skeleton-pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes skeleton-pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.55;
+    }
   }
 
   html {
@@ -236,8 +290,8 @@
   }
 
   ::selection {
-    background: #d8c4a8;
-    color: var(--ink);
+    background: color-mix(in srgb, var(--oxide) 22%, transparent);
+    color: var(--text-high);
   }
 }
 
@@ -331,6 +385,193 @@
     bottom: max(1.5rem, env(safe-area-inset-bottom));
   }
 
+  /* --- D-5: Panel-System ------------------------------------------------
+     Einheitlicher Aufbau für Sidebar/Inspector/ExpertPanel/Dashboard:
+     Panel-Kopf 40 px hoch mit 11-px-Uppercase-Label (Mono), Sektionen mit
+     Divider, Innenabstände 12/16. Buttons bleiben im Toolbar-Stil
+     (Button variant="outline": 1-px-Linie, flache Fläche). */
+  .panel {
+    background: var(--surface-panel);
+  }
+  .panel-header {
+    display: flex;
+    height: 2.5rem; /* 40 px */
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding-inline: 1rem; /* 16 px */
+    border-bottom: 1px solid var(--rule);
+  }
+  .panel-title {
+    font-family: var(--font-mono), ui-monospace, monospace;
+    font-size: 0.6875rem; /* 11 px */
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: var(--text-med);
+  }
+  .panel-section {
+    padding: 0.75rem 1rem; /* 12 / 16 */
+  }
+  .panel-section + .panel-section {
+    border-top: 1px solid var(--rule);
+  }
+
+  /* --- D-6: Toolbar-Details — Tooltips & Shortcut-Badges --------------- */
+  /* Icon-Toolbar-Buttons: zentriertes Icon, Tooltip via ::after (CSS-only,
+     ressourcenlos, im Werft-Stil: Panel-Fläche, 1-px-Linie, Mono). */
+  .tool-btn {
+    position: relative;
+  }
+  .tool-btn::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 2px 6px;
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    background: var(--surface-raised);
+    color: var(--text-high);
+    font-family: var(--font-mono), ui-monospace, monospace;
+    font-size: 0.6875rem;
+    line-height: 1rem;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 150ms ease;
+    z-index: 80;
+  }
+  .tool-btn:hover::after,
+  .tool-btn:focus-visible::after {
+    opacity: 1;
+  }
+  /* Shortcut-Badge (kbd) im Werft-Stil */
+  kbd.shortcut-key,
+  .shortcut-key {
+    display: inline-block;
+    padding: 0 4px;
+    border: 1px solid var(--rule);
+    border-bottom-width: 2px;
+    border-radius: 4px;
+    background: var(--surface-raised);
+    font-family: var(--font-mono), ui-monospace, monospace;
+    font-size: 0.6875rem;
+    line-height: 1.25rem;
+    color: var(--text-med);
+  }
+
+  /* --- D-6: Shortcut-Overlay (?) im Werft-Stil ------------------------- */
+  .shortcut-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 190;
+    display: grid;
+    place-items: center;
+    padding: 1rem;
+    background: var(--scrim);
+  }
+  .shortcut-overlay__card {
+    width: 100%;
+    max-width: 30rem;
+    border: 1px solid var(--rule-strong);
+    border-radius: 4px;
+    background: var(--surface-panel);
+    color: var(--text-high);
+    box-shadow: 0 8px 24px var(--scrim-soft);
+  }
+  .shortcut-overlay__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.8125rem;
+  }
+  .shortcut-overlay__row + .shortcut-overlay__row {
+    border-top: 1px solid var(--rule);
+  }
+
+  /* --- D-3: Einheitlicher Seitencontainer & Rhythmus -------------------
+     Alle Inhaltsseiten (/ , /guides/*, Impressum, Datenschutz) teilen sich
+     denselben Außenrahmen: max. 1024 px, 20 px Seitenrand, 48/64 px
+     Vertikalrhythmus. Lesestext hält zusätzlich Maß über .prose-measure. */
+  .container-page {
+    margin-inline: auto;
+    width: 100%;
+    max-width: 64rem;
+    padding-inline: 1.25rem;
+    padding-block: 3rem;
+  }
+  @media (min-width: 768px) {
+    .container-page {
+      padding-block: 4rem;
+    }
+  }
+  .prose-measure {
+    margin-inline: auto;
+    max-width: 42rem;
+  }
+
+  /* --- Wasser-Bauteile: Token-Tints (D-1/D-4) --------------------------
+     Setzen die Karten-Hintergrundvariable; .node-card konsumiert sie.
+     So bleiben Tint und Kartenrahmen eine Ebene, hell wie dunkel. */
+  .tint-fresh {
+    --node-card-bg: color-mix(in srgb, var(--pipe-fresh) 16%, var(--surface-panel));
+  }
+  .tint-gray-water {
+    --node-card-bg: color-mix(in srgb, var(--pipe-gray) 16%, var(--surface-panel));
+  }
+  .tint-pump {
+    --node-card-bg: color-mix(in srgb, var(--pipe-fresh) 26%, var(--surface-panel));
+  }
+  .tint-acc {
+    --node-card-bg: color-mix(in srgb, var(--wire-ac) 14%, var(--surface-panel));
+  }
+  .tint-filter {
+    --node-card-bg: color-mix(in srgb, var(--ok) 14%, var(--surface-panel));
+  }
+
+  /* --- D-4: Node-Card im CAD-Stil --------------------------------------
+     1-px-Linie, Radius 4, flache Fläche; der Status liegt als 2-px-
+     Akzentleiste an der Kartenoberkante (Selektion = Akzent, Fehler =
+     Error). Der Hintergrund ist über --node-card-bg überstimmbar
+     (Wasser-Tints). */
+  .node-card {
+    position: relative;
+    border: 1px solid var(--rule-strong);
+    border-radius: 4px;
+    background: var(--node-card-bg, var(--surface-panel));
+    color: var(--text-high);
+    transition: border-color 150ms ease;
+  }
+  .node-card::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 2px;
+    border-radius: 3px 3px 0 0;
+    background: transparent;
+    pointer-events: none;
+  }
+  .node-card:hover {
+    border-color: var(--accent-line);
+  }
+  .node-card--selected {
+    border-color: var(--accent-line);
+  }
+  .node-card--selected::before {
+    background: var(--accent-line);
+  }
+  .node-card--error {
+    border-color: var(--error);
+  }
+  .node-card--error::before {
+    background: var(--error);
+  }
+
   /* --- Planer-Layout: feste Spaltenbreiten als Variablen -------------
      Damit kennen auch absolut positionierte Bedienelemente (die Ein-/
      Ausklapp-Pfeile) die exakte Spaltenbreite, ohne dass Zahlen doppelt
@@ -417,33 +658,34 @@
     font-weight: 600;
     letter-spacing: 0.12em;
   }
+  /* D-4: Domain-Tints über Signaltokens gemischt — hell und dunkel korrekt. */
   .node-symbol--dc {
-    --node-symbol-color: #b42318;
-    --node-symbol-bg: #fff1f0;
+    --node-symbol-color: var(--wire-dc);
+    --node-symbol-bg: color-mix(in srgb, var(--wire-dc) 10%, var(--surface-panel));
   }
   .node-symbol--ac {
-    --node-symbol-color: #175cd3;
-    --node-symbol-bg: #eff8ff;
+    --node-symbol-color: var(--wire-ac);
+    --node-symbol-bg: color-mix(in srgb, var(--wire-ac) 10%, var(--surface-panel));
   }
   .node-symbol--solar {
-    --node-symbol-color: #b54708;
-    --node-symbol-bg: #fffaeb;
+    --node-symbol-color: var(--wire-solar);
+    --node-symbol-bg: color-mix(in srgb, var(--wire-solar) 12%, var(--surface-panel));
   }
   .node-symbol--load {
-    --node-symbol-color: #087443;
-    --node-symbol-bg: #ecfdf3;
+    --node-symbol-color: var(--ok);
+    --node-symbol-bg: color-mix(in srgb, var(--ok) 10%, var(--surface-panel));
   }
   .node-symbol--protect {
-    --node-symbol-color: #b42318;
-    --node-symbol-bg: #fff1f0;
+    --node-symbol-color: var(--wire-dc);
+    --node-symbol-bg: color-mix(in srgb, var(--wire-dc) 10%, var(--surface-panel));
   }
   .node-symbol--ground {
-    --node-symbol-color: #475467;
-    --node-symbol-bg: #f2f4f7;
+    --node-symbol-color: var(--text-low);
+    --node-symbol-bg: color-mix(in srgb, var(--text-low) 10%, var(--surface-panel));
   }
   .node-symbol--measure {
-    --node-symbol-color: #6941c6;
-    --node-symbol-bg: #f9f5ff;
+    --node-symbol-color: var(--wire-ac);
+    --node-symbol-bg: color-mix(in srgb, var(--wire-ac) 8%, var(--surface-panel));
   }
   .node-drag-handle:active {
     cursor: grabbing;
@@ -477,11 +719,21 @@
     background: transparent !important;
   }
 
+  /* D-4: 12-px-Anschluss, Hover vergrößert auf 14 px und färbt akzentuiert. */
   .react-flow__handle > div {
+    width: 12px !important;
+    height: 12px !important;
+    border: 2px solid var(--surface-panel);
+    box-shadow: 0 0 0 1px var(--rule-strong);
+    transition:
+      width 150ms ease,
+      height 150ms ease,
+      box-shadow 150ms ease;
+  }
+  .react-flow__handle:hover > div {
     width: 14px !important;
     height: 14px !important;
-    border: 2px solid var(--bone);
-    box-shadow: 0 0 0 1px var(--ink);
+    box-shadow: 0 0 0 1.5px var(--accent-line);
   }
 
   .react-flow__handle:focus-visible > div,
@@ -601,6 +853,12 @@
     transition-duration: 0.01ms !important;
   }
 
+  /* Skeletons stehen still, aber sichtbar (dauerhaft auf 55 % Fläche). */
+  .skeleton {
+    animation: none;
+    opacity: 0.55;
+  }
+
   .planner-flow-particle {
     display: none;
   }
@@ -616,15 +874,14 @@
 
 /* --- Mission 7 (M7-2/M7-3/M7-4): Planer-Schrift, Dichte, Statuszeile --- */
 
-/* M7-2 Fonts: Der Planer läuft auf Inter (gebündelt wie gehabt — keine
-   externen Font-CDNs); Werte in IBM Plex Mono mit tabular-nums. Fraunces
-   bleibt den Marketing-Seiten: display/heading biegen im Planer-Scope auf
-   die UI-Schrift um, damit CardTitle & Co. dort nicht serifern. */
+/* M7-2/D-2: Die GESAMTE Seite läuft auf Inter (D-2); Outfit ist echten
+   Display-Headlines vorbehalten. Im Planer ist alles UI — display/heading
+   biegen im planner-shell-Scope deshalb zurück auf Inter, damit CardTitle
+   & Co. nicht in die Marketing-Schrift kippen. Werte: IBM Plex Mono mit
+   tabular-nums. */
 .planner-shell {
-  --font-sans: 'Inter Variable', 'Source Sans 3', ui-sans-serif, system-ui, sans-serif;
-  --font-display: 'Inter Variable', 'Source Sans 3', ui-sans-serif, system-ui, sans-serif;
-  --font-heading: 'Inter Variable', 'Source Sans 3', ui-sans-serif, system-ui, sans-serif;
-  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --font-display: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-heading: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
   --space-1: 4px;
 }
 
@@ -657,6 +914,20 @@
 .planner-shell .react-flow__controls-button {
   width: 2rem;
   height: 2rem;
+}
+
+/* D-4: MiniMap im Werkzeug-Stil — Panel-Fläche, 1-px-Linie, Radius 4. */
+.planner-shell .react-flow__minimap {
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: none;
+}
+.planner-shell .react-flow__minimap-mask {
+  stroke: var(--accent-line);
+}
+.planner-shell .react-flow__panel {
+  font-family: var(--font-mono);
 }
 
 /* Inspector-Werte: Ziffern rechtsbündig in Plex Mono, damit Einheiten

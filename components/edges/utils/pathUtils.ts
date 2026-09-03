@@ -2,17 +2,28 @@ import { type Position, getSmoothStepPath } from 'reactflow';
 import type { Point } from './pathfinding';
 
 export const SMOOTH_STEP_BORDER_RADIUS = 10;
-export const PLUS_PATH_OFFSET = 24;
-export const MINUS_PATH_OFFSET = 38;
+
+/**
+ * Lane-System (R-5, agent.md): Es gibt genau eine Längeneinheit für
+ * Quer-Versätze — `PARALLEL_LANE_SPREAD` (16 px, M10-1, Abstand zwischen
+ * gebündelten Leitungen derselben Trasse). Alle anderen Versätze
+ * (Polaritäts-Lanes, Ausweich-Trassen der Router, U-Turn-Rücklauf) sind
+ * Vielfache davon und werden über `laneOffset` gebildet. Gleiche Korridore
+ * bündeln statt streuen: Die Ausweich-Stufen der Router liegen auf
+ * ±3/±6 Lanes (±48/±96 px) und kollidieren deshalb nie mit einer
+ * Bündel-Lane (±0,5/±1,5/±2,5 …).
+ */
+export const PARALLEL_LANE_SPREAD = 16;
+
+/** Versatz für `lanes` Lanes — die einzige Quelle für Quer-Offsets. */
+export const laneOffset = (lanes: number): number => lanes * PARALLEL_LANE_SPREAD;
+
+/** Polaritäts-Lanes: Plus auf 1,5 Lanes, Minus eine ganze Lane darunter. */
+export const PLUS_PATH_OFFSET = laneOffset(1.5); // 24
+export const MINUS_PATH_OFFSET = laneOffset(2.5); // 40
 export const PLUS_LABEL_NUDGE = -48;
 export const MINUS_LABEL_NUDGE = 48;
 export const PARALLEL_LABEL_SPREAD = 24;
-/**
- * Abstand zwischen gebündelten Leitungen derselben Trasse.
- * 16 px (M10-1) halten parallele Leitungen klar trennbar, ohne die Trasse
- * optisch aufzusprengen.
- */
-export const PARALLEL_LANE_SPREAD = 16;
 
 /** Kabel-Label-Box für Kollisionsprüfung (M8-3 / M10-1). */
 export const LABEL_BOX_WIDTH = 88;
@@ -69,6 +80,13 @@ export const calculateEdgePath = ({
   });
 };
 
+/**
+ * Polaritäts-Versatz — dieselbe Logik wie `parallelLaneOffset` (R-5): ein
+ * Wert aus dem einen Lane-Raster (`laneOffset`). Plus liegt auf 1,5 Lanes,
+ * Minus auf 2,5 — zusammen mit den symmetrischen Bündel-Lanes ergibt das
+ * ein einheitliches 8-px-Halbton-Raster ohne Kollision zwischen Polarität
+ * und Bündel.
+ */
 export const polarityPathOffset = (sourceHandle?: string | null): number => {
   if (sourceHandle?.includes('minus')) return MINUS_PATH_OFFSET;
   return PLUS_PATH_OFFSET;
@@ -117,8 +135,9 @@ const cableTypeRank = (edge: LabelEdgeRef): number =>
  *
  * Sortiert wird nach Kabeltyp (Plus → Minus → 230 V → Rest) und erst danach
  * nach id. Zwei Plus-Leitungen liegen damit immer direkt nebeneinander, auch
- * wenn ihre ids alphabetisch auseinanderfallen. Der Abstand beträgt
- * PARALLEL_LANE_SPREAD (16 px, M10-1) je Lane.
+ * wenn ihre ids alphabetisch auseinanderfallen. Der Abstand beträgt je Lane
+ * `laneOffset(1)` = PARALLEL_LANE_SPREAD (16 px) — dasselbe Raster wie die
+ * Polaritäts- und Ausweich-Lanes (R-5).
  */
 export const parallelLaneOffset = (input: {
   edgeId: string;
@@ -135,7 +154,7 @@ export const parallelLaneOffset = (input: {
     0,
     group.findIndex((edge) => edge.id === input.edgeId)
   );
-  return (idx - (group.length - 1) / 2) * PARALLEL_LANE_SPREAD;
+  return laneOffset(idx - (group.length - 1) / 2);
 };
 
 /**

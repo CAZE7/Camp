@@ -39,10 +39,14 @@ export const DOMAIN_COLORS: Record<Domain, string> = {
  * Reihenfolge der Signatur: Solar schlägt AC schlägt DC — ein MPPT ist in der
  * Minimap eine Solar-Komponente, ein Wechselrichter eine AC-Komponente.
  */
+// Fallbacks sind die var()-Referenz selbst: Die Tokens sind in globals.css
+// immer definiert (Relaunch D-1: keine Hex-/rgb-Werte außerhalb davon).
+// In jsdom/SSR — wo getComputedStyle keine Custom Properties auflöst —
+// bleibt dadurch der korrekte Token-Name als CSS-Wert erhalten.
 const DOMAIN_TOKEN: Record<Domain, { token: string; fallback: string }> = {
-  Solar: { token: '--wire-solar', fallback: '#b45309' },
-  AC_230V: { token: '--wire-ac', fallback: '#2563eb' },
-  DC_12V: { token: '--wire-dc', fallback: '#dc2626' },
+  Solar: { token: '--wire-solar', fallback: 'var(--wire-solar)' },
+  AC_230V: { token: '--wire-ac', fallback: 'var(--wire-ac)' },
+  DC_12V: { token: '--wire-dc', fallback: 'var(--wire-dc)' },
 };
 
 const SIGNATURE_ORDER: Domain[] = ['Solar', 'AC_230V', 'DC_12V'];
@@ -70,7 +74,7 @@ export function resolveMinimapPalette(): MinimapPalette {
     Solar: cssToken(DOMAIN_TOKEN.Solar.token, DOMAIN_TOKEN.Solar.fallback),
     AC_230V: cssToken(DOMAIN_TOKEN.AC_230V.token, DOMAIN_TOKEN.AC_230V.fallback),
     DC_12V: cssToken(DOMAIN_TOKEN.DC_12V.token, DOMAIN_TOKEN.DC_12V.fallback),
-    ink: cssToken('--ink', '#14110e'),
+    ink: cssToken('--ink', 'var(--ink)'),
   };
 }
 

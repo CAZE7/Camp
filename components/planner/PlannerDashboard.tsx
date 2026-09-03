@@ -141,9 +141,7 @@ function KeyboardShortcutHints() {
     <ul className="hidden items-center gap-1 2xl:flex" aria-label="Tastaturkürzel">
       {SHORTCUTS.map((shortcut) => (
         <li key={shortcut.keys} className="flex items-center gap-1 text-xs text-muted-foreground">
-          <kbd className="rounded border border-border bg-accent px-1.5 py-0.5 font-mono text-xs text-foreground">
-            {shortcut.keys}
-          </kbd>
+          <kbd className="shortcut-key">{shortcut.keys}</kbd>
           <span className="hidden 2xl:inline">{shortcut.label}</span>
         </li>
       ))}
@@ -331,7 +329,8 @@ function ActionsSection({
         size="icon"
         onClick={undo}
         disabled={!canUndo}
-        className="hidden h-11 w-11 md:inline-flex"
+        className="tool-btn hidden h-11 w-11 md:inline-flex"
+        data-tooltip="Rückgängig (Strg+Z)"
         aria-label="Rückgängig"
         title="Rückgängig"
       >
@@ -343,7 +342,8 @@ function ActionsSection({
         size="icon"
         onClick={redo}
         disabled={!canRedo}
-        className="hidden h-11 w-11 md:inline-flex"
+        className="tool-btn hidden h-11 w-11 md:inline-flex"
+        data-tooltip="Wiederholen (Strg+Y)"
         aria-label="Wiederholen"
         title="Wiederholen"
       >
@@ -376,7 +376,8 @@ function ActionsSection({
           variant="outline"
           size="icon"
           onClick={() => setMenuOpen((value) => !value)}
-          className="h-11 w-11"
+          className="tool-btn h-11 w-11"
+          data-tooltip="Weitere Aktionen"
           aria-haspopup="menu"
           aria-expanded={menuOpen}
           aria-label="Weitere Aktionen"
