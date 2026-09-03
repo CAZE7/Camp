@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Position } from 'reactflow';
 import {
   findCablePath,
@@ -16,6 +16,8 @@ import {
   countCrossings,
   nodesToObstacles,
   clearPathfindingCache,
+  pathfindingFallbackCount,
+  resetPathfindingTelemetry,
   remainingCostLowerBound,
   BEND_COST,
   OBSTACLE_MARGIN,
@@ -23,6 +25,7 @@ import {
   type Rect,
 } from './pathfinding';
 import { waypointsToPath, parallelLaneOffset, polarityPathOffset, edgeLabelNudge } from './pathUtils';
+import { ROUTING_SCENARIOS } from './routingScenarios';
 
 beforeEach(() => {
   clearPathfindingCache();
@@ -541,5 +544,52 @@ describe('lane helpers', () => {
     });
     expect(n1).not.toBe(0);
     expect(n3).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// R-3: Fallback-Verhalten bei erschöpftem Suchbudget
+// ---------------------------------------------------------------------------
+
+describe('Fallback-Verhalten (R-3)', () => {
+  it('Referenzplan: Fallback-Quote 0 — jede Kante kommt aus Katalog oder A*', () => {
+    resetPathfindingTelemetry();
+    for (const scenario of ROUTING_SCENARIOS) {
+      const result = findCablePath({ ...scenario.input, skipCache: true });
+      expect(result.usedSearch, `${scenario.id}: usedSearch ${result.usedSearch}`).not.toBe('fallback');
+      expect(isOrthogonalPath(result.waypoints)).toBe(true);
+    }
+    expect(pathfindingFallbackCount()).toBe(0);
+  });
+
+  it('unerreichbares Ziel: Fallback ist orthogonal, zählt und warnt', () => {
+    resetPathfindingTelemetry();
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      // Zielring: das Ziel ist vollständig von Hindernissen umschlossen
+      // (ohne das Ziel selbst zu enthalten) — kein Pfad existiert.
+      const result = findCablePath({
+        skipCache: true,
+        sourceX: -200,
+        sourceY: 0,
+        sourcePosition: Position.Right,
+        targetX: 0,
+        targetY: 0,
+        targetPosition: Position.Left,
+        obstacles: [
+          { x: -80, y: -100, width: 160, height: 40 },
+          { x: -80, y: 60, width: 160, height: 40 },
+          { x: -80, y: -60, width: 30, height: 120 },
+          { x: 50, y: -60, width: 30, height: 120 },
+        ],
+      });
+      expect(result.usedSearch).toBe('fallback');
+      expect(isOrthogonalPath(result.waypoints)).toBe(true);
+      expect(pathfindingFallbackCount()).toBe(1);
+      expect(warn).toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
+    }
+    resetPathfindingTelemetry();
   });
 });

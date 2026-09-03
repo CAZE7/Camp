@@ -621,12 +621,14 @@ export function hasSelfOverlap(points: Point[]): boolean {
       if (aHorizontal !== bHorizontal) continue;
       if (aHorizontal) {
         if (Math.abs(a1.y - b1.y) > EPS) continue;
-        const overlap = Math.min(Math.max(a1.x, a2.x), Math.max(b1.x, b2.x)) -
+        const overlap =
+          Math.min(Math.max(a1.x, a2.x), Math.max(b1.x, b2.x)) -
           Math.max(Math.min(a1.x, a2.x), Math.min(b1.x, b2.x));
         if (overlap > EPS) return true;
       } else {
         if (Math.abs(a1.x - b1.x) > EPS) continue;
-        const overlap = Math.min(Math.max(a1.y, a2.y), Math.max(b1.y, b2.y)) -
+        const overlap =
+          Math.min(Math.max(a1.y, a2.y), Math.max(b1.y, b2.y)) -
           Math.max(Math.min(a1.y, a2.y), Math.min(b1.y, b2.y));
         if (overlap > EPS) return true;
       }
@@ -908,6 +910,20 @@ export type PathResult = {
 
 const cache = new Map<string, PathResult>();
 
+/**
+ * R-3 (Routing-Fallback): Telemetrie. `fallbackCount` zählt, wie oft der
+ * Notfallpfad (roher Katalog ohne Freigabeprüfung) das Endergebnis war —
+ * Ziel im Referenzplan: Quote 0. Ein Anstieg bedeutet, dass Hindernisfeld
+ * oder Budget (MAX_EXPANSIONS) die ordentliche Suche überfordern.
+ */
+let fallbackCount = 0;
+
+export const pathfindingFallbackCount = (): number => fallbackCount;
+
+export const resetPathfindingTelemetry = (): void => {
+  fallbackCount = 0;
+};
+
 export const clearPathfindingCache = (): void => {
   cache.clear();
 };
@@ -1102,6 +1118,19 @@ export function findCablePath(input: PathRequest): PathResult {
   }
 
   const result = assemble(best.waypoints, bestCross, best.usedSearch, radius);
+  if (result.usedSearch === 'fallback') {
+    // R-3: Der Notfallpfad ist orthogonal, hat aber keine Freigabe-Garantie
+    // (der Wiederholungslauf mit halbiertem Margin ist oben gelaufen).
+    // Sichtbar machen statt still leiden:
+    fallbackCount += 1;
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn(
+        `[pathfinding] Fallback ohne Hindernisfreigabe: ` +
+          `(${input.sourceX},${input.sourceY}) → (${input.targetX},${input.targetY}), ` +
+          `${allObstacles.length} Hindernisse, ${crossingSegments.length} Fremdsegmente`
+      );
+    }
+  }
   if (!input.skipCache) cacheSet(key, result);
   return result;
 }
