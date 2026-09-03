@@ -1,118 +1,109 @@
-"use client";
+'use client';
+
 import React, { useState } from 'react';
+import { Search } from 'lucide-react';
+import {
+  DEFAULT_OPEN_CATEGORY,
+  deviceAssistant,
+  groupByCategory,
+  useComponentCatalog,
+} from './sidebar/catalog';
+import { CategorySection } from './sidebar/CategorySection';
+import { SidebarSearch } from './sidebar/SidebarSearch';
 
-const components = [
-  { type: 'battery', label: 'Batterie' },
-  { type: 'shunt', label: 'Smart Shunt' },
-  { type: 'busbar', label: 'Main Busbar' },
-  { type: 'charger', label: 'Ladebooster' },
-  { type: 'solar', label: 'Solarmodul' },
-  { type: 'inverter', label: 'Wechselrichter' },
-  { type: 'consumer', label: '12V Verbraucher (Heizung, Licht)' },
-  { type: 'consumer230v', label: '230V Verbraucher (Induktion, Kaffee)' },
-  { type: 'shorePower', label: 'Landstromanschluss' },
-  { type: 'fuse', label: 'Sicherungskasten' },
-  { type: 'ground', label: 'Massepunkt (Karosserie)' },
-  { type: 'conduit', label: 'Leerrohr / Kabelkanal' },
-];
+interface SidebarProps {
+  mode?: 'electric' | 'water';
+  onMobileAdd?: () => void;
+}
 
-const waterComponents = [
-  { type: 'freshWaterTank', label: 'Frischwassertank' },
-  { type: 'grayWaterTank', label: 'Grauwassertank' },
-  { type: 'pump', label: 'Wasserpumpe' },
-  { type: 'accumulator', label: 'Druckausgleichsgefäß (Accumulator)' },
-  { type: 'preFilter', label: 'Vorfilter' },
-  { type: 'sink', label: 'Spüle' },
-  { type: 'shower', label: 'Dusche' },
-];
-
-export default function Sidebar({ mode = 'electric' }: { mode?: 'electric' | 'water' }) {
+/**
+ * Linke Spalte des Planers: Bauteil-Katalog (Registry) + Geräte-Vorlagen.
+ *
+ * Diese Datei hält nur noch die Schale — Suchbegriff, Kategorien-Zustand und
+ * die Komposition. Daten und reine Funktionen liegen in `sidebar/catalog.ts`,
+ * Hinzufügen und Ghost-Drag in `sidebar/drag.ts`, Kachel, Kategorie und
+ * Suchfeld in eigenen Komponenten. Ehemals 300+ Zeilen in einem File.
+ */
+export function Sidebar({ mode = 'electric', onMobileAdd }: SidebarProps) {
   const [searchTerm, setSearchTerm] = useState('');
+  const [manualOpen, setManualOpen] = useState<Record<string, boolean>>({});
+  const activeComponents = useComponentCatalog(mode);
+  const isSearching = searchTerm.trim().length > 0;
+  const matches = (label: string, description: string) =>
+    `${label} ${description}`.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredComponents = activeComponents.filter((item) => matches(item.label, item.description));
+  const filteredDevices =
+    mode === 'electric' ? deviceAssistant.filter((item) => matches(item.label, item.description)) : [];
 
-  const activeComponents = mode === 'water' ? waterComponents : components;
+  const { categories, byCategory } = groupByCategory(filteredComponents);
 
-  const handlePointerDown = (e: React.PointerEvent, comp: { type: string, label: string }) => {
-    e.preventDefault(); // Prevent default touch actions
-
-    // Create a ghost element that follows the pointer
-    const target = e.currentTarget as HTMLElement;
-    const clone = target.cloneNode(true) as HTMLElement;
-    clone.style.position = 'fixed';
-    clone.style.zIndex = '9999';
-    clone.style.opacity = '0.8';
-    clone.style.pointerEvents = 'none'; // so it doesn't interfere with mouseup/pointerup targets
-    clone.style.left = `${e.clientX - target.offsetWidth / 2}px`;
-    clone.style.top = `${e.clientY - target.offsetHeight / 2}px`;
-    document.body.appendChild(clone);
-
-    const onPointerMove = (moveEvent: PointerEvent) => {
-      clone.style.left = `${moveEvent.clientX - target.offsetWidth / 2}px`;
-      clone.style.top = `${moveEvent.clientY - target.offsetHeight / 2}px`;
-    };
-
-    const onPointerUp = (upEvent: PointerEvent) => {
-      document.removeEventListener('pointermove', onPointerMove);
-      document.removeEventListener('pointerup', onPointerUp);
-      clone.remove();
-
-      // Check if dropped over the react-flow pane
-      const elementsUnderPointer = document.elementsFromPoint(upEvent.clientX, upEvent.clientY);
-      const isOverCanvas = elementsUnderPointer.some(el => el.classList.contains('react-flow__pane'));
-
-      if (isOverCanvas) {
-        // Dispatch custom event to Planner.tsx
-        const dropEvent = new CustomEvent('custom-node-drop', {
-          detail: {
-            clientX: upEvent.clientX,
-            clientY: upEvent.clientY,
-            type: comp.type,
-            label: comp.label
-          }
-        });
-        window.dispatchEvent(dropEvent);
-      }
-    };
-
-    document.addEventListener('pointermove', onPointerMove);
-    document.addEventListener('pointerup', onPointerUp);
-  };
-
-  const filteredComponents = activeComponents.filter(c =>
-    c.label.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const defaultOpen = DEFAULT_OPEN_CATEGORY[mode];
+  const isCatOpen = (category: string) =>
+    isSearching || (category in manualOpen ? manualOpen[category] === true : category === defaultOpen);
+  const toggleCat = (category: string) =>
+    setManualOpen((previous) => ({
+      ...previous,
+      [category]: !(category in previous ? previous[category] : category === defaultOpen),
+    }));
+  const devicesOpen = isSearching || (manualOpen.__devices ?? false);
+  const hasAnyResult = filteredComponents.length > 0 || filteredDevices.length > 0;
 
   return (
-    <aside className="w-64 bg-white dark:bg-gray-900 border-r border-gray-200 flex flex-col h-full">
-      <div className="p-4 border-b border-gray-100">
-        <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100">Komponenten</h2>
+    <aside
+      data-testid="sidebar"
+      className="flex h-full w-full flex-col border-r border-border bg-paper lg:w-72"
+      aria-label={mode === 'water' ? 'Wasser-Komponenten' : 'Elektrik-Komponenten'}
+    >
+      <div className="border-b border-border bg-accent p-4">
+        <h2 className="panel-title">Komponenten</h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Antippen oder per Tastatur hinzufügen; am Desktop auch ziehen.
+        </p>
       </div>
 
-      <div className="m-4">
-        <input
-          type="text"
-          placeholder="Suchen..."
-          aria-label="Komponenten suchen"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all bg-gray-50 dark:bg-gray-800 dark:text-gray-200"
-        />
+      <div className="border-b border-border p-4">
+        <SidebarSearch value={searchTerm} onChange={setSearchTerm} />
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 pb-4">
-        {filteredComponents.length > 0 ? (
-          <div className="flex flex-col gap-2">
-            {filteredComponents.map((comp, index) => (
-              <div
-                key={index}
-                className="p-3 border border-gray-200 rounded cursor-grab hover:bg-orange-50 hover:scale-105 transition-transform transition-colors text-sm font-medium text-gray-700 bg-white shadow-sm touch-none"
-                onPointerDown={(e) => handlePointerDown(e, comp)}
-              >
-                {comp.label}
-              </div>
+      <div className="flex-1 overflow-y-auto p-4">
+        {hasAnyResult ? (
+          <div className="flex flex-col gap-3">
+            {categories.map((category) => (
+              <CategorySection
+                key={category}
+                title={category}
+                items={byCategory[category] ?? []}
+                open={isCatOpen(category)}
+                onToggle={() => toggleCat(category)}
+                onMobileAdd={onMobileAdd}
+                accent="default"
+              />
             ))}
+            {mode === 'electric' && filteredDevices.length > 0 && (
+              <CategorySection
+                title="Geräte-Vorlagen"
+                items={filteredDevices}
+                open={devicesOpen}
+                onToggle={() =>
+                  setManualOpen((previous) => ({ ...previous, __devices: !(previous.__devices ?? false) }))
+                }
+                onMobileAdd={onMobileAdd}
+                accent="device"
+              />
+            )}
           </div>
         ) : (
-          <div className="text-gray-500 text-sm text-center py-4">Keine Komponenten gefunden</div>
+          <div className="flex flex-col items-center gap-3 py-8 text-center text-sm text-muted-foreground">
+            <Search className="h-8 w-8" aria-hidden="true" />
+            <p>Keine Treffer für „{searchTerm}“</p>
+            <button
+              type="button"
+              onClick={() => setSearchTerm('')}
+              className="min-h-11 rounded-lg border border-border bg-card px-4 font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              Filter zurücksetzen
+            </button>
+          </div>
         )}
       </div>
     </aside>

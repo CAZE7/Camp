@@ -1,14 +1,15 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import GroundNode from './GroundNode';
+import { asDivProps, type MockHandleProps } from '../../test-helpers/reactflowMocks';
 
 // Mock reactflow Handle since it might need a context provider
 vi.mock('reactflow', async () => {
   const actual = await vi.importActual('reactflow');
   return {
     ...actual,
-    Handle: ({ 'data-testid': testId, isConnectable, ...props }: any) => (
-      <div data-testid={testId || 'react-flow-handle'} {...props} />
+    Handle: ({ 'data-testid': testId, isConnectable, ...props }: MockHandleProps) => (
+      <div data-testid={testId || 'react-flow-handle'} {...asDivProps(props)} />
     ),
     Position: {
       Left: 'left',
@@ -33,15 +34,15 @@ describe('GroundNode Component', () => {
   it('applies selected styling when selected is true', () => {
     const { container } = render(<GroundNode id="1" data={{}} selected={true} />);
     const mainDiv = container.firstChild as HTMLElement;
-    expect(mainDiv.className).toContain('ring-4');
-    expect(mainDiv.className).toContain('ring-blue-500');
+    expect(mainDiv.getAttribute('data-selected')).toBe('true');
+    expect(mainDiv.className).toContain('node-card--selected');
   });
 
   it('does not apply selected styling when selected is false', () => {
     const { container } = render(<GroundNode id="1" data={{}} selected={false} />);
     const mainDiv = container.firstChild as HTMLElement;
-    expect(mainDiv.className).not.toContain('ring-4');
-    expect(mainDiv.className).not.toContain('ring-blue-500');
+    expect(mainDiv.getAttribute('data-selected')).toBeNull();
+    expect(mainDiv.className).not.toContain('ring-[color:var(--accent-line)]');
   });
 
   it('renders target and source Handle components with correct props', () => {
@@ -49,8 +50,8 @@ describe('GroundNode Component', () => {
     const handles = screen.getAllByTestId('react-flow-handle');
     expect(handles.length).toBe(2);
 
-    const targetHandle = handles.find(h => h.getAttribute('type') === 'target');
-    const sourceHandle = handles.find(h => h.getAttribute('type') === 'source');
+    const targetHandle = handles.find((h) => h.getAttribute('type') === 'target');
+    const sourceHandle = handles.find((h) => h.getAttribute('type') === 'source');
 
     expect(targetHandle).toBeInTheDocument();
     expect(targetHandle).toHaveAttribute('id', 'minus');
