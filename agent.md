@@ -68,3 +68,63 @@ Freigabe durch den Nutzer.
       150-ms-Transitions, Empty-States, Skeletons, gestaltete ErrorBoundary.
 - [ ] **D-9 Visuelle Regression:** Playwright-Screenshots der Kernrouten
       (hell+dunkel, 375/768/1440 px) als CI-Check; Lighthouse A11y ≥ 95.
+
+## Routing-Qualität Elektroplaner
+
+Ziel: Kabelverlegung logisch und ruhig — Flussrichtung, wenige Biegungen,
+keine U-Turns, keine vermeidbaren Kreuzungen. Baut auf M11-2/M11-3 aus
+AGENTS.md auf. Pro Aufgabe ein Commit; jeder Fix mit Regressionstest;
+Vorher/Nachher-Screenshots (375/768/1440 px) im PR — Merge erst nach
+optischer Freigabe durch den Nutzer.
+
+- [ ] **R-1 Routing-Messung zuerst:** Qualitäts-Dashboard für Referenzpläne in
+      `routingScenarios.ts`: Gesamtkabellänge vs. Manhattan-Optimum (Ziel
+      ≤ 1,3×), Biegungen und U-Turns je Kante, Kreuzungen (Ziel ≤ 2),
+      Clearance-Verletzungen (< 12 px). Report als Vitest-Modul plus Tabelle
+      im PR. Keine Fix-Aufgabe gilt ohne Metrik-Nachweis als fertig.
+- [ ] **R-2 Kostenfunktion kalibrieren:** `BEND_COST` (80) und `U_TURN_COST`
+      (400) gegen die Distanzeinheiten des Hanan-A* prüfen und Einheiten
+      dokumentieren. Invariante: Gerade < L < Z < Zickzack; U-Turn ist immer
+      die teuerste lokale Entscheidung. Tests in
+      `orthogonalRouting.invariants.test.ts`.
+- [ ] **R-3 Fallback härten:** Bei Erreichen von `MAX_EXPANSIONS` (48 000)
+      muss der Fallback orthogonal bleiben, Clearance halten und geloggt
+      werden (Warnung plus Zähler). Fallback-Quote im Referenzplan = 0.
+      Budget-/Grid-Strategie anpassen, statt Qualität fallen zu lassen.
+- [ ] **R-4 Kreuzungs-Scan skalierbar:** Das Überspringen ab
+      `CROSSING_SCAN_EDGE_LIMIT` entfällt — Spatial-Index (Grid/Quadtree)
+      statt O(n²)-Ausstieg. Kreuzungen ≤ 2 gilt für Pläne jeder Größe;
+      Regressionstest mit einem 100+-Kanten-Plan.
+- [ ] **R-5 Trassen-System vereinheitlichen:** Parallele Trassen (±40/±80 px)
+      und `PARALLEL_LANE_SPREAD` (16) zu einem Lane-System konsolidieren;
+      `parallelLaneOffset` und `polarityPathOffset` nutzen dieselbe Logik.
+      Gleiche Korridore bündeln statt streuen.
+- [ ] **R-6 Globale Nachoptimierung:** Nach dem Einzel-Routing ein
+      `routeAll`-Pass: Kantenreihenfolge an Ports tauschen, um Kreuzungen
+      aufzulösen; gemeinsame Segmente auf gemeinsame Lanes ausrichten;
+      `simplifyWaypoints` und `dedupe` verifizieren (kein Punkt-Verlust,
+      keine Kollisionsänderung). Deterministische Reihenfolge, Test mit
+      fixem Seed.
+- [ ] **R-7 Port- und Stub-Logik:** Handle-Seite nach Flussrichtung wählen
+      (Quelle → Verteilung → Verbraucher); `ROUTE_MIN_STUB` (24 px) immer
+      einhalten; kein U-Turn direkt am Handle. Test: kein Stub < 24 px,
+      kein Richtungswechsel im Stub-Bereich.
+- [ ] **R-8 AutoWire-Platzierung (M11-2):** Knoten in Flussrichtung auf dem
+      16-px-Raster platzieren, mit konsistenten Abständen; optional
+      dagre-Auto-Layout direkt nach dem Verdrahten. Metrik als Test:
+      Kabellänge ≤ 1,3× Manhattan-Optimum, keine Kante mit > 2
+      Richtungswechseln ohne Grund.
+- [ ] **R-9 Cache- und Re-Routing-Korrektheit:** `routingCache` und
+      `cableRouteStore` bei Move/Resize/Delete/Connect invalidieren; keine
+      veralteten Pfade nach Undo/Redo. Re-Route während des Draggens
+      (gedrosselt), damit der Pfad live logisch bleibt. Tests für jede
+      Invalidierungsquelle.
+- [ ] **R-10 Hindernis-Präzision:** `NODE_FALLBACK_WIDTH/HEIGHT` (192/120)
+      durch gemessene Node-Bounds ersetzen; Labels und Handles in die
+      Hindernis-Rechtecke aufnehmen; `OBSTACLE_MARGIN` (14) konsistent zum
+      Clearance-Ziel ≥ 12 px. Test: keine Kante schneidet einen Node
+      inklusive Label.
+- [ ] **R-11 Visuelle Abnahme & Doku:** Routing-Gallery um reale Nutzerpläne
+      (vorher/nachher) erweitern; Playwright-Screenshots (375/768/1440 px)
+      als CI-Check; Routing-Invarianten in `docs/` dokumentieren
+      (Kostenmodell, Lanes, Clearance). Merge erst nach optischer Freigabe.
