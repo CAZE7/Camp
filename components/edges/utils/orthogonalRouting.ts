@@ -386,8 +386,12 @@ export type Segment = [Point, Point];
 /** Ab dieser Zahl an Kreuzungen wird eine Alternativroute gesucht. */
 export const MAX_ACCEPTABLE_CROSSINGS = 2;
 
-/** Zusätzlicher Abstand je Ausweich-Versuch (ein Vielfaches der Lane-Breite). */
-export const ALTERNATIVE_ROUTE_GAP = 40;
+/**
+ * Ausweich-Trassen (R-5): ganzzahlige Lane-Multipel (3 Lanes à 16 px),
+ * damit Ausweicher nie auf einer Bündel- oder Polaritäts-Lane liegen.
+ * (Früher ±40/±80 px — außerhalb des 16-px-Rasters.)
+ */
+export const ALTERNATIVE_ROUTE_GAP = 48;
 
 /** Zerlegt eine Polylinie in einzelne Segmente. */
 export function waypointsToSegments(points: Point[]): Segment[] {

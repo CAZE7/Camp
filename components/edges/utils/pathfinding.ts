@@ -58,7 +58,9 @@ export const MAX_EXPANSIONS = 48_000;
 /** Abstand der Rücklauflane vom Stub bei erzwungenen U-Loops (2 Lanes, R-5). */
 export const U_TURN_LANE_SPREAD = 2 * 16;
 export const MAX_ACCEPTABLE_CROSSINGS = 2;
-export const ALTERNATIVE_ROUTE_GAP = 40;
+
+/** Ausweich-Trassen (R-5): 3 und 6 Lanes à 16 px — siehe orthogonalRouting. */
+export const ALTERNATIVE_ROUTE_GAP = 48;
 
 const EPS = 1e-6;
 const QUANT = 2; // 0.5 px
