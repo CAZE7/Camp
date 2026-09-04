@@ -1,830 +1,2759 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="de">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Elektroplaner · Ansichten-Prototyp (Recherche-Begleitmaterial)</title>
-<style>
-  :root{
-    --bg:#f4f3f0; --panel:#fbfaf8; --raised:#ffffff; --rule:#d8d4cd; --rule-strong:#b6b1a8;
-    --ink:#1c1b18; --ink-2:#57534a; --ink-3:#8a857b;
-    --accent:#b4552d;            /* oxide/copper */
-    --wire-dc:#c2413b; --wire-neg:#26241f; --wire-solar:#b07d10; --wire-ac:#2f5fa8; --wire-pe:#2c7a4b;
-    --ok:#2c7a4b; --warn:#b07d10; --err:#b3372f;
-    --band:#efede8;
-    --mono:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    --sans:"Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    --shadow:0 1px 2px rgba(28,27,24,.08), 0 8px 24px rgba(28,27,24,.06);
-  }
-  html.dark{
-    --bg:#141513; --panel:#1b1c1a; --raised:#22231f; --rule:#33342f; --rule-strong:#4a4b44;
-    --ink:#ece9e2; --ink-2:#b3afa5; --ink-3:#807c73;
-    --accent:#e08a5c;
-    --wire-dc:#e0655c; --wire-neg:#c9c6bd; --wire-solar:#d9a53a; --wire-ac:#6f9bdd; --wire-pe:#5cb483;
-    --ok:#5cb483; --warn:#d9a53a; --err:#e0655c;
-    --band:#1e1f1c;
-    --shadow:0 1px 2px rgba(0,0,0,.5), 0 10px 30px rgba(0,0,0,.35);
-  }
-  *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.45}
-  button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
-  .mono{font-family:var(--mono)}
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>
+      Elektroplaner · Ansichten-Prototyp (Recherche-Begleitmaterial)
+    </title>
+    <style>
+      :root {
+        --bg: #f4f3f0;
+        --panel: #fbfaf8;
+        --raised: #ffffff;
+        --rule: #d8d4cd;
+        --rule-strong: #b6b1a8;
+        --ink: #1c1b18;
+        --ink-2: #57534a;
+        --ink-3: #8a857b;
+        --accent: #b4552d; /* oxide/copper */
+        --wire-dc: #c2413b;
+        --wire-neg: #26241f;
+        --wire-solar: #b07d10;
+        --wire-ac: #2f5fa8;
+        --wire-pe: #2c7a4b;
+        --ok: #2c7a4b;
+        --warn: #b07d10;
+        --err: #b3372f;
+        --band: #efede8;
+        --mono:
+          "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas,
+          monospace;
+        --sans:
+          "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        --shadow:
+          0 1px 2px rgba(28, 27, 24, 0.08), 0 8px 24px rgba(28, 27, 24, 0.06);
+      }
+      html.dark {
+        --bg: #141513;
+        --panel: #1b1c1a;
+        --raised: #22231f;
+        --rule: #33342f;
+        --rule-strong: #4a4b44;
+        --ink: #ece9e2;
+        --ink-2: #b3afa5;
+        --ink-3: #807c73;
+        --accent: #e08a5c;
+        --wire-dc: #e0655c;
+        --wire-neg: #c9c6bd;
+        --wire-solar: #d9a53a;
+        --wire-ac: #6f9bdd;
+        --wire-pe: #5cb483;
+        --ok: #5cb483;
+        --warn: #d9a53a;
+        --err: #e0655c;
+        --band: #1e1f1c;
+        --shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 10px 30px rgba(0, 0, 0, 0.35);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: var(--sans);
+        font-size: 14px;
+        line-height: 1.45;
+      }
+      button {
+        font: inherit;
+        color: inherit;
+        background: none;
+        border: none;
+        cursor: pointer;
+      }
+      .mono {
+        font-family: var(--mono);
+      }
 
-  header.top{
-    position:sticky;top:0;z-index:40;display:flex;align-items:center;gap:16px;
-    padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--rule);
-  }
-  .brand{display:flex;align-items:baseline;gap:10px;min-width:0}
-  .brand b{font-size:15px;letter-spacing:.2px;white-space:nowrap}
-  .brand span{font-family:var(--mono);font-size:11px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .tabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:thin;padding:2px}
-  .tab{
-    display:flex;align-items:center;gap:7px;white-space:nowrap;
-    padding:8px 12px;border:1px solid transparent;border-radius:8px;color:var(--ink-2);font-weight:600;font-size:12.5px;
-  }
-  .tab:hover{background:var(--raised);color:var(--ink)}
-  .tab[aria-selected="true"]{background:var(--raised);border-color:var(--rule-strong);color:var(--ink);box-shadow:var(--shadow)}
-  .tab .dot{width:8px;height:8px;border-radius:2px;background:var(--accent)}
-  .spacer{flex:1}
-  .iconbtn{display:flex;align-items:center;justify-content:center;width:36px;height:36px;border:1px solid var(--rule);border-radius:8px;background:var(--raised)}
-  .iconbtn:hover{border-color:var(--rule-strong)}
+      header.top {
+        position: sticky;
+        top: 0;
+        z-index: 40;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 10px 16px;
+        background: var(--panel);
+        border-bottom: 1px solid var(--rule);
+      }
+      .brand {
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+        min-width: 0;
+      }
+      .brand b {
+        font-size: 15px;
+        letter-spacing: 0.2px;
+        white-space: nowrap;
+      }
+      .brand span {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--ink-3);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .tabs {
+        display: flex;
+        gap: 4px;
+        overflow-x: auto;
+        scrollbar-width: thin;
+        padding: 2px;
+      }
+      .tab {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        white-space: nowrap;
+        padding: 8px 12px;
+        border: 1px solid transparent;
+        border-radius: 8px;
+        color: var(--ink-2);
+        font-weight: 600;
+        font-size: 12.5px;
+      }
+      .tab:hover {
+        background: var(--raised);
+        color: var(--ink);
+      }
+      .tab[aria-selected="true"] {
+        background: var(--raised);
+        border-color: var(--rule-strong);
+        color: var(--ink);
+        box-shadow: var(--shadow);
+      }
+      .tab .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 2px;
+        background: var(--accent);
+      }
+      .spacer {
+        flex: 1;
+      }
+      .iconbtn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        border: 1px solid var(--rule);
+        border-radius: 8px;
+        background: var(--raised);
+      }
+      .iconbtn:hover {
+        border-color: var(--rule-strong);
+      }
 
-  .subbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 16px;background:var(--panel);border-bottom:1px solid var(--rule)}
-  .chips{display:flex;gap:6px;flex-wrap:wrap}
-  .chip{padding:5px 10px;border:1px solid var(--rule);border-radius:999px;font-size:11.5px;font-weight:600;color:var(--ink-2);background:var(--raised)}
-  .chip[aria-pressed="true"]{color:#fff;border-color:transparent}
-  .hint{font-size:11.5px;color:var(--ink-3)}
-  .seg{display:flex;border:1px solid var(--rule);border-radius:8px;overflow:hidden;background:var(--raised)}
-  .seg button{padding:6px 12px;font-size:12px;font-weight:600;color:var(--ink-2)}
-  .seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+      .subbar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        padding: 8px 16px;
+        background: var(--panel);
+        border-bottom: 1px solid var(--rule);
+      }
+      .chips {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+      .chip {
+        padding: 5px 10px;
+        border: 1px solid var(--rule);
+        border-radius: 999px;
+        font-size: 11.5px;
+        font-weight: 600;
+        color: var(--ink-2);
+        background: var(--raised);
+      }
+      .chip[aria-pressed="true"] {
+        color: #fff;
+        border-color: transparent;
+      }
+      .hint {
+        font-size: 11.5px;
+        color: var(--ink-3);
+      }
+      .seg {
+        display: flex;
+        border: 1px solid var(--rule);
+        border-radius: 8px;
+        overflow: hidden;
+        background: var(--raised);
+      }
+      .seg button {
+        padding: 6px 12px;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--ink-2);
+      }
+      .seg button[aria-pressed="true"] {
+        background: var(--ink);
+        color: var(--bg);
+      }
 
-  main{display:flex;gap:0;align-items:stretch;min-height:calc(100vh - 105px)}
-  .stage{flex:1;min-width:0;padding:16px;overflow:auto}
-  .card{background:var(--panel);border:1px solid var(--rule);border-radius:12px;box-shadow:var(--shadow);overflow:hidden}
-  .card-h{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--rule)}
-  .card-h h2{margin:0;font-size:13px;letter-spacing:.4px;text-transform:uppercase;color:var(--ink-2)}
-  .card-b{padding:14px}
-  svg{display:block;width:100%;height:auto}
-  svg text{font-family:var(--sans);fill:var(--ink)}
-  svg .mono{font-family:var(--mono)}
+      main {
+        display: flex;
+        gap: 0;
+        align-items: stretch;
+        min-height: calc(100vh - 105px);
+      }
+      .stage {
+        flex: 1;
+        min-width: 0;
+        padding: 16px;
+        overflow: auto;
+      }
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--rule);
+        border-radius: 12px;
+        box-shadow: var(--shadow);
+        overflow: hidden;
+      }
+      .card-h {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 14px;
+        border-bottom: 1px solid var(--rule);
+      }
+      .card-h h2 {
+        margin: 0;
+        font-size: 13px;
+        letter-spacing: 0.4px;
+        text-transform: uppercase;
+        color: var(--ink-2);
+      }
+      .card-b {
+        padding: 14px;
+      }
+      svg {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+      svg text {
+        font-family: var(--sans);
+        fill: var(--ink);
+      }
+      svg .mono {
+        font-family: var(--mono);
+      }
 
-  aside.info{
-    width:330px;flex:none;border-left:1px solid var(--rule);background:var(--panel);padding:16px;overflow:auto;
-  }
-  aside.info h3{margin:0 0 4px;font-size:13px}
-  aside.info .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.6px;text-transform:uppercase;color:var(--ink-3);margin:14px 0 4px}
-  aside.info p{margin:0 0 8px;font-size:12.5px;color:var(--ink-2)}
-  aside.info ul{margin:0;padding-left:18px;font-size:12.5px;color:var(--ink-2)}
-  aside.info li{margin-bottom:4px}
-  .badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:10.5px;font-weight:700;letter-spacing:.4px}
-  .b-s{background:color-mix(in srgb, var(--ok) 18%, transparent);color:var(--ok)}
-  .b-m{background:color-mix(in srgb, var(--warn) 20%, transparent);color:var(--warn)}
-  .b-l{background:color-mix(in srgb, var(--err) 16%, transparent);color:var(--err)}
-  @media (max-width:1100px){ aside.info{display:none} }
+      aside.info {
+        width: 330px;
+        flex: none;
+        border-left: 1px solid var(--rule);
+        background: var(--panel);
+        padding: 16px;
+        overflow: auto;
+      }
+      aside.info h3 {
+        margin: 0 0 4px;
+        font-size: 13px;
+      }
+      aside.info .k {
+        font-family: var(--mono);
+        font-size: 10.5px;
+        letter-spacing: 0.6px;
+        text-transform: uppercase;
+        color: var(--ink-3);
+        margin: 14px 0 4px;
+      }
+      aside.info p {
+        margin: 0 0 8px;
+        font-size: 12.5px;
+        color: var(--ink-2);
+      }
+      aside.info ul {
+        margin: 0;
+        padding-left: 18px;
+        font-size: 12.5px;
+        color: var(--ink-2);
+      }
+      aside.info li {
+        margin-bottom: 4px;
+      }
+      .badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 10.5px;
+        font-weight: 700;
+        letter-spacing: 0.4px;
+      }
+      .b-s {
+        background: color-mix(in srgb, var(--ok) 18%, transparent);
+        color: var(--ok);
+      }
+      .b-m {
+        background: color-mix(in srgb, var(--warn) 20%, transparent);
+        color: var(--warn);
+      }
+      .b-l {
+        background: color-mix(in srgb, var(--err) 16%, transparent);
+        color: var(--err);
+      }
+      @media (max-width: 1100px) {
+        aside.info {
+          display: none;
+        }
+      }
 
-  /* Tabellen */
-  table{width:100%;border-collapse:collapse;font-size:12.5px}
-  th,td{padding:8px 10px;border-bottom:1px solid var(--rule);text-align:left;vertical-align:top}
-  th{font-size:10.5px;letter-spacing:.6px;text-transform:uppercase;color:var(--ink-3);cursor:pointer;user-select:none;white-space:nowrap}
-  th .arr{color:var(--accent)}
-  td.mono,th.mono{font-family:var(--mono);font-size:11.5px}
-  tbody tr:hover{background:var(--raised)}
-  tbody tr.sel{background:color-mix(in srgb, var(--accent) 10%, transparent)}
-  .pill{display:inline-block;padding:1px 7px;border-radius:6px;font-size:10.5px;font-weight:700;font-family:var(--mono)}
-  .st-ok{color:var(--ok)} .st-warn{color:var(--warn)} .st-err{color:var(--err)}
+      /* Tabellen */
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12.5px;
+      }
+      th,
+      td {
+        padding: 8px 10px;
+        border-bottom: 1px solid var(--rule);
+        text-align: left;
+        vertical-align: top;
+      }
+      th {
+        font-size: 10.5px;
+        letter-spacing: 0.6px;
+        text-transform: uppercase;
+        color: var(--ink-3);
+        cursor: pointer;
+        user-select: none;
+        white-space: nowrap;
+      }
+      th .arr {
+        color: var(--accent);
+      }
+      td.mono,
+      th.mono {
+        font-family: var(--mono);
+        font-size: 11.5px;
+      }
+      tbody tr:hover {
+        background: var(--raised);
+      }
+      tbody tr.sel {
+        background: color-mix(in srgb, var(--accent) 10%, transparent);
+      }
+      .pill {
+        display: inline-block;
+        padding: 1px 7px;
+        border-radius: 6px;
+        font-size: 10.5px;
+        font-weight: 700;
+        font-family: var(--mono);
+      }
+      .st-ok {
+        color: var(--ok);
+      }
+      .st-warn {
+        color: var(--warn);
+      }
+      .st-err {
+        color: var(--err);
+      }
 
-  /* Stromkreis-Raster */
-  .circuits{display:flex;flex-direction:column;gap:8px}
-  .crow{display:grid;grid-template-columns:120px 1fr 190px 120px 110px;gap:12px;align-items:center;
-    padding:10px 12px;border:1px solid var(--rule);border-radius:10px;background:var(--raised)}
-  .crow:hover{border-color:var(--rule-strong)}
-  .crow .fuse{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:12px;font-weight:700}
-  .fusebox{width:34px;height:20px;border:1.5px solid var(--ink-2);border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:10px}
-  .crow .load{display:flex;align-items:center;gap:10px;min-width:0}
-  .crow .load .nm{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .crow .load .sp{font-family:var(--mono);font-size:11px;color:var(--ink-3);white-space:nowrap}
-  .bar{height:6px;border-radius:3px;background:var(--band);overflow:hidden}
-  .bar i{display:block;height:100%;background:var(--wire-dc)}
-  @media (max-width:900px){.crow{grid-template-columns:100px 1fr;grid-auto-rows:auto}.crow .hide-s{display:none}}
+      /* Stromkreis-Raster */
+      .circuits {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .crow {
+        display: grid;
+        grid-template-columns: 120px 1fr 190px 120px 110px;
+        gap: 12px;
+        align-items: center;
+        padding: 10px 12px;
+        border: 1px solid var(--rule);
+        border-radius: 10px;
+        background: var(--raised);
+      }
+      .crow:hover {
+        border-color: var(--rule-strong);
+      }
+      .crow .fuse {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-family: var(--mono);
+        font-size: 12px;
+        font-weight: 700;
+      }
+      .fusebox {
+        width: 34px;
+        height: 20px;
+        border: 1.5px solid var(--ink-2);
+        border-radius: 3px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+      }
+      .crow .load {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+      }
+      .crow .load .nm {
+        font-weight: 600;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .crow .load .sp {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--ink-3);
+        white-space: nowrap;
+      }
+      .bar {
+        height: 6px;
+        border-radius: 3px;
+        background: var(--band);
+        overflow: hidden;
+      }
+      .bar i {
+        display: block;
+        height: 100%;
+        background: var(--wire-dc);
+      }
+      @media (max-width: 900px) {
+        .crow {
+          grid-template-columns: 100px 1fr;
+          grid-auto-rows: auto;
+        }
+        .crow .hide-s {
+          display: none;
+        }
+      }
 
-  /* Blatt / Druck */
-  .sheetwrap{display:flex;justify-content:center;padding:8px 0 24px}
-  .sheet{width:794px;max-width:100%;background:#fff;color:#17181a;border:1px solid var(--rule-strong);box-shadow:var(--shadow);padding:34px 40px;position:relative}
-  .sheet h1{font-size:17px;margin:0 0 2px}
-  .sheet .sub{font-family:var(--mono);font-size:10.5px;color:#5c5f66;letter-spacing:.5px}
-  .sheet .frame{border:1px solid #9aa0a8;margin-top:14px;padding:12px}
-  .tblock{position:absolute;right:40px;bottom:34px;width:300px;border:1px solid #9aa0a8;font-family:var(--mono);font-size:9.5px}
-  .tblock div{display:flex;justify-content:space-between;gap:8px;padding:3px 7px;border-top:1px solid #c3c8cf}
-  .tblock div:first-child{border-top:none;font-weight:700}
-  @media print{
-    body{background:#fff}
-    header.top,.subbar,aside.info,.noprint{display:none !important}
-    main{display:block;min-height:0}
-    .stage{padding:0;overflow:visible}
-    .card{border:none;box-shadow:none;border-radius:0}
-    .sheetwrap{padding:0}
-    .sheet{width:auto;border:none;box-shadow:none;padding:10mm}
-    .tblock{right:10mm;bottom:10mm}
-  }
-</style>
-</head>
-<body>
-<header class="top">
-  <div class="brand"><b>⚡ Elektroplaner</b><span>Ansichten-Prototyp · Recherche „Übersichtlichkeit“ · CAZE7/Camp</span></div>
-  <div class="spacer"></div>
-  <nav class="tabs" id="tabs" role="tablist" aria-label="Planansichten"></nav>
-  <div class="spacer"></div>
-  <button class="iconbtn" id="theme" title="Hell / Dunkel umschalten" aria-label="Hell / Dunkel umschalten">◐</button>
-</header>
-<div class="subbar" id="subbar"></div>
-<main>
-  <section class="stage" id="stage"></section>
-  <aside class="info" id="info"></aside>
-</main>
+      /* Blatt / Druck */
+      .sheetwrap {
+        display: flex;
+        justify-content: center;
+        padding: 8px 0 24px;
+      }
+      .sheet {
+        width: 794px;
+        max-width: 100%;
+        background: #fff;
+        color: #17181a;
+        border: 1px solid var(--rule-strong);
+        box-shadow: var(--shadow);
+        padding: 34px 40px;
+        position: relative;
+      }
+      .sheet h1 {
+        font-size: 17px;
+        margin: 0 0 2px;
+      }
+      .sheet .sub {
+        font-family: var(--mono);
+        font-size: 10.5px;
+        color: #5c5f66;
+        letter-spacing: 0.5px;
+      }
+      .sheet .frame {
+        border: 1px solid #9aa0a8;
+        margin-top: 14px;
+        padding: 12px;
+      }
+      .tblock {
+        position: absolute;
+        right: 40px;
+        bottom: 34px;
+        width: 300px;
+        border: 1px solid #9aa0a8;
+        font-family: var(--mono);
+        font-size: 9.5px;
+      }
+      .tblock div {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 3px 7px;
+        border-top: 1px solid #c3c8cf;
+      }
+      .tblock div:first-child {
+        border-top: none;
+        font-weight: 700;
+      }
+      @media print {
+        body {
+          background: #fff;
+        }
+        header.top,
+        .subbar,
+        aside.info,
+        .noprint {
+          display: none !important;
+        }
+        main {
+          display: block;
+          min-height: 0;
+        }
+        .stage {
+          padding: 0;
+          overflow: visible;
+        }
+        .card {
+          border: none;
+          box-shadow: none;
+          border-radius: 0;
+        }
+        .sheetwrap {
+          padding: 0;
+        }
+        .sheet {
+          width: auto;
+          border: none;
+          box-shadow: none;
+          padding: 10mm;
+        }
+        .tblock {
+          right: 10mm;
+          bottom: 10mm;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="top">
+      <div class="brand">
+        <b>⚡ Elektroplaner</b
+        ><span
+          >Ansichten-Prototyp · Recherche „Übersichtlichkeit“ · CAZE7/Camp</span
+        >
+      </div>
+      <div class="spacer"></div>
+      <nav
+        class="tabs"
+        id="tabs"
+        role="tablist"
+        aria-label="Planansichten"
+      ></nav>
+      <div class="spacer"></div>
+      <button
+        class="iconbtn"
+        id="theme"
+        title="Hell / Dunkel umschalten"
+        aria-label="Hell / Dunkel umschalten"
+      >
+        ◐
+      </button>
+    </header>
+    <div class="subbar" id="subbar"></div>
+    <main>
+      <section class="stage" id="stage"></section>
+      <aside class="info" id="info"></aside>
+    </main>
 
-<script>
-"use strict";
-/* ============================================================================
+    <script>
+      "use strict";
+      /* ============================================================================
    Beispieldaten: realistischer Mid-Size-Ausbau (eine gemeinsame Datenquelle,
    aus der alle Ansichten abgeleitet werden — genau wie im geplanten View-System).
    ========================================================================== */
-const N = [
-  {id:"pv1",  nm:"Solarmodul 1",      kind:"solar",  dom:"solar", zone:"Dach",        spec:["150 Wp","Vmp 18 V"],          ah:0},
-  {id:"pv2",  nm:"Solarmodul 2",      kind:"solar",  dom:"solar", zone:"Dach",        spec:["150 Wp","Vmp 18 V"],          ah:0},
-  {id:"mppt", nm:"MPPT-Laderegler",   kind:"charger",dom:"solar", zone:"Sitzbank",    spec:["30 A","12/24 V"],             ah:0},
-  {id:"strt", nm:"Starterbatterie",   kind:"battery",dom:"dc",    zone:"Motorraum",   spec:["12 V","Fahrzeug"],            ah:0},
-  {id:"dcdc", nm:"Ladebooster",       kind:"charger",dom:"dc",    zone:"Sitzbank",    spec:["30 A","DC-DC"],               ah:0},
-  {id:"shore",nm:"Landstrom",         kind:"shore",  dom:"ac",    zone:"Heck links",  spec:["230 V","RCD 30 mA"],          ah:0},
-  {id:"acchg",nm:"AC-Ladegerät",      kind:"charger",dom:"ac",    zone:"Sitzbank",    spec:["20 A","LiFePO4"],             ah:0},
-  {id:"bat",  nm:"Aufbaubatterie",    kind:"battery",dom:"dc",    zone:"Garage",      spec:["200 Ah","LiFePO4"],           ah:0},
-  {id:"shunt",nm:"Smart Shunt",       kind:"shunt",  dom:"dc",    zone:"Garage",      spec:["500 A","−Pfad"],              ah:0},
-  {id:"busp", nm:"Plus-Busbar",       kind:"busbar", dom:"dc",    zone:"Garage",      spec:["250 A","M8"],                 ah:0},
-  {id:"busm", nm:"Minus-Busbar",      kind:"busbar", dom:"dc",    zone:"Garage",      spec:["250 A","M8"],                 ah:0},
-  {id:"fuse", nm:"Sicherungskasten",  kind:"fuse",   dom:"dc",    zone:"Garage",      spec:["6 Kreise","ATC"],             ah:0},
-  {id:"inv",  nm:"Wechselrichter",    kind:"inverter",dom:"ac",   zone:"Garage",      spec:["2000 W","12→230 V"],          ah:0},
-  {id:"ligt", nm:"LED-Licht",         kind:"consumer",dom:"dc",   zone:"Wohnraum",    spec:["36 W","5 h/Tag"],             ah:15.0, w:36,  hS:5, hW:6,  circ:"F1"},
-  {id:"frid", nm:"Kühlschrank",       kind:"consumer",dom:"dc",   zone:"Küchenblock", spec:["45 W","8 h/Tag"],             ah:30.0, w:45,  hS:8, hW:10, circ:"F2"},
-  {id:"pump", nm:"Wasserpumpe",       kind:"consumer",dom:"dc",   zone:"Küchenblock", spec:["40 W","0,5 h/Tag"],           ah:1.7,  w:40,  hS:.5,hW:.5, circ:"F3"},
-  {id:"usb",  nm:"USB-Station",       kind:"consumer",dom:"dc",   zone:"Wohnraum",    spec:["24 W","3 h/Tag"],             ah:6.0,  w:24,  hS:3, hW:3,  circ:"F4"},
-  {id:"fan",  nm:"Dachlüfter",        kind:"consumer",dom:"dc",   zone:"Dach",        spec:["30 W","6 h/Tag"],             ah:15.0, w:30,  hS:6, hW:0,  circ:"F5"},
-  {id:"heat", nm:"Dieselheizung",     kind:"consumer",dom:"dc",   zone:"Wohnraum",    spec:["60 W","4 h/Tag"],             ah:20.0, w:60,  hS:4, hW:8,  circ:"F6"},
-  {id:"ind",  nm:"Induktionskochfeld",kind:"consumer230v",dom:"ac",zone:"Küchenblock",spec:["1800 W","0,33 h/Tag"],        ah:61.8, w:1800,hS:.33,hW:.33,circ:"AC1"},
-  {id:"cof",  nm:"Kaffeemaschine",    kind:"consumer230v",dom:"ac",zone:"Küchenblock",spec:["1000 W","0,25 h/Tag"],        ah:24.5, w:1000,hS:.25,hW:.25,circ:"AC2"},
-  {id:"gnd",  nm:"Massepunkt",        kind:"ground", dom:"gnd",   zone:"Garage",      spec:["Karosserie","M8"],            ah:0},
-  {id:"rohr", nm:"Leerrohr EN 25",    kind:"conduit",dom:"gnd",   zone:"Sitzbank→Garage",spec:["Füllgrad 41 %","3 Kabel"], ah:0},
-];
-const byId = Object.fromEntries(N.map(n=>[n.id,n]));
+      const N = [
+        {
+          id: "pv1",
+          nm: "Solarmodul 1",
+          kind: "solar",
+          dom: "solar",
+          zone: "Dach",
+          spec: ["150 Wp", "Vmp 18 V"],
+          ah: 0,
+        },
+        {
+          id: "pv2",
+          nm: "Solarmodul 2",
+          kind: "solar",
+          dom: "solar",
+          zone: "Dach",
+          spec: ["150 Wp", "Vmp 18 V"],
+          ah: 0,
+        },
+        {
+          id: "mppt",
+          nm: "MPPT-Laderegler",
+          kind: "charger",
+          dom: "solar",
+          zone: "Sitzbank",
+          spec: ["30 A", "12/24 V"],
+          ah: 0,
+        },
+        {
+          id: "strt",
+          nm: "Starterbatterie",
+          kind: "battery",
+          dom: "dc",
+          zone: "Motorraum",
+          spec: ["12 V", "Fahrzeug"],
+          ah: 0,
+        },
+        {
+          id: "dcdc",
+          nm: "Ladebooster",
+          kind: "charger",
+          dom: "dc",
+          zone: "Sitzbank",
+          spec: ["30 A", "DC-DC"],
+          ah: 0,
+        },
+        {
+          id: "shore",
+          nm: "Landstrom",
+          kind: "shore",
+          dom: "ac",
+          zone: "Heck links",
+          spec: ["230 V", "RCD 30 mA"],
+          ah: 0,
+        },
+        {
+          id: "acchg",
+          nm: "AC-Ladegerät",
+          kind: "charger",
+          dom: "ac",
+          zone: "Sitzbank",
+          spec: ["20 A", "LiFePO4"],
+          ah: 0,
+        },
+        {
+          id: "bat",
+          nm: "Aufbaubatterie",
+          kind: "battery",
+          dom: "dc",
+          zone: "Garage",
+          spec: ["200 Ah", "LiFePO4"],
+          ah: 0,
+        },
+        {
+          id: "shunt",
+          nm: "Smart Shunt",
+          kind: "shunt",
+          dom: "dc",
+          zone: "Garage",
+          spec: ["500 A", "−Pfad"],
+          ah: 0,
+        },
+        {
+          id: "busp",
+          nm: "Plus-Busbar",
+          kind: "busbar",
+          dom: "dc",
+          zone: "Garage",
+          spec: ["250 A", "M8"],
+          ah: 0,
+        },
+        {
+          id: "busm",
+          nm: "Minus-Busbar",
+          kind: "busbar",
+          dom: "dc",
+          zone: "Garage",
+          spec: ["250 A", "M8"],
+          ah: 0,
+        },
+        {
+          id: "fuse",
+          nm: "Sicherungskasten",
+          kind: "fuse",
+          dom: "dc",
+          zone: "Garage",
+          spec: ["6 Kreise", "ATC"],
+          ah: 0,
+        },
+        {
+          id: "inv",
+          nm: "Wechselrichter",
+          kind: "inverter",
+          dom: "ac",
+          zone: "Garage",
+          spec: ["2000 W", "12→230 V"],
+          ah: 0,
+        },
+        {
+          id: "ligt",
+          nm: "LED-Licht",
+          kind: "consumer",
+          dom: "dc",
+          zone: "Wohnraum",
+          spec: ["36 W", "5 h/Tag"],
+          ah: 15.0,
+          w: 36,
+          hS: 5,
+          hW: 6,
+          circ: "F1",
+        },
+        {
+          id: "frid",
+          nm: "Kühlschrank",
+          kind: "consumer",
+          dom: "dc",
+          zone: "Küchenblock",
+          spec: ["45 W", "8 h/Tag"],
+          ah: 30.0,
+          w: 45,
+          hS: 8,
+          hW: 10,
+          circ: "F2",
+        },
+        {
+          id: "pump",
+          nm: "Wasserpumpe",
+          kind: "consumer",
+          dom: "dc",
+          zone: "Küchenblock",
+          spec: ["40 W", "0,5 h/Tag"],
+          ah: 1.7,
+          w: 40,
+          hS: 0.5,
+          hW: 0.5,
+          circ: "F3",
+        },
+        {
+          id: "usb",
+          nm: "USB-Station",
+          kind: "consumer",
+          dom: "dc",
+          zone: "Wohnraum",
+          spec: ["24 W", "3 h/Tag"],
+          ah: 6.0,
+          w: 24,
+          hS: 3,
+          hW: 3,
+          circ: "F4",
+        },
+        {
+          id: "fan",
+          nm: "Dachlüfter",
+          kind: "consumer",
+          dom: "dc",
+          zone: "Dach",
+          spec: ["30 W", "6 h/Tag"],
+          ah: 15.0,
+          w: 30,
+          hS: 6,
+          hW: 0,
+          circ: "F5",
+        },
+        {
+          id: "heat",
+          nm: "Dieselheizung",
+          kind: "consumer",
+          dom: "dc",
+          zone: "Wohnraum",
+          spec: ["60 W", "4 h/Tag"],
+          ah: 20.0,
+          w: 60,
+          hS: 4,
+          hW: 8,
+          circ: "F6",
+        },
+        {
+          id: "ind",
+          nm: "Induktionskochfeld",
+          kind: "consumer230v",
+          dom: "ac",
+          zone: "Küchenblock",
+          spec: ["1800 W", "0,33 h/Tag"],
+          ah: 61.8,
+          w: 1800,
+          hS: 0.33,
+          hW: 0.33,
+          circ: "AC1",
+        },
+        {
+          id: "cof",
+          nm: "Kaffeemaschine",
+          kind: "consumer230v",
+          dom: "ac",
+          zone: "Küchenblock",
+          spec: ["1000 W", "0,25 h/Tag"],
+          ah: 24.5,
+          w: 1000,
+          hS: 0.25,
+          hW: 0.25,
+          circ: "AC2",
+        },
+        {
+          id: "gnd",
+          nm: "Massepunkt",
+          kind: "ground",
+          dom: "gnd",
+          zone: "Garage",
+          spec: ["Karosserie", "M8"],
+          ah: 0,
+        },
+        {
+          id: "rohr",
+          nm: "Leerrohr EN 25",
+          kind: "conduit",
+          dom: "gnd",
+          zone: "Sitzbank→Garage",
+          spec: ["Füllgrad 41 %", "3 Kabel"],
+          ah: 0,
+        },
+      ];
+      const byId = Object.fromEntries(N.map((n) => [n.id, n]));
 
-/* Verbindungen = logische Kabel (im Status quo mehrlinig gerendert). */
-const C = [
-  {id:"W01", a:"pv1",  b:"mppt", kind:"solar", adern:2, cs:4,   len:3.0, circ:"PV1", route:"Dach→Sitzbank"},
-  {id:"W02", a:"pv2",  b:"mppt", kind:"solar", adern:2, cs:4,   len:3.0, circ:"PV2", route:"Dach→Sitzbank"},
-  {id:"W03", a:"strt", b:"dcdc", kind:"dc",    adern:2, cs:6,   len:2.0, fuse:40, circ:"LQ1", route:"Motorraum→Sitzbank"},
-  {id:"W04", a:"shore",b:"acchg",kind:"ac",    adern:3, cs:2.5, len:2.5, fuse:16, circ:"AC-IN", route:"Heck→Sitzbank"},
-  {id:"W05", a:"acchg",b:"busp", kind:"dc",    adern:2, cs:6,   len:1.5, fuse:40, circ:"LQ2", route:"Sitzbank→Garage"},
-  {id:"W06", a:"mppt", b:"busp", kind:"dc",    adern:2, cs:6,   len:2.0, fuse:40, circ:"LQ3", route:"Sitzbank→Garage"},
-  {id:"W07", a:"dcdc", b:"busp", kind:"dc",    adern:2, cs:6,   len:2.0, fuse:40, circ:"LQ1", route:"Sitzbank→Garage"},
-  {id:"W08", a:"bat",  b:"busp", kind:"main",  adern:1, cs:35,  len:0.8, fuse:200,circ:"MAIN+", route:"Garage"},
-  {id:"W09", a:"bat",  b:"shunt",kind:"main",  adern:1, cs:35,  len:0.5, circ:"MAIN−", route:"Garage"},
-  {id:"W10", a:"shunt",b:"busm", kind:"main",  adern:1, cs:35,  len:0.5, circ:"MAIN−", route:"Garage"},
-  {id:"W11", a:"busp", b:"fuse", kind:"main",  adern:2, cs:16,  len:1.0, fuse:100,circ:"VERT", route:"Garage"},
-  {id:"W12", a:"fuse", b:"busm", kind:"dc",    adern:1, cs:16,  len:1.0, circ:"VERT−", route:"Garage"},
-  {id:"W13", a:"fuse", b:"ligt", kind:"dc",    adern:2, cs:2.5, len:4.0, fuse:3,  circ:"F1", route:"Garage→Wohnraum"},
-  {id:"W14", a:"fuse", b:"frid", kind:"dc",    adern:2, cs:4,   len:3.0, fuse:10, circ:"F2", route:"Garage→Küche"},
-  {id:"W15", a:"fuse", b:"pump", kind:"dc",    adern:2, cs:2.5, len:2.5, fuse:5,  circ:"F3", route:"Garage→Küche"},
-  {id:"W16", a:"fuse", b:"usb",  kind:"dc",    adern:2, cs:1.5, len:5.0, fuse:3,  circ:"F4", route:"Garage→Wohnraum"},
-  {id:"W17", a:"fuse", b:"fan",  kind:"dc",    adern:2, cs:2.5, len:6.0, fuse:5,  circ:"F5", route:"Garage→Dach"},
-  {id:"W18", a:"fuse", b:"heat", kind:"dc",    adern:2, cs:4,   len:4.0, fuse:10, circ:"F6", route:"Garage→Wohnraum"},
-  {id:"W19", a:"busp", b:"inv",  kind:"main",  adern:2, cs:35,  len:1.2, fuse:200,circ:"INV+", route:"Garage"},
-  {id:"W20", a:"inv",  b:"busm", kind:"main",  adern:1, cs:35,  len:1.2, circ:"INV−", route:"Garage"},
-  {id:"W21", a:"inv",  b:"ind",  kind:"ac",    adern:3, cs:2.5, len:2.0, fuse:10, circ:"AC1", route:"Garage→Küche"},
-  {id:"W22", a:"inv",  b:"cof",  kind:"ac",    adern:3, cs:1.5, len:2.0, fuse:6,  circ:"AC2", route:"Garage→Küche"},
-  {id:"W23", a:"busm", b:"gnd",  kind:"gnd",   adern:1, cs:16,  len:1.0, circ:"PE", route:"Garage→Karosserie"},
-];
-const FUSES = [
-  {slot:"F1", rating:3,  load:"ligt", nm:"Beleuchtung"},
-  {slot:"F2", rating:10, load:"frid", nm:"Kühlschrank"},
-  {slot:"F3", rating:5,  load:"pump", nm:"Wasserpumpe"},
-  {slot:"F4", rating:3,  load:"usb",  nm:"USB-Ladestation"},
-  {slot:"F5", rating:5,  load:"fan",  nm:"Dachlüfter"},
-  {slot:"F6", rating:10, load:"heat", nm:"Heizung"},
-];
-const DOMAIN_LABEL = {dc:"12V", ac:"230V", solar:"Solar", gnd:"PE"};
-const DOMAIN_COLOR = {dc:"var(--wire-dc)", ac:"var(--wire-ac)", solar:"var(--wire-solar)", gnd:"var(--wire-pe)"};
-const KIND_ICON = {solar:"☀", charger:"⚡", battery:"🔋", shore:"🔌", shunt:"◔", busbar:"☰", fuse:"🛡",
-  inverter:"∿", consumer:"💡", consumer230v:"♨", ground:"⏚", conduit:"⌀"};
+      /* Verbindungen = logische Kabel (im Status quo mehrlinig gerendert). */
+      const C = [
+        {
+          id: "W01",
+          a: "pv1",
+          b: "mppt",
+          kind: "solar",
+          adern: 2,
+          cs: 4,
+          len: 3.0,
+          circ: "PV1",
+          route: "Dach→Sitzbank",
+        },
+        {
+          id: "W02",
+          a: "pv2",
+          b: "mppt",
+          kind: "solar",
+          adern: 2,
+          cs: 4,
+          len: 3.0,
+          circ: "PV2",
+          route: "Dach→Sitzbank",
+        },
+        {
+          id: "W03",
+          a: "strt",
+          b: "dcdc",
+          kind: "dc",
+          adern: 2,
+          cs: 6,
+          len: 2.0,
+          fuse: 40,
+          circ: "LQ1",
+          route: "Motorraum→Sitzbank",
+        },
+        {
+          id: "W04",
+          a: "shore",
+          b: "acchg",
+          kind: "ac",
+          adern: 3,
+          cs: 2.5,
+          len: 2.5,
+          fuse: 16,
+          circ: "AC-IN",
+          route: "Heck→Sitzbank",
+        },
+        {
+          id: "W05",
+          a: "acchg",
+          b: "busp",
+          kind: "dc",
+          adern: 2,
+          cs: 6,
+          len: 1.5,
+          fuse: 40,
+          circ: "LQ2",
+          route: "Sitzbank→Garage",
+        },
+        {
+          id: "W06",
+          a: "mppt",
+          b: "busp",
+          kind: "dc",
+          adern: 2,
+          cs: 6,
+          len: 2.0,
+          fuse: 40,
+          circ: "LQ3",
+          route: "Sitzbank→Garage",
+        },
+        {
+          id: "W07",
+          a: "dcdc",
+          b: "busp",
+          kind: "dc",
+          adern: 2,
+          cs: 6,
+          len: 2.0,
+          fuse: 40,
+          circ: "LQ1",
+          route: "Sitzbank→Garage",
+        },
+        {
+          id: "W08",
+          a: "bat",
+          b: "busp",
+          kind: "main",
+          adern: 1,
+          cs: 35,
+          len: 0.8,
+          fuse: 200,
+          circ: "MAIN+",
+          route: "Garage",
+        },
+        {
+          id: "W09",
+          a: "bat",
+          b: "shunt",
+          kind: "main",
+          adern: 1,
+          cs: 35,
+          len: 0.5,
+          circ: "MAIN−",
+          route: "Garage",
+        },
+        {
+          id: "W10",
+          a: "shunt",
+          b: "busm",
+          kind: "main",
+          adern: 1,
+          cs: 35,
+          len: 0.5,
+          circ: "MAIN−",
+          route: "Garage",
+        },
+        {
+          id: "W11",
+          a: "busp",
+          b: "fuse",
+          kind: "main",
+          adern: 2,
+          cs: 16,
+          len: 1.0,
+          fuse: 100,
+          circ: "VERT",
+          route: "Garage",
+        },
+        {
+          id: "W12",
+          a: "fuse",
+          b: "busm",
+          kind: "dc",
+          adern: 1,
+          cs: 16,
+          len: 1.0,
+          circ: "VERT−",
+          route: "Garage",
+        },
+        {
+          id: "W13",
+          a: "fuse",
+          b: "ligt",
+          kind: "dc",
+          adern: 2,
+          cs: 2.5,
+          len: 4.0,
+          fuse: 3,
+          circ: "F1",
+          route: "Garage→Wohnraum",
+        },
+        {
+          id: "W14",
+          a: "fuse",
+          b: "frid",
+          kind: "dc",
+          adern: 2,
+          cs: 4,
+          len: 3.0,
+          fuse: 10,
+          circ: "F2",
+          route: "Garage→Küche",
+        },
+        {
+          id: "W15",
+          a: "fuse",
+          b: "pump",
+          kind: "dc",
+          adern: 2,
+          cs: 2.5,
+          len: 2.5,
+          fuse: 5,
+          circ: "F3",
+          route: "Garage→Küche",
+        },
+        {
+          id: "W16",
+          a: "fuse",
+          b: "usb",
+          kind: "dc",
+          adern: 2,
+          cs: 1.5,
+          len: 5.0,
+          fuse: 3,
+          circ: "F4",
+          route: "Garage→Wohnraum",
+        },
+        {
+          id: "W17",
+          a: "fuse",
+          b: "fan",
+          kind: "dc",
+          adern: 2,
+          cs: 2.5,
+          len: 6.0,
+          fuse: 5,
+          circ: "F5",
+          route: "Garage→Dach",
+        },
+        {
+          id: "W18",
+          a: "fuse",
+          b: "heat",
+          kind: "dc",
+          adern: 2,
+          cs: 4,
+          len: 4.0,
+          fuse: 10,
+          circ: "F6",
+          route: "Garage→Wohnraum",
+        },
+        {
+          id: "W19",
+          a: "busp",
+          b: "inv",
+          kind: "main",
+          adern: 2,
+          cs: 35,
+          len: 1.2,
+          fuse: 200,
+          circ: "INV+",
+          route: "Garage",
+        },
+        {
+          id: "W20",
+          a: "inv",
+          b: "busm",
+          kind: "main",
+          adern: 1,
+          cs: 35,
+          len: 1.2,
+          circ: "INV−",
+          route: "Garage",
+        },
+        {
+          id: "W21",
+          a: "inv",
+          b: "ind",
+          kind: "ac",
+          adern: 3,
+          cs: 2.5,
+          len: 2.0,
+          fuse: 10,
+          circ: "AC1",
+          route: "Garage→Küche",
+        },
+        {
+          id: "W22",
+          a: "inv",
+          b: "cof",
+          kind: "ac",
+          adern: 3,
+          cs: 1.5,
+          len: 2.0,
+          fuse: 6,
+          circ: "AC2",
+          route: "Garage→Küche",
+        },
+        {
+          id: "W23",
+          a: "busm",
+          b: "gnd",
+          kind: "gnd",
+          adern: 1,
+          cs: 16,
+          len: 1.0,
+          circ: "PE",
+          route: "Garage→Karosserie",
+        },
+      ];
+      const FUSES = [
+        { slot: "F1", rating: 3, load: "ligt", nm: "Beleuchtung" },
+        { slot: "F2", rating: 10, load: "frid", nm: "Kühlschrank" },
+        { slot: "F3", rating: 5, load: "pump", nm: "Wasserpumpe" },
+        { slot: "F4", rating: 3, load: "usb", nm: "USB-Ladestation" },
+        { slot: "F5", rating: 5, load: "fan", nm: "Dachlüfter" },
+        { slot: "F6", rating: 10, load: "heat", nm: "Heizung" },
+      ];
+      const DOMAIN_LABEL = { dc: "12V", ac: "230V", solar: "Solar", gnd: "PE" };
+      const DOMAIN_COLOR = {
+        dc: "var(--wire-dc)",
+        ac: "var(--wire-ac)",
+        solar: "var(--wire-solar)",
+        gnd: "var(--wire-pe)",
+      };
+      const KIND_ICON = {
+        solar: "☀",
+        charger: "⚡",
+        battery: "🔋",
+        shore: "🔌",
+        shunt: "◔",
+        busbar: "☰",
+        fuse: "🛡",
+        inverter: "∿",
+        consumer: "💡",
+        consumer230v: "♨",
+        ground: "⏚",
+        conduit: "⌀",
+      };
 
-/* ---------- kleine Helfer ---------- */
-const el = (tag, attrs, kids) => {
-  const e = document.createElementNS("http://www.w3.org/2000/svg", tag);
-  for (const k in (attrs||{})) e.setAttribute(k, attrs[k]);
-  (kids||[]).forEach(c => e.appendChild(typeof c === "string" ? document.createTextNode(c) : c));
-  return e;
-};
-const H = (html) => { const t = document.createElement("template"); t.innerHTML = html.trim(); return t.content.firstChild; };
-const esc = (s) => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const fmt = (x, d=1) => Number(x).toFixed(d).replace(".", ",");
+      /* ---------- kleine Helfer ---------- */
+      const el = (tag, attrs, kids) => {
+        const e = document.createElementNS("http://www.w3.org/2000/svg", tag);
+        for (const k in attrs || {}) e.setAttribute(k, attrs[k]);
+        (kids || []).forEach((c) =>
+          e.appendChild(typeof c === "string" ? document.createTextNode(c) : c),
+        );
+        return e;
+      };
+      const H = (html) => {
+        const t = document.createElement("template");
+        t.innerHTML = html.trim();
+        return t.content.firstChild;
+      };
+      const esc = (s) =>
+        String(s).replace(
+          /[&<>"]/g,
+          (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c],
+        );
+      const fmt = (x, d = 1) => Number(x).toFixed(d).replace(".", ",");
 
-/* ============================================================================
+      /* ============================================================================
    ANSICHT 1 — Status quo (Mehrlinien-Graph, wie heute im Planer)
    ========================================================================== */
-const SQ_POS = {
-  pv1:[60,40],   pv2:[60,150],  mppt:[280,90],
-  strt:[60,270], dcdc:[280,270],
-  shore:[60,390],acchg:[280,390],
-  bat:[520,60],  shunt:[520,190], busp:[740,60], busm:[740,250],
-  fuse:[740,400], inv:[960,120],
-  ligt:[960,300], frid:[960,390], pump:[960,480], usb:[1150,300], fan:[1150,390], heat:[1150,480],
-  ind:[1150,60], cof:[1150,150], gnd:[960,570], rohr:[520,540],
-};
-const NW = 150, NH = 58;
+      const SQ_POS = {
+        pv1: [60, 40],
+        pv2: [60, 150],
+        mppt: [280, 90],
+        strt: [60, 270],
+        dcdc: [280, 270],
+        shore: [60, 390],
+        acchg: [280, 390],
+        bat: [520, 60],
+        shunt: [520, 190],
+        busp: [740, 60],
+        busm: [740, 250],
+        fuse: [740, 400],
+        inv: [960, 120],
+        ligt: [960, 300],
+        frid: [960, 390],
+        pump: [960, 480],
+        usb: [1150, 300],
+        fan: [1150, 390],
+        heat: [1150, 480],
+        ind: [1150, 60],
+        cof: [1150, 150],
+        gnd: [960, 570],
+        rohr: [520, 540],
+      };
+      const NW = 150,
+        NH = 58;
 
-function nodeCard(g, n, x, y, opts={}) {
-  const w = opts.w || NW, h = opts.h || NH;
-  const grp = el("g", {transform:`translate(${x},${y})`, "data-node":n.id, class:"sq-node"});
-  grp.appendChild(el("rect", {width:w, height:h, rx:6, fill:"var(--raised)", stroke:"var(--rule-strong)", "stroke-width":1}));
-  grp.appendChild(el("rect", {width:3, height:h, rx:1.5, fill:DOMAIN_COLOR[n.dom]}));
-  grp.appendChild(el("text", {x:12, y:18, "font-size":11, "font-weight":700}, [n.nm]));
-  (opts.spec !== false ? n.spec : []).slice(0,2).forEach((s,i)=>{
-    grp.appendChild(el("text", {x:12, y:33+i*13, "font-size":9.5, class:"mono", fill:"var(--ink-3)"}, [s]));
-  });
-  grp.appendChild(el("text", {x:w-10, y:18, "font-size":11, "text-anchor":"end", fill:"var(--ink-3)"}, [KIND_ICON[n.kind]||"·"]));
-  g.appendChild(grp);
-  return grp;
-}
+      function nodeCard(g, n, x, y, opts = {}) {
+        const w = opts.w || NW,
+          h = opts.h || NH;
+        const grp = el("g", {
+          transform: `translate(${x},${y})`,
+          "data-node": n.id,
+          class: "sq-node",
+        });
+        grp.appendChild(
+          el("rect", {
+            width: w,
+            height: h,
+            rx: 6,
+            fill: "var(--raised)",
+            stroke: "var(--rule-strong)",
+            "stroke-width": 1,
+          }),
+        );
+        grp.appendChild(
+          el("rect", {
+            width: 3,
+            height: h,
+            rx: 1.5,
+            fill: DOMAIN_COLOR[n.dom],
+          }),
+        );
+        grp.appendChild(
+          el("text", { x: 12, y: 18, "font-size": 11, "font-weight": 700 }, [
+            n.nm,
+          ]),
+        );
+        (opts.spec !== false ? n.spec : []).slice(0, 2).forEach((s, i) => {
+          grp.appendChild(
+            el(
+              "text",
+              {
+                x: 12,
+                y: 33 + i * 13,
+                "font-size": 9.5,
+                class: "mono",
+                fill: "var(--ink-3)",
+              },
+              [s],
+            ),
+          );
+        });
+        grp.appendChild(
+          el(
+            "text",
+            {
+              x: w - 10,
+              y: 18,
+              "font-size": 11,
+              "text-anchor": "end",
+              fill: "var(--ink-3)",
+            },
+            [KIND_ICON[n.kind] || "·"],
+          ),
+        );
+        g.appendChild(grp);
+        return grp;
+      }
 
-/* Anker-Slots: mehrere Kabel an einer Node-Seite werden vertikal verteilt. */
-/* Liegt das Ziel links der Quelle (z. B. vertikal gestapelte Knoten in einer
+      /* Anker-Slots: mehrere Kabel an einer Node-Seite werden vertikal verteilt. */
+      /* Liegt das Ziel links der Quelle (z. B. vertikal gestapelte Knoten in einer
    Spalte), würde ein Elbow zur linken Kante durch die Karten laufen. Solche
    Verbindungen werden deshalb an der RECHTEN Kante des Ziels eingeführt und
    über eine schmale Lane rechts der Quelle geführt. */
-const isBackwards = (c) => SQ_POS[c.b][0] <= SQ_POS[c.a][0];
+      const isBackwards = (c) => SQ_POS[c.b][0] <= SQ_POS[c.a][0];
 
-function anchors(conns) {
-  const out = {}, inn = {};
-  conns.forEach(c => {
-    (out[c.a] = out[c.a] || []).push(c);
-    (inn[c.b] = inn[c.b] || []).push(c);
-  });
-  const pos = {};
-  const spread = (map, side) => {
-    for (const id in map) {
-      const list = map[id]; const p = SQ_POS[id];
-      list.forEach((c, i) => {
-        const y = p[1] + NH*(i+1)/(list.length+1);
-        const rightSide = side === "o" ? true : isBackwards(c);
-        pos[c.id + ":" + side] = {x: rightSide ? p[0]+NW : p[0], y};
-      });
-    }
-  };
-  spread(out, "o"); spread(inn, "i");
-  return pos;
-}
+      function anchors(conns) {
+        const out = {},
+          inn = {};
+        conns.forEach((c) => {
+          (out[c.a] = out[c.a] || []).push(c);
+          (inn[c.b] = inn[c.b] || []).push(c);
+        });
+        const pos = {};
+        const spread = (map, side) => {
+          for (const id in map) {
+            const list = map[id];
+            const p = SQ_POS[id];
+            list.forEach((c, i) => {
+              const y = p[1] + (NH * (i + 1)) / (list.length + 1);
+              const rightSide = side === "o" ? true : isBackwards(c);
+              pos[c.id + ":" + side] = { x: rightSide ? p[0] + NW : p[0], y };
+            });
+          }
+        };
+        spread(out, "o");
+        spread(inn, "i");
+        return pos;
+      }
 
-function renderStatusQuo(host, opts={}) {
-  const active = opts.active || new Set(["dc","ac","solar","gnd"]);
-  const g = el("g");
-  const svg = el("svg", {viewBox:"0 0 1360 660", role:"img", "aria-label":"Mehrlinien-Schaltplan (Status quo)"});
-  svg.appendChild(el("rect", {width:1360, height:660, fill:"var(--bg)"}));
-  /* Punktraster */
-  for (let x=20;x<1360;x+=24) for (let y=20;y<660;y+=24)
-    svg.appendChild(el("circle", {cx:x, cy:y, r:.7, fill:"var(--rule)"}));
-  /* Hauptstromkreis-Rahmen */
-  svg.appendChild(el("rect", {x:505, y:40, width:400, height:230, rx:10, fill:"none",
-    stroke:"var(--accent)", "stroke-width":1.2, "stroke-dasharray":"6 5", opacity:.75}));
-  svg.appendChild(el("text", {x:513, y:32, "font-size":10, class:"mono", fill:"var(--accent)"}, ["HAUPTSTROMKREIS"]));
+      function renderStatusQuo(host, opts = {}) {
+        const active = opts.active || new Set(["dc", "ac", "solar", "gnd"]);
+        const g = el("g");
+        const svg = el("svg", {
+          viewBox: "0 0 1360 660",
+          role: "img",
+          "aria-label": "Mehrlinien-Schaltplan (Status quo)",
+        });
+        svg.appendChild(
+          el("rect", { width: 1360, height: 660, fill: "var(--bg)" }),
+        );
+        /* Punktraster */
+        for (let x = 20; x < 1360; x += 24)
+          for (let y = 20; y < 660; y += 24)
+            svg.appendChild(
+              el("circle", { cx: x, cy: y, r: 0.7, fill: "var(--rule)" }),
+            );
+        /* Hauptstromkreis-Rahmen */
+        svg.appendChild(
+          el("rect", {
+            x: 505,
+            y: 40,
+            width: 400,
+            height: 230,
+            rx: 10,
+            fill: "none",
+            stroke: "var(--accent)",
+            "stroke-width": 1.2,
+            "stroke-dasharray": "6 5",
+            opacity: 0.75,
+          }),
+        );
+        svg.appendChild(
+          el(
+            "text",
+            {
+              x: 513,
+              y: 32,
+              "font-size": 10,
+              class: "mono",
+              fill: "var(--accent)",
+            },
+            ["HAUPTSTROMKREIS"],
+          ),
+        );
 
-  const A = anchors(C);
-  C.forEach(c => {
-    const dim = !active.has(byId[c.a].dom) && !active.has(byId[c.b].dom);
-    const a = A[c.id+":o"], b = A[c.id+":i"];
-    const mx = isBackwards(c) ? Math.max(a.x, b.x) + 26 : (a.x + b.x)/2;
-    const wires = c.kind==="ac" ? ["L","N","PE"] : c.kind==="gnd" ? ["PE"] : ["+","−"];
-    wires.forEach((wName, wi) => {
-      const off = (wi - (wires.length-1)/2) * 7;
-      const col = c.kind==="ac" ? ["var(--wire-ac)","#7d8aa0","var(--wire-pe)"][wi]
-                : c.kind==="solar" ? "var(--wire-solar)"
-                : c.kind==="gnd" ? "var(--wire-pe)"
-                : wName==="+" || wName==="−" && c.kind==="main" ? (wName==="+"?"var(--wire-dc)":"var(--wire-neg)")
-                : (wName==="+" ? "var(--wire-dc)" : "var(--wire-neg)");
-      const y1 = a.y+off, y2 = b.y+off;
-      const d = `M ${a.x} ${y1} L ${mx} ${y1} L ${mx} ${y2} L ${b.x} ${y2}`;
-      svg.appendChild(el("path", {d, fill:"none", stroke:col, "stroke-width": c.kind==="main"?2.6:1.8,
-        opacity: dim ? .12 : .95}));
-    });
-    /* Label-Chip (im Status quo dauerhaft sichtbar) */
-    const lx = mx, ly = (a.y+b.y)/2 - 14;
-    const label = `${c.cs} mm² · ${fmt(c.len)} m${c.fuse?` · ${c.fuse} A`:""}`;
-    const chip = el("g", {opacity: dim ? .12 : 1});
-    chip.appendChild(el("rect", {x:lx-46, y:ly-10, width:92, height:15, rx:4, fill:"var(--panel)", stroke:"var(--rule)"}));
-    chip.appendChild(el("text", {x:lx, y:ly+1.5, "font-size":8.5, class:"mono", "text-anchor":"middle", fill:"var(--ink-2)"}, [label]));
-    svg.appendChild(chip);
-  });
+        const A = anchors(C);
+        C.forEach((c) => {
+          const dim = !active.has(byId[c.a].dom) && !active.has(byId[c.b].dom);
+          const a = A[c.id + ":o"],
+            b = A[c.id + ":i"];
+          const mx = isBackwards(c) ? Math.max(a.x, b.x) + 26 : (a.x + b.x) / 2;
+          const wires =
+            c.kind === "ac"
+              ? ["L", "N", "PE"]
+              : c.kind === "gnd"
+                ? ["PE"]
+                : ["+", "−"];
+          wires.forEach((wName, wi) => {
+            const off = (wi - (wires.length - 1) / 2) * 7;
+            const col =
+              c.kind === "ac"
+                ? ["var(--wire-ac)", "#7d8aa0", "var(--wire-pe)"][wi]
+                : c.kind === "solar"
+                  ? "var(--wire-solar)"
+                  : c.kind === "gnd"
+                    ? "var(--wire-pe)"
+                    : wName === "+" || (wName === "−" && c.kind === "main")
+                      ? wName === "+"
+                        ? "var(--wire-dc)"
+                        : "var(--wire-neg)"
+                      : wName === "+"
+                        ? "var(--wire-dc)"
+                        : "var(--wire-neg)";
+            const y1 = a.y + off,
+              y2 = b.y + off;
+            const d = `M ${a.x} ${y1} L ${mx} ${y1} L ${mx} ${y2} L ${b.x} ${y2}`;
+            svg.appendChild(
+              el("path", {
+                d,
+                fill: "none",
+                stroke: col,
+                "stroke-width": c.kind === "main" ? 2.6 : 1.8,
+                opacity: dim ? 0.12 : 0.95,
+              }),
+            );
+          });
+          /* Label-Chip (im Status quo dauerhaft sichtbar) */
+          const lx = mx,
+            ly = (a.y + b.y) / 2 - 14;
+          const label = `${c.cs} mm² · ${fmt(c.len)} m${c.fuse ? ` · ${c.fuse} A` : ""}`;
+          const chip = el("g", { opacity: dim ? 0.12 : 1 });
+          chip.appendChild(
+            el("rect", {
+              x: lx - 46,
+              y: ly - 10,
+              width: 92,
+              height: 15,
+              rx: 4,
+              fill: "var(--panel)",
+              stroke: "var(--rule)",
+            }),
+          );
+          chip.appendChild(
+            el(
+              "text",
+              {
+                x: lx,
+                y: ly + 1.5,
+                "font-size": 8.5,
+                class: "mono",
+                "text-anchor": "middle",
+                fill: "var(--ink-2)",
+              },
+              [label],
+            ),
+          );
+          svg.appendChild(chip);
+        });
 
-  N.forEach(n => {
-    const p = SQ_POS[n.id]; if (!p) return;
-    const dim = !active.has(n.dom);
-    const grp = nodeCard(svg, n, p[0], p[1]);
-    grp.setAttribute("opacity", dim ? .18 : 1);
-  });
-  host.appendChild(svg);
-}
+        N.forEach((n) => {
+          const p = SQ_POS[n.id];
+          if (!p) return;
+          const dim = !active.has(n.dom);
+          const grp = nodeCard(svg, n, p[0], p[1]);
+          grp.setAttribute("opacity", dim ? 0.18 : 1);
+        });
+        host.appendChild(svg);
+      }
 
-/* ============================================================================
+      /* ============================================================================
    ANSICHT 2 — Einlinien-Übersicht (einpolig, Zonenbänder)
    ========================================================================== */
-const SL_COLS = [
-  {t:"QUELLEN", x:30,   w:190}, {t:"LADEN", x:240, w:180}, {t:"SPEICHERN", x:440, w:180},
-  {t:"VERTEILEN", x:640, w:200}, {t:"VERBRAUCHEN", x:860, w:470},
-];
-const SL_POS = {
-  pv1:[50,70],  pv2:[50,150], shore:[50,250], strt:[50,350],
-  mppt:[265,70], acchg:[265,250], dcdc:[265,350],
-  bat:[465,120], shunt:[465,230],
-  busp:[665,90], fuse:[665,220], busm:[665,340], inv:[665,450],
-  ligt:[880,60], frid:[880,130], pump:[880,200], usb:[880,270], fan:[880,340], heat:[880,410],
-  ind:[1120,440], cof:[1120,510], gnd:[1120,340], rohr:[465,430],
-};
-function renderSingleLine(host, opts={}) {
-  const labels = opts.labels !== false;
-  const svg = el("svg", {viewBox:"0 0 1360 600", role:"img", "aria-label":"Einlinien-Übersichtsschaltplan"});
-  svg.appendChild(el("rect", {width:1360, height:600, fill:"var(--bg)"}));
-  SL_COLS.forEach(col => {
-    svg.appendChild(el("rect", {x:col.x, y:34, width:col.w, height:540, rx:8, fill:"var(--band)", opacity:.7}));
-    svg.appendChild(el("text", {x:col.x+10, y:54, "font-size":10, class:"mono", fill:"var(--ink-3)"}, [col.t]));
-  });
-  /* Einlinien: eine Linie pro Verbindung, Adernzahl als Schrägstrich-Kerben */
-  C.forEach(c => {
-    const a0 = SL_POS[c.a], b0 = SL_POS[c.b];
-    const a = {x:a0[0]+NW, y:a0[1]+NH/2};
-    const col = c.kind==="ac" ? "var(--wire-ac)" : c.kind==="solar" ? "var(--wire-solar)"
-      : c.kind==="gnd" ? "var(--wire-pe)" : c.kind==="main" ? "var(--wire-dc)" : "var(--wire-dc)";
-    const back = b0[0] <= a0[0];
-    const bx = back ? b0[0]+NW : b0[0];
-    const b = {x: bx, y: b0[1]+NH/2};
-    const mx = back ? Math.max(a.x, bx) + 22 : (a.x+bx)/2;
-    const d = Math.abs(a.y-b.y) < 2 ? `M ${a.x} ${a.y} L ${bx} ${b.y}` : `M ${a.x} ${a.y} L ${mx} ${a.y} L ${mx} ${b.y} L ${bx} ${b.y}`;
-    svg.appendChild(el("path", {d, fill:"none", stroke:col, "stroke-width": c.kind==="main"?3:2, opacity:.9}));
-    const lx = mx + 12, ly = (a.y+b.y)/2;
-    /* Adern-Kerbe: Schrägstrich + Zahl (normtypisch einpolig) */
-    const tick = el("g", {transform:`translate(${lx},${ly})`});
-    tick.appendChild(el("path", {d:"M -5 5 L 5 -5", stroke:col, "stroke-width":1.6}));
-    tick.appendChild(el("text", {x:8, y:-4, "font-size":9, class:"mono", fill:"var(--ink-2)"}, [String(c.adern)]));
-    svg.appendChild(tick);
-    if (labels && (c.kind==="main" || c.fuse)) {
-      svg.appendChild(el("text", {x:lx, y:ly+16, "font-size":8.5, class:"mono", fill:"var(--ink-3)"},
-        [`${c.cs} mm²${c.fuse?` / ${c.fuse} A`:""}`]));
-    }
-  });
-  N.forEach(n => {
-    const p = SL_POS[n.id]; if (!p) return;
-    nodeCard(svg, n, p[0], p[1], {w:150, h:52});
-  });
-  host.appendChild(svg);
-}
+      const SL_COLS = [
+        { t: "QUELLEN", x: 30, w: 190 },
+        { t: "LADEN", x: 240, w: 180 },
+        { t: "SPEICHERN", x: 440, w: 180 },
+        { t: "VERTEILEN", x: 640, w: 200 },
+        { t: "VERBRAUCHEN", x: 860, w: 470 },
+      ];
+      const SL_POS = {
+        pv1: [50, 70],
+        pv2: [50, 150],
+        shore: [50, 250],
+        strt: [50, 350],
+        mppt: [265, 70],
+        acchg: [265, 250],
+        dcdc: [265, 350],
+        bat: [465, 120],
+        shunt: [465, 230],
+        busp: [665, 90],
+        fuse: [665, 220],
+        busm: [665, 340],
+        inv: [665, 450],
+        ligt: [880, 60],
+        frid: [880, 130],
+        pump: [880, 200],
+        usb: [880, 270],
+        fan: [880, 340],
+        heat: [880, 410],
+        ind: [1120, 440],
+        cof: [1120, 510],
+        gnd: [1120, 340],
+        rohr: [465, 430],
+      };
+      function renderSingleLine(host, opts = {}) {
+        const labels = opts.labels !== false;
+        const svg = el("svg", {
+          viewBox: "0 0 1360 600",
+          role: "img",
+          "aria-label": "Einlinien-Übersichtsschaltplan",
+        });
+        svg.appendChild(
+          el("rect", { width: 1360, height: 600, fill: "var(--bg)" }),
+        );
+        SL_COLS.forEach((col) => {
+          svg.appendChild(
+            el("rect", {
+              x: col.x,
+              y: 34,
+              width: col.w,
+              height: 540,
+              rx: 8,
+              fill: "var(--band)",
+              opacity: 0.7,
+            }),
+          );
+          svg.appendChild(
+            el(
+              "text",
+              {
+                x: col.x + 10,
+                y: 54,
+                "font-size": 10,
+                class: "mono",
+                fill: "var(--ink-3)",
+              },
+              [col.t],
+            ),
+          );
+        });
+        /* Einlinien: eine Linie pro Verbindung, Adernzahl als Schrägstrich-Kerben */
+        C.forEach((c) => {
+          const a0 = SL_POS[c.a],
+            b0 = SL_POS[c.b];
+          const a = { x: a0[0] + NW, y: a0[1] + NH / 2 };
+          const col =
+            c.kind === "ac"
+              ? "var(--wire-ac)"
+              : c.kind === "solar"
+                ? "var(--wire-solar)"
+                : c.kind === "gnd"
+                  ? "var(--wire-pe)"
+                  : c.kind === "main"
+                    ? "var(--wire-dc)"
+                    : "var(--wire-dc)";
+          const back = b0[0] <= a0[0];
+          const bx = back ? b0[0] + NW : b0[0];
+          const b = { x: bx, y: b0[1] + NH / 2 };
+          const mx = back ? Math.max(a.x, bx) + 22 : (a.x + bx) / 2;
+          const d =
+            Math.abs(a.y - b.y) < 2
+              ? `M ${a.x} ${a.y} L ${bx} ${b.y}`
+              : `M ${a.x} ${a.y} L ${mx} ${a.y} L ${mx} ${b.y} L ${bx} ${b.y}`;
+          svg.appendChild(
+            el("path", {
+              d,
+              fill: "none",
+              stroke: col,
+              "stroke-width": c.kind === "main" ? 3 : 2,
+              opacity: 0.9,
+            }),
+          );
+          const lx = mx + 12,
+            ly = (a.y + b.y) / 2;
+          /* Adern-Kerbe: Schrägstrich + Zahl (normtypisch einpolig) */
+          const tick = el("g", { transform: `translate(${lx},${ly})` });
+          tick.appendChild(
+            el("path", {
+              d: "M -5 5 L 5 -5",
+              stroke: col,
+              "stroke-width": 1.6,
+            }),
+          );
+          tick.appendChild(
+            el(
+              "text",
+              {
+                x: 8,
+                y: -4,
+                "font-size": 9,
+                class: "mono",
+                fill: "var(--ink-2)",
+              },
+              [String(c.adern)],
+            ),
+          );
+          svg.appendChild(tick);
+          if (labels && (c.kind === "main" || c.fuse)) {
+            svg.appendChild(
+              el(
+                "text",
+                {
+                  x: lx,
+                  y: ly + 16,
+                  "font-size": 8.5,
+                  class: "mono",
+                  fill: "var(--ink-3)",
+                },
+                [`${c.cs} mm²${c.fuse ? ` / ${c.fuse} A` : ""}`],
+              ),
+            );
+          }
+        });
+        N.forEach((n) => {
+          const p = SL_POS[n.id];
+          if (!p) return;
+          nodeCard(svg, n, p[0], p[1], { w: 150, h: 52 });
+        });
+        host.appendChild(svg);
+      }
 
-/* ============================================================================
+      /* ============================================================================
    ANSICHT 3 — Stromschienen / aufgelöste Darstellung (Ladder)
    ========================================================================== */
-function renderRails(host) {
-  const svg = el("svg", {viewBox:"0 0 1360 640", role:"img", "aria-label":"Aufgelöste Darstellung mit Stromschienen"});
-  svg.appendChild(el("rect", {width:1360, height:640, fill:"var(--bg)"}));
-  const PLUS = 110, MINUS = 560, ACL = 300, ACN = 350;
-  const rail = (y, color, label) => {
-    svg.appendChild(el("path", {d:`M 40 ${y} L 1320 ${y}`, stroke:color, "stroke-width":3.4}));
-    svg.appendChild(el("text", {x:44, y:y-8, "font-size":10, class:"mono", fill:color}, [label]));
-  };
-  rail(PLUS, "var(--wire-dc)", "+12 V  ·  Plus-Schiene (Busbar)");
-  rail(MINUS, "var(--wire-neg)", "0 V  ·  Minus-Schiene (Busbar)");
+      function renderRails(host) {
+        const svg = el("svg", {
+          viewBox: "0 0 1360 640",
+          role: "img",
+          "aria-label": "Aufgelöste Darstellung mit Stromschienen",
+        });
+        svg.appendChild(
+          el("rect", { width: 1360, height: 640, fill: "var(--bg)" }),
+        );
+        const PLUS = 110,
+          MINUS = 560,
+          ACL = 300,
+          ACN = 350;
+        const rail = (y, color, label) => {
+          svg.appendChild(
+            el("path", {
+              d: `M 40 ${y} L 1320 ${y}`,
+              stroke: color,
+              "stroke-width": 3.4,
+            }),
+          );
+          svg.appendChild(
+            el(
+              "text",
+              { x: 44, y: y - 8, "font-size": 10, class: "mono", fill: color },
+              [label],
+            ),
+          );
+        };
+        rail(PLUS, "var(--wire-dc)", "+12 V  ·  Plus-Schiene (Busbar)");
+        rail(MINUS, "var(--wire-neg)", "0 V  ·  Minus-Schiene (Busbar)");
 
-  /* Einspeisungen links: Quelle → Ladewandler → Plus-Schiene */
-  const feeds = [
-    {nm:"PV 300 Wp → MPPT 30 A", y:PLUS-0, col:"var(--wire-solar)", x:110},
-    {nm:"Ladebooster 30 A", y:PLUS, col:"var(--wire-dc)", x:210},
-    {nm:"AC-Ladegerät 20 A (Landstrom, RCD)", y:PLUS, col:"var(--wire-ac)", x:310},
-  ];
-  feeds.forEach(f => {
-    svg.appendChild(el("path", {d:`M ${f.x} 40 L ${f.x} ${PLUS}`, stroke:f.col, "stroke-width":2.2}));
-    svg.appendChild(el("rect", {x:f.x-52, y:22, width:104, height:18, rx:4, fill:"var(--raised)", stroke:"var(--rule)"}));
-    svg.appendChild(el("text", {x:f.x, y:35, "font-size":9, class:"mono", "text-anchor":"middle", fill:"var(--ink-2)"}, [f.nm]));
-    svg.appendChild(el("circle", {cx:f.x, cy:PLUS, r:3.4, fill:f.col}));
-  });
+        /* Einspeisungen links: Quelle → Ladewandler → Plus-Schiene */
+        const feeds = [
+          {
+            nm: "PV 300 Wp → MPPT 30 A",
+            y: PLUS - 0,
+            col: "var(--wire-solar)",
+            x: 110,
+          },
+          { nm: "Ladebooster 30 A", y: PLUS, col: "var(--wire-dc)", x: 210 },
+          {
+            nm: "AC-Ladegerät 20 A (Landstrom, RCD)",
+            y: PLUS,
+            col: "var(--wire-ac)",
+            x: 310,
+          },
+        ];
+        feeds.forEach((f) => {
+          svg.appendChild(
+            el("path", {
+              d: `M ${f.x} 40 L ${f.x} ${PLUS}`,
+              stroke: f.col,
+              "stroke-width": 2.2,
+            }),
+          );
+          svg.appendChild(
+            el("rect", {
+              x: f.x - 52,
+              y: 22,
+              width: 104,
+              height: 18,
+              rx: 4,
+              fill: "var(--raised)",
+              stroke: "var(--rule)",
+            }),
+          );
+          svg.appendChild(
+            el(
+              "text",
+              {
+                x: f.x,
+                y: 35,
+                "font-size": 9,
+                class: "mono",
+                "text-anchor": "middle",
+                fill: "var(--ink-2)",
+              },
+              [f.nm],
+            ),
+          );
+          svg.appendChild(
+            el("circle", { cx: f.x, cy: PLUS, r: 3.4, fill: f.col }),
+          );
+        });
 
-  /* Stromkreise als vertikale Abgänge */
-  FUSES.forEach((f, i) => {
-    const x = 430 + i*105;
-    const load = byId[f.load];
-    svg.appendChild(el("path", {d:`M ${x} ${PLUS} L ${x} ${PLUS+52}`, stroke:"var(--wire-dc)", "stroke-width":2}));
-    svg.appendChild(el("circle", {cx:x, cy:PLUS, r:3.4, fill:"var(--wire-dc)"}));
-    /* Sicherungssymbol */
-    svg.appendChild(el("rect", {x:x-9, y:PLUS+52, width:18, height:34, rx:3, fill:"var(--raised)", stroke:"var(--ink-2)", "stroke-width":1.4}));
-    svg.appendChild(el("path", {d:`M ${x} ${PLUS+52} L ${x} ${PLUS+86}`, stroke:"var(--ink-2)", "stroke-width":1}));
-    svg.appendChild(el("text", {x:x+14, y:PLUS+74, "font-size":9.5, class:"mono", fill:"var(--ink-2)"}, [`${f.rating} A`]));
-    const cab = C.find(c => c.circ===f.slot);
-    svg.appendChild(el("text", {x:x+14, y:PLUS+88, "font-size":8.5, class:"mono", fill:"var(--ink-3)"}, [`${cab.cs} mm² · ${fmt(cab.len)} m`]));
-    svg.appendChild(el("path", {d:`M ${x} ${PLUS+86} L ${x} 330`, stroke:"var(--wire-dc)", "stroke-width":2}));
-    /* Verbraucher-Symbol */
-    svg.appendChild(el("rect", {x:x-34, y:330, width:68, height:52, rx:6, fill:"var(--raised)", stroke:"var(--rule-strong)"}));
-    svg.appendChild(el("text", {x:x, y:352, "font-size":13, "text-anchor":"middle"}, [KIND_ICON[load.kind]]));
-    svg.appendChild(el("text", {x:x, y:368, "font-size":9, "text-anchor":"middle", fill:"var(--ink-2)"}, [load.nm]));
-    svg.appendChild(el("text", {x:x, y:378, "font-size":8.5, class:"mono", "text-anchor":"middle", fill:"var(--ink-3)"}, [`${load.spec[0]} · ${fmt(load.ah)} Ah/d`]));
-    svg.appendChild(el("path", {d:`M ${x} 382 L ${x} ${MINUS}`, stroke:"var(--wire-neg)", "stroke-width":2}));
-    svg.appendChild(el("circle", {cx:x, cy:MINUS, r:3.4, fill:"var(--wire-neg)"}));
-  });
+        /* Stromkreise als vertikale Abgänge */
+        FUSES.forEach((f, i) => {
+          const x = 430 + i * 105;
+          const load = byId[f.load];
+          svg.appendChild(
+            el("path", {
+              d: `M ${x} ${PLUS} L ${x} ${PLUS + 52}`,
+              stroke: "var(--wire-dc)",
+              "stroke-width": 2,
+            }),
+          );
+          svg.appendChild(
+            el("circle", { cx: x, cy: PLUS, r: 3.4, fill: "var(--wire-dc)" }),
+          );
+          /* Sicherungssymbol */
+          svg.appendChild(
+            el("rect", {
+              x: x - 9,
+              y: PLUS + 52,
+              width: 18,
+              height: 34,
+              rx: 3,
+              fill: "var(--raised)",
+              stroke: "var(--ink-2)",
+              "stroke-width": 1.4,
+            }),
+          );
+          svg.appendChild(
+            el("path", {
+              d: `M ${x} ${PLUS + 52} L ${x} ${PLUS + 86}`,
+              stroke: "var(--ink-2)",
+              "stroke-width": 1,
+            }),
+          );
+          svg.appendChild(
+            el(
+              "text",
+              {
+                x: x + 14,
+                y: PLUS + 74,
+                "font-size": 9.5,
+                class: "mono",
+                fill: "var(--ink-2)",
+              },
+              [`${f.rating} A`],
+            ),
+          );
+          const cab = C.find((c) => c.circ === f.slot);
+          svg.appendChild(
+            el(
+              "text",
+              {
+                x: x + 14,
+                y: PLUS + 88,
+                "font-size": 8.5,
+                class: "mono",
+                fill: "var(--ink-3)",
+              },
+              [`${cab.cs} mm² · ${fmt(cab.len)} m`],
+            ),
+          );
+          svg.appendChild(
+            el("path", {
+              d: `M ${x} ${PLUS + 86} L ${x} 330`,
+              stroke: "var(--wire-dc)",
+              "stroke-width": 2,
+            }),
+          );
+          /* Verbraucher-Symbol */
+          svg.appendChild(
+            el("rect", {
+              x: x - 34,
+              y: 330,
+              width: 68,
+              height: 52,
+              rx: 6,
+              fill: "var(--raised)",
+              stroke: "var(--rule-strong)",
+            }),
+          );
+          svg.appendChild(
+            el(
+              "text",
+              { x: x, y: 352, "font-size": 13, "text-anchor": "middle" },
+              [KIND_ICON[load.kind]],
+            ),
+          );
+          svg.appendChild(
+            el(
+              "text",
+              {
+                x: x,
+                y: 368,
+                "font-size": 9,
+                "text-anchor": "middle",
+                fill: "var(--ink-2)",
+              },
+              [load.nm],
+            ),
+          );
+          svg.appendChild(
+            el(
+              "text",
+              {
+                x: x,
+                y: 378,
+                "font-size": 8.5,
+                class: "mono",
+                "text-anchor": "middle",
+                fill: "var(--ink-3)",
+              },
+              [`${load.spec[0]} · ${fmt(load.ah)} Ah/d`],
+            ),
+          );
+          svg.appendChild(
+            el("path", {
+              d: `M ${x} 382 L ${x} ${MINUS}`,
+              stroke: "var(--wire-neg)",
+              "stroke-width": 2,
+            }),
+          );
+          svg.appendChild(
+            el("circle", { cx: x, cy: MINUS, r: 3.4, fill: "var(--wire-neg)" }),
+          );
+        });
 
-  /* AC-Block rechts: Wechselrichter zwischen Schienen, dahinter L/N-Schienen */
-  const ix = 1120;
-  svg.appendChild(el("path", {d:`M ${ix} ${PLUS} L ${ix} 200`, stroke:"var(--wire-dc)", "stroke-width":2.6}));
-  svg.appendChild(el("circle", {cx:ix, cy:PLUS, r:3.4, fill:"var(--wire-dc)"}));
-  svg.appendChild(el("rect", {x:ix-46, y:200, width:92, height:44, rx:6, fill:"var(--raised)", stroke:"var(--rule-strong)"}));
-  svg.appendChild(el("text", {x:ix, y:218, "font-size":10, "text-anchor":"middle", "font-weight":700}, ["Wechselrichter"]));
-  svg.appendChild(el("text", {x:ix, y:232, "font-size":8.5, class:"mono", "text-anchor":"middle", fill:"var(--ink-3)"}, ["2000 W · 12→230 V"]));
-  svg.appendChild(el("path", {d:`M ${ix} 244 L ${ix} ${MINUS}`, stroke:"var(--wire-neg)", "stroke-width":2.6}));
-  svg.appendChild(el("circle", {cx:ix, cy:MINUS, r:3.4, fill:"var(--wire-neg)"}));
-  svg.appendChild(el("path", {d:`M ${ix+46} 212 L 1240 212 L 1240 ${ACL}`, stroke:"var(--wire-ac)", "stroke-width":2.4}));
-  svg.appendChild(el("path", {d:`M ${ix+46} 232 L 1268 232 L 1268 ${ACN}`, stroke:"#7d8aa0", "stroke-width":2.4}));
-  svg.appendChild(el("text", {x:1244, y:ACL-8, "font-size":9.5, class:"mono", fill:"var(--wire-ac)"}, ["L"]));
-  svg.appendChild(el("text", {x:1272, y:ACN-8, "font-size":9.5, class:"mono", fill:"#7d8aa0"}, ["N"]));
-  [byId.ind, byId.cof].forEach((load, i) => {
-    const x = 1150 + i*90;
-    svg.appendChild(el("path", {d:`M ${x} ${ACL} L ${x} 420`, stroke:"var(--wire-ac)", "stroke-width":2}));
-    svg.appendChild(el("rect", {x:x-30, y:420, width:76, height:46, rx:6, fill:"var(--raised)", stroke:"var(--rule-strong)"}));
-    svg.appendChild(el("text", {x:x+8, y:440, "font-size":12, "text-anchor":"middle"}, [KIND_ICON[load.kind]]));
-    svg.appendChild(el("text", {x:x+8, y:456, "font-size":8.5, class:"mono", "text-anchor":"middle", fill:"var(--ink-3)"}, [load.spec[0]]));
-    svg.appendChild(el("path", {d:`M ${x+16} ${ACN} L ${x+16} 420`, stroke:"#7d8aa0", "stroke-width":1.6, "stroke-dasharray":"3 3"}));
-    svg.appendChild(el("circle", {cx:x, cy:ACL, r:3, fill:"var(--wire-ac)"}));
-  });
-  /* PE */
-  svg.appendChild(el("path", {d:`M 60 ${MINUS} L 60 610 L 200 610`, stroke:"var(--wire-pe)", "stroke-width":2.2}));
-  svg.appendChild(el("text", {x:206, y:614, "font-size":10, class:"mono", fill:"var(--wire-pe)"}, ["⏚ Massepunkt Karosserie"]));
-  host.appendChild(svg);
-}
+        /* AC-Block rechts: Wechselrichter zwischen Schienen, dahinter L/N-Schienen */
+        const ix = 1120;
+        svg.appendChild(
+          el("path", {
+            d: `M ${ix} ${PLUS} L ${ix} 200`,
+            stroke: "var(--wire-dc)",
+            "stroke-width": 2.6,
+          }),
+        );
+        svg.appendChild(
+          el("circle", { cx: ix, cy: PLUS, r: 3.4, fill: "var(--wire-dc)" }),
+        );
+        svg.appendChild(
+          el("rect", {
+            x: ix - 46,
+            y: 200,
+            width: 92,
+            height: 44,
+            rx: 6,
+            fill: "var(--raised)",
+            stroke: "var(--rule-strong)",
+          }),
+        );
+        svg.appendChild(
+          el(
+            "text",
+            {
+              x: ix,
+              y: 218,
+              "font-size": 10,
+              "text-anchor": "middle",
+              "font-weight": 700,
+            },
+            ["Wechselrichter"],
+          ),
+        );
+        svg.appendChild(
+          el(
+            "text",
+            {
+              x: ix,
+              y: 232,
+              "font-size": 8.5,
+              class: "mono",
+              "text-anchor": "middle",
+              fill: "var(--ink-3)",
+            },
+            ["2000 W · 12→230 V"],
+          ),
+        );
+        svg.appendChild(
+          el("path", {
+            d: `M ${ix} 244 L ${ix} ${MINUS}`,
+            stroke: "var(--wire-neg)",
+            "stroke-width": 2.6,
+          }),
+        );
+        svg.appendChild(
+          el("circle", { cx: ix, cy: MINUS, r: 3.4, fill: "var(--wire-neg)" }),
+        );
+        svg.appendChild(
+          el("path", {
+            d: `M ${ix + 46} 212 L 1240 212 L 1240 ${ACL}`,
+            stroke: "var(--wire-ac)",
+            "stroke-width": 2.4,
+          }),
+        );
+        svg.appendChild(
+          el("path", {
+            d: `M ${ix + 46} 232 L 1268 232 L 1268 ${ACN}`,
+            stroke: "#7d8aa0",
+            "stroke-width": 2.4,
+          }),
+        );
+        svg.appendChild(
+          el(
+            "text",
+            {
+              x: 1244,
+              y: ACL - 8,
+              "font-size": 9.5,
+              class: "mono",
+              fill: "var(--wire-ac)",
+            },
+            ["L"],
+          ),
+        );
+        svg.appendChild(
+          el(
+            "text",
+            {
+              x: 1272,
+              y: ACN - 8,
+              "font-size": 9.5,
+              class: "mono",
+              fill: "#7d8aa0",
+            },
+            ["N"],
+          ),
+        );
+        [byId.ind, byId.cof].forEach((load, i) => {
+          const x = 1150 + i * 90;
+          svg.appendChild(
+            el("path", {
+              d: `M ${x} ${ACL} L ${x} 420`,
+              stroke: "var(--wire-ac)",
+              "stroke-width": 2,
+            }),
+          );
+          svg.appendChild(
+            el("rect", {
+              x: x - 30,
+              y: 420,
+              width: 76,
+              height: 46,
+              rx: 6,
+              fill: "var(--raised)",
+              stroke: "var(--rule-strong)",
+            }),
+          );
+          svg.appendChild(
+            el(
+              "text",
+              { x: x + 8, y: 440, "font-size": 12, "text-anchor": "middle" },
+              [KIND_ICON[load.kind]],
+            ),
+          );
+          svg.appendChild(
+            el(
+              "text",
+              {
+                x: x + 8,
+                y: 456,
+                "font-size": 8.5,
+                class: "mono",
+                "text-anchor": "middle",
+                fill: "var(--ink-3)",
+              },
+              [load.spec[0]],
+            ),
+          );
+          svg.appendChild(
+            el("path", {
+              d: `M ${x + 16} ${ACN} L ${x + 16} 420`,
+              stroke: "#7d8aa0",
+              "stroke-width": 1.6,
+              "stroke-dasharray": "3 3",
+            }),
+          );
+          svg.appendChild(
+            el("circle", { cx: x, cy: ACL, r: 3, fill: "var(--wire-ac)" }),
+          );
+        });
+        /* PE */
+        svg.appendChild(
+          el("path", {
+            d: `M 60 ${MINUS} L 60 610 L 200 610`,
+            stroke: "var(--wire-pe)",
+            "stroke-width": 2.2,
+          }),
+        );
+        svg.appendChild(
+          el(
+            "text",
+            {
+              x: 206,
+              y: 614,
+              "font-size": 10,
+              class: "mono",
+              fill: "var(--wire-pe)",
+            },
+            ["⏚ Massepunkt Karosserie"],
+          ),
+        );
+        host.appendChild(svg);
+      }
 
-/* ============================================================================
+      /* ============================================================================
    ANSICHT 4 — Stromkreis-Raster (Sicherungszuordnung)
    ========================================================================== */
-function renderCircuits(host, season) {
-  const wrap = H(`<div class="card"><div class="card-h"><h2>Stromkreise · Sicherung → Verbraucher → Kabel</h2>
+      function renderCircuits(host, season) {
+        const wrap =
+          H(`<div class="card"><div class="card-h"><h2>Stromkreise · Sicherung → Verbraucher → Kabel</h2>
     <span class="hint">Ein Stromkreis = eine Zeile. Genau so denkt man bei Fehlersuche und Erweiterung.</span></div>
     <div class="card-b"><div class="circuits" id="cl"></div></div></div>`);
-  const list = wrap.querySelector("#cl");
-  const rows = [...FUSES, {slot:"AC1", rating:10, load:"ind", nm:"Induktion (über WR)"}, {slot:"AC2", rating:6, load:"cof", nm:"Kaffee (über WR)"}];
-  const maxAh = Math.max(...rows.map(r => ahOf(byId[r.load], season)));
-  rows.forEach(r => {
-    const load = byId[r.load];
-    const cab = C.find(c => c.circ===r.slot);
-    const ah = ahOf(load, season);
-    const row = H(`<div class="crow">
+        const list = wrap.querySelector("#cl");
+        const rows = [
+          ...FUSES,
+          { slot: "AC1", rating: 10, load: "ind", nm: "Induktion (über WR)" },
+          { slot: "AC2", rating: 6, load: "cof", nm: "Kaffee (über WR)" },
+        ];
+        const maxAh = Math.max(...rows.map((r) => ahOf(byId[r.load], season)));
+        rows.forEach((r) => {
+          const load = byId[r.load];
+          const cab = C.find((c) => c.circ === r.slot);
+          const ah = ahOf(load, season);
+          const row = H(`<div class="crow">
       <div class="fuse"><span class="fusebox">${r.rating}A</span><span>${r.slot}</span></div>
       <div class="load"><span style="font-size:16px">${KIND_ICON[load.kind]}</span>
         <span style="min-width:0"><span class="nm">${esc(r.nm)}</span><br><span class="sp">${esc(load.zone)}</span></span></div>
       <div class="hide-s"><span class="pill" style="background:color-mix(in srgb, ${DOMAIN_COLOR[load.dom]} 16%, transparent);color:${DOMAIN_COLOR[load.dom]}">${cab.cs} mm²</span>
         <span class="mono" style="font-size:11px;color:var(--ink-3)"> ${fmt(cab.len)} m · ${cab.adern}-adrig</span></div>
-      <div class="hide-s"><div class="bar"><i style="width:${Math.round(ah/maxAh*100)}%"></i></div>
+      <div class="hide-s"><div class="bar"><i style="width:${Math.round((ah / maxAh) * 100)}%"></i></div>
         <span class="mono" style="font-size:10.5px;color:var(--ink-3)">${fmt(ah)} Ah/Tag</span></div>
       <div style="text-align:right"><span class="st-ok mono" style="font-size:11px">● ok</span></div>
     </div>`);
-    list.appendChild(row);
-  });
-  const sum = rows.reduce((s,r)=>s+ahOf(byId[r.load], season),0);
-  list.appendChild(H(`<div class="hint" style="padding:6px 4px 0">Summe Verbrauch ${fmt(sum)} Ah/Tag (${season==="winter"?"Winter":"Sommer"}) ·
-     Nutzbar 190 Ah (200 Ah LiFePO4 × 95 % DoD) · Autarkie ≈ ${fmt(190/Math.max(sum,1),1)} Tage</div>`));
-  host.appendChild(wrap);
-}
+          list.appendChild(row);
+        });
+        const sum = rows.reduce((s, r) => s + ahOf(byId[r.load], season), 0);
+        list.appendChild(
+          H(`<div class="hint" style="padding:6px 4px 0">Summe Verbrauch ${fmt(sum)} Ah/Tag (${season === "winter" ? "Winter" : "Sommer"}) ·
+     Nutzbar 190 Ah (200 Ah LiFePO4 × 95 % DoD) · Autarkie ≈ ${fmt(190 / Math.max(sum, 1), 1)} Tage</div>`),
+        );
+        host.appendChild(wrap);
+      }
 
-/* ============================================================================
+      /* ============================================================================
    ANSICHT 5 — Kabelliste (Tabellenansicht / wire schedule)
    ========================================================================== */
-let cableSort = {key:"id", dir:1};
-function cableRows() {
-  return C.map(c => ({
-    id:c.id, von:byId[c.a].nm, nach:byId[c.b].nm,
-    fn: c.kind==="ac" ? "AC 230 V" : c.kind==="solar" ? "Solar DC" : c.kind==="gnd" ? "PE / Masse" : c.kind==="main" ? "Hauptleitung" : "DC 12 V",
-    adern:c.adern, cs:c.cs, len:c.len, fuse:c.fuse||"—", kreis:c.circ, route:c.route,
-    status: c.cs < 1.5 ? "err" : (c.fuse && c.fuse > 25*c.cs ? "warn" : "ok"),
-  }));
-}
-function renderCableTable(host) {
-  const keys = [["id","Kabel"],["von","Von"],["nach","Nach"],["fn","Funktion"],["adern","Adern"],["cs","mm²"],["len","Länge m"],["fuse","Sicherung A"],["kreis","Stromkreis"],["route","Verlegeort"],["status","Status"]];
-  const rows = cableRows().sort((a,b)=>{
-    const k = cableSort.key; const va=a[k], vb=b[k];
-    return (va>vb?1:va<vb?-1:0)*cableSort.dir;
-  });
-  const card = H(`<div class="card"><div class="card-h"><h2>Kabelliste (Kabelverzeichnis nach IEC-81346-Prinzip)</h2>
+      let cableSort = { key: "id", dir: 1 };
+      function cableRows() {
+        return C.map((c) => ({
+          id: c.id,
+          von: byId[c.a].nm,
+          nach: byId[c.b].nm,
+          fn:
+            c.kind === "ac"
+              ? "AC 230 V"
+              : c.kind === "solar"
+                ? "Solar DC"
+                : c.kind === "gnd"
+                  ? "PE / Masse"
+                  : c.kind === "main"
+                    ? "Hauptleitung"
+                    : "DC 12 V",
+          adern: c.adern,
+          cs: c.cs,
+          len: c.len,
+          fuse: c.fuse || "—",
+          kreis: c.circ,
+          route: c.route,
+          status:
+            c.cs < 1.5 ? "err" : c.fuse && c.fuse > 25 * c.cs ? "warn" : "ok",
+        }));
+      }
+      function renderCableTable(host) {
+        const keys = [
+          ["id", "Kabel"],
+          ["von", "Von"],
+          ["nach", "Nach"],
+          ["fn", "Funktion"],
+          ["adern", "Adern"],
+          ["cs", "mm²"],
+          ["len", "Länge m"],
+          ["fuse", "Sicherung A"],
+          ["kreis", "Stromkreis"],
+          ["route", "Verlegeort"],
+          ["status", "Status"],
+        ];
+        const rows = cableRows().sort((a, b) => {
+          const k = cableSort.key;
+          const va = a[k],
+            vb = b[k];
+          return (va > vb ? 1 : va < vb ? -1 : 0) * cableSort.dir;
+        });
+        const card =
+          H(`<div class="card"><div class="card-h"><h2>Kabelliste (Kabelverzeichnis nach IEC-81346-Prinzip)</h2>
      <span class="spacer" style="flex:1"></span>
      <button class="chip noprint" id="csv" aria-pressed="false">CSV kopieren</button></div>
      <div class="card-b" style="padding:0 6px 10px"><table><thead><tr id="th"></tr></thead><tbody id="tb"></tbody></table></div></div>`);
-  const thr = card.querySelector("#th");
-  keys.forEach(([k,label])=>{
-    const th = H(`<th data-k="${k}">${label}${cableSort.key===k?` <span class="arr">${cableSort.dir>0?"▲":"▼"}</span>`:""}</th>`);
-    if (["adern","cs","len","fuse"].includes(k)) th.classList.add("mono");
-    th.onclick = () => { cableSort = {key:k, dir: cableSort.key===k ? -cableSort.dir : 1}; rerender(); };
-    thr.appendChild(th);
-  });
-  const tb = card.querySelector("#tb");
-  rows.forEach(r => {
-    const tr = H(`<tr>
+        const thr = card.querySelector("#th");
+        keys.forEach(([k, label]) => {
+          const th = H(
+            `<th data-k="${k}">${label}${cableSort.key === k ? ` <span class="arr">${cableSort.dir > 0 ? "▲" : "▼"}</span>` : ""}</th>`,
+          );
+          if (["adern", "cs", "len", "fuse"].includes(k))
+            th.classList.add("mono");
+          th.onclick = () => {
+            cableSort = {
+              key: k,
+              dir: cableSort.key === k ? -cableSort.dir : 1,
+            };
+            rerender();
+          };
+          thr.appendChild(th);
+        });
+        const tb = card.querySelector("#tb");
+        rows.forEach((r) => {
+          const tr = H(`<tr>
       <td class="mono">-${r.id}</td><td>${esc(r.von)}</td><td>${esc(r.nach)}</td><td>${r.fn}</td>
       <td class="mono">${r.adern}</td><td class="mono">${r.cs}</td><td class="mono">${fmt(r.len)}</td>
       <td class="mono">${r.fuse}</td><td class="mono">${r.kreis}</td><td>${esc(r.route)}</td>
-      <td class="${"st-"+r.status} mono">${r.status==="ok"?"●":r.status==="warn"?"▲":"■"}</td></tr>`);
-    tb.appendChild(tr);
-  });
-  card.querySelector("#csv").onclick = (e) => {
-    const head = keys.map(k=>k[1]).join(";");
-    const body = cableRows().map(r=>[r.id,r.von,r.nach,r.fn,r.adern,r.cs,r.len,r.fuse,r.kreis,r.route,r.status].join(";")).join("\n");
-    navigator.clipboard?.writeText(head+"\n"+body);
-    e.target.textContent = "✓ kopiert"; setTimeout(()=>e.target.textContent="CSV kopieren", 1500);
-  };
-  host.appendChild(card);
-}
+      <td class="${"st-" + r.status} mono">${r.status === "ok" ? "●" : r.status === "warn" ? "▲" : "■"}</td></tr>`);
+          tb.appendChild(tr);
+        });
+        card.querySelector("#csv").onclick = (e) => {
+          const head = keys.map((k) => k[1]).join(";");
+          const body = cableRows()
+            .map((r) =>
+              [
+                r.id,
+                r.von,
+                r.nach,
+                r.fn,
+                r.adern,
+                r.cs,
+                r.len,
+                r.fuse,
+                r.kreis,
+                r.route,
+                r.status,
+              ].join(";"),
+            )
+            .join("\n");
+          navigator.clipboard?.writeText(head + "\n" + body);
+          e.target.textContent = "✓ kopiert";
+          setTimeout(() => (e.target.textContent = "CSV kopieren"), 1500);
+        };
+        host.appendChild(card);
+      }
 
-/* ============================================================================
+      /* ============================================================================
    ANSICHT 6 — Räumlicher Verlegeplan (Installationsansicht)
    ========================================================================== */
-const FLOOR = {
-  pv1:[300,26], pv2:[430,26], fan:[560,26],
-  strt:[70,300], dcdc:[250,300], mppt:[250,220], acchg:[250,380], shore:[60,380],
-  bat:[700,380], shunt:[700,300], busp:[790,260], busm:[790,340], fuse:[700,220], inv:[880,380],
-  ligt:[430,180], frid:[520,300], pump:[520,380], usb:[430,260], heat:[600,180],
-  ind:[520,140], cof:[600,140], gnd:[880,300], rohr:[400,340],
-};
-function renderFloor(host) {
-  const svg = el("svg", {viewBox:"0 0 1000 440", role:"img", "aria-label":"Verlegeplan im Fahrzeug"});
-  svg.appendChild(el("rect", {width:1000, height:440, fill:"var(--bg)"}));
-  /* Dach-Ebene */
-  svg.appendChild(el("rect", {x:250, y:12, width:400, height:44, rx:8, fill:"var(--band)", stroke:"var(--rule)"}));
-  svg.appendChild(el("text", {x:258, y:26, "font-size":9, class:"mono", fill:"var(--ink-3)"}, ["EBENE DACH"]));
-  /* Fahrzeug-Grundriss */
-  svg.appendChild(el("path", {d:"M 40 120 L 120 90 L 940 90 Q 965 90 965 115 L 965 400 Q 965 425 940 425 L 65 425 Q 40 425 40 400 Z",
-    fill:"var(--panel)", stroke:"var(--rule-strong)", "stroke-width":1.4}));
-  [["Fahrerhaus",60,150],["Sitzbank / Technik",200,150],["Küchenblock",470,110],["Wohnraum",560,220],["Garage / Heck",760,150]]
-    .forEach(([t,x,y])=>svg.appendChild(el("text",{x,y,"font-size":9.5,class:"mono",fill:"var(--ink-3)"},[t])));
-  svg.appendChild(el("path",{d:"M 170 90 L 170 425", stroke:"var(--rule)", "stroke-dasharray":"4 4"}));
-  svg.appendChild(el("path",{d:"M 360 90 L 360 425", stroke:"var(--rule)", "stroke-dasharray":"4 4"}));
-  svg.appendChild(el("path",{d:"M 660 90 L 660 425", stroke:"var(--rule)", "stroke-dasharray":"4 4"}));
-  /* Leerrohr-Trassen */
-  const routes = [
-    {d:"M 320 48 L 320 200 L 262 220", l:"EN25 · PV"},
-    {d:"M 262 300 L 400 340 L 690 300", l:"EN25 · Hauptsammlung"},
-    {d:"M 700 240 L 700 200 L 540 190 L 520 160", l:"EN20 · Kreise"},
-    {d:"M 890 360 L 890 320 L 800 300", l:"EN32 · WR"},
-  ];
-  routes.forEach(r => {
-    svg.appendChild(el("path", {d:r.d, fill:"none", stroke:"var(--accent)", "stroke-width":5, opacity:.28, "stroke-linecap":"round"}));
-    svg.appendChild(el("path", {d:r.d, fill:"none", stroke:"var(--accent)", "stroke-width":1.2, "stroke-dasharray":"5 4"}));
-  });
-  svg.appendChild(el("text", {x:410, y:356, "font-size":9, class:"mono", fill:"var(--accent)"}, ["Leerrohr EN 25 (Füllgrad 41 %)"]));
-  /* Komponenten als Ortsmarker */
-  N.forEach(n => {
-    const p = FLOOR[n.id]; if (!p) return;
-    const g = el("g", {transform:`translate(${p[0]},${p[1]})`});
-    g.appendChild(el("circle", {r:13, fill:"var(--raised)", stroke:DOMAIN_COLOR[n.dom], "stroke-width":2}));
-    g.appendChild(el("text", {y:4, "font-size":11, "text-anchor":"middle"}, [KIND_ICON[n.kind]]));
-    g.appendChild(el("text", {y:26, "font-size":8.5, class:"mono", "text-anchor":"middle", fill:"var(--ink-2)"}, [n.nm]));
-    svg.appendChild(g);
-  });
-  svg.appendChild(el("text", {x:40, y:438, "font-size":9.5, class:"mono", fill:"var(--ink-3)"},
-    ["Ortsebene: Wo sitzt was, welche Trasse bündelt welche Kabel — die Brücke zwischen Schaltplan und Schraubenschlüssel."]));
-  host.appendChild(svg);
-}
+      const FLOOR = {
+        pv1: [300, 26],
+        pv2: [430, 26],
+        fan: [560, 26],
+        strt: [70, 300],
+        dcdc: [250, 300],
+        mppt: [250, 220],
+        acchg: [250, 380],
+        shore: [60, 380],
+        bat: [700, 380],
+        shunt: [700, 300],
+        busp: [790, 260],
+        busm: [790, 340],
+        fuse: [700, 220],
+        inv: [880, 380],
+        ligt: [430, 180],
+        frid: [520, 300],
+        pump: [520, 380],
+        usb: [430, 260],
+        heat: [600, 180],
+        ind: [520, 140],
+        cof: [600, 140],
+        gnd: [880, 300],
+        rohr: [400, 340],
+      };
+      function renderFloor(host) {
+        const svg = el("svg", {
+          viewBox: "0 0 1000 440",
+          role: "img",
+          "aria-label": "Verlegeplan im Fahrzeug",
+        });
+        svg.appendChild(
+          el("rect", { width: 1000, height: 440, fill: "var(--bg)" }),
+        );
+        /* Dach-Ebene */
+        svg.appendChild(
+          el("rect", {
+            x: 250,
+            y: 12,
+            width: 400,
+            height: 44,
+            rx: 8,
+            fill: "var(--band)",
+            stroke: "var(--rule)",
+          }),
+        );
+        svg.appendChild(
+          el(
+            "text",
+            {
+              x: 258,
+              y: 26,
+              "font-size": 9,
+              class: "mono",
+              fill: "var(--ink-3)",
+            },
+            ["EBENE DACH"],
+          ),
+        );
+        /* Fahrzeug-Grundriss */
+        svg.appendChild(
+          el("path", {
+            d: "M 40 120 L 120 90 L 940 90 Q 965 90 965 115 L 965 400 Q 965 425 940 425 L 65 425 Q 40 425 40 400 Z",
+            fill: "var(--panel)",
+            stroke: "var(--rule-strong)",
+            "stroke-width": 1.4,
+          }),
+        );
+        [
+          ["Fahrerhaus", 60, 150],
+          ["Sitzbank / Technik", 200, 150],
+          ["Küchenblock", 470, 110],
+          ["Wohnraum", 560, 220],
+          ["Garage / Heck", 760, 150],
+        ].forEach(([t, x, y]) =>
+          svg.appendChild(
+            el(
+              "text",
+              { x, y, "font-size": 9.5, class: "mono", fill: "var(--ink-3)" },
+              [t],
+            ),
+          ),
+        );
+        svg.appendChild(
+          el("path", {
+            d: "M 170 90 L 170 425",
+            stroke: "var(--rule)",
+            "stroke-dasharray": "4 4",
+          }),
+        );
+        svg.appendChild(
+          el("path", {
+            d: "M 360 90 L 360 425",
+            stroke: "var(--rule)",
+            "stroke-dasharray": "4 4",
+          }),
+        );
+        svg.appendChild(
+          el("path", {
+            d: "M 660 90 L 660 425",
+            stroke: "var(--rule)",
+            "stroke-dasharray": "4 4",
+          }),
+        );
+        /* Leerrohr-Trassen */
+        const routes = [
+          { d: "M 320 48 L 320 200 L 262 220", l: "EN25 · PV" },
+          { d: "M 262 300 L 400 340 L 690 300", l: "EN25 · Hauptsammlung" },
+          { d: "M 700 240 L 700 200 L 540 190 L 520 160", l: "EN20 · Kreise" },
+          { d: "M 890 360 L 890 320 L 800 300", l: "EN32 · WR" },
+        ];
+        routes.forEach((r) => {
+          svg.appendChild(
+            el("path", {
+              d: r.d,
+              fill: "none",
+              stroke: "var(--accent)",
+              "stroke-width": 5,
+              opacity: 0.28,
+              "stroke-linecap": "round",
+            }),
+          );
+          svg.appendChild(
+            el("path", {
+              d: r.d,
+              fill: "none",
+              stroke: "var(--accent)",
+              "stroke-width": 1.2,
+              "stroke-dasharray": "5 4",
+            }),
+          );
+        });
+        svg.appendChild(
+          el(
+            "text",
+            {
+              x: 410,
+              y: 356,
+              "font-size": 9,
+              class: "mono",
+              fill: "var(--accent)",
+            },
+            ["Leerrohr EN 25 (Füllgrad 41 %)"],
+          ),
+        );
+        /* Komponenten als Ortsmarker */
+        N.forEach((n) => {
+          const p = FLOOR[n.id];
+          if (!p) return;
+          const g = el("g", { transform: `translate(${p[0]},${p[1]})` });
+          g.appendChild(
+            el("circle", {
+              r: 13,
+              fill: "var(--raised)",
+              stroke: DOMAIN_COLOR[n.dom],
+              "stroke-width": 2,
+            }),
+          );
+          g.appendChild(
+            el("text", { y: 4, "font-size": 11, "text-anchor": "middle" }, [
+              KIND_ICON[n.kind],
+            ]),
+          );
+          g.appendChild(
+            el(
+              "text",
+              {
+                y: 26,
+                "font-size": 8.5,
+                class: "mono",
+                "text-anchor": "middle",
+                fill: "var(--ink-2)",
+              },
+              [n.nm],
+            ),
+          );
+          svg.appendChild(g);
+        });
+        svg.appendChild(
+          el(
+            "text",
+            {
+              x: 40,
+              y: 438,
+              "font-size": 9.5,
+              class: "mono",
+              fill: "var(--ink-3)",
+            },
+            [
+              "Ortsebene: Wo sitzt was, welche Trasse bündelt welche Kabel — die Brücke zwischen Schaltplan und Schraubenschlüssel.",
+            ],
+          ),
+        );
+        host.appendChild(svg);
+      }
 
-/* ============================================================================
+      /* ============================================================================
    ANSICHT 7 — Energiebilanz
    ========================================================================== */
-function ahOf(n, season) {
-  if (!n.w) return 0;
-  const h = season==="winter" ? n.hW : n.hS;
-  const wh = n.w * h;
-  return n.kind==="consumer230v" ? (wh/0.85)/12 : wh/12;
-}
-function renderEnergy(host, season, setSeason) {
-  const loads = N.filter(n=>n.w).map(n=>({n, ah:ahOf(n, season)})).sort((a,b)=>b.ah-a.ah);
-  const sum = loads.reduce((s,l)=>s+l.ah,0);
-  const prod = [
-    {nm:`Solar 300 Wp (${season==="winter"?"1,2":"4,5"} h Sonne)`, ah: season==="winter" ? 300*1.2*0.8/12 : 300*4.5*0.8/12},
-    {nm:"Ladebooster (Fahrzeit 1,5 h)", ah:30*1.5},
-    {nm:"Landstrom-AC-Lader (2 h, optional)", ah:20*2},
-  ];
-  const psum = prod.reduce((s,p)=>s+p.ah,0);
-  const max = Math.max(sum, psum);
-  const card = H(`<div class="card"><div class="card-h"><h2>Energiebilanz pro Tag</h2>
+      function ahOf(n, season) {
+        if (!n.w) return 0;
+        const h = season === "winter" ? n.hW : n.hS;
+        const wh = n.w * h;
+        return n.kind === "consumer230v" ? wh / 0.85 / 12 : wh / 12;
+      }
+      function renderEnergy(host, season, setSeason) {
+        const loads = N.filter((n) => n.w)
+          .map((n) => ({ n, ah: ahOf(n, season) }))
+          .sort((a, b) => b.ah - a.ah);
+        const sum = loads.reduce((s, l) => s + l.ah, 0);
+        const prod = [
+          {
+            nm: `Solar 300 Wp (${season === "winter" ? "1,2" : "4,5"} h Sonne)`,
+            ah:
+              season === "winter"
+                ? (300 * 1.2 * 0.8) / 12
+                : (300 * 4.5 * 0.8) / 12,
+          },
+          { nm: "Ladebooster (Fahrzeit 1,5 h)", ah: 30 * 1.5 },
+          { nm: "Landstrom-AC-Lader (2 h, optional)", ah: 20 * 2 },
+        ];
+        const psum = prod.reduce((s, p) => s + p.ah, 0);
+        const max = Math.max(sum, psum);
+        const card =
+          H(`<div class="card"><div class="card-h"><h2>Energiebilanz pro Tag</h2>
     <span class="spacer" style="flex:1"></span>
-    <div class="seg"><button id="s" aria-pressed="${season==="summer"}">Sommer</button><button id="w" aria-pressed="${season==="winter"}">Winter</button></div>
+    <div class="seg"><button id="s" aria-pressed="${season === "summer"}">Sommer</button><button id="w" aria-pressed="${season === "winter"}">Winter</button></div>
     </div><div class="card-b" id="eb"></div></div>`);
-  const body = card.querySelector("#eb");
-  const bar = (label, ah, color, note) => H(`<div style="display:grid;grid-template-columns:230px 1fr 90px;gap:10px;align-items:center;margin-bottom:7px">
+        const body = card.querySelector("#eb");
+        const bar = (label, ah, color, note) =>
+          H(`<div style="display:grid;grid-template-columns:230px 1fr 90px;gap:10px;align-items:center;margin-bottom:7px">
      <span style="font-size:12px">${esc(label)}</span>
-     <span class="bar" style="height:10px"><i style="width:${Math.round(ah/max*100)}%;background:${color}"></i></span>
-     <span class="mono" style="font-size:11px;color:var(--ink-2);text-align:right">${fmt(ah)} Ah${note||""}</span></div>`);
-  body.appendChild(H(`<div class="hint" style="margin-bottom:6px">VERBRAUCH</div>`));
-  loads.forEach(l => body.appendChild(bar(`${KIND_ICON[l.n.kind]} ${l.n.nm}`, l.ah, "var(--wire-dc)")));
-  body.appendChild(bar("Σ Verbrauch", sum, "var(--ink-2)", " /Tag"));
-  body.appendChild(H(`<div class="hint" style="margin:14px 0 6px">ERTRAG / LADUNG</div>`));
-  prod.forEach(p => body.appendChild(bar(p.nm, p.ah, "var(--ok)")));
-  body.appendChild(bar("Σ Ertrag", psum, "var(--ink-2)", " /Tag"));
-  const diff = psum - sum;
-  body.appendChild(H(`<div style="margin-top:14px;padding:10px 12px;border:1px solid var(--rule);border-radius:10px;background:var(--raised);font-size:12.5px">
-     Bilanz: <b class="mono ${diff>=0?"st-ok":"st-err"}">${diff>=0?"+":""}${fmt(diff)} Ah/Tag</b> ·
-     Batterie nutzbar 190 Ah → Autarkie ohne Laden ≈ <b class="mono">${fmt(190/Math.max(sum,1),1)} Tage</b>.
-     <span class="hint">Diese Ansicht beantwortet „Ist meine Anlage ausgelegt?“ in 3 Sekunden — der Graph kann das nicht.</span></div>`));
-  card.querySelector("#s").onclick = () => setSeason("summer");
-  card.querySelector("#w").onclick = () => setSeason("winter");
-  host.appendChild(card);
-}
+     <span class="bar" style="height:10px"><i style="width:${Math.round((ah / max) * 100)}%;background:${color}"></i></span>
+     <span class="mono" style="font-size:11px;color:var(--ink-2);text-align:right">${fmt(ah)} Ah${note || ""}</span></div>`);
+        body.appendChild(
+          H(`<div class="hint" style="margin-bottom:6px">VERBRAUCH</div>`),
+        );
+        loads.forEach((l) =>
+          body.appendChild(
+            bar(`${KIND_ICON[l.n.kind]} ${l.n.nm}`, l.ah, "var(--wire-dc)"),
+          ),
+        );
+        body.appendChild(bar("Σ Verbrauch", sum, "var(--ink-2)", " /Tag"));
+        body.appendChild(
+          H(
+            `<div class="hint" style="margin:14px 0 6px">ERTRAG / LADUNG</div>`,
+          ),
+        );
+        prod.forEach((p) => body.appendChild(bar(p.nm, p.ah, "var(--ok)")));
+        body.appendChild(bar("Σ Ertrag", psum, "var(--ink-2)", " /Tag"));
+        const diff = psum - sum;
+        body.appendChild(
+          H(`<div style="margin-top:14px;padding:10px 12px;border:1px solid var(--rule);border-radius:10px;background:var(--raised);font-size:12.5px">
+     Bilanz: <b class="mono ${diff >= 0 ? "st-ok" : "st-err"}">${diff >= 0 ? "+" : ""}${fmt(diff)} Ah/Tag</b> ·
+     Batterie nutzbar 190 Ah → Autarkie ohne Laden ≈ <b class="mono">${fmt(190 / Math.max(sum, 1), 1)} Tage</b>.
+     <span class="hint">Diese Ansicht beantwortet „Ist meine Anlage ausgelegt?“ in 3 Sekunden — der Graph kann das nicht.</span></div>`),
+        );
+        card.querySelector("#s").onclick = () => setSeason("summer");
+        card.querySelector("#w").onclick = () => setSeason("winter");
+        host.appendChild(card);
+      }
 
-/* ============================================================================
+      /* ============================================================================
    ANSICHT 8 — Druckblatt / Dokumentationsansicht (DIN-EN-61082-Anleihe)
    ========================================================================== */
-let sheet = 1;
-function renderSheet(host) {
-  const wrap = H(`<div>
+      let sheet = 1;
+      function renderSheet(host) {
+        const wrap = H(`<div>
     <div class="noprint" style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
-      <div class="seg"><button data-sh="1" aria-pressed="${sheet===1}">Blatt 1 · Übersicht</button><button data-sh="2" aria-pressed="${sheet===2}">Blatt 2 · Stromkreise</button><button data-sh="3" aria-pressed="${sheet===3}">Blatt 3 · Kabelliste</button></div>
+      <div class="seg"><button data-sh="1" aria-pressed="${sheet === 1}">Blatt 1 · Übersicht</button><button data-sh="2" aria-pressed="${sheet === 2}">Blatt 2 · Stromkreise</button><button data-sh="3" aria-pressed="${sheet === 3}">Blatt 3 · Kabelliste</button></div>
       <button class="chip" id="print"> Drucken / PDF (Strg+P)</button>
       <span class="hint">A4-Hochformat, Schriftfeld unten rechts — so wird aus dem Plan ein Dokument.</span>
     </div>
     <div class="sheetwrap"><div class="sheet" id="sheet"></div></div></div>`);
-  const sh = wrap.querySelector("#sheet");
-  const head = (title) => `<h1>${title}</h1><div class="sub">PROJEKT: CAMPER „ARENA“ · SYSTEM 12 V DC / 230 V AC · REV A · DATUM 2026-09-04</div>`;
-  const tblock = `<div class="tblock">
+        const sh = wrap.querySelector("#sheet");
+        const head = (title) =>
+          `<h1>${title}</h1><div class="sub">PROJEKT: CAMPER „ARENA“ · SYSTEM 12 V DC / 230 V AC · REV A · DATUM 2026-09-04</div>`;
+        const tblock = `<div class="tblock">
      <div><span>DIY-CAMP · Elektroplanung</span><span>Blatt ${sheet}/3</span></div>
      <div><span>Projekt</span><span>Camper Arena</span></div>
      <div><span>Gezeichnet</span><span>Planer v2</span></div>
      <div><span>Geprüft</span><span>—</span></div>
      <div><span>Maßstab</span><span>o. M.</span></div>
      <div><span>Norm</span><span>DIN EN 61082 / 60617</span></div></div>`;
-  if (sheet===1) {
-    sh.innerHTML = head("Einlinien-Übersichtsschaltplan") + `<div class="frame" id="f"></div>` + tblock;
-    renderSingleLine(sh.querySelector("#f"), {labels:true});
-  } else if (sheet===2) {
-    sh.innerHTML = head("Stromkreisliste") + `<div class="frame"><table><thead><tr>
+        if (sheet === 1) {
+          sh.innerHTML =
+            head("Einlinien-Übersichtsschaltplan") +
+            `<div class="frame" id="f"></div>` +
+            tblock;
+          renderSingleLine(sh.querySelector("#f"), { labels: true });
+        } else if (sheet === 2) {
+          sh.innerHTML =
+            head("Stromkreisliste") +
+            `<div class="frame"><table><thead><tr>
       <th>Sicherung</th><th>Stromkreis</th><th>Verbraucher</th><th>Kabel</th><th>Länge</th><th>Ah/Tag</th></tr></thead><tbody>` +
-      FUSES.map(f=>{const cab=C.find(c=>c.circ===f.slot);const l=byId[f.load];
-        return `<tr><td class="mono">${f.slot} · ${f.rating} A</td><td>${f.nm}</td><td>${l.nm} (${l.spec[0]})</td>
-        <td class="mono">${cab.adern}×${cab.cs} mm²</td><td class="mono">${fmt(cab.len)} m</td><td class="mono">${fmt(ahOf(l,"summer"))}</td></tr>`;}).join("") +
-      `</tbody></table></div>` + tblock;
-  } else {
-    sh.innerHTML = head("Kabelliste") + `<div class="frame"><table><thead><tr>
+            FUSES.map((f) => {
+              const cab = C.find((c) => c.circ === f.slot);
+              const l = byId[f.load];
+              return `<tr><td class="mono">${f.slot} · ${f.rating} A</td><td>${f.nm}</td><td>${l.nm} (${l.spec[0]})</td>
+        <td class="mono">${cab.adern}×${cab.cs} mm²</td><td class="mono">${fmt(cab.len)} m</td><td class="mono">${fmt(ahOf(l, "summer"))}</td></tr>`;
+            }).join("") +
+            `</tbody></table></div>` +
+            tblock;
+        } else {
+          sh.innerHTML =
+            head("Kabelliste") +
+            `<div class="frame"><table><thead><tr>
       <th>Kabel</th><th>Von</th><th>Nach</th><th>Funktion</th><th>Adern</th><th>mm²</th><th>m</th><th>Sicherung</th><th>Trasse</th></tr></thead><tbody>` +
-      cableRows().map(r=>`<tr><td class="mono">-${r.id}</td><td>${r.von}</td><td>${r.nach}</td><td>${r.fn}</td>
-        <td class="mono">${r.adern}</td><td class="mono">${r.cs}</td><td class="mono">${fmt(r.len)}</td><td class="mono">${r.fuse}</td><td>${r.route}</td></tr>`).join("") +
-      `</tbody></table></div>` + tblock;
-  }
-  wrap.querySelectorAll("[data-sh]").forEach(b => b.onclick = () => { sheet = +b.dataset.sh; rerender(); });
-  wrap.querySelector("#print").onclick = () => window.print();
-  host.appendChild(wrap);
-}
+            cableRows()
+              .map(
+                (
+                  r,
+                ) => `<tr><td class="mono">-${r.id}</td><td>${r.von}</td><td>${r.nach}</td><td>${r.fn}</td>
+        <td class="mono">${r.adern}</td><td class="mono">${r.cs}</td><td class="mono">${fmt(r.len)}</td><td class="mono">${r.fuse}</td><td>${r.route}</td></tr>`,
+              )
+              .join("") +
+            `</tbody></table></div>` +
+            tblock;
+        }
+        wrap.querySelectorAll("[data-sh]").forEach(
+          (b) =>
+            (b.onclick = () => {
+              sheet = +b.dataset.sh;
+              rerender();
+            }),
+        );
+        wrap.querySelector("#print").onclick = () => window.print();
+        host.appendChild(wrap);
+      }
 
-/* ============================================================================
+      /* ============================================================================
    ANSICHT 9 — Split-Vergleich Status quo ↔ Einlinie
    ========================================================================== */
-function renderCompare(host) {
-  const wrap = H(`<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-    <div class="card"><div class="card-h"><h2>Heute: mehrlinig</h2><span class="hint">${C.reduce((s,c)=>s+c.adern,0)} Linien</span></div><div class="card-b" id="a"></div></div>
-    <div class="card"><div class="card-h"><h2>Vorschlag: einpolig</h2><span class="hint">${C.length} Linien (−${Math.round((1-C.length/C.reduce((s,c)=>s+c.adern,0))*100)} %)</span></div><div class="card-b" id="b"></div></div>
+      function renderCompare(host) {
+        const wrap =
+          H(`<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+    <div class="card"><div class="card-h"><h2>Heute: mehrlinig</h2><span class="hint">${C.reduce((s, c) => s + c.adern, 0)} Linien</span></div><div class="card-b" id="a"></div></div>
+    <div class="card"><div class="card-h"><h2>Vorschlag: einpolig</h2><span class="hint">${C.length} Linien (−${Math.round((1 - C.length / C.reduce((s, c) => s + c.adern, 0)) * 100)} %)</span></div><div class="card-b" id="b"></div></div>
   </div>`);
-  renderStatusQuo(wrap.querySelector("#a"), {});
-  renderSingleLine(wrap.querySelector("#b"), {labels:false});
-  host.appendChild(wrap);
-}
+        renderStatusQuo(wrap.querySelector("#a"), {});
+        renderSingleLine(wrap.querySelector("#b"), { labels: false });
+        host.appendChild(wrap);
+      }
 
-/* ============================================================================
+      /* ============================================================================
    View-Registry + Shell
    ========================================================================== */
-const VIEWS = [
-  {id:"quo", label:"Status quo", icon:"▦", render:(h,s)=>renderStatusQuo(h, s),
-   sub:[{type:"domains"}],
-   info:{
-     purpose:"Der heutige Plan: jede Verbindung wird mehrlinig gezeichnet (12 V = 2 Adern, 230 V = 3 Adern), jede Ader trägt ein dauerhaftes Label-Chip. Vollständig, aber dicht.",
-     solves:["B1 Mehrlinien-Default verdoppelt/verdreifacht die Linienmenge","B2 permanente Label-Chips → Overplotting an Sammeltrassen"],
-     norm:"DIN EN 60617 „mehrpolige Darstellung“ — korrekt, aber die Detailtiefe für den Überblick.",
-     effort:"—", files:"components/edges/CableEdge.tsx, components/planner/FlowCanvas.tsx",
-     notes:["Stärken: volle Editierbarkeit, alle Werte live.","Schwäche: Ab ~15 Bauteilen kippt die Lesbarkeit; die Struktur (Quelle→Laden→Speichern→Verteilen→Verbrauchen) ist nicht sichtbar."]}},
-  {id:"single", label:"Einlinien-Übersicht", icon:"⎯", render:(h,s)=>renderSingleLine(h, s),
-   sub:[{type:"labels"}],
-   info:{
-     purpose:"Einpolige Darstellung: eine Linie pro Kabel mit Adern-Kerbe (2/3), Hauptleitungen fett. Zonenbänder machen die Energiefluss-Logik sofort lesbar.",
-     solves:["B1 Linienmenge −60 %","B3 fehlende räumliche Ordnung → Zonenbänder","B12 Stromfluss-Logik unsichtbar"],
-     norm:"DIN EN 60617/61082: Übersichtsschaltplan wird einpolig gezeichnet; Adernzahl als Querstrich mit Zahl.",
-     effort:"M", files:"components/planner/views/SingleLineView.tsx (neu), utils/singleLine.ts (neu: derive aus nodes/edges)",
-     notes:["Read-only-Ansicht, abgeleitet aus demselben Graphen — keine Zweitpflege von Daten.","Detailtiefe per Toggle: Labels aus → reine Struktur; Labels an → Planungswerte."]}},
-  {id:"rails", label:"Stromschienen (aufgelöst)", icon:"☰", render:(h)=>renderRails(h), sub:[],
-   info:{
-     purpose:"Aufgelöste Darstellung nach Stromweg: +12-V-Schiene oben, 0-V-Schiene unten, jeder Stromkreis ein senkrechter Abgang mit Sicherungssymbol. AC-Block separat rechts.",
-     solves:["B3 freie Fläche ohne Stromweg-Logik","B12 Sicherungszuordnung nur im Graph lesbar","B11 230-V-Teil versinkt im 12-V-Graph"],
-     norm:"DIN EN 61082 / Elektrotechnik-Didaktik: aufgelöste Darstellung „Stromwege möglichst gerade und kreuzungsfrei“; Potenzialschienen oben/unten.",
-     effort:"L", files:"components/planner/views/RailView.tsx (neu, eigener SVG-Renderer), utils/circuits.ts (neu)",
-     notes:["Die Ansicht, in der Elektriker:innen Fehler suchen — Kreuzungen ≈ 0 by construction.","Erzeugbar aus dem Graphen: Kreise = Kanten ab Sicherungskasten; Einspeisungen = Kanten zur Plus-Busbar."]}},
-  {id:"circuits", label:"Stromkreise", icon:"🛡", render:(h,s)=>renderCircuits(h, s.season), sub:[{type:"season"}],
-   info:{
-     purpose:"Stromkreisliste als Raster: Sicherung → Verbraucher → Kabel → Tagesverbrauch. Eine Zeile pro Kreis, inklusive AC-Kreise über den Wechselrichter.",
-     solves:["B12 keine Stromkreis-Sicht","B5 Kennzahlen verstreut → Ah/Tag direkt am Kreis"],
-     norm:"Praxis Gebäudetechnik: „Stromkreisliste / Zuordnung Sicherung – Verbraucher“ ist ein eigenes Dokument neben dem Stromlaufplan.",
-     effort:"S", files:"components/planner/views/CircuitListView.tsx (neu), reuse useDashboardMetrics + lib/electrical",
-     notes:["Sofort nutzbar beim Erweitern („Welche Sicherung hat noch Luft?“) und beim Bauen (Beschriften des Kastens).","Zeilenklick kann im Graph den Kreis highlighten (Sync Selection)."]},
-  },
-  {id:"cables", label:"Kabelliste", icon:"📋", render:(h)=>renderCableTable(h), sub:[],
-   info:{
-     purpose:"Tabellarisches Kabelverzeichnis: Kabel-ID (-W01 … nach IEC-81346-Prinzip), Von/Nach, Funktion, Adern, Querschnitt, Länge, Sicherung, Verlegeort, Status. Sortierbar, CSV-Export.",
-     solves:["B7 keine Kennzeichnung → IDs schaffen Bruch-freie Referenz Plan↔Tabelle↔Kabelmarker","B6 kein maschinenlesbares Exportformat"],
-     norm:"IEC 81346 (Referenzkennzeichnung), EPLAN/AutoCAD Electrical: „Cable schedule … generate from the schematic database, never by hand“.",
-     effort:"S–M", files:"components/planner/views/CableScheduleView.tsx (neu), utils/cableSchedule.ts (derive), lib/units",
-     notes:["Die Ansicht für Einkauf und Installation: Meter pro Querschnitt summieren sich automatisch.","Zeile ↔ Kante im Graph synchron highlightbar (focusHighlight existiert bereits)."]},
-  },
-  {id:"floor", label:"Verlegeplan", icon:"🚐", render:(h)=>renderFloor(h), sub:[],
-   info:{
-     purpose:"Ortsebene: Grundriss + Dach-Ebene mit Einbauorten und Leerrohr-Trassen. Zeigt, was der Schaltplan nicht zeigen kann: Wo liegt was, welche Kabel teilen sich welche Trasse.",
-     solves:["B3 Plan ≠ Einbauort","Leerrohr-/Füllgrad-Wissen hängt heute an einem isolierten Node"],
-     norm:"Installationsplan (DIN EN 61082-Anleihe): „räumliche Lage der Betriebsmittel“; Conduit-Füllgrad nach VDE-Rohrtabellen (existiert in lib/vde-standards).",
-     effort:"L", files:"components/planner/views/FloorView.tsx (neu), Datenmodell: node.data.mount = {zone,x,y} (Migration optional)",
-     notes:["Der Dach-Planer hat bereits eine Top-View-Sprache — dieselbe Grafiksprache hier wiederverwenden.","Trassen = Conduit-Nodes + assignedEdges; Füllgrad-Balken an der Trasse statt nur am Node."]},
-  },
-  {id:"energy", label:"Energiebilanz", icon:"⚖", render:(h,s)=>renderEnergy(h, s.season, s.setSeason), sub:[{type:"season"}],
-   info:{
-     purpose:"Bilanzansicht: Verbrauch je Verbraucher (Ah/Tag) gegen Ertrag (Solar/Fahrzeit/Landstrom), Saison umschaltbar, Autarkie als Klartext.",
-     solves:["B5 System-Cockpit fehlt: Berechnungen stecken in FloatingMetricsCard/ExpertPanel/Inspector"],
-     norm:"—", effort:"S", files:"components/planner/views/EnergyView.tsx (neu), reuse hooks/useDashboardMetrics",
-     notes:["Beantwortet die häufigste Nutzerfrage („reicht meine Batterie?“) ohne Graph-Lesen.","Saison-Umschalter existiert bereits im Store — hier bekommt er sichtbare Wirkung."]},
-  },
-  {id:"sheet", label:"Druckblatt", icon:"🖨", render:(h)=>renderSheet(h), sub:[],
-   info:{
-     purpose:"Dokumentationsansicht: A4-Blätter mit Schriftfeld und Blattnavigation (1 Übersicht, 2 Stromkreise, 3 Kabelliste), druckbar per Strg+P / PDF.",
-     solves:["B6 Export = nur Viewport-PNG, nicht werkstatttauglich"],
-     norm:"DIN EN 61082: Schriftfeld-Pflichtangaben (Projekt, Blatt, Rev, Datum, Prüfer); Blattnavigation mit Querverweisen.",
-     effort:"M", files:"components/planner/views/SheetView.tsx (neu), app/globals.css (@media print, @page A4)",
-     notes:["PDF ohne Library: Browser-Druck auf die Blatt-Ansicht scoped (CSS @media print existiert heute nicht).","Dasselbe Blatt ist die Grundlage für „Plan an Werkstatt/Forum schicken“."]},
-  },
-  {id:"compare", label:"Vergleich", icon:"⇄", render:(h)=>renderCompare(h), sub:[],
-   info:{
-     purpose:"Split-Ansicht zum Entscheiden: derselbe Plan mehrlinig (heute) vs. einpolig (Vorschlag), Linienzahl als harte Zahl.",
-     solves:["Entscheidungsbedarf: Wie viel Detail bleibt im Default-Canvas?"],
-     norm:"—", effort:"S (als internes Werkzeug)", files:"—",
-     notes:["Im Produkt denkbar als „Vorher/Nachher“ beim Einführen neuer Ansichten oder für PR-Demos."]}},
-];
+      const VIEWS = [
+        {
+          id: "quo",
+          label: "Status quo",
+          icon: "▦",
+          render: (h, s) => renderStatusQuo(h, s),
+          sub: [{ type: "domains" }],
+          info: {
+            purpose:
+              "Der heutige Plan: jede Verbindung wird mehrlinig gezeichnet (12 V = 2 Adern, 230 V = 3 Adern), jede Ader trägt ein dauerhaftes Label-Chip. Vollständig, aber dicht.",
+            solves: [
+              "B1 Mehrlinien-Default verdoppelt/verdreifacht die Linienmenge",
+              "B2 permanente Label-Chips → Overplotting an Sammeltrassen",
+            ],
+            norm: "DIN EN 60617 „mehrpolige Darstellung“ — korrekt, aber die Detailtiefe für den Überblick.",
+            effort: "—",
+            files:
+              "components/edges/CableEdge.tsx, components/planner/FlowCanvas.tsx",
+            notes: [
+              "Stärken: volle Editierbarkeit, alle Werte live.",
+              "Schwäche: Ab ~15 Bauteilen kippt die Lesbarkeit; die Struktur (Quelle→Laden→Speichern→Verteilen→Verbrauchen) ist nicht sichtbar.",
+            ],
+          },
+        },
+        {
+          id: "single",
+          label: "Einlinien-Übersicht",
+          icon: "⎯",
+          render: (h, s) => renderSingleLine(h, s),
+          sub: [{ type: "labels" }],
+          info: {
+            purpose:
+              "Einpolige Darstellung: eine Linie pro Kabel mit Adern-Kerbe (2/3), Hauptleitungen fett. Zonenbänder machen die Energiefluss-Logik sofort lesbar.",
+            solves: [
+              "B1 Linienmenge −60 %",
+              "B3 fehlende räumliche Ordnung → Zonenbänder",
+              "B12 Stromfluss-Logik unsichtbar",
+            ],
+            norm: "DIN EN 60617/61082: Übersichtsschaltplan wird einpolig gezeichnet; Adernzahl als Querstrich mit Zahl.",
+            effort: "M",
+            files:
+              "components/planner/views/SingleLineView.tsx (neu), utils/singleLine.ts (neu: derive aus nodes/edges)",
+            notes: [
+              "Read-only-Ansicht, abgeleitet aus demselben Graphen — keine Zweitpflege von Daten.",
+              "Detailtiefe per Toggle: Labels aus → reine Struktur; Labels an → Planungswerte.",
+            ],
+          },
+        },
+        {
+          id: "rails",
+          label: "Stromschienen (aufgelöst)",
+          icon: "☰",
+          render: (h) => renderRails(h),
+          sub: [],
+          info: {
+            purpose:
+              "Aufgelöste Darstellung nach Stromweg: +12-V-Schiene oben, 0-V-Schiene unten, jeder Stromkreis ein senkrechter Abgang mit Sicherungssymbol. AC-Block separat rechts.",
+            solves: [
+              "B3 freie Fläche ohne Stromweg-Logik",
+              "B12 Sicherungszuordnung nur im Graph lesbar",
+              "B11 230-V-Teil versinkt im 12-V-Graph",
+            ],
+            norm: "DIN EN 61082 / Elektrotechnik-Didaktik: aufgelöste Darstellung „Stromwege möglichst gerade und kreuzungsfrei“; Potenzialschienen oben/unten.",
+            effort: "L",
+            files:
+              "components/planner/views/RailView.tsx (neu, eigener SVG-Renderer), utils/circuits.ts (neu)",
+            notes: [
+              "Die Ansicht, in der Elektriker:innen Fehler suchen — Kreuzungen ≈ 0 by construction.",
+              "Erzeugbar aus dem Graphen: Kreise = Kanten ab Sicherungskasten; Einspeisungen = Kanten zur Plus-Busbar.",
+            ],
+          },
+        },
+        {
+          id: "circuits",
+          label: "Stromkreise",
+          icon: "🛡",
+          render: (h, s) => renderCircuits(h, s.season),
+          sub: [{ type: "season" }],
+          info: {
+            purpose:
+              "Stromkreisliste als Raster: Sicherung → Verbraucher → Kabel → Tagesverbrauch. Eine Zeile pro Kreis, inklusive AC-Kreise über den Wechselrichter.",
+            solves: [
+              "B12 keine Stromkreis-Sicht",
+              "B5 Kennzahlen verstreut → Ah/Tag direkt am Kreis",
+            ],
+            norm: "Praxis Gebäudetechnik: „Stromkreisliste / Zuordnung Sicherung – Verbraucher“ ist ein eigenes Dokument neben dem Stromlaufplan.",
+            effort: "S",
+            files:
+              "components/planner/views/CircuitListView.tsx (neu), reuse useDashboardMetrics + lib/electrical",
+            notes: [
+              "Sofort nutzbar beim Erweitern („Welche Sicherung hat noch Luft?“) und beim Bauen (Beschriften des Kastens).",
+              "Zeilenklick kann im Graph den Kreis highlighten (Sync Selection).",
+            ],
+          },
+        },
+        {
+          id: "cables",
+          label: "Kabelliste",
+          icon: "📋",
+          render: (h) => renderCableTable(h),
+          sub: [],
+          info: {
+            purpose:
+              "Tabellarisches Kabelverzeichnis: Kabel-ID (-W01 … nach IEC-81346-Prinzip), Von/Nach, Funktion, Adern, Querschnitt, Länge, Sicherung, Verlegeort, Status. Sortierbar, CSV-Export.",
+            solves: [
+              "B7 keine Kennzeichnung → IDs schaffen Bruch-freie Referenz Plan↔Tabelle↔Kabelmarker",
+              "B6 kein maschinenlesbares Exportformat",
+            ],
+            norm: "IEC 81346 (Referenzkennzeichnung), EPLAN/AutoCAD Electrical: „Cable schedule … generate from the schematic database, never by hand“.",
+            effort: "S–M",
+            files:
+              "components/planner/views/CableScheduleView.tsx (neu), utils/cableSchedule.ts (derive), lib/units",
+            notes: [
+              "Die Ansicht für Einkauf und Installation: Meter pro Querschnitt summieren sich automatisch.",
+              "Zeile ↔ Kante im Graph synchron highlightbar (focusHighlight existiert bereits).",
+            ],
+          },
+        },
+        {
+          id: "floor",
+          label: "Verlegeplan",
+          icon: "🚐",
+          render: (h) => renderFloor(h),
+          sub: [],
+          info: {
+            purpose:
+              "Ortsebene: Grundriss + Dach-Ebene mit Einbauorten und Leerrohr-Trassen. Zeigt, was der Schaltplan nicht zeigen kann: Wo liegt was, welche Kabel teilen sich welche Trasse.",
+            solves: [
+              "B3 Plan ≠ Einbauort",
+              "Leerrohr-/Füllgrad-Wissen hängt heute an einem isolierten Node",
+            ],
+            norm: "Installationsplan (DIN EN 61082-Anleihe): „räumliche Lage der Betriebsmittel“; Conduit-Füllgrad nach VDE-Rohrtabellen (existiert in lib/vde-standards).",
+            effort: "L",
+            files:
+              "components/planner/views/FloorView.tsx (neu), Datenmodell: node.data.mount = {zone,x,y} (Migration optional)",
+            notes: [
+              "Der Dach-Planer hat bereits eine Top-View-Sprache — dieselbe Grafiksprache hier wiederverwenden.",
+              "Trassen = Conduit-Nodes + assignedEdges; Füllgrad-Balken an der Trasse statt nur am Node.",
+            ],
+          },
+        },
+        {
+          id: "energy",
+          label: "Energiebilanz",
+          icon: "⚖",
+          render: (h, s) => renderEnergy(h, s.season, s.setSeason),
+          sub: [{ type: "season" }],
+          info: {
+            purpose:
+              "Bilanzansicht: Verbrauch je Verbraucher (Ah/Tag) gegen Ertrag (Solar/Fahrzeit/Landstrom), Saison umschaltbar, Autarkie als Klartext.",
+            solves: [
+              "B5 System-Cockpit fehlt: Berechnungen stecken in FloatingMetricsCard/ExpertPanel/Inspector",
+            ],
+            norm: "—",
+            effort: "S",
+            files:
+              "components/planner/views/EnergyView.tsx (neu), reuse hooks/useDashboardMetrics",
+            notes: [
+              "Beantwortet die häufigste Nutzerfrage („reicht meine Batterie?“) ohne Graph-Lesen.",
+              "Saison-Umschalter existiert bereits im Store — hier bekommt er sichtbare Wirkung.",
+            ],
+          },
+        },
+        {
+          id: "sheet",
+          label: "Druckblatt",
+          icon: "🖨",
+          render: (h) => renderSheet(h),
+          sub: [],
+          info: {
+            purpose:
+              "Dokumentationsansicht: A4-Blätter mit Schriftfeld und Blattnavigation (1 Übersicht, 2 Stromkreise, 3 Kabelliste), druckbar per Strg+P / PDF.",
+            solves: ["B6 Export = nur Viewport-PNG, nicht werkstatttauglich"],
+            norm: "DIN EN 61082: Schriftfeld-Pflichtangaben (Projekt, Blatt, Rev, Datum, Prüfer); Blattnavigation mit Querverweisen.",
+            effort: "M",
+            files:
+              "components/planner/views/SheetView.tsx (neu), app/globals.css (@media print, @page A4)",
+            notes: [
+              "PDF ohne Library: Browser-Druck auf die Blatt-Ansicht scoped (CSS @media print existiert heute nicht).",
+              "Dasselbe Blatt ist die Grundlage für „Plan an Werkstatt/Forum schicken“.",
+            ],
+          },
+        },
+        {
+          id: "compare",
+          label: "Vergleich",
+          icon: "⇄",
+          render: (h) => renderCompare(h),
+          sub: [],
+          info: {
+            purpose:
+              "Split-Ansicht zum Entscheiden: derselbe Plan mehrlinig (heute) vs. einpolig (Vorschlag), Linienzahl als harte Zahl.",
+            solves: [
+              "Entscheidungsbedarf: Wie viel Detail bleibt im Default-Canvas?",
+            ],
+            norm: "—",
+            effort: "S (als internes Werkzeug)",
+            files: "—",
+            notes: [
+              "Im Produkt denkbar als „Vorher/Nachher“ beim Einführen neuer Ansichten oder für PR-Demos.",
+            ],
+          },
+        },
+      ];
 
-const state = {view:"single", season:"summer", active:new Set(["dc","ac","solar","gnd"]), labels:true};
+      const state = {
+        view: "single",
+        season: "summer",
+        active: new Set(["dc", "ac", "solar", "gnd"]),
+        labels: true,
+      };
 
-function rerender() {
-  const view = VIEWS.find(v=>v.id===state.view);
-  const tabs = document.getElementById("tabs");
-  tabs.innerHTML = "";
-  VIEWS.forEach(v => {
-    const dotStyle = v.id === state.view ? "" : ' style="background:var(--rule-strong)"';
-    const b = H(`<button class="tab" role="tab" aria-selected="${v.id===state.view}"><span class="dot"${dotStyle}></span>${v.icon} ${v.label}</button>`);
-    b.onclick = () => { state.view = v.id; rerender(); };
-    tabs.appendChild(b);
-  });
+      function rerender() {
+        const view = VIEWS.find((v) => v.id === state.view);
+        const tabs = document.getElementById("tabs");
+        tabs.innerHTML = "";
+        VIEWS.forEach((v) => {
+          const dotStyle =
+            v.id === state.view ? "" : ' style="background:var(--rule-strong)"';
+          const b = H(
+            `<button class="tab" role="tab" aria-selected="${v.id === state.view}"><span class="dot"${dotStyle}></span>${v.icon} ${v.label}</button>`,
+          );
+          b.onclick = () => {
+            state.view = v.id;
+            rerender();
+          };
+          tabs.appendChild(b);
+        });
 
-  /* Subbar */
-  const sub = document.getElementById("subbar");
-  sub.innerHTML = "";
-  if (view.sub.some(s=>s.type==="domains")) {
-    const chips = H(`<div class="chips" role="group" aria-label="Domänen filtern"></div>`);
-    [["dc","12V","var(--wire-dc)"],["ac","230V","var(--wire-ac)"],["solar","Solar","var(--wire-solar)"],["gnd","PE","var(--wire-pe)"]].forEach(([id,label,color])=>{
-      const on = state.active.has(id);
-      const c = H(`<button class="chip" aria-pressed="${on}" style="${on?`background:${color}`:""}">${label}</button>`);
-      c.onclick = () => { on ? state.active.delete(id) : state.active.add(id); if (!state.active.size) state.active.add(id); rerender(); };
-      chips.appendChild(c);
-    });
-    sub.appendChild(chips);
-  }
-  if (view.sub.some(s=>s.type==="labels")) {
-    const seg = H(`<div class="seg"><button id="lb0" aria-pressed="${!state.labels}">Struktur</button><button id="lb1" aria-pressed="${state.labels}">Mit Werten</button></div>`);
-    seg.querySelector("#lb0").onclick = () => { state.labels=false; rerender(); };
-    seg.querySelector("#lb1").onclick = () => { state.labels=true; rerender(); };
-    sub.appendChild(seg);
-  }
-  if (view.sub.some(s=>s.type==="season")) {
-    const seg = H(`<div class="seg"><button id="ss" aria-pressed="${state.season==="summer"}">Sommer</button><button id="sw" aria-pressed="${state.season==="winter"}">Winter</button></div>`);
-    seg.querySelector("#ss").onclick = () => { state.season="summer"; rerender(); };
-    seg.querySelector("#sw").onclick = () => { state.season="winter"; rerender(); };
-    sub.appendChild(seg);
-  }
-  sub.appendChild(H(`<span class="hint">Beispieldaten: 22 Bauteile, ${C.length} Kabel (${C.reduce((s,c)=>s+c.adern,0)} Adern) · alle Ansichten lesen dieselbe Datenquelle</span>`));
+        /* Subbar */
+        const sub = document.getElementById("subbar");
+        sub.innerHTML = "";
+        if (view.sub.some((s) => s.type === "domains")) {
+          const chips = H(
+            `<div class="chips" role="group" aria-label="Domänen filtern"></div>`,
+          );
+          [
+            ["dc", "12V", "var(--wire-dc)"],
+            ["ac", "230V", "var(--wire-ac)"],
+            ["solar", "Solar", "var(--wire-solar)"],
+            ["gnd", "PE", "var(--wire-pe)"],
+          ].forEach(([id, label, color]) => {
+            const on = state.active.has(id);
+            const c = H(
+              `<button class="chip" aria-pressed="${on}" style="${on ? `background:${color}` : ""}">${label}</button>`,
+            );
+            c.onclick = () => {
+              on ? state.active.delete(id) : state.active.add(id);
+              if (!state.active.size) state.active.add(id);
+              rerender();
+            };
+            chips.appendChild(c);
+          });
+          sub.appendChild(chips);
+        }
+        if (view.sub.some((s) => s.type === "labels")) {
+          const seg = H(
+            `<div class="seg"><button id="lb0" aria-pressed="${!state.labels}">Struktur</button><button id="lb1" aria-pressed="${state.labels}">Mit Werten</button></div>`,
+          );
+          seg.querySelector("#lb0").onclick = () => {
+            state.labels = false;
+            rerender();
+          };
+          seg.querySelector("#lb1").onclick = () => {
+            state.labels = true;
+            rerender();
+          };
+          sub.appendChild(seg);
+        }
+        if (view.sub.some((s) => s.type === "season")) {
+          const seg = H(
+            `<div class="seg"><button id="ss" aria-pressed="${state.season === "summer"}">Sommer</button><button id="sw" aria-pressed="${state.season === "winter"}">Winter</button></div>`,
+          );
+          seg.querySelector("#ss").onclick = () => {
+            state.season = "summer";
+            rerender();
+          };
+          seg.querySelector("#sw").onclick = () => {
+            state.season = "winter";
+            rerender();
+          };
+          sub.appendChild(seg);
+        }
+        sub.appendChild(
+          H(
+            `<span class="hint">Beispieldaten: 22 Bauteile, ${C.length} Kabel (${C.reduce((s, c) => s + c.adern, 0)} Adern) · alle Ansichten lesen dieselbe Datenquelle</span>`,
+          ),
+        );
 
-  /* Stage */
-  const stage = document.getElementById("stage");
-  stage.innerHTML = "";
-  const card = document.createElement("div");
-  view.render(card, {active:state.active, labels:state.labels, season:state.season, setSeason:(s)=>{state.season=s; rerender();}});
-  stage.appendChild(card);
+        /* Stage */
+        const stage = document.getElementById("stage");
+        stage.innerHTML = "";
+        const card = document.createElement("div");
+        view.render(card, {
+          active: state.active,
+          labels: state.labels,
+          season: state.season,
+          setSeason: (s) => {
+            state.season = s;
+            rerender();
+          },
+        });
+        stage.appendChild(card);
 
-  /* Info-Drawer */
-  const info = document.getElementById("info");
-  const i = view.info;
-  const effortBadge = {"S":"b-s","S–M":"b-s","M":"b-m","L":"b-l"}[i.effort] || "b-m";
-  info.innerHTML = `<h3>${view.icon} ${view.label}</h3>
+        /* Info-Drawer */
+        const info = document.getElementById("info");
+        const i = view.info;
+        const effortBadge =
+          { S: "b-s", "S–M": "b-s", M: "b-m", L: "b-l" }[i.effort] || "b-m";
+        info.innerHTML = `<h3>${view.icon} ${view.label}</h3>
     <p>${esc(i.purpose)}</p>
-    <div class="k">Löst Befund</div><ul>${i.solves.map(s=>`<li>${esc(s)}</li>`).join("")}</ul>
+    <div class="k">Löst Befund</div><ul>${i.solves.map((s) => `<li>${esc(s)}</li>`).join("")}</ul>
     <div class="k">Norm / Quelle</div><p>${esc(i.norm)}</p>
     <div class="k">Aufwand</div><p><span class="badge ${effortBadge}">${esc(i.effort)}</span></p>
     <div class="k">Betroffene Stellen im Repo</div><p class="mono" style="font-size:11px">${esc(i.files)}</p>
-    <div class="k">Anmerkungen</div><ul>${i.notes.map(s=>`<li>${esc(s)}</li>`).join("")}</ul>`;
-}
+    <div class="k">Anmerkungen</div><ul>${i.notes.map((s) => `<li>${esc(s)}</li>`).join("")}</ul>`;
+      }
 
-document.getElementById("theme").onclick = () => document.documentElement.classList.toggle("dark");
-rerender();
-</script>
-</body>
+      document.getElementById("theme").onclick = () =>
+        document.documentElement.classList.toggle("dark");
+      rerender();
+    </script>
+  </body>
 </html>
