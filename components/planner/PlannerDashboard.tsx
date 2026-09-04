@@ -41,12 +41,11 @@ function NavigationSection({
     // while the full desktop labels do not fit next to the sidebar. Keeping a
     // compact, labelled icon switcher here prevents the Wasser plan from
     // becoming unreachable on portrait tablets.
-    <div className="hidden items-center gap-1 md:flex" role="tablist" aria-label="Planbereich wählen">
+    <div className="hidden items-center gap-1 md:flex" role="group" aria-label="Planbereich wählen">
       <Button
         variant={viewMode === 'electric' ? 'default' : 'ghost'}
         size="sm"
-        role="tab"
-        aria-selected={viewMode === 'electric'}
+        aria-pressed={viewMode === 'electric'}
         onClick={() => setViewMode('electric')}
         className="min-h-11 min-w-11 gap-1 px-3"
         aria-label="Elektrikplan anzeigen"
@@ -58,8 +57,7 @@ function NavigationSection({
       <Button
         variant={viewMode === 'water' ? 'default' : 'ghost'}
         size="sm"
-        role="tab"
-        aria-selected={viewMode === 'water'}
+        aria-pressed={viewMode === 'water'}
         onClick={() => setViewMode('water')}
         className="min-h-11 min-w-11 gap-1 px-3"
         aria-label="Wasserplan anzeigen"
