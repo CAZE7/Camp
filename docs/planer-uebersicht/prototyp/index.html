@@ -254,6 +254,12 @@ function nodeCard(g, n, x, y, opts={}) {
 }
 
 /* Anker-Slots: mehrere Kabel an einer Node-Seite werden vertikal verteilt. */
+/* Liegt das Ziel links der Quelle (z. B. vertikal gestapelte Knoten in einer
+   Spalte), würde ein Elbow zur linken Kante durch die Karten laufen. Solche
+   Verbindungen werden deshalb an der RECHTEN Kante des Ziels eingeführt und
+   über eine schmale Lane rechts der Quelle geführt. */
+const isBackwards = (c) => SQ_POS[c.b][0] <= SQ_POS[c.a][0];
+
 function anchors(conns) {
   const out = {}, inn = {};
   conns.forEach(c => {
@@ -266,7 +272,8 @@ function anchors(conns) {
       const list = map[id]; const p = SQ_POS[id];
       list.forEach((c, i) => {
         const y = p[1] + NH*(i+1)/(list.length+1);
-        pos[c.id + ":" + side] = {x: side==="o" ? p[0]+NW : p[0], y};
+        const rightSide = side === "o" ? true : isBackwards(c);
+        pos[c.id + ":" + side] = {x: rightSide ? p[0]+NW : p[0], y};
       });
     }
   };
@@ -291,7 +298,7 @@ function renderStatusQuo(host, opts={}) {
   C.forEach(c => {
     const dim = !active.has(byId[c.a].dom) && !active.has(byId[c.b].dom);
     const a = A[c.id+":o"], b = A[c.id+":i"];
-    const mx = (a.x + b.x)/2;
+    const mx = isBackwards(c) ? Math.max(a.x, b.x) + 26 : (a.x + b.x)/2;
     const wires = c.kind==="ac" ? ["L","N","PE"] : c.kind==="gnd" ? ["PE"] : ["+","−"];
     wires.forEach((wName, wi) => {
       const off = (wi - (wires.length-1)/2) * 7;
@@ -349,13 +356,16 @@ function renderSingleLine(host, opts={}) {
   /* Einlinien: eine Linie pro Verbindung, Adernzahl als Schrägstrich-Kerben */
   C.forEach(c => {
     const a0 = SL_POS[c.a], b0 = SL_POS[c.b];
-    const a = {x:a0[0]+NW, y:a0[1]+NH/2}, b = {x:b0[0], y:b0[1]+NH/2};
+    const a = {x:a0[0]+NW, y:a0[1]+NH/2};
     const col = c.kind==="ac" ? "var(--wire-ac)" : c.kind==="solar" ? "var(--wire-solar)"
       : c.kind==="gnd" ? "var(--wire-pe)" : c.kind==="main" ? "var(--wire-dc)" : "var(--wire-dc)";
-    const mx = (a.x+b.x)/2;
-    const d = Math.abs(a.y-b.y) < 2 ? `M ${a.x} ${a.y} L ${b.x} ${b.y}` : `M ${a.x} ${a.y} L ${mx} ${a.y} L ${mx} ${b.y} L ${b.x} ${b.y}`;
+    const back = b0[0] <= a0[0];
+    const bx = back ? b0[0]+NW : b0[0];
+    const b = {x: bx, y: b0[1]+NH/2};
+    const mx = back ? Math.max(a.x, bx) + 22 : (a.x+bx)/2;
+    const d = Math.abs(a.y-b.y) < 2 ? `M ${a.x} ${a.y} L ${bx} ${b.y}` : `M ${a.x} ${a.y} L ${mx} ${a.y} L ${mx} ${b.y} L ${bx} ${b.y}`;
     svg.appendChild(el("path", {d, fill:"none", stroke:col, "stroke-width": c.kind==="main"?3:2, opacity:.9}));
-    const lx = (a.x+b.x)/2 + 14, ly = (a.y+b.y)/2;
+    const lx = mx + 12, ly = (a.y+b.y)/2;
     /* Adern-Kerbe: Schrägstrich + Zahl (normtypisch einpolig) */
     const tick = el("g", {transform:`translate(${lx},${ly})`});
     tick.appendChild(el("path", {d:"M -5 5 L 5 -5", stroke:col, "stroke-width":1.6}));
@@ -438,7 +448,6 @@ function renderRails(host) {
   [byId.ind, byId.cof].forEach((load, i) => {
     const x = 1150 + i*90;
     svg.appendChild(el("path", {d:`M ${x} ${ACL} L ${x} 420`, stroke:"var(--wire-ac)", "stroke-width":2}));
-    svg.appendChild(el("path", {d:`M ${x+16} ${ACN} L ${x+16} 404 L ${x+16} 404`, stroke:"#7d8aa0", "stroke-width":0}));
     svg.appendChild(el("rect", {x:x-30, y:420, width:76, height:46, rx:6, fill:"var(--raised)", stroke:"var(--rule-strong)"}));
     svg.appendChild(el("text", {x:x+8, y:440, "font-size":12, "text-anchor":"middle"}, [KIND_ICON[load.kind]]));
     svg.appendChild(el("text", {x:x+8, y:456, "font-size":8.5, class:"mono", "text-anchor":"middle", fill:"var(--ink-3)"}, [load.spec[0]]));

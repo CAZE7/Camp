@@ -29,7 +29,7 @@ View-Leiste und persistiert je Plan. Die wirkungsvollsten Einzelmaßnahmen in Re
 
 | # | Maßnahme | Wirkung | Aufwand |
 |---|----------|---------|---------|
-| 1 | **Einlinien-/Übersichtsmodus** (einpolig, Adern-Kerbe, Zonenbänder) | Linienmenge −60 %, Struktur sofort lesbar | M |
+| 1 | **Einlinien-/Übersichtsmodus** (einpolig, Adern-Kerbe, Zonenbänder) | Linienmenge −47 % (43→23), Struktur sofort lesbar | M |
 | 2 | **Label-Dichte steuerbar** (Kabel-Labels default nur Hauptleitungen + Hover/Selektion) | entfernt sofortiges Overplotting | S |
 | 3 | **Stromkreis-Raster** (Sicherung → Verbraucher → Kabel → Ah/Tag) | die Sicht, in der erweitert & gesucht wird | S |
 | 4 | **Kabelliste** mit Kabel-IDs (IEC-81346-Prinzip), sortierbar, CSV | Bruchfreie Referenz Plan ↔ Tabelle ↔ Kabelmarker | S–M |
@@ -90,7 +90,7 @@ Der Prototyp zeigt alle acht plus Verlegeplan und Split-Vergleich — zum Anfass
 
 | ID | Befund | Beleg (Default-Branch) |
 |----|--------|------------------------|
-| **B1** | **Mehrlinien-Default:** jede 12-V-Verbindung = 2 Kanten (+/−), 230 V = 3 Adern. Bei 23 logischen Kabeln sind es 52 gezeichnete Linien. Kein einpoliger Modus existiert. | `templates.ts` (`e-batt-plus`/`e-batt-minus`), `CableEdge.tsx` je Kante |
+| **B1** | **Mehrlinien-Default:** jede 12-V-Verbindung = 2 Kanten (+/−), 230 V = 3 Adern. Bei 23 logischen Kabeln sind das 43 gezeichnete Linien (Beispielplan des Prototyps). Kein einpoliger Modus existiert. | `templates.ts` (`e-batt-plus`/`e-batt-minus`), `CableEdge.tsx` je Kante |
 | **B2** | **Dauerlabels:** Kabel-Labels sind am Desktop permanent sichtbar; an Sammelsternen (Busbar, Sicherungskasten) überlagern sie sich. Kompakt-Modus gilt nur < sm. | `CableEdge.tsx` („am Desktop immer sichtbar, auf Handy nur bei Auswahl/Tap“) |
 | **B3** | **Eine freie Fläche für alles:** 12 V, 230 V, Solar, PE, Leerrohr und Wasser teilen sich denselben Canvas; Ordnung entsteht nur implizit über dagre-Ränge. Zonen/Funktionsbereiche sind nicht sichtbar. | `utils/layout.ts` (`LAYOUT_TYPE_ORDER`), `FlowCanvas.tsx` |
 | **B4** | **Ansichten = nur elektrisch/wasser + Dimm-Chips.** Filter *dimmen*, sie schaffen keine alternative Darstellungsform. Keine Tabellen-, Blatt-, Orts- oder Bilanzansicht. | `uiSlice.ts` (`viewMode: 'electric' \| 'water'`), `CanvasDisplayOptions.tsx` |
@@ -188,7 +188,7 @@ Legende Aufwand: **S** ≤ 1 Tag · **M** 2–4 Tage · **L** 1–2 Wochen · **
 
 | ID | Maßnahme | Inhalt / Nutzen (Befund) | Aufwand | Phase |
 |----|----------|--------------------------|---------|-------|
-| A1 | **Einlinien-Übersicht (einpolig)** | Eine Linie pro Kabel mit Adern-Kerbe (2/3), Hauptleitungen fett, Zonenbänder der Funktionsränge; Detailgrad schaltbar („Struktur“ / „mit Werten“). Löst B1, B3, B12; −60 % Linien. | M | 1 |
+| A1 | **Einlinien-Übersicht (einpolig)** | Eine Linie pro Kabel mit Adern-Kerbe (2/3), Hauptleitungen fett, Zonenbänder der Funktionsränge; Detailgrad schaltbar („Struktur“ / „mit Werten“). Löst B1, B3, B12; −47 % Linien (43→23 im Beispielplan). | M | 1 |
 | A2 | **Stromschienen-Ansicht (aufgelöst)** | +12-V-Schiene oben, 0-V unten, je Sicherungskreis ein senkrechter Abgang mit Sicherungssymbol; AC-Block separat. Kreuzungsfrei by construction; die Fehlersuche-Ansicht. Löst B3, B11, B12. | L | 2 |
 | A3 | **Stromkreis-Raster** | Zeile pro Kreis: Sicherungswert, Verbraucher, Kabel (mm²/m/adrig), Ah/Tag, Status; Summenfuß mit Autarkie. Löst B5, B12. | S | 1 |
 | A4 | **Kabelliste (Kabelverzeichnis)** | Sortierbare Tabelle: `-W01…`, Von/Nach, Funktion, Adern, mm², m, Sicherung, Stromkreis, Verlegeort, Status; CSV-Export; Zeile↔Kante synchron highlightbar. Löst B6, B7. | S–M | 1 |
@@ -354,7 +354,7 @@ C2 Label-Dichte · E5 Legende · D4 Toolbar-Konsolidierung · A11 Zen-Modus · B
 
 **Phase 1 — View-Fundament + die vier Lesesichten (2–3 Wochen):**
 H1/H2/H4 Architektur · **A1 Einlinie** · **A3 Stromkreise** · **A4/F1 Kabelliste** · **A6 Energiebilanz** · A8 Review · A9 Fokus · E1/E2 Suche+Filter · B3 Zonenbänder · H5 Tests.
-*Akzeptanz:* View-Leiste mit 6 Sichten, persistiert; Single-Line zeigt ≤ 40 % der Linien des Detail-Canvas bei identischer Information (Property-Test); E2E-Screenshots je Ansicht in CI.
+*Akzeptanz:* View-Leiste mit 6 Sichten, persistiert; Single-Line zeigt ≤ 55 % der Linien des Detail-Canvas bei identischer Information (Property-Test; Beispielplan: 23 von 43); E2E-Screenshots je Ansicht in CI.
 
 **Phase 2 — Tiefe Darstellungsformen & Chrome (3–4 Wochen):**
 A2 Stromschienen · B4 Rail-Layout · B5 Gruppen · C1 Detailgrade · C4 Kennzeichnung · C6 Bündel · A7/G1–G3 Blätter+Druck+SVG/PDF · D1 Dock · D3 Palette · A10 Sync-Split · B1 ELK · F2 Stückliste-Positionen.
@@ -365,7 +365,7 @@ A5 Verlegeplan · A12 Blattnavigation · A13 24-h-Simulation · F4 Klemmenliste 
 *Akzeptanz:* Verlegeplan nutzt dieselbe Grafiksprache wie der Dach-Planer; Share-Link rendert read-only in allen Ansichten.
 
 **Messgrößen für Erfolg (vorher/nachher messbar):**
-Linien pro Plan (Ziel −50 % im Default-Overview) · Label-Dichte (Labels/100 px²) · Kreuzungen (bestehende Metrik) ·
+Linien pro Plan (Ziel ≤ 55 % im Default-Overview) · Label-Dichte (Labels/100 px²) · Kreuzungen (bestehende Metrik) ·
 „Zeit bis Antwort: Welche Sicherung versorgt den Kühlschrank?“ (Nutzertest, Ziel < 5 s) · Druck/PDF-Existenz (binär).
 
 ---
