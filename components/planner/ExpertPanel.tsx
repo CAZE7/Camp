@@ -414,13 +414,14 @@ export function ExpertPanel() {
       data-testid="expert-panel"
       data-open={isOpen ? 'true' : 'false'}
       className={cn(
-        'pointer-events-auto absolute z-50 transition-all duration-300 ease-out',
+        'planner-expert-panel pointer-events-auto absolute z-50 transition-all duration-300 ease-out',
         // Geschlossen: FAB unten rechts, ab md über der Statuszeile.
         // Offen: wächst nach oben (kein top+bottom-Stretch), max-h hält
-        // MiniMap/Statuszeile/Bottom-Nav frei.
+        // MiniMap/Statuszeile/Bottom-Nav frei. Die CSS-Klasse ergänzt auf
+        // iPhones zusätzlich die Safe-Area des Home-Indicators.
         isOpen
-          ? 'bottom-28 right-4 w-11/12 max-w-sm md:bottom-16'
-          : 'bottom-20 right-4 w-auto max-w-xs md:bottom-16'
+          ? 'planner-expert-panel--open bottom-28 right-4 w-11/12 max-w-sm md:bottom-16'
+          : 'planner-expert-panel--closed bottom-20 right-4 w-auto max-w-xs md:bottom-16'
       )}
     >
       {/* Expanded Panel */}

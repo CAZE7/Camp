@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { addAtVisibleCenter, handlePointerDown } from './drag';
 import type { Comp } from './catalog';
@@ -11,6 +11,9 @@ interface ComponentTileProps {
 
 export function ComponentTile({ comp, onMobileAdd, accent }: ComponentTileProps) {
   const Icon = comp.icon;
+  const desktopDragStarted = useRef(false);
+  const keyboardAddHandled = useRef(false);
+
   return (
     <button
       type="button"
@@ -27,13 +30,27 @@ export function ComponentTile({ comp, onMobileAdd, accent }: ComponentTileProps)
           ? 'border-border bg-accent text-accent-foreground hover:bg-secondary'
           : 'border-border bg-card text-foreground hover:bg-accent'
       )}
-      onPointerDown={(event) => handlePointerDown(event, comp, onMobileAdd)}
+      onPointerDown={(event) => {
+        desktopDragStarted.current = handlePointerDown(event, comp);
+      }}
       onClick={() => {
-        if (window.innerWidth < 1024) addAtVisibleCenter(comp, onMobileAdd);
+        // A started mouse ghost drag owns this click, even if it was released
+        // outside the canvas. Every other activation (touch, pen, assistive
+        // technology) adds directly at the current canvas centre.
+        if (desktopDragStarted.current) {
+          desktopDragStarted.current = false;
+          return;
+        }
+        if (keyboardAddHandled.current) {
+          keyboardAddHandled.current = false;
+          return;
+        }
+        addAtVisibleCenter(comp, onMobileAdd);
       }}
       onKeyDown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault();
+          keyboardAddHandled.current = true;
           addAtVisibleCenter(comp, onMobileAdd);
         }
       }}

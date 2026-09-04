@@ -46,12 +46,11 @@ import { applyFocusHighlight } from './utils/focusHighlight';
 import {
   applyDomainFilter,
   DOMAINS,
-  DOMAIN_COLORS,
-  DOMAIN_LABELS,
   type Domain,
   nodeMinimapColorFrom,
   resolveMinimapPalette,
 } from './utils/domainFilter';
+import { CanvasDisplayOptions } from './ui/CanvasDisplayOptions';
 import { markErrorEdgesZIndex } from './utils/errorEdges';
 import { useTouchContextMenu } from './hooks/useTouchContextMenu';
 import { applyCircuitTrace, circuitTraceLabel, traceCircuit } from './utils/circuitTrace';
@@ -92,6 +91,19 @@ function useAccessibleHandles() {
           'aria-label',
           `${direction}: ${name}. Enter drücken, um die Verbindung zu beginnen oder abzuschließen.`
         );
+      });
+      // React Flow 11 does not yet expose localized labels for Controls. Keep
+      // the visible controls understandable for German screen-reader users.
+      const controlLabels = [
+        ['.react-flow__controls-zoomin', 'Ansicht vergrößern'],
+        ['.react-flow__controls-zoomout', 'Ansicht verkleinern'],
+        ['.react-flow__controls-fitview', 'Ganzen Plan einpassen'],
+      ] as const;
+      controlLabels.forEach(([selector, label]) => {
+        document.querySelectorAll<HTMLElement>(selector).forEach((control) => {
+          control.setAttribute('aria-label', label);
+          control.setAttribute('title', label);
+        });
       });
     };
     enhance();
@@ -265,6 +277,59 @@ export function FlowCanvas() {
       else fitView({ duration: 400, padding: PLANNER_FIT_PADDING });
     });
   }, [viewMode, fitView, getViewport, setViewport]);
+
+  /**
+   * Tap/keyboard additions deliberately land in the currently visible canvas
+   * area. The old fixed (0, 0) list plus automatic fitView made every add jump
+   * the viewport — especially disorienting when switching back from the phone
+   * catalogue. A two-frame retry gives the mobile tab switch time to reveal
+   * the React Flow pane before its bounds are read.
+   */
+  React.useEffect(() => {
+    type AddAtCanvasCenterDetail = { type?: unknown; label?: unknown; watts?: unknown };
+
+    const placeAtCanvasCenter = (detail: AddAtCanvasCenterDetail, attempt = 0) => {
+      const state = usePlannerStore.getState();
+      const pane = document.querySelector<HTMLElement>('.planner-canvas .react-flow__pane');
+      const bounds = pane?.getBoundingClientRect();
+      const type = typeof detail.type === 'string' ? detail.type : '';
+      const label = typeof detail.label === 'string' ? detail.label : '';
+      const watts = typeof detail.watts === 'number' ? detail.watts : undefined;
+      if (!type || !label) return;
+
+      if (!bounds || bounds.width < 1 || bounds.height < 1) {
+        if (attempt < 2) {
+          window.requestAnimationFrame(() => placeAtCanvasCenter(detail, attempt + 1));
+          return;
+        }
+        // Defensive fallback for an interrupted tab switch. It preserves the
+        // former deterministic grid rather than dropping the user's action.
+        const count = state.viewMode === 'water' ? state.waterNodes.length : state.nodes.length;
+        state.addNode(type, label, { x: (count % 2) * 192, y: count * 144 }, watts);
+        return;
+      }
+
+      const center = screenToFlowPosition({
+        x: bounds.left + bounds.width / 2,
+        y: bounds.top + bounds.height / 2,
+      });
+      const initialPosition = { x: center.x - 96, y: center.y - 60 };
+      const domainNodes = state.viewMode === 'water' ? state.waterNodes : state.nodes;
+      const position = findNearestFreePosition(
+        { id: 'new-component', type, data: {}, position: initialPosition },
+        domainNodes
+      );
+      state.addNode(type, label, position, watts);
+      showConnectionFeedback(`${label} wurde in der aktuellen Ansicht hinzugefügt.`, 2200);
+    };
+
+    const onAddAtCanvasCenter = (event: Event) => {
+      placeAtCanvasCenter((event as CustomEvent<AddAtCanvasCenterDetail>).detail || {});
+    };
+
+    window.addEventListener('planner-add-at-canvas-center', onAddAtCanvasCenter);
+    return () => window.removeEventListener('planner-add-at-canvas-center', onAddAtCanvasCenter);
+  }, [screenToFlowPosition, showConnectionFeedback]);
 
   const calculatedSolarWatts = useAppStore((state) => state.calculatedSolarWatts);
   const { onDragOver, onDrop } = usePlannerDragDrop(screenToFlowPosition);
@@ -610,6 +675,10 @@ export function FlowCanvas() {
           selectionKeyCode={interaction.selectionKeyCode}
           multiSelectionKeyCode={interaction.multiSelectionKeyCode}
           panActivationKeyCode={interaction.panActivationKeyCode}
+          // Tap-to-connect is implemented once in useSequentialTapConnect.
+          // React Flow's built-in click connector would otherwise also fire
+          // on the same two taps and report a duplicate/invalid connection.
+          connectOnClick={false}
           onNodeContextMenu={handleNodeContextMenu}
           onEdgeContextMenu={handleEdgeContextMenu}
           onPaneContextMenu={handlePaneContextMenu}
@@ -647,11 +716,14 @@ export function FlowCanvas() {
               verliert gegen die Shorthand. !bottom/!left mit !important.
               Mobile: über Undo/Bottom-Nav. Ab md über der Statuszeile.
               MiniMap erst ab lg (sonst ~200 px auf dem 508-px-Tablet-
-              Canvas) und mit !left-14 neben den Zoom-Controls. */}
-          <Controls className="planner-controls !bottom-32 overflow-hidden rounded-lg border border-border shadow-sm md:!bottom-14" />
+              Canvas) und mit !left-16 neben den 44-px-Zoom-Controls. */}
+          <Controls
+            showInteractive={false}
+            className="planner-controls !bottom-32 overflow-hidden rounded-lg border border-border shadow-sm md:!bottom-14"
+          />
           <MiniMap
             position="bottom-left"
-            className="planner-minimap !bottom-32 !left-14 hidden overflow-hidden rounded-lg border border-border shadow-sm lg:!bottom-14 lg:block"
+            className="planner-minimap !bottom-32 !left-16 hidden overflow-hidden rounded-lg border border-border shadow-sm lg:!bottom-14 lg:block"
             ariaLabel="Miniaturübersicht des Plans"
             nodeColor={(node) => nodeMinimapColorFrom(minimapColors.palette, node)}
             maskColor={minimapColors.mask}
@@ -673,55 +745,15 @@ export function FlowCanvas() {
           </Panel>
 
           {viewMode === 'electric' && (
-            <Panel position="top-right" className="m-3">
-              <div
-                className="bg-card/95 flex flex-wrap gap-1.5 rounded-lg border border-border p-1.5 shadow-sm"
-                role="group"
-                aria-label="Domänen-Filter"
-              >
-                {DOMAINS.map((domain) => {
-                  const active = activeDomains.has(domain);
-                  return (
-                    <button
-                      key={domain}
-                      type="button"
-                      aria-pressed={active}
-                      onClick={() => toggleDomain(domain)}
-                      className={`rounded-md px-2.5 py-1 text-xs font-semibold transition-colors ${
-                        active ? 'text-on-signal' : 'text-muted-foreground opacity-60 hover:opacity-100'
-                      }`}
-                      style={active ? { backgroundColor: DOMAIN_COLORS[domain] } : undefined}
-                    >
-                      {DOMAIN_LABELS[domain]}
-                    </button>
-                  );
-                })}
-                <span className="mx-0.5 h-5 w-px bg-border" aria-hidden="true" />
-                <button
-                  type="button"
-                  aria-pressed={trunkMode}
-                  onClick={() => setTrunkMode(!trunkMode)}
-                  title="Hauptrouten (Batterie → Sicherungskasten → Verteilung) hervorheben"
-                  className={`rounded-md px-2.5 py-1 text-xs font-semibold transition-colors ${
-                    trunkMode ? 'bg-ink text-bone' : 'text-muted-foreground opacity-60 hover:opacity-100'
-                  }`}
-                >
-                  Trassen
-                </button>
-                <button
-                  type="button"
-                  aria-pressed={backboneGrouping}
-                  onClick={() => setBackboneGrouping(!backboneGrouping)}
-                  title="Rahmen und Label für den Hauptstromkreis ein- oder ausblenden"
-                  className={`rounded-md px-2.5 py-1 text-xs font-semibold transition-colors ${
-                    backboneGrouping
-                      ? 'bg-copper text-bone'
-                      : 'text-muted-foreground opacity-60 hover:opacity-100'
-                  }`}
-                >
-                  Hauptstromkreis
-                </button>
-              </div>
+            <Panel position="top-right" className="m-2 sm:m-3">
+              <CanvasDisplayOptions
+                activeDomains={activeDomains}
+                onToggleDomain={toggleDomain}
+                trunkMode={trunkMode}
+                onToggleTrunkMode={() => setTrunkMode(!trunkMode)}
+                backboneGrouping={backboneGrouping}
+                onToggleBackboneGrouping={() => setBackboneGrouping(!backboneGrouping)}
+              />
             </Panel>
           )}
 
@@ -769,7 +801,7 @@ export function FlowCanvas() {
       </div>
 
       <div
-        className="pointer-events-none absolute bottom-24 left-1/2 z-50 w-11/12 -translate-x-1/2 text-center md:bottom-6"
+        className="planner-mobile-feedback pointer-events-none absolute bottom-24 left-1/2 z-50 w-11/12 -translate-x-1/2 text-center md:bottom-6"
         aria-live="polite"
         role="status"
       >

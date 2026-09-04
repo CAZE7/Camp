@@ -20,7 +20,9 @@ type MockReactFlowProps = {
   onDragOver?: React.DragEventHandler;
   onDrop?: React.DragEventHandler;
   className?: string;
+  connectOnClick?: boolean;
 };
+type MockControlsProps = { showInteractive?: boolean };
 /** DOM-DragEvent mit den Attributen, die der FlowCanvas-Handler liest. */
 type DragEventish = MouseEvent & {
   dataTransfer?: { dropEffect: string };
@@ -41,7 +43,12 @@ vi.mock('next/dynamic', async () => {
 
 // Mock React Flow
 const mockFitView = vi.fn();
-const mockScreenToFlowPosition = vi.fn().mockImplementation((pos) => ({ x: pos.clientX, y: pos.clientY }));
+const mockScreenToFlowPosition = vi
+  .fn()
+  .mockImplementation((pos: { x?: number; y?: number; clientX?: number; clientY?: number }) => ({
+    x: pos.x ?? pos.clientX,
+    y: pos.y ?? pos.clientY,
+  }));
 vi.mock('reactflow', async () => {
   const actual = await vi.importActual('reactflow');
   return {
@@ -57,22 +64,38 @@ vi.mock('reactflow', async () => {
     useStore: (selector: (state: { transform: [number, number, number] }) => unknown) =>
       selector({ transform: [0, 0, 1] }),
     Background: () => <div data-testid="rf-background" />,
-    Controls: () => <div data-testid="rf-controls" />,
+    Controls: ({ showInteractive }: MockControlsProps) => (
+      <div data-testid="rf-controls" data-show-interactive={String(showInteractive)}>
+        <button type="button" className="react-flow__controls-zoomin" />
+        <button type="button" className="react-flow__controls-zoomout" />
+        <button type="button" className="react-flow__controls-fitview" />
+      </div>
+    ),
     MiniMap: () => <div data-testid="rf-minimap" />,
     Panel: ({ children, position, className }: MockPanelProps) => (
       <div data-testid={`rf-panel-${position}`} className={className}>
         {children}
       </div>
     ),
-    default: ({ children, nodes, edges, onDragOver, onDrop, className }: MockReactFlowProps) => (
+    default: ({
+      children,
+      nodes,
+      edges,
+      onDragOver,
+      onDrop,
+      className,
+      connectOnClick,
+    }: MockReactFlowProps) => (
       <div
         data-testid="react-flow-mock"
         data-nodes={JSON.stringify(nodes)}
         data-edges={JSON.stringify(edges)}
+        data-connect-on-click={String(connectOnClick)}
         className={className}
         onDragOver={onDragOver}
         onDrop={onDrop}
       >
+        <div className="react-flow__pane" />
         {children}
       </div>
     ),
@@ -225,6 +248,74 @@ describe('FlowCanvas', () => {
     expect(canvas).not.toHaveClass('planner-zoom-full');
   });
 
+  it('uses one custom tap-to-connect path instead of a duplicate React Flow click connection', () => {
+    render(<FlowCanvas />);
+    expect(screen.getByTestId('react-flow-mock')).toHaveAttribute('data-connect-on-click', 'false');
+  });
+
+  it('removes the interactive control toggle and gives zoom controls German names', () => {
+    render(<FlowCanvas />);
+
+    expect(screen.getByTestId('rf-controls')).toHaveAttribute('data-show-interactive', 'false');
+    expect(document.querySelector('.react-flow__controls-zoomin')).toHaveAttribute(
+      'aria-label',
+      'Ansicht vergrößern'
+    );
+    expect(document.querySelector('.react-flow__controls-zoomout')).toHaveAttribute(
+      'aria-label',
+      'Ansicht verkleinern'
+    );
+    expect(document.querySelector('.react-flow__controls-fitview')).toHaveAttribute(
+      'aria-label',
+      'Ganzen Plan einpassen'
+    );
+  });
+
+  it('adds a keyboard or tap catalogue item at the visible canvas centre', () => {
+    const addNode = vi.fn();
+    const centeredStore = { ...defaultPlannerStoreState, nodes: [], addNode } as PlannerState;
+    Object.assign(usePlannerStore, { getState: () => centeredStore });
+    vi.mocked(usePlannerStore).mockImplementation((selector) => selector(centeredStore));
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      if (this.classList.contains('react-flow__pane')) {
+        return {
+          x: 100,
+          y: 80,
+          width: 600,
+          height: 400,
+          top: 80,
+          right: 700,
+          bottom: 480,
+          left: 100,
+          toJSON: () => ({}),
+        } as DOMRect;
+      }
+      return {
+        x: 0,
+        y: 0,
+        width: 0,
+        height: 0,
+        top: 0,
+        right: 0,
+        bottom: 0,
+        left: 0,
+        toJSON: () => ({}),
+      } as DOMRect;
+    });
+    render(<FlowCanvas />);
+
+    act(() => {
+      window.dispatchEvent(
+        new CustomEvent('planner-add-at-canvas-center', {
+          detail: { type: 'battery', label: 'Batterie', watts: 120 },
+        })
+      );
+    });
+
+    expect(mockScreenToFlowPosition).toHaveBeenCalledWith({ x: 400, y: 280 });
+    expect(addNode).toHaveBeenCalledWith('battery', 'Batterie', { x: 304, y: 224 }, 120);
+  });
+
   it('shows a mobile overview action only for more than eight nodes', () => {
     vi.mocked(usePlannerStore).mockImplementation(
       withSelector({
@@ -356,21 +447,31 @@ describe('FlowCanvas', () => {
       document.body.appendChild(handle2);
 
       // First tap
-      fireEvent.click(handle1);
+      act(() => {
+        fireEvent.click(handle1);
+      });
 
       // Inside setFirstTappedHandle, state updater is called
       expect(mockSetFirstTappedHandle).toHaveBeenCalledTimes(1);
 
       const updater1 = mockSetFirstTappedHandle.mock.calls[0]![0];
-      const newState1 = updater1(null); // Previous state is null
+      let newState1: unknown;
+      act(() => {
+        newState1 = updater1(null); // Previous state is null
+      });
       expect(newState1).toEqual({ nodeId: 'nodeA', handleId: 'handleA', handleType: 'source' });
 
       // Second tap
-      fireEvent.click(handle2);
+      act(() => {
+        fireEvent.click(handle2);
+      });
       expect(mockSetFirstTappedHandle).toHaveBeenCalledTimes(2);
 
       const updater2 = mockSetFirstTappedHandle.mock.calls[1]![0];
-      const newState2 = updater2({ nodeId: 'nodeA', handleId: 'handleA', handleType: 'source' }); // Mocking previous state
+      let newState2: unknown;
+      act(() => {
+        newState2 = updater2({ nodeId: 'nodeA', handleId: 'handleA', handleType: 'source' }); // Mocking previous state
+      });
 
       expect(newState2).toBeNull(); // It resets after attempt
       expect(mockIsValidConnection).toHaveBeenCalledWith({
@@ -390,6 +491,40 @@ describe('FlowCanvas', () => {
       document.body.removeChild(handle2);
     });
 
+    it('keeps the first endpoint selected when a second output/input is tapped by mistake', () => {
+      render(<FlowCanvas />);
+
+      const first = document.createElement('div');
+      first.className = 'react-flow__handle source';
+      first.setAttribute('data-nodeid', 'nodeA');
+      first.setAttribute('data-handleid', 'handleA');
+      document.body.appendChild(first);
+      const second = document.createElement('div');
+      second.className = 'react-flow__handle source';
+      second.setAttribute('data-nodeid', 'nodeB');
+      second.setAttribute('data-handleid', 'handleB');
+      document.body.appendChild(second);
+
+      act(() => {
+        fireEvent.click(first);
+        fireEvent.click(second);
+      });
+      const updater = mockSetFirstTappedHandle.mock.calls[1]![0];
+      let updatedSelection: unknown;
+      act(() => {
+        updatedSelection = updater({ nodeId: 'nodeA', handleId: 'handleA', handleType: 'source' });
+      });
+      expect(updatedSelection).toEqual({
+        nodeId: 'nodeA',
+        handleId: 'handleA',
+        handleType: 'source',
+      });
+      expect(mockOnConnect).not.toHaveBeenCalled();
+
+      document.body.removeChild(first);
+      document.body.removeChild(second);
+    });
+
     it('cancels tap connection if the same handle is clicked twice', () => {
       render(<FlowCanvas />);
 
@@ -400,11 +535,16 @@ describe('FlowCanvas', () => {
       document.body.appendChild(handle);
 
       // Click handle
-      fireEvent.click(handle);
+      act(() => {
+        fireEvent.click(handle);
+      });
 
       const updater = mockSetFirstTappedHandle.mock.calls[0]![0];
       // Try to update with the same state again
-      const newState = updater({ nodeId: 'nodeA', handleId: 'handleA', handleType: 'source' });
+      let newState: unknown;
+      act(() => {
+        newState = updater({ nodeId: 'nodeA', handleId: 'handleA', handleType: 'source' });
+      });
 
       expect(newState).toBeNull();
       expect(mockOnConnect).not.toHaveBeenCalled();

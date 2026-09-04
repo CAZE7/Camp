@@ -142,7 +142,7 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
       >
         <AlertTriangle className="h-4 w-4" />
         <span>{warnings.length}</span>
-        <span className="hidden sm:inline">{warnings.length === 1 ? 'Hinweis' : 'Hinweise'}</span>
+        <span className="hidden xl:inline">{warnings.length === 1 ? 'Hinweis' : 'Hinweise'}</span>
         <ChevronDown className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
