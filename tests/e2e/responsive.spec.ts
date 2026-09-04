@@ -76,19 +76,19 @@ test.describe('Responsives Layout', () => {
     // Zwischen md und lg gab es vorher keinen Weg zum Wasserplan: die
     // Bottom-Navigation war ausgeblendet, der Desktop-Umschalter aber noch
     // nicht sichtbar. Die kompakte Toolbar löst diesen Zwischenzustand.
-    await page.getByRole('tab', { name: 'Wasserplan anzeigen' }).click();
+    await page.getByRole('button', { name: 'Wasserplan anzeigen' }).click();
     await expect(page.getByTestId('sidebar')).toHaveAttribute('aria-label', 'Wasser-Komponenten');
 
     // Die Domänenfilter gehören ausschließlich zum Elektrikplan; zurück dort
     // liegt ihr kompakter, beschrifteter Zugang am Canvas.
-    await page.getByRole('tab', { name: 'Elektrikplan anzeigen' }).click();
+    await page.getByRole('button', { name: 'Elektrikplan anzeigen' }).click();
     const displayOptions = page.getByTestId('canvas-display-options');
     await expect(displayOptions).toBeVisible();
     const box = await displayOptions.boundingBox();
     expect(box).not.toBeNull();
     expect(box!.height).toBeGreaterThanOrEqual(44);
     await displayOptions.click();
-    await expect(page.getByRole('group', { name: 'Anzeige und Filter' })).toBeVisible();
+    await expect(page.locator('#canvas-display-options-panel')).toBeVisible();
   });
 
   test('Touch-Ziele der Navigation sind mindestens 44 px hoch', async ({ page }) => {

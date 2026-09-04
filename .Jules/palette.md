@@ -67,3 +67,13 @@
 
 **Learning:** Standalone toggle buttons and segmented controls acting as pseudo-radio groups (like the 'Sommer'/'Winter' toggles) must convey which option is currently active to assistive technologies. Without this, screen reader users cannot perceive the current state or understand the result of their selection.
 **Action:** Always add `aria-pressed={condition}` to any button that visually toggles between active and inactive states.
+
+## 2026-09-04 - Segmented Control Accessibility Fix
+
+**Learning:** When using segmented controls that act as radio-like groups (e.g., View Mode toggles 'Elektrik' / 'Wasser' in a toolbar), wrapping them in `role="tablist"` with `role="tab"` causes screen reader misinterpretation if standard tablist keyboard navigation (arrow keys to cycle) isn't implemented.
+**Action:** For simple toggle button groups where users interact via click without advanced tab navigation, use `role="group"` on the container and `aria-pressed` on the buttons instead of `role="tablist"`, `role="tab"`, and `aria-selected`. This correctly conveys the state to assistive technologies without enforcing strict tab navigation patterns.
+
+## 2026-09-04 - E2E Testing with Playwright Locators
+
+**Learning:** When changing UI accessibility roles (like migrating from `role="tab"` to `role="button"` and `aria-pressed` in segmented controls), Playwright E2E tests using `getByRole` locators will break if they are tightly coupled to the old roles.
+**Action:** Always verify if any UI tests depend on the modified roles, and update the associated Playwright locators (e.g., from `getByRole('tab')` to `getByRole('button')`) simultaneously with the UI implementation.
