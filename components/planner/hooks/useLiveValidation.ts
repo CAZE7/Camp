@@ -139,7 +139,7 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
           title: 'FI-Schutzschalter fehlt',
           focusId: sp.id,
           focusType: 'node',
-          message: `⚠️ Kritisch: Am Landstromanschluss „${sp.data?.label || 'Landstrom'}" fehlt ein FI-Schutzschalter (RCD ≤ 30 mA). Nach DIN VDE 0100-721 ist dieser zwingend vorgeschrieben — Stromschlaggefahr!`,
+          message: `Am Landstromanschluss „${sp.data?.label || 'Landstrom'}" fehlt ein FI-Schutzschalter mit höchstens 30 mA (RCD ≤ 30 mA). Nach DIN VDE 0100-721 ist dieser zwingend vorgeschrieben — Stromschlaggefahr. Lass den 230-V-Schutz von einer Elektrofachkraft einplanen.`,
         });
       }
     });

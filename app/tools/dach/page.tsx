@@ -241,7 +241,7 @@ function DachPlanerInner() {
               <button
                 type="button"
                 onClick={() => setOnboardingOpen(false)}
-                className="hover:bg-surface-raised/60 flex h-11 w-11 items-center justify-center text-warn-info focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warn-info"
+                className="flex h-11 w-11 items-center justify-center text-warn-info hover:bg-surface-raised/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warn-info"
                 aria-label="Anleitung schließen"
               >
                 <XIcon className="h-5 w-5" aria-hidden="true" />

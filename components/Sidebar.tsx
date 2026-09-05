@@ -49,9 +49,11 @@ export function Sidebar({ mode = 'electric', onMobileAdd }: SidebarProps) {
   const hasAnyResult = filteredComponents.length > 0 || filteredDevices.length > 0;
 
   return (
+    // Breite alleinige Sache der Spalte in PlannerSidebar (260/280 px) —
+    // ein eigenes lg:w-72 (288 px) ließ den Inhalt aus der Spalte quellen.
     <aside
       data-testid="sidebar"
-      className="flex h-full w-full flex-col border-r border-border bg-paper lg:w-72"
+      className="flex h-full w-full flex-col border-r border-border bg-paper"
       aria-label={mode === 'water' ? 'Wasser-Komponenten' : 'Elektrik-Komponenten'}
     >
       <div className="border-b border-border bg-accent p-4">

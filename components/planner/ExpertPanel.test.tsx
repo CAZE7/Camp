@@ -156,7 +156,9 @@ describe('ExpertPanel', () => {
     const panel = screen.getByTestId('expert-panel');
     expect(panel).toHaveAttribute('data-open', 'true');
     expect(panel.className).toContain('bottom-28');
-    expect(panel.className).toContain('md:bottom-16');
+    // md:bottom-20 hält das offene Panel über der Statuszeile (54 px +
+    // Rand) — bottom-16 ließ es sie um 5 px schneiden (E2E `expert-panel`).
+    expect(panel.className).toContain('md:bottom-20');
     expect(panel.className).not.toContain('top-16');
   });
 

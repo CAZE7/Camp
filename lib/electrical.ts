@@ -39,6 +39,27 @@ export const calculateMaxFuse = (crossSection: number): number => {
 };
 
 /**
+ * Kabel-Maximalsicherung für ANZEWECKE (Edge-Label, Metrics): klemmt
+ * Nicht-Normquerschnitte auf die größte Normstufe ≤ Querschnitt ein, statt
+ * zu werfen. calculateCrossSection gibt bewusst >70 mm² (z. B. importierte
+ * 95 mm²) unverändert durch — würde das direkt an calculateMaxFuse,
+ * crashte die gesamte Canvas-Render-Pipeline mit RangeError.
+ * Für Validierer/Dimensionierung bleibt calculateMaxFuse die strikte
+ * Variante (Werfen = expliziter Fehler statt stillschweigender Duldung).
+ */
+export const maxFuseForDisplay = (crossSection: number): number => {
+  const sizes = Object.keys(FUSE_MAP)
+    .map(Number)
+    .sort((a, b) => a - b);
+  let largestAtOrBelow = sizes[0] ?? 1.5;
+  for (const size of sizes) {
+    if (size <= crossSection) largestAtOrBelow = size;
+    else break;
+  }
+  return FUSE_MAP[largestAtOrBelow] ?? 0;
+};
+
+/**
  * Übliche Norm-Sicherungsgrößen in Ampere (Blade ATO/ATC, MIDI, ANL).
  * Wird von Auto-Wire und der Live-Validierung verwendet, damit die gewählte
  * Sicherung immer einem real verfügbaren Sicherungswert entspricht.

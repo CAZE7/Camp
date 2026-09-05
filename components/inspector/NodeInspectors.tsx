@@ -634,7 +634,7 @@ export function ConduitInspector({
                 return (
                   <label
                     key={edge.id}
-                    className="flex cursor-pointer items-center gap-2 rounded p-1 text-sm text-foreground hover:bg-paper"
+                    className="flex min-h-11 cursor-pointer items-center gap-2 rounded px-2 py-1 text-sm text-foreground hover:bg-paper"
                   >
                     <input
                       type="checkbox"

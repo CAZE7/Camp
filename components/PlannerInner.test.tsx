@@ -173,14 +173,25 @@ describe('PlannerInner — responsives Layout', () => {
     expect(column('planner-sidebar').className).not.toContain('w-auto');
   });
 
-  it('öffnet den Inspector bei Auswahl und schließt ihn ohne Auswahl', () => {
+  it('öffnet den Inspector bei jeder Auswahl und schließt ihn ohne Auswahl', () => {
     const { rerender } = render(<PlannerInner />);
+    // Leere Auswahl beim Mount: das Overlay (Tablet/Handy) darf nicht ohne
+    // Anlass mit Backdrop über dem Canvas stehen.
     expect(setInspectorOpen).toHaveBeenLastCalledWith(false);
 
     plannerState.selectedNodes = [{ id: 'battery-1' }];
     rerender(<PlannerInner />);
     expect(setInspectorOpen).toHaveBeenLastCalledWith(true);
 
+    // Auswahl gegen ein anderes Element getauscht (1→1): der Inspector
+    // folgt — früher blieb er bei manuellem Schließen „stecken".
+    plannerState.selectedNodes = [{ id: 'inverter-1' }];
+    rerender(<PlannerInner />);
+    expect(setInspectorOpen).toHaveBeenLastCalledWith(true);
+
+    // Auswahl aufheben: Overlay wieder zu — sonst blockiert es auf kleinen
+    // Geräten dauerhaft den Toolbar-Zugriff (E2E-Persistenz-Flow).
+    setInspectorOpen.mockClear();
     plannerState.selectedNodes = [];
     rerender(<PlannerInner />);
     expect(setInspectorOpen).toHaveBeenLastCalledWith(false);

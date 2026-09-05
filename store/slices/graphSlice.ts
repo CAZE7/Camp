@@ -3,6 +3,7 @@ import type { Node, Edge } from 'reactflow';
 import { getLayoutedElements } from '../../components/planner/utils/layout';
 import { TEMPLATES_DICT } from '../../components/planner/templates';
 import { getEdgeDomain, getHandleDomain } from '../../lib/electrical';
+import { newEntityId } from '../../lib/id';
 import { getSystemVoltage } from '../../lib/vde-standards';
 import { performAutoWiring, relevantCumulativeDrop } from '../../lib/autoWire';
 import { type CableEdgeData } from '../../components/edges/CableEdge';
@@ -333,7 +334,7 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
         target: connection.target,
         sourceHandle: connection.sourceHandle,
         targetHandle: connection.targetHandle,
-        id: crypto.randomUUID(),
+        id: newEntityId(),
         type: 'waterPipe',
         data: {},
       };
@@ -352,7 +353,7 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
       target: connection.target,
       sourceHandle: connection.sourceHandle,
       targetHandle: connection.targetHandle,
-      id: crypto.randomUUID(),
+      id: newEntityId(),
       type: 'cableEdge',
       data: {
         length: 3,
@@ -373,13 +374,16 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
 
     // Nutzer-Kanten bleiben erhalten; nur Auto-Kanten früherer Läufe
     // werden durch die frisch berechneten ersetzt (Idempotenz).
-    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
-      result.nodes,
-      result.edges,
-      'LR'
-    );
-
-    set((state) => withHistory(state, { nodes: [...layoutedNodes], edges: [...layoutedEdges] }));
+    //
+    // M11-2/R-8: performAutoWiring platziert automatisch erzeugte Knoten
+    // bereits in Flussrichtung auf dem 16-px-Raster (applyFlowLayout in
+    // lib/autoWire/placement.ts) und lässt Nutzerplatzierungen unberührt.
+    // Der frühere zusätzliche getLayoutedElements-Pass würde ALLE Knoten
+    // erneut in die Funktions-Pipeline-Spalten stapeln — das hob die
+    // Flussrichtung wieder auf (Kabel-Umwege, M11-2) und verschob
+    // handplatzierte Bauteile. Das Spalten-Layout bleibt dem expliziten
+    // „Aufräumen“-Knopf (onLayout) vorbehalten.
+    set((state) => withHistory(state, { nodes: [...result.nodes], edges: [...result.edges] }));
 
     if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
       window.requestAnimationFrame(() => {
@@ -431,8 +435,9 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
         withHistory(state, {
           nodes: [...template.nodes],
           edges: [...template.edges],
-          waterNodes: [],
-          waterEdges: [],
+          // Wasserbewusst NICHT zurücksetzen: die Templates beschreiben nur
+          // den Elektrikplan. Ein stiller Kollateralschaden auf waterNodes/
+          // waterEdges war Datenverlust (nur über Undo erkennbar zurückholbar).
           selectedNodes: [],
           selectedEdges: [],
         })
@@ -470,7 +475,7 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
   },
   addNode: (type, label, position, watts?: number) => {
     const newNode: Node = {
-      id: `${type}-${crypto.randomUUID()}`,
+      id: `${type}-${newEntityId()}`,
       type,
       position,
       data: { label, ...(watts !== undefined ? { watts } : {}) },

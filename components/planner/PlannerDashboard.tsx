@@ -19,6 +19,8 @@ import {
   Wrench,
   Check,
   Circle,
+  AlertTriangle,
+  Info,
 } from 'lucide-react';
 import { usePlannerStore } from '../../store/usePlannerStore';
 import { useAppStore } from '../../lib/store';
@@ -121,7 +123,7 @@ function SaveIndicator({ revision }: { revision: unknown[] }) {
       aria-live="polite"
       aria-label={detail}
       title={detail}
-      className={`flex h-11 min-w-11 items-center justify-center gap-1 rounded-full border px-2 text-xs font-semibold ${
+      className={`flex h-11 min-w-11 items-center justify-center gap-1 rounded border px-2 text-xs font-semibold ${
         saved ? 'border-success/40 bg-success/10 text-success' : 'border-copper/50 bg-copper/10 text-copper'
       }`}
     >
@@ -397,7 +399,7 @@ function ActionsSection({
         {menuOpen && (
           <div
             role="menu"
-            className="absolute left-0 top-full z-[70] mt-2 w-72 rounded-xl border border-border bg-card p-2 shadow-2xl sm:left-auto sm:right-0"
+            className="absolute left-0 top-full z-[70] mt-2 w-72 rounded border border-border bg-card p-2 shadow-2xl sm:left-auto sm:right-0"
           >
             <button
               role="menuitem"
@@ -405,7 +407,7 @@ function ActionsSection({
                 window.dispatchEvent(new CustomEvent('planner-fit-view'));
                 setMenuOpen(false);
               }}
-              className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-sm text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex min-h-11 w-full items-center gap-2 rounded px-3 text-sm text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <Maximize2 className="h-4 w-4" />
               Übersicht
@@ -415,7 +417,7 @@ function ActionsSection({
               data-testid="action-layout"
               onClick={runLayout}
               disabled={busy !== null}
-              className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-sm text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+              className="flex min-h-11 w-full items-center gap-2 rounded px-3 text-sm text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
             >
               <LayoutGrid className="h-4 w-4" />
               Aufräumen
@@ -424,7 +426,7 @@ function ActionsSection({
               role="menuitem"
               data-testid="action-bom"
               onClick={handleExportBOM}
-              className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-sm text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex min-h-11 w-full items-center gap-2 rounded px-3 text-sm text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <Package className="h-4 w-4" />
               Stückliste
@@ -433,7 +435,7 @@ function ActionsSection({
               role="menuitem"
               data-testid="action-check"
               onClick={runCheck}
-              className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-sm text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex min-h-11 w-full items-center gap-2 rounded px-3 text-sm text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <ScanSearch className="h-4 w-4" />
               Plan lokal prüfen
@@ -441,7 +443,7 @@ function ActionsSection({
             <button
               role="menuitem"
               onClick={onExportImage}
-              className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-sm text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex min-h-11 w-full items-center gap-2 rounded px-3 text-sm text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               {busy === 'export' ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -485,7 +487,7 @@ function ActionsSection({
                 setMenuOpen(false);
                 setHasOnboarded(false);
               }}
-              className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-sm text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex min-h-11 w-full items-center gap-2 rounded px-3 text-sm text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <Wrench className="h-4 w-4" />
               Einführung erneut öffnen
@@ -496,7 +498,7 @@ function ActionsSection({
                 setMenuOpen(false);
                 onRequestReset();
               }}
-              className="hover:bg-signal/5 flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-sm font-semibold text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex min-h-11 w-full items-center gap-2 rounded px-3 text-sm font-semibold text-destructive hover:bg-signal/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <Trash2 className="h-4 w-4" />
               Neuen leeren Plan starten
@@ -555,20 +557,10 @@ export function PlannerDashboard() {
   const liveWarnings = useLiveValidation(nodes, edges);
   const warnings = useMemo(() => {
     const supplemental: ValidationWarning[] = [];
-    nodes
-      .filter((node) => node.type === 'shorePower' && !node.data?.hasRcd)
-      .forEach((node) =>
-        supplemental.push({
-          id: `rcd-${node.id}`,
-          category: 'safety',
-          type: 'critical',
-          title: 'FI-Schutzschalter fehlt',
-          focusId: node.id,
-          focusType: 'node',
-          message:
-            'Am Landstromanschluss fehlt ein FI-Schutzschalter mit höchstens 30 mA. Ohne ihn besteht bei einem Fehler Stromschlaggefahr. Lass den 230-V-Schutz von einer Elektrofachkraft ergänzen.',
-        })
-      );
+    // Landstrom/RCD wird nicht mehr dupliziert: die kanonische Regel
+    // `missing-rcd-*` liefert useLiveValidation (Rule A2) — inklusive
+    // Node-Fokus. Frühere Zweitvariante hier erzeugte dieselbe Warnung
+    // doppelt (mit abweichenden IDs, an denen Wartung schiefhing).
     nodes
       .filter((node) => node.type === 'inverter')
       .forEach((node) => {
@@ -650,7 +642,10 @@ export function PlannerDashboard() {
   return (
     <>
       <header className="relative flex w-full shrink-0 flex-nowrap items-center gap-2 overflow-visible border-b border-border bg-card px-2 py-1">
-        <div className="flex min-w-0 flex-1 items-center gap-2 overflow-visible">
+        {/* Wraps statt zu überlappen: dockt der Inspector an (≥1280 px),
+            verliert der Canvas 288–320 px und die Kopfzeile mit ihm — bei
+            `nowrap` schoben sich Tabs und Buttons sonst ineinander. */}
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 overflow-visible">
           <NavigationSection viewMode={viewMode} setViewMode={setViewMode} />
           <ActionsSection
             season={season}
@@ -673,10 +668,15 @@ export function PlannerDashboard() {
           <KeyboardShortcutHints />
           <SaveIndicator revision={[nodes, edges, waterNodes, waterEdges]} />
           <span
-            className="hidden rounded-full border border-border bg-accent px-2 py-1 text-xs font-semibold text-foreground xl:inline"
+            className="hidden items-center gap-1 rounded border border-border bg-accent px-2 py-1 text-xs font-semibold text-foreground xl:inline-flex"
             title="Die Jahreszeit beeinflusst Solarertrag und Heizverbrauch"
           >
-            {season === 'summer' ? '☀ Sommer' : '❄ Winter'}
+            {season === 'summer' ? (
+              <Sun className="h-3.5 w-3.5 text-oxide" aria-hidden="true" />
+            ) : (
+              <Snowflake className="h-3.5 w-3.5 text-info" aria-hidden="true" />
+            )}
+            {season === 'summer' ? 'Sommer' : 'Winter'}
           </span>
           <WarningCenter warnings={warnings} onFix={handleFix} />
         </div>
@@ -685,16 +685,28 @@ export function PlannerDashboard() {
           <div
             role={feedback.type === 'error' ? 'alert' : 'status'}
             aria-live={feedback.type === 'error' ? 'assertive' : 'polite'}
-            className={`fixed left-1/2 top-16 z-50 w-11/12 max-w-md -translate-x-1/2 rounded-lg border p-3 text-sm font-semibold shadow-lg ${
+            /* Deckblatt-artiger Toast: opaque Fläche + Statuskante statt
+               durchscheinender Tönung — vorher lag der Text halbtransparent
+               über Hinweiskarte und Canvas und war dort kaum lesbar. */
+            className={`fixed left-1/2 top-16 z-[95] w-11/12 max-w-md -translate-x-1/2 rounded border border-l-4 border-border bg-surface-panel p-3 text-sm font-semibold text-foreground shadow-2xl ${
               feedback.type === 'error'
-                ? 'bg-signal/5 border-signal text-signal'
+                ? 'border-l-signal'
                 : feedback.type === 'success'
-                  ? 'bg-moss/10 border-moss text-moss'
-                  : 'bg-oxide/10 border-oxide text-oxide'
+                  ? 'border-l-moss'
+                  : 'border-l-oxide'
             }`}
           >
             <div className="flex items-center justify-between gap-3">
-              <span>{feedback.message}</span>
+              <span className="flex items-start gap-2">
+                {feedback.type === 'error' ? (
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-signal" aria-hidden="true" />
+                ) : feedback.type === 'success' ? (
+                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-moss" aria-hidden="true" />
+                ) : (
+                  <Info className="mt-0.5 h-4 w-4 shrink-0 text-oxide" aria-hidden="true" />
+                )}
+                <span>{feedback.message}</span>
+              </span>
               {feedback.actionLabel && feedback.onAction && (
                 <Button
                   data-testid="feedback-action"

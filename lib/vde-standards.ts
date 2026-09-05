@@ -324,11 +324,15 @@ export function calculateEdgeCurrent(
   /** I = P / U mit der Systemspannung. */
   const currentAt = (load: Watts, at: Volts): Amps => currentFromPower(load, at);
 
-  // 1. Expliziter Gesamtstrom (manuell gesetzt oder von Auto-Wire berechnet)
+  // 1. Expliziter Gesamtstrom (manuell gesetzt oder von Auto-Wire berechnet).
+  //    Ein vorhanden, aber unparsebarer Wert (Altbestand/Import) wird nicht
+  //    als 0 A interpretiert — 0 A würde Spannungsfall und Sicherungsprüfung
+  //    stillschweigend entscharfen. Ohne vertrauenswürdigen Wert fällt die
+  //    Berechnung auf die physikalische Herleitung (P/U bzw. A) zurück.
   const sourceTotal = parseQuantity(sData?.totalAmps, amps);
-  if (sData?.totalAmps !== undefined) return sourceTotal ?? ZERO_AMPS;
+  if (sourceTotal !== null) return sourceTotal;
   const targetTotal = parseQuantity(tData?.totalAmps, amps);
-  if (tData?.totalAmps !== undefined) return targetTotal ?? ZERO_AMPS;
+  if (targetTotal !== null) return targetTotal;
 
   const isSolarType = (type: string | undefined): boolean => type === 'solar' || type === 'roofSolar';
 
