@@ -31,7 +31,7 @@ Actions` und aktiver Default-Branch als Quelle bestätigt.
 - [x] **A-5 Aufräumen:** Temporäre `patches/2026-09-01-pages-deploy-fix.patch`
       entfernt.
 
-## Design-Relaunch „Werft" (Autodesk-Niveau)
+## Design-Relaunch „Werft“ (Autodesk-Niveau)
 
 Zielbild: ruhige, präzise CAD-Optik — neutrale Flächen, 1-px-Linien, ein Akzent
 (`--oxide`), technische Typo (Inter + IBM Plex Mono), hell und dunkel.
@@ -128,3 +128,84 @@ optischer Freigabe durch den Nutzer.
       (vorher/nachher) erweitern; Playwright-Screenshots (375/768/1440 px)
       als CI-Check; Routing-Invarianten in `docs/` dokumentieren
       (Kostenmodell, Lanes, Clearance). Merge erst nach optischer Freigabe.
+
+## Stack-Modernisierung
+
+Ziel: veraltete oder überholte Abhängigkeiten auf die aktiv gepflegte Linie
+heben, ohne Verhalten zu ändern (Befund: Code-Analyse vom 05.09.2026). Pro
+Aufgabe ein Commit; Abnahme über `npm run check` plus Playwright-Baselines
+(375/768/1440 px, hell+dunkel); kein Merge bei unbeabsichtigtem visuellem
+Diff.
+
+- [ ] **S-1 React Flow 12 (`@xyflow/react`):** `reactflow@^11` ist die alte,
+      nur noch gepflegte Paketlinie; v12 läuft als `@xyflow/react` weiter und
+      bringt React-19-Support und Render-Verbesserungen am Canvas. Migration
+      nach offiziellem Guide: Imports (`store/slices/persistence.ts`, Hooks,
+      `CableEdge`), `nodeTypes`/`edgeTypes` und CSS-Einbindung prüfen.
+      Abnahme: `npm run check` grün; Drag, Auto-Wire und Undo/Redo unverändert;
+      Routing-Invarianten-Tests und visuelle Baselines ohne Diff.
+- [ ] **S-2 Tailwind CSS v4:** v3.4 auf v4 (Oxide-Engine, schnellere Builds,
+      CSS-first-Theme). Upgrade-Codemod laufen lassen; Tokens aus
+      `tailwind.config.ts` nach `@theme` in `globals.css` überführen (bleibt
+      einzige Farbquelle, D-1); `tailwindcss-animate` durch `tw-animate-css`
+      ersetzen. Risiko: geänderte Border-/Ring-/Shadow-Defaults. Abnahme:
+      Baselines aktualisiert und optisch freigegeben; Build-Zeit
+      vorher/nachher notiert.
+- [ ] **S-3 lucide-react aktualisieren:** 0.446.x (Stand 09/2024) auf die
+      aktuelle 1.x-Linie. Umbenannte Icons über Release-Notes und Typecheck
+      finden. Abnahme: Build, Tests und visuelle Baselines grün; kein
+      Bundle-Wachstum (Tree-Shaking prüfen).
+- [ ] **S-4 Bild-Export modernisieren:** `html-to-image` (nur PNG-Viewport)
+      gegen SnapDOM/modern-screenshot als Drop-in prüfen — Aufrufstelle in
+      `PlannerDashboard.tsx` ist bereits lazy und im Test gemockt. Zusätzlich
+      Print-Stylesheet (`@media print`, `@page`) für den Plan (Befund B6).
+      Abnahme: Export-E2E grün; Export-Zeit vorher/nachher gemessen; kein
+      Eintritt in den Initial-Bundle-Pfad (dynamischer Import bleibt).
+- [ ] **S-5 ADR 0003 nachziehen:** „Orthogonales Routing statt Wegfindung“
+      ist überlagert, seit `findCablePath` kontrollierte Wegfindung (Hanan-A*)
+      enthält. ADR-Status auf „erweitert“ setzen und auf
+      `docs/ROUTING-INVARIANTS.md` verweisen. Abnahme: kein Widerspruch
+      zwischen ADR, AGENTS.md und Invarianten-Doku.
+
+## Routing-Performance
+
+Baut auf R-4/R-9 und PERF-02/PERF-04 auf. Jede Aufgabe mit Vorher/Nachher-
+Werten aus `benchmarks/edgeRoutingPerf.bench.ts` am 100+-Kanten-Referenzplan;
+keine Aufgabe gilt ohne Bench-Nachweis als fertig (Konvention aus R-1).
+
+- [ ] **P-1 Betroffenheits-Analyse (Affected-Set):** Re-Route nur für Kanten
+      am gezogenen Knoten plus Kanten, deren Pfad-Bounding-Box die alte oder
+      neue Node-BBox schneidet (Abfrage über `SegmentSpatialIndex`).
+      `nodeLayoutSignature` bleibt global, die Invalidierung wird selektiv.
+      Abnahme: Bench zeigt O(betroffene Kanten) statt O(E) beim Drag;
+      Invarianten- und Gallery-Tests grün; keine veralteten Pfade (R-9 bleibt
+      erfüllt).
+- [ ] **P-2 Zwei-Qualitäts-Stufen im Drag:** Während des Ziehens schnelle
+      Vorschau (Bestandspfad beziehungsweise L-Stub), voller `routeAll`-Pass
+      mit Nudging erst beim Drag-Ende (gedrosselt, 100–150 ms). Abnahme:
+      konstante Frame-Zeit im Drag-Bench; Endqualität identisch zur
+      Szenario-Gallery.
+- [ ] **P-3 Viewport-Culling prüfen:** `onlyRenderVisibleElements` am
+      FlowCanvas evaluieren. Wechselwirkung beachten: Der PNG-Export liest
+      das DOM — Culling beim Export kurz aufheben oder Export-Ausschnitt
+      explizit rendern. Abnahme: Export-E2E unverändert grün; gerenderte
+      Kantenzahl bei großem Plan sinkt messbar.
+- [ ] **P-4 Validierung von Position entkoppeln (B15):** `useLiveValidation`
+      an `edgeTopologySignature` koppeln statt an jede Mutation; nur der
+      Spannungsfall (`voltageDrop.ts`) braucht Geometrie und wird gedrosselt
+      nachgezogen. Abnahme: Test mit Lauf-Zähler — reines Verschieben löst
+      keine Topologie-Validierung aus; Längenänderung aktualisiert den
+      Spannungsfall verzögert korrekt.
+- [ ] **P-5 Nudging scopen:** `nudgeOrthogonalPaths` nur auf Lanes betroffener
+      Trassen anwenden (setzt P-1 voraus). Abnahme: routingGallery ohne Diff;
+      Bench-Verbesserung notiert.
+- [ ] **P-6 Routing im Web Worker (optional):** Reine Pipeline
+      (`pathfinding.ts`, `orthogonalRouting.ts`) in einen Worker auslagern;
+      Übergabe strukturiert klonen oder als Flat-Arrays; bei schnellem Drag
+      gewinnt die letzte Anfrage (keine Race-Pfade). Erst nach P-1–P-5.
+      Abnahme: Main-Thread ≤ 16 ms/Frame am 100+-Kanten-Plan (M11-9); Pfade
+      identisch zur synchronen Variante (Gallery).
+- [ ] **P-7 Benchmark-Gate im CI:** `edgeRoutingPerf.bench.ts` mit festem
+      Budget am 100+-Kanten-Referenzplan in die Quality-Pipeline (passt zu
+      M11-5/M11-9). Abnahme: CI schlägt bei Budget-Überschreitung fehl;
+      Budget-Wert im Benchmark-ADR begründet.
