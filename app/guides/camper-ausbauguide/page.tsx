@@ -444,7 +444,7 @@ export default function CamperAusbauguide() {
                 <h3 className={cn('mb-4 text-2xl font-semibold text-paper md:text-2xl', outfit.className)}>
                   Bereit für den ersten Roadtrip?
                 </h3>
-                <p className="text-paper/80 mx-auto mb-8 max-w-2xl text-base leading-relaxed md:text-lg">
+                <p className="mx-auto mb-8 max-w-2xl text-base leading-relaxed text-paper/80 md:text-lg">
                   Der Ausbau kostet Schweiß, zerschnittene Finger und Nerven. Aber der Moment, in dem du
                   abends am Bergsee die Hecktüren öffnest und das Rauschen der Wellen hörst, ist unbezahlbar.
                 </p>

@@ -70,8 +70,14 @@ const DynamicBOMModal = dynamic(() => import('./BOMModal').then((mod) => mod.BOM
 
 function useAccessibleHandles() {
   React.useEffect(() => {
+    let frame = 0;
+    // Scope: der ReactFlow-Root, sofern vorhanden — Tests rendern gemockte
+    // Canvasse ohne diesen; dann auf das Dokument ausweichen.
+    const scope = (): ParentNode => document.querySelector('.react-flow') ?? document;
     const enhance = () => {
-      document.querySelectorAll<HTMLElement>('.react-flow__handle').forEach((handle) => {
+      frame = 0;
+      const root = scope();
+      root.querySelectorAll<HTMLElement>('.react-flow__handle').forEach((handle) => {
         handle.tabIndex = 0;
         handle.setAttribute('role', 'button');
         const id = handle.dataset.handleid || '';
@@ -100,16 +106,21 @@ function useAccessibleHandles() {
         ['.react-flow__controls-fitview', 'Ganzen Plan einpassen'],
       ] as const;
       controlLabels.forEach(([selector, label]) => {
-        document.querySelectorAll<HTMLElement>(selector).forEach((control) => {
+        root.querySelectorAll<HTMLElement>(selector).forEach((control) => {
           control.setAttribute('aria-label', label);
           control.setAttribute('title', label);
         });
       });
     };
     enhance();
-    const observer = new MutationObserver(enhance);
-    const root = document.querySelector('.react-flow');
-    if (root) observer.observe(root, { childList: true, subtree: true });
+    // Der Observer befeuert enhance() während Node-Drags pro Frame mit allen
+    // Handles — ohne Rasterung kostet das bei 100+ Bauteilen messbar Frame-
+    // zeit (M11-9). Mutationen pro Frame zu einem Durchlauf bündeln.
+    const observer = new MutationObserver(() => {
+      if (frame) return;
+      frame = window.requestAnimationFrame(enhance);
+    });
+    observer.observe(scope(), { childList: true, subtree: true });
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Enter' && event.key !== ' ') return;
       const handle = (event.target as HTMLElement)?.closest<HTMLElement>('.react-flow__handle');
@@ -120,6 +131,7 @@ function useAccessibleHandles() {
     document.addEventListener('keydown', onKeyDown);
     return () => {
       observer.disconnect();
+      if (frame) window.cancelAnimationFrame(frame);
       document.removeEventListener('keydown', onKeyDown);
     };
   }, []);
@@ -591,6 +603,7 @@ export function FlowCanvas() {
 
       {viewMode === 'electric' && nodes.length === 0 && (
         <EmptyState
+          className="pb-44 sm:pb-28 lg:pb-0"
           title="Fang mit deiner Batterie an"
           description="Jede Anlage startet mit der Aufbaubatterie. Danach führt dich der Planer Schritt für Schritt weiter."
           actionLabel="Batterie hinzufügen"
@@ -602,6 +615,7 @@ export function FlowCanvas() {
       )}
       {viewMode === 'water' && waterNodes.length === 0 && (
         <EmptyState
+          className="pb-44 sm:pb-28 lg:pb-0"
           title="Starte mit dem Frischwassertank"
           description="Dein Wassersystem beginnt beim Frischwassertank. Danach folgen Pumpe, Filter und Entnahmestellen."
           actionLabel="Frischwassertank hinzufügen"
@@ -716,31 +730,37 @@ export function FlowCanvas() {
               verliert gegen die Shorthand. !bottom/!left mit !important.
               Mobile: über Undo/Bottom-Nav. Ab md über der Statuszeile.
               MiniMap erst ab lg (sonst ~200 px auf dem 508-px-Tablet-
-              Canvas) und mit !left-16 neben den 44-px-Zoom-Controls. */}
+              Canvas) und mit !left-16 neben den 44-px-Zoom-Controls.
+              Bei leerem Plan blendet sie sonst als leere Schwarze/Weiße
+              Kachel — sie wird nur mit Inhalt gerendert. */}
           <Controls
             showInteractive={false}
-            className="planner-controls !bottom-32 overflow-hidden rounded-lg border border-border shadow-sm md:!bottom-14"
+            className="planner-controls !bottom-32 overflow-hidden rounded border border-border md:!bottom-14"
           />
-          <MiniMap
-            position="bottom-left"
-            className="planner-minimap !bottom-32 !left-16 hidden overflow-hidden rounded-lg border border-border shadow-sm lg:!bottom-14 lg:block"
-            ariaLabel="Miniaturübersicht des Plans"
-            nodeColor={(node) => nodeMinimapColorFrom(minimapColors.palette, node)}
-            maskColor={minimapColors.mask}
-            style={{ backgroundColor: minimapColors.background }}
-          />
+          {rawNodes.length > 0 && (
+            <MiniMap
+              position="bottom-left"
+              className="planner-minimap !bottom-32 !left-16 hidden overflow-hidden rounded border border-border lg:!bottom-14 lg:block"
+              ariaLabel="Miniaturübersicht des Plans"
+              nodeColor={(node) => nodeMinimapColorFrom(minimapColors.palette, node)}
+              maskColor={minimapColors.mask}
+              style={{ backgroundColor: minimapColors.background }}
+            />
+          )}
 
           <Panel
             position="top-left"
             className="m-2 hidden max-w-[min(20rem,calc(100vw-6rem))] sm:block md:m-3"
           >
-            <div className="bg-card/95 rounded-lg border border-border px-3 py-2 text-xs text-foreground shadow-sm">
-              <strong>{viewMode === 'water' ? 'Wasserplan' : 'Elektrikplan'}</strong>
-              <span className="ml-2 text-muted-foreground">
+            <div className="rounded border border-border bg-surface-panel px-3 py-2 shadow-sm">
+              <span className="label-eyebrow text-text-low">
+                {viewMode === 'water' ? 'Wasserplan' : 'Elektrikplan'}
+              </span>
+              <p className="mt-0.5 text-xs leading-snug text-ink-soft">
                 {coarsePointer
                   ? 'Anschluss antippen, dann Ziel antippen. Am Griff ziehen; 500 ms halten öffnet das Kontextmenü.'
                   : 'Anschluss anklicken oder ziehen. Rechtsklick öffnet das Kontextmenü.'}
-              </span>
+              </p>
             </div>
           </Panel>
 
@@ -760,14 +780,18 @@ export function FlowCanvas() {
           {traceLabel && (
             <Panel
               position="bottom-left"
-              className="mb-20 ml-14 max-w-[min(36rem,calc(100vw-6rem))] md:mb-4 md:ml-14"
+              /* Ab lg rückt die Strompfad-Kachel über MiniMap (bis 259 px)
+                 und Statuszeile (bis ~55 px) — sonst liegen drei schwebende
+                 Panels exakt aufeinander. ml-[17rem] = 272 px =
+                 MiniMap-Kante + 16 px. */
+              className="mb-20 ml-2 max-w-[min(36rem,calc(100vw-6rem))] md:mb-4 md:ml-14 lg:mb-20 lg:ml-[17rem] lg:max-w-[min(20rem,calc(100vw-34rem))]"
             >
               <div
                 data-testid="circuit-trace-info"
                 role="status"
-                className="border-copper/50 bg-card/95 rounded-lg border px-3 py-2 text-sm font-semibold text-foreground shadow-lg"
+                className="rounded border border-rule bg-surface-panel px-3 py-2 text-xs font-semibold text-foreground shadow-md"
               >
-                <span className="mr-2 text-copper">Strompfad:</span>
+                <span className="label-eyebrow mr-2 text-oxide">Strompfad</span>
                 {traceLabel}
               </div>
             </Panel>
@@ -791,7 +815,7 @@ export function FlowCanvas() {
           {viewMode === 'electric' && calculatedSolarWatts > 0 && (
             <Panel
               position="bottom-center"
-              className="border-oxide/40 bg-oxide/10 mb-4 rounded-lg border p-3 text-sm text-oxide shadow-sm"
+              className="mb-4 rounded-lg border border-oxide/40 bg-oxide/10 p-3 text-sm text-oxide shadow-sm"
             >
               <strong>Dachplaner-Daten erkannt:</strong> {calculatedSolarWatts} W Solarleistung verfügbar. Der
               Solar-Laderegler (MPPT) muss dafür passend dimensioniert sein.

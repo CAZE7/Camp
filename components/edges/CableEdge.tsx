@@ -13,9 +13,9 @@ import { getWireColor, WIRE_COLORS } from './utils/edgeColors';
 import { hasVoltageDropError } from './utils/voltageDrop';
 import {
   calculateCrossSection,
-  calculateMaxFuse,
   calculateStrokeWidth,
   getEdgeDomain,
+  maxFuseForDisplay,
 } from '../../lib/electrical';
 import {
   AC_SYSTEM_VOLTAGE,
@@ -351,7 +351,11 @@ const CableEdge = function ({
       : calculateEdgeCurrent(sourceNode, targetNode, getNodes(), sysVoltage);
 
     const crossSection = calculateCrossSection(I, length, data?.crossSection, isAC ? 'AC_230V' : 'DC_12V');
-    const maxFuse = isAC ? 0 : calculateMaxFuse(crossSection);
+    // maxFuseForDisplay statt calculateMaxFuse: Nicht-Normquerschnitte
+    // (importierte 95 mm²) dürfen das Edge-Rendering nicht mit RangeError
+    // crashen — für Label/Metrics wird auf die größte Normstufe ≤ cs
+    // geklemmt, gewarnt wird separat über collectEdgeErrors.
+    const maxFuse = isAC ? 0 : maxFuseForDisplay(crossSection);
     const strokeWidth = calculateStrokeWidth(crossSection);
     const animationDuration = calculateAnimationDuration(I);
 
@@ -506,7 +510,7 @@ const CableEdge = function ({
               <span
                 style={{
                   fontFamily: 'var(--font-mono)',
-                  fontSize: '10px',
+                  fontSize: '12px',
                   fontWeight: 700,
                   letterSpacing: '0.04em',
                   opacity: 0.85,

@@ -907,3 +907,84 @@ describe('Auto-Wire: Topologie-Heilung & reale Templates', () => {
     expect(errors.some((err) => err.includes('Gesamt-Drop'))).toBe(true);
   });
 });
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * M11-1-Regression: autoWireSystem darf kein zusätzliches Re-Layout fahren.
+ *
+ * performAutoWiring() beendet intern mit applyFlowLayout() (autoWired-Flags
+ * gesetzt, nur neu erzeugte Nodes wandern in die Fluß-Spalten). Der Store
+ * durfte danach nicht erneut getLayoutedElements() über ALLE Nodes laufen
+ * lassen — das hat manuell platzierte Bauteile bei jedem Klick auf
+ * „Automatisch verbinden" zurück ins Raster gesogen und die eigene Anordnung
+ * zerstört.
+ * ──────────────────────────────────────────────────────────────────────────── */
+describe('autoWireSystem: erhält die manuelle Node-Position', () => {
+  it('verschiebt vorhandene Nodes nicht und legt nur neue an', () => {
+    const placed = (id: string, type: string, x: number, y: number): Node => ({
+      id,
+      type,
+      position: { x, y },
+      data: { label: type },
+    });
+    const nodes = [
+      placed('b1', 'battery', 640, -160),
+      placed('s1', 'solar', 80, 240),
+      placed('i1', 'inverter', 960, 320),
+    ];
+    nodes[0]!.data = { label: 'Batterie', capacity: 200, chemistry: 'LiFePO4' };
+    nodes[1]!.data = { label: 'Solar', watts: 400 };
+    nodes[2]!.data = { label: 'Wechselrichter', watts: 2000 };
+
+    const { nodes: after } = runAutoWire(nodes);
+
+    const byId = new Map(after.map((n) => [n.id, n]));
+    for (const before of nodes) {
+      expect(byId.get(before.id)!.position, `${before.id} wurde verschoben`).toEqual(before.position);
+    }
+    // Kanten wurden erzeugt, ohne die bestehenden Nodes zu verrücken:
+    expect(after.length, 'Auto-Wire soll keine Nodes verschieben, aber verdrahten').toBeGreaterThanOrEqual(
+      nodes.length
+    );
+  });
+});
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * M11-1-Regression: applyTemplate ist ein reines Elektrik-Template und darf
+ * den Wasserplan nicht stillschweigend leeren (früher: waterNodes/
+ * waterEdges: [] im gleichen set()-Aufruf — Datenverlust, nur über Undo
+ * wiederherstellbar).
+ * ──────────────────────────────────────────────────────────────────────────── */
+describe('applyTemplate: lässt den Wasserplan unberührt', () => {
+  it('überschreibt nur nodes/edges, waterNodes/waterEdges bleiben erhalten', () => {
+    const waterNode: Node = {
+      id: 'w-tank',
+      type: 'freshWaterTank',
+      position: { x: 10, y: 10 },
+      data: { label: 'Frischwassertank', capacity: 100 },
+    };
+    const waterEdge: Edge = {
+      id: 'w-pipe',
+      source: 'w-tank',
+      target: 'w-pump',
+      data: { pipeType: 'fresh' },
+    };
+    usePlannerStore.setState({
+      viewMode: 'electric',
+      nodes: [],
+      edges: [],
+      waterNodes: [waterNode],
+      waterEdges: [waterEdge],
+      selectedNodes: [],
+      selectedEdges: [],
+    });
+
+    act(() => {
+      usePlannerStore.getState().applyTemplate('allrounder');
+    });
+
+    const state = usePlannerStore.getState();
+    expect(state.nodes.length, 'Template soll Elektrik befüllen').toBeGreaterThan(0);
+    expect(state.waterNodes).toEqual([waterNode]);
+    expect(state.waterEdges).toEqual([waterEdge]);
+  });
+});

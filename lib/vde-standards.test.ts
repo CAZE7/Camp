@@ -230,6 +230,21 @@ describe('VDE-Standards mit typsicheren Einheiten (K1b)', () => {
       expect(calculateEdgeCurrent(undefined, consumer, [consumer], volts(12))).toBeCloseTo(5, 10);
     });
 
+    it('fällt bei unlesbarem totalAmps auf die physikalische Herleitung zurück (statt 0 A)', () => {
+      // Alter Bug: totalAmps vorhanden, aber unparsebar (Altbestand/Import) →
+      // 0 A, was Spannungsfall- und Sicherungsprüfung stillschweigend
+      // entschärfte. Heute: nur vertrauenswürdige Zahlen werden übernommen.
+      const brokenSource = node('battery', { totalAmps: 'unsicher' });
+      const consumer = node('consumer', { watts: 60 });
+      expect(calculateEdgeCurrent(brokenSource, consumer, [brokenSource, consumer], volts(12))).toBeCloseTo(
+        5,
+        10
+      );
+      // Ein lesbarer Wert gewinnt dagegen weiterhin:
+      const explicit = node('battery', { totalAmps: 7.5 });
+      expect(calculateEdgeCurrent(explicit, consumer, [explicit, consumer], volts(12))).toBe(7.5);
+    });
+
     it('behandelt negative oder unlesbare Leistungsangaben als 0 W', () => {
       const broken = node('consumer', { watts: -60 });
       expect(calculateEdgeCurrent(undefined, broken, [broken], volts(12))).toBe(0);

@@ -1,10 +1,14 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { SlidersHorizontal, X } from 'lucide-react';
 import { useMediaQuery } from '../hooks/useMediaCapabilities';
+import { usePlannerStore } from '../../../store/usePlannerStore';
 import { DOMAINS, DOMAIN_COLORS, DOMAIN_LABELS, type Domain } from '../utils/domainFilter';
 
 /** The canvas gets narrow before the page reaches Tailwind's xl breakpoint. */
 const COMPACT_CANVAS_CONTROLS_QUERY = '(max-width: 1279px)';
+/** Ab hier dockt der Inspector an und entzieht dem Canvas 288–320 px —
+ *  die Chip-Reihe hätte dann trotz breitem Fenster keinen Platz mehr. */
+const INSPECTOR_DOCK_QUERY = '(min-width: 1280px)';
 
 type CanvasDisplayOptionsProps = {
   activeDomains: Set<Domain>;
@@ -19,12 +23,25 @@ type ToggleButtonProps = {
   pressed: boolean;
   onClick: () => void;
   children: string;
-  activeClassName: string;
+  /** Leitungs-/Akzentfarbe des Chips als CSS-Ton (Token-Variable). */
+  tint: string;
   title?: string;
-  style?: CSSProperties;
 };
 
-function ToggleButton({ pressed, onClick, children, activeClassName, title, style }: ToggleButtonProps) {
+/**
+ * Filter-Chip im Werft-Stil: flache Panel-Fläche, Status über getönte
+ * Fläche + Rand in Leitungsfarbe — nicht über gesättigte Volltonflächen
+ * (die dominierten das Canvas und standen im Widerspruch zur Text-Regel
+ * „ein Akzent, Ruhe zuerst“). Die Volltonfarbe bleibt als Punkt erhalten.
+ */
+function ToggleButton({ pressed, onClick, children, tint, title }: ToggleButtonProps) {
+  const style: CSSProperties = pressed
+    ? {
+        backgroundColor: `color-mix(in srgb, ${tint} 14%, var(--surface-panel))`,
+        borderColor: tint,
+        color: 'var(--text-high)',
+      }
+    : { borderColor: 'var(--rule)', color: 'var(--text-med)' };
   return (
     <button
       type="button"
@@ -32,10 +49,9 @@ function ToggleButton({ pressed, onClick, children, activeClassName, title, styl
       onClick={onClick}
       title={title}
       style={style}
-      className={`min-h-11 rounded-md px-3 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-        pressed ? activeClassName : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-      }`}
+      className="flex min-h-11 items-center gap-1.5 rounded border px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
+      <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: tint }} />
       {children}
     </button>
   );
@@ -52,35 +68,36 @@ function DisplayToggles({
 }: CanvasDisplayOptionsProps & { compact?: boolean }) {
   const layoutClass = compact ? 'grid grid-cols-2 gap-2' : 'flex flex-wrap gap-1.5';
 
+  // Im Popover trägt bereits das Panel (id="canvas-display-options-panel")
+  // Rolle und Namen — eine zweite benannte Gruppe darin wäre ein duplizierter
+  // Accessibility-Name (strict-mode-Verstoß im E2E). Kompakt bleibt die
+  // Chips-Gruppe daher ohne eigenes Label.
   return (
-    <div className={layoutClass} role="group" aria-label="Anzeige und Filter">
-      {DOMAINS.map((domain) => {
-        const active = activeDomains.has(domain);
-        return (
-          <ToggleButton
-            key={domain}
-            pressed={active}
-            onClick={() => onToggleDomain(domain)}
-            activeClassName="text-on-signal"
-            style={active ? { backgroundColor: DOMAIN_COLORS[domain] } : undefined}
-          >
-            {DOMAIN_LABELS[domain]}
-          </ToggleButton>
-        );
-      })}
+    <div className={layoutClass} {...(compact ? {} : { role: 'group', 'aria-label': 'Anzeige und Filter' })}>
+      {DOMAINS.map((domain) => (
+        <ToggleButton
+          key={domain}
+          pressed={activeDomains.has(domain)}
+          onClick={() => onToggleDomain(domain)}
+          tint={DOMAIN_COLORS[domain]}
+          title={`Domäne ${DOMAIN_LABELS[domain]} ein- oder ausblenden`}
+        >
+          {DOMAIN_LABELS[domain]}
+        </ToggleButton>
+      ))}
       <ToggleButton
         pressed={trunkMode}
         onClick={onToggleTrunkMode}
+        tint="var(--wire-ac)"
         title="Hauptrouten (Batterie → Sicherungskasten → Verteilung) hervorheben"
-        activeClassName="bg-ink text-bone"
       >
         Trassen
       </ToggleButton>
       <ToggleButton
         pressed={backboneGrouping}
         onClick={onToggleBackboneGrouping}
+        tint="var(--oxide)"
         title="Rahmen und Label für den Hauptstromkreis ein- oder ausblenden"
-        activeClassName="bg-copper text-bone"
       >
         Hauptstromkreis
       </ToggleButton>
@@ -95,7 +112,10 @@ function DisplayToggles({
  * same controls as an intentional, thumb-friendly popover.
  */
 export function CanvasDisplayOptions(props: CanvasDisplayOptionsProps) {
-  const compact = useMediaQuery(COMPACT_CANVAS_CONTROLS_QUERY);
+  const compactViewport = useMediaQuery(COMPACT_CANVAS_CONTROLS_QUERY);
+  const inspectorDocked = usePlannerStore((state) => state.isInspectorOpen);
+  const dockBreakpoint = useMediaQuery(INSPECTOR_DOCK_QUERY);
+  const compact = compactViewport || (dockBreakpoint && inspectorDocked);
   const [open, setOpen] = useState(false);
   const popoverRef = useRef<HTMLDivElement>(null);
 
@@ -121,7 +141,7 @@ export function CanvasDisplayOptions(props: CanvasDisplayOptionsProps) {
 
   if (!compact) {
     return (
-      <div className="bg-card/95 rounded-lg border border-border p-1.5 shadow-sm">
+      <div className="rounded border border-border bg-surface-panel/95 p-1.5 shadow-sm">
         <DisplayToggles {...props} />
       </div>
     );
@@ -135,7 +155,7 @@ export function CanvasDisplayOptions(props: CanvasDisplayOptionsProps) {
         aria-expanded={open}
         aria-controls="canvas-display-options-panel"
         onClick={() => setOpen((value) => !value)}
-        className="bg-card/95 flex min-h-11 items-center gap-2 rounded-lg border border-border px-3 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="flex min-h-11 items-center gap-2 rounded-lg border border-border bg-card px-3 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
         Ansicht
@@ -146,7 +166,7 @@ export function CanvasDisplayOptions(props: CanvasDisplayOptionsProps) {
           id="canvas-display-options-panel"
           role="group"
           aria-label="Anzeige und Filter"
-          className="absolute right-0 top-full z-[70] mt-2 w-[min(20rem,calc(100vw-1rem))] rounded-xl border border-border bg-card p-3 shadow-2xl"
+          className="absolute right-0 top-full z-[70] mt-2 w-[min(20rem,calc(100vw-1rem))] rounded-lg border border-border bg-card p-3 shadow-2xl"
         >
           <div className="mb-2 flex min-h-11 items-center justify-between gap-3 border-b border-border pb-2">
             <div>

@@ -55,7 +55,7 @@ interface InspectorProps {
 
 const EmptySelection = () => (
   <div className="flex h-full flex-col items-center justify-center text-muted-foreground">
-    <div className="bg-primary/10 mb-3 flex h-14 w-14 items-center justify-center rounded-full">
+    <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
       <MousePointerClick className="h-7 w-7 text-primary opacity-70" />
     </div>
     <p className="font-semibold text-foreground">Kein Element ausgewählt</p>
@@ -175,7 +175,10 @@ const NodeInspector = ({
   };
 
   return (
-    <div className="space-y-4">
+    // panel-section: ohne Innenabstand standen Felder randlos an der
+    // Spaltenkante und Inputs liefen über die 288-px-Spalte hinaus
+    // (Kanten-Inspector nutzte den Abstand bereits).
+    <div className="panel-section flex flex-col gap-4">
       <div>
         <label className="mb-1 block text-xs font-medium text-foreground" htmlFor={`${node.id}-label`}>
           Bezeichnung

@@ -50,12 +50,18 @@ export default function PlannerInner() {
   const redo = usePlannerStore((state) => state.redo);
   const router = useRouter();
 
-  // Auswahl öffnet den Inspector, Klick auf leere Fläche (= Auswahl leer)
-  // schließt ihn wieder. Am Desktop ist das nur ein Ein-/Ausklappen der
-  // dritten Spalte, auf dem Tablet das Öffnen/Schließen des Slide-overs.
+  // Auswahl öffnet den Inspector, leere Auswahl schließt ihn — dokumentierte
+  // Slide-over-Semantik unterhalb des Andock-Breakpoints (Backdrop & E2E-Specs
+  // bauen darauf). Der Unterschied zum alten count-Depotency: das Effect hängt
+  // an der Auswahl-SIGNATUR, nicht an ihrer Länge. Ein Tausch A→B (count bleibt
+  // 1) ließ den Inspector früher zu, wenn er zwischendurch manuell geschlossen
+  // worden war.
+  const selectionSignature = usePlannerStore((state) =>
+    [...state.selectedNodes.map((n) => n.id), ...state.selectedEdges.map((e) => e.id)].join('|')
+  );
   useEffect(() => {
-    setInspectorOpen(selectionCount > 0);
-  }, [selectionCount, setInspectorOpen]);
+    setInspectorOpen(selectionSignature !== '');
+  }, [selectionSignature, setInspectorOpen]);
 
   React.useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -196,7 +202,7 @@ export default function PlannerInner() {
             data-testid="inspector-backdrop"
             aria-hidden="true"
             onClick={() => setInspectorOpen(false)}
-            className="bg-ink/25 fixed inset-0 z-30 hidden md:block xl:hidden"
+            className="fixed inset-0 z-30 hidden bg-ink/25 md:block xl:hidden"
           />
         )}
 

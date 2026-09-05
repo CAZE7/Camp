@@ -81,7 +81,7 @@ export default function Home() {
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <Link
               href="/elektrik-planung"
-              className="hover:bg-oxide/90 inline-flex min-h-11 items-center gap-2 bg-oxide px-4 py-2 text-sm font-medium text-on-signal transition-colors"
+              className="inline-flex min-h-11 items-center gap-2 bg-oxide px-4 py-2 text-sm font-medium text-on-signal transition-colors hover:bg-oxide/90"
             >
               Schaltplan starten
               <ArrowRight className="h-4 w-4" aria-hidden="true" />

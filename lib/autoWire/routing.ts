@@ -1,5 +1,6 @@
 import type { Node } from 'reactflow';
 import { type Meters, type Mm2 } from '../units';
+import { newEntityId } from '../id';
 import { CHARGER_TYPES, type CableEdge, connectionKey, isLeadChemistry, labelOf } from './primitives';
 import { isStarterBattery, looksLikeMinusBusbar, looksLikePlusBusbar } from './validation';
 
@@ -42,7 +43,7 @@ export function ensureNode(
   let node = nodesByLabel.get(key);
   if (!node) {
     node = {
-      id: crypto.randomUUID(),
+      id: newEntityId(),
       type,
       // R-8 (M11-2): Platzierung in Flussrichtung auf dem 16-px-Raster —
       // Issue 11 (Härtung gegen fehlende Position) bleibt erhalten.

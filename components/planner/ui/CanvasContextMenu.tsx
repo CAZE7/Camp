@@ -145,7 +145,7 @@ export function CanvasContextMenu({ state, onClose }: { state: ContextMenuState;
       ref={ref}
       role="menu"
       aria-label="Kontextmenü der Arbeitsfläche"
-      className="fixed z-[60] rounded-xl border border-border bg-card p-2 shadow-2xl"
+      className="fixed z-[60] rounded-lg border border-border bg-card p-2 shadow-2xl"
       style={{ left: Math.max(8, clampedLeft), top: Math.max(8, clampedTop), width: MENU_WIDTH }}
     >
       {state.label && (

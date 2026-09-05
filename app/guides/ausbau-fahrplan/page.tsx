@@ -78,7 +78,7 @@ const StepModule = ({ step }: { step: StepData }) => (
       </div>
     )}
 
-    <div className="bg-copper/10 mb-8 rounded-r-lg border-l-2 border-signal p-5">
+    <div className="mb-8 rounded-r-lg border-l-2 border-signal bg-copper/10 p-5">
       <h3 className="mb-2 flex items-center text-sm font-medium text-signal">
         <svg className="mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
           <path

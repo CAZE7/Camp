@@ -71,7 +71,7 @@ export function SiteHeader({ tone = 'paper' }: { tone?: 'paper' | 'soot' }) {
         <div className="flex items-center gap-1">
           <Link
             href="/elektrik-planung"
-            className="hover:bg-oxide/90 hidden min-h-11 items-center bg-oxide px-3 py-2 text-sm font-medium text-on-signal transition-colors sm:inline-flex"
+            className="hidden min-h-11 items-center bg-oxide px-3 py-2 text-sm font-medium text-on-signal transition-colors hover:bg-oxide/90 sm:inline-flex"
           >
             Planer öffnen
           </Link>

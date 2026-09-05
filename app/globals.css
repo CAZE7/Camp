@@ -154,6 +154,70 @@
     --success: var(--ok);
     --warning: var(--warn);
     --danger: var(--error); /* Alias — CableEdge referenziert --danger */
+
+    /* 5 · RGB-Triplets („Zwillinge“). Tailwind v3 kann einem nackten
+       var()-Farbwert keinen Alpha-Modifier anhängen — alle Utilities wie
+       `bg-moss/10` oder `hover:bg-primary/90` fielen sonst kommentarlos
+       aus dem Stylesheet (toter Hover-Zustand, keine Tints). Jedes von
+       tailwind.config.ts referenzierte Farbtoken hat daher einen
+       *-rgb-Zwilling; lib/designTokens.test.ts bewacht, dass beide in
+       hell UND dunkel identische Farbe ergeben. */
+    --surface-canvas-rgb: 236 238 240;
+    --surface-panel-rgb: 249 250 251;
+    --surface-raised-rgb: 255 255 255;
+    --surface-hover-rgb: 231 234 237;
+    --rule-rgb: 211 215 219;
+    --rule-strong-rgb: 180 186 193;
+    --oxide-rgb: 163 74 36;
+    --text-high-rgb: 22 24 26;
+    --text-med-rgb: 74 81 88;
+    --text-low-rgb: 92 100 107;
+    --ok-rgb: 30 107 79;
+    --warn-rgb: 138 90 10;
+    --error-rgb: 179 38 30;
+    --soot-rgb: 26 29 32;
+    --on-signal-rgb: 255 255 255;
+    --wire-dc-rgb: 198 47 33;
+    --wire-dc-minus-rgb: 63 71 80;
+    --wire-ac-rgb: 37 99 235;
+    --wire-solar-rgb: 180 83 9;
+    --pipe-fresh-rgb: 29 78 216;
+    --pipe-gray-rgb: 75 85 99;
+    --warn-info-rgb: 29 78 216;
+    /* Ketten-Zwillinge — sie folgen den Primitiven themenweit, deshalb
+       nur einmal in :root. */
+    --background-rgb: var(--surface-canvas-rgb);
+    --foreground-rgb: var(--text-high-rgb);
+    --card-rgb: var(--surface-panel-rgb);
+    --card-foreground-rgb: var(--text-high-rgb);
+    --popover-rgb: var(--surface-raised-rgb);
+    --popover-foreground-rgb: var(--text-high-rgb);
+    --primary-rgb: var(--text-high-rgb);
+    --primary-foreground-rgb: var(--surface-panel-rgb);
+    --secondary-rgb: var(--surface-hover-rgb);
+    --secondary-foreground-rgb: var(--text-high-rgb);
+    --muted-rgb: var(--surface-hover-rgb);
+    --muted-foreground-rgb: var(--text-med-rgb);
+    --accent-rgb: var(--surface-hover-rgb);
+    --accent-foreground-rgb: var(--text-high-rgb);
+    --destructive-rgb: var(--error-rgb);
+    --destructive-foreground-rgb: 255 255 255;
+    --border-rgb: var(--rule-rgb);
+    --input-rgb: var(--rule-strong-rgb);
+    --ring-rgb: var(--oxide-rgb);
+    --info-rgb: var(--warn-info-rgb);
+    --success-rgb: var(--ok-rgb);
+    --warning-rgb: var(--warn-rgb);
+    --wire-selected-rgb: var(--oxide-rgb);
+    --wire-error-rgb: var(--error-rgb);
+    --pipe-selected-rgb: var(--oxide-rgb);
+    --warn-critical-rgb: var(--error-rgb);
+    --warn-warning-rgb: var(--warn-rgb);
+    --chart-1-rgb: var(--oxide-rgb);
+    --chart-2-rgb: var(--ok-rgb);
+    --chart-3-rgb: var(--warn-rgb);
+    --chart-4-rgb: var(--wire-ac-rgb);
+    --chart-5-rgb: var(--text-low-rgb);
   }
 
   /* --- Dark Theme („Werft“ dunkel) --------------------------------------
@@ -229,6 +293,36 @@
     --warn-info: var(--wire-ac); /* Hinweis: helles Blau auf dunkler Fläche */
     --warn-info-bg: rgba(122, 162, 247, 0.14);
     --warn-info-border: rgba(122, 162, 247, 0.4);
+
+    /* Ebene-1-Zwillinge der dunklen Werft-Palette (siehe :root, Punkt 5). */
+    --surface-canvas-rgb: 19 21 24;
+    --surface-panel-rgb: 25 28 31;
+    --surface-raised-rgb: 33 37 41;
+    --surface-hover-rgb: 35 40 45;
+    --rule-rgb: 44 49 54;
+    --rule-strong-rgb: 61 67 74;
+    --oxide-rgb: 226 136 95;
+    --text-high-rgb: 232 235 238;
+    --text-med-rgb: 166 173 179;
+    --text-low-rgb: 139 147 154;
+    --ok-rgb: 111 207 151;
+    --warn-rgb: 229 180 91;
+    --error-rgb: 242 107 96;
+    --soot-rgb: 16 18 20;
+    --on-signal-rgb: 19 21 24;
+    --wire-dc-rgb: 248 113 113;
+    --wire-dc-minus-rgb: 203 213 225;
+    --wire-ac-rgb: 122 162 247;
+    --wire-solar-rgb: 251 191 36;
+    --pipe-fresh-rgb: 96 165 250;
+    --pipe-gray-rgb: 148 163 184;
+    --warn-info-rgb: var(--wire-ac-rgb);
+    /* Aliase, die in dunkel einen anderen Ursprung haben als in hell —
+       sie spiegeln die Overrides oben (primar/destruktiv-fläche dunkler,
+       Drahtauswahl Textfarbe). */
+    --primary-foreground-rgb: var(--surface-canvas-rgb);
+    --destructive-foreground-rgb: var(--surface-canvas-rgb);
+    --wire-selected-rgb: var(--text-high-rgb);
 
     ::selection {
       background: color-mix(in srgb, var(--oxide) 30%, transparent);
@@ -436,7 +530,7 @@
     background: var(--surface-raised);
     color: var(--text-high);
     font-family: var(--font-mono), ui-monospace, monospace;
-    font-size: 0.6875rem;
+    font-size: 0.75rem; /* D-2-Lesbarkeitsfloor: kein Text unter 12 px */
     line-height: 1rem;
     white-space: nowrap;
     opacity: 0;
@@ -545,28 +639,42 @@
     border-radius: 4px;
     background: var(--node-card-bg, var(--surface-panel));
     color: var(--text-high);
-    transition: border-color 150ms ease;
+    transition:
+      border-color 150ms ease,
+      box-shadow 150ms ease;
   }
+  /* Statusleiste: 2 px Akzent über der Kartenoberkante. z-index 1, damit sie
+     sichtbar bleibt — ohne würde der Symbolstreifen (höherer Paint-Order)
+     sie überdecken und Selektion/Fehler wären nie zu sehen. */
   .node-card::before {
     content: '';
     position: absolute;
     inset: 0 0 auto 0;
+    z-index: 1;
     height: 2px;
     border-radius: 3px 3px 0 0;
     background: transparent;
     pointer-events: none;
   }
+  /* Hover bleibt dezent (nur Rahmen an), Selektion ist eindeutig: Akzent-
+     rand + Leiste + Vor-ring. Vorher waren Hover und Auswahl identisch —
+     nicht unterscheidbar, sobald zwei Karten nebeneinander stehen. */
   .node-card:hover {
-    border-color: var(--accent-line);
+    border-color: var(--rule-strong);
+    box-shadow: 0 1px 4px color-mix(in srgb, var(--text-high) 14%, transparent);
   }
   .node-card--selected {
     border-color: var(--accent-line);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-line) 45%, transparent);
   }
   .node-card--selected::before {
     background: var(--accent-line);
   }
   .node-card--error {
     border-color: var(--error);
+  }
+  .node-card--error.node-card--selected {
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--error) 45%, transparent);
   }
   .node-card--error::before {
     background: var(--error);
@@ -729,10 +837,11 @@
   }
 
   /* Kabel-Labels bleiben bei jedem Zoom sichtbar (M8-1). Auf schmalen
-     Displays nur die Schrift etwas dichter, nie display:none. */
+     Displays nur die Schrift etwas dichter, nie display:none —
+     D-2 hält die 12-px-Lesbarkeitsgrenze ein. */
   @media (max-width: 767px) {
     .edge-label {
-      font-size: 11px;
+      font-size: 12px;
       padding: 1px 4px;
     }
   }
@@ -797,11 +906,15 @@
   }
 
   /* M8-3: Karten haben eine Mindestbreite und brechen lange Inter-Texte,
-     statt sie über Nachbarn zu schieben. */
+     statt sie über Nachbarn zu schieben. `overflow: visible` (statt hidden):
+     Anschlusspunkte sitzen auf der Rahmenlinie und der Touch-Drag-Griff
+     ragt über die Kartenkante hinaus — beides würde mit hidden abgeschnitten
+     (Griff war auf Touch praktisch unsichtbar). Brechen übernimmt
+     `overflow-wrap: anywhere`. */
   .react-flow__node .custom-drag-handle,
   .react-flow__node [data-testid='planner-node'] {
     min-width: 12rem;
-    overflow: hidden;
+    overflow: visible;
     overflow-wrap: anywhere;
   }
 
@@ -851,6 +964,28 @@
     to {
       stroke-dashoffset: -28;
     }
+  }
+
+  /* --- D-4: Anschlusspunkte auf der Kartenkante ------------------------
+     React Flows Default-Offset (-4 px) galt für 6-px-Handles; unsere
+     Trefferfläche ist 44 px. Ohne Gegenrechnung sitzt der sichtbare Punkt
+     ~18 px IMMER im Karteninneren und überdeckt Text/Kante (Batterie-Titel,
+     „BAT"-Code) und Kabel enden sichtbar im Kartenbauch. Mit -22 px liegt
+     der Punkt-Mittelpunkt exakt auf der Rahmenlinie — wie Anschlusspunkte
+     in CAD-Schaltplänen; Kabel enden an der Kante. Voraussetzung ist das
+     `overflow: visible` unten (sonst schneidet die Karte den halben Punkt
+     und den Touch-Drag-Griff ab). */
+  .planner-shell .react-flow__handle-left {
+    left: -22px;
+  }
+  .planner-shell .react-flow__handle-right {
+    right: -22px;
+  }
+  .planner-shell .react-flow__handle-top {
+    top: -22px;
+  }
+  .planner-shell .react-flow__handle-bottom {
+    bottom: -22px;
   }
 
   .roof-dot-grid {
@@ -918,6 +1053,7 @@
 /* M10-2: Hover / Active / Focus / Disabled an jedem Control, hell + dunkel. */
 .planner-shell .react-flow__controls-button:hover:not(:disabled) {
   background-color: var(--surface-2);
+  color: var(--text-high);
 }
 .planner-shell button:active:not(:disabled) {
   filter: brightness(0.96);
@@ -934,12 +1070,43 @@
   opacity: 0.4;
 }
 
+/* D-4: Zoom-Controls im Werft-Panel-Stil. React Flows mitgeliefertes
+   style.css härtert `#fefefe`-Buttons auf weißer Fläche mit #eee-Trennern —
+   im dunklen Theme leuchteten die Buttons als weiße Kacheln aus der Fläche
+   heraus. Token-Werte überschreiben beider Themes korrekt; das SVG folgt
+   `currentColor`. */
+.planner-shell .react-flow__controls {
+  background: var(--surface-1);
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--text-high) 18%, transparent);
+}
 /* Canvas zoom actions are used on phones and tablets as well as desktop.
    Keep every button at Apple's 44 px recommendation (well above WCAG 2.5.8's
    24 px floor) instead of React Flow's compact 26/32 px defaults. */
 .planner-shell .react-flow__controls-button {
   width: 2.75rem;
   height: 2.75rem;
+  background: var(--surface-1);
+  color: var(--text-med);
+  border-bottom: 1px solid var(--rule);
+  fill: currentColor;
+}
+.planner-shell .react-flow__controls-button:last-child {
+  border-bottom: 0;
+}
+.planner-shell .react-flow__controls-button svg {
+  fill: currentColor;
+}
+
+/* Die React-Flow-Attribution bleibt (Lizenz), aber dezent: kein weißer
+   Kasten auf dunkler Fläche. */
+.planner-shell .react-flow__attribution {
+  background: transparent;
+}
+.planner-shell .react-flow__attribution a {
+  color: var(--text-low);
+}
+.planner-shell .react-flow__attribution a:hover {
+  color: var(--oxide);
 }
 
 /* D-4: MiniMap im Werkzeug-Stil — Panel-Fläche, 1-px-Linie, Radius 4. */

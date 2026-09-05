@@ -63,7 +63,7 @@ export function ValidatingNumberInput({
         aria-errormessage={isInvalid ? `${id}-error` : undefined}
         className={cn(
           'min-h-11 rounded border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2',
-          isInvalid ? 'bg-signal/5 border-signal focus:ring-signal' : 'border-border focus:ring-ring',
+          isInvalid ? 'border-signal bg-signal/5 focus:ring-signal' : 'border-border focus:ring-ring',
           className
         )}
       />

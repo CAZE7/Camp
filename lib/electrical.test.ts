@@ -3,6 +3,7 @@ import {
   DERATE_FACTOR,
   FUSE_MAP,
   calculateMaxFuse,
+  maxFuseForDisplay,
   lookupThermalCrossSection,
   calculateCrossSection,
   getEdgeDomain,
@@ -137,5 +138,20 @@ describe('electrical safety refactoring tests', () => {
     expect(isFuseFeasible(16, 1.5)).toBe(true);
     expect(isFuseFeasible(17, 1.5)).toBe(false);
     expect(isFuseFeasible(0, 1.5)).toBe(true);
+  });
+});
+
+describe('M11-1: maxFuseForDisplay — Anzeige-Klemmung statt Render-Crash', () => {
+  it('liefert für Normquerschnitte dieselben Werte wie calculateMaxFuse', () => {
+    for (const cs of [1.5, 2.5, 4, 6, 10, 16, 25, 35, 50, 70]) {
+      expect(maxFuseForDisplay(cs)).toBe(calculateMaxFuse(cs));
+    }
+  });
+
+  it('klemmt Nicht-Normquerschnitte auf die größte Normstufe darunter ein', () => {
+    expect(maxFuseForDisplay(2.75)).toBe(calculateMaxFuse(2.5));
+    expect(maxFuseForDisplay(95)).toBe(calculateMaxFuse(70)); // Import-Fall
+    expect(maxFuseForDisplay(0.5)).toBe(calculateMaxFuse(1.5)); // unter Minimum
+    expect(() => calculateMaxFuse(95)).toThrow(RangeError); // strikt bleibt strikt
   });
 });

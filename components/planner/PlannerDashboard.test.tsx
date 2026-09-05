@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -330,5 +332,16 @@ describe('PlannerDashboard - Image Export', () => {
 
     consoleErrorSpy.mockRestore();
     document.body.removeChild(mockReactFlowElem);
+  });
+});
+
+describe('Warnungs-Deduplizierung (M11-1)', () => {
+  it('dupliziert die RCD-Regel nicht — kanonisch ist nur missing-rcd-* aus useLiveValidation', () => {
+    // Früher meldete der Dashboard-Memo dieselbe Landstrom-Warnung ein zweites
+    // Mal (id `rcd-${node.id}`) — doppelte Karten im Zentrum, driftende
+    // Warnhinweise (WarningCenter spezialbehandelte nur die Duplikat-ID).
+    const src = readFileSync(resolve(process.cwd(), 'components/planner/PlannerDashboard.tsx'), 'utf8');
+    expect(src).not.toMatch(/id: `rcd-\$\{/);
+    expect(src).not.toContain("type === 'shorePower'");
   });
 });

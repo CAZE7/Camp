@@ -69,7 +69,7 @@ function nextStep(warning: ValidationWarning) {
     return 'So löst du es: Verbinde Eingang mit der Starterseite und Ausgang mit dem abgesicherten Pfad zur Aufbaubatterie.';
   if (warning.id.includes('shunt-bypass'))
     return 'So löst du es: Führe alle Minusleitungen der Aufbaubatterie über den Shunt.';
-  if (warning.id.startsWith('rcd-'))
+  if (warning.id.includes('rcd-'))
     return 'So löst du es: Lass einen zweipoligen FI/LS-Schutz durch eine Elektrofachkraft einplanen.';
   return 'So löst du es: Zeige die betroffene Stelle im Plan und ergänze die dort beschriebene Komponente.';
 }
@@ -117,7 +117,7 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
 
   if (warnings.length === 0) {
     return (
-      <span className="bg-moss/10 hidden min-h-11 items-center gap-1 rounded-lg border border-moss px-3 text-xs font-semibold text-moss xl:inline-flex">
+      <span className="hidden min-h-11 items-center gap-1 rounded border border-moss bg-moss/10 px-3 text-xs font-semibold text-moss md:inline-flex">
         <Check className="h-4 w-4" />
         Keine Hinweise
       </span>
@@ -150,7 +150,7 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
         <div
           ref={panelRef}
           tabIndex={-1}
-          className="absolute right-0 top-full z-50 mt-2 max-h-96 w-11/12 min-w-80 max-w-md overflow-y-auto rounded-xl border border-border bg-card shadow-2xl focus:outline-none sm:w-96"
+          className="absolute right-0 top-full z-50 mt-2 max-h-96 w-11/12 min-w-80 max-w-md overflow-y-auto rounded border border-border bg-card shadow-2xl focus:outline-none sm:w-96"
           role="dialog"
           aria-label="Prüfhinweise für deine Anlage"
         >

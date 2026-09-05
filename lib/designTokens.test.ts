@@ -235,6 +235,59 @@ describe('D-1 Werft-Token-Fundament — Kontraste WCAG AA', () => {
   }
 });
 
+/* ────────────────────────────────────────────────────────────────────────────
+ * Tailwind-Alpha-Zwillinge: tailwind.config.ts referenziert für jedes
+ * planerische Farbtoken `rgb(var(--X-rgb) / <alpha-value>)`. Ohne diese
+ * Zwillinge verwirft Tailwind v3 stillschweigend jeden `bg-x/10`-Modifier
+ * (tote Hover-Zustände, verlorene Tints). Der Guard prüft:
+ *   1. jeder in globals.css deklarierte, zahlenbasierte *-rgb-Zwilling
+ *      stimmt in hell UND dunkel exakt mit dem aufgelösten Hex seines
+ *      Basis-Tokens überein (keine Drift),
+ *   2. jedes von tailwind.config.ts referenzierte *-rgb existiert in :root.
+ * ──────────────────────────────────────────────────────────────────────────── */
+describe('D-1 — RGB-Triplets als Alpha-Zwillinge der Farbtokens', () => {
+  const tripletOf = (block: Map<string, string>, name: string): string | undefined => {
+    let value = block.get(name);
+    for (let i = 0; i < 10 && value; i++) {
+      const ref = value.match(/^var\(--([\w-]+)\)$/)?.[1];
+      if (ref === undefined) break;
+      value = block.get(ref) ?? rootTokens.get(ref);
+    }
+    return value
+      ?.match(/^(\d{1,3}) +(\d{1,3}) +(\d{1,3})$/)
+      ?.slice(1)
+      .map((c) => parseInt(c, 10))
+      ? value
+      : undefined;
+  };
+
+  const numericTriplets = (block: Map<string, string>) =>
+    [...block.keys()].filter((k) => k.endsWith('-rgb') && tripletOf(block, k) !== undefined);
+
+  for (const theme of ['hell', 'dunkel'] as const) {
+    const block = theme === 'hell' ? rootTokens : darkTokens;
+    it.each(numericTriplets(block).map((k) => [k]))(
+      `[${theme}] --%s ist deckungsgleich mit seinem Farbtoken`,
+      (rgbKey) => {
+        const base = rgbKey.replace(/-rgb$/, '');
+        const hex = colorOf(block, base).toLowerCase();
+        const expected = [hex.slice(0, 2), hex.slice(2, 4), hex.slice(4, 6)]
+          .map((pair) => parseInt(pair, 16))
+          .join(' ');
+        expect(tripletOf(block, rgbKey)).toBe(expected);
+      }
+    );
+  }
+
+  it('jedes von tailwind.config.ts referenzierte Zwillingsexemplar existiert in :root', () => {
+    const config = readFileSync(resolve(process.cwd(), 'tailwind.config.ts'), 'utf8');
+    const referenced = [...config.matchAll(/rgb\(var\(--([\w-]+)-rgb\)/g)].map((m) => m[1]!).filter(Boolean);
+    expect(referenced.length).toBeGreaterThan(10);
+    const missing = [...new Set(referenced)].filter((name) => !rootTokens.has(`${name}-rgb`));
+    expect(missing, `fehlende *-rgb in :root: ${missing.join(', ')}`).toEqual([]);
+  });
+});
+
 describe('D-1 Werft-Token-Hygiene — keine Farbliterale außerhalb globals.css', () => {
   const ROOTS = ['app', 'components', 'lib', 'store'] as const;
   const IGNORED = /\.(test|spec|stories)\.[jt]sx?$/;

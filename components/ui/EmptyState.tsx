@@ -14,13 +14,28 @@ interface EmptyStateProps {
   icon?: React.ReactNode;
   /** Kleiner Zusatzhinweis unter dem Button. */
   hint?: string;
+  /**
+   * Zusätzliche Klassen am Vollbild-Container — z. B. `pb-*`, damit die
+   * Karte auf kleinen Bildschirmen über den schwebenden Canvas-Controls sitzt.
+   */
+  className?: string;
 }
 
-export function EmptyState({ title, description, actionLabel, onAction, icon, hint }: EmptyStateProps) {
+export function EmptyState({
+  title,
+  description,
+  actionLabel,
+  onAction,
+  icon,
+  hint,
+  className,
+}: EmptyStateProps) {
   return (
-    <div className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center">
-      <div className="bg-card/95 pointer-events-auto mx-4 flex max-w-sm flex-col items-center rounded-3xl border border-border p-6 text-center shadow-2xl sm:p-8">
-        <div className="bg-primary/10 mb-6 flex h-20 w-20 items-center justify-center rounded-full">
+    <div
+      className={`pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center ${className ?? ''}`.trim()}
+    >
+      <div className="pointer-events-auto mx-4 flex max-w-sm flex-col items-center rounded-lg border border-border bg-card p-6 text-center shadow-2xl sm:p-8">
+        <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
           {icon ?? <Compass className="h-10 w-10 text-primary" strokeWidth={1.5} />}
         </div>
         <h2 className="mb-3 text-2xl font-extrabold tracking-tight text-foreground">{title}</h2>
