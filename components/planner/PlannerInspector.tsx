@@ -67,13 +67,17 @@ export function PlannerInspector() {
         title={isInspectorOpen ? 'Inspector einklappen' : 'Inspector ausklappen'}
         aria-label={isInspectorOpen ? 'Rechte Sidebar einklappen' : 'Rechte Sidebar ausklappen'}
         aria-expanded={isInspectorOpen}
+        aria-controls="planner-inspector-panel"
       >
         {isInspectorOpen ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
       </Button>
 
       {/* Die Spaltenbreite setzt der Container in PlannerInner (Slide-over vs.
           Spalte); hier füllt das Panel nur noch den zugewiesenen Platz. */}
-      <div className="relative z-40 flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden bg-card">
+      <div
+        id="planner-inspector-panel"
+        className="relative z-40 flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden bg-card"
+      >
         <div className="h-full w-full">
           <Inspector
             selectedEdge={selectedEdge}

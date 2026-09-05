@@ -67,3 +67,6 @@
 
 **Learning:** Standalone toggle buttons and segmented controls acting as pseudo-radio groups (like the 'Sommer'/'Winter' toggles) must convey which option is currently active to assistive technologies. Without this, screen reader users cannot perceive the current state or understand the result of their selection.
 **Action:** Always add `aria-pressed={condition}` to any button that visually toggles between active and inactive states.
+## 2023-10-27 - Linking Toggle Buttons to Panels
+**Learning:** React toggle buttons that control sidebars or panels should not only have `aria-expanded` but must also be explicitly linked to the panel's `id` using `aria-controls` to allow screen readers to understand the relationship between the toggle and the controlled content.
+**Action:** Always add an `id` to the toggled panel and apply `aria-controls="panel-id"` to the button that controls it.

@@ -32,6 +32,7 @@ export function PlannerSidebar({ onMobileAdd }: PlannerSidebarProps) {
   return (
     <>
       <div
+        id="planner-sidebar-panel"
         className={`relative z-40 h-full flex-shrink-0 overflow-hidden border-r border-border bg-card shadow-lg transition-all duration-300 ease-in-out motion-reduce:transition-none ${
           isSidebarOpen
             ? 'w-full opacity-100 md:w-[260px] xl:w-[280px]'
@@ -53,6 +54,7 @@ export function PlannerSidebar({ onMobileAdd }: PlannerSidebarProps) {
         title={isSidebarOpen ? 'Sidebar einklappen' : 'Sidebar ausklappen'}
         aria-label={isSidebarOpen ? 'Linke Sidebar einklappen' : 'Linke Sidebar ausklappen'}
         aria-expanded={isSidebarOpen}
+        aria-controls="planner-sidebar-panel"
       >
         {isSidebarOpen ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
       </Button>
