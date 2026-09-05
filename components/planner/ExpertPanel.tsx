@@ -465,7 +465,7 @@ export function ExpertPanel() {
               type="button"
               data-testid="expert-panel-close"
               onClick={() => setIsOpen(false)}
-              className="flex h-11 w-11 items-center justify-center rounded-lg text-bone transition-colors hover:bg-bone/15 hover:text-bone focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bone disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex h-11 w-11 min-w-11 shrink-0 items-center justify-center rounded-lg text-bone transition-colors hover:bg-bone/15 hover:text-bone focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bone disabled:cursor-not-allowed disabled:opacity-40"
               aria-label="Panel schließen"
             >
               <svg
