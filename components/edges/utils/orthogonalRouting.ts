@@ -659,9 +659,7 @@ export function edgeTopologySignature(edges: Edge[]): string {
  * gemessene Koordinaten die Signatur treiben (R-9, cableRouteStore.test.ts).
  * Breite und Höhe fließen mit ein, damit Resize die Signatur ändert.
  */
-export function nodeLayoutSignature(
-  nodes: Node[]
-): string {
+export function nodeLayoutSignature(nodes: Node[]): string {
   const parts: string[] = [];
   for (const node of nodes) {
     if (!node) continue;

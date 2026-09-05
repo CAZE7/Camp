@@ -36,9 +36,7 @@ export { edgeTopologySignature } from '../../edges/utils/orthogonalRouting';
  * Die Validierung hängt in Zukunft von dieser Signatur ab (Hebel 4),
  * damit reine Positionsänderungen keine Validierung auslösen.
  */
-export const nodeTopoSignature = (
-  nodes: Node[] | undefined
-): string => {
+export const nodeTopoSignature = (nodes: Node[] | undefined): string => {
   if (!nodes) return '';
   const parts: string[] = [];
   for (const n of nodes) {
@@ -55,9 +53,7 @@ export const nodeTopoSignature = (
  * Kantenänderungen (hinzufügen/entfernen/Re-Konnekt), nicht bei
  * Node-Positionen.
  */
-export function edgeTopoSignature(
-  edges: Edge[] | undefined
-): string {
+export function edgeTopoSignature(edges: Edge[] | undefined): string {
   if (!edges) return '';
   return edges
     .map((e) => {
@@ -199,7 +195,7 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
           title: 'FI-Schutzschalter fehlt',
           focusId: sp.id,
           focusType: 'node',
-          message: `Am Landstromanschluss „${sp.data?.label || 'Landstrom'}\" fehlt ein FI-Schutzschalter mit höchstens 30 mA (RCD ≤ 30 mA). Nach DIN VDE 0100-721 ist dieser zwingend vorgeschrieben — Stromschlaggefahr. Lass den 230-V-Schutz von einer Elektrofachkraft einplanen.`,
+          message: `Am Landstromanschluss „${sp.data?.label || 'Landstrom'} fehlt ein FI-Schutzschalter mit höchstens 30 mA (RCD ≤ 30 mA). Nach DIN VDE 0100-721 ist dieser zwingend vorgeschrieben — Stromschlaggefahr. Lass den 230-V-Schutz von einer Elektrofachkraft einplanen.`,
         });
       }
     });

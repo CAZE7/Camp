@@ -16,18 +16,20 @@ import { reroutePreviewAffected } from '../components/edges/utils/routePreview';
 // In vitest the globals `describe`, `it`, `expect` exist; in tsx they don't.
 // We detect them at runtime and fall back to no-ops otherwise.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const testDescribe = (typeof describe === 'function' ? describe : ((_: string, fn: () => void) => fn()));
+const testDescribe = typeof describe === 'function' ? describe : (_: string, fn: () => void) => fn();
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const testIt = (typeof it === 'function' ? it : ((_: string, fn: () => void) => fn()));
+const testIt = typeof it === 'function' ? it : (_: string, fn: () => void) => fn();
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const testExpect = (typeof expect === 'function' ? expect :
-  ((value: unknown) => ({
-     toBeLessThan: (_: number) => {},
-     toBeGreaterThanOrEqual: (_: number) => {},
-     toBeLessThanOrEqual: (_: number) => {},
-     toBe: (_: number) => {},
-     toEqual: (_: unknown) => {},
-  })));
+const testExpect =
+  typeof expect === 'function'
+    ? expect
+    : (value: unknown) => ({
+        toBeLessThan: (_: number) => {},
+        toBeGreaterThanOrEqual: (_: number) => {},
+        toBeLessThanOrEqual: (_: number) => {},
+        toBe: (_: number) => {},
+        toEqual: (_: unknown) => {},
+      });
 
 // ---------------------------------------------------------------------------
 // Deterministischer PRNG (mulberry32) — fixer Seed, kein Math.random
@@ -107,7 +109,9 @@ function buildReferencePlan(seed: number = SEED): { nodes: BenchNode[]; edges: R
     if (si === ti) ti = (ti + 1) % nodes.length;
     const src = nodes[si].id;
     const tgt = nodes[ti].id;
-    const exists = edges.some(e => (e.source === src && e.target === tgt) || (e.source === tgt && e.target === src));
+    const exists = edges.some(
+      (e) => (e.source === src && e.target === tgt) || (e.source === tgt && e.target === src)
+    );
     if (!exists) {
       edges.push({ id: `e${idCounter++}`, source: src, target: tgt });
     }
@@ -120,7 +124,9 @@ function buildReferencePlan(seed: number = SEED): { nodes: BenchNode[]; edges: R
 // Hilfsfunktionen
 // ---------------------------------------------------------------------------
 
-const makeNodeSnapshot = (nodes: BenchNode[]): Map<string, { id: string; x: number; y: number; width: number; height: number }> => {
+const makeNodeSnapshot = (
+  nodes: BenchNode[]
+): Map<string, { id: string; x: number; y: number; width: number; height: number }> => {
   const map = new Map<string, { id: string; x: number; y: number; width: number; height: number }>();
   for (const node of nodes) {
     if (!node) continue;
@@ -136,7 +142,7 @@ const makeNodeSnapshot = (nodes: BenchNode[]): Map<string, { id: string; x: numb
 };
 
 const moveNode = (nodes: BenchNode[], nodeId: string, dx: number, dy: number): BenchNode[] => {
-  return nodes.map(n => {
+  return nodes.map((n) => {
     if (n.id !== nodeId) return n;
     return {
       ...n,
@@ -312,7 +318,9 @@ function printResults(
   console.log('='.repeat(72));
   console.log('  Edge Routing Performance Benchmark — CI-Gate Zusammenfassung');
   console.log('='.repeat(72));
-  console.log(`\n[Referenz-Benchmark] Zeit: ${dirtyResult.dirtyTime.toFixed(2)}ms | Routen: ${refRoutesCount}`);
+  console.log(
+    `\n[Referenz-Benchmark] Zeit: ${dirtyResult.dirtyTime.toFixed(2)}ms | Routen: ${refRoutesCount}`
+  );
   console.log(`\n[Dirty Region (Hebel 1)]`);
   console.log(`  Dirty-Zeit: ${dirtyResult.dirtyTime.toFixed(2)}ms`);
   console.log(`  Direkt betroffene: ${dirtyResult.directlyAffectedCount}`);

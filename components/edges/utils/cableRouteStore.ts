@@ -1,7 +1,7 @@
 import { useRef, useLayoutEffect, useSyncExternalStore } from 'react';
-import { useStore, useStoreApi, type Node, type Edge } from 'reactflow';
+import { useStore, useStoreApi, type Node } from 'reactflow';
 import { routeAllCables, type RouteEdgeRef } from './routeAll';
-import { reroutePreviewAffected, routePreviewCables } from './routePreview';
+import { reroutePreviewAffected } from './routePreview';
 import type { PathResult } from './pathfinding';
 import { edgeTopologySignature, nodeLayoutSignature } from './orthogonalRouting';
 
@@ -42,18 +42,10 @@ const NODE_FALLBACK_H = 120;
 
 const nodeBBox = (node: Node | NodeSnapshot): Rect => {
   const isNodeObj = node instanceof Object && 'positionAbsolute' in node;
-  const x = isNodeObj
-    ? (node.positionAbsolute?.x ?? node.position.x)
-    : (node as NodeSnapshot).x;
-  const y = isNodeObj
-    ? (node.positionAbsolute?.y ?? node.position.y)
-    : (node as NodeSnapshot).y;
-  const width = isNodeObj
-    ? (node.width ?? NODE_FALLBACK_W)
-    : (node as NodeSnapshot).width;
-  const height = isNodeObj
-    ? (node.height ?? NODE_FALLBACK_H)
-    : (node as NodeSnapshot).height;
+  const x = isNodeObj ? (node.positionAbsolute?.x ?? node.position.x) : (node as NodeSnapshot).x;
+  const y = isNodeObj ? (node.positionAbsolute?.y ?? node.position.y) : (node as NodeSnapshot).y;
+  const width = isNodeObj ? (node.width ?? NODE_FALLBACK_W) : (node as NodeSnapshot).width;
+  const height = isNodeObj ? (node.height ?? NODE_FALLBACK_H) : (node as NodeSnapshot).height;
   return { x, y, width, height };
 };
 
@@ -73,8 +65,7 @@ const pathBBox = (waypoints: readonly { x: number; y: number }[]): Rect | null =
 };
 
 const rectsIntersect = (a: Rect, b: Rect): boolean =>
-  a.x < b.x + b.width && a.x + a.width > b.x &&
-  a.y < b.y + b.height && a.y + a.height > b.y;
+  a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
 
 // ---------------------------------------------------------------------------
 // Snapshot- und Diff-Helfer
@@ -95,10 +86,7 @@ const buildSnapshot = (nodes: Node[]): Map<string, NodeSnapshot> => {
   return map;
 };
 
-const diffSnapshots = (
-  prev: Map<string, NodeSnapshot>,
-  cur: Map<string, NodeSnapshot>
-): Set<string> => {
+const diffSnapshots = (prev: Map<string, NodeSnapshot>, cur: Map<string, NodeSnapshot>): Set<string> => {
   const changed = new Set<string>();
   for (const [id, curNode] of cur) {
     const prevNode = prev.get(id);
@@ -140,12 +128,18 @@ export const computeDirtyRegion = (
   let topologicalChange = curEdgeIds.size !== cachedIds.size;
   if (!topologicalChange) {
     for (const id of curEdgeIds) {
-      if (!cachedIds.has(id)) { topologicalChange = true; break; }
+      if (!cachedIds.has(id)) {
+        topologicalChange = true;
+        break;
+      }
     }
   }
   if (!topologicalChange) {
     for (const id of cachedIds) {
-      if (!curEdgeIds.has(id)) { topologicalChange = true; break; }
+      if (!curEdgeIds.has(id)) {
+        topologicalChange = true;
+        break;
+      }
     }
   }
 
@@ -192,10 +186,7 @@ export const computeDirtyRegion = (
     const bbox = pathBBox(route.waypoints);
     if (!bbox) continue;
     for (const [, rects] of movedNodeRects) {
-      if (
-        (rects.old && rectsIntersect(bbox, rects.old)) ||
-        (rects.neu && rectsIntersect(bbox, rects.neu))
-      ) {
+      if ((rects.old && rectsIntersect(bbox, rects.old)) || (rects.neu && rectsIntersect(bbox, rects.neu))) {
         regionalAffected.add(edge.id);
         break;
       }
@@ -237,21 +228,30 @@ export const createThrottledRunner = (
       const now = Date.now();
       const elapsed = now - lastRun;
       if (elapsed >= windowMs) {
-        if (timer) { clearTimeout(timer); timer = null; }
+        if (timer) {
+          clearTimeout(timer);
+          timer = null;
+        }
         lastRun = now;
         run();
         return;
       }
       if (!timer) {
-        timer = setTimeout(() => {
-          timer = null;
-          lastRun = Date.now();
-          run();
-        }, Math.max(0, windowMs - elapsed));
+        timer = setTimeout(
+          () => {
+            timer = null;
+            lastRun = Date.now();
+            run();
+          },
+          Math.max(0, windowMs - elapsed)
+        );
       }
     },
     cancel: () => {
-      if (timer) { clearTimeout(timer); timer = null; }
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
     },
   };
 };
@@ -271,7 +271,9 @@ export const getCableRoute = (id: string): PathResult | undefined => currentRout
 
 const subscribe = (cb: () => void): (() => void) => {
   routeListeners.add(cb);
-  return () => { routeListeners.delete(cb); };
+  return () => {
+    routeListeners.delete(cb);
+  };
 };
 
 export const publishCableRoutes = (routes: Map<string, PathResult>): void => {
@@ -280,13 +282,17 @@ export const publishCableRoutes = (routes: Map<string, PathResult>): void => {
 };
 
 export const useCableRoute = (id: string): PathResult | undefined =>
-  useSyncExternalStore(subscribe, () => getCableRoute(id), () => undefined);
+  useSyncExternalStore(
+    subscribe,
+    () => getCableRoute(id),
+    () => undefined
+  );
 
 // ---------------------------------------------------------------------------
 // Drag-Detektor
 // ---------------------------------------------------------------------------
 
-const DRAG_DETECTION_WINDOW_MS = 200;
+const _DRAG_DETECTION_WINDOW_MS = 200;
 
 type DragDetector = {
   readonly lastTouchMs: number;
@@ -299,8 +305,12 @@ const createDragDetector = (): DragDetector => {
   let lastTouchMs = 0;
   let isActive = false;
   return {
-    get lastTouchMs() { return lastTouchMs; },
-    get isActive() { return isActive; },
+    get lastTouchMs() {
+      return lastTouchMs;
+    },
+    get isActive() {
+      return isActive;
+    },
     touch(now: number): boolean {
       const wasActive = isActive;
       lastTouchMs = now;
@@ -363,7 +373,12 @@ export const CableRouteSync = () => {
         return;
       }
 
-      const previewRoutes = reroutePreviewAffected(curNodes, curEdges, dirty.allAffectedEdgeIds, currentRoutes);
+      const previewRoutes = reroutePreviewAffected(
+        curNodes,
+        curEdges,
+        dirty.allAffectedEdgeIds,
+        currentRoutes
+      );
       publishCableRoutes(previewRoutes);
       snapshotRef.current = buildSnapshot(curNodes);
     }, ROUTE_THROTTLE_MS);
@@ -459,7 +474,7 @@ export const CableRouteSync = () => {
         debounceTimerRef.current = null;
       }
     };
-  }, [signature, previewRunner, fullRunner]);
+  }, [signature, previewRunner, fullRunner, plannerStore]);
 
   return null;
 };

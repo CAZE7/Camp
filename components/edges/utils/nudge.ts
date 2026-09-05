@@ -11,16 +11,11 @@
  */
 
 import type { Point, Rect } from './pathfinding';
-import {
-  isOrthogonalPath,
-  pathHitsObstacles,
-  containsPoint,
-  stitchOrthogonal,
-} from './pathfinding';
+import { isOrthogonalPath, pathHitsObstacles, containsPoint, stitchOrthogonal } from './pathfinding';
 
 export const NUDGE_GAP = 16;
 export const NUDGE_THRESHOLD = 10;
-export const NUDGE_MIN_OVERLAP = 12;
+const NUDGE_MIN_OVERLAP = 12;
 
 const EPS = 1e-6;
 
@@ -42,19 +37,13 @@ type Seg = {
   lo: number;
   hi: number;
   perp: number;
-  /* Welcher Korridor-Cluster-Repräsentant (eindeutig pro Achse). */
   clusterKey: number;
 };
 
 const clonePaths = (paths: NudgePath[]): Point[][] =>
   paths.map((p) => p.waypoints.map((pt) => ({ x: pt.x, y: pt.y })));
 
-const rangesOverlap = (
-  aLo: number,
-  aHi: number,
-  bLo: number,
-  bHi: number
-): boolean =>
+const rangesOverlap = (aLo: number, aHi: number, bLo: number, bHi: number): boolean =>
   aHi >= bLo + NUDGE_MIN_OVERLAP && bHi >= aLo + NUDGE_MIN_OVERLAP;
 
 /**
@@ -62,10 +51,7 @@ const rangesOverlap = (
  * Der lange Lauf eines 5-Punkt-L (Elbow→T2) ist damit dabei.
  * Handles (0, n-1) bleiben unangetastet.
  */
-const collectInterior = (
-  pts: Point[],
-  axis: 'h' | 'v'
-): Seg[] => {
+const collectInterior = (pts: Point[], axis: 'h' | 'v'): Seg[] => {
   const n = pts.length;
   if (n < 4) return [];
   const segs: Seg[] = [];
@@ -104,8 +90,8 @@ const collectInterior = (
 const clusterSegments = (
   segs: Seg[],
   threshold: number,
-  minOverlap: number
-): { parent: number[]; groupIds: Map<number, number>; clusterCount: number } => {
+  _minOverlap: number
+): { parent: number[]; _groupIds: Map<number, number>; clusterCount: number } => {
   const n = segs.length;
   const parent = new Array<number>(n);
   for (let i = 0; i < n; i++) parent[i] = i;
@@ -126,38 +112,28 @@ const clusterSegments = (
 
   for (let i = 0; i < n; i++) {
     for (let j = i + 1; j < n; j++) {
-      if (Math.abs(at(segs, i).perp - at(segs, j).perp) > threshold)
-        continue;
-      if (
-        !rangesOverlap(
-          at(segs, i).lo,
-          at(segs, i).hi,
-          at(segs, j).lo,
-          at(segs, j).hi
-        )
-      )
-        continue;
+      if (Math.abs(at(segs, i).perp - at(segs, j).perp) > threshold) continue;
+      if (!rangesOverlap(at(segs, i).lo, at(segs, i).hi, at(segs, j).lo, at(segs, j).hi)) continue;
       union(i, j);
     }
   }
 
-  const groupIds = new Map<number, number>();
-  const clusterCount = new Set<number>();
+  const _groupIds = new Map<number, number>();
+  const _clusterCount = new Set<number>();
   for (let i = 0; i < n; i++) {
     const root = find(i);
-    clusterCount.add(root);
-    if (!groupIds.has(root)) {
-      groupIds.set(root, groupIds.size);
+    _clusterCount.add(root);
+    if (!_groupIds.has(root)) {
+      _groupIds.set(root, _groupIds.size);
     }
-    at(segs, i).clusterKey = groupIds.get(root)!;
+    at(segs, i).clusterKey = _groupIds.get(root)!;
   }
 
-  return { parent, groupIds, clusterCount: clusterCount.size };
+  return { parent, _groupIds, clusterCount: _clusterCount.size };
 };
 
 /** Nur echte Innenpunkte verschieben — Stubs bekommen später einen Ellbogen. */
-const isFreeVertex = (index: number, n: number): boolean =>
-  index >= 2 && index <= n - 3;
+const isFreeVertex = (index: number, n: number): boolean => index >= 2 && index <= n - 3;
 
 /**
  * Apply Nudging auf betroffene Lanes.
@@ -189,11 +165,7 @@ const applyAxisScoped = (
   if (segs.length < 2) return;
 
   // Cluster bilden
-  const { parent, groupIds, clusterCount } = clusterSegments(
-    segs,
-    NUDGE_THRESHOLD,
-    NUDGE_MIN_OVERLAP
-  );
+  const { parent, _groupIds, _clusterCount } = clusterSegments(segs, NUDGE_THRESHOLD, NUDGE_MIN_OVERLAP);
 
   // Cluster-Gruppen (wiederkehrende Indices)
   const buckets = new Map<number, number[]>();
@@ -237,8 +209,7 @@ const applyAxisScoped = (
 
     // Pfad-Reihenfolge: nach Perp-Koordinate, dann ID
     const pathOrder = Array.from(byPath.keys()).sort((pa, pb) => {
-      const da = at(segs, at(byPath.get(pa)!, 0)).perp -
-        at(segs, at(byPath.get(pb)!, 0)).perp;
+      const da = at(segs, at(byPath.get(pa)!, 0)).perp - at(segs, at(byPath.get(pb)!, 0)).perp;
       if (Math.abs(da) > EPS) return da;
       return at(pathIds, pa).localeCompare(at(pathIds, pb));
     });
@@ -260,8 +231,7 @@ const applyAxisScoped = (
       if (!affectedPathsInCluster.has(p)) continue;
 
       const target = affectedMean + (k - (affectedCount - 1) / 2) * gap;
-      const delta =
-        target - at(segs, at(byPath.get(p)!, 0)).perp;
+      const delta = target - at(segs, at(byPath.get(p)!, 0)).perp;
       if (Math.abs(delta) < EPS) continue;
 
       const pts = at(clones, p);
@@ -284,11 +254,7 @@ const applyAxisScoped = (
   }
 };
 
-const obstaclesForPath = (
-  obstacles: Rect[],
-  start: Point,
-  end: Point
-): Rect[] => {
+const obstaclesForPath = (obstacles: Rect[], start: Point, end: Point): Rect[] => {
   const out: Rect[] = [];
   for (let i = 0; i < obstacles.length; i++) {
     const r = at(obstacles, i);
@@ -333,24 +299,8 @@ export function nudgeOrthogonalPaths(
   }
 
   // Nur betroffene Achsen verarbeiten
-  applyAxisScoped(
-    clones,
-    originals,
-    ids,
-    pathIndexById,
-    affected,
-    'h',
-    gap
-  );
-  applyAxisScoped(
-    clones,
-    originals,
-    ids,
-    pathIndexById,
-    affected,
-    'v',
-    gap
-  );
+  applyAxisScoped(clones, originals, ids, pathIndexById, affected, 'h', gap);
+  applyAxisScoped(clones, originals, ids, pathIndexById, affected, 'v', gap);
 
   for (let i = 0; i < paths.length; i++) {
     const id = at(ids, i);
@@ -362,16 +312,12 @@ export function nudgeOrthogonalPaths(
     clone[clone.length - 1] = { x: end.x, y: end.y };
 
     const changed = clone.some(
-      (p, j) =>
-        Math.abs(p.x - at(orig, j).x) > EPS ||
-        Math.abs(p.y - at(orig, j).y) > EPS
+      (p, j) => Math.abs(p.x - at(orig, j).x) > EPS || Math.abs(p.y - at(orig, j).y) > EPS
     );
     const repaired = changed ? stitchOrthogonal(clone) : orig;
     const relevant = obstaclesForPath(obstacles, start, end);
     const ok =
-      isOrthogonalPath(repaired) &&
-      (relevant.length === 0 ||
-        !pathHitsObstacles(repaired, relevant));
+      isOrthogonalPath(repaired) && (relevant.length === 0 || !pathHitsObstacles(repaired, relevant));
     out.set(id, ok ? repaired : orig);
   }
   return out;
