@@ -25,7 +25,7 @@ const at = <T>(arr: readonly T[], i: number): T => {
   if (v === undefined) {
     throw new RangeError(`nudge.at: Index ${i} außerhalb (Länge ${arr.length})`);
   }
-  return v;
+  return v as T;
 };
 
 export type NudgePath = { id: string; waypoints: Point[] };
@@ -119,17 +119,17 @@ const clusterSegments = (
   }
 
   const _groupIds = new Map<number, number>();
-  const _clusterCount = new Set<number>();
+  const clusterCount = new Set<number>();
   for (let i = 0; i < n; i++) {
     const root = find(i);
-    _clusterCount.add(root);
+    clusterCount.add(root);
     if (!_groupIds.has(root)) {
       _groupIds.set(root, _groupIds.size);
     }
     at(segs, i).clusterKey = _groupIds.get(root)!;
   }
 
-  return { parent, _groupIds, clusterCount: _clusterCount.size };
+  return { parent, _groupIds, clusterCount: clusterCount.size };
 };
 
 /** Nur echte Innenpunkte verschieben — Stubs bekommen später einen Ellbogen. */
@@ -165,7 +165,7 @@ const applyAxisScoped = (
   if (segs.length < 2) return;
 
   // Cluster bilden
-  const { parent, _groupIds, _clusterCount } = clusterSegments(segs, NUDGE_THRESHOLD, NUDGE_MIN_OVERLAP);
+  const { parent, _groupIds } = clusterSegments(segs, NUDGE_THRESHOLD, NUDGE_MIN_OVERLAP);
 
   // Cluster-Gruppen (wiederkehrende Indices)
   const buckets = new Map<number, number[]>();
@@ -197,7 +197,7 @@ const applyAxisScoped = (
     const affectedPathsInCluster = new Set<number>();
     for (const [, pathIndices] of byPath) {
       for (const si of pathIndices) {
-        const pathId = at(pathIds, at(segs, si).path);
+        const pathId = at(pathIds, at(segs, si).path) || '';
         if (affectedPathIds.has(pathId)) {
           affectedPathsInCluster.add(at(segs, si).path);
           break;
@@ -211,7 +211,9 @@ const applyAxisScoped = (
     const pathOrder = Array.from(byPath.keys()).sort((pa, pb) => {
       const da = at(segs, at(byPath.get(pa)!, 0)).perp - at(segs, at(byPath.get(pb)!, 0)).perp;
       if (Math.abs(da) > EPS) return da;
-      return at(pathIds, pa).localeCompare(at(pathIds, pb));
+      const pathA = at(pathIds, pa);
+      const pathB = at(pathIds, pb);
+      return (pathA || '').localeCompare(pathB || '');
     });
 
     // Mittelwert aller betroffenen Pfade im Cluster
@@ -295,7 +297,7 @@ export function nudgeOrthogonalPaths(
   // PathIndex map für schnellen Lookup
   const pathIndexById = new Map<string, number>();
   for (let i = 0; i < ids.length; i++) {
-    pathIndexById.set(ids[i], i);
+    pathIndexById.set(ids[i]!, i);
   }
 
   // Nur betroffene Achsen verarbeiten

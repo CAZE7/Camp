@@ -11,6 +11,18 @@
 import { routeAllCables, type RouteEdgeRef } from '../components/edges/utils/routeAll';
 import { computeDirtyRegion } from '../components/edges/utils/cableRouteStore';
 import { reroutePreviewAffected } from '../components/edges/utils/routePreview';
+import type { PathResult } from '../components/edges/utils/pathfinding';
+
+// Deklarations-Check für Vitest-Globals (nur Typen, nicht runtime)
+declare const describe: (name: string, fn: () => void) => void;
+declare const it: (name: string, fn: () => void) => void;
+declare const expect: (value: unknown) => {
+  toBeLessThan: (n: number) => void;
+  toBeGreaterThanOrEqual: (n: number) => void;
+  toBeLessThanOrEqual: (n: number) => void;
+  toBe: (n: number) => void;
+  toEqual: (value: unknown) => void;
+};
 
 // Support both tsx (direct) and vitest (test) execution modes.
 // In vitest the globals `describe`, `it`, `expect` exist; in tsx they don't.
@@ -107,10 +119,12 @@ function buildReferencePlan(seed: number = SEED): { nodes: BenchNode[]; edges: R
     const si = Math.floor(rng() * nodes.length);
     let ti = Math.floor(rng() * nodes.length);
     if (si === ti) ti = (ti + 1) % nodes.length;
-    const src = nodes[si].id;
-    const tgt = nodes[ti].id;
+    const src = nodes[si]!.id;
+    const tgt = nodes[ti]!.id;
+    const eSrc = src;
+    const eTgt = tgt;
     const exists = edges.some(
-      (e) => (e.source === src && e.target === tgt) || (e.source === tgt && e.target === src)
+      (e) => (e.source === eSrc && e.target === eTgt) || (e.source === eTgt && e.target === eSrc)
     );
     if (!exists) {
       edges.push({ id: `e${idCounter++}`, source: src, target: tgt });
@@ -155,7 +169,7 @@ const moveNode = (nodes: BenchNode[], nodeId: string, dx: number, dy: number): B
 // Benchmark-Helfer (direkt ausführbar und testbar)
 // ---------------------------------------------------------------------------
 
-function refBench(): Map<string, ReturnType<typeof routeAllCables>> {
+function refBench(): Map<string, PathResult> {
   const plan = buildReferencePlan();
   return routeAllCables(plan.nodes as any, plan.edges as any);
 }
@@ -176,7 +190,7 @@ function benchDirtyRegion(): {
   const prevSnapshot = makeNodeSnapshot(nodes);
   const initialRoutes = routeAllCables(nodes as any, edges as any);
 
-  const movedNodeId = nodes[0].id;
+  const movedNodeId = nodes[0]!.id;
   const movedNodes = moveNode(nodes, movedNodeId, 100, 0);
 
   const dirtyStart = performance.now();
@@ -221,7 +235,7 @@ function benchPreviewVsFull(): {
   const nodes = plan.nodes;
   const edges = plan.edges;
 
-  const movedNodeId = nodes[0].id;
+  const movedNodeId = nodes[0]!.id;
   const movedNodes = moveNode(nodes, movedNodeId, 100, 0);
   const prevSnapshot = makeNodeSnapshot(nodes);
   const initialRoutes = routeAllCables(nodes as any, edges as any);
