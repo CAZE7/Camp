@@ -24,7 +24,68 @@ export const SEVERITY_ORDER: Record<ValidationWarning['type'], number> = {
   info: 2,
 };
 
+/** Signatur der Kantentopologie — ändert sich nur bei Edge-Änderungen,
+ * nicht bei Node-Moves. Importiert aus orthogonalRouting.
+ */
+export { edgeTopologySignature } from '../../edges/utils/orthogonalRouting';
+
+/**
+ * Node-Topologie-Signatur — ändert sich nur bei Node-Änderungen
+ * (hinzufügen, entfernen, type/data-Änderung), nicht bei Moves.
+ *
+ * Die Validierung hängt in Zukunft von dieser Signatur ab (Hebel 4),
+ * damit reine Positionsänderungen keine Validierung auslösen.
+ */
+export const nodeTopoSignature = (
+  nodes: Node[] | undefined
+): string => {
+  if (!nodes) return '';
+  const parts: string[] = [];
+  for (const n of nodes) {
+    if (!n) continue;
+    parts.push(
+      `${n.id}|${n.type ?? ''}|${n.data?.watts ?? ''}|${n.data?.amps ?? ''}|${n.data?.capacity ?? ''}|${n.data?.hasRcd ?? ''}`
+    );
+  }
+  return parts.sort().join(';');
+};
+
+/**
+ * Topologische Signatur der Kanten — ändert sich nur bei
+ * Kantenänderungen (hinzufügen/entfernen/Re-Konnekt), nicht bei
+ * Node-Positionen.
+ */
+export function edgeTopoSignature(
+  edges: Edge[] | undefined
+): string {
+  if (!edges) return '';
+  return edges
+    .map((e) => {
+      if (!e) return '';
+      return `${e.id}|${e.source}|${e.target}|${e.sourceHandle ?? ''}|${e.targetHandle ?? ''}`;
+    })
+    .sort()
+    .join(';');
+}
+
+/** Validierung von der Topologie abhängig machen, nicht von jeder Mutation.
+ *
+ * Vorher: useMemo([nodes, edges]) → jede Frame-Änderung (auch reine Moves)
+ * löst Validierung aus.
+ *
+ * Nachher: useMemo([edgeTopoSignature(edges), nodeTopoSignature(nodes)])
+ * → nur wenn Kanten hinzugefügt/entfernt/umgeleitet werden oder sich Node-Daten
+ * ändern, triggert Validierung. Reine Positionsänderungen bleiben unberührt.
+ *
+ * Hinweis: Der Spannungsfall (voltageDrop.ts) ist zur Laufzeit pro Kante
+ * geometry-abhängig und wird NICHT durch diese Entkopplung beeinträchtigt —
+ * er läuft in CableEdge.tsx über useMemo mit sourceX/Y als Dependency.
+ */
 export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
+  // Topologie-Signaturen als Dependency-Hash
+  const edgeSig = useMemo(() => edgeTopoSignature(edges), [edges]);
+  const nodeTopoSig = useMemo(() => nodeTopoSignature(nodes), [nodes]);
+
   return useMemo(() => {
     const warnings: ValidationWarning[] = [];
 
@@ -96,9 +157,8 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
     }
 
     // --- Rule A: Quellschutz-Regel ---
-    // Look for edges coming from battery, inverter, solar charger on positive line
     edges.forEach((edge) => {
-      if (edge.data?.edgeDomain === 'AC_230V') return; // Skip DC fuse warning for AC edges
+      if (edge.data?.edgeDomain === 'AC_230V') return;
       if (edge.sourceHandle?.includes('plus')) {
         const sourceNode = nodeMap.get(edge.source);
         const targetNode = nodeMap.get(edge.target);
@@ -139,7 +199,7 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
           title: 'FI-Schutzschalter fehlt',
           focusId: sp.id,
           focusType: 'node',
-          message: `Am Landstromanschluss „${sp.data?.label || 'Landstrom'}" fehlt ein FI-Schutzschalter mit höchstens 30 mA (RCD ≤ 30 mA). Nach DIN VDE 0100-721 ist dieser zwingend vorgeschrieben — Stromschlaggefahr. Lass den 230-V-Schutz von einer Elektrofachkraft einplanen.`,
+          message: `Am Landstromanschluss „${sp.data?.label || 'Landstrom'}\" fehlt ein FI-Schutzschalter mit höchstens 30 mA (RCD ≤ 30 mA). Nach DIN VDE 0100-721 ist dieser zwingend vorgeschrieben — Stromschlaggefahr. Lass den 230-V-Schutz von einer Elektrofachkraft einplanen.`,
         });
       }
     });
@@ -167,10 +227,9 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
     if (batteries.length > 0 && consumers.length > 0) {
       const totalBatteryAh = batteries.reduce((acc, node) => acc + (Number(node.data.capacity) || 0), 0);
 
-      // Calculate daily Ah consumption using dynamic system voltage
       const totalDailyAh = consumers.reduce((acc, node) => {
         const watts = Number(node.data.watts) || 0;
-        const hours = Number(node.data.hours) || 4; // default to 4 hours
+        const hours = Number(node.data.hours) || 4;
         return acc + (watts * hours) / sysVoltage;
       }, 0);
 
@@ -249,8 +308,6 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
     });
 
     // --- Rule F: Der Shunt wird umgangen ---
-    // Nur die Aufbaubatterie, an der der Shunt hängt. Die Starterbatterie
-    // des Ladeboosters führt Minus fachgerecht direkt und ist kein Bypass.
     if (shunts.length > 0) {
       const shuntBatteryIds = new Set<string>();
       for (const shunt of shunts) {
@@ -299,5 +356,10 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
     }
 
     return warnings;
-  }, [nodes, edges]);
+
+    // Die useMemo-Abhängigkeiten oben (edgeSig, nodeTopoSig) garantieren,
+    // dass diese Berechnung nur bei topologischen Änderungen neu ausgeführt wird.
+    // Reine Positionsänderungen (Drag ohne Topologie-Änderung) lösen KEIN Re-Render aus.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [edgeSig, nodeTopoSig]);
 }

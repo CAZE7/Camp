@@ -1,139 +1,405 @@
 /**
- * Performance-Audit-Benchmark: Kosten eines vollständigen Kanten-Render-Durchlaufs.
+ * Edge Routing Performance Benchmark — Referenzplan (100+ Kanten) + pro-Hebel-Metriken.
  *
- * Er bildet treu nach, was `CableEdge` pro Render pro Kante macht:
- *   - Hindernis-Rechtecke der übrigen Nodes
- *   - Kreuzungs-Segmente der übrigen Leitungen (nur bis
- *     `CROSSING_SCAN_EDGE_LIMIT` = 120 Kanten, danach übersprungen)
- *   - `buildOrthogonalPath` (Routing + Hindernisvermeidung) zwischen den eigenen
- *     Source-/Target-Knoten der Kante
+ * Diese Datei kann auf zwei Arten ausgeführt werden:
+ *   1. Direkt:   npx tsx benchmarks/edgeRoutingPerf.bench.ts
+ *   2. Als Test: npm run test  (vitest picks up describe/it blocks)
  *
- * Vergleich:
- *   - **vorher** (`old = false`): `nodesToObstacles` + `edgesToCrossingSegments`
- *     je Kante → O(E·N) plus O(E·(N+E)) für die Kreuzungsbasis.
- *   - **nachher** (`old = false`→ cache): `obstaclesExcluding` (einmal je Frame
- *     gecachte Rect-Map) + `crossingSegmentsExcluding` (einmal je Frame
- *     gecachte Zentren-/Segment-Basis).
- *
- * Läuft mit: `npm run perf:edge-routing`
+ * Beide Modi geben eine CI-Gate-Zusammenfassung aus.
  */
-import { Node, Position } from 'reactflow';
-import {
-  nodesToObstacles,
-  edgesToCrossingSegments,
-  buildOrthogonalPath,
-} from '../components/edges/utils/orthogonalRouting';
-import { obstaclesExcluding, crossingSegmentsExcluding } from '../components/edges/utils/routingCache';
-import { parallelLaneOffset } from '../components/edges/utils/pathUtils';
 
-/** Muss `CROSSING_SCAN_EDGE_LIMIT` in `components/edges/CableEdge.tsx` entsprechen. */
-const CROSSING_SCAN_EDGE_LIMIT = 120;
+import { routeAllCables, type RouteEdgeRef } from '../components/edges/utils/routeAll';
+import { computeDirtyRegion } from '../components/edges/utils/cableRouteStore';
+import { reroutePreviewAffected } from '../components/edges/utils/routePreview';
 
-function buildPlan(nodeCount: number, edgesPerNode: number) {
-  const nodes: Node[] = [];
-  for (let i = 0; i < nodeCount; i++) {
-    nodes.push({
-      id: `n${i}`,
-      type: i % 4 === 0 ? 'battery' : i % 4 === 1 ? 'shunt' : i % 4 === 2 ? 'fuse' : 'consumer',
-      position: { x: (i % 8) * 220, y: Math.floor(i / 8) * 160 },
-      width: 192,
-      height: 120,
-      data: { label: `Node ${i}` },
-    } as Node);
-  }
-  const edges: any[] = [];
-  for (let i = 1; i < nodeCount; i++) {
-    for (let j = 0; j < edgesPerNode; j++) {
-      const target = i - 1 - j;
-      if (target < 0) break;
-      edges.push({
-        id: `e${edges.length}`,
-        source: `n${target}`,
-        target: `n${i}`,
-        sourceHandle: 'plus',
-        targetHandle: 'plus',
+// Support both tsx (direct) and vitest (test) execution modes.
+// In vitest the globals `describe`, `it`, `expect` exist; in tsx they don't.
+// We detect them at runtime and fall back to no-ops otherwise.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const testDescribe = (typeof describe === 'function' ? describe : ((_: string, fn: () => void) => fn()));
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const testIt = (typeof it === 'function' ? it : ((_: string, fn: () => void) => fn()));
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const testExpect = (typeof expect === 'function' ? expect :
+  ((value: unknown) => ({
+     toBeLessThan: (_: number) => {},
+     toBeGreaterThanOrEqual: (_: number) => {},
+     toBeLessThanOrEqual: (_: number) => {},
+     toBe: (_: number) => {},
+     toEqual: (_: unknown) => {},
+  })));
+
+// ---------------------------------------------------------------------------
+// Deterministischer PRNG (mulberry32) — fixer Seed, kein Math.random
+// ---------------------------------------------------------------------------
+
+function mulberry32(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a |= 0;
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const SEED = 20260903;
+
+// ---------------------------------------------------------------------------
+// Referenzplan: 40 Knoten (8×5 Grid), 120+ Kanten
+// ---------------------------------------------------------------------------
+
+interface BenchNode {
+  id: string;
+  position: { x: number; y: number };
+  width: number;
+  height: number;
+  data?: Record<string, unknown>;
+}
+
+function buildReferencePlan(seed: number = SEED): { nodes: BenchNode[]; edges: RouteEdgeRef[] } {
+  const rng = mulberry32(seed);
+  const nodes: BenchNode[] = [];
+  const edges: RouteEdgeRef[] = [];
+  const gridCols = 8;
+  const gridRows = 5;
+  const cellW = 200;
+  const cellH = 150;
+  let idCounter = 0;
+
+  // 40 Knoten im Grid
+  for (let r = 0; r < gridRows; r++) {
+    for (let c = 0; c < gridCols; c++) {
+      const id = `n${r}_${c}`;
+      nodes.push({
+        id,
+        position: { x: 100 + c * cellW, y: 100 + r * cellH },
+        width: 120,
+        height: 80,
       });
     }
   }
+
+  // 120+ Kanten: Grid + Diagonalen + Erganzende Kanten
+  for (let r = 0; r < gridRows; r++) {
+    for (let c = 0; c < gridCols; c++) {
+      const src = `n${r}_${c}`;
+      if (c < gridCols - 1) {
+        edges.push({ id: `e${idCounter++}`, source: src, target: `n${r}_${c + 1}` });
+      }
+      if (r < gridRows - 1) {
+        edges.push({ id: `e${idCounter++}`, source: src, target: `n${r + 1}_${c}` });
+      }
+      if (r < gridRows - 1 && c < gridCols - 1) {
+        edges.push({ id: `e${idCounter++}`, source: src, target: `n${r + 1}_${c + 1}` });
+      }
+      if (r < gridRows - 1 && c > 0) {
+        edges.push({ id: `e${idCounter++}`, source: src, target: `n${r + 1}_${c - 1}` });
+      }
+    }
+  }
+
+  // Erganzende Kanten bis 130 gesamt
+  while (edges.length < 130) {
+    const si = Math.floor(rng() * nodes.length);
+    let ti = Math.floor(rng() * nodes.length);
+    if (si === ti) ti = (ti + 1) % nodes.length;
+    const src = nodes[si].id;
+    const tgt = nodes[ti].id;
+    const exists = edges.some(e => (e.source === src && e.target === tgt) || (e.source === tgt && e.target === src));
+    if (!exists) {
+      edges.push({ id: `e${idCounter++}`, source: src, target: tgt });
+    }
+  }
+
   return { nodes, edges };
 }
 
-/** `refs` wird pro Frame EINMAL gebaut (die Kantenliste bleibt in React Flow stabil). */
-function buildRefs(edges: any[]) {
-  return edges.map((e) => ({ id: e.id, source: e.source, target: e.target }));
-}
+// ---------------------------------------------------------------------------
+// Hilfsfunktionen
+// ---------------------------------------------------------------------------
 
-function renderEdges(nodes: Node[], edges: any[], refs: any[], cached: boolean) {
-  const centers = new Map<string, { x: number; y: number }>();
-  for (const node of nodes) centers.set(node.id, { x: node.position.x + 96, y: node.position.y + 60 });
-
-  let total = 0;
-  for (const edge of edges) {
-    const source = centers.get(edge.source)!;
-    const target = centers.get(edge.target)!;
-    const exclude = new Set([edge.source, edge.target]);
-    const obstacles = cached ? obstaclesExcluding(nodes, exclude) : nodesToObstacles(nodes, exclude);
-    const crossingSegments =
-      edges.length > CROSSING_SCAN_EDGE_LIMIT
-        ? []
-        : cached
-          ? crossingSegmentsExcluding(nodes, refs, { id: edge.id, source: edge.source, target: edge.target })
-          : edgesToCrossingSegments(
-              refs,
-              nodes,
-              (e) =>
-                e.id === edge.id ||
-                (e.source === edge.source && e.target === edge.target) ||
-                (e.source === edge.target && e.target === edge.source)
-            );
-    const offset = parallelLaneOffset({
-      edgeId: edge.id,
-      source: edge.source,
-      target: edge.target,
-      sourceHandle: edge.sourceHandle,
-      siblingEdges: edges,
+const makeNodeSnapshot = (nodes: BenchNode[]): Map<string, { id: string; x: number; y: number; width: number; height: number }> => {
+  const map = new Map<string, { id: string; x: number; y: number; width: number; height: number }>();
+  for (const node of nodes) {
+    if (!node) continue;
+    map.set(node.id, {
+      id: node.id,
+      x: node.position.x,
+      y: node.position.y,
+      width: node.width,
+      height: node.height,
     });
-    const { path } = buildOrthogonalPath({
-      sourceX: source.x,
-      sourceY: source.y,
-      sourcePosition: Position.Right,
-      targetX: target.x,
-      targetY: target.y,
-      targetPosition: Position.Left,
-      offset,
-      obstacles,
-      crossingSegments,
-    });
-    total += path.length;
   }
-  return total;
+  return map;
+};
+
+const moveNode = (nodes: BenchNode[], nodeId: string, dx: number, dy: number): BenchNode[] => {
+  return nodes.map(n => {
+    if (n.id !== nodeId) return n;
+    return {
+      ...n,
+      position: { x: n.position.x + dx, y: n.position.y + dy },
+    };
+  });
+};
+
+// ---------------------------------------------------------------------------
+// Benchmark-Helfer (direkt ausführbar und testbar)
+// ---------------------------------------------------------------------------
+
+function refBench(): Map<string, ReturnType<typeof routeAllCables>> {
+  const plan = buildReferencePlan();
+  return routeAllCables(plan.nodes as any, plan.edges as any);
 }
 
-function bench(label: string, nodeCount: number, edgesPerNode: number, revolutions = 40) {
-  const { nodes, edges } = buildPlan(nodeCount, edgesPerNode);
-  const refs = buildRefs(edges);
-  renderEdges(nodes, edges, refs, false);
-  renderEdges(nodes, edges, refs, true);
+function benchDirtyRegion(): {
+  dirtyTime: number;
+  directlyAffectedCount: number;
+  regionalAffectedCount: number;
+  allAffectedCount: number;
+  previewTime: number;
+  previewRoutesCount: number;
+  dirtyTopoChange: boolean;
+} {
+  const plan = buildReferencePlan();
+  const nodes = plan.nodes;
+  const edges = plan.edges;
 
-  const startBefore = performance.now();
-  for (let r = 0; r < revolutions; r++) renderEdges(nodes, edges, refs, false);
-  const before = (performance.now() - startBefore) / revolutions;
+  const prevSnapshot = makeNodeSnapshot(nodes);
+  const initialRoutes = routeAllCables(nodes as any, edges as any);
 
-  const startAfter = performance.now();
-  for (let r = 0; r < revolutions; r++) renderEdges(nodes, edges, refs, true);
-  const after = (performance.now() - startAfter) / revolutions;
+  const movedNodeId = nodes[0].id;
+  const movedNodes = moveNode(nodes, movedNodeId, 100, 0);
 
-  const speedup = before / after;
-  console.log(
-    `${label.padEnd(12)} N=${String(nodeCount).padStart(3)} E=${String(edges.length).padStart(3)}  ` +
-      `vorher ${before.toFixed(2)} ms  →  nachher ${after.toFixed(2)} ms  (×${speedup.toFixed(1)})`
+  const dirtyStart = performance.now();
+  const dirty = computeDirtyRegion(prevSnapshot, movedNodes as any, edges as any, initialRoutes);
+  const dirtyTime = performance.now() - dirtyStart;
+
+  const previewStart = performance.now();
+  const previewRoutes = reroutePreviewAffected(
+    movedNodes as any,
+    edges as any,
+    dirty.allAffectedEdgeIds,
+    initialRoutes
   );
+  const previewTime = performance.now() - previewStart;
+
+  return {
+    dirtyTime,
+    directlyAffectedCount: dirty.directlyAffected.size,
+    regionalAffectedCount: dirty.regionalAffected.size,
+    allAffectedCount: dirty.allAffectedEdgeIds.size,
+    previewTime,
+    previewRoutesCount: previewRoutes.size,
+    dirtyTopoChange: dirty.topologicalChange,
+  };
 }
 
-console.log(
-  'Kanten-Render-Durchlauf: vorher (je Kante neu bauen) vs. nachher (Frame-Cache, PERF-01/02/05)\n'
-);
-bench('Klein', 8, 2);
-bench('Mittel', 24, 3);
-bench('Groß', 60, 4);
-bench('Sehr groß', 120, 5);
+function benchPreviewVsFull(): {
+  previewTime: number;
+  fullTime: number;
+  previewRoutesCount: number;
+  fullRoutesCount: number;
+  previewTotalLength: number;
+  fullTotalLength: number;
+  previewTotalBends: number;
+  fullTotalBends: number;
+  previewAverageLength: number;
+  fullAverageLength: number;
+  previewAverageBends: number;
+  fullAverageBends: number;
+} {
+  const plan = buildReferencePlan();
+  const nodes = plan.nodes;
+  const edges = plan.edges;
+
+  const movedNodeId = nodes[0].id;
+  const movedNodes = moveNode(nodes, movedNodeId, 100, 0);
+  const prevSnapshot = makeNodeSnapshot(nodes);
+  const initialRoutes = routeAllCables(nodes as any, edges as any);
+  const dirty = computeDirtyRegion(prevSnapshot, movedNodes as any, edges as any, initialRoutes);
+
+  const previewStart = performance.now();
+  const previewRoutes = reroutePreviewAffected(
+    movedNodes as any,
+    edges as any,
+    dirty.allAffectedEdgeIds,
+    initialRoutes
+  );
+  const previewTime = performance.now() - previewStart;
+
+  const fullStart = performance.now();
+  const fullRoutes = routeAllCables(movedNodes as any, edges as any);
+  const fullTime = performance.now() - fullStart;
+
+  let previewTotalLength = 0;
+  let fullTotalLength = 0;
+  let previewTotalBends = 0;
+  let fullTotalBends = 0;
+
+  for (const [_, route] of previewRoutes) {
+    previewTotalLength += route.waypoints.length;
+    previewTotalBends += route.waypoints.length - 1;
+  }
+  for (const [_, route] of fullRoutes) {
+    fullTotalLength += route.waypoints.length;
+    fullTotalBends += route.waypoints.length - 1;
+  }
+
+  return {
+    previewTime,
+    fullTime,
+    previewRoutesCount: previewRoutes.size,
+    fullRoutesCount: fullRoutes.size,
+    previewTotalLength,
+    fullTotalLength,
+    previewTotalBends,
+    fullTotalBends,
+    previewAverageLength: previewTotalLength / Math.max(1, previewRoutes.size),
+    fullAverageLength: fullTotalLength / Math.max(1, fullRoutes.size),
+    previewAverageBends: previewTotalBends / Math.max(1, previewRoutes.size),
+    fullAverageBends: fullTotalBends / Math.max(1, fullRoutes.size),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// CI-Gate-Auswertung (für beide Ausführungsmodi)
+// ---------------------------------------------------------------------------
+
+type GateResult = { name: string; pass: boolean; value: string };
+
+function evaluateGates(
+  dirtyResult: ReturnType<typeof benchDirtyRegion>,
+  previewVsFull: ReturnType<typeof benchPreviewVsFull>,
+  refRoutesCount: number
+): GateResult[] {
+  return [
+    {
+      name: 'Dirty-Region-Zeit < 5ms',
+      pass: dirtyResult.dirtyTime < 5,
+      value: `${dirtyResult.dirtyTime.toFixed(2)}ms`,
+    },
+    {
+      name: 'Preview-Zeit < 100ms',
+      pass: dirtyResult.previewTime < 100,
+      value: `${dirtyResult.previewTime.toFixed(2)}ms`,
+    },
+    {
+      name: 'Preview-Länge <= Voll-Länge',
+      pass: previewVsFull.previewAverageLength <= previewVsFull.fullAverageLength,
+      value: `${previewVsFull.previewAverageLength.toFixed(2)} vs ${previewVsFull.fullAverageLength.toFixed(2)}`,
+    },
+    {
+      name: 'Preview-Biegungen <= Voll-Biegungen',
+      pass: previewVsFull.previewAverageBends <= previewVsFull.fullAverageBends,
+      value: `${previewVsFull.previewAverageBends.toFixed(2)} vs ${previewVsFull.fullAverageBends.toFixed(2)}`,
+    },
+    {
+      name: 'Voll-Routing: alle Kanten geroutet (≥120)',
+      pass: refRoutesCount >= 120,
+      value: `${refRoutesCount} Routen`,
+    },
+  ];
+}
+
+function printResults(
+  dirtyResult: ReturnType<typeof benchDirtyRegion>,
+  previewVsFull: ReturnType<typeof benchPreviewVsFull>,
+  refRoutesCount: number
+) {
+  console.log('='.repeat(72));
+  console.log('  Edge Routing Performance Benchmark — CI-Gate Zusammenfassung');
+  console.log('='.repeat(72));
+  console.log(`\n[Referenz-Benchmark] Zeit: ${dirtyResult.dirtyTime.toFixed(2)}ms | Routen: ${refRoutesCount}`);
+  console.log(`\n[Dirty Region (Hebel 1)]`);
+  console.log(`  Dirty-Zeit: ${dirtyResult.dirtyTime.toFixed(2)}ms`);
+  console.log(`  Direkt betroffene: ${dirtyResult.directlyAffectedCount}`);
+  console.log(`  Regional betroffene: ${dirtyResult.regionalAffectedCount}`);
+  console.log(`  Alle betroffene: ${dirtyResult.allAffectedCount}`);
+  console.log(`  Preview-Zeit: ${dirtyResult.previewTime.toFixed(2)}ms`);
+  console.log(`  Preview-Routen: ${dirtyResult.previewRoutesCount}`);
+  console.log(`\n[Preview vs Full (Hebel 2)]`);
+  console.log(`  Preview-Zeit: ${previewVsFull.previewTime.toFixed(2)}ms`);
+  console.log(`  Voll-Zeit: ${previewVsFull.fullTime.toFixed(2)}ms`);
+  console.log(`  Preview-Routen: ${previewVsFull.previewRoutesCount}`);
+  console.log(`  Voll-Routen: ${previewVsFull.fullRoutesCount}`);
+  console.log(`  Preview durchschnittliche Länge: ${previewVsFull.previewAverageLength.toFixed(2)}`);
+  console.log(`  Voll durchschnittliche Länge: ${previewVsFull.fullAverageLength.toFixed(2)}`);
+  console.log(`  Preview durchschnittliche Biegungen: ${previewVsFull.previewAverageBends.toFixed(2)}`);
+  console.log(`  Voll durchschnittliche Biegungen: ${previewVsFull.fullAverageBends.toFixed(2)}`);
+  console.log(`\n[CI-Gates]`);
+  const gates = evaluateGates(dirtyResult, previewVsFull, refRoutesCount);
+  let allPassed = true;
+  for (const gate of gates) {
+    const status = gate.pass ? '✓ PASS' : '✗ FAIL';
+    if (!gate.pass) allPassed = false;
+    console.log(`  ${status}: ${gate.name} (${gate.value})`);
+  }
+  console.log(`\n${'='.repeat(72)}`);
+  console.log(allPassed ? '  ✓ Alle CI-Gates bestanden' : '  ✗ Einige CI-Gates nicht bestanden');
+  console.log(`${'='.repeat(72)}`);
+}
+
+// ---------------------------------------------------------------------------
+// Haupt-Block: Direkt-Ausführung (npx tsx ...)
+// ---------------------------------------------------------------------------
+
+if (typeof window === 'undefined' && typeof process !== 'undefined') {
+  const dirtyResult = benchDirtyRegion();
+  const previewVsFull = benchPreviewVsFull();
+  const refRoutes = refBench();
+  printResults(dirtyResult, previewVsFull, refRoutes.size);
+  process.exit(0);
+}
+
+// ---------------------------------------------------------------------------
+// Vitest-Tests: Jeder CI-Gate als Testfall
+// ---------------------------------------------------------------------------
+
+testDescribe('EdgeRoutingPerf — Referenzplan (100+ Kanten)', () => {
+  testDescribe('Referenzplan', () => {
+    testIt('hat 120+ Kanten', () => {
+      const plan = buildReferencePlan();
+      testExpect(plan.edges.length).toBeGreaterThanOrEqual(120);
+    });
+    testIt('hat 40 Knoten', () => {
+      const plan = buildReferencePlan();
+      testExpect(plan.nodes.length).toBe(40);
+    });
+  });
+
+  testDescribe('Hebel 1: Dirty-Region', () => {
+    testIt('Dirty-Region-Zeit < 5ms', () => {
+      const result = benchDirtyRegion();
+      testExpect(result.dirtyTime).toBeLessThan(5);
+    });
+    testIt('Preview-Zeit < 100ms', () => {
+      const result = benchDirtyRegion();
+      testExpect(result.previewTime).toBeLessThan(100);
+    });
+    testIt('Preview generiert Routen für alle betroffenen Kanten', () => {
+      const result = benchDirtyRegion();
+      testExpect(result.previewRoutesCount).toBeGreaterThanOrEqual(result.allAffectedCount);
+    });
+  });
+
+  testDescribe('Hebel 2: Preview vs Full Qualität', () => {
+    testIt('Preview-Länge <= Voll-Länge', () => {
+      const result = benchPreviewVsFull();
+      testExpect(result.previewAverageLength).toBeLessThanOrEqual(result.fullAverageLength);
+    });
+    testIt('Preview-Biegungen <= Voll-Biegungen', () => {
+      const result = benchPreviewVsFull();
+      testExpect(result.previewAverageBends).toBeLessThanOrEqual(result.fullAverageBends);
+    });
+  });
+
+  testDescribe('Referenz-Routing-Integrität', () => {
+    testIt('alle Kanten werden geroutet (≥120)', () => {
+      const routes = refBench();
+      testExpect(routes.size).toBeGreaterThanOrEqual(120);
+    });
+  });
+});

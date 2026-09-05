@@ -2,7 +2,6 @@ import { type Node, Position } from 'reactflow';
 import {
   findCablePath,
   nodesToObstacles,
-  inflateRect,
   pathLength,
   countBends,
   countCrossings,
@@ -127,7 +126,7 @@ const LANE_GRID = 8;
 /** Korridor-Cluster: Segmente näher als das kommen auf dieselbe Lane. */
 const CORRIDOR_MERGE_TOLERANCE = 6;
 
-/** Mindestüberlappung entlang der Achse, damit zwei Segmente „denselben Korridor“ fahren. */
+/** Mindestüberlappung entlang der Achse, damit zwei Segmente „denselben Korridor" fahren. */
 const CORRIDOR_MIN_OVERLAP = 32;
 
 /**
@@ -137,7 +136,7 @@ const CORRIDOR_MIN_OVERLAP = 32;
  * Bündel. Statt der id-basierten Reihenfolge sortiert diese Stufe nach der
  * Quer-Koordinate des Gegenübers: Wer weiter oben ankommt, verlässt den
  * Port auch oben — die Stubs überkreuzen sich nicht („Kantenreihenfolge
- * an Ports tauschen“). Deterministisch: Gleichstand per Edge-ID.
+ * an Ports tauschen"). Deterministisch: Gleichstand per Edge-ID.
  */
 export function portOrderedLaneOffsets(
   edges: RouteEdgeRef[],
@@ -269,12 +268,20 @@ export function alignSharedCorridors(
 }
 
 /**
- * Routet alle Kanten in einem Durchgang und schiebt parallele Trassen global.
+ * Routet alle Kanten vollständig mit Alignment und Nudging.
+ * Optional: nur betroffene Kanten (nach Dirty-Region) erneut routen.
  */
-export function routeAllCables(nodes: Node[], edges: RouteEdgeRef[]): Map<string, PathResult> {
-  const out = new Map<string, PathResult>();
-  if (edges.length === 0) return out;
+export function routeAllCables(
+  nodes: Node[],
+  edges: RouteEdgeRef[],
+  affectedEdgeIds?: ReadonlySet<string>
+): Map<string, PathResult> {
+  // Wenn kein Subset angegeben, betrifft alles (rückwärtskompatibel)
+  const subset = affectedEdgeIds ?? new Set(edges.map((e) => e.id));
 
+  if (edges.length === 0) return new Map();
+
+  const out = new Map<string, PathResult>();
   const nodeById = new Map<string, Node>();
   for (let i = 0; i < nodes.length; i++) {
     const node = nodes[i];
@@ -335,9 +342,10 @@ export function routeAllCables(nodes: Node[], edges: RouteEdgeRef[]): Map<string
 
   const raw: { id: string; waypoints: Point[]; result: PathResult }[] = [];
 
+  // Nur betroffene Kanten routen (oder alle, wenn kein Subset)
   for (let i = 0; i < edges.length; i++) {
     const edge = edges[i];
-    if (!edge) continue;
+    if (!edge || !subset.has(edge.id)) continue;
     const srcNode = nodeById.get(edge.source);
     const tgtNode = nodeById.get(edge.target);
     const flow = centerDelta(srcNode, tgtNode);
@@ -392,7 +400,7 @@ export function routeAllCables(nodes: Node[], edges: RouteEdgeRef[]): Map<string
   );
   const nudged = nudgeOrthogonalPaths(
     raw.map((r) => ({ id: r.id, waypoints: aligned.get(r.id) ?? r.waypoints })),
-    { obstacles: inflated }
+    { obstacles: inflated, affectedPathIds: subset }
   );
 
   // Deterministische Ausgabereihenfolge: nach Edge-ID, nicht nach Eingabereihenfolge.
@@ -406,4 +414,14 @@ export function routeAllCables(nodes: Node[], edges: RouteEdgeRef[]): Map<string
     out.set(id, rebuild(wp, crossings, item.result.usedSearch));
   }
   return out;
+}
+
+/** Einfache Inflationsfunktion. */
+function inflateRect(r: Rect, margin: number): Rect {
+  return {
+    x: r.x - margin,
+    y: r.y - margin,
+    width: r.width + 2 * margin,
+    height: r.height + 2 * margin,
+  };
 }

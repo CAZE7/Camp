@@ -1,154 +1,465 @@
 import { useRef, useLayoutEffect, useSyncExternalStore } from 'react';
 import { useStore, useStoreApi, type Node, type Edge } from 'reactflow';
 import { routeAllCables, type RouteEdgeRef } from './routeAll';
+import { reroutePreviewAffected, routePreviewCables } from './routePreview';
 import type { PathResult } from './pathfinding';
+import { edgeTopologySignature, nodeLayoutSignature } from './orthogonalRouting';
 
-/**
- * R-9 (Cache-/Re-Routing-Korrektheit): Layout-Signaturen.
- *
- * Die alte `nodeVersion` war die SUMME aller Positionen und Maße — ein
- * Verschieben um (+10, −10) ließ sie unverändert, und die Kabel blieben
- * auf der alten Trasse (stiller Stale-Pfad). Die Signaturen hier sind
- * vollständig: jede Positions-, Größen- oder Topologie-Änderung ändert
- * den String. Move, Resize, Delete, Connect und Undo/Redo laufen damit
- * über dieselbe, inhaltsbasierte Invalidierung.
- */
+export { edgeTopologySignature, nodeLayoutSignature } from './orthogonalRouting';
 
-/** Signatur aller Node-Geometrien (positionAbsolute, width, height). */
-export function nodeLayoutSignature(nodes: Node[]): string {
-  const parts: string[] = [];
+// ---------------------------------------------------------------------------
+// Typen
+// ---------------------------------------------------------------------------
+
+export interface Rect {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+}
+
+export interface DirtyRegion {
+  readonly topologicalChange: boolean;
+  readonly directlyAffected: ReadonlySet<string>;
+  readonly regionalAffected: ReadonlySet<string>;
+  readonly allAffectedEdgeIds: ReadonlySet<string>;
+}
+
+type NodeSnapshot = {
+  readonly id: string;
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+};
+
+// ---------------------------------------------------------------------------
+// Bounding-Box-Operationen
+// ---------------------------------------------------------------------------
+
+const NODE_FALLBACK_W = 192;
+const NODE_FALLBACK_H = 120;
+
+const nodeBBox = (node: Node | NodeSnapshot): Rect => {
+  const isNodeObj = node instanceof Object && 'positionAbsolute' in node;
+  const x = isNodeObj
+    ? (node.positionAbsolute?.x ?? node.position.x)
+    : (node as NodeSnapshot).x;
+  const y = isNodeObj
+    ? (node.positionAbsolute?.y ?? node.position.y)
+    : (node as NodeSnapshot).y;
+  const width = isNodeObj
+    ? (node.width ?? NODE_FALLBACK_W)
+    : (node as NodeSnapshot).width;
+  const height = isNodeObj
+    ? (node.height ?? NODE_FALLBACK_H)
+    : (node as NodeSnapshot).height;
+  return { x, y, width, height };
+};
+
+const pathBBox = (waypoints: readonly { x: number; y: number }[]): Rect | null => {
+  if (!waypoints || waypoints.length < 2) return null;
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const p of waypoints) {
+    if (p.x < minX) minX = p.x;
+    if (p.y < minY) minY = p.y;
+    if (p.x > maxX) maxX = p.x;
+    if (p.y > maxY) maxY = p.y;
+  }
+  return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+};
+
+const rectsIntersect = (a: Rect, b: Rect): boolean =>
+  a.x < b.x + b.width && a.x + a.width > b.x &&
+  a.y < b.y + b.height && a.y + a.height > b.y;
+
+// ---------------------------------------------------------------------------
+// Snapshot- und Diff-Helfer
+// ---------------------------------------------------------------------------
+
+const buildSnapshot = (nodes: Node[]): Map<string, NodeSnapshot> => {
+  const map = new Map<string, NodeSnapshot>();
   for (const node of nodes) {
     if (!node) continue;
-    parts.push(
-      `${node.id}:${node.positionAbsolute?.x ?? node.position.x},${node.positionAbsolute?.y ?? node.position.y}` +
-        `:${node.width ?? ''}x${node.height ?? ''}`
-    );
+    map.set(node.id, {
+      id: node.id,
+      x: node.positionAbsolute?.x ?? node.position.x,
+      y: node.positionAbsolute?.y ?? node.position.y,
+      width: node.width ?? NODE_FALLBACK_W,
+      height: node.height ?? NODE_FALLBACK_H,
+    });
   }
-  return parts.sort().join('|');
-}
+  return map;
+};
 
-/** Signatur der Kantentopologie (id, Enden, Handles). */
-export function edgeTopologySignature(
-  edges: Pick<Edge, 'id' | 'source' | 'target' | 'sourceHandle' | 'targetHandle'>[]
-): string {
-  return edges
-    .map((e) => `${e.id}:${e.source}:${e.target}:${e.sourceHandle ?? ''}:${e.targetHandle ?? ''}`)
-    .sort()
-    .join('|');
-}
+const diffSnapshots = (
+  prev: Map<string, NodeSnapshot>,
+  cur: Map<string, NodeSnapshot>
+): Set<string> => {
+  const changed = new Set<string>();
+  for (const [id, curNode] of cur) {
+    const prevNode = prev.get(id);
+    if (!prevNode) {
+      changed.add(id);
+    } else if (
+      prevNode.x !== curNode.x ||
+      prevNode.y !== curNode.y ||
+      prevNode.width !== curNode.width ||
+      prevNode.height !== curNode.height
+    ) {
+      changed.add(id);
+    }
+  }
+  for (const id of prev.keys()) {
+    if (!cur.has(id)) changed.add(id);
+  }
+  return changed;
+};
 
-/**
- * Drossel für das Live-Re-Routing beim Draggen (R-9): Aufrufe innerhalb
- * des Fensters werden auf einen einzigen trailing-Run zusammengefasst —
- * der Pfad bleibt während des Draggens logisch, ohne jede Frame neu zu
- * rechnen; nach dem Loslassen läuft immer der Endzustand.
- */
-export function createThrottledRunner(
+// ---------------------------------------------------------------------------
+// Dirty-Region-Berechnung (Hebel 1)
+// ---------------------------------------------------------------------------
+
+export const computeDirtyRegion = (
+  prevSnapshot: Map<string, NodeSnapshot>,
+  curNodes: Node[],
+  curEdges: RouteEdgeRef[],
+  cachedRoutes: Map<string, PathResult>
+): DirtyRegion => {
+  const curSnapshot = buildSnapshot(curNodes);
+  const movedIds = diffSnapshots(prevSnapshot, curSnapshot);
+
+  const directlyAffected = new Set<string>();
+  const regionalAffected = new Set<string>();
+
+  const curEdgeIds = new Set<string>(curEdges.map((e) => e.id));
+  const cachedIds = new Set<string>(cachedRoutes.keys());
+  let topologicalChange = curEdgeIds.size !== cachedIds.size;
+  if (!topologicalChange) {
+    for (const id of curEdgeIds) {
+      if (!cachedIds.has(id)) { topologicalChange = true; break; }
+    }
+  }
+  if (!topologicalChange) {
+    for (const id of cachedIds) {
+      if (!curEdgeIds.has(id)) { topologicalChange = true; break; }
+    }
+  }
+
+  if (movedIds.size === 0 && !topologicalChange) {
+    return {
+      topologicalChange: false,
+      directlyAffected,
+      regionalAffected,
+      allAffectedEdgeIds: regionalAffected,
+    };
+  }
+
+  if (topologicalChange) {
+    for (const edge of curEdges) {
+      directlyAffected.add(edge.id);
+    }
+    return {
+      topologicalChange: true,
+      directlyAffected,
+      regionalAffected: new Set<string>(),
+      allAffectedEdgeIds: directlyAffected,
+    };
+  }
+
+  for (const edge of curEdges) {
+    if (movedIds.has(edge.source) || movedIds.has(edge.target)) {
+      directlyAffected.add(edge.id);
+    }
+  }
+
+  const movedNodeRects = new Map<string, { old: Rect | null; neu: Rect | null }>();
+  for (const id of movedIds) {
+    const prevItem = prevSnapshot.get(id);
+    const curItem = curNodes.find((n) => n.id === id) ?? null;
+    const oldRect = prevItem ? nodeBBox(prevItem) : null;
+    const neuRect = curItem ? nodeBBox(curItem) : null;
+    movedNodeRects.set(id, { old: oldRect, neu: neuRect });
+  }
+
+  for (const edge of curEdges) {
+    if (directlyAffected.has(edge.id)) continue;
+    const route = cachedRoutes.get(edge.id);
+    if (!route) continue;
+    const bbox = pathBBox(route.waypoints);
+    if (!bbox) continue;
+    for (const [, rects] of movedNodeRects) {
+      if (
+        (rects.old && rectsIntersect(bbox, rects.old)) ||
+        (rects.neu && rectsIntersect(bbox, rects.neu))
+      ) {
+        regionalAffected.add(edge.id);
+        break;
+      }
+    }
+  }
+
+  const allAffected = new Set<string>([...directlyAffected, ...regionalAffected]);
+  return {
+    topologicalChange: false,
+    directlyAffected,
+    regionalAffected,
+    allAffectedEdgeIds: allAffected,
+  };
+};
+
+// ---------------------------------------------------------------------------
+// Routing-Qualitätsstufen (Hebel 2)
+// ---------------------------------------------------------------------------
+
+/** Volles Routing — volle Qualität mit Nudging, Alignment, Kreuzungsminimierung. */
+export const rerouteFull = (nodes: Node[], edges: RouteEdgeRef[]): Map<string, PathResult> =>
+  routeAllCables(nodes, edges);
+
+// ---------------------------------------------------------------------------
+// Throttling- und Debounce-Helfer
+// ---------------------------------------------------------------------------
+
+export const ROUTE_THROTTLE_MS = 100;
+export const FULL_REROUTE_DEBOUNCE_MS = 120;
+
+export const createThrottledRunner = (
   run: () => void,
   windowMs: number
-): {
-  schedule: () => void;
-  cancel: () => void;
-} {
-  let last = 0;
+): { schedule: () => void; cancel: () => void } => {
+  let lastRun = 0;
   let timer: ReturnType<typeof setTimeout> | null = null;
   return {
-    schedule(): void {
+    schedule: () => {
       const now = Date.now();
-      const elapsed = now - last;
+      const elapsed = now - lastRun;
       if (elapsed >= windowMs) {
-        if (timer) {
-          clearTimeout(timer);
-          timer = null;
-        }
-        last = now;
+        if (timer) { clearTimeout(timer); timer = null; }
+        lastRun = now;
         run();
         return;
       }
       if (!timer) {
-        timer = setTimeout(
-          () => {
-            timer = null;
-            last = Date.now();
-            run();
-          },
-          Math.max(0, windowMs - elapsed)
-        );
+        timer = setTimeout(() => {
+          timer = null;
+          lastRun = Date.now();
+          run();
+        }, Math.max(0, windowMs - elapsed));
       }
     },
-    cancel(): void {
-      if (timer) {
-        clearTimeout(timer);
-        timer = null;
-      }
+    cancel: () => {
+      if (timer) { clearTimeout(timer); timer = null; }
     },
   };
-}
-
-/** Drossel-Fenster des Live-Re-Routings (ms). */
-export const ROUTE_THROTTLE_MS = 100;
-
-let current = new Map<string, PathResult>();
-const listeners = new Set<() => void>();
-
-/** Alle zwischengespeicherten Routen verwerfen (Reset/Tests, R-9). */
-export const clearCableRoutes = (): void => {
-  current = new Map<string, PathResult>();
 };
 
-export const getCableRoute = (id: string): PathResult | undefined => current.get(id);
+// ---------------------------------------------------------------------------
+// Shared Route-Cache-Store
+// ---------------------------------------------------------------------------
+
+let currentRoutes = new Map<string, PathResult>();
+const routeListeners = new Set<() => void>();
+
+export const clearCableRoutes = (): void => {
+  currentRoutes = new Map<string, PathResult>();
+};
+
+export const getCableRoute = (id: string): PathResult | undefined => currentRoutes.get(id);
 
 const subscribe = (cb: () => void): (() => void) => {
-  listeners.add(cb);
-  return () => {
-    listeners.delete(cb);
-  };
+  routeListeners.add(cb);
+  return () => { routeListeners.delete(cb); };
 };
 
 export const publishCableRoutes = (routes: Map<string, PathResult>): void => {
-  current = routes;
-  listeners.forEach((l) => l());
+  currentRoutes = routes;
+  routeListeners.forEach((l) => l());
 };
 
-export function useCableRoute(id: string): PathResult | undefined {
-  return useSyncExternalStore(
-    subscribe,
-    () => getCableRoute(id),
-    () => undefined
-  );
-}
+export const useCableRoute = (id: string): PathResult | undefined =>
+  useSyncExternalStore(subscribe, () => getCableRoute(id), () => undefined);
 
-/**
- * Sitzt als Kind von <ReactFlow>, sieht gemessene Nodes/Handles,
- * routet alle Kanten einmal und veröffentlicht das Ergebnis zum Nudging.
+// ---------------------------------------------------------------------------
+// Drag-Detektor
+// ---------------------------------------------------------------------------
+
+const DRAG_DETECTION_WINDOW_MS = 200;
+
+type DragDetector = {
+  readonly lastTouchMs: number;
+  readonly isActive: boolean;
+  touch: (now: number) => boolean;
+  release: () => void;
+};
+
+const createDragDetector = (): DragDetector => {
+  let lastTouchMs = 0;
+  let isActive = false;
+  return {
+    get lastTouchMs() { return lastTouchMs; },
+    get isActive() { return isActive; },
+    touch(now: number): boolean {
+      const wasActive = isActive;
+      lastTouchMs = now;
+      isActive = true;
+      return wasActive;
+    },
+    release() {
+      isActive = false;
+    },
+  };
+};
+
+// ---------------------------------------------------------------------------
+// CableRouteSync — Orchestrierung (Hebel 1 + 2)
+// ---------------------------------------------------------------------------
+
+/** `CableRouteSync` orchestrates re-routing with dirty-region awareness and
+ * two quality tiers:
+ *
+ * During drag:
+ *   - Compute dirty region (affected edges only)
+ *   - Run preview routing (L-stub, no A*, no nudging) on affected edges
+ *   - Throttled to max once per 100ms
+ *
+ * After drag end (120ms debounce):
+ *   - Run full routing (all optimizations) on all edges
+ *
+ * Topological changes (edge add/remove) always trigger full routing immediately.
  */
-export function CableRouteSync() {
-  const store = useStoreApi();
-  // R-9: inhaltsbasierte Signatur (Move/Resize/Delete/Connect/Undo/Redo
-  // ändern sie zuverlässig — die alte Positionssumme tat das nicht).
+export const CableRouteSync = () => {
+  const plannerStore = useStoreApi();
+
   const signature = useStore((s) => {
     const nodes = nodeLayoutSignature([...s.nodeInternals.values()]);
     const edges = edgeTopologySignature(s.edges);
     return `${nodes}#${edges}`;
   });
 
-  // R-9: Live-Re-Routing gedrosselt — während des Draggens ändert sich die
-  // Signatur pro Frame; Rechnen UND Veröffentlichen laufen so höchstens
-  // alle ROUTE_THROTTLE_MS plus ein garantiertes trailing nach dem
-  // Loslassen (Endzustand immer aktuell).
-  const runnerRef = useRef<ReturnType<typeof createThrottledRunner> | null>(null);
-  if (runnerRef.current === null) {
-    runnerRef.current = createThrottledRunner(() => {
-      const state = store.getState();
-      publishCableRoutes(routeAllCables(state.getNodes(), state.edges as RouteEdgeRef[]));
+  const snapshotRef = useRef<Map<string, NodeSnapshot>>(new Map<string, NodeSnapshot>());
+  const dragDetectorRef = useRef<DragDetector>(createDragDetector());
+
+  // Preview runner (throttled, for during drag)
+  const previewRunnerRef = useRef<ReturnType<typeof createThrottledRunner> | null>(null);
+  if (previewRunnerRef.current === null) {
+    previewRunnerRef.current = createThrottledRunner(() => {
+      const state = plannerStore.getState();
+      const curNodes = state.getNodes();
+      const curEdges = state.edges as RouteEdgeRef[];
+      const prevSnapshot = snapshotRef.current;
+
+      const dirty = computeDirtyRegion(prevSnapshot, curNodes, curEdges, currentRoutes);
+
+      if (dirty.topologicalChange) {
+        publishCableRoutes(rerouteFull(curNodes, curEdges));
+        snapshotRef.current = buildSnapshot(curNodes);
+        return;
+      }
+
+      if (dirty.allAffectedEdgeIds.size === 0) {
+        return;
+      }
+
+      const previewRoutes = reroutePreviewAffected(curNodes, curEdges, dirty.allAffectedEdgeIds, currentRoutes);
+      publishCableRoutes(previewRoutes);
+      snapshotRef.current = buildSnapshot(curNodes);
     }, ROUTE_THROTTLE_MS);
   }
 
+  // Full runner (throttled, for after drag end)
+  const fullRunnerRef = useRef<ReturnType<typeof createThrottledRunner> | null>(null);
+  if (fullRunnerRef.current === null) {
+    fullRunnerRef.current = createThrottledRunner(() => {
+      const state = plannerStore.getState();
+      const curNodes = state.getNodes();
+      const curEdges = state.edges as RouteEdgeRef[];
+      const prevSnapshot = snapshotRef.current;
+
+      const dirty = computeDirtyRegion(prevSnapshot, curNodes, curEdges, currentRoutes);
+
+      if (dirty.topologicalChange) {
+        publishCableRoutes(rerouteFull(curNodes, curEdges));
+        snapshotRef.current = buildSnapshot(curNodes);
+        return;
+      }
+
+      if (dirty.allAffectedEdgeIds.size === 0) {
+        return;
+      }
+
+      publishCableRoutes(rerouteFull(curNodes, curEdges));
+      snapshotRef.current = buildSnapshot(curNodes);
+    }, ROUTE_THROTTLE_MS);
+  }
+
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const previewRunner = previewRunnerRef.current;
+  const fullRunner = fullRunnerRef.current;
+
   useLayoutEffect(() => {
-    const runner = runnerRef.current;
-    if (runner) runner.schedule();
-    return () => runner?.cancel();
-  }, [signature]);
+    const state = plannerStore.getState();
+    const curNodes = state.getNodes();
+    const curEdges = state.edges as RouteEdgeRef[];
+    const curSnapshot = buildSnapshot(curNodes);
+    const prevSnapshot = snapshotRef.current;
+    const now = Date.now();
+    const dragDetector = dragDetectorRef.current;
+
+    const dirty = computeDirtyRegion(prevSnapshot, curNodes, curEdges, currentRoutes);
+    snapshotRef.current = curSnapshot;
+
+    if (dirty.topologicalChange) {
+      publishCableRoutes(rerouteFull(curNodes, curEdges));
+      dragDetector.release();
+      return;
+    }
+
+    if (dirty.allAffectedEdgeIds.size === 0) {
+      if (dragDetector.isActive) {
+        dragDetector.release();
+        if (debounceTimerRef.current) {
+          clearTimeout(debounceTimerRef.current);
+        }
+        debounceTimerRef.current = setTimeout(() => {
+          const state2 = plannerStore.getState();
+          const cn2 = state2.getNodes();
+          const ce2 = state2.edges as RouteEdgeRef[];
+          publishCableRoutes(rerouteFull(cn2, ce2));
+          debounceTimerRef.current = null;
+        }, FULL_REROUTE_DEBOUNCE_MS);
+      }
+      return;
+    }
+
+    const wasActive = dragDetector.touch(now);
+
+    if (wasActive) {
+      // Drag läuft: Preview-Qualität (nur betroffene Kanten, L-Stub, kein A*/Nudge)
+      previewRunner.schedule();
+    } else {
+      // Drag gestoppt: Vollqualität nach Debounce (alle Kanten, mit A*/Nudge/Alignment)
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+      debounceTimerRef.current = setTimeout(() => {
+        const state2 = plannerStore.getState();
+        const cn2 = state2.getNodes();
+        const ce2 = state2.edges as RouteEdgeRef[];
+        publishCableRoutes(rerouteFull(cn2, ce2));
+        debounceTimerRef.current = null;
+      }, FULL_REROUTE_DEBOUNCE_MS);
+    }
+
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = null;
+      }
+    };
+  }, [signature, previewRunner, fullRunner]);
 
   return null;
-}
+};

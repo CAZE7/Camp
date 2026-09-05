@@ -634,3 +634,42 @@ export function edgesToCrossingSegments(
   }
   return segments;
 }
+
+/**
+ * Kanten-Topologie-Signatur — ändert sich bei Connect/Delete/Re-Konnekt.
+ *
+ * Handles fließen mit ein, damit auch Handle-Änderungen den Re-Route auslösen.
+ * (R-9, useLiveValidation.ts)
+ */
+export function edgeTopologySignature(edges: Edge[]): string {
+  const parts: string[] = [];
+  for (const edge of edges) {
+    if (!edge) continue;
+    const sh = edge.sourceHandle ?? '';
+    const th = edge.targetHandle ?? '';
+    parts.push(`${edge.id}|${edge.source}|${edge.target}|${sh}|${th}`);
+  }
+  return parts.sort().join(';');
+}
+
+/**
+ * Layout-Signatur für Nodes — ändert sich bei Move/Resize/Delete.
+ *
+ * Preferzt positionAbsolute (React-Flow-Messung) vor position, damit
+ * gemessene Koordinaten die Signatur treiben (R-9, cableRouteStore.test.ts).
+ * Breite und Höhe fließen mit ein, damit Resize die Signatur ändert.
+ */
+export function nodeLayoutSignature(
+  nodes: Node[]
+): string {
+  const parts: string[] = [];
+  for (const node of nodes) {
+    if (!node) continue;
+    const x = node.positionAbsolute?.x ?? node.position?.x ?? 0;
+    const y = node.positionAbsolute?.y ?? node.position?.y ?? 0;
+    const width = node.width ?? NODE_FALLBACK_WIDTH;
+    const height = node.height ?? NODE_FALLBACK_HEIGHT;
+    parts.push(`${node.id}|${x}|${y}|${width}|${height}`);
+  }
+  return parts.sort().join(';');
+}
