@@ -641,7 +641,7 @@ export function edgesToCrossingSegments(
  * Handles fließen mit ein, damit auch Handle-Änderungen den Re-Route auslösen.
  * (R-9, useLiveValidation.ts)
  */
-export function edgeTopologySignature(edges: Edge[]): string {
+export function edgeTopologySignature(edges: import('reactflow').Edge[]): string {
   const parts: string[] = [];
   for (const edge of edges) {
     if (!edge) continue;
