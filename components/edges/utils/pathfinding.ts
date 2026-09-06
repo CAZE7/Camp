@@ -1,6 +1,7 @@
 import { Position, type Node } from 'reactflow';
 import { polylineMidpoint, waypointsToPath } from './pathUtils';
 import { LEGACY_ROUTING_TOKENS, ROUTING_TOKENS, alternativeRouteGap } from '../../../lib/routing/tokens';
+import { COST_WEIGHTS } from '../../../lib/routing/rules/costModel';
 import {
   inflateRect,
   containsPoint,
@@ -891,8 +892,11 @@ const relevantObstacles = (obstacles: Rect[], start: Point, end: Point): Rect[] 
   return out;
 };
 
+// WP-6 (#396): Kreuzungsstrafe aus dem generierten Kostenmodell
+// (COST_WEIGHTS.crossing = 7,5 × laneGrid = 120 — wertgleich zum bisherigen
+// Hardcode, Golden Master unverändert; Sync-Test in costModel.test.ts).
 const scorePath = (points: Point[], crossings: number): number =>
-  pathLength(points) + BEND_COST * countBends(points) + 120 * crossings;
+  pathLength(points) + BEND_COST * countBends(points) + COST_WEIGHTS.crossing * crossings;
 
 function assemble(
   waypoints: Point[],
