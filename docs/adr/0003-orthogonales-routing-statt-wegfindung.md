@@ -1,15 +1,15 @@
 # ADR 0003 — Orthogonales Routing mit Ausweichverfahren statt Wegfindung
 
-**Status:** angenommen — _wird mit Routing V2 teilweise überlagert_ · **Datum:** 2026-08 (verschärft in K3) · **Statusupdate:** 2026-09-06 (WP-0c, #403)
+**Status:** erweitert/überlagert durch ADR 0011 (globaler Pass) · **Datum:** 2026-08 (verschärft in K3) · **Statusupdate:** 2026-09-06 (WP-4, #393)
 
-> **Statusvermerk Routing V2 (2026-09-06):** Die Entscheidung „kein A*/Dijkstra“
-> wird durch die eingefrorene Spec `docs/ROUTING-V2.md` überlagert: V2 nutzt
-> **ELK Layered (elkjs)** als globalen Layout-Pass und einen **Hanan-A\*** als
-> inkrementellen Pass. Das hier beschriebene Verfahren bleibt als
-> **Fallback-Router** (Worker-Fail/Timeout) und für den Katalog-Schnellpfad
-> gültig. Die endgültige Markierung als „überlagert“ samt neuer ELK-ADR erfolgt
-> mit WP-4 (#393, agent.md S-5). Siehe Change Ledger
-> `docs/ARCHITECTURE-CHANGES.md` (2026-09-06) sowie ADR 0009/0010.
+> **Statusvermerk Routing V2 (2026-09-06, finalisiert in WP-4):** Für den
+> **globalen Layout-Pass** ist diese Entscheidung durch
+> **ADR 0011 (ELK Layered / elkjs)** überlagert — Crossing-Minimization,
+> orthogonales Edge-Routing und Port-Constraints laufen dort in einem
+> Durchgang (A/B-Nachweis in ADR 0011). Das hier beschriebene Verfahren
+> bleibt gültig als **Fallback-Router** (ELK-Worker-Fail/Timeout) und als
+> Basis des **inkrementellen Passes** (Katalog + Hanan-A\*, WP-6/WP-8).
+> Siehe Change Ledger `docs/ARCHITECTURE-CHANGES.md` sowie ADR 0009/0010.
 
 ## Kontext
 

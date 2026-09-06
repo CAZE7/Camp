@@ -11,6 +11,14 @@ Format: neueste Einträge oben. Jeder Eintrag: Datum, Bezug (ADR/WP/Issue), Kurz
 
 ---
 
+## 2026-09-06 (WP-2 … WP-4)
+
+- **ADR-0011** ELK Layered (elkjs) als globaler Layout-Pass — A/B-Gate bestanden (Kreuzungen 53→13, Bends 199→92 über die 6 Golden-Master-Pläne); Konfiguration aus Tokens generiert; Worker-Vertrag P-6 (letzte Anfrage gewinnt); bestehender Router bleibt Fallback. Erledigt agent.md S-5. (WP-4, #393)
+- **ADR-0003 als „erweitert/überlagert“ markiert** — gilt weiter für Fallback-Router und inkrementellen Pass. (WP-4, #393)
+- **Neue Abhängigkeit `elkjs`** (EPL-2.0) — Begründung und Nachweis in ADR 0011; nur via dynamischem Import geladen (Bundle-Budget M11-5). Issue-Kommentar war wegen fehlender Schreibrechte des CI-Tokens nicht möglich; Ankündigung dokumentiert hier + ADR.
+- **Kollisionsmodell fixiert** — `classifyCollision()` / `RoutingConstraint` / `domainSeparationRules` in `lib/routing/rules/`; ELK- und A*-Pass konsumieren dasselbe Modell. (WP-3, #391)
+- **Geometrie-Schicht eingezogen** — `lib/routing/geometry/` (pure Functions); Router re-exportieren, `segmentsIntersect` u. a. nicht mehr doppelt gepflegt. Verhalten unverändert (Golden Master grün). (WP-2, #392)
+
 ## 2026-09-06
 
 - **ADR-0007** React Flow bleibt UI-Adapter — RF ist Canvas + Interaktion, keine Fachlogik. (WP-0c, #403)
