@@ -1,4 +1,5 @@
 import { type Node } from '@xyflow/react';
+import { nodeHeight, nodeWidth } from '@/components/edges/utils/nodeGeometry';
 import { type RoofNodeData } from '@/components/nodes/types';
 import { type VehicleTemplate } from '@/lib/vehicleTemplates';
 
@@ -12,8 +13,10 @@ export const SAFE_MARGINS = {
 type RoofNode = Node<RoofNodeData>;
 
 function nodeRect(node: RoofNode): { x: number; y: number; w: number; h: number } {
-  const w = node.width || (node.type === 'roofSolar' ? 200 : 80);
-  const h = node.height || (node.type === 'roofSolar' ? 120 : 80);
+  // Messgrenze (RF 12): `node.width/height` sind die gesetzten, nicht die
+  // gemessenen Maße — sonst prüft die Dachbelegung gegen Ersatzwerte.
+  const w = nodeWidth(node, node.type === 'roofSolar' ? 200 : 80);
+  const h = nodeHeight(node, node.type === 'roofSolar' ? 120 : 80);
   return { x: node.position.x, y: node.position.y, w, h };
 }
 

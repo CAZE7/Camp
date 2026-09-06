@@ -1,4 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react';
+import { measuredHeight, measuredWidth, nodeHeight, nodeWidth } from '../edges/utils/nodeGeometry';
 import {
   ReactFlow,
   BackgroundVariant,
@@ -188,8 +189,9 @@ export function FlowCanvas() {
       if (elementType === 'node') {
         const node = getNode(id);
         if (node) {
-          const width = node.width || 200;
-          const height = node.height || 120;
+          // Messgrenze (RF 12): gemessene Größe steht in `measured`.
+          const width = nodeWidth(node, 200);
+          const height = nodeHeight(node, 120);
           setCenter(node.position.x + width / 2, node.position.y + height / 2, { zoom: 1.15, duration: 450 });
         }
         return;
@@ -390,8 +392,8 @@ export function FlowCanvas() {
     for (const node of rawNodes) {
       const position = (node as Partial<Node> | null)?.position;
       if (!position || typeof position.x !== 'number' || typeof position.y !== 'number') continue;
-      const width = node.width || 192;
-      const height = node.height || 120;
+      const width = nodeWidth(node, 192);
+      const height = nodeHeight(node, 120);
       minX = Math.min(minX, position.x);
       minY = Math.min(minY, position.y);
       maxX = Math.max(maxX, position.x + width);
@@ -554,7 +556,14 @@ export function FlowCanvas() {
         setCollidingNodeId(null);
         return;
       }
-      const moved = { ...current, position: node.position, width: node.width, height: node.height };
+      const moved = {
+        ...current,
+        position: node.position,
+        // Kollisionsprüfung braucht die GEMESSENE Größe des gezogenen
+        // Knotens; `node.width` ist in RF 12 die gesetzte (meist leere).
+        width: measuredWidth(node) ?? current.width,
+        height: measuredHeight(node) ?? current.height,
+      };
       if (collidingNodeIds(moved, domainNodes).length > 0) {
         const position = findNearestFreePosition(moved, domainNodes);
         const change = [{ type: 'position' as const, id: node.id, position, dragging: false }];

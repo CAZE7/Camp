@@ -76,3 +76,74 @@ describe('React-Flow-Handles (S-1 / RF 12)', () => {
     expect(height).toMatch(/^44px/);
   });
 });
+
+/**
+ * Zweiter Teil derselben Lehre: die Messgrenze muss die EINZIGE Stelle
+ * bleiben, die gemessene Geometrie liest.
+ *
+ * React Flow 12 hat die Messwerte verschoben (`measured.width`,
+ * `internals.positionAbsolute`, `internals.handleBounds`); die flachen
+ * v11-Felder existieren weiter, bedeuten aber die vom Nutzer GESETZTEN
+ * Maße — meist leer. Ein direkter Zugriff kompiliert deshalb anstandslos,
+ * fällt still auf Ersatzwerte zurück und verschiebt Layout, Kollisions-
+ * prüfung oder Viewport. In S-1 ist genau das an vier Stellen passiert
+ * (Auto-Layout, Fokus-Zentrierung, Pan-Grenze, Drag-Kollision) und erst in
+ * der Touch-E2E aufgefallen, weil ein Knoten dadurch unter der Controls-
+ * Leiste landete.
+ */
+import { readdirSync, statSync } from 'node:fs';
+import { join } from 'node:path';
+
+const SEAM = join('components', 'edges', 'utils', 'nodeGeometry.ts');
+const SCAN_ROOTS = ['app', 'components', 'store'];
+/**
+ * Direktzugriffe auf verschobene Messwerte — außerhalb der Messgrenze
+ * verboten. Bewusst nur auf Variablen, die einen React-Flow-Knoten meinen:
+ * eine allgemeine `.width`-Regel träfe jedes Rechteck und jede DOM-Box im
+ * Projekt und wäre binnen einer Woche mit Ausnahmen durchlöchert.
+ */
+const RAW_ACCESS = /\b(node|internalNode|rfNode)\.(width|height|positionAbsolute|handleBounds)\b/;
+
+function sourceFiles(dir: string): string[] {
+  const out: string[] = [];
+  for (const entry of readdirSync(dir)) {
+    const full = join(dir, entry);
+    if (statSync(full).isDirectory()) {
+      out.push(...sourceFiles(full));
+      continue;
+    }
+    if (!/\.tsx?$/.test(entry) || /\.test\.tsx?$/.test(entry)) continue;
+    out.push(full);
+  }
+  return out;
+}
+
+describe('Messgrenze (nodeGeometry) ist die einzige Leseseite', () => {
+  it('kein Direktzugriff auf verschobene React-Flow-Messwerte', () => {
+    const offenders: string[] = [];
+    for (const root of SCAN_ROOTS) {
+      for (const file of sourceFiles(root)) {
+        if (file.endsWith(SEAM)) continue;
+        const lines = readFileSync(file, 'utf8').split('\n');
+        lines.forEach((line, index) => {
+          // Zeilen- und Blockkommentare zählen nicht: sie ERKLÄREN den
+          // Unterschied oft, statt ihn zu begehen.
+          const code = (line.split('//')[0] ?? '').trim();
+          if (code.startsWith('*') || code.startsWith('/*')) return;
+          // Nur Variablen, die einen React-Flow-Knoten meinen. `current` &
+          // Co. sind Store-Knoten: die tragen die flache Form legitim, weil
+          // gespeicherte Pläne und Fixtures so aussehen.
+          if (!RAW_ACCESS.test(code)) return;
+          offenders.push(`${file}:${index + 1}  ${line.trim()}`);
+        });
+      }
+    }
+    expect(
+      offenders,
+      `Direktzugriff auf React-Flow-Messwerte:\n${offenders.join('\n')}\n\n` +
+        'Bitte über components/edges/utils/nodeGeometry.ts lesen ' +
+        '(nodeWidth/nodeHeight/measuredWidth/measuredHeight/nodeOrigin/nodeHandleBounds). ' +
+        'In RF 12 sind die flachen Felder die GESETZTEN Maße, nicht die gemessenen.'
+    ).toEqual([]);
+  });
+});
