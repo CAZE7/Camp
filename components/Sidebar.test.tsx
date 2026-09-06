@@ -11,9 +11,7 @@ describe('Sidebar Component', () => {
     it('renders electric components by default', () => {
       render(<Sidebar />);
       expect(screen.getByText('Batterie')).toBeInTheDocument();
-      fireEvent.click(screen.getByRole('button', { name: /Strom verteilen/ }));
-      expect(screen.getByText('Batteriemonitor (Shunt)')).toBeInTheDocument();
-      fireEvent.click(screen.getByRole('button', { name: /Strom laden/ }));
+      expect(screen.getByText('Smart Shunt')).toBeInTheDocument();
       expect(screen.getByText('Solarmodul')).toBeInTheDocument();
       expect(screen.queryByText('Frischwassertank')).not.toBeInTheDocument();
     });
@@ -21,7 +19,6 @@ describe('Sidebar Component', () => {
     it('renders water components when mode is water', () => {
       render(<Sidebar mode="water" />);
       expect(screen.getByText('Frischwassertank')).toBeInTheDocument();
-      fireEvent.click(screen.getByRole('button', { name: /Fördern & filtern/ }));
       expect(screen.getByText('Wasserpumpe')).toBeInTheDocument();
       expect(screen.queryByText('Batterie')).not.toBeInTheDocument();
     });
@@ -49,7 +46,7 @@ describe('Sidebar Component', () => {
       const resetButtons = screen.getAllByRole('button', { name: 'Filter zurücksetzen' });
       expect(resetButtons.length).toBeGreaterThan(0);
 
-      fireEvent.click(resetButtons[resetButtons.length - 1]!);
+      fireEvent.click(resetButtons[resetButtons.length - 1]);
       expect((searchInput as HTMLInputElement).value).toBe('');
     });
   });
@@ -59,10 +56,10 @@ describe('Sidebar Component', () => {
       render(<Sidebar />);
 
       // Mock document.elementsFromPoint to simulate dropping over the canvas
-      const mockElementsFromPoint = vi
-        .fn()
-        .mockReturnValue([{ classList: { contains: (cls: string) => cls === 'react-flow__pane' } }]);
-      document.elementsFromPoint = mockElementsFromPoint as unknown as typeof document.elementsFromPoint;
+      const mockElementsFromPoint = vi.fn().mockReturnValue([
+        { classList: { contains: (cls: string) => cls === 'react-flow__pane' } }
+      ]);
+      document.elementsFromPoint = mockElementsFromPoint as any;
 
       // Spy on window.dispatchEvent
       const dispatchEventSpy = vi.spyOn(window, 'dispatchEvent');
@@ -85,13 +82,13 @@ describe('Sidebar Component', () => {
       expect(mockElementsFromPoint).toHaveBeenCalledWith(100, 100);
 
       expect(dispatchEventSpy).toHaveBeenCalled();
-      const dispatchedEvent = dispatchEventSpy.mock.calls[0]![0] as CustomEvent;
+      const dispatchedEvent = dispatchEventSpy.mock.calls[0][0] as CustomEvent;
       expect(dispatchedEvent.type).toBe('custom-node-drop');
       expect(dispatchedEvent.detail).toEqual({
         clientX: 100,
         clientY: 100,
         type: 'battery',
-        label: 'Batterie',
+        label: 'Batterie'
       });
     });
 
@@ -99,8 +96,10 @@ describe('Sidebar Component', () => {
       render(<Sidebar />);
 
       // Mock document.elementsFromPoint to simulate dropping outside the canvas
-      const mockElementsFromPoint = vi.fn().mockReturnValue([{ classList: { contains: () => false } }]);
-      document.elementsFromPoint = mockElementsFromPoint as unknown as typeof document.elementsFromPoint;
+      const mockElementsFromPoint = vi.fn().mockReturnValue([
+        { classList: { contains: () => false } }
+      ]);
+      document.elementsFromPoint = mockElementsFromPoint as any;
 
       // Spy on window.dispatchEvent
       const dispatchEventSpy = vi.spyOn(window, 'dispatchEvent');

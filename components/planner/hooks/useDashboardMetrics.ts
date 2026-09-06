@@ -1,16 +1,10 @@
 import { useMemo, useState, useEffect } from 'react';
-import {
-  type BatteryNodeData,
-  type ConsumerNodeData,
-  type SolarNodeData,
-  type ChargerNodeData,
-} from '@/components/nodes/types';
-import { type Node, type Edge } from 'reactflow';
+import { BatteryNodeData, ConsumerNodeData, SolarNodeData, ChargerNodeData } from '@/components/nodes/types';
+import { Node, Edge } from 'reactflow';
 import { getSystemVoltage } from '../utils/voltage';
 import {
   VDE_INVERTER_EFFICIENCY,
   VDE_BATTERY_DOD,
-  VDE_DOD_REFERENCE,
   VDE_SOLAR_WINTER_REDUCTION,
   VDE_SOLAR_VMP_VOLTAGE,
   VDE_CHARGE_DERATING_FACTOR,
@@ -26,35 +20,31 @@ export function useDashboardMetrics(
   const [debouncedEdges, setDebouncedEdges] = useState(edges);
 
   useEffect(() => {
-    const nodesChanged =
-      nodes.length !== debouncedNodes.length ||
-      nodes.some((n, i) => {
-        const prev = debouncedNodes[i];
-        if (!prev) return true;
-        return (
-          n.id !== prev.id ||
-          n.type !== prev.type ||
-          n.data?.watts !== prev.data?.watts ||
-          n.data?.capacity !== prev.data?.capacity ||
-          n.data?.amps !== prev.data?.amps ||
-          n.data?.hours !== prev.data?.hours
-        );
-      });
+    const nodesChanged = nodes.length !== debouncedNodes.length || nodes.some((n, i) => {
+      const prev = debouncedNodes[i];
+      if (!prev) return true;
+      return (
+        n.id !== prev.id ||
+        n.type !== prev.type ||
+        n.data?.watts !== prev.data?.watts ||
+        n.data?.capacity !== prev.data?.capacity ||
+        n.data?.amps !== prev.data?.amps ||
+        n.data?.hours !== prev.data?.hours
+      );
+    });
 
-    const edgesChanged =
-      edges.length !== debouncedEdges.length ||
-      edges.some((e, i) => {
-        const prev = debouncedEdges[i];
-        if (!prev) return true;
-        return (
-          e.id !== prev.id ||
-          e.source !== prev.source ||
-          e.target !== prev.target ||
-          e.sourceHandle !== prev.sourceHandle ||
-          e.targetHandle !== prev.targetHandle ||
-          JSON.stringify(e.data) !== JSON.stringify(prev.data)
-        );
-      });
+    const edgesChanged = edges.length !== debouncedEdges.length || edges.some((e, i) => {
+      const prev = debouncedEdges[i];
+      if (!prev) return true;
+      return (
+        e.id !== prev.id ||
+        e.source !== prev.source ||
+        e.target !== prev.target ||
+        e.sourceHandle !== prev.sourceHandle ||
+        e.targetHandle !== prev.targetHandle ||
+        JSON.stringify(e.data) !== JSON.stringify(prev.data)
+      );
+    });
 
     if (nodesChanged || edgesChanged) {
       const handler = setTimeout(() => {
@@ -98,7 +88,10 @@ export function useDashboardMetrics(
       season
     );
 
-    const hasDirectBatteryToConsumer = checkDirectBatteryConnection(debouncedEdges, categories.nodeTypeMap);
+    const hasDirectBatteryToConsumer = checkDirectBatteryConnection(
+      debouncedEdges,
+      categories.nodeTypeMap
+    );
 
     return {
       dailyConsumptionAh,
@@ -126,7 +119,8 @@ function categorizeNodes(nodes: Node[]) {
     chargers: [] as Node[],
   };
 
-  for (const n of nodes) {
+  for (let i = 0, len = nodes.length; i < len; i++) {
+    const n = nodes[i];
     result.nodeTypeMap[n.id] = n.type;
     const type = n.type;
 
@@ -153,7 +147,7 @@ function calculateUsableCapacity(batteries: Node[]): number {
   return batteries.reduce((acc, batteryNode) => {
     const capacityAh = (batteryNode?.data as BatteryNodeData)?.capacity || 0;
     const chemistry = (batteryNode?.data as BatteryNodeData)?.chemistry || 'LiFePO4';
-    const dod = VDE_BATTERY_DOD[chemistry] ?? VDE_DOD_REFERENCE;
+    const dod = VDE_BATTERY_DOD[chemistry] ?? VDE_BATTERY_DOD.LiFePO4;
     return acc + capacityAh * dod;
   }, 0);
 }
@@ -169,16 +163,15 @@ function calculateDailyConsumption(
     const w = (n.data as ConsumerNodeData)?.watts || 0;
     const h = (n.data as ConsumerNodeData)?.hours || 0;
     let consumption = (w / sysVoltage) * h;
-
+    
     // Seasonal adjustment only for heaters
     const label = String(n.data?.label || '').toLowerCase();
-    const isHeater =
-      n.type === 'heater' || label.includes('heiz') || label.includes('heater') || label.includes('autoterm');
-
+    const isHeater = n.type === 'heater' || label.includes('heiz') || label.includes('heater') || label.includes('autoterm');
+    
     if (isHeater && season === 'winter') {
       consumption *= 2;
     }
-
+    
     return acc + consumption;
   }, 0);
 
@@ -194,7 +187,7 @@ function calculateDailyConsumption(
 }
 
 function calculateAutarky(usableCapacityAh: number, dailyConsumptionAh: number): string {
-  let autarkyHours: number;
+  let autarkyHours = 0;
   if (usableCapacityAh === 0 && dailyConsumptionAh === 0) {
     autarkyHours = Infinity;
   } else if (usableCapacityAh === 0) {
@@ -205,10 +198,14 @@ function calculateAutarky(usableCapacityAh: number, dailyConsumptionAh: number):
     autarkyHours = Infinity;
   }
 
-  const autarkyDays = autarkyHours === Infinity ? 'Unendlich' : Math.floor(autarkyHours / 24);
-  const autarkyRemainderHours = autarkyHours === Infinity ? 0 : Math.floor(autarkyHours % 24);
+  const autarkyDays =
+    autarkyHours === Infinity ? 'Unendlich' : Math.floor(autarkyHours / 24);
+  const autarkyRemainderHours =
+    autarkyHours === Infinity ? 0 : Math.floor(autarkyHours % 24);
 
-  return autarkyHours === Infinity ? 'Unendlich' : `${autarkyDays} Tage / ${autarkyRemainderHours} Stunden`;
+  return autarkyHours === Infinity
+      ? 'Unendlich'
+      : `${autarkyDays} Tage / ${autarkyRemainderHours} Stunden`;
 }
 
 function calculateSolarMetrics(
@@ -229,18 +226,26 @@ function calculateSolarMetrics(
       return (
         sType === 'solar' &&
         tType === 'solar' &&
-        ((e.sourceHandle?.includes('plus') && e.targetHandle?.includes('minus')) ||
-          (e.sourceHandle?.includes('minus') && e.targetHandle?.includes('plus')))
+        ((e.sourceHandle?.includes('plus') &&
+          e.targetHandle?.includes('minus')) ||
+          (e.sourceHandle?.includes('minus') &&
+            e.targetHandle?.includes('plus')))
       );
     });
 
     if (hasSeriesConnection) {
       // Series: Voltage adds up, Amps stays the same (take min or average, here we assume identical panels so we take the first)
-      totalSolarVoltage = solarNodes.reduce((acc, n) => acc + ((n.data as SolarNodeData)?.voltage || 0), 0);
+      totalSolarVoltage = solarNodes.reduce(
+        (acc, n) => acc + ((n.data as SolarNodeData)?.voltage || 0),
+        0
+      );
       totalSolarAmps = (solarNodes[0]?.data as SolarNodeData)?.amps || 0;
     } else {
       // Parallel: Amps add up, Voltage stays the same
-      totalSolarAmps = solarNodes.reduce((acc, n) => acc + ((n.data as SolarNodeData)?.amps || 0), 0);
+      totalSolarAmps = solarNodes.reduce(
+        (acc, n) => acc + ((n.data as SolarNodeData)?.amps || 0),
+        0
+      );
       totalSolarVoltage = (solarNodes[0]?.data as SolarNodeData)?.voltage || 0;
     }
 
@@ -274,20 +279,19 @@ function calculateChargingTime(
   const roofSolarAmps = (effectiveSolarWatts / VDE_SOLAR_VMP_VOLTAGE) * seasonFactor;
 
   const totalChargerAmps =
-    chargers.reduce(
-      (acc, n) =>
-        acc +
-        ((n.data as ChargerNodeData)?.amps || 0) * (((n.data as ChargerNodeData)?.efficiency ?? 100) / 100),
-      0
-    ) +
+    chargers.reduce((acc, n) => acc + (((n.data as ChargerNodeData)?.amps || 0) * (((n.data as ChargerNodeData)?.efficiency ?? 100) / 100)), 0) +
     effectiveSolarAmps +
     roofSolarAmps;
 
-  let chargingTimeStr: string;
+  let chargingTimeStr = 'N/A';
   if (totalChargerAmps > 0) {
     const chargingTime = (usableCapacityAh / totalChargerAmps) * VDE_CHARGE_DERATING_FACTOR;
     chargingTimeStr = `${chargingTime.toFixed(1)} Stunden`;
-  } else if (chargers.length > 0 || solarNodesCount > 0 || calculatedSolarWatts > 0) {
+  } else if (
+    chargers.length > 0 ||
+    solarNodesCount > 0 ||
+    calculatedSolarWatts > 0
+  ) {
     chargingTimeStr = '0 Ladeleistung';
   } else {
     chargingTimeStr = 'Kein Ladegerät';
@@ -307,9 +311,13 @@ function checkDirectBatteryConnection(
 
     return (
       (sourceType === 'battery' &&
-        (targetType === 'consumer' || targetType === 'consumer230v' || targetType === 'inverter')) ||
+        (targetType === 'consumer' ||
+          targetType === 'consumer230v' ||
+          targetType === 'inverter')) ||
       (targetType === 'battery' &&
-        (sourceType === 'consumer' || sourceType === 'consumer230v' || sourceType === 'inverter'))
+        (sourceType === 'consumer' ||
+          sourceType === 'consumer230v' ||
+          sourceType === 'inverter'))
     );
   });
 }

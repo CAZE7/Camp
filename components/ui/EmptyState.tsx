@@ -1,51 +1,26 @@
-'use client';
+"use client";
 
 import React from 'react';
 import { Compass } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 
 interface EmptyStateProps {
   title: string;
   description: string;
-  /** Optionaler, klarer nächster Schritt (geführter Einstieg). */
-  actionLabel?: string;
-  onAction?: () => void;
-  /** Optionales Icon (Standard: Kompass). */
-  icon?: React.ReactNode;
-  /** Kleiner Zusatzhinweis unter dem Button. */
-  hint?: string;
-  /**
-   * Zusätzliche Klassen am Vollbild-Container — z. B. `pb-*`, damit die
-   * Karte auf kleinen Bildschirmen über den schwebenden Canvas-Controls sitzt.
-   */
-  className?: string;
 }
 
-export function EmptyState({
-  title,
-  description,
-  actionLabel,
-  onAction,
-  icon,
-  hint,
-  className,
-}: EmptyStateProps) {
+export function EmptyState({ title, description }: EmptyStateProps) {
   return (
-    <div
-      className={`pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center ${className ?? ''}`.trim()}
-    >
-      <div className="pointer-events-auto mx-4 flex max-w-sm flex-col items-center rounded-lg border border-border bg-card p-6 text-center shadow-2xl sm:p-8">
-        <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
-          {icon ?? <Compass className="h-10 w-10 text-primary" strokeWidth={1.5} />}
+    <div className="absolute inset-0 flex flex-col items-center justify-center z-10 pointer-events-none">
+      <div className="bg-card/80 backdrop-blur-sm border border-border p-8 rounded-3xl shadow-2xl flex flex-col items-center max-w-sm text-center pointer-events-auto">
+        <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-6">
+          <Compass className="w-10 h-10 text-primary" strokeWidth={1.5} />
         </div>
-        <h2 className="mb-3 text-2xl font-extrabold tracking-tight text-foreground">{title}</h2>
-        <p className="text-muted-foreground">{description}</p>
-        {actionLabel && onAction && (
-          <Button onClick={onAction} className="mt-6 min-h-[44px] px-6" size="lg">
-            {actionLabel}
-          </Button>
-        )}
-        {hint && <p className="mt-3 text-xs text-muted-foreground">{hint}</p>}
+        <h2 className="text-2xl font-extrabold tracking-tight text-foreground mb-3">
+          {title}
+        </h2>
+        <p className="text-muted-foreground">
+          {description}
+        </p>
       </div>
     </div>
   );

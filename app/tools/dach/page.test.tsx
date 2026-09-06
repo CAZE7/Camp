@@ -5,7 +5,8 @@ import { useAppStore } from '@/lib/store';
 
 // Mock Zustand store
 vi.mock('@/lib/store', () => {
-  const storeState = {
+  let storeState = {
+    isProMode: true,
     calculatedSolarWatts: 0,
     setCalculatedSolarWatts: vi.fn((watts) => {
       storeState.calculatedSolarWatts = watts;
@@ -25,7 +26,6 @@ vi.mock('next/link', () => ({
 // Mock React Flow
 vi.mock('reactflow', async () => {
   const actual = await vi.importActual('reactflow');
-  const React = await import('react');
   return {
     ...actual,
     ReactFlow: ({
@@ -41,10 +41,10 @@ vi.mock('reactflow', async () => {
         data-testid="react-flow-wrapper"
         className="react-flow-mock"
         onDrop={(e) => {
-          if (onDrop) onDrop(e as unknown as React.DragEvent<HTMLDivElement>);
+          if (onDrop) onDrop(e as any);
         }}
         onDragOver={(e) => {
-          if (onDragOver) onDragOver(e as unknown as React.DragEvent<HTMLDivElement>);
+          if (onDragOver) onDragOver(e as any);
         }}
       >
         {children}
@@ -52,20 +52,23 @@ vi.mock('reactflow', async () => {
     ),
     Background: () => <div data-testid="rf-background" />,
     Controls: () => <div data-testid="rf-controls" />,
-    Panel: ({ children }: { children: React.ReactNode }) => <div data-testid="rf-panel">{children}</div>,
-    useNodesState: (initialNodes: unknown[] | (() => unknown[])) => {
+    Panel: ({ children }: { children: React.ReactNode }) => (
+      <div data-testid="rf-panel">{children}</div>
+    ),
+    useNodesState: (initialNodes: any) => {
+      const React = require('react');
       // Some React Flow functions like applyNodeChanges need an actual instance, but we can do a dummy hook
       const [nodes, setNodes] = React.useState(
         typeof initialNodes === 'function' ? initialNodes() : initialNodes
       );
 
-      const onNodesChange = () => {
+      const onNodesChange = (changes: any) => {
         // Mock apply node changes if needed, but not required if we just update full nodes manually
       };
 
       return [nodes, setNodes, onNodesChange];
     },
-    applyNodeChanges: (changes: unknown[], nodes: unknown[]) => nodes,
+    applyNodeChanges: (changes: any, nodes: any) => nodes,
     ReactFlowProvider: ({ children }: { children: React.ReactNode }) => (
       <div data-testid="rf-provider">{children}</div>
     ),
@@ -113,7 +116,7 @@ describe('DachPlanerPage', () => {
 
     // Wait for the UI to be fully rendered
     const solarPanelTexts = await screen.findAllByText('Solarpanel');
-    const solarCard = solarPanelTexts[0]!.closest('.cursor-grab');
+    const solarCard = solarPanelTexts[0].closest('.cursor-grab');
     expect(solarCard).toBeInTheDocument();
 
     const setDataMock = vi.fn();
@@ -148,19 +151,18 @@ describe('DachPlanerPage', () => {
       });
     }
 
+    const reactFlowMock = wrapper;
+
     const getDataMock = vi.fn().mockReturnValue('roofSolar');
 
     // DachPlanerFlow puts onDrop on the ReactFlow component itself, which in our mock is rendered as <div data-testid="react-flow-wrapper" className="react-flow-mock">
     // Sometimes getByTestId fails if it's nested strangely, but we can query by class
-    const mockReactFlow =
-      document.querySelector('.react-flow-mock') ||
-      document.querySelector('.react-flow-wrapper > div') ||
-      document.querySelector('.react-flow-wrapper');
+    const mockReactFlow = document.querySelector('.react-flow-mock') || document.querySelector('.react-flow-wrapper > div') || document.querySelector('.react-flow-wrapper');
 
     fireEvent.drop(mockReactFlow!, {
       dataTransfer: {
         getData: getDataMock,
-        dropEffect: 'move',
+        dropEffect: 'move'
       },
       clientX: 200,
       clientY: 200,

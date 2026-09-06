@@ -2,9 +2,6 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "incremental": false
-    // noUncheckedIndexedAccess steht in der Basis-tsconfig — Editor,
-    // Produktionscode- und Test-Profil laufen mit derselben Schärfe
-    // (kein Profil-Drift).
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx"],
   "exclude": [

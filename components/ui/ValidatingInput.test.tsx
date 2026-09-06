@@ -5,14 +5,7 @@ import { ValidatingInput, COMMON_RULES } from './ValidatingInput';
 describe('ValidatingInput', () => {
   it('allows valid input and calls onValidChange', () => {
     const onValidChange = vi.fn();
-    render(
-      <ValidatingInput
-        value={10}
-        onValidChange={onValidChange}
-        rules={[COMMON_RULES.positive]}
-        aria-label="test-input"
-      />
-    );
+    render(<ValidatingInput value={10} onValidChange={onValidChange} rules={[COMMON_RULES.positive]} aria-label="test-input" />);
 
     const input = screen.getByLabelText('test-input');
     fireEvent.change(input, { target: { value: '20' } });
@@ -23,14 +16,7 @@ describe('ValidatingInput', () => {
 
   it('shows error message and blocks onValidChange on invalid input', () => {
     const onValidChange = vi.fn();
-    render(
-      <ValidatingInput
-        value={10}
-        onValidChange={onValidChange}
-        rules={[COMMON_RULES.positive]}
-        aria-label="test-input"
-      />
-    );
+    render(<ValidatingInput value={10} onValidChange={onValidChange} rules={[COMMON_RULES.positive]} aria-label="test-input" />);
 
     const input = screen.getByLabelText('test-input');
     fireEvent.change(input, { target: { value: '-5' } });
@@ -41,14 +27,7 @@ describe('ValidatingInput', () => {
 
   it('reverts to the initial/last valid value on blur when invalid', () => {
     const onValidChange = vi.fn();
-    render(
-      <ValidatingInput
-        value={10}
-        onValidChange={onValidChange}
-        rules={[COMMON_RULES.positive]}
-        aria-label="test-input"
-      />
-    );
+    render(<ValidatingInput value={10} onValidChange={onValidChange} rules={[COMMON_RULES.positive]} aria-label="test-input" />);
 
     const input = screen.getByLabelText('test-input') as HTMLInputElement;
     fireEvent.change(input, { target: { value: '-5' } });
@@ -61,14 +40,7 @@ describe('ValidatingInput', () => {
 
   it('validates strictly positive', () => {
     const onValidChange = vi.fn();
-    render(
-      <ValidatingInput
-        value={10}
-        onValidChange={onValidChange}
-        rules={[COMMON_RULES.strictlyPositive]}
-        aria-label="test-input"
-      />
-    );
+    render(<ValidatingInput value={10} onValidChange={onValidChange} rules={[COMMON_RULES.strictlyPositive]} aria-label="test-input" />);
 
     const input = screen.getByLabelText('test-input');
     fireEvent.change(input, { target: { value: '0' } });
@@ -77,15 +49,7 @@ describe('ValidatingInput', () => {
 
   it('validates float correctly when isFloat is true', () => {
     const onValidChange = vi.fn();
-    render(
-      <ValidatingInput
-        value={1.5}
-        onValidChange={onValidChange}
-        rules={[COMMON_RULES.strictlyPositive]}
-        isFloat={true}
-        aria-label="test-input"
-      />
-    );
+    render(<ValidatingInput value={1.5} onValidChange={onValidChange} rules={[COMMON_RULES.strictlyPositive]} isFloat={true} aria-label="test-input" />);
 
     const input = screen.getByLabelText('test-input');
     fireEvent.change(input, { target: { value: '2.5' } });

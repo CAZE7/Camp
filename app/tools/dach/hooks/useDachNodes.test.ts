@@ -2,9 +2,9 @@ import { renderHook, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useDachNodes } from './useDachNodes';
 import { useAppStore } from '@/lib/store';
-import { type VehicleTemplate } from '@/lib/vehicleTemplates';
-import { type NodeChange, type Node } from 'reactflow';
-import { type RoofNodeData } from '@/components/nodes/types';
+import { VehicleTemplate } from '@/lib/vehicleTemplates';
+import { NodeChange, Node } from 'reactflow';
+import { RoofNodeData } from '@/components/nodes/types';
 
 // Mock the Zustand store
 vi.mock('@/lib/store', () => ({
@@ -19,7 +19,7 @@ const mockVehicle: VehicleTemplate = {
   length: 5,
   width: 2,
   height: 2,
-  roofLength: 4, // 800px width equivalent
+  roofLength: 4,  // 800px width equivalent
   roofWidth: 1.5, // 300px height equivalent
 };
 
@@ -30,15 +30,15 @@ describe('useDachNodes', () => {
     mockSetCalculatedSolarWatts = vi.fn();
     vi.mocked(useAppStore).mockReturnValue({
       setCalculatedSolarWatts: mockSetCalculatedSolarWatts,
-    } as unknown as ReturnType<typeof useAppStore>);
+    } as any);
   });
 
   it('should initialize with background and one solar node', () => {
     const { result } = renderHook(() => useDachNodes(mockVehicle));
 
     expect(result.current.nodes).toHaveLength(2);
-    expect(result.current.nodes[0]!.type).toBe('roofBackground');
-    expect(result.current.nodes[1]!.type).toBe('roofSolar');
+    expect(result.current.nodes[0].type).toBe('roofBackground');
+    expect(result.current.nodes[1].type).toBe('roofSolar');
   });
 
   it('should update calculated solar watts on mount', () => {
@@ -53,10 +53,10 @@ describe('useDachNodes', () => {
 
     // Make the node valid
     act(() => {
-      const node = result.current.nodes[1]!;
+      const node = result.current.nodes[1];
       result.current.setNodes([
-        result.current.nodes[0]!,
-        { ...node, data: { ...node.data, watts: 300, isInvalid: false } },
+        result.current.nodes[0],
+        { ...node, data: { ...node.data, watts: 300, isInvalid: false } }
       ]);
     });
 
@@ -64,10 +64,10 @@ describe('useDachNodes', () => {
 
     // Make the node invalid
     act(() => {
-      const node = result.current.nodes[1]!;
+      const node = result.current.nodes[1];
       result.current.setNodes([
-        result.current.nodes[0]!,
-        { ...node, data: { ...node.data, watts: 300, isInvalid: true } },
+        result.current.nodes[0],
+        { ...node, data: { ...node.data, watts: 300, isInvalid: true } }
       ]);
     });
 
@@ -78,17 +78,17 @@ describe('useDachNodes', () => {
     const { result } = renderHook(() => useDachNodes(mockVehicle));
 
     act(() => {
-      result.current.onNodeResize(null as unknown as MouseEvent, {
+      result.current.onNodeResize(null as any, {
         id: 'solar-1',
         width: 300,
         height: 200,
         x: 0,
         y: 0,
-        direction: [1, 1],
+        direction: [1, 1]
       });
     });
 
-    const resizedNode = result.current.nodes.find((n) => n.id === 'solar-1');
+    const resizedNode = result.current.nodes.find(n => n.id === 'solar-1');
     expect(resizedNode?.width).toBe(300);
     expect(resizedNode?.height).toBe(200);
     expect(resizedNode?.data.width).toBe(150); // px / 2
@@ -102,7 +102,7 @@ describe('useDachNodes', () => {
 
     act(() => {
       result.current.setNodes((nodes: Node<RoofNodeData>[]) =>
-        nodes.map((n) => (n.id === 'solar-1' ? { ...n, selected: true } : n))
+        nodes.map(n => n.id === 'solar-1' ? { ...n, selected: true } : n)
       );
     });
 
@@ -115,7 +115,7 @@ describe('useDachNodes', () => {
     // First select the node
     act(() => {
       result.current.setNodes((nodes: Node<RoofNodeData>[]) =>
-        nodes.map((n) => (n.id === 'solar-1' ? { ...n, selected: true } : n))
+        nodes.map(n => n.id === 'solar-1' ? { ...n, selected: true } : n)
       );
     });
 
@@ -123,7 +123,7 @@ describe('useDachNodes', () => {
       result.current.updateSelectedNodeWatts(400);
     });
 
-    const node = result.current.nodes.find((n) => n.id === 'solar-1');
+    const node = result.current.nodes.find(n => n.id === 'solar-1');
     expect(node?.data.watts).toBe(400);
   });
 
@@ -132,7 +132,7 @@ describe('useDachNodes', () => {
 
     act(() => {
       result.current.setNodes((nodes: Node<RoofNodeData>[]) =>
-        nodes.map((n) => (n.id === 'solar-1' ? { ...n, selected: true } : n))
+        nodes.map(n => n.id === 'solar-1' ? { ...n, selected: true } : n)
       );
     });
 
@@ -140,7 +140,7 @@ describe('useDachNodes', () => {
       result.current.updateSelectedNodeWidth(120); // 120cm
     });
 
-    const node = result.current.nodes.find((n) => n.id === 'solar-1');
+    const node = result.current.nodes.find(n => n.id === 'solar-1');
     expect(node?.width).toBe(240); // 120 * 2
     expect(node?.data.width).toBe(120);
   });
@@ -150,7 +150,7 @@ describe('useDachNodes', () => {
 
     act(() => {
       result.current.setNodes((nodes: Node<RoofNodeData>[]) =>
-        nodes.map((n) => (n.id === 'solar-1' ? { ...n, selected: true } : n))
+        nodes.map(n => n.id === 'solar-1' ? { ...n, selected: true } : n)
       );
     });
 
@@ -158,7 +158,7 @@ describe('useDachNodes', () => {
       result.current.updateSelectedNodeHeight(80); // 80cm
     });
 
-    const node = result.current.nodes.find((n) => n.id === 'solar-1');
+    const node = result.current.nodes.find(n => n.id === 'solar-1');
     expect(node?.height).toBe(160); // 80 * 2
     expect(node?.data.height).toBe(80);
   });
@@ -173,12 +173,12 @@ describe('useDachNodes', () => {
           type: 'position',
           id: 'solar-1',
           position: { x: -100, y: -100 },
-        },
+        }
       ];
       result.current.onNodesChange(changes);
     });
 
-    const node = result.current.nodes.find((n) => n.id === 'solar-1');
+    const node = result.current.nodes.find(n => n.id === 'solar-1');
     expect(node?.position.x).toBe(-100);
     expect(node?.data.isInvalid).toBe(true);
   });

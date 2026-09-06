@@ -9,6 +9,7 @@
  *   - components/edges/CableEdge.tsx
  *   - components/nodes/ConduitNode.tsx
  *   - components/Inspector.tsx
+ *   - app/api/chat/route.ts
  *
  * Verbotene Patterns (außerhalb von Kommentaren):
  *   - [/]\s*0\.85\b     Inverter-Effizienz
@@ -29,22 +30,23 @@ const FILES_TO_SCAN = [
   'components/edges/CableEdge.tsx',
   'components/nodes/ConduitNode.tsx',
   'components/Inspector.tsx',
+  'app/api/chat/route.ts',
 ] as const;
 
 const FORBIDDEN_PATTERNS: Array<{ name: string; pattern: RegExp; hint: string }> = [
   {
     name: 'hardcoded inverter efficiency 0.85',
-    pattern: /[/]\s*0\.85\b/,
+    pattern: /[\/]\s*0\.85\b/,
     hint: 'Ersetze / 0.85 durch / VDE_INVERTER_EFFICIENCY (aus @/lib/vde-standards).',
   },
   {
     name: 'hardcoded copper formula 58 * 0.x',
     pattern: /58\s*\*\s*0\.\d+/,
-    hint: 'Ersetze 58 * 0.xx durch hasVoltageDropError (components/edges/utils/voltageDrop.ts) bzw. edgeVoltageDrop (lib/autoWire.ts).',
+    hint: 'Ersetze 58 * 0.xx durch calculateVoltageDrop / VDE_COPPER_RESISTIVITY aus vde-standards.',
   },
   {
     name: 'hardcoded 60% conduit fill',
-    pattern: />\s*60\s*[);,]/,
+    pattern: />\s*60\s*[\);,]/,
     hint: 'Ersetze > 60 durch > VDE_MAX_CONDUIT_FILL_PERCENT (aus @/lib/vde-standards).',
   },
 ];
@@ -66,10 +68,11 @@ function findViolations(relPath: string): Array<{ line: number; text: string; na
   const lines = content.split('\n');
   const violations: Array<{ line: number; text: string; name: string; hint: string }> = [];
 
-  lines.forEach((line, i) => {
-    if (isCommentOrStringOnly(line)) return;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (isCommentOrStringOnly(line)) continue;
     // Skip template-string prompt lines in route.ts (Faktor 0.85 in Fließtext)
-    if (line.includes('Faktor 0.85') && !/[/]\s*0\.85\b/.test(line.replace(/Faktor 0\.85/g, ''))) {
+    if (line.includes('Faktor 0.85') && !/[\/]\s*0\.85\b/.test(line.replace(/Faktor 0\.85/g, ''))) {
       // still run other patterns
     }
     for (const { name, pattern, hint } of FORBIDDEN_PATTERNS) {
@@ -82,7 +85,7 @@ function findViolations(relPath: string): Array<{ line: number; text: string; na
         });
       }
     }
-  });
+  }
   return violations;
 }
 
@@ -91,22 +94,19 @@ describe('VDE-Konsistenz: keine hardcoded Magic-Numbers', () => {
     const violations = findViolations(relPath);
     if (violations.length > 0) {
       const details = violations
-        .map((v) => `  ${relPath}:${v.line}  [${v.name}]\n    ${v.text}\n    → ${v.hint}`)
+        .map(v => `  ${relPath}:${v.line}  [${v.name}]\n    ${v.text}\n    → ${v.hint}`)
         .join('\n');
       throw new Error(
         `Hardcoded VDE-Wert in ${relPath} gefunden.\n` +
-          `Alle VDE-Werte MÜSSEN in lib/vde-standards.ts definiert und von dort importiert werden.\n\n` +
-          details
+        `Alle VDE-Werte MÜSSEN in lib/vde-standards.ts definiert und von dort importiert werden.\n\n` +
+        details
       );
     }
     expect(violations).toEqual([]);
   });
 
   it('useDashboardMetrics.ts importiert die zentralen VDE-Konstanten', () => {
-    const content = fs.readFileSync(
-      path.join(REPO_ROOT, 'components/planner/hooks/useDashboardMetrics.ts'),
-      'utf-8'
-    );
+    const content = fs.readFileSync(path.join(REPO_ROOT, 'components/planner/hooks/useDashboardMetrics.ts'), 'utf-8');
     expect(content).toMatch(/VDE_INVERTER_EFFICIENCY/);
     expect(content).toMatch(/VDE_BATTERY_DOD/);
     expect(content).toMatch(/VDE_SOLAR_WINTER_REDUCTION/);
@@ -114,24 +114,19 @@ describe('VDE-Konsistenz: keine hardcoded Magic-Numbers', () => {
     expect(content).toMatch(/VDE_CHARGE_DERATING_FACTOR/);
   });
 
-  it('CableEdge.tsx bezieht alle Ströme aus den zentralen Funktionen (DC + AC)', () => {
-    // Seit der AC-Strom-Berechnung braucht CableEdge die Konstanten nicht
-    // mehr selbst zu importieren — es delegiert an calculateEdgeCurrent (DC)
-    // und calculateAcEdgeCurrent (230 V) aus lib/vde-standards.ts. Genau
-    // diese Delegation wird hier erzwungen, damit keine Magic Numbers
-    // (0.85, 18 V, 230 V) in die Anzeige zurückwandern.
+  it('CableEdge.tsx importiert VDE_INVERTER_EFFICIENCY und VDE_SOLAR_VMP_VOLTAGE', () => {
     const content = fs.readFileSync(path.join(REPO_ROOT, 'components/edges/CableEdge.tsx'), 'utf-8');
-    expect(content).toMatch(/calculateEdgeCurrent/);
-    expect(content).toMatch(/calculateAcEdgeCurrent/);
-    expect(content).not.toMatch(/[/]\s*0\.85\b/);
+    expect(content).toMatch(/VDE_INVERTER_EFFICIENCY/);
+    expect(content).toMatch(/VDE_SOLAR_VMP_VOLTAGE/);
+    expect(content).not.toMatch(/[\/]\s*0\.85\b/);
   });
 
-  it('ConduitNode.tsx rechnet über die zentrale Füllgrad-Funktion statt mit eigenen Tabellen', () => {
+  it('ConduitNode.tsx definiert keine lokalen CONDUIT_SIZES / CABLE_OUTER_DIAMETERS', () => {
     const content = fs.readFileSync(path.join(REPO_ROOT, 'components/nodes/ConduitNode.tsx'), 'utf-8');
     expect(content).not.toMatch(/const\s+CONDUIT_SIZES\s*=/);
     expect(content).not.toMatch(/const\s+CABLE_OUTER_DIAMETERS\s*=/);
-    expect(content).toMatch(/calculateConduitFillPercent/);
-    expect(content).toMatch(/recommendConduitType/);
+    expect(content).toMatch(/VDE_CONDUIT_INNER_DIAMETERS/);
+    expect(content).toMatch(/VDE_CABLE_OUTER_DIAMETERS/);
     expect(content).toMatch(/VDE_MAX_CONDUIT_FILL_PERCENT/);
   });
 });
@@ -149,41 +144,40 @@ describe('VDE-Konsistenz: vde-standards exportiert alle wichtigen Konstanten', (
     'calculateStrokeWidth',
     'getEdgeDomain',
     'getHandleDomain',
+    'VDE_CURRENT_CAPACITY',
+    'VDE_STANDARD_FUSES',
+    'VDE_CONSERVATIVE_FUSES',
+    'VDE_COPPER_RESISTIVITY',
+    'VDE_MAX_VOLTAGE_DROP_12V',
+    'VDE_MAX_VOLTAGE_DROP_230V',
     'VDE_CONDUIT_INNER_DIAMETERS',
     'VDE_MAX_CONDUIT_FILL_PERCENT',
     'VDE_CABLE_OUTER_DIAMETERS',
     'VDE_INVERTER_EFFICIENCY',
+    'VDE_INVERTER_MAX_LOAD_FRACTION',
+    'VDE_RCD_MAX_TRIP_CURRENT_MA',
+    'VDE_230V_PERSON_PROTECTION_MA',
     'VDE_SOLAR_WINTER_REDUCTION',
     'VDE_SOLAR_VMP_VOLTAGE',
     'VDE_CHARGE_DERATING_FACTOR',
     'VDE_BATTERY_DOD',
+    'VDE_MIN_CROSS_SECTION',
+    'calculateMinCrossSection',
+    'roundUpToVDECrossSection',
+    'calculateVoltageDrop',
     'calculateConduitFillPercent',
     'recommendConduitType',
+    'calculateWire',
+    'validateCableEdge',
+    'validateBatteryNode',
+    'validateShorePowerNode',
+    'validateInverterNode',
+    'validateSchematic',
   ] as const;
 
   it('exportiert alle erforderlichen Konstanten und Funktionen', () => {
     const missing = requiredExports.filter((name) => (vde as Record<string, unknown>)[name] === undefined);
     expect(missing).toEqual([]);
-  });
-
-  it('exportiert die entfernte Legacy-Validierungs-API nicht mehr (Mission 4)', () => {
-    // Die zweite Validierungs-API und die parallelen Sicherungstabellen waren
-    // toter Code und widersprachen der aktiven Logik (selectFuseSize/FUSE_MAP).
-    const removed = [
-      'VDE_CURRENT_CAPACITY',
-      'VDE_STANDARD_FUSES',
-      'VDE_CONSERVATIVE_FUSES',
-      'calculateWire',
-      'calculateMinCrossSection',
-      'calculateVoltageDrop',
-      'validateSchematic',
-      'validateCableEdge',
-      'validateBatteryNode',
-      'validateShorePowerNode',
-      'validateInverterNode',
-    ];
-    const present = removed.filter((name) => (vde as Record<string, unknown>)[name] !== undefined);
-    expect(present).toEqual([]);
   });
 });
 
@@ -207,7 +201,7 @@ describe('VDE-Konsistenz: Re-Exports aus electrical.ts', () => {
 
   it('DERATE_FACTOR stimmt mit electrical.ts überein', () => {
     expect(vde.DERATE_FACTOR).toBe(electrical.DERATE_FACTOR);
-    expect(vde.DERATE_FACTOR).toBe(0.7);
+    expect(vde.DERATE_FACTOR).toBe(0.70);
   });
 
   it('calculateMaxFuseBase delegiert an electrical.calculateMaxFuse', () => {

@@ -1,7 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { withSelector } from '../../test-helpers/reactflowMocks';
 import { PlannerSidebar } from './PlannerSidebar';
 
 // Mock usePlannerStore
@@ -10,12 +9,12 @@ vi.mock('../../store/usePlannerStore', () => ({
   usePlannerStore: vi.fn((selector) => {
     const state = { viewMode: 'electric', isSidebarOpen: true, toggleSidebar: mockToggleSidebar };
     return selector(state);
-  }),
+  })
 }));
 
 // Mock Sidebar component
 vi.mock('../Sidebar', () => ({
-  Sidebar: ({ mode }: { mode: string }) => <div data-testid="sidebar-mock">Sidebar Mode: {mode}</div>,
+  Sidebar: ({ mode }: { mode: string }) => <div data-testid="sidebar-mock">Sidebar Mode: {mode}</div>
 }));
 
 describe('PlannerSidebar', () => {
@@ -50,13 +49,9 @@ describe('PlannerSidebar', () => {
   it('passes the correct viewMode from store to Sidebar', async () => {
     // Change mock to return 'water' mode
     const { usePlannerStore } = await import('../../store/usePlannerStore');
-    vi.mocked(usePlannerStore).mockImplementation(
-      withSelector({
-        viewMode: 'water',
-        isSidebarOpen: true,
-        toggleSidebar: vi.fn(),
-      }) as typeof usePlannerStore
-    );
+    vi.mocked(usePlannerStore).mockImplementation((selector: any) => {
+      return selector({ viewMode: 'water', isSidebarOpen: true, toggleSidebar: vi.fn() });
+    });
 
     render(<PlannerSidebar />);
 

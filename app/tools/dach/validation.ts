@@ -1,88 +1,116 @@
-import { type Node } from 'reactflow';
-import { type RoofNodeData } from '@/components/nodes/types';
-import { type VehicleTemplate } from '@/lib/vehicleTemplates';
+import { Node } from 'reactflow';
+import { RoofNodeData } from '@/components/nodes/types';
+import { VehicleTemplate } from '@/lib/vehicleTemplates';
 
 export const SAFE_MARGINS = {
   front: 15, // cm
-  rear: 5, // cm
-  left: 5, // cm
-  right: 5, // cm
+  rear: 5,   // cm
+  left: 5,   // cm
+  right: 5,  // cm
 };
 
-type RoofNode = Node<RoofNodeData>;
+// 1 cm = 2 px; Dachmaße in m → px = m * 100 cm/m * 2 px/cm = * 200.
+const CM_TO_PX = 2;
+const M_TO_PX = 100 * CM_TO_PX; // 200
 
-function nodeRect(node: RoofNode): { x: number; y: number; w: number; h: number } {
-  const w = node.width || (node.type === 'roofSolar' ? 200 : 80);
-  const h = node.height || (node.type === 'roofSolar' ? 120 : 80);
-  return { x: node.position.x, y: node.position.y, w, h };
+type RoofBounds = {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+};
+
+/**
+ * Berechnet die AABB-Bounds eines Dach-Knotens in Pixeln. Nutzt explizite
+ * `width`/`height`, sonst einen plausiblen Typ-Default.
+ */
+function getNodeBounds(node: Node<RoofNodeData>): RoofBounds | null {
+  if (node.id === 'background') return null;
+  const w = node.width ?? (node.type === 'roofSolar' ? 200 : 80);
+  const h = node.height ?? (node.type === 'roofSolar' ? 120 : 80);
+  if (!Number.isFinite(w) || !Number.isFinite(h)) return null;
+  return {
+    left: node.position.x,
+    top: node.position.y,
+    right: node.position.x + w,
+    bottom: node.position.y + h,
+  };
 }
 
-function rectsOverlap(
-  a: { x: number; y: number; w: number; h: number },
-  b: { x: number; y: number; w: number; h: number }
-): boolean {
-  // Zwei Rechtecke überlappen, wenn sie nicht vollständig nebeneinander
-  // oder übereinander liegen.
-  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+/** AABB-Überlappungstest mit 1 px Toleranz für Gleitkomma-Ungenauigkeiten. */
+function boundsOverlap(a: RoofBounds, b: RoofBounds): boolean {
+  return !(
+    a.right <= b.left + 1 ||
+    b.right <= a.left + 1 ||
+    a.bottom <= b.top + 1 ||
+    b.bottom <= a.top + 1
+  );
 }
 
 /**
- * Prüft alle Dach-Komponenten gegen den sicheren Bereich und auf
- * gegenseitige Überlappung. Setzt `isInvalid`, wenn eine Komponente
- * außerhalb liegt, und `isOverlapping`, wenn sie eine andere schneidet.
+ * Prüft gegen die Safe-Margins und auf Überlappung zwischen allen belegten
+ * Dach-Elementen (Solarmodule, Dachfenster, Dachhauben, …). Kennzeichnet
+ * Verstöße über `data.isInvalid` bzw. `data.overlapWith`.
  */
-export const validateRoofNodes = (nds: RoofNode[], selectedVehicle: VehicleTemplate): RoofNode[] => {
-  const roofW_px = selectedVehicle.roofWidth * 200;
-  const roofH_px = selectedVehicle.roofLength * 200;
+export const validateRoofNodes = (
+  nds: Node<RoofNodeData>[],
+  selectedVehicle: VehicleTemplate
+): Node<RoofNodeData>[] => {
+  const roofW_px = selectedVehicle.roofWidth * M_TO_PX;
+  const roofH_px = selectedVehicle.roofLength * M_TO_PX;
 
-  const safeMinX = SAFE_MARGINS.left * 2;
-  const safeMaxX = roofW_px - SAFE_MARGINS.right * 2;
-  const safeMinY = SAFE_MARGINS.front * 2;
-  const safeMaxY = roofH_px - SAFE_MARGINS.rear * 2;
+  const safeMinX = SAFE_MARGINS.left * CM_TO_PX;
+  const safeMaxX = roofW_px - SAFE_MARGINS.right * CM_TO_PX;
+  const safeMinY = SAFE_MARGINS.front * CM_TO_PX;
+  const safeMaxY = roofH_px - SAFE_MARGINS.rear * CM_TO_PX;
 
-  const relevant = nds.filter((node) => node.id !== 'background');
-  const rects = new Map(relevant.map((node) => [node.id, nodeRect(node)]));
+  // 1. Bounds pro Knoten einmal berechnen.
+  const itemNodes = nds.filter(n => n.id !== 'background');
+  const boundsById = new Map<string, RoofBounds>();
+  for (const node of itemNodes) {
+    const b = getNodeBounds(node);
+    if (b) boundsById.set(node.id, b);
+  }
 
-  const overlapping = new Set<string>();
-  for (let i = 0; i < relevant.length; i++) {
-    const a = relevant[i];
-    if (!a) continue;
-    const ra = rects.get(a.id)!;
-    for (let j = i + 1; j < relevant.length; j++) {
-      const b = relevant[j];
-      if (!b) continue;
-      const rb = rects.get(b.id)!;
-      if (rectsOverlap(ra, rb)) {
-        overlapping.add(a.id);
-        overlapping.add(b.id);
+  // 2. Paarweise Überlappungsprüfung.
+  const overlappingIds = new Set<string>();
+  const items = itemNodes.filter(n => boundsById.has(n.id));
+  for (let i = 0; i < items.length; i++) {
+    const a = boundsById.get(items[i].id)!;
+    for (let j = i + 1; j < items.length; j++) {
+      const b = boundsById.get(items[j].id)!;
+      if (boundsOverlap(a, b)) {
+        overlappingIds.add(items[i].id);
+        overlappingIds.add(items[j].id);
       }
     }
   }
 
-  return nds.map((node: RoofNode) => {
+  return nds.map((node: Node<RoofNodeData>) => {
     if (node.id === 'background') return node;
 
-    const rect = rects.get(node.id)!;
-    const isOutside =
-      rect.x < safeMinX || rect.y < safeMinY || rect.x + rect.w > safeMaxX || rect.y + rect.h > safeMaxY;
-    const isOverlapping = overlapping.has(node.id);
+    const bounds = boundsById.get(node.id);
+    const nodeW = node.width ?? (node.type === 'roofSolar' ? 200 : 80);
+    const nodeH = node.height ?? (node.type === 'roofSolar' ? 120 : 80);
 
-    const nextData = { ...node.data };
-    let changed = false;
-    if (nextData.isInvalid !== isOutside) {
-      nextData.isInvalid = isOutside;
-      changed = true;
+    const isOutside =
+      node.position.x < safeMinX ||
+      node.position.y < safeMinY ||
+      (node.position.x + nodeW) > safeMaxX ||
+      (node.position.y + nodeH) > safeMaxY;
+
+    const isOverlapping = overlappingIds.has(node.id);
+    const isInvalid = isOutside || isOverlapping;
+
+    // Referenzgleichheit, wenn sich nichts geändert hat (kein Re-Render).
+    const prevOverlap = node.data.overlapWith === true;
+    if (node.data.isInvalid === isInvalid && prevOverlap === isOverlapping) {
+      return node;
     }
-    // Überlappung nur als Flag schreiben, wenn sie aktiv ist oder zuvor
-    // aktiv war (zurücksetzen). Ein initial fehlendes Feld bleibt leer,
-    // damit bestehende Knotenreferenzen nicht unnötig ersetzt werden.
-    if (isOverlapping || nextData.isOverlapping) {
-      nextData.isOverlapping = isOverlapping;
-      changed = true;
-    }
-    if (changed) {
-      return { ...node, data: nextData };
-    }
-    return node;
+
+    return {
+      ...node,
+      data: { ...node.data, isInvalid, overlapWith: isOverlapping },
+    };
   });
 };

@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { validateRoofNodes, SAFE_MARGINS } from './validation';
-import { type Node } from 'reactflow';
-import { type RoofNodeData } from '@/components/nodes/types';
-import { type VehicleTemplate } from '@/lib/vehicleTemplates';
+import { Node } from 'reactflow';
+import { RoofNodeData } from '@/components/nodes/types';
+import { VehicleTemplate } from '@/lib/vehicleTemplates';
 
 describe('validateRoofNodes', () => {
   const mockVehicle: VehicleTemplate = {
@@ -13,7 +13,7 @@ describe('validateRoofNodes', () => {
     length: 5,
     width: 2,
     height: 2,
-    roofLength: 4, // 800px
+    roofLength: 4,  // 800px
     roofWidth: 1.5, // 300px
   };
 
@@ -21,9 +21,9 @@ describe('validateRoofNodes', () => {
   const roofH_px = mockVehicle.roofLength * 200; // 800
 
   const safeMinX = SAFE_MARGINS.left * 2; // 10
-  const safeMaxX = roofW_px - SAFE_MARGINS.right * 2; // 300 - 10 = 290
+  const safeMaxX = roofW_px - (SAFE_MARGINS.right * 2); // 300 - 10 = 290
   const safeMinY = SAFE_MARGINS.front * 2; // 30
-  const safeMaxY = roofH_px - SAFE_MARGINS.rear * 2; // 800 - 10 = 790
+  const safeMaxY = roofH_px - (SAFE_MARGINS.rear * 2); // 800 - 10 = 790
 
   const createNode = (
     id: string,
@@ -43,7 +43,7 @@ describe('validateRoofNodes', () => {
       width: width / 2,
       height: height / 2,
       isInvalid,
-      onNodeResize: () => {},
+      onNodeResize: () => {}
     },
     selected: false,
     draggable: true,
@@ -62,36 +62,36 @@ describe('validateRoofNodes', () => {
       // Top-left just inside safe margins
       const validNode = createNode('node-1', safeMinX, safeMinY, 'roofSolar', 100, 100);
       const result = validateRoofNodes([validNode], mockVehicle);
-      expect(result[0]!.data.isInvalid).toBe(false);
+      expect(result[0].data.isInvalid).toBe(false);
 
       // Bottom-right just inside safe margins
       const validNode2 = createNode('node-2', safeMaxX - 100, safeMaxY - 100, 'roofSolar', 100, 100);
       const result2 = validateRoofNodes([validNode2], mockVehicle);
-      expect(result2[0]!.data.isInvalid).toBe(false);
+      expect(result2[0].data.isInvalid).toBe(false);
     });
 
     it('should mark node as invalid if outside safe margins (left)', () => {
       const invalidNode = createNode('node-1', safeMinX - 1, safeMinY, 'roofSolar', 100, 100);
       const result = validateRoofNodes([invalidNode], mockVehicle);
-      expect(result[0]!.data.isInvalid).toBe(true);
+      expect(result[0].data.isInvalid).toBe(true);
     });
 
     it('should mark node as invalid if outside safe margins (right)', () => {
       const invalidNode = createNode('node-1', safeMaxX - 99, safeMinY, 'roofSolar', 100, 100); // 290 - 99 + 100 = 291 > 290
       const result = validateRoofNodes([invalidNode], mockVehicle);
-      expect(result[0]!.data.isInvalid).toBe(true);
+      expect(result[0].data.isInvalid).toBe(true);
     });
 
     it('should mark node as invalid if outside safe margins (front/top)', () => {
       const invalidNode = createNode('node-1', safeMinX, safeMinY - 1, 'roofSolar', 100, 100);
       const result = validateRoofNodes([invalidNode], mockVehicle);
-      expect(result[0]!.data.isInvalid).toBe(true);
+      expect(result[0].data.isInvalid).toBe(true);
     });
 
     it('should mark node as invalid if outside safe margins (rear/bottom)', () => {
       const invalidNode = createNode('node-1', safeMinX, safeMaxY - 99, 'roofSolar', 100, 100); // 790 - 99 + 100 = 791 > 790
       const result = validateRoofNodes([invalidNode], mockVehicle);
-      expect(result[0]!.data.isInvalid).toBe(true);
+      expect(result[0].data.isInvalid).toBe(true);
     });
   });
 
@@ -104,7 +104,7 @@ describe('validateRoofNodes', () => {
         data: {
           width: 100,
           height: 60,
-          onNodeResize: () => {},
+          onNodeResize: () => {}
         },
         selected: false,
         draggable: true,
@@ -112,7 +112,7 @@ describe('validateRoofNodes', () => {
 
       // safeMaxX - 199 + 200 = safeMaxX + 1 > safeMaxX -> invalid
       const resultInvalid = validateRoofNodes([nodeWithoutSize], mockVehicle);
-      expect(resultInvalid[0]!.data.isInvalid).toBe(true);
+      expect(resultInvalid[0].data.isInvalid).toBe(true);
 
       const validNodeWithoutSize: Node<RoofNodeData> = {
         id: 'node-2',
@@ -121,13 +121,32 @@ describe('validateRoofNodes', () => {
         data: {
           width: 100,
           height: 60,
-          onNodeResize: () => {},
+          onNodeResize: () => {}
         },
         selected: false,
         draggable: true,
       };
       const resultValid = validateRoofNodes([validNodeWithoutSize], mockVehicle);
-      expect(resultValid[0]!.data.isInvalid).toBe(false);
+      expect(resultValid[0].data.isInvalid).toBe(false);
+    });
+  });
+
+  describe('Overlap Detection', () => {
+    it('marks two overlapping roof elements as invalid', () => {
+      const a = createNode('solar-a', safeMinX, safeMinY, 'roofSolar', 100, 100);
+      const b = createNode('solar-b', safeMinX + 50, safeMinY + 50, 'roofSolar', 100, 100);
+      const result = validateRoofNodes([a, b], mockVehicle);
+      expect(result.find(n => n.id === 'solar-a')?.data.isInvalid).toBe(true);
+      expect(result.find(n => n.id === 'solar-b')?.data.isInvalid).toBe(true);
+      expect(result.find(n => n.id === 'solar-a')?.data.overlapWith).toBe(true);
+    });
+
+    it('keeps disjoint elements valid', () => {
+      const a = createNode('solar-a', safeMinX, safeMinY, 'roofSolar', 80, 80);
+      const b = createNode('solar-b', safeMinX + 90, safeMinY, 'roofSolar', 80, 80);
+      const result = validateRoofNodes([a, b], mockVehicle);
+      expect(result.find(n => n.id === 'solar-a')?.data.isInvalid).toBe(false);
+      expect(result.find(n => n.id === 'solar-b')?.data.isInvalid).toBe(false);
     });
   });
 
@@ -142,25 +161,7 @@ describe('validateRoofNodes', () => {
       const invalidNode = createNode('node-1', safeMinX - 10, safeMinY, 'roofSolar', 100, 100, false);
       const result = validateRoofNodes([invalidNode], mockVehicle);
       expect(result[0]).not.toBe(invalidNode); // reference changed
-      expect(result[0]!.data.isInvalid).toBe(true);
-    });
-  });
-
-  describe('Overlap Detection', () => {
-    it('marks two overlapping solar panels', () => {
-      const a = createNode('a', safeMinX, safeMinY, 'roofSolar', 100, 100);
-      const b = createNode('b', safeMinX + 50, safeMinY + 50, 'roofSolar', 100, 100);
-      const result = validateRoofNodes([a, b], mockVehicle);
-      expect(result.find((n) => n.id === 'a')?.data.isOverlapping).toBe(true);
-      expect(result.find((n) => n.id === 'b')?.data.isOverlapping).toBe(true);
-    });
-
-    it('does not mark side-by-side non-overlapping panels', () => {
-      const a = createNode('a', safeMinX, safeMinY, 'roofSolar', 80, 80);
-      const b = createNode('b', safeMinX + 90, safeMinY, 'roofSolar', 80, 80);
-      const result = validateRoofNodes([a, b], mockVehicle);
-      expect(result.find((n) => n.id === 'a')?.data.isOverlapping).toBeFalsy();
-      expect(result.find((n) => n.id === 'b')?.data.isOverlapping).toBeFalsy();
+      expect(result[0].data.isInvalid).toBe(true);
     });
   });
 });

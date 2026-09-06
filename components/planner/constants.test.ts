@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { NODE_TYPES, EDGE_TYPES, PLANNER_MIN_ZOOM, PLANNER_MAX_ZOOM, PLANNER_SNAP_GRID } from './constants';
-import * as plannerConstants from './constants';
+import { NODE_TYPES, EDGE_TYPES, initialNodes, initialEdges } from './constants';
 
 describe('components/planner/constants', () => {
   it('exports NODE_TYPES with expected node types', () => {
@@ -17,17 +16,19 @@ describe('components/planner/constants', () => {
     expect(Object.keys(EDGE_TYPES)).toContain('cableEdge');
   });
 
-  it('exports keine Demo-Fixtures mehr (initialNodes/initialEdges entfernt)', () => {
-    // Mission 4: Die Fixtures waren toter Code — der Plan startet leer bzw.
-    // über Templates/Onboarding. Das Modul ist jetzt rein deklarativ.
-    expect(Object.keys({ NODE_TYPES, EDGE_TYPES }).sort()).toEqual(['EDGE_TYPES', 'NODE_TYPES']);
+  it('exports initialNodes as an array with items', () => {
+    expect(Array.isArray(initialNodes)).toBe(true);
+    expect(initialNodes.length).toBeGreaterThan(0);
+    expect(initialNodes[0]).toHaveProperty('id');
+    expect(initialNodes[0]).toHaveProperty('type');
+    expect(initialNodes[0]).toHaveProperty('position');
   });
 
-  it('M8-1: Zoom 0,25–2 ohne Stufen-Schwellen', () => {
-    expect(PLANNER_MIN_ZOOM).toBe(0.25);
-    expect(PLANNER_MAX_ZOOM).toBe(2);
-    expect(PLANNER_SNAP_GRID).toEqual([16, 16]);
-    expect(plannerConstants).not.toHaveProperty('PLANNER_OVERVIEW_ZOOM');
-    expect(plannerConstants).not.toHaveProperty('PLANNER_FULL_DETAIL_ZOOM');
+  it('exports initialEdges as an array with items', () => {
+    expect(Array.isArray(initialEdges)).toBe(true);
+    expect(initialEdges.length).toBeGreaterThan(0);
+    expect(initialEdges[0]).toHaveProperty('id');
+    expect(initialEdges[0]).toHaveProperty('source');
+    expect(initialEdges[0]).toHaveProperty('target');
   });
 });

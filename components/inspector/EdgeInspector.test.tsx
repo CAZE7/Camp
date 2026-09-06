@@ -1,17 +1,15 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { Edge } from 'reactflow';
-import type { CableEdgeData } from '../edges/CableEdge';
 import { EdgeInspector } from './EdgeInspector';
 
 describe('EdgeInspector Component', () => {
   const mockOnChangeLength = vi.fn();
 
-  const defaultEdge: Edge<CableEdgeData> = {
+  const defaultEdge: any = {
     id: 'edge-1',
     source: 'node-1',
     target: 'node-2',
-    data: {},
+    data: {}
   };
 
   beforeEach(() => {

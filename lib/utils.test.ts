@@ -12,9 +12,7 @@ describe('cn utility', () => {
   });
 
   it('should handle conditional classes', () => {
-    const isActive = true;
-    const isPadded = false;
-    expect(cn('bg-red-500', isActive && 'text-white', isPadded && 'p-4')).toBe('bg-red-500 text-white');
+    expect(cn('bg-red-500', true && 'text-white', false && 'p-4')).toBe('bg-red-500 text-white');
   });
 
   it('should handle arrays of classes', () => {
@@ -34,9 +32,7 @@ describe('cn utility', () => {
   });
 
   it('should handle complex nested arrays and mixed structures', () => {
-    expect(cn(['bg-red-500', ['text-white', { 'font-bold': true, italic: false }]])).toBe(
-      'bg-red-500 text-white font-bold'
-    );
+    expect(cn(['bg-red-500', ['text-white', { 'font-bold': true, 'italic': false }]])).toBe('bg-red-500 text-white font-bold');
   });
 
   it('should handle arbitrary values in Tailwind classes', () => {

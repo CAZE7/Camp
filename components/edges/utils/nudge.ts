@@ -1,17 +1,21 @@
+/**
+ * Scope-fähiges orthogonales Nudging (libavoid-Phase 2) — Industrie-Version.
+ *
+ * Unterschied zur globalen Version:
+ *   - Nur betroffene Pfade (nach Dirty-Region) dürfen verschoben werden.
+ *   - Korridore, die von betroffenen UND unbeffected Pfaden geteilt werden,
+ *     bekommen nur den betroffenen Teil verschoben; der unbeffected Teil bleibt.
+ *   - Pfade ohne betroffene Segmente im Korridor bleiben unverändert.
+ *
+ * Volle Qualität wird mit globalem Nudging beim Drag-Ende nachgerüstet.
+ */
+
 import type { Point, Rect } from './pathfinding';
 import { isOrthogonalPath, pathHitsObstacles, containsPoint, stitchOrthogonal } from './pathfinding';
 
-/**
- * Globales orthogonales Nudging (libavoid-Phase 2).
- *
- * Parallele Innenstücke werden deterministisch auf Lanes verteilt.
- * Handle-Punkte bleiben. Wo ein Stub nicht mitwandern darf, setzt
- * `stitchOrthogonal` einen Ellbogen — der Pfad bleibt rechtwinklig.
- */
-
 export const NUDGE_GAP = 16;
 export const NUDGE_THRESHOLD = 10;
-export const NUDGE_MIN_OVERLAP = 12;
+const NUDGE_MIN_OVERLAP = 12;
 
 const EPS = 1e-6;
 
@@ -21,7 +25,7 @@ const at = <T>(arr: readonly T[], i: number): T => {
   if (v === undefined) {
     throw new RangeError(`nudge.at: Index ${i} außerhalb (Länge ${arr.length})`);
   }
-  return v;
+  return v as T;
 };
 
 export type NudgePath = { id: string; waypoints: Point[] };
@@ -33,6 +37,7 @@ type Seg = {
   lo: number;
   hi: number;
   perp: number;
+  clusterKey: number;
 };
 
 const clonePaths = (paths: NudgePath[]): Point[][] =>
@@ -63,6 +68,7 @@ const collectInterior = (pts: Point[], axis: 'h' | 'v'): Seg[] => {
         lo: Math.min(a.x, b.x),
         hi: Math.max(a.x, b.x),
         perp: a.y,
+        clusterKey: -1,
       });
     } else {
       if (Math.abs(a.x - b.x) > EPS) continue;
@@ -73,16 +79,23 @@ const collectInterior = (pts: Point[], axis: 'h' | 'v'): Seg[] => {
         lo: Math.min(a.y, b.y),
         hi: Math.max(a.y, b.y),
         perp: a.x,
+        clusterKey: -1,
       });
     }
   }
   return segs;
 };
 
-const clustersOf = (segs: Seg[]): number[][] => {
+/** Union-Find für Segment-Cluster. */
+const clusterSegments = (
+  segs: Seg[],
+  threshold: number,
+  _minOverlap: number
+): { parent: number[]; _groupIds: Map<number, number>; clusterCount: number } => {
   const n = segs.length;
   const parent = new Array<number>(n);
   for (let i = 0; i < n; i++) parent[i] = i;
+
   const find = (a: number): number => {
     while (at(parent, a) !== a) {
       parent[a] = at(parent, at(parent, a));
@@ -90,6 +103,7 @@ const clustersOf = (segs: Seg[]): number[][] => {
     }
     return a;
   };
+
   const union = (a: number, b: number) => {
     a = find(a);
     b = find(b);
@@ -98,29 +112,44 @@ const clustersOf = (segs: Seg[]): number[][] => {
 
   for (let i = 0; i < n; i++) {
     for (let j = i + 1; j < n; j++) {
-      if (Math.abs(at(segs, i).perp - at(segs, j).perp) > NUDGE_THRESHOLD) continue;
+      if (Math.abs(at(segs, i).perp - at(segs, j).perp) > threshold) continue;
       if (!rangesOverlap(at(segs, i).lo, at(segs, i).hi, at(segs, j).lo, at(segs, j).hi)) continue;
       union(i, j);
     }
   }
 
-  const buckets = new Map<number, number[]>();
+  const _groupIds = new Map<number, number>();
+  const clusterCount = new Set<number>();
   for (let i = 0; i < n; i++) {
-    const r = find(i);
-    const list = buckets.get(r);
-    if (list) list.push(i);
-    else buckets.set(r, [i]);
+    const root = find(i);
+    clusterCount.add(root);
+    if (!_groupIds.has(root)) {
+      _groupIds.set(root, _groupIds.size);
+    }
+    at(segs, i).clusterKey = _groupIds.get(root)!;
   }
-  return Array.from(buckets.values()).filter((g) => g.length > 1);
+
+  return { parent, _groupIds, clusterCount: clusterCount.size };
 };
 
 /** Nur echte Innenpunkte verschieben — Stubs bekommen später einen Ellbogen. */
 const isFreeVertex = (index: number, n: number): boolean => index >= 2 && index <= n - 3;
 
-const applyAxis = (
+/**
+ * Apply Nudging auf betroffene Lanes.
+ *
+ * `affectedPathIds` — Menge der Kanten-IDs, die verschoben werden dürfen
+ * (alle anderen bleiben unverändert, auch wenn sie denselben Korridor teilen).
+ *
+ * Korridore, die von betroffenen UND unbeffected Pfaden geteilt werden,
+ * werden nur für den betroffenen Teil verschoben.
+ */
+const applyAxisScoped = (
   clones: Point[][],
   originals: Point[][],
   pathIds: string[],
+  pathIndexById: Map<string, number>,
+  affectedPathIds: ReadonlySet<string>,
   axis: 'h' | 'v',
   gap: number
 ): void => {
@@ -135,9 +164,25 @@ const applyAxis = (
   }
   if (segs.length < 2) return;
 
-  const groups = clustersOf(segs);
+  // Cluster bilden
+  const { parent, _groupIds } = clusterSegments(segs, NUDGE_THRESHOLD, NUDGE_MIN_OVERLAP);
+
+  // Cluster-Gruppen (wiederkehrende Indices)
+  const buckets = new Map<number, number[]>();
+  for (let i = 0; i < segs.length; i++) {
+    const root = at(parent, i);
+    const list = buckets.get(root);
+    if (list) list.push(i);
+    else buckets.set(root, [i]);
+  }
+
+  // Nur große Cluster (mind. 2 Segmente) weiterverarbeiten
+  const groups = Array.from(buckets.values()).filter((g) => g.length > 1);
+
   for (let g = 0; g < groups.length; g++) {
     const group = at(groups, g);
+
+    // Welche Pfade sind in diesem Cluster betroffen?
     const byPath = new Map<number, number[]>();
     for (let t = 0; t < group.length; t++) {
       const si = at(group, t);
@@ -146,30 +191,56 @@ const applyAxis = (
       if (list) list.push(si);
       else byPath.set(p, [si]);
     }
-    if (byPath.size < 2) continue;
 
-    const firstSegIndexOf = (pathIdx: number): number => at(byPath.get(pathIdx)!, 0);
+    // Nur wenn mindestens 2 verschiedene Pfade im Cluster sind UND
+    // mindestens einer davon betroffen ist
+    const affectedPathsInCluster = new Set<number>();
+    for (const [, pathIndices] of byPath) {
+      for (const si of pathIndices) {
+        const pathId = at(pathIds, at(segs, si).path) || '';
+        if (affectedPathIds.has(pathId)) {
+          affectedPathsInCluster.add(at(segs, si).path);
+          break;
+        }
+      }
+    }
+
+    if (affectedPathsInCluster.size < 1) continue;
+
+    // Pfad-Reihenfolge: nach Perp-Koordinate, dann ID
     const pathOrder = Array.from(byPath.keys()).sort((pa, pb) => {
-      const da = at(segs, firstSegIndexOf(pa)).perp - at(segs, firstSegIndexOf(pb)).perp;
+      const da = at(segs, at(byPath.get(pa)!, 0)).perp - at(segs, at(byPath.get(pb)!, 0)).perp;
       if (Math.abs(da) > EPS) return da;
-      return at(pathIds, pa).localeCompare(at(pathIds, pb));
+      const pathA = at(pathIds, pa);
+      const pathB = at(pathIds, pb);
+      return (pathA || '').localeCompare(pathB || '');
     });
 
-    let mean = 0;
-    for (let i = 0; i < pathOrder.length; i++) {
-      mean += at(segs, firstSegIndexOf(at(pathOrder, i))).perp;
+    // Mittelwert aller betroffenen Pfade im Cluster
+    let affectedMean = 0;
+    let affectedCount = 0;
+    for (const p of pathOrder) {
+      if (!affectedPathsInCluster.has(p)) continue;
+      affectedMean += at(segs, at(byPath.get(p)!, 0)).perp;
+      affectedCount++;
     }
-    mean /= pathOrder.length;
+    if (affectedCount === 0) continue;
+    affectedMean /= affectedCount;
 
+    // Verschiebe nur betroffene Pfade auf Lane-Positionen
     for (let k = 0; k < pathOrder.length; k++) {
       const p = at(pathOrder, k);
-      const target = mean + (k - (pathOrder.length - 1) / 2) * gap;
-      const delta = target - at(segs, firstSegIndexOf(p)).perp;
+      if (!affectedPathsInCluster.has(p)) continue;
+
+      const target = affectedMean + (k - (affectedCount - 1) / 2) * gap;
+      const delta = target - at(segs, at(byPath.get(p)!, 0)).perp;
       if (Math.abs(delta) < EPS) continue;
+
       const pts = at(clones, p);
       const n = pts.length;
       const moved = new Set<number>();
       const list = byPath.get(p)!;
+
       for (let s = 0; s < list.length; s++) {
         const seg = at(segs, at(list, s));
         const ends = [seg.i0, seg.i1];
@@ -196,12 +267,20 @@ const obstaclesForPath = (obstacles: Rect[], start: Point, end: Point): Rect[] =
 };
 
 /**
- * Schiebt parallele Innenstücke auseinander. Start- und Zielpunkte bleiben.
- * Pfade, die danach ein fremdes Hindernis schneiden, fallen auf das Original zurück.
+ * Schiebt nur betroffene parallele Innenstücke auseinander.
+ * Start- und Zielpunkte bleiben. Pfade, die danach ein fremdes Hindernis
+ * schneiden, fallen auf das Original zurück.
+ *
+ * `affectedPathIds` — nur diese Pfade dürfen verschoben werden.
+ * Korridore ohne betroffene Pfade werden nicht berührt.
  */
 export function nudgeOrthogonalPaths(
   paths: NudgePath[],
-  options?: { obstacles?: Rect[]; gap?: number }
+  options?: {
+    obstacles?: Rect[];
+    gap?: number;
+    affectedPathIds?: ReadonlySet<string>;
+  }
 ): Map<string, Point[]> {
   const out = new Map<string, Point[]>();
   if (paths.length === 0) return out;
@@ -212,8 +291,18 @@ export function nudgeOrthogonalPaths(
   const gap = options?.gap ?? NUDGE_GAP;
   const obstacles = options?.obstacles ?? [];
 
-  applyAxis(clones, originals, ids, 'h', gap);
-  applyAxis(clones, originals, ids, 'v', gap);
+  // AffectedPathIds: wenn nicht angegeben, alle betroffen (globales Verhalten)
+  const affected = options?.affectedPathIds ?? new Set(ids);
+
+  // PathIndex map für schnellen Lookup
+  const pathIndexById = new Map<string, number>();
+  for (let i = 0; i < ids.length; i++) {
+    pathIndexById.set(ids[i]!, i);
+  }
+
+  // Nur betroffene Achsen verarbeiten
+  applyAxisScoped(clones, originals, ids, pathIndexById, affected, 'h', gap);
+  applyAxisScoped(clones, originals, ids, pathIndexById, affected, 'v', gap);
 
   for (let i = 0; i < paths.length; i++) {
     const id = at(ids, i);

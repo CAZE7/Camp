@@ -1,19 +1,18 @@
-'use client';
+"use client";
 
 import React from 'react';
-import { Panel, type Node } from 'reactflow';
+import { Panel, Node } from 'reactflow';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { type RoofNodeData } from '@/components/nodes/types';
-import { Sun, Home } from 'lucide-react';
+import { RoofNodeData } from '@/components/nodes/types';
 
 export function DachPanel({
   selectedNode,
   updateSelectedNodeWatts,
   updateSelectedNodeWidth,
   updateSelectedNodeHeight,
-  totalRoofSolarWatts,
+  totalRoofSolarWatts
 }: {
   selectedNode: Node<RoofNodeData> | undefined;
   updateSelectedNodeWatts: (watts: number) => void;
@@ -25,107 +24,62 @@ export function DachPanel({
   const isWindow = selectedNode?.type === 'roofWindow';
 
   return (
-    <Panel
-      position="top-right"
-      className="pointer-events-auto m-3 flex max-w-[calc(100vw-1.5rem)] flex-col gap-3"
-    >
+    <Panel position="top-right" className="mt-4 mr-4 pointer-events-auto flex flex-col gap-4">
       {selectedNode && (isSolar || isWindow) && (
-        <Card className="w-72 max-w-full rounded-none border border-rule bg-bone shadow-xl ring-0">
+        <Card className="min-w-[260px] shadow-2xl border border-border bg-card/95 backdrop-blur-md rounded-2xl">
           <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-sm font-semibold text-ink">
-              {isSolar ? (
-                <Sun className="h-4 w-4 text-copper" aria-hidden="true" />
-              ) : (
-                <Home className="h-4 w-4 text-warn-info" aria-hidden="true" />
-              )}
-              {isSolar ? 'Solarpanel anpassen' : 'Dachfenster anpassen'}
+            <CardTitle className="text-sm font-bold flex items-center gap-2">
+              <span className="text-base">{isSolar ? "⚡" : "🚐"}</span>
+              <span>{isSolar ? "Solarpanel anpassen" : "Dachfenster anpassen"}</span>
             </CardTitle>
-            <CardDescription className="text-xs text-ink-soft">
-              Werte werden sofort übernommen.
-            </CardDescription>
+            <CardDescription className="text-xs">Größe & Parameter konfigurieren</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {isSolar && (
               <div className="space-y-1.5">
-                <Label htmlFor="watts-input" className="text-xs font-semibold text-ink-soft">
-                  Leistung (Wp)
-                </Label>
+                <Label htmlFor="watts-input" className="text-xs font-semibold text-slate-600 dark:text-slate-400">Leistung (Wp)</Label>
                 <div className="relative">
                   <Input
                     id="watts-input"
                     type="number"
-                    value={selectedNode.data.watts ?? 0}
-                    onChange={(e) => {
-                      const raw = e.target.value;
-                      if (raw === '') return; // beim Editieren nicht auf 0 zwingen
-                      updateSelectedNodeWatts(Number(raw));
-                    }}
-                    className="h-11 pr-8"
+                    value={selectedNode.data.watts || 0}
+                    onChange={(e) => updateSelectedNodeWatts(Number(e.target.value))}
+                    className="h-9 pr-8"
                     min={0}
-                    aria-describedby="watts-unit"
                   />
-                  <span
-                    id="watts-unit"
-                    className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-ink-soft"
-                  >
-                    W
-                  </span>
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-bold">W</span>
                 </div>
               </div>
             )}
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label htmlFor="width-input" className="text-xs font-semibold text-ink-soft">
-                  Breite (cm)
-                </Label>
+                <Label htmlFor="width-input" className="text-xs font-semibold text-slate-600 dark:text-slate-400">Breite (cm)</Label>
                 <div className="relative">
                   <Input
                     id="width-input"
                     type="number"
                     value={Math.round(selectedNode.data.width || (isSolar ? 100 : 40))}
-                    onChange={(e) => {
-                      const raw = e.target.value;
-                      if (raw === '') return;
-                      updateSelectedNodeWidth(Number(raw));
-                    }}
-                    className="h-11 pr-9"
+                    onChange={(e) => updateSelectedNodeWidth(Number(e.target.value))}
+                    className="h-9 pr-9"
                     min={10}
-                    aria-describedby="width-unit"
                   />
-                  <span
-                    id="width-unit"
-                    className="caption-xs pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 font-semibold text-ink-soft"
-                  >
-                    cm
-                  </span>
+                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground font-semibold">cm</span>
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="height-input" className="text-xs font-semibold text-ink-soft">
-                  Länge (cm)
-                </Label>
+                <Label htmlFor="height-input" className="text-xs font-semibold text-slate-600 dark:text-slate-400">Länge (cm)</Label>
                 <div className="relative">
                   <Input
                     id="height-input"
                     type="number"
                     value={Math.round(selectedNode.data.height || (isSolar ? 60 : 40))}
-                    onChange={(e) => {
-                      const raw = e.target.value;
-                      if (raw === '') return;
-                      updateSelectedNodeHeight(Number(raw));
-                    }}
-                    className="h-11 pr-9"
+                    onChange={(e) => updateSelectedNodeHeight(Number(e.target.value))}
+                    className="h-9 pr-9"
                     min={10}
-                    aria-describedby="height-unit"
                   />
-                  <span
-                    id="height-unit"
-                    className="caption-xs pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 font-semibold text-ink-soft"
-                  >
-                    cm
-                  </span>
+                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground font-semibold">cm</span>
                 </div>
               </div>
             </div>
@@ -133,29 +87,25 @@ export function DachPanel({
         </Card>
       )}
 
-      <Card className="w-72 max-w-full rounded-none border border-rule bg-soot text-paper shadow-xl ring-0">
+      <Card className="min-w-[260px] shadow-2xl border-none bg-slate-900 text-white rounded-2xl overflow-hidden relative">
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-500" />
         <CardHeader className="pb-2">
-          <CardDescription className="label-eyebrow text-paper/70">Live-Sync</CardDescription>
-          <CardTitle className="flex items-center justify-between text-lg font-semibold text-paper">
+          <CardDescription className="text-blue-400 font-bold uppercase tracking-[0.2em] text-[10px]">System Check</CardDescription>
+          <CardTitle className="flex items-center justify-between text-2xl font-black">
             <span>Solarleistung</span>
-            <span className="measure text-warn">{totalRoofSolarWatts} W</span>
+            <span className="text-orange-400">{totalRoofSolarWatts} W</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div
-            className="h-1.5 w-full overflow-hidden bg-card/10"
-            role="progressbar"
-            aria-valuemin={0}
-            aria-valuemax={1000}
-            aria-valuenow={Math.min(1000, totalRoofSolarWatts)}
-            aria-label="Solarleistung von 1000 W"
-          >
+          <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
             <div
-              className="h-full bg-copper transition-[width] duration-300"
+              className="h-full bg-orange-500 transition-all duration-500"
               style={{ width: `${Math.min(100, (totalRoofSolarWatts / 1000) * 100)}%` }}
             />
           </div>
-          <p className="caption-xs mt-3 text-paper/70">Wird in Echtzeit an den Schaltplan übergeben.</p>
+          <p className="text-[10px] text-white/50 mt-3 font-medium">
+            Daten werden in Echtzeit mit dem Elektrik-Planer synchronisiert.
+          </p>
         </CardContent>
       </Card>
     </Panel>

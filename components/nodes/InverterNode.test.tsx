@@ -2,17 +2,16 @@ import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useNodes } from 'reactflow';
 import InverterNode from './InverterNode';
-import { asDivProps, type MockHandleProps } from '../../test-helpers/reactflowMocks';
 
 // Mock reactflow
 vi.mock('reactflow', async () => {
   const actual = await vi.importActual('reactflow');
   return {
     ...actual,
-    Handle: ({ 'data-testid': testId, isConnectable, ...props }: MockHandleProps) => {
+    Handle: ({ 'data-testid': testId, isConnectable, ...props }: any) => {
       // Destructure and exclude isConnectable and other reactflow-specific props to avoid React warnings
       const { position, ...rest } = props;
-      return <div data-testid={testId || 'react-flow-handle'} {...asDivProps(rest)} />;
+      return <div data-testid={testId || 'react-flow-handle'} {...rest} />;
     },
     Position: {
       Left: 'left',
@@ -47,53 +46,49 @@ describe('InverterNode Component', () => {
   it('applies selected styling when selected is true and not overloaded', () => {
     const { container } = render(<InverterNode id="1" data={{ continuousPower: 1500 }} selected={true} />);
     const mainDiv = container.firstChild as HTMLElement;
-    expect(mainDiv.getAttribute('data-selected')).toBe('true');
-    expect(mainDiv.className).toContain('node-card--selected');
+    expect(mainDiv.className).toContain('ring-4');
+    expect(mainDiv.className).toContain('ring-blue-500');
   });
 
   it('does not apply selected styling when selected is false', () => {
     const { container } = render(<InverterNode id="1" data={{ continuousPower: 1500 }} selected={false} />);
     const mainDiv = container.firstChild as HTMLElement;
-    expect(mainDiv.getAttribute('data-selected')).toBeNull();
-    expect(mainDiv.className).not.toContain('ring-[color:var(--accent-line)]');
+    expect(mainDiv.className).not.toContain('ring-4');
+    expect(mainDiv.className).not.toContain('ring-blue-500');
   });
 
   it('does not show overload warning when under continuous power limit', () => {
     vi.mocked(useNodes).mockReturnValue([
-      { id: 'c1', type: 'consumer230v', data: { watts: 1000 }, position: { x: 0, y: 0 } },
-    ]);
+      { id: 'c1', type: 'consumer230v', data: { watts: 1000 }, position: { x: 0, y: 0 } }
+    ] as any);
     render(<InverterNode id="1" data={{ continuousPower: 1500, concurrentDevices: ['c1'] }} />);
     expect(screen.queryByText(/Überlastung!/)).not.toBeInTheDocument();
   });
 
   it('shows overload warning and red styling when over continuous power limit', () => {
     vi.mocked(useNodes).mockReturnValue([
-      { id: 'c1', type: 'consumer230v', data: { watts: 2000 }, position: { x: 0, y: 0 } },
-    ]);
-    const { container } = render(
-      <InverterNode id="1" data={{ continuousPower: 1500, concurrentDevices: ['c1'] }} />
-    );
+      { id: 'c1', type: 'consumer230v', data: { watts: 2000 }, position: { x: 0, y: 0 } }
+    ] as any);
+    const { container } = render(<InverterNode id="1" data={{ continuousPower: 1500, concurrentDevices: ['c1'] }} />);
     expect(screen.getByText(/Überlastung!/)).toBeInTheDocument();
 
     const mainDiv = container.firstChild as HTMLElement;
-    expect(mainDiv.className).toContain('node-card--error');
-    expect(mainDiv.className).toContain('bg-warn-critical-bg');
+    expect(mainDiv.className).toContain('border-red-500');
+    expect(mainDiv.className).toContain('bg-red-50');
   });
 
   it('applies selected styling and overload styling together correctly', () => {
     vi.mocked(useNodes).mockReturnValue([
-      { id: 'c1', type: 'consumer230v', data: { watts: 2000 }, position: { x: 0, y: 0 } },
-    ]);
-    const { container } = render(
-      <InverterNode id="1" data={{ continuousPower: 1500, concurrentDevices: ['c1'] }} selected={true} />
-    );
+      { id: 'c1', type: 'consumer230v', data: { watts: 2000 }, position: { x: 0, y: 0 } }
+    ] as any);
+    const { container } = render(<InverterNode id="1" data={{ continuousPower: 1500, concurrentDevices: ['c1'] }} selected={true} />);
 
     const mainDiv = container.firstChild as HTMLElement;
-    expect(mainDiv.className).toContain('node-card--error');
-    expect(mainDiv.className).toContain('bg-warn-critical-bg');
-    expect(mainDiv.getAttribute('data-selected')).toBe('true');
-    expect(mainDiv.className).toContain('node-card--error');
-    expect(mainDiv.className).not.toContain('ring-[color:var(--accent-line)]');
+    expect(mainDiv.className).toContain('border-red-500');
+    expect(mainDiv.className).toContain('bg-red-50');
+    expect(mainDiv.className).toContain('ring-4');
+    expect(mainDiv.className).toContain('ring-red-500');
+    expect(mainDiv.className).not.toContain('ring-blue-500');
   });
 
   it('renders Handle components with correct props', () => {

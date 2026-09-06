@@ -2,7 +2,6 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import ConduitNode from './ConduitNode';
-import type { MockHandleProps } from '../../test-helpers/reactflowMocks';
 
 const mockUseEdges = vi.fn();
 
@@ -10,17 +9,9 @@ vi.mock('reactflow', async () => {
   const actual = await vi.importActual('reactflow');
   return {
     ...actual,
-    Handle: ({ 'data-testid': testId, isConnectable, ...props }: MockHandleProps) => {
+    Handle: ({ 'data-testid': testId, isConnectable, ...props }: any) => {
       const { type, position, id, style } = props;
-      return (
-        <div
-          data-testid={testId || 'react-flow-handle'}
-          data-type={type}
-          data-position={position}
-          data-id={id}
-          style={style}
-        />
-      );
+      return <div data-testid={testId || 'react-flow-handle'} data-type={type} data-position={position} data-id={id} style={style} />;
     },
     Position: {
       Left: 'left',
@@ -57,7 +48,9 @@ describe('ConduitNode Component', () => {
   });
 
   it('calculates fill correctly with assigned cables', () => {
-    mockUseEdges.mockReturnValue([{ id: 'edge-1', data: { crossSection: 1.5 } }]);
+    mockUseEdges.mockReturnValue([
+      { id: 'edge-1', data: { crossSection: 1.5 } }
+    ]);
 
     render(<ConduitNode id="1" data={{ assignedEdges: ['edge-1'] }} />);
     expect(screen.getByText('Zugewiesene Kabel: 1')).toBeInTheDocument();
@@ -68,28 +61,28 @@ describe('ConduitNode Component', () => {
   it('shows overfill warning when capacity exceeds 60%', () => {
     // EN 20 area ~224.3, 60% = ~134.5
     // 50mm2 cable outer diam = 13.5 (area ~143.1). 143.1 / 224.3 = 63.8%
-    mockUseEdges.mockReturnValue([{ id: 'edge-1', data: { crossSection: 50.0 } }]);
+    mockUseEdges.mockReturnValue([
+      { id: 'edge-1', data: { crossSection: 50.0 } }
+    ]);
 
     const { container } = render(<ConduitNode id="1" data={{ assignedEdges: ['edge-1'] }} />);
 
     // Check main warning text
-    expect(
-      screen.getByText('Kanal überfüllt! Gefahr durch Hitzestau in der Kabelbündelung.')
-    ).toBeInTheDocument();
+    expect(screen.getByText('Kanal überfüllt! Gefahr durch Hitzestau in der Kabelbündelung.')).toBeInTheDocument();
     // Check recommendation text
     expect(screen.getByText(/Bitte mindestens EN 25 Rohr verwenden./i)).toBeInTheDocument();
 
-    // Check if the overfill token classes are present
+    // Check if the overfill css class is present
     const mainDiv = container.firstChild as HTMLElement;
-    expect(mainDiv.className).toContain('bg-warn-critical-bg');
-    expect(mainDiv.className).toContain('node-card--error');
+    expect(mainDiv.className).toContain('bg-red-50');
+    expect(mainDiv.className).toContain('border-red-500');
   });
 
   it('applies selected styling when selected is true and not overfilled', () => {
     const { container } = render(<ConduitNode id="1" data={{}} selected={true} />);
     const mainDiv = container.firstChild as HTMLElement;
-    expect(mainDiv.getAttribute('data-selected')).toBe('true');
-    expect(mainDiv.className).toContain('node-card--selected');
+    expect(mainDiv.className).toContain('ring-4');
+    expect(mainDiv.className).toContain('ring-gray-400');
   });
 
   it('renders Handle components properly', () => {

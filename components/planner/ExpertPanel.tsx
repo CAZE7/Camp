@@ -1,41 +1,23 @@
-'use client';
+"use client";
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from "react";
+import { usePlannerStore } from "../../store/usePlannerStore";
+import { calculateCrossSection, calculateMaxFuse } from "../../lib/electrical";
 import {
-  Battery,
-  Cable,
-  CheckCircle2,
-  Compass,
-  Droplets,
-  Earth,
-  Gauge,
-  Info,
-  Link2,
-  Lightbulb,
-  Plug,
-  PlugZap,
-  RefreshCw,
-  Shield,
-  Sun,
-  Zap,
-  type LucideIcon,
-} from 'lucide-react';
-import { usePlannerStore } from '../../store/usePlannerStore';
-import { calculateCrossSection, calculateMaxFuse } from '../../lib/electrical';
-import { VDE_INVERTER_EFFICIENCY, VDE_SOLAR_VMP_VOLTAGE, getSystemVoltage } from '../../lib/vde-standards';
-import { cn } from '@/lib/utils';
-import { type Node, type Edge } from 'reactflow';
-import type { CableEdgeData } from '../edges/CableEdge';
+  VDE_INVERTER_EFFICIENCY,
+  VDE_SOLAR_VMP_VOLTAGE,
+} from "../../lib/vde-standards";
+import { getSystemVoltage } from "./utils/voltage";
+import { cn } from "@/lib/utils";
+import { Node, Edge } from 'reactflow';
+
 
 /* ─── Knowledge Database ─── */
 
 interface ExpertTip {
   title: string;
-  /** Lucide statt Emoji: der Planer ist eine Ingenieur-Oberfläche (Werft,
-   *  D-2) — Icons bleiben in Farbe/Gewicht kontrollierbar und brauchen kein
-   *  Emoji-Font auf dem Gerät. */
-  icon: LucideIcon;
-  color: string; // tailwind bg color (Token-Klasse)
+  icon: string;
+  color: string; // tailwind bg color
   tips: {
     heading: string;
     body: string;
@@ -45,380 +27,322 @@ interface ExpertTip {
 
 const EXPERT_KNOWLEDGE: Record<string, ExpertTip> = {
   battery: {
-    title: 'Batterie — Fachwissen',
-    icon: Battery,
-    color: 'bg-moss',
+    title: "Batterie — Experten-Wissen",
+    icon: "🔋",
+    color: "bg-emerald-500",
     tips: [
       {
-        heading: 'LiFePO4 vs. AGM',
-        body: 'LiFePO4-Akkus haben eine nutzbare Kapazität von ca. 95 % Entladetiefe (DoD), AGM nur ~50%. Eine 100Ah LiFePO4 ersetzt also eine 200Ah AGM.',
+        heading: "LiFePO4 vs. AGM",
+        body: "LiFePO4-Akkus haben eine nutzbare Kapazität von ca. 95% (DoD), AGM nur ~50%. Eine 100Ah LiFePO4 ersetzt also eine 200Ah AGM.",
       },
       {
-        heading: 'Kabelquerschnitt zur Batterie',
-        body: 'Die Zuleitung zur Batterie muss den maximalen Entladestrom tragen. Bei 100Ah LiFePO4 (1C) sind das 100A → mindestens 35mm² bei <1m Kabellänge.',
-        norm: 'DIN VDE 0298-4',
+        heading: "Kabelquerschnitt zur Batterie",
+        body: "Die Zuleitung zur Batterie muss den maximalen Entladestrom tragen. Bei 100Ah LiFePO4 (1C) sind das 100A → mindestens 35mm² bei <1m Kabellänge.",
+        norm: "DIN VDE 0298-4",
       },
       {
-        heading: 'Absicherung',
-        body: 'Die Hauptsicherung (ANL/MIDI) muss so nah wie möglich am Plus-Pol sitzen. Sie schützt das KABEL, nicht das Gerät! Bei 35mm² → max. 150A Sicherung.',
-        norm: 'DIN VDE 0100-721',
+        heading: "Absicherung",
+        body: "Die Hauptsicherung (ANL/MIDI) muss so nah wie möglich am Plus-Pol sitzen. Sie schützt das KABEL, nicht das Gerät! Bei 35mm² → max. 150A Sicherung.",
+        norm: "DIN VDE 0100-721",
       },
       {
-        heading: 'Parallelschaltung',
-        body: 'Zellen gleicher Kapazität und Alter verwenden. Gleichlange Kabel zwischen den Batterien (Symmetrische Verdrahtung), sonst fließen Ausgleichsströme.',
+        heading: "Parallelschaltung",
+        body: "Zellen gleicher Kapazität und Alter verwenden. Gleichlange Kabel zwischen den Batterien (Symmetrische Verdrahtung), sonst fließen Ausgleichsströme.",
       },
     ],
   },
   charger: {
-    title: 'Laderegler / Booster — Fachwissen',
-    icon: Zap,
-    color: 'bg-oak',
+    title: "Laderegler / Booster — Experten-Wissen",
+    icon: "⚡",
+    color: "bg-amber-500",
     tips: [
       {
-        heading: 'Solar-Laderegler: MPPT oder PWM',
-        body: 'Solar-Laderegler mit Maximum-Power-Point-Tracking (MPPT) sind ~30% effizienter als einfache Pulsweitenmodulation (PWM). Sie wandeln die höhere Panel-Spannung in mehr Ladestrom um. Ab 100W Solarleistung immer MPPT wählen.',
+        heading: "MPPT vs. PWM",
+        body: "MPPT-Regler sind ~30% effizienter als PWM. Sie wandeln die höhere Panel-Spannung in mehr Ladestrom um. Ab 100W Solarleistung immer MPPT wählen.",
       },
       {
-        heading: 'Dimensionierung',
-        body: 'Der Solar-Laderegler mit Maximum-Power-Point-Tracking (MPPT) muss die Leerlaufspannung (Voc) aller Panels in Reihe verkraften. Bei 2× 100W Panels in Reihe: Leerlaufspannung (Voc) ≈ 2 × 22V = 44V → min. 50V Regler.',
+        heading: "Dimensionierung",
+        body: "Der MPPT-Regler muss die Leerlaufspannung (Voc) aller Panels in Reihe verkraften. Bei 2× 100W Panels in Reihe: Voc ≈ 2 × 22V = 44V → min. 50V Regler.",
       },
       {
-        heading: 'Batterie-zu-Batterie-Ladebooster (B2B)',
-        body: 'Moderner Euro 6d Lichtmaschinen liefern oft nur 14,0V. Ein Ladebooster (z.B. Victron Orion-Tr Smart 12/12-30) hebt die Spannung auf 14,4V für LiFePO4.',
+        heading: "Ladebooster (B2B)",
+        body: "Moderner Euro 6d Lichtmaschinen liefern oft nur 14,0V. Ein Ladebooster (z.B. Victron Orion-Tr Smart 12/12-30) hebt die Spannung auf 14,4V für LiFePO4.",
       },
       {
-        heading: 'Kabelquerschnitt',
-        body: 'Von Lichtmaschine zum Ladebooster: min. 10mm² bei 30A und ≤3m. Vom Booster zur Batterie: gleicher Querschnitt. Immer beidseitig absichern!',
-        norm: 'DIN VDE 0298-4',
+        heading: "Kabelquerschnitt",
+        body: "Von Lichtmaschine zum Ladebooster: min. 10mm² bei 30A und ≤3m. Vom Booster zur Batterie: gleicher Querschnitt. Immer beidseitig absichern!",
+        norm: "DIN VDE 0298-4",
       },
     ],
   },
   solar: {
-    title: 'Solarpanel — Fachwissen',
-    icon: Sun,
-    color: 'bg-oxide',
+    title: "Solarpanel — Experten-Wissen",
+    icon: "☀️",
+    color: "bg-sky-500",
     tips: [
       {
-        heading: 'Ausrichtung',
-        body: 'Panels flach auf dem Dach montiert verlieren ~30% Ertrag ggü. optimaler Neigung. Trotzdem besser als Falt-Panels, da immer bereit und diebstahlsicher.',
+        heading: "Ausrichtung",
+        body: "Panels flach auf dem Dach montiert verlieren ~30% Ertrag ggü. optimaler Neigung. Trotzdem besser als Falt-Panels, da immer bereit und diebstahlsicher.",
       },
       {
-        heading: 'Parallel vs. Reihe',
-        body: 'Parallelschaltung: Ströme addieren sich, Spannung bleibt gleich → besser bei Teilverschattung. Reihenschaltung: Spannungen addieren sich → effizienter für MPPT.',
+        heading: "Parallel vs. Reihe",
+        body: "Parallelschaltung: Ströme addieren sich, Spannung bleibt gleich → besser bei Teilverschattung. Reihenschaltung: Spannungen addieren sich → effizienter für MPPT.",
       },
       {
-        heading: 'Realistische Erträge',
-        body: 'In Deutschland rechnet man mit ~3-4 Sonnenstunden/Tag (Sommer). Ein 200Wp Panel erzeugt real ca. 600-800Wh/Tag ≈ 50-65Ah bei 12V.',
+        heading: "Realistische Erträge",
+        body: "In Deutschland rechnet man mit ~3-4 Sonnenstunden/Tag (Sommer). Ein 200Wp Panel erzeugt real ca. 600-800Wh/Tag ≈ 50-65Ah bei 12V.",
       },
     ],
   },
   consumer: {
-    title: '12V Verbraucher — Fachwissen',
-    icon: Lightbulb,
-    color: 'bg-copper',
+    title: "12V Verbraucher — Experten-Wissen",
+    icon: "💡",
+    color: "bg-violet-500",
     tips: [
       {
-        heading: 'Querschnittberechnung',
-        body: 'Formel: A = (I × L × 2) ÷ (κ × ΔU). Für Kupfer: κ = 58. Bei 5A, 3m und max. 3% Spannungsfall (0,36V): A = (5 × 6) ÷ (58 × 0,36) = 1,44mm² → 1,5mm² wählen.',
-        norm: 'DIN VDE 0298-4',
+        heading: "Querschnittberechnung",
+        body: "Formel: A = (I × L × 2) ÷ (κ × ΔU). Für Kupfer: κ = 58. Bei 5A, 3m und max. 3% Spannungsfall (0,36V): A = (5 × 6) ÷ (58 × 0,36) = 1,44mm² → 1,5mm² wählen.",
+        norm: "DIN VDE 0298-4",
       },
       {
-        heading: 'Sicherungsgröße',
-        body: 'Die Sicherung muss zwischen Kabelbelastbarkeit und Nennstrom des Geräts liegen. Für 1,5mm² Kabel: max. 15A Sicherung. Für 2,5mm²: max. 20A.',
+        heading: "Sicherungsgröße",
+        body: "Die Sicherung muss zwischen Kabelbelastbarkeit und Nennstrom des Geräts liegen. Für 1,5mm² Kabel: max. 15A Sicherung. Für 2,5mm²: max. 20A.",
       },
       {
-        heading: 'Standby-Verbrauch beachten',
-        body: 'Viele 12V-Geräte ziehen im Standby 10-50mA. Bei 5 Geräten summiert sich das auf 50-250mA → 1,2-6Ah pro Tag. Trennschalter einplanen!',
+        heading: "Standby-Verbrauch beachten",
+        body: "Viele 12V-Geräte ziehen im Standby 10-50mA. Bei 5 Geräten summiert sich das auf 50-250mA → 1,2-6Ah pro Tag. Trennschalter einplanen!",
       },
     ],
   },
   consumer230v: {
-    title: '230V Verbraucher — Fachwissen',
-    icon: PlugZap,
-    color: 'bg-signal',
+    title: "230V Verbraucher — Experten-Wissen",
+    icon: "🔌",
+    color: "bg-rose-500",
     tips: [
       {
-        heading: 'Wechselrichter-Dimensionierung',
-        body: 'Induktionskochfeld (2000W) + Kaffeemaschine (1200W) = 3200W. Dein Wechselrichter muss min. 3500W Dauerleistung und >5000W Spitzenleistung haben.',
+        heading: "Wechselrichter-Dimensionierung",
+        body: "Induktionskochfeld (2000W) + Kaffeemaschine (1200W) = 3200W. Dein Wechselrichter muss min. 3500W Dauerleistung und >5000W Peak haben.",
       },
       {
-        heading: 'Batterie-Belastung',
-        body: '2000W bei 12V = ~185A Entladestrom! Das erfordert 50mm² Kabel zum Wechselrichter und eine 200A Sicherung. LiFePO4 ist Pflicht.',
+        heading: "Batterie-Belastung",
+        body: "2000W bei 12V = ~185A Entladestrom! Das erfordert 50mm² Kabel zum Wechselrichter und eine 200A Sicherung. LiFePO4 ist Pflicht.",
       },
       {
-        heading: 'Schutzmaßnahmen',
-        body: 'Ein 2-poliger kombinierter Fehlerstrom- und Leitungsschutzschalter (FI/LS, auch RCBO, 30 mA, Typ A) ist Pflicht für die 230V-Anlage im Wohnmobil. Kabel: H07RN-F Gummischlauchleitung.',
-        norm: 'DIN VDE 0100-721',
+        heading: "Schutzmaßnahmen",
+        body: "Ein 2-poliger FI/LS-Schutzschalter (RCBO, 30mA, Typ A) ist Pflicht für die 230V-Anlage im Wohnmobil. Kabel: H07RN-F Gummischlauchleitung.",
+        norm: "DIN VDE 0100-721",
       },
     ],
   },
   fuse: {
-    title: 'Sicherungskasten — Fachwissen',
-    icon: Shield,
-    color: 'bg-copper-deep',
+    title: "Sicherungskasten — Experten-Wissen",
+    icon: "🛡️",
+    color: "bg-orange-500",
     tips: [
       {
-        heading: 'Richtige Reihenfolge',
-        body: 'Batterie+ → Hauptsicherung (ANL, ≤20 cm) → Plus-Sammelschiene → Sicherungskasten → Verbraucher. Batterie- → Batteriemonitor (Shunt) → Minus-Sammelschiene. Der Shunt sitzt nur im Minus, die Hauptsicherung nur im Plus.',
+        heading: "Richtige Reihenfolge",
+        body: "Batterie → Hauptsicherung (ANL) → Shunt → Busbar → Sicherungskasten (Einzelsicherungen) → Verbraucher. Die Hauptsicherung kommt VOR dem Shunt!",
       },
       {
-        heading: 'Sicherungstypen',
-        body: 'ATO/ATC (KFZ-Standard) für ≤30A. MIDI/ANL für Hauptleitungen (40-300A). Verwende Sicherungshalter mit Abdeckung gegen Kurzschluss.',
+        heading: "Sicherungstypen",
+        body: "ATO/ATC (KFZ-Standard) für ≤30A. MIDI/ANL für Hauptleitungen (40-300A). Verwende Sicherungshalter mit Abdeckung gegen Kurzschluss.",
       },
       {
-        heading: 'Selektivität',
-        body: 'Einzelsicherungen müssen kleiner sein als die Hauptsicherung. Sonst löst bei Kurzschluss die Hauptsicherung aus, statt nur den betroffenen Zweig abzuschalten.',
+        heading: "Selektivität",
+        body: "Einzelsicherungen müssen kleiner sein als die Hauptsicherung. Sonst löst bei Kurzschluss die Hauptsicherung aus, statt nur den betroffenen Zweig abzuschalten.",
       },
     ],
   },
   inverter: {
-    title: 'Wechselrichter — Fachwissen',
-    icon: RefreshCw,
-    color: 'bg-ink',
+    title: "Wechselrichter — Experten-Wissen",
+    icon: "🔄",
+    color: "bg-indigo-500",
     tips: [
       {
-        heading: 'Reine Sinuswelle',
-        body: 'Immer einen reinen Sinus-Wechselrichter verwenden. Modifizierter Sinus kann empfindliche Geräte (Induktionskochfeld, Kompressor-Kühlbox) beschädigen.',
+        heading: "Reine Sinuswelle",
+        body: "Immer einen reinen Sinus-Wechselrichter verwenden. Modifizierter Sinus kann empfindliche Geräte (Induktionskochfeld, Kompressor-Kühlbox) beschädigen.",
       },
       {
-        heading: 'Kabelführung',
-        body: 'Die DC-Kabel zum Wechselrichter so kurz wie möglich halten (<1,5m). Bei 3000W Wechselrichter und 1m Kabel: min. 50mm² Querschnitt!',
+        heading: "Kabelführung",
+        body: "Die DC-Kabel zum Wechselrichter so kurz wie möglich halten (<1,5m). Bei 3000W Wechselrichter und 1m Kabel: min. 50mm² Querschnitt!",
       },
       {
-        heading: 'Eigenverbrauch',
-        body: 'Wechselrichter ziehen im Leerlauf 15-30W. Bei 24h: 360-720Wh ≈ 30-60Ah. Schalte ihn nur bei Bedarf ein oder nutze den Energiesparmodus.',
+        heading: "Eigenverbrauch",
+        body: "Wechselrichter ziehen im Leerlauf 15-30W. Bei 24h: 360-720Wh ≈ 30-60Ah. Schalte ihn nur bei Bedarf ein oder nutze die Eco-Mode Funktion.",
       },
     ],
   },
   shunt: {
-    title: 'Batteriemonitor (Shunt) — Fachwissen',
-    icon: Gauge,
-    color: 'bg-oxide',
+    title: "Smart Shunt — Experten-Wissen",
+    icon: "📊",
+    color: "bg-teal-500",
     tips: [
       {
-        heading: 'Einbauort',
-        body: 'Der Shunt kommt IMMER in die Minus-Leitung, direkt am Batterie-Minuspol. ALLE Minus-Leitungen müssen durch den Shunt laufen, sonst misst er falsch.',
+        heading: "Einbauort",
+        body: "Der Shunt kommt IMMER in die Minus-Leitung, direkt am Batterie-Minuspol. ALLE Minus-Leitungen müssen durch den Shunt laufen, sonst misst er falsch.",
       },
       {
-        heading: 'Kalibrierung',
-        body: 'Stelle die Batteriekapazität exakt ein (nicht den Nennwert!). Bei neuer LiFePO4 100Ah: trage 100Ah ein. Schweifstrom („Tail Current“) auf 4% und Ladeschlussspannung („Charged Voltage“) auf 14,2V.',
+        heading: "Kalibrierung",
+        body: "Stelle die Batteriekapazität exakt ein (nicht den Nennwert!). Bei neuer LiFePO4 100Ah: trage 100Ah ein. Tail Current auf 4% und Charged Voltage auf 14,2V.",
       },
     ],
   },
   busbar: {
-    title: 'Sammelschiene (Busbar) — Fachwissen',
-    icon: Link2,
-    color: 'bg-clay',
+    title: "Sammelschiene (Busbar) — Experten-Wissen",
+    icon: "🔗",
+    color: "bg-zinc-600",
     tips: [
       {
-        heading: 'Warum ein Busbar?',
-        body: 'Ein Busbar (Sammelschiene) vereinfacht die Verdrahtung. Statt alles an der Batterie anzuklemmen, geht nur ein dickes Kabel zum Busbar, und von dort verteilt es sich.',
+        heading: "Warum ein Busbar?",
+        body: "Ein Busbar (Sammelschiene) vereinfacht die Verdrahtung. Statt alles an der Batterie anzuklemmen, geht nur ein dickes Kabel zum Busbar, und von dort verteilt es sich.",
       },
       {
-        heading: 'Dimensionierung',
-        body: 'Die Busbar muss den Gesamtstrom aller angeschlossenen Verbraucher + Ladequellen tragen können. Typisch: 250A-Busbar mit M8-Bolzen für Kabelschuhe.',
+        heading: "Dimensionierung",
+        body: "Die Busbar muss den Gesamtstrom aller angeschlossenen Verbraucher + Ladequellen tragen können. Typisch: 250A-Busbar mit M8-Bolzen für Kabelschuhe.",
       },
     ],
   },
   shorePower: {
-    title: 'Landstromanschluss — Fachwissen',
-    icon: Plug,
-    color: 'bg-oxide',
+    title: "Landstromanschluss — Experten-Wissen",
+    icon: "🏕️",
+    color: "bg-blue-600",
     tips: [
       {
-        heading: 'CEE-Steckdose',
-        body: 'Verwende eine blaue CEE 16A Außendose (IP44). Im Fahrzeuginneren einen 2-poligen FI/LS 30mA Typ A. Kabel: H07RN-F 3G2,5mm².',
-        norm: 'DIN VDE 0100-721',
+        heading: "CEE-Steckdose",
+        body: "Verwende eine blaue CEE 16A Außendose (IP44). Im Fahrzeuginneren einen 2-poligen FI/LS 30mA Typ A. Kabel: H07RN-F 3G2,5mm².",
+        norm: "DIN VDE 0100-721",
       },
       {
-        heading: 'Galvanische Trennung',
-        body: 'Ein Trenntrafo schützt vor Korrosion durch Ableitströme auf dem Campingplatz. Besonders wichtig bei Fahrzeugen am Wasser oder mit Aluminiumkarosserie.',
+        heading: "Galvanische Trennung",
+        body: "Ein Trenntrafo schützt vor Korrosion durch Ableitströme auf dem Campingplatz. Besonders wichtig bei Fahrzeugen am Wasser oder mit Aluminiumkarosserie.",
       },
     ],
   },
   ground: {
-    title: 'Massepunkt — Fachwissen',
-    icon: Earth,
-    color: 'bg-clay',
+    title: "Massepunkt — Experten-Wissen",
+    icon: "⏚",
+    color: "bg-stone-600",
     tips: [
       {
-        heading: 'Sternförmige Masseführung',
-        body: 'Alle Masse-Kabel an einem zentralen Punkt (Masseschiene) sammeln und von dort mit EINEM dicken Kabel zur Batterie-Minus führen.',
+        heading: "Sternförmige Masseführung",
+        body: "Alle Masse-Kabel an einem zentralen Punkt (Masseschiene) sammeln und von dort mit EINEM dicken Kabel zur Batterie-Minus führen.",
       },
       {
-        heading: 'Karosserie-Masse',
-        body: 'Im Camper möglichst KEINE Karosserie als Rückleiter nutzen. Übergangwiderstände an korrodierenden Schrauben verursachen Spannungsabfälle und Brand-Risiko.',
-      },
-    ],
-  },
-  water: {
-    title: 'Wassersystem — Hilfe',
-    icon: Droplets,
-    color: 'bg-ink',
-    tips: [
-      {
-        heading: 'Flussrichtung beachten',
-        body: 'Frischwasser fließt vom Tank über Vorfilter, Pumpe und Druckausgleichsgefäß zu Spüle oder Dusche. Abwasser wird getrennt zum Abwassertank geführt.',
-      },
-      {
-        heading: 'Pumpe schützen',
-        body: 'Setze den Vorfilter vor die Pumpe und plane ihn gut erreichbar. Ein Druckausgleichsgefäß hinter der Pumpe reduziert Geräusche und häufiges Schalten.',
-      },
-      {
-        heading: 'Leitungen markieren',
-        body: 'Kennzeichne Frisch- und Abwasser auch bei der Montage eindeutig. Prüfe Rohrdurchmesser und Anschlüsse anhand der Herstellerangaben deiner Pumpe und Armaturen.',
+        heading: "Karosserie-Masse",
+        body: "Im Camper möglichst KEINE Karosserie als Rückleiter nutzen. Übergangwiderstände an korrodierenden Schrauben verursachen Spannungsabfälle und Brand-Risiko.",
       },
     ],
   },
   conduit: {
-    title: 'Leerrohr / Kabelkanal — Fachwissen',
-    icon: Cable,
-    color: 'bg-clay',
+    title: "Leerrohr / Kabelkanal — Experten-Wissen",
+    icon: "🔧",
+    color: "bg-gray-500",
     tips: [
       {
-        heading: 'Wellrohr verwenden',
-        body: 'Kabel im Fahrzeug immer in geschlitztem Wellrohr (NW 10-25) verlegen. Das schützt vor Scheuerstellen durch Vibrationen und erleichtert späteres Nachziehen.',
+        heading: "Wellrohr verwenden",
+        body: "Kabel im Fahrzeug immer in geschlitztem Wellrohr (NW 10-25) verlegen. Das schützt vor Scheuerstellen durch Vibrationen und erleichtert späteres Nachziehen.",
       },
       {
-        heading: 'Füllgrad beachten',
-        body: 'Max. 40% des Wellrohr-Querschnitts mit Kabeln füllen. Sonst lassen sich Kabel nicht mehr nachziehen und die Wärmeabfuhr ist eingeschränkt.',
+        heading: "Füllgrad beachten",
+        body: "Max. 40% des Wellrohr-Querschnitts mit Kabeln füllen. Sonst lassen sich Kabel nicht mehr nachziehen und die Wärmeabfuhr ist eingeschränkt.",
       },
     ],
   },
 };
 
-/* Standardwert when nothing is selected */
+/* Fallback when nothing is selected */
 const DEFAULT_TIP: ExpertTip = {
-  title: 'Fachwissen',
-  icon: Compass,
-  color: 'bg-ink',
+  title: "Experten-Wissen",
+  icon: "🧭",
+  color: "bg-stone-700",
   tips: [
     {
       heading: "So funktioniert's",
-      body: 'Wähle eine Komponente im Plan aus (klicke auf Batterie, Solar, Verbraucher, etc.) und hier erscheint sofort passendes Fachwissen zu Kabelquerschnitten, Normen und Profi-Tipps.',
+      body: "Wähle eine Komponente auf dem Canvas aus (klicke auf Batterie, Solar, Verbraucher, etc.) und hier erscheint sofort passendes Fachwissen zu Kabelquerschnitten, Normen und Profi-Tipps.",
     },
     {
-      heading: 'Profi-Tipp',
-      body: 'Beginne immer mit der Batterie und arbeite dich von dort nach außen vor. So behältst du den Überblick über Ströme und Querschnitte.',
+      heading: "Profi-Tipp",
+      body: "Beginne immer mit der Batterie und arbeite dich von dort nach außen vor. So behältst du den Überblick über Ströme und Querschnitte.",
     },
   ],
 };
 
 /* ─── Component ─── */
 
-function LiveRecommendationCard({
-  node,
-  nodes,
-  edges,
-}: {
-  node: Node;
-  nodes: Node[];
-  edges: Edge<CableEdgeData>[];
-}) {
-  if (!node || !(node.data?.watts || node.data?.amps || node.type === 'inverter' || node.type === 'solar'))
-    return null;
-
-  // Dieselbe Systemspannung wie in Kabel-Label und Auto-Wire (12,8 V LiFePO4,
-  // 12,0 V Blei, explizite nominalVoltage) — vorher wurde hart mit 12 V
-  // gerechnet und die Karte widersprach damit der Kantenbeschriftung.
+function LiveRecommendationCard({ node, edges }: { node: Node; edges: Edge[] }) {
+  const nodes = usePlannerStore((s) => s.nodes);
   const sysVoltage = getSystemVoltage(nodes);
-  const isAC = node.type === 'consumer230v';
 
-  let I = 0;
-  if (node.type === 'inverter') I = (Number(node.data.watts) || 1000) / sysVoltage / VDE_INVERTER_EFFICIENCY;
-  else if (node.type === 'solar') I = (Number(node.data.watts) || 100) / VDE_SOLAR_VMP_VOLTAGE;
-  else if (isAC)
-    I = (Number(node.data.watts) || 0) / 230; // AC current at 230V
-  else if (node.data?.watts) I = Number(node.data.watts) / sysVoltage;
-  else if (node.data?.amps) I = Number(node.data.amps);
+  if (!node || !(node.data?.watts || node.data?.amps || node.type === 'inverter' || node.type === 'solar')) return null;
 
-  const connectedEdges = edges.filter((e) => e.source === node.id || e.target === node.id);
-  let length = 2; // Default assumption 2 meters
-  let isStandardwert = true;
-  if (connectedEdges.length > 0) {
-    length = Math.max(...connectedEdges.map((e) => e.data?.length || 2));
-    isStandardwert = false;
-  }
+            let I = 0;
+            if (node.type === 'inverter')
+              I = (Number(node.data.watts) || 1000) / sysVoltage / VDE_INVERTER_EFFICIENCY;
+            else if (node.type === 'solar')
+              I = (Number(node.data.watts) || 100) / VDE_SOLAR_VMP_VOLTAGE;
+            else if (node.type === 'consumer230v')
+              I = (Number(node.data.watts) || 0) / 230; // AC current at 230V
+            else if (node.data?.watts) I = Number(node.data.watts) / sysVoltage;
+            else if (node.data?.amps) I = Number(node.data.amps);
 
-  // Determine domain for cross-section calculation
-  const domain: 'DC_12V' | 'AC_230V' = isAC ? 'AC_230V' : 'DC_12V';
-  const crossSection = calculateCrossSection(I, length, undefined, domain);
-  // 230-V-Leitungen werden nicht über die DC-FUSE_MAP abgesichert, sondern
-  // über einen FI/LS (RCBO) — die DC-Tabelle wäre hier irreführend.
-  const fuseLabel = isAC ? '16 A RCBO' : `${calculateMaxFuse(crossSection)} A`;
+            const connectedEdges = edges.filter(e => e.source === node.id || e.target === node.id);
+            let length = 2; // Default assumption 2 meters
+            let isFallback = true;
+            if (connectedEdges.length > 0) {
+              length = Math.max(...connectedEdges.map(e => (e.data as any)?.length || 2));
+              isFallback = false;
+            }
 
-  if (I > 0) {
-    return (
-      <div className="relative mx-4 mt-4 overflow-hidden rounded-lg border border-rule bg-surface-panel p-4 shadow-lg">
-        <h4 className="panel-title mb-3 flex items-center gap-1.5">
-          <span className="h-1.5 w-1.5 rounded-full bg-copper"></span>
-          Aktuelle Empfehlung{' '}
-          <span className="text-xs font-normal normal-case text-ink-soft">
-            {isStandardwert
-              ? '(Berechnung basiert auf 2m Standardwert – bitte Kabel verbinden!)'
-              : `(bei ${length.toFixed(1)}m Kabel)`}
-          </span>
-        </h4>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="flex flex-col rounded border border-border bg-surface-raised p-2.5">
-            <span className="text-muted-ink mb-1 text-xs font-semibold">Kabelquerschnitt</span>
-            <span className="font-display text-lg font-bold text-ink">
-              {crossSection} <span className="text-muted-ink text-xs font-bold">mm²</span>
-            </span>
-          </div>
-          <div className="flex flex-col rounded border border-border bg-surface-raised p-2.5">
-            <span className="text-muted-ink mb-1 text-xs font-semibold">Sicherung</span>
-            <span className="font-display text-lg font-bold text-ink">{fuseLabel}</span>
-          </div>
-          <div className="col-span-2 flex items-center justify-between rounded border border-border bg-surface-raised p-2">
-            <span className="text-xs font-semibold text-ink-soft">Erwarteter Strom:</span>
-            <span className="text-sm font-bold text-ink">{I.toFixed(1)} A</span>
-          </div>
-        </div>
-      </div>
-    );
-  }
+            // Determine domain for cross-section calculation
+            const domain: 'DC_12V' | 'AC_230V' = node.type === 'consumer230v' ? 'AC_230V' : 'DC_12V';
+            const crossSection = calculateCrossSection(I, length, undefined, domain);
+            const fuseSize = calculateMaxFuse(crossSection);
+
+            if (I > 0) {
+              return (
+                <div className="mx-4 mt-4 p-4 rounded-xl bg-gradient-to-br from-white/60 to-white/30 border border-white/50 shadow-[0_8px_32px_rgba(31,38,135,0.07)] backdrop-blur-md relative overflow-hidden">
+                  <div className="absolute -right-4 -top-4 w-16 h-16 bg-blue-500/10 rounded-full blur-xl pointer-events-none" />
+                  <div className="absolute -left-4 -bottom-4 w-16 h-16 bg-emerald-500/10 rounded-full blur-xl pointer-events-none" />
+                  <h4 className="text-xs font-bold text-stone-700 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
+                    Live-Empfehlung <span className="text-[10px] font-normal text-stone-400 normal-case">{isFallback ? "(Berechnung basiert auf 2m Fallback – bitte Kabel verbinden!)" : `(bei ${length.toFixed(1)}m Kabel)`}</span>
+                  </h4>
+                  <div className="grid grid-cols-2 gap-3 relative z-10">
+                    <div className="flex flex-col bg-white/60 rounded-lg p-2.5 border border-white">
+                      <span className="text-[10px] text-stone-500 font-semibold mb-1">Kabelquerschnitt</span>
+                      <span className="text-lg font-black text-stone-800">{crossSection} <span className="text-xs font-bold text-stone-500">mm²</span></span>
+                    </div>
+                    <div className="flex flex-col bg-white/60 rounded-lg p-2.5 border border-white">
+                      <span className="text-[10px] text-stone-500 font-semibold mb-1">Max. Sicherung</span>
+                      <span className="text-lg font-black text-stone-800">{fuseSize} <span className="text-xs font-bold text-stone-500">A</span></span>
+                    </div>
+                    <div className="col-span-2 flex justify-between items-center bg-white/40 rounded-lg p-2 border border-white/50">
+                      <span className="text-[10px] text-stone-600 font-semibold">Erwarteter Strom:</span>
+                      <span className="text-sm font-bold text-stone-800">{I.toFixed(1)} A</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            }
   return null;
 }
 
 export function ExpertPanel() {
   const [isOpen, setIsOpen] = useState(false);
   const [expandedTip, setExpandedTip] = useState<number | null>(0);
-  const [autoWireSummary, setAutoWireSummary] = useState<{ edgeCount: number } | null>(null);
 
   // Read-only subscription to selection state
   const selectedNodes = usePlannerStore((s) => s.selectedNodes);
   const edges = usePlannerStore((s) => s.edges);
-  const nodes = usePlannerStore((s) => s.nodes);
-
-  // Öffnet das Panel automatisch, sobald Automatische Verbindung abgeschlossen wurde,
-  // und bestätigt das Ergebnis sichtbar („nach Automatische Verbindung ist alles perfekt").
-  useEffect(() => {
-    const onAutoWired = (event: Event) => {
-      const detail = (event as CustomEvent<{ edgeCount?: number }>).detail;
-      setIsOpen(true);
-      setAutoWireSummary({ edgeCount: Number(detail?.edgeCount) || 0 });
-    };
-    window.addEventListener('planner-auto-wired', onAutoWired);
-    return () => window.removeEventListener('planner-auto-wired', onAutoWired);
-  }, []);
 
   const currentKnowledge = useMemo(() => {
-    const firstSelected = selectedNodes.at(0);
-    if (!firstSelected) return DEFAULT_TIP;
-    let nodeType = firstSelected.type;
+    if (selectedNodes.length === 0) return DEFAULT_TIP;
+    let nodeType = selectedNodes[0].type;
     if (!nodeType) return DEFAULT_TIP;
-
+    
     // Map new charger types to the general charger knowledge
     if (['mpptController', 'dcdcCharger', 'acBatteryCharger'].includes(nodeType)) {
       nodeType = 'charger';
-    }
-    if (
-      ['freshWaterTank', 'grayWaterTank', 'pump', 'accumulator', 'preFilter', 'sink', 'shower'].includes(
-        nodeType
-      )
-    ) {
-      nodeType = 'water';
     }
 
     return EXPERT_KNOWLEDGE[nodeType] || DEFAULT_TIP;
@@ -431,41 +355,34 @@ export function ExpertPanel() {
 
   return (
     <div
-      data-testid="expert-panel"
-      data-open={isOpen ? 'true' : 'false'}
       className={cn(
-        'planner-expert-panel pointer-events-auto absolute z-50 transition-all duration-300 ease-out',
-        // Geschlossen: FAB unten rechts, ab md über der Statuszeile.
-        // Offen: wächst nach oben (kein top+bottom-Stretch), max-h hält
-        // MiniMap/Statuszeile/Bottom-Nav frei. Die CSS-Klasse ergänzt auf
-        // iPhones zusätzlich die Safe-Area des Home-Indicators.
-        isOpen
-          ? 'planner-expert-panel--open bottom-28 right-4 w-11/12 max-w-sm md:bottom-20'
-          : 'planner-expert-panel--closed bottom-20 right-4 w-auto max-w-xs md:bottom-16'
+        "absolute bottom-20 md:bottom-4 right-4 z-50 transition-all duration-400 ease-out",
+        "pointer-events-auto"
       )}
+      style={{ maxWidth: isOpen ? 380 : 56 }}
     >
       {/* Expanded Panel */}
       {isOpen && (
-        <div
-          data-testid="expert-panel-open"
-          className="flex max-h-[min(28rem,calc(100dvh-8rem))] flex-col overflow-hidden rounded-lg border border-rule bg-bone/95 shadow-2xl backdrop-blur-xl duration-300 animate-in fade-in slide-in-from-bottom-4"
-        >
-          {/* Header — sticky, Token-Farben (bg-ink / text-bone) in hell und dunkel. */}
-          <div className="sticky top-0 z-10 flex shrink-0 items-center gap-3 bg-ink px-5 py-4 text-bone">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded border-bone/25 bg-bone/10">
-              <currentKnowledge.icon size={17} aria-hidden="true" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <h3 className="truncate text-sm font-black text-bone">{currentKnowledge.title}</h3>
-              <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-bone/80">
-                Fachwissen &amp; Normen
+        <div className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.2)] border border-stone-200/80 overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-300">
+          {/* Header */}
+          <div
+            className={cn(
+              "flex items-center gap-3 px-5 py-4",
+              "bg-gradient-to-r from-stone-800 to-stone-700"
+            )}
+          >
+            <span className="text-xl">{currentKnowledge.icon}</span>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-sm font-black text-white truncate">
+                {currentKnowledge.title}
+              </h3>
+              <p className="text-[10px] text-stone-400 font-medium uppercase tracking-wider">
+                Kontextuelles Lernen
               </p>
             </div>
             <button
-              type="button"
-              data-testid="expert-panel-close"
               onClick={() => setIsOpen(false)}
-              className="flex h-11 w-11 items-center justify-center rounded-lg text-bone transition-colors hover:bg-bone/15 hover:text-bone focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bone disabled:cursor-not-allowed disabled:opacity-40"
+              className="text-stone-400 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10"
               aria-label="Panel schließen"
             >
               <svg
@@ -476,7 +393,7 @@ export function ExpertPanel() {
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className="h-4 w-4"
+                className="w-4 h-4"
               >
                 <path d="M18 6 6 18" />
                 <path d="m6 6 12 12" />
@@ -484,70 +401,36 @@ export function ExpertPanel() {
             </button>
           </div>
 
-          {/* Automatische Verbindung Erfolgs-Bestätigung */}
-          {autoWireSummary && (
-            <div className="mx-4 mt-4 rounded-lg border border-moss bg-moss/10 p-3.5 shadow-sm duration-300 animate-in fade-in slide-in-from-top-2">
-              <div className="flex items-start gap-2.5">
-                <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-moss" aria-hidden="true" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-black text-moss">Automatische Verbindung abgeschlossen</p>
-                  <p className="mt-1 text-xs leading-snug text-moss">
-                    {autoWireSummary.edgeCount} Kabel verlegt · alle Sicherungen &amp; Querschnitte berechnet
-                    (DIN VDE 0298-4 / 0100-721). Klicke auf eine Komponente für Details.
-                  </p>
-                </div>
-                <button
-                  onClick={() => setAutoWireSummary(null)}
-                  className="rounded-md p-0.5 text-moss/60 transition-colors hover:bg-moss/10 hover:text-moss"
-                  aria-label="Automatische Verbindung Zusammenfassung schließen"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="h-3.5 w-3.5"
-                  >
-                    <path d="M18 6 6 18" />
-                    <path d="m6 6 12 12" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          )}
-
           {/* Dynamic Calculation Card */}
-          {(() => {
-            const first = selectedNodes.at(0);
-            return first ? <LiveRecommendationCard node={first} nodes={nodes} edges={edges} /> : null;
-          })()}
+          {selectedNodes.length > 0 && <LiveRecommendationCard node={selectedNodes[0]} edges={edges} />}
 
           {/* Tip Accordion */}
-          <div className="mt-2 min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          <div className="max-h-[40vh] overflow-y-auto overscroll-contain mt-2">
             {currentKnowledge.tips.map((tip, idx) => {
               const isExpanded = expandedTip === idx;
               return (
-                <div key={idx} className="border-b border-rule/40 last:border-b-0">
+                <div key={idx} className="border-b border-stone-100 last:border-b-0">
                   <button
-                    onClick={() => setExpandedTip(isExpanded ? null : idx)}
-                    className="group flex min-h-11 w-full items-center gap-3 px-5 py-3 text-left transition-colors hover:bg-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ink"
+                    onClick={() =>
+                      setExpandedTip(isExpanded ? null : idx)
+                    }
+                    className="w-full flex items-center gap-3 px-5 py-3 text-left hover:bg-stone-50 transition-colors group"
                     aria-expanded={isExpanded}
                     aria-controls={`tip-content-${idx}`}
                   >
                     {/* Accent dot */}
                     <span
                       className={cn(
-                        'h-2 w-2 flex-shrink-0 rounded-full transition-all',
-                        isExpanded ? currentKnowledge.color : 'bg-clay group-hover:bg-ink'
+                        "flex-shrink-0 w-2 h-2 rounded-full transition-all",
+                        isExpanded
+                          ? currentKnowledge.color
+                          : "bg-stone-300 group-hover:bg-stone-400"
                       )}
                     />
                     <span
                       className={cn(
-                        'flex-1 text-sm font-bold transition-colors',
-                        isExpanded ? 'text-ink' : 'text-ink-soft'
+                        "flex-1 text-sm font-bold transition-colors",
+                        isExpanded ? "text-stone-900" : "text-stone-600"
                       )}
                     >
                       {tip.heading}
@@ -561,8 +444,8 @@ export function ExpertPanel() {
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       className={cn(
-                        'h-4 w-4 text-ink-soft transition-transform duration-200',
-                        isExpanded && 'rotate-180'
+                        "w-4 h-4 text-stone-400 transition-transform duration-200",
+                        isExpanded && "rotate-180"
                       )}
                     >
                       <path d="m6 9 6 6 6-6" />
@@ -573,18 +456,20 @@ export function ExpertPanel() {
                   {isExpanded && (
                     <div
                       id={`tip-content-${idx}`}
-                      className="px-5 pb-4 pl-10 duration-200 animate-in fade-in slide-in-from-top-2"
+                      className="px-5 pb-4 pl-10 animate-in slide-in-from-top-2 fade-in duration-200"
                     >
-                      <p className="text-sm leading-relaxed text-ink-soft">{tip.body}</p>
+                      <p className="text-sm text-stone-600 leading-relaxed">
+                        {tip.body}
+                      </p>
                       {tip.norm && (
-                        <span className="mt-2 inline-flex items-center gap-1 rounded-md border border-oxide/20 bg-oxide/10 px-2 py-0.5 text-xs font-bold uppercase tracking-wider text-oxide">
+                        <span className="inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 text-[10px] font-bold uppercase tracking-wider border border-blue-100">
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
                             viewBox="0 0 24 24"
                             fill="none"
                             stroke="currentColor"
                             strokeWidth="2.5"
-                            className="h-3 w-3"
+                            className="w-3 h-3"
                           >
                             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                           </svg>
@@ -599,58 +484,52 @@ export function ExpertPanel() {
           </div>
 
           {/* Footer */}
-          <div className="shrink-0 border-t border-rule bg-paper px-5 py-3">
-            <p className="text-xs font-medium text-ink-soft">Wähle eine Komponente für passende Tipps.</p>
-            <p className="mt-1 text-xs font-semibold text-signal">
-              230-V-Anlagen müssen von einer Elektrofachkraft geprüft und angeschlossen werden.
+          <div className="px-5 py-3 bg-stone-50 border-t border-stone-100">
+            <p className="text-[10px] text-stone-400 font-medium">
+              💡 Klicke auf verschiedene Komponenten für kontextspezifische Tipps
             </p>
           </div>
         </div>
       )}
 
-      {/* FAB Toggle Button — bewusst groß & auffällig („Fachwissen") */}
+      {/* FAB Toggle Button */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
           className={cn(
-            'group relative flex items-center gap-2.5 rounded-lg border border-copper bg-ink py-3 pl-3 pr-4',
-            'text-bone shadow-lg',
-            'hover:border-copper hover:bg-surface-raised hover:text-ink',
-            'transition-colors duration-200'
+            "w-14 h-14 rounded-2xl flex items-center justify-center",
+            "bg-gradient-to-br from-stone-800 to-stone-700",
+            "text-white shadow-[0_8px_25px_rgba(0,0,0,0.25)]",
+            "hover:shadow-[0_12px_35px_rgba(0,0,0,0.35)] hover:scale-105",
+            "transition-all duration-200",
+            "border border-stone-600/50",
+            "relative group"
           )}
-          aria-label="Hilfe und Fachwissen öffnen"
-          title="Hilfe und Fachwissen öffnen"
+          aria-label="Experten-Wissen öffnen"
+          title="Experten-Wissen"
         >
-          {/* Die Auswahl wird über den Text angekündigt – ohne ablenkende Daueranimation. */}
-          <span className="relative flex h-8 w-8 items-center justify-center rounded border border-copper/40 bg-copper/10 transition-colors group-hover:bg-copper/15">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="h-5 w-5"
-            >
-              <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
-              <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
-            </svg>
-          </span>
-          <span className="relative flex flex-col items-start text-left">
-            <span className="text-sm font-black leading-tight">Hilfe &amp; Fachwissen</span>
-            <span className="text-xs font-bold leading-tight text-paper/80">
-              {selectedNodes.length > 0 ? 'Tipps für deine Auswahl' : 'Details und Normen'}
-            </span>
-          </span>
+          {/* Pulse ring when a component is selected */}
+          {selectedNodes.length > 0 && (
+            <span className="absolute inset-0 rounded-2xl animate-ping bg-emerald-400/20 pointer-events-none" />
+          )}
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="w-6 h-6"
+          >
+            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+          </svg>
 
           {/* Notification dot */}
           {selectedNodes.length > 0 && (
-            <span
-              className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full border-2 border-bone bg-oxide text-bone shadow-md"
-              aria-hidden="true"
-            >
-              <Info size={12} strokeWidth={2.5} />
+            <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border-2 border-white flex items-center justify-center">
+              <span className="text-[8px] font-black text-white">!</span>
             </span>
           )}
         </button>
