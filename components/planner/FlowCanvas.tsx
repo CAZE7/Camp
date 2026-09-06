@@ -55,7 +55,8 @@ export function FlowCanvas() {
     onWaterEdgesChange,
     onConnect,
     isValidConnection,
-    onSelectionChange
+    onSelectionChange,
+    rerouteV2
   } = usePlannerStore(useShallow((state) => ({
     viewMode: state.viewMode,
     nodes: state.nodes,
@@ -71,6 +72,7 @@ export function FlowCanvas() {
     onConnect: state.onConnect,
     isValidConnection: state.isValidConnection,
     onSelectionChange: state.onSelectionChange,
+    rerouteV2: state.rerouteV2,
   })));
 
   const calculatedSolarWatts = useAppStore((state) => state.calculatedSolarWatts);
@@ -106,6 +108,7 @@ export function FlowCanvas() {
           edgeTypes={edgeTypes}
           onNodesChange={viewMode === 'water' ? onWaterNodesChange : onNodesChange}
           onEdgesChange={viewMode === 'water' ? onWaterEdgesChange : onEdgesChange}
+          onNodeDragStop={viewMode === 'water' ? undefined : () => rerouteV2()}
           onConnect={onConnect}
           isValidConnection={isValidConnection}
           onSelectionChange={onSelectionChange}

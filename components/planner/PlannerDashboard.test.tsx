@@ -28,6 +28,7 @@ const mockExportBOM = vi.fn();
 const mockAutoWireSystem = vi.fn();
 const mockCheckSchematic = vi.fn();
 const mockOnLayout = vi.fn();
+const mockOnLayoutV2 = vi.fn().mockResolvedValue(undefined);
 
 vi.mock('../../store/usePlannerStore', () => ({
   usePlannerStore: vi.fn((selector) => {
@@ -40,6 +41,7 @@ vi.mock('../../store/usePlannerStore', () => ({
       autoWireSystem: mockAutoWireSystem,
       checkSchematic: mockCheckSchematic,
       onLayout: mockOnLayout,
+      onLayoutV2: mockOnLayoutV2,
       systemMessage: null,
       setSystemMessage: vi.fn(),
       nodes: [],
@@ -151,13 +153,13 @@ describe('PlannerDashboard - Action Buttons', () => {
     expect(mockCheckSchematic).toHaveBeenCalledTimes(1);
   });
 
-  it('calls onLayout with no args when clicking Aufräumen', () => {
+  it('calls onLayoutV2 when clicking Aufräumen', () => {
     render(<PlannerDashboard />);
 
     fireEvent.click(screen.getByText(/Aufräumen/));
 
-    expect(mockOnLayout).toHaveBeenCalledTimes(1);
-    expect(mockOnLayout).toHaveBeenCalledWith();
+    expect(mockOnLayoutV2).toHaveBeenCalledTimes(1);
+    expect(mockOnLayoutV2).toHaveBeenCalledWith();
   });
 });
 
