@@ -4,10 +4,13 @@
 > Ausführung streng sequenziell: **ein Workpackage = ein PR.**
 > Details je Workpackage stehen im referenzierten Issue — dieser Plan definiert Reihenfolge,
 > Regeln und Verifikation, nicht die Fachinhalte.
+> **Revision 2026-09-06:** Abgleich mit agent.md-Tracks S/P (Rev. 2 der Spec) —
+> WP-8 absorbiert P-1/P-2/P-5, WP-4 erhält den P-6-Worker-Vertrag, WP-11 das P-7-Perf-Gate,
+> neuer Abschnitt „Stack-Track“ zur S-1-Sequenz.
 
 ## Grundregeln (immer gültig)
 
-1. **Quelle der Wahrheit ist `docs/ROUTING-V2.md`** (eingefroren per Freeze-Gate).
+1. **Quelle der Wahrheit ist `docs/ROUTING-V2.md`** (Rev. 2, eingefroren per Freeze-Gate).
    Bei Widerspruch: Spec > Code > Issues. Spec-Änderungen nur via ADR + Change Ledger.
 2. **Freeze-Gate:** WP-1 … WP-11 starten erst, wenn WP-0a, WP-0b, WP-0c abgeschlossen sind.
 3. **Ein PR verändert genau eine Verantwortung.** Bestehende Tests bleiben grün — kein
@@ -18,14 +21,23 @@
 6. **Bei unlösbarem Konflikt: STOPP** → Befund als Kommentar ins Issue, keine Eigenlösung.
 7. Jeder PR: `Closes #<Issue>` + WP-Nummer im Titel + Verifikations-Output im PR-Body.
 
+## Stack-Track (agent.md S-1…S-5, paralleler Strang)
+
+- **S-1 (React Flow 12) muss VOR WP-7 und WP-8 gemerged sein** — diese WPs berühren die
+  RF-API (`CableEdge`, `nodeTypes`/`edgeTypes`, CSS); sonst doppelter Migrationsaufwand.
+  Akzeptanz aus agent.md: `npm run check` grün; Drag, Auto-Wire, Undo/Redo unverändert;
+  Invarianten-Tests und visuelle Baselines ohne Diff. Kann parallel zu Phase 0/1 laufen.
+- S-2 (Tailwind v4), S-3 (lucide), S-4 (Export): unabhängig von Routing V2.
+- S-5 (ADR 0003): wird in WP-4 miterledigt.
+
 ## Kontext vor Start (lesen, nicht ändern)
 
-- `docs/ROUTING-V2.md` — Spezifikation (Architekturvertrag, Tokens, Kollisionsmodell,
-  Invarianten, Exit-Conditions)
+- `docs/ROUTING-V2.md` — Spezifikation Rev. 2 (Architekturvertrag, Tokens, Kollisionsmodell,
+  Invarianten, Exit-Conditions, S/P-Zuordnung Abschnitt 16)
 - Epic `#389` — Exit-Conditions und Freeze-Gate
 - `docs/ROUTING-INVARIANTS.md` — bestehende Invarianten, bleiben gültig
 - `docs/adr/` — bestehende ADRs; ADR 0003 wird in WP-4 aktualisiert
-- `AGENTS.md` / `agent.md` — Missionskonventionen des Repos
+- `AGENTS.md` / `agent.md` — Missionskonventionen des Repos (inkl. S/P-Tracks)
 
 ## Ausführungsreihenfolge
 
@@ -39,16 +51,18 @@ WP-3  #391  Kollisionsmodell                           ┘
 WP-4  #393  ELK Adapter (elkjs, Worker, A/B, ADR)     ┐
 WP-5  #394  LaneRegistry                              │
 WP-6  #396  A*-Kostenmodell                           │
-WP-7  #395  Kreuzungs-Hopping                         ├ Phase 2 — Routing V2
-WP-8  #397  Lokales Re-Routing                        │
+WP-7  #395  Kreuzungs-Hopping (erst nach S-1!)        ├ Phase 2 — Routing V2
+WP-8  #397  Re-Routing & Drag-Performance (P-1/2/5)   │
 WP-9  #398  Port Fan-Out                              │
 WP-10 #399  Invarianten-Suite                         │
-WP-11 #400  Regression-Suite & Golden Layouts         ┘
+WP-11 #400  Regression, Golden Layouts, Perf-Gate     ┘
 ```
 
-Hinweis zur Reihenfolge: Issue #390 ist numerisch vor #392 geschnitten, aber **WP-2
-(Geometrie) ist die Code-Voraussetzung für WP-3 (Kollisionsmodell)** — beide Reihenfolgen
-(WP-1→WP-2 oder parallel) sind zulässig, WP-2 muss nur vor WP-3 gemerged sein.
+Hinweise zur Reihenfolge:
+
+- Issue #390 ist numerisch vor #392 geschnitten, aber **WP-2 (Geometrie) ist die
+  Code-Voraussetzung für WP-3 (Kollisionsmodell)** — WP-2 muss vor WP-3 gemerged sein.
+- **S-1 (React Flow 12) vor WP-7/WP-8** — siehe Stack-Track.
 
 ## Workpackages
 
@@ -70,12 +84,16 @@ Hinweis zur Reihenfolge: Issue #390 ist numerisch vor #392 geschnitten, aber **W
 ### WP-1 — #390 Design Tokens
 - **Ziel:** Token-Modell + ELK-Config-Generator + Config-Sync-Test
 - **Migration:** `OBSTACLE_MARGIN`, `ROUTE_MIN_STUB`, `ROUTE_BORDER_RADIUS`, ±40/±80-Parallelen → Tokens
+- **Wichtig:** Bestehendes Token-System **erweitern** (RGB-Triplet-Zwillinge aus M11-1
+  mit Drift-Guard, D-1: `globals.css` einzige Farbquelle) — nicht ersetzen.
 
 ### WP-2 — #392 Geometrie-Primitives
 - **Ziel:** `lib/routing/geometry/` als Pure Functions (Intersect, Distanzen, Kollinearität,
   Stub, Bend-Merge, Lane-Berechnung)
 - **Wichtig:** Geometrie aus `pathUtils.ts` / `segmentSpatialIndex.ts` **migrieren**, nicht
   neu erfinden. Grenzfall-Tests: kollinear, Touch, Punkt-auf-Segment.
+- **Handle-Geometrie:** Handles sitzen ±22 px außerhalb der Node-Karte (M11-1) —
+  `inflateObstacle()` muss die Handle-Ausrisse einrechnen.
 
 ### WP-3 — #391 Kollisionsmodell
 - **Ziel:** `classifyCollision()` + `CollisionClass`/`RoutingConstraint` + `domainSeparationRules`
@@ -84,7 +102,9 @@ Hinweis zur Reihenfolge: Issue #390 ist numerisch vor #392 geschnitten, aber **W
 ### WP-4 — #393 ELK Adapter
 - **Ziel:** elkjs-Integration (Konfiguration aus Spec-Abschnitt 6), Web Worker + Timeout,
   Fallback auf bestehenden Router, ELK-A/B auf Routing-Gallery
-- **Zusätzlich:** neue ADR zur ELK-Adoption, ADR 0003 als überlagert markieren
+- **Worker-Vertrag (P-6):** Übergabe strukturiert klonen oder als Flat-Arrays; letzte
+  Anfrage gewinnt (keine Race-Pfade)
+- **Zusätzlich:** neue ADR zur ELK-Adoption (erledigt agent.md S-5), ADR 0003 als überlagert markieren
 - **Gate:** A/B muss Kreuzungen/Bends besser oder gleich zeigen — sonst STOPP + Befund ins Issue.
 
 ### WP-5 — #394 LaneRegistry
@@ -95,10 +115,14 @@ Hinweis zur Reihenfolge: Issue #390 ist numerisch vor #392 geschnitten, aber **W
 
 ### WP-7 — #395 Kreuzungs-Hopping
 - **Ziel:** routingPriority + Hop-Rendering (Prioritätsregel aus Spec-Abschnitt 8)
+- **Voraussetzung:** S-1 (React Flow 12) gemerged
 
-### WP-8 — #397 Lokales Re-Routing
-- **Ziel:** minimaler Scope (Kanten des bewegten Nodes + betroffene alte/neue Segmente),
-  Re-Routing-Zähler als Test
+### WP-8 — #397 Lokales Re-Routing & Drag-Performance
+- **Ziel:** absorbiert agent.md P-1/P-2/P-5 (Details im Issue):
+  Affected-Set (Bounding-Box, O(betroffene Kanten) statt O(E)) · Zwei-Qualitäts-Stufen
+  (L-Stub-Vorschau im Drag, voller Pass am Drag-Ende gedrosselt 100–150 ms) ·
+  gescopedes Nudging (nur betroffene Lanes)
+- **Voraussetzung:** S-1 (React Flow 12) gemerged; Worker-Auslagerung (P-6) erst danach
 
 ### WP-9 — #398 Port Fan-Out
 - **Ziel:** deterministische Sortierung nach Zielposition + stabiler ID
@@ -106,9 +130,11 @@ Hinweis zur Reihenfolge: Issue #390 ist numerisch vor #392 geschnitten, aber **W
 ### WP-10 — #399 Invarianten-Suite
 - **Ziel:** alle 10 Invarianten aus Spec-Abschnitt 12, für **beide** Pässe, CI-Blocker
 
-### WP-11 — #400 Regression-Suite & Golden Layouts
+### WP-11 — #400 Regression-Suite, Golden Layouts & Perf-Gate
 - **Ziel:** 15 Szenarien als Fixtures, Golden-Layout-Dateien, Metrik-Budget Delta ≤ 0,
   visuelle Regression via Playwright
+- **Perf-Gate (P-7):** `edgeRoutingPerf.bench.ts` mit festem Budget am 100+-Kanten-
+  Referenzplan in die Quality-Pipeline; Budget-Wert im Benchmark-ADR begründet
 - **Voraussetzung:** WP-5 (Determinismus) und WP-10 (Invarianten) gemerged
 
 ## Verifikation (vor jedem PR)
@@ -119,6 +145,7 @@ npm run lint
 npm test                # vitest — volle Suite
 npx playwright test     # e2e, routing-relevant
 npm run test:goldenmaster   # ab WP-0b vorhanden: Diff gegen knownPlans/
+npx vitest bench         # ab WP-11: Perf-Gate (edgeRoutingPerf.bench.ts)
 ```
 
 - WP-4 zusätzlich: Lighthouse ≥ 90 prüfen (elkjs dynamischer Import, Bundle-Budget)
