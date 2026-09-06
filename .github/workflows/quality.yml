@@ -95,6 +95,12 @@ jobs:
         # die Schwellen aus vitest.config.ts, scheitert das Gate hier.
         run: npm run test:coverage
 
+      - name: Perf-Gate Kanten-Routing (WP-11 / #400)
+        # Harter Budget-Check: Median ≤ 16 ms Main-Thread pro Frame am
+        # 100+-Kanten-Referenzplan (Begründung: dieser ADR).
+        # Überschreitung ⇒ Exit-Code 1 ⇒ Gate rot.
+        run: npm run perf:edge-routing
+
       - name: Build (Static Export)
         run: npm run build
 

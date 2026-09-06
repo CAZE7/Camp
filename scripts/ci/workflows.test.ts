@@ -131,13 +131,14 @@ describe('GitHub-Actions-Workflows', () => {
     }
   });
 
-  it('quality.yml prüft Lint, Format, Typecheck, Tests (mit Coverage) und Build', () => {
+  it('quality.yml prüft Lint, Format, Typecheck, Tests (mit Coverage), Perf-Gate und Build', () => {
     const workflow = readWorkflow('quality.yml');
     const runs = allSteps(workflow).map((step) => step.run ?? '');
     expect(runs.some((run) => run.includes('npm run lint'))).toBe(true);
     expect(runs.some((run) => run.includes('npm run format:check'))).toBe(true);
     expect(runs.some((run) => run.includes('npm run typecheck'))).toBe(true);
     expect(runs.some((run) => run.trim() === 'npm run test:coverage')).toBe(true);
+    expect(runs.some((run) => run.includes('npm run perf:edge-routing'))).toBe(true);
     expect(runs.some((run) => run.includes('npm run build'))).toBe(true);
     expect(runs.some((run) => run.includes('npm ci'))).toBe(true);
   });

@@ -96,7 +96,7 @@ describe('Visuelle Regression — SVGs byte-genau (deterministisch, nicht flaky)
     it(`${scenario.id}: docs/routing-regression/${scenario.id}.svg ist aktuell`, () => {
       const file = resolve(SVG_DIR, `${scenario.id}.svg`);
       expect(existsSync(file), `${scenario.id}.svg fehlt — npx tsx scripts/regression/capture.ts`).toBe(true);
-      const expected = readFileSync(file, 'utf8');
+      const expected = readFileSync(file, 'utf8').replace(/\r\n/g, '\n');
       const actual = renderScenarioSvg(scenario, buildScenarioLayout(scenario));
       expect(actual, `${scenario.id}: SVG weicht von der eingecheckten Referenz ab`).toBe(expected);
     });

@@ -205,7 +205,7 @@ keine Aufgabe gilt ohne Bench-Nachweis als fertig (Konvention aus R-1).
       gewinnt die letzte Anfrage (keine Race-Pfade). Erst nach P-1–P-5.
       Abnahme: Main-Thread ≤ 16 ms/Frame am 100+-Kanten-Plan (M11-9); Pfade
       identisch zur synchronen Variante (Gallery).
-- [ ] **P-7 Benchmark-Gate im CI:** `edgeRoutingPerf.bench.ts` mit festem
+- [x] **P-7 Benchmark-Gate im CI:** `edgeRoutingPerf.bench.ts` mit festem
       Budget am 100+-Kanten-Referenzplan in die Quality-Pipeline (passt zu
       M11-5/M11-9). Abnahme: CI schlägt bei Budget-Überschreitung fehl;
       Budget-Wert im Benchmark-ADR begründet.

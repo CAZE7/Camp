@@ -19,7 +19,7 @@ Drei Workflows, eine einzige Quelle für die Qualitätsprüfung:
 | `.github/workflows/deploy.yml`  | Push auf den GitHub-Default-Branch, manuell       | Pages-Build + Deploy + Smoke-Check, **nach** dem Quality Gate          |
 
 ```
-pull_request ─► ci.yml ─────► quality.yml (npm ci → lint → format → typecheck → test:coverage → build → e2e)
+pull_request ─► ci.yml ─────► quality.yml (npm ci → lint → format → typecheck → test:coverage → perf:edge-routing → build → e2e)
 
 push (default) ─► deploy.yml ─► quality.yml
                                └─► build (Pages, basePath) ─► deploy ─► smoke-check (HTTP 200)
@@ -75,7 +75,7 @@ bewussten Wechsel auf `main` müssen Default-Branch, Pages-Quelle,
 - Keine verbotenen Lockfile-Manipulationen
 - `npm ci` ohne Fallback
 - `node-version-file: .nvmrc`
-- Quality Gate führt Lint, Format, Typechecks, Coverage-Tests und Build aus
+- Quality Gate führt Lint, Format, Typechecks, Coverage-Tests, Perf-Gate und Build aus
 - Trigger-Entkoppelung (kein redundanter Push-Trigger in `ci.yml`)
 - Smoke-Check im Deploy-Job vorhanden
 - Minimale Berechtigungen und SHA-Pins auf allen Actions
