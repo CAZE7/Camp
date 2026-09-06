@@ -13,16 +13,11 @@ import {
   type PathResult,
   type Rect,
 } from './pathfinding';
-import {
-  polylineMidpoint,
-  waypointsToPath,
-  polarityPathOffset,
-  parallelLaneOffset,
-  PARALLEL_LANE_SPREAD,
-} from './pathUtils';
+import { polylineMidpoint, waypointsToPath, polarityPathOffset, parallelLaneOffset } from './pathUtils';
 import { nudgeOrthogonalPaths } from './nudge';
 import { crossingSegmentsNear } from './routingCache';
 import { ROUTING_TOKENS } from '../../../lib/routing/tokens';
+import { assignFanOut, type FanOutRequest, type PortAxis } from '../../../lib/routing/rules/portFanOut';
 
 export type RouteEdgeRef = {
   id: string;
@@ -144,25 +139,28 @@ export function portOrderedLaneOffsets(
   edges: RouteEdgeRef[],
   resolve: (edge: RouteEdgeRef, kind: 'source' | 'target') => { x: number; y: number; position: Position }
 ): Map<string, number> {
+  // WP-9 (#398): Sortierung und Versatz kommen aus der zentralen
+  // Fan-Out-Mechanik (lib/routing/rules/portFanOut) — dieselbe Quelle wie
+  // die ELK-Portindizes (FIXED_ORDER). Verhalten identisch zur bisherigen
+  // Inline-Implementierung (Zielposition, dann Edge-ID; symmetrische Lanes).
   const offsets = new Map<string, number>();
-  const groups = new Map<string, { id: string; order: number }[]>();
+  const groups = new Map<string, { axis: PortAxis; requests: FanOutRequest[] }>();
   for (const edge of edges) {
     for (const kind of ['source', 'target'] as const) {
       const point = resolve(edge, kind);
       const far = resolve(edge, kind === 'source' ? 'target' : 'source');
       const horizontal = point.position === Position.Left || point.position === Position.Right;
       const key = `${kind}|${Math.round(point.x)}:${Math.round(point.y)}`;
-      const group = groups.get(key) ?? [];
-      group.push({ id: edge.id, order: horizontal ? far.y : far.x });
+      const group = groups.get(key) ?? { axis: horizontal ? 'horizontal' : 'vertical', requests: [] };
+      group.requests.push({ edgeId: edge.id, farEnd: { x: far.x, y: far.y } });
       groups.set(key, group);
     }
   }
   for (const group of groups.values()) {
-    if (group.length <= 1) continue;
-    const sorted = [...group].sort((a, b) => a.order - b.order || a.id.localeCompare(b.id));
-    sorted.forEach((item, idx) => {
-      offsets.set(item.id, (idx - (sorted.length - 1) / 2) * PARALLEL_LANE_SPREAD);
-    });
+    if (group.requests.length <= 1) continue;
+    for (const assignment of assignFanOut(group.axis, group.requests)) {
+      offsets.set(assignment.edgeId, assignment.offset);
+    }
   }
   return offsets;
 }

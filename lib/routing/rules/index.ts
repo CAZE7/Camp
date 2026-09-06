@@ -3,3 +3,6 @@
  * ELK-Pass (WP-4) und A*-Pass (WP-6) konsumieren ausschließlich dieses Modul.
  */
 export * from './collision';
+export * from './laneRegistry';
+export * from './costModel';
+export * from './portFanOut';
