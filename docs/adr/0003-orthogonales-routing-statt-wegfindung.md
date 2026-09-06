@@ -1,6 +1,15 @@
 # ADR 0003 — Orthogonales Routing mit Ausweichverfahren statt Wegfindung
 
-**Status:** angenommen · **Datum:** 2026-08 (verschärft in K3)
+**Status:** angenommen — _wird mit Routing V2 teilweise überlagert_ · **Datum:** 2026-08 (verschärft in K3) · **Statusupdate:** 2026-09-06 (WP-0c, #403)
+
+> **Statusvermerk Routing V2 (2026-09-06):** Die Entscheidung „kein A*/Dijkstra“
+> wird durch die eingefrorene Spec `docs/ROUTING-V2.md` überlagert: V2 nutzt
+> **ELK Layered (elkjs)** als globalen Layout-Pass und einen **Hanan-A\*** als
+> inkrementellen Pass. Das hier beschriebene Verfahren bleibt als
+> **Fallback-Router** (Worker-Fail/Timeout) und für den Katalog-Schnellpfad
+> gültig. Die endgültige Markierung als „überlagert“ samt neuer ELK-ADR erfolgt
+> mit WP-4 (#393, agent.md S-5). Siehe Change Ledger
+> `docs/ARCHITECTURE-CHANGES.md` (2026-09-06) sowie ADR 0009/0010.
 
 ## Kontext
 
