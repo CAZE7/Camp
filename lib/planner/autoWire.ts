@@ -11,6 +11,7 @@
 export {
   AUTO_WIRE_MISSING_BATTERY_MESSAGE,
   AUTO_WIRE_MULTIPLE_BATTERIES_MESSAGE,
+  AUTO_WIRE_MANAGED_TYPES,
   planAutoWiringPipeline as planAutoWiring,
 } from './autowire';
 export type { AutoWireOptions, AutoWireResult } from './autowire';

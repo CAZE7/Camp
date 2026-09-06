@@ -375,5 +375,111 @@ describe('usePlannerStore', () => {
       const boosterToBusbarEdges = state.edges.filter((e) => e.source === 'ch1' && e.target === busbar?.id);
       expect(boosterToBusbarEdges).toHaveLength(2);
     });
+
+    it('does not overwrite a user-set cable length when Auto-Wire runs again', async () => {
+      usePlannerStore.setState({
+        removedAutoComponents: [],
+        nodes: [
+          { id: 'b1', type: 'battery', position: { x: 0, y: 0 }, data: { label: 'Battery', capacity: 100 } },
+          { id: 'c1', type: 'consumer', position: { x: 0, y: 0 }, data: { label: 'Light', watts: 24 } },
+        ],
+        edges: [],
+      });
+
+      await act(async () => {
+        usePlannerStore.getState().autoWireSystem(mockFitView as any);
+      });
+      const afterFirst = usePlannerStore.getState();
+
+      const shunt = afterFirst.nodes.find((n) => n.type === 'shunt')!;
+      const batteryPlusEdges = afterFirst.edges.filter(
+        (e) => e.source === 'b1' && e.target === shunt.id && e.sourceHandle === 'plus'
+      );
+      expect(batteryPlusEdges.length).toBe(1);
+      const customEdgeId = batteryPlusEdges[0].id;
+
+      // Nutzer passt die Länge an…
+      usePlannerStore.getState().handleChangeLength(customEdgeId, 4.2);
+
+      // …und drückt erneut Auto-Wire.
+      await act(async () => {
+        usePlannerStore.getState().autoWireSystem(mockFitView as any);
+      });
+      const afterSecond = usePlannerStore.getState();
+
+      const preserved = afterSecond.edges.find((e) => e.id === customEdgeId);
+      expect(preserved?.data?.length).toBe(4.2);
+      // Keine Duplikate durch den zweiten Lauf.
+      expect(afterSecond.nodes.filter((n) => n.type === 'fuse')).toHaveLength(1);
+      expect(afterSecond.nodes.filter((n) => n.type === 'shunt')).toHaveLength(1);
+      expect(afterSecond.edges).toHaveLength(afterFirst.edges.length);
+    });
+
+    it('does not re-create a fuse box that the user deleted via the Inspector', async () => {
+      usePlannerStore.setState({
+        removedAutoComponents: [],
+        nodes: [
+          { id: 'b1', type: 'battery', position: { x: 0, y: 0 }, data: { label: 'Battery', capacity: 100 } },
+          { id: 'c1', type: 'consumer', position: { x: 0, y: 0 }, data: { label: 'Light', watts: 24 } },
+        ],
+        edges: [],
+      });
+
+      await act(async () => {
+        usePlannerStore.getState().autoWireSystem(mockFitView as any);
+      });
+      let state = usePlannerStore.getState();
+      const fuse = state.nodes.find((n) => n.type === 'fuse');
+      expect(fuse).toBeDefined();
+
+      // Nutzer löscht den Sicherungskasten manuell.
+      act(() => {
+        usePlannerStore.getState().setSelectedNodes([fuse!]);
+        usePlannerStore.getState().deleteSelected();
+      });
+
+      state = usePlannerStore.getState();
+      expect(state.nodes.some((n) => n.type === 'fuse')).toBe(false);
+      expect(state.removedAutoComponents).toContain('fuse');
+
+      // Erneutes Auto-Wire darf ihn NICHT wieder anlegen.
+      await act(async () => {
+        usePlannerStore.getState().autoWireSystem(mockFitView as any);
+      });
+      state = usePlannerStore.getState();
+      expect(state.nodes.some((n) => n.type === 'fuse')).toBe(false);
+      expect(state.nodes.some((n) => n.type === 'shunt')).toBe(true);
+    });
+
+    it('does not re-create a shunt that the user removed via a node change (delete key)', async () => {
+      usePlannerStore.setState({
+        removedAutoComponents: [],
+        nodes: [
+          { id: 'b1', type: 'battery', position: { x: 0, y: 0 }, data: { label: 'Battery', capacity: 100 } },
+        ],
+        edges: [],
+      });
+
+      await act(async () => {
+        usePlannerStore.getState().autoWireSystem(mockFitView as any);
+      });
+      let state = usePlannerStore.getState();
+      const shunt = state.nodes.find((n) => n.type === 'shunt');
+      expect(shunt).toBeDefined();
+
+      act(() => {
+        usePlannerStore.getState().onNodesChange([{ type: 'remove', id: shunt!.id } as any]);
+      });
+
+      state = usePlannerStore.getState();
+      expect(state.nodes.some((n) => n.type === 'shunt')).toBe(false);
+      expect(state.removedAutoComponents).toContain('shunt');
+
+      await act(async () => {
+        usePlannerStore.getState().autoWireSystem(mockFitView as any);
+      });
+      state = usePlannerStore.getState();
+      expect(state.nodes.some((n) => n.type === 'shunt')).toBe(false);
+    });
   });
 });

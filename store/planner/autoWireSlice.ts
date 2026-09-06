@@ -19,8 +19,12 @@ import type { PlannerState } from './types';
 export function createAutoWireSlice(set: SetState, get: () => PlannerState): AutoWireSliceState {
   return {
     autoWireSystem: async (fitView) => {
-      const { nodes } = get();
-      const result = planAutoWiring(nodes, { idFactory: nextPlannerId });
+      const { nodes, edges, removedAutoComponents } = get();
+      const result = planAutoWiring(nodes, {
+        idFactory: nextPlannerId,
+        existingEdges: edges,
+        skipTypes: removedAutoComponents,
+      });
 
       if (!result.ok) {
         if (typeof window !== 'undefined') {

@@ -64,6 +64,15 @@ export interface PlannerState {
   setSelectedNodes: (nodes: PlannerNode[]) => void;
   setSelectedEdges: (edges: PlannerEdge[]) => void;
 
+  /**
+   * Auto-Wire-verwaltete Komponenten (Sammelschiene/Sicherungskasten/Shunt),
+   * die der Nutzer manuell entfernt hat. Auto-Wire legt diese dann nicht
+   * erneut an. Wird automatisch gepflegt, sobald eine solche Komponente über
+   * deleteSelected oder onNodesChange gelöscht wird.
+   */
+  removedAutoComponents: string[];
+  markAutoComponentsRemoved: (types: string[]) => void;
+
   /** Live-VDE-Validierungsergebnisse für den aktuellen Schaltplan. */
   vdeValidationResults: VDEValidationResult[];
   /** Convenience: gibt es kritische Fehler? */
@@ -134,6 +143,8 @@ export type BaseSliceState = Pick<
   | 'selectedEdges'
   | 'setSelectedNodes'
   | 'setSelectedEdges'
+  | 'removedAutoComponents'
+  | 'markAutoComponentsRemoved'
   | 'vdeValidationResults'
   | 'hasVdeErrors'
   | 'onNodesChange'
