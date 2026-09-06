@@ -2,10 +2,9 @@
 
 import React, { useMemo } from 'react';
 import { BaseEdge, EdgeProps, getBezierPath, useReactFlow } from 'reactflow';
+import type { WaterPipeEdgeData } from '../../lib/planner/domain';
 
-export type WaterPipeEdgeData = {
-  pipeType?: 'fresh' | 'gray';
-};
+export type { WaterPipeEdgeData } from '../../lib/planner/domain';
 
 const WaterPipeEdge = function ({
   id,

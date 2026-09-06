@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { usePlannerStore } from './usePlannerStore';
-import { initialNodes, initialEdges } from '../components/planner/constants';
-import * as layoutUtils from '../components/planner/utils/layout';
+import { initialNodes, initialEdges } from '../lib/planner/initialGraph';
+import * as layoutUtils from '../lib/planner/layout';
 
 // Mock the layout utility so it doesn't try to use dagre in tests
-vi.mock('../components/planner/utils/layout', () => ({
+vi.mock('../lib/planner/layout', () => ({
   getLayoutedElements: vi.fn((nodes, edges) => ({ nodes, edges })),
 }));
 
@@ -58,7 +58,7 @@ describe('usePlannerStore', () => {
 
   it('should set first tapped handle', () => {
     const { result } = renderHook(() => usePlannerStore());
-    const handle = { nodeId: '1', handleId: 'a', handleType: 'source' };
+    const handle = { nodeId: '1', handleId: 'a', handleType: 'source' } as const;
     act(() => {
       result.current.setFirstTappedHandle(handle);
     });
@@ -67,8 +67,8 @@ describe('usePlannerStore', () => {
 
   it('should set first tapped handle via function', () => {
     const { result } = renderHook(() => usePlannerStore());
-    const handle1 = { nodeId: '1', handleId: 'a', handleType: 'source' };
-    const handle2 = { nodeId: '2', handleId: 'b', handleType: 'target' };
+    const handle1 = { nodeId: '1', handleId: 'a', handleType: 'source' } as const;
+    const handle2 = { nodeId: '2', handleId: 'b', handleType: 'target' } as const;
 
     act(() => {
       result.current.setFirstTappedHandle(handle1);

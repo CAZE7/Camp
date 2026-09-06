@@ -1,7 +1,7 @@
 "use client";
 import React, { useMemo } from 'react';
 import { Handle, Position, useEdges } from 'reactflow';
-import { CableEdgeData } from '../edges/CableEdge';
+import type { CableEdgeData } from '../../lib/planner/domain';
 import {
   VDE_CONDUIT_INNER_DIAMETERS,
   VDE_CABLE_OUTER_DIAMETERS,

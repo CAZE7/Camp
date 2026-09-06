@@ -74,6 +74,9 @@ describe('VDE-Konsistenz: Single Source of Truth', () => {
   describe('vde-standards.ts ist die einzige Quelle', () => {
     const filesToCheck = [
       'store/usePlannerStore.ts',
+      'lib/planner/autoWire.ts',
+      'lib/planner/cableAnalysis.ts',
+      'lib/planner/routing.ts',
       'components/edges/CableEdge.tsx',
       'components/nodes/ConduitNode.tsx',
       'components/planner/hooks/useDashboardMetrics.ts',
@@ -106,19 +109,19 @@ describe('VDE-Konsistenz: Single Source of Truth', () => {
 
   describe('VDE-Werte sind zwischen Dateien konsistent', () => {
     it('Inverter-Effizienz wird einheitlich aus vde-standards importiert', async () => {
-      // Wenn jemand in store den Wert 0.85 manuell eintippt statt zu importieren,
-      // soll dieser Test fehlschlagen.
-      const storeContent = readFile('store/usePlannerStore.ts');
+      // Wenn jemand in einer Rechenstelle den Wert 0.85 manuell eintippt statt
+      // VDE_INVERTER_EFFICIENCY zu importieren, soll dieser Test fehlschlagen.
+      const autoWireContent = readFile('lib/planner/autoWire.ts');
       const apiContent = readFile('app/api/chat/route.ts');
       const metricsContent = readFile('components/planner/hooks/useDashboardMetrics.ts');
 
-      // Alle drei sollten die zentrale Konstante importieren ODER gar nicht verwenden
-      const storeUsesImport = storeContent.includes('VDE_INVERTER_EFFICIENCY');
+      // AutoWire ist aus dem Store in die Domain-Schicht gewandert.
+      // Alle Rechenstellen müssen weiterhin die zentrale Konstante importieren.
+      const autoWireUsesImport = autoWireContent.includes('VDE_INVERTER_EFFICIENCY');
       const apiUsesImport = apiContent.includes('VDE_INVERTER_EFFICIENCY');
       const metricsUsesImport = metricsContent.includes('VDE_INVERTER_EFFICIENCY');
 
-      // Mindestens store und metrics sollten es importieren
-      expect(storeUsesImport).toBe(true);
+      expect(autoWireUsesImport).toBe(true);
       expect(metricsUsesImport).toBe(true);
 
       // Wenn API es erwähnt, sollte es importiert sein
@@ -128,27 +131,27 @@ describe('VDE-Konsistenz: Single Source of Truth', () => {
     });
 
     it('Kabelquerschnitte werden einheitlich aus vde-standards verwendet', () => {
-      const storeContent = readFile('store/usePlannerStore.ts');
+      const autoWireContent = readFile('lib/planner/autoWire.ts');
+      const routingContent = readFile('lib/planner/routing.ts');
+      const cableAnalysisContent = readFile('lib/planner/cableAnalysis.ts');
       const cableEdgeContent = readFile('components/edges/CableEdge.tsx');
       const inspectorContent = readFile('components/Inspector.tsx');
 
-      // Die Dateien sollten VDE_CROSS_SECTIONS oder die Symbole daraus verwenden
-      const usesCentralCrossSection =
-        storeContent.includes('VDE_CROSS_SECTIONS') ||
-        storeContent.includes('VDE_MIN_CROSS_SECTION') ||
-        storeContent.includes('roundUpToVDECrossSection');
+      // Die Domain-Dateien sollten VDE_CROSS_SECTIONS oder die Symbole daraus verwenden.
+      const domainUsesCentralCrossSection =
+        autoWireContent.includes('calculateWire') &&
+        (routingContent.includes('VDE_MIN_CROSS_SECTION') ||
+          cableAnalysisContent.includes('VDE_MIN_CROSS_SECTION') ||
+          cableAnalysisContent.includes('roundUpToVDECrossSection'));
 
-      const cableEdgeUsesCentral =
-        cableEdgeContent.includes('VDE_CROSS_SECTIONS') ||
-        cableEdgeContent.includes('VDE_MIN_CROSS_SECTION') ||
-        cableEdgeContent.includes('roundUpToVDECrossSection');
+      const cableEdgeDelegatesToDomainAnalysis = cableEdgeContent.includes('analyzeCableEdge');
 
       const inspectorUsesCentral =
         inspectorContent.includes('VDE_CROSS_SECTIONS') ||
         inspectorContent.includes('VDE_CONDUIT_INNER_DIAMETERS');
 
-      expect(usesCentralCrossSection).toBe(true);
-      expect(cableEdgeUsesCentral).toBe(true);
+      expect(domainUsesCentralCrossSection).toBe(true);
+      expect(cableEdgeDelegatesToDomainAnalysis).toBe(true);
       expect(inspectorUsesCentral).toBe(true);
     });
 
@@ -241,6 +244,9 @@ describe('VDE-Konsistenz: Single Source of Truth', () => {
 
       const filesToCheck = [
         'store/usePlannerStore.ts',
+        'lib/planner/autoWire.ts',
+        'lib/planner/cableAnalysis.ts',
+        'lib/planner/routing.ts',
         'components/edges/CableEdge.tsx',
         'components/nodes/ConduitNode.tsx',
         'components/planner/hooks/useDashboardMetrics.ts',

@@ -26,8 +26,8 @@
  * Für die finale Auslegung im Fahrzeug immer durch eine Elektrofachkraft prüfen.
  */
 
-import type { Node, Edge } from 'reactflow';
-import type { CableEdgeData } from '../components/edges/CableEdge';
+import type { CablePlannerEdge, PlannerNode } from './planner/domain';
+import { inferCableCurrentA } from './planner/electrical';
 
 // ============================================================================
 // KABEL-QUERSCHNITTE (Normreihe nach DIN EN 60228)
@@ -365,9 +365,9 @@ export type VDEValidationResult = {
  * Validiert eine einzelne Kabel-Edge gegen die VDE-Norm.
  */
 export function validateCableEdge(
-  edge: Edge<CableEdgeData>,
-  sourceNode: Node | undefined,
-  targetNode: Node | undefined,
+  edge: CablePlannerEdge,
+  sourceNode: PlannerNode | undefined,
+  targetNode: PlannerNode | undefined,
   currentA: number
 ): VDEValidationResult {
   const data = edge.data;
@@ -438,7 +438,7 @@ export function validateCableEdge(
 /**
  * Validiert, ob eine Batterie-Komponente korrekt konfiguriert ist.
  */
-export function validateBatteryNode(node: Node): VDEValidationResult[] {
+export function validateBatteryNode(node: PlannerNode): VDEValidationResult[] {
   const results: VDEValidationResult[] = [];
   const data = node.data as any;
   const chemistry = data?.chemistry || 'LiFePO4';
@@ -459,7 +459,7 @@ export function validateBatteryNode(node: Node): VDEValidationResult[] {
 /**
  * Validiert, ob ein Landstrom-Anschluss einen RCD hat (VDE 0100-721 Pflicht).
  */
-export function validateShorePowerNode(node: Node): VDEValidationResult[] {
+export function validateShorePowerNode(node: PlannerNode): VDEValidationResult[] {
   const results: VDEValidationResult[] = [];
   const data = node.data as any;
 
@@ -478,7 +478,7 @@ export function validateShorePowerNode(node: Node): VDEValidationResult[] {
 /**
  * Validiert, ob ein Wechselrichter überlastet ist.
  */
-export function validateInverterNode(node: Node, allNodes: Node[]): VDEValidationResult[] {
+export function validateInverterNode(node: PlannerNode, allNodes: PlannerNode[]): VDEValidationResult[] {
   const results: VDEValidationResult[] = [];
   const data = node.data as any;
   const continuousPower = data?.continuousPower || 0;
@@ -515,11 +515,11 @@ export function validateInverterNode(node: Node, allNodes: Node[]): VDEValidatio
  * Validiert einen kompletten Schaltplan und gibt alle Verstöße zurück.
  */
 export function validateSchematic(
-  nodes: Node[],
-  edges: Edge<CableEdgeData>[]
+  nodes: PlannerNode[],
+  edges: CablePlannerEdge[]
 ): VDEValidationResult[] {
   const results: VDEValidationResult[] = [];
-  const nodeMap = new Map<string, Node>();
+  const nodeMap = new Map<string, PlannerNode>();
   for (const n of nodes) nodeMap.set(n.id, n);
 
   // 1. Alle Edges prüfen
@@ -527,17 +527,8 @@ export function validateSchematic(
     const sourceNode = nodeMap.get(edge.source);
     const targetNode = nodeMap.get(edge.target);
 
-    // Strom berechnen
-    let currentA = 0;
-    if (sourceNode?.type === 'consumer') {
-      currentA = ((sourceNode.data as any).watts || 0) / 12;
-    } else if (targetNode?.type === 'consumer') {
-      currentA = ((targetNode.data as any).watts || 0) / 12;
-    } else if (sourceNode?.type === 'charger') {
-      currentA = (sourceNode.data as any).amps || 0;
-    } else if (targetNode?.type === 'charger') {
-      currentA = (targetNode.data as any).amps || 0;
-    }
+    // Stromberechnung über die React-Flow-freie Domain-Logik.
+    const currentA = inferCableCurrentA(nodes, edge, false);
 
     const result = validateCableEdge(edge, sourceNode, targetNode, currentA);
     if (result.severity !== 'ok') {

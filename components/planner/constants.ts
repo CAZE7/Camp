@@ -1,5 +1,4 @@
-import { Node, Edge } from 'reactflow';
-import CableEdge, { CableEdgeData } from '../edges/CableEdge';
+import CableEdge from '../edges/CableEdge';
 import BatteryNode from '../nodes/BatteryNode';
 import ConsumerNode from '../nodes/ConsumerNode';
 import ChargerNode from '../nodes/ChargerNode';
@@ -12,6 +11,8 @@ import GroundNode from '../nodes/GroundNode';
 import ConduitNode from '../nodes/ConduitNode';
 import BusbarNode from '../nodes/BusbarNode';
 import ShuntNode from '../nodes/ShuntNode';
+
+export { initialEdges, initialNodes } from '../../lib/planner/initialGraph';
 
 export const NODE_TYPES = {
   battery: BatteryNode,
@@ -29,64 +30,3 @@ export const NODE_TYPES = {
 };
 
 export const EDGE_TYPES = { cableEdge: CableEdge };
-
-export const initialNodes: Node[] = [
-  {
-    id: 'battery',
-    type: 'battery',
-    position: { x: 100, y: 100 },
-    data: { capacity: 100, chemistry: 'LiFePO4' },
-  },
-  {
-    id: 'fuse-box',
-    type: 'default',
-    position: { x: 400, y: 100 },
-    data: { label: 'Sicherungskasten' },
-    style: { border: '1px solid #777', padding: 10, borderRadius: 5, background: '#fff' }
-  },
-  {
-    id: 'consumer-1',
-    type: 'consumer',
-    position: { x: 700, y: 50 },
-    data: { watts: 60, hours: 12 },
-  },
-  {
-    id: 'charger-1',
-    type: 'charger',
-    position: { x: 100, y: 300 },
-    data: { amps: 30 },
-  },
-];
-
-export const initialEdges: Edge<CableEdgeData>[] = [
-  {
-    id: 'e-battery-fuse',
-    source: 'battery',
-    target: 'fuse-box',
-    type: 'cableEdge',
-    data: {
-      length: 3,
-      crossSection: 6,
-    },
-  },
-  {
-    id: 'e-fuse-consumer',
-    source: 'fuse-box',
-    target: 'consumer-1',
-    type: 'cableEdge',
-    data: {
-      length: 5,
-      crossSection: 2.5,
-    },
-  },
-  {
-    id: 'e-charger-battery',
-    source: 'charger-1',
-    target: 'battery',
-    type: 'cableEdge',
-    data: {
-      length: 2,
-      crossSection: 10,
-    },
-  },
-];

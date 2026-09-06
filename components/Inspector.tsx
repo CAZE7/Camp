@@ -1,6 +1,5 @@
 import React from 'react';
-import { Edge, Node } from 'reactflow';
-import { CableEdgeData } from './edges/CableEdge';
+import type { CablePlannerEdge, PlannerEdge, PlannerNode } from '../lib/planner/domain';
 import {
   VDE_CROSS_SECTIONS,
   VDE_RCD_MAX_TRIP_CURRENT_MA,
@@ -8,16 +7,16 @@ import {
 } from '../lib/vde-standards';
 
 interface InspectorProps {
-  selectedEdge: Edge<CableEdgeData> | null;
-  selectedNode?: Node | null;
+  selectedEdge: CablePlannerEdge | null;
+  selectedNode?: PlannerNode | null;
   onChangeLength: (id: string, length: number) => void;
   onChangeCrossSection: (id: string, crossSection: number) => void;
   onDelete?: () => void;
   onUpdateNodeData?: (id: string, data: any) => void;
-  edges?: Edge[];
+  edges?: PlannerEdge[];
   chargingTimeStr?: string;
   calculatedSolarWatts?: number;
-  nodes?: Node[];
+  nodes?: PlannerNode[];
 }
 
 export default function Inspector({
