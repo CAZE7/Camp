@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-60 -100 520 420" width="520" height="420" role="img" aria-label="Versatz in der Höhe">
+  <rect x="-100000" y="-100000" width="200000" height="200000" fill="#0f172a"/>
+  <text x="-48" y="-72" fill="#e2e8f0" font-family="monospace" font-size="16">02-vertical-offset — Versatz in der Höhe</text>
+  <path d="M 0 0 L 190 0 Q 200 0 200 10 L 200 250 Q 200 260 210 260 L 400 260" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="0" cy="0" r="7" fill="#22c55e"/>
+  <circle cx="400" cy="260" r="7" fill="#f97316"/>
+</svg>

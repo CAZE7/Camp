@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-60 -300 920 560" width="920" height="560" role="img" aria-label="Dichtes Kreuzungsgitter">
+  <rect x="-100000" y="-100000" width="200000" height="200000" fill="#0f172a"/>
+  <text x="-48" y="-272" fill="#e2e8f0" font-family="monospace" font-size="16">15-crossing-dense-grid — Dichtes Kreuzungsgitter</text>
+  <line x1="60" y1="-200" x2="60" y2="200" stroke="#475569" stroke-width="2" stroke-dasharray="6 6"/>
+  <line x1="130" y1="-200" x2="130" y2="200" stroke="#475569" stroke-width="2" stroke-dasharray="6 6"/>
+  <line x1="200" y1="-200" x2="200" y2="200" stroke="#475569" stroke-width="2" stroke-dasharray="6 6"/>
+  <line x1="270" y1="-200" x2="270" y2="200" stroke="#475569" stroke-width="2" stroke-dasharray="6 6"/>
+  <line x1="340" y1="-200" x2="340" y2="200" stroke="#475569" stroke-width="2" stroke-dasharray="6 6"/>
+  <line x1="410" y1="-200" x2="410" y2="200" stroke="#475569" stroke-width="2" stroke-dasharray="6 6"/>
+  <line x1="480" y1="-200" x2="480" y2="200" stroke="#475569" stroke-width="2" stroke-dasharray="6 6"/>
+  <line x1="550" y1="-200" x2="550" y2="200" stroke="#475569" stroke-width="2" stroke-dasharray="6 6"/>
+  <line x1="620" y1="-200" x2="620" y2="200" stroke="#475569" stroke-width="2" stroke-dasharray="6 6"/>
+  <line x1="690" y1="-200" x2="690" y2="200" stroke="#475569" stroke-width="2" stroke-dasharray="6 6"/>
+  <path d="M 0 0 L 390 0 Q 400 0 400 10 L 400 30 Q 400 40 410 40 L 800 40" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="0" cy="0" r="7" fill="#22c55e"/>
+  <circle cx="800" cy="40" r="7" fill="#f97316"/>
+</svg>

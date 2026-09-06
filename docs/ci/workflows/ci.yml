@@ -1,0 +1,28 @@
+name: CI
+
+# Pflicht-Check für Pull Requests.
+# Die eigentliche Prüfung liegt in `quality.yml`, damit PR und Deploy
+# garantiert dieselbe Messlatte verwenden.
+#
+# Hinweis (D07): Trigger läuft gezielt nur auf Pull Requests und workflow_dispatch,
+# um redundante Doppelläufe (push + pull_request) auf demselben Commit zu vermeiden.
+# Pushes auf den Default-Branch laufen direkt durch deploy.yml (inklusive Quality Gate).
+
+on:
+  pull_request:
+    branches: ["**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Quality Gate
+    uses: ./.github/workflows/quality.yml
+    permissions:
+      contents: read
