@@ -3,10 +3,7 @@ import ReactFlow, {
   Background,
   Controls,
   MiniMap,
-  Panel,
   useReactFlow,
-  Edge,
-  Node,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 
@@ -17,7 +14,9 @@ import { usePlannerStore } from '../../store/usePlannerStore';
 import { useAppStore } from '../../lib/store';
 import { useDashboardMetrics } from './hooks/useDashboardMetrics';
 import { BOMModal } from './ui/BOMModal';
-import { Button } from '@/components/ui/button';
+import { DashboardPanel } from './ui/DashboardPanel';
+import { calculateBom } from '../../lib/planner/bom';
+import type { BomData, PlannerConnection, TapHandleType } from '../../lib/planner/domain';
 
 export function FlowCanvas() {
   const { screenToFlowPosition, fitView } = useReactFlow();
@@ -43,31 +42,14 @@ export function FlowCanvas() {
   const onDropFromStore = usePlannerStore((state) => state.onDrop);
   const onCustomDropFromStore = usePlannerStore((state) => state.onCustomDrop);
 
-  const onLayout = usePlannerStore((state) => state.onLayout);
-
   const calculatedSolarWatts = useAppStore((state) => state.calculatedSolarWatts);
 
   const [showBOM, setShowBOM] = useState(false);
-  const [bomData, setBomData] = useState<{ counts: Record<string, number>, cableLengths: Record<string, number> } | null>(null);
+  const [bomData, setBomData] = useState<BomData | null>(null);
 
   useEffect(() => {
     const handleShowBom = () => {
-      // Re-calculate directly to match original local state flow
-      const counts: Record<string, number> = {};
-      for (let i = 0, len = nodes.length; i < len; i++) {
-        const type = nodes[i].type;
-        if (type) {
-          counts[type] = (counts[type] || 0) + 1;
-        }
-      }
-
-      const cableLengths: Record<string, number> = {};
-      for (let i = 0, len = edges.length; i < len; i++) {
-        const data = edges[i].data;
-        const cs = data?.crossSection || 2.5;
-        cableLengths[cs] = (cableLengths[cs] || 0) + (data?.length || 3);
-      }
-      setBomData({ counts, cableLengths });
+      setBomData(calculateBom(nodes, edges));
       setShowBOM(true);
     };
     window.addEventListener('show-bom-modal', handleShowBom);
@@ -102,7 +84,7 @@ export function FlowCanvas() {
       if (handleEl) {
         const nodeId = handleEl.getAttribute('data-nodeid');
         const handleId = handleEl.getAttribute('data-handleid');
-        const handleType = handleEl.classList.contains('source') ? 'source' : 'target';
+        const handleType: TapHandleType = handleEl.classList.contains('source') ? 'source' : 'target';
 
         if (nodeId && handleId) {
           setFirstTappedHandle((prev) => {
@@ -116,15 +98,15 @@ export function FlowCanvas() {
                }
 
                // Attempt connection
-               const connection = {
+               const connection: PlannerConnection = {
                  source: prev.handleType === 'source' ? prev.nodeId : nodeId,
                  target: prev.handleType === 'target' ? prev.nodeId : nodeId,
                  sourceHandle: prev.handleType === 'source' ? prev.handleId : handleId,
                  targetHandle: prev.handleType === 'target' ? prev.handleId : handleId,
                };
 
-               if (isValidConnection(connection as any)) {
-                 onConnect(connection as any);
+               if (isValidConnection(connection)) {
+                 onConnect(connection);
                }
 
                return null; // Reset after attempt
@@ -184,124 +166,13 @@ export function FlowCanvas() {
         <MiniMap className="rounded-lg overflow-hidden border border-border shadow-sm" />
 
         {viewMode === 'electric' && (
-          <Panel position="top-center" className="bg-card/95 backdrop-blur-md p-4 rounded-lg shadow-lg border border-border text-sm w-80">
-            <h3 className="font-bold mb-2 border-b border-border pb-1">System Berechnungen</h3>
-            <div className="flex flex-col gap-2">
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded bg-primary"></span>
-                  <span> Positive Kabel (+12V)</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded bg-negative"></span>
-                  <span> Negative Kabel (Return)</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded bg-ground"></span>
-                  <span> Ground/PE Kabel</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded bg-solar"></span>
-                  <span> Solar-Kabel</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded bg-shore"></span>
-                  <span> Landstrom (230V)</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded bg-main"></span>
-                  <span> Hauptkabel</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded bg-secondary"></span>
-                  <span> Zweitär/Kleinstrom</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded bg-charging"></span>
-                  <span> MPPT/Laderegler</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded bg-inverter"></span>
-                  <span> Wechselrichter</span>
-                </div>
-              </div>
-              <hr className="my-3 border-border" />
-              <div className="flex flex-col gap-1 text-muted-foreground">
-                <span>↻</span>
-                <span>Layout anwenden - Knoten automatisch nach logischer Reihenfolge anordnen</span>
-              </div>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Täglicher Gesamtverbrauch:</span>
-              <span className="font-semibold">{metrics.dailyConsumptionAh.toFixed(1)} Ah</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Batterie-Autarkie (ohne Laden):</span>
-              <span className="font-semibold">{metrics.autarkyStr}</span>
-            </div>
-            {metrics.solarNodesCount > 0 && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Solar-Array Output:</span>
-                <span className="font-semibold">{metrics.totalSolarVoltage}V / {metrics.totalSolarAmps.toFixed(1)}A</span>
-              </div>
-            )}
-            {metrics.hasDirectBatteryToConsumer && (
-              <div className="mt-2 p-2 bg-red-100 text-red-800 text-xs rounded-md border border-red-200">
-                Warnung: Verbraucher ist direkt mit der Batterie verbunden. Ein Sicherungsknoten fehlt!
-              </div>
-            )}
-          </Panel>
-        )}
-
-        {viewMode === 'electric' && calculatedSolarWatts > 0 && (
-          <Panel position="bottom-center" className="bg-blue-50/90 backdrop-blur-md p-3 rounded-lg shadow-sm border border-blue-200 text-blue-800 text-sm mb-4">
-            <strong>Dachplaner-Daten erkannt:</strong> {calculatedSolarWatts} W Solarleistung verfügbar. Du kannst nun deinen MPPT-Regler entsprechend dimensionieren.
-          </Panel>
+          <DashboardPanel
+            metrics={metrics}
+            calculatedSolarWatts={calculatedSolarWatts}
+          />
         )}
       </ReactFlow>
 
-      {showBOM && bomData && (
-        <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-50 pointer-events-auto">
-          <div className="bg-card p-6 rounded-lg shadow-lg w-96 max-h-[80vh] overflow-y-auto border border-border">
-            <h2 className="text-xl font-bold mb-4 border-b border-border pb-2">Stückliste (BOM)</h2>
-
-            <div className="mb-4">
-              <h3 className="font-semibold mb-2 text-muted-foreground">Komponenten:</h3>
-              <ul className="list-disc pl-5 text-sm space-y-1">
-                {Object.entries(bomData.counts).map(([type, count]) => (
-                  <li key={type} className="capitalize">{count}x {type}</li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="mb-6">
-              <h3 className="font-semibold mb-2 text-muted-foreground">Kabelbedarf:</h3>
-              <ul className="list-disc pl-5 text-sm space-y-1">
-                {Object.entries(bomData.cableLengths).map(([cs, length]) => (
-                  <li key={cs}>{length.toFixed(1)} Meter {cs} mm² Kabel</li>
-                ))}
-              </ul>
-              {/* Cable function breakdown */}
-              {bomData.counts && (
-                <div className="mt-3 pt-3 border-t border-border text-xs text-muted-foreground">
-                  <strong>Bestand:</strong> {Object.entries(bomData.counts)
-                    .filter(([type]) => type.includes('cable') || type === 'consumer' || type === 'battery' || type === 'inverter' || type === 'solar' || type === 'shunt' || type === 'fuse' || type === 'shorePower')
-                    .map(([type, count]) => `${count}x ${type}`).join(' | ')}
-                </div>
-              )}
-            </div>
-
-            <Button
-              onClick={() => setShowBOM(false)}
-              className="w-full"
-            >
-              Schließen
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Keeping existing BOMModal to not break any external dependencies, but the above renders first */}
       {showBOM && bomData && <BOMModal bom={bomData} onClose={() => setShowBOM(false)} />}
     </>
   );

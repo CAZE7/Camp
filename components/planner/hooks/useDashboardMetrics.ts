@@ -1,14 +1,14 @@
 import { useMemo, useRef } from 'react';
-import { Node, Edge } from 'reactflow';
+import type { PlannerEdge, PlannerNode } from '../../../lib/planner/domain';
 import {
   VDE_INVERTER_EFFICIENCY,
   VDE_BATTERY_DOD,
-  VDE_MAX_VOLTAGE_DROP_12V,
 } from '../../../lib/vde-standards';
+import { checkHasSeriesConnection } from '../../../lib/planner/solar';
 
 export function useDashboardMetrics(
-  nodes: Node[],
-  edges: Edge[],
+  nodes: PlannerNode[],
+  edges: PlannerEdge[],
   season: 'summer' | 'winter',
   calculatedSolarWatts: number
 ) {
@@ -17,8 +17,8 @@ export function useDashboardMetrics(
   // to avoid recalculating heavy metrics on every frame during a drag event.
   // Instead of JSON.stringify, we use a manual check to only update a memo key when needed.
 
-  const lastNodesRef = useRef<Node[]>(nodes);
-  const lastEdgesRef = useRef<Edge[]>(edges);
+  const lastNodesRef = useRef<PlannerNode[]>(nodes);
+  const lastEdgesRef = useRef<PlannerEdge[]>(edges);
 
   // Check if nodes have changed in a way that affects metrics
   // We use JSON.stringify for data comparison to handle deep changes while avoiding it for the whole array
@@ -86,12 +86,12 @@ export function useDashboardMetrics(
       },
       {
         nodeTypeMap: {} as Record<string, string | undefined>,
-        batteryNode: undefined as Node | undefined,
-        consumers: [] as Node[],
-        consumers230v: [] as Node[],
+        batteryNode: undefined as PlannerNode | undefined,
+        consumers: [] as PlannerNode[],
+        consumers230v: [] as PlannerNode[],
         hasInverter: false,
-        solarNodes: [] as Node[],
-        chargers: [] as Node[],
+        solarNodes: [] as PlannerNode[],
+        chargers: [] as PlannerNode[],
       }
     );
 
@@ -147,20 +147,7 @@ export function useDashboardMetrics(
     let totalSolarVoltage = 0;
 
     if (solarNodes.length > 0) {
-      // Basic heuristic for the demo:
-      // If we find an edge between two solars from plus to minus, it's series.
-      const hasSeriesConnection = significantEdges.some((e) => {
-        const sType = nodeTypeMap[e.source];
-        const tType = nodeTypeMap[e.target];
-        return (
-          sType === 'solar' &&
-          tType === 'solar' &&
-          ((e.sourceHandle?.includes('plus') &&
-            e.targetHandle?.includes('minus')) ||
-            (e.sourceHandle?.includes('minus') &&
-              e.targetHandle?.includes('plus')))
-        );
-      });
+      const hasSeriesConnection = checkHasSeriesConnection(significantNodes, significantEdges);
 
       if (hasSeriesConnection) {
         // Series: Voltage adds up, Amps stays the same (take min or average, here we assume identical panels so we take the first)
