@@ -1,32 +1,24 @@
 import CableEdge from '../edges/CableEdge';
-import BatteryNode from '../nodes/BatteryNode';
-import ConsumerNode from '../nodes/ConsumerNode';
-import ChargerNode from '../nodes/ChargerNode';
-import FuseNode from '../nodes/FuseNode';
-import ShorePowerNode from '../nodes/ShorePowerNode';
-import Consumer230VNode from '../nodes/Consumer230VNode';
-import InverterNode from '../nodes/InverterNode';
-import SolarNode from '../nodes/SolarNode';
-import GroundNode from '../nodes/GroundNode';
-import ConduitNode from '../nodes/ConduitNode';
-import BusbarNode from '../nodes/BusbarNode';
-import ShuntNode from '../nodes/ShuntNode';
+import { buildNodeTypes } from '../registry';
 
-export { initialEdges, initialNodes } from '../../lib/planner/initialGraph';
-
-export const NODE_TYPES = {
-  battery: BatteryNode,
-  consumer: ConsumerNode,
-  charger: ChargerNode,
-  fuse: FuseNode,
-  shorePower: ShorePowerNode,
-  consumer230v: Consumer230VNode,
-  inverter: InverterNode,
-  solar: SolarNode,
-  ground: GroundNode,
-  conduit: ConduitNode,
-  busbar: BusbarNode,
-  shunt: ShuntNode,
-};
+/**
+ * Typ → React-Komponente für React Flow.
+ *
+ * Seit K4 aus der Bauteil-Registry abgeleitet (`components/registry`).
+ * Ein neues Bauteil wird dort registriert und ist damit automatisch
+ * darstellbar — diese Datei muss dafür nicht mehr angefasst werden.
+ *
+ * Mission 4: Die früheren `initialNodes`/`initialEdges` (Demo-Fixtures) waren
+ * toter Code — der Plan startet leer bzw. über Templates/Onboarding.
+ *
+ * M8-1: Zoom-Stufen (`PLANNER_OVERVIEW_ZOOM` / `PLANNER_FULL_DETAIL_ZOOM`)
+ * gibt es nicht mehr. Darstellung ist von minZoom bis maxZoom identisch.
+ */
+export const NODE_TYPES = buildNodeTypes();
 
 export const EDGE_TYPES = { cableEdge: CableEdge };
+
+export const PLANNER_MIN_ZOOM = 0.25;
+export const PLANNER_MAX_ZOOM = 2;
+export const PLANNER_FIT_PADDING = 0.2;
+export const PLANNER_SNAP_GRID: [number, number] = [16, 16];

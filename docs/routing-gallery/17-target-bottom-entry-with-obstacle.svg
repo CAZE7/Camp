@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-60 -100 626 560" width="626" height="560" role="img" aria-label="Eintritt von unten mit Hindernis">
+  <rect x="-100000" y="-100000" width="200000" height="200000" fill="#0f172a"/>
+  <text x="-48" y="-72" fill="#e2e8f0" font-family="monospace" font-size="16">17-target-bottom-entry-with-obstacle — Eintritt von unten mit Hindernis</text>
+  <rect x="300" y="200" width="192" height="120" fill="#1e293b" stroke="#64748b" stroke-width="2" rx="8"/>
+  <path d="M 0 0 L 390 0 Q 400 0 400 10 L 400 176 Q 400 186 410 186 L 496 186 Q 506 186 506 196 L 506 324 Q 506 334 496 334 L 410 334 Q 400 334 400 344 L 400 400" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="0" cy="0" r="7" fill="#22c55e"/>
+  <circle cx="400" cy="400" r="7" fill="#f97316"/>
+</svg>

@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-160 -400 1620 860" width="1620" height="860" role="img" aria-label="Stressszene: 12 Hindernisse, 12 Fremdleitungen">
+  <rect x="-100000" y="-100000" width="200000" height="200000" fill="#0f172a"/>
+  <text x="-148" y="-372" fill="#e2e8f0" font-family="monospace" font-size="16">22-stress-scene — Stressszene: 12 Hindernisse, 12 Fremdleitungen</text>
+  <line x1="40" y1="-300" x2="40" y2="400" stroke="#475569" stroke-width="2" stroke-dasharray="6 6"/>
+  <line x1="150" y1="-300" x2="150" y2="400" stroke="#475569" stroke-width="2" stroke-dasharray="6 6"/>
+  <line x1="260" y1="-300" x2="260" y2="400" stroke="#475569" stroke-width="2" stroke-dasharray="6 6"/>
+  <line x1="370" y1="-300" x2="370" y2="400" stroke="#475569" stroke-width="2" stroke-dasharray="6 6"/>
+  <line x1="480" y1="-300" x2="480" y2="400" stroke="#475569" stroke-width="2" stroke-dasharray="6 6"/>
+  <line x1="590" y1="-300" x2="590" y2="400" stroke="#475569" stroke-width="2" stroke-dasharray="6 6"/>
+  <line x1="700" y1="-300" x2="700" y2="400" stroke="#475569" stroke-width="2" stroke-dasharray="6 6"/>
+  <line x1="810" y1="-300" x2="810" y2="400" stroke="#475569" stroke-width="2" stroke-dasharray="6 6"/>
+  <line x1="920" y1="-300" x2="920" y2="400" stroke="#475569" stroke-width="2" stroke-dasharray="6 6"/>
+  <line x1="1030" y1="-300" x2="1030" y2="400" stroke="#475569" stroke-width="2" stroke-dasharray="6 6"/>
+  <line x1="1140" y1="-300" x2="1140" y2="400" stroke="#475569" stroke-width="2" stroke-dasharray="6 6"/>
+  <line x1="1250" y1="-300" x2="1250" y2="400" stroke="#475569" stroke-width="2" stroke-dasharray="6 6"/>
+  <rect x="80" y="-120" width="192" height="120" fill="#1e293b" stroke="#64748b" stroke-width="2" rx="8"/>
+  <rect x="300" y="-120" width="192" height="120" fill="#1e293b" stroke="#64748b" stroke-width="2" rx="8"/>
+  <rect x="520" y="-120" width="192" height="120" fill="#1e293b" stroke="#64748b" stroke-width="2" rx="8"/>
+  <rect x="740" y="-120" width="192" height="120" fill="#1e293b" stroke="#64748b" stroke-width="2" rx="8"/>
+  <rect x="960" y="-120" width="192" height="120" fill="#1e293b" stroke="#64748b" stroke-width="2" rx="8"/>
+  <rect x="1180" y="-120" width="192" height="120" fill="#1e293b" stroke="#64748b" stroke-width="2" rx="8"/>
+  <rect x="80" y="140" width="192" height="120" fill="#1e293b" stroke="#64748b" stroke-width="2" rx="8"/>
+  <rect x="300" y="140" width="192" height="120" fill="#1e293b" stroke="#64748b" stroke-width="2" rx="8"/>
+  <rect x="520" y="140" width="192" height="120" fill="#1e293b" stroke="#64748b" stroke-width="2" rx="8"/>
+  <rect x="740" y="140" width="192" height="120" fill="#1e293b" stroke="#64748b" stroke-width="2" rx="8"/>
+  <rect x="960" y="140" width="192" height="120" fill="#1e293b" stroke="#64748b" stroke-width="2" rx="8"/>
+  <rect x="1180" y="140" width="192" height="120" fill="#1e293b" stroke="#64748b" stroke-width="2" rx="8"/>
+  <path d="M -100 0 L 640 0 Q 650 0 650 10 L 650 116 Q 650 126 660 126 L 716 126 Q 726 126 726 136 L 726 264 Q 726 274 716 274 L 660 274 Q 650 274 660 274 L 1390 274 Q 1400 274 1400 264 L 1400 200" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="-100" cy="0" r="7" fill="#22c55e"/>
+  <circle cx="1400" cy="200" r="7" fill="#f97316"/>
+</svg>

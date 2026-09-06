@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-60 36 720 294" width="720" height="294" role="img" aria-label="Hindernis oberhalb der Ideallinie">
+  <rect x="-100000" y="-100000" width="200000" height="200000" fill="#0f172a"/>
+  <text x="-48" y="64" fill="#e2e8f0" font-family="monospace" font-size="16">08-obstacle-above — Hindernis oberhalb der Ideallinie</text>
+  <rect x="250" y="150" width="192" height="120" fill="#1e293b" stroke="#64748b" stroke-width="2" rx="8"/>
+  <path d="M 0 200 L 226 200 Q 236 200 236 190 L 236 146 Q 236 136 246 136 L 446 136 Q 456 136 456 146 L 456 190 Q 456 200 466 200 L 600 200" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="0" cy="200" r="7" fill="#22c55e"/>
+  <circle cx="600" cy="200" r="7" fill="#f97316"/>
+</svg>

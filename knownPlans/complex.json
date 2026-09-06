@@ -1,0 +1,1508 @@
+{
+  "autoWire": {
+    "edges": [
+      {
+        "data": {
+          "crossSection": 70,
+          "dropWarning": false,
+          "edgeDomain": "DC_12V",
+          "length": 0.2
+        },
+        "id": "e-auto-1",
+        "source": "battery-1",
+        "sourceHandle": "minus",
+        "target": "auto:0:smart-shunt",
+        "targetHandle": "minus"
+      },
+      {
+        "data": {
+          "crossSection": 70,
+          "dropWarning": false,
+          "edgeDomain": "DC_12V",
+          "length": 1
+        },
+        "id": "e-auto-2",
+        "source": "busbar-minus",
+        "sourceHandle": "minus",
+        "target": "fusebox-1",
+        "targetHandle": "minus"
+      },
+      {
+        "data": {
+          "crossSection": 2.5,
+          "dropWarning": false,
+          "edgeDomain": "DC_12V",
+          "length": 3
+        },
+        "id": "e-auto-3",
+        "source": "busbar-minus",
+        "sourceHandle": "minus",
+        "target": "cons-fridge",
+        "targetHandle": "minus"
+      },
+      {
+        "data": {
+          "crossSection": 1.5,
+          "dropWarning": false,
+          "edgeDomain": "DC_12V",
+          "length": 3
+        },
+        "id": "e-auto-4",
+        "source": "busbar-minus",
+        "sourceHandle": "minus",
+        "target": "cons-heat",
+        "targetHandle": "minus"
+      },
+      {
+        "data": {
+          "crossSection": 1.5,
+          "dropWarning": false,
+          "edgeDomain": "DC_12V",
+          "length": 3
+        },
+        "id": "e-auto-5",
+        "source": "busbar-minus",
+        "sourceHandle": "minus",
+        "target": "cons-fan",
+        "targetHandle": "minus"
+      },
+      {
+        "data": {
+          "crossSection": 16,
+          "dropWarning": false,
+          "edgeDomain": "Solar",
+          "length": 5
+        },
+        "id": "e-auto-6",
+        "source": "solar-1",
+        "sourceHandle": "minus",
+        "target": "charger-1",
+        "targetHandle": "minus"
+      },
+      {
+        "data": {
+          "crossSection": 10,
+          "dropWarning": false,
+          "edgeDomain": "DC_12V",
+          "length": 2
+        },
+        "id": "e-auto-7",
+        "source": "charger-1",
+        "sourceHandle": "minus",
+        "target": "busbar-minus",
+        "targetHandle": "minus"
+      },
+      {
+        "data": {
+          "crossSection": 16,
+          "dropWarning": false,
+          "edgeDomain": "DC_12V",
+          "length": 3
+        },
+        "id": "e-auto-8",
+        "source": "charger-2",
+        "sourceHandle": "minus",
+        "target": "busbar-minus",
+        "targetHandle": "minus"
+      },
+      {
+        "data": {
+          "crossSection": 16,
+          "dropWarning": false,
+          "edgeDomain": "DC_12V",
+          "length": 3
+        },
+        "id": "e-auto-9",
+        "source": "starter-1",
+        "sourceHandle": "minus",
+        "target": "charger-2",
+        "targetHandle": "minus"
+      },
+      {
+        "data": {
+          "crossSection": 70,
+          "dropWarning": false,
+          "edgeDomain": "DC_12V",
+          "length": 0.5
+        },
+        "id": "e-batt-minus",
+        "source": "auto:0:smart-shunt",
+        "sourceHandle": "minus",
+        "target": "busbar-minus",
+        "targetHandle": "minus"
+      },
+      {
+        "data": {
+          "crossSection": 70,
+          "dropWarning": false,
+          "edgeDomain": "DC_12V",
+          "fuseSize": 160,
+          "length": 0.5
+        },
+        "id": "e-batt-plus",
+        "source": "battery-1",
+        "sourceHandle": "plus",
+        "target": "busbar-plus",
+        "targetHandle": "plus"
+      },
+      {
+        "data": {
+          "crossSection": 70,
+          "dropWarning": false,
+          "edgeDomain": "DC_12V",
+          "fuseSize": 160,
+          "length": 1
+        },
+        "id": "e-busbar-fuse",
+        "source": "busbar-plus",
+        "sourceHandle": "plus",
+        "target": "fusebox-1",
+        "targetHandle": "plus"
+      },
+      {
+        "data": {
+          "crossSection": 70,
+          "dropWarning": false,
+          "edgeDomain": "DC_12V",
+          "length": 1
+        },
+        "id": "e-busbar-inv-minus",
+        "source": "busbar-minus",
+        "sourceHandle": "minus",
+        "target": "inverter-1",
+        "targetHandle": "minus"
+      },
+      {
+        "data": {
+          "crossSection": 70,
+          "dropWarning": false,
+          "edgeDomain": "DC_12V",
+          "fuseSize": 160,
+          "length": 1
+        },
+        "id": "e-busbar-inv-plus",
+        "source": "busbar-plus",
+        "sourceHandle": "plus",
+        "target": "inverter-1",
+        "targetHandle": "plus"
+      },
+      {
+        "data": {
+          "crossSection": 10,
+          "dropWarning": false,
+          "edgeDomain": "DC_12V",
+          "fuseSize": 32,
+          "length": 1
+        },
+        "id": "e-charger-busbar",
+        "source": "charger-1",
+        "sourceHandle": "plus",
+        "target": "busbar-plus",
+        "targetHandle": "plus"
+      },
+      {
+        "data": {
+          "crossSection": 16,
+          "dropWarning": false,
+          "edgeDomain": "DC_12V",
+          "fuseSize": 30,
+          "length": 1
+        },
+        "id": "e-dcdc-busbar",
+        "source": "charger-2",
+        "sourceHandle": "plus",
+        "target": "busbar-plus",
+        "targetHandle": "plus"
+      },
+      {
+        "data": {
+          "crossSection": 2.5,
+          "dropWarning": false,
+          "edgeDomain": "DC_12V",
+          "fuseSize": 5,
+          "length": 3
+        },
+        "id": "e-fuse-fan",
+        "source": "fusebox-1",
+        "sourceHandle": "plus",
+        "target": "cons-fan",
+        "targetHandle": "plus"
+      },
+      {
+        "data": {
+          "crossSection": 4,
+          "dropWarning": false,
+          "edgeDomain": "DC_12V",
+          "fuseSize": 5,
+          "length": 3
+        },
+        "id": "e-fuse-fridge",
+        "source": "fusebox-1",
+        "sourceHandle": "plus",
+        "target": "cons-fridge",
+        "targetHandle": "plus"
+      },
+      {
+        "data": {
+          "crossSection": 4,
+          "dropWarning": false,
+          "edgeDomain": "DC_12V",
+          "fuseSize": 5,
+          "length": 4
+        },
+        "id": "e-fuse-heat",
+        "source": "fusebox-1",
+        "sourceHandle": "plus",
+        "target": "cons-heat",
+        "targetHandle": "plus"
+      },
+      {
+        "data": {
+          "crossSection": 2.5,
+          "edgeDomain": "AC_230V",
+          "fuseSize": 7.5,
+          "length": 2
+        },
+        "id": "e-inv-induct",
+        "source": "inverter-1",
+        "sourceHandle": "plus",
+        "target": "cons-induct",
+        "targetHandle": "plus"
+      },
+      {
+        "data": {
+          "crossSection": 2.5,
+          "edgeDomain": "AC_230V",
+          "fuseSize": 7.5,
+          "length": 2
+        },
+        "id": "e-shore-inv",
+        "source": "shore-1",
+        "sourceHandle": "plus",
+        "target": "inverter-1",
+        "targetHandle": "ac_in"
+      },
+      {
+        "data": {
+          "crossSection": 16,
+          "dropWarning": false,
+          "edgeDomain": "Solar",
+          "fuseSize": 25,
+          "length": 4
+        },
+        "id": "e-solar-charger",
+        "source": "solar-1",
+        "sourceHandle": "plus",
+        "target": "charger-1",
+        "targetHandle": "plus"
+      },
+      {
+        "data": {
+          "crossSection": 25,
+          "dropWarning": false,
+          "edgeDomain": "DC_12V",
+          "fuseSize": 30,
+          "length": 5
+        },
+        "id": "e-starter-dcdc",
+        "source": "starter-1",
+        "sourceHandle": "plus",
+        "target": "charger-2",
+        "targetHandle": "plus"
+      }
+    ],
+    "nodes": [
+      {
+        "data": {
+          "label": "Smart Shunt"
+        },
+        "id": "auto:0:smart-shunt",
+        "position": {
+          "x": 288,
+          "y": 0
+        },
+        "type": "shunt"
+      },
+      {
+        "data": {
+          "capacity": 200,
+          "chemistry": "LiFePO4",
+          "label": "200Ah Lithium"
+        },
+        "id": "battery-1",
+        "position": {
+          "x": 80,
+          "y": 600
+        },
+        "type": "battery"
+      },
+      {
+        "data": {
+          "label": "Minus Busbar",
+          "role": "negative"
+        },
+        "id": "busbar-minus",
+        "position": {
+          "x": 380,
+          "y": 680
+        },
+        "type": "busbar"
+      },
+      {
+        "data": {
+          "label": "Plus Busbar",
+          "role": "positive"
+        },
+        "id": "busbar-plus",
+        "position": {
+          "x": 380,
+          "y": 500
+        },
+        "type": "busbar"
+      },
+      {
+        "data": {
+          "amps": 32,
+          "label": "MPPT Solarregler"
+        },
+        "id": "charger-1",
+        "position": {
+          "x": 380,
+          "y": 60
+        },
+        "type": "mpptController"
+      },
+      {
+        "data": {
+          "amps": 30,
+          "label": "DC-DC Ladebooster"
+        },
+        "id": "charger-2",
+        "position": {
+          "x": 380,
+          "y": 240
+        },
+        "type": "dcdcCharger"
+      },
+      {
+        "data": {
+          "label": "MaxxFan",
+          "watts": 40
+        },
+        "id": "cons-fan",
+        "position": {
+          "x": 980,
+          "y": 380
+        },
+        "type": "consumer"
+      },
+      {
+        "data": {
+          "label": "Kompressorkühlschrank",
+          "watts": 60
+        },
+        "id": "cons-fridge",
+        "position": {
+          "x": 980,
+          "y": 60
+        },
+        "type": "consumer"
+      },
+      {
+        "data": {
+          "label": "Standheizung",
+          "watts": 40
+        },
+        "id": "cons-heat",
+        "position": {
+          "x": 980,
+          "y": 220
+        },
+        "type": "consumer"
+      },
+      {
+        "data": {
+          "label": "Induktionskochfeld",
+          "watts": 1200
+        },
+        "id": "cons-induct",
+        "position": {
+          "x": 980,
+          "y": 540
+        },
+        "type": "consumer230v"
+      },
+      {
+        "data": {
+          "label": "Sicherungskasten",
+          "rating": 160
+        },
+        "id": "fusebox-1",
+        "position": {
+          "x": 680,
+          "y": 200
+        },
+        "type": "fuse"
+      },
+      {
+        "data": {
+          "continuousPower": 1500,
+          "label": "1500W Inverter",
+          "watts": 1500
+        },
+        "id": "inverter-1",
+        "position": {
+          "x": 680,
+          "y": 480
+        },
+        "type": "inverter"
+      },
+      {
+        "data": {
+          "hasRcd": true,
+          "label": "Landstrom"
+        },
+        "id": "shore-1",
+        "position": {
+          "x": 80,
+          "y": 420
+        },
+        "type": "shorePower"
+      },
+      {
+        "data": {
+          "label": "400W Solar",
+          "watts": 400
+        },
+        "id": "solar-1",
+        "position": {
+          "x": 80,
+          "y": 60
+        },
+        "type": "solar"
+      },
+      {
+        "data": {
+          "capacity": 90,
+          "chemistry": "AGM",
+          "label": "Starterbatterie"
+        },
+        "id": "starter-1",
+        "position": {
+          "x": 80,
+          "y": 240
+        },
+        "type": "battery"
+      }
+    ]
+  },
+  "electrical": {
+    "cumulativeDrops": {
+      "auto:0:smart-shunt": 0.015,
+      "battery-1": 0,
+      "busbar-minus": 0.051,
+      "busbar-plus": 0.037,
+      "charger-1": 0,
+      "charger-2": 0,
+      "cons-fan": 0.267,
+      "cons-fridge": 0.246,
+      "cons-heat": 0.267,
+      "cons-induct": 0,
+      "fusebox-1": 0.125,
+      "inverter-1": 0.119,
+      "shore-1": 0,
+      "solar-1": 0,
+      "starter-1": 0
+    },
+    "edgeCurrents": {
+      "e-auto-1": 148.81,
+      "e-auto-2": 148.81,
+      "e-auto-3": 4.69,
+      "e-auto-4": 3.13,
+      "e-auto-5": 3.13,
+      "e-auto-6": 22.22,
+      "e-auto-7": 32,
+      "e-auto-8": 30,
+      "e-auto-9": 30,
+      "e-batt-minus": 148.81,
+      "e-batt-plus": 148.81,
+      "e-busbar-fuse": 148.81,
+      "e-busbar-inv-minus": 137.87,
+      "e-busbar-inv-plus": 137.87,
+      "e-charger-busbar": 32,
+      "e-dcdc-busbar": 30,
+      "e-fuse-fan": 3.13,
+      "e-fuse-fridge": 4.69,
+      "e-fuse-heat": 3.13,
+      "e-inv-induct": 137.87,
+      "e-shore-inv": 137.87,
+      "e-solar-charger": 22.22,
+      "e-starter-dcdc": 30
+    },
+    "systemVoltage": 12.8
+  },
+  "fixtureVersion": 1,
+  "input": {
+    "edges": [
+      {
+        "data": {
+          "crossSection": 70,
+          "length": 0.5
+        },
+        "id": "e-batt-minus",
+        "source": "battery-1",
+        "sourceHandle": "minus",
+        "target": "busbar-minus",
+        "targetHandle": "minus"
+      },
+      {
+        "data": {
+          "crossSection": 70,
+          "fuseSize": 160,
+          "length": 0.5
+        },
+        "id": "e-batt-plus",
+        "source": "battery-1",
+        "sourceHandle": "plus",
+        "target": "busbar-plus",
+        "targetHandle": "plus"
+      },
+      {
+        "data": {
+          "crossSection": 70,
+          "fuseSize": 160,
+          "length": 1
+        },
+        "id": "e-busbar-fuse",
+        "source": "busbar-plus",
+        "sourceHandle": "plus",
+        "target": "fusebox-1",
+        "targetHandle": "plus"
+      },
+      {
+        "data": {
+          "crossSection": 70,
+          "length": 1
+        },
+        "id": "e-busbar-inv-minus",
+        "source": "busbar-minus",
+        "sourceHandle": "minus",
+        "target": "inverter-1",
+        "targetHandle": "minus"
+      },
+      {
+        "data": {
+          "crossSection": 70,
+          "fuseSize": 160,
+          "length": 1
+        },
+        "id": "e-busbar-inv-plus",
+        "source": "busbar-plus",
+        "sourceHandle": "plus",
+        "target": "inverter-1",
+        "targetHandle": "plus"
+      },
+      {
+        "data": {
+          "crossSection": 10,
+          "fuseSize": 40,
+          "length": 1
+        },
+        "id": "e-charger-busbar",
+        "source": "charger-1",
+        "sourceHandle": "plus",
+        "target": "busbar-plus",
+        "targetHandle": "plus"
+      },
+      {
+        "data": {
+          "crossSection": 16,
+          "fuseSize": 50,
+          "length": 1
+        },
+        "id": "e-dcdc-busbar",
+        "source": "charger-2",
+        "sourceHandle": "plus",
+        "target": "busbar-plus",
+        "targetHandle": "plus"
+      },
+      {
+        "data": {
+          "crossSection": 2.5,
+          "length": 3
+        },
+        "id": "e-fuse-fan",
+        "source": "fusebox-1",
+        "sourceHandle": "plus",
+        "target": "cons-fan",
+        "targetHandle": "plus"
+      },
+      {
+        "data": {
+          "crossSection": 4,
+          "length": 3
+        },
+        "id": "e-fuse-fridge",
+        "source": "fusebox-1",
+        "sourceHandle": "plus",
+        "target": "cons-fridge",
+        "targetHandle": "plus"
+      },
+      {
+        "data": {
+          "crossSection": 4,
+          "length": 4
+        },
+        "id": "e-fuse-heat",
+        "source": "fusebox-1",
+        "sourceHandle": "plus",
+        "target": "cons-heat",
+        "targetHandle": "plus"
+      },
+      {
+        "data": {
+          "crossSection": 2.5,
+          "edgeDomain": "AC_230V",
+          "length": 2
+        },
+        "id": "e-inv-induct",
+        "source": "inverter-1",
+        "sourceHandle": "plus",
+        "target": "cons-induct",
+        "targetHandle": "plus"
+      },
+      {
+        "data": {
+          "crossSection": 2.5,
+          "edgeDomain": "AC_230V",
+          "fuseSize": 16,
+          "length": 2
+        },
+        "id": "e-shore-inv",
+        "source": "shore-1",
+        "sourceHandle": "plus",
+        "target": "inverter-1",
+        "targetHandle": "ac_in"
+      },
+      {
+        "data": {
+          "crossSection": 6,
+          "length": 4
+        },
+        "id": "e-solar-charger",
+        "source": "solar-1",
+        "sourceHandle": "plus",
+        "target": "charger-1",
+        "targetHandle": "plus"
+      },
+      {
+        "data": {
+          "crossSection": 16,
+          "fuseSize": 60,
+          "length": 5
+        },
+        "id": "e-starter-dcdc",
+        "source": "starter-1",
+        "sourceHandle": "plus",
+        "target": "charger-2",
+        "targetHandle": "plus"
+      }
+    ],
+    "nodes": [
+      {
+        "data": {
+          "capacity": 200,
+          "chemistry": "LiFePO4",
+          "label": "200Ah Lithium"
+        },
+        "id": "battery-1",
+        "position": {
+          "x": 80,
+          "y": 600
+        },
+        "type": "battery"
+      },
+      {
+        "data": {
+          "label": "Minus Busbar"
+        },
+        "id": "busbar-minus",
+        "position": {
+          "x": 380,
+          "y": 680
+        },
+        "type": "busbar"
+      },
+      {
+        "data": {
+          "label": "Plus Busbar"
+        },
+        "id": "busbar-plus",
+        "position": {
+          "x": 380,
+          "y": 500
+        },
+        "type": "busbar"
+      },
+      {
+        "data": {
+          "amps": 30,
+          "label": "MPPT Solarregler"
+        },
+        "id": "charger-1",
+        "position": {
+          "x": 380,
+          "y": 60
+        },
+        "type": "mpptController"
+      },
+      {
+        "data": {
+          "amps": 30,
+          "label": "DC-DC Ladebooster"
+        },
+        "id": "charger-2",
+        "position": {
+          "x": 380,
+          "y": 240
+        },
+        "type": "dcdcCharger"
+      },
+      {
+        "data": {
+          "label": "MaxxFan",
+          "watts": 40
+        },
+        "id": "cons-fan",
+        "position": {
+          "x": 980,
+          "y": 380
+        },
+        "type": "consumer"
+      },
+      {
+        "data": {
+          "label": "Kompressorkühlschrank",
+          "watts": 60
+        },
+        "id": "cons-fridge",
+        "position": {
+          "x": 980,
+          "y": 60
+        },
+        "type": "consumer"
+      },
+      {
+        "data": {
+          "label": "Standheizung",
+          "watts": 40
+        },
+        "id": "cons-heat",
+        "position": {
+          "x": 980,
+          "y": 220
+        },
+        "type": "consumer"
+      },
+      {
+        "data": {
+          "label": "Induktionskochfeld",
+          "watts": 1200
+        },
+        "id": "cons-induct",
+        "position": {
+          "x": 980,
+          "y": 540
+        },
+        "type": "consumer230v"
+      },
+      {
+        "data": {
+          "label": "Sicherungskasten"
+        },
+        "id": "fusebox-1",
+        "position": {
+          "x": 680,
+          "y": 200
+        },
+        "type": "fuse"
+      },
+      {
+        "data": {
+          "continuousPower": 1500,
+          "label": "1500W Inverter",
+          "watts": 1500
+        },
+        "id": "inverter-1",
+        "position": {
+          "x": 680,
+          "y": 480
+        },
+        "type": "inverter"
+      },
+      {
+        "data": {
+          "hasRcd": true,
+          "label": "Landstrom"
+        },
+        "id": "shore-1",
+        "position": {
+          "x": 80,
+          "y": 420
+        },
+        "type": "shorePower"
+      },
+      {
+        "data": {
+          "label": "400W Solar",
+          "watts": 400
+        },
+        "id": "solar-1",
+        "position": {
+          "x": 80,
+          "y": 60
+        },
+        "type": "solar"
+      },
+      {
+        "data": {
+          "capacity": 90,
+          "chemistry": "AGM",
+          "label": "Starterbatterie"
+        },
+        "id": "starter-1",
+        "position": {
+          "x": 80,
+          "y": 240
+        },
+        "type": "battery"
+      }
+    ]
+  },
+  "routing": {
+    "e-auto-1": {
+      "bends": 5,
+      "crossings": 7,
+      "length": 688.2,
+      "usedSearch": "astar",
+      "waypoints": [
+        {
+          "x": 214.4,
+          "y": 600
+        },
+        {
+          "x": 214.5,
+          "y": 600
+        },
+        {
+          "x": 214.5,
+          "y": 554
+        },
+        {
+          "x": 350,
+          "y": 554
+        },
+        {
+          "x": 350,
+          "y": 150
+        },
+        {
+          "x": 422.5,
+          "y": 150
+        },
+        {
+          "x": 422.4,
+          "y": 150
+        },
+        {
+          "x": 422.4,
+          "y": 120
+        }
+      ]
+    },
+    "e-auto-2": {
+      "bends": 5,
+      "crossings": 7,
+      "length": 660.2,
+      "usedSearch": "astar",
+      "waypoints": [
+        {
+          "x": 514.4,
+          "y": 680
+        },
+        {
+          "x": 514.5,
+          "y": 680
+        },
+        {
+          "x": 514.5,
+          "y": 634
+        },
+        {
+          "x": 666,
+          "y": 634
+        },
+        {
+          "x": 666,
+          "y": 349
+        },
+        {
+          "x": 814.5,
+          "y": 349
+        },
+        {
+          "x": 814.4,
+          "y": 349
+        },
+        {
+          "x": 814.4,
+          "y": 320
+        }
+      ]
+    },
+    "e-auto-3": {
+      "bends": 5,
+      "crossings": 8,
+      "length": 1100.2,
+      "usedSearch": "astar",
+      "waypoints": [
+        {
+          "x": 514.4,
+          "y": 680
+        },
+        {
+          "x": 514.5,
+          "y": 680
+        },
+        {
+          "x": 514.5,
+          "y": 634
+        },
+        {
+          "x": 966,
+          "y": 634
+        },
+        {
+          "x": 966,
+          "y": 211
+        },
+        {
+          "x": 1114.5,
+          "y": 211
+        },
+        {
+          "x": 1114.4,
+          "y": 211
+        },
+        {
+          "x": 1114.4,
+          "y": 180
+        }
+      ]
+    },
+    "e-auto-4": {
+      "bends": 2,
+      "crossings": 4,
+      "length": 868,
+      "usedSearch": "catalog",
+      "waypoints": [
+        {
+          "x": 572,
+          "y": 764
+        },
+        {
+          "x": 952.5,
+          "y": 764
+        },
+        {
+          "x": 952.5,
+          "y": 304
+        },
+        {
+          "x": 980,
+          "y": 304
+        }
+      ]
+    },
+    "e-auto-5": {
+      "bends": 2,
+      "crossings": 2,
+      "length": 708,
+      "usedSearch": "catalog",
+      "waypoints": [
+        {
+          "x": 572,
+          "y": 764
+        },
+        {
+          "x": 950,
+          "y": 764
+        },
+        {
+          "x": 950,
+          "y": 464
+        },
+        {
+          "x": 980,
+          "y": 464
+        }
+      ]
+    },
+    "e-auto-6": {
+      "bends": 0,
+      "crossings": 1,
+      "length": 108,
+      "usedSearch": "catalog",
+      "waypoints": [
+        {
+          "x": 272,
+          "y": 144
+        },
+        {
+          "x": 380,
+          "y": 144
+        }
+      ]
+    },
+    "e-auto-7": {
+      "bends": 5,
+      "crossings": 5,
+      "length": 657.2,
+      "usedSearch": "astar",
+      "waypoints": [
+        {
+          "x": 514.4,
+          "y": 180
+        },
+        {
+          "x": 514.5,
+          "y": 180
+        },
+        {
+          "x": 514.5,
+          "y": 226
+        },
+        {
+          "x": 593,
+          "y": 226
+        },
+        {
+          "x": 593,
+          "y": 650
+        },
+        {
+          "x": 514.4,
+          "y": 650
+        },
+        {
+          "x": 514.4,
+          "y": 680
+        }
+      ]
+    },
+    "e-auto-8": {
+      "bends": 5,
+      "crossings": 5,
+      "length": 459.2,
+      "usedSearch": "astar",
+      "waypoints": [
+        {
+          "x": 514.4,
+          "y": 360
+        },
+        {
+          "x": 514.5,
+          "y": 360
+        },
+        {
+          "x": 514.5,
+          "y": 488
+        },
+        {
+          "x": 584,
+          "y": 488
+        },
+        {
+          "x": 584,
+          "y": 633
+        },
+        {
+          "x": 514.4,
+          "y": 633
+        },
+        {
+          "x": 514.4,
+          "y": 680
+        }
+      ]
+    },
+    "e-auto-9": {
+      "bends": 0,
+      "crossings": 1,
+      "length": 108,
+      "usedSearch": "catalog",
+      "waypoints": [
+        {
+          "x": 272,
+          "y": 324
+        },
+        {
+          "x": 380,
+          "y": 324
+        }
+      ]
+    },
+    "e-batt-minus": {
+      "bends": 5,
+      "crossings": 10,
+      "length": 765.2,
+      "usedSearch": "astar",
+      "waypoints": [
+        {
+          "x": 422.4,
+          "y": 120
+        },
+        {
+          "x": 422.5,
+          "y": 120
+        },
+        {
+          "x": 422.5,
+          "y": 218
+        },
+        {
+          "x": 366,
+          "y": 218
+        },
+        {
+          "x": 366,
+          "y": 652.5
+        },
+        {
+          "x": 514.5,
+          "y": 652.5
+        },
+        {
+          "x": 514.4,
+          "y": 652.5
+        },
+        {
+          "x": 514.4,
+          "y": 680
+        }
+      ]
+    },
+    "e-batt-plus": {
+      "bends": 2,
+      "crossings": 1,
+      "length": 208,
+      "usedSearch": "catalog",
+      "waypoints": [
+        {
+          "x": 272,
+          "y": 636
+        },
+        {
+          "x": 350,
+          "y": 636
+        },
+        {
+          "x": 350,
+          "y": 536
+        },
+        {
+          "x": 380,
+          "y": 536
+        }
+      ]
+    },
+    "e-busbar-fuse": {
+      "bends": 2,
+      "crossings": 3,
+      "length": 408,
+      "usedSearch": "catalog",
+      "waypoints": [
+        {
+          "x": 572,
+          "y": 536
+        },
+        {
+          "x": 642,
+          "y": 536
+        },
+        {
+          "x": 642,
+          "y": 236
+        },
+        {
+          "x": 680,
+          "y": 236
+        }
+      ]
+    },
+    "e-busbar-inv-minus": {
+      "bends": 2,
+      "crossings": 3,
+      "length": 308,
+      "usedSearch": "catalog",
+      "waypoints": [
+        {
+          "x": 572,
+          "y": 764
+        },
+        {
+          "x": 647.5,
+          "y": 764
+        },
+        {
+          "x": 647.5,
+          "y": 564
+        },
+        {
+          "x": 680,
+          "y": 564
+        }
+      ]
+    },
+    "e-busbar-inv-plus": {
+      "bends": 2,
+      "crossings": 2,
+      "length": 128,
+      "usedSearch": "catalog",
+      "waypoints": [
+        {
+          "x": 572,
+          "y": 536
+        },
+        {
+          "x": 651,
+          "y": 536
+        },
+        {
+          "x": 651,
+          "y": 516
+        },
+        {
+          "x": 680,
+          "y": 516
+        }
+      ]
+    },
+    "e-charger-busbar": {
+      "bends": 5,
+      "crossings": 3,
+      "length": 463.2,
+      "usedSearch": "astar",
+      "waypoints": [
+        {
+          "x": 437.6,
+          "y": 180
+        },
+        {
+          "x": 437.5,
+          "y": 180
+        },
+        {
+          "x": 437.5,
+          "y": 226
+        },
+        {
+          "x": 366,
+          "y": 226
+        },
+        {
+          "x": 366,
+          "y": 473.5
+        },
+        {
+          "x": 437.6,
+          "y": 473.5
+        },
+        {
+          "x": 437.6,
+          "y": 500
+        }
+      ]
+    },
+    "e-dcdc-busbar": {
+      "bends": 3,
+      "crossings": 1,
+      "length": 140.2,
+      "usedSearch": "astar",
+      "waypoints": [
+        {
+          "x": 437.6,
+          "y": 360
+        },
+        {
+          "x": 437.5,
+          "y": 360
+        },
+        {
+          "x": 437.5,
+          "y": 471
+        },
+        {
+          "x": 437.6,
+          "y": 471
+        },
+        {
+          "x": 437.6,
+          "y": 500
+        }
+      ]
+    },
+    "e-fuse-fan": {
+      "bends": 2,
+      "crossings": 4,
+      "length": 288,
+      "usedSearch": "catalog",
+      "waypoints": [
+        {
+          "x": 872,
+          "y": 236
+        },
+        {
+          "x": 950,
+          "y": 236
+        },
+        {
+          "x": 950,
+          "y": 416
+        },
+        {
+          "x": 980,
+          "y": 416
+        }
+      ]
+    },
+    "e-fuse-fridge": {
+      "bends": 2,
+      "crossings": 1,
+      "length": 248,
+      "usedSearch": "catalog",
+      "waypoints": [
+        {
+          "x": 872,
+          "y": 236
+        },
+        {
+          "x": 934,
+          "y": 236
+        },
+        {
+          "x": 934,
+          "y": 96
+        },
+        {
+          "x": 980,
+          "y": 96
+        }
+      ]
+    },
+    "e-fuse-heat": {
+      "bends": 2,
+      "crossings": 1,
+      "length": 128,
+      "usedSearch": "catalog",
+      "waypoints": [
+        {
+          "x": 872,
+          "y": 236
+        },
+        {
+          "x": 950,
+          "y": 236
+        },
+        {
+          "x": 950,
+          "y": 256
+        },
+        {
+          "x": 980,
+          "y": 256
+        }
+      ]
+    },
+    "e-inv-induct": {
+      "bends": 2,
+      "crossings": 2,
+      "length": 168,
+      "usedSearch": "catalog",
+      "waypoints": [
+        {
+          "x": 872,
+          "y": 516
+        },
+        {
+          "x": 950,
+          "y": 516
+        },
+        {
+          "x": 950,
+          "y": 576
+        },
+        {
+          "x": 980,
+          "y": 576
+        }
+      ]
+    },
+    "e-shore-inv": {
+      "bends": 2,
+      "crossings": 9,
+      "length": 492,
+      "usedSearch": "catalog",
+      "waypoints": [
+        {
+          "x": 272,
+          "y": 456
+        },
+        {
+          "x": 652.5,
+          "y": 456
+        },
+        {
+          "x": 652.5,
+          "y": 540
+        },
+        {
+          "x": 680,
+          "y": 540
+        }
+      ]
+    },
+    "e-solar-charger": {
+      "bends": 0,
+      "crossings": 1,
+      "length": 108,
+      "usedSearch": "catalog",
+      "waypoints": [
+        {
+          "x": 272,
+          "y": 96
+        },
+        {
+          "x": 380,
+          "y": 96
+        }
+      ]
+    },
+    "e-starter-dcdc": {
+      "bends": 0,
+      "crossings": 1,
+      "length": 108,
+      "usedSearch": "catalog",
+      "waypoints": [
+        {
+          "x": 272,
+          "y": 276
+        },
+        {
+          "x": 380,
+          "y": 276
+        }
+      ]
+    }
+  }
+}

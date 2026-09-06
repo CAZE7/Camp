@@ -11,13 +11,13 @@ describe('vehicleTemplates', () => {
   });
 
   it('should have unique ids', () => {
-    const ids = vehicleTemplates.map(v => v.id);
+    const ids = vehicleTemplates.map((v) => v.id);
     const uniqueIds = new Set(ids);
     expect(uniqueIds.size).toBe(ids.length);
   });
 
   it('should have valid descriptive fields for all templates', () => {
-    vehicleTemplates.forEach(template => {
+    vehicleTemplates.forEach((template) => {
       expect(template.id).toBeTruthy();
       expect(typeof template.id).toBe('string');
       expect(template.brand).toBeTruthy();
@@ -30,7 +30,7 @@ describe('vehicleTemplates', () => {
   });
 
   it('should have positive dimensions for all templates', () => {
-    vehicleTemplates.forEach(template => {
+    vehicleTemplates.forEach((template) => {
       expect(template.length).toBeGreaterThan(0);
       expect(template.width).toBeGreaterThan(0);
       expect(template.height).toBeGreaterThan(0);
@@ -38,7 +38,7 @@ describe('vehicleTemplates', () => {
   });
 
   it('should have reasonable dimensions (sanity check)', () => {
-    vehicleTemplates.forEach(template => {
+    vehicleTemplates.forEach((template) => {
       // Smallest van is around 2m, largest around 8m
       expect(template.length).toBeGreaterThan(2);
       expect(template.length).toBeLessThan(10);
