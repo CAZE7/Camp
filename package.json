@@ -14,6 +14,8 @@
     "ci:verify-lockfile-gate": "node scripts/ci/verify-lockfile-gate.mjs",
     "postinstall": "node -e \"try { require('child_process').execSync('git config core.hooksPath scripts/git-hooks') } catch {}\"",
     "routing:gallery": "tsx scripts/routing/generate-gallery.ts",
+    "goldenmaster:capture": "tsx scripts/goldenmaster/capture.ts",
+    "test:goldenmaster": "vitest run scripts/goldenmaster/goldenMaster.test.ts",
     "perf:edge-routing": "tsx benchmarks/edgeRoutingPerf.bench.ts",
     "pree2e": "node scripts/check-node-version.mjs",
     "e2e": "playwright test",

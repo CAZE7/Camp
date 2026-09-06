@@ -1,0 +1,800 @@
+{
+  "autoWire": {
+    "edges": [
+      {
+        "data": {
+          "crossSection": 1.5,
+          "dropWarning": false,
+          "edgeDomain": "DC_12V",
+          "fuseSize": 10,
+          "length": 0.2
+        },
+        "id": "e-auto-1",
+        "source": "battery-1",
+        "sourceHandle": "plus",
+        "target": "auto:0:plus-schiene",
+        "targetHandle": "plus"
+      },
+      {
+        "data": {
+          "crossSection": 1.5,
+          "dropWarning": false,
+          "edgeDomain": "DC_12V",
+          "length": 0.2
+        },
+        "id": "e-auto-2",
+        "source": "battery-1",
+        "sourceHandle": "minus",
+        "target": "auto:2:smart-shunt",
+        "targetHandle": "minus"
+      },
+      {
+        "data": {
+          "crossSection": 1.5,
+          "dropWarning": false,
+          "edgeDomain": "DC_12V",
+          "length": 0.5
+        },
+        "id": "e-auto-3",
+        "source": "auto:2:smart-shunt",
+        "sourceHandle": "minus",
+        "target": "auto:1:minus-schiene",
+        "targetHandle": "minus"
+      },
+      {
+        "data": {
+          "crossSection": 1.5,
+          "dropWarning": false,
+          "edgeDomain": "DC_12V",
+          "length": 1
+        },
+        "id": "e-auto-4",
+        "source": "auto:1:minus-schiene",
+        "sourceHandle": "minus",
+        "target": "fusebox-1",
+        "targetHandle": "minus"
+      },
+      {
+        "data": {
+          "crossSection": 1.5,
+          "dropWarning": false,
+          "edgeDomain": "DC_12V",
+          "length": 3
+        },
+        "id": "e-auto-5",
+        "source": "auto:1:minus-schiene",
+        "sourceHandle": "minus",
+        "target": "cons-light",
+        "targetHandle": "minus"
+      },
+      {
+        "data": {
+          "crossSection": 1.5,
+          "dropWarning": false,
+          "edgeDomain": "DC_12V",
+          "length": 3
+        },
+        "id": "e-auto-6",
+        "source": "auto:1:minus-schiene",
+        "sourceHandle": "minus",
+        "target": "cons-usb",
+        "targetHandle": "minus"
+      },
+      {
+        "data": {
+          "crossSection": 2.5,
+          "dropWarning": false,
+          "edgeDomain": "DC_12V",
+          "length": 3
+        },
+        "id": "e-auto-7",
+        "source": "auto:1:minus-schiene",
+        "sourceHandle": "minus",
+        "target": "cons-cool",
+        "targetHandle": "minus"
+      },
+      {
+        "data": {
+          "crossSection": 10,
+          "dropWarning": false,
+          "edgeDomain": "DC_12V",
+          "fuseSize": 10,
+          "length": 0.2
+        },
+        "id": "e-batt-fuse",
+        "source": "auto:0:plus-schiene",
+        "sourceHandle": "plus",
+        "target": "fusebox-1",
+        "targetHandle": "plus"
+      },
+      {
+        "data": {
+          "crossSection": 16,
+          "dropWarning": false,
+          "edgeDomain": "DC_12V",
+          "length": 1
+        },
+        "id": "e-batt-gnd",
+        "source": "auto:2:smart-shunt",
+        "sourceHandle": "minus",
+        "target": "ground-1",
+        "targetHandle": "minus"
+      },
+      {
+        "data": {
+          "crossSection": 10,
+          "dropWarning": false,
+          "edgeDomain": "DC_12V",
+          "fuseSize": 5,
+          "length": 2
+        },
+        "id": "e-fuse-cool",
+        "source": "fusebox-1",
+        "sourceHandle": "plus",
+        "target": "cons-cool",
+        "targetHandle": "plus"
+      },
+      {
+        "data": {
+          "crossSection": 10,
+          "dropWarning": false,
+          "edgeDomain": "DC_12V",
+          "fuseSize": 5,
+          "length": 5
+        },
+        "id": "e-fuse-light",
+        "source": "fusebox-1",
+        "sourceHandle": "plus",
+        "target": "cons-light",
+        "targetHandle": "plus"
+      },
+      {
+        "data": {
+          "crossSection": 10,
+          "dropWarning": false,
+          "edgeDomain": "DC_12V",
+          "fuseSize": 5,
+          "length": 3
+        },
+        "id": "e-fuse-usb",
+        "source": "fusebox-1",
+        "sourceHandle": "plus",
+        "target": "cons-usb",
+        "targetHandle": "plus"
+      }
+    ],
+    "nodes": [
+      {
+        "data": {
+          "label": "Plus-Schiene",
+          "role": "positive"
+        },
+        "id": "auto:0:plus-schiene",
+        "position": {
+          "x": 288,
+          "y": 0
+        },
+        "type": "busbar"
+      },
+      {
+        "data": {
+          "label": "Minus-Schiene",
+          "role": "negative"
+        },
+        "id": "auto:1:minus-schiene",
+        "position": {
+          "x": 576,
+          "y": 0
+        },
+        "type": "busbar"
+      },
+      {
+        "data": {
+          "label": "Smart Shunt"
+        },
+        "id": "auto:2:smart-shunt",
+        "position": {
+          "x": 288,
+          "y": 192
+        },
+        "type": "shunt"
+      },
+      {
+        "data": {
+          "capacity": 100,
+          "chemistry": "AGM",
+          "label": "12V Batterie"
+        },
+        "id": "battery-1",
+        "position": {
+          "x": 80,
+          "y": 160
+        },
+        "type": "battery"
+      },
+      {
+        "data": {
+          "label": "Kühlbox",
+          "watts": 45
+        },
+        "id": "cons-cool",
+        "position": {
+          "x": 680,
+          "y": 380
+        },
+        "type": "consumer"
+      },
+      {
+        "data": {
+          "label": "LED-Beleuchtung",
+          "watts": 20
+        },
+        "id": "cons-light",
+        "position": {
+          "x": 680,
+          "y": 60
+        },
+        "type": "consumer"
+      },
+      {
+        "data": {
+          "label": "USB Steckdosen",
+          "watts": 36
+        },
+        "id": "cons-usb",
+        "position": {
+          "x": 680,
+          "y": 220
+        },
+        "type": "consumer"
+      },
+      {
+        "data": {
+          "label": "Sicherungskasten",
+          "rating": 10
+        },
+        "id": "fusebox-1",
+        "position": {
+          "x": 380,
+          "y": 160
+        },
+        "type": "fuse"
+      },
+      {
+        "data": {
+          "label": "Massepunkt"
+        },
+        "id": "ground-1",
+        "position": {
+          "x": 80,
+          "y": 360
+        },
+        "type": "ground"
+      }
+    ]
+  },
+  "electrical": {
+    "cumulativeDrops": {
+      "auto:0:plus-schiene": 0.039,
+      "auto:1:minus-schiene": 0.135,
+      "auto:2:smart-shunt": 0.039,
+      "battery-1": 0,
+      "cons-cool": 0.355,
+      "cons-light": 0.358,
+      "cons-usb": 0.36,
+      "fusebox-1": 0.329,
+      "ground-1": 0.057
+    },
+    "edgeCurrents": {
+      "e-auto-1": 8.42,
+      "e-auto-2": 8.42,
+      "e-auto-3": 8.42,
+      "e-auto-4": 8.42,
+      "e-auto-5": 1.67,
+      "e-auto-6": 3,
+      "e-auto-7": 3.75,
+      "e-batt-fuse": 8.42,
+      "e-batt-gnd": 8.42,
+      "e-fuse-cool": 3.75,
+      "e-fuse-light": 1.67,
+      "e-fuse-usb": 3
+    },
+    "systemVoltage": 12
+  },
+  "fixtureVersion": 1,
+  "input": {
+    "edges": [
+      {
+        "data": {
+          "crossSection": 10,
+          "fuseSize": 10,
+          "length": 0.2
+        },
+        "id": "e-batt-fuse",
+        "source": "battery-1",
+        "sourceHandle": "plus",
+        "target": "fusebox-1",
+        "targetHandle": "plus"
+      },
+      {
+        "data": {
+          "crossSection": 10,
+          "length": 1
+        },
+        "id": "e-batt-gnd",
+        "source": "battery-1",
+        "sourceHandle": "minus",
+        "target": "ground-1",
+        "targetHandle": "minus"
+      },
+      {
+        "data": {
+          "crossSection": 4,
+          "length": 2
+        },
+        "id": "e-fuse-cool",
+        "source": "fusebox-1",
+        "sourceHandle": "plus",
+        "target": "cons-cool",
+        "targetHandle": "plus"
+      },
+      {
+        "data": {
+          "crossSection": 2.5,
+          "length": 5
+        },
+        "id": "e-fuse-light",
+        "source": "fusebox-1",
+        "sourceHandle": "plus",
+        "target": "cons-light",
+        "targetHandle": "plus"
+      },
+      {
+        "data": {
+          "crossSection": 2.5,
+          "length": 3
+        },
+        "id": "e-fuse-usb",
+        "source": "fusebox-1",
+        "sourceHandle": "plus",
+        "target": "cons-usb",
+        "targetHandle": "plus"
+      }
+    ],
+    "nodes": [
+      {
+        "data": {
+          "capacity": 100,
+          "chemistry": "AGM",
+          "label": "12V Batterie"
+        },
+        "id": "battery-1",
+        "position": {
+          "x": 80,
+          "y": 160
+        },
+        "type": "battery"
+      },
+      {
+        "data": {
+          "label": "Kühlbox",
+          "watts": 45
+        },
+        "id": "cons-cool",
+        "position": {
+          "x": 680,
+          "y": 380
+        },
+        "type": "consumer"
+      },
+      {
+        "data": {
+          "label": "LED-Beleuchtung",
+          "watts": 20
+        },
+        "id": "cons-light",
+        "position": {
+          "x": 680,
+          "y": 60
+        },
+        "type": "consumer"
+      },
+      {
+        "data": {
+          "label": "USB Steckdosen",
+          "watts": 36
+        },
+        "id": "cons-usb",
+        "position": {
+          "x": 680,
+          "y": 220
+        },
+        "type": "consumer"
+      },
+      {
+        "data": {
+          "label": "Sicherungskasten"
+        },
+        "id": "fusebox-1",
+        "position": {
+          "x": 380,
+          "y": 160
+        },
+        "type": "fuse"
+      },
+      {
+        "data": {
+          "label": "Massepunkt"
+        },
+        "id": "ground-1",
+        "position": {
+          "x": 80,
+          "y": 360
+        },
+        "type": "ground"
+      }
+    ]
+  },
+  "routing": {
+    "e-auto-1": {
+      "bends": 2,
+      "crossings": 1,
+      "length": 263,
+      "usedSearch": "fallback",
+      "waypoints": [
+        {
+          "x": 272,
+          "y": 196
+        },
+        {
+          "x": 304,
+          "y": 196
+        },
+        {
+          "x": 304,
+          "y": 36
+        },
+        {
+          "x": 260.5,
+          "y": 36
+        },
+        {
+          "x": 288,
+          "y": 36
+        }
+      ]
+    },
+    "e-auto-2": {
+      "bends": 4,
+      "crossings": 0,
+      "length": 136,
+      "usedSearch": "catalog",
+      "waypoints": [
+        {
+          "x": 272,
+          "y": 244
+        },
+        {
+          "x": 302,
+          "y": 244
+        },
+        {
+          "x": 302,
+          "y": 268
+        },
+        {
+          "x": 258,
+          "y": 268
+        },
+        {
+          "x": 258,
+          "y": 276
+        },
+        {
+          "x": 288,
+          "y": 276
+        }
+      ]
+    },
+    "e-auto-3": {
+      "bends": 2,
+      "crossings": 5,
+      "length": 288,
+      "usedSearch": "catalog",
+      "waypoints": [
+        {
+          "x": 480,
+          "y": 276
+        },
+        {
+          "x": 546,
+          "y": 276
+        },
+        {
+          "x": 546,
+          "y": 84
+        },
+        {
+          "x": 576,
+          "y": 84
+        }
+      ]
+    },
+    "e-auto-4": {
+      "bends": 2,
+      "crossings": 4,
+      "length": 256,
+      "usedSearch": "catalog",
+      "waypoints": [
+        {
+          "x": 576,
+          "y": 84
+        },
+        {
+          "x": 551,
+          "y": 84
+        },
+        {
+          "x": 566,
+          "y": 84
+        },
+        {
+          "x": 566,
+          "y": 244
+        },
+        {
+          "x": 597,
+          "y": 244
+        },
+        {
+          "x": 572,
+          "y": 244
+        }
+      ]
+    },
+    "e-auto-5": {
+      "bends": 2,
+      "crossings": 3,
+      "length": 278,
+      "usedSearch": "catalog",
+      "waypoints": [
+        {
+          "x": 768,
+          "y": 84
+        },
+        {
+          "x": 800.5,
+          "y": 84
+        },
+        {
+          "x": 668,
+          "y": 84
+        },
+        {
+          "x": 668,
+          "y": 144
+        },
+        {
+          "x": 647.5,
+          "y": 144
+        },
+        {
+          "x": 680,
+          "y": 144
+        }
+      ]
+    },
+    "e-auto-6": {
+      "bends": 3,
+      "crossings": 3,
+      "length": 220.2,
+      "usedSearch": "astar",
+      "waypoints": [
+        {
+          "x": 710.4,
+          "y": 120
+        },
+        {
+          "x": 710.5,
+          "y": 120
+        },
+        {
+          "x": 702.5,
+          "y": 120
+        },
+        {
+          "x": 702.5,
+          "y": 191
+        },
+        {
+          "x": 814.5,
+          "y": 191
+        },
+        {
+          "x": 814.4,
+          "y": 191
+        },
+        {
+          "x": 814.4,
+          "y": 220
+        }
+      ]
+    },
+    "e-auto-7": {
+      "bends": 5,
+      "crossings": 4,
+      "length": 429.2,
+      "usedSearch": "astar",
+      "waypoints": [
+        {
+          "x": 710.4,
+          "y": 120
+        },
+        {
+          "x": 710.5,
+          "y": 120
+        },
+        {
+          "x": 710.5,
+          "y": 218
+        },
+        {
+          "x": 678,
+          "y": 218
+        },
+        {
+          "x": 678,
+          "y": 349
+        },
+        {
+          "x": 814.5,
+          "y": 349
+        },
+        {
+          "x": 814.4,
+          "y": 349
+        },
+        {
+          "x": 814.4,
+          "y": 380
+        }
+      ]
+    },
+    "e-batt-fuse": {
+      "bends": 5,
+      "crossings": 1,
+      "length": 162.2,
+      "usedSearch": "astar",
+      "waypoints": [
+        {
+          "x": 345.6,
+          "y": 120
+        },
+        {
+          "x": 345.5,
+          "y": 120
+        },
+        {
+          "x": 345.5,
+          "y": 147.5
+        },
+        {
+          "x": 415.5,
+          "y": 147.5
+        },
+        {
+          "x": 415.5,
+          "y": 132.5
+        },
+        {
+          "x": 437.6,
+          "y": 132.5
+        },
+        {
+          "x": 437.6,
+          "y": 160
+        }
+      ]
+    },
+    "e-batt-gnd": {
+      "bends": 2,
+      "crossings": 1,
+      "length": 308,
+      "usedSearch": "fallback",
+      "waypoints": [
+        {
+          "x": 288,
+          "y": 276
+        },
+        {
+          "x": 258,
+          "y": 276
+        },
+        {
+          "x": 320,
+          "y": 276
+        },
+        {
+          "x": 320,
+          "y": 444
+        },
+        {
+          "x": 272,
+          "y": 444
+        }
+      ]
+    },
+    "e-fuse-cool": {
+      "bends": 2,
+      "crossings": 2,
+      "length": 328,
+      "usedSearch": "catalog",
+      "waypoints": [
+        {
+          "x": 572,
+          "y": 196
+        },
+        {
+          "x": 650,
+          "y": 196
+        },
+        {
+          "x": 650,
+          "y": 416
+        },
+        {
+          "x": 680,
+          "y": 416
+        }
+      ]
+    },
+    "e-fuse-light": {
+      "bends": 2,
+      "crossings": 1,
+      "length": 208,
+      "usedSearch": "catalog",
+      "waypoints": [
+        {
+          "x": 572,
+          "y": 196
+        },
+        {
+          "x": 634,
+          "y": 196
+        },
+        {
+          "x": 634,
+          "y": 96
+        },
+        {
+          "x": 680,
+          "y": 96
+        }
+      ]
+    },
+    "e-fuse-usb": {
+      "bends": 2,
+      "crossings": 1,
+      "length": 168,
+      "usedSearch": "catalog",
+      "waypoints": [
+        {
+          "x": 572,
+          "y": 196
+        },
+        {
+          "x": 650,
+          "y": 196
+        },
+        {
+          "x": 650,
+          "y": 256
+        },
+        {
+          "x": 680,
+          "y": 256
+        }
+      ]
+    }
+  }
+}
