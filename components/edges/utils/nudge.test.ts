@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { nudgeOrthogonalPaths, NUDGE_GAP } from './nudge';
 import { isOrthogonalPath, pathHitsObstacles, type Point, type Rect } from './pathfinding';
 import { routeAllCables } from './routeAll';
-import { Position, type Node } from 'reactflow';
+import { Position, type Node } from '@xyflow/react';
 
 const z = (id: string, y: number): { id: string; waypoints: Point[] } => ({
   id,

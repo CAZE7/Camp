@@ -1,4 +1,4 @@
-import type { Node } from 'reactflow';
+import type { Node } from '@xyflow/react';
 import { routeAllCables, type RouteEdgeRef } from '../../components/edges/utils/routeAll';
 import { countBends, pathLength, type Point } from '../../lib/routing/geometry';
 import {

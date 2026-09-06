@@ -36,7 +36,7 @@
  * geprüft (`edgeLength`, `edgeCrossSection`).
  */
 
-import type { Node } from 'reactflow';
+import type { Node } from '@xyflow/react';
 import { getSystemVoltage, isStarterBatteryLabel } from './vde-standards';
 import {
   addWatts,

@@ -1,4 +1,4 @@
-import { type Node } from 'reactflow';
+import { type Node } from '@xyflow/react';
 import { type RoofNodeData } from '@/components/nodes/types';
 import { type VehicleTemplate } from '@/lib/vehicleTemplates';
 

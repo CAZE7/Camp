@@ -1,4 +1,4 @@
-import type { Edge, Node } from 'reactflow';
+import type { Edge, Node } from '@xyflow/react';
 
 const ACTIVE = 'planner-trace-active';
 const DIM = 'planner-trace-dim';

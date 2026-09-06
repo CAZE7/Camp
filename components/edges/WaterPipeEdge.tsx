@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { BaseEdge, EdgeLabelRenderer, type EdgeProps, useReactFlow } from 'reactflow';
+import { BaseEdge, EdgeLabelRenderer, type Edge, type EdgeProps, useReactFlow } from '@xyflow/react';
 import { PIPE_COLORS } from './utils/edgeColors';
 import { usePlannerStore } from '../../store/usePlannerStore';
 import { calculateEdgePath, edgeLabelNudge } from './utils/pathUtils';
@@ -12,6 +12,12 @@ export type WaterPipeEdgeData = {
   pipeType?: 'fresh' | 'gray';
   length?: number;
 };
+
+/**
+ * React Flow 12 typisiert `EdgeProps` über den KANTEN-Typ statt über die
+ * Datenform (v11: `EdgeProps<TData>`).
+ */
+export type WaterPipeEdgeType = Edge<WaterPipeEdgeData, 'waterPipe'>;
 
 const WaterPipeEdge = function ({
   id,
@@ -27,7 +33,7 @@ const WaterPipeEdge = function ({
   data,
   markerEnd,
   selected,
-}: EdgeProps<WaterPipeEdgeData>) {
+}: EdgeProps<WaterPipeEdgeType>) {
   const { getNode, getNodes } = useReactFlow();
   const siblingEdges = usePlannerStore((state) => state.waterEdges);
   const globalRoute = useCableRoute(id);

@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
-import type { NodeTypes } from 'reactflow';
+import type { NodeTypes } from '@xyflow/react';
 
 /**
  * Darstellungs-Komponente eines Bauteils — exakt der Typ, den React Flow in

@@ -1,5 +1,5 @@
 import React from 'react';
-import { type Edge } from 'reactflow';
+import { type Edge } from '@xyflow/react';
 import { type CableEdgeData } from '../edges/CableEdge';
 import { ValidatingInput, COMMON_RULES } from '../ui/ValidatingInput';
 import { FUSE_MAP } from '../../lib/electrical';

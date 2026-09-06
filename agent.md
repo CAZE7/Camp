@@ -137,13 +137,17 @@ Aufgabe ein Commit; Abnahme über `npm run check` plus Playwright-Baselines
 (375/768/1440 px, hell+dunkel); kein Merge bei unbeabsichtigtem visuellem
 Diff.
 
-- [ ] **S-1 React Flow 12 (`@xyflow/react`):** `reactflow@^11` ist die alte,
+- [x] **S-1 React Flow 12 (`@xyflow/react`):** `reactflow@^11` ist die alte,
       nur noch gepflegte Paketlinie; v12 läuft als `@xyflow/react` weiter und
       bringt React-19-Support und Render-Verbesserungen am Canvas. Migration
       nach offiziellem Guide: Imports (`store/slices/persistence.ts`, Hooks,
       `CableEdge`), `nodeTypes`/`edgeTypes` und CSS-Einbindung prüfen.
       Abnahme: `npm run check` grün; Drag, Auto-Wire und Undo/Redo unverändert;
       Routing-Invarianten-Tests und visuelle Baselines ohne Diff.
+      **Erledigt 2026-09-06:** Paketwechsel + Messgrenze im Adapter
+      `components/edges/utils/nodeGeometry.ts` (v12: `measured`,
+      `internals.positionAbsolute`, `nodeLookup`); Golden Master und
+      Routing-Regression byte-identisch. Begründung: ADR 0013.
 - [ ] **S-2 Tailwind CSS v4:** v3.4 auf v4 (Oxide-Engine, schnellere Builds,
       CSS-first-Theme). Upgrade-Codemod laufen lassen; Tokens aus
       `tailwind.config.ts` nach `@theme` in `globals.css` überführen (bleibt

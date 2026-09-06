@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { BaseEdge, type EdgeProps, EdgeLabelRenderer, useReactFlow } from 'reactflow';
+import { BaseEdge, type Edge, type EdgeProps, EdgeLabelRenderer, useReactFlow } from '@xyflow/react';
 import { usePlannerStore, getDerivedSystemState } from '../../store/usePlannerStore';
 import { useShallow } from 'zustand/react/shallow';
 import { edgeLabelNudge, parallelLaneOffset, polarityPathOffset } from './utils/pathUtils';
@@ -56,7 +56,15 @@ export type CableEdgeData = {
   fuseWarning?: boolean;
 };
 
-type CableEdgeProps = EdgeProps<CableEdgeData> & {
+/**
+ * React Flow 12 typisiert `EdgeProps` über den KANTEN-Typ, nicht mehr über die
+ * Datenform (v11: `EdgeProps<TData>`). `CableEdgeType` ist deshalb die Kante
+ * inklusive ihrer Daten; `EdgeProps<CableEdgeType>` liefert `data` weiterhin
+ * als `CableEdgeData`.
+ */
+export type CableEdgeType = Edge<CableEdgeData, 'cable'>;
+
+type CableEdgeProps = EdgeProps<CableEdgeType> & {
   sourceHandle?: string | null;
   targetHandle?: string | null;
 };

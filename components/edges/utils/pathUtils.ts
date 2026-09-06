@@ -1,4 +1,4 @@
-import { type Position, getSmoothStepPath } from 'reactflow';
+import { type Position, getSmoothStepPath } from '@xyflow/react';
 import type { Point } from './pathfinding';
 import { LEGACY_ROUTING_TOKENS, ROUTING_TOKENS } from '../../../lib/routing/tokens';
 

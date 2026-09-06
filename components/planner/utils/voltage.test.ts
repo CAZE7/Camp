@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { getSystemVoltage } from './voltage';
-import { type Node } from 'reactflow';
+import { type Node } from '@xyflow/react';
 
 describe('getSystemVoltage', () => {
   it('should return 12.8V when no batteries are present', () => {

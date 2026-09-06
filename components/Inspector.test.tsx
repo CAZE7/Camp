@@ -2,7 +2,7 @@ import { beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import Inspector from './Inspector';
-import { type Edge } from 'reactflow';
+import { type Edge } from '@xyflow/react';
 import { type CableEdgeData } from './edges/CableEdge';
 
 describe('Inspector Component', () => {

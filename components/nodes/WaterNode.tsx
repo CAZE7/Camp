@@ -1,6 +1,6 @@
 'use client';
 import React from 'react';
-import { Handle, Position } from 'reactflow';
+import { Handle, Position } from '@xyflow/react';
 import { type PlannerNodeProps, type WaterNodeData } from './types';
 
 const WaterNode = function ({ data, isConnectable, selected, type }: PlannerNodeProps<WaterNodeData>) {

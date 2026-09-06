@@ -21,7 +21,7 @@ import {
   LEAD_SYSTEM_VOLTAGE,
 } from './vde-standards';
 import { amps, meters, mm2, volts, watts } from './units';
-import type { Node, Edge } from 'reactflow';
+import type { Node, Edge } from '@xyflow/react';
 
 describe('VDE Standards - Zentrale Konstanten', () => {
   describe('Kabelquerschnitte', () => {

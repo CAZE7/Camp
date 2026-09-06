@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { type Node, type Edge } from 'reactflow';
+import { type Node, type Edge } from '@xyflow/react';
 import { type CableEdgeData } from '../../edges/CableEdge';
 
 import { getSystemVoltage } from '../utils/voltage';

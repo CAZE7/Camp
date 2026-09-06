@@ -11,6 +11,12 @@ Format: neueste Einträge oben. Jeder Eintrag: Datum, Bezug (ADR/WP/Issue), Kurz
 
 ---
 
+## 2026-09-06 (S-1, Stack-Track)
+
+- **ADR-0013** React Flow 12 (`@xyflow/react`) als Canvas-Paketlinie — Voraussetzung für WP-7 (#395) und WP-8 (#397) laut `docs/AGENT-PLAN-ROUTING-V2.md` (Stack-Track). Paketwechsel `reactflow@11` → `@xyflow/react@12`; **ADR 0002 dadurch erweitert** (v11-Bindung aufgehoben), ADR 0007 unberührt (RF bleibt UI-Adapter). (agent.md S-1)
+- **Messgrenze zentralisiert** — `components/edges/utils/nodeGeometry.ts` ist die einzige Stelle, die gemessene Größe (`measured`), absolute Position (`internals.positionAbsolute`) und Handle-Rechtecke liest; die flache v11-Form bleibt gültige Eingabe, weil `knownPlans/`, Golden Layouts und gespeicherte Pläne Knoten so beschreiben. Verhalten unverändert: Golden Master + Routing-Regression byte-identisch. (ADR 0013)
+- **Store-/UI-Typen geschärft** — v12 typisiert `Node['data']` als `Record<string, unknown>` (v11: `any`); Store und Inspektoren führen `PlannerFlowNode = Node<CommonNodeData>`, Kanten-Props laufen über den Kanten-Typ (`EdgeProps<CableEdgeType>`). Kein neuer `any`-Pfad. (ADR 0013)
+
 ## 2026-09-06 (WP-6, WP-9 … WP-11)
 
 - **ADR-0012** Perf-Budget 16 ms Main-Thread/Frame am 100+-Kanten-Referenzplan — `npm run perf:edge-routing` ist jetzt ein hartes Gate (Median über 30 Läufe, Exit-Code 1 bei Überschreitung). Absorbiert agent.md P-7. In `quality.yml` (und dem Spiegel `docs/ci/workflows/quality.yml`) als blockierender Schritt direkt nach dem Coverage-Schritt eingetragen. (WP-11, #400)

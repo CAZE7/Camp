@@ -1,4 +1,4 @@
-import type { Node, XYPosition } from 'reactflow';
+import type { Node, XYPosition } from '@xyflow/react';
 import { getNodeLayoutSize } from './layout';
 import { PLANNER_SNAP_GRID } from '../constants';
 

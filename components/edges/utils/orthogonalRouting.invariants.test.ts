@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
-import { Position } from 'reactflow';
+import { Position } from '@xyflow/react';
 import {
   buildOrthogonalPath,
   orthogonalWaypoints,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
-import type { Node } from 'reactflow';
+import type { Node } from '@xyflow/react';
 import {
   VDE_SIZES,
   VDE_AMPACITY,

@@ -1,12 +1,12 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { useNodes } from 'reactflow';
+import { useNodes } from '@xyflow/react';
 import InverterNode from './InverterNode';
 import { asDivProps, type MockHandleProps } from '../../test-helpers/reactflowMocks';
 
 // Mock reactflow
-vi.mock('reactflow', async () => {
-  const actual = await vi.importActual('reactflow');
+vi.mock('@xyflow/react', async () => {
+  const actual = await vi.importActual('@xyflow/react');
   return {
     ...actual,
     Handle: ({ 'data-testid': testId, isConnectable, ...props }: MockHandleProps) => {

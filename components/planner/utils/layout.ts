@@ -1,4 +1,4 @@
-import { type Node, type Edge } from 'reactflow';
+import { type Node, type Edge } from '@xyflow/react';
 
 /** Visual fallbacks for nodes that React Flow has not measured yet. */
 export const DEFAULT_NODE_WIDTH = 192;

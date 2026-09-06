@@ -13,7 +13,7 @@ import type {
   PlannerNodeData,
   OnNodeResize,
 } from './types';
-import type { ResizeDragEvent } from 'reactflow';
+import type { ResizeDragEvent } from '@xyflow/react';
 import type React from 'react';
 
 describe('components/nodes/types', () => {

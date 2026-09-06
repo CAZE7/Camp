@@ -1,5 +1,5 @@
 import React from 'react';
-import type { NodeProps, NodeTypes } from 'reactflow';
+import type { NodeProps, NodeTypes } from '@xyflow/react';
 
 /**
  * M8-1: Zoom-Stufen sind abgeschafft. Jede Komponente rendert immer ihre

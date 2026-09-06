@@ -1,4 +1,4 @@
-import type { Node, Edge } from 'reactflow';
+import type { Node, Edge } from '@xyflow/react';
 import { performAutoWiring } from '../../lib/autoWire';
 import { getSystemVoltage, calculateEdgeCurrent } from '../../lib/vde-standards';
 import { relevantCumulativeDrop } from '../../lib/autoWire/sizing';

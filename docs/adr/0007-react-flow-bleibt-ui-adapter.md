@@ -4,8 +4,7 @@
 
 ## Kontext
 
-React Flow (aktuell `reactflow@11`, Migration auf `@xyflow/react` geplant, agent.md
-S-1) ist Canvas, Interaktions- und Messschicht des Planners. Historisch ist
+React Flow (seit ADR 0013 `@xyflow/react@12`, agent.md S-1 erledigt) ist Canvas, Interaktions- und Messschicht des Planners. Historisch ist
 Fachlogik in RF-nahe Komponenten gesickert: `CableEdge.tsx` routet im Fallback
 selbst (`findCablePath` pro Kante), die Routing-Engine lebt physisch unter
 `components/edges/utils/`. Ohne explizite Entscheidung wächst der Adapter zur

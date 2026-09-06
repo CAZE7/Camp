@@ -1,5 +1,5 @@
 import { useCallback, useEffect } from 'react';
-import { type XYPosition } from 'reactflow';
+import { type XYPosition } from '@xyflow/react';
 import { usePlannerStore } from '../../../store/usePlannerStore';
 
 export function usePlannerDragDrop(screenToFlowPosition: (pos: { x: number; y: number }) => XYPosition) {

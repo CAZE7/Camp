@@ -1,4 +1,12 @@
-import { type Node, Position } from 'reactflow';
+import { Position } from '@xyflow/react';
+import {
+  nodeHandleBounds,
+  nodeHeight,
+  nodeOriginX,
+  nodeOriginY,
+  nodeWidth,
+  type RoutableNode,
+} from './nodeGeometry';
 import {
   findCablePath,
   nodesToObstacles,
@@ -27,18 +35,7 @@ export type RouteEdgeRef = {
   targetHandle?: string | null;
 };
 
-type HandleBounds = {
-  id: string | null;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  position: Position;
-};
-
-type NodeWithHandles = Node & {
-  handleBounds?: { source?: HandleBounds[]; target?: HandleBounds[] };
-};
+type NodeWithHandles = RoutableNode;
 
 const NODE_W = 192;
 const NODE_H = 120;
@@ -53,9 +50,10 @@ export function resolveHandlePoint(
   if (!node) {
     return { x: 0, y: 0, position: kind === 'source' ? Position.Right : Position.Left };
   }
-  const originX = node.positionAbsolute?.x ?? node.position.x;
-  const originY = node.positionAbsolute?.y ?? node.position.y;
-  const group = node.handleBounds?.[kind] ?? node.handleBounds?.[kind === 'source' ? 'target' : 'source'];
+  const originX = nodeOriginX(node);
+  const originY = nodeOriginY(node);
+  const bounds = nodeHandleBounds(node);
+  const group = bounds?.[kind] ?? bounds?.[kind === 'source' ? 'target' : 'source'];
   const wanted = handleId ?? null;
   const hb = group?.find((h) => (h.id ?? null) === wanted) ?? group?.[0];
   if (hb) {
@@ -68,8 +66,8 @@ export function resolveHandlePoint(
   // R-7: Ohne gemessene Handles liegt der Anschluss auf der Seite, die der
   // FLUSSRICHTUNG entspricht (Quelle → Verteilung → Verbraucher). Ohne
   // Flussangabe gilt die konventionelle Seite (Quelle rechts, Ziel links).
-  const w = node.width || NODE_W;
-  const h = node.height || NODE_H;
+  const w = nodeWidth(node, NODE_W);
+  const h = nodeHeight(node, NODE_H);
   const t = handleId?.includes('minus') ? 0.7 : handleId?.includes('plus') ? 0.3 : 0.5;
   const horizontal = !flow || Math.abs(flow.x) >= Math.abs(flow.y);
   if (horizontal) {
@@ -103,17 +101,20 @@ const rebuild = (waypoints: Point[], crossings: number, usedSearch: PathResult['
 };
 
 /** R-7: Zentrums-Differenz zweier Nodes (Flussrichtung Quelle → Ziel). */
-function centerDelta(from: Node | undefined, to: Node | undefined): { x: number; y: number } | undefined {
+function centerDelta(
+  from: RoutableNode | undefined,
+  to: RoutableNode | undefined
+): { x: number; y: number } | undefined {
   if (!from || !to) return undefined;
   const fc = nodeCenter(from);
   const tc = nodeCenter(to);
   return { x: tc.x - fc.x, y: tc.y - fc.y };
 }
 
-function nodeCenter(node: Node): { x: number; y: number } {
+function nodeCenter(node: RoutableNode): { x: number; y: number } {
   return {
-    x: (node.positionAbsolute?.x ?? node.position.x) + (node.width || NODE_W) / 2,
-    y: (node.positionAbsolute?.y ?? node.position.y) + (node.height || NODE_H) / 2,
+    x: nodeOriginX(node) + nodeWidth(node, NODE_W) / 2,
+    y: nodeOriginY(node) + nodeHeight(node, NODE_H) / 2,
   };
 }
 
@@ -270,11 +271,11 @@ export function alignSharedCorridors(
 /**
  * Routet alle Kanten in einem Durchgang und schiebt parallele Trassen global.
  */
-export function routeAllCables(nodes: Node[], edges: RouteEdgeRef[]): Map<string, PathResult> {
+export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Map<string, PathResult> {
   const out = new Map<string, PathResult>();
   if (edges.length === 0) return out;
 
-  const nodeById = new Map<string, Node>();
+  const nodeById = new Map<string, RoutableNode>();
   for (let i = 0; i < nodes.length; i++) {
     const node = nodes[i];
     if (node) nodeById.set(node.id, node);
@@ -293,18 +294,18 @@ export function routeAllCables(nodes: Node[], edges: RouteEdgeRef[]): Map<string
         )
       : [];
   /** Gemeinsame BBox aller Nodes (für die globale Kreuzungszählung, R-6). */
-  function planBounds(nodeList: Node[]): Rect {
+  function planBounds(nodeList: RoutableNode[]): Rect {
     let minX = Infinity;
     let minY = Infinity;
     let maxX = -Infinity;
     let maxY = -Infinity;
     for (const node of nodeList) {
-      const x = node.positionAbsolute?.x ?? node.position.x;
-      const y = node.positionAbsolute?.y ?? node.position.y;
+      const x = nodeOriginX(node);
+      const y = nodeOriginY(node);
       minX = Math.min(minX, x);
       minY = Math.min(minY, y);
-      maxX = Math.max(maxX, x + (node.width || 192));
-      maxY = Math.max(maxY, y + (node.height || 120));
+      maxX = Math.max(maxX, x + nodeWidth(node, NODE_W));
+      maxY = Math.max(maxY, y + nodeHeight(node, NODE_H));
     }
     return { x: minX - 200, y: minY - 200, width: maxX - minX + 400, height: maxY - minY + 400 };
   }

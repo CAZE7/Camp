@@ -1,7 +1,7 @@
 import { renderHook } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { useLiveValidation } from './useLiveValidation';
-import { type Node, type Edge } from 'reactflow';
+import { type Node, type Edge } from '@xyflow/react';
 import { type CableEdgeData } from '../../edges/CableEdge';
 
 describe('useLiveValidation', () => {

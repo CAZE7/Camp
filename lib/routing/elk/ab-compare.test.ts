@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Node } from 'reactflow';
+import type { Node } from '@xyflow/react';
 import { GOLDEN_PLANS } from '../../../scripts/goldenmaster/plans';
 import { performAutoWiring } from '../../autoWire';
 import type { RouteEdgeRef } from '../../../components/edges/utils/routeAll';

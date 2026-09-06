@@ -1,6 +1,6 @@
 'use client';
 import React from 'react';
-import { Handle, Position } from 'reactflow';
+import { Handle, Position } from '@xyflow/react';
 import { type GroundNodeData, type PlannerNodeProps } from './types';
 import { NodeSymbol } from './NodeSymbol';
 

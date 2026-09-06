@@ -4,8 +4,8 @@ import RoofSolarNode from './RoofSolarNode';
 import type { MockNodeResizerProps } from '../../test-helpers/reactflowMocks';
 
 // Mock reactflow NodeResizer
-vi.mock('reactflow', async () => {
-  const actual = await vi.importActual('reactflow');
+vi.mock('@xyflow/react', async () => {
+  const actual = await vi.importActual('@xyflow/react');
   return {
     ...actual,
     NodeResizer: ({ isVisible, onResize }: MockNodeResizerProps) => (

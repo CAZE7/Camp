@@ -20,11 +20,11 @@ import {
   laneOffset,
 } from './pathUtils';
 import { ALTERNATIVE_ROUTE_GAP } from './pathfinding';
-import { Position } from 'reactflow';
-import * as reactflow from 'reactflow';
+import { Position } from '@xyflow/react';
+import * as reactflow from '@xyflow/react';
 
-vi.mock('reactflow', async () => {
-  const actual = await vi.importActual<typeof import('reactflow')>('reactflow');
+vi.mock('@xyflow/react', async () => {
+  const actual = await vi.importActual<typeof import('@xyflow/react')>('@xyflow/react');
   return {
     ...actual,
     getBezierPath: vi.fn().mockReturnValue(['bezierPath', 0, 0, 0, 0]),

@@ -2,8 +2,8 @@
 
 import React, { useCallback, useMemo, useRef, useState, useEffect } from 'react';
 import Link from 'next/link';
-import ReactFlow, { Background, Controls, ReactFlowProvider, type Node } from 'reactflow';
-import 'reactflow/dist/style.css';
+import { ReactFlow, Background, Controls, ReactFlowProvider, type Node } from '@xyflow/react';
+import '@xyflow/react/dist/style.css';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';

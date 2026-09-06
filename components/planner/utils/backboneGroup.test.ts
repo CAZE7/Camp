@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Node } from 'reactflow';
+import type { Node } from '@xyflow/react';
 import { BACKBONE_GROUP_ID, withBackboneGroup } from './backboneGroup';
 
 const node = (id: string, type: string, x: number, y: number): Node => ({

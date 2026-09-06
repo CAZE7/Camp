@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Node } from 'reactflow';
+import type { Node } from '@xyflow/react';
 import { collidingNodeIds, findNearestFreePosition, nodeRect, rectsOverlap } from './collision';
 
 const node = (id: string, x: number, y: number, width = 192, height = 120): Node => ({

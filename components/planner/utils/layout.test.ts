@@ -9,7 +9,7 @@ import {
   LAYOUT_RANKSEP,
   LAYOUT_MARGIN,
 } from './layout';
-import { type Node, type Edge } from 'reactflow';
+import { type Node, type Edge } from '@xyflow/react';
 
 const node = (id: string, type: string, data: Record<string, unknown> = {}): Node => ({
   id,

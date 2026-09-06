@@ -1,4 +1,4 @@
-import type { Node, Edge } from 'reactflow';
+import type { Node, Edge } from '@xyflow/react';
 import type { CableEdgeData } from '../../components/edges/CableEdge';
 import { TEMPLATE_MINIMALIST, TEMPLATE_AUTARK } from '../../components/planner/templates';
 

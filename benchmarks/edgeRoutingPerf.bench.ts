@@ -17,7 +17,7 @@
  *
  * Läuft mit: `npm run perf:edge-routing`
  */
-import { Node, Position } from 'reactflow';
+import { Node, Position } from '@xyflow/react';
 import {
   nodesToObstacles,
   edgesToCrossingSegments,

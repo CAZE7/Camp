@@ -1,4 +1,4 @@
-import type { Node } from 'reactflow';
+import type { Node } from '@xyflow/react';
 import { getNodeLayoutSize } from './layout';
 
 export const BACKBONE_GROUP_ID = '__planner-backbone-group';

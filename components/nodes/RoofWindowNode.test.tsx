@@ -3,8 +3,8 @@ import { describe, it, expect, vi } from 'vitest';
 import RoofWindowNode from './RoofWindowNode';
 import { asDivProps, type MockNodeResizerProps } from '../../test-helpers/reactflowMocks';
 
-vi.mock('reactflow', async () => {
-  const actual = await vi.importActual('reactflow');
+vi.mock('@xyflow/react', async () => {
+  const actual = await vi.importActual('@xyflow/react');
   return {
     ...actual,
     NodeResizer: ({

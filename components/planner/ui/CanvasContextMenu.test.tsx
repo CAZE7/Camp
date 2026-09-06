@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Node } from 'reactflow';
+import type { Node } from '@xyflow/react';
 import { CanvasContextMenu } from './CanvasContextMenu';
 
 const store = vi.hoisted(() => ({

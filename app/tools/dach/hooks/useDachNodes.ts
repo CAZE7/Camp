@@ -1,12 +1,19 @@
 import { useCallback, useMemo, useEffect } from 'react';
-import { type Node, type NodeChange, type OnNodesChange, applyNodeChanges, useNodesState } from 'reactflow';
+import {
+  type Node,
+  type NodeChange,
+  type OnNodesChange,
+  applyNodeChanges,
+  useNodesState,
+} from '@xyflow/react';
 import { type OnNodeResize, type RoofNodeData } from '@/components/nodes/types';
 import { type VehicleTemplate } from '@/lib/vehicleTemplates';
 import { SAFE_MARGINS, validateRoofNodes } from '../validation';
 import { useAppStore } from '@/lib/store';
 
 export function useDachNodes(selectedVehicle: VehicleTemplate) {
-  const [nodes, setNodes] = useNodesState<RoofNodeData>([]);
+  // v12: `useNodesState` ist über den NODE-Typ generisch, nicht über die Datenform.
+  const [nodes, setNodes] = useNodesState<Node<RoofNodeData>>([]);
   const { setCalculatedSolarWatts } = useAppStore();
 
   const onNodeResize: OnNodeResize = useCallback(

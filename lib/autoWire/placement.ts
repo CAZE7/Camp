@@ -1,4 +1,4 @@
-import type { Node } from 'reactflow';
+import type { Node } from '@xyflow/react';
 
 /**
  * R-8 (Routing-Qualität, M11-2): AutoWire-Platzierung.

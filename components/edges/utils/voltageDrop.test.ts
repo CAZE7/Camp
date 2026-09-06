@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { Node, Edge } from 'reactflow';
+import type { Node, Edge } from '@xyflow/react';
 import type { CableEdgeData } from '../CableEdge';
 import { hasVoltageDropError, edgeDropInputs } from './voltageDrop';
 

@@ -6,8 +6,8 @@ import type { MockHandleProps } from '../../test-helpers/reactflowMocks';
 
 const mockUseEdges = vi.fn();
 
-vi.mock('reactflow', async () => {
-  const actual = await vi.importActual('reactflow');
+vi.mock('@xyflow/react', async () => {
+  const actual = await vi.importActual('@xyflow/react');
   return {
     ...actual,
     Handle: ({ 'data-testid': testId, isConnectable, ...props }: MockHandleProps) => {

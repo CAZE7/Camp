@@ -1,5 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react';
-import ReactFlow, {
+import {
+  ReactFlow,
   BackgroundVariant,
   Background,
   Controls,
@@ -10,9 +11,9 @@ import ReactFlow, {
   type Connection,
   type Viewport,
   type Node,
-} from 'reactflow';
+} from '@xyflow/react';
 import { Map as MapIcon } from 'lucide-react';
-import 'reactflow/dist/style.css';
+import '@xyflow/react/dist/style.css';
 import { useShallow } from 'zustand/react/shallow';
 
 import WaterPipeEdge from '../edges/WaterPipeEdge';
@@ -531,8 +532,9 @@ export function FlowCanvas() {
     [openContextMenu]
   );
 
+  // v12 reicht das native Event durch (v11: React-SyntheticEvent).
   const handleNodeDrag = React.useCallback(
-    (_event: React.MouseEvent, node: Node) => {
+    (_event: MouseEvent | TouchEvent, node: Node) => {
       if (node.type === 'backboneGroup') return;
       const domainNodes =
         viewMode === 'water' ? usePlannerStore.getState().waterNodes : usePlannerStore.getState().nodes;
@@ -542,7 +544,7 @@ export function FlowCanvas() {
   );
 
   const handleNodeDragStop = React.useCallback(
-    (_event: React.MouseEvent, node: Node) => {
+    (_event: MouseEvent | TouchEvent, node: Node) => {
       setContextMenu(null);
       if (node.type === 'backboneGroup') return;
       const state = usePlannerStore.getState();

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { Position, type Node } from 'reactflow';
+import { Position, type Node } from '@xyflow/react';
 import {
   routeWaypoints,
   avoidObstacles,

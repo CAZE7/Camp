@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { type Node, type Edge } from 'reactflow';
+import { type Edge } from '@xyflow/react';
 import { Button } from '@/components/ui/button';
 import { MousePointerClick, Trash2 } from 'lucide-react';
 import { type CableEdgeData } from './edges/CableEdge';
@@ -21,7 +21,12 @@ import {
   ComponentInfoInspector,
 } from './inspector/NodeInspectors';
 import { WaterPipeInspector } from './inspector/WaterPipeInspector';
-import { type NodeDataPatch, type PlannerNodeType, type TypedNode } from './nodes/types';
+import {
+  type NodeDataPatch,
+  type PlannerFlowNode,
+  type PlannerNodeType,
+  type TypedNode,
+} from './nodes/types';
 
 /**
  * React Flow liefert Nodes lose (`data: Record<string, any>`). Der Switch auf
@@ -29,12 +34,12 @@ import { type NodeDataPatch, type PlannerNodeType, type TypedNode } from './node
  * die diskriminierte Registry-Form (`TypedNode<K>`) heraus — alle Inspektoren
  * arbeiten danach datengetypisch statt mit `any`.
  */
-function typedAs<K extends PlannerNodeType>(node: Node, _type: K): TypedNode<K> {
+function typedAs<K extends PlannerNodeType>(node: PlannerFlowNode, _type: K): TypedNode<K> {
   return node as unknown as TypedNode<K>;
 }
 
 interface InspectorProps {
-  selectedNode?: Node | null;
+  selectedNode?: PlannerFlowNode | null;
   selectedEdge?: Edge<CableEdgeData> | null;
   // old names kept for backward-compat
   onDeleteNode?: (nodeId: string) => void;
@@ -48,7 +53,7 @@ interface InspectorProps {
 
   // data props
   edges?: Edge[];
-  nodes?: Node[];
+  nodes?: PlannerFlowNode[];
   chargingTimeStr?: string;
   calculatedSolarWatts?: number;
 }
@@ -80,9 +85,9 @@ function TypeSpecificInspector({
   chargingTimeStr,
   calculatedSolarWatts,
 }: {
-  node: Node;
+  node: PlannerFlowNode;
   onUpdateNodeData?: (id: string, patch: NodeDataPatch) => void;
-  nodes?: Node[];
+  nodes?: PlannerFlowNode[];
   edges?: Edge[];
   chargingTimeStr?: string;
   calculatedSolarWatts?: number;
@@ -155,10 +160,10 @@ const NodeInspector = ({
   chargingTimeStr,
   calculatedSolarWatts,
 }: {
-  node: Node;
+  node: PlannerFlowNode;
   onDelete: (nodeId: string) => void;
   onUpdate?: (nodeId: string, data: NodeDataPatch) => void;
-  nodes?: Node[];
+  nodes?: PlannerFlowNode[];
   edges?: Edge[];
   chargingTimeStr?: string;
   calculatedSolarWatts?: number;
