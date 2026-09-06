@@ -1,5 +1,6 @@
 import { Position, type Node } from 'reactflow';
 import { polylineMidpoint, waypointsToPath } from './pathUtils';
+import { LEGACY_ROUTING_TOKENS, ROUTING_TOKENS, alternativeRouteGap } from '../../../lib/routing/tokens';
 
 /**
  * Orthogonaler Kabel-Router — Hanan-Grid-A* mit Knickkosten.
@@ -24,9 +25,11 @@ export type Point = { x: number; y: number };
 export type Rect = { x: number; y: number; width: number; height: number };
 export type Segment = [Point, Point];
 
-export const ROUTE_BORDER_RADIUS = 10;
-export const ROUTE_MIN_STUB = 24;
-export const OBSTACLE_MARGIN = 14;
+// WP-1 (#390): Werte aus dem zentralen Token-Modell (lib/routing/tokens.ts) —
+// vorher hier UND in orthogonalRouting.ts doppelt gepflegt.
+export const ROUTE_BORDER_RADIUS = LEGACY_ROUTING_TOKENS.routeBorderRadius;
+export const ROUTE_MIN_STUB = ROUTING_TOKENS.stubMin;
+export const OBSTACLE_MARGIN = LEGACY_ROUTING_TOKENS.obstacleMargin;
 export const NODE_FALLBACK_WIDTH = 192;
 export const NODE_FALLBACK_HEIGHT = 120;
 
@@ -55,12 +58,12 @@ export const BEND_COST = 80;
 export const U_TURN_COST = 400;
 
 /** Abstand der Rücklauflane vom Stub bei erzwungenen U-Loops (2 Parallellanes). */
-export const U_TURN_LANE_SPREAD = 2 * 16;
+export const U_TURN_LANE_SPREAD = 2 * ROUTING_TOKENS.laneGrid;
 export const MAX_EXPANSIONS = 48_000;
 export const MAX_ACCEPTABLE_CROSSINGS = 2;
 
-/** Ausweich-Trassen (R-5): 3 und 6 Lanes à 16 px — siehe orthogonalRouting. */
-export const ALTERNATIVE_ROUTE_GAP = 48;
+/** Ausweich-Trassen (R-5): 3 und 6 Lanes à `laneGrid` — siehe orthogonalRouting. */
+export const ALTERNATIVE_ROUTE_GAP = alternativeRouteGap();
 
 const EPS = 1e-6;
 const QUANT = 2; // 0.5 px

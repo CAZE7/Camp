@@ -1,4 +1,5 @@
 import { Position, type Node } from 'reactflow';
+import { LEGACY_ROUTING_TOKENS, ROUTING_TOKENS } from '../../../lib/routing/tokens';
 
 /**
  * Orthogonales Kabel-Routing mit Hindernisvermeidung und parallelen Lanes.
@@ -29,9 +30,11 @@ export type HandleBox = {
 export const readHandleBounds = (node: Node): { source?: HandleBox[]; target?: HandleBox[] } | undefined =>
   (node as unknown as { handleBounds?: { source?: HandleBox[]; target?: HandleBox[] } }).handleBounds;
 
-export const ROUTE_BORDER_RADIUS = 10;
-export const ROUTE_MIN_STUB = 24;
-export const OBSTACLE_MARGIN = 14;
+// WP-1 (#390): Werte kommen aus dem zentralen Token-Modell — hier nur
+// Re-Export unter den etablierten Namen (keine zweite Pflegestelle mehr).
+export const ROUTE_BORDER_RADIUS = LEGACY_ROUTING_TOKENS.routeBorderRadius;
+export const ROUTE_MIN_STUB = ROUTING_TOKENS.stubMin;
+export const OBSTACLE_MARGIN = LEGACY_ROUTING_TOKENS.obstacleMargin;
 
 /** Fallback-Maße für Nodes ohne gemessene width/height (entspricht w-48 ~ 192px). */
 export const NODE_FALLBACK_WIDTH = 192;

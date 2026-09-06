@@ -1,7 +1,8 @@
 import { type Position, getSmoothStepPath } from 'reactflow';
 import type { Point } from './pathfinding';
+import { LEGACY_ROUTING_TOKENS, ROUTING_TOKENS } from '../../../lib/routing/tokens';
 
-export const SMOOTH_STEP_BORDER_RADIUS = 10;
+export const SMOOTH_STEP_BORDER_RADIUS = LEGACY_ROUTING_TOKENS.routeBorderRadius;
 
 /**
  * Lane-System (R-5, agent.md): Es gibt genau eine Längeneinheit für
@@ -13,7 +14,7 @@ export const SMOOTH_STEP_BORDER_RADIUS = 10;
  * ±3/±6 Lanes (±48/±96 px) und kollidieren deshalb nie mit einer
  * Bündel-Lane (±0,5/±1,5/±2,5 …).
  */
-export const PARALLEL_LANE_SPREAD = 16;
+export const PARALLEL_LANE_SPREAD = ROUTING_TOKENS.laneGrid; // WP-1: Token `laneGrid`
 
 /** Versatz für `lanes` Lanes — die einzige Quelle für Quer-Offsets. */
 export const laneOffset = (lanes: number): number => lanes * PARALLEL_LANE_SPREAD;

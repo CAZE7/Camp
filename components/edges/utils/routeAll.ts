@@ -22,6 +22,7 @@ import {
 } from './pathUtils';
 import { nudgeOrthogonalPaths } from './nudge';
 import { crossingSegmentsNear } from './routingCache';
+import { ROUTING_TOKENS } from '../../../lib/routing/tokens';
 
 export type RouteEdgeRef = {
   id: string;
@@ -122,7 +123,7 @@ function nodeCenter(node: Node): { x: number; y: number } {
 }
 
 /** Halbe Lane (8 px) — das Halbton-Raster, auf das Korridore ausgerichtet werden. */
-const LANE_GRID = 8;
+const LANE_GRID = ROUTING_TOKENS.laneGrid / 2; // WP-1: aus Token `laneGrid`
 
 /** Korridor-Cluster: Segmente näher als das kommen auf dieselbe Lane. */
 const CORRIDOR_MERGE_TOLERANCE = 6;
