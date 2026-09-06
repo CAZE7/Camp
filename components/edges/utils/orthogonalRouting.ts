@@ -1,4 +1,6 @@
 import { Position, type Node } from 'reactflow';
+import { LEGACY_ROUTING_TOKENS, ROUTING_TOKENS } from '../../../lib/routing/tokens';
+import { segmentsIntersect } from '../../../lib/routing/geometry';
 
 /**
  * Orthogonales Kabel-Routing mit Hindernisvermeidung und parallelen Lanes.
@@ -29,9 +31,11 @@ export type HandleBox = {
 export const readHandleBounds = (node: Node): { source?: HandleBox[]; target?: HandleBox[] } | undefined =>
   (node as unknown as { handleBounds?: { source?: HandleBox[]; target?: HandleBox[] } }).handleBounds;
 
-export const ROUTE_BORDER_RADIUS = 10;
-export const ROUTE_MIN_STUB = 24;
-export const OBSTACLE_MARGIN = 14;
+// WP-1 (#390): Werte kommen aus dem zentralen Token-Modell — hier nur
+// Re-Export unter den etablierten Namen (keine zweite Pflegestelle mehr).
+export const ROUTE_BORDER_RADIUS = LEGACY_ROUTING_TOKENS.routeBorderRadius;
+export const ROUTE_MIN_STUB = ROUTING_TOKENS.stubMin;
+export const OBSTACLE_MARGIN = LEGACY_ROUTING_TOKENS.obstacleMargin;
 
 /** Fallback-Maße für Nodes ohne gemessene width/height (entspricht w-48 ~ 192px). */
 export const NODE_FALLBACK_WIDTH = 192;
@@ -407,40 +411,23 @@ export const MAX_ACCEPTABLE_CROSSINGS = 2;
  */
 export const ALTERNATIVE_ROUTE_GAP = 48;
 
-/** Zerlegt eine Polylinie in einzelne Segmente. */
+/**
+ * Zerlegt eine Polylinie in einzelne Segmente.
+ *
+ * Bewusst LOKAL (nicht aus lib/routing/geometry): diese Variante behält
+ * Null-Längen-Segmente — `routingQuality.countUTurns` und die Detour-Logik
+ * verlassen sich auf die 1:1-Zuordnung Segment ↔ Punktpaar. Die zentrale
+ * Version filtert Null-Segmente heraus.
+ */
 export function waypointsToSegments(points: Point[]): Segment[] {
   const segments: Segment[] = [];
   for (let i = 0; i < points.length - 1; i++) segments.push([at(points, i), at(points, i + 1)]);
   return segments;
 }
 
-const orientation = (a: Point, b: Point, c: Point): number => {
-  const value = (b.y - a.y) * (c.x - b.x) - (b.x - a.x) * (c.y - b.y);
-  if (Math.abs(value) < 1e-9) return 0;
-  return value > 0 ? 1 : 2;
-};
-
-const onSegment = (a: Point, b: Point, c: Point): boolean =>
-  b.x <= Math.max(a.x, c.x) + 1e-9 &&
-  b.x >= Math.min(a.x, c.x) - 1e-9 &&
-  b.y <= Math.max(a.y, c.y) + 1e-9 &&
-  b.y >= Math.min(a.y, c.y) - 1e-9;
-
-/** Echter Schnitt zweier Strecken (auch für kollineare Überlappung). */
-export function segmentsIntersect(s1: Segment, s2: Segment): boolean {
-  const [p1, q1] = s1;
-  const [p2, q2] = s2;
-  const o1 = orientation(p1, q1, p2);
-  const o2 = orientation(p1, q1, q2);
-  const o3 = orientation(p2, q2, p1);
-  const o4 = orientation(p2, q2, q1);
-  if (o1 !== o2 && o3 !== o4) return true;
-  if (o1 === 0 && onSegment(p1, p2, q1)) return true;
-  if (o2 === 0 && onSegment(p1, q2, q1)) return true;
-  if (o3 === 0 && onSegment(p2, p1, q2)) return true;
-  if (o4 === 0 && onSegment(p2, q1, q2)) return true;
-  return false;
-}
+// WP-2 (#392): zentrale Geometrie-Schicht — identische Implementierung,
+// vorher hier UND in pathfinding.ts doppelt gepflegt.
+export { segmentsIntersect };
 
 /**
  * Zählt, wie viele fremde Leitungen eine Route kreuzt.

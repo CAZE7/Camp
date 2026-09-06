@@ -1,5 +1,6 @@
 import type { Point, Rect } from './pathfinding';
 import { isOrthogonalPath, pathHitsObstacles, containsPoint, stitchOrthogonal } from './pathfinding';
+import { ROUTING_TOKENS } from '../../../lib/routing/tokens';
 
 /**
  * Globales orthogonales Nudging (libavoid-Phase 2).
@@ -9,9 +10,9 @@ import { isOrthogonalPath, pathHitsObstacles, containsPoint, stitchOrthogonal } 
  * `stitchOrthogonal` einen Ellbogen — der Pfad bleibt rechtwinklig.
  */
 
-export const NUDGE_GAP = 16;
+export const NUDGE_GAP = ROUTING_TOKENS.laneGrid; // WP-1: Token `laneGrid`
 export const NUDGE_THRESHOLD = 10;
-export const NUDGE_MIN_OVERLAP = 12;
+export const NUDGE_MIN_OVERLAP = ROUTING_TOKENS.cableClearance; // WP-1: Token `cableClearance`
 
 const EPS = 1e-6;
 

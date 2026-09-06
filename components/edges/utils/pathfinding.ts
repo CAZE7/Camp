@@ -1,5 +1,35 @@
 import { Position, type Node } from 'reactflow';
 import { polylineMidpoint, waypointsToPath } from './pathUtils';
+import { LEGACY_ROUTING_TOKENS, ROUTING_TOKENS, alternativeRouteGap } from '../../../lib/routing/tokens';
+import { COST_WEIGHTS } from '../../../lib/routing/rules/costModel';
+import {
+  inflateRect,
+  containsPoint,
+  segmentHitsRect,
+  isOrthogonalPath,
+  pathLength,
+  countBends,
+  simplifyWaypoints,
+  manhattan,
+  segmentsIntersect,
+  waypointsToSegments,
+  type Point,
+  type Rect,
+  type Segment,
+} from '../../../lib/routing/geometry';
+
+export {
+  inflateRect,
+  containsPoint,
+  segmentHitsRect,
+  isOrthogonalPath,
+  pathLength,
+  countBends,
+  simplifyWaypoints,
+  manhattan,
+  segmentsIntersect,
+  waypointsToSegments,
+};
 
 /**
  * Orthogonaler Kabel-Router — Hanan-Grid-A* mit Knickkosten.
@@ -20,13 +50,16 @@ import { polylineMidpoint, waypointsToPath } from './pathUtils';
  * überspringen. 4-connected A* auf dem Hanan-Grid ist vollständig und schnell.
  */
 
-export type Point = { x: number; y: number };
-export type Rect = { x: number; y: number; width: number; height: number };
-export type Segment = [Point, Point];
+// WP-2 (#392): Typen und Geometrie-Primitives kommen aus der zentralen
+// Geometrie-Schicht (lib/routing/geometry) — hier nur Re-Export unter den
+// etablierten Namen. Wörtliche Migration, Verhalten identisch.
+export type { Point, Rect, Segment };
 
-export const ROUTE_BORDER_RADIUS = 10;
-export const ROUTE_MIN_STUB = 24;
-export const OBSTACLE_MARGIN = 14;
+// WP-1 (#390): Werte aus dem zentralen Token-Modell (lib/routing/tokens.ts) —
+// vorher hier UND in orthogonalRouting.ts doppelt gepflegt.
+export const ROUTE_BORDER_RADIUS = LEGACY_ROUTING_TOKENS.routeBorderRadius;
+export const ROUTE_MIN_STUB = ROUTING_TOKENS.stubMin;
+export const OBSTACLE_MARGIN = LEGACY_ROUTING_TOKENS.obstacleMargin;
 export const NODE_FALLBACK_WIDTH = 192;
 export const NODE_FALLBACK_HEIGHT = 120;
 
@@ -55,12 +88,12 @@ export const BEND_COST = 80;
 export const U_TURN_COST = 400;
 
 /** Abstand der Rücklauflane vom Stub bei erzwungenen U-Loops (2 Parallellanes). */
-export const U_TURN_LANE_SPREAD = 2 * 16;
+export const U_TURN_LANE_SPREAD = 2 * ROUTING_TOKENS.laneGrid;
 export const MAX_EXPANSIONS = 48_000;
 export const MAX_ACCEPTABLE_CROSSINGS = 2;
 
-/** Ausweich-Trassen (R-5): 3 und 6 Lanes à 16 px — siehe orthogonalRouting. */
-export const ALTERNATIVE_ROUTE_GAP = 48;
+/** Ausweich-Trassen (R-5): 3 und 6 Lanes à `laneGrid` — siehe orthogonalRouting. */
+export const ALTERNATIVE_ROUTE_GAP = alternativeRouteGap();
 
 const EPS = 1e-6;
 const QUANT = 2; // 0.5 px
@@ -69,8 +102,6 @@ const CACHE_LIMIT = 256;
 import { readHandleBounds } from './orthogonalRouting';
 
 export const quantize = (n: number): number => Math.round(n * QUANT) / QUANT;
-
-export const manhattan = (a: Point, b: Point): number => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
 
 /**
  * Gebundener Lesezugriff in beweisbar abgesicherten Schleifen
@@ -88,35 +119,6 @@ const at = <T>(arr: readonly T[], i: number): T => {
   return v;
 };
 
-export const inflateRect = (r: Rect, margin: number): Rect => ({
-  x: r.x - margin,
-  y: r.y - margin,
-  width: r.width + margin * 2,
-  height: r.height + margin * 2,
-});
-
-export const containsPoint = (r: Rect, p: Point): boolean =>
-  p.x > r.x + EPS && p.x < r.x + r.width - EPS && p.y > r.y + EPS && p.y < r.y + r.height - EPS;
-
-/** Echter Schnitt eines achsenparallelen Segments mit dem Inneren der Box. */
-export function segmentHitsRect(a: Point, b: Point, r: Rect): boolean {
-  if (Math.abs(a.x - b.x) <= EPS) {
-    const x = a.x;
-    if (x <= r.x + EPS || x >= r.x + r.width - EPS) return false;
-    const lo = Math.min(a.y, b.y);
-    const hi = Math.max(a.y, b.y);
-    return hi > r.y + EPS && lo < r.y + r.height - EPS;
-  }
-  if (Math.abs(a.y - b.y) <= EPS) {
-    const y = a.y;
-    if (y <= r.y + EPS || y >= r.y + r.height - EPS) return false;
-    const lo = Math.min(a.x, b.x);
-    const hi = Math.max(a.x, b.x);
-    return hi > r.x + EPS && lo < r.x + r.width - EPS;
-  }
-  return true;
-}
-
 export function segmentHitsAny(a: Point, b: Point, obstacles: Rect[]): boolean {
   for (let i = 0; i < obstacles.length; i++) {
     if (segmentHitsRect(a, b, at(obstacles, i))) return true;
@@ -129,34 +131,6 @@ export function pathHitsObstacles(points: Point[], obstacles: Rect[]): boolean {
     if (segmentHitsAny(at(points, i), at(points, i + 1), obstacles)) return true;
   }
   return false;
-}
-
-export function isOrthogonalPath(points: Point[]): boolean {
-  for (let i = 0; i < points.length - 1; i++) {
-    const a = at(points, i);
-    const b = at(points, i + 1);
-    if (Math.abs(a.x - b.x) > EPS && Math.abs(a.y - b.y) > EPS) return false;
-  }
-  return true;
-}
-
-export function pathLength(points: Point[]): number {
-  let len = 0;
-  for (let i = 0; i < points.length - 1; i++) len += manhattan(at(points, i), at(points, i + 1));
-  return len;
-}
-
-export function countBends(points: Point[]): number {
-  let bends = 0;
-  for (let i = 1; i < points.length - 1; i++) {
-    const prev = at(points, i - 1);
-    const curr = at(points, i);
-    const next = at(points, i + 1);
-    const inH = Math.abs(curr.y - prev.y) <= EPS;
-    const outH = Math.abs(next.y - curr.y) <= EPS;
-    if (inH !== outH) bends++;
-  }
-  return bends;
 }
 
 /** Fügt einen Ellbogen ein, falls zwei aufeinanderfolgende Punkte diagonal liegen. */
@@ -210,36 +184,6 @@ export function remainingCostLowerBound(
     if (!matchY) bends = 1;
   }
   return len + bends * BEND_COST;
-}
-
-export function simplifyWaypoints(points: Point[]): Point[] {
-  if (points.length <= 2) return points.map((p) => ({ x: p.x, y: p.y }));
-  const out: Point[] = [{ x: at(points, 0).x, y: at(points, 0).y }];
-  for (let i = 1; i < points.length; i++) {
-    const p = at(points, i);
-    const last = at(out, out.length - 1);
-    if (Math.abs(last.x - p.x) <= EPS && Math.abs(last.y - p.y) <= EPS) continue;
-    out.push({ x: p.x, y: p.y });
-  }
-  const collapsed: Point[] = [];
-  for (let i = 0; i < out.length; i++) {
-    if (collapsed.length >= 2) {
-      const a = at(collapsed, collapsed.length - 2);
-      const b = at(collapsed, collapsed.length - 1);
-      const c = at(out, i);
-      const vertical = Math.abs(a.x - b.x) <= EPS && Math.abs(b.x - c.x) <= EPS;
-      const horizontal = Math.abs(a.y - b.y) <= EPS && Math.abs(b.y - c.y) <= EPS;
-      if (vertical || horizontal) {
-        const sameDir = vertical ? (b.y - a.y) * (c.y - b.y) >= -EPS : (b.x - a.x) * (c.x - b.x) >= -EPS;
-        if (sameDir) {
-          collapsed[collapsed.length - 1] = c;
-          continue;
-        }
-      }
-    }
-    collapsed.push(at(out, i));
-  }
-  return collapsed;
 }
 
 export const sourceExitVector = (position?: Position): Point => {
@@ -641,43 +585,6 @@ export function hasSelfOverlap(points: Point[]): boolean {
   return false;
 }
 
-const orientation = (a: Point, b: Point, c: Point): number => {
-  const value = (b.y - a.y) * (c.x - b.x) - (b.x - a.x) * (c.y - b.y);
-  if (Math.abs(value) < 1e-9) return 0;
-  return value > 0 ? 1 : 2;
-};
-
-const onSegment = (a: Point, b: Point, c: Point): boolean =>
-  b.x <= Math.max(a.x, c.x) + 1e-9 &&
-  b.x >= Math.min(a.x, c.x) - 1e-9 &&
-  b.y <= Math.max(a.y, c.y) + 1e-9 &&
-  b.y >= Math.min(a.y, c.y) - 1e-9;
-
-export function segmentsIntersect(s1: Segment, s2: Segment): boolean {
-  const [p1, q1] = s1;
-  const [p2, q2] = s2;
-  const o1 = orientation(p1, q1, p2);
-  const o2 = orientation(p1, q1, q2);
-  const o3 = orientation(p2, q2, p1);
-  const o4 = orientation(p2, q2, q1);
-  if (o1 !== o2 && o3 !== o4) return true;
-  if (o1 === 0 && onSegment(p1, p2, q1)) return true;
-  if (o2 === 0 && onSegment(p1, q2, q1)) return true;
-  if (o3 === 0 && onSegment(p2, p1, q2)) return true;
-  if (o4 === 0 && onSegment(p2, q1, q2)) return true;
-  return false;
-}
-
-export function waypointsToSegments(points: Point[]): Segment[] {
-  const segments: Segment[] = [];
-  for (let i = 0; i < points.length - 1; i++) {
-    if (at(points, i).x !== at(points, i + 1).x || at(points, i).y !== at(points, i + 1).y) {
-      segments.push([at(points, i), at(points, i + 1)]);
-    }
-  }
-  return segments;
-}
-
 export function countCrossings(waypoints: Point[], others: Segment[]): number {
   if (others.length === 0 || waypoints.length < 2) return 0;
   const own = waypointsToSegments(waypoints);
@@ -985,8 +892,11 @@ const relevantObstacles = (obstacles: Rect[], start: Point, end: Point): Rect[] 
   return out;
 };
 
+// WP-6 (#396): Kreuzungsstrafe aus dem generierten Kostenmodell
+// (COST_WEIGHTS.crossing = 7,5 × laneGrid = 120 — wertgleich zum bisherigen
+// Hardcode, Golden Master unverändert; Sync-Test in costModel.test.ts).
 const scorePath = (points: Point[], crossings: number): number =>
-  pathLength(points) + BEND_COST * countBends(points) + 120 * crossings;
+  pathLength(points) + BEND_COST * countBends(points) + COST_WEIGHTS.crossing * crossings;
 
 function assemble(
   waypoints: Point[],

@@ -67,27 +67,32 @@ Hinweise zur Reihenfolge:
 ## Workpackages
 
 ### WP-0a — #401 Architecture Contract & Dependency Map
+
 - **Ziel:** `docs/ARCHITECTURE-V2.md` (Schichtenmodell, Prinzipien, Dependency Map, Datei-Katalog)
 - **Wichtig:** Nur Verstehen und Dokumentieren — **kein Code-Umbau in diesem PR.**
 - **Werkzeuge:** `knip.ts` vorhanden; Aufrufgraph/Kopplungen können damit und per
   Code-Trace erhoben werden.
 
 ### WP-0b — #402 Golden Master
+
 - **Ziel:** `knownPlans/` (simple, camper, solar, inverter, acdc, complex) + Capture-Skript
-  + Vergleichs-Harness (identisch oder bewusst besser)
+  - Vergleichs-Harness (identisch oder bewusst besser)
 - **Wichtig:** Fixtures müssen mit dem **aktuellen** System erzeugt werden — vor jedem
   anderen Code-Change.
 
 ### WP-0c — #403 Change Ledger & ADR-Basis
+
 - **Ziel:** `docs/ARCHITECTURE-CHANGES.md` + ADR-0007…0010 + ADR 0003-Statusupdate
 
 ### WP-1 — #390 Design Tokens
+
 - **Ziel:** Token-Modell + ELK-Config-Generator + Config-Sync-Test
 - **Migration:** `OBSTACLE_MARGIN`, `ROUTE_MIN_STUB`, `ROUTE_BORDER_RADIUS`, ±40/±80-Parallelen → Tokens
 - **Wichtig:** Bestehendes Token-System **erweitern** (RGB-Triplet-Zwillinge aus M11-1
   mit Drift-Guard, D-1: `globals.css` einzige Farbquelle) — nicht ersetzen.
 
 ### WP-2 — #392 Geometrie-Primitives
+
 - **Ziel:** `lib/routing/geometry/` als Pure Functions (Intersect, Distanzen, Kollinearität,
   Stub, Bend-Merge, Lane-Berechnung)
 - **Wichtig:** Geometrie aus `pathUtils.ts` / `segmentSpatialIndex.ts` **migrieren**, nicht
@@ -96,10 +101,12 @@ Hinweise zur Reihenfolge:
   `inflateObstacle()` muss die Handle-Ausrisse einrechnen.
 
 ### WP-3 — #391 Kollisionsmodell
+
 - **Ziel:** `classifyCollision()` + `CollisionClass`/`RoutingConstraint` + `domainSeparationRules`
 - **Baut auf:** WP-1 (Tokens), WP-2 (Primitives). Beide Router konsumieren dasselbe Modell.
 
 ### WP-4 — #393 ELK Adapter
+
 - **Ziel:** elkjs-Integration (Konfiguration aus Spec-Abschnitt 6), Web Worker + Timeout,
   Fallback auf bestehenden Router, ELK-A/B auf Routing-Gallery
 - **Worker-Vertrag (P-6):** Übergabe strukturiert klonen oder als Flat-Arrays; letzte
@@ -108,16 +115,20 @@ Hinweise zur Reihenfolge:
 - **Gate:** A/B muss Kreuzungen/Bends besser oder gleich zeigen — sonst STOPP + Befund ins Issue.
 
 ### WP-5 — #394 LaneRegistry
+
 - **Ziel:** deterministische Lanes (3-Stufen-Sortierung), ersetzt ±40/±80-Heuristik
 
 ### WP-6 — #396 A*-Kostenmodell
+
 - **Ziel:** Kostenmatrix aus Spec-Abschnitt 9, Werte aus Tokens, `segmentSpatialIndex` als Basis
 
 ### WP-7 — #395 Kreuzungs-Hopping
+
 - **Ziel:** routingPriority + Hop-Rendering (Prioritätsregel aus Spec-Abschnitt 8)
 - **Voraussetzung:** S-1 (React Flow 12) gemerged
 
 ### WP-8 — #397 Lokales Re-Routing & Drag-Performance
+
 - **Ziel:** absorbiert agent.md P-1/P-2/P-5 (Details im Issue):
   Affected-Set (Bounding-Box, O(betroffene Kanten) statt O(E)) · Zwei-Qualitäts-Stufen
   (L-Stub-Vorschau im Drag, voller Pass am Drag-Ende gedrosselt 100–150 ms) ·
@@ -125,12 +136,15 @@ Hinweise zur Reihenfolge:
 - **Voraussetzung:** S-1 (React Flow 12) gemerged; Worker-Auslagerung (P-6) erst danach
 
 ### WP-9 — #398 Port Fan-Out
+
 - **Ziel:** deterministische Sortierung nach Zielposition + stabiler ID
 
 ### WP-10 — #399 Invarianten-Suite
+
 - **Ziel:** alle 10 Invarianten aus Spec-Abschnitt 12, für **beide** Pässe, CI-Blocker
 
 ### WP-11 — #400 Regression-Suite, Golden Layouts & Perf-Gate
+
 - **Ziel:** 15 Szenarien als Fixtures, Golden-Layout-Dateien, Metrik-Budget Delta ≤ 0,
   visuelle Regression via Playwright
 - **Perf-Gate (P-7):** `edgeRoutingPerf.bench.ts` mit festem Budget am 100+-Kanten-

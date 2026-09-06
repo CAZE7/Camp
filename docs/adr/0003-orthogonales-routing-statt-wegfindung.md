@@ -1,6 +1,15 @@
 # ADR 0003 — Orthogonales Routing mit Ausweichverfahren statt Wegfindung
 
-**Status:** angenommen · **Datum:** 2026-08 (verschärft in K3)
+**Status:** erweitert/überlagert durch ADR 0011 (globaler Pass) · **Datum:** 2026-08 (verschärft in K3) · **Statusupdate:** 2026-09-06 (WP-4, #393)
+
+> **Statusvermerk Routing V2 (2026-09-06, finalisiert in WP-4):** Für den
+> **globalen Layout-Pass** ist diese Entscheidung durch
+> **ADR 0011 (ELK Layered / elkjs)** überlagert — Crossing-Minimization,
+> orthogonales Edge-Routing und Port-Constraints laufen dort in einem
+> Durchgang (A/B-Nachweis in ADR 0011). Das hier beschriebene Verfahren
+> bleibt gültig als **Fallback-Router** (ELK-Worker-Fail/Timeout) und als
+> Basis des **inkrementellen Passes** (Katalog + Hanan-A\*, WP-6/WP-8).
+> Siehe Change Ledger `docs/ARCHITECTURE-CHANGES.md` sowie ADR 0009/0010.
 
 ## Kontext
 

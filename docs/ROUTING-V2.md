@@ -62,14 +62,14 @@ Alle geometrischen Konstanten leben genau einmal im Token-Modell (`lib/designTok
 oder `lib/routing/tokens.ts`). ELK-Optionen und A\*-Straffunktion leiten ausschließlich
 daraus ab (generiert, nicht gepflegt; Config-Sync-Test schlägt bei Hardcode fehl).
 
-| Token                | Wert   | Verwendung                                              |
-|----------------------|--------|---------------------------------------------------------|
-| `cableClearance`     | 12 px  | Mindestabstand Kabel ↔ Kabel / Kabel ↔ Node             |
-| `elkEdgeNodeSpacing` | 16     | ELK `spacing.edgeNode` / `edgeNodeBetweenLayers`        |
-| `stubMin`            | 24 px  | Mindestlänge vor erstem Bend; Mindestsegmentlänge       |
-| `laneGrid`           | 16 px  | Kanalabstand paralleler Trassen (≈ Node-Raster)         |
-| `bendRadius`         | 8 px   | Einheitliche Rundungen; Bend-Merge-Schwelle 2×r         |
-| `crossDomainSpacing` | 24 px  | Wert für Domain-Trennung (Paar-Regel s. Abschnitt 4.2)  |
+| Token                | Wert  | Verwendung                                             |
+| -------------------- | ----- | ------------------------------------------------------ |
+| `cableClearance`     | 12 px | Mindestabstand Kabel ↔ Kabel / Kabel ↔ Node            |
+| `elkEdgeNodeSpacing` | 16    | ELK `spacing.edgeNode` / `edgeNodeBetweenLayers`       |
+| `stubMin`            | 24 px | Mindestlänge vor erstem Bend; Mindestsegmentlänge      |
+| `laneGrid`           | 16 px | Kanalabstand paralleler Trassen (≈ Node-Raster)        |
+| `bendRadius`         | 8 px  | Einheitliche Rundungen; Bend-Merge-Schwelle 2×r        |
+| `crossDomainSpacing` | 24 px | Wert für Domain-Trennung (Paar-Regel s. Abschnitt 4.2) |
 
 **Integration ins bestehende Token-System (M11-1):** `lib/designTokens.ts` pflegt seit
 M11-1 RGB-Triplet-Zwillinge (`--x-rgb`) mit Drift-Guard in `lib/designTokens.test.ts`;
@@ -82,13 +82,13 @@ nicht inhaltlich.
 
 ### 4.1 Kollisionsklassen
 
-| Typ                        | Klasse     | Konsequenz                                  |
-|----------------------------|------------|----------------------------------------------|
-| Edge × Node                | **HARD**   | verboten — garantiert unmöglich              |
-| Edge × Edge — Overlap/kollinear | **HARD** | verboten — garantiert unmöglich              |
-| Edge × Edge — Crossing     | **SOFT**   | minimieren; falls unvermeidbar → Hop-Rendering |
-| Clearance-Verletzung       | **WEIGHTED**| Kosten (A\*) bzw. Spacing (ELK)             |
-| keine Kollision            | **NONE**   | —                                            |
+| Typ                             | Klasse       | Konsequenz                                     |
+| ------------------------------- | ------------ | ---------------------------------------------- |
+| Edge × Node                     | **HARD**     | verboten — garantiert unmöglich                |
+| Edge × Edge — Overlap/kollinear | **HARD**     | verboten — garantiert unmöglich                |
+| Edge × Edge — Crossing          | **SOFT**     | minimieren; falls unvermeidbar → Hop-Rendering |
+| Clearance-Verletzung            | **WEIGHTED** | Kosten (A\*) bzw. Spacing (ELK)                |
+| keine Kollision                 | **NONE**     | —                                              |
 
 Kernregel: **Overlaps sind das Lesbarkeits-Desaster** (zwei Kabel sehen wie eines aus —
 elektrisch fatal) und damit Invariante. **Crossings sind ein Optimierungsziel**, kein
@@ -101,7 +101,7 @@ domainSeparationRules = {
   electrical: {
     water: { minimumClearance: 24 }, // crossDomainSpacing
   },
-}
+};
 ```
 
 Erweiterbar: 230V ↔ 12V DC, gas ↔ electrical, heat ↔ cable.
@@ -205,14 +205,14 @@ routingPriority =
 
 ## 9. A\*-Kostenmodell (inkrementeller Pass)
 
-| Situation             | Kosten      |
-|-----------------------|-------------|
-| overlap               | `Infinity`  |
-| clearance violation   | `VERY_HIGH` |
-| crossing              | `HIGH`      |
-| nearby lane           | `MEDIUM`    |
-| preferred lane        | `BONUS`     |
-| free space            | `LOW`       |
+| Situation           | Kosten      |
+| ------------------- | ----------- |
+| overlap             | `Infinity`  |
+| clearance violation | `VERY_HIGH` |
+| crossing            | `HIGH`      |
+| nearby lane         | `MEDIUM`    |
+| preferred lane      | `BONUS`     |
+| free space          | `LOW`       |
 
 Werte aus Tokens/Config abgeleitet, nie hardcoded. Datenbasis: `segmentSpatialIndex`
 (registriert geroutete Segmente als weiche Hindernisse). Konsistenz mit Abschnitt 4:
@@ -258,10 +258,10 @@ Port-Constraints `FIXED_ORDER` (Abschnitt 6.1).
 
 ## 13. Teststrategie (drei Ebenen)
 
-| Ebene | Beispiel |
-|-------|----------|
-| **Unit** | `segmentsCross()`, Bend-Merge, Lane-Sortierung |
-| **Domain** | Batterie → Sicherung → Verbraucher (AutoWire + Sizing) |
+| Ebene      | Beispiel                                                                                                               |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------- |
+| **Unit**   | `segmentsCross()`, Bend-Merge, Lane-Sortierung                                                                         |
+| **Domain** | Batterie → Sicherung → Verbraucher (AutoWire + Sizing)                                                                 |
 | **System** | Nutzer bewegt Batterie → Auto-Reroute → keine Kollision → Warnsystem aktuell → Undo stellt exakt den alten Zustand her |
 
 Dazu **Golden Master** (`knownPlans/`): simple, camper, solar, inverter, acdc, complex —
@@ -292,22 +292,22 @@ Routing V2 ist fertig wenn (nicht: „ich glaube, Routing funktioniert jetzt”)
 
 ## 15. Ticket-Referenzen
 
-| Phase | Ticket | Issue |
-|-------|--------|-------|
-| 0 | Architecture Contract & Dependency Map | #401 |
-| 0 | Golden Master absichern (knownPlans/) | #402 |
-| 0 | Change Ledger & ADR-Basis | #403 |
-| 1 | Design Tokens (Single Source of Truth) | #390 |
-| 1 | Kollisionsmodell (CollisionClass/RoutingConstraint) | #391 |
-| 1 | Geometrie-Primitives — **zuerst im Code** | #392 |
-| 2 | ELK Global Layout (elkjs) | #393 |
-| 2 | Deterministisches Lane-System (LaneRegistry) | #394 |
-| 2 | Kreuzungs-Hopping (routingPriority) | #395 |
-| 2 | A\*-Kostenmodell | #396 |
-| 2 | Lokales Re-Routing & Drag-Performance | #397 |
-| 2 | Port Fan-Out | #398 |
-| 2 | Routing-Invarianten (Testsuite) | #399 |
-| 2 | Regression-Suite & Golden Layout Tests | #400 |
+| Phase | Ticket                                              | Issue |
+| ----- | --------------------------------------------------- | ----- |
+| 0     | Architecture Contract & Dependency Map              | #401  |
+| 0     | Golden Master absichern (knownPlans/)               | #402  |
+| 0     | Change Ledger & ADR-Basis                           | #403  |
+| 1     | Design Tokens (Single Source of Truth)              | #390  |
+| 1     | Kollisionsmodell (CollisionClass/RoutingConstraint) | #391  |
+| 1     | Geometrie-Primitives — **zuerst im Code**           | #392  |
+| 2     | ELK Global Layout (elkjs)                           | #393  |
+| 2     | Deterministisches Lane-System (LaneRegistry)        | #394  |
+| 2     | Kreuzungs-Hopping (routingPriority)                 | #395  |
+| 2     | A\*-Kostenmodell                                    | #396  |
+| 2     | Lokales Re-Routing & Drag-Performance               | #397  |
+| 2     | Port Fan-Out                                        | #398  |
+| 2     | Routing-Invarianten (Testsuite)                     | #399  |
+| 2     | Regression-Suite & Golden Layout Tests              | #400  |
 
 Implementierung **bottom-up**: Geometry → Rules → Algorithms → Domain → Store → UI.
 Jeder Schritt hält die bestehenden Tests grün; ein PR verändert genau eine
@@ -315,16 +315,16 @@ Verantwortung.
 
 ## 16. Verhältnis zu den agent.md-Tracks (S/P)
 
-| agent.md | Zuordnung in Routing V2 |
-|----------|--------------------------|
-| P-1 Affected-Set | → WP-8 / #397 (absorbiert, Abschnitt 10) |
-| P-2 Zwei-Stufen-Drag | → WP-8 / #397 (absorbiert, Abschnitt 10) |
-| P-5 Scoped Nudging | → WP-8 / #397 (absorbiert, Abschnitt 10) |
-| P-6 Routing-Worker | → WP-4 / #393 (Worker-Vertrag, Abschnitt 6.3) + WP-8 |
-| P-7 Benchmark-Gate | → WP-11 / #400 + Exit-Condition (Abschnitt 14) |
-| S-5 ADR 0003 nachziehen | → WP-4 / #393 (ADR zur ELK-Adoption) |
-| S-1 React Flow 12 | **Sequenz-Entscheidung**, siehe unten |
-| S-2 Tailwind v4 / S-3 lucide / S-4 Export | unabhängig von Routing V2 |
+| agent.md                                  | Zuordnung in Routing V2                              |
+| ----------------------------------------- | ---------------------------------------------------- |
+| P-1 Affected-Set                          | → WP-8 / #397 (absorbiert, Abschnitt 10)             |
+| P-2 Zwei-Stufen-Drag                      | → WP-8 / #397 (absorbiert, Abschnitt 10)             |
+| P-5 Scoped Nudging                        | → WP-8 / #397 (absorbiert, Abschnitt 10)             |
+| P-6 Routing-Worker                        | → WP-4 / #393 (Worker-Vertrag, Abschnitt 6.3) + WP-8 |
+| P-7 Benchmark-Gate                        | → WP-11 / #400 + Exit-Condition (Abschnitt 14)       |
+| S-5 ADR 0003 nachziehen                   | → WP-4 / #393 (ADR zur ELK-Adoption)                 |
+| S-1 React Flow 12                         | **Sequenz-Entscheidung**, siehe unten                |
+| S-2 Tailwind v4 / S-3 lucide / S-4 Export | unabhängig von Routing V2                            |
 
 **S-1-Empfehlung (Sequenz):** React Flow 12 **vor** den UI-integrierenden Workpackages
 (insbesondere WP-7 Hop-Rendering, WP-8 Drag) mergen — WP-4+ berühren die RF-API
