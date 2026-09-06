@@ -9,11 +9,22 @@
  * Diese Stufe macht keine Dimensionierung (Sizing) und erzeugt keine Edge-
  * Objekte (Routing). Sie liefert nur eine geordnete Liste von Verbindungs-
  * Absichten — das ist der Kern der "Entkopplung".
+ *
+ * Fehlen Struktur-Komponenten, weil der Nutzer sie entfernt hat, wird sauber
+ * darum herum verdrahtet:
+ *   - Ohne Shunt: Batterie direkt an die Versorgungsschiene.
+ *   - Ohne Sammelschiene: Batterie dient als Einspeisepunkt.
+ *   - Ohne Sicherungskasten: Verbraucher direkt an der Versorgungsschiene.
  */
 
 import { VDE_INVERTER_EFFICIENCY } from '../electrical';
 import type { Analysis, ConnectionIntent, Topology } from './types';
 import { consumerAmps, inverterWatts, readNumber } from './analyse';
+
+/** Versorgungs-Schiene: Sammelschiene oder (falls entfernt) die Batterie. */
+function feedBusId(topology: Topology): string {
+  return topology.busbar?.id ?? topology.battery.id;
+}
 
 /**
  * Baut die Liste der Verbindungs-Absichten aus Analyse + Topologie.
@@ -26,43 +37,65 @@ export function planConnections(
   topology: Topology
 ): ConnectionIntent[] {
   const intents: ConnectionIntent[] = [];
+  const feed = feedBusId(topology);
+  const batteryId = analysis.battery.id;
 
   const batteryCapacity = readNumber(analysis.battery.data?.capacity, 100);
   const maxDischargeA = batteryCapacity;
 
-  // Versorgungs-Hauptpfad
-  intents.push({ sourceId: analysis.battery.id, targetId: topology.shunt.id, currentA: maxDischargeA, length: 0.5 });
-  intents.push({ sourceId: topology.shunt.id, targetId: topology.busbar.id, currentA: maxDischargeA, length: 0.5 });
-  intents.push({ sourceId: topology.busbar.id, targetId: topology.fuseBox.id, currentA: readNumber(topology.fuseBox.data?.rating, 100), length: 1 });
+  const push = (
+    sourceId: string,
+    targetId: string,
+    currentA: number,
+    length: number
+  ): void => {
+    if (sourceId === targetId) return;
+    intents.push({ sourceId, targetId, currentA, length });
+  };
+
+  // Versorgungs-Hauptpfad. Shunt entfernt → Batterie direkt an die Schiene.
+  if (topology.shunt) {
+    push(batteryId, topology.shunt.id, maxDischargeA, 0.5);
+    push(topology.shunt.id, feed, maxDischargeA, 0.5);
+  } else if (feed !== batteryId) {
+    push(batteryId, feed, maxDischargeA, 0.5);
+  }
+
+  // Sicherungskasten wird von der Versorgungsschiene gespeist.
+  if (topology.fuseBox) {
+    push(feed, topology.fuseBox.id, readNumber(topology.fuseBox.data?.rating, 100), 1);
+  }
 
   // Wechselrichter
   for (const inverter of analysis.inverters) {
     const inverterAmps = inverterWatts(inverter) / 12 / VDE_INVERTER_EFFICIENCY;
-    intents.push({ sourceId: topology.busbar.id, targetId: inverter.id, currentA: inverterAmps, length: 1 });
+    push(feed, inverter.id, inverterAmps, 1);
   }
 
   // Solar → MPPT → Busbar
   if (topology.mppt) {
     for (const solar of analysis.solars) {
       const solarWatts = readNumber(solar.data?.watts, 100);
-      intents.push({ sourceId: solar.id, targetId: topology.mppt.id, currentA: solarWatts / 12, length: 5 });
+      push(solar.id, topology.mppt.id, solarWatts / 12, 5);
     }
-    intents.push({ sourceId: topology.mppt.id, targetId: topology.busbar.id, currentA: readNumber(topology.mppt.data?.amps, 30), length: 2 });
+    push(topology.mppt.id, feed, readNumber(topology.mppt.data?.amps, 30), 2);
   }
 
   // Ladequellen
   for (const booster of analysis.boosters) {
-    intents.push({ sourceId: booster.id, targetId: topology.busbar.id, currentA: readNumber(booster.data?.amps, 30), length: 3 });
+    push(booster.id, feed, readNumber(booster.data?.amps, 30), 3);
   }
 
   // "Echte" Ladegeräte
   for (const charger of analysis.plainChargers) {
-    intents.push({ sourceId: charger.id, targetId: topology.busbar.id, currentA: readNumber(charger.data?.amps, 30), length: 3 });
+    push(charger.id, feed, readNumber(charger.data?.amps, 30), 3);
   }
 
-  // Verbraucher
+  // Verbraucher: über den Sicherungskasten oder (falls entfernt) direkt an
+  // der Versorgungsschiene.
+  const consumerSource = topology.fuseBox?.id ?? feed;
   for (const consumer of analysis.consumers) {
-    intents.push({ sourceId: topology.fuseBox.id, targetId: consumer.id, currentA: consumerAmps(consumer), length: 3 });
+    push(consumerSource, consumer.id, consumerAmps(consumer), 3);
   }
 
   return intents;

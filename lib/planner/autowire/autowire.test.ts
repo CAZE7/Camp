@@ -23,9 +23,9 @@ describe('autowire pipeline (entkoppelt)', () => {
     const analysis = analyseNodes(nodes)!;
     const topology = buildTopology(analysis, nodes, { idFactory: (() => { let i = 0; return () => `n${i++}`; })() });
 
-    expect(topology.busbar.type).toBe('busbar');
-    expect(topology.fuseBox.type).toBe('fuse');
-    expect(topology.shunt.type).toBe('shunt');
+    expect(topology.busbar?.type).toBe('busbar');
+    expect(topology.fuseBox?.type).toBe('fuse');
+    expect(topology.shunt?.type).toBe('shunt');
     expect(nodes.map((n) => n.type).sort()).toEqual(['battery', 'busbar', 'consumer', 'fuse', 'shunt']);
   });
 
@@ -36,9 +36,9 @@ describe('autowire pipeline (entkoppelt)', () => {
     const intents = planConnections(analysis, topology);
 
     expect(intents.map((i) => i.targetId)).toEqual([
-      topology.shunt.id,
-      topology.busbar.id,
-      topology.fuseBox.id,
+      topology.shunt!.id,
+      topology.busbar!.id,
+      topology.fuseBox!.id,
       'c1',
     ]);
   });
