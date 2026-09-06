@@ -5,6 +5,8 @@
 > Es wird in Phase 0 erstellt und vor Implementierungsbeginn eingefroren (siehe Epic #389).
 > Änderungen nach dem Freeze nur noch via ADR (`docs/adr/`) + Eintrag im Change Ledger
 > (`docs/ARCHITECTURE-CHANGES.md`).
+> **Revision 2026-09-06:** Abgleich mit agent.md-Tracks S-1…S-5 / P-1…P-7 und M11-1
+> (Token-Zwillinge, Handle-Geometrie) — Änderungen siehe Abschnitte 3, 5, 6.3, 10, 14, 16.
 
 ---
 
@@ -69,6 +71,13 @@ daraus ab (generiert, nicht gepflegt; Config-Sync-Test schlägt bei Hardcode feh
 | `bendRadius`         | 8 px   | Einheitliche Rundungen; Bend-Merge-Schwelle 2×r         |
 | `crossDomainSpacing` | 24 px  | Wert für Domain-Trennung (Paar-Regel s. Abschnitt 4.2)  |
 
+**Integration ins bestehende Token-System (M11-1):** `lib/designTokens.ts` pflegt seit
+M11-1 RGB-Triplet-Zwillinge (`--x-rgb`) mit Drift-Guard in `lib/designTokens.test.ts`;
+D-1 gilt: `globals.css` bleibt einzige Farbquelle. Die Routing-Tokens **erweitern**
+dieses System (gleiche Konventionen, gleiche Test-Disziplin) und ersetzen es nicht.
+S-2 (Tailwind v4) überführt die Config später nach `@theme` — berührt die Routing-Tokens
+nicht inhaltlich.
+
 ## 4. Kollisionsmodell
 
 ### 4.1 Kollisionsklassen
@@ -109,11 +118,15 @@ Pure Functions, kein Domänenwissen, Werte aus Tokens:
 - `areCollinear()` / `segmentsOverlap()`
 - `inflateObstacle()` — Node-Rect + Clearance-Aufschlag
 - Stub-Minimum-Check
-- Bend-Merge — zwei Bends < 2 × `bendRadius` verschmelzen (kein „Zitter-Treppenmuster“)
+- Bend-Merge — zwei Bends < 2 × `bendRadius` verschmelzen (kein „Zitter-Treppenmuster”)
 - Lane-Berechnung — `laneIndex × laneGrid` vom Referenzsegment
 
 Bestehende Geometrie aus `pathUtils.ts` / `segmentSpatialIndex.ts` wird hierher
 migriert, nicht neu erfunden.
+
+**Handle-Geometrie (M11-1):** Handles sitzen ±22 px **außerhalb** der Node-Karte
+(`overflow: visible`). `inflateObstacle()` muss die Handle-Ausrisse einrechnen — sonst
+verletzt der Stub die Clearance am eigenen Knoten.
 
 ## 6. ELK Global Layout
 
@@ -138,6 +151,9 @@ migriert, nicht neu erfunden.
 ### 6.3 Integration & Fallstricke
 
 - elkjs asynchron: dynamischer Import + **Web Worker + Timeout** (Lighthouse-Gate ≥ 90)
+- **Worker-Vertrag (P-6):** Übergabe strukturiert klonen oder als Flat-Arrays; bei
+  schnellen Drag-Updates gewinnt die **letzte Anfrage** (keine Race-Pfade). Gilt für den
+  ELK-Worker wie für die Routing-Pipeline.
 - Child-Positionen kommen **relativ zum Parent** → absolute Koordinaten umrechnen
 - Zyklen: Camper-Ladekreise sind zyklisch (Solar → MPPT → Batterie → Inverter → Landstrom)
   — Cycle-Breaking-Strategie bewusst wählen
@@ -161,6 +177,9 @@ Stabile Sortierung (3 Stufen):
 1. topologische Reihenfolge
 2. Zielposition
 3. stabile Node-/Edge-ID als letzter Tie-Breaker
+
+(ID-Stabilität gesichert: `newEntityId()` in `lib/id.ts` mit Fallback-Kette seit M11-1
+auch im LAN-Dev über http:// robust.)
 
 Garantie: Re-Layout, Undo/Redo und visuelle Regressionstests erzeugen **identische**
 Lane-Zuordnung.
@@ -199,15 +218,24 @@ Werte aus Tokens/Config abgeleitet, nie hardcoded. Datenbasis: `segmentSpatialIn
 (registriert geroutete Segmente als weiche Hindernisse). Konsistenz mit Abschnitt 4:
 hard = Infinity/verboten, weighted = Kosten.
 
-## 10. Lokales Re-Routing
+## 10. Inkrementeller Pass: Re-Routing & Drag-Performance
 
-Nur betroffene Kanten neu berechnen — danach **keine** globale Neuordnung:
+**Affected-Set (P-1):** Nur Kanten am gezogenen Knoten plus Kanten, deren
+Pfad-Bounding-Box die alte oder neue Position schneiden.
+Abnahme: **O(betroffene Kanten) statt O(E)** beim Drag; keine veralteten Pfade (R-9
+bleibt erfüllt).
 
-- Kanten des bewegten Nodes
-- Kanten mit betroffenem **altem** Segment
-- Kanten mit betroffenem **neuem** Segment
+**Zwei-Qualitäts-Stufen (P-2):** Während des Ziehens schnelle Vorschau (Bestandspfad
+bzw. L-Stub); voller `routeAll`-Pass mit Nudging erst beim Drag-Ende (gedrosselt,
+100–150 ms). Abnahme: konstante Frame-Zeit im Drag-Bench; Endqualität identisch zur
+Szenario-Gallery.
 
-Basis: `cableRouteStore` (Subscriptions) + Geometrie-Primitives.
+**Gescopedes Nudging (P-5):** `nudgeOrthogonalPaths` nur auf Lanes betroffener Trassen
+(setzt P-1 voraus). Abnahme: routingGallery ohne Diff.
+
+Danach **keine** globale Neuordnung. Basis: `cableRouteStore` (Subscriptions) +
+Geometrie-Primitives. Vollständige Worker-Auslagerung der Pipeline gemäß P-6 erst nach
+P-1/P-2/P-5.
 
 ## 11. Port Fan-Out
 
@@ -242,11 +270,11 @@ V2 darf intern anders funktionieren, aber das Ergebnis muss **identisch oder bew
 besser** sein (mit dokumentierter Begründung).
 
 **Golden Layouts:** Für definierte Szenarien (15, siehe Regression-Suite #400) muss exakt
-diese Topologie/Trassenstruktur herauskommen — nicht nur „kein Crash“.
+diese Topologie/Trassenstruktur herauskommen — nicht nur „kein Crash”.
 
 ## 14. Exit-Conditions
 
-Routing V2 ist fertig wenn (nicht: „ich glaube, Routing funktioniert jetzt“):
+Routing V2 ist fertig wenn (nicht: „ich glaube, Routing funktioniert jetzt”):
 
 - ✓ keine Edge-Node-Overlaps
 - ✓ keine Edge-Edge-Overlaps
@@ -256,7 +284,9 @@ Routing V2 ist fertig wenn (nicht: „ich glaube, Routing funktioniert jetzt“)
 - ✓ 100 % Invariant-Tests grün (beide Pässe)
 - ✓ Golden Layouts stabil
 - ✓ Golden Master: identisch oder bewusst besser
-- ✓ Performance-Budget < X ms (X vom Nutzer festzulegen)
+- ✓ **Performance-Budget: Main-Thread ≤ 16 ms/Frame am 100+-Kanten-Referenzplan**
+  (M11-9; Gate: `edgeRoutingPerf.bench.ts` in der Quality-Pipeline, Budget-Wert im
+  Benchmark-ADR begründet — P-7)
 - ✓ ELK-A/B auf Routing-Gallery: Kreuzungen/Bends besser oder gleich
 - ✓ Lighthouse ≥ 90
 
@@ -274,7 +304,7 @@ Routing V2 ist fertig wenn (nicht: „ich glaube, Routing funktioniert jetzt“)
 | 2 | Deterministisches Lane-System (LaneRegistry) | #394 |
 | 2 | Kreuzungs-Hopping (routingPriority) | #395 |
 | 2 | A\*-Kostenmodell | #396 |
-| 2 | Lokales Re-Routing | #397 |
+| 2 | Lokales Re-Routing & Drag-Performance | #397 |
 | 2 | Port Fan-Out | #398 |
 | 2 | Routing-Invarianten (Testsuite) | #399 |
 | 2 | Regression-Suite & Golden Layout Tests | #400 |
@@ -282,3 +312,22 @@ Routing V2 ist fertig wenn (nicht: „ich glaube, Routing funktioniert jetzt“)
 Implementierung **bottom-up**: Geometry → Rules → Algorithms → Domain → Store → UI.
 Jeder Schritt hält die bestehenden Tests grün; ein PR verändert genau eine
 Verantwortung.
+
+## 16. Verhältnis zu den agent.md-Tracks (S/P)
+
+| agent.md | Zuordnung in Routing V2 |
+|----------|--------------------------|
+| P-1 Affected-Set | → WP-8 / #397 (absorbiert, Abschnitt 10) |
+| P-2 Zwei-Stufen-Drag | → WP-8 / #397 (absorbiert, Abschnitt 10) |
+| P-5 Scoped Nudging | → WP-8 / #397 (absorbiert, Abschnitt 10) |
+| P-6 Routing-Worker | → WP-4 / #393 (Worker-Vertrag, Abschnitt 6.3) + WP-8 |
+| P-7 Benchmark-Gate | → WP-11 / #400 + Exit-Condition (Abschnitt 14) |
+| S-5 ADR 0003 nachziehen | → WP-4 / #393 (ADR zur ELK-Adoption) |
+| S-1 React Flow 12 | **Sequenz-Entscheidung**, siehe unten |
+| S-2 Tailwind v4 / S-3 lucide / S-4 Export | unabhängig von Routing V2 |
+
+**S-1-Empfehlung (Sequenz):** React Flow 12 **vor** den UI-integrierenden Workpackages
+(insbesondere WP-7 Hop-Rendering, WP-8 Drag) mergen — WP-4+ berühren die RF-API
+(`CableEdge`, `nodeTypes`/`edgeTypes`, CSS), sonst doppelter Migrationsaufwand.
+Akzeptanz aus agent.md S-1: `npm run check` grün; Drag, Auto-Wire und Undo/Redo
+unverändert; Routing-Invarianten-Tests und visuelle Baselines ohne Diff.
