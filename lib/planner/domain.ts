@@ -5,42 +5,58 @@ export type PlannerPosition = {
   y: number;
 };
 
+/**
+ * Fachlich typisiertes Datenprofil eines Planner-Knotens.
+ *
+ * WICHTIG: Dies ist KEIN generisches React-Flow-Node-Modell mehr. Alle hier
+ * deklarierten Felder sind bekannte, fachlich bedeutsame Eigenschaften der
+ * jeweiligen Komponente (Batterie, Verbraucher, Sicherung, Sammelschiene, …).
+ * Es gibt bewusst KEINEN index-signature-Fallback `[key: string]: any` mehr.
+ *
+ * Für eine strikt typisierte, diskriminierte Sicht pro Komponententyp siehe
+ * `lib/planner/domainModel.ts` (`PlannerDomainNode`, `defaultDataForKind`).
+ */
 export type PlannerNodeData = {
+  // Gemeinsame UI-/Zustands-Felder
   label?: string;
+  isInvalid?: boolean;
+  assignedEdges?: string[];
+  concurrentDevices?: string[];
+
+  // Batterie
+  capacity?: number;
+  chemistry?: string;
+  doD?: number;
+
+  // Verbraucher (12V / 230V) & Wechselrichter
   watts?: number;
   hours?: number;
   amps?: number;
   efficiency?: number;
-  capacity?: number;
-  chemistry?: string;
-  rating?: number;
-  hasRcd?: boolean;
   continuousPower?: number;
-  concurrentDevices?: string[];
-  assignedEdges?: string[];
   voltage?: number;
-  isInvalid?: boolean;
-  [key: string]: any;
-};
 
-/**
- * Domain representation of a planner node.
- *
- * Keep this shape independent from React Flow. UI adapters may pass it to
- * React Flow because the fields are structurally compatible, but pure planner
- * logic should only depend on this type.
- */
-export type PlannerNode<Data extends PlannerNodeData = PlannerNodeData> = {
-  id: string;
-  type?: string;
-  position: PlannerPosition;
-  data: Data;
-  width?: number | null;
-  height?: number | null;
-  style?: any;
-  draggable?: boolean;
-  selectable?: boolean;
-  selected?: boolean;
+  // Sicherung / Sammelschiene / Shunt
+  rating?: number;
+  maxAmps?: number;
+  poles?: number;
+  rcd?: boolean;
+  hasRcd?: boolean;
+
+  // Solar
+  orientation?: string;
+
+  // Dach-Fenster / Dach-Panel (Abmessungen in cm)
+  width?: number;
+  height?: number;
+
+  // Leerrohr / Kabelkanal
+  conduitType?: string;
+  fillPercent?: number;
+
+  // Wasser
+  volumeLiters?: number;
+  status?: 'normal' | 'warning';
 };
 
 export type CableFunction =
@@ -61,6 +77,9 @@ export type CableEdgeData = {
   crossSection?: number;
   fuseSize?: number;
   cableFunction?: CableFunction;
+  // Routing V2: geführte orthogonale Punktfolge (flaches x,y-Paar-Array) + Lane
+  routedPath?: number[];
+  lane?: number;
 };
 
 export type WaterPipeEdgeData = {
@@ -107,3 +126,23 @@ export type BomData = {
 };
 
 export type FitViewCallback = (options?: any) => void;
+
+/**
+ * Domain representation of a planner node.
+ *
+ * Keep this shape independent from React Flow. UI adapters may pass it to
+ * React Flow because the fields are structurally compatible, but pure planner
+ * logic should only depend on this type.
+ */
+export type PlannerNode<Data extends PlannerNodeData = PlannerNodeData> = {
+  id: string;
+  type?: string;
+  position: PlannerPosition;
+  data: Data;
+  width?: number | null;
+  height?: number | null;
+  style?: any;
+  draggable?: boolean;
+  selectable?: boolean;
+  selected?: boolean;
+};

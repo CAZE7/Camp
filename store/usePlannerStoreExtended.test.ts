@@ -16,13 +16,23 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { usePlannerStore } from './usePlannerStore';
 import { initialNodes, initialEdges } from '../lib/planner/initialGraph';
-import * as layoutUtils from '../lib/planner/layout';
+import * as routingV2 from '../lib/planner/routingV2';
 import type { Node, Edge, Connection } from 'reactflow';
 import { CableEdgeData } from '../components/edges/CableEdge';
 
-// Mock the layout utility so it doesn't try to use dagre in tests
-vi.mock('../lib/planner/layout', () => ({
-  getLayoutedElements: vi.fn((nodes, edges) => ({ nodes, edges })),
+// Mock the Routing-V2 pipeline (ELK/dagre) so tests run deterministically
+// without actually loading elkjs.
+vi.mock('../lib/planner/routingV2', () => ({
+  routeSchematicV2: vi.fn(async ({ nodes, edges }) => ({
+    nodes: nodes.map((n: any) => ({ ...n, position: { ...n.position } })),
+    edges: edges.map((e: any) => ({ ...e })),
+    routedEdges: [],
+    collisions: [],
+    hops: { hops: [], hopCountByEdge: new Map() },
+    laneRegistry: {},
+    layoutResult: { positions: new Map() },
+  })),
+  attachRoutedPaths: vi.fn((_nodes: any, edges: any[]) => edges),
 }));
 
 describe('usePlannerStore - extended coverage', () => {
@@ -61,30 +71,28 @@ describe('usePlannerStore - extended coverage', () => {
   // onLayout
   // ============================================================
   describe('onLayout', () => {
-    it('should call getLayoutedElements with current nodes/edges and update state', () => {
+    it('should call routeSchematicV2 with current nodes/edges and update state', async () => {
       const mockFitView = vi.fn();
       const { result } = renderHook(() => usePlannerStore());
 
-      act(() => {
-        result.current.onLayout(mockFitView as any);
+      await act(async () => {
+        await result.current.onLayout(mockFitView as any);
       });
 
-      expect(layoutUtils.getLayoutedElements).toHaveBeenCalled();
-      const args = vi.mocked(layoutUtils.getLayoutedElements).mock.calls[0];
-      // The store spreads the array before setting, so identity may not match,
-      // but the lengths and types should be intact.
-      expect(Array.isArray(args[0])).toBe(true);
-      expect(Array.isArray(args[1])).toBe(true);
+      expect(routingV2.routeSchematicV2).toHaveBeenCalled();
+      const arg = vi.mocked(routingV2.routeSchematicV2).mock.calls[0][0];
+      expect(Array.isArray(arg.nodes)).toBe(true);
+      expect(Array.isArray(arg.edges)).toBe(true);
     });
 
-    it('should accept undefined fitView without throwing', () => {
+    it('should accept undefined fitView without throwing', async () => {
       const { result } = renderHook(() => usePlannerStore());
 
-      expect(() => {
-        act(() => {
-          result.current.onLayout(undefined);
-        });
-      }).not.toThrow();
+      await expect(
+        act(async () => {
+          await result.current.onLayout(undefined);
+        })
+      ).resolves.not.toThrow();
     });
   });
 
@@ -841,7 +849,7 @@ describe('usePlannerStore - extended coverage', () => {
         const added = after[after.length - 1];
         expect(added.type).toBe(type);
         for (const [key, val] of Object.entries(expected)) {
-          expect(added.data[key]).toBe(val);
+          expect((added.data as Record<string, unknown>)[key]).toBe(val);
         }
       }
     });
