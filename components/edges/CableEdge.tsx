@@ -9,11 +9,8 @@ import {
 } from 'reactflow';
 import { useAppStore } from '../../lib/store';
 import { analyzeCableEdge } from '../../lib/planner/cableAnalysis';
-import type {
-  CableEdgeData,
-  CableFunction,
-  PlannerNode,
-} from '../../lib/planner/domain';
+import type { CableEdgeData, PlannerNode } from '../../lib/planner/domain';
+import { buildCableLabelLines, cableStroke, CABLE_COLOR_MAP } from './utils/cablePresentation';
 
 export type { CableEdgeData } from '../../lib/planner/domain';
 
@@ -21,45 +18,6 @@ type CableEdgeProps = EdgeProps<CableEdgeData> & {
   sourceHandle?: string | null;
   targetHandle?: string | null;
 };
-
-const CABLE_COLOR_MAP: Record<CableFunction, string> = {
-  positive: '#dc2626',
-  negative: '#18181b',
-  ground: '#10b981',
-  solar: '#f59e0b',
-  shore: '#3b82f6',
-  inverter: '#a855f7',
-  charging: '#ec4899',
-  main: '#dc2626',
-  secondary: '#6b7280',
-  consumer: '#6b7280',
-  busbar: '#dc2626',
-};
-
-function buildCableLabelLines({
-  length,
-  crossSection,
-  maxFuse,
-  fuseSize,
-  voltageDropWarning,
-  cableFunction,
-}: {
-  length: number;
-  crossSection: number;
-  maxFuse: number;
-  fuseSize?: number;
-  voltageDropWarning: boolean;
-  cableFunction: CableFunction;
-}): string[] {
-  const lines = [`${length.toFixed(2)} m`, `${crossSection} mm²`];
-
-  if (maxFuse > 0) lines.push(`Max: ${maxFuse}A`);
-  if (fuseSize) lines.push(`${fuseSize}A Sicherung`);
-  if (voltageDropWarning) lines.push('⚠ VDE-Spannungsabfall');
-  lines.push(cableFunction);
-
-  return lines;
-}
 
 const CableEdge = function ({
   id,
@@ -126,7 +84,7 @@ const CableEdge = function ({
   const color = CABLE_COLOR_MAP[cableFunction] || CABLE_COLOR_MAP.secondary;
   const isMainCable = cableFunction === 'main' || cableFunction === 'positive' || cableFunction === 'busbar';
   const effectiveStrokeWidth = isMainCable ? Math.max(strokeWidth, 4) : strokeWidth;
-  const stroke = selected ? '#f97316' : voltageDropWarning ? '#ef4444' : color;
+  const stroke = cableStroke({ selected, voltageDropWarning, cableFunction });
   const labelOffsetY = effectiveSourceHandle?.includes('minus') ? 40 : -40;
   const labelLines = buildCableLabelLines({
     length,

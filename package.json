@@ -6,7 +6,8 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
-    "build": "next build"
+    "build": "next build",
+    "measure:v2": "tsx scripts/measure_planner_v2.ts"
   },
   "repository": {
     "type": "git",

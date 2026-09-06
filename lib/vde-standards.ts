@@ -342,7 +342,11 @@ export function calculateWire(
   // Der Endquerschnitt ist max(Mindestquerschnitt, absolutes Minimum)
   const minRequired = Math.max(VDE_MIN_CROSS_SECTION, minCrossSection);
   const crossSection = roundUpToVDECrossSection(minRequired);
-  const fuseSize = VDE_CONSERVATIVE_FUSES[crossSection] ?? VDE_STANDARD_FUSES[crossSection] ?? 15;
+  const recommendedFuse = VDE_CONSERVATIVE_FUSES[crossSection] ?? VDE_STANDARD_FUSES[crossSection] ?? 15;
+  // A fuse must never exceed the thermal limit of the selected conductor.
+  // Keep this guard here (rather than only in the UI) because auto-wiring and
+  // imported plans also consume calculateWire directly.
+  const fuseSize = Math.min(recommendedFuse, VDE_CURRENT_CAPACITY[crossSection] ?? recommendedFuse);
 
   return { crossSection, fuseSize, length: lengthM, minCrossSection };
 }
