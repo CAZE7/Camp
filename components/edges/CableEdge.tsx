@@ -19,6 +19,32 @@ type CableEdgeProps = EdgeProps<CableEdgeData> & {
   targetHandle?: string | null;
 };
 
+/**
+ * Baut aus einem flachen Routing-V2-Pfad ([x0,y0,x1,y1,...]) einen SVG-Pfad
+ * sowie eine Label-Position (Mittelpunkt der Strecke).
+ */
+function buildPathFromRouted(flat: number[]): [string, number, number, number, number] {
+  let path = '';
+  let labelX = 0;
+  let labelY = 0;
+
+  for (let i = 0; i + 1 < flat.length; i += 2) {
+    const x = flat[i];
+    const y = flat[i + 1];
+    path += `${i === 0 ? 'M' : 'L'} ${x} ${y} `;
+  }
+
+  // Label midpoint: Punkt in der Mitte der Punktfolge.
+  const count = Math.floor(flat.length / 2);
+  if (count > 0) {
+    const mid = Math.floor(count / 2);
+    labelX = flat[mid * 2];
+    labelY = flat[mid * 2 + 1];
+  }
+
+  return [path.trim(), labelX, labelY, 0, 0];
+}
+
 const CableEdge = function ({
   id,
   source,
@@ -42,6 +68,12 @@ const CableEdge = function ({
   const isProMode = useAppStore((state) => state.isProMode);
 
   const [edgePath, labelX, labelY] = useMemo(() => {
+    // Routing V2: Wenn ein geführter Pfad hinterlegt ist, wird dieser gezeichnet
+    // (deterministische Lanes + Hops). Sonst Fallback auf React-Flow-Pfad.
+    if (Array.isArray(data?.routedPath) && data.routedPath.length >= 4) {
+      return buildPathFromRouted(data.routedPath);
+    }
+
     const pathParams = {
       sourceX,
       sourceY,
@@ -54,7 +86,7 @@ const CableEdge = function ({
     return isProMode
       ? getSmoothStepPath({ ...pathParams, borderRadius: 10 })
       : getBezierPath(pathParams);
-  }, [sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, isProMode]);
+  }, [data, sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, isProMode]);
 
   const effectiveSourceHandle = sourceHandle ?? sourceHandleId;
   const effectiveTargetHandle = targetHandle ?? targetHandleId;

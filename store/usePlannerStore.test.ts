@@ -2,11 +2,21 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { usePlannerStore } from './usePlannerStore';
 import { initialNodes, initialEdges } from '../lib/planner/initialGraph';
-import * as layoutUtils from '../lib/planner/layout';
+import * as routingV2 from '../lib/planner/routingV2';
 
-// Mock the layout utility so it doesn't try to use dagre in tests
-vi.mock('../lib/planner/layout', () => ({
-  getLayoutedElements: vi.fn((nodes, edges) => ({ nodes, edges })),
+// Mock the Routing-V2 pipeline (ELK/dagre) so tests run deterministically
+// without actually loading elkjs.
+vi.mock('../lib/planner/routingV2', () => ({
+  routeSchematicV2: vi.fn(async ({ nodes, edges }) => ({
+    nodes: nodes.map((n: any) => ({ ...n, position: { ...n.position } })),
+    edges: edges.map((e: any) => ({ ...e })),
+    routedEdges: [],
+    collisions: [],
+    hops: { hops: [], hopCountByEdge: new Map() },
+    laneRegistry: {},
+    layoutResult: { positions: new Map() },
+  })),
+  attachRoutedPaths: vi.fn((_nodes: any, edges: any[]) => edges),
 }));
 
 describe('usePlannerStore', () => {
@@ -240,13 +250,15 @@ describe('usePlannerStore', () => {
       crypto.randomUUID = originalRandomUUID;
     });
 
-    it('should alert if no battery is present', () => {
+    it('should alert if no battery is present', async () => {
       usePlannerStore.setState({
         nodes: [{ id: '1', type: 'consumer', position: { x: 0, y: 0 }, data: { label: 'Consumer' } }],
         edges: []
       });
 
-      usePlannerStore.getState().autoWireSystem(mockFitView as any);
+      await act(async () => {
+        usePlannerStore.getState().autoWireSystem(mockFitView as any);
+      });
 
       expect(mockAlert).toHaveBeenCalledWith('Bitte zuerst eine Batterie platzieren');
       const state = usePlannerStore.getState();
@@ -254,7 +266,7 @@ describe('usePlannerStore', () => {
       expect(state.edges).toHaveLength(0);
     });
 
-    it('should generate basic wiring (busbar, shunt, fuse) when only battery is present', () => {
+    it('should generate basic wiring (busbar, shunt, fuse) when only battery is present', async () => {
       usePlannerStore.setState({
         nodes: [
           { id: 'b1', type: 'battery', position: { x: 0, y: 0 }, data: { label: 'Battery', capacity: 100 } }
@@ -262,7 +274,9 @@ describe('usePlannerStore', () => {
         edges: []
       });
 
-      usePlannerStore.getState().autoWireSystem(mockFitView as any);
+      await act(async () => {
+        usePlannerStore.getState().autoWireSystem(mockFitView as any);
+      });
 
       expect(mockAlert).not.toHaveBeenCalled();
 
@@ -286,13 +300,13 @@ describe('usePlannerStore', () => {
       // Total = 6 edges
       expect(state.edges).toHaveLength(6);
 
-      // Verify layout and fitView
-      expect(layoutUtils.getLayoutedElements).toHaveBeenCalled();
+      // Verify routing and fitView
+      expect(routingV2.routeSchematicV2).toHaveBeenCalled();
       expect(mockRequestAnimationFrame).toHaveBeenCalled();
       expect(mockFitView).toHaveBeenCalledWith({ duration: 800 });
     });
 
-    it('should connect inverters and consumers correctly', () => {
+    it('should connect inverters and consumers correctly', async () => {
       usePlannerStore.setState({
         nodes: [
           { id: 'b1', type: 'battery', position: { x: 0, y: 0 }, data: { label: 'Battery', capacity: 100 } },
@@ -302,7 +316,9 @@ describe('usePlannerStore', () => {
         edges: []
       });
 
-      usePlannerStore.getState().autoWireSystem(mockFitView as any);
+      await act(async () => {
+        usePlannerStore.getState().autoWireSystem(mockFitView as any);
+      });
 
       const state = usePlannerStore.getState();
 
@@ -325,7 +341,7 @@ describe('usePlannerStore', () => {
       expect(consumerPlusEdge?.data?.crossSection).toBeGreaterThanOrEqual(1.5);
     });
 
-    it('should handle solar panels and chargers correctly', () => {
+    it('should handle solar panels and chargers correctly', async () => {
       usePlannerStore.setState({
         nodes: [
           { id: 'b1', type: 'battery', position: { x: 0, y: 0 }, data: { label: 'Battery', capacity: 100 } },
@@ -335,7 +351,9 @@ describe('usePlannerStore', () => {
         edges: []
       });
 
-      usePlannerStore.getState().autoWireSystem(mockFitView as any);
+      await act(async () => {
+        usePlannerStore.getState().autoWireSystem(mockFitView as any);
+      });
 
       const state = usePlannerStore.getState();
 

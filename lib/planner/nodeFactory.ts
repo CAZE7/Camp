@@ -1,4 +1,5 @@
-import type { PlannerNode, PlannerPosition } from './domain';
+import type { PlannerNode, PlannerNodeData, PlannerPosition } from './domain';
+import { defaultDataForKind, type PlannerNodeKind } from './domainModel';
 
 export type CreatePlannerNodeInput = {
   id: string;
@@ -7,32 +8,16 @@ export type CreatePlannerNodeInput = {
   position: PlannerPosition;
 };
 
-export function getDefaultNodeData(type: string, label?: string): PlannerNode['data'] {
-  const data: PlannerNode['data'] = { label };
-
-  if (type === 'battery') {
-    return { ...data, capacity: 100, chemistry: 'LiFePO4' };
-  }
-  if (type === 'consumer') {
-    return { ...data, watts: 50, hours: 2 };
-  }
-  if (type === 'charger') {
-    return { ...data, amps: 10 };
-  }
-  if (type === 'fuse') {
-    return { ...data, rating: 30 };
-  }
-  if (type === 'shorePower') {
-    return { ...data, hasRcd: false };
-  }
-  if (type === 'consumer230v') {
-    return { ...data, watts: 1000, hours: 0.5 };
-  }
-  if (type === 'solar') {
-    return { ...data, voltage: 18, amps: 5 };
-  }
-
-  return data;
+/**
+ * Liefert die fachlichen Standarddaten für eine Knotenart.
+ *
+ * Delegiert an das zentrale, typisierte Domain-Modell
+ * (`domainModel.defaultDataForKind`) und ergänzt das Label. Damit gibt es
+ * nur EINE Quelle für die Default-Daten — keine Duplikation mehr.
+ */
+export function getDefaultNodeData(type: string, label?: string): PlannerNodeData {
+  const data: PlannerNodeData = defaultDataForKind(type as PlannerNodeKind) as PlannerNodeData;
+  return { ...data, label };
 }
 
 export function createPlannerNode({

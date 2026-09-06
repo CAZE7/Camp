@@ -11,7 +11,7 @@ import {
   inferCableCurrentA,
   inferCableFunction,
   strokeWidthForCrossSection,
-} from './electrical';
+} from './cableCurrent';
 
 export type CableAnalysis = {
   length: number;

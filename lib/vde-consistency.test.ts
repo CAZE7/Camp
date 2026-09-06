@@ -75,6 +75,9 @@ describe('VDE-Konsistenz: Single Source of Truth', () => {
     const filesToCheck = [
       'store/usePlannerStore.ts',
       'lib/planner/autoWire.ts',
+      'lib/planner/autowire/wiringStrategy.ts',
+      'lib/planner/autowire/sizing.ts',
+      'lib/planner/electrical/validation.ts',
       'lib/planner/cableAnalysis.ts',
       'lib/planner/routing.ts',
       'components/edges/CableEdge.tsx',
@@ -111,13 +114,13 @@ describe('VDE-Konsistenz: Single Source of Truth', () => {
     it('Inverter-Effizienz wird einheitlich aus vde-standards importiert', async () => {
       // Wenn jemand in einer Rechenstelle den Wert 0.85 manuell eintippt statt
       // VDE_INVERTER_EFFICIENCY zu importieren, soll dieser Test fehlschlagen.
-      const autoWireContent = readFile('lib/planner/autoWire.ts');
+      // Die AutoWire-Logik liegt jetzt in der entkoppelten Pipeline
+      // (lib/planner/autowire/wiringStrategy.ts), nicht mehr in der Fassade.
+      const wiringStrategyContent = readFile('lib/planner/autowire/wiringStrategy.ts');
       const apiContent = readFile('app/api/chat/route.ts');
       const metricsContent = readFile('components/planner/hooks/useDashboardMetrics.ts');
 
-      // AutoWire ist aus dem Store in die Domain-Schicht gewandert.
-      // Alle Rechenstellen müssen weiterhin die zentrale Konstante importieren.
-      const autoWireUsesImport = autoWireContent.includes('VDE_INVERTER_EFFICIENCY');
+      const autoWireUsesImport = wiringStrategyContent.includes('VDE_INVERTER_EFFICIENCY');
       const apiUsesImport = apiContent.includes('VDE_INVERTER_EFFICIENCY');
       const metricsUsesImport = metricsContent.includes('VDE_INVERTER_EFFICIENCY');
 
@@ -131,15 +134,16 @@ describe('VDE-Konsistenz: Single Source of Truth', () => {
     });
 
     it('Kabelquerschnitte werden einheitlich aus vde-standards verwendet', () => {
-      const autoWireContent = readFile('lib/planner/autoWire.ts');
+      // Die Sizing-Logik liegt jetzt in lib/planner/autowire/sizing.ts.
+      const sizingContent = readFile('lib/planner/autowire/sizing.ts');
       const routingContent = readFile('lib/planner/routing.ts');
       const cableAnalysisContent = readFile('lib/planner/cableAnalysis.ts');
       const cableEdgeContent = readFile('components/edges/CableEdge.tsx');
       const inspectorContent = readFile('components/Inspector.tsx');
 
-      // Die Domain-Dateien sollten VDE_CROSS_SECTIONS oder die Symbole daraus verwenden.
+      // Die Domain-Dateien sollten calculateWire oder die Symbole daraus verwenden.
       const domainUsesCentralCrossSection =
-        autoWireContent.includes('calculateWire') &&
+        sizingContent.includes('calculateWire') &&
         (routingContent.includes('VDE_MIN_CROSS_SECTION') ||
           cableAnalysisContent.includes('VDE_MIN_CROSS_SECTION') ||
           cableAnalysisContent.includes('roundUpToVDECrossSection'));
@@ -190,7 +194,8 @@ describe('VDE-Konsistenz: Single Source of Truth', () => {
         return 0;
       });
 
-      usePlannerStore.getState().autoWireSystem();
+      // autoWireSystem ist async (Routing-V2-Pipeline).
+      await usePlannerStore.getState().autoWireSystem();
 
       const state = usePlannerStore.getState();
       // Es sollten 2+ Kanten zur Batterie → Shunt → Busbar existieren (jeweils plus+minus = 2 Edges pro Pfad)
@@ -245,6 +250,8 @@ describe('VDE-Konsistenz: Single Source of Truth', () => {
       const filesToCheck = [
         'store/usePlannerStore.ts',
         'lib/planner/autoWire.ts',
+        'lib/planner/autowire/wiringStrategy.ts',
+        'lib/planner/autowire/sizing.ts',
         'lib/planner/cableAnalysis.ts',
         'lib/planner/routing.ts',
         'components/edges/CableEdge.tsx',
