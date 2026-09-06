@@ -67,3 +67,7 @@
 
 **Learning:** Standalone toggle buttons and segmented controls acting as pseudo-radio groups (like the 'Sommer'/'Winter' toggles) must convey which option is currently active to assistive technologies. Without this, screen reader users cannot perceive the current state or understand the result of their selection.
 **Action:** Always add `aria-pressed={condition}` to any button that visually toggles between active and inactive states.
+## 2026-05-18 - Missing aria-controls on Component Accordions
+
+**Learning:** While the category accordions in the `CategorySection` component had `aria-expanded` to indicate their state, they lacked an `aria-controls` attribute linking the toggle button to the expandable content container. This prevents screen readers from understanding which specific content section the button expands or collapses.
+**Action:** Always link accordion toggle buttons to their respective content containers by generating a unique ID (e.g., using `React.useId()`) for the content wrapper and assigning that ID to the button's `aria-controls` attribute.

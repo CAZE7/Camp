@@ -14,6 +14,7 @@ interface CategorySectionProps {
 }
 
 export function CategorySection({ title, items, open, onToggle, onMobileAdd, accent }: CategorySectionProps) {
+  const contentId = React.useId();
   if (items.length === 0) return null;
   return (
     <section className="overflow-hidden rounded-xl border border-border bg-card">
@@ -21,6 +22,7 @@ export function CategorySection({ title, items, open, onToggle, onMobileAdd, acc
         type="button"
         onClick={onToggle}
         aria-expanded={open}
+        aria-controls={contentId}
         className="flex min-h-11 w-full items-center justify-between px-3 py-2 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
       >
         <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
@@ -32,7 +34,7 @@ export function CategorySection({ title, items, open, onToggle, onMobileAdd, acc
         />
       </button>
       {open && (
-        <div className="grid grid-cols-2 gap-2 p-3 pt-1">
+        <div id={contentId} className="grid grid-cols-2 gap-2 p-3 pt-1">
           {items.map((comp) => (
             <ComponentTile
               key={`${comp.type}-${comp.label}`}
