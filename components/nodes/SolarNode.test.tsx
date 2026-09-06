@@ -1,15 +1,14 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import SolarNode from './SolarNode';
-import { asDivProps, type MockHandleProps } from '../../test-helpers/reactflowMocks';
 
 // Mock reactflow Handle since it might need a context provider
-vi.mock('@xyflow/react', async () => {
-  const actual = await vi.importActual('@xyflow/react');
+vi.mock('reactflow', async () => {
+  const actual = await vi.importActual('reactflow');
   return {
     ...actual,
-    Handle: ({ 'data-testid': testId, isConnectable, ...props }: MockHandleProps) => (
-      <div data-testid={testId || 'react-flow-handle'} {...asDivProps(props)} />
+    Handle: ({ 'data-testid': testId, isConnectable, ...props }: any) => (
+      <div data-testid={testId || 'react-flow-handle'} {...props} />
     ),
     Position: {
       Left: 'left',
@@ -46,15 +45,15 @@ describe('SolarNode Component', () => {
   it('applies selected styling when selected is true', () => {
     const { container } = render(<SolarNode id="1" data={{}} selected={true} />);
     const mainDiv = container.firstChild as HTMLElement;
-    expect(mainDiv.getAttribute('data-selected')).toBe('true');
-    expect(mainDiv.className).toContain('node-card--selected');
+    expect(mainDiv.className).toContain('ring-4');
+    expect(mainDiv.className).toContain('ring-blue-500');
   });
 
   it('does not apply selected styling when selected is false', () => {
     const { container } = render(<SolarNode id="1" data={{}} selected={false} />);
     const mainDiv = container.firstChild as HTMLElement;
-    expect(mainDiv.getAttribute('data-selected')).toBeNull();
-    expect(mainDiv.className).not.toContain('ring-[color:var(--accent-line)]');
+    expect(mainDiv.className).not.toContain('ring-4');
+    expect(mainDiv.className).not.toContain('ring-blue-500');
   });
 
   it('renders 4 Handle components with correct props', () => {

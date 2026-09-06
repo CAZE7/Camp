@@ -1,85 +1,77 @@
-'use client';
+"use client";
 import React, { useMemo } from 'react';
-import { Handle, Position, useEdges } from '@xyflow/react';
-import type { ConduitNodeData } from './types';
-import { type CableEdgeData } from '../edges/CableEdge';
+import { Handle, Position, useEdges } from 'reactflow';
+import type { CableEdgeData } from '../../lib/planner/domain';
 import {
-  type VDE_CONDUIT_INNER_DIAMETERS,
+  VDE_CONDUIT_INNER_DIAMETERS,
+  VDE_CABLE_OUTER_DIAMETERS,
   VDE_MAX_CONDUIT_FILL_PERCENT,
   calculateConduitFillPercent,
-  recommendConduitType,
-} from '@/lib/vde-standards';
-import { mm2, quantityOr } from '@/lib/units';
-import { NodeSymbol } from './NodeSymbol';
+  recommendConduitType as recommendConduitTypeVDE,
+} from '../../lib/vde-standards';
 
-/**
- * Füllgrad-Anzeige auf Basis der zentralen Füllgrad-Funktion
- * (lib/vde-standards.ts). Vorher rechnete diese Datei mit einer dritten,
- * lokalen Kopie der Kabel-/Rohr-Tabellen — die ist entfernt, damit Warn-
- * Zentrale, PlanerDashboard und Node dieselbe Zahl zeigen.
- */
-const ConduitNode = function ({ data, selected }: { id: string; data: ConduitNodeData; selected?: boolean }) {
+export type ConduitType = keyof typeof VDE_CONDUIT_INNER_DIAMETERS;
+
+export interface ConduitNodeData {
+  label?: string;
+  conduitType?: ConduitType;
+  assignedEdges?: string[];
+}
+
+const ConduitNode = function ({ id, data, selected }: { id: string, data: ConduitNodeData, selected?: boolean }) {
   const edges = useEdges();
 
-  const conduitType = (data.conduitType || 'EN 20') as keyof typeof VDE_CONDUIT_INNER_DIAMETERS;
-  // Referenzstabil über Renders mit gleichem data.assignedEdges — ohne dieses
-  // Memo wäre das fillStats-Memo bei jedem Render invalidiert (neues []-Array).
-  const assignedEdgeIds = useMemo(() => data.assignedEdges || [], [data.assignedEdges]);
+  const conduitType = data.conduitType || 'EN 20';
+  const assignedEdgeIds = data.assignedEdges || [];
 
   const fillStats = useMemo(() => {
     const assignedEdgeIdsSet = new Set(assignedEdgeIds);
-    // Persistenzgrenze: crossSection kommt aus dem Store und wird geprüft
-    // eingelesen (Standardkabel 2.5 mm² als Ersatz).
-    const crossSections = edges
-      .filter((e) => assignedEdgeIdsSet.has(e.id))
-      .map((edge) => quantityOr((edge.data as CableEdgeData)?.crossSection, mm2, mm2(2.5)));
+    const assignedCables = edges.filter(e => assignedEdgeIdsSet.has(e.id));
 
-    const fillPercentage = calculateConduitFillPercent(conduitType, crossSections);
+    // VDE-konforme Berechnung über zentrale Quelle
+    const crossSections = assignedCables.map(e => (e.data as CableEdgeData)?.crossSection || 2.5);
+    const fillPercentage = calculateConduitFillPercent(conduitType as ConduitType, crossSections);
     const isOverfilled = fillPercentage > VDE_MAX_CONDUIT_FILL_PERCENT;
-    const recommendedConduit = isOverfilled ? recommendConduitType(crossSections) : null;
+    const recommendedConduit = isOverfilled ? recommendConduitTypeVDE(crossSections) : null;
 
-    return { fillPercentage, isOverfilled, recommendedConduit };
+    return {
+      fillPercentage,
+      isOverfilled,
+      recommendedConduit
+    };
   }, [conduitType, assignedEdgeIds, edges]);
 
   return (
-    <div
-      role="group"
-      aria-label={`${data.label || 'Leerrohr'} (${conduitType}). Komponente im Plan.`}
-      data-selected={selected || undefined}
-      className={`node-card custom-drag-handle w-64 p-3 ${
-        fillStats.isOverfilled ? 'node-card--error bg-warn-critical-bg' : ''
-      } ${selected ? 'node-card--selected' : ''}`}
-    >
-      <NodeSymbol kind="conduit" />
+    <div className={`hover:scale-105 transition-all custom-drag-handle bg-white border-2 rounded-md p-3 shadow-md w-64 ${
+      fillStats.isOverfilled ? "border-red-500 bg-red-50" : "border-gray-400"
+    } ${selected ? (fillStats.isOverfilled ? "ring-4 ring-red-500 shadow-[0_0_15px_rgba(239,68,68,0.6)]" : "ring-4 ring-gray-400 shadow-[0_0_15px_rgba(156,163,175,0.6)]") : ""}`}>
 
-      <div className="mb-2 text-center text-sm font-bold text-foreground">
+      <div className="font-bold mb-2 text-sm text-center text-gray-800">
         {data.label || 'Leerrohr'} ({conduitType})
       </div>
 
-      <div className="measure mb-2 text-xs text-muted-foreground">
+      <div className="text-xs text-gray-600 mb-2">
         Zugewiesene Kabel: {assignedEdgeIds.length}
       </div>
 
-      <div className="mb-2 h-2.5 w-full overflow-hidden rounded-full border border-border bg-accent">
+      <div className="w-full bg-gray-200 rounded-full h-2.5 mb-2 overflow-hidden border border-gray-300">
         <div
-          className={`h-2.5 rounded-full transition-all duration-300 ${fillStats.isOverfilled ? 'bg-warn-critical' : 'bg-moss'}`}
+          className={`h-2.5 rounded-full transition-all duration-300 ${fillStats.isOverfilled ? 'bg-red-500' : 'bg-green-500'}`}
           style={{ width: `${Math.min(fillStats.fillPercentage, 100)}%` }}
         />
       </div>
 
-      <div className="mb-2 text-right font-mono text-xs">
+      <div className="text-xs text-right mb-2 font-mono">
         Füllgrad: {fillStats.fillPercentage.toFixed(1)}%
       </div>
 
       {fillStats.isOverfilled && (
-        <div className="mt-2 rounded bg-warn-critical p-2 text-xs font-bold leading-tight text-on-signal">
+        <div className="mt-2 p-2 bg-red-500 text-white text-xs font-bold rounded leading-tight">
           Kanal überfüllt! Gefahr durch Hitzestau in der Kabelbündelung.
           {fillStats.recommendedConduit ? (
-            <span className="mt-1 block">
-              Bitte mindestens {fillStats.recommendedConduit} Rohr verwenden.
-            </span>
+            <span className="block mt-1">Bitte mindestens {fillStats.recommendedConduit} Rohr verwenden.</span>
           ) : (
-            <span className="mt-1 block">Bitte ein größeres Leerrohr verwenden.</span>
+            <span className="block mt-1">Bitte ein größeres Leerrohr verwenden.</span>
           )}
         </div>
       )}
