@@ -16,6 +16,8 @@
     "routing:gallery": "tsx scripts/routing/generate-gallery.ts",
     "goldenmaster:capture": "tsx scripts/goldenmaster/capture.ts",
     "test:goldenmaster": "vitest run scripts/goldenmaster/goldenMaster.test.ts",
+    "regression:capture": "tsx scripts/regression/capture.ts",
+    "test:regression": "vitest run scripts/regression/regression.test.ts",
     "perf:edge-routing": "tsx benchmarks/edgeRoutingPerf.bench.ts",
     "pree2e": "node scripts/check-node-version.mjs",
     "e2e": "playwright test",

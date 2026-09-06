@@ -11,6 +11,14 @@ Format: neueste Einträge oben. Jeder Eintrag: Datum, Bezug (ADR/WP/Issue), Kurz
 
 ---
 
+## 2026-09-06 (WP-6, WP-9 … WP-11)
+
+- **ADR-0012** Perf-Budget 16 ms Main-Thread/Frame am 100+-Kanten-Referenzplan — `npm run perf:edge-routing` ist jetzt ein hartes Gate (Median über 30 Läufe, Exit-Code 1 bei Überschreitung). Absorbiert agent.md P-7. **Offener Handgriff für Maintainer:** der Push-Token dieser Session darf `.github/workflows/` nicht ändern — in `quality.yml` (und dem Spiegel `docs/ci/workflows/quality.yml`) fehlt noch der Schritt `run: npm run perf:edge-routing` direkt nach dem Coverage-Schritt (Vorlage in ADR 0012 §Konsequenzen). (WP-11, #400)
+- **Golden Layouts eingefroren** — `scripts/regression/goldenLayouts.json` + deterministische SVGs in `docs/routing-regression/`: 15 Szenarien (#400), Wegpunkt-genau + Metrik-Budget „Delta ≤ 0“ (Kreuzungen/Bends/Länge; Clearance-Verstöße = 0). Refresh nur via `npm run regression:capture` + PR-Begründung. (WP-11, #400)
+- **Invarianten-Suite CI-blockierend** — `lib/routing/invariants.ts` prüft I1–I7 aus ROUTING-V2.md §12 für BEIDE Pässe; ELK strikt (I1–I4, I7 = 0), Bestandsrouter als Ratchet-Baseline (nur Abbau erlaubt, Behebung WP-7/WP-8 nach S-1). I9-Determinismus per Doppel-Lauf. (WP-10, #399)
+- **Port-Fan-Out zentralisiert** — `lib/routing/rules/portFanOut.ts`: eine Sortierquelle für Stub-Reihenfolge am Port UND ELK-FIXED_ORDER-Portindizes; `routeAll.portOrderedLaneOffsets` delegiert (verhaltensidentisch, Golden Master byte-gleich). (WP-9, #398)
+- **A\*-Kostenmodell aus Tokens** — `lib/routing/rules/costModel.ts`: alle Gewichte aus `laneGrid` generiert, Sync-Test gegen den Legacy-Wert (crossing = 120); `pathfinding.scorePath` konsumiert `COST_WEIGHTS.crossing`. Vollintegration in den A*-Pass folgt mit WP-8. (WP-6, #396)
+
 ## 2026-09-06 (WP-2 … WP-4)
 
 - **ADR-0011** ELK Layered (elkjs) als globaler Layout-Pass — A/B-Gate bestanden (Kreuzungen 53→13, Bends 199→92 über die 6 Golden-Master-Pläne); Konfiguration aus Tokens generiert; Worker-Vertrag P-6 (letzte Anfrage gewinnt); bestehender Router bleibt Fallback. Erledigt agent.md S-5. (WP-4, #393)

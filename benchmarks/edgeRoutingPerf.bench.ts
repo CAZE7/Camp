@@ -130,6 +130,49 @@ function bench(label: string, nodeCount: number, edgesPerNode: number, revolutio
   );
 }
 
+/**
+ * WP-11 (#400, absorbiert P-7): Perf-Gate am 100+-Kanten-Referenzplan.
+ *
+ * Budget: **16 ms Main-Thread pro Frame** (M11-9: ein Frame bei 60 Hz;
+ * Begründung des Werts in docs/adr/0012-perf-budget-16ms-pro-frame.md).
+ * Gemessen wird der MEDIAN über `GATE_REVOLUTIONS` vollständige
+ * Render-Durchläufe des Referenzplans (36 Nodes / 134 Kanten — oberhalb
+ * von CROSSING_SCAN_EDGE_LIMIT, also der Produktionsmodus großer Pläne
+ * mit Frame-Cache). Median statt Mittelwert, damit einzelne
+ * Scheduler-Ausreißer des CI-Runners das Gate nicht flackern lassen.
+ *
+ * Überschreitung ⇒ Exit-Code 1 ⇒ die Quality-Pipeline schlägt fehl.
+ */
+const FRAME_BUDGET_MS = 16;
+const GATE_NODE_COUNT = 36;
+const GATE_EDGES_PER_NODE = 4; // ⇒ 134 Kanten (> 100, > CROSSING_SCAN_EDGE_LIMIT)
+const GATE_REVOLUTIONS = 30;
+
+function perfGate(): boolean {
+  const { nodes, edges } = buildPlan(GATE_NODE_COUNT, GATE_EDGES_PER_NODE);
+  const refs = buildRefs(edges);
+  if (edges.length <= 100) throw new Error('Referenzplan hat keine 100+ Kanten mehr — Gate anpassen');
+  renderEdges(nodes, edges, refs, true); // Warmup (JIT + Frame-Cache)
+
+  const samples: number[] = [];
+  for (let r = 0; r < GATE_REVOLUTIONS; r++) {
+    const start = performance.now();
+    renderEdges(nodes, edges, refs, true);
+    samples.push(performance.now() - start);
+  }
+  samples.sort((a, b) => a - b);
+  const median = samples[Math.floor(samples.length / 2)]!;
+  const p90 = samples[Math.floor(samples.length * 0.9)]!;
+
+  const passed = median <= FRAME_BUDGET_MS;
+  console.log(
+    `\nPerf-Gate (WP-11/#400): Referenzplan N=${GATE_NODE_COUNT} E=${edges.length}  ` +
+      `Median ${median.toFixed(2)} ms  p90 ${p90.toFixed(2)} ms  Budget ${FRAME_BUDGET_MS} ms/Frame  → ` +
+      (passed ? 'OK' : 'ÜBERSCHRITTEN')
+  );
+  return passed;
+}
+
 console.log(
   'Kanten-Render-Durchlauf: vorher (je Kante neu bauen) vs. nachher (Frame-Cache, PERF-01/02/05)\n'
 );
@@ -137,3 +180,7 @@ bench('Klein', 8, 2);
 bench('Mittel', 24, 3);
 bench('Groß', 60, 4);
 bench('Sehr groß', 120, 5);
+
+if (!perfGate()) {
+  process.exitCode = 1;
+}

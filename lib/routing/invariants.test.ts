@@ -408,7 +408,7 @@ type PlanFixture = {
 };
 
 function wirePlan(planName: keyof typeof GOLDEN_PLANS): PlanFixture {
-  const plan = GOLDEN_PLANS[planName];
+  const plan = GOLDEN_PLANS[planName]!;
   const wired = performAutoWiring(plan.nodes as never[], plan.edges as never[]);
   expect(wired).not.toBeNull();
   const nodes = wired!.nodes as Node[];
