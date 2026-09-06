@@ -1,8 +1,18 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { useAppStore } from './store';
+import { migrateAppState, useAppStore } from './store';
 
 describe('useAppStore', () => {
+  it('migrates persisted preferences defensively', () => {
+    expect(migrateAppState({ isProMode: false, calculatedSolarWatts: 420 })).toEqual({
+      isProMode: false,
+      calculatedSolarWatts: 420,
+    });
+    expect(migrateAppState({ isProMode: 'yes', calculatedSolarWatts: -1 })).toEqual({
+      isProMode: undefined,
+      calculatedSolarWatts: undefined,
+    });
+  });
   beforeEach(() => {
     window.localStorage.clear();
     useAppStore.setState({ isProMode: false, calculatedSolarWatts: 0 });

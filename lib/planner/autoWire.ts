@@ -5,6 +5,8 @@ import {
 import type { CablePlannerEdge, PlannerNode } from './domain';
 
 export const AUTO_WIRE_MISSING_BATTERY_MESSAGE = 'Bitte zuerst eine Batterie platzieren';
+export const AUTO_WIRE_MULTIPLE_BATTERIES_MESSAGE =
+  'Auto-Wire unterstützt derzeit nur eine Batterie pro 12-V-System';
 
 type AutoWireOk = {
   ok: true;
@@ -53,7 +55,8 @@ export function planAutoWiring(
   const idFactory = options.idFactory ?? defaultIdFactory;
   const edgeIdPrefix = options.edgeIdPrefix ?? 'e-auto';
 
-  const batteryNode = inputNodes.find((node) => node.type === 'battery');
+  const batteryNodes = inputNodes.filter((node) => node.type === 'battery');
+  const batteryNode = batteryNodes[0];
   if (!batteryNode) {
     return {
       ok: false,
@@ -62,7 +65,16 @@ export function planAutoWiring(
       edges: [],
     };
   }
+  if (batteryNodes.length > 1) {
+    return {
+      ok: false,
+      message: AUTO_WIRE_MULTIPLE_BATTERIES_MESSAGE,
+      nodes: inputNodes,
+      edges: [],
+    };
+  }
 
+  const batteryPosition = batteryNode.position ?? { x: 0, y: 0 };
   const currentNodes = [...inputNodes];
   const generatedEdges: CablePlannerEdge[] = [];
   let edgeIdCounter = 1;
@@ -83,8 +95,8 @@ export function planAutoWiring(
         id: idFactory(),
         type,
         position: {
-          x: batteryNode.position.x + offsetX,
-          y: batteryNode.position.y + offsetY,
+          x: batteryPosition.x + offsetX,
+          y: batteryPosition.y + offsetY,
         },
         data: { label, ...extraData },
       };
