@@ -24,6 +24,7 @@ import { routeConnections } from './routing';
 import type { AutoWireOptions, AutoWireResult } from './types';
 
 export type { AutoWireOptions, AutoWireResult, Analysis, Topology, ConnectionIntent, SizedCable } from './types';
+export { AUTO_WIRE_MANAGED_TYPES } from './types';
 
 /** Meldung, wenn keine Batterie platziert wurde. */
 export const AUTO_WIRE_MISSING_BATTERY_MESSAGE = 'Bitte zuerst eine Batterie platzieren';
@@ -36,7 +37,7 @@ export const AUTO_WIRE_MULTIPLE_BATTERIES_MESSAGE =
  * Führt die vollständige AutoWire-Pipeline aus.
  *
  * @param inputNodes Eingangs-Knoten
- * @param options    Optionen (idFactory, edgeIdPrefix) für deterministische Tests
+ * @param options    Optionen (idFactory, edgeIdPrefix, existingEdges, skipTypes)
  * @returns          AutoWire-Ergebnis
  */
 export function planAutoWiringPipeline(
@@ -63,11 +64,17 @@ export function planAutoWiringPipeline(
   }
 
   const nodes: PlannerNode[] = [...inputNodes];
-  const topology = buildTopology(analysis, nodes, { idFactory: options.idFactory });
+  const topology = buildTopology(analysis, nodes, {
+    idFactory: options.idFactory,
+    skipTypes: options.skipTypes,
+  });
 
   const intents = planConnections(analysis, topology);
   const sized = sizeConnections(intents);
-  const edges: CablePlannerEdge[] = routeConnections(sized, { edgeIdPrefix: options.edgeIdPrefix });
+  const edges: CablePlannerEdge[] = routeConnections(sized, {
+    edgeIdPrefix: options.edgeIdPrefix,
+    existingEdges: options.existingEdges,
+  });
 
   return { ok: true, nodes, edges };
 }

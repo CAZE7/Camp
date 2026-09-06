@@ -13,9 +13,32 @@ import {
   applyPlannerEdgeChanges,
   applyPlannerNodeChanges,
 } from '../../lib/planner/reactFlowAdapter';
+import { AUTO_WIRE_MANAGED_TYPES } from '../../lib/planner/autoWire';
 import { attachRoutedPaths } from '../../lib/planner/routingV2';
 import { validateSchematic } from '../../lib/planner/electrical';
 import type { BaseSliceState, PlannerState, SetState } from './types';
+
+/**
+ * Fügt nur Auto-Wire-verwaltete Komponententypen zur "entfernt"-Liste hinzu,
+ * ohne Duplikate zu erzeugen.
+ */
+function collectRemovedAutoTypes(
+  existing: string[],
+  types: Array<string | undefined>
+): string[] {
+  const toAdd: string[] = [];
+  for (const type of types) {
+    if (
+      type &&
+      (AUTO_WIRE_MANAGED_TYPES as readonly string[]).includes(type) &&
+      !existing.includes(type)
+    ) {
+      toAdd.push(type);
+    }
+  }
+  if (toAdd.length === 0) return existing;
+  return [...existing, ...toAdd];
+}
 
 /** Basis-Slice mit reinem State und direkten Mutations-Helfern. */
 export function createBaseSlice(set: SetState, get: () => PlannerState): BaseSliceState {
@@ -59,10 +82,32 @@ export function createBaseSlice(set: SetState, get: () => PlannerState): BaseSli
     setSelectedNodes: (nodes) => set({ selectedNodes: nodes }),
     setSelectedEdges: (edges) => set({ selectedEdges: edges }),
 
+    removedAutoComponents: [],
+    markAutoComponentsRemoved: (types) =>
+      set((state) => ({
+        removedAutoComponents: collectRemovedAutoTypes(
+          state.removedAutoComponents,
+          types
+        ),
+      })),
+
     vdeValidationResults: validateSchematic(initialNodes, initialEdges),
     hasVdeErrors: () => get().vdeValidationResults.some((result) => result.severity === 'error'),
 
     onNodesChange: (changes) => set((state) => {
+      // Entfernte Auto-Wire-Komponenten merken, damit sie nicht erneut
+      // automatisch angelegt werden.
+      const removedManaged: string[] = [];
+      for (const change of changes) {
+        if (change.type !== 'remove') continue;
+        const node = state.nodes.find((candidate) => candidate.id === change.id);
+        if (node?.type) removedManaged.push(node.type);
+      }
+      const removedAutoComponents = collectRemovedAutoTypes(
+        state.removedAutoComponents,
+        removedManaged
+      );
+
       const nodes = applyPlannerNodeChanges(changes, state.nodes);
       // Routing V2: Knotenbewegungen (Drag) aktualisieren die geführten Pfade,
       // damit die Kanten an den Knoten "hängen" bleiben und Lanes/Hops synchron sind.
@@ -70,6 +115,7 @@ export function createBaseSlice(set: SetState, get: () => PlannerState): BaseSli
       return {
         nodes,
         edges,
+        removedAutoComponents,
         vdeValidationResults: validateSchematic(nodes, edges),
       };
     }),
@@ -97,6 +143,11 @@ export function createBaseSlice(set: SetState, get: () => PlannerState): BaseSli
       const nodeIdsSet = new Set(state.selectedNodes.map((node) => node.id));
       const edgeIdsSet = new Set(state.selectedEdges.map((edge) => edge.id));
 
+      const removedAutoComponents = collectRemovedAutoTypes(
+        state.removedAutoComponents,
+        state.selectedNodes.map((node) => node.type)
+      );
+
       const nodes = state.nodes.filter((node) => !nodeIdsSet.has(node.id));
       const edges = state.edges.filter(
         (edge) => !nodeIdsSet.has(edge.source) && !nodeIdsSet.has(edge.target) && !edgeIdsSet.has(edge.id)
@@ -105,6 +156,7 @@ export function createBaseSlice(set: SetState, get: () => PlannerState): BaseSli
       return {
         nodes,
         edges,
+        removedAutoComponents,
         selectedNodes: [],
         selectedEdges: [],
         vdeValidationResults: validateSchematic(nodes, edges),
