@@ -97,7 +97,7 @@ jobs:
 
       - name: Perf-Gate Kanten-Routing (WP-11 / #400)
         # Harter Budget-Check: Median ≤ 16 ms Main-Thread pro Frame am
-        # 100+-Kanten-Referenzplan (Begründung: dieser ADR).
+        # 100+-Kanten-Referenzplan (Begründung: docs/adr/0012-perf-budget-16ms-pro-frame.md).
         # Überschreitung ⇒ Exit-Code 1 ⇒ Gate rot.
         run: npm run perf:edge-routing
 
