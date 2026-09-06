@@ -8,12 +8,12 @@
   <path d="M 710.4 192 L 710.45 192 Q 710.5 192 710.5 191.95 L 710.5 160 Q 710.5 150 700.5 150 L 682 150 Q 672 150 672 140 L 672 120" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
   <path d="M 768 36 L 990 36 Q 1000 36 1000 46 L 1000 250 Q 1000 260 1010 260 L 1200 260" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
   <path d="M 768 276 L 1008 276 Q 1016 276 1016 268 L 1016 268 Q 1016 260 1024 260 L 1200 260" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
-  <path d="M 768 36 L 990 36 Q 1000 36 1000 46 L 1000 530 Q 1000 540 1010 540 L 1200 540" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
-  <path d="M 768 276 L 1022 276 Q 1032 276 1032 286 L 1032 530 Q 1032 540 1042 540 L 1200 540" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
+  <path d="M 768 36 L 990 36 Q 1000 36 1000 46 L 1000 268 A 8 8 0 0 1 1000 284 L 1000 530 Q 1000 540 1010 540 L 1200 540" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
+  <path d="M 768 276 L 992 276 A 8 8 0 0 1 1008 276 L 1022 276 Q 1032 276 1032 286 L 1032 530 Q 1032 540 1042 540 L 1200 540" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
   <path d="M 57.6 -280 L 57.55 -280 Q 57.5 -280 57.5 -279.95 L 57.5 -30.75 Q 57.5 -20.75 67.5 -20.75 L 381.13 -20.75 Q 384 -20.75 384 -23.62 L 384 -23.62 Q 384 -26.5 384 -23.62 L 384 0" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
   <path d="M 134.4 -280 L 134.45 -280 Q 134.5 -280 134.5 -279.95 L 134.5 -46.75 Q 134.5 -36.75 144.5 -36.75 L 374 -36.75 Q 384 -36.75 384 -26.75 L 384 0" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
   <path d="M 345.6 120 L 345.55 120 Q 345.5 120 345.5 120.05 L 345.5 154.5 Q 345.5 164.5 355.5 164.5 L 374 164.5 Q 384 164.5 384 174.5 L 384 192" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
-  <path d="M 480 84 L 537 84 Q 547 84 547 94 L 547 242 Q 547 252 557 252 L 576 252" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
+  <path d="M 480 84 L 537 84 Q 547 84 547 94 L 547 220 A 8 8 0 0 1 547 236 L 547 242 Q 547 252 557 252 L 576 252" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
   <rect x="0" y="0" width="192" height="120" fill="#1e293b" stroke="#64748b" stroke-width="2" rx="8"/>
   <text x="12" y="28" fill="#e2e8f0" font-family="monospace" font-size="14">Batterie</text>
   <rect x="0" y="-400" width="192" height="120" fill="#1e293b" stroke="#64748b" stroke-width="2" rx="8"/>

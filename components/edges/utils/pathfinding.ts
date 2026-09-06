@@ -818,6 +818,12 @@ export type PathResult = {
   bends: number;
   crossings: number;
   usedSearch: 'catalog' | 'astar' | 'fallback';
+  /**
+   * WP-7 (#395): Kreuzungen, an denen DIESE Leitung einen Bogen zeichnet.
+   * Wird erst in `routeAllCables` gefüllt (nur dort sind alle Leitungen
+   * bekannt); die Einzelpfad-Suche liefert immer eine leere Liste.
+   */
+  hops?: { x: number; y: number; orientation: 'horizontal' | 'vertical' }[];
 };
 
 const cache = new Map<string, PathResult>();

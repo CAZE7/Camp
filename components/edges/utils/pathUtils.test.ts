@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
+  waypointsToPath,
+  waypointsToPathWithHops,
   calculateEdgePath,
   polarityPathOffset,
   polarityLabelNudge,
@@ -309,5 +311,122 @@ describe('Lane-System (R-5)', () => {
   it('Ausweich-Trassen der Router liegen auf ganzzahligen Lanes', () => {
     expect(ALTERNATIVE_ROUTE_GAP).toBe(laneOffset(3));
     expect(ALTERNATIVE_ROUTE_GAP * 2).toBe(laneOffset(6));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// WP-7 (#395): Hop-Rendering — Kreuzung ≠ Verbindung
+// ---------------------------------------------------------------------------
+
+describe('waypointsToPathWithHops', () => {
+  const line = [
+    { x: 0, y: 100 },
+    { x: 200, y: 100 },
+  ];
+
+  it('ist ohne Hops zeichengleich mit waypointsToPath', () => {
+    const knick = [
+      { x: 0, y: 0 },
+      { x: 100, y: 0 },
+      { x: 100, y: 80 },
+    ];
+    expect(waypointsToPathWithHops(knick, 8)).toBe(waypointsToPath(knick, 8));
+    expect(waypointsToPathWithHops(knick, 8, [])).toBe(waypointsToPath(knick, 8));
+  });
+
+  it('setzt einen Halbkreis-Bogen um den Kreuzungspunkt', () => {
+    const d = waypointsToPathWithHops(line, 8, [{ x: 100, y: 100, orientation: 'horizontal' }]);
+    expect(d).toBe('M 0 100 L 92 100 A 8 8 0 0 1 108 100 L 200 100');
+  });
+
+  it('wölbt den Bogen richtungsunabhängig zur selben Seite', () => {
+    const rechts = waypointsToPathWithHops(line, 8, [{ x: 100, y: 100, orientation: 'horizontal' }]);
+    const links = waypointsToPathWithHops([...line].reverse(), 8, [
+      { x: 100, y: 100, orientation: 'horizontal' },
+    ]);
+    // Gegenläufig ⇒ gespiegeltes Sweep-Flag, damit die Wölbung gleich bleibt.
+    expect(rechts).toContain('A 8 8 0 0 1');
+    expect(links).toContain('A 8 8 0 0 0');
+  });
+
+  it('zeichnet mehrere Bögen entlang derselben Strecke in Laufrichtung', () => {
+    const d = waypointsToPathWithHops(line, 8, [
+      { x: 150, y: 100, orientation: 'horizontal' },
+      { x: 50, y: 100, orientation: 'horizontal' },
+    ]);
+    expect(d).toBe('M 0 100 L 42 100 A 8 8 0 0 1 58 100 L 142 100 A 8 8 0 0 1 158 100 L 200 100');
+  });
+
+  it('behandelt senkrechte Strecken gleichwertig', () => {
+    const d = waypointsToPathWithHops(
+      [
+        { x: 40, y: 0 },
+        { x: 40, y: 200 },
+      ],
+      8,
+      [{ x: 40, y: 100, orientation: 'vertical' }]
+    );
+    expect(d).toBe('M 40 0 L 40 92 A 8 8 0 0 1 40 108 L 40 200');
+  });
+
+  it('ignoriert Hops, die nicht auf der Leitung liegen', () => {
+    const d = waypointsToPathWithHops(line, 8, [
+      { x: 100, y: 40, orientation: 'horizontal' },
+      { x: 300, y: 100, orientation: 'horizontal' },
+      { x: 100, y: 100, orientation: 'vertical' },
+    ]);
+    expect(d).toBe(waypointsToPath(line, 8));
+  });
+
+  it('ignoriert Hops exakt auf einem Endpunkt (dort gibt es nichts zu überbrücken)', () => {
+    const d = waypointsToPathWithHops(line, 8, [{ x: 0, y: 100, orientation: 'horizontal' }]);
+    expect(d).toBe(waypointsToPath(line, 8));
+  });
+
+  it('verteilt Bögen auf beide Schenkel eines Knicks und behält die Ecke', () => {
+    const knick = [
+      { x: 0, y: 0 },
+      { x: 200, y: 0 },
+      { x: 200, y: 200 },
+    ];
+    const d = waypointsToPathWithHops(knick, 8, [
+      { x: 100, y: 0, orientation: 'horizontal' },
+      { x: 200, y: 100, orientation: 'vertical' },
+    ]);
+    expect(d).toBe(
+      'M 0 0 L 92 0 A 8 8 0 0 1 108 0 L 192 0 Q 200 0 200 8 L 200 92 A 8 8 0 0 1 200 108 L 200 200'
+    );
+  });
+
+  it('staucht den Bogen, statt in die gerundete Ecke zu laufen', () => {
+    const knick = [
+      { x: 0, y: 0 },
+      { x: 20, y: 0 },
+      { x: 20, y: 60 },
+    ];
+    // Kreuzung 4 px vor der Ecke: der Bogen darf höchstens Radius 4 haben.
+    const d = waypointsToPathWithHops(knick, 8, [{ x: 8, y: 0, orientation: 'horizontal' }]);
+    expect(d).toContain('A 4 4 0 0 1');
+    expect(d).toContain('Q 20 0');
+  });
+
+  it('lässt aufeinander folgende Bögen nicht ineinander laufen', () => {
+    const d = waypointsToPathWithHops(line, 8, [
+      { x: 100, y: 100, orientation: 'horizontal' },
+      { x: 110, y: 100, orientation: 'horizontal' },
+    ]);
+    // Zweiter Bogen auf Radius 8 würde bei 102 beginnen — vor dem Ende des ersten (108).
+    expect(d).toBe('M 0 100 L 92 100 A 8 8 0 0 1 108 100 A 2 2 0 0 1 112 100 L 200 100');
+  });
+
+  it('erlaubt einen eigenen Bogenradius unabhängig vom Eckenradius', () => {
+    const d = waypointsToPathWithHops(line, 16, [{ x: 100, y: 100, orientation: 'horizontal' }], 8);
+    expect(d).toContain('A 8 8 0 0 1');
+  });
+
+  it('bleibt bei zu kurzen Wegen leer bzw. unverändert', () => {
+    expect(waypointsToPathWithHops([{ x: 0, y: 0 }], 8, [{ x: 0, y: 0, orientation: 'horizontal' }])).toBe(
+      ''
+    );
   });
 });
