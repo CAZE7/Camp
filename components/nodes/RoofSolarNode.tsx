@@ -1,7 +1,7 @@
 'use client';
 import React from 'react';
 
-import { NodeResizer } from 'reactflow';
+import { NodeResizer } from '@xyflow/react';
 import { cn } from '@/lib/utils';
 import { type RoofNodeData } from './types';
 

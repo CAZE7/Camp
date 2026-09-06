@@ -5,7 +5,7 @@ import {
   type SolarNodeData,
   type ChargerNodeData,
 } from '@/components/nodes/types';
-import { type Node, type Edge } from 'reactflow';
+import { type Node, type Edge } from '@xyflow/react';
 import { getSystemVoltage } from '../utils/voltage';
 import {
   VDE_INVERTER_EFFICIENCY,

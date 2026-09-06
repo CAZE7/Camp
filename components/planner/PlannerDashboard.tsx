@@ -25,7 +25,7 @@ import {
 import { usePlannerStore } from '../../store/usePlannerStore';
 import { useAppStore } from '../../lib/store';
 import { useShallow } from 'zustand/react/shallow';
-import { getNodesBounds, getViewportForBounds } from 'reactflow';
+import { getNodesBounds, getViewportForBounds } from '@xyflow/react';
 import { useLiveValidation, type ValidationWarning } from './hooks/useLiveValidation';
 import { WarningCenter } from './ui/WarningCenter';
 import { calculateConduitFillPercent, VDE_MAX_CONDUIT_FILL_PERCENT } from '../../lib/vde-standards';
@@ -179,7 +179,7 @@ function ActionsSection({
   setSeason: (season: 'summer' | 'winter') => void;
   autoWireSystem: () => void;
   onLayout: () => void;
-  nodes: import('reactflow').Node[];
+  nodes: import('@xyflow/react').Node[];
   warnings: ValidationWarning[];
   setFeedback: (feedback: ActionFeedback) => void;
   undo?: () => void;
@@ -585,7 +585,9 @@ export function PlannerDashboard() {
       .filter((node) => node.type === 'conduit')
       .forEach((node) => {
         const conduitType = String(node.data?.conduitType || 'EN 20');
-        const assigned = new Set<string>(node.data?.assignedEdges || []);
+        // Persistenzgrenze: `assignedEdges` kommt als unbekannte Feldform aus
+        // dem Store und wird hier auf die erwartete ID-Liste eingegrenzt.
+        const assigned = new Set<string>((node.data?.assignedEdges as string[] | undefined) || []);
         // Persistenzgrenze: `edge.data.crossSection` kommt aus dem Store und
         // wird hier geprüft in mm² überführt (Standardkabel 2.5 mm² als Ersatz).
         const crossSections = edges

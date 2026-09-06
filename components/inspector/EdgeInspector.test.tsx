@@ -1,6 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { Edge } from 'reactflow';
+import type { Edge } from '@xyflow/react';
 import type { CableEdgeData } from '../edges/CableEdge';
 import { EdgeInspector } from './EdgeInspector';
 

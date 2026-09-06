@@ -1,4 +1,5 @@
-import { type Node, type Edge } from 'reactflow';
+import { type Edge } from '@xyflow/react';
+import { nodeHeight, nodeOriginX, nodeOriginY, nodeWidth, type RoutableNode } from './nodeGeometry';
 import {
   NODE_FALLBACK_WIDTH,
   NODE_FALLBACK_HEIGHT,
@@ -25,10 +26,10 @@ import { SegmentSpatialIndex } from './segmentSpatialIndex';
  * Reference identity is a safe proxy for content because applyNodeChanges /
  * setNodes always hand out a *new* array on update.
  */
-const OBSTACLE_MAP_CACHE = new WeakMap<Node[], Map<string, Rect>>();
+const OBSTACLE_MAP_CACHE = new WeakMap<RoutableNode[], Map<string, Rect>>();
 
 /** Returns the nodeId → bounding-box map, built once per `nodes` array. */
-export function getObstacleMap(nodes: Node[]): Map<string, Rect> {
+export function getObstacleMap(nodes: RoutableNode[]): Map<string, Rect> {
   let map = OBSTACLE_MAP_CACHE.get(nodes);
   if (!map) {
     map = new Map<string, Rect>();
@@ -39,10 +40,10 @@ export function getObstacleMap(nodes: Node[]): Map<string, Rect> {
       // Hindernis-Rechtecke lägen dann an der falschen Canvas-Stelle.
       // Aktuell vergibt die App keine parentId; der Fix ist defensiv.
       map.set(node.id, {
-        x: node.positionAbsolute?.x ?? node.position.x,
-        y: node.positionAbsolute?.y ?? node.position.y,
-        width: node.width || NODE_FALLBACK_WIDTH,
-        height: node.height || NODE_FALLBACK_HEIGHT,
+        x: nodeOriginX(node),
+        y: nodeOriginY(node),
+        width: nodeWidth(node, NODE_FALLBACK_WIDTH),
+        height: nodeHeight(node, NODE_FALLBACK_HEIGHT),
       });
     }
     OBSTACLE_MAP_CACHE.set(nodes, map);
@@ -51,7 +52,7 @@ export function getObstacleMap(nodes: Node[]): Map<string, Rect> {
 }
 
 /** Obstacle rectangles of all nodes except the given excluded ids. */
-export function obstaclesExcluding(nodes: Node[], excludeIds: Set<string>): Rect[] {
+export function obstaclesExcluding(nodes: RoutableNode[], excludeIds: Set<string>): Rect[] {
   const map = getObstacleMap(nodes);
   const out: Rect[] = [];
   map.forEach((rect, id) => {
@@ -99,19 +100,19 @@ type CrossingItem = {
 };
 
 /** Key is the `edges` array; value is keyed by the `nodes` array of that snapshot. */
-const CROSSING_BASE_CACHE = new WeakMap<Edge[], WeakMap<Node[], CrossingBase>>();
+const CROSSING_BASE_CACHE = new WeakMap<Edge[], WeakMap<RoutableNode[], CrossingBase>>();
 
 type CrossingEdgeRef = { id: string; source: string; target: string };
 
-function buildCrossingBase(nodes: Node[], edges: CrossingEdgeRef[]): CrossingBase {
+function buildCrossingBase(nodes: RoutableNode[], edges: CrossingEdgeRef[]): CrossingBase {
   const centers = new Map<string, Point>();
   for (const node of nodes) {
     if (!node) continue;
     // positionAbsolute (siehe getObstacleMap): Gruppen-Kinder routen im
     // Canvas-Koordinatensystem, ihre position wäre relativ zum Parent.
     centers.set(node.id, {
-      x: (node.positionAbsolute?.x ?? node.position.x) + (node.width || NODE_FALLBACK_WIDTH) / 2,
-      y: (node.positionAbsolute?.y ?? node.position.y) + (node.height || NODE_FALLBACK_HEIGHT) / 2,
+      x: nodeOriginX(node) + nodeWidth(node, NODE_FALLBACK_WIDTH) / 2,
+      y: nodeOriginY(node) + nodeHeight(node, NODE_FALLBACK_HEIGHT) / 2,
     });
   }
 
@@ -126,10 +127,10 @@ function buildCrossingBase(nodes: Node[], edges: CrossingEdgeRef[]): CrossingBas
   return { centers, items, index };
 }
 
-function getCrossingBase(nodes: Node[], edges: CrossingEdgeRef[]): CrossingBase {
+function getCrossingBase(nodes: RoutableNode[], edges: CrossingEdgeRef[]): CrossingBase {
   let byNodes = CROSSING_BASE_CACHE.get(edges as unknown as Edge[]);
   if (!byNodes) {
-    byNodes = new WeakMap<Node[], CrossingBase>();
+    byNodes = new WeakMap<RoutableNode[], CrossingBase>();
     CROSSING_BASE_CACHE.set(edges as unknown as Edge[], byNodes);
   }
   let base = byNodes.get(nodes);
@@ -148,7 +149,7 @@ function getCrossingBase(nodes: Node[], edges: CrossingEdgeRef[]): CrossingBase 
  * work reduces to an O(E) filter over the shared segment list.
  */
 export function crossingSegmentsExcluding(
-  nodes: Node[],
+  nodes: RoutableNode[],
   edges: CrossingEdgeRef[],
   current: CrossingEdgeRef
 ): Segment[] {
@@ -174,7 +175,7 @@ export function crossingSegmentsExcluding(
  * Node-Paars sind ausgenommen.
  */
 export function crossingSegmentsNear(
-  nodes: Node[],
+  nodes: RoutableNode[],
   edges: CrossingEdgeRef[],
   current: CrossingEdgeRef,
   region: Rect

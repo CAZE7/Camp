@@ -49,8 +49,8 @@ const mockScreenToFlowPosition = vi
     x: pos.x ?? pos.clientX,
     y: pos.y ?? pos.clientY,
   }));
-vi.mock('reactflow', async () => {
-  const actual = await vi.importActual('reactflow');
+vi.mock('@xyflow/react', async () => {
+  const actual = await vi.importActual('@xyflow/react');
   return {
     ...actual,
     useReactFlow: () => ({
@@ -77,7 +77,8 @@ vi.mock('reactflow', async () => {
         {children}
       </div>
     ),
-    default: ({
+    // v12 exportiert die Canvas-Komponente benannt (`ReactFlow`) statt als Default.
+    ReactFlow: ({
       children,
       nodes,
       edges,
@@ -135,9 +136,11 @@ const mockOnConnect = vi.fn();
 
 const defaultPlannerStoreState = {
   viewMode: 'electric',
-  nodes: [{ id: '1', type: 'battery', data: {} }],
+  // React Flow 12 misst Knoten beim Übernehmen (`adoptUserNodes`) und setzt
+  // `position` voraus — v11 hat eine fehlende Position stillschweigend geduldet.
+  nodes: [{ id: '1', type: 'battery', position: { x: 0, y: 0 }, data: {} }],
   edges: [{ id: 'e1', source: '1', target: '2', data: { crossSection: 4, length: 5 } }],
-  waterNodes: [{ id: 'w1', type: 'freshWaterTank', data: {} }],
+  waterNodes: [{ id: 'w1', type: 'freshWaterTank', position: { x: 0, y: 0 }, data: {} }],
   waterEdges: [{ id: 'we1', source: 'w1', target: 'w2', data: {} }],
   waterWarning: '',
   season: 'summer',

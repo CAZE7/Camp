@@ -1,7 +1,7 @@
 import { describe, expect, it, afterEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { Sparkles } from 'lucide-react';
-import type { Node } from 'reactflow';
+import type { Node } from '@xyflow/react';
 import {
   BUILTIN_COMPONENT_SPECS,
   ComponentSpecError,

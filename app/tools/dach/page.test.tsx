@@ -23,8 +23,8 @@ vi.mock('next/link', () => ({
 }));
 
 // Mock React Flow
-vi.mock('reactflow', async () => {
-  const actual = await vi.importActual('reactflow');
+vi.mock('@xyflow/react', async () => {
+  const actual = await vi.importActual('@xyflow/react');
   const React = await import('react');
   return {
     ...actual,

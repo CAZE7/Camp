@@ -1,8 +1,13 @@
 import React from 'react';
-import { type Node, type Edge } from 'reactflow';
+import { type Edge } from '@xyflow/react';
 import { type CableEdgeData } from '../edges/CableEdge';
 import { ValidatingInput, COMMON_RULES } from '../ui/ValidatingInput';
-import { type NodeDataPatch, type PlannerNodeType, type TypedNode } from '../nodes/types';
+import {
+  type NodeDataPatch,
+  type PlannerFlowNode,
+  type PlannerNodeType,
+  type TypedNode,
+} from '../nodes/types';
 
 /**
  * Die Inspectors lesen/schreiben Node-Daten typisiert über die Registry
@@ -14,7 +19,7 @@ export type InspectorNode<K extends PlannerNodeType> = TypedNode<K>;
 export type InspectorUpdate = (id: string, patch: NodeDataPatch) => void;
 
 export interface BaseNodeInspectorProps {
-  node: Node;
+  node: PlannerFlowNode;
   onUpdateNodeData?: InspectorUpdate;
 }
 
@@ -35,6 +40,9 @@ const COMPONENT_HELP: Record<string, string> = {
 
 export function ComponentInfoInspector({ node, onUpdateNodeData }: BaseNodeInspectorProps) {
   if (node.type === 'busbar') {
+    // Engstelle wie im Inspector-Switch: das `type`-Literal garantiert die
+    // Datenform, erst danach ist `rating` eine Zahl statt `unknown`.
+    const busbar = node as unknown as TypedNode<'busbar'>;
     return (
       <div className="space-y-3">
         <p className="rounded-lg bg-accent p-3 text-sm text-foreground">
@@ -49,7 +57,7 @@ export function ComponentInfoInspector({ node, onUpdateNodeData }: BaseNodeInspe
             id={`${node.id}-rating`}
             type="number"
             min="1"
-            value={node.data?.rating || 250}
+            value={busbar.data?.rating || 250}
             rules={[COMMON_RULES.strictlyPositive]}
             onValidChange={(value) => onUpdateNodeData?.(node.id, { rating: value })}
             className="min-h-11 rounded border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
@@ -294,7 +302,7 @@ export function InverterInspector({
 }: {
   node: InspectorNode<'inverter'>;
   onUpdateNodeData?: InspectorUpdate;
-  nodes?: Node[];
+  nodes?: PlannerFlowNode[];
 }) {
   const consumerNodes = React.useMemo(() => {
     return nodes?.filter((n) => n.type === 'consumer230v') || [];

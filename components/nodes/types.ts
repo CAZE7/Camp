@@ -1,4 +1,4 @@
-import { type ResizeDragEvent, type Node, type NodeProps } from 'reactflow';
+import { type ResizeDragEvent, type Node, type NodeProps } from '@xyflow/react';
 
 /**
  * Typmodell der Planer-Nodes (AGENTS.md M6-3).
@@ -189,6 +189,15 @@ export type PlannerNode = {
 
 /** Aus der Union auf einen (oder mehrere) Typen herausgeschnittener Node. */
 export type TypedNode<K extends PlannerNodeType> = Extract<PlannerNode, { type: K }>;
+
+/**
+ * Node, wie ihn Store und UI führen: React-Flow-Node mit Planer-Datenform.
+ *
+ * React Flow 12 typisiert `Node['data']` als `Record<string, unknown>`
+ * (v11: `any`). Ohne diesen Alias wäre jeder Lesezugriff `unknown` und die
+ * Inspektoren müssten casten — die Datenform ist aber bekannt.
+ */
+export type PlannerFlowNode = Node<CommonNodeData>;
 
 /**
  * Props einer Planer-Node-Komponente.

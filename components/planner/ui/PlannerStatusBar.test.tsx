@@ -7,7 +7,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 
 const screenToFlowPosition = vi.fn((p: { x: number; y: number }) => ({ x: p.x * 2, y: p.y * 2 }));
-vi.mock('reactflow', () => ({
+vi.mock('@xyflow/react', () => ({
   useReactFlow: () => ({ screenToFlowPosition }),
 }));
 

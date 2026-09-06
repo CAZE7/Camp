@@ -1,6 +1,6 @@
 'use client';
 import React, { useMemo } from 'react';
-import { Handle, Position, useNodes } from 'reactflow';
+import { Handle, Position, useNodes, type Node } from '@xyflow/react';
 import { type InverterNodeData, type PlannerNodeProps } from './types';
 import { useInlineNodeEditing } from './hooks/useInlineNodeEditing';
 import { type CommonNodeData } from './types';
@@ -10,7 +10,8 @@ const InverterNode = function ({ id, data, isConnectable, selected }: PlannerNod
   const { editingField, tempValue, setTempValue, handleDoubleClick, handleBlur, handleKeyDown } =
     useInlineNodeEditing(id);
 
-  const nodes = useNodes<CommonNodeData>();
+  // v12: `useNodes` ist über den NODE-Typ generisch, nicht über die Datenform.
+  const nodes = useNodes<Node<CommonNodeData>>();
 
   const overloadStats = useMemo(() => {
     const concurrentDevices = data.concurrentDevices || [];

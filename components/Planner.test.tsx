@@ -33,8 +33,8 @@ vi.mock('./planner/FlowCanvas', () => ({
 }));
 
 // Mock ReactFlowProvider
-vi.mock('reactflow', async () => {
-  const actual = await vi.importActual('reactflow');
+vi.mock('@xyflow/react', async () => {
+  const actual = await vi.importActual('@xyflow/react');
   return {
     ...actual,
     ReactFlowProvider: ({ children }: { children: React.ReactNode }) => (

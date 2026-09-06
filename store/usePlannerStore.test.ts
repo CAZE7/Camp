@@ -2,7 +2,7 @@ import type React from 'react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { usePlannerStore } from './usePlannerStore';
-import { type Node, type Edge } from 'reactflow';
+import { type Node, type Edge } from '@xyflow/react';
 
 // Mock the layout utility so Auto-Layout-Aufrufe im Store deterministisch
 // bleiben (kein echtes Layout im Test).

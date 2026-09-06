@@ -1,5 +1,5 @@
-import { addEdge, applyNodeChanges, applyEdgeChanges } from 'reactflow';
-import type { Node, Edge } from 'reactflow';
+import { addEdge, applyNodeChanges, applyEdgeChanges } from '@xyflow/react';
+import type { Node, Edge } from '@xyflow/react';
 import { getLayoutedElements } from '../../components/planner/utils/layout';
 import { TEMPLATES_DICT } from '../../components/planner/templates';
 import { getEdgeDomain, getHandleDomain } from '../../lib/electrical';

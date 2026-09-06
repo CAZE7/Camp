@@ -1,4 +1,5 @@
-import { type Node, type Edge } from 'reactflow';
+import { type Node, type Edge } from '@xyflow/react';
+import { nodeHeight, nodeWidth } from '../../edges/utils/nodeGeometry';
 
 /** Visual fallbacks for nodes that React Flow has not measured yet. */
 export const DEFAULT_NODE_WIDTH = 192;
@@ -74,11 +75,17 @@ export const getNodeLayoutRank = (node: Node): number => {
   return 2; // Default to distribution layer
 };
 
+/**
+ * Kartenmaße fürs Auto-Layout. Liest über die Messgrenze: React Flow 12 hält
+ * die GEMESSENE Größe in `node.measured`, während `node.width/height` die
+ * (meist leeren) gesetzten Maße sind. Direkt gelesen fiel das Layout still
+ * auf die Typ-Defaults zurück und stapelte Karten anders als bemessen.
+ */
 export const getNodeLayoutSize = (node: Node): { width: number; height: number } => {
   const typed = node.type ? NODE_SIZE_BY_TYPE[node.type] : undefined;
   return {
-    width: node.width || typed?.width || DEFAULT_NODE_WIDTH,
-    height: node.height || typed?.height || DEFAULT_NODE_HEIGHT,
+    width: nodeWidth(node, typed?.width ?? DEFAULT_NODE_WIDTH),
+    height: nodeHeight(node, typed?.height ?? DEFAULT_NODE_HEIGHT),
   };
 };
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { type Node } from 'reactflow';
+import { type Node } from '@xyflow/react';
 import {
   getObstacleMap,
   obstaclesExcluding,

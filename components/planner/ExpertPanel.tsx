@@ -24,7 +24,7 @@ import { usePlannerStore } from '../../store/usePlannerStore';
 import { calculateCrossSection, calculateMaxFuse } from '../../lib/electrical';
 import { VDE_INVERTER_EFFICIENCY, VDE_SOLAR_VMP_VOLTAGE, getSystemVoltage } from '../../lib/vde-standards';
 import { cn } from '@/lib/utils';
-import { type Node, type Edge } from 'reactflow';
+import { type Node, type Edge } from '@xyflow/react';
 import type { CableEdgeData } from '../edges/CableEdge';
 
 /* ─── Knowledge Database ─── */

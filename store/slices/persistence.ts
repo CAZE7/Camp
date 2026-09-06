@@ -1,5 +1,5 @@
 import { createJSONStorage, type PersistOptions } from 'zustand/middleware';
-import { type Node, type Edge } from 'reactflow';
+import { type Node, type Edge } from '@xyflow/react';
 import { plannerDebouncedStorage } from '../storage';
 import { type CableEdgeData } from '../../components/edges/CableEdge';
 import type { PlannerState } from './types';

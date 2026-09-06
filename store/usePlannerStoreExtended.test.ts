@@ -14,7 +14,7 @@ import { act } from '@testing-library/react';
 import { usePlannerStore, getDerivedSystemState } from './usePlannerStore';
 import { TEMPLATE_MINIMALIST } from '../components/planner/templates';
 import * as layoutUtils from '../components/planner/utils/layout';
-import type { Node, Edge } from 'reactflow';
+import type { Node, Edge } from '@xyflow/react';
 import { type CableEdgeData } from '../components/edges/CableEdge';
 
 vi.mock('../components/planner/utils/layout', () => ({

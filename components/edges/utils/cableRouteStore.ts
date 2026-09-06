@@ -1,5 +1,13 @@
 import { useRef, useLayoutEffect, useSyncExternalStore } from 'react';
-import { useStore, useStoreApi, type Node, type Edge } from 'reactflow';
+import { useStore, useStoreApi, type Edge } from '@xyflow/react';
+import {
+  measuredHeight,
+  measuredWidth,
+  nodeOriginX,
+  nodeOriginY,
+  type GeometryNode,
+  type RoutableNode,
+} from './nodeGeometry';
 import { routeAllCables, type RouteEdgeRef } from './routeAll';
 import type { PathResult } from './pathfinding';
 
@@ -14,14 +22,14 @@ import type { PathResult } from './pathfinding';
  * über dieselbe, inhaltsbasierte Invalidierung.
  */
 
-/** Signatur aller Node-Geometrien (positionAbsolute, width, height). */
-export function nodeLayoutSignature(nodes: Node[]): string {
+/** Signatur aller Node-Geometrien (absolute Position, gemessene Maße). */
+export function nodeLayoutSignature(nodes: ({ id: string } & GeometryNode)[]): string {
   const parts: string[] = [];
   for (const node of nodes) {
     if (!node) continue;
     parts.push(
-      `${node.id}:${node.positionAbsolute?.x ?? node.position.x},${node.positionAbsolute?.y ?? node.position.y}` +
-        `:${node.width ?? ''}x${node.height ?? ''}`
+      `${node.id}:${nodeOriginX(node)},${nodeOriginY(node)}` +
+        `:${measuredWidth(node) ?? ''}x${measuredHeight(node) ?? ''}`
     );
   }
   return parts.sort().join('|');
@@ -127,7 +135,9 @@ export function CableRouteSync() {
   // R-9: inhaltsbasierte Signatur (Move/Resize/Delete/Connect/Undo/Redo
   // ändern sie zuverlässig — die alte Positionssumme tat das nicht).
   const signature = useStore((s) => {
-    const nodes = nodeLayoutSignature([...s.nodeInternals.values()]);
+    // v12: `nodeLookup` ersetzt `nodeInternals` und liefert InternalNodes —
+    // gemessene Maße unter `measured`, absolute Position unter `internals`.
+    const nodes = nodeLayoutSignature([...s.nodeLookup.values()]);
     const edges = edgeTopologySignature(s.edges);
     return `${nodes}#${edges}`;
   });
@@ -140,7 +150,10 @@ export function CableRouteSync() {
   if (runnerRef.current === null) {
     runnerRef.current = createThrottledRunner(() => {
       const state = store.getState();
-      publishCableRoutes(routeAllCables(state.getNodes(), state.edges as RouteEdgeRef[]));
+      // InternalNodes statt `getNodes()` (in v12 nicht mehr am Store):
+      // sie tragen gemessene Größe UND Handle-Rechtecke.
+      const nodes = [...state.nodeLookup.values()] as unknown as RoutableNode[];
+      publishCableRoutes(routeAllCables(nodes, state.edges as RouteEdgeRef[]));
     }, ROUTE_THROTTLE_MS);
   }
 

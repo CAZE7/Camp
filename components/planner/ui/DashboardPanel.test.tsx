@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import { DashboardPanel } from './DashboardPanel';
 import React from 'react';
 
-vi.mock('reactflow', () => ({
+vi.mock('@xyflow/react', () => ({
   Panel: ({
     children,
     position,

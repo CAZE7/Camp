@@ -89,6 +89,27 @@ export function segmentsCross(s1: Segment, s2: Segment): boolean {
   return o1 !== 0 && o2 !== 0 && o3 !== 0 && o4 !== 0 && o1 !== o2 && o3 !== o4;
 }
 
+/**
+ * Schnittpunkt zweier ECHT kreuzender Strecken (`segmentsCross`).
+ *
+ * Gibt `undefined` zurück, wenn die Strecken sich nicht echt kreuzen —
+ * Berührung und kollineare Überlappung haben keinen eindeutigen Punkt und
+ * sind laut Kollisionsmodell (WP-3) ohnehin kein Crossing. Grundlage des
+ * Kreuzungs-Hoppings (WP-7): der Punkt ist der Mittelpunkt des Bogens.
+ */
+export function segmentIntersectionPoint(s1: Segment, s2: Segment): Point | undefined {
+  if (!segmentsCross(s1, s2)) return undefined;
+  const [p1, q1] = s1;
+  const [p2, q2] = s2;
+  const r = { x: q1.x - p1.x, y: q1.y - p1.y };
+  const s = { x: q2.x - p2.x, y: q2.y - p2.y };
+  const denominator = r.x * s.y - r.y * s.x;
+  // segmentsCross schließt Parallelität aus; die Prüfung bleibt als Absicherung.
+  if (Math.abs(denominator) <= ORIENT_EPS) return undefined;
+  const t = ((p2.x - p1.x) * s.y - (p2.y - p1.y) * s.x) / denominator;
+  return { x: p1.x + t * r.x, y: p1.y + t * r.y };
+}
+
 /** Abstand Punkt ↔ Strecke (euklidisch). */
 export function distancePointToSegment(p: Point, s: Segment): number {
   const [a, b] = s;

@@ -967,26 +967,23 @@
   }
 
   /* --- D-4: Anschlusspunkte auf der Kartenkante ------------------------
-     React Flows Default-Offset (-4 px) galt für 6-px-Handles; unsere
-     Trefferfläche ist 44 px. Ohne Gegenrechnung sitzt der sichtbare Punkt
-     ~18 px IMMER im Karteninneren und überdeckt Text/Kante (Batterie-Titel,
-     „BAT"-Code) und Kabel enden sichtbar im Kartenbauch. Mit -22 px liegt
-     der Punkt-Mittelpunkt exakt auf der Rahmenlinie — wie Anschlusspunkte
-     in CAD-Schaltplänen; Kabel enden an der Kante. Voraussetzung ist das
-     `overflow: visible` unten (sonst schneidet die Karte den halben Punkt
-     und den Touch-Drag-Griff ab). */
-  .planner-shell .react-flow__handle-left {
-    left: -22px;
-  }
-  .planner-shell .react-flow__handle-right {
-    right: -22px;
-  }
-  .planner-shell .react-flow__handle-top {
-    top: -22px;
-  }
-  .planner-shell .react-flow__handle-bottom {
-    bottom: -22px;
-  }
+     Ziel unverändert: der Punkt-Mittelpunkt liegt exakt auf der Rahmenlinie
+     — wie Anschlusspunkte in CAD-Schaltplänen; Kabel enden an der Kante.
+
+     KEINE Gegenrechnung mehr. React Flow 11 setzte einen festen Pixel-Offset
+     (`right: -4px`) ohne Achsen-Transform; der galt für 6-px-Handles, und
+     unsere 44-px-Trefferfläche musste ihn mit -22 px korrigieren. React
+     Flow 12 setzt stattdessen `right: 0` PLUS `transform: translate(50%, -50%)`
+     — der Kasten wird also unabhängig von seiner Größe selbst auf der Kante
+     zentriert. Die alte -22-px-Korrektur addierte sich in v12 zum Transform
+     und schob Trefferfläche und Punkt eine halbe Fläche (22 px) nach außen:
+     der sichtbare Punkt schwebte neben der Karte, und ein Tap auf den
+     Anschluss landete auf der leeren Fläche daneben (Touch-E2E, pixel5).
+
+     Wer hier wieder einen Offset einträgt, bricht beides. Größe ändern ist
+     gefahrlos: das Transform zentriert jede Kantenlänge. Voraussetzung
+     bleibt das `overflow: visible` unten (sonst schneidet die Karte den
+     halben Punkt und den Touch-Drag-Griff ab). */
 
   .roof-dot-grid {
     background-image: radial-gradient(var(--ink) 1px, transparent 1px);

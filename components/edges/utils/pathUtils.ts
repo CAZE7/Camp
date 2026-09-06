@@ -1,4 +1,4 @@
-import { type Position, getSmoothStepPath } from 'reactflow';
+import { type Position, getSmoothStepPath } from '@xyflow/react';
 import type { Point } from './pathfinding';
 import { LEGACY_ROUTING_TOKENS, ROUTING_TOKENS } from '../../../lib/routing/tokens';
 
@@ -227,6 +227,111 @@ export function waypointsToPath(waypoints: Point[], radius: number): string {
     d += ` L ${fmt(inPt.x)} ${fmt(inPt.y)} Q ${fmt(curr.x)} ${fmt(curr.y)} ${fmt(outPt.x)} ${fmt(outPt.y)}`;
   }
   const last = at(waypoints, waypoints.length - 1);
+  d += ` L ${fmt(last.x)} ${fmt(last.y)}`;
+  return d;
+}
+
+/**
+ * WP-7 (#395): Bogen-Mittelpunkt auf einer Leitung. Deckungsgleich mit
+ * `Hop` aus `lib/routing/rules/hopping` — hier lokal deklariert, damit die
+ * Renderschicht nicht von der Regelschicht abhängt (Abhängigkeitsrichtung
+ * laut `docs/ARCHITECTURE-V2.md`: Regeln → Adapter → UI, nie zurück).
+ */
+export type PathHop = { x: number; y: number; orientation: 'horizontal' | 'vertical' };
+
+const HOP_EPS = 0.5;
+
+/** Liegt der Hop auf der (achsparallelen) Strecke a→b, Ränder ausgenommen? */
+const hopOnSegment = (hop: PathHop, a: Point, b: Point): boolean => {
+  const horizontal = Math.abs(b.y - a.y) < HOP_EPS;
+  const vertical = Math.abs(b.x - a.x) < HOP_EPS;
+  if (horizontal && hop.orientation === 'horizontal') {
+    return Math.abs(hop.y - a.y) < HOP_EPS && hop.x > Math.min(a.x, b.x) && hop.x < Math.max(a.x, b.x);
+  }
+  if (vertical && hop.orientation === 'vertical') {
+    return Math.abs(hop.x - a.x) < HOP_EPS && hop.y > Math.min(a.y, b.y) && hop.y < Math.max(a.y, b.y);
+  }
+  return false;
+};
+
+/**
+ * Zeichnet die Bögen auf der geraden Strecke `from → to` und gibt die
+ * Pfad-Kommandos zurück (ohne den abschließenden `L to`).
+ *
+ * Der Bogen wölbt sich immer zur selben Seite — waagerecht nach oben (−y),
+ * senkrecht nach rechts (+x) —, unabhängig davon, in welche Richtung die
+ * Leitung läuft. Dafür wird das Sweep-Flag aus der Laufrichtung abgeleitet:
+ * bei +x/+y im Uhrzeigersinn (1), bei −x/−y dagegen (0). Ohne das würden
+ * zwei gegenläufige Leitungen an derselben Kreuzung entgegengesetzte Bögen
+ * zeigen, was wie zwei verschiedene Symbole aussieht.
+ */
+const hopCommands = (from: Point, to: Point, hops: readonly PathHop[], radius: number): string => {
+  const forward = to.x > from.x || to.y > from.y;
+  const horizontal = Math.abs(to.y - from.y) < HOP_EPS;
+  const relevant = hops
+    .filter((hop) => hopOnSegment(hop, from, to))
+    .sort((a, b) => (forward ? 1 : -1) * (horizontal ? a.x - b.x : a.y - b.y));
+  if (relevant.length === 0) return '';
+
+  const axis = (p: Point): number => (horizontal ? p.x : p.y);
+  const sweep = forward ? 1 : 0;
+  const dir = forward ? 1 : -1;
+  let cursor = axis(from);
+  let d = '';
+  for (const hop of relevant) {
+    const center = axis(hop);
+    const remaining = Math.abs(axis(to) - center);
+    // Radius so weit stauchen, dass der Bogen weder in den vorherigen Bogen
+    // noch in die (gerundete) Ecke am Streckenende läuft.
+    const r = Math.min(radius, Math.abs(center - cursor), remaining);
+    if (r < 1) continue;
+    const entry = center - dir * r;
+    const exit = center + dir * r;
+    const entryPoint = horizontal ? { x: entry, y: from.y } : { x: from.x, y: entry };
+    const exitPoint = horizontal ? { x: exit, y: from.y } : { x: from.x, y: exit };
+    // Schließt ein Bogen direkt an den vorherigen an, entfällt das (dann
+    // längenlose) L — sonst stünden Null-Segmente im Pfad.
+    if (Math.abs(entry - cursor) > HOP_EPS / 10) {
+      d += ` L ${fmt(entryPoint.x)} ${fmt(entryPoint.y)}`;
+    }
+    d += ` A ${fmt(r)} ${fmt(r)} 0 0 ${sweep} ${fmt(exitPoint.x)} ${fmt(exitPoint.y)}`;
+    cursor = exit;
+  }
+  return d;
+};
+
+/**
+ * Wie `waypointsToPath`, zeichnet an den übergebenen Kreuzungspunkten aber
+ * einen Halbkreis-Bogen („Hop“), damit eine Kreuzung optisch nicht mit einer
+ * Verbindung verwechselt werden kann (`docs/ROUTING-V2.md` §8).
+ *
+ * Ohne Hops ist die Ausgabe zeichengleich mit `waypointsToPath` — so bleibt
+ * jeder bestehende Pfad unverändert, solange keine Kreuzung gemeldet wird.
+ */
+export function waypointsToPathWithHops(
+  waypoints: Point[],
+  radius: number,
+  hops: readonly PathHop[] = [],
+  hopArcRadius = radius
+): string {
+  if (waypoints.length < 2) return '';
+  if (hops.length === 0) return waypointsToPath(waypoints, radius);
+
+  let d = `M ${fmt(at(waypoints, 0).x)} ${fmt(at(waypoints, 0).y)}`;
+  let segmentStart = at(waypoints, 0);
+  for (let i = 1; i < waypoints.length - 1; i++) {
+    const prev = at(waypoints, i - 1);
+    const curr = at(waypoints, i);
+    const next = at(waypoints, i + 1);
+    const r = Math.min(radius, euclid(prev, curr) / 2, euclid(curr, next) / 2);
+    const inPt = toward(curr, prev, r);
+    const outPt = toward(curr, next, r);
+    d += hopCommands(segmentStart, inPt, hops, hopArcRadius);
+    d += ` L ${fmt(inPt.x)} ${fmt(inPt.y)} Q ${fmt(curr.x)} ${fmt(curr.y)} ${fmt(outPt.x)} ${fmt(outPt.y)}`;
+    segmentStart = outPt;
+  }
+  const last = at(waypoints, waypoints.length - 1);
+  d += hopCommands(segmentStart, last, hops, hopArcRadius);
   d += ` L ${fmt(last.x)} ${fmt(last.y)}`;
   return d;
 }

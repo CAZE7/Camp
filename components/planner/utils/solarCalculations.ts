@@ -1,4 +1,4 @@
-import { type Node, type Edge } from 'reactflow';
+import { type Node, type Edge } from '@xyflow/react';
 
 export function checkHasSeriesConnection(nodes: Node[], edges: Edge[]): boolean {
   const nodeMap = new Map<string, Node>();

@@ -17,6 +17,7 @@ import {
   pointOnSegment,
   segmentHitsRect,
   segmentsCross,
+  segmentIntersectionPoint,
   segmentsIntersect,
   segmentsOverlap,
   simplifyWaypoints,
@@ -70,6 +71,31 @@ describe('segmentsIntersect / segmentsCross (echte Kreuzung vs. Touch)', () => {
     const b = seg(5, 0, 15, 0);
     expect(segmentsIntersect(a, b)).toBe(true);
     expect(segmentsCross(a, b)).toBe(false);
+  });
+});
+
+describe('segmentIntersectionPoint (Grundlage Kreuzungs-Hopping, WP-7)', () => {
+  it('liefert den Schnittpunkt eines orthogonalen Kreuzes', () => {
+    expect(segmentIntersectionPoint(seg(0, 100, 200, 100), seg(60, 0, 60, 200))).toEqual({ x: 60, y: 100 });
+  });
+
+  it('liefert den Schnittpunkt auch bei schrägen Strecken', () => {
+    const point = segmentIntersectionPoint(seg(0, 0, 10, 10), seg(0, 10, 10, 0));
+    expect(point?.x).toBeCloseTo(5);
+    expect(point?.y).toBeCloseTo(5);
+  });
+
+  it('gibt undefined zurück, wo segmentsCross false ist (Touch, Overlap, disjunkt, parallel)', () => {
+    expect(segmentIntersectionPoint(seg(0, 0, 10, 0), seg(5, 0, 5, 5))).toBeUndefined();
+    expect(segmentIntersectionPoint(seg(0, 0, 10, 0), seg(5, 0, 15, 0))).toBeUndefined();
+    expect(segmentIntersectionPoint(seg(0, 0, 10, 0), seg(0, 5, 10, 5))).toBeUndefined();
+    expect(segmentIntersectionPoint(seg(0, 0, 10, 0), seg(20, -5, 20, 5))).toBeUndefined();
+  });
+
+  it('ist symmetrisch in den Argumenten', () => {
+    const a = seg(0, 40, 90, 40);
+    const b = seg(33, 10, 33, 90);
+    expect(segmentIntersectionPoint(a, b)).toEqual(segmentIntersectionPoint(b, a));
   });
 });
 

@@ -1,4 +1,4 @@
-import type { Node, Edge } from 'reactflow';
+import type { Node, Edge } from '@xyflow/react';
 import type { CableEdgeData } from '../../components/edges/CableEdge';
 import { VDE_SIZES } from '../electrical';
 import {

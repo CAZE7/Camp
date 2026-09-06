@@ -1,12 +1,12 @@
 import { render } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { Position } from 'reactflow';
+import { Position } from '@xyflow/react';
 import WaterPipeEdge from './WaterPipeEdge';
-import { useReactFlow } from 'reactflow';
+import { useReactFlow } from '@xyflow/react';
 
 // Mock reactflow
-vi.mock('reactflow', async () => {
-  const actual = await vi.importActual('reactflow');
+vi.mock('@xyflow/react', async () => {
+  const actual = await vi.importActual('@xyflow/react');
   return {
     ...actual,
     BaseEdge: vi.fn(({ id, path, style, markerEnd }) => (

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { validateRoofNodes, SAFE_MARGINS } from './validation';
-import { type Node } from 'reactflow';
+import { type Node } from '@xyflow/react';
 import { type RoofNodeData } from '@/components/nodes/types';
 import { type VehicleTemplate } from '@/lib/vehicleTemplates';
 

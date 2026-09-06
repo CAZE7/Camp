@@ -1,7 +1,7 @@
 import { render } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import CableEdge, { calculateAnimationDuration, type CableEdgeData } from './CableEdge';
-import { useReactFlow, Position, type Edge, type Node } from 'reactflow';
+import { useReactFlow, Position, type Edge, type Node } from '@xyflow/react';
 import { usePlannerStore } from '../../store/usePlannerStore';
 
 /**
@@ -26,8 +26,8 @@ describe('calculateAnimationDuration (Bug 14)', () => {
 });
 
 // Mock reactflow
-vi.mock('reactflow', async () => {
-  const actual = await vi.importActual('reactflow');
+vi.mock('@xyflow/react', async () => {
+  const actual = await vi.importActual('@xyflow/react');
   return {
     ...actual,
     BaseEdge: vi.fn(({ id, path, style, markerEnd }) => (

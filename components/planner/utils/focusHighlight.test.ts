@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { Edge, Node } from 'reactflow';
+import type { Edge, Node } from '@xyflow/react';
 import { applyNeighborhoodFocus, applyFocusHighlight } from './focusHighlight';
 
 describe('applyNeighborhoodFocus', () => {

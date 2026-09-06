@@ -1,6 +1,6 @@
 'use client';
 import React, { useMemo } from 'react';
-import { Handle, Position, useEdges } from 'reactflow';
+import { Handle, Position, useEdges } from '@xyflow/react';
 import type { ConduitNodeData } from './types';
 import { type CableEdgeData } from '../edges/CableEdge';
 import {

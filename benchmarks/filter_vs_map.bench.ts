@@ -1,4 +1,4 @@
-import { Node } from 'reactflow';
+import { Node } from '@xyflow/react';
 
 const generateNodes = (count: number): Node[] => {
   const nodes: Node[] = [];

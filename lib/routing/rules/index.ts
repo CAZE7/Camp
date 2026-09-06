@@ -6,3 +6,4 @@ export * from './collision';
 export * from './laneRegistry';
 export * from './costModel';
 export * from './portFanOut';
+export * from './hopping';

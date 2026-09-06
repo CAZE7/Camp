@@ -1,4 +1,4 @@
-import type { Node } from 'reactflow';
+import type { Node } from '@xyflow/react';
 import {
   VDE_SIZES,
   FUSE_MAP,

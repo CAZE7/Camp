@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useDachNodes } from './useDachNodes';
 import { useAppStore } from '@/lib/store';
 import { type VehicleTemplate } from '@/lib/vehicleTemplates';
-import { type NodeChange, type Node } from 'reactflow';
+import { type NodeChange, type Node } from '@xyflow/react';
 import { type RoofNodeData } from '@/components/nodes/types';
 
 // Mock the Zustand store

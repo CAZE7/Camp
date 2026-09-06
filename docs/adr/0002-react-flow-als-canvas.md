@@ -1,6 +1,7 @@
 # ADR 0002 — React Flow als Canvas
 
-**Status:** angenommen · **Datum:** 2026-08 (nachträglich dokumentiert)
+**Status:** angenommen, **erweitert durch ADR 0013** (Paketlinie `@xyflow/react` v12,
+2026-09-06) · **Datum:** 2026-08 (nachträglich dokumentiert)
 
 ## Kontext
 
@@ -9,7 +10,8 @@ eigenem Rendering, Zoom/Pan, Auswahl, Minimap — auf Maus **und** Touch.
 
 ## Entscheidung
 
-`reactflow` v11 als Canvas-Bibliothek. Knoten sind normale React-Komponenten
+React Flow als Canvas-Bibliothek (ursprünglich `reactflow` v11, seit ADR 0013
+`@xyflow/react` v12). Knoten sind normale React-Komponenten
 (`components/nodes/*`), Kanten ebenso (`components/edges/CableEdge.tsx`).
 Die Interaktions-Props sind an einer Stelle gebündelt
 (`components/planner/utils/flowInteraction.ts`, Mission-1-Entscheidung).
@@ -31,8 +33,8 @@ Die Interaktions-Props sind an einer Stelle gebündelt
   (siehe `docs/ROUTING-INVARIANTS.md`).
 - Touch-Verhalten musste explizit konfiguriert werden (Drag-Handle,
   Long-Press, Tap-to-Connect); die Standardwerte sind maus-orientiert.
-- Bindung an die v11-API: ein Wechsel auf v12 berührt Knoten, Kanten und
-  Interaktions-Props gleichzeitig.
+- Bindung an die RF-API: der Wechsel auf v12 berührte Knoten, Kanten,
+  Interaktions-Props und die Messschicht gleichzeitig (ADR 0013).
 
 ## Alternativen
 

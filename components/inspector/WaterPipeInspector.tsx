@@ -1,13 +1,13 @@
 import React from 'react';
-import { type Edge } from 'reactflow';
 import { ValidatingInput, COMMON_RULES } from '../ui/ValidatingInput';
 import { usePlannerStore } from '../../store/usePlannerStore';
+import { type PlannerWaterEdge } from '../../store/slices/types';
 
 export function WaterPipeInspector({
   edge,
   onChangeLength,
 }: {
-  edge: Edge;
+  edge: PlannerWaterEdge;
   onChangeLength: (id: string, length: number) => void;
 }) {
   const setWaterEdges = usePlannerStore((state) => state.setWaterEdges);
@@ -31,7 +31,12 @@ export function WaterPipeInspector({
           onChange={(event) =>
             setWaterEdges((items) =>
               items.map((item) =>
-                item.id === edge.id ? { ...item, data: { ...item.data, pipeType: event.target.value } } : item
+                item.id === edge.id
+                  ? {
+                      ...item,
+                      data: { ...item.data, pipeType: event.target.value === 'gray' ? 'gray' : 'fresh' },
+                    }
+                  : item
               )
             )
           }

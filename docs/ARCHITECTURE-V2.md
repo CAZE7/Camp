@@ -44,7 +44,7 @@ Jeder PR muss diese vier Fragen mit **Ja** beantworten können:
    Sicherungen oder VDE-Regeln — er ruft die Planner Domain auf und rendert deren
    Ergebnis.
 2. **AutoWire kennt kein React.**
-   `lib/autoWire*` importiert aus `reactflow` ausschließlich **Typen**
+   `lib/autoWire*` importiert aus `@xyflow/react` ausschließlich **Typen**
    (`import type { Node }`), niemals Laufzeit-Werte, Hooks oder Komponenten.
 3. **Routing kennt keine UI.**
    Die Routing Engine erhält Geometrie (Rects, Punkte, Handles) und Kantenreferenzen
@@ -67,7 +67,7 @@ Zusätzlich (aus AGENT-PLAN, immer gültig):
 ```text
 FlowCanvas (RF-Adapter)
  └─ <CableRouteSync>                        components/edges/utils/cableRouteStore.ts
-     ├─ liest RF-Store (nodeInternals, edges) → Layout-/Topologie-Signatur (R-9)
+     ├─ liest RF-Store (nodeLookup, edges) → Layout-/Topologie-Signatur (R-9)
      ├─ createThrottledRunner (100 ms)      — Drossel + trailing run
      └─ routeAllCables(nodes, edges)        components/edges/utils/routeAll.ts
          ├─ resolveHandlePoint()            — Handle-Punkt + Orientierung (R-7)

@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { ReactFlowProvider } from 'reactflow';
+import { ReactFlowProvider } from '@xyflow/react';
 import { usePlannerDarkMode } from './planner/hooks/usePlannerTheme';
-import 'reactflow/dist/style.css';
+import '@xyflow/react/dist/style.css';
 import { PlannerSidebar } from './planner/PlannerSidebar';
 import { PlannerInspector } from './planner/PlannerInspector';
 import { PlannerDashboard } from './planner/PlannerDashboard';

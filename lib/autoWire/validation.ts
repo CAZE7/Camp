@@ -1,4 +1,4 @@
-import type { Node } from 'reactflow';
+import type { Node } from '@xyflow/react';
 import { isStarterBatteryLabel } from '../vde-standards';
 import { getEdgeDomain } from '../electrical';
 import { type CableEdge, labelOf } from './primitives';

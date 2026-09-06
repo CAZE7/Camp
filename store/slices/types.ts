@@ -1,13 +1,19 @@
-import { type Node, type Edge, type Connection } from 'reactflow';
+import { type Edge, type Connection } from '@xyflow/react';
 import type { Volts } from '../../lib/units';
 import { type CableEdgeData } from '../../components/edges/CableEdge';
-import { type NodeDataPatch } from '../../components/nodes/types';
+import { type NodeDataPatch, type PlannerFlowNode } from '../../components/nodes/types';
+import { type WaterPipeEdgeData } from '../../components/edges/WaterPipeEdge';
+
+export type { PlannerFlowNode };
+
+/** Wasserleitung mit ihrer Datenform (Rohrtyp, Länge). */
+export type PlannerWaterEdge = Edge<WaterPipeEdgeData>;
 
 export type GraphSnapshot = {
-  nodes: Node[];
+  nodes: PlannerFlowNode[];
   edges: Edge<CableEdgeData>[];
-  waterNodes: Node[];
-  waterEdges: Edge[];
+  waterNodes: PlannerFlowNode[];
+  waterEdges: PlannerWaterEdge[];
 };
 
 export interface PlannerState {
@@ -25,15 +31,15 @@ export interface PlannerState {
   systemMessage: string | null;
   setSystemMessage: (msg: string | null) => void;
 
-  nodes: Node[];
+  nodes: PlannerFlowNode[];
   edges: Edge<CableEdgeData>[];
-  setNodes: (nodes: Node[] | ((nds: Node[]) => Node[])) => void;
+  setNodes: (nodes: PlannerFlowNode[] | ((nds: PlannerFlowNode[]) => PlannerFlowNode[])) => void;
   setEdges: (edges: Edge<CableEdgeData>[] | ((eds: Edge<CableEdgeData>[]) => Edge<CableEdgeData>[])) => void;
 
-  waterNodes: Node[];
-  waterEdges: Edge[];
-  setWaterNodes: (nodes: Node[] | ((nds: Node[]) => Node[])) => void;
-  setWaterEdges: (edges: Edge[] | ((eds: Edge[]) => Edge[])) => void;
+  waterNodes: PlannerFlowNode[];
+  waterEdges: PlannerWaterEdge[];
+  setWaterNodes: (nodes: PlannerFlowNode[] | ((nds: PlannerFlowNode[]) => PlannerFlowNode[])) => void;
+  setWaterEdges: (edges: PlannerWaterEdge[] | ((eds: PlannerWaterEdge[]) => PlannerWaterEdge[])) => void;
 
   season: 'summer' | 'winter';
   setSeason: (season: 'summer' | 'winter') => void;
@@ -51,9 +57,9 @@ export interface PlannerState {
         ) => { nodeId: string; handleId: string; handleType: string } | null)
   ) => void;
 
-  selectedNodes: Node[];
+  selectedNodes: PlannerFlowNode[];
   selectedEdges: Edge[];
-  setSelectedNodes: (nodes: Node[]) => void;
+  setSelectedNodes: (nodes: PlannerFlowNode[]) => void;
   setSelectedEdges: (edges: Edge[]) => void;
 
   highlightedNodeId: string | null;
@@ -66,18 +72,23 @@ export interface PlannerState {
   backboneGrouping: boolean;
   setBackboneGrouping: (enabled: boolean) => void;
 
-  onNodesChange: (changes: import('reactflow').NodeChange[]) => void;
-  onEdgesChange: (changes: import('reactflow').EdgeChange[]) => void;
-  onWaterNodesChange: (changes: import('reactflow').NodeChange[]) => void;
-  onWaterEdgesChange: (changes: import('reactflow').EdgeChange[]) => void;
-  onSelectionChange: (params: import('reactflow').OnSelectionChangeParams) => void;
+  onNodesChange: (changes: import('@xyflow/react').NodeChange[]) => void;
+  onEdgesChange: (changes: import('@xyflow/react').EdgeChange[]) => void;
+  onWaterNodesChange: (changes: import('@xyflow/react').NodeChange[]) => void;
+  onWaterEdgesChange: (changes: import('@xyflow/react').EdgeChange[]) => void;
+  onSelectionChange: (params: import('@xyflow/react').OnSelectionChangeParams) => void;
   focusElement: (id: string, elementType: 'node' | 'edge') => void;
   deleteSelected: () => void;
   updateNodeData: (id: string, data: NodeDataPatch) => void;
   handleChangeLength: (id: string, length: number) => void;
   handleChangeFuseSize: (id: string, fuseSize: number) => void;
 
-  isValidConnection: (connection: Connection) => boolean;
+  /**
+   * v12: React Flow prüft mit `IsValidConnection<EdgeType>` — der Callback
+   * bekommt beim Verschieben eines Kantenendes die bestehende Kante statt
+   * einer reinen `Connection`. Beide Formen tragen source/target/Handles.
+   */
+  isValidConnection: (connection: Connection | Edge<CableEdgeData>) => boolean;
   onConnect: (connection: Connection) => void;
   autoWireSystem: () => void;
   onLayout: () => void;
@@ -96,7 +107,11 @@ export interface PlannerState {
    * Aufrufer, die weiterhin mit `number` rechnen, funktionieren unverändert,
    * weil `Volts` zur Laufzeit eine Zahl ist.
    */
-  calculatePathVoltageDrop: (targetNodeId: string, customNodes?: Node[], customEdges?: Edge[]) => Volts;
+  calculatePathVoltageDrop: (
+    targetNodeId: string,
+    customNodes?: PlannerFlowNode[],
+    customEdges?: Edge<CableEdgeData>[]
+  ) => Volts;
   isLayoutPending: boolean;
   setIsLayoutPending: (pending: boolean) => void;
 

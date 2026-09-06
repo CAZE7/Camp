@@ -1,4 +1,5 @@
-import { Position, type Node } from 'reactflow';
+import { Position } from '@xyflow/react';
+import { nodeHeight, nodeOriginX, nodeOriginY, nodeWidth, type RoutableNode } from './nodeGeometry';
 import { polylineMidpoint, waypointsToPath } from './pathUtils';
 import { LEGACY_ROUTING_TOKENS, ROUTING_TOKENS, alternativeRouteGap } from '../../../lib/routing/tokens';
 import { COST_WEIGHTS } from '../../../lib/routing/rules/costModel';
@@ -817,6 +818,12 @@ export type PathResult = {
   bends: number;
   crossings: number;
   usedSearch: 'catalog' | 'astar' | 'fallback';
+  /**
+   * WP-7 (#395): Kreuzungen, an denen DIESE Leitung einen Bogen zeichnet.
+   * Wird erst in `routeAllCables` gefüllt (nur dort sind alle Leitungen
+   * bekannt); die Einzelpfad-Suche liefert immer eine leere Liste.
+   */
+  hops?: { x: number; y: number; orientation: 'horizontal' | 'vertical' }[];
 };
 
 const cache = new Map<string, PathResult>();
@@ -1111,7 +1118,7 @@ export function findCablePath(input: PathRequest): PathResult {
   return result;
 }
 
-export function nodesToObstacles(nodes: Node[], excludeIds: Set<string>): Rect[] {
+export function nodesToObstacles(nodes: RoutableNode[], excludeIds: Set<string>): Rect[] {
   const rects: Rect[] = [];
   for (let i = 0; i < nodes.length; i++) {
     const node = nodes[i];
@@ -1119,10 +1126,10 @@ export function nodesToObstacles(nodes: Node[], excludeIds: Set<string>): Rect[]
     // R-10: Gemessene Bounds sind die Pflichtquelle (React Flow misst
     // width/height nach dem Mount); der Fallback bleibt nur für
     // ungemessene Knoten (Tests, erster Frame) und ist dokumentiert.
-    let x = node.positionAbsolute?.x ?? node.position.x;
-    let y = node.positionAbsolute?.y ?? node.position.y;
-    let width = node.width || NODE_FALLBACK_WIDTH;
-    let height = node.height || NODE_FALLBACK_HEIGHT;
+    let x = nodeOriginX(node);
+    let y = nodeOriginY(node);
+    let width = nodeWidth(node, NODE_FALLBACK_WIDTH);
+    let height = nodeHeight(node, NODE_FALLBACK_HEIGHT);
     // R-10: Handles (inkl. überstehender Anschlusspunkte) gehören zur
     // belegten Fläche — die Box wächst auf die Handle-Ausdehnung.
     const bounds = readHandleBounds(node);
@@ -1146,7 +1153,7 @@ export type CrossingEdgeRef = { id: string; source: string; target: string };
 
 export function edgesToCrossingSegments(
   edges: CrossingEdgeRef[],
-  nodes: Node[],
+  nodes: RoutableNode[],
   skip: (edge: CrossingEdgeRef) => boolean
 ): Segment[] {
   const centers = new Map<string, Point>();
@@ -1154,8 +1161,8 @@ export function edgesToCrossingSegments(
     const node = nodes[i];
     if (!node) continue;
     centers.set(node.id, {
-      x: node.position.x + (node.width || NODE_FALLBACK_WIDTH) / 2,
-      y: node.position.y + (node.height || NODE_FALLBACK_HEIGHT) / 2,
+      x: node.position.x + nodeWidth(node, NODE_FALLBACK_WIDTH) / 2,
+      y: node.position.y + nodeHeight(node, NODE_FALLBACK_HEIGHT) / 2,
     });
   }
   const segments: Segment[] = [];

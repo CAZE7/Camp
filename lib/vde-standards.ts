@@ -53,7 +53,7 @@ export {
 // Lokales Binding: der Re-Export oben bindet nichts in diesen Scope.
 import { getEdgeDomain } from './electrical';
 
-import type { Node, Edge } from 'reactflow';
+import type { Node, Edge } from '@xyflow/react';
 import {
   addAmps,
   addWatts,

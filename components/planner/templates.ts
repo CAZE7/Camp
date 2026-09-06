@@ -1,4 +1,4 @@
-import { type Node, type Edge } from 'reactflow';
+import { type Node, type Edge } from '@xyflow/react';
 import { type CableEdgeData } from '../edges/CableEdge';
 
 export const TEMPLATE_MINIMALIST = {

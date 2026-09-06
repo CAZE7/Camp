@@ -1,4 +1,4 @@
-import type { Node, Edge } from 'reactflow';
+import type { Node, Edge } from '@xyflow/react';
 import type { CableEdgeData } from '../CableEdge';
 import { calculateCrossSection, getEdgeDomain } from '../../../lib/electrical';
 import {

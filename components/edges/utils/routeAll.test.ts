@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Position, type Node } from 'reactflow';
+import { Position, type Node } from '@xyflow/react';
 import {
   routeAllCables,
   portOrderedLaneOffsets,
@@ -279,6 +279,99 @@ describe('Handle-Seite nach Flussrichtung (R-7)', () => {
       const end = route.waypoints[route.waypoints.length - 1]!;
       expect(Math.hypot(first.x - start.x, first.y - start.y)).toBeGreaterThanOrEqual(24);
       expect(Math.hypot(end.x - last.x, end.y - last.y)).toBeGreaterThanOrEqual(24);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// WP-7 (#395): Kreuzungs-Hopping in der Gesamtpipeline
+// ---------------------------------------------------------------------------
+
+describe('routeAllCables — Hops', () => {
+  /**
+   * Waagerechte Leitung a→b und senkrechte Leitung c→d kreuzen sich bei
+   * (496, 360). Die Kreuzung ist unvermeidbar (beide Enden liegen fest),
+   * also genau der Fall, für den §8 das Hop-Rendering vorsieht.
+   */
+  const crossingPlan = (
+    edgeData: Record<string, RouteEdgeRef['data']> = {}
+  ): { nodes: Node[]; edges: RouteEdgeRef[] } => ({
+    nodes: [makeNode('a', 0, 300), makeNode('b', 900, 300), makeNode('c', 400, 0), makeNode('d', 400, 700)],
+    edges: [
+      { id: 'e-a-b', source: 'a', target: 'b', data: edgeData['e-a-b'] },
+      { id: 'e-c-d', source: 'c', target: 'd', data: edgeData['e-c-d'] },
+    ],
+  });
+
+  const dickUndDuenn = { 'e-a-b': { crossSection: 35 }, 'e-c-d': { crossSection: 2.5 } };
+
+  it('meldet den Hop nur für die dünnere Leitung', () => {
+    const { nodes, edges } = crossingPlan(dickUndDuenn);
+    const routes = routeAllCables(nodes, edges);
+    expect(routes.get('e-a-b')?.hops).toEqual([]);
+    expect(routes.get('e-c-d')?.hops).toEqual([{ x: 496, y: 360, orientation: 'vertical' }]);
+  });
+
+  it('zeichnet den Bogen in den Pfad der hüpfenden Leitung', () => {
+    const { nodes, edges } = crossingPlan(dickUndDuenn);
+    const routes = routeAllCables(nodes, edges);
+    expect(routes.get('e-c-d')?.path).toContain(' A ');
+    expect(routes.get('e-a-b')?.path).not.toContain(' A ');
+  });
+
+  it('lässt Waypoints, Länge, Knicke und Kreuzungszahl unberührt', () => {
+    const ohne = crossingPlan();
+    const mit = crossingPlan(dickUndDuenn);
+    const plain = routeAllCables(ohne.nodes, ohne.edges);
+    const withData = routeAllCables(mit.nodes, mit.edges);
+    for (const id of ['e-a-b', 'e-c-d']) {
+      expect(withData.get(id)?.waypoints).toEqual(plain.get(id)?.waypoints);
+      expect(withData.get(id)?.length).toBe(plain.get(id)?.length);
+      expect(withData.get(id)?.bends).toBe(plain.get(id)?.bends);
+      expect(withData.get(id)?.crossings).toBe(plain.get(id)?.crossings);
+    }
+  });
+
+  it('ein fixiertes Kabel hüpft auch in der Pipeline nicht', () => {
+    const { nodes, edges } = crossingPlan({
+      'e-a-b': { crossSection: 2.5, locked: true },
+      'e-c-d': { crossSection: 35 },
+    });
+    const routes = routeAllCables(nodes, edges);
+    expect(routes.get('e-a-b')?.hops).toEqual([]);
+    expect(routes.get('e-c-d')?.hops).toHaveLength(1);
+  });
+
+  it('die Backbone-Verbindung bleibt gerade, der Abzweig hüpft', () => {
+    const nodes = [
+      { ...makeNode('a', 0, 300), type: 'battery' } as Node,
+      { ...makeNode('b', 900, 300), type: 'busbar' } as Node,
+      makeNode('c', 400, 0),
+      makeNode('d', 400, 700),
+    ];
+    // Der Abzweig ist DICKER — nur der Backbone-Bonus darf entscheiden.
+    const routes = routeAllCables(nodes, [
+      { id: 'e-a-b', source: 'a', target: 'b', data: { crossSection: 2.5 } },
+      { id: 'e-c-d', source: 'c', target: 'd', data: { crossSection: 35 } },
+    ]);
+    expect(routes.get('e-a-b')?.hops).toEqual([]);
+    expect(routes.get('e-c-d')?.hops).toHaveLength(1);
+  });
+
+  it('liefert ohne Kreuzung keine Hops und keinen Bogen', () => {
+    const nodes = [makeNode('a', 0, 0), makeNode('b', 600, 0)];
+    const routes = routeAllCables(nodes, [{ id: 'e', source: 'a', target: 'b' }]);
+    expect(routes.get('e')?.hops).toEqual([]);
+    expect(routes.get('e')?.path).not.toContain(' A ');
+  });
+
+  it('ist deterministisch — Kantenreihenfolge ändert die Hops nicht', () => {
+    const { nodes, edges } = crossingPlan(dickUndDuenn);
+    const first = routeAllCables(nodes, edges);
+    const second = routeAllCables(nodes, [...edges].reverse());
+    for (const id of ['e-a-b', 'e-c-d']) {
+      expect(second.get(id)?.hops).toEqual(first.get(id)?.hops);
+      expect(second.get(id)?.path).toBe(first.get(id)?.path);
     }
   });
 });

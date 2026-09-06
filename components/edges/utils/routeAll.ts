@@ -1,4 +1,12 @@
-import { type Node, Position } from 'reactflow';
+import { Position } from '@xyflow/react';
+import {
+  nodeHandleBounds,
+  nodeHeight,
+  nodeOriginX,
+  nodeOriginY,
+  nodeWidth,
+  type RoutableNode,
+} from './nodeGeometry';
 import {
   findCablePath,
   nodesToObstacles,
@@ -13,11 +21,20 @@ import {
   type PathResult,
   type Rect,
 } from './pathfinding';
-import { polylineMidpoint, waypointsToPath, polarityPathOffset, parallelLaneOffset } from './pathUtils';
+import {
+  polylineMidpoint,
+  waypointsToPath,
+  waypointsToPathWithHops,
+  polarityPathOffset,
+  parallelLaneOffset,
+  type PathHop,
+} from './pathUtils';
 import { nudgeOrthogonalPaths } from './nudge';
 import { crossingSegmentsNear } from './routingCache';
 import { ROUTING_TOKENS } from '../../../lib/routing/tokens';
 import { assignFanOut, type FanOutRequest, type PortAxis } from '../../../lib/routing/rules/portFanOut';
+import { hopRadius, resolveHops, type HopDomain, type HopEdge } from '../../../lib/routing/rules/hopping';
+import { isBackboneConnection } from '../../planner/utils/backbone';
 
 export type RouteEdgeRef = {
   id: string;
@@ -25,20 +42,25 @@ export type RouteEdgeRef = {
   target: string;
   sourceHandle?: string | null;
   targetHandle?: string | null;
+  /**
+   * Fachliche Merkmale der Leitung. Nur für die Hop-Priorität (WP-7) gelesen,
+   * alle Felder optional: Kanten aus Fixtures, `knownPlans/` und älteren
+   * Plänen bringen sie nicht zwingend mit, und die Route darf davon nicht
+   * abhängen — ohne Angabe zählt die Leitung als rangloser Abzweig.
+   */
+  data?: {
+    edgeDomain?: HopDomain;
+    crossSection?: number;
+    /**
+     * Vom Nutzer fixierte Leitung — hoppt nie (`docs/ROUTING-V2.md` §8).
+     * Ein Lock-Feature gibt es in der UI noch nicht; die Regel ist hier
+     * bereits umgesetzt, damit sie nicht später nachgereicht werden muss.
+     */
+    locked?: boolean;
+  } | null;
 };
 
-type HandleBounds = {
-  id: string | null;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  position: Position;
-};
-
-type NodeWithHandles = Node & {
-  handleBounds?: { source?: HandleBounds[]; target?: HandleBounds[] };
-};
+type NodeWithHandles = RoutableNode;
 
 const NODE_W = 192;
 const NODE_H = 120;
@@ -53,9 +75,10 @@ export function resolveHandlePoint(
   if (!node) {
     return { x: 0, y: 0, position: kind === 'source' ? Position.Right : Position.Left };
   }
-  const originX = node.positionAbsolute?.x ?? node.position.x;
-  const originY = node.positionAbsolute?.y ?? node.position.y;
-  const group = node.handleBounds?.[kind] ?? node.handleBounds?.[kind === 'source' ? 'target' : 'source'];
+  const originX = nodeOriginX(node);
+  const originY = nodeOriginY(node);
+  const bounds = nodeHandleBounds(node);
+  const group = bounds?.[kind] ?? bounds?.[kind === 'source' ? 'target' : 'source'];
   const wanted = handleId ?? null;
   const hb = group?.find((h) => (h.id ?? null) === wanted) ?? group?.[0];
   if (hb) {
@@ -68,8 +91,8 @@ export function resolveHandlePoint(
   // R-7: Ohne gemessene Handles liegt der Anschluss auf der Seite, die der
   // FLUSSRICHTUNG entspricht (Quelle → Verteilung → Verbraucher). Ohne
   // Flussangabe gilt die konventionelle Seite (Quelle rechts, Ziel links).
-  const w = node.width || NODE_W;
-  const h = node.height || NODE_H;
+  const w = nodeWidth(node, NODE_W);
+  const h = nodeHeight(node, NODE_H);
   const t = handleId?.includes('minus') ? 0.7 : handleId?.includes('plus') ? 0.3 : 0.5;
   const horizontal = !flow || Math.abs(flow.x) >= Math.abs(flow.y);
   if (horizontal) {
@@ -86,10 +109,19 @@ export function resolveHandlePoint(
     : { x: originX + w * t, y: originY, position: Position.Top };
 }
 
-const rebuild = (waypoints: Point[], crossings: number, usedSearch: PathResult['usedSearch']): PathResult => {
+const rebuild = (
+  waypoints: Point[],
+  crossings: number,
+  usedSearch: PathResult['usedSearch'],
+  hops: PathHop[] = []
+): PathResult => {
   const mid = polylineMidpoint(waypoints);
   return {
-    path: waypointsToPath(waypoints, ROUTE_BORDER_RADIUS),
+    path:
+      hops.length > 0
+        ? waypointsToPathWithHops(waypoints, ROUTE_BORDER_RADIUS, hops, hopRadius())
+        : waypointsToPath(waypoints, ROUTE_BORDER_RADIUS),
+    hops,
     waypoints,
     labelX: mid.x,
     labelY: mid.y,
@@ -103,17 +135,20 @@ const rebuild = (waypoints: Point[], crossings: number, usedSearch: PathResult['
 };
 
 /** R-7: Zentrums-Differenz zweier Nodes (Flussrichtung Quelle → Ziel). */
-function centerDelta(from: Node | undefined, to: Node | undefined): { x: number; y: number } | undefined {
+function centerDelta(
+  from: RoutableNode | undefined,
+  to: RoutableNode | undefined
+): { x: number; y: number } | undefined {
   if (!from || !to) return undefined;
   const fc = nodeCenter(from);
   const tc = nodeCenter(to);
   return { x: tc.x - fc.x, y: tc.y - fc.y };
 }
 
-function nodeCenter(node: Node): { x: number; y: number } {
+function nodeCenter(node: RoutableNode): { x: number; y: number } {
   return {
-    x: (node.positionAbsolute?.x ?? node.position.x) + (node.width || NODE_W) / 2,
-    y: (node.positionAbsolute?.y ?? node.position.y) + (node.height || NODE_H) / 2,
+    x: nodeOriginX(node) + nodeWidth(node, NODE_W) / 2,
+    y: nodeOriginY(node) + nodeHeight(node, NODE_H) / 2,
   };
 }
 
@@ -270,15 +305,17 @@ export function alignSharedCorridors(
 /**
  * Routet alle Kanten in einem Durchgang und schiebt parallele Trassen global.
  */
-export function routeAllCables(nodes: Node[], edges: RouteEdgeRef[]): Map<string, PathResult> {
+export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Map<string, PathResult> {
   const out = new Map<string, PathResult>();
   if (edges.length === 0) return out;
 
-  const nodeById = new Map<string, Node>();
+  const nodeById = new Map<string, RoutableNode>();
   for (let i = 0; i < nodes.length; i++) {
     const node = nodes[i];
     if (node) nodeById.set(node.id, node);
   }
+
+  const edgeById = new Map<string, RouteEdgeRef>(edges.map((edge) => [edge.id, edge]));
 
   const allObstacles = nodesToObstacles(nodes, new Set());
   // R-4: Kreuzungsbasis über den gecachten Spatial-Index — kein 120er-Limit mehr.
@@ -293,18 +330,18 @@ export function routeAllCables(nodes: Node[], edges: RouteEdgeRef[]): Map<string
         )
       : [];
   /** Gemeinsame BBox aller Nodes (für die globale Kreuzungszählung, R-6). */
-  function planBounds(nodeList: Node[]): Rect {
+  function planBounds(nodeList: RoutableNode[]): Rect {
     let minX = Infinity;
     let minY = Infinity;
     let maxX = -Infinity;
     let maxY = -Infinity;
     for (const node of nodeList) {
-      const x = node.positionAbsolute?.x ?? node.position.x;
-      const y = node.positionAbsolute?.y ?? node.position.y;
+      const x = nodeOriginX(node);
+      const y = nodeOriginY(node);
       minX = Math.min(minX, x);
       minY = Math.min(minY, y);
-      maxX = Math.max(maxX, x + (node.width || 192));
-      maxY = Math.max(maxY, y + (node.height || 120));
+      maxX = Math.max(maxX, x + nodeWidth(node, NODE_W));
+      maxY = Math.max(maxY, y + nodeHeight(node, NODE_H));
     }
     return { x: minX - 200, y: minY - 200, width: maxX - minX + 400, height: maxY - minY + 400 };
   }
@@ -397,12 +434,39 @@ export function routeAllCables(nodes: Node[], edges: RouteEdgeRef[]): Map<string
   // Deterministische Ausgabereihenfolge: nach Edge-ID, nicht nach Eingabereihenfolge.
   const order = raw.map((r) => r.id).sort((a, b) => a.localeCompare(b));
   const byId = new Map(raw.map((r) => [r.id, r]));
+  const finalWaypoints = new Map<string, Point[]>(
+    order.map((id) => {
+      const item = byId.get(id);
+      return [id, nudged.get(id) ?? aligned.get(id) ?? item?.waypoints ?? []];
+    })
+  );
+
+  // WP-7 (#395): Hops erst NACH Ausrichtung und Nudge bestimmen — vorher
+  // liegen die Kreuzungen noch woanders. Reine Darstellung: die Waypoints
+  // bleiben unangetastet, Länge/Knicke/Kreuzungen ändern sich nicht.
+  const hopsByEdge = resolveHops(
+    order.map<HopEdge>((id) => {
+      const edge = edgeById.get(id);
+      return {
+        id,
+        waypoints: finalWaypoints.get(id) ?? [],
+        domain: edge?.data?.edgeDomain,
+        crossSection: edge?.data?.crossSection,
+        locked: edge?.data?.locked,
+        backbone: isBackboneConnection(
+          nodeById.get(edge?.source ?? '')?.type,
+          nodeById.get(edge?.target ?? '')?.type
+        ),
+      };
+    })
+  );
+
   for (const id of order) {
     const item = byId.get(id);
     if (!item) continue;
-    const wp = nudged.get(id) ?? aligned.get(id) ?? item.waypoints;
+    const wp = finalWaypoints.get(id) ?? item.waypoints;
     const crossings = countCrossings(wp, crossingAll);
-    out.set(id, rebuild(wp, crossings, item.result.usedSearch));
+    out.set(id, rebuild(wp, crossings, item.result.usedSearch, hopsByEdge.get(id) ?? []));
   }
   return out;
 }

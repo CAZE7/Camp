@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
-import type { NodeProps } from 'reactflow';
+import type { NodeProps } from '@xyflow/react';
 import { NodeDragHandle, withNodeDragHandle, withNodeDragHandles } from './NodeDragHandle';
 
 const DummyNode = ({ id }: { id: string }) => <div data-testid="dummy">Node {id}</div>;

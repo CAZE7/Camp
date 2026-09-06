@@ -11,6 +11,19 @@ Format: neueste Einträge oben. Jeder Eintrag: Datum, Bezug (ADR/WP/Issue), Kurz
 
 ---
 
+## 2026-09-06 (WP-7)
+
+- **Kreuzungs-Hopping als Regel, nicht als Renderer-Trick** — `lib/routing/rules/hopping.ts` (`routingPriority`, `resolveHops`) beantwortet „wer hüpft?“ in Schicht 2/3 und liefert der UI nur noch Bogen-Mittelpunkte. Damit gilt dieselbe Antwort für ELK- und A\*-Pass, sie ist ohne Browser testbar (ADR 0007) und deterministisch (ADR 0010: Reihenfolge über sortierte IDs, Gleichstand über die lexikografisch größere ID). (WP-7, #395)
+- **Prioritätsstaffelung festgelegt** — `manualLock` 10000 > `backbone` 1000 > `domain` 0…300 + `crossSection` 0…280. Die beiden strukturellen Terme können von den fachlichen nicht überstimmt werden (Trunk bleibt gerade); Domäne und Querschnitt liegen laut Spec-Formel (§8, reine Summe) bewusst auf einer Ebene. Zwei fixierte Leitungen erzeugen **keinen** Hop — eine stille Änderung an einem vom Nutzer festgelegten Verlauf wäre schlimmer als die ungeschmückte Kreuzung. Ein Lock-Feature existiert in der UI noch nicht; die Regel ist bereits umgesetzt. (WP-7, #395)
+- **Kein neues Token** — der Bogenradius ist als `laneGrid / 2` (8 px) abgeleitet (`hopRadius()`), analog zu `alternativeRouteGap`. So bleibt der Bogen garantiert schmaler als der Lane-Abstand und die eingefrorene Token-Liste (ROUTING-V2.md §3) unverändert. Neues Geometrie-Primitiv `segmentIntersectionPoint` in `lib/routing/geometry/segments.ts`. (WP-7, #395)
+- **Reine Darstellung** — Hops werden erst nach `alignSharedCorridors` + `nudgeOrthogonalPaths` bestimmt und ausschließlich in den SVG-Pfad geschrieben (`waypointsToPathWithHops`). Waypoints, Länge, Bends und Kreuzungszahl bleiben unberührt: Golden Master (13/13) und Routing-Regression (50/50) byte-identisch, Perf-Gate 2.35 ms Median. Ohne globale Route (Einzelpfad-Fallback in `CableEdge`) wird weiterhin ohne Bogen gezeichnet. (WP-7, #395)
+
+## 2026-09-06 (S-1, Stack-Track)
+
+- **ADR-0013** React Flow 12 (`@xyflow/react`) als Canvas-Paketlinie — Voraussetzung für WP-7 (#395) und WP-8 (#397) laut `docs/AGENT-PLAN-ROUTING-V2.md` (Stack-Track). Paketwechsel `reactflow@11` → `@xyflow/react@12`; **ADR 0002 dadurch erweitert** (v11-Bindung aufgehoben), ADR 0007 unberührt (RF bleibt UI-Adapter). (agent.md S-1)
+- **Messgrenze zentralisiert** — `components/edges/utils/nodeGeometry.ts` ist die einzige Stelle, die gemessene Größe (`measured`), absolute Position (`internals.positionAbsolute`) und Handle-Rechtecke liest; die flache v11-Form bleibt gültige Eingabe, weil `knownPlans/`, Golden Layouts und gespeicherte Pläne Knoten so beschreiben. Verhalten unverändert: Golden Master + Routing-Regression byte-identisch. (ADR 0013)
+- **Store-/UI-Typen geschärft** — v12 typisiert `Node['data']` als `Record<string, unknown>` (v11: `any`); Store und Inspektoren führen `PlannerFlowNode = Node<CommonNodeData>`, Kanten-Props laufen über den Kanten-Typ (`EdgeProps<CableEdgeType>`). Kein neuer `any`-Pfad. (ADR 0013)
+
 ## 2026-09-06 (WP-6, WP-9 … WP-11)
 
 - **ADR-0012** Perf-Budget 16 ms Main-Thread/Frame am 100+-Kanten-Referenzplan — `npm run perf:edge-routing` ist jetzt ein hartes Gate (Median über 30 Läufe, Exit-Code 1 bei Überschreitung). Absorbiert agent.md P-7. In `quality.yml` (und dem Spiegel `docs/ci/workflows/quality.yml`) als blockierender Schritt direkt nach dem Coverage-Schritt eingetragen. (WP-11, #400)

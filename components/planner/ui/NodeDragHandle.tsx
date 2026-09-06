@@ -1,6 +1,6 @@
 import React from 'react';
 import { GripVertical } from 'lucide-react';
-import type { NodeProps } from 'reactflow';
+import type { NodeProps } from '@xyflow/react';
 
 /**
  * Dedizierter Drag-Griff für Touch-Geräte.

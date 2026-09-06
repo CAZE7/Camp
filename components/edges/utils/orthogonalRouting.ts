@@ -1,4 +1,13 @@
-import { Position, type Node } from 'reactflow';
+import { Position } from '@xyflow/react';
+import {
+  nodeHandleBounds,
+  nodeHeight,
+  nodeOriginX,
+  nodeOriginY,
+  nodeWidth,
+  type HandleBoundsMap,
+  type RoutableNode,
+} from './nodeGeometry';
 import { LEGACY_ROUTING_TOKENS, ROUTING_TOKENS } from '../../../lib/routing/tokens';
 import { segmentsIntersect } from '../../../lib/routing/geometry';
 
@@ -18,18 +27,14 @@ export type Point = { x: number; y: number };
 export type Rect = { x: number; y: number; width: number; height: number };
 
 /** Gemessene Handle-Box (React Flow intern, nicht Teil des öffentlichen Node-Typs). */
-export type HandleBox = {
-  id: string | null;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  position: unknown;
-};
+export type { HandleBox } from './nodeGeometry';
 
-/** Liest node.handleBounds, ohne den (versionsabhängigen) Node-Typ zu sprengen. */
-export const readHandleBounds = (node: Node): { source?: HandleBox[]; target?: HandleBox[] } | undefined =>
-  (node as unknown as { handleBounds?: { source?: HandleBox[]; target?: HandleBox[] } }).handleBounds;
+/**
+ * Liest die Handle-Rechtecke versionsunabhängig (v11: `node.handleBounds`,
+ * v12: `internalNode.internals.handleBounds`) — Details im Adapter
+ * `nodeGeometry.ts`.
+ */
+export const readHandleBounds = (node: RoutableNode): HandleBoundsMap | undefined => nodeHandleBounds(node);
 
 // WP-1 (#390): Werte kommen aus dem zentralen Token-Modell — hier nur
 // Re-Export unter den etablierten Namen (keine zweite Pflegestelle mehr).
@@ -549,20 +554,20 @@ export function buildOrthogonalPath(input: OrthogonalPathInput): OrthogonalPathR
 }
 
 /** Erstellt Sperr-Rechtecke aus Nodes (ohne Source/Target). */
-export function nodesToObstacles(nodes: Node[], excludeIds: Set<string>): Rect[] {
+export function nodesToObstacles(nodes: RoutableNode[], excludeIds: Set<string>): Rect[] {
   const rects: Rect[] = [];
   for (const node of nodes) {
     if (!node || excludeIds.has(node.id)) continue;
     // R-10: Gemessene Bounds sind die Pflichtquelle; der Fallback bleibt
     // nur für ungemessene Knoten (Tests, erster Frame) erhalten.
-    let x = node.positionAbsolute?.x ?? node.position.x;
-    let y = node.positionAbsolute?.y ?? node.position.y;
-    // positionAbsolute statt position: React Flow liefert für Kindknoten
+    // Absolute Position statt `position`: React Flow liefert für Kindknoten
     // einer Gruppe (parentId) die Position relativ zum Parent; geroutet
     // wird im Canvas-Koordinatensystem. Aktuell vergibt die App keine
     // parentId — der Fix ist defensiv für zukünftige Gruppen.
-    let width = node.width || NODE_FALLBACK_WIDTH;
-    let height = node.height || NODE_FALLBACK_HEIGHT;
+    let x = nodeOriginX(node);
+    let y = nodeOriginY(node);
+    let width = nodeWidth(node, NODE_FALLBACK_WIDTH);
+    let height = nodeHeight(node, NODE_FALLBACK_HEIGHT);
     // R-10: Handles (inkl. überstehender Anschlusspunkte) gehören zur
     // belegten Fläche — die Box wächst auf die Handle-Ausdehnung.
     const bounds = readHandleBounds(node);
@@ -599,15 +604,15 @@ export type CrossingEdgeRef = { id: string; source: string; target: string };
  */
 export function edgesToCrossingSegments(
   edges: CrossingEdgeRef[],
-  nodes: Node[],
+  nodes: RoutableNode[],
   skip: (edge: CrossingEdgeRef) => boolean
 ): Segment[] {
   const centers = new Map<string, Point>();
   for (const node of nodes) {
     if (!node) continue;
     centers.set(node.id, {
-      x: node.position.x + (node.width || NODE_FALLBACK_WIDTH) / 2,
-      y: node.position.y + (node.height || NODE_FALLBACK_HEIGHT) / 2,
+      x: node.position.x + nodeWidth(node, NODE_FALLBACK_WIDTH) / 2,
+      y: node.position.y + nodeHeight(node, NODE_FALLBACK_HEIGHT) / 2,
     });
   }
 
