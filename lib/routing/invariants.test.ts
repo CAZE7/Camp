@@ -496,6 +496,30 @@ describe('Bestandsrouter (A-Stern-Pass) — Ratchet gegen Baseline', () => {
       expect(third, `${planName}: Kantenreihenfolge beeinflusst das Ergebnis`).toBe(first);
     }
   });
+
+  it('keine Routing-Routen dürfen auf den Fallback (usedSearch="fallback" inkl. Hindernis) zurückfallen', () => {
+    // ROUTE-001 / Performance / Qualität: Ein Fallback-Pfad, der durch ein Hindernis
+    // bricht, darf in normalen Plänen (≤ 150 Knoten, normale Dichte) nicht das Endresultat sein.
+    for (const planName of Object.keys(LEGACY_BASELINE) as (keyof typeof GOLDEN_PLANS)[]) {
+      const fixture = wirePlan(planName);
+      const routed = routeAllCables(
+        fixture.nodes,
+        fixture.edges.map((e) => ({
+          id: e.id,
+          source: e.source,
+          target: e.target,
+          sourceHandle: e.sourceHandle,
+          targetHandle: e.targetHandle,
+        }))
+      );
+      for (const [edgeId, result] of routed) {
+        expect(
+          result.usedSearch === 'fallback' && result.fallbackHitsObstacles,
+          `Kante ${edgeId} in ${planName} fällt auf einen Fallback mit Kollisionen zurück!`
+        ).toBe(false);
+      }
+    }
+  });
 });
 
 describe('ELK-Pass — strikt wo erfüllt, Ratchet für Stubs', () => {
