@@ -53,7 +53,7 @@ export {
 // Lokales Binding: der Re-Export oben bindet nichts in diesen Scope.
 import { getEdgeDomain } from './electrical';
 
-import type { Node, Edge } from '@xyflow/react';
+import type { Node, Edge } from './domain/graph'; // ARCH-001: Domäne statt React-Flow-Typen
 import {
   addAmps,
   addWatts,
@@ -240,6 +240,18 @@ export const VDE_DOD_REFERENCE: number = (() => {
 export const isStarterBatteryLabel = (label: unknown): boolean => /start/i.test(String(label || ''));
 
 /**
+ * AUDIT AUTO-003: Starter-Klassifikation mit explizitem role-Feld vor der
+ * Label-Heuristik (dieselbe Priorität wie isStarterBattery in
+ * lib/autoWire/validation.ts — zwei Wahrheiten vermeiden).
+ */
+export const isStarterBatteryNode = (node: Node): boolean => {
+  const role = (node.data as Record<string, unknown> | undefined)?.role;
+  if (role === 'starter') return true;
+  if (role === 'house') return false;
+  return isStarterBatteryLabel((node.data as { label?: unknown })?.label);
+};
+
+/**
  * Nominale Netzspannung des 230-V-Kreises (DIN VDE 0100-721).
  */
 export const AC_SYSTEM_VOLTAGE: Volts = volts(230);
@@ -262,8 +274,7 @@ export const AC_SYSTEM_VOLTAGE: Volts = volts(230);
 export const VDE_DISCHARGE_VOLTAGE_FACTOR = 0.9375; // 12,8 V → 12,0 V
 
 /** AUDIT ELE-005: Entladeschlussspannung (Strom-Maximum) zur Nennspannung. */
-export const dischargeFloorVoltage = (nominal: Volts): Volts =>
-  volts(nominal * VDE_DISCHARGE_VOLTAGE_FACTOR);
+export const dischargeFloorVoltage = (nominal: Volts): Volts => volts(nominal * VDE_DISCHARGE_VOLTAGE_FACTOR);
 
 /**
  * Ermittelt die nominale Systemspannung anhand der Batterien im Plan.
@@ -290,8 +301,8 @@ export function getSystemVoltage(nodes: Node[], preferredBatteryId?: string): Vo
         // 24-V-Starterbatterie vor der 12-V-Aufbaubatterie, wurden ALLE
         // DC-Berechnungen (Anzeige, Live-Validierung, Spannungsfall) mit der
         // falschen Spannung geführt.
-        ...batteries.filter((b) => !isStarterBatteryLabel((b.data as { label?: unknown })?.label)),
-        ...batteries.filter((b) => isStarterBatteryLabel((b.data as { label?: unknown })?.label)),
+        ...batteries.filter((b) => !isStarterBatteryNode(b)),
+        ...batteries.filter((b) => isStarterBatteryNode(b)),
       ];
 
   // Explizite nominalVoltage an der Vorrangbatterie gewinnt.
@@ -505,9 +516,11 @@ export function calculateAcEdgeCurrent(sourceId: string | undefined, nodes: Node
     if (node) nodeMap.set(node.id, node);
   }
 
+  // Domäne liegt typoffen im Datenfeld (CableEdgeData o. ä.) — geprüft lesen.
+  const domainOf = (edge: Edge): unknown => (edge.data as Record<string, unknown> | undefined)?.edgeDomain;
   const isAcEdge = (edge: Edge): boolean => {
-    if (edge.data?.edgeDomain === 'AC_230V') return true;
-    if (edge.data?.edgeDomain === 'DC_12V') return false;
+    if (domainOf(edge) === 'AC_230V') return true;
+    if (domainOf(edge) === 'DC_12V') return false;
     const s = nodeMap.get(edge.source)?.type;
     const t = nodeMap.get(edge.target)?.type;
     return getEdgeDomain(s, t, edge.sourceHandle, edge.targetHandle) === 'AC_230V';

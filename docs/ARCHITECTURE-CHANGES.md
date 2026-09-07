@@ -11,6 +11,58 @@ Format: neueste Einträge oben. Jeder Eintrag: Datum, Bezug (ADR/WP/Issue), Kurz
 
 ---
 
+## 2026-09-07 (2) — Audit-Nachtrag P2–P4: Solar-Auslegung, Chemie-Parallelen, Schema, Schichten
+
+Bezug: `AUDIT-EXTREM-2026-09.md`, Findings ELE-007, AUTO-003, DOM-003, ARCH-001/002, UX-001-Rest.
+
+**ELE-007 (Solar-Modell, neues Modul `lib/solar.ts`):**
+
+- Datenblattfelder voc/isc/tempCoefficient am Panel, maxPvVoltage am MPPT (Inspector pflegbar).
+- Thermik/Dimensionierung Solar-Zuleitung: Designstrom ≥ 1,25 × Isc (IEC-62548-Kontext);
+  Sicherungsfloor 1,5625 × Isc (NEC 690.8 × 690.9 — als MODELLANNAHME deklariert, Quellen
+  im Dateikopf: Mersen Tech-Topic, EEP 2/2012; IEC-62548-Bereich 1,25–2,4 × Isc deckungskompatibel).
+  Ohne Datenblatt-Isc: konservative Schätzung 1,25 × Imp.
+- Kalt-Voc-Prüfung: Voc(T_min) = Voc_STC · (1 + |TK|·(25 °C − T_min)), T_min = −20 °C
+  (Modellannahme Fahrzeug/Winter), TK-Default −0,35 %/K (schlechtester typischer c-Si-Wert).
+  Live-Regel A6 prüft String-Kalt-Voc gegen das Regler-Fenster (BFS ab MPPT, Series-Strings
+  über Solar↔Solar-Verbundkomponenten); fehlende Voc-Datenblattwerte werden als Hinweis
+  angefordert statt still geschätzt.
+- Solar-Drop-Referenz bewusst NICHT umgestellt (weiterhin 12,8-V-Referenz ⇒ konservativ).
+
+**AUTO-003 (Batterie):** `chemistriesParallelSafe` — bekannte Chemien parallel nur identisch
+(AGM‖Gel und LiFePO4‖Li-Ion blockiert), unbekannte fallen auf die alte Blei/Li-Regel zurück;
+Live-Regel A5 (kritisch) für Nutzer-Parallelikanten; `role`-Feld ('starter'/'house') gewinnt
+über die Label-Heuristik (`isStarterBattery`, `getSystemVoltage`); Inspector: Gel-Option + Rolle.
+
+**DOM-003 (Schema):** `lib/nodeSchema.ts` — deklarative Feldtabelle je Bauteiltyp
+(Typ/Enum-Prüfung, handgerollt statt Zod, Repo-Stil). Persistenz-Migration entfernt falsch
+getippte BEKANNTE Felder (watts: 'viel' → raus; Leseschicht fällt auf dokumentierte Defaults),
+unbekannte Felder bleiben (Forward-Kompatibilität).
+
+**ARCH-001 (Typ-Ebene):** `lib/domain/graph.ts` (PlannerNode/PlannerEdge, strukturell
+RF-kompatibel in beide Richtungen) + `lib/domain/cableEdgeData.ts` (CableEdgeData aus
+components/ verschoben, dort re-exportiert). lib/** importiert produktionsseitig keine
+@xyflow/react-/components-Typen mehr. Bewusster Rest: `lib/routing/elk/ab-compare.ts` und
+`lib/routing/rules/costModel.ts` importieren Runtime-seitig aus components (ELK =
+Vergleichs-/Scriptschicht außerhalb des Produktionspfads, s. ROUTE-003-Statusnotiz).
+
+**ARCH-002:** `lib/connectionRules.ts` — isValidConnection-Fachregeln (Domänen-Trennung,
+Polarität, Serien-Exception, Wasser-Sonderfall, Duplikate) als reine Funktion; Store
+delegiert 1:1. Direkt testbar ohne Store (`connectionRules.test.ts`, 7 Charakter-Tests).
+
+**UX-001 (vollständig):** `collectEdgeErrors` liefert `EdgeError[]` (ruleId, severity,
+message, measuredValue, expectedValue, unit, source) statt `string[]` — inkl. neuer
+Solar-Regel `fuse-below-minimum` mit 1,56×Isc-Floor.
+
+**Golden Master neu eingefroren (2. Mal, solar.json + complex.json):** Solar-Zuleitungen
+erhalten durch die Isc-Regel größere Sicherungen/Querschnitte (z. B. 200-W-Panel mit
+Schätz-Isc: 15 A/10 mm² → 25 A/16 mm²) — bewusste Korrektheitänderung, Suite inkl.
+Invarianten grün.
+
+**Nachweis:** tsc grün; Vollsuite 1816 Tests grün (davon neu: solar 8, nodeSchema 6,
+connectionRules 7, A5/A6 7, autoWire-Solar/AUTO-003 5, persistence-Schema 1, angepasste
+Szenario-/Property-Tests).
+
 ## 2026-09-07 — Audit EXTREM 2026-09: Sicherheits-/Korrektheits-Fixes + Golden-Master-Neueinfrierung
 
 Bezug: `AUDIT-EXTREM-2026-09.md` (Findings ELE-001…007, AC-001, AUTO-001…004, CRASH-001,

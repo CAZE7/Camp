@@ -232,10 +232,7 @@ describe('VDE-Standards mit typsicheren Einheiten (K1b)', () => {
       const consumer = node('consumer', { watts: 60 });
       // 12 V nominal × 0,9375 = 11,25 V floor → 60 / 11,25 = 5,33 A
       // (nicht 5 A @ nominal — der Strom am leeren Akku ist der höchste).
-      expect(calculateEdgeCurrent(undefined, consumer, [consumer], volts(12))).toBeCloseTo(
-        60 / 11.25,
-        10
-      );
+      expect(calculateEdgeCurrent(undefined, consumer, [consumer], volts(12))).toBeCloseTo(60 / 11.25, 10);
     });
 
     it('fällt bei unlesbarem totalAmps auf die physikalische Herleitung zurück (statt 0 A)', () => {
@@ -244,9 +241,10 @@ describe('VDE-Standards mit typsicheren Einheiten (K1b)', () => {
       // entschärfte. Heute: nur vertrauenswürdige Zahlen werden übernommen.
       const brokenSource = node('battery', { totalAmps: 'unsicher' });
       const consumer = node('consumer', { watts: 60 });
-      expect(
-        calculateEdgeCurrent(brokenSource, consumer, [brokenSource, consumer], volts(12))
-      ).toBeCloseTo(60 / 11.25, 10); // ELE-005: 11,25 V floor bei 12 V nominal
+      expect(calculateEdgeCurrent(brokenSource, consumer, [brokenSource, consumer], volts(12))).toBeCloseTo(
+        60 / 11.25,
+        10
+      ); // ELE-005: 11,25 V floor bei 12 V nominal
       // Ein lesbarer Wert gewinnt dagegen weiterhin:
       const explicit = node('battery', { totalAmps: 7.5 });
       expect(calculateEdgeCurrent(explicit, consumer, [explicit, consumer], volts(12))).toBe(7.5);
@@ -317,22 +315,23 @@ describe('VDE-Standards mit typsicheren Einheiten (K1b)', () => {
       const socket1 = withId('s1', 'consumer230v', { watts: 300 });
       const bigLoad = withId('s2', 'consumer230v', { watts: 1500 });
       const nodes = [inv1, inv2, socket1, bigLoad];
-      const acEdge = (id: string, s: string, t: string): Edge => ({
-        id,
-        source: s,
-        target: t,
-        data: { edgeDomain: 'AC_230V' },
-      }) as Edge;
+      const acEdge = (id: string, s: string, t: string): Edge =>
+        ({
+          id,
+          source: s,
+          target: t,
+          data: { edgeDomain: 'AC_230V' },
+        }) as Edge;
       const edges = [acEdge('e1', 'inv1', 's1'), acEdge('e2', 'inv2', 's2')];
 
       // inv1 führt max(500 W Dauerleistung, 300 W Insel) = 500 W.
       expect(calculateEdgeCurrent(inv1, undefined, nodes, volts(12.8), edges)).toBeCloseTo(
-        (500 / 12.0) / VDE_INVERTER_EFFICIENCY,
+        500 / 12.0 / VDE_INVERTER_EFFICIENCY,
         10
       );
       // inv2 führt max(300 W, 1500 W Insel) = 1500 W.
       expect(calculateEdgeCurrent(inv2, undefined, nodes, volts(12.8), edges)).toBeCloseTo(
-        (1500 / 12.0) / VDE_INVERTER_EFFICIENCY,
+        1500 / 12.0 / VDE_INVERTER_EFFICIENCY,
         10
       );
       // Batterie-Hauptleitung (Fallback) summiert die Insel-Lasten beider WR:
@@ -340,12 +339,13 @@ describe('VDE-Standards mit typsicheren Einheiten (K1b)', () => {
       const battery = withId('b1', 'battery', {});
       const busbar = withId('bus1', 'busbar', {});
       const allNodes = [battery, busbar, ...nodes];
-      const dcEdge = (id: string, s: string, t: string): Edge => ({
-        id,
-        source: s,
-        target: t,
-        data: { edgeDomain: 'DC_12V' },
-      }) as Edge;
+      const dcEdge = (id: string, s: string, t: string): Edge =>
+        ({
+          id,
+          source: s,
+          target: t,
+          data: { edgeDomain: 'DC_12V' },
+        }) as Edge;
       const allEdges = [dcEdge('e3', 'b1', 'bus1'), ...edges];
       expect(calculateEdgeCurrent(battery, busbar, allNodes, volts(12.8), allEdges)).toBeCloseTo(
         (500 / 12.0 + 1500 / 12.0) / VDE_INVERTER_EFFICIENCY,
@@ -356,7 +356,7 @@ describe('VDE-Standards mit typsicheren Einheiten (K1b)', () => {
       // (300 + 1500 = 1800 W) — konservativer Over-Schätzer (nie zu niedrig),
       // dokumentiertes Übergangsverhalten für Anzeigepfade ohne Kanten.
       expect(calculateEdgeCurrent(inv1, undefined, nodes, volts(12.8), undefined)).toBeCloseTo(
-        (1800 / 12.0) / VDE_INVERTER_EFFICIENCY,
+        1800 / 12.0 / VDE_INVERTER_EFFICIENCY,
         10
       );
     });

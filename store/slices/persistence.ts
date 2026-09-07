@@ -1,3 +1,4 @@
+import { sanitizeNodeDataBySchema } from '../../lib/nodeSchema'; // DOM-003
 import { createJSONStorage, type PersistOptions } from 'zustand/middleware';
 import { type Node, type Edge } from '@xyflow/react';
 import { plannerDebouncedStorage } from '../storage';
@@ -50,10 +51,18 @@ function isEdgeShape(value: unknown): value is Edge {
   return true;
 }
 
-/** `data`-Block neutralisieren, wenn er kein plain object ist (String/Zahl aus Altdaten). */
+/**
+ * `data`-Block neutralisieren, wenn er kein plain object ist (String/Zahl aus Altdaten).
+ *
+ * AUDIT DOM-003: Anschließend deklaratives Feld-Schema (lib/nodeSchema.ts) —
+ * bekannte Felder mit falschem Laufzeit-Typ (watts: 'viel', hasRcd: 'ja', …)
+ * werden ENTFERNT, statt still in Berechnungen zu laufen. Unbekannte Felder
+ * bleiben erhalten (Forward-Kompatibilität).
+ */
 function sanitizeNodeData<T extends Node>(node: T): T {
   if (!node.data || typeof node.data !== 'object') return { ...node, data: {} };
-  return node;
+  const { data } = sanitizeNodeDataBySchema(node.type, node.data as Record<string, unknown>);
+  return { ...node, data: data as T['data'] };
 }
 
 function sanitizeEdgeData<T extends Edge>(edge: T): T {
@@ -83,10 +92,8 @@ export function migratePlannerPersisted(persisted: unknown, version: number): Pa
   if (Array.isArray(p.nodes)) safe.nodes = p.nodes.filter(isNodeShape).map(sanitizeNodeData);
   if (Array.isArray(p.edges))
     safe.edges = p.edges.filter(isEdgeShape).map(sanitizeEdgeData) as Edge<CableEdgeData>[];
-  if (Array.isArray(p.waterNodes))
-    safe.waterNodes = p.waterNodes.filter(isNodeShape).map(sanitizeNodeData);
-  if (Array.isArray(p.waterEdges))
-    safe.waterEdges = p.waterEdges.filter(isEdgeShape).map(sanitizeEdgeData);
+  if (Array.isArray(p.waterNodes)) safe.waterNodes = p.waterNodes.filter(isNodeShape).map(sanitizeNodeData);
+  if (Array.isArray(p.waterEdges)) safe.waterEdges = p.waterEdges.filter(isEdgeShape).map(sanitizeEdgeData);
 
   // Version 0 → 1: keine Feldumbenennungen, nur Validierung.
   void version;

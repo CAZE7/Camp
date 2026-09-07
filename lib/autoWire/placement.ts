@@ -1,4 +1,4 @@
-import type { Node } from '@xyflow/react';
+import type { Node } from '../domain/graph'; // ARCH-001
 
 /**
  * R-8 (Routing-Qualität, M11-2): AutoWire-Platzierung.

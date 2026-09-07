@@ -24,12 +24,12 @@ LOW FINDINGS:        9   (P3/P4)
 
 ## BLOCKING ISSUES (vor produktivem Einsatz zwingend beheben)
 
-| # | Finding | Kern | Status 2026-09-07 |
-|---|---------|------|-------------------|
-| 1 | ELE-001 | Sicherungs-/Belastbarkeits­koordination intern widersprüchlich: FUSE_MAP liegt für **jeden** Querschnitt **über** der zur Dimensionierung verwendeten (derateten) Belastbarkeit. `In ≤ Iz` wird im Modell gebrochen. | ✅ BEHOBEN — FUSE_MAP abgeleitet (größte Sicherung ≤ Iz×0,7), Invariant-Test fixesiert die Koordination |
-| 2 | ELE-002 | Thermische Sättigung bei >120 A: 70 mm² wird still ausgewählt, selbst wenn der Strom die eigene (deratete UND ab 173 A auch die rohe) Belastbarkeit übersteigt — **ohne Warnung** (nur fuseWarning bei I > 160 A). | ✅ BEHOBEN — `collectEdgeErrors` meldet „Leitung thermisch überlastet (I > X)" |
-| 3 | ELE-003 | Verpolte Batterie-Parallelschaltung (plus→minus zwischen zwei Aufbaubatterien) wird ohne jede Warnung akzeptiert („Series-Exception"). Im realen Fahrzeug = Kurzschluss. | ✅ BEHOBEN (Modellgrenze bleibt: Serien-String nicht geprüft) — Live-Regel A3 „Polarität vertauscht", kritisch |
-| 4 | CRASH-001 | AutoWire crasht mit `RangeError` bei AC-Nutzerkanten mit Querschnitt > 70 mm² (Import/Altdaten) — genau der Fall, den der DC-Pfad explizit abfängt. App-Aktion „Auto-Verdrahten" bricht ab. | ✅ BEHOBEN — sizeAcEdges normiert; Regressionstest 95/0/NaN/3 „wirft nie" |
+| #   | Finding   | Kern                                                                                                                                                                                                                 | Status 2026-09-07                                                                                              |
+| --- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| 1   | ELE-001   | Sicherungs-/Belastbarkeits­koordination intern widersprüchlich: FUSE_MAP liegt für **jeden** Querschnitt **über** der zur Dimensionierung verwendeten (derateten) Belastbarkeit. `In ≤ Iz` wird im Modell gebrochen. | ✅ BEHOBEN — FUSE_MAP abgeleitet (größte Sicherung ≤ Iz×0,7), Invariant-Test fixesiert die Koordination        |
+| 2   | ELE-002   | Thermische Sättigung bei >120 A: 70 mm² wird still ausgewählt, selbst wenn der Strom die eigene (deratete UND ab 173 A auch die rohe) Belastbarkeit übersteigt — **ohne Warnung** (nur fuseWarning bei I > 160 A).   | ✅ BEHOBEN — `collectEdgeErrors` meldet „Leitung thermisch überlastet (I > X)"                                 |
+| 3   | ELE-003   | Verpolte Batterie-Parallelschaltung (plus→minus zwischen zwei Aufbaubatterien) wird ohne jede Warnung akzeptiert („Series-Exception"). Im realen Fahrzeug = Kurzschluss.                                             | ✅ BEHOBEN (Modellgrenze bleibt: Serien-String nicht geprüft) — Live-Regel A3 „Polarität vertauscht", kritisch |
+| 4   | CRASH-001 | AutoWire crasht mit `RangeError` bei AC-Nutzerkanten mit Querschnitt > 70 mm² (Import/Altdaten) — genau der Fall, den der DC-Pfad explizit abfängt. App-Aktion „Auto-Verdrahten" bricht ab.                          | ✅ BEHOBEN — sizeAcEdges normiert; Regressionstest 95/0/NaN/3 „wirft nie"                                      |
 
 ---
 
@@ -41,44 +41,52 @@ Koordinationsmodell angepasst + neue Beweis-Tests), `tsc --noEmit` grün,
 `npm run build` (statischer Export) grün. Golden Master bewusst neu eingefroren
 (Begründung im Change Ledger `docs/ARCHITECTURE-CHANGES.md`, 2026-09-07).
 
-| Finding | Status | Maßnahme (Datei) | Beweis-Test |
-|---------|--------|------------------|-------------|
-| ELE-001 / NORM-002 | ✅ BEHOBEN | FUSE_MAP aus Ampacity×0,7 **abgeleitet** (`lib/electrical.ts`); Zitate durch ehrliche Modell-Doku ersetzt | `electrical.test.ts` „Sicherungsgrenze liegt NIEMALS über der Dimensionierungs-Belastbarkeit"; `vde-properties.test.ts` Shrinking-Anker |
-| ELE-002 | ✅ BEHOBEN | Thermisch-Überlast-Fehler in `collectEdgeErrors` (`CableEdge.tsx`) | Szenario-Tests (AssertZeroWarnings greift auf collectEdgeErrors durch) |
-| ELE-003 | ✅ BEHOBEN (mit dokumentierter Grenze: echte Serien-Strings weiter unmodelliert) | Regel A3 Verpolungs-Warnung kritisch (`useLiveValidation.ts`) | `useLiveValidation.test.ts` |
-| ELE-004 | ✅ TEILWEISE | `fuseOffset` (m) an Kante pflegbar + Fehler bei >0,2 m (`EdgeInspector`, `graphSlice.handleChangeFuseOffset`, `CableEdge`) | `persistence/Extended`-Suite grün; Feldvalidierung finite/≥0 |
-| ELE-005 | ✅ BEHOBEN | Insel-BFS für Wechselrichter-Last (optionaler `edges`-Parameter durch alle Call-Sites) + Entladeschlussspannung 0,9375×U_nom (`lib/vde-standards.ts`) | `vde-standards.test.ts` „ELE-005: zählt … Insel" + `dischargeFloorVoltage` |
-| ELE-006 | ✅ BEHOBEN (Anzeige-Seite) | ExpertPanel nutzt continuousPower + Floor-Spannung; calculateAcEdgeCurrent-Fallback auf charger.amps/shore.rating | `vde-standards.test.ts` AC-Tests, `ExpertPanel.test.tsx` |
-| ELE-007 | ⛔ OFFEN (P2) | Solar Isc/Voc/1,56×-Stringschutz unmodelliert — bewusste Modellgrenze, keine falsche Anzeige | — |
-| AC-001 | ✅ BEHOBEN | Kritische Regel für Inverter-AC-Insel ohne FI; `hasRcd` am Inverter pflegbar (Checkbox + Hinweiskarte) | `useLiveValidation.test.ts`, Szenario 3/4/5 |
-| CRASH-001 | ✅ BEHOBEN | sizeAcEdges normiert Alt-/Importquerschnitte (nie verkleinern, >70 auf 70-mm²-Bestung + Warnmarke) | `autoWire.test.ts` „CRASH-001: wirft nie … (95/0/NaN/3)" |
-| AUTO-001 | ✅ BEHOBEN | Länge-0-Guard in `crossSectionForDrop` (`primitives.ts`) | `autoWire.test.ts` |
-| AUTO-002 | ✅ BEHOBEN | Negative Länge → Fehlerchip + Fallback physicalDistance/2 m (`CableEdge.tsx`, `voltageDrop.ts`) | Suite grün |
-| AUTO-003 | ⛔ OFFEN (P3) | Chemie-Mischparallelen/Label-Heuristik — dokumentiert, nicht geändert | — |
-| AUTO-004 | ✅ DOKUMENTIERT | ADR-0010 „Geltungsbereich": elektrisch deterministisch, IDs nicht byte-identisch | `docs/adr/0010-…md` |
-| NORM-001 | ✅ BEHOBEN | Füllgrad 40 % (0100-520-Kontext + 18015-1 dokumentiert) | `vde-standards.test.ts` „Maximaler Füllgrad ist 40 %" |
-| NORM-003 | ✅ DOKUMENTIERT | Ampacity-Quellen ehrlich benannt (B2-30°C-Näherung, 50/70-Abweichung, FLLY nicht modelliert) | Code-Kommentar `electrical.ts` |
-| PERSIST-001 | ✅ BEHOBEN | Harte Shape-Validierung + sanitize bei Migration | `persistence.test.ts` |
-| CACHE-001 | ✅ BEHOBEN | Signatur um continuousPower/capacity/hours/rating/hasRcd erweitert | `graphInternals`-Suite grün |
-| PERF-001 | ✅ BEHOBEN | A*-Hindernisfilter pro Kante (PAD 240 px) + `itemBySegment`-Index O(K) statt O(K×E) | Routing-Suite + Invarianten grün |
-| PERF-002 | — (Positivbefund) | — | — |
-| ROUTE-001 | ✅ TEILWEISE | Fallback-Kollisionen zählbar gekennzeichnet (`PathResult.fallbackHitsObstacles`); Ausnahmen (a)/(b)/(c) im Change Ledger + Code dokumentiert | Routing-Invarianten-Suite |
-| ROUTE-002 | ✅ TEILWEISE (Index-Teil behoben) | crossingSegmentsNear nutzt Identitäts-Map; Gerade-Modell- vs. echte-Polyline-Kreuzung bleibt Näherung (dokumentiert) | Routing-Suite |
-| ROUTE-003 | ✅ DOKUMENTIERT | Implementierungs-Statusnotiz in `ROUTING-V2.md` (ELK nicht im Produktivpfad) | — |
-| ROUTE-004 | — (Positivbefund, dokumentiert) | — | — |
-| DOM-001/002 | ✅ DOKUMENTIERT (Modellgrenzen) | ExpertPanel-Abschnitt „Was der Planer NICHT leistet"; AC-Chip ehrlich („real ausführen: 3-adrig"; FI „wird hier nicht geprüft") | — |
-| DOM-003 / ARCH-001/002 / PERSIST-002 | ⛔ OFFEN (P3/P4, Architektur-Refactoring) | bewusst nicht in diesem Durchgang | — |
-| UX-001 | ✅ TEILWEISE | ValidationWarning um ruleId/measuredValue/expectedValue/unit/source; WarningCenter zeigt Ist/Soll/Regel | `useLiveValidation.test.ts` |
-| UX-002 | ✅ BEHOBEN | ExpertPanel-Texte auf Engine-Werte (DoD 90/50, FUSE_MAP-Werte, 70-mm²-Sättigung) | `ExpertPanel.test.tsx` |
-| UX-003 | ✅ BEHOBEN | Chip-Formulierungen ohne Modell-Anspruch | — |
+| Finding            | Status                                                                           | Maßnahme (Datei)                                                                                                                                                                                                                                                                                                      | Beweis-Test                                                                                                                             |
+| ------------------ | -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| ELE-001 / NORM-002 | ✅ BEHOBEN                                                                       | FUSE_MAP aus Ampacity×0,7 **abgeleitet** (`lib/electrical.ts`); Zitate durch ehrliche Modell-Doku ersetzt                                                                                                                                                                                                             | `electrical.test.ts` „Sicherungsgrenze liegt NIEMALS über der Dimensionierungs-Belastbarkeit"; `vde-properties.test.ts` Shrinking-Anker |
+| ELE-002            | ✅ BEHOBEN                                                                       | Thermisch-Überlast-Fehler in `collectEdgeErrors` (`CableEdge.tsx`)                                                                                                                                                                                                                                                    | Szenario-Tests (AssertZeroWarnings greift auf collectEdgeErrors durch)                                                                  |
+| ELE-003            | ✅ BEHOBEN (mit dokumentierter Grenze: echte Serien-Strings weiter unmodelliert) | Regel A3 Verpolungs-Warnung kritisch (`useLiveValidation.ts`)                                                                                                                                                                                                                                                         | `useLiveValidation.test.ts`                                                                                                             |
+| ELE-004            | ✅ TEILWEISE                                                                     | `fuseOffset` (m) an Kante pflegbar + Fehler bei >0,2 m (`EdgeInspector`, `graphSlice.handleChangeFuseOffset`, `CableEdge`)                                                                                                                                                                                            | `persistence/Extended`-Suite grün; Feldvalidierung finite/≥0                                                                            |
+| ELE-005            | ✅ BEHOBEN                                                                       | Insel-BFS für Wechselrichter-Last (optionaler `edges`-Parameter durch alle Call-Sites) + Entladeschlussspannung 0,9375×U_nom (`lib/vde-standards.ts`)                                                                                                                                                                 | `vde-standards.test.ts` „ELE-005: zählt … Insel" + `dischargeFloorVoltage`                                                              |
+| ELE-006            | ✅ BEHOBEN (Anzeige-Seite)                                                       | ExpertPanel nutzt continuousPower + Floor-Spannung; calculateAcEdgeCurrent-Fallback auf charger.amps/shore.rating                                                                                                                                                                                                     | `vde-standards.test.ts` AC-Tests, `ExpertPanel.test.tsx`                                                                                |
+| ELE-007            | ✅ BEHOBEN                                                                       | `lib/solar.ts`: Isc (Datenblatt oder Schätzung 1,25×Imp), Designstrom 1,25×Isc, Sicherungsfloor 1,5625×Isc (NEC 690.8×690.9, Quellendoku in Dateikopf), Kalt-Voc Voc(−20 °C) mit TK-Default −0,35 %/K; MPPT-Voc-Fensterprüfung als Live-Regel A6; voc/isc/tempCoefficient/maxPvVoltage pflegbar                       | `lib/solar.test.ts` (8 Tests), `useLiveValidation.test.ts` A6 (4 Tests), `autoWire.test.ts` Solar-Fuse (2 Tests)                        |
+| AC-001             | ✅ BEHOBEN                                                                       | Kritische Regel für Inverter-AC-Insel ohne FI; `hasRcd` am Inverter pflegbar (Checkbox + Hinweiskarte)                                                                                                                                                                                                                | `useLiveValidation.test.ts`, Szenario 3/4/5                                                                                             |
+| CRASH-001          | ✅ BEHOBEN                                                                       | sizeAcEdges normiert Alt-/Importquerschnitte (nie verkleinern, >70 auf 70-mm²-Bestung + Warnmarke)                                                                                                                                                                                                                    | `autoWire.test.ts` „CRASH-001: wirft nie … (95/0/NaN/3)"                                                                                |
+| AUTO-001           | ✅ BEHOBEN                                                                       | Länge-0-Guard in `crossSectionForDrop` (`primitives.ts`)                                                                                                                                                                                                                                                              | `autoWire.test.ts`                                                                                                                      |
+| AUTO-002           | ✅ BEHOBEN                                                                       | Negative Länge → Fehlerchip + Fallback physicalDistance/2 m (`CableEdge.tsx`, `voltageDrop.ts`)                                                                                                                                                                                                                       | Suite grün                                                                                                                              |
+| AUTO-003           | ✅ BEHOBEN                                                                       | `chemistriesParallelSafe` (AGM‖Gel und LiFePO4‖Li-Ion blockiert, bekannte Chemien exakt, Unbekannte alter Blei/Li-Fallback); Live-Regel A5 für Nutzer-Kanten (kritisch); `role`-Feld ('starter'/'house') gewinnt über Label-Heuristik (isStarterBattery + getSystemVoltage); Gel-Option + Rollen-Auswahl im Inspector | `autoWire.test.ts` (AGM‖Gel nicht auf Schiene, AGM‖AGM weiter parallel, role-Priorität), `useLiveValidation.test.ts` A5 (3 Tests)       |
+| AUTO-004           | ✅ DOKUMENTIERT                                                                  | ADR-0010 „Geltungsbereich": elektrisch deterministisch, IDs nicht byte-identisch                                                                                                                                                                                                                                      | `docs/adr/0010-…md`                                                                                                                     |
+| NORM-001           | ✅ BEHOBEN                                                                       | Füllgrad 40 % (0100-520-Kontext + 18015-1 dokumentiert)                                                                                                                                                                                                                                                               | `vde-standards.test.ts` „Maximaler Füllgrad ist 40 %"                                                                                   |
+| NORM-003           | ✅ DOKUMENTIERT                                                                  | Ampacity-Quellen ehrlich benannt (B2-30°C-Näherung, 50/70-Abweichung, FLLY nicht modelliert)                                                                                                                                                                                                                          | Code-Kommentar `electrical.ts`                                                                                                          |
+| PERSIST-001        | ✅ BEHOBEN                                                                       | Harte Shape-Validierung + sanitize bei Migration                                                                                                                                                                                                                                                                      | `persistence.test.ts`                                                                                                                   |
+| CACHE-001          | ✅ BEHOBEN                                                                       | Signatur um continuousPower/capacity/hours/rating/hasRcd erweitert                                                                                                                                                                                                                                                    | `graphInternals`-Suite grün                                                                                                             |
+| PERF-001           | ✅ BEHOBEN                                                                       | A*-Hindernisfilter pro Kante (PAD 240 px) + `itemBySegment`-Index O(K) statt O(K×E)                                                                                                                                                                                                                                   | Routing-Suite + Invarianten grün                                                                                                        |
+| PERF-002           | — (Positivbefund)                                                                | —                                                                                                                                                                                                                                                                                                                     | —                                                                                                                                       |
+| ROUTE-001          | ✅ TEILWEISE                                                                     | Fallback-Kollisionen zählbar gekennzeichnet (`PathResult.fallbackHitsObstacles`); Ausnahmen (a)/(b)/(c) im Change Ledger + Code dokumentiert                                                                                                                                                                          | Routing-Invarianten-Suite                                                                                                               |
+| ROUTE-002          | ✅ TEILWEISE (Index-Teil behoben)                                                | crossingSegmentsNear nutzt Identitäts-Map; Gerade-Modell- vs. echte-Polyline-Kreuzung bleibt Näherung (dokumentiert)                                                                                                                                                                                                  | Routing-Suite                                                                                                                           |
+| ROUTE-003          | ✅ DOKUMENTIERT                                                                  | Implementierungs-Statusnotiz in `ROUTING-V2.md` (ELK nicht im Produktivpfad)                                                                                                                                                                                                                                          | —                                                                                                                                       |
+| ROUTE-004          | — (Positivbefund, dokumentiert)                                                  | —                                                                                                                                                                                                                                                                                                                     | —                                                                                                                                       |
+| DOM-001/002        | ✅ DOKUMENTIERT (Modellgrenzen)                                                  | ExpertPanel-Abschnitt „Was der Planer NICHT leistet"; AC-Chip ehrlich („real ausführen: 3-adrig"; FI „wird hier nicht geprüft")                                                                                                                                                                                       | —                                                                                                                                       |
+| DOM-003            | ✅ BEHOBEN                                                                       | Deklaratives Runtime-Schema `lib/nodeSchema.ts` (Feldtabelle je Bauteiltyp, Enum-/Typ-Prüfung); Persistenz-Migration entfernt falsch getippte bekannte Felder, Unbekannte bleiben (Forward-Kompat.)                                                                                                                   | `nodeSchema.test.ts` (6 Tests), `persistence.test.ts` DOM-003-Fall                                                                      |
+| UX-001             | ✅ BEHOBEN (vollständig)                                                         | ValidationWarning strukturiert (s.o.); `collectEdgeErrors` liefert jetzt `EdgeError[]` mit ruleId/severity/measuredValue/expectedValue/unit/source statt reiner Strings — Chips, Tests und WarningCenter konsumieren dieselben Objekte                                                                                | `usePlannerStoreExtended.test.ts` (EdgeError-getrosten Helper), `CableEdge.test.tsx`                                                    |
+| UX-002             | ✅ BEHOBEN                                                                       | ExpertPanel-Texte auf Engine-Werte (DoD 90/50, FUSE_MAP-Werte, 70-mm²-Sättigung)                                                                                                                                                                                                                                      | `ExpertPanel.test.tsx`                                                                                                                  |
+| UX-003             | ✅ BEHOBEN                                                                       | Chip-Formulierungen ohne Modell-Anspruch                                                                                                                                                                                                                                                                              | —                                                                                                                                       |
 
-**Verbleibend (bewusst offen, priorisiert):** ELE-007 (Solar-Isc/Voc), AUTO-003
-(Chemie-Parallelen), DOM-003/ARCH-001/002 (Schema-/Schichten-Refactoring), UX-001-Rest
-(collectEdgeErrors als String-Liste statt strukturierter Objekte), ELE-007-abhängige
-Norm-Recherchen. Der Statusblock oben (NOT SAFE / NOT READY) bezieht sich auf die
-**Audiert-Baseline** und bleibt als historisches Dokument unverändert; nach dieser
-Nachbearbeitung sind alle 4 BLOCKING ISSUES behoben — eine erneute vollständige
-Freigabeprüfung steht noch aus.
+**Zweiter Nachtrag 2026-09-07 (P2–P4-Block):** ELE-007, AUTO-003, DOM-003, ARCH-001
+(Typ-Ebene: lib/ importiert keine @xyflow/react-/components-Typen mehr; neue Domänen-
+Typen `lib/domain/graph.ts`, CableEdgeData nach `lib/domain/cableEdgeData.ts` verschoben;
+bewusster Rest: `lib/routing/elk/ab-compare.ts` + `costModel.ts` importieren Runtime-seitig
+aus components — ELK bleibt Vergleichs-/Scriptschicht, nicht Produktionspfad), ARCH-002
+(`lib/connectionRules.ts` reine Funktion, Store delegiert), UX-001-Rest (EdgeError[]).
+Solar-Spezial-Drop-Budget (Audit-Fix-Punkt 4) bewusst NICHT umgestellt: Solar-Spannungsfall
+weiterhin gegen 12,8-V-Referenz gerechnet = überschätzt den Prozentwert konservativ
+(dokumentiert in lib/solar.ts + sizing.ts).
+
+**Verbleibend (bewusst offen, priorisiert):** ARCH-Rest (lib/routing/elk Runtime-Importe),
+ELE-004-Normverankerung der 20-cm-Faustregel (UNVERIFIED), fehlende Negativ-Tests für
+Wasser-Modus-Interaktionen mit connectionRules. Der Statusblock oben (NOT SAFE / NOT READY)
+bezieht sich auf die **audierte Baseline** und bleibt als historisches Dokument unverändert;
+alle 4 BLOCKING ISSUES sind behoben — eine erneute vollständige Freigabeprüfung steht aus.
 
 ---
 
@@ -832,38 +840,38 @@ ID: DOC-001 · SEVERITY: MEDIUM (P2)
 
 ## M. NORMATIVE UNCERTAINTIES (Regel-Matrix)
 
-| Regel (Code-Behauptung) | Behauptete Quelle | Implementiert | Bewertung | Status |
-|---|---|---|---|---|
-| Ampacity {16.5…172} | (implizit) DIN VDE 0298-4 | electrical.ts:4 | Werte ≈ 0298-4 **B2** (30 °C, 2 Adern); 50/70 mm² weichen ab (136/172 vs 133/168 [4](https://www.elekrechner.com/tabellen/strombelastbarkeit)); Kontext Fahrzeug vs Gebäude ungeklärt | **UNVERIFIED** |
-| FUSE_MAP „max fuse per cs" | „DIN VDE 0298-4" | electrical.ts:20 | 0298-4 enthält keine Fuse-Tabelle; Werte = Installationspraxis (0100-430-Kontext) [5](https://www.voltflow.net/blog/kabelquerschnitt-tabelle) | **INCORRECT (Quelle)** |
-| FUSE ≤ Iz-Koordination | — | selectFuseSize | im Modell gebrochen (ELE-001) | **INCORRECT (intern)** |
-| Pauschal-Derate 0.7 | — | electrical.ts:17 | ersetzt Temperatur+Häufung+Verlegeart; keine Quelle | **UNVERIFIED / NORMATIVE GAP** |
-| 3 % Spannungsfall DC (0,36 V) | „DIN VDE 0298-4" | electrical.ts:138, primitives.ts:23 | 0298-4 definiert keine 3-%-Grenze; übliche Grenzen: 0100-520-Anhang (3 % Licht/5 % übrige, Gebäude), Fahrzeugpraxis 2–5 % — Wert als Faustregel OK, Quelle falsch | **UNVERIFIED (Wert) / INCORRECT (Zitat)** |
-| 2 % AC (4,6 V) | Kommentar „conservative" | electrical.ts:140 | willkürlich-konservativ, ohne Quelle; Schwellenanzeige nutzt 3 % (6,9 V) — zwei Grenzen | **UNVERIFIED** |
-| Leerrohr 60 % | „VDE 0100-520" | vde-standards.ts:95 | Praxis/Normkontext: 40 % bzw. DIN 18015-1 ⅓/½ [5](https://www.elektro.net/120698/mechanischer-schutz-fuer-leitungen-verpflichtend/) | **UNVERIFIED→INCORRECT** |
-| RCD ≤ 30 mA Landstrom | DIN VDE 0100-721 | useLiveValidation | für Caravan-Landstrom plausibel/einschlägig; Klausel nicht verifizierbar; Inverter-Seite fehlt | **PROBABLY CORRECT (Lücke AC-001)** |
-| 16 mm² Masseanbindung Karosserie | — (Kommentar „VDE-Mindestanbindung") | autoWire.ts Ground-Loop | keine Quelle auffindbar; plausible Praxis | **UNVERIFIED** |
-| 20 cm Hauptsicherung | Kommentar | CableEdge | ABYC ~178 mm/„as close as practicable" (ISO 10133) — nicht VDE; Position unmodelliert (ELE-004) | **UNVERIFIED** |
-| Inverter-Wirkungsgrad 0.85, Vmp 18 V, Winter 0.35, DoD {0.9/0.5/0.3} | — | vde-standards.ts | Hersteller-/Faustwerte, konservativ gewählt; als Konstanten dokumentiert | **PROBABLY CORRECT (Annahmen, keine Norm)** |
-| B2-Ampacity für Fahrzeug-FLRY | — | — | FLRY → DIN EN 1648-2/ISO 6722-Kontext; Kontextwechsel nicht dokumentiert | **NORMATIVE GAP** |
+| Regel (Code-Behauptung)                                              | Behauptete Quelle                    | Implementiert                       | Bewertung                                                                                                                                                                             | Status                                      |
+| -------------------------------------------------------------------- | ------------------------------------ | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| Ampacity {16.5…172}                                                  | (implizit) DIN VDE 0298-4            | electrical.ts:4                     | Werte ≈ 0298-4 **B2** (30 °C, 2 Adern); 50/70 mm² weichen ab (136/172 vs 133/168 [4](https://www.elekrechner.com/tabellen/strombelastbarkeit)); Kontext Fahrzeug vs Gebäude ungeklärt | **UNVERIFIED**                              |
+| FUSE_MAP „max fuse per cs"                                           | „DIN VDE 0298-4"                     | electrical.ts:20                    | 0298-4 enthält keine Fuse-Tabelle; Werte = Installationspraxis (0100-430-Kontext) [5](https://www.voltflow.net/blog/kabelquerschnitt-tabelle)                                         | **INCORRECT (Quelle)**                      |
+| FUSE ≤ Iz-Koordination                                               | —                                    | selectFuseSize                      | im Modell gebrochen (ELE-001)                                                                                                                                                         | **INCORRECT (intern)**                      |
+| Pauschal-Derate 0.7                                                  | —                                    | electrical.ts:17                    | ersetzt Temperatur+Häufung+Verlegeart; keine Quelle                                                                                                                                   | **UNVERIFIED / NORMATIVE GAP**              |
+| 3 % Spannungsfall DC (0,36 V)                                        | „DIN VDE 0298-4"                     | electrical.ts:138, primitives.ts:23 | 0298-4 definiert keine 3-%-Grenze; übliche Grenzen: 0100-520-Anhang (3 % Licht/5 % übrige, Gebäude), Fahrzeugpraxis 2–5 % — Wert als Faustregel OK, Quelle falsch                     | **UNVERIFIED (Wert) / INCORRECT (Zitat)**   |
+| 2 % AC (4,6 V)                                                       | Kommentar „conservative"             | electrical.ts:140                   | willkürlich-konservativ, ohne Quelle; Schwellenanzeige nutzt 3 % (6,9 V) — zwei Grenzen                                                                                               | **UNVERIFIED**                              |
+| Leerrohr 60 %                                                        | „VDE 0100-520"                       | vde-standards.ts:95                 | Praxis/Normkontext: 40 % bzw. DIN 18015-1 ⅓/½ [5](https://www.elektro.net/120698/mechanischer-schutz-fuer-leitungen-verpflichtend/)                                                   | **UNVERIFIED→INCORRECT**                    |
+| RCD ≤ 30 mA Landstrom                                                | DIN VDE 0100-721                     | useLiveValidation                   | für Caravan-Landstrom plausibel/einschlägig; Klausel nicht verifizierbar; Inverter-Seite fehlt                                                                                        | **PROBABLY CORRECT (Lücke AC-001)**         |
+| 16 mm² Masseanbindung Karosserie                                     | — (Kommentar „VDE-Mindestanbindung") | autoWire.ts Ground-Loop             | keine Quelle auffindbar; plausible Praxis                                                                                                                                             | **UNVERIFIED**                              |
+| 20 cm Hauptsicherung                                                 | Kommentar                            | CableEdge                           | ABYC ~178 mm/„as close as practicable" (ISO 10133) — nicht VDE; Position unmodelliert (ELE-004)                                                                                       | **UNVERIFIED**                              |
+| Inverter-Wirkungsgrad 0.85, Vmp 18 V, Winter 0.35, DoD {0.9/0.5/0.3} | —                                    | vde-standards.ts                    | Hersteller-/Faustwerte, konservativ gewählt; als Konstanten dokumentiert                                                                                                              | **PROBABLY CORRECT (Annahmen, keine Norm)** |
+| B2-Ampacity für Fahrzeug-FLRY                                        | —                                    | —                                   | FLRY → DIN EN 1648-2/ISO 6722-Kontext; Kontextwechsel nicht dokumentiert                                                                                                              | **NORMATIVE GAP**                           |
 
 ---
 
 ## TEST-COVERAGE-MATRIX (gemessener Stand; ✅=vorhanden, ⚠=teilweise, ❌=fehlt)
 
-| Bereich | Happy | Edge | Negative/Adversarial | Property | E2E |
-|---|---|---|---|---|---|
-| Ohm/Leistung (units) | ✅ | ✅ | ⚠ (0/NaN in Konstruktoren; **nicht** in calculateCrossSection-Kette) | ✅ (units.typecheck) | – |
-| Strom (calculateEdgeCurrent) | ✅ | ⚠ | ❌ (verpolte Batterie, Solar direkt→Batterie, Mischspannungsplan) | ⚠ | – |
-| Cable sizing | ✅ | ⚠ (95 mm²-DC) | ❌ (>120-A-Sättigung, 24-V-Plan, Länge 0/negativ) | ✅ (vde-properties) | – |
-| Fuse sizing | ✅ | ✅ | ❌ (FUSE_MAP-vs-Derate-Widerspruch wird von Test **maskiert**) | ⚠ | – |
-| Voltage drop | ✅ | ⚠ | ❌ (negative Länge, AC/DC-Mischung, Stale-Cache) | ✅ (Monotonie) | – |
-| AutoWire | ✅ | ✅ (Issues 1–11 aus Voraudit) | ❌ (AC-95 mm²-Crash, Länge-0-Crash) | ✅ (1000-Lauf-Idempotenz) | ⚠ |
-| Routing | ✅ | ✅ | ⚠ (Fallback-Zähler, aber kein Test „Fallback nie Endresultat bei ≤X Knoten") | ✅ (Determinismus) | ✅ (visual) |
-| Collision/Geometry | ✅ | ✅ (kollinear/touch/zero-length) | ⚠ | ✅ (invariants I1–I7) | – |
-| ELK | ✅ (Modul/A-B) | ⚠ | ❌ (kein Test „ELK aktiv in App") | ✅ (cloneable/determ.) | ❌ |
-| Persistence | ✅ | ✅ (teilkorrupt) | ⚠ (position null, Feld-Typen) | ⚠ | ✅ (persistence.spec) |
-| Live-Validierung | ✅ | ✅ | ❌ (Inverter-RCD, verpolte Batterie, direktes Solar→Batterie) | ❌ | ⚠ (expert-panel.spec) |
+| Bereich                      | Happy          | Edge                             | Negative/Adversarial                                                         | Property                  | E2E                   |
+| ---------------------------- | -------------- | -------------------------------- | ---------------------------------------------------------------------------- | ------------------------- | --------------------- |
+| Ohm/Leistung (units)         | ✅             | ✅                               | ⚠ (0/NaN in Konstruktoren; **nicht** in calculateCrossSection-Kette)         | ✅ (units.typecheck)      | –                     |
+| Strom (calculateEdgeCurrent) | ✅             | ⚠                                | ❌ (verpolte Batterie, Solar direkt→Batterie, Mischspannungsplan)            | ⚠                         | –                     |
+| Cable sizing                 | ✅             | ⚠ (95 mm²-DC)                    | ❌ (>120-A-Sättigung, 24-V-Plan, Länge 0/negativ)                            | ✅ (vde-properties)       | –                     |
+| Fuse sizing                  | ✅             | ✅                               | ❌ (FUSE_MAP-vs-Derate-Widerspruch wird von Test **maskiert**)               | ⚠                         | –                     |
+| Voltage drop                 | ✅             | ⚠                                | ❌ (negative Länge, AC/DC-Mischung, Stale-Cache)                             | ✅ (Monotonie)            | –                     |
+| AutoWire                     | ✅             | ✅ (Issues 1–11 aus Voraudit)    | ❌ (AC-95 mm²-Crash, Länge-0-Crash)                                          | ✅ (1000-Lauf-Idempotenz) | ⚠                     |
+| Routing                      | ✅             | ✅                               | ⚠ (Fallback-Zähler, aber kein Test „Fallback nie Endresultat bei ≤X Knoten") | ✅ (Determinismus)        | ✅ (visual)           |
+| Collision/Geometry           | ✅             | ✅ (kollinear/touch/zero-length) | ⚠                                                                            | ✅ (invariants I1–I7)     | –                     |
+| ELK                          | ✅ (Modul/A-B) | ⚠                                | ❌ (kein Test „ELK aktiv in App")                                            | ✅ (cloneable/determ.)    | ❌                    |
+| Persistence                  | ✅             | ✅ (teilkorrupt)                 | ⚠ (position null, Feld-Typen)                                                | ⚠                         | ✅ (persistence.spec) |
+| Live-Validierung             | ✅             | ✅                               | ❌ (Inverter-RCD, verpolte Batterie, direktes Solar→Batterie)                | ❌                        | ⚠ (expert-panel.spec) |
 
 **1751 grüne Tests stehen den P0-Befunden nicht entgegen — die Lücken liegen gezielt dort, wo grün getestet wurde, was die Implementierung absichert, nicht was die Norm verlangt.**
 
@@ -871,30 +879,30 @@ ID: DOC-001 · SEVERITY: MEDIUM (P2)
 
 ## SCORECARD (0–100; Durchschnitt versteckt nichts — P0 dominieren die Aussage)
 
-| Kriterium | Score | Begründung (Kurz) |
-|---|---|---|
-| Electrical Correctness | **52** | Formeln (ΔU=2LI/κA, P/U) korrekt & branded; aber Strommodell-Topologieblind (ELE-005), 2×AC-Wahrheit (ELE-006), 12-V-Budget überall (P2) |
-| VDE/Normative Confidence | **30** | 3 falsch/ungeklärte Quellenzuordnungen, 0 Klausel-Referenzen, Ampacity-Herkunft unklar |
-| Safety (Planungsrisiko) | **45** | RCD-Regel + Quellschutz-Regel existieren; aber ELE-001/002/003 + fuse position unmodelliert |
-| Cable Sizing | **55** | saubere Zwei-Kriterien-Suche + Budget-Iterierung; Sättigung still (ELE-002), Kontexttabellen unklar |
-| Fuse Sizing | **40** |_normale_ Auswahl ok; Koordination widersprüchlich (ELE-001), 20-cm-Regel Placebo (ELE-004) |
-| Voltage Drop | **70** | Formel & Kumulation korrekt & getestet; Grenzwerte doppelt/doppelt begründet, Cache-Stale, Negativ-Länge |
-| Battery Logic | **50** | DoD/Spannungswahl ok; keine C-Rate/Ströme/Peukert, Parallelausnahme AGM+Gel, Label-Heuristik |
-| Solar Logic | **40** | Vmp-Strommodell; Isc/Voc-kalt/MPPT-Fenster fehlen |
-| AC Logic (230 V) | **35** | Domain-Gate stark; aber 1-Leiter-Modell, kein RCD am WR, kein PE-Modell |
-| DC Logic (12 V) | **65** | Backbone-Topologie + Shunt-Regeln + Polaritäts-Gate; Serie-/Paradoxlücke (ELE-003) |
-| AutoWire | **60** | herausragende Heilungs-/Idempotenzlogik; 2 Crash-Pfade, Phantomlasten |
-| Domain Model | **55** | gute Typmärke, aber fachliche Felder untypisiert in data, PE/N fehlen |
-| Routing | **72** | A* + Geometrie + Lanes/Hops deterministisch & getestet; Garantielücken (ROUTE-001), Näherungs-Kreuzungen |
-| Collision Handling | **75** | mathematisch sauber;zwei Wahrheiten (V2-Modul ungenutzt) |
-| Determinism | **80** | Routing/AutoWire-Ergebnisse deterministisch (bewiesen); IDs zufällig, Dokuklarheit fehlend |
-| Data Integrity | **60** | Migration & Debounce solide; Hüllencheck only, stiller Fallback, Cache-Stale-Bug |
-| Testing | **68** | 1751 Tests, Property-/Golden-/RegRESSION-Harness; adversariale elektrische Lücken |
-| Architecture | **70** | klare Schichtung; Typ-Abhängigkeiten lib→components, ELK unverdrahtet, Store-Regeln |
-| Security | **85** | minimale Fläche, kein XSS, saubere Whitelist-Migration |
-| UX | **70** | Warn-Zentrale mit Beheben/Fokus stark; Messwert-/Quellenstruktur fehlt, Widerspruchs-Texte |
-| Performance | **50** | <100 Kanten gut (Caches, Throttle); 500 Knoten = 81 s → unbrauchbar |
-| Documentation | **60** | außergewöhnlich ehrliche Audits/ADRs; ELK-Status & einige Behauptungen überzeichnet |
+| Kriterium                | Score  | Begründung (Kurz)                                                                                                                        |
+| ------------------------ | ------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Electrical Correctness   | **52** | Formeln (ΔU=2LI/κA, P/U) korrekt & branded; aber Strommodell-Topologieblind (ELE-005), 2×AC-Wahrheit (ELE-006), 12-V-Budget überall (P2) |
+| VDE/Normative Confidence | **30** | 3 falsch/ungeklärte Quellenzuordnungen, 0 Klausel-Referenzen, Ampacity-Herkunft unklar                                                   |
+| Safety (Planungsrisiko)  | **45** | RCD-Regel + Quellschutz-Regel existieren; aber ELE-001/002/003 + fuse position unmodelliert                                              |
+| Cable Sizing             | **55** | saubere Zwei-Kriterien-Suche + Budget-Iterierung; Sättigung still (ELE-002), Kontexttabellen unklar                                      |
+| Fuse Sizing              | **40** | _normale_ Auswahl ok; Koordination widersprüchlich (ELE-001), 20-cm-Regel Placebo (ELE-004)                                              |
+| Voltage Drop             | **70** | Formel & Kumulation korrekt & getestet; Grenzwerte doppelt/doppelt begründet, Cache-Stale, Negativ-Länge                                 |
+| Battery Logic            | **50** | DoD/Spannungswahl ok; keine C-Rate/Ströme/Peukert, Parallelausnahme AGM+Gel, Label-Heuristik                                             |
+| Solar Logic              | **40** | Vmp-Strommodell; Isc/Voc-kalt/MPPT-Fenster fehlen                                                                                        |
+| AC Logic (230 V)         | **35** | Domain-Gate stark; aber 1-Leiter-Modell, kein RCD am WR, kein PE-Modell                                                                  |
+| DC Logic (12 V)          | **65** | Backbone-Topologie + Shunt-Regeln + Polaritäts-Gate; Serie-/Paradoxlücke (ELE-003)                                                       |
+| AutoWire                 | **60** | herausragende Heilungs-/Idempotenzlogik; 2 Crash-Pfade, Phantomlasten                                                                    |
+| Domain Model             | **55** | gute Typmärke, aber fachliche Felder untypisiert in data, PE/N fehlen                                                                    |
+| Routing                  | **72** | A* + Geometrie + Lanes/Hops deterministisch & getestet; Garantielücken (ROUTE-001), Näherungs-Kreuzungen                                 |
+| Collision Handling       | **75** | mathematisch sauber;zwei Wahrheiten (V2-Modul ungenutzt)                                                                                 |
+| Determinism              | **80** | Routing/AutoWire-Ergebnisse deterministisch (bewiesen); IDs zufällig, Dokuklarheit fehlend                                               |
+| Data Integrity           | **60** | Migration & Debounce solide; Hüllencheck only, stiller Fallback, Cache-Stale-Bug                                                         |
+| Testing                  | **68** | 1751 Tests, Property-/Golden-/RegRESSION-Harness; adversariale elektrische Lücken                                                        |
+| Architecture             | **70** | klare Schichtung; Typ-Abhängigkeiten lib→components, ELK unverdrahtet, Store-Regeln                                                      |
+| Security                 | **85** | minimale Fläche, kein XSS, saubere Whitelist-Migration                                                                                   |
+| UX                       | **70** | Warn-Zentrale mit Beheben/Fokus stark; Messwert-/Quellenstruktur fehlt, Widerspruchs-Texte                                               |
+| Performance              | **50** | <100 Kanten gut (Caches, Throttle); 500 Knoten = 81 s → unbrauchbar                                                                      |
+| Documentation            | **60** | außergewöhnlich ehrliche Audits/ADRs; ELK-Status & einige Behauptungen überzeichnet                                                      |
 
 **Gesamt: NICHT production ready — 4 P0 blockieren.**
 
@@ -903,24 +911,15 @@ ID: DOC-001 · SEVERITY: MEDIUM (P2)
 ## N. RECOMMENDED ROADMAP
 
 **P0 (sofort, vor jedem „produktiv"):**
+
 1. ELE-001: Eine Iz-Wahrheit + Koordinationstest (FUSE_MAP ≤ Iz) — bewusster Golden-Master-Recapture.
 2. ELE-002: thermWarning bei Sättigung + Property-Test.
 3. ELE-003: Verpolungs-/Serie-Validator (critical).
 4. CRASH-001 + AUTO-001: sizeAcEdges-Normierung + Länge-0-Guard + Fuzz-Regression im CI (fuzz-suite gegen performAutoWiring, 1000 Läufe, „wirft nie").
 
-**P1 (nächster Sprint):**
-5. CACHE-001 Signatur erweitern (continuousPower/rating/capacity) + Store-Test.
-6. ELE-006: AC-Strom auf EINE Funktion; ExpertPanel anschließen.
-7. AC-001: RCD-Regel Inverter-Kreis; DOM-001/UX-003: „3-adrig"-Chip entfernen oder als Annahme kennzeichnen.
-8. PERF-001: räumliche Hindernisvorfilter + Grid-Markierung; >250-Knoten-Benchmark ins CI.
-9. NORM-001/002/003: Quellen korrigieren/dokumentieren (auch ExpertPanel-Texte UX-002) — oder Abschwächung aller Normzitate zu „nach implementierten Regeln".
+**P1 (nächster Sprint):** 5. CACHE-001 Signatur erweitern (continuousPower/rating/capacity) + Store-Test. 6. ELE-006: AC-Strom auf EINE Funktion; ExpertPanel anschließen. 7. AC-001: RCD-Regel Inverter-Kreis; DOM-001/UX-003: „3-adrig"-Chip entfernen oder als Annahme kennzeichnen. 8. PERF-001: räumliche Hindernisvorfilter + Grid-Markierung; >250-Knoten-Benchmark ins CI. 9. NORM-001/002/003: Quellen korrigieren/dokumentieren (auch ExpertPanel-Texte UX-002) — oder Abschwächung aller Normzitate zu „nach implementierten Regeln".
 
-**P2 (Quartal):**
-10. ROUTE-003: ELK verdrahten oder Doku korrigieren; classifyCollision in A* einbinden.
-11. PERSIST-001: Runtime-Schema (z. B. zod) für Rehydrate + Warnmarker statt stiller Fallback.
-12. ELE-004: fuseOffset-Modell + Validierung; UX-001: structured warnings (ruleId/measured/expected/source).
-13. ELE-007: Solar-Datenmodell (Isc/Voc/TempKoeff) + MPPT-Fenster-Regel.
-14. DOM-002: Kurzschluss-/Abschaltvermögens-Modell oder explizite Limitierungs-Erklärung in UI/Doku.
+**P2 (Quartal):** 10. ROUTE-003: ELK verdrahten oder Doku korrigieren; classifyCollision in A* einbinden. 11. PERSIST-001: Runtime-Schema (z. B. zod) für Rehydrate + Warnmarker statt stiller Fallback. 12. ELE-004: fuseOffset-Modell + Validierung; UX-001: structured warnings (ruleId/measured/expected/source). 13. ELE-007: Solar-Datenmodell (Isc/Voc/TempKoeff) + MPPT-Fenster-Regel. 14. DOM-002: Kurzschluss-/Abschaltvermögens-Modell oder explizite Limitierungs-Erklärung in UI/Doku.
 
 ---
 

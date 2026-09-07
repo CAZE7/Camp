@@ -115,6 +115,10 @@ const EXPERT_KNOWLEDGE: Record<string, ExpertTip> = {
         heading: 'Realistische Erträge',
         body: 'In Deutschland rechnet man mit ~3-4 Sonnenstunden/Tag (Sommer). Ein 200Wp Panel erzeugt real ca. 600-800Wh/Tag ≈ 50-65Ah bei 12V.',
       },
+      {
+        heading: 'Datenblattwerte Isc & Voc eintragen',
+        body: 'Der Planer sichert Solar-Zuleitungen nach der 1,56 × Isc-Regel ab (NEC-Kontext) und prüft die Kalt-Leerlaufspannung Voc(−20 °C) gegen das Eingangsfenster des Ladereglers. Fehlt der Isc-Datenblattwert, schätzt er konservativ 1,25 × Imp — mit echten Werten wird die Absicherung passgenauer.',
+      },
     ],
   },
   consumer: {
@@ -339,7 +343,10 @@ function LiveRecommendationCard({
   // AUDIT ELE-006: continuousPower zuerst — dieselbe Priorität wie calculateEdgeCurrent.
   // AUDIT ELE-005: Entladeschlussspannung statt Nennspannung (Strom-Maximum).
   if (node.type === 'inverter')
-    I = (Number(node.data.continuousPower || node.data.watts) || 1000) / dischargeFloorVoltage(sysVoltage) / VDE_INVERTER_EFFICIENCY;
+    I =
+      (Number(node.data.continuousPower || node.data.watts) || 1000) /
+      dischargeFloorVoltage(sysVoltage) /
+      VDE_INVERTER_EFFICIENCY;
   else if (node.type === 'solar') I = (Number(node.data.watts) || 100) / VDE_SOLAR_VMP_VOLTAGE;
   else if (isAC)
     I = (Number(node.data.watts) || 0) / 230; // AC current at 230V

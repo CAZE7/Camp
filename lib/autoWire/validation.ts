@@ -1,4 +1,4 @@
-import type { Node } from '@xyflow/react';
+import type { Node } from '../domain/graph'; // ARCH-001
 import { isStarterBatteryLabel } from '../vde-standards';
 import { getEdgeDomain } from '../electrical';
 import { type CableEdge, labelOf } from './primitives';
@@ -16,7 +16,18 @@ export const isVoltageDropStopType = (type: string | undefined): boolean =>
   type === 'dcdcCharger' ||
   type === 'acBatteryCharger';
 
-export const isStarterBattery = (node: Node): boolean => isStarterBatteryLabel(labelOf(node));
+/**
+ * AUDIT AUTO-003: Explizites role-Feld gewinnt über die Label-Heuristik —
+ * eine umbenannte Batterie wechselt so nicht mehr still ihre Rolle
+ * (Starter- vs. Aufbaubatterie entscheidet über Spannungspriorität,
+ * DC-DC-Topologie und Parallelschaltung).
+ */
+export const isStarterBattery = (node: Node): boolean => {
+  const role = (node.data as Record<string, unknown> | undefined)?.role;
+  if (role === 'starter') return true;
+  if (role === 'house') return false;
+  return isStarterBatteryLabel(labelOf(node));
+};
 
 export const looksLikePlusBusbar = (node: Node): boolean =>
   node.data?.role === 'positive' || /plus|positiv/i.test(labelOf(node));

@@ -46,7 +46,7 @@ Performance-Optimierungen dürfen Reihenfolgen nicht „opportunistisch“ ände
 identischer Output" gilt für das **elektrische/flammfähige Ergebnis**
 (Querschnitte, Sicherungen, Längen, Warnungen) und das **Routing-Resultat**
 — nachweisbar durch Doppellauf-Tests und Golden Master. **Nicht** garantiert
-wird Byte-Identität der von AutoWire *erzeugten* Node-/Edge-IDs: `newEntityId`
+wird Byte-Identität der von AutoWire _erzeugten_ Node-/Edge-IDs: `newEntityId`
 verwendet Zufalls-UUIDs, zwei Läufe auf demselben frischen Input erzeugen
 also unterschiedliche IDs (elektrisch identische Ergebnisse). Der Golden
 Master normalisiert IDs deshalb explizit (`auto:<i>:<slug>`). Auf dem

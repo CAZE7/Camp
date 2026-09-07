@@ -61,6 +61,12 @@ function nextStep(warning: ValidationWarning) {
     return 'So löst du es: Trenne die Kante und verbinde Plus mit Plus sowie Minus mit Minus (Plus↔Minus ist nur zwischen verschiedenen Polaritäten zulässig).';
   if (warning.id.startsWith('inverter-missing-rcd'))
     return 'So löst du es: Setze am Wechselrichter-Ausgang einen FI/LS (RCD, ≤ 30 mA) — im Inspektor des Wechselrichters als vorhanden markieren, sobald verbaut.';
+  if (warning.id.startsWith('battery-parallel-chemistry'))
+    return 'So löst du es: Trenne die Parallelschaltung und verwende Batterien derselben Chemie (z. B. nur AGM oder nur Gel).';
+  if (warning.id.startsWith('solar-voc-window'))
+    return 'So löst du es: Reduziere die Anzahl der Panels in Serie oder wähle einen Laderegler mit höherer maximaler PV-Eingangsspannung.';
+  if (warning.id.startsWith('solar-voc-missing'))
+    return 'So löst du es: Trage im Panel-Inspektor die Leerlaufspannung (Voc) aus dem Datenblatt ein — erst dann kann das Regler-Fenster geprüft werden.';
   if (warning.id === 'solar-overload')
     return 'So löst du es: Wähle einen Solar-Laderegler mit höherem zulässigem Ladestrom oder reduziere die Solarleistung.';
   if (warning.id === 'battery-capacity')

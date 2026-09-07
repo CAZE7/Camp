@@ -2,6 +2,7 @@ import React from 'react';
 import { type Edge } from '@xyflow/react';
 import { type CableEdgeData } from '../edges/CableEdge';
 import { ValidatingInput, COMMON_RULES } from '../ui/ValidatingInput';
+import { isStarterBatteryLabel } from '../../lib/vde-standards'; // AUTO-003: Rollen-Fallback
 import {
   type NodeDataPatch,
   type PlannerFlowNode,
@@ -137,7 +138,37 @@ export function BatteryInspector({
         >
           <option value="LiFePO4">LiFePO4</option>
           <option value="AGM">AGM</option>
+          <option value="Gel">Gel</option>
         </select>
+        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+          Verschiedene Blei-Varianten (AGM/Gel) dürfen nicht parallel geschaltet werden — ihre
+          Ladeschlussspannungen unterscheiden sich (Gel ~14,1–14,4 V, AGM ~14,4–14,7 V).
+        </p>
+      </div>
+      <div className="flex flex-col">
+        <label
+          className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+          htmlFor={`${node.id}-role`}
+        >
+          Rolle im Verbund
+        </label>
+        <select
+          id={`${node.id}-role`}
+          value={node.data?.role || (isStarterBatteryLabel(node.data?.label) ? 'starter' : 'house')}
+          onChange={(e) =>
+            onUpdateNodeData?.(node.id, {
+              role: e.target.value === 'starter' ? 'starter' : 'house',
+            })
+          }
+          className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+        >
+          <option value="house">Aufbaubatterie</option>
+          <option value="starter">Starterbatterie</option>
+        </select>
+        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+          Explizite Angabe gewinnt über die Namens-Heuristik („Starter…") — umbenannte Batterien wechseln so
+          nicht mehr still ihre Rolle.
+        </p>
       </div>
     </>
   );
@@ -201,6 +232,32 @@ export function ChargerInspector({
 }) {
   return (
     <>
+      {node.type === 'mpptController' && (
+        <div className="flex flex-col">
+          <label
+            className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+            htmlFor={`${node.id}-maxPvVoltage`}
+          >
+            Max. PV-Eingangsspannung (V)
+          </label>
+          {/* ELE-007: Basis der Kalt-Voc-Fensterprüfung — 0/leer = Prüfung aus. */}
+          <ValidatingInput
+            id={`${node.id}-maxPvVoltage`}
+            type="number"
+            min="0"
+            step="0.1"
+            isFloat={true}
+            value={node.data?.maxPvVoltage || 0}
+            rules={[COMMON_RULES.positive]}
+            onValidChange={(val) => onUpdateNodeData?.(node.id, { maxPvVoltage: val })}
+            className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+            Der Regler muss die Kalt-Leerlaufspannung des Strings verkraften — der Planer prüft Voc(−20 °C)
+            gegen diesen Wert, sobald die Panels ihr Datenblatt-Voc tragen.
+          </p>
+        </div>
+      )}
       <div className="flex flex-col">
         <label
           className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
@@ -341,9 +398,8 @@ export function InverterInspector({
         </label>
         {!node.data?.hasRcd && (
           <div className="warn-card warn-card-critical p-2 text-xs">
-            Speist der Wechselrichter 230-V-Geräte, muss der Ausgangskreis einen
-            FI-Schutzschalter (max. 30 mA, Typ A) haben — sonst droht Stromschlaggefahr
-            auch ohne Landstrom.
+            Speist der Wechselrichter 230-V-Geräte, muss der Ausgangskreis einen FI-Schutzschalter (max. 30
+            mA, Typ A) haben — sonst droht Stromschlaggefahr auch ohne Landstrom.
           </div>
         )}
       </div>
@@ -496,6 +552,72 @@ export function SolarInspector({
           onValidChange={(val) => onUpdateNodeData?.(node.id, { amps: val })}
           className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
         />
+      </div>
+      {/* ELE-007: Datenblattwerte für Isc/Voc — ohne sie schätzt/kappt der Planer
+          konservativ bzw. fordert den Wert für die Voc-Fensterprüfung an. */}
+      <div className="flex flex-col">
+        <label
+          className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+          htmlFor={`${node.id}-isc`}
+        >
+          Kurzschlussstrom Isc (A)
+        </label>
+        <ValidatingInput
+          id={`${node.id}-isc`}
+          type="number"
+          min="0"
+          step="0.1"
+          isFloat={true}
+          value={node.data?.isc || 0}
+          rules={[COMMON_RULES.positive]}
+          onValidChange={(val) => onUpdateNodeData?.(node.id, { isc: val })}
+          className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+        />
+        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+          Fehlt der Wert, schätzt der Planer Isc = 1,25 × Imp (konservativ) und sichert die Zuleitung nach der
+          1,56 × Isc-Regel ab.
+        </p>
+      </div>
+      <div className="flex flex-col">
+        <label
+          className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+          htmlFor={`${node.id}-voc`}
+        >
+          Leerlaufspannung Voc, STC (V)
+        </label>
+        <ValidatingInput
+          id={`${node.id}-voc`}
+          type="number"
+          min="0"
+          step="0.1"
+          isFloat={true}
+          value={node.data?.voc || 0}
+          rules={[COMMON_RULES.positive]}
+          onValidChange={(val) => onUpdateNodeData?.(node.id, { voc: val })}
+          className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+        />
+      </div>
+      <div className="flex flex-col">
+        <label
+          className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+          htmlFor={`${node.id}-tempCoefficient`}
+        >
+          Temp.-Koeffizient Voc (%/K, negativ)
+        </label>
+        <ValidatingInput
+          id={`${node.id}-tempCoefficient`}
+          type="number"
+          step="0.01"
+          isFloat={true}
+          value={node.data?.tempCoefficient ?? -0.35}
+          rules={[COMMON_RULES.positive]}
+          onValidChange={(val) => onUpdateNodeData?.(node.id, { tempCoefficient: -Math.abs(val) })}
+          className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+        />
+        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+          Typisch c-Si: −0,25 bis −0,35 %/K. Der Planer rechnet Voc kalt bei −20 °C hoch und prüft es gegen
+          das Regler-Fenster (falls dort ein Maximalwert steht).
+        </p>
       </div>
     </>
   );

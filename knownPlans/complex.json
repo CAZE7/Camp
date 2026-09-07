@@ -68,7 +68,7 @@
       },
       {
         "data": {
-          "crossSection": 16,
+          "crossSection": 25,
           "dropWarning": false,
           "edgeDomain": "Solar",
           "length": 5
@@ -284,10 +284,10 @@
       },
       {
         "data": {
-          "crossSection": 16,
+          "crossSection": 25,
           "dropWarning": false,
           "edgeDomain": "Solar",
-          "fuseSize": 25,
+          "fuseSize": 50,
           "length": 4
         },
         "id": "e-solar-charger",

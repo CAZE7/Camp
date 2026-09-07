@@ -16,6 +16,133 @@ describe('useLiveValidation', () => {
     expect(result.current).toEqual([]);
   });
 
+  describe('Rule A5: Parallelschaltung inkompatibler Batterie-Chemien (AUTO-003)', () => {
+    const battery = (id: string, chemistry: string): Node => ({
+      id,
+      type: 'battery',
+      data: { label: `Batterie ${id}`, chemistry, capacity: 100 },
+      position: { x: 0, y: 0 },
+    });
+
+    it('warnt kritisch bei AGM ‖ Gel auf einer Plus-Parallel-Kante', () => {
+      const nodes = [battery('1', 'AGM'), battery('2', 'Gel')];
+      const edges: Edge<CableEdgeData>[] = [
+        { id: 'e1-2', source: '1', target: '2', sourceHandle: 'plus', targetHandle: 'plus' },
+      ];
+      const { result } = renderHook(() => useLiveValidation(nodes, edges));
+      const warning = result.current.find((w) => w.id === 'battery-parallel-chemistry-e1-2');
+      expect(warning).toEqual(
+        expect.objectContaining({
+          category: 'safety',
+          type: 'critical',
+          ruleId: 'AUTO-003-parallel-chemistry',
+          measuredValue: 'AGM ‖ Gel',
+        })
+      );
+    });
+
+    it('LiFePO4 ‖ LiFePO4 bleibt zulässig (keine Chemie-Warnung)', () => {
+      const nodes = [battery('1', 'LiFePO4'), battery('2', 'LiFePO4')];
+      const edges: Edge<CableEdgeData>[] = [
+        { id: 'e1-2', source: '1', target: '2', sourceHandle: 'plus', targetHandle: 'plus' },
+      ];
+      const { result } = renderHook(() => useLiveValidation(nodes as Node[], edges as never));
+      expect(result.current.some((w) => w.id.startsWith('battery-parallel-chemistry'))).toBe(false);
+    });
+
+    it('Serien-Kante (plus↔minus) löst NICHT die Chemie-Regel aus (dafür A3)', () => {
+      const nodes = [battery('1', 'AGM'), battery('2', 'Gel')];
+      const edges: Edge<CableEdgeData>[] = [
+        { id: 'e1-2', source: '1', target: '2', sourceHandle: 'plus', targetHandle: 'minus' },
+      ];
+      const { result } = renderHook(() => useLiveValidation(nodes, edges));
+      expect(result.current.some((w) => w.id === 'battery-parallel-chemistry-e1-2')).toBe(false);
+    });
+  });
+
+  describe('Rule A6: MPPT-Voc-Fenster bei Kälte (ELE-007)', () => {
+    const panel = (id: string, data: Record<string, unknown>): Node => ({
+      id,
+      type: 'solar',
+      data,
+      position: { x: 0, y: 0 },
+    });
+
+    it('warnt kritisch, wenn Kalt-Voc des Strings das Regler-Fenster überschreitet', () => {
+      // 2 × 22 V STC in Serie; TK −0,35 %/K, T_min −20 °C → 2 · 22 · 1,1575 ≈ 50,9 V.
+      const nodes = [
+        panel('p1', { label: 'Panel 1', watts: 100, voc: 22 }),
+        panel('p2', { label: 'Panel 2', watts: 100, voc: 22 }),
+        {
+          id: 'm',
+          type: 'mpptController',
+          data: { label: 'MPPT', amps: 20, maxPvVoltage: 50 },
+          position: { x: 0, y: 0 },
+        },
+      ];
+      const edges: Edge<CableEdgeData>[] = [
+        { id: 's-p1-p2', source: 'p1', target: 'p2' }, // Serie
+        { id: 's-p2-m', source: 'p2', target: 'm' },
+      ];
+      const { result } = renderHook(() => useLiveValidation(nodes, edges));
+      const warning = result.current.find((w) => w.id === 'solar-voc-window-m');
+      expect(warning).toEqual(
+        expect.objectContaining({
+          category: 'safety',
+          type: 'critical',
+          ruleId: 'ELE-007-voc-window',
+          measuredValue: expect.stringContaining('51 V'),
+        })
+      );
+    });
+
+    it('bleibt still, wenn Kalt-Voc im Fenster liegt', () => {
+      const nodes = [
+        panel('p1', { label: 'Panel 1', watts: 100, voc: 22 }),
+        {
+          id: 'm',
+          type: 'mpptController',
+          data: { label: 'MPPT', amps: 20, maxPvVoltage: 60 },
+          position: { x: 0, y: 0 },
+        },
+      ];
+      const edges: Edge<CableEdgeData>[] = [{ id: 's-p1-m', source: 'p1', target: 'm' }];
+      const { result } = renderHook(() => useLiveValidation(nodes, edges));
+      expect(result.current.some((w) => w.id === 'solar-voc-window-m')).toBe(false);
+    });
+
+    it('fordert fehlende Voc-Datenblattwerte als Hinweis an (nicht still schätzen)', () => {
+      const nodes = [
+        panel('p1', { label: 'Panel 1', watts: 100 }), // ohne voc
+        {
+          id: 'm',
+          type: 'mpptController',
+          data: { label: 'MPPT', amps: 20, maxPvVoltage: 50 },
+          position: { x: 0, y: 0 },
+        },
+      ];
+      const edges: Edge<CableEdgeData>[] = [{ id: 's-p1-m', source: 'p1', target: 'm' }];
+      const { result } = renderHook(() => useLiveValidation(nodes, edges));
+      const warning = result.current.find((w) => w.id === 'solar-voc-missing-m');
+      expect(warning).toEqual(
+        expect.objectContaining({
+          type: 'info',
+          ruleId: 'ELE-007-voc-missing-data',
+        })
+      );
+    });
+
+    it('ohne maxPvVoltage am Regler findet keine Fensterprüfung statt', () => {
+      const nodes = [
+        panel('p1', { label: 'Panel 1', watts: 100, voc: 40 }),
+        { id: 'm', type: 'mpptController', data: { label: 'MPPT', amps: 20 }, position: { x: 0, y: 0 } },
+      ];
+      const edges: Edge<CableEdgeData>[] = [{ id: 's-p1-m', source: 'p1', target: 'm' }];
+      const { result } = renderHook(() => useLiveValidation(nodes, edges));
+      expect(result.current.some((w) => w.id.startsWith('solar-voc-'))).toBe(false);
+    });
+  });
+
   describe('Rule A: Missing Fuse on High Power Component', () => {
     it('should generate critical warning if fuse is missing on positive line from high power source', () => {
       const nodes: Node[] = [

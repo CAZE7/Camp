@@ -139,4 +139,30 @@ describe('migratePlannerPersisted', () => {
       edges: [{ id: 'e', source: 'a', target: 'b', data: {} }],
     });
   });
+
+  it('DOM-003: Schema-Validierung entfernt falsch getippte bekannte Felder', () => {
+    const persisted = {
+      nodes: [
+        {
+          id: 'ok',
+          type: 'battery',
+          position: { x: 0, y: 0 },
+          data: { label: 'Aufbau', capacity: 100, chemistry: 'AGM' },
+        },
+        {
+          id: 'muell',
+          type: 'battery',
+          position: { x: 1, y: 1 },
+          data: { label: 'Alt', capacity: 'viel', chemistry: 42, watts: 'unklar' },
+        },
+      ],
+    };
+    const result = migratePlannerPersisted(persisted, 1);
+    const ok = result.nodes?.find((n) => n.id === 'ok');
+    const muell = result.nodes?.find((n) => n.id === 'muell');
+    expect(ok?.data).toEqual({ label: 'Aufbau', capacity: 100, chemistry: 'AGM' });
+    // Falsch getippte BEKANNTE Felder fliegen raus (Leseschicht fällt auf
+    // dokumentierte Defaults), unbekannte bleiben:
+    expect(muell?.data).toEqual({ label: 'Alt' });
+  });
 });

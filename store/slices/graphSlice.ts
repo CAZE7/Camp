@@ -2,7 +2,8 @@ import { addEdge, applyNodeChanges, applyEdgeChanges } from '@xyflow/react';
 import type { Node, Edge } from '@xyflow/react';
 import { getLayoutedElements } from '../../components/planner/utils/layout';
 import { TEMPLATES_DICT } from '../../components/planner/templates';
-import { getEdgeDomain, getHandleDomain } from '../../lib/electrical';
+import { getEdgeDomain } from '../../lib/electrical';
+import { isConnectionAllowed } from '../../lib/connectionRules'; // ARCH-002
 import { newEntityId } from '../../lib/id';
 import { getSystemVoltage } from '../../lib/vde-standards';
 import { performAutoWiring, relevantCumulativeDrop } from '../../lib/autoWire';
@@ -251,76 +252,27 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
       withHistory(state, {
         // AUDIT ELE-004: Nur endliche, nicht-negative Offsets speichern —
         // ungültige Eingaben ändern den Zustand nicht.
-        edges: Number.isFinite(fuseOffset) && fuseOffset >= 0
-          ? state.edges.map((e) =>
-              e.id === id ? { ...e, data: { ...e.data!, fuseOffset } } : e
-            )
-          : state.edges,
+        edges:
+          Number.isFinite(fuseOffset) && fuseOffset >= 0
+            ? state.edges.map((e) => (e.id === id ? { ...e, data: { ...e.data!, fuseOffset } } : e))
+            : state.edges,
       })
     ),
   isValidConnection: (connection) => {
-    const { nodes, waterNodes, viewMode, edges } = get();
+    // AUDIT ARCH-002: Fachregeln (Domänen-Trennung, Polarität, Serien-,
+    // Duplikat-Prüfung) sind als reine Funktion in lib/connectionRules.ts
+    // ausgelagert und dort direkt testbar — der Store delegiert nur.
+    const { nodes, waterNodes, viewMode, edges, waterEdges } = get();
     const allNodes = [...nodes, ...waterNodes];
-
-    // Create a node map for O(1) lookups
     const { nodesMap } = getDerivedSystemState(allNodes, []);
+    const activeEdges = viewMode === 'water' ? waterEdges : edges;
 
-    const sourceNode = nodesMap.get(connection.source || '');
-    const targetNode = nodesMap.get(connection.target || '');
-
-    if (viewMode === 'water') {
-      if (sourceNode?.type === 'grayWaterTank' && targetNode?.type === 'sink') {
-        return false;
-      }
-    } else {
-      // Strict AC vs. DC domain separation
-      const sourceDomain = getHandleDomain(sourceNode?.type, connection.sourceHandle, 'source');
-      const targetDomain = getHandleDomain(targetNode?.type, connection.targetHandle, 'target');
-      if (sourceDomain !== targetDomain) {
-        return false; // Blocker!
-      }
-
-      // Pre-check for polarity matching
-      const sHandle = connection.sourceHandle || '';
-      const tHandle = connection.targetHandle || '';
-
-      const sIsPlus = sHandle.includes('plus');
-      const tIsPlus = tHandle.includes('plus');
-      const sIsMinus = sHandle.includes('minus');
-      const tIsMinus = tHandle.includes('minus');
-
-      // Exception for series connection between batteries or solars
-      const isSeriesException =
-        (sourceNode?.type === 'battery' && targetNode?.type === 'battery') ||
-        (sourceNode?.type === 'solar' && targetNode?.type === 'solar');
-
-      // AC uses L/N/PE, not plus/minus — skip DC polarity on AC-AC links
-      if (sourceDomain !== 'AC_230V' && !isSeriesException) {
-        if ((sIsPlus && !tIsPlus) || (sIsMinus && !tIsMinus)) {
-          return false; // Polarity mismatch strict block
-        }
-      }
-    }
-
-    // Bereits vorhandene identische Verbindung nicht stillschweigend ignorieren.
-    const activeEdges = viewMode === 'water' ? get().waterEdges : edges;
-    const duplicate = activeEdges.some(
-      (edge) =>
-        edge.source === connection.source &&
-        edge.target === connection.target &&
-        edge.sourceHandle === connection.sourceHandle &&
-        edge.targetHandle === connection.targetHandle
-    );
-    if (duplicate) return false;
-
-    // Bewusst KEINE generische Zyklusprüfung: Ein funktionierender Stromkreis
-    // ist topologisch immer ein Zyklus (Plus-Leitung hin, Minus-Rückleitung
-    // zurück). Die Prüfung blockierte den Rückleiter consumer− → battery−,
-    // sobald die Plus-Leitung battery+ → consumer+ existierte — und je nach
-    // Zeichenreihenfolge umgekehrt. Der Spannungsfall-Walk (cumulativeDropAt)
-    // und das Tracing sind gegen echte Zyklen abgesichert (visited-Mengen).
-
-    return true;
+    return isConnectionAllowed({
+      connection,
+      getNode: (id) => nodesMap.get(id),
+      viewMode,
+      activeEdges,
+    });
   },
   onConnect: (connection) => {
     if (!connection.source || !connection.target) return;
