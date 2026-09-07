@@ -183,7 +183,7 @@ export function PlannerDashboard() {
     exportBOM,
     autoWireSystem,
     checkSchematic,
-    onLayout,
+    onLayoutV2,
     systemMessage,
     setSystemMessage,
     nodes,
@@ -198,7 +198,7 @@ export function PlannerDashboard() {
     exportBOM: state.exportBOM,
     autoWireSystem: state.autoWireSystem,
     checkSchematic: state.checkSchematic,
-    onLayout: state.onLayout,
+    onLayoutV2: state.onLayoutV2,
     systemMessage: state.systemMessage,
     setSystemMessage: state.setSystemMessage,
     nodes: state.nodes,
@@ -208,7 +208,7 @@ export function PlannerDashboard() {
   })));
 
   const { isProMode, toggleProMode } = useAppStore();
-  const warnings = useLiveValidation(nodes, edges, waterNodes, waterEdges);
+  const warnings = useLiveValidation(nodes, edges);
 
   return (
     <div className="relative flex flex-nowrap items-center gap-2 bg-card border-b border-border px-2 py-1 shrink-0 w-full overflow-x-auto">
@@ -221,7 +221,7 @@ export function PlannerDashboard() {
           exportBOM={exportBOM}
           autoWireSystem={autoWireSystem}
           checkSchematic={checkSchematic}
-          onLayout={onLayout}
+          onLayout={() => void onLayoutV2()}
           onExportError={(msg) => { setExportError(msg); setTimeout(() => setExportError(null), 5000); }}
           nodes={nodes}
         />

@@ -6,6 +6,7 @@ import { Node, Edge, Connection } from 'reactflow';
 import { initialNodes, initialEdges } from '../components/planner/constants';
 import { CableEdgeData } from '../components/edges/CableEdge';
 import { PlannerNodeData } from '../components/nodes/types';
+import { applyAdvancedLayout, routeEdgesV2 } from '../lib/planner/routingV2Adapter';
 
 interface PlannerState {
   viewMode: 'electric' | 'water';
@@ -61,6 +62,8 @@ interface PlannerState {
   onConnect: (connection: Connection) => void;
   autoWireSystem: () => void;
   onLayout: () => void;
+  onLayoutV2: () => Promise<void>;
+  rerouteV2: () => void;
   checkSchematic: () => void;
   exportBOM: () => void;
   onDrop: (event: React.DragEvent, screenToFlowPosition: (client: {x: number, y: number}) => {x: number, y: number}) => void;
@@ -451,8 +454,14 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
 
   nodes: initialNodes,
   edges: initialEdges,
-  setNodes: (update) => set({ nodes: typeof update === 'function' ? update(get().nodes) : update }),
-  setEdges: (update) => set({ edges: typeof update === 'function' ? update(get().edges) : update }),
+  setNodes: (update) => {
+    const newNodes = typeof update === 'function' ? update(get().nodes) : update;
+    set({ nodes: newNodes, edges: routeEdgesV2(newNodes, get().edges) });
+  },
+  setEdges: (update) => {
+    const newEdges = typeof update === 'function' ? update(get().edges) : update;
+    set({ edges: routeEdgesV2(get().nodes, newEdges) });
+  },
 
   waterNodes: [],
   waterEdges: [],
@@ -483,14 +492,20 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
       if (change.type === 'remove') deletedNodeIds.add(change.id);
     }
     if (deletedNodeIds.size > 0) {
+      const edges = state.edges.filter(e => !deletedNodeIds.has(e.source) && !deletedNodeIds.has(e.target));
       return {
         nodes: newNodes,
-        edges: state.edges.filter(e => !deletedNodeIds.has(e.source) && !deletedNodeIds.has(e.target))
+        edges: routeEdgesV2(newNodes, edges),
       };
     }
     return { nodes: newNodes };
   }),
-  onEdgesChange: (changes) => set((state) => ({ edges: applyEdgeChanges(changes, state.edges) as Edge<CableEdgeData>[] })),
+  onEdgesChange: (changes) => set((state) => {
+    const changedEdges = applyEdgeChanges(changes, state.edges) as Edge<CableEdgeData>[];
+    const structuralChange = changes.some((change) => change.type === 'add' || change.type === 'remove');
+    if (!structuralChange) return { edges: changedEdges };
+    return { edges: routeEdgesV2(state.nodes, changedEdges) };
+  }),
   onWaterNodesChange: (changes) => set((state) => {
     const newWaterNodes = applyNodeChanges(changes, state.waterNodes);
     const deletedNodeIds = new Set<string>();
@@ -525,9 +540,14 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
     const filterNode = (n: Node) => !nodeIdsSet.has(n.id);
     const filterEdge = (e: Edge) => !nodeIdsSet.has(e.source) && !nodeIdsSet.has(e.target) && !edgeIdsSet.has(e.id);
 
+    const nodes = state.nodes.filter(filterNode);
+    const edges = state.edges.filter(filterEdge).filter(
+      (edge): edge is Edge<CableEdgeData> => edge.type !== 'waterPipe',
+    );
+
     return {
-      nodes: state.nodes.filter(filterNode),
-      edges: state.edges.filter(filterEdge),
+      nodes,
+      edges: routeEdgesV2(nodes, edges),
       waterNodes: state.waterNodes.filter(filterNode),
       waterEdges: state.waterEdges.filter(filterEdge),
       selectedNodes: [],
@@ -535,35 +555,42 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
     };
   }),
 
-  updateNodeData: (id, data) => set((state) => ({
-    nodes: state.nodes.map((n) => {
+  updateNodeData: (id, data) => set((state) => {
+    const nodes = state.nodes.map((n) => {
       if (n.id === id) {
         return { ...n, data: { ...n.data, ...data } };
       }
       return n;
-    }),
-    waterNodes: state.waterNodes.map((n) => {
-      if (n.id === id) {
-        return { ...n, data: { ...n.data, ...data } };
-      }
-      return n;
-    })
-  })),
+    });
+    return {
+      nodes,
+      edges: routeEdgesV2(nodes, state.edges),
+      waterNodes: state.waterNodes.map((n) => {
+        if (n.id === id) {
+          return { ...n, data: { ...n.data, ...data } };
+        }
+        return n;
+      }),
+    };
+  }),
 
-  handleChangeLength: (id, length) => set((state) => ({
-    edges: state.edges.map((e) => {
+  handleChangeLength: (id, length) => set((state) => {
+    const edges = state.edges.map((e) => {
       if (e.id === id) {
         return { ...e, data: { ...e.data!, length } };
       }
       return e;
-    }),
-    waterEdges: state.waterEdges.map((e) => {
-      if (e.id === id) {
-        return { ...e, data: { ...e.data!, length } };
-      }
-      return e;
-    })
-  })),
+    });
+    return {
+      edges: routeEdgesV2(state.nodes, edges),
+      waterEdges: state.waterEdges.map((e) => {
+        if (e.id === id) {
+          return { ...e, data: { ...e.data!, length } };
+        }
+        return e;
+      }),
+    };
+  }),
 
   isValidConnection: (connection) => {
     const { nodes, waterNodes, viewMode, edges } = get();
@@ -695,8 +722,10 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
         edgeDomain,
       },
     };
-    set((state) => ({ edges: addEdge(newEdge, state.edges) as Edge<CableEdgeData>[] }));
-    
+    set((state) => {
+      const edges = addEdge(newEdge, state.edges) as Edge<CableEdgeData>[];
+      return { edges: routeEdgesV2(state.nodes, edges) };
+    });
   },
 
   autoWireSystem: () => {
@@ -714,7 +743,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
       'LR'
     );
 
-    set({ nodes: [...layoutedNodes], edges: [...layoutedEdges] });
+    set({ nodes: [...layoutedNodes], edges: routeEdgesV2(layoutedNodes, layoutedEdges) });
 
     if (typeof window !== 'undefined') {
       window.requestAnimationFrame(() => {
@@ -730,12 +759,28 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
       edges,
       'LR'
     );
-    set({ nodes: [...layoutedNodes], edges: [...layoutedEdges] });
+    set({ nodes: [...layoutedNodes], edges: routeEdgesV2(layoutedNodes, layoutedEdges) });
     if (typeof window !== 'undefined') {
       window.requestAnimationFrame(() => {
         window.dispatchEvent(new CustomEvent('planner-fit-view'));
       });
     }
+  },
+
+  onLayoutV2: async () => {
+    const { nodes, edges } = get();
+    const result = await applyAdvancedLayout(nodes, edges, 'LR');
+    set({ nodes: result.nodes, edges: result.edges });
+    if (typeof window !== 'undefined') {
+      window.requestAnimationFrame(() => {
+        window.dispatchEvent(new CustomEvent('planner-fit-view'));
+      });
+    }
+  },
+
+  rerouteV2: () => {
+    const { nodes, edges } = get();
+    set({ edges: routeEdgesV2(nodes, edges) });
   },
 
   checkSchematic: () => {
@@ -750,9 +795,11 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
   applyTemplate: (templateId: string) => {
     const template = TEMPLATES_DICT[templateId];
     if (template) {
+      const nodes = [...template.nodes];
+      const edges = [...template.edges] as Edge<CableEdgeData>[];
       set({
-        nodes: [...template.nodes],
-        edges: [...template.edges],
+        nodes,
+        edges: routeEdgesV2(nodes, edges),
         waterNodes: [],
         waterEdges: [],
       });
@@ -854,27 +901,32 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
     if (viewMode === 'water') {
       set((state) => ({ waterNodes: state.waterNodes.concat(newNode) }));
     } else {
-      set((state) => ({ nodes: state.nodes.concat(newNode) }));
+      set((state) => {
+        const nodes = state.nodes.concat(newNode);
+        return { nodes, edges: routeEdgesV2(nodes, state.edges) };
+      });
     }
   },
 
-  handleChangeCrossSection: (id, crossSection) => set((state) => ({
-    edges: state.edges.map((e) => {
+  handleChangeCrossSection: (id, crossSection) => set((state) => {
+    const edges = state.edges.map((e) => {
       if (e.id === id) {
         return { ...e, data: { ...e.data!, crossSection } };
       }
       return e;
-    })
-  })),
+    });
+    return { edges: routeEdgesV2(state.nodes, edges) };
+  }),
 
-  handleChangeFuseSize: (id, fuseSize) => set((state) => ({
-    edges: state.edges.map((e) => {
+  handleChangeFuseSize: (id, fuseSize) => set((state) => {
+    const edges = state.edges.map((e) => {
       if (e.id === id) {
         return { ...e, data: { ...e.data!, fuseSize } };
       }
       return e;
-    })
-  })),
+    });
+    return { edges: routeEdgesV2(state.nodes, edges) };
+  }),
 
   calculatePathVoltageDrop: (targetNodeId, customNodes, customEdges, excludeEdgeId) => {
     const edges = customEdges || get().edges;

@@ -9,6 +9,7 @@
     "typecheck": "tsc -p tsconfig.typecheck.json --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "verify:routing-v2": "tsx scripts/measure_planner_v2.ts && vitest run lib/planner/routing-v2/routingV2.test.ts lib/planner/routing-v2/routingV2.stress.test.ts lib/planner/routingV2Adapter.test.ts",
     "check": "npm run typecheck && npm run test",
     "postinstall": "git config core.hooksPath scripts/git-hooks 2>/dev/null || true"
   },
@@ -44,6 +45,7 @@
     "clsx": "^2.1.1",
     "dagre": "^0.8.5",
     "dotenv": "^17.4.2",
+    "elkjs": "^0.10.0",
     "gsap": "^3.15.0",
     "html-to-image": "^1.11.13",
     "lucide-react": "^0.446.0",
@@ -55,6 +57,7 @@
     "reactflow": "^11.11.4",
     "tailwind-merge": "^3.5.0",
     "tailwindcss-animate": "^1.0.7",
+    "web-worker": "^1.3.0",
     "zustand": "^5.0.14"
   },
   "devDependencies": {
