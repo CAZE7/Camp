@@ -156,4 +156,41 @@ describe('Architektur: eine Quelle für Abstände und Kosten (ADR 0015)', () => 
     const costModel = read(join(ROOT, 'lib/routing/rules/costModel.ts'));
     expect(costModel).toMatch(/overlap:\s*Infinity/);
   });
+
+  /**
+   * Genau EINE Datei bindet elkjs an (ADR 0016).
+   *
+   * Dieselbe Geschichte wie beim Routing, nur eine Ebene höher: Es gab zwei
+   * elkjs-Anbindungen, und die produktiv verwendete war die schwächere — ohne
+   * Timeout, ohne Schutz gegen überholende Antworten, mit einer neuen
+   * ELK-Instanz bei jedem einzelnen Layout. Sie importierte zudem `elkjs`
+   * statt `elkjs/lib/elk.bundled.js`; die ungebündelte Variante verlangt zur
+   * Laufzeit `web-worker` und ließ die Planer-Seite im Dev-Server mit
+   * „Module not found“ scheitern.
+   *
+   * Der Import-Pfad wird deshalb mitgeprüft: Eine einzelne Anbindung ist
+   * wertlos, wenn sie das Modul erwischt, das im Browser nicht lädt.
+   */
+  it('elkjs wird an genau einer Stelle und nur gebündelt eingebunden', () => {
+    // Nur echte Ladeanweisungen zaehlen, und nur ausserhalb von Tests: Dieser
+    // Test nennt elkjs selbst mehrfach im Prosatext und wuerde sich sonst
+    // selbst als Verstoss melden.
+    const LOADS_ELKJS = /(?:\bfrom\s*|\bimport\s*\(\s*|\brequire\s*\(\s*)['"]elkjs(\/[^'"]*)?['"]/;
+    const importers = SOURCES.filter(
+      (file) => !/\.test\.tsx?$/.test(file) && LOADS_ELKJS.test(read(file))
+    ).map(rel);
+
+    expect(
+      importers,
+      'elkjs darf nur von lib/routing/elk/runner.ts geladen werden.\n' +
+        'Alle anderen Layout-Pfade gehen über layoutWithElk(). Gefunden in:\n  ' +
+        importers.join('\n  ')
+    ).toEqual(['lib/routing/elk/runner.ts']);
+
+    const runner = read(join(ROOT, 'lib/routing/elk/runner.ts'));
+    expect(runner, "Nur 'elkjs/lib/elk.bundled.js' laedt ohne die Abhaengigkeit 'web-worker'.").toMatch(
+      /['"]elkjs\/lib\/elk\.bundled\.js['"]/
+    );
+    expect(runner).not.toMatch(/(?:\bfrom\s*|\bimport\s*\(\s*|\brequire\s*\(\s*)['"]elkjs['"]/);
+  });
 });

@@ -48,6 +48,8 @@ export type ElkPlan = {
   edges: ElkPlanEdge[];
   /** Nutzerplatzierungen respektieren (Spec §6.2)? */
   interactive?: boolean;
+  /** Layout-Richtung; ohne Angabe bleibt ELKs Vorgabe bestehen. */
+  direction?: 'LR' | 'TB';
 };
 
 /** Minimale strukturelle Sicht auf den elkjs-Graphen (kein Typ-Import nötig). */
@@ -87,8 +89,8 @@ const LABEL_HEIGHT = 20;
 /** Baut den elkjs-Eingabegraphen; Optionen ausschließlich aus den Tokens. */
 export function buildElkGraph(plan: ElkPlan, tokens?: RoutingTokens): ElkGraph {
   const layoutOptions = plan.interactive
-    ? generateElkInteractiveOptions(tokens)
-    : generateElkLayoutOptions(tokens);
+    ? generateElkInteractiveOptions(tokens, plan.direction)
+    : generateElkLayoutOptions(tokens, plan.direction);
   return {
     id: 'root',
     layoutOptions,

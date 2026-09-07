@@ -85,7 +85,10 @@ export const alternativeRouteGap = (tokens: RoutingTokens = ROUTING_TOKENS): num
  * Die Nicht-Geometrie-Optionen (Algorithmus, mergeEdges, Ports, …) sind
  * Teil der eingefrorenen Spec und hier die einzige Definitionsstelle.
  */
-export function generateElkLayoutOptions(tokens: RoutingTokens = ROUTING_TOKENS): Record<string, string> {
+export function generateElkLayoutOptions(
+  tokens: RoutingTokens = ROUTING_TOKENS,
+  direction?: 'LR' | 'TB'
+): Record<string, string> {
   return {
     'elk.algorithm': 'layered',
     'elk.edgeRouting': 'ORTHOGONAL',
@@ -97,6 +100,9 @@ export function generateElkLayoutOptions(tokens: RoutingTokens = ROUTING_TOKENS)
     'elk.layered.priority.straightness': '1',
     'elk.portConstraints': 'FIXED_ORDER',
     'elk.junctionPoints': 'true',
+    // Nur setzen, wenn der Aufrufer eine Richtung vorgibt — sonst bleibt
+    // ELKs Vorgabe erhalten und bestehende Aufrufer ändern ihr Ergebnis nicht.
+    ...(direction ? { 'elk.direction': direction === 'TB' ? 'DOWN' : 'RIGHT' } : {}),
   };
 }
 
@@ -105,10 +111,11 @@ export function generateElkLayoutOptions(tokens: RoutingTokens = ROUTING_TOKENS)
  * (`docs/ROUTING-V2.md` §6.2) — überlagert die Basis-Optionen.
  */
 export function generateElkInteractiveOptions(
-  tokens: RoutingTokens = ROUTING_TOKENS
+  tokens: RoutingTokens = ROUTING_TOKENS,
+  direction?: 'LR' | 'TB'
 ): Record<string, string> {
   return {
-    ...generateElkLayoutOptions(tokens),
+    ...generateElkLayoutOptions(tokens, direction),
     'elk.layered.cycleBreaking.strategy': 'INTERACTIVE',
     'elk.layered.layering.strategy': 'INTERACTIVE',
     'elk.layered.crossingMinimization.semiInteractive': 'true',
