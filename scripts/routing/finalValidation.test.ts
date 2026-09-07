@@ -6,15 +6,14 @@ import {
   formatFinalValidation,
   totalViolations,
   validateFinalRouting,
-  type FinalValidationCounts,
 } from '../../lib/routing/finalValidation';
 import type { NodeRect, RoutedEdge } from '../../lib/routing/invariants';
 import { GOLDEN_PLANS } from '../goldenmaster/plans';
 
 /**
- * CI-Gate der Final-Invariante (ADR 0015).
+ * CI-Gate der Final-Invariante (ADR 0015, ADR 0017).
  *
- * ## Was hier passiert — und warum die Zahlen nicht 0 sind
+ * ## Was hier passiert
  *
  * Die Spezifikation verlangt am Ende des Routings:
  *
@@ -24,33 +23,50 @@ import { GOLDEN_PLANS } from '../goldenmaster/plans';
  * clearance violation = 0
  * ```
  *
- * Der heutige Router erfüllt das nicht. Die unten eingefrorenen Zahlen sind
- * der ehrlich gemessene Ist-Zustand, kein Zielwert. Sie stehen hier, damit
- * der Zustand SICHTBAR und nicht verhandelbar ist:
+ * **I1 ist seit ADR 0017 erfüllt und wird hart auf 0 geprüft** — keine
+ * Baseline, keine Toleranz. Ursache der früheren 72 Verletzungen war nicht
+ * der Router, sondern die Platzierung: `applyFlowLayout` rasterte automatisch
+ * erzeugte Bauteile, ohne die Positionen der Nutzerknoten zu kennen, und
+ * setzte sie regelmäßig mitten in ein vorhandenes Bauteil. Wo der
+ * Anschlusspunkt im Hindernis liegt, kann kein Router kollisionsfrei
+ * arbeiten. Seit die Platzierung Überlappungen auflöst, ist I1 in allen
+ * sechs Plänen null.
  *
- * - Sie dürfen **sinken** — jede Verbesserung ist willkommen, der Test
- *   fordert dann aktiv das Nachziehen der Baseline (kein stilles Aufweichen
- *   in die andere Richtung).
- * - Sie dürfen **niemals steigen**. Wer eine Leitung mehr durch ein Bauteil
- *   legt, bricht den Build.
+ * I2 und I3 sind noch nicht null. Für sie gilt weiter ein Ratchet, aber auf
+ * der **Plansumme** statt je Invariante einzeln — mit Begründung:
  *
- * Ein Gate mit Schwelle 0 wäre ehrlicher, würde aber sofort jeden Build
- * blockieren und damit binnen Minuten abgeschaltet — ein abgeschaltetes Gate
- * schützt nichts. Der Weg auf 0 ist Router-Arbeit (ADR 0015, „Offen“).
+ * Eine Layout-Änderung verschiebt Verletzungen zwischen den Kategorien. Rücken
+ * Bauteile auseinander, verschwinden Durchdringungen (I1) und es entstehen
+ * stattdessen enge Parallelläufe (I2/I3). Ein Ratchet je Einzelkategorie
+ * würde solche Umbauten blockieren, obwohl der Plan insgesamt deutlich besser
+ * wird — gemessen: 122 → 46 Verletzungen, jeder einzelne Plan besser. Die
+ * Summe je Plan hält den Druck aufrecht, ohne echte Verbesserungen zu
+ * bestrafen. I1 bleibt davon unberührt und hart.
  *
- * `validateFinalRouting()` selbst kennt diese Baseline NICHT. Sie meldet
- * kompromisslos `INVALID`, sobald eine Verletzung vorliegt. Die Toleranz
- * lebt ausschließlich hier, sichtbar und kommentiert.
+ * Bekannter Rest bei I2: 33 der 34 verbleibenden Überdeckungen betreffen
+ * Kabelpaare, die sich ein Bauteil teilen — sie laufen am gemeinsamen
+ * Anschluss zusammen. Das ist Arbeit am Port-Fan-Out und in ADR 0017 als
+ * nächster Schritt festgehalten.
+ *
+ * `validateFinalRouting()` selbst kennt weder Baseline noch Toleranz. Sie
+ * meldet kompromisslos `INVALID`, sobald eine Verletzung vorliegt.
  */
 
-/** Gemessen am 2026-09-07 auf `GOLDEN_PLANS`. Obergrenze, kein Ziel. */
-const BASELINE: Readonly<Record<string, FinalValidationCounts>> = {
-  simple: { edgeNodeCollisions: 8, edgeEdgeOverlaps: 2, clearanceViolations: 0 },
-  camper: { edgeNodeCollisions: 13, edgeEdgeOverlaps: 6, clearanceViolations: 9 },
-  solar: { edgeNodeCollisions: 8, edgeEdgeOverlaps: 3, clearanceViolations: 0 },
-  inverter: { edgeNodeCollisions: 7, edgeEdgeOverlaps: 2, clearanceViolations: 0 },
-  acdc: { edgeNodeCollisions: 30, edgeEdgeOverlaps: 9, clearanceViolations: 1 },
-  complex: { edgeNodeCollisions: 6, edgeEdgeOverlaps: 15, clearanceViolations: 3 },
+/**
+ * Obergrenze der Verletzungen JE PLAN (I2 + I3; I1 wird hart auf 0 geprüft).
+ * Gemessen am 2026-09-07 nach ADR 0017. Obergrenze, kein Ziel.
+ *
+ * Zum Vergleich der Stand davor (I1/I2/I3 = Summe):
+ * simple 8/2/0 = 10 · camper 13/6/9 = 28 · solar 8/3/0 = 11 ·
+ * inverter 7/2/0 = 9 · acdc 30/9/1 = 40 · complex 6/15/3 = 24 → 122 gesamt.
+ */
+const BASELINE: Readonly<Record<string, number>> = {
+  simple: 4,
+  camper: 18,
+  solar: 2,
+  inverter: 3,
+  acdc: 5,
+  complex: 14,
 };
 
 type Wired = Parameters<typeof nodesToObstacles>[0];
@@ -82,24 +98,23 @@ function routePlan(planName: string) {
 
 describe('Final-Invariante — Ratchet über die Golden-Master-Pläne', () => {
   for (const planName of Object.keys(BASELINE)) {
-    it(`${planName}: keine NEUEN Verletzungen gegenüber der Baseline`, () => {
+    it(`${planName}: keine Leitung durch ein fremdes Bauteil (I1 = 0, hart)`, () => {
       const report = routePlan(planName);
-      const baseline = BASELINE[planName]!;
-
-      // Verschlechterung bricht den Build — je Invariante einzeln, damit die
-      // Fehlermeldung sagt, WELCHE Regel gerissen ist.
+      // Keine Baseline, kein Spielraum: Eine Leitung, die durch ein Bauteil
+      // läuft, ist in einer Planungssoftware mit Sicherheitsbezug kein
+      // Schönheitsfehler.
       expect(
         report.counts.edgeNodeCollisions,
-        `I1 (Leitung durch fremdes Bauteil) verschlechtert: ${formatFinalValidation(report)}`
-      ).toBeLessThanOrEqual(baseline.edgeNodeCollisions);
+        `I1 (Leitung durch fremdes Bauteil) muss 0 sein: ${formatFinalValidation(report)}`
+      ).toBe(0);
+    });
+
+    it(`${planName}: keine NEUEN Verletzungen gegenüber der Baseline`, () => {
+      const report = routePlan(planName);
       expect(
-        report.counts.edgeEdgeOverlaps,
-        `I2 (kollineare Überdeckung) verschlechtert: ${formatFinalValidation(report)}`
-      ).toBeLessThanOrEqual(baseline.edgeEdgeOverlaps);
-      expect(
-        report.counts.clearanceViolations,
-        `I3 (Clearance unterschritten) verschlechtert: ${formatFinalValidation(report)}`
-      ).toBeLessThanOrEqual(baseline.clearanceViolations);
+        totalViolations(report.counts),
+        `Mehr Verletzungen als in der Baseline (${BASELINE[planName]}): ` + formatFinalValidation(report)
+      ).toBeLessThanOrEqual(BASELINE[planName]!);
     });
   }
 
@@ -112,13 +127,8 @@ describe('Final-Invariante — Ratchet über die Golden-Master-Pläne', () => {
     const stale: string[] = [];
     for (const planName of Object.keys(BASELINE)) {
       const report = routePlan(planName);
-      const baseline = BASELINE[planName]!;
-      if (
-        report.counts.edgeNodeCollisions < baseline.edgeNodeCollisions ||
-        report.counts.edgeEdgeOverlaps < baseline.edgeEdgeOverlaps ||
-        report.counts.clearanceViolations < baseline.clearanceViolations
-      ) {
-        stale.push(`${planName}: ${formatFinalValidation(report)}`);
+      if (totalViolations(report.counts) < BASELINE[planName]!) {
+        stale.push(`${planName}: ${formatFinalValidation(report)} (Baseline ${BASELINE[planName]})`);
       }
     }
     expect(

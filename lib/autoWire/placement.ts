@@ -1,4 +1,5 @@
 import type { Node } from '../domain/graph'; // ARCH-001
+import { ROUTING_TOKENS } from '../routing/tokens';
 
 /**
  * R-8 (Routing-Qualität, M11-2): AutoWire-Platzierung.
@@ -21,12 +22,22 @@ import type { Node } from '../domain/graph'; // ARCH-001
 /** Rasterweite in px — konsistent zum Kabel-Lane-System (16 px). */
 export const AUTO_WIRE_GRID = 16;
 
+/**
+ * Vorgabe-Grundfläche eines Bauteils, wenn der Knoten (noch) nicht gemessen
+ * ist — dieselben Maße, die das Routing als Hindernis-Box annimmt.
+ *
+ * ARCH-001: bewusst hier als Zahl statt als Import aus `components/` —
+ * Domänencode darf nicht an der Renderschicht hängen.
+ */
+export const NODE_BOX_WIDTH = 192;
+export const NODE_BOX_HEIGHT = 120;
+
 /** Spaltenabstand in Flussrichtung (192 px Node + 96 px Korridor). */
-export const FLOW_COLUMN_SPACING = 288;
+export const FLOW_COLUMN_SPACING = NODE_BOX_WIDTH + 96;
 
 /** Zeilenabstand innerhalb einer Schicht (120 px Node + 72 px Korridor —
  *  zwei Kabel mit je 12 px Freigabe haben darin Platz, siehe R-10). */
-export const FLOW_ROW_SPACING = 192;
+export const FLOW_ROW_SPACING = NODE_BOX_HEIGHT + 72;
 
 export const snapToGrid = (value: number): number => Math.round(value / AUTO_WIRE_GRID) * AUTO_WIRE_GRID;
 
@@ -52,6 +63,43 @@ export function relativeGridPosition(
 }
 
 type FlowEdge = { source: string; target: string };
+
+type Box = { x: number; y: number; width: number; height: number };
+
+/**
+ * Grundfläche eines Knotens an seiner aktuellen Position.
+ *
+ * Gemessene Werte haben Vorrang (React Flow trägt sie nach dem Mount ein);
+ * ohne Messung gilt die Vorgabe-Grundfläche.
+ */
+function boxAt(node: Node, x: number, y: number): Box {
+  return {
+    x,
+    y,
+    width: node.width ?? node.measured?.width ?? NODE_BOX_WIDTH,
+    height: node.height ?? node.measured?.height ?? NODE_BOX_HEIGHT,
+  };
+}
+
+/**
+ * Mindestluft zwischen zwei Bauteilen: beidseits eine Kabelfreigabe.
+ *
+ * Reine Überlappungsfreiheit genügt nicht. Zwei bündig aneinander stehende
+ * Bauteile lassen keinen Platz für die Leitung, die zwischen ihnen
+ * hindurchmuss — die Route rückt dann bis auf wenige Pixel an die Box heran
+ * und verletzt `cableClearance` (I3), statt in ein Bauteil zu laufen (I1).
+ * Ohne diesen Puffer verschiebt sich das Problem nur von I1 nach I3
+ * (gemessen: I1 72 → 2, dafür I3 13 → 20).
+ */
+const NODE_MIN_GAP = ROUTING_TOKENS.cableClearance * 2;
+
+/** Flächenüberdeckung inklusive der geforderten Mindestluft. */
+function boxesOverlap(a: Box, b: Box, gap = NODE_MIN_GAP): boolean {
+  return (
+    Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x) > -gap &&
+    Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y) > -gap
+  );
+}
 
 /**
  * Optionales Auto-Layout nach dem Verdrahten (dagre-Ersatz, rein und
@@ -121,14 +169,53 @@ export function applyFlowLayout(nodes: Node[], edges: FlowEdge[], movableIds: Se
     // crypto.randomUUID bei jedem Auto-Wire).
     return `${String(data.label ?? '')}\u0000${node.type}\u0000${node.id}`;
   };
-  for (const [l, bucket] of byLayer) {
+
+  /**
+   * Belegte Flächen: alle Knoten, die NICHT verschoben werden dürfen, an
+   * ihrer Ist-Position.
+   *
+   * Warum das nötig ist: Bis 2026-09-07 rasterte diese Funktion die neuen
+   * Knoten auf ein eigenes Gitter und ignorierte dabei, wo die Nutzerknoten
+   * stehen. Da Nutzerpositionen beliebig sind, landete regelmäßig ein
+   * automatisch erzeugtes Bauteil MITTEN IN einem vorhandenen — gemessen auf
+   * den sechs Golden-Master-Plänen: in jedem einzelnen Plan mindestens ein
+   * überlappendes Paar, im Extremfall 100 × 88 px Überdeckung bei 192 × 120
+   * px Grundfläche (über 50 % Fläche).
+   *
+   * Die Folge traf das Routing, nicht das Layout: Liegt der Anschlusspunkt
+   * eines Bauteils in der Box eines anderen, gibt es keinen kollisionsfreien
+   * Weg mehr — der A*-Start liegt bereits im Hindernis. Von den 72 gemessenen
+   * edge×node-Verletzungen der Final-Invariante (ADR 0015) hatten 41 genau
+   * diese Ursache. Kein Kostenmodell und keine Nachbearbeitung kann das
+   * heilen; es muss beim Platzieren verhindert werden.
+   */
+  const blocked: Box[] = [];
+  for (const node of nodes) {
+    if (movableIds.has(node.id)) continue;
+    blocked.push(boxAt(node, node.position?.x ?? 0, node.position?.y ?? 0));
+  }
+
+  // Spalten in aufsteigender Schichtnummer: Die Belegung wächst über die
+  // Spalten hinweg mit, deshalb muss die Reihenfolge festliegen (ADR 0010).
+  const layers = [...byLayer.keys()].sort((a, b) => a - b);
+  for (const l of layers) {
+    const bucket = byLayer.get(l)!;
     bucket.sort((a, b) => sortKey(a).localeCompare(sortKey(b)));
-    bucket.forEach((node, index) => {
-      node.position = {
-        x: snapToGrid(l * FLOW_COLUMN_SPACING),
-        y: snapToGrid(index * FLOW_ROW_SPACING),
-      };
-    });
+    // Obergrenze gegen Endlossuche in pathologischen Plänen: Selbst wenn
+    // jede Zeile belegt wäre, ist nach so vielen Schritten Platz.
+    const maxRow = nodes.length * 2 + bucket.length + 8;
+    let row = 0;
+    for (const node of bucket) {
+      const x = snapToGrid(l * FLOW_COLUMN_SPACING);
+      let candidate = boxAt(node, x, snapToGrid(row * FLOW_ROW_SPACING));
+      while (row < maxRow && blocked.some((other) => boxesOverlap(candidate, other))) {
+        row++;
+        candidate = boxAt(node, x, snapToGrid(row * FLOW_ROW_SPACING));
+      }
+      node.position = { x: candidate.x, y: candidate.y };
+      blocked.push(candidate);
+      row++;
+    }
   }
   return nodes;
 }
