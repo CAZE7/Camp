@@ -1,10 +1,30 @@
 /**
  * lib/planner/layout-engine/elk.ts
  *
- * ELK adapter with full token-based mapping.
+ * ELK-Adapter für den `PlannerLayoutEngine`-Vertrag.
  *
- * This is the layout bridge only. Final cable routing is produced by Routing V2;
- * ELK never replaces the collision/routing layer.
+ * WICHTIG — hier steht KEINE eigene elkjs-Anbindung mehr. Die Ausführung
+ * liegt vollständig bei `lib/routing/elk/runner.ts`; dieses Modul übersetzt
+ * nur zwischen `LayoutRequest`/`LayoutResult` (Vertrag der Layout-Schicht)
+ * und `ElkPlan`/`ElkLayoutResult` (Vertrag des Runners).
+ *
+ * Vorgeschichte (ADR 0016): Bis zur Konsolidierung gab es zwei getrennte
+ * elkjs-Anbindungen. Diese hier war die schwächere, wurde aber produktiv
+ * verwendet — dasselbe Muster wie beim Hopping (ADR 0014):
+ *
+ * | | vorher (hier) | Runner (jetzt) |
+ * | --- | --- | --- |
+ * | Import | `elkjs` → `lib/main.js` | `elkjs/lib/elk.bundled.js` |
+ * | Instanz | `new ELK()` bei JEDEM Layout | Lazy-Singleton |
+ * | Timeout | keiner | `ELK_TIMEOUT_MS` + `ElkTimeoutError` |
+ * | Parallele Aufrufe | Race möglich | „letzte Anfrage gewinnt" (`createElkSession`) |
+ * | Optionen | von Hand gepflegt | aus den Tokens generiert |
+ *
+ * Der Import über `elkjs` statt `elkjs/lib/elk.bundled.js` war zudem ein
+ * echter Defekt: `lib/main.js` verlangt zur Laufzeit `web-worker`, das nicht
+ * installiert ist — der Dev-Server meldete beim Laden der Planer-Seite
+ * „Module not found: Can't resolve 'web-worker'". Die gebündelte Variante
+ * funktioniert in Browser und Node identisch.
  */
 
 import type {
@@ -14,102 +34,59 @@ import type {
   LayoutResult,
   PlannerLayoutEngine,
 } from './contract';
-import { GEOMETRY } from '../tokens';
+import { LAYOUT_TOKENS } from './tokens';
+import type { ElkPlan } from '../../routing/elk/graph';
+import { layoutWithElk } from '../../routing/elk/runner';
 
 export class ElkLayoutEngine implements PlannerLayoutEngine {
   readonly name = 'elk';
 
   async layout(request: LayoutRequest): Promise<LayoutResult> {
-    const direction = request.direction ?? 'LR';
-    const elkDirection = direction === 'TB' ? 'DOWN' : 'RIGHT';
+    // Sortierung nach ID: ELK ist reihenfolgeempfindlich, das Ergebnis muss
+    // unabhängig von der Eingabereihenfolge sein (ADR 0010).
+    const nodes = [...request.nodes].sort(compareById);
+    const edges = [...request.edges].sort(compareById);
 
-    const { default: ELK } = await import('elkjs');
-    const elk = new ELK();
+    const sizeById = new Map(
+      nodes.map((node) => [
+        node.id,
+        {
+          width: node.width ?? LAYOUT_TOKENS.defaultNodeWidth,
+          height: node.height ?? LAYOUT_TOKENS.defaultNodeHeight,
+        },
+      ])
+    );
 
-    const input = {
-      id: 'root',
-      layoutOptions: {
-        'elk.algorithm': 'layered',
-        'elk.direction': elkDirection,
-        'elk.edgeRouting': 'ORTHOGONAL',
-        'elk.layered.mergeEdges': 'false',
-        'elk.layered.nodePlacement.strategy': 'BRANDES_KOEPF',
-        'elk.layered.nodePlacement.favorStraightEdges': 'true',
-        'elk.layered.crossingMinimization.strategy': 'LAYER_SWEEP',
-        'elk.layered.cycleBreaking.strategy': 'DFS',
-        'elk.layered.considerModelOrder.strategy': 'NONE',
-        'elk.spacing.nodeNode': `${GEOMETRY.componentComponentSpacing}`,
-        'elk.spacing.edgeNode': `${GEOMETRY.edgeNodeSpacing}`,
-        'elk.spacing.edgeEdge': `${GEOMETRY.edgeEdgeSpacing}`,
-        'elk.spacing.edgeNodeBetweenLayers': `${GEOMETRY.edgeNodeBetweenLayers}`,
-        'elk.spacing.componentComponent': `${GEOMETRY.componentComponentSpacing}`,
-        'elk.padding': `[${GEOMETRY.cableClearance},${GEOMETRY.cableClearance},${GEOMETRY.cableClearance},${GEOMETRY.cableClearance}]`,
-      },
-      children: [...request.nodes].sort(compareById).map((node) => ({
-        id: node.id,
-        width: node.width ?? GEOMETRY.defaultNodeWidth,
-        height: node.height ?? GEOMETRY.defaultNodeHeight,
-      })),
-      edges: [...request.edges].sort(compareById).map((edge) => ({
-        id: edge.id,
-        sources: [edge.source],
-        targets: [edge.target],
-      })),
+    const plan: ElkPlan = {
+      nodes: nodes.map((node) => {
+        const size = sizeById.get(node.id)!;
+        return { id: node.id, x: 0, y: 0, width: size.width, height: size.height };
+      }),
+      edges: edges.map((edge) => ({ id: edge.id, source: edge.source, target: edge.target })),
+      direction: request.direction ?? 'LR',
     };
 
-    const result = await elk.layout(input);
+    const result = await layoutWithElk(plan);
 
-    const nodeById = new Map<string, { x: number; y: number; width: number; height: number }>();
-    const nodeResults: LayoutNodeResult[] = (result.children ?? []).sort(compareById).map((child) => {
-      const width = child.width ?? GEOMETRY.defaultNodeWidth;
-      const height = child.height ?? GEOMETRY.defaultNodeHeight;
-      const node = {
-        id: child.id,
-        x: child.x ?? 0,
-        y: child.y ?? 0,
-        width,
-        height,
+    const nodeResults: LayoutNodeResult[] = nodes.map((node) => {
+      const position = result.nodes.get(node.id);
+      const size = sizeById.get(node.id)!;
+      return {
+        id: node.id,
+        x: position?.x ?? 0,
+        y: position?.y ?? 0,
+        width: size.width,
+        height: size.height,
       };
-      nodeById.set(node.id, node);
-      return node;
     });
 
-    const edgeResults: LayoutEdgeResult[] = (result.edges ?? []).sort(compareById).map((edge) => ({
+    const edgeResults: LayoutEdgeResult[] = edges.map((edge) => ({
       id: edge.id,
-      points: collectElkPoints(edge.sections),
+      points: result.routes.get(edge.id) ?? [],
     }));
 
-    return {
-      nodes: nodeResults,
-      edges: edgeResults,
-      engine: this.name,
-    };
+    return { nodes: nodeResults, edges: edgeResults, engine: this.name };
   }
-}
-
-function collectElkPoints(
-  sections:
-    | Array<{
-        startPoint?: { x: number; y: number };
-        endPoint?: { x: number; y: number };
-        bendPoints?: Array<{ x: number; y: number }>;
-      }>
-    | undefined
-): readonly { x: number; y: number }[] {
-  const points: Array<{ x: number; y: number }> = [];
-  for (const section of sections ?? []) {
-    if (section.startPoint) points.push(section.startPoint);
-    for (const bend of section.bendPoints ?? []) points.push(bend);
-    if (section.endPoint) points.push(section.endPoint);
-  }
-
-  // Deduplicate consecutive identical points.
-  const unique: Array<{ x: number; y: number }> = [];
-  for (const point of points) {
-    const last = unique[unique.length - 1];
-    if (!last || last.x !== point.x || last.y !== point.y) unique.push(point);
-  }
-  return unique;
 }
 
 function compareById<T extends { id: string }>(a: T, b: T): number {

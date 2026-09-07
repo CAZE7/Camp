@@ -10,7 +10,6 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
-    "verify:routing-v2": "tsx scripts/measure_planner_v2.ts && vitest run lib/planner/routing-v2/routingV2.test.ts lib/planner/routing-v2/routingV2.stress.test.ts lib/planner/routingV2Adapter.test.ts",
     "check": "npm run lint && npm run format:check && npm run typecheck && npm run typecheck:tests && npm run test:coverage",
     "ci:verify-lockfile-gate": "node scripts/ci/verify-lockfile-gate.mjs",
     "postinstall": "node -e \"try { require('child_process').execSync('git config core.hooksPath scripts/git-hooks') } catch {}\"",

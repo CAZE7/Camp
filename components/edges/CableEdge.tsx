@@ -398,15 +398,17 @@ const CableEdge = function ({
     labelX,
     labelY,
   } = useMemo(() => {
-    // Routing V2: explizit berechnete Polyline hat Vorrang.
-    const routedPoints = data?.geometry?.points;
-    if (routedPoints && routedPoints.length >= 2) {
-      const path = routedPoints
-        .map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`)
-        .join(' ');
-      const mid = routedPoints[Math.floor((routedPoints.length - 1) / 2)] ?? routedPoints[0]!;
-      return { path, labelX: mid.x, labelY: mid.y };
-    }
+    // Einzige Geometrie-Quelle ist der globale Routing-Pass
+    // (`lib/routing/rules` via `cableRouteStore`). Er ist der einzige Ort, an
+    // dem ALLE Leitungen gleichzeitig sichtbar sind — nur dort können
+    // Prioritäts-Hopping (§8: Backbone bleibt gerade), Lane-Registry und die
+    // harte Overlap-Invariante (ADR 0009) überhaupt greifen.
+    //
+    // Vorher stand hier ein Vorrang für `data.geometry.points` aus einer
+    // zweiten, parallel laufenden Engine (`lib/planner/routing-v2`). Die
+    // entschied das Hopping per Edge-ID-Vergleich und behandelte Overlaps als
+    // „teuer“ (100_000) statt als verboten — und überstimmte damit still den
+    // ausgereiften Pass. Zwei Engines, zwei Wahrheiten, die schlechtere gewann.
     if (globalRoute) {
       return { path: globalRoute.path, labelX: globalRoute.labelX, labelY: globalRoute.labelY };
     }
@@ -432,7 +434,6 @@ const CableEdge = function ({
     });
     return { path: routed.path, labelX: routed.labelX, labelY: routed.labelY };
   }, [
-    data?.geometry?.points,
     globalRoute,
     sourceX,
     sourceY,

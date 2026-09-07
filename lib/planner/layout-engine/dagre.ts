@@ -15,7 +15,7 @@ import type {
   LayoutResult,
   PlannerLayoutEngine,
 } from './contract';
-import { GEOMETRY } from '../tokens';
+import { LAYOUT_TOKENS } from './tokens';
 
 export class DagreLayoutEngine implements PlannerLayoutEngine {
   readonly name = 'dagre';
@@ -26,10 +26,10 @@ export class DagreLayoutEngine implements PlannerLayoutEngine {
     graph.setDefaultEdgeLabel(() => ({}));
     graph.setGraph({
       rankdir: direction === 'LR' ? 'LR' : 'TB',
-      nodesep: GEOMETRY.componentComponentSpacing,
-      ranksep: GEOMETRY.edgeNodeSpacing * 2,
-      marginx: GEOMETRY.cableClearance,
-      marginy: GEOMETRY.cableClearance,
+      nodesep: LAYOUT_TOKENS.componentComponentSpacing,
+      ranksep: LAYOUT_TOKENS.edgeNodeSpacing * 2,
+      marginx: LAYOUT_TOKENS.cableClearance,
+      marginy: LAYOUT_TOKENS.cableClearance,
     });
 
     const nodes = [...request.nodes].sort(compareById);
@@ -37,8 +37,8 @@ export class DagreLayoutEngine implements PlannerLayoutEngine {
 
     for (const node of nodes) {
       graph.setNode(node.id, {
-        width: node.width ?? GEOMETRY.defaultNodeWidth,
-        height: node.height ?? GEOMETRY.defaultNodeHeight,
+        width: node.width ?? LAYOUT_TOKENS.defaultNodeWidth,
+        height: node.height ?? LAYOUT_TOKENS.defaultNodeHeight,
       });
     }
 
@@ -52,8 +52,8 @@ export class DagreLayoutEngine implements PlannerLayoutEngine {
 
     const nodeResults = nodes.map((node) => {
       const position = graph.node(node.id);
-      const width = node.width ?? GEOMETRY.defaultNodeWidth;
-      const height = node.height ?? GEOMETRY.defaultNodeHeight;
+      const width = node.width ?? LAYOUT_TOKENS.defaultNodeWidth;
+      const height = node.height ?? LAYOUT_TOKENS.defaultNodeHeight;
       return {
         id: node.id,
         x: position.x - width / 2,

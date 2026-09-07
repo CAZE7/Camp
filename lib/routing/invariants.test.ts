@@ -374,20 +374,40 @@ describe('I10 — Crossing nur, wenn kein konfliktfreier Weg existiert', () => {
 // ---------------------------------------------------------------------------
 
 /**
- * Baseline (Stand WP-10, 2026-09-06) — RATCHET: Werte dürfen nur sinken.
- * Der Bestandsrouter verletzt I1–I7 noch strukturell (dokumentierter
- * Fallback „ohne Hindernisfreigabe", fehlende Stub-Erzwingung); Abbau in
- * WP-7/WP-8. ELK erfüllt I1–I4 und I7 bereits strikt; offen sind dort nur
- * die Stub-Mindestlängen (I5/I6), die erst die A-Stern-Nachverdichtung
- * (WP-8) garantiert.
+ * Baseline (Stand ADR 0017, 2026-09-07) — RATCHET: Werte dürfen nur sinken.
+ * `I1` steht hier nur noch der Vollständigkeit halber auf 0; geprüft wird es
+ * unten strikt, nicht als Obergrenze.
+ *
+ * ## Warum I5/I6/crossings gegenüber WP-10 GESTIEGEN sind
+ *
+ * Bis ADR 0017 setzte `applyFlowLayout` automatisch erzeugte Bauteile auf ein
+ * Raster, ohne die Positionen der Nutzerknoten zu kennen — Bauteile lagen
+ * regelmäßig übereinander (bis 100 × 88 px bei 192 × 120 px Grundfläche). Die
+ * alten Zahlen sind also an einem Plan gemessen, in dem Bauteile ineinander
+ * standen. Das machte manche Metrik künstlich gut: Wo zwei Boxen einander
+ * überlappen, sind die Wege kurz, die Stubs unauffällig und es kreuzt wenig —
+ * weil die Leitung schlicht durch das Bauteil hindurchging (I1 = 72).
+ *
+ * Seit die Platzierung Überlappungen auflöst, stehen die Bauteile
+ * auseinander. Die Leitungen müssen echte Wege gehen: länger, mit mehr
+ * Kreuzungen (Σ 13 → 20) und mehr kurzen Stub-Segmenten.
+ *
+ * Der Tausch ist bewusst: I1 (Leitung durch ein fremdes Bauteil) ist in einer
+ * Planungssoftware mit Sicherheitsbezug ein Fehler, eine Kreuzung ist
+ * Normalfall — dafür gibt es das Hopping. 72 Durchdringungen gegen ein paar
+ * Kreuzungen und Stubs zu tauschen, ist kein Rückschritt.
+ *
+ * Vorher (WP-10, mit überlappenden Bauteilen):
+ * simple 8/2/0/6/2/6/1 · camper 13/6/9/7/3/11/1 · solar 8/3/0/3/5/10/0 ·
+ * inverter 7/2/0/4/4/9/1 · acdc 30/9/1/4/5/15/1 · complex 6/15/3/0/8/15/0
  */
 const LEGACY_BASELINE: Record<string, Record<InvariantId, number> & { crossings: number }> = {
-  simple: { I1: 8, I2: 2, I3: 0, I4: 6, I5: 2, I6: 6, I7: 1, crossings: 1 },
-  camper: { I1: 13, I2: 6, I3: 9, I4: 7, I5: 3, I6: 11, I7: 1, crossings: 3 },
-  solar: { I1: 8, I2: 3, I3: 0, I4: 3, I5: 5, I6: 10, I7: 0, crossings: 3 },
-  inverter: { I1: 7, I2: 2, I3: 0, I4: 4, I5: 4, I6: 9, I7: 1, crossings: 2 },
-  acdc: { I1: 30, I2: 9, I3: 1, I4: 4, I5: 5, I6: 15, I7: 1, crossings: 4 },
-  complex: { I1: 6, I2: 15, I3: 3, I4: 0, I5: 8, I6: 15, I7: 0, crossings: 40 },
+  simple: { I1: 0, I2: 4, I3: 0, I4: 1, I5: 5, I6: 11, I7: 1, crossings: 2 },
+  camper: { I1: 0, I2: 9, I3: 9, I4: 1, I5: 6, I6: 13, I7: 1, crossings: 4 },
+  solar: { I1: 0, I2: 2, I3: 0, I4: 1, I5: 7, I6: 13, I7: 0, crossings: 4 },
+  inverter: { I1: 0, I2: 3, I3: 0, I4: 2, I5: 7, I6: 13, I7: 1, crossings: 5 },
+  acdc: { I1: 0, I2: 5, I3: 0, I4: 2, I5: 9, I6: 16, I7: 0, crossings: 8 },
+  complex: { I1: 0, I2: 11, I3: 3, I4: 0, I5: 8, I6: 15, I7: 0, crossings: 37 },
 };
 
 const ELK_BASELINE: Record<string, { I5: number; I6: number; crossings: number }> = {
@@ -454,6 +474,8 @@ describe('Bestandsrouter (A-Stern-Pass) — Ratchet gegen Baseline', () => {
       const routed = routeLegacy(fixture);
       const counts = countsOf(checkInvariants(routed, fixture.nodeRects));
       const baseline = LEGACY_BASELINE[planName]!;
+      // I1 ist seit ADR 0017 erfüllt und wird hart geprüft — keine Obergrenze.
+      expect(counts.I1, `${planName}: Leitung läuft durch ein fremdes Bauteil`).toBe(0);
       for (const id of INVARIANT_IDS) {
         expect(counts[id], `${planName}/${id}: ${counts[id]} > Baseline ${baseline[id]}`).toBeLessThanOrEqual(
           baseline[id]
