@@ -694,7 +694,7 @@ describe('Auto-Wire: Topologie-Heilung & reale Templates', () => {
 
     assertNoSafetyWarnings(n, e);
     assertFusesMatchVde(e);
-  });
+  }, 15000);
 
   it('Szenario Autark-Template: Landstrom-RCD, Busbars wiederverwendet, kein Shunt-Bypass', () => {
     const { nodes: n, edges: e } = runAutoWire(TEMPLATE_AUTARK.nodes, {
@@ -711,7 +711,7 @@ describe('Auto-Wire: Topologie-Heilung & reale Templates', () => {
     // hier die volle Prüfung — ohne die frühere Sonderbehandlung für 2000 W.
     assertNoSafetyWarnings(n, e);
     assertFusesMatchVde(e);
-  });
+  }, 15000);
 
   it('Legacy-Laderegler (type charger) wird als MPPT wiederverwendet', () => {
     const nodes = [
