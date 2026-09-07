@@ -14,7 +14,7 @@ import type {
   LayoutResult,
   PlannerLayoutEngine,
 } from './contract';
-import { GEOMETRY } from '../tokens';
+import { LAYOUT_TOKENS } from './tokens';
 
 export class ElkLayoutEngine implements PlannerLayoutEngine {
   readonly name = 'elk';
@@ -38,17 +38,17 @@ export class ElkLayoutEngine implements PlannerLayoutEngine {
         'elk.layered.crossingMinimization.strategy': 'LAYER_SWEEP',
         'elk.layered.cycleBreaking.strategy': 'DFS',
         'elk.layered.considerModelOrder.strategy': 'NONE',
-        'elk.spacing.nodeNode': `${GEOMETRY.componentComponentSpacing}`,
-        'elk.spacing.edgeNode': `${GEOMETRY.edgeNodeSpacing}`,
-        'elk.spacing.edgeEdge': `${GEOMETRY.edgeEdgeSpacing}`,
-        'elk.spacing.edgeNodeBetweenLayers': `${GEOMETRY.edgeNodeBetweenLayers}`,
-        'elk.spacing.componentComponent': `${GEOMETRY.componentComponentSpacing}`,
-        'elk.padding': `[${GEOMETRY.cableClearance},${GEOMETRY.cableClearance},${GEOMETRY.cableClearance},${GEOMETRY.cableClearance}]`,
+        'elk.spacing.nodeNode': `${LAYOUT_TOKENS.componentComponentSpacing}`,
+        'elk.spacing.edgeNode': `${LAYOUT_TOKENS.edgeNodeSpacing}`,
+        'elk.spacing.edgeEdge': `${LAYOUT_TOKENS.edgeEdgeSpacing}`,
+        'elk.spacing.edgeNodeBetweenLayers': `${LAYOUT_TOKENS.edgeNodeBetweenLayers}`,
+        'elk.spacing.componentComponent': `${LAYOUT_TOKENS.componentComponentSpacing}`,
+        'elk.padding': `[${LAYOUT_TOKENS.cableClearance},${LAYOUT_TOKENS.cableClearance},${LAYOUT_TOKENS.cableClearance},${LAYOUT_TOKENS.cableClearance}]`,
       },
       children: [...request.nodes].sort(compareById).map((node) => ({
         id: node.id,
-        width: node.width ?? GEOMETRY.defaultNodeWidth,
-        height: node.height ?? GEOMETRY.defaultNodeHeight,
+        width: node.width ?? LAYOUT_TOKENS.defaultNodeWidth,
+        height: node.height ?? LAYOUT_TOKENS.defaultNodeHeight,
       })),
       edges: [...request.edges].sort(compareById).map((edge) => ({
         id: edge.id,
@@ -61,8 +61,8 @@ export class ElkLayoutEngine implements PlannerLayoutEngine {
 
     const nodeById = new Map<string, { x: number; y: number; width: number; height: number }>();
     const nodeResults: LayoutNodeResult[] = (result.children ?? []).sort(compareById).map((child) => {
-      const width = child.width ?? GEOMETRY.defaultNodeWidth;
-      const height = child.height ?? GEOMETRY.defaultNodeHeight;
+      const width = child.width ?? LAYOUT_TOKENS.defaultNodeWidth;
+      const height = child.height ?? LAYOUT_TOKENS.defaultNodeHeight;
       const node = {
         id: child.id,
         x: child.x ?? 0,
