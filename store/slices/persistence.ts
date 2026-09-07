@@ -13,14 +13,52 @@ import type { PlannerState } from './types';
  */
 export const PLANNER_STORAGE_VERSION = 1;
 
+/**
+ * AUDIT PERSIST-001: Form-Prüfung mit echten Typchecks statt reiner
+ * Schlüssel-Existenz. Vorher passierten `{ id, position: null }` oder
+ * `{ id, source: 5, target: null }` die Migration — position null erzeugt
+ * NaN-Geometrie im Rendering, nicht-stringliche Enden crashen die
+ * Graphlogik. „Retten statt Verwerfen" bleibt: nur nachweisbar unbrauchbare
+ * Elemente fliegen, kaputte `data` werden zu `{}` neutralisiert.
+ */
 function isNodeShape(value: unknown): value is Node {
-  return Boolean(value && typeof value === 'object' && 'id' in value && 'position' in value);
+  if (!value || typeof value !== 'object') return false;
+  const v = value as Record<string, unknown>;
+  if (typeof v.id !== 'string' || v.id === '') return false;
+  const pos = v.position;
+  if (
+    !pos ||
+    typeof pos !== 'object' ||
+    typeof (pos as Record<string, unknown>).x !== 'number' ||
+    typeof (pos as Record<string, unknown>).y !== 'number' ||
+    !Number.isFinite((pos as Record<string, unknown>).x as number) ||
+    !Number.isFinite((pos as Record<string, unknown>).y as number)
+  ) {
+    return false;
+  }
+  if (v.data !== undefined && (typeof v.data !== 'object' || v.data === null)) return false;
+  return true;
 }
 
 function isEdgeShape(value: unknown): value is Edge {
-  return Boolean(
-    value && typeof value === 'object' && 'id' in value && 'source' in value && 'target' in value
-  );
+  if (!value || typeof value !== 'object') return false;
+  const v = value as Record<string, unknown>;
+  if (typeof v.id !== 'string' || v.id === '') return false;
+  if (typeof v.source !== 'string' || typeof v.target !== 'string') return false;
+  if (v.source === '' || v.target === '') return false;
+  if (v.data !== undefined && (typeof v.data !== 'object' || v.data === null)) return false;
+  return true;
+}
+
+/** `data`-Block neutralisieren, wenn er kein plain object ist (String/Zahl aus Altdaten). */
+function sanitizeNodeData<T extends Node>(node: T): T {
+  if (!node.data || typeof node.data !== 'object') return { ...node, data: {} };
+  return node;
+}
+
+function sanitizeEdgeData<T extends Edge>(edge: T): T {
+  if (!edge.data || typeof edge.data !== 'object') return { ...edge, data: {} } as T;
+  return edge;
 }
 
 /**
@@ -42,10 +80,13 @@ export function migratePlannerPersisted(persisted: unknown, version: number): Pa
   if (typeof p.isSidebarOpen === 'boolean') safe.isSidebarOpen = p.isSidebarOpen;
   if (typeof p.isInspectorOpen === 'boolean') safe.isInspectorOpen = p.isInspectorOpen;
   if (typeof p.backboneGrouping === 'boolean') safe.backboneGrouping = p.backboneGrouping;
-  if (Array.isArray(p.nodes)) safe.nodes = p.nodes.filter(isNodeShape);
-  if (Array.isArray(p.edges)) safe.edges = p.edges.filter(isEdgeShape) as Edge<CableEdgeData>[];
-  if (Array.isArray(p.waterNodes)) safe.waterNodes = p.waterNodes.filter(isNodeShape);
-  if (Array.isArray(p.waterEdges)) safe.waterEdges = p.waterEdges.filter(isEdgeShape);
+  if (Array.isArray(p.nodes)) safe.nodes = p.nodes.filter(isNodeShape).map(sanitizeNodeData);
+  if (Array.isArray(p.edges))
+    safe.edges = p.edges.filter(isEdgeShape).map(sanitizeEdgeData) as Edge<CableEdgeData>[];
+  if (Array.isArray(p.waterNodes))
+    safe.waterNodes = p.waterNodes.filter(isNodeShape).map(sanitizeNodeData);
+  if (Array.isArray(p.waterEdges))
+    safe.waterEdges = p.waterEdges.filter(isEdgeShape).map(sanitizeEdgeData);
 
   // Version 0 → 1: keine Feldumbenennungen, nur Validierung.
   void version;

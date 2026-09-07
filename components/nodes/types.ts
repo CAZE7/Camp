@@ -86,11 +86,18 @@ export interface FuseNodeData extends CommonNodeData {
   rating?: number;
 }
 
-// Batteriemonitor/Massepunkt/Wechselrichter führen keine über die Basis
-// hinaus deklarierten Felder; eigene Aliase halten die Registry explizit.
+// Batteriemonitor/Massepunkt führen keine über die Basis hinaus deklarierten
+// Felder; eigene Aliase halten die Registry explizit.
 export type ShuntNodeData = CommonNodeData;
 export type GroundNodeData = CommonNodeData;
-export type InverterNodeData = CommonNodeData;
+
+/** AUDIT AC-001: Wechselrichter-Daten — FI am AC-Ausgang ist pflegbar. */
+export interface InverterNodeData extends CommonNodeData {
+  /** Dauerleistung in W (Basis der DC-Eingangsstrom-Berechnung, ELE-006). */
+  continuousPower?: number;
+  /** Vorhandensein eines FI/LS (RCD ≤ 30 mA) im AC-Ausgangskreis. */
+  hasRcd?: boolean;
+}
 
 export interface ShorePowerNodeData extends CommonNodeData {
   /** Vorhandensein eines 30-mA-RCD (DIN VDE 0100-721). */

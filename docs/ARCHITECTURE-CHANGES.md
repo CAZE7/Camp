@@ -11,6 +11,66 @@ Format: neueste Einträge oben. Jeder Eintrag: Datum, Bezug (ADR/WP/Issue), Kurz
 
 ---
 
+## 2026-09-07 — Audit EXTREM 2026-09: Sicherheits-/Korrektheits-Fixes + Golden-Master-Neueinfrierung
+
+Bezug: `AUDIT-EXTREM-2026-09.md` (Findings ELE-001…007, AC-001, AUTO-001…004, CRASH-001,
+NORM-001…003, PERSIST-001, CACHE-001, PERF-001, ROUTE-001/002, UX-001…003, DOM-001/002, ELE-006).
+
+**Elektrik (Single Source of Truth):**
+
+- **ELE-001/NORM-002:** `FUSE_MAP` ist abgeleitet — größte Norm-Sicherung ≤ Tabellen-Belastbarkeit
+  × 0,7 (`lib/electrical.ts`). Koordination I_B ≤ I_n ≤ I_z per Konstruktion; Invariant-Test hält
+  sie fest. Vorher widersprach die Karte der eigenen Dimensionierung (1,5 mm²: 16 A-Sicherung bei
+  11,55 A design-Belastbarkeit).
+- **ELE-002:** Thermische Sättigung oberhalb 70 mm² erzeugt jetzt Fehler „Leitung thermisch
+  überlastet" (`collectEdgeErrors`) statt stiller 70-mm²-Kappung ohne Warnung.
+- **ELE-005:** Leistungsabhängige DC-Ströme rechnen mit der **Entladeschlussspannung**
+  (12,8 V × 0,9375 = 12,0 V; `dischargeFloorVoltage`), und die Wechselrichter-Last ist
+  **topologisch** begrenzt: mit Kantenliste zählt nur die 230-V-Insel des jeweiligen WR (BFS),
+  ohne Kantenliste gilt die dokumentierte globale Summe als konservativer Fallback.
+  `calculateEdgeCurrent` hat dazu den optionalen Parameter `edges`; alle Anzeige-/Dimensionierungs-
+  Call-Sites (CableEdge, voltageDrop, BOMModal, ExpertPanel, sizing, pipeline) reichen ihn durch.
+- **ELE-006/UX-002:** ExpertPanel-Inverter-Strom nutzt continuousPower zuerst und dieselbe
+  Floor-Spannung wie die Engine; Fachtexte (DoD 90 %/50 %, Sicherungswerte, Batterie-Querschnitt)
+  auf Engine-Werte gebracht.
+- **AC-001:** Neue kritische Live-Regel für Wechselrichter-AC-Inseln ohne FI (≤ 30 mA);
+  `hasRcd` am Inverter pflegbar (Inspector-Checkbox). Templates/Szenario-Fixtures führen den FI
+  als Referenz-Best-Practice (analog shorePower).
+- **CRASH-001:** `sizeAcEdges` normiert Alt-/Import-Querschnitte (95/0/NaN/3) statt RangeError;
+  Regressionstest „wirft nie" in `lib/autoWire.test.ts`.
+- **AUTO-001/002:** Länge-0-Guard in `crossSectionForDrop`; negative Längen fallen in Anzeige und
+  Spannungsfall auf physikalische Ersatzwerte + Fehlermeldung.
+
+**Norm-Historie (keine unbelegten Zitate mehr):** Leerrohr-Füllgrad 60 % → **40 %**
+(DIN VDE 0100-520-Kontext dokumentiert, NORM-001); „VDE 0298-4"-Zitate durch ehrliche
+Modellannahmen ersetzt (NORM-002/003).
+
+**Routing (PERF-001/ROUTE-001/ROUTE-002):** A*-Hindernisfilter pro Kante (räumliche Umgebung,
+PAD 240 px) statt globaler Scan — 500-Knoten-Pläne bleiben interaktiv; `crossingSegmentsNear`
+nutzt den Identitäts-Index `itemBySegment` (O(Kandidaten) statt O(Kandidaten × E)); Fallback-Pfade
+kennzeichnen Hindernis-Kollisionen jetzt explizit (`PathResult.fallbackHitsObstacles`).
+**Dokumentierte Ausnahmen der harten Kollisionsgarantie (ROUTE-001):** (a) ungeprüfter
+Fallback-Pfad bei Katalog+A*-Versagen — jetzt zählbar gekennzeichnet, nicht versteckt;
+(b) Stub-Toleranz gegen entzerrte Boxen; (c) Rohbox+2px-Schrumpfung an handle-klebenden Nodes.
+Der Verwurf endpoint-enthaltender Hindernis-Boxen in `relevantObstacles` bleibtvertragsgemäß
+für Aufrufer, die die eigene Node mitgeben (Unit-Tests); der Produktionspfad schließt die eigene
+Node vorher aus.
+
+**Persistenz/Cache:** `migratePlannerPersisted` validiert Node-/Edge-Hüllen hart
+(id/position/source/target, NaN-safe) und sanitisiert kaputte `data`-Objekte (PERSIST-001);
+Spannungsfall-Cache-Signatur um continuousPower/capacity/hours/rating/hasRcd erweitert (CACHE-001).
+
+**Golden Master neu eingefroren (`knownPlans/`)** — Begründung: Die ELE-001/ELE-005-Änderungen
+sind bewusste Korrektheits-Fixes des Strommodells (höhere Ströme durch 12,0-V-Floor ⇒ teils
+größere Sicherungen/Querschnitte, Insel- statt Global-Last am WR). Elektrisch konservativer,
+nicht schwächer; Suite inkl. Invarianten grün.
+
+**Bewusst NICHT geändert (Modellgrenzen, DOM-001/002/ROUTE-003):** 230-V-Seite bleibt
+Single-Line-Approximation ohne PE/N-Modell; Kurzschlussstrom/Abschaltvermögen/Batterieinnen-
+widerstand sind nicht modelliert; ELK-Pass ist vorbereitet, aber nicht im Produktivpfad
+verdrahtet (s. ROUTING-V2-Statusnotiz). Der Planer ist ein Dimensionierungs-Werkzeug und
+ersetzt keine Elektrofachkraft.
+
 ## 2026-09-06 (WP-7)
 
 - **Kreuzungs-Hopping als Regel, nicht als Renderer-Trick** — `lib/routing/rules/hopping.ts` (`routingPriority`, `resolveHops`) beantwortet „wer hüpft?“ in Schicht 2/3 und liefert der UI nur noch Bogen-Mittelpunkte. Damit gilt dieselbe Antwort für ELK- und A\*-Pass, sie ist ohne Browser testbar (ADR 0007) und deterministisch (ADR 0010: Reihenfolge über sortierte IDs, Gleichstand über die lexikografisch größere ID). (WP-7, #395)

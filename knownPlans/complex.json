@@ -136,7 +136,7 @@
           "crossSection": 70,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
-          "fuseSize": 160,
+          "fuseSize": 100,
           "length": 0.5
         },
         "id": "e-batt-plus",
@@ -150,7 +150,7 @@
           "crossSection": 70,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
-          "fuseSize": 160,
+          "fuseSize": 100,
           "length": 1
         },
         "id": "e-busbar-fuse",
@@ -177,7 +177,7 @@
           "crossSection": 70,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
-          "fuseSize": 160,
+          "fuseSize": 100,
           "length": 1
         },
         "id": "e-busbar-inv-plus",
@@ -260,7 +260,7 @@
         "data": {
           "crossSection": 2.5,
           "edgeDomain": "AC_230V",
-          "fuseSize": 7.5,
+          "fuseSize": 5,
           "length": 2
         },
         "id": "e-inv-induct",
@@ -273,7 +273,7 @@
         "data": {
           "crossSection": 2.5,
           "edgeDomain": "AC_230V",
-          "fuseSize": 7.5,
+          "fuseSize": 5,
           "length": 2
         },
         "id": "e-shore-inv",
@@ -422,8 +422,8 @@
       },
       {
         "data": {
-          "label": "Induktionskochfeld",
-          "watts": 1200
+          "label": "Induktionskochfeld (1 Platte)",
+          "watts": 800
         },
         "id": "cons-induct",
         "position": {
@@ -435,7 +435,7 @@
       {
         "data": {
           "label": "Sicherungskasten",
-          "rating": 160
+          "rating": 100
         },
         "id": "fusebox-1",
         "position": {
@@ -446,9 +446,10 @@
       },
       {
         "data": {
-          "continuousPower": 1500,
-          "label": "1500W Inverter",
-          "watts": 1500
+          "continuousPower": 900,
+          "hasRcd": true,
+          "label": "900W Inverter",
+          "watts": 900
         },
         "id": "inverter-1",
         "position": {
@@ -498,44 +499,44 @@
   },
   "electrical": {
     "cumulativeDrops": {
-      "auto:0:smart-shunt": 0.015,
+      "auto:0:smart-shunt": 0.01,
       "battery-1": 0,
-      "busbar-minus": 0.051,
-      "busbar-plus": 0.037,
+      "busbar-minus": 0.034,
+      "busbar-plus": 0.025,
       "charger-1": 0,
       "charger-2": 0,
-      "cons-fan": 0.267,
-      "cons-fridge": 0.246,
-      "cons-heat": 0.267,
+      "cons-fan": 0.264,
+      "cons-fridge": 0.241,
+      "cons-heat": 0.264,
       "cons-induct": 0,
-      "fusebox-1": 0.125,
-      "inverter-1": 0.119,
+      "fusebox-1": 0.084,
+      "inverter-1": 0.078,
       "shore-1": 0,
       "solar-1": 0,
       "starter-1": 0
     },
     "edgeCurrents": {
-      "e-auto-1": 148.81,
-      "e-auto-2": 148.81,
-      "e-auto-3": 4.69,
-      "e-auto-4": 3.13,
-      "e-auto-5": 3.13,
+      "e-auto-1": 99.9,
+      "e-auto-2": 99.9,
+      "e-auto-3": 5,
+      "e-auto-4": 3.33,
+      "e-auto-5": 3.33,
       "e-auto-6": 22.22,
       "e-auto-7": 32,
       "e-auto-8": 30,
       "e-auto-9": 30,
-      "e-batt-minus": 148.81,
-      "e-batt-plus": 148.81,
-      "e-busbar-fuse": 148.81,
-      "e-busbar-inv-minus": 137.87,
-      "e-busbar-inv-plus": 137.87,
+      "e-batt-minus": 99.9,
+      "e-batt-plus": 99.9,
+      "e-busbar-fuse": 99.9,
+      "e-busbar-inv-minus": 88.24,
+      "e-busbar-inv-plus": 88.24,
       "e-charger-busbar": 32,
       "e-dcdc-busbar": 30,
-      "e-fuse-fan": 3.13,
-      "e-fuse-fridge": 4.69,
-      "e-fuse-heat": 3.13,
-      "e-inv-induct": 137.87,
-      "e-shore-inv": 137.87,
+      "e-fuse-fan": 3.33,
+      "e-fuse-fridge": 5,
+      "e-fuse-heat": 3.33,
+      "e-inv-induct": 88.24,
+      "e-shore-inv": 88.24,
       "e-solar-charger": 22.22,
       "e-starter-dcdc": 30
     },
@@ -806,8 +807,8 @@
       },
       {
         "data": {
-          "label": "Induktionskochfeld",
-          "watts": 1200
+          "label": "Induktionskochfeld (1 Platte)",
+          "watts": 800
         },
         "id": "cons-induct",
         "position": {
@@ -829,9 +830,10 @@
       },
       {
         "data": {
-          "continuousPower": 1500,
-          "label": "1500W Inverter",
-          "watts": 1500
+          "continuousPower": 900,
+          "hasRcd": true,
+          "label": "900W Inverter",
+          "watts": 900
         },
         "id": "inverter-1",
         "position": {

@@ -16,6 +16,8 @@ import {
   calculateStrokeWidth,
   getEdgeDomain,
   maxFuseForDisplay,
+  VDE_AMPACITY,
+  DERATE_FACTOR,
 } from '../../lib/electrical';
 import {
   AC_SYSTEM_VOLTAGE,
@@ -54,6 +56,13 @@ export type CableEdgeData = {
   dropWarning?: boolean;
   /** Gesetzt, wenn selbst der größte Normquerschnitt den Laststrom nicht absichern kann. */
   fuseWarning?: boolean;
+  /**
+   * Position der Sicherung entlang der Leitung in Metern, gemessen ab der
+   * Batterie(-Seite) der Kante (AUDIT ELE-004). Ohne Angabe gilt der alte
+   * Vertrag: eine vorhandene `fuseSize` sitzt „am Pol" (≤ 20 cm ungeschützt).
+   * Nur für DC-Plus-Kanten mit Batterie-Endpunkt relevant.
+   */
+  fuseOffset?: number;
 };
 
 /**
@@ -115,6 +124,8 @@ export const collectEdgeErrors = (input: {
   data?: CableEdgeData;
   I: number;
   maxFuse: number;
+  /** Angezeigter/empfohlener Querschnitt der Kante (mm²). */
+  crossSection?: number;
   isPlus: boolean;
   sourceNodeType?: string;
   targetNodeType?: string;
@@ -126,6 +137,7 @@ export const collectEdgeErrors = (input: {
     data,
     I,
     maxFuse,
+    crossSection,
     isPlus,
     sourceNodeType,
     targetNodeType,
@@ -133,6 +145,27 @@ export const collectEdgeErrors = (input: {
     totalDropPercentage,
   } = input;
   const errors: string[] = [];
+
+  // AUDIT AUTO-002: Negativ gespeicherte Längen (Import/Altdaten) würden den
+  // angezeigten Spannungsfall VERKLEINERN und echte Verstöße unsichtbar
+  // machen — explizit melden statt still durchzurechnen.
+  if (typeof data?.length === 'number' && data.length < 0) {
+    errors.push('Ungültige (negative) Länge!');
+  }
+
+  // AUDIT ELE-002: Thermische Sättigung sichtbar machen. lookupThermalCross
+  // Section saturiert bei 70 mm²; oberhalb von Iz_design des gewählten
+  // Querschnitts ist die Leitung nach dem eigenen Modell überlastet —
+  // vorher geschah das komplett still (Fenster 120–160 A ohne jedes Signal).
+  // Geprüft wird der tatsächlich vorhandene Nutzer-Querschnitt, falls
+  // gesetzt (die Empfehlung ist immer passend dimensioniert).
+  const csForThermalCheck = data?.crossSection ?? crossSection;
+  if (edgeDomain !== 'AC_230V' && csForThermalCheck !== undefined) {
+    const iz = (VDE_AMPACITY[csForThermalCheck] ?? 0) * DERATE_FACTOR;
+    if (Number.isFinite(iz) && iz > 0 && I > iz) {
+      errors.push(`Leitung thermisch überlastet (${Math.round(I)}A > ${Math.round(iz)}A)!`);
+    }
+  }
 
   // Spannungsfall gilt für DC- UND AC-Leitungen (3 % von 230 V = 6,9 V).
   // Nur die Sicherungslogik darunter ist DC-spezifisch.
@@ -163,6 +196,14 @@ export const collectEdgeErrors = (input: {
     const batteryAtEnd = sourceNodeType === 'battery' || targetNodeType === 'battery';
     if (batteryAtEnd && length > 0.2 && !data?.fuseSize) {
       errors.push('Hauptsicherung nach Batterie max 20cm!');
+    }
+    // AUDIT ELE-004: Eine vorhandene fuseSize darf die Lage der Sicherung
+    // nicht „wegzaubern": Sitzt die Sicherung (fuseOffset in Metern ab
+    // Batteriepol) weiter als 20 cm entfernt, bleibt die Anfangsstrecke
+    // ungeschützt. Fehlt fuseOffset, gilt wie bisher der alte Vertrag
+    // (Sicherung am Pol) — kein Bruch bestehender Pläne.
+    if (batteryAtEnd && data?.fuseSize && data.fuseOffset !== undefined && data.fuseOffset > 0.2) {
+      errors.push(`Sicherung sitzt ${data.fuseOffset.toFixed(1)}m vom Batteriepol (max 0.2m)!`);
     }
   }
 
@@ -337,8 +378,12 @@ const CableEdge = function ({
     // falsch für kurze Stichleitungen. `??` statt `||`, damit ein
     // gespeichertes `length: 0` (z. B. Sammelschiene) nicht stillschweigend
     // durch den Schätzwert ersetzt wird.
+    // AUDIT AUTO-002: NEGATIVE Längen (Import/Altdaten) sind ungültig — sie
+    // fallen auf die geometrische Schätzung zurück; collectEdgeErrors
+    // meldet zusätzlich „Ungültige (negative) Länge!“.
     const physicalDistance = Math.hypot(targetX - sourceX, targetY - sourceY) / PX_PER_METER;
-    const length = data?.length ?? physicalDistance;
+    const rawLength = data?.length;
+    const length = typeof rawLength === 'number' && rawLength >= 0 ? rawLength : physicalDistance;
     const sourceNode = getNode(source);
     const targetNode = getNode(target);
 
@@ -356,7 +401,7 @@ const CableEdge = function ({
     const sysVoltage = isAC ? AC_SYSTEM_VOLTAGE : getSystemVoltage(getNodes());
     const I = isAC
       ? calculateAcEdgeCurrent(source, getNodes(), siblingEdges)
-      : calculateEdgeCurrent(sourceNode, targetNode, getNodes(), sysVoltage);
+      : calculateEdgeCurrent(sourceNode, targetNode, getNodes(), sysVoltage, siblingEdges); // ELE-005: Kanten für Insel-BFS
 
     const crossSection = calculateCrossSection(I, length, data?.crossSection, isAC ? 'AC_230V' : 'DC_12V');
     // maxFuseForDisplay statt calculateMaxFuse: Nicht-Normquerschnitte
@@ -418,6 +463,7 @@ const CableEdge = function ({
     data,
     I,
     maxFuse,
+    crossSection,
     isPlus,
     sourceNodeType: sourceNode?.type,
     targetNodeType: targetNode?.type,
@@ -540,7 +586,9 @@ const CableEdge = function ({
             {/* Details bei Auswahl / Hover */}
             {emphasized && edgeDomain === 'AC_230V' ? (
               <>
-                <span style={{ color: 'var(--success)', fontSize: '12px' }}>3-adrig (L, N, PE)</span>
+                <span style={{ color: 'var(--info)', fontSize: '12px' }}>
+                  real ausführen: 3-adrig (L, N, PE)
+                </span>
                 <span
                   style={{
                     background: 'var(--warn-info)',
@@ -551,7 +599,7 @@ const CableEdge = function ({
                     marginTop: '2px',
                   }}
                 >
-                  RCBO (FI/LS) empfohlen
+                  FI/LS (RCD ≤ 30 mA) einplanen — wird hier nicht geprüft
                 </span>
                 {/* Auch AC-Kanten zeigen ihren Spannungsfall-Fehler (Bug 10). */}
                 {errors.map((err, idx) => (

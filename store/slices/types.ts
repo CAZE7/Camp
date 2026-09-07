@@ -82,6 +82,11 @@ export interface PlannerState {
   updateNodeData: (id: string, data: NodeDataPatch) => void;
   handleChangeLength: (id: string, length: number) => void;
   handleChangeFuseSize: (id: string, fuseSize: number) => void;
+  /**
+   * AUDIT ELE-004: Position der Sicherung entlang der Kante in Metern ab
+   * Batteriepol — Grundlage der 20-cm-Regel in collectEdgeErrors.
+   */
+  handleChangeFuseOffset: (id: string, fuseOffset: number) => void;
 
   /**
    * v12: React Flow prüft mit `IsValidConnection<EdgeType>` — der Callback

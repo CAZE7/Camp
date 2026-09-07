@@ -6,7 +6,8 @@
           "crossSection": 70,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
-          "fuseSize": 160,
+          "fuseSize": 100,
+          "fuseWarning": true,
           "length": 0.2
         },
         "id": "e-auto-1",
@@ -73,7 +74,8 @@
           "crossSection": 70,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
-          "fuseSize": 160,
+          "fuseSize": 100,
+          "fuseWarning": true,
           "length": 1
         },
         "id": "e-auto-4",
@@ -127,7 +129,8 @@
           "crossSection": 70,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
-          "fuseSize": 160,
+          "fuseSize": 100,
+          "fuseWarning": true,
           "length": 1
         },
         "id": "e-auto-8",
@@ -229,7 +232,7 @@
       {
         "data": {
           "label": "12V Sicherungskasten",
-          "rating": 160
+          "rating": 100
         },
         "id": "auto:2:12v-sicherungskasten",
         "position": {
@@ -315,30 +318,30 @@
   "electrical": {
     "cumulativeDrops": {
       "accharger-1": 0,
-      "auto:0:plus-schiene": 0.014,
-      "auto:1:minus-schiene": 0.049,
-      "auto:2:12v-sicherungskasten": 0.119,
-      "auto:3:smart-shunt": 0.014,
+      "auto:0:plus-schiene": 0.015,
+      "auto:1:minus-schiene": 0.052,
+      "auto:2:12v-sicherungskasten": 0.127,
+      "auto:3:smart-shunt": 0.015,
       "battery-1": 0,
       "cons-230v": 0,
-      "cons-fridge": 0.313,
-      "inverter-1": 0.117,
+      "cons-fridge": 0.334,
+      "inverter-1": 0.125,
       "shore-1": 0
     },
     "edgeCurrents": {
-      "e-auto-1": 142.56,
+      "e-auto-1": 152.06,
       "e-auto-10": 25,
       "e-auto-11": 25,
-      "e-auto-2": 142.56,
-      "e-auto-3": 142.56,
-      "e-auto-4": 142.56,
-      "e-auto-5": 142.56,
-      "e-auto-6": 4.69,
-      "e-auto-7": 4.69,
-      "e-auto-8": 137.87,
-      "e-auto-9": 137.87,
-      "e-auto-ac-12": 137.87,
-      "e-auto-ac-13": 137.87,
+      "e-auto-2": 152.06,
+      "e-auto-3": 152.06,
+      "e-auto-4": 152.06,
+      "e-auto-5": 152.06,
+      "e-auto-6": 5,
+      "e-auto-7": 5,
+      "e-auto-8": 147.06,
+      "e-auto-9": 147.06,
+      "e-auto-ac-12": 147.06,
+      "e-auto-ac-13": 147.06,
       "e-auto-ac-14": 25
     },
     "systemVoltage": 12.8

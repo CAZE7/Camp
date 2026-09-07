@@ -118,7 +118,7 @@ export const TEMPLATE_ALLROUNDER = {
       id: 'inverter-1',
       type: 'inverter',
       position: { x: 680, y: 440 },
-      data: { label: '500W Inverter', watts: 500 },
+      data: { label: '500W Inverter', watts: 500, hasRcd: true },
     },
     {
       id: 'cons-fridge',
@@ -302,15 +302,18 @@ export const TEMPLATE_AUTARK = {
     { id: 'busbar-plus', type: 'busbar', position: { x: 380, y: 500 }, data: { label: 'Plus Busbar' } },
     { id: 'busbar-minus', type: 'busbar', position: { x: 380, y: 680 }, data: { label: 'Minus Busbar' } },
     { id: 'fusebox-1', type: 'fuse', position: { x: 680, y: 200 }, data: { label: 'Sicherungskasten' } },
-    // 1500 W Wechselrichter: ~138 A DC-Eingangsstrom bei 12,8 V — das lässt
-    // sich mit der Normreihe (max. 70 mm² / 160 A Sicherung) fehlerfrei
-    // absichern. Ein 2000-W-Wechselrichter (~184 A) läge über jeder
-    // zulässigen Sicherung der Normreihe und zeigte dauerhaft Fehler.
+    // AUDIT ELE-001: Die absicherbare Grenze des Modells ist 70 mm² mit
+    // max. 100 A (FUSE_MAP, 70 % der Tabellen-Belastbarkeit). Der
+    // Batterie-Hauptstrang trägt Wechselrichter-Eingangsstrom + DC-Lasten;
+    // bei 12,8 V bleibt dafür ein Wechselrichter bis ~900 W Continuous.
+    // Größere Wechselrichter (z. B. 1500 W ⇒ ~138 A + DC-Lasten > 120 A
+    // thermische Grenze) erzeugen zu Recht Warnungen — real löst man das
+    // mit 24 V oder parallelen Leitungen, beides wird nicht modelliert.
     {
       id: 'inverter-1',
       type: 'inverter',
       position: { x: 680, y: 480 },
-      data: { label: '1500W Inverter', watts: 1500, continuousPower: 1500 },
+      data: { label: '900W Inverter', watts: 900, continuousPower: 900, hasRcd: true },
     },
     {
       id: 'cons-fridge',
@@ -329,7 +332,7 @@ export const TEMPLATE_AUTARK = {
       id: 'cons-induct',
       type: 'consumer230v',
       position: { x: 980, y: 540 },
-      data: { label: 'Induktionskochfeld', watts: 1200 },
+      data: { label: 'Induktionskochfeld (1 Platte)', watts: 800 },
     },
   ] as Node[],
   edges: [

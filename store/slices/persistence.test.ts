@@ -132,6 +132,11 @@ describe('migratePlannerPersisted', () => {
 
   it('persistOptions.migrate delegiert auf migratePlannerPersisted', () => {
     const persisted = { season: 'winter', edges: [{ id: 'e', source: 'a', target: 'b' }] };
-    expect(persistOptions.migrate?.(structuredClone(persisted), 1)).toEqual(persisted);
+    // AUDIT PERSIST-001: Validierte Kanten werden normalisiert — fehlendes
+    // `data` wird zum einheitlichen leeren Objekt (kein undefined downstream).
+    expect(persistOptions.migrate?.(structuredClone(persisted), 1)).toEqual({
+      ...persisted,
+      edges: [{ id: 'e', source: 'a', target: 'b', data: {} }],
+    });
   });
 });

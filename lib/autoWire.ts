@@ -609,7 +609,7 @@ export function performAutoWiring(
   }
 
   sizeDcEdges(allDcEdges, currentNodes, allEdges, sysVoltage, nodeMap);
-  applyFuseSizes(allDcEdges, currentNodes, sysVoltage, nodeMap);
+  applyFuseSizes(allDcEdges, currentNodes, sysVoltage, nodeMap, allEdges); // ELE-005: Insel-BFS
   sizeAcEdges(allEdges, currentNodes);
 
   const fuseBoxFeed = allDcEdges.find(

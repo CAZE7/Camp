@@ -7,6 +7,15 @@
 > (`docs/ARCHITECTURE-CHANGES.md`).
 > **Revision 2026-09-06:** Abgleich mit agent.md-Tracks S-1…S-5 / P-1…P-7 und M11-1
 > (Token-Zwillinge, Handle-Geometrie) — Änderungen siehe Abschnitte 3, 5, 6.3, 10, 14, 16.
+>
+> **Implementierungs-Status (AUDIT ROUTE-003, 2026-09-07):** Diese Spec beschreibt das
+> **Zielbild**, nicht den verdrahteten Ist-Zustand. Der Produktionspfad nutzt ausschließlich
+> das eigene 5-Rang-Spaltenlayout (`components/planner/utils/layout.ts`) + Hanan-A*
+> (`components/edges/utils/routeAll.ts` / `pathfinding.ts`). Der ELK-Pass
+> (`lib/routing/elk/`) ist implementiert und über Scripts (regression, goldenmaster,
+> ab-compare) vergleichbar, aber **nicht in der Anwendung aktiviert**; `classifyCollision`
+> wird vom A*-Pass nicht konsumiert (dort gelten COST_WEIGHTS + segmentHitsRect).
+> „ELK/A*-Konsistenz" (§12/R-3-Kontext) ist damit aktuell nur über die Scripts herstellbar.
 
 ---
 

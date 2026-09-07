@@ -81,8 +81,9 @@ describe('ExpertPanel', () => {
     expect(screen.getByText(/Aktuelle Empfehlung/)).toBeInTheDocument();
     expect(screen.getByText('Kabelquerschnitt')).toBeInTheDocument();
     expect(screen.getByText('Sicherung')).toBeInTheDocument();
-    // I = 1000 / 12.8 / 0.85 = 91.91 A (Systemspannung statt hartem /12)
-    expect(screen.getByText(/91\.9 A/)).toBeInTheDocument();
+    // I = 1000 / 12.0 / 0.85 = 98.04 A — ELE-005: Entladeschlussspannung
+    // (12,8 V nominal × 0,9375) statt Nennspannung.
+    expect(screen.getByText(/98\.0 A/)).toBeInTheDocument();
   });
 
   it('calculates live recommendations for solar', () => {
@@ -119,7 +120,7 @@ describe('ExpertPanel', () => {
     // We should see its body text
     expect(
       screen.getByText(
-        'LiFePO4-Akkus haben eine nutzbare Kapazität von ca. 95 % Entladetiefe (DoD), AGM nur ~50%. Eine 100Ah LiFePO4 ersetzt also eine 200Ah AGM.'
+        'LiFePO4-Akkus dürfen zu ca. 90 % entladen werden (DoD), AGM nur ~50 %. Eine 100-Ah-LiFePO4 ersetzt damit rund 180 Ah AGM (Werte wie im Planer).'
       )
     ).toBeInTheDocument();
 

@@ -475,7 +475,7 @@ describe('Auto-Wire: keine Warnungen nach performAutoWiring', () => {
   it('Szenario 3 — Landstrom + Wechselrichter (AC/DC strikt getrennt)', () => {
     const nodes = [
       makeNode('b1', 'battery', { label: 'Batterie', capacity: 200, chemistry: 'LiFePO4' }),
-      makeNode('i1', 'inverter', { label: 'Inverter', watts: 1000 }),
+      makeNode('i1', 'inverter', { label: 'Inverter', watts: 900, hasRcd: true }),
       makeNode('a1', 'consumer230v', { label: 'Steckdose', watts: 300, hours: 1 }),
       makeNode('p1', 'shorePower', { label: 'Landstrom', hasRcd: true }),
       makeNode('c1', 'consumer', { label: 'Pumpe', watts: 40, hours: 2 }),
@@ -508,11 +508,11 @@ describe('Auto-Wire: keine Warnungen nach performAutoWiring', () => {
       makeNode('s1', 'solar', { label: 'Panel 1', watts: 200 }),
       makeNode('s2', 'solar', { label: 'Panel 2', watts: 200 }),
       makeNode('m1', 'mpptController', { label: 'MPPT', amps: 10 }),
-      makeNode('d1', 'dcdcCharger', { label: 'Ladebooster', amps: 30 }),
+      makeNode('d1', 'dcdcCharger', { label: 'Ladebooster', amps: 20 }),
       makeNode('ch1', 'charger', { label: 'Ladequelle', amps: 20 }),
       makeNode('ac1', 'acBatteryCharger', { label: '230V Ladegerät', amps: 25 }),
       makeNode('p1', 'shorePower', { label: 'Landstrom', hasRcd: true }),
-      makeNode('i1', 'inverter', { label: 'Inverter', watts: 1000 }),
+      makeNode('i1', 'inverter', { label: 'Inverter', watts: 800, hasRcd: true }),
       makeNode('c1', 'consumer', { label: 'Kühlschrank', watts: 60, hours: 4 }),
       makeNode('c2', 'consumer', { label: 'Pumpe', watts: 40, hours: 3 }),
       makeNode('c3', 'consumer', { label: 'LED', watts: 40, hours: 2 }),
@@ -540,7 +540,7 @@ describe('Auto-Wire: keine Warnungen nach performAutoWiring', () => {
   it('Szenario 5 — Winter-Saison: hohe Lasten', () => {
     const nodes = [
       makeNode('b1', 'battery', { label: 'Batterie', capacity: 300, chemistry: 'LiFePO4' }),
-      makeNode('i1', 'inverter', { label: 'Inverter', watts: 800 }),
+      makeNode('i1', 'inverter', { label: 'Inverter', watts: 800, hasRcd: true }),
       makeNode('a1', 'consumer230v', { label: 'Heizlüfter', watts: 500, hours: 1 }),
       makeNode('c1', 'consumer', { label: 'Standheizung', watts: 80, hours: 4 }),
       makeNode('s1', 'solar', { label: 'Panel', watts: 200 }),
@@ -559,7 +559,7 @@ describe('Auto-Wire: keine Warnungen nach performAutoWiring', () => {
       makeNode('b1', 'battery', { label: 'Batterie', capacity: 200, chemistry: 'LiFePO4' }),
       makeNode('s1', 'solar', { label: 'Panel', watts: 200 }),
       makeNode('c1', 'consumer', { label: 'Kühlbox', watts: 60, hours: 4 }),
-      makeNode('i1', 'inverter', { label: 'Inverter', watts: 1000 }),
+      makeNode('i1', 'inverter', { label: 'Inverter', watts: 900, hasRcd: true }),
       makeNode('a1', 'consumer230v', { label: 'Steckdose', watts: 300, hours: 1 }),
     ];
 

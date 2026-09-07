@@ -8,6 +8,7 @@ import {
   quantityOr,
   voltageDrop,
   ZERO_AMPS,
+  ZERO_METERS,
   ZERO_VOLTS,
   type Amps,
   type Meters,
@@ -75,7 +76,11 @@ export const edgeVoltageDrop = (current: Amps, length: Meters, crossSection: Mm2
  */
 
 export const crossSectionForDrop = (current: Amps, length: Meters, allowedDrop: Volts): Mm2 => {
-  if (allowedDrop <= ZERO_VOLTS || current <= ZERO_AMPS) return MIN_CROSS_SECTION;
+  // AUDIT AUTO-001: Länge 0 ist als meters(0) GÜLTIG (Sammelschienen!), führt
+  // in A = I·2L/(κ·ΔU) aber auf A = 0 → mm2(0) wirft RangeError und riss
+  // komplette AutoWire-Läufe. Physikalisch ist der Spannungsfall bei L = 0
+  // null — der rechnerische Bedarf ist damit das Leitungsminimum.
+  if (allowedDrop <= ZERO_VOLTS || current <= ZERO_AMPS || length <= ZERO_METERS) return MIN_CROSS_SECTION;
   const required = crossSectionForVoltageDrop(current, length, allowedDrop, COPPER_CONDUCTIVITY);
   return required > MIN_CROSS_SECTION ? required : MIN_CROSS_SECTION;
 };

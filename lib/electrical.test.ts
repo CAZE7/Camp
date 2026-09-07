@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   DERATE_FACTOR,
+  VDE_AMPACITY,
   FUSE_MAP,
   calculateMaxFuse,
   maxFuseForDisplay,
@@ -18,16 +19,28 @@ describe('electrical safety refactoring tests', () => {
   });
 
   it('should have VDE safety-compliant values in FUSE_MAP', () => {
-    expect(FUSE_MAP[1.5]).toBe(16);
-    expect(FUSE_MAP[2.5]).toBe(20);
-    expect(FUSE_MAP[4.0]).toBe(25);
-    expect(FUSE_MAP[6.0]).toBe(32);
-    expect(FUSE_MAP[10.0]).toBe(50);
-    expect(FUSE_MAP[16.0]).toBe(63);
-    expect(FUSE_MAP[25.0]).toBe(80);
-    expect(FUSE_MAP[35.0]).toBe(100);
-    expect(FUSE_MAP[50.0]).toBe(125);
-    expect(FUSE_MAP[70.0]).toBe(160);
+    // AUDIT ELE-001: FUSE_MAP ist abgeleitet — größte Norm-Sicherung unter
+    // der design-Belastbarkeit (Tabelle × 0,7). Spot-Check der Ableitung:
+    expect(FUSE_MAP[1.5]).toBe(10); // 16.5 × 0.7 = 11.55 → 10
+    expect(FUSE_MAP[2.5]).toBe(16); // 23 × 0.7 = 16.1 → 16
+    expect(FUSE_MAP[4.0]).toBe(20);
+    expect(FUSE_MAP[6.0]).toBe(25);
+    expect(FUSE_MAP[10.0]).toBe(32);
+    expect(FUSE_MAP[16.0]).toBe(40);
+    expect(FUSE_MAP[25.0]).toBe(63); // 90 × 0.7 = 63 (exakt)
+    expect(FUSE_MAP[35.0]).toBe(63);
+    expect(FUSE_MAP[50.0]).toBe(80);
+    expect(FUSE_MAP[70.0]).toBe(100); // 172 × 0.7 = 120.4 → 100
+  });
+
+  it('ELE-001: Sicherungsgrenze liegt NIEMALS über der Dimensionierungs-Belastbarkeit', () => {
+    // Die Koordination I_B ≤ I_n ≤ I_z muss im Modell durch Konstruktion
+    // gelten — vorher lag FUSE_MAP für jeden Querschnitt ÜBER der zur
+    // Dimensionierung verwendeten (derateten) Belastbarkeit.
+    for (const size of [1.5, 2.5, 4, 6, 10, 16, 25, 35, 50, 70]) {
+      const designIz = (VDE_AMPACITY[size] ?? 0) * DERATE_FACTOR;
+      expect(FUSE_MAP[size]!).toBeLessThanOrEqual(designIz + 1e-9);
+    }
   });
 
   it('should throw RangeError for unknown cross sections in calculateMaxFuse', () => {
@@ -119,23 +132,30 @@ describe('electrical safety refactoring tests', () => {
   });
 
   it('selectFuseSize never exceeds the cable maximum (FUSE_MAP)', () => {
-    // 1,5 mm² darf max. 16 A abgesichert werden. Bei 17 A Nennstrom
-    // darf KEINE 20-A-Sicherung empfohlen werden (Brandgefahr).
+    // ELE-001: 1,5 mm² trägt nach Modell max. 10 A design-Strom
+    // (16,5 × 0,7 = 11,55 A). Bei 17 A Nennstrom gibt es KEINE zulässige
+    // Sicherung auf 1,5 mm² — Rückgabe ist die Kabelgrenze (10 A) als
+    // Signal, dass der Querschnitt vergrößert werden muss (niemals mehr!).
     expect(selectFuseSize(17, 1.5)).toBeLessThanOrEqual(FUSE_MAP[1.5]!);
-    expect(selectFuseSize(17, 1.5)).toBe(16);
+    expect(selectFuseSize(17, 1.5)).toBe(10);
+    expect(isFuseFeasible(17, 1.5)).toBe(false);
 
-    // 2,5 mm² max 20 A.
+    // 2,5 mm² max 16 A — 21 A sind unzulässig, Rückgabe ist die Grenze.
     expect(selectFuseSize(21, 2.5)).toBeLessThanOrEqual(FUSE_MAP[2.5]!);
-    expect(selectFuseSize(21, 2.5)).toBe(20);
+    expect(selectFuseSize(21, 2.5)).toBe(16);
 
     // Normalfall: kleinste passende Norm-Sicherung.
     expect(selectFuseSize(10, 2.5)).toBe(10);
-    expect(selectFuseSize(16, 1.5)).toBe(16);
+    expect(selectFuseSize(10, 1.5)).toBe(10);
+    expect(selectFuseSize(16, 2.5)).toBe(16);
   });
 
   it('isFuseFeasible indicates whether a cable can carry the current', () => {
     expect(isFuseFeasible(10, 1.5)).toBe(true);
-    expect(isFuseFeasible(16, 1.5)).toBe(true);
+    // ELE-001: 16 A übersteigen die design-Belastbarkeit von 1,5 mm²
+    // (11,55 A) — früher true, obwohl die eigene Dimensionierung hier
+    // bereits 2,5 mm² verlangt hätte.
+    expect(isFuseFeasible(16, 1.5)).toBe(false);
     expect(isFuseFeasible(17, 1.5)).toBe(false);
     expect(isFuseFeasible(0, 1.5)).toBe(true);
   });

@@ -327,6 +327,26 @@ export function InverterInspector({
           className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
         />
       </div>
+      {/* AUDIT AC-001: FI-Schutz am AC-Ausgangskreis pflegbar (30 mA Typ A),
+          sonst war die neue Live-Regel „Inverter-Kreis ohne RCD“ nicht behebbar. */}
+      <div className="mt-4 flex flex-col gap-2">
+        <label className="flex items-center gap-2 text-sm text-foreground">
+          <input
+            type="checkbox"
+            checked={node.data?.hasRcd || false}
+            onChange={(e) => onUpdateNodeData?.(node.id, { hasRcd: e.target.checked })}
+            className="rounded border-rule text-primary focus:ring-ring"
+          />
+          FI/LS (RCBO) im AC-Ausgang installiert
+        </label>
+        {!node.data?.hasRcd && (
+          <div className="warn-card warn-card-critical p-2 text-xs">
+            Speist der Wechselrichter 230-V-Geräte, muss der Ausgangskreis einen
+            FI-Schutzschalter (max. 30 mA, Typ A) haben — sonst droht Stromschlaggefahr
+            auch ohne Landstrom.
+          </div>
+        )}
+      </div>
       <div className="mt-4 flex flex-col">
         {/* Gruppenüberschrift, kein Steuerelement-Label (a11y: label bräuchte ein Control) */}
         <span className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">

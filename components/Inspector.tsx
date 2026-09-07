@@ -50,6 +50,8 @@ interface InspectorProps {
   onUpdateNodeData?: (nodeId: string, data: NodeDataPatch) => void;
   onChangeLength?: (id: string, length: number) => void;
   onChangeFuseSize?: (id: string, fuseSize: number) => void;
+  /** AUDIT ELE-004: Sicherungsabstand (m) vom Leitungsanfang pflegbar. */
+  onChangeFuseOffset?: (id: string, offset: number) => void;
 
   // data props
   edges?: Edge[];
@@ -240,6 +242,7 @@ export default function Inspector({
   onUpdateNodeData,
   onChangeLength,
   onChangeFuseSize,
+  onChangeFuseOffset,
   edges,
   nodes,
   chargingTimeStr,
@@ -280,6 +283,7 @@ export default function Inspector({
               edge={selectedEdge}
               onChangeLength={onChangeLength || (() => {})}
               onChangeFuseSize={onChangeFuseSize}
+              onChangeFuseOffset={onChangeFuseOffset}
             />
           )}
           {onDelete && (

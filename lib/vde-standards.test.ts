@@ -19,6 +19,8 @@ import {
   calculateAcEdgeCurrent,
   DEFAULT_SYSTEM_VOLTAGE,
   LEAD_SYSTEM_VOLTAGE,
+  dischargeFloorVoltage,
+  VDE_DISCHARGE_VOLTAGE_FACTOR,
 } from './vde-standards';
 import { amps, meters, mm2, volts, watts } from './units';
 import type { Node, Edge } from '@xyflow/react';
@@ -58,8 +60,9 @@ describe('VDE Standards - Zentrale Konstanten', () => {
       // Mission 4: Die früheren Parallel-Tabellen (VDE_STANDARD_FUSES,
       // VDE_CONSERVATIVE_FUSES, VDE_CURRENT_CAPACITY) wurden entfernt —
       // selectFuseSize + FUSE_MAP sind die einzige Quelle der Wahrheit.
-      expect(VDE_FUSE_MAP[1.5]).toBe(16);
-      expect(VDE_FUSE_MAP[70]).toBe(160);
+      // ELE-001: Werte sind aus Ampacity × Derate ABGELEITET.
+      expect(VDE_FUSE_MAP[1.5]).toBe(10);
+      expect(VDE_FUSE_MAP[70]).toBe(100);
     });
 
     it('die Kabelgrenze bleibt unter der derateten Strombelastbarkeit', () => {
@@ -108,8 +111,8 @@ describe('VDE Standards - Zentrale Konstanten', () => {
   });
 
   describe('Leerrohr-Konstanten', () => {
-    it('Maximaler Füllgrad ist 60%', () => {
-      expect(VDE_MAX_CONDUIT_FILL_PERCENT).toBe(60);
+    it('Maximaler Füllgrad ist 40% (AUDIT NORM-001: 60% war unbelegt)', () => {
+      expect(VDE_MAX_CONDUIT_FILL_PERCENT).toBe(40);
     });
 
     it('EN 20 hat 16.9mm Innendurchmesser', () => {
@@ -225,9 +228,14 @@ describe('VDE-Standards mit typsicheren Einheiten (K1b)', () => {
     const node = (type: string, data: Record<string, unknown>): Node =>
       ({ id: `${type}-1`, type, position: { x: 0, y: 0 }, data }) as Node;
 
-    it('rechnet Verbraucherleistung mit der Systemspannung in Strom um', () => {
+    it('rechnet Verbraucherleistung mit der Entladeschlussspannung in Strom um (ELE-005)', () => {
       const consumer = node('consumer', { watts: 60 });
-      expect(calculateEdgeCurrent(undefined, consumer, [consumer], volts(12))).toBeCloseTo(5, 10);
+      // 12 V nominal × 0,9375 = 11,25 V floor → 60 / 11,25 = 5,33 A
+      // (nicht 5 A @ nominal — der Strom am leeren Akku ist der höchste).
+      expect(calculateEdgeCurrent(undefined, consumer, [consumer], volts(12))).toBeCloseTo(
+        60 / 11.25,
+        10
+      );
     });
 
     it('fällt bei unlesbarem totalAmps auf die physikalische Herleitung zurück (statt 0 A)', () => {
@@ -236,10 +244,9 @@ describe('VDE-Standards mit typsicheren Einheiten (K1b)', () => {
       // entschärfte. Heute: nur vertrauenswürdige Zahlen werden übernommen.
       const brokenSource = node('battery', { totalAmps: 'unsicher' });
       const consumer = node('consumer', { watts: 60 });
-      expect(calculateEdgeCurrent(brokenSource, consumer, [brokenSource, consumer], volts(12))).toBeCloseTo(
-        5,
-        10
-      );
+      expect(
+        calculateEdgeCurrent(brokenSource, consumer, [brokenSource, consumer], volts(12))
+      ).toBeCloseTo(60 / 11.25, 10); // ELE-005: 11,25 V floor bei 12 V nominal
       // Ein lesbarer Wert gewinnt dagegen weiterhin:
       const explicit = node('battery', { totalAmps: 7.5 });
       expect(calculateEdgeCurrent(explicit, consumer, [explicit, consumer], volts(12))).toBe(7.5);
@@ -255,7 +262,8 @@ describe('VDE-Standards mit typsicheren Einheiten (K1b)', () => {
 
     it('rechnet den Wechselrichter-Eingangsstrom bit-identisch zur Division', () => {
       const inverter = node('inverter', { watts: 1000 });
-      const expected = 1000 / 12.8 / VDE_INVERTER_EFFICIENCY;
+      // ELE-005: 12,8 V nominal → 12,0 V Entladeschlussspannung.
+      const expected = 1000 / 12.0 / VDE_INVERTER_EFFICIENCY;
       expect(calculateEdgeCurrent(inverter, undefined, [inverter], volts(12.8))).toBe(expected);
     });
 
@@ -283,7 +291,7 @@ describe('VDE-Standards mit typsicheren Einheiten (K1b)', () => {
       const inv = node('inverter', { watts: 100, continuousPower: 1000 });
       const nodes = [house, busbar, inv];
       const I = calculateEdgeCurrent(house, busbar, nodes, volts(12.8));
-      expect(I).toBeCloseTo(1000 / 12.8 / VDE_INVERTER_EFFICIENCY, 10);
+      expect(I).toBeCloseTo(1000 / 12.0 / VDE_INVERTER_EFFICIENCY, 10); // ELE-005: floor 12,0 V
     });
 
     it('nutzt im Fallback-Pfad die 230-V-Last des Wechselrichters (acConsumerLoad)', () => {
@@ -293,8 +301,71 @@ describe('VDE-Standards mit typsicheren Einheiten (K1b)', () => {
       const consumer230 = node('consumer230v', { watts: 2300 });
       const nodes = [house, busbar, inv, consumer230];
       const I = calculateEdgeCurrent(house, busbar, nodes, volts(12.8));
-      // max(100 W, 2300 W) / 12,8 V / 0,85
-      expect(I).toBeCloseTo(2300 / 12.8 / VDE_INVERTER_EFFICIENCY, 10);
+      // max(100 W, 2300 W) / 12,0 V (floor, ELE-005) / 0,85
+      expect(I).toBeCloseTo(2300 / 12.0 / VDE_INVERTER_EFFICIENCY, 10);
+    });
+
+    it('ELE-005: zählt mit Kantenliste nur die 230-V-Last der Insel des Wechselrichters', () => {
+      // Vorher: globale Summe ALLER consumer230v — ein 500-W-WR neben einem
+      // fremden/unverbundenen 1500-W-Verbraucher wurde auf 137,9 A statt 46 A
+      // dimensioniert (falsch in beide Richtungen: über- UND dimensioniert,
+      // je nachdem wo die Verbraucher wirklich hängen).
+      const withId = (id: string, type: string, data: Record<string, unknown>): Node =>
+        ({ id, type, position: { x: 0, y: 0 }, data }) as Node;
+      const inv1 = withId('inv1', 'inverter', { watts: 500 });
+      const inv2 = withId('inv2', 'inverter', { watts: 300 });
+      const socket1 = withId('s1', 'consumer230v', { watts: 300 });
+      const bigLoad = withId('s2', 'consumer230v', { watts: 1500 });
+      const nodes = [inv1, inv2, socket1, bigLoad];
+      const acEdge = (id: string, s: string, t: string): Edge => ({
+        id,
+        source: s,
+        target: t,
+        data: { edgeDomain: 'AC_230V' },
+      }) as Edge;
+      const edges = [acEdge('e1', 'inv1', 's1'), acEdge('e2', 'inv2', 's2')];
+
+      // inv1 führt max(500 W Dauerleistung, 300 W Insel) = 500 W.
+      expect(calculateEdgeCurrent(inv1, undefined, nodes, volts(12.8), edges)).toBeCloseTo(
+        (500 / 12.0) / VDE_INVERTER_EFFICIENCY,
+        10
+      );
+      // inv2 führt max(300 W, 1500 W Insel) = 1500 W.
+      expect(calculateEdgeCurrent(inv2, undefined, nodes, volts(12.8), edges)).toBeCloseTo(
+        (1500 / 12.0) / VDE_INVERTER_EFFICIENCY,
+        10
+      );
+      // Batterie-Hauptleitung (Fallback) summiert die Insel-Lasten beider WR:
+      // 500/12/0,85 + 1500/12/0,85 ≈ 196 A.
+      const battery = withId('b1', 'battery', {});
+      const busbar = withId('bus1', 'busbar', {});
+      const allNodes = [battery, busbar, ...nodes];
+      const dcEdge = (id: string, s: string, t: string): Edge => ({
+        id,
+        source: s,
+        target: t,
+        data: { edgeDomain: 'DC_12V' },
+      }) as Edge;
+      const allEdges = [dcEdge('e3', 'b1', 'bus1'), ...edges];
+      expect(calculateEdgeCurrent(battery, busbar, allNodes, volts(12.8), allEdges)).toBeCloseTo(
+        (500 / 12.0 + 1500 / 12.0) / VDE_INVERTER_EFFICIENCY,
+        5
+      );
+
+      // Legacy-Pfad ohne Kantenliste: globale Summe ALLER 230-V-Verbraucher
+      // (300 + 1500 = 1800 W) — konservativer Over-Schätzer (nie zu niedrig),
+      // dokumentiertes Übergangsverhalten für Anzeigepfade ohne Kanten.
+      expect(calculateEdgeCurrent(inv1, undefined, nodes, volts(12.8), undefined)).toBeCloseTo(
+        (1800 / 12.0) / VDE_INVERTER_EFFICIENCY,
+        10
+      );
+    });
+
+    it('ELE-005: dischargeFloorVoltage — 12,8 V → 12,0 V, 12 V → 11,25 V, 24 V → 22,5 V', () => {
+      expect(dischargeFloorVoltage(volts(12.8))).toBeCloseTo(12.0, 10);
+      expect(dischargeFloorVoltage(volts(12))).toBeCloseTo(11.25, 10);
+      expect(dischargeFloorVoltage(volts(24))).toBeCloseTo(22.5, 10);
+      expect(VDE_DISCHARGE_VOLTAGE_FACTOR).toBe(0.9375);
     });
   });
 

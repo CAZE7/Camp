@@ -130,7 +130,7 @@ export function sizeDcEdges(
   const sizeEdge = (edge: CableEdge, allowedOwn: Volts): Mm2 => {
     const sourceNode = nodeMap.get(edge.source);
     const targetNode = nodeMap.get(edge.target);
-    const I = calculateEdgeCurrent(sourceNode, targetNode, nodes, sysVoltage);
+    const I = calculateEdgeCurrent(sourceNode, targetNode, nodes, sysVoltage, allEdges); // ELE-005: Insel-BFS
     const length = edgeLength(edge);
     const currentCs = edgeCrossSection(edge, MIN_CROSS_SECTION);
 
@@ -164,7 +164,7 @@ export function sizeDcEdges(
     for (const edge of dcEdges) {
       const sourceNode = nodeMap.get(edge.source);
       const targetNode = nodeMap.get(edge.target);
-      const I = calculateEdgeCurrent(sourceNode, targetNode, nodes, sysVoltage);
+      const I = calculateEdgeCurrent(sourceNode, targetNode, nodes, sysVoltage, allEdges); // ELE-005
       const currentCs = edgeCrossSection(edge, MIN_CROSS_SECTION);
       const cumAtSource = relevantCumulativeDrop(edge.source, nodeMap, allEdges, nodes, sysVoltage);
       const ownDrop = edgeVoltageDrop(I, edgeLength(edge), currentCs);
@@ -224,7 +224,7 @@ export function sizeDcEdges(
         const cs = edgeCrossSection(edge, MIN_CROSS_SECTION);
         if (cs >= MAX_CROSS_SECTION) continue;
         const own = edgeVoltageDrop(
-          calculateEdgeCurrent(nodeMap.get(edge.source), nodeMap.get(edge.target), nodes, sysVoltage),
+          calculateEdgeCurrent(nodeMap.get(edge.source), nodeMap.get(edge.target), nodes, sysVoltage, allEdges), // ELE-005
           edgeLength(edge),
           cs
         );
@@ -253,14 +253,16 @@ export function applyFuseSizes(
   dcEdges: CableEdge[],
   nodes: Node[],
   sysVoltage: Volts,
-  nodeMap: Map<string, Node> = new Map(nodes.map((n) => [n.id, n]))
+  nodeMap: Map<string, Node> = new Map(nodes.map((n) => [n.id, n])),
+  /** ELE-005: volle Kantenliste für die Insel-BFS der Wechselrichter-Last. */
+  allEdges: CableEdge[] = []
 ): void {
   for (const edge of dcEdges) {
     if (!edge.sourceHandle?.includes('plus')) continue;
     if (!edge.data) edge.data = {};
     const sourceNode = nodeMap.get(edge.source);
     const targetNode = nodeMap.get(edge.target);
-    const I = calculateEdgeCurrent(sourceNode, targetNode, nodes, sysVoltage);
+    const I = calculateEdgeCurrent(sourceNode, targetNode, nodes, sysVoltage, allEdges); // ELE-005
     let cs: Mm2 = edgeCrossSection(edge, MIN_CROSS_SECTION);
 
     // Altpläne/Importe können Nicht-Normquerschnitte (z. B. 3 mm² oder 95 mm²)
@@ -383,7 +385,26 @@ export function sizeAcEdges(edges: CableEdge[], nodes: Node[]): void {
     const targetNode = nodeMap.get(edge.target);
     const I = acCurrentA(sourceNode, targetNode, nodes);
     const length = edgeLength(edge, DEFAULT_AC_LENGTH);
-    edge.data.crossSection = calculateCrossSection(I, length, edge.data.crossSection, 'AC_230V');
+
+    // AUDIT CRASH-001: calculateCrossSection gibt Nutzer-/Import-Querschnitte
+    // > 70 mm² bewusst unverändert durch — der DC-Pfad (applyFuseSizes)
+    // fängt das, der AC-Pfad reichte sie an calculateMaxFuse weiter und riss
+    // mit RangeError den GESAMTEN AutoWire-Lauf. Symmetrisch zum DC-Pfad:
+    // unbekannte Querschnitte auf die Normreihe anheben (nie verkleinern),
+    // > 70 mm² auf die 70-mm²-Normbestung absichern + Warnmarke.
+    let cs: Mm2 = edgeCrossSection(edge, MIN_CROSS_SECTION);
+    if (!VDE_SIZES.includes(cs)) {
+      cs = nextStandardCrossSection(cs);
+      edge.data.crossSection = cs;
+    }
+    if (cs > MAX_CROSS_SECTION) {
+      // Querschnitt bleibt unverändert (95 mm² niemals auf 70 schwächen);
+      // gesichert wird auf die größte bekannte Normstufe (konservativ).
+      edge.data.fuseSize = selectFuseSize(I, MAX_CROSS_SECTION);
+      edge.data.fuseWarning = I > (FUSE_MAP[MAX_CROSS_SECTION] ?? 0);
+      continue;
+    }
+    edge.data.crossSection = calculateCrossSection(I, length, cs, 'AC_230V');
     // ELEC-003: AC-Zweige waren ungesichert dimensioniert. Die Sicherung ist
     // der kleinere Wert aus modellierter Dosen-Absicherung (sonst Normwert
     // ≥ Astlast) und der Kabelträgigkeit — selectFuseSize kapselt beides.

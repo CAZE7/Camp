@@ -91,8 +91,17 @@ export const VDE_CONDUIT_INNER_DIAMETERS: Record<string, number> = {
   'EN 50': 47.2,
 };
 
-/** Maximal zulässiger Füllgrad eines Leerrohrs nach VDE 0100-520. */
-export const VDE_MAX_CONDUIT_FILL_PERCENT = 60;
+/**
+ * Maximal zulässiger Füllgrad eines Leerrohrs.
+ *
+ * AUDIT NORM-001: Der frühere Wert 60 % war mit „VDE 0100-520" beziffert,
+ * aber in keiner auffindbaren Quelle belegt. Üblich und belegt ist max. 40 %
+ * der Rohrquerschnittsfläche im DIN-VDE-0100-520-Kontext (bzw. nach
+ * DIN 18015-1 max. ⅓ bei Einzeladern / ½ bei Mantelleitungen). Konservativ
+ * auf 40 % korrigiert — ein zu klein empfohlenes Rohr ist ein Wärme- und
+ * Zugentlastungsproblem, ein größer gewähltes unkritisch.
+ */
+export const VDE_MAX_CONDUIT_FILL_PERCENT = 40;
 
 /**
  * Kabelaußendurchmesser pro Querschnitt in mm (gilt für FLYY/FLRY-Leitungen).
@@ -236,6 +245,27 @@ export const isStarterBatteryLabel = (label: unknown): boolean => /start/i.test(
 export const AC_SYSTEM_VOLTAGE: Volts = volts(230);
 
 /**
+ * AUDIT ELE-005: Faktor zwischen Nenn- und Entladeschlussspannung.
+ *
+ * Dimensionierungsströme dürfen nicht mit der NOMINALspannung gerechnet
+ * werden: am Entladeende einer LiFePO4-Zelle (3,0 V statt 3,2 V) liefert
+ * dieselbe Leistung bis zu 6,7 % mehr Strom (12,8 V → 12,0 V). Alle
+ * leistungsabhängigen DC-Ströme (Verbraucher, Wechselrichter-Eingang)
+ * werden daher mit dieser floor-Spannung gerechnet — konservativ und
+ * ehrlich, statt nominal und systematisch zu niedrig.
+ *
+ * Bewusste Modellannahme (keine Normkopie): 3,0 V/Zelle LiFePO4. Für
+ * Blei (LEAD_SYSTEM_VOLTAGE 12,0 V nominal) ergibt der Faktor 11,25 V —
+ * auch das liegt auf der sicheren Seite. Wer eine andere Zellchemie
+ * annimmt, muss diesen Faktor anpassen.
+ */
+export const VDE_DISCHARGE_VOLTAGE_FACTOR = 0.9375; // 12,8 V → 12,0 V
+
+/** AUDIT ELE-005: Entladeschlussspannung (Strom-Maximum) zur Nennspannung. */
+export const dischargeFloorVoltage = (nominal: Volts): Volts =>
+  volts(nominal * VDE_DISCHARGE_VOLTAGE_FACTOR);
+
+/**
  * Ermittelt die nominale Systemspannung anhand der Batterien im Plan.
  * Default 12.8V (typisch LiFePO4) ohne explizite Angabe.
  */
@@ -299,8 +329,9 @@ export function getSystemVoltage(nodes: Node[], preferredBatteryId?: string): Vo
  *   1. totalAmps — explizit gesetzter Gesamtstrom (z.B. Hauptleitungen)
  *   2. Solar-Kante: Panel-Strom (watts / Vmp). Die Zuleitung vom Panel zum
  *      Laderegler trägt den PANEL-Strom, nicht die Nennleistung des Reglers.
- *   3. 12V-Verbraucher: watts / Systemspannung
- *   4. Wechselrichter (DC-Seite): watts / Systemspannung / Wirkungsgrad
+ *   3. 12V-Verbraucher: watts / Entladeschlussspannung (ELE-005)
+ *   4. Wechselrichter (DC-Seite): Insel-230V-Last bzw. Dauerleistung,
+ *      geteilt durch Entladeschlussspannung × Wirkungsgrad (ELE-005)
  *   5. Generische amps-Angabe (Laderegler, Booster, AC-Ladegeräte)
  *   6. Fallback: max(Last, Ladung) — Batterie-Hauptleitungen führen
  *      bidirektionalen Strom; Panel-Strom zählt nur ohne Laderegler
@@ -309,20 +340,25 @@ export function calculateEdgeCurrent(
   sourceNode: Node | undefined,
   targetNode: Node | undefined,
   nodes: Node[],
-  sysVoltage?: Volts
+  sysVoltage?: Volts,
+  edges?: Edge[]
 ): Amps {
   const sData = sourceNode?.data as Record<string, unknown> | undefined;
   const tData = targetNode?.data as Record<string, unknown> | undefined;
   const voltage = sysVoltage ?? getSystemVoltage(nodes);
 
+  /** AUDIT ELE-005: Ströme aus Leistung mit der Entladeschlussspannung
+   *  rechnen — am leeren Akku ist der Strom am höchsten, und genau den
+   *  muss Leitung und Sicherung aushalten. */
+  const floor = dischargeFloorVoltage(voltage);
   /** Leistung aus `node.data` — negative/ungültige Angaben zählen als 0 W. */
   const loadOf = (data: Record<string, unknown> | undefined): Watts =>
     quantityOr(data?.watts, watts, ZERO_WATTS);
   /** Strom aus `node.data` — negative/ungültige Angaben zählen als 0 A. */
   const currentOf = (data: Record<string, unknown> | undefined): Amps =>
     quantityOr(data?.amps, amps, ZERO_AMPS);
-  /** I = P / U mit der Systemspannung. */
-  const currentAt = (load: Watts, at: Volts): Amps => currentFromPower(load, at);
+  /** I = P / U mit der Entladeschlussspannung (ELE-005). */
+  const currentAt = (load: Watts, at: Volts = floor): Amps => currentFromPower(load, at);
 
   // 1. Expliziter Gesamtstrom (manuell gesetzt oder von Auto-Wire berechnet).
   //    Ein vorhanden, aber unparsebarer Wert (Altbestand/Import) wird nicht
@@ -340,33 +376,77 @@ export function calculateEdgeCurrent(
   if (isSolarType(sourceNode?.type)) return currentAt(loadOf(sData), VDE_SOLAR_VMP_VOLTAGE);
   if (isSolarType(targetNode?.type)) return currentAt(loadOf(tData), VDE_SOLAR_VMP_VOLTAGE);
 
-  // 3. 12V-Verbraucher
-  if (sourceNode?.type === 'consumer') return currentAt(loadOf(sData), voltage);
-  if (targetNode?.type === 'consumer') return currentAt(loadOf(tData), voltage);
+  // 3. 12V-Verbraucher (ELE-005: P / Entladeschlussspannung)
+  if (sourceNode?.type === 'consumer') return currentAt(loadOf(sData));
+  if (targetNode?.type === 'consumer') return currentAt(loadOf(tData));
 
   // 4. Wechselrichter (DC-Eingangsstrom inkl. Verlusten)
   // Die DC-Zuleitung trägt den tatsächlichen 230-V-Laststrom, nicht die
   // (oft nur Nenn-)Leistung des Inverters: max(Nennlast des WR,
-  // Summe aller angeschlossenen 230-V-Verbraucher). `continuousPower` ist
+  // 230-V-Verbraucher DIESSES Wechselrichters). `continuousPower` ist
   // die relevante Dauerleistung, `watts` nur der Fallback für alte Pläne.
-  const acConsumerLoad = (): Watts => {
+  //
+  // AUDIT ELE-005: Vorher wurde die Summe ALLER consumer230v im GESAMTEN
+  // Plan verwendet — unabhängig von der Konnektivität. Ein 500-W-WR neben
+  // einem (unverbundenen oder fremden) 1500-W-Verbraucher wurde auf
+  // 137,9 A statt 46 A dimensioniert. Mit übergebener Kantenliste wird
+  // die 230-V-Insel des Wechselrichters per BFS ermittelt; ohne Kanten
+  // (Legacy-Anzeigepfade) bleibt die globale Summe als konservativer
+  // Over-Schätzer — nie zu niedrig, aber dokumentiert ungenau.
+  const acConsumerLoad = (inverter: Node | undefined): Watts => {
+    if (!inverter || !edges || edges.length === 0) {
+      // Globaler Fallback (konservativ: Insel-Summe ≤ globale Summe).
+      let total: Watts = ZERO_WATTS;
+      for (const n of nodes) {
+        if (n.type === 'consumer230v') {
+          total = addWatts(total, quantityOr((n.data as Record<string, unknown>)?.watts, watts, ZERO_WATTS));
+        }
+      }
+      return total;
+    }
+    // BFS über AC-Kanten ab dem Wechselrichter: nur elektrisch
+    // verbundene 230-V-Verbraucher zählen zu SEINER Last.
+    const nodeById = new Map(nodes.map((n) => [n.id, n]));
+    const visited = new Set<string>([inverter.id]);
+    const queue: string[] = [inverter.id];
     let total: Watts = ZERO_WATTS;
-    for (const n of nodes) {
-      if (n.type === 'consumer230v') {
-        total = addWatts(total, quantityOr((n.data as Record<string, unknown>)?.watts, watts, ZERO_WATTS));
+    while (queue.length > 0) {
+      const currentId = queue.shift()!;
+      for (const edge of edges) {
+        if (edge.source !== currentId && edge.target !== currentId) continue;
+        const domain =
+          (edge.data as { edgeDomain?: 'DC_12V' | 'AC_230V' | 'Solar' } | undefined)?.edgeDomain ??
+          getEdgeDomain(
+            nodeById.get(edge.source)?.type,
+            nodeById.get(edge.target)?.type,
+            edge.sourceHandle,
+            edge.targetHandle
+          );
+        if (domain !== 'AC_230V') continue;
+        const otherId = edge.source === currentId ? edge.target : edge.source;
+        if (visited.has(otherId)) continue;
+        visited.add(otherId);
+        const other = nodeById.get(otherId);
+        if (other?.type === 'consumer230v') {
+          total = addWatts(
+            total,
+            quantityOr((other.data as Record<string, unknown>)?.watts, watts, ZERO_WATTS)
+          );
+        }
+        queue.push(otherId);
       }
     }
     return total;
   };
-  const inverterLoad = (data: Record<string, unknown> | undefined): Watts => {
+  const inverterLoad = (data: Record<string, unknown> | undefined, owner: Node | undefined): Watts => {
     const own = quantityOr(data?.continuousPower || data?.watts, watts, ZERO_WATTS);
-    return maxWatts(own, acConsumerLoad());
+    return maxWatts(own, acConsumerLoad(owner));
   };
   if (sourceNode?.type === 'inverter') {
-    return divideAmps(currentAt(inverterLoad(sData), voltage), VDE_INVERTER_EFFICIENCY);
+    return divideAmps(currentAt(inverterLoad(sData, sourceNode)), VDE_INVERTER_EFFICIENCY);
   }
   if (targetNode?.type === 'inverter') {
-    return divideAmps(currentAt(inverterLoad(tData), voltage), VDE_INVERTER_EFFICIENCY);
+    return divideAmps(currentAt(inverterLoad(tData, targetNode)), VDE_INVERTER_EFFICIENCY);
   }
 
   // 5. Generische Ampere-Angabe (Laderegler, Booster, AC-Ladegeräte)
@@ -382,16 +462,16 @@ export function calculateEdgeCurrent(
   for (const n of nodes) {
     const nData = n.data as Record<string, unknown> | undefined;
     if (n.type === 'consumer') {
-      totalConsumerAmps = addAmps(totalConsumerAmps, currentAt(loadOf(nData), voltage));
+      totalConsumerAmps = addAmps(totalConsumerAmps, currentAt(loadOf(nData)));
     } else if (n.type === 'inverter') {
       // Derselbe Lastansatz wie im Direktpfad (Priorität 4): max(Nennlast des
-      // Wechselrichters, Summe aller 230-V-Verbraucher) — `continuousPower`
-      // ist die relevante Dauerleistung, `watts` nur der Fallback für alte
-      // Pläne. Vorher wurde hier nur `watts` gelesen; Batterie-Hauptleitungen
-      // wurden dadurch bei `continuousPower > watts` zu gering dimensioniert.
+      // Wechselrichters, 230-V-Last SEINER Insel) — `continuousPower` ist die
+      // relevante Dauerleistung, `watts` nur der Fallback für alte Pläne.
+      // ELE-005: Mit Kantenliste wird die Insel per BFS ermittelt; ohne
+      // bleibt die globale Summe pro WR konservativ (nie zu niedrig).
       totalConsumerAmps = addAmps(
         totalConsumerAmps,
-        divideAmps(currentAt(inverterLoad(nData), voltage), VDE_INVERTER_EFFICIENCY)
+        divideAmps(currentAt(inverterLoad(nData, n)), VDE_INVERTER_EFFICIENCY)
       );
     } else if (['charger', 'mpptController', 'dcdcCharger', 'acBatteryCharger'].includes(n.type as string)) {
       totalChargerAmps = addAmps(totalChargerAmps, currentOf(nData));
@@ -464,5 +544,34 @@ export function calculateAcEdgeCurrent(sourceId: string | undefined, nodes: Node
       total = addWatts(total, quantityOr((node.data as Record<string, unknown>)?.watts, watts, ZERO_WATTS));
     }
   });
-  return currentFromPower(total, AC_SYSTEM_VOLTAGE);
+  if (total > ZERO_WATTS) {
+    return currentFromPower(total, AC_SYSTEM_VOLTAGE);
+  }
+
+  // AUDIT ELE-006: Kein 230-V-Verbraucher in der AC-Insel heißt NICHT
+  // „kein Strom". Eine Landstrom-Zuleitung zu einem AC-Ladegerät trägt
+  // dessen Ladestrom, eine Dosenleitung mindestens den Anschlusswert —
+  // vorher standen solche Kanten bei 0 A (keine Animation, Spannungsfall
+  // 0 %), während die AutoWire-Dimensionierung (acCurrentA) korrekt
+  // dimensionierte. Semantik dieser Funktion bleibt „tatsächlicher Strom
+  // auf der Leitung"; die Capability-Sicht (Nennlast Wechselrichter) macht
+  // weiterhin ausschließlich die Dimensionierung.
+  let connectionCurrent: Amps = ZERO_AMPS;
+  visited.forEach((id) => {
+    const node = nodeMap.get(id);
+    if (!node) return;
+    if (node.type === 'acBatteryCharger') {
+      connectionCurrent = maxAmps(
+        connectionCurrent,
+        quantityOr((node.data as Record<string, unknown>)?.amps, amps, ZERO_AMPS)
+      );
+    }
+    if (node.type === 'shorePower') {
+      const raw = Number((node.data as Record<string, unknown>)?.rating);
+      if (Number.isFinite(raw) && raw > 0) {
+        connectionCurrent = maxAmps(connectionCurrent, amps(raw));
+      }
+    }
+  });
+  return connectionCurrent;
 }

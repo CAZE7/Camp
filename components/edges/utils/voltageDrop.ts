@@ -50,7 +50,9 @@ export function edgeDropInputs(
     // AC-Leitungen tragen den AC-Laststrom; der Querschnitt wird mit dem
     // AC-Spannungsfall-Budget (2 % konservativ) dimensioniert — nicht mehr
     // pauschal 0 A / 1,5 mm².
-    const length = edge.data?.length ?? 2;
+    // AUDIT AUTO-002: negative Längen fallen auf den AC-Standard (2 m) zurück.
+    const rawLength = edge.data?.length;
+    const length = typeof rawLength === 'number' && rawLength >= 0 ? rawLength : 2;
     const I = calculateAcEdgeCurrent(edge.source, nodes, edges);
     return {
       isAC: true,
@@ -62,9 +64,12 @@ export function edgeDropInputs(
   }
 
   const sysVoltage = getSystemVoltage(nodes);
-  const I = calculateEdgeCurrent(sourceNode, targetNode, nodes, sysVoltage);
+  const I = calculateEdgeCurrent(sourceNode, targetNode, nodes, sysVoltage, edges); // ELE-005: Insel-BFS
   // Ohne 1-m-Mindestclamp: kurze Leitungen behalten ihre echte Länge
   // (`??` statt `||`, damit length: 0 nicht durch den Schätzwert ersetzt wird).
+  // AUDIT AUTO-002: negative Längen (Import/Altdaten) sind ungültig und
+  // fallen hier ebenfalls auf die geometrische Schätzung zurück, statt den
+  // Spannungsfall zu verkleinern.
   const physical =
     sourceNode && targetNode
       ? Math.hypot(
@@ -72,7 +77,8 @@ export function edgeDropInputs(
           targetNode.position.y - sourceNode.position.y
         ) / PX_PER_METER
       : 1;
-  const length = edge.data?.length ?? physical;
+  const rawLength = edge.data?.length;
+  const length = typeof rawLength === 'number' && rawLength >= 0 ? rawLength : physical;
   const crossSection = calculateCrossSection(I, length, edge.data?.crossSection, 'DC_12V');
 
   return { isAC: false, I, length, crossSection, sysVoltage };

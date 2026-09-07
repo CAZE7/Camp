@@ -51,6 +51,7 @@ export type GraphSlice = Pick<
   | 'updateNodeData'
   | 'handleChangeLength'
   | 'handleChangeFuseSize'
+  | 'handleChangeFuseOffset'
   | 'isValidConnection'
   | 'onConnect'
   | 'autoWireSystem'
@@ -243,6 +244,18 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
     set((state) =>
       withHistory(state, {
         edges: state.edges.map((e) => (e.id === id ? { ...e, data: { ...e.data!, fuseSize } } : e)),
+      })
+    ),
+  handleChangeFuseOffset: (id, fuseOffset) =>
+    set((state) =>
+      withHistory(state, {
+        // AUDIT ELE-004: Nur endliche, nicht-negative Offsets speichern —
+        // ungültige Eingaben ändern den Zustand nicht.
+        edges: Number.isFinite(fuseOffset) && fuseOffset >= 0
+          ? state.edges.map((e) =>
+              e.id === id ? { ...e, data: { ...e.data!, fuseOffset } } : e
+            )
+          : state.edges,
       })
     ),
   isValidConnection: (connection) => {

@@ -14,7 +14,7 @@ import {
 } from './autoWire';
 import { volts } from './units';
 import type { CableEdgeData } from '../components/edges/CableEdge';
-import { FUSE_MAP } from './electrical';
+import { FUSE_MAP, VDE_SIZES } from './electrical';
 
 function n(id: string, type: string, data: Record<string, unknown> = {}, position = { x: 0, y: 0 }): Node {
   return { id, type, position, data } as Node;
@@ -396,6 +396,42 @@ describe('autoWire — sizeAcEdges', () => {
     sizeAcEdges(edges, nodes);
     expect(edges[0]?.data?.crossSection).toBe(4);
     expect(edges[1]?.data).toBeUndefined();
+  });
+
+  it('CRASH-001: wirft nie bei Alt-/Import-Querschnitten (95/0/NaN/3) und normiert stattdessen', () => {
+    // Fuzz-Fund (400 Graphen, 5 Abstürze): eine AC-Kante mit
+    // data.crossSection = 95 aus Altplänen/localStorage riss mit
+    // RangeError („Unbekannter Querschnitt: 95mm²") den GESAMTEN
+    // AutoWire-Lauf. Gefordert: nie werfen, symmetrisch zum DC-Pfad
+    // normieren/absichern.
+    const nodes = [n('sp', 'shorePower', { rating: 16 }), n('c1', 'consumer230v', { watts: 230 })];
+    for (const cs of [95, 0, NaN, 3]) {
+      const edges: Edge<CableEdgeData>[] = [
+        e({
+          id: 'ac1',
+          source: 'sp',
+          target: 'c1',
+          sourceHandle: 'plus',
+          targetHandle: 'plus',
+          data: { length: 2, crossSection: cs, edgeDomain: 'AC_230V' },
+        }),
+      ];
+      expect(() => sizeAcEdges(edges, nodes), `cs=${cs} darf nie werfen`).not.toThrow();
+      const out = edges[0]?.data;
+      expect(out, `cs=${cs} muss crossSection setzen`).toBeDefined();
+      if (cs === 95) {
+        // Nutzerquerschnitt bleibt (nie schwächen), Absicherung über die
+        // 70-mm²-Normbestung, da 95 nicht in FUSE_MAP liegt. fuseWarning
+        // wird gesetzt (hier false: 16 A ≤ 100 A Grenze der 70-mm²-Bestung).
+        expect(out?.crossSection).toBe(95);
+        expect(out?.fuseSize).toBeLessThanOrEqual(FUSE_MAP[70] ?? 0);
+        expect(out?.fuseWarning).toBe(false);
+      } else {
+        // 0/NaN → Minimum der Normreihe, 3 → nächstgrößere Normstufe.
+        expect(out?.crossSection).toBeGreaterThanOrEqual(1.5);
+        expect(VDE_SIZES).toContain(out?.crossSection as number);
+      }
+    }
   });
 });
 
