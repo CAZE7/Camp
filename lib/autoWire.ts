@@ -36,7 +36,7 @@
  * geprüft (`edgeLength`, `edgeCrossSection`).
  */
 
-import type { Node } from '@xyflow/react';
+import type { Node } from './domain/graph'; // ARCH-001: Domäne statt React-Flow-Typen
 import { getSystemVoltage, isStarterBatteryLabel } from './vde-standards';
 import {
   addWatts,
@@ -55,7 +55,7 @@ import {
   AUTO_EDGE_PREFIX,
   connectionKey,
   edgeCrossSection,
-  isLeadChemistry,
+  chemistriesParallelSafe,
   type CableEdge,
 } from './autoWire/primitives';
 import { isAcEdge, isSolarEdge, isStarterBattery } from './autoWire/validation';
@@ -298,8 +298,11 @@ export function performAutoWiring(
   // JEDE bereits akzeptierte Batterie geprüft.
   const voltageOf = (b: Node): Volts =>
     quantityOr((b.data as Record<string, unknown>)?.nominalVoltage, volts, sysVoltage);
+  // AUDIT AUTO-003: chemiegenau statt nur „Blei vs. Li" — AGM ‖ Gel wird
+  // genauso blockiert wie LiFePO4 ‖ Li-Ion (Ladeschlussspannungen/-
+  // spannungsfenster vertragen sich nicht).
   const safeToParallel = (a: Node, b: Node): boolean =>
-    voltageOf(a) === voltageOf(b) && isLeadChemistry(a) === isLeadChemistry(b);
+    voltageOf(a) === voltageOf(b) && chemistriesParallelSafe(a, b);
   const acceptedParallel: Node[] = [batteryNode];
   for (const extra of batteries) {
     if (extra.id === batteryNode.id) continue;
@@ -609,7 +612,7 @@ export function performAutoWiring(
   }
 
   sizeDcEdges(allDcEdges, currentNodes, allEdges, sysVoltage, nodeMap);
-  applyFuseSizes(allDcEdges, currentNodes, sysVoltage, nodeMap);
+  applyFuseSizes(allDcEdges, currentNodes, sysVoltage, nodeMap, allEdges); // ELE-005: Insel-BFS
   sizeAcEdges(allEdges, currentNodes);
 
   const fuseBoxFeed = allDcEdges.find(

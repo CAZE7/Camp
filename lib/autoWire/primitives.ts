@@ -1,5 +1,5 @@
-import type { Node, Edge } from '@xyflow/react';
-import type { CableEdgeData } from '../../components/edges/CableEdge';
+import type { Node, Edge } from '../domain/graph'; // ARCH-001
+import type { CableEdgeData } from '../domain/cableEdgeData'; // ARCH-001: aus Komponente in Domäne verschoben
 import { VDE_SIZES } from '../electrical';
 import {
   crossSectionForVoltageDrop,
@@ -8,6 +8,7 @@ import {
   quantityOr,
   voltageDrop,
   ZERO_AMPS,
+  ZERO_METERS,
   ZERO_VOLTS,
   type Amps,
   type Meters,
@@ -75,7 +76,11 @@ export const edgeVoltageDrop = (current: Amps, length: Meters, crossSection: Mm2
  */
 
 export const crossSectionForDrop = (current: Amps, length: Meters, allowedDrop: Volts): Mm2 => {
-  if (allowedDrop <= ZERO_VOLTS || current <= ZERO_AMPS) return MIN_CROSS_SECTION;
+  // AUDIT AUTO-001: Länge 0 ist als meters(0) GÜLTIG (Sammelschienen!), führt
+  // in A = I·2L/(κ·ΔU) aber auf A = 0 → mm2(0) wirft RangeError und riss
+  // komplette AutoWire-Läufe. Physikalisch ist der Spannungsfall bei L = 0
+  // null — der rechnerische Bedarf ist damit das Leitungsminimum.
+  if (allowedDrop <= ZERO_VOLTS || current <= ZERO_AMPS || length <= ZERO_METERS) return MIN_CROSS_SECTION;
   const required = crossSectionForVoltageDrop(current, length, allowedDrop, COPPER_CONDUCTIVITY);
   return required > MIN_CROSS_SECTION ? required : MIN_CROSS_SECTION;
 };
@@ -105,3 +110,38 @@ export const labelOf = (node: Node | undefined): string => String(node?.data?.la
 
 export const isLeadChemistry = (node: Node): boolean =>
   /agm|lead|gel|blei/i.test(String(node.data?.chemistry || ''));
+
+/** Normalisierter Chemie-Schlüssel ('' wenn fehlend/unbekannt). */
+export const chemistryKeyOf = (node: Node): string => {
+  const raw = String(node.data?.chemistry || '')
+    .trim()
+    .toLowerCase();
+  if (raw === 'lifepo4' || raw === 'li-feapo4' || raw === 'lfp') return 'lifepo4';
+  if (raw === 'li-ion' || raw === 'liion' || raw === 'lion') return 'liion';
+  if (raw === 'agm') return 'agm';
+  if (raw === 'gel') return 'gel';
+  if (raw === 'lead' || raw === 'blei' || raw === 'lead-acid' || raw === 'blei-säure') return 'lead';
+  return raw; // unbekannte Angabe bleibt unnormalisiert stehen
+};
+
+/**
+ * AUDIT AUTO-003: Parallelschaltbarkeit zweier Batterien nach Chemie.
+ * Früher wurde nur „Blei vs. Lithium" verglichen — AGM ‖ Gel galt als zulässig,
+ * obwohl ihre Ladeschlussspannungen deutlich differieren (Gel ~14,1–14,4 V,
+ * AGM ~14,4–14,7 V → Dauerüber-/unterladung eines Partners). Jetzt:
+ * - Beide Chemien bekannt → nur identische Gruppe ist parallel-sicher
+ *   (auch LiFePO4 ‖ Li-Ion ist wegen der unterschiedlichen Zellspannungen
+ *   unzulässig).
+ * - Chemie unbekannt/leer → Rückfall auf die alte Konservativregel
+ *   (Blei-Familie ‖ Nicht-Blei wird weiter blockiert, innerhalb Blei
+ *   weiter erlaubt — dokumentierte Unsicherheit statt stiller Freigabe).
+ */
+export const chemistriesParallelSafe = (a: Node, b: Node): boolean => {
+  const ka = chemistryKeyOf(a);
+  const kb = chemistryKeyOf(b);
+  const known = new Set(['lifepo4', 'liion', 'agm', 'gel', 'lead']);
+  if (ka && kb && known.has(ka) && known.has(kb)) {
+    return ka === kb;
+  }
+  return isLeadChemistry(a) === isLeadChemistry(b);
+};

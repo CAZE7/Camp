@@ -8,9 +8,16 @@ export interface EdgeInspectorProps {
   edge: Edge<CableEdgeData>;
   onChangeLength: (id: string, length: number) => void;
   onChangeFuseSize?: (id: string, fuseSize: number) => void;
+  /** AUDIT ELE-004: Position der Sicherung ab Batteriepol (m). */
+  onChangeFuseOffset?: (id: string, fuseOffset: number) => void;
 }
 
-export function EdgeInspector({ edge, onChangeLength, onChangeFuseSize }: EdgeInspectorProps) {
+export function EdgeInspector({
+  edge,
+  onChangeLength,
+  onChangeFuseSize,
+  onChangeFuseOffset,
+}: EdgeInspectorProps) {
   const isAc = edge.data?.edgeDomain === 'AC_230V';
   const storedCs = edge.data?.crossSection;
   // Bewusst kein calculateMaxFuse: das wirft für Nicht-Normquerschnitte aus
@@ -59,14 +66,43 @@ export function EdgeInspector({ edge, onChangeLength, onChangeFuseSize }: EdgeIn
           />
           {maxFuse > 0 && (
             <p className="mt-1 text-xs text-muted-foreground">
-              Max. {maxFuse} A laut VDE 0298-4 bei {storedCs} mm².
+              Max. {maxFuse} A nach implementierter Regel (abgeleitet aus der Strombelastbarkeit von{' '}
+              {storedCs} mm² mit 0,7-Derating).
             </p>
           )}
         </div>
       )}
+      {/* AUDIT ELE-004: Position der Sicherung — ohne diese Angabe gilt eine
+          vorhandene Sicherung als „am Pol sitzend" (≤ 20 cm ungeschützt). */}
+      {!isAc && onChangeFuseOffset && edge.data?.fuseSize !== undefined && (
+        <div className="flex flex-col">
+          <label
+            className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+            htmlFor="fuse-offset-input"
+          >
+            Abstand Sicherung → Batteriepol (m)
+          </label>
+          <ValidatingInput
+            id="fuse-offset-input"
+            type="number"
+            min="0"
+            max="1"
+            step="0.05"
+            isFloat={true}
+            value={edge.data?.fuseOffset ?? 0}
+            rules={[COMMON_RULES.positive]}
+            onValidChange={(val) => onChangeFuseOffset(edge.id, val)}
+            className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+          <p className="mt-1 text-xs text-muted-foreground">
+            Die Hauptsicherung soll möglichst direkt am Batteriepol sitzen (fachüblich: ungeschützte Strecke ≤
+            0,2 m).
+          </p>
+        </div>
+      )}
       <p className="mt-2 text-xs text-muted-foreground">
-        Der Kabelquerschnitt wird automatisch nach VDE 0100-721 berechnet und an der Leitung im Planer
-        angezeigt.
+        Der Kabelquerschnitt wird automatisch nach den implementierten Regeln (thermische Belastbarkeit +
+        Spannungsfall) berechnet und an der Leitung im Planer angezeigt — keine normengeprüfte Auslegung.
       </p>
     </div>
   );

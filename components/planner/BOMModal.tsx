@@ -50,7 +50,7 @@ export function BOMModal() {
           if (isAc) {
             cs = 2.5;
           } else {
-            const I = calculateEdgeCurrent(s, t, nodes, sysVoltage);
+            const I = calculateEdgeCurrent(s, t, nodes, sysVoltage, edges); // ELE-005: Insel-BFS
             const len = edge.data?.length || 1;
             cs = calculateCrossSection(I, len, undefined, 'DC_12V');
           }

@@ -90,6 +90,8 @@ type CrossingBase = {
    * Kreuzungsvermeidung, weil pro Kante nur die Umgebung abgefragt wird.
    */
   index: SegmentSpatialIndex;
+  /** AUDIT PERF-001: Identitäts-Mapping Segment → Item (O(1) statt O(E)-Scan). */
+  itemBySegment: Map<Segment, CrossingItem>;
 };
 
 type CrossingItem = {
@@ -124,7 +126,11 @@ function buildCrossingBase(nodes: RoutableNode[], edges: CrossingEdgeRef[]): Cro
     items.push({ source: edge.source, target: edge.target, segment: [a, b] });
   }
   const index = new SegmentSpatialIndex(items.map((item) => item.segment));
-  return { centers, items, index };
+  // AUDIT PERF-001: Segment → Item per Identität — crossingSegmentsNear
+  // musste vorher für JEDE Index-Antwort über ALLE items scannen (O(K×E)).
+  const itemBySegment = new Map<Segment, CrossingItem>();
+  for (const item of items) itemBySegment.set(item.segment, item);
+  return { centers, items, index, itemBySegment };
 }
 
 function getCrossingBase(nodes: RoutableNode[], edges: CrossingEdgeRef[]): CrossingBase {
@@ -180,18 +186,16 @@ export function crossingSegmentsNear(
   current: CrossingEdgeRef,
   region: Rect
 ): Segment[] {
-  const { items, index } = getCrossingBase(nodes, edges);
+  const { index, itemBySegment } = getCrossingBase(nodes, edges);
   const candidates = index.queryRect(region);
   const included: Segment[] = [];
   for (const candidate of candidates) {
-    for (const item of items) {
-      if (item.segment !== candidate) continue;
-      const samePair =
-        (item.source === current.source && item.target === current.target) ||
-        (item.source === current.target && item.target === current.source);
-      if (!samePair) included.push(candidate);
-      break;
-    }
+    const item = itemBySegment.get(candidate);
+    if (!item) continue;
+    const samePair =
+      (item.source === current.source && item.target === current.target) ||
+      (item.source === current.target && item.target === current.source);
+    if (!samePair) included.push(candidate);
   }
   return included;
 }

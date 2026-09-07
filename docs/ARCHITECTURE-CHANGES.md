@@ -11,6 +11,118 @@ Format: neueste Einträge oben. Jeder Eintrag: Datum, Bezug (ADR/WP/Issue), Kurz
 
 ---
 
+## 2026-09-07 (2) — Audit-Nachtrag P2–P4: Solar-Auslegung, Chemie-Parallelen, Schema, Schichten
+
+Bezug: `AUDIT-EXTREM-2026-09.md`, Findings ELE-007, AUTO-003, DOM-003, ARCH-001/002, UX-001-Rest.
+
+**ELE-007 (Solar-Modell, neues Modul `lib/solar.ts`):**
+
+- Datenblattfelder voc/isc/tempCoefficient am Panel, maxPvVoltage am MPPT (Inspector pflegbar).
+- Thermik/Dimensionierung Solar-Zuleitung: Designstrom ≥ 1,25 × Isc (IEC-62548-Kontext);
+  Sicherungsfloor 1,5625 × Isc (NEC 690.8 × 690.9 — als MODELLANNAHME deklariert, Quellen
+  im Dateikopf: Mersen Tech-Topic, EEP 2/2012; IEC-62548-Bereich 1,25–2,4 × Isc deckungskompatibel).
+  Ohne Datenblatt-Isc: konservative Schätzung 1,25 × Imp.
+- Kalt-Voc-Prüfung: Voc(T_min) = Voc_STC · (1 + |TK|·(25 °C − T_min)), T_min = −20 °C
+  (Modellannahme Fahrzeug/Winter), TK-Default −0,35 %/K (schlechtester typischer c-Si-Wert).
+  Live-Regel A6 prüft String-Kalt-Voc gegen das Regler-Fenster (BFS ab MPPT, Series-Strings
+  über Solar↔Solar-Verbundkomponenten); fehlende Voc-Datenblattwerte werden als Hinweis
+  angefordert statt still geschätzt.
+- Solar-Drop-Referenz bewusst NICHT umgestellt (weiterhin 12,8-V-Referenz ⇒ konservativ).
+
+**AUTO-003 (Batterie):** `chemistriesParallelSafe` — bekannte Chemien parallel nur identisch
+(AGM‖Gel und LiFePO4‖Li-Ion blockiert), unbekannte fallen auf die alte Blei/Li-Regel zurück;
+Live-Regel A5 (kritisch) für Nutzer-Parallelikanten; `role`-Feld ('starter'/'house') gewinnt
+über die Label-Heuristik (`isStarterBattery`, `getSystemVoltage`); Inspector: Gel-Option + Rolle.
+
+**DOM-003 (Schema):** `lib/nodeSchema.ts` — deklarative Feldtabelle je Bauteiltyp
+(Typ/Enum-Prüfung, handgerollt statt Zod, Repo-Stil). Persistenz-Migration entfernt falsch
+getippte BEKANNTE Felder (watts: 'viel' → raus; Leseschicht fällt auf dokumentierte Defaults),
+unbekannte Felder bleiben (Forward-Kompatibilität).
+
+**ARCH-001 (Typ-Ebene):** `lib/domain/graph.ts` (PlannerNode/PlannerEdge, strukturell
+RF-kompatibel in beide Richtungen) + `lib/domain/cableEdgeData.ts` (CableEdgeData aus
+components/ verschoben, dort re-exportiert). lib/** importiert produktionsseitig keine
+@xyflow/react-/components-Typen mehr. Bewusster Rest: `lib/routing/elk/ab-compare.ts` und
+`lib/routing/rules/costModel.ts` importieren Runtime-seitig aus components (ELK =
+Vergleichs-/Scriptschicht außerhalb des Produktionspfads, s. ROUTE-003-Statusnotiz).
+
+**ARCH-002:** `lib/connectionRules.ts` — isValidConnection-Fachregeln (Domänen-Trennung,
+Polarität, Serien-Exception, Wasser-Sonderfall, Duplikate) als reine Funktion; Store
+delegiert 1:1. Direkt testbar ohne Store (`connectionRules.test.ts`, 7 Charakter-Tests).
+
+**UX-001 (vollständig):** `collectEdgeErrors` liefert `EdgeError[]` (ruleId, severity,
+message, measuredValue, expectedValue, unit, source) statt `string[]` — inkl. neuer
+Solar-Regel `fuse-below-minimum` mit 1,56×Isc-Floor.
+
+**Golden Master neu eingefroren (2. Mal, solar.json + complex.json):** Solar-Zuleitungen
+erhalten durch die Isc-Regel größere Sicherungen/Querschnitte (z. B. 200-W-Panel mit
+Schätz-Isc: 15 A/10 mm² → 25 A/16 mm²) — bewusste Korrektheitänderung, Suite inkl.
+Invarianten grün.
+
+**Nachweis:** tsc grün; Vollsuite 1816 Tests grün (davon neu: solar 8, nodeSchema 6,
+connectionRules 7, A5/A6 7, autoWire-Solar/AUTO-003 5, persistence-Schema 1, angepasste
+Szenario-/Property-Tests).
+
+## 2026-09-07 — Audit EXTREM 2026-09: Sicherheits-/Korrektheits-Fixes + Golden-Master-Neueinfrierung
+
+Bezug: `AUDIT-EXTREM-2026-09.md` (Findings ELE-001…007, AC-001, AUTO-001…004, CRASH-001,
+NORM-001…003, PERSIST-001, CACHE-001, PERF-001, ROUTE-001/002, UX-001…003, DOM-001/002, ELE-006).
+
+**Elektrik (Single Source of Truth):**
+
+- **ELE-001/NORM-002:** `FUSE_MAP` ist abgeleitet — größte Norm-Sicherung ≤ Tabellen-Belastbarkeit
+  × 0,7 (`lib/electrical.ts`). Koordination I_B ≤ I_n ≤ I_z per Konstruktion; Invariant-Test hält
+  sie fest. Vorher widersprach die Karte der eigenen Dimensionierung (1,5 mm²: 16 A-Sicherung bei
+  11,55 A design-Belastbarkeit).
+- **ELE-002:** Thermische Sättigung oberhalb 70 mm² erzeugt jetzt Fehler „Leitung thermisch
+  überlastet" (`collectEdgeErrors`) statt stiller 70-mm²-Kappung ohne Warnung.
+- **ELE-005:** Leistungsabhängige DC-Ströme rechnen mit der **Entladeschlussspannung**
+  (12,8 V × 0,9375 = 12,0 V; `dischargeFloorVoltage`), und die Wechselrichter-Last ist
+  **topologisch** begrenzt: mit Kantenliste zählt nur die 230-V-Insel des jeweiligen WR (BFS),
+  ohne Kantenliste gilt die dokumentierte globale Summe als konservativer Fallback.
+  `calculateEdgeCurrent` hat dazu den optionalen Parameter `edges`; alle Anzeige-/Dimensionierungs-
+  Call-Sites (CableEdge, voltageDrop, BOMModal, ExpertPanel, sizing, pipeline) reichen ihn durch.
+- **ELE-006/UX-002:** ExpertPanel-Inverter-Strom nutzt continuousPower zuerst und dieselbe
+  Floor-Spannung wie die Engine; Fachtexte (DoD 90 %/50 %, Sicherungswerte, Batterie-Querschnitt)
+  auf Engine-Werte gebracht.
+- **AC-001:** Neue kritische Live-Regel für Wechselrichter-AC-Inseln ohne FI (≤ 30 mA);
+  `hasRcd` am Inverter pflegbar (Inspector-Checkbox). Templates/Szenario-Fixtures führen den FI
+  als Referenz-Best-Practice (analog shorePower).
+- **CRASH-001:** `sizeAcEdges` normiert Alt-/Import-Querschnitte (95/0/NaN/3) statt RangeError;
+  Regressionstest „wirft nie" in `lib/autoWire.test.ts`.
+- **AUTO-001/002:** Länge-0-Guard in `crossSectionForDrop`; negative Längen fallen in Anzeige und
+  Spannungsfall auf physikalische Ersatzwerte + Fehlermeldung.
+
+**Norm-Historie (keine unbelegten Zitate mehr):** Leerrohr-Füllgrad 60 % → **40 %**
+(DIN VDE 0100-520-Kontext dokumentiert, NORM-001); „VDE 0298-4"-Zitate durch ehrliche
+Modellannahmen ersetzt (NORM-002/003).
+
+**Routing (PERF-001/ROUTE-001/ROUTE-002):** A*-Hindernisfilter pro Kante (räumliche Umgebung,
+PAD 240 px) statt globaler Scan — 500-Knoten-Pläne bleiben interaktiv; `crossingSegmentsNear`
+nutzt den Identitäts-Index `itemBySegment` (O(Kandidaten) statt O(Kandidaten × E)); Fallback-Pfade
+kennzeichnen Hindernis-Kollisionen jetzt explizit (`PathResult.fallbackHitsObstacles`).
+**Dokumentierte Ausnahmen der harten Kollisionsgarantie (ROUTE-001):** (a) ungeprüfter
+Fallback-Pfad bei Katalog+A*-Versagen — jetzt zählbar gekennzeichnet, nicht versteckt;
+(b) Stub-Toleranz gegen entzerrte Boxen; (c) Rohbox+2px-Schrumpfung an handle-klebenden Nodes.
+Der Verwurf endpoint-enthaltender Hindernis-Boxen in `relevantObstacles` bleibtvertragsgemäß
+für Aufrufer, die die eigene Node mitgeben (Unit-Tests); der Produktionspfad schließt die eigene
+Node vorher aus.
+
+**Persistenz/Cache:** `migratePlannerPersisted` validiert Node-/Edge-Hüllen hart
+(id/position/source/target, NaN-safe) und sanitisiert kaputte `data`-Objekte (PERSIST-001);
+Spannungsfall-Cache-Signatur um continuousPower/capacity/hours/rating/hasRcd erweitert (CACHE-001).
+
+**Golden Master neu eingefroren (`knownPlans/`)** — Begründung: Die ELE-001/ELE-005-Änderungen
+sind bewusste Korrektheits-Fixes des Strommodells (höhere Ströme durch 12,0-V-Floor ⇒ teils
+größere Sicherungen/Querschnitte, Insel- statt Global-Last am WR). Elektrisch konservativer,
+nicht schwächer; Suite inkl. Invarianten grün.
+
+**Bewusst NICHT geändert (Modellgrenzen, DOM-001/002/ROUTE-003):** 230-V-Seite bleibt
+Single-Line-Approximation ohne PE/N-Modell; Kurzschlussstrom/Abschaltvermögen/Batterieinnen-
+widerstand sind nicht modelliert; ELK-Pass ist vorbereitet, aber nicht im Produktivpfad
+verdrahtet (s. ROUTING-V2-Statusnotiz). Der Planer ist ein Dimensionierungs-Werkzeug und
+ersetzt keine Elektrofachkraft.
+
 ## 2026-09-06 (WP-7)
 
 - **Kreuzungs-Hopping als Regel, nicht als Renderer-Trick** — `lib/routing/rules/hopping.ts` (`routingPriority`, `resolveHops`) beantwortet „wer hüpft?“ in Schicht 2/3 und liefert der UI nur noch Bogen-Mittelpunkte. Damit gilt dieselbe Antwort für ELK- und A\*-Pass, sie ist ohne Browser testbar (ADR 0007) und deterministisch (ADR 0010: Reihenfolge über sortierte IDs, Gleichstand über die lexikografisch größere ID). (WP-7, #395)

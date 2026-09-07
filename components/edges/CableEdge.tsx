@@ -16,6 +16,8 @@ import {
   calculateStrokeWidth,
   getEdgeDomain,
   maxFuseForDisplay,
+  VDE_AMPACITY,
+  DERATE_FACTOR,
 } from '../../lib/electrical';
 import {
   AC_SYSTEM_VOLTAGE,
@@ -28,33 +30,14 @@ import { PX_PER_METER } from '../../lib/units';
 /** Wie lange ein angetipptes Kabel sein Label als Tooltip zeigt (Touch). */
 export const TAP_LABEL_TIMEOUT_MS = 5000;
 
-export type CableEdgeData = {
-  /**
-   * Leitungslänge in Metern. Optional, weil Kanten aus älteren gespeicherten
-   * Plänen, Vorlagen und Importen sie nicht zwingend mitbringen. Jeder
-   * Lesezugriff in der Fachlogik hat deshalb einen benannten Ersatzwert
-   * (`edgeLength` in lib/autoWire.ts, `quantityOr` in lib/vde-standards.ts).
-   */
-  length?: number;
-  crossSection?: number;
-  fuseSize?: number;
-  /**
-   * Elektrische Domäne der Leitung. 'Solar' ist bewusst Teil des Typs:
-   * Solar-Zuleitungen werden beim Verbinden (Store) und bei Auto-Wire als
-   * 'Solar' gespeichert — sonst ginge die Domäne beim Speichern/Laden
-   * verloren und die Leitung würde als DC_12V behandelt.
-   */
-  edgeDomain?: 'DC_12V' | 'AC_230V' | 'Solar';
-  /**
-   * Von `sizeDcEdges` gesetzt, wenn der Versorgungspfad trotz 70-mm²-Obergrenze
-   * das 3-%-Spannungsfall-Budget reißt — die Leitung ist fachlich nicht
-   * ausführbar dimensionierbar (AUDIT-AUTOWIRE Issue 3). Datenmarkierung;
-   * die Anzeige erfolgt über die vorhandene Spannungsfall-Logik.
-   */
-  dropWarning?: boolean;
-  /** Gesetzt, wenn selbst der größte Normquerschnitt den Laststrom nicht absichern kann. */
-  fuseWarning?: boolean;
-};
+/**
+ * AUDIT ARCH-001: CableEdgeData ist in die Domänenschicht gewandert
+ * (lib/domain/cableEdgeData.ts) — lib/ importierte ihn typseitig aus einer
+ * Komponente. Re-Export hält bestehende Importe stabil.
+ */
+export type { CableEdgeData } from '../../lib/domain/cableEdgeData';
+import type { CableEdgeData } from '../../lib/domain/cableEdgeData';
+import { solarEdgeFuseFloorOf } from '../../lib/solar'; // ELE-007: 1,56×Isc-Sicherungsregel
 
 /**
  * React Flow 12 typisiert `EdgeProps` über den KANTEN-Typ, nicht mehr über die
@@ -110,50 +93,174 @@ const HIGH_POWER_SOURCE_TYPES = new Set([
   'acBatteryCharger',
 ]);
 
+/**
+ * AUDIT UX-001 (Rest): Strukturierte Kantenfehler statt reiner Strings.
+ * Jeder Fehler trägt Regel-ID, Messwert/Grenzwert (wenn sinnvoll) und seine
+ * Quelle — Anzeige (Chips), Tests und WarningCenter konsumieren dasselbe
+ * Objekt statt Text-Präfixe zu parsen.
+ */
+export type EdgeErrorRule =
+  | 'negative-length'
+  | 'thermal-overload'
+  | 'drop-exceeded'
+  | 'fuse-no-recommendation'
+  | 'fuse-missing'
+  | 'fuse-too-large'
+  | 'fuse-below-minimum'
+  | 'main-fuse-distance'
+  | 'fuse-offset';
+
+export interface EdgeError {
+  ruleId: EdgeErrorRule;
+  severity: 'critical' | 'warning';
+  /** Anzeigetext (Chip) — bewusst weiter Mensch-Sprache. */
+  message: string;
+  /** Messwert (z. B. Strom in A, Spannungsfall in %). */
+  measuredValue?: number;
+  /** Grenzwert desselben Werttyps. */
+  expectedValue?: number;
+  unit?: string;
+  /** Regelquelle: Modellannahme oder Norm-Kontext, nie unbelegt „VDE". */
+  source: string;
+}
+
 export const collectEdgeErrors = (input: {
   edgeDomain: 'DC_12V' | 'AC_230V' | 'Solar';
   data?: CableEdgeData;
   I: number;
   maxFuse: number;
+  /** Angezeigter/empfohlener Querschnitt der Kante (mm²). */
+  crossSection?: number;
   isPlus: boolean;
   sourceNodeType?: string;
   targetNodeType?: string;
   length: number;
   totalDropPercentage: number;
-}): string[] => {
+  /**
+   * AUDIT ELE-007: Mindest-Sicherungsstrom dieser Kante. Standard ist der
+   * Laststrom I; für Solar-Zuleitungen gilt stattdessen 1,56 × Isc
+   * (NEC 690.8/690.9-Modellannahme, s. lib/solar.ts) — Aufrufer reichen
+   * solarEdgeFuseFloorOf(...) herein.
+   */
+  fuseFloor?: number;
+}): EdgeError[] => {
   const {
     edgeDomain,
     data,
     I,
     maxFuse,
+    crossSection,
     isPlus,
     sourceNodeType,
     targetNodeType,
     length,
     totalDropPercentage,
+    fuseFloor,
   } = input;
-  const errors: string[] = [];
+  const errors: EdgeError[] = [];
+
+  // AUDIT AUTO-002: Negativ gespeicherte Längen (Import/Altdaten) würden den
+  // angezeigten Spannungsfall VERKLEINERN und echte Verstöße unsichtbar
+  // machen — explizit melden statt still durchzurechnen.
+  if (typeof data?.length === 'number' && data.length < 0) {
+    errors.push({
+      ruleId: 'negative-length',
+      severity: 'critical',
+      message: 'Ungültige (negative) Länge!',
+      measuredValue: data.length,
+      expectedValue: 0,
+      unit: 'm',
+      source: 'Datenmodell: Länge ≥ 0 (Import/Altdaten-Validierung)',
+    });
+  }
+
+  // AUDIT ELE-002: Thermische Sättigung sichtbar machen. lookupThermalCross
+  // Section saturiert bei 70 mm²; oberhalb von Iz_design des gewählten
+  // Querschnitts ist die Leitung nach dem eigenen Modell überlastet —
+  // vorher geschah das komplett still (Fenster 120–160 A ohne jedes Signal).
+  // Geprüft wird der tatsächlich vorhandene Nutzer-Querschnitt, falls
+  // gesetzt (die Empfehlung ist immer passend dimensioniert).
+  const csForThermalCheck = data?.crossSection ?? crossSection;
+  if (edgeDomain !== 'AC_230V' && csForThermalCheck !== undefined) {
+    const iz = (VDE_AMPACITY[csForThermalCheck] ?? 0) * DERATE_FACTOR;
+    if (Number.isFinite(iz) && iz > 0 && I > iz) {
+      errors.push({
+        ruleId: 'thermal-overload',
+        severity: 'critical',
+        message: `Leitung thermisch überlastet (${Math.round(I)}A > ${Math.round(iz)}A)!`,
+        measuredValue: Math.round(I),
+        expectedValue: Math.round(iz),
+        unit: 'A',
+        source: 'Modell: Iz_design = Tabellen-Ampacity × 0,7 (lib/electrical.ts)',
+      });
+    }
+  }
 
   // Spannungsfall gilt für DC- UND AC-Leitungen (3 % von 230 V = 6,9 V).
   // Nur die Sicherungslogik darunter ist DC-spezifisch.
   if (totalDropPercentage > 3) {
-    errors.push(`Gesamt-Drop! (${totalDropPercentage.toFixed(1)}% > 3%)`);
+    errors.push({
+      ruleId: 'drop-exceeded',
+      severity: 'critical',
+      message: `Gesamt-Drop! (${totalDropPercentage.toFixed(1)}% > 3%)`,
+      measuredValue: Number(totalDropPercentage.toFixed(1)),
+      expectedValue: 3,
+      unit: '%',
+      source: 'Modellannahme Planungsbudget: max. 3 % Gesamt-Spannungsfall',
+    });
   }
+
+  // AUDIT ELE-007: Mindest-Sicherungsstrom — Laststrom, bei Solar-Zuleitungen
+  // 1,56 × Isc (NEC 690.8 × 690.9; Quellen-/Annahmedoku in lib/solar.ts).
+  const minimumFuseCurrent = fuseFloor ?? I;
+  const isSolarRule = fuseFloor !== undefined && fuseFloor > I;
 
   if (edgeDomain !== 'AC_230V' && isPlus) {
     if (maxFuse === 0) {
-      errors.push('Keine Empfehlung möglich / Querschnitt prüfen');
+      errors.push({
+        ruleId: 'fuse-no-recommendation',
+        severity: 'warning',
+        message: 'Keine Empfehlung möglich / Querschnitt prüfen',
+        source: 'Modell: kein Normquerschnitt für die Last absicherbar',
+      });
     } else if (!data?.fuseSize) {
       const needsSourceFuse = HIGH_POWER_SOURCE_TYPES.has(sourceNodeType || '') && targetNodeType !== 'fuse';
       if (needsSourceFuse) {
-        errors.push('Sicherung fehlt!');
+        errors.push({
+          ruleId: 'fuse-missing',
+          severity: 'critical',
+          message: 'Sicherung fehlt!',
+          expectedValue: minimumFuseCurrent,
+          unit: 'A',
+          source: 'Modell: Quellschutz auf DC-Plus-Kanten',
+        });
       }
     } else {
       if (data.fuseSize > maxFuse) {
-        errors.push('Sicherung zu groß!');
+        errors.push({
+          ruleId: 'fuse-too-large',
+          severity: 'critical',
+          message: 'Sicherung zu groß!',
+          measuredValue: data.fuseSize,
+          expectedValue: maxFuse,
+          unit: 'A',
+          source: 'Modell: I_n ≤ FUSE_MAP[querschnitt] = 0,7 × Ampacity',
+        });
       }
-      if (data.fuseSize < I) {
-        errors.push('Sicherung zu klein!');
+      if (data.fuseSize < minimumFuseCurrent) {
+        errors.push({
+          ruleId: 'fuse-below-minimum',
+          severity: 'critical',
+          message: isSolarRule
+            ? `Sicherung zu klein (Solar: ≥ 1,56 × Isc = ${Math.ceil(minimumFuseCurrent)}A)!`
+            : 'Sicherung zu klein!',
+          measuredValue: data.fuseSize,
+          expectedValue: Math.ceil(minimumFuseCurrent * 10) / 10,
+          unit: 'A',
+          source: isSolarRule
+            ? 'Modellannahme: 1,56 × Isc (NEC 690.8/690.9; lib/solar.ts)'
+            : 'Modell: Sicherung ≥ Laststrom',
+        });
       }
     }
     // 20-cm-Regel gilt für die Lage der Sicherung am Batteriepol —
@@ -162,7 +269,32 @@ export const collectEdgeErrors = (input: {
     // (z. B. Starterbatterie → Ladebooster) darf länger sein.
     const batteryAtEnd = sourceNodeType === 'battery' || targetNodeType === 'battery';
     if (batteryAtEnd && length > 0.2 && !data?.fuseSize) {
-      errors.push('Hauptsicherung nach Batterie max 20cm!');
+      errors.push({
+        ruleId: 'main-fuse-distance',
+        severity: 'critical',
+        message: 'Hauptsicherung nach Batterie max 20cm!',
+        measuredValue: length,
+        expectedValue: 0.2,
+        unit: 'm',
+        // Faustregel (ABYC/ISO-Ursprung, in dieser Form NICHT VDE) — s. Audit ELE-004.
+        source: 'Faustregel: ungeschützte Leitung ab Batteriepol ≤ 0,2 m',
+      });
+    }
+    // AUDIT ELE-004: Eine vorhandene fuseSize darf die Lage der Sicherung
+    // nicht „wegzaubern": Sitzt die Sicherung (fuseOffset in Metern ab
+    // Batteriepol) weiter als 20 cm entfernt, bleibt die Anfangsstrecke
+    // ungeschützt. Fehlt fuseOffset, gilt wie bisher der alte Vertrag
+    // (Sicherung am Pol) — kein Bruch bestehender Pläne.
+    if (batteryAtEnd && data?.fuseSize && data.fuseOffset !== undefined && data.fuseOffset > 0.2) {
+      errors.push({
+        ruleId: 'fuse-offset',
+        severity: 'critical',
+        message: `Sicherung sitzt ${data.fuseOffset.toFixed(1)}m vom Batteriepol (max 0.2m)!`,
+        measuredValue: data.fuseOffset,
+        expectedValue: 0.2,
+        unit: 'm',
+        source: 'Faustregel: ungeschützte Leitung ab Batteriepol ≤ 0,2 m',
+      });
     }
   }
 
@@ -337,8 +469,12 @@ const CableEdge = function ({
     // falsch für kurze Stichleitungen. `??` statt `||`, damit ein
     // gespeichertes `length: 0` (z. B. Sammelschiene) nicht stillschweigend
     // durch den Schätzwert ersetzt wird.
+    // AUDIT AUTO-002: NEGATIVE Längen (Import/Altdaten) sind ungültig — sie
+    // fallen auf die geometrische Schätzung zurück; collectEdgeErrors
+    // meldet zusätzlich „Ungültige (negative) Länge!“.
     const physicalDistance = Math.hypot(targetX - sourceX, targetY - sourceY) / PX_PER_METER;
-    const length = data?.length ?? physicalDistance;
+    const rawLength = data?.length;
+    const length = typeof rawLength === 'number' && rawLength >= 0 ? rawLength : physicalDistance;
     const sourceNode = getNode(source);
     const targetNode = getNode(target);
 
@@ -356,7 +492,7 @@ const CableEdge = function ({
     const sysVoltage = isAC ? AC_SYSTEM_VOLTAGE : getSystemVoltage(getNodes());
     const I = isAC
       ? calculateAcEdgeCurrent(source, getNodes(), siblingEdges)
-      : calculateEdgeCurrent(sourceNode, targetNode, getNodes(), sysVoltage);
+      : calculateEdgeCurrent(sourceNode, targetNode, getNodes(), sysVoltage, siblingEdges); // ELE-005: Kanten für Insel-BFS
 
     const crossSection = calculateCrossSection(I, length, data?.crossSection, isAC ? 'AC_230V' : 'DC_12V');
     // maxFuseForDisplay statt calculateMaxFuse: Nicht-Normquerschnitte
@@ -413,14 +549,23 @@ const CableEdge = function ({
     cumulativeDropVolts: cumulativeDrop,
   });
 
+  // ELE-007: Solar-Zuleitungen brauchen eine Sicherung ≥ 1,56 × Isc —
+  // der Floor wird aus dem Panel-Endpunkt der Kante abgeleitet (0 bei Nicht-Solar).
+  const fuseFloor =
+    edgeDomain === 'Solar' && sourceNode && targetNode
+      ? solarEdgeFuseFloorOf(getNodes(), { source, target })
+      : undefined;
+
   const errors = collectEdgeErrors({
     edgeDomain,
     data,
     I,
     maxFuse,
+    crossSection,
     isPlus,
     sourceNodeType: sourceNode?.type,
     targetNodeType: targetNode?.type,
+    fuseFloor,
     length,
     totalDropPercentage,
   });
@@ -540,7 +685,9 @@ const CableEdge = function ({
             {/* Details bei Auswahl / Hover */}
             {emphasized && edgeDomain === 'AC_230V' ? (
               <>
-                <span style={{ color: 'var(--success)', fontSize: '12px' }}>3-adrig (L, N, PE)</span>
+                <span style={{ color: 'var(--info)', fontSize: '12px' }}>
+                  real ausführen: 3-adrig (L, N, PE)
+                </span>
                 <span
                   style={{
                     background: 'var(--warn-info)',
@@ -551,7 +698,7 @@ const CableEdge = function ({
                     marginTop: '2px',
                   }}
                 >
-                  RCBO (FI/LS) empfohlen
+                  FI/LS (RCD ≤ 30 mA) einplanen — wird hier nicht geprüft
                 </span>
                 {/* Auch AC-Kanten zeigen ihren Spannungsfall-Fehler (Bug 10). */}
                 {errors.map((err, idx) => (
@@ -566,7 +713,7 @@ const CableEdge = function ({
                       marginTop: '2px',
                     }}
                   >
-                    {err}
+                    {err.message}
                   </span>
                 ))}
               </>
@@ -601,7 +748,7 @@ const CableEdge = function ({
                       marginTop: '2px',
                     }}
                   >
-                    {err}
+                    {err.message}
                   </span>
                 ))}
               </>

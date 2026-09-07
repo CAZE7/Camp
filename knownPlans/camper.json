@@ -69,7 +69,7 @@
       },
       {
         "data": {
-          "crossSection": 1.5,
+          "crossSection": 2.5,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "length": 3
@@ -122,7 +122,7 @@
       },
       {
         "data": {
-          "crossSection": 10,
+          "crossSection": 35,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseSize": 5,
@@ -136,7 +136,7 @@
       },
       {
         "data": {
-          "crossSection": 10,
+          "crossSection": 35,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseSize": 5,
@@ -150,7 +150,7 @@
       },
       {
         "data": {
-          "crossSection": 10,
+          "crossSection": 50,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseSize": 5,
@@ -275,29 +275,29 @@
   },
   "electrical": {
     "cumulativeDrops": {
-      "auto:0:plus-schiene": 0.039,
-      "auto:1:minus-schiene": 0.135,
-      "auto:2:smart-shunt": 0.039,
+      "auto:0:plus-schiene": 0.041,
+      "auto:1:minus-schiene": 0.144,
+      "auto:2:smart-shunt": 0.041,
       "battery-1": 0,
-      "cons-cool": 0.355,
-      "cons-light": 0.358,
-      "cons-usb": 0.36,
-      "fusebox-1": 0.329,
-      "ground-1": 0.057
+      "cons-cool": 0.359,
+      "cons-light": 0.36,
+      "cons-usb": 0.357,
+      "fusebox-1": 0.351,
+      "ground-1": 0.061
     },
     "edgeCurrents": {
-      "e-auto-1": 8.42,
-      "e-auto-2": 8.42,
-      "e-auto-3": 8.42,
-      "e-auto-4": 8.42,
-      "e-auto-5": 1.67,
-      "e-auto-6": 3,
-      "e-auto-7": 3.75,
-      "e-batt-fuse": 8.42,
-      "e-batt-gnd": 8.42,
-      "e-fuse-cool": 3.75,
-      "e-fuse-light": 1.67,
-      "e-fuse-usb": 3
+      "e-auto-1": 8.98,
+      "e-auto-2": 8.98,
+      "e-auto-3": 8.98,
+      "e-auto-4": 8.98,
+      "e-auto-5": 1.78,
+      "e-auto-6": 3.2,
+      "e-auto-7": 4,
+      "e-batt-fuse": 8.98,
+      "e-batt-gnd": 8.98,
+      "e-fuse-cool": 4,
+      "e-fuse-light": 1.78,
+      "e-fuse-usb": 3.2
     },
     "systemVoltage": 12
   },

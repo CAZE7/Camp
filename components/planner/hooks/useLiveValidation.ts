@@ -1,6 +1,9 @@
 import { useMemo } from 'react';
 import { type Node, type Edge } from '@xyflow/react';
 import { type CableEdgeData } from '../../edges/CableEdge';
+import { getEdgeDomain } from '../../../lib/electrical';
+import { SOLAR_DESIGN_MIN_TEMPERATURE_C, stringColdVocOf } from '../../../lib/solar'; // ELE-007
+import { chemistriesParallelSafe } from '../../../lib/autoWire/primitives'; // AUTO-003
 
 import { getSystemVoltage } from '../utils/voltage';
 
@@ -15,6 +18,17 @@ export interface ValidationWarning {
   focusId?: string;
   /** Ob focusId eine Node oder eine Kante (Leitung) ist. */
   focusType?: 'node' | 'edge';
+  /**
+   * Strukturierte Messwerte (AUDIT UX-001): Gemessener Ist-Wert der Regel,
+   * erwarteter Grenzwert und Einheit — statt nur Prosa im message-String.
+   * `ruleId` benennt die Regel maschinenlesbar, `source` die fachliche
+   * Grundlage (Modellannahme oder Norm-Kontext).
+   */
+  ruleId?: string;
+  measuredValue?: string;
+  expectedValue?: string;
+  unit?: string;
+  source?: string;
 }
 
 /** Reihenfolge der Schwere für die Sortierung in der Warn-Zentrale. */
@@ -129,6 +143,210 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
 
     const sysVoltage = getSystemVoltage(nodes);
 
+    // --- Rule A3: Verpolte Gleichspannungs-Quellen (AUDIT ELE-003) ---
+    // Die Polaritäts-Ausnahme für battery×battery / solar×solar in
+    // isValidConnection erlaubt plus↔minus-Kanten (Serienverschaltung).
+    // Ohne separates Serien-Modell ist dieselbe Kante eine VERPOLTE
+    // PARALLELSCHALTUNG, sobald beide Quellen zusätzlich auf gemeinsamen
+    // Schienen liegen — im realen Fahrzeug ein Kurzschluss im kA-Bereich.
+    // Die Kante wird daher nie still akzeptiert: kritische Warnung mit
+    // Klartext, was elektrisch passiert.
+    edges.forEach((edge) => {
+      const sourceNode = nodeMap.get(edge.source);
+      const targetNode = nodeMap.get(edge.target);
+      if (!sourceNode || !targetNode) return;
+      const isBatteryPair = sourceNode.type === 'battery' && targetNode.type === 'battery';
+      const isSolarPair =
+        (sourceNode.type === 'solar' || sourceNode.type === 'roofSolar') &&
+        (targetNode.type === 'solar' || targetNode.type === 'roofSolar');
+      if (!isBatteryPair && !isSolarPair) return;
+      const reversed =
+        (edge.sourceHandle?.includes('plus') && edge.targetHandle?.includes('minus')) ||
+        (edge.sourceHandle?.includes('minus') && edge.targetHandle?.includes('plus'));
+      if (!reversed) return;
+      warnings.push({
+        id: `reversed-polarity-${edge.id}`,
+        category: 'safety',
+        type: 'critical',
+        title: 'Polarität vertauscht',
+        focusId: edge.id,
+        focusType: 'edge',
+        ruleId: 'ELE-003-reversed-polarity',
+        measuredValue: `${edge.sourceHandle} → ${edge.targetHandle}`,
+        expectedValue: 'plus → plus / minus → minus',
+        unit: '',
+        source: 'Polaritätsmodell (Physik): verpolte Parallelschaltung = Kurzschluss',
+        message: `⚠️ Kritisch: Polarität vertauscht! ${
+          isBatteryPair ? 'Zwei Batterien' : 'Zwei Solarpanele'
+        } sind plus auf minus verbunden. Als Parallelschaltung ist das ein direkter Kurzschluss; eine Serienschaltung (z. B. 24 V) ist im Planer nicht modelliert — trenne diese Verbindung und verbinde gleiche Pole (plus→plus, minus→minus).`,
+      });
+    });
+
+    // --- Rule A5: Parallelschaltung inkompatibler Batterie-Chemien (AUTO-003) ---
+    // Auto-Wire legt AGM ‖ Gel nicht mehr auf die Schiene, aber Nutzer-Kanten
+    // sind weiterhin frei ziehbar: plus↔plus / minus↔minus zwischen Batterien
+    // ist eine Parallelschaltung — bei unterschiedlichen Chemien mit
+    // verschiedenen Ladeschlussspannungen lädt ein Partner dauerüber/unter.
+    edges.forEach((edge) => {
+      const sourceNode = nodeMap.get(edge.source);
+      const targetNode = nodeMap.get(edge.target);
+      if (sourceNode?.type !== 'battery' || targetNode?.type !== 'battery') return;
+      const sPlus = edge.sourceHandle?.includes('plus') ?? false;
+      const tPlus = edge.targetHandle?.includes('plus') ?? false;
+      const sMinus = edge.sourceHandle?.includes('minus') ?? false;
+      const tMinus = edge.targetHandle?.includes('minus') ?? false;
+      const isParallel = (sPlus && tPlus) || (sMinus && tMinus);
+      if (!isParallel) return; // plus↔minus = Serienfall, dafür gibt es A3
+      if (chemistriesParallelSafe(sourceNode, targetNode)) return;
+      warnings.push({
+        id: `battery-parallel-chemistry-${edge.id}`,
+        category: 'safety',
+        type: 'critical',
+        title: 'Batterie-Chemien nicht parallel-sicher',
+        focusId: edge.id,
+        focusType: 'edge',
+        ruleId: 'AUTO-003-parallel-chemistry',
+        measuredValue: `${String(sourceNode.data?.chemistry || '?')} ‖ ${String(
+          targetNode.data?.chemistry || '?'
+        )}`,
+        expectedValue: 'identische Chemie (z. B. AGM ‖ AGM)',
+        unit: '',
+        source: 'Modell: Ladeschlussspannungen/Fenster je Chemie (AGM ~14,4–14,7 V, Gel ~14,1–14,4 V)',
+        message: `⚠️ Kritisch: „${sourceNode.data?.label || 'Batterie'}“ (${String(
+          sourceNode.data?.chemistry || '?'
+        )}) und „${targetNode.data?.label || 'Batterie'}“ (${String(
+          targetNode.data?.chemistry || '?'
+        )}) sind parallel geschaltet. Unterschiedliche Chemien haben unterschiedliche Ladeschlussspannungen — ein Partner wird dauerhaft über- oder unterladen (Sulfatierung/Gasung). Trenne die Verbindung oder verwende identische Chemien.`,
+      });
+    });
+
+    // --- Rule A6: MPPT-Voc-Fenster bei Kälte (AUDIT ELE-007) ---
+    // Der Regler muss die KALT-Leerlaufspannung des Strings verkraften:
+    // Voc(T_min) = Voc_STC · (1 + |TK| · (25 °C − T_min)), Modell-T_min = −20 °C.
+    // Geprüft wird, sobald der Regler ein maxPvVoltage-Eintrag hat; fehlen
+    // Panel-Voc-Datenblattwerte, fordert eine Hinweis-Warnung sie an (still
+    // überschätzen wäre die alte, unsichere Variante).
+    nodes.forEach((mppt) => {
+      if (mppt.type !== 'mpptController') return;
+      const maxPvVoltage = Number((mppt.data as Record<string, unknown> | undefined)?.maxPvVoltage || 0);
+      if (maxPvVoltage <= 0) return;
+      // Erreichbare Panels per BFS über alle Kanten ab dem Regler.
+      const adjacent = new Map<string, string[]>();
+      edges.forEach((edge) => {
+        if (!adjacent.has(edge.source)) adjacent.set(edge.source, []);
+        if (!adjacent.has(edge.target)) adjacent.set(edge.target, []);
+        adjacent.get(edge.source)!.push(edge.target);
+        adjacent.get(edge.target)!.push(edge.source);
+      });
+      const visited = new Set<string>([mppt.id]);
+      const queue = [mppt.id];
+      while (queue.length > 0) {
+        const currentId = queue.shift()!;
+        for (const next of adjacent.get(currentId) ?? []) {
+          if (!visited.has(next)) {
+            visited.add(next);
+            queue.push(next);
+          }
+        }
+      }
+      const connectedNodes = nodes.filter((n) => visited.has(n.id));
+      const { stringVoc, missingVoc } = stringColdVocOf(connectedNodes, edges);
+      const worst = stringVoc.length > 0 ? Math.max(...stringVoc) : 0;
+      if (worst > maxPvVoltage) {
+        warnings.push({
+          id: `solar-voc-window-${mppt.id}`,
+          category: 'safety',
+          type: 'critical',
+          title: 'MPPT-Eingangsspannung zu klein für Kalt-Voc',
+          focusId: mppt.id,
+          focusType: 'node',
+          ruleId: 'ELE-007-voc-window',
+          measuredValue: `Voc kalt ≈ ${Math.round(worst)} V (bei ${SOLAR_DESIGN_MIN_TEMPERATURE_C} °C)`,
+          expectedValue: `max. ${maxPvVoltage} V`,
+          unit: 'V',
+          source: 'Modellannahme: Voc(T_min) = Voc_STC · (1 + |TK|·ΔT); TK-Default −0,35 %/K (c-Si)',
+          message: `⚠️ Kritisch: Die Leerlaufspannung des Solar-Strings steigt in der Kälte auf ≈ ${Math.round(
+            worst
+          )} V (Auslegungstemperatur ${SOLAR_DESIGN_MIN_TEMPERATURE_C} °C) — der Laderegler „${
+            (mppt.data as Record<string, unknown>)?.label || 'MPPT'
+          }“ erlaubt aber max. ${maxPvVoltage} V. Überspannung zerstört den Regler. Strings kürzen (weniger Panels in Serie) oder Regler mit höherem PV-Eingangsbereich wählen.`,
+        });
+      } else if (missingVoc) {
+        warnings.push({
+          id: `solar-voc-missing-${mppt.id}`,
+          category: 'estimation',
+          type: 'info',
+          title: 'Solar-Voc-Datenblattwerte fehlen',
+          focusId: mppt.id,
+          focusType: 'node',
+          ruleId: 'ELE-007-voc-missing-data',
+          measuredValue: 'Voc nicht angegeben',
+          expectedValue: 'Voc (STC) je Panel',
+          unit: 'V',
+          source: 'Modell: Voc-Fensterprüfung nur mit Datenblattwert (schätzen wäre unehrlich)',
+          message: `ℹ️ Hinweis: Für die Kalt-Voc-Prüfung des Ladereglers fehlt bei mindestens einem Panel der Datenblattwert „Leerlaufspannung Voc“. Trage ihn im Panel-Inspektor ein, damit das Eingangsfenster geprüft werden kann.`,
+        });
+      }
+    });
+
+    // --- Rule A4: RCD/FI am Wechselrichter-Kreis (AUDIT AC-001) ---
+    // Rule A2 prüft nur Landstrom-Nodes. Ein Plan „Batterie → Wechselrichter
+    // → 230-V-Verbraucher" ohne jedes Fehlerstrom-Schutzorgan erzeugte
+    // KEINE Warnung — dabei führt der Inverter-Kreis dieselbe Gefahr
+    // (Berührungsschutz 230 V) wie die Landstromseite.
+    const acAdjacency = new Map<string, string[]>();
+    const addAcLink = (from: string, to: string): void => {
+      const list = acAdjacency.get(from) ?? [];
+      list.push(to);
+      acAdjacency.set(from, list);
+    };
+    for (const edge of edges) {
+      const s = nodeMap.get(edge.source)?.type;
+      const t = nodeMap.get(edge.target)?.type;
+      const domain = edge.data?.edgeDomain ?? getEdgeDomain(s, t, edge.sourceHandle, edge.targetHandle);
+      if (domain !== 'AC_230V') continue;
+      addAcLink(edge.source, edge.target);
+      addAcLink(edge.target, edge.source);
+    }
+    const acReachable = (startId: string): Set<string> => {
+      const visited = new Set<string>();
+      const queue = [startId];
+      while (queue.length > 0) {
+        const current = queue.shift();
+        if (current === undefined || visited.has(current)) continue;
+        visited.add(current);
+        for (const next of acAdjacency.get(current) ?? []) {
+          if (!visited.has(next)) queue.push(next);
+        }
+      }
+      return visited;
+    };
+    inverters.forEach((inverter) => {
+      if (inverter.data?.hasRcd) return;
+      const island = acReachable(inverter.id);
+      let consumerCount = 0;
+      island.forEach((id) => {
+        if (nodeMap.get(id)?.type === 'consumer230v') consumerCount += 1;
+      });
+      if (consumerCount === 0) return;
+      warnings.push({
+        id: `inverter-missing-rcd-${inverter.id}`,
+        category: 'safety',
+        type: 'critical',
+        title: 'FI-Schutz am Wechselrichter fehlt',
+        focusId: inverter.id,
+        focusType: 'node',
+        ruleId: 'AC-001-inverter-rcd',
+        measuredValue: `${consumerCount} × 230-V-Verbraucher ohne FI`,
+        expectedValue: 'RCD/FI ≤ 30 mA (Typ A) im AC-Ausgangskreis',
+        unit: '',
+        source: 'Schutz bei indirektem Berühren, 230-V-Fahrzeugkreis (DIN VDE 0100-721-Kontext)',
+        message: `⚠️ Kritisch: Der Wechselrichter „${
+          inverter.data?.label || 'Wechselrichter'
+        }“ speist ${consumerCount} 230-V-Verbraucher, der AC-Kreis hat aber keinen FI-Schutzschalter (RCD ≤ 30 mA, Typ A). Auch ohne Landstrom besteht Berührungsgefahr an 230 V. Lass diese Schutzmaßnahme von einer Elektrofachkraft einplanen.`,
+      });
+    });
+
     // --- Rule A2: RCD / FI-Pflicht an Landstrom (DIN VDE 0100-721) ---
     shorePowerNodes.forEach((sp) => {
       if (!sp.data?.hasRcd) {
@@ -139,6 +357,11 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
           title: 'FI-Schutzschalter fehlt',
           focusId: sp.id,
           focusType: 'node',
+          ruleId: 'A2-shore-rcd',
+          measuredValue: 'kein FI',
+          expectedValue: 'RCD <= 30 mA',
+          unit: 'mA',
+          source: 'DIN VDE 0100-721 (Landstromanschluss Wohnmobil)',
           message: `Am Landstromanschluss „${sp.data?.label || 'Landstrom'}" fehlt ein FI-Schutzschalter mit höchstens 30 mA (RCD ≤ 30 mA). Nach DIN VDE 0100-721 ist dieser zwingend vorgeschrieben — Stromschlaggefahr. Lass den 230-V-Schutz von einer Elektrofachkraft einplanen.`,
         });
       }

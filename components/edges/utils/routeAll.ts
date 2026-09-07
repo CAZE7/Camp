@@ -10,6 +10,8 @@ import {
 import {
   findCablePath,
   nodesToObstacles,
+  nodeObstacleMap,
+  rectsIntersect,
   inflateRect,
   pathLength,
   countBends,
@@ -318,6 +320,24 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
   const edgeById = new Map<string, RouteEdgeRef>(edges.map((edge) => [edge.id, edge]));
 
   const allObstacles = nodesToObstacles(nodes, new Set());
+  // AUDIT PERF-001: Hindernis-Boxen einmal pro Plan mit ID — pro Kante wird
+  // nur die räumliche Umgebung (Routen-BBox + Pad) gefiltert, statt ALLE
+  // N-1 Hindernisse in jeden A*-Lauf zu stecken. Bei 500-Knoten-Plänen
+  // wuchs das Hanan-Grid sonst über die gesamte Plan-Envelope (gemessen:
+  // 81 s für einen kompletten Routing-Pass). Pad = 240 px = 2 × ALTERNATIVE_
+  // ROUTE_GAP — Ausweichtrassen bleiben innerhalb des gefilterten Fensters,
+  // und ein Pfad kann per Konstruktion die Box nie verlassen, sodass
+  // ausgefilterte Hindernisse nicht getroffen werden können (außerhalb).
+  const obstacleById = nodeObstacleMap(nodes);
+  const OBSTACLE_REGION_PAD = 240;
+  const obstaclesNear = (excludeIds: Set<string>, region: Rect): Rect[] => {
+    const out: Rect[] = [];
+    obstacleById.forEach((rect, id) => {
+      if (excludeIds.has(id)) return;
+      if (rectsIntersect(rect, region)) out.push(rect);
+    });
+    return out;
+  };
   // R-4: Kreuzungsbasis über den gecachten Spatial-Index — kein 120er-Limit mehr.
   const edgeRefs = edges.map((edge) => ({ id: edge.id, source: edge.source, target: edge.target }));
   const crossingAll =
@@ -385,7 +405,13 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
       flow ? { x: -flow.x, y: -flow.y } : undefined
     );
     const exclude = new Set([edge.source, edge.target]);
-    const obstacles = nodesToObstacles(nodes, exclude);
+    // PERF-001: nur Hindernisse in der erweiterten Routen-Umgebung.
+    const obstacles = obstaclesNear(exclude, {
+      x: Math.min(src.x, tgt.x) - OBSTACLE_REGION_PAD,
+      y: Math.min(src.y, tgt.y) - OBSTACLE_REGION_PAD,
+      width: Math.abs(src.x - tgt.x) + 2 * OBSTACLE_REGION_PAD,
+      height: Math.abs(src.y - tgt.y) + 2 * OBSTACLE_REGION_PAD,
+    });
     const lane =
       portOffsets.get(edge.id) ??
       parallelLaneOffset({

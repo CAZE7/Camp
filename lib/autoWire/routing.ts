@@ -1,4 +1,4 @@
-import type { Node } from '@xyflow/react';
+import type { Node } from '../domain/graph'; // ARCH-001
 import { type Meters, type Mm2 } from '../units';
 import { newEntityId } from '../id';
 import { CHARGER_TYPES, type CableEdge, connectionKey, isLeadChemistry, labelOf } from './primitives';

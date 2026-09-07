@@ -819,6 +819,15 @@ export type PathResult = {
   crossings: number;
   usedSearch: 'catalog' | 'astar' | 'fallback';
   /**
+   * AUDIT ROUTE-001 (Ausnahme a): true, wenn der gewählte Pfad ein
+   * Fallback ist UND gegen die aufgeblasenen Hindernis-Boxen verstößt.
+   * Solche Pfade haben KEINE Freigabe-Garantie (ADR-0009 „Overlaps
+   * verboten" im Strengsinn verletzt) — sie werden nicht versteckt,
+   * sondern explicit gezählt, damit Invarianten-Reports sie als harte
+   * Verletzung ausweisen können.
+   */
+  fallbackHitsObstacles?: boolean;
+  /**
    * WP-7 (#395): Kreuzungen, an denen DIESE Leitung einen Bogen zeichnet.
    * Wird erst in `routeAllCables` gefüllt (nur dort sind alle Leitungen
    * bekannt); die Einzelpfad-Suche liefert immer eine leere Liste.
@@ -890,6 +899,14 @@ const cacheSet = (key: string, value: PathResult): void => {
 };
 
 const relevantObstacles = (obstacles: Rect[], start: Point, end: Point): Rect[] => {
+  // AUDIT ROUTE-001 (dokumentierte Ausnahme a): Boxen, die Start oder Ziel
+  // enthalten, werden verworfen. Das ist der Vertrag für Aufrufer, die die
+  // eigene Node als Hindernis mitgeben (Unit-Tests, fremde Codepfade). Der
+  // Produktionspfad (routeAll) schließt die eigene Node bereits aus — dort
+  // trifft der Verwurf stattdessen ÜBERLAPPENDE fremde Nodes, durch die dann
+  // geroutet werden kann. Bekannt, bewusst akzeptiert und im Change Ledger
+  // dokumentiert; die Fallback-Kollision wird über `fallbackHitsObstacles`
+  // sichtbar gezählt statt versteckt.
   const out: Rect[] = [];
   for (let i = 0; i < obstacles.length; i++) {
     const r = at(obstacles, i);
@@ -1104,7 +1121,10 @@ export function findCablePath(input: PathRequest): PathResult {
   if (result.usedSearch === 'fallback') {
     // R-3: Der Notfallpfad ist orthogonal, hat aber keine Freigabe-Garantie
     // (der Wiederholungslauf mit halbiertem Margin ist oben gelaufen).
-    // Sichtbar machen statt still leiden:
+    // AUDIT ROUTE-001 (Ausnahme a): Kollision des Fallback-Pfads gegen die
+    // Hindernis-Boxen explizit kennzeichnen — zählbar für Invarianten,
+    // statt die harte Verletzung nur im Log zu verstecken.
+    result.fallbackHitsObstacles = pathHitsObstacles(result.waypoints, obstacles);
     fallbackCount += 1;
     if (process.env.NODE_ENV !== 'production') {
       console.warn(
@@ -1150,6 +1170,30 @@ export function nodesToObstacles(nodes: RoutableNode[], excludeIds: Set<string>)
 }
 
 export type CrossingEdgeRef = { id: string; source: string; target: string };
+
+/**
+ * AUDIT PERF-001: Node → Hindernis-Box einmal pro Plan (statt pro Kante),
+ * nach Node-ID auflösbar — Grundlage der räumlichen Vorfilterung in
+ * routeAllCables. Gleiche Boxbildung wie nodesToObstacles (inkl. Handle-
+ * Ausrisse, R-10), nur zusätzlich mit ID geliefert.
+ */
+export function nodeObstacleMap(nodes: RoutableNode[]): Map<string, Rect> {
+  const ids: string[] = [];
+  for (let i = 0; i < nodes.length; i++) {
+    const node = nodes[i];
+    if (node) ids.push(node.id);
+  }
+  const rects = nodesToObstacles(nodes, new Set());
+  const byId = new Map<string, Rect>();
+  for (let i = 0; i < rects.length && i < ids.length; i++) {
+    byId.set(ids[i]!, rects[i]!);
+  }
+  return byId;
+}
+
+/** Schnitt zweier achsenparalleler Boxen (inkl. Randberührung). */
+export const rectsIntersect = (a: Rect, b: Rect): boolean =>
+  a.x <= b.x + b.width && a.x + a.width >= b.x && a.y <= b.y + b.height && a.y + a.height >= b.y;
 
 export function edgesToCrossingSegments(
   edges: CrossingEdgeRef[],

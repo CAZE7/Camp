@@ -132,7 +132,7 @@ export function captureGoldenMaster(input: GoldenPlanInput): GoldenMaster {
   const edgeCurrents: Record<string, number> = {};
   for (const e of byId(edges)) {
     edgeCurrents[e.id] = round(
-      calculateEdgeCurrent(nodeMap.get(e.source), nodeMap.get(e.target), nodes, sysVoltage),
+      calculateEdgeCurrent(nodeMap.get(e.source), nodeMap.get(e.target), nodes, sysVoltage, edges), // ELE-005
       2
     );
   }

@@ -3,7 +3,7 @@
     "edges": [
       {
         "data": {
-          "crossSection": 50,
+          "crossSection": 70,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseSize": 100,
@@ -17,7 +17,7 @@
       },
       {
         "data": {
-          "crossSection": 50,
+          "crossSection": 70,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "length": 0.2
@@ -30,7 +30,7 @@
       },
       {
         "data": {
-          "crossSection": 50,
+          "crossSection": 70,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "length": 0.5
@@ -43,7 +43,7 @@
       },
       {
         "data": {
-          "crossSection": 50,
+          "crossSection": 70,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseSize": 100,
@@ -57,7 +57,7 @@
       },
       {
         "data": {
-          "crossSection": 50,
+          "crossSection": 70,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "length": 1
@@ -97,7 +97,7 @@
       },
       {
         "data": {
-          "crossSection": 50,
+          "crossSection": 70,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseSize": 100,
@@ -111,7 +111,7 @@
       },
       {
         "data": {
-          "crossSection": 50,
+          "crossSection": 70,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "length": 1
@@ -238,26 +238,26 @@
   },
   "electrical": {
     "cumulativeDrops": {
-      "auto:0:plus-schiene": 0.013,
-      "auto:1:minus-schiene": 0.045,
-      "auto:2:12v-sicherungskasten": 0.11,
-      "auto:3:smart-shunt": 0.013,
+      "auto:0:plus-schiene": 0.01,
+      "auto:1:minus-schiene": 0.034,
+      "auto:2:12v-sicherungskasten": 0.083,
+      "auto:3:smart-shunt": 0.01,
       "battery-1": 0,
       "cons-230v": 0,
-      "cons-light": 0.217,
-      "inverter-1": 0.109
+      "cons-light": 0.198,
+      "inverter-1": 0.083
     },
     "edgeCurrents": {
-      "e-auto-1": 93.47,
-      "e-auto-2": 93.47,
-      "e-auto-3": 93.47,
-      "e-auto-4": 93.47,
-      "e-auto-5": 93.47,
-      "e-auto-6": 1.56,
-      "e-auto-7": 1.56,
-      "e-auto-8": 91.91,
-      "e-auto-9": 91.91,
-      "e-auto-ac-10": 91.91
+      "e-auto-1": 99.71,
+      "e-auto-2": 99.71,
+      "e-auto-3": 99.71,
+      "e-auto-4": 99.71,
+      "e-auto-5": 99.71,
+      "e-auto-6": 1.67,
+      "e-auto-7": 1.67,
+      "e-auto-8": 98.04,
+      "e-auto-9": 98.04,
+      "e-auto-ac-10": 98.04
     },
     "systemVoltage": 12.8
   },

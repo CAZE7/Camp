@@ -22,7 +22,12 @@ import {
 } from 'lucide-react';
 import { usePlannerStore } from '../../store/usePlannerStore';
 import { calculateCrossSection, calculateMaxFuse } from '../../lib/electrical';
-import { VDE_INVERTER_EFFICIENCY, VDE_SOLAR_VMP_VOLTAGE, getSystemVoltage } from '../../lib/vde-standards';
+import {
+  VDE_INVERTER_EFFICIENCY,
+  VDE_SOLAR_VMP_VOLTAGE,
+  dischargeFloorVoltage,
+  getSystemVoltage,
+} from '../../lib/vde-standards';
 import { cn } from '@/lib/utils';
 import { type Node, type Edge } from '@xyflow/react';
 import type { CableEdgeData } from '../edges/CableEdge';
@@ -51,16 +56,16 @@ const EXPERT_KNOWLEDGE: Record<string, ExpertTip> = {
     tips: [
       {
         heading: 'LiFePO4 vs. AGM',
-        body: 'LiFePO4-Akkus haben eine nutzbare Kapazität von ca. 95 % Entladetiefe (DoD), AGM nur ~50%. Eine 100Ah LiFePO4 ersetzt also eine 200Ah AGM.',
+        body: 'LiFePO4-Akkus dürfen zu ca. 90 % entladen werden (DoD), AGM nur ~50 %. Eine 100-Ah-LiFePO4 ersetzt damit rund 180 Ah AGM (Werte wie im Planer).',
       },
       {
         heading: 'Kabelquerschnitt zur Batterie',
-        body: 'Die Zuleitung zur Batterie muss den maximalen Entladestrom tragen. Bei 100Ah LiFePO4 (1C) sind das 100A → mindestens 35mm² bei <1m Kabellänge.',
+        body: 'Die Zuleitung zur Batterie muss den maximalen Entladestrom tragen. Bei 100 Ah LiFePO4 mit 1C (100 A) dimensioniert der Planer thermisch 70 mm² — liegt der Strom darüber, warnt die App (Leitungen parallel legen oder 24-V-System erwägen).',
         norm: 'DIN VDE 0298-4',
       },
       {
         heading: 'Absicherung',
-        body: 'Die Hauptsicherung (ANL/MIDI) muss so nah wie möglich am Plus-Pol sitzen. Sie schützt das KABEL, nicht das Gerät! Bei 35mm² → max. 150A Sicherung.',
+        body: 'Die Hauptsicherung (ANL/MIDI) muss so nah wie möglich am Plus-Pol sitzen (≤ 20 cm ungeschützt). Sie schützt das KABEL, nicht das Gerät! Maximale Sicherung je Querschnitt nach Planer-Regel (70 % Belastbarkeit): 25 mm² → 63 A, 70 mm² → 100 A.',
         norm: 'DIN VDE 0100-721',
       },
       {
@@ -110,6 +115,10 @@ const EXPERT_KNOWLEDGE: Record<string, ExpertTip> = {
         heading: 'Realistische Erträge',
         body: 'In Deutschland rechnet man mit ~3-4 Sonnenstunden/Tag (Sommer). Ein 200Wp Panel erzeugt real ca. 600-800Wh/Tag ≈ 50-65Ah bei 12V.',
       },
+      {
+        heading: 'Datenblattwerte Isc & Voc eintragen',
+        body: 'Der Planer sichert Solar-Zuleitungen nach der 1,56 × Isc-Regel ab (NEC-Kontext) und prüft die Kalt-Leerlaufspannung Voc(−20 °C) gegen das Eingangsfenster des Ladereglers. Fehlt der Isc-Datenblattwert, schätzt er konservativ 1,25 × Imp — mit echten Werten wird die Absicherung passgenauer.',
+      },
     ],
   },
   consumer: {
@@ -124,7 +133,7 @@ const EXPERT_KNOWLEDGE: Record<string, ExpertTip> = {
       },
       {
         heading: 'Sicherungsgröße',
-        body: 'Die Sicherung muss zwischen Kabelbelastbarkeit und Nennstrom des Geräts liegen. Für 1,5mm² Kabel: max. 15A Sicherung. Für 2,5mm²: max. 20A.',
+        body: 'Die Sicherung muss zwischen Kabelbelastbarkeit und Nennstrom des Geräts liegen. Nach der Planer-Regel (70 % der Tabellen-Belastbarkeit): 1,5 mm² → max. 10 A, 2,5 mm² → max. 16 A, 4 mm² → max. 20 A.',
       },
       {
         heading: 'Standby-Verbrauch beachten',
@@ -143,7 +152,7 @@ const EXPERT_KNOWLEDGE: Record<string, ExpertTip> = {
       },
       {
         heading: 'Batterie-Belastung',
-        body: '2000W bei 12V = ~185A Entladestrom! Das erfordert 50mm² Kabel zum Wechselrichter und eine 200A Sicherung. LiFePO4 ist Pflicht.',
+        body: '2000 W bei 12 V ≈ 185 A Entladestrom (inkl. ~15 % Verluste)! Das liegt über der 70-mm²-Belastbarkeit des Planers — die App warnt. Abhilfe: zwei parallel geführte Leitungen, einen 24-V-Aufbau oder einen kleineren/wechselrichternahen Verbraucher.',
       },
       {
         heading: 'Schutzmaßnahmen',
@@ -301,6 +310,12 @@ const DEFAULT_TIP: ExpertTip = {
       heading: 'Profi-Tipp',
       body: 'Beginne immer mit der Batterie und arbeite dich von dort nach außen vor. So behältst du den Überblick über Ströme und Querschnitte.',
     },
+    {
+      // AUDIT DOM-001/002: Ehrliche Abgrenzung statt impliziter
+      // Vollständigkeits-Anspruch — der Planer dimensioniert, er prüft nicht.
+      heading: 'Was der Planer NICHT leistet (Modellgrenzen)',
+      body: 'Der Planer ist ein Dimensionierungs-Hilfsmittel und ersetzt keine Elektrofachkraft. Nicht modelliert: Mehrleiter-Ausführung der 230-V-Seite (PE/N — die Kanten sind Einleiter-Schemata, real 3-adrig ausführen), Kurzschlussstrom und Abschaltvermögen (kA-Rating von Sicherungen), Batterieinnenwiderstand, C-Raten, Anlassströme, Selektivität sowie die exakte Sicherungsposition (nur Abstand zur Quelle als Feld). Für die endgültige Auslegung gelten die einschlägigen Normen durch eine fachkundige Person.',
+    },
   ],
 };
 
@@ -325,7 +340,13 @@ function LiveRecommendationCard({
   const isAC = node.type === 'consumer230v';
 
   let I = 0;
-  if (node.type === 'inverter') I = (Number(node.data.watts) || 1000) / sysVoltage / VDE_INVERTER_EFFICIENCY;
+  // AUDIT ELE-006: continuousPower zuerst — dieselbe Priorität wie calculateEdgeCurrent.
+  // AUDIT ELE-005: Entladeschlussspannung statt Nennspannung (Strom-Maximum).
+  if (node.type === 'inverter')
+    I =
+      (Number(node.data.continuousPower || node.data.watts) || 1000) /
+      dischargeFloorVoltage(sysVoltage) /
+      VDE_INVERTER_EFFICIENCY;
   else if (node.type === 'solar') I = (Number(node.data.watts) || 100) / VDE_SOLAR_VMP_VOLTAGE;
   else if (isAC)
     I = (Number(node.data.watts) || 0) / 230; // AC current at 230V

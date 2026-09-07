@@ -42,6 +42,18 @@ exakt denselben Plan wieder her; Bug-Reproduktion wird trivial.
 Seeds/Strategien); Sortierschlüssel-Disziplin bei jedem neuen Vergleich;
 Performance-Optimierungen dürfen Reihenfolgen nicht „opportunistisch“ ändern.
 
+**Geltungsbereich (AUDIT AUTO-004, 2026-09-07):** „gleicher Input ⇒
+identischer Output" gilt für das **elektrische/flammfähige Ergebnis**
+(Querschnitte, Sicherungen, Längen, Warnungen) und das **Routing-Resultat**
+— nachweisbar durch Doppellauf-Tests und Golden Master. **Nicht** garantiert
+wird Byte-Identität der von AutoWire _erzeugten_ Node-/Edge-IDs: `newEntityId`
+verwendet Zufalls-UUIDs, zwei Läufe auf demselben frischen Input erzeugen
+also unterschiedliche IDs (elektrisch identische Ergebnisse). Der Golden
+Master normalisiert IDs deshalb explizit (`auto:<i>:<slug>`). Auf dem
+Ergebnis eines vorherigen Laufs ist AutoWire idempotent (Wiederverwendung
+über Label/Role). Wer Byte-Identität braucht, muss die IDs vor dem Vergleich
+normalisieren.
+
 ## Alternativen
 
 - _„Praktisch deterministisch reicht“:_ verworfen — genau die seltenen

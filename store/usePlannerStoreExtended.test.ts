@@ -348,6 +348,7 @@ import { useLiveValidation } from '../components/planner/hooks/useLiveValidation
 import { calculateEdgeCurrent, getSystemVoltage } from '../lib/vde-standards';
 import { FUSE_MAP, STANDARD_FUSE_SIZES, calculateCrossSection, calculateMaxFuse } from '../lib/electrical';
 import { collectEdgeErrors } from '../components/edges/CableEdge';
+import { solarEdgeFuseFloorOf } from '../lib/solar'; // ELE-007
 import { TEMPLATE_ALLROUNDER, TEMPLATE_AUTARK } from '../components/planner/templates';
 
 function makeNode(id: string, type: string, data: Record<string, unknown> = {}): Node {
@@ -378,7 +379,11 @@ function runAutoWire(nodes: Node[], extra?: Partial<{ season: 'summer' | 'winter
  * Spiegelt die Kanten-Prüfung aus CableEdge.tsx mit denselben Bibliotheks-
  * Funktionen — so testen die Szenarien exakt das, was der Nutzer sieht.
  */
-function getEdgeErrors(nodes: Node[], edges: Edge<CableEdgeData>[], edge: Edge<CableEdgeData>): string[] {
+function getEdgeErrors(
+  nodes: Node[],
+  edges: Edge<CableEdgeData>[],
+  edge: Edge<CableEdgeData>
+): ReturnType<typeof collectEdgeErrors> {
   const nodeMap = new Map(nodes.map((n) => [n.id, n]));
   const sourceNode = nodeMap.get(edge.source);
   const targetNode = nodeMap.get(edge.target);
@@ -395,8 +400,12 @@ function getEdgeErrors(nodes: Node[], edges: Edge<CableEdgeData>[], edge: Edge<C
   const pathDrop = usePlannerStore.getState().calculatePathVoltageDrop(edge.source, nodes, edges);
   const totalDropPercentage = ((ownDrop + pathDrop) / sysVoltage) * 100;
 
+  // ELE-007: Solar-Zuleitungen gelten für die Sicherungsprüfung mit 1,56 × Isc.
+  const domain = edge.data?.edgeDomain ?? 'DC_12V';
+  const fuseFloor = domain === 'Solar' ? solarEdgeFuseFloorOf(nodes, edge) : undefined;
+
   return collectEdgeErrors({
-    edgeDomain: edge.data?.edgeDomain ?? 'DC_12V',
+    edgeDomain: domain,
     data: edge.data,
     I,
     maxFuse,
@@ -404,6 +413,7 @@ function getEdgeErrors(nodes: Node[], edges: Edge<CableEdgeData>[], edge: Edge<C
     sourceNodeType: sourceNode?.type,
     length,
     totalDropPercentage,
+    fuseFloor,
   });
 }
 
@@ -413,7 +423,7 @@ function assertZeroWarnings(nodes: Node[], edges: Edge<CableEdgeData>[]) {
   expect(result.current).toEqual([]);
 
   // 2. Kanten-Logik der Anzeige (CableEdge-Errors)
-  const edgeErrors: string[] = [];
+  const edgeErrors: ReturnType<typeof collectEdgeErrors> = [];
   for (const edge of edges) {
     edgeErrors.push(...getEdgeErrors(nodes, edges, edge));
   }
@@ -475,7 +485,7 @@ describe('Auto-Wire: keine Warnungen nach performAutoWiring', () => {
   it('Szenario 3 — Landstrom + Wechselrichter (AC/DC strikt getrennt)', () => {
     const nodes = [
       makeNode('b1', 'battery', { label: 'Batterie', capacity: 200, chemistry: 'LiFePO4' }),
-      makeNode('i1', 'inverter', { label: 'Inverter', watts: 1000 }),
+      makeNode('i1', 'inverter', { label: 'Inverter', watts: 900, hasRcd: true }),
       makeNode('a1', 'consumer230v', { label: 'Steckdose', watts: 300, hours: 1 }),
       makeNode('p1', 'shorePower', { label: 'Landstrom', hasRcd: true }),
       makeNode('c1', 'consumer', { label: 'Pumpe', watts: 40, hours: 2 }),
@@ -508,11 +518,11 @@ describe('Auto-Wire: keine Warnungen nach performAutoWiring', () => {
       makeNode('s1', 'solar', { label: 'Panel 1', watts: 200 }),
       makeNode('s2', 'solar', { label: 'Panel 2', watts: 200 }),
       makeNode('m1', 'mpptController', { label: 'MPPT', amps: 10 }),
-      makeNode('d1', 'dcdcCharger', { label: 'Ladebooster', amps: 30 }),
+      makeNode('d1', 'dcdcCharger', { label: 'Ladebooster', amps: 20 }),
       makeNode('ch1', 'charger', { label: 'Ladequelle', amps: 20 }),
       makeNode('ac1', 'acBatteryCharger', { label: '230V Ladegerät', amps: 25 }),
       makeNode('p1', 'shorePower', { label: 'Landstrom', hasRcd: true }),
-      makeNode('i1', 'inverter', { label: 'Inverter', watts: 1000 }),
+      makeNode('i1', 'inverter', { label: 'Inverter', watts: 800, hasRcd: true }),
       makeNode('c1', 'consumer', { label: 'Kühlschrank', watts: 60, hours: 4 }),
       makeNode('c2', 'consumer', { label: 'Pumpe', watts: 40, hours: 3 }),
       makeNode('c3', 'consumer', { label: 'LED', watts: 40, hours: 2 }),
@@ -540,7 +550,7 @@ describe('Auto-Wire: keine Warnungen nach performAutoWiring', () => {
   it('Szenario 5 — Winter-Saison: hohe Lasten', () => {
     const nodes = [
       makeNode('b1', 'battery', { label: 'Batterie', capacity: 300, chemistry: 'LiFePO4' }),
-      makeNode('i1', 'inverter', { label: 'Inverter', watts: 800 }),
+      makeNode('i1', 'inverter', { label: 'Inverter', watts: 800, hasRcd: true }),
       makeNode('a1', 'consumer230v', { label: 'Heizlüfter', watts: 500, hours: 1 }),
       makeNode('c1', 'consumer', { label: 'Standheizung', watts: 80, hours: 4 }),
       makeNode('s1', 'solar', { label: 'Panel', watts: 200 }),
@@ -559,7 +569,7 @@ describe('Auto-Wire: keine Warnungen nach performAutoWiring', () => {
       makeNode('b1', 'battery', { label: 'Batterie', capacity: 200, chemistry: 'LiFePO4' }),
       makeNode('s1', 'solar', { label: 'Panel', watts: 200 }),
       makeNode('c1', 'consumer', { label: 'Kühlbox', watts: 60, hours: 4 }),
-      makeNode('i1', 'inverter', { label: 'Inverter', watts: 1000 }),
+      makeNode('i1', 'inverter', { label: 'Inverter', watts: 900, hasRcd: true }),
       makeNode('a1', 'consumer230v', { label: 'Steckdose', watts: 300, hours: 1 }),
     ];
 
@@ -625,7 +635,7 @@ function assertNoSafetyWarnings(nodes: Node[], edges: Edge<CableEdgeData>[]) {
   const { result } = renderHook(() => useLiveValidation(nodes, edges));
   expect(result.current.filter((w) => w.category !== 'estimation')).toEqual([]);
 
-  const edgeErrors: string[] = [];
+  const edgeErrors: ReturnType<typeof collectEdgeErrors> = [];
   for (const edge of edges) {
     edgeErrors.push(...getEdgeErrors(nodes, edges, edge));
   }
@@ -843,7 +853,7 @@ describe('Auto-Wire: Topologie-Heilung & reale Templates', () => {
       length: 5,
       totalDropPercentage: 1,
     });
-    expect(errors.filter((err) => err.includes('20cm'))).toEqual([]);
+    expect(errors.filter((err) => err.message.includes('20cm'))).toEqual([]);
   });
 
   it('unabgesicherte lange Batterie-Leitung warnt weiterhin (20cm-Regel)', () => {
@@ -857,7 +867,7 @@ describe('Auto-Wire: Topologie-Heilung & reale Templates', () => {
       length: 5,
       totalDropPercentage: 1,
     });
-    expect(errors.some((err) => err.includes('20cm'))).toBe(true);
+    expect(errors.some((err) => err.message.includes('20cm'))).toBe(true);
   });
 
   it('20cm-Regel gilt auch, wenn die Batterie ZIEL der Leitung ist (Bug 18)', () => {
@@ -873,7 +883,7 @@ describe('Auto-Wire: Topologie-Heilung & reale Templates', () => {
       length: 5,
       totalDropPercentage: 1,
     });
-    expect(errors.some((err) => err.includes('20cm'))).toBe(true);
+    expect(errors.some((err) => err.message.includes('20cm'))).toBe(true);
   });
 
   it('fuseSize=0 löst weder „Sicherung zu klein“ noch „Sicherung zu groß“ aus (Bug 7)', () => {
@@ -890,8 +900,8 @@ describe('Auto-Wire: Topologie-Heilung & reale Templates', () => {
       length: 3,
       totalDropPercentage: 1,
     });
-    expect(errors.some((err) => err.includes('zu klein'))).toBe(false);
-    expect(errors.some((err) => err.includes('zu groß'))).toBe(false);
+    expect(errors.some((err) => err.message.includes('zu klein'))).toBe(false);
+    expect(errors.some((err) => err.message.includes('zu groß'))).toBe(false);
   });
 
   it('AC-Kante mit hohem Spannungsfall meldet Gesamt-Drop (Bug 10)', () => {
@@ -904,7 +914,7 @@ describe('Auto-Wire: Topologie-Heilung & reale Templates', () => {
       length: 50,
       totalDropPercentage: 5,
     });
-    expect(errors.some((err) => err.includes('Gesamt-Drop'))).toBe(true);
+    expect(errors.some((err) => err.message.includes('Gesamt-Drop'))).toBe(true);
   });
 });
 

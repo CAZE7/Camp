@@ -1,5 +1,17 @@
 export const VDE_SIZES = [1.5, 2.5, 4.0, 6.0, 10.0, 16.0, 25.0, 35.0, 50.0, 70.0];
 
+/**
+ * Strombelastbarkeit (A) je Querschnitt — Kupfer, PVC.
+ *
+ * Werte-Referenz: veröffentlichte Belastbarkeitstabellen nach DIN VDE 0298-4,
+ * Verlegeart B2 (im Rohr auf Wand), 2 belastete Adern, 30 °C — die Werte
+ * {16.5, 23, 30, 38, 52, 69, 90, 111} decken sich mit den veröffentlichten
+ * B2-Reihen; 50/70 mm² (136/172) weichen von einer verbreiteten Referenz
+ * (133/168) leicht ab und sind unverändert übernommen (bestehende Pläne
+ * und Golden Master). KEINE Klausel-Referenz — der Fahrzeugkontext
+ * (FLRY, DIN EN 1648-2 / ISO 6722) ist NICHT modelliert; das ist eine
+ * dokumentierte, konservative Annahme (AUDIT NORM-003).
+ */
 export const VDE_AMPACITY: Record<number, number> = {
   1.5: 16.5,
   2.5: 23.0,
@@ -13,22 +25,49 @@ export const VDE_AMPACITY: Record<number, number> = {
   70.0: 172.0,
 };
 
-// 1. Einheitlicher Sicherheitsfaktor (Derating)
+/**
+ * Einheitlicher Korrekturfaktor (Derating), der Umgebungstemperatur > 30 °C und
+ * Bündelung pauschal abdeckt, weil individuelle Korrekturfaktoren (DIN VDE
+ * 0298-4 Tab. 3/4) nicht modelliert sind. Bewusst konservativ (0.7).
+ *
+ * EINZIGE Iz-Wahrheit (AUDIT ELE-001): Sowohl die thermische Dimensionierung
+ * (`lookupThermalCrossSection`: benötigt Tabellenwert ≥ I / DERATE_FACTOR,
+ * d. h. Iz_design = 0.7 · Tabelle) als auch die Sicherungsgrenze (FUSE_MAP,
+ * abgeleitet) nutzen denselben Wert — die Koordination
+ * I_B ≤ I_n ≤ I_z ist damit im Modell durch Konstruktion erfüllt.
+ */
 export const DERATE_FACTOR = 0.7;
 
-// DIN VDE 0298-4: max fuse ratings per conductor cross-section
-export const FUSE_MAP: Record<number, number> = {
-  1.5: 16,
-  2.5: 20,
-  4.0: 25,
-  6.0: 32,
-  10.0: 50,
-  16.0: 63,
-  25.0: 80,
-  35.0: 100,
-  50.0: 125,
-  70.0: 160,
-};
+/**
+ * Übliche Norm-Sicherungsgrößen in Ampere (Blade ATO/ATC, MIDI, ANL).
+ * Wird von Auto-Wire und der Live-Validierung verwendet, damit die gewählte
+ * Sicherung immer einem real verfügbaren Sicherungswert entspricht.
+ */
+export const STANDARD_FUSE_SIZES = [
+  5, 7.5, 10, 15, 16, 20, 25, 30, 32, 40, 50, 60, 63, 80, 100, 125, 160, 200, 250, 300, 350, 400,
+];
+
+/**
+ * Maximal zulässige Sicherung je Querschnitt — ABGELEITET (AUDIT ELE-001):
+ * größte Norm-Sicherung, die noch unter der design-Belastbarkeit
+ * VDE_AMPACITY × DERATE_FACTOR liegt. Vorher war FUSE_MAP eine hand-
+ * gepflegte Tabelle OHNE Normquelle, die für jeden Querschnitt ÜBER der
+ * eigenen Dimensionierungs-Belastbarkeit lag (z. B. 25 mm²: Iz_design 63 A,
+ * maxFuse 80 A) — die Sicherung schützte den Leiter nach dem eigenen Modell
+ * nicht. Die Koordinationsregel I_B ≤ I_n ≤ I_z ist DIN VDE 0100-430
+ * (bzw. DIN EN 60364-4-43) entlehnt; die Werte selbst sind Modellwerte,
+ * KEINE Zitatwerte aus 0298-4 (dort gibt es keine Sicherungstabelle).
+ */
+export const FUSE_MAP: Record<number, number> = (() => {
+  const map: Record<number, number> = {};
+  for (const size of VDE_SIZES) {
+    const designIz = (VDE_AMPACITY[size] ?? 0) * DERATE_FACTOR;
+    // Größte Norm-Sicherung ≤ design-Iz (absteigend suchen, EPS gegen Float-Rand).
+    const fuse = [...STANDARD_FUSE_SIZES].reverse().find((rating) => rating <= designIz + 1e-9);
+    map[size] = fuse ?? 5;
+  }
+  return Object.freeze(map);
+})();
 
 export const calculateMaxFuse = (crossSection: number): number => {
   const maxFuse = FUSE_MAP[crossSection];
@@ -60,15 +99,8 @@ export const maxFuseForDisplay = (crossSection: number): number => {
 };
 
 /**
- * Übliche Norm-Sicherungsgrößen in Ampere (Blade ATO/ATC, MIDI, ANL).
- * Wird von Auto-Wire und der Live-Validierung verwendet, damit die gewählte
- * Sicherung immer einem real verfügbaren Sicherungswert entspricht.
+ * Kleinste Norm-Sicherung — Listenerste Element, einmal bewiesen (noUncheckedIndexedAccess).
  */
-export const STANDARD_FUSE_SIZES = [
-  5, 7.5, 10, 15, 16, 20, 25, 30, 32, 40, 50, 60, 63, 80, 100, 125, 160, 200, 250, 300, 350, 400,
-];
-
-/** Kleinste Norm-Sicherung — Listenerste Element, einmal bewiesen (noUncheckedIndexedAccess). */
 export const MIN_STANDARD_FUSE: number = (() => {
   const first = STANDARD_FUSE_SIZES[0];
   if (first === undefined) throw new Error('STANDARD_FUSE_SIZES ist leer — MIN_STANDARD_FUSE ungültig');
@@ -135,8 +167,11 @@ export const calculateCrossSection = (
   electricalDomain: 'DC_12V' | 'AC_230V' = 'DC_12V'
 ): number => {
   // Schritt A: Mindestquerschnitt nach Spannungsfall
-  // DC 12V: 3% von 12V = 0.36V (DIN VDE 0298-4)
-  // AC 230V: 3% von 230V = 6.9V → 4.6V (2% conservative)
+  // DC 12V: 3% von 12V = 0.36V — fachüblicher Planungswert für Niederspannungs-
+  //   Gleichstromkreise (KEINE Zitatgröße aus DIN VDE 0298-4; die 0298-4 enthält
+  //   Belastbarkeiten, keine Spannungsfall-Grenzwerte. Grenzwert-Herkunft ist
+  //   Praxis-/Faustregel, z. B. 0100-520-umbfeld 3 % Licht / 5 % Sonstiges).
+  // AC 230V: 3% von 230V = 6.9V → 4.6V (2% konservativer Planungswert)
   const maxAllowedVoltageDrop = electricalDomain === 'AC_230V' ? 4.6 : 0.36;
   const dropArea = (I * (length * 2)) / (58 * maxAllowedVoltageDrop);
 

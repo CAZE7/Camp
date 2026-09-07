@@ -212,7 +212,8 @@ describe('VDE-Konsistenz: Re-Exports aus electrical.ts', () => {
 
   it('calculateMaxFuseBase delegiert an electrical.calculateMaxFuse', () => {
     expect(vde.calculateMaxFuseBase(2.5)).toBe(electrical.calculateMaxFuse(2.5));
-    expect(vde.calculateMaxFuseBase(2.5)).toBe(20);
+    // ELE-001: FUSE_MAP abgeleitet — 2,5 mm² → 16 A (23 × 0.7 = 16,1).
+    expect(vde.calculateMaxFuseBase(2.5)).toBe(16);
   });
 
   it('lookupThermalCrossSectionBase delegiert an electrical.lookupThermalCrossSection', () => {

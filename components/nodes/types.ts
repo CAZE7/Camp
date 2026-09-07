@@ -43,6 +43,12 @@ export interface CommonNodeData {
 export interface BatteryNodeData extends CommonNodeData {
   capacity?: number;
   chemistry?: string;
+  /**
+   * Explizite Rolle im Verbund (AUDIT AUTO-003): gewinnt über die
+   * Label-Heuristik („start…" = Starterbatterie). 'house' verhindert,
+   * dass ein umbenannter Akku still zur Starterbatterie wird.
+   */
+  role?: 'starter' | 'house';
   nominalVoltage?: number;
   hasInternalBms?: boolean;
   hasExternalBms?: boolean;
@@ -63,6 +69,19 @@ export interface Consumer230VNodeData extends CommonNodeData {
 export interface SolarNodeData extends CommonNodeData {
   voltage?: number;
   amps?: number;
+  /**
+   * Leerlaufspannung Voc bei STC (25 °C) laut Datenblatt — Basis der
+   * Kalt-Voc-Berechnung (ELE-007). Ohne Wert wird das MPPT-Voc-Fenster
+   * nicht geprüft, sondern der Datenblattwert angefordert.
+   */
+  voc?: number;
+  /** Kurzschlussstrom Isc laut Datenblatt (ELE-007). Fehlt: Schätzung 1,25 × Imp. */
+  isc?: number;
+  /**
+   * Temperaturkoeffizient der Voc in %/K (negativ, z. B. −0.35).
+   * Default ohne Datenblatt: −0,35 %/K (schlechtester typischer c-Si-Wert).
+   */
+  tempCoefficient?: number;
 }
 
 export interface ChargerNodeData extends CommonNodeData {
@@ -71,7 +90,13 @@ export interface ChargerNodeData extends CommonNodeData {
   efficiency?: number;
 }
 
-export type MpptControllerNodeData = ChargerNodeData;
+export type MpptControllerNodeData = ChargerNodeData & {
+  /**
+   * Maximal zulässige PV-Eingangsspannung (Voc,max) des MPPT — Basis der
+   * Kalt-Voc-Fensterprüfung (ELE-007). Ohne Wert keine Prüfung.
+   */
+  maxPvVoltage?: number;
+};
 export type DcdcChargerNodeData = ChargerNodeData;
 export type AcBatteryChargerNodeData = ChargerNodeData;
 
@@ -86,11 +111,18 @@ export interface FuseNodeData extends CommonNodeData {
   rating?: number;
 }
 
-// Batteriemonitor/Massepunkt/Wechselrichter führen keine über die Basis
-// hinaus deklarierten Felder; eigene Aliase halten die Registry explizit.
+// Batteriemonitor/Massepunkt führen keine über die Basis hinaus deklarierten
+// Felder; eigene Aliase halten die Registry explizit.
 export type ShuntNodeData = CommonNodeData;
 export type GroundNodeData = CommonNodeData;
-export type InverterNodeData = CommonNodeData;
+
+/** AUDIT AC-001: Wechselrichter-Daten — FI am AC-Ausgang ist pflegbar. */
+export interface InverterNodeData extends CommonNodeData {
+  /** Dauerleistung in W (Basis der DC-Eingangsstrom-Berechnung, ELE-006). */
+  continuousPower?: number;
+  /** Vorhandensein eines FI/LS (RCD ≤ 30 mA) im AC-Ausgangskreis. */
+  hasRcd?: boolean;
+}
 
 export interface ShorePowerNodeData extends CommonNodeData {
   /** Vorhandensein eines 30-mA-RCD (DIN VDE 0100-721). */

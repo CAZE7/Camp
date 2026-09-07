@@ -674,15 +674,17 @@ describe('G7 — sizeDcEdges-Konvergenz (AUDIT-AUTOWIRE Issue 3/9)', () => {
 });
 
 describe('Shrinking-Anker (gemeldete Gegenbeispiele)', () => {
-  it('(a) 16.000000000000004 A auf 1.5 mm²: Sicherung bleibt bei 16 A', () => {
+  it('(a) 16.000000000000004 A auf 2.5 mm²: Sicherung bleibt bei 16 A', () => {
     // fast-check, Seed 20260821 → Counterexample: [16.000000000000004, 1.5]
     // Gemeldet, als selectFuseSize testweise ohne Obergrenze suchte.
-    // Der Gleitkommawert liegt minimal über FUSE_MAP[1.5] = 16 A; die
-    // Auswahl darf trotzdem nicht auf 20 A springen — das Kabel wäre
-    // ungeschützt.
+    // ELE-001: Seit der abgeleiteten FUSE_MAP gilt die 16-A-Grenze für
+    // 2,5 mm² (23 × 0.7 = 16,1 A). Der Gleitkommawert liegt minimal über
+    // 16 A; die Auswahl darf trotzdem nicht auf 20 A springen — das Kabel
+    // wäre ungeschützt. Auf 1,5 mm² ist 16 A ohnehin unzulässig (max. 10 A).
     const current = 16.000000000000004;
-    expect(selectFuseSize(current, 1.5)).toBe(16);
-    expect(selectFuseSize(current, 1.5)).toBeLessThanOrEqual(FUSE_MAP[1.5]!);
+    expect(selectFuseSize(current, 2.5)).toBe(16);
+    expect(selectFuseSize(current, 2.5)).toBeLessThanOrEqual(FUSE_MAP[2.5]!);
+    expect(isFuseFeasible(current, 2.5)).toBe(false);
     expect(isFuseFeasible(current, 1.5)).toBe(false);
   });
 
@@ -808,7 +810,10 @@ describe('Shrinking-Anker (gemeldete Gegenbeispiele)', () => {
     expect(isFuseFeasible(200, 70)).toBe(false);
     expect(selectFuseSize(200, 70)).toBe(FUSE_MAP[70]);
     expect(selectFuseSize(0.1, 1.5)).toBe(5);
-    expect(selectFuseSize(16, 1.5)).toBe(16);
+    // ELE-001: 16 A sind auf 1,5 mm² unzulässig (max. 10 A) — Rückgabe
+    // ist die Kabelgrenze als Signal; zulässig ist 16 A ab 2,5 mm².
+    expect(selectFuseSize(16, 1.5)).toBe(10);
+    expect(selectFuseSize(16, 2.5)).toBe(16);
     expect(calculateCrossSection(0, 5)).toBe(1.5);
     expect(lookupThermalCrossSection(0)).toBe(1.5);
   });

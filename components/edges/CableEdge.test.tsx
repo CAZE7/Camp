@@ -105,12 +105,13 @@ describe('CableEdge', () => {
     // calculatedA = (10 * (5 * 2)) / (58 * 0.36) = 100 / 20.88 = 4.79
     // minRequiredA = max(1.5, 4.79) = 4.79
     // VDE_SIZES = [1.5, 2.5, 4.0, 6.0, 10.0, 16.0, ...], first size >= 4.79 is 6.0
-    // cs = 6.0 => mf = 32 (VDE 0298-4)
+    // cs = 6.0 => FUSE_MAP[6] = 25 (abgeleitet aus Tabellen-Belastbarkeit
+    // 36 A × 0.7 Derating = 25,2 A → größte Norm-Sicherung darunter: 25 A)
 
     const { getByText } = render(<CableEdge {...defaultProps} selected={true} />);
 
     expect(getByText(/6 mm²/)).toBeInTheDocument();
-    expect(getByText('Max: 32A')).toBeInTheDocument();
+    expect(getByText('Max: 25A')).toBeInTheDocument();
   });
 
   it('calculates crossSection and maxFuse when target is mpptController', () => {
@@ -124,12 +125,13 @@ describe('CableEdge', () => {
 
     // calculatedA = (30 * (5 * 2)) / (58 * 0.36) = 300 / 20.88 = 14.36
     // VDE_SIZES = [... 10.0, 16.0, 25.0, ...], first size >= 14.36 is 16.0
-    // cs = 16.0 => mf = 63 (VDE 0298-4)
+    // cs = 16.0 => FUSE_MAP[16] = 40 (Belastbarkeit 16 mm² = 64 A,
+    // Design 64 × 0.7 = 44.8 → größte Sicherung ≤ 44.8 ist 40 A)
 
     const { getByText } = render(<CableEdge {...defaultProps} selected={true} />);
 
     expect(getByText(/16 mm²/)).toBeInTheDocument();
-    expect(getByText('Max: 63A')).toBeInTheDocument();
+    expect(getByText('Max: 40A')).toBeInTheDocument();
   });
 
   it('uses fallback logic to calculate total watts from all consumers when no source/target match', () => {

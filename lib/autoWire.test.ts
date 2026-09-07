@@ -14,7 +14,9 @@ import {
 } from './autoWire';
 import { volts } from './units';
 import type { CableEdgeData } from '../components/edges/CableEdge';
-import { FUSE_MAP } from './electrical';
+import { FUSE_MAP, VDE_SIZES } from './electrical';
+import { isStarterBattery } from './autoWire/validation';
+import { getSystemVoltage } from './vde-standards';
 
 function n(id: string, type: string, data: Record<string, unknown> = {}, position = { x: 0, y: 0 }): Node {
   return { id, type, position, data } as Node;
@@ -397,6 +399,42 @@ describe('autoWire — sizeAcEdges', () => {
     expect(edges[0]?.data?.crossSection).toBe(4);
     expect(edges[1]?.data).toBeUndefined();
   });
+
+  it('CRASH-001: wirft nie bei Alt-/Import-Querschnitten (95/0/NaN/3) und normiert stattdessen', () => {
+    // Fuzz-Fund (400 Graphen, 5 Abstürze): eine AC-Kante mit
+    // data.crossSection = 95 aus Altplänen/localStorage riss mit
+    // RangeError („Unbekannter Querschnitt: 95mm²") den GESAMTEN
+    // AutoWire-Lauf. Gefordert: nie werfen, symmetrisch zum DC-Pfad
+    // normieren/absichern.
+    const nodes = [n('sp', 'shorePower', { rating: 16 }), n('c1', 'consumer230v', { watts: 230 })];
+    for (const cs of [95, 0, NaN, 3]) {
+      const edges: Edge<CableEdgeData>[] = [
+        e({
+          id: 'ac1',
+          source: 'sp',
+          target: 'c1',
+          sourceHandle: 'plus',
+          targetHandle: 'plus',
+          data: { length: 2, crossSection: cs, edgeDomain: 'AC_230V' },
+        }),
+      ];
+      expect(() => sizeAcEdges(edges, nodes), `cs=${cs} darf nie werfen`).not.toThrow();
+      const out = edges[0]?.data;
+      expect(out, `cs=${cs} muss crossSection setzen`).toBeDefined();
+      if (cs === 95) {
+        // Nutzerquerschnitt bleibt (nie schwächen), Absicherung über die
+        // 70-mm²-Normbestung, da 95 nicht in FUSE_MAP liegt. fuseWarning
+        // wird gesetzt (hier false: 16 A ≤ 100 A Grenze der 70-mm²-Bestung).
+        expect(out?.crossSection).toBe(95);
+        expect(out?.fuseSize).toBeLessThanOrEqual(FUSE_MAP[70] ?? 0);
+        expect(out?.fuseWarning).toBe(false);
+      } else {
+        // 0/NaN → Minimum der Normreihe, 3 → nächstgrößere Normstufe.
+        expect(out?.crossSection).toBeGreaterThanOrEqual(1.5);
+        expect(VDE_SIZES).toContain(out?.crossSection as number);
+      }
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -422,6 +460,95 @@ describe('autoWire — pickHouseBattery', () => {
 // ---------------------------------------------------------------------------
 // applyFuseSizes — Sicherungsauswahl (R3, ELEC-001)
 // ---------------------------------------------------------------------------
+describe('autoWire — ELE-007: Solar-Sicherung nach 1,56×Isc-Regel', () => {
+  it('ohne Datenblatt-Isc: Sicherung ≥ 1,56 × 1,25 × Imp und tragender Querschnitt', () => {
+    // 200-W-Panel: Imp = 11,1 A; Schätz-Isc = 13,9 A; Floor = 21,7 A.
+    // Sicherung 25 A braucht nach FUSE_MAP mind. 6 mm² (25 A) — der
+    // Querschnitt wächst automatisch mit (Bump-Mechanismus).
+    const nodes = [
+      n('b1', 'battery', {}),
+      n('p1', 'solar', { watts: 200 }),
+      n('m1', 'mpptController', { amps: 20 }),
+    ];
+    const edges: Edge<CableEdgeData>[] = [
+      e({
+        id: 'sol1',
+        source: 'p1',
+        target: 'm1',
+        data: { length: 2, edgeDomain: 'Solar' },
+      }),
+    ];
+    sizeDcEdges(edges, nodes, edges, volts(12.8));
+    applyFuseSizes(edges, nodes, volts(12.8), undefined, edges);
+    const cs = edges[0]?.data?.crossSection as number;
+    const fuse = edges[0]?.data?.fuseSize as number;
+    expect(fuse).toBeGreaterThanOrEqual(21.7);
+    expect(fuse).toBeLessThanOrEqual(FUSE_MAP[cs] ?? 0);
+    expect(cs).toBeGreaterThanOrEqual(6);
+  });
+
+  it('mit Datenblatt-Isc: Sicherung direkt über 1,56 × Isc (keine Überschätzung)', () => {
+    // Victron-ähnliches 200-W/12-V-Panel: Isc 11,44 A → Floor 17,9 A → 20 A.
+    const nodes = [
+      n('b1', 'battery', {}),
+      n('p1', 'solar', { watts: 200, isc: 11.44 }),
+      n('m1', 'mpptController', { amps: 20 }),
+    ];
+    const edges: Edge<CableEdgeData>[] = [
+      e({ id: 'sol1', source: 'p1', target: 'm1', data: { length: 2, edgeDomain: 'Solar' } }),
+    ];
+    sizeDcEdges(edges, nodes, edges, volts(12.8));
+    applyFuseSizes(edges, nodes, volts(12.8), undefined, edges);
+    expect(edges[0]?.data?.fuseSize).toBe(20);
+    expect(edges[0]?.data?.crossSection).toBeGreaterThanOrEqual(4); // FUSE_MAP[4] = 20
+  });
+});
+
+describe('autoWire — AUTO-003: Chemie-Parallelen und Rollen-Feld', () => {
+  it('AGM ‖ Gel wird NICHT auf die gemeinsame Schiene gelegt', () => {
+    const out = performAutoWiring([
+      n('b1', 'battery', { label: 'Aufbau AGM', capacity: 100, chemistry: 'AGM' }),
+      n('b2', 'battery', { label: 'Aufbau Gel', capacity: 100, chemistry: 'Gel' }),
+      n('c1', 'consumer', { label: 'Pumpe', watts: 40 }),
+    ])!;
+    // Beide Batterien mit Plus-Kante zur selben Schiene wäre die gefährliche
+    // Parallelschaltung — Gel muss unverbunden bleiben.
+    const plusEdgesFromGel = out.edges.filter((edge) => edge.source === 'b2' || edge.target === 'b2');
+    expect(plusEdgesFromGel).toHaveLength(0);
+  });
+
+  it('identische Chemie (AGM ‖ AGM) wird weiter parallel geschaltet', () => {
+    const out = performAutoWiring([
+      n('b1', 'battery', { label: 'Aufbau 1', capacity: 100, chemistry: 'AGM' }),
+      n('b2', 'battery', { label: 'Aufbau 2', capacity: 100, chemistry: 'AGM' }),
+      n('c1', 'consumer', { label: 'Pumpe', watts: 40 }),
+    ])!;
+    expect(out.edges.some((edge) => edge.source === 'b2' || edge.target === 'b2')).toBe(true);
+  });
+
+  it("role='house' gewinnt über das Label 'Starter…' (kein stiller Rollenwechsel)", () => {
+    const starter = n('s1', 'battery', {
+      label: 'Starterbatterie',
+      chemistry: 'AGM',
+      role: 'house',
+      nominalVoltage: 12,
+    });
+    const house = n('h1', 'battery', { label: 'Wohnbatterie', chemistry: 'LiFePO4' });
+    expect(isStarterBattery(starter)).toBe(false);
+    expect(isStarterBattery(n('s2', 'battery', { label: 'Starterbatterie', chemistry: 'AGM' }))).toBe(true);
+    expect(isStarterBattery(house)).toBe(false);
+    // Spannungspriorität folgt der Rolle: die Aufbaubatterie (Vorrang, 12 V)
+    // gewinnt gegen die 24-V-Batterie mit expliziter starter-Rolle.
+    const house12 = n('h2', 'battery', { label: 'Wohnbatterie', chemistry: 'LiFePO4', nominalVoltage: 12 });
+    expect(
+      getSystemVoltage([
+        house12,
+        n('s3', 'battery', { label: 'Zweitbatterie', role: 'starter', nominalVoltage: 24 }),
+      ]).valueOf()
+    ).toBeCloseTo(12, 6);
+  });
+});
+
 describe('autoWire — applyFuseSizes', () => {
   it('setzt eine Sicherung ≤ Kabel-Max (FUSE_MAP)', () => {
     const nodes = [n('b1', 'battery', {}), n('c1', 'consumer', { watts: 60 })];

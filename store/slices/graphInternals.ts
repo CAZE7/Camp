@@ -80,6 +80,17 @@ export function plannerGraphSignature(nodes: Node[], edges: Edge[]): string {
         n.data?.totalAmps,
         n.data?.nominalVoltage,
         n.data?.chemistry,
+        // AUDIT CACHE-001: Diese Felder ändern Ströme/Warnungen, fehlten aber
+        // in der Signatur — calculatePathVoltageDrop lieferte nach einer
+        // continuousPower-/rating-Änderung STALE Werte aus dem Cache, bis ein
+        // anderes getracktes Feld sich änderte (falsch-grüne Spannungsfall-
+        // Anzeige). capacity/hours treiben die Kapazitäts-, rating/hasRcd die
+        // Warn-Berechnung.
+        n.data?.continuousPower,
+        n.data?.capacity,
+        n.data?.hours,
+        n.data?.rating,
+        n.data?.hasRcd,
       ].join('|')
     )
     .join('~');

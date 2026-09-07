@@ -57,6 +57,16 @@ function consequence(warning: ValidationWarning) {
 function nextStep(warning: ValidationWarning) {
   if (warning.id.startsWith('missing-fuse'))
     return 'So löst du es: Füge am Anfang der Plusleitung eine passende Sicherung oder einen Sicherungskasten ein.';
+  if (warning.id.startsWith('reversed-polarity'))
+    return 'So löst du es: Trenne die Kante und verbinde Plus mit Plus sowie Minus mit Minus (Plus↔Minus ist nur zwischen verschiedenen Polaritäten zulässig).';
+  if (warning.id.startsWith('inverter-missing-rcd'))
+    return 'So löst du es: Setze am Wechselrichter-Ausgang einen FI/LS (RCD, ≤ 30 mA) — im Inspektor des Wechselrichters als vorhanden markieren, sobald verbaut.';
+  if (warning.id.startsWith('battery-parallel-chemistry'))
+    return 'So löst du es: Trenne die Parallelschaltung und verwende Batterien derselben Chemie (z. B. nur AGM oder nur Gel).';
+  if (warning.id.startsWith('solar-voc-window'))
+    return 'So löst du es: Reduziere die Anzahl der Panels in Serie oder wähle einen Laderegler mit höherer maximaler PV-Eingangsspannung.';
+  if (warning.id.startsWith('solar-voc-missing'))
+    return 'So löst du es: Trage im Panel-Inspektor die Leerlaufspannung (Voc) aus dem Datenblatt ein — erst dann kann das Regler-Fenster geprüft werden.';
   if (warning.id === 'solar-overload')
     return 'So löst du es: Wähle einen Solar-Laderegler mit höherem zulässigem Ladestrom oder reduziere die Solarleistung.';
   if (warning.id === 'battery-capacity')
@@ -181,6 +191,15 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
                       <p className="mt-1 text-sm leading-relaxed text-ink-soft">
                         <strong>Problem:</strong> {toPlainExplanation(warning.message)}
                       </p>
+                      {(warning.measuredValue !== undefined || warning.expectedValue !== undefined) && (
+                        <p className="mt-1 font-mono text-xs leading-relaxed text-ink-soft">
+                          Ist: {warning.measuredValue ?? '—'}
+                          {warning.measuredValue !== undefined && warning.unit ? ` ${warning.unit}` : ''}
+                          {' · Soll: '}
+                          {warning.expectedValue ?? '—'}
+                          {warning.source ? ` · Regel: ${warning.source}` : ''}
+                        </p>
+                      )}
                       <p className="mt-1 text-sm leading-relaxed text-ink-soft">{consequence(warning)}</p>
                       <p className="mt-1 text-sm font-semibold leading-relaxed text-foreground">
                         {nextStep(warning)}

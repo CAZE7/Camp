@@ -1,4 +1,4 @@
-import type { Node } from '@xyflow/react';
+import type { Node } from '../../domain/graph'; // ARCH-001
 import { routeAllCables, type RouteEdgeRef } from '../../../components/edges/utils/routeAll';
 import { segmentsCross, waypointsToSegments, type Point, type Segment } from '../geometry';
 import { countBends } from '../geometry';
