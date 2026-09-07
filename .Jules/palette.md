@@ -67,3 +67,7 @@
 
 **Learning:** Standalone toggle buttons and segmented controls acting as pseudo-radio groups (like the 'Sommer'/'Winter' toggles) must convey which option is currently active to assistive technologies. Without this, screen reader users cannot perceive the current state or understand the result of their selection.
 **Action:** Always add `aria-pressed={condition}` to any button that visually toggles between active and inactive states.
+## 2026-09-07 - Add loading states to async Chat Submissions
+
+**Learning:** When users submit a chat message, giving an indication that the request is processing is crucial for UX. Before this change, the chat form only disabled the submit button during `isLoading` but did not provide a visual cue. Adding a `Loader2` from `lucide-react` with `animate-spin` makes it clear the action is processing, enhancing usability and reducing potential for user frustration when the submission is delayed by the server.
+**Action:** When implementing async chat components or forms, always conditionally render a loading spinner inside the submit button based on the `isLoading` state, instead of just disabling the button.
