@@ -98,7 +98,6 @@ export interface PlannerState {
   autoWireSystem: () => void;
   onLayout: () => void;
   onLayoutV2: () => Promise<void>;
-  rerouteV2: () => void;
   onDrop: (
     event: React.DragEvent,
     screenToFlowPosition: (client: { x: number; y: number }) => { x: number; y: number }

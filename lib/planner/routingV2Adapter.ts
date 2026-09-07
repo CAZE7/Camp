@@ -1,52 +1,29 @@
 /**
  * lib/planner/routingV2Adapter.ts
  *
- * Adapter between the React Flow types used by the UI/store and the pure
- * Routing V2 engine. This is the only place that translates between the two
- * type families.
+ * Adapter between the React Flow types used by the UI/store and the ELK/Dagre
+ * layout engines. This is the only place that translates between the two type
+ * families.
+ *
+ * Scope note: this module produces NODE POSITIONS only. Cable geometry is owned
+ * exclusively by the global routing pass in `lib/routing/rules` (driven by
+ * `components/edges/utils/cableRouteStore`). A second, parallel router used to
+ * live under `lib/planner/routing-v2` and wrote `data.geometry` here; it
+ * decided crossing hops by comparing edge IDs and priced overlaps as merely
+ * expensive instead of forbidden, silently overriding the mature pass. It was
+ * removed — see the consolidation note in `docs/`.
  */
 
 import type { Edge, Node } from '@xyflow/react';
 import type { CableEdgeData } from '../../components/edges/CableEdge';
-import {
-  type PlannerEdge as DomainEdge,
-  type PlannerNode as DomainNode,
-  type PlannerNodeData,
-} from './domainModel';
 import type { LayoutRequest, LayoutResult } from './layout-engine/contract';
-import { routeAllEdges } from './routing-v2/orchestrator';
 
 export type V2Node = Node;
 export type V2CableEdge = Edge<CableEdgeData>;
-export type V2GeometryPoint = { x: number; y: number };
-
-/**
- * Runs Routing V2 on React Flow nodes/edges and returns the same edge array
- * with `data.geometry` attached to every edge that was successfully routed.
- * Edges whose endpoints are not present are preserved unchanged.
- */
-export function routeEdgesV2(nodes: readonly V2Node[], edges: readonly V2CableEdge[]): V2CableEdge[] {
-  const domainNodes = nodes.map(toDomainNode);
-  const domainEdges = edges.map(toDomainEdge);
-  const result = routeAllEdges({ nodes: domainNodes, edges: domainEdges });
-  const geometryByEdge = new Map(result.edges.map((edge) => [edge.edgeId, edge.points.map(toPosition)]));
-
-  return edges.map((edge) => {
-    const points = geometryByEdge.get(edge.id);
-    if (!points) return edge;
-    return {
-      ...edge,
-      data: {
-        ...(edge.data ?? {}),
-        geometry: { points },
-      },
-    } as V2CableEdge;
-  }) as V2CableEdge[];
-}
 
 /**
  * Runs the industrial layout pipeline: ELK first, Dagre as a deterministic
- * fallback, then Routing V2 to produce final cable geometry.
+ * fallback. Returns repositioned nodes; edges are passed through untouched.
  *
  * ELK is loaded lazily only when this function runs. The dependency is a client
  * bundle dependency so the app keeps working as a static export (the repo's
@@ -105,37 +82,6 @@ export async function applyAdvancedLayout(
 
   return {
     nodes: layoutedNodes,
-    edges: routeEdgesV2(layoutedNodes, edges),
+    edges: [...edges],
   };
-}
-
-// ---------------------------------------------------------------------------
-// Private conversions
-// ---------------------------------------------------------------------------
-
-function toDomainNode(node: V2Node): DomainNode<PlannerNodeData> {
-  return {
-    id: node.id,
-    type: typeof node.type === 'string' ? node.type : 'unknown',
-    position: { x: node.position.x, y: node.position.y },
-    data: node.data as PlannerNodeData,
-    width: typeof node.width === 'number' ? node.width : undefined,
-    height: typeof node.height === 'number' ? node.height : undefined,
-  };
-}
-
-function toDomainEdge(edge: V2CableEdge): DomainEdge {
-  return {
-    id: edge.id,
-    source: edge.source,
-    target: edge.target,
-    sourceHandle: edge.sourceHandle ?? undefined,
-    targetHandle: edge.targetHandle ?? undefined,
-    type: edge.type,
-    data: edge.data,
-  };
-}
-
-function toPosition(point: { x: number; y: number }): V2GeometryPoint {
-  return { x: point.x, y: point.y };
 }

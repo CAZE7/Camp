@@ -1,7 +1,7 @@
 import { addEdge, applyNodeChanges, applyEdgeChanges } from '@xyflow/react';
 import type { Node, Edge } from '@xyflow/react';
 import { getLayoutedElements } from '../../components/planner/utils/layout';
-import { routeEdgesV2, applyAdvancedLayout } from '../../lib/planner/routingV2Adapter'; // Routing V2
+import { applyAdvancedLayout } from '../../lib/planner/routingV2Adapter'; // ELK/Dagre-Layout
 import { TEMPLATES_DICT } from '../../components/planner/templates';
 import { getEdgeDomain } from '../../lib/electrical';
 import { isConnectionAllowed } from '../../lib/connectionRules'; // ARCH-002
@@ -67,7 +67,6 @@ export type GraphSlice = Pick<
   | 'clearPlan'
   | 'calculatePathVoltageDrop'
   | 'onLayoutV2'
-  | 'rerouteV2'
 >;
 
 export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
@@ -76,12 +75,12 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
   setNodes: (update) =>
     set((state) => {
       const nodes = typeof update === 'function' ? update(state.nodes) : update;
-      return withHistory(state, { nodes, edges: routeEdgesV2(nodes, state.edges) });
+      return withHistory(state, { nodes });
     }),
   setEdges: (update) =>
     set((state) => {
       const edges = typeof update === 'function' ? update(state.edges) : update;
-      return withHistory(state, { edges: routeEdgesV2(state.nodes, edges) });
+      return withHistory(state, { edges });
     }),
   waterNodes: [],
   waterEdges: [],
@@ -110,7 +109,7 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
         );
         return withHistory(state, {
           nodes: newNodes,
-          edges: routeEdgesV2(newNodes, remaining),
+          edges: remaining,
         });
       }
       // Während des Ziehens nicht jeden Pixel als eigenen Undo-Schritt speichern.
@@ -123,9 +122,7 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
     set((state) => {
       const nextEdges = applyEdgeChanges(changes, state.edges) as Edge<CableEdgeData>[];
       const structural = changes.some((change) => change.type === 'add' || change.type === 'remove');
-      return structural
-        ? withHistory(state, { edges: routeEdgesV2(state.nodes, nextEdges) })
-        : { edges: nextEdges };
+      return structural ? withHistory(state, { edges: nextEdges }) : { edges: nextEdges };
     }),
   onWaterNodesChange: (changes) =>
     set((state) => {
@@ -210,7 +207,7 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
       const nextNodes = state.nodes.filter(filterNode);
       return withHistory(state, {
         nodes: nextNodes,
-        edges: routeEdgesV2(nextNodes, state.edges.filter(filterEdge)),
+        edges: state.edges.filter(filterEdge),
         waterNodes: state.waterNodes.filter(filterNode),
         waterEdges: state.waterEdges.filter(filterEdge),
         selectedNodes: [],
@@ -338,7 +335,7 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
     };
     set((state) =>
       withHistory(state, {
-        edges: routeEdgesV2(state.nodes, addEdge(newEdge, state.edges) as Edge<CableEdgeData>[]),
+        edges: addEdge(newEdge, state.edges) as Edge<CableEdgeData>[],
       })
     );
   },
@@ -362,9 +359,7 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
     // Flussrichtung wieder auf (Kabel-Umwege, M11-2) und verschob
     // handplatzierte Bauteile. Das Spalten-Layout bleibt dem expliziten
     // „Aufräumen“-Knopf (onLayout) vorbehalten.
-    set((state) =>
-      withHistory(state, { nodes: [...result.nodes], edges: routeEdgesV2(result.nodes, [...result.edges]) })
-    );
+    set((state) => withHistory(state, { nodes: [...result.nodes], edges: [...result.edges] }));
 
     if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
       window.requestAnimationFrame(() => {
@@ -416,7 +411,7 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
       set((state) =>
         withHistory(state, {
           nodes: templateNodes,
-          edges: routeEdgesV2(templateNodes, [...template.edges] as Edge<CableEdgeData>[]),
+          edges: [...template.edges] as Edge<CableEdgeData>[],
           // Wasserbewusst NICHT zurücksetzen: die Templates beschreiben nur
           // den Elektrikplan. Ein stiller Kollateralschaden auf waterNodes/
           // waterEdges war Datenverlust (nur über Undo erkennbar zurückholbar).
@@ -492,24 +487,19 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
     } else {
       set((state) => {
         const nodes = state.nodes.concat(newNode);
-        return withHistory(state, { nodes, edges: routeEdgesV2(nodes, state.edges) });
+        return withHistory(state, { nodes });
       });
     }
   },
-  // Routing V2 / ELK: separates Ziel-API — onLayout (dagre) bleibt als
-  // Fallback bestehen; der Toolbar-Button ruft onLayoutV2.
+  // ELK-Layout (Knotenpositionen). Die Kabelgeometrie entsteht danach
+  // reaktiv im globalen Routing-Pass (`CableRouteSync`), sobald sich die
+  // Layout-Signatur ändert — hier wird bewusst nicht mehr geroutet.
   onLayoutV2: async () => {
     const { nodes, edges } = get();
     const result = await applyAdvancedLayout(nodes, edges, 'LR');
     if (result) {
-      set((state) =>
-        withHistory(state, { nodes: result.nodes, edges: routeEdgesV2(result.nodes, result.edges) })
-      );
+      set((state) => withHistory(state, { nodes: result.nodes, edges: result.edges }));
     }
-  },
-  rerouteV2: () => {
-    const { nodes, edges } = get();
-    set({ edges: routeEdgesV2(nodes, edges) });
   },
   undo: () =>
     set((state) => {
