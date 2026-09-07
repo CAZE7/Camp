@@ -93,6 +93,24 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
     const edgesByTarget = new Map<string, Edge<CableEdgeData>[]>();
     const edgesBySource = new Map<string, Edge<CableEdgeData>[]>();
 
+    // ELE-008: Mischspannungsplan verhindern
+    if (batteries.length > 1) {
+      const voltages = new Set(batteries.map((b) => Number(b.data?.voltage) || 12));
+      if (voltages.size > 1) {
+        warnings.push({
+          id: 'mixed-voltage-batteries',
+          category: 'topology',
+          type: 'critical',
+          title: 'Mischspannung (12 V / 24 V)',
+          message: 'Batterien mit unterschiedlichen Nennspannungen im Plan. Dies ist gefährlich und wird vom Berechnungsmodell nicht unterstützt.',
+          ruleId: 'ELE-008-mixed-voltage',
+          measuredValue: Array.from(voltages).join(' V, ') + ' V',
+          expectedValue: 'einheitliche Spannung',
+          unit: 'V'
+        });
+      }
+    }
+
     for (const edge of edges) {
       let targetList = edgesByTarget.get(edge.target);
       if (!targetList) {
@@ -364,6 +382,42 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
           source: 'DIN VDE 0100-721 (Landstromanschluss Wohnmobil)',
           message: `Am Landstromanschluss „${sp.data?.label || 'Landstrom'}" fehlt ein FI-Schutzschalter mit höchstens 30 mA (RCD ≤ 30 mA). Nach DIN VDE 0100-721 ist dieser zwingend vorgeschrieben — Stromschlaggefahr. Lass den 230-V-Schutz von einer Elektrofachkraft einplanen.`,
         });
+      }
+    });
+
+    // --- Rule A4: Direktes Solar an DC (ohne MPPT) ---
+    edges.forEach((edge) => {
+      const sourceNode = nodeMap.get(edge.source);
+      const targetNode = nodeMap.get(edge.target);
+      if (!sourceNode || !targetNode) return;
+
+      const isSourceSolar = sourceNode.type === 'solar' || sourceNode.type === 'roofSolar';
+      const isTargetSolar = targetNode.type === 'solar' || targetNode.type === 'roofSolar';
+      
+      if (isSourceSolar || isTargetSolar) {
+        const otherNode = isSourceSolar ? targetNode : sourceNode;
+        const isOtherSolar = otherNode.type === 'solar' || otherNode.type === 'roofSolar';
+        const isCharger = otherNode.type === 'mpptController' || otherNode.type === 'charger';
+        const isFuse = otherNode.type === 'fuse';
+        const isConduit = otherNode.type === 'conduit';
+        const isGround = otherNode.type === 'ground'; // Solar minus to ground is sometimes OK
+
+        if (!isOtherSolar && !isCharger && !isFuse && !isConduit && !isGround) {
+          const solarNode = isSourceSolar ? sourceNode : targetNode;
+          warnings.push({
+            id: `solar-direct-${edge.id}`,
+            category: 'topology',
+            type: 'critical',
+            title: 'Solar ohne Laderegler',
+            message: `Kritisch: Das Solarmodul "${solarNode.data?.label || 'Solar'}" ist direkt mit "${otherNode.data?.label || otherNode.type}" verbunden. Solarmodule müssen zwingend über einen Laderegler (MPPT) an das System angeschlossen werden!`,
+            focusId: edge.id,
+            focusType: 'edge',
+            ruleId: 'ELE-009-solar-direct',
+            measuredValue: `Solar → ${otherNode.type}`,
+            expectedValue: 'Solar → Laderegler',
+            unit: ''
+          });
+        }
       }
     });
 

@@ -464,4 +464,50 @@ describe('useLiveValidation', () => {
       expect(result.current.find((w) => w.id === 'missing-rcd-1')).toBeUndefined();
     });
   });
+
+  describe('Missing coverage: verpolte Batterie, direktes Solar, Mischspannung, Inverter-RCD', () => {
+    const node = (id: string, type: string, data: any): Node => ({ id, type, position: { x: 0, y: 0 }, data } as Node);
+
+    it('warnt bei verpolter Batterie (ELE-003)', () => {
+      const nodes = [node('b1', 'battery', {}), node('b2', 'battery', {})];
+      const edges = [{ id: 'e1', source: 'b1', target: 'b2', sourceHandle: 'plus', targetHandle: 'minus' }] as any[];
+      const { result } = renderHook(() => useLiveValidation(nodes, edges));
+      const warning = result.current.find((w) => w.ruleId === 'ELE-003-reversed-polarity');
+      expect(warning).toBeDefined();
+      expect(warning!.measuredValue).toBe('plus → minus');
+    });
+
+    it('warnt bei direktem Anschluss von Solar an Batterie (ELE-009)', () => {
+      const nodes = [node('s1', 'solar', { label: 'Panel' }), node('b1', 'battery', {})];
+      const edges = [{ id: 'e1', source: 's1', target: 'b1', sourceHandle: 'plus', targetHandle: 'plus' }] as any[];
+      const { result } = renderHook(() => useLiveValidation(nodes, edges));
+      const warning = result.current.find((w) => w.ruleId === 'ELE-009-solar-direct');
+      expect(warning).toBeDefined();
+      expect(warning!.measuredValue).toBe('Solar → battery');
+    });
+
+    it('warnt bei Mischspannungsplan (ELE-008)', () => {
+      const nodes = [
+        node('b1', 'battery', { voltage: 12 }),
+        node('b2', 'battery', { voltage: 24 })
+      ];
+      const { result } = renderHook(() => useLiveValidation(nodes, []));
+      const warning = result.current.find((w) => w.ruleId === 'ELE-008-mixed-voltage');
+      expect(warning).toBeDefined();
+      expect(warning!.measuredValue).toMatch(/12 V/);
+      expect(warning!.measuredValue).toMatch(/24 V/);
+    });
+
+    it('warnt bei Inverter ohne RCD (AC-001)', () => {
+      const nodes = [
+        node('inv', 'inverter', { hasRcd: false }),
+        node('c1', 'consumer230v', {})
+      ];
+      const edges = [{ id: 'e1', source: 'inv', target: 'c1', sourceHandle: 'acOut', targetHandle: 'acIn', data: { edgeDomain: 'AC_230V' } }] as any[];
+      const { result } = renderHook(() => useLiveValidation(nodes, edges));
+      const warning = result.current.find((w) => w.ruleId === 'AC-001-inverter-rcd');
+      expect(warning).toBeDefined();
+      expect(warning!.measuredValue).toBe('1 × 230-V-Verbraucher ohne FI');
+    });
+  });
 });

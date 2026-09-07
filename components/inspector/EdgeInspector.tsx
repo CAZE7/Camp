@@ -95,7 +95,7 @@ export function EdgeInspector({
             className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
           />
           <p className="mt-1 text-xs text-muted-foreground">
-            Die Hauptsicherung soll möglichst direkt am Batteriepol sitzen (fachüblich: ungeschützte Strecke ≤
+            Die Hauptsicherung soll möglichst direkt am Batteriepol sitzen (ISO 10133 / ABYC E-11: ungeschützte Strecke ≤
             0,2 m).
           </p>
         </div>
