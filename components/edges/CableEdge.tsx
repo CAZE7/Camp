@@ -35,7 +35,7 @@ export const TAP_LABEL_TIMEOUT_MS = 5000;
  * (lib/domain/cableEdgeData.ts) — lib/ importierte ihn typseitig aus einer
  * Komponente. Re-Export hält bestehende Importe stabil.
  */
-export type { CableEdgeData } from '../../lib/domain/cableEdgeData';
+export type { CableEdgeData, CableEdgeGeometry } from '../../lib/domain/cableEdgeData';
 import type { CableEdgeData } from '../../lib/domain/cableEdgeData';
 import { solarEdgeFuseFloorOf } from '../../lib/solar'; // ELE-007: 1,56×Isc-Sicherungsregel
 
@@ -398,6 +398,15 @@ const CableEdge = function ({
     labelX,
     labelY,
   } = useMemo(() => {
+    // Routing V2: explizit berechnete Polyline hat Vorrang.
+    const routedPoints = data?.geometry?.points;
+    if (routedPoints && routedPoints.length >= 2) {
+      const path = routedPoints
+        .map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`)
+        .join(' ');
+      const mid = routedPoints[Math.floor((routedPoints.length - 1) / 2)] ?? routedPoints[0]!;
+      return { path, labelX: mid.x, labelY: mid.y };
+    }
     if (globalRoute) {
       return { path: globalRoute.path, labelX: globalRoute.labelX, labelY: globalRoute.labelY };
     }
@@ -423,6 +432,7 @@ const CableEdge = function ({
     });
     return { path: routed.path, labelX: routed.labelX, labelY: routed.labelY };
   }, [
+    data?.geometry?.points,
     globalRoute,
     sourceX,
     sourceY,

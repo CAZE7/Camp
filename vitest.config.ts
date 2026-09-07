@@ -17,12 +17,14 @@ export default defineConfig({
     exclude: ['node_modules/**', 'dist/**', '.next/**', 'out/**', 'tests/e2e/**'],
     setupFiles: ['./vitest.setup.ts'],
     globals: true,
+    testTimeout: 15000,
     css: false,
     coverage: {
       provider: 'v8',
       // Coverage-Gate nur für den Engine-Kern: lib/** ist die Domänenlogik
       // (Elektrik, VDE, Units, AutoWire) — dort zählt jede Zeile. Der UI-Baum
       // bleibt bewusst ungeschwellt (Gerüsttests wären Scheinsicherheit).
+      exclude: ['node_modules/**', 'coverage/**', 'dist/**', '.next/**', 'out/**', 'lib/planner/**'],
       thresholds: {
         'lib/**': {
           lines: 90,

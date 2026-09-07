@@ -1,342 +1,330 @@
-# ROUTING-V2 — Spezifikation des Kabel-Routings
+# ROUTING-V2
 
-> **Status: SPEC-FIRST (eingefroren per Freeze-Gate).**
-> Dieses Dokument ist die Spezifikation **vor** dem Programmieren, nicht die Dokumentation danach.
-> Es wird in Phase 0 erstellt und vor Implementierungsbeginn eingefroren (siehe Epic #389).
-> Änderungen nach dem Freeze nur noch via ADR (`docs/adr/`) + Eintrag im Change Ledger
-> (`docs/ARCHITECTURE-CHANGES.md`).
-> **Revision 2026-09-06:** Abgleich mit agent.md-Tracks S-1…S-5 / P-1…P-7 und M11-1
-> (Token-Zwillinge, Handle-Geometrie) — Änderungen siehe Abschnitte 3, 5, 6.3, 10, 14, 16.
->
-> **Implementierungs-Status (AUDIT ROUTE-003, 2026-09-07):** Diese Spec beschreibt das
-> **Zielbild**, nicht den verdrahteten Ist-Zustand. Der Produktionspfad nutzt ausschließlich
-> das eigene 5-Rang-Spaltenlayout (`components/planner/utils/layout.ts`) + Hanan-A*
-> (`components/edges/utils/routeAll.ts` / `pathfinding.ts`). Der ELK-Pass
-> (`lib/routing/elk/`) ist implementiert und über Scripts (regression, goldenmaster,
-> ab-compare) vergleichbar, aber **nicht in der Anwendung aktiviert**; `classifyCollision`
-> wird vom A*-Pass nicht konsumiert (dort gelten COST_WEIGHTS + segmentHitsRect).
-> „ELK/A*-Konsistenz" (§12/R-3-Kontext) ist damit aktuell nur über die Scripts herstellbar.
+**Status: `FROZEN` (Spezifikation)**
+
+Dieses Dokument beschreibt die Routing-Pipeline V2 im Detail. Es ist die verbindliche
+Basis für `lib/planner/geometry`, `lib/planner/routing-core` und `lib/planner/routing-v2`.
 
 ---
 
-## 1. Zweck
+## 1. Ziel
 
-Das Kabel-Routing des Camp-Planners auf Industriestandard heben. Zwei Pässe, ein Regelwerk:
+Gegeben ein Schaltplan (Knoten mit Dimensionen + Handle-Ports, Kanten mit source/target),
+finde für jede Kante einen orthogonalen Pfad, der
 
-- **ELK Layered (elkjs)** als globaler Layout-Pass — Crossing-Minimization, orthogonales
-  Edge-Routing, Port-Constraints in einem Durchgang.
-- **Eigener Hanan-A\* als inkrementeller Pass** für Nutzerinteraktionen — Knotenpositionen
-  fixiert, nur betroffene Kanten neu routen (Drag-Interaktionen).
+- keinen Knoten / kein Hindernis schneidet,
+- den Mindestabstand (`cableClearance` bzw. `edgeNodeSpacing`) einhält,
+- Kollisionen mit anderen Leitungen minimiert,
+- Lane-Belegung (parallele Kabel) minimiert,
+- Crossings möglichst vermeidet,
+- deterministisch ist (gleiche Eingabe → gleicher Pfad).
 
-**Nicht-Ziel:** Negotiated Congestion / PathFinder — bewusst verworfen (Overkill für die
-Graphgröße; dokumentiert im Change Ledger).
+Routing ist **kein** reines 0/−/+off-Kandidatenwürfeln, sondern eine Suche über einen
+geometrisch aufgelösten Graphen (_Search Space_), der Hindernisse vollständig abbildet.
 
-## 2. Architekturvertrag
+---
 
-### 2.1 Schichtenmodell (CAMP V2, Richtung)
+## 2. Begriffe
 
-```text
-UI
- ↓
-React Flow Adapter
- ↓
-Planner Domain (AutoWire / Electrical / Validation)
- ↓
-Routing Engine
- ↓
-Layout / Rendering
-```
+| Begriff               | Definition                                                                |
+| --------------------- | ------------------------------------------------------------------------- |
+| Port                  | Ankerpunkt einer Kante am Knoten (`sourceHandle`, `targetHandle`)         |
+| Handle-Stub           | gerades Stück ab Port mit Länge `stubMin..stubMax`                        |
+| Knoten-Hindernis      | Bounding-Box eines Knotens                                                |
+| erweitertes Hindernis | `bboxEx = bbox ⊕ clearance` (Minkowski um `edgeNodeSpacing/2`)            |
+| Kanal (Corridor)      | orthogonale Achse zwischen zwei Trassenpunkten, `laneGrid` breit          |
+| Lane                  | konkurrierende Trasse in einem Kanal (`maxLaneSegments` parallele Routen) |
+| Crossing              | Schnittpunkt zweier orthogonaler Kanten auf unterschiedlicher Trasse      |
+| Hop                   | Übergangssegment (kurzes Stück), das eine Kreuzung auflöst                |
 
-### 2.2 Prinzipien (Architecture Contract)
+---
 
-1. React Flow kennt **keine** Elektrofachlogik.
-2. AutoWire kennt **kein** React.
-3. Routing kennt **keine** UI.
-4. Validierung liefert strukturierte Regeln/Fehler.
-
-### 2.3 Routing-interne Schichten
-
-```text
-1. Geometry      — pure Geometrie-Primitives, kein Domänenwissen
-2. Routing Rules — Tokens, Kollisionsklassen, Lanes, Kostenmodell (router-agnostisch)
-3. Domain Rules  — fachliche Trennregeln (domainSeparationRules)
-```
-
-ELK-Pass und A\*-Pass konsumieren **dieselben** Regeln aus Schicht 2/3. Kein Router
-besitzt eine eigene Definition von Kollisionen, Abständen oder Lanes.
-
-## 3. Design Tokens (Single Source of Truth)
-
-Alle geometrischen Konstanten leben genau einmal im Token-Modell (`lib/designTokens.ts`
-oder `lib/routing/tokens.ts`). ELK-Optionen und A\*-Straffunktion leiten ausschließlich
-daraus ab (generiert, nicht gepflegt; Config-Sync-Test schlägt bei Hardcode fehl).
-
-| Token                | Wert  | Verwendung                                             |
-| -------------------- | ----- | ------------------------------------------------------ |
-| `cableClearance`     | 12 px | Mindestabstand Kabel ↔ Kabel / Kabel ↔ Node            |
-| `elkEdgeNodeSpacing` | 16    | ELK `spacing.edgeNode` / `edgeNodeBetweenLayers`       |
-| `stubMin`            | 24 px | Mindestlänge vor erstem Bend; Mindestsegmentlänge      |
-| `laneGrid`           | 16 px | Kanalabstand paralleler Trassen (≈ Node-Raster)        |
-| `bendRadius`         | 8 px  | Einheitliche Rundungen; Bend-Merge-Schwelle 2×r        |
-| `crossDomainSpacing` | 24 px | Wert für Domain-Trennung (Paar-Regel s. Abschnitt 4.2) |
-
-**Integration ins bestehende Token-System (M11-1):** `lib/designTokens.ts` pflegt seit
-M11-1 RGB-Triplet-Zwillinge (`--x-rgb`) mit Drift-Guard in `lib/designTokens.test.ts`;
-D-1 gilt: `globals.css` bleibt einzige Farbquelle. Die Routing-Tokens **erweitern**
-dieses System (gleiche Konventionen, gleiche Test-Disziplin) und ersetzen es nicht.
-S-2 (Tailwind v4) überführt die Config später nach `@theme` — berührt die Routing-Tokens
-nicht inhaltlich.
-
-## 4. Kollisionsmodell
-
-### 4.1 Kollisionsklassen
-
-| Typ                             | Klasse       | Konsequenz                                     |
-| ------------------------------- | ------------ | ---------------------------------------------- |
-| Edge × Node                     | **HARD**     | verboten — garantiert unmöglich                |
-| Edge × Edge — Overlap/kollinear | **HARD**     | verboten — garantiert unmöglich                |
-| Edge × Edge — Crossing          | **SOFT**     | minimieren; falls unvermeidbar → Hop-Rendering |
-| Clearance-Verletzung            | **WEIGHTED** | Kosten (A\*) bzw. Spacing (ELK)                |
-| keine Kollision                 | **NONE**     | —                                              |
-
-Kernregel: **Overlaps sind das Lesbarkeits-Desaster** (zwei Kabel sehen wie eines aus —
-elektrisch fatal) und damit Invariante. **Crossings sind ein Optimierungsziel**, kein
-Verstoß — topologisch bei echten Stromplänen teils unvermeidbar.
-
-### 4.2 Domain Rules (Schicht 3)
+## 3. Eingaben / Ausgaben
 
 ```ts
-domainSeparationRules = {
-  electrical: {
-    water: { minimumClearance: 24 }, // crossDomainSpacing
-  },
+export type RoutingRequest = {
+  nodes: readonly PlannerNode[];
+  edges: readonly CablePlannerEdge[];
+  bounds?: { width: number; height: number; padding: number };
+};
+
+export type RoutingResult = {
+  edges: Array<{
+    edgeId: string;
+    points: ReadonlyArray<{ x: number; y: number }>;
+    crossingCount: number;
+    hopCount: number;
+    cost: number;
+  }>;
+  diagnostics: {
+    collisions: Array<{ edgeA: string; edgeB: string; type: 'edge-node' | 'edge-edge' }>;
+    metrics: {
+      totalLength: number;
+      totalBends: number;
+      totalCrossings: number;
+      totalHops: number;
+      maxEdgeNodeCollisions: number;
+      maxEdgeEdgeOverlaps: number;
+      minClearance: number;
+    };
+  };
 };
 ```
 
-Erweiterbar: 230V ↔ 12V DC, gas ↔ electrical, heat ↔ cable.
-Die Werte kommen aus den Tokens; die **Paar-Regeln** sind Domänenlogik und liegen NICHT
-in der Geometrie-Schicht.
+Das Ergebnis ist **rein** (keine Seiteneffekte), deterministisch, serialisierbar.
 
-## 5. Geometrie-Primitives (Schicht 1)
+---
 
-Pure Functions, kein Domänenwissen, Werte aus Tokens:
+## 4. Suchraum-Aufbau (korrigierte "Kandidaten-Heuristik")
 
-- `segmentsIntersect()` — echte Kreuzung vs. Touch
-- `distanceSegmentToSegment()`
-- `distanceSegmentToRect()`
-- `areCollinear()` / `segmentsOverlap()`
-- `inflateObstacle()` — Node-Rect + Clearance-Aufschlag
-- Stub-Minimum-Check
-- Bend-Merge — zwei Bends < 2 × `bendRadius` verschmelzen (kein „Zitter-Treppenmuster”)
-- Lane-Berechnung — `laneIndex × laneGrid` vom Referenzsegment
+`geometry/corridor.ts` baut aus der Geometrie den eigentlichen Suchgraphen:
 
-Bestehende Geometrie aus `pathUtils.ts` / `segmentSpatialIndex.ts` wird hierher
-migriert, nicht neu erfunden.
+```
+Schritt 1: Knoten-Hindernisse
+   Für jeden Knoten: box = {x, y, w, h}  (aus width/height oder dem Layout)
+   expandedBox = box vergrößert um edgeNodeSpacing/2 auf jeder Seite
 
-**Handle-Geometrie (M11-1):** Handles sitzen ±22 px **außerhalb** der Node-Karte
-(`overflow: visible`). `inflateObstacle()` muss die Handle-Ausrisse einrechnen — sonst
-verletzt der Stub die Clearance am eigenen Knoten.
+Schritt 2: Ports & Stubs
+   Für jede Kante, für source und target:
+     p = port-Position (Mitte der Handleseite des Knotens)
+     stub = Segment von p in Portrichtung, Länge = stubMin..stubMax
+     stub darf das erweiterte Hindernis des Quell-/Zielknotens verlassen,
+     aber kein ANDERES erweitertes Hindernis schneiden.
 
-## 6. ELK Global Layout
+Schritt 3: Korridore
+   Raster auf `laneGrid` über die Zeichenfläche.
+   Pro Rasterzeile/-spalte: freie Intervalle = Intervalle minus alle erweiterten
+   Hindernisse und minus Sonderflächen (z.B. Wasser→Elektrik crossDomainSpacing).
 
-### 6.1 Konfiguration
+Schritt 4: Routing-Graph
+   Nodes  = Gitterpunkte auf freien Intervallgrenzen + alle Stub-Enden.
+   Edges  = orthogonale Nachbarschaft zwischen Gitterpunkten, nur wenn das
+            komplette Segment in einem freien Intervall liegt (kein Hindernis).
 
-- `algorithm: 'layered'`, `EdgeRouting: ORTHOGONAL`
-- `spacing.edgeEdge`, `spacing.edgeNode`, `spacing.edgeNodeBetweenLayers` — aus Tokens
-- `layered.mergeEdges: false` (parallele Kabel werden nicht zusammengelegt)
-- `favorStraightEdges`
-- Edge-Labels nativ (zentriert bevorzugt — INTERACTIVE + HEAD-Labels + FIXED_SIDE-Ports
-  ist bekannt fehleranfällig)
-- Junction Points aktiviert (Busbar-Abzweige)
-- Port-Constraints `FIXED_ORDER` (Handle-Reihenfolge stabil: Plus oben, Minus unten)
+Schritt 5: Lane-Kapazität
+   Jeder Kanal besitzt `maxLaneSegments` parallele Ebenen.
+   Aktuelle Belegung kommt aus `geometry/lanes.ts` (deterministisch).
+```
 
-### 6.2 Interaktiver Modus (Nutzerplatzierungen respektieren)
+Der `0 / +offset / -offset`-Fall ist damit nur noch ein Sonderfall dieses Graphen
+(zwei Ports auf derselben Achse, freie Intervalle).
 
-- `cycleBreaking.strategy: INTERACTIVE`
-- `layering.strategy: INTERACTIVE`
-- `crossingMinimization.semiInteractive: true`
-- `considerModelOrder` — Nutzer-Anordnung nicht durch Crossing-Minimization zerlegen
+---
 
-### 6.3 Integration & Fallstricke
+## 5. A*-Algorithmus (`routing-core/astar.ts`)
 
-- elkjs asynchron: dynamischer Import + **Web Worker + Timeout** (Lighthouse-Gate ≥ 90)
-- **Worker-Vertrag (P-6):** Übergabe strukturiert klonen oder als Flat-Arrays; bei
-  schnellen Drag-Updates gewinnt die **letzte Anfrage** (keine Race-Pfade). Gilt für den
-  ELK-Worker wie für die Routing-Pipeline.
-- Child-Positionen kommen **relativ zum Parent** → absolute Koordinaten umrechnen
-- Zyklen: Camper-Ladekreise sind zyklisch (Solar → MPPT → Batterie → Inverter → Landstrom)
-  — Cycle-Breaking-Strategie bewusst wählen
-- Bestehender Router bleibt **Fallback** bei Worker-Fail/Timeout
-
-## 7. Deterministisches Lane-System
-
-Ersetzt die ±40/±80-px-Heuristik:
+State:
 
 ```ts
-LaneRegistry {
-  corridor,    // gemeinsamer Referenzverlauf
-  direction,   // Hauptrichtung des Korridors
-  laneIndex,   // stabiler Index je Kante
-  offset,      // laneIndex × laneGrid
+type AStarNode = {
+  x: number;
+  y: number;
+  dir: 'H' | 'V';
+  laneOffset: number; // 0..maxLaneSegments-1
+  edgeId: string; // Route, die gerade gesucht wird
+};
+```
+
+Kostenfunktion ($f = g + h$):
+
+```
+g =       Σ   WEIGHT.segment * len(segment)
+        + Σ   WEIGHT.bend     * (dirWechsel)
+        + Σ   WEIGHT.laneHop  * (laneOffsetWechsel)
+        + Σ   WEIGHT.laneCongestion * (Kollisionen mit belegten Lanes im Segment)
+        + Σ   WEIGHT.collision      * (Hindernis-Kollisionen im Segment)
+
+h = WEIGHT.length * Manhattan-Distanz zum Ziel
+```
+
+> `h` ist **zulässig** (unterschätzt), solange `WEIGHT.bend` und die Lane-Kosten
+> nicht negativ sind. Damit bleibt A* optimal bezüglich des Kostenmodells.
+
+### Regeln
+
+1. **Hindernisse blockieren hart**
+   Ein Segment, das ein erweitertes Hindernis schneidet (`clearance < cableClearance`),
+   ist **nicht expandierbar** (`collision = +unendlich`). Kein Re-Routing um Kollisionen
+   herum, das Clearance verletzt.
+
+2. **Edge-Edge-Belegung bestraft, nicht blockiert**
+   Ein Segment, das eine bereits geroutete parallele Leitung berührt, ist zulässig,
+   kostet aber `laneCongestion`. So entstehen echte parallele Trassen, kein Blind-Spam.
+
+3. **Lane-Wechsel bestraft**
+   Der Router darf die Lane-Ebene wechseln, kostet aber `laneHop`.
+
+4. **Kreuzungen bestrafen**
+   Ein Orthogonalschnitt mit einer bereits gerouteten Kante kostet `hop` (sonst würde
+   der Router jede Kreuzung über A* umgehen, was bei großen Netzen nicht skalierbar ist).
+
+5. **Determinismus**
+   Expandierte Nachbarn sind **stabil sortiert** (x, y, dir, laneOffset). Die
+   Prioritäts-Warteschlange vergleicht bei Gleichstand via `nodeId`/`sequence`.
+
+---
+
+## 6. Kandidaten & Orchestrator (`routing-v2/orchestrator.ts`)
+
+Der Orchestrator verdrahtet Kanten **einzeln** und wählt für jede Kante aus mehreren
+Kandidaten. Kandidaten entstehen aus:
+
+1. A*-Pfad im Korridor-Graph (Standard).
+2. Direkter Orthogonalkandidat (nur Stubs + ein Segel), wenn möglich.
+3. Kandidat auf höherer/alternativer Lane-Ebene (Lane-Registry).
+4. Kandidat mit vorgeschaltetem Hop (nur wenn sonst keine Kollision möglich).
+
+Auswahl:
+
+```ts
+export function selectBestPath<T extends RoutingCandidate>(candidates: T[], ctx: RouteContext): T {
+  // 1. Kollisionssimulation je Kandidat (edge-node + edge-edge gegen bereits geroutete)
+  // 2. costModel.apply(candidate, simulatedCollisions, laneRegistry, hops)
+  // 3. sortiere stabil nach cost, dann candidate.id
+  // 4. wähle das Minimum
 }
 ```
 
-Stabile Sortierung (3 Stufen):
+### Kritische Entscheidung (Review-Punkt 1 & 6)
 
-1. topologische Reihenfolge
-2. Zielposition
-3. stabile Node-/Edge-ID als letzter Tie-Breaker
+**`selectBestPath` reicht die simulierten Kollisionen, die Lane-Belegung und die
+Hop-Anzahl an `routeCost(...)` weiter.** Es wird **nicht** `routeCost({ path }, DEFAULT_COST_WEIGHTS)`
+gerufen, bei dem `collision / laneCongestion / hops` den Wert `0` haben.
 
-(ID-Stabilität gesichert: `newEntityId()` in `lib/id.ts` mit Fallback-Kette seit M11-1
-auch im LAN-Dev über http:// robust.)
+Verbindlicher Aufruf:
 
-Garantie: Re-Layout, Undo/Redo und visuelle Regressionstests erzeugen **identische**
-Lane-Zuordnung.
-
-## 8. Kreuzungs-Hopping
-
-```text
-crossing detected → priority comparison → lower priority hops → render hop
+```ts
+const sim = simulateCollisions(candidate, routedEdges, laneRegistry);
+const cost = routeCost(
+  {
+    path: candidate.path,
+    collisions: sim.collisions, // Edge-Node + Edge-Edge
+    laneCongestion: sim.laneCongestion, // belegte Lane-Segmente
+    hops: sim.requiredHops, // via Voranalyse
+  },
+  COST_WEIGHTS
+); // aus tokens.ts, nicht Leerwerte
 ```
 
-```text
-routingPriority =
-    domainPriority
-    + backboneWeight
-    + crossSectionWeight
-    + manualLockWeight
+Die Simulation ist **rein** und liefert dieselben Zahlen wie die spätere Abnahme-Messung
+(`max edge-node collision = 0`, `max edge-edge overlap = 0`).
+
+---
+
+## 7. Deterministische LaneRegistry (`geometry/lanes.ts`)
+
+### 7.1 Problem
+
+Ist-Code vergibt `lane = edges.size` in `acquire()`-Reihenfolge → nicht deterministisch.
+
+### 7.2 Vorgabe
+
+```ts
+export class LaneRegistry {
+  constructor(edges: readonly PlannerEdge[], preferredOrder?: readonly string[]);
+
+  laneFor(edgeId: string, sourceId: string, targetId: string): Lane;
+  blockSpace(edgeId: string, lane: Lane, span: { x0: number; y0: number; x1: number; y1: number }): void;
+  isFree(edgeId: string, lane: Lane, span: ...): boolean;
+}
 ```
 
-- Dickeres/Backbone-Kabel bleibt gerade, Abzweig hüpft (Halbkreis-Bogen)
-- Manuell fixierte Kabel (Lock) hoppen nie
-- `manualLockWeight` schützt später nutzerfixierte Trunks
-- Hop-Rendering ist visuell eindeutig: Kreuzung ≠ Verbindung
+Intern:
 
-## 9. A\*-Kostenmodell (inkrementeller Pass)
+```
+1. topoRank(nodeId) aus graph/topology.ts (stabil; tie-break: nodeId)
+2. key(edge) = [
+     topoRank(source), topoRank(target),
+     normHandle(sourceHandle), normHandle(targetHandle),
+     kind, edge.id
+   ].join(":")
+3. sortiere stableKey
+4. assign lane = sortierter Index  (keine insertion-order)
+```
 
-| Situation           | Kosten      |
-| ------------------- | ----------- |
-| overlap             | `Infinity`  |
-| clearance violation | `VERY_HIGH` |
-| crossing            | `HIGH`      |
-| nearby lane         | `MEDIUM`    |
-| preferred lane      | `BONUS`     |
-| free space          | `LOW`       |
+Die **Insertions-Reihenfolge der Eingabe ist irrelevant**.
 
-Werte aus Tokens/Config abgeleitet, nie hardcoded. Datenbasis: `segmentSpatialIndex`
-(registriert geroutete Segmente als weiche Hindernisse). Konsistenz mit Abschnitt 4:
-hard = Infinity/verboten, weighted = Kosten.
+---
 
-## 10. Inkrementeller Pass: Re-Routing & Drag-Performance
+## 8. Hopping (`routing-v2/hopping.ts`)
 
-**Affected-Set (P-1):** Nur Kanten am gezogenen Knoten plus Kanten, deren
-Pfad-Bounding-Box die alte oder neue Position schneiden.
-Abnahme: **O(betroffene Kanten) statt O(E)** beim Drag; keine veralteten Pfade (R-9
-bleibt erfüllt).
+Hopping ist **letzter** Schritt, nur für unvermeidbare Crossings.
 
-**Zwei-Qualitäts-Stufen (P-2):** Während des Ziehens schnelle Vorschau (Bestandspfad
-bzw. L-Stub); voller `routeAll`-Pass mit Nudging erst beim Drag-Ende (gedrosselt,
-100–150 ms). Abnahme: konstante Frame-Zeit im Drag-Bench; Endqualität identisch zur
-Szenario-Gallery.
+Pipeline:
 
-**Gescopedes Nudging (P-5):** `nudgeOrthogonalPaths` nur auf Lanes betroffener Trassen
-(setzt P-1 voraus). Abnahme: routingGallery ohne Diff.
+```
+1. Routing-Vorlauf: Kandidaten, Kollisionen, Kosten
+2. Auswahl: besten Kandidaten wählen (Crossings durch hop-Kosten bereits minimiert)
+3. Syntax-Prüfung: verbleibende Crossings sammeln
+4. planHop(edgeA, edgeB, crossing) → HopVorschlag
+5. applyHopPlan(result) → neue Geometry, Topologie unverändert
+```
 
-Danach **keine** globale Neuordnung. Basis: `cableRouteStore` (Subscriptions) +
-Geometrie-Primitives. Vollständige Worker-Auslagerung der Pipeline gemäß P-6 erst nach
-P-1/P-2/P-5.
+Regeln:
 
-## 11. Port Fan-Out
+- Hop **entfernt keine Kollision, die durch ein Objekt verursacht wird**. Nur
+  Kanten-Kreuzungen werden behandelt.
+- Nach jedem `applyHopPlan` werden Edge-Edge-Überlappungen **erneut geprüft**.
+- Beste Anzahl Hops ist Teil der Abnahme (G6).
 
-Mehrere Kanten an einem Handle: deterministische Sortierung nach **Zielposition**,
-stabile ID als Tie-Breaker — kein Kreuzen direkt an der Quelle. Konsistent mit
-Port-Constraints `FIXED_ORDER` (Abschnitt 6.1).
+---
 
-## 12. Invarianten (prüfbar, für BEIDE Pässe)
+## 9. ELK-Integration
 
-1. kein Edge-Node-Collision
-2. kein Edge-Edge-Overlap
-3. Clearance ≥ `cableClearance` überall
-4. kein U-Turn direkt am Handle
-5. Stub ≥ `stubMin`
-6. Segment ≥ `stubMin`
-7. kein unnötiges Treppenmuster (Bend-Merge greift)
-8. deterministische Lanes (Lane-Registry stabil)
-9. deterministisches Ergebnis (gleicher Input → identischer Output)
-10. Crossing nur erlaubt, wenn kein konfliktfreier Weg existiert
+Der ELK-Adapter (`layout-engine/elk.ts`) produziert das _Knoten-/Trassen-Rohlayout_.
+Die **finale Geometrie** der Kanten kommt aber aus dem Routing-V2-Ergebnis.
 
-## 13. Teststrategie (drei Ebenen)
+Nur der `layout-engine` nutzt ELK; `routing-core` kennt ELK **nicht**.
 
-| Ebene      | Beispiel                                                                                                               |
-| ---------- | ---------------------------------------------------------------------------------------------------------------------- |
-| **Unit**   | `segmentsCross()`, Bend-Merge, Lane-Sortierung                                                                         |
-| **Domain** | Batterie → Sicherung → Verbraucher (AutoWire + Sizing)                                                                 |
-| **System** | Nutzer bewegt Batterie → Auto-Reroute → keine Kollision → Warnsystem aktuell → Undo stellt exakt den alten Zustand her |
+| Ebene                | Quelle                                | verantwortlich für                         |
+| -------------------- | ------------------------------------- | ------------------------------------------ |
+| Knotenpositionen     | ELK layout requested nodes            | `layout-engine/elk.ts`                     |
+| Stub-/Portpositionen | ELK-Knotenpositionen + Domain-Handles | `geometry/corridor.ts`                     |
+| Kantengeometrie      | Routing-V2 A*                         | `routing-core/astar.ts`                    |
+| Visuelle Polylinie   | Routing-V2 Ergebnis                   | `components/edges/CableEdge.tsx` (Adapter) |
 
-Dazu **Golden Master** (`knownPlans/`): simple, camper, solar, inverter, acdc, complex —
-Input → AutoWire-Result → Electrical-Result → Routing-Result des Altsystems als Fixtures.
-V2 darf intern anders funktionieren, aber das Ergebnis muss **identisch oder bewusst
-besser** sein (mit dokumentierter Begründung).
+---
 
-**Golden Layouts:** Für definierte Szenarien (15, siehe Regression-Suite #400) muss exakt
-diese Topologie/Trassenstruktur herauskommen — nicht nur „kein Crash”.
+## 10. Referenz-Implementierung → Abnahme-Messung
 
-## 14. Exit-Conditions
+`scripts/measure_planner_v2.ts` muss folgendes messen und gegen Gate-Grenzen prüfen:
 
-Routing V2 ist fertig wenn (nicht: „ich glaube, Routing funktioniert jetzt”):
+```ts
+const gates: Gate[] = [
+  { id: 'G1', desc: 'max edge-node collisions = 0', check: m.maxEdgeNodeCollisions === 0 },
+  { id: 'G2', desc: 'max edge-edge overlaps = 0', check: m.maxEdgeEdgeOverlaps === 0 },
+  { id: 'G3', desc: 'min clearance >= cableClearance', check: m.minClearance >= GEOMETRY.cableClearance },
+  { id: 'G4', desc: 'deterministic layout = true', check: m.deterministic },
+  { id: 'G5', desc: 'crossing count <= threshold', check: m.totalCrossings <= CROSSINGS_THRESHOLD },
+  { id: 'G6', desc: 'hop correctness = 100%', check: m.hopCorrectnessPct === 100 },
+  { id: 'G7', desc: 'performance <= perfBudgetMs', check: m.elapsedMs <= PERF_BUDGET_MS },
+];
+```
 
-- ✓ keine Edge-Node-Overlaps
-- ✓ keine Edge-Edge-Overlaps
-- ✓ Clearance ≥ `cableClearance` eingehalten
-- ✓ deterministische Lanes
-- ✓ Crossing-Hops gerendert
-- ✓ 100 % Invariant-Tests grün (beide Pässe)
-- ✓ Golden Layouts stabil
-- ✓ Golden Master: identisch oder bewusst besser
-- ✓ **Performance-Budget: Main-Thread ≤ 16 ms/Frame am 100+-Kanten-Referenzplan**
-  (M11-9; Gate: `edgeRoutingPerf.bench.ts` in der Quality-Pipeline, Budget-Wert im
-  Benchmark-ADR begründet — P-7)
-- ✓ ELK-A/B auf Routing-Gallery: Kreuzungen/Bends besser oder gleich
-- ✓ Lighthouse ≥ 90
+`CROSSINGS_THRESHOLD`, `PERF_BUDGET_MS` sind Konstanten in `scripts/measure_planner_v2.ts`
+(defining gates) und werden beim Einfrieren der Spezifikation festgelegt.
 
-## 15. Ticket-Referenzen
+---
 
-| Phase | Ticket                                              | Issue |
-| ----- | --------------------------------------------------- | ----- |
-| 0     | Architecture Contract & Dependency Map              | #401  |
-| 0     | Golden Master absichern (knownPlans/)               | #402  |
-| 0     | Change Ledger & ADR-Basis                           | #403  |
-| 1     | Design Tokens (Single Source of Truth)              | #390  |
-| 1     | Kollisionsmodell (CollisionClass/RoutingConstraint) | #391  |
-| 1     | Geometrie-Primitives — **zuerst im Code**           | #392  |
-| 2     | ELK Global Layout (elkjs)                           | #393  |
-| 2     | Deterministisches Lane-System (LaneRegistry)        | #394  |
-| 2     | Kreuzungs-Hopping (routingPriority)                 | #395  |
-| 2     | A\*-Kostenmodell                                    | #396  |
-| 2     | Lokales Re-Routing & Drag-Performance               | #397  |
-| 2     | Port Fan-Out                                        | #398  |
-| 2     | Routing-Invarianten (Testsuite)                     | #399  |
-| 2     | Regression-Suite & Golden Layout Tests              | #400  |
+## 11. Beispiele
 
-Implementierung **bottom-up**: Geometry → Rules → Algorithms → Domain → Store → UI.
-Jeder Schritt hält die bestehenden Tests grün; ein PR verändert genau eine
-Verantwortung.
+### 11.1 Hindernis-Umgehung
 
-## 16. Verhältnis zu den agent.md-Tracks (S/P)
+```
+           ┌────────────┐
+           │ Konsument  │
+           │  Box(200x100) │
+           └────────────┘
+                ↑  edgeNodeSpacing=24
+           ┌────────────┐
+   B ───────┤ Batterie  │─────── C
+           └────────────┘
+```
 
-| agent.md                                  | Zuordnung in Routing V2                              |
-| ----------------------------------------- | ---------------------------------------------------- |
-| P-1 Affected-Set                          | → WP-8 / #397 (absorbiert, Abschnitt 10)             |
-| P-2 Zwei-Stufen-Drag                      | → WP-8 / #397 (absorbiert, Abschnitt 10)             |
-| P-5 Scoped Nudging                        | → WP-8 / #397 (absorbiert, Abschnitt 10)             |
-| P-6 Routing-Worker                        | → WP-4 / #393 (Worker-Vertrag, Abschnitt 6.3) + WP-8 |
-| P-7 Benchmark-Gate                        | → WP-11 / #400 + Exit-Condition (Abschnitt 14)       |
-| S-5 ADR 0003 nachziehen                   | → WP-4 / #393 (ADR zur ELK-Adoption)                 |
-| S-1 React Flow 12                         | **Sequenz-Entscheidung**, siehe unten                |
-| S-2 Tailwind v4 / S-3 lucide / S-4 Export | unabhängig von Routing V2                            |
+A*-Graph erlaubt nur Routen, die die erweiterten Boxen meiden. Ein Kandidat, der direkt
+durch `Batterie` läuft, erhält `collision = ∞` und wird **nie** gewählt.
 
-**S-1-Empfehlung (Sequenz):** React Flow 12 **vor** den UI-integrierenden Workpackages
-(insbesondere WP-7 Hop-Rendering, WP-8 Drag) mergen — WP-4+ berühren die RF-API
-(`CableEdge`, `nodeTypes`/`edgeTypes`, CSS), sonst doppelter Migrationsaufwand.
-Akzeptanz aus agent.md S-1: `npm run check` grün; Drag, Auto-Wire und Undo/Redo
-unverändert; Routing-Invarianten-Tests und visuelle Baselines ohne Diff.
+### 11.2 Lane-Belegung
+
+Dasselbe Korridor-Intervall wird von zwei Kanten genutzt: beide bekommen `laneCongestion`,
+die Route mit mehr Freiheit ist günstiger. Damit entstehen keine wilden Überlappungen.
