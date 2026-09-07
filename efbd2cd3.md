@@ -282,4 +282,3 @@ Empfohlen werden mindestens Rauchmelder, CO-Melder, Gaswarnmelder und geeignete 
 ### 10.4 Versicherung & Steuer
 
 Die Einstufung als Wohnmobil kann sich positiv auf die Steuer- und Versicherungssituation auswirken, hängt aber von Ausbaugrad, Fahrzeugalter und individuellen Versicherungsbedingungen ab.[web:2][web:8] Ein Vergleich der Tarife und die frühzeitige Klärung mit Versicherer und Finanzamt sind ratsam.
-

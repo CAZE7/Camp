@@ -25,7 +25,7 @@ function canonicalNodeId(a: string, b: string): number {
  */
 export function topologicalRank(
   nodes: readonly PlannerNode[],
-  edges: readonly PlannerEdge[],
+  edges: readonly PlannerEdge[]
 ): TopologyResult {
   const nodeIds = nodes.map((node) => node.id).sort(canonicalNodeId);
 

@@ -42,7 +42,9 @@ describe('HolzausbauGuide Component', () => {
     render(<HolzausbauGuide />);
 
     // Check if the intro text is present
-    const introText = screen.getByText(/Reihenfolge: entkernen, Kabel, Luken, Verankerung, Wasser, dann Holz/i);
+    const introText = screen.getByText(
+      /Reihenfolge: entkernen, Kabel, Luken, Verankerung, Wasser, dann Holz/i
+    );
     expect(introText).toBeInTheDocument();
   });
 });

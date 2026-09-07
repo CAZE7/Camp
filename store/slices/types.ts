@@ -81,6 +81,10 @@ export interface PlannerState {
   onConnect: (connection: Connection) => void;
   autoWireSystem: () => void;
   onLayout: () => void;
+  /** Routing V2: ELK-Layout + obstakelbewusstes Routing (asynchron). */
+  onLayoutV2: () => Promise<void>;
+  /** Routing V2: Neu-Routing der Kanten bei unveränderten Knoten (z. B. nach Drag). */
+  rerouteV2: () => void;
   onDrop: (
     event: React.DragEvent,
     screenToFlowPosition: (client: { x: number; y: number }) => { x: number; y: number }

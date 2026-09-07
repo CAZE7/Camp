@@ -5,9 +5,11 @@
  * module for Routing V2. The legacy `lib/vde-standards.ts` is only a re-export.
  */
 
-export const VDE_CROSS_SECTIONS = [1.5, 2.5, 4.0, 6.0, 10.0, 16.0, 25.0, 35.0, 50.0, 70.0, 95.0, 120.0] as const;
+export const VDE_CROSS_SECTIONS = [
+  1.5, 2.5, 4.0, 6.0, 10.0, 16.0, 25.0, 35.0, 50.0, 70.0, 95.0, 120.0,
+] as const;
 
-export type VDECrossSection = typeof VDE_CROSS_SECTIONS[number];
+export type VDECrossSection = (typeof VDE_CROSS_SECTIONS)[number];
 
 export const VDE_CURRENT_CAPACITY: Record<number, number> = {
   1.5: 16,
@@ -53,14 +55,14 @@ export const VDE_CONSERVATIVE_FUSES: Record<number, number> = {
 };
 
 export const VDE_COPPER_RESISTIVITY = 0.0175;
-export const VDE_MAX_VOLTAGE_DROP_12V = 0.10;
+export const VDE_MAX_VOLTAGE_DROP_12V = 0.1;
 export const VDE_MAX_VOLTAGE_DROP_230V = 0.03;
 
 export function calculateMinCrossSection(
   currentA: number,
   lengthM: number,
   maxVoltageDropFraction: number = VDE_MAX_VOLTAGE_DROP_12V,
-  systemVoltage: number = 12,
+  systemVoltage: number = 12
 ): number {
   if (currentA <= 0 || lengthM <= 0) {
     return VDE_CROSS_SECTIONS[0];
@@ -71,14 +73,17 @@ export function calculateMinCrossSection(
 }
 
 export function roundUpToVDECrossSection(minRequired: number): number {
-  return VDE_CROSS_SECTIONS.find((size) => size >= minRequired) ?? VDE_CROSS_SECTIONS[VDE_CROSS_SECTIONS.length - 1];
+  return (
+    VDE_CROSS_SECTIONS.find((size) => size >= minRequired) ??
+    VDE_CROSS_SECTIONS[VDE_CROSS_SECTIONS.length - 1]!
+  );
 }
 
 export function calculateVoltageDrop(
   currentA: number,
   lengthM: number,
   crossSection: number,
-  systemVoltage: number = 12,
+  systemVoltage: number = 12
 ): number {
   void systemVoltage;
   if (crossSection <= 0) return Infinity;
@@ -112,13 +117,13 @@ export const VDE_CABLE_OUTER_DIAMETERS: Record<number, number> = {
 
 export function calculateConduitFillPercent(
   conduitType: keyof typeof VDE_CONDUIT_INNER_DIAMETERS,
-  cableCrossSections: readonly number[],
+  cableCrossSections: readonly number[]
 ): number {
   const innerDiameter = VDE_CONDUIT_INNER_DIAMETERS[conduitType];
   if (!innerDiameter) return 0;
   const innerArea = Math.PI * Math.pow(innerDiameter / 2, 2);
   const totalCableArea = cableCrossSections.reduce((acc, cs) => {
-    const outerDiam = VDE_CABLE_OUTER_DIAMETERS[cs] ?? VDE_CABLE_OUTER_DIAMETERS[2.5];
+    const outerDiam = VDE_CABLE_OUTER_DIAMETERS[cs] ?? VDE_CABLE_OUTER_DIAMETERS[2.5]!;
     return acc + Math.PI * Math.pow(outerDiam / 2, 2);
   }, 0);
   return (totalCableArea / innerArea) * 100;
@@ -128,7 +133,7 @@ export function recommendConduitType(cableCrossSections: readonly number[]): str
   for (const [type, diameter] of Object.entries(VDE_CONDUIT_INNER_DIAMETERS)) {
     const innerArea = Math.PI * Math.pow(diameter / 2, 2);
     const totalCableArea = cableCrossSections.reduce((acc, cs) => {
-      const outerDiam = VDE_CABLE_OUTER_DIAMETERS[cs] ?? VDE_CABLE_OUTER_DIAMETERS[2.5];
+      const outerDiam = VDE_CABLE_OUTER_DIAMETERS[cs] ?? VDE_CABLE_OUTER_DIAMETERS[2.5]!;
       return acc + Math.PI * Math.pow(outerDiam / 2, 2);
     }, 0);
     if ((totalCableArea / innerArea) * 100 <= VDE_MAX_CONDUIT_FILL_PERCENT) {
@@ -139,7 +144,7 @@ export function recommendConduitType(cableCrossSections: readonly number[]): str
 }
 
 export const VDE_INVERTER_EFFICIENCY = 0.85;
-export const VDE_INVERTER_MAX_LOAD_FRACTION = 0.80;
+export const VDE_INVERTER_MAX_LOAD_FRACTION = 0.8;
 export const VDE_RCD_MAX_TRIP_CURRENT_MA = 30;
 export const VDE_230V_PERSON_PROTECTION_MA = 30;
 
@@ -154,7 +159,7 @@ export const VDE_MIN_CROSS_SECTION = 1.5;
 
 export function calculateWire(
   currentA: number,
-  lengthM: number,
+  lengthM: number
 ): { crossSection: number; fuseSize: number; length: number; minCrossSection: number } {
   const minCrossSection = calculateMinCrossSection(currentA, lengthM);
   const minRequired = Math.max(VDE_MIN_CROSS_SECTION, minCrossSection);

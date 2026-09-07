@@ -38,10 +38,7 @@ const edge = (id: string, source: string, target: string): Edge<CableEdgeData> =
   data: { length: 1 },
 });
 
-const fixtureNodes = (): Node[] => [
-  node('b1', 'battery', 0, 0),
-  node('b2', 'busbar', 160, 0),
-];
+const fixtureNodes = (): Node[] => [node('b1', 'battery', 0, 0), node('b2', 'busbar', 160, 0)];
 
 const fixtureEdges = (): Edge<CableEdgeData>[] => [edge('e1', 'b1', 'b2')];
 
@@ -89,19 +86,17 @@ describe('usePlannerStore - Routing V2 integration', () => {
 
   it('keeps routed geometry when setNodes updates a node position', () => {
     act(() => {
-      usePlannerStore.getState().setNodes((current) =>
-        current.map((currentNode) =>
-          currentNode.id === 'b2'
-            ? { ...currentNode, position: { x: 260, y: 20 } }
-            : currentNode,
-        ),
-      );
+      usePlannerStore
+        .getState()
+        .setNodes((current) =>
+          current.map((currentNode) =>
+            currentNode.id === 'b2' ? { ...currentNode, position: { x: 260, y: 20 } } : currentNode
+          )
+        );
     });
 
     const edges = usePlannerStore.getState().edges;
-    expect(
-      edges.every((current) => (current.data?.geometry?.points?.length ?? 0) >= 2),
-    ).toBe(true);
+    expect(edges.every((current) => (current.data?.geometry?.points?.length ?? 0) >= 2)).toBe(true);
   });
 
   it('attaches routed geometry when setEdges adds a new edge', () => {
@@ -132,15 +127,13 @@ describe('usePlannerStore - Routing V2 integration', () => {
   });
 
   it('does not re-route on a selection-only edge change', () => {
-    const before = usePlannerStore.getState().edges[0];
+    const before = usePlannerStore.getState().edges[0]!;
 
     act(() => {
-      usePlannerStore.getState().onEdgesChange([
-        { type: 'select', id: before.id, selected: true } as never,
-      ]);
+      usePlannerStore.getState().onEdgesChange([{ type: 'select', id: before.id, selected: true } as never]);
     });
 
-    const after = usePlannerStore.getState().edges[0];
+    const after = usePlannerStore.getState().edges[0]!;
     expect(after.id).toBe(before.id);
     expect(after.data?.geometry?.points?.length ?? 0).toBeGreaterThanOrEqual(2);
   });
@@ -148,7 +141,7 @@ describe('usePlannerStore - Routing V2 integration', () => {
   it('keeps routed geometry after deleteSelected', () => {
     usePlannerStore.setState({
       selectedNodes: [],
-      selectedEdges: [usePlannerStore.getState().edges[0]],
+      selectedEdges: [usePlannerStore.getState().edges[0]!],
     });
 
     act(() => {
@@ -162,9 +155,7 @@ describe('usePlannerStore - Routing V2 integration', () => {
     const movedNodes = usePlannerStore
       .getState()
       .nodes.map((currentNode) =>
-        currentNode.id === 'b2'
-          ? { ...currentNode, position: { x: 320, y: 60 } }
-          : currentNode,
+        currentNode.id === 'b2' ? { ...currentNode, position: { x: 320, y: 60 } } : currentNode
       );
 
     // Simulate a raw React Flow drag update: the edge geometry is stale.
@@ -177,7 +168,7 @@ describe('usePlannerStore - Routing V2 integration', () => {
       usePlannerStore.getState().rerouteV2();
     });
 
-    const routed = usePlannerStore.getState().edges[0];
+    const routed = usePlannerStore.getState().edges[0]!;
     expect(routed.data?.geometry?.points).toBeDefined();
     expect(routed.data?.geometry?.points?.length ?? 0).toBeGreaterThanOrEqual(2);
   });
@@ -185,17 +176,8 @@ describe('usePlannerStore - Routing V2 integration', () => {
   it('onLayoutV2 applies ELK placement and then routes the result', async () => {
     const mockApplyAdvancedLayout = vi.mocked(applyAdvancedLayout);
     mockApplyAdvancedLayout.mockResolvedValue({
-      nodes: [
-        node('b1', 'battery', 0, 0),
-        node('b2', 'busbar', 320, 60),
-      ],
-      edges: routeEdgesV2(
-        [
-          node('b1', 'battery', 0, 0),
-          node('b2', 'busbar', 320, 60),
-        ],
-        fixtureEdges(),
-      ),
+      nodes: [node('b1', 'battery', 0, 0), node('b2', 'busbar', 320, 60)],
+      edges: routeEdgesV2([node('b1', 'battery', 0, 0), node('b2', 'busbar', 320, 60)], fixtureEdges()),
     });
 
     const { result } = renderHook(() => usePlannerStore());
@@ -204,11 +186,7 @@ describe('usePlannerStore - Routing V2 integration', () => {
       await result.current.onLayoutV2();
     });
 
-    expect(mockApplyAdvancedLayout).toHaveBeenCalledWith(
-      expect.any(Array),
-      expect.any(Array),
-      'LR',
-    );
+    expect(mockApplyAdvancedLayout).toHaveBeenCalledWith(expect.any(Array), expect.any(Array), 'LR');
     expect(result.current.nodes.find((current) => current.id === 'b2')?.position).toEqual({
       x: 320,
       y: 60,
@@ -218,6 +196,6 @@ describe('usePlannerStore - Routing V2 integration', () => {
 
   it('at least one explicitly routed edge has a polyline with multiple points', () => {
     const routed = routeEdgesV2(fixtureNodes(), fixtureEdges());
-    expect(routed[0].data?.geometry?.points?.length ?? 0).toBeGreaterThan(1);
+    expect(routed[0]!.data?.geometry?.points?.length ?? 0).toBeGreaterThan(1);
   });
 });

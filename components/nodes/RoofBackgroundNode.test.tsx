@@ -24,7 +24,7 @@ describe('RoofBackgroundNode Component', () => {
       top: '30px',
       bottom: '10px',
       left: '10px',
-      right: '10px'
+      right: '10px',
     });
   });
 
@@ -36,8 +36,8 @@ describe('RoofBackgroundNode Component', () => {
         front: 20,
         rear: 10,
         left: 15,
-        right: 25
-      }
+        right: 25,
+      },
     };
     render(<RoofBackgroundNode data={data} />);
 
@@ -48,7 +48,7 @@ describe('RoofBackgroundNode Component', () => {
       top: '40px',
       bottom: '20px',
       left: '30px',
-      right: '50px'
+      right: '50px',
     });
   });
 
@@ -60,8 +60,8 @@ describe('RoofBackgroundNode Component', () => {
         front: 25,
         // rear is missing, default is 5 -> 10px
         // left is missing, default is 5 -> 10px
-        right: 12
-      }
+        right: 12,
+      },
     };
     render(<RoofBackgroundNode data={data} />);
 
@@ -72,7 +72,7 @@ describe('RoofBackgroundNode Component', () => {
       top: '50px',
       bottom: '10px',
       left: '10px',
-      right: '24px'
+      right: '24px',
     });
   });
 });

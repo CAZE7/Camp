@@ -1,3 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any --
+ * Werft-Altbestand (übernommen 2026-09): nutzt noch `any` für AI-SDK-
+ * Mocks/Datenstrukturen. FOLLOW-UP: typisieren, dann Disable entfernen.
+ */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { POST } from './route';
 import pool from '../../../lib/db';
@@ -5,7 +9,7 @@ import { streamText, embed } from 'ai';
 
 vi.mock('ai', () => ({
   streamText: vi.fn().mockReturnValue({
-    toUIMessageStreamResponse: vi.fn().mockReturnValue(new Response('stream'))
+    toUIMessageStreamResponse: vi.fn().mockReturnValue(new Response('stream')),
   }),
   embed: vi.fn().mockResolvedValue({ embedding: [0.1, 0.2] }),
   convertToModelMessages: vi.fn().mockResolvedValue([{ role: 'user', content: 'What is a battery?' }]),
@@ -41,10 +45,7 @@ describe('POST /api/chat', () => {
   it('performs a successful RAG query and calls streamText', async () => {
     // Mock the database query specifically for this test
     const mockQuery = vi.fn().mockResolvedValue({
-      rows: [
-        { content: 'Context chunk 1' },
-        { content: 'Context chunk 2' }
-      ]
+      rows: [{ content: 'Context chunk 1' }, { content: 'Context chunk 2' }],
     });
 
     (pool.connect as any).mockResolvedValueOnce({
@@ -61,9 +62,9 @@ describe('POST /api/chat', () => {
             id: '3',
             role: 'user',
             content: 'What is a battery?',
-          }
-        ]
-      })
+          },
+        ],
+      }),
     });
 
     const response = await POST(req);
@@ -71,9 +72,11 @@ describe('POST /api/chat', () => {
     expect(response).toBeInstanceOf(Response);
 
     // Verify embedding was called with the user query
-    expect(embed).toHaveBeenCalledWith(expect.objectContaining({
-      value: 'What is a battery?'
-    }));
+    expect(embed).toHaveBeenCalledWith(
+      expect.objectContaining({
+        value: 'What is a battery?',
+      })
+    );
 
     // Verify the DB was queried for vector similarity
     expect(mockQuery).toHaveBeenCalledWith(
@@ -83,7 +86,7 @@ describe('POST /api/chat', () => {
 
     // Verify streamText was called and system prompt includes the retrieved context
     expect(streamText).toHaveBeenCalled();
-    const streamTextArgs = vi.mocked(streamText).mock.calls[0][0];
+    const streamTextArgs = vi.mocked(streamText).mock.calls[0]![0]!;
     const systemMessage = streamTextArgs.messages?.find((m: any) => m.role === 'system');
 
     expect(systemMessage).toBeDefined();
@@ -106,9 +109,9 @@ describe('POST /api/chat', () => {
             id: 'db-error',
             role: 'user',
             content: 'What is a battery?',
-          }
-        ]
-      })
+          },
+        ],
+      }),
     });
 
     const response = await POST(req);
@@ -118,10 +121,7 @@ describe('POST /api/chat', () => {
     expect(response.status).toBe(200);
 
     // Ensure the error was caught and logged
-    expect(consoleSpy).toHaveBeenCalledWith(
-      'Error during RAG pipeline:',
-      expect.any(Error)
-    );
+    expect(consoleSpy).toHaveBeenCalledWith('Error during RAG pipeline:', expect.any(Error));
 
     // Verify streamText WAS called, ensuring graceful fallback
     expect(streamText).toHaveBeenCalled();
@@ -144,9 +144,9 @@ describe('POST /api/chat', () => {
             id: 'embed-error',
             role: 'user',
             content: 'What is a battery?',
-          }
-        ]
-      })
+          },
+        ],
+      }),
     });
 
     const response = await POST(req);
@@ -156,10 +156,7 @@ describe('POST /api/chat', () => {
     expect(response.status).toBe(200);
 
     // Ensure the error was caught and logged
-    expect(consoleSpy).toHaveBeenCalledWith(
-      'Error during RAG pipeline:',
-      expect.any(Error)
-    );
+    expect(consoleSpy).toHaveBeenCalledWith('Error during RAG pipeline:', expect.any(Error));
 
     // Verify streamText WAS called, ensuring graceful fallback
     expect(streamText).toHaveBeenCalled();
@@ -179,9 +176,9 @@ describe('POST /api/chat', () => {
             id: 'missing-end-tag',
             role: 'user',
             content: 'Here is my request \n```json\n{ "cables": [] }',
-          }
-        ]
-      })
+          },
+        ],
+      }),
     });
 
     const response = await POST(req);
@@ -205,9 +202,9 @@ describe('POST /api/chat', () => {
             id: 'large-input',
             role: 'user',
             content: largeContent,
-          }
-        ]
-      })
+          },
+        ],
+      }),
     });
 
     const start = Date.now();
@@ -236,9 +233,9 @@ describe('POST /api/chat', () => {
             id: '4',
             role: 'user',
             content: 'What is a battery?',
-          }
-        ]
-      })
+          },
+        ],
+      }),
     });
 
     const response = await POST(req);
@@ -248,10 +245,7 @@ describe('POST /api/chat', () => {
     expect(response.status).toBe(200);
 
     // Ensure the error was caught and logged
-    expect(consoleSpy).toHaveBeenCalledWith(
-      'Error during RAG pipeline:',
-      expect.any(Error)
-    );
+    expect(consoleSpy).toHaveBeenCalledWith('Error during RAG pipeline:', expect.any(Error));
 
     // Verify streamText WAS called, ensuring graceful fallback
     expect(streamText).toHaveBeenCalled();
@@ -261,13 +255,15 @@ describe('POST /api/chat', () => {
 
   it('parses valid BOM JSON with cables and provides product recommendations', async () => {
     // Mock the DB query to return components for the BOM
-    const mockQuery = vi.fn()
+    const mockQuery = vi
+      .fn()
       .mockResolvedValueOnce({ rows: [] }) // 1st query: Knowledge RAG (mock empty)
-      .mockResolvedValueOnce({ // 2nd query: Products for the cables
+      .mockResolvedValueOnce({
+        // 2nd query: Products for the cables
         rows: [
           { name: 'Cable A', brand: 'BrandX', price: 10.5, cross_section: 4 },
           { name: 'Cable B', brand: 'BrandY', price: 12.0, cross_section: 4 },
-        ]
+        ],
       });
 
     (pool.connect as any).mockResolvedValueOnce({
@@ -278,8 +274,8 @@ describe('POST /api/chat', () => {
     const bomJson = JSON.stringify({
       cables: [
         { crossSection: 4, length: 2 },
-        { crossSection: null, length: 5 } // to ensure null crossSections are handled
-      ]
+        { crossSection: null, length: 5 }, // to ensure null crossSections are handled
+      ],
     });
 
     const req = new Request('http://localhost/api/chat', {
@@ -291,9 +287,9 @@ describe('POST /api/chat', () => {
             id: '5',
             role: 'user',
             content: `Here is my setup\n\`\`\`json\n${bomJson}\n\`\`\``,
-          }
-        ]
-      })
+          },
+        ],
+      }),
     });
 
     const response = await POST(req);
@@ -310,7 +306,7 @@ describe('POST /api/chat', () => {
 
     // Verify streamText was called and system prompt includes product recommendations
     expect(streamText).toHaveBeenCalled();
-    const streamTextArgs = vi.mocked(streamText).mock.calls[0][0];
+    const streamTextArgs = vi.mocked(streamText).mock.calls[0]![0]!;
     const systemMessage = streamTextArgs.messages?.find((m: any) => m.role === 'system');
 
     expect(systemMessage).toBeDefined();
@@ -323,7 +319,7 @@ describe('POST /api/chat', () => {
     const req = new Request('http://localhost/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: 'invalid-json'
+      body: 'invalid-json',
     });
 
     const response = await POST(req);
@@ -338,8 +334,8 @@ describe('POST /api/chat', () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        otherData: 'no messages here'
-      })
+        otherData: 'no messages here',
+      }),
     });
 
     const response = await POST(req);
@@ -354,8 +350,8 @@ describe('POST /api/chat', () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        messages: []
-      })
+        messages: [],
+      }),
     });
 
     const response = await POST(req);
@@ -369,15 +365,15 @@ describe('POST /api/chat', () => {
     const manyMessages = Array.from({ length: 101 }, (_, i) => ({
       id: i.toString(),
       role: 'user',
-      content: 'test content'
+      content: 'test content',
     }));
 
     const req = new Request('http://localhost/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        messages: manyMessages
-      })
+        messages: manyMessages,
+      }),
     });
 
     const response = await POST(req);
@@ -396,10 +392,10 @@ describe('POST /api/chat', () => {
           {
             id: '1',
             role: 'invalid_role',
-            content: 'test content'
-          }
-        ]
-      })
+            content: 'test content',
+          },
+        ],
+      }),
     });
 
     const response = await POST(req);
@@ -419,10 +415,10 @@ describe('POST /api/chat', () => {
           {
             id: '1',
             role: 'user',
-            content: longContent
-          }
-        ]
-      })
+            content: longContent,
+          },
+        ],
+      }),
     });
 
     const response = await POST(req);
@@ -435,7 +431,7 @@ describe('POST /api/chat', () => {
   it('returns 400 Bad Request if a message has too many parts', async () => {
     const tooManyParts = Array.from({ length: 11 }, () => ({
       type: 'text',
-      text: 'test'
+      text: 'test',
     }));
 
     const req = new Request('http://localhost/api/chat', {
@@ -447,10 +443,10 @@ describe('POST /api/chat', () => {
             id: '1',
             role: 'user',
             content: 'test',
-            parts: tooManyParts
-          }
-        ]
-      })
+            parts: tooManyParts,
+          },
+        ],
+      }),
     });
 
     const response = await POST(req);
@@ -471,10 +467,10 @@ describe('POST /api/chat', () => {
             id: '1',
             role: 'user',
             content: 'test',
-            parts: [{ type: 'text', text: longPartText }]
-          }
-        ]
-      })
+            parts: [{ type: 'text', text: longPartText }],
+          },
+        ],
+      }),
     });
 
     const response = await POST(req);
@@ -493,20 +489,20 @@ describe('POST /api/chat', () => {
           {
             id: '1',
             role: 'tool',
-            content: 'tool output'
+            content: 'tool output',
           },
           {
             id: '2',
             role: 'data',
-            content: 'additional data'
+            content: 'additional data',
           },
           {
             id: '3',
             role: 'user',
-            content: 'what now?'
-          }
-        ]
-      })
+            content: 'what now?',
+          },
+        ],
+      }),
     });
 
     const response = await POST(req);
@@ -519,8 +515,8 @@ describe('POST /api/chat', () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        messages: ["not an object"]
-      })
+        messages: ['not an object'],
+      }),
     });
 
     const response = await POST(req);
@@ -542,18 +538,15 @@ describe('POST /api/chat', () => {
             id: '1',
             role: 'user',
             content: 'Here is my request \n```json\n{ bad json \n```',
-          }
-        ]
-      })
+          },
+        ],
+      }),
     });
 
     const response = await POST(req);
 
     expect(response).toBeInstanceOf(Response);
-    expect(consoleSpy).toHaveBeenCalledWith(
-      'Failed to parse BOM JSON:',
-      expect.any(Error)
-    );
+    expect(consoleSpy).toHaveBeenCalledWith('Failed to parse BOM JSON:', expect.any(Error));
 
     consoleSpy.mockRestore();
   });
@@ -570,18 +563,15 @@ describe('POST /api/chat', () => {
             id: '2',
             role: 'user',
             content: 'Here is my request \n```json\n{ "other": "data" }\n```',
-          }
-        ]
-      })
+          },
+        ],
+      }),
     });
 
     const response = await POST(req);
 
     expect(response).toBeInstanceOf(Response);
-    expect(consoleSpy).not.toHaveBeenCalledWith(
-      'Failed to parse BOM JSON:',
-      expect.any(Error)
-    );
+    expect(consoleSpy).not.toHaveBeenCalledWith('Failed to parse BOM JSON:', expect.any(Error));
 
     consoleSpy.mockRestore();
   });

@@ -3,12 +3,7 @@ import type { PlannerEdge, PlannerNode } from '../domainModel';
 import { GEOMETRY } from '../tokens';
 import { routeAllEdges } from './orchestrator';
 
-const node = (
-  id: string,
-  type: string,
-  x: number,
-  y: number,
-): PlannerNode => ({
+const node = (id: string, type: string, x: number, y: number): PlannerNode => ({
   id,
   type,
   position: { x, y },
@@ -22,7 +17,7 @@ const edge = (
   source: string,
   target: string,
   sourceHandle?: string,
-  targetHandle?: string,
+  targetHandle?: string
 ): PlannerEdge => ({
   id,
   source,
@@ -92,9 +87,7 @@ describe('Routing V2 stress', () => {
     expect(first.diagnostics.maxEdgeNodeCollisions).toBe(0);
     expect(first.diagnostics.maxEdgeEdgeOverlaps).toBe(0);
     expect(first.diagnostics.totalCrossings).toBeLessThanOrEqual(2);
-    expect(first.diagnostics.minClearance).toBeGreaterThanOrEqual(
-      GEOMETRY.cableClearance,
-    );
+    expect(first.diagnostics.minClearance).toBeGreaterThanOrEqual(GEOMETRY.cableClearance);
     expect(first.edges).toEqual(second.edges);
   }, 15000);
 });

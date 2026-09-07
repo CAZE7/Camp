@@ -8,7 +8,6 @@
  */
 
 import type {
-  LayoutDirection,
   LayoutEdgeResult,
   LayoutNodeResult,
   LayoutRequest,
@@ -46,47 +45,39 @@ export class ElkLayoutEngine implements PlannerLayoutEngine {
         'elk.spacing.componentComponent': `${GEOMETRY.componentComponentSpacing}`,
         'elk.padding': `[${GEOMETRY.cableClearance},${GEOMETRY.cableClearance},${GEOMETRY.cableClearance},${GEOMETRY.cableClearance}]`,
       },
-      children: [...request.nodes]
-        .sort(compareById)
-        .map((node) => ({
-          id: node.id,
-          width: node.width ?? GEOMETRY.defaultNodeWidth,
-          height: node.height ?? GEOMETRY.defaultNodeHeight,
-        })),
-      edges: [...request.edges]
-        .sort(compareById)
-        .map((edge) => ({
-          id: edge.id,
-          sources: [edge.source],
-          targets: [edge.target],
-        })),
+      children: [...request.nodes].sort(compareById).map((node) => ({
+        id: node.id,
+        width: node.width ?? GEOMETRY.defaultNodeWidth,
+        height: node.height ?? GEOMETRY.defaultNodeHeight,
+      })),
+      edges: [...request.edges].sort(compareById).map((edge) => ({
+        id: edge.id,
+        sources: [edge.source],
+        targets: [edge.target],
+      })),
     };
 
     const result = await elk.layout(input);
 
     const nodeById = new Map<string, { x: number; y: number; width: number; height: number }>();
-    const nodeResults: LayoutNodeResult[] = (result.children ?? [])
-      .sort(compareById)
-      .map((child) => {
-        const width = child.width ?? GEOMETRY.defaultNodeWidth;
-        const height = child.height ?? GEOMETRY.defaultNodeHeight;
-        const node = {
-          id: child.id,
-          x: child.x ?? 0,
-          y: child.y ?? 0,
-          width,
-          height,
-        };
-        nodeById.set(node.id, node);
-        return node;
-      });
+    const nodeResults: LayoutNodeResult[] = (result.children ?? []).sort(compareById).map((child) => {
+      const width = child.width ?? GEOMETRY.defaultNodeWidth;
+      const height = child.height ?? GEOMETRY.defaultNodeHeight;
+      const node = {
+        id: child.id,
+        x: child.x ?? 0,
+        y: child.y ?? 0,
+        width,
+        height,
+      };
+      nodeById.set(node.id, node);
+      return node;
+    });
 
-    const edgeResults: LayoutEdgeResult[] = (result.edges ?? [])
-      .sort(compareById)
-      .map((edge) => ({
-        id: edge.id,
-        points: collectElkPoints(edge.sections),
-      }));
+    const edgeResults: LayoutEdgeResult[] = (result.edges ?? []).sort(compareById).map((edge) => ({
+      id: edge.id,
+      points: collectElkPoints(edge.sections),
+    }));
 
     return {
       nodes: nodeResults,
@@ -97,11 +88,13 @@ export class ElkLayoutEngine implements PlannerLayoutEngine {
 }
 
 function collectElkPoints(
-  sections: Array<{
-    startPoint?: { x: number; y: number };
-    endPoint?: { x: number; y: number };
-    bendPoints?: Array<{ x: number; y: number }>;
-  }> | undefined,
+  sections:
+    | Array<{
+        startPoint?: { x: number; y: number };
+        endPoint?: { x: number; y: number };
+        bendPoints?: Array<{ x: number; y: number }>;
+      }>
+    | undefined
 ): readonly { x: number; y: number }[] {
   const points: Array<{ x: number; y: number }> = [];
   for (const section of sections ?? []) {

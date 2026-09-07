@@ -38,9 +38,7 @@ export type AStarOptions = {
   readonly routedBounded?: readonly RoutedWithBounds[];
 };
 
-export function prepareRoutedEdges(
-  routed: readonly RoutedGeometry[],
-): readonly RoutedWithBounds[] {
+export function prepareRoutedEdges(routed: readonly RoutedGeometry[]): readonly RoutedWithBounds[] {
   return routed.map(withBounds);
 }
 
@@ -97,10 +95,10 @@ class MinHeap {
 
   private siftUp(index: number): void {
     const items = this.items;
-    const entry = items[index];
+    const entry = items[index]!;
     while (index > 0) {
       const parentIndex = (index - 1) >> 1;
-      const parent = items[parentIndex];
+      const parent = items[parentIndex]!;
       if (compare(parent, entry) <= 0) break;
       items[index] = parent;
       index = parentIndex;
@@ -111,7 +109,7 @@ class MinHeap {
   private siftDown(index: number): void {
     const items = this.items;
     const count = items.length;
-    const entry = items[index];
+    const entry = items[index]!;
 
     for (;;) {
       const left = index * 2 + 1;
@@ -120,12 +118,12 @@ class MinHeap {
 
       let smallest = left;
       if (right < count) {
-        const rightEntry = items[right];
-        const leftEntry = items[left];
+        const rightEntry = items[right]!;
+        const leftEntry = items[left]!;
         if (compare(rightEntry, leftEntry) < 0) smallest = right;
       }
 
-      const child = items[smallest];
+      const child = items[smallest]!;
       if (compare(entry, child) <= 0) break;
       items[index] = child;
       index = smallest;
@@ -156,12 +154,9 @@ export function astarRoute(options: AStarOptions): readonly Point[] | undefined 
     return [snapPoint(startCell), snapPoint(startCell)];
   }
 
-  const segmentCost =
-    (graph.grid / ROUTING.pxPerMeter) * weights.lengthPerMeter +
-    weights.routeSegment;
+  const segmentCost = (graph.grid / ROUTING.pxPerMeter) * weights.lengthPerMeter + weights.routeSegment;
 
-  const routedWithBounds =
-    options.routedBounded ?? (options.routed ?? []).map(withBounds);
+  const routedWithBounds = options.routedBounded ?? (options.routed ?? []).map(withBounds);
 
   const open = new MinHeap();
   const byKey = new Map<string, AStarCell>();
@@ -204,18 +199,12 @@ export function astarRoute(options: AStarOptions): readonly Point[] | undefined 
       if (closed.has(neighborKey)) continue;
 
       const nextDir = direction(current, neighbor);
-      const bendCost = current.incomingDir && current.incomingDir !== nextDir
-        ? weights.bend
-        : 0;
+      const bendCost = current.incomingDir && current.incomingDir !== nextDir ? weights.bend : 0;
       const segment: Segment = {
         from: current.point,
         to: { x: neighbor.x, y: neighbor.y },
       };
-      const interferenceCost = interferencePenalty(
-        segment,
-        routedWithBounds,
-        weights,
-      );
+      const interferenceCost = interferencePenalty(segment, routedWithBounds, weights);
       const g = current.g + segmentCost + bendCost + interferenceCost;
 
       const existing = byKey.get(neighborKey);
@@ -239,20 +228,12 @@ export function astarRoute(options: AStarOptions): readonly Point[] | undefined 
   return undefined;
 }
 
-function heuristic(
-  current: CorridorCell,
-  goal: CorridorCell,
-  weights: CostWeights,
-): number {
-  const distance =
-    Math.abs(goal.x - current.x) + Math.abs(goal.y - current.y);
+function heuristic(current: CorridorCell, goal: CorridorCell, weights: CostWeights): number {
+  const distance = Math.abs(goal.x - current.x) + Math.abs(goal.y - current.y);
   return (distance / ROUTING.pxPerMeter) * weights.lengthPerMeter;
 }
 
-function direction(
-  current: AStarCell,
-  next: CorridorCell,
-): 'H' | 'V' {
+function direction(current: AStarCell, next: CorridorCell): 'H' | 'V' {
   if (current.gy === next.gy) return 'H';
   return 'V';
 }
@@ -307,13 +288,10 @@ function segmentBounds(segment: Segment): {
 
 function boundsOverlap(
   a: { minX: number; maxX: number; minY: number; maxY: number },
-  b: { minX: number; maxX: number; minY: number; maxY: number },
+  b: { minX: number; maxX: number; minY: number; maxY: number }
 ): boolean {
   return (
-    a.minX <= b.maxX + 1e-9 &&
-    a.maxX >= b.minX - 1e-9 &&
-    a.minY <= b.maxY + 1e-9 &&
-    a.maxY >= b.minY - 1e-9
+    a.minX <= b.maxX + 1e-9 && a.maxX >= b.minX - 1e-9 && a.minY <= b.maxY + 1e-9 && a.maxY >= b.minY - 1e-9
   );
 }
 
@@ -326,7 +304,7 @@ function boundsOverlap(
 function interferencePenalty(
   segment: Segment,
   routed: readonly RoutedWithBounds[],
-  weights: CostWeights,
+  weights: CostWeights
 ): number {
   let cost = 0;
   const segmentPath: readonly Point[] = [segment.from, segment.to];
@@ -339,7 +317,7 @@ function interferencePenalty(
       'segment',
       segmentPath,
       existing.edgeId,
-      existing.points,
+      existing.points
     );
     cost += crossings.length * weights.hop + overlaps.length * weights.collision;
   }

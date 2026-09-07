@@ -61,10 +61,7 @@ export class LaneRegistry {
    * normalized handles, kind and finally the edge id. It never depends on the
    * order of the input array.
    */
-  static stableKey(
-    edge: PlannerEdge,
-    rankByNodeId: ReadonlyMap<string, number>,
-  ): string {
+  static stableKey(edge: PlannerEdge, rankByNodeId: ReadonlyMap<string, number>): string {
     const sourceRank = rankByNodeId.get(edge.source) ?? Number.MAX_SAFE_INTEGER;
     const targetRank = rankByNodeId.get(edge.target) ?? Number.MAX_SAFE_INTEGER;
     const sourceHandle = normalizeHandle(edge.sourceHandle);
@@ -74,10 +71,8 @@ export class LaneRegistry {
   }
 
   private assignStableLanes(edges: readonly PlannerEdge[]): void {
-    const nodePlaceholder = Array.from(
-      new Set(edges.flatMap((edge) => [edge.source, edge.target])),
-    ).map(
-      (id) => ({ id, type: 'unknown', position: { x: 0, y: 0 }, data: {} }),
+    const nodePlaceholder = Array.from(new Set(edges.flatMap((edge) => [edge.source, edge.target]))).map(
+      (id) => ({ id, type: 'unknown', position: { x: 0, y: 0 }, data: {} })
     );
 
     // We only need ranks over ids present in the edge list. If a caller wants
@@ -115,9 +110,7 @@ function normalizeHandle(handle: string | undefined | null): string {
   if (lower.includes('plus') || lower.includes('right') || lower.includes('input')) return '0';
   if (lower.includes('minus') || lower.includes('left') || lower.includes('output')) return '1';
   if (lower.includes('ground')) return '2';
-  return lower
-    .replace(/[^a-z0-9]/gi, '')
-    .toLowerCase();
+  return lower.replace(/[^a-z0-9]/gi, '').toLowerCase();
 }
 
 function compareKeys(a: string, b: string): number {

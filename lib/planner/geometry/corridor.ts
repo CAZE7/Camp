@@ -8,18 +8,9 @@
  * routed (those are excluded from the obstacle set, so ports remain reachable).
  */
 
-import type {
-  BBox,
-  PlannerNode,
-  PlannerNodeData,
-  Point,
-} from '../domainModel';
+import type { BBox, PlannerNode, PlannerNodeData, Point } from '../domainModel';
 import { GEOMETRY, ROUTING } from '../tokens';
-import {
-  boundingBoxOfNodes,
-  expandBBox,
-  segmentIntersectsBBox,
-} from './collision';
+import { boundingBoxOfNodes, expandBBox, segmentIntersectsBBox } from './collision';
 
 export type CorridorCell = {
   readonly gx: number;
@@ -49,7 +40,7 @@ export class CorridorGraph {
     obstacleBBoxes: readonly BBox[],
     excludedNodeIds: readonly string[],
     cells: readonly CorridorCell[],
-    neighbors: ReadonlyMap<string, readonly CorridorCell[]>,
+    neighbors: ReadonlyMap<string, readonly CorridorCell[]>
   ) {
     this.bounds = bounds;
     this.grid = grid;
@@ -87,8 +78,7 @@ export class CorridorGraph {
     let best: CorridorCell | undefined;
     let bestDistance = Number.POSITIVE_INFINITY;
     for (const cell of Array.from(this.cellsByKey.values())) {
-      const distance =
-        Math.abs(cell.x - point.x) + Math.abs(cell.y - point.y);
+      const distance = Math.abs(cell.x - point.x) + Math.abs(cell.y - point.y);
       if (distance < bestDistance) {
         bestDistance = distance;
         best = cell;
@@ -101,7 +91,7 @@ export class CorridorGraph {
 export function buildCorridorGraph(
   nodes: readonly PlannerNode<PlannerNodeData>[],
   excludedNodeIds: readonly string[],
-  options: CorridorGraphOptions = {},
+  options: CorridorGraphOptions = {}
 ): CorridorGraph {
   const grid = options.grid ?? GEOMETRY.laneGrid;
   const padding = options.padding ?? ROUTING.searchPadding;
@@ -163,7 +153,7 @@ function isCellBlocked(cell: CorridorCell, obstacles: readonly BBox[]): boolean 
 function buildNeighbors(
   cells: readonly CorridorCell[],
   obstacleBBoxes: readonly BBox[],
-  blocked: ReadonlySet<string>,
+  blocked: ReadonlySet<string>
 ): ReadonlyMap<string, readonly CorridorCell[]> {
   const byKey = new Map<string, CorridorCell>();
   for (const cell of cells) byKey.set(cellKey(cell.gx, cell.gy), cell);

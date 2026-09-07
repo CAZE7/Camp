@@ -1,6 +1,6 @@
-import { Slider as SliderPrimitive } from "@base-ui/react/slider"
+import { Slider as SliderPrimitive } from '@base-ui/react/slider';
 
-import { cn } from "@/lib/utils"
+import { cn } from '@/lib/utils';
 
 function Slider({
   className,
@@ -10,16 +10,12 @@ function Slider({
   max = 100,
   ...props
 }: SliderPrimitive.Root.Props) {
-  const _values = Array.isArray(value)
-    ? value
-    : Array.isArray(defaultValue)
-      ? defaultValue
-      : [min]
+  const _values = Array.isArray(value) ? value : Array.isArray(defaultValue) ? defaultValue : [min];
 
   return (
     <SliderPrimitive.Root
       className={cn(
-        "relative flex w-full touch-none select-none items-center group data-[orientation=vertical]:flex-col data-[orientation=vertical]:w-auto data-[orientation=vertical]:h-full py-4",
+        'group relative flex w-full touch-none select-none items-center py-4 data-[orientation=vertical]:h-full data-[orientation=vertical]:w-auto data-[orientation=vertical]:flex-col',
         className
       )}
       data-slot="slider"
@@ -30,10 +26,10 @@ function Slider({
       thumbAlignment="center"
       {...props}
     >
-      <SliderPrimitive.Control className="relative flex w-full grow items-center data-[orientation=vertical]:flex-col data-[orientation=vertical]:h-full">
+      <SliderPrimitive.Control className="relative flex w-full grow items-center data-[orientation=vertical]:h-full data-[orientation=vertical]:flex-col">
         <SliderPrimitive.Track
           data-slot="slider-track"
-          className="relative grow overflow-hidden bg-rule data-[orientation=horizontal]:h-1.5 data-[orientation=horizontal]:w-full data-[orientation=vertical]:h-full data-[orientation=vertical]:w-1.5"
+          className="relative grow overflow-hidden bg-rule data-[orientation=horizontal]:h-1.5 data-[orientation=vertical]:h-full data-[orientation=horizontal]:w-full data-[orientation=vertical]:w-1.5"
         >
           <SliderPrimitive.Indicator
             data-slot="slider-range"
@@ -44,12 +40,12 @@ function Slider({
           <SliderPrimitive.Thumb
             data-slot="slider-thumb"
             key={index}
-            className="block size-5 shrink-0 rounded-none border-2 border-ink bg-bone focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink disabled:pointer-events-none disabled:opacity-50 cursor-grab active:cursor-grabbing"
+            className="block size-5 shrink-0 cursor-grab rounded-none border-2 border-ink bg-bone focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink active:cursor-grabbing disabled:pointer-events-none disabled:opacity-50"
           />
         ))}
       </SliderPrimitive.Control>
     </SliderPrimitive.Root>
-  )
+  );
 }
 
-export { Slider }
+export { Slider };

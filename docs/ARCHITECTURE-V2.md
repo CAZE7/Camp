@@ -2,7 +2,7 @@
 
 **Status: `FROZEN` (Spezifikation, kein Ist-Code)**
 
-Diese Datei ist die Referenzarchitektur für Routing-V2. Sie beschreibt, *wie* das System
+Diese Datei ist die Referenzarchitektur für Routing-V2. Sie beschreibt, _wie_ das System
 aufgebaut sein soll, nicht, was heute im Repo steht. Der Ist-Zustand ist in
 `ARCHITECTURE-CHANGES.md` dokumentiert; die Implementierungsreihenfolge steht in
 `IMPLEMENTATION-V2.md`.
@@ -101,7 +101,7 @@ export type PlannerNodeData =
 
 export type PlannerNode<D extends PlannerNodeData = PlannerNodeData> = {
   readonly id: string;
-  readonly type: D["type"];
+  readonly type: D['type'];
   readonly position: PlannerPosition;
   readonly data: D;
   readonly width?: number;
@@ -115,13 +115,11 @@ export type PlannerNode<D extends PlannerNodeData = PlannerNodeData> = {
 ### 3.2 Kanten
 
 ```ts
-export type PlannerEdgeData =
-  | CableEdgeData
-  | WaterPipeEdgeData;
+export type PlannerEdgeData = CableEdgeData | WaterPipeEdgeData;
 
 export type PlannerEdge<D extends PlannerEdgeData = PlannerEdgeData> = {
   readonly id: string;
-  readonly kind: D["kind"];        // 'cable' | 'waterPipe'  (statt type: 'cableEdge')
+  readonly kind: D['kind']; // 'cable' | 'waterPipe'  (statt type: 'cableEdge')
   readonly source: string;
   readonly target: string;
   readonly sourceHandle?: HandleId;
@@ -158,40 +156,40 @@ Eine Wahrheit. Alle Layer (ELK, Collision Engine, Route, Hopping) lesen von hier
 ```ts
 export const GEOMETRY = {
   // Kernabstand zwischen Kabel/Gerät und Knoten (Grenze der Fachdomäne)
-  cableClearance: 12,              // px
-  edgeEdgeSpacing: 12,             // px  (edge↔edge, gleiche Domäne)
-  edgeNodeSpacing: 24,             // px  = cableClearance * 2 (edge↔node)
-  crossDomainSpacing: 24,          // px  (elektrisch ↔ wasser, bei geteilten Knoten)
-  stubMin: 24,                     // px  (min. gerades Stub-Stück am Port)
-  stubMax: 48,                     // px
-  laneGrid: 16,                    // px  (Raster/Orthogonalschritte)
-  bendRadius: 8,                   // px  (visueller Radius; Routing ist orthogonal)
-  nodeNodeSpacing: 24,             // px
-  edgeNodeBetweenLayers: 24,       // px  (ELK-Konzept: edge↔node zwischen Layern)
-  componentComponentSpacing: 24,   // px
-  maxLaneSegments: 4,              // Anzahl paralleler Routen pro Korridor
+  cableClearance: 12, // px
+  edgeEdgeSpacing: 12, // px  (edge↔edge, gleiche Domäne)
+  edgeNodeSpacing: 24, // px  = cableClearance * 2 (edge↔node)
+  crossDomainSpacing: 24, // px  (elektrisch ↔ wasser, bei geteilten Knoten)
+  stubMin: 24, // px  (min. gerades Stub-Stück am Port)
+  stubMax: 48, // px
+  laneGrid: 16, // px  (Raster/Orthogonalschritte)
+  bendRadius: 8, // px  (visueller Radius; Routing ist orthogonal)
+  nodeNodeSpacing: 24, // px
+  edgeNodeBetweenLayers: 24, // px  (ELK-Konzept: edge↔node zwischen Layern)
+  componentComponentSpacing: 24, // px
+  maxLaneSegments: 4, // Anzahl paralleler Routen pro Korridor
 } as const;
 
 export const COST_WEIGHTS = {
   lengthPerMeter: 1.0,
-  bend: 6.0,                        // pro Biegung
-  routeSegment: 2.0,                // pro Korridor-Segment (Orthogonalweg)
-  collision: 100_000,               // hard penalty (edge-node/edge-edge)
-  laneCongestion: 20,               // pro gleichzeitig belegtem Lane-Segment
-  hop: 50,                          // je Hop (Crossing-Zuschlag)
-  laneHop: 200,                     // Lane-/Port-Wechsel (Verdrahtungsteuerung)
+  bend: 6.0, // pro Biegung
+  routeSegment: 2.0, // pro Korridor-Segment (Orthogonalweg)
+  collision: 100_000, // hard penalty (edge-node/edge-edge)
+  laneCongestion: 20, // pro gleichzeitig belegtem Lane-Segment
+  hop: 50, // je Hop (Crossing-Zuschlag)
+  laneHop: 200, // Lane-/Port-Wechsel (Verdrahtungsteuerung)
 } as const;
 ```
 
 ### 4.1 Semantik der Spacings (verbindlich)
 
-| Token | Bedeutung | ELK-Äquivalent | Collision-Engine |
-|---|---|---|---|
-| `cableClearance` | kleinster Abstand zwischen Kabel und einem Hindernis | unten | `>= 12px` |
-| `edgeEdgeSpacing` | Abstand paralleler Leitungen derselben Domäne | `elk.spacing.edgeEdge` | `>= 12px` |
-| `edgeNodeSpacing` | Abstand Leitung ↔ Knoten | `elk.spacing.edgeNode` | `>= 24px` |
-| `edgeNodeBetweenLayers` | Abstand Leitung ↔ Knoten zwischen Layern | `elk.spacing.edgeNodeBetweenLayers` | `>= 24px` |
-| `crossDomainSpacing` | elektrisch ↔ wasser | `elk.spacing.componentComponent` | `>= 24px` |
+| Token                   | Bedeutung                                            | ELK-Äquivalent                      | Collision-Engine |
+| ----------------------- | ---------------------------------------------------- | ----------------------------------- | ---------------- |
+| `cableClearance`        | kleinster Abstand zwischen Kabel und einem Hindernis | unten                               | `>= 12px`        |
+| `edgeEdgeSpacing`       | Abstand paralleler Leitungen derselben Domäne        | `elk.spacing.edgeEdge`              | `>= 12px`        |
+| `edgeNodeSpacing`       | Abstand Leitung ↔ Knoten                             | `elk.spacing.edgeNode`              | `>= 24px`        |
+| `edgeNodeBetweenLayers` | Abstand Leitung ↔ Knoten zwischen Layern             | `elk.spacing.edgeNodeBetweenLayers` | `>= 24px`        |
+| `crossDomainSpacing`    | elektrisch ↔ wasser                                  | `elk.spacing.componentComponent`    | `>= 24px`        |
 
 > **Invariante:** `edgeNodeSpacing >= edgeEdgeSpacing` und beide sind **Vielfache** von
 > `laneGrid`. Sonst ist der deterministische A*-Suchraum nicht auflösbar.
@@ -230,8 +228,8 @@ Kandidaten bauen
 ```ts
 export type LayoutRequest = {
   nodes: Array<{ id: string; kind: string; width?: number; height?: number }>;
-  edges: Array<{ id: string; source: string; target: string; kind: "cable" | "waterPipe" }>;
-  direction: "LR" | "TB";
+  edges: Array<{ id: string; source: string; target: string; kind: 'cable' | 'waterPipe' }>;
+  direction: 'LR' | 'TB';
 };
 
 export type LayoutResult = {
@@ -244,9 +242,9 @@ Layout ist **reine Funktion**: gleicher Request → identisches Ergebnis.
 
 ### 6.2 Engine-Auswahl
 
-| Engine | Einsatz | Status |
-|---|---|---|
-| `ElkLayoutEngine` | Standard für Elektrik/Wasser, volle Tokens | **Ziel** |
+| Engine              | Einsatz                                                 | Status   |
+| ------------------- | ------------------------------------------------------- | -------- |
+| `ElkLayoutEngine`   | Standard für Elektrik/Wasser, volle Tokens              | **Ziel** |
 | `DagreLayoutEngine` | Fallback/kompakte Ansicht, dokumentiert deterministisch | **Ziel** |
 
 ### 6.3 ELK-Mapping (verbindlich)
@@ -255,33 +253,33 @@ ELK wird nicht mehr nur mit `nodeNode` und `edgeNode` betrieben, sondern mit der
 vollen, aus `tokens.ts` abgeleiteten Konfiguration:
 
 ```ts
-const ELK_RUNNER = "elkjs";
+const ELK_RUNNER = 'elkjs';
 
 elk.layout({
-  id: "root",
+  id: 'root',
   layoutOptions: {
-    "elk.algorithm": "layered",
-    "elk.direction": direction,                          // "RIGHT" | "DOWN"
-    "elk.edgeRouting": "ORTHOGONAL",
-    "elk.layered.mergeEdges": "false",
-    "elk.layered.nodePlacement.strategy": "BRANDES_KOEPF",
-    "elk.layered.nodePlacement.favorStraightEdges": "true",
-    "elk.layered.crossingMinimization.strategy": "LAYER_SWEEP",
-    "elk.layered.cycleBreaking.strategy": "DFS",
-    "elk.layered.considerModelOrder.strategy": "NONE",
-    "elk.spacing.nodeNode": `${GEOMETRY.nodeNodeSpacing}`,
-    "elk.spacing.edgeNode": `${GEOMETRY.edgeNodeSpacing}`,
-    "elk.spacing.edgeEdge": `${GEOMETRY.edgeEdgeSpacing}`,
-    "elk.spacing.edgeNodeBetweenLayers": `${GEOMETRY.edgeNodeBetweenLayers}`,
-    "elk.spacing.componentComponent": `${GEOMETRY.componentComponentSpacing}`,
-    "elk.padding": `[${GEOMETRY.cableClearance},${GEOMETRY.cableClearance},${GEOMETRY.cableClearance},${GEOMETRY.cableClearance}]`,
+    'elk.algorithm': 'layered',
+    'elk.direction': direction, // "RIGHT" | "DOWN"
+    'elk.edgeRouting': 'ORTHOGONAL',
+    'elk.layered.mergeEdges': 'false',
+    'elk.layered.nodePlacement.strategy': 'BRANDES_KOEPF',
+    'elk.layered.nodePlacement.favorStraightEdges': 'true',
+    'elk.layered.crossingMinimization.strategy': 'LAYER_SWEEP',
+    'elk.layered.cycleBreaking.strategy': 'DFS',
+    'elk.layered.considerModelOrder.strategy': 'NONE',
+    'elk.spacing.nodeNode': `${GEOMETRY.nodeNodeSpacing}`,
+    'elk.spacing.edgeNode': `${GEOMETRY.edgeNodeSpacing}`,
+    'elk.spacing.edgeEdge': `${GEOMETRY.edgeEdgeSpacing}`,
+    'elk.spacing.edgeNodeBetweenLayers': `${GEOMETRY.edgeNodeBetweenLayers}`,
+    'elk.spacing.componentComponent': `${GEOMETRY.componentComponentSpacing}`,
+    'elk.padding': `[${GEOMETRY.cableClearance},${GEOMETRY.cableClearance},${GEOMETRY.cableClearance},${GEOMETRY.cableClearance}]`,
   },
   children: nodes,
   edges: edges,
 });
 ```
 
-> **Anforderung:** `layout-engine/elk.ts` muss genau diese Options als *typisierten*
+> **Anforderung:** `layout-engine/elk.ts` muss genau diese Options als _typisierten_
 > `ElkLayoutOptions`-Record kapseln. Werte sind **nicht** hart kodiert, sondern aus
 > `tokens.ts` abgeleitet.
 
@@ -334,12 +332,12 @@ vergeben wird, ändert sich die Zuordnung mit jeder Insertions-Reihenfolge.
 
 ```ts
 function isBatteryNode(n: PlannerNode): n is PlannerNode<BatteryNodeData> {
-  return n.type === "battery";
+  return n.type === 'battery';
 }
 
 export function validateSchematic(
   nodes: readonly PlannerNode[],
-  edges: readonly CablePlannerEdge[],
+  edges: readonly CablePlannerEdge[]
 ): VDEValidationResult[] {
   const byId = buildNodeLookup(nodes);
   const results: VDEValidationResult[] = [];
@@ -353,8 +351,8 @@ export function validateSchematic(
 
   for (const node of nodes) {
     if (isBatteryNode(node)) results.push(...validateBatteryNode(node));
-    else if (node.type === "shorePower") results.push(...validateShorePowerNode(node));
-    else if (node.type === "inverter") results.push(...validateInverterNode(node, nodes));
+    else if (node.type === 'shorePower') results.push(...validateShorePowerNode(node));
+    else if (node.type === 'inverter') results.push(...validateInverterNode(node, nodes));
   }
 
   return results;
@@ -368,12 +366,12 @@ export function validateSchematic(
 
 ## 9. Kompatibilität
 
-| Ehemalige Datei | Ziel | Nutzung |
-|---|---|---|
-| `lib/planner/domain.ts` | bleibt als **Legacy-Fassade** re-exportieren, nur UI/Adapter dürfen es importieren | `reactFlowAdapter.ts`, alte Komponenten |
-| `lib/vde-standards.ts` | wird zu einer Fassade, die `lib/planner/vde/` re-exportiert | UI, alte Components |
-| `lib/planner/routing.ts` | alte Verbindungsregeln bleiben in `routing-core` neu typisiert | neue Pipeline |
-| `lib/planner/layout.ts` | Dagre wird durch `layout-engine/dagre.ts` ersetzt | nur noch am Adapter |
+| Ehemalige Datei          | Ziel                                                                               | Nutzung                                 |
+| ------------------------ | ---------------------------------------------------------------------------------- | --------------------------------------- |
+| `lib/planner/domain.ts`  | bleibt als **Legacy-Fassade** re-exportieren, nur UI/Adapter dürfen es importieren | `reactFlowAdapter.ts`, alte Komponenten |
+| `lib/vde-standards.ts`   | wird zu einer Fassade, die `lib/planner/vde/` re-exportiert                        | UI, alte Components                     |
+| `lib/planner/routing.ts` | alte Verbindungsregeln bleiben in `routing-core` neu typisiert                     | neue Pipeline                           |
+| `lib/planner/layout.ts`  | Dagre wird durch `layout-engine/dagre.ts` ersetzt                                  | nur noch am Adapter                     |
 
 **Regel:** Neue Code-Pfade (`routing-v2`, `geometry`, `layout-engine`, `vde`) dürfen
 `domain.ts`/`lib/vde-standards.ts` **nicht** importieren. Ein `boundary.test.ts` verhindert
@@ -386,18 +384,18 @@ das.
 Diese Kriterien sind Teil der Architektur. Sie werden in `scripts/measure_planner_v2.ts`
 (auch `scripts/verify_routing_v2.ts`) ausgeführt und müssen **alle** grün sein.
 
-| # | Gate | Grenze |
-|---|---|---|
-| G1 | max. Edge-Node-Kollision | `0` |
-| G2 | max. Edge-Edge-Overlap | `0` |
-| G3 | min. Clearance | `>= tokens.GEOMETRY.cableClearance` |
-| G4 | deterministisches Layout | `true` (2 Läufe, identisches JSON) |
-| G5 | Crossing-Anzahl | `<= crossingsThreshold` (default `2`) |
-| G6 | Hop-Korrektheit | `100%` (jeder Hop erhält Topologie, keine neuen Kollisionen) |
-| G7 | Performance | `<= perfBudgetMs` (default `1500` ms für Referenz-Schema) |
-| G8 | Domain Boundary | `0` verbotene Imports (Prüfung via `domain-boundaries.test.ts`) |
-| G9 | keine `any` in neuen V2-Modulen | `0` (ESLint/TS-`no-explicit-any`) |
-| G10 | Re-Layout deterministisch | `true` (Insertion-Reihenfolge ändert Ergebnis nicht) |
+| #   | Gate                            | Grenze                                                          |
+| --- | ------------------------------- | --------------------------------------------------------------- |
+| G1  | max. Edge-Node-Kollision        | `0`                                                             |
+| G2  | max. Edge-Edge-Overlap          | `0`                                                             |
+| G3  | min. Clearance                  | `>= tokens.GEOMETRY.cableClearance`                             |
+| G4  | deterministisches Layout        | `true` (2 Läufe, identisches JSON)                              |
+| G5  | Crossing-Anzahl                 | `<= crossingsThreshold` (default `2`)                           |
+| G6  | Hop-Korrektheit                 | `100%` (jeder Hop erhält Topologie, keine neuen Kollisionen)    |
+| G7  | Performance                     | `<= perfBudgetMs` (default `1500` ms für Referenz-Schema)       |
+| G8  | Domain Boundary                 | `0` verbotene Imports (Prüfung via `domain-boundaries.test.ts`) |
+| G9  | keine `any` in neuen V2-Modulen | `0` (ESLint/TS-`no-explicit-any`)                               |
+| G10 | Re-Layout deterministisch       | `true` (Insertion-Reihenfolge ändert Ergebnis nicht)            |
 
 ---
 

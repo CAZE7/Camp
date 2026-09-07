@@ -3,48 +3,45 @@
  *
  * ZENTRALE API für alle VDE-Normen, die im Elektroplanner verwendet werden.
  *
- * Die thermische Basis (VDE_SIZES, VDE_AMPACITY, FUSE_MAP, calculateCrossSection,
- * getEdgeDomain, getHandleDomain, Kupfer-/Spannungsfall-Konstanten) kommt aus
- * `./electrical` und wird von hier aus re-exportiert. Es gibt KEINE zweite,
- * abweichende Implementierung mehr.
+ * Die thermische Basis (Normreihe, Strombelastbarkeit, Sicherungsgrenzen,
+ * Querschnittsberechnung) kommt unverändert aus `lib/electrical.ts` und wird
+ * hier re-exportiert. Diese Datei ergänzt die Werte, die früher an mehreren
+ * Stellen dupliziert waren:
+ *   - Systemspannung und Kantenströme (getSystemVoltage, calculateEdgeCurrent)
+ *   - Leerrohr/Kabelkanal (DIN EN 61386, 60%-Füllgrad)
+ *   - Wechselrichter-/Solar-/Batterie-Kennwerte
  *
- * Diese Datei ergänzt die Werte, die über die reine Kabeldimensionierung
- * hinausgehen:
- *   - Strombelastbarkeits- / Sicherungs-Vorschlagstabellen
- *   - Leerrohr / Füllgrad (VDE 0100-520 / DIN EN 61386)
- *   - Wechselrichter-Wirkungsgrad & -Auslastung
- *   - RCD 30 mA Personenschutz
- *   - Solar (Vmp, Winter-Ertrag), Lade-Derating, Batterie-DoD
- *   - High-level Validierung (validateCableEdge, validateSchematic, …)
+ * Aufgeräumt (Mission 4):
+ * =======================
+ * Die frühere zweite Validierungs-API (validateSchematic/validateCableEdge/
+ * validateBatteryNode/…, calculateWire) sowie die drei parallelen
+ * Sicherungstabellen (VDE_CURRENT_CAPACITY, VDE_STANDARD_FUSES,
+ * VDE_CONSERVATIVE_FUSES) wurden entfernt — sie wurden von keinem
+ * Produktionscode aufgerufen und widersprachen der aktiven Sicherungslogik
+ * (selectFuseSize + FUSE_MAP aus electrical.ts). Die Live-Prüfung der App ist
+ * `useLiveValidation` (components/planner/hooks/useLiveValidation.ts), die
+ * Kabel-Fehleranzeige `collectEdgeErrors` (components/edges/CableEdge.tsx).
  *
- * Verwendete Normen (vereinfacht auf das Camper-Use-Case):
- * - DIN VDE 0100-721: Errichten von Niederspannungsanlagen in Wohnmobilen
- * - DIN VDE 0100-520: Kabel- und Leitungsanlagen (Füllgrad, Spannungsabfall)
- * - VDE 0298-4: Strombelastbarkeit von Kabeln
- * - DIN EN 60228: Leiter, isolierte Kabel — Normquerschnitte
- * - DIN EN 61386: Elektroinstallationsrohrsysteme (EN 20 – EN 50)
+ * Einheiten (seit K1b)
+ * ====================
+ * Alle rechnenden Funktionen dieses Moduls arbeiten mit den Branded Types aus
+ * `lib/units.ts` (`Amps`, `Volts`, `Mm2`, `Meters`, `Watts`). Damit kann der
+ * Compiler vertauschte Argumente ablehnen — `calculateEdgeCurrent(strom,
+ * spannung)` kompiliert nicht.
  *
- * WICHTIG: Diese Werte sind eine sichere Approximation und konservativ
- * gewählt. Für die finale Auslegung im Fahrzeug immer durch eine
- * Elektrofachkraft prüfen.
+ * Werte aus `node.data` / `edge.data` (React Flow, localStorage) sind
+ * `unknown`-nah und werden mit `quantityOr(...)` geprüft eingelesen.
+ * Unbrauchbare Werte (negativ, NaN, Text) werden zu 0 bzw. zum
+ * dokumentierten Ersatzwert — genau wie vorher `Number(x) || 0`, nur
+ * jetzt an einer benannten Stelle.
  */
 
 export {
   VDE_SIZES,
   VDE_SIZES as VDE_CROSS_SECTIONS,
-  VDE_AMPACITY,
   VDE_AMPACITY as VDE_AMPACITY_RAW,
   DERATE_FACTOR,
   FUSE_MAP as VDE_FUSE_MAP,
-  VDE_COPPER_RESISTIVITY,
-  VDE_COPPER_CONDUCTIVITY,
-  VDE_MAX_VOLTAGE_DROP_12V,
-  VDE_MAX_VOLTAGE_DROP_230V,
-  VDE_MAX_DROP_VOLTS_DC_12V,
-  VDE_MAX_DROP_VOLTS_AC_230V,
-  VDE_NOMINAL_DC_VOLTAGE,
-  VDE_NOMINAL_AC_VOLTAGE,
-  VDE_MIN_CROSS_SECTION,
   calculateMaxFuse as calculateMaxFuseBase,
   lookupThermalCrossSection as lookupThermalCrossSectionBase,
   calculateCrossSection as calculateCrossSectionBase,
@@ -53,168 +50,30 @@ export {
   getHandleDomain,
 } from './electrical';
 
-import {
-  VDE_SIZES,
-  VDE_AMPACITY,
-  FUSE_MAP,
-  VDE_COPPER_RESISTIVITY,
-  VDE_MAX_VOLTAGE_DROP_12V,
-  VDE_MAX_VOLTAGE_DROP_230V,
-  VDE_MAX_DROP_VOLTS_DC_12V,
-  VDE_MAX_DROP_VOLTS_AC_230V,
-  VDE_MIN_CROSS_SECTION,
-  calculateMaxFuse,
-} from './electrical';
+// Lokales Binding: der Re-Export oben bindet nichts in diesen Scope.
+import { getEdgeDomain } from './electrical';
 
 import type { Node, Edge } from 'reactflow';
-
-// Keep a typed local alias so consumers can write `VDECrossSection`.
-// electrical.ts does not mark VDE_SIZES `as const`, so this is `number`.
-export type VDECrossSection = typeof VDE_SIZES[number];
-
-// Local cable-spec shape — avoid importing CableEdgeData (circular).
-type CableSpec = {
-  length?: number;
-  crossSection?: number;
-  fuseSize?: number;
-  edgeDomain?: 'DC_12V' | 'AC_230V' | string;
-};
-
-// Silence unused-import warnings for symbols that exist so this module
-// can wrap / document the electrical.ts API without forcing every caller
-// to import from two files.
-void VDE_AMPACITY;
-void FUSE_MAP;
-void calculateMaxFuse;
-
-// ============================================================================
-// STROMBELASTBARKEIT (sichere Werte für Validierung)
-// ============================================================================
-
-/**
- * Maximale Strombelastbarkeit pro Querschnitt — konservative Validierungswerte.
- * Diese Tabelle ist bewusst runder als VDE_AMPACITY (electrical.ts) und wird
- * ausschließlich für die Validierungs-API (validateCableEdge) verwendet.
- */
-export const VDE_CURRENT_CAPACITY: Record<number, number> = {
-  1.5: 16,
-  2.5: 25,
-  4.0: 32,
-  6.0: 50,
-  10.0: 70,
-  16.0: 100,
-  25.0: 130,
-  35.0: 150,
-  50.0: 200,
-  70.0: 250,
-  95.0: 300,
-  120.0: 350,
-};
-
-/**
- * Standard-Sicherungsgrößen (in A) als grobe Zuordnung zum Querschnitt.
- * Wird als Vorschlag verwendet, wenn der Nutzer eine Sicherung setzt.
- *
- * Jeder Wert liegt <= VDE_CURRENT_CAPACITY[cs], also wird der Leiter durch
- * die gewählte Sicherung thermisch nicht überlastet.
- */
-export const VDE_STANDARD_FUSES: Record<number, number> = {
-  1.5: 16,
-  2.5: 20,
-  4.0: 25,
-  6.0: 32,
-  10.0: 50,
-  16.0: 63,
-  25.0: 80,
-  35.0: 100,
-  50.0: 125,
-  70.0: 160,
-  95.0: 250,
-  120.0: 300,
-};
-
-/**
- * Konservativere Sicherungs-Vorschläge (kleiner als die Standardwerte, für
- * berechnete Querschnitte in `calculateWire`). Für jeden Wert gilt:
- * conservative <= standard <= Ampacity.
- */
-export const VDE_CONSERVATIVE_FUSES: Record<number, number> = {
-  1.5: 10,
-  2.5: 16,
-  4.0: 20,
-  6.0: 25,
-  10.0: 40,
-  16.0: 50,
-  25.0: 63,
-  35.0: 80,
-  50.0: 100,
-  70.0: 125,
-};
-
-// ============================================================================
-// SPANNUNGSABFALL-BERECHNUNG (mit echtem Kupferwiderstand)
-// ============================================================================
-
-/**
- * Berechnet den erforderlichen Mindestquerschnitt in mm² für einen gegebenen
- * Strom und eine Kabellänge, sodass der Spannungsabfall den Maximalwert
- * nicht überschreitet.
- *
- * @param currentA Strom in Ampere
- * @param lengthM Länge der Leitung in Metern (einfache Strecke; Hin- und
- *                Rückleiter wird intern mit Faktor 2 berücksichtigt)
- * @param maxVoltageDropFraction Max. zulässiger Spannungsabfall als Bruchteil
- * @param systemVoltage Systemspannung (default: 12V)
- * @returns Erforderlicher Mindestquerschnitt in mm² (nicht aufgerundet)
- */
-export function calculateMinCrossSection(
-  currentA: number,
-  lengthM: number,
-  maxVoltageDropFraction: number = VDE_MAX_VOLTAGE_DROP_12V,
-  systemVoltage: number = 12
-): number {
-  if (
-    !Number.isFinite(currentA) ||
-    !Number.isFinite(lengthM) ||
-    currentA <= 0 ||
-    lengthM <= 0
-  ) {
-    return VDE_MIN_CROSS_SECTION; // 1.5 mm² ist das absolute Minimum
-  }
-
-  // ΔU_max = maxDrop * systemVoltage
-  // A_min = (ρ · L · 2 · I) / ΔU_max
-  const maxVoltageDrop = maxVoltageDropFraction * systemVoltage;
-  const minCrossSection = (VDE_COPPER_RESISTIVITY * lengthM * 2 * currentA) / maxVoltageDrop;
-  return minCrossSection;
-}
-
-/**
- * Rundet einen Querschnitt auf den nächstgrößeren normierten Querschnitt auf.
- *
- * @param minRequired Mindestquerschnitt in mm²
- * @returns Aufgerundeter normierter Querschnitt, oder der größte VDE_SIZES-Wert
- */
-export function roundUpToVDECrossSection(minRequired: number): number {
-  return VDE_SIZES.find(size => size >= minRequired) ?? VDE_SIZES[VDE_SIZES.length - 1];
-}
-
-/**
- * Berechnet den tatsächlichen Spannungsabfall für einen gegebenen Strom,
- * eine Länge und einen Querschnitt.
- *
- * @returns Spannungsabfall in Volt (Hin- und Rückleiter)
- */
-export function calculateVoltageDrop(
-  currentA: number,
-  lengthM: number,
-  crossSection: number
-): number {
-  if (!Number.isFinite(currentA) || !Number.isFinite(lengthM)) return 0;
-  if (crossSection <= 0) return Infinity;
-  // ΔU = (ρ · L · 2 · I) / A
-  return (VDE_COPPER_RESISTIVITY * lengthM * 2 * currentA) / crossSection;
-}
+import {
+  addAmps,
+  addWatts,
+  amps,
+  currentFromPower,
+  divideAmps,
+  maxAmps,
+  maxWatts,
+  parseQuantity,
+  quantityOr,
+  volts,
+  watts,
+  ZERO_AMPS,
+  ZERO_WATTS,
+  type Amps,
+  type Mm2,
+  type Scalar,
+  type Volts,
+  type Watts,
+} from './units';
 
 // ============================================================================
 // LEERROHR / KABELKANAL (60% Maximum nach VDE 0100-520)
@@ -254,44 +113,42 @@ export const VDE_CABLE_OUTER_DIAMETERS: Record<number, number> = {
   120.0: 20.0,
 };
 
-/**
- * Summiert die Kabel-Querschnittsflächen. Ungültige Querschnitte (<=0 oder
- * nicht in der Tabelle bekannt) führen zu einem `null`-Ergebnis, statt still
- * mit 2.5 mm² weiterzurechnen (was vorher zu klein dimensionierte Rohre
- * empfehlen konnte).
- */
-function sumCableAreas(cableCrossSections: number[]): number | null {
-  let totalCableArea = 0;
-  for (const cs of cableCrossSections) {
-    if (typeof cs !== 'number' || !Number.isFinite(cs) || cs <= 0) {
-      return null;
-    }
-    const outerDiam = VDE_CABLE_OUTER_DIAMETERS[cs];
-    if (!outerDiam) {
-      return null;
-    }
-    totalCableArea += Math.PI * Math.pow(outerDiam / 2, 2);
+// Fallback-Invariante einmal beweisen statt überall kaschieren: Die
+// Leerrohr-Rechnung fällt für unbekannte Querschnitte auf 2,5 mm² zurück —
+// ein Tabellenstand ohne diesen Eintrag wäre ein Laufzeit-Alarmsignal.
+const VDE_FALLBACK_CABLE_OUTER_DIAMETER: number = (() => {
+  const d = VDE_CABLE_OUTER_DIAMETERS[2.5];
+  if (d === undefined) {
+    throw new Error('VDE_CABLE_OUTER_DIAMETERS ohne 2.5-Eintrag — Leerrohr-Fallback ungültig');
   }
-  return totalCableArea;
+  return d;
+})();
+
+/** Kabelaußendurchmesser in mm; unbekannte Querschnitte fallen auf 2,5 mm² zurück. */
+export function cableOuterDiameter(cs: Mm2): number {
+  return VDE_CABLE_OUTER_DIAMETERS[cs] ?? VDE_FALLBACK_CABLE_OUTER_DIAMETER;
 }
 
 /**
  * Berechnet den Füllgrad eines Leerrohrs bei gegebenen Kabeln.
  *
- * @returns Füllgrad in Prozent (0–100+) oder `null`, wenn ein Querschnitt
- *          unbekannt ist.
+ * @param conduitType Schlüssel aus VDE_CONDUIT_INNER_DIAMETERS (z.B. 'EN 20')
+ * @param cableCrossSections Liste der Querschnitte der verlegten Kabel
+ * @returns Füllgrad in Prozent (0–100+)
  */
 export function calculateConduitFillPercent(
   conduitType: keyof typeof VDE_CONDUIT_INNER_DIAMETERS,
-  cableCrossSections: number[]
+  cableCrossSections: readonly Mm2[]
 ): number {
   const innerDiameter = VDE_CONDUIT_INNER_DIAMETERS[conduitType];
   if (!innerDiameter) return 0;
 
-  const totalCableArea = sumCableAreas(cableCrossSections);
-  if (totalCableArea === null) return 0;
-
   const innerArea = Math.PI * Math.pow(innerDiameter / 2, 2);
+
+  const totalCableArea = cableCrossSections.reduce((acc, cs) => {
+    return acc + Math.PI * Math.pow(cableOuterDiameter(cs) / 2, 2);
+  }, 0);
+
   return (totalCableArea / innerArea) * 100;
 }
 
@@ -299,15 +156,14 @@ export function calculateConduitFillPercent(
  * Findet das kleinste Leerrohr, das die Kabel mit
  * <= VDE_MAX_CONDUIT_FILL_PERCENT aufnehmen kann.
  *
- * @returns Empfohlener Leerrohr-Typ oder null, wenn keiner passt oder ein
- *          Querschnitt unbekannt ist.
+ * @returns Empfohlener Leerrohr-Typ oder null, wenn keiner passt
  */
-export function recommendConduitType(cableCrossSections: number[]): string | null {
-  const totalCableArea = sumCableAreas(cableCrossSections);
-  if (totalCableArea === null) return null;
-
+export function recommendConduitType(cableCrossSections: readonly Mm2[]): string | null {
   for (const [type, diameter] of Object.entries(VDE_CONDUIT_INNER_DIAMETERS)) {
     const innerArea = Math.PI * Math.pow(diameter / 2, 2);
+    const totalCableArea = cableCrossSections.reduce((acc, cs) => {
+      return acc + Math.PI * Math.pow(cableOuterDiameter(cs) / 2, 2);
+    }, 0);
     if ((totalCableArea / innerArea) * 100 <= VDE_MAX_CONDUIT_FILL_PERCENT) {
       return type;
     }
@@ -316,31 +172,14 @@ export function recommendConduitType(cableCrossSections: number[]): string | nul
 }
 
 // ============================================================================
-// WECHSELRICHTER, RCD, SOLAR, BATTERIE
+// WECHSELRICHTER, SOLAR, BATTERIE
 // ============================================================================
 
 /**
  * Typischer Wirkungsgrad eines 12V→230V-Wechselrichters.
  * Hersteller-Angaben liegen meist bei 85–93%. 0.85 = 15% Verlust ist konservativ.
  */
-export const VDE_INVERTER_EFFICIENCY = 0.85;
-
-/**
- * Maximaler empfohlener Auslastungsgrad eines Wechselrichters
- * (dauerhafte Last sollte max 80% der Nennleistung betragen).
- */
-export const VDE_INVERTER_MAX_LOAD_FRACTION = 0.80;
-
-/**
- * Maximaler Auslösestrom eines RCD für Personenschutz nach VDE 0100-721.
- * Für Landstrom-Anschlüsse in Wohnmobilen ist ≤30mA vorgeschrieben.
- */
-export const VDE_RCD_MAX_TRIP_CURRENT_MA = 30;
-
-/**
- * Maximaler Bemessungsdifferenzstrom in mA für den 230V-Personenschutz.
- */
-export const VDE_230V_PERSON_PROTECTION_MA = 30;
+export const VDE_INVERTER_EFFICIENCY: Scalar = 0.85;
 
 /**
  * Winter-Ertragsfaktor für Solarmodule (ca. 35% des Sommerertrags).
@@ -351,7 +190,7 @@ export const VDE_SOLAR_WINTER_REDUCTION = 0.35;
  * Typische MPP-Spannung (Vmp) eines 12V-Solarmoduls in Volt.
  * Module liefern nicht bei Systemspannung, sondern bei ~18V.
  */
-export const VDE_SOLAR_VMP_VOLTAGE = 18;
+export const VDE_SOLAR_VMP_VOLTAGE: Volts = volts(18);
 
 /**
  * Ladezeit-Derating (CC/CV-Knick, Wärme, Alterung). 1.15 = +15%.
@@ -369,267 +208,261 @@ export const VDE_BATTERY_DOD: Record<string, number> = {
   Blei: 0.3,
 };
 
-/**
- * Dauerhafter Entladestrom als Vielfaches der Nennkapazität (1C = 1 h).
- * 1C ist ein konservativer, praxisüblicher Wert für die Dimensionierung der
- * Batterie-Hauptleitung ohne Kenntnis der genauen Zellspezifikation.
- */
-export const VDE_BATTERY_MAX_DISCHARGE_C_RATE = 1.0;
+// Referenz-Chemie (LiFePO4) einmal beweisen — die nutzbare-Kapazität-Rechnung
+// fällt für unbekannte Chemie-Strings darauf zurück (noUncheckedIndexedAccess).
+export const VDE_DOD_REFERENCE: number = (() => {
+  const reference = VDE_BATTERY_DOD.LiFePO4;
+  if (reference === undefined) throw new Error('VDE_BATTERY_DOD ohne LiFePO4-Eintrag — Referenz ungültig');
+  return reference;
+})();
 
 // ============================================================================
-// HAUPTFUNKTION: Kabelberechnung
+// SYSTEMSPANNUNG & KANTENSTRÖME (EINZIGE QUELLE FÜR STROM-BERECHNUNGEN)
 // ============================================================================
 
 /**
- * Berechnet den passenden Kabelquerschnitt und die empfohlene Sicherung.
+ * Startbatterie / Starterbatterie / Starter battery — nicht die Aufbaubatterie.
  *
- * @param currentA Strom in Ampere
- * @param lengthM Kabellänge in Metern (Hin- und Rückleiter intern)
- * @returns Empfohlener Querschnitt (mm²) und Sicherungsgröße (A)
+ * Lebt hier (statt in lib/autoWire.ts), damit getSystemVoltage dieselbe
+ * Label-Priorität wie pickHouseBattery verwenden kann, ohne dass
+ * lib/vde-standards.ts von lib/autoWire.ts abhängt (Zirkularität).
+ * lib/autoWire.ts re-exportiert die Funktion unverändert.
  */
-export function calculateWire(
-  currentA: number,
-  lengthM: number
-): { crossSection: number; fuseSize: number; length: number; minCrossSection: number } {
-  const minCrossSection = calculateMinCrossSection(currentA, lengthM);
-  const minRequired = Math.max(VDE_MIN_CROSS_SECTION, minCrossSection);
-  const crossSection = roundUpToVDECrossSection(minRequired);
-  const fuseSize =
-    VDE_CONSERVATIVE_FUSES[crossSection] ??
-    VDE_STANDARD_FUSES[crossSection] ??
-    VDE_FUSE_FALLBACK;
-
-  return { crossSection, fuseSize, length: lengthM, minCrossSection };
-}
-
-/** Fallback-Sicherungswert, falls für einen Querschnitt nichts gepflegt ist. */
-export const VDE_FUSE_FALLBACK = 15;
-
-// ============================================================================
-// VALIDIERUNG: Einzelne Edge / Komponente
-// ============================================================================
-
-export type VDEValidationResult = {
-  isValid: boolean;
-  severity: 'error' | 'warning' | 'ok';
-  message: string;
-  code: string; // z.B. 'UNDERSIZED_CABLE', 'MISSING_RCD'
-};
+export const isStarterBatteryLabel = (label: unknown): boolean => /start/i.test(String(label || ''));
 
 /**
- * Ermittelt das Spannungsfall-Limit (in Volt) anhand der Kanten-Domäne.
- * Unbekannte Domänen fallen auf DC_12V zurück (konservativ).
+ * Nominale Netzspannung des 230-V-Kreises (DIN VDE 0100-721).
  */
-export function maxVoltageDropForDomain(edgeDomain: string | undefined): number {
-  if (edgeDomain === 'AC_230V') return VDE_MAX_DROP_VOLTS_AC_230V; // 6.9V
-  return VDE_MAX_DROP_VOLTS_DC_12V; // 1.2V
-}
+export const AC_SYSTEM_VOLTAGE: Volts = volts(230);
 
 /**
- * Validiert eine einzelne Kabel-Edge gegen die VDE-Norm.
- *
- * Reihenfolge der Checks (erster Treffer gewinnt):
- *   1. NO_DATA
- *   2. UNDERSIZED_CABLE
- *   3. HIGH_VOLTAGE_DROP
- *   4. OVERSIZED_FUSE
- *   5. NON_STANDARD_CROSS_SECTION
- *   6. OK
+ * Ermittelt die nominale Systemspannung anhand der Batterien im Plan.
+ * Default 12.8V (typisch LiFePO4) ohne explizite Angabe.
  */
-export function validateCableEdge(
-  edge: Edge<CableSpec>,
-  _sourceNode: Node | undefined,
-  _targetNode: Node | undefined,
-  currentA: number
-): VDEValidationResult {
-  const data = edge.data;
-  if (!data) {
-    return {
-      isValid: false,
-      severity: 'error',
-      message: 'Kabel hat keine Spezifikationen (Länge/Querschnitt fehlt).',
-      code: 'NO_DATA',
-    };
-  }
+export const DEFAULT_SYSTEM_VOLTAGE: Volts = volts(12.8);
+export const LEAD_SYSTEM_VOLTAGE: Volts = volts(12.0);
+export function getSystemVoltage(nodes: Node[], preferredBatteryId?: string): Volts {
+  const batteries = nodes.filter((n) => n.type === 'battery');
+  if (batteries.length === 0) return DEFAULT_SYSTEM_VOLTAGE;
 
-  const crossSection = data.crossSection ?? 0;
-  const length = data.length ?? 0;
+  // Die Aufbaubatterie (Auto-Wire) hat Vorrang; mit mehreren Batterien wäre
+  // sonst die nominale Spannung einer irrelevanten/parallelgeschalteten
+  // Batterie (z. B. einer 24-V-Zweitbatterie) Auslegungsgrundlage.
+  const ordered = preferredBatteryId
+    ? [
+        ...batteries.filter((b) => b.id === preferredBatteryId),
+        ...batteries.filter((b) => b.id !== preferredBatteryId),
+      ]
+    : [
+        // Ohne explizite Vorwahl gilt die Aufbaubatterie als Auslegungs-
+        // grundlage — exakt dieselbe Priorität wie pickHouseBattery in
+        // lib/autoWire.ts. Vorher entschied die Node-Reihenfolge: stand eine
+        // 24-V-Starterbatterie vor der 12-V-Aufbaubatterie, wurden ALLE
+        // DC-Berechnungen (Anzeige, Live-Validierung, Spannungsfall) mit der
+        // falschen Spannung geführt.
+        ...batteries.filter((b) => !isStarterBatteryLabel((b.data as { label?: unknown })?.label)),
+        ...batteries.filter((b) => isStarterBatteryLabel((b.data as { label?: unknown })?.label)),
+      ];
 
-  // 1. Mindest-Querschnitt
-  if (crossSection < VDE_MIN_CROSS_SECTION) {
-    return {
-      isValid: false,
-      severity: 'error',
-      message: `Kabel-Querschnitt ${crossSection} mm² ist kleiner als das VDE-Minimum von ${VDE_MIN_CROSS_SECTION} mm².`,
-      code: 'UNDERSIZED_CABLE',
-    };
-  }
-
-  // 2. Spannungsabfall — domänensensibel (1.2V bei 12V DC, 6.9V bei 230V AC).
-  const voltageDrop = calculateVoltageDrop(currentA, length, crossSection);
-  const maxDrop = maxVoltageDropForDomain(data.edgeDomain);
-  const dropFraction =
-    data.edgeDomain === 'AC_230V' ? VDE_MAX_VOLTAGE_DROP_230V : VDE_MAX_VOLTAGE_DROP_12V;
-  const systemVoltage = data.edgeDomain === 'AC_230V' ? 230 : 12;
-  if (voltageDrop > maxDrop) {
-    return {
-      isValid: false,
-      severity: 'warning',
-      message: `Spannungsabfall ${voltageDrop.toFixed(2)}V überschreitet ${(dropFraction * 100).toFixed(0)}% von ${systemVoltage}V. Kabel evtl. zu schwach dimensioniert.`,
-      code: 'HIGH_VOLTAGE_DROP',
-    };
-  }
-
-  // 3. Sicherung gegen Querschnitt
-  if (data.fuseSize) {
-    const maxFuse = VDE_CURRENT_CAPACITY[crossSection] ?? Infinity;
-    if (data.fuseSize > maxFuse) {
-      return {
-        isValid: false,
-        severity: 'error',
-        message: `Sicherung ${data.fuseSize}A ist zu groß für ${crossSection} mm² Kabel (max ${maxFuse}A). Brandgefahr!`,
-        code: 'OVERSIZED_FUSE',
-      };
+  // Explizite nominalVoltage an der Vorrangbatterie gewinnt.
+  // `node.data` stammt aus localStorage/JSON — daher geprüft einlesen und
+  // unbrauchbare Werte (0, negativ, Text) überspringen statt sie zu übernehmen.
+  for (const b of ordered) {
+    const nominalVoltage = parseQuantity((b.data as { nominalVoltage?: unknown })?.nominalVoltage, volts);
+    if (nominalVoltage !== null && nominalVoltage > 0) {
+      return nominalVoltage;
     }
   }
 
-  // 4. Normierter Querschnitt?
-  if (!VDE_SIZES.includes(crossSection)) {
-    return {
-      isValid: false,
-      severity: 'warning',
-      message: `Querschnitt ${crossSection} mm² ist kein normierter Wert. Empfohlen: ${roundUpToVDECrossSection(crossSection)} mm².`,
-      code: 'NON_STANDARD_CROSS_SECTION',
-    };
+  // Fallback: chemiebasierte Schätzung der Vorrangbatterie
+  const first = ordered[0];
+  if (!first) return DEFAULT_SYSTEM_VOLTAGE;
+  const chemistry = String((first.data as { chemistry?: string })?.chemistry || '').toLowerCase();
+  if (chemistry === 'agm' || chemistry === 'lead' || chemistry === 'gel') {
+    return LEAD_SYSTEM_VOLTAGE;
   }
 
-  return {
-    isValid: true,
-    severity: 'ok',
-    message: 'Kabel ist VDE-konform dimensioniert.',
-    code: 'OK',
-  };
+  // Default für LiFePO4 und unbekannte Chemien
+  return DEFAULT_SYSTEM_VOLTAGE;
 }
 
 /**
- * Validiert, ob eine Batterie-Komponente korrekt konfiguriert ist.
+ * Berechnet den Nennstrom einer Kante aus den verbundenen Komponenten.
+ *
+ * DIESE Funktion ist die EINZIGE Strom-Quelle für Kabel-Dimensionierung und
+ * Live-Validierung (CableEdge, calculatePathVoltageDrop, Auto-Wire). Dadurch
+ * kann Auto-Wire exakt die Ströme dimensionieren, die die Validierung später
+ * verwendet — Abweichungen (z.B. "Sicherung zu klein") sind damit
+ * ausgeschlossen, solange die Komponentendaten unverändert bleiben.
+ *
+ * Prioritäten (physikalische Begründung):
+ *   1. totalAmps — explizit gesetzter Gesamtstrom (z.B. Hauptleitungen)
+ *   2. Solar-Kante: Panel-Strom (watts / Vmp). Die Zuleitung vom Panel zum
+ *      Laderegler trägt den PANEL-Strom, nicht die Nennleistung des Reglers.
+ *   3. 12V-Verbraucher: watts / Systemspannung
+ *   4. Wechselrichter (DC-Seite): watts / Systemspannung / Wirkungsgrad
+ *   5. Generische amps-Angabe (Laderegler, Booster, AC-Ladegeräte)
+ *   6. Fallback: max(Last, Ladung) — Batterie-Hauptleitungen führen
+ *      bidirektionalen Strom; Panel-Strom zählt nur ohne Laderegler
  */
-export function validateBatteryNode(node: Node): VDEValidationResult[] {
-  const results: VDEValidationResult[] = [];
-  const data = node.data as { chemistry?: string };
-  const chemistry = data?.chemistry || 'LiFePO4';
-  const dod = VDE_BATTERY_DOD[chemistry];
-
-  if (!dod) {
-    results.push({
-      isValid: false,
-      severity: 'warning',
-      message: `Unbekannte Batterie-Chemie "${chemistry}". Verwendete DoD könnte falsch sein.`,
-      code: 'UNKNOWN_CHEMISTRY',
-    });
-  }
-
-  return results;
-}
-
-/**
- * Validiert, ob ein Landstrom-Anschluss einen RCD hat (VDE 0100-721 Pflicht).
- */
-export function validateShorePowerNode(node: Node): VDEValidationResult[] {
-  const results: VDEValidationResult[] = [];
-  const data = node.data as { hasRcd?: boolean; label?: string };
-
-  if (!data?.hasRcd) {
-    results.push({
-      isValid: false,
-      severity: 'error',
-      message: `Landstromanschluss "${data?.label || ''}" hat keinen RCD (FI-Schalter ≤${VDE_RCD_MAX_TRIP_CURRENT_MA}mA). Nach DIN VDE 0100-721 vorgeschrieben!`,
-      code: 'MISSING_RCD',
-    });
-  }
-
-  return results;
-}
-
-/**
- * Validiert, ob ein Wechselrichter überlastet ist.
- */
-export function validateInverterNode(node: Node, allNodes: Node[]): VDEValidationResult[] {
-  const results: VDEValidationResult[] = [];
-  const data = node.data as { continuousPower?: number; concurrentDevices?: string[] };
-  const continuousPower = data?.continuousPower || 0;
-  const concurrentDevices = data?.concurrentDevices || [];
-
-  if (continuousPower <= 0) return results;
-
-  const totalLoad = allNodes
-    .filter(n => n.type === 'consumer230v' && concurrentDevices.includes(n.id))
-    .reduce((acc, n) => acc + ((n.data as { watts?: number })?.watts || 0), 0);
-
-  const maxAllowed = continuousPower * VDE_INVERTER_MAX_LOAD_FRACTION;
-
-  if (totalLoad > continuousPower) {
-    results.push({
-      isValid: false,
-      severity: 'error',
-      message: `Wechselrichter überlastet: ${totalLoad}W angeschlossene Last übersteigt Nennleistung ${continuousPower}W.`,
-      code: 'INVERTER_OVERLOADED',
-    });
-  } else if (totalLoad > maxAllowed) {
-    results.push({
-      isValid: false,
-      severity: 'warning',
-      message: `Wechselrichter-Auslastung ${totalLoad}W übersteigt empfohlene ${VDE_INVERTER_MAX_LOAD_FRACTION * 100}% der Nennleistung (${maxAllowed}W).`,
-      code: 'INVERTER_NEAR_LIMIT',
-    });
-  }
-
-  return results;
-}
-
-/**
- * Validiert einen kompletten Schaltplan und gibt alle Verstöße zurück.
- */
-export function validateSchematic(
+export function calculateEdgeCurrent(
+  sourceNode: Node | undefined,
+  targetNode: Node | undefined,
   nodes: Node[],
-  edges: Edge<CableSpec>[]
-): VDEValidationResult[] {
-  const results: VDEValidationResult[] = [];
+  sysVoltage?: Volts
+): Amps {
+  const sData = sourceNode?.data as Record<string, unknown> | undefined;
+  const tData = targetNode?.data as Record<string, unknown> | undefined;
+  const voltage = sysVoltage ?? getSystemVoltage(nodes);
+
+  /** Leistung aus `node.data` — negative/ungültige Angaben zählen als 0 W. */
+  const loadOf = (data: Record<string, unknown> | undefined): Watts =>
+    quantityOr(data?.watts, watts, ZERO_WATTS);
+  /** Strom aus `node.data` — negative/ungültige Angaben zählen als 0 A. */
+  const currentOf = (data: Record<string, unknown> | undefined): Amps =>
+    quantityOr(data?.amps, amps, ZERO_AMPS);
+  /** I = P / U mit der Systemspannung. */
+  const currentAt = (load: Watts, at: Volts): Amps => currentFromPower(load, at);
+
+  // 1. Expliziter Gesamtstrom (manuell gesetzt oder von Auto-Wire berechnet).
+  //    Ein vorhanden, aber unparsebarer Wert (Altbestand/Import) wird nicht
+  //    als 0 A interpretiert — 0 A würde Spannungsfall und Sicherungsprüfung
+  //    stillschweigend entscharfen. Ohne vertrauenswürdigen Wert fällt die
+  //    Berechnung auf die physikalische Herleitung (P/U bzw. A) zurück.
+  const sourceTotal = parseQuantity(sData?.totalAmps, amps);
+  if (sourceTotal !== null) return sourceTotal;
+  const targetTotal = parseQuantity(tData?.totalAmps, amps);
+  if (targetTotal !== null) return targetTotal;
+
+  const isSolarType = (type: string | undefined): boolean => type === 'solar' || type === 'roofSolar';
+
+  // 2. Solar-Zuleitung: trägt den Panel-Strom, nicht die Regler-Nennleistung
+  if (isSolarType(sourceNode?.type)) return currentAt(loadOf(sData), VDE_SOLAR_VMP_VOLTAGE);
+  if (isSolarType(targetNode?.type)) return currentAt(loadOf(tData), VDE_SOLAR_VMP_VOLTAGE);
+
+  // 3. 12V-Verbraucher
+  if (sourceNode?.type === 'consumer') return currentAt(loadOf(sData), voltage);
+  if (targetNode?.type === 'consumer') return currentAt(loadOf(tData), voltage);
+
+  // 4. Wechselrichter (DC-Eingangsstrom inkl. Verlusten)
+  // Die DC-Zuleitung trägt den tatsächlichen 230-V-Laststrom, nicht die
+  // (oft nur Nenn-)Leistung des Inverters: max(Nennlast des WR,
+  // Summe aller angeschlossenen 230-V-Verbraucher). `continuousPower` ist
+  // die relevante Dauerleistung, `watts` nur der Fallback für alte Pläne.
+  const acConsumerLoad = (): Watts => {
+    let total: Watts = ZERO_WATTS;
+    for (const n of nodes) {
+      if (n.type === 'consumer230v') {
+        total = addWatts(total, quantityOr((n.data as Record<string, unknown>)?.watts, watts, ZERO_WATTS));
+      }
+    }
+    return total;
+  };
+  const inverterLoad = (data: Record<string, unknown> | undefined): Watts => {
+    const own = quantityOr(data?.continuousPower || data?.watts, watts, ZERO_WATTS);
+    return maxWatts(own, acConsumerLoad());
+  };
+  if (sourceNode?.type === 'inverter') {
+    return divideAmps(currentAt(inverterLoad(sData), voltage), VDE_INVERTER_EFFICIENCY);
+  }
+  if (targetNode?.type === 'inverter') {
+    return divideAmps(currentAt(inverterLoad(tData), voltage), VDE_INVERTER_EFFICIENCY);
+  }
+
+  // 5. Generische Ampere-Angabe (Laderegler, Booster, AC-Ladegeräte)
+  if (sData?.amps !== undefined && sourceNode?.type !== 'battery') return currentOf(sData);
+  if (tData?.amps !== undefined && targetNode?.type !== 'battery') return currentOf(tData);
+
+  // 6. Fallback: Systemaggregate über alle Komponenten
+  // Batterie-Hauptleitungen führen bidirektionalen Strom → max(Last, Ladung).
+  // Panel-Strom zählt nur, wenn kein Laderegler die Leistung bereits abbildet.
+  let totalConsumerAmps: Amps = ZERO_AMPS;
+  let totalChargerAmps: Amps = ZERO_AMPS;
+  const hasMppt = nodes.some((n) => n.type === 'mpptController' || n.type === 'charger');
+  for (const n of nodes) {
+    const nData = n.data as Record<string, unknown> | undefined;
+    if (n.type === 'consumer') {
+      totalConsumerAmps = addAmps(totalConsumerAmps, currentAt(loadOf(nData), voltage));
+    } else if (n.type === 'inverter') {
+      // Derselbe Lastansatz wie im Direktpfad (Priorität 4): max(Nennlast des
+      // Wechselrichters, Summe aller 230-V-Verbraucher) — `continuousPower`
+      // ist die relevante Dauerleistung, `watts` nur der Fallback für alte
+      // Pläne. Vorher wurde hier nur `watts` gelesen; Batterie-Hauptleitungen
+      // wurden dadurch bei `continuousPower > watts` zu gering dimensioniert.
+      totalConsumerAmps = addAmps(
+        totalConsumerAmps,
+        divideAmps(currentAt(inverterLoad(nData), voltage), VDE_INVERTER_EFFICIENCY)
+      );
+    } else if (['charger', 'mpptController', 'dcdcCharger', 'acBatteryCharger'].includes(n.type as string)) {
+      totalChargerAmps = addAmps(totalChargerAmps, currentOf(nData));
+    } else if (isSolarType(n.type) && !hasMppt) {
+      totalChargerAmps = addAmps(totalChargerAmps, currentAt(loadOf(nData), VDE_SOLAR_VMP_VOLTAGE));
+    }
+  }
+
+  return maxAmps(totalConsumerAmps, totalChargerAmps);
+}
+
+/**
+ * Nennstrom einer 230-V-Kante in Ampere.
+ *
+ * Die AC-Seite wird nicht über die Batterie-Systemspannung dimensioniert,
+ * sondern über die 230-V-Verbraucher (consumer230v) *hinter der Quelle der
+ * Kante*: Landstrom (shorePower) bzw. Wechselrichter-AC-Ausgang. Dazu wird
+ * der Graph entlang der AC-Kanten ab der Quell-Node ungerichtet durchlaufen
+ * (BFS) — ungerichtet, damit auch umgekehrt gezeichnete Kanten (Verbraucher
+ * → Quelle) den Kreis korrekt finden. Eine Abzweigleitung trägt damit nur
+ * ihre eigene Last, nicht pauschal den Gesamtplan. Ohne erreichbare 230-V-
+ * Last ergibt sich 0 A (Mindestquerschnitt 1,5 mm² bleibt bestehen).
+ *
+ * Eine Kante gilt als AC, wenn ihre gespeicherte Domäne AC ist oder die
+ * Topologie (getEdgeDomain) sie als AC ausweist — exakt die Zuordnung, die
+ * auch Anzeige und Validierung verwenden.
+ */
+export function calculateAcEdgeCurrent(sourceId: string | undefined, nodes: Node[], edges: Edge[]): Amps {
   const nodeMap = new Map<string, Node>();
-  for (const n of nodes) nodeMap.set(n.id, n);
-
-  // 1. Alle Edges prüfen
-  for (const edge of edges) {
-    const sourceNode = nodeMap.get(edge.source);
-    const targetNode = nodeMap.get(edge.target);
-
-    let currentA = 0;
-    if (sourceNode?.type === 'consumer') {
-      currentA = ((sourceNode.data as { watts?: number }).watts || 0) / 12;
-    } else if (targetNode?.type === 'consumer') {
-      currentA = ((targetNode.data as { watts?: number }).watts || 0) / 12;
-    } else if (sourceNode?.type === 'charger') {
-      currentA = (sourceNode.data as { amps?: number }).amps || 0;
-    } else if (targetNode?.type === 'charger') {
-      currentA = (targetNode.data as { amps?: number }).amps || 0;
-    }
-
-    const result = validateCableEdge(edge, sourceNode, targetNode, currentA);
-    if (result.severity !== 'ok') {
-      results.push(result);
-    }
-  }
-
-  // 2. Alle Nodes prüfen
   for (const node of nodes) {
-    if (node.type === 'battery') {
-      results.push(...validateBatteryNode(node));
-    } else if (node.type === 'shorePower') {
-      results.push(...validateShorePowerNode(node));
-    } else if (node.type === 'inverter') {
-      results.push(...validateInverterNode(node, nodes));
+    if (node) nodeMap.set(node.id, node);
+  }
+
+  const isAcEdge = (edge: Edge): boolean => {
+    if (edge.data?.edgeDomain === 'AC_230V') return true;
+    if (edge.data?.edgeDomain === 'DC_12V') return false;
+    const s = nodeMap.get(edge.source)?.type;
+    const t = nodeMap.get(edge.target)?.type;
+    return getEdgeDomain(s, t, edge.sourceHandle, edge.targetHandle) === 'AC_230V';
+  };
+
+  // Ungerichtete Adjazenz über AC-Kanten.
+  const acAdjacency = new Map<string, string[]>();
+  const addLink = (from: string, to: string): void => {
+    const list = acAdjacency.get(from) ?? [];
+    list.push(to);
+    acAdjacency.set(from, list);
+  };
+  for (const edge of edges) {
+    if (!isAcEdge(edge)) continue;
+    addLink(edge.source, edge.target);
+    addLink(edge.target, edge.source);
+  }
+
+  const visited = new Set<string>();
+  const queue: string[] = sourceId ? [sourceId] : [];
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    if (visited.has(current)) continue;
+    visited.add(current);
+    for (const next of acAdjacency.get(current) ?? []) {
+      if (!visited.has(next)) queue.push(next);
     }
   }
 
-  return results;
+  let total: Watts = ZERO_WATTS;
+  visited.forEach((id) => {
+    const node = nodeMap.get(id);
+    if (node?.type === 'consumer230v') {
+      total = addWatts(total, quantityOr((node.data as Record<string, unknown>)?.watts, watts, ZERO_WATTS));
+    }
+  });
+  return currentFromPower(total, AC_SYSTEM_VOLTAGE);
 }

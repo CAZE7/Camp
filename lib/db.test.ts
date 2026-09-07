@@ -1,8 +1,12 @@
+/* eslint-disable @typescript-eslint/no-explicit-any --
+ * Werft-Altbestand (übernommen 2026-09): nutzt noch `any` für AI-SDK-
+ * Mocks/Datenstrukturen. FOLLOW-UP: typisieren, dann Disable entfernen.
+ */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Use vi.doMock so it doesn't get hoisted and we can control when it's used with resetModules
 vi.doMock('pg', () => {
-  const Pool = vi.fn().mockImplementation(function(this: any, config) {
+  const Pool = vi.fn().mockImplementation(function (this: any, config) {
     this.config = config;
     this.connect = vi.fn();
     this.end = vi.fn();

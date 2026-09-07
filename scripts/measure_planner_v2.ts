@@ -7,10 +7,7 @@
  * exits with code 1.
  */
 import { routeAllEdges } from '../lib/planner/routing-v2/orchestrator';
-import type {
-  PlannerEdge,
-  PlannerNode,
-} from '../lib/planner/domainModel';
+import type { PlannerEdge, PlannerNode } from '../lib/planner/domainModel';
 import { GEOMETRY } from '../lib/planner/tokens';
 
 export const MAX_CROSSINGS = 2;
@@ -22,12 +19,7 @@ export const MAX_CROSSINGS = 2;
  */
 export const PERF_BUDGET_MS = 10_000;
 
-const node = (
-  id: string,
-  type: string,
-  x: number,
-  y: number,
-): PlannerNode => ({
+const node = (id: string, type: string, x: number, y: number): PlannerNode => ({
   id,
   type,
   position: { x, y },
@@ -41,7 +33,7 @@ const edge = (
   source: string,
   target: string,
   sourceHandle?: string,
-  targetHandle?: string,
+  targetHandle?: string
 ): PlannerEdge => ({
   id,
   source,
@@ -118,8 +110,7 @@ function main(): void {
   });
   const elapsedMs = Date.now() - started;
 
-  const deterministic =
-    JSON.stringify(first.edges) === JSON.stringify(second.edges);
+  const deterministic = JSON.stringify(first.edges) === JSON.stringify(second.edges);
 
   const gates: Gate[] = [
     {
@@ -155,9 +146,7 @@ function main(): void {
     {
       id: 'G6',
       description: 'hop correctness = 100% (no new collisions)',
-      passed:
-        first.diagnostics.totalCrossings <= MAX_CROSSINGS &&
-        first.diagnostics.totalCollisions === 0,
+      passed: first.diagnostics.totalCrossings <= MAX_CROSSINGS && first.diagnostics.totalCollisions === 0,
       value: first.diagnostics.totalCollisions,
     },
     {

@@ -25,16 +25,11 @@ export type V2GeometryPoint = { x: number; y: number };
  * with `data.geometry` attached to every edge that was successfully routed.
  * Edges whose endpoints are not present are preserved unchanged.
  */
-export function routeEdgesV2(
-  nodes: readonly V2Node[],
-  edges: readonly V2CableEdge[],
-): V2CableEdge[] {
+export function routeEdgesV2(nodes: readonly V2Node[], edges: readonly V2CableEdge[]): V2CableEdge[] {
   const domainNodes = nodes.map(toDomainNode);
   const domainEdges = edges.map(toDomainEdge);
   const result = routeAllEdges({ nodes: domainNodes, edges: domainEdges });
-  const geometryByEdge = new Map(
-    result.edges.map((edge) => [edge.edgeId, edge.points.map(toPosition)]),
-  );
+  const geometryByEdge = new Map(result.edges.map((edge) => [edge.edgeId, edge.points.map(toPosition)]));
 
   return edges.map((edge) => {
     const points = geometryByEdge.get(edge.id);
@@ -60,7 +55,7 @@ export function routeEdgesV2(
 export async function applyAdvancedLayout(
   nodes: readonly V2Node[],
   edges: readonly V2CableEdge[],
-  direction: 'LR' | 'TB' = 'LR',
+  direction: 'LR' | 'TB' = 'LR'
 ): Promise<{ nodes: V2Node[]; edges: V2CableEdge[] }> {
   const { ElkLayoutEngine } = await import('./layout-engine/elk');
   const { DagreLayoutEngine } = await import('./layout-engine/dagre');
@@ -94,7 +89,7 @@ export async function applyAdvancedLayout(
     layoutResult.nodes.map((node) => [
       node.id,
       { x: node.x, y: node.y, width: node.width, height: node.height },
-    ]),
+    ])
   );
 
   const layoutedNodes = nodes.map((node) => {

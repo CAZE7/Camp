@@ -2,12 +2,11 @@ import { beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import Inspector from './Inspector';
-import { Edge } from 'reactflow';
-import { CableEdgeData } from './edges/CableEdge';
+import { type Edge } from 'reactflow';
+import { type CableEdgeData } from './edges/CableEdge';
 
 describe('Inspector Component', () => {
   const mockOnChangeLength = vi.fn();
-  const mockOnChangeCrossSection = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -15,13 +14,7 @@ describe('Inspector Component', () => {
 
   describe('Empty Selection', () => {
     it('renders "Kein Element ausgewählt" when no edge or node is selected', () => {
-      render(
-        <Inspector
-          selectedEdge={null}
-          onChangeLength={mockOnChangeLength}
-          onChangeCrossSection={mockOnChangeCrossSection}
-        />
-      );
+      render(<Inspector selectedEdge={null} onChangeLength={mockOnChangeLength} />);
 
       expect(screen.getByText('Kein Element ausgewählt')).toBeInTheDocument();
     });
@@ -36,13 +29,7 @@ describe('Inspector Component', () => {
         data: { length: 5 },
       };
 
-      render(
-        <Inspector
-          selectedEdge={mockEdge}
-          onChangeLength={mockOnChangeLength}
-          onChangeCrossSection={mockOnChangeCrossSection}
-        />
-      );
+      render(<Inspector selectedEdge={mockEdge} onChangeLength={mockOnChangeLength} />);
 
       expect(screen.queryByText('Kein Kabel ausgewählt')).not.toBeInTheDocument();
 
@@ -59,13 +46,7 @@ describe('Inspector Component', () => {
         data: { length: 5 },
       };
 
-      render(
-        <Inspector
-          selectedEdge={mockEdge}
-          onChangeLength={mockOnChangeLength}
-          onChangeCrossSection={mockOnChangeCrossSection}
-        />
-      );
+      render(<Inspector selectedEdge={mockEdge} onChangeLength={mockOnChangeLength} />);
 
       const lengthInput = screen.getByLabelText(/Länge \(m\)/i);
       fireEvent.change(lengthInput, { target: { value: '7.5' } });
@@ -82,13 +63,7 @@ describe('Inspector Component', () => {
         // Missing data
       };
 
-      render(
-        <Inspector
-          selectedEdge={mockEdge}
-          onChangeLength={mockOnChangeLength}
-          onChangeCrossSection={mockOnChangeCrossSection}
-        />
-      );
+      render(<Inspector selectedEdge={mockEdge} onChangeLength={mockOnChangeLength} />);
 
       const lengthInput = screen.getByLabelText(/Länge \(m\)/i);
       expect(lengthInput).toHaveValue(3); // Default length is 3
@@ -102,13 +77,7 @@ describe('Inspector Component', () => {
         data: { length: 5, crossSection: 4 },
       };
 
-      render(
-        <Inspector
-          selectedEdge={mockEdge}
-          onChangeLength={mockOnChangeLength}
-          onChangeCrossSection={mockOnChangeCrossSection}
-        />
-      );
+      render(<Inspector selectedEdge={mockEdge} onChangeLength={mockOnChangeLength} />);
 
       const lengthInput = screen.getByLabelText(/Länge \(m\)/i);
       fireEvent.change(lengthInput, { target: { value: '' } });

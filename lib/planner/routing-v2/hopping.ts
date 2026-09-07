@@ -12,11 +12,8 @@
  */
 
 import type { Point } from '../domainModel';
-import {
-  classifyEdgeEdgeIntersections,
-  type EdgeEdgeCollision,
-} from '../geometry/collision';
-import { GEOMETRY, ROUTING } from '../tokens';
+import { classifyEdgeEdgeIntersections } from '../geometry/collision';
+import { GEOMETRY } from '../tokens';
 
 export type HoppingEdge = {
   readonly edgeId: string;
@@ -43,25 +40,25 @@ export type HopResult = {
 
 export function planHops(
   edges: readonly HoppingEdge[],
-  minGap = Math.max(4, GEOMETRY.laneGrid / 2),
+  minGap = Math.max(4, GEOMETRY.laneGrid / 2)
 ): HopPlan {
   const hops: Hop[] = [];
 
   for (let i = 0; i < edges.length; i += 1) {
     for (let j = i + 1; j < edges.length; j += 1) {
       const { crossings } = classifyEdgeEdgeIntersections(
-        edges[i].edgeId,
-        edges[i].points,
-        edges[j].edgeId,
-        edges[j].points,
+        edges[i]!.edgeId,
+        edges[i]!.points,
+        edges[j]!.edgeId,
+        edges[j]!.points
       );
 
       for (const crossing of crossings) {
-        const hopEdge = hopTarget(edges[i].edgeId, edges[j].edgeId);
+        const hopEdge = hopTarget(edges[i]!.edgeId, edges[j]!.edgeId);
         hops.push({
           edgeId: hopEdge,
           point: crossing.point,
-          otherEdgeId: hopEdge === edges[i].edgeId ? edges[j].edgeId : edges[i].edgeId,
+          otherEdgeId: hopEdge === edges[i]!.edgeId ? edges[j]!.edgeId : edges[i]!.edgeId,
         });
         void minGap;
       }
@@ -81,7 +78,7 @@ export function applyHopPlan(
   plan: HopPlan,
   edges: readonly HoppingEdge[],
   hopHeight = Math.max(8, GEOMETRY.edgeEdgeSpacing / 2),
-  hopHalf = Math.max(4, GEOMETRY.laneGrid / 2),
+  hopHalf = Math.max(4, GEOMETRY.laneGrid / 2)
 ): readonly HoppingEdge[] {
   const resolved = new Map(edges.map((edge) => [edge.edgeId, [...edge.points]]));
 
@@ -106,10 +103,7 @@ export function applyHopPlan(
  * Executes the hop pipeline and returns the crossings after the hop. This is the
  * "hop correctness" check used by the measurement suite.
  */
-export function rerouteCrossings(
-  edges: readonly HoppingEdge[],
-  minGap?: number,
-): HopResult {
+export function rerouteCrossings(edges: readonly HoppingEdge[], minGap?: number): HopResult {
   const plan = planHops(edges, minGap);
   const hopped = applyHopPlan(plan, edges);
   const crossingsAfter = countAllCrossings(hopped);
@@ -125,25 +119,20 @@ function hopTarget(edgeA: string, edgeB: string): string {
   return edgeA < edgeB ? edgeA : edgeB;
 }
 
-function bumpPoints(
-  points: readonly Point[],
-  crossing: Point,
-  height: number,
-  half: number,
-): Point[] {
+function bumpPoints(points: readonly Point[], crossing: Point, height: number, half: number): Point[] {
   const result: Point[] = [];
 
   for (let index = 0; index < points.length - 1; index += 1) {
-    const a = points[index];
-    const b = points[index + 1];
+    const a = points[index]!;
+    const b = points[index + 1]!;
     const used = segmentContainsPoint(a, b, crossing);
 
     if (!used || pointOnSegmentEndpoint(a, b, crossing)) {
-      if (result.length === 0 || !samePoint(result[result.length - 1], a)) {
+      if (result.length === 0 || !samePoint(result[result.length - 1]!, a)) {
         result.push(a);
       }
       if (index === points.length - 2) {
-        if (!samePoint(result[result.length - 1], b)) result.push(b);
+        if (!samePoint(result[result.length - 1]!, b)) result.push(b);
       }
       continue;
     }
@@ -154,9 +143,9 @@ function bumpPoints(
       result.push({ x: crossing.x - half, y: crossing.y - height });
       result.push({ x: crossing.x + half, y: crossing.y - height });
       result.push({ x: crossing.x + half, y: crossing.y + 0 });
-      result.push(b);
+      result.push(b)!;
     } else {
-      result.push(a);
+      result.push(a)!;
       result.push({ x: crossing.x - height, y: crossing.y - half });
       result.push({ x: crossing.x - height, y: crossing.y + half });
       result.push({ x: crossing.x + 0, y: crossing.y + half });
@@ -172,10 +161,10 @@ function countAllCrossings(edges: readonly HoppingEdge[]): number {
   for (let i = 0; i < edges.length; i += 1) {
     for (let j = i + 1; j < edges.length; j += 1) {
       const { crossings } = classifyEdgeEdgeIntersections(
-        edges[i].edgeId,
-        edges[i].points,
-        edges[j].edgeId,
-        edges[j].points,
+        edges[i]!.edgeId,
+        edges[i]!.points,
+        edges[j]!.edgeId,
+        edges[j]!.points
       );
       count += crossings.length;
     }
@@ -185,8 +174,7 @@ function countAllCrossings(edges: readonly HoppingEdge[]): number {
 
 function segmentContainsPoint(a: Point, b: Point, p: Point): boolean {
   const tolerance = 1e-6;
-  const cross =
-    (p.x - a.x) * (b.y - a.y) - (p.y - a.y) * (b.x - a.x);
+  const cross = (p.x - a.x) * (b.y - a.y) - (p.y - a.y) * (b.x - a.x);
   if (Math.abs(cross) > tolerance) return false;
   return (
     Math.min(a.x, b.x) - tolerance <= p.x &&

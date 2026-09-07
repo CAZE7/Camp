@@ -22,11 +22,7 @@ const edge = (id: string, source: string, target: string): Edge<CableEdgeData> =
 
 describe('routingV2Adapter - advanced layout integration', () => {
   it('routeEdgesV2 attaches a routed polyline to every routable edge', () => {
-    const nodes = [
-      node('a', 'battery', 0, 0),
-      node('b', 'busbar', 160, 0),
-      node('c', 'consumer', 320, 0),
-    ];
+    const nodes = [node('a', 'battery', 0, 0), node('b', 'busbar', 160, 0), node('c', 'consumer', 320, 0)];
     const edges = [edge('e1', 'a', 'b'), edge('e2', 'b', 'c')];
 
     const routed = routeEdgesV2(nodes, edges);

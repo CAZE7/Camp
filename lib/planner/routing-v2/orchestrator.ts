@@ -13,12 +13,7 @@
  * This module intentionally imports nothing from React Flow, ELK or dagre.
  */
 
-import type {
-  PlannerEdge,
-  PlannerNode,
-  PlannerNodeData,
-  Point,
-} from '../domainModel';
+import type { PlannerEdge, PlannerNode, PlannerNodeData, Point } from '../domainModel';
 import { buildNodeLookup } from '../graph/nodeLookup';
 import { LaneRegistry } from '../geometry/lanes';
 import { buildCorridorGraph } from '../geometry/corridor';
@@ -33,12 +28,7 @@ import {
 } from '../geometry/collision';
 import { rerouteCrossings } from './hopping';
 import { generateRoutingCandidates } from '../routing-core/candidates';
-import {
-  defaultCostWeights,
-  routeCost,
-  selectBestPath,
-  type CostWeights,
-} from '../routing-core/costModel';
+import { defaultCostWeights, routeCost, selectBestPath, type CostWeights } from '../routing-core/costModel';
 import type {
   RouteCandidate,
   RouteCandidateScore,
@@ -74,9 +64,7 @@ type RoutedEdge = {
   readonly cost: number;
 };
 
-export function routeAllEdges(
-  input: RouteOrchestratorInput,
-): RoutingV2Result {
+export function routeAllEdges(input: RouteOrchestratorInput): RoutingV2Result {
   const startedAt = now();
   const nodes = input.nodes;
   const edges = input.edges;
@@ -88,8 +76,7 @@ export function routeAllEdges(
     nodeId: node.id,
     bbox: bboxFromNode(node),
   }));
-  const bounds =
-    options.bounds ?? boundingBoxOfNodes(nodes, ROUTING.searchPadding);
+  const bounds = options.bounds ?? boundingBoxOfNodes(nodes, ROUTING.searchPadding);
 
   const routedEdges: RoutedEdge[] = [];
   const metrics: RoutedEdgeMetrics[] = [];
@@ -138,21 +125,12 @@ export function routeAllEdges(
       })),
     });
 
-    const scored = scoreCandidates(
-      candidates,
-      edge,
-      routedEdges,
-      laneRegistry,
-      nodeBBoxes,
-      weights,
-    );
+    const scored = scoreCandidates(candidates, edge, routedEdges, laneRegistry, nodeBBoxes, weights);
 
     const bestScore = selectBestPath(scored) as ScoredWithExtras | undefined;
     if (!bestScore) continue;
 
-    const bestCandidate = candidates.find(
-      (candidate) => candidate.id === bestScore.candidateId,
-    );
+    const bestCandidate = candidates.find((candidate) => candidate.id === bestScore.candidateId);
     if (!bestCandidate) continue;
 
     routedEdges.push({
@@ -179,25 +157,17 @@ export function routeAllEdges(
     });
   }
 
-  const refinedEdges = refineCrossings(
-    routedEdges,
-    nodes,
-    laneRegistry,
-    nodeBBoxes,
-    bounds,
-    weights,
-    {
-      grid: options.grid ?? GEOMETRY.laneGrid,
-      padding: ROUTING.searchPadding,
-      maxCandidates: options.maxCandidates ?? ROUTING.maxCandidatesPerEdge,
-    },
-  );
+  const refinedEdges = refineCrossings(routedEdges, nodes, laneRegistry, nodeBBoxes, bounds, weights, {
+    grid: options.grid ?? GEOMETRY.laneGrid,
+    padding: ROUTING.searchPadding,
+    maxCandidates: options.maxCandidates ?? ROUTING.maxCandidatesPerEdge,
+  });
 
   const hopped = rerouteCrossings(
     refinedEdges.map((edge) => ({
       edgeId: edge.edgeId,
       points: edge.points,
-    })),
+    }))
   );
 
   const finalEdges = hopped.edges.map((edge) => {
@@ -254,23 +224,21 @@ function scoreCandidates(
   routedEdges: readonly RoutedEdge[],
   laneRegistry: LaneRegistry,
   nodeBBoxes: readonly { nodeId: string; bbox: { x: number; y: number; width: number; height: number } }[],
-  weights: CostWeights,
+  weights: CostWeights
 ): ScoredWithExtras[] {
   const lane = laneRegistry.laneFor(edge.id);
   const routedSegments = new Map(
-    routedEdges.map((routed) => [routed.edgeId, pointsToSegments(routed.points)]),
+    routedEdges.map((routed) => [routed.edgeId, pointsToSegments(routed.points)])
   );
-  const routedBounds = new Map(
-    routedEdges.map((routed) => [routed.edgeId, boundsOfPoints(routed.points)]),
-  );
+  const routedBounds = new Map(routedEdges.map((routed) => [routed.edgeId, boundsOfPoints(routed.points)]));
 
   return candidates.map((candidate) => {
-    let edgeNodeCollisions = countEdgeNodeCollisions(
+    const edgeNodeCollisions = countEdgeNodeCollisions(
       edge.id,
       candidate.points,
       nodeBBoxes,
       [edge.source, edge.target],
-      GEOMETRY.cableClearance,
+      GEOMETRY.cableClearance
     ).length;
 
     const candidateSegments = pointsToSegments(candidate.points);
@@ -287,16 +255,13 @@ function scoreCandidates(
         edge.id,
         candidateSegments,
         routed.edgeId,
-        routedSegments.get(routed.edgeId) ?? [],
+        routedSegments.get(routed.edgeId) ?? []
       );
 
       overlapCount += overlaps.length;
       crossingCount += crossings.length;
 
-      if (
-        laneRegistry.laneFor(routed.edgeId) === lane &&
-        (overlaps.length > 0 || crossings.length > 0)
-      ) {
+      if (laneRegistry.laneFor(routed.edgeId) === lane && (overlaps.length > 0 || crossings.length > 0)) {
         laneCongestion += 1;
       }
     }
@@ -308,7 +273,7 @@ function scoreCandidates(
         laneCongestion,
         hops: crossingCount,
       },
-      weights,
+      weights
     );
 
     return {
@@ -345,7 +310,7 @@ function refineCrossings(
   nodeBBoxes: readonly { nodeId: string; bbox: { x: number; y: number; width: number; height: number } }[],
   bounds: { x: number; y: number; width: number; height: number },
   weights: CostWeights,
-  routeOptions: RefinementRouteOptions,
+  routeOptions: RefinementRouteOptions
 ): RoutedEdge[] {
   const lookup = buildNodeLookup(nodes);
   let current = [...routedEdges];
@@ -396,20 +361,11 @@ function refineCrossings(
         targetHandle: oldEdge.targetHandle,
       };
 
-      const scored = scoreCandidates(
-        candidates,
-        edgeLike,
-        otherEdges,
-        laneRegistry,
-        nodeBBoxes,
-        weights,
-      );
+      const scored = scoreCandidates(candidates, edgeLike, otherEdges, laneRegistry, nodeBBoxes, weights);
       const bestScore = selectBestPath(scored) as ScoredWithExtras | undefined;
       if (!bestScore) continue;
 
-      const bestCandidate = candidates.find(
-        (candidate) => candidate.id === bestScore.candidateId,
-      );
+      const bestCandidate = candidates.find((candidate) => candidate.id === bestScore.candidateId);
       if (!bestCandidate) continue;
 
       const candidateEdge: RoutedEdge = {
@@ -421,15 +377,10 @@ function refineCrossings(
         cost: bestScore.cost,
       };
 
-      const newInterference = interferenceCountForEdge(
-        [...otherEdges, candidateEdge],
-        edgeId,
-      );
+      const newInterference = interferenceCountForEdge([...otherEdges, candidateEdge], edgeId);
 
       if (newInterference < oldInterference) {
-        current = current.map((edge) =>
-          edge.edgeId === edgeId ? candidateEdge : edge,
-        );
+        current = current.map((edge) => (edge.edgeId === edgeId ? candidateEdge : edge));
         changed = true;
       }
     }
@@ -445,24 +396,21 @@ function collectInterferingEdgeIds(edges: readonly RoutedEdge[]): Set<string> {
   for (let i = 0; i < edges.length; i += 1) {
     for (let j = i + 1; j < edges.length; j += 1) {
       const { crossings, overlaps } = classifyEdgeEdgeIntersections(
-        edges[i].edgeId,
-        edges[i].points,
-        edges[j].edgeId,
-        edges[j].points,
+        edges[i]!.edgeId,
+        edges[i]!.points,
+        edges[j]!.edgeId,
+        edges[j]!.points
       );
       if (crossings.length > 0 || overlaps.length > 0) {
-        ids.add(edges[i].edgeId);
-        ids.add(edges[j].edgeId);
+        ids.add(edges[i]!.edgeId);
+        ids.add(edges[j]!.edgeId);
       }
     }
   }
   return ids;
 }
 
-function interferenceCountForEdge(
-  edges: readonly RoutedEdge[],
-  edgeId: string,
-): number {
+function interferenceCountForEdge(edges: readonly RoutedEdge[], edgeId: string): number {
   const edge = edges.find((candidate) => candidate.edgeId === edgeId);
   if (!edge) return Number.POSITIVE_INFINITY;
 
@@ -473,7 +421,7 @@ function interferenceCountForEdge(
       edge.edgeId,
       edge.points,
       other.edgeId,
-      other.points,
+      other.points
     );
     count += crossings.length + overlaps.length;
   }
@@ -482,7 +430,7 @@ function interferenceCountForEdge(
 
 function computeFinalDiagnostics(
   finalEdges: readonly RoutedEdge[],
-  nodeBBoxes: readonly { nodeId: string; bbox: { x: number; y: number; width: number; height: number } }[],
+  nodeBBoxes: readonly { nodeId: string; bbox: { x: number; y: number; width: number; height: number } }[]
 ): RoutingV2Result['diagnostics'] {
   let totalCollisions = 0;
   let totalCrossings = 0;
@@ -501,7 +449,7 @@ function computeFinalDiagnostics(
       edge.points,
       nodeBBoxes,
       excluded,
-      GEOMETRY.cableClearance,
+      GEOMETRY.cableClearance
     ).length;
     edgeNodeByEdge.set(edge.edgeId, edgeNode);
     maxEdgeNodeCollisions = Math.max(maxEdgeNodeCollisions, edgeNode);
@@ -509,14 +457,9 @@ function computeFinalDiagnostics(
 
   for (let i = 0; i < finalEdges.length; i += 1) {
     for (let j = i + 1; j < finalEdges.length; j += 1) {
-      const a = finalEdges[i];
-      const b = finalEdges[j];
-      const { crossings, overlaps } = classifyEdgeEdgeIntersections(
-        a.edgeId,
-        a.points,
-        b.edgeId,
-        b.points,
-      );
+      const a = finalEdges[i]!;
+      const b = finalEdges[j]!;
+      const { crossings, overlaps } = classifyEdgeEdgeIntersections(a.edgeId, a.points, b.edgeId, b.points);
       edgeOverlapByEdge.set(a.edgeId, (edgeOverlapByEdge.get(a.edgeId) ?? 0) + overlaps.length);
       edgeOverlapByEdge.set(b.edgeId, (edgeOverlapByEdge.get(b.edgeId) ?? 0) + overlaps.length);
       edgeCrossingByEdge.set(a.edgeId, (edgeCrossingByEdge.get(a.edgeId) ?? 0) + crossings.length);
@@ -524,7 +467,7 @@ function computeFinalDiagnostics(
       maxEdgeEdgeOverlaps = Math.max(
         maxEdgeEdgeOverlaps,
         edgeOverlapByEdge.get(a.edgeId) ?? 0,
-        edgeOverlapByEdge.get(b.edgeId) ?? 0,
+        edgeOverlapByEdge.get(b.edgeId) ?? 0
       );
       totalCrossings += crossings.length;
       totalHops += crossings.length;
@@ -541,10 +484,7 @@ function computeFinalDiagnostics(
   let minClearance = Number.POSITIVE_INFINITY;
   for (const edge of finalEdges) {
     const excluded = [edge.sourceNodeId, edge.targetNodeId];
-    minClearance = Math.min(
-      minClearance,
-      minEdgeNodeClearance(edge.points, nodeBBoxes, excluded),
-    );
+    minClearance = Math.min(minClearance, minEdgeNodeClearance(edge.points, nodeBBoxes, excluded));
   }
   if (!Number.isFinite(minClearance)) minClearance = Number.POSITIVE_INFINITY;
 
@@ -560,10 +500,7 @@ function computeFinalDiagnostics(
   };
 }
 
-function computeCrossingCountForEdge(
-  finalEdges: readonly RoutedEdge[],
-  edgeId: string,
-): number {
+function computeCrossingCountForEdge(finalEdges: readonly RoutedEdge[], edgeId: string): number {
   let count = 0;
   for (const edge of finalEdges) {
     if (edge.edgeId === edgeId) continue;
@@ -571,16 +508,19 @@ function computeCrossingCountForEdge(
       edgeId,
       finalEdges.find((entry) => entry.edgeId === edgeId)?.points ?? [],
       edge.edgeId,
-      edge.points,
+      edge.points
     );
     count += crossings.length;
   }
   return count;
 }
 
-function boundsOfPoints(
-  points: readonly Point[],
-): { minX: number; maxX: number; minY: number; maxY: number } {
+function boundsOfPoints(points: readonly Point[]): {
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
+} {
   let minX = Number.POSITIVE_INFINITY;
   let maxX = Number.NEGATIVE_INFINITY;
   let minY = Number.POSITIVE_INFINITY;
@@ -596,13 +536,10 @@ function boundsOfPoints(
 
 function rectsOverlap(
   a: { minX: number; maxX: number; minY: number; maxY: number },
-  b: { minX: number; maxX: number; minY: number; maxY: number },
+  b: { minX: number; maxX: number; minY: number; maxY: number }
 ): boolean {
   return (
-    a.minX <= b.maxX + 1e-9 &&
-    a.maxX >= b.minX - 1e-9 &&
-    a.minY <= b.maxY + 1e-9 &&
-    a.maxY >= b.minY - 1e-9
+    a.minX <= b.maxX + 1e-9 && a.maxX >= b.minX - 1e-9 && a.minY <= b.maxY + 1e-9 && a.maxY >= b.minY - 1e-9
   );
 }
 

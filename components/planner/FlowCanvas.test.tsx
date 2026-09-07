@@ -1,17 +1,54 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { FlowCanvas } from './FlowCanvas';
 import { usePlannerStore } from '../../store/usePlannerStore';
-import * as StoreModule from '../../store/usePlannerStore';
-import { useAppStore } from '../../lib/store';
+import { useAppStore, type AppState } from '../../lib/store';
 import { useDashboardMetrics } from './hooks/useDashboardMetrics';
+import { withSelector } from '../../test-helpers/reactflowMocks';
+import type { PlannerState } from '../../store/usePlannerStore';
+
+type MockPanelProps = {
+  children?: React.ReactNode;
+  position?: string;
+  className?: string;
+};
+type MockReactFlowProps = {
+  children?: React.ReactNode;
+  nodes?: unknown[];
+  edges?: unknown[];
+  onDragOver?: React.DragEventHandler;
+  onDrop?: React.DragEventHandler;
+  className?: string;
+  connectOnClick?: boolean;
+};
+type MockControlsProps = { showInteractive?: boolean };
+/** DOM-DragEvent mit den Attributen, die der FlowCanvas-Handler liest. */
+type DragEventish = MouseEvent & {
+  dataTransfer?: { dropEffect: string };
+  preventDefault: () => void;
+};
+
+// next/dynamic wird im Test synchron aufgelöst, damit der per next/dynamic
+// nachgeladene BOMModal (ssr:false) deterministisch hydriert statt in einer
+// nie auflösenden Suspense zu hängen.
+vi.mock('next/dynamic', async () => {
+  const { BOMModal } = await import('./BOMModal');
+  return {
+    default: () => BOMModal,
+  };
+});
 
 // --- Mocks ---
 
 // Mock React Flow
 const mockFitView = vi.fn();
-const mockScreenToFlowPosition = vi.fn().mockImplementation((pos) => ({ x: pos.clientX, y: pos.clientY }));
+const mockScreenToFlowPosition = vi
+  .fn()
+  .mockImplementation((pos: { x?: number; y?: number; clientX?: number; clientY?: number }) => ({
+    x: pos.x ?? pos.clientX,
+    y: pos.y ?? pos.clientY,
+  }));
 vi.mock('reactflow', async () => {
   const actual = await vi.importActual('reactflow');
   return {
@@ -19,24 +56,62 @@ vi.mock('reactflow', async () => {
     useReactFlow: () => ({
       fitView: mockFitView,
       screenToFlowPosition: mockScreenToFlowPosition,
+      getViewport: () => ({ x: 0, y: 0, zoom: 1 }),
+      setViewport: vi.fn(),
+      getNode: vi.fn(),
+      setCenter: vi.fn(),
     }),
+    useStore: (selector: (state: { transform: [number, number, number] }) => unknown) =>
+      selector({ transform: [0, 0, 1] }),
     Background: () => <div data-testid="rf-background" />,
-    Controls: () => <div data-testid="rf-controls" />,
+    Controls: ({ showInteractive }: MockControlsProps) => (
+      <div data-testid="rf-controls" data-show-interactive={String(showInteractive)}>
+        <button type="button" className="react-flow__controls-zoomin" />
+        <button type="button" className="react-flow__controls-zoomout" />
+        <button type="button" className="react-flow__controls-fitview" />
+      </div>
+    ),
     MiniMap: () => <div data-testid="rf-minimap" />,
-    Panel: ({ children, position, className }: any) => <div data-testid={`rf-panel-${position}`} className={className}>{children}</div>,
-    default: ({ children, nodes, edges, onNodesChange, onEdgesChange, onConnect, isValidConnection, onSelectionChange, onDragOver, onDrop }: any) => (
+    Panel: ({ children, position, className }: MockPanelProps) => (
+      <div data-testid={`rf-panel-${position}`} className={className}>
+        {children}
+      </div>
+    ),
+    default: ({
+      children,
+      nodes,
+      edges,
+      onDragOver,
+      onDrop,
+      className,
+      connectOnClick,
+    }: MockReactFlowProps) => (
       <div
         data-testid="react-flow-mock"
         data-nodes={JSON.stringify(nodes)}
         data-edges={JSON.stringify(edges)}
+        data-connect-on-click={String(connectOnClick)}
+        className={className}
         onDragOver={onDragOver}
         onDrop={onDrop}
       >
+        <div className="react-flow__pane" />
         {children}
       </div>
     ),
   };
 });
+
+// Der CableRouteSync rendert als Kind von <ReactFlow> und liest den echten
+// React-Flow-Store (useStoreApi/useStore). Im Test ist ReactFlow gemockt,
+// daher wird der Routing-Sync als No-Op gestubbt — geroutete Pfade werden
+// hier nicht geprüft (dafür existieren CableEdge/WaterPipeEdge-Tests).
+vi.mock('../edges/utils/cableRouteStore', () => ({
+  CableRouteSync: () => null,
+  useCableRoute: () => undefined,
+  publishCableRoutes: vi.fn(),
+  getCableRoute: () => undefined,
+}));
 
 // Mock hooks
 vi.mock('./hooks/useDashboardMetrics', () => ({
@@ -76,7 +151,22 @@ const defaultPlannerStoreState = {
   onDrop: mockOnDropFromStore,
   onCustomDrop: mockOnCustomDropFromStore,
   setFirstTappedHandle: mockSetFirstTappedHandle,
-} as any;
+  addNode: vi.fn(),
+  highlightedNodeId: null,
+  highlightedEdgeId: null,
+  setHighlightedNodeId: vi.fn(),
+  setHighlightedEdgeId: vi.fn(),
+  trunkMode: false,
+  setTrunkMode: vi.fn(),
+  backboneGrouping: true,
+  setBackboneGrouping: vi.fn(),
+  isLayoutPending: false,
+  selectedNodes: [],
+  selectedEdges: [],
+  setSelectedNodes: vi.fn(),
+  setSelectedEdges: vi.fn(),
+  calculatePathVoltageDrop: vi.fn(() => 0),
+} as unknown as PlannerState;
 
 vi.mock('../../store/usePlannerStore', () => ({
   usePlannerStore: vi.fn((selector) => {
@@ -86,7 +176,7 @@ vi.mock('../../store/usePlannerStore', () => ({
 
 const defaultAppStoreState = {
   calculatedSolarWatts: 0,
-} as any;
+} as unknown as AppState;
 
 vi.mock('../../lib/store', () => ({
   useAppStore: vi.fn((selector) => {
@@ -113,6 +203,145 @@ describe('FlowCanvas', () => {
     expect(screen.getByTestId('react-flow-mock')).toBeInTheDocument();
   });
 
+  it('renders domain filter chips in electric mode', () => {
+    render(<FlowCanvas />);
+    expect(screen.getByRole('button', { name: '12V' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '230V' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Solar' })).toBeInTheDocument();
+  });
+
+  it('toggles a domain filter chip off and on', () => {
+    render(<FlowCanvas />);
+    const solarChip = screen.getByRole('button', { name: 'Solar' });
+    expect(solarChip).toHaveAttribute('aria-pressed', 'true');
+
+    fireEvent.click(solarChip);
+    expect(screen.getByRole('button', { name: 'Solar' })).toHaveAttribute('aria-pressed', 'false');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Solar' }));
+    expect(screen.getByRole('button', { name: 'Solar' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('renders a trunk-mode toggle and flips it', () => {
+    render(<FlowCanvas />);
+    const trunkToggle = screen.getByRole('button', { name: 'Trassen' });
+    expect(trunkToggle).toHaveAttribute('aria-pressed', 'false');
+
+    fireEvent.click(trunkToggle);
+    expect(defaultPlannerStoreState.setTrunkMode).toHaveBeenCalledWith(true);
+  });
+
+  it('toggles the configurable main-circuit grouping', () => {
+    render(<FlowCanvas />);
+    const toggle = screen.getByRole('button', { name: 'Hauptstromkreis' });
+    expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(toggle);
+    expect(defaultPlannerStoreState.setBackboneGrouping).toHaveBeenCalledWith(false);
+  });
+
+  it('M8-1: eine Canvas-Darstellung ohne Zoom-Stufen-Klassen', () => {
+    render(<FlowCanvas />);
+    const canvas = screen.getByTestId('react-flow-mock');
+    expect(canvas).toHaveClass('planner-canvas');
+    expect(canvas).not.toHaveClass('planner-zoom-overview');
+    expect(canvas).not.toHaveClass('planner-zoom-standard');
+    expect(canvas).not.toHaveClass('planner-zoom-full');
+  });
+
+  it('uses one custom tap-to-connect path instead of a duplicate React Flow click connection', () => {
+    render(<FlowCanvas />);
+    expect(screen.getByTestId('react-flow-mock')).toHaveAttribute('data-connect-on-click', 'false');
+  });
+
+  it('removes the interactive control toggle and gives zoom controls German names', () => {
+    render(<FlowCanvas />);
+
+    expect(screen.getByTestId('rf-controls')).toHaveAttribute('data-show-interactive', 'false');
+    expect(document.querySelector('.react-flow__controls-zoomin')).toHaveAttribute(
+      'aria-label',
+      'Ansicht vergrößern'
+    );
+    expect(document.querySelector('.react-flow__controls-zoomout')).toHaveAttribute(
+      'aria-label',
+      'Ansicht verkleinern'
+    );
+    expect(document.querySelector('.react-flow__controls-fitview')).toHaveAttribute(
+      'aria-label',
+      'Ganzen Plan einpassen'
+    );
+  });
+
+  it('adds a keyboard or tap catalogue item at the visible canvas centre', () => {
+    const addNode = vi.fn();
+    const centeredStore = { ...defaultPlannerStoreState, nodes: [], addNode } as PlannerState;
+    Object.assign(usePlannerStore, { getState: () => centeredStore });
+    vi.mocked(usePlannerStore).mockImplementation((selector) => selector(centeredStore));
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      if (this.classList.contains('react-flow__pane')) {
+        return {
+          x: 100,
+          y: 80,
+          width: 600,
+          height: 400,
+          top: 80,
+          right: 700,
+          bottom: 480,
+          left: 100,
+          toJSON: () => ({}),
+        } as DOMRect;
+      }
+      return {
+        x: 0,
+        y: 0,
+        width: 0,
+        height: 0,
+        top: 0,
+        right: 0,
+        bottom: 0,
+        left: 0,
+        toJSON: () => ({}),
+      } as DOMRect;
+    });
+    render(<FlowCanvas />);
+
+    act(() => {
+      window.dispatchEvent(
+        new CustomEvent('planner-add-at-canvas-center', {
+          detail: { type: 'battery', label: 'Batterie', watts: 120 },
+        })
+      );
+    });
+
+    expect(mockScreenToFlowPosition).toHaveBeenCalledWith({ x: 400, y: 280 });
+    expect(addNode).toHaveBeenCalledWith('battery', 'Batterie', { x: 304, y: 224 }, 120);
+  });
+
+  it('shows a mobile overview action only for more than eight nodes', () => {
+    vi.mocked(usePlannerStore).mockImplementation(
+      withSelector({
+        ...defaultPlannerStoreState,
+        nodes: Array.from({ length: 9 }, (_, index) => ({
+          id: `n${index}`,
+          type: 'consumer',
+          position: { x: index * 20, y: 0 },
+          data: {},
+        })),
+      }) as typeof usePlannerStore
+    );
+    render(<FlowCanvas />);
+    fireEvent.click(screen.getByTestId('mobile-overview'));
+    expect(mockFitView).toHaveBeenCalledWith({ duration: 400, padding: 0.2 });
+  });
+
+  it('does not render domain filter chips in water mode', () => {
+    Object.assign(usePlannerStore, { getState: () => defaultPlannerStoreState });
+    vi.mocked(usePlannerStore).mockImplementation(
+      withSelector({ ...defaultPlannerStoreState, viewMode: 'water' }) as typeof usePlannerStore
+    );
+    render(<FlowCanvas />);
+    expect(screen.queryByRole('button', { name: '12V' })).not.toBeInTheDocument();
+  });
+
   it('passes electric nodes and edges when viewMode is electric', () => {
     render(<FlowCanvas />);
     const reactFlowElement = screen.getByTestId('react-flow-mock');
@@ -124,19 +353,23 @@ describe('FlowCanvas', () => {
 
   it('passes water nodes and edges when viewMode is water', () => {
     Object.assign(usePlannerStore, { getState: () => defaultPlannerStoreState });
-    vi.mocked(usePlannerStore).mockImplementation((selector: any) => {
-      return selector({
+    vi.mocked(usePlannerStore).mockImplementation(
+      withSelector({
         ...defaultPlannerStoreState,
         viewMode: 'water',
-      });
-    });
+      }) as typeof usePlannerStore
+    );
 
     render(<FlowCanvas />);
     const reactFlowElement = screen.getByTestId('react-flow-mock');
 
     // In water mode, nodes and edges should correspond to defaultPlannerStoreState.waterNodes/waterEdges
-    expect(reactFlowElement.getAttribute('data-nodes')).toBe(JSON.stringify(defaultPlannerStoreState.waterNodes));
-    expect(reactFlowElement.getAttribute('data-edges')).toBe(JSON.stringify(defaultPlannerStoreState.waterEdges));
+    expect(reactFlowElement.getAttribute('data-nodes')).toBe(
+      JSON.stringify(defaultPlannerStoreState.waterNodes)
+    );
+    expect(reactFlowElement.getAttribute('data-edges')).toBe(
+      JSON.stringify(defaultPlannerStoreState.waterEdges)
+    );
   });
 
   describe('User Interactions', () => {
@@ -145,7 +378,7 @@ describe('FlowCanvas', () => {
       const reactFlowElement = screen.getByTestId('react-flow-mock');
 
       // Create a proper event object for drag over
-      const event = new MouseEvent('dragover', { bubbles: true }) as any;
+      const event = new MouseEvent('dragover', { bubbles: true }) as unknown as DragEventish;
       event.dataTransfer = { dropEffect: 'none' };
       event.preventDefault = vi.fn();
 
@@ -175,7 +408,7 @@ describe('FlowCanvas', () => {
       expect(mockOnCustomDropFromStore).toHaveBeenCalledWith(expect.anything(), mockScreenToFlowPosition);
     });
 
-    it('listens to show-bom-modal and displays the BOM data', () => {
+    it('listens to show-bom-modal and displays the BOM data', async () => {
       render(<FlowCanvas />);
 
       const bomEvent = new CustomEvent('show-bom-modal');
@@ -183,15 +416,18 @@ describe('FlowCanvas', () => {
         window.dispatchEvent(bomEvent);
       });
 
-      expect(screen.getByText('Stückliste (BOM)')).toBeInTheDocument();
-      expect(screen.getByText('1x Batterie')).toBeInTheDocument();
-      expect(screen.getByText('5.0 Meter 4 mm² Kabel')).toBeInTheDocument();
+      // BOMModal wird per next/dynamic (ssr:false) nachgeladen — der Lade-
+      // Zustand ist `null`, daher warten wir auf das eingeblendete Dialog-
+      // Fenster, statt es synchron zu erwarten.
+      expect(await screen.findByText('Stückliste')).toBeInTheDocument();
+      expect(screen.getByText('Batterie')).toBeInTheDocument();
+      expect(screen.getByText('5.0 m Kabel mit 4 mm²')).toBeInTheDocument();
 
       // Close modal
       act(() => {
         fireEvent.click(screen.getByText('Schließen'));
       });
-      expect(screen.queryByText('Stückliste (BOM)')).not.toBeInTheDocument();
+      expect(screen.queryByText('Stückliste')).not.toBeInTheDocument();
     });
 
     it('handles sequential tap connections', () => {
@@ -211,21 +447,31 @@ describe('FlowCanvas', () => {
       document.body.appendChild(handle2);
 
       // First tap
-      fireEvent.click(handle1);
+      act(() => {
+        fireEvent.click(handle1);
+      });
 
       // Inside setFirstTappedHandle, state updater is called
       expect(mockSetFirstTappedHandle).toHaveBeenCalledTimes(1);
 
-      const updater1 = mockSetFirstTappedHandle.mock.calls[0][0];
-      const newState1 = updater1(null); // Previous state is null
+      const updater1 = mockSetFirstTappedHandle.mock.calls[0]![0];
+      let newState1: unknown;
+      act(() => {
+        newState1 = updater1(null); // Previous state is null
+      });
       expect(newState1).toEqual({ nodeId: 'nodeA', handleId: 'handleA', handleType: 'source' });
 
       // Second tap
-      fireEvent.click(handle2);
+      act(() => {
+        fireEvent.click(handle2);
+      });
       expect(mockSetFirstTappedHandle).toHaveBeenCalledTimes(2);
 
-      const updater2 = mockSetFirstTappedHandle.mock.calls[1][0];
-      const newState2 = updater2({ nodeId: 'nodeA', handleId: 'handleA', handleType: 'source' }); // Mocking previous state
+      const updater2 = mockSetFirstTappedHandle.mock.calls[1]![0];
+      let newState2: unknown;
+      act(() => {
+        newState2 = updater2({ nodeId: 'nodeA', handleId: 'handleA', handleType: 'source' }); // Mocking previous state
+      });
 
       expect(newState2).toBeNull(); // It resets after attempt
       expect(mockIsValidConnection).toHaveBeenCalledWith({
@@ -245,6 +491,40 @@ describe('FlowCanvas', () => {
       document.body.removeChild(handle2);
     });
 
+    it('keeps the first endpoint selected when a second output/input is tapped by mistake', () => {
+      render(<FlowCanvas />);
+
+      const first = document.createElement('div');
+      first.className = 'react-flow__handle source';
+      first.setAttribute('data-nodeid', 'nodeA');
+      first.setAttribute('data-handleid', 'handleA');
+      document.body.appendChild(first);
+      const second = document.createElement('div');
+      second.className = 'react-flow__handle source';
+      second.setAttribute('data-nodeid', 'nodeB');
+      second.setAttribute('data-handleid', 'handleB');
+      document.body.appendChild(second);
+
+      act(() => {
+        fireEvent.click(first);
+        fireEvent.click(second);
+      });
+      const updater = mockSetFirstTappedHandle.mock.calls[1]![0];
+      let updatedSelection: unknown;
+      act(() => {
+        updatedSelection = updater({ nodeId: 'nodeA', handleId: 'handleA', handleType: 'source' });
+      });
+      expect(updatedSelection).toEqual({
+        nodeId: 'nodeA',
+        handleId: 'handleA',
+        handleType: 'source',
+      });
+      expect(mockOnConnect).not.toHaveBeenCalled();
+
+      document.body.removeChild(first);
+      document.body.removeChild(second);
+    });
+
     it('cancels tap connection if the same handle is clicked twice', () => {
       render(<FlowCanvas />);
 
@@ -255,11 +535,16 @@ describe('FlowCanvas', () => {
       document.body.appendChild(handle);
 
       // Click handle
-      fireEvent.click(handle);
+      act(() => {
+        fireEvent.click(handle);
+      });
 
-      const updater = mockSetFirstTappedHandle.mock.calls[0][0];
+      const updater = mockSetFirstTappedHandle.mock.calls[0]![0];
       // Try to update with the same state again
-      const newState = updater({ nodeId: 'nodeA', handleId: 'handleA', handleType: 'source' });
+      let newState: unknown;
+      act(() => {
+        newState = updater({ nodeId: 'nodeA', handleId: 'handleA', handleType: 'source' });
+      });
 
       expect(newState).toBeNull();
       expect(mockOnConnect).not.toHaveBeenCalled();
@@ -284,13 +569,13 @@ describe('FlowCanvas', () => {
   describe('Metrics & Warnings', () => {
     it('displays water warning when viewMode is water and warning exists', () => {
       Object.assign(usePlannerStore, { getState: () => defaultPlannerStoreState });
-    vi.mocked(usePlannerStore).mockImplementation((selector: any) => {
-        return selector({
+      vi.mocked(usePlannerStore).mockImplementation(
+        withSelector({
           ...defaultPlannerStoreState,
           viewMode: 'water',
           waterWarning: 'Test Water Warning',
-        });
-      });
+        }) as typeof usePlannerStore
+      );
 
       render(<FlowCanvas />);
 
@@ -300,9 +585,9 @@ describe('FlowCanvas', () => {
     it('displays electric system calculations panel when viewMode is electric', () => {
       render(<FlowCanvas />);
 
-      expect(screen.getByText('Live Status')).toBeInTheDocument();
+      expect(screen.getByText('Aktueller Status')).toBeInTheDocument();
       // removed check
-      expect(screen.getByText('~100.5 Ah')).toBeInTheDocument();
+      expect(screen.getByText(/100\.5 Ah/)).toBeInTheDocument();
       // removed check
       expect(screen.getByText('2 Tage')).toBeInTheDocument();
       // expect(screen.getByText('Solar-Array Output:')).toBeInTheDocument();
@@ -317,7 +602,7 @@ describe('FlowCanvas', () => {
         totalSolarVoltage: 0,
         totalSolarAmps: 0,
         hasDirectBatteryToConsumer: true,
-      } as any);
+      } as unknown as ReturnType<typeof useDashboardMetrics>);
 
       render(<FlowCanvas />);
 

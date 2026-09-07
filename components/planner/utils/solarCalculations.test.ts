@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { checkHasSeriesConnection } from './solarCalculations';
-import { Node, Edge } from 'reactflow';
+import { type Node, type Edge } from 'reactflow';
 
 describe('checkHasSeriesConnection', () => {
   it('should return false for empty nodes and edges', () => {

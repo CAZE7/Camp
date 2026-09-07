@@ -1,6 +1,7 @@
 import { addEdge, applyNodeChanges, applyEdgeChanges } from 'reactflow';
 import type { Node, Edge } from 'reactflow';
 import { getLayoutedElements } from '../../components/planner/utils/layout';
+import { routeEdgesV2, applyAdvancedLayout } from '../../lib/planner/routingV2Adapter'; // Routing V2
 import { TEMPLATES_DICT } from '../../components/planner/templates';
 import { getEdgeDomain, getHandleDomain } from '../../lib/electrical';
 import { newEntityId } from '../../lib/id';
@@ -63,19 +64,23 @@ export type GraphSlice = Pick<
   | 'redo'
   | 'clearPlan'
   | 'calculatePathVoltageDrop'
+  | 'onLayoutV2'
+  | 'rerouteV2'
 >;
 
 export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
   nodes: [],
   edges: [],
   setNodes: (update) =>
-    set((state) =>
-      withHistory(state, { nodes: typeof update === 'function' ? update(state.nodes) : update })
-    ),
+    set((state) => {
+      const nodes = typeof update === 'function' ? update(state.nodes) : update;
+      return withHistory(state, { nodes, edges: routeEdgesV2(nodes, state.edges) });
+    }),
   setEdges: (update) =>
-    set((state) =>
-      withHistory(state, { edges: typeof update === 'function' ? update(state.edges) : update })
-    ),
+    set((state) => {
+      const edges = typeof update === 'function' ? update(state.edges) : update;
+      return withHistory(state, { edges: routeEdgesV2(state.nodes, edges) });
+    }),
   waterNodes: [],
   waterEdges: [],
   setWaterNodes: (update) =>
@@ -98,9 +103,12 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
         if (change.type === 'remove') deletedNodeIds.add(change.id);
       }
       if (deletedNodeIds.size > 0) {
+        const remaining = state.edges.filter(
+          (e) => !deletedNodeIds.has(e.source) && !deletedNodeIds.has(e.target)
+        );
         return withHistory(state, {
           nodes: newNodes,
-          edges: state.edges.filter((e) => !deletedNodeIds.has(e.source) && !deletedNodeIds.has(e.target)),
+          edges: routeEdgesV2(newNodes, remaining),
         });
       }
       // Während des Ziehens nicht jeden Pixel als eigenen Undo-Schritt speichern.
@@ -112,8 +120,10 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
   onEdgesChange: (changes) =>
     set((state) => {
       const nextEdges = applyEdgeChanges(changes, state.edges) as Edge<CableEdgeData>[];
-      return changes.some((change) => change.type === 'remove')
-        ? withHistory(state, { edges: nextEdges })
+      // Auswahl-Only-Änderungen dürfen nicht neu routen (Performance + Testvertrag).
+      const structural = changes.some((change) => change.type === 'add' || change.type === 'remove');
+      return structural
+        ? withHistory(state, { edges: routeEdgesV2(state.nodes, nextEdges) })
         : { edges: nextEdges };
     }),
   onWaterNodesChange: (changes) =>
@@ -196,9 +206,10 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
       const filterEdge = (e: Edge) =>
         !nodeIdsSet.has(e.source) && !nodeIdsSet.has(e.target) && !edgeIdsSet.has(e.id);
 
+      const nextNodes = state.nodes.filter(filterNode);
       return withHistory(state, {
-        nodes: state.nodes.filter(filterNode),
-        edges: state.edges.filter(filterEdge),
+        nodes: nextNodes,
+        edges: routeEdgesV2(nextNodes, state.edges.filter(filterEdge)),
         waterNodes: state.waterNodes.filter(filterNode),
         waterEdges: state.waterEdges.filter(filterEdge),
         selectedNodes: [],
@@ -206,31 +217,36 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
       });
     }),
   updateNodeData: (id, data) =>
-    set((state) =>
-      withHistory(state, {
-        nodes: state.nodes.map((n) => {
-          if (n.id === id) {
-            return { ...n, data: { ...n.data, ...data } };
-          }
-          return n;
-        }),
+    set((state) => {
+      const nodes = state.nodes.map((n) => {
+        if (n.id === id) {
+          return { ...n, data: { ...n.data, ...data } };
+        }
+        return n;
+      });
+      return withHistory(state, {
+        nodes,
+        edges: routeEdgesV2(nodes, state.edges),
         waterNodes: state.waterNodes.map((n) => {
           if (n.id === id) {
             return { ...n, data: { ...n.data, ...data } };
           }
           return n;
         }),
-      })
-    ),
+      });
+    }),
   handleChangeLength: (id, length) =>
     set((state) =>
       withHistory(state, {
-        edges: state.edges.map((e) => {
-          if (e.id === id) {
-            return { ...e, data: { ...e.data!, length } };
-          }
-          return e;
-        }),
+        edges: routeEdgesV2(
+          state.nodes,
+          state.edges.map((e) => {
+            if (e.id === id) {
+              return { ...e, data: { ...e.data!, length } };
+            }
+            return e;
+          })
+        ),
         waterEdges: state.waterEdges.map((e) => {
           if (e.id === id) {
             return { ...e, data: { ...e.data!, length } };
@@ -242,7 +258,10 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
   handleChangeFuseSize: (id, fuseSize) =>
     set((state) =>
       withHistory(state, {
-        edges: state.edges.map((e) => (e.id === id ? { ...e, data: { ...e.data!, fuseSize } } : e)),
+        edges: routeEdgesV2(
+          state.nodes,
+          state.edges.map((e) => (e.id === id ? { ...e, data: { ...e.data!, fuseSize } } : e))
+        ),
       })
     ),
   isValidConnection: (connection) => {
@@ -361,7 +380,11 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
         edgeDomain,
       },
     };
-    set((state) => withHistory(state, { edges: addEdge(newEdge, state.edges) as Edge<CableEdgeData>[] }));
+    set((state) =>
+      withHistory(state, {
+        edges: routeEdgesV2(state.nodes, addEdge(newEdge, state.edges) as Edge<CableEdgeData>[]),
+      })
+    );
   },
   autoWireSystem: () => {
     const { nodes, edges } = get();
@@ -383,7 +406,12 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
     // Flussrichtung wieder auf (Kabel-Umwege, M11-2) und verschob
     // handplatzierte Bauteile. Das Spalten-Layout bleibt dem expliziten
     // „Aufräumen“-Knopf (onLayout) vorbehalten.
-    set((state) => withHistory(state, { nodes: [...result.nodes], edges: [...result.edges] }));
+    set((state) =>
+      withHistory(state, {
+        nodes: [...result.nodes],
+        edges: routeEdgesV2(result.nodes, [...result.edges]),
+      })
+    );
 
     if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
       window.requestAnimationFrame(() => {
@@ -428,20 +456,37 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
       set({ isLayoutPending: false });
     }
   },
+  // Routing V2 / ELK: separates Ziel-API — onLayout (dagre) bleibt als
+  // Fallback bestehen, das Toolbar-Button-Panel ruft onLayoutV2.
+  onLayoutV2: async () => {
+    const { nodes, edges } = get();
+    const result = await applyAdvancedLayout(nodes, edges, 'LR');
+    set((state) => withHistory(state, { nodes: [...result.nodes], edges: [...result.edges] }));
+    if (typeof window !== 'undefined') {
+      window.requestAnimationFrame(() => {
+        window.dispatchEvent(new CustomEvent('planner-fit-view'));
+      });
+    }
+  },
+  rerouteV2: () => {
+    const { nodes, edges } = get();
+    set({ edges: routeEdgesV2(nodes, edges) });
+  },
   applyTemplate: (templateId: string) => {
     const template = TEMPLATES_DICT[templateId];
     if (template) {
-      set((state) =>
-        withHistory(state, {
-          nodes: [...template.nodes],
-          edges: [...template.edges],
+      set((state) => {
+        const templateNodes = [...template.nodes];
+        return withHistory(state, {
+          nodes: templateNodes,
+          edges: routeEdgesV2(templateNodes, [...template.edges] as Edge<CableEdgeData>[]),
           // Wasserbewusst NICHT zurücksetzen: die Templates beschreiben nur
           // den Elektrikplan. Ein stiller Kollateralschaden auf waterNodes/
           // waterEdges war Datenverlust (nur über Undo erkennbar zurückholbar).
           selectedNodes: [],
           selectedEdges: [],
-        })
-      );
+        });
+      });
     }
   },
   onDrop: (event, screenToFlowPosition) => {
@@ -508,7 +553,10 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
     if (viewMode === 'water') {
       set((state) => withHistory(state, { waterNodes: state.waterNodes.concat(newNode) }));
     } else {
-      set((state) => withHistory(state, { nodes: state.nodes.concat(newNode) }));
+      set((state) => {
+        const nodes = state.nodes.concat(newNode);
+        return withHistory(state, { nodes, edges: routeEdgesV2(nodes, state.edges) });
+      });
     }
   },
   undo: () =>

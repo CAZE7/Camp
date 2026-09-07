@@ -51,10 +51,7 @@ export function defaultCostWeights(): CostWeights {
  * those dimensions, but the caller must supply the real simulation when using
  * this in routing.
  */
-export function routeCost(
-  input: PathCostInput,
-  weights: CostWeights = defaultCostWeights(),
-): PathCost {
+export function routeCost(input: PathCostInput, weights: CostWeights = defaultCostWeights()): PathCost {
   const points = input.path.points;
   const length = pathLength(points) / ROUTING.pxPerMeter;
   const bends = countBends(points);
@@ -87,9 +84,7 @@ export function routeCost(
  * Ranks candidates deterministically by cost, then by edge id and candidate id.
  * Every candidate is required to have been evaluated with the full simulation.
  */
-export function selectBestPath(
-  candidates: readonly RouteCandidateScore[],
-): RouteCandidateScore | undefined {
+export function selectBestPath(candidates: readonly RouteCandidateScore[]): RouteCandidateScore | undefined {
   if (candidates.length === 0) return undefined;
 
   const sorted = [...candidates].sort((a, b) => {
@@ -110,7 +105,7 @@ export function scoreCandidate(
   candidateId: string,
   points: readonly Point[],
   input: PathCostInput,
-  weights: CostWeights = defaultCostWeights(),
+  weights: CostWeights = defaultCostWeights()
 ): RouteCandidateScore {
   const cost = routeCost({ ...input, path: { points } }, weights);
   return {

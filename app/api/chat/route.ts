@@ -1,14 +1,12 @@
+/* eslint-disable @typescript-eslint/no-explicit-any --
+ * Werft-Altbestand (übernommen 2026-09): nutzt noch `any` für AI-SDK-
+ * Mocks/Datenstrukturen. FOLLOW-UP: typisieren, dann Disable entfernen.
+ */
 import { createOpenAI } from '@ai-sdk/openai';
 import { streamText, embed, convertToModelMessages } from 'ai';
 import pool from '../../../lib/db';
 import type { PoolClient } from 'pg';
 import type { UIMessage } from 'ai';
-
-interface MessagePart {
-  type: string;
-  text?: string;
-  [key: string]: any;
-}
 
 interface Message {
   id: string;
@@ -35,7 +33,7 @@ const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 
 function getClientIp(req: Request): string {
   const forwarded = req.headers.get('x-forwarded-for');
-  if (forwarded) return forwarded.split(',')[0].trim();
+  if (forwarded) return forwarded.split(',')[0]?.trim() ?? 'anonymous';
   return req.headers.get('x-real-ip') || 'anonymous';
 }
 
@@ -134,10 +132,13 @@ function validateMessages(messages: any[]): Response | null {
     }
 
     if (msg.content && msg.content.length > MAX_CONTENT_LENGTH) {
-      return new Response(JSON.stringify({ error: `Message content too long. Maximum is ${MAX_CONTENT_LENGTH} characters` }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return new Response(
+        JSON.stringify({ error: `Message content too long. Maximum is ${MAX_CONTENT_LENGTH} characters` }),
+        {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
     }
 
     if (msg.parts) {
@@ -163,10 +164,15 @@ function validateMessages(messages: any[]): Response | null {
           });
         }
         if (part.type === 'text' && part.text && part.text.length > MAX_CONTENT_LENGTH) {
-          return new Response(JSON.stringify({ error: `Message part text too long. Maximum is ${MAX_CONTENT_LENGTH} characters` }), {
-            status: 400,
-            headers: { 'Content-Type': 'application/json' },
-          });
+          return new Response(
+            JSON.stringify({
+              error: `Message part text too long. Maximum is ${MAX_CONTENT_LENGTH} characters`,
+            }),
+            {
+              status: 400,
+              headers: { 'Content-Type': 'application/json' },
+            }
+          );
         }
       }
     }
@@ -228,18 +234,18 @@ async function extractAndProcessBOM(client: PoolClient, userQuery: string): Prom
   const rawCables = bom.cables.slice(0, MAX_BOM_CABLES);
 
   // Input Validation: Filter for valid cable objects with numeric cross-sections
-  const validCables = rawCables.filter((c: any) =>
-    c && typeof c === 'object' &&
-    typeof c.crossSection === 'number' &&
-    !isNaN(c.crossSection) &&
-    c.crossSection > 0 &&
-    c.crossSection < 1000 && // Reasonable upper limit for cross-section (mm²)
-    (c.length === undefined || (typeof c.length === 'number' && !isNaN(c.length) && c.length >= 0))
+  const validCables = rawCables.filter(
+    (c: any) =>
+      c &&
+      typeof c === 'object' &&
+      typeof c.crossSection === 'number' &&
+      !isNaN(c.crossSection) &&
+      c.crossSection > 0 &&
+      c.crossSection < 1000 && // Reasonable upper limit for cross-section (mm²)
+      (c.length === undefined || (typeof c.length === 'number' && !isNaN(c.length) && c.length >= 0))
   );
 
-  const uniqueCrossSections = Array.from(new Set(
-    validCables.map((c: any) => c.crossSection)
-  ));
+  const uniqueCrossSections = Array.from(new Set(validCables.map((c: any) => c.crossSection)));
 
   const recommendedProducts: any[] = [];
 
@@ -280,14 +286,14 @@ async function extractAndProcessBOM(client: PoolClient, userQuery: string): Prom
         recommendedProducts.push({
           needed_crossSection: cable.crossSection,
           length: cable.length,
-          recommendations
+          recommendations,
         });
       }
     }
   }
 
   if (recommendedProducts.length > 0) {
-      return JSON.stringify(recommendedProducts, null, 2);
+    return JSON.stringify(recommendedProducts, null, 2);
   }
 
   return '';
@@ -308,9 +314,7 @@ export async function POST(req: Request) {
 
   const rate = checkRateLimit(req);
   if (!rate.allowed) {
-    const headers = applySecurityHeaders(
-      new Headers({ 'Retry-After': String(rate.retryAfter) })
-    );
+    const headers = applySecurityHeaders(new Headers({ 'Retry-After': String(rate.retryAfter) }));
     return new Response(JSON.stringify({ error: 'Too many requests' }), {
       status: 429,
       headers,
@@ -345,8 +349,10 @@ export async function POST(req: Request) {
 
   const latestMessage = messages[messages.length - 1];
   // Use map to avoid type inference issues with find on union types
-  const textParts = latestMessage?.parts?.map((p: any) => p.type === 'text' ? p.text : null).filter(Boolean);
-  const userQuery = (textParts && textParts.length > 0) ? textParts[0] : latestMessage?.content || '';
+  const textParts = latestMessage?.parts
+    ?.map((p: any) => (p.type === 'text' ? p.text : null))
+    .filter(Boolean);
+  const userQuery = textParts && textParts.length > 0 ? textParts[0] : latestMessage?.content || '';
 
   let contextText = '';
   let productRecommendations = '';
@@ -384,13 +390,17 @@ Formatiere dein KI-Gutachten übersichtlich und verwende Warn-Icons bei gefunden
 WICHTIGER KONTEXT AUS DER DATENBANK:
 ${contextText ? contextText : 'Kein spezifischer Kontext gefunden.'}
 
-${productRecommendations ? `
+${
+  productRecommendations
+    ? `
 DER NUTZER HAT EINE STÜCKLISTE (BOM) GESENDET.
 HIER SIND VERIFIZIERTE PRODUKT-EMPFEHLUNGEN AUS UNSERER DATENBANK, PASSEND ZUR STÜCKLISTE:
 ${productRecommendations}
 
 Bitte beziehe diese günstigen, passenden Produkte in deine Antwort ein und schlage sie dem Nutzer vor.
-` : ''}
+`
+    : ''
+}
 
 Antworte auf Deutsch, sei hilfreich und verständlich.
   `;
@@ -399,15 +409,12 @@ Antworte auf Deutsch, sei hilfreich und verständlich.
   const modelMessages = await convertToModelMessages(messages as any);
   const result = streamText({
     model: openai('gpt-4o-mini'),
-    messages: [
-        { role: 'system', content: systemPrompt },
-        ...modelMessages
-    ],
+    messages: [{ role: 'system', content: systemPrompt }, ...modelMessages],
   });
 
   const response = result.toUIMessageStreamResponse({
     originalMessages: messages as any,
-    generateMessageId: () => `msg_${Date.now()}`
+    generateMessageId: () => `msg_${Date.now()}`,
   });
 
   applySecurityHeaders(response.headers);

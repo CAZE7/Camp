@@ -7,10 +7,7 @@
  * the strict domainModel types, without casting to `any`.
  */
 
-import type {
-  VDECrossSection,
-  VDEValidationResult,
-} from './standards';
+import type { VDECrossSection, VDEValidationResult } from './standards';
 import {
   VDE_BATTERY_DOD,
   VDE_CROSS_SECTIONS,
@@ -23,9 +20,7 @@ import {
   roundUpToVDECrossSection,
 } from './standards';
 
-export type {
-  VDEValidationResult,
-};
+export type { VDEValidationResult };
 
 type VdeNodeData = {
   readonly label?: string;
@@ -65,7 +60,7 @@ export function validateCableEdge(
   edge: VdeCableEdge,
   sourceNode: VdePlannerNode | undefined,
   targetNode: VdePlannerNode | undefined,
-  currentA: number,
+  currentA: number
 ): VDEValidationResult {
   void sourceNode;
   void targetNode;
@@ -133,9 +128,7 @@ export function validateCableEdge(
 
 export function validateBatteryNode(node: VdePlannerNode): VDEValidationResult[] {
   const results: VDEValidationResult[] = [];
-  const chemistry = isBatteryNode(node)
-    ? (node.data.chemistry ?? 'LiFePO4')
-    : 'LiFePO4';
+  const chemistry = isBatteryNode(node) ? (node.data.chemistry ?? 'LiFePO4') : 'LiFePO4';
 
   if (!VDE_BATTERY_DOD[chemistry]) {
     results.push({
@@ -167,7 +160,7 @@ export function validateShorePowerNode(node: VdePlannerNode): VDEValidationResul
 
 export function validateInverterNode(
   node: VdePlannerNode,
-  allNodes: readonly VdePlannerNode[],
+  allNodes: readonly VdePlannerNode[]
 ): VDEValidationResult[] {
   const results: VDEValidationResult[] = [];
   if (!isInverterNode(node)) return results;
@@ -177,11 +170,7 @@ export function validateInverterNode(
 
   const concurrentDevices = node.data.concurrentDevices ?? [];
   const totalLoad = allNodes
-    .filter(
-      (candidate) =>
-        candidate.type === 'consumer230v' &&
-        concurrentDevices.includes(candidate.id),
-    )
+    .filter((candidate) => candidate.type === 'consumer230v' && concurrentDevices.includes(candidate.id))
     .reduce((sum, candidate) => sum + (candidate.data.watts ?? 0), 0);
 
   const maxAllowed = continuousPower * VDE_INVERTER_MAX_LOAD_FRACTION;
@@ -197,7 +186,7 @@ export function validateInverterNode(
     results.push({
       isValid: false,
       severity: 'warning',
-      message: `Wechselrichter-Auslastung ${totalLoad}W übersteigt empfohlene ${(VDE_INVERTER_MAX_LOAD_FRACTION * 100)}% der Nennleistung (${maxAllowed}W).`,
+      message: `Wechselrichter-Auslastung ${totalLoad}W übersteigt empfohlene ${VDE_INVERTER_MAX_LOAD_FRACTION * 100}% der Nennleistung (${maxAllowed}W).`,
       code: 'INVERTER_NEAR_LIMIT',
     });
   }
@@ -207,7 +196,7 @@ export function validateInverterNode(
 
 export function validateSchematic(
   nodes: readonly VdePlannerNode[],
-  edges: readonly VdeCableEdge[],
+  edges: readonly VdeCableEdge[]
 ): VDEValidationResult[] {
   const results: VDEValidationResult[] = [];
   const nodeMap = new Map<string, VdePlannerNode>();
@@ -253,7 +242,7 @@ function labelOf(node: VdePlannerNode): string {
 function inferCurrentA(
   nodes: readonly VdePlannerNode[],
   edge: Pick<VdeCableEdge, 'source' | 'target'>,
-  fallbackToTotalConsumers: boolean,
+  fallbackToTotalConsumers: boolean
 ): number {
   const sourceNode = nodes.find((node) => node.id === edge.source);
   const targetNode = nodes.find((node) => node.id === edge.target);

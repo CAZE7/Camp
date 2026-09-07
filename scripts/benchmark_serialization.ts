@@ -26,11 +26,15 @@ const edges = Array.from({ length: edgeCount }, (_, i) => ({
 }));
 
 function original() {
-  const serializedNodes = JSON.stringify(
-    nodes.map((n) => ({ id: n.id, type: n.type, data: n.data }))
-  );
+  const serializedNodes = JSON.stringify(nodes.map((n) => ({ id: n.id, type: n.type, data: n.data })));
   const serializedEdges = JSON.stringify(
-    edges.map((e) => ({ id: e.id, source: e.source, target: e.target, sourceHandle: e.sourceHandle, targetHandle: e.targetHandle }))
+    edges.map((e) => ({
+      id: e.id,
+      source: e.source,
+      target: e.target,
+      sourceHandle: e.sourceHandle,
+      targetHandle: e.targetHandle,
+    }))
   );
   return { serializedNodes, serializedEdges };
 }
@@ -55,4 +59,6 @@ for (let i = 0; i < iterations; i++) {
   original();
 }
 const end = performance.now();
-logger.info(`Original (JSON.stringify): ${(end - start).toFixed(2)}ms total, ${((end - start) / iterations).toFixed(4)}ms per call`);
+logger.info(
+  `Original (JSON.stringify): ${(end - start).toFixed(2)}ms total, ${((end - start) / iterations).toFixed(4)}ms per call`
+);

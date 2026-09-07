@@ -11,10 +11,8 @@ function checkHasSeriesConnectionOriginal(nodes: Node[], edges: Edge[]): boolean
     return (
       s?.type === 'solar' &&
       t?.type === 'solar' &&
-      ((e.sourceHandle?.includes('plus') &&
-        e.targetHandle?.includes('minus')) ||
-        (e.sourceHandle?.includes('minus') &&
-          e.targetHandle?.includes('plus')))
+      ((e.sourceHandle?.includes('plus') && e.targetHandle?.includes('minus')) ||
+        (e.sourceHandle?.includes('minus') && e.targetHandle?.includes('plus')))
     );
   });
 }
@@ -31,10 +29,8 @@ function checkHasSeriesConnectionOptimized(nodes: Node[], edges: Edge[]): boolea
     return (
       s?.type === 'solar' &&
       t?.type === 'solar' &&
-      ((e.sourceHandle?.includes('plus') &&
-        e.targetHandle?.includes('minus')) ||
-        (e.sourceHandle?.includes('minus') &&
-          e.targetHandle?.includes('plus')))
+      ((e.sourceHandle?.includes('plus') && e.targetHandle?.includes('minus')) ||
+        (e.sourceHandle?.includes('minus') && e.targetHandle?.includes('plus')))
     );
   });
 }

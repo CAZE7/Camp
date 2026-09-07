@@ -5,13 +5,7 @@
  * no ELK, no React Flow.
  */
 
-import type {
-  BBox,
-  Point,
-  PlannerNode,
-  PlannerNodeData,
-  Segment,
-} from '../domainModel';
+import type { BBox, Point, PlannerNode, PlannerNodeData, Segment } from '../domainModel';
 
 export type CollisionType = 'edge-node' | 'edge-edge';
 
@@ -58,10 +52,7 @@ export function expandBBox(bbox: BBox, amount: number): BBox {
 }
 
 /** Bounding box covering all nodes (used to define the search space bounds). */
-export function boundingBoxOfNodes(
-  nodes: readonly PlannerNode<PlannerNodeData>[],
-  padding = 0,
-): BBox {
+export function boundingBoxOfNodes(nodes: readonly PlannerNode<PlannerNodeData>[], padding = 0): BBox {
   if (nodes.length === 0) {
     return { x: 0, y: 0, width: 0, height: 0 };
   }
@@ -93,8 +84,11 @@ export function boundingBoxOfNodes(
 
 export function pointsToSegments(points: readonly Point[]): Segment[] {
   const segments: Segment[] = [];
-  for (let index = 0; index < points.length - 1; index += 1) {
-    segments.push({ from: points[index], to: points[index + 1] });
+  for (let index = 0; index + 1 < points.length; index += 1) {
+    const from = points[index];
+    const to = points[index + 1];
+    if (!from || !to) continue;
+    segments.push({ from, to });
   }
   return segments;
 }
@@ -102,10 +96,10 @@ export function pointsToSegments(points: readonly Point[]): Segment[] {
 export function pathLength(points: readonly Point[]): number {
   let total = 0;
   for (let index = 0; index < points.length - 1; index += 1) {
-    total += Math.hypot(
-      points[index + 1].x - points[index].x,
-      points[index + 1].y - points[index].y,
-    );
+    const from = points[index];
+    const to = points[index + 1];
+    if (!from || !to) continue;
+    total += Math.hypot(to.x - from.x, to.y - from.y);
   }
   return total;
 }
@@ -116,6 +110,7 @@ export function countBends(points: readonly Point[]): number {
     const a = points[index - 1];
     const b = points[index];
     const c = points[index + 1];
+    if (!a || !b || !c) continue;
     const horizontalA = Math.abs(a.x - b.x) >= Math.abs(a.y - b.y);
     const horizontalB = Math.abs(b.x - c.x) >= Math.abs(b.y - c.y);
     if (horizontalA !== horizontalB) bends += 1;
@@ -129,17 +124,6 @@ export function countBends(points: readonly Point[]): number {
 
 function cross(ax: number, ay: number, bx: number, by: number): number {
   return ax * by - ay * bx;
-}
-
-function pointOnSegment(p: Point, a: Point, b: Point): boolean {
-  const crossValue = cross(p.x - a.x, p.y - a.y, b.x - a.x, b.y - a.y);
-  if (Math.abs(crossValue) > 1e-9) return false;
-  return (
-    Math.min(a.x, b.x) - 1e-9 <= p.x &&
-    p.x <= Math.max(a.x, b.x) + 1e-9 &&
-    Math.min(a.y, b.y) - 1e-9 <= p.y &&
-    p.y <= Math.max(a.y, b.y) + 1e-9
-  );
 }
 
 /** Returns true when the two line segments touch or cross. */
@@ -176,10 +160,8 @@ export function segmentsIntersect(a: Segment, b: Segment): SegmentIntersection |
 
   // Handle axis-aligned collinear overlaps explicitly. The interval overlap must
   // have positive length; a single shared endpoint is not an overlap.
-  const bothHorizontal =
-    Math.abs(p.y - q.y) < 1e-9 && Math.abs(r.y - s.y) < 1e-9;
-  const bothVertical =
-    Math.abs(p.x - q.x) < 1e-9 && Math.abs(r.x - s.x) < 1e-9;
+  const bothHorizontal = Math.abs(p.y - q.y) < 1e-9 && Math.abs(r.y - s.y) < 1e-9;
+  const bothVertical = Math.abs(p.x - q.x) < 1e-9 && Math.abs(r.x - s.x) < 1e-9;
 
   if (bothHorizontal && Math.abs(p.y - r.y) < 1e-9) {
     const start = Math.max(Math.min(p.x, q.x), Math.min(r.x, s.x));
@@ -219,11 +201,11 @@ export function segmentIntersectsBBox(a: Segment, bbox: BBox): boolean {
   ];
 
   for (let index = 0; index < 4; index += 1) {
-    if (Math.abs(p[index]) < 1e-12) {
-      if (q[index] < 0) return false;
+    if (Math.abs(p[index]!) < 1e-12) {
+      if (q[index]! < 0) return false;
     } else {
-      const ratio = q[index] / p[index];
-      if (p[index] < 0) {
+      const ratio = q[index]! / p[index]!;
+      if (p[index]! < 0) {
         if (ratio > t1) return false;
         if (ratio > t0) t0 = ratio;
       } else {
@@ -252,13 +234,7 @@ export function distancePointToSegment(point: Point, a: Point, b: Point): number
 
   if (lengthSquared === 0) return Math.hypot(point.x - a.x, point.y - a.y);
 
-  const t = Math.max(
-    0,
-    Math.min(
-      1,
-      ((point.x - a.x) * dx + (point.y - a.y) * dy) / lengthSquared,
-    ),
-  );
+  const t = Math.max(0, Math.min(1, ((point.x - a.x) * dx + (point.y - a.y) * dy) / lengthSquared));
   const projection = { x: a.x + t * dx, y: a.y + t * dy };
   return Math.hypot(point.x - projection.x, point.y - projection.y);
 }
@@ -278,7 +254,7 @@ export function countEdgeNodeCollisions(
   points: readonly Point[],
   nodeBBoxes: readonly { nodeId: string; bbox: BBox }[],
   excludedNodeIds: readonly string[],
-  clearance: number,
+  clearance: number
 ): EdgeNodeCollision[] {
   const excluded = new Set(excludedNodeIds);
   const collisions: EdgeNodeCollision[] = [];
@@ -299,7 +275,7 @@ export function countEdgeNodeCollisions(
 export function minEdgeNodeClearance(
   points: readonly Point[],
   nodeBBoxes: readonly { nodeId: string; bbox: BBox }[],
-  excludedNodeIds: readonly string[],
+  excludedNodeIds: readonly string[]
 ): number {
   const excluded = new Set(excludedNodeIds);
   let min = Number.POSITIVE_INFINITY;
@@ -339,7 +315,7 @@ export function classifyEdgeEdgeIntersections(
   edgeA: string,
   pointsA: readonly Point[],
   edgeB: string,
-  pointsB: readonly Point[],
+  pointsB: readonly Point[]
 ): EdgeEdgeIntersectionCategory {
   return classifySegments(edgeA, pointsToSegments(pointsA), edgeB, pointsToSegments(pointsB));
 }
@@ -353,7 +329,7 @@ export function classifySegments(
   edgeA: string,
   segmentsA: readonly Segment[],
   edgeB: string,
-  segmentsB: readonly Segment[],
+  segmentsB: readonly Segment[]
 ): EdgeEdgeIntersectionCategory {
   const crossings: EdgeEdgeCollision[] = [];
   const overlaps: EdgeEdgeCollision[] = [];
@@ -384,7 +360,7 @@ export function countEdgeEdgeOverlaps(
   edgeA: string,
   pointsA: readonly Point[],
   edgeB: string,
-  pointsB: readonly Point[],
+  pointsB: readonly Point[]
 ): EdgeEdgeCollision[] {
   const classified = classifyEdgeEdgeIntersections(edgeA, pointsA, edgeB, pointsB);
   return [...classified.overlaps, ...classified.crossings];
@@ -395,7 +371,7 @@ export function countCoincidentOverlaps(
   edgeA: string,
   pointsA: readonly Point[],
   edgeB: string,
-  pointsB: readonly Point[],
+  pointsB: readonly Point[]
 ): EdgeEdgeCollision[] {
   return classifyEdgeEdgeIntersections(edgeA, pointsA, edgeB, pointsB).overlaps;
 }
@@ -405,7 +381,7 @@ export function countCrossings(
   edgeA: string,
   pointsA: readonly Point[],
   edgeB: string,
-  pointsB: readonly Point[],
+  pointsB: readonly Point[]
 ): EdgeEdgeCollision[] {
   return classifyEdgeEdgeIntersections(edgeA, pointsA, edgeB, pointsB).crossings;
 }

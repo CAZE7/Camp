@@ -1,29 +1,5 @@
-/**
- * lib/electrical.ts
- *
- * THERMISCHE & DOMÄNE-BASIS der VDE-Auslegung.
- *
- * Die hier definierten Konstanten sind die EINZIGE Quelle der Wahrheit für
- * Kupferwiderstand, zulässigen Spannungsabfall und Normquerschnitte.
- * Erweiterte Werte (Leerrohr, RCD, DoD, …) liegen in `vde-standards.ts`,
- * das die Basiskonstanten von hier re-exportiert.
- *
- * Verwendete Normen (vereinfacht für das Camper-Use-Case):
- * - DIN VDE 0100-721 (Niederspannungsanlagen in Wohnmobilen)
- * - DIN VDE 0100-520 / VDE 0298-4 (Kabelanlagen, Spannungsfall)
- * - DIN EN 60228 (Normquerschnitte)
- */
-
-// ---------------------------------------------------------------------------
-// NORMQUERSCHNITTE & STROMBELASTBARKEIT
-// ---------------------------------------------------------------------------
-
 export const VDE_SIZES = [1.5, 2.5, 4.0, 6.0, 10.0, 16.0, 25.0, 35.0, 50.0, 70.0];
 
-/**
- * Strombelastbarkeit in Ampere bei Einzelverlegung, ca. 30 °C
- * (Ableitung VDE 0298-4, konservative Werte für die thermische Auslegung).
- */
 export const VDE_AMPACITY: Record<number, number> = {
   1.5: 16.5,
   2.5: 23.0,
@@ -37,13 +13,10 @@ export const VDE_AMPACITY: Record<number, number> = {
   70.0: 172.0,
 };
 
-/** Einheitlicher Sicherheitsfaktor (Derating) für gebündelte/erwärmte Leitungen. */
-export const DERATE_FACTOR = 0.70;
+// 1. Einheitlicher Sicherheitsfaktor (Derating)
+export const DERATE_FACTOR = 0.7;
 
-/**
- * Max. Nenn-Sicherungsstrom je Querschnitt nach VDE 0298-4.
- * Jeder Wert ist <= VDE_AMPACITY (Schutz des Leiters vor thermischer Zerstörung).
- */
+// DIN VDE 0298-4: max fuse ratings per conductor cross-section
 export const FUSE_MAP: Record<number, number> = {
   1.5: 16,
   2.5: 20,
@@ -57,84 +30,128 @@ export const FUSE_MAP: Record<number, number> = {
   70.0: 160,
 };
 
-// ---------------------------------------------------------------------------
-// KUPFER & SPANNUNGSFALL (zentrale, einheitliche Werte)
-// ---------------------------------------------------------------------------
-
-/** Spezifischer Widerstand von Kupfer bei 20 °C in Ω·mm²/m. */
-export const VDE_COPPER_RESISTIVITY = 0.0175;
-
-/** Reziprokwert (Leitwert κ in m/(Ω·mm²)) für die klassische ΔU-Formel. */
-export const VDE_COPPER_CONDUCTIVITY = 1 / VDE_COPPER_RESISTIVITY; // ≈ 57.14
-
-/** Nennspannung des DC-Bordnetzes im Camper (12 V). */
-export const VDE_NOMINAL_DC_VOLTAGE = 12;
-
-/** Nennspannung des AC-Landstromnetzes (230 V). */
-export const VDE_NOMINAL_AC_VOLTAGE = 230;
-
-/** Zulässiger Spannungsabfall (Bruchteil der Nennspannung). */
-export const VDE_MAX_VOLTAGE_DROP_12V = 0.10; // 10 % von 12 V = 1.2 V
-export const VDE_MAX_VOLTAGE_DROP_230V = 0.03; // 3 % von 230 V = 6.9 V
-
-/** Absolutes Spannungsfall-Limit in Volt, direkt in den Formeln verwendet. */
-export const VDE_MAX_DROP_VOLTS_DC_12V = VDE_MAX_VOLTAGE_DROP_12V * 12; // 1.2 V
-export const VDE_MAX_DROP_VOLTS_AC_230V = VDE_MAX_VOLTAGE_DROP_230V * 230; // 6.9 V
-
-/** Mindest-Querschnitt nach VDE 0100-721. */
-export const VDE_MIN_CROSS_SECTION = 1.5;
-
-// ---------------------------------------------------------------------------
-// THERMISCHE AUSLEGUNG
-// ---------------------------------------------------------------------------
-
 export const calculateMaxFuse = (crossSection: number): number => {
-  return FUSE_MAP[crossSection] || 0;
-};
-
-export const lookupThermalCrossSection = (I: number): number => {
-  if (!Number.isFinite(I) || I <= 0) return VDE_MIN_CROSS_SECTION;
-  const requiredAmpacity = I * (1 / DERATE_FACTOR);
-  const size = VDE_SIZES.find(s => VDE_AMPACITY[s] >= requiredAmpacity);
-  return size || VDE_SIZES[VDE_SIZES.length - 1];
+  const maxFuse = FUSE_MAP[crossSection];
+  if (maxFuse === undefined) {
+    throw new RangeError(`Unbekannter Querschnitt: ${crossSection}mm²`);
+  }
+  return maxFuse;
 };
 
 /**
- * Ermittelt den erforderlichen Normquerschnitt als Maximum aus
- *   A) Spannungsfallkriterium   ΔU = I · L · 2 / (κ · ΔU_max)
- *   B) thermischer Belastbarkeit (VDE-Lookup mit Derating)
- *   C) optionalem manuell gesetztem Querschnitt
+ * Kabel-Maximalsicherung für ANZEWECKE (Edge-Label, Metrics): klemmt
+ * Nicht-Normquerschnitte auf die größte Normstufe ≤ Querschnitt ein, statt
+ * zu werfen. calculateCrossSection gibt bewusst >70 mm² (z. B. importierte
+ * 95 mm²) unverändert durch — würde das direkt an calculateMaxFuse,
+ * crashte die gesamte Canvas-Render-Pipeline mit RangeError.
+ * Für Validierer/Dimensionierung bleibt calculateMaxFuse die strikte
+ * Variante (Werfen = expliziter Fehler statt stillschweigender Duldung).
  */
+export const maxFuseForDisplay = (crossSection: number): number => {
+  const sizes = Object.keys(FUSE_MAP)
+    .map(Number)
+    .sort((a, b) => a - b);
+  let largestAtOrBelow = sizes[0] ?? 1.5;
+  for (const size of sizes) {
+    if (size <= crossSection) largestAtOrBelow = size;
+    else break;
+  }
+  return FUSE_MAP[largestAtOrBelow] ?? 0;
+};
+
+/**
+ * Übliche Norm-Sicherungsgrößen in Ampere (Blade ATO/ATC, MIDI, ANL).
+ * Wird von Auto-Wire und der Live-Validierung verwendet, damit die gewählte
+ * Sicherung immer einem real verfügbaren Sicherungswert entspricht.
+ */
+export const STANDARD_FUSE_SIZES = [
+  5, 7.5, 10, 15, 16, 20, 25, 30, 32, 40, 50, 60, 63, 80, 100, 125, 160, 200, 250, 300, 350, 400,
+];
+
+/** Kleinste Norm-Sicherung — Listenerste Element, einmal bewiesen (noUncheckedIndexedAccess). */
+export const MIN_STANDARD_FUSE: number = (() => {
+  const first = STANDARD_FUSE_SIZES[0];
+  if (first === undefined) throw new Error('STANDARD_FUSE_SIZES ist leer — MIN_STANDARD_FUSE ungültig');
+  return first;
+})();
+
+/**
+ * Berechnet die passende Sicherungsgröße für eine Leitung:
+ *
+ *   Verbraucher-Nennstrom ≤ Sicherungsnennstrom ≤ Kabel-Maximalsicherung
+ *
+ * Es wird die kleinste Norm-Sicherung gewählt, die den Nennstrom trägt und
+ * den durch den Kabelquerschnitt erlaubten Maximalwert (FUSE_MAP nach
+ * DIN VDE 0298-4) nicht überschreitet. Dadurch schützt die Sicherung das
+ * Kabel und löst bei Überlast zuverlässig aus, ohne im Normalbetrieb
+ * ungewollt auszulösen.
+ *
+ * WICHTIG: Wenn selbst die größte zulässige Sicherung für das Kabel den
+ * Nennstrom nicht tragen kann, wird `maxFuse` zurückgegeben (niemals ein
+ * Wert darüber). So kann die Funktion nie eine überdimensionierte Sicherung
+ * empfehlen, die das Kabel im Kurzschlussfall nicht schützt. In diesem Fall
+ * ist der Rückgabewert kleiner als der Nennstrom — ein Signal, dass der
+ * Querschnitt vergrößert werden muss.
+ *
+ * @param currentA      Nennstrom der Leitung in Ampere
+ * @param crossSection  Kabelquerschnitt in mm²
+ * @returns             Sicherungsgröße in Ampere (≤ FUSE_MAP[crossSection])
+ */
+export const selectFuseSize = (currentA: number, crossSection: number): number => {
+  const maxFuse = calculateMaxFuse(crossSection);
+  const minFuse = Math.max(1, Math.ceil(currentA));
+  for (const size of STANDARD_FUSE_SIZES) {
+    if (size >= minFuse && size <= maxFuse) {
+      return size;
+    }
+  }
+  // Keine Norm-Sicherung erfüllt minFuse ≤ size ≤ maxFuse. Statt eine
+  // zu große Sicherung über dem Kabel-Maximum zu wählen, wird der
+  // Kabel-Höchstwert zurückgegeben — der Querschnitt ist zu klein.
+  return maxFuse || MIN_STANDARD_FUSE;
+};
+
+/**
+ * Prüft, ob ein Kabelquerschnitt für den Nennstrom ausreicht, also
+ * eine zulässige Sicherung gefunden werden kann, die ≥ Nennstrom und
+ * ≤ Kabel-Maximalsicherung ist.
+ */
+export const isFuseFeasible = (currentA: number, crossSection: number): boolean => {
+  const maxFuse = calculateMaxFuse(crossSection);
+  const minFuse = Math.max(1, Math.ceil(currentA));
+  return minFuse <= maxFuse;
+};
+
+export const lookupThermalCrossSection = (I: number): number => {
+  const requiredAmpacity = I * (1 / DERATE_FACTOR);
+  const size = VDE_SIZES.find((s) => (VDE_AMPACITY[s] ?? 0) >= requiredAmpacity);
+  return size || 70.0;
+};
+
 export const calculateCrossSection = (
   I: number,
   length: number,
   dataCrossSection?: number,
   electricalDomain: 'DC_12V' | 'AC_230V' = 'DC_12V'
 ): number => {
-  const safeI = Number.isFinite(I) && I > 0 ? I : 0;
-  const safeLength = Number.isFinite(length) && length > 0 ? length : 0;
+  // Schritt A: Mindestquerschnitt nach Spannungsfall
+  // DC 12V: 3% von 12V = 0.36V (DIN VDE 0298-4)
+  // AC 230V: 3% von 230V = 6.9V → 4.6V (2% conservative)
+  const maxAllowedVoltageDrop = electricalDomain === 'AC_230V' ? 4.6 : 0.36;
+  const dropArea = (I * (length * 2)) / (58 * maxAllowedVoltageDrop);
 
-  // A) Spannungsfall
-  // DC 12V: 10% von 12V = 1.2V (branchenüblich im Camper)
-  // AC 230V: 3% von 230V = 6.9V (VDE 0100-520)
-  const maxAllowedVoltageDrop =
-    electricalDomain === 'AC_230V' ? VDE_MAX_DROP_VOLTS_AC_230V : VDE_MAX_DROP_VOLTS_DC_12V;
-  const dropArea =
-    maxAllowedVoltageDrop > 0
-      ? (safeI * (safeLength * 2)) / (VDE_COPPER_CONDUCTIVITY * maxAllowedVoltageDrop)
-      : 0;
+  // Schritt B: Mindestquerschnitt nach thermischer Belastbarkeit (VDE Lookup mit Derating)
+  const thermalArea = lookupThermalCrossSection(I);
 
-  // B) Thermisch
-  const thermalArea = lookupThermalCrossSection(safeI);
+  // Finaler Querschnitt: Maximum aus beiden Kriterien und eventuellem manuellen Querschnitt
+  const rawMax = Math.max(1.5, dropArea, thermalArea, dataCrossSection || 0);
 
-  const rawMax = Math.max(
-    VDE_MIN_CROSS_SECTION,
-    dropArea,
-    thermalArea,
-    dataCrossSection || 0
-  );
-
-  return VDE_SIZES.find(size => size >= rawMax) || VDE_SIZES[VDE_SIZES.length - 1];
+  // Aufgerundet auf die nächste VDE-Normgröße. Über 70 mm² hinaus gibt es in
+  // der Normreihe keine Stufe mehr; ein vorhandener Nutzer-/importierter
+  // Querschnitt (z. B. 95 mm²) darf dabei nie auf 70 mm² heruntergerundet
+  // werden — das würde eine bereits größere Leitung stillschweigend schwächen.
+  const fallback = dataCrossSection ? Math.max(rawMax, dataCrossSection) : 70.0;
+  return VDE_SIZES.find((size) => size >= rawMax) || fallback;
 };
 
 export const calculateStrokeWidth = (cs: number): number => {
@@ -144,62 +161,75 @@ export const calculateStrokeWidth = (cs: number): number => {
   return 10;
 };
 
-// ---------------------------------------------------------------------------
-// DOMÄNEN-LOGIK (DC_12V vs. AC_230V)
-// ---------------------------------------------------------------------------
+export const getEdgeDomain = (
+  sourceNodeType: string | undefined,
+  targetNodeType: string | undefined,
+  sourceHandle: string | null | undefined,
+  targetHandle?: string | null | undefined
+): 'DC_12V' | 'AC_230V' | 'Solar' => {
+  // Solar hat Vorrang: Panel-Zuleitungen sind weder 12-V- noch 230-V-Kreise,
+  // sondern führen Panel-Strom auf MPP-Spannung. Vorher fehlte der Fall ganz —
+  // Solar-Kanten wurden als DC_12V gespeichert und verloren beim Nachladen
+  // ihre Domäne (falsche Farbe/Fehlerbehandlung in Code, der nur auf
+  // `data.edgeDomain` schaut, z. B. edgeDropInputs).
+  const isSolarNode = (type: string | undefined) => type === 'solar' || type === 'roofSolar';
+  if (isSolarNode(sourceNodeType) || isSolarNode(targetNodeType)) {
+    return 'Solar';
+  }
 
-const isAcNodeType = (type: string | undefined | null): boolean =>
-  type === 'shorePower' || type === 'consumer230v';
+  // acBatteryCharger ist bewusst NICHT in dieser Liste: gemischte Domäne —
+  // AC-Eingang (Landstrom), DC-Ausgang (Ladestrom auf die Schiene). Eine
+  // Pauschale klassifizierte seine DC-Ausgangsleitung als AC und entzog sie
+  // der DC-Dimensionierung (AUDIT-AUTOWIRE Issue 4). Die AC-Seite wird über
+  // den shorePower-Endpunkt erkannt, die DC-Seite bleibt DC.
+  const isAcNode = (type: string | undefined) => type === 'shorePower' || type === 'consumer230v';
+  if (isAcNode(sourceNodeType) || isAcNode(targetNodeType)) {
+    return 'AC_230V';
+  }
 
-const AC_HANDLE_IDS = ['ac_out', 'L', 'ac', 'output', 'ac_in'];
+  // Wechselrichter: Die Plus-Quelle ist der 230-V-Ausgang, der Plus-Eingang
+  // (target) ist dagegen der 12-V-DC-Anschluss — nur 'ac_in' ist ein AC-Ziel.
+  // Exakt dieselbe Zuordnung steht in der Registry
+  // (components/registry/builtinComponents.ts) und in getHandleDomain.
+  const AC_SOURCE_HANDLES = ['plus', 'ac_out', 'L', 'ac', 'output'];
+  const AC_TARGET_HANDLES = ['ac_in'];
 
-/**
- * Klassifiziert einen einzelnen Handle als DC- oder AC-Domäne.
- *
- * Inverter:
- *  - target "plus" (links)  => 12V-DC-Eingang von der Batterie
- *  - source "plus" (rechts) => 230V-AC-Ausgang
- *  - "ac_in" (oben)         => 230V-AC-Landstrom-Eingang
- */
+  if (sourceNodeType === 'inverter' && sourceHandle && AC_SOURCE_HANDLES.includes(sourceHandle)) {
+    return 'AC_230V';
+  }
+  if (targetNodeType === 'inverter' && targetHandle && AC_TARGET_HANDLES.includes(targetHandle)) {
+    return 'AC_230V';
+  }
+  return 'DC_12V';
+};
+
+// Proaktiv: Auch getHandleDomain für Inverter AC-Ausgänge erweitern für Drag-and-Drop Stabilität.
 export const getHandleDomain = (
-  nodeType: string | undefined | null,
+  nodeType: string | undefined,
   handleId: string | null | undefined,
   handleType: 'source' | 'target' | undefined
 ): 'DC_12V' | 'AC_230V' => {
   if (!nodeType) return 'DC_12V';
-  if (isAcNodeType(nodeType)) return 'AC_230V';
-
+  if (nodeType === 'shorePower' || nodeType === 'consumer230v') {
+    return 'AC_230V';
+  }
+  if (nodeType === 'acBatteryCharger') {
+    // Mischdomäne (Issue 4): Die Landstrom-Zuweisung kommt als Kante
+    // shorePower.plus -> Charger-'plus'-TARGET an; alle SOURCE-Handles
+    // (plus/minus) sind der DC_12V-Ladeausgang.
+    return handleId === 'plus' && handleType === 'target' ? 'AC_230V' : 'DC_12V';
+  }
   if (nodeType === 'inverter') {
-    if (handleId === 'plus' && handleType === 'target') return 'DC_12V';
-    if (handleId === 'ac_in') return 'AC_230V';
-    if (handleId && AC_HANDLE_IDS.includes(handleId)) return 'AC_230V';
-    if (handleId === 'plus' && handleType === 'source') return 'AC_230V';
+    // Left TARGET plus/minus = 12V DC input. Right SOURCE plus / ac_* = 230V AC.
+    // 'plus' as a target is the battery-side DC terminal on InverterNode.
+    if (handleId === 'plus' && handleType === 'target') {
+      return 'DC_12V';
+    }
+    const AC_HANDLES = ['plus', 'ac_out', 'L', 'ac', 'output', 'ac_in'];
+    if (handleId && AC_HANDLES.includes(handleId)) {
+      return 'AC_230V';
+    }
     return 'DC_12V';
   }
-
-  return 'DC_12V';
-};
-
-/**
- * Leitet die Domäne einer Kante aus den beteiligten Knoten UND Handes ab.
- *
- * Gegenüber der Vorgängerversion wird nun die Handle-Richtung (source/target)
- * berücksichtigt, damit die Batterie-Zuleitung zum Inverter (target "plus")
- * korrekt als DC_12V erkannt wird.
- */
-export const getEdgeDomain = (
-  sourceNodeType: string | undefined | null,
-  targetNodeType: string | undefined | null,
-  sourceHandle?: string | null,
-  targetHandle?: string | null
-): 'DC_12V' | 'AC_230V' => {
-  if (isAcNodeType(sourceNodeType) || isAcNodeType(targetNodeType)) return 'AC_230V';
-
-  const sourceDomain = getHandleDomain(sourceNodeType, sourceHandle, 'source');
-  const targetDomain = getHandleDomain(targetNodeType, targetHandle, 'target');
-
-  // Eine AC-Domäne auf einer Seite macht die gesamte Kante zu AC (z. B.
-  // Inverter-AC-Ausgang oder Inverter-AC-Eingang).
-  if (sourceDomain === 'AC_230V' || targetDomain === 'AC_230V') return 'AC_230V';
   return 'DC_12V';
 };

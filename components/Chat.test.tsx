@@ -1,3 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any --
+ * Werft-Altbestand (übernommen 2026-09): nutzt noch `any` für AI-SDK-
+ * Mocks/Datenstrukturen. FOLLOW-UP: typisieren, dann Disable entfernen.
+ */
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import Chat from './Chat';
 import { useChat } from '@ai-sdk/react';

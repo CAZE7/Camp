@@ -9,21 +9,12 @@
  *  - A* routes with source/target offsets (execution on different lane levels).
  */
 
-import type {
-  PlannerNode,
-  PlannerNodeData,
-  Point,
-} from '../domainModel';
+import type { PlannerNode, PlannerNodeData, Point } from '../domainModel';
 import type { CorridorGraph } from '../geometry/corridor';
 import { bboxFromNode } from '../geometry/collision';
 import { GEOMETRY } from '../tokens';
 import type { RouteCandidate } from './types';
-import {
-  astarRoute,
-  prepareRoutedEdges,
-  type AStarOptions,
-  type RoutedGeometry,
-} from './astar';
+import { astarRoute, prepareRoutedEdges, type AStarOptions, type RoutedGeometry } from './astar';
 import type { CostWeights } from './costModel';
 
 export type GenerateCandidatesOptions = {
@@ -38,19 +29,10 @@ export type GenerateCandidatesOptions = {
   readonly routed?: readonly RoutedGeometry[];
 };
 
-const OFFSETS: readonly number[] = [
-  0,
-  GEOMETRY.laneGrid,
-];
+const OFFSETS: readonly number[] = [0, GEOMETRY.laneGrid];
 
-export function generateRoutingCandidates(
-  options: GenerateCandidatesOptions,
-): readonly RouteCandidate[] {
-  const {
-    graph,
-    edgeId,
-    maximum,
-  } = {
+export function generateRoutingCandidates(options: GenerateCandidatesOptions): readonly RouteCandidate[] {
+  const { edgeId, maximum } = {
     maximum: options.maxCandidates ?? 8,
     ...options,
   };
@@ -71,25 +53,13 @@ export function generateRoutingCandidates(
     for (const targetOffset of OFFSETS) {
       if (sourceOffset === 0 && targetOffset === 0) continue;
 
-      const start = translatePortOutward(
-        sourcePort,
-        options.sourceHandle,
-        sourceOffset,
-      );
-      const goal = translatePortOutward(
-        targetPort,
-        options.targetHandle,
-        targetOffset,
-      );
+      const start = translatePortOutward(sourcePort, options.sourceHandle, sourceOffset);
+      const goal = translatePortOutward(targetPort, options.targetHandle, targetOffset);
 
       const path = astarRoute(makeAStarOptions(options, start, goal, routedBounded));
       if (!path || path.length < 2) continue;
 
-      const points = prependAndAppend(
-        path,
-        sourcePort,
-        targetPort,
-      );
+      const points = prependAndAppend(path, sourcePort, targetPort);
       candidates.push({
         id: candidateId(edgeId, sequence++),
         edgeId,
@@ -101,12 +71,11 @@ export function generateRoutingCandidates(
   }
 
   // 3. Canonical A* route (zero offsets) is usually the strongest candidate.
-  const canonical = astarRoute(
-    makeAStarOptions(options, sourcePort, targetPort, routedBounded),
-  );
+  const canonical = astarRoute(makeAStarOptions(options, sourcePort, targetPort, routedBounded));
   if (canonical && canonical.length >= 2) {
     candidates.push({
-      id: candidateId(edgeId, sequence++),
+      // letzte Nutzung — kein ++ nötig (Schreibzugriff wäre nutzlos)
+      id: candidateId(edgeId, sequence),
       edgeId,
       points: prependAndAppend(canonical, sourcePort, targetPort),
       sourceHandle: options.sourceHandle,
@@ -123,7 +92,7 @@ function addDirectCandidates(
   edgeId: string,
   source: Point,
   target: Point,
-  startSequence: number,
+  startSequence: number
 ): void {
   if (samePoint(source, target)) {
     candidates.push({
@@ -151,7 +120,7 @@ function makeAStarOptions(
   options: GenerateCandidatesOptions,
   start: Point,
   goal: Point,
-  routedBounded: ReturnType<typeof prepareRoutedEdges>,
+  routedBounded: ReturnType<typeof prepareRoutedEdges>
 ): AStarOptions {
   return {
     graph: options.graph,
@@ -163,11 +132,7 @@ function makeAStarOptions(
   };
 }
 
-function translatePortOutward(
-  port: Point,
-  handle: string | undefined,
-  offset: number,
-): Point {
+function translatePortOutward(port: Point, handle: string | undefined, offset: number): Point {
   const side = portSide(handle);
   const outward = outwardVector(side);
   return {
@@ -176,17 +141,13 @@ function translatePortOutward(
   };
 }
 
-function prependAndAppend(
-  path: readonly Point[],
-  sourcePort: Point,
-  targetPort: Point,
-): readonly Point[] {
+function prependAndAppend(path: readonly Point[], sourcePort: Point, targetPort: Point): readonly Point[] {
   const points: Point[] = [];
   points.push(sourcePort);
   for (const point of path) {
-    if (!samePoint(points[points.length - 1], point)) points.push(point);
+    if (!samePoint(points[points.length - 1]!, point)) points.push(point);
   }
-  const last = points[points.length - 1];
+  const last = points[points.length - 1]!;
   if (!samePoint(last, targetPort)) points.push(targetPort);
   return trimReversalSpikes(points);
 }
@@ -200,11 +161,11 @@ function prependAndAppend(
 export function trimReversalSpikes(points: readonly Point[]): readonly Point[] {
   if (points.length <= 2) return points;
 
-  const result: Point[] = [points[0]];
+  const result: Point[] = [points[0]!];
   for (let index = 1; index < points.length - 1; index += 1) {
-    const a = result[result.length - 1];
-    const b = points[index];
-    const c = points[index + 1];
+    const a = result[result.length - 1]!;
+    const b = points[index]!;
+    const c = points[index + 1]!;
 
     if (collinear(a, b, c) && !strictlyBetween(a, b, c)) {
       // b is an overshoot on the same line; the direct a->c segment is shorter
@@ -213,14 +174,13 @@ export function trimReversalSpikes(points: readonly Point[]): readonly Point[] {
     }
     result.push(b);
   }
-  result.push(points[points.length - 1]);
+  result.push(points[points.length - 1]!);
 
   return result;
 }
 
 function collinear(a: Point, b: Point, c: Point): boolean {
-  const cross =
-    (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+  const cross = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
   return Math.abs(cross) < 1e-6;
 }
 
@@ -238,9 +198,7 @@ function distance(a: Point, b: Point): number {
 function dedupeCandidates(candidates: RouteCandidate[]): void {
   const seen = new Set<string>();
   for (let index = candidates.length - 1; index >= 0; index -= 1) {
-    const key = candidates[index].points
-      .map((point) => `${point.x}:${point.y}`)
-      .join('|');
+    const key = candidates[index]!.points.map((point) => `${point.x}:${point.y}`).join('|');
     if (seen.has(key)) {
       candidates.splice(index, 1);
     } else {
@@ -259,10 +217,7 @@ function candidateId(edgeId: string, sequence: number): string {
 
 type PortSide = 'left' | 'right' | 'top' | 'bottom';
 
-export function portPoint(
-  node: PlannerNode<PlannerNodeData>,
-  handle: string | undefined,
-): Point {
+export function portPoint(node: PlannerNode<PlannerNodeData>, handle: string | undefined): Point {
   const bbox = bboxFromNode(node);
   const side = portSide(handle);
   const centerX = bbox.x + bbox.width / 2;

@@ -1,34 +1,27 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { PlannerDashboard } from './PlannerDashboard';
-import { usePlannerStore } from '../../store/usePlannerStore';
-import { useAppStore } from '../../lib/store';
 import { toPng } from 'html-to-image';
 
 // --- Mocks ---
 
-// Mock html-to-image
+// Mock html-to-image (lazy-imported by the dashboard)
 vi.mock('html-to-image', () => ({
-  toPng: vi.fn().mockResolvedValue('data:image/png;base64,mocked')
-}));
-
-// Mock React Flow (no longer used in PlannerDashboard, kept for safety)
-const mockFitView = vi.fn();
-vi.mock('reactflow', () => ({
-  useReactFlow: () => ({
-    fitView: mockFitView
-  })
+  toPng: vi.fn().mockResolvedValue('data:image/png;base64,mocked'),
 }));
 
 // Mock Planner Store
 const mockSetViewMode = vi.fn();
 const mockSetSeason = vi.fn();
-const mockExportBOM = vi.fn();
 const mockAutoWireSystem = vi.fn();
-const mockCheckSchematic = vi.fn();
 const mockOnLayout = vi.fn();
 const mockOnLayoutV2 = vi.fn().mockResolvedValue(undefined);
+const mockUndo = vi.fn();
+const mockRedo = vi.fn();
+const mockClearPlan = vi.fn();
 
 vi.mock('../../store/usePlannerStore', () => ({
   usePlannerStore: vi.fn((selector) => {
@@ -37,30 +30,31 @@ vi.mock('../../store/usePlannerStore', () => ({
       setViewMode: mockSetViewMode,
       season: 'summer',
       setSeason: mockSetSeason,
-      exportBOM: mockExportBOM,
       autoWireSystem: mockAutoWireSystem,
-      checkSchematic: mockCheckSchematic,
       onLayout: mockOnLayout,
       onLayoutV2: mockOnLayoutV2,
       systemMessage: null,
       setSystemMessage: vi.fn(),
+      focusElement: vi.fn(),
       nodes: [],
       edges: [],
       waterNodes: [],
       waterEdges: [],
+      waterWarning: null,
+      undo: mockUndo,
+      redo: mockRedo,
+      canUndo: true,
+      canRedo: true,
+      clearPlan: mockClearPlan,
     };
     return selector(state);
-  })
+  }),
 }));
 
-// Mock App Store
-const mockToggleProMode = vi.fn();
-vi.mock('../../lib/store', () => ({
-  useAppStore: vi.fn(() => ({
-    isProMode: false,
-    toggleProMode: mockToggleProMode
-  }))
-}));
+// Helper to open the overflow ("Mehr") menu where secondary actions live
+const openMoreMenu = () => {
+  fireEvent.click(screen.getByRole('button', { name: 'Weitere Aktionen' }));
+};
 
 describe('PlannerDashboard - Core Interactions', () => {
   beforeEach(() => {
@@ -74,43 +68,44 @@ describe('PlannerDashboard - Core Interactions', () => {
   it('renders default UI elements correctly', () => {
     render(<PlannerDashboard />);
 
-    expect(screen.getByText('Elektrik-Schaltplan')).toBeInTheDocument();
-    expect(screen.getByText('Wasser & Sanitär')).toBeInTheDocument();
+    // View toggles
+    expect(screen.getByText('Elektrik')).toBeInTheDocument();
+    expect(screen.getByText('Wasser')).toBeInTheDocument();
+    // Primary action is always visible
+    expect(screen.getByText(/Automatisch verbinden/)).toBeInTheDocument();
+
+    // Secondary actions live in the overflow menu
+    openMoreMenu();
     expect(screen.getByText(/Stückliste/)).toBeInTheDocument();
-    expect(screen.getByText(/Auto-Wire/)).toBeInTheDocument();
-    expect(screen.getByText(/KI-Check/)).toBeInTheDocument();
-    expect(screen.getByText(/Aufräumen/)).toBeInTheDocument();
-    expect(screen.getByText(/Bild Export/)).toBeInTheDocument();
-    expect(screen.getByText(/Sommer/)).toBeInTheDocument();
-    expect(screen.getByText(/Winter/)).toBeInTheDocument();
-    expect(screen.getByText('Profi-Modus Aus')).toBeInTheDocument();
+    expect(screen.getByText(/Plan lokal prüfen/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Aufräumen/).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Bild exportieren/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Sommer' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Winter' })).toBeInTheDocument();
+
+    // Der Pro-Modus-Schalter wurde entfernt; Fachdetails sind immer sichtbar.
   });
 
   it('calls setViewMode when changing view mode', () => {
     render(<PlannerDashboard />);
 
-    fireEvent.click(screen.getByText('Wasser & Sanitär'));
+    fireEvent.click(screen.getByText('Wasser'));
     expect(mockSetViewMode).toHaveBeenCalledWith('water');
 
-    fireEvent.click(screen.getByText('Elektrik-Schaltplan'));
+    fireEvent.click(screen.getByText('Elektrik'));
     expect(mockSetViewMode).toHaveBeenCalledWith('electric');
   });
 
   it('calls setSeason when changing season', () => {
     render(<PlannerDashboard />);
 
-    fireEvent.click(screen.getByText(/Winter/));
+    // Season buttons live in the overflow menu and keep it open after a click
+    openMoreMenu();
+    fireEvent.click(screen.getByRole('button', { name: 'Winter' }));
     expect(mockSetSeason).toHaveBeenCalledWith('winter');
 
-    fireEvent.click(screen.getByText(/Sommer/));
+    fireEvent.click(screen.getByRole('button', { name: 'Sommer' }));
     expect(mockSetSeason).toHaveBeenCalledWith('summer');
-  });
-
-  it('calls toggleProMode when clicking Profi-Modus', () => {
-    render(<PlannerDashboard />);
-
-    fireEvent.click(screen.getByText('Profi-Modus Aus'));
-    expect(mockToggleProMode).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -123,34 +118,37 @@ describe('PlannerDashboard - Action Buttons', () => {
     vi.restoreAllMocks();
   });
 
-  it('dispatches show-bom-modal and calls exportBOM when clicking Stückliste', async () => {
+  it('dispatches show-bom-modal when clicking Stückliste (BOM liest den Store selbst)', async () => {
     render(<PlannerDashboard />);
     const dispatchEventSpy = vi.spyOn(window, 'dispatchEvent');
 
+    openMoreMenu();
     fireEvent.click(screen.getByText(/Stückliste/));
 
-    expect(mockExportBOM).toHaveBeenCalledTimes(1);
-
     expect(dispatchEventSpy).toHaveBeenCalledTimes(1);
-    const event = dispatchEventSpy.mock.calls[0][0] as CustomEvent;
+    const event = dispatchEventSpy.mock.calls[0]![0] as CustomEvent;
     expect(event.type).toBe('show-bom-modal');
   });
 
-  it('calls autoWireSystem with no args when clicking Auto-Wire', () => {
+  it('calls autoWireSystem with no args when clicking the primary automatic wiring action', () => {
     render(<PlannerDashboard />);
 
-    fireEvent.click(screen.getByText(/Auto-Wire/));
+    fireEvent.click(screen.getByText(/Automatisch verbinden/));
 
     expect(mockAutoWireSystem).toHaveBeenCalledTimes(1);
     expect(mockAutoWireSystem).toHaveBeenCalledWith();
   });
 
-  it('calls checkSchematic when clicking KI-Check', () => {
+  it('öffnet die Warn-Zentrale bei vorhandenen Hinweisen statt eines toten Events', () => {
     render(<PlannerDashboard />);
+    const dispatchEventSpy = vi.spyOn(window, 'dispatchEvent');
 
-    fireEvent.click(screen.getByText(/KI-Check/));
+    openMoreMenu();
+    fireEvent.click(screen.getByText(/Plan lokal prüfen/));
 
-    expect(mockCheckSchematic).toHaveBeenCalledTimes(1);
+    // Kein 'check-schematic'-Dispatch mehr (hatte nie einen Listener).
+    const types = dispatchEventSpy.mock.calls.map((call) => (call[0] as CustomEvent).type);
+    expect(types).not.toContain('check-schematic');
   });
 
   it('calls onLayoutV2 when clicking Aufräumen', () => {
@@ -160,6 +158,44 @@ describe('PlannerDashboard - Action Buttons', () => {
 
     expect(mockOnLayoutV2).toHaveBeenCalledTimes(1);
     expect(mockOnLayoutV2).toHaveBeenCalledWith();
+  });
+
+  it('dispatches planner-fit-view when clicking the Übersicht (fit view) button', () => {
+    render(<PlannerDashboard />);
+    const dispatchEventSpy = vi.spyOn(window, 'dispatchEvent');
+
+    fireEvent.click(screen.getByTitle('Ganzen Plan einpassen'));
+
+    const dispatched = dispatchEventSpy.mock.calls.map((c) => (c[0] as CustomEvent).type);
+    expect(dispatched).toContain('planner-fit-view');
+  });
+});
+
+describe('PlannerDashboard - Mission 3 feedback', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('shows tablet undo/redo controls with explicit disabled-capable targets', () => {
+    render(<PlannerDashboard />);
+    expect(screen.getByTestId('toolbar-undo')).toHaveClass('md:inline-flex');
+    expect(screen.getByTestId('toolbar-redo')).toHaveClass('md:inline-flex');
+  });
+
+  it('shows a saved indicator on every viewport', () => {
+    render(<PlannerDashboard />);
+    const indicator = screen.getByTestId('save-indicator');
+    expect(indicator).toHaveAttribute('role', 'status');
+    expect(indicator.getAttribute('aria-label')).toMatch(/Zuletzt gespeichert/);
+    expect(indicator.className).not.toContain('hidden');
+  });
+
+  it('offers a five-second undo action after clearing the plan', () => {
+    render(<PlannerDashboard />);
+    openMoreMenu();
+    fireEvent.click(screen.getByText('Neuen leeren Plan starten'));
+    fireEvent.click(screen.getByRole('button', { name: 'Plan leeren' }));
+    expect(mockClearPlan).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByTestId('feedback-action'));
+    expect(mockUndo).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -184,30 +220,33 @@ describe('PlannerDashboard - Image Export', () => {
     };
 
     const originalCreateElement = document.createElement.bind(document);
-    const createElementSpy = vi.spyOn(document, 'createElement').mockImplementation((tagName: string, options?: ElementCreationOptions) => {
-      const el = originalCreateElement(tagName, options);
-      if (tagName === 'a') {
-        Object.defineProperty(el, 'download', {
-          get: () => mockLink.download,
-          set: (val) => mockLink.download = val,
-        });
-        Object.defineProperty(el, 'href', {
-          get: () => mockLink.href,
-          set: (val) => mockLink.href = val,
-        });
-        el.click = mockLink.click;
-      }
-      return el;
-    });
+    const createElementSpy = vi
+      .spyOn(document, 'createElement')
+      .mockImplementation((tagName: string, options?: ElementCreationOptions) => {
+        const el = originalCreateElement(tagName, options);
+        if (tagName === 'a') {
+          Object.defineProperty(el, 'download', {
+            get: () => mockLink.download,
+            set: (val) => (mockLink.download = val),
+          });
+          Object.defineProperty(el, 'href', {
+            get: () => mockLink.href,
+            set: (val) => (mockLink.href = val),
+          });
+          el.click = mockLink.click;
+        }
+        return el;
+      });
 
     render(<PlannerDashboard />);
 
-    fireEvent.click(screen.getByText(/Bild Export/));
+    openMoreMenu();
+    fireEvent.click(screen.getByText(/Bild exportieren/));
 
     await waitFor(() => {
       expect(toPng).toHaveBeenCalledWith(mockReactFlowElem, expect.any(Object));
       expect(createElementSpy).toHaveBeenCalledWith('a');
-      expect(mockLink.download).toBe('schaltplan.png');
+      expect(mockLink.download).toBe('werft-schaltplan.png');
       expect(mockLink.href).toBe('data:image/png;base64,mocked');
       expect(mockLink.click).toHaveBeenCalledTimes(1);
     });
@@ -216,16 +255,19 @@ describe('PlannerDashboard - Image Export', () => {
     createElementSpy.mockRestore();
   });
 
-  it('does not export image if react flow wrapper is not found', () => {
+  it('does not export image if react flow wrapper is not found', async () => {
     const existingElements = document.querySelectorAll('.react-flow');
-    existingElements.forEach(el => document.body.removeChild(el));
+    existingElements.forEach((el) => document.body.removeChild(el));
 
     vi.mocked(toPng).mockClear();
 
     render(<PlannerDashboard />);
 
-    fireEvent.click(screen.getByText(/Bild Export/));
+    openMoreMenu();
+    fireEvent.click(screen.getByText(/Bild exportieren/));
 
+    // Give the dynamic import a tick to resolve
+    await Promise.resolve();
     expect(toPng).not.toHaveBeenCalled();
   });
 
@@ -236,13 +278,15 @@ describe('PlannerDashboard - Image Export', () => {
 
     render(<PlannerDashboard />);
 
-    fireEvent.click(screen.getByText(/Bild Export/));
+    openMoreMenu();
+    fireEvent.click(screen.getByText(/Bild exportieren/));
 
     await waitFor(() => {
       expect(toPng).toHaveBeenCalled();
     });
 
-    const filterFunc = (toPng as unknown as any).mock.calls[0][1].filter;
+    const [, pngOptions] = vi.mocked(toPng).mock.calls[0]!;
+    const filterFunc = (pngOptions as { filter?: (el: HTMLElement) => boolean }).filter!;
 
     const validNode = document.createElement('div');
     expect(filterFunc(validNode)).toBe(true);
@@ -262,24 +306,44 @@ describe('PlannerDashboard - Image Export', () => {
     document.body.removeChild(mockReactFlowElem);
   });
 
-  it('logs an error if image export fails', async () => {
+  it('zeigt einen sichtbaren Fehler, wenn der Bild-Export scheitert (M6-4)', async () => {
+    // Regressionstest: der Export-Fehler war vorher NUR ein console.error —
+    // für Nutzer unsichtbar. Jetzt erscheint eine role=alert-Meldung, und
+    // console.error wird bewusst nicht mehr verwendet.
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
     const mockReactFlowElem = document.createElement('div');
     mockReactFlowElem.className = 'react-flow';
     document.body.appendChild(mockReactFlowElem);
 
-    (toPng as unknown as any).mockRejectedValueOnce(new Error('Export failed'));
+    const error = new Error('Export failed');
+    error.name = 'SecurityError';
+    vi.mocked(toPng).mockRejectedValueOnce(error);
 
     render(<PlannerDashboard />);
 
-    fireEvent.click(screen.getByText(/Bild Export/));
+    openMoreMenu();
+    fireEvent.click(screen.getByText(/Bild exportieren/));
 
     await waitFor(() => {
-      expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to export image', expect.any(Error));
+      expect(screen.getByRole('alert')).toBeInTheDocument();
     });
+    // leerer Plan (Mock-State): die kontextbezogene Erste-Meldung greift vor
+    // der SecurityError-Klasse — beides sind Nutzer-sichtbare Pfade.
+    expect(screen.getByRole('alert').textContent).toMatch(/Nichts zu exportieren|Export blockiert/);
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
 
     consoleErrorSpy.mockRestore();
     document.body.removeChild(mockReactFlowElem);
+  });
+});
+
+describe('Warnungs-Deduplizierung (M11-1)', () => {
+  it('dupliziert die RCD-Regel nicht — kanonisch ist nur missing-rcd-* aus useLiveValidation', () => {
+    // Früher meldete der Dashboard-Memo dieselbe Landstrom-Warnung ein zweites
+    // Mal (id `rcd-${node.id}`) — doppelte Karten im Zentrum, driftende
+    // Warnhinweise (WarningCenter spezialbehandelte nur die Duplikat-ID).
+    const src = readFileSync(resolve(process.cwd(), 'components/planner/PlannerDashboard.tsx'), 'utf8');
+    expect(src).not.toMatch(/id: `rcd-\$\{/);
+    expect(src).not.toContain("type === 'shorePower'");
   });
 });

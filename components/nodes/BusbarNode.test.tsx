@@ -2,6 +2,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import BusbarNode from './BusbarNode';
 import { usePlannerStore } from '../../store/usePlannerStore';
+import { asDivProps, type MockHandleProps } from '../../test-helpers/reactflowMocks';
 
 // Mock the Zustand store
 vi.mock('../../store/usePlannerStore', () => ({
@@ -13,8 +14,8 @@ vi.mock('reactflow', async () => {
   const actual = await vi.importActual('reactflow');
   return {
     ...actual,
-    Handle: ({ 'data-testid': testId, isConnectable, ...props }: any) => (
-      <div data-testid={testId || 'react-flow-handle'} {...props} />
+    Handle: ({ 'data-testid': testId, isConnectable, ...props }: MockHandleProps) => (
+      <div data-testid={testId || 'react-flow-handle'} {...asDivProps(props)} />
     ),
     Position: {
       Left: 'left',
@@ -40,7 +41,7 @@ describe('BusbarNode Component', () => {
 
   it('renders default label when no label is provided', () => {
     render(<BusbarNode id="1" data={{}} />);
-    expect(screen.getByText('Main Busbar')).toBeInTheDocument();
+    expect(screen.getByText('Sammelschiene')).toBeInTheDocument();
   });
 
   it('renders custom label when provided in data', () => {
@@ -61,15 +62,15 @@ describe('BusbarNode Component', () => {
   it('applies selected styling when selected is true', () => {
     const { container } = render(<BusbarNode id="1" data={{}} selected={true} />);
     const mainDiv = container.firstChild as HTMLElement;
-    expect(mainDiv.className).toContain('ring-4');
-    expect(mainDiv.className).toContain('ring-blue-500');
+    expect(mainDiv.getAttribute('data-selected')).toBe('true');
+    expect(mainDiv.className).toContain('node-card--selected');
   });
 
   it('does not apply selected styling when selected is false', () => {
     const { container } = render(<BusbarNode id="1" data={{}} selected={false} />);
     const mainDiv = container.firstChild as HTMLElement;
-    expect(mainDiv.className).not.toContain('ring-4');
-    expect(mainDiv.className).not.toContain('ring-blue-500');
+    expect(mainDiv.getAttribute('data-selected')).toBeNull();
+    expect(mainDiv.className).not.toContain('ring-[color:var(--accent-line)]');
   });
 
   it('renders all four Handle components with correct props', () => {
@@ -140,7 +141,7 @@ describe('BusbarNode Component', () => {
       expect(mockUpdateNodeData).toHaveBeenCalledWith('test-1', { rating: 300 });
     });
 
-    it('updates data to 0 for rating on blur if input is not a number', () => {
+    it('rejects an invalid rating on blur', () => {
       render(<BusbarNode id="test-1" data={{ rating: 100 }} isConnectable={true} />);
 
       const ratingDiv = screen.getByText('Max Strom: 100 A');
@@ -151,7 +152,7 @@ describe('BusbarNode Component', () => {
       fireEvent.change(input, { target: { value: 'invalid' } });
       fireEvent.blur(input);
 
-      expect(mockUpdateNodeData).toHaveBeenCalledWith('test-1', { rating: 0 });
+      expect(mockUpdateNodeData).not.toHaveBeenCalled();
     });
   });
 });

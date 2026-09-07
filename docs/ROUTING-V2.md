@@ -20,22 +20,22 @@ finde für jede Kante einen orthogonalen Pfad, der
 - deterministisch ist (gleiche Eingabe → gleicher Pfad).
 
 Routing ist **kein** reines 0/−/+off-Kandidatenwürfeln, sondern eine Suche über einen
-geometrisch aufgelösten Graphen (*Search Space*), der Hindernisse vollständig abbildet.
+geometrisch aufgelösten Graphen (_Search Space_), der Hindernisse vollständig abbildet.
 
 ---
 
 ## 2. Begriffe
 
-| Begriff | Definition |
-|---|---|
-| Port | Ankerpunkt einer Kante am Knoten (`sourceHandle`, `targetHandle`) |
-| Handle-Stub | gerades Stück ab Port mit Länge `stubMin..stubMax` |
-| Knoten-Hindernis | Bounding-Box eines Knotens |
-| erweitertes Hindernis | `bboxEx = bbox ⊕ clearance` (Minkowski um `edgeNodeSpacing/2`) |
-| Kanal (Corridor) | orthogonale Achse zwischen zwei Trassenpunkten, `laneGrid` breit |
-| Lane | konkurrierende Trasse in einem Kanal (`maxLaneSegments` parallele Routen) |
-| Crossing | Schnittpunkt zweier orthogonaler Kanten auf unterschiedlicher Trasse |
-| Hop | Übergangssegment (kurzes Stück), das eine Kreuzung auflöst |
+| Begriff               | Definition                                                                |
+| --------------------- | ------------------------------------------------------------------------- |
+| Port                  | Ankerpunkt einer Kante am Knoten (`sourceHandle`, `targetHandle`)         |
+| Handle-Stub           | gerades Stück ab Port mit Länge `stubMin..stubMax`                        |
+| Knoten-Hindernis      | Bounding-Box eines Knotens                                                |
+| erweitertes Hindernis | `bboxEx = bbox ⊕ clearance` (Minkowski um `edgeNodeSpacing/2`)            |
+| Kanal (Corridor)      | orthogonale Achse zwischen zwei Trassenpunkten, `laneGrid` breit          |
+| Lane                  | konkurrierende Trasse in einem Kanal (`maxLaneSegments` parallele Routen) |
+| Crossing              | Schnittpunkt zweier orthogonaler Kanten auf unterschiedlicher Trasse      |
+| Hop                   | Übergangssegment (kurzes Stück), das eine Kreuzung auflöst                |
 
 ---
 
@@ -57,7 +57,7 @@ export type RoutingResult = {
     cost: number;
   }>;
   diagnostics: {
-    collisions: Array<{ edgeA: string; edgeB: string; type: "edge-node" | "edge-edge" }>;
+    collisions: Array<{ edgeA: string; edgeB: string; type: 'edge-node' | 'edge-edge' }>;
     metrics: {
       totalLength: number;
       totalBends: number;
@@ -119,9 +119,9 @@ State:
 type AStarNode = {
   x: number;
   y: number;
-  dir: "H" | "V";
-  laneOffset: number;      // 0..maxLaneSegments-1
-  edgeId: string;          // Route, die gerade gesucht wird
+  dir: 'H' | 'V';
+  laneOffset: number; // 0..maxLaneSegments-1
+  edgeId: string; // Route, die gerade gesucht wird
 };
 ```
 
@@ -177,10 +177,7 @@ Kandidaten. Kandidaten entstehen aus:
 Auswahl:
 
 ```ts
-export function selectBestPath<T extends RoutingCandidate>(
-  candidates: T[],
-  ctx: RouteContext,
-): T {
+export function selectBestPath<T extends RoutingCandidate>(candidates: T[], ctx: RouteContext): T {
   // 1. Kollisionssimulation je Kandidat (edge-node + edge-edge gegen bereits geroutete)
   // 2. costModel.apply(candidate, simulatedCollisions, laneRegistry, hops)
   // 3. sortiere stabil nach cost, dann candidate.id
@@ -198,12 +195,15 @@ Verbindlicher Aufruf:
 
 ```ts
 const sim = simulateCollisions(candidate, routedEdges, laneRegistry);
-const cost = routeCost({
-  path: candidate.path,
-  collisions: sim.collisions,             // Edge-Node + Edge-Edge
-  laneCongestion: sim.laneCongestion,     // belegte Lane-Segmente
-  hops: sim.requiredHops,                 // via Voranalyse
-}, COST_WEIGHTS);                          // aus tokens.ts, nicht Leerwerte
+const cost = routeCost(
+  {
+    path: candidate.path,
+    collisions: sim.collisions, // Edge-Node + Edge-Edge
+    laneCongestion: sim.laneCongestion, // belegte Lane-Segmente
+    hops: sim.requiredHops, // via Voranalyse
+  },
+  COST_WEIGHTS
+); // aus tokens.ts, nicht Leerwerte
 ```
 
 Die Simulation ist **rein** und liefert dieselben Zahlen wie die spätere Abnahme-Messung
@@ -271,17 +271,17 @@ Regeln:
 
 ## 9. ELK-Integration
 
-Der ELK-Adapter (`layout-engine/elk.ts`) produziert das *Knoten-/Trassen-Rohlayout*.
+Der ELK-Adapter (`layout-engine/elk.ts`) produziert das _Knoten-/Trassen-Rohlayout_.
 Die **finale Geometrie** der Kanten kommt aber aus dem Routing-V2-Ergebnis.
 
 Nur der `layout-engine` nutzt ELK; `routing-core` kennt ELK **nicht**.
 
-| Ebene | Quelle | verantwortlich für |
-|---|---|---|
-| Knotenpositionen | ELK layout requested nodes | `layout-engine/elk.ts` |
-| Stub-/Portpositionen | ELK-Knotenpositionen + Domain-Handles | `geometry/corridor.ts` |
-| Kantengeometrie | Routing-V2 A* | `routing-core/astar.ts` |
-| Visuelle Polylinie | Routing-V2 Ergebnis | `components/edges/CableEdge.tsx` (Adapter) |
+| Ebene                | Quelle                                | verantwortlich für                         |
+| -------------------- | ------------------------------------- | ------------------------------------------ |
+| Knotenpositionen     | ELK layout requested nodes            | `layout-engine/elk.ts`                     |
+| Stub-/Portpositionen | ELK-Knotenpositionen + Domain-Handles | `geometry/corridor.ts`                     |
+| Kantengeometrie      | Routing-V2 A*                         | `routing-core/astar.ts`                    |
+| Visuelle Polylinie   | Routing-V2 Ergebnis                   | `components/edges/CableEdge.tsx` (Adapter) |
 
 ---
 
@@ -291,13 +291,13 @@ Nur der `layout-engine` nutzt ELK; `routing-core` kennt ELK **nicht**.
 
 ```ts
 const gates: Gate[] = [
-  { id: "G1", desc: "max edge-node collisions = 0",          check: m.maxEdgeNodeCollisions === 0 },
-  { id: "G2", desc: "max edge-edge overlaps = 0",            check: m.maxEdgeEdgeOverlaps === 0 },
-  { id: "G3", desc: "min clearance >= cableClearance",       check: m.minClearance >= GEOMETRY.cableClearance },
-  { id: "G4", desc: "deterministic layout = true",           check: m.deterministic },
-  { id: "G5", desc: "crossing count <= threshold",           check: m.totalCrossings <= CROSSINGS_THRESHOLD },
-  { id: "G6", desc: "hop correctness = 100%",                check: m.hopCorrectnessPct === 100 },
-  { id: "G7", desc: "performance <= perfBudgetMs",           check: m.elapsedMs <= PERF_BUDGET_MS },
+  { id: 'G1', desc: 'max edge-node collisions = 0', check: m.maxEdgeNodeCollisions === 0 },
+  { id: 'G2', desc: 'max edge-edge overlaps = 0', check: m.maxEdgeEdgeOverlaps === 0 },
+  { id: 'G3', desc: 'min clearance >= cableClearance', check: m.minClearance >= GEOMETRY.cableClearance },
+  { id: 'G4', desc: 'deterministic layout = true', check: m.deterministic },
+  { id: 'G5', desc: 'crossing count <= threshold', check: m.totalCrossings <= CROSSINGS_THRESHOLD },
+  { id: 'G6', desc: 'hop correctness = 100%', check: m.hopCorrectnessPct === 100 },
+  { id: 'G7', desc: 'performance <= perfBudgetMs', check: m.elapsedMs <= PERF_BUDGET_MS },
 ];
 ```
 

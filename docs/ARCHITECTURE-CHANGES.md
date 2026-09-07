@@ -116,7 +116,7 @@ das vollständige Mapping.
 - `elk.spacing.edgeEdge`, `edgeNodeBetweenLayers`, `componentComponent`
 - `elk.padding` aus `cableClearance`
 
-**Grenze (wichtig):** ELK erzeugt das *Rohlayout*. Die finale Kantengeometrie kommt aus
+**Grenze (wichtig):** ELK erzeugt das _Rohlayout_. Die finale Kantengeometrie kommt aus
 Routing-V2. ELK wird nie als Ersatz für den Kollisions-/Routing-Layer verwendet.
 
 ---
@@ -203,19 +203,19 @@ Diese Gates sind konsistent mit den Review-Anforderungen:
 
 ## 2. Vergleich Ist → Ziel (Zusammenfassung)
 
-| Aspekt | Ist (im Repo) | Ziel V2 |
-|---|---|---|
-| Domain-Typen | `domain.ts`, viel `any` | `domainModel.ts`, strikt typisiert |
-| Tokens | teilweise in `vde-standards.ts` / UI | `tokens.ts` (alle Geometrie-Werte) |
-| Validierung | `lib/vde-standards.ts` mit `as any` | `lib/planner/vde/validation.ts` typisiert |
-| Routing | Verbindungsregeln / einfache Dagre-Placement | Geometrie-Korridore + A* + Kostenmodell |
-| Routing-Auswahl | optimiert grob nur Länge/Biegungen | optimiert Länge, Biegungen, Kollisionen, Lanes, Hops |
-| LaneRegistry | nicht vorhanden / insertionsabhängig | deterministisch aus stabilem Ranking |
-| Crossings | nicht als Kostenfaktor in Auswahl | Kostenfaktor bei Auswahl + Hopping nur im Nachlauf |
-| ELK | minimal (algorithm, direction, 2 spacing) | volles Token-Mapping, Grenze: nur Rohlayout |
-| Architektur-Boundary | `domain.ts` importiert nichts Schlimmes, aber `any` überall | `domainModel.ts` strickt, Boundary-Tests |
-| Abnahme | keine Gate-Messung | `measure_planner_v2.ts` mit G1–G10 |
-| Doku | fehlt | `docs/ARCHITECTURE-V2.md`, `ROUTING-V2.md`, `ARCHITECTURE-CHANGES.md`, `IMPLEMENTATION-V2.md` |
+| Aspekt               | Ist (im Repo)                                               | Ziel V2                                                                                       |
+| -------------------- | ----------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| Domain-Typen         | `domain.ts`, viel `any`                                     | `domainModel.ts`, strikt typisiert                                                            |
+| Tokens               | teilweise in `vde-standards.ts` / UI                        | `tokens.ts` (alle Geometrie-Werte)                                                            |
+| Validierung          | `lib/vde-standards.ts` mit `as any`                         | `lib/planner/vde/validation.ts` typisiert                                                     |
+| Routing              | Verbindungsregeln / einfache Dagre-Placement                | Geometrie-Korridore + A* + Kostenmodell                                                       |
+| Routing-Auswahl      | optimiert grob nur Länge/Biegungen                          | optimiert Länge, Biegungen, Kollisionen, Lanes, Hops                                          |
+| LaneRegistry         | nicht vorhanden / insertionsabhängig                        | deterministisch aus stabilem Ranking                                                          |
+| Crossings            | nicht als Kostenfaktor in Auswahl                           | Kostenfaktor bei Auswahl + Hopping nur im Nachlauf                                            |
+| ELK                  | minimal (algorithm, direction, 2 spacing)                   | volles Token-Mapping, Grenze: nur Rohlayout                                                   |
+| Architektur-Boundary | `domain.ts` importiert nichts Schlimmes, aber `any` überall | `domainModel.ts` strickt, Boundary-Tests                                                      |
+| Abnahme              | keine Gate-Messung                                          | `measure_planner_v2.ts` mit G1–G10                                                            |
+| Doku                 | fehlt                                                       | `docs/ARCHITECTURE-V2.md`, `ROUTING-V2.md`, `ARCHITECTURE-CHANGES.md`, `IMPLEMENTATION-V2.md` |
 
 ---
 
@@ -240,7 +240,7 @@ Diese Gates sind konsistent mit den Review-Anforderungen:
 
 - [x] `docs/ARCHITECTURE-V2.md` angelegt
 - [ ] Runtime-Typen `domainModel.ts` + `tokens.ts` definieren (abgestimmt mit
-  `domain-boundaries.test.ts`)
+      `domain-boundaries.test.ts`)
 - [ ] `docs/ROUTING-V2.md` final reviewen
 - [ ] `docs/IMPLEMENTATION-V2.md` für Umsetzung übernehmen
 - [ ] Reviewpunkt 11 Gates als Checkbox absegnen (Thresholds)
@@ -270,7 +270,7 @@ Diese Gates sind konsistent mit den Review-Anforderungen:
 ### Woche 4 (Orchestrator + Hopping)
 
 - [ ] `routing-v2/orchestrator.ts` (Pipeline korrekt gekoppelt, selectBestPath mit
-  Simulationseingaben)
+      Simulationseingaben)
 - [ ] `routing-v2/hopping.ts` (nur verbleibende Crossings, Nachher-Prüfung)
 - [ ] Tests: `collision`/`laneCongestion`/`hops` fließen in `routeCost`.
 - [ ] Tests: Verhalten auf 20-Knoten-Beispiel

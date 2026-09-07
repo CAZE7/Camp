@@ -9,7 +9,6 @@
 
 import * as dagre from 'dagre';
 import type {
-  LayoutDirection,
   LayoutEdgeResult,
   LayoutNodeResult,
   LayoutRequest,

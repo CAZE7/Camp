@@ -3,87 +3,88 @@ import { usePlannerStore } from '../../../store/usePlannerStore';
 import { useAppStore } from '../../../lib/store';
 import { useDashboardMetrics } from '../hooks/useDashboardMetrics';
 import { useShallow } from 'zustand/react/shallow';
+import { ChevronDown } from 'lucide-react';
 
 export function FloatingMetricsCard() {
   const [expanded, setExpanded] = useState(false);
-
-  const { nodes, edges, season, viewMode } = usePlannerStore(useShallow((state) => ({
-    nodes: state.nodes,
-    edges: state.edges,
-    season: state.season,
-    viewMode: state.viewMode,
-  })));
-
+  const { nodes, edges, season, viewMode } = usePlannerStore(
+    useShallow((state) => ({
+      nodes: state.nodes,
+      edges: state.edges,
+      season: state.season,
+      viewMode: state.viewMode,
+    }))
+  );
   const calculatedSolarWatts = useAppStore((state) => state.calculatedSolarWatts);
-
   const metrics = useDashboardMetrics(nodes, edges, season, calculatedSolarWatts);
 
-  if (viewMode !== 'electric') return null;
+  if (viewMode !== 'electric' || nodes.length === 0) return null;
 
   return (
-    <div
-      className="absolute top-24 right-4 z-50 transition-all duration-300 ease-in-out overflow-hidden backdrop-blur-xl bg-white/80 border border-white/50 shadow-2xl rounded-2xl pointer-events-none"
-      style={{
-        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
-        width: expanded ? '320px' : '200px'
-      }}
+    <aside
+      className={`pointer-events-none absolute right-3 top-28 z-40 hidden overflow-hidden rounded-lg border border-border bg-card shadow-lg transition-all sm:block ${expanded ? 'w-80' : 'w-56'}`}
+      aria-label="Aktuelle Kennzahlen des Elektrikplans"
     >
-      <div className="p-4 pointer-events-auto">
+      <div className="pointer-events-auto p-4">
         <button
           type="button"
-          onClick={() => setExpanded(!expanded)}
+          onClick={() => setExpanded((value) => !value)}
           aria-expanded={expanded}
-          className="w-full flex justify-between items-center mb-1 cursor-pointer min-h-[48px]"
+          className="mb-2 flex min-h-11 w-full items-center justify-between rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Live Status</span>
-          <span className="text-xs font-bold text-slate-400">{expanded ? 'Verkleinern' : 'Details'}</span>
+          <span>
+            <span className="block text-xs font-bold uppercase tracking-wider text-ink-soft">
+              Aktueller Status
+            </span>
+            <span className="text-muted-ink text-xs">
+              {season === 'summer' ? 'Sommerannahme' : 'Winterannahme'}
+            </span>
+          </span>
+          <ChevronDown
+            className={`h-5 w-5 text-ink-soft transition-transform ${expanded ? 'rotate-180' : ''}`}
+          />
         </button>
 
-        <div className="flex flex-col gap-2">
-          <div className="flex justify-between items-center">
-            <span className="text-sm font-medium text-slate-700">Autarkie:</span>
-            <span className="text-sm font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">{metrics.autarkyStr}</span>
+        <dl className="space-y-2">
+          <div className="flex items-center justify-between gap-3">
+            <dt className="text-sm font-medium text-ink-soft">Autarkie</dt>
+            <dd className="rounded-full bg-moss/10 px-2 py-1 text-sm font-bold text-moss">
+              {metrics.autarkyStr}
+            </dd>
           </div>
-
-          <div className="flex justify-between items-center">
-            <span className="text-sm font-medium text-slate-700">Verbrauch:</span>
-            <div className="flex flex-col items-end">
-              <span className="text-sm font-bold text-slate-800">~{metrics.dailyConsumptionAh.toFixed(1)} Ah</span>
-              <span className="text-[10px] text-slate-400">(geschätzt)</span>
-            </div>
+          <div className="flex items-center justify-between gap-3">
+            <dt className="text-sm font-medium text-ink-soft">Tagesverbrauch</dt>
+            <dd className="text-right text-sm font-bold text-ink">
+              ≈ {metrics.dailyConsumptionAh.toFixed(1)} Ah
+              <span className="text-muted-ink block text-xs font-normal">geschätzt</span>
+            </dd>
           </div>
-
           {expanded && (
-            <div className="mt-3 pt-3 border-t border-slate-200/60 flex flex-col gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-slate-600">Ladezeit (0-100%):</span>
-                <span className="text-sm font-bold text-blue-600">{metrics.chargingTimeStr}</span>
+            <>
+              <div className="border-t border-rule/50 pt-2" />
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-sm text-ink-soft">Ladezeit 0–100 %</dt>
+                <dd className="text-right text-sm font-bold text-oxide">{metrics.chargingTimeStr}</dd>
               </div>
-
               {(calculatedSolarWatts > 0 || metrics.solarNodesCount > 0) && (
-                <div className="flex justify-between items-center mt-1">
-                  <span className="text-sm text-slate-600">Solar Output:</span>
-                  <span className="text-sm font-bold text-amber-600">
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-sm text-ink-soft">Solarleistung</dt>
+                  <dd className="text-right text-sm font-bold text-warn-warning">
                     {metrics.solarNodesCount > 0
-                      ? `${metrics.totalSolarVoltage}V / ${metrics.totalSolarAmps.toFixed(1)}A`
-                      : `${calculatedSolarWatts}W`
-                    }
-                  </span>
+                      ? `${metrics.totalSolarVoltage} V / ${metrics.totalSolarAmps.toFixed(1)} A`
+                      : `${calculatedSolarWatts} W`}
+                  </dd>
                 </div>
               )}
-
-              {metrics.hasDirectBatteryToConsumer && (
-                <div className="mt-2 p-2 bg-red-50 border border-red-100 rounded-lg">
-                  <p className="text-xs text-red-600 font-medium flex items-start gap-1">
-                    <span>⚠️</span>
-                    Sicherung fehlt (Batterie direkt am Verbraucher)!
-                  </p>
-                </div>
-              )}
-            </div>
+              <p className="rounded-lg bg-accent p-2 text-xs text-foreground">
+                {season === 'winter'
+                  ? 'Winter: reduzierter Solarertrag und höherer Heizbedarf werden berücksichtigt.'
+                  : 'Sommer: regulärer Solarertrag und Heizbedarf werden angenommen.'}
+              </p>
+            </>
           )}
-        </div>
+        </dl>
       </div>
-    </div>
+    </aside>
   );
 }

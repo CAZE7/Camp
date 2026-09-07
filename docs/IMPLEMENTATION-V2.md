@@ -142,7 +142,7 @@ die Zielarchitektur in `ARCHITECTURE-V2.md` und `ROUTING-V2.md`.
   - `edgeEdge`, `edgeNodeBetweenLayers`, `componentComponent`, `padding`
 - [x] `layout-engine/dagre.ts` — Fallback, deterministisch
 - [x] Boundary-Test: `routing-core` importiert nicht `elkjs`, `layout-engine` importiert
-  nicht `reactflow`
+      nicht `reactflow`
 
 ---
 
@@ -155,7 +155,7 @@ die Zielarchitektur in `ARCHITECTURE-V2.md` und `ROUTING-V2.md`.
 - [x] `lib/planner/vde/index.ts` — Fassade
 - [x] Alte `lib/vde-standards.ts` → re-export von `lib/planner/vde`
 - [x] `lib/planner/domain.ts` bleibt Legacy-Fassade für Adapter/UI; neue V2-Module
-  importieren sie nicht
+      importieren sie nicht
 - [x] Boundary-Test: neue Module dürfen Legacy-Fassade/UI-Engines nicht importieren
 
 ---
@@ -180,19 +180,19 @@ die Zielarchitektur in `ARCHITECTURE-V2.md` und `ROUTING-V2.md`.
 
 ## 3. Bekannte Grenzen (Stand 2026-09-06)
 
-| Bereich | Status |
-|---|---|
-| Collision-Grundfunktion | ✅ Edge-node & edge-edge (inkl. kollinearer Overlaps) |
-| Routing-Auswahl | ✅ Kostenmodell bekommt echte collision/laneCongestion/hops |
-| Deterministisches Routing | ✅ identische Eingaben → identisches Ergebnis |
-| Crossing-Reduktion (Referenz-Fixture) | ✅ 0 Crossings, 0 Overlaps, 0 Edge-Node-Collisions |
-| Crossing-Reduktion (Industrial-Fixture, 20 Knoten / 23 Kanten) | ✅ 0 Crossings, 0 Overlaps, 0 Edge-Node-Collisions |
-| ELK/Dagre | ✅ beide Engines laufen live in der App (`applyAdvancedLayout`: ELK → Dagre-Fallback → Routing V2) |
-| Hopping | ✅ implementiert; auf aktuellem Industrial-Gateway werden keine Hops benötigt |
-| Performance | ✅ Industrial-Fixture: ~1,2 s pro Pass im Gate, ~2,3 s für beide Determinismus-Läufe (Budget 10 s) |
-| Layout-Qualität | ⚠️ Pfade hängen am 16px-Raster; `minClearance=16` ist sehr konservativ, kann aber durch engere Eingaben sinken |
-| UI-Anbindung | ✅ `routeEdgesV2` im Store auf allen Mutationspfaden, `onLayoutV2` für ELK/Dagre, `rerouteV2` bei Node-Drag-Stop, `CableEdge` rendert `data.geometry.points` |
-| Model-Migration | ⚠️ UI nutzt weiterhin die Legacy-`domain.ts`-Fassade; die neuen V2-Module (Layer, Boundary, Geom, Routing-Core) arbeiten ausschließlich mit `domainModel` |
+| Bereich                                                        | Status                                                                                                                                                       |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Collision-Grundfunktion                                        | ✅ Edge-node & edge-edge (inkl. kollinearer Overlaps)                                                                                                        |
+| Routing-Auswahl                                                | ✅ Kostenmodell bekommt echte collision/laneCongestion/hops                                                                                                  |
+| Deterministisches Routing                                      | ✅ identische Eingaben → identisches Ergebnis                                                                                                                |
+| Crossing-Reduktion (Referenz-Fixture)                          | ✅ 0 Crossings, 0 Overlaps, 0 Edge-Node-Collisions                                                                                                           |
+| Crossing-Reduktion (Industrial-Fixture, 20 Knoten / 23 Kanten) | ✅ 0 Crossings, 0 Overlaps, 0 Edge-Node-Collisions                                                                                                           |
+| ELK/Dagre                                                      | ✅ beide Engines laufen live in der App (`applyAdvancedLayout`: ELK → Dagre-Fallback → Routing V2)                                                           |
+| Hopping                                                        | ✅ implementiert; auf aktuellem Industrial-Gateway werden keine Hops benötigt                                                                                |
+| Performance                                                    | ✅ Industrial-Fixture: ~1,2 s pro Pass im Gate, ~2,3 s für beide Determinismus-Läufe (Budget 10 s)                                                           |
+| Layout-Qualität                                                | ⚠️ Pfade hängen am 16px-Raster; `minClearance=16` ist sehr konservativ, kann aber durch engere Eingaben sinken                                               |
+| UI-Anbindung                                                   | ✅ `routeEdgesV2` im Store auf allen Mutationspfaden, `onLayoutV2` für ELK/Dagre, `rerouteV2` bei Node-Drag-Stop, `CableEdge` rendert `data.geometry.points` |
+| Model-Migration                                                | ⚠️ UI nutzt weiterhin die Legacy-`domain.ts`-Fassade; die neuen V2-Module (Layer, Boundary, Geom, Routing-Core) arbeiten ausschließlich mit `domainModel`    |
 
 ---
 

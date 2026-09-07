@@ -1,12 +1,12 @@
-import { Node, Edge } from "reactflow";
+import { type Node, type Edge } from 'reactflow';
 
 export const initialNodes: Node[] = [
   {
-    id: "dach-node-1",
-    type: "dachNode",
+    id: 'dach-node-1',
+    type: 'dachNode',
     position: { x: 150, y: 100 },
     data: {
-      label: "Dach-Element",
+      label: 'Dach-Element',
     },
   },
 ];

@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import React from 'react';
 import { Minus, Plus } from 'lucide-react';
@@ -40,18 +40,23 @@ export function StepperSlider({
   };
 
   return (
-    <div className={cn("flex items-center gap-3 w-full bg-stone-50/80 p-3 rounded-2xl border border-stone-200/80 shadow-sm", className)}>
+    <div
+      className={cn(
+        'flex w-full items-center gap-3 rounded-2xl border border-border/80 bg-paper/80 p-3 shadow-sm',
+        className
+      )}
+    >
       <button
         type="button"
         onClick={handleDecrement}
         disabled={value <= min}
-        className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center bg-white border border-stone-200 hover:bg-emerald-50 hover:text-emerald-600 disabled:opacity-40 disabled:hover:bg-white disabled:hover:text-stone-400 text-stone-600 rounded-xl transition-all shadow-sm active:scale-95 touch-manipulation"
+        className="flex h-11 min-h-11 w-11 min-w-11 touch-manipulation items-center justify-center rounded-xl border border-border bg-bone text-ink-soft shadow-sm transition-all hover:bg-moss/10 hover:text-moss active:scale-95 disabled:opacity-40 disabled:hover:bg-bone disabled:hover:text-ink-soft"
         aria-label="Wert verringern"
       >
         <Minus size={18} />
       </button>
 
-      <div className="flex-1 flex flex-col gap-1 items-center justify-center px-1">
+      <div className="flex flex-1 flex-col items-center justify-center gap-1 px-1">
         <input
           type="range"
           min={min}
@@ -60,10 +65,11 @@ export function StepperSlider({
           value={value}
           onChange={handleSliderChange}
           aria-label={ariaLabel}
-          className="w-full h-2 bg-stone-200 rounded-full appearance-none cursor-pointer accent-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-500/40"
+          className="h-2 w-full cursor-pointer appearance-none rounded-full bg-rule/40 accent-moss focus:outline-none focus:ring-1 focus:ring-moss/40"
         />
-        <span className="text-xs font-mono font-bold text-stone-700 bg-white border border-stone-200/50 rounded-lg px-2.5 py-0.5 mt-1 shadow-sm select-none">
-          {value.toFixed(step < 1 ? 1 : 0)}{unit}
+        <span className="mt-1 select-none rounded-lg border border-border/50 bg-bone px-2.5 py-0.5 font-mono text-xs font-bold text-ink-soft shadow-sm">
+          {value.toFixed(step < 1 ? 1 : 0)}
+          {unit}
         </span>
       </div>
 
@@ -71,7 +77,7 @@ export function StepperSlider({
         type="button"
         onClick={handleIncrement}
         disabled={value >= max}
-        className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center bg-white border border-stone-200 hover:bg-emerald-50 hover:text-emerald-600 disabled:opacity-40 disabled:hover:bg-white disabled:hover:text-stone-400 text-stone-600 rounded-xl transition-all shadow-sm active:scale-95 touch-manipulation"
+        className="flex h-11 min-h-11 w-11 min-w-11 touch-manipulation items-center justify-center rounded-xl border border-border bg-bone text-ink-soft shadow-sm transition-all hover:bg-moss/10 hover:text-moss active:scale-95 disabled:opacity-40 disabled:hover:bg-bone disabled:hover:text-ink-soft"
         aria-label="Wert erhöhen"
       >
         <Plus size={18} />
