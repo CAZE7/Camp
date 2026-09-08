@@ -17,7 +17,8 @@ import {
 import { getSystemVoltage } from './vde-standards';
 import { hasVoltageDropError } from '../components/edges/utils/voltageDrop';
 import { performAutoWiring, sizeDcEdges } from './autoWire';
-import { volts } from './units';
+import { volts, amps, meters, watts } from './units';
+import { crossSectionForDrop } from './autoWire/primitives';
 
 /**
  * lib/vde-properties.test.ts — Property-Based Tests der VDE-Logik (AGENTS.md K2).
@@ -816,5 +817,33 @@ describe('Shrinking-Anker (gemeldete Gegenbeispiele)', () => {
     expect(selectFuseSize(16, 2.5)).toBe(16);
     expect(calculateCrossSection(0, 5)).toBe(1.5);
     expect(lookupThermalCrossSection(0)).toBe(1.5);
+  });
+
+  describe('Missing coverage: >120-A-Sättigung, 24-V-Plan, Länge 0/negativ', () => {
+    it('liefert den maximalen Querschnitt (70 mm²) bei Strömen über der Sättigungsgrenze', () => {
+      // Bei extremen Strömen darf die Funktion nicht abstürzen,
+      // sondern liefert den höchsten normierten Wert zurück.
+      const cs = calculateCrossSection(amps(500), meters(5), undefined, 'DC_12V');
+      expect(cs).toBe(70);
+    });
+
+    it('berechnet Spannungsfall und Querschnitt korrekt im 24-V-Plan', () => {
+      // Bei 24V (und z. B. 0.72V Drop-Budget) ist der Querschnitt niedriger als bei 12V (0.36V).
+      const cs12 = crossSectionForDrop(amps(50), meters(5), volts(0.36));
+      const cs24 = crossSectionForDrop(amps(50), meters(5), volts(0.72));
+      // 50A bei 24V fällt meist niedriger aus als bei 12V (bei gleicher Leistung sogar noch niedriger)
+      expect(cs24).toBeLessThanOrEqual(cs12);
+    });
+
+    it('verhält sich sicher bei Länge 0 oder negativ', () => {
+      // Fallback in calculateCrossSection
+      const csZero = calculateCrossSection(amps(50), meters(0), undefined, 'DC_12V');
+      // Meter construct wirft RangeError bei negativ
+      let threw = false;
+      try { meters(-5); } catch { threw = true; }
+      
+      expect(csZero).toBeGreaterThanOrEqual(10);
+      expect(threw).toBe(true);
+    });
   });
 });

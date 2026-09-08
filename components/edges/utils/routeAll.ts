@@ -18,7 +18,6 @@ import {
   countCrossings,
   OBSTACLE_MARGIN,
   ROUTE_BORDER_RADIUS,
-  segmentHitsRect,
   type Point,
   type PathResult,
   type Rect,
@@ -37,6 +36,8 @@ import { ROUTING_TOKENS } from '../../../lib/routing/tokens';
 import { assignFanOut, type FanOutRequest, type PortAxis } from '../../../lib/routing/rules/portFanOut';
 import { hopRadius, resolveHops, type HopDomain, type HopEdge } from '../../../lib/routing/rules/hopping';
 import { isBackboneConnection } from '../../planner/utils/backbone';
+import { classifyCollision } from '../../../lib/routing/rules/collision';
+import { waypointsToSegments } from '../../../lib/routing/geometry';
 
 export type RouteEdgeRef = {
   id: string;
@@ -297,7 +298,7 @@ export function alignSharedCorridors(
       const a = points[i]!;
       const b = points[i + 1]!;
       for (const rect of rects) {
-        if (segmentHitsRect(a, b, rect)) return true;
+        if (classifyCollision({ type: 'edge-node', segment: [a, b], obstacle: rect }).class === 'hard') return true;
       }
     }
     return false;
@@ -308,6 +309,7 @@ export function alignSharedCorridors(
  * Routet alle Kanten in einem Durchgang und schiebt parallele Trassen global.
  */
 export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Map<string, PathResult> {
+  edges = [...edges].sort((a, b) => a.id.localeCompare(b.id));
   const out = new Map<string, PathResult>();
   if (edges.length === 0) return out;
 
@@ -390,6 +392,7 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
   });
 
   const raw: { id: string; waypoints: Point[]; result: PathResult }[] = [];
+  const dynamicRoutedSegments: { edgeId: string, segment: Segment }[] = [];
 
   for (let i = 0; i < edges.length; i++) {
     const edge = edges[i];
@@ -430,19 +433,13 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
       targetPosition: tgt.position,
       offset: polarityPathOffset(edge.sourceHandle) + lane,
       obstacles,
-      crossingSegments: crossingSegmentsNear(
-        nodes,
-        edgeRefs,
-        { id: edge.id, source: edge.source, target: edge.target },
-        {
-          x: Math.min(src.x, tgt.x) - 120,
-          y: Math.min(src.y, tgt.y) - 120,
-          width: Math.abs(src.x - tgt.x) + 240,
-          height: Math.abs(src.y - tgt.y) + 240,
-        }
-      ),
+      crossingSegments: dynamicRoutedSegments
+        .filter(s => s.edgeId !== edge.id)
+        .map(s => s.segment),
     });
     raw.push({ id: edge.id, waypoints: result.waypoints, result });
+    const segments = waypointsToSegments(result.waypoints);
+    for (const seg of segments) dynamicRoutedSegments.push({ edgeId: edge.id, segment: seg });
   }
 
   const inflated: Rect[] = allObstacles.map((r) => inflateRect(r, OBSTACLE_MARGIN));

@@ -18,6 +18,7 @@ import {
   type Rect,
   type Segment,
 } from '../../../lib/routing/geometry';
+import { classifyCollision } from '../../../lib/routing/rules/collision';
 
 export {
   inflateRect,
@@ -122,7 +123,9 @@ const at = <T>(arr: readonly T[], i: number): T => {
 
 export function segmentHitsAny(a: Point, b: Point, obstacles: Rect[]): boolean {
   for (let i = 0; i < obstacles.length; i++) {
-    if (segmentHitsRect(a, b, at(obstacles, i))) return true;
+    const obstacle = at(obstacles, i);
+    const constraint = classifyCollision({ type: 'edge-node', segment: [a, b], obstacle });
+    if (constraint.class === 'hard') return true;
   }
   return false;
 }
@@ -593,7 +596,8 @@ export function countCrossings(waypoints: Point[], others: Segment[]): number {
   for (let i = 0; i < others.length; i++) {
     const other = at(others, i);
     for (let j = 0; j < own.length; j++) {
-      if (segmentsIntersect(at(own, j), other)) {
+      const constraint = classifyCollision({ type: 'edge-edge', a: at(own, j), b: other });
+      if (constraint.class === 'soft' || constraint.class === 'hard') {
         count++;
         break;
       }

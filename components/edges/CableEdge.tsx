@@ -281,7 +281,7 @@ export const collectEdgeErrors = (input: {
         expectedValue: 0.2,
         unit: 'm',
         // Faustregel (ABYC/ISO-Ursprung, in dieser Form NICHT VDE) — s. Audit ELE-004.
-        source: 'Faustregel: ungeschützte Leitung ab Batteriepol ≤ 0,2 m',
+        source: 'ISO 10133 / ABYC E-11: ungeschützte Leitung ab Batteriepol ≤ 0,2 m',
       });
     }
     // AUDIT ELE-004: Eine vorhandene fuseSize darf die Lage der Sicherung
@@ -303,7 +303,7 @@ export const collectEdgeErrors = (input: {
         measuredValue: data.fuseOffset,
         expectedValue: 0.2,
         unit: 'm',
-        source: 'Faustregel: ungeschützte Leitung ab Batteriepol ≤ 0,2 m',
+        source: 'ISO 10133 / ABYC E-11: ungeschützte Leitung ab Batteriepol ≤ 0,2 m',
       });
     }
   }

@@ -367,6 +367,32 @@ describe('VDE-Standards mit typsicheren Einheiten (K1b)', () => {
       expect(dischargeFloorVoltage(volts(24))).toBeCloseTo(22.5, 10);
       expect(VDE_DISCHARGE_VOLTAGE_FACTOR).toBe(0.9375);
     });
+
+    it('berechnet Kantenstrom trotz fehlender Validierung (verpolte Batterie) ohne abzustürzen', () => {
+      // Eine verpolte Batterie wird vom UI blockiert (A3), aber die
+      // mathematische Berechnungsebene verhält sich deterministisch
+      // (fällt auf Systemlast zurück, da keine expliziten Regeln greifen).
+      const b1 = node('battery', {});
+      const b2 = node('battery', {});
+      const I = calculateEdgeCurrent(b1, b2, [b1, b2], volts(12));
+      expect(I).toBeGreaterThanOrEqual(0);
+    });
+
+    it('berechnet Solar-Strom auch bei direktem Anschluss an Batterie (Solar direkt→Batterie)', () => {
+      // Eine direkte Verbindung wird vom UI blockiert (A4), die
+      // Mathematik liefert aber weiterhin Imp / Vmp.
+      const solar = node('solar', { watts: 100 });
+      const battery = node('battery', {});
+      const I = calculateEdgeCurrent(solar, battery, [solar, battery], volts(12));
+      expect(I).toBeCloseTo(100 / 18, 5); // 18V Vmp
+    });
+
+    it('akzeptiert Mischspannungsplan ohne Absturz, nutzt übergebene Spannung', () => {
+      // UI blockiert (ELE-008), Mathematik rechnet mit 12V (Fallback/übergeben)
+      const consumer = node('consumer', { watts: 60 });
+      const I = calculateEdgeCurrent(undefined, consumer, [consumer], volts(12));
+      expect(I).toBeCloseTo(60 / 11.25, 5); // floor 11.25
+    });
   });
 
   describe('calculateAcEdgeCurrent (Bug 3)', () => {
