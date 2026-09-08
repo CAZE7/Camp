@@ -144,10 +144,41 @@ ELE-004, ELE-007 und das erste DOM-002-Modellstück abgearbeitet.
   Regel+Konstanten-Pins, Store-Handler-Pins), `tsc` App+Tests grün,
   ESLint/Prettier sauber.
 
-**Verbleibend (bewusst offen, priorisiert):** ARCH-Rest (lib/routing/elk Runtime-Importe),
-fehlende Negativ-Tests für Wasser-Modus-Interaktionen mit connectionRules, ROUTE-003
-(ELK-Produktivverdrahtung — separates Architekturprojekt), DOM-001 (230-V-Mehrleiter-Modell),
-DOM-002-Nachpflege (Datenblattwerte statt UNVERIFIED-Tabelle; Peukert sowie temperatur-/
+**Fünfte Nachbearbeitung 2026-09-08 (Fortsetzung Branch `arena/01a0818b-camp`):**
+ARCH-Rest und Wasser-Negativ-Tests abgearbeitet; dabei ein echter Produktiv-Befund gefunden und behoben.
+
+- **ARCH-Rest (lib/routing/elk Runtime-Import) geschlossen:** `ab-compare.ts`
+  importierte den Bestandsrouter zur Laufzeit aus `components/` (ADR-0008-
+  Verstoß). Gelöst per Dependency Injection — das A/B-Harness bekommt
+  `routeAllCables` vom aufrufenden Test herein (Testdateien dürfen lib-
+  seitig components ziehen, Präzedenz `lib/autoWire/placement.test.ts`).
+  Zusätzlich der type-only-Import in `lib/planner/routingV2Adapter.ts` von
+  der UI-Reexport-Fassade direkt auf `lib/domain/cableEdgeData` (ARCH-001-
+  Heimatort) umgehängt. Verbleibende bekannte Typkante
+  (costModel → SegmentSpatialIndex) ist mit Begründung/Heilungspfad in einer
+  Allowlist hinterlegt. **Neuer Guard:** `scripts/architecture/
+libBoundary.test.ts` scannt alle lib-Produktivdateien und verbietet jeden
+  components/store/app/benchmarks-Import außer allowgelisteten — Rückfall
+  unmöglich; die Allowlist kann nur schrumpfen (Verfall wird rot).
+- **Wasser-Negativ-Tests + gefundene Lücke:** Die Negativ-Test-Serie
+  (Store-Ebene) belegte: `isValidConnection` blockiert Grauwasser→Spüle
+  korrekt — **aber `onConnect` rief die Regel nie auf**; jeder Nicht-UI-
+  Aufrufer konnte die Gegen-Wasserlinie real anlegen (React Flow prüft nur
+  im Drag-Pfad). Fix: `onConnect` beglaubigt die Verbindung jetzt selbst
+  über die reine Funktion (Defense in Depth); der Negativ-Test beweist die
+  vorherige Lücke über Zustandsprüfung und sichert den Fix. Dazu positiv
+  festgeschrieben: Pumpe→Spüle ohne Accumulator setzt den Hinweis
+  (waterWarning), Solar→Batterie bleibt im Produktivpfad blockiert
+  (ELE-002-Beweis auf Store-Ebene).
+- **Nachweis:** 1938/1938 Tests grün (+6: zwei Boundary-Guards, vier
+  Negativ-/Lücken-Tests), `tsc` App+Tests grün, ESLint 0 Fehler, Golden
+  Master unverändert (kein Produktivverhalten geändert außer der eben
+  geschlossenen Lücke, die nie SOLL-Verhalten war).
+
+**Verbleibend (bewusst offen, priorisiert):** ROUTE-003 (ELK-Produktivverdrahtung —
+eigenes Architekturprojekt, inkl. Geometrie-Migration components/edges/utils → lib/routing
+mit Abbau der Allowlist-Typkante), DOM-001 (230-V-Mehrleiter-Modell), DOM-002-
+Nachpflege (Datenblattwerte statt UNVERIFIED-Tabelle; Peukert sowie temperatur-/
 SoC-abhängiges Ri). Der Statusblock oben (NOT SAFE / NOT READY)
 bezieht sich auf die **audierte Baseline** und bleibt als historisches Dokument unverändert;
 alle 4 BLOCKING ISSUES sind behoben — eine erneute vollständige Freigabeprüfung steht aus.

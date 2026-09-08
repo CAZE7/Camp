@@ -1053,4 +1053,69 @@ describe('applyTemplate: lässt den Wasserplan unberührt', () => {
       expect(usePlannerStore.getState().edges[0]!.data?.fuseOffset).toBe(0.15);
     });
   });
+
+  describe('Wasser-Modus-Negativregeln über den Store (AUDIT Verbindungsregeln)', () => {
+    const wn = (id: string, type: string): Node => ({ id, type, position: { x: 0, y: 0 }, data: {} });
+
+    it('Grauwassertank → Spüle wird über isValidConnection blockiert (keine Gegen-Wasserlinie)', () => {
+      usePlannerStore.setState({
+        viewMode: 'water',
+        waterNodes: [wn('gray', 'grayWaterTank'), wn('sink', 'sink')],
+        waterEdges: [],
+      });
+      const ok = usePlannerStore.getState().isValidConnection({
+        source: 'gray',
+        target: 'sink',
+        sourceHandle: 'out',
+        targetHandle: 'in',
+      });
+      expect(ok).toBe(false);
+    });
+
+    it('Grauwassertank → Spüle wird über onConnect niemals angelegt', () => {
+      usePlannerStore.setState({
+        viewMode: 'water',
+        waterNodes: [wn('gray', 'grayWaterTank'), wn('sink', 'sink')],
+        waterEdges: [],
+      });
+      act(() => {
+        usePlannerStore
+          .getState()
+          .onConnect({ source: 'gray', target: 'sink', sourceHandle: 'out', targetHandle: 'in' });
+      });
+      expect(usePlannerStore.getState().waterEdges).toEqual([]);
+      expect(usePlannerStore.getState().waterWarning).toBeNull();
+    });
+
+    it('Pumpe → Spüle ohne Accumulator: Hinweis wird gesetzt (Kat. A, Level: Info)', () => {
+      usePlannerStore.setState({
+        viewMode: 'water',
+        waterNodes: [wn('pump1', 'pump'), wn('sink1', 'sink')],
+        waterEdges: [],
+      });
+      act(() => {
+        usePlannerStore
+          .getState()
+          .onConnect({ source: 'pump1', target: 'sink1', sourceHandle: 'out', targetHandle: 'in' });
+      });
+      expect(usePlannerStore.getState().waterEdges.length).toBe(1);
+      expect(usePlannerStore.getState().waterWarning).toContain('Accumulator');
+    });
+
+    it('Solar-Modul → Batterie direkt bleibt im Produktivpfad blockiert (ELE-002-Store-Beweis)', () => {
+      const en = (id: string, type: string): Node => ({ id, type, position: { x: 0, y: 0 }, data: {} });
+      usePlannerStore.setState({
+        viewMode: 'electric',
+        nodes: [en('sol', 'solar'), en('bat', 'battery')],
+        edges: [],
+      });
+      const ok = usePlannerStore.getState().isValidConnection({
+        source: 'sol',
+        target: 'bat',
+        sourceHandle: 'plus',
+        targetHandle: 'plus',
+      });
+      expect(ok).toBe(false);
+    });
+  });
 });

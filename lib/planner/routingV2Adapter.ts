@@ -15,7 +15,7 @@
  */
 
 import type { Edge, Node } from '@xyflow/react';
-import type { CableEdgeData } from '../../components/edges/CableEdge';
+import type { CableEdgeData } from '../domain/cableEdgeData'; // ARCH-001: Domänen-Datenform, nicht UI
 import type { LayoutRequest, LayoutResult } from './layout-engine/contract';
 
 export type V2Node = Node;

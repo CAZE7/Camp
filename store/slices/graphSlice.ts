@@ -303,6 +303,14 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
     // laufen. Hier schon abfangen, statt sie später „heilen" zu müssen.
     if (connection.source === connection.target) return;
 
+    // AUDIT (Negativ-Test-Befund 2026-09-08): Der UI-Pfad prüft über React
+    // Flows isValidConnection — onConnect selbst tat das bisher NICHT. Jeder
+    // andere Aufrufer (Heilung, Programmcode, Tests) konnte die fachlichen
+    // Negativregeln (Grauwasser→Spüle, AC/DC-Mischung, Polarität) umgehen:
+    // die Gegen-Wasserlinie wurde real angelegt. Beglaubigung gehört in den
+    // Schreibpfad selbst (Defense in Depth); isConnectionAllowed ist rein.
+    if (!get().isValidConnection(connection)) return;
+
     const { viewMode, waterNodes, nodes } = get();
 
     if (viewMode === 'water') {
