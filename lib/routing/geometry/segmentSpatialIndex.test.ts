@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SegmentSpatialIndex, SPATIAL_CELL_SIZE } from './segmentSpatialIndex';
-import type { Segment } from './orthogonalRouting';
+import type { Segment } from './types';
 
 /**
  * R-4 (Routing-Qualität): Unit-Tests für den Spatial-Index, der den

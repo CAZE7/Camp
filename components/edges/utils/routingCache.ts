@@ -7,7 +7,7 @@ import {
   type Rect,
   type Segment,
 } from './orthogonalRouting';
-import { SegmentSpatialIndex } from './segmentSpatialIndex';
+import { SegmentSpatialIndex } from '../../../lib/routing/geometry/segmentSpatialIndex';
 
 /**
  * Caches the node bounding boxes once per `nodes` array reference.

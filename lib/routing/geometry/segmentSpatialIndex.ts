@@ -1,4 +1,4 @@
-import type { Point, Rect, Segment } from './orthogonalRouting';
+import type { Point, Rect, Segment } from './types';
 
 /**
  * R-4 (Routing-Qualität): Spatialer Index für den Kreuzungs-Scan.
@@ -11,6 +11,11 @@ import type { Point, Rect, Segment } from './orthogonalRouting';
  * ihrer eigenen Umgebung ab. Der Scan bleibt in großen Plänen aktiv.
  *
  * Rein und framework-frei; Index-Bau O(S), Abfrage O(Treffer).
+ *
+ * Heimat: seit 2026-09-08 (ARCH-Rest / ehem. ROUTE-003-Migrationsblock)
+ * in `lib/routing/geometry` — vorher `components/edges/utils`. Der
+ * type-only-Import des Kostenmodells war die letzte verbliebene
+ * Allowlist-Typkante der App-Grenze (ADR 0008) und ist damit geheilt.
  */
 
 /** Zellgröße des Gitters in px (≈ 2 Kabelabschnitte plus Freigabe). */

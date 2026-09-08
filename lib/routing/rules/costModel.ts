@@ -1,4 +1,4 @@
-import { type SegmentSpatialIndex } from '../../../components/edges/utils/segmentSpatialIndex';
+import { type SegmentSpatialIndex } from '../geometry/segmentSpatialIndex';
 import { classifySegmentAgainstSegment } from './collision';
 import { distanceSegmentToSegment, type Segment } from '../geometry';
 import { ROUTING_TOKENS, type RoutingTokens } from '../tokens';

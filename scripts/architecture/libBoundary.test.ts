@@ -16,24 +16,18 @@ import { join, relative } from 'node:path';
  * Regression) bewusst beiderlei Seiten ziehen dürfen (Präzedenz:
  * lib/autoWire/placement.test.ts).
  *
- * Type-only-Ausnahmen (`import type` bzw. `{ type X }`) sind nur über
- * die ALLOWLIST unten möglich — mit Pflichtbegründung und Heilungs-Pfad.
- * Der Test meldet sowohl neue Verstöße als auch Allowlist-Einträge, deren
- * Import längst geheilt ist, sodass die Liste nur schrumpfen kann.
+ * Type-only-Ausnahmen (`import type` bzw. `{ type X }`) wären nur über
+ * eine ALLOWLIST mit Pflichtbegründung und Heilungs-Pfad möglich.
+ * STAND 2026-09-08: **leer und vollständig geheilt** — die letzte Typkante
+ * (`costModel` → `SegmentSpatialIndex`) wurde durch die Migration der
+ * Klasse nach `lib/routing/geometry/segmentSpatialIndex.ts` aufgelöst.
+ * Die Leere ist der Sollzustand; jeder neue Eintrag bricht den Verfall-
+ * Test und verlangt eine Begründung.
  */
 
 type AllowEntry = { file: string; needle: string; reason: string };
 
-const ALLOWED_TYPE_ONLY_IMPORTS: AllowEntry[] = [
-  {
-    file: 'lib/routing/rules/costModel.ts',
-    needle: 'components/edges/utils/segmentSpatialIndex',
-    reason:
-      'type-only: framework-freie Klasse SegmentSpatialIndex; der Typ wandert mit der ' +
-      'Routing-Geometrie-Migration nach lib/routing (gehört zum ROUTE-003-Block), bis ' +
-      'dahin bleibt der Import reine Typkante ohne Laufzeit-Effekt.',
-  },
-];
+const ALLOWED_TYPE_ONLY_IMPORTS: AllowEntry[] = [];
 
 /** Verbotene App-Schichten als Import-Ziel aus lib-Produktivdateien. */
 const FORBIDDEN_LAYERS = ['components/', 'store/', 'app/', 'benchmarks/'];
@@ -92,10 +86,13 @@ describe('ADR-0008 — lib importiert keine App-Schichten (Architektur-Boundary)
     ).toEqual([]);
   });
 
-  it('Allowlist-Einträge tragen eine Begründung mit Heilungspfad', () => {
+  it('Allowlist ist leer und bleibt es (jeder Eintrag braucht Heilungspfad)', () => {
+    // Seit 2026-09-08 ist die Liste leer — der Sollzustand. Sollte je ein
+    // Eintrag nötig werden: Begründung mit Heilungspfad ist Pflicht.
+    expect(ALLOWED_TYPE_ONLY_IMPORTS).toEqual([]);
     for (const a of ALLOWED_TYPE_ONLY_IMPORTS) {
       expect(a.reason.length).toBeGreaterThan(40);
-      expect(a.reason).toContain('ROUTE-003');
+      expect(a.reason).toContain('Heilungspfad');
     }
   });
 });
