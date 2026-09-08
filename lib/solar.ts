@@ -195,6 +195,26 @@ export function solarPanelEndOf(source: Node | undefined, target: Node | undefin
 }
 
 /**
+ * Referenzspannung (Basis) des Spannungsfalls auf der Panel-Zuleitung
+ * (Panel → Laderegler) — AUDIT ELE-007 Restpunkt, nachgezogen 2026-09-08.
+ *
+ * Bis dahin wurde der prozentuale Spannungsfall auch auf Solar-Kanten gegen
+ * die 12,8-V-Systemreferenz gerechnet: ein Fall von 0,5 V erschien als 3,9 %
+ * statt als 2,8 % — konservativ, aber fachlich falsch bemessen (das Budget
+ * greift so schon deutlich vor dem 3-%-Ziel an der MPP-Spannung).
+ *
+ * Basis ist die Betriebsspannung MPP des Modells (`VDE_SOLAR_VMP_VOLTAGE`,
+ * 18 V: typische Vmp-Lage von „12-V"-Modulen, 36 Zellen, Vmp ≈ 17–18,5 V).
+ * Bewusst NICHT panelindividuell: ein Datenblatt-Vmp-Feld existiert im
+ * Modell nicht (das Feld data.voltage ist ein Legacy-Nennspannungsfeld ohne
+ * Vmp-Semantik — 12-V-Nennlage ≠ 18-V-Betriebspunkt). Erweiterungspunkt:
+ * echtes Datenblatt-Vmp anlegen und hier bevorzugen.
+ */
+export function solarDropBasisVoltageOf(): Volts {
+  return VDE_SOLAR_VMP_VOLTAGE;
+}
+
+/**
  * Mindest-Sicherungsstrom für eine konkrete Kante:
  * Solar-Kante (Panel-Endpunkt) → 1,5625 × Isc des Panels,
  * sonst 0 (kein Solar-Sonderfaktor).

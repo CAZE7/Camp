@@ -18,6 +18,8 @@ import {
   maxFuseForDisplay,
   VDE_AMPACITY,
   DERATE_FACTOR,
+  FUSE_MAX_UNPROTECTED_LENGTH_M,
+  FUSE_MAX_UNPROTECTED_SOURCE,
 } from '../../lib/electrical';
 import { AC_SYSTEM_VOLTAGE, calculateEdgeCurrent, getSystemVoltage } from '../../lib/vde-standards';
 import { acCurrentA } from '../../lib/autoWire/sizing';
@@ -34,6 +36,7 @@ export const TAP_LABEL_TIMEOUT_MS = 5000;
 export type { CableEdgeData, CableEdgeGeometry } from '../../lib/domain/cableEdgeData';
 import type { CableEdgeData } from '../../lib/domain/cableEdgeData';
 import { solarEdgeFuseFloorOf } from '../../lib/solar'; // ELE-007: 1,56×Isc-Sicherungsregel
+import { acCableComposition } from '../../lib/acProtection'; // DOM-001: Mehrleiter-Zusammensetzung
 
 /**
  * React Flow 12 typisiert `EdgeProps` über den KANTEN-Typ, nicht mehr über die
@@ -267,26 +270,32 @@ export const collectEdgeErrors = (input: {
         });
       }
     }
-    // 20-cm-Regel gilt für die Lage der Sicherung am Batteriepol —
-    // unabhängig von der Flussrichtung der Kante. Ist die Leitung bereits
-    // abgesichert, gilt die Sicherung als am Pol sitzend; die Strecke danach
-    // (z. B. Starterbatterie → Ladebooster) darf länger sein.
+    // 20-cm-Regel (FUSE_MAX_UNPROTECTED_LENGTH_M, Normverankerung in
+    // lib/electrical.ts: ISO 10133:2000 §8.1 = 200 mm; ABYC E-11 = 178 mm)
+    // gilt für die Lage der Sicherung am Batteriepol — unabhängig von der
+    // Flussrichtung der Kante. Ist die Leitung bereits abgesichert, gilt die
+    // Sicherung als am Pol sitzend; die Strecke danach (z. B.
+    // Starterbatterie → Ladebooster) darf länger sein.
     const batteryAtEnd = sourceNodeType === 'battery' || targetNodeType === 'battery';
-    if (edgeDomain !== 'AC_230V' && batteryAtEnd && length > 0.2 && !data?.fuseSize) {
+    if (
+      edgeDomain !== 'AC_230V' &&
+      batteryAtEnd &&
+      length > FUSE_MAX_UNPROTECTED_LENGTH_M &&
+      !data?.fuseSize
+    ) {
       errors.push({
         ruleId: 'main-fuse-distance',
         severity: 'critical',
         message: 'Hauptsicherung nach Batterie max 20cm!',
         measuredValue: length,
-        expectedValue: 0.2,
+        expectedValue: FUSE_MAX_UNPROTECTED_LENGTH_M,
         unit: 'm',
-        // Faustregel (ABYC/ISO-Ursprung, in dieser Form NICHT VDE) — s. Audit ELE-004.
-        source: 'ISO 10133 / ABYC E-11: ungeschützte Leitung ab Batteriepol ≤ 0,2 m',
+        source: FUSE_MAX_UNPROTECTED_SOURCE,
       });
     }
     // AUDIT ELE-004: Eine vorhandene fuseSize darf die Lage der Sicherung
     // nicht „wegzaubern": Sitzt die Sicherung (fuseOffset in Metern ab
-    // Batteriepol) weiter als 20 cm entfernt, bleibt die Anfangsstrecke
+    // Batteriepol) weiter als die Grenze entfernt, bleibt die Anfangsstrecke
     // ungeschützt. Fehlt fuseOffset, gilt wie bisher der alte Vertrag
     // (Sicherung am Pol) — kein Bruch bestehender Pläne.
     if (
@@ -294,16 +303,16 @@ export const collectEdgeErrors = (input: {
       batteryAtEnd &&
       data?.fuseSize &&
       data.fuseOffset !== undefined &&
-      data.fuseOffset > 0.2
+      data.fuseOffset > FUSE_MAX_UNPROTECTED_LENGTH_M
     ) {
       errors.push({
         ruleId: 'fuse-offset',
         severity: 'critical',
-        message: `Sicherung sitzt ${data.fuseOffset.toFixed(1)}m vom Batteriepol (max 0.2m)!`,
+        message: `Sicherung sitzt ${data.fuseOffset.toFixed(1)}m vom Batteriepol (max ${FUSE_MAX_UNPROTECTED_LENGTH_M}m)!`,
         measuredValue: data.fuseOffset,
-        expectedValue: 0.2,
+        expectedValue: FUSE_MAX_UNPROTECTED_LENGTH_M,
         unit: 'm',
-        source: 'ISO 10133 / ABYC E-11: ungeschützte Leitung ab Batteriepol ≤ 0,2 m',
+        source: FUSE_MAX_UNPROTECTED_SOURCE,
       });
     }
   }
@@ -711,7 +720,8 @@ const CableEdge = function ({
             {emphasized && edgeDomain === 'AC_230V' ? (
               <>
                 <span style={{ color: 'var(--info)', fontSize: '12px' }}>
-                  real ausführen: 3-adrig (L, N, PE)
+                  real ausführen: {acCableComposition(crossSection).label} (L/N je {crossSection} mm² + PE{' '}
+                  {acCableComposition(crossSection).protectiveEarth} mm² · Tab. 54.2)
                 </span>
                 <span
                   style={{
@@ -723,7 +733,9 @@ const CableEdge = function ({
                     marginTop: '2px',
                   }}
                 >
-                  FI/LS (RCD ≤ 30 mA) einplanen — wird hier nicht geprüft
+                  {data?.acProtection?.kind === 'rcbo'
+                    ? 'FI/LS gewählt (RCBO, 30 mA) — Abschaltung wird geschätzt (Hinweis A8)'
+                    : 'FI/LS (RCD ≤ 30 mA) einplanen — Abschaltung wird geschätzt (Hinweis A8)'}
                 </span>
                 {/* Auch AC-Kanten zeigen ihren Spannungsfall-Fehler (Bug 10). */}
                 {errors.map((err, idx) => (

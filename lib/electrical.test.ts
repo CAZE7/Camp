@@ -11,6 +11,8 @@ import {
   getHandleDomain,
   selectFuseSize,
   isFuseFeasible,
+  FUSE_MAX_UNPROTECTED_LENGTH_M,
+  FUSE_MAX_UNPROTECTED_SOURCE,
 } from './electrical';
 
 describe('electrical safety refactoring tests', () => {
@@ -173,5 +175,17 @@ describe('M11-1: maxFuseForDisplay — Anzeige-Klemmung statt Render-Crash', () 
     expect(maxFuseForDisplay(95)).toBe(calculateMaxFuse(70)); // Import-Fall
     expect(maxFuseForDisplay(0.5)).toBe(calculateMaxFuse(1.5)); // unter Minimum
     expect(() => calculateMaxFuse(95)).toThrow(RangeError); // strikt bleibt strikt
+  });
+});
+
+describe('AUDIT ELE-004 — 20-cm-Regel normativ verankert', () => {
+  it('Grenze ist exakt die ISO-10133:2000-§8.1-Distanz von 200 mm', () => {
+    expect(FUSE_MAX_UNPROTECTED_LENGTH_M).toBe(0.2);
+  });
+
+  it('Quellenanker nennt Norm, Paragraf und ABYC-Referenzwert', () => {
+    expect(FUSE_MAX_UNPROTECTED_SOURCE).toContain('ISO 10133:2000');
+    expect(FUSE_MAX_UNPROTECTED_SOURCE).toContain('§8.1');
+    expect(FUSE_MAX_UNPROTECTED_SOURCE).toContain('178 mm');
   });
 });

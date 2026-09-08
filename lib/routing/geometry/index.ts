@@ -11,3 +11,4 @@ export * from './types';
 export * from './segments';
 export * from './rects';
 export * from './polyline';
+export * from './segmentSpatialIndex';

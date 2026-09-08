@@ -60,6 +60,12 @@ export const NODE_DATA_SCHEMA: Record<string, Record<string, NodeDataFieldSpec>>
     bmsContinuousDischarge: { type: 'number', allowZero: true },
     bmsPeakDischarge: { type: 'number', allowZero: true },
     bmsContinuousCharge: { type: 'number', allowZero: true },
+    // AUDIT DOM-002: Batterie-Innenwiderstand (mΩ, Datenblatt) — schlägt
+    // die Chemie-Faustformel in lib/shortCircuit.ts.
+    internalResistance: { type: 'number', allowZero: true },
+    // DOM-002-Nachpflege: Peukert-Exponent (k ≥ 1, Datenblatt) — schlägt den
+    // Chemie-Faustwert in lib/peukert.ts.
+    peukertExponent: { type: 'number' },
   },
   busbar: {
     ...COMMON_FIELDS,

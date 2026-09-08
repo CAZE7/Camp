@@ -14,6 +14,8 @@ import { act } from '@testing-library/react';
 import { usePlannerStore, getDerivedSystemState } from './usePlannerStore';
 import { TEMPLATE_MINIMALIST } from '../components/planner/templates';
 import * as layoutUtils from '../components/planner/utils/layout';
+import { applyAdvancedLayout } from '../lib/planner/routingV2Adapter';
+import type { LayoutV2Outcome } from './slices/types';
 import type { Node, Edge } from '@xyflow/react';
 import { type CableEdgeData } from '../components/edges/CableEdge';
 
@@ -22,6 +24,13 @@ vi.mock('../components/planner/utils/layout', () => ({
     nodes: nodes.map((n: Node) => ({ ...n, position: { x: n.position.x + 10, y: n.position.y + 20 } })),
     edges,
   })),
+}));
+
+// AUDIT ROUTE-003 / ADR 0018: Der ELK/Dagre-Adapter wird für die
+// Store-Verträge gemockt — eigene Läufe des echten ELK stehen in
+// lib/planner/routingV2Adapter.test.ts.
+vi.mock('../lib/planner/routingV2Adapter', () => ({
+  applyAdvancedLayout: vi.fn(),
 }));
 
 describe('usePlannerStore - extended coverage', () => {
@@ -110,6 +119,152 @@ describe('usePlannerStore - extended coverage', () => {
 
       raf.mockRestore();
       dispatchSpy.mockRestore();
+    });
+  });
+
+  /**
+   * AUDIT ROUTE-003 / ADR 0018: onLayoutV2 ist der verdrahtete ELK-Produktivpfad.
+   * Vertrag: letzte Anfrage gewinnt (veraltete Läufe schreiben nie),
+   * Engine-Transparenz im Ergebnis, Wasser-Modus schreibt waterNodes,
+   * leerer Plan und Doppelfehler sind ehrliche Verweigerungen.
+   */
+  describe('onLayoutV2', () => {
+    const shift10 = (nodes: readonly Node[], edges: readonly Edge[]) => ({
+      nodes: nodes.map((n) => ({ ...n, position: { x: n.position.x + 10, y: n.position.y + 20 } })),
+      edges: [...edges],
+      engine: 'elk' as const,
+    });
+
+    beforeEach(() => {
+      vi.mocked(applyAdvancedLayout).mockImplementation((nodes, edges) =>
+        Promise.resolve(shift10(nodes as Node[], edges as Edge[]))
+      );
+      usePlannerStore.setState({ viewMode: 'electric' });
+    });
+
+    it('applies ELK positions with history and reports the engine', async () => {
+      const node: Node = { id: 'n1', type: 'battery', position: { x: 0, y: 0 }, data: {} };
+      usePlannerStore.setState({ nodes: [node], edges: [] });
+
+      let outcome: LayoutV2Outcome | undefined;
+      await act(async () => {
+        outcome = await usePlannerStore.getState().onLayoutV2();
+      });
+
+      expect(outcome).toEqual({ applied: true, engine: 'elk' });
+      const state = usePlannerStore.getState();
+      expect(state.nodes[0]!.position).toEqual({ x: 10, y: 20 });
+      expect(state.isLayoutPending).toBe(false);
+      expect(state.canUndo).toBe(true);
+    });
+
+    it('reports the Dagre fallback instead of silently claiming ELK', async () => {
+      const node: Node = { id: 'n1', type: 'battery', position: { x: 0, y: 0 }, data: {} };
+      usePlannerStore.setState({ nodes: [node], edges: [] });
+      vi.mocked(applyAdvancedLayout).mockImplementation((nodes, edges) =>
+        Promise.resolve({ ...shift10(nodes as Node[], edges as Edge[]), engine: 'dagre' as const })
+      );
+
+      let outcome: LayoutV2Outcome | undefined;
+      await act(async () => {
+        outcome = await usePlannerStore.getState().onLayoutV2();
+      });
+
+      expect(outcome).toEqual({ applied: true, engine: 'dagre' });
+    });
+
+    it('layouts water nodes when viewMode is water', async () => {
+      const waterNode: Node = {
+        id: 'w1',
+        type: 'freshWaterTank',
+        position: { x: 0, y: 0 },
+        data: {},
+      };
+      usePlannerStore.setState({
+        viewMode: 'water',
+        waterNodes: [waterNode],
+        waterEdges: [],
+        nodes: [],
+        edges: [],
+      });
+
+      let outcome: LayoutV2Outcome | undefined;
+      await act(async () => {
+        outcome = await usePlannerStore.getState().onLayoutV2();
+      });
+
+      expect(outcome).toEqual({ applied: true, engine: 'elk' });
+      expect(usePlannerStore.getState().waterNodes[0]!.position).toEqual({ x: 10, y: 20 });
+      expect(usePlannerStore.getState().nodes).toEqual([]);
+    });
+
+    it('refuses an empty plan without calling the adapter', async () => {
+      usePlannerStore.setState({ nodes: [], edges: [] });
+      vi.mocked(applyAdvancedLayout).mockClear();
+
+      let outcome: LayoutV2Outcome | undefined;
+      await act(async () => {
+        outcome = await usePlannerStore.getState().onLayoutV2();
+      });
+
+      expect(outcome).toEqual({ applied: false, reason: 'empty' });
+      expect(applyAdvancedLayout).not.toHaveBeenCalled();
+    });
+
+    it('letzte Anfrage gewinnt: ein veralteter Lauf schreibt nie (P-6, ADR 0018)', async () => {
+      const node: Node = { id: 'n1', type: 'battery', position: { x: 0, y: 0 }, data: {} };
+      usePlannerStore.setState({ nodes: [node], edges: [] });
+
+      // Lauf 1 bleibt offen, Lauf 2 gewinnt sofort mit +10/+20.
+      let resolveFirst!: (value: ReturnType<typeof shift10>) => void;
+      vi.mocked(applyAdvancedLayout)
+        .mockImplementationOnce(
+          (_nodes, _edges) =>
+            new Promise((resolve) => {
+              resolveFirst = resolve;
+            })
+        )
+        .mockImplementation((nodes, edges) => Promise.resolve(shift10(nodes as Node[], edges as Edge[])));
+
+      const firstPromise = usePlannerStore.getState().onLayoutV2();
+      let second: LayoutV2Outcome | undefined;
+      await act(async () => {
+        second = await usePlannerStore.getState().onLayoutV2();
+      });
+      expect(second).toEqual({ applied: true, engine: 'elk' });
+      expect(usePlannerStore.getState().nodes[0]!.position).toEqual({ x: 10, y: 20 });
+
+      // Der veraltete Lauf kehrt jetzt zurück — mit abweichendem Ergebnis,
+      // damit ein unerlaubter Schreibzugriff sichtbar würde.
+      let first: LayoutV2Outcome | undefined;
+      await act(async () => {
+        resolveFirst({
+          nodes: [{ id: 'n1', type: 'battery', position: { x: 100, y: 200 }, data: {} }],
+          edges: [],
+          engine: 'elk',
+        });
+        first = await firstPromise;
+      });
+
+      expect(first).toEqual({ applied: false, reason: 'stale' });
+      // Positionen unverändert — der jüngere Lauf bleibt die Wahrheit.
+      expect(usePlannerStore.getState().nodes[0]!.position).toEqual({ x: 10, y: 20 });
+      expect(usePlannerStore.getState().isLayoutPending).toBe(false);
+    });
+
+    it('reports error when both engines fail and releases the pending state', async () => {
+      const node: Node = { id: 'n1', type: 'battery', position: { x: 0, y: 0 }, data: {} };
+      usePlannerStore.setState({ nodes: [node], edges: [] });
+      vi.mocked(applyAdvancedLayout).mockRejectedValueOnce(new Error('beide Engines unten'));
+
+      let outcome: LayoutV2Outcome | undefined;
+      await act(async () => {
+        outcome = await usePlannerStore.getState().onLayoutV2();
+      });
+
+      expect(outcome).toEqual({ applied: false, reason: 'error' });
+      expect(usePlannerStore.getState().isLayoutPending).toBe(false);
+      expect(usePlannerStore.getState().nodes[0]!.position).toEqual({ x: 0, y: 0 });
     });
   });
 
@@ -996,5 +1151,159 @@ describe('applyTemplate: lässt den Wasserplan unberührt', () => {
     expect(state.nodes.length, 'Template soll Elektrik befüllen').toBeGreaterThan(0);
     expect(state.waterNodes).toEqual([waterNode]);
     expect(state.waterEdges).toEqual([waterEdge]);
+  });
+
+  describe('handleChangeFuseType / handleChangeFuseOffset (AUDIT ELE-004/DOM-002)', () => {
+    const edge: Edge<CableEdgeData> = {
+      id: 'e1',
+      source: 'n1',
+      target: 'n2',
+      data: { fuseSize: 100 },
+    };
+
+    beforeEach(() => {
+      usePlannerStore.setState({ edges: [edge], waterEdges: [] });
+    });
+
+    it('setzt und tauscht eine bekannte Bauform (DOM-002)', () => {
+      act(() => {
+        usePlannerStore.getState().handleChangeFuseType('e1', 'mrbf');
+      });
+      expect(usePlannerStore.getState().edges[0]!.data?.fuseType).toBe('mrbf');
+      act(() => {
+        usePlannerStore.getState().handleChangeFuseType('e1', 'classT');
+      });
+      expect(usePlannerStore.getState().edges[0]!.data?.fuseType).toBe('classT');
+    });
+
+    it('lehnt unbekannte Bauform-Strings defensiv ab (Zustand unverändert)', () => {
+      act(() => {
+        usePlannerStore.getState().handleChangeFuseType('e1', 'mrbf');
+      });
+      act(() => {
+        usePlannerStore.getState().handleChangeFuseType('e1', 'klingeldraht');
+      });
+      expect(usePlannerStore.getState().edges[0]!.data?.fuseType).toBe('mrbf');
+    });
+
+    it('undefined löscht die Bauform wieder (Feld zurücksetzen)', () => {
+      act(() => {
+        usePlannerStore.getState().handleChangeFuseType('e1', 'ato');
+      });
+      act(() => {
+        usePlannerStore.getState().handleChangeFuseType('e1', undefined);
+      });
+      expect(usePlannerStore.getState().edges[0]!.data?.fuseType).toBeUndefined();
+    });
+
+    /** AUDIT DOM-001: AC-Schutzorgan an AC-Kanten pflegen. */
+    it('handleChangeAcProtection setzt, tauscht und löscht das AC-Schutzorgan (DOM-001)', () => {
+      usePlannerStore.setState({
+        edges: [{ id: 'e1', source: 'n1', target: 'n2', data: { edgeDomain: 'AC_230V', fuseSize: 16 } }],
+      });
+      act(() => {
+        usePlannerStore.getState().handleChangeAcProtection('e1', {
+          kind: 'mcb',
+          characteristic: 'B',
+          breakingCapacityKA: 6,
+        });
+      });
+      expect(usePlannerStore.getState().edges[0]!.data?.acProtection).toEqual({
+        kind: 'mcb',
+        characteristic: 'B',
+        breakingCapacityKA: 6,
+      });
+      act(() => {
+        usePlannerStore.getState().handleChangeAcProtection('e1', {
+          kind: 'rcbo',
+          characteristic: 'C',
+          breakingCapacityKA: 10,
+        });
+      });
+      expect(usePlannerStore.getState().edges[0]!.data?.acProtection?.kind).toBe('rcbo');
+      act(() => {
+        usePlannerStore.getState().handleChangeAcProtection('e1', undefined);
+      });
+      expect(usePlannerStore.getState().edges[0]!.data?.acProtection).toBeUndefined();
+      // Undo-Sicherheit: Wert ist im History-Snapshot.
+      expect(usePlannerStore.getState().canUndo).toBe(true);
+    });
+
+    it('fuseOffset: negative oder nicht-endliche Werte ändern den Zustand nicht (ELE-004)', () => {
+      act(() => {
+        usePlannerStore.getState().handleChangeFuseOffset('e1', 0.15);
+      });
+      expect(usePlannerStore.getState().edges[0]!.data?.fuseOffset).toBe(0.15);
+      act(() => {
+        usePlannerStore.getState().handleChangeFuseOffset('e1', -0.5);
+        usePlannerStore.getState().handleChangeFuseOffset('e1', Number.NaN);
+      });
+      expect(usePlannerStore.getState().edges[0]!.data?.fuseOffset).toBe(0.15);
+    });
+  });
+
+  describe('Wasser-Modus-Negativregeln über den Store (AUDIT Verbindungsregeln)', () => {
+    const wn = (id: string, type: string): Node => ({ id, type, position: { x: 0, y: 0 }, data: {} });
+
+    it('Grauwassertank → Spüle wird über isValidConnection blockiert (keine Gegen-Wasserlinie)', () => {
+      usePlannerStore.setState({
+        viewMode: 'water',
+        waterNodes: [wn('gray', 'grayWaterTank'), wn('sink', 'sink')],
+        waterEdges: [],
+      });
+      const ok = usePlannerStore.getState().isValidConnection({
+        source: 'gray',
+        target: 'sink',
+        sourceHandle: 'out',
+        targetHandle: 'in',
+      });
+      expect(ok).toBe(false);
+    });
+
+    it('Grauwassertank → Spüle wird über onConnect niemals angelegt', () => {
+      usePlannerStore.setState({
+        viewMode: 'water',
+        waterNodes: [wn('gray', 'grayWaterTank'), wn('sink', 'sink')],
+        waterEdges: [],
+      });
+      act(() => {
+        usePlannerStore
+          .getState()
+          .onConnect({ source: 'gray', target: 'sink', sourceHandle: 'out', targetHandle: 'in' });
+      });
+      expect(usePlannerStore.getState().waterEdges).toEqual([]);
+      expect(usePlannerStore.getState().waterWarning).toBeNull();
+    });
+
+    it('Pumpe → Spüle ohne Accumulator: Hinweis wird gesetzt (Kat. A, Level: Info)', () => {
+      usePlannerStore.setState({
+        viewMode: 'water',
+        waterNodes: [wn('pump1', 'pump'), wn('sink1', 'sink')],
+        waterEdges: [],
+      });
+      act(() => {
+        usePlannerStore
+          .getState()
+          .onConnect({ source: 'pump1', target: 'sink1', sourceHandle: 'out', targetHandle: 'in' });
+      });
+      expect(usePlannerStore.getState().waterEdges.length).toBe(1);
+      expect(usePlannerStore.getState().waterWarning).toContain('Accumulator');
+    });
+
+    it('Solar-Modul → Batterie direkt bleibt im Produktivpfad blockiert (ELE-002-Store-Beweis)', () => {
+      const en = (id: string, type: string): Node => ({ id, type, position: { x: 0, y: 0 }, data: {} });
+      usePlannerStore.setState({
+        viewMode: 'electric',
+        nodes: [en('sol', 'solar'), en('bat', 'battery')],
+        edges: [],
+      });
+      const ok = usePlannerStore.getState().isValidConnection({
+        source: 'sol',
+        target: 'bat',
+        sourceHandle: 'plus',
+        targetHandle: 'plus',
+      });
+      expect(ok).toBe(false);
+    });
   });
 });

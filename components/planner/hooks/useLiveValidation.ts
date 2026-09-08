@@ -4,6 +4,17 @@ import { type CableEdgeData } from '../../edges/CableEdge';
 import { getEdgeDomain } from '../../../lib/electrical';
 import { SOLAR_DESIGN_MIN_TEMPERATURE_C, stringColdVocOf } from '../../../lib/solar'; // ELE-007
 import { chemistriesParallelSafe } from '../../../lib/autoWire/primitives'; // AUTO-003
+import {
+  FUSE_BREAKING_CAPACITY_A,
+  bankShortCircuitCurrentA,
+  breakingCapacityAOf,
+  shortCircuitAtFuseA,
+} from '../../../lib/shortCircuit'; // DOM-002
+import {
+  UPSTREAM_IMPEDANCE_ASSUMPTION_OHM,
+  acSourceKindOf,
+  evaluateAcEdgeProtection,
+} from '../../../lib/acProtection'; // DOM-001
 
 import { getSystemVoltage } from '../utils/voltage';
 import { calculateEdgeCurrent } from '../../../lib/vde-standards';
@@ -495,6 +506,199 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
               battery.data?.label || 'Batterie'
             }“ führt ≈${Math.round(I)} A, das BMS erlaubt dauerhaft nur ${chargeLimit} A Ladestrom.`,
           });
+        }
+      }
+    }
+
+    // --- Rule A7: Kurzschlussstrom vs. Abschaltvermögen (AUDIT DOM-002) ---
+    // Erster Modellschnitt mit geschätztem Ik (Batterie-Innenwiderstand oder
+    // Chemie-Faustformel) und typischen Abschaltvermögen je Bauform —
+    // Modellgrenzen und Quellenlage: lib/shortCircuit.ts. Geprüft werden nur
+    // Batterie-Plus-Ausgänge mit eingetragener Sicherung: genau dort ist die
+    // Sicherung das Trennorgan zwischen dem höchsten Fehlerstrom des Plans
+    // und der Installation.
+    {
+      const bankIk = bankShortCircuitCurrentA(batteries, sysVoltage);
+      let fuseTypeNotePushed = false;
+      for (const battery of batteries) {
+        if (bankIk === null) break; // Bank nicht schätzbar → ehrlich schweigen
+        for (const edge of edges) {
+          const isBatterySourcePlus = edge.source === battery.id && !!edge.sourceHandle?.includes('plus');
+          if (!isBatterySourcePlus) continue;
+          const edgeData = edge.data as
+            | {
+                fuseSize?: number;
+                fuseType?: string;
+                fuseBreakingCapacity?: number;
+                fuseOffset?: number;
+                crossSection?: number;
+              }
+            | undefined;
+          if (!(Number(edgeData?.fuseSize) > 0)) continue;
+          const capacity = breakingCapacityAOf(
+            edgeData?.fuseType,
+            edgeData?.fuseBreakingCapacity,
+            sysVoltage
+          );
+          const ikAtFuse = shortCircuitAtFuseA(
+            batteries,
+            edgeData?.fuseOffset,
+            edgeData?.crossSection,
+            sysVoltage
+          );
+          if (ikAtFuse === null) continue;
+          if (capacity === null) {
+            // Ohne Bauform/Datenblatt ist das Abschaltvermögen nicht
+            // bewertbar — einmal pro Plan als Hinweis (kein Warn-Spam je Kante).
+            if (!fuseTypeNotePushed && bankIk > FUSE_BREAKING_CAPACITY_A.ato) {
+              fuseTypeNotePushed = true;
+              warnings.push({
+                id: 'sc-fuse-type-unknown',
+                category: 'estimation',
+                type: 'warning',
+                title: 'Abschaltvermögen der Hauptsicherung unbekannt',
+                focusId: battery.id,
+                focusType: 'node',
+                ruleId: 'DOM-002-fuse-type-unknown',
+                measuredValue: `≈ ${(bankIk / 1000).toFixed(1)} kA`,
+                expectedValue: 'Bauform bzw. Datenblatt-Abschaltvermögen angeben',
+                unit: 'kA',
+                source: 'Modell: geschätzter Bank-Kurzschlussstrom (lib/shortCircuit.ts)',
+                message: `Hinweis: Die Batteriebank kann im Kurzschlussfall ≈ ${(bankIk / 1000).toFixed(1)} kA liefern (geschätzt aus Innenwiderstand/Faustformel). Ohne Bauform der Hauptsicherung (ATO/MIDI/MEGA/ANL/MRBF/Class T) ist ihr Abschaltvermögen hier nicht geprüft — im Leitungs-Inspektor eintragen.`,
+              });
+            }
+            continue;
+          }
+          if (ikAtFuse > capacity) {
+            warnings.push({
+              id: `sc-breaking-${edge.id}`,
+              category: 'safety',
+              type: 'critical',
+              title: 'Abschaltvermögen der Sicherung zu gering',
+              focusId: edge.id,
+              focusType: 'edge',
+              ruleId: 'DOM-002-breaking-capacity',
+              measuredValue: `≈ ${Math.round(ikAtFuse)} A`,
+              expectedValue: `≤ ${capacity} A`,
+              unit: 'A',
+              source:
+                'ABYC-E-11-AIC-Anforderung; Bauform-Tabelle lib/shortCircuit.ts (typische Herstellerwerte, UNVERIFIED)',
+              message: `⚠️ Kritisch: Die Sicherung (Abschaltvermögen ${capacity} A) kann den geschätzten Kurzschlussstrom der Bank am Einbauort (≈ ${Math.round(ikAtFuse)} A) nicht sicher trennen. Bauform mit höherem Abschaltvermögen wählen (z. B. Class T ≈ 20 kA) oder Datenblatt-Wert eintragen.`,
+            });
+          }
+        }
+      }
+    }
+
+    // --- Rule A8: AC-Abschaltbedingung / Mehrleiter-Schutz (AUDIT DOM-001) ---
+    // Bisher waren AC-Kanten Einleiter-Abstraktionen mit einem Zahlenfeld
+    // als „Sicherung". Jetzt wird die Abschaltbedingung (IEC 60364-4-41,
+    // TN: Zs·Ia ≤ U0, 2/3-Regel) geschätzt bewertet: Leitungsanteil über
+    // Phase+PE (Tabelle 54.2), vorgelagerte Netzimpedanz als deklarierte
+    // Annahme. Sonderfälle ehrlich: Wechselrichter-Ausgang (elektronisch
+    // begrenzt) und 30-mA-FI am Einspeisepunkt (oder RCBO) decken den
+    // Fehlerschutz. FI-Deckung ≠ Messpflicht-Freischein: 'rcd-covered'
+    // bleibt ein Hinweis, kein OK.
+    {
+      const anyUpstreamRcd = [...shorePowerNodes, ...chargers].some((n) => n.data?.hasRcd === true);
+      let acProtectionNotePushed = false;
+      for (const edge of edges) {
+        const sourceNode = nodeMap.get(edge.source);
+        const targetNode = nodeMap.get(edge.target);
+        const isAc =
+          (edge.data?.edgeDomain ??
+            getEdgeDomain(sourceNode?.type, targetNode?.type, edge.sourceHandle, edge.targetHandle)) ===
+          'AC_230V';
+        if (!isAc) continue;
+
+        // Wechselrichter-Ausgänge erzeugen bewusst KEINEN Statushinweis:
+        // das „Auto-Wired-Plan ist meldungsfrei"-Versprechen (Szenario-Tests)
+        // gilt weiter; das Modelllimit steht sichtbar am Kanten-Chip
+        // (elektronisch begrenzt → Hersteller-Datenblatt beachten). Die
+        // Schätzung selbst verweigert dort ebenfalls ('inverter-limited').
+        const sourceKind = acSourceKindOf(sourceNode?.type);
+
+        const rated = Number(edge.data?.fuseSize);
+        if (!(rated > 0)) continue; // ungesicherte AC-Kante: bestehender Status quo (FI/LS-Hinweis im Chip)
+        const assessment = evaluateAcEdgeProtection({
+          ratedCurrentA: rated,
+          descriptor: edge.data?.acProtection,
+          lengthM: typeof edge.data?.length === 'number' ? edge.data.length : undefined,
+          crossSection: typeof edge.data?.crossSection === 'number' ? edge.data.crossSection : undefined,
+          sourceKind,
+          upstreamRcd: anyUpstreamRcd,
+        });
+
+        const fmt = (value: number | null) => (value === null ? '—' : `≈ ${value.toFixed(2)} Ω`);
+        const base = {
+          focusId: edge.id,
+          focusType: 'edge' as const,
+          unit: 'Ω',
+          source: `Schätzung nach IEC 60364-4-41 (Zs·Ia ≤ U0, 2/3-Regel); vorgelagert angenommen ${UPSTREAM_IMPEDANCE_ASSUMPTION_OHM} Ω, PE nach IEC 60364-5-54 Tab. 54.2; lib/acProtection.ts`,
+        };
+        switch (assessment.verdict) {
+          case 'fail':
+            warnings.push({
+              ...base,
+              id: `ac-trip-${edge.id}`,
+              category: 'safety',
+              type: 'critical',
+              title: 'AC-Abschaltbedingung nicht gesichert (Schleifenimpedanz)',
+              ruleId: 'DOM-001-trip-condition',
+              measuredValue: fmt(assessment.zsEstimateOhm),
+              expectedValue: `≤ ${assessment.zsMaxOhm?.toFixed(2)} Ω (Ia = ${Math.round(assessment.iaA ?? 0)} A)`,
+              message: `⚠️ Kritisch: ${assessment.reason} Die geschätzte magnetische Abschaltung des LS-Schalters ist im Fehlerfall nicht gesichert — 30-mA-FI am Landstromanschluss aktivieren oder FI/LS (RCBO) statt LS wählen, Schleifenimpedanz vor Ort messen lassen. Ohne FI kann ein Körperschluss die Leitung dauerhaft gefährlich spannungsführend halten.`,
+            });
+            break;
+          case 'borderline':
+            warnings.push({
+              ...base,
+              id: `ac-trip-${edge.id}`,
+              category: 'estimation',
+              type: 'warning',
+              title: 'AC-Abschaltbedingung knapp (Leitungslänge treibt Schleifenimpedanz)',
+              ruleId: 'DOM-001-trip-borderline',
+              measuredValue: fmt(assessment.zsEstimateOhm),
+              expectedValue: `≤ ${assessment.zsMaxOhm?.toFixed(2)} Ω`,
+              message: `Hinweis: ${assessment.reason} Die Abschaltung hängt damit an der angenommenen Netzimpedanz — Schleifenimpedanz messen lassen oder Leitung kürzen/verstärken.`,
+            });
+            break;
+          case 'rcd-covered':
+            warnings.push({
+              ...base,
+              id: `ac-trip-rcd-${edge.id}`,
+              category: 'estimation',
+              type: 'info',
+              title: 'AC-Fehlerschutz über 30-mA-FI gedeckt (TN-Grenze überschritten)',
+              ruleId: 'DOM-001-trip-rcd-covered',
+              measuredValue: fmt(assessment.zsEstimateOhm),
+              expectedValue: `≤ ${assessment.zsMaxOhm?.toFixed(2)} Ω`,
+              message: `Hinweis: ${assessment.reason}`,
+            });
+            break;
+          case 'ok-with-assumption':
+            break; // geprüft & still — die Annahmen stehen im source-String anderer Meldungen
+          case 'not-modeled': {
+            if (!acProtectionNotePushed) {
+              acProtectionNotePushed = true;
+              warnings.push({
+                ...base,
+                id: 'ac-protection-not-modeled',
+                category: 'estimation',
+                type: 'info',
+                title: 'AC-Schutzorgan ohne Bauform — Abschaltbedingung unbewertet',
+                focusId: edge.id,
+                focusType: 'edge',
+                ruleId: 'DOM-001-protection-not-modeled',
+                measuredValue: 'Sicherung als Zahl',
+                expectedValue: 'Bauform (LS/RCBO), Charakteristik B/C, Icn 6/10 kA',
+                source:
+                  'DOM-001: AC-Schutzdaten fehlen — Bewertung erst mit Datenblatt-Angaben (Edge-Inspektor)',
+                message: `Hinweis: Für mindestens eine 230-V-Leitung ist die Sicherung nur als Bemessungsstrom eingetragen. Bauform (LS oder FI/LS), Charakteristik (B/C) und Abschaltvermögen im Leitungs-Inspektor angeben — erst dann wird die Abschaltbedingung geschätzt geprüft (IEC 60898-1 / 60364-4-41).`,
+              });
+            }
+            break;
+          }
         }
       }
     }

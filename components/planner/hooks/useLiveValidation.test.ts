@@ -566,3 +566,208 @@ describe('useLiveValidation', () => {
     });
   });
 });
+
+describe('Rule A7: Kurzschlussstrom vs. Abschaltvermögen (AUDIT DOM-002)', () => {
+  const battery = (id: string, data: Record<string, unknown> = {}): Node => ({
+    id,
+    type: 'battery',
+    data: { label: 'Batterie', capacity: 100, chemistry: 'LiFePO4', ...data },
+    position: { x: 0, y: 0 },
+  });
+  const fused = (edgeData: Record<string, unknown>): Edge<CableEdgeData>[] => [
+    { id: 'e1', source: 'b1', target: 'bus1', sourceHandle: 'plus', targetHandle: 'plus', data: edgeData },
+  ];
+
+  it('meldet kritisch, wenn die Bauform den Bank-Ik nicht trennt (ATO 1 kA < ≈ 4,27 kA)', () => {
+    const nodes = [battery('b1'), { id: 'bus1', type: 'busbar', data: {}, position: { x: 0, y: 0 } } as Node];
+    const { result } = renderHook(() => useLiveValidation(nodes, fused({ fuseSize: 100, fuseType: 'ato' })));
+    const warning = result.current.find((w) => w.ruleId === 'DOM-002-breaking-capacity');
+    expect(warning).toBeDefined();
+    expect(warning!.type).toBe('critical');
+    expect(warning!.category).toBe('safety');
+    expect(warning!.expectedValue).toBe('≤ 1000 A');
+    // Ik ≈ 12,8 V / 3 mΩ = 4267 A (gerundet)
+    expect(warning!.measuredValue).toBe('≈ 4267 A');
+    expect(warning!.focusId).toBe('e1');
+  });
+
+  it('gibt bei ausreichendem Abschaltvermögen (Class T 20 kA) Ruhe', () => {
+    const nodes = [battery('b1'), { id: 'bus1', type: 'busbar', data: {}, position: { x: 0, y: 0 } } as Node];
+    const { result } = renderHook(() =>
+      useLiveValidation(nodes, fused({ fuseSize: 100, fuseType: 'classT' }))
+    );
+    expect(result.current.filter((w) => w.ruleId === 'DOM-002-breaking-capacity')).toEqual([]);
+  });
+
+  it('weist ohne Bauform einmal auf den offenen Abschaltvermögens-Check hin', () => {
+    const nodes = [battery('b1'), { id: 'bus1', type: 'busbar', data: {}, position: { x: 0, y: 0 } } as Node];
+    const edges = [
+      ...fused({ fuseSize: 100 }),
+      {
+        id: 'e2',
+        source: 'b1',
+        target: 'bus1',
+        sourceHandle: 'plus',
+        targetHandle: 'plus',
+        data: { fuseSize: 50 },
+      },
+    ];
+    const { result } = renderHook(() => useLiveValidation(nodes, edges));
+    const notes = result.current.filter((w) => w.ruleId === 'DOM-002-fuse-type-unknown');
+    expect(notes.length).toBe(1); // ein Hinweis pro Plan, nicht pro Kante
+    expect(notes[0]!.type).toBe('warning');
+    expect(notes[0]!.category).toBe('estimation');
+    expect(result.current.filter((w) => w.ruleId === 'DOM-002-breaking-capacity')).toEqual([]);
+  });
+
+  it('bewertet mit explizitem Datenblatt-Abschaltvermögen statt Bauform', () => {
+    const nodes = [
+      battery('b1', { internalResistance: 1 }),
+      { id: 'bus1', type: 'busbar', data: {}, position: { x: 0, y: 0 } } as Node,
+    ];
+    // Ri = 1 mΩ → Ik = 12 800 A; MRBF 3000 A reicht nicht, 15 000 A explizit reicht.
+    const low = renderHook(() => useLiveValidation(nodes, fused({ fuseSize: 150, fuseType: 'mrbf' })));
+    expect(low.result.current.some((w) => w.ruleId === 'DOM-002-breaking-capacity')).toBe(true);
+    const ok = renderHook(() =>
+      useLiveValidation(nodes, fused({ fuseSize: 150, fuseType: 'mrbf', fuseBreakingCapacity: 15000 }))
+    );
+    expect(ok.result.current.some((w) => w.ruleId === 'DOM-002-breaking-capacity')).toBe(false);
+    expect(ok.result.current.some((w) => w.ruleId === 'DOM-002-fuse-type-unknown')).toBe(false);
+  });
+
+  it('schweigt ohne schätzbare Bank (keine Kapazität) und ohne Sicherung', () => {
+    const nodes = [
+      battery('b1', { capacity: undefined, chemistry: undefined }),
+      { id: 'bus1', type: 'busbar', data: {}, position: { x: 0, y: 0 } } as Node,
+    ];
+    const { result } = renderHook(() => useLiveValidation(nodes, fused({ fuseSize: 100, fuseType: 'ato' })));
+    expect(result.current.filter((w) => w.ruleId?.startsWith('DOM-002'))).toEqual([]);
+  });
+
+  it('berücksichtigt die Kabeldämpfung Pol → Sicherung über fuseOffset/Querschnitt', () => {
+    const nodes = [battery('b1'), { id: 'bus1', type: 'busbar', data: {}, position: { x: 0, y: 0 } } as Node];
+    // Sicherung 10 m entfernt auf 95 mm²: R_loop = 2·10/(58·95) = 3,629 mΩ
+    // → Ik = 12,8 / (3 + 3,629) mΩ ≈ 1932 A — MRBF 3000 A würde reichen…
+    const far = renderHook(() =>
+      useLiveValidation(nodes, fused({ fuseSize: 100, fuseType: 'mrbf', fuseOffset: 10, crossSection: 95 }))
+    );
+    expect(far.result.current.some((w) => w.ruleId === 'DOM-002-breaking-capacity')).toBe(false);
+    // … direkt am Pol dagegen: Ik = 4267 A > ATO 1000 A (Gegenprobe am offensichtlichen Fall).
+    const near = renderHook(() =>
+      useLiveValidation(nodes, fused({ fuseSize: 100, fuseType: 'ato', fuseOffset: 0.15, crossSection: 95 }))
+    );
+    expect(near.result.current.some((w) => w.ruleId === 'DOM-002-breaking-capacity')).toBe(true);
+  });
+
+  describe('Rule A8: AC-Abschaltbedingung / Mehrleiter-Schutz (DOM-001)', () => {
+    const shore = (id: string, hasRcd = false): Node => ({
+      id,
+      type: 'shorePower',
+      data: { label: 'Landstrom', rating: 16, hasRcd },
+      position: { x: 0, y: 0 },
+    });
+    const acConsumer = (id: string): Node => ({
+      id,
+      type: 'consumer230v',
+      data: { label: '230-V-Gerät', watts: 500 },
+      position: { x: 0, y: 0 },
+    });
+    const acEdge = (
+      id: string,
+      source: string,
+      target: string,
+      data: CableEdgeData
+    ): Edge<CableEdgeData> => ({
+      id,
+      source,
+      target,
+      sourceHandle: 'plus',
+      targetHandle: 'plus',
+      data: { edgeDomain: 'AC_230V', fuseSize: 16, crossSection: 2.5, ...data },
+    });
+    const b16 = { kind: 'mcb', characteristic: 'B', breakingCapacityKA: 6 };
+
+    it('sehr lange AC-Leitung ohne FI → kritisch (Abschaltung ungesichert)', () => {
+      const nodes = [shore('sp1'), acConsumer('c1')];
+      const edges = [acEdge('e1', 'sp1', 'c1', { length: 200, acProtection: b16 })];
+      const { result } = renderHook(() => useLiveValidation(nodes, edges));
+      const warning = result.current.find((w) => w.id === 'ac-trip-e1');
+      expect(warning).toEqual(
+        expect.objectContaining({
+          category: 'safety',
+          type: 'critical',
+          ruleId: 'DOM-001-trip-condition',
+          unit: 'Ω',
+        })
+      );
+    });
+
+    it('dieselbe Leitung mit 30-mA-FI am Landstrom → FI-gedeckt (Info, nicht kritisch)', () => {
+      const nodes = [shore('sp1', true), acConsumer('c1')];
+      const edges = [acEdge('e1', 'sp1', 'c1', { length: 200, acProtection: b16 })];
+      const { result } = renderHook(() => useLiveValidation(nodes, edges));
+      expect(result.current.some((w) => w.id === 'ac-trip-e1' && w.type === 'critical')).toBe(false);
+      expect(result.current.some((w) => w.id === 'ac-trip-rcd-e1' && w.type === 'info')).toBe(true);
+    });
+
+    it('da ein FI/LS (RCBO) gewählt ist, deckt er den Fall auch ohne Landstrom-FI', () => {
+      const nodes = [shore('sp1'), acConsumer('c1')];
+      const edges = [
+        acEdge('e1', 'sp1', 'c1', {
+          length: 200,
+          acProtection: { kind: 'rcbo', characteristic: 'B', breakingCapacityKA: 6 },
+        }),
+      ];
+      const { result } = renderHook(() => useLiveValidation(nodes, edges));
+      expect(result.current.some((w) => w.id === 'ac-trip-rcd-e1')).toBe(true);
+      expect(result.current.some((w) => w.type === 'critical' && w.id.startsWith('ac-trip'))).toBe(false);
+    });
+
+    it('kurze Leitung: Abschaltbedingung erfüllt — keine A8-Meldung', () => {
+      const nodes = [shore('sp1'), acConsumer('c1')];
+      const edges = [acEdge('e1', 'sp1', 'c1', { length: 5, acProtection: b16 })];
+      const { result } = renderHook(() => useLiveValidation(nodes, edges));
+      expect(result.current.filter((w) => w.ruleId?.startsWith('DOM-001'))).toEqual([]);
+    });
+
+    it('Grenzfall: Leitungsanteil > 50 % des Zulasswerts → „knapp“-Warnung', () => {
+      const nodes = [shore('sp1'), acConsumer('c1')];
+      const edges = [acEdge('e1', 'sp1', 'c1', { length: 70, acProtection: b16 })];
+      const { result } = renderHook(() => useLiveValidation(nodes, edges));
+      const warning = result.current.find((w) => w.id === 'ac-trip-e1');
+      expect(warning).toEqual(
+        expect.objectContaining({ type: 'warning', ruleId: 'DOM-001-trip-borderline' })
+      );
+    });
+
+    it('Wechselrichter-Ausgang: keine Schleifenrechnung und bewusst stumm (Limit steht am Kanten-Chip)', () => {
+      const inverter: Node = {
+        id: 'inv1',
+        type: 'inverter',
+        data: { label: 'WR', continuousPower: 1000, hasRcd: true },
+        position: { x: 0, y: 0 },
+      };
+      const nodes = [inverter, acConsumer('c1'), acConsumer('c2')];
+      const edges = [
+        acEdge('e1', 'inv1', 'c1', { length: 200, acProtection: b16 }),
+        acEdge('e2', 'inv1', 'c2', { length: 250, acProtection: b16 }),
+      ];
+      const { result } = renderHook(() => useLiveValidation(nodes, edges));
+      // Weder kritisch noch ein „inverter-limited"-Hinweis: der Status bar
+      // bleibt meldungsfrei (Auto-Wire-Vertrag), die Ehrlichkeit liegt am
+      // 230-V-Kanten-Chip (elektronisch begrenzt → Datenblatt).
+      expect(result.current.some((w) => w.id.startsWith('ac-trip'))).toBe(false);
+      expect(result.current.some((w) => w.ruleId === 'DOM-001-inverter-output')).toBe(false);
+    });
+
+    it('Sicherung nur als Zahl → Info: Bauform/Charakteristik nachrüsten', () => {
+      const nodes = [shore('sp1'), acConsumer('c1')];
+      const edges = [acEdge('e1', 'sp1', 'c1', { length: 5 })];
+      const { result } = renderHook(() => useLiveValidation(nodes, edges));
+      const note = result.current.find((w) => w.id === 'ac-protection-not-modeled');
+      expect(note).toEqual(
+        expect.objectContaining({ type: 'info', ruleId: 'DOM-001-protection-not-modeled' })
+      );
+    });
+  });
+});

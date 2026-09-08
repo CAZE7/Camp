@@ -646,3 +646,68 @@ describe('Fallback-Verhalten (R-3)', () => {
     resetPathfindingTelemetry();
   });
 });
+
+// AUDIT ROUTE-001 (Härtung 2026-09-08): `ownObstacles` — der Produktionspfad
+// verwirft nur noch die EIGENE Box; fremde, am Start/Ziel klebende Boxen
+// bleiben Hindernisse und werden nicht mehr lautlos durchroutet.
+describe('ROUTE-001 ownObstacles — überlappende Fremd-Nodes', () => {
+  // Fremde Box, die den Startpunkt (und damit auch den Stub) enthält —
+  // das Modell einer an die eigene Node geklebten Nachbar-Node.
+  const glued: Rect = { x: -40, y: 20, width: 260, height: 80 }; // enthält (0,60)
+
+  it('Legacy (kein ownObstacles): fremde Box mit Start wird verworfen — dokumentierter Altvertrag', () => {
+    resetPathfindingTelemetry();
+    const result = route(0, 60, 600, 60, [glued]);
+    // Altverhalten: die Box existiert für den Router nicht → „saubere“
+    // Direktverbindung Mitten DURCH die fremde Node. Genau diese lautlose
+    // Verletzung ist der Audit-Befund ROUTE-001 (Ausnahme a).
+    expect(result.usedSearch).not.toBe('fallback');
+    expect(pathHitsObstacles(result.waypoints, [glued])).toBe(true);
+    resetPathfindingTelemetry();
+  });
+
+  it('mit ownObstacles: die fremde Klebe-Box bleibt Hindernis — Konflikt wird markiert statt versteckt', () => {
+    resetPathfindingTelemetry();
+    // Eigene Node-Box (liegt NICHT in der Hindernisliste — wie im
+    // Produktionspfad, wo routeAll die eigene Node vorab ausschließt).
+    const own: Rect = { x: -12, y: 48, width: 24, height: 24 };
+    const result = route(0, 60, 600, 60, [glued], { ownObstacles: [own] });
+    // Die Box ist unüberwindbar (Start liegt in ihr): der Router darf das
+    // NICHT als Freigabe ausgeben — er fällt auf den markierten Notfallpfad.
+    expect(result.usedSearch).toBe('fallback');
+    expect(result.fallbackHitsObstacles).toBe(true);
+    expect(pathfindingFallbackCount()).toBe(1);
+    // Und: es bleibt eine echte Kollision — nur jetzt ZÄHLBAR und sichtbar.
+    expect(pathHitsObstacles(result.waypoints, [glued])).toBe(true);
+    resetPathfindingTelemetry();
+  });
+
+  it('mit ownObstacles: die eigene Box selbst wird weiterhin verworfen (Referenzgleichheit)', () => {
+    resetPathfindingTelemetry();
+    // Die eigene Box steht hier ausnahmsweise IN der Liste — sie darf nur
+    // verworfen werden, weil sie per Referenz in ownObstacles steht.
+    const ownA: Rect = { x: -16, y: 44, width: 32, height: 32 }; // enthält Start (0,60)
+    const ownB: Rect = { x: 584, y: 44, width: 32, height: 32 }; // enthält Ziel (600,60)
+    const result = route(0, 60, 600, 60, [ownA, ownB], { ownObstacles: [ownA, ownB] });
+    expect(result.usedSearch).not.toBe('fallback');
+    // Gerade Direktverbindung ohne jeden Umweg: wären die eigenen Boxen
+    // Hindernisse geblieben, müsste die Route ausweichen (Knicke > 0,
+    // Länge > 600). Die Strecke selbst schneidet naturgemäß die eigene Box
+    // am Stub — darum schließt der Produktionspfad sie vorab aus.
+    expect(result.bends).toBe(0);
+    expect(result.length).toBeCloseTo(600, 6);
+    resetPathfindingTelemetry();
+  });
+
+  it('mit ownObstacles: frei liegende fremde Box wird wie bisher umfahren (kein Verhaltensbruch)', () => {
+    resetPathfindingTelemetry();
+    const blocker: Rect = { x: 120, y: 20, width: 80, height: 80 }; // frei im Korridor
+    const ownA: Rect = { x: -16, y: 44, width: 32, height: 32 };
+    const ownB: Rect = { x: 584, y: 44, width: 32, height: 32 };
+    const result = route(0, 60, 600, 60, [blocker], { ownObstacles: [ownA, ownB] });
+    expect(result.usedSearch).not.toBe('fallback');
+    expect(pathHitsObstacles(result.waypoints, [blocker])).toBe(false);
+    expect(isOrthogonalPath(result.waypoints)).toBe(true);
+    resetPathfindingTelemetry();
+  });
+});

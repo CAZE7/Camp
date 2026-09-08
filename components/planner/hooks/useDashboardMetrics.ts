@@ -15,6 +15,7 @@ import {
   VDE_SOLAR_VMP_VOLTAGE,
   VDE_CHARGE_DERATING_FACTOR,
 } from '@/lib/vde-standards';
+import { peukertExponentOf, usableCapacityWithPeukertAh } from '../../../lib/peukert'; // DOM-002-Nachpflege
 
 export function useDashboardMetrics(
   nodes: Node[],
@@ -70,8 +71,10 @@ export function useDashboardMetrics(
 
     const categories = categorizeNodes(debouncedNodes);
 
-    const usableCapacityAh = calculateUsableCapacity(categories.batteries);
-
+    // AUDIT DOM-002-Nachpflege (Peukert): erst die Last bestimmen, dann die
+    // nutzbare Kapazität peukert-gewichtet — der Faktor hängt von der
+    // Dauerstromhöhe ab (Tagesdurchschnitt). Nennkapazität×DoD allein
+    // überschätzte die Autarkie gerade bei stark belasteten Blei-Bänken.
     const dailyConsumptionAh = calculateDailyConsumption(
       categories.consumers,
       categories.consumers230v,
@@ -79,6 +82,8 @@ export function useDashboardMetrics(
       season,
       sysVoltage
     );
+
+    const usableCapacityAh = calculateUsableCapacity(categories.batteries, dailyConsumptionAh / 24);
 
     const autarkyStr = calculateAutarky(usableCapacityAh, dailyConsumptionAh);
 
@@ -149,12 +154,19 @@ function categorizeNodes(nodes: Node[]) {
   return result;
 }
 
-function calculateUsableCapacity(batteries: Node[]): number {
+function calculateUsableCapacity(batteries: Node[], averageSystemCurrentA = 0): number {
+  // AUDIT DOM-002-Nachpflege (Peukert): Faustmodell lib/peukert.ts —
+  // Dauerstrom reduziert die nutzbare Kapazität (Blei deutlich, LiFePO4 kaum).
+  // Parallelblöcke teilen die Systemlast gleichmäßig; ohne Lastangabe
+  // (averageSystemCurrentA = 0) bleibt das bisherige Nennmodell aktiv.
+  const count = batteries.length || 1;
+  const shareA = averageSystemCurrentA > 0 ? averageSystemCurrentA / count : 0;
   return batteries.reduce((acc, batteryNode) => {
-    const capacityAh = (batteryNode?.data as BatteryNodeData)?.capacity || 0;
-    const chemistry = (batteryNode?.data as BatteryNodeData)?.chemistry || 'LiFePO4';
+    const data = batteryNode?.data as BatteryNodeData | undefined;
+    const capacityAh = data?.capacity || 0;
+    const chemistry = data?.chemistry || 'LiFePO4';
     const dod = VDE_BATTERY_DOD[chemistry] ?? VDE_DOD_REFERENCE;
-    return acc + capacityAh * dod;
+    return acc + usableCapacityWithPeukertAh(capacityAh, dod, shareA, peukertExponentOf(data));
   }, 0);
 }
 

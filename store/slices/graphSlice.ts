@@ -4,6 +4,7 @@ import { getLayoutedElements } from '../../components/planner/utils/layout';
 import { applyAdvancedLayout } from '../../lib/planner/routingV2Adapter'; // ELK/Dagre-Layout
 import { TEMPLATES_DICT } from '../../components/planner/templates';
 import { getEdgeDomain } from '../../lib/electrical';
+import { isFuseType } from '../../lib/shortCircuit';
 import { isConnectionAllowed } from '../../lib/connectionRules'; // ARCH-002
 import { newEntityId } from '../../lib/id';
 import { getSystemVoltage } from '../../lib/vde-standards';
@@ -18,7 +19,16 @@ import {
   plannerGraphSignature,
   HISTORY_LIMIT,
 } from './graphInternals';
-import type { PlannerSlice, PlannerState } from './types';
+import type { PlannerSlice, LayoutV2Outcome, PlannerState } from './types';
+
+/**
+ * AUDIT ROUTE-003 / ADR 0018: Letzte Anfrage gewinnt (P-6-Vertrag des
+ * ELK-Runners, eine Ebene höher). Jede neue ELK-Layout-Anfrage nummeriert
+ * sich hoch; ein veralteter Lauf schreibt nie in den Store und löscht
+ * `isLayoutPending` nie vorzeitig — auch dann nicht, wenn er über den
+ * Dagre-Fallback spät zurückkehrt.
+ */
+let layoutV2Seq = 0;
 
 /**
  * Graph-Slice: Knoten, Kanten (Strom + Wasser), Selektions-Mutationen,
@@ -54,6 +64,8 @@ export type GraphSlice = Pick<
   | 'handleChangeLength'
   | 'handleChangeFuseSize'
   | 'handleChangeFuseOffset'
+  | 'handleChangeFuseType'
+  | 'handleChangeAcProtection'
   | 'isValidConnection'
   | 'onConnect'
   | 'autoWireSystem'
@@ -265,6 +277,28 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
             : state.edges,
       })
     ),
+  handleChangeFuseType: (id, fuseType) =>
+    set((state) =>
+      withHistory(state, {
+        // AUDIT DOM-002: Bauform (Abschaltvermögens-Check) — defensiv gegen
+        // unbekannte Werte validiert (Import/Persistenz), leeren String als
+        // „Feld zurücksetzen“ lesen.
+        edges:
+          fuseType === undefined || isFuseType(fuseType)
+            ? state.edges.map((e) => (e.id === id ? { ...e, data: { ...e.data!, fuseType } } : e))
+            : state.edges,
+      })
+    ),
+  handleChangeAcProtection: (id, acProtection) =>
+    set((state) =>
+      withHistory(state, {
+        // AUDIT DOM-001: AC-Schutzorgan (LS/RCBO, B/C, 6/10 kA); die
+        // Regelauswertung (A8) validiert defensiv erneut, hier wird die
+        // Auswahl des Inspektors ehrlich gespeichert. `undefined` löscht
+        // den Stempel — unbewertet ist dann wieder die ehrliche Anzeige.
+        edges: state.edges.map((e) => (e.id === id ? { ...e, data: { ...e.data!, acProtection } } : e)),
+      })
+    ),
   isValidConnection: (connection) => {
     // AUDIT ARCH-002: Fachregeln (Domänen-Trennung, Polarität, Serien-,
     // Duplikat-Prüfung) sind als reine Funktion in lib/connectionRules.ts
@@ -288,6 +322,14 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
     // und ließen Spannungsfall-Rekursionen über eine Null-Länge-Kante
     // laufen. Hier schon abfangen, statt sie später „heilen" zu müssen.
     if (connection.source === connection.target) return;
+
+    // AUDIT (Negativ-Test-Befund 2026-09-08): Der UI-Pfad prüft über React
+    // Flows isValidConnection — onConnect selbst tat das bisher NICHT. Jeder
+    // andere Aufrufer (Heilung, Programmcode, Tests) konnte die fachlichen
+    // Negativregeln (Grauwasser→Spüle, AC/DC-Mischung, Polarität) umgehen:
+    // die Gegen-Wasserlinie wurde real angelegt. Beglaubigung gehört in den
+    // Schreibpfad selbst (Defense in Depth); isConnectionAllowed ist rein.
+    if (!get().isValidConnection(connection)) return;
 
     const { viewMode, waterNodes, nodes } = get();
 
@@ -491,15 +533,60 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
       });
     }
   },
-  // ELK-Layout (Knotenpositionen). Die Kabelgeometrie entsteht danach
-  // reaktiv im globalen Routing-Pass (`CableRouteSync`), sobald sich die
-  // Layout-Signatur ändert — hier wird bewusst nicht mehr geroutet.
-  onLayoutV2: async () => {
-    const { nodes, edges } = get();
-    const result = await applyAdvancedLayout(nodes, edges, 'LR');
-    if (result) {
-      set((state) => withHistory(state, { nodes: result.nodes, edges: result.edges }));
+  // ELK-Layout (Knotenpositionen, ADR 0018). Die Kabelgeometrie entsteht
+  // danach reaktiv im globalen Routing-Pass (`CableRouteSync`), sobald sich
+  // die Layout-Signatur ändert — hier wird bewusst nicht mehr geroutet.
+  // ELK-`routes`/`junctions` werden nicht konsumiert (ADR 0014: die
+  // Geometrie gehört exklusiv dem A*-Pass).
+  onLayoutV2: async (): Promise<LayoutV2Outcome> => {
+    const mySeq = ++layoutV2Seq;
+    const { viewMode, nodes, edges, waterNodes, waterEdges } = get();
+    const sourceNodes = viewMode === 'water' ? waterNodes : nodes;
+    const sourceEdges = viewMode === 'water' ? waterEdges : edges;
+    if (sourceNodes.length === 0) {
+      return { applied: false, reason: 'empty' };
     }
+
+    set({ isLayoutPending: true });
+    let result: Awaited<ReturnType<typeof applyAdvancedLayout>>;
+    try {
+      result = await applyAdvancedLayout(sourceNodes, sourceEdges, 'LR');
+    } catch {
+      // ELK wirft kontrolliert (Timeout → Adapter fängt über den
+      // Dagre-Fallback); landet doch etwas hier, sind beide Engines
+      // gescheitert — das ist in der UI eine echte Fehlermeldung wert.
+      if (mySeq === layoutV2Seq) set({ isLayoutPending: false });
+      return { applied: false, reason: mySeq === layoutV2Seq ? 'error' : 'stale' };
+    }
+
+    if (mySeq !== layoutV2Seq) {
+      // Veraltetes Ergebnis (letzte Anfrage gewinnt): nicht schreiben,
+      // Pending löscht der jüngere Lauf.
+      return { applied: false, reason: 'stale' };
+    }
+
+    set((state) =>
+      withHistory(
+        state,
+        viewMode === 'water'
+          ? {
+              waterNodes: [...result.nodes],
+              waterEdges: [...result.edges],
+              isLayoutPending: false,
+            }
+          : {
+              nodes: [...result.nodes],
+              edges: [...result.edges],
+              isLayoutPending: false,
+            }
+      )
+    );
+    if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+      window.requestAnimationFrame(() => {
+        window.dispatchEvent(new CustomEvent('planner-fit-view'));
+      });
+    }
+    return { applied: true, engine: result.engine };
   },
   undo: () =>
     set((state) => {

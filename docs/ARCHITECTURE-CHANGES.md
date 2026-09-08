@@ -293,3 +293,88 @@ Diese Gates sind konsistent mit den Review-Anforderungen:
 - [ ] `scripts/measure_planner_v2.ts` → Gate-Suite G1–G10
 - [ ] CI-Script (`npm run verify:routing-v2`)
 - [ ] Fehlende Architektur-/Doku-Referenzen in `README`/`docs` verlinken
+
+---
+
+## Change Ledger
+
+### 2026-09-08 — ROUTE-003 erledigt: ELK produktiv verdrahtet + Final-Gate liest das Kollisionsmodell
+
+Kein Golden-Master-Recapture nötig (kein Geometrie-/Dimensionierungs-Delta).
+Zwei Architektur-Entscheidungen (`docs/adr/0018`, `docs/adr/0019`), Befund-Text
+und Beweise in `AUDIT-EXTREM-2026-09.md` → „Siebte Nachbearbeitung":
+
+1. **ELK-Pass UI-produktiv (ADR 0018):** Toolbar-/Menü-Eintrag „Strukturieren
+   (ELK)" (`data-testid="action-layout-v2"`) ruft die zuvor UI-tote
+   `onLayoutV2`. Neu: Sequenz-Guard „letzte Anfrage gewinnt" (P-6) im Store,
+   `isLayoutPending` erst beim jüngsten Lauf zurück, Undo-History +
+   Fit-View-Dispatch wie beim klassischen Aufräumen, Wasser-Ansicht
+   mitbedient (`kind: 'waterPipe'` war im Engine-Vertrag längst vorgesehen).
+   `applyAdvancedLayout` meldet `engine: 'elk' | 'dagre'` — der einst stille
+   Dagre-Fallback ist jetzt im UI-Feedback lesbar. Bewusst nicht konsumiert:
+   ELK-`routes`/`junctions` (Geometrie bleibt exklusiv im A\*-Pass, ADR 0014).
+2. **Final-Gate konsumiert `classifyCollision` (ADR 0019):** I1/I2/I3 in
+   `lib/routing/invariants.ts` sind Ableitungen von
+   `classifySegmentAgainstNode`/`classifySegmentAgainstSegment`
+   (hard ⇒ I1/I2, weighted ⇒ I3) statt eigener `geometry`-Begriffe — drei
+   Begriffswelten → zwei, wobei die A\*-Fassung dokumentiert äquivalent bleibt
+   (PERF-001: Modell-Aufruf im Innenloop wäre der belegte 95-%-Laufzeitpfad
+   bei identischer Entscheidung). Zahlen: LEGACY_BASELINE + Ratchet ohne
+   Nachzug grün.
+
+Bewusst NICHT in dieser Scheibe: Geometrie-Migration
+`components/edges/utils → lib/routing` (Allowlist-Typkante) — eigenes Projekt,
+siehe „Verbleibend" im Audit.
+
+### 2026-09-08 — Golden-Master-Neuerfassung (AUDIT ELE-007 + DOM-002, Branch `arena/01a0818b-camp`)
+
+`npm run goldenmaster:capture` bewusst ausgeführt; alle 7 Fixtures neu eingefroren.
+Begründung „bewusst besser, weil …":
+
+1. **ELE-007 (Solar-Drop-Budget):** Solar-Zuleitungen (Panel → MPPT) werden jetzt
+   gegen die MPP-Basis 18 V dimensioniert/bewertet statt gegen die 12,8-V-
+   Systemreferenz. Betroffen: Plan `solar` (Panel-Kanten 16 mm² → 10 mm²).
+   Der alte Stand überschätzte den Prozentfall um ~40 % — konservativ, aber
+   falsch bemessen.
+2. **DOM-002 (Sicherungs-Bauform):** Auto-Wire vergibt jetzt `fuseType`
+   (`applyFuseTypes` in `lib/autoWire/sizing.ts`): kleinste Bauform, deren
+   typisches Abschaltvermögen den geschätzten Bank-Kurzschlussstrom am
+   Einbauort trägt (`lib/shortCircuit.ts`; ≈ 4,3 kA bei 100 Ah LiFePO4 →
+   Class T; kleine AGM-Bank → MRBF/MEGA/ATO). Ohne diesen Stempel meldete
+   der neue Kurzschluss-Check (Rule A7) in jedem Auto-Plan „Abschaltvermögen
+   unbekannt". Delta: reine Zusatzfelder `fuseType` (+ die zwei Solar-
+   Querschnitte), keine Id-/Geometrie-/Safety-Verschlechterung.
+
+### 2026-09-08 — Zweite Fassung: AIC-Tabelle verifiziert (DOM-002-Nachpflege)
+
+Erneutes `npm run goldenmaster:capture`, Diff ausschließlich `fuseType`-Stempel
+(`simple`/`camper`: mrbf → anl; `solar`: classT → anl; `inverter`/`acdc`:
+classT → mrbf; `complex` unverändert), keine Querschnitts-/Geometrie-Änderung.
+Begründung „bewusst besser, weil …": die Bauform-Tabelle in `lib/shortCircuit.ts`
+ruht jetzt auf verifizierten Hersteller-Datenblattankern (Littelfuse-Blatt:
+ATO 1 kA, MEGA/MIDI 2 kA @32 VDC; Blue-Sea-„Quick Guide to Fuses": ANL 6 kA,
+Class T 20 kA, MRBF spannungsabhängig 10/5/2 kA @14/32/58 VDC) statt auf
+Faustwerten (MRBF war 3 kA angenommen), und `applyFuseTypes` wählt das
+KLEINSTE wirksame Abschaltvermögen ≥ geschätztem Ik (spannungsabhängig
+sortiert) — kürzester Lichtbogen, Class T als Dach. Details:
+`AUDIT-EXTREM-2026-09.md` → „Sechste Nachbearbeitung".
+
+### 2026-09-08 — Dritte Fassung: AC-Schutzorgan gestempelt (DOM-001)
+
+Erneutes `npm run goldenmaster:capture`; der Gesamt-Diff der Fixtures enthält
+jetzt drei durch Tests abgesicherte, bewusste Deltas — sonst nichts
+(Ids/Geometrie/Routing byte-identisch):
+
+1. `fuseType`-Stempel auf DC-Kanten (siehe DOM-002-Einträge oben),
+2. `solar`: zwei Querschnitte 16 → 10 mm² (siehe ELE-007-Eintrag oben),
+3. **DOM-001:** `acProtection: { kind: 'mcb', characteristic: 'B',
+breakingCapacityKA: 6 }` auf genau den sechs AC-Kanten (je Plan eine).
+   Begründung „bewusst besser, weil …": `sizeAcEdges` stempelt das
+   230-V-Schutzorgan mit (LS, Charakteristik B, 6 kA nach IEC 60898-1 —
+   konservativer Marktstandard, Nutzer-Einträge werden nie überschrieben).
+   Erst mit diesem Datenblatt-Satz wird Rule A8 (geschätzte
+   Abschaltbedingung Zs·Ia ≤ U0, 2/3-Regel, PE nach IEC 60364-5-54
+   Tab. 54.2; `lib/acProtection.ts`) für Auto-Pläne aktiv statt nur als
+   Info „nicht modelliert". Das schließt die Lücke, dass AC-Kanten eine
+   Sicherung als nackte Zahl ohne Typ/Charakteristik/Abschaltvermögen
+   trugen.

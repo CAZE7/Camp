@@ -7,6 +7,7 @@
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseSize": 100,
+          "fuseType": "mrbf",
           "fuseWarning": true,
           "length": 0.2
         },
@@ -22,6 +23,7 @@
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseSize": 25,
+          "fuseType": "mrbf",
           "length": 3
         },
         "id": "e-auto-10",
@@ -75,6 +77,7 @@
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseSize": 100,
+          "fuseType": "mrbf",
           "fuseWarning": true,
           "length": 1
         },
@@ -103,6 +106,7 @@
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseSize": 5,
+          "fuseType": "mrbf",
           "length": 3
         },
         "id": "e-auto-6",
@@ -130,6 +134,7 @@
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseSize": 100,
+          "fuseType": "mrbf",
           "fuseWarning": true,
           "length": 1
         },
@@ -154,6 +159,11 @@
       },
       {
         "data": {
+          "acProtection": {
+            "breakingCapacityKA": 6,
+            "characteristic": "B",
+            "kind": "mcb"
+          },
           "crossSection": 1.5,
           "edgeDomain": "AC_230V",
           "fuseSize": 7.5,
@@ -167,6 +177,11 @@
       },
       {
         "data": {
+          "acProtection": {
+            "breakingCapacityKA": 6,
+            "characteristic": "B",
+            "kind": "mcb"
+          },
           "crossSection": 2.5,
           "edgeDomain": "AC_230V",
           "fuseSize": 7.5,
@@ -180,6 +195,11 @@
       },
       {
         "data": {
+          "acProtection": {
+            "breakingCapacityKA": 6,
+            "characteristic": "B",
+            "kind": "mcb"
+          },
           "crossSection": 6,
           "edgeDomain": "AC_230V",
           "fuseSize": 25,

@@ -1,18 +1,16 @@
 import { ROUTING_TOKENS, type RoutingTokens } from './tokens';
 import {
-  distanceSegmentToRect,
   hasMinimumStubs,
   manhattan,
   mergeCloseBends,
-  segmentHitsRect,
   segmentsCross,
-  segmentsOverlap,
   simplifyWaypoints,
   waypointsToSegments,
   type Point,
   type Rect,
   type Segment,
 } from './geometry';
+import { classifySegmentAgainstNode, classifySegmentAgainstSegment } from './rules/collision';
 
 /**
  * WP-10 (#399): Routing-Invarianten (ROUTING-V2.md §12) als reine, für
@@ -33,6 +31,14 @@ import {
  * Alle Schwellen kommen aus den Design Tokens (#390) — keine Zahl ist hier
  * hart kodiert. Die Checker geben Verletzungslisten zurück; die Testsuite
  * (`invariants.test.ts`) macht daraus CI-Blocker.
+ *
+ * ADR 0019 / AUDIT ROUTE-003 (Fix 2026-09-08): I1/I2/I3 besitzen KEINE eigene
+ * Kollisions-/Abstandsbegriffswelt mehr. Die harten Freigabe-Urteile werden
+ * aus dem geteilten Modell `rules/collision.ts` abgeleitet — hard ist I1/I2,
+ * weighted ist I3. Der Produktiv-A* (pathfinding.ts) prüft im Innenloop
+ * weiterhin über das äquivalente, billigere `segmentHitsRect` (PERF-001);
+ * die Freigabe-Prüfung hier ist die eine Stelle, an der binäre Urteile
+ * materiell erzeugt werden — und die liest das Modell.
  */
 
 export type RoutedEdge = {
@@ -69,7 +75,8 @@ export function checkEdgeNodeCollisions(
     const rects = foreignRects(edge, nodes);
     for (const [a, b] of waypointsToSegments(edge.waypoints)) {
       for (const rect of rects) {
-        if (segmentHitsRect(a, b, rect)) {
+        // 'hard' des Modells IS die I1-Bedingung (ADR 0019).
+        if (classifySegmentAgainstNode([a, b], rect).class === 'hard') {
           violations.push({
             invariant: 'I1',
             edgeId: edge.id,
@@ -97,7 +104,8 @@ export function checkEdgeEdgeOverlaps(edges: readonly RoutedEdge[]): InvariantVi
       let overlapping = false;
       for (const s1 of a.segments) {
         for (const s2 of b.segments) {
-          if (segmentsOverlap(s1, s2)) {
+          // 'hard' (edge-edge-overlap) des Modells IS die I2-Bedingung (ADR 0019).
+          if (classifySegmentAgainstSegment(s1, s2).class === 'hard') {
             overlapping = true;
             break;
           }
@@ -119,8 +127,14 @@ export function checkEdgeEdgeOverlaps(edges: readonly RoutedEdge[]): InvariantVi
 
 /**
  * I3 — jedes Segment hält `cableClearance` Abstand zu unbeteiligten Nodes.
- * Segmente, die den Node treffen, meldet bereits I1 — hier zählt nur die
- * Unterschreitung der Freigabe ohne Berührung.
+ * Segmente, die den Node treffen, meldet bereits I1 ('hard') — hier zählt
+ * nur die Unterschreitung der Freigabe ohne Berührung ('weighted').
+ *
+ * Das Modell (`classifySegmentAgainstNode`) liefert beides aus demselben
+ * Aufruf: hard ⇒ I1, weighted ⇒ I3. Die bisher hier geführte EPS-Toleranz
+ * (1e-6 px unter der Schwelle) entfällt — das Modell definiert `< clearance`
+ * exakt. Der Golden-Master-Ratchet über die realen Pläne zeigt: keine
+ * Zähländerung (ADR 0019).
  */
 export function checkClearance(
   edges: readonly RoutedEdge[],
@@ -132,14 +146,13 @@ export function checkClearance(
     const rects = foreignRects(edge, nodes);
     for (const segment of waypointsToSegments(edge.waypoints)) {
       for (const rect of rects) {
-        if (segmentHitsRect(segment[0], segment[1], rect)) continue; // I1-Fall
-        const distance = distanceSegmentToRect(segment, rect);
-        if (distance < tokens.cableClearance - EPS) {
+        const verdict = classifySegmentAgainstNode(segment, rect, tokens.cableClearance);
+        if (verdict.class === 'weighted' && verdict.distance !== undefined) {
           violations.push({
             invariant: 'I3',
             edgeId: edge.id,
             otherId: rect.id,
-            detail: `Abstand ${distance.toFixed(1)}px < cableClearance ${tokens.cableClearance}px zu Node ${rect.id}`,
+            detail: `Abstand ${verdict.distance.toFixed(1)}px < cableClearance ${tokens.cableClearance}px zu Node ${rect.id}`,
           });
         }
       }

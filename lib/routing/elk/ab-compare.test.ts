@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Node } from '@xyflow/react';
 import { GOLDEN_PLANS } from '../../../scripts/goldenmaster/plans';
 import { performAutoWiring } from '../../autoWire';
-import type { RouteEdgeRef } from '../../../components/edges/utils/routeAll';
+import { routeAllCables, type RouteEdgeRef } from '../../../components/edges/utils/routeAll';
 import { measureElk, measureLegacy, toElkPlan } from './ab-compare';
 
 /**
@@ -29,7 +29,7 @@ describe('ELK-A/B auf den Golden-Master-Plänen', () => {
       const nodes = wired!.nodes as Node[];
       const edges = wired!.edges as RouteEdgeRef[];
 
-      const legacy = measureLegacy(nodes, edges);
+      const legacy = measureLegacy(routeAllCables, nodes, edges);
       const elk = await measureElk(toElkPlan(nodes, edges));
 
       expect(elk.edges).toBe(legacy.edges);
@@ -47,7 +47,7 @@ describe('ELK-A/B auf den Golden-Master-Plänen', () => {
       const wired = performAutoWiring(plan.nodes, plan.edges as never[]);
       const nodes = wired!.nodes as Node[];
       const edges = wired!.edges as RouteEdgeRef[];
-      const legacy = measureLegacy(nodes, edges);
+      const legacy = measureLegacy(routeAllCables, nodes, edges);
       const elk = await measureElk(toElkPlan(nodes, edges));
       legacyCrossings += legacy.crossings;
       elkCrossings += elk.crossings;

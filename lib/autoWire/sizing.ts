@@ -44,7 +44,8 @@ import {
   nextStandardCrossSection,
 } from './primitives';
 import { isVoltageDropStopType } from './validation';
-import { solarDesignCurrentOf, solarFuseFloorOf, solarPanelEndOf } from '../solar'; // ELE-007
+import { solarDesignCurrentOf, solarDropBasisVoltageOf, solarFuseFloorOf, solarPanelEndOf } from '../solar'; // ELE-007
+import { breakingCapacityAOf, isFuseType, shortCircuitAtFuseA, type FuseType } from '../shortCircuit'; // DOM-002
 
 // lib/autoWire/sizing.ts — Spannungsfall, Querschnitt- und Sicherungsdimensionierung (M6-6).
 
@@ -127,6 +128,12 @@ export function sizeDcEdges(
 ): void {
   const dropLimit = scaleVolts(sysVoltage, VDE_MAX_DC_DROP_FRACTION);
   const perEdgeCap = scaleVolts(sysVoltage, VDE_MAX_DC_DROP_PER_EDGE_FRACTION);
+  // AUDIT ELE-007 (Restpunkt, nachgezogen 2026-09-08): Panel-Zuleitungen
+  // bekommen ihr Drop-Budget an der MPP-Basis (18 V × Anteil ≈ 0,54 V)
+  // statt an der 12,8-V-Systemreferenz — vorher ~40 % zu früh (konservativ,
+  // aber falsch bemessen; Anzeige in voltageDrop.ts nutzt dieselbe Basis).
+  const solarDropLimit = scaleVolts(solarDropBasisVoltageOf(), VDE_MAX_DC_DROP_FRACTION);
+  const solarPerEdgeCap = scaleVolts(solarDropBasisVoltageOf(), VDE_MAX_DC_DROP_PER_EDGE_FRACTION);
 
   const sizeEdge = (edge: CableEdge, allowedOwn: Volts): Mm2 => {
     const sourceNode = nodeMap.get(edge.source);
@@ -163,7 +170,9 @@ export function sizeDcEdges(
   // veralten.
   for (const edge of dcEdges) {
     if (!edge.data) edge.data = {};
-    edge.data.crossSection = sizeEdge(edge, perEdgeCap);
+    // ELE-007: Panel-Kanten an der MPP-Basis (18 V), Rest an der Systembasis.
+    const panel = solarPanelEndOf(nodeMap.get(edge.source), nodeMap.get(edge.target));
+    edge.data.crossSection = sizeEdge(edge, panel ? solarPerEdgeCap : perEdgeCap);
     edge.data.dropWarning = false;
   }
 
@@ -177,10 +186,14 @@ export function sizeDcEdges(
       const cumAtSource = relevantCumulativeDrop(edge.source, nodeMap, allEdges, nodes, sysVoltage);
       const ownDrop = edgeVoltageDrop(I, edgeLength(edge), currentCs);
 
-      if (addVolts(cumAtSource, ownDrop) <= dropLimit) continue;
+      // ELE-007: Budget der Panel-Kante an der MPP-Basis bemessen.
+      const panel = solarPanelEndOf(sourceNode, targetNode);
+      const limit = panel ? solarDropLimit : dropLimit;
+      const edgeCap = panel ? solarPerEdgeCap : perEdgeCap;
+      if (addVolts(cumAtSource, ownDrop) <= limit) continue;
 
-      const remaining = cumAtSource >= dropLimit ? ZERO_VOLTS : subtractVolts(dropLimit, cumAtSource);
-      const allowedOwn = remaining < perEdgeCap ? remaining : perEdgeCap;
+      const remaining = cumAtSource >= limit ? ZERO_VOLTS : subtractVolts(limit, cumAtSource);
+      const allowedOwn = remaining < edgeCap ? remaining : edgeCap;
       const finalCs = sizeEdge(edge, allowedOwn);
       if (finalCs > currentCs) {
         edge.data!.crossSection = finalCs;
@@ -438,6 +451,15 @@ export function sizeAcEdges(edges: CableEdge[], nodes: Node[]): void {
   for (const edge of edges) {
     if (edge.data?.edgeDomain !== 'AC_230V') continue;
     if (!edge.data) edge.data = {};
+    // AUDIT DOM-001: Das AC-Schutzorgan ist keine bloße Zahl mehr. Dem
+    // Auto-Wire-Standard im Fahrzeugbau folgend: LS-Charakteristik B mit
+    // 6-kA-Icn als ehrlicher, konservativer Default (IEC 60898-1);
+    // Nutzer-Einträge bleiben unangetastet.
+    edge.data.acProtection = edge.data.acProtection ?? {
+      kind: 'mcb',
+      characteristic: 'B',
+      breakingCapacityKA: 6,
+    };
     const sourceNode = nodeMap.get(edge.source);
     const targetNode = nodeMap.get(edge.target);
     const I = acCurrentA(sourceNode, targetNode, nodes, edges);
@@ -470,5 +492,47 @@ export function sizeAcEdges(edges: CableEdge[], nodes: Node[]): void {
       rating !== undefined && rating <= calculateMaxFuse(edge.data.crossSection)
         ? rating
         : selectFuseSize(I, edge.data.crossSection);
+  }
+}
+
+/**
+ * AUDIT DOM-002: Auto-Wire vergibt die Sicherungs-BAUFORM mit. Bisher wurde
+ * nur der Nennstrom (`fuseSize`) gewählt — der Kurzschluss-Check (Ik der
+ * Batteriebank vs. Abschaltvermögen, useLiveValidation Rule A7) läge ohne
+ * Bauform in JEDEM Auto-Plan als ungelöster Hinweis. Politik: die kleinste
+ * Bauform, deren typisches Abschaltvermögen den Ik am Einbauort (Pol →
+ * Sicherung, gedämpft über fuseOffset/Querschnitt) trägt. ATO nur bis 30 A
+ * Nennstrom (Baugröße), darüber MEGA/ANL/MRBF, Spitzenbank (> MRBF-Deckel)
+ * → Class T. Nutzer-Einträge und explizite Datenblatt-Werte gewinnen und
+ * bleiben unangetastet. AC-Kanten: LS-Schalter/RCD-Modell, keine DC-Bauform.
+ */
+export function applyFuseTypes(dcEdges: CableEdge[], nodes: Node[], sysVoltage: number): void {
+  const batteries = nodes.filter((n) => n.type === 'battery');
+  for (const edge of dcEdges) {
+    const data = edge.data;
+    if (!data || !(Number(data.fuseSize) > 0)) continue;
+    if (data.edgeDomain === 'AC_230V') continue;
+    if (isFuseType(data.fuseType) || Number(data.fuseBreakingCapacity) > 0) continue;
+    const ik = shortCircuitAtFuseA(batteries, data.fuseOffset, data.crossSection, sysVoltage);
+    if (ik === null) continue; // Bank nicht schätzbar → ehrlich nichts erfinden
+    // Kandidaten spannungsabhängig aufsteigend nach wirksamem Abschaltvermögen
+    // sortieren (MRBF kollabiert bei 24-V-Bänken auf 5 kA) und die kleinste
+    // tragende Bauform stempeln. Auswahlprinzip „kleinstes Abschaltvermögen ≥
+    // Ik": höheres Abschaltvermögen bedeutet physikalisch immer längere/
+    // energiereichere Lichtbögen beim Abschalten (Class T ist das Dach für
+    // Lithium-Spitzenbänke, nicht die Familienwahl von nebenan); ANL (6 kA)
+    // schlägt damit bewusst MRBF (10 kA), sobald letzterer nicht nötig ist.
+    // ATO bleibt Baugrößenbeschränkung ≤ 30 A.
+    const base: readonly FuseType[] =
+      Number(data.fuseSize) > 30
+        ? ['mega', 'anl', 'mrbf', 'classT']
+        : ['ato', 'mega', 'anl', 'mrbf', 'classT'];
+    const nominees = [...base].sort(
+      (a, b) =>
+        (breakingCapacityAOf(a, undefined, sysVoltage) ?? 0) -
+        (breakingCapacityAOf(b, undefined, sysVoltage) ?? 0)
+    );
+    data.fuseType =
+      nominees.find((t) => (breakingCapacityAOf(t, undefined, sysVoltage) ?? 0) >= ik) ?? 'classT';
   }
 }

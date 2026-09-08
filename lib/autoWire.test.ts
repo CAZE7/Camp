@@ -165,6 +165,48 @@ describe('autoWire — performAutoWiring', () => {
     expect(ac).toBeTruthy();
     expect(ac!.data?.crossSection).toBeGreaterThanOrEqual(1.5);
   });
+
+  /**
+   * AUDIT DOM-001 (Fix 2026-09-08): Auto-Wire stempelt das AC-Schutzorgan
+   * mit — LS B, 6 kA (IEC 60898-1) als ehrlicher, konservativer Standard;
+   * Nutzer-Einträge bleiben unangetastet.
+   */
+  it('stempelt das AC-Schutzorgan (LS B, 6 kA) auf Auto-AC-Kanten und respektiert Nutzerdaten', () => {
+    const nodes = [
+      n('b1', 'battery', { label: 'Aufbau', capacity: 100, chemistry: 'LiFePO4' }),
+      n('sp1', 'shorePower', { label: 'Landstrom' }),
+      n('a1', 'consumer230v', { label: 'Steckdose', watts: 2000 }),
+    ];
+    const out = performAutoWiring(nodes)!;
+    const ac = out.edges.find((x) => x.data?.edgeDomain === 'AC_230V');
+    expect(ac!.data?.acProtection).toEqual({ kind: 'mcb', characteristic: 'B', breakingCapacityKA: 6 });
+
+    // Nutzer-Eintrag (FI/LS C 10 kA) darf nicht plattgemacht werden.
+    const custom = [
+      n('sp1', 'shorePower', { label: 'Landstrom' }),
+      n('a1', 'consumer230v', { label: 'Steckdose', watts: 2000 }),
+    ];
+    const edges = [
+      {
+        id: 'e1',
+        source: 'sp1',
+        target: 'a1',
+        sourceHandle: 'plus',
+        targetHandle: 'plus',
+        data: {
+          edgeDomain: 'AC_230V' as const,
+          length: 4,
+          acProtection: { kind: 'rcbo', characteristic: 'C', breakingCapacityKA: 10 },
+        },
+      },
+    ];
+    sizeAcEdges(edges as never, custom);
+    expect(edges[0]!.data.acProtection).toEqual({
+      kind: 'rcbo',
+      characteristic: 'C',
+      breakingCapacityKA: 10,
+    });
+  });
 });
 
 // ---------------------------------------------------------------------------

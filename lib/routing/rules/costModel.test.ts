@@ -7,7 +7,7 @@ import {
   segmentExtraCost,
 } from './costModel';
 import { classifyCollision } from './collision';
-import { SegmentSpatialIndex } from '../../../components/edges/utils/segmentSpatialIndex';
+import { SegmentSpatialIndex } from '../geometry/segmentSpatialIndex';
 import { ROUTING_TOKENS } from '../tokens';
 import type { Segment } from '../geometry';
 

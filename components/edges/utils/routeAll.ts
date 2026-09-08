@@ -116,7 +116,8 @@ const rebuild = (
   waypoints: Point[],
   crossings: number,
   usedSearch: PathResult['usedSearch'],
-  hops: PathHop[] = []
+  hops: PathHop[] = [],
+  fallbackHitsObstacles?: boolean
 ): PathResult => {
   const mid = polylineMidpoint(waypoints);
   return {
@@ -134,6 +135,11 @@ const rebuild = (
     bends: countBends(waypoints),
     crossings,
     usedSearch,
+    // AUDIT ROUTE-001 (Härtung 2026-09-08): die Härtungs-Marke der
+    // Einzelsuche darf im RouteAll-Rebuild nicht verloren gehen — sonst
+    // wäre ein Fallback ohne Hindernisfreigabe an der UI/Invarianten-
+    // Oberfläche unsichtbar.
+    fallbackHitsObstacles,
   };
 };
 
@@ -434,6 +440,12 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
       targetPosition: tgt.position,
       offset: polarityPathOffset(edge.sourceHandle) + lane,
       obstacles,
+      // AUDIT ROUTE-001 (Härtung 2026-09-08): eigene Boxen explizit — der
+      // Router verwirft NUR diese; fremde, an den eigenen Node geklebte
+      // Boxen bleiben Hindernis (früher still verworfen → durchroutet).
+      ownObstacles: [obstacleById.get(edge.source), obstacleById.get(edge.target)].filter(
+        (r): r is Rect => r !== undefined
+      ),
       crossingSegments: dynamicRoutedSegments.filter((s) => s.edgeId !== edge.id).map((s) => s.segment),
     });
     raw.push({ id: edge.id, waypoints: result.waypoints, result });
@@ -488,7 +500,16 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
     if (!item) continue;
     const wp = finalWaypoints.get(id) ?? item.waypoints;
     const crossings = countCrossings(wp, crossingAll);
-    out.set(id, rebuild(wp, crossings, item.result.usedSearch, hopsByEdge.get(id) ?? []));
+    out.set(
+      id,
+      rebuild(
+        wp,
+        crossings,
+        item.result.usedSearch,
+        hopsByEdge.get(id) ?? [],
+        item.result.fallbackHitsObstacles
+      )
+    );
   }
   return out;
 }

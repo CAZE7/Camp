@@ -16,6 +16,15 @@ export type GraphSnapshot = {
   waterEdges: PlannerWaterEdge[];
 };
 
+/**
+ * Ergebnis der ELK-Layout-Action (ADR 0018). `elk`/`dagre` melden die
+ * tatsächlich gelaufene Engine; `empty` (kein Bauteil), `stale` (neuere
+ * Anfrage hat gewonnen) und `error` (beide Engines gescheitert) sind die
+ * ehrlichen Verweigerungen — das UI sagt aus, was passiert ist.
+ */
+export type LayoutV2Outcome =
+  { applied: true; engine: 'elk' | 'dagre' } | { applied: false; reason: 'empty' | 'stale' | 'error' };
+
 export interface PlannerState {
   viewMode: 'electric' | 'water';
   setViewMode: (mode: 'electric' | 'water') => void;
@@ -82,6 +91,13 @@ export interface PlannerState {
   updateNodeData: (id: string, data: NodeDataPatch) => void;
   handleChangeLength: (id: string, length: number) => void;
   handleChangeFuseSize: (id: string, fuseSize: number) => void;
+  handleChangeFuseType: (id: string, fuseType: string | undefined) => void;
+  /**
+   * AUDIT DOM-001: AC-Schutzorgan an einer AC-Kante ändern
+   * (Bauform/Charakteristik/Abschaltvermögen nach IEC 60898-1).
+   * `undefined` setzt das Feld zurück (kein Stempel mehr).
+   */
+  handleChangeAcProtection: (id: string, acProtection: CableEdgeData['acProtection']) => void;
   /**
    * AUDIT ELE-004: Position der Sicherung entlang der Kante in Metern ab
    * Batteriepol — Grundlage der 20-cm-Regel in collectEdgeErrors.
@@ -97,7 +113,13 @@ export interface PlannerState {
   onConnect: (connection: Connection) => void;
   autoWireSystem: () => void;
   onLayout: () => void;
-  onLayoutV2: () => Promise<void>;
+  /**
+   * ELK-Layout (ADR 0018): globaler Layout-Pass für Knotenpositionen.
+   * Ergebnis ist transparent — `engine` sagt, ob ELK gelaufen ist oder der
+   * Dagre-Fallback; `applied: false` bei leerem Plan, veralteter Anfrage
+   * (letzte Anfrage gewinnt) oder bei Versagen beider Engines.
+   */
+  onLayoutV2: () => Promise<LayoutV2Outcome>;
   onDrop: (
     event: React.DragEvent,
     screenToFlowPosition: (client: { x: number; y: number }) => { x: number; y: number }
