@@ -658,4 +658,116 @@ describe('Rule A7: Kurzschlussstrom vs. Abschaltvermögen (AUDIT DOM-002)', () =
     );
     expect(near.result.current.some((w) => w.ruleId === 'DOM-002-breaking-capacity')).toBe(true);
   });
+
+  describe('Rule A8: AC-Abschaltbedingung / Mehrleiter-Schutz (DOM-001)', () => {
+    const shore = (id: string, hasRcd = false): Node => ({
+      id,
+      type: 'shorePower',
+      data: { label: 'Landstrom', rating: 16, hasRcd },
+      position: { x: 0, y: 0 },
+    });
+    const acConsumer = (id: string): Node => ({
+      id,
+      type: 'consumer230v',
+      data: { label: '230-V-Gerät', watts: 500 },
+      position: { x: 0, y: 0 },
+    });
+    const acEdge = (
+      id: string,
+      source: string,
+      target: string,
+      data: CableEdgeData
+    ): Edge<CableEdgeData> => ({
+      id,
+      source,
+      target,
+      sourceHandle: 'plus',
+      targetHandle: 'plus',
+      data: { edgeDomain: 'AC_230V', fuseSize: 16, crossSection: 2.5, ...data },
+    });
+    const b16 = { kind: 'mcb', characteristic: 'B', breakingCapacityKA: 6 };
+
+    it('sehr lange AC-Leitung ohne FI → kritisch (Abschaltung ungesichert)', () => {
+      const nodes = [shore('sp1'), acConsumer('c1')];
+      const edges = [acEdge('e1', 'sp1', 'c1', { length: 200, acProtection: b16 })];
+      const { result } = renderHook(() => useLiveValidation(nodes, edges));
+      const warning = result.current.find((w) => w.id === 'ac-trip-e1');
+      expect(warning).toEqual(
+        expect.objectContaining({
+          category: 'safety',
+          type: 'critical',
+          ruleId: 'DOM-001-trip-condition',
+          unit: 'Ω',
+        })
+      );
+    });
+
+    it('dieselbe Leitung mit 30-mA-FI am Landstrom → FI-gedeckt (Info, nicht kritisch)', () => {
+      const nodes = [shore('sp1', true), acConsumer('c1')];
+      const edges = [acEdge('e1', 'sp1', 'c1', { length: 200, acProtection: b16 })];
+      const { result } = renderHook(() => useLiveValidation(nodes, edges));
+      expect(result.current.some((w) => w.id === 'ac-trip-e1' && w.type === 'critical')).toBe(false);
+      expect(result.current.some((w) => w.id === 'ac-trip-rcd-e1' && w.type === 'info')).toBe(true);
+    });
+
+    it('da ein FI/LS (RCBO) gewählt ist, deckt er den Fall auch ohne Landstrom-FI', () => {
+      const nodes = [shore('sp1'), acConsumer('c1')];
+      const edges = [
+        acEdge('e1', 'sp1', 'c1', {
+          length: 200,
+          acProtection: { kind: 'rcbo', characteristic: 'B', breakingCapacityKA: 6 },
+        }),
+      ];
+      const { result } = renderHook(() => useLiveValidation(nodes, edges));
+      expect(result.current.some((w) => w.id === 'ac-trip-rcd-e1')).toBe(true);
+      expect(result.current.some((w) => w.type === 'critical' && w.id.startsWith('ac-trip'))).toBe(false);
+    });
+
+    it('kurze Leitung: Abschaltbedingung erfüllt — keine A8-Meldung', () => {
+      const nodes = [shore('sp1'), acConsumer('c1')];
+      const edges = [acEdge('e1', 'sp1', 'c1', { length: 5, acProtection: b16 })];
+      const { result } = renderHook(() => useLiveValidation(nodes, edges));
+      expect(result.current.filter((w) => w.ruleId?.startsWith('DOM-001'))).toEqual([]);
+    });
+
+    it('Grenzfall: Leitungsanteil > 50 % des Zulasswerts → „knapp“-Warnung', () => {
+      const nodes = [shore('sp1'), acConsumer('c1')];
+      const edges = [acEdge('e1', 'sp1', 'c1', { length: 70, acProtection: b16 })];
+      const { result } = renderHook(() => useLiveValidation(nodes, edges));
+      const warning = result.current.find((w) => w.id === 'ac-trip-e1');
+      expect(warning).toEqual(
+        expect.objectContaining({ type: 'warning', ruleId: 'DOM-001-trip-borderline' })
+      );
+    });
+
+    it('Wechselrichter-Ausgang: keine Schleifenrechnung und bewusst stumm (Limit steht am Kanten-Chip)', () => {
+      const inverter: Node = {
+        id: 'inv1',
+        type: 'inverter',
+        data: { label: 'WR', continuousPower: 1000, hasRcd: true },
+        position: { x: 0, y: 0 },
+      };
+      const nodes = [inverter, acConsumer('c1'), acConsumer('c2')];
+      const edges = [
+        acEdge('e1', 'inv1', 'c1', { length: 200, acProtection: b16 }),
+        acEdge('e2', 'inv1', 'c2', { length: 250, acProtection: b16 }),
+      ];
+      const { result } = renderHook(() => useLiveValidation(nodes, edges));
+      // Weder kritisch noch ein „inverter-limited"-Hinweis: der Status bar
+      // bleibt meldungsfrei (Auto-Wire-Vertrag), die Ehrlichkeit liegt am
+      // 230-V-Kanten-Chip (elektronisch begrenzt → Datenblatt).
+      expect(result.current.some((w) => w.id.startsWith('ac-trip'))).toBe(false);
+      expect(result.current.some((w) => w.ruleId === 'DOM-001-inverter-output')).toBe(false);
+    });
+
+    it('Sicherung nur als Zahl → Info: Bauform/Charakteristik nachrüsten', () => {
+      const nodes = [shore('sp1'), acConsumer('c1')];
+      const edges = [acEdge('e1', 'sp1', 'c1', { length: 5 })];
+      const { result } = renderHook(() => useLiveValidation(nodes, edges));
+      const note = result.current.find((w) => w.id === 'ac-protection-not-modeled');
+      expect(note).toEqual(
+        expect.objectContaining({ type: 'info', ruleId: 'DOM-001-protection-not-modeled' })
+      );
+    });
+  });
 });

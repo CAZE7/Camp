@@ -65,6 +65,7 @@ export type GraphSlice = Pick<
   | 'handleChangeFuseSize'
   | 'handleChangeFuseOffset'
   | 'handleChangeFuseType'
+  | 'handleChangeAcProtection'
   | 'isValidConnection'
   | 'onConnect'
   | 'autoWireSystem'
@@ -286,6 +287,16 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
           fuseType === undefined || isFuseType(fuseType)
             ? state.edges.map((e) => (e.id === id ? { ...e, data: { ...e.data!, fuseType } } : e))
             : state.edges,
+      })
+    ),
+  handleChangeAcProtection: (id, acProtection) =>
+    set((state) =>
+      withHistory(state, {
+        // AUDIT DOM-001: AC-Schutzorgan (LS/RCBO, B/C, 6/10 kA); die
+        // Regelauswertung (A8) validiert defensiv erneut, hier wird die
+        // Auswahl des Inspektors ehrlich gespeichert. `undefined` löscht
+        // den Stempel — unbewertet ist dann wieder die ehrliche Anzeige.
+        edges: state.edges.map((e) => (e.id === id ? { ...e, data: { ...e.data!, acProtection } } : e)),
       })
     ),
   isValidConnection: (connection) => {

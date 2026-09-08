@@ -1196,6 +1196,39 @@ describe('applyTemplate: lässt den Wasserplan unberührt', () => {
       expect(usePlannerStore.getState().edges[0]!.data?.fuseType).toBeUndefined();
     });
 
+    /** AUDIT DOM-001: AC-Schutzorgan an AC-Kanten pflegen. */
+    it('handleChangeAcProtection setzt, tauscht und löscht das AC-Schutzorgan (DOM-001)', () => {
+      usePlannerStore.setState({
+        edges: [{ id: 'e1', source: 'n1', target: 'n2', data: { edgeDomain: 'AC_230V', fuseSize: 16 } }],
+      });
+      act(() => {
+        usePlannerStore.getState().handleChangeAcProtection('e1', {
+          kind: 'mcb',
+          characteristic: 'B',
+          breakingCapacityKA: 6,
+        });
+      });
+      expect(usePlannerStore.getState().edges[0]!.data?.acProtection).toEqual({
+        kind: 'mcb',
+        characteristic: 'B',
+        breakingCapacityKA: 6,
+      });
+      act(() => {
+        usePlannerStore.getState().handleChangeAcProtection('e1', {
+          kind: 'rcbo',
+          characteristic: 'C',
+          breakingCapacityKA: 10,
+        });
+      });
+      expect(usePlannerStore.getState().edges[0]!.data?.acProtection?.kind).toBe('rcbo');
+      act(() => {
+        usePlannerStore.getState().handleChangeAcProtection('e1', undefined);
+      });
+      expect(usePlannerStore.getState().edges[0]!.data?.acProtection).toBeUndefined();
+      // Undo-Sicherheit: Wert ist im History-Snapshot.
+      expect(usePlannerStore.getState().canUndo).toBe(true);
+    });
+
     it('fuseOffset: negative oder nicht-endliche Werte ändern den Zustand nicht (ELE-004)', () => {
       act(() => {
         usePlannerStore.getState().handleChangeFuseOffset('e1', 0.15);

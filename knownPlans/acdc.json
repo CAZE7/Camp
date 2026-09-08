@@ -159,6 +159,11 @@
       },
       {
         "data": {
+          "acProtection": {
+            "breakingCapacityKA": 6,
+            "characteristic": "B",
+            "kind": "mcb"
+          },
           "crossSection": 1.5,
           "edgeDomain": "AC_230V",
           "fuseSize": 7.5,
@@ -172,6 +177,11 @@
       },
       {
         "data": {
+          "acProtection": {
+            "breakingCapacityKA": 6,
+            "characteristic": "B",
+            "kind": "mcb"
+          },
           "crossSection": 2.5,
           "edgeDomain": "AC_230V",
           "fuseSize": 7.5,
@@ -185,6 +195,11 @@
       },
       {
         "data": {
+          "acProtection": {
+            "breakingCapacityKA": 6,
+            "characteristic": "B",
+            "kind": "mcb"
+          },
           "crossSection": 6,
           "edgeDomain": "AC_230V",
           "fuseSize": 25,

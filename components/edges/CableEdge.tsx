@@ -36,6 +36,7 @@ export const TAP_LABEL_TIMEOUT_MS = 5000;
 export type { CableEdgeData, CableEdgeGeometry } from '../../lib/domain/cableEdgeData';
 import type { CableEdgeData } from '../../lib/domain/cableEdgeData';
 import { solarEdgeFuseFloorOf } from '../../lib/solar'; // ELE-007: 1,56×Isc-Sicherungsregel
+import { acCableComposition } from '../../lib/acProtection'; // DOM-001: Mehrleiter-Zusammensetzung
 
 /**
  * React Flow 12 typisiert `EdgeProps` über den KANTEN-Typ, nicht mehr über die
@@ -719,7 +720,8 @@ const CableEdge = function ({
             {emphasized && edgeDomain === 'AC_230V' ? (
               <>
                 <span style={{ color: 'var(--info)', fontSize: '12px' }}>
-                  real ausführen: 3-adrig (L, N, PE)
+                  real ausführen: {acCableComposition(crossSection).label} (L/N je {crossSection} mm² + PE{' '}
+                  {acCableComposition(crossSection).protectiveEarth} mm² · Tab. 54.2)
                 </span>
                 <span
                   style={{
@@ -731,7 +733,9 @@ const CableEdge = function ({
                     marginTop: '2px',
                   }}
                 >
-                  FI/LS (RCD ≤ 30 mA) einplanen — wird hier nicht geprüft
+                  {data?.acProtection?.kind === 'rcbo'
+                    ? 'FI/LS gewählt (RCBO, 30 mA) — Abschaltung wird geschätzt (Hinweis A8)'
+                    : 'FI/LS (RCD ≤ 30 mA) einplanen — Abschaltung wird geschätzt (Hinweis A8)'}
                 </span>
                 {/* Auch AC-Kanten zeigen ihren Spannungsfall-Fehler (Bug 10). */}
                 {errors.map((err, idx) => (

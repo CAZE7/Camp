@@ -358,3 +358,23 @@ Faustwerten (MRBF war 3 kA angenommen), und `applyFuseTypes` wählt das
 KLEINSTE wirksame Abschaltvermögen ≥ geschätztem Ik (spannungsabhängig
 sortiert) — kürzester Lichtbogen, Class T als Dach. Details:
 `AUDIT-EXTREM-2026-09.md` → „Sechste Nachbearbeitung".
+
+### 2026-09-08 — Dritte Fassung: AC-Schutzorgan gestempelt (DOM-001)
+
+Erneutes `npm run goldenmaster:capture`; der Gesamt-Diff der Fixtures enthält
+jetzt drei durch Tests abgesicherte, bewusste Deltas — sonst nichts
+(Ids/Geometrie/Routing byte-identisch):
+
+1. `fuseType`-Stempel auf DC-Kanten (siehe DOM-002-Einträge oben),
+2. `solar`: zwei Querschnitte 16 → 10 mm² (siehe ELE-007-Eintrag oben),
+3. **DOM-001:** `acProtection: { kind: 'mcb', characteristic: 'B',
+breakingCapacityKA: 6 }` auf genau den sechs AC-Kanten (je Plan eine).
+   Begründung „bewusst besser, weil …": `sizeAcEdges` stempelt das
+   230-V-Schutzorgan mit (LS, Charakteristik B, 6 kA nach IEC 60898-1 —
+   konservativer Marktstandard, Nutzer-Einträge werden nie überschrieben).
+   Erst mit diesem Datenblatt-Satz wird Rule A8 (geschätzte
+   Abschaltbedingung Zs·Ia ≤ U0, 2/3-Regel, PE nach IEC 60364-5-54
+   Tab. 54.2; `lib/acProtection.ts`) für Auto-Pläne aktiv statt nur als
+   Info „nicht modelliert". Das schließt die Lücke, dass AC-Kanten eine
+   Sicherung als nackte Zahl ohne Typ/Charakteristik/Abschaltvermögen
+   trugen.

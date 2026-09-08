@@ -451,6 +451,15 @@ export function sizeAcEdges(edges: CableEdge[], nodes: Node[]): void {
   for (const edge of edges) {
     if (edge.data?.edgeDomain !== 'AC_230V') continue;
     if (!edge.data) edge.data = {};
+    // AUDIT DOM-001: Das AC-Schutzorgan ist keine bloße Zahl mehr. Dem
+    // Auto-Wire-Standard im Fahrzeugbau folgend: LS-Charakteristik B mit
+    // 6-kA-Icn als ehrlicher, konservativer Default (IEC 60898-1);
+    // Nutzer-Einträge bleiben unangetastet.
+    edge.data.acProtection = edge.data.acProtection ?? {
+      kind: 'mcb',
+      characteristic: 'B',
+      breakingCapacityKA: 6,
+    };
     const sourceNode = nodeMap.get(edge.source);
     const targetNode = nodeMap.get(edge.target);
     const I = acCurrentA(sourceNode, targetNode, nodes, edges);

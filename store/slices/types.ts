@@ -93,6 +93,12 @@ export interface PlannerState {
   handleChangeFuseSize: (id: string, fuseSize: number) => void;
   handleChangeFuseType: (id: string, fuseType: string | undefined) => void;
   /**
+   * AUDIT DOM-001: AC-Schutzorgan an einer AC-Kante ändern
+   * (Bauform/Charakteristik/Abschaltvermögen nach IEC 60898-1).
+   * `undefined` setzt das Feld zurück (kein Stempel mehr).
+   */
+  handleChangeAcProtection: (id: string, acProtection: CableEdgeData['acProtection']) => void;
+  /**
    * AUDIT ELE-004: Position der Sicherung entlang der Kante in Metern ab
    * Batteriepol — Grundlage der 20-cm-Regel in collectEdgeErrors.
    */

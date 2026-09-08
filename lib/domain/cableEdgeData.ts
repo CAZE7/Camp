@@ -1,3 +1,5 @@
+import type { AcProtectionDescriptor } from '../acProtection';
+
 /**
  * lib/domain/cableEdgeData.ts — Datenform einer elektrischen Kante.
  *
@@ -58,6 +60,14 @@ export type CableEdgeData = {
    * bewertbar — die Live-Validierung meldet das Datenfeld dann als offen.
    */
   fuseType?: string;
+  /**
+   * AC-Schutzorgan (AUDIT DOM-001): Bauform/Charakteristik/Abschaltvermögen
+   * des Leitungsschutzschalters nach IEC 60898-1 (LS/MCB oder FI/LS/RCBO).
+   * `fuseSize` bleibt der Bemessungsstrom In. Bewertet wird damit die
+   * Abschaltbedingung (Schleifenimpedanz-Schätzung, lib/acProtection.ts);
+   * ohne Angabe ist sie unbewertet statt angenommen.
+   */
+  acProtection?: AcProtectionDescriptor;
   /**
    * Explizites Abschaltvermögen (A) aus dem Datenblatt des konkreten
    * Produkts — schlägt die Bauform-Tabelle (AUDIT DOM-002).
