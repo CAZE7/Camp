@@ -145,6 +145,52 @@ Regel selbst bleibt hart.
   Bauart wie die Doppelungen oben — Kandidat für die nächste Runde.
 - `onLayoutV2` ist an keinen UI-Knopf verdrahtet (Bestandslage).
 
+## Nachtrag 2026-09-08 — PERF-001(b)/ROUTE-001 (Branch `arena/01a0818b-camp`)
+
+**PERF-001, Fix (b) aus dem Audit-Befund umgesetzt** (`pathfinding.ts`):
+
+- `segmentHitsAny` berechnet keine `classifyCollision` (inkl.
+  `distanceSegmentToRect`) mehr pro Segment×Box, sondern prüft direkt
+  `segmentHitsRect` — bitweise äquivalent ('hard' ⇔ `segmentHitsRect`), denn
+  die Clearance-Klasse 'weighted' wurde hier nie gelesen. Im Profil lagen
+  ~95 % der Worst-Case-Laufzeit in genau diesen verworfenen Distanzen.
+- `buildHananGridMasks`: Blockade-Markierung des Hanan-Grids per
+  Indexbereich (binäre Suche + Intervall-Store) statt Zelle×Solid.
+  Exaktheitsvertrag „Ergebnis bitweise identisch" ist als Fuzz gegen die
+  wörtlich kopierte Schleifenfassung belegt (`hananGridMasks.test.ts`,
+  240 Boards inkl. on-grid-Kanten, degenerierten und EPS-kleinen Boxen).
+- `countCrossings`: Bounding-Box-Vorfilter vor `classifyCollision(edge-edge)`
+  — ergebnisidentisch (Crossing/Overlap setzen Berührung voraus);
+  Referenzvergleich ohne Vorfilter liegt im selben Testfile.
+
+Messung (`benchmarks/routeAllScaling.probe.ts`, Audit-Nachbau + neuer
+Worst Case „planweite Spannkanten", Vollaufbau aller Routen):
+
+| Szenario                           | vorher (Branch) | Audit-Baseline | nachher   |
+| ---------------------------------- | --------------- | -------------- | --------- |
+| 500 Knoten, Kette (Audit-Szenario) | ~1 550 ms       | ~81 200 ms     | ~153 ms   |
+| 250 Knoten, planweite Spannkanten  | ~203 000 ms     | —              | ~1 343 ms |
+| 500 Knoten, planweite Spannkanten  | ~64 800 ms      | —              | ~2 813 ms |
+
+**ROUTE-001-Härtung:**
+
+- `PathRequest.ownObstacles`: Der Produktionspfad (`routeAllCables`) reicht
+  die eigenen Node-Boxen mit; der Router verwirft nur noch diese. Fremde,
+  an den eigenen Node geklebte Boxen (überlappende Nachbarn) bleiben
+  Hindernis — sie wurden bis hierhin lautlos mitverworfen und durchroutet.
+- `fallbackHitsObstacles` überlebt den RouteAll-Rebuild; die harte
+  Verletzung steht damit auch im Final-Validation-Report (I1), nicht nur
+  im Dev-Log. End-to-End belegt: `routeAllCollisionGuarantee.test.ts`.
+- Unverändert begründete Ausnahmen: Stub-Toleranz (b) und die
+  Rohbox+2-px-Stufe (c) — bei an einen Handle geklebten Bauteilen sind
+  24-px-Stub UND 12-px-Clearance geometrisch gemeinsam unmöglich; diese
+  Fälle laufen als markierter Fallback mit `fallbackHitsObstacles === true`.
+
+Nachweis: komplette Suite 1890/1890 grün, `tsc` (App + Tests) grün,
+Golden Master unverändert (kein Fixture mit überlappenden Nodes — die
+Härtung ändert ausschließlich solche Pläne, und dort nur Richtung
+„strenger statt lautlos").
+
 ## Verweise
 
 - ADR 0009 — Crossings erlaubt, Overlaps verboten

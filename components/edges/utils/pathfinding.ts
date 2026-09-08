@@ -121,11 +121,23 @@ const at = <T>(arr: readonly T[], i: number): T => {
   return v;
 };
 
+/**
+ * AUDIT PERF-001 (Fix 2026-09-08): exakt äquivalente, billige Fassung.
+ *
+ * Vorher wurde pro Segment×Box die volle `classifyCollision(edge-node)`
+ * gerechnet — inkl. `distanceSegmentToRect` für die Clearance-Klasse
+ * 'weighted', deren Ergebnis hier NIE gelesen wird. `classifySegmentAgainstNode`
+ * liefert class 'hard' gdw. `segmentHitsRect(segment, obstacle)` — alle
+ * übrigen Klassen (weighted/none) sind für den Aufrufer ununterscheidbar
+ * von "kein Treffer". Der Rückgabewert dieser Funktion ist daher bitweise
+ * derselbe; die Distanzberechnung entfällt.
+ *
+ * Messung (Audit-Nachbau, 250 Knoten mit planweiten Spannkanten): ~95 % der
+ * Laufzeit lagen in den verworfenen Clearance-Distanzen — 203 s pro Pass.
+ */
 export function segmentHitsAny(a: Point, b: Point, obstacles: Rect[]): boolean {
   for (let i = 0; i < obstacles.length; i++) {
-    const obstacle = at(obstacles, i);
-    const constraint = classifyCollision({ type: 'edge-node', segment: [a, b], obstacle });
-    if (constraint.class === 'hard') return true;
+    if (segmentHitsRect(a, b, at(obstacles, i))) return true;
   }
   return false;
 }
@@ -595,8 +607,27 @@ export function countCrossings(waypoints: Point[], others: Segment[]): number {
   let count = 0;
   for (let i = 0; i < others.length; i++) {
     const other = at(others, i);
+    const oMinX = Math.min(other[0].x, other[1].x);
+    const oMaxX = Math.max(other[0].x, other[1].x);
+    const oMinY = Math.min(other[0].y, other[1].y);
+    const oMaxY = Math.max(other[0].y, other[1].y);
     for (let j = 0; j < own.length; j++) {
-      const constraint = classifyCollision({ type: 'edge-edge', a: at(own, j), b: other });
+      const self = at(own, j);
+      // AUDIT PERF-001 (Fix 2026-09-08): Bounding-Box-Vorfilter, exakt
+      // ergebniserhaltend. Crossing (soft) und Overlap (hard) setzen
+      // geometrische Berührung voraus — `segmentsCross`/`segmentsOverlap`
+      // sind bei strikt disjunkten Boxen beide false, die Klassifikation
+      // ändert sich also durch das Überspringen nicht; die volle
+      // `classifyCollision` (mit Segmentdistanz) läuft nur für Kandidaten.
+      if (
+        Math.max(self[0].x, self[1].x) < oMinX ||
+        oMaxX < Math.min(self[0].x, self[1].x) ||
+        Math.max(self[0].y, self[1].y) < oMinY ||
+        oMaxY < Math.min(self[0].y, self[1].y)
+      ) {
+        continue;
+      }
+      const constraint = classifyCollision({ type: 'edge-edge', a: self, b: other });
       if (constraint.class === 'soft' || constraint.class === 'hard') {
         count++;
         break;
@@ -604,6 +635,117 @@ export function countCrossings(waypoints: Point[], others: Segment[]): number {
     }
   }
   return count;
+}
+
+/** Erstes i mit `arr[i] > v` (arr aufsteigend sortiert); arr.length, falls keins. */
+const firstIndexGreater = (arr: readonly number[], v: number): number => {
+  let lo = 0;
+  let hi = arr.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (at(arr, mid) > v) hi = mid;
+    else lo = mid + 1;
+  }
+  return lo;
+};
+
+/** Erstes i mit `arr[i] >= v` (arr aufsteigend sortiert); arr.length, falls keins. */
+const firstIndexGreaterEqual = (arr: readonly number[], v: number): number => {
+  let lo = 0;
+  let hi = arr.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (at(arr, mid) >= v) hi = mid;
+    else lo = mid + 1;
+  }
+  return lo;
+};
+
+export type HananGridMasks = {
+  /** Punkt (xs[ix], ys[iy]) liegt strikt im Inneren eines Solids. */
+  blocked: Uint8Array;
+  /** Horizontale Bewegung (xs[ix],y)→(xs[ix+1],y) trifft ein Solid. */
+  hClosed: Uint8Array;
+  /** Vertikale Bewegung (x,ys[iy])→(x,ys[iy+1]) trifft ein Solid. */
+  vClosed: Uint8Array;
+};
+
+/**
+ * AUDIT PERF-001, Fix (b) aus dem Audit-Befund: Blockade-Markierung des
+ * Hanan-Grids per Index-BEREICH statt Zelle×Solid.
+ *
+ * Vorher wurde jede der xs.length×ys.length Gitterlinien gegen JEDES Solid
+ * mit einer vollen Segment-Prüfung getestet — O(Zellen × Solids) pro Kante,
+ * gemessen bis zu 203 s für einen Routing-Pass bei 250 Knoten mit
+ * planweiten Spannkanten (Probe `benchmarks/routeAllScaling.probe.ts`).
+ * Jetzt wird pro Solid der betroffene Indexbereich binär gesucht und das
+ * Intervall markiert — Kosten ∝ abgedeckte Zellen, nicht ∝ alle Zellen.
+ *
+ * Exaktheit (Bedingung für den Golden Master): die Prädikate sind wörtlich
+ * die der früheren Schleifen —
+ *  - Punkt blockiert: `x` und `y` strikt im Inneren (±EPS, s. u.),
+ *  - Bewegung geschlossen: `segmentHitsRect` des achsenparallelen Segments
+ *    (konstante Koordinate strikt innen, variable überlappt mit EPS-Rand).
+ * Die Intervallgrenzen folgen denselben Ungleichungen (erstes >, erstes ≥),
+ * damit ist das Markierungsergebnis bitweise identisch zur alten Schleife;
+ * der Äquivalenz-Fuzz liegt in `hananGridMasks.test.ts`.
+ *
+ * Annahme: Gitterkoordinaten stammen aus Pixel-Geometrie und sind paarweise
+ * > EPS voneinander entfernt (uniqueSorted) — Segmentlängen < EPS, bei denen
+ * `segmentHitsRect` in den anderen Achsen-AST wechseln würde, kommen hier
+ * nicht vor.
+ */
+export function buildHananGridMasks(
+  xs: readonly number[],
+  ys: readonly number[],
+  solids: readonly Rect[]
+): HananGridMasks {
+  const nx = xs.length;
+  const ny = ys.length;
+  const blocked = new Uint8Array(nx * ny);
+  const hClosed = new Uint8Array(ny * Math.max(0, nx - 1));
+  const vClosed = new Uint8Array(nx * Math.max(0, ny - 1));
+
+  for (let o = 0; o < solids.length; o++) {
+    const r = at(solids, o);
+    // Zeilen mit ys[iy] ∈ (r.y+EPS, r.y+h-EPS); Spalten analog.
+    const rowLo = firstIndexGreater(ys, r.y + EPS);
+    const rowHi = firstIndexGreaterEqual(ys, r.y + r.height - EPS); // exklusiv
+    const colLo = firstIndexGreater(xs, r.x + EPS);
+    const colHi = firstIndexGreaterEqual(xs, r.x + r.width - EPS);
+    if (rowHi > rowLo && colHi > colLo) {
+      for (let iy = rowLo; iy < rowHi; iy++) {
+        const rowBase = iy * nx;
+        for (let ix = colLo; ix < colHi; ix++) blocked[rowBase + ix] = 1;
+      }
+    }
+    // Horizontal-Segmente: Zeile im y-Fenster UND
+    //   xs[ix+1] > r.x+EPS   ⟺  ix ≥ colLo-1
+    //   xs[ix]   < r.x+w-EPS ⟺  ix ≤ colHi-1
+    // (Intervallgrenzen: leer erkennbar an lo > hi — exakt die segmentHitsRect-Formeln.)
+    if (nx > 1 && rowHi > rowLo) {
+      const segLo = Math.max(0, colLo - 1);
+      const segHi = Math.min(nx - 2, colHi - 1);
+      if (segLo <= segHi) {
+        for (let iy = rowLo; iy < rowHi; iy++) {
+          const rowBase = iy * (nx - 1);
+          for (let ix = segLo; ix <= segHi; ix++) hClosed[rowBase + ix] = 1;
+        }
+      }
+    }
+    // Vertikal-Segmente: gespiegelt.
+    if (ny > 1 && colHi > colLo) {
+      const segLo = Math.max(0, rowLo - 1);
+      const segHi = Math.min(ny - 2, rowHi - 1);
+      if (segLo <= segHi) {
+        for (let ix = colLo; ix < colHi; ix++) {
+          const colBase = ix * (ny - 1);
+          for (let iy = segLo; iy <= segHi; iy++) vClosed[colBase + iy] = 1;
+        }
+      }
+    }
+  }
+  return { blocked, hClosed, vClosed };
 }
 
 function hananAStar(
@@ -661,19 +803,7 @@ function hananAStar(
     solids.push(r);
   }
 
-  const blocked = new Uint8Array(nx * ny);
-  for (let o = 0; o < solids.length; o++) {
-    const r = at(solids, o);
-    for (let iy = 0; iy < ny; iy++) {
-      const y = at(ys, iy);
-      if (y <= r.y + EPS || y >= r.y + r.height - EPS) continue;
-      const row = iy * nx;
-      for (let ix = 0; ix < nx; ix++) {
-        const x = at(xs, ix);
-        if (x > r.x + EPS && x < r.x + r.width - EPS) blocked[row + ix] = 1;
-      }
-    }
-  }
+  const { blocked, hClosed, vClosed } = buildHananGridMasks(xs, ys, solids);
   blocked[siy * nx + six] = 0;
   blocked[giy * nx + gix] = 0;
 
@@ -681,21 +811,21 @@ function hananAStar(
   const vOpen = new Uint8Array(nx * Math.max(0, ny - 1));
   if (nx > 1) {
     for (let iy = 0; iy < ny; iy++) {
-      const y = at(ys, iy);
       const row = iy * (nx - 1);
       for (let ix = 0; ix < nx - 1; ix++) {
+        if (hClosed[row + ix]) continue;
         if (blocked[iy * nx + ix] || blocked[iy * nx + ix + 1]) continue;
-        if (!segmentHitsAny({ x: at(xs, ix), y }, { x: at(xs, ix + 1), y }, solids)) hOpen[row + ix] = 1;
+        hOpen[row + ix] = 1;
       }
     }
   }
   if (ny > 1) {
     for (let ix = 0; ix < nx; ix++) {
-      const x = at(xs, ix);
       const col = ix * (ny - 1);
       for (let iy = 0; iy < ny - 1; iy++) {
+        if (vClosed[col + iy]) continue;
         if (blocked[iy * nx + ix] || blocked[(iy + 1) * nx + ix]) continue;
-        if (!segmentHitsAny({ x, y: at(ys, iy) }, { x, y: at(ys, iy + 1) }, solids)) vOpen[col + iy] = 1;
+        vOpen[col + iy] = 1;
       }
     }
   }
@@ -807,6 +937,16 @@ export type PathRequest = {
   obstacles?: Rect[];
   borderRadius?: number;
   crossingSegments?: Segment[];
+  /**
+   * AUDIT ROUTE-001 (Härtung 2026-09-08): die EIGENEN Node-Boxen (Quelle
+   * und Ziel) — Produktionspfad `routeAllCables` reicht sie als Referenzen
+   * aus seiner `nodeObstacleMap` mit. Wenn gesetzt, werden aus `obstacles`
+   * ausschließlich diese eigenen Boxen verworfen; fremde Boxen, die Start
+   * oder Ziel enthalten (überlappende Nachbar-Nodes), bleiben Hindernisse.
+   * Ohne Angabe gilt der Legacy-Vertrag: Boxen, die Start/Ziel enthalten,
+   * werden verworfen.
+   */
+  ownObstacles?: readonly Rect[];
   /** Test-Hook: Cache umgehen. */
   skipCache?: boolean;
 };
@@ -902,18 +1042,25 @@ const cacheSet = (key: string, value: PathResult): void => {
   }
 };
 
-const relevantObstacles = (obstacles: Rect[], start: Point, end: Point): Rect[] => {
-  // AUDIT ROUTE-001 (dokumentierte Ausnahme a): Boxen, die Start oder Ziel
-  // enthalten, werden verworfen. Das ist der Vertrag für Aufrufer, die die
-  // eigene Node als Hindernis mitgeben (Unit-Tests, fremde Codepfade). Der
-  // Produktionspfad (routeAll) schließt die eigene Node bereits aus — dort
-  // trifft der Verwurf stattdessen ÜBERLAPPENDE fremde Nodes, durch die dann
-  // geroutet werden kann. Bekannt, bewusst akzeptiert und im Change Ledger
-  // dokumentiert; die Fallback-Kollision wird über `fallbackHitsObstacles`
-  // sichtbar gezählt statt versteckt.
+const relevantObstacles = (obstacles: Rect[], start: Point, end: Point, own?: readonly Rect[]): Rect[] => {
+  // AUDIT ROUTE-001 (Härtung 2026-09-08): Der Produktionspfad (routeAll)
+  // reicht die eigenen Node-Boxen explizit mit (`own`) — dann wird NUR die
+  // eigene Box verworfen (Referenz aus derselben nodeObstacleMap). Fremde,
+  // an den eigenen Node geklebte (überlappende) Boxen bleiben Hindernis und
+  // werden nicht mehr still durchroutet; unvermeidbare Klebefälle laufen
+  // über den markierten Fallback (`fallbackHitsObstacles`) statt lautlos
+  // "konform" zu sein.
+  //
+  // Legacy-Modus (kein `own`): Boxen, die Start oder Ziel enthalten, werden
+  // verworfen. Das ist der Vertrag für Aufrufer, die die eigene Node als
+  // Hindernis mitgeben (Unit-Tests, CableEdge/WaterPipeEdge-Einzelpfade).
   const out: Rect[] = [];
   for (let i = 0; i < obstacles.length; i++) {
     const r = at(obstacles, i);
+    if (own !== undefined) {
+      if (!own.includes(r)) out.push(r);
+      continue;
+    }
     if (containsPoint(r, start) || containsPoint(r, end)) continue;
     out.push(r);
   }
@@ -1075,7 +1222,9 @@ export function findCablePath(input: PathRequest): PathResult {
   const allObstacles = input.obstacles ?? [];
   const start: Point = { x: input.sourceX, y: input.sourceY };
   const end: Point = { x: input.targetX, y: input.targetY };
-  const obstacles = relevantObstacles(allObstacles, start, end).map((r) => inflateRect(r, OBSTACLE_MARGIN));
+  const obstacles = relevantObstacles(allObstacles, start, end, input.ownObstacles).map((r) =>
+    inflateRect(r, OBSTACLE_MARGIN)
+  );
   const crossingSegments = input.crossingSegments ?? [];
   const key = requestKey(input, obstacles);
 
@@ -1087,7 +1236,7 @@ export function findCablePath(input: PathRequest): PathResult {
   const baseOffset = input.offset ?? 0;
   let best = searchOnce(input, obstacles, baseOffset);
   if (best.usedSearch === 'fallback' && pathHitsObstacles(best.waypoints, obstacles)) {
-    const tight = relevantObstacles(allObstacles, start, end).map((r) =>
+    const tight = relevantObstacles(allObstacles, start, end, input.ownObstacles).map((r) =>
       inflateRect(r, Math.max(2, OBSTACLE_MARGIN / 2))
     );
     const retry = searchOnce(input, tight, baseOffset, Math.max(2, OBSTACLE_MARGIN / 2));

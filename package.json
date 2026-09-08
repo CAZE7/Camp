@@ -19,6 +19,7 @@
     "regression:capture": "tsx scripts/regression/capture.ts",
     "test:regression": "vitest run scripts/regression/regression.test.ts",
     "perf:edge-routing": "tsx benchmarks/edgeRoutingPerf.bench.ts",
+    "perf:route-scaling": "tsx benchmarks/routeAllScaling.probe.ts",
     "pree2e": "node scripts/check-node-version.mjs",
     "e2e": "playwright test",
     "e2e:install": "playwright install --with-deps chromium",
