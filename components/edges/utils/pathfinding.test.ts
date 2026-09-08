@@ -218,9 +218,9 @@ describe('findCablePath — invariants', () => {
     expect(result.waypoints.some((p) => p.y < -220 || p.y > 220)).toBe(true);
     // CI läuft mit Coverage + Node 24 deutlich langsamer als lokal; der Test
     // ist bewusst ein Worst-Case mit 80 irrelevanten Dummy-Obstacles und
-    // liegt lokal bereits bei ~5.5 s. 30 s verhindern Flakes, ohne die
+    // liegt lokal bereits bei ~5.5 s. 90 s verhindern Flakes, ohne die
     // Invariante zu lockern.
-  }, 30_000);
+  }, 90_000);
 
   it('goes around a blocking rectangle instead of through it', () => {
     const wall: Rect = { x: 80, y: 0, width: 40, height: 120 };
