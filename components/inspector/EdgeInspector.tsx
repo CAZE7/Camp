@@ -3,6 +3,13 @@ import { type Edge } from '@xyflow/react';
 import { type CableEdgeData } from '../edges/CableEdge';
 import { ValidatingInput, COMMON_RULES } from '../ui/ValidatingInput';
 import { FUSE_MAP } from '../../lib/electrical';
+import {
+  FUSE_BREAKING_CAPACITY_A,
+  FUSE_TYPE_LABELS,
+  FUSE_TYPES,
+  isFuseType,
+  type FuseType,
+} from '../../lib/shortCircuit';
 
 export interface EdgeInspectorProps {
   edge: Edge<CableEdgeData>;
@@ -10,6 +17,8 @@ export interface EdgeInspectorProps {
   onChangeFuseSize?: (id: string, fuseSize: number) => void;
   /** AUDIT ELE-004: Position der Sicherung ab Batteriepol (m). */
   onChangeFuseOffset?: (id: string, fuseOffset: number) => void;
+  /** AUDIT DOM-002: Bauform der Sicherung (Abschaltvermögens-Check). */
+  onChangeFuseType?: (id: string, fuseType: string | undefined) => void;
 }
 
 export function EdgeInspector({
@@ -17,6 +26,7 @@ export function EdgeInspector({
   onChangeLength,
   onChangeFuseSize,
   onChangeFuseOffset,
+  onChangeFuseType,
 }: EdgeInspectorProps) {
   const isAc = edge.data?.edgeDomain === 'AC_230V';
   const storedCs = edge.data?.crossSection;
@@ -95,8 +105,39 @@ export function EdgeInspector({
             className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
           />
           <p className="mt-1 text-xs text-muted-foreground">
-            Die Hauptsicherung soll möglichst direkt am Batteriepol sitzen (ISO 10133 / ABYC E-11:
-            ungeschützte Strecke ≤ 0,2 m).
+            Die Hauptsicherung soll möglichst direkt am Batteriepol sitzen — ungeschützte Strecke ≤ 0,2 m (ISO
+            10133:2000 §8.1 = 200 mm; ABYC E-11: 7 in = 178 mm).
+          </p>
+        </div>
+      )}
+      {/* AUDIT DOM-002: Bauform → typisches Abschaltvermögen (kA) für den
+          Kurzschluss-Check der Live-Validierung. Ohne Bauform bleibt der
+          Check offen und meldet sich als Hinweis. */}
+      {!isAc && onChangeFuseType && edge.data?.fuseSize !== undefined && (
+        <div className="flex flex-col">
+          <label
+            className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+            htmlFor="fuse-type-select"
+          >
+            Sicherungs-Bauform
+          </label>
+          <select
+            id="fuse-type-select"
+            value={isFuseType(edge.data?.fuseType) ? (edge.data?.fuseType as FuseType) : ''}
+            onChange={(e) => onChangeFuseType(edge.id, e.target.value === '' ? undefined : e.target.value)}
+            className="rounded border border-border bg-background px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+          >
+            <option value="">— nicht angegeben —</option>
+            {FUSE_TYPES.map((ft) => (
+              <option key={ft} value={ft}>
+                {FUSE_TYPE_LABELS[ft]} (≈ {(FUSE_BREAKING_CAPACITY_A[ft] / 1000).toLocaleString('de-DE')} kA)
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Typisches Abschaltvermögen der Bauform (Hersteller-Kennwerte, keine normengeprüfte Auslegung).
+            Danach prüft der Planer, ob die Sicherung den geschätzten Kurzschlussstrom der Batteriebank
+            trennen kann.
           </p>
         </div>
       )}

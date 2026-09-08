@@ -314,7 +314,7 @@ const DEFAULT_TIP: ExpertTip = {
       // AUDIT DOM-001/002: Ehrliche Abgrenzung statt impliziter
       // Vollständigkeits-Anspruch — der Planer dimensioniert, er prüft nicht.
       heading: 'Was der Planer NICHT leistet (Modellgrenzen)',
-      body: 'Der Planer ist ein Dimensionierungs-Hilfsmittel und ersetzt keine Elektrofachkraft. Nicht modelliert: Mehrleiter-Ausführung der 230-V-Seite (PE/N — die Kanten sind Einleiter-Schemata, real 3-adrig ausführen), Kurzschlussstrom und Abschaltvermögen (kA-Rating von Sicherungen), Batterieinnenwiderstand, C-Raten, Anlassströme, Selektivität sowie die exakte Sicherungsposition (nur Abstand zur Quelle als Feld). Für die endgültige Auslegung gelten die einschlägigen Normen durch eine fachkundige Person.',
+      body: 'Der Planer ist ein Dimensionierungs-Hilfsmittel und ersetzt keine Elektrofachkraft. Nicht modelliert: Mehrleiter-Ausführung der 230-V-Seite (PE/N — die Kanten sind Einleiter-Schemata, real 3-adrig ausführen), Peukert-/Temperaturkorrektur der Kapazität, Anlassströme, Selektivität/I²t-Koordination sowie die exakte Sicherungsposition (nur Abstand zur Quelle als Feld). Kurzschlussstrom und Abschaltvermögen (kA) sind seit DOM-002 als SCHÄTZUNG modelliert (Batterie-Innenwiderstand oder Chemie-Faustformel + typische Bauform-Werte — UNVERIFIED, prüft nur: kann die Sicherung den Bank-Kurzschlussstrom trennen?). Für die endgültige Auslegung gelten die einschlägigen Normen durch eine fachkundige Person.',
     },
   ],
 };

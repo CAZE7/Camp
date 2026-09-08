@@ -997,4 +997,60 @@ describe('applyTemplate: lässt den Wasserplan unberührt', () => {
     expect(state.waterNodes).toEqual([waterNode]);
     expect(state.waterEdges).toEqual([waterEdge]);
   });
+
+  describe('handleChangeFuseType / handleChangeFuseOffset (AUDIT ELE-004/DOM-002)', () => {
+    const edge: Edge<CableEdgeData> = {
+      id: 'e1',
+      source: 'n1',
+      target: 'n2',
+      data: { fuseSize: 100 },
+    };
+
+    beforeEach(() => {
+      usePlannerStore.setState({ edges: [edge], waterEdges: [] });
+    });
+
+    it('setzt und tauscht eine bekannte Bauform (DOM-002)', () => {
+      act(() => {
+        usePlannerStore.getState().handleChangeFuseType('e1', 'mrbf');
+      });
+      expect(usePlannerStore.getState().edges[0]!.data?.fuseType).toBe('mrbf');
+      act(() => {
+        usePlannerStore.getState().handleChangeFuseType('e1', 'classT');
+      });
+      expect(usePlannerStore.getState().edges[0]!.data?.fuseType).toBe('classT');
+    });
+
+    it('lehnt unbekannte Bauform-Strings defensiv ab (Zustand unverändert)', () => {
+      act(() => {
+        usePlannerStore.getState().handleChangeFuseType('e1', 'mrbf');
+      });
+      act(() => {
+        usePlannerStore.getState().handleChangeFuseType('e1', 'klingeldraht');
+      });
+      expect(usePlannerStore.getState().edges[0]!.data?.fuseType).toBe('mrbf');
+    });
+
+    it('undefined löscht die Bauform wieder (Feld zurücksetzen)', () => {
+      act(() => {
+        usePlannerStore.getState().handleChangeFuseType('e1', 'ato');
+      });
+      act(() => {
+        usePlannerStore.getState().handleChangeFuseType('e1', undefined);
+      });
+      expect(usePlannerStore.getState().edges[0]!.data?.fuseType).toBeUndefined();
+    });
+
+    it('fuseOffset: negative oder nicht-endliche Werte ändern den Zustand nicht (ELE-004)', () => {
+      act(() => {
+        usePlannerStore.getState().handleChangeFuseOffset('e1', 0.15);
+      });
+      expect(usePlannerStore.getState().edges[0]!.data?.fuseOffset).toBe(0.15);
+      act(() => {
+        usePlannerStore.getState().handleChangeFuseOffset('e1', -0.5);
+        usePlannerStore.getState().handleChangeFuseOffset('e1', Number.NaN);
+      });
+      expect(usePlannerStore.getState().edges[0]!.data?.fuseOffset).toBe(0.15);
+    });
+  });
 });

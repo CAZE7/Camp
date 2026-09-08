@@ -94,9 +94,61 @@ durchroutet, sondern laufen als markierter Fallback (`fallbackHitsObstacles`, du
 RouteAll-Rebuild hindurch erhalten) und stehen als I1-Verletzung im Final-Validation-Report.
 1890/1890 Tests grün (davon 8 neue Beweis-Tests), `tsc` App+Tests grün, Golden Master unverändert.
 
+**Vierte Nachbearbeitung 2026-09-08 (Fortsetzung Branch `arena/01a0818b-camp`):**
+ELE-004, ELE-007 und das erste DOM-002-Modellstück abgearbeitet.
+
+- **ELE-004 (20-cm-Sicherungsregel, normativ verankert):** Die Grenze ist als
+  benannte Konstante `FUSE_MAX_UNPROTECTED_LENGTH_M` = 0,2 m samt Quellenanker
+  `FUSE_MAX_UNPROTECTED_SOURCE` in `lib/electrical.ts` verankert —
+  **ISO 10133:2000 §8.1** (Wortlaut geprüft: Sicherung „within 200 mm of the
+  source of power", Ausnahme durchgehende Schutzummantelung) und **ABYC E-11
+  §11.10.1.1.1** (7 in = 178 mm, UNVERIFIED-Einordnung ehrlich mitgeführt; die
+  2012er-ISO-Auflage nennt keinen mm-Wert mehr, DIN VDE 0100-721 keinen
+  konkreten Abstand — beides im Konstanten-Kommentar festgehalten). Der alte
+  Kommentar „nicht VDE…" wurde entfernt; beide Checks in `CableEdge.tsx` und
+  alle drei Warn-/Hinweistexte (Chip, Detail, EdgeInspector) beziehen sich auf
+  die Konstante — 200 mm/178 mm Werte stimmen jetzt überein.
+- **ELE-007 (Solar-Spannungsfall auf MPP-Basis):** `solarDropBasisVoltageOf()`
+  (lib/solar.ts) liefert die Vmp-Auslegungsspannung (18 V, bestehende
+  `VDE_SOLAR_VMP_VOLTAGE`); `edgeDropInputs` (Anzeige) und `sizeDcEdges`
+  (AutoWire, beide Loops) bewerten Panel-Zuleitungen dagegen statt gegen
+  12,8 V — der Prozentfall wird nicht mehr konservativ um ~40 % überschätzt.
+  Fachlich nur der Planidealfall: Kennzahlen Vmp/Voc pro Panel sind nicht im
+  Datenmodell (`data.voltage` bleibt Legacy-Nennfeld, nicht Vmp — im
+  Dokkommentar festgehalten); die Last-Nacherschleife am Systembudget bleibt
+  bewusst unverändert. Golden-Master-Delta: Plan `solar` Panel-Kanten
+  16 mm² → 10 mm² (siehe Ledger unten).
+- **DOM-002 (erstes Modellstück Kurzschluss/Abschaltvermögen):** neues Modul
+  `lib/shortCircuit.ts` — Batterie-Innenwiderstand aus Datenblatt
+  (`internalResistance`, mΩ; Batterie-Schema + Inspektor-Feld) oder
+  Faustformel je Chemie (3/5/6 mΩ @ 100 Ah für LiFePO4/AGM/Gel, UNVERIFIED-
+  markiert), Bank-Ik als Parallelschätzung (ohne Starterbatterie), Ik am
+  Sicherungseinbauort gedämpft über Pol→Sicherung-Leitung (fuseOffset +
+  Querschnitt), Abschaltvermögen aus Bauform-Tabelle (ATO 1 kA … Class T
+  20 kA, typische Herstellerwerte, UNVERIFIED) oder explizitem
+  `fuseBreakingCapacity`. Neue Live-Regel **A7** in `useLiveValidation`
+  (`DOM-002-breaking-capacity` = critical, `DOM-002-fuse-type-unknown` =
+  Hinweis einmal pro Plan). Damit Auto-Pläne nicht pauschal „Typ unbekannt"
+  melden, stempelt Auto-Wire die Bauform gleich mit (`applyFuseTypes` in
+  `lib/autoWire/sizing.ts`: kleinste tragende Bauform; ≥ 32 A kein ATO;
+  AC-Kanten ausgenommen). Neuer EdgeInspector-Select „Sicherungs-Bauform"
+  (`handleChangeFuseType`, defensiv gegen unbekannte Strings validiert).
+  Bewusst NICHT enthalten (steht im ExpertPanel-Text): Peukert, temperatur-/
+  SoC-abhängiges Ri, I²t/Selektivität, 230-V-Mehrleitermodell (DOM-001).
+- **Golden Master bewusst neu eingefroren** (`npm run goldenmaster:capture`,
+  7 Fixtures): Delta = `fuseType`-Stempel auf allen Auto-Kanten + die zwei
+  Solar-Querschnitte; keine Id-/Geometrie-Änderungen. Ledger-Eintrag in
+  `docs/ARCHITECTURE-CHANGES.md`.
+- **Nachweis:** 1932/1932 Tests grün (42 neue: lib/shortCircuit.test.ts,
+  lib/autoWire/sizing.test.ts; A7-Regel, edgeDropInputs-Solarbasis, ELE-004-
+  Regel+Konstanten-Pins, Store-Handler-Pins), `tsc` App+Tests grün,
+  ESLint/Prettier sauber.
+
 **Verbleibend (bewusst offen, priorisiert):** ARCH-Rest (lib/routing/elk Runtime-Importe),
-ELE-004-Normverankerung der 20-cm-Faustregel (UNVERIFIED), fehlende Negativ-Tests für
-Wasser-Modus-Interaktionen mit connectionRules. Der Statusblock oben (NOT SAFE / NOT READY)
+fehlende Negativ-Tests für Wasser-Modus-Interaktionen mit connectionRules, ROUTE-003
+(ELK-Produktivverdrahtung — separates Architekturprojekt), DOM-001 (230-V-Mehrleiter-Modell),
+DOM-002-Nachpflege (Datenblattwerte statt UNVERIFIED-Tabelle; Peukert sowie temperatur-/
+SoC-abhängiges Ri). Der Statusblock oben (NOT SAFE / NOT READY)
 bezieht sich auf die **audierte Baseline** und bleibt als historisches Dokument unverändert;
 alle 4 BLOCKING ISSUES sind behoben — eine erneute vollständige Freigabeprüfung steht aus.
 

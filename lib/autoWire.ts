@@ -60,7 +60,7 @@ import {
 } from './autoWire/primitives';
 import { isAcEdge, isSolarEdge, isStarterBattery } from './autoWire/validation';
 import { applyFlowLayout } from './autoWire/placement';
-import { sizeDcEdges, applyFuseSizes, sizeAcEdges } from './autoWire/sizing';
+import { sizeDcEdges, applyFuseSizes, applyFuseTypes, sizeAcEdges } from './autoWire/sizing';
 import {
   buildDictionaries,
   ensureNode,
@@ -613,6 +613,10 @@ export function performAutoWiring(
 
   sizeDcEdges(allDcEdges, currentNodes, allEdges, sysVoltage, nodeMap);
   applyFuseSizes(allDcEdges, currentNodes, sysVoltage, nodeMap, allEdges); // ELE-005: Insel-BFS
+  // DOM-002: Bauform der Sicherungen mitschreiben (kleinste Bauform, deren
+  // Abschaltvermögen den Bank-Ik am Einbauort trägt) — sonst meldete Rule A7
+  // in jedem Auto-Plan „Abschaltvermögen unbekannt".
+  applyFuseTypes(allDcEdges, currentNodes, sysVoltage);
   sizeAcEdges(allEdges, currentNodes);
 
   const fuseBoxFeed = allDcEdges.find(

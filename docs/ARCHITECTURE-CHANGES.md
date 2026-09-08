@@ -293,3 +293,26 @@ Diese Gates sind konsistent mit den Review-Anforderungen:
 - [ ] `scripts/measure_planner_v2.ts` → Gate-Suite G1–G10
 - [ ] CI-Script (`npm run verify:routing-v2`)
 - [ ] Fehlende Architektur-/Doku-Referenzen in `README`/`docs` verlinken
+
+---
+
+## Change Ledger
+
+### 2026-09-08 — Golden-Master-Neuerfassung (AUDIT ELE-007 + DOM-002, Branch `arena/01a0818b-camp`)
+
+`npm run goldenmaster:capture` bewusst ausgeführt; alle 7 Fixtures neu eingefroren.
+Begründung „bewusst besser, weil …":
+
+1. **ELE-007 (Solar-Drop-Budget):** Solar-Zuleitungen (Panel → MPPT) werden jetzt
+   gegen die MPP-Basis 18 V dimensioniert/bewertet statt gegen die 12,8-V-
+   Systemreferenz. Betroffen: Plan `solar` (Panel-Kanten 16 mm² → 10 mm²).
+   Der alte Stand überschätzte den Prozentfall um ~40 % — konservativ, aber
+   falsch bemessen.
+2. **DOM-002 (Sicherungs-Bauform):** Auto-Wire vergibt jetzt `fuseType`
+   (`applyFuseTypes` in `lib/autoWire/sizing.ts`): kleinste Bauform, deren
+   typisches Abschaltvermögen den geschätzten Bank-Kurzschlussstrom am
+   Einbauort trägt (`lib/shortCircuit.ts`; ≈ 4,3 kA bei 100 Ah LiFePO4 →
+   Class T; kleine AGM-Bank → MRBF/MEGA/ATO). Ohne diesen Stempel meldete
+   der neue Kurzschluss-Check (Rule A7) in jedem Auto-Plan „Abschaltvermögen
+   unbekannt". Delta: reine Zusatzfelder `fuseType` (+ die zwei Solar-
+   Querschnitte), keine Id-/Geometrie-/Safety-Verschlechterung.

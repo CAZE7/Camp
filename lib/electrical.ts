@@ -39,6 +39,42 @@ export const VDE_AMPACITY: Record<number, number> = {
 export const DERATE_FACTOR = 0.7;
 
 /**
+ * Maximale ungeschützte Leitungslänge ab Batteriepol bis zum Schutzorgan
+ * (AUDIT ELE-004 — Normverankerung NACHGEZOGEN 2026-09-08, vorher UNVERIFIED).
+ *
+ * Die „20-cm-Regel" ist KEINE Faustregel ohne Quelle, sondern der wörtliche
+ * Wert aus **ISO 10133:2000, §8.1** (small craft, extra-low-voltage DC):
+ * „A manually reset trip-free circuit-breaker, or a fuse, shall be installed
+ * within 200 mm of the source of power for each circuit or conductor of the
+ * system or, if impractical, each conductor shall be contained within a
+ * protective covering […] for its entire length from the source of power to
+ * the circuit-breaker or fuse." — VERIFIED (Wortlaut).
+ *
+ * Verwandte Referenz (nicht widersprechend, leicht strenger):
+ * **ABYC E-11 §11.10.1.1.1**: Schutzorgan innerhalb von 7 in = **178 mm**
+ * (entlang des Leiters gemessen); Ausnahmen: 40 in (102 cm), wenn der Leiter
+ * durchgehend in Schutzschlauch/Verkleidung liegt und NICHT direkt am
+ * Batteriepol anschließt; ≤ 72 in (183 cm) bei direktem Batterieanschluss
+ * im Schutzschlauch; Anlasser-Stromkreis ausgenommen. VERIFIED (Wortlaut-
+ * Exzerpt 2010).
+ * ISO 10133:2012 (Nachfolgeedition, von REC/COM/Bootspraxis referenziert)
+ * nennt die 200 mm nicht mehr explizit und fordert Schutz „at the source of
+ * power" — die konkrete Zahl stammt aus der 2000er-Edition.
+ *
+ * Für den Fahrzeug-/Camper-Kontext nennt DIN VDE 0100-721 KEINE konkrete
+ * Länge (Verweis auf allgemeinen Schutz bei Überlast/Kurzschluss) — die
+ * 0,2 m sind damit eine bewusste, dokumentierte Planungsvorgabe: exakt der
+ * ISO-10133:2000-Wert und nahe am ABYC-178-mm-Wert. Starter-/Anlasser-
+ * Stromkreise (Starterbatterie → Anlasser) sind fachlich ein anderer Fall
+ * (ABYC-Ausnahme); CAMP modelliert keinen Anlasser-Kreis.
+ */
+export const FUSE_MAX_UNPROTECTED_LENGTH_M = 0.2;
+
+/** Maschinenlesbare Quellenzeile für strukturierte Fehler (UX-001). */
+export const FUSE_MAX_UNPROTECTED_SOURCE =
+  'ISO 10133:2000 §8.1 (200 mm); ABYC E-11 §11.10.1.1.1 (7 in = 178 mm)';
+
+/**
  * Übliche Norm-Sicherungsgrößen in Ampere (Blade ATO/ATC, MIDI, ANL).
  * Wird von Auto-Wire und der Live-Validierung verwendet, damit die gewählte
  * Sicherung immer einem real verfügbaren Sicherungswert entspricht.

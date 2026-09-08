@@ -51,4 +51,16 @@ export type CableEdgeData = {
    * Nur für DC-Plus-Kanten mit Batterie-Endpunkt relevant.
    */
   fuseOffset?: number;
+  /**
+   * Bauform der Sicherung (AUDIT DOM-002): bestimmt mit der Tabelle in
+   * lib/shortCircuit.ts das typische Abschaltvermögen (kA) für den
+   * Kurzschluss-Check. Ohne Angabe ist das Abschaltvermögen nicht
+   * bewertbar — die Live-Validierung meldet das Datenfeld dann als offen.
+   */
+  fuseType?: string;
+  /**
+   * Explizites Abschaltvermögen (A) aus dem Datenblatt des konkreten
+   * Produkts — schlägt die Bauform-Tabelle (AUDIT DOM-002).
+   */
+  fuseBreakingCapacity?: number;
 };

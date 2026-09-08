@@ -227,6 +227,31 @@ export function BatteryInspector({
           className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
         />
       </div>
+      {/* AUDIT DOM-002: Innenwiderstand treibt die Kurzschlussstrom-
+          Schätzung (Abschaltvermögens-Check an Batterie-Hauptleitungen). */}
+      <div className="flex flex-col">
+        <label
+          className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+          htmlFor={`${node.id}-internalResistance`}
+        >
+          Innenwiderstand (mΩ)
+        </label>
+        <ValidatingInput
+          id={`${node.id}-internalResistance`}
+          type="number"
+          min="0"
+          step="0.1"
+          isFloat={true}
+          value={node.data?.internalResistance || 0}
+          rules={[COMMON_RULES.positive]}
+          onValidChange={(val) => onUpdateNodeData?.(node.id, { internalResistance: val })}
+          className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+        />
+        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+          Datenblattwert (Block inkl. BMS). Bleibt das Feld leer, schätzt der Planer aus Chemie und Kapazität
+          (≈ 3 mΩ je 100 Ah bei LiFePO4) — Schätzung, kein Grenzfalldatenblatt.
+        </p>
+      </div>
       <div className="flex flex-col">
         <label
           className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"

@@ -55,6 +55,8 @@ export interface BatteryNodeData extends CommonNodeData {
   bmsContinuousDischarge?: number;
   bmsPeakDischarge?: number;
   bmsContinuousCharge?: number;
+  /** AUDIT DOM-002: Batterie-Innenwiderstand (mΩ, Datenblatt) — treibt die Kurzschluss-Schätzung. */
+  internalResistance?: number;
 }
 
 export interface ConsumerNodeData extends CommonNodeData {

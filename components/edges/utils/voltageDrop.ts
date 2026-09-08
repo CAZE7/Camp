@@ -3,6 +3,7 @@ import type { CableEdgeData } from '../CableEdge';
 import { calculateCrossSection, getEdgeDomain } from '../../../lib/electrical';
 import { AC_SYSTEM_VOLTAGE, calculateEdgeCurrent, getSystemVoltage } from '../../../lib/vde-standards';
 import { acCurrentA } from '../../../lib/autoWire/sizing';
+import { solarDropBasisVoltageOf, solarPanelEndOf } from '../../../lib/solar';
 import { PX_PER_METER } from '../../../lib/units';
 
 /**
@@ -81,6 +82,14 @@ export function edgeDropInputs(
   const rawLength = edge.data?.length;
   const length = typeof rawLength === 'number' && rawLength >= 0 ? rawLength : physical;
   const crossSection = calculateCrossSection(I, length, edge.data?.crossSection, 'DC_12V');
+
+  // AUDIT ELE-007 (Restpunkt): Panel-Zuleitungen (Panel → Laderegler) werden
+  // an der MPP-Betriebsspannung bemessen (18 V), nicht an der 12,8-V-
+  // Systemreferenz — sonst erscheint jeder Drop ~40 % zu groß (konservativ,
+  // aber fachlich falsch bemessen; Quelle: lib/solar.ts).
+  if (solarPanelEndOf(sourceNode, targetNode)) {
+    return { isAC: false, I, length, crossSection, sysVoltage: solarDropBasisVoltageOf() };
+  }
 
   return { isAC: false, I, length, crossSection, sysVoltage };
 }

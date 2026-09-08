@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import CableEdge, { calculateAnimationDuration, collectEdgeErrors, type CableEdgeData } from './CableEdge';
 import { useReactFlow, Position, type Edge, type Node } from '@xyflow/react';
 import { usePlannerStore } from '../../store/usePlannerStore';
+import { FUSE_MAX_UNPROTECTED_LENGTH_M, FUSE_MAX_UNPROTECTED_SOURCE } from '../../lib/electrical';
 
 /**
  * Typisierter Helfer für den `useReactFlow`-Mock (M6-7): Die Tests brauchen
@@ -363,5 +364,52 @@ describe('collectEdgeErrors — AUDIT ELE-003/008', () => {
       totalDropPercentage: 1,
     });
     expect(errors.some((err) => err.ruleId === 'fuse-too-large')).toBe(true);
+  });
+});
+
+describe('ELE-004 — 20-cm-Hauptsicherungsregel, normativ verankert', () => {
+  const base = {
+    edgeDomain: 'DC_12V' as const,
+    I: 10,
+    maxFuse: 30,
+    isPlus: true,
+    sourceNodeType: 'battery',
+    targetNodeType: 'busbar',
+    length: 2,
+    totalDropPercentage: 1,
+    fuseFloor: 10,
+  };
+
+  it('beanstandet ungesicherte Batterieleitungen länger als 200 mm (Kat. A)', () => {
+    const errors = collectEdgeErrors({ ...base, data: { length: 2, crossSection: 4 } });
+    const rule = errors.find((e) => e.ruleId === 'main-fuse-distance');
+    expect(rule).toBeDefined();
+    expect(rule!.severity).toBe('critical');
+    expect(rule!.expectedValue).toBe(FUSE_MAX_UNPROTECTED_LENGTH_M);
+    // Normquelle wandert bis ins Chip-Detail: ISO-Grenze UND ABYC-Referenz.
+    expect(rule!.source).toContain('ISO 10133:2000');
+    expect(rule!.source).toContain('178 mm');
+  });
+
+  it('eine Sicherung > 0,2 m vom Pol „zaubert“ die ungeschützte Strecke nicht weg', () => {
+    const errors = collectEdgeErrors({
+      ...base,
+      data: { length: 2, crossSection: 4, fuseSize: 30, fuseOffset: 0.5 },
+    });
+    const rule = errors.find((e) => e.ruleId === 'fuse-offset');
+    expect(rule).toBeDefined();
+    expect(rule!.severity).toBe('critical');
+    expect(rule!.measuredValue).toBe(0.5);
+    expect(rule!.expectedValue).toBe(FUSE_MAX_UNPROTECTED_LENGTH_M);
+    expect(rule!.source).toBe(FUSE_MAX_UNPROTECTED_SOURCE);
+  });
+
+  it('genau 200 mm (ISO-Grenze) ist noch zulässig — die Grenze ist inklusiv', () => {
+    const errors = collectEdgeErrors({
+      ...base,
+      data: { length: 2, crossSection: 4, fuseSize: 30, fuseOffset: 0.2 },
+    });
+    expect(errors.find((e) => e.ruleId === 'fuse-offset')).toBeUndefined();
+    expect(errors.find((e) => e.ruleId === 'main-fuse-distance')).toBeUndefined();
   });
 });

@@ -4,6 +4,12 @@ import { type CableEdgeData } from '../../edges/CableEdge';
 import { getEdgeDomain } from '../../../lib/electrical';
 import { SOLAR_DESIGN_MIN_TEMPERATURE_C, stringColdVocOf } from '../../../lib/solar'; // ELE-007
 import { chemistriesParallelSafe } from '../../../lib/autoWire/primitives'; // AUTO-003
+import {
+  FUSE_BREAKING_CAPACITY_A,
+  bankShortCircuitCurrentA,
+  breakingCapacityAOf,
+  shortCircuitAtFuseA,
+} from '../../../lib/shortCircuit'; // DOM-002
 
 import { getSystemVoltage } from '../utils/voltage';
 import { calculateEdgeCurrent } from '../../../lib/vde-standards';
@@ -495,6 +501,82 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
               battery.data?.label || 'Batterie'
             }“ führt ≈${Math.round(I)} A, das BMS erlaubt dauerhaft nur ${chargeLimit} A Ladestrom.`,
           });
+        }
+      }
+    }
+
+    // --- Rule A7: Kurzschlussstrom vs. Abschaltvermögen (AUDIT DOM-002) ---
+    // Erster Modellschnitt mit geschätztem Ik (Batterie-Innenwiderstand oder
+    // Chemie-Faustformel) und typischen Abschaltvermögen je Bauform —
+    // Modellgrenzen und Quellenlage: lib/shortCircuit.ts. Geprüft werden nur
+    // Batterie-Plus-Ausgänge mit eingetragener Sicherung: genau dort ist die
+    // Sicherung das Trennorgan zwischen dem höchsten Fehlerstrom des Plans
+    // und der Installation.
+    {
+      const bankIk = bankShortCircuitCurrentA(batteries, sysVoltage);
+      let fuseTypeNotePushed = false;
+      for (const battery of batteries) {
+        if (bankIk === null) break; // Bank nicht schätzbar → ehrlich schweigen
+        for (const edge of edges) {
+          const isBatterySourcePlus = edge.source === battery.id && !!edge.sourceHandle?.includes('plus');
+          if (!isBatterySourcePlus) continue;
+          const edgeData = edge.data as
+            | {
+                fuseSize?: number;
+                fuseType?: string;
+                fuseBreakingCapacity?: number;
+                fuseOffset?: number;
+                crossSection?: number;
+              }
+            | undefined;
+          if (!(Number(edgeData?.fuseSize) > 0)) continue;
+          const capacity = breakingCapacityAOf(edgeData?.fuseType, edgeData?.fuseBreakingCapacity);
+          const ikAtFuse = shortCircuitAtFuseA(
+            batteries,
+            edgeData?.fuseOffset,
+            edgeData?.crossSection,
+            sysVoltage
+          );
+          if (ikAtFuse === null) continue;
+          if (capacity === null) {
+            // Ohne Bauform/Datenblatt ist das Abschaltvermögen nicht
+            // bewertbar — einmal pro Plan als Hinweis (kein Warn-Spam je Kante).
+            if (!fuseTypeNotePushed && bankIk > FUSE_BREAKING_CAPACITY_A.ato) {
+              fuseTypeNotePushed = true;
+              warnings.push({
+                id: 'sc-fuse-type-unknown',
+                category: 'estimation',
+                type: 'warning',
+                title: 'Abschaltvermögen der Hauptsicherung unbekannt',
+                focusId: battery.id,
+                focusType: 'node',
+                ruleId: 'DOM-002-fuse-type-unknown',
+                measuredValue: `≈ ${(bankIk / 1000).toFixed(1)} kA`,
+                expectedValue: 'Bauform bzw. Datenblatt-Abschaltvermögen angeben',
+                unit: 'kA',
+                source: 'Modell: geschätzter Bank-Kurzschlussstrom (lib/shortCircuit.ts)',
+                message: `Hinweis: Die Batteriebank kann im Kurzschlussfall ≈ ${(bankIk / 1000).toFixed(1)} kA liefern (geschätzt aus Innenwiderstand/Faustformel). Ohne Bauform der Hauptsicherung (ATO/MIDI/MEGA/ANL/MRBF/Class T) ist ihr Abschaltvermögen hier nicht geprüft — im Leitungs-Inspektor eintragen.`,
+              });
+            }
+            continue;
+          }
+          if (ikAtFuse > capacity) {
+            warnings.push({
+              id: `sc-breaking-${edge.id}`,
+              category: 'safety',
+              type: 'critical',
+              title: 'Abschaltvermögen der Sicherung zu gering',
+              focusId: edge.id,
+              focusType: 'edge',
+              ruleId: 'DOM-002-breaking-capacity',
+              measuredValue: `≈ ${Math.round(ikAtFuse)} A`,
+              expectedValue: `≤ ${capacity} A`,
+              unit: 'A',
+              source:
+                'ABYC-E-11-AIC-Anforderung; Bauform-Tabelle lib/shortCircuit.ts (typische Herstellerwerte, UNVERIFIED)',
+              message: `⚠️ Kritisch: Die Sicherung (Abschaltvermögen ${capacity} A) kann den geschätzten Kurzschlussstrom der Bank am Einbauort (≈ ${Math.round(ikAtFuse)} A) nicht sicher trennen. Bauform mit höherem Abschaltvermögen wählen (z. B. Class T ≈ 20 kA) oder Datenblatt-Wert eintragen.`,
+            });
+          }
         }
       }
     }

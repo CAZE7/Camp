@@ -122,3 +122,55 @@ describe('edgeDropInputs', () => {
     expect(inputs.length).toBe(0.3);
   });
 });
+
+describe('edgeDropInputs — Solar-Bewertung auf MPP-Basis (AUDIT ELE-007)', () => {
+  it('referenziert Solar-Kanten auf 18 V (Vmp) statt 12,8 V Batterie-Nennspannung', () => {
+    const nodes = [
+      { id: 's1', type: 'solar', position: { x: 0, y: 0 }, data: { watts: 200 } },
+      { id: 'm1', type: 'mpptController', position: { x: 100, y: 0 }, data: {} },
+    ] as Node[];
+    const edges = [
+      {
+        id: 'e1',
+        source: 's1',
+        target: 'm1',
+        sourceHandle: 'plus',
+        targetHandle: 'plus',
+        data: { length: 5, crossSection: 4, edgeDomain: 'Solar' as const },
+      },
+    ] as Edge<CableEdgeData>[];
+    const inputs = edgeDropInputs(edges[0]!, nodes[0]!, nodes[1]!, nodes, edges);
+    expect(inputs.isAC).toBe(false);
+    expect(inputs.sysVoltage).toBe(18);
+  });
+
+  it('bewertet String-Kanten hinter einem verbundenen MPPT ebenfalls auf 18 V', () => {
+    const nodes = [
+      { id: 's1', type: 'solar', position: { x: 0, y: 0 }, data: { watts: 200 } },
+      { id: 's2', type: 'solar', position: { x: 0, y: 50 }, data: { watts: 200 } },
+      { id: 'm1', type: 'mpptController', position: { x: 200, y: 0 }, data: {} },
+    ] as Node[];
+    const mkEdge = (id: string, source: string, target: string) =>
+      ({
+        id,
+        source,
+        target,
+        sourceHandle: 'plus',
+        targetHandle: 'plus',
+        data: { length: 5, crossSection: 4, edgeDomain: 'Solar' as const },
+      }) as Edge<CableEdgeData>;
+    const edges = [mkEdge('e1', 's1', 's2'), mkEdge('e2', 's2', 'm1')];
+    const inputs = edgeDropInputs(edges[0]!, nodes[0]!, nodes[1]!, nodes, edges);
+    expect(inputs.sysVoltage).toBe(18);
+  });
+
+  it('lässt reine DC-Kanten unverändert auf der Systemreferenz (12,8 V)', () => {
+    const inputs = edgeDropInputs(
+      { id: 'e1', source: 'a', target: 'b', data: { length: 2, edgeDomain: 'DC_12V' } },
+      { id: 'a', type: 'consumer', position: { x: 0, y: 0 }, data: { watts: 128 } },
+      { id: 'b', type: 'battery', position: { x: 100, y: 0 }, data: {} },
+      []
+    );
+    expect(inputs.sysVoltage).toBe(12.8);
+  });
+});

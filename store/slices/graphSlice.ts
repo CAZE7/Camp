@@ -4,6 +4,7 @@ import { getLayoutedElements } from '../../components/planner/utils/layout';
 import { applyAdvancedLayout } from '../../lib/planner/routingV2Adapter'; // ELK/Dagre-Layout
 import { TEMPLATES_DICT } from '../../components/planner/templates';
 import { getEdgeDomain } from '../../lib/electrical';
+import { isFuseType } from '../../lib/shortCircuit';
 import { isConnectionAllowed } from '../../lib/connectionRules'; // ARCH-002
 import { newEntityId } from '../../lib/id';
 import { getSystemVoltage } from '../../lib/vde-standards';
@@ -54,6 +55,7 @@ export type GraphSlice = Pick<
   | 'handleChangeLength'
   | 'handleChangeFuseSize'
   | 'handleChangeFuseOffset'
+  | 'handleChangeFuseType'
   | 'isValidConnection'
   | 'onConnect'
   | 'autoWireSystem'
@@ -262,6 +264,18 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
         edges:
           Number.isFinite(fuseOffset) && fuseOffset >= 0
             ? state.edges.map((e) => (e.id === id ? { ...e, data: { ...e.data!, fuseOffset } } : e))
+            : state.edges,
+      })
+    ),
+  handleChangeFuseType: (id, fuseType) =>
+    set((state) =>
+      withHistory(state, {
+        // AUDIT DOM-002: Bauform (Abschaltvermögens-Check) — defensiv gegen
+        // unbekannte Werte validiert (Import/Persistenz), leeren String als
+        // „Feld zurücksetzen“ lesen.
+        edges:
+          fuseType === undefined || isFuseType(fuseType)
+            ? state.edges.map((e) => (e.id === id ? { ...e, data: { ...e.data!, fuseType } } : e))
             : state.edges,
       })
     ),

@@ -7,6 +7,7 @@
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseSize": 10,
+          "fuseType": "mrbf",
           "length": 0.2
         },
         "id": "e-auto-1",
@@ -99,6 +100,7 @@
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseSize": 10,
+          "fuseType": "mrbf",
           "length": 0.2
         },
         "id": "e-batt-fuse",
@@ -126,6 +128,7 @@
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseSize": 5,
+          "fuseType": "mrbf",
           "length": 2
         },
         "id": "e-fuse-cool",
@@ -140,6 +143,7 @@
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseSize": 5,
+          "fuseType": "mrbf",
           "length": 5
         },
         "id": "e-fuse-light",
@@ -154,6 +158,7 @@
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseSize": 5,
+          "fuseType": "mrbf",
           "length": 3
         },
         "id": "e-fuse-usb",

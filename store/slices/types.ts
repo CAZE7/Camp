@@ -82,6 +82,7 @@ export interface PlannerState {
   updateNodeData: (id: string, data: NodeDataPatch) => void;
   handleChangeLength: (id: string, length: number) => void;
   handleChangeFuseSize: (id: string, fuseSize: number) => void;
+  handleChangeFuseType: (id: string, fuseType: string | undefined) => void;
   /**
    * AUDIT ELE-004: Position der Sicherung entlang der Kante in Metern ab
    * Batteriepol — Grundlage der 20-cm-Regel in collectEdgeErrors.
