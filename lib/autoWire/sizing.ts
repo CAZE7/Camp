@@ -332,16 +332,53 @@ export const DEFAULT_AC_LENGTH: Meters = meters(2);
 export function acCurrentA(
   sourceNode: Node | undefined,
   targetNode: Node | undefined,
-  nodes: Node[] = []
+  nodes: Node[] = [],
+  /** AUDIT ELE-010: volle Kantenliste für die AC-Insel-BFS. */
+  edges: CableEdge[] = []
 ): Amps {
   const loadOf = (node: Node | undefined): Amps =>
     currentFromPower(quantityOr(node?.data?.watts, watts, ZERO_WATTS), AC_VOLTAGE);
 
+  /** 230-V-Last einer AC-Insel (ab dem Inverter), sonst globaler Fallback. */
   const total230vLoad = (): Watts => {
     let total: Watts = ZERO_WATTS;
     for (const n of nodes) {
       if (n.type !== 'consumer230v') continue;
       total = addWatts(total, quantityOr((n.data as Record<string, unknown>)?.watts, watts, ZERO_WATTS));
+    }
+    return total;
+  };
+
+  const acIslandLoad = (inverter: Node): Watts => {
+    if (!edges || edges.length === 0) return total230vLoad();
+    const byId = new Map(nodes.map((n) => [n.id, n]));
+    const adjacency = new Map<string, string[]>();
+    const add = (a: string, b: string): void => {
+      if (!adjacency.has(a)) adjacency.set(a, []);
+      adjacency.get(a)!.push(b);
+    };
+    for (const edge of edges) {
+      if (edge.data?.edgeDomain !== 'AC_230V') continue;
+      add(edge.source, edge.target);
+      add(edge.target, edge.source);
+    }
+    const visited = new Set<string>([inverter.id]);
+    const queue = [inverter.id];
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      for (const next of adjacency.get(current) ?? []) {
+        if (!visited.has(next)) {
+          visited.add(next);
+          queue.push(next);
+        }
+      }
+    }
+    let total: Watts = ZERO_WATTS;
+    for (const id of visited) {
+      const node = byId.get(id);
+      if (node?.type === 'consumer230v') {
+        total = addWatts(total, quantityOr((node.data as Record<string, unknown>)?.watts, watts, ZERO_WATTS));
+      }
     }
     return total;
   };
@@ -366,7 +403,7 @@ export function acCurrentA(
       watts,
       ZERO_WATTS
     );
-    const connectedLoad = total230vLoad();
+    const connectedLoad = acIslandLoad(inverter);
     const load = ownLoad > connectedLoad ? ownLoad : connectedLoad;
     return currentFromPower(load, AC_VOLTAGE);
   }
@@ -403,7 +440,7 @@ export function sizeAcEdges(edges: CableEdge[], nodes: Node[]): void {
     if (!edge.data) edge.data = {};
     const sourceNode = nodeMap.get(edge.source);
     const targetNode = nodeMap.get(edge.target);
-    const I = acCurrentA(sourceNode, targetNode, nodes);
+    const I = acCurrentA(sourceNode, targetNode, nodes, edges);
     const length = edgeLength(edge, DEFAULT_AC_LENGTH);
 
     // AUDIT CRASH-001: calculateCrossSection gibt Nutzer-/Import-Querschnitte

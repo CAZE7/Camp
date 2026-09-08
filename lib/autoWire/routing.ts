@@ -263,6 +263,41 @@ export function healUserEdges(userEdges: CableEdge[], ctx: HealContext): CableEd
     const sourceIsHouseMinus = edge.source === houseBatteryId && !!edge.sourceHandle?.includes('minus');
     const targetIsHouseMinus = edge.target === houseBatteryId && !!edge.targetHandle?.includes('minus');
 
+    // AUDIT ELE-001: Batterie×Batterie plus↔minus ist keine modellierte
+    // Serienschaltung. AutoWire würde beide Akkus zusätzlich auf gemeinsame
+    // Plus-/Minus-Schienen legen und daraus einen Kurzschluss bauen. Solche
+    // Kanten werden beim AutoWire-Lauf entfernt statt gefährlich umgesetzt.
+    const sourceIsBattery = sourceNode?.type === 'battery';
+    const targetIsBattery = targetNode?.type === 'battery';
+    if (sourceIsBattery && targetIsBattery) {
+      const sPlus = !!edge.sourceHandle?.includes('plus');
+      const tMinus = !!edge.targetHandle?.includes('minus');
+      const sMinus = !!edge.sourceHandle?.includes('minus');
+      const tPlus = !!edge.targetHandle?.includes('plus');
+      if ((sPlus && tMinus) || (sMinus && tPlus)) {
+        existingConnections.delete(connectionKey(edge));
+        dropIds.add(edge.id);
+        continue;
+      }
+    }
+
+    // AUDIT ELE-002: Solar-Kanten nur zwischen Panels (String) oder Panel
+    // → Laderegler/MPPT. Direktverbindungen zu Batterie/Verbraucher sind
+    // fachlich falsch und werden beim AutoWire-Lauf entfernt.
+    const isSolarType = (type?: string): boolean => type === 'solar' || type === 'roofSolar';
+    const sourceSolar = isSolarType(sourceNode?.type);
+    const targetSolar = isSolarType(targetNode?.type);
+    if (sourceSolar || targetSolar) {
+      const other = sourceSolar ? targetNode : sourceNode;
+      const solarPair = sourceSolar && targetSolar;
+      const otherIsController = other?.type === 'mpptController' || other?.type === 'charger';
+      if (!solarPair && !otherIsController) {
+        existingConnections.delete(connectionKey(edge));
+        dropIds.add(edge.id);
+        continue;
+      }
+    }
+
     if (sourceIsHouseMinus && edge.target !== shuntId && targetNode?.type !== 'battery') {
       if (retargetEdge(edge, { source: shuntId }, existingConnections) === 'drop') {
         dropIds.add(edge.id);

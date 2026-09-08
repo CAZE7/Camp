@@ -8,6 +8,9 @@ import {
   type GeometryNode,
   type RoutableNode,
 } from './nodeGeometry';
+import { nodeObstacleMap } from './pathfinding';
+import { validateFinalRouting, type FinalValidationReport } from '../../../lib/routing/finalValidation';
+import type { NodeRect, RoutedEdge } from '../../../lib/routing/invariants';
 import { routeAllCables, type RouteEdgeRef } from './routeAll';
 import type { PathResult } from './pathfinding';
 
@@ -99,9 +102,16 @@ export const ROUTE_THROTTLE_MS = 100;
 let current = new Map<string, PathResult>();
 const listeners = new Set<() => void>();
 
+/** Final-Validation-Report des zuletzt gerouteten Plans (AUDIT F-07). */
+let currentValidation: FinalValidationReport | undefined;
+const validationListeners = new Set<() => void>();
+
 /** Alle zwischengespeicherten Routen verwerfen (Reset/Tests, R-9). */
 export const clearCableRoutes = (): void => {
   current = new Map<string, PathResult>();
+  currentValidation = undefined;
+  listeners.forEach((l) => l());
+  validationListeners.forEach((l) => l());
 };
 
 export const getCableRoute = (id: string): PathResult | undefined => current.get(id);
@@ -117,6 +127,49 @@ export const publishCableRoutes = (routes: Map<string, PathResult>): void => {
   current = routes;
   listeners.forEach((l) => l());
 };
+
+export const publishCableRouteFinalValidation = (report: FinalValidationReport): void => {
+  currentValidation = report;
+  validationListeners.forEach((l) => l());
+};
+
+export const getCableRouteFinalValidation = (): FinalValidationReport | undefined => currentValidation;
+
+/**
+ * AUDIT F-07: Baut aus genau den Waypoints, die `routeAllCables` für die UI
+ * geliefert hat, den Final-Validation-Report. Reine Funktion, damit der
+ * Router-Kontext nicht gemockt werden muss und der Report im Test
+ * deterministisch reproduzierbar ist.
+ */
+export function computeCableRouteFinalValidation(
+  nodes: RoutableNode[],
+  edges: readonly RouteEdgeRef[],
+  routes: Map<string, PathResult>
+): FinalValidationReport {
+  const routed: RoutedEdge[] = [];
+  for (const edge of edges) {
+    const route = routes.get(edge.id);
+    if (route)
+      routed.push({ id: edge.id, source: edge.source, target: edge.target, waypoints: route.waypoints });
+  }
+  const obstacleById = nodeObstacleMap(nodes);
+  const rects: NodeRect[] = [];
+  for (const node of nodes) {
+    const rect = obstacleById.get(node.id);
+    if (rect) rects.push({ id: node.id, ...rect });
+  }
+  return validateFinalRouting(routed, rects);
+}
+const subscribeValidation = (cb: () => void): (() => void) => {
+  validationListeners.add(cb);
+  return () => {
+    validationListeners.delete(cb);
+  };
+};
+
+export function useCableRouteFinalValidation(): FinalValidationReport | undefined {
+  return useSyncExternalStore(subscribeValidation, getCableRouteFinalValidation, () => undefined);
+}
 
 export function useCableRoute(id: string): PathResult | undefined {
   return useSyncExternalStore(
@@ -153,7 +206,15 @@ export function CableRouteSync() {
       // InternalNodes statt `getNodes()` (in v12 nicht mehr am Store):
       // sie tragen gemessene Größe UND Handle-Rechtecke.
       const nodes = [...state.nodeLookup.values()] as unknown as RoutableNode[];
-      publishCableRoutes(routeAllCables(nodes, state.edges as RouteEdgeRef[]));
+      const edgeRefs = state.edges as RouteEdgeRef[];
+      const routes = routeAllCables(nodes, edgeRefs);
+      publishCableRoutes(routes);
+
+      // AUDIT F-07: Die finale Routing-Invariante (I1/I2/I3) wird im Rendering
+      // mitgeführt statt nur im CI. `routeAllCables` liefert bereits exakt
+      // die Waypoints, die die UI zeichnet — derselbe Report erscheint damit
+      // sichtbar, solange der Plan Rest-Überdeckungen hat.
+      publishCableRouteFinalValidation(computeCableRouteFinalValidation(nodes, edgeRefs, routes));
     }, ROUTE_THROTTLE_MS);
   }
 

@@ -464,4 +464,60 @@ describe('useLiveValidation', () => {
       expect(result.current.find((w) => w.id === 'missing-rcd-1')).toBeUndefined();
     });
   });
+
+  describe('AUDIT ELE-002/003/005/009', () => {
+    it('warnt kritisch bei direkter Solar→Batterie-Verbindung', () => {
+      const nodes: Node[] = [
+        { id: 'p1', type: 'solar', data: { label: 'Panel', watts: 200 }, position: { x: 0, y: 0 } },
+        { id: 'b1', type: 'battery', data: { label: 'Batterie', capacity: 100 }, position: { x: 0, y: 0 } },
+      ];
+      const edges: Edge<CableEdgeData>[] = [
+        { id: 'direct', source: 'p1', target: 'b1', sourceHandle: 'plus', targetHandle: 'plus', data: {} },
+      ];
+      const { result } = renderHook(() => useLiveValidation(nodes, edges));
+      expect(result.current.some((w) => w.id === 'solar-direct-connection-direct')).toBe(true);
+    });
+
+    it('warnt kritisch, wenn eine Solarzuleitung keine Sicherung hat', () => {
+      const nodes: Node[] = [
+        { id: 'p1', type: 'solar', data: { label: 'Panel', watts: 200, isc: 14 }, position: { x: 0, y: 0 } },
+        { id: 'm1', type: 'mpptController', data: { label: 'MPPT', amps: 30 }, position: { x: 0, y: 0 } },
+      ];
+      const edges: Edge<CableEdgeData>[] = [
+        { id: 'pv', source: 'p1', target: 'm1', sourceHandle: 'plus', targetHandle: 'plus', data: {} },
+      ];
+      const { result } = renderHook(() => useLiveValidation(nodes, edges));
+      expect(result.current.some((w) => w.id === 'missing-fuse-pv')).toBe(true);
+    });
+
+    it('warnt bei BMS-Dauerstromüberschreitung', () => {
+      const nodes: Node[] = [
+        {
+          id: 'b1',
+          type: 'battery',
+          data: { label: 'Batterie', capacity: 100, bmsContinuousDischarge: 50, nominalVoltage: 12.8 },
+          position: { x: 0, y: 0 },
+        },
+        {
+          id: 'i1',
+          type: 'inverter',
+          data: { label: 'Inverter', continuousPower: 1500 },
+          position: { x: 0, y: 0 },
+        },
+      ];
+      const edges: Edge<CableEdgeData>[] = [
+        { id: 'inv', source: 'b1', target: 'i1', sourceHandle: 'plus', targetHandle: 'plus', data: {} },
+      ];
+      const { result } = renderHook(() => useLiveValidation(nodes, edges));
+      expect(result.current.some((w) => w.id.startsWith('bms-discharge-b1'))).toBe(true);
+    });
+
+    it('warnt bei ungültigen negativen Watt-Werten', () => {
+      const nodes: Node[] = [
+        { id: 'c1', type: 'consumer', data: { label: 'Gerät', watts: -60 }, position: { x: 0, y: 0 } },
+      ];
+      const { result } = renderHook(() => useLiveValidation(nodes, []));
+      expect(result.current.some((w) => w.id === 'invalid-load-c1-watts')).toBe(true);
+    });
+  });
 });

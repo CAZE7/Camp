@@ -27,6 +27,7 @@ import { useAppStore } from '../../lib/store';
 import { useShallow } from 'zustand/react/shallow';
 import { getNodesBounds, getViewportForBounds } from '@xyflow/react';
 import { useLiveValidation, type ValidationWarning } from './hooks/useLiveValidation';
+import { RoutingStatusBadge } from './ui/RoutingStatusBadge';
 import { WarningCenter } from './ui/WarningCenter';
 import { calculateConduitFillPercent, VDE_MAX_CONDUIT_FILL_PERCENT } from '../../lib/vde-standards';
 import { mm2, quantityOr } from '../../lib/units';
@@ -680,6 +681,7 @@ export function PlannerDashboard() {
             )}
             {season === 'summer' ? 'Sommer' : 'Winter'}
           </span>
+          {viewMode === 'electric' && <RoutingStatusBadge />}
           <WarningCenter warnings={warnings} onFix={handleFix} />
         </div>
 

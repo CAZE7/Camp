@@ -6,6 +6,7 @@ import { SOLAR_DESIGN_MIN_TEMPERATURE_C, stringColdVocOf } from '../../../lib/so
 import { chemistriesParallelSafe } from '../../../lib/autoWire/primitives'; // AUTO-003
 
 import { getSystemVoltage } from '../utils/voltage';
+import { calculateEdgeCurrent } from '../../../lib/vde-standards';
 
 export interface ValidationWarning {
   id: string;
@@ -120,6 +121,8 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
         const isHighPowerSource =
           sourceNode?.type === 'battery' ||
           sourceNode?.type === 'inverter' ||
+          sourceNode?.type === 'solar' ||
+          sourceNode?.type === 'roofSolar' ||
           ['charger', 'mpptController', 'dcdcCharger', 'acBatteryCharger'].includes(
             sourceNode?.type as string
           );
@@ -142,6 +145,35 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
     });
 
     const sysVoltage = getSystemVoltage(nodes);
+
+    // --- Rule A2.1: Direkte Solar↔Batterie/Verbraucher-Verbindung (AUDIT ELE-002) ---
+    // Neu gezogene Verbindungen werden bereits in `isConnectionAllowed`
+    // blockiert. Diese Regel deckt trotzdem Import-/Altpläne ab: ein Direct-
+    // Draht (ohne Laderegler) darf kein stiller grüner Plan sein.
+    const isSolarNodeType = (type?: string): boolean => type === 'solar' || type === 'roofSolar';
+    for (const edge of edges) {
+      const sourceNode = nodeMap.get(edge.source);
+      const targetNode = nodeMap.get(edge.target);
+      if (!sourceNode || !targetNode) continue;
+      const sourceSolar = isSolarNodeType(sourceNode.type);
+      const targetSolar = isSolarNodeType(targetNode.type);
+      if (!sourceSolar && !targetSolar) continue;
+      if (sourceSolar && targetSolar) continue;
+      const other = sourceSolar ? targetNode : sourceNode;
+      const otherIsController = other.type === 'mpptController' || other.type === 'charger';
+      if (otherIsController) continue;
+      warnings.push({
+        id: `solar-direct-connection-${edge.id}`,
+        category: 'safety',
+        type: 'critical',
+        title: 'Solarmodul falsch direkt verbunden',
+        focusId: edge.id,
+        focusType: 'edge',
+        message: `⚠️ Kritisch: Das Solarmodul ist direkt mit „${
+          other.data?.label || other.type
+        }“ verbunden — ohne Laderegler. Direkte Modul→Batterie/Verbraucher-Verbindungen sind fachlich falsch und können die Batterie überladen oder ein 12-V-Gerät beschädigen. Verbinde das Panel über einen MPPT/Laderegler.`,
+      });
+    }
 
     // --- Rule A3: Verpolte Gleichspannungs-Quellen (AUDIT ELE-003) ---
     // Die Polaritäts-Ausnahme für battery×battery / solar×solar in
@@ -386,6 +418,61 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
       }
     }
 
+    // --- Rule BMMS: BMS-Dauerstromgrenzen (AUDIT ELE-005) ---
+    // Die Batterie-/BMS-Grenzwerte sind im Datenmodell vorhanden, wurden aber
+    // nie geprüft. Eine 50-A-BMS-Batterie mit einem 1,5-kW-Wechselrichter
+    // (~138 A) wäre sonst ein „sicherer“ AutoWire-Plan. Bei explizit
+    // eingetragener Grenze prüfen wir die berechneten DC-Ströme der
+    // Batterie-Hauptleitungen.
+    for (const battery of batteries) {
+      const dischargeLimit = Number((battery.data as Record<string, unknown>)?.bmsContinuousDischarge || 0);
+      const chargeLimit = Number((battery.data as Record<string, unknown>)?.bmsContinuousCharge || 0);
+      for (const edge of edges) {
+        const sourceNode = nodeMap.get(edge.source);
+        const targetNode = nodeMap.get(edge.target);
+        const isBatterySourcePlus = edge.source === battery.id && !!edge.sourceHandle?.includes('plus');
+        const isBatteryTargetPlus = edge.target === battery.id && !!edge.targetHandle?.includes('plus');
+        if (!isBatterySourcePlus && !isBatteryTargetPlus) continue;
+        const I = calculateEdgeCurrent(sourceNode, targetNode, nodes, sysVoltage, edges);
+        if (dischargeLimit > 0 && isBatterySourcePlus && I > dischargeLimit) {
+          warnings.push({
+            id: `bms-discharge-${battery.id}-${edge.id}`,
+            category: 'safety',
+            type: 'critical',
+            title: 'Batterie-/BMS-Dauerstrom überschritten',
+            focusId: battery.id,
+            focusType: 'node',
+            ruleId: 'ELE-005-bms-discharge',
+            measuredValue: `${Math.round(I)} A`,
+            expectedValue: `max. ${dischargeLimit} A`,
+            unit: 'A',
+            source: 'Batteriemodell: bmsContinuousDischarge (BMS-Grenze)',
+            message: `⚠️ Kritisch: Die Leitung von „${
+              battery.data?.label || 'Batterie'
+            }“ wird mit ≈${Math.round(I)} A belastet, das BMS erlaubt dauerhaft nur ${dischargeLimit} A. Kabeldimensionierung und Sicherung schützen das Kabel, nicht das BMS — die Batterie kann abgeschaltet werden oder Schaden nehmen.`,
+          });
+        }
+        if (chargeLimit > 0 && isBatteryTargetPlus && I > chargeLimit) {
+          warnings.push({
+            id: `bms-charge-${battery.id}-${edge.id}`,
+            category: 'safety',
+            type: 'critical',
+            title: 'Batterie-/BMS-Ladestrom überschritten',
+            focusId: battery.id,
+            focusType: 'node',
+            ruleId: 'ELE-005-bms-charge',
+            measuredValue: `${Math.round(I)} A`,
+            expectedValue: `max. ${chargeLimit} A`,
+            unit: 'A',
+            source: 'Batteriemodell: bmsContinuousCharge (BMS-Grenze)',
+            message: `⚠️ Kritisch: Der Ladezweig zu „${
+              battery.data?.label || 'Batterie'
+            }“ führt ≈${Math.round(I)} A, das BMS erlaubt dauerhaft nur ${chargeLimit} A Ladestrom.`,
+          });
+        }
+      }
+    }
+
     // --- Rule C: Battery Capacity Alert ---
     if (batteries.length > 0 && consumers.length > 0) {
       const totalBatteryAh = batteries.reduce((acc, node) => acc + (Number(node.data.capacity) || 0), 0);
@@ -519,6 +606,36 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
           }
         }
       });
+    }
+
+    // --- Rule DATA: Ungültige Last-/Stromwerte (AUDIT ELE-009) ---
+    // Negative Werte und NaN dürfen nicht still als 0 A verschwinden. Das
+    // würde Kabel und Sicherung zu klein erscheinen lassen, während das Gerät
+    // real Leistung zieht.
+    for (const node of nodes) {
+      const data = node.data as Record<string, unknown> | undefined;
+      for (const field of ['watts', 'amps'] as const) {
+        const raw = data?.[field];
+        if (raw === undefined || raw === null || raw === '') continue;
+        const value = Number(raw);
+        if (!Number.isFinite(value) || value < 0) {
+          warnings.push({
+            id: `invalid-load-${node.id}-${field}`,
+            category: 'safety',
+            type: 'critical',
+            title: 'Ungültiger Last-/Stromwert',
+            focusId: node.id,
+            focusType: 'node',
+            ruleId: 'DATA-001-invalid-load-value',
+            measuredValue: String(raw),
+            expectedValue: 'endlicher Wert ≥ 0',
+            source: 'Datenmodell: watts/amps ≥ 0 (Import-/Altdaten-Validierung)',
+            message: `⚠️ Kritisch: Bei „${node.data?.label || node.type}“ ist ${
+              field === 'watts' ? 'die Leistung' : 'der Strom'
+            } ungültig (${String(raw)}). Der Wert wird intern als 0 A behandelt und kann zu dünn dimensionierte Leitungen verbergen. Korrigiere die Angabe im Inspektor.`,
+          });
+        }
+      }
     }
 
     return warnings;

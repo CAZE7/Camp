@@ -153,7 +153,7 @@ export const TEMPLATE_ALLROUNDER = {
       target: 'busbar-plus',
       targetHandle: 'plus',
       type: 'cableEdge',
-      data: { length: 0.5, crossSection: 35, fuseSize: 100 },
+      data: { length: 0.5, crossSection: 35, fuseSize: 63 },
     },
     {
       id: 'e-batt-minus',
@@ -171,7 +171,7 @@ export const TEMPLATE_ALLROUNDER = {
       target: 'charger-1',
       targetHandle: 'plus',
       type: 'cableEdge',
-      data: { length: 3, crossSection: 6 },
+      data: { length: 3, crossSection: 6, fuseSize: 20, edgeDomain: 'Solar' },
     },
     {
       id: 'e-charger-busbar',
@@ -180,7 +180,7 @@ export const TEMPLATE_ALLROUNDER = {
       target: 'busbar-plus',
       targetHandle: 'plus',
       type: 'cableEdge',
-      data: { length: 1, crossSection: 10, fuseSize: 40 },
+      data: { length: 1, crossSection: 10, fuseSize: 32 },
     },
     {
       id: 'e-starter-dcdc',
@@ -189,7 +189,7 @@ export const TEMPLATE_ALLROUNDER = {
       target: 'charger-2',
       targetHandle: 'plus',
       type: 'cableEdge',
-      data: { length: 5, crossSection: 16, fuseSize: 60 },
+      data: { length: 5, crossSection: 16, fuseSize: 40 },
     },
     {
       id: 'e-dcdc-busbar',
@@ -198,7 +198,7 @@ export const TEMPLATE_ALLROUNDER = {
       target: 'busbar-plus',
       targetHandle: 'plus',
       type: 'cableEdge',
-      data: { length: 1, crossSection: 16, fuseSize: 50 },
+      data: { length: 1, crossSection: 16, fuseSize: 40 },
     },
     {
       id: 'e-busbar-fuse',
@@ -207,7 +207,7 @@ export const TEMPLATE_ALLROUNDER = {
       target: 'fusebox-1',
       targetHandle: 'plus',
       type: 'cableEdge',
-      data: { length: 1, crossSection: 16 },
+      data: { length: 1, crossSection: 25, fuseSize: 63 },
     },
     {
       id: 'e-fuse-fridge',
@@ -343,7 +343,7 @@ export const TEMPLATE_AUTARK = {
       target: 'busbar-plus',
       targetHandle: 'plus',
       type: 'cableEdge',
-      data: { length: 0.5, crossSection: 70, fuseSize: 160 },
+      data: { length: 0.5, crossSection: 70, fuseSize: 100 },
     },
     {
       id: 'e-batt-minus',
@@ -361,7 +361,7 @@ export const TEMPLATE_AUTARK = {
       target: 'charger-1',
       targetHandle: 'plus',
       type: 'cableEdge',
-      data: { length: 4, crossSection: 6 },
+      data: { length: 4, crossSection: 25, fuseSize: 50, edgeDomain: 'Solar' },
     },
     {
       id: 'e-charger-busbar',
@@ -370,7 +370,7 @@ export const TEMPLATE_AUTARK = {
       target: 'busbar-plus',
       targetHandle: 'plus',
       type: 'cableEdge',
-      data: { length: 1, crossSection: 10, fuseSize: 40 },
+      data: { length: 1, crossSection: 10, fuseSize: 32 },
     },
     {
       id: 'e-starter-dcdc',
@@ -379,7 +379,7 @@ export const TEMPLATE_AUTARK = {
       target: 'charger-2',
       targetHandle: 'plus',
       type: 'cableEdge',
-      data: { length: 5, crossSection: 16, fuseSize: 60 },
+      data: { length: 5, crossSection: 16, fuseSize: 40 },
     },
     {
       id: 'e-dcdc-busbar',
@@ -388,7 +388,7 @@ export const TEMPLATE_AUTARK = {
       target: 'busbar-plus',
       targetHandle: 'plus',
       type: 'cableEdge',
-      data: { length: 1, crossSection: 16, fuseSize: 50 },
+      data: { length: 1, crossSection: 16, fuseSize: 40 },
     },
     {
       id: 'e-busbar-fuse',
@@ -397,7 +397,7 @@ export const TEMPLATE_AUTARK = {
       target: 'fusebox-1',
       targetHandle: 'plus',
       type: 'cableEdge',
-      data: { length: 1, crossSection: 70, fuseSize: 160 },
+      data: { length: 1, crossSection: 70, fuseSize: 100 },
     },
     {
       id: 'e-fuse-fridge',
@@ -433,7 +433,7 @@ export const TEMPLATE_AUTARK = {
       target: 'inverter-1',
       targetHandle: 'plus',
       type: 'cableEdge',
-      data: { length: 1, crossSection: 70, fuseSize: 160 },
+      data: { length: 1, crossSection: 70, fuseSize: 100 },
     },
     {
       id: 'e-busbar-inv-minus',

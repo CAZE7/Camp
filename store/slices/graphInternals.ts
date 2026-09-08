@@ -91,6 +91,14 @@ export function plannerGraphSignature(nodes: Node[], edges: Edge[]): string {
         n.data?.hours,
         n.data?.rating,
         n.data?.hasRcd,
+        // AUDIT ELE-005: BMS-Grenzwerte ändern BMS-Warnungen und damit die
+        // Cache-Eingabe — fehlen sie in der Signatur, liefert
+        // calculatePathVoltageDrop nach einer BMS-Änderung stale Werte.
+        n.data?.bmsContinuousDischarge,
+        n.data?.bmsPeakDischarge,
+        n.data?.bmsContinuousCharge,
+        n.data?.hasInternalBms,
+        n.data?.hasExternalBms,
       ].join('|')
     )
     .join('~');

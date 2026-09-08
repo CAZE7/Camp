@@ -117,12 +117,12 @@ describe('VDE-Konsistenz: keine hardcoded Magic-Numbers', () => {
   it('CableEdge.tsx bezieht alle Ströme aus den zentralen Funktionen (DC + AC)', () => {
     // Seit der AC-Strom-Berechnung braucht CableEdge die Konstanten nicht
     // mehr selbst zu importieren — es delegiert an calculateEdgeCurrent (DC)
-    // und calculateAcEdgeCurrent (230 V) aus lib/vde-standards.ts. Genau
-    // diese Delegation wird hier erzwungen, damit keine Magic Numbers
-    // (0.85, 18 V, 230 V) in die Anzeige zurückwandern.
+    // und acCurrentA (230 V) aus lib/autoWire/sizing.ts. Genau diese
+    // Delegation wird hier erzwungen, damit keine Magic Numbers (0.85, 18 V,
+    // 230 V) in die Anzeige zurückwandern.
     const content = fs.readFileSync(path.join(REPO_ROOT, 'components/edges/CableEdge.tsx'), 'utf-8');
     expect(content).toMatch(/calculateEdgeCurrent/);
-    expect(content).toMatch(/calculateAcEdgeCurrent/);
+    expect(content).toMatch(/acCurrentA/);
     expect(content).not.toMatch(/[/]\s*0\.85\b/);
   });
 

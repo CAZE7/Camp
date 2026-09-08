@@ -1,6 +1,6 @@
 import { render } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import CableEdge, { calculateAnimationDuration, type CableEdgeData } from './CableEdge';
+import CableEdge, { calculateAnimationDuration, collectEdgeErrors, type CableEdgeData } from './CableEdge';
 import { useReactFlow, Position, type Edge, type Node } from '@xyflow/react';
 import { usePlannerStore } from '../../store/usePlannerStore';
 
@@ -328,5 +328,40 @@ describe('CableEdge', () => {
 
     const { container } = render(<CableEdge {...defaultProps} sourceHandle="plus" />);
     expect(container.querySelector('.planner-flow-particle')).not.toBeNull();
+  });
+});
+
+describe('collectEdgeErrors — AUDIT ELE-003/008', () => {
+  it('meldet fehlende Sicherung auf Solarzuleitung', () => {
+    const errors = collectEdgeErrors({
+      edgeDomain: 'Solar',
+      data: { length: 3, crossSection: 6, edgeDomain: 'Solar' },
+      I: 11.1,
+      maxFuse: 25,
+      crossSection: 6,
+      isPlus: true,
+      sourceNodeType: 'solar',
+      targetNodeType: 'mpptController',
+      length: 3,
+      totalDropPercentage: 1,
+      fuseFloor: 21.7,
+    });
+    expect(errors.some((err) => err.ruleId === 'fuse-missing')).toBe(true);
+  });
+
+  it('meldet zu große AC-Sicherung auf einer 1,5-mm²-Leitung', () => {
+    const errors = collectEdgeErrors({
+      edgeDomain: 'AC_230V',
+      data: { length: 2, crossSection: 1.5, edgeDomain: 'AC_230V', fuseSize: 40 },
+      I: 10,
+      maxFuse: 10,
+      crossSection: 1.5,
+      isPlus: true,
+      sourceNodeType: 'shorePower',
+      targetNodeType: 'consumer230v',
+      length: 2,
+      totalDropPercentage: 1,
+    });
+    expect(errors.some((err) => err.ruleId === 'fuse-too-large')).toBe(true);
   });
 });

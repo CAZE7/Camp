@@ -2,13 +2,21 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Edge, Node } from '@xyflow/react';
 import {
   clearCableRoutes,
+  computeCableRouteFinalValidation,
   createThrottledRunner,
   edgeTopologySignature,
   getCableRoute,
+  getCableRouteFinalValidation,
   nodeLayoutSignature,
   publishCableRoutes,
+  publishCableRouteFinalValidation,
   ROUTE_THROTTLE_MS,
 } from './cableRouteStore';
+import type { RouteEdgeRef } from './routeAll';
+import type { RoutableNode } from './nodeGeometry';
+import type { PathResult } from './pathfinding';
+import { validateFinalRouting } from '../../../lib/routing/finalValidation';
+import type { NodeRect, RoutedEdge } from '../../../lib/routing/invariants';
 
 /**
  * R-9 (Cache-/Re-Routing-Korrektheit): Für jede Invalidierungsquelle —
@@ -127,6 +135,107 @@ describe('Gedrosseltes Live-Re-Routing (R-9)', () => {
     runner.cancel();
     vi.advanceTimersByTime(ROUTE_THROTTLE_MS * 2);
     expect(runs).toHaveLength(1);
+  });
+});
+
+describe('Final-Validation-Publikation (AUDIT F-07)', () => {
+  it('publiziert den Report des letzten Routinglaufs und clearCableRoutes löscht ihn', () => {
+    clearCableRoutes();
+    expect(getCableRouteFinalValidation()).toBeUndefined();
+
+    const routed: RoutedEdge[] = [
+      {
+        id: 'e1',
+        source: 'a',
+        target: 'b',
+        waypoints: [
+          { x: 0, y: 70 },
+          { x: 300, y: 70 },
+        ],
+      },
+    ];
+    const rects: NodeRect[] = [
+      { id: 'a', x: 0, y: 0, width: 100, height: 100 },
+      { id: 'b', x: 200, y: 0, width: 100, height: 100 },
+      { id: 'obstacle', x: 140, y: 0, width: 100, height: 100 },
+    ];
+    const report = validateFinalRouting(routed, rects);
+    expect(report.status).toBe('INVALID');
+
+    publishCableRouteFinalValidation(report);
+    expect(getCableRouteFinalValidation()).toMatchObject({
+      status: 'INVALID',
+      edgeCount: 1,
+      counts: { edgeNodeCollisions: 1, edgeEdgeOverlaps: 0, clearanceViolations: 0 },
+    });
+
+    clearCableRoutes();
+    expect(getCableRouteFinalValidation()).toBeUndefined();
+  });
+
+  it('publiziert auch ein VALID-Ergebnis, damit der grüne Status sichtbar ist', () => {
+    clearCableRoutes();
+    const routed: RoutedEdge[] = [
+      {
+        id: 'e1',
+        source: 'a',
+        target: 'b',
+        waypoints: [
+          { x: 0, y: 70 },
+          { x: 300, y: 70 },
+        ],
+      },
+    ];
+    const rects: NodeRect[] = [
+      { id: 'a', x: 0, y: 0, width: 100, height: 100 },
+      { id: 'b', x: 200, y: 0, width: 100, height: 100 },
+    ];
+    const report = validateFinalRouting(routed, rects);
+    expect(report.status).toBe('VALID');
+    publishCableRouteFinalValidation(report);
+    expect(getCableRouteFinalValidation()?.status).toBe('VALID');
+    clearCableRoutes();
+  });
+
+  it('computeCableRouteFinalValidation bildet aus den UI-Waypoints denselben I1-Report', () => {
+    const nodes = [
+      makeNode('a', 0, 0, 100, 100),
+      makeNode('b', 200, 0, 100, 100),
+      makeNode('obstacle', 140, 0, 100, 100),
+    ] as unknown as RoutableNode[];
+    const edges = [
+      {
+        id: 'e1',
+        source: 'a',
+        target: 'b',
+        sourceHandle: 'plus',
+        targetHandle: 'plus',
+        data: {},
+      },
+    ] as unknown as RouteEdgeRef[];
+    const routes = new Map<string, PathResult>([
+      [
+        'e1',
+        {
+          path: 'M 0 70 L 300 70',
+          waypoints: [
+            { x: 0, y: 70 },
+            { x: 300, y: 70 },
+          ],
+          labelX: 150,
+          labelY: 75,
+          offsetX: 0,
+          offsetY: 0,
+          length: 300,
+          bends: 0,
+          crossings: 0,
+          usedSearch: 'catalog',
+        },
+      ],
+    ]);
+    const report = computeCableRouteFinalValidation(nodes, edges, routes);
+    expect(report.status).toBe('INVALID');
+    expect(report.counts).toEqual({ edgeNodeCollisions: 1, edgeEdgeOverlaps: 0, clearanceViolations: 0 });
   });
 });
 

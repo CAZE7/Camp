@@ -1317,6 +1317,54 @@ describe('M6-8 — AUDIT-Testgruppen', () => {
   });
 
   // Gruppe 8 (Issue 9) ── Konvergenz der Dimensionierung ────────────────────
+  // AUDIT ELE-001: Batterie-Serienkanten werden im AutoWire-Lauf entfernt,
+  // weil es kein 24-V-Serienmodell gibt und die gemeinsame Minus-Schiene sonst
+  // einen Kurzschluss erzeugt.
+  it('verwirft Batterie×Batterie-Serienkanten (AUDIT ELE-001)', () => {
+    const res = performAutoWiring(
+      [
+        n('b1', 'battery', { label: 'B1', nominalVoltage: 12 }),
+        n('b2', 'battery', { label: 'B2', nominalVoltage: 12 }),
+        n('c1', 'consumer', { watts: 40 }),
+      ],
+      [
+        e({
+          id: 'series',
+          source: 'b1',
+          target: 'b2',
+          sourceHandle: 'plus',
+          targetHandle: 'minus',
+          data: { length: 1, edgeDomain: 'DC_12V' },
+        }),
+      ]
+    )!;
+    expect(res.edges.some((x) => x.id === 'series')).toBe(false);
+  });
+
+  // AUDIT ELE-002: Direkte Solar→Batterie-Kanten werden verworfen; das Panel
+  // wird stattdessen über den automatisch angelegten MPPT angebunden.
+  it('verwirft direkte Solar→Batterie-Kanten und erzeugt MPPT-Pfad (AUDIT ELE-002)', () => {
+    const res = performAutoWiring(
+      [
+        n('b1', 'battery', { label: 'Aufbau', capacity: 100, chemistry: 'LiFePO4' }),
+        n('s1', 'solar', { watts: 200 }),
+      ],
+      [
+        e({
+          id: 'direct',
+          source: 's1',
+          target: 'b1',
+          sourceHandle: 'plus',
+          targetHandle: 'plus',
+          data: { length: 3, edgeDomain: 'Solar' },
+        }),
+      ]
+    )!;
+    expect(res.edges.some((x) => x.id === 'direct')).toBe(false);
+    expect(res.nodes.some((x) => x.type === 'mpptController' || x.type === 'charger')).toBe(true);
+    expect(res.edges.some((x) => x.source === 's1' && x.data?.edgeDomain === 'Solar')).toBe(true);
+  });
+
   it('zweiter sizeDcEdges-Durchlauf verändert nichts mehr (Konvergenz)', () => {
     const nodes = [
       n('b', 'battery', { label: 'Aufbau', nominalVoltage: 12.8 }),

@@ -425,6 +425,20 @@ describe('VDE-Standards mit typsicheren Einheiten (K1b)', () => {
       expect(calculateAcEdgeCurrent('inv', nodes, [])).toBe(0);
       expect(calculateAcEdgeCurrent(undefined, nodes, [])).toBe(0);
     });
+
+    it('zählt AC-Ladegeräte in derselben Insel mit (AUDIT ELE-004)', () => {
+      const nodes = [
+        node('sp', 'shorePower', {}),
+        node('c1', 'consumer230v', { watts: 300 }),
+        node('ch', 'acBatteryCharger', { amps: 20 }),
+      ];
+      const edges = [
+        edge('e1', 'sp', 'c1', { edgeDomain: 'AC_230V' }, 'plus', 'plus'),
+        edge('e2', 'sp', 'ch', { edgeDomain: 'AC_230V' }, 'plus', 'plus'),
+      ];
+      // 300 W / 230 V ≈ 1,30 A + 20 A Ladestrom ≈ 21,3 A am Landstrom-Strang.
+      expect(calculateAcEdgeCurrent('sp', nodes, edges)).toBeCloseTo(21.304, 2);
+    });
   });
 
   describe('typisierte Berechnungen', () => {

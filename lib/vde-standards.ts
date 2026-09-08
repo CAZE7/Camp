@@ -551,34 +551,44 @@ export function calculateAcEdgeCurrent(sourceId: string | undefined, nodes: Node
   }
 
   let total: Watts = ZERO_WATTS;
+  // AUDIT ELE-004: AC-Ladegeräte in derselben Insel sind echte Lasten. Vorher
+  // wurde bei >0-W-Verbrauchern sofort mit dem Verbraucherstrom zurückgekehrt
+  // und der Ladestrom der `acBatteryCharger` ignoriert — die Anzeige zeigte
+  // z. B. 1,3 A, während AutoWire korrekt mit 20 A dimensionierte.
+  let chargerAmps: Amps = ZERO_AMPS;
   visited.forEach((id) => {
     const node = nodeMap.get(id);
     if (node?.type === 'consumer230v') {
       total = addWatts(total, quantityOr((node.data as Record<string, unknown>)?.watts, watts, ZERO_WATTS));
+      return;
+    }
+    if (node?.type === 'acBatteryCharger') {
+      chargerAmps = addAmps(
+        chargerAmps,
+        quantityOr((node.data as Record<string, unknown>)?.amps, amps, ZERO_AMPS)
+      );
     }
   });
-  if (total > ZERO_WATTS) {
-    return currentFromPower(total, AC_SYSTEM_VOLTAGE);
+  const loadAmps = total > ZERO_WATTS ? currentFromPower(total, AC_SYSTEM_VOLTAGE) : ZERO_AMPS;
+  if (loadAmps > ZERO_AMPS && chargerAmps > ZERO_AMPS) {
+    return addAmps(loadAmps, chargerAmps);
+  }
+  if (loadAmps > ZERO_AMPS) {
+    return loadAmps;
+  }
+  if (chargerAmps > ZERO_AMPS) {
+    return chargerAmps;
   }
 
-  // AUDIT ELE-006: Kein 230-V-Verbraucher in der AC-Insel heißt NICHT
-  // „kein Strom". Eine Landstrom-Zuleitung zu einem AC-Ladegerät trägt
-  // dessen Ladestrom, eine Dosenleitung mindestens den Anschlusswert —
-  // vorher standen solche Kanten bei 0 A (keine Animation, Spannungsfall
-  // 0 %), während die AutoWire-Dimensionierung (acCurrentA) korrekt
-  // dimensionierte. Semantik dieser Funktion bleibt „tatsächlicher Strom
-  // auf der Leitung"; die Capability-Sicht (Nennlast Wechselrichter) macht
-  // weiterhin ausschließlich die Dimensionierung.
+  // AUDIT ELE-006: Kein 230-V-Verbraucher/kein Ladegerät in der AC-Insel
+  // heißt NICHT „kein Strom". Eine Dosenleitung trägt mindestens den
+  // Anschlusswert des Landstroms — vorher standen solche Kanten bei 0 A
+  // (keine Animation, Spannungsfall 0 %), während die AutoWire-
+  // Dimensionierung (acCurrentA) korrekt dimensionierte.
   let connectionCurrent: Amps = ZERO_AMPS;
   visited.forEach((id) => {
     const node = nodeMap.get(id);
     if (!node) return;
-    if (node.type === 'acBatteryCharger') {
-      connectionCurrent = maxAmps(
-        connectionCurrent,
-        quantityOr((node.data as Record<string, unknown>)?.amps, amps, ZERO_AMPS)
-      );
-    }
     if (node.type === 'shorePower') {
       const raw = Number((node.data as Record<string, unknown>)?.rating);
       if (Number.isFinite(raw) && raw > 0) {
