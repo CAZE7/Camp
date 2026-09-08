@@ -524,11 +524,14 @@ describe('useLiveValidation', () => {
   });
 
   describe('Missing coverage: verpolte Batterie, Mischspannung, Inverter-RCD', () => {
-    const node = (id: string, type: string, data: any): Node => ({ id, type, position: { x: 0, y: 0 }, data } as Node);
+    const node = (id: string, type: string, data: Record<string, unknown>): Node =>
+      ({ id, type, position: { x: 0, y: 0 }, data }) as Node;
 
     it('warnt bei verpolter Batterie (ELE-003)', () => {
       const nodes = [node('b1', 'battery', {}), node('b2', 'battery', {})];
-      const edges = [{ id: 'e1', source: 'b1', target: 'b2', sourceHandle: 'plus', targetHandle: 'minus' }] as any[];
+      const edges: Edge<CableEdgeData>[] = [
+        { id: 'e1', source: 'b1', target: 'b2', sourceHandle: 'plus', targetHandle: 'minus' },
+      ];
       const { result } = renderHook(() => useLiveValidation(nodes, edges));
       const warning = result.current.find((w) => w.ruleId === 'ELE-003-reversed-polarity');
       expect(warning).toBeDefined();
@@ -536,10 +539,7 @@ describe('useLiveValidation', () => {
     });
 
     it('warnt bei Mischspannungsplan (ELE-008)', () => {
-      const nodes = [
-        node('b1', 'battery', { voltage: 12 }),
-        node('b2', 'battery', { voltage: 24 })
-      ];
+      const nodes = [node('b1', 'battery', { voltage: 12 }), node('b2', 'battery', { voltage: 24 })];
       const { result } = renderHook(() => useLiveValidation(nodes, []));
       const warning = result.current.find((w) => w.ruleId === 'ELE-008-mixed-voltage');
       expect(warning).toBeDefined();
@@ -548,11 +548,17 @@ describe('useLiveValidation', () => {
     });
 
     it('warnt bei Inverter ohne RCD (AC-001)', () => {
-      const nodes = [
-        node('inv', 'inverter', { hasRcd: false }),
-        node('c1', 'consumer230v', {})
+      const nodes = [node('inv', 'inverter', { hasRcd: false }), node('c1', 'consumer230v', {})];
+      const edges: Edge<CableEdgeData>[] = [
+        {
+          id: 'e1',
+          source: 'inv',
+          target: 'c1',
+          sourceHandle: 'acOut',
+          targetHandle: 'acIn',
+          data: { edgeDomain: 'AC_230V' },
+        },
       ];
-      const edges = [{ id: 'e1', source: 'inv', target: 'c1', sourceHandle: 'acOut', targetHandle: 'acIn', data: { edgeDomain: 'AC_230V' } }] as any[];
       const { result } = renderHook(() => useLiveValidation(nodes, edges));
       const warning = result.current.find((w) => w.ruleId === 'AC-001-inverter-rcd');
       expect(warning).toBeDefined();

@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1312" height="1360" viewBox="0 0 1312 1360">
   <title>p02-batterie-10-verbraucher — 1 Batterie + 10 Verbraucher</title>
   <rect width="100%" height="100%" fill="#0b0f14"/>
-  <text x="60" y="32" fill="#8b98a5" font-family="monospace" font-size="14">p02-batterie-10-verbraucher: X=4 Bends=32 L=7103.40 Clearance=0</text>
+  <text x="60" y="32" fill="#8b98a5" font-family="monospace" font-size="14">p02-batterie-10-verbraucher: X=8 Bends=32 L=7146.65 Clearance=0</text>
   <rect x="60" y="660" width="192" height="120" fill="#151b23" stroke="#31404f" stroke-width="1.5" rx="8"/>
   <text x="70" y="684" fill="#c7d0d9" font-family="monospace" font-size="13">batt</text>
   <rect x="380" y="660" width="192" height="120" fill="#151b23" stroke="#31404f" stroke-width="1.5" rx="8"/>
@@ -30,22 +30,22 @@
   <circle cx="252" cy="696" r="4" fill="#39b2f5"/>
   <path d="M 437.60 660 L 437.50 660 L 437.50 207.50 L 797.60 207.50 L 797.60 180" fill="none" stroke="#39b2f5" stroke-width="2.5"/>
   <circle cx="437.60" cy="660" r="4" fill="#39b2f5"/>
-  <path d="M 572 696 L 613.50 696 L 613.50 316 L 1024 316 L 1024 96 L 1060 96" fill="none" stroke="#39b2f5" stroke-width="2.5"/>
+  <path d="M 572 696 L 726 696 L 718 696 L 718 194 L 1031 194 L 1031 96 L 1060 96" fill="none" stroke="#39b2f5" stroke-width="2.5"/>
   <circle cx="572" cy="696" r="4" fill="#39b2f5"/>
-  <path d="M 572 696 L 688 696 L 688 376 L 740 376" fill="none" stroke="#39b2f5" stroke-width="2.5"/>
+  <path d="M 572 696 L 640 696 L 640 376 L 740 376" fill="none" stroke="#39b2f5" stroke-width="2.5"/>
   <circle cx="572" cy="696" r="4" fill="#39b2f5"/>
-  <path d="M 572 696 L 603 696 L 597.50 696 L 597.50 584 L 1029 584 L 1029 376 L 1060 376" fill="none" stroke="#39b2f5" stroke-width="2.5"/>
+  <path d="M 572 696 L 726 696 L 726 474 L 1036 474 L 1036 376 L 1060 376" fill="none" stroke="#39b2f5" stroke-width="2.5"/>
   <circle cx="572" cy="696" r="4" fill="#39b2f5"/>
   <path d="M 572 696 L 672 696 L 672 656 L 740 656" fill="none" stroke="#39b2f5" stroke-width="2.5"/>
   <circle cx="572" cy="696" r="4" fill="#39b2f5"/>
-  <path d="M 572 696 L 726 696 L 726 606 L 1031 606 L 1031 656 L 1060 656" fill="none" stroke="#39b2f5" stroke-width="2.5"/>
+  <path d="M 572 696 L 612.38 696 L 612.38 756 L 1024 756 L 1024 656 L 1060 656" fill="none" stroke="#39b2f5" stroke-width="2.5"/>
   <circle cx="572" cy="696" r="4" fill="#39b2f5"/>
-  <path d="M 572 696 L 704 696 L 704 936 L 740 936" fill="none" stroke="#39b2f5" stroke-width="2.5"/>
+  <path d="M 572 696 L 596 696 L 596 936 L 740 936" fill="none" stroke="#39b2f5" stroke-width="2.5"/>
   <circle cx="572" cy="696" r="4" fill="#39b2f5"/>
-  <path d="M 572 696 L 726 696 L 726 886 L 1019 886 L 1019 936 L 1060 936" fill="none" stroke="#39b2f5" stroke-width="2.5"/>
+  <path d="M 572 696 L 605.50 696 L 596.38 696 L 596.38 880 L 1026.50 880 L 1026.50 936 L 1060 936" fill="none" stroke="#39b2f5" stroke-width="2.5"/>
   <circle cx="572" cy="696" r="4" fill="#39b2f5"/>
   <path d="M 437.60 780 L 437.50 780 L 437.50 1152.50 L 797.60 1152.50 L 797.60 1180" fill="none" stroke="#39b2f5" stroke-width="2.5"/>
   <circle cx="437.60" cy="780" r="4" fill="#39b2f5"/>
-  <path d="M 572 696 L 608 696 L 608 1036 L 1024 1036 L 1024 1216 L 1060 1216" fill="none" stroke="#39b2f5" stroke-width="2.5"/>
+  <path d="M 572 696 L 628.38 696 L 628.38 1036 L 1024 1036 L 1024 1216 L 1060 1216" fill="none" stroke="#39b2f5" stroke-width="2.5"/>
   <circle cx="572" cy="696" r="4" fill="#39b2f5"/>
 </svg>

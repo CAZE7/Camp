@@ -8,7 +8,7 @@
 
 ## 0. Umsetzung nach dem Audit (Stand dieser Session)
 
-Die prüfbaren Findings wurden im Code umgesetzt. Die Gesamttestsuite ist danach **137 Dateien / 1870 Tests grün**, `typecheck` und `typecheck:tests` ebenfalls grün. Die Golden-Master-Baseline wurde mit `npm run goldenmaster:capture` neu eingefroren (nur durch die bewusst korrigierten Template-Sicherungen verändert).
+Die prüfbaren Findings wurden im Code umgesetzt. Die Gesamttestsuite ist nach dem Merge des Basis-Branch-Stands (#423 routing/logic) **137 Dateien / 1880 Tests grün**, `typecheck` und `typecheck:tests` ebenfalls grün. Die Golden-Master-Baseline wurde mit `npm run goldenmaster:capture` neu eingefroren (nur durch die bewusst korrigierten Template-Sicherungen verändert).
 
 | Finding                             | Status                             | Kernänderung                                                                                                                                                                                                                                                         |
 | ----------------------------------- | ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

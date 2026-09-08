@@ -103,11 +103,12 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
           category: 'topology',
           type: 'critical',
           title: 'Mischspannung (12 V / 24 V)',
-          message: 'Batterien mit unterschiedlichen Nennspannungen im Plan. Dies ist gefährlich und wird vom Berechnungsmodell nicht unterstützt.',
+          message:
+            'Batterien mit unterschiedlichen Nennspannungen im Plan. Dies ist gefährlich und wird vom Berechnungsmodell nicht unterstützt.',
           ruleId: 'ELE-008-mixed-voltage',
           measuredValue: Array.from(voltages).join(' V, ') + ' V',
           expectedValue: 'einheitliche Spannung',
-          unit: 'V'
+          unit: 'V',
         });
       }
     }
@@ -396,7 +397,7 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
 
       const isSourceSolar = sourceNode.type === 'solar' || sourceNode.type === 'roofSolar';
       const isTargetSolar = targetNode.type === 'solar' || targetNode.type === 'roofSolar';
-      
+
       if (isSourceSolar || isTargetSolar) {
         const otherNode = isSourceSolar ? targetNode : sourceNode;
         const isOtherSolar = otherNode.type === 'solar' || otherNode.type === 'roofSolar';
@@ -418,7 +419,7 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
             ruleId: 'ELE-009-solar-direct',
             measuredValue: `Solar → ${otherNode.type}`,
             expectedValue: 'Solar → Laderegler',
-            unit: ''
+            unit: '',
           });
         }
       }

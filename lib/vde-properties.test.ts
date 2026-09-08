@@ -17,7 +17,7 @@ import {
 import { getSystemVoltage } from './vde-standards';
 import { hasVoltageDropError } from '../components/edges/utils/voltageDrop';
 import { performAutoWiring, sizeDcEdges } from './autoWire';
-import { volts, amps, meters, watts } from './units';
+import { volts, amps, meters } from './units';
 import { crossSectionForDrop } from './autoWire/primitives';
 
 /**
@@ -840,8 +840,12 @@ describe('Shrinking-Anker (gemeldete Gegenbeispiele)', () => {
       const csZero = calculateCrossSection(amps(50), meters(0), undefined, 'DC_12V');
       // Meter construct wirft RangeError bei negativ
       let threw = false;
-      try { meters(-5); } catch { threw = true; }
-      
+      try {
+        meters(-5);
+      } catch {
+        threw = true;
+      }
+
       expect(csZero).toBeGreaterThanOrEqual(10);
       expect(threw).toBe(true);
     });

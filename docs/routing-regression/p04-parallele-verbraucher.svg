@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="912" height="960" viewBox="0 0 912 960">
   <title>p04-parallele-verbraucher — Parallele Verbraucher</title>
   <rect width="100%" height="100%" fill="#0b0f14"/>
-  <text x="60" y="32" fill="#8b98a5" font-family="monospace" font-size="14">p04-parallele-verbraucher: X=1 Bends=8 L=2592 Clearance=0</text>
+  <text x="60" y="32" fill="#8b98a5" font-family="monospace" font-size="14">p04-parallele-verbraucher: X=0 Bends=8 L=2592 Clearance=0</text>
   <rect x="60" y="420" width="192" height="120" fill="#151b23" stroke="#31404f" stroke-width="1.5" rx="8"/>
   <text x="70" y="444" fill="#c7d0d9" font-family="monospace" font-size="13">fuse</text>
   <rect x="660" y="60" width="192" height="120" fill="#151b23" stroke="#31404f" stroke-width="1.5" rx="8"/>
@@ -18,6 +18,6 @@
   <circle cx="252" cy="456" r="4" fill="#39b2f5"/>
   <path d="M 252 456 L 488 456 L 488 576 L 660 576" fill="none" stroke="#39b2f5" stroke-width="2.5"/>
   <circle cx="252" cy="456" r="4" fill="#39b2f5"/>
-  <path d="M 252 456 L 504 456 L 504 816 L 660 816" fill="none" stroke="#39b2f5" stroke-width="2.5"/>
+  <path d="M 252 456 L 276 456 L 276 816 L 660 816" fill="none" stroke="#39b2f5" stroke-width="2.5"/>
   <circle cx="252" cy="456" r="4" fill="#39b2f5"/>
 </svg>
