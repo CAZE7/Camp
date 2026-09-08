@@ -21,6 +21,9 @@ import type { LayoutRequest, LayoutResult } from './layout-engine/contract';
 export type V2Node = Node;
 export type V2CableEdge = Edge<CableEdgeData>;
 
+/** Die beiden Engine-Namen, die dieser Adapter produzieren kann. */
+export type LayoutEngineName = 'elk' | 'dagre';
+
 /**
  * Runs the industrial layout pipeline: ELK first, Dagre as a deterministic
  * fallback. Returns repositioned nodes; edges are passed through untouched.
@@ -28,12 +31,17 @@ export type V2CableEdge = Edge<CableEdgeData>;
  * ELK is loaded lazily only when this function runs. The dependency is a client
  * bundle dependency so the app keeps working as a static export (the repo's
  * deployment mode); the engine still runs live in the user's browser.
+ *
+ * Generisch über die Kantenform: Der Adapter liest nur `source`/`target`/
+ * `type` und reicht dieselben Kantenobjekte weiter — der Store ruft ihn mit
+ * den Elektro-Kanten (`CableEdgeData`) wie mit den Wasser-Kanten
+ * (`WaterPipeEdgeData`) auf und bekommt jeweils seinen Typ zurück (ADR 0018).
  */
-export async function applyAdvancedLayout(
+export async function applyAdvancedLayout<E extends Edge = V2CableEdge>(
   nodes: readonly V2Node[],
-  edges: readonly V2CableEdge[],
+  edges: readonly E[],
   direction: 'LR' | 'TB' = 'LR'
-): Promise<{ nodes: V2Node[]; edges: V2CableEdge[] }> {
+): Promise<{ nodes: V2Node[]; edges: E[]; engine: LayoutEngineName }> {
   const { ElkLayoutEngine } = await import('./layout-engine/elk');
   const { DagreLayoutEngine } = await import('./layout-engine/dagre');
 
@@ -83,5 +91,6 @@ export async function applyAdvancedLayout(
   return {
     nodes: layoutedNodes,
     edges: [...edges],
+    engine: layoutResult.engine === 'elk' ? 'elk' : 'dagre',
   };
 }

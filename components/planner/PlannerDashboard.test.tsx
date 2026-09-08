@@ -18,6 +18,7 @@ const mockSetViewMode = vi.fn();
 const mockSetSeason = vi.fn();
 const mockAutoWireSystem = vi.fn();
 const mockOnLayout = vi.fn();
+const mockOnLayoutV2 = vi.fn().mockResolvedValue({ applied: true, engine: 'elk' });
 const mockUndo = vi.fn();
 const mockRedo = vi.fn();
 const mockClearPlan = vi.fn();
@@ -31,6 +32,7 @@ vi.mock('../../store/usePlannerStore', () => ({
       setSeason: mockSetSeason,
       autoWireSystem: mockAutoWireSystem,
       onLayout: mockOnLayout,
+      onLayoutV2: mockOnLayoutV2,
       systemMessage: null,
       setSystemMessage: vi.fn(),
       focusElement: vi.fn(),
@@ -156,6 +158,31 @@ describe('PlannerDashboard - Action Buttons', () => {
 
     expect(mockOnLayout).toHaveBeenCalledTimes(1);
     expect(mockOnLayout).toHaveBeenCalledWith();
+  });
+
+  /**
+   * AUDIT ROUTE-003 / ADR 0018: Der ELK-Pass muss ein erreichbarer
+   * Produktivpfad sein — der Befund war „Modul fertig, UI tot". Dieser
+   * Test verankert die Verdrahtung, damit er es bleibt.
+   */
+  it('calls onLayoutV2 when clicking Strukturieren (ELK) and reports the engine', async () => {
+    render(<PlannerDashboard />);
+
+    openMoreMenu();
+    fireEvent.click(screen.getByTestId('action-layout-v2-menu'));
+
+    expect(mockOnLayoutV2).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(screen.getByText(/Plan mit ELK global strukturiert/)).toBeInTheDocument());
+  });
+
+  it('reports the Dagre fallback honestly instead of claiming ELK', async () => {
+    mockOnLayoutV2.mockResolvedValueOnce({ applied: true, engine: 'dagre' });
+    render(<PlannerDashboard />);
+
+    openMoreMenu();
+    fireEvent.click(screen.getByTestId('action-layout-v2-menu'));
+
+    await waitFor(() => expect(screen.getByText(/Dagre-Fallback/)).toBeInTheDocument());
   });
 
   it('dispatches planner-fit-view when clicking the Übersicht (fit view) button', () => {

@@ -16,6 +16,15 @@ export type GraphSnapshot = {
   waterEdges: PlannerWaterEdge[];
 };
 
+/**
+ * Ergebnis der ELK-Layout-Action (ADR 0018). `elk`/`dagre` melden die
+ * tatsächlich gelaufene Engine; `empty` (kein Bauteil), `stale` (neuere
+ * Anfrage hat gewonnen) und `error` (beide Engines gescheitert) sind die
+ * ehrlichen Verweigerungen — das UI sagt aus, was passiert ist.
+ */
+export type LayoutV2Outcome =
+  { applied: true; engine: 'elk' | 'dagre' } | { applied: false; reason: 'empty' | 'stale' | 'error' };
+
 export interface PlannerState {
   viewMode: 'electric' | 'water';
   setViewMode: (mode: 'electric' | 'water') => void;
@@ -98,7 +107,13 @@ export interface PlannerState {
   onConnect: (connection: Connection) => void;
   autoWireSystem: () => void;
   onLayout: () => void;
-  onLayoutV2: () => Promise<void>;
+  /**
+   * ELK-Layout (ADR 0018): globaler Layout-Pass für Knotenpositionen.
+   * Ergebnis ist transparent — `engine` sagt, ob ELK gelaufen ist oder der
+   * Dagre-Fallback; `applied: false` bei leerem Plan, veralteter Anfrage
+   * (letzte Anfrage gewinnt) oder bei Versagen beider Engines.
+   */
+  onLayoutV2: () => Promise<LayoutV2Outcome>;
   onDrop: (
     event: React.DragEvent,
     screenToFlowPosition: (client: { x: number; y: number }) => { x: number; y: number }

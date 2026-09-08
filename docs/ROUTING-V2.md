@@ -276,6 +276,15 @@ Die **finale Geometrie** der Kanten kommt aber aus dem Routing-V2-Ergebnis.
 
 Nur der `layout-engine` nutzt ELK; `routing-core` kennt ELK **nicht**.
 
+**Implementierungsstand (2026-09-08, ADR 0018/0019 — schließt AUDIT ROUTE-003):**
+ELK ist produktiv verdrahtet — als globaler **Knoten**-Layout-Pass hinter
+„Strukturieren (ELK)" (`onLayoutV2` im Planner-Store, Dagre-Fallback mit
+sichtbarer Engine-Meldung im UI). Die Kanten**geometrie** bleibt exklusiv im
+A\*-Produktivpass (`components/edges/utils`, ADR 0014); ELK-`routes`/`junctions`
+werden bewusst nicht konsumiert. Die Freigabe-Prüfung
+(`lib/routing/invariants.ts` via `finalValidation.ts` → `RoutingStatusBadge`)
+liest I1/I2/I3 aus dem geteilten Kollisionsmodell `rules/collision.ts`.
+
 | Ebene                | Quelle                                | verantwortlich für                         |
 | -------------------- | ------------------------------------- | ------------------------------------------ |
 | Knotenpositionen     | ELK layout requested nodes            | `layout-engine/elk.ts`                     |

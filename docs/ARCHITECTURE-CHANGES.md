@@ -298,6 +298,34 @@ Diese Gates sind konsistent mit den Review-Anforderungen:
 
 ## Change Ledger
 
+### 2026-09-08 — ROUTE-003 erledigt: ELK produktiv verdrahtet + Final-Gate liest das Kollisionsmodell
+
+Kein Golden-Master-Recapture nötig (kein Geometrie-/Dimensionierungs-Delta).
+Zwei Architektur-Entscheidungen (`docs/adr/0018`, `docs/adr/0019`), Befund-Text
+und Beweise in `AUDIT-EXTREM-2026-09.md` → „Siebte Nachbearbeitung":
+
+1. **ELK-Pass UI-produktiv (ADR 0018):** Toolbar-/Menü-Eintrag „Strukturieren
+   (ELK)" (`data-testid="action-layout-v2"`) ruft die zuvor UI-tote
+   `onLayoutV2`. Neu: Sequenz-Guard „letzte Anfrage gewinnt" (P-6) im Store,
+   `isLayoutPending` erst beim jüngsten Lauf zurück, Undo-History +
+   Fit-View-Dispatch wie beim klassischen Aufräumen, Wasser-Ansicht
+   mitbedient (`kind: 'waterPipe'` war im Engine-Vertrag längst vorgesehen).
+   `applyAdvancedLayout` meldet `engine: 'elk' | 'dagre'` — der einst stille
+   Dagre-Fallback ist jetzt im UI-Feedback lesbar. Bewusst nicht konsumiert:
+   ELK-`routes`/`junctions` (Geometrie bleibt exklusiv im A\*-Pass, ADR 0014).
+2. **Final-Gate konsumiert `classifyCollision` (ADR 0019):** I1/I2/I3 in
+   `lib/routing/invariants.ts` sind Ableitungen von
+   `classifySegmentAgainstNode`/`classifySegmentAgainstSegment`
+   (hard ⇒ I1/I2, weighted ⇒ I3) statt eigener `geometry`-Begriffe — drei
+   Begriffswelten → zwei, wobei die A\*-Fassung dokumentiert äquivalent bleibt
+   (PERF-001: Modell-Aufruf im Innenloop wäre der belegte 95-%-Laufzeitpfad
+   bei identischer Entscheidung). Zahlen: LEGACY_BASELINE + Ratchet ohne
+   Nachzug grün.
+
+Bewusst NICHT in dieser Scheibe: Geometrie-Migration
+`components/edges/utils → lib/routing` (Allowlist-Typkante) — eigenes Projekt,
+siehe „Verbleibend" im Audit.
+
 ### 2026-09-08 — Golden-Master-Neuerfassung (AUDIT ELE-007 + DOM-002, Branch `arena/01a0818b-camp`)
 
 `npm run goldenmaster:capture` bewusst ausgeführt; alle 7 Fixtures neu eingefroren.

@@ -12,6 +12,7 @@ import {
   Snowflake,
   MoreHorizontal,
   Maximize2,
+  Network,
   Undo2,
   Redo2,
   Loader2,
@@ -23,6 +24,7 @@ import {
   Info,
 } from 'lucide-react';
 import { usePlannerStore } from '../../store/usePlannerStore';
+import type { LayoutV2Outcome } from '../../store/slices/types';
 import { useAppStore } from '../../lib/store';
 import { useShallow } from 'zustand/react/shallow';
 import { getNodesBounds, getViewportForBounds } from '@xyflow/react';
@@ -167,6 +169,7 @@ function ActionsSection({
   setSeason,
   autoWireSystem,
   onLayout,
+  onLayoutV2,
   nodes,
   warnings,
   setFeedback,
@@ -180,6 +183,7 @@ function ActionsSection({
   setSeason: (season: 'summer' | 'winter') => void;
   autoWireSystem: () => void;
   onLayout: () => void;
+  onLayoutV2: () => Promise<LayoutV2Outcome>;
   nodes: import('@xyflow/react').Node[];
   warnings: ValidationWarning[];
   setFeedback: (feedback: ActionFeedback) => void;
@@ -190,7 +194,7 @@ function ActionsSection({
   onRequestReset: () => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [busy, setBusy] = useState<'export' | 'wire' | 'layout' | 'check' | null>(null);
+  const [busy, setBusy] = useState<'export' | 'wire' | 'layout' | 'layoutV2' | 'check' | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const setHasOnboarded = useAppStore((state) => state.setHasOnboarded);
 
@@ -238,6 +242,41 @@ function ActionsSection({
       message: 'Plan in drei Funktionsspalten aufgeräumt. Rückgängig ist möglich.',
     });
     window.setTimeout(() => setBusy(null), 350);
+  };
+
+  /**
+   * AUDIT ROUTE-003 / ADR 0018: ELK ist jetzt ein erreichbarer Produktivpfad.
+   * Das Feedback sagt, welche Engine TATSÄCHLICH gelaufen ist — der frühere
+   * stille Dagre-Fallback war genau der „Doku ≠ Implementation"-Befund.
+   */
+  const runLayoutV2 = async () => {
+    setBusy('layoutV2');
+    setMenuOpen(false);
+    let outcome: LayoutV2Outcome;
+    try {
+      outcome = await onLayoutV2();
+    } catch {
+      outcome = { applied: false, reason: 'error' };
+    }
+    if (outcome.applied) {
+      setFeedback({
+        type: outcome.engine === 'elk' ? 'success' : 'info',
+        message:
+          outcome.engine === 'elk'
+            ? 'Plan mit ELK global strukturiert. Rückgängig ist möglich.'
+            : 'ELK nicht rechtzeitig fertig — Raster-Layout (Dagre-Fallback) angewendet. Rückgängig ist möglich.',
+      });
+    } else if (outcome.reason === 'empty') {
+      setFeedback({ type: 'info', message: 'Keine Bauteile zum Strukturieren im Plan.' });
+    } else if (outcome.reason === 'error') {
+      setFeedback({
+        type: 'error',
+        message: 'Layout fehlgeschlagen — ELK und Dagre-Fallback konnten den Plan nicht anordnen.',
+      });
+    }
+    // 'stale': Eine neuere Anfrage läuft bereits und meldet selbst — hier
+    // bewusst keine doppelte Meldung.
+    setBusy(null);
   };
 
   const runCheck = () => {
@@ -382,6 +421,22 @@ function ActionsSection({
         <LayoutGrid className="h-4 w-4" />
         <span>Aufräumen</span>
       </Button>
+      <Button
+        variant="outline"
+        data-testid="action-layout-v2"
+        onClick={runLayoutV2}
+        disabled={busy !== null}
+        className="hidden min-h-11 gap-1.5 lg:inline-flex"
+        title="Plan global strukturieren — ELK Layered (bei Ausfall: Dagre-Fallback); Kabel werden danach neu geroutet"
+        aria-label="Strukturieren (ELK)"
+      >
+        {busy === 'layoutV2' ? (
+          <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />
+        ) : (
+          <Network className="h-4 w-4" />
+        )}
+        <span>Strukturieren (ELK)</span>
+      </Button>
 
       <div className="relative" ref={menuRef}>
         <Button
@@ -422,6 +477,16 @@ function ActionsSection({
             >
               <LayoutGrid className="h-4 w-4" />
               Aufräumen
+            </button>
+            <button
+              role="menuitem"
+              data-testid="action-layout-v2-menu"
+              onClick={runLayoutV2}
+              disabled={busy !== null}
+              className="flex min-h-11 w-full items-center gap-2 rounded px-3 text-sm text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+            >
+              <Network className="h-4 w-4" />
+              Strukturieren (ELK)
             </button>
             <button
               role="menuitem"
@@ -522,6 +587,7 @@ export function PlannerDashboard() {
     setSeason,
     autoWireSystem,
     onLayout,
+    onLayoutV2,
     focusElement,
     nodes,
     edges,
@@ -541,6 +607,7 @@ export function PlannerDashboard() {
       setSeason: state.setSeason,
       autoWireSystem: state.autoWireSystem,
       onLayout: state.onLayout,
+      onLayoutV2: state.onLayoutV2,
       focusElement: state.focusElement,
       nodes: state.nodes,
       edges: state.edges,
@@ -655,6 +722,7 @@ export function PlannerDashboard() {
             setSeason={setSeason}
             autoWireSystem={autoWireSystem}
             onLayout={onLayout}
+            onLayoutV2={onLayoutV2}
             nodes={viewMode === 'water' ? waterNodes : nodes}
             warnings={warnings}
             setFeedback={setFeedback}
