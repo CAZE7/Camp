@@ -35,8 +35,13 @@ test.describe('M8-2 Fachwissen-Panel', () => {
     await expect(close).toBeEnabled();
     const closeBox = await close.boundingBox();
     expect(closeBox, 'Schließen-Button ohne Box').not.toBeNull();
-    expect(closeBox!.width).toBeGreaterThanOrEqual(44);
-    expect(closeBox!.height).toBeGreaterThanOrEqual(44);
+    // Sub-Pixel-Toleranz (Beleg CI 2026-09-08, Run 34285434939): Ubuntu/Playwright
+    // rechnet h-11 (44 px) gelegentlich als 43.99998 px zurück — Flake, kein
+    // Touch-Target-Defizit. Der eigentliche Schutz (Button nicht real zu klein,
+    // also ≫ 10 px Abweichung) bleibt voll wirksam.
+    const SUBPX_EPS = 0.05;
+    expect(closeBox!.width).toBeGreaterThanOrEqual(44 - SUBPX_EPS);
+    expect(closeBox!.height).toBeGreaterThanOrEqual(44 - SUBPX_EPS);
 
     const panel = await boxOf(page.getByTestId('expert-panel-open'));
     expect(panel).not.toBeNull();
