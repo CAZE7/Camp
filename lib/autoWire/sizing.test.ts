@@ -68,10 +68,36 @@ describe('AUDIT DOM-002 — applyFuseTypes: Bauform nach Abschaltvermögen', () 
   });
   const nodes = [battery({}), n('bus1', 'busbar', {})];
 
-  it('100-Ah-LiFePO4 (Ik ≈ 4,3 kA) → Class T, einzige Bauform über dem Bank-Ik', () => {
+  it('100-Ah-LiFePO4 (Ik ≈ 4,3 kA) → ANL (6 kA), nicht MRBF (10 kA)', () => {
     const edges = [fusedEdge(100)];
     applyFuseTypes(edges, nodes, 12.8);
-    // MEGA 2 kA, ANL 2,5 kA, MRBF 3 kA — alle unterhalb 4,27 kA: Class T.
+    // Politik „kleinstes Abschaltvermögen ≥ Ik": kürzester Lichtbogen beim
+    // Abschalten. MEGA 2 kA ist zu klein; ANL 6 kA trägt 4,27 kA → ANL.
+    // MRBF (10 kA @12 V) wäre Überdimensionierung — erst >6 kA nötig.
+    expect(edges[0]!.data?.fuseType).toBe('anl');
+  });
+
+  it('zwei Blöcke parallel (Ik ≈ 8,5 kA) → MRBF; drei (≈12,8 kA) → Class T', () => {
+    const three = [battery({}), battery({}), battery({}), n('bus1', 'busbar', {})];
+    const two = [battery({}), battery({}), n('bus1', 'busbar', {})];
+    const edges = [fusedEdge(150)];
+    applyFuseTypes(edges, two, 12.8);
+    // ≈8,5 kA > ANL 6 kA → MRBF (10 kA @12 V) ist hier die kleinste tragende.
+    expect(edges[0]!.data?.fuseType).toBe('mrbf');
+    const edges3 = [fusedEdge(150)];
+    applyFuseTypes(edges3, three, 12.8); // ≈12,8 kA > 10 kA
+    expect(edges3[0]!.data?.fuseType).toBe('classT');
+  });
+
+  it('24-V-Bank: MRBF fällt auf 5 kA — mittlere Ik landet bei ANL (6 kA), hohe bei Class T', () => {
+    const bank24 = [
+      battery({ capacity: 200, chemistry: 'LiFePO4', nominalVoltage: 25.6 }),
+      n('bus1', 'busbar', {}),
+    ];
+    // Ri = 3 mΩ × 100/200 = 1,5 mΩ → Ik = 25,6/0,0015 ≈ 17 kA > Class-T-Deckel ist
+    // Modellgrenze? Nein: 17 kA < 20 kA → Class T, MRBF/ANL wären falsch.
+    const edges = [fusedEdge(150)];
+    applyFuseTypes(edges, bank24, 25.6);
     expect(edges[0]!.data?.fuseType).toBe('classT');
   });
 

@@ -118,10 +118,24 @@ describe('DOM-002 — Abschaltvermögen der Sicherung', () => {
     expect(breakingCapacityAOf('ato', 3000)).toBe(3000);
   });
 
-  it('Bauform-Tabelle liefert die verankerten Richtwerte', () => {
+  it('Bauform-Tabelle spiegelt die Hersteller-Datenblattanker (VERIFIED)', () => {
     expect(breakingCapacityAOf('classT', undefined)).toBe(FUSE_BREAKING_CAPACITY_A.classT);
-    expect(FUSE_BREAKING_CAPACITY_A.classT).toBe(20000);
+    // Littelfuse-Blatt: ATO 1 kA, MEGA/MIDI 2 kA @32 VDC
     expect(FUSE_BREAKING_CAPACITY_A.ato).toBe(1000);
+    expect(FUSE_BREAKING_CAPACITY_A.mega).toBe(2000);
+    expect(FUSE_BREAKING_CAPACITY_A.midi).toBe(2000);
+    // Blue-Sea-Quick-Guide: ANL 6 kA @32 VDC, Class T 20 kA
+    expect(FUSE_BREAKING_CAPACITY_A.anl).toBe(6000);
+    expect(FUSE_BREAKING_CAPACITY_A.classT).toBe(20000);
+  });
+
+  it('MRBF ist spannungsabhängig (Blue-Sea-Datenblatt 10/5/2 kA je Korridor)', () => {
+    expect(breakingCapacityAOf('mrbf', undefined, 12.8)).toBe(10000); // 12-V-System
+    expect(breakingCapacityAOf('mrbf', undefined, 25.6)).toBe(5000); // 24-V-System
+    expect(breakingCapacityAOf('mrbf', undefined, 51.2)).toBe(2000); // 48-V-System
+    expect(breakingCapacityAOf('mrbf', undefined, 65)).toBeNull(); // jenseits der Bauform
+    // Default ohne Systemspannung: konservativ der 12-V-Tabellenwert
+    expect(breakingCapacityAOf('mrbf', undefined)).toBe(FUSE_BREAKING_CAPACITY_A.mrbf);
   });
 
   it('unbekannte Bauform → nicht bewertbar (null)', () => {
@@ -146,6 +160,9 @@ describe('DOM-002 — Regelanker begründet die Bauformwahl', () => {
     expect(bankShortCircuitCurrentA(bank)!).toBeLessThan(FUSE_BREAKING_CAPACITY_A.classT);
     // … aber über dem ATO-Deckel → genau der Fall, den der Warncheck anzeigt.
     expect(bankShortCircuitCurrentA(bank)!).toBeGreaterThan(FUSE_BREAKING_CAPACITY_A.ato);
+    // MRBF (10 kA @12 V) trägt die typische Zweiblock-Bank noch — erst
+    // ab ~2,5 kA-Ik ist Class T der letzte Bauform-Punkt.
+    expect(bankShortCircuitCurrentA(bank)!).toBeLessThan(FUSE_BREAKING_CAPACITY_A.mrbf);
   });
 
   it('Solar-Teilmenge dieses Tests: Vmp-Anker bleibt 18 V (ELE-007-Pin)', () => {

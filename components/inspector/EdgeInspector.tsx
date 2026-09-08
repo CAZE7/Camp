@@ -130,14 +130,18 @@ export function EdgeInspector({
             <option value="">— nicht angegeben —</option>
             {FUSE_TYPES.map((ft) => (
               <option key={ft} value={ft}>
-                {FUSE_TYPE_LABELS[ft]} (≈ {(FUSE_BREAKING_CAPACITY_A[ft] / 1000).toLocaleString('de-DE')} kA)
+                {FUSE_TYPE_LABELS[ft]} (
+                {ft === 'mrbf'
+                  ? '≈ 10 kA @ 12 V / 5 kA @ 24 V'
+                  : `≈ ${(FUSE_BREAKING_CAPACITY_A[ft] / 1000).toLocaleString('de-DE')} kA`}
+                )
               </option>
             ))}
           </select>
           <p className="mt-1 text-xs text-muted-foreground">
-            Typisches Abschaltvermögen der Bauform (Hersteller-Kennwerte, keine normengeprüfte Auslegung).
-            Danach prüft der Planer, ob die Sicherung den geschätzten Kurzschlussstrom der Batteriebank
-            trennen kann.
+            Abschaltvermögen der Bauform nach Hersteller-Datenblatt (Littelfuse/Blue Sea; MRBF
+            spannungsabhängig). Danach prüft der Planer, ob die Sicherung den geschätzten Kurzschlussstrom der
+            Batteriebank trennen kann.
           </p>
         </div>
       )}

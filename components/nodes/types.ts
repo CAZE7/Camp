@@ -57,6 +57,8 @@ export interface BatteryNodeData extends CommonNodeData {
   bmsContinuousCharge?: number;
   /** AUDIT DOM-002: Batterie-Innenwiderstand (mΩ, Datenblatt) — treibt die Kurzschluss-Schätzung. */
   internalResistance?: number;
+  /** DOM-002-Nachpflege: Peukert-Exponent (k ≥ 1, Datenblatt) — schlägt den Chemie-Faustwert. */
+  peukertExponent?: number;
 }
 
 export interface ConsumerNodeData extends CommonNodeData {

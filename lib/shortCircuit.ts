@@ -26,10 +26,23 @@
  *   als Schätzung ausgewiesen, nicht als Grenzfallrechnung.
  * - Forderung an das Abschaltvermögen: ABYC E-11 AIC-Tabelle (main:
  *   1 500 A bis 750 CCA / 3 000 A bis 1 250 CCA / 5 000 A darüber, 12 V;
- *   branch jeweils die Hälfte) — die kA-Tabelle unten gibt TYPISCHE
- *   Hersteller-Abschaltvermögen je Bauform wieder (UNVERIFIED für das
- *   konkrete Produkt; explizites edge.data.fuseBreakingCapacity schlägt
- *   die Tabelle).
+ *   branch jeweils die Hälfte) — die kA-Tabelle unten spiegelt
+ *   HERSTELLER-DATENBLATTWERTE (Nachpflege 2026-09-08, VERIFIED):
+ *   Littelfuse-Blatt (ATO/MINI 1 000 A @32 VDC, MEGA/MIDI 2 000 A @32 VDC)
+ *   sowie Blue-Sea-„Quick Guide to Fuses" (ANL 6 000 A @32 VDC,
+ *   MIDI/AMI 5 000 A @32 VDC, MRBF/Terminal 10 000 A @14 VDC /
+ *   5 000 A @32 VDC / 2 000 A @58 VDC, Class T 20 000 A @160 VDC).
+ *   Bei MIDI streuen die Hersteller (Littelfuse 2 000 vs. Blue Sea 5 000) —
+ *   der Tabelleneintrag ist der konservative Minimalanker. MRBF ist
+ *   explizit SPANNUNGSABHÄNGIG: breakingCapacityAOf wertet die System-
+ *   spannung aus. Datenblattwert des konkreten Produkts schlägt die
+ *   Tabelle (edge.data.fuseBreakingCapacity).
+ * - Ri ist last-/temperaturabhängig: Kälte erhöht Ri (Ik sinkt um bis zu
+ *   ~50 % bei Blei-Blöcken, LiFePO4 weniger betroffen) und Entladeende
+ *   senkt die Polspannung. Beides wirkt auf die Abschaltbetrachtung nur
+ *   ENTLASTEND (höchstes Ik = warm & voll = hier ohnehin angesetzte
+ *   Nennwerte) — für das Sicherheitsverbotsschema unkritisch, für die
+ *   Verfügbarkeit (Fehlauslösung) relevant; nicht weiter modelliert.
  *
  * Nicht enthalten (weiter offen, im ExpertPanel als Modellgrenze
  * ausgewiesen): temperatur-/Ladezustandsabhängiges Ri, Peukert, I²t/
@@ -47,19 +60,30 @@ export type FuseType = 'ato' | 'midi' | 'mega' | 'anl' | 'mrbf' | 'classT';
 export const FUSE_TYPES: readonly FuseType[] = ['ato', 'midi', 'mega', 'anl', 'mrbf', 'classT'];
 
 /**
- * Typische Nenn-Abschaltvermögen (A) bei ≤ 32 V DC, Hersteller-Kennwerte
- * (z. B. Littelfuse ATO/MIDI/MEGA/ANL-Serien, Blue-Sea-MRBF, Class T/JJN).
- * UNVERIFIED für das konkrete Produkt — das Datenblatt schlägt die Tabelle
+ * Abschaltvermögen (A) der Bauformen — Hersteller-Datenblattanker à ≤ 32 V DC
+ * (Quellenlage im Dateikopf, VERIFIED 2026-09-08: Littelfuse-Datenblätter +
+ * Blue-Sea-„Quick Guide to Fuses"). MIDI ist der konservative Minimalanker der
+ * Herstellerstreuung (2 000 Littelfuse vs. 5 000 Blue Sea). MRBF ist
+ * spannungsabhängig (s. breakingCapacityAOf): der Tabellenwert gilt für den
+ * 12-V-Systemkorridor (Nenn 12,8 V, Ladefenster ≤ 14,6 V).
+ * Das Datenblatt des konkreten Produkts schlägt die Tabelle
  * (edge.data.fuseBreakingCapacity).
  */
 export const FUSE_BREAKING_CAPACITY_A: Record<FuseType, number> = {
   ato: 1_000,
-  midi: 1_000,
+  midi: 2_000,
   mega: 2_000,
-  anl: 2_500,
-  mrbf: 3_000,
+  anl: 6_000,
+  mrbf: 10_000,
   classT: 20_000,
 };
+
+/** MRBF-Abschaltvermögen (A) je Nennspannungskorridor — Blue-Sea-Datenblatt. */
+export const MRBF_BREAKING_CAPACITY_BY_VOLTAGE: ReadonlyArray<{ maxVolts: number; capacity: number }> = [
+  { maxVolts: 16, capacity: 10_000 }, // 12-V-Systeme inkl. Ladefenster (@14 V DC)
+  { maxVolts: 32, capacity: 5_000 }, // 24-V-Systeme (@32 V DC)
+  { maxVolts: 58, capacity: 2_000 }, // 48-V-Systeme (@58 V DC)
+];
 
 /** Anzeige-Namen der Bauformen (EdgeInspector). */
 export const FUSE_TYPE_LABELS: Record<FuseType, string> = {
@@ -197,10 +221,20 @@ export function shortCircuitAtFuseA(
  * Wirksames Abschaltvermögen (A) einer abgesicherten Kante:
  * explizites Datenfeld (Datenblatt) schlägt Bauform-Tabelle, sonst null
  * (= nicht bewertbar — Aufrufer meldet „Typ angeben", statt zu schweigen).
+ * `systemVoltageV` steuert den MRBF-Korridor (Blue-Sea-Datenblatt: 10/5/2 kA
+ * für 14/32/58 V DC); ohne Angabe gilt der 12-V-Wert aus der Tabelle.
  */
-export function breakingCapacityAOf(fuseType: unknown, explicitA: unknown): number | null {
+export function breakingCapacityAOf(
+  fuseType: unknown,
+  explicitA: unknown,
+  systemVoltageV?: number
+): number | null {
   const explicit = finitePositive(explicitA);
   if (explicit !== null) return explicit;
-  if (isFuseType(fuseType)) return FUSE_BREAKING_CAPACITY_A[fuseType];
-  return null;
+  if (!isFuseType(fuseType)) return null;
+  if (fuseType === 'mrbf' && typeof systemVoltageV === 'number' && Number.isFinite(systemVoltageV)) {
+    const band = MRBF_BREAKING_CAPACITY_BY_VOLTAGE.find((b) => systemVoltageV <= b.maxVolts);
+    return band ? band.capacity : null; // > 58 V: außerhalb der Bauform — ehrlich null
+  }
+  return FUSE_BREAKING_CAPACITY_A[fuseType];
 }

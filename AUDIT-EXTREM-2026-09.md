@@ -175,6 +175,42 @@ libBoundary.test.ts` scannt alle lib-Produktivdateien und verbietet jeden
   Master unverändert (kein Produktivverhalten geändert außer der eben
   geschlossenen Lücke, die nie SOLL-Verhalten war).
 
+**Sechste Nachbearbeitung 2026-09-08 (Fortsetzung Branch `arena/01a0818b-camp`):**
+DOM-002-Nachpflege abgeschlossen — AIC-Tabelle verifiziert, Peukert-Faustmodell, Temperatur-Ri dokumentiert.
+
+- **Abschaltvermögen von UNVERIFIED auf Datenblattanker gehoben:** Tabelle in
+  `lib/shortCircuit.ts` spiegelt jetzt Hersteller-Datenblattwerte
+  (**VERIFIED**, Quellen im Modulkopf): Littelfuse-Blatt (ATO/MINI 1 000 A,
+  MEGA/MIDI 2 000 A @32 VDC), Blue-Sea-„Quick Guide to Fuses" (ANL 6 000 A,
+  Class T 20 000 A, MIDI/AMI 5 000 A — Tabelle bleibt wegen Herstellerstreuung
+  MIDI = Littelfuse 2 000 als konservativem Minimalanker). **MRBF ist
+  spannungsabhängig** (Blue-Sea-Datenblatt 10 000 A @14 V / 5 000 A @32 V /
+  2 000 A @58 V): `breakingCapacityAOf` lästet nach Systemspannungskorridor
+  auf; Regel A7 und `applyFuseTypes` reichen die Systemspannung durch,
+  EdgeInspector zeigt MRBF als „≈ 10 kA @ 12 V / 5 kA @ 24 V".
+- **AutoWire-Politik `applyFuseTypes` geschärft:** Auswahlprinzip „kleinstes
+  Abschaltvermögen ≥ Ik" (kürzester Lichtbogen/geringste Durchlassenergie —
+  Class T als Dach für Spitzenbänke, nicht als Familienwahl); Kandidaten werden
+  spannungsabhängig sortiert (MRBF fällt bei 24 V auf 5 kA < ANL 6 kA).
+  Golden-Master-Diff zweite Fassung: nur fuseType-Stempel (mrbf→anl,
+  classT→anl/mrbf, `complex` unverändert), keine Querschnitts-/Geometrie-
+  änderung; Ledger-Eintrag-Sektion in `docs/ARCHITECTURE-CHANGES.md`
+  aktualisiert.
+- **Peukert-Faustmodell (`lib/peukert.ts`, UNVERIFIED-Faustwerte:**
+  k = 1,05 LiFePO4 / 1,12 AGM / 1,15 Gel; Datenblattfeld `peukertExponent`
+  am Batterie-Block (Schema, Typ, Inspektor) schlägt den Chemiewert):
+  `calculateUsableCapacity` in `useDashboardMetrics` gewichtet die nutzbare
+  Kapazität mit (C/20)/$(I) hoch (k−1) bei Tagesdurchschnittsstrom, Deckel 1
+  (kein Bonus bei Kleinstlasten), Split gleichmäßig auf Parallelblöcke.
+  Kleine Lasten (< C/20) ändern nichts — die Bestandswerte der Autarkie-
+  Suite bleiben exakt, hohe Dauerlasten zeigen jetzt die reale Richtung
+  (AGM 100 Ah @40 A: ≈ 0,78 statt 1,0).
+- **Temperatur-/SoC-Abhängigkeit des Ri:** nicht modelliert, ehrlich
+  begründet (Kälte/SoC wirken für die Abschaltvermögens-Forderung entlastend;
+  Kommentar im Modulkopf + ExpertPanel-Grenzenliste).
+- **Nachweis:** Peukert-Unit + Integrationstests (Autarkie-Strings) 39/39;
+  1001/1001 components-Suite; Golden Master erneut bewusst eingefroren.
+
 **Verbleibend (bewusst offen, priorisiert):** ROUTE-003 (ELK-Produktivverdrahtung —
 eigenes Architekturprojekt, inkl. Geometrie-Migration components/edges/utils → lib/routing
 mit Abbau der Allowlist-Typkante), DOM-001 (230-V-Mehrleiter-Modell), DOM-002-

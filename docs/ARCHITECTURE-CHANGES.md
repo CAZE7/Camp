@@ -316,3 +316,17 @@ Begründung „bewusst besser, weil …":
    der neue Kurzschluss-Check (Rule A7) in jedem Auto-Plan „Abschaltvermögen
    unbekannt". Delta: reine Zusatzfelder `fuseType` (+ die zwei Solar-
    Querschnitte), keine Id-/Geometrie-/Safety-Verschlechterung.
+
+### 2026-09-08 — Zweite Fassung: AIC-Tabelle verifiziert (DOM-002-Nachpflege)
+
+Erneutes `npm run goldenmaster:capture`, Diff ausschließlich `fuseType`-Stempel
+(`simple`/`camper`: mrbf → anl; `solar`: classT → anl; `inverter`/`acdc`:
+classT → mrbf; `complex` unverändert), keine Querschnitts-/Geometrie-Änderung.
+Begründung „bewusst besser, weil …": die Bauform-Tabelle in `lib/shortCircuit.ts`
+ruht jetzt auf verifizierten Hersteller-Datenblattankern (Littelfuse-Blatt:
+ATO 1 kA, MEGA/MIDI 2 kA @32 VDC; Blue-Sea-„Quick Guide to Fuses": ANL 6 kA,
+Class T 20 kA, MRBF spannungsabhängig 10/5/2 kA @14/32/58 VDC) statt auf
+Faustwerten (MRBF war 3 kA angenommen), und `applyFuseTypes` wählt das
+KLEINSTE wirksame Abschaltvermögen ≥ geschätztem Ik (spannungsabhängig
+sortiert) — kürzester Lichtbogen, Class T als Dach. Details:
+`AUDIT-EXTREM-2026-09.md` → „Sechste Nachbearbeitung".

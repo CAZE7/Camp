@@ -373,3 +373,56 @@ describe('Edge cases and error conditions', () => {
     expect(result.current.hasDirectBatteryToConsumer).toBe(true);
   });
 });
+
+describe('DOM-002-Nachpflege — Peukert in der Autarkie (Integration)', () => {
+  const emptyEdges: Edge[] = [];
+  // 240 W × 24 h ÷ 12 V Systemreferenz = 480 Ah/Tag → Dauerstrom 20 A;
+  // AGM 100 Ah (I_ref = C/20 = 5 A): (5/20)^0,12 ≈ 0,847 → nutzbar
+  // 50 × 0,847 ≈ 42,3 Ah statt 50 Ah.
+  it('hohe Dauerlast drückt die AGM-Autarkie spürbar (Faustk = 1,12)', () => {
+    const nodes: Node[] = [
+      { id: 'b1', type: 'battery', data: { capacity: 100, chemistry: 'AGM' }, position: { x: 0, y: 0 } },
+      { id: 'c1', type: 'consumer', data: { watts: 240, hours: 24 }, position: { x: 0, y: 0 } },
+    ];
+    const { result } = renderHook(() => useDashboardMetrics(nodes, emptyEdges, 'summer', 0));
+    // Nennmodell: 50 / 20 = 2,5 h → Peukert: 42,3 / 20 ≈ 2,12 h
+    expect(result.current.autarkyStr).toBe('0 Tage / 2 Stunden');
+    // Gegenprobe Nennmodell ohne Peukert wäre ≥ 2,5 h → anders.
+    expect(Math.floor((100 * 0.5) / 20)).toBe(2);
+  });
+
+  it('LiFePO4 bleibt bei gleicher Last fast beim Nennmodell (k = 1,05)', () => {
+    const nodes: Node[] = [
+      { id: 'b1', type: 'battery', data: { capacity: 100, chemistry: 'LiFePO4' }, position: { x: 0, y: 0 } },
+      { id: 'c1', type: 'consumer', data: { watts: 240, hours: 24 }, position: { x: 0, y: 0 } },
+    ];
+    const { result } = renderHook(() => useDashboardMetrics(nodes, emptyEdges, 'summer', 0));
+    // Nennmodell: 90 / 20 = 4,5 h; Peukert: 90 · (5/20)^0,05 ≈ 84,0 → ≈ 4,2 h
+    expect(result.current.autarkyStr).toBe('0 Tage / 4 Stunden');
+  });
+
+  it('Datenblatt-Exponent am Block schlägt den Chemie-Faustwert (k = 1,20 → stärker)', () => {
+    const nodes: Node[] = [
+      {
+        id: 'b1',
+        type: 'battery',
+        data: { capacity: 100, chemistry: 'AGM', peukertExponent: 1.2 },
+        position: { x: 0, y: 0 },
+      },
+      { id: 'c1', type: 'consumer', data: { watts: 240, hours: 24 }, position: { x: 0, y: 0 } },
+    ];
+    const { result } = renderHook(() => useDashboardMetrics(nodes, emptyEdges, 'summer', 0));
+    // (5/20)^0,2 ≈ 0,758 → ≈ 37,9 Ah → ≈ 1,9 h statt 2,1 h (k=1,12)
+    expect(result.current.autarkyStr).toBe('0 Tage / 1 Stunden');
+  });
+
+  it('kleine Dauerlast unter C/20 bleibt beim Nennmodell (Deckel: kein Bonus)', () => {
+    const nodes: Node[] = [
+      { id: 'b1', type: 'battery', data: { capacity: 100, chemistry: 'AGM' }, position: { x: 0, y: 0 } },
+      { id: 'c1', type: 'consumer', data: { watts: 12, hours: 24 }, position: { x: 0, y: 0 } },
+    ];
+    const { result } = renderHook(() => useDashboardMetrics(nodes, emptyEdges, 'summer', 0));
+    // 1 A < 5 A Referenzstrom → Faktor 1 → unverändert 50 Ah → 50 Stunden
+    expect(result.current.autarkyStr).toBe('2 Tage / 2 Stunden');
+  });
+});

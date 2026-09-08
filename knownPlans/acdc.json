@@ -7,7 +7,7 @@
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseSize": 100,
-          "fuseType": "classT",
+          "fuseType": "mrbf",
           "fuseWarning": true,
           "length": 0.2
         },
@@ -23,7 +23,7 @@
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseSize": 25,
-          "fuseType": "classT",
+          "fuseType": "mrbf",
           "length": 3
         },
         "id": "e-auto-10",
@@ -77,7 +77,7 @@
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseSize": 100,
-          "fuseType": "classT",
+          "fuseType": "mrbf",
           "fuseWarning": true,
           "length": 1
         },
@@ -106,7 +106,7 @@
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseSize": 5,
-          "fuseType": "classT",
+          "fuseType": "mrbf",
           "length": 3
         },
         "id": "e-auto-6",
@@ -134,7 +134,7 @@
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseSize": 100,
-          "fuseType": "classT",
+          "fuseType": "mrbf",
           "fuseWarning": true,
           "length": 1
         },

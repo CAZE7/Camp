@@ -530,7 +530,11 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
               }
             | undefined;
           if (!(Number(edgeData?.fuseSize) > 0)) continue;
-          const capacity = breakingCapacityAOf(edgeData?.fuseType, edgeData?.fuseBreakingCapacity);
+          const capacity = breakingCapacityAOf(
+            edgeData?.fuseType,
+            edgeData?.fuseBreakingCapacity,
+            sysVoltage
+          );
           const ikAtFuse = shortCircuitAtFuseA(
             batteries,
             edgeData?.fuseOffset,

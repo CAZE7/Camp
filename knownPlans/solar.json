@@ -7,7 +7,7 @@
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseSize": 20,
-          "fuseType": "classT",
+          "fuseType": "anl",
           "length": 0.2
         },
         "id": "e-auto-1",
@@ -22,7 +22,7 @@
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseSize": 20,
-          "fuseType": "classT",
+          "fuseType": "anl",
           "length": 2
         },
         "id": "e-auto-10",
@@ -76,7 +76,7 @@
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseSize": 20,
-          "fuseType": "classT",
+          "fuseType": "anl",
           "length": 1
         },
         "id": "e-auto-4",
@@ -104,7 +104,7 @@
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseSize": 5,
-          "fuseType": "classT",
+          "fuseType": "anl",
           "length": 3
         },
         "id": "e-auto-6",
@@ -132,7 +132,7 @@
           "dropWarning": false,
           "edgeDomain": "Solar",
           "fuseSize": 25,
-          "fuseType": "classT",
+          "fuseType": "anl",
           "length": 5
         },
         "id": "e-auto-8",

@@ -45,7 +45,7 @@ import {
 } from './primitives';
 import { isVoltageDropStopType } from './validation';
 import { solarDesignCurrentOf, solarDropBasisVoltageOf, solarFuseFloorOf, solarPanelEndOf } from '../solar'; // ELE-007
-import { FUSE_BREAKING_CAPACITY_A, isFuseType, shortCircuitAtFuseA, type FuseType } from '../shortCircuit'; // DOM-002
+import { breakingCapacityAOf, isFuseType, shortCircuitAtFuseA, type FuseType } from '../shortCircuit'; // DOM-002
 
 // lib/autoWire/sizing.ts — Spannungsfall, Querschnitt- und Sicherungsdimensionierung (M6-6).
 
@@ -506,10 +506,24 @@ export function applyFuseTypes(dcEdges: CableEdge[], nodes: Node[], sysVoltage: 
     if (isFuseType(data.fuseType) || Number(data.fuseBreakingCapacity) > 0) continue;
     const ik = shortCircuitAtFuseA(batteries, data.fuseOffset, data.crossSection, sysVoltage);
     if (ik === null) continue; // Bank nicht schätzbar → ehrlich nichts erfinden
-    const nominees: readonly FuseType[] =
+    // Kandidaten spannungsabhängig aufsteigend nach wirksamem Abschaltvermögen
+    // sortieren (MRBF kollabiert bei 24-V-Bänken auf 5 kA) und die kleinste
+    // tragende Bauform stempeln. Auswahlprinzip „kleinstes Abschaltvermögen ≥
+    // Ik": höheres Abschaltvermögen bedeutet physikalisch immer längere/
+    // energiereichere Lichtbögen beim Abschalten (Class T ist das Dach für
+    // Lithium-Spitzenbänke, nicht die Familienwahl von nebenan); ANL (6 kA)
+    // schlägt damit bewusst MRBF (10 kA), sobald letzterer nicht nötig ist.
+    // ATO bleibt Baugrößenbeschränkung ≤ 30 A.
+    const base: readonly FuseType[] =
       Number(data.fuseSize) > 30
         ? ['mega', 'anl', 'mrbf', 'classT']
         : ['ato', 'mega', 'anl', 'mrbf', 'classT'];
-    data.fuseType = nominees.find((t) => FUSE_BREAKING_CAPACITY_A[t] >= ik) ?? 'classT';
+    const nominees = [...base].sort(
+      (a, b) =>
+        (breakingCapacityAOf(a, undefined, sysVoltage) ?? 0) -
+        (breakingCapacityAOf(b, undefined, sysVoltage) ?? 0)
+    );
+    data.fuseType =
+      nominees.find((t) => (breakingCapacityAOf(t, undefined, sysVoltage) ?? 0) >= ik) ?? 'classT';
   }
 }
