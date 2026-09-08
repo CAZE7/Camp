@@ -66,7 +66,7 @@ const BASELINE: Readonly<Record<string, number>> = {
   solar: 2,
   inverter: 3,
   acdc: 5,
-  complex: 14,
+  complex: 13,
 };
 
 type Wired = Parameters<typeof nodesToObstacles>[0];

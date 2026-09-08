@@ -55,10 +55,31 @@ export function isConnectionAllowed(input: ConnectionRulesInput): boolean {
     const sIsMinus = sHandle.includes('minus');
     const tIsMinus = tHandle.includes('minus');
 
-    // Serien-Exception zwischen Batterien oder Solarmodulen
+    // Serien-Exception NUR für Solarmodule (Solar-Strings sind modelliert).
+    // Batterie×Batterie plus↔minus wird bewusst NICHT mehr erlaubt: Der Planer
+    // hat kein 24-V-Serienmodell. Dieselbe Kante ist bei gemeinsamer Minus-
+    // Schiene (AutoWire) ein direkter Kurzschluss des Batteriepakets —
+    // AUDIT ELE-001.
     const isSeriesException =
-      (sourceNode?.type === 'battery' && targetNode?.type === 'battery') ||
-      (sourceNode?.type === 'solar' && targetNode?.type === 'solar');
+      (sourceNode?.type === 'solar' || sourceNode?.type === 'roofSolar') &&
+      (targetNode?.type === 'solar' || targetNode?.type === 'roofSolar');
+
+    // Direkte Solar↔Batterie- und Solar↔Verbraucher-Verbindungen sind fachlich
+    // falsch: Ein Solarmodul speist nie ohne Laderegler eine Batterie und nie
+    // direkt ein 12-V-Gerät. Zulässig sind Solar↔Solar (Strings) und
+    // Solar↔MPPT/Laderegler. AUDIT ELE-002.
+    const isSolarType = (type?: string): boolean => type === 'solar' || type === 'roofSolar';
+    const sourceSolar = isSolarType(sourceNode?.type);
+    const targetSolar = isSolarType(targetNode?.type);
+    const solarPair = sourceSolar && targetSolar;
+    const targetIsSolarController = targetNode?.type === 'mpptController' || targetNode?.type === 'charger';
+    const sourceIsSolarController = sourceNode?.type === 'mpptController' || sourceNode?.type === 'charger';
+    if (
+      (sourceSolar && !solarPair && !targetIsSolarController) ||
+      (targetSolar && !solarPair && !sourceIsSolarController)
+    ) {
+      return false;
+    }
 
     // AC nutzt L/N/PE, nicht plus/minus — DC-Polarität nur im DC-Kreis
     if (sourceDomain !== 'AC_230V' && !isSeriesException) {

@@ -19,12 +19,8 @@ import {
   VDE_AMPACITY,
   DERATE_FACTOR,
 } from '../../lib/electrical';
-import {
-  AC_SYSTEM_VOLTAGE,
-  calculateAcEdgeCurrent,
-  calculateEdgeCurrent,
-  getSystemVoltage,
-} from '../../lib/vde-standards';
+import { AC_SYSTEM_VOLTAGE, calculateEdgeCurrent, getSystemVoltage } from '../../lib/vde-standards';
+import { acCurrentA } from '../../lib/autoWire/sizing';
 import { PX_PER_METER } from '../../lib/units';
 
 /** Wie lange ein angetipptes Kabel sein Label als Tooltip zeigt (Touch). */
@@ -78,11 +74,12 @@ export const calculateAnimationDuration = (I: number): number => {
  *    strom in ein defektes Kabel liefern).
  *
  * Die „Sicherung fehlt!“-Regel deckt sich bewusst mit Rule A der
- * Live-Validierung (useLiveValidation): Nur Hochstromquellen (Batterie,
- * Wechselrichter, Ladequellen) brauchen zwingend eine eigene Sicherung am
- * Kabel. Abgänge ab dem Sicherungskasten und Solarzuleitungen sind über ihre
- * Quelle geschützt und melden hier keinen Fehler — sonst widersprechen sich
- * Kanten-Chips und Warn-Zentrale.
+ * Live-Validierung (useLiveValidation): Hochstromquellen (Batterie,
+ * Wechselrichter, Ladequellen) und Solar-Zuleitungen brauchen zwingend eine
+ * eigene Sicherung am Kabel. Solar-Zuleitungen sind NICHT über ihre Quelle
+ * geschützt — das Datenblatt fordert 1,56 × Isc (AUDIT ELE-003/007).
+ * Abgänge ab dem Sicherungskasten sind über die vorgelagerte Sicherung
+ * geschützt und melden hier keinen Fehler.
  */
 const HIGH_POWER_SOURCE_TYPES = new Set([
   'battery',
@@ -91,6 +88,8 @@ const HIGH_POWER_SOURCE_TYPES = new Set([
   'mpptController',
   'dcdcCharger',
   'acBatteryCharger',
+  'solar',
+  'roofSolar',
 ]);
 
 /**
@@ -215,7 +214,12 @@ export const collectEdgeErrors = (input: {
   const minimumFuseCurrent = fuseFloor ?? I;
   const isSolarRule = fuseFloor !== undefined && fuseFloor > I;
 
-  if (edgeDomain !== 'AC_230V' && isPlus) {
+  if (isPlus) {
+    // AC-Sicherungen sind explizit pflegbar (AutoWire setzt sie in
+    // `sizeAcEdges`). Fehlende AC-Sicherung wird NICHT als „Sicherung fehlt!“
+    // gemeldet (AC-Schutz ist FI/LS-Schutz), aber eine vorhandene Sicherung
+    // wird gegen die Kabelträgkeit geprüft — sonst konnte sie ungeprüft
+    // bleiben (AUDIT ELE-008).
     if (maxFuse === 0) {
       errors.push({
         ruleId: 'fuse-no-recommendation',
@@ -223,7 +227,7 @@ export const collectEdgeErrors = (input: {
         message: 'Keine Empfehlung möglich / Querschnitt prüfen',
         source: 'Modell: kein Normquerschnitt für die Last absicherbar',
       });
-    } else if (!data?.fuseSize) {
+    } else if (!data?.fuseSize && edgeDomain !== 'AC_230V') {
       const needsSourceFuse = HIGH_POWER_SOURCE_TYPES.has(sourceNodeType || '') && targetNodeType !== 'fuse';
       if (needsSourceFuse) {
         errors.push({
@@ -235,7 +239,7 @@ export const collectEdgeErrors = (input: {
           source: 'Modell: Quellschutz auf DC-Plus-Kanten',
         });
       }
-    } else {
+    } else if (data?.fuseSize !== undefined) {
       if (data.fuseSize > maxFuse) {
         errors.push({
           ruleId: 'fuse-too-large',
@@ -268,7 +272,7 @@ export const collectEdgeErrors = (input: {
     // abgesichert, gilt die Sicherung als am Pol sitzend; die Strecke danach
     // (z. B. Starterbatterie → Ladebooster) darf länger sein.
     const batteryAtEnd = sourceNodeType === 'battery' || targetNodeType === 'battery';
-    if (batteryAtEnd && length > 0.2 && !data?.fuseSize) {
+    if (edgeDomain !== 'AC_230V' && batteryAtEnd && length > 0.2 && !data?.fuseSize) {
       errors.push({
         ruleId: 'main-fuse-distance',
         severity: 'critical',
@@ -285,7 +289,13 @@ export const collectEdgeErrors = (input: {
     // Batteriepol) weiter als 20 cm entfernt, bleibt die Anfangsstrecke
     // ungeschützt. Fehlt fuseOffset, gilt wie bisher der alte Vertrag
     // (Sicherung am Pol) — kein Bruch bestehender Pläne.
-    if (batteryAtEnd && data?.fuseSize && data.fuseOffset !== undefined && data.fuseOffset > 0.2) {
+    if (
+      edgeDomain !== 'AC_230V' &&
+      batteryAtEnd &&
+      data?.fuseSize &&
+      data.fuseOffset !== undefined &&
+      data.fuseOffset > 0.2
+    ) {
       errors.push({
         ruleId: 'fuse-offset',
         severity: 'critical',
@@ -502,7 +512,7 @@ const CableEdge = function ({
     const isAC = edgeDomain === 'AC_230V';
     const sysVoltage = isAC ? AC_SYSTEM_VOLTAGE : getSystemVoltage(getNodes());
     const I = isAC
-      ? calculateAcEdgeCurrent(source, getNodes(), siblingEdges)
+      ? acCurrentA(sourceNode, targetNode, getNodes(), siblingEdges) // AUDIT ELE-004: Anzeige = Dimensionierung
       : calculateEdgeCurrent(sourceNode, targetNode, getNodes(), sysVoltage, siblingEdges); // ELE-005: Kanten für Insel-BFS
 
     const crossSection = calculateCrossSection(I, length, data?.crossSection, isAC ? 'AC_230V' : 'DC_12V');
@@ -510,7 +520,11 @@ const CableEdge = function ({
     // (importierte 95 mm²) dürfen das Edge-Rendering nicht mit RangeError
     // crashen — für Label/Metrics wird auf die größte Normstufe ≤ cs
     // geklemmt, gewarnt wird separat über collectEdgeErrors.
-    const maxFuse = isAC ? 0 : maxFuseForDisplay(crossSection);
+    // Auch AC-Kanten bekommen hier eine Kabelträgheitsgrenze: eine manuell
+    // gesetzte AC-Sicherung wird damit geprüft (AUDIT ELE-008). Eine fehlende
+    // AC-Sicherung bleibt bewusst unbestraft (FI/LS-Schutz), die vorhandene
+    // Sicherung darf nur nicht über der Kabelträgheit liegen.
+    const maxFuse = maxFuseForDisplay(crossSection);
     const strokeWidth = calculateStrokeWidth(crossSection);
     const animationDuration = calculateAnimationDuration(I);
 

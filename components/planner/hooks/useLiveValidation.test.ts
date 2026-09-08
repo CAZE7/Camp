@@ -465,32 +465,81 @@ describe('useLiveValidation', () => {
     });
   });
 
-  describe('Missing coverage: verpolte Batterie, direktes Solar, Mischspannung, Inverter-RCD', () => {
-    const node = (id: string, type: string, data: any): Node => ({ id, type, position: { x: 0, y: 0 }, data } as Node);
+  describe('AUDIT ELE-002/003/005/009', () => {
+    it('warnt kritisch bei direkter Solar→Batterie-Verbindung (ELE-009)', () => {
+      const nodes: Node[] = [
+        { id: 'p1', type: 'solar', data: { label: 'Panel', watts: 200 }, position: { x: 0, y: 0 } },
+        { id: 'b1', type: 'battery', data: { label: 'Batterie', capacity: 100 }, position: { x: 0, y: 0 } },
+      ];
+      const edges: Edge<CableEdgeData>[] = [
+        { id: 'direct', source: 'p1', target: 'b1', sourceHandle: 'plus', targetHandle: 'plus', data: {} },
+      ];
+      const { result } = renderHook(() => useLiveValidation(nodes, edges));
+      const warning = result.current.find((w) => w.id === 'solar-direct-direct');
+      expect(warning).toBeDefined();
+      expect(warning?.ruleId).toBe('ELE-009-solar-direct');
+    });
+
+    it('warnt kritisch, wenn eine Solarzuleitung keine Sicherung hat', () => {
+      const nodes: Node[] = [
+        { id: 'p1', type: 'solar', data: { label: 'Panel', watts: 200, isc: 14 }, position: { x: 0, y: 0 } },
+        { id: 'm1', type: 'mpptController', data: { label: 'MPPT', amps: 30 }, position: { x: 0, y: 0 } },
+      ];
+      const edges: Edge<CableEdgeData>[] = [
+        { id: 'pv', source: 'p1', target: 'm1', sourceHandle: 'plus', targetHandle: 'plus', data: {} },
+      ];
+      const { result } = renderHook(() => useLiveValidation(nodes, edges));
+      expect(result.current.some((w) => w.id === 'missing-fuse-pv')).toBe(true);
+    });
+
+    it('warnt bei BMS-Dauerstromüberschreitung', () => {
+      const nodes: Node[] = [
+        {
+          id: 'b1',
+          type: 'battery',
+          data: { label: 'Batterie', capacity: 100, bmsContinuousDischarge: 50, nominalVoltage: 12.8 },
+          position: { x: 0, y: 0 },
+        },
+        {
+          id: 'i1',
+          type: 'inverter',
+          data: { label: 'Inverter', continuousPower: 1500 },
+          position: { x: 0, y: 0 },
+        },
+      ];
+      const edges: Edge<CableEdgeData>[] = [
+        { id: 'inv', source: 'b1', target: 'i1', sourceHandle: 'plus', targetHandle: 'plus', data: {} },
+      ];
+      const { result } = renderHook(() => useLiveValidation(nodes, edges));
+      expect(result.current.some((w) => w.id.startsWith('bms-discharge-b1'))).toBe(true);
+    });
+
+    it('warnt bei ungültigen negativen Watt-Werten', () => {
+      const nodes: Node[] = [
+        { id: 'c1', type: 'consumer', data: { label: 'Gerät', watts: -60 }, position: { x: 0, y: 0 } },
+      ];
+      const { result } = renderHook(() => useLiveValidation(nodes, []));
+      expect(result.current.some((w) => w.id === 'invalid-load-c1-watts')).toBe(true);
+    });
+  });
+
+  describe('Missing coverage: verpolte Batterie, Mischspannung, Inverter-RCD', () => {
+    const node = (id: string, type: string, data: Record<string, unknown>): Node =>
+      ({ id, type, position: { x: 0, y: 0 }, data }) as Node;
 
     it('warnt bei verpolter Batterie (ELE-003)', () => {
       const nodes = [node('b1', 'battery', {}), node('b2', 'battery', {})];
-      const edges = [{ id: 'e1', source: 'b1', target: 'b2', sourceHandle: 'plus', targetHandle: 'minus' }] as any[];
+      const edges: Edge<CableEdgeData>[] = [
+        { id: 'e1', source: 'b1', target: 'b2', sourceHandle: 'plus', targetHandle: 'minus' },
+      ];
       const { result } = renderHook(() => useLiveValidation(nodes, edges));
       const warning = result.current.find((w) => w.ruleId === 'ELE-003-reversed-polarity');
       expect(warning).toBeDefined();
       expect(warning!.measuredValue).toBe('plus → minus');
     });
 
-    it('warnt bei direktem Anschluss von Solar an Batterie (ELE-009)', () => {
-      const nodes = [node('s1', 'solar', { label: 'Panel' }), node('b1', 'battery', {})];
-      const edges = [{ id: 'e1', source: 's1', target: 'b1', sourceHandle: 'plus', targetHandle: 'plus' }] as any[];
-      const { result } = renderHook(() => useLiveValidation(nodes, edges));
-      const warning = result.current.find((w) => w.ruleId === 'ELE-009-solar-direct');
-      expect(warning).toBeDefined();
-      expect(warning!.measuredValue).toBe('Solar → battery');
-    });
-
     it('warnt bei Mischspannungsplan (ELE-008)', () => {
-      const nodes = [
-        node('b1', 'battery', { voltage: 12 }),
-        node('b2', 'battery', { voltage: 24 })
-      ];
+      const nodes = [node('b1', 'battery', { voltage: 12 }), node('b2', 'battery', { voltage: 24 })];
       const { result } = renderHook(() => useLiveValidation(nodes, []));
       const warning = result.current.find((w) => w.ruleId === 'ELE-008-mixed-voltage');
       expect(warning).toBeDefined();
@@ -499,11 +548,17 @@ describe('useLiveValidation', () => {
     });
 
     it('warnt bei Inverter ohne RCD (AC-001)', () => {
-      const nodes = [
-        node('inv', 'inverter', { hasRcd: false }),
-        node('c1', 'consumer230v', {})
+      const nodes = [node('inv', 'inverter', { hasRcd: false }), node('c1', 'consumer230v', {})];
+      const edges: Edge<CableEdgeData>[] = [
+        {
+          id: 'e1',
+          source: 'inv',
+          target: 'c1',
+          sourceHandle: 'acOut',
+          targetHandle: 'acIn',
+          data: { edgeDomain: 'AC_230V' },
+        },
       ];
-      const edges = [{ id: 'e1', source: 'inv', target: 'c1', sourceHandle: 'acOut', targetHandle: 'acIn', data: { edgeDomain: 'AC_230V' } }] as any[];
       const { result } = renderHook(() => useLiveValidation(nodes, edges));
       const warning = result.current.find((w) => w.ruleId === 'AC-001-inverter-rcd');
       expect(warning).toBeDefined();

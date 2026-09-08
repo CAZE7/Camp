@@ -559,7 +559,7 @@
       {
         "data": {
           "crossSection": 70,
-          "fuseSize": 160,
+          "fuseSize": 100,
           "length": 0.5
         },
         "id": "e-batt-plus",
@@ -571,7 +571,7 @@
       {
         "data": {
           "crossSection": 70,
-          "fuseSize": 160,
+          "fuseSize": 100,
           "length": 1
         },
         "id": "e-busbar-fuse",
@@ -594,7 +594,7 @@
       {
         "data": {
           "crossSection": 70,
-          "fuseSize": 160,
+          "fuseSize": 100,
           "length": 1
         },
         "id": "e-busbar-inv-plus",
@@ -606,7 +606,7 @@
       {
         "data": {
           "crossSection": 10,
-          "fuseSize": 40,
+          "fuseSize": 32,
           "length": 1
         },
         "id": "e-charger-busbar",
@@ -618,7 +618,7 @@
       {
         "data": {
           "crossSection": 16,
-          "fuseSize": 50,
+          "fuseSize": 40,
           "length": 1
         },
         "id": "e-dcdc-busbar",
@@ -687,7 +687,9 @@
       },
       {
         "data": {
-          "crossSection": 6,
+          "crossSection": 25,
+          "edgeDomain": "Solar",
+          "fuseSize": 50,
           "length": 4
         },
         "id": "e-solar-charger",
@@ -699,7 +701,7 @@
       {
         "data": {
           "crossSection": 16,
-          "fuseSize": 60,
+          "fuseSize": 40,
           "length": 5
         },
         "id": "e-starter-dcdc",
@@ -1029,11 +1031,11 @@
           "y": 764
         },
         {
-          "x": 950,
+          "x": 955,
           "y": 764
         },
         {
-          "x": 950,
+          "x": 955,
           "y": 464
         },
         {

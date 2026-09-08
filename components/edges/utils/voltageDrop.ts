@@ -1,12 +1,8 @@
 import type { Node, Edge } from '@xyflow/react';
 import type { CableEdgeData } from '../CableEdge';
 import { calculateCrossSection, getEdgeDomain } from '../../../lib/electrical';
-import {
-  AC_SYSTEM_VOLTAGE,
-  calculateAcEdgeCurrent,
-  calculateEdgeCurrent,
-  getSystemVoltage,
-} from '../../../lib/vde-standards';
+import { AC_SYSTEM_VOLTAGE, calculateEdgeCurrent, getSystemVoltage } from '../../../lib/vde-standards';
+import { acCurrentA } from '../../../lib/autoWire/sizing';
 import { PX_PER_METER } from '../../../lib/units';
 
 /**
@@ -53,7 +49,12 @@ export function edgeDropInputs(
     // AUDIT AUTO-002: negative Längen fallen auf den AC-Standard (2 m) zurück.
     const rawLength = edge.data?.length;
     const length = typeof rawLength === 'number' && rawLength >= 0 ? rawLength : 2;
-    const I = calculateAcEdgeCurrent(edge.source, nodes, edges);
+    // AUDIT ELE-004: Die Anzeige verwendet dieselbe per-Kanten-AC-Stromquelle
+    // wie die AutoWire-Dimensionierung (acCurrentA). Der Insel-Summenwert aus
+    // calculateAcEdgeCurrent wäre nur an Quellkanten korrekt und unterschätzte
+    // z. B. eine Landstrom→Ladegerät-Leitung, solange ein 230-V-Verbraucher
+    // in der Insel hängt.
+    const I = acCurrentA(sourceNode, targetNode, nodes, edges);
     return {
       isAC: true,
       I,

@@ -69,11 +69,16 @@ describe('ARCH-002 — Verbindungsregeln als reine Funktion (lib/connectionRules
     expect(check(conn('bat', 'con', 'minus', 'plus'))).toBe(false);
   });
 
-  it('Serial-Exception: battery×battery und solar×solar dürfen plus↔minus', () => {
-    expect(check(conn('bat', 'bat2', 'plus', 'minus'))).toBe(true);
+  it('Serial-Exception nur für Solarmodule; Batterie-Serie ist blockiert (AUDIT ELE-001)', () => {
+    expect(check(conn('bat', 'bat2', 'plus', 'minus'))).toBe(false);
     expect(check(conn('sol1', 'sol2', 'minus', 'plus'))).toBe(true);
     // Aber nicht zwischen verschiedenen Typen:
     expect(check(conn('sol1', 'con', 'plus', 'minus'))).toBe(false);
+  });
+
+  it('blockiert direkte Solar↔Batterie und Solar↔Verbraucher-Verbindungen (AUDIT ELE-002)', () => {
+    expect(check(conn('sol1', 'bat2', 'plus', 'plus'))).toBe(false);
+    expect(check(conn('bat2', 'sol1', 'plus', 'plus'))).toBe(false);
   });
 
   it('AC-Kanten (shore↔consumer230v) kennen keine plus/minus-Polarität', () => {
