@@ -36,18 +36,23 @@ import {
  * eine Verletzung vorliegt — unabhängig davon, wie gut der Rest ist und
  * unabhängig davon, ob das gerade bequem ist.
  *
- * ## Warum das kein CI-Blocker mit Schwelle 0 ist (Stand 2026-09-07)
+ * ## Stand: die Invariante ist erfüllt (2026-09-09)
  *
- * Der heutige Router erfüllt die Invariante nicht. Gemessen über die sechs
- * Golden-Master-Pläne (79 Kanten): **72 × I1, 37 × I2, 13 × I3**. Leitungen
- * laufen durch fremde Bauteile.
+ * Gemessen über die sechs Golden-Master-Pläne (79 Kanten) mit
+ * `npm run routing:audit` liegen **I1, I2 und I3 bei 0**.
  *
- * Ein Gate mit Schwelle 0 würde daher sofort jeden Build blockieren und
- * müsste binnen Minuten wieder abgeschaltet werden — ein Gate, das man
- * abschaltet, ist kein Gate. Stattdessen friert `finalValidation.test.ts`
- * die gemessenen Zahlen als Obergrenze ein (Ratchet): Sie dürfen sinken,
- * niemals steigen. Der Weg auf 0 ist Router-Arbeit und in ADR 0015 als
- * eigenes Vorhaben festgehalten.
+ * Historie (nicht mehr aktuell, aber der Grund für das Ratchet-Design): Bei
+ * Einführung dieses Gates am 2026-09-07 waren es **72 × I1, 37 × I2,
+ * 13 × I3** — Leitungen liefen durch fremde Bauteile. Ein Gate mit Schwelle 0
+ * hätte damals jeden Build blockiert und wäre binnen Minuten wieder
+ * abgeschaltet worden; ein Gate, das man abschaltet, ist kein Gate. Die
+ * Beseitigung steht in ADR 0017 (Platzierung ohne Überlappung), ADR 0019
+ * (Kollisionsmodell als eine Quelle) und ADR 0020 (Stub-Modell, Port-Fan-Out,
+ * Freigabe-Rangfolge).
+ *
+ * Das Gate lebt in `scripts/routing/finalValidation.test.ts`: **I1 wird hart
+ * auf 0 geprüft**, I2 + I3 über eine Ratchet-Obergrenze je Plan (heute 0 —
+ * sie darf sinken, niemals steigen).
  *
  * Diese Funktion selbst kennt keine Baseline und keine Toleranz — die
  * Aufweichung lebt ausschließlich im Test, wo sie sichtbar und
