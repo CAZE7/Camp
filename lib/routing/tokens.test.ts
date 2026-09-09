@@ -45,6 +45,13 @@ describe('Routing-Tokens (Single Source of Truth)', () => {
       segmentMin: 16,
       bendRadius: 8,
       crossDomainSpacing: 24,
+      nodeFallbackWidth: 192,
+      nodeFallbackHeight: 120,
+      obstacleRegionPad: 240,
+      bendCost: 80,
+      uTurnCost: 400,
+      maxSearchExpansions: 48_000,
+      maxAcceptableCrossings: 2,
     });
   });
 

@@ -71,7 +71,7 @@ export type FinalValidationCounts = {
   edgeNodeCollisions: number;
   /** I2 — kollineare Überdeckung zweier verschiedener Kanten. */
   edgeEdgeOverlaps: number;
-  /** I3 — Unterschreitung von `cableClearance` ohne Berührung. */
+  /** I3 — Unterschreitung der Basis- oder konfigurierten Domain-Clearance ohne Berührung. */
   clearanceViolations: number;
 };
 

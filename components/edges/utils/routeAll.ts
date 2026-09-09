@@ -46,8 +46,24 @@ import {
 } from '../../../lib/routing/geometry';
 import { ROUTING_TOKENS } from '../../../lib/routing/tokens';
 import { LaneRegistry } from '../../../lib/routing/rules/laneRegistry';
+import type { RoutingDomain } from '../../../lib/routing/rules/collision';
 import { validateFinalRouting, type FinalValidationReport } from '../../../lib/routing/finalValidation';
 import type { NodeRect, RoutedEdge } from '../../../lib/routing/invariants';
+
+const routingDomainFor = (domain: HopDomain | undefined): RoutingDomain | undefined => {
+  switch (domain) {
+    case 'AC_230V':
+      return 'ac230';
+    case 'DC_12V':
+      return 'dc12';
+    case 'water':
+      return 'water';
+    case 'Solar':
+      return 'electrical';
+    default:
+      return undefined;
+  }
+};
 
 export type RouteEdgeRef = {
   id: string;
@@ -75,8 +91,8 @@ export type RouteEdgeRef = {
 
 type NodeWithHandles = RoutableNode;
 
-const NODE_W = 192;
-const NODE_H = 120;
+const NODE_W = ROUTING_TOKENS.nodeFallbackWidth;
+const NODE_H = ROUTING_TOKENS.nodeFallbackHeight;
 
 export function resolveHandlePoint(
   node: NodeWithHandles | undefined,
@@ -436,7 +452,13 @@ function validateRouteSet(
   for (const edge of edges) {
     const route = routes.get(edge.id);
     if (route)
-      routed.push({ id: edge.id, source: edge.source, target: edge.target, waypoints: route.waypoints });
+      routed.push({
+        id: edge.id,
+        source: edge.source,
+        target: edge.target,
+        waypoints: route.waypoints,
+        domain: routingDomainFor(edge.data?.edgeDomain),
+      });
   }
   const report = validateFinalRouting(routed, rects);
   let tight = 0;
@@ -510,12 +532,13 @@ export function routePlan(inputNodes: RoutableNode[], edges: RouteEdgeRef[]): Ro
   // nur die räumliche Umgebung (Routen-BBox + Pad) gefiltert, statt ALLE
   // N-1 Hindernisse in jeden A*-Lauf zu stecken. Bei 500-Knoten-Plänen
   // wuchs das Hanan-Grid sonst über die gesamte Plan-Envelope (gemessen:
-  // 81 s für einen kompletten Routing-Pass). Pad = 240 px = 2 × ALTERNATIVE_
-  // ROUTE_GAP — Ausweichtrassen bleiben innerhalb des gefilterten Fensters,
-  // und ein Pfad kann per Konstruktion die Box nie verlassen, sodass
-  // ausgefilterte Hindernisse nicht getroffen werden können (außerhalb).
+  // 81 s für einen kompletten Routing-Pass). Das Pad kommt aus
+  // `ROUTING_TOKENS.obstacleRegionPad`; es hält die historischen
+  // Ausweichtrassen und die relevante Umgebung im Fenster. Ein Pfad kann per
+  // Konstruktion die Box nie verlassen, sodass ausgefilterte Hindernisse nicht
+  // getroffen werden können (außerhalb).
   const obstacleById = nodeObstacleMap(nodes);
-  const OBSTACLE_REGION_PAD = 240;
+  const obstacleRegionPad = ROUTING_TOKENS.obstacleRegionPad;
   /** Bounding-Box einer Route, allseitig um `pad` erweitert. */
   const routeWindow = (points: readonly Point[], pad: number): Rect => {
     let minX = Infinity;
@@ -566,7 +589,7 @@ export function routePlan(inputNodes: RoutableNode[], edges: RouteEdgeRef[]): Ro
   const preferredLanes = buildPreferredLanes(edges, nodeById);
 
   const raw: { id: string; waypoints: Point[]; result: PathResult }[] = [];
-  const dynamicRoutedSegments: { edgeId: string; segment: Segment }[] = [];
+  const dynamicRoutedSegments: { edgeId: string; segment: Segment; domain?: RoutingDomain }[] = [];
   // ROUTE-BUG-16: wächst mit jeder verlegten Kante (siehe `addTubes`).
   const tubes: Rect[] = [];
 
@@ -592,10 +615,10 @@ export function routePlan(inputNodes: RoutableNode[], edges: RouteEdgeRef[]): Ro
     );
     const exclude = new Set([edge.source, edge.target]);
     const region: Rect = {
-      x: Math.min(src.x, tgt.x) - OBSTACLE_REGION_PAD,
-      y: Math.min(src.y, tgt.y) - OBSTACLE_REGION_PAD,
-      width: Math.abs(src.x - tgt.x) + 2 * OBSTACLE_REGION_PAD,
-      height: Math.abs(src.y - tgt.y) + 2 * OBSTACLE_REGION_PAD,
+      x: Math.min(src.x, tgt.x) - obstacleRegionPad,
+      y: Math.min(src.y, tgt.y) - obstacleRegionPad,
+      width: Math.abs(src.x - tgt.x) + 2 * obstacleRegionPad,
+      height: Math.abs(src.y - tgt.y) + 2 * obstacleRegionPad,
     };
     // PERF-001: nur Hindernisse in der erweiterten Routen-Umgebung.
     const obstacles = obstaclesNear(exclude, region);
@@ -632,6 +655,7 @@ export function routePlan(inputNodes: RoutableNode[], edges: RouteEdgeRef[]): Ro
       // Registry preference is evaluated by the production score; see
       // `preferredLanes` above.
       preferredLane: preferredLanes.get(edge.id),
+      domain: routingDomainFor(edge.data?.edgeDomain),
       obstacles,
       // AUDIT ROUTE-001 (Härtung 2026-09-08): eigene Boxen explizit — der
       // Router verwirft NUR diese; fremde, an den eigenen Node geklebte
@@ -640,6 +664,9 @@ export function routePlan(inputNodes: RoutableNode[], edges: RouteEdgeRef[]): Ro
         (r): r is Rect => r !== undefined
       ),
       crossingSegments: dynamicRoutedSegments.filter((s) => s.edgeId !== edge.id).map((s) => s.segment),
+      crossingSegmentDomains: dynamicRoutedSegments
+        .filter((s) => s.edgeId !== edge.id)
+        .map((s) => ({ segment: s.segment, domain: s.domain })),
     };
     let request_ = request;
     let result = findCablePath({ ...request_, cableTubes: tubesForRegion(tubes, region) });
@@ -656,7 +683,7 @@ export function routePlan(inputNodes: RoutableNode[], edges: RouteEdgeRef[]): Ro
     // endlich, die Schleife terminiert also — und bleibt deterministisch.
     let window = region;
     for (let attempt = 0; attempt < 3; attempt++) {
-      const span = routeWindow(result.waypoints, OBSTACLE_REGION_PAD);
+      const span = routeWindow(result.waypoints, obstacleRegionPad);
       if (coversRect(window, span)) break;
       const wider = obstaclesNear(exclude, span);
       if (wider.length === request_.obstacles.length) break;
@@ -677,7 +704,8 @@ export function routePlan(inputNodes: RoutableNode[], edges: RouteEdgeRef[]): Ro
     raw.push({ id: edge.id, waypoints: result.waypoints, result });
     addTubes(tubes, result.waypoints);
     const segments = waypointsToSegments(result.waypoints);
-    for (const seg of segments) dynamicRoutedSegments.push({ edgeId: edge.id, segment: seg });
+    const domain = routingDomainFor(edge.data?.edgeDomain);
+    for (const seg of segments) dynamicRoutedSegments.push({ edgeId: edge.id, segment: seg, domain });
   }
 
   const inflated: Rect[] = allObstacles.map((r) => inflateRect(r, OBSTACLE_MARGIN));

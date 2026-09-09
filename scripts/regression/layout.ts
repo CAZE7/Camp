@@ -1,6 +1,7 @@
 import type { Node } from '@xyflow/react';
 import { routeAllCables, type RouteEdgeRef } from '../../components/edges/utils/routeAll';
 import { countBends, pathLength, type Point } from '../../lib/routing/geometry';
+import { ROUTING_TOKENS } from '../../lib/routing/tokens';
 import {
   checkClearance,
   checkEdgeNodeCollisions,
@@ -48,8 +49,8 @@ export function scenarioNodeRects(nodes: readonly Node[]): NodeRect[] {
     id: n.id,
     x: n.position.x,
     y: n.position.y,
-    width: n.width || 192,
-    height: n.height || 120,
+    width: n.width || ROUTING_TOKENS.nodeFallbackWidth,
+    height: n.height || ROUTING_TOKENS.nodeFallbackHeight,
   }));
 }
 

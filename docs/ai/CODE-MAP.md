@@ -38,7 +38,7 @@ CAMP
 │   ├── Tokens             lib/routing/tokens.ts
 │   ├── Geometry           lib/routing/geometry/*        (pure Primitives)
 │   ├── Rules              lib/routing/rules/*           (Collision, Lanes, Cost, FanOut, Hopping)
-│   ├── Engines            components/edges/utils/pathfinding.ts (Hanan-A*), orthogonalRouting.ts (LEGACY)
+│   ├── Engines            components/edges/utils/pathfinding.ts (Hanan-A*); orthogonalRouting.ts (LEGACY, Galerie-only)
 │   ├── Orchestrator       components/edges/utils/routeAll.ts (`routePlan`)
 │   ├── Post-Process       components/edges/utils/nudge.ts, pathUtils.ts
 │   ├── Invariants         lib/routing/invariants.ts, lib/routing/finalValidation.ts
@@ -211,7 +211,8 @@ CAMP
 
 ### 4.1 Tokens
 
-- **Files:** `lib/routing/tokens.ts` (136). `ROUTING_TOKENS` (frozen), `LEGACY_ROUTING_TOKENS`,
+- **Files:** `lib/routing/tokens.ts`. `ROUTING_TOKENS` (frozen; Clearance, Node-Fallbacks,
+  Such-/Kostenlimits und Fenster-Pad), `LEGACY_ROUTING_TOKENS`,
   `generateElkLayoutOptions()`, `generateElkInteractiveOptions()`, `alternativeRouteGap()`.
 - **Called By:** alle Router-Module, `lib/planner/layout-engine/tokens.ts`, `lib/autoWire/placement.ts`.
 - **Tests:** `lib/routing/tokens.test.ts`.
@@ -244,6 +245,7 @@ CAMP
   `nodesToObstacles`, `nodeObstacleMap`, `inflateRect`, `quantize`,
   Telemetrie (`pathfindingFallbackCount`, `resetPathfindingTelemetry`, `clearPathfindingCache`).
 - **Depends On:** `lib/routing/geometry`, `lib/routing/tokens`, `lib/routing/rules/{collision,costModel,portFanOut}`, `./nodeGeometry`.
+  Die ehemalige `orthogonalRouting.ts`-/`routingCache.ts`-Kopplung ist entfernt; ihre Galerie-/Benchmark-Module bleiben isoliertes Legacy.
 - **Called By:** `components/edges/utils/routeAll.ts`, `components/edges/CableEdge.tsx`
   (Einzelfall-Fallback), `scripts/routing/*`, `scripts/regression/*`.
 - **Tests:** `components/edges/utils/pathfinding.test.ts` (801), `hananGridMasks.test.ts`,
@@ -286,7 +288,8 @@ CAMP
 
 - **Files:** `lib/routing/invariants.ts` (407), `lib/routing/finalValidation.ts` (127).
 - **Exporte:** `checkInvariants`, `checkEdgeNodeCollisions` (I1), `checkEdgeEdgeOverlaps` (I2),
-  `checkClearance` (I3), `checkUTurnAtHandle` (I4), `checkStubs` (I5), `checkSegmentLengths` (I6),
+  `checkClearance` (I3 inkl. Domain-Clearance), `checkDomainClearance`, `checkUTurnAtHandle` (I4),
+  `checkStubs` (I5), `checkSegmentLengths` (I6),
   `checkStairs` (I7), `countCrossings`, `serializeRoutes`, `requiredStubLength`;
   `validateFinalRouting`, `totalViolations`, `formatFinalValidation`.
 - **Called By:** `scripts/routing/finalValidation.test.ts`, `scripts/routing/audit.ts`,

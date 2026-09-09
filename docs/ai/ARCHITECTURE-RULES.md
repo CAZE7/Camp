@@ -57,17 +57,17 @@ Alle elektrischen Werte kommen aus `lib/units.ts`, `lib/electrical.ts`, `lib/vde
 Anzeige-Helfer (`components/edges/utils/voltageDrop.ts`,
 `components/planner/utils/voltage.ts`) dürfen **nur** delegieren.
 
-### Rule E — Keine Geometrie-Zahl außerhalb der Tokens. **(teilweise erzwungen)**
+### Rule E — Keine relevante Routing-Zahl außerhalb der Tokens. **(testgestützt)**
 
-Alle Routing-Abstände kommen aus `lib/routing/tokens.ts`.
+Routing-Abstände, Fallback-Geometrie, A*-Kostenlimits, Suchbudgets und das lokale
+Hindernisfenster kommen aus `lib/routing/tokens.ts`.
 
-- Erzwungen: nur `lib/routing/tokens.ts` darf `cableClearance: <Zahl>` definieren
+- Erzwungen: nur `lib/routing/tokens.ts` definiert `cableClearance` als Zahl
   (`scripts/routing/architecture.test.ts`).
-- Erzwungen: Drift-Guards — Router-Konstanten sind Re-Exports der Tokens
+- Erzwungen: Router-Konstanten sind Re-Exports bzw. Ableitungen der Tokens
   (`lib/routing/tokens.test.ts`).
-- **Nicht** erzwungen: Kostenkonstanten (`BEND_COST`, `U_TURN_COST`), Suchbudgets
-  (`MAX_EXPANSIONS`) und Frame-Puffer (`OBSTACLE_REGION_PAD`) stehen an ihrem Wirkort.
-  Siehe [KNOWN-PROBLEMS.md](./KNOWN-PROBLEMS.md) `ROUTE-004`.
+- Fachliche Gewichte bleiben im Cost Model (`COST_FACTORS`), weil sie keine
+  Geometrie-Tokens sind.
 - Layout-Tokens (`lib/planner/layout-engine/tokens.ts`) **leiten ab**, sie definieren nicht.
 
 ### Rule F — Sicherheit hat Vorrang vor Schönheit. **(Konvention, testgestützt)**
@@ -110,6 +110,9 @@ Kollisionsurteile entstehen in `lib/routing/rules/collision.ts` (`classifyCollis
 
 - `lib/routing/invariants.ts` (I1/I2/I3) und `lib/routing/finalValidation.ts` leiten ihre
   harten Urteile daraus ab — sie besitzen **keine** eigene Abstandsdefinition.
+- `RoutingDomain` wird im Orchestrator aus dem Planner-/Hop-Domain-Metadatum abgeleitet;
+  `checkDomainClearance()` und `segmentExtraCost()` rufen für Domänenpaare dieselbe
+  `classifyDomainAwareSegments()`-Regel auf.
 - Der A*-Innenloop (`pathfinding.ts`) nutzt das billigere äquivalente `segmentHitsRect`
   (Performance); die eine materielle Begriffsquelle bleibt das Modell.
 
@@ -119,6 +122,11 @@ Kollisionsurteile entstehen in `lib/routing/rules/collision.ts` (`classifyCollis
 Fehler und bricht den Test (`scripts/routing/architecture.test.ts`).
 Begründung: „sehr teuer“ lässt sich überstimmen, `Infinity` nicht. Echte Kreuzungen bleiben
 `soft`: erlaubt, aber im Primärscore kostenpflichtig; sie erzeugen keine elektrische Verbindung.
+
+Das vollständige `segmentExtraCost`-Modell wirkt produktiv: Overlap/Domain-Clearance
+entscheidet hart; soft/weighted/nearby-Kosten entscheiden nach der geometrischen
+Basisfunktion bei Gleichstand. Dadurch beeinflusst das Modell reale Kandidaten, ohne die
+historisch verifizierte Route wegen einer rein sekundären Qualitätsdifferenz umzuschreiben.
 
 ### Rule J — LaneRegistry ist eine deterministische Produktionspräferenz. **(testgestützt)**
 

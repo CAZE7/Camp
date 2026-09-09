@@ -2,7 +2,9 @@
 
 **Stand:** 2026-09-09  
 **Branch:** `arena/01a087f9-camp`  
-**Status:** Produktionsintegration verifiziert; Legacy-Entfernung und vollständige Kostenmatrix bleiben bewusst offen.
+**Status:** Produktionsintegration und Härtungsrunde verifiziert; Legacy ist außerhalb des
+Produktionspfads isoliert, Domain-Clearance ist hart validiert, und das vollständige
+Kostenmodell wirkt als baseline-preserving Kandidatenrang.
 
 ## 1. Ergebnis in einem Satz
 
@@ -24,9 +26,10 @@ Map-Kompatibilitätsadapter.
    echte Crossings sind erlaubt, kosten aber im Primärscore und erzeugen keine elektrische
    Verbindung.
 4. **Kosten:** `segmentExtraCost()` klassifiziert dynamische Nachbarsegmente über den
-   gemeinsamen `SegmentSpatialIndex`. Harte Overlaps werden gegenüber einer kollisionsfreien
-   Kandidatenroute nicht bevorzugt. `preferredLaneBonus()` zieht bei Gleichstand zur
-   deterministischen LaneRegistry-Präferenz.
+   gemeinsamen `SegmentSpatialIndex` mit der vollständigen hard/soft/weighted/none-Matrix.
+   Overlap und konfigurierte Domain-Clearance werden hart verworfen; Crossings bleiben erlaubt
+   und kostenpflichtig. Weighted/Nearby sind der sekundäre Kostenrang nach geometrischem
+   Gleichstand; `preferredLaneBonus()` ist der letzte deterministische Tie-Break.
 5. **Lanes:** Port-Fan-Out ist die lokale Anschlussregel. `LaneRegistry` liefert im
    Orchestrator eine stabile Korridorpräferenz; Reihenfolge ist
    `topologicalOrder → targetPosition → edgeId`, nie Render- oder Array-Reihenfolge.
@@ -35,7 +38,9 @@ Map-Kompatibilitätsadapter.
 7. **ELK:** ELK/Dagre bleiben globales Node-Layout. ELK-Routen/Junctions sind keine
    Kabelrouting-Wahrheit.
 8. **Validation:** `routePlan()` validiert genau die Waypoints, die es zurückgibt. Der
-   Report wird im `cableRouteStore` ohne zweiten Produktions-Validierungspfad publiziert.
+   Report enthält auch die domänenbewusste I3-Prüfung; `RoutedEdge.domain` wird nur aus
+   Routing-Metadaten abgeleitet und verändert keine elektrische Semantik. Der Report wird im
+   `cableRouteStore` ohne zweiten Produktions-Validierungspfad publiziert.
 
 ## 3. Vorher / Nachher
 
@@ -56,8 +61,16 @@ Map-Kompatibilitätsadapter.
 - `components/edges/utils/routeAll.ts` — `routePlan`, zentrale Final Validation,
   LaneRegistry-Präferenz, deterministische Normalisierung; `routeAllCables` delegiert.
 - `components/edges/utils/pathfinding.ts` — gemeinsamer `SegmentSpatialIndex`,
-  `segmentExtraCost`-Hard-Collision-Klassifikation und `preferredLaneBonus` in der
-  Kandidatenbewertung.
+  vollständige Kostenrangfolge inklusive Domain-Clearance, Lane-Tie-Break, Token-Härtung
+  und React-Flow-Handle-Adapter ohne Legacy-Import.
+- `components/edges/utils/routeAll.ts` — deterministisches HopDomain→RoutingDomain-Mapping,
+  Domain-Metadaten im Kandidatenpass und Final Validation.
+- `lib/routing/invariants.ts` — `RoutedEdge.domain` und `checkDomainClearance()` mit
+  Port-/Stub-Ausnahmen über die gemeinsame Collision Engine.
+- `lib/routing/rules/costModel.ts` — Domain-Metadaten und diagnostische
+  `domainClearanceViolations`.
+- `lib/routing/tokens.ts` — Node-Fallbacks, Such-/Kostenlimits und Region-Pad als zentrale
+  Routing-Tokens.
 - `components/edges/utils/cableRouteStore.ts` — konsumiert `routePlan` und publiziert dessen
   Report.
 - `components/edges/CableEdge.tsx` — React-Flow-Adapter ohne direkte Routingberechnung.
@@ -86,8 +99,9 @@ routePlan()  [Normalize: stable node/edge IDs]
           +--> candidate generation / Hanan-A*
           |       |
           |       +--> shared Collision Engine + SegmentSpatialIndex
-          |       +--> primary score: length + bends + crossings
-          |       +--> hard-overlap ordering + preferred-lane tie-break
+          |       +--> domain metadata → 24-px pair clearance
+          |       +--> geometric score → full weighted model → lane tie-break
+          |       +--> hard-overlap/domain-clearance ordering
           |
           +--> Hopping (existing priority rules)
           +--> nudge + mergeCloseBends
@@ -107,40 +121,48 @@ Electrical ---------------------> reads routing metadata; routing writes no elec
 
 ## 6. Verifizierte Tests und Befunde
 
-| Gate / Kommando                                                                                        | Ergebnis                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
-| `npx tsc --noEmit`                                                                                     | grün                                                                                                                        |
-| `npm run test:goldenmaster -- --reporter=dot`                                                          | **13/13 grün**                                                                                                              |
-| `npm run test:regression -- --reporter=dot`                                                            | **50/50 grün**                                                                                                              |
-| `npx vitest run lib/routing/invariants.test.ts components/edges/utils/routeAll.test.ts --reporter=dot` | **56/56 grün**                                                                                                              |
-| `npm run routing:audit`                                                                                | sechs Referenzpläne; I1–I7 jeweils 0, harte Kollisionen 0, Fallback 0, deterministisch true, 79 Kanten, 48 echte Kreuzungen |
+| Gate / Kommando                                                                                                                                                              | Ergebnis                                                                                                                    |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `npx tsc --noEmit`                                                                                                                                                           | grün                                                                                                                        |
+| `npm run typecheck:tests`                                                                                                                                                    | grün                                                                                                                        |
+| `npm test -- --reporter=dot`                                                                                                                                                 | **2024/2024 grün**, 145 Testdateien                                                                                         |
+| `npm run lint` / `npm run format:check`                                                                                                                                      | grün                                                                                                                        |
+| `npm run build`                                                                                                                                                              | grün; Next Production Build erstellt, `/api/chat` bleibt bekannter statischer-Export-Befund (ARCH-001)                      |
+| `npm run test:goldenmaster -- --reporter=dot`                                                                                                                                | **13/13 grün**                                                                                                              |
+| `npm run test:regression -- --reporter=dot`                                                                                                                                  | **50/50 grün**                                                                                                              |
+| `npx vitest run lib/routing/rules/costModel.test.ts lib/routing/invariants.test.ts --reporter=dot`                                                                           | **59/59 grün**; Domain-Cost und harte Domain-Final-Validation enthalten                                                     |
+| `npx vitest run components/edges/utils/pathfinding.test.ts components/edges/utils/routeAll.test.ts components/edges/utils/routeAllCollisionGuarantee.test.ts --reporter=dot` | **70/70 grün**                                                                                                              |
+| `npx vitest run scripts/routing/architecture.test.ts --reporter=dot`                                                                                                         | **8/8 grün**; Legacy-Orthogonalrouter/Cache außerhalb des Produktionspfads                                                  |
+| `npm run routing:audit`                                                                                                                                                      | sechs Referenzpläne; I1–I7 jeweils 0, harte Kollisionen 0, Fallback 0, deterministisch true, 79 Kanten, 48 echte Kreuzungen |
+| `npm run audit:dead-code`                                                                                                                                                    | lokal nicht ausführbar: `oxc-parser`/Knip meldet `Array buffer allocation failed`; kein Befund interpretiert                |
 
 Die Cost-Model-Änderung wurde gegen Golden Master und Regression geprüft. Eine probeweise
-Aufwertung der weichen `segmentExtraCost`-Summen zum primären Tie-Break veränderte die
-`simple`-Golden-Route und verschlechterte `p02` auf 14 statt 5 Crossings; diese Änderung
-wurde deshalb verworfen. Es wurden weder Assertions abgeschwächt noch Baselines neu
-aufgezeichnet.
+globale Priorisierung der weichen `segmentExtraCost`-Summen vor der geometrischen Route
+veränderte die `simple`-Golden-Route und verschlechterte `p02` auf 14 statt 5 Crossings.
+Die produktive Lösung ist deshalb lexikographisch: harte Regeln zuerst, geometrische
+Primärkosten danach, vollständige gewichtete Modellkosten als realer Tie-Break für
+geometrisch gleichwertige Kandidaten, dann Lane-Bonus. Es wurden weder Assertions
+abgeschwächt noch Baselines neu aufgezeichnet.
 
-## 7. Offene Probleme / kontrollierte nächste Schritte
+## 7. Restbefunde / bewusst nicht verschleierte Grenzen
 
-1. **ROUTE-002:** Soft-/Weighted-Kosten werden klassifiziert, sind aber noch nicht der
-   primäre Kandidatenvergleich. Ein nächster Schritt braucht einen eigenen Messlauf und darf
-   Baselines nur bei nachgewiesener Verbesserung ändern.
-2. **ROUTE-003:** Domänenspezifische Clearance (`electrical ↔ water`, `ac230 ↔ dc12`) ist
-   als Regel vorhanden, aber noch nicht je Kantenpaar im Produktionsrouter verdrahtet.
-3. **ROUTE-004:** Einige Such- und Frame-Budgetwerte sind noch nicht vollständig als Tokens
-   bzw. Drift-Guards modelliert.
-4. **Legacy:** `components/edges/utils/orthogonalRouting.ts` und zugehörige Galerie-/Tests
-   bleiben bis zu einem separaten Beweis isoliert. Sie sind nicht Teil von `routePlan()` und
-   werden nicht aus dem Renderpfad aufgerufen.
-5. **Nudge:** `nudgeOrthogonalPaths` unterstützt einen stabilen `laneOrder`-Parameter,
+1. **Legacy:** `components/edges/utils/orthogonalRouting.ts`, `routingCache.ts` und die
+   Galerie-/Qualitätsmodule bleiben als nicht-produktives Referenzmaterial im Baum. Das ist
+   durch `scripts/routing/architecture.test.ts` abgesichert; eine spätere Löschung braucht
+   nur noch eine Produktentscheidung zur Galerie.
+2. **Kostenrang:** Das vollständige Kostenmodell ist produktiv wirksam, aber bewusst nach der
+   geometrischen Primärkostenfunktion gerankt. Das verhindert Baseline-Drift durch eine
+   sekundäre Nähepräferenz; harte Sicherheitsregeln haben ohnehin Vorrang.
+3. **Nudge:** `nudgeOrthogonalPaths` unterstützt einen stabilen `laneOrder`-Parameter,
    verwendet im Produktionspass aber bewusst keine zweite Lane-Geometrie. Die wirksame
    Registry-Integration sitzt in der Kandidatenpräferenz.
+4. **E2E:** Lokale Playwright-Ausführung bleibt abhängig von der Browserinstallation; der
+   CI-Beleg steht in `KNOWN-PROBLEMS.md` `TEST-001`.
 
 ## 8. Abschlussentscheidung
 
-Die erste Integrationsstufe ist für den Produktionsvertrag abnahmefähig: ein Entry-Point,
-keine UI-Routinglogik, deterministische Routen, aktive Final Validation und grüne Golden-,
-Regression- und Invariant-Gates. Die Gesamtmigration ist **nicht** als vollständige
-Legacy-Entfernung oder vollständige Kostenmatrix abgeschlossen; diese Punkte bleiben als
-explizite, testbare Folgearbeiten dokumentiert.
+Die Härtungsrunde ist für den Produktionsvertrag abnahmefähig: ein Entry-Point,
+keine UI-Routinglogik, deterministische Routen, aktive Domain-aware Final Validation,
+Token-Governance, produktiv wirksames vollständiges Kostenmodell sowie grüne Golden-,
+Regression-, Architektur- und Invariant-Gates. Legacy-Dateien bleiben ausschließlich als
+isoliertes Galerie-/Benchmark-Material bestehen; es gibt keine zweite Produktionswahrheit.

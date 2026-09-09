@@ -1,5 +1,5 @@
 import { type SegmentSpatialIndex } from '../geometry/segmentSpatialIndex';
-import { classifySegmentAgainstSegment } from './collision';
+import { classifyDomainAwareSegments, classifySegmentAgainstSegment, type RoutingDomain } from './collision';
 import { distanceSegmentToSegment, type Segment } from '../geometry';
 import { ROUTING_TOKENS, type RoutingTokens } from '../tokens';
 
@@ -75,6 +75,8 @@ export type SegmentCostBreakdown = {
   overlaps: number;
   crossings: number;
   clearanceViolations: number;
+  /** Violations using a pair-specific domain clearance. */
+  domainClearanceViolations: number;
   nearbyLanes: number;
 };
 
@@ -92,7 +94,13 @@ export type SegmentCostBreakdown = {
 export function segmentExtraCost(
   segment: Segment,
   index: SegmentSpatialIndex,
-  options?: { tokens?: RoutingTokens; weights?: CostWeights; clearance?: number }
+  options?: {
+    tokens?: RoutingTokens;
+    weights?: CostWeights;
+    clearance?: number;
+    domain?: RoutingDomain;
+    segmentDomains?: ReadonlyMap<Segment, RoutingDomain>;
+  }
 ): SegmentCostBreakdown {
   const tokens = options?.tokens ?? ROUTING_TOKENS;
   const weights = options?.weights ?? (options?.tokens ? buildCostWeights(options.tokens) : COST_WEIGHTS);
@@ -104,12 +112,22 @@ export function segmentExtraCost(
     overlaps: 0,
     crossings: 0,
     clearanceViolations: 0,
+    domainClearanceViolations: 0,
     nearbyLanes: 0,
   };
 
   const neighbors = index.queryNear(segment[0], segment[1], nearbyBand);
   for (const other of neighbors) {
-    const constraint = classifySegmentAgainstSegment(segment, other, clearance);
+    const otherDomain = options?.segmentDomains?.get(other);
+    const constraint =
+      options?.domain && otherDomain
+        ? classifyDomainAwareSegments(
+            { segment, domain: options.domain },
+            { segment: other, domain: otherDomain },
+            undefined,
+            tokens
+          )
+        : classifySegmentAgainstSegment(segment, other, clearance);
     if (constraint.class === 'hard') {
       breakdown.overlaps += 1;
       breakdown.cost = Infinity;
@@ -122,6 +140,9 @@ export function segmentExtraCost(
     }
     if (constraint.class === 'weighted') {
       breakdown.clearanceViolations += 1;
+      if (options?.domain && otherDomain && (constraint.requiredClearance ?? clearance) > clearance) {
+        breakdown.domainClearanceViolations += 1;
+      }
       breakdown.cost += weights.clearanceViolation;
       continue;
     }

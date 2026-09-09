@@ -1,5 +1,13 @@
 import { Position } from '@xyflow/react';
-import { nodeHeight, nodeOriginX, nodeOriginY, nodeWidth, type RoutableNode } from './nodeGeometry';
+import {
+  nodeHandleBounds,
+  nodeHeight,
+  nodeOriginX,
+  nodeOriginY,
+  nodeWidth,
+  type HandleBoundsMap,
+  type RoutableNode,
+} from './nodeGeometry';
 import { polylineMidpoint, waypointsToPath } from './pathUtils';
 import { LEGACY_ROUTING_TOKENS, ROUTING_TOKENS, alternativeRouteGap } from '../../../lib/routing/tokens';
 import { COST_WEIGHTS } from '../../../lib/routing/rules/costModel';
@@ -21,6 +29,7 @@ import {
 } from '../../../lib/routing/geometry';
 import { classifyCollision } from '../../../lib/routing/rules/collision';
 import { segmentExtraCost, preferredLaneBonus } from '../../../lib/routing/rules/costModel';
+import type { RoutingDomain } from '../../../lib/routing/rules/collision';
 import { portNormal } from '../../../lib/routing/rules/portFanOut';
 
 export {
@@ -65,8 +74,8 @@ export type { Point, Rect, Segment };
 export const ROUTE_BORDER_RADIUS = LEGACY_ROUTING_TOKENS.routeBorderRadius;
 export const ROUTE_MIN_STUB = ROUTING_TOKENS.stubMin;
 export const OBSTACLE_MARGIN = LEGACY_ROUTING_TOKENS.obstacleMargin;
-export const NODE_FALLBACK_WIDTH = 192;
-export const NODE_FALLBACK_HEIGHT = 120;
+export const NODE_FALLBACK_WIDTH = ROUTING_TOKENS.nodeFallbackWidth;
+export const NODE_FALLBACK_HEIGHT = ROUTING_TOKENS.nodeFallbackHeight;
 
 /**
  * Kostenmodell (R-2, agent.md): alle Kosten sind **px-äquivalent** —
@@ -89,13 +98,13 @@ export const NODE_FALLBACK_HEIGHT = 120;
  * Geprüft wird die Ordnung in `orthogonalRouting.invariants.test.ts`
  * (Abschnitt „Kostenmodell (R-2)“): Gerade < L < Z < Zickzack, Kehre zuletzt.
  */
-export const BEND_COST = 80;
-export const U_TURN_COST = 400;
+export const BEND_COST = ROUTING_TOKENS.bendCost;
+export const U_TURN_COST = ROUTING_TOKENS.uTurnCost;
 
 /** Abstand der Rücklauflane vom Stub bei erzwungenen U-Loops (2 Parallellanes). */
 export const U_TURN_LANE_SPREAD = 2 * ROUTING_TOKENS.laneGrid;
-export const MAX_EXPANSIONS = 48_000;
-export const MAX_ACCEPTABLE_CROSSINGS = 2;
+export const MAX_EXPANSIONS = ROUTING_TOKENS.maxSearchExpansions;
+export const MAX_ACCEPTABLE_CROSSINGS = ROUTING_TOKENS.maxAcceptableCrossings;
 
 /** Ausweich-Trassen (R-5): 3 und 6 Lanes à `laneGrid` — siehe orthogonalRouting. */
 export const ALTERNATIVE_ROUTE_GAP = alternativeRouteGap();
@@ -104,7 +113,8 @@ const EPS = 1e-6;
 const QUANT = 2; // 0.5 px
 const CACHE_LIMIT = 256;
 
-import { readHandleBounds } from './orthogonalRouting';
+/** React-Flow v11/v12 handle compatibility stays at the geometry adapter boundary. */
+const readHandleBounds = (node: RoutableNode): HandleBoundsMap | undefined => nodeHandleBounds(node);
 
 export const quantize = (n: number): number => Math.round(n * QUANT) / QUANT;
 
@@ -1340,6 +1350,10 @@ export type PathRequest = {
   obstacles?: Rect[];
   borderRadius?: number;
   crossingSegments?: Segment[];
+  /** Existing routed segments with optional domain metadata for domain-aware clearance. */
+  crossingSegmentDomains?: readonly RoutedSegmentRef[];
+  /** Domain of the candidate edge, used by the shared domain-clearance rules. */
+  domain?: RoutingDomain;
   /**
    * AUDIT ROUTE-001 (Härtung 2026-09-08): die EIGENEN Node-Boxen (Quelle
    * und Ziel) — Produktionspfad `routePlan` reicht sie als Referenzen
@@ -1436,6 +1450,17 @@ const segmentsKey = (segments: Segment[] | undefined): string => {
   return `${segments.length}:${h}`;
 };
 
+const segmentDomainsKey = (segments: readonly RoutedSegmentRef[] | undefined): string => {
+  if (!segments || segments.length === 0) return '0';
+  let h = segments.length | 0;
+  for (const item of segments) {
+    const [a, b] = item.segment;
+    for (const char of item.domain ?? '') h = (Math.imul(h, 31) + char.charCodeAt(0)) | 0;
+    h = (Math.imul(h, 31) + quantize(a.x) + quantize(a.y) + quantize(b.x) + quantize(b.y)) | 0;
+  }
+  return `${segments.length}:${h}`;
+};
+
 const requestKey = (input: PathRequest, obstacles: Rect[]): string =>
   `${quantize(input.sourceX)},${quantize(input.sourceY)},${input.sourcePosition ?? ''},` +
   `${quantize(input.targetX)},${quantize(input.targetY)},${input.targetPosition ?? ''},` +
@@ -1451,6 +1476,7 @@ const requestKey = (input: PathRequest, obstacles: Rect[]): string =>
   // unterschiedlicher Hindernis-/Trassenbelegung dasselbe (falsche) Ergebnis.
   `${(input.ownObstacles ?? []).length},` +
   `${obstacleKey(obstacles)},${segmentsKey(input.crossingSegments)},` +
+  `${segmentDomainsKey(input.crossingSegmentDomains)},${input.domain ?? ''},` +
   `${obstacleKey(input.cableTubes ?? [])}`;
 
 const cacheGet = (key: string): PathResult | undefined => {
@@ -1506,9 +1532,16 @@ export type PreferredLane = {
   coordinate: number;
 };
 
+export type RoutedSegmentRef = {
+  segment: Segment;
+  domain?: RoutingDomain;
+};
+
 type PathScore = {
-  /** Historical length/bend/crossing cost remains the primary comparator. */
+  /** Geometric route cost: length, bends and real crossings. */
   cost: number;
+  /** Full shared collision-model cost used after geometric cost ties. */
+  modelCost: number;
   preferredLaneBonus: number;
   /** Shared model rejects a hard overlap before a clean candidate. */
   hardCollision: boolean;
@@ -1518,28 +1551,45 @@ type PathScore = {
  * WP-6 (#396): the production candidate score.
  *
  * Every already routed segment is indexed and evaluated through the shared
- * cost model. This keeps the old hard safety ordering (obstacles and tubes
- * are still hard blockers) while making hard-overlap classification visible
- * to candidate selection. Weighted/soft breakdowns remain diagnostic during
- * this baseline-preserving migration. Lane preference is only a deterministic
- * tie-breaker, so the registry cannot silently make a longer path win.
+ * cost model. The geometric route cost remains the first criterion so the
+ * Golden-Master geometry cannot drift for a merely cosmetic preference;
+ * the complete weighted model is the second criterion for geometrically equal
+ * candidates. Hard overlap/domain-clearance remains an unconditional reject.
+ * Lane preference is the final deterministic tie-breaker, so the registry
+ * cannot silently make a longer path win.
  */
 const scorePath = (
   points: Point[],
   crossings: number,
   crossingSegments: readonly Segment[] = [],
-  preferredLane?: PreferredLane
+  preferredLane?: PreferredLane,
+  domain?: RoutingDomain,
+  crossingSegmentDomains: readonly RoutedSegmentRef[] = []
 ): PathScore => {
-  const index = crossingSegments.length > 0 ? new SegmentSpatialIndex([...crossingSegments]) : undefined;
+  const routedSegments: readonly RoutedSegmentRef[] =
+    crossingSegmentDomains.length > 0
+      ? crossingSegmentDomains
+      : crossingSegments.map((segment) => ({ segment }));
+  const index =
+    routedSegments.length > 0
+      ? new SegmentSpatialIndex(routedSegments.map((item) => item.segment))
+      : undefined;
+  const segmentDomains = new Map(
+    routedSegments.flatMap((item) => (item.domain ? [[item.segment, item.domain] as const] : []))
+  );
   let hardCollision = false;
+  let modelCost = 0;
   let laneBonus = 0;
   for (const segment of waypointsToSegments(points)) {
     if (index) {
-      // Use the shared model for classification. The mature scalar score stays
-      // the primary metric during migration; a hard overlap is nevertheless
-      // never preferred over a collision-free candidate.
-      const breakdown = segmentExtraCost(segment, index);
-      if (!Number.isFinite(breakdown.cost)) hardCollision = true;
+      const breakdown = segmentExtraCost(segment, index, {
+        domain,
+        segmentDomains,
+      });
+      modelCost += breakdown.cost;
+      // Hard overlap and domain-specific clearance are never preferred over a
+      // clean candidate, regardless of the geometric route cost.
+      if (!Number.isFinite(breakdown.cost) || breakdown.domainClearanceViolations > 0) hardCollision = true;
     }
     if (preferredLane) {
       const horizontal = Math.abs(segment[0].y - segment[1].y) <= EPS;
@@ -1555,6 +1605,7 @@ const scorePath = (
   // hard-collision ordering and the registry contributes its lane tie-break.
   return {
     cost: pathLength(points) + BEND_COST * countBends(points) + COST_WEIGHTS.crossing * crossings,
+    modelCost,
     preferredLaneBonus: laneBonus,
     hardCollision,
   };
@@ -1562,11 +1613,11 @@ const scorePath = (
 
 const isBetterScore = (candidate: PathScore, current: PathScore): boolean => {
   if (candidate.hardCollision !== current.hardCollision) return !candidate.hardCollision;
-  return (
-    candidate.cost < current.cost - EPS ||
-    (Math.abs(candidate.cost - current.cost) <= EPS &&
-      candidate.preferredLaneBonus < current.preferredLaneBonus - EPS)
-  );
+  if (candidate.cost < current.cost - EPS) return true;
+  if (candidate.cost > current.cost + EPS) return false;
+  if (candidate.modelCost < current.modelCost - EPS) return true;
+  if (candidate.modelCost > current.modelCost + EPS) return false;
+  return candidate.preferredLaneBonus < current.preferredLaneBonus - EPS;
 };
 
 function assemble(
@@ -1615,13 +1666,13 @@ function searchFrame(
   const A = f.S3;
   const B = f.T3;
 
-  const CLEARANCE_GOAL = 12;
-  const inset = Math.max(0, marginUsed - CLEARANCE_GOAL);
+  const clearanceGoal = ROUTING_TOKENS.cableClearance;
+  const inset = Math.max(0, marginUsed - clearanceGoal);
   const shrink = (r: Rect, by: number): Rect => ({
     x: r.x + by,
     y: r.y + by,
-    width: Math.max(2 * CLEARANCE_GOAL, r.width - 2 * by),
-    height: Math.max(2 * CLEARANCE_GOAL, r.height - 2 * by),
+    width: Math.max(2 * clearanceGoal, r.width - 2 * by),
+    height: Math.max(2 * clearanceGoal, r.height - 2 * by),
   });
 
   /**
@@ -1679,8 +1730,8 @@ function searchFrame(
         minY = Math.min(minY, r.y);
         maxY = Math.max(maxY, r.y + r.height);
       }
-      extraXs.push(minX - 16, maxX + 16);
-      extraYs.push(minY - 16, maxY + 16);
+      extraXs.push(minX - ROUTING_TOKENS.laneGrid, maxX + ROUTING_TOKENS.laneGrid);
+      extraYs.push(minY - ROUTING_TOKENS.laneGrid, maxY + ROUTING_TOKENS.laneGrid);
     }
 
     const inner = hananAStar(A, B, headingFromDir(f.ds), headingFromDir(f.dt), blocked, extraXs, extraYs);
@@ -1871,7 +1922,14 @@ export function findCablePath(input: PathRequest): PathResult {
     }
   }
   let bestCross = countCrossings(best.waypoints, crossingSegments);
-  let bestScore = scorePath(best.waypoints, bestCross, crossingSegments, input.preferredLane);
+  let bestScore = scorePath(
+    best.waypoints,
+    bestCross,
+    crossingSegments,
+    input.preferredLane,
+    input.domain,
+    input.crossingSegmentDomains
+  );
 
   if (crossingSegments.length > 0 && bestCross > MAX_ACCEPTABLE_CROSSINGS) {
     // ROUTE-BUG-27: Ausweich-Trassen BEIDSEITS der Lane. Früher wurde nur in
@@ -1894,7 +1952,14 @@ export function findCablePath(input: PathRequest): PathResult {
       if (cand.usedSearch === 'fallback' && best.usedSearch !== 'fallback') continue;
       if (cand.tight && !best.tight) continue;
       const cross = countCrossings(cand.waypoints, crossingSegments);
-      const score = scorePath(cand.waypoints, cross, crossingSegments, input.preferredLane);
+      const score = scorePath(
+        cand.waypoints,
+        cross,
+        crossingSegments,
+        input.preferredLane,
+        input.domain,
+        input.crossingSegmentDomains
+      );
       if (isBetterScore(score, bestScore)) {
         best = cand;
         bestCross = cross;
