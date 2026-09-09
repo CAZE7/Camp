@@ -413,6 +413,162 @@ function countRealCrossings(order: readonly string[], waypoints: Map<string, Poi
  * Routet alle Kanten in einem Durchgang und schiebt parallele Trassen global.
  */
 export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Map<string, PathResult> {
+  return routeCables(nodes, edges);
+}
+
+/**
+ * P-1 (#397): Stand des letzten Laufs für inkrementelles Re-Routing.
+ *
+ * Der globale Pass (`routeAllCables`) verlegt bei JEDER Geometrie-Änderung
+ * alle Kanten neu — während Messwerte nach Auto-Wire frameweise eintrudeln,
+ * mischt das alle Trassen wiederholt durch (sichtbares Springen). Der
+ * inkrementelle Pass verlegt nur betroffene Kanten neu und übernimmt alle
+ * übrigen exakt aus dem Vorlauf: Was sich nicht geändert hat, wackelt nicht.
+ */
+export type RoutePrevState = {
+  /** Ausgabe des Vorlaufs (Wege + Kennzeichen je Kante). */
+  routes: Map<string, PathResult>;
+  /** Hindernis-Boxen des Vorlaufs je Knoten-ID (Bewegungs-Diff). */
+  rects: Map<string, Rect>;
+  /** Kantentopologie des Vorlaufs je Kanten-ID (Reconnect-Diff). */
+  topo: Map<string, string>;
+};
+
+/** Topologie-Schlüssel einer Kante für den Reconnect-Diff (P-1). */
+export const topoKeyOf = (edge: RouteEdgeRef): string =>
+  `${edge.source}|${edge.target}|${edge.sourceHandle ?? ''}|${edge.targetHandle ?? ''}`;
+
+/**
+ * P-1 (#397): Betroffene Kanten eines Geometrie-Updates.
+ *
+ * Betroffen ist, wer neu ist, an einem geänderten Knoten hängt, mit einer
+ * betroffenen Kante einen Knoten teilt (Port-Geschwister: Lanes, Ränge und
+ * Gleichstände einer Bauteilseite verschieben sich gemeinsam,
+ * ROUTE-BUG-12/22/34/35), umverdrahtet wurde oder dessen bisheriger Pfad die
+ * geänderte Fläche berührt (Pfad-BBox-Regel aus #397, um `cableClearance`
+ * erweitert, damit auch I3-getriebene Fälle neu verlegt werden).
+ *
+ * Entfernte Knoten lösen nichts aus: Sie geben nur Raum frei — ihre Kanten
+ * sind mit ihnen verschwunden, alle übrigen Wege bleiben gültig (Stabilität
+ * schlägt Neuoptimierung).
+ */
+export function computeAffectedEdgeIds(
+  currentRects: Map<string, Rect>,
+  edges: readonly RouteEdgeRef[],
+  prev: RoutePrevState
+): Set<string> {
+  const changedNodes = new Set<string>();
+  const changedRects: Rect[] = [];
+  for (const [id, rect] of currentRects) {
+    const old = prev.rects.get(id);
+    if (
+      !old ||
+      old.x !== rect.x ||
+      old.y !== rect.y ||
+      old.width !== rect.width ||
+      old.height !== rect.height
+    ) {
+      changedNodes.add(id);
+      changedRects.push(rect);
+    }
+  }
+
+  const byId = new Map<string, RouteEdgeRef>();
+  const incident = new Map<string, string[]>();
+  for (const edge of edges) {
+    byId.set(edge.id, edge);
+    for (const nodeId of [edge.source, edge.target]) {
+      const list = incident.get(nodeId);
+      if (list) list.push(edge.id);
+      else incident.set(nodeId, [edge.id]);
+    }
+  }
+
+  const seed = new Set<string>();
+  for (const edge of edges) {
+    if (changedNodes.has(edge.source) || changedNodes.has(edge.target)) seed.add(edge.id);
+    const waypoints = prev.routes.get(edge.id)?.waypoints;
+    if (!waypoints || waypoints.length < 2) seed.add(edge.id);
+    const topo = prev.topo.get(edge.id);
+    if (topo !== undefined && topo !== topoKeyOf(edge)) seed.add(edge.id);
+  }
+
+  const affected = new Set(seed);
+  for (const id of seed) {
+    const edge = byId.get(id);
+    if (!edge) continue;
+    for (const nodeId of [edge.source, edge.target]) {
+      for (const mate of incident.get(nodeId) ?? []) affected.add(mate);
+    }
+  }
+
+  if (changedRects.length > 0) {
+    const pad = ROUTING_TOKENS.cableClearance;
+    const zones = changedRects.map((rect) => inflateRect(rect, pad));
+    for (const edge of edges) {
+      if (affected.has(edge.id)) continue;
+      const waypoints = prev.routes.get(edge.id)?.waypoints;
+      if (!waypoints || waypoints.length === 0) {
+        affected.add(edge.id);
+        continue;
+      }
+      let minX = Infinity;
+      let minY = Infinity;
+      let maxX = -Infinity;
+      let maxY = -Infinity;
+      for (const p of waypoints) {
+        minX = Math.min(minX, p.x);
+        minY = Math.min(minY, p.y);
+        maxX = Math.max(maxX, p.x);
+        maxY = Math.max(maxY, p.y);
+      }
+      const box = { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+      for (const zone of zones) {
+        if (rectsIntersect(box, zone)) {
+          affected.add(edge.id);
+          break;
+        }
+      }
+    }
+  }
+  return affected;
+}
+
+/**
+ * P-1 (#397): Verlegt nur betroffene Kanten neu, alle übrigen exakt aus `prev`.
+ *
+ * Semantik: `routeAllCables` für den Erstlauf (ohne Vorwissen), danach diese
+ * Funktion — der Sync (`cableRouteStore`) behält den Vorlauf. `onRouted`
+ * zählt die tatsächlich neu verlegten Kanten (Re-Routing-Zähler aus #397:
+ * Drag-Nachweis O(betroffen) statt O(E)).
+ *
+ * Keine globale Neuordnung: Reihenfolge, Tubes und Kreuzungskontext laufen in
+ * derselben ID-Ordnung wie der Voll-Pass; fixierte Trassen werden als
+ * Sperrflächen registriert, der Nudge läuft nur auf betroffenen Trassen
+ * (P-5) und unveränderte Ergebnisse behalten ihre Objekt-Identität (kein
+ * Re-Render, kein Flackern).
+ */
+export function routeIncrementalCables(
+  nodes: RoutableNode[],
+  edges: RouteEdgeRef[],
+  prev: RoutePrevState,
+  onRouted?: (edgeId: string) => void
+): Map<string, PathResult> {
+  return routeCables(nodes, edges, { prev, onRouted });
+}
+
+const samePoints = (a: readonly Point[], b: readonly Point[]): boolean =>
+  a.length === b.length && a.every((p, i) => p.x === b[i]!.x && p.y === b[i]!.y);
+
+const sameHops = (a: readonly PathHop[], b: readonly PathHop[]): boolean =>
+  a.length === b.length &&
+  a.every((h, i) => h.x === b[i]!.x && h.y === b[i]!.y && h.orientation === b[i]!.orientation);
+
+function routeCables(
+  nodes: RoutableNode[],
+  edges: RouteEdgeRef[],
+  incr?: { prev: RoutePrevState; onRouted?: (edgeId: string) => void }
+): Map<string, PathResult> {
   edges = [...edges].sort((a, b) => a.id.localeCompare(b.id));
   const out = new Map<string, PathResult>();
   if (edges.length === 0) return out;
@@ -481,10 +637,17 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
         );
   });
 
+  // P-1: Im inkrementellen Lauf steht vorher fest, wer neu verlegt wird —
+  // alle anderen Wege werden exakt aus dem Vorlauf übernommen.
+  const affected = incr ? computeAffectedEdgeIds(obstacleById, edges, incr.prev) : null;
+
   const raw: { id: string; waypoints: Point[]; result: PathResult }[] = [];
   const dynamicRoutedSegments: { edgeId: string; segment: Segment }[] = [];
   // ROUTE-BUG-16: wächst mit jeder verlegten Kante (siehe `addTubes`).
   const tubes: Rect[] = [];
+  // P-1/P-5: Trassen-Sperrflächen der ÜBERNOMMENEN Wege — neu verlegte
+  // Kanten und der gescopte Nudge weichen ihnen aus, kein Fixierter wandert.
+  const fixedTubes: Rect[] = [];
 
   // Verworfener Versuch (gemessen 2026-09-09): die Arbeitsreihenfolge nach
   // der Luftlinie der Bauteile zu sortieren, lange Querleger zuerst. Die
@@ -496,6 +659,20 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
   for (let i = 0; i < edges.length; i++) {
     const edge = edges[i];
     if (!edge) continue;
+    // P-1: Unveränderter Kontext → exakte Wiederverwendung (kein A*-Lauf).
+    // Die Segmente werden trotzdem als Tubes und Kreuzungskontext
+    // registriert, damit neu verlegte Kanten ihnen ausweichen wie im
+    // Voll-Pass — in derselben ID-Ordnung, deterministisch.
+    const prevRoute = incr?.prev.routes.get(edge.id);
+    if (incr && affected && !affected.has(edge.id) && prevRoute && prevRoute.waypoints.length >= 2) {
+      raw.push({ id: edge.id, waypoints: prevRoute.waypoints, result: prevRoute });
+      addTubes(tubes, prevRoute.waypoints);
+      addTubes(fixedTubes, prevRoute.waypoints);
+      for (const seg of waypointsToSegments(prevRoute.waypoints)) {
+        dynamicRoutedSegments.push({ edgeId: edge.id, segment: seg });
+      }
+      continue;
+    }
     const srcNode = nodeById.get(edge.source);
     const tgtNode = nodeById.get(edge.target);
     const flow = centerDelta(srcNode, tgtNode);
@@ -577,6 +754,13 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
       window = span;
       result = findCablePath({ ...request_, cableTubes: tubesForRegion(tubes, span) });
     }
+    // P-1: Fixierte Korridore gelten auch in der Notstufe — erst weichen die
+    // frischen Tubes, dann (nur bei echter Sackgasse darunter) auch die
+    // fixierten. Die Rangfolge I1-vor-I2 aus ROUTE-BUG-16 bleibt.
+    if (incr && result.usedSearch === 'fallback' && fixedTubes.length > 0) {
+      const fixed = findCablePath({ ...request_, cableTubes: tubesForRegion(fixedTubes, window) });
+      if (fixed.usedSearch !== 'fallback' || !fixed.fallbackHitsObstacles) result = fixed;
+    }
     // ROUTE-BUG-16 (Rangfolge der Garantien): Trassen-Belegung ist eine
     // Qualitätsregel (I2), Hindernisfreiheit eine harte Regel (I1). Führt die
     // Trassensperre in die Sackgasse — der Router liefert nur noch den
@@ -588,6 +772,7 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
       if (free.usedSearch !== 'fallback' || !free.fallbackHitsObstacles) result = free;
     }
     raw.push({ id: edge.id, waypoints: result.waypoints, result });
+    incr?.onRouted?.(edge.id);
     addTubes(tubes, result.waypoints);
     const segments = waypointsToSegments(result.waypoints);
     for (const seg of segments) dynamicRoutedSegments.push({ edgeId: edge.id, segment: seg });
@@ -612,10 +797,20 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
   // Stub-Endpunkte, was die Port-Richtung brach. Sie ist ersatzlos
   // gestrichen; `nudgeOrthogonalPaths` löst Überlappungen auf und
   // akzeptiert eine Variante nur, wenn sie die Route nicht verschlechtert.
-  const nudged = nudgeOrthogonalPaths(
-    raw.map((r) => ({ id: r.id, waypoints: r.waypoints })),
-    { obstacles: inflated }
-  );
+  // P-5 (#397): Im inkrementellen Lauf nudgen nur betroffene Trassen —
+  // fixierte Korridore sind Sperrflächen der Annahmeprüfung, kein Fixierter
+  // wandert je (das ist die Stabilitätszusage des Affected-Sets).
+  const mergeGuards = incr && affected ? [...inflated, ...fixedTubes] : inflated;
+  const nudged =
+    incr && affected
+      ? nudgeOrthogonalPaths(
+          raw.filter((r) => affected.has(r.id)).map((r) => ({ id: r.id, waypoints: r.waypoints })),
+          { obstacles: mergeGuards }
+        )
+      : nudgeOrthogonalPaths(
+          raw.map((r) => ({ id: r.id, waypoints: r.waypoints })),
+          { obstacles: inflated }
+        );
 
   // Letzter Geometrie-Gang (ROUTE-BUG-19): Treppen und Mini-Stufen auflösen.
   //
@@ -631,14 +826,31 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
   // schlechter. Handles bleiben exakt — `mergeCloseBends` tastet die ersten
   // und letzten Punkte nicht an.
   const cleaned = new Map<string, Point[]>();
-  for (const [id, waypoints] of nudged) {
-    const merged = mergeCloseBends(waypoints);
-    const worthIt =
-      merged.length < waypoints.length &&
-      isOrthogonalPath(merged) &&
-      !pathHitsObstacles(merged, inflated) &&
-      routeDefectScore(merged) <= routeDefectScore(waypoints);
-    cleaned.set(id, worthIt ? merged : waypoints);
+  if (incr && affected) {
+    // P-5: Merge nur auf betroffenen Trassen (gegen fixierte Korridore
+    // geprüft); übernommene Wege sind bereits gemergt und bleiben exakt.
+    for (const [id, waypoints] of nudged) {
+      const merged = mergeCloseBends(waypoints);
+      const worthIt =
+        merged.length < waypoints.length &&
+        isOrthogonalPath(merged) &&
+        !pathHitsObstacles(merged, mergeGuards) &&
+        routeDefectScore(merged) <= routeDefectScore(waypoints);
+      cleaned.set(id, worthIt ? merged : waypoints);
+    }
+    for (const r of raw) {
+      if (!affected.has(r.id)) cleaned.set(r.id, r.waypoints);
+    }
+  } else {
+    for (const [id, waypoints] of nudged) {
+      const merged = mergeCloseBends(waypoints);
+      const worthIt =
+        merged.length < waypoints.length &&
+        isOrthogonalPath(merged) &&
+        !pathHitsObstacles(merged, inflated) &&
+        routeDefectScore(merged) <= routeDefectScore(waypoints);
+      cleaned.set(id, worthIt ? merged : waypoints);
+    }
   }
 
   // Deterministische Ausgabereihenfolge: nach Edge-ID, nicht nach Eingabereihenfolge.
@@ -686,13 +898,31 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
     if (!item) continue;
     const wp = finalWaypoints.get(id) ?? item.waypoints;
     const crossings = crossingsByEdge.get(id) ?? 0;
+    const hops = hopsByEdge.get(id) ?? [];
+    // P-1: Unverändertes Ergebnis → Vorlauf-Objekt. `useSyncExternalStore`
+    // steigt bei identischer Referenz aus: kein Re-Render, kein Flackern.
+    // (Kreuzungen/Hops laufen global — ändert eine betroffene Kante die
+    // Kreuzungslage einer fixierten, bekommt diese korrekt ein neues Objekt.)
+    const prevRoute = incr?.prev.routes.get(id);
+    if (
+      prevRoute &&
+      prevRoute.usedSearch === item.result.usedSearch &&
+      (prevRoute.fallbackHitsObstacles ?? false) === (item.result.fallbackHitsObstacles ?? false) &&
+      (prevRoute.tightMarginUsed ?? false) === (item.result.tightMarginUsed ?? false) &&
+      prevRoute.crossings === crossings &&
+      samePoints(prevRoute.waypoints, wp) &&
+      sameHops(prevRoute.hops ?? [], hops)
+    ) {
+      out.set(id, prevRoute);
+      continue;
+    }
     out.set(
       id,
       rebuild(
         wp,
         crossings,
         item.result.usedSearch,
-        hopsByEdge.get(id) ?? [],
+        hops,
         item.result.fallbackHitsObstacles,
         item.result.tightMarginUsed
       )

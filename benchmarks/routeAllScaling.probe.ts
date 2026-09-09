@@ -11,12 +11,21 @@
  *
  * Messstand nach dem Fix (diese Maschine, tsx): Kette 500 ≈ 153 ms,
  * Spannkanten 250 ≈ 1,3 s, Spannkanten 500 ≈ 2,8 s — Audit-Baseline für
- * die 500-Knoten-Kette war ~81 200 ms.
+ * die 500-Knoten-Kette war ~81 200 ms. P-1-Drag-Nachweis (Kette 500, ein
+ * Knoten wandert): 499 Kanten, 5 betroffen, 5 neu verlegt, ≈ 121 ms voll
+ * gegen ≈ 14 ms inkrementell.
  *
  * Aufruf: npm run perf:route-scaling
  */
-import { routeAllCables, type RouteEdgeRef } from '../components/edges/utils/routeAll';
+import {
+  computeAffectedEdgeIds,
+  routeAllCables,
+  routeIncrementalCables,
+  topoKeyOf,
+  type RouteEdgeRef,
+} from '../components/edges/utils/routeAll';
 import type { RoutableNode } from '../components/edges/utils/nodeGeometry';
+import { nodeObstacleMap } from '../components/edges/utils/pathfinding';
 
 const COL_W = 420;
 const ROW_H = 220;
@@ -106,5 +115,35 @@ for (const n of [100, 250, 500]) {
   });
   console.log(
     `N=${String(n).padStart(3)} E=${String(edges.length).padStart(3)}  ${ms.toFixed(1).padStart(9)} ms  (${(ms / edges.length).toFixed(2)} ms/Kante)  fallbacks=${fallbacks}`
+  );
+}
+
+// P-1 (#397): Drag-Nachweis — ein Knoten wandert, Voll-Pass gegen
+// inkrementellen Pass. Erwartung: O(betroffen) statt O(E) A*-Läufe,
+// der Rest bleibt referenzstabil.
+console.log('\nInkrementell: ein Knoten (+30,+20) in der 500er-Kette wandert');
+{
+  const nodes = makeNodes(500);
+  const edges = makeChainEdges(500);
+  const routes = routeAllCables(nodes, edges);
+  const prev = {
+    routes,
+    rects: nodeObstacleMap(nodes),
+    topo: new Map(edges.map((edge) => [edge.id, topoKeyOf(edge)])),
+  };
+  const moved = nodes.map((node, i) =>
+    i === 250 ? { ...node, position: { x: node.position.x + 30, y: node.position.y + 20 } } : node
+  );
+  const rects = nodeObstacleMap(moved);
+  const affected = computeAffectedEdgeIds(rects, edges, prev);
+  const tFull0 = performance.now();
+  routeAllCables(moved, edges);
+  const fullMs = performance.now() - tFull0;
+  let routed = 0;
+  const tIncr0 = performance.now();
+  routeIncrementalCables(moved, edges, prev, () => routed++);
+  const incrMs = performance.now() - tIncr0;
+  console.log(
+    `E=499  betroffen=${affected.size}  neu-verlegt=${routed}  voll=${fullMs.toFixed(1)} ms  inkrementell=${incrMs.toFixed(1)} ms`
   );
 }

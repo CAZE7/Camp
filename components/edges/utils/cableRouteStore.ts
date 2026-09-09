@@ -11,7 +11,13 @@ import {
 import { nodeObstacleMap } from './pathfinding';
 import { validateFinalRouting, type FinalValidationReport } from '../../../lib/routing/finalValidation';
 import type { NodeRect, RoutedEdge } from '../../../lib/routing/invariants';
-import { routeAllCables, type RouteEdgeRef } from './routeAll';
+import {
+  routeAllCables,
+  routeIncrementalCables,
+  topoKeyOf,
+  type RouteEdgeRef,
+  type RoutePrevState,
+} from './routeAll';
 import type { PathResult } from './pathfinding';
 
 /**
@@ -131,10 +137,19 @@ const listeners = new Set<() => void>();
 let currentValidation: FinalValidationReport | undefined;
 const validationListeners = new Set<() => void>();
 
+/**
+ * P-1 (#397): Stand des letzten Laufs für inkrementelles Re-Routing. Der
+ * Erstlauf (oder ein Reset) routet voll, alle Folgeläufe verlegen nur
+ * betroffene Kanten neu — unveränderte Trassen behalten Wege UND
+ * Objekt-Identität (kein Springen, kein Re-Render).
+ */
+let prevIncremental: RoutePrevState | null = null;
+
 /** Alle zwischengespeicherten Routen verwerfen (Reset/Tests, R-9). */
 export const clearCableRoutes = (): void => {
   current = new Map<string, PathResult>();
   currentValidation = undefined;
+  prevIncremental = null;
   listeners.forEach((l) => l());
   validationListeners.forEach((l) => l());
 };
@@ -241,7 +256,16 @@ export function CableRouteSync() {
       // (siehe `withoutPresentationNodes`).
       const nodes = withoutPresentationNodes([...state.nodeLookup.values()]) as unknown as RoutableNode[];
       const edgeRefs = state.edges as RouteEdgeRef[];
-      const routes = routeAllCables(nodes, edgeRefs);
+      // P-1 (#397): Erstlauf voll, Folgeläufe inkrementell — nur betroffene
+      // Kanten werden neu verlegt, der Rest bleibt pixel- und referenzstabil.
+      const routes = prevIncremental
+        ? routeIncrementalCables(nodes, edgeRefs, prevIncremental)
+        : routeAllCables(nodes, edgeRefs);
+      prevIncremental = {
+        routes,
+        rects: nodeObstacleMap(nodes),
+        topo: new Map(edgeRefs.map((edge) => [edge.id, topoKeyOf(edge)])),
+      };
       publishCableRoutes(routes);
 
       // AUDIT F-07: Die finale Routing-Invariante (I1/I2/I3) wird im Rendering

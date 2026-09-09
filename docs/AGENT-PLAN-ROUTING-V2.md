@@ -133,6 +133,11 @@ Hinweise zur Reihenfolge:
   Affected-Set (Bounding-Box, O(betroffene Kanten) statt O(E)) · Zwei-Qualitäts-Stufen
   (L-Stub-Vorschau im Drag, voller Pass am Drag-Ende gedrosselt 100–150 ms) ·
   gescopedes Nudging (nur betroffene Lanes)
+- **Stand 2026-09-09:** P-1 (Affected-Set: `routeIncrementalCables`,
+  `computeAffectedEdgeIds`, Vorlauf im `CableRouteSync`) und P-5 (gescopedes
+  Nudging + Merge gegen fixierte Korridore) umgesetzt; Re-Routing-Zähler via
+  `onRouted`, Drag-Nachweis in `routeAllScaling.probe.ts`. Offen: P-2
+  (Zwei-Qualitäts-Stufen mit L-Stub-Vorschau), P-6 (Worker) danach.
 - **Voraussetzung:** S-1 (React Flow 12) gemerged; Worker-Auslagerung (P-6) erst danach
 
 ### WP-9 — #398 Port Fan-Out
