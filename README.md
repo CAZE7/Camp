@@ -196,14 +196,29 @@ Branch Protection: `docs/CI.md`.
 
 ## Architektur-Entscheidungen (ADRs)
 
-| ADR                                                                         | Thema                      | Kurzfassung                                                                    |
-| --------------------------------------------------------------------------- | -------------------------- | ------------------------------------------------------------------------------ |
-| [0001](docs/adr/0001-static-export-ohne-backend.md)                         | Static Export ohne Backend | Keine Server, Daten bleiben im Browser — Preis: kein Geräteabgleich            |
-| [0002](docs/adr/0002-react-flow-als-canvas.md)                              | React Flow als Canvas      | Knoten sind React — Preis: Kanten kennen fremde Handles nicht                  |
-| [0003](docs/adr/0003-orthogonales-routing-statt-wegfindung.md)              | Routing ohne Wegfindung    | Deterministisch und schnell — Preis: nicht optimal                             |
-| [0004](docs/adr/0004-vde-modell-konservativ-und-zentral.md)                 | VDE-Modell                 | Eine Quelle, konservative Werte, typsichere Einheiten                          |
-| [0005](docs/adr/0005-dark-engineering-theme-als-geprueftes-token-system.md) | Dark Engineering Theme     | Tokens als einzige Farbquelle, Radius ≤ 4 px, Kontraste per Test-Gate          |
-| [0006](docs/adr/0006-planer-korrektheitskonventionen.md)                    | Korrektheitskonventionen   | PX_PER_METER-Maßstab, Selbstschleifen-Verbot, Persistenz-Rettung, NUUIA-Muster |
+| ADR                                                                         | Thema                         | Kurzfassung                                                                    |
+| --------------------------------------------------------------------------- | ----------------------------- | ------------------------------------------------------------------------------ |
+| [0001](docs/adr/0001-static-export-ohne-backend.md)                         | Static Export ohne Backend    | Keine Server, Daten bleiben im Browser — Preis: kein Geräteabgleich            |
+| [0002](docs/adr/0002-react-flow-als-canvas.md)                              | React Flow als Canvas         | Knoten sind React — Preis: Kanten kennen fremde Handles nicht                  |
+| [0003](docs/adr/0003-orthogonales-routing-statt-wegfindung.md)              | Routing ohne Wegfindung       | Deterministisch und schnell — Preis: nicht optimal                             |
+| [0004](docs/adr/0004-vde-modell-konservativ-und-zentral.md)                 | VDE-Modell                    | Eine Quelle, konservative Werte, typsichere Einheiten                          |
+| [0005](docs/adr/0005-dark-engineering-theme-als-geprueftes-token-system.md) | Dark Engineering Theme        | Tokens als einzige Farbquelle, Radius ≤ 4 px, Kontraste per Test-Gate          |
+| [0006](docs/adr/0006-planer-korrektheitskonventionen.md)                    | Korrektheitskonventionen      | PX_PER_METER-Maßstab, Selbstschleifen-Verbot, Persistenz-Rettung, NUUIA-Muster |
+| [0007](docs/adr/0007-react-flow-bleibt-ui-adapter.md)                       | React Flow bleibt UI-Adapter  | Mess- und Interaktionsschicht; Fachlogik gehört nach `lib/`                    |
+| [0008](docs/adr/0008-domain-model-unabhaengig-von-react-flow.md)            | Domain Model ohne RF          | Eigene Typen in `lib/domain/`; `lib/` darf keine App-Schicht importieren       |
+| [0009](docs/adr/0009-crossings-erlaubt-overlaps-verboten.md)                | Kreuzung ja, Überdeckung nein | Kreuzung kostet, kollineare Überdeckung und Bauteilberührung sind verboten     |
+| [0010](docs/adr/0010-routing-ist-deterministisch.md)                        | Deterministisches Routing     | Gleiche Eingabe ⇒ byte-identisches Ergebnis; Tie-Breaker ist die Kanten-ID     |
+| [0011](docs/adr/0011-elk-layered-als-globaler-layout-pass.md)               | ELK Layered                   | Globaler **Knoten**-Layout-Pass, asynchron außerhalb des Frame-Budgets         |
+| [0012](docs/adr/0012-perf-budget-16ms-pro-frame.md)                         | Perf-Budget 16 ms             | CI-Gate am Referenzplan N=36/E=134, Median aus 30 Läufen                       |
+| [0013](docs/adr/0013-react-flow-12-xyflow.md)                               | React Flow 12                 | Paketlinienwechsel von `reactflow@11` auf `@xyflow/react@12`                   |
+| [0014](docs/adr/0014-eine-quelle-fuer-kabelgeometrie.md)                    | Eine Kabelgeometrie-Quelle    | Globaler Pass; `edge.data.geometry` und `routing-v2`-Imports sind verboten     |
+| [0015](docs/adr/0015-harte-final-invariante.md)                             | Harte Final-Invariante        | Binäres Urteil VALID/INVALID statt Gewichtung; eine Quelle je Zuständigkeit    |
+| [0016](docs/adr/0016-eine-elkjs-anbindung.md)                               | Eine elkjs-Anbindung          | Nur `lib/routing/elk/runner.ts`, gebündelt (`elk.bundled.js`)                  |
+| [0017](docs/adr/0017-platzierung-ohne-ueberlappung.md)                      | Platzierung ohne Überlappung  | Die AutoWire-Platzierung war die Ursache der Routing-Verletzungen              |
+| [0018](docs/adr/0018-elk-produktiver-layout-pass.md)                        | ELK produktiv verdrahtet      | „Strukturieren“ ruft ELK, Dagre als Fallback; erzeugt keine Kabelgeometrie     |
+| [0019](docs/adr/0019-final-gate-konsumiert-kollisionsmodell.md)             | Gate nutzt Kollisionsmodell   | I1/I2/I3 leiten aus `lib/routing/rules/collision.ts` ab, ohne eigene Schwelle  |
+| [0020](docs/adr/0020-routing-fehlerkorrektur-stub-und-fanout.md)            | Routing-Fehlerkorrektur       | Stub-Modell, Port-Fan-Out, Freigabe-Rangfolge: 179 → 0 Invarianten-Verstöße    |
+| [0021](docs/adr/0021-ki-assistent-und-api-route-im-statischen-export.md)    | KI-Assistent im Export        | **vorgeschlagen, offen:** `/api/chat` wird nicht exportiert (`out/api` fehlt)  |
 
 ## Weitere Nachweise
 

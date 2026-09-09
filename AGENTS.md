@@ -198,5 +198,9 @@ Details: [ARCHITECTURE-RULES.md](docs/ai/ARCHITECTURE-RULES.md) und
 ## 12. Kontext
 
 - Detaillierte Arbeitsdokumentation: [`docs/ai/`](docs/ai/).
+- **ADRs 0001–0021:** Übersicht mit Kurzfassung je Entscheidung im
+  [`README.md`](README.md#architektur-entscheidungen-adrs) (Abschnitt
+  „Architektur-Entscheidungen“); die Volltexte liegen in `docs/adr/`.
+  ADR 0021 ist **vorgeschlagen** und offen.
 - Historische Audits: `AUDIT.md`, `AUDIT-AUTOWIRE.md`, `AUDIT-EXTREM-2026-09.md`,
   `docs/` (ADRs, CI-Referenzen). Historie: Git-Log.
