@@ -72,6 +72,13 @@ const DynamicBOMModal = dynamic(() => import('./BOMModal').then((mod) => mod.BOM
   loading: () => null,
 });
 
+// Kabelliste (Recherche A4): öffnet über das planner-show-cable-list-Event,
+// eigener lazy Chunk — keine Zusatzlast im initialen Planner-Pfad.
+const DynamicCableListModal = dynamic(() => import('./ui/CableListModal').then((mod) => mod.CableListModal), {
+  ssr: false,
+  loading: () => null,
+});
+
 function useAccessibleHandles() {
   React.useEffect(() => {
     let frame = 0;
@@ -879,6 +886,7 @@ export function FlowCanvas() {
       {contextMenu && <CanvasContextMenu state={contextMenu} onClose={() => setContextMenu(null)} />}
 
       <DynamicBOMModal />
+      <DynamicCableListModal />
     </>
   );
 }

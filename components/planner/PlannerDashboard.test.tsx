@@ -130,6 +130,18 @@ describe('PlannerDashboard - Action Buttons', () => {
     expect(event.type).toBe('show-bom-modal');
   });
 
+  it('dispatches show-cable-list when clicking Kabelliste (A4)', async () => {
+    render(<PlannerDashboard />);
+    const dispatchEventSpy = vi.spyOn(window, 'dispatchEvent');
+
+    openMoreMenu();
+    fireEvent.click(screen.getByText(/Kabelliste/));
+
+    expect(dispatchEventSpy).toHaveBeenCalledTimes(1);
+    const event = dispatchEventSpy.mock.calls[0]![0] as CustomEvent;
+    expect(event.type).toBe('show-cable-list');
+  });
+
   it('calls autoWireSystem with no args when clicking the primary automatic wiring action', () => {
     render(<PlannerDashboard />);
 

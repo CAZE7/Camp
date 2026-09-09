@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { AccessibleDialog } from '@/components/ui/AccessibleDialog';
 import {
   Package,
+  ListTree,
   Zap,
   Droplets,
   ScanSearch,
@@ -214,9 +215,21 @@ function ActionsSection({
     };
   }, [menuOpen]);
 
+  // Menü nach Ablauf eines Toolbar-Jobs wieder schließen (Aktionen ohne
+  // Promise-Rückgabe schließen das Menü bereits selbst).
+  useEffect(() => {
+    if (busy) setMenuOpen(false);
+  }, [busy]);
+
   const handleExportBOM = useCallback(() => {
     // Das BOMModal liest den Store selbst und öffnet sich über dieses Event.
     window.dispatchEvent(new CustomEvent('show-bom-modal'));
+    setMenuOpen(false);
+  }, []);
+
+  const handleShowCableList = useCallback(() => {
+    // Die Kabelliste liest den Store selbst und öffnet sich über dieses Event.
+    window.dispatchEvent(new CustomEvent('show-cable-list'));
     setMenuOpen(false);
   }, []);
 
@@ -496,6 +509,15 @@ function ActionsSection({
             >
               <Package className="h-4 w-4" />
               Stückliste
+            </button>
+            <button
+              role="menuitem"
+              data-testid="action-cable-list"
+              onClick={handleShowCableList}
+              className="flex min-h-11 w-full items-center gap-2 rounded px-3 text-sm text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <ListTree className="h-4 w-4" />
+              Kabelliste
             </button>
             <button
               role="menuitem"
