@@ -10,10 +10,10 @@
   <text x="950" y="84" fill="#c7d0d9" font-family="monospace" font-size="13">ac-cons</text>
   <rect x="500" y="500" width="192" height="120" fill="#151b23" stroke="#31404f" stroke-width="1.5" rx="8"/>
   <text x="510" y="524" fill="#c7d0d9" font-family="monospace" font-size="13">dc-cons</text>
-  <path d="M 252 316 L 392 316 L 392 96 L 500 96" fill="none" stroke="#39b2f5" stroke-width="2.5"/>
+  <path d="M 252 316 L 276 316 L 276 96 L 500 96" fill="none" stroke="#39b2f5" stroke-width="2.5"/>
   <circle cx="252" cy="316" r="4" fill="#39b2f5"/>
   <path d="M 692 96 L 940 96" fill="none" stroke="#39b2f5" stroke-width="2.5"/>
   <circle cx="692" cy="96" r="4" fill="#39b2f5"/>
-  <path d="M 252 316 L 408 316 L 408 536 L 500 536" fill="none" stroke="#39b2f5" stroke-width="2.5"/>
+  <path d="M 252 316 L 292 316 L 292 536 L 500 536" fill="none" stroke="#39b2f5" stroke-width="2.5"/>
   <circle cx="252" cy="316" r="4" fill="#39b2f5"/>
 </svg>

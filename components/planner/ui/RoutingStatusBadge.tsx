@@ -37,7 +37,19 @@ export function RoutingStatusBadge() {
 
   const total = totalViolations(report.counts);
   if (report.status === 'VALID') {
-    const detail = `${report.edgeCount} Kanten, I1=0, I2=0, I3=0`;
+    // ROUTE-BUG-36: Die Not-Freigabe muss auch im grünen Fall sichtbar
+    // bleiben. Seit der Stub-Kappung (ROUTE-BUG-31) ist sie kein Fehler
+    // mehr, sondern der geregelte Ausgang für enge Stellen: I3 ist
+    // eingehalten, aber die volle Freigabe war dort nicht erreichbar. Wer
+    // nur das grüne Badge sieht, hält den Plan für großzügiger, als er ist.
+    const tight = report.tightMarginRoutes ?? 0;
+    const detail =
+      `${report.edgeCount} Kanten, I1=0, I2=0, I3=0` +
+      (tight > 0
+        ? ` — davon ${tight} Leitung(en) mit Not-Freigabe verlegt ` +
+          `(Stub endet an der Bauteil-Freigabe): Mindestabstand eingehalten, ` +
+          `Bündel-Staffelung dort eingeschränkt`
+        : '');
     return (
       <span
         data-testid="routing-status-valid"
@@ -58,6 +70,15 @@ export function RoutingStatusBadge() {
     `I1 Leitungen × Bauteile: ${report.counts.edgeNodeCollisions}`,
     `I2 Leitung × Leitung: ${report.counts.edgeEdgeOverlaps}`,
     `I3 Mindestabstand: ${report.counts.clearanceViolations}`,
+    // ROUTE-BUG-23: Die Ursache nennen, nicht nur die Zahl. Eine Leitung mit
+    // `tightMarginUsed` liegt enger am Bauteil als erlaubt, weil Port-Stub
+    // und Mindestabstand dort geometrisch nicht gleichzeitig passen.
+    ...(report.tightMarginRoutes
+      ? [
+          `davon ${report.tightMarginRoutes} Leitung(en) mit unterschrittenem Abstand, ` +
+            `weil Port-Stub und Mindestabstand geometrisch nicht gleichzeitig passen`,
+        ]
+      : []),
     'Der Plan ist damit nicht layout-verifiziert. Bitte Leitungen umlegen bzw. Abstände vergrößern.',
   ].join(' — ');
   return (

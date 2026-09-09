@@ -71,6 +71,13 @@ export type FinalValidationReport = {
   violations: InvariantViolation[];
   /** Zahl der geprüften Kanten — Kontext für die Zahlen oben. */
   edgeCount: number;
+  /**
+   * ROUTE-BUG-23: Wie viele Leitungen die Bauteil-Freigabe aus geometrischer
+   * Not unterschreiten (`PathResult.tightMarginUsed`). Das sind dieselben
+   * Fälle, die I3 zählt — hier als ZAHL für die Anzeige, damit „Zwang nicht
+   * erreicht" die Ursache nennt, statt nur zu zählen.
+   */
+  tightMarginRoutes?: number;
 };
 
 /** Summe aller harten Verletzungen. */

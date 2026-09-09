@@ -42,6 +42,7 @@ describe('Routing-Tokens (Single Source of Truth)', () => {
       elkEdgeNodeSpacing: 16,
       stubMin: 24,
       laneGrid: 16,
+      segmentMin: 16,
       bendRadius: 8,
       crossDomainSpacing: 24,
     });

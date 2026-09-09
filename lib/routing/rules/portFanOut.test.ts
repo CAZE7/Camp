@@ -1,98 +1,140 @@
 import { describe, expect, it } from 'vitest';
-import { assignFanOut, compareFanOutRequests, fanOutPortIndices, type FanOutRequest } from './portFanOut';
+import {
+  assignFanOut,
+  compareFanOutRequests,
+  fanOutPortIndices,
+  portCross,
+  portNormal,
+  type FanOutRequest,
+} from './portFanOut';
 import { segmentsCross, type Point, type Segment } from '../geometry';
 import { ROUTING_TOKENS } from '../tokens';
 
 /**
- * WP-9 (#398): Tests des Port Fan-Out.
- * Abnahme: deterministisch (gleicher Input → gleiche Reihenfolge), keine
- * quellnahen Kreuzungen im Busbar-Szenario, konsistent mit FIXED_ORDER,
- * nutzt die Geometrie-Primitives für die Zielsortierung.
+ * WP-9 (#398) / ROUTE-BUG-2: Tests des Port Fan-Out.
+ *
+ * Abnahme: deterministisch (gleicher Input → gleiche Lanes, ADR 0010), die
+ * achsparallelste Kante fährt geradeaus, beide Seiten des Ports bekommen
+ * eindeutige Beträge, und im Busbar-Szenario kreuzen sich die Stubs nicht.
  */
 
 const grid = ROUTING_TOKENS.laneGrid;
+const stubMin = ROUTING_TOKENS.stubMin;
 
-const req = (edgeId: string, x: number, y: number): FanOutRequest => ({ edgeId, farEnd: { x, y } });
+const req = (edgeId: string, cross: number): FanOutRequest => ({ edgeId, cross });
 
 describe('Sortiervertrag', () => {
-  it('horizontal: y des Gegenübers entscheidet; vertikal: x', () => {
-    expect(compareFanOutRequests('horizontal', req('a', 0, 10), req('b', 999, 20))).toBeLessThan(0);
-    expect(compareFanOutRequests('vertical', req('a', 10, 0), req('b', 20, -999))).toBeLessThan(0);
+  it('Quer-Versatz des Gegenübers entscheidet', () => {
+    expect(compareFanOutRequests(req('a', 10), req('b', 20))).toBeLessThan(0);
+    expect(compareFanOutRequests(req('a', 20), req('b', 10))).toBeGreaterThan(0);
   });
 
-  it('stabile Edge-ID als Tie-Breaker bei gleicher Zielposition', () => {
-    expect(compareFanOutRequests('horizontal', req('a', 0, 10), req('b', 0, 10))).toBeLessThan(0);
-    expect(compareFanOutRequests('horizontal', req('b', 0, 10), req('a', 0, 10))).toBeGreaterThan(0);
+  it('stabile Edge-ID als Tie-Breaker bei gleichem Quer-Versatz', () => {
+    expect(compareFanOutRequests(req('a', 10), req('b', 10))).toBeLessThan(0);
+    expect(compareFanOutRequests(req('b', 10), req('a', 10))).toBeGreaterThan(0);
+  });
+});
+
+describe('portNormal / portCross', () => {
+  it('Senkrechte ist rechtsdrehend zur Fahrtrichtung', () => {
+    expect(portNormal({ x: 1, y: 0 })).toEqual({ x: 0, y: 1 });
+    expect(portNormal({ x: -1, y: 0 })).toEqual({ x: 0, y: -1 });
+    expect(portNormal({ x: 0, y: 1 })).toEqual({ x: -1, y: 0 });
+    expect(portNormal({ x: 0, y: -1 })).toEqual({ x: 1, y: 0 });
+  });
+
+  it('Quer-Versatz projiziert das Gegenende auf die Port-Senkrechte', () => {
+    const port: Point = { x: 100, y: 100 };
+    // Port zeigt nach rechts ⇒ Querachse ist y.
+    expect(portCross(port, { x: 999, y: 130 }, portNormal({ x: 1, y: 0 }))).toBe(30);
+    // Port zeigt nach oben ⇒ Querachse ist x.
+    expect(portCross(port, { x: 70, y: -999 }, portNormal({ x: 0, y: -1 }))).toBe(-30);
   });
 });
 
 describe('assignFanOut', () => {
-  const requests = [req('e-3', 500, 300), req('e-1', 500, 50), req('e-2', 500, 180)];
+  const requests = [req('e-3', 300), req('e-1', -50), req('e-2', 0), req('e-4', 120)];
 
-  it('ordnet nach Zielposition, Versatz = symmetricLaneIndex × laneGrid', () => {
-    const result = assignFanOut('horizontal', requests);
-    expect(result.map((a) => a.edgeId)).toEqual(['e-1', 'e-2', 'e-3']);
-    expect(result.map((a) => a.laneIndex)).toEqual([-1, 0, 1]);
-    expect(result.map((a) => a.offset)).toEqual([-grid, 0, grid]);
+  it('die achsparallelste Kante fährt geradeaus (Lane 0)', () => {
+    const result = assignFanOut(requests);
+    const byId = new Map(result.map((a) => [a.edgeId, a]));
+    expect(byId.get('e-2')!.laneIndex).toBe(0);
+    expect(byId.get('e-2')!.offset).toBe(0);
+  });
+
+  it('jede Seite zählt eigene Ränge — Beträge sind je Seite eindeutig', () => {
+    const result = assignFanOut(requests);
+    const byId = new Map(result.map((a) => [a.edgeId, a]));
+    // cross < 0 ⇒ negative Seite, |cross| aufsteigend ⇒ innere Lane zuerst.
+    expect(byId.get('e-1')!.offset).toBe(-grid);
+    // cross > 0: e-4 (120) ist achsparalleler als e-3 (300).
+    expect(byId.get('e-4')!.offset).toBe(grid);
+    expect(byId.get('e-3')!.offset).toBe(2 * grid);
+  });
+
+  it('Einzelkante am Port bleibt auf Lane 0', () => {
+    expect(assignFanOut([req('solo', 42)])).toEqual([{ edgeId: 'solo', order: 0, laneIndex: 0, offset: 0 }]);
   });
 
   it('deterministisch: permutierte Eingabe ⇒ identisches Ergebnis (ADR 0010)', () => {
-    const a = JSON.stringify(assignFanOut('horizontal', requests));
-    const b = JSON.stringify(assignFanOut('horizontal', [...requests].reverse()));
-    const c = JSON.stringify(assignFanOut('horizontal', [requests[1]!, requests[0]!, requests[2]!]));
+    const a = JSON.stringify(assignFanOut(requests));
+    const b = JSON.stringify(assignFanOut([...requests].reverse()));
+    const c = JSON.stringify(assignFanOut([requests[1]!, requests[0]!, requests[3]!, requests[2]!]));
     expect(b).toBe(a);
     expect(c).toBe(a);
   });
 
-  it('fanOutPortIndices liefert dieselbe Ordnung für ELK FIXED_ORDER (eine Quelle)', () => {
-    const assignments = assignFanOut('horizontal', requests);
-    const indices = fanOutPortIndices('horizontal', requests);
+  it('fanOutPortIndices liefert dieselbe Ordnung für ELK FIXED_ORDER', () => {
+    const assignments = assignFanOut(requests);
+    const indices = fanOutPortIndices(requests);
     for (const a of assignments) expect(indices.get(a.edgeId)).toBe(a.order);
   });
 });
 
 describe('Szenario „Busbar + Fan-Out": keine quellnahen Kreuzungen', () => {
   it('Stubs zu 4 Verbrauchern kreuzen sich am Port nicht', () => {
-    // Busbar-Port rechts bei (400, 200); 4 Verbraucher in gemischter
-    // Registrierungs-Reihenfolge auf verschiedenen Höhen.
+    // Busbar-Port oben bei (400, 200), Austritt nach oben; 4 Verbraucher in
+    // gemischter Registrierungs-Reihenfolge auf verschiedenen Höhen/Seiten.
     const port: Point = { x: 400, y: 200 };
+    const ds: Point = { x: 0, y: -1 };
+    const normal = portNormal(ds);
     const targets: Record<string, Point> = {
-      'e-d': { x: 700, y: 380 },
-      'e-a': { x: 700, y: 40 },
-      'e-c': { x: 700, y: 260 },
-      'e-b': { x: 700, y: 150 },
+      'e-d': { x: 700, y: 40 },
+      'e-a': { x: 100, y: 40 },
+      'e-c': { x: 560, y: 40 },
+      'e-b': { x: 400, y: 40 },
     };
-    const requests = Object.entries(targets).map(([edgeId, farEnd]) => ({ edgeId, farEnd }));
-    const assignments = assignFanOut('horizontal', requests);
+    const requests = Object.entries(targets).map(([edgeId, farEnd]) => ({
+      edgeId,
+      cross: portCross(port, farEnd, normal),
+    }));
+    const assignments = assignFanOut(requests);
 
-    // Quellnaher Stub je Kante: Port (+Lane-Versatz) → horizontaler Auslauf →
-    // vertikal auf Zielhöhe (L-Stub). Verschachtelter Fan-Out: die äußerste
-    // Lane knickt zuerst ab, innere Lanes laufen weiter, bevor sie abbiegen.
-    const maxAbsLane = Math.max(...assignments.map((a) => Math.abs(a.laneIndex)));
-    const stubs: Segment[][] = assignments.map((a) => {
-      const start: Point = { x: port.x, y: port.y + a.offset };
-      const elbowX = port.x + 2 * ROUTING_TOKENS.stubMin + (maxAbsLane - Math.abs(a.laneIndex)) * grid;
+    // Quellnaher Stub je Kante, exakt wie `portFrame` ihn baut: entlang der
+    // Port-Achse um `stubMin + |lane|`, dann der Seitenschritt um `lane`,
+    // dann senkrecht auf Zielhöhe.
+    // Trasse je Kante = der Lauf senkrecht zur Port-Achse nach dem
+    // Seitenschritt (dort entscheidet sich, ob zwei Kanten dieselbe Trasse
+    // belegen — Invariante I2).
+    const trunks: Segment[] = assignments.map((a) => {
+      const stub = stubMin + Math.abs(a.offset);
+      const s2: Point = { x: port.x + ds.x * stub, y: port.y + ds.y * stub };
+      const s3: Point = { x: s2.x + normal.x * a.offset, y: s2.y + normal.y * a.offset };
       const target = targets[a.edgeId]!;
-      return [
-        [start, { x: elbowX, y: start.y }],
-        [
-          { x: elbowX, y: start.y },
-          { x: elbowX, y: target.y },
-        ],
-      ];
+      return [s3, { x: s3.x, y: target.y }];
     });
 
-    for (let i = 0; i < stubs.length; i++) {
-      for (let j = i + 1; j < stubs.length; j++) {
-        for (const s1 of stubs[i]!) {
-          for (const s2 of stubs[j]!) {
-            expect(segmentsCross(s1, s2)).toBe(false);
-          }
-        }
+    for (let i = 0; i < trunks.length; i++) {
+      for (let j = i + 1; j < trunks.length; j++) {
+        expect(segmentsCross(trunks[i]!, trunks[j]!)).toBe(false);
       }
     }
 
-    // Reihenfolge am Port entspricht der Zielhöhe (kein Vertauschen).
-    expect(assignments.map((a) => a.edgeId)).toEqual(['e-a', 'e-b', 'e-c', 'e-d']);
+    // Die achsparallelste Kante (Ziel direkt über dem Port) fährt geradeaus.
+    const straight = assignments.find((a) => a.edgeId === 'e-b')!;
+    expect(straight.offset).toBe(0);
+    // Alle Lanes sind paarweise verschieden — keine doppelte Trassenbelegung.
+    const offsets = assignments.map((a) => a.offset);
+    expect(new Set(offsets).size).toBe(offsets.length);
   });
 });

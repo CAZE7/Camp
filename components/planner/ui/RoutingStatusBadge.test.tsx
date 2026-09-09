@@ -54,6 +54,21 @@ describe('RoutingStatusBadge (AUDIT F-07)', () => {
     expect(bad.getAttribute('title')).toContain('nicht layout-verifiziert');
   });
 
+  it('nennt die Not-Freigabe auch im VALID-Badge (ROUTE-BUG-36)', () => {
+    clearCableRoutes();
+    render(<RoutingStatusBadge />);
+    // I1–I3 sind sauber, eine Leitung ist aber mit verringerter Freigabe
+    // gefahren — genau der Zustand des Referenzplans complex.
+    const report = { ...validateFinalRouting(route, cleanNodes), tightMarginRoutes: 1 };
+    act(() => {
+      publishCableRouteFinalValidation(report);
+    });
+    const good = screen.getByTestId('routing-status-valid');
+    expect(good).toBeInTheDocument();
+    expect(good.getAttribute('title')).toContain('Not-Freigabe');
+    expect(good.getAttribute('title')).toContain('1 Leitung(en)');
+  });
+
   it('zeigt ein VALID-Badge, wenn alle Final-Invarianten erfüllt sind', () => {
     clearCableRoutes();
     render(<RoutingStatusBadge />);

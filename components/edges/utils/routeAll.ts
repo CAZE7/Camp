@@ -15,29 +15,35 @@ import {
   inflateRect,
   pathLength,
   countBends,
-  countCrossings,
+  pathHitsObstacles,
+  routeDefectScore,
+  sourceExitVector,
   OBSTACLE_MARGIN,
   ROUTE_BORDER_RADIUS,
   type Point,
   type PathResult,
   type Rect,
 } from './pathfinding';
-import {
-  polylineMidpoint,
-  waypointsToPath,
-  waypointsToPathWithHops,
-  polarityPathOffset,
-  parallelLaneOffset,
-  type PathHop,
-} from './pathUtils';
+import { polylineMidpoint, waypointsToPath, waypointsToPathWithHops, type PathHop } from './pathUtils';
 import { nudgeOrthogonalPaths } from './nudge';
-import { crossingSegmentsNear } from './routingCache';
-import { ROUTING_TOKENS } from '../../../lib/routing/tokens';
-import { assignFanOut, type FanOutRequest, type PortAxis } from '../../../lib/routing/rules/portFanOut';
+import {
+  assignFanOut,
+  portCross,
+  portNormal,
+  type FanOutRequest,
+} from '../../../lib/routing/rules/portFanOut';
 import { hopRadius, resolveHops, type HopDomain, type HopEdge } from '../../../lib/routing/rules/hopping';
 import { isBackboneConnection } from '../../planner/utils/backbone';
-import { classifyCollision } from '../../../lib/routing/rules/collision';
-import { waypointsToSegments, type Segment } from '../../../lib/routing/geometry';
+import {
+  isOrthogonalPath,
+  mergeCloseBends,
+  SegmentSpatialIndex,
+  segmentsCross,
+  simplifyWaypoints,
+  waypointsToSegments,
+  type Segment,
+} from '../../../lib/routing/geometry';
+import { ROUTING_TOKENS } from '../../../lib/routing/tokens';
 
 export type RouteEdgeRef = {
   id: string;
@@ -117,7 +123,8 @@ const rebuild = (
   crossings: number,
   usedSearch: PathResult['usedSearch'],
   hops: PathHop[] = [],
-  fallbackHitsObstacles?: boolean
+  fallbackHitsObstacles?: boolean,
+  tightMarginUsed?: boolean
 ): PathResult => {
   const mid = polylineMidpoint(waypoints);
   return {
@@ -140,6 +147,10 @@ const rebuild = (
     // wäre ein Fallback ohne Hindernisfreigabe an der UI/Invarianten-
     // Oberfläche unsichtbar.
     fallbackHitsObstacles,
+    // ROUTE-BUG-23: Auch die Kennzeichnung „Freigabe geometrisch nicht
+    // einhaltbar" muss den Rebuild überleben — sonst sieht die UI nur eine
+    // unauffällige Leitung, wo der Router eine Ausnahme gemacht hat.
+    tightMarginUsed,
   };
 };
 
@@ -161,155 +172,241 @@ function nodeCenter(node: RoutableNode): { x: number; y: number } {
   };
 }
 
-/** Halbe Lane (8 px) — das Halbton-Raster, auf das Korridore ausgerichtet werden. */
-const LANE_GRID = ROUTING_TOKENS.laneGrid / 2; // WP-1: aus Token `laneGrid`
-
-/** Korridor-Cluster: Segmente näher als das kommen auf dieselbe Lane. */
-const CORRIDOR_MERGE_TOLERANCE = 6;
-
-/** Mindestüberlappung entlang der Achse, damit zwei Segmente „denselben Korridor“ fahren. */
-const CORRIDOR_MIN_OVERLAP = 32;
+/**
+ * ROUTE-BUG-16: Verlegte Leitungen als Sperrflächen („Tubes").
+ *
+ * Jede bereits geroutete Kante belegt ihren Korridor: Die Segmente werden zu
+ * Boxen der Breite `2 · cableClearance` aufgezogen, damit die nächste Kante
+ * mindestens `cableClearance` Abstand hält, statt denselben billigsten
+ * Korridor zu wählen. Die Port-Stubs (erstes/letztes Segment) bleiben frei —
+ * dort läuft ein Bündel by design gemeinsam (dokumentierte Bündel-Ausnahme
+ * von Invariante I2).
+ */
+const addTubes = (tubes: Rect[], waypoints: readonly Point[]): void => {
+  const segments = waypointsToSegments(simplifyWaypoints(waypoints));
+  // Halbe Breite = voller Node-Abstand: Zwei Leitungen halten denselben
+  // Abstand wie eine Leitung zum Bauteil. Gemessen ist das der Wert, bei dem
+  // weder doppelte Trassenbelegung (I2) noch Engstellen unter 12 px (I3)
+  // entstehen; die halbe Breite drückte Kanten in 6-px-Korridore
+  // (Kurzsegmente I6, neue Überdeckungen).
+  const half = ROUTING_TOKENS.cableClearance;
+  for (let i = 1; i < segments.length - 1; i++) {
+    const seg = segments[i];
+    if (!seg) continue;
+    const [a, b] = seg;
+    tubes.push({
+      x: Math.min(a.x, b.x) - half,
+      y: Math.min(a.y, b.y) - half,
+      width: Math.abs(b.x - a.x) + 2 * half,
+      height: Math.abs(b.y - a.y) + 2 * half,
+    });
+  }
+};
 
 /**
- * R-6: Lane-Offsets nach Port-Flussreihenfolge.
+ * Tubes im Ausschnitt der aktuellen Route (PERF-001, wie bei den Nodes) —
+ * und auf ihn ZUGESCHNITTEN.
  *
- * Kanten an demselben Handle (gleicher Punkt) verlassen den Port als
- * Bündel. Statt der id-basierten Reihenfolge sortiert diese Stufe nach der
- * Quer-Koordinate des Gegenübers: Wer weiter oben ankommt, verlässt den
- * Port auch oben — die Stubs überkreuzen sich nicht („Kantenreihenfolge
- * an Ports tauschen“). Deterministisch: Gleichstand per Edge-ID.
+ * Zuschneiden ist Pflicht, nicht Kosmetik: `searchFrame` spannt das
+ * Hanan-Gitter auch über die Außenkanten der Sperrflächen auf. Reichte ein
+ * Tube über das Hindernis-Fenster hinaus, entstand dort eine Gitterlinie —
+ * und die Suche führte die Kante in einen Bereich, in dem gar keine
+ * Hindernisse geladen waren (gemessen: 378 px Umweg quer durch ein Bauteil,
+ * I1-Verstoß).
  */
-export function portOrderedLaneOffsets(
+const tubesForRegion = (tubes: readonly Rect[], region: Rect): Rect[] => {
+  const out: Rect[] = [];
+  for (let i = 0; i < tubes.length; i++) {
+    const r = tubes[i];
+    if (!r) continue;
+    const x0 = Math.max(r.x, region.x);
+    const y0 = Math.max(r.y, region.y);
+    const x1 = Math.min(r.x + r.width, region.x + region.width);
+    const y1 = Math.min(r.y + r.height, region.y + region.height);
+    if (x1 - x0 <= 0 || y1 - y0 <= 0) continue;
+    out.push({ x: x0, y: y0, width: x1 - x0, height: y1 - y0 });
+  }
+  return out;
+};
+
+/** Lane-Staffelung einer Kante an beiden Ports (px, ≥ 0). */
+export type PortLanes = {
+  /** Stub-Verlängerung am Quell-Port (px, ≥ 0). */
+  lane: number;
+  /** Stub-Verlängerung am Ziel-Port. */
+  laneTarget: number;
+  /**
+   * Rang dieser Kante im Bündel des Quell-Ports, absteigend nach `|lane|`
+   * (ROUTE-BUG-34). Der Router nutzt ihn nur, wenn die Stub-Kappung aus der
+   * Bauteil-Freigabe greift.
+   */
+  laneRank?: number;
+  /** Dasselbe für den Ziel-Port. */
+  laneTargetRank?: number;
+  /**
+   * Höherrangige Bündel-Nachbarn mit demselben `|lane|`-Betrag
+   * (ROUTE-BUG-35) — der Gleichstand weicht nach innen aus.
+   */
+  laneTie?: number;
+  /** Dasselbe für den Ziel-Port. */
+  laneTargetTie?: number;
+};
+
+/**
+ * R-6 / ROUTE-BUG-2: Lane-Staffelung je Kante und Port.
+ *
+ * Kanten am selben Handle (gleicher Punkt, gleiche Seite) verlassen den Port
+ * als Bündel; jede bekommt einen Rang und knickt erst nach
+ * `stubMin + Rang · laneGrid` px ab. Quelle und Ziel werden GETRENNT
+ * bewertet — ein Bündel am Quell-Port sagt nichts über die Belegung am
+ * Ziel-Port aus. Die Vergabe kommt aus der zentralen Fan-Out-Mechanik
+ * (`lib/routing/rules/portFanOut`, WP-9): Reihenfolge nach dem Quer-Versatz
+ * des Gegenübers. Deterministisch; Gleichstand per Edge-ID (ADR 0010).
+ */
+export function portFanOutLanes(
   edges: RouteEdgeRef[],
   resolve: (edge: RouteEdgeRef, kind: 'source' | 'target') => { x: number; y: number; position: Position }
-): Map<string, number> {
-  // WP-9 (#398): Sortierung und Versatz kommen aus der zentralen
-  // Fan-Out-Mechanik (lib/routing/rules/portFanOut) — dieselbe Quelle wie
-  // die ELK-Portindizes (FIXED_ORDER). Verhalten identisch zur bisherigen
-  // Inline-Implementierung (Zielposition, dann Edge-ID; symmetrische Lanes).
-  const offsets = new Map<string, number>();
-  const groups = new Map<string, { axis: PortAxis; requests: FanOutRequest[] }>();
+): Map<string, PortLanes> {
+  const lanes = new Map<string, PortLanes>();
+  const groups = new Map<string, { normal: Point; requests: FanOutRequest[] }>();
+  // ROUTE-BUG-12: Eine Klemme ist EINE Anschlussstelle — gleichgültig, ob eine
+  // Kante dort ankommt oder abfährt. Früher wurde nach `kind` gruppiert, also
+  // bekamen „ankommend am Busbar-Port" und „abfahrend am Busbar-Port" zwei
+  // unabhängige Rangfolgen (gemessen: beide auf Lane 0 ⇒ 372 px doppelte
+  // Belegung auf derselben Achse). Gruppenschlüssel ist deshalb der
+  // Port-Punkt plus die Bauteil-Seite; die Rolle (Quelle/Ziel) wird nur
+  // gemerkt, um den Rang dem richtigen Ende zuzuordnen.
+  const roleOf = new Map<string, 'source' | 'target'>();
   for (const edge of edges) {
     for (const kind of ['source', 'target'] as const) {
       const point = resolve(edge, kind);
       const far = resolve(edge, kind === 'source' ? 'target' : 'source');
-      const horizontal = point.position === Position.Left || point.position === Position.Right;
-      const key = `${kind}|${Math.round(point.x)}:${Math.round(point.y)}`;
-      const group = groups.get(key) ?? { axis: horizontal ? 'horizontal' : 'vertical', requests: [] };
-      group.requests.push({ edgeId: edge.id, farEnd: { x: far.x, y: far.y } });
+      // Richtung, in die eine Kante diese Bauteil-Seite verlässt — für Quelle
+      // und Ziel identisch (beide zeigen vom Bauteil weg).
+      const outward = sourceExitVector(point.position);
+      const normal = portNormal(outward);
+      // ROUTE-BUG-22: Der Gruppenschlüssel ist das BAUTEIL plus die Seite,
+      // nicht der einzelne Port-Punkt. Zwei Leitungen, die dieselbe
+      // Bauteilseite an verschiedenen Klemmen anfahren, bekamen sonst
+      // unabhängige Rangfolgen und damit denselben Rang — beide Stubs gleich
+      // lang, beide Zuführungen auf derselben Achse (gemessen: 20 px
+      // kollineare Überdeckung an der Sammelschiene, I2). Als Bündel einer
+      // Seite staffeln sie sich jetzt wie an einer Klemmenleiste.
+      const key = `${kind === 'source' ? edge.source : edge.target}|${point.position}`;
+      const group = groups.get(key) ?? { normal, requests: [] };
+      group.requests.push({
+        edgeId: edge.id,
+        cross: portCross({ x: point.x, y: point.y }, { x: far.x, y: far.y }, normal),
+      });
       groups.set(key, group);
+      roleOf.set(`${key}|${edge.id}`, kind);
     }
   }
-  for (const group of groups.values()) {
-    if (group.requests.length <= 1) continue;
-    for (const assignment of assignFanOut(group.axis, group.requests)) {
-      offsets.set(assignment.edgeId, assignment.offset);
+  for (const [key, group] of groups) {
+    const assignments = assignFanOut(group.requests);
+    // ROUTE-BUG-34: Rang im Bündel, absteigend nach Betrag der Lane. Alle
+    // Kanten einer Bauteilseite verlassen den Port in dieselbe Richtung —
+    // Quelle und Ziel eingeschlossen (ROUTE-BUG-12) —, deshalb reicht EINE
+    // Rangfolge pro Gruppe. Gleichstand deterministisch per Edge-ID.
+    const ranked = [...assignments].sort(
+      (a, b) => Math.abs(b.offset) - Math.abs(a.offset) || a.edgeId.localeCompare(b.edgeId)
+    );
+    const rankOf = new Map(ranked.map((assignment, index) => [assignment.edgeId, index] as const));
+    // ROUTE-BUG-35: Zwillinge zählen — Rang −1 und +1 haben denselben Betrag.
+    const tieOf = new Map(
+      ranked.map(
+        (assignment, index) =>
+          [
+            assignment.edgeId,
+            ranked.slice(0, index).filter((other) => Math.abs(other.offset) === Math.abs(assignment.offset))
+              .length,
+          ] as const
+      )
+    );
+    for (const assignment of assignments) {
+      const entry = lanes.get(assignment.edgeId) ?? { lane: 0, laneTarget: 0 };
+      const rank = rankOf.get(assignment.edgeId) ?? 0;
+      const tie = tieOf.get(assignment.edgeId) ?? 0;
+      // `laneStep`/`laneStepTarget` bleiben UNBESETZT: `portFrame` leitet den
+      // Seitenschritt dann aus `lane` ab, und `catalogCandidates` erkennt daran
+      // den Fall „überhaupt kein Seitenschritt" (zweiter Rahmen mit Schritt 0).
+      //
+      // Verworfener Versuch (gemessen 2026-09-09): die Stub-Verlängerung aus
+      // dem Rang in der Gruppe statt aus |Lane| zu nehmen. Das trennt zwar zwei
+      // Zuführungen auf gegenüberliegenden Seiten — Rang −1 und +1 haben
+      // denselben Betrag, also gleich lange Stubs und dieselbe Zuführungs-Achse
+      // (I2) —, kostete aber 14 zusätzliche Kreuzungen über die Referenzpläne
+      // und 6 zusätzliche Überdeckungs-Paare im dichtesten Plan, gegen genau
+      // ein behobenes Kurzsegment.
+      if (roleOf.get(`${key}|${assignment.edgeId}`) === 'source') {
+        entry.lane = assignment.offset;
+        entry.laneRank = rank;
+        entry.laneTie = tie;
+      } else {
+        entry.laneTarget = assignment.offset;
+        entry.laneTargetRank = rank;
+        entry.laneTargetTie = tie;
+      }
+      lanes.set(assignment.edgeId, entry);
     }
   }
-  return offsets;
+  return lanes;
 }
 
 /**
- * R-6: Gemeinsame Segmente auf gemeinsame Lanes ausrichten.
+ * Echte Kreuzungen je Kante aus der fertig gerouteten Geometrie.
  *
- * Innere Segmente mehrerer Kanten, die denselben Korridor fahren
- * (achsenparallel, ≤ 6 px Versatz, ≥ 32 px Überlappung), werden auf
- * dasselbe 8-px-Halbton-Raster gezogen — sie liegen danach exakt nebenei-
- * nander statt fast übereinander. Jeder Zugrif bleibt hindernisfrei geprüft;
- * Endpunkte und Stubs werden nie verändert.
+ * Eine Kreuzung = eine fremde Kante, deren Verlauf diesen Weg schneidet
+ * (nicht: Zahl der Segmentpaare). Räumlich vorgefiltert über den
+ * `SegmentSpatialIndex`, damit große Pläne im Frame-Budget bleiben (R-4).
  */
-export function alignSharedCorridors(
-  paths: { id: string; waypoints: Point[] }[],
-  obstacles: Rect[]
-): Map<string, Point[]> {
-  const out = new Map<string, Point[]>();
-  for (const path of paths) out.set(path.id, path.waypoints);
-
-  type Item = { id: string; segIndex: number; coord: number; from: number; to: number; horizontal: boolean };
-  const items: Item[] = [];
-  for (const path of paths) {
-    for (let i = 1; i < path.waypoints.length - 2; i++) {
-      const a = path.waypoints[i];
-      const b = path.waypoints[i + 1];
-      if (!a || !b) continue;
-      const horizontal = Math.abs(a.y - b.y) <= 1e-6 && Math.abs(a.x - b.x) > 1e-6;
-      const vertical = Math.abs(a.x - b.x) <= 1e-6 && Math.abs(a.y - b.y) > 1e-6;
-      if (!horizontal && !vertical) continue;
-      items.push({
-        id: path.id,
-        segIndex: i,
-        coord: horizontal ? a.y : a.x,
-        from: horizontal ? Math.min(a.x, b.x) : Math.min(a.y, b.y),
-        to: horizontal ? Math.max(a.x, b.x) : Math.max(a.y, b.y),
-        horizontal,
-      });
+function countRealCrossings(order: readonly string[], waypoints: Map<string, Point[]>): Map<string, number> {
+  const segmentsByEdge = new Map<string, Segment[]>();
+  const all: Segment[] = [];
+  const edgeOfSegment = new Map<Segment, string>();
+  for (const id of order) {
+    const segments = waypointsToSegments(waypoints.get(id) ?? []);
+    segmentsByEdge.set(id, segments);
+    for (const segment of segments) {
+      all.push(segment);
+      edgeOfSegment.set(segment, id);
     }
   }
-
-  // Cluster je Achse: nach Koordinate sortieren, Nachbarn ≤ Toleranz
-  // bündeln und nur bei ausreichender Überlappung (> 32 px entlang der
-  // Achse) auf dasselbe 8-px-Raster ziehen.
-  const snapToLane = (value: number): number => Math.round(value / LANE_GRID) * LANE_GRID;
-  for (const horizontal of [true, false]) {
-    const axis = items.filter((item) => item.horizontal === horizontal).sort((a, b) => a.coord - b.coord);
-    let cluster: Item[] = [];
-    const flush = () => {
-      if (cluster.length >= 2) {
-        // Ziel-Lane: kleinste Koordinate im Cluster, auf 8 px gerastet —
-        // deterministisch unabhängig von der Eingabereihenfolge.
-        const minCoord = cluster.reduce((min, item) => Math.min(min, item.coord), Infinity);
-        const target = Math.max(minCoord, snapToLane(minCoord));
-        // Paare mit ≥ CORRIDOR_MIN_OVERLAP gemeinsamer Länge aus jeweils
-        // ZWEI verschiedenen Kanten ausrichten.
-        for (let i = 0; i < cluster.length; i++) {
-          for (let j = 0; j < cluster.length; j++) {
-            if (i === j) continue;
-            const a = cluster[i]!;
-            const b = cluster[j]!;
-            if (a.id === b.id) continue;
-            const overlap = Math.min(a.to, b.to) - Math.max(a.from, b.from);
-            if (overlap < CORRIDOR_MIN_OVERLAP) continue;
-            for (const item of [a, b]) {
-              if (item.coord === target) continue;
-              const points = out.get(item.id);
-              if (!points) continue;
-              const p1 = points[item.segIndex];
-              const p2 = points[item.segIndex + 1];
-              if (!p1 || !p2) continue;
-              const moved1 = horizontal ? { x: p1.x, y: target } : { x: target, y: p1.y };
-              const moved2 = horizontal ? { x: p2.x, y: target } : { x: target, y: p2.y };
-              const candidate = [...points];
-              candidate[item.segIndex] = moved1;
-              candidate[item.segIndex + 1] = moved2;
-              if (!pathHitsObstacles(candidate, obstacles)) {
-                out.set(item.id, candidate);
-              }
-            }
-          }
+  const index = new SegmentSpatialIndex(all);
+  const out = new Map<string, number>();
+  for (const id of order) {
+    const own = segmentsByEdge.get(id) ?? [];
+    if (own.length === 0) {
+      out.set(id, 0);
+      continue;
+    }
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    for (const points of [waypoints.get(id) ?? []]) {
+      for (const p of points) {
+        minX = Math.min(minX, p.x);
+        maxX = Math.max(maxX, p.x);
+        minY = Math.min(minY, p.y);
+        maxY = Math.max(maxY, p.y);
+      }
+    }
+    const candidates = index.queryRect({ x: minX, y: minY, width: maxX - minX, height: maxY - minY });
+    const crossed = new Set<string>();
+    for (const candidate of candidates) {
+      const otherId = edgeOfSegment.get(candidate);
+      if (otherId === undefined || otherId === id || crossed.has(otherId)) continue;
+      for (const segment of own) {
+        if (segmentsCross(segment, candidate)) {
+          crossed.add(otherId);
+          break;
         }
       }
-      cluster = [];
-    };
-    for (const item of axis) {
-      const prev = cluster[cluster.length - 1];
-      if (prev && Math.abs(item.coord - prev.coord) > CORRIDOR_MERGE_TOLERANCE) flush();
-      cluster.push(item);
     }
-    flush();
+    out.set(id, crossed.size);
   }
   return out;
-
-  function pathHitsObstacles(points: Point[], rects: Rect[]): boolean {
-    for (let i = 0; i < points.length - 1; i++) {
-      const a = points[i]!;
-      const b = points[i + 1]!;
-      for (const rect of rects) {
-        if (classifyCollision({ type: 'edge-node', segment: [a, b], obstacle: rect }).class === 'hard')
-          return true;
-      }
-    }
-    return false;
-  }
 }
 
 /**
@@ -339,6 +436,27 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
   // ausgefilterte Hindernisse nicht getroffen werden können (außerhalb).
   const obstacleById = nodeObstacleMap(nodes);
   const OBSTACLE_REGION_PAD = 240;
+  /** Bounding-Box einer Route, allseitig um `pad` erweitert. */
+  const routeWindow = (points: readonly Point[], pad: number): Rect => {
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    for (const p of points) {
+      minX = Math.min(minX, p.x);
+      minY = Math.min(minY, p.y);
+      maxX = Math.max(maxX, p.x);
+      maxY = Math.max(maxY, p.y);
+    }
+    if (!Number.isFinite(minX)) return { x: 0, y: 0, width: 0, height: 0 };
+    return { x: minX - pad, y: minY - pad, width: maxX - minX + 2 * pad, height: maxY - minY + 2 * pad };
+  };
+  /** Liegt `inner` vollständig in `outer`? */
+  const coversRect = (outer: Rect, inner: Rect): boolean =>
+    inner.x >= outer.x &&
+    inner.y >= outer.y &&
+    inner.x + inner.width <= outer.x + outer.width &&
+    inner.y + inner.height <= outer.y + outer.height;
   const obstaclesNear = (excludeIds: Set<string>, region: Rect): Rect[] => {
     const out: Rect[] = [];
     obstacleById.forEach((rect, id) => {
@@ -347,44 +465,9 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
     });
     return out;
   };
-  // R-4: Kreuzungsbasis über den gecachten Spatial-Index — kein 120er-Limit mehr.
-  const edgeRefs = edges.map((edge) => ({ id: edge.id, source: edge.source, target: edge.target }));
-  const crossingAll =
-    edgeRefs.length > 0
-      ? crossingSegmentsNear(
-          nodes,
-          edgeRefs,
-          { id: '\u0000-none', source: '', target: '' },
-          planBounds(nodes)
-        )
-      : [];
-  /** Gemeinsame BBox aller Nodes (für die globale Kreuzungszählung, R-6). */
-  function planBounds(nodeList: RoutableNode[]): Rect {
-    let minX = Infinity;
-    let minY = Infinity;
-    let maxX = -Infinity;
-    let maxY = -Infinity;
-    for (const node of nodeList) {
-      const x = nodeOriginX(node);
-      const y = nodeOriginY(node);
-      minX = Math.min(minX, x);
-      minY = Math.min(minY, y);
-      maxX = Math.max(maxX, x + nodeWidth(node, NODE_W));
-      maxY = Math.max(maxY, y + nodeHeight(node, NODE_H));
-    }
-    return { x: minX - 200, y: minY - 200, width: maxX - minX + 400, height: maxY - minY + 400 };
-  }
-
-  const siblingEdges = edges.map((edge) => ({
-    id: edge.id,
-    source: edge.source,
-    target: edge.target,
-    sourceHandle: edge.sourceHandle,
-  }));
-
   // R-6/R-7: Port-Reihenfolge vor dem Einzel-Routing festlegen
   // (deterministisch); die Handle-Seite folgt der Flussrichtung.
-  const portOffsets = portOrderedLaneOffsets(edges, (edge, kind) => {
+  const portLanes = portFanOutLanes(edges, (edge, kind) => {
     const srcNode = nodeById.get(edge.source);
     const tgtNode = nodeById.get(edge.target);
     const flow = centerDelta(srcNode, tgtNode);
@@ -400,7 +483,16 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
 
   const raw: { id: string; waypoints: Point[]; result: PathResult }[] = [];
   const dynamicRoutedSegments: { edgeId: string; segment: Segment }[] = [];
+  // ROUTE-BUG-16: wächst mit jeder verlegten Kante (siehe `addTubes`).
+  const tubes: Rect[] = [];
 
+  // Verworfener Versuch (gemessen 2026-09-09): die Arbeitsreihenfolge nach
+  // der Luftlinie der Bauteile zu sortieren, lange Querleger zuerst. Die
+  // Erwartung war, dass die langen Kanten die sauberen Korridore bekommen.
+  // Gemessen das Gegenteil: Kreuzungen 42 → 58 über die Referenzpläne
+  // (complex 28 → 41), dazu 2 × I6 und 3 × I7 mehr. Die langen Kanten auf
+  // Lane 0 legen sich quer durch die Mitte und zwingen damit jede kurze
+  // Kante zum Kreuzen. Die Store-Reihenfolge bleibt.
   for (let i = 0; i < edges.length; i++) {
     const edge = edges[i];
     if (!edge) continue;
@@ -415,30 +507,44 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
       flow ? { x: -flow.x, y: -flow.y } : undefined
     );
     const exclude = new Set([edge.source, edge.target]);
-    // PERF-001: nur Hindernisse in der erweiterten Routen-Umgebung.
-    const obstacles = obstaclesNear(exclude, {
+    const region: Rect = {
       x: Math.min(src.x, tgt.x) - OBSTACLE_REGION_PAD,
       y: Math.min(src.y, tgt.y) - OBSTACLE_REGION_PAD,
       width: Math.abs(src.x - tgt.x) + 2 * OBSTACLE_REGION_PAD,
       height: Math.abs(src.y - tgt.y) + 2 * OBSTACLE_REGION_PAD,
-    });
-    const lane =
-      portOffsets.get(edge.id) ??
-      parallelLaneOffset({
-        edgeId: edge.id,
-        source: edge.source,
-        target: edge.target,
-        sourceHandle: edge.sourceHandle,
-        siblingEdges,
-      });
-    const result = findCablePath({
+    };
+    // PERF-001: nur Hindernisse in der erweiterten Routen-Umgebung.
+    const obstacles = obstaclesNear(exclude, region);
+    // ROUTE-BUG-9: Lanes kommen AUSSCHLIEßLICH aus dem Port-Fan-Out.
+    // Der frühere Rückfall auf `parallelLaneOffset` mischte eine zweite,
+    // incompatible Lane-Mechanik ein (vorzeichenbehaftete Halb-Lanes
+    // ±19/±38 px je Bauteil-Paar): zwei Geschwister-Kanten erhielten
+    // denselben Betrag, knickten also an derselben Stelle ab und belegten
+    // dieselbe Trasse (I2). Ein Port ohne Bündel fährt auf Lane 0.
+    const lanes = portLanes.get(edge.id);
+    const request = {
       sourceX: src.x,
       sourceY: src.y,
       sourcePosition: src.position,
       targetX: tgt.x,
       targetY: tgt.y,
       targetPosition: tgt.position,
-      offset: polarityPathOffset(edge.sourceHandle) + lane,
+      // Lane-Versatz NUR aus dem Port-Fan-Out (bzw. der Bündel-Lane).
+      // ROUTE-BUG-3: Früher kam die Polaritäts-Lane (+24/+40 px, immer
+      // gleiches Vorzeichen) dazu. Sie zwang jede Leitung unabhängig von der
+      // Ziellage auf eine Seite der Port-Achse — der Fan-Out lief dadurch
+      // regelmäßig erst von der Route weg und dann zurück (Haken am Port,
+      // doppelte Belegung der Nachbarspur). Die Trennung von Plus/Minus ist
+      // Aufgabe des Fan-Outs: beide Leiter verlassen dasselbe Bauteil an
+      // verschiedenen Ports oder bekommen verschiedene Lanes.
+      lane: lanes?.lane ?? 0,
+      laneTarget: lanes?.laneTarget ?? 0,
+      // Rang im Bündel — greift nur, wenn die Stub-Kappung bindet
+      // (ROUTE-BUG-34, `capStep` in pathfinding.ts).
+      stubCapRank: lanes?.laneRank,
+      stubCapRankTarget: lanes?.laneTargetRank,
+      stubTie: lanes?.laneTie,
+      stubTieTarget: lanes?.laneTargetTie,
       obstacles,
       // AUDIT ROUTE-001 (Härtung 2026-09-08): eigene Boxen explizit — der
       // Router verwirft NUR diese; fremde, an den eigenen Node geklebte
@@ -447,23 +553,93 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
         (r): r is Rect => r !== undefined
       ),
       crossingSegments: dynamicRoutedSegments.filter((s) => s.edgeId !== edge.id).map((s) => s.segment),
-    });
+    };
+    let request_ = request;
+    let result = findCablePath({ ...request_, cableTubes: tubesForRegion(tubes, region) });
+    // ROUTE-BUG-24: Das Hindernis-Fenster (PERF-001) ist die Bounding-Box der
+    // beiden Ports plus Puffer. Verlässt die gefundene Route dieses Fenster,
+    // lagen Bauteile jenseits der Grenze außerhalb jeder Prüfung — die
+    // Leitung legt sich dann genau auf die Fenstergrenze und damit beliebig
+    // nah an ein Bauteil, das die Suche nie gesehen hat (gemessen: 2.4 px an
+    // drei Nachbarbauteilen, 4 × I3 im Referenzplan complex).
+    //
+    // Deshalb wird die Anfrage mit dem Fenster der TATSÄCHLICHEN Route
+    // wiederholt, bis der Hindernis-Satz stabil ist. Maximal drei Durchgänge:
+    // Jede Runde vergrößert das Fenster monoton und die Bauteil-Menge ist
+    // endlich, die Schleife terminiert also — und bleibt deterministisch.
+    let window = region;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const span = routeWindow(result.waypoints, OBSTACLE_REGION_PAD);
+      if (coversRect(window, span)) break;
+      const wider = obstaclesNear(exclude, span);
+      if (wider.length === request_.obstacles.length) break;
+      request_ = { ...request_, obstacles: wider };
+      window = span;
+      result = findCablePath({ ...request_, cableTubes: tubesForRegion(tubes, span) });
+    }
+    // ROUTE-BUG-16 (Rangfolge der Garantien): Trassen-Belegung ist eine
+    // Qualitätsregel (I2), Hindernisfreiheit eine harte Regel (I1). Führt die
+    // Trassensperre in die Sackgasse — der Router liefert nur noch den
+    // Notfallpfad ohne Freigabe —, wird dieselbe Anfrage ohne Tubes erneut
+    // gestellt. Lieber zwei Kanten auf einer Trasse als eine Kante durch ein
+    // Bauteil.
+    if (result.usedSearch === 'fallback') {
+      const free = findCablePath({ ...request_, cableTubes: [] });
+      if (free.usedSearch !== 'fallback' || !free.fallbackHitsObstacles) result = free;
+    }
     raw.push({ id: edge.id, waypoints: result.waypoints, result });
+    addTubes(tubes, result.waypoints);
     const segments = waypointsToSegments(result.waypoints);
     for (const seg of segments) dynamicRoutedSegments.push({ edgeId: edge.id, segment: seg });
   }
 
   const inflated: Rect[] = allObstacles.map((r) => inflateRect(r, OBSTACLE_MARGIN));
-  // R-6: gemeinsame Korridore zuerst auf gemeinsame Lanes ausrichten,
-  // danach löst der Nudge nur noch echte Rest-Überlappungen auf.
-  const aligned = alignSharedCorridors(
-    raw.map((r) => ({ id: r.id, waypoints: r.waypoints })),
-    inflated
-  );
+
+  // Verworfener Versuch (gemessen 2026-09-09): ein ZWEITER Routing-Gang über
+  // die kreuzungsreichsten Kanten, mit vollem Wissen über alle anderen
+  // (Trassen + Kreuzungs-Segmente) und Ausweich-Trassen ab der ersten
+  // Kreuzung. Keine einzige der Referenzpläne hat dadurch auch nur eine
+  // Kreuzung verloren — die verbleibenden sind strukturell (vier
+  // Bauteil-Spalten, neun Querleger dazwischen), nicht gierig verursacht.
+  // Kosten: +0,45 ms auf den Referenzplan (1,68 → 2,13 ms). Deshalb raus.
+  // Was bleibt, ist die symmetrische Ausweich-Trasse in `findCablePath`
+  // (ROUTE-BUG-27): Sie allein brachte 42 → 40 Kreuzungen ohne Nebenwirkung.
+
+  // R-6: Parallellaufende Innensegmente auf eigene Lanes verteilen.
+  // ROUTE-BUG-4: Die frühere Zusatzstufe `alignSharedCorridors` zog
+  // Segmente desselben Korridors auf EINE gemeinsame Lane — also exakt
+  // übereinander (neue I2-Überdeckungen) — und verschob dabei auch
+  // Stub-Endpunkte, was die Port-Richtung brach. Sie ist ersatzlos
+  // gestrichen; `nudgeOrthogonalPaths` löst Überlappungen auf und
+  // akzeptiert eine Variante nur, wenn sie die Route nicht verschlechtert.
   const nudged = nudgeOrthogonalPaths(
-    raw.map((r) => ({ id: r.id, waypoints: aligned.get(r.id) ?? r.waypoints })),
+    raw.map((r) => ({ id: r.id, waypoints: r.waypoints })),
     { obstacles: inflated }
   );
+
+  // Letzter Geometrie-Gang (ROUTE-BUG-19): Treppen und Mini-Stufen auflösen.
+  //
+  // `mergeCloseBends` zieht ein kurzes Innensegment (kürzer als 2·bendRadius)
+  // auf die Achse seines Vorgängers — genau die Struktur, die I7 als
+  // Treppenmuster zählt und I6 als Kurzsegment. Der Nudge erzeugt sie selbst:
+  // Er verschiebt ein Segment als Ganzes (ROUTE-BUG-17), das Anschlusssegment
+  // wird dabei kürzer (gemessen 30 px → 14 px). Deshalb läuft dieser Gang
+  // NACH dem Nudge und nicht davor.
+  //
+  // Übernommen wird das Ergebnis nur unter denselben Bedingungen wie beim
+  // Nudge: orthogonal, hindernisfrei und nach `routeDefectScore` nicht
+  // schlechter. Handles bleiben exakt — `mergeCloseBends` tastet die ersten
+  // und letzten Punkte nicht an.
+  const cleaned = new Map<string, Point[]>();
+  for (const [id, waypoints] of nudged) {
+    const merged = mergeCloseBends(waypoints);
+    const worthIt =
+      merged.length < waypoints.length &&
+      isOrthogonalPath(merged) &&
+      !pathHitsObstacles(merged, inflated) &&
+      routeDefectScore(merged) <= routeDefectScore(waypoints);
+    cleaned.set(id, worthIt ? merged : waypoints);
+  }
 
   // Deterministische Ausgabereihenfolge: nach Edge-ID, nicht nach Eingabereihenfolge.
   const order = raw.map((r) => r.id).sort((a, b) => a.localeCompare(b));
@@ -471,7 +647,7 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
   const finalWaypoints = new Map<string, Point[]>(
     order.map((id) => {
       const item = byId.get(id);
-      return [id, nudged.get(id) ?? aligned.get(id) ?? item?.waypoints ?? []];
+      return [id, cleaned.get(id) ?? nudged.get(id) ?? item?.waypoints ?? []];
     })
   );
 
@@ -495,11 +671,21 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
     })
   );
 
+  // ROUTE-BUG-5: Kreuzungen aus der TATSÄCHLICH gerouteten Geometrie.
+  // Früher wurde gegen Mittelpunkts-Näherungen aller Kanten gezählt — und
+  // weil als „aktuelle Kante“ ein Platzhalter übergeben wurde, zählte jede
+  // Leitung auch ihre eigene Näherungsstrecke mit (gemessen: 133 gemeldete
+  // gegen 60 echte Kreuzungen über die sechs Referenzpläne). Gezählt werden
+  // jetzt echte Schnitte (`segmentsCross`) gegen die Wegpunkte der anderen
+  // Kanten, eine Kreuzung je fremder Kante — exakt die Punkte, an denen auch
+  // die Hop-Bögen sitzen.
+  const crossingsByEdge = countRealCrossings(order, finalWaypoints);
+
   for (const id of order) {
     const item = byId.get(id);
     if (!item) continue;
     const wp = finalWaypoints.get(id) ?? item.waypoints;
-    const crossings = countCrossings(wp, crossingAll);
+    const crossings = crossingsByEdge.get(id) ?? 0;
     out.set(
       id,
       rebuild(
@@ -507,7 +693,8 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
         crossings,
         item.result.usedSearch,
         hopsByEdge.get(id) ?? [],
-        item.result.fallbackHitsObstacles
+        item.result.fallbackHitsObstacles,
+        item.result.tightMarginUsed
       )
     );
   }

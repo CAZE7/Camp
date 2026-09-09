@@ -32,6 +32,31 @@ export const AUTO_WIRE_GRID = 16;
 export const NODE_BOX_WIDTH = 192;
 export const NODE_BOX_HEIGHT = 120;
 
+/**
+ * ROUTE-BUG-32: Mindestspalt zwischen zwei Bauteilen, deren Ports einander
+ * gegenüberliegen.
+ *
+ * Eine Leitung verlässt den Port mit `stubMin` px Stub und braucht danach
+ * `cableClearance` px Luft zum nächsten Bauteil. Ist der Spalt kleiner, sind
+ * Stub und Freigabe geometrisch nicht gleichzeitig erfüllbar — der Router
+ * muss dann eine Ausnahme machen (`tightMarginUsed`, I3). Gemessen im
+ * Referenzplan complex: 60-px-Spalt, 56-px-Stub durch die Lane-Staffelung,
+ * Lane-Punkt 4 px vor dem Nachbarbauteil.
+ *
+ * Der Router fängt den Fall inzwischen ab (ROUTE-BUG-31 kappt den Stub),
+ * aber die Platzierung soll ihn gar nicht erst erzeugen.
+ *
+ * Ein Lane-Raster kommt dazu, weil an einer Klemme meist mehr als eine
+ * Leitung hängt: Das Bündel staffelt um `laneGrid` (R-7), die zweite
+ * Leitung braucht also `stubMin + laneGrid` Stub plus Freigabe. Größer als
+ * EIN Schritt ist die Forderung bewusst nicht — die Bündelgröße ist offen,
+ * und ab der dritten Lane degradiert der Router kontrolliert
+ * (Rang-Treppe in der Kappung, ROUTE-BUG-34) statt dass die Platzierung
+ * Bauteile beliebig auseinanderschiebt.
+ */
+export const PORT_FACING_CLEARANCE =
+  ROUTING_TOKENS.stubMin + ROUTING_TOKENS.laneGrid + ROUTING_TOKENS.cableClearance;
+
 /** Spaltenabstand in Flussrichtung (192 px Node + 96 px Korridor). */
 export const FLOW_COLUMN_SPACING = NODE_BOX_WIDTH + 96;
 

@@ -1,19 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="-60 -500 1512 1160" width="1512" height="1160" role="img" aria-label="Nutzerplan: Auto-Verdrahtung">
   <rect x="-100000" y="-100000" width="200000" height="200000" fill="#0f172a"/>
   <text x="-48" y="-472" fill="#e2e8f0" font-family="monospace" font-size="16">nutzerplan-autowire — 12-px-Freigabe</text>
-  <path d="M 192 36 L 250.5 36 Q 260.5 36 260.5 46 L 260.5 242 Q 260.5 252 270.5 252 L 288 252" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
-  <path d="M 134.4 120 L 134.45 120 Q 134.5 120 134.5 120.05 L 134.5 344 Q 134.5 354 144.5 354 L 374 354 Q 384 354 384 364 L 384 384" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
-  <path d="M 480 468 L 535 468 Q 545 468 545 458 L 545 262 Q 545 252 555 252 L 576 252" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
-  <path d="M 480 228 L 538.5 228 Q 548.5 228 548.5 218 L 548.5 70 Q 548.5 60 558.5 60 L 576 60" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
-  <path d="M 710.4 192 L 710.45 192 Q 710.5 192 710.5 191.95 L 710.5 160 Q 710.5 150 700.5 150 L 682 150 Q 672 150 672 140 L 672 120" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
-  <path d="M 768 36 L 990 36 Q 1000 36 1000 46 L 1000 250 Q 1000 260 1010 260 L 1200 260" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
-  <path d="M 768 276 L 1008 276 Q 1016 276 1016 268 L 1016 268 Q 1016 260 1024 260 L 1200 260" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
-  <path d="M 768 36 L 990 36 Q 1000 36 1000 46 L 1000 268 A 8 8 0 0 1 1000 284 L 1000 530 Q 1000 540 1010 540 L 1200 540" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
-  <path d="M 768 276 L 992 276 A 8 8 0 0 1 1008 276 L 1022 276 Q 1032 276 1032 286 L 1032 530 Q 1032 540 1042 540 L 1200 540" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
-  <path d="M 57.6 -280 L 57.55 -280 Q 57.5 -280 57.5 -279.95 L 57.5 -30.75 Q 57.5 -20.75 67.5 -20.75 L 381.13 -20.75 Q 384 -20.75 384 -23.62 L 384 -23.62 Q 384 -26.5 384 -23.62 L 384 0" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
-  <path d="M 134.4 -280 L 134.45 -280 Q 134.5 -280 134.5 -279.95 L 134.5 -46.75 Q 134.5 -36.75 144.5 -36.75 L 374 -36.75 Q 384 -36.75 384 -26.75 L 384 0" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
-  <path d="M 345.6 120 L 345.55 120 Q 345.5 120 345.5 120.05 L 345.5 154.5 Q 345.5 164.5 355.5 164.5 L 374 164.5 Q 384 164.5 384 174.5 L 384 192" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
-  <path d="M 480 84 L 537 84 Q 547 84 547 94 L 547 220 A 8 8 0 0 1 547 236 L 547 242 Q 547 252 557 252 L 576 252" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
+  <path d="M 192 36 L 206 36 Q 216 36 216 46 L 216 242 Q 216 252 226 252 L 288 252" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
+  <path d="M 134.4 120 L 134.4 350 Q 134.4 360 144.4 360 L 374 360 Q 384 360 384 370 L 384 384" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
+  <path d="M 480 468 L 542 468 Q 552 468 552 458 L 552 262 Q 552 252 562 252 L 576 252" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
+  <path d="M 480 228 L 494 228 Q 504 228 504 218 L 504 70 Q 504 60 514 60 L 576 60" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
+  <path d="M 710.4 192 L 710.4 178 Q 710.4 168 700.4 168 L 682 168 Q 672 168 672 158 L 672 120" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
+  <path d="M 768 36 L 798 36 Q 808 36 808 46 L 808 250 Q 808 260 818 260 L 1200 260" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
+  <path d="M 768 276 L 1168 276 Q 1176 276 1176 268 L 1176 268 Q 1176 260 1184 260 L 1200 260" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
+  <path d="M 768 36 L 814 36 Q 824 36 824 46 L 824 58 Q 824 68 834 68 L 1134 68 Q 1144 68 1144 78 L 1144 252 A 8 8 0 0 1 1144 268 A 8 8 0 0 1 1144 284 L 1144 530 Q 1144 540 1154 540 L 1200 540" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
+  <path d="M 768 276 L 784 276 Q 792 276 792 284 L 792 284 Q 792 292 800 292 L 1122 292 Q 1132 292 1132 302 L 1132 514 Q 1132 524 1142 524 A 2 2 0 0 1 1146 524 L 1152 524 Q 1160 524 1160 532 L 1160 532 Q 1160 540 1168 540 L 1200 540" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
+  <path d="M 57.6 -280 L 57.6 -234 Q 57.6 -224 67.6 -224 L 374 -224 Q 384 -224 384 -214 L 384 0" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
+  <path d="M 134.4 -280 L 134.4 -246 Q 134.4 -236 144.4 -236 L 386 -236 Q 396 -236 396 -226 L 396 -46 Q 396 -40 390 -40 L 390 -40 Q 384 -40 384 -34 L 384 0" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
+  <path d="M 345.6 120 L 345.6 134 Q 345.6 144 355.6 144 L 374 144 Q 384 144 384 154 L 384 192" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
+  <path d="M 480 84 L 496 84 A 8 8 0 0 1 512 84 L 526 84 Q 536 84 536 94 L 536 242 Q 536 252 546 252 L 576 252" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
   <rect x="0" y="0" width="192" height="120" fill="#1e293b" stroke="#64748b" stroke-width="2" rx="8"/>
   <text x="12" y="28" fill="#e2e8f0" font-family="monospace" font-size="14">Batterie</text>
   <rect x="0" y="-400" width="192" height="120" fill="#1e293b" stroke="#64748b" stroke-width="2" rx="8"/>

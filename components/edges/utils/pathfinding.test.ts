@@ -7,6 +7,7 @@ import {
   simplifyWaypoints,
   isOrthogonalPath,
   pathHitsObstacles,
+  portFrame,
   pathLength,
   countBends,
   manhattan,
@@ -26,6 +27,7 @@ import {
 } from './pathfinding';
 import { waypointsToPath, parallelLaneOffset, polarityPathOffset, edgeLabelNudge } from './pathUtils';
 import { ROUTING_SCENARIOS } from './routingScenarios';
+import { ROUTING_TOKENS } from '../../../lib/routing/tokens';
 
 beforeEach(() => {
   clearPathfindingCache();
@@ -281,8 +283,8 @@ describe('findCablePath — invariants', () => {
   });
 
   it('plus/minus offsets produce distinct corridors', () => {
-    const plus = route(0, 0, 200, 80, [], { offset: 24 });
-    const minus = route(0, 0, 200, 80, [], { offset: 38 });
+    const plus = route(0, 0, 200, 80, [], { lane: 24 });
+    const minus = route(0, 0, 200, 80, [], { lane: 38 });
     expect(plus.waypoints).not.toEqual(minus.waypoints);
   });
 
@@ -613,6 +615,92 @@ describe('Fallback-Verhalten (R-3)', () => {
       expect(isOrthogonalPath(result.waypoints)).toBe(true);
     }
     expect(pathfindingFallbackCount()).toBe(0);
+  });
+
+  // ROUTE-BUG-31: Die Lane-Staffelung verlängert den Stub. Steht ein Bauteil
+  // gegenüber, darf diese Verlängerung den Lane-Punkt nicht an das Bauteil
+  // heranschieben — die Freigabe ist eine Regel, die Staffelung Komfort.
+  it('kappt den Stub an der Bauteil-Freigabe, statt den Lane-Punkt heranzuschieben', () => {
+    const wall: Rect = { x: 60, y: -60, width: 140, height: 120 };
+    const result = findCablePath({
+      sourceX: 0,
+      sourceY: 0,
+      sourcePosition: Position.Right,
+      targetX: 400,
+      targetY: 0,
+      targetPosition: Position.Left,
+      lane: 48,
+      obstacles: [wall],
+      skipCache: true,
+    });
+    const stubEnd = result.waypoints[1]!;
+    // Ohne Kappung wäre der Stub 24 + 48 = 72 px lang und der Lane-Punkt
+    // läge IN der Box. Mit Kappung gilt: 60 px Spalt − 12 px Freigabe = 48.
+    expect(stubEnd.x).toBeGreaterThanOrEqual(ROUTING_TOKENS.stubMin);
+    expect(stubEnd.x).toBeLessThanOrEqual(48 + 1e-6);
+    // Und die ganze Route hält die Freigabe zum Rohbauteil ein.
+    expect(pathHitsObstacles(result.waypoints, [inflateRect(wall, ROUTING_TOKENS.cableClearance)])).toBe(
+      false
+    );
+  });
+
+  // ROUTE-BUG-34: Greift die Kappung, darf das Bündel nicht zu einer Einheit
+  // kollabieren — sonst laufen alle gekappten Kanten auf derselben Trasse.
+  it('staffelt gekappte Stubs über den Bündel-Rang (ROUTE-BUG-34)', () => {
+    const base = {
+      sourceX: 0,
+      sourceY: 0,
+      sourcePosition: Position.Top,
+      targetX: 0,
+      targetY: -400,
+      targetPosition: Position.Bottom,
+    };
+    const inner = portFrame({ ...base, lane: -64, stubCap: 48, stubCapRank: 0 });
+    const outer = portFrame({ ...base, lane: -80, stubCap: 48, stubCapRank: 1 });
+    // Ohne Rang-Treppe wären beide Stubs 48 px — dieselbe Trasse (I2).
+    expect(inner.stub).toBe(48);
+    expect(outer.stub).toBe(48 - ROUTING_TOKENS.laneGrid);
+  });
+
+  // ROUTE-BUG-35: Rang −1 und +1 derselben Bauteilseite haben denselben
+  // Betrag, also gleich lange Stubs und dieselbe Zuführungs-Achse.
+  it('zieht den Gleichstand im Bündel nach innen (ROUTE-BUG-35)', () => {
+    const base = {
+      sourceX: 0,
+      sourceY: 0,
+      sourcePosition: Position.Top,
+      targetX: 0,
+      targetY: -400,
+      targetPosition: Position.Bottom,
+    };
+    const first = portFrame({ ...base, lane: -16, stubTie: 0 });
+    const twin = portFrame({ ...base, lane: 16, stubTie: 1 });
+    expect(first.stub).toBe(ROUTING_TOKENS.stubMin + 16);
+    expect(twin.stub).toBe(ROUTING_TOKENS.stubMin);
+  });
+
+  // ROUTE-BUG-23: Eine Route, die die Bauteil-Freigabe aus geometrischer Not
+  // unterschreitet, muss das sagen — statt still enger zu liegen. Dieselben
+  // Fälle zählt `npm run routing:audit` als I3.
+  it('Freigabe-Notstufe wird gekennzeichnet (tightMarginUsed)', () => {
+    const stress = ROUTING_SCENARIOS.find((scenario) => scenario.id === '22-stress-scene');
+    if (!stress) throw new Error('Referenzszenario 22 fehlt');
+    // Der Ziel-Handle liegt 28 px vom Nachbarbauteil. Stub (24 px) plus
+    // Freigabe (12 px) brauchen 36 px — beides gleichzeitig ist geometrisch
+    // unmöglich, also greift R-7 („Stub-Recht") und die Route wird enger.
+    expect(findCablePath({ ...stress.input, skipCache: true }).tightMarginUsed).toBe(true);
+
+    const free = findCablePath({
+      sourceX: 0,
+      sourceY: 0,
+      sourcePosition: Position.Right,
+      targetX: 200,
+      targetY: 80,
+      targetPosition: Position.Left,
+      obstacles: [],
+      skipCache: true,
+    });
+    expect(free.tightMarginUsed).toBeUndefined();
   });
 
   it('unerreichbares Ziel: Fallback ist orthogonal, zählt und warnt', () => {

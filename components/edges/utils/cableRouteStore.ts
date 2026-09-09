@@ -158,7 +158,12 @@ export function computeCableRouteFinalValidation(
     const rect = obstacleById.get(node.id);
     if (rect) rects.push({ id: node.id, ...rect });
   }
-  return validateFinalRouting(routed, rects);
+  const report = validateFinalRouting(routed, rects);
+  let tight = 0;
+  for (const edge of edges) {
+    if (routes.get(edge.id)?.tightMarginUsed) tight += 1;
+  }
+  return { ...report, tightMarginRoutes: tight };
 }
 const subscribeValidation = (cb: () => void): (() => void) => {
   validationListeners.add(cb);

@@ -144,6 +144,25 @@ export function mergeCloseBends(
 }
 
 /**
+ * Stub-Länge für ein sich GEGENÜBERLIEGENDES Port-Paar (ROUTE-BUG-7).
+ *
+ * `gap` ist der freie Raum zwischen den beiden Anschlussstellen entlang der
+ * Port-Achse. Reicht er für zwei volle Stubs, gilt `stubMin`. Reicht er
+ * nicht, müssen sich beide Stubs den Raum teilen: Bei voller Stub-Länge
+ * würden sich die Stubs sonst überkreuzen, und die Route müsste direkt am
+ * Handle kehren (I4) oder ein Kurzsegment einschieben (I6) — beides ist
+ * schlechter als ein kürzerer, dafür gerader Stub.
+ *
+ * Fällt `gap / 2` unter `segmentMin`, ist das Layout degeneriert (Bauteile
+ * kleben praktisch aneinander); der Wert wird dann nicht künstlich angehoben,
+ * damit der Verstoß messbar bleibt.
+ */
+export function facingStubLength(gap: number, stubMin: number = ROUTING_TOKENS.stubMin): number {
+  if (!Number.isFinite(gap) || gap >= 2 * stubMin) return stubMin;
+  return Math.max(0, gap / 2);
+}
+
+/**
  * Lane-Berechnung (ROUTING-V2.md §5/§7): Versatz einer Lane vom
  * Referenzverlauf — `laneIndex × laneGrid`. Einzige Quelle für
  * Quer-Offsets der V2-Schicht (die LaneRegistry (WP-5) vergibt die Indizes).

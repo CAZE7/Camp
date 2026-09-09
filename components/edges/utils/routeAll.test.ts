@@ -1,16 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { Position, type Node } from '@xyflow/react';
-import {
-  routeAllCables,
-  portOrderedLaneOffsets,
-  alignSharedCorridors,
-  resolveHandlePoint,
-  type RouteEdgeRef,
-} from './routeAll';
+import { routeAllCables, portFanOutLanes, resolveHandlePoint, type RouteEdgeRef } from './routeAll';
 import { simplifyWaypoints } from './pathfinding';
 import { dedupe, orthogonalWaypoints } from './orthogonalRouting';
-import type { Point, Rect } from './orthogonalRouting';
+import type { Point } from './orthogonalRouting';
 import { ROUTING_SCENARIOS } from './routingScenarios';
+import { ROUTING_TOKENS } from '../../../lib/routing/tokens';
 
 /**
  * R-6 (Routing-Qualität): Globale Nachoptimierung.
@@ -79,94 +74,84 @@ describe('routeAll-Nachoptimierung (R-6)', () => {
     }
   });
 
-  it('Port-Reihenfolge: Stubs am geteilten Handle überkreuzen sich nicht', () => {
+  it('Port-Reihenfolge: Lanes am geteilten Handle folgen den Gegenenden', () => {
     // Drei Kanten verlassen denselben Quell-Handle (gleicher Punkt) zu
-    // Zielen bei y = 0, 200, 400. Ohne Sortierung (id-Sortierung der
-    // Bündel-Lanes) würde die oberste Lane zu einem tiefen Ziel laufen.
+    // Zielen bei y = 60, 260, 460. Die Lane muss mit dem Quer-Versatz des
+    // Gegenübers wachsen, sonst läuft die äußerste Lane zu einem nahen Ziel.
     const edges: RouteEdgeRef[] = [
       { id: 'z-first', source: 'hub', target: 'c' },
       { id: 'a-second', source: 'hub', target: 'a' },
       { id: 'm-third', source: 'hub', target: 'b' },
     ];
-    const offsets = portOrderedLaneOffsets(edges, (edge, kind) => {
+    const lanes = portFanOutLanes(edges, (edge, kind) => {
       if (kind === 'source') return { x: 192, y: 60, position: Position.Right };
       const y = edge.target === 'a' ? 60 : edge.target === 'b' ? 260 : 460;
       return { x: 400, y, position: Position.Left };
     });
-    // Reihenfolge nach Gegenüber-y: a (60) < b (260) < c (460).
-    const aOffset = offsets.get('a-second')!;
-    const bOffset = offsets.get('m-third')!;
-    const cOffset = offsets.get('z-first')!;
-    expect(aOffset).toBeLessThan(bOffset);
-    expect(bOffset).toBeLessThan(cOffset);
+    // Querachse eines Right-Ports ist y: a (60) liegt auf der Port-Achse
+    // (Lane 0), b (260) und c (460) darüber — Rang nach |Quer-Versatz|.
+    const aLane = lanes.get('a-second')!.lane;
+    const bLane = lanes.get('m-third')!.lane;
+    const cLane = lanes.get('z-first')!.lane;
+    expect(aLane).toBe(0);
+    expect(bLane).toBeGreaterThan(aLane);
+    expect(cLane).toBeGreaterThan(bLane);
+    // Ziel-Seiten ohne Bündel bleiben auf Lane 0.
+    expect(lanes.get('a-second')!.laneTarget).toBe(0);
   });
 
-  it('gemeinsame Korridore: nahe parallele Segmente liegen auf derselben Lane', () => {
-    const obstacles: Rect[] = [];
-    const paths = [
-      {
-        id: 'p1',
-        waypoints: [
-          { x: 0, y: 100 },
-          { x: 40, y: 100 },
-          { x: 40, y: 103 },
-          { x: 500, y: 103 },
-          { x: 500, y: 0 },
-        ],
-      },
-      {
-        id: 'p2',
-        waypoints: [
-          { x: 0, y: 200 },
-          { x: 60, y: 200 },
-          { x: 60, y: 97 },
-          { x: 480, y: 97 },
-          { x: 480, y: 300 },
-        ],
-      },
+  it('ROUTE-BUG-12: eine Klemme teilt sich EINE Rangfolge (Quelle und Ziel)', () => {
+    // Kante 1 fährt am Port ab, Kante 2 kommt dort an — dieselbe Klemme,
+    // also dieselbe Lane-Folge. Früher wurde nach Rolle gruppiert, beide
+    // bekamen Lane 0 und belegten 372 px derselben Achse doppelt.
+    const edges: RouteEdgeRef[] = [
+      { id: 'out', source: 'terminal', target: 'far-right' },
+      { id: 'in', source: 'far-left', target: 'terminal' },
     ];
-    const aligned = alignSharedCorridors(paths, obstacles);
-    const p1 = aligned.get('p1')!;
-    const p2 = aligned.get('p2')!;
-    // Beide Mittelstücke (p1 y=103, p2 y=97, 6 px auseinander, 320 px Überlappung)
-    // landen auf derselben Koordinate (kleinste des Clusters = 97).
-    const y1 = p1[2]!.y;
-    const y2 = p2[2]!.y;
-    expect(y1).toBe(y2);
-    // Endpunkte unangetastet:
-    expect(p1[0]).toEqual({ x: 0, y: 100 });
-    expect(p2[0]).toEqual({ x: 0, y: 200 });
+    const lanes = portFanOutLanes(edges, (edge, kind) => {
+      if (edge.id === 'out') {
+        return kind === 'source'
+          ? { x: 300, y: 300, position: Position.Top }
+          : { x: 900, y: 100, position: Position.Left };
+      }
+      return kind === 'source'
+        ? { x: 500, y: 100, position: Position.Right }
+        : { x: 300, y: 300, position: Position.Top };
+    });
+    const outLane = lanes.get('out')!.lane;
+    const inLane = lanes.get('in')!.laneTarget;
+    expect(outLane).not.toBe(inLane);
+    expect(Math.abs(outLane - inLane)).toBeGreaterThanOrEqual(ROUTING_TOKENS.laneGrid);
   });
 
-  it('alignSharedCorridors erzeugt keine Hindernis-Kollision', () => {
-    const obstacle: Rect[] = [{ x: 200, y: 91, width: 100, height: 12 }];
-    const paths = [
-      {
-        id: 'p1',
-        waypoints: [
-          { x: 0, y: 100 },
-          { x: 30, y: 100 },
-          { x: 30, y: 104 },
-          { x: 500, y: 104 },
-          { x: 500, y: 0 },
-        ],
-      },
-      {
-        id: 'p2',
-        waypoints: [
-          { x: 0, y: 300 },
-          { x: 60, y: 300 },
-          { x: 60, y: 99 },
-          { x: 480, y: 99 },
-          { x: 480, y: 400 },
-        ],
-      },
+  it('ROUTE-BUG-34/35: Rang und Gleichstand im Bündel sind ausgewiesen', () => {
+    // Drei Kanten an derselben Bauteilseite: zwei links (Rang 1 und 2),
+    // eine rechts (Rang 1). Die beiden inneren Lanes haben denselben
+    // Betrag — genau der Fall, in dem gleich lange Stubs dieselbe
+    // Zuführungs-Achse ergeben (I2). Der Rang staffelt, der Gleichstand
+    // zieht den Zwilling nach innen.
+    const edges: RouteEdgeRef[] = [
+      { id: 'e-left-1', source: 'hub', target: 'near-left' },
+      { id: 'e-left-2', source: 'hub', target: 'far-left' },
+      { id: 'e-right-1', source: 'hub', target: 'near-right' },
     ];
-    const aligned = alignSharedCorridors(paths, obstacle);
-    // Das Zusammenziehen auf y=99 würde p1 durch das Hindernis schieben —
-    // p1 bleibt deshalb auf 104, p2 wird ausgerichtet oder bleibt.
-    const y1 = aligned.get('p1')![2]!.y;
-    expect(y1 === 104 || y1 === 99).toBe(true);
+    const farX: Record<string, number> = { 'near-left': 200, 'far-left': 100, 'near-right': 400 };
+    const lanes = portFanOutLanes(edges, (edge, kind) => {
+      if (kind === 'source') return { x: 300, y: 300, position: Position.Top };
+      return { x: farX[edge.target]!, y: 100, position: Position.Left };
+    });
+    const left1 = lanes.get('e-left-1')!;
+    const left2 = lanes.get('e-left-2')!;
+    const right1 = lanes.get('e-right-1')!;
+    // Betragsgleichheit der Zwillinge ist die Voraussetzung des Gleichstands.
+    expect(Math.abs(left1.lane)).toBe(Math.abs(right1.lane));
+    expect(Math.abs(left2.lane)).toBeGreaterThan(Math.abs(left1.lane));
+    // Rang absteigend nach Betrag, Gleichstand deterministisch per Edge-ID.
+    expect(left2.laneRank).toBe(0);
+    expect(left1.laneRank).toBe(1);
+    expect(right1.laneRank).toBe(2);
+    expect(left1.laneTie).toBe(0);
+    expect(right1.laneTie).toBe(1);
   });
 });
 
