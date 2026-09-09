@@ -4,7 +4,7 @@ import { Position } from '@xyflow/react';
 import WaterPipeEdge from './WaterPipeEdge';
 import { useReactFlow } from '@xyflow/react';
 
-// Mock reactflow
+// Mock @xyflow/react (ADR 0013)
 vi.mock('@xyflow/react', async () => {
   const actual = await vi.importActual('@xyflow/react');
   return {
@@ -133,7 +133,7 @@ describe('WaterPipeEdge', () => {
     const { getByTestId } = render(<WaterPipeEdge {...defaultProps} selected={true} />);
 
     const baseEdge = getByTestId('base-edge');
-    expect(baseEdge).toHaveStyle({ stroke: 'var(--pipe-selected)' }); // --pipe-selected = #c2410c
+    expect(baseEdge).toHaveStyle({ stroke: 'var(--pipe-selected)' }); // --pipe-selected = var(--oxide)
   });
 
   it('renders interaction path correctly', () => {

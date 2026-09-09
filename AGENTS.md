@@ -38,7 +38,7 @@ Next.js-App (TypeScript, Tailwind, React Flow, Zustand) zur Planung von Camper-E
 ## Mission 11: Profi-Niveau
 
 - [ ] M11-1 DESIGN-SPRUNG (Top-Prio, Nutzer-Vorgabe): Planner visuell auf CAD-Niveau polieren — Node-Cards, Toolbar, Panels, Handles neu gestaltet (Token-basiert, hell+dunkel). PFLICHT: Vorher/Nachher-Screenshots (375/768/1440 px) im PR — Merge erst nach optischer Freigabe durch den Nutzer.
-- [ ] M11-2 AutoWire-Platzierung: Bauteile werden aktuell ungünstig gesetzt → Kabel laufen Umwege. Fix: AutoWire platziert Knoten in Flussrichtung (Quellen → Verteilung → Verbraucher), auf dem 16-px-Grid, mit konsistenten Abständen; optional Auto-Layout (dagre) direkt nach dem Verdrahten. Metrik als Test: Gesamtkabellänge im Referenzplan ≤ 1,3× Manhattan-Optimum, keine Kante mit > 2 Richtungswechseln ohne Grund.
+- [x] M11-2 AutoWire-Platzierung: Bauteile werden aktuell ungünstig gesetzt → Kabel laufen Umwege. Fix: AutoWire platziert Knoten in Flussrichtung (Quellen → Verteilung → Verbraucher), auf dem 16-px-Grid, mit konsistenten Abständen; optional Auto-Layout (dagre) direkt nach dem Verdrahten. Metrik als Test: Gesamtkabellänge im Referenzplan ≤ 1,3× Manhattan-Optimum, keine Kante mit > 2 Richtungswechseln ohne Grund.
 - [ ] M11-3 Tastatur-First wie CAD: Canvas komplett ohne Maus bedienbar (Bauteil bewegen/verbinden/löschen per Tastatur) + Shortcut-Overlay per `?`. Abnahme: E2E baut Mini-Plan nur per Tastatur.
 - [ ] M11-4 `prefers-reduced-motion` global respektieren (tokenbasiert, nicht pro Komponente).
 - [ ] M11-5 Performance-Gate: Lighthouse Performance ≥ 90 im CI + Bundle-Budget (ADR); React Compiler evaluieren (ADR).
