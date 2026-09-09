@@ -67,10 +67,15 @@ describe('CableEdge', () => {
     // Der echte Store startet ohne Kanten; Tests, die den Store füllen,
     // setzen den Zustand in afterEach zurück.
     usePlannerStore.setState({ edges: [] });
+    // B2: Die meisten Legacy-Tests prüfen die Label-Darstellung — sie laufen
+    // mit Dichte 'all' (jedes Kabel beschriftet). Das neue Default-Verhalten
+    // ('core') wird in eigenen Tests unten geprüft.
+    usePlannerStore.setState({ cableLabelDensity: 'all' });
   });
 
   afterEach(() => {
     usePlannerStore.setState({ nodes: [], edges: [], waterNodes: [], waterEdges: [] });
+    usePlannerStore.setState({ cableLabelDensity: 'core' });
   });
 
   it('renders correctly with default props', () => {
@@ -194,6 +199,25 @@ describe('CableEdge', () => {
     // and verify the class
     const labelContainer = container.querySelector('.nodrag.nopan');
     expect(labelContainer).toBeInTheDocument();
+  });
+
+  it('B2: Dichte core blendet Labels an Nebenleitungen aus, Auswahl blendet ein', () => {
+    usePlannerStore.setState({ cableLabelDensity: 'core', nodes: [], edges: [] });
+    const { container, rerender } = render(<CableEdge {...defaultProps} />);
+    expect(container.querySelector('.nodrag.nopan')).toBeNull();
+
+    rerender(<CableEdge {...defaultProps} selected={true} />);
+    expect(container.querySelector('.nodrag.nopan')).not.toBeNull();
+  });
+
+  it('B2: Dichte core lässt Labels an Hauptrouten (Backbone) dauerhaft sichtbar', () => {
+    const backboneNodes: Node[] = [
+      { id: '1', type: 'battery', position: { x: 0, y: 0 }, data: {} },
+      { id: '2', type: 'busbar', position: { x: 200, y: 0 }, data: {} },
+    ];
+    usePlannerStore.setState({ cableLabelDensity: 'core', nodes: backboneNodes, edges: [] });
+    const { container } = render(<CableEdge {...defaultProps} />);
+    expect(container.querySelector('.nodrag.nopan')).not.toBeNull();
   });
 
   it('renders AC edges with standard AC layout and RCBO recommendations', () => {

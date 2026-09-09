@@ -32,6 +32,8 @@ describe('persistOptions — Speicher-Vertrag', () => {
       isSidebarOpen: true,
       isInspectorOpen: false,
       backboneGrouping: true,
+      showZones: true,
+      cableLabelDensity: 'core',
       // Interne Felder, die NICHT persistiert werden dürfen:
       undoStack: ['x'],
       systemMessage: 'nur Laufzeit',
@@ -40,11 +42,13 @@ describe('persistOptions — Speicher-Vertrag', () => {
     expect(Object.keys(subset).sort()).toEqual(
       [
         'backboneGrouping',
+        'cableLabelDensity',
         'edges',
         'isInspectorOpen',
         'isSidebarOpen',
         'nodes',
         'season',
+        'showZones',
         'viewMode',
         'waterEdges',
         'waterNodes',
@@ -61,6 +65,8 @@ describe('migratePlannerPersisted', () => {
       isSidebarOpen: false,
       isInspectorOpen: true,
       backboneGrouping: true,
+      showZones: true,
+      cableLabelDensity: 'core',
       nodes: [validNode],
       edges: [validEdge],
       waterNodes: [validNode],
