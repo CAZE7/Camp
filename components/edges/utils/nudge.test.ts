@@ -69,7 +69,14 @@ describe('nudgeOrthogonalPaths', () => {
     expect(a[a.length - 1]).toEqual({ x: 200, y: 80 });
     expect(isOrthogonalPath(a)).toBe(true);
     expect(isOrthogonalPath(b)).toBe(true);
-    expect(Math.abs(longRunY(a) - longRunY(b))).toBeCloseTo(NUDGE_GAP, 5);
+    // ROUTE-BUG-17: Hier ist das Mittelstück am Ziel-Stub verankert (Punkt 3
+    // ist Anfang des letzten Stubs). Es zu verschieben hieße, nur EIN Ende
+    // des Segments zu bewegen — die Diagonale flickt `stitchOrthogonal` mit
+    // einem Ellbogen, und die Kante bekäme einen 8-px-Stummel (I6) samt Haken
+    // am Handle (I4). Ein Segment wandert nur als Ganzes, also bleibt der
+    // Lauf hier stehen; gespreizt wird, wo beide Enden frei sind (Test oben).
+    expect(longRunY(a)).toBe(80);
+    expect(longRunY(b)).toBe(80);
   });
 
   it('is deterministic (id order, not input order)', () => {

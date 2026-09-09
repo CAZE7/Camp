@@ -237,6 +237,45 @@ describe('Final-Validation-Publikation (AUDIT F-07)', () => {
     expect(report.status).toBe('INVALID');
     expect(report.counts).toEqual({ edgeNodeCollisions: 1, edgeEdgeOverlaps: 0, clearanceViolations: 0 });
   });
+
+  // ROUTE-BUG-23: Der Report muss nicht nur zählen, WIE VIELE Züge scheitern,
+  // sondern auch sagen, wie viele Leitungen der Router bewusst enger gelegt
+  // hat, weil Stub und Mindestabstand geometrisch nicht gleichzeitig passen.
+  it('computeCableRouteFinalValidation zählt tightMarginUsed-Leitungen', () => {
+    const nodes = [
+      makeNode('a', 0, 0, 100, 100),
+      makeNode('b', 400, 0, 100, 100),
+    ] as unknown as RoutableNode[];
+    const edges = [
+      { id: 'e1', source: 'a', target: 'b', sourceHandle: 'plus', targetHandle: 'plus', data: {} },
+      { id: 'e2', source: 'a', target: 'b', sourceHandle: 'minus', targetHandle: 'minus', data: {} },
+    ] as unknown as RouteEdgeRef[];
+    const route = (tight?: boolean): PathResult => ({
+      path: 'M 100 50 L 400 50',
+      waypoints: [
+        { x: 100, y: 50 },
+        { x: 400, y: 50 },
+      ],
+      labelX: 250,
+      labelY: 55,
+      offsetX: 0,
+      offsetY: 0,
+      length: 300,
+      bends: 0,
+      crossings: 0,
+      usedSearch: 'astar',
+      ...(tight ? { tightMarginUsed: true } : {}),
+    });
+    const report = computeCableRouteFinalValidation(
+      nodes,
+      edges,
+      new Map<string, PathResult>([
+        ['e1', route()],
+        ['e2', route(true)],
+      ])
+    );
+    expect(report.tightMarginRoutes).toBe(1);
+  });
 });
 
 describe('cableRouteStore-Publikation (R-9)', () => {

@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1072" height="1440" viewBox="0 0 1072 1440">
   <title>p13-drag-zentraler-node — Drag eines zentralen Nodes</title>
   <rect width="100%" height="100%" fill="#0b0f14"/>
-  <text x="60" y="32" fill="#8b98a5" font-family="monospace" font-size="14">p13-drag-zentraler-node: X=0 Bends=12 L=3312.40 Clearance=0</text>
+  <text x="60" y="32" fill="#8b98a5" font-family="monospace" font-size="14">p13-drag-zentraler-node: X=0 Bends=16 L=3324 Clearance=0</text>
   <rect x="60" y="500" width="192" height="120" fill="#151b23" stroke="#31404f" stroke-width="1.5" rx="8"/>
   <text x="70" y="524" fill="#c7d0d9" font-family="monospace" font-size="13">batt</text>
   <rect x="420" y="660" width="192" height="120" fill="#151b23" stroke="#31404f" stroke-width="1.5" rx="8"/>
@@ -16,16 +16,16 @@
   <text x="830" y="984" fill="#c7d0d9" font-family="monospace" font-size="13">cons-d</text>
   <rect x="820" y="1260" width="192" height="120" fill="#151b23" stroke="#31404f" stroke-width="1.5" rx="8"/>
   <text x="830" y="1284" fill="#c7d0d9" font-family="monospace" font-size="13">cons-e</text>
-  <path d="M 252 536 L 360 536 L 360 696 L 420 696" fill="none" stroke="#39b2f5" stroke-width="2.5"/>
+  <path d="M 252 536 L 276 536 L 276 696 L 420 696" fill="none" stroke="#39b2f5" stroke-width="2.5"/>
   <circle cx="252" cy="536" r="4" fill="#39b2f5"/>
-  <path d="M 477.60 660 L 477.50 660 L 477.50 207.50 L 877.60 207.50 L 877.60 180" fill="none" stroke="#39b2f5" stroke-width="2.5"/>
+  <path d="M 477.60 660 L 477.60 204 L 877.60 204 L 877.60 180" fill="none" stroke="#39b2f5" stroke-width="2.5"/>
   <circle cx="477.60" cy="660" r="4" fill="#39b2f5"/>
-  <path d="M 612 696 L 724 696 L 724 396 L 820 396" fill="none" stroke="#39b2f5" stroke-width="2.5"/>
+  <path d="M 612 696 L 652 696 L 652 396 L 820 396" fill="none" stroke="#39b2f5" stroke-width="2.5"/>
   <circle cx="612" cy="696" r="4" fill="#39b2f5"/>
-  <path d="M 612 696 L 820 696" fill="none" stroke="#39b2f5" stroke-width="2.5"/>
+  <path d="M 612 696 L 640 696 L 640 702 L 796 702 L 796 696 L 820 696" fill="none" stroke="#39b2f5" stroke-width="2.5"/>
   <circle cx="612" cy="696" r="4" fill="#39b2f5"/>
-  <path d="M 612 696 L 756 696 L 756 996 L 820 996" fill="none" stroke="#39b2f5" stroke-width="2.5"/>
+  <path d="M 612 696 L 636 696 L 636 718 L 716 718 L 716 996 L 820 996" fill="none" stroke="#39b2f5" stroke-width="2.5"/>
   <circle cx="612" cy="696" r="4" fill="#39b2f5"/>
-  <path d="M 477.60 780 L 477.50 780 L 477.50 1232.50 L 877.60 1232.50 L 877.60 1260" fill="none" stroke="#39b2f5" stroke-width="2.5"/>
+  <path d="M 477.60 780 L 477.60 1236 L 877.60 1236 L 877.60 1260" fill="none" stroke="#39b2f5" stroke-width="2.5"/>
   <circle cx="477.60" cy="780" r="4" fill="#39b2f5"/>
 </svg>

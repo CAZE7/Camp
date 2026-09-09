@@ -8,6 +8,6 @@
   <text x="470" y="98" fill="#c7d0d9" font-family="monospace" font-size="13">blocker</text>
   <rect x="860" y="74" width="192" height="120" fill="#151b23" stroke="#31404f" stroke-width="1.5" rx="8"/>
   <text x="870" y="98" fill="#c7d0d9" font-family="monospace" font-size="13">cons</text>
-  <path d="M 252 110 L 446 110 L 446 60 L 832.50 60 L 832.50 110 L 860 110" fill="none" stroke="#39b2f5" stroke-width="2.5"/>
+  <path d="M 252 110 L 446 110 L 446 60 L 836 60 L 836 110 L 860 110" fill="none" stroke="#39b2f5" stroke-width="2.5"/>
   <circle cx="252" cy="110" r="4" fill="#39b2f5"/>
 </svg>

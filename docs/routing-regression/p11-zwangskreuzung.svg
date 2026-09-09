@@ -10,8 +10,8 @@
   <text x="750" y="84" fill="#c7d0d9" font-family="monospace" font-size="13">dst-top</text>
   <rect x="740" y="520" width="192" height="120" fill="#151b23" stroke="#31404f" stroke-width="1.5" rx="8"/>
   <text x="750" y="544" fill="#c7d0d9" font-family="monospace" font-size="13">dst-bottom</text>
-  <path d="M 252 96 L 520 96 L 520 556 L 740 556" fill="none" stroke="#39b2f5" stroke-width="2.5"/>
+  <path d="M 252 96 L 276 96 L 276 556 L 740 556" fill="none" stroke="#39b2f5" stroke-width="2.5"/>
   <circle cx="252" cy="96" r="4" fill="#39b2f5"/>
-  <path d="M 252 556 L 520 556 L 520 96 L 740 96" fill="none" stroke="#39b2f5" stroke-width="2.5"/>
+  <path d="M 252 556 L 716 556 L 716 96 L 740 96" fill="none" stroke="#39b2f5" stroke-width="2.5"/>
   <circle cx="252" cy="556" r="4" fill="#39b2f5"/>
 </svg>

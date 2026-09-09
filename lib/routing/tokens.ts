@@ -21,8 +21,19 @@ export type RoutingTokens = {
   readonly cableClearance: number;
   /** ELK `spacing.edgeNode` / `spacing.edgeNodeBetweenLayers`. */
   readonly elkEdgeNodeSpacing: number;
-  /** Mindestlänge vor erstem Bend; Mindestsegmentlänge (px). */
+  /** Mindestlänge vor erstem Bend; Mindestlänge der Stubs (px). */
   readonly stubMin: number;
+  /**
+   * Mindestlänge JEDES Segments (px) — Invariante I6.
+   *
+   * Kleiner als `stubMin` und bewusst gleich `laneGrid`: Ein Lane-Wechsel
+   * (Port-Fan-Out, Bündelung paralleler Trassen) ist orthogonal nur als
+   * Quersegment von genau einer Lane Breite darstellbar. Würde hier
+   * `stubMin` gelten, wäre jeder Lane-Wechsel ein Invarianten-Verstoß —
+   * die Regel wäre unerfüllbar und damit wertlos. Drift-Guard im Token-Test:
+   * `segmentMin === laneGrid` und `segmentMin <= stubMin`.
+   */
+  readonly segmentMin: number;
   /** Kanalabstand paralleler Trassen (px, ≈ Node-Raster). */
   readonly laneGrid: number;
   /** Einheitliche Rundungen; Bend-Merge-Schwelle ist 2×r (px). */
@@ -36,6 +47,7 @@ export const ROUTING_TOKENS: RoutingTokens = Object.freeze({
   elkEdgeNodeSpacing: 16,
   stubMin: 24,
   laneGrid: 16,
+  segmentMin: 16,
   bendRadius: 8,
   crossDomainSpacing: 24,
 });

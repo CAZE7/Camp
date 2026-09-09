@@ -1,3 +1,4 @@
+import { ROUTING_TOKENS } from '../routing/tokens';
 import { describe, expect, it } from 'vitest';
 import type { Node } from '@xyflow/react';
 import {
@@ -7,6 +8,7 @@ import {
   FLOW_ROW_SPACING,
   NODE_BOX_HEIGHT,
   NODE_BOX_WIDTH,
+  PORT_FACING_CLEARANCE,
   relativeGridPosition,
   snapToGrid,
 } from './placement';
@@ -301,5 +303,53 @@ describe('Platzierung ohne Überlappung (ADR 0017)', () => {
       return nodes.map((n) => `${n.id}@${n.position.x},${n.position.y}`).join('|');
     };
     expect(build()).toBe(build());
+  });
+});
+
+/**
+ * ROUTE-BUG-32: Die Platzierung darf keine Spalte erzeugen, in der Stub und
+ * Bauteil-Freigabe nicht gleichzeitig passen. Der Router kappt den Stub zwar
+ * inzwischen (ROUTE-BUG-31), aber ein Plan, der gar nicht erst in diese Lage
+ * kommt, braucht keine Ausnahme — und Ausnahmen sind sichtbar (I3,
+ * `tightMarginUsed`).
+ */
+describe('Freigabe an gegenüberliegenden Ports (ROUTE-BUG-32)', () => {
+  it('Spalten- und Zeilenkorridor sind mindestens stubMin + cableClearance', () => {
+    // Stub + EIN Lane-Schritt des Bündels + Freigabe (ROUTE-BUG-32).
+    expect(PORT_FACING_CLEARANCE).toBe(
+      ROUTING_TOKENS.stubMin + ROUTING_TOKENS.laneGrid + ROUTING_TOKENS.cableClearance
+    );
+    expect(FLOW_COLUMN_SPACING - NODE_BOX_WIDTH).toBeGreaterThanOrEqual(PORT_FACING_CLEARANCE);
+    expect(FLOW_ROW_SPACING - NODE_BOX_HEIGHT).toBeGreaterThanOrEqual(PORT_FACING_CLEARANCE);
+  });
+
+  it('platzierte Nachbarn halten den Mindestspalt ein', () => {
+    const battery = makeNode('bat', 'battery', { x: 0, y: 0 });
+    const fuse = makeNode('fuse', 'fuse', { x: 0, y: 0 });
+    const light = makeNode('light', 'light', { x: 0, y: 0 });
+    const nodes = [battery, fuse, light];
+    applyFlowLayout(
+      nodes,
+      [
+        { source: 'bat', target: 'fuse' },
+        { source: 'fuse', target: 'light' },
+      ],
+      new Set(['fuse', 'light'])
+    );
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        const a = nodes[i]!;
+        const b = nodes[j]!;
+        const gapX =
+          Math.max(a.position.x, b.position.x) -
+          Math.min(a.position.x + NODE_BOX_WIDTH, b.position.x + NODE_BOX_WIDTH);
+        const gapY =
+          Math.max(a.position.y, b.position.y) -
+          Math.min(a.position.y + NODE_BOX_HEIGHT, b.position.y + NODE_BOX_HEIGHT);
+        // Überlappen die Boxen in einer Achse, ist der Spalt die andere Achse.
+        const gap = gapX <= 0 ? gapY : gapY <= 0 ? gapX : Math.min(gapX, gapY);
+        expect(gap, `${a.id} ↔ ${b.id}`).toBeGreaterThanOrEqual(PORT_FACING_CLEARANCE);
+      }
+    }
   });
 });

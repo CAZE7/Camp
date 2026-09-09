@@ -1,5 +1,11 @@
 import type { Point, Rect } from './pathfinding';
-import { isOrthogonalPath, pathHitsObstacles, containsPoint, stitchOrthogonal } from './pathfinding';
+import {
+  isOrthogonalPath,
+  pathHitsObstacles,
+  containsPoint,
+  stitchOrthogonal,
+  routeDefectScore,
+} from './pathfinding';
 import { ROUTING_TOKENS } from '../../../lib/routing/tokens';
 
 /**
@@ -174,9 +180,18 @@ const applyAxis = (
       for (let s = 0; s < list.length; s++) {
         const seg = at(segs, at(list, s));
         const ends = [seg.i0, seg.i1];
+        // ROUTE-BUG-17: Ein Segment wandert nur als Ganzes. Wandert nur ein
+        // Ende (das andere gehört zu einem Stub), entsteht eine Diagonale,
+        // die `stitchOrthogonal` mit einem Ellbogen flickt — die Kante macht
+        // dann einen Haken am Handle (I4) oder ein Kurzsegment (I6).
+        let movable = true;
+        for (let e = 0; e < 2; e++) {
+          if (!isFreeVertex(at(ends, e), n)) movable = false;
+        }
+        if (!movable) continue;
         for (let e = 0; e < 2; e++) {
           const idx = at(ends, e);
-          if (moved.has(idx) || !isFreeVertex(idx, n)) continue;
+          if (moved.has(idx)) continue;
           moved.add(idx);
           if (axis === 'h') at(pts, idx).y += delta;
           else at(pts, idx).x += delta;
@@ -230,8 +245,16 @@ export function nudgeOrthogonalPaths(
     );
     const repaired = changed ? stitchOrthogonal(clone) : orig;
     const relevant = obstaclesForPath(obstacles, start, end);
+    // ROUTE-BUG-8: Nudging darf eine Route nur verbessern. Ein verschobener
+    // Punkt kann den Ellbogen neben einem Stub entstehen lassen — der Pfad
+    // bleibt dann zwar orthogonal, kehrt aber am Handle um (I4) oder baut ein
+    // Kurzsegment ein (I6). Solche Varianten werden verworfen: Akzeptiert
+    // wird nur, was orthogonal UND hindernisfrei ist und die Mängel-Strafe
+    // nicht erhöht.
     const ok =
-      isOrthogonalPath(repaired) && (relevant.length === 0 || !pathHitsObstacles(repaired, relevant));
+      isOrthogonalPath(repaired) &&
+      (relevant.length === 0 || !pathHitsObstacles(repaired, relevant)) &&
+      routeDefectScore(repaired) <= routeDefectScore(orig) + EPS;
     out.set(id, ok ? repaired : orig);
   }
   return out;

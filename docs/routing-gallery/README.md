@@ -17,7 +17,7 @@ schlägt der Test fehl. Die Galerie darf nur neu erzeugt werden, wenn die
 Zusätzlich zu den 25 konstruierten Szenarien zeigt
 `nutzerplan-autowire.svg` einen realen Nutzerplan (Batterie, Solar,
 zwei Verbraucher) nach Auto-Verdrahtung (R-8) und Routing (R-5/R-7/
-R-10): 13 Kabel, Gesamtlänge 5771 px, 0 Clearance-Verstöße (Ziel: 0 bei 12 px).
+R-10): 13 Kabel, Gesamtlänge 5782 px, 0 Clearance-Verstöße (Ziel: 0 bei 12 px).
 Er ist die „nachher“-Referenz für die Vorher/Nachher-Betrachtung des
 R-Blocks; die „vorher“-Zahlen stehen in `docs/ROUTING-INVARIANTS.md`
 (Abschnitt Qualität & Messung).

@@ -279,17 +279,36 @@ describe('I5/I6 — Stub- und Segment-Mindestlängen (stubMin)', () => {
     ).toHaveLength(0);
   });
 
-  it(`Innensegment kürzer als ${stub}px ⇒ I6-Verletzung`, () => {
+  // I6 misst gegen `segmentMin` (= laneGrid), nicht gegen `stubMin`: Ein
+  // Lane-Wechsel des Port-Fan-Outs ist orthogonal nur als Quersegment von
+  // genau einer Lane Breite darstellbar — mit `stubMin` (24 > 16) wäre jeder
+  // Lane-Wechsel ein Verstoß und die Regel nicht erfüllbar.
+  const segmentMin = ROUTING_TOKENS.segmentMin;
+
+  it(`Innensegment kürzer als ${segmentMin}px ⇒ I6-Verletzung`, () => {
     const violations = checkSegmentLengths([
       edge('e', [
         { x: 0, y: 0 },
         { x: stub, y: 0 },
-        { x: stub, y: stub - 8 },
-        { x: 2 * stub, y: stub - 8 },
+        { x: stub, y: segmentMin - 4 },
+        { x: 2 * stub, y: segmentMin - 4 },
       ]),
     ]);
     expect(violations).toHaveLength(1);
-    expect(violations[0]!.detail).toContain('stubMin');
+    expect(violations[0]!.detail).toContain('Mindestlänge');
+  });
+
+  it(`Innensegment exakt ${segmentMin}px (ein Lane-Wechsel) ⇒ keine Verletzung`, () => {
+    expect(
+      checkSegmentLengths([
+        edge('e', [
+          { x: 0, y: 0 },
+          { x: stub, y: 0 },
+          { x: stub, y: segmentMin },
+          { x: 2 * stub, y: segmentMin },
+        ]),
+      ])
+    ).toHaveLength(0);
   });
 });
 
@@ -397,17 +416,26 @@ describe('I10 — Crossing nur, wenn kein konfliktfreier Weg existiert', () => {
  * Normalfall — dafür gibt es das Hopping. 72 Durchdringungen gegen ein paar
  * Kreuzungen und Stubs zu tauschen, ist kein Rückschritt.
  *
+ * Stand 2026-09-09 (Routing-Fehlerkorrektur ROUTE-BUG-1…35), gemessen mit
+ * `npm run routing:audit`: ALLE sechs Pläne liegen in allen sieben
+ * Invarianten bei 0 — complex eingeschlossen (vorher 37 dort, Σ 179 über
+ * alle Pläne): I2 11 → 0, I3 3 → 0, I5 8 → 0, I6 15 → 0. Der Preis steht
+ * bei den Kreuzungen: Σ 42 → 48 (camper 1 → 5, acdc 6 → 8), weil die
+ * Bündel-Staffelung aus ROUTE-BUG-34/35 Zuführungen um ein Lane-Raster
+ * versetzt. Kreuzungen sind Normalfall mit Hopping, doppelte
+ * Trassenbelegung ist ein Fehler — der Tausch ist derselbe wie oben.
+ *
  * Vorher (WP-10, mit überlappenden Bauteilen):
  * simple 8/2/0/6/2/6/1 · camper 13/6/9/7/3/11/1 · solar 8/3/0/3/5/10/0 ·
  * inverter 7/2/0/4/4/9/1 · acdc 30/9/1/4/5/15/1 · complex 6/15/3/0/8/15/0
  */
 const LEGACY_BASELINE: Record<string, Record<InvariantId, number> & { crossings: number }> = {
-  simple: { I1: 0, I2: 4, I3: 0, I4: 1, I5: 5, I6: 11, I7: 1, crossings: 2 },
-  camper: { I1: 0, I2: 9, I3: 9, I4: 1, I5: 6, I6: 13, I7: 1, crossings: 4 },
-  solar: { I1: 0, I2: 2, I3: 0, I4: 1, I5: 7, I6: 13, I7: 0, crossings: 4 },
-  inverter: { I1: 0, I2: 3, I3: 0, I4: 2, I5: 7, I6: 13, I7: 1, crossings: 5 },
-  acdc: { I1: 0, I2: 5, I3: 0, I4: 2, I5: 9, I6: 16, I7: 0, crossings: 8 },
-  complex: { I1: 0, I2: 11, I3: 3, I4: 0, I5: 8, I6: 15, I7: 0, crossings: 37 },
+  simple: { I1: 0, I2: 0, I3: 0, I4: 0, I5: 0, I6: 0, I7: 0, crossings: 2 },
+  camper: { I1: 0, I2: 0, I3: 0, I4: 0, I5: 0, I6: 0, I7: 0, crossings: 5 },
+  solar: { I1: 0, I2: 0, I3: 0, I4: 0, I5: 0, I6: 0, I7: 0, crossings: 2 },
+  inverter: { I1: 0, I2: 0, I3: 0, I4: 0, I5: 0, I6: 0, I7: 0, crossings: 2 },
+  acdc: { I1: 0, I2: 0, I3: 0, I4: 0, I5: 0, I6: 0, I7: 0, crossings: 8 },
+  complex: { I1: 0, I2: 0, I3: 0, I4: 0, I5: 0, I6: 0, I7: 0, crossings: 29 },
 };
 
 const ELK_BASELINE: Record<string, { I5: number; I6: number; crossings: number }> = {

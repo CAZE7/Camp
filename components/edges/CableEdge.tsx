@@ -2,7 +2,7 @@ import React, { useMemo, useRef, useState } from 'react';
 import { BaseEdge, type Edge, type EdgeProps, EdgeLabelRenderer, useReactFlow } from '@xyflow/react';
 import { usePlannerStore, getDerivedSystemState } from '../../store/usePlannerStore';
 import { useShallow } from 'zustand/react/shallow';
-import { edgeLabelNudge, parallelLaneOffset, polarityPathOffset } from './utils/pathUtils';
+import { edgeLabelNudge } from './utils/pathUtils';
 import { findCablePath, nodesToObstacles } from './utils/pathfinding';
 import { useCableRoute } from './utils/cableRouteStore';
 import { crossingSegmentsNear } from './utils/routingCache';
@@ -439,15 +439,11 @@ const CableEdge = function ({
       targetX,
       targetY,
       targetPosition,
-      offset:
-        polarityPathOffset(resolvedSourceHandle) +
-        parallelLaneOffset({
-          edgeId: id,
-          source,
-          target,
-          sourceHandle: resolvedSourceHandle,
-          siblingEdges,
-        }),
+      // Fallback ohne Port-Bündel: Die Lane-Staffelung des Port-Fan-Outs
+      // kennt nur `routeAllCables` (dort sind alle Kanten eines Ports
+      // bekannt). Die Einzelfall-Route fährt deshalb auf der inneren Lane —
+      // sie ist der Notnagel, wenn der globale Pass diese Kante nicht hat.
+      lane: 0,
       obstacles,
       crossingSegments,
     });
@@ -460,12 +456,9 @@ const CableEdge = function ({
     targetX,
     targetY,
     targetPosition,
-    resolvedSourceHandle,
-    siblingEdges,
     allNodes,
     source,
     target,
-    id,
     crossingSegments,
   ]);
 

@@ -19,6 +19,7 @@ import {
   type Segment,
 } from '../../../lib/routing/geometry';
 import { classifyCollision } from '../../../lib/routing/rules/collision';
+import { portNormal } from '../../../lib/routing/rules/portFanOut';
 
 export {
   inflateRect,
@@ -332,192 +333,484 @@ class MinHeap {
   }
 }
 
-const uniqueSorted = (values: number[]): number[] => {
-  const rounded = values.map(quantize).sort((a, b) => a - b);
-  const out: number[] = [];
-  for (let i = 0; i < rounded.length; i++) {
-    if (out.length === 0 || Math.abs(at(out, out.length - 1) - at(rounded, i)) > 1 / QUANT / 2) {
-      out.push(at(rounded, i));
+/**
+ * Mindestabstand zweier Hanan-Gitter-Linien (px).
+ *
+ * ROUTE-BUG-14: Eine Gitterzelle ist die kürzeste Gerade, die A* fahren kann.
+ * Wäre sie schmaler als die Mindestsegmentlänge (I6), lieferte die Suche
+ * „korrekte" Pfade mit 2-px-Stummeln. Pflicht-Linien (Start/Ziel) bleiben
+ * exakt; Hindernis-Linien in diesem Abstand entfallen — sie bieten ohnehin
+ * keine nutzbare Abbiegemöglichkeit.
+ */
+const GRID_MIN_GAP = ROUTING_TOKENS.segmentMin;
+
+/**
+ * Hanan-Gitter-Linien: sortiert, ohne Duplikate.
+ *
+ * ROUTE-BUG-1 (Fix 2026-09-09): Start und Ziel werden EXAKT übernommen.
+ * Früher rundete `quantize` jede Linie auf das 0.5-px-Raster — ein Handle auf
+ * x = 437.6 landete bei 437.5 und `stitchOrthogonal` musste die Differenz als
+ * 0.1-px-Segment ausgleichen (Kehre am Handle, Kurzsegment, I4/I6).
+ *
+ * Linien, die näher als `GRID_MIN_GAP` an einer Pflicht-Linie (Start/Ziel)
+ * liegen, entfallen: keine Mini-Zellen, keine Rundungs-Stummel.
+ */
+const uniqueSorted = (values: number[], exact: readonly number[] = []): number[] => {
+  const sorted = [...values].sort((a, b) => a - b);
+  const isExact = (v: number): boolean => {
+    for (let i = 0; i < exact.length; i++) {
+      if (Math.abs(at(exact, i) - v) <= EPS) return true;
     }
+    return false;
+  };
+  const out: number[] = [];
+  for (let i = 0; i < sorted.length; i++) {
+    const v = at(sorted, i);
+    while (
+      out.length > 0 &&
+      !isExact(at(out, out.length - 1)) &&
+      Math.abs(v - at(out, out.length - 1)) < GRID_MIN_GAP
+    ) {
+      out.pop();
+    }
+    if (out.length > 0 && Math.abs(v - at(out, out.length - 1)) <= EPS) continue;
+    out.push(v);
   }
   return out;
 };
 
+/**
+ * Punkt auf der Port-Achse in `stub` Abstand vom Handle.
+ *
+ * ROUTE-BUG-1: Ohne Rundung. Handle-Koordinaten kommen mit 0.1-px-Genauigkeit
+ * aus React Flow; ein 0.5-px-Raster machte aus einem 24-px-Stub 23.9 px —
+ * sichtbar als I5-Verstoß („Stub kürzer als gefordert").
+ */
 const stubPoint = (p: Point, dir: Point, stub: number): Point => ({
-  x: quantize(p.x + dir.x * stub),
-  y: quantize(p.y + dir.y * stub),
+  x: p.x + dir.x * stub,
+  y: p.y + dir.y * stub,
 });
 
 /**
- * Klassischer orthogonaler Katalog: Gerade, L, Z, U — port-treu.
- * Länge ist manhattan (bzw. manhattan + 2*loop bei U). Wenn frei, optimal.
+ * Port-Rahmen einer Route: Handle-Punkte, Stub-Endpunkte, Lane-Rang.
+ *
+ * ROUTE-BUG-2 (Fix 2026-09-09): Kanten desselben Ports liefen früher auf
+ * denselben ersten Metern exakt übereinander (gemessen bis 78 px doppelte
+ * Belegung, Invariante I2). Der Lane-Rang des Port-Fan-Outs wird deshalb als
+ * **Staffelung der Stub-Länge** ausgefahren: Rang `r` knickt erst nach
+ * `stubMin + r · laneGrid` px ab, jede Trasse liegt damit auf einer eigenen
+ * Linie senkrecht zur Port-Achse. Die Rang-Vergabe steht in
+ * `lib/routing/rules/portFanOut`.
  */
-export function catalogWaypoints(input: {
+export type PortFrame = {
+  /** Handle-Punkt (Quelle). */
+  S: Point;
+  /** Ende des Quell-Stubs (in Port-Richtung, Länge `stub`). */
+  S2: Point;
+  /** Handle-Punkt (Ziel). */
+  T: Point;
+  /** Ende des Quell-Stubs. */
+  T2: Point;
+  /** Lane-Punkt der Quelle: Stub-Ende plus Seitenschritt (`lane`). */
+  S3: Point;
+  /** Lane-Punkt des Ziels: Stub-Ende plus Seitenschritt (`laneTarget`). */
+  T3: Point;
+  /** Austrittsrichtung der Quelle. */
+  ds: Point;
+  /** Eintrittsrichtung des Ziels (zeigt in den Node). */
+  dt: Point;
+  /** Stub-Länge der Quelle. */
+  stub: number;
+  /** Stub-Länge des Ziels. */
+  stubTarget: number;
+  /** Stub-Verlängerung der Quelle durch den Port-Fan-Out (px, ≥ 0). */
+  lane: number;
+  /** Stub-Verlängerung des Ziels (px, ≥ 0). */
+  laneTarget: number;
+};
+
+/** Gemeinsame Form der Port-Eingabe (Katalog, Kandidaten, Suche). */
+export type PortInput = {
   sourceX: number;
   sourceY: number;
   sourcePosition?: Position;
   targetX: number;
   targetY: number;
   targetPosition?: Position;
-  offset?: number;
-}): Point[] {
+  /** Lane-Wert des Port-Fan-Outs (px, vorzeichenbehaftet). */
+  lane?: number;
+  /** Lane-Wert am Ziel-Port. Fällt auf `lane` zurück. */
+  laneTarget?: number;
+  /**
+   * Seitenschritt senkrecht zur Port-Achse (px). Fehlt er, gilt `lane`.
+   * Auf 0 gesetzt bedeutet „nur staffeln, nicht zur Seite treten" — die
+   * Variante ohne Haken (ROUTE-BUG-15).
+   */
+  laneStep?: number;
+  /** Seitenschritt am Ziel-Port. Fällt auf `laneStep`, dann `laneTarget`. */
+  laneStepTarget?: number;
+  /**
+   * Obergrenze der Quell-Stub-Länge aus der Bauteil-Freigabe (ROUTE-BUG-31).
+   * Setzt `findCablePath` aus den Rohboxen; fehlt sie, gilt keine Grenze.
+   */
+  stubCap?: number;
+  /** Dasselbe für den Ziel-Stub. */
+  stubCapTarget?: number;
+  /**
+   * Rang dieser Kante im Port-Bündel, absteigend nach `|lane|` (0 = größter
+   * Lane-Wert). Wirkt NUR, wenn die Kappung aus `stubCap` greift
+   * (ROUTE-BUG-34) — sonst ist der Wert bedeutungslos.
+   */
+  stubCapRank?: number;
+  /** Dasselbe für den Ziel-Stub. */
+  stubCapRankTarget?: number;
+  /**
+   * Zahl der höherrangigen Bündel-Nachbarn mit DEMSELBEN `|lane|`-Betrag
+   * (ROUTE-BUG-35). Solche Zwillinge — Rang −1 und +1 einer Bauteilseite —
+   * bekämen gleich lange Stubs und lägen damit auf derselben
+   * Zuführungs-Achse; der niederrangige weicht nach innen aus.
+   */
+  stubTie?: number;
+  /** Dasselbe für den Ziel-Stub. */
+  stubTieTarget?: number;
+};
+
+/**
+ * Stub-Länge: `ROUTE_MIN_STUB` plus Lane-Staffelung des Port-Fan-Outs (R-7).
+ *
+ * Liegen sich zwei Ports auf derselben Achse gegenüber und ist der Raum
+ * zwischen ihnen kleiner als zwei volle Stubs, teilen sich beide den Raum
+ * (`facingStubLength`, ROUTE-BUG-7); die Staffelung entfällt dann — in einem
+ * zu engen Korridor hat ein Bündel keinen Platz für eigene Lanes.
+ *
+ * ROUTE-BUG-6: Früher wuchs der Stub mit einem *Quer*-Versatz
+ * (`24 + 0.15·|offset|`). Ersatzlos gestrichen: Der Stub ist ein
+ * Design-Token, kein Restposten der Kostenfunktion.
+ */
+/**
+ * Stub-Länge eines Ports.
+ *
+ * @param port     Handle-Punkt dieses Ports
+ * @param other    Handle-Punkt des Gegen-Ports
+ * @param outward  Richtung, in die die Kante diesen Port verlässt
+ *                 (Quelle: `ds`; Ziel: gegen die Eintrittsrichtung `-dt`)
+ * @param facing   zeigen sich beide Ports an (ROUTE-BUG-7-Relevanz)
+ * @param lane     Stub-Verlängerung durch den Port-Fan-Out (px, ≥ 0)
+ *
+ * ROUTE-BUG-10: Der Abstand zum Gegen-Port muss entlang der RICHTUNG
+ * gemessen werden, in die die Kante den Port verlässt. Für das Ziel ist das
+ * `-dt` — mit `dt` wurde der Abstand negativ, `facingStubLength` klemmte auf
+ * 0 und JEDER Ziel-Stub gegenüberliegender Ports fiel weg (gemessen: 0.0 px
+ * statt 24 px; I5-Verstöße und Kurzsegmente am Ziel-Handle).
+ */
+/**
+ * Abstand von `from` entlang der achsparallelen Richtung `dir` bis zur
+ * ersten Hinderniskante (∞, wenn der Strahl nichts trifft).
+ */
+const distanceAlongAxis = (from: Point, dir: Point, boxes: readonly Rect[]): number => {
+  let best = Number.POSITIVE_INFINITY;
+  for (let i = 0; i < boxes.length; i++) {
+    const r = at(boxes, i);
+    const horizontal = dir.x !== 0;
+    const across = horizontal ? from.y : from.x;
+    const lo = horizontal ? r.y : r.x;
+    const hi = horizontal ? r.y + r.height : r.x + r.width;
+    if (across < lo - EPS || across > hi + EPS) continue;
+    const origin = horizontal ? from.x : from.y;
+    const near =
+      dir.x > 0 || dir.y > 0 ? (horizontal ? r.x : r.y) : horizontal ? r.x + r.width : r.y + r.height;
+    const distance = (near - origin) * (horizontal ? dir.x : dir.y);
+    if (distance < -EPS) continue; // Hindernis liegt hinter dem Port
+    best = Math.min(best, distance);
+  }
+  return best;
+};
+
+/**
+ * ROUTE-BUG-31: Obergrenze der Stub-Länge aus der Bauteil-Freigabe.
+ *
+ * Der Port-Fan-Out verlängert den Stub um den Lane-Wert. Steht ein Bauteil
+ * gegenüber, schiebt diese Verlängerung den Lane-Punkt an das Bauteil heran
+ * (gemessen: 56-px-Stub in einem 60-px-Spalt ⇒ Lane-Punkt 4 px vor dem
+ * Nachbarn, I3). Die Lane-Staffelung ist Bündel-Komfort, die Freigabe eine
+ * Regel — also wird der Stub gekappt, bevor die Freigabe bricht.
+ *
+ * Untergrenze ist `stubMin`: Reicht der Spalt nicht einmal für
+ * `stubMin + cableClearance`, ist beides geometrisch unmöglich. Dann gewinnt
+ * der Stub (I5) und der Fall bleibt als I3 bzw. `tightMarginUsed` sichtbar.
+ *
+ * Gemessen und verworfen (ROUTE-BUG-33): die Kappung *ordnungserhaltend* zu
+ * falten (`limit − (Überhang mod laneGrid)`), damit unterschiedliche Lanes
+ * unterschiedlich lange Stubs behalten. Sie behebt die kollineare Trasse
+ * `e-auto-2 ↔ e-auto-3` nicht, kostet aber complex +1 I2, +5 I3, +2 I6,
+ * +2 I7, Kreuzungen 29 → 38 und inverter +1 I2. Die harte Kappung bleibt.
+ */
+const stubCapFor = (from: Point, outward: Point, boxes: readonly Rect[]): number => {
+  const distance = distanceAlongAxis(from, outward, boxes);
+  if (!Number.isFinite(distance)) return Number.POSITIVE_INFINITY;
+  return Math.max(ROUTE_MIN_STUB, distance - ROUTING_TOKENS.cableClearance);
+};
+
+/**
+ * ROUTE-BUG-34: Rang-Treppe innerhalb der Kappung.
+ *
+ * Eine harte Kappung (`min(wanted, limit)`) macht aus einem Bündel eine
+ * Einheit: Alle Kanten, deren Lane-Staffelung über die Bauteil-Freigabe
+ * hinauswollte, bekommen denselben Stub — und laufen danach auf derselben
+ * Trasse kollinear weiter (gemessen: Lanes −64/−80 am Minus-Port der
+ * Sammelschiene, beide Stubs 48 px ⇒ 72 px doppelte Belegung, I2).
+ *
+ * Der Rang im Bündel staffelt die gekappten Stubs deshalb um je ein
+ * Lane-Raster nach innen: unterschiedliche Lanes bleiben unterschiedlich
+ * lang, und zwar IMMER kürzer, nie länger — die Freigabe aus ROUTE-BUG-31
+ * kann dadurch nicht schlechter werden. Untergrenze ist `stubMin`; ist das
+ * Band schmaler als das Bündel, teilen sich die letzten Ränge `stubMin`
+ * (dann bleibt der Fall als I2 sichtbar, statt als I3 zu enden).
+ */
+/**
+ * ROUTE-BUG-35: Gleichstand im Bündel weicht nach innen aus.
+ *
+ * Zwei Kanten, die dieselbe Bauteilseite auf gegenüberliegenden Seiten
+ * anfahren (Rang −1 und +1), haben denselben `|lane|`-Betrag und damit
+ * denselben Stub — ihre Zuführungen liegen auf derselben Achse (gemessen:
+ * beide T2 auf x = 640 an der Sammelschiene ⇒ 24 px doppelte Belegung, I2).
+ * Der niedrigere Rang zieht seinen Stub um je ein Lane-Raster nach innen.
+ * Kürzer ist dabei immer freigabe-sicher: Der Lane-Punkt wandert auf die
+ * eigene Klemme zu, nie auf ein Bauteil zu.
+ */
+const capStep = (wanted: number, limit: number, rank: number, tie: number = 0): number => {
+  const capped = wanted > limit ? Math.max(ROUTE_MIN_STUB, limit - rank * ROUTING_TOKENS.laneGrid) : wanted;
+  const stub = Math.min(capped, limit) - tie * ROUTING_TOKENS.laneGrid;
+  return Math.min(limit, Math.max(ROUTE_MIN_STUB, stub));
+};
+
+const stubLength = (
+  port: Point,
+  other: Point,
+  outward: Point,
+  facing: boolean,
+  lane: number,
+  cap: number = Number.POSITIVE_INFINITY,
+  rank: number = 0,
+  tie: number = 0
+): number => {
+  const wanted = ROUTE_MIN_STUB + Math.abs(lane);
+  if (!facing) return capStep(wanted, cap, rank, tie);
+  // ROUTE-BUG-11: Beide Stubs teilen sich den Raum zwischen den Ports. Ohne
+  // diese Kappung überrannte die Lane-Staffelung den Korridor (gemessen:
+  // gap 72 px, Quell-Stub 56 px, Ziel-Stub 24 px ⇒ die Stubs überkreuzten
+  // sich, die Kante machte eine Kehre am Handle). In einem engen Korridor
+  // hat ein Bündel keinen Platz für eigene Lanes — die Staffelung entfällt.
+  const gap = (other.x - port.x) * outward.x + (other.y - port.y) * outward.y;
+  return capStep(wanted, Math.min(Math.max(0, gap / 2), cap), rank, tie);
+};
+
+export function portFrame(input: PortInput): PortFrame {
   const ds = sourceExitVector(input.sourcePosition);
   const dt = targetEntryVector(input.targetPosition);
-  const offset = input.offset ?? 0;
-  const stub = ROUTE_MIN_STUB + Math.abs(offset) * 0.15;
   const S: Point = { x: input.sourceX, y: input.sourceY };
   const T: Point = { x: input.targetX, y: input.targetY };
+  const lane = input.lane ?? 0;
+  const laneTarget = input.laneTarget ?? lane;
+  // Sich anzeigende Ports: beide Austrittsrichtungen zeigen aufeinander.
+  const facing = ds.x === dt.x && ds.y === dt.y;
+  const outTarget = { x: -dt.x, y: -dt.y };
+  const stub = stubLength(
+    S,
+    T,
+    ds,
+    facing,
+    lane,
+    input.stubCap ?? Number.POSITIVE_INFINITY,
+    input.stubCapRank ?? 0,
+    input.stubTie ?? 0
+  );
+  const stubTarget = stubLength(
+    T,
+    S,
+    outTarget,
+    facing,
+    laneTarget,
+    input.stubCapTarget ?? Number.POSITIVE_INFINITY,
+    input.stubCapRankTarget ?? input.stubCapRank ?? 0,
+    input.stubTieTarget ?? input.stubTie ?? 0
+  );
   const S2 = stubPoint(S, ds, stub);
-  const T2 = stubPoint(T, { x: -dt.x, y: -dt.y }, stub);
-
-  const points: Point[] = [S, S2];
-  const horizS = Math.abs(ds.x) === 1;
-  const horizT = Math.abs(dt.x) === 1;
-
-  if (horizS && horizT) {
-    if (ds.x === dt.x) {
-      if (offset === 0 && Math.abs(S2.y - T2.y) > EPS) {
-        points.push({ x: S2.x, y: T2.y });
-      } else {
-        const midX = quantize((S2.x + T2.x) / 2 + offset);
-        points.push({ x: midX, y: S2.y });
-        points.push({ x: midX, y: T2.y });
-      }
-    } else {
-      const sameRow = Math.abs(S2.y - T2.y) <= EPS;
-      const facing = (ds.x > 0 && T2.x >= S2.x - EPS) || (ds.x < 0 && T2.x <= S2.x + EPS);
-      if (sameRow && facing && offset === 0) {
-        // gerade
-      } else if (facing && offset === 0) {
-        // L, das in den Ziel-Stub mündet: ein Knick statt zwei.
-        points.push({ x: S2.x, y: T2.y });
-      } else if (facing) {
-        const midX = quantize((S2.x + T2.x) / 2 + offset);
-        points.push({ x: midX, y: S2.y });
-        points.push({ x: midX, y: T2.y });
-      } else {
-        // U-Loop (R-2-Fix, Regression: orthogonalRouting.invariants.test.ts
-        // „U-Turn nur wenn geometrisch erzwungen“): Ziel liegt hinter der
-        // Quelle. Die Rücklaufeinstrecke darf NICHT auf der Stub-Achse
-        // liegen — früher fielen (loopX, S2.y) und (loopX, T2.y) auf
-        // denselben Punkt zusammen und die Leitung lief nach dem Stub auf
-        // derselben Linie durch den Handle zurück (Selbstüberlappung,
-        // 0 Bends). Jetzt weicht die Rückstellstrecke um
-        // U_TURN_LANE_SPREAD auf eine eigene Lane aus.
-        const dir = ds.x > 0 ? 1 : -1;
-        const loopX = quantize(
-          (dir > 0 ? Math.max(S2.x, T2.x) : Math.min(S2.x, T2.x)) +
-            dir * (ROUTE_MIN_STUB * 2 + Math.abs(offset))
-        );
-        const laneSign = offset !== 0 ? Math.sign(offset) : 1;
-        const returnY = quantize(S2.y + laneSign * U_TURN_LANE_SPREAD);
-        points.push({ x: loopX, y: S2.y });
-        points.push({ x: loopX, y: returnY });
-        points.push({ x: T2.x, y: returnY });
-      }
-    }
-  } else if (!horizS && !horizT) {
-    if (ds.y === dt.y) {
-      const midY = quantize((S2.y + T2.y) / 2 + offset);
-      points.push({ x: S2.x, y: midY });
-      points.push({ x: T2.x, y: midY });
-    } else {
-      const sameCol = Math.abs(S2.x - T2.x) <= EPS;
-      const facing = (ds.y > 0 && T2.y >= S2.y - EPS) || (ds.y < 0 && T2.y <= S2.y + EPS);
-      if (sameCol && facing && offset === 0) {
-        // gerade
-      } else if (facing && offset === 0) {
-        points.push({ x: T2.x, y: S2.y });
-      } else if (facing) {
-        const midY = quantize((S2.y + T2.y) / 2 + offset);
-        points.push({ x: S2.x, y: midY });
-        points.push({ x: T2.x, y: midY });
-      } else {
-        const dir = ds.y > 0 ? 1 : -1;
-        const loopY = quantize(
-          (dir > 0 ? Math.max(S2.y, T2.y) : Math.min(S2.y, T2.y)) +
-            dir * (ROUTE_MIN_STUB * 2 + Math.abs(offset))
-        );
-        // R-2-Fix: Rücklauf auf eigener Lane statt auf der Stub-Achse
-        // (siehe horizontalen U-Loop oben).
-        const laneSign = offset !== 0 ? Math.sign(offset) : 1;
-        const returnX = quantize(S2.x + laneSign * U_TURN_LANE_SPREAD);
-        points.push({ x: S2.x, y: loopY });
-        points.push({ x: returnX, y: loopY });
-        points.push({ x: returnX, y: T2.y });
-      }
-    }
-  } else if (horizS) {
-    points.push({ x: T2.x, y: S2.y });
-  } else {
-    points.push({ x: S2.x, y: T2.y });
-  }
-
-  points.push(T2, T);
-  return simplifyWaypoints(points);
+  const T2 = stubPoint(T, outTarget, stubTarget);
+  return {
+    S,
+    S2,
+    T,
+    T2,
+    // Seitenschritt senkrecht zur Port-Achse (ROUTE-BUG-2, Stufe 2): trennt
+    // Kanten, die erst einmal entlang der Port-Achse weiterlaufen.
+    S3: stubPoint(S2, portNormal(ds), input.laneStep ?? lane),
+    T3: stubPoint(T2, portNormal(outTarget), input.laneStepTarget ?? laneTarget),
+    ds,
+    dt,
+    stub,
+    stubTarget,
+    lane,
+    laneTarget,
+  };
 }
 
-const withElbow = (S: Point, S2: Point, elbow: Point, T2: Point, T: Point): Point[] =>
-  simplifyWaypoints([S, S2, elbow, T2, T]);
+/** Liegen sich die Ports auf derselben Achse gegenüber? */
+const isFacing = (f: PortFrame): boolean => f.ds.x === f.dt.x && f.ds.y === f.dt.y;
+
+/** Ziel liegt in Fahrtrichtung vor dem Lane-Punkt der Quelle? */
+const isForward = (f: PortFrame): boolean => {
+  if (Math.abs(f.ds.x) === 1) {
+    return f.ds.x > 0 ? f.T3.x >= f.S3.x - EPS : f.T3.x <= f.S3.x + EPS;
+  }
+  return f.ds.y > 0 ? f.T3.y >= f.S3.y - EPS : f.T3.y <= f.S3.y + EPS;
+};
+
+/** U-Schleife für gegenläufige waagerechte Ports (Ziel liegt „hinter“ der Quelle). */
+const horizontalLoop = (f: PortFrame): Point[] => {
+  const dir = f.ds.x > 0 ? 1 : -1;
+  const loopX =
+    (dir > 0 ? Math.max(f.S3.x, f.T3.x) : Math.min(f.S3.x, f.T3.x)) +
+    dir * (ROUTE_MIN_STUB * 2 + Math.abs(f.lane));
+  if (Math.abs(f.S3.y - f.T3.y) > EPS) {
+    return [
+      { x: loopX, y: f.S3.y },
+      { x: loopX, y: f.T3.y },
+    ];
+  }
+  // Beide Lane-Punkte auf derselben Achse: Rücklauf auf eigener Lane, sonst
+  // läuft die Leitung auf der Port-Achse in sich zurück (R-2).
+  const returnY = f.S3.y + U_TURN_LANE_SPREAD;
+  return [
+    { x: loopX, y: f.S3.y },
+    { x: loopX, y: returnY },
+    { x: f.T3.x, y: returnY },
+  ];
+};
+
+/** U-Schleife für gegenläufige senkrechte Ports. */
+const verticalLoop = (f: PortFrame): Point[] => {
+  const dir = f.ds.y > 0 ? 1 : -1;
+  const loopY =
+    (dir > 0 ? Math.max(f.S3.y, f.T3.y) : Math.min(f.S3.y, f.T3.y)) +
+    dir * (ROUTE_MIN_STUB * 2 + Math.abs(f.lane));
+  if (Math.abs(f.S3.x - f.T3.x) > EPS) {
+    return [
+      { x: f.S3.x, y: loopY },
+      { x: f.T3.x, y: loopY },
+    ];
+  }
+  const returnX = f.S3.x + U_TURN_LANE_SPREAD;
+  return [
+    { x: f.S3.x, y: loopY },
+    { x: returnX, y: loopY },
+    { x: returnX, y: f.T3.y },
+  ];
+};
+
+/**
+ * Innerer Verlauf zwischen den Stub-Endpunkten S2 und T2 (ohne Stubs).
+ * Formen: Gerade, L, Z, U — jeweils port-treu.
+ */
+const coreWaypoints = (f: PortFrame, variant: 'primary' | 'midX' | 'midY' | 'late'): Point[] => {
+  const horizS = Math.abs(f.ds.x) === 1;
+  const horizT = Math.abs(f.dt.x) === 1;
+  const A = f.S3;
+  const B = f.T3;
+
+  if (horizS && horizT) {
+    if (!isFacing(f) && !isForward(f)) return horizontalLoop(f);
+    if (Math.abs(A.y - B.y) <= EPS) return [];
+    if (variant === 'midY') {
+      const midY = (A.y + B.y) / 2;
+      return [
+        { x: A.x, y: midY },
+        { x: B.x, y: midY },
+      ];
+    }
+    if (variant === 'midX' && !isFacing(f)) {
+      const midX = (A.x + B.x) / 2;
+      return [
+        { x: midX, y: A.y },
+        { x: midX, y: B.y },
+      ];
+    }
+    if (variant === 'late') {
+      // Gespiegeltes L: erst waagerecht bis unter/über den Ziel-Stub, dann
+      // senkrecht hinein. Für viele Layouts die kürzere, kreuzungsärmere der
+      // beiden L-Formen — deshalb steht sie gleichberechtigt im Katalog.
+      return [{ x: B.x, y: A.y }];
+    }
+    // L: erst waagerecht, dann senkrecht in den Ziel-Stub.
+    return [{ x: A.x, y: B.y }];
+  }
+
+  if (!horizS && !horizT) {
+    if (!isFacing(f) && !isForward(f)) return verticalLoop(f);
+    if (Math.abs(A.x - B.x) <= EPS) return [];
+    if (variant === 'midX') {
+      const midX = (A.x + B.x) / 2;
+      return [
+        { x: midX, y: A.y },
+        { x: midX, y: B.y },
+      ];
+    }
+    if (variant === 'midY' && !isFacing(f)) {
+      const midY = (A.y + B.y) / 2;
+      return [
+        { x: A.x, y: midY },
+        { x: B.x, y: midY },
+      ];
+    }
+    if (variant === 'late') return [{ x: A.x, y: B.y }];
+    return [{ x: B.x, y: A.y }];
+  }
+
+  // Gemischte Achsen: genau eine Ecke.
+  return horizS ? [{ x: B.x, y: A.y }] : [{ x: A.x, y: B.y }];
+};
+
+/**
+ * Setzt Stubs, Lane-Schritte und Kern zu einem vollständigen, port-treuen
+ * Pfad zusammen: `S → S2 → S3 → …Kern… → T3 → T2 → T`.
+ * `simplifyWaypoints` entfernt die Punkte, die auf einer Geraden liegen —
+ * bei Lane 0 fallen S3/S2 zusammen, der Pfad bleibt der klassische Katalog.
+ */
+const assembleCatalog = (f: PortFrame, core: Point[]): Point[] =>
+  simplifyWaypoints([f.S, f.S2, f.S3, ...core, f.T3, f.T2, f.T]);
+
+/**
+ * Klassischer orthogonaler Katalog: Gerade, L, Z, U — port-treu.
+ * Länge ist manhattan (bzw. manhattan + 2·Loop bei U). Wenn frei, optimal.
+ */
+export function catalogWaypoints(input: PortInput): Point[] {
+  const f = portFrame(input);
+  return assembleCatalog(f, coreWaypoints(f, 'primary'));
+}
 
 /**
  * Alle billigen, port-treuen Katalogpfade. A* läuft nur, wenn keiner frei ist.
- * Beide L-Varianten sind manhattan-optimal; Z nur, wenn ein Lane-Offset nötig ist.
+ * Die Varianten unterscheiden sich in der Lage der Mittellane (L, Z über X,
+ * Z über Y) — bewertet wird über Mängel (`routeDefectScore`), dann über
+ * Länge + Knicke.
  */
-export function catalogCandidates(input: {
-  sourceX: number;
-  sourceY: number;
-  sourcePosition?: Position;
-  targetX: number;
-  targetY: number;
-  targetPosition?: Position;
-  offset?: number;
-}): Point[][] {
-  const primary = catalogWaypoints(input);
-  const ds = sourceExitVector(input.sourcePosition);
-  const dt = targetEntryVector(input.targetPosition);
-  const offset = input.offset ?? 0;
-  const stub = ROUTE_MIN_STUB + Math.abs(offset) * 0.15;
-  const S: Point = { x: input.sourceX, y: input.sourceY };
-  const T: Point = { x: input.targetX, y: input.targetY };
-  const S2 = stubPoint(S, ds, stub);
-  const T2 = stubPoint(T, { x: -dt.x, y: -dt.y }, stub);
-
-  const out: Point[][] = [primary];
-  // R-2-Fix: Liegt das Ziel HINTER der Quelle (nicht „facing“), läuft der
-  // X-Elbow nach dem Stub auf derselben Achse zurück — Selbstüberlappung
-  // („Kabel durch den Handle“). Solche Kandidaten erst gar nicht erzeugen;
-  // der Y-Elbow ist genau dann degeneriert, wenn sein Knick auf der
-  // Stub-Achse liegt (T2.y == S2.y).
-  const facingX = ds.x > 0 ? T2.x >= S2.x - EPS : T2.x <= S2.x + EPS;
-  if (facingX) {
-    out.push(withElbow(S, S2, { x: T2.x, y: S2.y }, T2, T));
-  }
-  if (Math.abs(T2.y - S2.y) > EPS) {
-    out.push(withElbow(S, S2, { x: S2.x, y: T2.y }, T2, T));
-  }
-
-  if (offset !== 0) {
-    out.push(
-      simplifyWaypoints([
-        S,
-        S2,
-        { x: quantize((S2.x + T2.x) / 2 + offset), y: S2.y },
-        { x: quantize((S2.x + T2.x) / 2 + offset), y: T2.y },
-        T2,
-        T,
-      ])
-    );
-    out.push(
-      simplifyWaypoints([
-        S,
-        S2,
-        { x: S2.x, y: quantize((S2.y + T2.y) / 2 + offset) },
-        { x: T2.x, y: quantize((S2.y + T2.y) / 2 + offset) },
-        T2,
-        T,
-      ])
-    );
+export function catalogCandidates(input: PortInput): Point[][] {
+  const out: Point[][] = [];
+  // ROUTE-BUG-15: Der Seitenschritt ist nur sinnvoll, wenn die Kante danach
+  // entlang der Port-Achse weiterläuft. Knickt sie sofort ab — oder kommt sie
+  // von der anderen Seite an — wird der Schritt zum Haken (hin und zurück).
+  // Beide Varianten stehen zur Wahl; `scoreCatalog` verwirft den Haken über
+  // die Mängel-Strafe (I4).
+  const step = input.laneStep ?? input.lane ?? 0;
+  const stepTarget = input.laneStepTarget ?? input.laneTarget ?? input.lane ?? 0;
+  const frames =
+    step === 0 && stepTarget === 0
+      ? [portFrame(input)]
+      : [portFrame(input), portFrame({ ...input, laneStep: 0, laneStepTarget: 0 })];
+  for (const f of frames) {
+    for (const variant of ['primary', 'late', 'midX', 'midY'] as const) {
+      out.push(assembleCatalog(f, coreWaypoints(f, variant)));
+    }
   }
 
   const seen = new Set<string>();
@@ -533,41 +826,71 @@ export function catalogCandidates(input: {
   return unique;
 }
 
-const scoreCatalog = (points: Point[]): number => pathLength(points) + BEND_COST * countBends(points);
+/** Kehre (180°) zwischen zwei aufeinanderfolgenden Segmenten? */
+const isUTurnPair = (s1: Segment, s2: Segment): boolean => {
+  const d1 = { x: Math.sign(s1[1].x - s1[0].x), y: Math.sign(s1[1].y - s1[0].y) };
+  const d2 = { x: Math.sign(s2[1].x - s2[0].x), y: Math.sign(s2[1].y - s2[0].y) };
+  return d1.x === -d2.x && d1.y === -d2.y && (d1.x !== 0 || d1.y !== 0);
+};
 
-export function bestFreeCatalog(
-  input: {
-    sourceX: number;
-    sourceY: number;
-    sourcePosition?: Position;
-    targetX: number;
-    targetY: number;
-    targetPosition?: Position;
-    offset?: number;
-  },
-  obstacles: Rect[]
-): Point[] | null {
+/**
+ * Mängel-Strafe einer Route (Invarianten I4/I6 + R-2-Selbstüberlappung).
+ *
+ * Wird der Auswahl vorangestellt, weil ein „freier“ Pfad mit Kehre am Handle
+ * oder 0,1-px-Stummel kein Erfolg ist — solche Kandidaten gewinnen nur, wenn
+ * es keinen mangelfreien gibt.
+ */
+export function routeDefectScore(points: Point[]): number {
+  const segments = waypointsToSegments(simplifyWaypoints(points));
+  if (segments.length === 0) return Number.POSITIVE_INFINITY;
+  let penalty = 0;
+  // I4: Kehren in der Port-Region. Geprüft werden die beiden ersten und die
+  // beiden letzten Segmentpaare — die Kehre entsteht am Knick hinter dem Stub.
+  const pairs = [
+    [0, 1],
+    [1, 2],
+    [segments.length - 3, segments.length - 2],
+    [segments.length - 2, segments.length - 1],
+  ];
+  for (const pair of pairs) {
+    const i = pair[0];
+    const j = pair[1];
+    if (i === undefined || j === undefined) continue;
+    if (i < 0 || j >= segments.length || i >= j) continue;
+    if (isUTurnPair(at(segments, i), at(segments, j))) penalty += U_TURN_COST;
+  }
+  // I6: Kurzsegmente (Schwelle: Lane-Raster, siehe Invariante I6).
+  for (let i = 0; i < segments.length; i++) {
+    const seg = at(segments, i);
+    if (manhattan(seg[0], seg[1]) < ROUTING_TOKENS.segmentMin - EPS) {
+      penalty += BEND_COST;
+      break;
+    }
+  }
+  // R-2: Selbstüberlappung — die Leitung belegt dieselbe Lane zweimal.
+  if (hasSelfOverlap(points)) penalty += U_TURN_COST;
+  return penalty;
+}
+
+const scoreCatalog = (points: Point[]): number =>
+  pathLength(points) + BEND_COST * countBends(points) + routeDefectScore(points);
+
+export function bestFreeCatalog(input: PortInput, obstacles: Rect[]): Point[] | null {
   const candidates = catalogCandidates(input);
   let best: Point[] | null = null;
-  let bestScore = Infinity;
-  let bestOverlaps = false;
+  let bestScore = Number.POSITIVE_INFINITY;
   for (let i = 0; i < candidates.length; i++) {
     const pts = at(candidates, i);
     if (!isOrthogonalPath(pts) || pathHitsObstacles(pts, obstacles)) continue;
-    // R-2: selbstüberlappende Kandidaten verlieren grundsätzlich gegen
-    // überlappungsfreie — egal wie kurz sie sind.
-    const overlaps = hasSelfOverlap(pts);
-    if (best !== null && overlaps && !bestOverlaps) continue;
-    const score = scoreCatalog(pts) + (overlaps ? U_TURN_COST : 0);
-    if (best === null || score < bestScore - EPS) {
+    // Mängel sind Teil der Bewertung: erst I4/I6/R-2, dann Länge + Knicke.
+    const score = scoreCatalog(pts);
+    if (score < bestScore - EPS) {
       best = pts;
       bestScore = score;
-      bestOverlaps = overlaps;
     }
   }
   return best;
 }
-
 /**
  * Selbstüberlappung (R-2): zwei achsenparallele Segmente desselben Pfads
  * liegen auf derselben Linie und überlappen auf einer Strecke > EPS — die
@@ -758,14 +1081,22 @@ function hananAStar(
   extraYs: number[],
   clip?: { minX: number; maxX: number; minY: number; maxY: number }
 ): Point[] | null {
-  let xs = uniqueSorted([start.x, goal.x, ...extraXs, ...obstacles.flatMap((r) => [r.x, r.x + r.width])]);
-  let ys = uniqueSorted([start.y, goal.y, ...extraYs, ...obstacles.flatMap((r) => [r.y, r.y + r.height])]);
+  const exactXs = [start.x, goal.x];
+  const exactYs = [start.y, goal.y];
+  let xs = uniqueSorted(
+    [start.x, goal.x, ...extraXs, ...obstacles.flatMap((r) => [r.x, r.x + r.width])],
+    exactXs
+  );
+  let ys = uniqueSorted(
+    [start.y, goal.y, ...extraYs, ...obstacles.flatMap((r) => [r.y, r.y + r.height])],
+    exactYs
+  );
 
   if (clip) {
     const keepX = (x: number) => x >= clip.minX && x <= clip.maxX;
     const keepY = (y: number) => y >= clip.minY && y <= clip.maxY;
-    xs = uniqueSorted([start.x, goal.x, ...xs.filter(keepX)]);
-    ys = uniqueSorted([start.y, goal.y, ...ys.filter(keepY)]);
+    xs = uniqueSorted([start.x, goal.x, ...xs.filter(keepX)], exactXs);
+    ys = uniqueSorted([start.y, goal.y, ...ys.filter(keepY)], exactYs);
   } else if (xs.length * ys.length > 20_000) {
     // Envelope aller Hindernisse, nicht nur Start–Ziel ±120 px:
     // sonst kann der Umweg um ein großes Bauteil aus dem Fenster fallen.
@@ -796,6 +1127,14 @@ function hananAStar(
   const gix = snapIndex(xs, goal.x);
   const giy = snapIndex(ys, goal.y);
 
+  // Ein Hindernis, das den Start- oder Zielpunkt enthält, nimmt nicht an den
+  // Masken teil: Die Suche muss von dort überhaupt erst wegkommen. Was das
+  // für die Freigabe bedeutet, entscheidet nicht diese Zeile, sondern die
+  // Abnahme in `searchFrame` (Stub-Toleranz bis Rohbox + 2 px) — siehe
+  // ROUTE-BUG-18. Gemessen (2026-09-09): Werden solche Boxen NICHT
+  // ausgenommen, gewinnen solar/acdc je 2 × I6 + 1 × I7 und complex 1 × I4
+  // bei 1 Selbstüberlappung, während I3 nur von 6 auf 2 fällt — netto
+  // schlechter, deshalb bleibt die Ausnahme.
   const solids: Rect[] = [];
   for (let i = 0; i < obstacles.length; i++) {
     const r = at(obstacles, i);
@@ -804,8 +1143,33 @@ function hananAStar(
   }
 
   const { blocked, hClosed, vClosed } = buildHananGridMasks(xs, ys, solids);
-  blocked[siy * nx + six] = 0;
-  blocked[giy * nx + gix] = 0;
+  // R-7 „Stub-Recht", eng gefasst: Start- und Zielzelle sind frei, und die
+  // vier angrenzenden Gittersegmente ebenfalls — sonst kommt die Suche aus
+  // der Zelle nicht heraus, wenn ein Bauteil bis an den Handle reicht.
+  //
+  // ROUTE-BUG-18: Nur diese Zelle, nicht die ganze Box. Die frühere Lösung
+  // entzerrte die komplette Box auf Rohbox + 2 px; die Leitung durfte dann
+  // auf ihrer ganzen Länge 2 px am Bauteil entlanglaufen (gemessen 8 × I3 im
+  // Referenzplan complex). So bleibt die Ausnahme auf den Stub beschränkt.
+  // Frei wird nur die Zelle selbst plus ihre vier Anschlusssegmente: reicht
+  // ein Bauteil bis an den Handle, sperrt es sonst schon den ersten Schritt
+  // aus der Zelle. Mehr darf nicht frei werden — eine ganze Zeile/Spalte
+  // freizugeben hieße, die Leitung mitten durch das Bauteil zu lassen
+  // (gemessen: I1 = 1 in acdc, Wand-Durchbruch statt Umfahrung).
+  const freeCell = (ix: number, iy: number): void => {
+    if (ix < 0 || iy < 0 || ix >= nx || iy >= ny) return;
+    blocked[iy * nx + ix] = 0;
+    if (nx > 1) {
+      if (ix > 0) hClosed[iy * (nx - 1) + (ix - 1)] = 0;
+      if (ix < nx - 1) hClosed[iy * (nx - 1) + ix] = 0;
+    }
+    if (ny > 1) {
+      if (iy > 0) vClosed[(iy - 1) * nx + ix] = 0;
+      if (iy < ny - 1) vClosed[iy * nx + ix] = 0;
+    }
+  };
+  freeCell(six, siy);
+  freeCell(gix, giy);
 
   const hOpen = new Uint8Array(ny * Math.max(0, nx - 1));
   const vOpen = new Uint8Array(nx * Math.max(0, ny - 1));
@@ -933,7 +1297,44 @@ export type PathRequest = {
   targetX: number;
   targetY: number;
   targetPosition?: Position;
-  offset?: number;
+  /**
+   * Lane-Wert des Port-Fan-Outs (px, vorzeichenbehaftet): `|lane|` staffelt
+   * den Stub und verschiebt den Lane-Punkt um `lane` px senkrecht zur
+   * Port-Achse; das Vorzeichen gibt die Seite an
+   * (`lib/routing/rules/portFanOut`, ROUTE-BUG-2). 0 = mittlere Lane.
+   */
+  lane?: number;
+  /**
+   * Lane-Wert am Ziel-Port. Fehlt er, gilt `lane` — `routeAllCables` setzt
+   * beide getrennt, weil ein Bündel am Quell-Port nichts über die Belegung
+   * am Ziel-Port aussagt (ROUTE-BUG-9).
+   */
+  laneTarget?: number;
+  /**
+   * Seitenschritt senkrecht zur Port-Achse (px). Fehlt er, gilt `lane`;
+   * 0 = nur staffeln (Variante ohne Haken, ROUTE-BUG-15).
+   */
+  laneStep?: number;
+  /** Seitenschritt am Ziel-Port. Fällt auf `laneStep`, dann `laneTarget`. */
+  laneStepTarget?: number;
+  /**
+   * Bereits verlegte Leitungen als dünne Sperrflächen (px-Boxen um deren
+   * Segmente, OHNE die Port-Stubs). Verhindert, dass zwei Kanten denselben
+   * Korridor doppelt belegen (ROUTE-BUG-16). Werden nicht aufgebläht.
+   */
+  cableTubes?: readonly Rect[];
+  /** Obergrenze der Stub-Länge aus der Bauteil-Freigabe (ROUTE-BUG-31). */
+  stubCap?: number;
+  /** Dasselbe für den Ziel-Stub. */
+  stubCapTarget?: number;
+  /** Rang im Port-Bündel für die Rang-Treppe (ROUTE-BUG-34). */
+  stubCapRank?: number;
+  /** Dasselbe für den Ziel-Stub. */
+  stubCapRankTarget?: number;
+  /** Bündel-Gleichstand mit demselben `|lane|`-Betrag (ROUTE-BUG-35). */
+  stubTie?: number;
+  /** Dasselbe für den Ziel-Stub. */
+  stubTieTarget?: number;
   obstacles?: Rect[];
   borderRadius?: number;
   crossingSegments?: Segment[];
@@ -972,6 +1373,18 @@ export type PathResult = {
    */
   fallbackHitsObstacles?: boolean;
   /**
+   * ROUTE-BUG-23: true, wenn diese Route die Bauteil-Freigabe NICHT einhält,
+   * weil sie geometrisch nicht einhaltbar war — der Router hat die Rangfolge
+   * der Garantien bis zur letzten Stufe ausgeschöpft (R-7 „Stub-Recht":
+   * Hindernis-Box auf Rohbox + 2 px, bzw. Wiederholungslauf mit halbiertem
+   * Margin). Der Pfad ist orthogonal und im Rohmodell kollisionsfrei, liegt
+   * aber enger als `cableClearance` am Bauteil.
+   *
+   * Nicht versteckt, sondern gekennzeichnet: Die UI kann die Leitung
+   * markieren, und `npm run routing:audit` zählt dieselben Fälle als I3.
+   */
+  tightMarginUsed?: boolean;
+  /**
    * WP-7 (#395): Kreuzungen, an denen DIESE Leitung einen Bogen zeichnet.
    * Wird erst in `routeAllCables` gefüllt (nur dort sind alle Leitungen
    * bekannt); die Einzelpfad-Suche liefert immer eine leere Liste.
@@ -999,7 +1412,7 @@ export const clearPathfindingCache = (): void => {
   cache.clear();
 };
 
-const obstacleKey = (obstacles: Rect[]): string => {
+const obstacleKey = (obstacles: readonly Rect[]): string => {
   if (obstacles.length === 0) return '';
   let s = `${obstacles.length}:`;
   for (let i = 0; i < obstacles.length; i++) {
@@ -1022,8 +1435,18 @@ const segmentsKey = (segments: Segment[] | undefined): string => {
 const requestKey = (input: PathRequest, obstacles: Rect[]): string =>
   `${quantize(input.sourceX)},${quantize(input.sourceY)},${input.sourcePosition ?? ''},` +
   `${quantize(input.targetX)},${quantize(input.targetY)},${input.targetPosition ?? ''},` +
-  `${input.offset ?? 0},${input.borderRadius ?? ROUTE_BORDER_RADIUS},` +
-  `${obstacleKey(obstacles)},${segmentsKey(input.crossingSegments)}`;
+  `${input.lane ?? 0}/${input.laneTarget ?? ''}/${input.laneStep ?? ''}/` +
+  `${input.laneStepTarget ?? ''},${input.borderRadius ?? ROUTE_BORDER_RADIUS},` +
+  // ROUTE-BUG-34: Der Bündel-Rang ändert die Stub-Länge und gehört damit in
+  // den Schlüssel wie jeder andere Routing-Eingang.
+  `${input.stubCapRank ?? ''}/${input.stubCapRankTarget ?? ''},` +
+  `${input.stubTie ?? ''}/${input.stubTieTarget ?? ''},` +
+  // ROUTE-BUG-6: `ownObstacles` und `cableTubes` gehören in den
+  // Cache-Schlüssel — sonst liefern identische Geometrie-Paare mit
+  // unterschiedlicher Hindernis-/Trassenbelegung dasselbe (falsche) Ergebnis.
+  `${(input.ownObstacles ?? []).length},` +
+  `${obstacleKey(obstacles)},${segmentsKey(input.crossingSegments)},` +
+  `${obstacleKey(input.cableTubes ?? [])}`;
 
 const cacheGet = (key: string): PathResult | undefined => {
   const hit = cache.get(key);
@@ -1095,45 +1518,30 @@ function assemble(
   };
 }
 
-function searchOnce(
-  input: PathRequest,
+const sameSegment = (a: Point, b: Point, c: Point, d: Point): boolean =>
+  Math.abs(a.x - c.x) <= EPS &&
+  Math.abs(a.y - c.y) <= EPS &&
+  Math.abs(b.x - d.x) <= EPS &&
+  Math.abs(b.y - d.y) <= EPS;
+
+/**
+ * Hanan-A*-Suche zwischen den Stub-Endpunkten eines Port-Rahmens.
+ * Liefert `null`, wenn kein hindernisfreier Pfad gefunden wurde.
+ */
+function searchFrame(
+  f: PortFrame,
   obstacles: Rect[],
-  offset: number,
-  /** Wie weit sind `obstacles` gegenüber den Rohboxen aufgebläht? */
-  marginUsed: number = OBSTACLE_MARGIN
-): { waypoints: Point[]; usedSearch: PathResult['usedSearch'] } {
-  const freeCatalog = bestFreeCatalog({ ...input, offset }, obstacles);
-  if (freeCatalog) {
-    return { waypoints: freeCatalog, usedSearch: 'catalog' };
-  }
+  tubes: readonly Rect[],
+  marginUsed: number,
+  /** Darf die Freigabe gelockert werden („Stub-Recht", R-7)? */
+  relaxed: boolean
+): { waypoints: Point[]; usedSearch: PathResult['usedSearch']; tight: boolean } | null {
+  // Gesucht wird zwischen den Lane-Punkten (S3/T3): Dort ist die Kante
+  // bereits aus dem Port-Bündel herausgetreten, die Stubs und Seitenschritte
+  // stehen fest und bleiben port-treu.
+  const A = f.S3;
+  const B = f.T3;
 
-  const catalog = catalogWaypoints({ ...input, offset });
-  const ds = sourceExitVector(input.sourcePosition);
-  const dt = targetEntryVector(input.targetPosition);
-  const S: Point = { x: input.sourceX, y: input.sourceY };
-  const T: Point = { x: input.targetX, y: input.targetY };
-
-  // R-7: Der Stub bleibt IMMER ≥ ROUTE_MIN_STUB (24 px). Früher wurde er
-  // bei Hinderniskontakt halbiert (bis 4 px) — das erzeugte Winzstummel
-  // direkt am Handle und Richtungswechsel im Stub-Bereich.
-  const pickStub = (from: Point, dir: Point): Point => {
-    const stub = ROUTE_MIN_STUB + Math.abs(offset) * 0.15;
-    return stubPoint(from, dir, stub);
-  };
-
-  const S2 = pickStub(S, ds);
-  const T2 = pickStub(T, { x: -dt.x, y: -dt.y });
-
-  // R-7/R-10: Sitzt ein (aufgeblähtes) Hindernis so nah am Handle, dass es
-  // den vollen Stub überdeckt, wird NUR dieses Hindernis für die Suche auf
-  // das 12-px-Clearance-Ziel zurückgesetzt (Rohbox + 12) — der Stub kürzt
-  // nicht, die A*-Suche startet nicht in einem blockierten Punkt, und JEDER
-  // im entzerrten Raum akzeptierte Pfad hält trotzdem mindestens 12 px
-  // Abstand zum echten Node (inkl. Labelfläche, die in der Box liegt).
-  // Früher stand hier eine 2-px-Restfreigabe — Routen durften bis auf
-  // 10 px an einen Node heranrücken (R-10-Verstoß). Der Inset wird aus der
-  // TATSÄCHLICH verwendeten Inflation abgeleitet (der Notfall-Retry läuft
-  // mit 7 px — dort wäre ein fester 14er-Abzug die Box gewachsen).
   const CLEARANCE_GOAL = 12;
   const inset = Math.max(0, marginUsed - CLEARANCE_GOAL);
   const shrink = (r: Rect, by: number): Rect => ({
@@ -1142,75 +1550,210 @@ function searchOnce(
     width: Math.max(2 * CLEARANCE_GOAL, r.width - 2 * by),
     height: Math.max(2 * CLEARANCE_GOAL, r.height - 2 * by),
   });
-  // Stufe 1: Rohbox + 12 px (R-10-Ziel). Stufe 2: Liegt der Stub-Punkt
-  // AUCH dort noch im Block, klebt das Bauteil näher am Handle als die
-  // Stub-Länge plus Ziel-Freigabe — beides (≥ 12 px UND voller Stub) ist
-  // geometrisch unmöglich. Dann weicht die Box auf Rohbox + 2 px aus
-  // („Stub-Recht"), damit A* überhaupt starten kann; die Freigabe gilt im
-  // Umgang mit an Handle geklebten Bauteilen als begründete Ausnahme.
+
+  /**
+   * R-7/R-10, zweistufig — Freigabe hat Vorrang vor dem „Stub-Recht":
+   *
+   * Stufe 1 sucht mit den vollen Hindernis-Boxen. Nur wenn dort kein Pfad
+   * existiert, wird Stufe 2 freigeschaltet: Boxen, die den Stub-Punkt
+   * überdecken, werden auf Rohbox + 12 px (bzw. +2 px, wenn selbst das nicht
+   * reicht) zurückgesetzt, damit die Suche überhaupt starten kann. Ohne diese
+   * Rangfolge nahm die Suche die Notfreiheit auch dann, wenn eine saubere
+   * Route existierte (gemessen: Leitungen 4.5 px am Bauteil, I3-Verstöße).
+   */
+  // Stufe 1: Rohbox + 12 px (R-10-Ziel). Stufe 2 („Stub-Recht", R-7): Liegt
+  // der Stub-Punkt AUCH dort noch im Block, klebt das Bauteil näher am Handle
+  // als Stub-Länge plus Freigabe — beides gleichzeitig ist geometrisch
+  // unmöglich. Dann weicht die Box auf Rohbox + 2 px aus, damit die Suche
+  // starten kann; der Stub wiegt schwerer als die Freigabe, und der Fall ist
+  // zählbar (I3 in `npm run routing:audit`, Referenzszenario 22).
+  // Letzter Ausweg vor dem Notfallpfad (R-7 „Stub-Recht"): Klebt ein Bauteil
+  // so nah am Handle, dass selbst die freie Start-/Zielzelle keinen Weg
+  // öffnet, weicht NUR dieses Bauteil auf Rohbox + 2 px aus. Der Stub wiegt
+  // schwerer als die Freigabe — und der Fall bleibt über I3 zählbar.
   const searchObstacles = obstacles.map((r) => {
-    if (!containsPoint(r, S2) && !containsPoint(r, T2)) return r;
+    if (!containsPoint(r, A) && !containsPoint(r, B)) return r;
     const floored = shrink(r, inset);
-    if (!containsPoint(floored, S2) && !containsPoint(floored, T2)) return floored;
-    return shrink(r, marginUsed - 2);
+    if (!containsPoint(floored, A) && !containsPoint(floored, B)) return floored;
+    return shrink(r, Math.max(0, marginUsed - 2));
   });
 
-  const extraXs = [S2.x, T2.x, (S2.x + T2.x) / 2 + offset, S.x, T.x];
-  const extraYs = [S2.y, T2.y, (S2.y + T2.y) / 2 + offset, S.y, T.y];
-  if (obstacles.length > 0) {
-    let minX = Infinity;
-    let maxX = -Infinity;
-    let minY = Infinity;
-    let maxY = -Infinity;
-    for (let i = 0; i < obstacles.length; i++) {
-      const r = at(obstacles, i);
-      minX = Math.min(minX, r.x);
-      maxX = Math.max(maxX, r.x + r.width);
-      minY = Math.min(minY, r.y);
-      maxY = Math.max(maxY, r.y + r.height);
+  const runWith = (
+    searchObstacles: Rect[]
+  ): { waypoints: Point[]; usedSearch: PathResult['usedSearch'] } | null => {
+    // ROUTE-BUG-16: Bereits verlegte Leitungen sind harte Sperrflächen. Ohne
+    // sie sucht sich jede Kante denselben billigsten Korridor (Hinderniskante)
+    // und zwei Kanten belegen dieselbe Trasse — gemessen bis 372 px doppelte
+    // Belegung. Die Tubes werden NICHT aufgebläht und NICHT entzerrt.
+    const blocked: Rect[] = tubes.length > 0 ? [...searchObstacles, ...tubes] : [...searchObstacles];
+
+    const extraXs = [A.x, B.x, (A.x + B.x) / 2, f.S.x, f.T.x];
+    const extraYs = [A.y, B.y, (A.y + B.y) / 2, f.S.y, f.T.y];
+    for (let i = 0; i < tubes.length; i++) {
+      const r = at(tubes, i);
+      extraXs.push(r.x, r.x + r.width);
+      extraYs.push(r.y, r.y + r.height);
     }
-    extraXs.push(minX - 16, maxX + 16);
-    extraYs.push(minY - 16, maxY + 16);
-  }
+    if (blocked.length > 0) {
+      let minX = Infinity;
+      let maxX = -Infinity;
+      let minY = Infinity;
+      let maxY = -Infinity;
+      for (let i = 0; i < blocked.length; i++) {
+        const r = at(blocked, i);
+        minX = Math.min(minX, r.x);
+        maxX = Math.max(maxX, r.x + r.width);
+        minY = Math.min(minY, r.y);
+        maxY = Math.max(maxY, r.y + r.height);
+      }
+      extraXs.push(minX - 16, maxX + 16);
+      extraYs.push(minY - 16, maxY + 16);
+    }
 
-  const inner = hananAStar(S2, T2, headingFromDir(ds), headingFromDir(dt), searchObstacles, extraXs, extraYs);
+    const inner = hananAStar(A, B, headingFromDir(f.ds), headingFromDir(f.dt), blocked, extraXs, extraYs);
+    if (!inner || inner.length < 1) return null;
 
-  if (inner && inner.length >= 1) {
-    const full = stitchOrthogonal([S, ...inner, T]);
-    if (!pathHitsObstacles(full, searchObstacles)) {
+    const full = stitchOrthogonal([f.S, f.S2, f.S3, ...inner, f.T3, f.T2, f.T]);
+    if (!pathHitsObstacles(full, blocked)) {
       return { waypoints: full, usedSearch: 'astar' };
     }
-    // Stub-Toleranz (R-7): Bleiben Verletzungen, die NUR die Stub-Segmente
-    // (S→S2 bzw. T2→T) gegen eine entzerrte Box betreffen, wird der Pfad
-    // akzeptiert — der 24-px-Stub wiegt schwerer als die letzten 12 px
+
+    // Stub-Toleranz (R-7): Bleiben Verletzungen, die NUR die Port-Segmente
+    // (S→S2, S2→S3 bzw. T3→T2, T2→T) gegen eine entzerrte Box betreffen, wird
+    // der Pfad akzeptiert — der Stub wiegt schwerer als die letzten 12 px
     // Inflate-Margin an einem direkt anliegenden Bauteil.
-    const sameSegment = (a: Point, b: Point, c: Point, d: Point): boolean =>
-      Math.abs(a.x - c.x) <= EPS &&
-      Math.abs(a.y - c.y) <= EPS &&
-      Math.abs(b.x - d.x) <= EPS &&
-      Math.abs(b.y - d.y) <= EPS;
     let tolerated = true;
     for (let i = 0; i + 1 < full.length && tolerated; i++) {
       const a = at(full, i);
       const b = at(full, i + 1);
-      const isStub = sameSegment(a, b, S, S2) || sameSegment(a, b, T2, T);
+      const isStub =
+        sameSegment(a, b, f.S, f.S2) ||
+        sameSegment(a, b, f.S2, f.S3) ||
+        sameSegment(a, b, f.T3, f.T2) ||
+        sameSegment(a, b, f.T2, f.T);
       for (let k = 0; k < obstacles.length && tolerated; k++) {
         const rFull = at(obstacles, k);
         if (!segmentHitsAny(a, b, [rFull])) continue;
-        const rSearch = at(searchObstacles, k);
-        if (segmentHitsAny(a, b, [rSearch])) {
-          tolerated = false;
-        } else if (!isStub) {
+        // Nur ein Stub darf näher ans Bauteil — und auch nur bis zur
+        // Restfreigabe von 2 px (Rohbox + 2). Alle übrigen Segmente müssen
+        // die volle aufgeblähte Box meiden.
+        const rStub = shrink(rFull, Math.max(0, marginUsed - 2));
+        if (segmentHitsAny(a, b, [rStub]) || !isStub) {
           tolerated = false;
         }
       }
     }
-    if (tolerated) {
-      return { waypoints: full, usedSearch: 'astar' };
-    }
+    return tolerated ? { waypoints: full, usedSearch: 'astar' } : null;
+  };
+
+  const clean = runWith(obstacles);
+  if (clean) return { ...clean, tight: false };
+  if (!relaxed) return null;
+  const loose = runWith(searchObstacles);
+  // ROUTE-BUG-23: Die gelockerte Stufe ist ein Eingeständnis — sie wird
+  // mitgeliefert, statt im Aufrufer unsichtbar zu verpuffen.
+  return loose ? { ...loose, tight: true } : null;
+}
+
+/**
+ * Eine Routing-Anfrage bedienen: erst der billige Katalog, dann Hanan-A*.
+ *
+ * `marginUsed` gibt an, wie weit `obstacles` gegenüber den Rohboxen
+ * aufgebläht sind (normal 14 px, im Notfall-Retry 7 px) — `searchFrame`
+ * leitet daraus die Freigabe-Untergrenze ab.
+ */
+function searchOnce(
+  input: PathRequest,
+  obstacles: Rect[],
+  lane: number,
+  marginUsed: number = OBSTACLE_MARGIN
+): { waypoints: Point[]; usedSearch: PathResult['usedSearch']; tight: boolean } {
+  // Degenerierter Fall (überlappende Nodes): Quelle und Ziel sind derselbe
+  // Punkt. Es gibt keine Route, also auch keine Suche — der Punkt selbst ist
+  // das Ergebnis. Ohne diese Abzweigung lief der Fall in den Notfallpfad
+  // (Szenario `18-same-point`, R-3-Quote).
+  if (Math.abs(input.sourceX - input.targetX) <= EPS && Math.abs(input.sourceY - input.targetY) <= EPS) {
+    return {
+      waypoints: [{ x: input.sourceX, y: input.sourceY }],
+      usedSearch: 'catalog',
+      tight: false,
+    };
   }
 
-  return { waypoints: catalog, usedSearch: 'fallback' };
+  const tubes = input.cableTubes ?? [];
+  const hard = tubes.length > 0 ? [...obstacles, ...tubes] : obstacles;
+  const freeCatalog = bestFreeCatalog({ ...input, lane }, hard);
+  if (freeCatalog) {
+    return { waypoints: freeCatalog, usedSearch: 'catalog', tight: false };
+  }
+
+  // A*-Varianten: mit Seitenschritt und (falls einer gesetzt war) ohne.
+  // Gewählt wird die erste mangelfreie, sonst die mit der geringsten Strafe.
+  const step = input.laneStep ?? lane;
+  const stepTarget = input.laneStepTarget ?? input.laneTarget ?? lane;
+  const frames =
+    step === 0 && stepTarget === 0
+      ? [portFrame({ ...input, lane })]
+      : [portFrame({ ...input, lane }), portFrame({ ...input, lane, laneStep: 0, laneStepTarget: 0 })];
+  let bestFound: { waypoints: Point[]; usedSearch: PathResult['usedSearch']; tight: boolean } | null = null;
+  let bestPenalty = Number.POSITIVE_INFINITY;
+  // Rangfolge der Garantien — erst die harte Regel, dann die weiche:
+  //
+  //   1. volle Freigabe (14 px) + Trassensperre
+  //   2. volle Freigabe, ohne Trassensperre   (I3 schlägt I2)
+  //   3. gelockerte Freigabe („Stub-Recht") + Trassensperre
+  //   4. gelockerte Freigabe, ohne Trassensperre
+  //
+  // Ohne diese Ordnung drückte die Trassensperre Kanten an Bauteile heran
+  // (gemessen 4.5 px statt 12 px, I3) — zwei Kanten auf einer Trasse sind
+  // ein Schönheitsfehler, eine Kante am Bauteil ein Regelverstoß.
+  //
+  // Kein Vorab-Check „Stub-Punkt frei?": Genau für den Fall, dass ein
+  // aufgeblähtes Bauteil den Stub-Punkt überdeckt, entzerrt `searchFrame`
+  // dieses eine Hindernis. Ein Vorab-Abbruch würde die Suche in den
+  // Notfallpfad schicken (gemessen: Stressszene 22).
+  const attempts: { tubes: readonly Rect[]; relaxed: boolean }[] =
+    tubes.length > 0
+      ? [
+          { tubes, relaxed: false },
+          { tubes: [], relaxed: false },
+          { tubes, relaxed: true },
+          { tubes: [], relaxed: true },
+        ]
+      : [
+          { tubes: [], relaxed: false },
+          { tubes: [], relaxed: true },
+        ];
+  outer: for (const attempt of attempts) {
+    for (const f of frames) {
+      const found = searchFrame(f, obstacles, attempt.tubes, marginUsed, attempt.relaxed);
+      if (!found) continue;
+      const penalty = routeDefectScore(found.waypoints);
+      if (penalty < bestPenalty - EPS) {
+        bestFound = found;
+        bestPenalty = penalty;
+      }
+      if (penalty <= EPS) break outer;
+    }
+    if (bestFound) break;
+  }
+  if (bestFound) return bestFound;
+
+  // Kein freier Stub-Punkt oder keine freie Suche: Lane komplett
+  // zurücknehmen und erneut versuchen — ein Bündel ohne eigene Lane ist
+  // besser als gar kein hindernisfreier Pfad.
+  if (lane !== 0 || step !== 0 || stepTarget !== 0) {
+    const found = searchFrame(
+      portFrame({ ...input, lane: 0, laneTarget: 0, laneStep: 0, laneStepTarget: 0 }),
+      obstacles,
+      [],
+      marginUsed,
+      true
+    );
+    if (found) return found;
+  }
+
+  return { waypoints: catalogWaypoints({ ...input, lane }), usedSearch: 'fallback', tight: false };
 }
 
 /**
@@ -1222,9 +1765,17 @@ export function findCablePath(input: PathRequest): PathResult {
   const allObstacles = input.obstacles ?? [];
   const start: Point = { x: input.sourceX, y: input.sourceY };
   const end: Point = { x: input.targetX, y: input.targetY };
-  const obstacles = relevantObstacles(allObstacles, start, end, input.ownObstacles).map((r) =>
-    inflateRect(r, OBSTACLE_MARGIN)
-  );
+  const relevant = relevantObstacles(allObstacles, start, end, input.ownObstacles);
+  const obstacles = relevant.map((r) => inflateRect(r, OBSTACLE_MARGIN));
+  // ROUTE-BUG-31: Stub-Kappen aus den ROHboxen (nicht den aufgeblähten — die
+  // Freigabe ist ja gerade das, was eingehalten werden soll). Die eigenen
+  // Bauteile sind über `relevantObstacles` bereits raus.
+  const entryVector = targetEntryVector(input.targetPosition);
+  const capped: PathRequest = {
+    ...input,
+    stubCap: stubCapFor(start, sourceExitVector(input.sourcePosition), relevant),
+    stubCapTarget: stubCapFor(end, { x: -entryVector.x, y: -entryVector.y }, relevant),
+  };
   const crossingSegments = input.crossingSegments ?? [];
   const key = requestKey(input, obstacles);
 
@@ -1233,32 +1784,42 @@ export function findCablePath(input: PathRequest): PathResult {
     if (hit) return hit;
   }
 
-  const baseOffset = input.offset ?? 0;
-  let best = searchOnce(input, obstacles, baseOffset);
+  const lane = input.lane ?? 0;
+  let best = searchOnce(capped, obstacles, lane);
   if (best.usedSearch === 'fallback' && pathHitsObstacles(best.waypoints, obstacles)) {
     const tight = relevantObstacles(allObstacles, start, end, input.ownObstacles).map((r) =>
       inflateRect(r, Math.max(2, OBSTACLE_MARGIN / 2))
     );
-    const retry = searchOnce(input, tight, baseOffset, Math.max(2, OBSTACLE_MARGIN / 2));
+    const retry = searchOnce(capped, tight, lane, Math.max(2, OBSTACLE_MARGIN / 2));
     if (!pathHitsObstacles(retry.waypoints, tight)) {
-      best = retry;
+      // Der Wiederholungslauf fährt mit halbiertem Margin — dieselbe Aussage
+      // wie die gelockerte Stufe in `searchFrame` (ROUTE-BUG-23).
+      best = { ...retry, tight: true };
     }
   }
   let bestCross = countCrossings(best.waypoints, crossingSegments);
   let bestScore = scorePath(best.waypoints, bestCross);
 
   if (crossingSegments.length > 0 && bestCross > MAX_ACCEPTABLE_CROSSINGS) {
+    // ROUTE-BUG-27: Ausweich-Trassen BEIDSEITS der Lane. Früher wurde nur in
+    // positive Richtung ausgewichen — lag die Störung dort, blieb die Kante
+    // auf ihrer kreuzungsreichen Route, obwohl spiegelbildlich Platz war.
     const candidates = [
-      baseOffset + ALTERNATIVE_ROUTE_GAP,
-      baseOffset - ALTERNATIVE_ROUTE_GAP,
-      baseOffset + ALTERNATIVE_ROUTE_GAP * 2,
-      baseOffset - ALTERNATIVE_ROUTE_GAP * 2,
+      lane + ALTERNATIVE_ROUTE_GAP,
+      lane - ALTERNATIVE_ROUTE_GAP,
+      lane + ALTERNATIVE_ROUTE_GAP * 2,
+      lane - ALTERNATIVE_ROUTE_GAP * 2,
     ];
     for (let i = 0; i < candidates.length; i++) {
-      const cand = searchOnce(input, obstacles, at(candidates, i));
+      const cand = searchOnce(capped, obstacles, at(candidates, i));
       // R-3/R-7: Ein Fallback-Kandidat (keine Freigabe-Garantie) gewinnt
       // nie gegen Katalog oder A* — auch nicht über weniger Kreuzungen.
+      // ROUTE-BUG-27: Dasselbe gilt eine Stufe darunter — ein Kandidat aus
+      // der Freigabe-Notstufe (`tight`) gewinnt nie gegen eine Route mit
+      // voller Freigabe. Weniger Kreuzungen sind ein Schönheitsgewinn,
+      // 2.4 px am Bauteil ein Regelverstoß (I3).
       if (cand.usedSearch === 'fallback' && best.usedSearch !== 'fallback') continue;
+      if (cand.tight && !best.tight) continue;
       const cross = countCrossings(cand.waypoints, crossingSegments);
       const score = scorePath(cand.waypoints, cross);
       if (score < bestScore - EPS || (Math.abs(score - bestScore) <= EPS && cross < bestCross)) {
@@ -1271,6 +1832,7 @@ export function findCablePath(input: PathRequest): PathResult {
   }
 
   const result = assemble(best.waypoints, bestCross, best.usedSearch, radius);
+  if (best.tight) result.tightMarginUsed = true;
   if (result.usedSearch === 'fallback') {
     // R-3: Der Notfallpfad ist orthogonal, hat aber keine Freigabe-Garantie
     // (der Wiederholungslauf mit halbiertem Margin ist oben gelaufen).
