@@ -1,5 +1,5 @@
 import { addEdge, applyNodeChanges, applyEdgeChanges } from '@xyflow/react';
-import type { Node, Edge } from '@xyflow/react';
+import type { Node, Edge, NodeChange, EdgeChange } from '@xyflow/react';
 import { getLayoutedElements } from '../../components/planner/utils/layout';
 import { applyAdvancedLayout } from '../../lib/planner/routingV2Adapter'; // ELK/Dagre-Layout
 import { TEMPLATES_DICT } from '../../components/planner/templates';
@@ -29,6 +29,29 @@ import type { PlannerSlice, LayoutV2Outcome, PlannerState } from './types';
  * Dagre-Fallback spät zurückkehrt.
  */
 let layoutV2Seq = 0;
+
+/**
+ * Präsentations-Elemente (Backbone-Gruppe `__planner-backbone-group`) leben
+ * nur in den React-Flow-Props, nicht in den Store-Arrays. Ihre
+ * Change-Meldungen (v. a. `dimensions` nach jedem Measure) treffen kein
+ * Store-Element — würden sie trotzdem ein set() auslösen, bekäme React
+ * Flow ein frisches Array, vermäße neu und meldete erneut: ein
+ * 60-Hz-Kreislauf (gemessen: 120 setTimeout(200)/2 s nach Auto-Wire), der
+ * den Persistenz-Debounce ewig zurückstellt (Plan ginge bei Reload
+ * verloren) und den Render-Baum dauerfeuert. Die Change-Handler kehren bei
+ * fremden IDs deshalb um, BEVOR sie set() aufrufen — auch der
+ * Persistenz-Wrapper (läuft nur innerhalb von set()) bleibt dann ruhig.
+ * `add`-Changes tragen keine ID, sondern ihr Element — sie sind immer
+ * relevant und passieren den Filter.
+ */
+const touchesKnownElement = (
+  changes: readonly (NodeChange | EdgeChange)[],
+  known: readonly { id: string }[]
+): boolean => {
+  if (changes.length === 0) return false;
+  const ids = new Set(known.map((element) => element.id));
+  return changes.some((change) => change.type === 'add' || ids.has(change.id));
+};
 
 /**
  * Graph-Slice: Knoten, Kanten (Strom + Wasser), Selektions-Mutationen,
@@ -108,7 +131,9 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
   historyFuture: [],
   canUndo: false,
   canRedo: false,
-  onNodesChange: (changes) =>
+  onNodesChange: (changes) => {
+    // Fremde IDs (Backbone-Gruppe): gar kein set() — sonst 60-Hz-Loop, siehe `touchesKnownElement`.
+    if (!touchesKnownElement(changes, get().nodes)) return;
     set((state) => {
       const newNodes = applyNodeChanges(changes, state.nodes);
       const deletedNodeIds = new Set<string>();
@@ -129,14 +154,18 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
         (change) => change.type === 'remove' || (change.type === 'position' && !change.dragging)
       );
       return shouldCheckpoint ? withHistory(state, { nodes: newNodes }) : { nodes: newNodes };
-    }),
-  onEdgesChange: (changes) =>
+    });
+  },
+  onEdgesChange: (changes) => {
+    if (!touchesKnownElement(changes, get().edges)) return;
     set((state) => {
       const nextEdges = applyEdgeChanges(changes, state.edges) as Edge<CableEdgeData>[];
       const structural = changes.some((change) => change.type === 'add' || change.type === 'remove');
       return structural ? withHistory(state, { edges: nextEdges }) : { edges: nextEdges };
-    }),
-  onWaterNodesChange: (changes) =>
+    });
+  },
+  onWaterNodesChange: (changes) => {
+    if (!touchesKnownElement(changes, get().waterNodes)) return;
     set((state) => {
       const newWaterNodes = applyNodeChanges(changes, state.waterNodes);
       const deletedNodeIds = new Set<string>();
@@ -157,14 +186,17 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
       return shouldCheckpoint
         ? withHistory(state, { waterNodes: newWaterNodes })
         : { waterNodes: newWaterNodes };
-    }),
-  onWaterEdgesChange: (changes) =>
+    });
+  },
+  onWaterEdgesChange: (changes) => {
+    if (!touchesKnownElement(changes, get().waterEdges)) return;
     set((state) => {
       const nextEdges = applyEdgeChanges(changes, state.waterEdges);
       return changes.some((change) => change.type === 'remove')
         ? withHistory(state, { waterEdges: nextEdges })
         : { waterEdges: nextEdges };
-    }),
+    });
+  },
   onSelectionChange: (params) => set({ selectedNodes: params.nodes, selectedEdges: params.edges }),
 
   // Fokussiert eine betroffene Komponente/Leitung ("Beheben" aus der Warn-Zentrale):
