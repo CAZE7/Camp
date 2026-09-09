@@ -363,18 +363,22 @@ Legende Severity: **hoch** = Agent kann falschen Code ändern / falsche Sicherhe
 
 ---
 
-## TEST-001 — E2E-Suite lokal nicht ausgeführt
+## TEST-001 — E2E-Suite lokal nicht ausgeführt (im CI **grün**)
 
 - **AREA:** Tests
 - **FILE:** `tests/e2e/*.spec.ts`, `docs/E2E-TESTS.md`
 - **DESCRIPTION:** Die Playwright-Suite ist vollständig geschrieben und im CI eingebunden
-  (`quality.yml`, Job `e2e`). In der Entwicklungsumgebung war der Browser-Download blockiert;
-  ein lokaler Beleg fehlt.
+  (`quality.yml`, Job `e2e`, Chromium). In der Entwicklungsumgebung war der Browser-Download
+  blockiert; ein lokaler Beleg fehlt weiterhin.
 - **CURRENT BEHAVIOR:** E2E-Ergebnisse stammen aus dem CI, nicht vom lokalen Lauf.
 - **EXPECTED BEHAVIOR:** lokaler Lauf möglich (`npm run e2e:install` setzt Netzwerkzugang voraus).
-- **SEVERITY:** niedrig
+- **SEVERITY:** niedrig (kein Risiko für die Aussagekraft — der CI-Beleg existiert)
+- **BELEG (2026-09-09, PR #428):** Beide Jobs der Quality-Pipeline liefen grün —
+  `Typecheck, Tests & Build` in 3:29 min, `End-to-End (Playwright)` in 2:53 min.
+  Die E2E-Suite ist damit nicht nur geschrieben, sondern **ausgeführt und bestanden**.
 - **WORKAROUND:** Selektor-Vertrag ohne Browser prüfen: `components/e2eSelectors.test.tsx`.
-- **RELATED TEST:** `tests/e2e/*`
+- **RELATED TEST:** `tests/e2e/*` (a11y, planner-flow, persistence, responsive, touch,
+  controls-overlap, expert-panel, visual)
 
 ---
 
