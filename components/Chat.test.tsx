@@ -5,7 +5,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import Chat from './Chat';
 import { useChat } from '@ai-sdk/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 vi.mock('@ai-sdk/react', () => ({
   useChat: vi.fn(),
@@ -17,11 +17,16 @@ const mockUseChat = vi.mocked(useChat);
 describe('Chat Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubEnv('NEXT_PUBLIC_CHAT_API_URL', 'https://chat.example.test/api/chat');
     mockUseChat.mockReturnValue({
       messages: [],
       sendMessage: mockSendMessage,
       status: 'idle',
     } as any);
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 
   describe('Rendering', () => {
@@ -48,6 +53,14 @@ describe('Chat Component', () => {
 
       expect(screen.getByText('Camper AI Assistent')).toBeInTheDocument();
       expect(screen.queryByLabelText('Chat öffnen')).not.toBeInTheDocument();
+    });
+
+    it('shows an explicit configuration state when no endpoint is available', () => {
+      vi.stubEnv('NEXT_PUBLIC_CHAT_API_URL', '');
+      render(<Chat defaultOpen />);
+
+      expect(screen.getByRole('status')).toHaveTextContent('nicht konfiguriert');
+      expect(screen.queryByPlaceholderText('Schreib deine Nachricht...')).not.toBeInTheDocument();
     });
   });
 

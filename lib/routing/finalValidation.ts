@@ -3,10 +3,15 @@ import {
   checkClearance,
   checkEdgeEdgeOverlaps,
   checkEdgeNodeCollisions,
+  checkSegmentLengths,
+  checkStairs,
+  checkStubs,
+  checkUTurnAtHandle,
   type InvariantViolation,
   type NodeRect,
   type RoutedEdge,
 } from './invariants';
+import { isOrthogonalPath, waypointsToSegments } from './geometry';
 
 /**
  * Final-Invariante des Routings (ROUTING-V2.md §12, ADR 0015).
@@ -66,7 +71,7 @@ export type FinalValidationCounts = {
   edgeNodeCollisions: number;
   /** I2 — kollineare Überdeckung zweier verschiedener Kanten. */
   edgeEdgeOverlaps: number;
-  /** I3 — Unterschreitung von `cableClearance` ohne Berührung. */
+  /** I3 — Unterschreitung der Basis- oder konfigurierten Domain-Clearance ohne Berührung. */
   clearanceViolations: number;
 };
 
@@ -89,13 +94,43 @@ export type FinalValidationReport = {
 export const totalViolations = (counts: FinalValidationCounts): number =>
   counts.edgeNodeCollisions + counts.edgeEdgeOverlaps + counts.clearanceViolations;
 
+/** Final structural checks that cannot be represented by the three legacy
+ * count fields without breaking the public report shape. They are still part
+ * of the final status and never silently downgraded to a successful route. */
+function checkFinalGeometry(edges: readonly RoutedEdge[], tokens: RoutingTokens): InvariantViolation[] {
+  const violations: InvariantViolation[] = [
+    ...checkUTurnAtHandle(edges),
+    ...checkStubs(edges, tokens),
+    ...checkSegmentLengths(edges, tokens),
+    ...checkStairs(edges, tokens),
+  ];
+  for (const edge of edges) {
+    const finite = edge.waypoints.every((point) => Number.isFinite(point.x) && Number.isFinite(point.y));
+    if (!edge.source || !edge.target || edge.waypoints.length < 2 || !finite) {
+      violations.push({
+        invariant: 'I7',
+        edgeId: edge.id,
+        detail: 'Ungültige Route-Endpunkte oder nicht-finite Geometrie',
+      });
+      continue;
+    }
+    if (!isOrthogonalPath(edge.waypoints) || waypointsToSegments(edge.waypoints).length === 0) {
+      violations.push({
+        invariant: 'I7',
+        edgeId: edge.id,
+        detail: 'Geometrie ist nicht orthogonal oder leer',
+      });
+    }
+  }
+  return violations;
+}
+
 /**
  * Prüft ein fertiges Routing gegen die Final-Invariante.
  *
  * Reine Funktion ohne Seiteneffekte: gleiche Eingabe ⇒ gleicher Report
- * (ADR 0010). Wird bewusst NICHT im Render-Pfad aufgerufen — die Prüfung
- * ist O(E²) über die Kantenpaare und würde das 16-ms-Frame-Budget
- * (ADR 0012) sprengen. Ihr Platz ist das CI-Gate und die Diagnose.
+ * (ADR 0010). Der Report wird am Produktions-Entry-Point nach Hopping
+ * erzeugt; eine ungültige Geometrie ist ausdrücklich `INVALID`.
  */
 export function validateFinalRouting(
   edges: readonly RoutedEdge[],
@@ -105,6 +140,7 @@ export function validateFinalRouting(
   const i1 = checkEdgeNodeCollisions(edges, nodes);
   const i2 = checkEdgeEdgeOverlaps(edges);
   const i3 = checkClearance(edges, nodes, tokens);
+  const geometry = checkFinalGeometry(edges, tokens);
 
   const counts: FinalValidationCounts = {
     edgeNodeCollisions: i1.length,
@@ -113,9 +149,9 @@ export function validateFinalRouting(
   };
 
   return {
-    status: totalViolations(counts) === 0 ? 'VALID' : 'INVALID',
+    status: totalViolations(counts) === 0 && geometry.length === 0 ? 'VALID' : 'INVALID',
     counts,
-    violations: [...i1, ...i2, ...i3],
+    violations: [...i1, ...i2, ...i3, ...geometry],
     edgeCount: edges.length,
   };
 }

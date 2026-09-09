@@ -17,9 +17,10 @@ Zweck: verhindern, dass ein Agent eine alte und eine neue Implementierung vermis
   `orthogonalRouting.test.ts`, `orthogonalRouting.invariants.test.ts`,
   `routingGallery.test.ts`, `routeAll.test.ts`.
 - **Produktivpfad?** **Nein.** Der Canvas rendert ausschließlich über
-  `routeAllCables` → `findCablePath` (Hanan-A* + Katalog).
+  `routePlan` → `findCablePath` (Hanan-A* + Katalog). Das Architektur-Gate prüft, dass
+  `app/`, `components/`, `lib/` und `store/` den Legacy-Router nicht importieren.
 - **Entfernbar?** Nur mit der Galerie. Vorher entscheiden, ob `docs/routing-gallery/` als
-  Geometrie-Referenz erhalten bleibt.
+  Geometrie-Referenz erhalten bleibt; bis dahin ist die Isolation der verbindliche Zustand.
 - **Gefahr:** R1–R7 sagen nichts über das, was der Nutzer sieht. Änderungen hier sind
   **keine** Routing-Verhaltensänderung am Planer.
 
@@ -29,13 +30,11 @@ Zweck: verhindern, dass ein Agent eine alte und eine neue Implementierung vermis
 
 - **Was:** `lib/routing/rules/laneRegistry.ts` — deterministische Lane-Vergabe je Korridor
   inkl. 3-Stufen-Sortierung (Topologie → Zielposition → Edge-ID).
-- **Warum:** vorbereitete Mechanik der Routing-V2-Roadmap (WP-5/WP-8), bewusst **ohne**
-  Eingriff in den Bestandsrouter, damit der Golden Master byte-identisch blieb.
-- **Wer benutzt sie:** ausschließlich `lib/routing/rules/laneRegistry.test.ts`.
-- **Produktivpfad?** **Nein.** Wirksam sind `assignFanOut` (Port-Ebene) und
-  `ALTERNATIVE_ROUTE_GAP` (Ausweich ±48/±96 px).
-- **Entfernbar?** Nein — sie ist das Zielbild. Anbindung fehlt
-  ([KNOWN-PROBLEMS ROUTE-001](./KNOWN-PROBLEMS.md#route-001--laneregistry-ist-nicht-an-den-produktiv-router-angebunden)).
+- **Warum:** Routing-V2-Mechanik für stabile Korridorpräferenzen.
+- **Wer benutzt sie:** `routePlan()` über `buildPreferredLanes()` sowie die Tests.
+- **Produktivpfad?** **Ja.** Die Registry beeinflusst den Kandidaten-Tie-Break; Port-Fan-Out
+  bleibt davon getrennt die lokale Anschlussregel.
+- **Entfernbar?** Nein — sie ist Teil der Produktionswahrheit.
 
 ---
 
@@ -43,23 +42,24 @@ Zweck: verhindern, dass ein Agent eine alte und eine neue Implementierung vermis
 
 - **Was:** `segmentExtraCost`, `preferredLaneBonus`, `buildCostWeights` in
   `lib/routing/rules/costModel.ts`.
-- **Warum:** vollständige Kostenmatrix für den geplanten inkrementellen Pass (WP-6/WP-8).
-- **Wer:** nur `costModel.test.ts`. Im Produktivpfad wirkt **nur** `COST_WEIGHTS.crossing`
-  über `scorePath` in `pathfinding.ts`.
-- **Entfernbar?** Nein (Zielbild). Änderungen an Kosten müssen heute in `scorePath` /
-  `routeDefectScore` erfolgen
-  ([KNOWN-PROBLEMS ROUTE-002](./KNOWN-PROBLEMS.md#route-002--kostenmodell-nur-teilweise-angebunden)).
+- **Warum:** vollständige Kostenmatrix des Produktionspasses.
+- **Wer:** `routePlan()`/`findCablePath()` und `costModel.test.ts`. Im Produktionsvergleich
+  wirken hard/soft/weighted/nearby; die geometrische Primärkostenfunktion bleibt zur
+  Golden-Master-Stabilität der erste Rang, das vollständige Modell der zweite.
+- **Entfernbar?** Nein — Änderungen am Modell ändern reales Kandidatenverhalten und brauchen
+  Golden-/Regression-Nachweis.
 
 ---
 
-## L-4 — Domänen-Trennregeln ohne Konsument
+## L-4 — Domänen-Trennregeln produktiv verdrahtet
 
 - **Was:** `buildDomainSeparationRules`, `requiredClearanceBetween`,
   `classifyDomainAwareSegments` in `lib/routing/rules/collision.ts`.
 - **Warum:** Paarregeln (Elektrik ↔ Wasser, AC 230 ↔ DC 12 → 24 px) der Spec §4.2.
-- **Wer:** nur `collision.test.ts`.
-- **Entfernbar?** Nein. Siehe
-  [KNOWN-PROBLEMS ROUTE-003](./KNOWN-PROBLEMS.md#route-003--domänen-trennregeln-sind-nicht-angebunden).
+- **Wer:** `routePlan()`/`findCablePath()`, Final Validation und `collision.test.ts`.
+- **Produktivpfad?** **Ja.** `routeAll` übergibt Domain-Metadaten; Port-Stubs sind die
+  dokumentierte Ausnahme, Crossings bleiben erlaubt.
+- **Entfernbar?** Nein — sie ist Teil der gemeinsamen Collision Engine.
 
 ---
 

@@ -519,6 +519,24 @@ describe('nodesToObstacles / cache / svg', () => {
     expect(a).toBe(b);
   });
 
+  it('cache distinguishes different own-obstacle identities and geometry', () => {
+    clearPathfindingCache();
+    const ownSource = { x: 70, y: -24, width: 60, height: 48 };
+    const offRoute = { x: 70, y: 120, width: 60, height: 48 };
+    const input = {
+      sourceX: 0,
+      sourceY: 0,
+      targetX: 200,
+      targetY: 0,
+      ...rightLeft,
+      obstacles: [ownSource, offRoute] as Rect[],
+    };
+    const direct = findCablePath({ ...input, ownObstacles: [ownSource] });
+    const detoured = findCablePath({ ...input, ownObstacles: [offRoute] });
+    expect(detoured).not.toBe(direct);
+    expect(detoured.waypoints).not.toEqual(direct.waypoints);
+  });
+
   it('waypointsToPath emits a move and at least one line', () => {
     const d = waypointsToPath(
       [

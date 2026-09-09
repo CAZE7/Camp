@@ -1,6 +1,7 @@
 import type { Node } from '../../domain/graph'; // ARCH-001
 import { segmentsCross, waypointsToSegments, type Point, type Segment } from '../geometry';
 import { countBends } from '../geometry';
+import { ROUTING_TOKENS } from '../tokens';
 import { layoutWithElk } from './runner';
 import type { ElkPlan } from './graph';
 
@@ -99,8 +100,8 @@ export function toElkPlan(nodes: Node[], edges: AbEdgeRef[], interactive = false
       id: n.id,
       x: n.position.x,
       y: n.position.y,
-      width: n.width || 192,
-      height: n.height || 120,
+      width: n.width || ROUTING_TOKENS.nodeFallbackWidth,
+      height: n.height || ROUTING_TOKENS.nodeFallbackHeight,
     })),
     edges: edges.map((e) => ({ id: e.id, source: e.source, target: e.target })),
   };

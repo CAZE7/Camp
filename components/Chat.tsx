@@ -38,18 +38,17 @@ const getMessageText = (message: UIMessage) => {
   return message.parts?.find((part) => part?.type === 'text' || part?.type === 'reasoning')?.text ?? '';
 };
 
-// Der Chat-Endpunkt kann über NEXT_PUBLIC_CHAT_API_URL auf einen externen
-// Serverless-Endpoint zeigen (erforderlich, wenn die App per `output: 'export'`
-// statisch gehostet wird). Fällt auf '/api/chat' zurück, falls kein Wert
-// gesetzt ist.
-const CHAT_API_URL = process.env.NEXT_PUBLIC_CHAT_API_URL || '/api/chat';
+// Der Chat-Endpunkt muss bei einem Static Export explizit als externer
+// Endpoint gesetzt werden. Ein stiller Fallback auf '/api/chat' wäre falsch:
+// diese Route ist nicht Bestandteil des ausgelieferten `out/`-Artefakts.
 const CHAT_TOKEN = process.env.NEXT_PUBLIC_CHAT_TOKEN;
 
 export default function Chat({ defaultOpen = false }: { defaultOpen?: boolean }) {
+  const chatApiUrl = process.env.NEXT_PUBLIC_CHAT_API_URL?.trim() || null;
   const [input, setInput] = useState('');
   const { messages, sendMessage, status } = useChat({
     transport: new DefaultChatTransport({
-      api: CHAT_API_URL,
+      api: chatApiUrl ?? 'about:blank',
       headers: CHAT_TOKEN ? { 'x-chat-token': CHAT_TOKEN } : undefined,
     }),
   });
@@ -59,11 +58,50 @@ export default function Chat({ defaultOpen = false }: { defaultOpen?: boolean })
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim()) return;
+    if (!chatApiUrl || !input.trim()) return;
 
     await sendMessage({ text: input });
     setInput('');
   };
+
+  if (!chatApiUrl) {
+    if (!isOpen) {
+      return (
+        <button
+          onClick={() => setIsOpen(true)}
+          className="fixed bottom-6 right-6 flex h-16 w-16 items-center justify-center rounded-full bg-slate-500 text-white shadow-lg transition-all hover:bg-slate-600"
+          aria-label="Chat öffnen"
+          title="Assistent nicht konfiguriert"
+        >
+          💬
+        </button>
+      );
+    }
+
+    return (
+      <aside
+        className="fixed bottom-6 right-6 z-50 flex w-96 flex-col rounded-lg border border-border bg-white p-5 shadow-2xl"
+        role="status"
+        aria-live="polite"
+      >
+        <div className="flex items-center justify-between">
+          <h2 className="font-semibold">Camper AI Assistent</h2>
+          <button
+            onClick={() => setIsOpen(false)}
+            className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted"
+            aria-label="Chat schließen"
+          >
+            <X size={20} />
+          </button>
+        </div>
+        <p className="mt-3 text-sm text-muted-foreground">
+          Der Assistent ist für diesen statischen Export nicht konfiguriert. Setze beim Build
+          <code className="mx-1 rounded bg-muted px-1">NEXT_PUBLIC_CHAT_API_URL</code> auf einen externen
+          Chat-Endpunkt.
+        </p>
+      </aside>
+    );
+  }
 
   if (!isOpen) {
     return (

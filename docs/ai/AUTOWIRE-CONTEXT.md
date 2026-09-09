@@ -111,7 +111,7 @@ Verlegen mit echten Längen überschreiben kann.
 
 | Nicht                                                     | Begründung / Ort der Entscheidung                                           |
 | --------------------------------------------------------- | --------------------------------------------------------------------------- |
-| Kein Kabel-Routing                                        | globaler Routing-Pass (`routeAllCables`)                                    |
+| Kein Kabel-Routing                                        | zentraler Produktionspass (`routePlan`)                                     |
 | Kein Verschieben von Nutzerknoten                         | `applyFlowLayout` arbeitet nur auf `autoCreatedNodeIds`                     |
 | Kein globales Auto-Layout                                 | bewusst dem „Aufräumen“-Knopf vorbehalten (M11-2/R-8)                       |
 | **Kein** automatisches Setzen von `hasRcd`                | ein gesetzter FI würde einen fehlenden FI verschleiern (Stromschlaggefahr)  |

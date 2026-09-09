@@ -40,6 +40,17 @@ export type RoutingTokens = {
   readonly bendRadius: number;
   /** Wert für Domain-Trennung — die Paar-Regel lebt in WP-3 (px). */
   readonly crossDomainSpacing: number;
+  /** Fallback-Größe für Nodes ohne gemessene React-Flow-Geometrie (px). */
+  readonly nodeFallbackWidth: number;
+  readonly nodeFallbackHeight: number;
+  /** Region um eine Kante, die der lokale Router als Suchfenster lädt (px). */
+  readonly obstacleRegionPad: number;
+  /** Geometrische Kosten der produktiven A*-Suche (px-Äquivalent). */
+  readonly bendCost: number;
+  readonly uTurnCost: number;
+  /** Begrenzungen der deterministischen Kandidatensuche. */
+  readonly maxSearchExpansions: number;
+  readonly maxAcceptableCrossings: number;
 };
 
 export const ROUTING_TOKENS: RoutingTokens = Object.freeze({
@@ -50,6 +61,13 @@ export const ROUTING_TOKENS: RoutingTokens = Object.freeze({
   segmentMin: 16,
   bendRadius: 8,
   crossDomainSpacing: 24,
+  nodeFallbackWidth: 192,
+  nodeFallbackHeight: 120,
+  obstacleRegionPad: 240,
+  bendCost: 80,
+  uTurnCost: 400,
+  maxSearchExpansions: 48_000,
+  maxAcceptableCrossings: 2,
 });
 
 /**

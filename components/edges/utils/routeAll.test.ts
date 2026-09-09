@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { Position, type Node } from '@xyflow/react';
-import { routeAllCables, portFanOutLanes, resolveHandlePoint, type RouteEdgeRef } from './routeAll';
+import {
+  routeAllCables,
+  routePlan,
+  portFanOutLanes,
+  resolveHandlePoint,
+  type RouteEdgeRef,
+} from './routeAll';
 import { simplifyWaypoints } from './pathfinding';
 import { dedupe, orthogonalWaypoints } from './orthogonalRouting';
 import type { Point } from './orthogonalRouting';
@@ -71,6 +77,19 @@ describe('routeAll-Nachoptimierung (R-6)', () => {
     expect([...straight.keys()]).toEqual([...shuffled.keys()]);
     for (const [id, result] of straight) {
       expect(shuffled.get(id)?.waypoints).toEqual(result.waypoints);
+    }
+  });
+
+  it('routePlan ist der validierende Produktions-Entry-Point und bleibt 100 Läufe stabil', () => {
+    const { nodes, edges } = buildSeededPlan(SEED);
+    const first = routePlan(nodes, edges);
+    expect(first.validation.edgeCount).toBe(edges.length);
+    for (let run = 0; run < 100; run++) {
+      const rotatedEdges = [...edges.slice(run % edges.length), ...edges.slice(0, run % edges.length)];
+      const rotatedNodes = [...nodes].reverse();
+      const next = routePlan(rotatedNodes, rotatedEdges);
+      expect([...next.routes.entries()]).toEqual([...first.routes.entries()]);
+      expect(next.validation).toEqual(first.validation);
     }
   });
 

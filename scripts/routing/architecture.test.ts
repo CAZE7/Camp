@@ -100,6 +100,29 @@ describe('Architektur: eine Quelle für Kabelgeometrie (ADR 0014)', () => {
       'lib/planner/routing-v2 und lib/planner/routing-core sind bewusst gelöscht (ADR 0014).'
     ).toEqual([]);
   });
+
+  it('der Legacy-Orthogonalrouter und sein Cache bleiben außerhalb des Produktionspfads', () => {
+    const productionDirs = ['app', 'components', 'lib', 'store'];
+    const legacySupportFiles = new Set([
+      'components/edges/utils/orthogonalRouting.ts',
+      'components/edges/utils/routingCache.ts',
+      'components/edges/utils/routingQuality.ts',
+      'components/edges/utils/routingScenarios.ts',
+    ]);
+    const importers = SOURCES.filter((file) => {
+      const path = rel(file);
+      if (!productionDirs.some((dir) => path.startsWith(`${dir}/`))) return false;
+      if (/\.test\.tsx?$/.test(path) || legacySupportFiles.has(path)) return false;
+      return /(?:from|import\s*\()\s*['\"][^'\"]*(?:orthogonalRouting|routingCache)(?:\.ts)?['\"]/.test(
+        stripComments(read(file))
+      );
+    }).map(rel);
+
+    expect(
+      importers,
+      'orthogonalRouting.ts/routingCache.ts sind nur Galerie-/Benchmark-Material; routePlan muss ausschließlich pathfinding.ts verwenden.'
+    ).toEqual([]);
+  });
 });
 
 describe('Architektur: eine Quelle für Abstände und Kosten (ADR 0015)', () => {

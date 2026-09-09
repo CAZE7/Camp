@@ -117,10 +117,12 @@ Ort: `lib/routing/invariants.ts` (Checker I1–I7) und `lib/routing/finalValidat
 I2+I3; I1 immer hart 0). Zahlen dürfen **sinkem**, nie steigen. Eine Anhebung ist nur mit
 messbar besserem Gesamtplan und Begründung zulässig — niemals, um CI grün zu bekommen.
 
-**Live-Sicht:** `computeCableRouteFinalValidation` (`components/edges/utils/cableRouteStore.ts`)
-baut denselben Report aus den gerouteten Waypoints und veröffentlicht ihn an
-`components/planner/ui/RoutingStatusBadge.tsx`. Der Report läuft **nicht** im Render-Pfad pro
-Frame, sondern gedrosselt (100 ms) — die Prüfung ist O(E²).
+**Live-Sicht:** `routePlan()` (`components/edges/utils/routeAll.ts`) validiert die tatsächlich
+zurückgegebenen Waypoints und liefert den Report gemeinsam mit den Routen. Der Store
+veröffentlicht genau diesen Report an `components/planner/ui/RoutingStatusBadge.tsx`.
+`computeCableRouteFinalValidation` bleibt als reine Test-/Kompatibilitätshilfe vorhanden;
+der Report läuft **nicht** im Render-Pfad pro Frame, sondern gedrosselt (100 ms) — die Prüfung
+ist O(E²).
 
 ---
 

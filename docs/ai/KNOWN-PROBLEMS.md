@@ -1,28 +1,22 @@
 # KNOWN-PROBLEMS
 
 Nur **echte, im Code nachweisbare** Probleme. Keine Wunschliste, keine allgemeinen TODOs.
-Jeder Eintrag ist am 2026-09-09 gegen den Code geprüft.
+Jeder Eintrag ist am 2026-09-10 gegen den Code geprüft.
 
 Legende Severity: **hoch** = Agent kann falschen Code ändern / falsche Sicherheit annehmen ·
 **mittel** = Qualitäts- oder Konsistenzrisiko · **niedrig** = Komfort/Doku.
 
 ---
 
-## DOC-001 — `docs/ROUTING-V2.md` beschreibt gelöschte Verzeichnisse
+## DOC-001 — `docs/ROUTING-V2.md` hatte veraltete Implementierungspfade — **behoben 2026-09-10**
 
+- **STATUS:** behoben. Die Spec kennzeichnet historische Modulnamen jetzt ausdrücklich als
+  Entwurfsbegriffe und enthält eine aktuelle Zuordnung auf `routePlan()`, `pathfinding.ts`,
+  `lib/routing/` und den ELK-only-Layoutpass.
 - **AREA:** Dokumentation / Routing
 - **FILE:** `docs/ROUTING-V2.md`
-- **DESCRIPTION:** Die Spec nennt `lib/planner/geometry`, `lib/planner/routing-core` und
-  `lib/planner/routing-v2` als verbindliche Basis. Beide Routing-Verzeichnisse sind **gelöscht**
-  (ADR 0014); der Produktivpfad ist `components/edges/utils/routeAll.ts` + `lib/routing/`.
-  Die Spec ist außerdem als `FROZEN` markiert und beschreibt ELK als „nicht im Produktivpfad“,
-  obwohl ADR 0018 den ELK-Layout-Pass produktiv verdrahtet hat.
-- **CURRENT BEHAVIOR:** Ein Agent, der nur die Spec liest, sucht Code, den es nicht gibt.
-- **EXPECTED BEHAVIOR:** Spec oder Verweis zeigt auf den realen Pfad; ELK-Status ist aktuell.
-- **SEVERITY:** hoch
-- **WORKAROUND:** Diese Datei ([ROUTING-CONTEXT.md](./ROUTING-CONTEXT.md)) ist autoritativ.
-- **RELATED TEST:** `scripts/routing/architecture.test.ts` („die zweite Routing-Engine ist
-  entfernt“) — der Test sichert den Code, nicht die Doku.
+- **VERIFICATION:** Die aktuelle Spec verweist auf die reale Produktionskette; die
+  Architekturtests sichern weiterhin die Codegrenzen.
 - **RELATED ISSUE:** ADR 0014, ADR 0018; historisch AUDIT ROUTE-003.
 
 ---
@@ -47,14 +41,14 @@ Legende Severity: **hoch** = Agent kann falschen Code ändern / falsche Sicherhe
 
 ---
 
-## DOC-003 — Veraltete Zahlen im `README.md` — **behoben 2026-09-09**
+## DOC-003 — Veraltete Zahlen im `README.md` — **behoben 2026-09-10**
 
-- **STATUS:** behoben. `README.md` nennt jetzt 2018 Tests / 145 Dateien, React Flow
+- **STATUS:** behoben. `README.md` nennt jetzt 2026 Tests / 145 Dateien, React Flow
   (`@xyflow/react`) 12.11 und als Routing-Engine den produktiven globalen Pass
   (`components/edges/utils/routeAll.ts`) statt des Legacy-Moduls `orthogonalRouting.ts`.
 - **AREA:** Dokumentation
 - **FILE:** `README.md`
-- **DESCRIPTION:** Das README nennt „1265 Tests, 101 Dateien“ (tatsächlich **2018 / 145**)
+- **DESCRIPTION:** Das README nennt „1265 Tests, 101 Dateien“ (tatsächlich **2026 / 145**)
   und „React Flow 11“ (tatsächlich `@xyflow/react` 12.11.6, ADR 0013).
 - **CURRENT BEHAVIOR:** Falsche Baseline für jeden, der das README als Stand nimmt.
 - **EXPECTED BEHAVIOR:** Zahlen aus dem letzten Lauf, mit Datum.
@@ -64,19 +58,15 @@ Legende Severity: **hoch** = Agent kann falschen Code ändern / falsche Sicherhe
 
 ---
 
-## DOC-004 — `docs/ROUTING-INVARIANTS.md` beschreibt die falsche Engine
+## DOC-004 — `docs/ROUTING-INVARIANTS.md` war nicht als Legacy gekennzeichnet — **behoben 2026-09-10**
 
+- **STATUS:** behoben. Das Dokument trägt jetzt den Geltungsbereich „Legacy-Galerie“ und
+  verweist explizit auf die produktiven I1–I7 in `lib/routing/invariants.ts` und
+  `lib/routing/finalValidation.ts`.
 - **AREA:** Dokumentation / Routing
 - **FILE:** `docs/ROUTING-INVARIANTS.md`, `components/edges/utils/orthogonalRouting.ts`
-- **DESCRIPTION:** Das Dokument definiert die Invarianten **R1–R7** für
-  `buildOrthogonalPath()` / `orthogonalWaypoints()`. Diese Engine ist **nicht** im Render-Pfad;
-  sie wird nur noch von Tests und vom Galerie-Generator benutzt.
-- **CURRENT BEHAVIOR:** Ein Agent kann R1–R7 „reparieren“ und damit Tests stabilisieren, die
-  nicht das rendern, was der Nutzer sieht.
-- **EXPECTED BEHAVIOR:** R1–R7 klar als **Legacy-Engine-Invarianten** markiert; I1–I10 als die
-  produktiven.
-- **SEVERITY:** hoch
-- **WORKAROUND:** [LEGACY.md](./LEGACY.md) + [ROUTING-CONTEXT.md §4.5](./ROUTING-CONTEXT.md#45-routing-invarianten).
+- **VERIFICATION:** `scripts/routing/architecture.test.ts` hält die Legacy-Datei außerhalb
+  des Produktionspfads.
 - **RELATED TEST:** `components/edges/utils/orthogonalRouting.invariants.test.ts`,
   `orthogonalRouting.test.ts`, `routingGallery.test.ts`
 
@@ -104,136 +94,100 @@ Legende Severity: **hoch** = Agent kann falschen Code ändern / falsche Sicherhe
 
 ---
 
-## ROUTE-001 — `LaneRegistry` ist nicht an den Produktiv-Router angebunden
+## ROUTE-001 — `LaneRegistry`-Anbindung — **behoben 2026-09-09**
 
+- **STATUS:** behoben für den Produktionsvertrag. `routePlan()` baut vor der Kandidatenwahl
+  über `buildPreferredLanes()` eine deterministische Korridorpräferenz aus der Registry;
+  `preferredLaneBonus` beeinflusst den Tie-Break. Das lokale Port-Fan-Out bleibt bewusst eine
+  getrennte Regel. `routeAllCables()` ist nur noch ein delegierender Adapter.
 - **AREA:** Routing
-- **FILE:** `lib/routing/rules/laneRegistry.ts`
-- **DESCRIPTION:** Die Registry (`LaneRegistry`, `corridorFor`, `assign`, `assignByEdge`) wird
-  ausschließlich von ihrem eigenen Test importiert. Der Produktiv-Router vergibt Lanes weiter
-  über `portFanOut.assignFanOut` (Port-Ebene) und die Ausweich-Heuristik
-  `ALTERNATIVE_ROUTE_GAP` (±48/±96 px, `ALTERNATIVE_LANE_STEP = 3`).
-- **CURRENT BEHAVIOR:** Korridor-Lanes sind nicht stabil registriert; die Ausweich-Trassen
-  stammen aus einer Heuristik, nicht aus der Registry.
-- **EXPECTED BEHAVIOR:** Registry-Lanes steuern Ausweich- und Bündel-Trassen (Zielbild WP-5/WP-8).
-- **SEVERITY:** mittel
-- **WORKAROUND:** Lanes nur über `lib/routing/rules/portFanOut.ts` ändern — dort liegt die
-  wirksame Mechanik.
-- **RELATED TEST:** `lib/routing/rules/laneRegistry.test.ts` (grün, aber ohne Produktionswirkung)
-- **RELATED ISSUE:** WP-5 (#394) / WP-8, dokumentiert im Modulkommentar.
+- **FILE:** `lib/routing/rules/laneRegistry.ts`, `components/edges/utils/routeAll.ts`,
+  `components/edges/utils/pathfinding.ts`
+- **VERIFICATION:** `components/edges/utils/routeAll.test.ts` prüft permutierte Eingaben und
+  100 stabile Produktionsläufe; Golden Master, Regression und Invariant-Ratchet bleiben grün.
+- **REMAINING LIMIT:** Die Registry ersetzt nicht die historische ±48/±96-Ausweichstrategie
+  (`ALTERNATIVE_ROUTE_GAP`). Sie liefert eine stabile Präferenz, keine zweite Geometrie-Engine.
 
 ---
 
-## ROUTE-002 — Kostenmodell nur teilweise angebunden
+## ROUTE-002 — Kostenmodell produktiv verdrahtet — **behoben 2026-09-09**
 
+- **STATUS:** behoben. `segmentExtraCost()` läuft im Produktions-Kandidatenvergleich gegen
+  den gemeinsamen `SegmentSpatialIndex`. Overlap und konfigurierte Domain-Clearance werden
+  hart verworfen; Crossings bleiben soft und kostenpflichtig. Weighted-/Nearby-Kosten bilden
+  die vollständige sekundäre Kostenfunktion nach Gleichstand der geometrischen Primärkosten;
+  `preferredLaneBonus` ist der letzte deterministische Tie-Break.
 - **AREA:** Routing
-- **FILE:** `lib/routing/rules/costModel.ts`
-- **DESCRIPTION:** `segmentExtraCost` und `preferredLaneBonus` werden **nur von Tests**
-  aufgerufen. Im Produktivpfad nutzt `pathfinding.ts` ausschließlich
-  `COST_WEIGHTS.crossing` (120) in `scorePath`.
-- **CURRENT BEHAVIOR:** Clearance-Verletzungen, Nachbar-Lanes und Registry-Bonus sind im
-  A*-Lauf **nicht** bepreist; nur Kreuzungen fließen in die Kosten ein.
-- **EXPECTED BEHAVIOR:** vollständige Kostenfunktion im inkrementellen Pass (Zielbild WP-6/WP-8).
-- **SEVERITY:** mittel
-- **WORKAROUND:** Kostenänderungen nur an `scorePath`/`routeDefectScore` vornehmen — nur dort
-  wirken sie heute.
-- **RELATED TEST:** `lib/routing/rules/costModel.test.ts`
-- **RELATED ISSUE:** WP-6 (#396).
+- **FILE:** `lib/routing/rules/costModel.ts`, `components/edges/utils/pathfinding.ts`
+- **VERIFICATION:** Golden Master 13/13, Regression 50/50 und die Cost-Model-/Pathfinding-Tests
+  grün; keine Baseline wurde abgeschwächt oder neu aufgezeichnet.
+- **RELATED TEST:** `lib/routing/rules/costModel.test.ts`,
+  `components/edges/utils/pathfinding.test.ts`, `scripts/goldenmaster/goldenMaster.test.ts`
 
 ---
 
-## ROUTE-003 — Domänen-Trennregeln sind nicht angebunden
+## ROUTE-003 — Domänen-Trennregeln produktiv verdrahtet — **behoben 2026-09-09**
 
-- **AREA:** Routing / Domäne
-- **FILE:** `lib/routing/rules/collision.ts` (`buildDomainSeparationRules`,
-  `classifyDomainAwareSegments`, `requiredClearanceBetween`)
-- **DESCRIPTION:** Die Paarregeln (`electrical ↔ water`, `ac230 ↔ dc12` → 24 px) existieren und
-  sind getestet, werden aber vom Produktiv-Router **nicht** verwendet. Dort gilt einheitlich
-  `cableClearance` (12 px).
-- **CURRENT BEHAVIOR:** Wasser- und Elektroleitungen können im Routing näher als 24 px
-  zusammenlaufen; die Regel ist wirkungslos.
-- **EXPECTED BEHAVIOR:** Router wertet die Paarregel je Kantenpaar aus.
-- **SEVERITY:** mittel
-- **WORKAROUND:** Bei Arbeiten an der Domänentrennung zuerst den Konsumenten schaffen —
-  die Regel ist fertig, die Anbindung fehlt.
-- **GEMESSENE WIRKUNG (2026-09-09, `npm run routing:domain-probe`):**
-  84 gemischte Kantenpaare in den sechs Referenzplänen (inverter 9, acdc 33, complex 42).
-  Davon **12 kreuzend** (acdc 4, complex 8) und **0 in zu enger Parallellage**.
-  → Eine Clearance-Regel mit 24 px würde die heutigen Trassen **nicht** verändern.
-  → Nur wenn die Regel auch Kreuzungen verbieten würde, verschöben sich 12 Paare — das
-  widerspricht ADR 0009 (Kreuzungen erlaubt, Überdeckungen verboten).
-  → Empfehlung: Anbindung als **Clearance** (wie I3, nur mit 24 px für gemischte Paare).
-  Der sichtbare Nutzen entsteht erst, wenn Wasser-Rohre geroutet werden
-  (`electrical ↔ water`); auf reinen Elektro-Plänen bleibt er bei null.
-- **RELATED TEST:** `lib/routing/rules/collision.test.ts`, `npm run routing:domain-probe`
-  (`scripts/routing/domainProbe.ts`)
-- **RELATED ISSUE:** ROUTING-V2 §4.2.
+- **STATUS:** behoben. `routeAll.ts` mappt `HopDomain` deterministisch auf `RoutingDomain`,
+  reicht Domänenmetadaten an die Kandidatenbewertung weiter und validiert sie im finalen
+  `checkDomainClearance()`. `electrical ↔ water` und `ac230 ↔ dc12` verlangen 24 px;
+  gemeinsame Port-Stubs sind die einzige dokumentierte Ausnahme. Crossings bleiben erlaubt
+  und erzeugen keine elektrische Verbindung.
+- **VERIFICATION:** `lib/routing/rules/costModel.test.ts` enthält den Produktionsmetadatenfall;
+  `lib/routing/invariants.test.ts` prüft die harte Final-Validation. Golden Master 13/13,
+  Regression 50/50 und `npm run routing:audit` (I1–I7 = 0) bleiben grün.
+- **RELATED FILES:** `lib/routing/rules/collision.ts`, `lib/routing/invariants.ts`,
+  `lib/routing/finalValidation.ts`, `components/edges/utils/{routeAll,pathfinding}.ts`.
 
 ---
 
-## ROUTE-004 — Geometrie-Zahlen außerhalb der Tokens
+## ROUTE-004 — Routing-Geometrie zentralisiert — **behoben 2026-09-09**
 
-- **AREA:** Routing
-- **FILE:** `components/edges/utils/pathfinding.ts` (`searchFrame`), `components/edges/utils/routeAll.ts`
-- **DESCRIPTION:** Mehrere Routing-Zahlen stehen nicht in `lib/routing/tokens.ts` und sind
-  **nicht** drift-gesichert:
-  - `const CLEARANCE_GOAL = 12;` in `searchFrame` (dupliziert `cableClearance`),
-  - `extraXs.push(minX - 16, maxX + 16)` / `extraYs` (entspricht `laneGrid`),
-  - `OBSTACLE_REGION_PAD = 240` in `routeAll.ts`,
-  - `BEND_COST = 80`, `U_TURN_COST = 400`, `MAX_EXPANSIONS = 48_000`,
-    `MAX_ACCEPTABLE_CROSSINGS = 2` in `pathfinding.ts`.
-- **CURRENT BEHAVIOR:** Eine Token-Änderung wirkt nicht auf diese Stellen; umgekehrt können sie
-  unbemerkt von den Tokens abweichen.
-- **EXPECTED BEHAVIOR:** Alle geometrischen Werte aus `lib/routing/tokens.ts` oder mit
-  Drift-Guard-Test.
-- **SEVERITY:** mittel
-- **WORKAROUND:** Vor einer Wertänderung **alle** genannten Stellen mitändern;
-  `lib/routing/tokens.test.ts` erweitern.
-- **RELATED TEST:** `lib/routing/tokens.test.ts` (deckt nur die Re-Export-Konstanten ab)
+- **STATUS:** behoben für alle relevanten Produktionswerte. Clearance-Ziel und Grid-Rand
+  lesen `ROUTING_TOKENS`; Node-Fallback-Größen, Suchkosten/-limits und das lokale
+  Hindernisfenster sind ebenfalls Tokenfelder. Cost-Faktoren bleiben bewusst im Cost Model,
+  weil sie fachliche Gewichte und keine Geometrie-Tokens sind.
+- **RELATED TEST:** `lib/routing/tokens.test.ts`, `scripts/routing/architecture.test.ts`
 
 ---
 
-## ARCH-001 — Server-Route und Postgres-Pool im statischen Export
+## ARCH-001 — Server-Route und Postgres-Pool im statischen Export — **behoben 2026-09-10**
 
+- **STATUS:** behoben. Der Static Export erzeugt weiterhin keine `/api/chat`-Datei; der
+  optionale Route-/Postgres-Pfad ist als separates Server-Deployment dokumentiert. Der
+  Client fällt nicht mehr still auf `/api/chat` zurück, sondern zeigt ohne
+  `NEXT_PUBLIC_CHAT_API_URL` einen sichtbaren Konfigurationsstatus.
 - **AREA:** Architektur
 - **FILE:** `app/api/chat/route.ts`, `lib/db.ts`, `components/Chat.tsx`, `app/ki-assistent/page.tsx`
-- **DESCRIPTION:** `next.config.ts` setzt `output: 'export'` (ADR 0001: kein Backend).
-  Trotzdem existieren eine API-Route mit `pg`-Pool (`lib/db.ts`, `OPENAI_API_KEY`) und die
-  Seite `/ki-assistent`, die `<Chat>` gegen `NEXT_PUBLIC_CHAT_API_URL || '/api/chat'` rendert.
-- **CURRENT BEHAVIOR (gemessen 2026-09-09):**
-  - `npm run build` weist `/api/chat` als **`ƒ` (Dynamic, server-rendered on demand)** aus —
-    der Export enthält **kein** `out/api` (geprüft).
-  - Ohne gesetzte `NEXT_PUBLIC_CHAT_API_URL` sendet die Seite ins Leere (404) und wirkt dabei
-    funktionsfähig.
-  - `.env.example` behauptete „No environment variables are required“ — die Variable war dort
-    nicht dokumentiert (mit ADR 0021 ergänzt).
-  - Abgesichert ist die Route nur durch Unit-Tests mit gemocktem `pg` (578 Zeilen):
-    grün, aber ohne Bezug zum ausgelieferten Artefakt.
-- **EXPECTED BEHAVIOR:** Entweder externer Endpunkt + dokumentierte Konfiguration, oder
-  Route/Seite entfernen.
-- **SEVERITY:** hoch (funktional), niedrig (Sicherheit: kein Secret im Repo)
-- **WORKAROUND:** Nicht als lauffähiges Feature behandeln. Vor Änderungen prüfen, ob der
-  KI-Assistent Teil des Produkts sein soll.
-- **RELATED TEST:** `app/api/chat/route.test.ts` (578 Zeilen, komplett gemockt),
-  `components/Chat.test.tsx`
-- **RELATED ISSUE:** ADR 0001, **ADR 0021** (Entscheidungsvorlage, offen).
+- **VERIFICATION:** `components/Chat.test.tsx` prüft den unkonfigurierten Zustand; `npm run build`
+  weist `/api/chat` nicht als Teil des Static Exports aus; ADR 0021 ist akzeptiert.
+- **REMAINING LIMIT:** Ein externes Chat-Deployment und `NEXT_PUBLIC_CHAT_API_URL` müssen
+  außerhalb dieses Repositories bereitgestellt werden.
+- **SEVERITY:** niedrig (bewusste optionale Betriebsgrenze)
+- **RELATED TEST:** `app/api/chat/route.test.ts`, `components/Chat.test.tsx`
+- **RELATED ISSUE:** ADR 0001, ADR 0021.
 
 ---
 
-## ARCH-002 — Legacy-Router lebt weiter (628 Zeilen + zwei Testdateien)
+## ARCH-002 — Legacy-Router bleibt als isoliertes Galerie-Material (bewusst, kein Produktionsproblem)
 
 - **AREA:** Routing / Legacy
 - **FILE:** `components/edges/utils/orthogonalRouting.ts`
 - **DESCRIPTION:** `buildOrthogonalPath`, `orthogonalWaypoints`, `avoidObstacles` werden nur von
   `routingGallery.test.ts`, `orthogonalRouting*.test.ts`, `routingQuality.ts` und
   `scripts/routing/generate-gallery.ts` benutzt — **nicht** von `FlowCanvas`/`CableEdge`.
-- **CURRENT BEHAVIOR:** Zwei Routing-Engines im Baum; die Galerie zeigt Geometrie, die nicht
-  gerendert wird.
-- **EXPECTED BEHAVIOR:** Eine Engine (ADR 0014) oder klare Kennzeichnung als Galerie-Werkzeug.
-- **SEVERITY:** mittel
+- **STATUS:** isoliert und getestet. Der Produktivpfad enthält keinen Import von
+  `orthogonalRouting.ts` oder `routingCache.ts`; die Legacy-Dateien werden nur von Galerie-,
+  Qualitäts- und Benchmark-Code verwendet.
+- **CURRENT BEHAVIOR:** Die Galerie zeigt weiterhin eine bewusst separate Referenzgeometrie,
+  die nicht gerendert wird.
+- **EXPECTED BEHAVIOR:** Keine Nutzung im Produktivpfad; Entfernung bleibt eine optionale
+  spätere Aufräumarbeit, falls die Galerie ersetzt wird.
+- **SEVERITY:** niedrig
 - **WORKAROUND:** [LEGACY.md](./LEGACY.md) beachten; Galerie-Änderungen nie als
   Verhaltenänderung am Planer verkaufen.
-- **RELATED TEST:** `components/edges/utils/orthogonalRouting.test.ts`,
-  `orthogonalRouting.invariants.test.ts`, `routingGallery.test.ts`
+- **RELATED TEST:** `scripts/routing/architecture.test.ts` (Produktivimport-Gate),
+  `components/edges/utils/orthogonalRouting.test.ts`, `routingGallery.test.ts`
 
 ---
 
@@ -379,6 +333,23 @@ Legende Severity: **hoch** = Agent kann falschen Code ändern / falsche Sicherhe
 - **WORKAROUND:** Selektor-Vertrag ohne Browser prüfen: `components/e2eSelectors.test.tsx`.
 - **RELATED TEST:** `tests/e2e/*` (a11y, planner-flow, persistence, responsive, touch,
   controls-overlap, expert-panel, visual)
+
+---
+
+## TEST-002 — Knip-Dead-Code-Audit scheitert lokal an Speicherlimit
+
+- **AREA:** Tests / Tooling
+- **FILE:** `knip.ts`, `package.json` (`audit:dead-code`)
+- **DESCRIPTION:** `npm run audit:dead-code` und der reduzierte Lauf `npx knip --include files`
+  brechen in der lokalen Sandbox während `oxc-parser` mit `RangeError: Array buffer allocation failed`
+  ab. Der Fehler tritt vor einer Befundliste auf; es wurde kein Dead-Code-Befund als Ergebnis
+  interpretiert.
+- **CURRENT BEHAVIOR:** Typecheck, Lint, Format, Build und die vollständige Vitest-Suite sind
+  unabhängig grün; nur dieser speicherintensive Audit-Lauf ist in dieser Umgebung nicht
+  ausführbar.
+- **EXPECTED BEHAVIOR:** Knip in CI oder einer Umgebung mit ausreichendem Speicher ausführen.
+- **SEVERITY:** niedrig (Tooling; kein Produktionsbefund)
+- **RELATED TEST:** `npm run audit:dead-code` (lokal nicht bestanden, reproduziert am 2026-09-10)
 
 ---
 

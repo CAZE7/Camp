@@ -1047,6 +1047,11 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Navigation easing: named CSS class avoids ambiguous Tailwind arbitrary-value parsing. */
+.ease-camp {
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 /* M10-2: Hover / Active / Focus / Disabled an jedem Control, hell + dunkel. */
 .planner-shell .react-flow__controls-button:hover:not(:disabled) {
   background-color: var(--surface-2);

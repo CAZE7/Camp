@@ -11,7 +11,12 @@ import {
   type Rect,
   type Segment,
 } from './geometry';
-import { classifySegmentAgainstNode, classifySegmentAgainstSegment } from './rules/collision';
+import {
+  classifyDomainAwareSegments,
+  classifySegmentAgainstNode,
+  classifySegmentAgainstSegment,
+  type RoutingDomain,
+} from './rules/collision';
 
 /**
  * WP-10 (#399): Routing-Invarianten (ROUTING-V2.md §12) als reine, für
@@ -47,6 +52,8 @@ export type RoutedEdge = {
   source: string;
   target: string;
   waypoints: Point[];
+  /** Optional routing domain for domain-specific edge-edge clearance. */
+  domain?: RoutingDomain;
 };
 
 export type NodeRect = Rect & { id: string };
@@ -222,6 +229,60 @@ export function checkClearance(
             otherId: rect.id,
             detail: `Abstand ${verdict.distance.toFixed(1)}px < cableClearance ${tokens.cableClearance}px zu Node ${rect.id}`,
           });
+        }
+      }
+    }
+  }
+  return [...violations, ...checkDomainClearance(edges, tokens)];
+}
+
+/** I3 extension: pair-specific domain clearance for already routed edges. */
+export function checkDomainClearance(
+  edges: readonly RoutedEdge[],
+  tokens: RoutingTokens = ROUTING_TOKENS
+): InvariantViolation[] {
+  const violations: InvariantViolation[] = [];
+  for (let i = 0; i < edges.length; i++) {
+    const first = edges[i]!;
+    if (!first.domain) continue;
+    const firstSegments = waypointsToSegments(first.waypoints);
+    for (let j = i + 1; j < edges.length; j++) {
+      const second = edges[j]!;
+      if (!second.domain) continue;
+      const secondSegments = waypointsToSegments(second.waypoints);
+      for (let firstIndex = 0; firstIndex < firstSegments.length; firstIndex++) {
+        const firstSegment = firstSegments[firstIndex]!;
+        for (let secondIndex = 0; secondIndex < secondSegments.length; secondIndex++) {
+          const secondSegment = secondSegments[secondIndex]!;
+          const verdict = classifyDomainAwareSegments(
+            { segment: firstSegment, domain: first.domain },
+            { segment: secondSegment, domain: second.domain },
+            undefined,
+            tokens
+          );
+          // Shared ports intentionally allow their two first/last stubs to
+          // touch or bundle. The rest of a domain-separated route does not.
+          const inSharedPortStub =
+            (first.source === second.source && firstIndex === 0 && secondIndex === 0) ||
+            (first.source === second.target &&
+              firstIndex === 0 &&
+              secondIndex === secondSegments.length - 1) ||
+            (first.target === second.source &&
+              firstIndex === firstSegments.length - 1 &&
+              secondIndex === 0) ||
+            (first.target === second.target &&
+              firstIndex === firstSegments.length - 1 &&
+              secondIndex === secondSegments.length - 1);
+          if (verdict.class === 'weighted' && !inSharedPortStub) {
+            violations.push({
+              invariant: 'I3',
+              edgeId: first.id,
+              otherId: second.id,
+              detail: `Domänenabstand ${verdict.distance?.toFixed(1) ?? '?'}px < ${
+                verdict.requiredClearance ?? tokens.crossDomainSpacing
+              }px zwischen ${first.id} und ${second.id}`,
+            });
+          }
         }
       }
     }

@@ -7,7 +7,7 @@ Dieses Verzeichnis ist die autoritative Einstiegsdokumentation für Coding-Agent
 **ausschließlich Dinge, die im Code nachweisbar sind**. Steht irgendwo `UNKNOWN` oder
 `NEEDS VERIFICATION`, ist die Frage offen und darf nicht durch Vermutung ersetzt werden.
 
-Gültigkeit: Branch `arena/01a08778-camp`, Stand 2026-09-09.
+Gültigkeit: Branch `arena/01a087f9-camp`, Stand 2026-09-10.
 
 ---
 
@@ -76,7 +76,7 @@ Der Datenfluss einer Planänderung:
 
 ```bash
 npm run check              # lint + format + typecheck (2 Profile) + Tests
-npm test                   # Vitest, 2018 Tests / 145 Dateien
+npm test                   # Vitest, 2026 Tests / 145 Dateien
 npm run typecheck:tests    # tsc inklusive Testdateien (Units wirken dort)
 npm run routing:audit      # Routing-Invarianten I1–I7 über die sechs Referenzpläne
 npm run test:goldenmaster  # Golden-Master-Diff

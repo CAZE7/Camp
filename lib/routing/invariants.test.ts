@@ -8,6 +8,7 @@ import { toElkPlan } from './elk/ab-compare';
 import { ROUTING_TOKENS } from './tokens';
 import {
   checkClearance,
+  checkDomainClearance,
   checkEdgeEdgeOverlaps,
   checkEdgeNodeCollisions,
   checkInvariants,
@@ -212,6 +213,103 @@ describe('I3 — Clearance ≥ cableClearance', () => {
         [foreign]
       )
     ).toHaveLength(0);
+  });
+
+  it('Domänenpaare erzwingen die 24-px-Clearance auch zwischen Kanten', () => {
+    const violations = checkClearance(
+      [
+        {
+          ...edge(
+            'electrical',
+            [
+              { x: 0, y: 0 },
+              { x: 400, y: 0 },
+            ],
+            'a',
+            'b'
+          ),
+          domain: 'electrical',
+        },
+        {
+          ...edge(
+            'water',
+            [
+              { x: 0, y: 20 },
+              { x: 400, y: 20 },
+            ],
+            'c',
+            'd'
+          ),
+          domain: 'water',
+        },
+      ],
+      []
+    );
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.invariant).toBe('I3');
+  });
+
+  it('gemeinsamer Port-Stub bleibt als Bündel-Ausnahme zulässig', () => {
+    expect(
+      checkDomainClearance([
+        {
+          ...edge(
+            'a',
+            [
+              { x: 0, y: 0 },
+              { x: 100, y: 0 },
+            ],
+            'shared',
+            'a-target'
+          ),
+          domain: 'electrical',
+        },
+        {
+          ...edge(
+            'b',
+            [
+              { x: 0, y: 20 },
+              { x: 100, y: 20 },
+            ],
+            'shared',
+            'b-target'
+          ),
+          domain: 'water',
+        },
+      ])
+    ).toHaveLength(0);
+  });
+
+  it('nicht gemeinsamer Ziel-Stub wird nicht versehentlich als Port-Ausnahme gewertet', () => {
+    const violations = checkDomainClearance([
+      {
+        ...edge(
+          'a',
+          [
+            { x: 0, y: 0 },
+            { x: 100, y: 0 },
+            { x: 100, y: 100 },
+          ],
+          'shared',
+          'a-target'
+        ),
+        domain: 'electrical',
+      },
+      {
+        ...edge(
+          'b',
+          [
+            { x: 0, y: 20 },
+            { x: 100, y: 20 },
+            { x: 100, y: 120 },
+          ],
+          'shared',
+          'b-target'
+        ),
+        domain: 'water',
+      },
+    ]);
+    expect(violations.length).toBeGreaterThan(0);
   });
 });
 

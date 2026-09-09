@@ -120,6 +120,18 @@ describe('segmentExtraCost — Kombinationen', () => {
     expect(base.cost).toBe(COST_WEIGHTS.nearbyLane);
     expect(domain.cost).toBe(COST_WEIGHTS.clearanceViolation);
   });
+
+  it('Produktions-Domänenmetadaten verwenden die gemeinsame 24-px-Clearance', () => {
+    const own = seg(0, 0, 100, 0);
+    const other = seg(0, 20, 100, 20);
+    const domain = segmentExtraCost(own, new SegmentSpatialIndex([other]), {
+      domain: 'electrical',
+      segmentDomains: new Map([[other, 'water']]),
+    });
+    expect(domain.clearanceViolations).toBe(1);
+    expect(domain.domainClearanceViolations).toBe(1);
+    expect(domain.cost).toBe(COST_WEIGHTS.clearanceViolation);
+  });
 });
 
 describe('Konsistenz mit dem Kollisionsmodell (WP-3)', () => {

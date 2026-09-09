@@ -94,7 +94,7 @@ Median **2,35 ms**, p90 2,43 ms, Budget 16 ms/Frame (ADR 0012).
 ```
 golden input            scripts/goldenmaster/plans.ts (unverändert)
       ↓
-current implementation  performAutoWiring → sizing → routeAllCables
+current implementation  performAutoWiring → sizing → routePlan
       ↓
 expected result         knownPlans/<plan>.json (byte-genau)
 ```

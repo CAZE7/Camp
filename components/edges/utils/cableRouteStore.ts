@@ -11,7 +11,7 @@ import {
 import { nodeObstacleMap } from './pathfinding';
 import { validateFinalRouting, type FinalValidationReport } from '../../../lib/routing/finalValidation';
 import type { NodeRect, RoutedEdge } from '../../../lib/routing/invariants';
-import { routeAllCables, type RouteEdgeRef } from './routeAll';
+import { routePlan, type RouteEdgeRef } from './routeAll';
 import type { PathResult } from './pathfinding';
 
 /**
@@ -136,10 +136,10 @@ export const publishCableRouteFinalValidation = (report: FinalValidationReport):
 export const getCableRouteFinalValidation = (): FinalValidationReport | undefined => currentValidation;
 
 /**
- * AUDIT F-07: Baut aus genau den Waypoints, die `routeAllCables` für die UI
- * geliefert hat, den Final-Validation-Report. Reine Funktion, damit der
- * Router-Kontext nicht gemockt werden muss und der Report im Test
- * deterministisch reproduzierbar ist.
+ * Test-/Kompatibilitätshilfe: Baut aus vorgegebenen Waypoints einen
+ * Final-Validation-Report. Die Produktion nutzt den Report direkt aus
+ * `routePlan()`; diese Funktion ist kein zweiter Routingpfad und wird nur für
+ * isolierte Store-Tests/ältere Integrationsaufrufe vorgehalten.
  */
 export function computeCableRouteFinalValidation(
   nodes: RoutableNode[],
@@ -212,14 +212,13 @@ export function CableRouteSync() {
       // sie tragen gemessene Größe UND Handle-Rechtecke.
       const nodes = [...state.nodeLookup.values()] as unknown as RoutableNode[];
       const edgeRefs = state.edges as RouteEdgeRef[];
-      const routes = routeAllCables(nodes, edgeRefs);
+      const { routes, validation } = routePlan(nodes, edgeRefs);
       publishCableRoutes(routes);
 
-      // AUDIT F-07: Die finale Routing-Invariante (I1/I2/I3) wird im Rendering
-      // mitgeführt statt nur im CI. `routeAllCables` liefert bereits exakt
-      // die Waypoints, die die UI zeichnet — derselbe Report erscheint damit
-      // sichtbar, solange der Plan Rest-Überdeckungen hat.
-      publishCableRouteFinalValidation(computeCableRouteFinalValidation(nodes, edgeRefs, routes));
+      // The production entry point validates the exact geometry it returns.
+      // The UI receives that report instead of re-running a second routing
+      // or validation path.
+      publishCableRouteFinalValidation(validation);
     }, ROUTE_THROTTLE_MS);
   }
 

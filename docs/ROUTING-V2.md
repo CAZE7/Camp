@@ -1,9 +1,28 @@
 # ROUTING-V2
 
-**Status: `FROZEN` (Spezifikation)**
+**Status: `FROZEN` (fachlicher Vertrag; Implementierung aktualisiert 2026-09-10)**
 
-Dieses Dokument beschreibt die Routing-Pipeline V2 im Detail. Es ist die verbindliche
-Basis für `lib/planner/geometry`, `lib/planner/routing-core` und `lib/planner/routing-v2`.
+Dieses Dokument beschreibt die fachliche Routing-Pipeline V2. Die historischen Modulnamen
+in den folgenden Abschnitten (`routing-core`, `routing-v2`, `geometry/corridor`) sind
+Bezeichnungen des ursprünglichen Entwurfs, keine aktuell vorausgesetzten Verzeichnisse.
+Die produktive Umsetzung liegt heute in `components/edges/utils/routeAll.ts`,
+`components/edges/utils/pathfinding.ts` und `lib/routing/`.
+
+## Aktuelle Implementierungszuordnung
+
+| Vertrag                    | Produktiver Code                                                           |
+| -------------------------- | -------------------------------------------------------------------------- |
+| Zentraler Orchestrator     | `components/edges/utils/routeAll.ts` — `routePlan()`                       |
+| Kandidaten/A*              | `components/edges/utils/pathfinding.ts` — `findCablePath()`                |
+| Collision/Clearance/Cost   | `lib/routing/rules/collision.ts`, `lib/routing/rules/costModel.ts`         |
+| Lanes/Fan-out/Hopping      | `lib/routing/rules/laneRegistry.ts`, `portFanOut.ts`, `hopping.ts`         |
+| Geometrie/Final Validation | `lib/routing/geometry/`, `lib/routing/finalValidation.ts`                  |
+| React-Flow-Adapter         | `components/edges/CableEdge.tsx` — veröffentlichte `routePlan()`-Geometrie |
+| Globales Node-Layout       | `lib/routing/elk/` — ELK/Dagre; keine Kabelgeometrie                       |
+
+Autoritativ für die aktuellen Aufrufbeziehungen ist zusätzlich
+[`docs/ai/ROUTING-CONTEXT.md`](ai/ROUTING-CONTEXT.md). `routePlan()` liefert die
+validierte Geometrie; `routeAllCables()` bleibt ausschließlich ein Map-Kompatibilitätsadapter.
 
 ---
 

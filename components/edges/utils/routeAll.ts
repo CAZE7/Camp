@@ -22,6 +22,7 @@ import {
   ROUTE_BORDER_RADIUS,
   type Point,
   type PathResult,
+  type PreferredLane,
   type Rect,
 } from './pathfinding';
 import { polylineMidpoint, waypointsToPath, waypointsToPathWithHops, type PathHop } from './pathUtils';
@@ -44,6 +45,25 @@ import {
   type Segment,
 } from '../../../lib/routing/geometry';
 import { ROUTING_TOKENS } from '../../../lib/routing/tokens';
+import { LaneRegistry } from '../../../lib/routing/rules/laneRegistry';
+import type { RoutingDomain } from '../../../lib/routing/rules/collision';
+import { validateFinalRouting, type FinalValidationReport } from '../../../lib/routing/finalValidation';
+import type { NodeRect, RoutedEdge } from '../../../lib/routing/invariants';
+
+const routingDomainFor = (domain: HopDomain | undefined): RoutingDomain | undefined => {
+  switch (domain) {
+    case 'AC_230V':
+      return 'ac230';
+    case 'DC_12V':
+      return 'dc12';
+    case 'water':
+      return 'water';
+    case 'Solar':
+      return 'electrical';
+    default:
+      return undefined;
+  }
+};
 
 export type RouteEdgeRef = {
   id: string;
@@ -71,8 +91,8 @@ export type RouteEdgeRef = {
 
 type NodeWithHandles = RoutableNode;
 
-const NODE_W = 192;
-const NODE_H = 120;
+const NODE_W = ROUTING_TOKENS.nodeFallbackWidth;
+const NODE_H = ROUTING_TOKENS.nodeFallbackHeight;
 
 export function resolveHandlePoint(
   node: NodeWithHandles | undefined,
@@ -409,19 +429,101 @@ function countRealCrossings(order: readonly string[], waypoints: Map<string, Poi
   return out;
 }
 
+/** The single production routing result. The legacy Map-only export below is
+ * kept as a compatibility adapter for scripts and tests, not as a second
+ * routing implementation. */
+export type RoutePlanResult = {
+  routes: Map<string, PathResult>;
+  validation: FinalValidationReport;
+};
+
+function validateRouteSet(
+  nodes: readonly RoutableNode[],
+  edges: readonly RouteEdgeRef[],
+  routes: ReadonlyMap<string, PathResult>
+): FinalValidationReport {
+  const obstacleById = nodeObstacleMap([...nodes]);
+  const rects: NodeRect[] = [];
+  for (const node of nodes) {
+    const rect = obstacleById.get(node.id);
+    if (rect) rects.push({ id: node.id, ...rect });
+  }
+  const routed: RoutedEdge[] = [];
+  for (const edge of edges) {
+    const route = routes.get(edge.id);
+    if (route)
+      routed.push({
+        id: edge.id,
+        source: edge.source,
+        target: edge.target,
+        waypoints: route.waypoints,
+        domain: routingDomainFor(edge.data?.edgeDomain),
+      });
+  }
+  const report = validateFinalRouting(routed, rects);
+  let tight = 0;
+  for (const edge of edges) if (routes.get(edge.id)?.tightMarginUsed) tight += 1;
+  return { ...report, tightMarginRoutes: tight };
+}
+
+/**
+ * Build deterministic preferred corridor lanes before candidate selection.
+ * The registry does not replace collision rules: it only supplies a stable
+ * preference when otherwise equal routes are compared.
+ */
+function buildPreferredLanes(
+  edges: readonly RouteEdgeRef[],
+  nodeById: ReadonlyMap<string, RoutableNode>
+): Map<string, PreferredLane> {
+  const registry = new LaneRegistry();
+  for (const edge of edges) {
+    const source = nodeById.get(edge.source);
+    const target = nodeById.get(edge.target);
+    const flow = centerDelta(source, target);
+    const sourcePoint = resolveHandlePoint(source, edge.sourceHandle, 'source', flow);
+    const targetPoint = resolveHandlePoint(
+      target,
+      edge.targetHandle,
+      'target',
+      flow ? { x: -flow.x, y: -flow.y } : undefined
+    );
+    const horizontal = Math.abs(targetPoint.x - sourcePoint.x) >= Math.abs(targetPoint.y - sourcePoint.y);
+    const direction = horizontal ? 'horizontal' : 'vertical';
+    const coord = horizontal ? (sourcePoint.y + targetPoint.y) / 2 : (sourcePoint.x + targetPoint.x) / 2;
+    const from = horizontal ? Math.min(sourcePoint.x, targetPoint.x) : Math.min(sourcePoint.y, targetPoint.y);
+    const to = horizontal ? Math.max(sourcePoint.x, targetPoint.x) : Math.max(sourcePoint.y, targetPoint.y);
+    const corridor = registry.corridorFor(direction, coord, from, to);
+    registry.register(corridor, {
+      edgeId: edge.id,
+      topoOrder: isBackboneConnection(source?.type, target?.type) ? 0 : 1,
+      targetPosition: horizontal ? targetPoint.y : targetPoint.x,
+    });
+  }
+
+  const preferred = new Map<string, PreferredLane>();
+  for (const [edgeId, assignments] of registry.assignByEdge()) {
+    const assignment = assignments[0];
+    if (!assignment) continue;
+    preferred.set(edgeId, {
+      direction: assignment.corridor.direction,
+      coordinate: assignment.corridor.coord + assignment.offset,
+    });
+  }
+  return preferred;
+}
+
 /**
  * Routet alle Kanten in einem Durchgang und schiebt parallele Trassen global.
+ * This is the only production entry point: normalize → route → hop → validate.
  */
-export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Map<string, PathResult> {
+export function routePlan(inputNodes: RoutableNode[], edges: RouteEdgeRef[]): RoutePlanResult {
+  const nodes = [...inputNodes].sort((a, b) => a.id.localeCompare(b.id));
   edges = [...edges].sort((a, b) => a.id.localeCompare(b.id));
   const out = new Map<string, PathResult>();
-  if (edges.length === 0) return out;
+  if (edges.length === 0) return { routes: out, validation: validateRouteSet(nodes, edges, out) };
 
   const nodeById = new Map<string, RoutableNode>();
-  for (let i = 0; i < nodes.length; i++) {
-    const node = nodes[i];
-    if (node) nodeById.set(node.id, node);
-  }
+  for (const node of nodes) nodeById.set(node.id, node);
 
   const edgeById = new Map<string, RouteEdgeRef>(edges.map((edge) => [edge.id, edge]));
 
@@ -430,12 +532,13 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
   // nur die räumliche Umgebung (Routen-BBox + Pad) gefiltert, statt ALLE
   // N-1 Hindernisse in jeden A*-Lauf zu stecken. Bei 500-Knoten-Plänen
   // wuchs das Hanan-Grid sonst über die gesamte Plan-Envelope (gemessen:
-  // 81 s für einen kompletten Routing-Pass). Pad = 240 px = 2 × ALTERNATIVE_
-  // ROUTE_GAP — Ausweichtrassen bleiben innerhalb des gefilterten Fensters,
-  // und ein Pfad kann per Konstruktion die Box nie verlassen, sodass
-  // ausgefilterte Hindernisse nicht getroffen werden können (außerhalb).
+  // 81 s für einen kompletten Routing-Pass). Das Pad kommt aus
+  // `ROUTING_TOKENS.obstacleRegionPad`; es hält die historischen
+  // Ausweichtrassen und die relevante Umgebung im Fenster. Ein Pfad kann per
+  // Konstruktion die Box nie verlassen, sodass ausgefilterte Hindernisse nicht
+  // getroffen werden können (außerhalb).
   const obstacleById = nodeObstacleMap(nodes);
-  const OBSTACLE_REGION_PAD = 240;
+  const obstacleRegionPad = ROUTING_TOKENS.obstacleRegionPad;
   /** Bounding-Box einer Route, allseitig um `pad` erweitert. */
   const routeWindow = (points: readonly Point[], pad: number): Rect => {
     let minX = Infinity;
@@ -480,9 +583,13 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
           flow ? { x: -flow.x, y: -flow.y } : undefined
         );
   });
+  // PRODUCTION: the same LaneRegistry supplies a stable corridor preference
+  // to candidate scoring. Port fan-out remains the local port rule; corridor
+  // preference is global and cannot depend on render-array order.
+  const preferredLanes = buildPreferredLanes(edges, nodeById);
 
   const raw: { id: string; waypoints: Point[]; result: PathResult }[] = [];
-  const dynamicRoutedSegments: { edgeId: string; segment: Segment }[] = [];
+  const dynamicRoutedSegments: { edgeId: string; segment: Segment; domain?: RoutingDomain }[] = [];
   // ROUTE-BUG-16: wächst mit jeder verlegten Kante (siehe `addTubes`).
   const tubes: Rect[] = [];
 
@@ -492,7 +599,7 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
   // Gemessen das Gegenteil: Kreuzungen 42 → 58 über die Referenzpläne
   // (complex 28 → 41), dazu 2 × I6 und 3 × I7 mehr. Die langen Kanten auf
   // Lane 0 legen sich quer durch die Mitte und zwingen damit jede kurze
-  // Kante zum Kreuzen. Die Store-Reihenfolge bleibt.
+  // Kante zum Kreuzen. Die stabile Edge-ID-Reihenfolge bleibt.
   for (let i = 0; i < edges.length; i++) {
     const edge = edges[i];
     if (!edge) continue;
@@ -508,10 +615,10 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
     );
     const exclude = new Set([edge.source, edge.target]);
     const region: Rect = {
-      x: Math.min(src.x, tgt.x) - OBSTACLE_REGION_PAD,
-      y: Math.min(src.y, tgt.y) - OBSTACLE_REGION_PAD,
-      width: Math.abs(src.x - tgt.x) + 2 * OBSTACLE_REGION_PAD,
-      height: Math.abs(src.y - tgt.y) + 2 * OBSTACLE_REGION_PAD,
+      x: Math.min(src.x, tgt.x) - obstacleRegionPad,
+      y: Math.min(src.y, tgt.y) - obstacleRegionPad,
+      width: Math.abs(src.x - tgt.x) + 2 * obstacleRegionPad,
+      height: Math.abs(src.y - tgt.y) + 2 * obstacleRegionPad,
     };
     // PERF-001: nur Hindernisse in der erweiterten Routen-Umgebung.
     const obstacles = obstaclesNear(exclude, region);
@@ -545,6 +652,10 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
       stubCapRankTarget: lanes?.laneTargetRank,
       stubTie: lanes?.laneTie,
       stubTieTarget: lanes?.laneTargetTie,
+      // Registry preference is evaluated by the production score; see
+      // `preferredLanes` above.
+      preferredLane: preferredLanes.get(edge.id),
+      domain: routingDomainFor(edge.data?.edgeDomain),
       obstacles,
       // AUDIT ROUTE-001 (Härtung 2026-09-08): eigene Boxen explizit — der
       // Router verwirft NUR diese; fremde, an den eigenen Node geklebte
@@ -553,6 +664,9 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
         (r): r is Rect => r !== undefined
       ),
       crossingSegments: dynamicRoutedSegments.filter((s) => s.edgeId !== edge.id).map((s) => s.segment),
+      crossingSegmentDomains: dynamicRoutedSegments
+        .filter((s) => s.edgeId !== edge.id)
+        .map((s) => ({ segment: s.segment, domain: s.domain })),
     };
     let request_ = request;
     let result = findCablePath({ ...request_, cableTubes: tubesForRegion(tubes, region) });
@@ -569,7 +683,7 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
     // endlich, die Schleife terminiert also — und bleibt deterministisch.
     let window = region;
     for (let attempt = 0; attempt < 3; attempt++) {
-      const span = routeWindow(result.waypoints, OBSTACLE_REGION_PAD);
+      const span = routeWindow(result.waypoints, obstacleRegionPad);
       if (coversRect(window, span)) break;
       const wider = obstaclesNear(exclude, span);
       if (wider.length === request_.obstacles.length) break;
@@ -590,7 +704,8 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
     raw.push({ id: edge.id, waypoints: result.waypoints, result });
     addTubes(tubes, result.waypoints);
     const segments = waypointsToSegments(result.waypoints);
-    for (const seg of segments) dynamicRoutedSegments.push({ edgeId: edge.id, segment: seg });
+    const domain = routingDomainFor(edge.data?.edgeDomain);
+    for (const seg of segments) dynamicRoutedSegments.push({ edgeId: edge.id, segment: seg, domain });
   }
 
   const inflated: Rect[] = allObstacles.map((r) => inflateRect(r, OBSTACLE_MARGIN));
@@ -698,5 +813,13 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
       )
     );
   }
-  return out;
+  return { routes: out, validation: validateRouteSet(nodes, edges, out) };
+}
+
+/**
+ * Compatibility adapter for existing scripts/tests. Production UI code calls
+ * `routePlan()` so validation cannot be skipped accidentally.
+ */
+export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Map<string, PathResult> {
+  return routePlan(nodes, edges).routes;
 }

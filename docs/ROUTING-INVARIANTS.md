@@ -1,9 +1,19 @@
-# Routing-Invarianten
+# Routing-Invarianten — Legacy-Galerie
 
 Stand: 2026-08-21 · Betrifft AGENTS.md **K3**
-Quelle: `components/edges/utils/orthogonalRouting.ts`
 
-## 1. Vertrag
+**Geltungsbereich:** ausschließlich die Legacy-Galerie und ihre Regressionstests.
+
+Dieses Dokument beschreibt nicht die produktive Kabelgeometrie. Die produktiven Invarianten
+I1–I7 gelten für `routePlan()` und sind in `lib/routing/invariants.ts` sowie
+`lib/routing/finalValidation.ts` implementiert. Der produktive Vertrag und seine Aufrufer
+stehen in [`docs/ai/ROUTING-CONTEXT.md`](ai/ROUTING-CONTEXT.md).
+
+Quelle dieser Legacy-Invarianten: `components/edges/utils/orthogonalRouting.ts`.
+Die Datei liegt bewusst außerhalb des Produktionspfads; sie darf nicht als zweite
+Rendering- oder Routing-Wahrheit verwendet werden.
+
+## 1. Legacy-Vertrag
 
 `buildOrthogonalPath(input)` ist eine **reine, deterministische** Funktion.
 Sie bekommt zwei orientierte Anschlusspunkte, optional Hindernis-Rechtecke,

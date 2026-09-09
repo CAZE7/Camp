@@ -132,7 +132,7 @@ Layout-Engines (schreiben `position`).
 - `edge.data.edgeDomain` ist nach AutoWire **immer** gesetzt (Property G6).
 
 **Consumers:** `CableEdge` (Anzeige), `useLiveValidation`, `collectEdgeErrors`,
-`routeAllCables` (liest `edgeDomain`/`crossSection`/`locked` für Hop-Priorität),
+`routePlan` (liest `edgeDomain`/`crossSection`/`locked` für Hop-Priorität),
 `lib/autoWire/sizing.ts` (schreibt).
 
 ---

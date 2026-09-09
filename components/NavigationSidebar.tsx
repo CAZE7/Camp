@@ -280,7 +280,7 @@ export default function NavigationSidebar({
     <aside
       ref={containerRef}
       className={cn(
-        'ease-[cubic-bezier(0.16,1,0.3,1)] fixed left-0 top-0 z-40 flex h-screen flex-col transition-all duration-300',
+        'ease-camp fixed left-0 top-0 z-40 flex h-screen flex-col transition-all duration-300',
         isCollapsed ? 'w-14' : 'w-[17rem]',
         'bg-gradient-to-b from-white via-stone-50 to-emerald-50/40',
         'border-r border-stone-200 shadow-sm'

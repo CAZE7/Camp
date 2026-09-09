@@ -7,7 +7,7 @@ Hier liegen die Engines; die Regeln, Geometrie-Primitives und Invarianten kommen
 `lib/routing/` (siehe dessen README).
 
 ```
-routeAll.ts          GLOBALER PASS (Produktivpfad) — routeAllCables, Port-Fan-Out-Gruppen
+routeAll.ts          ORCHESTRATOR (Produktivpfad) — routePlan, LaneRegistry, Port-Fan-Out
 pathfinding.ts       Einzelroute: Katalog → Hanan-A* → Fallback (findCablePath)
 cableRouteStore.ts   React-Anbindung, Cache, Drossel, Live-Final-Report
 nudge.ts             Überlappungen paralleler Trassen auflösen
@@ -25,10 +25,11 @@ routingQuality.ts    Qualitätsmetriken (kein Gate, nutzt den Legacy-Router)
 <FlowCanvas>  →  <CableRouteSync/>  (cableRouteStore.ts)
                    │ Signatur aus Node-Geometrie + Kantentopologie
                    ▼
-             routeAllCables(nodes, edges)      routeAll.ts
+             routePlan(nodes, edges)           routeAll.ts
+                   │  Normalize + LaneRegistry/Port-Fan-Out
                    │  je Kante: findCablePath  pathfinding.ts
                    │            Katalog → hananAStar → Fallback
-                   │  danach:   nudge → mergeCloseBends → resolveHops → Crossings
+                   │  danach:   nudge → mergeCloseBends → resolveHops → Validate
                    ▼
              publishCableRoutes()  →  useCableRoute(id)  →  <CableEdge> SVG
 ```
@@ -38,22 +39,23 @@ routingQuality.ts    Qualitätsmetriken (kein Gate, nutzt den Legacy-Router)
 
 ## What is the public API?
 
-| Symbol                                                                           | Datei                | Zweck                                                   |
-| -------------------------------------------------------------------------------- | -------------------- | ------------------------------------------------------- |
-| `routeAllCables(nodes, edges)`                                                   | `routeAll.ts`        | **Einstieg des globalen Passes**                        |
-| `resolveHandlePoint(node, handleId, kind, flow?)`                                | `routeAll.ts`        | Port-Punkt + Richtung (Flussrichtung)                   |
-| `portFanOutLanes(edges, resolve)`                                                | `routeAll.ts`        | Lane-Vergabe je (Bauteil, Seite)                        |
-| `findCablePath(request)`                                                         | `pathfinding.ts`     | Einzelroute (`usedSearch: catalog\|astar\|fallback`)    |
-| `catalogCandidates`, `bestFreeCatalog`, `portFrame`                              | `pathfinding.ts`     | Katalog + Stub-Geometrie                                |
-| `routeDefectScore(points)`                                                       | `pathfinding.ts`     | Mängel-Strafe (Kehren, Kurzsegmente, Selbstüberlappung) |
-| `buildHananGridMasks(xs, ys, solids)`                                            | `pathfinding.ts`     | Blockade-Markierung (PERF-001)                          |
-| `nodesToObstacles`, `nodeObstacleMap`                                            | `pathfinding.ts`     | Hindernis-Boxen inkl. Handle-Ausrisse                   |
-| `pathfindingFallbackCount`, `resetPathfindingTelemetry`, `clearPathfindingCache` | `pathfinding.ts`     | Telemetrie/Cache                                        |
-| `CableRouteSync`, `useCableRoute`, `useCableRouteFinalValidation`                | `cableRouteStore.ts` | Render-Anbindung                                        |
-| `nodeLayoutSignature`, `edgeTopologySignature`, `createThrottledRunner`          | `cableRouteStore.ts` | Invalidierung, Drossel (100 ms)                         |
-| `nudgeOrthogonalPaths(paths, {obstacles})`                                       | `nudge.ts`           | Trassen separieren                                      |
-| `waypointsToPath`, `waypointsToPathWithHops`, `polylineMidpoint`                 | `pathUtils.ts`       | SVG-Erzeugung                                           |
-| `edgeDropInputs`, `hasVoltageDropError`                                          | `voltageDrop.ts`     | Anzeige-Größen (delegiert an `lib/`)                    |
+| Symbol                                                                           | Datei                | Zweck                                                      |
+| -------------------------------------------------------------------------------- | -------------------- | ---------------------------------------------------------- |
+| `routePlan(nodes, edges)`                                                        | `routeAll.ts`        | **zentraler Produktions-Entry-Point; routes + validation** |
+| `routeAllCables(nodes, edges)`                                                   | `routeAll.ts`        | Map-Kompatibilitätsadapter                                 |
+| `resolveHandlePoint(node, handleId, kind, flow?)`                                | `routeAll.ts`        | Port-Punkt + Richtung (Flussrichtung)                      |
+| `portFanOutLanes(edges, resolve)`                                                | `routeAll.ts`        | Lane-Vergabe je (Bauteil, Seite)                           |
+| `findCablePath(request)`                                                         | `pathfinding.ts`     | Einzelroute (`usedSearch: catalog\|astar\|fallback`)       |
+| `catalogCandidates`, `bestFreeCatalog`, `portFrame`                              | `pathfinding.ts`     | Katalog + Stub-Geometrie                                   |
+| `routeDefectScore(points)`                                                       | `pathfinding.ts`     | Mängel-Strafe (Kehren, Kurzsegmente, Selbstüberlappung)    |
+| `buildHananGridMasks(xs, ys, solids)`                                            | `pathfinding.ts`     | Blockade-Markierung (PERF-001)                             |
+| `nodesToObstacles`, `nodeObstacleMap`                                            | `pathfinding.ts`     | Hindernis-Boxen inkl. Handle-Ausrisse                      |
+| `pathfindingFallbackCount`, `resetPathfindingTelemetry`, `clearPathfindingCache` | `pathfinding.ts`     | Telemetrie/Cache                                           |
+| `CableRouteSync`, `useCableRoute`, `useCableRouteFinalValidation`                | `cableRouteStore.ts` | Render-Anbindung                                           |
+| `nodeLayoutSignature`, `edgeTopologySignature`, `createThrottledRunner`          | `cableRouteStore.ts` | Invalidierung, Drossel (100 ms)                            |
+| `nudgeOrthogonalPaths(paths, {obstacles})`                                       | `nudge.ts`           | Trassen separieren                                         |
+| `waypointsToPath`, `waypointsToPathWithHops`, `polylineMidpoint`                 | `pathUtils.ts`       | SVG-Erzeugung                                              |
+| `edgeDropInputs`, `hasVoltageDropError`                                          | `voltageDrop.ts`     | Anzeige-Größen (delegiert an `lib/`)                       |
 
 ## What does it own?
 
@@ -71,8 +73,8 @@ routingQuality.ts    Qualitätsmetriken (kein Gate, nutzt den Legacy-Router)
    `scripts/routing/architecture.test.ts` (ADR 0014).
 3. **Keine Abstands-Zahl** — alle Werte kommen aus `lib/routing/tokens.ts` (Rule E).
 4. **Kein `Math.random`, kein ungeordnetes Iterieren** — Determinismus ist Pflicht (ADR 0010).
-5. **Kein UI-State** im Router: `routeAllCables` ist eine reine Funktion; React lebt in
-   `cableRouteStore.ts`.
+5. **Kein UI-State** im Router: `routePlan` ist eine reine Funktion; React lebt in
+   `cableRouteStore.ts`. `CableEdge` berechnet keine Ersatzroute, wenn der Store noch leer ist.
 6. **Keine Änderung am Legacy-Router als „Routing-Fix“ verkaufen** — er rendert nicht.
 
 ## Legacy: `orthogonalRouting.ts`
