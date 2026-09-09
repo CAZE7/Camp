@@ -16,7 +16,7 @@ interface CategorySectionProps {
 export function CategorySection({ title, items, open, onToggle, onMobileAdd, accent }: CategorySectionProps) {
   if (items.length === 0) return null;
   return (
-    <section className="overflow-hidden rounded-xl border border-border bg-card">
+    <section className="overflow-hidden rounded border border-border bg-card">
       <button
         type="button"
         onClick={onToggle}

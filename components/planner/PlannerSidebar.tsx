@@ -32,7 +32,7 @@ export function PlannerSidebar({ onMobileAdd }: PlannerSidebarProps) {
   return (
     <>
       <div
-        className={`relative z-40 h-full flex-shrink-0 overflow-hidden border-r border-border bg-card shadow-lg transition-all duration-300 ease-in-out motion-reduce:transition-none ${
+        className={`relative z-40 h-full flex-shrink-0 overflow-hidden border-r border-border bg-card transition-all duration-300 ease-in-out motion-reduce:transition-none ${
           isSidebarOpen
             ? 'w-full opacity-100 md:w-[260px] xl:w-[280px]'
             : 'w-full opacity-100 md:w-0 md:opacity-0'

@@ -148,7 +148,7 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
         aria-expanded={open}
         aria-haspopup="dialog"
         aria-label={`${warnings.length} Prüfhinweise anzeigen`}
-        className={`flex min-h-11 items-center gap-1.5 rounded-lg px-3 text-sm font-semibold shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${TYPE_STYLES[topType].badge}`}
+        className={`flex min-h-11 items-center gap-1.5 rounded px-3 text-sm font-semibold shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${TYPE_STYLES[topType].badge}`}
       >
         <AlertTriangle className="h-4 w-4" />
         <span>{warnings.length}</span>
@@ -160,7 +160,7 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
         <div
           ref={panelRef}
           tabIndex={-1}
-          className="absolute right-0 top-full z-50 mt-2 max-h-96 w-11/12 min-w-80 max-w-md overflow-y-auto rounded border border-border bg-card shadow-2xl focus:outline-none sm:w-96"
+          className="absolute right-0 top-full z-50 mt-2 max-h-96 w-11/12 min-w-80 max-w-md overflow-y-auto rounded border border-border bg-card shadow-xl focus:outline-none sm:w-96"
           role="dialog"
           aria-label="Prüfhinweise für deine Anlage"
         >
@@ -172,7 +172,7 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex h-11 w-11 items-center justify-center rounded text-muted-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               aria-label="Prüfhinweise schließen"
             >
               <X className="h-5 w-5" />
@@ -183,7 +183,7 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
             {sorted.map((warning) => {
               const style = TYPE_STYLES[warning.type];
               return (
-                <li key={warning.id} className={`rounded-lg border-l-4 p-3 ${style.card}`}>
+                <li key={warning.id} className={`rounded border-l-4 p-3 ${style.card}`}>
                   <div className="flex items-start gap-2">
                     {style.icon}
                     <div className="min-w-0 flex-1">

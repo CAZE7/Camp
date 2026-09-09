@@ -22,7 +22,7 @@ export function FloatingMetricsCard() {
 
   return (
     <aside
-      className={`pointer-events-none absolute right-3 top-28 z-40 hidden overflow-hidden rounded-lg border border-border bg-card shadow-lg transition-all sm:block ${expanded ? 'w-80' : 'w-56'}`}
+      className={`pointer-events-none absolute right-3 top-28 z-40 hidden overflow-hidden rounded border border-rule/60 bg-card shadow-md transition-all sm:block ${expanded ? 'w-72' : 'w-52'}`}
       aria-label="Aktuelle Kennzahlen des Elektrikplans"
     >
       <div className="pointer-events-auto p-4">
@@ -30,7 +30,7 @@ export function FloatingMetricsCard() {
           type="button"
           onClick={() => setExpanded((value) => !value)}
           aria-expanded={expanded}
-          className="mb-2 flex min-h-11 w-full items-center justify-between rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="mb-2 flex min-h-11 w-full items-center justify-between rounded text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <span>
             <span className="block text-xs font-bold uppercase tracking-wider text-ink-soft">
@@ -48,7 +48,7 @@ export function FloatingMetricsCard() {
         <dl className="space-y-2">
           <div className="flex items-center justify-between gap-3">
             <dt className="text-sm font-medium text-ink-soft">Autarkie</dt>
-            <dd className="rounded-full bg-moss/10 px-2 py-1 text-sm font-bold text-moss">
+            <dd className="rounded border border-moss/30 bg-moss/10 px-2 py-1 text-sm font-bold text-moss">
               {metrics.autarkyStr}
             </dd>
           </div>
@@ -76,7 +76,7 @@ export function FloatingMetricsCard() {
                   </dd>
                 </div>
               )}
-              <p className="rounded-lg bg-accent p-2 text-xs text-foreground">
+              <p className="rounded bg-accent p-2 text-xs text-foreground">
                 {season === 'winter'
                   ? 'Winter: reduzierter Solarertrag und höherer Heizbedarf werden berücksichtigt.'
                   : 'Sommer: regulärer Solarertrag und Heizbedarf werden angenommen.'}

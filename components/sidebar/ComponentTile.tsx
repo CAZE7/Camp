@@ -25,7 +25,7 @@ export function ComponentTile({ comp, onMobileAdd, accent }: ComponentTileProps)
       data-component-label={comp.label}
       data-accent={accent}
       className={cn(
-        'flex min-h-24 w-full touch-manipulation flex-col items-center justify-center gap-1 rounded-xl border p-2 text-center text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 lg:cursor-grab',
+        'flex min-h-24 w-full touch-manipulation flex-col items-center justify-center gap-1 rounded border p-2 text-center text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 lg:cursor-grab',
         accent === 'device'
           ? 'border-border bg-accent text-accent-foreground hover:bg-secondary'
           : 'border-border bg-card text-foreground hover:bg-accent'

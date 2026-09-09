@@ -370,7 +370,7 @@ function LiveRecommendationCard({
 
   if (I > 0) {
     return (
-      <div className="relative mx-4 mt-4 overflow-hidden rounded-lg border border-rule bg-surface-panel p-4 shadow-lg">
+      <div className="relative mx-4 mt-4 overflow-hidden rounded border border-rule bg-surface-panel p-4 shadow-md">
         <h4 className="panel-title mb-3 flex items-center gap-1.5">
           <span className="h-1.5 w-1.5 rounded-full bg-copper"></span>
           Aktuelle Empfehlung{' '}
@@ -469,7 +469,7 @@ export function ExpertPanel() {
       {isOpen && (
         <div
           data-testid="expert-panel-open"
-          className="flex max-h-[min(28rem,calc(100dvh-8rem))] flex-col overflow-hidden rounded-lg border border-rule bg-bone/95 shadow-2xl backdrop-blur-xl duration-300 animate-in fade-in slide-in-from-bottom-4"
+          className="flex max-h-[min(28rem,calc(100dvh-8rem))] flex-col overflow-hidden rounded border border-rule bg-bone/95 shadow-xl backdrop-blur-xl duration-300 animate-in fade-in slide-in-from-bottom-4"
         >
           {/* Header — sticky, Token-Farben (bg-ink / text-bone) in hell und dunkel. */}
           <div className="sticky top-0 z-10 flex shrink-0 items-center gap-3 bg-ink px-5 py-4 text-bone">
@@ -486,7 +486,7 @@ export function ExpertPanel() {
               type="button"
               data-testid="expert-panel-close"
               onClick={() => setIsOpen(false)}
-              className="flex h-11 w-11 min-w-11 shrink-0 items-center justify-center rounded-lg text-bone transition-colors hover:bg-bone/15 hover:text-bone focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bone disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex h-11 w-11 min-w-11 shrink-0 items-center justify-center rounded text-bone transition-colors hover:bg-bone/15 hover:text-bone focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bone disabled:cursor-not-allowed disabled:opacity-40"
               aria-label="Panel schließen"
             >
               <svg
@@ -507,7 +507,7 @@ export function ExpertPanel() {
 
           {/* Automatische Verbindung Erfolgs-Bestätigung */}
           {autoWireSummary && (
-            <div className="mx-4 mt-4 rounded-lg border border-moss bg-moss/10 p-3.5 shadow-sm duration-300 animate-in fade-in slide-in-from-top-2">
+            <div className="mx-4 mt-4 rounded border border-moss bg-moss/10 p-3.5 shadow-sm duration-300 animate-in fade-in slide-in-from-top-2">
               <div className="flex items-start gap-2.5">
                 <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-moss" aria-hidden="true" />
                 <div className="min-w-0 flex-1">
@@ -519,7 +519,7 @@ export function ExpertPanel() {
                 </div>
                 <button
                   onClick={() => setAutoWireSummary(null)}
-                  className="rounded-md p-0.5 text-moss/60 transition-colors hover:bg-moss/10 hover:text-moss"
+                  className="rounded p-0.5 text-moss/60 transition-colors hover:bg-moss/10 hover:text-moss"
                   aria-label="Automatische Verbindung Zusammenfassung schließen"
                 >
                   <svg
@@ -598,7 +598,7 @@ export function ExpertPanel() {
                     >
                       <p className="text-sm leading-relaxed text-ink-soft">{tip.body}</p>
                       {tip.norm && (
-                        <span className="mt-2 inline-flex items-center gap-1 rounded-md border border-oxide/20 bg-oxide/10 px-2 py-0.5 text-xs font-bold uppercase tracking-wider text-oxide">
+                        <span className="mt-2 inline-flex items-center gap-1 rounded border border-oxide/20 bg-oxide/10 px-2 py-0.5 text-xs font-bold uppercase tracking-wider text-oxide">
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
                             viewBox="0 0 24 24"
@@ -634,8 +634,8 @@ export function ExpertPanel() {
         <button
           onClick={() => setIsOpen(true)}
           className={cn(
-            'group relative flex items-center gap-2.5 rounded-lg border border-copper bg-ink py-3 pl-3 pr-4',
-            'text-bone shadow-lg',
+            'group relative flex items-center gap-2.5 rounded border border-copper bg-ink py-3 pl-3 pr-4',
+            'text-bone shadow-md',
             'hover:border-copper hover:bg-surface-raised hover:text-ink',
             'transition-colors duration-200'
           )}

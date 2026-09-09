@@ -679,13 +679,26 @@ const CableEdge = function ({
               alignItems: 'center',
               lineHeight: 1.25,
               boxShadow: hasDropError ? '0 0 0 1px var(--wire-error-bg)' : undefined,
+              // B2: Kern-Label einzeilig deckeln (Ellipsis); Details bei Auswahl laufen weiter voll aus.
+              maxWidth: emphasized ? undefined : 220,
+              overflow: 'hidden',
             }}
             className="nodrag nopan edge-label"
+            title={`${edgeDomain === 'AC_230V' ? '230V' : edgeDomain === 'Solar' ? 'SOLAR' : isPlus ? 'DC+' : 'DC−'} · ${crossSection} mm² · ${length.toFixed(1)} m`}
           >
             {/* Kompaktes Kern-Label: Typ-Kürzel + Querschnitt + Länge */}
             <span
               className="edge-label-main"
-              style={{ display: 'flex', alignItems: 'center', gap: '4px', color: stroke }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                color: stroke,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                maxWidth: '100%',
+              }}
             >
               <span
                 style={{

@@ -124,12 +124,13 @@ const WaterPipeEdge = function ({
       </circle>
       <EdgeLabelRenderer>
         <div
-          className="nodrag nopan edge-label rounded border border-border bg-card px-2 py-1 text-xs font-bold text-foreground shadow-sm"
+          className="nodrag nopan edge-label max-w-[220px] overflow-hidden text-ellipsis whitespace-nowrap rounded border border-border bg-card px-2 py-1 text-xs font-bold text-foreground shadow-sm"
           style={{
             position: 'absolute',
             transform: `translate(-50%, -50%) translate(${labelX}px,${labelY + labelNudgeY}px)`,
             pointerEvents: 'all',
           }}
+          title={`${label}${data?.length ? ` · ${data.length.toFixed(1)} m` : ''}`}
         >
           {label}
           {data?.length ? ` · ${data.length.toFixed(1)} m` : ''}

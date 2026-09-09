@@ -46,7 +46,7 @@ export function ComponentInfoInspector({ node, onUpdateNodeData }: BaseNodeInspe
     const busbar = node as unknown as TypedNode<'busbar'>;
     return (
       <div className="space-y-3">
-        <p className="rounded-lg bg-accent p-3 text-sm text-foreground">
+        <p className="rounded bg-accent p-3 text-sm text-foreground">
           Die Sammelschiene verteilt Plus oder Minus auf mehrere Leitungen. Ihr Nennstrom muss mindestens dem
           maximalen Gesamtstrom entsprechen.
         </p>
@@ -68,7 +68,7 @@ export function ComponentInfoInspector({ node, onUpdateNodeData }: BaseNodeInspe
     );
   }
   return (
-    <p className="rounded-lg bg-accent p-3 text-sm leading-relaxed text-foreground">
+    <p className="rounded bg-accent p-3 text-sm leading-relaxed text-foreground">
       {COMPONENT_HELP[node.type || ''] || 'Für dieses Bauteil sind keine weiteren Werte erforderlich.'}
     </p>
   );

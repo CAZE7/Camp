@@ -12,7 +12,7 @@ function withNodePresentation(
   Component: React.ComponentType<NodeProps>
 ): React.ComponentType<NodeProps> {
   const Presented = (props: NodeProps) => (
-    <div className="node-presentation-shell" data-node-kind={type}>
+    <div className="node-presentation-shell" data-node-kind={type} data-testid="planner-node">
       <Component {...props} />
     </div>
   );

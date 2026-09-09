@@ -155,7 +155,7 @@ export function CanvasDisplayOptions(props: CanvasDisplayOptionsProps) {
         aria-expanded={open}
         aria-controls="canvas-display-options-panel"
         onClick={() => setOpen((value) => !value)}
-        className="flex min-h-11 items-center gap-2 rounded-lg border border-border bg-card px-3 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="flex min-h-11 items-center gap-2 rounded border border-border bg-card px-3 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
         Ansicht
@@ -166,7 +166,7 @@ export function CanvasDisplayOptions(props: CanvasDisplayOptionsProps) {
           id="canvas-display-options-panel"
           role="group"
           aria-label="Anzeige und Filter"
-          className="absolute right-0 top-full z-[70] mt-2 w-[min(20rem,calc(100vw-1rem))] rounded-lg border border-border bg-card p-3 shadow-2xl"
+          className="absolute right-0 top-full z-[70] mt-2 w-[min(20rem,calc(100vw-1rem))] rounded border border-border bg-card p-3 shadow-xl"
         >
           <div className="mb-2 flex min-h-11 items-center justify-between gap-3 border-b border-border pb-2">
             <div>
@@ -176,7 +176,7 @@ export function CanvasDisplayOptions(props: CanvasDisplayOptionsProps) {
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               aria-label="Ansichtsoptionen schließen"
             >
               <X className="h-5 w-5" aria-hidden="true" />

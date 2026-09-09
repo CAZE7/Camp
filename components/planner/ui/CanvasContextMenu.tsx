@@ -30,7 +30,7 @@ const EDGE_MENU_HEIGHT = 244;
 const PANE_MENU_HEIGHT = 112;
 const NUDGE_STEP = 16;
 const ITEM_CLASS =
-  'flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-left text-sm text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
+  'flex min-h-11 w-full items-center gap-2 rounded px-3 text-left text-sm text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
 
 /**
  * Gemeinsames Kontextmenü: Rechtsklick mit Maus/Trackpad oder stationärer
@@ -145,7 +145,7 @@ export function CanvasContextMenu({ state, onClose }: { state: ContextMenuState;
       ref={ref}
       role="menu"
       aria-label="Kontextmenü der Arbeitsfläche"
-      className="fixed z-[60] rounded-lg border border-border bg-card p-2 shadow-2xl"
+      className="fixed z-[60] rounded border border-border bg-card p-2 shadow-xl"
       style={{ left: Math.max(8, clampedLeft), top: Math.max(8, clampedTop), width: MENU_WIDTH }}
     >
       {state.label && (
@@ -181,7 +181,7 @@ export function CanvasContextMenu({ state, onClose }: { state: ContextMenuState;
                 <span aria-hidden="true" />
                 <button
                   type="button"
-                  className="flex h-11 w-11 items-center justify-center rounded-lg text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="flex h-11 w-11 items-center justify-center rounded text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   onClick={() => nudgeTarget(0, -NUDGE_STEP)}
                   aria-label={`${state.label || 'Bauteil'} nach oben verschieben`}
                 >
@@ -190,7 +190,7 @@ export function CanvasContextMenu({ state, onClose }: { state: ContextMenuState;
                 <span aria-hidden="true" />
                 <button
                   type="button"
-                  className="flex h-11 w-11 items-center justify-center rounded-lg text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="flex h-11 w-11 items-center justify-center rounded text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   onClick={() => nudgeTarget(-NUDGE_STEP, 0)}
                   aria-label={`${state.label || 'Bauteil'} nach links verschieben`}
                 >
@@ -199,7 +199,7 @@ export function CanvasContextMenu({ state, onClose }: { state: ContextMenuState;
                 <span aria-hidden="true" />
                 <button
                   type="button"
-                  className="flex h-11 w-11 items-center justify-center rounded-lg text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="flex h-11 w-11 items-center justify-center rounded text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   onClick={() => nudgeTarget(NUDGE_STEP, 0)}
                   aria-label={`${state.label || 'Bauteil'} nach rechts verschieben`}
                 >
@@ -208,7 +208,7 @@ export function CanvasContextMenu({ state, onClose }: { state: ContextMenuState;
                 <span aria-hidden="true" />
                 <button
                   type="button"
-                  className="flex h-11 w-11 items-center justify-center rounded-lg text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="flex h-11 w-11 items-center justify-center rounded text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   onClick={() => nudgeTarget(0, NUDGE_STEP)}
                   aria-label={`${state.label || 'Bauteil'} nach unten verschieben`}
                 >

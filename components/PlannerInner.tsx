@@ -114,7 +114,7 @@ export default function PlannerInner() {
 
   // 56 px Kantenlänge – deutlich über den geforderten 44 px Touch-Target.
   const navClass = (active: boolean) =>
-    `relative flex min-h-14 min-w-14 flex-col items-center justify-center rounded-lg px-2 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${active ? 'bg-accent text-primary' : 'text-muted-foreground hover:bg-accent'}`;
+    `relative flex min-h-14 min-w-14 flex-col items-center justify-center rounded px-2 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${active ? 'bg-accent text-primary' : 'text-muted-foreground hover:bg-accent'}`;
 
   const inspectorClass = [
     // Handy: vollflächiger Tab-Bereich.
@@ -122,7 +122,7 @@ export default function PlannerInner() {
     activeTab === 'inspector' ? 'flex' : 'hidden',
     // Tablet/kleiner Desktop: Slide-over von rechts, 320 px, über dem Canvas.
     isInspectorOpen
-      ? 'md:fixed md:inset-y-0 md:right-0 md:z-40 md:flex md:w-80 md:flex-none md:border-l md:border-border md:shadow-2xl'
+      ? 'md:fixed md:inset-y-0 md:right-0 md:z-40 md:flex md:w-80 md:flex-none md:border-l md:border-border md:shadow-xl'
       : 'md:hidden',
     // Ab 1280 px echte dritte Spalte (kein Overlay, kein Schatten).
     isInspectorOpen
@@ -213,7 +213,7 @@ export default function PlannerInner() {
             <button
               type="button"
               onClick={() => setInspectorOpen(false)}
-              className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex h-11 w-11 items-center justify-center rounded text-muted-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               aria-label="Eigenschaften schließen"
             >
               <X size={20} aria-hidden="true" />
@@ -236,7 +236,7 @@ export default function PlannerInner() {
               data-testid="mobile-undo"
               onClick={undo}
               disabled={!canUndo}
-              className="flex h-12 w-12 items-center justify-center rounded-full border border-border bg-card text-foreground shadow-lg transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex h-12 w-12 items-center justify-center rounded border border-border bg-card text-foreground shadow-md transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
               aria-label="Rückgängig"
               title="Rückgängig"
             >
@@ -247,7 +247,7 @@ export default function PlannerInner() {
               data-testid="mobile-redo"
               onClick={redo}
               disabled={!canRedo}
-              className="flex h-12 w-12 items-center justify-center rounded-full border border-border bg-card text-foreground shadow-lg transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex h-12 w-12 items-center justify-center rounded border border-border bg-card text-foreground shadow-md transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
               aria-label="Wiederholen"
               title="Wiederholen"
             >

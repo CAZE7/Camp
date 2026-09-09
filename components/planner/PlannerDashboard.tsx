@@ -53,7 +53,7 @@ function NavigationSection({
         role="tab"
         aria-selected={viewMode === 'electric'}
         onClick={() => setViewMode('electric')}
-        className="min-h-11 min-w-11 gap-1 px-3"
+        className="min-h-11 min-w-11 gap-1 rounded-none px-3"
         aria-label="Elektrikplan anzeigen"
         title="Elektrikplan anzeigen"
       >
@@ -66,7 +66,7 @@ function NavigationSection({
         role="tab"
         aria-selected={viewMode === 'water'}
         onClick={() => setViewMode('water')}
-        className="min-h-11 min-w-11 gap-1 px-3"
+        className="min-h-11 min-w-11 gap-1 rounded-none px-3"
         aria-label="Wasserplan anzeigen"
         title="Wasserplan anzeigen"
       >
@@ -356,7 +356,7 @@ function ActionsSection({
   }, [nodes, setFeedback]);
 
   return (
-    <div className="flex min-w-0 items-center gap-1.5">
+    <div className="flex min-w-0 flex-wrap items-center gap-1.5">
       <Button
         data-testid="action-autowire"
         onClick={runAutoWire}
@@ -405,7 +405,7 @@ function ActionsSection({
       <Button
         variant="outline"
         onClick={() => window.dispatchEvent(new CustomEvent('planner-fit-view'))}
-        className="hidden min-h-11 gap-1.5 lg:inline-flex"
+        className="hidden min-h-11 gap-1.5 xl:inline-flex"
         title="Ganzen Plan einpassen"
       >
         <Maximize2 className="h-4 w-4" />
@@ -415,7 +415,7 @@ function ActionsSection({
         variant="outline"
         onClick={runLayout}
         disabled={busy !== null}
-        className="hidden min-h-11 gap-1.5 lg:inline-flex"
+        className="hidden min-h-11 gap-1.5 xl:inline-flex"
         title="Plan automatisch anordnen"
       >
         <LayoutGrid className="h-4 w-4" />
@@ -426,7 +426,7 @@ function ActionsSection({
         data-testid="action-layout-v2"
         onClick={runLayoutV2}
         disabled={busy !== null}
-        className="hidden min-h-11 gap-1.5 lg:inline-flex"
+        className="hidden min-h-11 gap-1.5 xl:inline-flex"
         title="Plan global strukturieren — ELK Layered (bei Ausfall: Dagre-Fallback); Kabel werden danach neu geroutet"
         aria-label="Strukturieren (ELK)"
       >
@@ -455,7 +455,7 @@ function ActionsSection({
         {menuOpen && (
           <div
             role="menu"
-            className="absolute left-0 top-full z-[70] mt-2 w-72 rounded border border-border bg-card p-2 shadow-2xl sm:left-auto sm:right-0"
+            className="absolute left-0 top-full z-[70] mt-2 w-72 rounded border border-border bg-card p-2 shadow-xl sm:left-auto sm:right-0"
           >
             <button
               role="menuitem"
@@ -760,7 +760,7 @@ export function PlannerDashboard() {
             /* Deckblatt-artiger Toast: opaque Fläche + Statuskante statt
                durchscheinender Tönung — vorher lag der Text halbtransparent
                über Hinweiskarte und Canvas und war dort kaum lesbar. */
-            className={`fixed left-1/2 top-16 z-[95] w-11/12 max-w-md -translate-x-1/2 rounded border border-l-4 border-border bg-surface-panel p-3 text-sm font-semibold text-foreground shadow-2xl ${
+            className={`fixed left-1/2 top-16 z-[95] w-11/12 max-w-md -translate-x-1/2 rounded border border-l-4 border-border bg-surface-panel p-3 text-sm font-semibold text-foreground shadow-xl ${
               feedback.type === 'error'
                 ? 'border-l-signal'
                 : feedback.type === 'success'
@@ -784,7 +784,7 @@ export function PlannerDashboard() {
                   data-testid="feedback-action"
                   variant="outline"
                   size="sm"
-                  className="shrink-0 border-current bg-card"
+                  className="shrink-0 rounded-none border-current bg-card"
                   onClick={() => {
                     feedback.onAction?.();
                     setFeedback(null);

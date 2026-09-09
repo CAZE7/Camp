@@ -25,13 +25,13 @@ export function SidebarSearch({ value, onChange }: SidebarSearchProps) {
         placeholder="Suchen..."
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="min-h-11 w-full rounded-xl border border-border bg-card pl-9 pr-11 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+        className="min-h-11 w-full rounded border border-border bg-card pl-9 pr-11 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
       />
       {value && (
         <button
           type="button"
           onClick={() => onChange('')}
-          className="absolute right-0 flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="absolute right-0 flex h-11 w-11 items-center justify-center rounded text-muted-foreground hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           aria-label="Filter zurücksetzen"
         >
           <XCircle className="h-5 w-5" />

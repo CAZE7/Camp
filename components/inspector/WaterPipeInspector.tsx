@@ -62,7 +62,7 @@ export function WaterPipeInspector({
           className="min-h-11 rounded border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
         />
       </div>
-      <p className="rounded-lg bg-accent p-3 text-sm text-foreground">
+      <p className="rounded bg-accent p-3 text-sm text-foreground">
         Rohrdurchmesser und Anschlussstücke hängen von Pumpe und Armaturen ab und müssen vor dem Einkauf
         geprüft werden.
       </p>

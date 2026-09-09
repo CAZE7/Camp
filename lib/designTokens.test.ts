@@ -167,7 +167,9 @@ describe('M7 — Struktur der Planer-Oberfläche', () => {
   });
 
   it('selektiert Bauteile mit 1 px Akzent-Linie (M7-3)', () => {
-    expect(read('components/nodes/BaseNode.tsx')).toContain('ring-1 ring-[color:var(--accent-line)]');
+    // M11-1: BaseNode ist gelöscht — die Auswahl lebt in .node-card--selected (globals.css).
+    expect(css).toMatch(/\.node-card--selected\s*\{[^}]*border-color:\s*var\(--accent-line\)/);
+    expect(css).toMatch(/\.node-card--selected::before\s*\{[^}]*background:\s*var\(--accent-line\)/);
   });
 
   it('bindet Inter als UI-Schrift und Outfit als Display-Schrift ein (D-2/M7-2)', () => {

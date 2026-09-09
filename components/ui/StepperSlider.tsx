@@ -50,7 +50,7 @@ export function StepperSlider({
         type="button"
         onClick={handleDecrement}
         disabled={value <= min}
-        className="flex h-11 min-h-11 w-11 min-w-11 touch-manipulation items-center justify-center rounded-xl border border-border bg-bone text-ink-soft shadow-sm transition-all hover:bg-moss/10 hover:text-moss active:scale-95 disabled:opacity-40 disabled:hover:bg-bone disabled:hover:text-ink-soft"
+        className="flex h-11 min-h-11 w-11 min-w-11 touch-manipulation items-center justify-center rounded border border-border bg-bone text-ink-soft shadow-sm transition-all hover:bg-moss/10 hover:text-moss active:scale-95 disabled:opacity-40 disabled:hover:bg-bone disabled:hover:text-ink-soft"
         aria-label="Wert verringern"
       >
         <Minus size={18} />
@@ -77,7 +77,7 @@ export function StepperSlider({
         type="button"
         onClick={handleIncrement}
         disabled={value >= max}
-        className="flex h-11 min-h-11 w-11 min-w-11 touch-manipulation items-center justify-center rounded-xl border border-border bg-bone text-ink-soft shadow-sm transition-all hover:bg-moss/10 hover:text-moss active:scale-95 disabled:opacity-40 disabled:hover:bg-bone disabled:hover:text-ink-soft"
+        className="flex h-11 min-h-11 w-11 min-w-11 touch-manipulation items-center justify-center rounded border border-border bg-bone text-ink-soft shadow-sm transition-all hover:bg-moss/10 hover:text-moss active:scale-95 disabled:opacity-40 disabled:hover:bg-bone disabled:hover:text-ink-soft"
         aria-label="Wert erhöhen"
       >
         <Plus size={18} />

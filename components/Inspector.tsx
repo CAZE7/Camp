@@ -66,7 +66,7 @@ interface InspectorProps {
 
 const EmptySelection = () => (
   <div className="flex h-full flex-col items-center justify-center text-muted-foreground">
-    <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
+    <div className="mb-3 flex h-14 w-14 items-center justify-center rounded border border-rule bg-surface-raised">
       <MousePointerClick className="h-7 w-7 text-primary opacity-70" />
     </div>
     <p className="font-semibold text-foreground">Kein Element ausgewählt</p>
@@ -228,7 +228,7 @@ const NodeInspector = ({
           )
             onDelete(node.id);
         }}
-        className="w-full gap-2"
+        className="w-full gap-2 rounded-none"
       >
         <Trash2 size={16} />
         Löschen
@@ -306,7 +306,7 @@ export default function Inspector({
                 )
                   onDelete();
               }}
-              className="w-full gap-2"
+              className="w-full gap-2 rounded-none"
             >
               <Trash2 size={16} />
               Löschen
