@@ -3,9 +3,7 @@ import { BaseEdge, type Edge, type EdgeProps, EdgeLabelRenderer, useReactFlow } 
 import { usePlannerStore, getDerivedSystemState } from '../../store/usePlannerStore';
 import { useShallow } from 'zustand/react/shallow';
 import { edgeLabelNudge } from './utils/pathUtils';
-import { findCablePath, nodesToObstacles } from './utils/pathfinding';
 import { useCableRoute } from './utils/cableRouteStore';
-import { crossingSegmentsNear } from './utils/routingCache';
 import { cableStrokeWidth } from './utils/cableStyle';
 import { useCoarsePointer, useMediaQuery, MOBILE_QUERY } from '../planner/hooks/useMediaCapabilities';
 import { isBackboneConnection } from '../planner/utils/backbone';
@@ -328,8 +326,6 @@ const CableEdge = function ({
   sourceY,
   targetX,
   targetY,
-  sourcePosition,
-  targetPosition,
   style = {},
   data,
   markerEnd,
@@ -391,27 +387,6 @@ const CableEdge = function ({
   const trunkMode = usePlannerStore((state) => state.trunkMode);
   const globalRoute = useCableRoute(id);
 
-  // Fremde Leitungen als grobe Strecken — Grundlage der Kreuzungszählung.
-  // Kanten desselben Node-Paars sind ausgenommen: die liegen bereits sauber
-  // als parallele Lanes nebeneinander und dürfen die Route nicht aufblähen.
-  // R-4: Der Scan bleibt ab NOW auch in großen Plänen aktiv — der spatiale
-  // Index liefert nur die Segmente in der Umgebung der eigenen Route
-  // (BBox + 120 px = 2 × ALTERNATIVE_ROUTE_GAP), statt alles zu vergleichen
-  // oder ab einer Kantezahl ganz zu verzichten (PERF-04, R-4).
-  const crossingSegments = useMemo(() => {
-    return crossingSegmentsNear(
-      allNodes,
-      siblingEdges as unknown as { id: string; source: string; target: string }[],
-      { id, source, target },
-      {
-        x: Math.min(sourceX, targetX) - 120,
-        y: Math.min(sourceY, targetY) - 120,
-        width: Math.abs(sourceX - targetX) + 240,
-        height: Math.abs(sourceY - targetY) + 240,
-      }
-    );
-  }, [siblingEdges, allNodes, id, source, target, sourceX, sourceY, targetX, targetY]);
-
   const {
     path: edgePath,
     labelX,
@@ -423,44 +398,12 @@ const CableEdge = function ({
     // Prioritäts-Hopping (§8: Backbone bleibt gerade), Lane-Registry und die
     // harte Overlap-Invariante (ADR 0009) überhaupt greifen.
     //
-    // Vorher stand hier ein Vorrang für `data.geometry.points` aus einer
-    // zweiten, parallel laufenden Engine (`lib/planner/routing-v2`). Die
-    // entschied das Hopping per Edge-ID-Vergleich und behandelte Overlaps als
-    // „teuer“ (100_000) statt als verboten — und überstimmte damit still den
-    // ausgereiften Pass. Zwei Engines, zwei Wahrheiten, die schlechtere gewann.
-    if (globalRoute) {
-      return { path: globalRoute.path, labelX: globalRoute.labelX, labelY: globalRoute.labelY };
-    }
-    const obstacles = nodesToObstacles(allNodes, new Set([source, target]));
-    const routed = findCablePath({
-      sourceX,
-      sourceY,
-      sourcePosition,
-      targetX,
-      targetY,
-      targetPosition,
-      // Fallback ohne Port-Bündel: Die Lane-Staffelung des Port-Fan-Outs
-      // kennt nur `routeAllCables` (dort sind alle Kanten eines Ports
-      // bekannt). Die Einzelfall-Route fährt deshalb auf der inneren Lane —
-      // sie ist der Notnagel, wenn der globale Pass diese Kante nicht hat.
-      lane: 0,
-      obstacles,
-      crossingSegments,
-    });
-    return { path: routed.path, labelX: routed.labelX, labelY: routed.labelY };
-  }, [
-    globalRoute,
-    sourceX,
-    sourceY,
-    sourcePosition,
-    targetX,
-    targetY,
-    targetPosition,
-    allNodes,
-    source,
-    target,
-    crossingSegments,
-  ]);
+    // A missing route is an explicit empty render state, never an implicit
+    // second routing pass. CableRouteSync invokes the sole production entry
+    // point (`routePlan`) and publishes the complete validated plan.
+    if (!globalRoute) return { path: '', labelX: (sourceX + targetX) / 2, labelY: (sourceY + targetY) / 2 };
+    return { path: globalRoute.path, labelX: globalRoute.labelX, labelY: globalRoute.labelY };
+  }, [globalRoute, sourceX, sourceY, targetX, targetY]);
 
   const labelNudgeY = useMemo(
     () =>

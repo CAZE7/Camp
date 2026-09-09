@@ -4,6 +4,8 @@ import CableEdge, { calculateAnimationDuration, collectEdgeErrors, type CableEdg
 import { useReactFlow, Position, type Edge, type Node } from '@xyflow/react';
 import { usePlannerStore } from '../../store/usePlannerStore';
 import { FUSE_MAX_UNPROTECTED_LENGTH_M, FUSE_MAX_UNPROTECTED_SOURCE } from '../../lib/electrical';
+import { clearCableRoutes, publishCableRoutes } from './utils/cableRouteStore';
+import type { PathResult } from './utils/pathfinding';
 
 /**
  * Typisierter Helfer für den `useReactFlow`-Mock (M6-7): Die Tests brauchen
@@ -58,18 +60,37 @@ describe('CableEdge', () => {
     sourceHandle: null,
   };
 
+  const publishedRoute: PathResult = {
+    path: 'M 0 0 L 40 0 Q 50 0 50 10 L 50 100',
+    waypoints: [
+      { x: 0, y: 0 },
+      { x: 50, y: 0 },
+      { x: 50, y: 100 },
+    ],
+    labelX: 50,
+    labelY: 50,
+    offsetX: 0,
+    offsetY: 0,
+    length: 150,
+    bends: 1,
+    crossings: 0,
+    usedSearch: 'catalog',
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
     mockReactFlow({
       getNode: vi.fn(),
       getNodes: vi.fn().mockReturnValue([]),
     });
-    // Der echte Store startet ohne Kanten; Tests, die den Store füllen,
-    // setzen den Zustand in afterEach zurück.
+    // CableEdge ist ein Adapter: Geometrie kommt ausschließlich aus dem
+    // veröffentlichten Produktionsplan, nie aus einer lokalen Routing-Route.
+    publishCableRoutes(new Map([['e1-2', publishedRoute]]));
     usePlannerStore.setState({ edges: [] });
   });
 
   afterEach(() => {
+    clearCableRoutes();
     usePlannerStore.setState({ nodes: [], edges: [], waterNodes: [], waterEdges: [] });
   });
 

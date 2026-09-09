@@ -104,39 +104,40 @@ Legende Severity: **hoch** = Agent kann falschen Code ändern / falsche Sicherhe
 
 ---
 
-## ROUTE-001 — `LaneRegistry` ist nicht an den Produktiv-Router angebunden
+## ROUTE-001 — `LaneRegistry`-Anbindung — **behoben 2026-09-09**
 
+- **STATUS:** behoben für den Produktionsvertrag. `routePlan()` baut vor der Kandidatenwahl
+  über `buildPreferredLanes()` eine deterministische Korridorpräferenz aus der Registry;
+  `preferredLaneBonus` beeinflusst den Tie-Break. Das lokale Port-Fan-Out bleibt bewusst eine
+  getrennte Regel. `routeAllCables()` ist nur noch ein delegierender Adapter.
 - **AREA:** Routing
-- **FILE:** `lib/routing/rules/laneRegistry.ts`
-- **DESCRIPTION:** Die Registry (`LaneRegistry`, `corridorFor`, `assign`, `assignByEdge`) wird
-  ausschließlich von ihrem eigenen Test importiert. Der Produktiv-Router vergibt Lanes weiter
-  über `portFanOut.assignFanOut` (Port-Ebene) und die Ausweich-Heuristik
-  `ALTERNATIVE_ROUTE_GAP` (±48/±96 px, `ALTERNATIVE_LANE_STEP = 3`).
-- **CURRENT BEHAVIOR:** Korridor-Lanes sind nicht stabil registriert; die Ausweich-Trassen
-  stammen aus einer Heuristik, nicht aus der Registry.
-- **EXPECTED BEHAVIOR:** Registry-Lanes steuern Ausweich- und Bündel-Trassen (Zielbild WP-5/WP-8).
-- **SEVERITY:** mittel
-- **WORKAROUND:** Lanes nur über `lib/routing/rules/portFanOut.ts` ändern — dort liegt die
-  wirksame Mechanik.
-- **RELATED TEST:** `lib/routing/rules/laneRegistry.test.ts` (grün, aber ohne Produktionswirkung)
-- **RELATED ISSUE:** WP-5 (#394) / WP-8, dokumentiert im Modulkommentar.
+- **FILE:** `lib/routing/rules/laneRegistry.ts`, `components/edges/utils/routeAll.ts`,
+  `components/edges/utils/pathfinding.ts`
+- **VERIFICATION:** `components/edges/utils/routeAll.test.ts` prüft permutierte Eingaben und
+  100 stabile Produktionsläufe; Golden Master, Regression und Invariant-Ratchet bleiben grün.
+- **REMAINING LIMIT:** Die Registry ersetzt nicht die historische ±48/±96-Ausweichstrategie
+  (`ALTERNATIVE_ROUTE_GAP`). Sie liefert eine stabile Präferenz, keine zweite Geometrie-Engine.
 
 ---
 
-## ROUTE-002 — Kostenmodell nur teilweise angebunden
+## ROUTE-002 — Kostenmodell teilweise produktiv, vollständige Gewichtung offen
 
 - **AREA:** Routing
-- **FILE:** `lib/routing/rules/costModel.ts`
-- **DESCRIPTION:** `segmentExtraCost` und `preferredLaneBonus` werden **nur von Tests**
-  aufgerufen. Im Produktivpfad nutzt `pathfinding.ts` ausschließlich
-  `COST_WEIGHTS.crossing` (120) in `scorePath`.
-- **CURRENT BEHAVIOR:** Clearance-Verletzungen, Nachbar-Lanes und Registry-Bonus sind im
-  A*-Lauf **nicht** bepreist; nur Kreuzungen fließen in die Kosten ein.
-- **EXPECTED BEHAVIOR:** vollständige Kostenfunktion im inkrementellen Pass (Zielbild WP-6/WP-8).
+- **FILE:** `lib/routing/rules/costModel.ts`, `components/edges/utils/pathfinding.ts`
+- **DESCRIPTION:** Der Produktionspfad ruft `segmentExtraCost` gegen den gemeinsamen
+  `SegmentSpatialIndex` für alle dynamisch gerouteten Segmente auf. Harte Overlaps werden
+  gegenüber kollisionsfreien Kandidaten ausgeschlossen; `preferredLaneBonus` beeinflusst den
+  deterministischen Registry-Tie-Break. Der historische Scalar (`Länge + Bends + Crossings`)
+  bleibt bewusst der primäre Vergleich, damit die eingefrorenen Routen nicht still driften.
+- **CURRENT BEHAVIOR:** Soft-/Weighted-Zusatzkosten (Crossing, Clearance-Verletzung,
+  Nachbar-Lane) klassifizieren im Produktionslauf, steuern aber noch nicht den primären
+  Scalar-Vergleich. Das ist eine bewusste Migrationsgrenze, keine fehlende Testabdeckung.
+- **EXPECTED BEHAVIOR:** Die vollständige Kostenmatrix soll in einem separaten, gemessenen
+  Schritt als sekundärer/primärer Kandidatenvergleich aktiviert werden; Golden- und
+  Regression-Baselines dürfen dabei nur nach nachgewiesener Verbesserung geändert werden.
 - **SEVERITY:** mittel
-- **WORKAROUND:** Kostenänderungen nur an `scorePath`/`routeDefectScore` vornehmen — nur dort
-  wirken sie heute.
-- **RELATED TEST:** `lib/routing/rules/costModel.test.ts`
+- **RELATED TEST:** `lib/routing/rules/costModel.test.ts`,
+  `components/edges/utils/pathfinding.test.ts`, `scripts/goldenmaster/goldenMaster.test.ts`
 - **RELATED ISSUE:** WP-6 (#396).
 
 ---

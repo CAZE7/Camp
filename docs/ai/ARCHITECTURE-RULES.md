@@ -47,8 +47,8 @@ geschrieben — **nie** vom Router.
 
 - Testgestützt: `scripts/goldenmaster/goldenMaster.test.ts` friert `electrical` getrennt von
   `routing` ein.
-- Ausnahme (bewusst, READ-ONLY): `routeAllCables` **liest** `edge.data.edgeDomain`,
-  `crossSection` und `locked` für die Hop-Priorität (`lib/routing/rules/hopping.ts`).
+- Ausnahme (bewusst, READ-ONLY): `routePlan` **liest** `edge.data.edgeDomain`, `crossSection`
+  und `locked` für die Hop-Priorität (`lib/routing/rules/hopping.ts`).
 
 ### Rule D — UI implementiert keine elektrischen Berechnungen. **(Konvention)**
 
@@ -89,9 +89,14 @@ Regelverstoß. Deshalb: **I3 schlägt I2.**
 
 ### Rule G — Eine Quelle für Kabelgeometrie. **(erzwungen, ADR 0014)**
 
-Der Renderer bezieht seine Polyline **ausschließlich** aus dem globalen Routing-Pass
-(`useCableRoute()` / `routeAllCables()`).
+Der Renderer bezieht seine Polyline **ausschließlich** aus dem zentralen Routing-Orchestrator
+`routePlan()` über `useCableRoute()`. `routeAllCables()` ist nur der typisierte Map-Kompatibilitätsadapter
+für ältere Skripte/Tests; er enthält keine zweite Routinglogik.
 
+- `routePlan()` ist der Produktionsvertrag: Normalize → Route → Hopping → Geometry Normalization
+  → Final Validation → Return (`{ routes, validation }`).
+- React-Flow-Komponenten dürfen keine Route berechnen. Fehlt im Adapter ein veröffentlichter
+  Plan, ist der Renderzustand leer; es gibt keinen lokalen Einzelkanten-Fallback.
 - Verboten: Produktionscode liest `edge.data.geometry`
   (Test: `scripts/routing/architecture.test.ts`).
 - `lib/planner/routing-v2/` und `lib/planner/routing-core/` sind **gelöscht** und dürfen
@@ -112,9 +117,17 @@ Kollisionsurteile entstehen in `lib/routing/rules/collision.ts` (`classifyCollis
 
 `overlap` im Kostenmodell ist `Infinity`. Eine endliche Zahl als Kollisionsgewicht ist ein
 Fehler und bricht den Test (`scripts/routing/architecture.test.ts`).
-Begründung: „sehr teuer“ lässt sich überstimmen, `Infinity` nicht.
+Begründung: „sehr teuer“ lässt sich überstimmen, `Infinity` nicht. Echte Kreuzungen bleiben
+`soft`: erlaubt, aber im Primärscore kostenpflichtig; sie erzeugen keine elektrische Verbindung.
 
-### Rule J — Eine elkjs-Anbindung, gebündelt. **(erzwungen, ADR 0016)**
+### Rule J — LaneRegistry ist eine deterministische Produktionspräferenz. **(testgestützt)**
+
+`routePlan()` baut vor der Kandidatenwahl aus `LaneRegistry` eine stabile Korridorpräferenz.
+Die Sortierung ist `topologicalOrder → targetPosition → edgeId`; Render-/Array-Reihenfolge und
+Zufall dürfen keine Lane-Zuordnung beeinflussen. Port-Fan-Out und Korridor-Lane sind getrennte
+Regeln. Test: `components/edges/utils/routeAll.test.ts` (inklusive 100 permutierter Läufe).
+
+### Rule K — Eine elkjs-Anbindung, gebündelt. **(erzwungen, ADR 0016)**
 
 `elkjs` wird ausschließlich von `lib/routing/elk/runner.ts` geladen, und nur als
 `elkjs/lib/elk.bundled.js` (die ungebündelte Variante verlangt `web-worker` und bricht den
@@ -125,7 +138,7 @@ Dev-Server). Alle anderen Layout-Pfade gehen über `layoutWithElk()` /
 
 ## C. Verhalten
 
-### Rule K — Routing ist deterministisch. **(erzwungen, ADR 0010)**
+### Rule L — Routing ist deterministisch. **(erzwungen, ADR 0010)**
 
 Gleiche Eingabe ⇒ byte-identisches Ergebnis. Tie-Breaker ist immer die Edge-ID
 (`String.localeCompare`), niemals `Math.random()`, niemals Objekt-Identität.
@@ -134,7 +147,7 @@ Belege: `scripts/goldenmaster/goldenMaster.test.ts` (Doppellauf byte-identisch),
 `scripts/regression/regression.test.ts` (Szenarien 13–15: Drag/Undo-Redo/Pass-Wechsel),
 `npm run routing:audit` (Spalte `determ`).
 
-### Rule L — Crossings sind erlaubt, Overlaps sind verboten. **(erzwungen, ADR 0009)**
+### Rule M — Crossings sind erlaubt, Overlaps sind verboten. **(erzwungen, ADR 0009)**
 
 - `edge × edge` **echte Kreuzung** → Klasse `soft` → Kosten, nicht Verbot.
 - `edge × edge` **kollineare Überdeckung** → Klasse `hard` → Verbot.
@@ -143,7 +156,7 @@ Belege: `scripts/goldenmaster/goldenMaster.test.ts` (Doppellauf byte-identisch),
 
 Quelle: `lib/routing/rules/collision.ts`.
 
-### Rule M — Kein stiller Fallback bei sicherheitskritischen Werten. **(Konvention, testgestützt)**
+### Rule N — Kein stiller Fallback bei sicherheitskritischen Werten. **(Konvention, testgestützt)**
 
 - `lib/units.ts` **wirft** (`RangeError`/`TypeError`) statt 0 einzusetzen.
 - Unbekannte/fehlende Elektro-Daten werden als **offen gemeldet**, nicht geschätzt
@@ -151,7 +164,7 @@ Quelle: `lib/routing/rules/collision.ts`.
 - Routing-Ausnahmen werden **sichtbar gemacht** (`PathResult.fallbackHitsObstacles`,
   `PathResult.tightMarginUsed`) statt verworfen.
 
-### Rule N — Ungültige Daten sind kein gültiger Zustand. **(Konvention)**
+### Rule O — Ungültige Daten sind kein gültiger Zustand. **(Konvention)**
 
 `lib/nodeSchema.ts` + `store/slices/persistence.ts`: bekannte Felder mit falschem Laufzeit-Typ
 werden **entfernt** (nicht durch 0 ersetzt); unbekannte Felder bleiben erhalten.
@@ -177,6 +190,6 @@ werden **entfernt** (nicht durch 0 ersetzt); unbekannte Felder bleiben erhalten.
 | A               | `npx vitest run scripts/architecture/libBoundary.test.ts`                                              |
 | E, G, H, I, J   | `npx vitest run scripts/routing/architecture.test.ts`                                                  |
 | E (Werte/Drift) | `npx vitest run lib/routing/tokens.test.ts`                                                            |
-| K               | `npm run test:goldenmaster` · `npm run test:regression` · `npm run routing:audit`                      |
-| L               | `npx vitest run lib/routing/rules/collision.test.ts` · `npx vitest run lib/routing/invariants.test.ts` |
+| K, L            | `npm run test:goldenmaster` · `npm run test:regression` · `npm run routing:audit`                      |
+| M               | `npx vitest run lib/routing/rules/collision.test.ts` · `npx vitest run lib/routing/invariants.test.ts` |
 | F               | `npm run routing:audit` (Spalten I1–I3, fallback)                                                      |

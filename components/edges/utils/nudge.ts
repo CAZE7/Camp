@@ -129,7 +129,8 @@ const applyAxis = (
   originals: Point[][],
   pathIds: string[],
   axis: 'h' | 'v',
-  gap: number
+  gap: number,
+  laneOrder?: ReadonlyMap<string, number>
 ): void => {
   const segs: Seg[] = [];
   for (let p = 0; p < originals.length; p++) {
@@ -159,7 +160,16 @@ const applyAxis = (
     const pathOrder = Array.from(byPath.keys()).sort((pa, pb) => {
       const da = at(segs, firstSegIndexOf(pa)).perp - at(segs, firstSegIndexOf(pb)).perp;
       if (Math.abs(da) > EPS) return da;
-      return at(pathIds, pa).localeCompare(at(pathIds, pb));
+      const aId = at(pathIds, pa);
+      const bId = at(pathIds, pb);
+      const aLane = laneOrder?.get(aId);
+      const bLane = laneOrder?.get(bId);
+      if (aLane !== undefined || bLane !== undefined) {
+        if (aLane === undefined) return 1;
+        if (bLane === undefined) return -1;
+        if (aLane !== bLane) return aLane - bLane;
+      }
+      return aId.localeCompare(bId);
     });
 
     let mean = 0;
@@ -217,7 +227,7 @@ const obstaclesForPath = (obstacles: Rect[], start: Point, end: Point): Rect[] =
  */
 export function nudgeOrthogonalPaths(
   paths: NudgePath[],
-  options?: { obstacles?: Rect[]; gap?: number }
+  options?: { obstacles?: Rect[]; gap?: number; laneOrder?: ReadonlyMap<string, number> }
 ): Map<string, Point[]> {
   const out = new Map<string, Point[]>();
   if (paths.length === 0) return out;
@@ -228,8 +238,8 @@ export function nudgeOrthogonalPaths(
   const gap = options?.gap ?? NUDGE_GAP;
   const obstacles = options?.obstacles ?? [];
 
-  applyAxis(clones, originals, ids, 'h', gap);
-  applyAxis(clones, originals, ids, 'v', gap);
+  applyAxis(clones, originals, ids, 'h', gap, options?.laneOrder);
+  applyAxis(clones, originals, ids, 'v', gap, options?.laneOrder);
 
   for (let i = 0; i < paths.length; i++) {
     const id = at(ids, i);

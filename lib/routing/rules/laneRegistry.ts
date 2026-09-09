@@ -19,11 +19,10 @@ import { ROUTING_TOKENS, type RoutingTokens } from '../tokens';
  * Eingabereihenfolgen erzeugen IDENTISCHE Lane-Zuordnungen — keine
  * Lane-Flips (ADR 0010).
  *
- * Einbau-Reihenfolge: Die Router-Konsumenten wechseln in WP-6
- * (A*-Kostenmodell: „preferred lane") und WP-8 (gescopedes Nudging) auf
- * die Registry — hier bewusst noch kein Eingriff in den Bestandsrouter,
- * damit der Golden Master byte-identisch bleibt (Freeze-Disziplin;
- * bewusste Verbesserungen kommen mit eigener Begründung).
+ * Produktionsanbindung: `routePlan()` registriert die stabilen Korridorpräferenzen
+ * vor der Kandidatenwahl; `preferredLaneBonus` ist der deterministische Tie-Break.
+ * Das Registry-Modul bleibt React-Flow-frei und ersetzt nicht die gemeinsame
+ * Collision Engine oder das lokale Port-Fan-Out.
  */
 
 /** Hauptrichtung eines Korridors. */

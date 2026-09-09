@@ -39,7 +39,7 @@ CAMP
 │   ├── Geometry           lib/routing/geometry/*        (pure Primitives)
 │   ├── Rules              lib/routing/rules/*           (Collision, Lanes, Cost, FanOut, Hopping)
 │   ├── Engines            components/edges/utils/pathfinding.ts (Hanan-A*), orthogonalRouting.ts (LEGACY)
-│   ├── Global Pass        components/edges/utils/routeAll.ts
+│   ├── Orchestrator       components/edges/utils/routeAll.ts (`routePlan`)
 │   ├── Post-Process       components/edges/utils/nudge.ts, pathUtils.ts
 │   ├── Invariants         lib/routing/invariants.ts, lib/routing/finalValidation.ts
 │   └── Layout             lib/routing/elk/*, lib/planner/layout-engine/*
@@ -228,13 +228,13 @@ CAMP
 
 ### 4.3 Rules (Schicht 2)
 
-| Modul                   | Zweck                                                                                         | Tests                  |
-| ----------------------- | --------------------------------------------------------------------------------------------- | ---------------------- |
-| `rules/collision.ts`    | Kollisionsmodell (`classifyCollision`, Klassen hard/soft/weighted/none) + Domänen-Trennregeln | `collision.test.ts`    |
-| `rules/portFanOut.ts`   | Lane-Vergabe am Port-Bündel (`assignFanOut`, `portNormal`, `portCross`)                       | `portFanOut.test.ts`   |
-| `rules/costModel.ts`    | A*-Kostenmatrix, **aus Tokens abgeleitet** (`COST_WEIGHTS`)                                   | `costModel.test.ts`    |
-| `rules/laneRegistry.ts` | deterministische Lane-Registry (**nicht im Produktivpfad**, s. LEGACY)                        | `laneRegistry.test.ts` |
-| `rules/hopping.ts`      | Kreuzungs-Hopping: Priorität, wer hüpft, Bogen-Mittelpunkte                                   | `hopping.test.ts`      |
+| Modul                   | Zweck                                                                                         | Tests                                      |
+| ----------------------- | --------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| `rules/collision.ts`    | Kollisionsmodell (`classifyCollision`, Klassen hard/soft/weighted/none) + Domänen-Trennregeln | `collision.test.ts`                        |
+| `rules/portFanOut.ts`   | Lane-Vergabe am Port-Bündel (`assignFanOut`, `portNormal`, `portCross`)                       | `portFanOut.test.ts`                       |
+| `rules/costModel.ts`    | A*-Kostenmatrix, **aus Tokens abgeleitet** (`COST_WEIGHTS`)                                   | `costModel.test.ts`                        |
+| `rules/laneRegistry.ts` | deterministische Lane-Registry; `routePlan` nutzt sie für stabile Korridorpräferenzen         | `laneRegistry.test.ts`, `routeAll.test.ts` |
+| `rules/hopping.ts`      | Kreuzungs-Hopping: Priorität, wer hüpft, Bogen-Mittelpunkte                                   | `hopping.test.ts`                          |
 
 ### 4.4 Engine: Hanan-A* (Produktivpfad)
 
@@ -252,12 +252,15 @@ CAMP
 
 ### 4.5 Globaler Routing-Pass
 
-- **Files:** `components/edges/utils/routeAll.ts` (702).
-- **Exporte:** `routeAllCables`, `resolveHandlePoint`, `portFanOutLanes`, `RouteEdgeRef`, `PortLanes`.
+- **Files:** `components/edges/utils/routeAll.ts`.
+- **Exporte:** `routePlan` (einziger Produktions-Entry-Point), `routeAllCables` (Map-Kompatibilitätsadapter),
+  `resolveHandlePoint`, `portFanOutLanes`, `RouteEdgeRef`, `PortLanes`.
+- **Contract:** Normalize → Route → Hopping → Geometry Normalization → Final Validation → Return.
+  `routePlan` liefert `{ routes, validation }`; kein React-Flow-Import und keine elektrische Mutation.
 - **Depends On:** `pathfinding.ts`, `nudge.ts`, `pathUtils.ts`, `nodeGeometry.ts`,
-  `lib/routing/{tokens,geometry,rules}`.
+  `lib/routing/{tokens,geometry,rules}` einschließlich `LaneRegistry`, Collision Engine und Cost Model.
 - **Called By:** `components/edges/utils/cableRouteStore.ts` (`CableRouteSync`),
-  `scripts/goldenmaster/pipeline.ts`, `scripts/regression/layout.ts`, `scripts/routing/audit.ts`.
+  `scripts/goldenmaster/pipeline.ts`; Regression/Audit nutzen den Kompatibilitätsadapter.
 - **Tests:** `components/edges/utils/routeAll.test.ts`, `routeAllCollisionGuarantee.test.ts`.
 
 ### 4.6 Route-Cache & Render-Anbindung
@@ -341,10 +344,11 @@ CAMP
 FlowCanvas  ──rendert──>  <CableRouteSync/>  (cableRouteStore.ts)
                               │ Signatur geändert (Node-Geometrie / Kanten-Topologie)
                               ▼
-                       routeAllCables(nodes, edges)        routeAll.ts
-                              │
-                              ├─ portFanOutLanes()  → Lanes je Port      (rules/portFanOut)
-                              ├─ findCablePath()    → je Kante           (pathfinding.ts)
+                       routePlan(nodes, edges)              routeAll.ts
+                              │ Normalize + Final Validation
+                              ├─ LaneRegistry         → Korridorpräferenz (rules/laneRegistry)
+                              ├─ portFanOutLanes()    → Lanes je Port      (rules/portFanOut)
+                              ├─ findCablePath()      → je Kante           (pathfinding.ts)
                               │      ├─ catalogCandidates()  (Gerade/L/Z/U)
                               │      ├─ hananAStar()         (Hanan-Grid + Blockademasken)
                               │      └─ Ausweich-Trassen ±48/±96 px
@@ -352,9 +356,10 @@ FlowCanvas  ──rendert──>  <CableRouteSync/>  (cableRouteStore.ts)
                               ├─ nudgeOrthogonalPaths()                  (nudge.ts)
                               ├─ mergeCloseBends()                       (geometry/polyline)
                               ├─ resolveHops()      → Bogen-Punkte       (rules/hopping)
-                              └─ countRealCrossings()
+                              ├─ countRealCrossings()
+                              ├─ validateFinalRouting() → validation report
                               ▼
-                     publishCableRoutes()  +  publishCableRouteFinalValidation()
+                     publishCableRoutes()  +  publishCableRouteFinalValidation(validation)
                               ▼
                      useCableRoute(id)  →  CableEdge  (SVG)
 ```

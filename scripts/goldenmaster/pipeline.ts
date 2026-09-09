@@ -3,7 +3,7 @@ import { performAutoWiring } from '../../lib/autoWire';
 import { getSystemVoltage, calculateEdgeCurrent } from '../../lib/vde-standards';
 import { relevantCumulativeDrop } from '../../lib/autoWire/sizing';
 import type { CableEdge } from '../../lib/autoWire/primitives';
-import { routeAllCables, type RouteEdgeRef } from '../../components/edges/utils/routeAll';
+import { routePlan, type RouteEdgeRef } from '../../components/edges/utils/routeAll';
 import type { GoldenPlanInput } from './plans';
 
 /**
@@ -143,7 +143,7 @@ export function captureGoldenMaster(input: GoldenPlanInput): GoldenMaster {
 
   // Stufe 3: Routing (globaler Pass des Ist-Systems, ohne gemessene Handles —
   // resolveHandlePoint fällt deterministisch auf die Flussrichtungs-Seite zurück)
-  const routes = routeAllCables(nodes, edges as RouteEdgeRef[]);
+  const routes = routePlan(nodes, edges as RouteEdgeRef[]).routes;
   const routing: Record<string, GoldenRoute> = {};
   for (const e of byId(edges)) {
     const r = routes.get(e.id);

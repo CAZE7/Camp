@@ -14,11 +14,13 @@ import {
   manhattan,
   segmentsIntersect,
   waypointsToSegments,
+  SegmentSpatialIndex,
   type Point,
   type Rect,
   type Segment,
 } from '../../../lib/routing/geometry';
 import { classifyCollision } from '../../../lib/routing/rules/collision';
+import { segmentExtraCost, preferredLaneBonus } from '../../../lib/routing/rules/costModel';
 import { portNormal } from '../../../lib/routing/rules/portFanOut';
 
 export {
@@ -1305,7 +1307,7 @@ export type PathRequest = {
    */
   lane?: number;
   /**
-   * Lane-Wert am Ziel-Port. Fehlt er, gilt `lane` — `routeAllCables` setzt
+   * Lane-Wert am Ziel-Port. Fehlt er, gilt `lane` — `routePlan` setzt
    * beide getrennt, weil ein Bündel am Quell-Port nichts über die Belegung
    * am Ziel-Port aussagt (ROUTE-BUG-9).
    */
@@ -1340,7 +1342,7 @@ export type PathRequest = {
   crossingSegments?: Segment[];
   /**
    * AUDIT ROUTE-001 (Härtung 2026-09-08): die EIGENEN Node-Boxen (Quelle
-   * und Ziel) — Produktionspfad `routeAllCables` reicht sie als Referenzen
+   * und Ziel) — Produktionspfad `routePlan` reicht sie als Referenzen
    * aus seiner `nodeObstacleMap` mit. Wenn gesetzt, werden aus `obstacles`
    * ausschließlich diese eigenen Boxen verworfen; fremde Boxen, die Start
    * oder Ziel enthalten (überlappende Nachbar-Nodes), bleiben Hindernisse.
@@ -1348,6 +1350,8 @@ export type PathRequest = {
    * werden verworfen.
    */
   ownObstacles?: readonly Rect[];
+  /** Preferred corridor lane from the production LaneRegistry. */
+  preferredLane?: PreferredLane;
   /** Test-Hook: Cache umgehen. */
   skipCache?: boolean;
 };
@@ -1386,7 +1390,7 @@ export type PathResult = {
   tightMarginUsed?: boolean;
   /**
    * WP-7 (#395): Kreuzungen, an denen DIESE Leitung einen Bogen zeichnet.
-   * Wird erst in `routeAllCables` gefüllt (nur dort sind alle Leitungen
+   * Wird erst in `routePlan` gefüllt (nur dort sind alle Leitungen
    * bekannt); die Einzelpfad-Suche liefert immer eine leere Liste.
    */
   hops?: { x: number; y: number; orientation: 'horizontal' | 'vertical' }[];
@@ -1437,6 +1441,7 @@ const requestKey = (input: PathRequest, obstacles: Rect[]): string =>
   `${quantize(input.targetX)},${quantize(input.targetY)},${input.targetPosition ?? ''},` +
   `${input.lane ?? 0}/${input.laneTarget ?? ''}/${input.laneStep ?? ''}/` +
   `${input.laneStepTarget ?? ''},${input.borderRadius ?? ROUTE_BORDER_RADIUS},` +
+  `${input.preferredLane?.direction ?? ''}/${input.preferredLane?.coordinate ?? ''},` +
   // ROUTE-BUG-34: Der Bündel-Rang ändert die Stub-Länge und gehört damit in
   // den Schlüssel wie jeder andere Routing-Eingang.
   `${input.stubCapRank ?? ''}/${input.stubCapRankTarget ?? ''},` +
@@ -1490,11 +1495,79 @@ const relevantObstacles = (obstacles: Rect[], start: Point, end: Point, own?: re
   return out;
 };
 
-// WP-6 (#396): Kreuzungsstrafe aus dem generierten Kostenmodell
-// (COST_WEIGHTS.crossing = 7,5 × laneGrid = 120 — wertgleich zum bisherigen
-// Hardcode, Golden Master unverändert; Sync-Test in costModel.test.ts).
-const scorePath = (points: Point[], crossings: number): number =>
-  pathLength(points) + BEND_COST * countBends(points) + COST_WEIGHTS.crossing * crossings;
+/**
+ * Corridor preference supplied by the production LaneRegistry pass.
+ * `coordinate` is the absolute preferred lane coordinate, not a new
+ * geometry constant. The preference is a tie-breaker only: hard collision,
+ * clearance, crossing, bends and length always win first.
+ */
+export type PreferredLane = {
+  direction: 'horizontal' | 'vertical';
+  coordinate: number;
+};
+
+type PathScore = {
+  /** Historical length/bend/crossing cost remains the primary comparator. */
+  cost: number;
+  preferredLaneBonus: number;
+  /** Shared model rejects a hard overlap before a clean candidate. */
+  hardCollision: boolean;
+};
+
+/**
+ * WP-6 (#396): the production candidate score.
+ *
+ * Every already routed segment is indexed and evaluated through the shared
+ * cost model. This keeps the old hard safety ordering (obstacles and tubes
+ * are still hard blockers) while making hard-overlap classification visible
+ * to candidate selection. Weighted/soft breakdowns remain diagnostic during
+ * this baseline-preserving migration. Lane preference is only a deterministic
+ * tie-breaker, so the registry cannot silently make a longer path win.
+ */
+const scorePath = (
+  points: Point[],
+  crossings: number,
+  crossingSegments: readonly Segment[] = [],
+  preferredLane?: PreferredLane
+): PathScore => {
+  const index = crossingSegments.length > 0 ? new SegmentSpatialIndex([...crossingSegments]) : undefined;
+  let hardCollision = false;
+  let laneBonus = 0;
+  for (const segment of waypointsToSegments(points)) {
+    if (index) {
+      // Use the shared model for classification. The mature scalar score stays
+      // the primary metric during migration; a hard overlap is nevertheless
+      // never preferred over a collision-free candidate.
+      const breakdown = segmentExtraCost(segment, index);
+      if (!Number.isFinite(breakdown.cost)) hardCollision = true;
+    }
+    if (preferredLane) {
+      const horizontal = Math.abs(segment[0].y - segment[1].y) <= EPS;
+      const direction = horizontal ? 'horizontal' : 'vertical';
+      const coordinate = horizontal ? segment[0].y : segment[0].x;
+      if (direction === preferredLane.direction) {
+        laneBonus += preferredLaneBonus(coordinate, preferredLane.coordinate);
+      }
+    }
+  }
+  // The existing route metric remains the migration baseline. The crossing
+  // weight itself comes from COST_WEIGHTS; the shared model contributes the
+  // hard-collision ordering and the registry contributes its lane tie-break.
+  return {
+    cost: pathLength(points) + BEND_COST * countBends(points) + COST_WEIGHTS.crossing * crossings,
+    preferredLaneBonus: laneBonus,
+    hardCollision,
+  };
+};
+
+const isBetterScore = (candidate: PathScore, current: PathScore): boolean => {
+  if (candidate.hardCollision !== current.hardCollision) return !candidate.hardCollision;
+  return (
+    candidate.cost < current.cost - EPS ||
+    (Math.abs(candidate.cost - current.cost) <= EPS &&
+      candidate.preferredLaneBonus < current.preferredLaneBonus - EPS)
+  );
+};
 
 function assemble(
   waypoints: Point[],
@@ -1798,7 +1871,7 @@ export function findCablePath(input: PathRequest): PathResult {
     }
   }
   let bestCross = countCrossings(best.waypoints, crossingSegments);
-  let bestScore = scorePath(best.waypoints, bestCross);
+  let bestScore = scorePath(best.waypoints, bestCross, crossingSegments, input.preferredLane);
 
   if (crossingSegments.length > 0 && bestCross > MAX_ACCEPTABLE_CROSSINGS) {
     // ROUTE-BUG-27: Ausweich-Trassen BEIDSEITS der Lane. Früher wurde nur in
@@ -1821,8 +1894,8 @@ export function findCablePath(input: PathRequest): PathResult {
       if (cand.usedSearch === 'fallback' && best.usedSearch !== 'fallback') continue;
       if (cand.tight && !best.tight) continue;
       const cross = countCrossings(cand.waypoints, crossingSegments);
-      const score = scorePath(cand.waypoints, cross);
-      if (score < bestScore - EPS || (Math.abs(score - bestScore) <= EPS && cross < bestCross)) {
+      const score = scorePath(cand.waypoints, cross, crossingSegments, input.preferredLane);
+      if (isBetterScore(score, bestScore)) {
         best = cand;
         bestCross = cross;
         bestScore = score;
@@ -1889,7 +1962,7 @@ export type CrossingEdgeRef = { id: string; source: string; target: string };
 /**
  * AUDIT PERF-001: Node → Hindernis-Box einmal pro Plan (statt pro Kante),
  * nach Node-ID auflösbar — Grundlage der räumlichen Vorfilterung in
- * routeAllCables. Gleiche Boxbildung wie nodesToObstacles (inkl. Handle-
+ * routePlan. Gleiche Boxbildung wie nodesToObstacles (inkl. Handle-
  * Ausrisse, R-10), nur zusätzlich mit ID geliefert.
  */
 export function nodeObstacleMap(nodes: RoutableNode[]): Map<string, Rect> {

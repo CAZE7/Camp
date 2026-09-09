@@ -22,6 +22,7 @@ import {
   ROUTE_BORDER_RADIUS,
   type Point,
   type PathResult,
+  type PreferredLane,
   type Rect,
 } from './pathfinding';
 import { polylineMidpoint, waypointsToPath, waypointsToPathWithHops, type PathHop } from './pathUtils';
@@ -44,6 +45,9 @@ import {
   type Segment,
 } from '../../../lib/routing/geometry';
 import { ROUTING_TOKENS } from '../../../lib/routing/tokens';
+import { LaneRegistry } from '../../../lib/routing/rules/laneRegistry';
+import { validateFinalRouting, type FinalValidationReport } from '../../../lib/routing/finalValidation';
+import type { NodeRect, RoutedEdge } from '../../../lib/routing/invariants';
 
 export type RouteEdgeRef = {
   id: string;
@@ -409,19 +413,95 @@ function countRealCrossings(order: readonly string[], waypoints: Map<string, Poi
   return out;
 }
 
+/** The single production routing result. The legacy Map-only export below is
+ * kept as a compatibility adapter for scripts and tests, not as a second
+ * routing implementation. */
+export type RoutePlanResult = {
+  routes: Map<string, PathResult>;
+  validation: FinalValidationReport;
+};
+
+function validateRouteSet(
+  nodes: readonly RoutableNode[],
+  edges: readonly RouteEdgeRef[],
+  routes: ReadonlyMap<string, PathResult>
+): FinalValidationReport {
+  const obstacleById = nodeObstacleMap([...nodes]);
+  const rects: NodeRect[] = [];
+  for (const node of nodes) {
+    const rect = obstacleById.get(node.id);
+    if (rect) rects.push({ id: node.id, ...rect });
+  }
+  const routed: RoutedEdge[] = [];
+  for (const edge of edges) {
+    const route = routes.get(edge.id);
+    if (route)
+      routed.push({ id: edge.id, source: edge.source, target: edge.target, waypoints: route.waypoints });
+  }
+  const report = validateFinalRouting(routed, rects);
+  let tight = 0;
+  for (const edge of edges) if (routes.get(edge.id)?.tightMarginUsed) tight += 1;
+  return { ...report, tightMarginRoutes: tight };
+}
+
+/**
+ * Build deterministic preferred corridor lanes before candidate selection.
+ * The registry does not replace collision rules: it only supplies a stable
+ * preference when otherwise equal routes are compared.
+ */
+function buildPreferredLanes(
+  edges: readonly RouteEdgeRef[],
+  nodeById: ReadonlyMap<string, RoutableNode>
+): Map<string, PreferredLane> {
+  const registry = new LaneRegistry();
+  for (const edge of edges) {
+    const source = nodeById.get(edge.source);
+    const target = nodeById.get(edge.target);
+    const flow = centerDelta(source, target);
+    const sourcePoint = resolveHandlePoint(source, edge.sourceHandle, 'source', flow);
+    const targetPoint = resolveHandlePoint(
+      target,
+      edge.targetHandle,
+      'target',
+      flow ? { x: -flow.x, y: -flow.y } : undefined
+    );
+    const horizontal = Math.abs(targetPoint.x - sourcePoint.x) >= Math.abs(targetPoint.y - sourcePoint.y);
+    const direction = horizontal ? 'horizontal' : 'vertical';
+    const coord = horizontal ? (sourcePoint.y + targetPoint.y) / 2 : (sourcePoint.x + targetPoint.x) / 2;
+    const from = horizontal ? Math.min(sourcePoint.x, targetPoint.x) : Math.min(sourcePoint.y, targetPoint.y);
+    const to = horizontal ? Math.max(sourcePoint.x, targetPoint.x) : Math.max(sourcePoint.y, targetPoint.y);
+    const corridor = registry.corridorFor(direction, coord, from, to);
+    registry.register(corridor, {
+      edgeId: edge.id,
+      topoOrder: isBackboneConnection(source?.type, target?.type) ? 0 : 1,
+      targetPosition: horizontal ? targetPoint.y : targetPoint.x,
+    });
+  }
+
+  const preferred = new Map<string, PreferredLane>();
+  for (const [edgeId, assignments] of registry.assignByEdge()) {
+    const assignment = assignments[0];
+    if (!assignment) continue;
+    preferred.set(edgeId, {
+      direction: assignment.corridor.direction,
+      coordinate: assignment.corridor.coord + assignment.offset,
+    });
+  }
+  return preferred;
+}
+
 /**
  * Routet alle Kanten in einem Durchgang und schiebt parallele Trassen global.
+ * This is the only production entry point: normalize → route → hop → validate.
  */
-export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Map<string, PathResult> {
+export function routePlan(inputNodes: RoutableNode[], edges: RouteEdgeRef[]): RoutePlanResult {
+  const nodes = [...inputNodes].sort((a, b) => a.id.localeCompare(b.id));
   edges = [...edges].sort((a, b) => a.id.localeCompare(b.id));
   const out = new Map<string, PathResult>();
-  if (edges.length === 0) return out;
+  if (edges.length === 0) return { routes: out, validation: validateRouteSet(nodes, edges, out) };
 
   const nodeById = new Map<string, RoutableNode>();
-  for (let i = 0; i < nodes.length; i++) {
-    const node = nodes[i];
-    if (node) nodeById.set(node.id, node);
-  }
+  for (const node of nodes) nodeById.set(node.id, node);
 
   const edgeById = new Map<string, RouteEdgeRef>(edges.map((edge) => [edge.id, edge]));
 
@@ -480,6 +560,10 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
           flow ? { x: -flow.x, y: -flow.y } : undefined
         );
   });
+  // PRODUCTION: the same LaneRegistry supplies a stable corridor preference
+  // to candidate scoring. Port fan-out remains the local port rule; corridor
+  // preference is global and cannot depend on render-array order.
+  const preferredLanes = buildPreferredLanes(edges, nodeById);
 
   const raw: { id: string; waypoints: Point[]; result: PathResult }[] = [];
   const dynamicRoutedSegments: { edgeId: string; segment: Segment }[] = [];
@@ -492,7 +576,7 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
   // Gemessen das Gegenteil: Kreuzungen 42 → 58 über die Referenzpläne
   // (complex 28 → 41), dazu 2 × I6 und 3 × I7 mehr. Die langen Kanten auf
   // Lane 0 legen sich quer durch die Mitte und zwingen damit jede kurze
-  // Kante zum Kreuzen. Die Store-Reihenfolge bleibt.
+  // Kante zum Kreuzen. Die stabile Edge-ID-Reihenfolge bleibt.
   for (let i = 0; i < edges.length; i++) {
     const edge = edges[i];
     if (!edge) continue;
@@ -545,6 +629,9 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
       stubCapRankTarget: lanes?.laneTargetRank,
       stubTie: lanes?.laneTie,
       stubTieTarget: lanes?.laneTargetTie,
+      // Registry preference is evaluated by the production score; see
+      // `preferredLanes` above.
+      preferredLane: preferredLanes.get(edge.id),
       obstacles,
       // AUDIT ROUTE-001 (Härtung 2026-09-08): eigene Boxen explizit — der
       // Router verwirft NUR diese; fremde, an den eigenen Node geklebte
@@ -698,5 +785,13 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
       )
     );
   }
-  return out;
+  return { routes: out, validation: validateRouteSet(nodes, edges, out) };
+}
+
+/**
+ * Compatibility adapter for existing scripts/tests. Production UI code calls
+ * `routePlan()` so validation cannot be skipped accidentally.
+ */
+export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Map<string, PathResult> {
+  return routePlan(nodes, edges).routes;
 }

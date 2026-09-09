@@ -2,32 +2,35 @@
 
 **Die wichtigste Routing-Dokumentation dieses Repos.** Sie beschreibt den **tatsächlichen**
 Produktivpfad. Abweichungen davon sind in [KNOWN-PROBLEMS.md](./KNOWN-PROBLEMS.md) und
-[LEGACY.md](./LEGACY.md) vermerkt.
+[LEGACY.md](./LEGACY.md) vermerkt. Der Integrationsstand ist im
+[Routing-V2-Abschlussbericht](./ROUTING-V2-COMPLETION-REPORT.md) zusammengefasst.
 
 Verifiziert am 2026-09-09 mit `npm run routing:audit` über die sechs Referenzpläne:
 **I1–I7 = 0, Fallback-Quote = 0, deterministisch, 79 Kanten, 48 Kreuzungen.**
+Golden Master und Regression sind mit dem aktuellen Produktionspfad vollständig grün
+(13/13 bzw. 50/50); der zusätzliche Invariant-Ratchet ist 38/38 grün.
 
 ---
 
 ## 4.1 Routing-Datenmodell
 
-| Begriff (Domäne)       | Typ / Symbol im Code                                               | Datei                                                                         | Bedeutung                                                                                                                                                   |
-| ---------------------- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Node**               | `PlannerNode` / `RoutableNode` / `GeometryNode`                    | `lib/domain/graph.ts`, `components/edges/utils/nodeGeometry.ts`               | Bauteil mit `position`, `measured`/`width/height`, `handleBounds`.                                                                                          |
-| **Port / Handle**      | `HandleBox` (`{id,x,y,width,height,position}`)                     | `components/edges/utils/nodeGeometry.ts`                                      | Anschlusspunkt. `position` ist die React-Flow-`Position` (Left/Right/Top/Bottom) und bestimmt Austrittsrichtung.                                            |
-| **Connection / Edge**  | `PlannerEdge` · `RouteEdgeRef`                                     | `lib/domain/graph.ts`, `components/edges/utils/routeAll.ts`                   | `source`/`target` + `sourceHandle`/`targetHandle` + optional `data` (`edgeDomain`, `crossSection`, `locked`).                                               |
-| **Obstacle**           | `Rect` (Node-Box ∪ Handle-Ausrisse)                                | `components/edges/utils/pathfinding.ts` `nodesToObstacles`, `nodeObstacleMap` | Hindernis. Wird für die Suche um `OBSTACLE_MARGIN` (14 px) aufgebläht (`inflateRect`).                                                                      |
-| **Tube** (Sperrfläche) | `Rect`                                                             | `components/edges/utils/routeAll.ts` `addTubes`                               | Korridor einer **bereits verlegten** Leitung: Inner-Segmente, halbe Breite = `cableClearance`. Port-Stubs sind ausgenommen (dokumentierte Bündel-Ausnahme). |
-| **Segment**            | `Segment = [Point, Point]`                                         | `lib/routing/geometry/types.ts`                                               | Achsenparalleles Stück zwischen zwei Wegpunkten.                                                                                                            |
-| **Route / PathResult** | `PathResult`                                                       | `components/edges/utils/pathfinding.ts`                                       | `path` (SVG), `waypoints`, `length`, `bends`, `crossings`, `usedSearch`, `hops`, `fallbackHitsObstacles`, `tightMarginUsed`.                                |
-| **Waypoints**          | `Point[]`                                                          | überall                                                                       | **Die Wahrheit.** SVG-Pfade werden daraus erzeugt (`waypointsToPath`), nie umgekehrt.                                                                       |
-| **Lane**               | `number` (px, vorzeichenbehaftet)                                  | `lib/routing/rules/portFanOut.ts`                                             | Port-Bündel-Versatz: `laneIndex × laneGrid`. Wirkt zweifach: (1) Stub-Verlängerung um `                                                                     | lane | `, (2) Seitenschritt um `lane` px senkrecht zur Port-Achse. |
-| **Lane (Korridor)**    | `LaneRegistry`, `Corridor`, `LaneAssignment`                       | `lib/routing/rules/laneRegistry.ts`                                           | **Nicht im Produktivpfad** (vorbereitete Mechanik). Siehe LEGACY.                                                                                           |
-| **Stub**               | erstes/letztes Segment                                             | `pathfinding.ts` `portFrame`                                                  | `stubMin` (24 px) + Lane-Staffelung; gekappt durch die Bauteil-Freigabe (`stubCap`, ROUTE-BUG-31).                                                          |
-| **Collision**          | `RoutingConstraint` `{class, kind, distance?, requiredClearance?}` | `lib/routing/rules/collision.ts`                                              | `class: 'hard' \| 'soft' \| 'weighted' \| 'none'`; `kind: 'edge-node' \| 'edge-edge-overlap' \| 'edge-edge-crossing' \| 'clearance' \| 'none'`.             |
-| **Crossing**           | `segmentsCross(s1, s2)`                                            | `lib/routing/geometry/segments.ts`                                            | **Echte** Kreuzung: ein innerer Schnittpunkt beider Strecken. Touch und kollineare Überdeckung sind **kein** Crossing.                                      |
-| **Overlap**            | `segmentsOverlap(s1, s2)`                                          | `lib/routing/geometry/segments.ts`                                            | Kollinear **mit gemeinsamer Länge > EPS**. Punktberührung zählt nicht.                                                                                      |
-| **Hop**                | `Hop = {x, y, orientation}`                                        | `lib/routing/rules/hopping.ts`                                                | Bogen-Mittelpunkt, den eine Leitung an einer Kreuzung zeichnet. Reine Darstellung: Waypoints/Länge/Bends/Crossings ändern sich **nicht**.                   |
+| Begriff (Domäne)       | Typ / Symbol im Code                                               | Datei                                                                         | Bedeutung                                                                                                                                                  |
+| ---------------------- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Node**               | `PlannerNode` / `RoutableNode` / `GeometryNode`                    | `lib/domain/graph.ts`, `components/edges/utils/nodeGeometry.ts`               | Bauteil mit `position`, `measured`/`width/height`, `handleBounds`.                                                                                         |
+| **Port / Handle**      | `HandleBox` (`{id,x,y,width,height,position}`)                     | `components/edges/utils/nodeGeometry.ts`                                      | Anschlusspunkt. `position` ist die React-Flow-`Position` (Left/Right/Top/Bottom) und bestimmt Austrittsrichtung.                                           |
+| **Connection / Edge**  | `PlannerEdge` · `RouteEdgeRef`                                     | `lib/domain/graph.ts`, `components/edges/utils/routeAll.ts`                   | `source`/`target` + `sourceHandle`/`targetHandle` + optional `data` (`edgeDomain`, `crossSection`, `locked`).                                              |
+| **Obstacle**           | `Rect` (Node-Box ∪ Handle-Ausrisse)                                | `components/edges/utils/pathfinding.ts` `nodesToObstacles`, `nodeObstacleMap` | Hindernis. Wird für die Suche um `OBSTACLE_MARGIN` (14 px) aufgebläht (`inflateRect`).                                                                     |
+| **Tube** (Sperrfläche) | `Rect`                                                             | `components/edges/utils/routeAll.ts` `addTubes`                               | Korridor einer **bereits verlegten** Leitung: alle Segmente, halbe Breite = `cableClearance`; die Port-Bündel-Regel wird erst in den Invarianten bewertet. |
+| **Segment**            | `Segment = [Point, Point]`                                         | `lib/routing/geometry/types.ts`                                               | Achsenparalleles Stück zwischen zwei Wegpunkten.                                                                                                           |
+| **Route / PathResult** | `PathResult`                                                       | `components/edges/utils/pathfinding.ts`                                       | `path` (SVG), `waypoints`, `length`, `bends`, `crossings`, `usedSearch`, `hops`, `fallbackHitsObstacles`, `tightMarginUsed`.                               |
+| **Waypoints**          | `Point[]`                                                          | überall                                                                       | **Die Wahrheit.** SVG-Pfade werden daraus erzeugt (`waypointsToPath`), nie umgekehrt.                                                                      |
+| **Lane**               | `number` (px, vorzeichenbehaftet)                                  | `lib/routing/rules/portFanOut.ts`                                             | Port-Bündel-Versatz: `laneIndex × laneGrid`. Wirkt zweifach: (1) Stub-Verlängerung um `                                                                    | lane | `, (2) Seitenschritt um `lane` px senkrecht zur Port-Achse. |
+| **Lane (Korridor)**    | `LaneRegistry`, `Corridor`, `LaneAssignment`                       | `lib/routing/rules/laneRegistry.ts` → `routeAll.ts` `buildPreferredLanes`     | Produktiv: stabile Korridorpräferenz bei der Kandidatenwahl; lokale Port-Lanes kommen separat aus `portFanOut`.                                            |
+| **Stub**               | erstes/letztes Segment                                             | `pathfinding.ts` `portFrame`                                                  | `stubMin` (24 px) + Lane-Staffelung; gekappt durch die Bauteil-Freigabe (`stubCap`, ROUTE-BUG-31).                                                         |
+| **Collision**          | `RoutingConstraint` `{class, kind, distance?, requiredClearance?}` | `lib/routing/rules/collision.ts`                                              | `class: 'hard' \| 'soft' \| 'weighted' \| 'none'`; `kind: 'edge-node' \| 'edge-edge-overlap' \| 'edge-edge-crossing' \| 'clearance' \| 'none'`.            |
+| **Crossing**           | `segmentsCross(s1, s2)`                                            | `lib/routing/geometry/segments.ts`                                            | **Echte** Kreuzung: ein innerer Schnittpunkt beider Strecken. Touch und kollineare Überdeckung sind **kein** Crossing.                                     |
+| **Overlap**            | `segmentsOverlap(s1, s2)`                                          | `lib/routing/geometry/segments.ts`                                            | Kollinear **mit gemeinsamer Länge > EPS**. Punktberührung zählt nicht.                                                                                     |
+| **Hop**                | `Hop = {x, y, orientation}`                                        | `lib/routing/rules/hopping.ts`                                                | Bogen-Mittelpunkt, den eine Leitung an einer Kreuzung zeichnet. Reine Darstellung: Waypoints/Länge/Bends/Crossings ändern sich **nicht**.                  |
 
 **Namensfalle:** `Edge` im Routing-Kontext ist eine React-Flow-Kante (`RouteEdgeRef`), **nicht**
 ein Graph-„Edge“ im Sinne der Invarianten. In `lib/routing/invariants.ts` heißt dasselbe
@@ -40,11 +43,12 @@ ein Graph-„Edge“ im Sinne der Invarianten. In `lib/routing/invariants.ts` he
 ```
 Input            nodes (RoutableNode[]) + edges (RouteEdgeRef[])
    ↓
-Normalization    edges.sort(by id) · nodeById · obstacleById (nodeObstacleMap)
+Normalization    nodes.sort(by id) · edges.sort(by id) · nodeById · obstacleById (nodeObstacleMap)
    ↓
-Candidate Prep   portFanOutLanes(): Gruppen je (Bauteil, Seite) → Lane-Versatz je Kante
+Candidate Prep   portFanOutLanes(): Gruppen je (Bauteil, Seite) → lokale Lane je Kante
+                 buildPreferredLanes(): LaneRegistry → stabile Korridorpräferenz
                  resolveHandlePoint(): Port-Punkt + Flussrichtung (Center-Delta)
-   ↓   ── je Kante, in Store-Reihenfolge ────────────────────────────────────────
+   ↓   ── je Kante, in stabiler Edge-ID-Reihenfolge ───────────────────────────────
 Route Selection  obstaclesNear(Region = Port-BBox + 240 px)
                  findCablePath(request):
                     relevantObstacles → inflateRect(14)
@@ -68,15 +72,18 @@ Collision Check  routeDefectScore() (Kehren I4, Kurzsegmente I6, Selbstüberlapp
                  Tube-Fallback: 'fallback' ⇒ zweite Suche OHNE Trassensperren
    ↓
 Cost             scorePath = Länge + 80·Bends + 120·Crossings   (px-äquivalent)
+                 segmentExtraCost(): harte Overlaps als nicht bevorzugte Kandidaten
+                 preferredLaneBonus(): deterministischer Registry-Tie-Break
    ↓
-Lane Assignment  ausschließlich aus dem Port-Fan-Out (keine Polaritäts-Lane, keine Heuristik)
+Lane Assignment  Port-Fan-Out für Anschluss-Lanes + LaneRegistry für Korridorpräferenz
    ↓
 Post-Process     nudgeOrthogonalPaths()   – Überlappungen lösen
                  mergeCloseBends()        – Treppen auflösen (nur wenn nicht schlechter)
    ↓
 Hopping          resolveHops() – deterministisch: niedrigere Priorität hüpft
    ↓
-Final Validation computeCableRouteFinalValidation() → validateFinalRouting() (I1/I2/I3)
+Final Validation routePlan() → validateRouteSet() → validateFinalRouting() (I1/I2/I3)
+                 Report wird gemeinsam mit den Routen zurückgegeben und im Store publiziert
    ↓
 Rendering        publishCableRoutes() → useCableRoute(id) → CableEdge
                  waypointsToPath / waypointsToPathWithHops (Radius 10 px)
@@ -90,22 +97,23 @@ Trasse als eine Kante durch ein Bauteil.
 
 ### Zuständigkeiten
 
-| Schritt          | Datei                                       | Einstiegssymbol                                                       |
-| ---------------- | ------------------------------------------- | --------------------------------------------------------------------- |
-| Globaler Pass    | `components/edges/utils/routeAll.ts`        | `routeAllCables`                                                      |
-| Einzelroute      | `components/edges/utils/pathfinding.ts`     | `findCablePath`                                                       |
-| Katalog          | `components/edges/utils/pathfinding.ts`     | `catalogCandidates`, `bestFreeCatalog`                                |
-| Hanan-A*         | `components/edges/utils/pathfinding.ts`     | `hananAStar`, `buildHananGridMasks`                                   |
-| Port-Frame/Stubs | `components/edges/utils/pathfinding.ts`     | `portFrame`, `stubLength`, `stubCapFor`                               |
-| Fan-Out          | `lib/routing/rules/portFanOut.ts`           | `assignFanOut`, `portNormal`, `portCross`                             |
-| Kollision        | `lib/routing/rules/collision.ts`            | `classifyCollision`                                                   |
-| Kosten           | `lib/routing/rules/costModel.ts`            | `COST_WEIGHTS`                                                        |
-| Hopping          | `lib/routing/rules/hopping.ts`              | `resolveHops`, `routingPriority`                                      |
-| Nudge            | `components/edges/utils/nudge.ts`           | `nudgeOrthogonalPaths`                                                |
-| Geometrie        | `lib/routing/geometry/*`                    | siehe [CODE-MAP](./CODE-MAP.md#42-geometry-schicht-1-pure-primitives) |
-| Invarianten      | `lib/routing/invariants.ts`                 | `checkInvariants`                                                     |
-| Final-Gate       | `lib/routing/finalValidation.ts`            | `validateFinalRouting`                                                |
-| Render-Anbindung | `components/edges/utils/cableRouteStore.ts` | `CableRouteSync`, `useCableRoute`                                     |
+| Schritt          | Datei                                       | Einstiegssymbol                                                          |
+| ---------------- | ------------------------------------------- | ------------------------------------------------------------------------ |
+| Globaler Pass    | `components/edges/utils/routeAll.ts`        | `routePlan` (Normalize → Route → Validate); `routeAllCables` ist Adapter |
+| Einzelroute      | `components/edges/utils/pathfinding.ts`     | `findCablePath`                                                          |
+| Katalog          | `components/edges/utils/pathfinding.ts`     | `catalogCandidates`, `bestFreeCatalog`                                   |
+| Hanan-A*         | `components/edges/utils/pathfinding.ts`     | `hananAStar`, `buildHananGridMasks`                                      |
+| Port-Frame/Stubs | `components/edges/utils/pathfinding.ts`     | `portFrame`, `stubLength`, `stubCapFor`                                  |
+| Fan-Out          | `lib/routing/rules/portFanOut.ts`           | `assignFanOut`, `portNormal`, `portCross`                                |
+| Kollision        | `lib/routing/rules/collision.ts`            | `classifyCollision`                                                      |
+| Kosten           | `lib/routing/rules/costModel.ts`            | `COST_WEIGHTS`, `segmentExtraCost`, `preferredLaneBonus`                 |
+| LaneRegistry     | `lib/routing/rules/laneRegistry.ts`         | `buildPreferredLanes` (über `routePlan`)                                 |
+| Hopping          | `lib/routing/rules/hopping.ts`              | `resolveHops`, `routingPriority`                                         |
+| Nudge            | `components/edges/utils/nudge.ts`           | `nudgeOrthogonalPaths`                                                   |
+| Geometrie        | `lib/routing/geometry/*`                    | siehe [CODE-MAP](./CODE-MAP.md#42-geometry-schicht-1-pure-primitives)    |
+| Invarianten      | `lib/routing/invariants.ts`                 | `checkInvariants`                                                        |
+| Final-Gate       | `lib/routing/finalValidation.ts`            | `validateFinalRouting`                                                   |
+| Render-Anbindung | `components/edges/utils/cableRouteStore.ts` | `CableRouteSync`, `useCableRoute`                                        |
 
 ---
 
@@ -271,12 +279,15 @@ dort weiter, sagen aber nichts über das, was der Nutzer sieht. Siehe [LEGACY.md
 ## 4.6 Öffentliche API des Routers
 
 ```ts
-// Globaler Pass (produktiv)
-routeAllCables(
+// Zentraler Produktions-Entry-Point: Normalize → Route → Validate
+routePlan(
   nodes: RoutableNode[],
   edges: RouteEdgeRef[]
-): Map<string, PathResult>
-// Seiteneffekte: keine. Deterministisch. Sortiert intern nach Edge-ID.
+): { routes: Map<string, PathResult>; validation: FinalValidationReport }
+// Seiteneffekte: keine. Deterministisch. Sortiert Nodes und Edges intern nach ID.
+
+// Kompatibilitätsadapter; keine zweite Routing-Wahrheit
+routeAllCables(nodes, edges): Map<string, PathResult>
 
 // Einzelroute (produktiv, auch direkt von CableEdge als Fallback genutzt)
 findCablePath(request: PathRequest): PathResult
