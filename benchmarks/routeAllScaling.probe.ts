@@ -9,9 +9,12 @@
  * distanzfreies `segmentHitsAny` + `countCrossings`-BBox-Vorfilter)
  * 203 s für 250 Knoten brauchte.
  *
- * Messstand nach dem Fix (diese Maschine, tsx): Kette 500 ≈ 153 ms,
- * Spannkanten 250 ≈ 1,3 s, Spannkanten 500 ≈ 2,8 s — Audit-Baseline für
- * die 500-Knoten-Kette war ~81 200 ms.
+ * Messstand nach dem Fix (diese Maschine, tsx, Median aus 3 Läufen —
+ * Neustand 2026-09-09, siehe Ausgabe): Audit-Baseline für die
+ * 500-Knoten-Kette war ~81 200 ms.
+ *
+ * Streuung beachten: große Pläne (Spannkanten) schwanken einzelmessungs-
+ * weise um mehr als Faktor 2, daher Mehrfachmessung statt Einzellauf.
  *
  * Aufruf: npm run perf:route-scaling
  */
@@ -68,13 +71,45 @@ const run = (n: number) => {
   return { ms, fallbacks, routed: result.size };
 };
 
+/**
+ * Mehrfachmessung: die großen Pläne sind Einzelmessungen zu unstet
+ * (GC/JIT streuen hier um Faktor >2). Gemeldet wird der Median von
+ * `runs` Läufen, dazu Minimum und Maximum als Streumaß.
+ */
+const measure = (build: () => { nodes: RoutableNode[]; edges: RouteEdgeRef[] }, runs = 3) => {
+  const samples: { ms: number; routed: number; fallbacks: number }[] = [];
+  for (let i = 0; i < runs; i++) {
+    const { nodes, edges } = build();
+    const t0 = performance.now();
+    const result = routeAllCables(nodes, edges);
+    const ms = performance.now() - t0;
+    let fallbacks = 0;
+    result.forEach((r) => {
+      if (r.usedSearch === 'fallback') fallbacks++;
+    });
+    samples.push({ ms, routed: result.size, fallbacks });
+  }
+  const ms = samples.map((s) => s.ms).sort((a, b) => a - b);
+  const last = samples[samples.length - 1]!;
+  return {
+    median: ms[Math.floor(ms.length / 2)]!,
+    min: ms[0]!,
+    max: ms[ms.length - 1]!,
+    routed: last.routed,
+    fallbacks: last.fallbacks,
+  };
+};
+
 for (const n of [10, 50, 100, 250, 500]) {
-  // Warmup klein halten: ein Lauf pro Größe, zweiter für stabilen Wert.
-  if (n <= 100) run(n);
-  const { ms, fallbacks, routed } = run(n);
-  const perEdge = ms / (n - 1);
+  run(n); // Warmup (JIT) — geht nicht in die Messung ein
+  const { median, min, max, routed, fallbacks } = measure(() => ({
+    nodes: makeNodes(n),
+    edges: makeChainEdges(n),
+  }));
+  const perEdge = median / (n - 1);
   console.log(
-    `N=${String(n).padStart(3)} E=${String(n - 1).padStart(3)}  ${ms.toFixed(1).padStart(9)} ms  (${perEdge.toFixed(2)} ms/Kante)  geroutet=${routed} fallbacks=${fallbacks}`
+    `N=${String(n).padStart(3)} E=${String(n - 1).padStart(3)}  ${median.toFixed(1).padStart(9)} ms  (${perEdge.toFixed(2)} ms/Kante)` +
+      `  median/min/max ${min.toFixed(1)}/${max.toFixed(1)}  geroutet=${routed} fallbacks=${fallbacks}`
   );
 }
 
@@ -95,16 +130,14 @@ const makeSpanEdges = (n: number): RouteEdgeRef[] => {
 };
 
 for (const n of [100, 250, 500]) {
-  const nodes = makeNodes(n);
+  routeAllCables(makeNodes(n), makeSpanEdges(n)); // Warmup
+  const { median, min, max, fallbacks } = measure(() => ({
+    nodes: makeNodes(n),
+    edges: makeSpanEdges(n),
+  }));
   const edges = makeSpanEdges(n);
-  const t0 = performance.now();
-  const result = routeAllCables(nodes, edges);
-  const ms = performance.now() - t0;
-  let fallbacks = 0;
-  result.forEach((r) => {
-    if (r.usedSearch === 'fallback') fallbacks++;
-  });
   console.log(
-    `N=${String(n).padStart(3)} E=${String(edges.length).padStart(3)}  ${ms.toFixed(1).padStart(9)} ms  (${(ms / edges.length).toFixed(2)} ms/Kante)  fallbacks=${fallbacks}`
+    `N=${String(n).padStart(3)} E=${String(edges.length).padStart(3)}  ${median.toFixed(1).padStart(9)} ms` +
+      `  (${(median / edges.length).toFixed(2)} ms/Kante)  median/min/max ${min.toFixed(1)}/${max.toFixed(1)}  fallbacks=${fallbacks}`
   );
 }

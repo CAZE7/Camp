@@ -115,7 +115,8 @@ Details: [ARCHITECTURE-RULES.md](docs/ai/ARCHITECTURE-RULES.md) und
 
 - `npm run dev` · `npm run build` · `npm test` (Vitest) · `npm run typecheck` · `npm run lint`
 - E2E: einmalig `npm run e2e:install`, dann `npm run e2e`
-- Routing: `npm run routing:audit` (I1–I7 über 6 Pläne) · `npm run routing:gallery`
+- Routing: `npm run routing:audit` (I1–I7 über 6 Pläne) · `npm run routing:domain-probe`
+  (Wirksamkeit der Domänen-Trennregeln) · `npm run routing:gallery`
 - Elektrik/Routing eingefroren: `npm run goldenmaster:capture` → `npm run test:goldenmaster`
 - Regression: `npm run regression:capture` → `npm run test:regression`
 - Performance: `npm run perf:edge-routing` (Gate) · `npm run perf:route-scaling`

@@ -15,6 +15,7 @@
     "postinstall": "node -e \"try { require('child_process').execSync('git config core.hooksPath scripts/git-hooks') } catch {}\"",
     "routing:gallery": "tsx scripts/routing/generate-gallery.ts",
     "routing:audit": "tsx scripts/routing/audit.ts",
+    "routing:domain-probe": "tsx scripts/routing/domainProbe.ts",
     "goldenmaster:capture": "tsx scripts/goldenmaster/capture.ts",
     "test:goldenmaster": "vitest run scripts/goldenmaster/goldenMaster.test.ts",
     "regression:capture": "tsx scripts/regression/capture.ts",

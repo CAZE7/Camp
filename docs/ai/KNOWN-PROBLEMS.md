@@ -27,8 +27,10 @@ Legende Severity: **hoch** = Agent kann falschen Code ändern / falsche Sicherhe
 
 ---
 
-## DOC-002 — Veraltete Zähler im Kommentar von `finalValidation.ts`
+## DOC-002 — Veraltete Zähler im Kommentar von `finalValidation.ts` — **behoben 2026-09-09**
 
+- **STATUS:** behoben. Der Kopfkommentar nennt jetzt den gemessenen Stand (0/0/0) und
+  verweist für die Historie auf ADR 0017/0019/0020; die Ratchet lebt im Test.
 - **AREA:** Dokumentation im Code / Routing
 - **FILE:** `lib/routing/finalValidation.ts` (Dateikopf)
 - **DESCRIPTION:** Der Kommentar nennt als gemessenen Stand „**72 × I1, 37 × I2, 13 × I3**“
@@ -45,8 +47,11 @@ Legende Severity: **hoch** = Agent kann falschen Code ändern / falsche Sicherhe
 
 ---
 
-## DOC-003 — Veraltete Zahlen im `README.md`
+## DOC-003 — Veraltete Zahlen im `README.md` — **behoben 2026-09-09**
 
+- **STATUS:** behoben. `README.md` nennt jetzt 2018 Tests / 145 Dateien, React Flow
+  (`@xyflow/react`) 12.11 und als Routing-Engine den produktiven globalen Pass
+  (`components/edges/utils/routeAll.ts`) statt des Legacy-Moduls `orthogonalRouting.ts`.
 - **AREA:** Dokumentation
 - **FILE:** `README.md`
 - **DESCRIPTION:** Das README nennt „1265 Tests, 101 Dateien“ (tatsächlich **2018 / 145**)
@@ -77,8 +82,10 @@ Legende Severity: **hoch** = Agent kann falschen Code ändern / falsche Sicherhe
 
 ---
 
-## DOC-005 — `scripts/routing/audit.ts` verweist auf eine nicht existierende Gate-Testdatei
+## DOC-005 — `scripts/routing/audit.ts` verweist auf eine nicht existierende Gate-Testdatei — **behoben 2026-09-09**
 
+- **STATUS:** behoben. Der Kopfkommentar nennt jetzt die realen Gates
+  (`finalValidation.test.ts`, `regression.test.ts`) statt `routingQualityGate.test.ts`.
 - **AREA:** Dokumentation / Routing
 - **FILE:** `scripts/routing/audit.ts` (Kopfkommentar, Zeilen ~10–14)
 - **DESCRIPTION:** Der Kommentar behauptet, „dieselben Zahlen prüft
@@ -148,7 +155,17 @@ Legende Severity: **hoch** = Agent kann falschen Code ändern / falsche Sicherhe
 - **SEVERITY:** mittel
 - **WORKAROUND:** Bei Arbeiten an der Domänentrennung zuerst den Konsumenten schaffen —
   die Regel ist fertig, die Anbindung fehlt.
-- **RELATED TEST:** `lib/routing/rules/collision.test.ts`
+- **GEMESSENE WIRKUNG (2026-09-09, `npm run routing:domain-probe`):**
+  84 gemischte Kantenpaare in den sechs Referenzplänen (inverter 9, acdc 33, complex 42).
+  Davon **12 kreuzend** (acdc 4, complex 8) und **0 in zu enger Parallellage**.
+  → Eine Clearance-Regel mit 24 px würde die heutigen Trassen **nicht** verändern.
+  → Nur wenn die Regel auch Kreuzungen verbieten würde, verschöben sich 12 Paare — das
+  widerspricht ADR 0009 (Kreuzungen erlaubt, Überdeckungen verboten).
+  → Empfehlung: Anbindung als **Clearance** (wie I3, nur mit 24 px für gemischte Paare).
+  Der sichtbare Nutzen entsteht erst, wenn Wasser-Rohre geroutet werden
+  (`electrical ↔ water`); auf reinen Elektro-Plänen bleibt er bei null.
+- **RELATED TEST:** `lib/routing/rules/collision.test.ts`, `npm run routing:domain-probe`
+  (`scripts/routing/domainProbe.ts`)
 - **RELATED ISSUE:** ROUTING-V2 §4.2.
 
 ---
@@ -179,20 +196,26 @@ Legende Severity: **hoch** = Agent kann falschen Code ändern / falsche Sicherhe
 
 - **AREA:** Architektur
 - **FILE:** `app/api/chat/route.ts`, `lib/db.ts`, `components/Chat.tsx`, `app/ki-assistent/page.tsx`
-- **DESCRIPTION:** `next.config.ts` setzt `output: 'export'` (ADR 0001: kein Backend);
-  `.env.example` sagt ausdrücklich, dass keine Umgebungsvariablen nötig sind. Trotzdem existiert
-  eine API-Route, die einen `pg`-Pool (`lib/db.ts`) und `OPENAI_API_KEY` benutzt, und die Seite
-  `/ki-assistent` rendert `<Chat>`, das per Default gegen `/api/chat` postet.
-- **CURRENT BEHAVIOR:** Im Static Export existiert `/api/chat` nicht; der KI-Assistent kann im
-  ausgelieferten Artefakt nicht funktionieren. Abgesichert ist die Route nur durch
-  Unit-Tests mit gemocktem `pg`.
-- **EXPECTED BEHAVIOR:** Entweder dokumentiert deaktiviert (Hinweis in der UI) oder entfernt.
+- **DESCRIPTION:** `next.config.ts` setzt `output: 'export'` (ADR 0001: kein Backend).
+  Trotzdem existieren eine API-Route mit `pg`-Pool (`lib/db.ts`, `OPENAI_API_KEY`) und die
+  Seite `/ki-assistent`, die `<Chat>` gegen `NEXT_PUBLIC_CHAT_API_URL || '/api/chat'` rendert.
+- **CURRENT BEHAVIOR (gemessen 2026-09-09):**
+  - `npm run build` weist `/api/chat` als **`ƒ` (Dynamic, server-rendered on demand)** aus —
+    der Export enthält **kein** `out/api` (geprüft).
+  - Ohne gesetzte `NEXT_PUBLIC_CHAT_API_URL` sendet die Seite ins Leere (404) und wirkt dabei
+    funktionsfähig.
+  - `.env.example` behauptete „No environment variables are required“ — die Variable war dort
+    nicht dokumentiert (mit ADR 0021 ergänzt).
+  - Abgesichert ist die Route nur durch Unit-Tests mit gemocktem `pg` (578 Zeilen):
+    grün, aber ohne Bezug zum ausgelieferten Artefakt.
+- **EXPECTED BEHAVIOR:** Entweder externer Endpunkt + dokumentierte Konfiguration, oder
+  Route/Seite entfernen.
 - **SEVERITY:** hoch (funktional), niedrig (Sicherheit: kein Secret im Repo)
 - **WORKAROUND:** Nicht als lauffähiges Feature behandeln. Vor Änderungen prüfen, ob der
   KI-Assistent Teil des Produkts sein soll.
 - **RELATED TEST:** `app/api/chat/route.test.ts` (578 Zeilen, komplett gemockt),
   `components/Chat.test.tsx`
-- **RELATED ISSUE:** ADR 0001.
+- **RELATED ISSUE:** ADR 0001, **ADR 0021** (Entscheidungsvorlage, offen).
 
 ---
 
@@ -214,20 +237,34 @@ Legende Severity: **hoch** = Agent kann falschen Code ändern / falsche Sicherhe
 
 ---
 
-## PERF-001 — Große Pläne überschreiten das Frame-Budget
+## PERF-001 — Große Pläne liegen über dem Frame-Budget (kein Gate-Bruch)
 
 - **AREA:** Performance
-- **FILE:** `benchmarks/edgeRoutingPerf.bench.ts`, `components/edges/utils/cableRouteStore.ts`
-- **DESCRIPTION:** Das CI-Gate prüft den Referenzplan (N=36, E=134): Median **2,35 ms**,
-  p90 2,43 ms, Budget 16 ms → OK. Der Durchlauf „Sehr groß“ (N=120, E=585) braucht
-  **19,54 ms** pro komplettem Kanten-Render-Durchlauf und liegt damit über dem Budget
-  (ADR 0012).
+- **FILE:** `benchmarks/edgeRoutingPerf.bench.ts`, `benchmarks/routeAllScaling.probe.ts`,
+  `components/edges/utils/cableRouteStore.ts`
+- **DESCRIPTION:** ADR 0012 bindet das 16-ms-Budget **ausdrücklich an den Referenzplan
+  N=36 / E=134** — nicht an jede Plangröße. Große Pläne liegen darüber:
+
+  | Messung                             | Plan        | Wert                            | Budget     |
+  | ----------------------------------- | ----------- | ------------------------------- | ---------- |
+  | `npm run perf:edge-routing` (Gate)  | N=36 E=134  | Median **2,57 ms**, p90 2,67 ms | 16 ms → OK |
+  | dto., Durchlauf „Sehr groß“         | N=120 E=585 | **21,3 ms**                     | über 16 ms |
+  | `npm run perf:route-scaling`, Kette | N=100 E=99  | 13,8 ms (0,14 ms/Kante)         | —          |
+  | dto.                                | N=500 E=499 | 215 ms (0,43 ms/Kante)          | —          |
+  | dto., Worst Case Spannkanten        | N=250 E=125 | 121 ms (0,97 ms/Kante)          | —          |
+  | dto.                                | N=500 E=250 | 2 125 ms (8,50 ms/Kante)        | —          |
+
+  (Medians aus 3 Läufen, 2026-09-09; die Scaling-Probe meldet min/max mit.)
+
 - **CURRENT BEHAVIOR:** Große Pläne werden im Live-Betrieb durch die 100-ms-Drossel
-  (`ROUTE_THROTTLE_MS`) erträglich, nicht durch Laufzeit.
-- **EXPECTED BEHAVIOR:** Budget auch für große Pläne, oder ein dokumentiertes, geprüftes Limit.
+  (`ROUTE_THROTTLE_MS`) erträglich, nicht durch Laufzeit. Ab N≈500 mit planweiten Kanten
+  übersteigt ein einzelner vollständiger Durchlauf die Drossel deutlich (≈2 s).
+- **EXPECTED BEHAVIOR:** Entweder ein zweiter, dokumentierter Messpunkt im Gate
+  (nicht-blockierend) oder eine Optimierung mit eigenem ADR. **Kein** stilles Anheben des
+  Budgets und kein Entfernen des Gates.
 - **SEVERITY:** mittel
-- **WORKAROUND:** Drossel nutzen; Änderungen am A*-Innenloop immer mit
-  `npm run perf:edge-routing` und `npm run perf:route-scaling` gegenmessen.
+- **WORKAROUND:** Drossel nutzen; Änderungen am A\*-Innenloop immer mit beiden Benchmarks
+  gegenmessen. Einzelmessungen großer Pläne streuen um Faktor >2 — immer den Median nehmen.
 - **RELATED TEST:** `npm run perf:edge-routing` (CI-Gate), `npm run perf:route-scaling` (Probe)
 - **RELATED ISSUE:** ADR 0012, historisch AUDIT PERF-001 (Region-Filter; sechsstellig → ms).
 
