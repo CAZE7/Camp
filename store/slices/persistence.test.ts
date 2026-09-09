@@ -166,3 +166,54 @@ describe('migratePlannerPersisted', () => {
     expect(muell?.data).toEqual({ label: 'Alt' });
   });
 });
+
+describe('Version 1 → 2: Layout-Fallback-Maße heilen', () => {
+  const poisoned = {
+    id: 'elk-opfer',
+    type: 'battery',
+    position: { x: 0, y: 0 },
+    data: {},
+    width: 120,
+    height: 80,
+  };
+
+  it('pinnt den Versionsschritt (bewusst hart — Migration alter Stände hängt daran)', () => {
+    expect(PLANNER_STORAGE_VERSION).toBe(2);
+  });
+
+  it('streicht exakt 120×80 (Elektrik- und Wasser-Knoten)', () => {
+    const result = migratePlannerPersisted(
+      { nodes: [poisoned], waterNodes: [{ ...poisoned, id: 'w-opfer' }] },
+      1
+    );
+    const node = result.nodes?.[0];
+    const water = result.waterNodes?.[0];
+    // Regression: Der Layout-Adapter schrieb Engine-Boxen als width/height
+    // zurück — vergiftete Pläne blieben (inklusive Reload) dauerhaft winzig.
+    expect(node).not.toHaveProperty('width');
+    expect(node).not.toHaveProperty('height');
+    expect(water).not.toHaveProperty('width');
+    expect(water).not.toHaveProperty('height');
+    expect(node?.id).toBe('elk-opfer');
+  });
+
+  it('lässt echte Maße unangetastet (inklusive Fast-Treffern)', () => {
+    const result = migratePlannerPersisted(
+      {
+        nodes: [
+          { ...poisoned, id: 'echt', width: 192, height: 120 },
+          { ...poisoned, id: 'fast-breit', width: 120, height: 81 },
+          { ...poisoned, id: 'fast-hoch', width: 121, height: 80 },
+          { ...poisoned, id: 'ohne', width: undefined, height: undefined },
+        ],
+      },
+      1
+    );
+    const byId = new Map((result.nodes ?? []).map((n) => [n.id, n]));
+    expect(byId.get('echt')).toMatchObject({ width: 192, height: 120 });
+    expect(byId.get('fast-breit')).toMatchObject({ width: 120, height: 81 });
+    expect(byId.get('fast-hoch')).toMatchObject({ width: 121, height: 80 });
+    expect(byId.get('ohne')?.width).toBeUndefined();
+    expect(byId.get('ohne')?.height).toBeUndefined();
+  });
+});

@@ -99,6 +99,31 @@ export function createThrottledRunner(
 /** Drossel-Fenster des Live-Re-Routings (ms). */
 export const ROUTE_THROTTLE_MS = 100;
 
+/**
+ * Präsentations-Nodes nehmen nicht am Routing teil.
+ *
+ * Die Backbone-Gruppe (`BACKBONE_GROUP_TYPE` in
+ * `planner/utils/backboneGroup.ts`, hier bewusst als Literal mit Rückverweis
+ * statt als Import — diese Schicht hängt an keinen Präsentations-Modulen)
+ * ist eine reine Darstellungs-Box HINTER dem Hauptstromkreis. Lief sie in den
+ * Routing-Pass, wurde sie zum Hindernis: Ihre Box umschließt Batterie, Shunt
+ * und Sammelschienen — jede Kern-Leitung startete IN einem Hindernis und wich
+ * in weiten Bögen aus. Da sich die Box mit jeder Messungs-Runde ihrer
+ * Mitglieder verschob, routete der globale Pass wiederholt um („Kabel
+ * springen nach Auto-Wire dauerhaft um“) und die Final-Validation meldete
+ * Geister-Kollisionen gegen die Gruppe. Filterung an dieser einen Stelle
+ * heilt Signatur, Routing und Validation gleichzeitig.
+ */
+const PRESENTATION_NODE_TYPE = 'backboneGroup';
+
+export function isPresentationNode(node: { type?: unknown }): boolean {
+  return node.type === PRESENTATION_NODE_TYPE;
+}
+
+export function withoutPresentationNodes<T extends { type?: unknown }>(nodes: readonly T[]): T[] {
+  return nodes.filter((node) => !isPresentationNode(node));
+}
+
 let current = new Map<string, PathResult>();
 const listeners = new Set<() => void>();
 
@@ -195,7 +220,9 @@ export function CableRouteSync() {
   const signature = useStore((s) => {
     // v12: `nodeLookup` ersetzt `nodeInternals` und liefert InternalNodes —
     // gemessene Maße unter `measured`, absolute Position unter `internals`.
-    const nodes = nodeLayoutSignature([...s.nodeLookup.values()]);
+    // Präsentations-Nodes (Backbone-Gruppe) sind kein Layout — ohne Filter
+    // würde jede Gruppen-Neuberechnung ein globales Re-Routing auslösen.
+    const nodes = nodeLayoutSignature(withoutPresentationNodes([...s.nodeLookup.values()]));
     const edges = edgeTopologySignature(s.edges);
     return `${nodes}#${edges}`;
   });
@@ -209,8 +236,10 @@ export function CableRouteSync() {
     runnerRef.current = createThrottledRunner(() => {
       const state = store.getState();
       // InternalNodes statt `getNodes()` (in v12 nicht mehr am Store):
-      // sie tragen gemessene Größe UND Handle-Rechtecke.
-      const nodes = [...state.nodeLookup.values()] as unknown as RoutableNode[];
+      // sie tragen gemessene Größe UND Handle-Rechtecke. Ohne die
+      // Backbone-Gruppe — sie ist Darstellungs-Box, kein Hindernis
+      // (siehe `withoutPresentationNodes`).
+      const nodes = withoutPresentationNodes([...state.nodeLookup.values()]) as unknown as RoutableNode[];
       const edgeRefs = state.edges as RouteEdgeRef[];
       const routes = routeAllCables(nodes, edgeRefs);
       publishCableRoutes(routes);

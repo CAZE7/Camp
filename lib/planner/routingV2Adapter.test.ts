@@ -1,6 +1,6 @@
 import { afterEach, describe, it, expect } from 'vitest';
 import type { Edge, Node } from '@xyflow/react';
-import { applyAdvancedLayout } from './routingV2Adapter';
+import { applyAdvancedLayout, toLayoutRequest } from './routingV2Adapter';
 import { setElkInstanceForTest } from '../routing/elk/runner';
 import type { CableEdgeData } from '../../components/edges/CableEdge';
 
@@ -90,6 +90,84 @@ describe('routingV2Adapter - advanced layout integration', () => {
 
     for (const current of result.edges) {
       expect(current.data?.geometry).toBeUndefined();
+    }
+  }, 20_000);
+});
+
+describe('toLayoutRequest — Größen-Vertrag über die Messgrenze (ADR 0013)', () => {
+  const req = (nodes: Node[]) =>
+    toLayoutRequest(
+      nodes,
+      [{ id: 'e1', source: 'a', target: 'b', type: 'cableEdge', data: {} } as Edge],
+      'LR'
+    );
+
+  it('gemessene Maße gewinnen über gesetzte (Browser-Pfad)', () => {
+    const [entry] = req([
+      {
+        id: 'a',
+        type: 'battery',
+        position: { x: 0, y: 0 },
+        data: {},
+        measured: { width: 210, height: 140 },
+      } as Node,
+      { id: 'b', type: 'busbar', position: { x: 0, y: 0 }, data: {} } as Node,
+    ]).nodes;
+    // Regression: Der Adapter las nur node.width/height (meist undefined) —
+    // ELK legte 120×80-Boxen unter echte Karten und komprimierte den Plan.
+    expect(entry).toMatchObject({ id: 'a', width: 210, height: 140 });
+  });
+
+  it('flache Form bleibt gültig (Fixture-/Persistenz-Grenze)', () => {
+    const [entry] = req([
+      { id: 'a', type: 'battery', position: { x: 0, y: 0 }, data: {}, width: 192, height: 120 } as Node,
+      { id: 'b', type: 'busbar', position: { x: 0, y: 0 }, data: {} } as Node,
+    ]).nodes;
+    expect(entry).toMatchObject({ id: 'a', width: 192, height: 120 });
+  });
+
+  it('ohne Maße bleibt das Feld undefiniert (Engine-Fallback greift)', () => {
+    const [entry] = req([
+      { id: 'a', type: 'battery', position: { x: 0, y: 0 }, data: {} } as Node,
+      { id: 'b', type: 'busbar', position: { x: 0, y: 0 }, data: {} } as Node,
+    ]).nodes;
+    expect(entry!.width).toBeUndefined();
+    expect(entry!.height).toBeUndefined();
+  });
+});
+
+describe('applyAdvancedLayout — Positions-only-Rückschreibung', () => {
+  it('schreibt Positionen, lässt Maße unangetastet (kein 120×80-Gift)', async () => {
+    const nodes = [
+      {
+        id: 'a',
+        type: 'battery',
+        position: { x: 0, y: 0 },
+        data: {},
+        measured: { width: 210, height: 140 },
+      } as Node,
+      {
+        id: 'b',
+        type: 'busbar',
+        position: { x: 400, y: 0 },
+        data: {},
+        measured: { width: 210, height: 140 },
+      } as Node,
+    ];
+    const edges = [
+      { id: 'e1', source: 'a', target: 'b', type: 'cableEdge', data: { length: 1 } } as Edge<CableEdgeData>,
+    ];
+
+    const result = await applyAdvancedLayout(nodes, edges, 'LR');
+
+    expect(result.engine).toBe('elk');
+    for (const current of result.nodes) {
+      // Regression: Der Adapter schrieb Engine-Boxen als width/height zurück —
+      // der Plan blieb (inklusive Persistierung) dauerhaft winzig.
+      expect(current.width).toBeUndefined();
+      expect(current.height).toBeUndefined();
+      expect(typeof current.position.x).toBe('number');
+      expect(typeof current.position.y).toBe('number');
     }
   }, 20_000);
 });

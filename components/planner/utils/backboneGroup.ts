@@ -2,6 +2,13 @@ import type { Node } from '@xyflow/react';
 import { getNodeLayoutSize } from './layout';
 
 export const BACKBONE_GROUP_ID = '__planner-backbone-group';
+/**
+ * Präsentations-Typ der Backbone-Gruppe (reine Darstellung, kein Bauteil).
+ * Das Routing kennt ihn unter demselben Literal (`cableRouteStore`, dort
+ * bewusst als Literal mit Rückverweis statt als Import — die Routing-Seite
+ * hängt nicht an Präsentations-Modulen).
+ */
+export const BACKBONE_GROUP_TYPE = 'backboneGroup';
 const CORE_TYPES = new Set(['battery', 'shunt', 'busbar', 'fuse']);
 const PADDING_X = 44;
 const PADDING_TOP = 56;
@@ -20,7 +27,7 @@ export function withBackboneGroup(nodes: Node[], enabled: boolean): Node[] {
 
   const group: Node = {
     id: BACKBONE_GROUP_ID,
-    type: 'backboneGroup',
+    type: BACKBONE_GROUP_TYPE,
     position: { x: left - PADDING_X, y: top - PADDING_TOP },
     data: { label: 'Hauptstromkreis' },
     style: {

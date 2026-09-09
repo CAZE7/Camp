@@ -25,6 +25,44 @@ export type V2CableEdge = Edge<CableEdgeData>;
 export type LayoutEngineName = 'elk' | 'dagre';
 
 /**
+ * Baut die Layout-Anfrage aus React-Flow-Knoten.
+ *
+ * Messgrenze (ADR 0013): In v12 sind `node.width/height` die vom Nutzer
+ * GESETZTEN Maße (meist undefined) — die gemessene Kartengröße steht in
+ * `node.measured`. Wer nur die flachen Felder liest, legt ELK/Dagre
+ * 120×80-Boxen unter 192×120-Karten: Das Ergebnis ist ein dicht
+ * gestapelter, winziger Plan mit überlappenden Karten („ELK wird viel zu
+ * klein, keine Kabel sichtbar“). Lesereihenfolge daher: gemessen →
+ * gesetzt → undefiniert (Engine-Fallback).
+ *
+ * Reine Funktion und exportiert, damit der Größen-Vertrag ohne elkjs
+ * unit-testbar ist (die Engines laufen nur im Integrationstest).
+ */
+export function toLayoutRequest(
+  nodes: readonly V2Node[],
+  edges: readonly Edge[],
+  direction: 'LR' | 'TB' = 'LR'
+): LayoutRequest {
+  return {
+    nodes: nodes.map((node) => ({
+      id: node.id,
+      kind: typeof node.type === 'string' ? node.type : 'unknown',
+      width: node.measured?.width ?? node.width ?? undefined,
+      height: node.measured?.height ?? node.height ?? undefined,
+    })),
+    edges: edges
+      .filter((edge) => Boolean(edge.source) && Boolean(edge.target))
+      .map((edge) => ({
+        id: edge.id,
+        source: edge.source,
+        target: edge.target,
+        kind: edge.type === 'waterPipe' ? 'waterPipe' : 'cable',
+      })),
+    direction,
+  };
+}
+
+/**
  * Runs the industrial layout pipeline: ELK first, Dagre as a deterministic
  * fallback. Returns repositioned nodes; edges are passed through untouched.
  *
@@ -45,23 +83,7 @@ export async function applyAdvancedLayout<E extends Edge = V2CableEdge>(
   const { ElkLayoutEngine } = await import('./layout-engine/elk');
   const { DagreLayoutEngine } = await import('./layout-engine/dagre');
 
-  const request: LayoutRequest = {
-    nodes: nodes.map((node) => ({
-      id: node.id,
-      kind: typeof node.type === 'string' ? node.type : 'unknown',
-      width: typeof node.width === 'number' ? node.width : undefined,
-      height: typeof node.height === 'number' ? node.height : undefined,
-    })),
-    edges: edges
-      .filter((edge) => Boolean(edge.source) && Boolean(edge.target))
-      .map((edge) => ({
-        id: edge.id,
-        source: edge.source,
-        target: edge.target,
-        kind: edge.type === 'waterPipe' ? 'waterPipe' : 'cable',
-      })),
-    direction,
-  };
+  const request = toLayoutRequest(nodes, edges, direction);
 
   let layoutResult: LayoutResult;
   try {
@@ -70,21 +92,18 @@ export async function applyAdvancedLayout<E extends Edge = V2CableEdge>(
     layoutResult = await new DagreLayoutEngine().layout(request);
   }
 
-  const positionById = new Map(
-    layoutResult.nodes.map((node) => [
-      node.id,
-      { x: node.x, y: node.y, width: node.width, height: node.height },
-    ])
-  );
+  const positionById = new Map(layoutResult.nodes.map((node) => [node.id, { x: node.x, y: node.y }]));
 
+  // Nur Positionen zurückschreiben — niemals Maße. Die Kartengröße misst
+  // React Flow (ADR 0013); schrieb der Adapter die Engine-Boxen (im
+  // schlimmsten Fall die 120×80-Fallbacks) als `width`/`height` zurück,
+  // vergiftete er den Plan dauerhaft — inklusive Persistierung.
   const layoutedNodes = nodes.map((node) => {
     const position = positionById.get(node.id);
     if (!position) return node;
     return {
       ...node,
       position: { x: position.x, y: position.y },
-      width: position.width,
-      height: position.height,
     };
   });
 

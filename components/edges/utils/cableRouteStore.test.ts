@@ -7,10 +7,12 @@ import {
   edgeTopologySignature,
   getCableRoute,
   getCableRouteFinalValidation,
+  isPresentationNode,
   nodeLayoutSignature,
   publishCableRoutes,
   publishCableRouteFinalValidation,
   ROUTE_THROTTLE_MS,
+  withoutPresentationNodes,
 } from './cableRouteStore';
 import type { RouteEdgeRef } from './routeAll';
 import type { RoutableNode } from './nodeGeometry';
@@ -304,5 +306,79 @@ describe('cableRouteStore-Publikation (R-9)', () => {
     publishCableRoutes(new Map());
     expect(getCableRoute('e1')).toBeUndefined();
     clearCableRoutes();
+  });
+});
+
+describe('Präsentations-Nodes (Backbone-Gruppe) nehmen nicht am Routing teil', () => {
+  const group = {
+    id: '__planner-backbone-group',
+    type: 'backboneGroup',
+    position: { x: 0, y: 0 },
+    data: {},
+  } as Node;
+
+  it('isPresentationNode erkennt die Gruppe am Typ, nicht an der ID', () => {
+    const renamed: Node = { ...group, id: 'andere-id' };
+    expect(isPresentationNode(group)).toBe(true);
+    expect(isPresentationNode(renamed)).toBe(true);
+    expect(isPresentationNode(makeNode('a', 0, 0))).toBe(false);
+  });
+
+  it('withoutPresentationNodes filtert die Gruppe, echte Bauteile bleiben', () => {
+    const nodes = [makeNode('a', 0, 0), group, makeNode('b', 300, 0)];
+    expect(withoutPresentationNodes(nodes).map((n) => n.id)).toEqual(['a', 'b']);
+  });
+
+  it('die Gruppe löst kein Re-Routing aus (Signatur ohne Gruppe identisch)', () => {
+    // Regression: Die Gruppen-Box (Hindernis um den halben Plan) ließ nach
+    // Auto-Wire alle Kabel wiederholt umspringen; jede Neuberechnung der
+    // Box stieß einen globalen Pass an.
+    const plain = nodeLayoutSignature(nodeSet([makeNode('a', 0, 0), makeNode('b', 300, 0)]));
+    const withGroup = nodeLayoutSignature(
+      withoutPresentationNodes(nodeSet([makeNode('a', 0, 0), group, makeNode('b', 300, 0)]))
+    );
+    expect(withGroup).toBe(plain);
+  });
+
+  it('computeCableRouteFinalValidation sieht keine Geister-Kollision mit der Gruppe', () => {
+    // Die Gruppen-Box umschließt die Leitung vollständig (wie im Browser die
+    // Kerntrasse) — ungefiltert wäre das eine I1-Geisterverletzung.
+    const enclosingGroup = {
+      ...group,
+      position: { x: 0, y: 0 },
+      measured: { width: 500, height: 200 },
+    } as Node;
+    const all = [makeNode('a', 0, 0), enclosingGroup, makeNode('b', 300, 0)];
+    const nodes = withoutPresentationNodes(all) as unknown as RoutableNode[];
+    const edges = [{ id: 'e1', source: 'a', target: 'b' }] as RouteEdgeRef[];
+    const routes = new Map<string, PathResult>([
+      [
+        'e1',
+        {
+          path: 'M 0 0 L 300 0',
+          waypoints: [
+            { x: 192, y: 60 },
+            { x: 300, y: 60 },
+          ],
+          labelX: 0,
+          labelY: 0,
+          offsetX: 0,
+          offsetY: 0,
+          length: 108,
+          bends: 0,
+          crossings: 0,
+          usedSearch: 'catalog',
+        },
+      ],
+    ]);
+    const report = computeCableRouteFinalValidation(nodes, edges, routes);
+    // Die Leitung liegt (korrekt) zwischen den Karten — ohne Filter zählte
+    // die umschließende Gruppen-Box als I1-Verletzung.
+    expect(report.violations.filter((v) => v.invariant === 'I1')).toHaveLength(0);
+
+    // Sensitivität: ungefiltert MUSS dieselbe Geometrie als I1 zählen —
+    // sonst würde der Test auch ohne Fix grün.
+    const unfiltered = computeCableRouteFinalValidation(all as unknown as RoutableNode[], edges, routes);
+    expect(unfiltered.violations.some((v) => v.invariant === 'I1')).toBe(true);
   });
 });

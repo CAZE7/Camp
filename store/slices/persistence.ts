@@ -1,4 +1,5 @@
 import { sanitizeNodeDataBySchema } from '../../lib/nodeSchema'; // DOM-003
+import { LAYOUT_TOKENS } from '../../lib/planner/layout-engine/tokens';
 import { createJSONStorage, type PersistOptions } from 'zustand/middleware';
 import { type Node, type Edge } from '@xyflow/react';
 import { plannerDebouncedStorage } from '../storage';
@@ -12,7 +13,7 @@ import type { PlannerState } from './types';
  * lebt hier und NICHT im Store-Body. Der Speichername ist Teil des Contracts
  * mit bestehenden Planungen und darf nicht ohne Versionsschritt ändern.
  */
-export const PLANNER_STORAGE_VERSION = 1;
+export const PLANNER_STORAGE_VERSION = 2;
 
 /**
  * AUDIT PERSIST-001: Form-Prüfung mit echten Typchecks statt reiner
@@ -71,6 +72,30 @@ function sanitizeEdgeData<T extends Edge>(edge: T): T {
 }
 
 /**
+ * Version 1 → 2: Layout-Fallback-Maße entfernen.
+ *
+ * Der Layout-Adapter schrieb vor dem Positions-only-Fix die Engine-Boxen als
+ * `width`/`height` auf die Knoten zurück — bei unvermessenen Knoten exakt die
+ * 120×80-Fallbacks (`LAYOUT_TOKENS`). Diese Maße persistierten mit und hielten
+ * alte Pläne dauerhaft im „ELK winzig“-Zustand. Echte Karten sind größer
+ * (192×120+) oder vom Nutzer resiziert (Dach-Planer, eigene Maße); exakt das
+ * Fallback-Paar kann daher nur aus dem alten Adapter stammen und wird
+ * ersatzlos gestrichen — React Flow misst die Karten danach neu.
+ */
+function stripLayoutFallbackSize<T extends Node>(stored: T): T {
+  // `stored`, nicht `node`: Persistierte Knoten tragen die flache Form
+  // legitim (handleGeometry-Vertrag) — und hier sind AUSDRÜCKLICH die
+  // gesetzten Maße gemeint, nicht die gemessenen.
+  if (stored.width === LAYOUT_TOKENS.defaultNodeWidth && stored.height === LAYOUT_TOKENS.defaultNodeHeight) {
+    const { width: _width, height: _height, ...rest } = stored;
+    void _width;
+    void _height;
+    return rest as T;
+  }
+  return stored;
+}
+
+/**
  * Defensive Migration für den Planner-Store. Alte localStorage-Stände können
  * Felder in anderem Shape oder teilkorrupte Knoten/Kanten enthalten. Diese
  * Funktion normalisiert, bevor Zustand den Stand merged — so lösen veraltete
@@ -89,13 +114,16 @@ export function migratePlannerPersisted(persisted: unknown, version: number): Pa
   if (typeof p.isSidebarOpen === 'boolean') safe.isSidebarOpen = p.isSidebarOpen;
   if (typeof p.isInspectorOpen === 'boolean') safe.isInspectorOpen = p.isInspectorOpen;
   if (typeof p.backboneGrouping === 'boolean') safe.backboneGrouping = p.backboneGrouping;
-  if (Array.isArray(p.nodes)) safe.nodes = p.nodes.filter(isNodeShape).map(sanitizeNodeData);
+  if (Array.isArray(p.nodes))
+    safe.nodes = p.nodes.filter(isNodeShape).map(sanitizeNodeData).map(stripLayoutFallbackSize);
   if (Array.isArray(p.edges))
     safe.edges = p.edges.filter(isEdgeShape).map(sanitizeEdgeData) as Edge<CableEdgeData>[];
-  if (Array.isArray(p.waterNodes)) safe.waterNodes = p.waterNodes.filter(isNodeShape).map(sanitizeNodeData);
+  if (Array.isArray(p.waterNodes))
+    safe.waterNodes = p.waterNodes.filter(isNodeShape).map(sanitizeNodeData).map(stripLayoutFallbackSize);
   if (Array.isArray(p.waterEdges)) safe.waterEdges = p.waterEdges.filter(isEdgeShape).map(sanitizeEdgeData);
 
   // Version 0 → 1: keine Feldumbenennungen, nur Validierung.
+  // Version 1 → 2: Layout-Fallback-Maße (exakt 120×80) von Knoten streichen.
   void version;
   return safe;
 }
