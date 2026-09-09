@@ -3,6 +3,7 @@ import { SlidersHorizontal, X } from 'lucide-react';
 import { useMediaQuery } from '../hooks/useMediaCapabilities';
 import { usePlannerStore } from '../../../store/usePlannerStore';
 import { DOMAINS, DOMAIN_COLORS, DOMAIN_LABELS, type Domain } from '../utils/domainFilter';
+import type { CableLabelDensity } from '../../../store/slices/types';
 
 /** The canvas gets narrow before the page reaches Tailwind's xl breakpoint. */
 const COMPACT_CANVAS_CONTROLS_QUERY = '(max-width: 1279px)';
@@ -17,6 +18,12 @@ type CanvasDisplayOptionsProps = {
   onToggleTrunkMode: () => void;
   backboneGrouping: boolean;
   onToggleBackboneGrouping: () => void;
+  /** B3: Funktionszonen-Bänder im Canvas. */
+  showZones: boolean;
+  onToggleShowZones: () => void;
+  /** B2: aktuelle Kabel-Label-Dichte. */
+  cableLabelDensity: CableLabelDensity;
+  onSetLabelDensity: (density: CableLabelDensity) => void;
 };
 
 type ToggleButtonProps = {
@@ -57,6 +64,84 @@ function ToggleButton({ pressed, onClick, children, tint, title }: ToggleButtonP
   );
 }
 
+const DENSITY_OPTIONS: ReadonlyArray<{
+  value: CableLabelDensity;
+  label: string;
+  title: string;
+}> = [
+  {
+    value: 'all',
+    label: 'Voll',
+    title: 'Jedes Kabel dauerhaft beschriften',
+  },
+  {
+    value: 'core',
+    label: 'Kern',
+    title: 'Nur Hauptrouten dauerhaft; Detail-Labels bei Hover, Auswahl oder Fehler',
+  },
+  {
+    value: 'none',
+    label: 'Aus',
+    title: 'Labels nur bei Hover, Auswahl oder Fehler',
+  },
+];
+
+/** B2: Drei-Stufen-Schalter für die Kabel-Label-Dichte (echte Radio-Semantik). */
+function DensitySwitch({
+  value,
+  onChange,
+}: {
+  value: CableLabelDensity;
+  onChange: (density: CableLabelDensity) => void;
+}) {
+  const base = [
+    'min-h-11',
+    'border',
+    'px-2.5',
+    'py-1.5',
+    'text-xs',
+    'font-semibold',
+    'transition-colors',
+    'hover:bg-accent',
+    'focus-visible:outline-none',
+    'focus-visible:ring-2',
+    'focus-visible:ring-ring',
+  ].join(' ');
+  return (
+    <div
+      role="group"
+      aria-label="Kabel-Label-Dichte"
+      className="flex overflow-hidden rounded border border-rule bg-surface-panel"
+    >
+      {DENSITY_OPTIONS.map((option) => {
+        const pressed = value === option.value;
+        return (
+          <button
+            key={option.value}
+            type="button"
+            aria-pressed={pressed}
+            title={option.title}
+            onClick={() => onChange(option.value)}
+            style={
+              pressed
+                ? {
+                    backgroundColor: `color-mix(in srgb, var(--oxide) 16%, var(--surface-panel))`,
+                    color: 'var(--text-high)',
+                  }
+                : { color: 'var(--text-med)' }
+            }
+            className={`${base} -ml-px border-0 first:ml-0 ${
+              pressed ? 'shadow-[inset_0_0_0_1px_var(--oxide)]' : ''
+            }`}
+          >
+            {option.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function DisplayToggles({
   activeDomains,
   onToggleDomain,
@@ -64,6 +149,10 @@ function DisplayToggles({
   onToggleTrunkMode,
   backboneGrouping,
   onToggleBackboneGrouping,
+  showZones,
+  onToggleShowZones,
+  cableLabelDensity,
+  onSetLabelDensity,
   compact = false,
 }: CanvasDisplayOptionsProps & { compact?: boolean }) {
   const layoutClass = compact ? 'grid grid-cols-2 gap-2' : 'flex flex-wrap gap-1.5';
@@ -101,6 +190,15 @@ function DisplayToggles({
       >
         Hauptstromkreis
       </ToggleButton>
+      <ToggleButton
+        pressed={showZones}
+        onClick={onToggleShowZones}
+        tint="var(--text-low)"
+        title="Funktionszonen (Quellen → Laden → Speichern → Verbrauchen) als Bänder ein- oder ausblenden"
+      >
+        Zonen
+      </ToggleButton>
+      <DensitySwitch value={cableLabelDensity} onChange={onSetLabelDensity} />
     </div>
   );
 }

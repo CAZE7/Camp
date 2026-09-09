@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CanvasDisplayOptions } from './CanvasDisplayOptions';
 
@@ -9,6 +9,10 @@ const props = () => ({
   onToggleTrunkMode: vi.fn(),
   backboneGrouping: true,
   onToggleBackboneGrouping: vi.fn(),
+  showZones: true,
+  onToggleShowZones: vi.fn(),
+  cableLabelDensity: 'core' as const,
+  onSetLabelDensity: vi.fn(),
 });
 
 afterEach(() => {
@@ -26,6 +30,20 @@ describe('CanvasDisplayOptions', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Hauptstromkreis' }));
     expect(handlers.onToggleBackboneGrouping).toHaveBeenCalledTimes(1);
+
+    // B3: Zonen-Schalter.
+    expect(screen.getByRole('button', { name: 'Zonen' })).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(screen.getByRole('button', { name: 'Zonen' }));
+    expect(handlers.onToggleShowZones).toHaveBeenCalledTimes(1);
+
+    // B2: Dichte-Schalter als Drei-Stufen-Radio (Voll/Kern/Aus).
+    const densityGroup = screen.getByRole('group', { name: 'Kabel-Label-Dichte' });
+    expect(within(densityGroup).getByRole('button', { name: 'Kern' })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+    fireEvent.click(within(densityGroup).getByRole('button', { name: 'Aus' }));
+    expect(handlers.onSetLabelDensity).toHaveBeenCalledWith('none');
   });
 
   it('uses a deliberate, 44 px popover trigger on narrow canvases', async () => {

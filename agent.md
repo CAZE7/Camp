@@ -15,6 +15,19 @@ nicht abgeschlossen werden können. Verbindliche Projektregeln stehen in
   `refusing to allow a GitHub App to create or update workflow ... without
 workflows permission`.
 
+## Befund am 09.09.2026 (Statusupdate)
+
+- Default-Branch unverändert:
+  `feature/react-flow-cable-editor-7322653268250495059`; Pages nutzt weiterhin
+  diesen Branch (A-1/A-2 erledigt, Deploys grün).
+- Branch-Protection (A-3) und Issue-Schreibzugriff (A-6) sind mit dem
+  Agent-Token nicht möglich — GitHub meldet „Resource not accessible by
+  integration“ (Kommentar-Test am 09.09.2026 auf Issue #400). Erledigung nur
+  durch Nutzer/Admin (Settings → Branches, Issues) oder Token mit
+  `administration`-/`issues:write`-Rechten.
+- Routing-V2-/Camp-V2-Track ist im Code erledigt, das Board ist veraltet:
+  Statusdokument mit Vorlagen: `docs/ISSUE-BOARD-389-403.md`.
+
 ## Offene Aufgaben
 
 - [x] **A-1 Workflow-Fix anwenden:** Den Patch aus PR #377 als echte Änderung
@@ -26,6 +39,15 @@ Actions` und aktiver Default-Branch als Quelle bestätigt.
 - [ ] **A-3 Schutzregeln prüfen:** Für den aktiven Default-Branch Pull Request,
       Review und die beiden CI-Checks verpflichtend machen. Keine Regel lockern,
       nur damit ein roter Check grün wird.
+      Stand 2026-09-09: unverändert offen — erfordert Admin-Rechte (der
+      Agent-Bot meldet „Resource not accessible by integration“); Schritte
+      liegen im Übergabe-Prompt (`docs/ci/pages-deploy-handoff-prompt.md`,
+      Abschnitt „Einstellungen nur bei Bedarf“).
+- [ ] **A-6 Issue-Board 389–403 schließen/annotieren:** Der Routing-V2-/Camp-V2-
+      Track ist im Default-Branch umgesetzt (ADR 0007–0020, PRs #404/#406/#417/
+      #421/#423/#424/#426), die Issues sind aber alle noch offen. Kommentar- und
+      Schließ-Vorlagen: `docs/ISSUE-BOARD-389-403.md`. Agent-Token hat kein
+      `issues:write` — Ausführung durch Nutzer/Admin nötig.
 - [x] **A-4 Nachweis führen:** Deploy beobachten und Startseite sowie
       mindestens ein `/_next/static/...`-Asset mit HTTP 200 prüfen.
 - [x] **A-5 Aufräumen:** Temporäre `patches/2026-09-01-pages-deploy-fix.patch`

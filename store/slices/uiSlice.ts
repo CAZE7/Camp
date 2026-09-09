@@ -38,6 +38,10 @@ export type UiSlice = Pick<
   | 'setTrunkMode'
   | 'backboneGrouping'
   | 'setBackboneGrouping'
+  | 'showZones'
+  | 'setShowZones'
+  | 'cableLabelDensity'
+  | 'setCableLabelDensity'
 >;
 
 export const createUiSlice: PlannerSlice<UiSlice> = (set, get) => ({
@@ -86,4 +90,13 @@ export const createUiSlice: PlannerSlice<UiSlice> = (set, get) => ({
   setTrunkMode: (enabled) => set({ trunkMode: enabled }),
   backboneGrouping: true,
   setBackboneGrouping: (enabled) => set({ backboneGrouping: enabled }),
+  // B3: Zonen-Bänder sind der neue Default; wer sie ausstellt, tut das pro
+  // Browser (persistiert) — auf Touch/kleinen Canvas halten sie sich zurück.
+  showZones: true,
+  setShowZones: (enabled) => set({ showZones: enabled }),
+  // B2: 'core' = Hauptrouten + Hover/Selektion/Fehler — reduziert das
+  // Dauerlabel-Rauschen an Sammelsternen (Befund B2) und bleibt per Hover
+  // vollständig erkundbar.
+  cableLabelDensity: 'core',
+  setCableLabelDensity: (density) => set({ cableLabelDensity: density }),
 });

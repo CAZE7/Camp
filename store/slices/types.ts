@@ -6,6 +6,14 @@ import { type WaterPipeEdgeData } from '../../components/edges/WaterPipeEdge';
 
 export type { PlannerFlowNode };
 
+/**
+ * Dichte der Kabel-Labels im Canvas (B2 / Maßnahme C2):
+ *   'all'  – jedes Kabel permanent beschriftet (Desktop-Altverhalten),
+ *   'core' – nur Hauptrouten (Backbone) plus Hover/Selektion/Fehler,
+ *   'none' – nur Hover/Selektion/Fehler.
+ */
+export type CableLabelDensity = 'all' | 'core' | 'none';
+
 /** Wasserleitung mit ihrer Datenform (Rohrtyp, Länge). */
 export type PlannerWaterEdge = Edge<WaterPipeEdgeData>;
 
@@ -80,6 +88,14 @@ export interface PlannerState {
   setTrunkMode: (enabled: boolean) => void;
   backboneGrouping: boolean;
   setBackboneGrouping: (enabled: boolean) => void;
+
+  /** B3: Funktionszonen-Bänder im Elektrik-Canvas sichtbar? */
+  showZones: boolean;
+  setShowZones: (enabled: boolean) => void;
+
+  /** B2: Kabel-Label-Dichte (siehe `CableLabelDensity`). */
+  cableLabelDensity: CableLabelDensity;
+  setCableLabelDensity: (density: CableLabelDensity) => void;
 
   onNodesChange: (changes: import('@xyflow/react').NodeChange[]) => void;
   onEdgesChange: (changes: import('@xyflow/react').EdgeChange[]) => void;

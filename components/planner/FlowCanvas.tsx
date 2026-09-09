@@ -53,6 +53,8 @@ import {
   resolveMinimapPalette,
 } from './utils/domainFilter';
 import { CanvasDisplayOptions } from './ui/CanvasDisplayOptions';
+import { FunctionZoneLayer } from './ui/FunctionZoneLayer';
+import { computeFunctionZones } from './utils/functionZones';
 import { markErrorEdgesZIndex } from './utils/errorEdges';
 import { useTouchContextMenu } from './hooks/useTouchContextMenu';
 import { applyCircuitTrace, circuitTraceLabel, traceCircuit } from './utils/circuitTrace';
@@ -66,6 +68,13 @@ import dynamic from 'next/dynamic';
 // AccessibleDialog + Registry nach. Als separater lazy Chunk landet sie nicht
 // im initialen Planner-Code (PERF-06 / Bundle).
 const DynamicBOMModal = dynamic(() => import('./BOMModal').then((mod) => mod.BOMModal), {
+  ssr: false,
+  loading: () => null,
+});
+
+// Kabelliste (Recherche A4): öffnet über das planner-show-cable-list-Event,
+// eigener lazy Chunk — keine Zusatzlast im initialen Planner-Pfad.
+const DynamicCableListModal = dynamic(() => import('./ui/CableListModal').then((mod) => mod.CableListModal), {
   ssr: false,
   loading: () => null,
 });
@@ -244,6 +253,10 @@ export function FlowCanvas() {
     setTrunkMode,
     backboneGrouping,
     setBackboneGrouping,
+    showZones,
+    setShowZones,
+    cableLabelDensity,
+    setCableLabelDensity,
     isLayoutPending,
   } = usePlannerStore(
     useShallow((state) => ({
@@ -274,6 +287,10 @@ export function FlowCanvas() {
       setTrunkMode: state.setTrunkMode,
       backboneGrouping: state.backboneGrouping,
       setBackboneGrouping: state.setBackboneGrouping,
+      showZones: state.showZones,
+      setShowZones: state.setShowZones,
+      cableLabelDensity: state.cableLabelDensity,
+      setCableLabelDensity: state.setCableLabelDensity,
       isLayoutPending: state.isLayoutPending,
     }))
   );
@@ -376,6 +393,15 @@ export function FlowCanvas() {
   }, [coarsePointer]);
   const rawNodes = viewMode === 'water' ? waterNodes : nodes;
   const rawEdges = viewMode === 'water' ? waterEdges : edges;
+
+  // B3-Funktionszonen: Bänder folgen den IST-Positionen der Elektrik-Knoten.
+  // Nur im Elektrik-Modus; Wasserplan behält die ruhige Fläche. Während des
+  // Drags ziehen sich die Bänder mit — die Berechnung ist O(n log n) über
+  // die wenigen Rang-Intervalle und für 100+-Knoten-Pläne unkritisch.
+  const functionZones = useMemo(() => {
+    if (viewMode !== 'electric' || !showZones) return [];
+    return computeFunctionZones(rawNodes);
+  }, [viewMode, showZones, rawNodes]);
 
   // Pan-Begrenzung wächst mit dem Planinhalt. Die frühere feste Grenze
   // [[-3000,-3000],[6000,6000]] machte große Pläne unerreichbar: Auto-Layout
@@ -720,6 +746,10 @@ export function FlowCanvas() {
         >
           <CableRouteSync />
 
+          {/* B3: Funktionszonen-Bänder unterhalb von Nodes/Kanten (nur
+              Elektrik, `showZones`-Schalter in den Canvas-Optionen). */}
+          <FunctionZoneLayer zones={functionZones} />
+
           {/* M7-3: Statuszeile ab lg. Auf dem 508-px-Tablet-Canvas (768 −
               Sidebar) umbricht sie und läuft in FAB/Fachwissen. */}
           <Panel
@@ -784,6 +814,10 @@ export function FlowCanvas() {
                 onToggleTrunkMode={() => setTrunkMode(!trunkMode)}
                 backboneGrouping={backboneGrouping}
                 onToggleBackboneGrouping={() => setBackboneGrouping(!backboneGrouping)}
+                showZones={showZones}
+                onToggleShowZones={() => setShowZones(!showZones)}
+                cableLabelDensity={cableLabelDensity}
+                onSetLabelDensity={setCableLabelDensity}
               />
             </Panel>
           )}
@@ -852,6 +886,7 @@ export function FlowCanvas() {
       {contextMenu && <CanvasContextMenu state={contextMenu} onClose={() => setContextMenu(null)} />}
 
       <DynamicBOMModal />
+      <DynamicCableListModal />
     </>
   );
 }

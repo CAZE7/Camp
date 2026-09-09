@@ -29,13 +29,19 @@ type DragEventish = MouseEvent & {
   preventDefault: () => void;
 };
 
-// next/dynamic wird im Test synchron aufgelöst, damit der per next/dynamic
-// nachgeladene BOMModal (ssr:false) deterministisch hydriert statt in einer
-// nie auflösenden Suspense zu hängen.
+// next/dynamic wird im Test synchron aufgelöst, damit die per next/dynamic
+// nachgeladenen Modals (BOMModal, CableListModal, ssr:false) deterministisch
+// hydrieren statt in einer nie auflösenden Suspense zu hängen. Der Mock
+// entscheidet anhand des Import-Pfads im Loader, welche Komponente gemeint
+// ist — mit nur einer Modal-Komponente gab es genau eine feste Zuordnung.
 vi.mock('next/dynamic', async () => {
   const { BOMModal } = await import('./BOMModal');
+  const { CableListModal } = await import('./ui/CableListModal');
   return {
-    default: () => BOMModal,
+    default: (loader: () => Promise<{ default: unknown }>) => {
+      const loaderText = loader.toString();
+      return loaderText.includes('CableListModal') ? CableListModal : BOMModal;
+    },
   };
 });
 

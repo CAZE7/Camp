@@ -347,6 +347,11 @@ const CableEdge = function ({
   // überdecken bei 375 px mehr Fläche als der Plan selbst. Deshalb dort
   // ausgeblendet und erst bei Tap auf das Kabel als Tooltip eingeblendet.
   const isCompact = useMediaQuery(MOBILE_QUERY);
+  // B2: Label-Dichte global aus dem UI-Slice (Schalter in den
+  // Canvas-Optionen). Bewusst eigene Subscription — der große
+  // useShallow-Selector darunter liefert pro Store-Änderung ein neues
+  // Objekt und würde jede Kante bei JEDER Zustandsänderung neu zeichnen.
+  const cableLabelDensity = usePlannerStore((state) => state.cableLabelDensity);
   const coarsePointer = useCoarsePointer();
   const [tapRevealed, setTapRevealed] = useState(false);
   const tapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -610,8 +615,19 @@ const CableEdge = function ({
   // nicht mehr den Querschnitt — der steht im Label. Siehe utils/cableStyle.ts.
   const renderedStrokeWidth = cableStrokeWidth({ isBackbone, emphasized, trunkMode });
 
-  // Sichtbarkeit des Labels: kompakt = nur bei Auswahl oder nach Tap.
-  const labelVisible = !isCompact || selected || tapRevealed;
+  // B2/C2 – Label-Dichte (Stufen Voll/Kern/Aus):
+  //   - Aufmerksamkeit (Hover, Auswahl, Fehlerzustand) blendet IMMER ein.
+  //   - Voll: zusätzlich jedes Kabel permanent (Desktop-Altverhalten).
+  //   - Kern: zusätzlich nur Hauptrouten (Backbone: Batterie ↔ Busbar ↔
+  //     Shunt ↔ Sicherungskasten) — reduziert das Dauerlabel-Rauschen an
+  //     Sammelsternen; alles andere bleibt per Hover/Auswahl erkundbar.
+  //   - Aus: keine Dauerlabels.
+  // Kompakt-Displays (< sm) behalten die Touch-Regel: Labels nur bei
+  // Selektion oder Tap (die Hover-Regel entfällt dort mangels Hover).
+  const attentionLabel = emphasized || hasDropError;
+  const labelVisible = isCompact
+    ? selected || tapRevealed
+    : attentionLabel || cableLabelDensity === 'all' || (cableLabelDensity === 'core' && isBackbone);
   // Fingerbreite Trefferzone auf Touch, schlanke Zone für die Maus.
   const interactionStrokeWidth = coarsePointer ? 36 : 20;
 
