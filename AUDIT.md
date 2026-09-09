@@ -371,7 +371,7 @@ Bei der Off-Token-Navigation (`NavigationSidebar.tsx`) sind die Primärtexte `st
   - `components/nodes/types.ts` — die zentrale `PlannerNodeData` existiert, wird aber nicht konsequent verwendet.
 - **Toter Code:** ~989 Zeilen, siehe DEAD-001.
 - **Doppelte Lockfiles:** `package-lock.json` + `pnpm-lock.yaml`, siehe M1.
-- **Stale Test-Kommentare:** `components/edges/WaterPipeEdge.test.tsx` behauptet in den Zeilenkommentaren `--pipe-fresh === #3b82f6`, `--pipe-gray === #9ca3af`, `--pipe-selected === #f97316`. Die tatsächlichen Tokens lauten nach K2/Farbkorrektur `#1d4ed8`, `#4b5563`, `#c2410c`. Die Assertions nutzen `var(--pipe-…)` und sind daher weiterhin korrekt, aber die Kommentare dokumentieren falsche Werte (stammt aus der K2-Farbumstellung, ohne die Test-Kommentare nachzuführen).
+- **Stale Test-Kommentare:** `components/edges/WaterPipeEdge.test.tsx` behauptet in den Zeilenkommentaren `--pipe-fresh === #3b82f6`, `--pipe-gray === #9ca3af`, `--pipe-selected === #f97316`. Die tatsächlichen Tokens lauten nach K2/Farbkorrektur `#1d4ed8`, `#4b5563`, `#c2410c`. Die Assertions nutzen `var(--pipe-…)` und sind daher weiterhin korrekt, aber die Kommentare dokumentieren falsche Werte (stammt aus der K2-Farbumstellung, ohne die Test-Kommentare nachzuführen). **Erledigt 2026-09-09:** Kommentare nachgeführt (Maßnahmenplan Nr. 17); `--pipe-selected` ist seit dem Werft-Relaunch `var(--oxide)`.
 - **Falscher Browser-Typ:** `app/guides/camper-ausbauguide/RoadTripAnimation.tsx:39` deklariert `let scrollTimeout: NodeJS.Timeout` in Client-Code. Funktioniert, weil `@types/node` installiert ist, ist aber semantisch falsch — bitte `ReturnType<typeof setTimeout>` verwenden (so wie in `FlowCanvas.tsx` bereits korrekt).
 - **Keine** `console.log`/`debugger`, `dangerouslySetInnerHTML`, `eval`, `new Function`, `TODO`/`FIXME`/`HACK` im Produktivcode. ✅
 - **Keine** Client-Secrets (`NEXT_PUBLIC_*` nicht verwendet). ✅
@@ -409,7 +409,7 @@ Bei der Off-Token-Navigation (`NavigationSidebar.tsx`) sind die Primärtexte `st
 14. **A11Y-003:** Chat-Dialog um `aria-modal`, Fokus-Fang, Escape und Fokus-Rückgabe ergänzen (AccessibileDialog wiederverwenden).
 15. BOM → KI-Übergabe mit einem Button im BOM-Modal vervollständigen.
 16. Dach-Überlappungsprüfung ergänzen.
-17. Stale Kommentare in `WaterPipeEdge.test.tsx` aktualisieren.
+17. Stale Kommentare in `WaterPipeEdge.test.tsx` aktualisieren. **Erledigt 2026-09-09** (Zeilenkommentare nennen die Token-Werte nach K2; `--pipe-selected` korrekt als `var(--oxide)` annotiert, vgl. `app/globals.css`).
 18. `NodeJS.Timeout` in `RoadTripAnimation` ersetzen.
 19. AC-Domänen-Logik aus `autoWire.ts` (`isAcEdge`) mit `getEdgeDomain` zusammenführen.
 20. Kleinere Touch-Targets in `NavigationSidebar` auf ≥44 px bringen.

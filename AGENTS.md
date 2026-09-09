@@ -38,6 +38,7 @@ Next.js-App (TypeScript, Tailwind, React Flow, Zustand) zur Planung von Camper-E
 ## Mission 11: Profi-Niveau
 
 - [ ] M11-1 DESIGN-SPRUNG (Top-Prio, Nutzer-Vorgabe): Planner visuell auf CAD-Niveau polieren — Node-Cards, Toolbar, Panels, Handles neu gestaltet (Token-basiert, hell+dunkel). PFLICHT: Vorher/Nachher-Screenshots (375/768/1440 px) im PR — Merge erst nach optischer Freigabe durch den Nutzer.
+  > Stand 2026-09-09: Kern durch „Design-Relaunch Werft“ erledigt (agent.md D-1…D-9, PRs #379/#385/#411, 03.–05.09.). Die offenen Rest-Befunde der Übersichtlichkeits-Recherche (docs/planer-uebersicht/RECHERCHE.md) sind umgesetzt: **B3 Funktionszonen-Bänder** und **B2 Kabel-Label-Dichte (aus/kern/voll)** — Commit `d3d5be2` (2026-09-09), 12 Vorher/Nachher-Screenshots in `docs/design/cad-evidence/`. Checkbox bleibt offen, bis die Screenshots optisch freigegeben sind (Merge-Bedingung).
 - [ ] M11-2 AutoWire-Platzierung: Bauteile werden aktuell ungünstig gesetzt → Kabel laufen Umwege. Fix: AutoWire platziert Knoten in Flussrichtung (Quellen → Verteilung → Verbraucher), auf dem 16-px-Grid, mit konsistenten Abständen; optional Auto-Layout (dagre) direkt nach dem Verdrahten. Metrik als Test: Gesamtkabellänge im Referenzplan ≤ 1,3× Manhattan-Optimum, keine Kante mit > 2 Richtungswechseln ohne Grund.
 - [ ] M11-3 Tastatur-First wie CAD: Canvas komplett ohne Maus bedienbar (Bauteil bewegen/verbinden/löschen per Tastatur) + Shortcut-Overlay per `?`. Abnahme: E2E baut Mini-Plan nur per Tastatur.
 - [ ] M11-4 `prefers-reduced-motion` global respektieren (tokenbasiert, nicht pro Komponente).
@@ -51,6 +52,7 @@ Next.js-App (TypeScript, Tailwind, React Flow, Zustand) zur Planung von Camper-E
 ## Rechte-Übergabe
 
 - Offene Aufgaben, die GitHub-Admin- oder `workflows:write`-Rechte benötigen, stehen in `agent.md`.
+- Issue-Board-Status für #389–#403 (Routing-V2-/Camp-V2-Track, umgesetzt im Default-Branch): `docs/ISSUE-BOARD-389-403.md` (Kommentar-/Schließ-Vorlagen; Agent-Token hat kein `issues:write`).
 - Der kopierfertige Übergabe-Prompt liegt in `docs/ci/pages-deploy-handoff-prompt.md`.
 
 ## Kontext

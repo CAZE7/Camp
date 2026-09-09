@@ -298,6 +298,17 @@ Diese Gates sind konsistent mit den Review-Anforderungen:
 
 ## Change Ledger
 
+### 2026-09-09 — WP-0c-Basis dokumentiert + Board-Hygiene (Issue #403, A-6)
+
+Initiale Ledger-Eintragung laut WP-0c (Camp V2 · 0c): ADR-0007 „React Flow bleibt
+UI-Adapter", ADR-0008 „Domain Model unabhängig von React Flow", ADR-0009
+„Crossings erlaubt, Overlaps verboten", ADR-0010 „Routing ist deterministisch" —
+alle vier liegen als Dateien unter `docs/adr/`; die ADR-Basis umfasst inzwischen
+0001–0020. ADR 0003 („Orthogonales Routing statt Wegfindung") trägt seit
+2026-09-06 (WP-4) den Statusvermerk „erweitert/überlagert durch ADR 0011".
+Keine Architektur-Änderung in diesem Eintrag — reine Statusdokumentation.
+Issue-Board-Abgleich (389–403): `docs/ISSUE-BOARD-389-403.md`.
+
 ### 2026-09-08 — ROUTE-003 erledigt: ELK produktiv verdrahtet + Final-Gate liest das Kollisionsmodell
 
 Kein Golden-Master-Recapture nötig (kein Geometrie-/Dimensionierungs-Delta).

@@ -133,7 +133,7 @@ describe('WaterPipeEdge', () => {
     const { getByTestId } = render(<WaterPipeEdge {...defaultProps} selected={true} />);
 
     const baseEdge = getByTestId('base-edge');
-    expect(baseEdge).toHaveStyle({ stroke: 'var(--pipe-selected)' }); // --pipe-selected = #c2410c
+    expect(baseEdge).toHaveStyle({ stroke: 'var(--pipe-selected)' }); // --pipe-selected = var(--oxide) → #a34a24 hell / #e2885f dunkel
   });
 
   it('renders interaction path correctly', () => {
