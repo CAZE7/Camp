@@ -9,8 +9,11 @@
  * Gemessen wird, was die Spezifikation verlangt (`docs/ROUTING-V2.md` §12):
  * die Invarianten I1–I7, dazu Orthogonalität, Determinismus (Doppellauf),
  * Fallback-Quote, Selbstüberlappungen und die Plausibilität der gemeldeten
- * Kreuzungszahl. Dieselben Zahlen prüft `routingQualityGate.test.ts` hart —
- * dieses Skript ist die Diagnose dazu, nicht die Gate selbst.
+ * Kreuzungszahl. Dieselben Zahlen prüft `finalValidation.test.ts` als Gate
+ * (I1 hart auf 0, I2 + I3 über eine Ratchet-Obergrenze je Plan) — dieses
+ * Skript ist die Diagnose dazu, nicht das Gate selbst. Geometrie- und
+ * Verhaltenstreue prüft zusätzlich `scripts/regression/regression.test.ts`
+ * über 15 Szenarien (Layout, Metrik, SVG byte-genau, Drag/Undo-Redo).
  *
  * Reine Messung: keine Seiteneffekte, keine Zufallsquelle, kein DOM.
  */

@@ -22,7 +22,7 @@ keine Abnahme durch eine Fachkraft.
 ```bash
 npm ci          # exakte Abhängigkeiten aus dem Lockfile
 npm run dev     # http://localhost:3000/elektrik-planung/
-npm run check   # Lint + Format + Typecheck (2 Profile) + 1265 Tests
+npm run check   # Lint + Format + Typecheck (2 Profile) + 2018 Tests
 npm run build   # Static Export nach ./out
 ```
 
@@ -33,21 +33,21 @@ gespeichert (`localStorage`, versioniert mit Migration).
 
 ## Funktionen (verifiziert)
 
-| Funktion                                                        | Wo im Code                                       | Beleg                                             |
-| --------------------------------------------------------------- | ------------------------------------------------ | ------------------------------------------------- |
-| Bauteil-Katalog mit Suche und Kategorien                        | `components/Sidebar.tsx`, `components/registry/` | `Sidebar.test.tsx`, `componentRegistry.test.tsx`  |
-| Schaltplan mit Zoom, Pan, Auswahl, Minimap                      | `components/planner/FlowCanvas.tsx`              | `FlowCanvas.test.tsx`                             |
-| Automatische Verdrahtung (Backbone, Sicherungen, Querschnitte)  | `lib/autoWire.ts`                                | `autoWire.test.ts`, `vde-properties.test.ts`      |
-| Querschnitt nach Strombelastbarkeit **und** Spannungsfall       | `lib/electrical.ts`, `lib/vde-standards.ts`      | `electrical.test.ts`, `vde-standards.test.ts`     |
-| Sicherungsauswahl, die nie über die Kabelgrenze geht            | `lib/electrical.ts` (`selectFuseSize`)           | Gesetz G1 in `vde-properties.test.ts`             |
-| Live-Prüfung mit Warn-Center (RCD, Überlast, Leerrohr-Füllgrad) | `components/planner/hooks/useLiveValidation.ts`  | `useLiveValidation.test.ts`                       |
-| Orthogonales Kabel-Routing mit Hindernisvermeidung              | `components/edges/utils/orthogonalRouting.ts`    | 25 Szenarien in `docs/routing-gallery/`           |
-| Stückliste mit Bauteilen und Leitungslängen                     | `components/planner/BOMModal.tsx`                | E2E `planner-flow.spec.ts`                        |
-| Bild-Export des Plans (PNG)                                     | `components/planner/PlannerDashboard.tsx`        | `PlannerDashboard.test.tsx`                       |
-| Undo/Redo, Auto-Layout, Vorlagen                                | `store/usePlannerStore.ts`                       | `usePlannerStore.test.ts`                         |
-| Wassermodus (Tanks, Pumpe, Entnahmestellen)                     | `components/nodes/WaterNode.tsx`                 | `WaterPipeEdge.test.tsx`                          |
-| Dachplaner und Heizlast-Rechner                                 | `app/tools/dach/`, `app/tools/heizung/`          | `page.test.tsx`, `validation.test.ts`             |
-| Bedienung auf Handy, Tablet und Desktop                         | `components/PlannerInner.tsx`                    | `PlannerInner.test.tsx`, E2E `responsive.spec.ts` |
+| Funktion                                                        | Wo im Code                                           | Beleg                                                                            |
+| --------------------------------------------------------------- | ---------------------------------------------------- | -------------------------------------------------------------------------------- |
+| Bauteil-Katalog mit Suche und Kategorien                        | `components/Sidebar.tsx`, `components/registry/`     | `Sidebar.test.tsx`, `componentRegistry.test.tsx`                                 |
+| Schaltplan mit Zoom, Pan, Auswahl, Minimap                      | `components/planner/FlowCanvas.tsx`                  | `FlowCanvas.test.tsx`                                                            |
+| Automatische Verdrahtung (Backbone, Sicherungen, Querschnitte)  | `lib/autoWire.ts`                                    | `autoWire.test.ts`, `vde-properties.test.ts`                                     |
+| Querschnitt nach Strombelastbarkeit **und** Spannungsfall       | `lib/electrical.ts`, `lib/vde-standards.ts`          | `electrical.test.ts`, `vde-standards.test.ts`                                    |
+| Sicherungsauswahl, die nie über die Kabelgrenze geht            | `lib/electrical.ts` (`selectFuseSize`)               | Gesetz G1 in `vde-properties.test.ts`                                            |
+| Live-Prüfung mit Warn-Center (RCD, Überlast, Leerrohr-Füllgrad) | `components/planner/hooks/useLiveValidation.ts`      | `useLiveValidation.test.ts`                                                      |
+| Orthogonales Kabel-Routing mit Hindernisvermeidung              | `components/edges/utils/routeAll.ts` (globaler Pass) | `routeAll.test.ts`, `pathfinding.test.ts`, 15 Szenarien in `scripts/regression/` |
+| Stückliste mit Bauteilen und Leitungslängen                     | `components/planner/BOMModal.tsx`                    | E2E `planner-flow.spec.ts`                                                       |
+| Bild-Export des Plans (PNG)                                     | `components/planner/PlannerDashboard.tsx`            | `PlannerDashboard.test.tsx`                                                      |
+| Undo/Redo, Auto-Layout, Vorlagen                                | `store/usePlannerStore.ts`                           | `usePlannerStore.test.ts`                                                        |
+| Wassermodus (Tanks, Pumpe, Entnahmestellen)                     | `components/nodes/WaterNode.tsx`                     | `WaterPipeEdge.test.tsx`                                                         |
+| Dachplaner und Heizlast-Rechner                                 | `app/tools/dach/`, `app/tools/heizung/`              | `page.test.tsx`, `validation.test.ts`                                            |
+| Bedienung auf Handy, Tablet und Desktop                         | `components/PlannerInner.tsx`                        | `PlannerInner.test.tsx`, E2E `responsive.spec.ts`                                |
 
 ---
 
@@ -77,7 +77,7 @@ gespeichert (`localStorage`, versioniert mit Migration).
    ┌────────────────────────────┐          ┌─────────────────────────────┐
    │  FlowCanvas (React Flow)   │          │  lib/autoWire.ts            │
    │  Nodes, CableEdge, Minimap │          │  Topologie: Batterie →      │
-   │  orthogonalRouting.ts      │          │  Shunt → Schienen →         │
+   │  routeAll.ts (Routing)    │          │  Shunt → Schienen →         │
    └────────────┬───────────────┘          │  Sicherungskasten → Lasten  │
                 │                          └──────────────┬──────────────┘
                 │ zeigt Warnungen                         │ Ströme, Längen
@@ -100,7 +100,7 @@ zurück in den Store** (Querschnitte, Sicherungen, Warnungen).
 | --------- | -------------------------------------------------------- | ------- |
 | Framework | Next.js (App Router, `output: 'export'`)                 | 16      |
 | UI        | React 19, Tailwind CSS 3, Radix Primitives, lucide-react | —       |
-| Canvas    | React Flow                                               | 11      |
+| Canvas    | React Flow (`@xyflow/react`)                             | 12.11   |
 | State     | Zustand mit `persist`                                    | 5       |
 | Tests     | Vitest + Testing Library, fast-check (Property-Tests)    | 4 / 4.9 |
 | E2E       | Playwright (Chromium, 4 Viewport-Projekte)               | 1.62    |
@@ -141,7 +141,7 @@ Alle Angaben stammen aus Läufen auf dem aktuellen Stand
 | Typecheck (inkl. Tests)     | `npm run typecheck:tests`                   | **0 Fehler** — Einheiten und Indexschärfe gelten auch in Tests    |
 | Lint (ESLint 10, flat)      | `npm run lint`                              | **0 Fehler** — u. a. consistent-type-imports, Tailwind-Sortierung |
 | Format (Prettier)           | `npm run format:check`                      | sauber, inkl. Tailwind-Klassensortierung                          |
-| Unit-/Komponententests      | `npm test`                                  | **1265 Tests, 101 Dateien, grün**                                 |
+| Unit-/Komponententests      | `npm test`                                  | **2018 Tests, 145 Dateien, grün**                                 |
 | Coverage-Gate (lib/**)      | `npm run test:coverage`                     | Schwellen: Zeilen 90, Branches 85, Funktionen 90, Statements 95   |
 | Property-Tests (VDE)        | `npx vitest run lib/vde-properties.test.ts` | 30 Tests, ~17.000 generierte Fälle                                |
 | Routing-Invarianten         | `npx vitest run components/edges/utils`     | 25 Szenarien × 7 Invarianten                                      |
