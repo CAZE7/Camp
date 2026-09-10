@@ -1,6 +1,8 @@
 import React from 'react';
 import { type Edge } from '@xyflow/react';
 import { type CableEdgeData } from '../edges/CableEdge';
+import { useCableRoute } from '../edges/utils/cableRouteStore';
+import { PX_PER_METER } from '../../lib/units';
 import { ValidatingInput, COMMON_RULES } from '../ui/ValidatingInput';
 import { FUSE_MAP } from '../../lib/electrical';
 import {
@@ -40,6 +42,12 @@ export function EdgeInspector({
 }: EdgeInspectorProps) {
   const isAc = edge.data?.edgeDomain === 'AC_230V';
   const storedCs = edge.data?.crossSection;
+  // R1: Ohne eingetragene Länge zeigt das Feld die geroutete Verlegelänge
+  // (dieselbe Quelle wie das Kanten-Label) statt einer fiktiven Konstante.
+  // Beim Drag des Plans ändert sich die Schätzung live (gedrosselt).
+  const globalRoute = useCableRoute(edge.id);
+  const lengthEstimateM =
+    globalRoute !== undefined ? Math.round((globalRoute.length / PX_PER_METER) * 10) / 10 : undefined;
   // Bewusst kein calculateMaxFuse: das wirft für Nicht-Normquerschnitte aus
   // alten gespeicherten Plänen (z. B. 3 mm²) einen RangeError und ließ den
   // Inspector crashen. Unbekannte Werte ergeben 0 → kein Hinweis, kein Absturz.
@@ -102,11 +110,17 @@ export function EdgeInspector({
           min="0.1"
           step="0.1"
           isFloat={true}
-          value={edge.data?.length ?? 3}
+          value={edge.data?.length ?? lengthEstimateM ?? 3}
           rules={[COMMON_RULES.strictlyPositive]}
           onValidChange={(val) => onChangeLength(edge.id, val)}
           className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
         />
+        {typeof edge.data?.length !== 'number' && (
+          <p className="mt-1 text-xs text-muted-foreground">
+            Geschätzt aus dem gerouteten Verlegeweg (inkl. Umwege, nicht Luftlinie) — ein eigener Wert
+            überschreibt die Schätzung dauerhaft.
+          </p>
+        )}
       </div>
       {!isAc && onChangeFuseSize && (
         <div className="flex flex-col">

@@ -6,6 +6,22 @@ import { ClipboardCopy } from 'lucide-react';
 import { getComponentSpec } from '../registry';
 import { calculateCrossSection } from '../../lib/electrical';
 import { calculateEdgeCurrent, getSystemVoltage } from '../../lib/vde-standards';
+import { getCableRoute } from '../edges/utils/cableRouteStore';
+import { PX_PER_METER } from '../../lib/units';
+
+/**
+ * R1: Kabellänge einer Kante für die Stückliste — eingetragener Wert zuerst,
+ * sonst die GEROUTETE Verlegelänge (der Router kennt den tatsächlichen Weg
+ * inklusive aller Umwege; die Luftlinie würde den Materialbedarf
+ * unterschätzen). Wasserstrecken haben nur dann eine Route, wenn der Wasser-
+ * Plan zuletzt im Vordergrund geroutet wurde (geteilter Route-Store).
+ */
+const edgeLengthM = (edgeId: string, stored: number | undefined, fallback: number): number => {
+  if (typeof stored === 'number' && stored >= 0) return stored;
+  const routed = getCableRoute(edgeId);
+  if (routed) return routed.length / PX_PER_METER;
+  return fallback;
+};
 
 type BomData = {
   counts: Record<string, number>;
@@ -46,22 +62,22 @@ export function BOMModal() {
         const t = nodesMap.get(edge.target);
         const isAc = edge.data?.edgeDomain === 'AC_230V';
         let cs = edge.data?.crossSection;
+        const lengthM = edgeLengthM(edge.id, edge.data?.length, 1);
         if (!cs) {
           if (isAc) {
             cs = 2.5;
           } else {
             const I = calculateEdgeCurrent(s, t, nodes, sysVoltage, edges); // ELE-005: Insel-BFS
-            const len = edge.data?.length || 1;
-            cs = calculateCrossSection(I, len, undefined, 'DC_12V');
+            cs = calculateCrossSection(I, lengthM, undefined, 'DC_12V');
           }
         }
         const crossSection = String(cs || 2.5);
-        cableLengths[crossSection] = (cableLengths[crossSection] || 0) + (edge.data?.length || 1);
+        cableLengths[crossSection] = (cableLengths[crossSection] || 0) + lengthM;
       });
       const pipeLengths: Record<string, number> = {};
       waterEdges.forEach((edge) => {
         const type = String(edge.data?.pipeType || 'fresh');
-        pipeLengths[type] = (pipeLengths[type] || 0) + (edge.data?.length || 2);
+        pipeLengths[type] = (pipeLengths[type] || 0) + edgeLengthM(edge.id, edge.data?.length, 2);
       });
       setBomData({ counts, cableLengths, pipeLengths });
       setCopied(false);
@@ -118,7 +134,7 @@ export function BOMModal() {
       open={open}
       onClose={() => setOpen(false)}
       title="Stückliste"
-      description="Das brauchst du für den aktuellen Plan. Längen sind Planwerte – rechne für die Montage eine Reserve hinzu."
+      description="Das brauchst du für den aktuellen Plan. Längen ohne eigenen Eintrag sind aus dem gerouteten Verlegeweg geschätzt (inkl. Umwege, nicht Luftlinie) – rechne für die Montage trotzdem eine Reserve hinzu."
       className="max-w-2xl"
     >
       <div className="flex-1 space-y-6 overflow-y-auto p-5">

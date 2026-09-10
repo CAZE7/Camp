@@ -370,7 +370,14 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
       id: newEntityId(),
       type: 'cableEdge',
       data: {
-        length: 3,
+        // A2: Keine pauschalen 3 m mehr — ohne eingetragene Länge gilt die
+        // geroutete Verlegelänge (CableEdge, Bauteil-I/M-Lesungen und BOM
+        // schätzen live aus der Route), die ehrlicher ist als eine fiktive
+        // Konstante. Der Nutzer kann sie im Inspector überschreiben;
+        // selectAutoWiring heilt Nutzer-Kanten später mit einer
+        // Geometrie-Schätzung nach.
+        // (Früher: `length: 3` — wirkte selbst bei 30-cm- und 8-m-Strecken
+        // „eingetragen“.)
         crossSection: edgeDomain === 'AC_230V' ? 1.5 : 2.5,
         edgeDomain,
       },
