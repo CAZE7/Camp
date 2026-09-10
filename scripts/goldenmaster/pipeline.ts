@@ -1,6 +1,8 @@
 import type { Node, Edge } from '@xyflow/react';
 import { performAutoWiring } from '../../lib/autoWire';
 import { getSystemVoltage, calculateEdgeCurrent } from '../../lib/vde-standards';
+import { acCurrentA } from '../../lib/autoWire/sizing';
+import { getEdgeDomain } from '../../lib/electrical';
 import { relevantCumulativeDrop } from '../../lib/autoWire/sizing';
 import type { CableEdge } from '../../lib/autoWire/primitives';
 import { routeAllCables, type RouteEdgeRef } from '../../components/edges/utils/routeAll';
@@ -131,8 +133,23 @@ export function captureGoldenMaster(input: GoldenPlanInput): GoldenMaster {
   const nodeMap = new Map(nodes.map((n) => [n.id, n]));
   const edgeCurrents: Record<string, number> = {};
   for (const e of byId(edges)) {
+    const sourceNode = nodeMap.get(e.source);
+    const targetNode = nodeMap.get(e.target);
+    // ELE-003: Domänenbestimmung wie im Renderer (CableEdge) — früher liefen
+    // AC-Kanten still durch die DC-Strom-BFS und froren Strom-Abweichungen
+    // am Wechselrichter ein. Jetzt bekommt jede Kante ihr eigenes Modell.
+    let domain =
+      e.data?.edgeDomain ?? getEdgeDomain(sourceNode?.type, targetNode?.type, e.sourceHandle, e.targetHandle);
+    if (
+      ['solar', 'roofSolar'].includes(sourceNode?.type || '') ||
+      ['solar', 'roofSolar'].includes(targetNode?.type || '')
+    ) {
+      domain = 'Solar';
+    }
     edgeCurrents[e.id] = round(
-      calculateEdgeCurrent(nodeMap.get(e.source), nodeMap.get(e.target), nodes, sysVoltage, edges), // ELE-005
+      domain === 'AC_230V'
+        ? acCurrentA(sourceNode, targetNode, nodes, edges as CableEdge[])
+        : calculateEdgeCurrent(sourceNode, targetNode, nodes, sysVoltage, edges), // ELE-005
       2
     );
   }
