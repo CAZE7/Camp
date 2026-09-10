@@ -1,5 +1,14 @@
 # Routing-Galerie
 
+> ⚠️ **ENGINE-HINWEIS (2026-09-10):** Diese Galerie wird vom
+> LEGACY-Einzelrouten-Router `orthogonalRouting.ts` generiert (s. dazu den
+> Kopf von `docs/ROUTING-INVARIANTS.md`). Sie zeigt Geometrie, die der
+> Produktiv-Router (`routeAllCables`, globaler Pass mit Port-Fan-Out,
+> Tubes, Hop-Priorität) so nicht zeichnet; Vergleiche sind nur als
+> Legacy-Referenz zu lesen. Migration der Galerie-Erzeugung auf den
+> Produktiv-Router ist offen (Analyse-Dokument `docs/ANALYSE-ELEKTROPLANER-
+> VERBESSERUNGSPOTENZIAL.md`, Befund R7).
+
 Automatisch erzeugt von `npm run routing:gallery` aus
 `components/edges/utils/routingScenarios.ts`. **Nicht von Hand bearbeiten.**
 
