@@ -4,6 +4,8 @@ import { usePlannerStore, getDerivedSystemState } from '../../store/usePlannerSt
 import { useShallow } from 'zustand/react/shallow';
 import { edgeLabelNudge } from './utils/pathUtils';
 import { findCablePath, nodesToObstacles } from './utils/pathfinding';
+import type { RoutableNode } from './utils/nodeGeometry';
+import { fanOutLanesForEdge, type RouteEdgeRef } from './utils/routeAll';
 import { useCableRoute } from './utils/cableRouteStore';
 import { crossingSegmentsNear } from './utils/routingCache';
 import { cableStrokeWidth } from './utils/cableStyle';
@@ -33,7 +35,7 @@ export const TAP_LABEL_TIMEOUT_MS = 5000;
  * (lib/domain/cableEdgeData.ts) — lib/ importierte ihn typseitig aus einer
  * Komponente. Re-Export hält bestehende Importe stabil.
  */
-export type { CableEdgeData, CableEdgeGeometry } from '../../lib/domain/cableEdgeData';
+export type { CableEdgeData } from '../../lib/domain/cableEdgeData';
 import type { CableEdgeData } from '../../lib/domain/cableEdgeData';
 import { solarEdgeFuseFloorOf } from '../../lib/solar'; // ELE-007: 1,56×Isc-Sicherungsregel
 import { acCableComposition } from '../../lib/acProtection'; // DOM-001: Mehrleiter-Zusammensetzung
@@ -416,6 +418,10 @@ const CableEdge = function ({
     path: edgePath,
     labelX,
     labelY,
+    routeLengthPx,
+    routeTight,
+    routeInvalid,
+    routeCrossings,
   } = useMemo(() => {
     // Einzige Geometrie-Quelle ist der globale Routing-Pass
     // (`lib/routing/rules` via `cableRouteStore`). Er ist der einzige Ort, an
@@ -429,9 +435,27 @@ const CableEdge = function ({
     // „teuer“ (100_000) statt als verboten — und überstimmte damit still den
     // ausgereiften Pass. Zwei Engines, zwei Wahrheiten, die schlechtere gewann.
     if (globalRoute) {
-      return { path: globalRoute.path, labelX: globalRoute.labelX, labelY: globalRoute.labelY };
+      return {
+        path: globalRoute.path,
+        labelX: globalRoute.labelX,
+        labelY: globalRoute.labelY,
+        routeLengthPx: globalRoute.length,
+        routeTight: globalRoute.tightMarginUsed ?? false,
+        routeInvalid: globalRoute.fallbackHitsObstacles ?? false,
+        routeCrossings: globalRoute.crossings,
+      };
     }
     const obstacles = nodesToObstacles(allNodes, new Set([source, target]));
+    // R8: Die Lane-Staffelung des Port-Fan-Outs kennt DIESELBE Mechanik wie
+    // `routeAllCables` — kein zweites „Lane 0“-Modell mehr im Einzelfall.
+    // Bis der globale Pass publiziert ist (≤ ROUTE_THROTTLE_MS), fährt die
+    // Einzelfall-Route damit dasselbe Bündelbild wie das Endergebnis: kein
+    // kurzes Aufblitzen überlagerter Trassen beim Anlegen neuer Kanten.
+    const lanes = fanOutLanesForEdge(
+      getNodes() as unknown as RoutableNode[],
+      siblingEdges as unknown as RouteEdgeRef[],
+      id
+    );
     const routed = findCablePath({
       sourceX,
       sourceY,
@@ -439,17 +463,28 @@ const CableEdge = function ({
       targetX,
       targetY,
       targetPosition,
-      // Fallback ohne Port-Bündel: Die Lane-Staffelung des Port-Fan-Outs
-      // kennt nur `routeAllCables` (dort sind alle Kanten eines Ports
-      // bekannt). Die Einzelfall-Route fährt deshalb auf der inneren Lane —
-      // sie ist der Notnagel, wenn der globale Pass diese Kante nicht hat.
-      lane: 0,
+      lane: lanes?.lane ?? 0,
+      laneTarget: lanes?.laneTarget ?? 0,
+      stubCapRank: lanes?.laneRank,
+      stubCapRankTarget: lanes?.laneTargetRank,
+      stubTie: lanes?.laneTie,
+      stubTieTarget: lanes?.laneTargetTie,
       obstacles,
       crossingSegments,
     });
-    return { path: routed.path, labelX: routed.labelX, labelY: routed.labelY };
+    return {
+      path: routed.path,
+      labelX: routed.labelX,
+      labelY: routed.labelY,
+      routeLengthPx: routed.length,
+      routeTight: routed.tightMarginUsed ?? false,
+      routeInvalid: routed.fallbackHitsObstacles ?? false,
+      routeCrossings: routed.crossings,
+    };
   }, [
     globalRoute,
+    getNodes,
+    id,
     sourceX,
     sourceY,
     sourcePosition,
@@ -459,6 +494,7 @@ const CableEdge = function ({
     allNodes,
     source,
     target,
+    siblingEdges,
     crossingSegments,
   ]);
 
@@ -478,6 +514,7 @@ const CableEdge = function ({
 
   const {
     length,
+    lengthIsEstimated,
     crossSection,
     maxFuse,
     animationDuration,
@@ -495,9 +532,21 @@ const CableEdge = function ({
     // AUDIT AUTO-002: NEGATIVE Längen (Import/Altdaten) sind ungültig — sie
     // fallen auf die geometrische Schätzung zurück; collectEdgeErrors
     // meldet zusätzlich „Ungültige (negative) Länge!“.
+    //
+    // R1: Schätzung ist die GEROUTETE Verlegelänge (routeLengthPx), nicht
+    // die Luftlinie — der Router kennt den tatsächlichen Weg inklusive aller
+    // Hindernis-Umwege, und Spannungsfall/Querschnitt/BOM dürfen ihn nicht
+    // mehr unterschätzen (gemessen +23…+70 % Gesamtlänge auf den
+    // Referenzplänen gegenüber der Luftlinie). Luftlinie bleibt als
+    // Rückfall, solange keine Route bekannt ist.
     const physicalDistance = Math.hypot(targetX - sourceX, targetY - sourceY) / PX_PER_METER;
+    const estimatedLength = routeLengthPx !== undefined ? routeLengthPx / PX_PER_METER : physicalDistance;
     const rawLength = data?.length;
-    const length = typeof rawLength === 'number' && rawLength >= 0 ? rawLength : physicalDistance;
+    const length = typeof rawLength === 'number' && rawLength >= 0 ? rawLength : estimatedLength;
+    // Herkunft für Anzeige/Barrierefreiheit: Manuell gesetzte Längen haben
+    // immer Vorrang; ohne sie ist der Wert eine Verlegeweg-Schätzung, die
+    // sich beim Verschieben der Bauteile live mitbewegt (gedrosselt).
+    const lengthIsEstimated = !(typeof rawLength === 'number' && rawLength >= 0);
     const sourceNode = getNode(source);
     const targetNode = getNode(target);
 
@@ -532,6 +581,7 @@ const CableEdge = function ({
 
     return {
       length,
+      lengthIsEstimated,
       crossSection,
       maxFuse,
       strokeWidth,
@@ -552,6 +602,7 @@ const CableEdge = function ({
     data?.length,
     data?.crossSection,
     data?.edgeDomain,
+    routeLengthPx,
     source,
     target,
     sNodeData,
@@ -617,6 +668,24 @@ const CableEdge = function ({
 
   return (
     <>
+      {/* R9: Routing-Ausnahmen pro Leitung sichtbar, nicht nur aggregiert im
+          RoutingStatusBadge. `fallbackHitsObstacles` = kein Freigabe-Nachweis
+          (rot, gepunktet), `tightMarginUsed` = Freigabe < cableClearance
+          (orange). Der Halo liegt UNTER der Leitung und ändert weder ihren
+          Pfad noch ihre Trefferzone. */}
+      {(routeInvalid || routeTight) && (
+        <path
+          d={edgePath}
+          fill="none"
+          stroke={routeInvalid ? 'var(--error)' : 'var(--oxide)'}
+          strokeWidth={renderedStrokeWidth + 6}
+          strokeLinecap="round"
+          strokeDasharray="2 7"
+          opacity={0.7}
+          style={{ pointerEvents: 'none' }}
+          aria-hidden="true"
+        />
+      )}
       <BaseEdge
         id={id}
         path={edgePath}
@@ -796,7 +865,7 @@ const CableEdge = function ({
         style={{ cursor: 'pointer' }}
         role="button"
         tabIndex={0}
-        aria-label={`${edgeDomain === 'AC_230V' ? '230 Volt Wechselstromleitung' : edgeDomain === 'Solar' ? 'Solarleitung' : 'Gleichstromleitung'}, ${crossSection} Quadratmillimeter, ${length.toFixed(1)} Meter`}
+        aria-label={`${edgeDomain === 'AC_230V' ? '230 Volt Wechselstromleitung' : edgeDomain === 'Solar' ? 'Solarleitung' : 'Gleichstromleitung'}, ${crossSection} Quadratmillimeter, ${length.toFixed(1)} Meter${lengthIsEstimated ? ' (geschätzt aus Verlegeweg)' : ''}${routeInvalid ? ', Achtung: Routing ohne Hindernis-Freigabe' : routeTight ? ', Hinweis: minimale Bauteil-Freigabe unterschritten' : ''}`}
         onClick={() => {
           revealLabel();
           usePlannerStore.getState().focusElement(id, 'edge');
@@ -811,7 +880,9 @@ const CableEdge = function ({
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
-        <title>{`${length.toFixed(2)}m | ${crossSection}mm²`}</title>
+        <title>
+          {`${length.toFixed(2)} m${lengthIsEstimated ? ' (Schätzung: gerouteter Verlegeweg)' : ' (eingetragen)'} | ${crossSection} mm²${routeCrossings > 0 ? ` | ${routeCrossings} Kreuzung(en)` : ''}${routeInvalid ? ' | Routing ohne Hindernis-Freigabe' : routeTight ? ' | eng an Bauteil (< Freigabe)' : ''}`}
+        </title>
       </path>
     </>
   );

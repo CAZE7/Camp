@@ -189,6 +189,13 @@ Legende Severity: **hoch** = Agent kann falschen Code ändern / falsche Sicherhe
 - **WORKAROUND:** Vor einer Wertänderung **alle** genannten Stellen mitändern;
   `lib/routing/tokens.test.ts` erweitern.
 - **RELATED TEST:** `lib/routing/tokens.test.ts` (deckt nur die Re-Export-Konstanten ab)
+- **STATUS (2026-09-10):** Teilweise behoben — `CLEARANCE_GOAL` → `cableClearance`-Token,
+  Kontur-Puffer → `laneGrid`-Token, `OBSTACLE_REGION_PAD` →
+  `LEGACY_ROUTING_TOKENS.obstacleRegionPad` mit Drift-Guard (≥ 2 × `alternativeRouteGap()`),
+  Test in `tokens.test.ts` erweitert. Verbleibt: `BEND_COST`, `U_TURN_COST`,
+  `MAX_EXPANSIONS`, `MAX_ACCEPTABLE_CROSSINGS` (kostenmodell-seitige Werte,
+  passen bewusst nicht in das reine Geometrie-Token-Modell — Eindokumentieren
+  oder eigene Kosten-Tokens sind separat zu entscheiden).
 
 ---
 

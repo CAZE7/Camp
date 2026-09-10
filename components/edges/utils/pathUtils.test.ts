@@ -4,20 +4,16 @@ import {
   waypointsToPathWithHops,
   calculateEdgePath,
   polarityPathOffset,
-  polarityLabelNudge,
   edgeLabelNudge,
   SMOOTH_STEP_BORDER_RADIUS,
   PLUS_PATH_OFFSET,
   MINUS_PATH_OFFSET,
-  PLUS_LABEL_NUDGE,
-  MINUS_LABEL_NUDGE,
   PARALLEL_LABEL_SPREAD,
   PARALLEL_LANE_SPREAD,
   LABEL_BOX_WIDTH,
   LABEL_BOX_HEIGHT,
   labelBoundingBox,
   boxesOverlap,
-  parallelLaneOffset,
   cableLaneType,
   laneOffset,
 } from './pathUtils';
@@ -91,12 +87,6 @@ describe('polarity helpers', () => {
     expect(polarityPathOffset('minus')).toBe(MINUS_PATH_OFFSET);
     expect(polarityPathOffset(null)).toBe(PLUS_PATH_OFFSET);
   });
-
-  it('nudges plus labels up and minus labels down', () => {
-    expect(polarityLabelNudge('plus')).toBe(PLUS_LABEL_NUDGE);
-    expect(polarityLabelNudge('handle-minus')).toBe(MINUS_LABEL_NUDGE);
-    expect(polarityLabelNudge(undefined)).toBe(0);
-  });
 });
 
 describe('edgeLabelNudge', () => {
@@ -134,27 +124,20 @@ describe('edgeLabelNudge', () => {
     expect(plus2 - plus1).toBe(PARALLEL_LABEL_SPREAD);
   });
 
-  it('ordnet Labels konsistent zu den Lanes, auch bei invertierter Store-Reihenfolge (Bug 8)', () => {
-    // Store-Reihenfolge z-plus VOR a-plus; die Lane-Sortierung stellt
-    // alphabetisch um. Die Labels müssen derselben Sortierung folgen —
-    // vorher wurden sie in Store-Reihenfolge indexiert und lagen gespiegelt
-    // zu ihren Lanes.
+  it('ordnet Labels deterministisch, auch bei invertierter Store-Reihenfolge (Bug 8)', () => {
+    // Store-Reihenfolge z-plus VOR a-plus; die Label-Sortierung stellt
+    // alphabetisch um — früher wurde in Store-Reihenfolge indexiert und
+    // die Labels lagen gespiegelt zu ihren Lanes (Lane-Reihenfolge liefert
+    // seit dem globalen Routing-Pass portFanOutLanes; die Sortierordnung
+    // Kabeltyp → id ist in edgeLabelNudge dieselbe).
     const siblings = [
       { id: 'z-plus', source: 'a', target: 'b', sourceHandle: 'plus' },
       { id: 'a-plus', source: 'a', target: 'b', sourceHandle: 'plus' },
     ];
     const nudgeOf = (edgeId: string) =>
       edgeLabelNudge({ edgeId, source: 'a', target: 'b', sourceHandle: 'plus', siblingEdges: siblings });
-    const laneOf = (edgeId: string) =>
-      parallelLaneOffset({ edgeId, source: 'a', target: 'b', sourceHandle: 'plus', siblingEdges: siblings });
 
-    // a-plus liegt in beiden Ordnungen vor z-plus → kleineres Label-Nudge.
     expect(nudgeOf('a-plus')).toBeLessThan(nudgeOf('z-plus'));
-    expect(laneOf('a-plus')).toBeLessThan(laneOf('z-plus'));
-    // Konsistenz: Label-Reihenfolge == Lane-Reihenfolge.
-    expect(Math.sign(nudgeOf('z-plus') - nudgeOf('a-plus'))).toBe(
-      Math.sign(laneOf('z-plus') - laneOf('a-plus'))
-    );
   });
 
   it('behandelt null und undefined sourceHandle identisch (Bug 16)', () => {
@@ -180,62 +163,8 @@ describe('edgeLabelNudge', () => {
   });
 });
 
-describe('parallelLaneOffset (Trassen-Bündelung)', () => {
+describe('Label-Sortierung derselben Node-Paar-Gruppe (M10-1)', () => {
   const pair = { source: 'a', target: 'b' };
-
-  it('keeps a single edge centered (offset 0)', () => {
-    expect(
-      parallelLaneOffset({
-        edgeId: 'e1',
-        ...pair,
-        sourceHandle: 'plus',
-        siblingEdges: [{ id: 'e1', ...pair, sourceHandle: 'plus' }],
-      })
-    ).toBe(0);
-  });
-
-  it('separates three parallel cables by exactly 16 px each (M10-1)', () => {
-    const siblings = [
-      { id: 'c', ...pair, sourceHandle: 'plus' },
-      { id: 'a', ...pair, sourceHandle: 'plus' },
-      { id: 'b', ...pair, sourceHandle: 'minus' },
-    ];
-    const offsets = siblings
-      .map((edge) =>
-        parallelLaneOffset({
-          edgeId: edge.id,
-          ...pair,
-          sourceHandle: edge.sourceHandle,
-          siblingEdges: siblings,
-        })
-      )
-      .sort((x, y) => x - y);
-
-    expect(offsets).toEqual([-16, 0, 16]);
-    expect(PARALLEL_LANE_SPREAD).toBe(16);
-    expect(offsets[1]! - offsets[0]!).toBe(16);
-    expect(offsets[2]! - offsets[1]!).toBe(16);
-  });
-
-  it('groups identical cable types next to each other, regardless of edge id', () => {
-    // ids sind absichtlich so gewählt, dass alphabetisch Minus zwischen die
-    // beiden Plus-Leitungen fiele.
-    const siblings = [
-      { id: 'a-plus', ...pair, sourceHandle: 'plus' },
-      { id: 'm-minus', ...pair, sourceHandle: 'minus' },
-      { id: 'z-plus', ...pair, sourceHandle: 'plus' },
-    ];
-    const offsetOf = (id: string, handle: string) =>
-      parallelLaneOffset({ edgeId: id, ...pair, sourceHandle: handle, siblingEdges: siblings });
-
-    const plusA = offsetOf('a-plus', 'plus');
-    const plusZ = offsetOf('z-plus', 'plus');
-    const minus = offsetOf('m-minus', 'minus');
-
-    // Beide Plus-Leitungen liegen direkt nebeneinander, Minus danach.
-    expect(Math.abs(plusZ - plusA)).toBe(PARALLEL_LANE_SPREAD);
-    expect(minus).toBeGreaterThan(Math.max(plusA, plusZ));
-  });
 
   it('recognises the cable type from the source handle', () => {
     expect(cableLaneType('battery-plus')).toBe('dc-plus');
@@ -244,13 +173,33 @@ describe('parallelLaneOffset (Trassen-Bündelung)', () => {
     expect(cableLaneType(null)).toBe('signal');
   });
 
-  it('is deterministic — same input, same lane', () => {
+  it('spreads same-handle labels by id, foreign handles stay at 0', () => {
+    // ids sind absichtlich so gewählt, dass alphabetisch Minus zwischen die
+    // beiden Plus-Leitungen fiele. edgeLabelNudge spreizt nur Labels der
+    // GLEICHEN Handle-Gruppe — eine Minus-Leitung teilt den Labelslot nicht.
+    const siblings = [
+      { id: 'a-plus', ...pair, sourceHandle: 'plus' },
+      { id: 'm-minus', ...pair, sourceHandle: 'minus' },
+      { id: 'z-plus', ...pair, sourceHandle: 'plus' },
+    ];
+    const nudgeOf = (id: string, handle: string) =>
+      edgeLabelNudge({ edgeId: id, ...pair, sourceHandle: handle, siblingEdges: siblings });
+
+    const plusA = nudgeOf('a-plus', 'plus');
+    const plusZ = nudgeOf('z-plus', 'plus');
+    const minus = nudgeOf('m-minus', 'minus');
+
+    expect(Math.abs(plusZ - plusA)).toBe(PARALLEL_LABEL_SPREAD);
+    expect(minus).toBe(0);
+  });
+
+  it('is deterministic — same input, same nudge', () => {
     const siblings = [
       { id: 'e1', ...pair, sourceHandle: 'plus' },
       { id: 'e2', ...pair, sourceHandle: 'plus' },
     ];
-    const first = parallelLaneOffset({ edgeId: 'e2', ...pair, sourceHandle: 'plus', siblingEdges: siblings });
-    const second = parallelLaneOffset({
+    const first = edgeLabelNudge({ edgeId: 'e2', ...pair, sourceHandle: 'plus', siblingEdges: siblings });
+    const second = edgeLabelNudge({
       edgeId: 'e2',
       ...pair,
       sourceHandle: 'plus',

@@ -10,17 +10,13 @@ import type { AcProtectionDescriptor } from '../acProtection';
  * Importe (kein Verhaltensänderung, nur Schichtenordnung laut ADR-0008).
  */
 
-export type CableEdgeGeometry = {
-  points: Array<{ x: number; y: number }>;
-};
-
 /** Datenform einer elektrischen Kante (Kabel) im Planer. */
 export type CableEdgeData = {
-  /**
-   * Routing V2: optionale Polyline. Wenn vorhanden, ersetzt sie den Pfad —
-   * die UI zeigt damit das obstakelbewusste Ergebnis.
-   */
-  geometry?: CableEdgeGeometry;
+  // Kein `geometry`-Feld: Kabelgeometrie lebt ausschließlich im
+  // Route-Publish des globalen Passes (`useCableRoute` / `routeAllCables`,
+  // ADR 0014). Ein persistiertes Geometrie-Feld in `edge.data` war das
+  // Einfallstor der zweiten, parallel laufenden Engine und ist entfernt
+  // (DOM-005); scripts/routing/architecture.test.ts bewacht das Verbot.
   /**
    * Leitungslänge in Metern. Optional, weil Kanten aus älteren gespeicherten
    * Plänen, Vorlagen und Importen sie nicht zwingend mitbringen. Jeder

@@ -1,6 +1,17 @@
 # ROUTING-V2
 
-**Status: `FROZEN` (Spezifikation)**
+**Status: `FROZEN` (Spezifikation) · LESER-HINWEIS (2026-09-10)**
+
+> ⚠️ **Zielbild einer Architektur-Iteration, nicht aktueller Stand.** Die hier
+> benannten Verzeichnisse `lib/planner/geometry`, `lib/planner/routing-core`
+> und `lib/planner/routing-v2` existieren nicht mehr (ADR 0014).
+> Der Kern dieser Spec — Tokens, Kostenmodell, Lane-/Hop-Ordnung — ist
+> zu weiten Teilen in `lib/routing/*` + `components/edges/utils/*`
+> implementiert; einzelne Aussagen (z. B. „ELK ist nicht im Produktivpfad“)
+> sind durch ADR 0018 überholt. `docs/ai/ROUTING-CONTEXT.md` beschreibt die
+> aktuelle Geometrie-Quelle (`routeAllCables` + `useCableRoute`);
+> `docs/ROUTING-INVARIANTS.md` bezieht sich zudem auf den
+> LEGACY-Einzelrouten-Router (s. dessen Kopf).
 
 Dieses Dokument beschreibt die Routing-Pipeline V2 im Detail. Es ist die verbindliche
 Basis für `lib/planner/geometry`, `lib/planner/routing-core` und `lib/planner/routing-v2`.

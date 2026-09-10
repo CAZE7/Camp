@@ -1542,7 +1542,10 @@ function searchFrame(
   const A = f.S3;
   const B = f.T3;
 
-  const CLEARANCE_GOAL = 12;
+  // ROUTE-004: Die Freigabe-Untergrenze IST das Token — keine zweite
+  // Pflegestelle (früher unabhängig auf 12 fixiert). `marginUsed` (14)
+  // deckt `cableClearance` (12) mit Reserve, wie der Token-Vertrag verlangt.
+  const CLEARANCE_GOAL = ROUTING_TOKENS.cableClearance;
   const inset = Math.max(0, marginUsed - CLEARANCE_GOAL);
   const shrink = (r: Rect, by: number): Rect => ({
     x: r.x + by,
@@ -1606,8 +1609,11 @@ function searchFrame(
         minY = Math.min(minY, r.y);
         maxY = Math.max(maxY, r.y + r.height);
       }
-      extraXs.push(minX - 16, maxX + 16);
-      extraYs.push(minY - 16, maxY + 16);
+      // Ein Lane-Raster Puffer um die Blockade-Envelope: Gitterlinien KNAPP
+      // außerhalb der Hindernisse, damit A* direkt an der Box abbiegen kann,
+      // ohne IN die Box zu laufen (ROUTE-004: Wert = laneGrid-Token).
+      extraXs.push(minX - ROUTING_TOKENS.laneGrid, maxX + ROUTING_TOKENS.laneGrid);
+      extraYs.push(minY - ROUTING_TOKENS.laneGrid, maxY + ROUTING_TOKENS.laneGrid);
     }
 
     const inner = hananAStar(A, B, headingFromDir(f.ds), headingFromDir(f.dt), blocked, extraXs, extraYs);

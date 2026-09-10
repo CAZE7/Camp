@@ -555,8 +555,8 @@
       "e-fuse-fan": 3.33,
       "e-fuse-fridge": 5,
       "e-fuse-heat": 3.33,
-      "e-inv-induct": 88.24,
-      "e-shore-inv": 88.24,
+      "e-inv-induct": 3.48,
+      "e-shore-inv": 3.91,
       "e-solar-charger": 22.22,
       "e-starter-dcdc": 30
     },

@@ -6,6 +6,8 @@ import { PIPE_COLORS } from './utils/edgeColors';
 import { usePlannerStore } from '../../store/usePlannerStore';
 import { calculateEdgePath, edgeLabelNudge } from './utils/pathUtils';
 import { findCablePath, nodesToObstacles } from './utils/pathfinding';
+import type { RoutableNode } from './utils/nodeGeometry';
+import { fanOutLanesForEdge, type RouteEdgeRef } from './utils/routeAll';
 import { useCableRoute } from './utils/cableRouteStore';
 
 export type WaterPipeEdgeData = {
@@ -42,6 +44,14 @@ const WaterPipeEdge = function ({
     if (globalRoute) return [globalRoute.path, globalRoute.labelX, globalRoute.labelY] as const;
     const nodes = getNodes();
     if (nodes.length > 0) {
+      // R8: Port-Fan-Out-Lanes wie im globalen Pass — sonst fahren zwei
+      // Wasserstrecken an derselben Bauteilseite im Übergangsfenster (bis zur
+      // nächsten Veröffentlichung des globalen Passes) exakt übereinander.
+      const lanes = fanOutLanesForEdge(
+        nodes as unknown as RoutableNode[],
+        siblingEdges as unknown as RouteEdgeRef[],
+        id
+      );
       const routed = findCablePath({
         sourceX,
         sourceY,
@@ -49,6 +59,8 @@ const WaterPipeEdge = function ({
         targetX,
         targetY,
         targetPosition,
+        lane: lanes?.lane ?? 0,
+        laneTarget: lanes?.laneTarget ?? 0,
         obstacles: nodesToObstacles(nodes, new Set([source, target])),
       });
       return [routed.path, routed.labelX, routed.labelY] as const;
@@ -63,6 +75,7 @@ const WaterPipeEdge = function ({
     });
   }, [
     globalRoute,
+    id,
     sourceX,
     sourceY,
     sourcePosition,
@@ -72,6 +85,7 @@ const WaterPipeEdge = function ({
     getNodes,
     source,
     target,
+    siblingEdges,
   ]);
 
   const labelNudgeY = useMemo(

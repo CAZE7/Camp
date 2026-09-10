@@ -80,6 +80,23 @@ export function nodeOriginX(node: GeometryNode): number {
   return node.internals?.positionAbsolute?.x ?? node.positionAbsolute?.x ?? node.position.x;
 }
 
+/**
+ * Trägt der Node eine nutzbare Canvas-Geometrie? R8-Härtung des
+ * Einzelfall-Rückfalls: Renderer geben gemessene (oder im Test-Parcours:
+ * geometriesparsame) Knoten durch; ein Knoten OHNE Positionsangabe würde
+ * `nodeOriginX`/`nodeOriginY` mit `undefined.x` crashen lassen. Solche
+ * Knoten gelten der Handle-Auflösung als nicht vorhanden — gleiches
+ * Verhalten wie ein fehlender Knoten.
+ */
+export function nodePositionAvailable(node: GeometryNode | undefined): node is GeometryNode {
+  return (
+    node !== undefined &&
+    (node.position !== undefined ||
+      node.positionAbsolute !== undefined ||
+      node.internals?.positionAbsolute !== undefined)
+  );
+}
+
 /** Absolute Y-Position (siehe `nodeOrigin`). */
 export function nodeOriginY(node: GeometryNode): number {
   return node.internals?.positionAbsolute?.y ?? node.positionAbsolute?.y ?? node.position.y;

@@ -125,4 +125,19 @@ describe('Konsumenten-Drift-Guard (keine doppelt gepflegten Geometriewerte)', ()
     expect(alternativeRouteGap()).toBe(ALTERNATIVE_LANE_STEP * ROUTING_TOKENS.laneGrid);
     expect(ALTERNATIVE_ROUTE_GAP % ROUTING_TOKENS.laneGrid).toBe(0);
   });
+
+  it('Legacy-Werte sind eingefroren und der Konsument nutzt den Token', () => {
+    expect(LEGACY_ROUTING_TOKENS).toEqual({
+      obstacleMargin: 14,
+      routeBorderRadius: 10,
+      obstacleRegionPad: 240,
+    });
+  });
+
+  it('Hindernis-Fenster deckt die äußersten Ausweich-Trassen (ROUTE-004)', () => {
+    // Der globale Pass filtert Hindernisse auf Routen-BBox + Pad; äußerste
+    // Ausweich-Trasse ist 2 × alternativeRouteGap — liegt sie außerhalb des
+    // Fensters, verlöre der Fenster-Puffer still seine Garantie.
+    expect(LEGACY_ROUTING_TOKENS.obstacleRegionPad).toBeGreaterThanOrEqual(2 * alternativeRouteGap());
+  });
 });

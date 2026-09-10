@@ -3,6 +3,16 @@
 Stand: 2026-08-21 · Betrifft AGENTS.md **K3**
 Quelle: `components/edges/utils/orthogonalRouting.ts`
 
+> ⚠️ **LESER-HINWEIS (2026-09-10):** `orthogonalRouting.ts` ist der
+> LEGACY-Einzelrouten-Router — er rendert keine Canvas-Leitungen mehr.
+> Die PRODUKTIVEN Invarianten des globalen Passes sind I1–I10
+> (`lib/routing/invariants.ts`, geprüft via `npm run routing:audit`, reports
+> pro Kante im Store unter `useCableRouteFinalValidation`). Die Galerie in
+> `docs/routing-gallery/` wird ebenfalls von der Legacy-Engine generiert
+> (`npm run routing:gallery`) und zeigt deren Geometrie — nicht zwingend
+> das, was der Produktiv-Router zeichnet. Diese Seite bleibt als Referenz
+> des Legacy-Vertrags und seiner Testdisziplin relevant.
+
 ## 1. Vertrag
 
 `buildOrthogonalPath(input)` ist eine **reine, deterministische** Funktion.

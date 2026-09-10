@@ -22,8 +22,6 @@ export const laneOffset = (lanes: number): number => lanes * PARALLEL_LANE_SPREA
 /** Polaritäts-Lanes: Plus auf 1,5 Lanes, Minus eine ganze Lane darunter. */
 export const PLUS_PATH_OFFSET = laneOffset(1.5); // 24
 export const MINUS_PATH_OFFSET = laneOffset(2.5); // 40
-export const PLUS_LABEL_NUDGE = -48;
-export const MINUS_LABEL_NUDGE = 48;
 export const PARALLEL_LABEL_SPREAD = 24;
 
 /** Kabel-Label-Box für Kollisionsprüfung (M8-3 / M10-1). */
@@ -93,12 +91,6 @@ export const polarityPathOffset = (sourceHandle?: string | null): number => {
   return PLUS_PATH_OFFSET;
 };
 
-export const polarityLabelNudge = (sourceHandle?: string | null): number => {
-  if (sourceHandle?.includes('minus')) return MINUS_LABEL_NUDGE;
-  if (sourceHandle?.includes('plus')) return PLUS_LABEL_NUDGE;
-  return 0;
-};
-
 export type LabelEdgeRef = {
   id: string;
   source: string;
@@ -130,40 +122,13 @@ const cableTypeRank = (edge: LabelEdgeRef): number =>
   CABLE_TYPE_ORDER.indexOf(cableLaneType(edge.sourceHandle));
 
 /**
- * Paralleler Versatz (Lane) für gebündelte Leitungen. Kanten, die dasselbe
- * Node-Paar verbinden, bekommen jeweils einen eigenen Versatz, damit sie als
- * Trasse nebeneinander liegen statt übereinander.
- *
- * Sortiert wird nach Kabeltyp (Plus → Minus → 230 V → Rest) und erst danach
- * nach id. Zwei Plus-Leitungen liegen damit immer direkt nebeneinander, auch
- * wenn ihre ids alphabetisch auseinanderfallen. Der Abstand beträgt je Lane
- * `laneOffset(1)` = PARALLEL_LANE_SPREAD (16 px) — dasselbe Raster wie die
- * Polaritäts- und Ausweich-Lanes (R-5).
- */
-export const parallelLaneOffset = (input: {
-  edgeId: string;
-  source: string;
-  target: string;
-  sourceHandle?: string | null;
-  siblingEdges: LabelEdgeRef[];
-}): number => {
-  const group = input.siblingEdges
-    .filter((edge) => sharePair(edge, { id: input.edgeId, source: input.source, target: input.target }))
-    .sort((a, b) => cableTypeRank(a) - cableTypeRank(b) || a.id.localeCompare(b.id));
-  if (group.length <= 1) return 0;
-  const idx = Math.max(
-    0,
-    group.findIndex((edge) => edge.id === input.edgeId)
-  );
-  return laneOffset(idx - (group.length - 1) / 2);
-};
-
-/**
  * Keeps labels apart and spreads labels when several edges share a node pair
  * and handle.
  *
- * Wichtig: Die Gruppe wird EXAKT so sortiert wie parallelLaneOffset (Kabeltyp,
- * dann id). Vorher wurde in Store-Reihenfolge indexiert — die Label-Reihen-
+ * Die Sortierordnung der Gruppe (Kabeltyp Plus → Minus → 230 V → Rest,
+ * dann id) ist die historische Ordnung des 2026-09 entfernten
+ * `parallelLaneOffset` — sie wird hier bewusst beibehalten, damit die
+ * Label-Reihenfolge stabil bleibt. Vorher wurde in Store-Reihenfolge indexiert — die Label-Reihen-
  * folge konnte dadurch gegenüber der Lane-Reihenfolge der Kabel gespiegelt
  * sein (Label von Kabel A lag neben Kabel B), sobald die Kanten-Reihenfolge
  * im Store von der Lane-Sortierung abwich.
