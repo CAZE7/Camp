@@ -4,6 +4,7 @@ import {
   nodeHeight,
   nodeOriginX,
   nodeOriginY,
+  nodePositionAvailable,
   nodeWidth,
   type RoutableNode,
 } from './nodeGeometry';
@@ -43,7 +44,7 @@ import {
   waypointsToSegments,
   type Segment,
 } from '../../../lib/routing/geometry';
-import { ROUTING_TOKENS } from '../../../lib/routing/tokens';
+import { LEGACY_ROUTING_TOKENS, ROUTING_TOKENS } from '../../../lib/routing/tokens';
 
 export type RouteEdgeRef = {
   id: string;
@@ -409,6 +410,51 @@ function countRealCrossings(order: readonly string[], waypoints: Map<string, Poi
   return out;
 }
 
+// R8-Härtung des Rückfalls: Der Prädikat hat in `nodeGeometry.ts` zu Hause
+// (einzige Leseseite für die Messgrenze, siehe app/handleGeometry.test.ts).
+const routableNodeHasGeometry = nodePositionAvailable;
+
+/**
+ * Handle-Auflösung genau wie im globalen Pass (Flussrichtung zwischen den
+ * Bauteilmittelpunkten, gemessene Handles zuerst). Ausgelagert, damit der
+ * Einzelfall-Fallback in `CableEdge`/`WaterPipeEdge` HAARGENAU dieselbe
+ * Auflösung nutzt statt einer zweiten Mechanik (R8).
+ */
+function makeHandleResolver(nodes: RoutableNode[]) {
+  const nodeById = new Map<string, RoutableNode>();
+  for (let i = 0; i < nodes.length; i++) {
+    const node = nodes[i];
+    if (node && routableNodeHasGeometry(node)) nodeById.set(node.id, node);
+  }
+  return (edge: RouteEdgeRef, kind: 'source' | 'target'): { x: number; y: number; position: Position } => {
+    const srcNode = nodeById.get(edge.source);
+    const tgtNode = nodeById.get(edge.target);
+    const flow = centerDelta(srcNode, tgtNode);
+    return kind === 'source'
+      ? resolveHandlePoint(srcNode, edge.sourceHandle, 'source', flow)
+      : resolveHandlePoint(
+          tgtNode,
+          edge.targetHandle,
+          'target',
+          flow ? { x: -flow.x, y: -flow.y } : undefined
+        );
+  };
+}
+
+/**
+ * R8: Lane-Staffelung des Port-Fan-Outs für eine einzelne Kante — dieselbe
+ * Eingabe wie `routeAllCables` (alle Geschwister-Kanten + Handle-Auflösung),
+ * damit der Einzelfall-Fallback des Renderers DCW dasselbe Bündelbild fährt
+ * wie der wenige Frames später gelieferte globale Pass.
+ */
+export function fanOutLanesForEdge(
+  nodes: RoutableNode[],
+  edges: RouteEdgeRef[],
+  edgeId: string
+): PortLanes | undefined {
+  return portFanOutLanes(edges, makeHandleResolver(nodes)).get(edgeId);
+}
+
 /**
  * Routet alle Kanten in einem Durchgang und schiebt parallele Trassen global.
  */
@@ -435,7 +481,9 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
   // und ein Pfad kann per Konstruktion die Box nie verlassen, sodass
   // ausgefilterte Hindernisse nicht getroffen werden können (außerhalb).
   const obstacleById = nodeObstacleMap(nodes);
-  const OBSTACLE_REGION_PAD = 240;
+  // ROUTE-004: Zentraler Token (Drift-Guard: ≥ 2 × alternativeRouteGap(),
+  // siehe lib/routing/tokens.ts und tokens.test.ts).
+  const OBSTACLE_REGION_PAD = LEGACY_ROUTING_TOKENS.obstacleRegionPad;
   /** Bounding-Box einer Route, allseitig um `pad` erweitert. */
   const routeWindow = (points: readonly Point[], pad: number): Rect => {
     let minX = Infinity;
@@ -467,19 +515,7 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
   };
   // R-6/R-7: Port-Reihenfolge vor dem Einzel-Routing festlegen
   // (deterministisch); die Handle-Seite folgt der Flussrichtung.
-  const portLanes = portFanOutLanes(edges, (edge, kind) => {
-    const srcNode = nodeById.get(edge.source);
-    const tgtNode = nodeById.get(edge.target);
-    const flow = centerDelta(srcNode, tgtNode);
-    return kind === 'source'
-      ? resolveHandlePoint(srcNode, edge.sourceHandle, 'source', flow)
-      : resolveHandlePoint(
-          tgtNode,
-          edge.targetHandle,
-          'target',
-          flow ? { x: -flow.x, y: -flow.y } : undefined
-        );
-  });
+  const portLanes = portFanOutLanes(edges, makeHandleResolver(nodes));
 
   const raw: { id: string; waypoints: Point[]; result: PathResult }[] = [];
   const dynamicRoutedSegments: { edgeId: string; segment: Segment }[] = [];
@@ -576,6 +612,24 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
       request_ = { ...request_, obstacles: wider };
       window = span;
       result = findCablePath({ ...request_, cableTubes: tubesForRegion(tubes, span) });
+    }
+    // ROUTE-BUG-24, Absicherung des Limits: Verlässt die Route das Fenster
+    // auch nach dem dritten Durchgang NOCH, lag die Drei-Runden-Schranke am
+    // Knick — Hindernisse jenseits der Grenze wären der Suche unsichtbar
+    // (verdecktes I1/I3). Dann EINmal mit dem vollständigen Bauteil-Satz
+    // der tatsächlichen Routen-Envelope neu routen. GEMESSEN und verworfen
+    // wurde die freiere Variante (Union-Fixpunkt ohne Limit): Sie änderte
+    // Hindernis-Sätze schon in der zweiten Runde und kostete p02 +2
+    // Kreuzungen (5 → 7) im Regression-Parcours. Diese Absicherung greift
+    // NUR im bislang verdeckten worst case und lässt alle Fixture-Pläne
+    // byte-identisch.
+    const finalSpan = routeWindow(result.waypoints, OBSTACLE_REGION_PAD);
+    if (!coversRect(window, finalSpan)) {
+      const full = obstaclesNear(exclude, routeWindow(result.waypoints, 0));
+      if (full.length > request_.obstacles.length) {
+        request_ = { ...request_, obstacles: full };
+        result = findCablePath({ ...request_, cableTubes: tubesForRegion(tubes, finalSpan) });
+      }
     }
     // ROUTE-BUG-16 (Rangfolge der Garantien): Trassen-Belegung ist eine
     // Qualitätsregel (I2), Hindernisfreiheit eine harte Regel (I1). Führt die

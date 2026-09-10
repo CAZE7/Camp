@@ -71,11 +71,23 @@ export type LegacyRoutingTokens = {
   readonly obstacleMargin: number;
   /** Eckenradius der gerenderten Pfade (px) — V2-Ziel: `bendRadius`. */
   readonly routeBorderRadius: number;
+  /**
+   * Hindernis-Fenster des globalen Passes (`routeAllCables`, PERF-001:
+   * Routen-BBox plus Pad statt aller N-1 Hindernisse pro Kante).
+   *
+   * Muss ≥ 2 × `alternativeRouteGap()` bleiben (Drift-Guard im Token-Test):
+   * dann liegen selbst die äußersten Ausweich-Trassen (±2 Gaps) vollständig
+   * innerhalb des gefilterten Fensters und können per Konstruktion kein
+   * ausgefiltertes Hindernis treffen. Der Fenster-Nachzug (ROUTE-BUG-24)
+   * erweitert das Fenster für Routen, die ihn dennoch verlassen.
+   */
+  readonly obstacleRegionPad: number;
 };
 
 export const LEGACY_ROUTING_TOKENS: LegacyRoutingTokens = Object.freeze({
   obstacleMargin: 14,
   routeBorderRadius: 10,
+  obstacleRegionPad: 240,
 });
 
 /**

@@ -24,7 +24,7 @@ import {
   buildOrthogonalPath,
 } from '../components/edges/utils/orthogonalRouting';
 import { obstaclesExcluding, crossingSegmentsExcluding } from '../components/edges/utils/routingCache';
-import { parallelLaneOffset } from '../components/edges/utils/pathUtils';
+import { polarityPathOffset } from '../components/edges/utils/pathUtils';
 
 /** Muss `CROSSING_SCAN_EDGE_LIMIT` in `components/edges/CableEdge.tsx` entsprechen. */
 const CROSSING_SCAN_EDGE_LIMIT = 120;
@@ -86,13 +86,12 @@ function renderEdges(nodes: Node[], edges: any[], refs: any[], cached: boolean) 
                 (e.source === edge.source && e.target === edge.target) ||
                 (e.source === edge.target && e.target === edge.source)
             );
-    const offset = parallelLaneOffset({
-      edgeId: edge.id,
-      source: edge.source,
-      target: edge.target,
-      sourceHandle: edge.sourceHandle,
-      siblingEdges: edges,
-    });
+    // Legacy-Engine-Benchmark: Die Bündel-Lane des produktiven Passes
+    // (portFanOutLanes) braucht einen Gesamtpass; hier misst der Parcours
+    // den Einzelrouten-Hot-Path — `polarityPathOffset` ist die noch
+    // exportierte Lane-Quelle desselben laneGrid-Rasters
+    // (`parallelLaneOffset` wurde mit dem globalen Pass obsolet, R11-a).
+    const offset = polarityPathOffset(edge.sourceHandle);
     const { path } = buildOrthogonalPath({
       sourceX: source.x,
       sourceY: source.y,

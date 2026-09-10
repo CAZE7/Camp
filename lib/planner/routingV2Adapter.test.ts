@@ -89,7 +89,9 @@ describe('routingV2Adapter - advanced layout integration', () => {
     const result = await applyAdvancedLayout(nodes, edges, 'LR');
 
     for (const current of result.edges) {
-      expect(current.data?.geometry).toBeUndefined();
+      // DOM-005: Das Feld existiert nicht mehr im Typ — das Verbot gilt
+      // weiterhin gegen Wiedereinführung (ADR 0014, architecture.test.ts).
+      expect('geometry' in (current.data ?? {})).toBe(false);
     }
   }, 20_000);
 });

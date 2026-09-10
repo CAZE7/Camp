@@ -25,7 +25,7 @@ import {
   type Point,
   type Rect,
 } from './pathfinding';
-import { waypointsToPath, parallelLaneOffset, polarityPathOffset, edgeLabelNudge } from './pathUtils';
+import { waypointsToPath, polarityPathOffset, edgeLabelNudge } from './pathUtils';
 import { ROUTING_SCENARIOS } from './routingScenarios';
 import { ROUTING_TOKENS } from '../../../lib/routing/tokens';
 
@@ -550,29 +550,6 @@ describe('nodesToObstacles / cache / svg', () => {
 });
 
 describe('lane helpers', () => {
-  it('spreads parallel plus/minus lanes symmetrically', () => {
-    const siblings = [
-      { id: 'e1', source: 'a', target: 'b', sourceHandle: 'plus' },
-      { id: 'e2', source: 'a', target: 'b', sourceHandle: 'minus' },
-    ];
-    const o1 = parallelLaneOffset({
-      edgeId: 'e1',
-      source: 'a',
-      target: 'b',
-      sourceHandle: 'plus',
-      siblingEdges: siblings,
-    });
-    const o2 = parallelLaneOffset({
-      edgeId: 'e2',
-      source: 'a',
-      target: 'b',
-      sourceHandle: 'minus',
-      siblingEdges: siblings,
-    });
-    expect(o1).toBeCloseTo(-o2);
-    expect(o1).not.toBe(0);
-  });
-
   it('polarityPathOffset is larger for minus', () => {
     expect(polarityPathOffset('minus')).toBeGreaterThan(polarityPathOffset('plus'));
   });
