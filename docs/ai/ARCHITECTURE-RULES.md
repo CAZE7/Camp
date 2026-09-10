@@ -201,3 +201,4 @@ werden **entfernt** (nicht durch 0 ersetzt); unbekannte Felder bleiben erhalten.
 | K, L            | `npm run test:goldenmaster` · `npm run test:regression` · `npm run routing:audit`                      |
 | M               | `npx vitest run lib/routing/rules/collision.test.ts` · `npx vitest run lib/routing/invariants.test.ts` |
 | F               | `npm run routing:audit` (Spalten I1–I3, fallback)                                                      |
+| Dead-Code/API   | `npm run audit:dead-code` (Knip; speicherschonender Wrapper, keine Befunde)                            |

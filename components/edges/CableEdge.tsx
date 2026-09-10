@@ -31,7 +31,7 @@ export const TAP_LABEL_TIMEOUT_MS = 5000;
  * (lib/domain/cableEdgeData.ts) — lib/ importierte ihn typseitig aus einer
  * Komponente. Re-Export hält bestehende Importe stabil.
  */
-export type { CableEdgeData, CableEdgeGeometry } from '../../lib/domain/cableEdgeData';
+export type { CableEdgeData } from '../../lib/domain/cableEdgeData';
 import type { CableEdgeData } from '../../lib/domain/cableEdgeData';
 import { solarEdgeFuseFloorOf } from '../../lib/solar'; // ELE-007: 1,56×Isc-Sicherungsregel
 import { acCableComposition } from '../../lib/acProtection'; // DOM-001: Mehrleiter-Zusammensetzung

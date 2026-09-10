@@ -319,9 +319,7 @@ describe('D-1 Werft-Token-Hygiene — keine Farbliterale außerhalb globals.css'
     'app/guides/camper-ausbauguide/ScrollSidebar.tsx',
     'app/tools/dach/components/DachPlanerFlow.tsx',
     'components/Chat.tsx',
-    'components/DachNode.tsx',
     'components/NavigationSidebar.tsx',
-    'components/layout/MainLayout.tsx',
   ]);
 
   /** Hex-/rgb-/hsl-Farbliterale (z. B. #dc2626, rgba(0,0,0,.4)). */

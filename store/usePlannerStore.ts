@@ -29,6 +29,5 @@ export const usePlannerStore = create<PlannerState>()(
   )
 );
 
-export type { PlannerState, GraphSnapshot } from './slices/types';
-export { getDerivedSystemState, plannerGraphSignature } from './slices/graphInternals';
-export { PLANNER_STORAGE_VERSION, migratePlannerPersisted } from './slices/persistence';
+export type { PlannerState } from './slices/types';
+export { getDerivedSystemState } from './slices/graphInternals';

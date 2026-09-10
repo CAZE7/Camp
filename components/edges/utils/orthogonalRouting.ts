@@ -27,7 +27,6 @@ export type Point = { x: number; y: number };
 export type Rect = { x: number; y: number; width: number; height: number };
 
 /** Gemessene Handle-Box (React Flow intern, nicht Teil des öffentlichen Node-Typs). */
-export type { HandleBox } from './nodeGeometry';
 
 /**
  * Liest die Handle-Rechtecke versionsunabhängig (v11: `node.handleBounds`,

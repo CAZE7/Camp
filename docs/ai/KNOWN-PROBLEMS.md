@@ -336,20 +336,17 @@ Legende Severity: **hoch** = Agent kann falschen Code ändern / falsche Sicherhe
 
 ---
 
-## TEST-002 — Knip-Dead-Code-Audit scheitert lokal an Speicherlimit
+## TEST-002 — Knip-Dead-Code-Audit war lokal speicherbegrenzt — **behoben 2026-09-10**
 
+- **STATUS:** behoben. `scripts/audit/dead-code.mjs` setzt `KNIP_DISABLE_RAW_TRANSFER=1`,
+  führt Knip plattformneutral aus und reicht den Exit-Code weiter. Der Audit läuft lokal ohne
+  Speicherfehler und meldet aktuell keine unbestätigten ungenutzten Exporte, Dateien oder
+  Dependencies.
 - **AREA:** Tests / Tooling
-- **FILE:** `knip.ts`, `package.json` (`audit:dead-code`)
-- **DESCRIPTION:** `npm run audit:dead-code` und der reduzierte Lauf `npx knip --include files`
-  brechen in der lokalen Sandbox während `oxc-parser` mit `RangeError: Array buffer allocation failed`
-  ab. Der Fehler tritt vor einer Befundliste auf; es wurde kein Dead-Code-Befund als Ergebnis
-  interpretiert.
-- **CURRENT BEHAVIOR:** Typecheck, Lint, Format, Build und die vollständige Vitest-Suite sind
-  unabhängig grün; nur dieser speicherintensive Audit-Lauf ist in dieser Umgebung nicht
-  ausführbar.
-- **EXPECTED BEHAVIOR:** Knip in CI oder einer Umgebung mit ausreichendem Speicher ausführen.
-- **SEVERITY:** niedrig (Tooling; kein Produktionsbefund)
-- **RELATED TEST:** `npm run audit:dead-code` (lokal nicht bestanden, reproduziert am 2026-09-10)
+- **FILE:** `scripts/audit/dead-code.mjs`, `knip.ts`, `package.json` (`audit:dead-code`)
+- **VERIFICATION:** `npm run audit:dead-code` lief am 2026-09-10 mit Exit 0; der `.css`-Eintrag
+  in `knip.ts` beseitigt außerdem den Konfigurationshinweis für `app/globals.css`.
+- **RELATED TEST:** `npm run audit:dead-code`
 
 ---
 

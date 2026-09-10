@@ -74,7 +74,6 @@ import {
 } from './autoWire/routing';
 
 export { isStarterBatteryLabel };
-export { AUTO_EDGE_PREFIX } from './autoWire/primitives';
 export {
   cumulativeDropAt,
   relevantCumulativeDrop,

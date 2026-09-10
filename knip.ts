@@ -18,7 +18,7 @@ const config: KnipConfig = {
     'scripts/**/*.mjs',
     'scripts/**/*.ts',
   ],
-  project: ['**/*.{ts,tsx,mjs}'],
+  project: ['**/*.{ts,tsx,mjs,css}'],
 
   // @types/js-yaml: Typen für js-yaml (Bench), knip erkennt den Typ-Import
   // über js-yaml, hält das types-Paket aber separat für ungenutzt.

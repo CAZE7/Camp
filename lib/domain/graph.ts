@@ -24,6 +24,8 @@
  * Default-Datenform: `Record<string, unknown>` — identisch zur React-Flow-
  * Voreinstellung und zur App-Datenform `CommonNodeData` (die eine Index-
  * Signatur trägt). Beide Richtungen bleiben damit zuweisbar.
+ *
+ * @public Stable domain contract for adapters and external planner tooling.
  */
 export interface PlannerNode<Data extends object = Record<string, unknown>> {
   id: string;

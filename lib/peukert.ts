@@ -24,8 +24,6 @@
  * weiterhin nicht modelliert (steht im ExpertPanel).
  */
 
-const defaultKeys = ['LiFePO4', 'AGM', 'Gel'] as const;
-
 /** Peukert-Exponent je Chemie — Faustwerte, s. Dateikopf (UNVERIFIED). */
 export const PEUKERT_EXPONENT: Record<string, number> = {
   LiFePO4: 1.05,
@@ -78,6 +76,3 @@ export function usableCapacityWithPeukertAh(
   const dod = doDFraction > 0 && doDFraction <= 1 ? doDFraction : 1;
   return capacity20hAh * dod * peukertCapacityFactor(capacity20hAh, averageCurrentA, exponentK);
 }
-
-// Re-Export, damit Aufrufer die Chemie-Keys zentral referenzieren können.
-export const PEUKERT_CHEMISTRY_KEYS = defaultKeys;

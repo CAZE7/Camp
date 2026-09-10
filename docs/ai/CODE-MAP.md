@@ -59,7 +59,7 @@ CAMP
 - **Purpose:** Rahmenseite des Planers; Responsive-/Touch-Verhalten, Panel-Breakpoints.
 - **Input:** Store-State (`usePlannerStore`), URL-Route.
 - **Output:** gerenderte App Shell.
-- **Depends On:** `store/`, `components/planner/*`, `components/layout/MainLayout.tsx`.
+- **Depends On:** `store/`, `components/planner/*`, `app/elektrik-planung/page.tsx`.
 - **Called By:** `app/elektrik-planung/page.tsx`.
 - **Files:** `components/PlannerInner.tsx`, `components/Planner.tsx`, `components/planner/PlannerSidebar.tsx`, `components/planner/PlannerInspector.tsx`.
 - **Tests:** `components/Planner.test.tsx`, `components/PlannerInner.test.tsx`, `components/planner/PlannerSidebar.test.tsx`, `components/planner/PlannerInspector.test.tsx`.
@@ -81,10 +81,11 @@ CAMP
 - **Purpose:** zeichnet eine Leitung: Pfad, Label, Fehler-Chips, Hop-Bögen.
 - **Input:** `EdgeProps` + `useCableRoute(id)` (fertige Route aus dem globalen Pass).
 - **Output:** SVG.
-- **Depends On:** `components/edges/utils/cableRouteStore.ts`, `components/edges/utils/pathfinding.ts`
-  (Fallback-Einzelroute), `components/edges/utils/voltageDrop.ts`, `lib/electrical.ts`.
+- **Depends On:** `components/edges/utils/cableRouteStore.ts` (veröffentlichte globale Route),
+  `components/edges/utils/pathUtils.ts`, `components/edges/utils/voltageDrop.ts`, `lib/electrical.ts`.
+  Es gibt keinen lokalen Einzelkanten-Fallback im Renderer.
 - **Called By:** React Flow (`EDGE_TYPES`).
-- **Files:** `components/edges/CableEdge.tsx` (820), `components/edges/WaterPipeEdge.tsx` (160),
+- **Files:** `components/edges/CableEdge.tsx` (763), `components/edges/WaterPipeEdge.tsx` (160),
   `components/edges/utils/cableStyle.ts`, `edgeColors.ts`.
 - **Tests:** `components/edges/CableEdge.test.tsx`, `components/edges/WaterPipeEdge.test.tsx`,
   `components/edges/utils/voltageDrop.test.ts`, `cableStyle.test.ts`, `edgeColors.test.ts`.
@@ -239,7 +240,7 @@ CAMP
 
 ### 4.4 Engine: Hanan-A* (Produktivpfad)
 
-- **Files:** `components/edges/utils/pathfinding.ts` (1937).
+- **Files:** `components/edges/utils/pathfinding.ts` (2045).
 - **Exporte:** `findCablePath`, `catalogWaypoints`, `catalogCandidates`, `bestFreeCatalog`,
   `portFrame`, `routeDefectScore`, `hasSelfOverlap`, `countCrossings`, `buildHananGridMasks`,
   `nodesToObstacles`, `nodeObstacleMap`, `inflateRect`, `quantize`,
@@ -248,7 +249,7 @@ CAMP
   Die ehemalige `orthogonalRouting.ts`-/`routingCache.ts`-Kopplung ist entfernt; ihre Galerie-/Benchmark-Module bleiben isoliertes Legacy.
 - **Called By:** `components/edges/utils/routeAll.ts`, `scripts/routing/*`,
   `scripts/regression/*`. `CableEdge.tsx` rendert ausschließlich veröffentlichte Geometrie.
-- **Tests:** `components/edges/utils/pathfinding.test.ts` (801), `hananGridMasks.test.ts`,
+- **Tests:** `components/edges/utils/pathfinding.test.ts` (819), `hananGridMasks.test.ts`,
   `routingCache.test.ts`.
 - **Detail:** [ROUTING-CONTEXT.md](./ROUTING-CONTEXT.md).
 
@@ -267,7 +268,7 @@ CAMP
 
 ### 4.6 Route-Cache & Render-Anbindung
 
-- **Files:** `components/edges/utils/cableRouteStore.ts` (233).
+- **Files:** `components/edges/utils/cableRouteStore.ts` (232).
 - **Exporte:** `CableRouteSync`, `useCableRoute`, `useCableRouteFinalValidation`,
   `nodeLayoutSignature`, `edgeTopologySignature`, `createThrottledRunner`,
   `ROUTE_THROTTLE_MS` (100 ms), `publishCableRoutes`, `clearCableRoutes`,
@@ -286,7 +287,7 @@ CAMP
 
 ### 4.8 Invarianten & Final-Gate
 
-- **Files:** `lib/routing/invariants.ts` (407), `lib/routing/finalValidation.ts` (127).
+- **Files:** `lib/routing/invariants.ts` (468), `lib/routing/finalValidation.ts` (168).
 - **Exporte:** `checkInvariants`, `checkEdgeNodeCollisions` (I1), `checkEdgeEdgeOverlaps` (I2),
   `checkClearance` (I3 inkl. Domain-Clearance), `checkDomainClearance`, `checkUTurnAtHandle` (I4),
   `checkStubs` (I5), `checkSegmentLengths` (I6),
@@ -299,9 +300,11 @@ CAMP
 
 ### 4.9 ELK-Layout
 
-- **Files:** `lib/routing/elk/{graph,runner,index}.ts`, `lib/planner/layout-engine/*`.
-- **Exporte:** `layoutWithElk`, `createElkSession`, `ElkTimeoutError`, `ELK_TIMEOUT_MS` (3000),
-  `toElkPlan`, `ElkLayoutEngine`, `DagreLayoutEngine`, `LAYOUT_TOKENS`.
+- **Files:** `lib/routing/elk/{graph,runner}.ts`, `lib/planner/layout-engine/*`.
+- **Exporte:** `buildElkGraph`, `parseElkResult`, `elkGraphIsCloneable`, `layoutWithElk`,
+  `createElkSession`, `ElkTimeoutError`, `ELK_TIMEOUT_MS` (3000), `ElkLayoutEngine`,
+  `DagreLayoutEngine`, `LAYOUT_TOKENS`. Eine zusätzliche `lib/routing/elk/index.ts`-Fassade
+  existiert nicht mehr.
 - **Regel:** genau eine elkjs-Anbindung, gebündelt (`elkjs/lib/elk.bundled.js`).
 - **Tests:** `lib/routing/elk/elk.test.ts`, `lib/routing/elk/ab-compare.test.ts`.
 

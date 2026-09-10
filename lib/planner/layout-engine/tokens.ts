@@ -45,5 +45,3 @@ export const LAYOUT_TOKENS = {
   /** Vorgabehöhe, wenn ein Knoten keine gemessene Höhe mitbringt. */
   defaultNodeHeight: 80,
 } as const;
-
-export type LayoutToken = keyof typeof LAYOUT_TOKENS;

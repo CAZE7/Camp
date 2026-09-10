@@ -20,7 +20,6 @@ import {
   countBends,
   simplifyWaypoints,
   manhattan,
-  segmentsIntersect,
   waypointsToSegments,
   SegmentSpatialIndex,
   type Point,
@@ -41,7 +40,6 @@ export {
   countBends,
   simplifyWaypoints,
   manhattan,
-  segmentsIntersect,
   waypointsToSegments,
 };
 
@@ -2022,8 +2020,6 @@ export function nodesToObstacles(nodes: RoutableNode[], excludeIds: Set<string>)
   return rects;
 }
 
-export type CrossingEdgeRef = { id: string; source: string; target: string };
-
 /**
  * AUDIT PERF-001: Node → Hindernis-Box einmal pro Plan (statt pro Kante),
  * nach Node-ID auflösbar — Grundlage der räumlichen Vorfilterung in
@@ -2047,29 +2043,3 @@ export function nodeObstacleMap(nodes: RoutableNode[]): Map<string, Rect> {
 /** Schnitt zweier achsenparalleler Boxen (inkl. Randberührung). */
 export const rectsIntersect = (a: Rect, b: Rect): boolean =>
   a.x <= b.x + b.width && a.x + a.width >= b.x && a.y <= b.y + b.height && a.y + a.height >= b.y;
-
-export function edgesToCrossingSegments(
-  edges: CrossingEdgeRef[],
-  nodes: RoutableNode[],
-  skip: (edge: CrossingEdgeRef) => boolean
-): Segment[] {
-  const centers = new Map<string, Point>();
-  for (let i = 0; i < nodes.length; i++) {
-    const node = nodes[i];
-    if (!node) continue;
-    centers.set(node.id, {
-      x: node.position.x + nodeWidth(node, NODE_FALLBACK_WIDTH) / 2,
-      y: node.position.y + nodeHeight(node, NODE_FALLBACK_HEIGHT) / 2,
-    });
-  }
-  const segments: Segment[] = [];
-  for (let i = 0; i < edges.length; i++) {
-    const edge = at(edges, i);
-    if (skip(edge)) continue;
-    const a = centers.get(edge.source);
-    const b = centers.get(edge.target);
-    if (!a || !b) continue;
-    segments.push([a, b]);
-  }
-  return segments;
-}

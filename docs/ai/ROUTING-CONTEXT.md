@@ -330,7 +330,3 @@ Pflichtlektüre und Ablauf: [CHANGE-WORKFLOW.md](./CHANGE-WORKFLOW.md#21-routing
 Kurzform: Invariante identifizieren → Modul identifizieren → Tests lesen → **kleinste** Änderung →
 `npm run routing:audit` → `npm run test:goldenmaster` → `npm run test:regression` →
 `npm run e2e -- visual` → Diff prüfen → Verhalten dokumentieren.
-ten dokumentieren.
-`npm run test:regression` →
-`npm run e2e -- visual` → Diff prüfen → Verhalten dokumentieren.
-ten dokumentieren.
