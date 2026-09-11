@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
 import { type UIMessage } from 'ai';
-import { Send, X } from 'lucide-react';
+import { Loader2, Send, X } from 'lucide-react';
 
 const ChatInputForm = ({
   input,
@@ -28,7 +28,7 @@ const ChatInputForm = ({
       className="flex-1"
     />
     <Button type="submit" disabled={isLoading || !input.trim()} size="sm" className="gap-2">
-      <Send size={16} />
+      {isLoading ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
       {isLoading ? 'Wird gesendet...' : 'Senden'}
     </Button>
   </form>
