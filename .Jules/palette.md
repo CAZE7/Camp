@@ -67,3 +67,8 @@
 
 **Learning:** Standalone toggle buttons and segmented controls acting as pseudo-radio groups (like the 'Sommer'/'Winter' toggles) must convey which option is currently active to assistive technologies. Without this, screen reader users cannot perceive the current state or understand the result of their selection.
 **Action:** Always add `aria-pressed={condition}` to any button that visually toggles between active and inactive states.
+
+## 2026-09-11 - Loading states for AI chat submit button
+
+**Learning:** When sending messages to an AI assistant, users need immediate visual confirmation that their request is being processed. Disabling the submit button alone is insufficient feedback, especially if the API response takes several seconds.
+**Action:** Replace the static "Send" icon with an animated loading spinner (e.g., `<Loader2 className="animate-spin" />`) within the submit button during the `isLoading` state.
