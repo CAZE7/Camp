@@ -67,3 +67,8 @@
 
 **Learning:** Standalone toggle buttons and segmented controls acting as pseudo-radio groups (like the 'Sommer'/'Winter' toggles) must convey which option is currently active to assistive technologies. Without this, screen reader users cannot perceive the current state or understand the result of their selection.
 **Action:** Always add `aria-pressed={condition}` to any button that visually toggles between active and inactive states.
+
+## 2024-05-19 - Interactive Element Screen Reader States & Spinner Feedback
+
+**Learning:** When users submit forms that trigger asynchronous actions (like the AI Chat interface), simply disabling the submit button or changing the text is often missed visually. A spinning visual indicator directly inside the button is a strong, universally recognized pattern that confirms the action is processing, reducing user confusion and redundant clicks.
+**Action:** Consistently replace static action icons (like a 'Send' arrow) inside submit buttons with an animated spinner (e.g., `<Loader2 className="animate-spin" />`) during `isLoading` or `isSubmitting` states.
