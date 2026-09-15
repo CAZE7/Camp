@@ -67,3 +67,4 @@
 
 **Learning:** Standalone toggle buttons and segmented controls acting as pseudo-radio groups (like the 'Sommer'/'Winter' toggles) must convey which option is currently active to assistive technologies. Without this, screen reader users cannot perceive the current state or understand the result of their selection.
 **Action:** Always add `aria-pressed={condition}` to any button that visually toggles between active and inactive states.
+\n## 2026-09-15 - Redundant Icon Screen Reader Announcement\n\n**Learning:** When adding decorative icons (like loading spinners or send icons) next to descriptive button text, screen readers may redundantly announce the icon's generic name if it lacks `aria-hidden="true"`.\n**Action:** Always apply `aria-hidden="true"` to icons used purely for visual enhancement alongside existing descriptive text within interactive elements.
