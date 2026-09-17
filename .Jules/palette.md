@@ -67,3 +67,7 @@
 
 **Learning:** Standalone toggle buttons and segmented controls acting as pseudo-radio groups (like the 'Sommer'/'Winter' toggles) must convey which option is currently active to assistive technologies. Without this, screen reader users cannot perceive the current state or understand the result of their selection.
 **Action:** Always add `aria-pressed={condition}` to any button that visually toggles between active and inactive states.
+## 2026-09-17 - Missing loading states for AI chat submit button
+
+**Learning:** When submitting a message in the AI assistant, the input and button were disabled, but there was no visual indication that the message was actively being processed. This can cause user uncertainty.
+**Action:** Always add an active visual loading state (like a spinner `Loader2` from `lucide-react`) to async action buttons (like form submissions or AI prompts) in addition to disabling them. Added `aria-hidden="true"` to both icons to improve accessibility.
