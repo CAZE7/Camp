@@ -67,6 +67,8 @@
 
 **Learning:** Standalone toggle buttons and segmented controls acting as pseudo-radio groups (like the 'Sommer'/'Winter' toggles) must convey which option is currently active to assistive technologies. Without this, screen reader users cannot perceive the current state or understand the result of their selection.
 **Action:** Always add `aria-pressed={condition}` to any button that visually toggles between active and inactive states.
+
 ## 2026-09-18 - Adding loading spinner to Chat input
+
 **Learning:** The AI chat provided no visual feedback during processing, leading to uncertainty if the message was sent. Simple text changes like "Wird gesendet..." may not be enough without an indicator.
 **Action:** Added a `<Loader2 className="animate-spin motion-reduce:animate-none" />` inside the submit button when `isLoading` is true to provide immediate feedback to the user.

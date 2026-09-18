@@ -28,7 +28,11 @@ const ChatInputForm = ({
       className="flex-1"
     />
     <Button type="submit" disabled={isLoading || !input.trim()} size="sm" className="gap-2">
-      {isLoading ? <Loader2 size={16} className="animate-spin motion-reduce:animate-none" /> : <Send size={16} />}
+      {isLoading ? (
+        <Loader2 size={16} className="animate-spin motion-reduce:animate-none" />
+      ) : (
+        <Send size={16} />
+      )}
       {isLoading ? 'Wird gesendet...' : 'Senden'}
     </Button>
   </form>
