@@ -20,6 +20,7 @@ const FuseNode = function ({ id, data, isConnectable, selected }: PlannerNodePro
       {editingField === 'label' ? (
         <input
           autoFocus
+          aria-label="Bezeichnung"
           className="mb-2 min-h-11 w-full rounded border border-border px-1 text-center text-sm font-bold"
           value={tempValue}
           onChange={(e) => setTempValue(e.target.value)}
@@ -41,6 +42,7 @@ const FuseNode = function ({ id, data, isConnectable, selected }: PlannerNodePro
             <input
               autoFocus
               type="text"
+              aria-label="Sicherung in Ampere"
               className="min-h-11 w-16 rounded border border-border px-1 text-xs"
               value={tempValue}
               onChange={(e) => setTempValue(e.target.value)}
