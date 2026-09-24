@@ -244,6 +244,8 @@ export function FlowCanvas() {
     setTrunkMode,
     backboneGrouping,
     setBackboneGrouping,
+    detailLevel,
+    setDetailLevel,
     isLayoutPending,
   } = usePlannerStore(
     useShallow((state) => ({
@@ -274,6 +276,8 @@ export function FlowCanvas() {
       setTrunkMode: state.setTrunkMode,
       backboneGrouping: state.backboneGrouping,
       setBackboneGrouping: state.setBackboneGrouping,
+      detailLevel: state.detailLevel,
+      setDetailLevel: state.setDetailLevel,
       isLayoutPending: state.isLayoutPending,
     }))
   );
@@ -716,7 +720,10 @@ export function FlowCanvas() {
           }}
           aria-label={`${viewMode === 'water' ? 'Wasserplan' : 'Elektrik-Schaltplan'} Arbeitsfläche`}
           style={{ backgroundColor: 'var(--canvas-bg)' }}
-          className={`planner-canvas ${isLayoutPending ? 'planner-layout-animating' : ''}`}
+          /* Detailgrad als Container-Klasse: Die Karten bleiben dieselben
+             Komponenten (M8-1: eine Darstellung je Zoomstufe), nur die
+             CSS-Ebene entscheidet, ob Messwerte sichtbar sind. */
+          className={`planner-canvas planner-detail-${detailLevel} ${isLayoutPending ? 'planner-layout-animating' : ''}`}
         >
           <CableRouteSync />
 
@@ -784,6 +791,8 @@ export function FlowCanvas() {
                 onToggleTrunkMode={() => setTrunkMode(!trunkMode)}
                 backboneGrouping={backboneGrouping}
                 onToggleBackboneGrouping={() => setBackboneGrouping(!backboneGrouping)}
+                detailLevel={detailLevel}
+                onSelectDetailLevel={setDetailLevel}
               />
             </Panel>
           )}

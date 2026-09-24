@@ -10,6 +10,8 @@ const props = () => ({
   onToggleTrunkMode: vi.fn(),
   backboneGrouping: true,
   onToggleBackboneGrouping: vi.fn(),
+  detailLevel: 'detail' as const,
+  onSelectDetailLevel: vi.fn(),
 });
 
 afterEach(() => {
@@ -56,6 +58,22 @@ describe('CanvasDisplayOptions', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Ansichtsoptionen schließen' }));
     expect(trigger).toHaveAttribute('aria-expanded', 'false');
     window.matchMedia = originalMatchMedia;
+  });
+
+  /**
+   * UX-Reset 2026-09 / RECHERCHE C1: Der Detailgrad ist ein bewusster
+   * Schalter — bei 30–50 Bauteilen ist die volle Karte das größte
+   * Lesbarkeitsproblem, aber automatisch umschalten darf er nicht (M8-1).
+   */
+  it('bietet den Detailgrad als ausdrücklichen Schalter an', () => {
+    const handlers = props();
+    render(<CanvasDisplayOptions {...handlers} />);
+
+    expect(screen.getByTestId('detail-level-detail')).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByTestId('detail-level-overview')).toHaveAttribute('aria-pressed', 'false');
+
+    fireEvent.click(screen.getByTestId('detail-level-overview'));
+    expect(handlers.onSelectDetailLevel).toHaveBeenCalledWith('overview');
   });
 
   /**

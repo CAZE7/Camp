@@ -680,6 +680,28 @@
     background: var(--error);
   }
 
+  /* --- Detailgrad der Bauteilkarten (UX-Reset 2026-09, RECHERCHE C1) -----
+     Zwei Stufen, NUTZERGESTEUERT über die Ansichtsoptionen — nicht
+     zoom-automatisch: M8-1 hat Zoom-Stufen entfernt, weil beim Zoomen
+     umschlagende Karten desorientieren. Diese Erkenntnis bleibt gültig,
+     deshalb steht der Schalter explizit im Panel und nicht am Zoomfaktor.
+
+     `overview` = Symbol + Name. Alles andere bleibt unberührt, insbesondere
+     Warnflächen (z. B. „Überlastung!“ am Wechselrichter) und der Status-Rand:
+     Sicherheit geht vor Kompaktheit (Rule F). */
+  .planner-detail-overview .node-card {
+    width: auto;
+    min-width: 7.5rem;
+    padding: 0.375rem 0.625rem;
+  }
+  .planner-detail-overview .node-card .measure {
+    display: none;
+  }
+  /* Der Name trägt sonst `mb-2` auf die (jetzt ausgeblendeten) Messwerte. */
+  .planner-detail-overview .node-card > div:not(.node-symbol) {
+    margin-bottom: 0;
+  }
+
   /* --- Planer-Layout: feste Spaltenbreiten als Variablen -------------
      Damit kennen auch absolut positionierte Bedienelemente (die Ein-/
      Ausklapp-Pfeile) die exakte Spaltenbreite, ohne dass Zahlen doppelt

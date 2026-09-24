@@ -33,6 +33,7 @@ describe('persistOptions — Speicher-Vertrag', () => {
       isInspectorOpen: false,
       backboneGrouping: true,
       guidedMode: false,
+      detailLevel: 'overview',
       // Interne Felder, die NICHT persistiert werden dürfen:
       undoStack: ['x'],
       systemMessage: 'nur Laufzeit',
@@ -41,6 +42,7 @@ describe('persistOptions — Speicher-Vertrag', () => {
     expect(Object.keys(subset).sort()).toEqual(
       [
         'backboneGrouping',
+        'detailLevel',
         'edges',
         'guidedMode',
         'isInspectorOpen',
@@ -54,6 +56,7 @@ describe('persistOptions — Speicher-Vertrag', () => {
     );
     // Der gewählte Modus (geführt/Experte) überlebt den Reload.
     expect(subset.guidedMode).toBe(false);
+    expect(subset.detailLevel).toBe('overview');
   });
 });
 
@@ -126,6 +129,11 @@ describe('migratePlannerPersisted', () => {
   it('übernimmt guidedMode nur als Boolean (sonst greift der Store-Default)', () => {
     expect(migratePlannerPersisted({ guidedMode: false }, 1)).toEqual({ guidedMode: false });
     expect(migratePlannerPersisted({ guidedMode: 'aus' }, 1)).toEqual({});
+  });
+
+  it('übernimmt detailLevel nur als bekannte Stufe', () => {
+    expect(migratePlannerPersisted({ detailLevel: 'overview' }, 1)).toEqual({ detailLevel: 'overview' });
+    expect(migratePlannerPersisted({ detailLevel: 'mini' }, 1)).toEqual({});
   });
 
   it('übernimmt keine unbekannten Felder', () => {

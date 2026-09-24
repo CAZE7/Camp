@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import React from 'react';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -163,6 +165,8 @@ const defaultPlannerStoreState = {
   setTrunkMode: vi.fn(),
   backboneGrouping: true,
   setBackboneGrouping: vi.fn(),
+  detailLevel: 'detail',
+  setDetailLevel: vi.fn(),
   isLayoutPending: false,
   selectedNodes: [],
   selectedEdges: [],
@@ -629,5 +633,44 @@ describe('FlowCanvas', () => {
       expect(screen.getByText('Dachplaner-Daten erkannt:')).toBeInTheDocument();
       expect(screen.getByText(/500 W Solarleistung verfügbar/)).toBeInTheDocument();
     });
+  });
+});
+
+describe('FlowCanvas · Detailgrad (UX-Reset 2026-09 / RECHERCHE C1)', () => {
+  const renderWith = (overrides: Partial<typeof defaultPlannerStoreState>) => {
+    const state = { ...defaultPlannerStoreState, ...overrides };
+    vi.mocked(usePlannerStore).mockImplementation(
+      (selector: (s: typeof defaultPlannerStoreState) => unknown) => selector(state)
+    );
+    return render(<FlowCanvas />);
+  };
+
+  afterEach(() => {
+    vi.mocked(usePlannerStore).mockImplementation(
+      (selector: (s: typeof defaultPlannerStoreState) => unknown) => selector(defaultPlannerStoreState)
+    );
+  });
+
+  it('trägt den Detailgrad als Klasse am Canvas-Container', () => {
+    const detail = renderWith({});
+    expect(detail.getByTestId('react-flow-mock').className).toContain('planner-detail-detail');
+    detail.unmount();
+
+    const overview = renderWith({ detailLevel: 'overview' });
+    expect(overview.getByTestId('react-flow-mock').className).toContain('planner-detail-overview');
+    overview.unmount();
+  });
+
+  /**
+   * CSS-Wächter: Der Schalter ist ohne Regel wertlos. Wie in
+   * PlannerDashboard.test.tsx (Warnungs-Deduplizierung) wird das Stylesheet
+   * festgezurrt — Messwerte ausblenden, Warnflächen aber sichtbar lassen.
+   */
+  it('hinterlegt die Übersichtsstufe in globals.css', () => {
+    const css = readFileSync(resolve(process.cwd(), 'app/globals.css'), 'utf8');
+    expect(css).toContain('.planner-detail-overview .node-card .measure');
+    expect(css).toContain('.planner-detail-overview .node-card > div:not(.node-symbol)');
+    // Sicherheit vor Kompaktheit: Der Status-Rand bleibt unangetastet.
+    expect(css).not.toContain('.planner-detail-overview .node-card--error');
   });
 });

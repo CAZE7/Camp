@@ -207,6 +207,23 @@ describe('usePlannerStore', () => {
     });
   });
 
+  describe('Detailgrad', () => {
+    it('zeigt standardmäßig die volle Karte und lässt sich umschalten', () => {
+      const { result } = renderHook(() => usePlannerStore());
+      expect(result.current.detailLevel).toBe('detail');
+
+      act(() => {
+        result.current.setDetailLevel('overview');
+      });
+      expect(result.current.detailLevel).toBe('overview');
+
+      act(() => {
+        result.current.setDetailLevel('detail');
+      });
+      expect(result.current.detailLevel).toBe('detail');
+    });
+  });
+
   describe('Nodes and Edges Management', () => {
     it('should handle onNodesChange', () => {
       const { result } = renderHook(() => usePlannerStore());

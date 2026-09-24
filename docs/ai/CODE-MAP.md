@@ -110,7 +110,16 @@ CAMP
 - **Depends On:** `components/planner/hooks/useLiveValidation.ts` (Hinweise),
   `store/slices/persistence.ts` (`partialize` + `migratePlannerPersisted`).
 - **Called By:** `components/planner/PlannerDashboard.tsx`; `planner-open-catalog`
-  wird von `components/PlannerInner.tsx` gehört (Katalog-Tab/Spalte + Fokus Suche).
+  wird von `components/planner/PlannerInner.tsx` gehört (Katalog-Tab/Spalte + Fokus
+  Suche).
+- **Detailgrad (RECHERCHE C1):** `detailLevel` (`overview`/`detail`, persistiert,
+  Default `detail`) ist ein Schalter in den Ansichtsoptionen — bewusst **nicht**
+  zoomgesteuert, denn `M8-1` hat zoom-automatische Knotenstufen entfernt. Die
+  Anwendung erfolgt rein per CSS: `planner-detail-${level}` am
+  `.planner-canvas`-Container (`components/planner/FlowCanvas.tsx`) und die Regel
+  `.planner-detail-overview .node-card .measure { display: none }` in
+  `app/globals.css`. Knotenkomponenten bleiben unverändert; Status-Rand und
+  Warnflächen („Überlastung!") sind in beiden Stufen sichtbar.
 - **Tests:** `components/planner/utils/guidedSteps.test.ts`,
   `components/planner/ui/GuidedPlanRail.test.tsx`,
   `components/planner/GuidedMode.integration.test.tsx` (echter Store, kein Mock).

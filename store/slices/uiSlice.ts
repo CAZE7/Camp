@@ -40,6 +40,8 @@ export type UiSlice = Pick<
   | 'setBackboneGrouping'
   | 'guidedMode'
   | 'setGuidedMode'
+  | 'detailLevel'
+  | 'setDetailLevel'
 >;
 
 export const createUiSlice: PlannerSlice<UiSlice> = (set, get) => ({
@@ -92,4 +94,8 @@ export const createUiSlice: PlannerSlice<UiSlice> = (set, get) => ({
   // Der Expertenmodus bleibt über den Toolbar-Umschalter erreichbar.
   guidedMode: true,
   setGuidedMode: (enabled) => set({ guidedMode: enabled }),
+  // Default ist die volle Karte: Niemand verliert beim ersten Öffnen Werte,
+  // die er vorher gesehen hat. „Übersichtlich" ist ein bewusster Klick.
+  detailLevel: 'detail',
+  setDetailLevel: (level) => set({ detailLevel: level }),
 });
