@@ -49,6 +49,24 @@ describe('createDebouncedStorage', () => {
     expect(writes).toEqual(['a']);
   });
 
+  it('wirft nicht, wenn der Flush nach dem Wegfall von `window` feuert', () => {
+    // Produktionsgetreu: `plannerDebouncedStorage` liest `window.localStorage`
+    // im Flush. Läuft der Timer nach dem Abräumen der Seite (oder nach dem
+    // jsdom-Teardown einer Testdatei) los, existiert `window` nicht mehr.
+    const storage = createDebouncedStorage(() => {
+      if (typeof window === 'undefined') throw new ReferenceError('window is not defined');
+      return { getItem: () => null, setItem: () => undefined, removeItem: () => undefined };
+    });
+    storage.setItem('plan', '{v:1}');
+
+    vi.stubGlobal('window', undefined);
+    try {
+      expect(() => vi.advanceTimersByTime(200)).not.toThrow();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('gibt getItem unverzögert durch', () => {
     const storage = createDebouncedStorage(() => ({
       getItem: (k) => (k === 'plan' ? '{stored}' : null),
