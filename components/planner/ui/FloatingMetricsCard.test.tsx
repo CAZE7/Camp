@@ -49,6 +49,24 @@ describe('FloatingMetricsCard', () => {
     });
   });
 
+  /**
+   * UX-Reset 2026-09: Kennzahlen sind tertiär — eingeklappt ist der Default,
+   * die Zahlen kosten einen bewussten Klick und keine Canvas-Fläche.
+   */
+  it('zeigt die Kennzahlen erst nach dem Aufklappen', () => {
+    render(<FloatingMetricsCard />);
+
+    const toggle = screen.getByRole('button', { name: /Aktueller Status/ });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByText('Autarkie')).not.toBeInTheDocument();
+    expect(screen.queryByText('Tagesverbrauch')).not.toBeInTheDocument();
+
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByText('Autarkie')).toBeInTheDocument();
+    expect(screen.getByText('Tagesverbrauch')).toBeInTheDocument();
+  });
+
   it('renders correct solar output when canvas solar nodes exist', () => {
     mockDashboardMetrics.mockReturnValue({
       autarkyStr: '1 Tag',

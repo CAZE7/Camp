@@ -231,15 +231,16 @@ Legende Aufwand: **S** ≤ 1 Tag · **M** 2–4 Tage · **L** 1–2 Wochen · **
 
 ### D · App-Layout, Panels & Navigation
 
-| ID  | Maßnahme                                 | Inhalt / Nutzen                                                                                             | Aufwand | Phase |
-| --- | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ------- | ----- |
-| D1  | **Rechtes Dock mit Tabs**                | Eigenschaften \| Prüfhinweise \| Stückliste \| Fachwissen — ein Ort statt Floating-Cards. Löst B5, B14.     | M       | 2     |
-| D2  | **Linkes Panel: Katalog + „Im Plan“**    | Zweiter Tab listet platzierte Bauteile (Suche, Jump-to, Zähler je Typ). Löst Orientierung bei vielen Nodes. | S       | 1     |
-| D3  | **Command-Palette (Strg+K)**             | Alle Aktionen + Jump-to-Element typisierbar; entlastet Toolbar.                                             | M       | 2     |
-| D4  | **Toolbar konsolidieren**                | Primär: Ansicht, Auto-Layout, Undo; kontextsensitiv bei Selektion; Rest ins Menü. Löst B14.                 | S       | 1     |
-| D5  | **Statusbar ausbauen**                   | Ansicht-Name, aktive Filter, Zoom, Umfang, Speicherzeitpunkt (CAD-Anmutung, existiert als Basis).           | S       | 1     |
-| D6  | **Breadcrumb bei Fokus**                 | „Plan › Verteilung › F2 Kühlschrank“ mit Zurück-Ebene.                                                      | S       | 2     |
-| D7  | **Onboarding um Ansichtswahl erweitern** | „Wie möchtest du starten? Freiheit / geführt / Tabelle“ — setzt Default-View je Nutzertyp.                  | S       | 2     |
+| ID  | Maßnahme                                 | Inhalt / Nutzen                                                                                                                                                                           | Aufwand | Phase |
+| --- | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | ----- |
+| D1  | **Rechtes Dock mit Tabs**                | Eigenschaften \| Prüfhinweise \| Stückliste \| Fachwissen — ein Ort statt Floating-Cards. Löst B5, B14.                                                                                   | M       | 2     |
+| D2  | **Linkes Panel: Katalog + „Im Plan“**    | Zweiter Tab listet platzierte Bauteile (Suche, Jump-to, Zähler je Typ). Löst Orientierung bei vielen Nodes.                                                                               | S       | 1     |
+| D3  | **Command-Palette (Strg+K)**             | Alle Aktionen + Jump-to-Element typisierbar; entlastet Toolbar.                                                                                                                           | M       | 2     |
+| D4  | **Toolbar konsolidieren** ✅             | Umgesetzt (UX-Reset 2026-09): ein „Plan ordnen“ statt „Übersicht / Aufräumen / Strukturieren (ELK)“; Einzelaktionen im ⋯-Menü. Löst B14 teilweise.                                        | S       | 1     |
+| D8  | **Geführter Planungsablauf** ✅          | Umgesetzt: `utils/guidedSteps.ts` + `ui/GuidedPlanRail.tsx` — fünf Schritte, je eine Primäraktion, ein Planstatus; `guidedMode` schaltet in den freien Editor.                            | S–M     | 1     |
+| D5  | **Statusbar ausbauen**                   | Ansicht-Name, aktive Filter, Zoom, Umfang, Speicherzeitpunkt (CAD-Anmutung, existiert als Basis).                                                                                         | S       | 1     |
+| D6  | **Breadcrumb bei Fokus**                 | „Plan › Verteilung › F2 Kühlschrank“ mit Zurück-Ebene.                                                                                                                                    | S       | 2     |
+| D7  | **Onboarding um Ansichtswahl erweitern** | „Wie möchtest du starten? Freiheit / geführt / Tabelle“ — setzt Default-View je Nutzertyp. Geführt/Experte ist über `guidedMode` schon umschaltbar; die Abfrage im Onboarding fehlt noch. | S       | 2     |
 
 ### E · Filter, Fokus & Suche
 

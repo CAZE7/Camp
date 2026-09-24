@@ -22,7 +22,7 @@ export function FloatingMetricsCard() {
 
   return (
     <aside
-      className={`pointer-events-none absolute right-3 top-28 z-40 hidden overflow-hidden rounded-lg border border-border bg-card shadow-lg transition-all sm:block ${expanded ? 'w-80' : 'w-56'}`}
+      className={`pointer-events-none absolute right-3 top-28 z-40 hidden overflow-hidden rounded-lg border border-border bg-card shadow-lg transition-all sm:block ${expanded ? 'w-80' : 'w-auto'}`}
       aria-label="Aktuelle Kennzahlen des Elektrikplans"
     >
       <div className="pointer-events-auto p-4">
@@ -45,45 +45,47 @@ export function FloatingMetricsCard() {
           />
         </button>
 
-        <dl className="space-y-2">
-          <div className="flex items-center justify-between gap-3">
-            <dt className="text-sm font-medium text-ink-soft">Autarkie</dt>
-            <dd className="rounded-full bg-moss/10 px-2 py-1 text-sm font-bold text-moss">
-              {metrics.autarkyStr}
-            </dd>
-          </div>
-          <div className="flex items-center justify-between gap-3">
-            <dt className="text-sm font-medium text-ink-soft">Tagesverbrauch</dt>
-            <dd className="text-right text-sm font-bold text-ink">
-              ≈ {metrics.dailyConsumptionAh.toFixed(1)} Ah
-              <span className="text-muted-ink block text-xs font-normal">geschätzt</span>
-            </dd>
-          </div>
-          {expanded && (
-            <>
-              <div className="border-t border-rule/50 pt-2" />
+        {/* UX-Reset 2026-09: Kennzahlen sind tertiär. Eingeklappt bleibt nur
+            die Überschrift als Griff — der Plan hat die Fläche, nicht die
+            Karte. Vorher standen Autarkie und Tagesverbrauch dauerhaft über
+            dem Canvas und konkurrierten mit Bauteilen und Leitungen. */}
+        {expanded && (
+          <dl className="space-y-2">
+            <div className="flex items-center justify-between gap-3">
+              <dt className="text-sm font-medium text-ink-soft">Autarkie</dt>
+              <dd className="rounded-full bg-moss/10 px-2 py-1 text-sm font-bold text-moss">
+                {metrics.autarkyStr}
+              </dd>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <dt className="text-sm font-medium text-ink-soft">Tagesverbrauch</dt>
+              <dd className="text-right text-sm font-bold text-ink">
+                ≈ {metrics.dailyConsumptionAh.toFixed(1)} Ah
+                <span className="text-muted-ink block text-xs font-normal">geschätzt</span>
+              </dd>
+            </div>
+            <div className="border-t border-rule/50 pt-2" />
+            <div className="flex items-center justify-between gap-3">
+              <dt className="text-sm text-ink-soft">Ladezeit 0–100 %</dt>
+              <dd className="text-right text-sm font-bold text-oxide">{metrics.chargingTimeStr}</dd>
+            </div>
+            {(calculatedSolarWatts > 0 || metrics.solarNodesCount > 0) && (
               <div className="flex items-center justify-between gap-3">
-                <dt className="text-sm text-ink-soft">Ladezeit 0–100 %</dt>
-                <dd className="text-right text-sm font-bold text-oxide">{metrics.chargingTimeStr}</dd>
+                <dt className="text-sm text-ink-soft">Solarleistung</dt>
+                <dd className="text-right text-sm font-bold text-warn-warning">
+                  {metrics.solarNodesCount > 0
+                    ? `${metrics.totalSolarVoltage} V / ${metrics.totalSolarAmps.toFixed(1)} A`
+                    : `${calculatedSolarWatts} W`}
+                </dd>
               </div>
-              {(calculatedSolarWatts > 0 || metrics.solarNodesCount > 0) && (
-                <div className="flex items-center justify-between gap-3">
-                  <dt className="text-sm text-ink-soft">Solarleistung</dt>
-                  <dd className="text-right text-sm font-bold text-warn-warning">
-                    {metrics.solarNodesCount > 0
-                      ? `${metrics.totalSolarVoltage} V / ${metrics.totalSolarAmps.toFixed(1)} A`
-                      : `${calculatedSolarWatts} W`}
-                  </dd>
-                </div>
-              )}
-              <p className="rounded-lg bg-accent p-2 text-xs text-foreground">
-                {season === 'winter'
-                  ? 'Winter: reduzierter Solarertrag und höherer Heizbedarf werden berücksichtigt.'
-                  : 'Sommer: regulärer Solarertrag und Heizbedarf werden angenommen.'}
-              </p>
-            </>
-          )}
-        </dl>
+            )}
+            <p className="rounded-lg bg-accent p-2 text-xs text-foreground">
+              {season === 'winter'
+                ? 'Winter: reduzierter Solarertrag und höherer Heizbedarf werden berücksichtigt.'
+                : 'Sommer: regulärer Solarertrag und Heizbedarf werden angenommen.'}
+            </p>
+          </dl>
+        )}
       </div>
     </aside>
   );

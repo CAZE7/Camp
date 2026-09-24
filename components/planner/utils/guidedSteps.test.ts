@@ -116,6 +116,40 @@ describe('evaluateGuidedSteps', () => {
     expect(plan.steps[3]!.detail).toBe('Kein kritisches Problem, 1 Hinweis.');
   });
 
+  it('zählt einen Verbraucher erst als verbunden, wenn eine Kante in ihn zeigt', () => {
+    // Kante zeigt VOM Verbraucher weg: keine Einspeisung, Schritt 3 bleibt offen.
+    const outgoingOnly = evaluateGuidedSteps({
+      nodes: [node('b1', 'battery'), node('f1', 'fuse'), node('c1', 'consumer')],
+      edges: [edge('e1', 'b1', 'f1'), edge('e2', 'c1', 'f1')],
+      warnings: [],
+    });
+    expect(outgoingOnly.steps[2]!.complete).toBe(false);
+    expect(outgoingOnly.steps[2]!.detail).toBe('0 von 1 Verbraucher verbunden.');
+
+    const incoming = evaluateGuidedSteps({
+      nodes: [node('b1', 'battery'), node('f1', 'fuse'), node('c1', 'consumer')],
+      edges: [edge('e1', 'b1', 'f1'), edge('e2', 'f1', 'c1')],
+      warnings: [],
+    });
+    expect(incoming.steps[2]!.complete).toBe(true);
+  });
+
+  it('gibt jedem Schritt eine ausführbare Primäraktion', () => {
+    const plan = evaluateGuidedSteps({ nodes: [], edges: [], warnings: [] });
+
+    // Keine Leiste ohne Knopf: Jeder Schritt beantwortet „Was soll ich tun?".
+    // Ein `none` gibt es im Typ `GuidedStepAction` gar nicht mehr — der
+    // Compiler verbietet den Zustand, dieser Test hält die Zuordnung fest.
+    expect(plan.steps.map((step) => step.action.kind)).toEqual([
+      'catalog',
+      'catalog',
+      'autowire',
+      'warnings',
+      'bom',
+    ]);
+    expect(plan.steps.every((step) => step.action.label.trim().length > 0)).toBe(true);
+  });
+
   it('weist jedem offenen Schritt genau einen aktuellen Schritt zu', () => {
     const plan = evaluateGuidedSteps({
       nodes: [node('b1', 'battery')],

@@ -708,6 +708,14 @@ export function PlannerDashboard() {
   const openBom = useCallback(() => {
     window.dispatchEvent(new CustomEvent('show-bom-modal'));
   }, []);
+  /**
+   * „Bauteile hinzufügen" öffnet den Katalog: Auf dem Handy ist er ein eigener
+   * Tab, am Desktop eine einklappbare Spalte — beides weiß `PlannerInner`,
+   * deshalb bleibt hier nur das Event.
+   */
+  const openCatalog = useCallback(() => {
+    window.dispatchEvent(new CustomEvent('planner-open-catalog'));
+  }, []);
   const handleGuidedAutoWire = useCallback(() => {
     autoWireSystem();
     setFeedback(autoWireFeedbackFor(nodes));
@@ -830,6 +838,7 @@ export function PlannerDashboard() {
           nodes={nodes}
           edges={edges}
           warnings={warnings}
+          onOpenCatalog={openCatalog}
           onAutoWire={handleGuidedAutoWire}
           onOpenWarnings={openWarningCenter}
           onOpenBom={openBom}

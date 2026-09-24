@@ -20,8 +20,12 @@ export type GuidedStepId = (typeof GUIDED_STEP_IDS)[number];
 
 export type GuidedStepStatus = 'done' | 'current' | 'todo';
 
-/** Primäraktion des aktuellen Schritts — ausgeführt von `GuidedPlanRail`. */
-export type GuidedStepAction = 'autowire' | 'warnings' | 'bom' | 'none';
+/**
+ * Primäraktion des aktuellen Schritts — ausgeführt von `GuidedPlanRail`.
+ * Jeder Schritt hat genau eine; es gibt bewusst kein `none`, sonst stünde der
+ * Nutzer im ersten Schritt ohne Antwort auf „Was soll ich jetzt tun?" da.
+ */
+export type GuidedStepAction = 'catalog' | 'autowire' | 'warnings' | 'bom';
 
 export interface GuidedStep {
   id: GuidedStepId;
@@ -63,15 +67,19 @@ function countTypes(nodes: PlannerFlowNode[], types: ReadonlySet<string>): numbe
   return nodes.reduce((count, node) => (types.has(String(node.type)) ? count + 1 : count), 0);
 }
 
-/** Wie viele Verbraucher hängen an mindestens einer Leitung? */
-function connectedConsumers(nodes: PlannerFlowNode[], edges: readonly GuidedEdgeRef[]): number {
-  const touched = new Set<string>();
-  for (const edge of edges) {
-    touched.add(edge.source);
-    touched.add(edge.target);
-  }
+/**
+ * Wie viele Verbraucher werden tatsächlich gespeist?
+ *
+ * Gezählt wird eine Kante, die IN den Verbraucher zeigt (`target`): Nur dann
+ * fließt ihm Energie zu. Die frühere Variante zählte jede Berührung — ein
+ * Verbraucher, an dem nur versehentlich der Minus-Ausgang eines anderen
+ * Bauteils hing, galt damit als „verbunden", und die Leiste sprang weiter.
+ */
+function fedConsumers(nodes: PlannerFlowNode[], edges: readonly GuidedEdgeRef[]): number {
+  const fed = new Set<string>();
+  for (const edge of edges) fed.add(edge.target);
   return nodes.reduce(
-    (count, node) => (CONSUMER_SET.has(String(node.type)) && touched.has(node.id) ? count + 1 : count),
+    (count, node) => (CONSUMER_SET.has(String(node.type)) && fed.has(node.id) ? count + 1 : count),
     0
   );
 }
@@ -119,7 +127,7 @@ export function evaluateGuidedSteps({ nodes, edges, warnings }: GuidedPlanInput)
   const hasSource = countTypes(nodes, SOURCE_SET) > 0;
   const coreCount = countTypes(nodes, CORE_SET);
   const consumerCount = countTypes(nodes, CONSUMER_SET);
-  const wiredConsumers = connectedConsumers(nodes, edges);
+  const wiredConsumers = fedConsumers(nodes, edges);
   const criticalCount = warnings.filter((warning) => warning.type === 'critical').length;
   const warningCount = warnings.filter((warning) => warning.type !== 'critical').length;
 
@@ -170,8 +178,8 @@ export function evaluateGuidedSteps({ nodes, edges, warnings }: GuidedPlanInput)
     'Stückliste, Kabel und Berechnungen für Einkauf und Einbau.',
   ];
   const actions: GuidedStep['action'][] = [
-    { label: 'Bauteile öffnen', kind: 'none' },
-    { label: 'Bauteile öffnen', kind: 'none' },
+    { label: 'Batterie hinzufügen', kind: 'catalog' },
+    { label: 'Schutz ergänzen', kind: 'catalog' },
     { label: 'Automatisch verbinden', kind: 'autowire' },
     { label: 'Prüfung öffnen', kind: 'warnings' },
     { label: 'Stückliste öffnen', kind: 'bom' },

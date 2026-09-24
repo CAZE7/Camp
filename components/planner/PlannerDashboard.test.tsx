@@ -234,8 +234,20 @@ describe('PlannerDashboard - Action Buttons', () => {
     // Leerer Plan: Schritt 1 (Anlage/Batterie) ist der aktuelle Schritt.
     expect(screen.getByTestId('guided-step-define')).toHaveAttribute('aria-current', 'step');
     expect(screen.getByText(/Schritt 1 von 5/)).toBeInTheDocument();
-    // Kein Verbraucher, keine Kanten: die AutoWire-Aktion ist noch nicht dran.
-    expect(screen.queryByTestId('guided-primary-action')).not.toBeInTheDocument();
+  });
+
+  it('bietet schon im ersten Schritt eine ausführbare Aktion an', () => {
+    render(<PlannerDashboard />);
+    const dispatchEventSpy = vi.spyOn(window, 'dispatchEvent');
+
+    // Eine Leiste ohne Knopf beantwortet „Was jetzt?" nicht — Schritt 1 öffnet
+    // den Bauteilkatalog, statt nur zu zählen.
+    const primary = screen.getByTestId('guided-primary-action');
+    expect(primary).toHaveTextContent('Batterie hinzufügen');
+
+    fireEvent.click(primary);
+    const dispatched = dispatchEventSpy.mock.calls.map((call) => (call[0] as CustomEvent).type);
+    expect(dispatched).toContain('planner-open-catalog');
   });
 
   it('schaltet über den Expertenmodus die Schrittleiste ab', () => {

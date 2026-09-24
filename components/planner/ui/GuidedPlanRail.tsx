@@ -1,19 +1,23 @@
 'use client';
 
 import React from 'react';
-import { Check, ChevronRight, Package, ScanSearch, SlidersHorizontal, Zap } from 'lucide-react';
+import { Check, ChevronRight, Package, Plus, ScanSearch, SlidersHorizontal, Zap } from 'lucide-react';
 import type { ValidationWarning } from '../hooks/useLiveValidation';
 import type { PlannerFlowNode } from '../../nodes/types';
 import { evaluateGuidedSteps, type GuidedEdgeRef, type GuidedStepAction } from '../utils/guidedSteps';
 
 /**
- * Geführte Planungsleiste — die sichtbare Antwort auf „Was kommt als Nächstes?“.
+ * Geführte Planungsleiste — die sichtbare Antwort auf „Was kommt als Nächstes?".
  *
  * UX-Reset 2026-09: Der Planer hat AutoWire, Routing, Validierung und Stückliste
  * gleichzeitig angeboten, aber nie gesagt, in welchem Schritt die Planung steht.
  * Diese Leiste zeigt genau EINEN nächsten Schritt plus dessen Primäraktion; die
  * Werkzeugkasten-Aktionen bleiben im `⋯`-Menü (Expertenmodus schaltet die Leiste
  * ganz ab).
+ *
+ * Jeder Schritt hat eine ausführbare Aktion — auch Schritt 1. Eine Leiste, die
+ * „Schritt 1 von 5" sagt und keinen Knopf anbietet, beantwortet die Frage nicht,
+ * die sie stellt.
  *
  * Die Komponente rechnet selbst nichts Elektrisches (Rule D): Der Fortschritt
  * kommt aus `evaluateGuidedSteps`, die Hinweise aus `useLiveValidation`.
@@ -22,13 +26,16 @@ export interface GuidedPlanRailProps {
   nodes: PlannerFlowNode[];
   edges: readonly GuidedEdgeRef[];
   warnings: ValidationWarning[];
+  /** Öffnet den Bauteilkatalog (mobile: Tab; Desktop: Spalte auf + Fokus Suche). */
+  onOpenCatalog: () => void;
   onAutoWire: () => void;
   onOpenWarnings: () => void;
   onOpenBom: () => void;
   onSwitchToExpertMode: () => void;
 }
 
-const ACTION_ICONS: Record<Exclude<GuidedStepAction, 'none'>, React.ComponentType<{ className?: string }>> = {
+const ACTION_ICONS: Record<GuidedStepAction, React.ComponentType<{ className?: string }>> = {
+  catalog: Plus,
   autowire: Zap,
   warnings: ScanSearch,
   bom: Package,
@@ -38,6 +45,7 @@ export function GuidedPlanRail({
   nodes,
   edges,
   warnings,
+  onOpenCatalog,
   onAutoWire,
   onOpenWarnings,
   onOpenBom,
@@ -48,13 +56,13 @@ export function GuidedPlanRail({
   const hints = warnings.length - critical;
 
   const runAction = (kind: GuidedStepAction) => {
-    if (kind === 'autowire') onAutoWire();
+    if (kind === 'catalog') onOpenCatalog();
+    else if (kind === 'autowire') onAutoWire();
     else if (kind === 'warnings') onOpenWarnings();
-    else if (kind === 'bom') onOpenBom();
+    else onOpenBom();
   };
 
-  const ActiveIcon =
-    plan.activeStep.action.kind === 'none' ? null : ACTION_ICONS[plan.activeStep.action.kind];
+  const ActiveIcon = ACTION_ICONS[plan.activeStep.action.kind];
 
   // EIN Planstatus statt sieben Warnmechanismen: dieselben Zähler, die auch die
   // Warn-Zentrale nutzt — hier nur als Zusammenfassung mit demselben Klickziel.
@@ -74,7 +82,21 @@ export function GuidedPlanRail({
       aria-label="Planungsablauf"
       className="flex w-full shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b border-border bg-surface-panel px-3 py-1.5"
     >
-      <ol className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1 gap-y-1" data-testid="guided-steps">
+      {/* Mobil: Zähler statt fünf Labels — die Leiste soll auf 375 px nicht zur
+          dritten Chrome-Zeile werden. `display:none` nimmt die Liste darunter
+          auf kleinen Breiten aus dem Accessibility-Tree, darum ist dieser
+          Zähler nicht `aria-hidden`. */}
+      <span
+        data-testid="guided-progress-compact"
+        className="min-w-0 truncate text-xs font-semibold text-foreground sm:hidden"
+      >
+        Schritt {plan.currentStep} von {plan.steps.length} — {plan.activeStep.label}
+      </span>
+
+      <ol
+        className="hidden min-w-0 flex-1 flex-wrap items-center gap-x-1 gap-y-1 sm:flex"
+        data-testid="guided-steps"
+      >
         {plan.steps.map((step, index) => {
           const isCurrent = step.status === 'current';
           return (
@@ -111,15 +133,9 @@ export function GuidedPlanRail({
         })}
       </ol>
 
-      <p className="min-w-0 text-xs text-muted-foreground">
-        <span className="font-semibold text-foreground">
-          Schritt {plan.currentStep} von {plan.steps.length} — {plan.activeStep.label}
-        </span>
-        <span className="mx-1.5 hidden sm:inline" aria-hidden="true">
-          ·
-        </span>
-        <span className="hidden sm:inline">{plan.activeStep.detail}</span>
-      </p>
+      {/* Ab sm steht der Fortschritt in der Liste daneben — hier bleibt nur die
+          Begründung, sonst stünde dieselbe Information zweimal in einer Zeile. */}
+      <p className="hidden min-w-0 text-xs text-muted-foreground sm:block">{plan.activeStep.detail}</p>
 
       <button
         type="button"
@@ -131,17 +147,15 @@ export function GuidedPlanRail({
         {status.label}
       </button>
 
-      {plan.activeStep.action.kind !== 'none' && (
-        <button
-          type="button"
-          data-testid="guided-primary-action"
-          onClick={() => runAction(plan.activeStep.action.kind)}
-          className="flex min-h-9 items-center gap-1.5 rounded bg-primary px-3 text-xs font-bold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          {ActiveIcon && <ActiveIcon className="h-3.5 w-3.5" />}
-          {plan.activeStep.action.label}
-        </button>
-      )}
+      <button
+        type="button"
+        data-testid="guided-primary-action"
+        onClick={() => runAction(plan.activeStep.action.kind)}
+        className="flex min-h-9 items-center gap-1.5 rounded bg-primary px-3 text-xs font-bold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <ActiveIcon className="h-3.5 w-3.5" />
+        {plan.activeStep.action.label}
+      </button>
 
       <button
         type="button"

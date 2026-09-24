@@ -112,6 +112,27 @@ export default function PlannerInner() {
 
   const handleMobileAdd = () => setActiveTab('canvas');
 
+  /**
+   * „Bauteile hinzufügen" aus der Schrittleiste (UX-Reset 2026-09).
+   *
+   * Der Katalog ist je Geräteklasse etwas anderes: Auf dem Handy ein eigener
+   * Tab, ab 768 px eine einklappbare Spalte. Beides wird hier bedient, danach
+   * geht der Fokus ins Suchfeld — der nächste Schritt ist damit ohne Suchen
+   * erreichbar. Der Fokus liegt im Frame danach, weil der Tab-Bereich auf dem
+   * Handy erst mit diesem Render sichtbar wird.
+   */
+  useEffect(() => {
+    const openCatalog = () => {
+      setActiveTab('sidebar');
+      usePlannerStore.getState().setSidebarOpen(true);
+      window.requestAnimationFrame(() => {
+        document.getElementById('component-search')?.focus();
+      });
+    };
+    window.addEventListener('planner-open-catalog', openCatalog);
+    return () => window.removeEventListener('planner-open-catalog', openCatalog);
+  }, []);
+
   // 56 px Kantenlänge – deutlich über den geforderten 44 px Touch-Target.
   const navClass = (active: boolean) =>
     `relative flex min-h-14 min-w-14 flex-col items-center justify-center rounded-lg px-2 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${active ? 'bg-accent text-primary' : 'text-muted-foreground hover:bg-accent'}`;

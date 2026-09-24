@@ -29,6 +29,7 @@ const hint: ValidationWarning = {
 };
 
 const handlers = () => ({
+  onOpenCatalog: vi.fn(),
   onAutoWire: vi.fn(),
   onOpenWarnings: vi.fn(),
   onOpenBom: vi.fn(),
@@ -49,6 +50,18 @@ describe('GuidedPlanRail', () => {
     expect(items).toHaveLength(5);
     expect(screen.getByTestId('guided-step-components')).toHaveAttribute('aria-current', 'step');
     expect(screen.getByText(/Schritt 2 von 5/)).toBeInTheDocument();
+  });
+
+  it('öffnet im ersten Schritt den Bauteilkatalog', () => {
+    const actions = handlers();
+    render(<GuidedPlanRail nodes={[]} edges={[]} warnings={[]} {...actions} />);
+
+    const primary = screen.getByTestId('guided-primary-action');
+    expect(primary).toHaveTextContent('Batterie hinzufügen');
+
+    fireEvent.click(primary);
+    expect(actions.onOpenCatalog).toHaveBeenCalledTimes(1);
+    expect(actions.onAutoWire).not.toHaveBeenCalled();
   });
 
   it('bietet im Verbindungsschritt AutoWire als einzige Primäraktion an', () => {
