@@ -22,6 +22,7 @@ const mockOnLayoutV2 = vi.fn().mockResolvedValue({ applied: true, engine: 'elk' 
 const mockUndo = vi.fn();
 const mockRedo = vi.fn();
 const mockClearPlan = vi.fn();
+const mockSetGuidedMode = vi.fn();
 
 vi.mock('../../store/usePlannerStore', () => ({
   usePlannerStore: vi.fn((selector) => {
@@ -46,6 +47,8 @@ vi.mock('../../store/usePlannerStore', () => ({
       canUndo: true,
       canRedo: true,
       clearPlan: mockClearPlan,
+      guidedMode: true,
+      setGuidedMode: mockSetGuidedMode,
     };
     return selector(state);
   }),
@@ -154,6 +157,9 @@ describe('PlannerDashboard - Action Buttons', () => {
   it('calls onLayout with no args when clicking Aufräumen', () => {
     render(<PlannerDashboard />);
 
+    // UX-Reset: „Aufräumen" ist keine Toolbar-Aktion mehr (drei Layout-Begriffe
+    // nebeneinander) — erreichbar bleibt sie im ⋯-Menü.
+    openMoreMenu();
     fireEvent.click(screen.getByText(/Aufräumen/));
 
     expect(mockOnLayout).toHaveBeenCalledTimes(1);
@@ -185,14 +191,59 @@ describe('PlannerDashboard - Action Buttons', () => {
     await waitFor(() => expect(screen.getByText(/Dagre-Fallback/)).toBeInTheDocument());
   });
 
-  it('dispatches planner-fit-view when clicking the Übersicht (fit view) button', () => {
+  it('dispatches planner-fit-view when clicking the Übersicht (fit view) action', () => {
     render(<PlannerDashboard />);
     const dispatchEventSpy = vi.spyOn(window, 'dispatchEvent');
 
-    fireEvent.click(screen.getByTitle('Ganzen Plan einpassen'));
+    // Die Übersicht wanderte aus der Toolbar ins ⋯-Menü: Der Canvas trägt
+    // dieselbe Aktion bereits als Zoom-Steuerung („Ganzen Plan einpassen").
+    openMoreMenu();
+    fireEvent.click(screen.getByText(/^Übersicht$/));
 
     const dispatched = dispatchEventSpy.mock.calls.map((c) => (c[0] as CustomEvent).type);
     expect(dispatched).toContain('planner-fit-view');
+  });
+
+  /**
+   * UX-Reset 2026-09: Die Toolbar darf nicht drei Layout-Begriffe
+   * gleichzeitig anbieten („Übersicht / Aufräumen / Strukturieren (ELK)").
+   * Sichtbar bleibt EIN „Plan ordnen"; die Einzelaktionen leben im ⋯-Menü.
+   */
+  it('bietet genau eine Layout-Aktion in der Toolbar an und ordnet den Plan', async () => {
+    render(<PlannerDashboard />);
+
+    expect(screen.getByTestId('action-tidy')).toHaveTextContent('Plan ordnen');
+    expect(screen.queryByText('Strukturieren (ELK)')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('action-tidy'));
+
+    expect(mockOnLayoutV2).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(screen.getByText(/Plan mit ELK global strukturiert/)).toBeInTheDocument());
+  });
+
+  /**
+   * UX-Reset 2026-09 (Priorität 1): Der Planer sagt, was als Nächstes zu tun
+   * ist — die Schrittleiste zeigt den ersten offenen Schritt und dessen
+   * Primäraktion, statt den Nutzer den Werkzeugkasten lesen zu lassen.
+   */
+  it('führt im geführten Modus mit dem ersten offenen Schritt', () => {
+    render(<PlannerDashboard />);
+
+    const rail = screen.getByTestId('guided-rail');
+    expect(rail).toBeInTheDocument();
+    // Leerer Plan: Schritt 1 (Anlage/Batterie) ist der aktuelle Schritt.
+    expect(screen.getByTestId('guided-step-define')).toHaveAttribute('aria-current', 'step');
+    expect(screen.getByText(/Schritt 1 von 5/)).toBeInTheDocument();
+    // Kein Verbraucher, keine Kanten: die AutoWire-Aktion ist noch nicht dran.
+    expect(screen.queryByTestId('guided-primary-action')).not.toBeInTheDocument();
+  });
+
+  it('schaltet über den Expertenmodus die Schrittleiste ab', () => {
+    render(<PlannerDashboard />);
+
+    fireEvent.click(screen.getByTestId('guided-expert-toggle'));
+
+    expect(mockSetGuidedMode).toHaveBeenCalledWith(false);
   });
 });
 

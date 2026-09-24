@@ -81,6 +81,14 @@ export interface PlannerState {
   backboneGrouping: boolean;
   setBackboneGrouping: (enabled: boolean) => void;
 
+  /**
+   * Geführter Planungsmodus (UX-Reset 2026-09): Die Schrittleiste sagt, was
+   * als Nächstes zu tun ist, und blendet die Werkzeugkasten-Aktionen aus.
+   * `false` = Expertenmodus (freier React-Flow-Editor ohne Schrittleiste).
+   */
+  guidedMode: boolean;
+  setGuidedMode: (enabled: boolean) => void;
+
   onNodesChange: (changes: import('@xyflow/react').NodeChange[]) => void;
   onEdgesChange: (changes: import('@xyflow/react').EdgeChange[]) => void;
   onWaterNodesChange: (changes: import('@xyflow/react').NodeChange[]) => void;

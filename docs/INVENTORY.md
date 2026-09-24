@@ -35,9 +35,12 @@ Legende Status:
 | Tabs „Elektrisch / Wasser“ (Desktop ≥1024) | wechselt `viewMode`                                        | ✅             | `NavigationSection`, `role="tablist"`, `aria-selected`, `min-h-11`.                                      |
 | Button „Automatisch verbinden“             | `performAutoWiring` (Querschnitte, Sicherungen, Topologie) | ✅ R3          | `ActionsSection.runAutoWire` — durch neue Unit-Tests in `lib/autoWire.test.ts` abgesichert.              |
 | Rückgängig / Wiederholen                   | `undo` / `redo` aus Store-History                          | ✅             | Icon-Buttons `h-11 w-11`, `aria-label`, bei Disabled ausgegraut.                                         |
-| Übersicht                                  | `fitView` über `planner-fit-view`-Event                    | ✅             | `min-h-11`, Icon + Text ab `lg`.                                                                         |
-| Aufräumen (Auto-Layout)                    | dagre-Layout                                               | ✅             | `min-h-11`, Icon + Text ab `sm`.                                                                         |
+| Plan ordnen                                | `onLayoutV2` (ELK, sonst Dagre-Fallback)                   | 🆕 UX-Reset    | `action-tidy`; ersetzt die drei Toolbar-Begriffe „Übersicht / Aufräumen / Strukturieren (ELK)".          |
 | Menü „Mehr“                                | öffnet Dropdown `role="menu"`                              | ✅             | `aria-haspopup="menu"`, `aria-expanded`, schließt bei Escape / Outside-Click.                            |
+| Menüpunkt „Übersicht“                      | `fitView` über `planner-fit-view`-Event                    | ✏️ UX-Reset    | aus der Toolbar ins Menü verschoben — der Canvas trägt dieselbe Aktion als Zoom-Steuerung.               |
+| Menüpunkt „Aufräumen“ (Auto-Layout)        | dagre-Layout                                               | ✏️ UX-Reset    | aus der Toolbar ins Menü verschoben; Primärpfad ist „Plan ordnen".                                       |
+| Menüpunkt „Strukturieren (ELK)“            | `onLayoutV2`, meldet die tatsächlich gelaufene Engine      | ✏️ UX-Reset    | bleibt als expliziter ELK-Pfad erreichbar (`action-layout-v2-menu`).                                     |
+| Menüpunkt „Expertenmodus / geführt“        | `setGuidedMode(!guidedMode)`                               | 🆕 UX-Reset    | `action-guided-toggle`, `aria-pressed`; schaltet die Schrittleiste.                                      |
 | Menüpunkt „Stückliste“                     | `exportBOM()` + öffnet `BOMModal`                          | ✏️ R1          | interner Kopier-Button von `copyBomForChat` in `copyBomToClipboard` umbenannt (kein toter Chat-Verweis). |
 | Menüpunkt „Plan lokal prüfen“              | `checkSchematic()`, öffnet WarningCenter                   | ✅             | `runCheck`, Feedback im Toast.                                                                           |
 | Menüpunkt „Bild exportieren“               | `html-to-image` PNG-Download                               | ✅             | `onExportImage`, leerer Plan wird mit ehrlicher Meldung quittiert (R5).                                  |
@@ -50,6 +53,20 @@ Legende Status:
 | Saison-Badge                               | „☀ Sommer / ❄ Winter“ ab 640 px                            | ✅             | Reine Info, `title`.                                                                                     |
 | Feedback-Toast                             | Erfolg/Fehler/Info nach Aktion                             | ✅             | `role="status"`/`role="alert"`, `aria-live`.                                                             |
 | Reset-Dialog                               | Bestätigung „Plan leeren“                                  | ✅             | `AccessibleDialog` mit Fokus-Falle.                                                                      |
+
+### 2b. Geführte Planungsleiste (`components/planner/ui/GuidedPlanRail.tsx`)
+
+UX-Reset 2026-09: beantwortet „Was soll ich als Nächstes tun?" — fünf Schritte
+(`guidedSteps.ts`), EIN Primäraktion-Knopf, EIN Planstatus. Nur Elektrik, nur im
+geführten Modus (`guidedMode`, Default `true`, persistiert).
+
+| Element                        | Aktion                                     | Status      | Maßnahme / Code-Stelle                                                                |
+| ------------------------------ | ------------------------------------------ | ----------- | ------------------------------------------------------------------------------------- |
+| Schrittleiste (5 Schritte)     | zeigt Fortschritt, kein Klick              | 🆕 UX-Reset | `<nav aria-label="Planungsablauf">`, `aria-current="step"` am aktuellen Schritt.      |
+| Schritt-Text „Schritt n von 5“ | benennt den aktuellen Schritt + Begründung | 🆕 UX-Reset | `evaluateGuidedSteps` — kumulative Bedingungen, keine elektrische Rechnung in der UI. |
+| Planstatus-Chip                | öffnet die Warn-Zentrale                   | 🆕 UX-Reset | `guided-plan-status`; kritisch → Hinweise → „n Verbindungen geprüft".                 |
+| Primäraktion                   | AutoWire / Prüfung / Stückliste je Schritt | 🆕 UX-Reset | `guided-primary-action`; feuert dieselben Events wie Toolbar und Menü.                |
+| „Expertenmodus“                | `setGuidedMode(false)`                     | 🆕 UX-Reset | `guided-expert-toggle`; zurück über das ⋯-Menü.                                       |
 
 ## 3. Ansichts-Modus & Canvas
 

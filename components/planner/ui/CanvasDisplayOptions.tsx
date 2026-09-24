@@ -115,7 +115,15 @@ export function CanvasDisplayOptions(props: CanvasDisplayOptionsProps) {
   const compactViewport = useMediaQuery(COMPACT_CANVAS_CONTROLS_QUERY);
   const inspectorDocked = usePlannerStore((state) => state.isInspectorOpen);
   const dockBreakpoint = useMediaQuery(INSPECTOR_DOCK_QUERY);
-  const compact = compactViewport || (dockBreakpoint && inspectorDocked);
+  /**
+   * UX-Reset 2026-09: Domänen-Filter, Trassen und Hauptstromkreis sind
+   * Expertenwerkzeuge. Im geführten Modus liegen sie deshalb hinter dem
+   * „Ansicht"-Auslöser statt als dauerhafte Chip-Reihe auf dem Plan —
+   * dieselben Schalter, ein bewusster Klick. Im Expertenmodus bleibt die
+   * Chip-Reihe auf breitem Canvas direkt erreichbar.
+   */
+  const guidedMode = usePlannerStore((state) => state.guidedMode);
+  const compact = compactViewport || (dockBreakpoint && inspectorDocked) || guidedMode;
   const [open, setOpen] = useState(false);
   const popoverRef = useRef<HTMLDivElement>(null);
 

@@ -32,6 +32,7 @@ describe('persistOptions — Speicher-Vertrag', () => {
       isSidebarOpen: true,
       isInspectorOpen: false,
       backboneGrouping: true,
+      guidedMode: false,
       // Interne Felder, die NICHT persistiert werden dürfen:
       undoStack: ['x'],
       systemMessage: 'nur Laufzeit',
@@ -41,6 +42,7 @@ describe('persistOptions — Speicher-Vertrag', () => {
       [
         'backboneGrouping',
         'edges',
+        'guidedMode',
         'isInspectorOpen',
         'isSidebarOpen',
         'nodes',
@@ -50,6 +52,8 @@ describe('persistOptions — Speicher-Vertrag', () => {
         'waterNodes',
       ].sort()
     );
+    // Der gewählte Modus (geführt/Experte) überlebt den Reload.
+    expect(subset.guidedMode).toBe(false);
   });
 });
 
@@ -117,6 +121,11 @@ describe('migratePlannerPersisted', () => {
       1
     );
     expect(result).toEqual({});
+  });
+
+  it('übernimmt guidedMode nur als Boolean (sonst greift der Store-Default)', () => {
+    expect(migratePlannerPersisted({ guidedMode: false }, 1)).toEqual({ guidedMode: false });
+    expect(migratePlannerPersisted({ guidedMode: 'aus' }, 1)).toEqual({});
   });
 
   it('übernimmt keine unbekannten Felder', () => {

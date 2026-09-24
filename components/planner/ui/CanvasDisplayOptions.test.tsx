@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CanvasDisplayOptions } from './CanvasDisplayOptions';
+import { usePlannerStore } from '../../../store/usePlannerStore';
 
 const props = () => ({
   activeDomains: new Set(['DC_12V', 'AC_230V', 'Solar'] as const),
@@ -18,6 +19,8 @@ afterEach(() => {
 
 describe('CanvasDisplayOptions', () => {
   it('keeps all display switches directly reachable on a wide canvas', () => {
+    // Expertenmodus: Auf breitem Canvas bleibt die Chip-Reihe direkt sichtbar.
+    usePlannerStore.setState({ guidedMode: false });
     const handlers = props();
     render(<CanvasDisplayOptions {...handlers} />);
 
@@ -53,5 +56,25 @@ describe('CanvasDisplayOptions', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Ansichtsoptionen schließen' }));
     expect(trigger).toHaveAttribute('aria-expanded', 'false');
     window.matchMedia = originalMatchMedia;
+  });
+
+  /**
+   * UX-Reset 2026-09: Im geführten Modus sind Domänen/Trassen/Hauptstromkreis
+   * Expertenwerkzeuge — sie liegen hinter dem „Ansicht"-Auslöser, auch auf
+   * einem breiten Canvas.
+   */
+  it('legt die technischen Filter im geführten Modus hinter den Ansicht-Auslöser', () => {
+    usePlannerStore.setState({ guidedMode: true });
+    const handlers = props();
+    render(<CanvasDisplayOptions {...handlers} />);
+
+    const trigger = screen.getByTestId('canvas-display-options');
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('button', { name: '12V' })).not.toBeInTheDocument();
+
+    fireEvent.click(trigger);
+    expect(screen.getByRole('button', { name: '12V' })).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(screen.getByRole('button', { name: 'Trassen' }));
+    expect(handlers.onToggleTrunkMode).toHaveBeenCalledTimes(1);
   });
 });

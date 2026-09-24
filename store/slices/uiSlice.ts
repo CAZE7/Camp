@@ -38,6 +38,8 @@ export type UiSlice = Pick<
   | 'setTrunkMode'
   | 'backboneGrouping'
   | 'setBackboneGrouping'
+  | 'guidedMode'
+  | 'setGuidedMode'
 >;
 
 export const createUiSlice: PlannerSlice<UiSlice> = (set, get) => ({
@@ -86,4 +88,8 @@ export const createUiSlice: PlannerSlice<UiSlice> = (set, get) => ({
   setTrunkMode: (enabled) => set({ trunkMode: enabled }),
   backboneGrouping: true,
   setBackboneGrouping: (enabled) => set({ backboneGrouping: enabled }),
+  // Geführter Modus ist der Standard: Er beantwortet „Was kommt als Nächstes?“.
+  // Der Expertenmodus bleibt über den Toolbar-Umschalter erreichbar.
+  guidedMode: true,
+  setGuidedMode: (enabled) => set({ guidedMode: enabled }),
 });

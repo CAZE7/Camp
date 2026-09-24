@@ -89,6 +89,7 @@ export function migratePlannerPersisted(persisted: unknown, version: number): Pa
   if (typeof p.isSidebarOpen === 'boolean') safe.isSidebarOpen = p.isSidebarOpen;
   if (typeof p.isInspectorOpen === 'boolean') safe.isInspectorOpen = p.isInspectorOpen;
   if (typeof p.backboneGrouping === 'boolean') safe.backboneGrouping = p.backboneGrouping;
+  if (typeof p.guidedMode === 'boolean') safe.guidedMode = p.guidedMode;
   if (Array.isArray(p.nodes)) safe.nodes = p.nodes.filter(isNodeShape).map(sanitizeNodeData);
   if (Array.isArray(p.edges))
     safe.edges = p.edges.filter(isEdgeShape).map(sanitizeEdgeData) as Edge<CableEdgeData>[];
@@ -115,5 +116,6 @@ export const persistOptions: PersistOptions<PlannerState, Partial<PlannerState>>
     isSidebarOpen: state.isSidebarOpen,
     isInspectorOpen: state.isInspectorOpen,
     backboneGrouping: state.backboneGrouping,
+    guidedMode: state.guidedMode,
   }),
 };
