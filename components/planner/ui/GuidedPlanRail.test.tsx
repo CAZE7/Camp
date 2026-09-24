@@ -111,7 +111,12 @@ describe('GuidedPlanRail', () => {
       />
     );
 
-    expect(screen.getByTestId('guided-plan-status')).toHaveTextContent('2 Verbindungen geprüft');
+    const status = screen.getByTestId('guided-plan-status');
+    expect(status).toHaveTextContent('2 Verbindungen geprüft');
+    // Ohne Hinweise existiert in der Warn-Zentrale kein Dialog — der Chip darf
+    // dann kein Knopf sein (toter Klick).
+    expect(status.tagName).toBe('SPAN');
+    expect(status).toHaveAttribute('role', 'status');
   });
 
   it('führt im letzten Schritt zur Stückliste', () => {

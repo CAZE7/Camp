@@ -137,15 +137,28 @@ export function GuidedPlanRail({
           Begründung, sonst stünde dieselbe Information zweimal in einer Zeile. */}
       <p className="hidden min-w-0 text-xs text-muted-foreground sm:block">{plan.activeStep.detail}</p>
 
-      <button
-        type="button"
-        data-testid="guided-plan-status"
-        onClick={onOpenWarnings}
-        className={`flex min-h-9 items-center gap-1 rounded border border-border bg-card px-2 text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${status.tone}`}
-        title="Planstatus anzeigen"
-      >
-        {status.label}
-      </button>
+      {/* Ohne offene Hinweise gibt es in der Warn-Zentrale keinen Dialog —
+          ein Klickbarer Chip wäre dann ein toter Klick. Deshalb: Status zum
+          Lesen, Knopf nur, wenn es etwas zu zeigen gibt. */}
+      {warnings.length === 0 ? (
+        <span
+          data-testid="guided-plan-status"
+          role="status"
+          className={`flex min-h-9 items-center gap-1 rounded border border-border bg-card px-2 text-xs font-semibold ${status.tone}`}
+        >
+          {status.label}
+        </span>
+      ) : (
+        <button
+          type="button"
+          data-testid="guided-plan-status"
+          onClick={onOpenWarnings}
+          className={`flex min-h-9 items-center gap-1 rounded border border-border bg-card px-2 text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${status.tone}`}
+          title="Planstatus anzeigen"
+        >
+          {status.label}
+        </button>
+      )}
 
       <button
         type="button"
