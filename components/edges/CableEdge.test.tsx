@@ -1,4 +1,5 @@
-import { render } from '@testing-library/react';
+import { act, render } from '@testing-library/react';
+import type { ReactElement } from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import CableEdge, { calculateAnimationDuration, collectEdgeErrors, type CableEdgeData } from './CableEdge';
 import { useReactFlow, Position, type Edge, type Node } from '@xyflow/react';
@@ -12,6 +13,14 @@ import { FUSE_MAX_UNPROTECTED_LENGTH_M, FUSE_MAX_UNPROTECTED_SOURCE } from '../.
  */
 const mockReactFlow = (partial: object) =>
   vi.mocked(useReactFlow).mockReturnValue(partial as unknown as ReturnType<typeof useReactFlow>);
+
+/**
+ * Kanten werden in React Flow innerhalb von `<svg class="react-flow__edges">`
+ * gerendert. Ohne diesen Namensraum legt React `<circle>`/`<animateMotion>` als
+ * unbekannte HTML-Tags an und meldet das als Fehler — die Tests rendern deshalb
+ * im selben Namensraum wie die Produktion.
+ */
+const renderEdge = (edge: ReactElement) => render(<svg>{edge}</svg>);
 
 describe('calculateAnimationDuration (Bug 14)', () => {
   it('liefert 0 für stromlose Leitungen (I = 0, NaN, Infinity)', () => {
@@ -66,15 +75,22 @@ describe('CableEdge', () => {
     });
     // Der echte Store startet ohne Kanten; Tests, die den Store füllen,
     // setzen den Zustand in afterEach zurück.
-    usePlannerStore.setState({ edges: [] });
+    act(() => {
+      usePlannerStore.setState({ edges: [] });
+    });
   });
 
   afterEach(() => {
-    usePlannerStore.setState({ nodes: [], edges: [], waterNodes: [], waterEdges: [] });
+    // Vitest führt afterEach-Hooks LIFO aus: dieser Reset läuft VOR dem
+    // RTL-Cleanup, trifft also eine noch gemountete Kante — ohne act() ist das
+    // ein State-Update außerhalb des Test-Rahmens.
+    act(() => {
+      usePlannerStore.setState({ nodes: [], edges: [], waterNodes: [], waterEdges: [] });
+    });
   });
 
   it('renders correctly with default props', () => {
-    const { getByTestId } = render(<CableEdge {...defaultProps} />);
+    const { getByTestId } = renderEdge(<CableEdge {...defaultProps} />);
 
     expect(getByTestId('base-edge')).toBeInTheDocument();
     expect(getByTestId('edge-label-renderer')).toBeInTheDocument();
@@ -84,7 +100,7 @@ describe('CableEdge', () => {
   });
 
   it('uses orthogonal routing with rounded corners (no bezier)', () => {
-    const { getByTestId } = render(<CableEdge {...defaultProps} />);
+    const { getByTestId } = renderEdge(<CableEdge {...defaultProps} />);
 
     const baseEdge = getByTestId('base-edge');
     const d = baseEdge.getAttribute('d') || '';
@@ -109,9 +125,11 @@ describe('CableEdge', () => {
     // cs = 6.0 => FUSE_MAP[6] = 25 (abgeleitet aus Tabellen-Belastbarkeit
     // 36 A × 0.7 Derating = 25,2 A → größte Norm-Sicherung darunter: 25 A)
 
-    const { getByText } = render(<CableEdge {...defaultProps} selected={true} />);
+    const { getByText } = renderEdge(<CableEdge {...defaultProps} selected={true} />);
 
-    expect(getByText(/6 mm²/)).toBeInTheDocument();
+    // Das Label UND der SVG-`<title>`-Tooltip tragen den Querschnitt — geprüft
+    // wird das sichtbare Label (Format „6 mm² · 5.0 m").
+    expect(getByText(/6 mm² · 5\.0 m/)).toBeInTheDocument();
     expect(getByText('Max: 25A')).toBeInTheDocument();
   });
 
@@ -129,9 +147,10 @@ describe('CableEdge', () => {
     // cs = 16.0 => FUSE_MAP[16] = 40 (Belastbarkeit 16 mm² = 64 A,
     // Design 64 × 0.7 = 44.8 → größte Sicherung ≤ 44.8 ist 40 A)
 
-    const { getByText } = render(<CableEdge {...defaultProps} selected={true} />);
+    const { getByText } = renderEdge(<CableEdge {...defaultProps} selected={true} />);
 
-    expect(getByText(/16 mm²/)).toBeInTheDocument();
+    // dito: sichtbares Label statt `<title>`-Tooltip
+    expect(getByText(/16 mm² · 5\.0 m/)).toBeInTheDocument();
     expect(getByText('Max: 40A')).toBeInTheDocument();
   });
 
@@ -148,7 +167,7 @@ describe('CableEdge', () => {
     // VDE_SIZES = [... 10.0, 16.0, ...], first size >= 10.77 is 16.0
     // cs = 16.0 => mf = 40
 
-    render(<CableEdge {...defaultProps} selected={true} />);
+    renderEdge(<CableEdge {...defaultProps} selected={true} />);
 
     // expect(getByText('16 mm²')).toBeInTheDocument(); // Smart labeling hides this
     // NEU-HIGH-B: New derated FUSE_MAP value for 16mm² in camper conditions = 70A (was 100A)
@@ -156,17 +175,17 @@ describe('CableEdge', () => {
   });
 
   it('renders DC plus with the red plus token', () => {
-    const { getByTestId } = render(<CableEdge {...defaultProps} sourceHandle="plus" />);
+    const { getByTestId } = renderEdge(<CableEdge {...defaultProps} sourceHandle="plus" />);
     expect(getByTestId('base-edge')).toHaveStyle({ stroke: 'var(--wire-dc)' });
   });
 
   it('renders DC minus with the dark minus token', () => {
-    const { getByTestId } = render(<CableEdge {...defaultProps} sourceHandle="minus" />);
+    const { getByTestId } = renderEdge(<CableEdge {...defaultProps} sourceHandle="minus" />);
     expect(getByTestId('base-edge')).toHaveStyle({ stroke: 'var(--wire-dc-minus)' });
   });
 
   it('keeps the domain color when selected (selection is glow, not a color swap)', () => {
-    const { getByTestId } = render(<CableEdge {...defaultProps} sourceHandle="plus" selected={true} />);
+    const { getByTestId } = renderEdge(<CableEdge {...defaultProps} sourceHandle="plus" selected={true} />);
     expect(getByTestId('base-edge')).toHaveStyle({ stroke: 'var(--wire-dc)' });
   });
 
@@ -176,20 +195,20 @@ describe('CableEdge', () => {
       getNodes: vi.fn().mockReturnValue([]),
     });
 
-    const { getByTestId } = render(
+    const { getByTestId } = renderEdge(
       <CableEdge {...defaultProps} sourceHandle="plus" data={{ length: 5, edgeDomain: 'AC_230V' }} />
     );
     expect(getByTestId('base-edge')).toHaveStyle({ stroke: 'var(--wire-ac)' });
   });
 
   it('renders fuseSize if provided in data', () => {
-    render(<CableEdge {...defaultProps} data={{ length: 5, fuseSize: 40 }} />);
+    renderEdge(<CableEdge {...defaultProps} data={{ length: 5, fuseSize: 40 }} />);
 
     // expect(getByText('40A Sicherung')).toBeInTheDocument(); // Smart labeling hides this
   });
 
   it('adjusts labelY when sourceHandle contains minus', () => {
-    const { container } = render(<CableEdge {...defaultProps} sourceHandleId="handle-minus" />);
+    const { container } = renderEdge(<CableEdge {...defaultProps} sourceHandleId="handle-minus" />);
     // The exact inline style check is brittle, let's just ensure it renders without error
     // and verify the class
     const labelContainer = container.querySelector('.nodrag.nopan');
@@ -205,7 +224,7 @@ describe('CableEdge', () => {
       getNodes: vi.fn().mockReturnValue([]),
     });
 
-    const { queryByText } = render(
+    const { queryByText } = renderEdge(
       <CableEdge {...defaultProps} data={{ length: 5, edgeDomain: 'AC_230V' }} />
     );
 
@@ -243,7 +262,7 @@ describe('CableEdge', () => {
       ]),
     });
 
-    const { getByText } = render(
+    const { getByText } = renderEdge(
       <CableEdge {...defaultProps} selected={true} data={{ length: 50, edgeDomain: 'AC_230V' }} />
     );
     expect(getByText(/4 mm² · 50\.0 m/)).toBeInTheDocument();
@@ -277,13 +296,19 @@ describe('CableEdge', () => {
         data: { length: 5, crossSection: 1.5, edgeDomain: 'DC_12V' },
       },
     ];
-    usePlannerStore.setState({ nodes, edges });
+    act(() => {
+      usePlannerStore.setState({ nodes, edges });
+    });
     mockReactFlow({
       getNode: vi.fn((id: string) => nodes.find((n) => n.id === id)),
       getNodes: vi.fn().mockReturnValue(nodes),
     });
+    // Die drei Nodes auf einer Linie zwingen den Router in den ROUTE-001-
+    // Fallback; dessen Dev-Log ist hier Nebensache (geprüft wird es in
+    // pathfinding.test.ts) und wird deshalb nicht auf stderr durchgereicht.
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-    const { getByTestId, getByText, container } = render(
+    const { getByTestId, getByText, container } = renderEdge(
       <CableEdge
         id="e2-3"
         source="2"
@@ -306,6 +331,7 @@ describe('CableEdge', () => {
     expect(baseEdge.style.animation).toBe('wire-error-dash 1s linear infinite');
     expect(container.querySelectorAll('.planner-edge-error-dash')).toHaveLength(0);
     expect(getByText(/Gesamt-Drop/)).toBeInTheDocument();
+    warnSpy.mockRestore();
   });
 
   it('rendert keinen Strom-Partikel auf stromlosen Leitungen (I = 0, Bug 14)', () => {
@@ -315,7 +341,7 @@ describe('CableEdge', () => {
       getNodes: vi.fn().mockReturnValue([{ id: '1', type: 'solar', data: {} }]),
     });
 
-    const { container } = render(<CableEdge {...defaultProps} sourceHandle="plus" />);
+    const { container } = renderEdge(<CableEdge {...defaultProps} sourceHandle="plus" />);
     expect(container.querySelector('.planner-flow-particle')).toBeNull();
   });
 
@@ -327,7 +353,7 @@ describe('CableEdge', () => {
       getNodes: vi.fn().mockReturnValue([]),
     });
 
-    const { container } = render(<CableEdge {...defaultProps} sourceHandle="plus" />);
+    const { container } = renderEdge(<CableEdge {...defaultProps} sourceHandle="plus" />);
     expect(container.querySelector('.planner-flow-particle')).not.toBeNull();
   });
 });

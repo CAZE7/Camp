@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { PlannerDashboard } from './PlannerDashboard';
 import { toPng } from 'html-to-image';
@@ -354,8 +354,12 @@ describe('PlannerDashboard - Image Export', () => {
     openMoreMenu();
     fireEvent.click(screen.getByText(/Bild exportieren/));
 
-    // Give the dynamic import a tick to resolve
-    await Promise.resolve();
+    // Dem dynamischen Import einen Tick Zeit geben — in act(), weil der
+    // Export-Handler asynchron Zustand setzt (sonst Update außerhalb des
+    // Test-Rahmens).
+    await act(async () => {
+      await Promise.resolve();
+    });
     expect(toPng).not.toHaveBeenCalled();
   });
 
