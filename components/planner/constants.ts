@@ -22,3 +22,13 @@ export const PLANNER_MIN_ZOOM = 0.25;
 export const PLANNER_MAX_ZOOM = 2;
 export const PLANNER_FIT_PADDING = 0.2;
 export const PLANNER_SNAP_GRID: [number, number] = [16, 16];
+
+/**
+ * Frames, die ein Bauteil-Zusatz auf eine messbare Plan-Pane wartet (≈0,5 s bei
+ * 60 fps), bevor er auf das feste Raster fällt. Auf dem Handy ist der Katalog
+ * ein eigener Tab: Beim Tippen auf eine Kachel ist die Plan-Spalte noch
+ * `hidden`, der Tab-Wechsel folgt erst danach. Zwei Frames (der alte Wert)
+ * reichten nicht, also landete dort jeder Zusatz auf dem Raster — teils
+ * außerhalb der sichtbaren Fläche.
+ */
+export const PANE_WAIT_FRAMES = 30;

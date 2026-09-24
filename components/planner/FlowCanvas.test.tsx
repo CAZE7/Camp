@@ -4,6 +4,7 @@ import React from 'react';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { FlowCanvas } from './FlowCanvas';
+import { PANE_WAIT_FRAMES } from './constants';
 import { usePlannerStore } from '../../store/usePlannerStore';
 import { useAppStore, type AppState } from '../../lib/store';
 import { useDashboardMetrics } from './hooks/useDashboardMetrics';
@@ -672,5 +673,119 @@ describe('FlowCanvas · Detailgrad (UX-Reset 2026-09 / RECHERCHE C1)', () => {
     expect(css).toContain('.planner-detail-overview .node-card > div:not(.node-symbol)');
     // Sicherheit vor Kompaktheit: Der Status-Rand bleibt unangetastet.
     expect(css).not.toContain('.planner-detail-overview .node-card--error');
+  });
+});
+
+/**
+ * Bauteil-Zusatz über den Katalog (Kachel-Tipp / Tastatur) — E2E-Regression
+ * `touch.spec.ts › Tap-to-Connect`: Auf dem Handy ist der Katalog ein eigener
+ * Tab, die Plan-Spalte also beim Tippen noch `hidden`. Der alte Zwei-Frame-Retry
+ * gab auf und legte das Bauteil auf das feste Raster — teils außerhalb der
+ * sichtbaren Fläche, wo der Anschluss unter der Schrittleiste nicht antippbar
+ * war. Jetzt wird auf eine messbare Pane gewartet.
+ */
+describe('FlowCanvas · Bauteil-Zusatz bei versteckter Plan-Spalte', () => {
+  const rect = (x: number, y: number, width: number, height: number) =>
+    ({
+      x,
+      y,
+      width,
+      height,
+      top: y,
+      right: x + width,
+      bottom: y + height,
+      left: x,
+      toJSON: () => ({}),
+    }) as DOMRect;
+
+  const setup = () => {
+    const addNode = vi.fn();
+    const store = { ...defaultPlannerStoreState, nodes: [], addNode } as PlannerState;
+    Object.assign(usePlannerStore, { getState: () => store });
+    vi.mocked(usePlannerStore).mockImplementation((selector: (s: PlannerState) => unknown) =>
+      selector(store)
+    );
+    const rafQueue: FrameRequestCallback[] = [];
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+      rafQueue.push(callback);
+      return rafQueue.length;
+    });
+    const flush = (frames: number) =>
+      act(() => {
+        for (let i = 0; i < frames && rafQueue.length > 0; i += 1) {
+          const callback = rafQueue.shift();
+          callback?.(performance.now());
+        }
+      });
+    return { addNode, flush };
+  };
+
+  const dispatchAdd = () =>
+    act(() => {
+      window.dispatchEvent(
+        new CustomEvent('planner-add-at-canvas-center', {
+          detail: { type: 'battery', label: 'Batterie', watts: 120 },
+        })
+      );
+    });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    Object.assign(usePlannerStore, { getState: () => defaultPlannerStoreState });
+    vi.mocked(usePlannerStore).mockImplementation((selector: (s: PlannerState) => unknown) =>
+      selector(defaultPlannerStoreState)
+    );
+    vi.mocked(useAppStore).mockImplementation((selector: (s: typeof defaultAppStoreState) => unknown) =>
+      selector(defaultAppStoreState)
+    );
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('wartet auf die messbare Pane und platziert dann in der sichtbaren Mitte', () => {
+    const { addNode, flush } = setup();
+    // Kachel-Tipp: die Plan-Spalte ist noch `hidden`, die Pane misst 0×0.
+    let measurable = false;
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      if (this.classList.contains('react-flow__pane')) {
+        return measurable ? rect(100, 80, 600, 400) : rect(0, 0, 0, 0);
+      }
+      return rect(0, 0, 0, 0);
+    });
+
+    render(<FlowCanvas />);
+    dispatchAdd();
+
+    // Nicht sofort auf das Raster gefallen — es wird auf den Tab-Wechsel gewartet.
+    expect(addNode).not.toHaveBeenCalled();
+
+    // Drei Frames lang bleibt die Spalte versteckt: Der alte Zwei-Frame-Retry
+    // hätte hier längst aufgegeben und auf das Raster gelegt.
+    flush(3);
+    expect(addNode).not.toHaveBeenCalled();
+
+    // Tab-Wechsel: Plan-Spalte sichtbar.
+    measurable = true;
+    flush(3);
+
+    expect(mockScreenToFlowPosition).toHaveBeenCalledWith({ x: 400, y: 280 });
+    expect(addNode).toHaveBeenCalledWith('battery', 'Batterie', { x: 304, y: 224 }, 120);
+  });
+
+  it('fällt nach dem Frame-Budget auf das deterministische Raster zurück', () => {
+    const { addNode, flush } = setup();
+    // Pane bleibt unmessbar (z. B. abgebrochener Tab-Wechsel): die Aktion darf
+    // nicht verloren gehen.
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(() => rect(0, 0, 0, 0));
+
+    render(<FlowCanvas />);
+    dispatchAdd();
+    expect(addNode).not.toHaveBeenCalled();
+
+    flush(PANE_WAIT_FRAMES + 2);
+
+    expect(addNode).toHaveBeenCalledWith('battery', 'Batterie', { x: 0, y: 0 }, 120);
   });
 });

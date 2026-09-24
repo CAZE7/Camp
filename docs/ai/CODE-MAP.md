@@ -110,8 +110,7 @@ CAMP
 - **Depends On:** `components/planner/hooks/useLiveValidation.ts` (Hinweise),
   `store/slices/persistence.ts` (`partialize` + `migratePlannerPersisted`).
 - **Called By:** `components/planner/PlannerDashboard.tsx`; `planner-open-catalog`
-  wird von `components/planner/PlannerInner.tsx` gehört (Katalog-Tab/Spalte + Fokus
-  Suche).
+  wird von `components/PlannerInner.tsx` gehört (Katalog-Tab/Spalte + Fokus Suche).
 - **Detailgrad (RECHERCHE C1):** `detailLevel` (`overview`/`detail`, persistiert,
   Default `detail`) ist ein Schalter in den Ansichtsoptionen — bewusst **nicht**
   zoomgesteuert, denn `M8-1` hat zoom-automatische Knotenstufen entfernt. Die
