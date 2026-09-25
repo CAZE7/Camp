@@ -176,7 +176,7 @@ export default function PlannerInner() {
           className={`min-w-0 flex-1 flex-col md:flex xl:min-w-[600px] ${activeTab === 'canvas' ? 'flex' : 'hidden'}`}
         >
           <PlannerDashboard />
-          <div className="relative flex h-full flex-1 flex-col overflow-hidden">
+          <div className="relative min-h-0 flex-1 flex-col overflow-hidden">
             <React.Suspense fallback={<CanvasSkeleton />}>
               {/* Fehlergrenze: Ein Werfen in einer Node-/Routing-Komponente
                   reißt nicht mehr die ganze Planer-Seite. Der Plan liegt im
