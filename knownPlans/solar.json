@@ -8,6 +8,7 @@
           "edgeDomain": "DC_12V",
           "fuseSize": 20,
           "fuseType": "anl",
+          "fuseWarning": false,
           "length": 0.2
         },
         "id": "e-auto-1",
@@ -23,6 +24,7 @@
           "edgeDomain": "DC_12V",
           "fuseSize": 20,
           "fuseType": "anl",
+          "fuseWarning": false,
           "length": 2
         },
         "id": "e-auto-10",
@@ -36,6 +38,7 @@
           "crossSection": 6,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
+          "fuseWarning": false,
           "length": 2
         },
         "id": "e-auto-11",
@@ -49,6 +52,7 @@
           "crossSection": 4,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
+          "fuseWarning": false,
           "length": 0.2
         },
         "id": "e-auto-2",
@@ -62,6 +66,7 @@
           "crossSection": 4,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
+          "fuseWarning": false,
           "length": 0.5
         },
         "id": "e-auto-3",
@@ -77,6 +82,7 @@
           "edgeDomain": "DC_12V",
           "fuseSize": 20,
           "fuseType": "anl",
+          "fuseWarning": false,
           "length": 1
         },
         "id": "e-auto-4",
@@ -90,6 +96,7 @@
           "crossSection": 4,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
+          "fuseWarning": false,
           "length": 1
         },
         "id": "e-auto-5",
@@ -105,6 +112,7 @@
           "edgeDomain": "DC_12V",
           "fuseSize": 5,
           "fuseType": "anl",
+          "fuseWarning": false,
           "length": 3
         },
         "id": "e-auto-6",
@@ -118,6 +126,7 @@
           "crossSection": 2.5,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
+          "fuseWarning": false,
           "length": 3
         },
         "id": "e-auto-7",
@@ -133,6 +142,7 @@
           "edgeDomain": "Solar",
           "fuseSize": 25,
           "fuseType": "anl",
+          "fuseWarning": false,
           "length": 5
         },
         "id": "e-auto-8",
@@ -146,6 +156,7 @@
           "crossSection": 10,
           "dropWarning": false,
           "edgeDomain": "Solar",
+          "fuseWarning": false,
           "length": 5
         },
         "id": "e-auto-9",

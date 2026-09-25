@@ -174,18 +174,72 @@ describe('evaluateAcEdgeProtection — Abschaltbedingung (TN, konservativ)', () 
     expect(result.iaA).toBeNull();
   });
 
-  it('ohne Bauform/Charakteristik: „not-modeled“ (ehrlich statt geraten)', () => {
-    expect(evaluateAcEdgeProtection({ ratedCurrentA: 16, lengthM: 5, crossSection: 2.5 }).verdict).toBe(
-      'not-modeled'
-    );
-    expect(
-      evaluateAcEdgeProtection({
-        ratedCurrentA: 16,
-        descriptor: { kind: 'sicherung', characteristic: 'X', breakingCapacityKA: 6 },
-        lengthM: 5,
-        crossSection: 2.5,
-      }).verdict
-    ).toBe('not-modeled');
+  it('ohne Bauform/Charakteristik: geprüft unter benannter C-Annahme (AUDIT ELE-004)', () => {
+    // Früher lautete dieser Fall „not-modeled“ — AutoWire umging ihn, indem es
+    // selbst ein Datenblatt (LS B, 6 kA) auf die Kante stempelte. Jetzt wird
+    // die ungünstigste übliche Charakteristik ANGENOMMEN und die Annahme
+    // ausgewiesen; „stilles ok“ gibt es nicht mehr.
+    const assumed = evaluateAcEdgeProtection({ ratedCurrentA: 16, lengthM: 5, crossSection: 2.5 });
+    expect(assumed.descriptorAssumed).toBe(true);
+    expect(assumed.descriptor).toEqual({ kind: 'mcb', characteristic: 'C', breakingCapacityKA: 6 });
+    expect(assumed.reason).toContain('Annahme mangels Datenblatt');
+
+    const invalid = evaluateAcEdgeProtection({
+      ratedCurrentA: 16,
+      descriptor: { kind: 'sicherung', characteristic: 'X', breakingCapacityKA: 6 },
+      lengthM: 5,
+      crossSection: 2.5,
+    });
+    expect(invalid.descriptorAssumed).toBe(true);
+    expect(invalid.descriptor!.characteristic).toBe('C');
+  });
+
+  it('fehlende Länge oder fehlender Querschnitt: UNKNOWN — nicht „ok“ (AUDIT ELE-002/003)', () => {
+    // Vorher: `lengthM ?? 0` machte aus einer fehlenden Länge ein 0-m-Kabel —
+    // die Kante bestand die Prüfung (eine 30-m-Leitung mit C16 auf 2,5 mm²
+    // fällt real durch, ohne Länge aber nicht).
+    const noLength = evaluateAcEdgeProtection({
+      ratedCurrentA: 16,
+      descriptor: { kind: 'mcb', characteristic: 'C', breakingCapacityKA: 6 },
+      crossSection: 2.5,
+    });
+    expect(noLength.verdict).toBe('not-modeled');
+    expect(noLength.limitation).toBe('missing-length');
+
+    const noCrossSection = evaluateAcEdgeProtection({
+      ratedCurrentA: 16,
+      descriptor: { kind: 'mcb', characteristic: 'C', breakingCapacityKA: 6 },
+      lengthM: 30,
+    });
+    expect(noCrossSection.verdict).toBe('not-modeled');
+    expect(noCrossSection.limitation).toBe('missing-cross-section');
+
+    // Mit Länge und Querschnitt ist dieselbe Leitung real ein Fehler.
+    const real = evaluateAcEdgeProtection({
+      ratedCurrentA: 16,
+      descriptor: { kind: 'mcb', characteristic: 'C', breakingCapacityKA: 6 },
+      lengthM: 30,
+      crossSection: 2.5,
+    });
+    expect(real.verdict).toBe('fail');
+  });
+
+  it('Abschaltvermögen wird gegen einen gerechneten Ik geprüft (AUDIT ELE-005)', () => {
+    const strong = evaluateAcEdgeProtection({
+      ratedCurrentA: 16,
+      descriptor: { kind: 'mcb', characteristic: 'B', breakingCapacityKA: 6 },
+      lengthM: 5,
+      crossSection: 2.5,
+    });
+    const weak = evaluateAcEdgeProtection({
+      ratedCurrentA: 16,
+      descriptor: { kind: 'mcb', characteristic: 'B', breakingCapacityKA: 0.1 },
+      lengthM: 5,
+      crossSection: 2.5,
+    });
+    expect(strong.verdict).not.toBe('breaking-capacity-fail');
+    expect(weak.verdict).toBe('breaking-capacity-fail');
+    expect(strong.prospectiveIkA).toBeCloseTo(strong.zsEstimateOhm! > 0 ? 230 / strong.zsEstimateOhm! : 0, 9);
   });
 
   it('ohne Bemessungsstrom: „not-modeled“', () => {

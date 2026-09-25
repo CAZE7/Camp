@@ -43,8 +43,12 @@ describe('circuit tracing', () => {
 
   it('builds a readable path overlay with electrical values', () => {
     const trace = traceCircuit(nodes, edges, { edgeId: 'e3' })!;
-    expect(circuitTraceLabel(nodes, trace)).toBe(
-      'Batterie → Shunt → Sicherung → Kühlbox (12 V, 5 A, 2.5 mm²)'
+    // AUDIT ELE-009: Die Beschriftung leitete Spannung/Strom inline ab und
+    // las dabei `data.voltage` (ein Feld, das Batterien nie tragen — sie
+    // führen `nominalVoltage`) mit Fallback 12 V. Jetzt kommt die Spannung
+    // aus derselben Autorität wie überall (getSystemVoltage → 12,8 V).
+    expect(circuitTraceLabel(nodes, trace, edges)).toBe(
+      'Batterie → Shunt → Sicherung → Kühlbox (12.8 V, 5 A, 2.5 mm²)'
     );
   });
 

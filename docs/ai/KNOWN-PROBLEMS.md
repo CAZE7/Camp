@@ -269,6 +269,15 @@ Legende Severity: **hoch** = Agent kann falschen Code ändern / falsche Sicherhe
 - **EXPECTED BEHAVIOR:** Entweder ein zweiter, dokumentierter Messpunkt im Gate
   (nicht-blockierend) oder eine Optimierung mit eigenem ADR. **Kein** stilles Anheben des
   Budgets und kein Entfernen des Gates.
+- **TEILWEISE UMGESETZT (2026-09-25, AUDIT P1):** Vorher maß das CI-Gate ausschließlich
+  `buildOrthogonalPath` — den **Legacy-Router**, den die Fläche seit ADR 0014 nicht mehr
+  zeichnet. `npm run perf:edge-routing` misst jetzt zusätzlich die **Live-Pipeline**
+  (`routeAllCables` auf demselben Referenzplan N=36/E=134): Median **≈ 29 ms**, p90 ≈ 40 ms
+  auf der Entwicklungsmaschine — also rund doppelt über dem 16-ms-Frame-Budget. Das Gate
+  läuft deshalb als **Ratchet** (60 ms, Exit-Code bei Überschreitung), nicht als Behauptung:
+  der Ist-Zustand ist festgehalten und Rückfall verboten; das Ziel bleibt 16 ms und wird
+  durch echte Optimierung (nicht durch Anheben) erreicht. Offen bleibt die
+  Skalierungsspitze N≈500 (≈2 s, s. Tabelle).
 - **SEVERITY:** mittel
 - **WORKAROUND:** Drossel nutzen; Änderungen am A\*-Innenloop immer mit beiden Benchmarks
   gegenmessen. Einzelmessungen großer Pläne streuen um Faktor >2 — immer den Median nehmen.
@@ -345,7 +354,7 @@ Legende Severity: **hoch** = Agent kann falschen Code ändern / falsche Sicherhe
 
 ---
 
-## ELE-003 — Golden Master nutzt für AC-Kanten die DC-Stromfunktion
+## ELE-003 — Golden Master nutzt für AC-Kanten die DC-Stromfunktion — **behoben 2026-09-25**
 
 - **AREA:** Electrical / Harness
 - **FILE:** `scripts/goldenmaster/pipeline.ts` (`captureGoldenMaster`, Stufe 2)
@@ -362,7 +371,12 @@ Legende Severity: **hoch** = Agent kann falschen Code ändern / falsche Sicherhe
   benutzen (`acCurrentA` / `calculateAcEdgeCurrent`) — oder die Abweichung explizit als
   „DC-Seitenstrom“ kennzeichnen.
 - **SEVERITY:** mittel
-- **WORKAROUND:** `electrical.edgeCurrents` in `knownPlans/*.json` bei AC-Kanten nicht als
+- **FIX (2026-09-25):** `captureGoldenMaster` benutzt für AC-Kanten dieselbe Funktion wie die
+  Anzeige (`acCurrentA`, `lib/autoWire/sizing.ts`). Die Fixtures tragen jetzt den echten
+  Leitungsstrom (`inverter`: `e-auto-ac-10` = 2,61 A statt 98,04 A). Der zweite, nie
+  konsumierte Rechenweg `calculateAcEdgeCurrent` (`lib/vde-standards.ts`) wurde entfernt
+  (AUDIT ELE-009) — es gibt genau EINEN AC-Strompfad.
+- **WORKAROUND (historisch):** `electrical.edgeCurrents` in `knownPlans/*.json` bei AC-Kanten nicht als
   „Strom der Leitung“ lesen. Für elektrische Aussagen die Anzeige-Pfade prüfen.
 - **RELATED TEST:** `scripts/goldenmaster/goldenMaster.test.ts`,
   `components/edges/utils/voltageDrop.test.ts`, `lib/vde-consistency.test.ts`

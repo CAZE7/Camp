@@ -1,4 +1,6 @@
 import type { Edge, Node } from '@xyflow/react';
+import { AC_SYSTEM_VOLTAGE, calculateEdgeCurrent, getSystemVoltage } from '../../../lib/vde-standards';
+import { acCurrentA } from '../../../lib/autoWire/sizing';
 
 const ACTIVE = 'planner-trace-active';
 const DIM = 'planner-trace-dim';
@@ -172,17 +174,40 @@ export function applyCircuitTrace<N extends Node, E extends Edge>(
 
 const format = (value: number): string => (Number.isInteger(value) ? String(value) : value.toFixed(1));
 
-export function circuitTraceLabel(nodes: Node[], trace: CircuitTrace): string {
+/**
+ * AUDIT ELE-009: Der Kurzinfo-Text leitete Spannung und Strom INLINE ab —
+ * `Number(target.data.voltage) || 12` (ein Feld, das Batterien nie tragen;
+ * sie führen `nominalVoltage`) und `data.amps` (ein Gerätefeld, das die
+ * Knoten nicht setzen). Ergebnis: Jede DC-Kante wurde mit 12 V statt der
+ * Systemspannung und mit 0 A beschriftet, solange keine Sicherung gesetzt war.
+ *
+ * Jetzt kommen alle drei Zahlen aus denselben Autoritäten wie Anzeige und
+ * Dimensionierung: Systemspannung (getSystemVoltage), Strom
+ * (calculateEdgeCurrent bzw. acCurrentA), Querschnitt aus der Kante.
+ */
+export function circuitTraceLabel(
+  nodes: Node[],
+  trace: CircuitTrace,
+  traceEdges: Edge[] = trace.referenceEdge ? [trace.referenceEdge] : []
+): string {
   const nodeMap = new Map(nodes.map((node) => [node.id, node]));
   const names = trace.pathNodeIds.map((id) => {
     const node = nodeMap.get(id);
     return String(node?.data?.label || node?.type || 'Bauteil');
   });
   const edge = trace.referenceEdge;
+  const source = edge ? nodeMap.get(edge.source) : undefined;
   const target = edge ? nodeMap.get(edge.target) : undefined;
-  const voltage = edge?.data?.edgeDomain === 'AC_230V' ? 230 : Number(target?.data?.voltage) || 12;
-  const watts = Number(target?.data?.watts) || 0;
-  const amps = Number(edge?.data?.amps) || (watts > 0 ? watts / voltage : Number(edge?.data?.fuseSize) || 0);
+  const isAc = edge?.data?.edgeDomain === 'AC_230V';
+  const sysVoltage = getSystemVoltage(nodes);
+  const voltage = isAc ? AC_SYSTEM_VOLTAGE : sysVoltage;
+  const computedAmps =
+    edge && source && target
+      ? isAc
+        ? acCurrentA(source, target, nodes, traceEdges)
+        : calculateEdgeCurrent(source, target, nodes, sysVoltage, traceEdges)
+      : 0;
+  const amps = computedAmps > 0 ? computedAmps : Number(edge?.data?.fuseSize) || 0;
   const crossSection = Number(edge?.data?.crossSection) || 2.5;
   return `${names.join(' → ')} (${format(voltage)} V, ${format(amps)} A, ${format(crossSection)} mm²)`;
 }

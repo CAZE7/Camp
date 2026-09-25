@@ -49,10 +49,18 @@
  * Durchlassenergie (Selektivität), Lichtbogenenergie, AC-seitiges Ik.
  */
 
+import { COPPER_CONDUCTIVITY_MS_PER_MM2 } from './materials';
+
 import type { Node } from './domain/graph';
 import { DEFAULT_SYSTEM_VOLTAGE } from './vde-standards';
 
-const COPPER_CONDUCTIVITY = 58;
+/**
+ * κ von Kupfer bei 20 °C — eine Quelle (lib/materials.ts, AUDIT ELE-010).
+ * Vorher stand hier eine eigene 58, während die Spannungsfall-Seite mit
+ * ρ = 0,0175 rechnete (Kehrwert 0,017241): zwei Kupferwerte für denselben
+ * Werkstoff in derselben App.
+ */
+const COPPER_CONDUCTIVITY = COPPER_CONDUCTIVITY_MS_PER_MM2;
 
 /** Bauformen mit typischem DC-Abschaltvermögen — s. Dateikopf (UNVERIFIED). */
 export type FuseType = 'ato' | 'midi' | 'mega' | 'anl' | 'mrbf' | 'classT';

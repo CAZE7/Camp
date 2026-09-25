@@ -18,6 +18,9 @@ import {
 
 import { getSystemVoltage } from '../utils/voltage';
 import { calculateEdgeCurrent } from '../../../lib/vde-standards';
+import { acCurrentA } from '../../../lib/autoWire/sizing';
+import { assessCableSelection, designAmpacity, isThermallyOverloaded } from '../../../lib/electrical';
+import { PX_PER_METER } from '../../../lib/units';
 
 export interface ValidationWarning {
   id: string;
@@ -106,8 +109,35 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
     const edgesBySource = new Map<string, Edge<CableEdgeData>[]>();
 
     // ELE-008: Mischspannungsplan verhindern
+    //
+    // AUDIT ELE-006: Hier stand `Number(b.data?.voltage) || 12`. Batterien
+    // tragen ihre Nennspannung aber in `nominalVoltage` (components/nodes/types.ts,
+    // geschrieben vom NodeInspector). Die Menge war damit IMMER {12} — die
+    // Regel konnte nie feuern, während ihr CI-Test grün blieb, weil das
+    // Fixture das Phantomfeld `voltage` benutzte. Gelesen wird jetzt das
+    // echte Feld; der fehlende Wert ist ausdrücklich „unbekannt“ (nicht 12),
+    // sonst entsteht dieselbe stille Gleichsetzung.
     if (batteries.length > 1) {
-      const voltages = new Set(batteries.map((b) => Number(b.data?.voltage) || 12));
+      const declaredVoltages = batteries
+        .map((b) => Number((b.data as Record<string, unknown> | undefined)?.nominalVoltage))
+        .filter((v) => Number.isFinite(v) && v > 0);
+      const hasUnknownVoltage = declaredVoltages.length < batteries.length;
+      const voltages = new Set(declaredVoltages);
+      if (hasUnknownVoltage) {
+        warnings.push({
+          id: 'mixed-voltage-unknown',
+          category: 'estimation',
+          type: 'info',
+          title: 'Batterie-Nennspannung fehlt',
+          ruleId: 'ELE-008-voltage-unknown',
+          measuredValue: `${batteries.length - declaredVoltages.length} × ohne Angabe`,
+          expectedValue: 'Nennspannung je Batterie eintragen',
+          unit: 'V',
+          source: 'Datenmodell: battery.nominalVoltage (NodeInspector)',
+          message:
+            'ℹ️ Hinweis: Bei mindestens einer Batterie ist die Nennspannung nicht eingetragen. Die Mischspannungs-Prüfung (12 V / 24 V) kann diese Batterie nicht einbeziehen — trage die Nennspannung im Batterie-Inspektor ein.',
+        });
+      }
       if (voltages.size > 1) {
         warnings.push({
           id: 'mixed-voltage-batteries',
@@ -262,7 +292,28 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
     nodes.forEach((mppt) => {
       if (mppt.type !== 'mpptController') return;
       const maxPvVoltage = Number((mppt.data as Record<string, unknown> | undefined)?.maxPvVoltage || 0);
-      if (maxPvVoltage <= 0) return;
+      if (maxPvVoltage <= 0) {
+        // AUDIT ELE-008: Vorher `return` — der „Voc fehlt“-Hinweis unten stand
+        // im else-Zweig hinter dieser Zeile und war damit für genau den Fall
+        // unerreichbar, für den er geschrieben war: Ein MPPT-String ohne
+        // Eingangsfenster blieb komplett stumm (UNKNOWN sah aus wie „ok“).
+        warnings.push({
+          id: `solar-voc-window-unknown-${mppt.id}`,
+          category: 'estimation',
+          type: 'warning',
+          title: 'MPPT-Eingangsspannung nicht angegeben — Fenster unbewertet',
+          focusId: mppt.id,
+          focusType: 'node',
+          ruleId: 'ELE-007-voc-window-unknown',
+          measuredValue: 'maxPvVoltage fehlt',
+          expectedValue: 'max. PV-Eingangsspannung laut Datenblatt',
+          unit: 'V',
+          source: 'Regel M: fehlende Eingabe ⇒ UNKNOWN; Modell prüft Voc(T_min) gegen maxPvVoltage',
+          message:
+            '⚠️ Hinweis: Am Laderegler ist die maximale PV-Eingangsspannung nicht eingetragen. Die Kalt-Voc-Prüfung (Strings können bei −10 °C über die Leerlaufspannung hinausgehen) ist damit unbewertet. Wert im Regler-Inspektor eintragen — erst dann prüft das Modell das Eingangsfenster.',
+        });
+        return;
+      }
       // Erreichbare Panels per BFS über alle Kanten ab dem Regler.
       const adjacent = new Map<string, string[]>();
       edges.forEach((edge) => {
@@ -520,8 +571,32 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
     {
       const bankIk = bankShortCircuitCurrentA(batteries, sysVoltage);
       let fuseTypeNotePushed = false;
+      if (bankIk === null && batteries.length > 0) {
+        // AUDIT ELE-008: Vorher `break` — die Kurzschlussprüfung verschwand
+        // lautlos, sobald die Bank nicht schätzbar war (z. B. leere oder
+        // schema-frisch angelegte Batterie). „Ehrlich schweigen“ ist hier
+        // nicht ehrlich: der Nutzer sieht nicht, dass GAR NICHT geprüft wurde.
+        const hasFuse = edges.some((e) => e.sourceHandle?.includes('plus') && Number(e.data?.fuseSize) > 0);
+        if (hasFuse) {
+          warnings.push({
+            id: 'sc-bank-unknown',
+            category: 'estimation',
+            type: 'warning',
+            title: 'Kurzschlussstrom der Batteriebank nicht schätzbar',
+            focusId: batteries[0]?.id,
+            focusType: 'node',
+            ruleId: 'DOM-002-bank-ik-unknown',
+            measuredValue: 'Ik Schätzung nicht möglich',
+            expectedValue: 'Kapazität/Chemie oder Innenwiderstand je Batterie',
+            unit: 'kA',
+            source: 'Modell: Ik-Schätzung aus Innenwiderstand oder Chemie-Faustwert (lib/shortCircuit.ts)',
+            message:
+              '⚠️ Hinweis: Für die Batteriebank fehlen die Angaben, aus denen der Kurzschlussstrom geschätzt wird (Kapazität/Chemie oder Innenwiderstand). Das Abschaltvermögen der Sicherungen ist damit NICHT geprüft — Datenblattwerte im Batterie-Inspektor eintragen.',
+          });
+        }
+      }
       for (const battery of batteries) {
-        if (bankIk === null) break; // Bank nicht schätzbar → ehrlich schweigen
+        if (bankIk === null) break; // Bank nicht schätzbar → geprüft wird unten nichts
         for (const edge of edges) {
           const isBatterySourcePlus = edge.source === battery.id && !!edge.sourceHandle?.includes('plus');
           if (!isBatterySourcePlus) continue;
@@ -602,6 +677,8 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
     {
       const anyUpstreamRcd = [...shorePowerNodes, ...chargers].some((n) => n.data?.hasRcd === true);
       let acProtectionNotePushed = false;
+      let acLengthNotePushed = false;
+      let acAssumptionNotePushed = false;
       for (const edge of edges) {
         const sourceNode = nodeMap.get(edge.source);
         const targetNode = nodeMap.get(edge.target);
@@ -676,9 +753,61 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
               message: `Hinweis: ${assessment.reason}`,
             });
             break;
-          case 'ok-with-assumption':
-            break; // geprüft & still — die Annahmen stehen im source-String anderer Meldungen
+          case 'ok-with-assumption': {
+            // Ohne Datenblatt wird mit der konservativen C-Annahme gerechnet
+            // (AUDIT ELE-004) — das Ergebnis ist dann KEIN stilles OK, sondern
+            // eine ausdrücklich benannte Annahme (Regel M: Annahme ja,
+            // Schweigen nein).
+            if (assessment.descriptorAssumed && !acAssumptionNotePushed) {
+              acAssumptionNotePushed = true;
+              warnings.push({
+                ...base,
+                id: 'ac-descriptor-assumed',
+                category: 'estimation',
+                type: 'warning',
+                title: 'AC-Schutzorgan ohne Datenblatt — unter Annahme geprüft',
+                focusId: edge.id,
+                focusType: 'edge',
+                ruleId: 'DOM-001-descriptor-assumed',
+                measuredValue: 'LS C, 6 kA (Annahme)',
+                expectedValue: 'Bauform (LS/RCBO), Charakteristik B/C, Icn laut Datenblatt',
+                source:
+                  'Annahme in lib/acProtection.ts: ungünstigste übliche Charakteristik C (10 × In) statt B (5 × In) — Zs,max(C16) = 0,96 Ω statt 1,92 Ω. Eine Leitung, die damit besteht, besteht auch mit jedem real verbauten B-Gerät.',
+                message: `Hinweis: Für mindestens eine 230-V-Leitung ist kein Schutzorgan hinterlegt. Gerechnet wurde deshalb mit der UNGÜNSTIGSTEN üblichen Charakteristik (LS C, 6 kA) — das Ergebnis liegt damit auf der sicheren Seite, ist aber eine Annahme. Trage Bauform, Charakteristik und Abschaltvermögen im Leitungs-Inspektor ein, dann prüft der Plan gegen das echte Gerät.`,
+              });
+            }
+            break;
+          }
           case 'not-modeled': {
+            // Jede Lücke wird benannt und einmal je Plan gemeldet. Der Grund
+            // entscheidet über Text und Fokus: „Länge fehlt“ ist eine andere
+            // Aufgabe als „Bauform fehlt“ (AUDIT ELE-002/003/004).
+            const limitation = assessment.limitation;
+            if (limitation === 'missing-length' || limitation === 'missing-cross-section') {
+              if (!acLengthNotePushed) {
+                acLengthNotePushed = true;
+                warnings.push({
+                  ...base,
+                  id: `ac-missing-input-${limitation}`,
+                  category: 'safety',
+                  // Bewusst `warning`, nicht `info`: ohne Länge/Querschnitt ist
+                  // die Abschaltbedingung UNBEKANNT — ein Plan, der hier
+                  // schweigt, sieht geprüft aus, ist es aber nicht.
+                  type: 'warning',
+                  title:
+                    limitation === 'missing-length'
+                      ? 'AC-Leitung ohne Länge — Abschaltung nicht bewertet'
+                      : 'AC-Leitung ohne Querschnitt — Abschaltung nicht bewertet',
+                  ruleId: 'DOM-001-trip-unknown-input',
+                  measuredValue: limitation === 'missing-length' ? 'Länge fehlt' : 'Querschnitt fehlt',
+                  expectedValue: 'Länge [m] und Querschnitt [mm²] an der Leitung',
+                  source:
+                    'Regel M (kein stiller Fallback): fehlende Eingabe ⇒ UNKNOWN, niemals PASS; lib/acProtection.ts',
+                  message: `${assessment.reason} Ohne diese Angabe ist die Abschaltbedingung der 230-V-Leitung unbekannt — der Plan darf sie nicht als geprüft ausweisen.`,
+                });
+              }
+              break;
+            }
             if (!acProtectionNotePushed) {
               acProtectionNotePushed = true;
               warnings.push({
@@ -694,11 +823,160 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
                 expectedValue: 'Bauform (LS/RCBO), Charakteristik B/C, Icn 6/10 kA',
                 source:
                   'DOM-001: AC-Schutzdaten fehlen — Bewertung erst mit Datenblatt-Angaben (Edge-Inspektor)',
-                message: `Hinweis: Für mindestens eine 230-V-Leitung ist die Sicherung nur als Bemessungsstrom eingetragen. Bauform (LS oder FI/LS), Charakteristik (B/C) und Abschaltvermögen im Leitungs-Inspektor angeben — erst dann wird die Abschaltbedingung geschätzt geprüft (IEC 60898-1 / 60364-4-41).`,
+                message: `Hinweis: Für mindestens eine 230-V-Leitung ist die Sicherung nur als Bemessungsstrom eingetragen. Bauform (LS oder FI/LS), Charakteristik (B/C) und Abschaltvermögen im Leitungs-Inspektor angeben — erst dann wird die Abschaltbedingung geschätzt geprüft (IEC 60898-1 / 60364-4-41). Ohne diese Angaben ist sie UNBEKANNT, nicht erfüllt.`,
               });
             }
             break;
           }
+          case 'breaking-capacity-fail': {
+            warnings.push({
+              ...base,
+              id: `ac-breaking-${edge.id}`,
+              category: 'safety',
+              type: 'critical',
+              title: 'Abschaltvermögen des AC-Schutzorgans zu gering',
+              ruleId: 'DOM-001-breaking-capacity',
+              measuredValue: `Icn ${edge.data?.acProtection?.breakingCapacityKA} kA`,
+              expectedValue: `> I_p ≈ ${((assessment.prospectiveIkA ?? 0) / 1000).toFixed(2)} kA`,
+              unit: 'kA',
+              message: `⚠️ Kritisch: ${assessment.reason} Schutzorgan mit höherem Abschaltvermögen wählen (üblich 6 kA) oder die Netzimpedanz vor Ort messen lassen.`,
+            });
+            break;
+          }
+        }
+      }
+    }
+
+    // --- Rule SIZE: verlegter Querschnitt gegen Anforderung (AUDIT ELE-001) ---
+    //
+    // Bis hierher wurde der QUERSCHNITT nirgends gegen die Rechnung verglichen:
+    // Anzeige, Spannungsfall und Sicherungsgrenze liefen alle über
+    // `calculateCrossSection(…, data.crossSection)`, und das ist das Maximum
+    // aus Empfehlung und gespeichertem Wert. Eine zu dünn gespeicherte Leitung
+    // (2,5 mm² gespeichert, 10 mm² gerechnet) zeigte damit 10 mm², 2,87 %
+    // Spannungsfall und 32 A Maximalsicherung — real verlegt waren 2,5 mm² mit
+    // 11,49 % und höchstens 16 A. Diese Regel vergleicht beide Zahlen
+    // ausdrücklich und meldet die Differenz als kritisch.
+    {
+      const nodePos = (id: string) => nodeMap.get(id)?.position;
+      const geometricLength = (edge: Edge<CableEdgeData>): number | undefined => {
+        const a = nodePos(edge.source);
+        const b = nodePos(edge.target);
+        if (!a || !b) return undefined;
+        return Math.hypot(b.x - a.x, b.y - a.y) / PX_PER_METER;
+      };
+
+      for (const edge of edges) {
+        if (edge.type === 'waterPipe') continue;
+        const sourceNode = nodeMap.get(edge.source);
+        const targetNode = nodeMap.get(edge.target);
+        if (!sourceNode || !targetNode) continue;
+        const domain =
+          edge.data?.edgeDomain ??
+          getEdgeDomain(sourceNode.type, targetNode.type, edge.sourceHandle, edge.targetHandle);
+        // Solar-Zuleitungen werden an der MPP-Spannung und mit dem
+        // Designstrom (≥ 1,25 × Isc) bemessen — eigene Regelkette, nicht hier.
+        if (domain === 'Solar') continue;
+
+        const isAC = domain === 'AC_230V';
+        const I = isAC
+          ? acCurrentA(sourceNode, targetNode, nodes, edges)
+          : calculateEdgeCurrent(sourceNode, targetNode, nodes, sysVoltage, edges);
+        if (!(I > 0)) continue;
+
+        // Wie in der Anzeige: gespeicherte Länge, sonst geometrische Schätzung.
+        const rawLength = edge.data?.length;
+        const storedLength = typeof rawLength === 'number' && rawLength >= 0 ? rawLength : undefined;
+        const length = storedLength ?? geometricLength(edge);
+        if (length === undefined || !(length >= 0)) continue;
+
+        const storedCs =
+          typeof edge.data?.crossSection === 'number' && edge.data.crossSection > 0
+            ? edge.data.crossSection
+            : undefined;
+        const selection = assessCableSelection(I, length, storedCs, isAC ? 'AC_230V' : 'DC_12V');
+        const lengthNote = storedLength === undefined ? ' (Länge geschätzt)' : '';
+
+        if (selection.undersized) {
+          warnings.push({
+            id: `cross-section-undersized-${edge.id}`,
+            category: 'safety',
+            type: 'critical',
+            title: 'Kabelquerschnitt zu klein verlegt',
+            focusId: edge.id,
+            focusType: 'edge',
+            ruleId: 'ELE-001-undersized-cross-section',
+            measuredValue: `${storedCs} mm²`,
+            expectedValue: `${selection.recommendedCrossSection} mm²`,
+            unit: 'mm²',
+            source:
+              'Modell: max(Spannungsfall-Budget, Iz = Tabellenwert × 0,7) — verlegt ist der gespeicherte Querschnitt',
+            message: `⚠️ Kritisch: Verlegt sind ${storedCs} mm², gefordert sind ${selection.recommendedCrossSection} mm² (Spannungsfall/Thermik bei ${Math.round(
+              I
+            )} A über ${length.toFixed(1)} m${lengthNote}). Der reale Spannungsfall und die zulässige Sicherung sind am verbauten Querschnitt gerechnet — Querschnitt im Leitungs-Inspektor anheben (oder Länge kürzen).`,
+          });
+        }
+
+        if (isThermallyOverloaded(I, selection.installedCrossSection)) {
+          const iz = designAmpacity(selection.installedCrossSection);
+          warnings.push({
+            id: `thermal-overload-${edge.id}`,
+            category: 'safety',
+            type: 'critical',
+            title: 'Leitung thermisch überlastet',
+            focusId: edge.id,
+            focusType: 'edge',
+            ruleId: 'ELE-002-thermal-overload',
+            measuredValue: `${Math.round(I)} A`,
+            expectedValue: `${Math.round(iz)} A`,
+            unit: 'A',
+            source: 'Modell: Iz = Tabellenwert × 0,7 (lib/electrical.ts, DIN VDE 0298-4-Belastbarkeiten)',
+            message: `⚠️ Kritisch: Die Leitung (${selection.installedCrossSection} mm²) führt ${Math.round(
+              I
+            )} A, dauerhaft zulässig sind ${Math.round(
+              iz
+            )} A (Tabellenwert × 0,7 für Bündelung/Temperatur). Last reduzieren, Parallelverlegung planen oder — falls möglich — den nächsten Normquerschnitt über 70 mm² wählen.`,
+          });
+        }
+
+        // AutoWire-Marker (AUDIT ELE-009): `dropWarning`/`fuseWarning` wurden
+        // vierfach geschrieben und von NICHTS gelesen — die Markierung war ein
+        // stiller Datenwert. Hier werden beide sichtbar.
+        if (edge.data?.dropWarning) {
+          warnings.push({
+            id: `drop-not-solvable-${edge.id}`,
+            category: 'safety',
+            type: 'critical',
+            title: 'Spannungsfall-Budget nicht auflösbar',
+            focusId: edge.id,
+            focusType: 'edge',
+            ruleId: 'AUTO-003-drop-warning',
+            measuredValue: '3 %-Budget gerissen',
+            expectedValue: '≤ 3 % bis zum Verbraucher',
+            unit: '%',
+            source: 'AutoWire-Dimensionierung (lib/autoWire/sizing.ts): Pfad bleibt bei 70 mm² über Budget',
+            message:
+              '⚠️ Kritisch: Auch mit dem größten Normquerschnitt (70 mm²) bleibt der Spannungsfall auf dieser Versorgungskette über dem 3-%-Budget. Die Last ist an 12 V so nicht ausführbar — kürzere Wege, Querschnitt-Erhöhung über die Normreihe oder eine höhere Systemspannung planen.',
+          });
+        }
+        if (edge.data?.fuseWarning) {
+          warnings.push({
+            id: `fuse-not-possible-${edge.id}`,
+            category: 'safety',
+            type: 'critical',
+            title: 'Keine Normsicherung kann den Laststrom schützen',
+            focusId: edge.id,
+            focusType: 'edge',
+            ruleId: 'ELE-001-fuse-not-feasible',
+            measuredValue: `${Math.round(I)} A`,
+            expectedValue: `≤ ${designAmpacity(selection.installedCrossSection) > 0 ? Math.round(Math.min(designAmpacity(selection.installedCrossSection), I)) : '—'} A`,
+            unit: 'A',
+            source:
+              'Modell: I_B ≤ I_n ≤ I_z = 0,7 × Tabellenwert; AutoWire markiert hier eine nicht ausführbare Dimensionierung',
+            message: `⚠️ Kritisch: Für diese Leitung existiert keine zulässige Normsicherung: der Laststrom (≈ ${Math.round(
+              I
+            )} A) liegt über der Absicherungsgrenze des größten Normquerschnitts. Die Leitung ist so nicht schutzfähig — Last aufteilen, Parallelverlegung/Sammelschiene planen oder die Systemspannung erhöhen.`,
+          });
         }
       }
     }

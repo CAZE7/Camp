@@ -60,7 +60,13 @@ import {
 } from './autoWire/primitives';
 import { isAcEdge, isSolarEdge, isStarterBattery } from './autoWire/validation';
 import { applyFlowLayout } from './autoWire/placement';
-import { sizeDcEdges, applyFuseSizes, applyFuseTypes, sizeAcEdges } from './autoWire/sizing';
+import {
+  sizeDcEdges,
+  applyFuseSizes,
+  applyFuseTypes,
+  markInfeasibleSizing,
+  sizeAcEdges,
+} from './autoWire/sizing';
 import {
   buildDictionaries,
   ensureNode,
@@ -613,6 +619,10 @@ export function performAutoWiring(
 
   sizeDcEdges(allDcEdges, currentNodes, allEdges, sysVoltage, nodeMap);
   applyFuseSizes(allDcEdges, currentNodes, sysVoltage, nodeMap, allEdges); // ELE-005: Insel-BFS
+  // ELE-002: Nicht ausführbare Dimensionierungen auf JEDER Leitung markieren
+  // (auch der Minus-Rückleitung) — der Marker wird von der Live-Validierung
+  // gelesen, vorher schrieb ihn niemand sichtbar.
+  markInfeasibleSizing(allDcEdges, currentNodes, sysVoltage, allEdges, nodeMap);
   // DOM-002: Bauform der Sicherungen mitschreiben (kleinste Bauform, deren
   // Abschaltvermögen den Bank-Ik am Einbauort trägt) — sonst meldete Rule A7
   // in jedem Auto-Plan „Abschaltvermögen unbekannt".

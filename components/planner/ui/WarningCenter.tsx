@@ -1,7 +1,16 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, AlertCircle, Info, ChevronDown, Check, Crosshair, X } from 'lucide-react';
+import {
+  AlertTriangle,
+  AlertCircle,
+  OctagonAlert,
+  Info,
+  ChevronDown,
+  Check,
+  Crosshair,
+  X,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { type ValidationWarning, SEVERITY_ORDER } from '../hooks/useLiveValidation';
 
@@ -125,12 +134,30 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
     };
   }, [open]);
 
+  // A6 (Screenreader): Die Live-Region steht VOR den Verzweigungen. Vorher
+  // mountete sie erst hinter dem Early-Return für „keine Hinweise“ — ein neu
+  // hinzugekommener kritischer Warnhinweis wurde dadurch nie angesagt, weil
+  // der Knoten mit seinem Inhalt zusammen erschien statt seinen Inhalt zu
+  // wechseln.
+  const liveRegion = (
+    <span className="sr-only" role="status" aria-live="polite">
+      {warnings.length === 0
+        ? 'Keine Prüfhinweise im Plan.'
+        : `${warnings.length} Prüfhinweise im Plan${
+            counts.critical > 0 ? `, davon ${counts.critical} kritisch` : ''
+          }.`}
+    </span>
+  );
+
   if (warnings.length === 0) {
     return (
-      <span className="hidden min-h-11 items-center gap-1 rounded border border-moss bg-moss/10 px-3 text-xs font-semibold text-moss md:inline-flex">
-        <Check className="h-4 w-4" />
-        Keine Hinweise
-      </span>
+      <>
+        {liveRegion}
+        <span className="hidden min-h-11 items-center gap-1 rounded border border-moss bg-moss/10 px-3 text-xs font-semibold text-moss md:inline-flex">
+          <Check className="h-4 w-4" />
+          Keine Hinweise
+        </span>
+      </>
     );
   }
 
@@ -139,9 +166,7 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
 
   return (
     <div className="relative" ref={containerRef}>
-      <span className="sr-only" role="status" aria-live="polite">
-        {warnings.length} Prüfhinweise im Plan.
-      </span>
+      {liveRegion}
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
@@ -150,9 +175,20 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
         aria-label={`${warnings.length} Prüfhinweise anzeigen`}
         className={`flex min-h-11 items-center gap-1.5 rounded-lg px-3 text-sm font-semibold shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${TYPE_STYLES[topType].badge}`}
       >
-        <AlertTriangle className="h-4 w-4" />
+        {topType === 'critical' ? (
+          <OctagonAlert className="h-4 w-4" aria-hidden="true" />
+        ) : topType === 'warning' ? (
+          <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+        ) : (
+          <Info className="h-4 w-4" aria-hidden="true" />
+        )}
         <span>{warnings.length}</span>
-        <span className="hidden xl:inline">{warnings.length === 1 ? 'Hinweis' : 'Hinweise'}</span>
+        {/* A5: Die Schwere hing unter 1280 px allein am Hintergrund (Farbe).
+            Das Wort steht jetzt immer da — „Kritisch“ ist auch auf dem Handy
+            als Wort lesbar, nicht nur als Rotton. */}
+        <span className="whitespace-nowrap">
+          {topType === 'critical' ? 'Kritisch' : warnings.length === 1 ? 'Hinweis' : 'Hinweise'}
+        </span>
         <ChevronDown className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 

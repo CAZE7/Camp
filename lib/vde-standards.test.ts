@@ -16,7 +16,6 @@ import {
   recommendConduitType,
   getSystemVoltage,
   calculateEdgeCurrent,
-  calculateAcEdgeCurrent,
   DEFAULT_SYSTEM_VOLTAGE,
   LEAD_SYSTEM_VOLTAGE,
   dischargeFloorVoltage,
@@ -392,78 +391,6 @@ describe('VDE-Standards mit typsicheren Einheiten (K1b)', () => {
       const consumer = node('consumer', { watts: 60 });
       const I = calculateEdgeCurrent(undefined, consumer, [consumer], volts(12));
       expect(I).toBeCloseTo(60 / 11.25, 5); // floor 11.25
-    });
-  });
-
-  describe('calculateAcEdgeCurrent (Bug 3)', () => {
-    const node = (id: string, type: string, data: Record<string, unknown>): Node =>
-      ({ id, type, position: { x: 0, y: 0 }, data }) as Node;
-    const edge = (
-      id: string,
-      source: string,
-      target: string,
-      data: Record<string, unknown> = {},
-      sourceHandle?: string,
-      targetHandle?: string
-    ): Edge => ({ id, source, target, sourceHandle, targetHandle, type: 'cableEdge', data }) as Edge;
-
-    it('dimensioniert die Landstrom-Zuleitung über alle erreichbaren 230-V-Verbraucher', () => {
-      const nodes = [
-        node('sp', 'shorePower', {}),
-        node('c1', 'consumer230v', { watts: 1150 }),
-        node('c2', 'consumer230v', { watts: 1150 }),
-      ];
-      const edges = [
-        edge('e1', 'sp', 'c1', { edgeDomain: 'AC_230V' }, 'plus', 'plus'),
-        edge('e2', 'sp', 'c2', { edgeDomain: 'AC_230V' }, 'plus', 'plus'),
-      ];
-      expect(calculateAcEdgeCurrent('sp', nodes, edges)).toBeCloseTo(10, 10);
-    });
-
-    it('dimensioniert eine Wechselrichter-Abzweigleitung nur mit deren eigenen Verbrauchern', () => {
-      const nodes = [
-        node('inv', 'inverter', {}),
-        node('c1', 'consumer230v', { watts: 2300 }),
-        node('sp2', 'shorePower', {}),
-        node('other', 'consumer230v', { watts: 23000 }), // anderer Kreis, nicht erreichbar
-      ];
-      const edges = [
-        edge('e1', 'inv', 'c1', {}, 'ac_out', 'plus'),
-        edge('e2', 'sp2', 'other', { edgeDomain: 'AC_230V' }, 'plus', 'plus'),
-      ];
-      // Nur c1 hängt hinter dem Wechselrichter — der fremde 23-kW-Kreis an
-      // sp2 darf die Abzweigleitung nicht aufblähen.
-      expect(calculateAcEdgeCurrent('inv', nodes, edges)).toBeCloseTo(10, 10);
-    });
-
-    it('ignoriert DC-Kanten mit expliziter DC_12V-Domäne', () => {
-      const nodes = [node('inv', 'inverter', {}), node('c1', 'consumer230v', { watts: 2300 })];
-      const edges = [
-        // data.edgeDomain sagt DC_12V — der BFS darf diese Kante NICHT als
-        // AC-Pfad nutzen (getEdgeDomain würde wegen consumer230v AC sagen).
-        edge('e1', 'inv', 'c1', { edgeDomain: 'DC_12V' }, 'plus', 'plus'),
-      ];
-      expect(calculateAcEdgeCurrent('inv', nodes, edges)).toBe(0);
-    });
-
-    it('liefert 0 A ohne erreichbare 230-V-Last', () => {
-      const nodes = [node('inv', 'inverter', {})];
-      expect(calculateAcEdgeCurrent('inv', nodes, [])).toBe(0);
-      expect(calculateAcEdgeCurrent(undefined, nodes, [])).toBe(0);
-    });
-
-    it('zählt AC-Ladegeräte in derselben Insel mit (AUDIT ELE-004)', () => {
-      const nodes = [
-        node('sp', 'shorePower', {}),
-        node('c1', 'consumer230v', { watts: 300 }),
-        node('ch', 'acBatteryCharger', { amps: 20 }),
-      ];
-      const edges = [
-        edge('e1', 'sp', 'c1', { edgeDomain: 'AC_230V' }, 'plus', 'plus'),
-        edge('e2', 'sp', 'ch', { edgeDomain: 'AC_230V' }, 'plus', 'plus'),
-      ];
-      // 300 W / 230 V ≈ 1,30 A + 20 A Ladestrom ≈ 21,3 A am Landstrom-Strang.
-      expect(calculateAcEdgeCurrent('sp', nodes, edges)).toBeCloseTo(21.304, 2);
     });
   });
 

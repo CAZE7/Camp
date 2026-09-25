@@ -167,11 +167,18 @@ describe('autoWire — performAutoWiring', () => {
   });
 
   /**
-   * AUDIT DOM-001 (Fix 2026-09-08): Auto-Wire stempelt das AC-Schutzorgan
-   * mit — LS B, 6 kA (IEC 60898-1) als ehrlicher, konservativer Standard;
-   * Nutzer-Einträge bleiben unangetastet.
+   * AUDIT ELE-004: Auto-Wire stempelt dem AC-Schutzorgan KEINE erfundenen
+   * Gerätedaten mehr auf. Vorher stand hier
+   * `acProtection ?? { kind: 'mcb', characteristic: 'B', breakingCapacityKA: 6 }`
+   * auf jeder AC-Kante — die Abschaltbedingung wurde damit gegen ein
+   * Datenblatt geprüft, das nie jemand angegeben hat, und meldete
+   * „ok-with-assumption“. Mit geratener B-Charakteristik liegt Zs,max bei
+   * 1,92 Ω statt 0,96 Ω (C) — dieselbe Leitung hätte mit einem real
+   * verbauten C16 versagt, ohne dass der Plan das gezeigt hätte.
+   *
+   * Geprüft: keine erfundenen Daten, Nutzerdaten bleiben unangetastet.
    */
-  it('stempelt das AC-Schutzorgan (LS B, 6 kA) auf Auto-AC-Kanten und respektiert Nutzerdaten', () => {
+  it('erfindet keine AC-Schutzdaten und respektiert Nutzerdaten', () => {
     const nodes = [
       n('b1', 'battery', { label: 'Aufbau', capacity: 100, chemistry: 'LiFePO4' }),
       n('sp1', 'shorePower', { label: 'Landstrom' }),
@@ -179,7 +186,8 @@ describe('autoWire — performAutoWiring', () => {
     ];
     const out = performAutoWiring(nodes)!;
     const ac = out.edges.find((x) => x.data?.edgeDomain === 'AC_230V');
-    expect(ac!.data?.acProtection).toEqual({ kind: 'mcb', characteristic: 'B', breakingCapacityKA: 6 });
+    expect(ac).toBeTruthy();
+    expect(ac!.data?.acProtection).toBeUndefined();
 
     // Nutzer-Eintrag (FI/LS C 10 kA) darf nicht plattgemacht werden.
     const custom = [

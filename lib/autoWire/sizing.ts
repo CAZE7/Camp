@@ -7,6 +7,7 @@ import {
   lookupThermalCrossSection,
   selectFuseSize,
   isFuseFeasible,
+  designAmpacity,
 } from '../electrical';
 import { calculateEdgeCurrent } from '../vde-standards';
 import {
@@ -451,15 +452,19 @@ export function sizeAcEdges(edges: CableEdge[], nodes: Node[]): void {
   for (const edge of edges) {
     if (edge.data?.edgeDomain !== 'AC_230V') continue;
     if (!edge.data) edge.data = {};
-    // AUDIT DOM-001: Das AC-Schutzorgan ist keine bloße Zahl mehr. Dem
-    // Auto-Wire-Standard im Fahrzeugbau folgend: LS-Charakteristik B mit
-    // 6-kA-Icn als ehrlicher, konservativer Default (IEC 60898-1);
-    // Nutzer-Einträge bleiben unangetastet.
-    edge.data.acProtection = edge.data.acProtection ?? {
-      kind: 'mcb',
-      characteristic: 'B',
-      breakingCapacityKA: 6,
-    };
+    // AUDIT ELE-004: Hier wurde bisher ein Datenblatt ERFUNDEN —
+    // `acProtection ?? { kind: 'mcb', characteristic: 'B', breakingCapacityKA: 6 }`
+    // auf jede AC-Kante. Damit war der ehrliche `not-modeled`-Zweig der
+    // Abschaltbedingung (lib/acProtection.ts) aus dem Produktpfad
+    // unerreichbar: Die Prüfung lief gegen geratene Werte und meldete
+    // „ok-with-assumption“. Mit geratener B-Charakteristik ist Zs,max =
+    // 1,92 Ω (C: 0,96 Ω) — dieselbe Leitung hätte mit einem real verbauten
+    // C16 versagt, ohne dass der Plan das gezeigt hätte (AUDIT §5: keine
+    // erfundenen VDE-Aussagen).
+    //
+    // Nutzer-/Import-Angaben bleiben unangetastet; fehlen sie, sagt die
+    // Live-Validierung ausdrücklich „Abschaltbedingung unbekannt“ und fragt
+    // Bauform, Charakteristik und Icn im Inspektor ab.
     const sourceNode = nodeMap.get(edge.source);
     const targetNode = nodeMap.get(edge.target);
     const I = acCurrentA(sourceNode, targetNode, nodes, edges);
@@ -506,6 +511,53 @@ export function sizeAcEdges(edges: CableEdge[], nodes: Node[]): void {
  * → Class T. Nutzer-Einträge und explizite Datenblatt-Werte gewinnen und
  * bleiben unangetastet. AC-Kanten: LS-Schalter/RCD-Modell, keine DC-Bauform.
  */
+/**
+ * Markiert **nicht ausführbare** DC-Dimensionierungen (AUDIT ELE-002/009).
+ *
+ * `applyFuseSizes` setzt den Marker bisher nur auf Plus-Kanten — die
+ * Minus-Rückleitung führt aber denselben Strom. Im Referenzplan `acdc`
+ * standen dadurch 7 von 14 Kanten mit 152,06 A auf 70 mm² (Iz_design =
+ * 120,4 A, FUSE_MAP[70] = 100 A) da, davon 4 ganz ohne Marker: Ein Plan, der
+ * so nicht ausführbar ist, sah im Datenbild vollständig unauffällig aus.
+ *
+ * Der Marker ist bewusst eine EIGENSCHAFT DER KANTE (nicht des Vorzeichens):
+ * „für diesen Leiter existiert bei diesem Strom keine zulässige
+ * Normsicherung“ gilt für Hin- und Rückweg. Die Live-Validierung liest ihn
+ * und meldet ihn als kritisch — vorher schrieb AutoWire ihn an vier Stellen
+ * und niemand las ihn (AUDIT ELE-009).
+ *
+ * Idempotent und rücksetzend: jeder Aufruf berechnet den Marker für jede
+ * Kante neu, ein geänderter Plan kann eine früher unrealisierbare
+ * Dimensionierung wieder lösbar machen.
+ */
+export function markInfeasibleSizing(
+  dcEdges: CableEdge[],
+  nodes: Node[],
+  sysVoltage: Volts,
+  allEdges: CableEdge[] = [],
+  nodeMap: Map<string, Node> = new Map(nodes.map((n) => [n.id, n]))
+): void {
+  for (const edge of dcEdges) {
+    if (!edge.data) edge.data = {};
+    const I = calculateEdgeCurrent(
+      nodeMap.get(edge.source),
+      nodeMap.get(edge.target),
+      nodes,
+      sysVoltage,
+      allEdges
+    );
+    const cs = edgeCrossSection(edge, MIN_CROSS_SECTION);
+    // Plus-Leiter: schutzbezogen — keine Normsicherung trägt den Strom bei
+    // diesem Querschnitt (I_B ≤ I_n ≤ I_z, isFuseFeasible kapselt das).
+    // Minus-Leiter: rein thermisch — eine Rückleitung wird nicht abgesichert,
+    // maßgeblich ist Iz = Tabellenwert × 0,7. Beide Fälle sind für den Nutzer
+    // derselbe Befund: „diese Leitung ist bei diesem Strom nicht ausführbar“.
+    const isPlusConductor = edge.sourceHandle?.includes('plus') ?? false;
+    const infeasible = isPlusConductor ? !isFuseFeasible(I, cs) : I > designAmpacity(cs);
+    edge.data.fuseWarning = I > 0 && infeasible;
+  }
+}
+
 export function applyFuseTypes(dcEdges: CableEdge[], nodes: Node[], sysVoltage: number): void {
   const batteries = nodes.filter((n) => n.type === 'battery');
   for (const edge of dcEdges) {

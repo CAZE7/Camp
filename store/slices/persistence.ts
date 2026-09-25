@@ -52,6 +52,39 @@ function isEdgeShape(value: unknown): value is Edge {
 }
 
 /**
+ * S5 (AUDIT): `__proto__`, `constructor` und `prototype` sind aus
+ * persistierten Ständen zu entfernen, bevor sie in Zustands-Objekte gemerged
+ * werden. `JSON.parse` legt `__proto__` als eigenes Datenfeld an — solange nur
+ * gespreadet wird, ist das harmlos; sobald irgendwo `Object.assign` oder eine
+ * Merge-Bibliothek ins Spiel kommt, wird daraus eine echte Prototyp-
+ * verseuchung (jeder neue `{}` erbt dann Attacker-Felder).
+ *
+ * Die Kopie wird deshalb mit `Object.defineProperty` aufgebaut: eine Zuweisung
+ * `out['__proto__'] = …` würde den Setter auslösen (genau der Angriff), ein
+ * Datenfeld ist ungefährlich. Tiefenlimit 8 genügt für echte Plan-Daten
+ * (Knoten → data → Punkte → Punkt) und beendet Zyklen.
+ */
+const FORBIDDEN_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
+function stripDangerousKeys<T>(value: T, depth = 0): T {
+  if (depth > 8 || value === null || typeof value !== 'object') return value;
+  if (Array.isArray(value)) {
+    return value.map((entry) => stripDangerousKeys(entry, depth + 1)) as unknown as T;
+  }
+  const out: Record<string, unknown> = {};
+  for (const [key, entry] of Object.entries(value)) {
+    if (FORBIDDEN_KEYS.has(key)) continue;
+    Object.defineProperty(out, key, {
+      value: stripDangerousKeys(entry, depth + 1),
+      enumerable: true,
+      writable: true,
+      configurable: true,
+    });
+  }
+  return out as T;
+}
+
+/**
  * `data`-Block neutralisieren, wenn er kein plain object ist (String/Zahl aus Altdaten).
  *
  * AUDIT DOM-003: Anschließend deklaratives Feld-Schema (lib/nodeSchema.ts) —
@@ -99,7 +132,9 @@ export function migratePlannerPersisted(persisted: unknown, version: number): Pa
 
   // Version 0 → 1: keine Feldumbenennungen, nur Validierung.
   void version;
-  return safe;
+  // S5 (AUDIT): Erst ganz zum Schluss — danach hat kein Fremdfeld mehr die
+  // Chance, über einen Merge in den Prototypen zu gelangen.
+  return stripDangerousKeys(safe);
 }
 
 export const persistOptions: PersistOptions<PlannerState, Partial<PlannerState>> = {

@@ -32,23 +32,23 @@ Kein Anspruch auf Vollständigkeit — es fehlen bewusst UI-Helfer und reine Ren
 
 ## Electrical
 
-| Symbol                                       | File                                            | Purpose                                    | Called By                          | Tests                                              |
-| -------------------------------------------- | ----------------------------------------------- | ------------------------------------------ | ---------------------------------- | -------------------------------------------------- |
-| `calculateEdgeCurrent`                       | `lib/vde-standards.ts`                          | **einzige** Stromquelle                    | AutoWire, `CableEdge`, Validierung | `vde-standards.test.ts`, `vde-consistency.test.ts` |
-| `getSystemVoltage`                           | `lib/vde-standards.ts`                          | Systemspannung (Aufbaubatterie zuerst)     | überall                            | `vde-standards.test.ts`, `vde-properties.test.ts`  |
-| `dischargeFloorVoltage`                      | `lib/vde-standards.ts`                          | Entladeschlussspannung (0,9375 × U)        | `calculateEdgeCurrent`             | dto.                                               |
-| `calculateAcEdgeCurrent`                     | `lib/vde-standards.ts`                          | AC-Strom über Insel-BFS                    | Anzeige/Validierung                | dto.                                               |
-| `calculateCrossSection`                      | `lib/electrical.ts`                             | Querschnitt aus Drop + thermisch           | AutoWire, Anzeige                  | `electrical.test.ts`, G4                           |
-| `selectFuseSize`                             | `lib/electrical.ts`                             | Sicherungsnennstrom (nie über Kabelgrenze) | AutoWire, Validierung              | `electrical.test.ts`, G1/G2                        |
-| `isFuseFeasible`                             | `lib/electrical.ts`                             | „ist dieser Querschnitt absicherbar?“      | Validierung                        | `electrical.test.ts`                               |
-| `calculateMaxFuse` / `maxFuseForDisplay`     | `lib/electrical.ts`                             | Kabelgrenze (streng / anzeigesicher)       | Sizing, Anzeige                    | `electrical.test.ts`                               |
-| `lookupThermalCrossSection`                  | `lib/electrical.ts`                             | thermischer Mindestquerschnitt             | `calculateCrossSection`, Sizing    | dto.                                               |
-| `getEdgeDomain` / `getHandleDomain`          | `lib/electrical.ts`                             | Domänenzuordnung (eine Quelle)             | Store, AutoWire, Anzeige           | `electrical.test.ts`, G6                           |
-| `voltageDrop` / `crossSectionForVoltageDrop` | `lib/units.ts`                                  | ΔU = I·2L/(κ·A) und Umkehrung              | Primitives, Anzeige                | `units.test.ts`, G3                                |
-| `edgeDropInputs` / `hasVoltageDropError`     | `components/edges/utils/voltageDrop.ts`         | Anzeige-Größen einer Kante (delegiert nur) | `CableEdge`, `FlowCanvas`          | `voltageDrop.test.ts`                              |
-| `calculateConduitFillPercent`                | `lib/vde-standards.ts`                          | Leerrohr-Füllgrad (40 %)                   | ExpertPanel/Validierung            | `vde-standards.test.ts`                            |
-| `collectEdgeErrors`                          | `components/edges/CableEdge.tsx`                | Kanten-Fehler (9 Regeln)                   | `CableEdge`                        | `CableEdge.test.tsx`                               |
-| `useLiveValidation`                          | `components/planner/hooks/useLiveValidation.ts` | Plan-Warnungen (23 Regeln)                 | Dashboard, WarningCenter           | `useLiveValidation.test.ts`                        |
+| Symbol                                       | File                                            | Purpose                                    | Called By                           | Tests                                              |
+| -------------------------------------------- | ----------------------------------------------- | ------------------------------------------ | ----------------------------------- | -------------------------------------------------- |
+| `calculateEdgeCurrent`                       | `lib/vde-standards.ts`                          | **einzige** Stromquelle                    | AutoWire, `CableEdge`, Validierung  | `vde-standards.test.ts`, `vde-consistency.test.ts` |
+| `getSystemVoltage`                           | `lib/vde-standards.ts`                          | Systemspannung (Aufbaubatterie zuerst)     | überall                             | `vde-standards.test.ts`, `vde-properties.test.ts`  |
+| `dischargeFloorVoltage`                      | `lib/vde-standards.ts`                          | Entladeschlussspannung (0,9375 × U)        | `calculateEdgeCurrent`              | dto.                                               |
+| `acCurrentA`                                 | `lib/autoWire/sizing.ts`                        | AC-Strom der Kante (Insel-BFS)             | Anzeige/Validierung/Dimensionierung | eine Quelle seit AUDIT ELE-009                     |
+| `calculateCrossSection`                      | `lib/electrical.ts`                             | Querschnitt aus Drop + thermisch           | AutoWire, Anzeige                   | `electrical.test.ts`, G4                           |
+| `selectFuseSize`                             | `lib/electrical.ts`                             | Sicherungsnennstrom (nie über Kabelgrenze) | AutoWire, Validierung               | `electrical.test.ts`, G1/G2                        |
+| `isFuseFeasible`                             | `lib/electrical.ts`                             | „ist dieser Querschnitt absicherbar?“      | Validierung                         | `electrical.test.ts`                               |
+| `calculateMaxFuse` / `maxFuseForDisplay`     | `lib/electrical.ts`                             | Kabelgrenze (streng / anzeigesicher)       | Sizing, Anzeige                     | `electrical.test.ts`                               |
+| `lookupThermalCrossSection`                  | `lib/electrical.ts`                             | thermischer Mindestquerschnitt             | `calculateCrossSection`, Sizing     | dto.                                               |
+| `getEdgeDomain` / `getHandleDomain`          | `lib/electrical.ts`                             | Domänenzuordnung (eine Quelle)             | Store, AutoWire, Anzeige            | `electrical.test.ts`, G6                           |
+| `voltageDrop` / `crossSectionForVoltageDrop` | `lib/units.ts`                                  | ΔU = I·2L/(κ·A) und Umkehrung              | Primitives, Anzeige                 | `units.test.ts`, G3                                |
+| `edgeDropInputs` / `hasVoltageDropError`     | `components/edges/utils/voltageDrop.ts`         | Anzeige-Größen einer Kante (delegiert nur) | `CableEdge`, `FlowCanvas`           | `voltageDrop.test.ts`                              |
+| `calculateConduitFillPercent`                | `lib/vde-standards.ts`                          | Leerrohr-Füllgrad (40 %)                   | ExpertPanel/Validierung             | `vde-standards.test.ts`                            |
+| `collectEdgeErrors`                          | `components/edges/CableEdge.tsx`                | Kanten-Fehler (9 Regeln)                   | `CableEdge`                         | `CableEdge.test.tsx`                               |
+| `useLiveValidation`                          | `components/planner/hooks/useLiveValidation.ts` | Plan-Warnungen (23 Regeln)                 | Dashboard, WarningCenter            | `useLiveValidation.test.ts`                        |
 
 ### Solar / Batterie / Schutz
 

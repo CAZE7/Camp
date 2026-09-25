@@ -29,7 +29,31 @@ export const maxDuration = 30;
 // ---------------------------------------------------------------------------
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX_REQUESTS = 10;
+/**
+ * S3/S4 (AUDIT): Die Map hing vorher unbegrenzt am Prozess — jeder erfundene
+ * `X-Forwarded-For`-Wert legte einen neuen Eintrag an (Speicher-Erschöpfung
+ * ohne jede Anfrage-Grenze; die Grenze greift pro Schlüssel, nicht global).
+ * Zwei Änderungen: harte Obergrenze mit Prune abgelaufener Einträge und ein
+ * globales Zählerfenster, damit ein Angreifer mit rotierenden Schlüsseln die
+ * Gesamtlast nicht beliebig hochtreiben kann.
+ */
+const RATE_LIMIT_MAX_KEYS = 2_000;
+const RATE_LIMIT_GLOBAL_MAX = 120;
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+let globalWindow = { count: 0, resetAt: 0 };
+
+function pruneRateLimitMap(now: number): void {
+  if (rateLimitMap.size < RATE_LIMIT_MAX_KEYS) return;
+  for (const [key, value] of rateLimitMap) {
+    if (value.resetAt < now) rateLimitMap.delete(key);
+  }
+  // Immer noch zu groß (alle Einträge frisch): die ältesten zuerst räumen.
+  while (rateLimitMap.size >= RATE_LIMIT_MAX_KEYS) {
+    const oldest = rateLimitMap.keys().next();
+    if (oldest.done) break;
+    rateLimitMap.delete(oldest.value);
+  }
+}
 
 function getClientIp(req: Request): string {
   const forwarded = req.headers.get('x-forwarded-for');
@@ -45,6 +69,12 @@ function checkRateLimit(req: Request): { allowed: boolean; retryAfter: number } 
   }
   const ip = getClientIp(req);
   const now = Date.now();
+  if (globalWindow.resetAt < now) globalWindow = { count: 0, resetAt: now + RATE_LIMIT_WINDOW_MS };
+  globalWindow.count += 1;
+  if (globalWindow.count > RATE_LIMIT_GLOBAL_MAX) {
+    return { allowed: false, retryAfter: Math.ceil((globalWindow.resetAt - now) / 1000) };
+  }
+  pruneRateLimitMap(now);
   const existing = rateLimitMap.get(ip);
   if (!existing || existing.resetAt < now) {
     rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
@@ -58,21 +88,52 @@ function checkRateLimit(req: Request): { allowed: boolean; retryAfter: number } 
 }
 
 /**
- * Optionale Authentifizierung über einen Shared-Secret-Header. Der Schlüssel
- * wird in der Client-Umgebung als NEXT_PUBLIC_CHAT_TOKEN gesetzt, wenn der
- * Chat öffentlich erreichbar sein soll. Ohne gesetzten Server-Secret ist die
- * Route weiterhin offen (für lokale Entwicklung), in der Produktion sollte
- * CHAT_SHARED_SECRET gesetzt sein.
+ * S1 (AUDIT): Die Route war **fail-open** — ohne gesetztes `CHAT_SHARED_SECRET`
+ * durfte jeder, der den Endpunkt erreicht, auf Kosten des Betreibers Tokens
+ * verbrauchen. Schlimmer: Der Schlüssel wurde als `NEXT_PUBLIC_CHAT_TOKEN`
+ * ausgeliefert und landete damit im Client-Bundle — ein „Secret“, das jeder
+ * Besucher im Quelltext lesen kann (und das in einer statisch gehosteten
+ * Variante zwangsläufig öffentlich ist).
+ *
+ * Jetzt gilt: Entweder ist ein serverseitiges `CHAT_SHARED_SECRET` gesetzt und
+ * muss als `x-chat-token` mitkommen — oder die Anfrage kommt nachweislich von
+ * der eigenen Seite (produktionsseitig same-origin). Ist beides nicht erfüllt,
+ * wird abgelehnt; es gibt keinen offenen Zweig mehr.
  */
+function unauthorized(reason: string): Response {
+  return new Response(JSON.stringify({ error: 'Unauthorized', reason }), {
+    status: 401,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+/** Vergleich ohne frühen Abbruch (Timing-Seite bei Shared Secrets). */
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i += 1) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
 function assertAuthorized(req: Request): Response | null {
   const expected = process.env.CHAT_SHARED_SECRET;
-  if (!expected || expected.length === 0) return null; // no auth configured
-  const provided = req.headers.get('x-chat-token');
-  if (provided !== expected) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-      status: 401,
-      headers: { 'Content-Type': 'application/json' },
-    });
+  if (expected && expected.length > 0) {
+    const provided = req.headers.get('x-chat-token') ?? '';
+    return timingSafeEqual(provided, expected) ? null : unauthorized('invalid-token');
+  }
+  // Kein Secret konfiguriert: nur eigene Seiten dürfen den Chat nutzen.
+  // In Entwicklung und Test bleibt der direkte Aufruf möglich (dort gibt es
+  // keine fremden Webseiten, die den Endpunkt missbrauchen könnten).
+  if (process.env.NODE_ENV !== 'production') return null;
+  const site = req.headers.get('sec-fetch-site');
+  if (site === 'cross-site') return unauthorized('cross-site');
+  const origin = req.headers.get('origin');
+  const host = req.headers.get('x-forwarded-host') ?? req.headers.get('host');
+  if (!origin || !host) return unauthorized('missing-origin');
+  try {
+    if (new URL(origin).host !== host) return unauthorized('origin-mismatch');
+  } catch {
+    return unauthorized('invalid-origin');
   }
   return null;
 }
@@ -117,7 +178,17 @@ function validateMessages(messages: any[]): Response | null {
       });
     }
 
-    if (!['system', 'user', 'assistant', 'tool', 'data'].includes(msg.role)) {
+    // S2 (AUDIT): Der Client konnte `role: 'system'` mitschicken und damit
+    // eigene Anweisungen auf Systemebene in den Prompt legen. Die Rolle des
+    // Systemprompts vergibt ausschließlich der Server (siehe unten).
+    if (msg.role === 'system') {
+      return new Response(JSON.stringify({ error: 'Message role not allowed' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (!['user', 'assistant', 'tool', 'data'].includes(msg.role)) {
       return new Response(JSON.stringify({ error: 'Invalid message role' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },

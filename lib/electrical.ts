@@ -1,3 +1,6 @@
+import { COPPER_CONDUCTIVITY_MS_PER_MM2, COPPER_RESISTIVITY_OHM_MM2_PER_M } from './materials';
+import { SOLAR_NODE_TYPES, edgeDomainOf, handleDomain } from './domain/handleDomains';
+
 export const VDE_SIZES = [1.5, 2.5, 4.0, 6.0, 10.0, 16.0, 25.0, 35.0, 50.0, 70.0];
 
 /**
@@ -149,8 +152,10 @@ export const MIN_STANDARD_FUSE: number = (() => {
  *   Verbraucher-Nennstrom ≤ Sicherungsnennstrom ≤ Kabel-Maximalsicherung
  *
  * Es wird die kleinste Norm-Sicherung gewählt, die den Nennstrom trägt und
- * den durch den Kabelquerschnitt erlaubten Maximalwert (FUSE_MAP nach
- * DIN VDE 0298-4) nicht überschreitet. Dadurch schützt die Sicherung das
+ * den durch den Kabelquerschnitt erlaubten Maximalwert (FUSE_MAP, abgeleitet
+ * aus Iz_design = 0,7 × Tabellenwert — ein MODELLWERT, keine Normtabelle; die
+ * DIN VDE 0298-4 enthält keine Sicherungstabelle, AUDIT ELE-010) nicht
+ * überschreitet. Dadurch schützt die Sicherung das
  * Kabel und löst bei Überlast zuverlässig aus, ohne im Normalbetrieb
  * ungewollt auszulösen.
  *
@@ -196,6 +201,17 @@ export const lookupThermalCrossSection = (I: number): number => {
   return size || 70.0;
 };
 
+/**
+ * EMPFEHLUNG: der kleinste Normquerschnitt, der Spannungsfall-Budget und
+ * Thermik für Strom `I` über `length` erfüllt — bzw. der gespeicherte
+ * (größere) Querschnitt, wenn der Nutzer bereits dicker geplant hat.
+ *
+ * **Diese Funktion liefert NICHT den eingebauten Querschnitt.** Sie gibt
+ * bewusst nie weniger zurück als `dataCrossSection` (eine vorhandene Leitung
+ * darf nicht stillschweigend geschwächt werden). Wer bewerten will, was
+ * tatsächlich verlegt ist, nutzt `assessCableSelection` — sonst bewertet die
+ * Anzeige die Empfehlung statt der Leitung (AUDIT ELE-001).
+ */
 export const calculateCrossSection = (
   I: number,
   length: number,
@@ -206,10 +222,10 @@ export const calculateCrossSection = (
   // DC 12V: 3% von 12V = 0.36V — fachüblicher Planungswert für Niederspannungs-
   //   Gleichstromkreise (KEINE Zitatgröße aus DIN VDE 0298-4; die 0298-4 enthält
   //   Belastbarkeiten, keine Spannungsfall-Grenzwerte. Grenzwert-Herkunft ist
-  //   Praxis-/Faustregel, z. B. 0100-520-umbfeld 3 % Licht / 5 % Sonstiges).
+  //   Praxis-/Faustregel, z. B. 0100-520-umfeld 3 % Licht / 5 % Sonstiges).
   // AC 230V: 3% von 230V = 6.9V → 4.6V (2% konservativer Planungswert)
   const maxAllowedVoltageDrop = electricalDomain === 'AC_230V' ? 4.6 : 0.36;
-  const dropArea = (I * (length * 2)) / (58 * maxAllowedVoltageDrop);
+  const dropArea = (I * (length * 2)) / (COPPER_CONDUCTIVITY_MS_PER_MM2 * maxAllowedVoltageDrop);
 
   // Schritt B: Mindestquerschnitt nach thermischer Belastbarkeit (VDE Lookup mit Derating)
   const thermalArea = lookupThermalCrossSection(I);
@@ -224,6 +240,67 @@ export const calculateCrossSection = (
   const fallback = dataCrossSection ? Math.max(rawMax, dataCrossSection) : 70.0;
   return VDE_SIZES.find((size) => size >= rawMax) || fallback;
 };
+
+/**
+ * Ergebnis der Querschnitts-Bewertung einer Kante: **verbaut vs. gefordert**
+ * (AUDIT ELE-001).
+ *
+ * Der Fehler, den diese Struktur unmöglich macht: Anzeige, Spannungsfall,
+ * Label und Sicherungsgrenze rechneten mit `calculateCrossSection(…, data.crossSection)`
+ * — also mit der EMPFEHLUNG. Bei einer zu dünn gespeicherten Leitung (2,5 mm²
+ * gespeichert, 10 mm² gerechnet) zeigte der Plan 10 mm², 2,87 % Spannungsfall
+ * und 32 A Maximalsicherung, während real 2,5 mm² mit 11,49 % und höchstens
+ * 16 A verlegt waren. Die Sicherungsangabe war damit um den Faktor 2 zu
+ * optimistisch.
+ */
+export type CableSelection = {
+  /** Querschnitt, der nach dem Modell VERBAUT ist: gespeicherter Wert, sonst die Empfehlung. */
+  installedCrossSection: number;
+  /** Querschnitt, den Spannungsfall + Thermik fordern (ohne gespeicherten Wert). */
+  recommendedCrossSection: number;
+  /** true = der gespeicherte Querschnitt stammt aus Plan/Import. */
+  crossSectionIsStored: boolean;
+  /** true = verbauter Querschnitt ist kleiner als die Empfehlung. */
+  undersized: boolean;
+};
+
+/** Bewertet gespeicherten gegen den geforderten Querschnitt (AUDIT ELE-001). */
+export const assessCableSelection = (
+  I: number,
+  length: number,
+  storedCrossSection: number | undefined,
+  electricalDomain: 'DC_12V' | 'AC_230V' = 'DC_12V'
+): CableSelection => {
+  const recommendedCrossSection = calculateCrossSection(I, length, undefined, electricalDomain);
+  const hasStored =
+    typeof storedCrossSection === 'number' && Number.isFinite(storedCrossSection) && storedCrossSection > 0;
+  const installedCrossSection = hasStored ? (storedCrossSection as number) : recommendedCrossSection;
+  return {
+    installedCrossSection,
+    recommendedCrossSection,
+    crossSectionIsStored: hasStored,
+    // Toleranz gegen Float-Ränder, nicht gegen echte Unterdimensionierung.
+    undersized: hasStored && installedCrossSection < recommendedCrossSection - 1e-9,
+  };
+};
+
+/** Design-Belastbarkeit Iz = Tabellenwert × Derating für einen Querschnitt. */
+export const designAmpacity = (crossSection: number): number =>
+  (VDE_AMPACITY[crossSection] ?? 0) * DERATE_FACTOR;
+
+/**
+ * Thermische Überlast eines KONKRETEN Querschnitts: der Strom übersteigt
+ * dessen Design-Belastbarkeit. Über `calculateCrossSection` ist das nicht
+ * erkennbar (dort ist Iz nur ein Term der Empfehlung); hier ist es das
+ * Verdikt über die verlegte Leitung.
+ */
+export const isThermallyOverloaded = (I: number, crossSection: number): boolean => {
+  const iz = designAmpacity(crossSection);
+  return iz > 0 && I > iz + 1e-9;
+};
+
+/** ρ des Modells — für Kurzschluss-/Schleifenimpedanz-Rechnungen. */
+export const COPPER_RESISTIVITY = COPPER_RESISTIVITY_OHM_MM2_PER_M;
 
 export const calculateStrokeWidth = (cs: number): number => {
   if (cs <= 1.5) return 2;
@@ -243,64 +320,26 @@ export const getEdgeDomain = (
   // Solar-Kanten wurden als DC_12V gespeichert und verloren beim Nachladen
   // ihre Domäne (falsche Farbe/Fehlerbehandlung in Code, der nur auf
   // `data.edgeDomain` schaut, z. B. edgeDropInputs).
-  const isSolarNode = (type: string | undefined) => type === 'solar' || type === 'roofSolar';
+  const isSolarNode = (type: string | undefined): boolean =>
+    type !== undefined && SOLAR_NODE_TYPES.includes(type);
   if (isSolarNode(sourceNodeType) || isSolarNode(targetNodeType)) {
     return 'Solar';
   }
 
-  // acBatteryCharger ist bewusst NICHT in dieser Liste: gemischte Domäne —
-  // AC-Eingang (Landstrom), DC-Ausgang (Ladestrom auf die Schiene). Eine
-  // Pauschale klassifizierte seine DC-Ausgangsleitung als AC und entzog sie
-  // der DC-Dimensionierung (AUDIT-AUTOWIRE Issue 4). Die AC-Seite wird über
-  // den shorePower-Endpunkt erkannt, die DC-Seite bleibt DC.
-  const isAcNode = (type: string | undefined) => type === 'shorePower' || type === 'consumer230v';
-  if (isAcNode(sourceNodeType) || isAcNode(targetNodeType)) {
-    return 'AC_230V';
-  }
-
-  // Wechselrichter: Die Plus-Quelle ist der 230-V-Ausgang, der Plus-Eingang
-  // (target) ist dagegen der 12-V-DC-Anschluss — nur 'ac_in' ist ein AC-Ziel.
-  // Exakt dieselbe Zuordnung steht in der Registry
-  // (components/registry/builtinComponents.ts) und in getHandleDomain.
-  const AC_SOURCE_HANDLES = ['plus', 'ac_out', 'L', 'ac', 'output'];
-  const AC_TARGET_HANDLES = ['ac_in'];
-
-  if (sourceNodeType === 'inverter' && sourceHandle && AC_SOURCE_HANDLES.includes(sourceHandle)) {
-    return 'AC_230V';
-  }
-  if (targetNodeType === 'inverter' && targetHandle && AC_TARGET_HANDLES.includes(targetHandle)) {
-    return 'AC_230V';
-  }
-  return 'DC_12V';
+  // AC/DC-Zuordnung kommt aus lib/domain/handleDomains.ts — derselben
+  // Tabelle, die getHandleDomain (Ziehen) benutzt. Vorher standen hier zwei
+  // handgepflegte Listen, die von der getHandleDomain-Liste abwichen:
+  // `getHandleDomain('inverter','ac_in','source')` war AC_230V, während
+  // dieselbe Kante beim Speichern als DC_12V landete (AUDIT ELE-007).
+  return edgeDomainOf(sourceNodeType, targetNodeType, sourceHandle, targetHandle ?? undefined);
 };
 
-// Proaktiv: Auch getHandleDomain für Inverter AC-Ausgänge erweitern für Drag-and-Drop Stabilität.
+/**
+ * Domäne eines Handles beim Ziehen/Verbinden. Delegiert an die gemeinsame
+ * Autorität `lib/domain/handleDomains.ts` (AUDIT ELE-007).
+ */
 export const getHandleDomain = (
   nodeType: string | undefined,
   handleId: string | null | undefined,
   handleType: 'source' | 'target' | undefined
-): 'DC_12V' | 'AC_230V' => {
-  if (!nodeType) return 'DC_12V';
-  if (nodeType === 'shorePower' || nodeType === 'consumer230v') {
-    return 'AC_230V';
-  }
-  if (nodeType === 'acBatteryCharger') {
-    // Mischdomäne (Issue 4): Die Landstrom-Zuweisung kommt als Kante
-    // shorePower.plus -> Charger-'plus'-TARGET an; alle SOURCE-Handles
-    // (plus/minus) sind der DC_12V-Ladeausgang.
-    return handleId === 'plus' && handleType === 'target' ? 'AC_230V' : 'DC_12V';
-  }
-  if (nodeType === 'inverter') {
-    // Left TARGET plus/minus = 12V DC input. Right SOURCE plus / ac_* = 230V AC.
-    // 'plus' as a target is the battery-side DC terminal on InverterNode.
-    if (handleId === 'plus' && handleType === 'target') {
-      return 'DC_12V';
-    }
-    const AC_HANDLES = ['plus', 'ac_out', 'L', 'ac', 'output', 'ac_in'];
-    if (handleId && AC_HANDLES.includes(handleId)) {
-      return 'AC_230V';
-    }
-    return 'DC_12V';
-  }
-  return 'DC_12V';
-};
+): 'DC_12V' | 'AC_230V' => handleDomain(nodeType, handleId, handleType);

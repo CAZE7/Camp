@@ -893,6 +893,23 @@
     box-shadow: 0 0 0 1.5px var(--accent-line);
   }
 
+  /* A1 (WCAG 2.4.7): @xyflow/react/dist/style.css setzt
+     `.react-flow__node.selectable:focus` und `:focus-visible` auf
+     `outline: none` — Spezifität 0,3,0 schlägt den globalen
+     `[tabindex]:focus-visible`-Ring (0,2,0). Ohne diese Gegenregel ist der
+     Tastaturfokus im Plan unsichtbar: Wer per Tab navigiert, sieht nicht, wo
+     er ist. Gleiches gilt für die Kanten (dort färbt die Bibliothek nur den
+     Pfad um). */
+  .react-flow__node.selectable:focus,
+  .react-flow__node.selectable:focus-visible,
+  .react-flow__edge.selectable:focus,
+  .react-flow__edge.selectable:focus-visible,
+  .react-flow__pane:focus-visible {
+    outline: 3px solid var(--oxide) !important;
+    outline-offset: 3px;
+    border-radius: 8px;
+  }
+
   .react-flow__handle:focus-visible > div,
   .react-flow__handle.connecting > div,
   .react-flow__handle.tap-connect-selected > div {

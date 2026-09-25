@@ -42,16 +42,18 @@ const getMessageText = (message: UIMessage) => {
 // Serverless-Endpoint zeigen (erforderlich, wenn die App per `output: 'export'`
 // statisch gehostet wird). Fällt auf '/api/chat' zurück, falls kein Wert
 // gesetzt ist.
+//
+// S1 (AUDIT): Hier stand zusätzlich ein `NEXT_PUBLIC_CHAT_TOKEN`. Alles mit
+// NEXT_PUBLIC_ wird in das Client-Bundle eingebettet — das „Secret“ war damit
+// für jeden Besucher lesbar und schützte nichts. Die Autorisierung liegt
+// vollständig auf dem Server (siehe app/api/chat/route.ts): dort gilt
+// entweder ein serverseitiges CHAT_SHARED_SECRET oder Same-Origin.
 const CHAT_API_URL = process.env.NEXT_PUBLIC_CHAT_API_URL || '/api/chat';
-const CHAT_TOKEN = process.env.NEXT_PUBLIC_CHAT_TOKEN;
 
 export default function Chat({ defaultOpen = false }: { defaultOpen?: boolean }) {
   const [input, setInput] = useState('');
   const { messages, sendMessage, status } = useChat({
-    transport: new DefaultChatTransport({
-      api: CHAT_API_URL,
-      headers: CHAT_TOKEN ? { 'x-chat-token': CHAT_TOKEN } : undefined,
-    }),
+    transport: new DefaultChatTransport({ api: CHAT_API_URL }),
   });
   const [isOpen, setIsOpen] = useState(defaultOpen);
 

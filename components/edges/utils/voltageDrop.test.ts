@@ -174,3 +174,53 @@ describe('edgeDropInputs — Solar-Bewertung auf MPP-Basis (AUDIT ELE-007)', () 
     expect(inputs.sysVoltage).toBe(12.8);
   });
 });
+
+describe('AUDIT ELE-001 — die Anzeige rechnet mit dem VERLEGTEN Querschnitt', () => {
+  const nodes = [
+    {
+      id: 'bat',
+      type: 'battery',
+      position: { x: 0, y: 0 },
+      data: { nominalVoltage: 12, capacity: 100, chemistry: 'LiFePO4' },
+    },
+    {
+      id: 'load',
+      type: 'consumer',
+      position: { x: 400, y: 0 },
+      data: { watts: 128, label: 'Verbraucher' },
+    },
+  ];
+  const edge = (data: Record<string, unknown>): Edge<CableEdgeData> =>
+    ({
+      id: 'e1',
+      source: 'bat',
+      target: 'load',
+      sourceHandle: 'plus',
+      targetHandle: 'plus',
+      data: { edgeDomain: 'DC_12V' as const, ...data },
+    }) as Edge<CableEdgeData>;
+
+  it('gespeicherter Querschnitt kleiner als die Empfehlung ⇒ Anzeige-Wert ist der gespeicherte', () => {
+    const stored = edge({ length: 10, crossSection: 2.5 });
+    const inputs = edgeDropInputs(stored, nodes[0]!, nodes[1]!, nodes);
+    // Der Kern des Befunds: hier stand früher die EMPFEHLUNG (max aus beiden).
+    expect(inputs.crossSection).toBe(stored.data!.crossSection);
+    expect(inputs.recommendedCrossSection).toBeGreaterThan(2.5);
+    expect(inputs.undersized).toBe(true);
+    // … und der Fehler wird mit dem echten Querschnitt sichtbar.
+    expect(hasVoltageDropError({ ...inputs, cumulativeDropVolts: 0 }).hasDropError).toBe(true);
+  });
+
+  it('ohne gespeicherten Wert fällt die Anzeige auf die Empfehlung zurück (kein NaN)', () => {
+    const inputs = edgeDropInputs(edge({ length: 10 }), nodes[0]!, nodes[1]!, nodes);
+    expect(inputs.crossSection).toBe(inputs.recommendedCrossSection);
+    expect(inputs.undersized).toBe(false);
+  });
+
+  it('ausreichend gespeicherter Querschnitt gilt weder als unterdimensioniert noch als Fehler', () => {
+    const inputs = edgeDropInputs(edge({ length: 2, crossSection: 10 }), nodes[0]!, nodes[1]!, nodes);
+    expect(inputs.crossSection).toBe(10);
+    expect(inputs.undersized).toBe(false);
+    expect(hasVoltageDropError({ ...inputs, cumulativeDropVolts: 0 }).hasDropError).toBe(false);
+  });
+});
