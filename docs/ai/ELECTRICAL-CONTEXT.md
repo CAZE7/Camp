@@ -71,7 +71,8 @@ Tests: `lib/vde-standards.test.ts`, `lib/vde-properties.test.ts` (Abschnitt „S
 5. `data.amps` (Laderegler, Booster, AC-Ladegerät).
 6. Fallback: `max(Σ Verbraucherströme, Σ Ladeströme)`.
 
-AC-Seite: `calculateAcEdgeCurrent(sourceId, nodes, edges)` und
+AC-Seite: `acCurrentA(sourceNode, targetNode, nodes, edges)` (`lib/autoWire/sizing.ts`)
+(früher zusätzlich `calculateAcEdgeCurrent` — 2026-09-25 entfernt, AUDIT ELE-009) und
 `acCurrentA(sourceNode, targetNode, nodes, edges)` (`lib/autoWire/sizing.ts`) — BFS über die
 AC-Insel ab Quelle, ungerichtet.
 

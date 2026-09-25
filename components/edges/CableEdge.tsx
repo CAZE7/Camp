@@ -14,7 +14,7 @@ import { isBackboneConnection } from '../planner/utils/backbone';
 import { getWireColor, WIRE_COLORS } from './utils/edgeColors';
 import { hasVoltageDropError } from './utils/voltageDrop';
 import {
-  calculateCrossSection,
+  assessCableSelection,
   calculateStrokeWidth,
   getEdgeDomain,
   maxFuseForDisplay,
@@ -105,6 +105,7 @@ const HIGH_POWER_SOURCE_TYPES = new Set([
  */
 export type EdgeErrorRule =
   | 'negative-length'
+  | 'cross-section-undersized'
   | 'thermal-overload'
   | 'drop-exceeded'
   | 'fuse-no-recommendation'
@@ -133,8 +134,10 @@ export const collectEdgeErrors = (input: {
   data?: CableEdgeData;
   I: number;
   maxFuse: number;
-  /** Angezeigter/empfohlener Querschnitt der Kante (mm²). */
+  /** VERLEGTER Querschnitt der Kante (mm²) — der gespeicherte Wert. */
   crossSection?: number;
+  /** Empfohlener Querschnitt (mm²) — was Spannungsfall/Thermik fordern. */
+  recommendedCrossSection?: number;
   isPlus: boolean;
   sourceNodeType?: string;
   targetNodeType?: string;
@@ -154,6 +157,7 @@ export const collectEdgeErrors = (input: {
     I,
     maxFuse,
     crossSection,
+    recommendedCrossSection,
     isPlus,
     sourceNodeType,
     targetNodeType,
@@ -198,6 +202,27 @@ export const collectEdgeErrors = (input: {
         source: 'Modell: Iz_design = Tabellen-Ampacity × 0,7 (lib/electrical.ts)',
       });
     }
+  }
+
+  // AUDIT ELE-001: Verlegter Querschnitt unter der Empfehlung ist ein
+  // kritischer Befund — Spannungsfall und Sicherungsgrenze richten sich nach
+  // der real verlegten Leitung, nicht nach der Empfehlung.
+  if (
+    typeof recommendedCrossSection === 'number' &&
+    typeof crossSection === 'number' &&
+    crossSection > 0 &&
+    crossSection < recommendedCrossSection - 1e-9
+  ) {
+    errors.push({
+      ruleId: 'cross-section-undersized',
+      severity: 'critical',
+      message: `Querschnitt zu klein (${crossSection} mm² < ${recommendedCrossSection} mm²)!`,
+      measuredValue: crossSection,
+      expectedValue: recommendedCrossSection,
+      unit: 'mm²',
+      source:
+        'Modell: max(Spannungsfall-Budget, Iz = Tabellenwert × 0,7); bewertet wird der verlegte Querschnitt',
+    });
   }
 
   // Spannungsfall gilt für DC- UND AC-Leitungen (3 % von 230 V = 6,9 V).
@@ -518,6 +543,8 @@ const CableEdge = function ({
     crossSection,
     maxFuse,
     animationDuration,
+    recommendedCrossSection,
+    crossSectionUndersized,
     I,
     sourceNode,
     targetNode,
@@ -566,7 +593,16 @@ const CableEdge = function ({
       ? acCurrentA(sourceNode, targetNode, getNodes(), siblingEdges) // AUDIT ELE-004: Anzeige = Dimensionierung
       : calculateEdgeCurrent(sourceNode, targetNode, getNodes(), sysVoltage, siblingEdges); // ELE-005: Kanten für Insel-BFS
 
-    const crossSection = calculateCrossSection(I, length, data?.crossSection, isAC ? 'AC_230V' : 'DC_12V');
+    // AUDIT ELE-001: Anzeige/Prüfung rechnen mit dem VERLEGTEN Querschnitt,
+    // nicht mit der Empfehlung. `calculateCrossSection(…, data.crossSection)`
+    // liefert das Maximum aus beidem — bei einer zu dünn gespeicherten Leitung
+    // (2,5 mm² gespeichert, 10 mm² gerechnet) zeigte die Kante „10 mm²“,
+    // 2,87 % Spannungsfall und 32 A Maximalsicherung, obwohl real 2,5 mm² mit
+    // 11,49 % und höchstens 16 A verlegt sind.
+    const selection = assessCableSelection(I, length, data?.crossSection, isAC ? 'AC_230V' : 'DC_12V');
+    const crossSection = selection.installedCrossSection;
+    const recommendedCrossSection = selection.recommendedCrossSection;
+    const crossSectionUndersized = selection.undersized;
     // maxFuseForDisplay statt calculateMaxFuse: Nicht-Normquerschnitte
     // (importierte 95 mm²) dürfen das Edge-Rendering nicht mit RangeError
     // crashen — für Label/Metrics wird auf die größte Normstufe ≤ cs
@@ -583,6 +619,8 @@ const CableEdge = function ({
       length,
       lengthIsEstimated,
       crossSection,
+      recommendedCrossSection,
+      crossSectionUndersized,
       maxFuse,
       strokeWidth,
       animationDuration,
@@ -640,6 +678,7 @@ const CableEdge = function ({
     I,
     maxFuse,
     crossSection,
+    recommendedCrossSection,
     isPlus,
     sourceNodeType: sourceNode?.type,
     targetNodeType: targetNode?.type,
@@ -751,10 +790,24 @@ const CableEdge = function ({
             }}
             className="nodrag nopan edge-label"
           >
-            {/* Kompaktes Kern-Label: Typ-Kürzel + Querschnitt + Länge */}
+            {/* Kompaktes Kern-Label: Typ-Kürzel + Querschnitt + Länge.
+                AUDIT ELE-001: Gezeigt wird der VERLEGTE Querschnitt. Ist er
+                kleiner als die Empfehlung, markiert das Label das sichtbar
+                (⚠ + rot) — vorher stand hier die Empfehlung, und die Kante
+                sah aus, als wäre sie ausreichend dimensioniert. */}
             <span
               className="edge-label-main"
-              style={{ display: 'flex', alignItems: 'center', gap: '4px', color: stroke }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                color: crossSectionUndersized ? 'var(--error)' : stroke,
+              }}
+              title={
+                crossSectionUndersized
+                  ? `Verlegt: ${crossSection} mm² — gefordert: ${recommendedCrossSection} mm² (Spannungsfall/Thermik)`
+                  : undefined
+              }
             >
               <span
                 style={{
@@ -762,7 +815,10 @@ const CableEdge = function ({
                   fontSize: '12px',
                   fontWeight: 700,
                   letterSpacing: '0.04em',
-                  opacity: 0.85,
+                  // A4: Vorher `color: stroke` mit `opacity: .85` auf
+                  // --bone — SOLAR 3,74:1, 230V 3,82:1, DC+ 4,22:1 bei 12 px.
+                  // Nötig sind 4,5:1; --ink liefert das in beiden Themes.
+                  color: 'var(--ink)',
                 }}
               >
                 {edgeDomain === 'AC_230V'
@@ -774,7 +830,9 @@ const CableEdge = function ({
                       : 'DC−'}
               </span>
               <span>
-                · {crossSection} mm² · {length.toFixed(1)} m
+                {crossSectionUndersized ? '⚠ ' : '· '}
+                {crossSection} mm² · {length.toFixed(1)} m
+                {crossSectionUndersized ? ` (empf. ${recommendedCrossSection})` : ''}
               </span>
             </span>
 

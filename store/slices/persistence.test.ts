@@ -183,3 +183,35 @@ describe('migratePlannerPersisted', () => {
     expect(muell?.data).toEqual({ label: 'Alt' });
   });
 });
+
+describe('S5 — persistierte Stände können den Prototypen nicht verseuchen', () => {
+  it('entfernt __proto__/constructor/prototype rekursiv aus Knoten- und Kantendaten', () => {
+    const hostile = JSON.parse(
+      '{"id":"bat","type":"battery","position":{"x":0,"y":0},"data":{"__proto__":{"polluted":1},"constructor":{"prototype":{"x":1}},"volts":12,"nested":{"__proto__":{"deep":true}}}}'
+    );
+    const migrated = migratePlannerPersisted({ nodes: [hostile] }, PLANNER_STORAGE_VERSION);
+
+    const node = (migrated.nodes as Array<Record<string, unknown>>)[0]!;
+    const data = node.data as Record<string, unknown>;
+    expect(Object.keys(data)).toContain('volts');
+    expect(Object.keys(data)).not.toContain('__proto__');
+    expect(Object.keys(data)).not.toContain('constructor');
+    expect(Object.keys(data.nested as Record<string, unknown>)).not.toContain('__proto__');
+    // Der eigentliche Beweis: kein neues Objekt erbt Angreifer-Felder.
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+    expect(Object.getPrototypeOf(data)).toBe(Object.prototype);
+  });
+
+  it('bleibt bei echten Plan-Daten unverändert (kein stiller Datenverlust)', () => {
+    const node = {
+      id: 'mppt',
+      type: 'mppt',
+      position: { x: 1, y: 2 },
+      data: { watts: 200, panels: [{ id: 'p1', watts: 100 }] },
+    };
+    const migrated = migratePlannerPersisted({ nodes: [node] }, PLANNER_STORAGE_VERSION);
+    const migratedNode = (migrated.nodes as Array<Record<string, unknown>>)[0]!;
+    expect(migratedNode.data).toEqual({ watts: 200, panels: [{ id: 'p1', watts: 100 }] });
+    expect(migratedNode.position).toEqual({ x: 1, y: 2 });
+  });
+});

@@ -8,6 +8,7 @@
           "edgeDomain": "DC_12V",
           "fuseSize": 10,
           "fuseType": "anl",
+          "fuseWarning": false,
           "length": 0.2
         },
         "id": "e-auto-1",
@@ -21,6 +22,7 @@
           "crossSection": 1.5,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
+          "fuseWarning": false,
           "length": 0.2
         },
         "id": "e-auto-2",
@@ -34,6 +36,7 @@
           "crossSection": 1.5,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
+          "fuseWarning": false,
           "length": 0.5
         },
         "id": "e-auto-3",
@@ -47,6 +50,7 @@
           "crossSection": 1.5,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
+          "fuseWarning": false,
           "length": 1
         },
         "id": "e-auto-4",
@@ -60,6 +64,7 @@
           "crossSection": 1.5,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
+          "fuseWarning": false,
           "length": 3
         },
         "id": "e-auto-5",
@@ -73,6 +78,7 @@
           "crossSection": 2.5,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
+          "fuseWarning": false,
           "length": 3
         },
         "id": "e-auto-6",
@@ -86,6 +92,7 @@
           "crossSection": 2.5,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
+          "fuseWarning": false,
           "length": 3
         },
         "id": "e-auto-7",
@@ -101,6 +108,7 @@
           "edgeDomain": "DC_12V",
           "fuseSize": 10,
           "fuseType": "anl",
+          "fuseWarning": false,
           "length": 0.2
         },
         "id": "e-batt-fuse",
@@ -114,6 +122,7 @@
           "crossSection": 16,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
+          "fuseWarning": false,
           "length": 1
         },
         "id": "e-batt-gnd",
@@ -129,6 +138,7 @@
           "edgeDomain": "DC_12V",
           "fuseSize": 5,
           "fuseType": "anl",
+          "fuseWarning": false,
           "length": 2
         },
         "id": "e-fuse-cool",
@@ -144,6 +154,7 @@
           "edgeDomain": "DC_12V",
           "fuseSize": 5,
           "fuseType": "anl",
+          "fuseWarning": false,
           "length": 5
         },
         "id": "e-fuse-light",
@@ -159,6 +170,7 @@
           "edgeDomain": "DC_12V",
           "fuseSize": 5,
           "fuseType": "anl",
+          "fuseWarning": false,
           "length": 3
         },
         "id": "e-fuse-usb",

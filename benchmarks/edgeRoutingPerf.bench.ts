@@ -3,8 +3,9 @@
  *
  * Er bildet treu nach, was `CableEdge` pro Render pro Kante macht:
  *   - Hindernis-Rechtecke der übrigen Nodes
- *   - Kreuzungs-Segmente der übrigen Leitungen (nur bis
- *     `CROSSING_SCAN_EDGE_LIMIT` = 120 Kanten, danach übersprungen)
+ *   - Kreuzungs-Segmente der übrigen Leitungen (Frame-Cache;
+ *     der frühere `CROSSING_SCAN_EDGE_LIMIT` ist entfallen — große Pläne
+ *     laufen über `lib/routing/geometry/segmentSpatialIndex.ts`)
  *   - `buildOrthogonalPath` (Routing + Hindernisvermeidung) zwischen den eigenen
  *     Source-/Target-Knoten der Kante
  *
@@ -25,9 +26,8 @@ import {
 } from '../components/edges/utils/orthogonalRouting';
 import { obstaclesExcluding, crossingSegmentsExcluding } from '../components/edges/utils/routingCache';
 import { polarityPathOffset } from '../components/edges/utils/pathUtils';
-
-/** Muss `CROSSING_SCAN_EDGE_LIMIT` in `components/edges/CableEdge.tsx` entsprechen. */
-const CROSSING_SCAN_EDGE_LIMIT = 120;
+import { routeAllCables, type RouteEdgeRef } from '../components/edges/utils/routeAll';
+import type { RoutableNode } from '../components/edges/utils/nodeGeometry';
 
 function buildPlan(nodeCount: number, edgesPerNode: number) {
   const nodes: Node[] = [];
@@ -74,7 +74,7 @@ function renderEdges(nodes: Node[], edges: any[], refs: any[], cached: boolean) 
     const exclude = new Set([edge.source, edge.target]);
     const obstacles = cached ? obstaclesExcluding(nodes, exclude) : nodesToObstacles(nodes, exclude);
     const crossingSegments =
-      edges.length > CROSSING_SCAN_EDGE_LIMIT
+      edges.length > 120
         ? []
         : cached
           ? crossingSegmentsExcluding(nodes, refs, { id: edge.id, source: edge.source, target: edge.target })
@@ -136,7 +136,8 @@ function bench(label: string, nodeCount: number, edgesPerNode: number, revolutio
  * Begründung des Werts in docs/adr/0012-perf-budget-16ms-pro-frame.md).
  * Gemessen wird der MEDIAN über `GATE_REVOLUTIONS` vollständige
  * Render-Durchläufe des Referenzplans (36 Nodes / 134 Kanten — oberhalb
- * von CROSSING_SCAN_EDGE_LIMIT, also der Produktionsmodus großer Pläne
+ * der Produktionsschwelle (früher 120 Kanten; heute übernimmt der
+ * Segment-Spatialindex), also der Produktionsmodus großer Pläne
  * mit Frame-Cache). Median statt Mittelwert, damit einzelne
  * Scheduler-Ausreißer des CI-Runners das Gate nicht flackern lassen.
  *
@@ -144,7 +145,7 @@ function bench(label: string, nodeCount: number, edgesPerNode: number, revolutio
  */
 const FRAME_BUDGET_MS = 16;
 const GATE_NODE_COUNT = 36;
-const GATE_EDGES_PER_NODE = 4; // ⇒ 134 Kanten (> 100, > CROSSING_SCAN_EDGE_LIMIT)
+const GATE_EDGES_PER_NODE = 4; // ⇒ 134 Kanten (> 100, ehemals über der 120er-Schwelle)
 const GATE_REVOLUTIONS = 30;
 
 function perfGate(): boolean {
@@ -180,6 +181,54 @@ bench('Mittel', 24, 3);
 bench('Groß', 60, 4);
 bench('Sehr groß', 120, 5);
 
-if (!perfGate()) {
+/**
+ * Hebel 3 (AUDIT P1): Das alte Gate maß `buildOrthogonalPath` — den
+ * **Altbestand**. Die Fläche zeichnet seit ADR 0014 die Routen aus
+ * `routeAllCables` (components/edges/utils/cableRouteStore.ts). Ein Gate,
+ * das den nicht mehr benutzten Pfad prüft, ist grün und sagt über die
+ * Wirklichkeit nichts: genau die Fehlerklasse, die dieses Projekt schon
+ * einmal teuer bezahlt hat.
+ *
+ * Deshalb misst dieser zweite Block denselben Referenzplan (36 Knoten /
+ * 134 Kanten) durch die **Live-Pipeline**. Er ist heute ehrlicherweise
+ * langsamer als das 16-ms-Ziel für Einzelkanten-Render (ADR 0012) — die
+ * Route berechnet den kompletten Plan in einem Pass, gedrosselt und nicht
+ * pro Frame. Das Budget ist deshalb als **Ratchet** gesetzt: Es hält den
+ * Ist-Zustand fest und verbietet Rückfall, statt eine Zahl zu behaupten,
+ * die nicht gemessen ist. Ziel bleibt 16 ms; wer den Pfad schneller macht,
+ * zieht das Ratchet nach unten.
+ *
+ * Aufruf: npm run perf:edge-routing
+ */
+const LIVE_PATH_RATCHET_MS = 60;
+const LIVE_PATH_REVOLUTIONS = 15;
+
+function livePathGate(): boolean {
+  const { nodes, edges } = buildPlan(GATE_NODE_COUNT, GATE_EDGES_PER_NODE);
+  const routableNodes = nodes as unknown as RoutableNode[];
+  const routeEdges = edges.map((edge) => ({ ...edge, data: {} })) as unknown as RouteEdgeRef[];
+  routeAllCables(routableNodes, routeEdges); // Warmup
+
+  const samples: number[] = [];
+  for (let r = 0; r < LIVE_PATH_REVOLUTIONS; r++) {
+    const start = performance.now();
+    routeAllCables(routableNodes, routeEdges);
+    samples.push(performance.now() - start);
+  }
+  samples.sort((a, b) => a - b);
+  const median = samples[Math.floor(samples.length / 2)]!;
+  const p90 = samples[Math.floor(samples.length * 0.9)]!;
+  const passed = median <= LIVE_PATH_RATCHET_MS;
+
+  console.log(
+    `\nPerf-Gate Live-Pfad (routeAllCables, AUDIT P1): N=${GATE_NODE_COUNT} E=${routeEdges.length}  ` +
+      `Median ${median.toFixed(2)} ms  p90 ${p90.toFixed(2)} ms  Ratchet ${LIVE_PATH_RATCHET_MS} ms ` +
+      `(ADR-0012-Ziel 16 ms)  → ` +
+      (passed ? 'OK' : 'ÜBERSCHRITTEN')
+  );
+  return passed;
+}
+
+if (!perfGate() || !livePathGate()) {
   process.exitCode = 1;
 }

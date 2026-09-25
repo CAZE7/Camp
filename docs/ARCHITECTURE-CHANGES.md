@@ -378,3 +378,47 @@ breakingCapacityKA: 6 }` auf genau den sechs AC-Kanten (je Plan eine).
    Info „nicht modelliert". Das schließt die Lücke, dass AC-Kanten eine
    Sicherung als nackte Zahl ohne Typ/Charakteristik/Abschaltvermögen
    trugen.
+
+### 2026-09-25 — Vierte Fassung: AC-Stempel zurückgenommen, Nicht-Ausführbarkeit sichtbar (AUDIT ELE-004/ELE-009)
+
+`npm run goldenmaster:capture` bewusst ausgeführt; die Fixtures enthalten
+gegenüber der dritten Fassung **zwei** Deltas, sonst nichts (Ids, Geometrie,
+Routing, Ströme byte-identisch):
+
+1. **Der AC-Stempel ist weg.** `acProtection: { kind: 'mcb',
+characteristic: 'B', breakingCapacityKA: 6 }` wurde von `sizeAcEdges`
+   erfunden und in JEDE AC-Kante geschrieben. Zwei Gründe, das
+   zurückzunehmen:
+   - Ein Plan, der ein Schutzorgan enthält, das niemand ausgewählt hat,
+     behauptet eine Geräteauswahl. Der Inspector zeigte „LS B, 6 kA“ als
+     wäre es eine Bestandsaufnahme — es war ein Default.
+   - Ausgerechnet **B ist für die Abschaltbedingung die optimistische
+     Annahme**: B löst bei 5 × I_n aus, C bei 10 × I_n. Mit B rechnet
+     `lib/acProtection.ts` also ein Zs,max, das die Anlage leichter
+     durchwinkt als eine C-Anlage es täte (Zs,max(B16) = 1,917 Ω gegenüber
+     Zs,max(C16) = 0,958 Ω). Die Begründung der dritten Fassung
+     („konservativer Marktstandard“) traf für das Abschaltvermögen zu, nicht
+     für die Charakteristik.
+     Statt eines stillen Stempels gibt es jetzt eine **sichtbare Annahme**:
+     Fehlt der Deskriptor, rechnet die Prüfung konservativ mit C/6 kA, setzt
+     `descriptorAssumed: true` und meldet einmalig
+     `DOM-001-descriptor-assumed` („LS C, 6 kA (Annahme)“). Fehlt die Länge
+     oder der Querschnitt, lautet das Ergebnis `not-modeled` mit
+     `limitation`-Kennung statt eines stillen `lengthM ?? 0`-Durchlaufs.
+2. **`fuseWarning` auf allen DC-Kanten.** `markInfeasibleSizing`
+   (`lib/autoWire/sizing.ts`, aufgerufen nach `applyFuseSizes`) markiert jede
+   Leitung, die mit diesem Querschnitt nicht ausführbar ist — Plus-Leiter
+   schutzbezogen (keine Normsicherung trägt den Strom: `I_B > FUSE_MAP[cs]`),
+   Minus-Leiter thermisch (`I_B > I_z = 0,7 × Tabellenwert`). Betroffen im
+   Referenzplan `acdc`: `e-auto-1…5` (152,06 A auf 70 mm² → I_z 120,4 A,
+   maxFuse 100 A), `e-auto-8/9` (147,06 A). Die Kante trug die Information
+   vorher gar nicht — und wo sie sie trug, las sie niemand (AUDIT ELE-009).
+
+Begründung „bewusst besser, weil …“: Die Fixtures zeigen jetzt denselben
+Sachstand, den die Oberfläche anzeigt (E1/E2/E9). Neu abgesichert durch
+`scripts/goldenmaster/electricalPlausibility.test.ts` — es prüft über allen
+sechs Plänen, dass (a) keine Kante unmarkiert über ihrer design-Belastbarkeit
+liegt, (b) kein Marker ohne Grenzverletzung gesetzt ist, (c) automatisch
+gewählte Sicherungen Last und Leiter koordinieren (I_B ≤ I_n ≤ FUSE_MAP[cs])
+und (d) keine Pipeline AC-Schutzorgan-Daten erfindet. Der Test wäre gegen die
+dritte Fassung rot gewesen: genau das war der Befund.

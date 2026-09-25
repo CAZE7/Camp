@@ -132,14 +132,22 @@ describe('useLiveValidation', () => {
       );
     });
 
-    it('ohne maxPvVoltage am Regler findet keine Fensterprüfung statt', () => {
+    it('ohne maxPvVoltage am Regler ist das Eingangsfenster UNBEWERTET (nicht still „ok“)', () => {
+      // AUDIT ELE-008: Vorher endete die Schleife hier mit `return` — der
+      // „Voc fehlt“-Hinweis im else-Zweig war für genau diesen Fall
+      // unerreichbar, und ein MPPT-String ohne Eingangsfenster blieb stumm.
       const nodes = [
         panel('p1', { label: 'Panel 1', watts: 100, voc: 40 }),
         { id: 'm', type: 'mpptController', data: { label: 'MPPT', amps: 20 }, position: { x: 0, y: 0 } },
       ];
       const edges: Edge<CableEdgeData>[] = [{ id: 's-p1-m', source: 'p1', target: 'm' }];
       const { result } = renderHook(() => useLiveValidation(nodes, edges));
-      expect(result.current.some((w) => w.id.startsWith('solar-voc-'))).toBe(false);
+      const unknown = result.current.find((w) => w.ruleId === 'ELE-007-voc-window-unknown');
+      expect(unknown).toBeDefined();
+      expect(unknown!.type).toBe('warning');
+      expect(unknown!.measuredValue).toContain('fehlt');
+      // Keine Falschmeldung: es wird kein Fensterverstoß behauptet.
+      expect(result.current.some((w) => w.ruleId === 'ELE-007-voc-window')).toBe(false);
     });
   });
 
@@ -190,7 +198,10 @@ describe('useLiveValidation', () => {
       ];
 
       const { result } = renderHook(() => useLiveValidation(nodes, edges));
-      expect(result.current).toEqual([]);
+      // Diese Prüfung gilt der Quellschutz-Regel; die (korrekte) Meldung
+      // „Bank-Ik nicht schätzbar“ gehört zu DOM-002 und wird dort geprüft.
+      expect(result.current.filter((w) => w.id === 'missing-fuse-e1-2')).toEqual([]);
+      expect(result.current.every((w) => w.category !== 'safety')).toBe(true);
     });
 
     it('should not generate warning if target is a fuse', () => {
@@ -244,7 +255,14 @@ describe('useLiveValidation', () => {
       const nodes: Node[] = [
         { id: '1', type: 'solar', data: { watts: 400 }, position: { x: 0, y: 0 } },
         { id: '2', type: 'solar', data: { watts: 400 }, position: { x: 0, y: 0 } },
-        { id: '3', type: 'mpptController', data: { amps: 30 }, position: { x: 100, y: 0 } }, // MPPT capacity = 30 * 12 / 0.85 = ~423.5W
+        {
+          id: '3',
+          type: 'mpptController',
+          // maxPvVoltage gesetzt: hier geht es um die Leistungs-Regel, nicht um
+          // das (separat geprüfte) Eingangsfenster.
+          data: { amps: 30, maxPvVoltage: 100 },
+          position: { x: 100, y: 0 },
+        }, // MPPT capacity = 30 * 12 / 0.85 = ~423.5W
       ];
 
       const { result } = renderHook(() => useLiveValidation(nodes, []));
@@ -264,7 +282,12 @@ describe('useLiveValidation', () => {
       const nodes: Node[] = [
         { id: '1', type: 'solar', data: { watts: 100 }, position: { x: 0, y: 0 } },
         { id: '2', type: 'solar', data: { watts: 100 }, position: { x: 0, y: 0 } },
-        { id: '3', type: 'mpptController', data: { amps: 30 }, position: { x: 100, y: 0 } }, // MPPT capacity = 30 * 12 / 0.85 = ~423.5W
+        {
+          id: '3',
+          type: 'mpptController',
+          data: { amps: 30, maxPvVoltage: 100 },
+          position: { x: 100, y: 0 },
+        }, // MPPT capacity = 30 * 12 / 0.85 = ~423.5W
       ];
 
       const { result } = renderHook(() => useLiveValidation(nodes, []));
@@ -538,8 +561,14 @@ describe('useLiveValidation', () => {
       expect(warning!.measuredValue).toBe('plus → minus');
     });
 
-    it('warnt bei Mischspannungsplan (ELE-008)', () => {
-      const nodes = [node('b1', 'battery', { voltage: 12 }), node('b2', 'battery', { voltage: 24 })];
+    it('warnt bei Mischspannungsplan (ELE-008) — über das ECHTE Feld nominalVoltage', () => {
+      // AUDIT ELE-006: Das Fixture benutzte `voltage`; der Produktivcode las
+      // genau dieses Phantomfeld (`Number(b.data?.voltage) || 12`) und bekam
+      // deshalb IMMER 12 V — die Regel konnte nie feuern, der Test war grün.
+      const nodes = [
+        node('b1', 'battery', { nominalVoltage: 12 }),
+        node('b2', 'battery', { nominalVoltage: 24 }),
+      ];
       const { result } = renderHook(() => useLiveValidation(nodes, []));
       const warning = result.current.find((w) => w.ruleId === 'ELE-008-mixed-voltage');
       expect(warning).toBeDefined();
@@ -635,12 +664,27 @@ describe('Rule A7: Kurzschlussstrom vs. Abschaltvermögen (AUDIT DOM-002)', () =
     expect(ok.result.current.some((w) => w.ruleId === 'DOM-002-fuse-type-unknown')).toBe(false);
   });
 
-  it('schweigt ohne schätzbare Bank (keine Kapazität) und ohne Sicherung', () => {
+  it('meldet UNKNOWN statt zu schweigen, wenn die Bank nicht schätzbar ist (AUDIT ELE-008)', () => {
+    // Vorher: `if (bankIk === null) break;` — die Kurzschlussprüfung
+    // verschwand lautlos. „Ehrlich schweigen“ ist hier unsichtbar: Der Nutzer
+    // sah nicht, dass GAR NICHT geprüft wurde.
     const nodes = [
       battery('b1', { capacity: undefined, chemistry: undefined }),
       { id: 'bus1', type: 'busbar', data: {}, position: { x: 0, y: 0 } } as Node,
     ];
     const { result } = renderHook(() => useLiveValidation(nodes, fused({ fuseSize: 100, fuseType: 'ato' })));
+    const unknown = result.current.find((w) => w.ruleId === 'DOM-002-bank-ik-unknown');
+    expect(unknown).toBeDefined();
+    expect(unknown!.type).toBe('warning');
+    expect(result.current.some((w) => w.ruleId === 'DOM-002-breaking-capacity')).toBe(false);
+  });
+
+  it('bleibt still, wenn gar keine Sicherung eingetragen ist (nichts zu prüfen)', () => {
+    const nodes = [
+      battery('b1', { capacity: undefined, chemistry: undefined }),
+      { id: 'bus1', type: 'busbar', data: {}, position: { x: 0, y: 0 } } as Node,
+    ];
+    const { result } = renderHook(() => useLiveValidation(nodes, fused({})));
     expect(result.current.filter((w) => w.ruleId?.startsWith('DOM-002'))).toEqual([]);
   });
 
@@ -760,14 +804,25 @@ describe('Rule A7: Kurzschlussstrom vs. Abschaltvermögen (AUDIT DOM-002)', () =
       expect(result.current.some((w) => w.ruleId === 'DOM-001-inverter-output')).toBe(false);
     });
 
-    it('Sicherung nur als Zahl → Info: Bauform/Charakteristik nachrüsten', () => {
+    it('Sicherung nur als Zahl → Annahme wird benannt (konservative C-Charakteristik)', () => {
+      // AUDIT ELE-004: Früher stempelte AutoWire selbst ein erfundenes
+      // Datenblatt (LS B, 6 kA) auf die Kante, sodass hier „geprüft & still“
+      // herauskam. Jetzt wird mit der UNGÜNSTIGSTEN üblichen Charakteristik
+      // gerechnet und die Annahme ausdrücklich gemeldet.
       const nodes = [shore('sp1'), acConsumer('c1')];
       const edges = [acEdge('e1', 'sp1', 'c1', { length: 5 })];
       const { result } = renderHook(() => useLiveValidation(nodes, edges));
-      const note = result.current.find((w) => w.id === 'ac-protection-not-modeled');
+      const note = result.current.find((w) => w.id === 'ac-descriptor-assumed');
       expect(note).toEqual(
-        expect.objectContaining({ type: 'info', ruleId: 'DOM-001-protection-not-modeled' })
+        expect.objectContaining({
+          type: 'warning',
+          category: 'estimation',
+          ruleId: 'DOM-001-descriptor-assumed',
+        })
       );
+      // Die Annahme ist die strengere: C16 ⇒ Zs,max = 0,958 Ω (B: 1,917 Ω).
+      expect(note!.source).toContain('0,96');
+      expect(note!.measuredValue).toContain('C');
     });
   });
 });

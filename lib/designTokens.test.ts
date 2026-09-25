@@ -374,3 +374,41 @@ describe('D-1 Werft-Token-Hygiene — keine Farbliterale außerhalb globals.css'
     expect(offenders, offenders.join('\n')).toEqual([]);
   });
 });
+
+describe('AUDIT A1/A2 — Tastaturfokus im Canvas ist sichtbar (WCAG 2.4.7)', () => {
+  const css = readFileSync(resolve(process.cwd(), 'app/globals.css'), 'utf8');
+
+  /**
+   * `@xyflow/react/dist/style.css` setzt auf jedem selektierbaren Knoten und
+   * jeder Kante `outline: none` in den Zuständen `:focus` und `:focus-visible`
+   * (Spezifität 0,3,0). Der globale Fokusring aus `globals.css`
+   * (`[tabindex]:focus-visible`, 0,2,0) verliert dagegen — wer per Tab in den
+   * Plan navigiert, sieht nicht, wo er ist. Diese beiden Regeln stellen den
+   * Ring wieder her; der Test hält sie fest, damit kein CSS-Aufräumen sie
+   * stillschweigend entfernt.
+   */
+  it('überstimmt die Bibliotheks-Regel für Knoten und Kanten', () => {
+    const nodeRule = css.match(/\.react-flow__node\.selectable:focus[^{]*\{[^}]*\}/)?.[0] ?? '';
+    const edgeRule = css.match(/\.react-flow__edge\.selectable:focus[^{]*\{[^}]*\}/)?.[0] ?? '';
+
+    for (const [name, rule] of [
+      ['Knoten', nodeRule],
+      ['Kante', edgeRule],
+    ] as const) {
+      expect(rule, `${name}-Fokusregel fehlt in app/globals.css`).not.toBe('');
+      expect(rule, `${name}-Fokusregel braucht !important gegen die Bibliothek`).toContain('!important');
+      expect(rule, `${name}-Fokusregel braucht eine sichtbare outline`).toMatch(/outline:\s*\d/);
+    }
+  });
+
+  it('das axe-Gate schließt den Canvas weiterhin bewusst aus — mit Begründung', () => {
+    // A2: Der Ausschluss ist legitim (eigenes Bedienmodell), aber er darf nicht
+    // kommentarlos passieren: Ohne Begründung liest ihn niemand mehr als das,
+    // was er ist — eine Ausnahme.
+    const spec = readFileSync(resolve(process.cwd(), 'tests/e2e/a11y.spec.ts'), 'utf8');
+    const index = spec.indexOf(".exclude('.react-flow')");
+    expect(index).toBeGreaterThan(-1);
+    const before = spec.slice(Math.max(0, index - 600), index);
+    expect(before).toMatch(/Bedienmodell|Ausnahme|Ausschluss/i);
+  });
+});

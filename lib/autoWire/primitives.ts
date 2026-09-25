@@ -26,7 +26,10 @@ export const VDE_MAX_DC_DROP_FRACTION: Scalar = 0.03;
 export const VDE_MAX_DC_DROP_PER_EDGE_FRACTION: Scalar = 0.02;
 /** Leitfähigkeit von Kupfer in m/(Ω·mm²) — Kehrwert des spez. Widerstands. */
 
-export const COPPER_CONDUCTIVITY = 58;
+import { COPPER_CONDUCTIVITY_MS_PER_MM2 } from '../materials';
+
+/** κ von Kupfer bei 20 °C — eine Quelle (lib/materials.ts, AUDIT ELE-010). */
+export const COPPER_CONDUCTIVITY = COPPER_CONDUCTIVITY_MS_PER_MM2;
 
 /** Standardlänge einer Kante ohne gespeicherte Länge. */
 

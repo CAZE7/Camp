@@ -572,10 +572,46 @@ function getEdgeErrors(
   });
 }
 
+/**
+ * Datenlücken-Hinweise, die nach AutoWire erlaubt sind (Regel M).
+ *
+ * Der Auto-Wire-Vertrag lautet: **keine Sicherheitsbefunde**. Was AutoWire
+ * nicht wissen KANN, sind Datenblattwerte des Nutzers (LS-Charakteristik,
+ * MPPT-Eingangsfenster, Batterie-Nennspannung). Diese Lücken dürfen nicht
+ * still bleiben (früher waren die Prüfungen dadurch unsichtbar „ok“), sie
+ * erscheinen aber als Datenanforderung — nicht als Sicherheitsmangel.
+ * Die Liste ist bewusst eng und wird nur mit Begründung erweitert.
+ */
+const ALLOWED_DATA_GAP_RULES = new Set([
+  'DOM-001-descriptor-assumed', // kein LS-Datenblatt → konservative C-Annahme (AUDIT ELE-004)
+  'ELE-007-voc-window-unknown', // kein maxPvVoltage → Eingangsfenster unbewertet (ELE-008)
+  'ELE-008-voltage-unknown', // keine Batterie-Nennspannung → Mischspannung unbewertet
+  'ELE-007-voc-missing-data', // Panel-Voc fehlt
+  // Folge der konservativen Annahme oben: Ohne Datenblatt wird mit C
+  // gerechnet (Zs,max(C16) = 0,96 Ω statt 1,92 Ω). Ein Plan, der unter C
+  // über der TN-Grenze liegt, meldet das — gedeckt durch den FI am
+  // Einspeisepunkt. Das ist die ehrliche Richtung: lieber ein Hinweis zu
+  // viel als eine Leitung, die erst mit dem echten C-Gerät auffällt.
+  'DOM-001-trip-rcd-covered',
+]);
+
 function assertZeroWarnings(nodes: Node[], edges: Edge<CableEdgeData>[]) {
   // 1. Live-Validierung (useLiveValidation-Regeln)
   const { result } = renderHook(() => useLiveValidation(nodes, edges));
-  expect(result.current).toEqual([]);
+  const blocking = result.current.filter((w) => w.type === 'critical' || w.category === 'safety');
+  expect(
+    blocking,
+    `Auto-Wire darf keine Sicherheitsbefunde erzeugen:\n${blocking
+      .map((w) => `${w.ruleId ?? w.id}: ${w.message}`)
+      .join('\n')}`
+  ).toEqual([]);
+  const unexpected = result.current.filter((w) => !ALLOWED_DATA_GAP_RULES.has(w.ruleId ?? ''));
+  expect(
+    unexpected,
+    `Nur benannte Datenlücken-Hinweise sind erlaubt:\n${unexpected
+      .map((w) => `${w.ruleId ?? w.id}: ${w.message}`)
+      .join('\n')}`
+  ).toEqual([]);
 
   // 2. Kanten-Logik der Anzeige (CableEdge-Errors)
   const edgeErrors: ReturnType<typeof collectEdgeErrors> = [];

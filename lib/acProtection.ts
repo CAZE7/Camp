@@ -1,3 +1,5 @@
+import { COPPER_RESISTIVITY_OHM_MM2_PER_M as COPPER_RESISTIVITY_OHM_MM2_PER_M_SOURCE } from './materials';
+
 /**
  * lib/acProtection.ts — DOM-001: Mehrleiter-/Schutzmodell der 230-V-Seite.
  *
@@ -38,8 +40,13 @@
  *    Single-Line-Schema.
  */
 
-/** Leitfähigkeits-Resistivität von Kupfer bei 20 °C [Ω·mm²/m]. */
-const COPPER_RESISTIVITY_OHM_MM2_PER_M = 0.0175;
+/**
+ * Leitfähigkeits-Resistivität von Kupfer bei 20 °C [Ω·mm²/m] — EINE Quelle
+ * (lib/materials.ts). Vorher stand hier 0,0175, während der Spannungsfall in
+ * electrical.ts/voltageDrop.ts mit κ = 58 rechnete (Kehrwert 0,017241): zwei
+ * Kupferwerte für denselben Werkstoff (AUDIT ELE-010).
+ */
+const COPPER_RESISTIVITY_OHM_MM2_PER_M = COPPER_RESISTIVITY_OHM_MM2_PER_M_SOURCE;
 
 /**
  * Angenommene vorgelagerte Netzimpedanz bis zur Einspeisestelle (CEE-16-A-
@@ -168,6 +175,20 @@ export function acSourceKindOf(sourceNodeType: string | undefined): AcSourceKind
   return 'unknown';
 }
 
+/**
+ * WARUM eine Bewertung nicht möglich war (AUDIT ELE-002/003, Regel M).
+ *
+ * `not-modeled` allein war stumm: die Anzeige unterschied nicht zwischen
+ * „kein Schutzorgan eingetragen“ und „Leitungslänge fehlt“. Schlimmer: die
+ * fehlende Länge wurde intern zu `0 m` — die Schleifenimpedanz war dann nur
+ * die Netzimpedanz, und die Kante bestand die Prüfung (`ok-with-assumption`).
+ * Eine 30-m-Leitung mit C16 auf 2,5 mm² ist real ein `fail`.
+ * Jede Lücke hat hier einen eigenen Namen und wird als UNKNOWN gemeldet,
+ * niemals als PASS.
+ */
+export type AcLimitation =
+  'missing-length' | 'missing-cross-section' | 'missing-rated-current' | 'missing-descriptor';
+
 /** Ergebnis der Abschaltbedingungs-Schätzung. */
 export type AcTripVerdict =
   | 'not-modeled'
@@ -176,6 +197,7 @@ export type AcTripVerdict =
   | 'ok-with-assumption'
   | 'borderline'
   | 'rcd-covered'
+  | 'breaking-capacity-fail'
   | 'fail';
 
 export type AcTripAssessment = {
@@ -194,6 +216,21 @@ export type AcTripAssessment = {
     characteristic: McbCharacteristic;
     breakingCapacityKA: number;
   } | null;
+  /**
+   * Prospektiver Kurzschlussstrom am Kantenanfang [A], geschätzt aus der
+   * deklarierten Netzimpedanz-Annahme: I_p = U0 / Zs. UNVERIFIED wie die
+   * Annahme selbst — aber eine Zahl statt eines dekorativen Icn-Feldes
+   * (AUDIT ELE-005).
+   */
+  prospectiveIkA: number | null;
+  /** Grund, warum nicht bewertet werden konnte (UNKNOWN, nie PASS). */
+  limitation?: AcLimitation;
+  /**
+   * true = es war kein Datenblatt hinterlegt; gerechnet wurde mit der
+   * konservativen Annahme C/6 kA (AUDIT ELE-004). Der Aufrufer MUSS die
+   * Annahme sichtbar machen.
+   */
+  descriptorAssumed: boolean;
   /** Freitext-Begründung für UI/Audit (de). */
   reason: string;
 };
@@ -218,12 +255,26 @@ export function evaluateAcEdgeProtection(params: {
   upstreamRcd?: boolean;
 }): AcTripAssessment {
   const { sourceKind = 'unknown', upstreamRcd = false } = params;
-  const lengthM = params.lengthM ?? 0;
-  const crossSection = params.crossSection ?? 0;
-  const cableLoopOhm = cableLoopContributionOhm(lengthM, crossSection);
   const rated = params.ratedCurrentA ?? 0;
 
-  const base: Omit<AcTripAssessment, 'verdict' | 'reason'> = {
+  /**
+   * Regel M: KEIN stiller Fallback. Fehlt die Länge oder der Querschnitt,
+   * wird nicht mit 0 gerechnet (das machte die Schleifenimpedanz künstlich
+   * klein und ließ die Kante bestehen), sondern ehrlich UNKNOWN gemeldet.
+   * Ein gespeichertes 0 m ist für eine AC-Leitung ebenso unbrauchbar wie ein
+   * fehlender Wert — beides ist eine Datenlücke, kein Messergebnis.
+   */
+  const hasLength =
+    typeof params.lengthM === 'number' && Number.isFinite(params.lengthM) && params.lengthM > 0;
+  const hasCrossSection =
+    typeof params.crossSection === 'number' &&
+    Number.isFinite(params.crossSection) &&
+    params.crossSection > 0;
+  const lengthM = hasLength ? (params.lengthM as number) : 0;
+  const crossSection = hasCrossSection ? (params.crossSection as number) : 0;
+  const cableLoopOhm = hasLength && hasCrossSection ? cableLoopContributionOhm(lengthM, crossSection) : 0;
+
+  const base: Omit<AcTripAssessment, 'verdict' | 'reason' | 'prospectiveIkA' | 'descriptorAssumed'> = {
     iaA: null,
     zsMaxOhm: null,
     cableLoopOhm,
@@ -236,6 +287,8 @@ export function evaluateAcEdgeProtection(params: {
   if (sourceKind === 'inverter') {
     return {
       ...base,
+      prospectiveIkA: null,
+      descriptorAssumed: false,
       verdict: 'inverter-limited',
       reason:
         'Wechselrichter-Ausgänge sind elektronisch strombegrenzt (kein TN-Schleifenmodell) — die Abschaltbeurteilung steht im Hersteller-Datenblatt.',
@@ -245,8 +298,28 @@ export function evaluateAcEdgeProtection(params: {
   if (!(rated > 0)) {
     return {
       ...base,
+      prospectiveIkA: null,
+      descriptorAssumed: false,
       verdict: 'not-modeled',
-      reason: 'Kein Bemessungsstrom (fuseSize) an der AC-Kante — Abschaltbedingung nicht bewertbar.',
+      limitation: 'missing-rated-current',
+      reason:
+        'Kein Bemessungsstrom (fuseSize) an der AC-Kante — Abschaltbedingung nicht bewertbar (UNKNOWN, kein Freibrief).',
+    };
+  }
+
+  // Regel M: Länge und Querschnitt sind Eingangsgrößen der Schleifenimpedanz.
+  // Fehlt eine davon, ist das Ergebnis UNKNOWN — früher wurde daraus 0 Ω
+  // Kabelanteil und damit ein scheinbares „ok-with-assumption“ (AUDIT ELE-002).
+  if (!hasLength || !hasCrossSection) {
+    return {
+      ...base,
+      prospectiveIkA: null,
+      descriptorAssumed: false,
+      verdict: 'not-modeled',
+      limitation: !hasLength ? 'missing-length' : 'missing-cross-section',
+      reason: !hasLength
+        ? 'Leitungslänge der AC-Kante nicht angegeben — Schleifenimpedanz und Abschaltbedingung sind nicht bewertbar (UNKNOWN). Länge im Leitungs-Inspektor eintragen.'
+        : 'Querschnitt der AC-Kante nicht angegeben — Schleifenimpedanz und Abschaltbedingung sind nicht bewertbar (UNKNOWN). Querschnitt im Leitungs-Inspektor eintragen.',
     };
   }
 
@@ -255,22 +328,68 @@ export function evaluateAcEdgeProtection(params: {
     ? params.descriptor.characteristic
     : undefined;
   const breaking = params.descriptor?.breakingCapacityKA;
-  if (!kind || !characteristic || !(Number(breaking) > 0)) {
+  const descriptorAssumed = !kind || !characteristic || !(Number(breaking) > 0);
+
+  /**
+   * AUDIT ELE-004: Fehlt das Datenblatt, wird NICHT stillschweigend mit einer
+   * bequemen Charakteristik gerechnet und das Ergebnis „ok" genannt. Stattdessen
+   * gilt die UNGÜNSTIGSTE übliche Charakteristik (C, 10 × In statt B, 5 × In)
+   * als ausdrücklich benannte Annahme:
+   *
+   *   Zs,max(C16) = 0,958 Ω  vs.  Zs,max(B16) = 1,917 Ω
+   *
+   * Eine Leitung, die unter der C-Annahme besteht, besteht auch mit jedem real
+   * verbauten B-Gerät — die Annahme irrt nur in die sichere Richtung. AutoWire
+   * stempelt keine erfundenen Gerätedaten mehr auf die Kante; der Aufrufer
+   * sieht `descriptorAssumed` und meldet die Annahme sichtbar (Regel M:
+   * Annahme ist erlaubt, Schweigen nicht).
+   */
+  const descriptor = descriptorAssumed
+    ? { kind: 'mcb' as const, characteristic: 'C' as const, breakingCapacityKA: 6 }
+    : {
+        kind: kind as AcProtectionKind,
+        characteristic: characteristic as McbCharacteristic,
+        breakingCapacityKA: Number(breaking),
+      };
+  const assumptionNote = descriptorAssumed
+    ? ' Annahme mangels Datenblatt: LS mit Charakteristik C (ungünstigste übliche, IEC 60898-1) und 6 kA — Datenblatt im Leitungs-Inspektor eintragen.'
+    : '';
+  const iaA = guaranteedTripCurrentA(rated, descriptor.characteristic);
+  const zsMaxOhm = maxLoopImpedanceOhm(rated, descriptor.characteristic);
+  const zsEstimateOhm = UPSTREAM_IMPEDANCE_ASSUMPTION_OHM + cableLoopOhm;
+
+  /**
+   * AUDIT ELE-005: Das Abschaltvermögen Icn war dekorativ — geprüft wurde nur
+   * „> 0“, für AC wurde NIE ein Kurzschlussstrom gerechnet. B16 mit 6 kA und
+   * mit 0,5 kA ergaben dasselbe „ok-with-assumption“.
+   *
+   * Jetzt wird der prospektive Kurzschlussstrom aus derselben deklarierten
+   * Netzimpedanz-Annahme gerechnet, aus der auch Zs stammt:
+   * I_p = U0 / Zs. Mit 0,8 Ω vorgelagert ergibt das ≈ 0,29 kA — die üblichen
+   * 6-kA-Geräte liegen also weit darüber, und der Vergleich schlägt genau bei
+   * Datenblatt-Werten an, die zur Installation nicht passen. Die Annahme ist
+   * UNVERIFIED (ein Messwert vor Ort schlägt sie), aber sie ist wenigstens
+   * gerechnet und steht als Zahl in UI/Audit — nicht als stiller Haken.
+   */
+  const prospectiveIkA = zsEstimateOhm > 0 ? AC_MODEL_VOLTAGE_V / zsEstimateOhm : null;
+  const breakingCapacityA = descriptor.breakingCapacityKA * 1000;
+  if (prospectiveIkA !== null && prospectiveIkA > breakingCapacityA) {
     return {
       ...base,
-      verdict: 'not-modeled',
-      reason:
-        'Bauform/Charakteristik/Abschaltvermögen des LS nicht angegeben — im Leitungs-Inspektor eintragen (IEC 60898-1: B = 3–5×In, C = 5–10×In).',
+      iaA,
+      zsMaxOhm,
+      zsEstimateOhm,
+      descriptor,
+      prospectiveIkA,
+      descriptorAssumed,
+      verdict: 'breaking-capacity-fail',
+      reason: `Abschaltvermögen Icn = ${descriptor.breakingCapacityKA} kA liegt unter dem geschätzten prospektiven Kurzschlussstrom ≈ ${(prospectiveIkA / 1000).toFixed(2)} kA (I_p = U0 / Zs aus der Netzimpedanz-Annahme ${UPSTREAM_IMPEDANCE_ASSUMPTION_OHM} Ω).${assumptionNote}`,
     };
   }
-  const descriptor = { kind, characteristic, breakingCapacityKA: Number(breaking) };
-  const iaA = guaranteedTripCurrentA(rated, characteristic);
-  const zsMaxOhm = maxLoopImpedanceOhm(rated, characteristic);
-  const zsEstimateOhm = UPSTREAM_IMPEDANCE_ASSUMPTION_OHM + cableLoopOhm;
 
   // FI-Falle: 30-mA-Fehlerschutz deckt Personen-/Fehlerschutz auch dann,
   // wenn die magnetische Abschaltbedingung knapp oder gerissen wäre.
-  const rcdProtects = upstreamRcd || kind === 'rcbo';
+  const rcdProtects = upstreamRcd || descriptor.kind === 'rcbo';
   if (zsEstimateOhm > zsMaxOhm) {
     if (rcdProtects) {
       return {
@@ -279,8 +398,10 @@ export function evaluateAcEdgeProtection(params: {
         zsMaxOhm,
         zsEstimateOhm,
         descriptor,
+        prospectiveIkA,
+        descriptorAssumed,
         verdict: 'rcd-covered',
-        reason: `Geschätzte Schleifenimpedanz ≈ ${zsEstimateOhm.toFixed(2)} Ω über dem TN-Zulasswert ${zsMaxOhm.toFixed(2)} Ω — Fehlerschutz über den 30-mA-FI${kind === 'rcbo' ? ' des FI/LS' : ' am Einspeisepunkt'} gedeckt; Messung vor Ort bleibt Pflicht.`,
+        reason: `Geschätzte Schleifenimpedanz ≈ ${zsEstimateOhm.toFixed(2)} Ω über dem TN-Zulasswert ${zsMaxOhm.toFixed(2)} Ω — Fehlerschutz über den 30-mA-FI${descriptor.kind === 'rcbo' ? ' des FI/LS' : ' am Einspeisepunkt'} gedeckt; Messung vor Ort bleibt Pflicht.${assumptionNote}`,
       };
     }
     return {
@@ -289,8 +410,10 @@ export function evaluateAcEdgeProtection(params: {
       zsMaxOhm,
       zsEstimateOhm,
       descriptor,
+      prospectiveIkA,
+      descriptorAssumed,
       verdict: 'fail',
-      reason: `Geschätzte Schleifenimpedanz ≈ ${zsEstimateOhm.toFixed(2)} Ω über dem zulässigen ${zsMaxOhm.toFixed(2)} Ω (Ia = ${Math.round(iaA)} A, 2/3-Regel) — magnetische Abschaltung im Fehlerfall nicht gesichert.`,
+      reason: `Geschätzte Schleifenimpedanz ≈ ${zsEstimateOhm.toFixed(2)} Ω über dem zulässigen ${zsMaxOhm.toFixed(2)} Ω (Ia = ${Math.round(iaA)} A, 2/3-Regel) — magnetische Abschaltung im Fehlerfall nicht gesichert.${assumptionNote}`,
     };
   }
 
@@ -303,8 +426,10 @@ export function evaluateAcEdgeProtection(params: {
       zsMaxOhm,
       zsEstimateOhm,
       descriptor,
+      prospectiveIkA,
+      descriptorAssumed,
       verdict: 'borderline',
-      reason: `Leitungsanteil ≈ ${cableLoopOhm.toFixed(2)} Ω beträgt mehr als die Hälfte des zulässigen ${zsMaxOhm.toFixed(2)} Ω — Abschaltbedingung hängt an der (angenommenen) Netzimpedanz; Schleifenimpedanz messen lassen.`,
+      reason: `Leitungsanteil ≈ ${cableLoopOhm.toFixed(2)} Ω beträgt mehr als die Hälfte des zulässigen ${zsMaxOhm.toFixed(2)} Ω — Abschaltbedingung hängt an der (angenommenen) Netzimpedanz; Schleifenimpedanz messen lassen.${assumptionNote}`,
     };
   }
 
@@ -314,8 +439,10 @@ export function evaluateAcEdgeProtection(params: {
     zsMaxOhm,
     zsEstimateOhm,
     descriptor,
+    prospectiveIkA,
+    descriptorAssumed,
     verdict: 'ok-with-assumption',
-    reason: `Abschaltbedingung rechnerisch erfüllt unter Annahmen (vorgelagert ≈ ${UPSTREAM_IMPEDANCE_ASSUMPTION_OHM} Ω, 2/3-Regel, ρ_Cu 20 °C): ≈ ${zsEstimateOhm.toFixed(2)} Ω ≤ ${zsMaxOhm.toFixed(2)} Ω.`,
+    reason: `Abschaltbedingung rechnerisch erfüllt unter Annahmen (vorgelagert ≈ ${UPSTREAM_IMPEDANCE_ASSUMPTION_OHM} Ω, 2/3-Regel, ρ_Cu 20 °C): ≈ ${zsEstimateOhm.toFixed(2)} Ω ≤ ${zsMaxOhm.toFixed(2)} Ω.${assumptionNote}`,
   };
 }
 

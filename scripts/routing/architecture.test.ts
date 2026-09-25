@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { join, relative, resolve } from 'node:path';
+import { join, relative, resolve, sep } from 'node:path';
+import {
+  findCableClearanceLiterals,
+  findFiniteOverlapValues,
+  findPersistedGeometryReads,
+  findRoutingV2Loaders,
+  type SourceFile,
+} from '../architecture/rules';
 
 /**
  * Architektur-Gate: EINE Wahrheit je Zuständigkeit (ADR 0014, ADR 0015).
@@ -26,6 +33,16 @@ import { join, relative, resolve } from 'node:path';
  */
 
 const ROOT = resolve(__dirname, '..', '..');
+
+/**
+ * G1 (AUDIT-Befund): `path.relative()` liefert auf Windows Backslashes, die
+ * Erwartungen dieses Gates sind aber Slash-Literale (`lib/routing/tokens.ts`).
+ * Auf Windows war `npm run check` damit dauerhaft rot — und weil der
+ * Pre-Push-Hook genau dieses Gate ausführt, musste jeder Windows-Beitragende
+ * `--no-verify` benutzen und schaltete damit ALLE Gates ab. Ein Gate, das
+ * umgangen werden muss, ist kein Gate.
+ */
+const rel = (file: string): string => relative(ROOT, file).split(sep).join('/');
 const CODE_DIRS = ['app', 'components', 'lib', 'store', 'scripts'];
 
 function collectSourceFiles(): string[] {
@@ -53,7 +70,28 @@ function collectSourceFiles(): string[] {
 
 const SOURCES = collectSourceFiles();
 const read = (file: string): string => readFileSync(file, 'utf8');
-const rel = (file: string): string => relative(ROOT, file);
+
+/**
+ * Quelltextmenge für die Regelfunktionen (scripts/architecture/rules.ts).
+ * Die Regeln selbst sind dort als reine Funktionen hinterlegt und werden in
+ * `scripts/architecture/rulesSelfCheck.test.ts` mit erfundenen Verstößen
+ * geprüft — inklusive der Formen, die die frühere Inline-Regex übersah
+ * (`import … from '../planner/routing-v2'` ohne Slash, `overlap: 100000 }`,
+ * `require(…)`, Destrukturierung von `geometry`).
+ */
+/**
+ * Das Messgerät ist kein Messobjekt: `scripts/architecture/rules.ts` enthält
+ * die Suchmuster als TEXT (u. a. die Zeichenfolge `data.geometry` in einer
+ * Regex). Ohne Ausnahme meldet es sich selbst als Verstoß. Es wird seinerseits
+ * von `rulesSelfCheck.test.ts` geprüft — dort mit erfundenen Verstößen.
+ */
+const SELF_REFERENTIAL = new Set(['scripts/architecture/rules.ts']);
+
+const SOURCE_FILES: SourceFile[] = SOURCES.map((file) => ({
+  file: rel(file),
+  text: read(file),
+  isTest: /\.test\.tsx?$/.test(file),
+})).filter((file) => !SELF_REFERENTIAL.has(file.file));
 
 /** Kommentarzeilen ausblenden — Prosa über die Historie ist erlaubt. */
 function stripComments(source: string): string {
@@ -66,14 +104,12 @@ describe('Architektur: eine Quelle für Kabelgeometrie (ADR 0014)', () => {
    * beziehen. `data.geometry` war das Einfallstor der zweiten Engine.
    */
   it('kein Produktionscode liest edge.data.geometry', () => {
-    const offenders = SOURCES.filter((file) => {
-      if (/\.test\.tsx?$/.test(file)) return false;
-      return /\bdata\??\.\s*geometry\b/.test(stripComments(read(file)));
-    }).map(rel);
+    const offenders = findPersistedGeometryReads(SOURCE_FILES);
 
     expect(
       offenders,
       'Kabelgeometrie kommt ausschließlich aus useCableRoute() / routeAllCables().\n' +
+        'Auch die Destrukturierung (`const { geometry } = edge.data`) zählt als Verstoß.\n' +
         'Gefunden in:\n  ' +
         offenders.join('\n  ')
     ).toEqual([]);
@@ -89,15 +125,15 @@ describe('Architektur: eine Quelle für Kabelgeometrie (ADR 0014)', () => {
     expect(adapter).not.toMatch(/\bgeometry\s*:/);
   });
 
-  /** Die abgeschaltete Engine darf nicht zurückkehren. */
+  /** Die abgeschaltete Engine darf nicht zurückkehren (jede Ladeform). */
   it('die zweite Routing-Engine ist entfernt und wird nirgends importiert', () => {
-    const importers = SOURCES.filter((file) =>
-      /(routing-v2|routing-core)\//.test(stripComments(read(file)))
-    ).map(rel);
+    const importers = findRoutingV2Loaders(SOURCE_FILES);
 
     expect(
       importers,
-      'lib/planner/routing-v2 und lib/planner/routing-core sind bewusst gelöscht (ADR 0014).'
+      'lib/planner/routing-v2 und lib/planner/routing-core sind bewusst gelöscht (ADR 0014).\n' +
+        'Geprüft werden ALLE Ladeformen — auch ohne abschließenden Slash, als Side-Effect-Import, per require() und dynamisch.\n  ' +
+        importers.join('\n  ')
     ).toEqual([]);
   });
 });
@@ -108,18 +144,13 @@ describe('Architektur: eine Quelle für Abstände und Kosten (ADR 0015)', () => 
    * dürfen daraus ableiten, aber keine eigenen Zahlen dafür führen.
    */
   it('es gibt genau eine Token-Datei, die Abstände definiert', () => {
-    const definingFiles = SOURCES.filter((file) => {
-      if (/\.test\.tsx?$/.test(file)) return false;
-      const source = stripComments(read(file));
-      // Eine Datei "definiert" Abstände, wenn sie cableClearance mit einer
-      // Literalzahl belegt (nicht aus einer anderen Quelle ableitet).
-      return /cableClearance\s*:\s*\d/.test(source);
-    }).map(rel);
+    const definingFiles = findCableClearanceLiterals(SOURCE_FILES);
 
     expect(
       definingFiles,
       'Nur lib/routing/tokens.ts darf Abstandswerte als Zahl festlegen.\n' +
         'Alles andere leitet ab (siehe lib/planner/layout-engine/tokens.ts).\n' +
+        'Geprüft werden Eigenschaft (`cableClearance: 42`) UND Zuweisung (`const cableClearance = 42`).\n' +
         'Gefunden in:\n  ' +
         definingFiles.join('\n  ')
     ).toEqual(['lib/routing/tokens.ts']);
@@ -131,21 +162,12 @@ describe('Architektur: eine Quelle für Abstände und Kosten (ADR 0015)', () => 
    * „sehr teuer“ lässt sich überstimmen, `Infinity` nicht.
    */
   it('Kollision wird nirgends als endliche Kostenzahl geführt', () => {
-    const offenders = SOURCES.filter((file) => {
-      if (/\.test\.tsx?$/.test(file)) return false;
-      const source = stripComments(read(file));
-      // Beide Schreibweisen der Regel: `collision:` (altes Modell) und
-      // `overlap:` (aktives Modell) müssen hart sein.
-      for (const match of source.matchAll(/\b(?:collision|overlap)\s*:\s*([^,\n]+)/g)) {
-        const value = match[1]!.trim();
-        if (value !== 'Infinity' && /^[\d_.]+$/.test(value)) return true;
-      }
-      return false;
-    }).map(rel);
+    const offenders = findFiniteOverlapValues(SOURCE_FILES);
 
     expect(
       offenders,
       'Overlap/Kollision muss Infinity sein (hart), nicht eine große Zahl (weich).\n' +
+        'Auch letzte Objekteigenschaften (`overlap: 100000 }`) und Exponentialschreibweise (`1e9`) zählen.\n' +
         'Gefunden in:\n  ' +
         offenders.join('\n  ')
     ).toEqual([]);

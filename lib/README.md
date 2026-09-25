@@ -36,7 +36,7 @@ lib/id.ts               kollisionsarme IDs ohne Secure-Context
 | `PX_PER_METER`                                                                                                 | `units.ts`           | **einzige** px↔m-Quelle (= 100)         |
 | `getSystemVoltage`, `dischargeFloorVoltage`                                                                    | `vde-standards.ts`   | Spannungsebene                          |
 | `calculateEdgeCurrent`                                                                                         | `vde-standards.ts`   | **einzige** Stromquelle für DC          |
-| `calculateAcEdgeCurrent`                                                                                       | `vde-standards.ts`   | AC-Strom über Insel-BFS                 |
+| `acCurrentA` (früher `calculateAcEdgeCurrent`, entfernt)                                                       | `autoWire/sizing.ts` | AC-Strom der Kante                      |
 | `VDE_SIZES`, `VDE_AMPACITY`, `DERATE_FACTOR`, `FUSE_MAP`                                                       | `electrical.ts`      | Normtabellen                            |
 | `calculateCrossSection`, `lookupThermalCrossSection`                                                           | `electrical.ts`      | Querschnitt                             |
 | `selectFuseSize`, `calculateMaxFuse`, `maxFuseForDisplay`, `isFuseFeasible`                                    | `electrical.ts`      | Sicherung                               |

@@ -66,8 +66,10 @@ Ausführlich: [CHANGE-WORKFLOW §21](docs/ai/CHANGE-WORKFLOW.md).
 ## 4. Wenn du Elektro änderst
 
 1. `docs/ai/ELECTRICAL-CONTEXT.md` lesen (§5.1 Einheiten … §5.7 Kette).
-2. **Eine** Stromquelle verwenden: `calculateEdgeCurrent` (DC) bzw.
-   `calculateAcEdgeCurrent` (AC) — nie einen zweiten Strompfad bauen.
+2. **Eine** Stromquelle verwenden: `calculateEdgeCurrent` (DC, vde-standards.ts)
+   bzw. `acCurrentA` (AC, autoWire/sizing.ts, per Kante) — nie einen zweiten
+   Strompfad bauen. (Die frühere `calculateAcEdgeCurrent` hatte null
+   Produkt-Consumenten und ist entfernt, AUDIT ELE-009.)
 3. `I_B ≤ I_n ≤ I_z` durch Konstruktion: Sizing und Sicherungsgrenze nutzen
    denselben `DERATE_FACTOR`.
 4. Längen nur über `PX_PER_METER` umrechnen, nie über eine eigene Konstante.

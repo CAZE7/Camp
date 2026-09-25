@@ -3,6 +3,8 @@
  * Mocks/Datenstrukturen. FOLLOW-UP: typisieren, dann Disable entfernen.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { POST } from './route';
 import pool from '../../../lib/db';
 import { streamText, embed } from 'ai';
@@ -36,6 +38,7 @@ vi.mock('../../../lib/db', () => ({
 describe('POST /api/chat', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    delete process.env.CHAT_SHARED_SECRET; // S1: pro Test neu entscheiden
     process.env.OPENAI_API_KEY = 'test_key';
     // DB-Pfad in der Route ist per DATABASE_URL-Gate abgesichert; Tests
     // erwarten, dass die RAG-Pipeline durchlaufen wird.
@@ -578,5 +581,52 @@ describe('POST /api/chat', () => {
     expect(consoleSpy).not.toHaveBeenCalledWith('Failed to parse BOM JSON:', expect.any(Error));
 
     consoleSpy.mockRestore();
+  });
+});
+
+describe('S1/S2 — Chat-Endpunkt ist nicht mehr offen (AUDIT-Befund)', () => {
+  const body = (role = 'user') => JSON.stringify({ messages: [{ id: '1', role, content: 'Hallo' }] });
+
+  const post = (headers: Record<string, string> = {}, role = 'user') =>
+    POST(
+      new Request('http://localhost/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...headers },
+        body: body(role),
+      })
+    );
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    process.env.OPENAI_API_KEY = 'test_key';
+    delete process.env.CHAT_SHARED_SECRET;
+  });
+
+  it('weist Anfragen ohne gültiges Shared Secret ab, sobald eines konfiguriert ist', async () => {
+    process.env.CHAT_SHARED_SECRET = 's3cret-token';
+
+    expect((await post()).status).toBe(401);
+    expect((await post({ 'x-chat-token': 'falsch' })).status).toBe(401);
+
+    const ok = await post({ 'x-chat-token': 's3cret-token' });
+    expect(ok.status).not.toBe(401);
+  });
+
+  it('verbietet die System-Rolle aus dem Client (Prompt-Injektion auf Systemebene)', async () => {
+    const response = await post({}, 'system');
+    expect(response.status).toBe(400);
+    const json = await response.json();
+    expect(json.error).toBe('Message role not allowed');
+  });
+
+  it('liefert kein Secret im Client-Bundle (Kein NEXT_PUBLIC_CHAT_TOKEN mehr)', () => {
+    const chatSource = readFileSync(resolve(process.cwd(), 'components/Chat.tsx'), 'utf8')
+      // Kommentare dürfen die Historie erklären — geprüft wird der CODE.
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '');
+    // Alles mit NEXT_PUBLIC_ landet im Browser-Bundle. Ein „Token“ dort ist
+    // kein Geheimnis, sondern eine Einladung — der Server prüft stattdessen
+    // CHAT_SHARED_SECRET bzw. Same-Origin.
+    expect(chatSource).not.toContain('NEXT_PUBLIC_CHAT_TOKEN');
   });
 });

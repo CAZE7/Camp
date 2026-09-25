@@ -6,6 +6,9 @@
  *   npm run routing:audit          Menschenlesbare Tabelle
  *   npm run routing:audit -- --json  Maschinenlesbar (CI/Dashboards)
  *
+ * Exit-Code 1, sobald ein Plan die HARTEN Invarianten verletzt (I1, Orthogonalität,
+ * Fallback-Quote, Determinismus) — siehe Kommentar am Ende der Datei (G3).
+ *
  * Gemessen wird, was die Spezifikation verlangt (`docs/ROUTING-V2.md` §12):
  * die Invarianten I1–I7, dazu Orthogonalität, Determinismus (Doppellauf),
  * Fallback-Quote, Selbstüberlappungen und die Plausibilität der gemeldeten
@@ -365,5 +368,33 @@ if (isCli) {
       );
       for (const sample of a.samples) process.stdout.write(`    ${sample}\n`);
     }
+  }
+
+  /**
+   * G3 (AUDIT-Befund): Das Skript war reine Ausgabe — Exit-Code immer 0, damit
+   * „grün“ für alles. Die Dokumentation führt `routing:audit` aber als Gate
+   * (ARCHITECTURE-RULES, Tabelle K/F). Ab hier ist es eines:
+   *
+   *   · I1 = 0 (keine Leitung durch ein fremdes Bauteil, ADR 0017 — hart)
+   *   · keine nicht-orthogonalen Segmente
+   *   · Determinismus (Doppellauf identisch)
+   *
+   * Die RATCHETS für I2/I3 bleiben in `scripts/routing/finalValidation.test.ts`
+   * (dort mit je-Plan-Obergrenzen dokumentiert) — dieses Skript bewertet nichts
+   * doppelt, sondern das, was es selbst als „hart“ ausweist.
+   */
+  const hardFailures = audits.filter(
+    (a) => a.hardViolations > 0 || a.nonOrthogonal > 0 || a.fallbacks > 0 || !a.deterministic
+  );
+  if (hardFailures.length > 0) {
+    process.stderr.write(
+      `\nRouting-Gate ROT: ${hardFailures
+        .map(
+          (a) =>
+            `${a.plan} (I1..I3=${a.hardViolations}, orth=${a.nonOrthogonal}, fallback=${a.fallbacks}, determ=${a.deterministic})`
+        )
+        .join('; ')}\n`
+    );
+    process.exitCode = 1;
   }
 }

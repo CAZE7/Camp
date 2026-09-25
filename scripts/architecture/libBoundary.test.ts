@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { join, relative, sep } from 'node:path';
+import { findForbiddenLayerImports, type SourceFile } from './rules';
 
 /**
  * ADR-0008-Boundary-Guard (ARCH-Rest, 2026-09-08):
@@ -34,45 +35,47 @@ const FORBIDDEN_LAYERS = ['components/', 'store/', 'app/', 'benchmarks/'];
 
 const LIB_ROOT = 'lib';
 
+/**
+ * G2 (AUDIT-Befund): Diese Datei hatte drei blinde Flecken, die zusammen mit
+ * einem realen Verstoß gereicht hätten:
+ *
+ *   · `entry.endsWith('.ts')` — eine lib-Datei mit `.tsx`-Endung wurde nie
+ *     gelesen (die README verbietet sie, der Test prüfte es nicht).
+ *   · `importTargetsOf` kannte nur `from '…'` und `import('…')` — ein
+ *     Side-Effect-`import '…'` oder ein `require('…')` kam durch.
+ *   · Der Vergleich lief gegen `replaceAll('\\', '/')`, was auf Windows
+ *     ein No-op ist (G1).
+ *
+ * Die Erkennung liegt jetzt in `./rules` (`findForbiddenLayerImports`) und
+ * wird von `rulesSelfCheck.test.ts` mit erfundenen Verstößen geprüft.
+ */
 function listFiles(dir: string, out: string[] = []): string[] {
   for (const entry of readdirSync(dir)) {
     const full = join(dir, entry);
     if (statSync(full).isDirectory()) listFiles(full, out);
-    else if (entry.endsWith('.ts') && !entry.endsWith('.test.ts')) out.push(full);
+    else if (/\.tsx?$/.test(entry) && !/\.test\.tsx?$/.test(entry)) out.push(full);
   }
   return out;
 }
 
-/** Alle `from '…'` / `import('…')`-Zielpfade einer Datei (Mehrzeilen-robust). */
-function importTargetsOf(source: string): string[] {
-  const targets: string[] = [];
-  const fromRe = /from\s+['"]([^'"]+)['"]/g;
-  const dynRe = /import\(\s*['"]([^'"]+)['"]\s*\)/g;
-  for (const re of [fromRe, dynRe]) {
-    let m: RegExpExecArray | null;
-    while ((m = re.exec(source)) !== null) targets.push(m[1]!);
-  }
-  return targets;
-}
+/** Relativer POSIX-Pfad — identisch auf Windows und POSIX (G1). */
+const toPosix = (file: string): string => relative(process.cwd(), file).split(sep).join('/');
 
 describe('ADR-0008 — lib importiert keine App-Schichten (Architektur-Boundary)', () => {
-  const files = listFiles(LIB_ROOT).map((f) => relative(process.cwd(), f));
+  const files: SourceFile[] = listFiles(LIB_ROOT).map((f) => ({
+    file: toPosix(f),
+    text: readFileSync(f, 'utf8'),
+    isTest: false,
+  }));
 
   it('kein lib-Produktivfile importiert components/store/app/benchmarks — Ausnahmen nur allowgelistet', () => {
-    const offenders: string[] = [];
+    const hits = findForbiddenLayerImports(files, FORBIDDEN_LAYERS);
     const matchedAllowances = new Set<number>();
-    for (const file of files) {
-      const rel = file.replaceAll('\\\\', '/');
-      const source = readFileSync(file, 'utf8');
-      for (const target of importTargetsOf(source)) {
-        if (!FORBIDDEN_LAYERS.some((layer) => target.includes(layer))) continue;
-        const hit = ALLOWED_TYPE_ONLY_IMPORTS.findIndex((a) => rel === a.file && target.includes(a.needle));
-        if (hit >= 0) {
-          matchedAllowances.add(hit);
-        } else {
-          offenders.push(`${rel} → ${target}`);
-        }
-      }
+    const offenders: string[] = [];
+    for (const { file, target } of hits) {
+      const hit = ALLOWED_TYPE_ONLY_IMPORTS.findIndex((a) => file === a.file && target.includes(a.needle));
+      if (hit >= 0) matchedAllowances.add(hit);
+      else offenders.push(`${file} → ${target}`);
     }
     expect(offenders, `Verbotene lib-Imports gefunden:\n${offenders.join('\n')}`).toEqual([]);
     // Allowlist-Verfall: Einträge ohne lebenden Import sind Schuldanzeigen —
