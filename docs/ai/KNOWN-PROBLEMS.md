@@ -432,8 +432,12 @@ Einträgen oben:
 - **Kupfer-Kennwerte (ELE-010)** — `lib/materials.ts` ist die eine Quelle.
 - **Gates (G1/G2/G3)** — Pfad-Separatoren plattformunabhängig; die
   Architektur-Regeln sind prüfbare Funktionen mit Positivkontrollen
-  (`scripts/architecture/rulesSelfCheck.test.ts`); `routing:audit` hat einen
-  Exit-Code und läuft im CI.
+  (`scripts/architecture/rulesSelfCheck.test.ts`); `routing:audit` gibt einen
+  Exit-Code zurück (I1/Orthogonalität/Fallback/Determinismus). **Offen:**
+  Der zugehörige CI-Schritt in `.github/workflows/quality.yml` ließ sich nicht
+  pushen — die GitHub-App der Session hat keine `workflows`-Berechtigung. Die
+  Zeile muss einmal von Hand ergänzt werden:
+  `run: npm run routing:audit` vor dem Perf-Gate.
 - **Barrierefreiheit (A1/A4/A5/A6)** — Tastaturfokus im Canvas sichtbar,
   Label-Kontrast auf `--ink`, Schwere als Wort, Live-Region immer vorhanden.
 - **Chat/Endpunkt (S1/S2)** — kein clientseitiges „Secret“ mehr, keine
