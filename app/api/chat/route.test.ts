@@ -191,6 +191,9 @@ describe('POST /api/chat', () => {
   });
 
   it('handles large input without ReDoS', async () => {
+    // Der Payload ist absichtlich kein gültiges BOM-JSON — der Parse-Fehler ist
+    // hier Nebensache (asserted im eigenen Test unten) und gehört nicht auf stderr.
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const largeContent = '```json\n' + '{"cables": []}' + 'A'.repeat(5000) + '\n```';
 
     const req = new Request('http://localhost/api/chat', {
@@ -213,6 +216,7 @@ describe('POST /api/chat', () => {
 
     expect(response).toBeInstanceOf(Response);
     expect(end - start).toBeLessThan(1000); // Should be very fast
+    consoleSpy.mockRestore();
   });
 
   it('handles DB connection or query errors gracefully without crashing', async () => {

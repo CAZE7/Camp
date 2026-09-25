@@ -190,6 +190,40 @@ describe('usePlannerStore', () => {
     });
   });
 
+  describe('Guided Mode', () => {
+    it('ist standardmäßig aktiv und lässt sich in den Expertenmodus schalten', () => {
+      const { result } = renderHook(() => usePlannerStore());
+      expect(result.current.guidedMode).toBe(true);
+
+      act(() => {
+        result.current.setGuidedMode(false);
+      });
+      expect(result.current.guidedMode).toBe(false);
+
+      act(() => {
+        result.current.setGuidedMode(true);
+      });
+      expect(result.current.guidedMode).toBe(true);
+    });
+  });
+
+  describe('Detailgrad', () => {
+    it('zeigt standardmäßig die volle Karte und lässt sich umschalten', () => {
+      const { result } = renderHook(() => usePlannerStore());
+      expect(result.current.detailLevel).toBe('detail');
+
+      act(() => {
+        result.current.setDetailLevel('overview');
+      });
+      expect(result.current.detailLevel).toBe('overview');
+
+      act(() => {
+        result.current.setDetailLevel('detail');
+      });
+      expect(result.current.detailLevel).toBe('detail');
+    });
+  });
+
   describe('Nodes and Edges Management', () => {
     it('should handle onNodesChange', () => {
       const { result } = renderHook(() => usePlannerStore());

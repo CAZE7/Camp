@@ -1,4 +1,5 @@
 import { render } from '@testing-library/react';
+import type { ReactElement } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Position } from '@xyflow/react';
 import WaterPipeEdge from './WaterPipeEdge';
@@ -52,6 +53,14 @@ const nodeById =
   (lookup: string): { id: string; type: string } | null =>
     lookup === id ? { id, type } : null;
 
+/**
+ * Rohre werden in React Flow innerhalb von `<svg class="react-flow__edges">`
+ * gerendert. Ohne diesen Namensraum legt React `<path>`/`<animateMotion>` als
+ * unbekannte HTML-Tags an und meldet das als Fehler — die Tests rendern deshalb
+ * im selben Namensraum wie die Produktion.
+ */
+const renderEdge = (edge: ReactElement) => render(<svg>{edge}</svg>);
+
 describe('WaterPipeEdge', () => {
   const defaultProps = {
     id: 'e1-2',
@@ -74,7 +83,7 @@ describe('WaterPipeEdge', () => {
   });
 
   it('renders correctly with default props (fresh water)', () => {
-    const { getByTestId } = render(<WaterPipeEdge {...defaultProps} />);
+    const { getByTestId } = renderEdge(<WaterPipeEdge {...defaultProps} />);
 
     const baseEdge = getByTestId('base-edge');
     expect(baseEdge).toBeInTheDocument();
@@ -85,7 +94,7 @@ describe('WaterPipeEdge', () => {
   it('renders as gray water when source node is sink', () => {
     mockReactFlow({ getNode: nodeById('1', 'sink') });
 
-    const { getByTestId } = render(<WaterPipeEdge {...defaultProps} />);
+    const { getByTestId } = renderEdge(<WaterPipeEdge {...defaultProps} />);
 
     const baseEdge = getByTestId('base-edge');
     expect(baseEdge).toHaveStyle({ stroke: 'var(--pipe-gray)' }); // --pipe-gray = #4b5563
@@ -94,7 +103,7 @@ describe('WaterPipeEdge', () => {
   it('renders as gray water when source node is shower', () => {
     mockReactFlow({ getNode: nodeById('1', 'shower') });
 
-    const { getByTestId } = render(<WaterPipeEdge {...defaultProps} />);
+    const { getByTestId } = renderEdge(<WaterPipeEdge {...defaultProps} />);
 
     const baseEdge = getByTestId('base-edge');
     expect(baseEdge).toHaveStyle({ stroke: 'var(--pipe-gray)' }); // --pipe-gray = #4b5563
@@ -103,7 +112,7 @@ describe('WaterPipeEdge', () => {
   it('renders as gray water when source node is grayWaterTank', () => {
     mockReactFlow({ getNode: nodeById('1', 'grayWaterTank') });
 
-    const { getByTestId } = render(<WaterPipeEdge {...defaultProps} />);
+    const { getByTestId } = renderEdge(<WaterPipeEdge {...defaultProps} />);
 
     const baseEdge = getByTestId('base-edge');
     expect(baseEdge).toHaveStyle({ stroke: 'var(--pipe-gray)' }); // --pipe-gray = #4b5563
@@ -113,7 +122,7 @@ describe('WaterPipeEdge', () => {
     // Not gray water by default — pipeType override wins.
     mockReactFlow({ getNode: nodeById('1', 'freshWaterTank') });
 
-    const { getByTestId } = render(<WaterPipeEdge {...defaultProps} data={{ pipeType: 'gray' }} />);
+    const { getByTestId } = renderEdge(<WaterPipeEdge {...defaultProps} data={{ pipeType: 'gray' }} />);
 
     const baseEdge = getByTestId('base-edge');
     expect(baseEdge).toHaveStyle({ stroke: 'var(--pipe-gray)' }); // --pipe-gray = #4b5563
@@ -123,21 +132,21 @@ describe('WaterPipeEdge', () => {
     // Gray water by default — pipeType override wins.
     mockReactFlow({ getNode: nodeById('1', 'sink') });
 
-    const { getByTestId } = render(<WaterPipeEdge {...defaultProps} data={{ pipeType: 'fresh' }} />);
+    const { getByTestId } = renderEdge(<WaterPipeEdge {...defaultProps} data={{ pipeType: 'fresh' }} />);
 
     const baseEdge = getByTestId('base-edge');
     expect(baseEdge).toHaveStyle({ stroke: 'var(--pipe-fresh)' }); // --pipe-fresh = #1d4ed8
   });
 
   it('renders selected state with var(--pipe-selected) stroke', () => {
-    const { getByTestId } = render(<WaterPipeEdge {...defaultProps} selected={true} />);
+    const { getByTestId } = renderEdge(<WaterPipeEdge {...defaultProps} selected={true} />);
 
     const baseEdge = getByTestId('base-edge');
     expect(baseEdge).toHaveStyle({ stroke: 'var(--pipe-selected)' }); // --pipe-selected = #c2410c
   });
 
   it('renders interaction path correctly', () => {
-    const { container } = render(<WaterPipeEdge {...defaultProps} />);
+    const { container } = renderEdge(<WaterPipeEdge {...defaultProps} />);
 
     // Check for interaction path (transparent, thicker path for easier clicking)
     const interactionPath = container.querySelector('#e1-2_interaction');

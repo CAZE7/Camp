@@ -733,6 +733,9 @@ describe('ROUTE-001 ownObstacles — überlappende Fremd-Nodes', () => {
 
   it('mit ownObstacles: die fremde Klebe-Box bleibt Hindernis — Konflikt wird markiert statt versteckt', () => {
     resetPathfindingTelemetry();
+    // Der Fallback IST das Testziel: Das Entwickler-Log (ROUTE-001 „sichtbar
+    // statt versteckt") wird hier geprüft, statt ungefiltert auf stderr zu landen.
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     // Eigene Node-Box (liegt NICHT in der Hindernisliste — wie im
     // Produktionspfad, wo routeAll die eigene Node vorab ausschließt).
     const own: Rect = { x: -12, y: 48, width: 24, height: 24 };
@@ -744,6 +747,8 @@ describe('ROUTE-001 ownObstacles — überlappende Fremd-Nodes', () => {
     expect(pathfindingFallbackCount()).toBe(1);
     // Und: es bleibt eine echte Kollision — nur jetzt ZÄHLBAR und sichtbar.
     expect(pathHitsObstacles(result.waypoints, [glued])).toBe(true);
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Fallback ohne Hindernisfreigabe'));
+    warnSpy.mockRestore();
     resetPathfindingTelemetry();
   });
 

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { SlidersHorizontal, X } from 'lucide-react';
 import { useMediaQuery } from '../hooks/useMediaCapabilities';
 import { usePlannerStore } from '../../../store/usePlannerStore';
+import type { PlannerDetailLevel } from '../../../store/slices/types';
 import { DOMAINS, DOMAIN_COLORS, DOMAIN_LABELS, type Domain } from '../utils/domainFilter';
 
 /** The canvas gets narrow before the page reaches Tailwind's xl breakpoint. */
@@ -17,7 +18,15 @@ type CanvasDisplayOptionsProps = {
   onToggleTrunkMode: () => void;
   backboneGrouping: boolean;
   onToggleBackboneGrouping: () => void;
+  /** Detailgrad der Bauteilkarten (`overview` = Symbol + Name). */
+  detailLevel: PlannerDetailLevel;
+  onSelectDetailLevel: (level: PlannerDetailLevel) => void;
 };
+
+const DETAIL_OPTIONS: { level: PlannerDetailLevel; label: string; title: string }[] = [
+  { level: 'overview', label: 'Übersichtlich', title: 'Nur Symbol und Name — für große Pläne' },
+  { level: 'detail', label: 'Mit Werten', title: 'Volle Karte mit Messwerten' },
+];
 
 type ToggleButtonProps = {
   pressed: boolean;
@@ -64,6 +73,8 @@ function DisplayToggles({
   onToggleTrunkMode,
   backboneGrouping,
   onToggleBackboneGrouping,
+  detailLevel,
+  onSelectDetailLevel,
   compact = false,
 }: CanvasDisplayOptionsProps & { compact?: boolean }) {
   const layoutClass = compact ? 'grid grid-cols-2 gap-2' : 'flex flex-wrap gap-1.5';
@@ -101,6 +112,30 @@ function DisplayToggles({
       >
         Hauptstromkreis
       </ToggleButton>
+
+      {/* Detailgrad (UX-Reset 2026-09 / RECHERCHE C1): Bei 30–50 Bauteilen ist
+          die volle Karte das größte Lesbarkeitsproblem. Der Schalter ist
+          bewusst NUTZERGESTEUERT — M8-1 hat zoom-automatische Stufen entfernt,
+          weil beim Zoomen umschlagende Karten desorientieren. */}
+      <div
+        role="group"
+        aria-label="Detailgrad der Bauteile"
+        className={compact ? 'col-span-2 flex gap-2' : 'flex w-full gap-1.5'}
+      >
+        {DETAIL_OPTIONS.map((option) => (
+          <button
+            key={option.level}
+            type="button"
+            data-testid={`detail-level-${option.level}`}
+            aria-pressed={detailLevel === option.level}
+            onClick={() => onSelectDetailLevel(option.level)}
+            title={option.title}
+            className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded border border-rule px-3 py-1.5 text-xs font-semibold text-ink-soft transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-pressed:border-accent aria-pressed:bg-accent aria-pressed:text-ink"
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
@@ -115,7 +150,15 @@ export function CanvasDisplayOptions(props: CanvasDisplayOptionsProps) {
   const compactViewport = useMediaQuery(COMPACT_CANVAS_CONTROLS_QUERY);
   const inspectorDocked = usePlannerStore((state) => state.isInspectorOpen);
   const dockBreakpoint = useMediaQuery(INSPECTOR_DOCK_QUERY);
-  const compact = compactViewport || (dockBreakpoint && inspectorDocked);
+  /**
+   * UX-Reset 2026-09: Domänen-Filter, Trassen und Hauptstromkreis sind
+   * Expertenwerkzeuge. Im geführten Modus liegen sie deshalb hinter dem
+   * „Ansicht"-Auslöser statt als dauerhafte Chip-Reihe auf dem Plan —
+   * dieselben Schalter, ein bewusster Klick. Im Expertenmodus bleibt die
+   * Chip-Reihe auf breitem Canvas direkt erreichbar.
+   */
+  const guidedMode = usePlannerStore((state) => state.guidedMode);
+  const compact = compactViewport || (dockBreakpoint && inspectorDocked) || guidedMode;
   const [open, setOpen] = useState(false);
   const popoverRef = useRef<HTMLDivElement>(null);
 

@@ -26,6 +26,7 @@ import {
   EDGE_TYPES,
   PLANNER_MIN_ZOOM,
   PLANNER_MAX_ZOOM,
+  PANE_WAIT_FRAMES,
   PLANNER_FIT_PADDING,
   PLANNER_SNAP_GRID,
 } from './constants';
@@ -244,6 +245,8 @@ export function FlowCanvas() {
     setTrunkMode,
     backboneGrouping,
     setBackboneGrouping,
+    detailLevel,
+    setDetailLevel,
     isLayoutPending,
   } = usePlannerStore(
     useShallow((state) => ({
@@ -274,6 +277,8 @@ export function FlowCanvas() {
       setTrunkMode: state.setTrunkMode,
       backboneGrouping: state.backboneGrouping,
       setBackboneGrouping: state.setBackboneGrouping,
+      detailLevel: state.detailLevel,
+      setDetailLevel: state.setDetailLevel,
       isLayoutPending: state.isLayoutPending,
     }))
   );
@@ -297,13 +302,16 @@ export function FlowCanvas() {
    * Tap/keyboard additions deliberately land in the currently visible canvas
    * area. The old fixed (0, 0) list plus automatic fitView made every add jump
    * the viewport — especially disorienting when switching back from the phone
-   * catalogue. A two-frame retry gives the mobile tab switch time to reveal
-   * the React Flow pane before its bounds are read.
+   * catalogue. The retry budget (`PANE_WAIT_FRAMES`) gives the mobile tab
+   * switch time to reveal the React Flow pane before its bounds are read.
    */
   React.useEffect(() => {
     type AddAtCanvasCenterDetail = { type?: unknown; label?: unknown; watts?: unknown };
+    let cancelled = false;
+    let rafId = 0;
 
     const placeAtCanvasCenter = (detail: AddAtCanvasCenterDetail, attempt = 0) => {
+      if (cancelled) return;
       const state = usePlannerStore.getState();
       const pane = document.querySelector<HTMLElement>('.planner-canvas .react-flow__pane');
       const bounds = pane?.getBoundingClientRect();
@@ -313,8 +321,14 @@ export function FlowCanvas() {
       if (!type || !label) return;
 
       if (!bounds || bounds.width < 1 || bounds.height < 1) {
-        if (attempt < 2) {
-          window.requestAnimationFrame(() => placeAtCanvasCenter(detail, attempt + 1));
+        // Auf dem Handy ist die Plan-Spalte beim Tippen auf eine Katalog-Kachel
+        // noch `hidden` (Katalog ist ein eigener Tab) — der Tab-Wechsel folgt
+        // unmittelbar danach. Zwei Frames reichten dafür nicht, also fiel dort
+        // JEDER Zusatz auf das feste Raster unten: Bauteile landeten damit
+        // außerhalb der sichtbaren Fläche und waren teils unter der Kopfzeile
+        // nicht antippbar. Deshalb wird ~0,5 s auf eine messbare Pane gewartet.
+        if (attempt < PANE_WAIT_FRAMES) {
+          rafId = window.requestAnimationFrame(() => placeAtCanvasCenter(detail, attempt + 1));
           return;
         }
         // Defensive fallback for an interrupted tab switch. It preserves the
@@ -343,7 +357,11 @@ export function FlowCanvas() {
     };
 
     window.addEventListener('planner-add-at-canvas-center', onAddAtCanvasCenter);
-    return () => window.removeEventListener('planner-add-at-canvas-center', onAddAtCanvasCenter);
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(rafId);
+      window.removeEventListener('planner-add-at-canvas-center', onAddAtCanvasCenter);
+    };
   }, [screenToFlowPosition, showConnectionFeedback]);
 
   const calculatedSolarWatts = useAppStore((state) => state.calculatedSolarWatts);
@@ -716,7 +734,10 @@ export function FlowCanvas() {
           }}
           aria-label={`${viewMode === 'water' ? 'Wasserplan' : 'Elektrik-Schaltplan'} Arbeitsfläche`}
           style={{ backgroundColor: 'var(--canvas-bg)' }}
-          className={`planner-canvas ${isLayoutPending ? 'planner-layout-animating' : ''}`}
+          /* Detailgrad als Container-Klasse: Die Karten bleiben dieselben
+             Komponenten (M8-1: eine Darstellung je Zoomstufe), nur die
+             CSS-Ebene entscheidet, ob Messwerte sichtbar sind. */
+          className={`planner-canvas planner-detail-${detailLevel} ${isLayoutPending ? 'planner-layout-animating' : ''}`}
         >
           <CableRouteSync />
 
@@ -784,6 +805,8 @@ export function FlowCanvas() {
                 onToggleTrunkMode={() => setTrunkMode(!trunkMode)}
                 backboneGrouping={backboneGrouping}
                 onToggleBackboneGrouping={() => setBackboneGrouping(!backboneGrouping)}
+                detailLevel={detailLevel}
+                onSelectDetailLevel={setDetailLevel}
               />
             </Panel>
           )}

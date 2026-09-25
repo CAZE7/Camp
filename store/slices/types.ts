@@ -25,6 +25,16 @@ export type GraphSnapshot = {
 export type LayoutV2Outcome =
   { applied: true; engine: 'elk' | 'dagre' } | { applied: false; reason: 'empty' | 'stale' | 'error' };
 
+/**
+ * Detailgrad der Bauteilkarten im Canvas (UX-Reset 2026-09, RECHERCHE C1).
+ *
+ * `overview` zeigt Symbol + Name, `detail` die volle Karte mit Messwerten.
+ * Bewusst NUTZERGESTEUERT und nicht zoom-automatisch: M8-1 hat Zoom-Stufen
+ * entfernt, weil beim Rauszoomen umschlagende Darstellungen desorientieren —
+ * diese Erkenntnis bleibt gültig, der Schalter ist ein zweiter, expliziter Weg.
+ */
+export type PlannerDetailLevel = 'overview' | 'detail';
+
 export interface PlannerState {
   viewMode: 'electric' | 'water';
   setViewMode: (mode: 'electric' | 'water') => void;
@@ -80,6 +90,18 @@ export interface PlannerState {
   setTrunkMode: (enabled: boolean) => void;
   backboneGrouping: boolean;
   setBackboneGrouping: (enabled: boolean) => void;
+
+  /**
+   * Geführter Planungsmodus (UX-Reset 2026-09): Die Schrittleiste sagt, was
+   * als Nächstes zu tun ist, und blendet die Werkzeugkasten-Aktionen aus.
+   * `false` = Expertenmodus (freier React-Flow-Editor ohne Schrittleiste).
+   */
+  guidedMode: boolean;
+  setGuidedMode: (enabled: boolean) => void;
+
+  /** Detailgrad der Bauteilkarten — siehe `PlannerDetailLevel`. */
+  detailLevel: PlannerDetailLevel;
+  setDetailLevel: (level: PlannerDetailLevel) => void;
 
   onNodesChange: (changes: import('@xyflow/react').NodeChange[]) => void;
   onEdgesChange: (changes: import('@xyflow/react').EdgeChange[]) => void;

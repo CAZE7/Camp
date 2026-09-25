@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import PlannerInner from './PlannerInner';
 
@@ -29,6 +29,7 @@ vi.mock('./planner/OnboardingWizard', () => ({
 
 // --- Stores -------------------------------------------------------------
 const setInspectorOpen = vi.fn();
+const setSidebarOpen = vi.fn();
 const setSelectedNodes = vi.fn();
 const setSelectedEdges = vi.fn();
 const plannerState: Record<string, unknown> = {
@@ -36,6 +37,8 @@ const plannerState: Record<string, unknown> = {
   setViewMode: vi.fn(),
   isInspectorOpen: true,
   setInspectorOpen,
+  isSidebarOpen: false,
+  setSidebarOpen,
   selectedNodes: [],
   selectedEdges: [],
   setSelectedNodes,
@@ -238,5 +241,31 @@ describe('PlannerInner — responsives Layout', () => {
     expect(listener).toHaveBeenCalledTimes(1);
     expect(event.defaultPrevented).toBe(true);
     window.removeEventListener('planner-save', listener);
+  });
+
+  /**
+   * UX-Reset 2026-09: Die Schrittleiste sagt nicht nur „Bauteil fehlt", sie
+   * bringt den Nutzer dorthin — auf dem Handy in den Katalog-Tab, ab 768 px
+   * in die eingeklappte Spalte, jeweils mit Fokus auf der Bauteilsuche.
+   */
+  it('öffnet auf planner-open-catalog den Bauteilkatalog und fokussiert die Suche', async () => {
+    const search = document.createElement('input');
+    search.id = 'component-search';
+    document.body.appendChild(search);
+    const focusSpy = vi.spyOn(search, 'focus');
+
+    render(<PlannerInner />);
+
+    act(() => {
+      window.dispatchEvent(new CustomEvent('planner-open-catalog'));
+    });
+
+    expect(setSidebarOpen).toHaveBeenCalledWith(true);
+    expect(screen.getByTestId('planner-sidebar')).toBeVisible();
+    // Der Fokus liegt im nächsten Frame (der Tab-Bereich wird erst jetzt sichtbar).
+    await waitFor(() => expect(focusSpy).toHaveBeenCalledTimes(1));
+
+    focusSpy.mockRestore();
+    search.remove();
   });
 });

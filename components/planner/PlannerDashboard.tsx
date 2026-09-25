@@ -22,6 +22,8 @@ import {
   Circle,
   AlertTriangle,
   Info,
+  SlidersHorizontal,
+  ListChecks,
 } from 'lucide-react';
 import { usePlannerStore } from '../../store/usePlannerStore';
 import type { LayoutV2Outcome } from '../../store/slices/types';
@@ -31,6 +33,8 @@ import { getNodesBounds, getViewportForBounds } from '@xyflow/react';
 import { useLiveValidation, type ValidationWarning } from './hooks/useLiveValidation';
 import { RoutingStatusBadge } from './ui/RoutingStatusBadge';
 import { WarningCenter } from './ui/WarningCenter';
+import { GuidedPlanRail } from './ui/GuidedPlanRail';
+import { autoWireFeedbackFor } from './utils/guidedSteps';
 import { calculateConduitFillPercent, VDE_MAX_CONDUIT_FILL_PERCENT } from '../../lib/vde-standards';
 import { mm2, quantityOr } from '../../lib/units';
 
@@ -178,6 +182,8 @@ function ActionsSection({
   canUndo,
   canRedo,
   onRequestReset,
+  guidedMode,
+  onToggleGuidedMode,
 }: {
   season: 'summer' | 'winter';
   setSeason: (season: 'summer' | 'winter') => void;
@@ -192,6 +198,9 @@ function ActionsSection({
   canUndo?: boolean;
   canRedo?: boolean;
   onRequestReset: () => void;
+  /** Wahr = geführte Schrittleiste sichtbar (Expertenmodus ist das Gegenteil). */
+  guidedMode: boolean;
+  onToggleGuidedMode: () => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [busy, setBusy] = useState<'export' | 'wire' | 'layout' | 'layoutV2' | 'check' | null>(null);
@@ -223,13 +232,8 @@ function ActionsSection({
   const runAutoWire = () => {
     setBusy('wire');
     autoWireSystem();
-    const hasBattery = nodes.some((node) => node.type === 'battery');
-    setFeedback({
-      type: hasBattery ? 'success' : 'error',
-      message: hasBattery
-        ? 'Automatische Verkabelung und Dimensionierung abgeschlossen.'
-        : 'Platziere zuerst eine Batterie.',
-    });
+    // Ein Satz für beide Einstiegspunkte (Toolbar und Schrittleiste).
+    setFeedback(autoWireFeedbackFor(nodes));
     window.setTimeout(() => setBusy(null), 350);
   };
 
@@ -402,40 +406,26 @@ function ActionsSection({
         <Redo2 className="h-4 w-4" />
       </Button>
 
+      {/* UX-Reset 2026-09: „Plan ordnen“ ist die EINZIGE Layout-Aktion in der
+          Toolbar. Welcher Algorithmus läuft (ELK Layered, sonst Dagre-Raster),
+          ist eine Implementierungsentscheidung — vorher standen „Übersicht“,
+          „Aufräumen“ und „Strukturieren (ELK)“ gleichzeitig nebeneinander und
+          zwangen den Nutzer, drei Layout-Systeme zu unterscheiden. Die
+          Einzelaktionen bleiben im ⋯-Menü erreichbar. */}
       <Button
         variant="outline"
-        onClick={() => window.dispatchEvent(new CustomEvent('planner-fit-view'))}
-        className="hidden min-h-11 gap-1.5 lg:inline-flex"
-        title="Ganzen Plan einpassen"
-      >
-        <Maximize2 className="h-4 w-4" />
-        <span>Übersicht</span>
-      </Button>
-      <Button
-        variant="outline"
-        onClick={runLayout}
-        disabled={busy !== null}
-        className="hidden min-h-11 gap-1.5 lg:inline-flex"
-        title="Plan automatisch anordnen"
-      >
-        <LayoutGrid className="h-4 w-4" />
-        <span>Aufräumen</span>
-      </Button>
-      <Button
-        variant="outline"
-        data-testid="action-layout-v2"
+        data-testid="action-tidy"
         onClick={runLayoutV2}
         disabled={busy !== null}
         className="hidden min-h-11 gap-1.5 lg:inline-flex"
-        title="Plan global strukturieren — ELK Layered (bei Ausfall: Dagre-Fallback); Kabel werden danach neu geroutet"
-        aria-label="Strukturieren (ELK)"
+        title="Plan automatisch anordnen (ELK, bei Ausfall Raster-Layout). Rückgängig ist möglich."
       >
         {busy === 'layoutV2' ? (
           <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />
         ) : (
-          <Network className="h-4 w-4" />
+          <LayoutGrid className="h-4 w-4" />
         )}
-        <span>Strukturieren (ELK)</span>
+        <span>Plan ordnen</span>
       </Button>
 
       <div className="relative" ref={menuRef}>
@@ -549,6 +539,19 @@ function ActionsSection({
 
             <button
               role="menuitem"
+              data-testid="action-guided-toggle"
+              onClick={() => {
+                onToggleGuidedMode();
+                setMenuOpen(false);
+              }}
+              aria-pressed={guidedMode}
+              className="flex min-h-11 w-full items-center gap-2 rounded px-3 text-sm text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {guidedMode ? <SlidersHorizontal className="h-4 w-4" /> : <ListChecks className="h-4 w-4" />}
+              {guidedMode ? 'Expertenmodus: Schrittleiste ausblenden' : 'Geführte Planung einblenden'}
+            </button>
+            <button
+              role="menuitem"
               onClick={() => {
                 setMenuOpen(false);
                 setHasOnboarded(false);
@@ -599,6 +602,8 @@ export function PlannerDashboard() {
     canUndo,
     canRedo,
     clearPlan,
+    guidedMode,
+    setGuidedMode,
   } = usePlannerStore(
     useShallow((state) => ({
       viewMode: state.viewMode,
@@ -619,6 +624,8 @@ export function PlannerDashboard() {
       canUndo: state.canUndo,
       canRedo: state.canRedo,
       clearPlan: state.clearPlan,
+      guidedMode: state.guidedMode,
+      setGuidedMode: state.setGuidedMode,
     }))
   );
 
@@ -691,6 +698,29 @@ export function PlannerDashboard() {
     [focusElement]
   );
 
+  /**
+   * Aktionen der Schrittleiste. Sie feuern dieselben Events wie die
+   * Toolbar-/Menüpfade — eine Wirkung, zwei Einstiege, keine Zweitlogik.
+   */
+  const openWarningCenter = useCallback(() => {
+    window.dispatchEvent(new CustomEvent('open-warning-center'));
+  }, []);
+  const openBom = useCallback(() => {
+    window.dispatchEvent(new CustomEvent('show-bom-modal'));
+  }, []);
+  /**
+   * „Bauteile hinzufügen" öffnet den Katalog: Auf dem Handy ist er ein eigener
+   * Tab, am Desktop eine einklappbare Spalte — beides weiß `PlannerInner`,
+   * deshalb bleibt hier nur das Event.
+   */
+  const openCatalog = useCallback(() => {
+    window.dispatchEvent(new CustomEvent('planner-open-catalog'));
+  }, []);
+  const handleGuidedAutoWire = useCallback(() => {
+    autoWireSystem();
+    setFeedback(autoWireFeedbackFor(nodes));
+  }, [autoWireSystem, nodes]);
+
   // Ctrl+S wird in PlannerInner abgefangen (kein Browser-Speichern-Dialog) und
   // hier sichtbar bestätigt — der Plan liegt ohnehin laufend im Local Storage.
   useEffect(() => {
@@ -731,6 +761,8 @@ export function PlannerDashboard() {
             canUndo={canUndo}
             canRedo={canRedo}
             onRequestReset={() => setResetOpen(true)}
+            guidedMode={guidedMode}
+            onToggleGuidedMode={() => setGuidedMode(!guidedMode)}
           />
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-2 pl-2">
@@ -797,6 +829,22 @@ export function PlannerDashboard() {
           </div>
         )}
       </header>
+
+      {/* Geführter Modus (Standard): EIN nächster Schritt statt Werkzeugkasten.
+          Der Wasserplan hat eigene Regeln — die Schrittleiste gilt nur für die
+          Elektrik, dort bleibt der freie Editor ohne Leiste. */}
+      {guidedMode && viewMode === 'electric' && (
+        <GuidedPlanRail
+          nodes={nodes}
+          edges={edges}
+          warnings={warnings}
+          onOpenCatalog={openCatalog}
+          onAutoWire={handleGuidedAutoWire}
+          onOpenWarnings={openWarningCenter}
+          onOpenBom={openBom}
+          onSwitchToExpertMode={() => setGuidedMode(false)}
+        />
+      )}
 
       <AccessibleDialog
         open={resetOpen}

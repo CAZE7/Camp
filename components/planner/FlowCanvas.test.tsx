@@ -1,7 +1,10 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import React from 'react';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { FlowCanvas } from './FlowCanvas';
+import { PANE_WAIT_FRAMES } from './constants';
 import { usePlannerStore } from '../../store/usePlannerStore';
 import { useAppStore, type AppState } from '../../lib/store';
 import { useDashboardMetrics } from './hooks/useDashboardMetrics';
@@ -163,6 +166,8 @@ const defaultPlannerStoreState = {
   setTrunkMode: vi.fn(),
   backboneGrouping: true,
   setBackboneGrouping: vi.fn(),
+  detailLevel: 'detail',
+  setDetailLevel: vi.fn(),
   isLayoutPending: false,
   selectedNodes: [],
   selectedEdges: [],
@@ -589,12 +594,16 @@ describe('FlowCanvas', () => {
       render(<FlowCanvas />);
 
       expect(screen.getByText('Aktueller Status')).toBeInTheDocument();
-      // removed check
+      /**
+       * UX-Reset 2026-09: Kennzahlen sind tertiär. Eingeklappt ist der Default —
+       * die Werte kosten einen Klick und stehen nicht dauerhaft über dem Plan.
+       */
+      expect(screen.queryByText(/100\.5 Ah/)).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByText('Aktueller Status'));
+
       expect(screen.getByText(/100\.5 Ah/)).toBeInTheDocument();
-      // removed check
       expect(screen.getByText('2 Tage')).toBeInTheDocument();
-      // expect(screen.getByText('Solar-Array Output:')).toBeInTheDocument();
-      // expect(screen.getByText('24V / 15.5A')).toBeInTheDocument();
     });
 
     it('displays direct battery to consumer warning in electric mode if applicable', () => {
@@ -625,5 +634,158 @@ describe('FlowCanvas', () => {
       expect(screen.getByText('Dachplaner-Daten erkannt:')).toBeInTheDocument();
       expect(screen.getByText(/500 W Solarleistung verfügbar/)).toBeInTheDocument();
     });
+  });
+});
+
+describe('FlowCanvas · Detailgrad (UX-Reset 2026-09 / RECHERCHE C1)', () => {
+  const renderWith = (overrides: Partial<typeof defaultPlannerStoreState>) => {
+    const state = { ...defaultPlannerStoreState, ...overrides };
+    vi.mocked(usePlannerStore).mockImplementation(
+      (selector: (s: typeof defaultPlannerStoreState) => unknown) => selector(state)
+    );
+    return render(<FlowCanvas />);
+  };
+
+  afterEach(() => {
+    vi.mocked(usePlannerStore).mockImplementation(
+      (selector: (s: typeof defaultPlannerStoreState) => unknown) => selector(defaultPlannerStoreState)
+    );
+  });
+
+  it('trägt den Detailgrad als Klasse am Canvas-Container', () => {
+    const detail = renderWith({});
+    expect(detail.getByTestId('react-flow-mock').className).toContain('planner-detail-detail');
+    detail.unmount();
+
+    const overview = renderWith({ detailLevel: 'overview' });
+    expect(overview.getByTestId('react-flow-mock').className).toContain('planner-detail-overview');
+    overview.unmount();
+  });
+
+  /**
+   * CSS-Wächter: Der Schalter ist ohne Regel wertlos. Wie in
+   * PlannerDashboard.test.tsx (Warnungs-Deduplizierung) wird das Stylesheet
+   * festgezurrt — Messwerte ausblenden, Warnflächen aber sichtbar lassen.
+   */
+  it('hinterlegt die Übersichtsstufe in globals.css', () => {
+    const css = readFileSync(resolve(process.cwd(), 'app/globals.css'), 'utf8');
+    expect(css).toContain('.planner-detail-overview .node-card .measure');
+    expect(css).toContain('.planner-detail-overview .node-card > div:not(.node-symbol)');
+    // Sicherheit vor Kompaktheit: Der Status-Rand bleibt unangetastet.
+    expect(css).not.toContain('.planner-detail-overview .node-card--error');
+  });
+});
+
+/**
+ * Bauteil-Zusatz über den Katalog (Kachel-Tipp / Tastatur) — E2E-Regression
+ * `touch.spec.ts › Tap-to-Connect`: Auf dem Handy ist der Katalog ein eigener
+ * Tab, die Plan-Spalte also beim Tippen noch `hidden`. Der alte Zwei-Frame-Retry
+ * gab auf und legte das Bauteil auf das feste Raster — teils außerhalb der
+ * sichtbaren Fläche, wo der Anschluss unter der Schrittleiste nicht antippbar
+ * war. Jetzt wird auf eine messbare Pane gewartet.
+ */
+describe('FlowCanvas · Bauteil-Zusatz bei versteckter Plan-Spalte', () => {
+  const rect = (x: number, y: number, width: number, height: number) =>
+    ({
+      x,
+      y,
+      width,
+      height,
+      top: y,
+      right: x + width,
+      bottom: y + height,
+      left: x,
+      toJSON: () => ({}),
+    }) as DOMRect;
+
+  const setup = () => {
+    const addNode = vi.fn();
+    const store = { ...defaultPlannerStoreState, nodes: [], addNode } as PlannerState;
+    Object.assign(usePlannerStore, { getState: () => store });
+    vi.mocked(usePlannerStore).mockImplementation((selector: (s: PlannerState) => unknown) =>
+      selector(store)
+    );
+    const rafQueue: FrameRequestCallback[] = [];
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+      rafQueue.push(callback);
+      return rafQueue.length;
+    });
+    const flush = (frames: number) =>
+      act(() => {
+        for (let i = 0; i < frames && rafQueue.length > 0; i += 1) {
+          const callback = rafQueue.shift();
+          callback?.(performance.now());
+        }
+      });
+    return { addNode, flush };
+  };
+
+  const dispatchAdd = () =>
+    act(() => {
+      window.dispatchEvent(
+        new CustomEvent('planner-add-at-canvas-center', {
+          detail: { type: 'battery', label: 'Batterie', watts: 120 },
+        })
+      );
+    });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    Object.assign(usePlannerStore, { getState: () => defaultPlannerStoreState });
+    vi.mocked(usePlannerStore).mockImplementation((selector: (s: PlannerState) => unknown) =>
+      selector(defaultPlannerStoreState)
+    );
+    vi.mocked(useAppStore).mockImplementation((selector: (s: typeof defaultAppStoreState) => unknown) =>
+      selector(defaultAppStoreState)
+    );
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('wartet auf die messbare Pane und platziert dann in der sichtbaren Mitte', () => {
+    const { addNode, flush } = setup();
+    // Kachel-Tipp: die Plan-Spalte ist noch `hidden`, die Pane misst 0×0.
+    let measurable = false;
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      if (this.classList.contains('react-flow__pane')) {
+        return measurable ? rect(100, 80, 600, 400) : rect(0, 0, 0, 0);
+      }
+      return rect(0, 0, 0, 0);
+    });
+
+    render(<FlowCanvas />);
+    dispatchAdd();
+
+    // Nicht sofort auf das Raster gefallen — es wird auf den Tab-Wechsel gewartet.
+    expect(addNode).not.toHaveBeenCalled();
+
+    // Drei Frames lang bleibt die Spalte versteckt: Der alte Zwei-Frame-Retry
+    // hätte hier längst aufgegeben und auf das Raster gelegt.
+    flush(3);
+    expect(addNode).not.toHaveBeenCalled();
+
+    // Tab-Wechsel: Plan-Spalte sichtbar.
+    measurable = true;
+    flush(3);
+
+    expect(mockScreenToFlowPosition).toHaveBeenCalledWith({ x: 400, y: 280 });
+    expect(addNode).toHaveBeenCalledWith('battery', 'Batterie', { x: 304, y: 224 }, 120);
+  });
+
+  it('fällt nach dem Frame-Budget auf das deterministische Raster zurück', () => {
+    const { addNode, flush } = setup();
+    // Pane bleibt unmessbar (z. B. abgebrochener Tab-Wechsel): die Aktion darf
+    // nicht verloren gehen.
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(() => rect(0, 0, 0, 0));
+
+    render(<FlowCanvas />);
+    dispatchAdd();
+    expect(addNode).not.toHaveBeenCalled();
+
+    flush(PANE_WAIT_FRAMES + 2);
+
+    expect(addNode).toHaveBeenCalledWith('battery', 'Batterie', { x: 0, y: 0 }, 120);
   });
 });

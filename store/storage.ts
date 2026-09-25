@@ -28,6 +28,14 @@ export function createDebouncedStorage(getStorage: () => StorageLike, delayMs = 
       timer = null;
     }
     if (pending.size === 0) return;
+    // Kein `window` mehr = kein Storage mehr: Der Flush kann feuern, nachdem die
+    // Seite (oder die jsdom-Umgebung eines Tests) bereits abgeräumt wurde — ein
+    // ausstehender Schreibvorgang ist dann hinfällig, werfen darf er nicht
+    // (CI: `ReferenceError: window is not defined` aus einem hängenden Timer).
+    if (typeof window === 'undefined') {
+      pending.clear();
+      return;
+    }
     const storage = getStorage();
     pending.forEach((value, key) => storage.setItem(key, value));
     pending.clear();

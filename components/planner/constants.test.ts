@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { NODE_TYPES, EDGE_TYPES, PLANNER_MIN_ZOOM, PLANNER_MAX_ZOOM, PLANNER_SNAP_GRID } from './constants';
+import {
+  NODE_TYPES,
+  EDGE_TYPES,
+  PLANNER_MIN_ZOOM,
+  PLANNER_MAX_ZOOM,
+  PLANNER_SNAP_GRID,
+  PANE_WAIT_FRAMES,
+} from './constants';
 import * as plannerConstants from './constants';
 
 describe('components/planner/constants', () => {
@@ -27,6 +34,9 @@ describe('components/planner/constants', () => {
     expect(PLANNER_MIN_ZOOM).toBe(0.25);
     expect(PLANNER_MAX_ZOOM).toBe(2);
     expect(PLANNER_SNAP_GRID).toEqual([16, 16]);
+    // Kein Zwei-Frame-Retry mehr: Auf dem Handy ist die Plan-Pane beim Tippen
+    // auf eine Katalog-Kachel noch hidden (E2E: Tap-to-Connect).
+    expect(PANE_WAIT_FRAMES).toBeGreaterThanOrEqual(10);
     expect(plannerConstants).not.toHaveProperty('PLANNER_OVERVIEW_ZOOM');
     expect(plannerConstants).not.toHaveProperty('PLANNER_FULL_DETAIL_ZOOM');
   });

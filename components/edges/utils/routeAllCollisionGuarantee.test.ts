@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { Node } from '@xyflow/react';
 import { routeAllCables, type RouteEdgeRef } from './routeAll';
 import { nodeObstacleMap } from './pathfinding';
@@ -48,12 +48,17 @@ describe('routeAllCables — ROUTE-001 Kollisionsgarantie bei geklebten Nachbar-
     const nodes = [makeNode('a', 0, 0), makeNode('glue', 120, 20), makeNode('b', 800, 0)];
     const edges: RouteEdgeRef[] = [{ id: 'e-a-b', source: 'a', target: 'b' }];
 
+    // Der Fallback ist hier Testziel: Das Dev-Log wird geprüft (ROUTE-001
+    // „sichtbar statt versteckt"), statt ungefiltert auf stderr zu landen.
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const routes = routeAllCables(nodes, edges);
     const route = routes.get('e-a-b');
     expect(route).toBeDefined();
     // Kein lautloses „konform": der unvermeidbare Konflikt ist markiert.
     expect(route!.usedSearch).toBe('fallback');
     expect(route!.fallbackHitsObstacles).toBe(true);
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Fallback ohne Hindernisfreigabe'));
+    warnSpy.mockRestore();
 
     // … und die harte Verletzung steht im Final-Validation-Report (I1),
     // statt nur in einem Dev-Log.
