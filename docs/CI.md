@@ -19,7 +19,7 @@ Drei Workflows, eine einzige Quelle für die Qualitätsprüfung:
 | `.github/workflows/deploy.yml`  | Push auf den GitHub-Default-Branch, manuell       | Pages-Build + Deploy + Smoke-Check, **nach** dem Quality Gate          |
 
 ```
-pull_request ─► ci.yml ─────► quality.yml (npm ci → lint → format → typecheck → test:coverage → perf:edge-routing → build → e2e)
+pull_request ─► ci.yml ─────► quality.yml (npm ci → lint → format → typecheck → test:coverage → routing:audit → perf:edge-routing → build → e2e)
 
 push (default) ─► deploy.yml ─► quality.yml
                                └─► build (Pages, basePath) ─► deploy ─► smoke-check (HTTP 200)

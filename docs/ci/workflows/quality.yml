@@ -95,6 +95,11 @@ jobs:
         # die Schwellen aus vitest.config.ts, scheitert das Gate hier.
         run: npm run test:coverage
 
+      - name: Routing-Invarianten (G3 — I1 hart, Orthogonalität, Determinismus)
+        # `routing:audit` gibt seit 2026-09-25 einen Exit-Code zurück; vorher war es reine
+        # Ausgabe. Die I2/I3-Ratchets bleiben in scripts/routing/finalValidation.test.ts.
+        run: npm run routing:audit
+
       - name: Perf-Gate Kanten-Routing (WP-11 / #400)
         # Harter Budget-Check: Median ≤ 16 ms Main-Thread pro Frame am
         # 100+-Kanten-Referenzplan (Begründung: docs/adr/0012-perf-budget-16ms-pro-frame.md).

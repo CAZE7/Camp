@@ -409,3 +409,51 @@ Legende Severity: **hoch** = Agent kann falschen Code ändern / falsche Sicherhe
 `tests/` (ohne Testdateien) liefert **keinen Treffer**. Neue Markierungen bitte mit Area-Tag:
 `TODO[ROUTING]:`, `TODO[ELECTRICAL]:`, `TODO[UX]:`, `TODO[PERF]:` — nie als nacktes
 `TODO` ohne Area-Tag.
+
+---
+
+## AUDIT-2026-09-25 — Nacharbeit dokumentiert (Branch `arena/01a0d77d-camp`)
+
+Die externe Durchsicht vom 2026-09-25 (Tier 1–6) ist in derselben Reihenfolge
+bearbeitet worden, in der ihre Befunde den Nutzer treffen. Was erledigt ist,
+steht hier bewusst NICHT als „Problem“ weiter, sondern mit Datum im
+Change Ledger (`docs/ARCHITECTURE-CHANGES.md` → „Vierte Fassung“) bzw. in den
+Einträgen oben:
+
+- **ELE-001 (Anzeige rechnete mit dem empfohlenen statt dem verlegten
+  Querschnitt)** — behoben; `assessCableSelection` ist die eine Quelle, das
+  Kanten-Label warnt sichtbar, `voltageDrop.test.ts` hält die Invariante fest.
+- **AC-Schutzorgan-Stempel (ELE-004)** — entfernt; fehlender Deskriptor ist
+  jetzt eine sichtbare Annahme (C/6 kA, `descriptorAssumed`).
+- **Stille Fallbacks (ELE-003/005/008/009)** — fehlende Länge/Querschnitt ⇒
+  `not-modeled` mit `limitation`; `nominalVoltage` statt Phantomfeld;
+  `fuseWarning`/`dropWarning` werden gelesen und als kritische Hinweise
+  angezeigt; `calculateAcEdgeCurrent` (0 Konsumenten) entfernt.
+- **Kupfer-Kennwerte (ELE-010)** — `lib/materials.ts` ist die eine Quelle.
+- **Gates (G1/G2/G3)** — Pfad-Separatoren plattformunabhängig; die
+  Architektur-Regeln sind prüfbare Funktionen mit Positivkontrollen
+  (`scripts/architecture/rulesSelfCheck.test.ts`); `routing:audit` hat einen
+  Exit-Code und läuft im CI.
+- **Barrierefreiheit (A1/A4/A5/A6)** — Tastaturfokus im Canvas sichtbar,
+  Label-Kontrast auf `--ink`, Schwere als Wort, Live-Region immer vorhanden.
+- **Chat/Endpunkt (S1/S2)** — kein clientseitiges „Secret“ mehr, keine
+  System-Rolle aus dem Client, Rate-Limit begrenzt, Persistenz ohne
+  Prototyp-Verschmutzung.
+
+**Weiter offen (bewusst, nicht still):**
+
+1. **PERF-001/P5:** Die Live-Pipeline liegt mit ≈29 ms (Median, N=36/E=134)
+   über dem 16-ms-Ziel; das Gate hält den Ist-Zustand als Ratchet fest. Die
+   Optimierung selbst (Kostenmodell/A*-Innenloop) braucht einen eigenen ADR.
+2. **ELE-002:** Die vorgelagerte Netzimpedanz (0,8 Ω) bleibt eine Annahme; sie
+   ist jetzt zusätzlich Eingang der Abschaltvermögen-Prüfung
+   (`prospectiveIkA`) und wird im Meldungstext benannt.
+3. **A2/A3:** Das axe-E2E-Gate schließt den Canvas weiterhin aus (eigenes
+   Bedienmodell); die Kontrakte dafür sind jetzt als Unit-Gates festgehalten
+   (`lib/designTokens.test.ts` → „AUDIT A1/A2“). Ein axe-Lauf MIT Canvas ist
+   erst sinnvoll, wenn die Node-Struktur semantisch benannt ist.
+4. **A7:** Die Touch-Simulation der E2E-Suite deckt noch nicht alle
+   Gesten ab (Zoom/Rotation) — unverändert.
+5. **Hebel 4 (vollständig):** Die Positivkontrollen laufen in-memory gegen die
+   Regelfunktionen; ein Test, der die Regeln gegen ein temporäres Verzeichnis
+   mit echten Dateien laufen lässt, steht noch aus.
