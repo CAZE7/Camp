@@ -80,7 +80,7 @@ export function GuidedPlanRail({
     <nav
       data-testid="guided-rail"
       aria-label="Planungsablauf"
-      className="flex w-full shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b border-border bg-surface-panel px-3 py-1.5"
+      className="pointer-events-none flex w-full shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b border-border bg-surface-panel px-3 py-1.5"
     >
       {/* Mobil: Zähler statt fünf Labels — die Leiste soll auf 375 px nicht zur
           dritten Chrome-Zeile werden. `display:none` nimmt die Liste darunter
@@ -144,7 +144,7 @@ export function GuidedPlanRail({
         <span
           data-testid="guided-plan-status"
           role="status"
-          className={`flex min-h-9 items-center gap-1 rounded border border-border bg-card px-2 text-xs font-semibold ${status.tone}`}
+          className={`pointer-events-auto flex min-h-9 items-center gap-1 rounded border border-border bg-card px-2 text-xs font-semibold ${status.tone}`}
         >
           {status.label}
         </span>
@@ -153,7 +153,7 @@ export function GuidedPlanRail({
           type="button"
           data-testid="guided-plan-status"
           onClick={onOpenWarnings}
-          className={`flex min-h-9 items-center gap-1 rounded border border-border bg-card px-2 text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${status.tone}`}
+          className={`pointer-events-auto flex min-h-9 items-center gap-1 rounded border border-border bg-card px-2 text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${status.tone}`}
           title="Planstatus anzeigen"
         >
           {status.label}
@@ -164,7 +164,7 @@ export function GuidedPlanRail({
         type="button"
         data-testid="guided-primary-action"
         onClick={() => runAction(plan.activeStep.action.kind)}
-        className="flex min-h-9 items-center gap-1.5 rounded bg-primary px-3 text-xs font-bold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="pointer-events-auto flex min-h-9 items-center gap-1.5 rounded bg-primary px-3 text-xs font-bold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <ActiveIcon className="h-3.5 w-3.5" />
         {plan.activeStep.action.label}
@@ -174,7 +174,7 @@ export function GuidedPlanRail({
         type="button"
         data-testid="guided-expert-toggle"
         onClick={onSwitchToExpertMode}
-        className="flex min-h-9 items-center gap-1 rounded px-2 text-xs font-semibold text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="pointer-events-auto flex min-h-9 items-center gap-1 rounded px-2 text-xs font-semibold text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         title="Schrittleiste ausblenden und frei im Plan arbeiten"
       >
         <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden="true" />

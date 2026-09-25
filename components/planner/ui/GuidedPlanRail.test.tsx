@@ -52,6 +52,15 @@ describe('GuidedPlanRail', () => {
     expect(screen.getByText(/Schritt 2 von 5/)).toBeInTheDocument();
   });
 
+  it('lässt die nicht-interaktive Leistenfläche durch, damit Canvas-Taps nicht blockiert werden', () => {
+    render(<GuidedPlanRail nodes={[]} edges={[]} warnings={[]} {...handlers()} />);
+
+    const rail = screen.getByRole('navigation', { name: 'Planungsablauf' });
+    expect(rail).toHaveClass('pointer-events-none');
+    expect(screen.getByTestId('guided-primary-action')).toHaveClass('pointer-events-auto');
+    expect(screen.getByTestId('guided-expert-toggle')).toHaveClass('pointer-events-auto');
+  });
+
   it('öffnet im ersten Schritt den Bauteilkatalog', () => {
     const actions = handlers();
     render(<GuidedPlanRail nodes={[]} edges={[]} warnings={[]} {...actions} />);
