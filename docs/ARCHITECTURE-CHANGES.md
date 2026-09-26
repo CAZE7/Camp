@@ -965,3 +965,87 @@ Gate (`npm run check` + Build): `npx eslint .` 0 Errors / 0 Warnings, beide
 2279 Tests, Golden Master 13 byte-identisch ohne Neuerfassung, Regression 50,
 `npx tsx scripts/routing/audit.ts` I1–I7 = 0 / fallback 0,
 `npm run perf:edge-routing` Live-Pfad 41,7 ms (≤ 60 ms).
+
+### 2026-09-26 — Zehnte Fassung: Identität statt Neubau im Change-Pfad (Rule Q/R)
+
+Nach der neunten Fassung blieb die Frage, **warum** der Rahmen überhaupt in zwei
+Hindernisbildern existieren konnte. Die Antwort ist eine Eigenschaft des
+Change-Pfads, nicht des Routers — und sie betrifft den ganzen Graphen:
+
+1. **No-Op-Changes erzeugten neuen Zustand.** `applyNodeChanges`/
+   `applyEdgeChanges` geben **immer** ein neues Array zurück, auch bei
+   Änderungslisten ohne Treffer. Real gemessen: React Flow meldet über seinen
+   ResizeObserver `dimensions`-Changes für **jeden** gemounteten Knoten — auch
+   für den Darstellungs-Rahmen, den der Planner-Store nicht kennt. Die Liste
+   lief durch `onNodesChange`, fand kein Element und wurde verworfen; übrig
+   blieb eine neue Array-Referenz. Folge: jeder
+   `usePlannerStore((s) => s.nodes)`-Konsument rendert (u. a. jede `CableEdge`),
+   die identitätsgebundenen Caches (`getDerivedSystemState`, `getObstacleMap`,
+   `CROSSING_BASE_CACHE`, Routing-Nachbarschaft) bauen sich neu auf, React Flow
+   adoptiert die Nodes erneut. Nebenbei flackerte der Speicher-Indikator, weil
+   er an genau diesen vier Array-Referenzen hängt.
+2. **Anzeige-Transformationen bauten alle Elemente neu.** `focusHighlight`
+   (Hover/Drag), `circuitTrace` (Strompfad) und `domainFilter` (Domänen-Filter)
+   erzeugten per `{ ...node, className }` für **jedes** Element ein neues
+   Objekt — bei jedem Render, und der Strompfad hängt an den Store-Arrays, also
+   auch während eines Drags in jedem Frame. React Flow übernimmt einen Knoten
+   nur bei **identischem** Objekt unverändert (`adoptUserNodes`,
+   `checkEquality`); jede Kopie führt zum Neuaufbau **und zur Neuvermessung**.
+   `circuitTrace` war zudem nicht idempotent: `[className, flag].join(' ')`
+   hängte die Marke bei jedem Durchlauf erneut an (`… dim dim dim`).
+3. **Messwerte wanderten in die Persistenz.** `partialize` schrieb `nodes` samt
+   `measured`/`width`/`height`; `migratePlannerPersisted` nahm sie beim Laden
+   zurück. Ein gespeicherter Messwert behauptet in der nächsten Sitzung eine
+   Größe, die nie gemessen wurde: `fitView`/`translateExtent` starten mit dem
+   alten Kasten, und bis der ResizeObserver korrigiert, routet der A*-Pass um
+   eine Box, die es so nicht mehr gibt — dieselbe Fehlerklasse wie der Rahmen,
+   der als „nicht gemessen" zwischen zwei Hindernisbildern pendelte.
+
+Behoben:
+
+- **Change-Handler schreiben nur bei Wirkung** (`store/slices/graphSlice.ts`,
+  Helfer `sameElements`/`affectsStructure` in `store/slices/graphInternals.ts`):
+  `if (!affectsStructure(changes) && sameElements(prev, next)) return state`.
+  zustand 5 überspringt die Benachrichtigung, wenn der Zustand identisch ist —
+  das ist der einzige vollständige No-Op. `add`/`remove` bleiben immer
+  strukturell (ein `remove` für eine unbekannte ID räumt weiterhin verwaiste
+  Kanten auf und schreibt History).
+- **Darstellungs-Marken identitätsstabil und idempotent:**
+  `components/planner/utils/classFlags.ts` (`hasClassFlag`, `addClassFlag`,
+  `withClassFlag`) ist jetzt die eine Quelle für alle drei Transformationen
+  (Fokus, Strompfad, Domänen-Filter) — Wortvergleich statt Substring, Marke
+  genau einmal, sonst **dasselbe Objekt**.
+- **Messwerte sind kein Planinhalt** (Rule R):
+  `stripNodeMeasurement` in `store/slices/persistence.ts` entfernt
+  `measured`/`width`/`height` beim Speichern **und** beim Laden
+  (Copy-on-write, dieselbe Referenz wenn nichts zu entfernen ist);
+  `initialWidth`/`initialHeight` bleiben, sie sind eine Nutzerangabe. Der
+  Darstellungs-Rahmen ist davon nicht betroffen: er **berechnet** seine Box aus
+  der Kern-Geometrie (`backboneGroup.ts`, Geometrie-Key-Cache) und trägt sie als
+  `width`/`height` — genau deshalb darf er nicht von einer Messung abhängen.
+  ⚠ `store/slices/persistence.ts` steht in `AGENTS.md` §6 unter „DO NOT TOUCH
+  (nur mit Tests + expliziter Review)" — die Änderung ist testgedeckt
+  (4 neue Tests) und hier begründet; sie braucht die explizite Review.
+
+Bewusst **nicht** geändert: keine `useEffect`-Schleife und kein
+`useMemo`/`useCallback`-Fehlgebrauch gefunden (die Kandidaten
+`useViewportHelper`, `FlowCanvas`-Memos, `markErrorEdgesZIndex` geben bereits
+stabile Referenzen zurück bzw. sind korrekt abhängig). `useReactFlow().setNodes`
+/`setEdges` ruft der Planer nirgends auf; `'replace'`-Changes entstehen
+ausschließlich in React Flows eigener Queue (`getElementsDiffChanges`) und
+laufen durch denselben Handler. Kein sichtbares Verhalten ändert sich: gleiche
+Klassen, gleiche Reihenfolge, gleiche Geometrie.
+
+Nachweis (Rule Q/R): `store/slices/changeNoise.test.ts` (6 Tests: unbekannte
+`dimensions`/`select`-IDs lassen Store-Objekt und Arrays identisch — auch für
+Wasser; eine echte Messung schreibt `measured` **und** `width`/`height` und
+lässt Geschwister identisch; `remove` für unbekannte ID bleibt strukturell und
+schreibt History), `persistence.test.ts` (4 neue Tests „Messwerte sind kein
+Planinhalt": Speichern, Laden aus Altbestand, `initialWidth` bleibt,
+Wasser-Graph), `components/planner/utils/classFlags.test.ts` (4 Tests),
+`focusHighlight.test.ts`, `circuitTrace.test.ts` (Identität + Idempotenz),
+`domainFilter`-Suite weiter grün.
+
+Gate: `npx vitest run` → 167 Testdateien / 2297 Tests, beide `tsc`-Profile,
+`eslint`, `prettier`, Golden Master 13 byte-identisch, Regression 50,
+`routing:audit` I1–I7 = 0 / fallback 0, `perf:edge-routing` 41,7 ms (≤ 60 ms).

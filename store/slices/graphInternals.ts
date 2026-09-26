@@ -54,6 +54,49 @@ export function getNodeMap(currentNodes: Node[], currentWaterNodes: Node[]): Map
   return combined;
 }
 
+/**
+ * Sind zwei Element-Listen inhaltlich identisch geblieben?
+ *
+ * `applyNodeChanges`/`applyEdgeChanges` geben **immer** ein neues Array zurück —
+ * auch dann, wenn keine einzige Änderung einen Treffer hatte. Das ist kein
+ * theoretischer Fall: React Flow meldet `dimensions`-Changes über seinen
+ * ResizeObserver für **jeden** gemounteten Knoten, auch für solche, die der
+ * Planner-Store gar nicht kennt (der Darstellungs-Rahmen des
+ * Hauptstromkreises). Die Änderung läuft dann durch `onNodesChange`, findet
+ * kein Element und wird verworfen — übrig bleibt eine neue Array-Referenz.
+ *
+ * Warum das schadet, obwohl der Inhalt gleich ist:
+ *  - jeder `usePlannerStore((s) => s.nodes)`-Konsument rendert neu (u. a. jede
+ *    einzelne `CableEdge`),
+ *  - die WeakMap-Caches des Graphen (`getDerivedSystemState`, `getObstacleMap`,
+ *    `CROSSING_BASE_CACHE`) und die Routing-Nachbarschaft sind an die
+ *    Array-**Identität** gebunden und bauen sich komplett neu auf,
+ *  - React Flow übernimmt die Nodes erneut (`adoptUserNodes`).
+ *
+ * Deshalb schreiben die Change-Handler ohne echte Änderung gar nicht: Der
+ * Vergleich ist ein reiner Identitätsvergleich pro Element, O(n) mit
+ * Abbruch beim ersten Unterschied.
+ */
+export function sameElements<T>(before: readonly T[], after: readonly T[]): boolean {
+  if (before === after) return true;
+  if (before.length !== after.length) return false;
+  for (let i = 0; i < before.length; i++) {
+    if (before[i] !== after[i]) return false;
+  }
+  return true;
+}
+
+/**
+ * Kann die Change-Liste überhaupt strukturell wirken (Element hinzufügen oder
+ * entfernen)? Nur dann darf ein „inhaltlich gleiches" Ergebnis echte Folgen
+ * haben: ein `remove` für eine unbekannte ID räumt derzeit auch verwaiste
+ * Kanten auf. Für alles andere (`select`, `dimensions`, `position`) ist ein
+ * unverändertes Ergebnis beweisbar folgenlos.
+ */
+export function affectsStructure(changes: readonly { type: string }[]): boolean {
+  return changes.some((change) => change.type === 'add' || change.type === 'remove');
+}
+
 const HISTORY_LIMIT = 50;
 
 /**

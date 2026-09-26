@@ -1,11 +1,18 @@
+import { withClassFlag } from './classFlags';
+
 export type FocusableNode = { id: string; className?: string };
 export type FocusableEdge = { id: string; source: string; target: string; className?: string };
 
 const ACTIVE = 'planner-focus-active';
 const DIM = 'planner-focus-dim';
 
-const withFlag = (className: string | undefined, flag: string): string =>
-  [className, flag].filter(Boolean).join(' ');
+/**
+ * Fokus-Marken laufen über `withClassFlag` (identitätsstabil + idempotent,
+ * Begründung im Modul). Vorher entstand hier bei **jedem** Hover und jedem
+ * Drag-Frame für jedes Element ein neues Objekt — React Flow baute daraufhin
+ * alle internen Knoten neu auf und maß sie neu.
+ */
+const withFlag = withClassFlag;
 
 /**
  * When a single node is selected, keep it and its neighbours readable and dim the rest.
@@ -41,13 +48,9 @@ export function applyFocusHighlight<N extends FocusableNode, E extends Focusable
   }
 
   return {
-    nodes: nodes.map((node) => ({
-      ...node,
-      className: withFlag(node.className, keep.has(node.id) ? ACTIVE : DIM),
-    })),
-    edges: edges.map((edge) => ({
-      ...edge,
-      className: withFlag(edge.className, seeds.has(edge.source) || seeds.has(edge.target) ? ACTIVE : DIM),
-    })),
+    nodes: nodes.map((node) => withFlag(node, keep.has(node.id) ? ACTIVE : DIM)),
+    edges: edges.map((edge) =>
+      withFlag(edge, seeds.has(edge.source) || seeds.has(edge.target) ? ACTIVE : DIM)
+    ),
   };
 }

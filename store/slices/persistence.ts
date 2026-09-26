@@ -101,6 +101,37 @@ function sanitizeNodeData<T extends Node>(node: T): T {
   return { ...node, data: data };
 }
 
+/**
+ * Messfelder, die React Flow über `dimensions`-Changes in den Knoten schreibt.
+ *
+ * Herkunft: `updateNodeInternals` (ResizeObserver, `setAttributes: true`) ruft
+ * `onNodesChange` mit `{ type: 'dimensions', dimensions }`; `applyNodeChanges`
+ * setzt daraus `measured` **und** `width`/`height`. Der Planner-Store hält
+ * diese Werte bewusst (das Routing liest die gemessene Box als Pflichtquelle),
+ * aber sie sind ein **Ergebnis der aktuellen Darstellung** — kein Planinhalt:
+ * Fonts, Komponenten-Markup und Geräte bestimmen sie. Ein mitgespeicherter
+ * Messwert behauptet beim nächsten Laden eine Größe, die in dieser Sitzung
+ * nie gemessen wurde: `fitView`/`translateExtent` starten mit dem alten Kasten,
+ * und bis der ResizeObserver korrigiert, routet der A*-Pass um eine Box, die es
+ * so nicht (mehr) gibt — dieselbe Fehlerklasse wie der Darstellungs-Rahmen, der
+ * als „nicht gemessen“ zwischen zwei Hindernisbildern pendelte.
+ *
+ * Deshalb gilt: Messwerte werden beim Speichern entfernt und beim Laden
+ * verworfen; sie entstehen immer neu aus der DOM-Messung. `initialWidth`/
+ * `initialHeight` bleiben unberührt — die sind eine Nutzerangabe, keine Messung.
+ */
+const MEASUREMENT_KEYS = ['measured', 'width', 'height'] as const;
+
+export function stripNodeMeasurement<T extends Node>(node: T): T {
+  let out = node;
+  for (const key of MEASUREMENT_KEYS) {
+    if (!(key in out)) continue;
+    if (out === node) out = { ...node };
+    delete (out as Record<string, unknown>)[key];
+  }
+  return out;
+}
+
 function sanitizeEdgeData<T extends Edge>(edge: T): T {
   if (!edge.data || typeof edge.data !== 'object') return { ...edge, data: {} };
   return edge;
@@ -127,9 +158,13 @@ export function migratePlannerPersisted(persisted: unknown, version: number): Pa
   if (typeof p.backboneGrouping === 'boolean') safe.backboneGrouping = p.backboneGrouping;
   if (typeof p.guidedMode === 'boolean') safe.guidedMode = p.guidedMode;
   if (p.detailLevel === 'overview' || p.detailLevel === 'detail') safe.detailLevel = p.detailLevel;
-  if (Array.isArray(p.nodes)) safe.nodes = p.nodes.filter(isNodeShape).map(sanitizeNodeData);
+  // `stripNodeMeasurement` in BEIDEN Richtungen (Laden hier, Speichern in
+  // `partialize`): gemessene Boxen sind Darstellung, nicht Planinhalt.
+  if (Array.isArray(p.nodes))
+    safe.nodes = p.nodes.filter(isNodeShape).map(sanitizeNodeData).map(stripNodeMeasurement);
   if (Array.isArray(p.edges)) safe.edges = p.edges.filter(isEdgeShape).map(sanitizeEdgeData);
-  if (Array.isArray(p.waterNodes)) safe.waterNodes = p.waterNodes.filter(isNodeShape).map(sanitizeNodeData);
+  if (Array.isArray(p.waterNodes))
+    safe.waterNodes = p.waterNodes.filter(isNodeShape).map(sanitizeNodeData).map(stripNodeMeasurement);
   if (Array.isArray(p.waterEdges)) safe.waterEdges = p.waterEdges.filter(isEdgeShape).map(sanitizeEdgeData);
 
   // Version 0 → 1: keine Feldumbenennungen, nur Validierung.
@@ -147,9 +182,9 @@ export const persistOptions: PersistOptions<PlannerState, Partial<PlannerState>>
   partialize: (state) => ({
     viewMode: state.viewMode,
     season: state.season,
-    nodes: state.nodes,
+    nodes: state.nodes.map(stripNodeMeasurement),
     edges: state.edges,
-    waterNodes: state.waterNodes,
+    waterNodes: state.waterNodes.map(stripNodeMeasurement),
     waterEdges: state.waterEdges,
     isSidebarOpen: state.isSidebarOpen,
     isInspectorOpen: state.isInspectorOpen,

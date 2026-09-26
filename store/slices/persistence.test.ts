@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { PLANNER_STORAGE_VERSION, migratePlannerPersisted, persistOptions } from './persistence';
+import {
+  PLANNER_STORAGE_VERSION,
+  migratePlannerPersisted,
+  persistOptions,
+  stripNodeMeasurement,
+} from './persistence';
 
 /**
  * Vertragstest für den localStorage-Pfad des Planers.
@@ -213,5 +218,71 @@ describe('S5 — persistierte Stände können den Prototypen nicht verseuchen', 
     const migratedNode = (migrated.nodes as Array<Record<string, unknown>>)[0]!;
     expect(migratedNode.data).toEqual({ watts: 200, panels: [{ id: 'p1', watts: 100 }] });
     expect(migratedNode.position).toEqual({ x: 1, y: 2 });
+  });
+});
+
+/**
+ * Regression (Bug 2026-09-26, „measured.width/height“): React Flow schreibt
+ * über `dimensions`-Changes (`setAttributes: true`) `measured` **und**
+ * `width`/`height` in den Store-Knoten. Diese Werte sind ein Ergebnis der
+ * aktuellen Darstellung, kein Planinhalt. Wurden sie mitgespeichert, startete
+ * der nächste Ladevorgang mit einer Box, die in dieser Sitzung nie gemessen
+ * wurde — `fitView`/`translateExtent` rechneten damit, und der A*-Pass routete
+ * bis zur Korrektur um eine Box, die es so nicht mehr gibt.
+ */
+describe('Messwerte sind kein Planinhalt', () => {
+  const measured = {
+    id: 'bat',
+    type: 'battery',
+    position: { x: 0, y: 0 },
+    data: {},
+    measured: { width: 844, height: 392 },
+    width: 844,
+    height: 392,
+    initialWidth: 192,
+  };
+
+  it('stripNodeMeasurement entfernt Messfelder — und lässt Nutzerangaben stehen', () => {
+    const stripped = stripNodeMeasurement(measured);
+
+    expect(stripped).not.toBe(measured); // Kopie, kein In-place-Eingriff
+    expect('measured' in stripped).toBe(false);
+    expect('width' in stripped).toBe(false);
+    expect('height' in stripped).toBe(false);
+    expect(stripped.initialWidth).toBe(192);
+    expect(stripped.id).toBe('bat');
+  });
+
+  it('stripNodeMeasurement lässt Knoten ohne Messfelder unangetastet (Identität)', () => {
+    expect(stripNodeMeasurement(validNode as never)).toBe(validNode);
+  });
+
+  it('die Migration verwirft gespeicherte Messwerte', () => {
+    const migrated = migratePlannerPersisted({ nodes: [measured], waterNodes: [measured] }, 1);
+
+    expect(migrated.nodes?.[0]).not.toHaveProperty('measured');
+    expect(migrated.nodes?.[0]).not.toHaveProperty('width');
+    expect(migrated.nodes?.[0]).not.toHaveProperty('height');
+    expect(migrated.waterNodes?.[0]).not.toHaveProperty('measured');
+  });
+
+  it('partialize schreibt keine Messwerte in den Speicher', () => {
+    const full = {
+      ...migratePlannerPersisted({}, PLANNER_STORAGE_VERSION),
+      nodes: [measured],
+      waterNodes: [measured],
+      edges: [],
+      waterEdges: [],
+    };
+    const subset = persistOptions.partialize?.(full as never) as {
+      nodes: Record<string, unknown>[];
+      waterNodes: Record<string, unknown>[];
+    };
+
+    expect(subset.nodes[0]).not.toHaveProperty('measured');
+    expect(subset.nodes[0]).not.toHaveProperty('width');
+    expect(subset.waterNodes[0]).not.toHaveProperty('height');
+    // Der Planinhalt selbst bleibt vollständig.
+    expect(subset.nodes[0]).toMatchObject({ id: 'bat', type: 'battery', data: {} });
   });
 });

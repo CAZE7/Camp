@@ -86,6 +86,9 @@ Kein Anspruch auf Vollständigkeit — es fehlen bewusst UI-Helfer und reine Ren
 | `mergeCloseBends`                               | `lib/routing/geometry/polyline.ts`          | Treppen/Ministufen auflösen (I7)                | `routeAllCables`                          | `geometry.test.ts`                                        |
 | `waypointsToPath` / `waypointsToPathWithHops`   | `components/edges/utils/pathUtils.ts`       | Waypoints → SVG (mit Hop-Bögen)                 | `CableEdge`                               | `pathUtils.test.ts`                                       |
 | `CableRouteSync` / `useCableRoute`              | `components/edges/utils/cableRouteStore.ts` | Render-Anbindung, Drossel, Signaturen           | `FlowCanvas`, `CableEdge`                 | `cableRouteStore.test.ts`                                 |
+| `isPresentationOnlyNode` / `routableNodes`      | `components/edges/utils/routableNodes.ts`   | Darstellungs-Grenze (Rule P, ADR 0022)          | `routeAllCables`, `cableRouteStore`       | `routableNodes.test.ts`                                   |
+| `nodeGeometrySnapshot`                          | `components/edges/utils/nodeGeometry.ts`    | Messwerte an der Messgrenze (Rule R)            | `routingDebug`, Diagnose                  | `nodeGeometry.test.ts`, `routingDebug.test.ts`            |
+| `routingNodeGeometry` / `logRoutingRun`         | `components/edges/utils/routingDebug.ts`    | zuschaltbare Routing-Diagnose                   | `routeAllCables`                          | `routingDebug.test.ts`                                    |
 | `nodeLayoutSignature` / `edgeTopologySignature` | dto.                                        | inhaltsbasierte Invalidierung (R-9)             | `CableRouteSync`                          | dto.                                                      |
 | `classifyCollision`                             | `lib/routing/rules/collision.ts`            | Kollisionklassifikation (eine Quelle)           | `invariants`, `pathfinding`, Kostenmodell | `collision.test.ts`                                       |
 | `assignFanOut`                                  | `lib/routing/rules/portFanOut.ts`           | Lane-Vergabe am Port-Bündel                     | `routeAllCables`                          | `portFanOut.test.ts`                                      |
@@ -111,6 +114,10 @@ Kein Anspruch auf Vollständigkeit — es fehlen bewusst UI-Helfer und reine Ren
 | `migratePlannerPersisted`  | `store/slices/persistence.ts`      | defensive Migration              | `persistence.test.ts`      |
 | `sanitizeNodeDataBySchema` | `lib/nodeSchema.ts`                | Feld-Schema für `node.data`      | `nodeSchema.test.ts`       |
 | `plannerGraphSignature`    | `store/slices/graphInternals.ts`   | Cache-Signatur (Drop-Cache)      | `usePlannerStore*.test.ts` |
+| `sameElements`             | `store/slices/graphInternals.ts`   | identische Element-Liste?        | `changeNoise.test.ts`      |
+| `affectsStructure`         | dto.                               | `add`/`remove` in der Liste      | dto.                       |
+| `stripNodeMeasurement`     | `store/slices/persistence.ts`      | Messwerte raus (Rule R)          | `persistence.test.ts`      |
+| `withClassFlag`            | `planner/utils/classFlags.ts`      | identitätsstabile CSS-Marke      | `classFlags.test.ts`       |
 | `createDebouncedStorage`   | `store/storage.ts`                 | Schreib-Debounce 200 ms          | `storage.test.ts`          |
 | `newEntityId`              | `lib/id.ts`                        | IDs ohne Secure-Context          | `id.test.ts`               |
 | `captureGoldenMaster`      | `scripts/goldenmaster/pipeline.ts` | Golden-Master-Erfassung          | `goldenMaster.test.ts`     |

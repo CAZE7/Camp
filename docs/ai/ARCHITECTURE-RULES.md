@@ -168,6 +168,49 @@ ist `components/edges/utils/routableNodes.ts` und wird in `routeAllCables`,
   Render neu erzeugtes Objekt lässt React Flow neu messen und löst über die
   Signatur einen weiteren Routing-Lauf aus (Bug 2026-09-26).
 
+### Rule Q — Änderungen ohne Wirkung erzeugen keinen Zustand. **(erzwungen)**
+
+React Flow gibt aus `applyNodeChanges`/`applyEdgeChanges` **immer** ein neues
+Array zurück — auch bei Änderungslisten ohne Treffer (Mess-Meldungen des
+ResizeObserver für Knoten, die der Planner-Store nicht kennt, gehören dazu).
+Umgekehrt erzeugen reine Anzeige-Transformationen (Fokus, Strompfad,
+Domänen-Filter) neue Elementobjekte. Beides ist nicht harmlos:
+
+- Eine neue Array-Referenz lässt jeden `usePlannerStore((s) => s.nodes)`-Konsumenten
+  rendern (u. a. jede `CableEdge`) und baut die identitätsgebundenen Caches
+  (`getDerivedSystemState`, `getObstacleMap`, Routing-Nachbarschaft) neu auf.
+- Ein neues Knotenobjekt lässt React Flow den internen Knoten neu aufbauen, neu
+  **messen** und — über die Layout-Signatur — einen weiteren Routing-Lauf
+  starten (Bug 2026-09-26).
+
+Regel: Change-Handler schreiben bei unverändertem Inhalt gar nicht
+(`sameElements` + `affectsStructure` → `return state`, zustand überspringt dann
+die Benachrichtigung), und Darstellungs-Transformationen geben unveränderte
+Elemente **identisch** zurück (`components/planner/utils/classFlags.ts`
+`withClassFlag`, `nodeInteractionState.ts`, `backboneGroup.ts`). Änderungen mit
+`add`/`remove` bleiben immer strukturell.
+
+- Tests: `store/slices/changeNoise.test.ts`,
+  `components/planner/utils/classFlags.test.ts`,
+  `components/planner/utils/nodeInteractionState.test.ts`,
+  `components/planner/utils/backboneGroup.test.ts`,
+  `components/planner/FlowCanvas.test.tsx` (Prop-Identität).
+
+### Rule R — Messwerte sind kein Planinhalt. **(erzwungen)**
+
+`measured`/`width`/`height` sind das Ergebnis einer DOM-Messung, nicht Teil des
+Plans: sie hängen an Markup, Fonts und Gerät. Sie werden deshalb nicht
+persistiert (`store/slices/persistence.ts` → `stripNodeMeasurement` in
+`partialize` **und** `migratePlannerPersisted`; `initialWidth`/`initialHeight`
+bleiben) und nur an der Messgrenze gelesen
+(`components/edges/utils/nodeGeometry.ts`, `app/handleGeometry.test.ts`).
+Ausnahme mit Absicht: Knoten, deren Box aus der Plan-Geometrie **berechnet**
+wird (Darstellungs-Rahmen des Hauptstromkreises), tragen `width`/`height` als
+Rechenergebnis — sie dürfen nicht von einer Messung abhängen.
+
+- Tests: `store/slices/persistence.test.ts` → „Messwerte sind kein Planinhalt",
+  `components/planner/utils/backboneGroup.test.ts`, `app/handleGeometry.test.ts`.
+
 ### Rule N — Ungültige Daten sind kein gültiger Zustand. **(Konvention)**
 
 `lib/nodeSchema.ts` + `store/slices/persistence.ts`: bekannte Felder mit falschem Laufzeit-Typ
@@ -198,3 +241,5 @@ werden **entfernt** (nicht durch 0 ersetzt); unbekannte Felder bleiben erhalten.
 | L               | `npx vitest run lib/routing/rules/collision.test.ts` · `npx vitest run lib/routing/invariants.test.ts` |
 | F               | `npm run routing:audit` (Spalten I1–I3, fallback)                                                      |
 | P               | `npx vitest run components/edges/utils/routableNodes.test.ts components/edges/utils/routeAll.test.ts`  |
+| Q               | `npx vitest run store/slices/changeNoise.test.ts components/planner/utils/classFlags.test.ts`          |
+| R               | `npx vitest run store/slices/persistence.test.ts app/handleGeometry.test.ts`                           |

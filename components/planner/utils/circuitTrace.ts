@@ -2,6 +2,7 @@ import type { Edge, Node } from '@xyflow/react';
 import { AC_SYSTEM_VOLTAGE, calculateEdgeCurrent, getSystemVoltage } from '../../../lib/vde-standards';
 import { acCurrentA } from '../../../lib/autoWire/sizing';
 import { nodeLabelOf } from '../../../lib/safeText'; // AUDIT T1
+import { withClassFlag } from './classFlags';
 
 const ACTIVE = 'planner-trace-active';
 const DIM = 'planner-trace-dim';
@@ -153,8 +154,17 @@ export function traceCircuit(nodes: Node[], edges: Edge[], seed: TraceSeed): Cir
   };
 }
 
-const addClass = (className: string | undefined, flag: string) => [className, flag].filter(Boolean).join(' ');
-
+/**
+ * Markiert Strompfad (aktiv) und Rest (gedimmt) — mit **identitätsstabilen**
+ * Objekten: Unveränderte Elemente kommen unverändert zurück (Bug 2026-09-26,
+ * „object recreation“).
+ *
+ * Vorher entstand hier bei jedem Aufruf für jedes Element ein neues Objekt.
+ * Da `selectedTrace` an den Store-Arrays hängt, passierte das während eines
+ * Drags in jedem Frame — React Flow sah damit alle Knoten als geändert an,
+ * baute jeden internen Knoten neu auf und maß neu (Re-Routing über die
+ * Layout-Signatur). Die Klassen selbst sind unverändert.
+ */
 export function applyCircuitTrace<N extends Node, E extends Edge>(
   nodes: N[],
   edges: E[],
@@ -162,14 +172,8 @@ export function applyCircuitTrace<N extends Node, E extends Edge>(
 ): { nodes: N[]; edges: E[] } {
   if (!trace) return { nodes, edges };
   return {
-    nodes: nodes.map((node) => ({
-      ...node,
-      className: addClass(node.className, trace.nodeIds.has(node.id) ? ACTIVE : DIM),
-    })),
-    edges: edges.map((edge) => ({
-      ...edge,
-      className: addClass(edge.className, trace.edgeIds.has(edge.id) ? ACTIVE : DIM),
-    })),
+    nodes: nodes.map((node) => withClassFlag(node, trace.nodeIds.has(node.id) ? ACTIVE : DIM)),
+    edges: edges.map((edge) => withClassFlag(edge, trace.edgeIds.has(edge.id) ? ACTIVE : DIM)),
   };
 }
 
