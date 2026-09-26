@@ -26,6 +26,9 @@ type MockReactFlowProps = {
   connectOnClick?: boolean;
 };
 type MockControlsProps = { showInteractive?: boolean };
+/** Nodes, die der Canvas zuletzt an React Flow übergeben hat (Identität). */
+type CapturedNode = { id: string; type?: string; data?: Record<string, unknown> };
+let lastNodesProp: CapturedNode[] = [];
 /** DOM-DragEvent mit den Attributen, die der FlowCanvas-Handler liest. */
 type DragEventish = MouseEvent & {
   dataTransfer?: { dropEffect: string };
@@ -89,20 +92,23 @@ vi.mock('@xyflow/react', async () => {
       onDrop,
       className,
       connectOnClick,
-    }: MockReactFlowProps) => (
-      <div
-        data-testid="react-flow-mock"
-        data-nodes={JSON.stringify(nodes)}
-        data-edges={JSON.stringify(edges)}
-        data-connect-on-click={String(connectOnClick)}
-        className={className}
-        onDragOver={onDragOver}
-        onDrop={onDrop}
-      >
-        <div className="react-flow__pane" />
-        {children}
-      </div>
-    ),
+    }: MockReactFlowProps) => {
+      lastNodesProp = (nodes ?? []) as CapturedNode[];
+      return (
+        <div
+          data-testid="react-flow-mock"
+          data-nodes={JSON.stringify(nodes)}
+          data-edges={JSON.stringify(edges)}
+          data-connect-on-click={String(connectOnClick)}
+          className={className}
+          onDragOver={onDragOver}
+          onDrop={onDrop}
+        >
+          <div className="react-flow__pane" />
+          {children}
+        </div>
+      );
+    },
   };
 });
 
@@ -212,6 +218,35 @@ describe('FlowCanvas', () => {
   it('renders correctly', () => {
     render(<FlowCanvas />);
     expect(screen.getByTestId('react-flow-mock')).toBeInTheDocument();
+  });
+
+  /**
+   * Regression (Bug 2026-09-26, „Routing springt zwischen 0 und 20“): Der
+   * Rahmen des Hauptstromkreises muss als reine Darstellung an React Flow
+   * gehen (Marker für die Routing-Grenze) — und die Bauteile dürfen dabei
+   * nicht kopiert werden: Jede Kopie lässt React Flow den internen Knoten neu
+   * aufbauen und neu messen.
+   */
+  it('übergibt den Hauptstromkreis-Rahmen als Darstellung und kopiert keine Bauteile', () => {
+    const coreNodes = [
+      { id: 'battery', type: 'battery', position: { x: 0, y: 0 }, data: {} },
+      { id: 'shunt', type: 'shunt', position: { x: 320, y: 0 }, data: {} },
+    ];
+    vi.mocked(usePlannerStore).mockImplementation((selector) =>
+      selector({ ...defaultPlannerStoreState, nodes: coreNodes } as PlannerState)
+    );
+
+    render(<FlowCanvas />);
+
+    const frame = lastNodesProp.find((node) => node.id === '__planner-backbone-group');
+    expect(frame?.type).toBe('backboneGroup');
+    expect(frame?.data?.presentationOnly).toBe(true);
+
+    const passedComponents = lastNodesProp.filter((node) => node.id !== '__planner-backbone-group');
+    expect(passedComponents).toHaveLength(2);
+    // Identität, nicht Gleichheit: dieselben Objekte wie im Store.
+    expect(passedComponents[0]).toBe(coreNodes[0]);
+    expect(passedComponents[1]).toBe(coreNodes[1]);
   });
 
   it('renders domain filter chips in electric mode', () => {

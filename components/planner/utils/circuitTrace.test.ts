@@ -70,3 +70,29 @@ describe('circuit tracing', () => {
     expect(traceCircuit(nodes, edges, { nodeId: 'missing' })).toBeNull();
   });
 });
+
+/**
+ * Regression (Bug 2026-09-26, „object recreation“): `applyCircuitTrace` erzeugte
+ * für jedes Element ein neues Objekt — pro Render, und der Strompfad hängt an
+ * den Store-Arrays (also auch während eines Drags). React Flow sah damit alle
+ * Knoten als geändert und baute sie neu auf. Unveränderte Elemente müssen
+ * unverändert zurückkommen.
+ */
+describe('applyCircuitTrace — identitätsstabil', () => {
+  it('markiert alle Elemente, lässt aber die Objekte unangetastet, die schon passen', () => {
+    const trace = traceCircuit(nodes, edges, { nodeId: 'fridge' })!;
+    const first = applyCircuitTrace(nodes, edges, trace);
+    expect(first.nodes).not.toBe(nodes);
+
+    // Zweiter Durchlauf: alles ist bereits markiert ⇒ dieselben Objekte.
+    const second = applyCircuitTrace(first.nodes, first.edges, trace);
+    expect(second.nodes.every((node, index) => node === first.nodes[index])).toBe(true);
+    expect(second.edges.every((edge, index) => edge === first.edges[index])).toBe(true);
+  });
+
+  it('ohne Strompfad kommen dieselben Arrays zurück', () => {
+    const result = applyCircuitTrace(nodes, edges, null);
+    expect(result.nodes).toBe(nodes);
+    expect(result.edges).toBe(edges);
+  });
+});

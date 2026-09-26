@@ -9,6 +9,8 @@ import {
   type RoutableNode,
 } from './nodeGeometry';
 import { nodeObstacleMap } from './pathfinding';
+import { collectRoutableNodes } from './routableNodes';
+import { logRoutingRun, routingDebugEnabled } from './routingDebug';
 import { validateFinalRouting, type FinalValidationReport } from '../../../lib/routing/finalValidation';
 import type { NodeRect, RoutedEdge } from '../../../lib/routing/invariants';
 import { routeAllCables, type RouteEdgeRef } from './routeAll';
@@ -146,6 +148,11 @@ export function computeCableRouteFinalValidation(
   edges: readonly RouteEdgeRef[],
   routes: Map<string, PathResult>
 ): FinalValidationReport {
+  // Reine Darstellungs-Knoten sind kein Prüfgegenstand: Der Rahmen des
+  // Hauptstromkreises umschließt die Kern-Bauteile, jedes Kabel, das sie
+  // verlässt, schnitte seinen Rand — und hätte damit als „I1“ gezählt,
+  // obwohl kein Kabel durch ein Bauteil läuft (siehe `routableNodes.ts`).
+  nodes = collectRoutableNodes(nodes).routable;
   const routed: RoutedEdge[] = [];
   for (const edge of edges) {
     const route = routes.get(edge.id);
@@ -195,7 +202,13 @@ export function CableRouteSync() {
   const signature = useStore((s) => {
     // v12: `nodeLookup` ersetzt `nodeInternals` und liefert InternalNodes —
     // gemessene Maße unter `measured`, absolute Position unter `internals`.
-    const nodes = nodeLayoutSignature([...s.nodeLookup.values()]);
+    //
+    // Darstellungs-Knoten stehen NICHT in der Signatur: Sie beeinflussen kein
+    // Routing-Ergebnis, dürfen also auch keinen Lauf auslösen. Vorher war der
+    // Rahmen des Hauptstromkreises enthalten — solange React Flow ihn nach
+    // jedem Store-Schreibvorgang neu maß, löste allein das einen zweiten
+    // Routing-Lauf aus („0 → 20 → 0“).
+    const nodes = nodeLayoutSignature(collectRoutableNodes(s.nodeLookup.values()).routable);
     const edges = edgeTopologySignature(s.edges);
     return `${nodes}#${edges}`;
   });
@@ -210,7 +223,11 @@ export function CableRouteSync() {
       const state = store.getState();
       // InternalNodes statt `getNodes()` (in v12 nicht mehr am Store):
       // sie tragen gemessene Größe UND Handle-Rechtecke.
-      const nodes = [...state.nodeLookup.values()] as unknown as RoutableNode[];
+      const all = [...state.nodeLookup.values()] as unknown as RoutableNode[];
+      // Einmal an der Grenze trennen: nur Bauteile routen, Darstellung nur
+      // protokollieren (NEXT_PUBLIC_ROUTING_DEBUG=1, siehe routingDebug.ts).
+      const { routable: nodes } = collectRoutableNodes(all);
+      if (routingDebugEnabled()) logRoutingRun(all);
       const edgeRefs = state.edges as RouteEdgeRef[];
       const routes = routeAllCables(nodes, edgeRefs);
       publishCableRoutes(routes);

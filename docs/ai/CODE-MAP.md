@@ -73,8 +73,12 @@ CAMP
   `components/edges/utils/cableRouteStore.ts`, `components/planner/hooks/*`.
 - **Called By:** `components/PlannerInner.tsx`.
 - **Files:** `components/planner/FlowCanvas.tsx` (857 Zeilen), `components/planner/constants.ts`,
-  `components/planner/utils/layout.ts` (`getLayoutedElements`, Dagre-basiertes „Aufräumen“).
-- **Tests:** `components/planner/FlowCanvas.test.tsx`, `components/planner/utils/layout.test.ts`.
+  `components/planner/utils/layout.ts` (`getLayoutedElements`, Dagre-basiertes „Aufräumen“),
+  `components/planner/utils/classFlags.ts` (identitätsstabile CSS-Marken für Fokus,
+  Strompfad und Domänen-Filter — Rule Q),
+  `components/planner/utils/{focusHighlight,circuitTrace,domainFilter,nodeInteractionState}.ts`.
+- **Tests:** `components/planner/FlowCanvas.test.tsx`, `components/planner/utils/layout.test.ts`,
+  `components/planner/utils/classFlags.test.ts`.
 
 ### 1.3 Kabel- und Rohrdarstellung
 

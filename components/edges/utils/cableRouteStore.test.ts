@@ -12,10 +12,11 @@ import {
   publishCableRouteFinalValidation,
   ROUTE_THROTTLE_MS,
 } from './cableRouteStore';
+import { collectRoutableNodes } from './routableNodes';
 import type { RouteEdgeRef } from './routeAll';
 import type { RoutableNode } from './nodeGeometry';
 import type { PathResult } from './pathfinding';
-import { validateFinalRouting } from '../../../lib/routing/finalValidation';
+import { totalViolations, validateFinalRouting } from '../../../lib/routing/finalValidation';
 import type { NodeRect, RoutedEdge } from '../../../lib/routing/invariants';
 
 /**
@@ -240,6 +241,102 @@ describe('Final-Validation-Publikation (AUDIT F-07)', () => {
     const report = computeCableRouteFinalValidation(nodes, edges, routes);
     expect(report.status).toBe('INVALID');
     expect(report.counts).toEqual({ edgeNodeCollisions: 1, edgeEdgeOverlaps: 0, clearanceViolations: 0 });
+  });
+
+  /**
+   * Regression (Bug 2026-09-26): Der Status-Badge wechselte zwischen
+   * „Routing verifiziert“ (0) und „20 Zwänge nicht erreicht“. Ursache war der
+   * Hauptstromkreis-Rahmen: Er lief als Bauteil in `validateFinalRouting`, und
+   * ob er gerade gemessen war, hing an der React-Flow-Übernahme. Der Test
+   * friert beide Hälften des Befunds ein — der Rahmen ist kein Prüfgegenstand,
+   * und seine Messung ist keine Signaturänderung.
+   */
+  describe('Darstellungs-Knoten sind kein Routing-Input (Bug 2026-09-26)', () => {
+    // Wie im Produktivpfad: Die Größe steht als `style` (Geometrie aus den
+    // Kern-Bauteilen), die MESSUNG kommt von React Flow und kann fehlen.
+    const frameAt = (measured: boolean) => ({
+      id: '__planner-backbone-group',
+      type: 'backboneGroup',
+      position: { x: -44, y: -56 },
+      style: { width: 844, height: 392 },
+      ...(measured ? { measured: { width: 844, height: 392 } } : {}),
+      data: { label: 'Hauptstromkreis', presentationOnly: true },
+    });
+
+    /** Zwei Bauteile mit einer Leitung dazwischen — und einem Rahmen darum. */
+    const plan = () => ({
+      nodes: [
+        makeNode('a', 100, 100, 120, 80),
+        makeNode('b', 600, 100, 120, 80),
+      ] as unknown as RoutableNode[],
+      edges: [
+        { id: 'e1', source: 'a', target: 'b', sourceHandle: 'plus', targetHandle: 'plus', data: {} },
+      ] as unknown as RouteEdgeRef[],
+      routes: new Map<string, PathResult>([
+        [
+          'e1',
+          {
+            path: 'M 220 140 L 600 140',
+            waypoints: [
+              { x: 220, y: 140 },
+              { x: 600, y: 140 },
+            ],
+            labelX: 410,
+            labelY: 145,
+            offsetX: 0,
+            offsetY: 0,
+            length: 380,
+            bends: 0,
+            crossings: 0,
+            usedSearch: 'catalog',
+          },
+        ],
+      ]),
+    });
+
+    it('zählt den Rahmen nicht als Bauteil (I1 bleibt 0)', () => {
+      const { nodes, edges, routes } = plan();
+      const withoutFrame = computeCableRouteFinalValidation(nodes, edges, routes);
+      const withFrame = computeCableRouteFinalValidation(
+        [...nodes, frameAt(true) as unknown as RoutableNode],
+        edges,
+        routes
+      );
+
+      expect(withoutFrame.status).toBe('VALID');
+      // Vorher: der Rahmen umschließt beide Enden, die Leitung schneidet
+      // seinen Rand ⇒ I1 ≥ 1, obwohl kein Kabel durch ein Bauteil läuft.
+      expect(withFrame.counts).toEqual(withoutFrame.counts);
+      expect(withFrame.status).toBe('VALID');
+    });
+
+    it('Kontrollprobe: derselbe Kasten als Bauteil ist eine echte Verletzung', () => {
+      const { nodes, edges, routes } = plan();
+      const asComponent = {
+        ...frameAt(true),
+        type: 'conduit',
+        data: { label: 'Leerrohr' },
+      } as unknown as RoutableNode;
+
+      const report = computeCableRouteFinalValidation([...nodes, asComponent], edges, routes);
+
+      expect(report.status).toBe('INVALID');
+      expect(totalViolations(report.counts)).toBeGreaterThan(0);
+    });
+
+    it('die Messung des Rahmens erzeugt keine Signaturänderung (kein Routing-Lauf)', () => {
+      const { nodes } = plan();
+      const measured = [...nodes, frameAt(true) as unknown as RoutableNode];
+      const unmeasured = [...nodes, frameAt(false) as unknown as RoutableNode];
+
+      // Kontrollprobe: MIT Rahmen in der Eingabe unterscheiden sich die
+      // Signaturen — genau das löste früher den zweiten Routing-Lauf aus.
+      expect(nodeLayoutSignature(measured)).not.toBe(nodeLayoutSignature(unmeasured));
+
+      const signature = (input: RoutableNode[]) => nodeLayoutSignature(collectRoutableNodes(input).routable);
+      expect(signature(measured)).toBe(signature(unmeasured));
+      expect(signature(measured)).toBe(nodeLayoutSignature(nodes as unknown as RoutableNode[]));
+    });
   });
 
   // ROUTE-BUG-23: Der Report muss nicht nur zählen, WIE VIELE Züge scheitern,

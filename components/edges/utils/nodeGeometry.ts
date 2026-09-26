@@ -132,3 +132,35 @@ export function measuredHeight(node: GeometryNode): number | undefined {
 export function nodeHandleBounds(node: GeometryNode): HandleBoundsMap | undefined {
   return node.internals?.handleBounds ?? node.handleBounds ?? undefined;
 }
+
+/**
+ * Kompakte Leseansicht der Knoten-Geometrie (Diagnose, Logging).
+ *
+ * Liegt bewusst **in** der Messgrenze: `app/handleGeometry.test.ts` verbietet
+ * direkte `node.width`/`node.height`-Zugriffe außerhalb dieser Datei, weil die
+ * flachen Felder in React Flow 12 die GESETZTEN Maße sind. Ein Diagnose-Modul,
+ * das sie selbst liest, würde beim nächsten RF-Update still falsche Zahlen
+ * protokollieren — genau der Fehler, den die Regel verhindert.
+ */
+export type NodeGeometrySnapshot = {
+  id: string;
+  type: string | null;
+  x: number;
+  y: number;
+  /** Gemessene Breite oder `null` — `null` heißt „noch nicht gemessen“. */
+  width: number | null;
+  height: number | null;
+};
+
+export function nodeGeometrySnapshot(
+  node: GeometryNode & { id: string; type?: string | null }
+): NodeGeometrySnapshot {
+  return {
+    id: node.id,
+    type: node.type ?? null,
+    x: nodeOriginX(node),
+    y: nodeOriginY(node),
+    width: measuredWidth(node) ?? null,
+    height: measuredHeight(node) ?? null,
+  };
+}

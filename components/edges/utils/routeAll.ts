@@ -27,6 +27,7 @@ import {
 } from './pathfinding';
 import { polylineMidpoint, waypointsToPath, waypointsToPathWithHops, type PathHop } from './pathUtils';
 import { nudgeOrthogonalPaths } from './nudge';
+import { routableNodes } from './routableNodes';
 import {
   assignFanOut,
   portCross,
@@ -457,8 +458,15 @@ export function fanOutLanesForEdge(
 
 /**
  * Routet alle Kanten in einem Durchgang und schiebt parallele Trassen global.
+ *
+ * Die Grenze ist hier verbindlich: Reine Darstellungs-Knoten (z. B. der
+ * Hauptstromkreis-Rahmen) erreichen den Router gar nicht erst — sie sind
+ * kein Hindernis und keine Trassensperre. Das gilt für **jeden** Aufrufer
+ * (Canvas, Skripte, Tests), damit die Regel nicht an einer Aufrufstelle
+ * hängt; Herkunft und Begründung in `routableNodes.ts`.
  */
 export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Map<string, PathResult> {
+  nodes = routableNodes(nodes);
   edges = [...edges].sort((a, b) => a.id.localeCompare(b.id));
   const out = new Map<string, PathResult>();
   if (edges.length === 0) return out;
