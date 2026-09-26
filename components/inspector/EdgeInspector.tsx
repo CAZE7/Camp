@@ -5,13 +5,7 @@ import { useCableRoute } from '../edges/utils/cableRouteStore';
 import { PX_PER_METER } from '../../lib/units';
 import { ValidatingInput, COMMON_RULES } from '../ui/ValidatingInput';
 import { FUSE_MAP } from '../../lib/electrical';
-import {
-  FUSE_BREAKING_CAPACITY_A,
-  FUSE_TYPE_LABELS,
-  FUSE_TYPES,
-  isFuseType,
-  type FuseType,
-} from '../../lib/shortCircuit';
+import { FUSE_BREAKING_CAPACITY_A, FUSE_TYPE_LABELS, FUSE_TYPES, isFuseType } from '../../lib/shortCircuit';
 import {
   MCB_BREAKING_CAPACITY_KA_OPTIONS,
   UPSTREAM_IMPEDANCE_ASSUMPTION_OHM,
@@ -188,7 +182,7 @@ export function EdgeInspector({
           </label>
           <select
             id="fuse-type-select"
-            value={isFuseType(edge.data?.fuseType) ? (edge.data?.fuseType as FuseType) : ''}
+            value={isFuseType(edge.data?.fuseType) ? edge.data?.fuseType : ''}
             onChange={(e) => onChangeFuseType(edge.id, e.target.value === '' ? undefined : e.target.value)}
             className="rounded border border-border bg-background px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
           >

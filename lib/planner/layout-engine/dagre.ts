@@ -20,6 +20,12 @@ import { LAYOUT_TOKENS } from './tokens';
 export class DagreLayoutEngine implements PlannerLayoutEngine {
   readonly name = 'dagre';
 
+  // AUDIT T1 (require-await): bewusst `async` ohne `await`. Der Vertrag
+  // `PlannerLayoutEngine.layout` liefert ein Promise, weil die ELK-Engine
+  // wirklich asynchron rechnet; Dagre tut es nicht. `async` bleibt trotzdem:
+  // Ohne es würde ein Wurf hier synchron nach außen gehen statt als
+  // Ablehnung — und genau darauf verlassen sich die Aufrufer (try/await).
+  // eslint-disable-next-line @typescript-eslint/require-await
   async layout(request: LayoutRequest): Promise<LayoutResult> {
     const direction = request.direction ?? 'LR';
     const graph = new dagre.graphlib.Graph();

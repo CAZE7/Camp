@@ -2,7 +2,6 @@ import { sanitizeNodeDataBySchema } from '../../lib/nodeSchema'; // DOM-003
 import { createJSONStorage, type PersistOptions } from 'zustand/middleware';
 import { type Node, type Edge } from '@xyflow/react';
 import { plannerDebouncedStorage } from '../storage';
-import { type CableEdgeData } from '../../components/edges/CableEdge';
 import type { PlannerState } from './types';
 
 /**
@@ -32,8 +31,8 @@ function isNodeShape(value: unknown): value is Node {
     typeof pos !== 'object' ||
     typeof (pos as Record<string, unknown>).x !== 'number' ||
     typeof (pos as Record<string, unknown>).y !== 'number' ||
-    !Number.isFinite((pos as Record<string, unknown>).x as number) ||
-    !Number.isFinite((pos as Record<string, unknown>).y as number)
+    !Number.isFinite((pos as Record<string, unknown>).x) ||
+    !Number.isFinite((pos as Record<string, unknown>).y)
   ) {
     return false;
   }
@@ -69,7 +68,11 @@ const FORBIDDEN_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 function stripDangerousKeys<T>(value: T, depth = 0): T {
   if (depth > 8 || value === null || typeof value !== 'object') return value;
   if (Array.isArray(value)) {
-    return value.map((entry) => stripDangerousKeys(entry, depth + 1)) as unknown as T;
+    // AUDIT T1: `Array.isArray` verengt ein generisches `T` auf `T & any[]` —
+    // `.map()` lieferte damit `any` und die Rückgabe war untypt. Über
+    // `unknown[]` gelesen bleibt nachvollziehbar, was hier rausgeht.
+    const entries: unknown[] = value;
+    return entries.map((entry) => stripDangerousKeys(entry, depth + 1)) as unknown as T;
   }
   const out: Record<string, unknown> = {};
   for (const [key, entry] of Object.entries(value)) {
@@ -94,12 +97,12 @@ function stripDangerousKeys<T>(value: T, depth = 0): T {
  */
 function sanitizeNodeData<T extends Node>(node: T): T {
   if (!node.data || typeof node.data !== 'object') return { ...node, data: {} };
-  const { data } = sanitizeNodeDataBySchema(node.type, node.data as Record<string, unknown>);
-  return { ...node, data: data as T['data'] };
+  const { data } = sanitizeNodeDataBySchema(node.type, node.data);
+  return { ...node, data: data };
 }
 
 function sanitizeEdgeData<T extends Edge>(edge: T): T {
-  if (!edge.data || typeof edge.data !== 'object') return { ...edge, data: {} } as T;
+  if (!edge.data || typeof edge.data !== 'object') return { ...edge, data: {} };
   return edge;
 }
 
@@ -125,8 +128,7 @@ export function migratePlannerPersisted(persisted: unknown, version: number): Pa
   if (typeof p.guidedMode === 'boolean') safe.guidedMode = p.guidedMode;
   if (p.detailLevel === 'overview' || p.detailLevel === 'detail') safe.detailLevel = p.detailLevel;
   if (Array.isArray(p.nodes)) safe.nodes = p.nodes.filter(isNodeShape).map(sanitizeNodeData);
-  if (Array.isArray(p.edges))
-    safe.edges = p.edges.filter(isEdgeShape).map(sanitizeEdgeData) as Edge<CableEdgeData>[];
+  if (Array.isArray(p.edges)) safe.edges = p.edges.filter(isEdgeShape).map(sanitizeEdgeData);
   if (Array.isArray(p.waterNodes)) safe.waterNodes = p.waterNodes.filter(isNodeShape).map(sanitizeNodeData);
   if (Array.isArray(p.waterEdges)) safe.waterEdges = p.waterEdges.filter(isEdgeShape).map(sanitizeEdgeData);
 
@@ -141,7 +143,7 @@ export const persistOptions: PersistOptions<PlannerState, Partial<PlannerState>>
   name: 'werft-planner-v1',
   version: PLANNER_STORAGE_VERSION,
   storage: createJSONStorage(() => plannerDebouncedStorage),
-  migrate: (persisted, version) => migratePlannerPersisted(persisted, version) as PlannerState,
+  migrate: (persisted, version) => migratePlannerPersisted(persisted, version),
   partialize: (state) => ({
     viewMode: state.viewMode,
     season: state.season,

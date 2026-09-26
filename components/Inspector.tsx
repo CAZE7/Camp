@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { type Edge } from '@xyflow/react';
 import { Button } from '@/components/ui/button';
 import { MousePointerClick, Trash2 } from 'lucide-react';
@@ -176,9 +176,13 @@ const NodeInspector = ({
 }) => {
   const [label, setLabel] = useState(node.data?.label || '');
 
-  useEffect(() => {
+  // AUDIT T1 (react-hooks/set-state-in-effect): Neuer Knoten -> neues Label,
+  // zur Render-Zeit statt in einem zweiten Commit.
+  const [syncedNode, setSyncedNode] = useState(node);
+  if (syncedNode !== node) {
+    setSyncedNode(node);
     setLabel(node.data?.label || '');
-  }, [node]);
+  }
 
   const handleLabelChange = (e: React.ChangeEvent<HTMLInputElement>) => setLabel(e.target.value);
   const commitLabel = () => {

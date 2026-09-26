@@ -56,8 +56,17 @@ export type HandleSpec = {
   id: string;
   /** Richtung aus Sicht von React Flow. */
   type: 'source' | 'target';
-  /** Domäne des Anschlusses — Grundlage der AC/DC-Trennung in der UI. */
-  domain: Exclude<SpecDomain, 'Solar'>;
+  /**
+   * Domäne des Anschlusses — Grundlage der Domänen-Trennung beim Ziehen.
+   * 'Solar' ist seit AUDIT N2 ausdrücklich erlaubt: Panel-Anschlüsse führen
+   * MPP-Strom und sind weder 12-V- noch 230-V-Pole. Vorher durfte die
+   * Registry nur AC/DC/WATER deklarieren und musste Solarmodule als DC_12V
+   * eintragen — dieselbe dritte Kopie, die den gemessenen Drift
+   * (`handle=DC_12V` vs. `edge=Solar`) verursacht hat.
+   * `lib/domain/handleDomains.test.ts` vergleicht jeden Eintrag gegen
+   * `handleDomain`, eine vierte Kopie kann so nicht entstehen.
+   */
+  domain: SpecDomain;
 };
 
 export type ComponentSpec = {
@@ -134,7 +143,11 @@ export function assertValidSpec(spec: ComponentSpec): void {
     if (handle.type !== 'source' && handle.type !== 'target') {
       fail(`Anschluss "${handle.id}" hat unbekannten type`);
     }
-    if (handle.domain !== 'DC_12V' && handle.domain !== 'AC_230V' && handle.domain !== 'WATER') {
+    // Dieselbe Quelle wie die Spec-Domänen (VALID_DOMAINS). Vorher stand hier
+    // eine vierte, handgeschriebene Domänen-Liste ohne 'Solar' — sie ließ das
+    // Solarmodul beim Registrieren scheitern, sobald dessen Anschlüsse die
+    // Domäne korrekt deklarierten (AUDIT N2).
+    if (!VALID_DOMAINS.includes(handle.domain)) {
       fail(`Anschluss "${handle.id}" hat unbekannte Domäne`);
     }
   }

@@ -3,6 +3,7 @@
     "edges": [
       {
         "data": {
+          "autoWired": true,
           "crossSection": 70,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
@@ -19,6 +20,7 @@
       },
       {
         "data": {
+          "autoWired": true,
           "crossSection": 16,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
@@ -35,6 +37,7 @@
       },
       {
         "data": {
+          "autoWired": true,
           "crossSection": 16,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
@@ -49,6 +52,7 @@
       },
       {
         "data": {
+          "autoWired": true,
           "crossSection": 70,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
@@ -63,6 +67,7 @@
       },
       {
         "data": {
+          "autoWired": true,
           "crossSection": 70,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
@@ -77,6 +82,7 @@
       },
       {
         "data": {
+          "autoWired": true,
           "crossSection": 70,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
@@ -93,6 +99,7 @@
       },
       {
         "data": {
+          "autoWired": true,
           "crossSection": 70,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
@@ -107,6 +114,7 @@
       },
       {
         "data": {
+          "autoWired": true,
           "crossSection": 2.5,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
@@ -123,6 +131,7 @@
       },
       {
         "data": {
+          "autoWired": true,
           "crossSection": 2.5,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
@@ -137,6 +146,7 @@
       },
       {
         "data": {
+          "autoWired": true,
           "crossSection": 70,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
@@ -153,6 +163,7 @@
       },
       {
         "data": {
+          "autoWired": true,
           "crossSection": 70,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
@@ -167,6 +178,7 @@
       },
       {
         "data": {
+          "autoWired": true,
           "crossSection": 1.5,
           "edgeDomain": "AC_230V",
           "fuseSize": 7.5,
@@ -180,6 +192,7 @@
       },
       {
         "data": {
+          "autoWired": true,
           "crossSection": 2.5,
           "edgeDomain": "AC_230V",
           "fuseSize": 7.5,
@@ -193,6 +206,7 @@
       },
       {
         "data": {
+          "autoWired": true,
           "crossSection": 6,
           "edgeDomain": "AC_230V",
           "fuseSize": 25,

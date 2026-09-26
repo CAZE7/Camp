@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useMemo, useRef, useState, useEffect } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ReactFlow, Background, Controls, ReactFlowProvider, type Node } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
@@ -98,9 +98,13 @@ function DachPlanerInner() {
   );
 
   // Onboarding schließt automatisch, sobald der Nutzer platziert hat.
-  useEffect(() => {
+  // AUDIT T1 (react-hooks/set-state-in-effect): Der Abgleich läuft zur
+  // Render-Zeit — ein setState im Effekt erzwingt einen zweiten Commit.
+  const [syncedPlacementCount, setSyncedPlacementCount] = useState(placementCount);
+  if (syncedPlacementCount !== placementCount) {
+    setSyncedPlacementCount(placementCount);
     if (placementCount > 0) setOnboardingOpen(false);
-  }, [placementCount]);
+  }
 
   const addNode = useCallback(
     (type: 'roofSolar' | 'roofWindow') => {

@@ -3,9 +3,13 @@ import type { Edge, Node } from '@xyflow/react';
 import { applyNeighborhoodFocus, applyFocusHighlight } from './focusHighlight';
 
 describe('applyNeighborhoodFocus', () => {
-  const node = (id: string, className?: string): Node =>
-    ({ id, position: { x: 0, y: 0 }, data: {}, className }) as Node;
-  const edge = (id: string, source: string, target: string): Edge => ({ id, source, target }) as Edge;
+  const node = (id: string, className?: string): Node => ({
+    id,
+    position: { x: 0, y: 0 },
+    data: {},
+    className,
+  });
+  const edge = (id: string, source: string, target: string): Edge => ({ id, source, target });
 
   const nodes: Node[] = [node('bat', 'keep-me'), node('fuse'), node('lamp')];
   const edges: Edge[] = [edge('e1', 'bat', 'fuse'), edge('e2', 'fuse', 'lamp')];

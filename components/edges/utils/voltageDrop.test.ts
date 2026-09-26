@@ -94,7 +94,7 @@ describe('edgeDropInputs', () => {
         data: { edgeDomain: 'AC_230V' },
       },
     ] as Edge<CableEdgeData>[];
-    const inputs = edgeDropInputs(edges[0]!, nodes[0]!, nodes[1]!, nodes, edges);
+    const inputs = edgeDropInputs(edges[0]!, nodes[0], nodes[1], nodes, edges);
     // I = 2300 W / 230 V = 10 A; Länge 1 m (Pixelabstand 100 px → 1 m ohne Clamp)
     expect(inputs.isAC).toBe(true);
     expect(inputs.I).toBeCloseTo(10, 10);
@@ -139,7 +139,7 @@ describe('edgeDropInputs — Solar-Bewertung auf MPP-Basis (AUDIT ELE-007)', () 
         data: { length: 5, crossSection: 4, edgeDomain: 'Solar' as const },
       },
     ] as Edge<CableEdgeData>[];
-    const inputs = edgeDropInputs(edges[0]!, nodes[0]!, nodes[1]!, nodes, edges);
+    const inputs = edgeDropInputs(edges[0]!, nodes[0], nodes[1], nodes, edges);
     expect(inputs.isAC).toBe(false);
     expect(inputs.sysVoltage).toBe(18);
   });
@@ -160,7 +160,7 @@ describe('edgeDropInputs — Solar-Bewertung auf MPP-Basis (AUDIT ELE-007)', () 
         data: { length: 5, crossSection: 4, edgeDomain: 'Solar' as const },
       }) as Edge<CableEdgeData>;
     const edges = [mkEdge('e1', 's1', 's2'), mkEdge('e2', 's2', 'm1')];
-    const inputs = edgeDropInputs(edges[0]!, nodes[0]!, nodes[1]!, nodes, edges);
+    const inputs = edgeDropInputs(edges[0]!, nodes[0], nodes[1], nodes, edges);
     expect(inputs.sysVoltage).toBe(18);
   });
 
@@ -190,19 +190,18 @@ describe('AUDIT ELE-001 — die Anzeige rechnet mit dem VERLEGTEN Querschnitt', 
       data: { watts: 128, label: 'Verbraucher' },
     },
   ];
-  const edge = (data: Record<string, unknown>): Edge<CableEdgeData> =>
-    ({
-      id: 'e1',
-      source: 'bat',
-      target: 'load',
-      sourceHandle: 'plus',
-      targetHandle: 'plus',
-      data: { edgeDomain: 'DC_12V' as const, ...data },
-    }) as Edge<CableEdgeData>;
+  const edge = (data: Record<string, unknown>): Edge<CableEdgeData> => ({
+    id: 'e1',
+    source: 'bat',
+    target: 'load',
+    sourceHandle: 'plus',
+    targetHandle: 'plus',
+    data: { edgeDomain: 'DC_12V' as const, ...data },
+  });
 
   it('gespeicherter Querschnitt kleiner als die Empfehlung ⇒ Anzeige-Wert ist der gespeicherte', () => {
     const stored = edge({ length: 10, crossSection: 2.5 });
-    const inputs = edgeDropInputs(stored, nodes[0]!, nodes[1]!, nodes);
+    const inputs = edgeDropInputs(stored, nodes[0], nodes[1], nodes);
     // Der Kern des Befunds: hier stand früher die EMPFEHLUNG (max aus beiden).
     expect(inputs.crossSection).toBe(stored.data!.crossSection);
     expect(inputs.recommendedCrossSection).toBeGreaterThan(2.5);
@@ -212,13 +211,13 @@ describe('AUDIT ELE-001 — die Anzeige rechnet mit dem VERLEGTEN Querschnitt', 
   });
 
   it('ohne gespeicherten Wert fällt die Anzeige auf die Empfehlung zurück (kein NaN)', () => {
-    const inputs = edgeDropInputs(edge({ length: 10 }), nodes[0]!, nodes[1]!, nodes);
+    const inputs = edgeDropInputs(edge({ length: 10 }), nodes[0], nodes[1], nodes);
     expect(inputs.crossSection).toBe(inputs.recommendedCrossSection);
     expect(inputs.undersized).toBe(false);
   });
 
   it('ausreichend gespeicherter Querschnitt gilt weder als unterdimensioniert noch als Fehler', () => {
-    const inputs = edgeDropInputs(edge({ length: 2, crossSection: 10 }), nodes[0]!, nodes[1]!, nodes);
+    const inputs = edgeDropInputs(edge({ length: 2, crossSection: 10 }), nodes[0], nodes[1], nodes);
     expect(inputs.crossSection).toBe(10);
     expect(inputs.undersized).toBe(false);
     expect(hasVoltageDropError({ ...inputs, cumulativeDropVolts: 0 }).hasDropError).toBe(false);

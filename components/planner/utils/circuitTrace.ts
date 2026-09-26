@@ -1,6 +1,7 @@
 import type { Edge, Node } from '@xyflow/react';
 import { AC_SYSTEM_VOLTAGE, calculateEdgeCurrent, getSystemVoltage } from '../../../lib/vde-standards';
 import { acCurrentA } from '../../../lib/autoWire/sizing';
+import { nodeLabelOf } from '../../../lib/safeText'; // AUDIT T1
 
 const ACTIVE = 'planner-trace-active';
 const DIM = 'planner-trace-dim';
@@ -193,7 +194,7 @@ export function circuitTraceLabel(
   const nodeMap = new Map(nodes.map((node) => [node.id, node]));
   const names = trace.pathNodeIds.map((id) => {
     const node = nodeMap.get(id);
-    return String(node?.data?.label || node?.type || 'Bauteil');
+    return nodeLabelOf(node, 'Bauteil');
   });
   const edge = trace.referenceEdge;
   const source = edge ? nodeMap.get(edge.source) : undefined;

@@ -30,7 +30,7 @@ describe('useDachNodes', () => {
     mockSetCalculatedSolarWatts = vi.fn();
     vi.mocked(useAppStore).mockReturnValue({
       setCalculatedSolarWatts: mockSetCalculatedSolarWatts,
-    } as unknown as ReturnType<typeof useAppStore>);
+    });
   });
 
   it('should initialize with background and one solar node', () => {

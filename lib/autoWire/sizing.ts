@@ -358,7 +358,7 @@ export function acCurrentA(
     let total: Watts = ZERO_WATTS;
     for (const n of nodes) {
       if (n.type !== 'consumer230v') continue;
-      total = addWatts(total, quantityOr((n.data as Record<string, unknown>)?.watts, watts, ZERO_WATTS));
+      total = addWatts(total, quantityOr(n.data?.watts, watts, ZERO_WATTS));
     }
     return total;
   };
@@ -391,7 +391,7 @@ export function acCurrentA(
     for (const id of visited) {
       const node = byId.get(id);
       if (node?.type === 'consumer230v') {
-        total = addWatts(total, quantityOr((node.data as Record<string, unknown>)?.watts, watts, ZERO_WATTS));
+        total = addWatts(total, quantityOr(node.data?.watts, watts, ZERO_WATTS));
       }
     }
     return total;
@@ -411,12 +411,7 @@ export function acCurrentA(
     // Die AC-Zuleitung (Landstrom→ac_in bzw. WR→Gerät) trägt den tatsächlichen
     // 230-V-Laststrom. Bei mehreren 230-V-Verbrauchern ist der WR nur Nennlast;
     // die Summe der Geräte ist maßgeblich, sonst wird die Leitung zu dünn.
-    const ownLoad = quantityOr(
-      (inverter.data as Record<string, unknown>)?.continuousPower ||
-        (inverter.data as Record<string, unknown>)?.watts,
-      watts,
-      ZERO_WATTS
-    );
+    const ownLoad = quantityOr(inverter.data?.continuousPower || inverter.data?.watts, watts, ZERO_WATTS);
     const connectedLoad = acIslandLoad(inverter);
     const load = ownLoad > connectedLoad ? ownLoad : connectedLoad;
     return currentFromPower(load, AC_VOLTAGE);
@@ -442,7 +437,7 @@ export function acCurrentA(
  */
 function shoreSupplyRating(node: Node | undefined): Amps | undefined {
   if (!node || node.type !== 'shorePower') return undefined;
-  const rating = Number((node.data as Record<string, unknown>)?.rating);
+  const rating = Number(node.data?.rating);
   if (!Number.isFinite(rating) || rating <= 0) return undefined;
   return amps(rating);
 }

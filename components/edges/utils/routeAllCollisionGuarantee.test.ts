@@ -19,8 +19,14 @@ import type { NodeRect, RoutedEdge } from '../../../lib/routing/invariants';
  *    derselben Funktion, mit der die App den Report im Render mitführt.
  */
 
-const makeNode = (id: string, x: number, y: number): Node =>
-  ({ id, type: 'consumer', position: { x, y }, width: 192, height: 120, data: { label: id } }) as Node;
+const makeNode = (id: string, x: number, y: number): Node => ({
+  id,
+  type: 'consumer',
+  position: { x, y },
+  width: 192,
+  height: 120,
+  data: { label: id },
+});
 
 const finalReport = (
   nodes: Node[],

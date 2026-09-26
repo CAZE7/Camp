@@ -31,7 +31,7 @@ const CROSSINGS_TOLERANCE = 1;
 describe('ELK-A/B auf den Golden-Master-Plänen', () => {
   for (const [name, plan] of Object.entries(GOLDEN_PLANS)) {
     it(`${name}: Kreuzungen ≤ Bestand + ${CROSSINGS_TOLERANCE}, Bends ≤ Bestand + ${BENDS_TOLERANCE}`, async () => {
-      const wired = performAutoWiring(plan.nodes, plan.edges as never[]);
+      const wired = performAutoWiring(plan.nodes, plan.edges);
       expect(wired).not.toBeNull();
       const nodes = wired!.nodes as Node[];
       const edges = wired!.edges as RouteEdgeRef[];
@@ -51,7 +51,7 @@ describe('ELK-A/B auf den Golden-Master-Plänen', () => {
     let legacyBends = 0;
     let elkBends = 0;
     for (const plan of Object.values(GOLDEN_PLANS)) {
-      const wired = performAutoWiring(plan.nodes, plan.edges as never[]);
+      const wired = performAutoWiring(plan.nodes, plan.edges);
       const nodes = wired!.nodes as Node[];
       const edges = wired!.edges as RouteEdgeRef[];
       const legacy = measureLegacy(routeAllCables, nodes, edges);

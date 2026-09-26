@@ -74,12 +74,12 @@ export function useInlineNodeEditing<K extends string = string>(
   const handleBlur = useCallback(() => {
     if (!editingField) return;
     const field: string = editingField;
-    const isText = (textFields as readonly string[]).includes(field);
+    const isText = textFields.includes(field);
 
     let finalValue: string | number = tempValue;
     if (!isText) {
       const parsed = Number(tempValue);
-      const allowsZero = (zeroAllowedFields as readonly string[]).includes(field);
+      const allowsZero = zeroAllowedFields.includes(field);
       if (!Number.isFinite(parsed) || parsed < 0 || (!allowsZero && parsed === 0)) {
         dispatchInputError(allowsZero ? 'Gib eine Zahl ab 0 ein.' : 'Der Wert muss größer als 0 sein.');
         setEditingField(null);

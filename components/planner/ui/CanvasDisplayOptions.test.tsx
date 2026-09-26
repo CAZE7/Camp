@@ -34,15 +34,20 @@ describe('CanvasDisplayOptions', () => {
   });
 
   it('uses a deliberate, 44 px popover trigger on narrow canvases', async () => {
-    const originalMatchMedia = window.matchMedia;
-    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+    // AUDIT T1: `const x = window.matchMedia` ist eine ungebundene
+    // Methoden-Referenz; spyOn ersetzt dieselbe Methode nachvollziehbar und
+    // stellt sie am Ende selbst zurück.
+    const matchMediaStub = (query: string) => ({
       matches: query === '(max-width: 1279px)',
       media: query,
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
       addListener: vi.fn(),
       removeListener: vi.fn(),
-    }));
+    });
+    const matchMediaSpy = vi
+      .spyOn(window, 'matchMedia')
+      .mockImplementation(matchMediaStub as unknown as typeof window.matchMedia);
     const handlers = props();
     render(<CanvasDisplayOptions {...handlers} />);
 
@@ -57,7 +62,7 @@ describe('CanvasDisplayOptions', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Ansichtsoptionen schließen' }));
     expect(trigger).toHaveAttribute('aria-expanded', 'false');
-    window.matchMedia = originalMatchMedia;
+    matchMediaSpy.mockRestore();
   });
 
   /**

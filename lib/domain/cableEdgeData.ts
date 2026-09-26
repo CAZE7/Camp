@@ -69,4 +69,18 @@ export type CableEdgeData = {
    * Produkts — schlägt die Bauform-Tabelle (AUDIT DOM-002).
    */
   fuseBreakingCapacity?: number;
+  /**
+   * Herkunft der Kante (AUDIT D2): `true` = von `performAutoWiring` erzeugt,
+   * `false` = vom Nutzer gezogen. AutoWire ersetzt bei jedem Lauf seine
+   * eigenen Kanten (Idempotenz) und behält Nutzerkanten — diese Entscheidung
+   * hing vorher am ID-Präfix `e-auto-`, also an einem STRING: eine Nutzerkante
+   * mit einer zufällig so beginnenden ID (Import, Hand-Edit, ältere Tools)
+   * wurde still gelöscht und durch zwei Auto-Kanten ersetzt.
+   *
+   * Das Flag ist die Autorität. Der Präfix-Vergleich bleibt als ausdrücklich
+   * dokumentierter Migrations-Fallback für Pläne, die vor dem Flag gespeichert
+   * wurden (`isAutoWiredEdge` in lib/autoWire/primitives.ts) — er greift nur,
+   * solange das Flag fehlt, und der Schreibpfad setzt es seitdem immer.
+   */
+  autoWired?: boolean;
 };

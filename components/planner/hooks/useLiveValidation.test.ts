@@ -1,6 +1,7 @@
 import { renderHook } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { useLiveValidation } from './useLiveValidation';
+import { textContaining } from '../../../test-helpers/matchers'; // AUDIT T1
 import { type Node, type Edge } from '@xyflow/react';
 import { type CableEdgeData } from '../../edges/CableEdge';
 
@@ -46,7 +47,7 @@ describe('useLiveValidation', () => {
       const edges: Edge<CableEdgeData>[] = [
         { id: 'e1-2', source: '1', target: '2', sourceHandle: 'plus', targetHandle: 'plus' },
       ];
-      const { result } = renderHook(() => useLiveValidation(nodes as Node[], edges as never));
+      const { result } = renderHook(() => useLiveValidation(nodes, edges as never));
       expect(result.current.some((w) => w.id.startsWith('battery-parallel-chemistry'))).toBe(false);
     });
 
@@ -91,7 +92,7 @@ describe('useLiveValidation', () => {
           category: 'safety',
           type: 'critical',
           ruleId: 'ELE-007-voc-window',
-          measuredValue: expect.stringContaining('51 V'),
+          measuredValue: textContaining('51 V'),
         })
       );
     });
@@ -169,7 +170,7 @@ describe('useLiveValidation', () => {
           id: 'missing-fuse-e1-2',
           category: 'safety',
           type: 'critical',
-          message: expect.stringContaining('Quellschutz fehlt'),
+          message: textContaining('Quellschutz fehlt'),
         })
       );
     });
@@ -273,7 +274,7 @@ describe('useLiveValidation', () => {
           id: 'solar-overload',
           category: 'estimation',
           type: 'warning',
-          message: expect.stringContaining('Solarregler unterdimensioniert'),
+          message: textContaining('Solarregler unterdimensioniert'),
         })
       );
     });
@@ -310,7 +311,7 @@ describe('useLiveValidation', () => {
           id: 'battery-capacity',
           category: 'estimation',
           type: 'info',
-          message: expect.stringContaining('Deine Batterie könnte knapp werden'),
+          message: textContaining('Deine Batterie könnte knapp werden'),
         })
       );
     });
@@ -339,7 +340,7 @@ describe('useLiveValidation', () => {
           id: 'battery-capacity',
           category: 'estimation',
           type: 'info',
-          message: expect.stringContaining('Deine Batterie könnte knapp werden'),
+          message: textContaining('Deine Batterie könnte knapp werden'),
         })
       );
     });
@@ -547,8 +548,12 @@ describe('useLiveValidation', () => {
   });
 
   describe('Missing coverage: verpolte Batterie, Mischspannung, Inverter-RCD', () => {
-    const node = (id: string, type: string, data: Record<string, unknown>): Node =>
-      ({ id, type, position: { x: 0, y: 0 }, data }) as Node;
+    const node = (id: string, type: string, data: Record<string, unknown>): Node => ({
+      id,
+      type,
+      position: { x: 0, y: 0 },
+      data,
+    });
 
     it('warnt bei verpolter Batterie (ELE-003)', () => {
       const nodes = [node('b1', 'battery', {}), node('b2', 'battery', {})];

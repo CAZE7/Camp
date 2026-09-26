@@ -23,7 +23,7 @@ describe('ValidatingNumberInput', () => {
   it('calls onChange with a number when valid numerical input is entered', () => {
     const onChange = vi.fn();
     render(<ValidatingNumberInput value={10} onChange={onChange} aria-label="num-input" />);
-    const input = screen.getByLabelText('num-input');
+    const input = screen.getByLabelText('num-input') as HTMLInputElement;
 
     fireEvent.change(input, { target: { value: '25' } });
     expect(onChange).toHaveBeenCalledWith(25);
@@ -32,7 +32,7 @@ describe('ValidatingNumberInput', () => {
   it('calls onChange with null when input is cleared', () => {
     const onChange = vi.fn();
     render(<ValidatingNumberInput value={10} onChange={onChange} aria-label="num-input" />);
-    const input = screen.getByLabelText('num-input');
+    const input = screen.getByLabelText('num-input') as HTMLInputElement;
 
     fireEvent.change(input, { target: { value: '' } });
     expect(onChange).toHaveBeenCalledWith(null);
@@ -50,7 +50,7 @@ describe('ValidatingNumberInput', () => {
       />
     );
 
-    const input = screen.getByLabelText('num-input');
+    const input = screen.getByLabelText('num-input') as HTMLInputElement;
     expect(input).toHaveAttribute('aria-invalid', 'true');
     expect(input).toHaveAttribute('aria-errormessage', 'test-field-error');
 
@@ -64,7 +64,7 @@ describe('ValidatingNumberInput', () => {
       <ValidatingNumberInput id="test-field" value={5} required onChange={() => {}} aria-label="num-input" />
     );
 
-    const input = screen.getByLabelText('num-input');
+    const input = screen.getByLabelText('num-input') as HTMLInputElement;
     expect(input).toHaveAttribute('aria-invalid', 'false');
     expect(input).not.toHaveAttribute('aria-errormessage');
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
@@ -84,7 +84,7 @@ describe('ValidatingNumberInput', () => {
       />
     );
 
-    const input = screen.getByLabelText('num-input');
+    const input = screen.getByLabelText('num-input') as HTMLInputElement;
 
     fireEvent.focus(input);
     expect(onFocus).toHaveBeenCalledTimes(1);

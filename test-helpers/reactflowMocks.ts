@@ -33,8 +33,7 @@ export type MockNodeResizerProps = {
  * Streut die Rest-Props eines gemockten reactflow-Elements auf ein <div>.
  * Der Cast sitzt zentral an einer Stelle statt `as any` pro Testdatei.
  */
-export const asDivProps = (props: object): HTMLAttributes<HTMLDivElement> =>
-  props as unknown as HTMLAttributes<HTMLDivElement>;
+export const asDivProps = (props: object): HTMLAttributes<HTMLDivElement> => props;
 
 /**
  * Zustand-Hook-Mock: leitet Selectoren gegen einen (partiellen) State weiter —
@@ -45,3 +44,17 @@ export const withSelector =
   <S>(state: S) =>
   <T>(selector: (s: S) => T): T =>
     selector(state);
+
+/**
+ * Props, die `BaseEdge` tatsächlich bekommt (AUDIT T1): Die Kanten-Mocks
+ * destructurierten sie ohne Typ — vier `any`, die untypt in ein gemocktes
+ * `<path>` flossen. Dieselbe Idee wie `MockHandleProps`: Der Mock beschreibt
+ * die echte API, damit ein Drift auffällt.
+ */
+export type MockBaseEdgeProps = {
+  id?: string;
+  path?: string;
+  style?: CSSProperties;
+  markerEnd?: string;
+  interactionWidth?: number;
+};

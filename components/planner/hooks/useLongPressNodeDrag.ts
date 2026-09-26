@@ -18,11 +18,19 @@ export function useLongPressNodeDrag(enabled: boolean): string | null {
   const [armedNodeId, setArmedNodeId] = useState<string | null>(null);
   const disarmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
+  // AUDIT T1 (react-hooks/set-state-in-effect): „Deaktiviert -> Node wieder
+  // sperren“ läuft zur Render-Zeit; der Effekt kümmert sich nur noch um die
+  // Listener und steigt bei !enabled unverändert aus.
+  const [syncedEnabled, setSyncedEnabled] = useState(enabled);
+  if (syncedEnabled !== enabled) {
+    setSyncedEnabled(enabled);
     if (!enabled) {
       setArmedNodeId(null);
-      return;
     }
+  }
+
+  useEffect(() => {
+    if (!enabled) return;
 
     const disarmLater = () => {
       if (disarmTimerRef.current) clearTimeout(disarmTimerRef.current);
@@ -43,9 +51,9 @@ export function useLongPressNodeDrag(enabled: boolean): string | null {
       );
     };
 
-    window.addEventListener('planner-arm-node', onArmFromMenu as EventListener);
+    window.addEventListener('planner-arm-node', onArmFromMenu);
     return () => {
-      window.removeEventListener('planner-arm-node', onArmFromMenu as EventListener);
+      window.removeEventListener('planner-arm-node', onArmFromMenu);
       if (disarmTimerRef.current) clearTimeout(disarmTimerRef.current);
     };
   }, [enabled]);

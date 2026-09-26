@@ -9,9 +9,11 @@ const ThrowingChild = ({ message }: { message: string }): never => {
 describe('ErrorBoundary', () => {
   // React loggt abgefangene Fehler auf die Konsole — das ist hier gewollt,
   // also nur im Test stummschalten, damit die Ausgabe lesbar bleibt.
-  let consoleError: ReturnType<typeof vi.spyOn>;
+  // AUDIT T1: `ReturnType<typeof vi.spyOn>` ist `any` — der Spy war untypt.
+  // Auf Modul-Ebene angelegt, trägt er seinen Typ aus der Inferenz.
+  const consoleError = vi.spyOn(console, 'error');
   beforeEach(() => {
-    consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    consoleError.mockImplementation(() => {});
   });
   afterEach(() => {
     consoleError.mockRestore();

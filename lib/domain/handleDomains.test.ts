@@ -24,7 +24,7 @@ describe('Domänen: eine Autorität, drei Verbraucher (AUDIT ELE-007)', () => {
     for (const component of BUILTIN_COMPONENT_SPECS) {
       for (const handle of component.handles) {
         const expected = handle.domain;
-        if (expected !== 'DC_12V' && expected !== 'AC_230V') continue; // Wasser/Leerrohr
+        if (expected === 'WATER') continue; // Wasser-Handles haben keine AC/DC/Solar-Domäne
         const actual = handleDomain(component.id, handle.id, handle.type);
         if (actual !== expected) {
           mismatches.push(
@@ -41,13 +41,12 @@ describe('Domänen: eine Autorität, drei Verbraucher (AUDIT ELE-007)', () => {
   });
 
   it('getHandleDomain und getEdgeDomain antworten rollenbewusst identisch', () => {
-    // Solar-Knoten sind die dokumentierte Ausnahme: ihre DOMÄNE ist 'Solar'
-    // (eigene Kategorie), nicht AC/DC. getHandleDomain kennt nur AC/DC und
-    // liefert dort konservativ DC — die Kantenfunktion hat Vorrang (eigener
-    // Test unten).
-    const nodeTypes = Array.from(
-      new Set(BUILTIN_COMPONENT_SPECS.map((c) => c.id).filter((id) => !SOLAR_NODE_TYPES.includes(id)))
-    );
+    // AUDIT N2: Solar war hier die „dokumentierte Ausnahme" — getHandleDomain
+    // kannte nur AC/DC und antwortete für ein Panel DC_12V, während
+    // getEdgeDomain dieselbe Kante als 'Solar' einstufte. Genau dieser Drift
+    // (gemessen: `solar/plus/source → handle=DC_12V, edge=Solar`) ist behoben,
+    // deshalb läuft die Paritätsprüfung jetzt über ALLE Typen inklusive Solar.
+    const nodeTypes = Array.from(new Set(BUILTIN_COMPONENT_SPECS.map((c) => c.id)));
     const handleIds = Array.from(
       new Set(
         BUILTIN_COMPONENT_SPECS.flatMap((c) => c.handles.map((h) => h.id)).concat([
@@ -100,6 +99,25 @@ describe('Domänen: eine Autorität, drei Verbraucher (AUDIT ELE-007)', () => {
   it('Solar hat Vorrang vor AC/DC (Kantenebene)', () => {
     expect(getEdgeDomain('solar', 'mpptController', 'plus', 'plus')).toBe('Solar');
     expect(getEdgeDomain('roofSolar', 'battery', 'plus', 'plus')).toBe('Solar');
+  });
+
+  // ── AUDIT N2: Handle-Ebene und Kanten-Ebene müssen dieselbe Grundlage nennen
+  it('Solar ist jetzt auch auf HANDLE-Ebene Solar (Parität zur Kantenebene)', () => {
+    for (const solarType of SOLAR_NODE_TYPES) {
+      for (const handleId of ['plus', 'minus']) {
+        for (const role of ['source', 'target'] as const) {
+          expect(
+            getHandleDomain(solarType, handleId, role),
+            `${solarType}.${handleId} als ${role}: Handle- und Kanten-Ebene dürfen nicht abweichen`
+          ).toBe('Solar');
+        }
+      }
+    }
+    // Die Kante eines Panels zum Laderegler bleibt 'Solar' — die Brücke ins
+    // DC-Netz entscheidet die Fachregel (lib/connectionRules.ts), nicht die
+    // Domänen-Tabelle.
+    expect(getEdgeDomain('solar', 'mpptController', 'plus', 'plus')).toBe('Solar');
+    expect(getHandleDomain('mpptController', 'plus', 'target')).toBe('DC_12V');
   });
 });
 

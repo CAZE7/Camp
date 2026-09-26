@@ -4,8 +4,7 @@ import { usePlannerStore, getDerivedSystemState } from '../../store/usePlannerSt
 import { useShallow } from 'zustand/react/shallow';
 import { edgeLabelNudge } from './utils/pathUtils';
 import { findCablePath, nodesToObstacles } from './utils/pathfinding';
-import type { RoutableNode } from './utils/nodeGeometry';
-import { fanOutLanesForEdge, type RouteEdgeRef } from './utils/routeAll';
+import { fanOutLanesForEdge } from './utils/routeAll';
 import { useCableRoute } from './utils/cableRouteStore';
 import { crossingSegmentsNear } from './utils/routingCache';
 import { cableStrokeWidth } from './utils/cableStyle';
@@ -428,7 +427,7 @@ const CableEdge = function ({
   const crossingSegments = useMemo(() => {
     return crossingSegmentsNear(
       allNodes,
-      siblingEdges as unknown as { id: string; source: string; target: string }[],
+      siblingEdges,
       { id, source, target },
       {
         x: Math.min(sourceX, targetX) - 120,
@@ -476,11 +475,7 @@ const CableEdge = function ({
     // Bis der globale Pass publiziert ist (≤ ROUTE_THROTTLE_MS), fährt die
     // Einzelfall-Route damit dasselbe Bündelbild wie das Endergebnis: kein
     // kurzes Aufblitzen überlagerter Trassen beim Anlegen neuer Kanten.
-    const lanes = fanOutLanesForEdge(
-      getNodes() as unknown as RoutableNode[],
-      siblingEdges as unknown as RouteEdgeRef[],
-      id
-    );
+    const lanes = fanOutLanesForEdge(getNodes(), siblingEdges, id);
     const routed = findCablePath({
       sourceX,
       sourceY,

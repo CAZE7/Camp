@@ -7,7 +7,6 @@ import {
   segmentCrossesRect,
   waypointsToSegments,
   OBSTACLE_MARGIN,
-  type OrthogonalPathInput,
   type Point,
   type Rect,
 } from './orthogonalRouting';
@@ -90,7 +89,7 @@ describe('R1–R4 — Invarianten über alle 25 Szenarien', () => {
 
   for (const scenario of ROUTING_SCENARIOS) {
     describe(`${scenario.id} — ${scenario.title}`, () => {
-      const input = deepFreeze({ ...scenario.input }) as OrthogonalPathInput;
+      const input = deepFreeze({ ...scenario.input });
       const { waypoints } = orthogonalWaypoints(input);
 
       it('R1: beginnt und endet exakt an den Anschlusspunkten', () => {
@@ -155,7 +154,7 @@ describe('R1–R4 — Invarianten über alle 25 Szenarien', () => {
 
       it('R6: die Eingabe bleibt unverändert', () => {
         const snapshot = JSON.stringify(scenario.input);
-        buildOrthogonalPath(deepFreeze({ ...scenario.input }) as OrthogonalPathInput);
+        buildOrthogonalPath(deepFreeze({ ...scenario.input }));
         expect(JSON.stringify(scenario.input)).toBe(snapshot);
       });
 

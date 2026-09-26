@@ -26,11 +26,15 @@ import type { NodeRect, RoutedEdge } from '../../../lib/routing/invariants';
  * ließ sie unverändert und die Kabel blieben auf der alten Trasse.
  */
 
-const makeNode = (id: string, x: number, y: number, width = 192, height = 120): Node =>
-  ({ id, position: { x, y }, width, height, data: {} }) as Node;
+const makeNode = (id: string, x: number, y: number, width = 192, height = 120): Node => ({
+  id,
+  position: { x, y },
+  width,
+  height,
+  data: {},
+});
 
-const makeEdge = (id: string, source: string, target: string): Edge =>
-  ({ id, source, target, data: {} }) as Edge;
+const makeEdge = (id: string, source: string, target: string): Edge => ({ id, source, target, data: {} });
 
 const nodeSet = (nodes: Node[]): Node[] => nodes;
 
@@ -82,11 +86,11 @@ describe('Invalidierungs-Signaturen (R-9)', () => {
 
   it('Handles fließen in die Kantensignatur ein', () => {
     const plain = edgeTopologySignature([
-      { id: 'e1', source: 'a', target: 'b', sourceHandle: null, targetHandle: null } as Edge,
+      { id: 'e1', source: 'a', target: 'b', sourceHandle: null, targetHandle: null },
     ]);
     const handled = edgeTopologySignature([makeEdge('e1', 'a', 'b')]);
     const withHandle = edgeTopologySignature([
-      { id: 'e1', source: 'a', target: 'b', sourceHandle: 'plus', targetHandle: 'plus' } as Edge,
+      { id: 'e1', source: 'a', target: 'b', sourceHandle: 'plus', targetHandle: 'plus' },
     ]);
     expect(plain).not.toBe(withHandle);
     expect(handled).not.toBe(withHandle);

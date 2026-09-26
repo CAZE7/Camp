@@ -1,5 +1,5 @@
 import { COPPER_CONDUCTIVITY_MS_PER_MM2, COPPER_RESISTIVITY_OHM_MM2_PER_M } from './materials';
-import { SOLAR_NODE_TYPES, edgeDomainOf, handleDomain } from './domain/handleDomains';
+import { edgeDomainOf, handleDomain, type HandleDomainValue } from './domain/handleDomains';
 
 export const VDE_SIZES = [1.5, 2.5, 4.0, 6.0, 10.0, 16.0, 25.0, 35.0, 50.0, 70.0];
 
@@ -274,7 +274,7 @@ export const assessCableSelection = (
   const recommendedCrossSection = calculateCrossSection(I, length, undefined, electricalDomain);
   const hasStored =
     typeof storedCrossSection === 'number' && Number.isFinite(storedCrossSection) && storedCrossSection > 0;
-  const installedCrossSection = hasStored ? (storedCrossSection as number) : recommendedCrossSection;
+  const installedCrossSection = hasStored ? storedCrossSection : recommendedCrossSection;
   return {
     installedCrossSection,
     recommendedCrossSection,
@@ -313,26 +313,14 @@ export const getEdgeDomain = (
   sourceNodeType: string | undefined,
   targetNodeType: string | undefined,
   sourceHandle: string | null | undefined,
-  targetHandle?: string | null | undefined
-): 'DC_12V' | 'AC_230V' | 'Solar' => {
-  // Solar hat Vorrang: Panel-Zuleitungen sind weder 12-V- noch 230-V-Kreise,
-  // sondern führen Panel-Strom auf MPP-Spannung. Vorher fehlte der Fall ganz —
-  // Solar-Kanten wurden als DC_12V gespeichert und verloren beim Nachladen
-  // ihre Domäne (falsche Farbe/Fehlerbehandlung in Code, der nur auf
-  // `data.edgeDomain` schaut, z. B. edgeDropInputs).
-  const isSolarNode = (type: string | undefined): boolean =>
-    type !== undefined && SOLAR_NODE_TYPES.includes(type);
-  if (isSolarNode(sourceNodeType) || isSolarNode(targetNodeType)) {
-    return 'Solar';
-  }
-
-  // AC/DC-Zuordnung kommt aus lib/domain/handleDomains.ts — derselben
-  // Tabelle, die getHandleDomain (Ziehen) benutzt. Vorher standen hier zwei
-  // handgepflegte Listen, die von der getHandleDomain-Liste abwichen:
-  // `getHandleDomain('inverter','ac_in','source')` war AC_230V, während
-  // dieselbe Kante beim Speichern als DC_12V landete (AUDIT ELE-007).
-  return edgeDomainOf(sourceNodeType, targetNodeType, sourceHandle, targetHandle ?? undefined);
-};
+  targetHandle?: string | null
+): HandleDomainValue =>
+  // Eine Tabelle, eine Funktion: `edgeDomainOf` (lib/domain/handleDomains.ts)
+  // kennt seit AUDIT ELE-007 die AC/DC-Rollen und seit AUDIT N2 auch Solar mit
+  // derselben Vorrangfolge (Solar → AC → DC), die hier vorher als eigener
+  // `isSolarNode`-Vorzweig stand. Zwei Solar-Logiken an zwei Stellen waren die
+  // Ursache des gemessenen Drifts `handle=DC_12V / edge=Solar`.
+  edgeDomainOf(sourceNodeType, targetNodeType, sourceHandle, targetHandle ?? undefined);
 
 /**
  * Domäne eines Handles beim Ziehen/Verbinden. Delegiert an die gemeinsame
@@ -342,4 +330,4 @@ export const getHandleDomain = (
   nodeType: string | undefined,
   handleId: string | null | undefined,
   handleType: 'source' | 'target' | undefined
-): 'DC_12V' | 'AC_230V' => handleDomain(nodeType, handleId, handleType);
+): HandleDomainValue => handleDomain(nodeType, handleId, handleType);

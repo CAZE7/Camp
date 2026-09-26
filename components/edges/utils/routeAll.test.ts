@@ -32,15 +32,14 @@ function mulberry32(seed: number): () => number {
 
 const SEED = 20260903;
 
-const makeNode = (id: string, x: number, y: number): Node =>
-  ({
-    id,
-    type: 'consumer',
-    position: { x, y },
-    width: 192,
-    height: 120,
-    data: { label: id },
-  }) as Node;
+const makeNode = (id: string, x: number, y: number): Node => ({
+  id,
+  type: 'consumer',
+  position: { x, y },
+  width: 192,
+  height: 120,
+  data: { label: id },
+});
 
 /** Referenzplan: Batterie → Verteilung → 5 Verbraucher, deterministisch gestreut. */
 function buildSeededPlan(seed: number): { nodes: Node[]; edges: RouteEdgeRef[] } {

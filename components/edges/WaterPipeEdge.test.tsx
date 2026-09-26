@@ -4,15 +4,20 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Position } from '@xyflow/react';
 import WaterPipeEdge from './WaterPipeEdge';
 import { useReactFlow } from '@xyflow/react';
+import { type MockBaseEdgeProps } from '../../test-helpers/reactflowMocks'; // AUDIT T1
 
 // Mock reactflow
 vi.mock('@xyflow/react', async () => {
   const actual = await vi.importActual('@xyflow/react');
   return {
     ...actual,
-    BaseEdge: vi.fn(({ id, path, style, markerEnd }) => (
-      <path data-testid="base-edge" id={id} d={path} style={style} markerEnd={markerEnd} />
-    )),
+    BaseEdge: vi.fn(
+      // AUDIT T1: ohne Typ waren alle vier Props `any` und landeten untypt
+      // im gemockten <path>.
+      ({ id, path, style, markerEnd }: MockBaseEdgeProps) => (
+        <path data-testid="base-edge" id={id} d={path} style={style} markerEnd={markerEnd} />
+      )
+    ),
     EdgeLabelRenderer: vi.fn(({ children }) => <div data-testid="edge-label-renderer">{children}</div>),
     getBezierPath: vi.fn(() => ['bezier-path', 0, 0]),
     getSmoothStepPath: vi.fn(() => ['smooth-step-path', 0, 0, 0, 0]),

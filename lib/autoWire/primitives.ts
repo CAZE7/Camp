@@ -1,6 +1,7 @@
 import type { Node, Edge } from '../domain/graph'; // ARCH-001
 import type { CableEdgeData } from '../domain/cableEdgeData'; // ARCH-001: aus Komponente in Domäne verschoben
 import { VDE_SIZES } from '../electrical';
+import { safeText } from '../safeText'; // AUDIT T1
 import {
   crossSectionForVoltageDrop,
   meters,
@@ -102,6 +103,23 @@ export const CHARGER_TYPES = ['charger', 'mpptController', 'dcdcCharger', 'acBat
 
 export type CableEdge = Edge<CableEdgeData>;
 
+/**
+ * Kanten-Herkunft: von AutoWire erzeugt oder vom Nutzer gezogen? (AUDIT D2)
+ *
+ * Autorität ist `edge.data.autoWired`. Der ID-Präfix-Vergleich ist nur ein
+ * Migrations-Fallback für Pläne, die VOR dem Flag gespeichert wurden — er
+ * greift ausschließlich, solange das Flag fehlt (`undefined`). Sobald der
+ * Schreibpfad eine Kante als Nutzerkante stempelt (`autoWired: false`,
+ * store/slices/graphSlice.ts), kann keine ID der Welt sie mehr zur Auto-Kante
+ * machen: Früher wurde eine Nutzerkante mit der ID `e-auto-99` beim AutoWire-
+ * Lauf still gelöscht und durch zwei Auto-Kanten ersetzt.
+ */
+export const isAutoWiredEdge = (edge: { id: string; data?: CableEdgeData | null }): boolean => {
+  const flag = edge.data?.autoWired;
+  if (typeof flag === 'boolean') return flag;
+  return edge.id.startsWith(AUTO_EDGE_PREFIX);
+};
+
 export const connectionKey = (e: {
   source: string;
   target: string;
@@ -109,16 +127,24 @@ export const connectionKey = (e: {
   targetHandle?: string | null;
 }): string => `${e.source}|${e.target}|${e.sourceHandle || ''}|${e.targetHandle || ''}`;
 
-export const labelOf = (node: Node | undefined): string => String(node?.data?.label || '');
+export const labelOf = (node: Node | undefined): string => safeText(node?.data?.label);
 
-export const isLeadChemistry = (node: Node): boolean =>
-  /agm|lead|gel|blei/i.test(String(node.data?.chemistry || ''));
+/**
+ * Schmale Sicht auf das, was die Chemie-Helfer lesen: ausschließlich
+ * `node.data`. Bewusst kein `Node` — die Verbindungsregeln
+ * (lib/connectionRules.ts, AUDIT V1) prüfen Batterie-Parallelschaltungen
+ * schon beim Ziehen mit DERSELBEN Logik wie AutoWire und haben dort keine
+ * Position zur Hand. Eine zweite Chemie-Tabelle an der zweiten Stelle wäre
+ * genau die Fehlerklasse, die AUTO-003 beseitigt hat.
+ */
+export type ChemistryCarrier = { data?: Record<string, unknown> | null };
+
+export const isLeadChemistry = (node: ChemistryCarrier): boolean =>
+  /agm|lead|gel|blei/i.test(safeText(node.data?.chemistry));
 
 /** Normalisierter Chemie-Schlüssel ('' wenn fehlend/unbekannt). */
-export const chemistryKeyOf = (node: Node): string => {
-  const raw = String(node.data?.chemistry || '')
-    .trim()
-    .toLowerCase();
+export const chemistryKeyOf = (node: ChemistryCarrier): string => {
+  const raw = safeText(node.data?.chemistry).trim().toLowerCase();
   if (raw === 'lifepo4' || raw === 'li-feapo4' || raw === 'lfp') return 'lifepo4';
   if (raw === 'li-ion' || raw === 'liion' || raw === 'lion') return 'liion';
   if (raw === 'agm') return 'agm';
@@ -139,7 +165,7 @@ export const chemistryKeyOf = (node: Node): string => {
  *   (Blei-Familie ‖ Nicht-Blei wird weiter blockiert, innerhalb Blei
  *   weiter erlaubt — dokumentierte Unsicherheit statt stiller Freigabe).
  */
-export const chemistriesParallelSafe = (a: Node, b: Node): boolean => {
+export const chemistriesParallelSafe = (a: ChemistryCarrier, b: ChemistryCarrier): boolean => {
   const ka = chemistryKeyOf(a);
   const kb = chemistryKeyOf(b);
   const known = new Set(['lifepo4', 'liion', 'agm', 'gel', 'lead']);

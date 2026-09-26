@@ -1,6 +1,10 @@
-/* eslint-disable @typescript-eslint/no-explicit-any --
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument --
  * Werft-Altbestand (übernommen 2026-09): nutzt noch `any` für AI-SDK-
  * Mocks/Datenstrukturen. FOLLOW-UP: typisieren, dann Disable entfernen.
+ *
+ * AUDIT T1 ergänzt `no-unsafe-argument`: Der Mock-Rückgabewert wird mit
+ * `as any` an `mockReturnValue` übergeben — derselbe Aufschub wie oben,
+ * nur eine Ebene tiefer. Mit den echten Typen verschwindet beides zusammen.
  */
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import Chat from './Chat';

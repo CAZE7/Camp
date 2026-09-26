@@ -20,7 +20,7 @@ import type { Node, Edge } from '@xyflow/react';
 import { type CableEdgeData } from '../components/edges/CableEdge';
 
 vi.mock('../components/planner/utils/layout', () => ({
-  getLayoutedElements: vi.fn((nodes, edges) => ({
+  getLayoutedElements: vi.fn((nodes: Node[], edges: Edge<CableEdgeData>[]) => ({
     nodes: nodes.map((n: Node) => ({ ...n, position: { x: n.position.x + 10, y: n.position.y + 20 } })),
     edges,
   })),
@@ -51,7 +51,9 @@ describe('usePlannerStore - extended coverage', () => {
       selectedEdges: [],
     });
 
-    originalRandomUUID = crypto.randomUUID;
+    // AUDIT T1 (unbound-method): die Referenz wird zum Zurückspielen
+    // gespeichert — gebunden, damit `this` nicht versehentlich abweicht.
+    originalRandomUUID = crypto.randomUUID.bind(crypto);
     idCounter = 0;
     crypto.randomUUID = vi.fn(() => `uuid-${idCounter++}`) as typeof crypto.randomUUID;
 
@@ -112,9 +114,7 @@ describe('usePlannerStore - extended coverage', () => {
       });
 
       expect(raf).toHaveBeenCalled();
-      const fitEvents = dispatchSpy.mock.calls
-        .map((c) => c[0] as Event)
-        .filter((e) => e.type === 'planner-fit-view');
+      const fitEvents = dispatchSpy.mock.calls.map((c) => c[0]).filter((e) => e.type === 'planner-fit-view');
       expect(fitEvents.length).toBeGreaterThanOrEqual(1);
 
       raf.mockRestore();
@@ -527,7 +527,7 @@ function runAutoWire(nodes: Node[], extra?: Partial<{ season: 'summer' | 'winter
     usePlannerStore.getState().autoWireSystem();
   });
   const state = usePlannerStore.getState();
-  return { nodes: state.nodes, edges: state.edges as Edge<CableEdgeData>[], season: state.season };
+  return { nodes: state.nodes, edges: state.edges, season: state.season };
 }
 
 /**

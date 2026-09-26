@@ -309,7 +309,7 @@ const planWithUserEdgesArbitrary = fc
         type: 'battery',
         position: { x: 0, y: 0 },
         data: { label: 'Aufbaubatterie', ...batteryData },
-      } as Node,
+      },
     ];
     specs.forEach((spec, index) => {
       nodes.push({
@@ -317,7 +317,7 @@ const planWithUserEdgesArbitrary = fc
         type: spec.type,
         position: { x: 200 * (index + 1), y: 120 * (index % 3) },
         data: { label: `${spec.type} ${index}`, ...spec.data },
-      } as Node);
+      });
     });
 
     const edges = edgeSpecs
@@ -371,7 +371,7 @@ const planArbitrary = fc
         type: 'battery',
         position: { x: 0, y: 0 },
         data: { label: 'Aufbaubatterie', ...batteryData },
-      } as Node,
+      },
     ];
     specs.forEach((spec, index) => {
       nodes.push({
@@ -379,7 +379,7 @@ const planArbitrary = fc
         type: spec.type,
         position: { x: 200 * (index + 1), y: 120 * (index % 3) },
         data: { label: `${spec.type} ${index}`, ...spec.data },
-      } as Node);
+      });
     });
     return nodes;
   });
@@ -528,7 +528,7 @@ describe('G6 — AC/DC-Trennung jeder erzeugten Verbindung', () => {
   it('auch mit vorhandenen Nutzer-Kanten mischt keine erzeugte Kante die Domänen', () => {
     fc.assert(
       fc.property(planWithUserEdgesArbitrary, ({ nodes, edges }) => {
-        const result = performAutoWiring(nodes, edges as never);
+        const result = performAutoWiring(nodes, edges);
         if (result === null) return;
         const byId = new Map(result.nodes.map((node) => [node.id, node]));
 
@@ -555,7 +555,7 @@ describe('G6 — AC/DC-Trennung jeder erzeugten Verbindung', () => {
   it('jede Kante ist nach der Verdrahtung dimensioniert (kein Kabel ohne Querschnitt)', () => {
     fc.assert(
       fc.property(planWithUserEdgesArbitrary, ({ nodes, edges }) => {
-        const result = performAutoWiring(nodes, edges as never);
+        const result = performAutoWiring(nodes, edges);
         if (result === null) return;
         for (const edge of result.edges) {
           const section = edge.data?.crossSection;
@@ -571,7 +571,7 @@ describe('G6 — AC/DC-Trennung jeder erzeugten Verbindung', () => {
   it('jede Kante trägt nach der Verdrahtung eine Domänen-Markierung', () => {
     fc.assert(
       fc.property(planWithUserEdgesArbitrary, ({ nodes, edges }) => {
-        const result = performAutoWiring(nodes, edges as never);
+        const result = performAutoWiring(nodes, edges);
         if (result === null) return;
         for (const edge of result.edges) {
           const byId = new Map(result.nodes.map((node) => [node.id, node]));
@@ -658,7 +658,7 @@ describe('G7 — sizeDcEdges-Konvergenz (AUDIT-AUTOWIRE Issue 3/9)', () => {
   it('sizeDcEdges(sizeDcEdges(x)) == sizeDcEdges(x) — Nacherschleife terminiert', () => {
     fc.assert(
       fc.property(planWithUserEdgesArbitrary, ({ nodes, edges }) => {
-        const result = performAutoWiring(nodes, edges as never);
+        const result = performAutoWiring(nodes, edges);
         if (!result) return;
         const sig = (list: typeof result.edges) =>
           list
@@ -666,7 +666,7 @@ describe('G7 — sizeDcEdges-Konvergenz (AUDIT-AUTOWIRE Issue 3/9)', () => {
             .join('|');
         const dc = result.edges.filter((x) => x.data?.edgeDomain !== 'AC_230V');
         const before = sig(dc);
-        sizeDcEdges(dc as never, result.nodes, result.edges as never, getSystemVoltage(result.nodes));
+        sizeDcEdges(dc, result.nodes, result.edges, getSystemVoltage(result.nodes));
         expect(sig(dc)).toBe(before);
       }),
       { ...propertyConfig, numRuns: 300 }
@@ -709,19 +709,19 @@ describe('Shrinking-Anker (gemeldete Gegenbeispiele)', () => {
         type: 'battery',
         position: { x: 0, y: 0 },
         data: { label: 'Aufbau', capacity: 50 },
-      } as Node,
+      },
       {
         id: 'shore-0',
         type: 'shorePower',
         position: { x: 200, y: 0 },
         data: { label: 'Landstrom', hasRcd: false },
-      } as Node,
+      },
       {
         id: 'c230-1',
         type: 'consumer230v',
         position: { x: 400, y: 120 },
         data: { label: 'Gerät', watts: 5 },
-      } as Node,
+      },
     ];
     const userEdge = {
       id: 'user-0',
@@ -747,14 +747,14 @@ describe('Shrinking-Anker (gemeldete Gegenbeispiele)', () => {
         type: 'battery',
         position: { x: 0, y: 0 },
         data: { label: 'Aufbau', capacity: 100 },
-      } as Node,
-      { id: 'sp1', type: 'shorePower', position: { x: 300, y: 0 }, data: { label: 'Landstrom' } } as Node,
+      },
+      { id: 'sp1', type: 'shorePower', position: { x: 300, y: 0 }, data: { label: 'Landstrom' } },
       {
         id: 'c230',
         type: 'consumer230v',
         position: { x: 600, y: 0 },
         data: { label: 'Kochfeld', watts: 2000 },
-      } as Node,
+      },
     ];
     const userEdge = {
       id: 'user-1',
@@ -786,9 +786,9 @@ describe('Shrinking-Anker (gemeldete Gegenbeispiele)', () => {
         type: 'battery',
         position: { x: 0, y: 0 },
         data: { label: 'Aufbau', capacity: 100 },
-      } as Node,
-      { id: 'x1', type: 'consumer230v', position: { x: 200, y: 0 }, data: { label: 'A', watts: 5 } } as Node,
-      { id: 'x2', type: 'consumer230v', position: { x: 400, y: 0 }, data: { label: 'B', watts: 5 } } as Node,
+      },
+      { id: 'x1', type: 'consumer230v', position: { x: 200, y: 0 }, data: { label: 'A', watts: 5 } },
+      { id: 'x2', type: 'consumer230v', position: { x: 400, y: 0 }, data: { label: 'B', watts: 5 } },
     ];
     const corrupted = {
       id: 'user-0',

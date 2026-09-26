@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   AC_MODEL_VOLTAGE_V,
   UPSTREAM_IMPEDANCE_ASSUMPTION_OHM,
+  UPSTREAM_IMPEDANCE_MIN_OHM,
   acCableComposition,
   acSourceKindOf,
   cableLoopContributionOhm,
@@ -246,6 +247,121 @@ describe('evaluateAcEdgeProtection — Abschaltbedingung (TN, konservativ)', () 
     expect(evaluateAcEdgeProtection({ descriptor: b16, lengthM: 5, crossSection: 2.5 }).verdict).toBe(
       'not-modeled'
     );
+  });
+});
+
+/**
+ * AUDIT N1 — die Abschaltvermögens-Prüfung war arithmetisch unerreichbar.
+ *
+ * Befund: I_p = U0/Zs mit Zs = 0,8 Ω + Kabelleitung ist bei ≈ 0,29 kA
+ * gedeckelt, real erfasste Geräte liegen bei 3–10 kA. Der Vergleich
+ * `I_p > Icn` konnte damit für KEIN Gerät kippen; die Prüfung war eine
+ * Formel ohne Wirkung. Und dort, wo Icn knapp über dem typischen Fall lag,
+ * stand `ok-with-assumption` ohne Hinweis auf die Reichweite der Annahme.
+ *
+ * Fix, zweigeteilt:
+ * 1. `supplyProspectiveIkA` — ein angegebener/gemessener I_k der Einspeisung
+ *    schlägt beide Annahmen und macht die Prüfung scharf.
+ * 2. `UPSTREAM_IMPEDANCE_MIN_OHM` — die Niederimpedanz-Grenze derselben
+ *    Einspeisung. Reicht Icn nur für den hochohmigen Fall, trägt das Verdikt
+ *    jetzt `limitation: 'breaking-capacity-reach'` und sagt es im Klartext.
+ */
+describe('evaluateAcEdgeProtection — Abschaltvermögen erreichbar (AUDIT N1)', () => {
+  const params = { ratedCurrentA: 16, lengthM: 5, crossSection: 2.5 };
+  const mcb = (icnKA: number) => ({ kind: 'mcb', characteristic: 'B', breakingCapacityKA: icnKA });
+
+  /** Die obere Grenze aus der Niederimpedanz-Annahme, am Kabelanteil belegt. */
+  const upperBoundOf = (assessed: { cableLoopOhm: number }) =>
+    AC_MODEL_VOLTAGE_V / (UPSTREAM_IMPEDANCE_MIN_OHM + assessed.cableLoopOhm);
+
+  it('rechnet die Niederimpedanz-Grenze als zweiten Term mit', () => {
+    const assessed = evaluateAcEdgeProtection({ ...params, descriptor: mcb(6) });
+    expect(assessed.prospectiveIkSource).toBe('assumed');
+    // Typischer Fall: 0,8 Ω vorgelagert (Campingplatz-Pitch).
+    expect(assessed.prospectiveIkA).toBeCloseTo(
+      AC_MODEL_VOLTAGE_V / (UPSTREAM_IMPEDANCE_ASSUMPTION_OHM + assessed.cableLoopOhm),
+      9
+    );
+    // Ungünstigster Fall: dieselbe Leitung, niederimpedante Einspeisung.
+    expect(assessed.prospectiveIkUpperBoundA).toBeCloseTo(upperBoundOf(assessed), 9);
+    expect(assessed.prospectiveIkUpperBoundA!).toBeGreaterThan(assessed.prospectiveIkA!);
+  });
+
+  it('reale Geräte (6/10 kA) bestehen — und tragen keine Reichweitengrenze', () => {
+    for (const icnKA of [6, 10]) {
+      const assessed = evaluateAcEdgeProtection({ ...params, descriptor: mcb(icnKA) });
+      expect(assessed.verdict).toBe('ok-with-assumption');
+      expect(assessed.limitation).toBeUndefined();
+      expect(assessed.reason).not.toMatch(/Reichweitengrenze/i);
+    }
+  });
+
+  it('knapp dimensionierte Geräte bekommen die Reichweitengrenze ausgewiesen', () => {
+    // I_p,typ ≈ 0,27 kA, I_p,max ≈ 1,45 kA: 1 kA und 0,5 kA bestehen gegen
+    // die Annahme, reichen aber nicht bis zur Niederimpedanz-Grenze.
+    for (const icnKA of [1, 0.5]) {
+      const assessed = evaluateAcEdgeProtection({ ...params, descriptor: mcb(icnKA) });
+      expect(assessed.verdict).toBe('ok-with-assumption');
+      expect(assessed.limitation).toBe('breaking-capacity-reach');
+      expect(assessed.reason).toMatch(/Reichweitengrenze/);
+      expect(assessed.reason).toMatch(/netznahe Einspeisung|Generator/);
+      // Der Hinweis nennt beide Zahlen — sonst ist er nicht überprüfbar.
+      expect(assessed.reason).toContain(`Icn = ${icnKA} kA`);
+      expect(assessed.reason).toContain((upperBoundOf(assessed) / 1000).toFixed(2));
+    }
+  });
+
+  it('unter dem typischen Kurzschlussstrom bleibt es ein hartes Fail', () => {
+    const assessed = evaluateAcEdgeProtection({ ...params, descriptor: mcb(0.1) });
+    expect(assessed.verdict).toBe('breaking-capacity-fail');
+    expect(assessed.prospectiveIkSource).toBe('assumed');
+    // Ein Fail ist keine Reichweiten-Anmerkung, sondern ein Ergebnis.
+    expect(assessed.limitation).toBe('breaking-capacity-reach');
+  });
+
+  it('ein angegebener I_k macht die Prüfung für reale Geräte scharf', () => {
+    // Gemessen/netznahe Einspeisung: 6 kA prospektiv.
+    const supply = { ...params, supplyProspectiveIkA: 6000 };
+    expect(evaluateAcEdgeProtection({ ...supply, descriptor: mcb(10) }).verdict).toBe('ok-with-assumption');
+    expect(evaluateAcEdgeProtection({ ...supply, descriptor: mcb(6) }).verdict).not.toBe(
+      'breaking-capacity-fail'
+    );
+    // 4,5 kA und 3 kA — vorher unerreichbar, jetzt ein echtes Fail.
+    expect(evaluateAcEdgeProtection({ ...supply, descriptor: mcb(4.5) }).verdict).toBe(
+      'breaking-capacity-fail'
+    );
+    expect(evaluateAcEdgeProtection({ ...supply, descriptor: mcb(3) }).verdict).toBe(
+      'breaking-capacity-fail'
+    );
+  });
+
+  it('der angegebene Wert schlägt die Annahme und ist als Quelle sichtbar', () => {
+    const assessed = evaluateAcEdgeProtection({ ...params, descriptor: mcb(10), supplyProspectiveIkA: 4500 });
+    expect(assessed.prospectiveIkA).toBe(4500);
+    expect(assessed.prospectiveIkSource).toBe('declared');
+    // Bei gemessenem Wert gibt es keine zweite Annahme mehr: Obergrenze = Wert.
+    expect(assessed.prospectiveIkUpperBoundA).toBe(4500);
+    expect(assessed.reason).toMatch(/angegebener|gemessen/i);
+  });
+
+  it('unsinnige Angaben (0, negativ, NaN) fallen auf die Annahme zurück', () => {
+    for (const bad of [0, -6000, Number.NaN]) {
+      const assessed = evaluateAcEdgeProtection({ ...params, descriptor: mcb(6), supplyProspectiveIkA: bad });
+      expect(assessed.prospectiveIkSource).toBe('assumed');
+      expect(assessed.prospectiveIkA).toBeCloseTo(
+        AC_MODEL_VOLTAGE_V / (UPSTREAM_IMPEDANCE_ASSUMPTION_OHM + assessed.cableLoopOhm),
+        9
+      );
+    }
+  });
+
+  it('die Schleifenimpedanz-Prüfung rechnet weiter mit 0,8 Ω (kein Zweckwechsel der Annahme)', () => {
+    // N1 ergänzt einen zweiten Term für das Abschaltvermögen. Die
+    // AbschaltBEDINGUNG (Zs·Ia ≤ U0) bleibt gegen die typische Einspeisung
+    // gerechnet — sie würde sonst jede kurze Leitung auf „fail" stellen.
+    const assessed = evaluateAcEdgeProtection({ ...params, descriptor: mcb(6) });
+    expect(assessed.zsEstimateOhm).toBeCloseTo(UPSTREAM_IMPEDANCE_ASSUMPTION_OHM + assessed.cableLoopOhm, 9);
+    expect(assessed.verdict).toBe('ok-with-assumption');
   });
 });
 

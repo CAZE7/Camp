@@ -7,7 +7,7 @@ import { type Node, type Edge } from '@xyflow/react';
 // Mock the layout utility so Auto-Layout-Aufrufe im Store deterministisch
 // bleiben (kein echtes Layout im Test).
 vi.mock('../components/planner/utils/layout', () => ({
-  getLayoutedElements: vi.fn((nodes, edges) => ({ nodes, edges })),
+  getLayoutedElements: vi.fn((nodes: Node[], edges: Edge[]) => ({ nodes, edges })),
 }));
 
 // Lokale Fixtures (die früheren initialNodes/initialEdges aus
@@ -654,9 +654,31 @@ describe('usePlannerStore', () => {
         source: 'bat',
         target: 'inv',
         sourceHandle: 'plus',
-        targetHandle: 'in-plus', // Left side target DC input
+        // AUDIT V1: 'in-plus' war eine Fantasie-ID, die es im Node-Markup nie
+        // gab (echte IDs: plus, minus, ac_in, in, out). Sie funktionierte nur,
+        // weil die Polaritätsprüfung `handleId.includes('plus')` lautete —
+        // dieselbe Substring-Logik, die 'surplus' zum Plus-Pol machte.
+        targetHandle: 'plus', // Left side target DC input
       });
       expect(valid).toBe(true);
+    });
+
+    it('rejects a phantom handle id that only substring matching accepted (AUDIT V1)', () => {
+      const { result } = renderHook(() => usePlannerStore());
+      act(() => {
+        result.current.setNodes([
+          { id: 'bat', type: 'battery', position: { x: 0, y: 0 }, data: {} },
+          { id: 'inv', type: 'inverter', position: { x: 100, y: 0 }, data: {} },
+        ]);
+      });
+      expect(
+        result.current.isValidConnection({
+          source: 'bat',
+          target: 'inv',
+          sourceHandle: 'plus',
+          targetHandle: 'in-plus',
+        })
+      ).toBe(false);
     });
 
     it('should allow connecting DC battery plus to inverter target plus (actual node handle)', () => {
@@ -703,7 +725,7 @@ describe('usePlannerStore', () => {
           source: 'consumer-1',
           target: 'consumer-1',
           sourceHandle: 'plus',
-          targetHandle: 'in-plus',
+          targetHandle: 'plus',
         });
       });
       expect(result.current.edges).toHaveLength(edgeCountBefore);

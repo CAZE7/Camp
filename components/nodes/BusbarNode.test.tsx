@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
 import BusbarNode from './BusbarNode';
 import { usePlannerStore } from '../../store/usePlannerStore';
 import { asDivProps, type MockHandleProps } from '../../test-helpers/reactflowMocks';
@@ -31,7 +31,13 @@ describe('BusbarNode Component', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    (usePlannerStore as unknown as ReturnType<typeof vi.fn>).mockImplementation((selector) => {
+    // AUDIT T1: `ReturnType<typeof vi.fn>` ist `any` — der Selektor und seine
+    // Rückgabe waren untypt. Die Mock-Signatur steht jetzt ausdrücklich da.
+    (
+      usePlannerStore as unknown as Mock<
+        (selector: (state: { updateNodeData: typeof mockUpdateNodeData }) => unknown) => unknown
+      >
+    ).mockImplementation((selector) => {
       if (typeof selector === 'function') {
         return selector({ updateNodeData: mockUpdateNodeData });
       }

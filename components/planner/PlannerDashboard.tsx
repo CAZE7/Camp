@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { AccessibleDialog } from '@/components/ui/AccessibleDialog';
+import { safeText } from '@/lib/safeText'; // AUDIT T1
 import {
   Package,
   Zap,
@@ -415,7 +416,13 @@ function ActionsSection({
       <Button
         variant="outline"
         data-testid="action-tidy"
-        onClick={runLayoutV2}
+        // AUDIT T1: React erwartet von onClick `void`. `runLayoutV2` fängt
+        // seine Fehler selbst (try/catch → Feedback-Banner), das `void`
+        // markiert also ein bewusstes Nicht-Abwarten statt eines stillen
+        // Wegwerfens (no-misused-promises).
+        onClick={() => {
+          void runLayoutV2();
+        }}
         disabled={busy !== null}
         className="hidden min-h-11 gap-1.5 lg:inline-flex"
         title="Plan automatisch anordnen (ELK, bei Ausfall Raster-Layout). Rückgängig ist möglich."
@@ -471,7 +478,9 @@ function ActionsSection({
             <button
               role="menuitem"
               data-testid="action-layout-v2-menu"
-              onClick={runLayoutV2}
+              onClick={() => {
+                void runLayoutV2();
+              }}
               disabled={busy !== null}
               className="flex min-h-11 w-full items-center gap-2 rounded px-3 text-sm text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
             >
@@ -498,7 +507,9 @@ function ActionsSection({
             </button>
             <button
               role="menuitem"
-              onClick={onExportImage}
+              onClick={() => {
+                void onExportImage();
+              }}
               className="flex min-h-11 w-full items-center gap-2 rounded px-3 text-sm text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               {busy === 'export' ? (
@@ -659,7 +670,7 @@ export function PlannerDashboard() {
     nodes
       .filter((node) => node.type === 'conduit')
       .forEach((node) => {
-        const conduitType = String(node.data?.conduitType || 'EN 20');
+        const conduitType = safeText(node.data?.conduitType, 'EN 20');
         // Persistenzgrenze: `assignedEdges` kommt als unbekannte Feldform aus
         // dem Store und wird hier auf die erwartete ID-Liste eingegrenzt.
         const assigned = new Set<string>((node.data?.assignedEdges as string[] | undefined) || []);

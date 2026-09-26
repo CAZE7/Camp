@@ -130,7 +130,9 @@ vi.mock('./hooks/useDashboardMetrics', () => ({
 }));
 
 // Mock Stores
-const mockSetFirstTappedHandle = vi.fn();
+/** AUDIT T1: Signatur des State-Updaters, den die Tests selbst aufrufen. */
+type TappedHandleUpdater = (previous: unknown) => unknown;
+const mockSetFirstTappedHandle = vi.fn<(updater: TappedHandleUpdater) => void>();
 const mockOnDropFromStore = vi.fn();
 const mockOnCustomDropFromStore = vi.fn();
 
@@ -177,7 +179,8 @@ const defaultPlannerStoreState = {
 } as unknown as PlannerState;
 
 vi.mock('../../store/usePlannerStore', () => ({
-  usePlannerStore: vi.fn((selector) => {
+  // AUDIT T1: Der Selektor war implizit `any` — Rückgabe und Aufruf damit auch.
+  usePlannerStore: vi.fn((selector: (state: PlannerState) => unknown) => {
     return selector(defaultPlannerStoreState);
   }),
 }));
@@ -187,7 +190,7 @@ const defaultAppStoreState = {
 } as unknown as AppState;
 
 vi.mock('../../lib/store', () => ({
-  useAppStore: vi.fn((selector) => {
+  useAppStore: vi.fn((selector: (state: AppState) => unknown) => {
     return selector(defaultAppStoreState);
   }),
 }));
@@ -296,7 +299,7 @@ describe('FlowCanvas', () => {
           bottom: 480,
           left: 100,
           toJSON: () => ({}),
-        } as DOMRect;
+        };
       }
       return {
         x: 0,
@@ -308,7 +311,7 @@ describe('FlowCanvas', () => {
         bottom: 0,
         left: 0,
         toJSON: () => ({}),
-      } as DOMRect;
+      };
     });
     render(<FlowCanvas />);
 
@@ -334,7 +337,7 @@ describe('FlowCanvas', () => {
           position: { x: index * 20, y: 0 },
           data: {},
         })),
-      }) as typeof usePlannerStore
+      })
     );
     render(<FlowCanvas />);
     fireEvent.click(screen.getByTestId('mobile-overview'));
@@ -344,7 +347,7 @@ describe('FlowCanvas', () => {
   it('does not render domain filter chips in water mode', () => {
     Object.assign(usePlannerStore, { getState: () => defaultPlannerStoreState });
     vi.mocked(usePlannerStore).mockImplementation(
-      withSelector({ ...defaultPlannerStoreState, viewMode: 'water' }) as typeof usePlannerStore
+      withSelector({ ...defaultPlannerStoreState, viewMode: 'water' })
     );
     render(<FlowCanvas />);
     expect(screen.queryByRole('button', { name: '12V' })).not.toBeInTheDocument();
@@ -365,7 +368,7 @@ describe('FlowCanvas', () => {
       withSelector({
         ...defaultPlannerStoreState,
         viewMode: 'water',
-      }) as typeof usePlannerStore
+      })
     );
 
     render(<FlowCanvas />);
@@ -388,11 +391,15 @@ describe('FlowCanvas', () => {
       // Create a proper event object for drag over
       const event = new MouseEvent('dragover', { bubbles: true }) as unknown as DragEventish;
       event.dataTransfer = { dropEffect: 'none' };
-      event.preventDefault = vi.fn();
+      // AUDIT T1 (unbound-method): `expect(event.preventDefault)` liest die
+      // Methode ungebunden aus dem Objekt. Dieselbe Assertion gegen die
+      // gehaltene Referenz ist eindeutig — und prüft denselben Spy.
+      const preventDefault = vi.fn();
+      event.preventDefault = preventDefault;
 
       fireEvent(reactFlowElement, event);
 
-      expect(event.preventDefault).toHaveBeenCalled();
+      expect(preventDefault).toHaveBeenCalled();
       expect(event.dataTransfer.dropEffect).toBe('move');
     });
 
@@ -582,7 +589,7 @@ describe('FlowCanvas', () => {
           ...defaultPlannerStoreState,
           viewMode: 'water',
           waterWarning: 'Test Water Warning',
-        }) as typeof usePlannerStore
+        })
       );
 
       render(<FlowCanvas />);

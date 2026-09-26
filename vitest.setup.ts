@@ -2,18 +2,25 @@ import '@testing-library/jest-dom';
 import { vi } from 'vitest';
 
 // Mock matchMedia for GSAP and Radix UI in jsdom
+/**
+ * AUDIT T1: `vi.fn().mockImplementation(...)` gibt `any` zurück — der Stub
+ * landete untypt an `window.matchMedia`. Mit benannter Factory bleibt der
+ * Mock das, was er sein soll: eine MediaQueryList-Attrappe.
+ */
+const createMatchMediaStub = (query: string) => ({
+  matches: false,
+  media: query,
+  onchange: null,
+  addListener: vi.fn(), // Deprecated
+  removeListener: vi.fn(), // Deprecated
+  addEventListener: vi.fn(),
+  removeEventListener: vi.fn(),
+  dispatchEvent: vi.fn(),
+});
+
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
-  value: vi.fn().mockImplementation((query) => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addListener: vi.fn(), // Deprecated
-    removeListener: vi.fn(), // Deprecated
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-    dispatchEvent: vi.fn(),
-  })),
+  value: vi.fn(createMatchMediaStub),
 });
 
 // Mock ResizeObserver for Radix UI in jsdom

@@ -1,6 +1,7 @@
 import type { Node } from '../domain/graph'; // ARCH-001
 import { type Meters, type Mm2 } from '../units';
 import { newEntityId } from '../id';
+import { safeText } from '../safeText'; // AUDIT T1
 import { CHARGER_TYPES, type CableEdge, connectionKey, isLeadChemistry, labelOf } from './primitives';
 import { isStarterBattery, looksLikeMinusBusbar, looksLikePlusBusbar } from './validation';
 
@@ -14,7 +15,7 @@ export function buildDictionaries(currentNodes: Node[]) {
     if (!nodesByType[type]) nodesByType[type] = [];
     nodesByType[type].push(node);
     if (node.data?.label) {
-      nodesByLabel.set(`${type}-${node.data.label}`, node);
+      nodesByLabel.set(`${type}-${safeText(node.data.label)}`, node);
     }
   }
   return { nodesByType, nodesByLabel };
@@ -78,7 +79,9 @@ export function addDcEdge(
     sourceHandle: handle,
     targetHandle: handle,
     type: 'cableEdge',
-    data: { length, edgeDomain: domain },
+    // AUDIT D2: Herkunft als DATENFELD, nicht als ID-Präfix — AutoWire
+    // erkennt seine eigenen Kanten am Flag wieder und ersetzt nur die.
+    data: { length, edgeDomain: domain, autoWired: true },
   };
   newEdges.push(edge);
   dcEdges.push(edge);
@@ -106,7 +109,8 @@ export function addAcEdge(
     sourceHandle,
     targetHandle,
     type: 'cableEdge',
-    data: { length, crossSection, edgeDomain: 'AC_230V' },
+    // AUDIT D2: s. addDcEdge — Flag statt String-Präfix.
+    data: { length, crossSection, edgeDomain: 'AC_230V', autoWired: true },
   });
 }
 

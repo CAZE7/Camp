@@ -37,7 +37,7 @@ describe('EdgeInspector Component', () => {
   it('calls onChangeLength when input value changes to a valid number', () => {
     render(<EdgeInspector edge={defaultEdge} onChangeLength={mockOnChangeLength} />);
 
-    const input = screen.getByLabelText(/Länge/i);
+    const input = screen.getByLabelText(/Länge/i) as HTMLInputElement;
     fireEvent.change(input, { target: { value: '4.2' } });
 
     expect(mockOnChangeLength).toHaveBeenCalledTimes(1);
@@ -47,7 +47,7 @@ describe('EdgeInspector Component', () => {
   it('does not call onChangeLength when input value is invalid (NaN)', () => {
     render(<EdgeInspector edge={defaultEdge} onChangeLength={mockOnChangeLength} />);
 
-    const input = screen.getByLabelText(/Länge/i);
+    const input = screen.getByLabelText(/Länge/i) as HTMLInputElement;
     fireEvent.change(input, { target: { value: '' } });
 
     expect(mockOnChangeLength).not.toHaveBeenCalled();

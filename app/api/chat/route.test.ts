@@ -1,6 +1,17 @@
-/* eslint-disable @typescript-eslint/no-explicit-any --
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call --
  * Werft-Altbestand (übernommen 2026-09): nutzt noch `any` für AI-SDK-
  * Mocks/Datenstrukturen. FOLLOW-UP: typisieren, dann Disable entfernen.
+ *
+ * AUDIT T1 ergänzt die abgeleiteten Regeln: `no-unsafe-*` ist dieselbe
+ * Entscheidung eine Ebene tiefer — jeder Zugriff auf ein `any`-Feld wäre ein
+ * eigener Befund, solange die Typen fehlen. Die Teile einzeln zu verbieten,
+ * ohne die Ursache zu beheben, hätte 100+ Einzel-Disables erzeugt und den
+ * Aufschub unlesbar gemacht. Die Ursache (`any`) steht oben und bleibt ein
+ * FOLLOW-UP; dieser Block ist die Grenze des aufgeschobenen Bereichs.
+ *
+ * Hinweis zum Kontext: Dieser Endpunkt läuft im Static Export
+ * (`output: 'export'`) nicht — die App verweist ihn über
+ * NEXT_PUBLIC_CHAT_API_URL auf einen externen Serverless-Endpoint.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -89,7 +100,7 @@ describe('POST /api/chat', () => {
 
     // Verify streamText was called and system prompt includes the retrieved context
     expect(streamText).toHaveBeenCalled();
-    const streamTextArgs = vi.mocked(streamText).mock.calls[0]![0]!;
+    const streamTextArgs = vi.mocked(streamText).mock.calls[0]![0];
     const systemMessage = streamTextArgs.messages?.find((m: any) => m.role === 'system');
 
     expect(systemMessage).toBeDefined();
@@ -313,7 +324,7 @@ describe('POST /api/chat', () => {
 
     // Verify streamText was called and system prompt includes product recommendations
     expect(streamText).toHaveBeenCalled();
-    const streamTextArgs = vi.mocked(streamText).mock.calls[0]![0]!;
+    const streamTextArgs = vi.mocked(streamText).mock.calls[0]![0];
     const systemMessage = streamTextArgs.messages?.find((m: any) => m.role === 'system');
 
     expect(systemMessage).toBeDefined();

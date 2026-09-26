@@ -5,7 +5,7 @@ import type { PlannerFlowNode } from '../../nodes/types';
 
 /** Minimaler Node-Baukasten: die Schritte lesen nur `id` und `type`. */
 function node(id: string, type: string): PlannerFlowNode {
-  return { id, type, position: { x: 0, y: 0 }, data: {} } as unknown as PlannerFlowNode;
+  return { id, type, position: { x: 0, y: 0 }, data: {} };
 }
 
 function edge(id: string, source: string, target: string): GuidedEdgeRef {

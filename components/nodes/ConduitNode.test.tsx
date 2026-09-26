@@ -4,7 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import ConduitNode from './ConduitNode';
 import type { MockHandleProps } from '../../test-helpers/reactflowMocks';
 
-const mockUseEdges = vi.fn();
+const mockUseEdges = vi.fn((): unknown[] => []); // AUDIT T1: Rückgabe war `any`
 
 vi.mock('@xyflow/react', async () => {
   const actual = await vi.importActual('@xyflow/react');

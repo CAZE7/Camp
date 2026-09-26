@@ -7,7 +7,7 @@ import { useAppStore } from '@/lib/store';
 vi.mock('@/lib/store', () => {
   const storeState = {
     calculatedSolarWatts: 0,
-    setCalculatedSolarWatts: vi.fn((watts) => {
+    setCalculatedSolarWatts: vi.fn((watts: number) => {
       storeState.calculatedSolarWatts = watts;
     }),
   };
@@ -41,10 +41,10 @@ vi.mock('@xyflow/react', async () => {
         data-testid="react-flow-wrapper"
         className="react-flow-mock"
         onDrop={(e) => {
-          if (onDrop) onDrop(e as unknown as React.DragEvent<HTMLDivElement>);
+          if (onDrop) onDrop(e);
         }}
         onDragOver={(e) => {
-          if (onDragOver) onDragOver(e as unknown as React.DragEvent<HTMLDivElement>);
+          if (onDragOver) onDragOver(e);
         }}
       >
         {children}
@@ -97,7 +97,7 @@ describe('DachPlanerPage', () => {
     expect(screen.getAllByText('Dachfenster')[0]).toBeInTheDocument();
   });
 
-  it('syncs total roof solar watts on load', async () => {
+  it('syncs total roof solar watts on load', () => {
     render(<DachPlanerPage />);
 
     // There are multiple "200 W" (in sidebar and system check), so use getAllByText
@@ -177,7 +177,7 @@ describe('DachPlanerPage', () => {
     expect(store.setCalculatedSolarWatts).toHaveBeenCalledWith(400);
   });
 
-  it('allows changing vehicle model via select', async () => {
+  it('allows changing vehicle model via select', () => {
     render(<DachPlanerPage />);
 
     // Trigger is there (Select component)

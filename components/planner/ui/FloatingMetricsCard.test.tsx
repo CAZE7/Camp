@@ -15,7 +15,7 @@ vi.mock('../../../lib/store', () => ({
   useAppStore: (selector: (state: ReturnType<typeof mockAppStore>) => unknown) => selector(mockAppStore()),
 }));
 
-const mockDashboardMetrics = vi.fn();
+const mockDashboardMetrics = vi.fn((): unknown => ({})); // AUDIT T1: Rückgabe war `any`
 vi.mock('../hooks/useDashboardMetrics', () => ({
   useDashboardMetrics: () => mockDashboardMetrics(),
 }));

@@ -52,6 +52,7 @@ export {
 
 // Lokales Binding: der Re-Export oben bindet nichts in diesen Scope.
 import { getEdgeDomain } from './electrical';
+import { safeText } from './safeText'; // AUDIT T1
 
 import type { Node, Edge } from './domain/graph'; // ARCH-001: Domäne statt React-Flow-Typen
 import {
@@ -237,7 +238,7 @@ export const VDE_DOD_REFERENCE: number = (() => {
  * lib/vde-standards.ts von lib/autoWire.ts abhängt (Zirkularität).
  * lib/autoWire.ts re-exportiert die Funktion unverändert.
  */
-export const isStarterBatteryLabel = (label: unknown): boolean => /start/i.test(String(label || ''));
+export const isStarterBatteryLabel = (label: unknown): boolean => /start/i.test(safeText(label));
 
 /**
  * AUDIT AUTO-003: Starter-Klassifikation mit explizitem role-Feld vor der
@@ -354,8 +355,8 @@ export function calculateEdgeCurrent(
   sysVoltage?: Volts,
   edges?: Edge[]
 ): Amps {
-  const sData = sourceNode?.data as Record<string, unknown> | undefined;
-  const tData = targetNode?.data as Record<string, unknown> | undefined;
+  const sData = sourceNode?.data;
+  const tData = targetNode?.data;
   const voltage = sysVoltage ?? getSystemVoltage(nodes);
 
   /** AUDIT ELE-005: Ströme aus Leistung mit der Entladeschlussspannung
@@ -410,7 +411,7 @@ export function calculateEdgeCurrent(
       let total: Watts = ZERO_WATTS;
       for (const n of nodes) {
         if (n.type === 'consumer230v') {
-          total = addWatts(total, quantityOr((n.data as Record<string, unknown>)?.watts, watts, ZERO_WATTS));
+          total = addWatts(total, quantityOr(n.data?.watts, watts, ZERO_WATTS));
         }
       }
       return total;
@@ -439,10 +440,7 @@ export function calculateEdgeCurrent(
         visited.add(otherId);
         const other = nodeById.get(otherId);
         if (other?.type === 'consumer230v') {
-          total = addWatts(
-            total,
-            quantityOr((other.data as Record<string, unknown>)?.watts, watts, ZERO_WATTS)
-          );
+          total = addWatts(total, quantityOr(other.data?.watts, watts, ZERO_WATTS));
         }
         queue.push(otherId);
       }

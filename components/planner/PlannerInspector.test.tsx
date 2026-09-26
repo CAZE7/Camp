@@ -24,7 +24,10 @@ const mockPlannerStoreState = {
 };
 
 vi.mock('../../store/usePlannerStore', () => ({
-  usePlannerStore: vi.fn((selector) => selector(mockPlannerStoreState)),
+  // AUDIT T1: Selektor-Typ aus dem Mock-Zustand statt implizit `any`.
+  usePlannerStore: vi.fn((selector: (state: typeof mockPlannerStoreState) => unknown) =>
+    selector(mockPlannerStoreState)
+  ),
 }));
 
 // Mock useAppStore
@@ -33,7 +36,7 @@ const mockAppStoreState = {
 };
 
 vi.mock('../../lib/store', () => ({
-  useAppStore: vi.fn((selector) => selector(mockAppStoreState)),
+  useAppStore: vi.fn((selector: (state: typeof mockAppStoreState) => unknown) => selector(mockAppStoreState)),
 }));
 
 // Mock useDashboardMetrics

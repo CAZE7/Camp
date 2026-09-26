@@ -3,6 +3,7 @@
     "edges": [
       {
         "data": {
+          "autoWired": true,
           "crossSection": 4,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
@@ -19,6 +20,7 @@
       },
       {
         "data": {
+          "autoWired": true,
           "crossSection": 6,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
@@ -35,6 +37,7 @@
       },
       {
         "data": {
+          "autoWired": true,
           "crossSection": 6,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
@@ -49,6 +52,7 @@
       },
       {
         "data": {
+          "autoWired": true,
           "crossSection": 4,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
@@ -63,6 +67,7 @@
       },
       {
         "data": {
+          "autoWired": true,
           "crossSection": 4,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
@@ -77,6 +82,7 @@
       },
       {
         "data": {
+          "autoWired": true,
           "crossSection": 4,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
@@ -93,6 +99,7 @@
       },
       {
         "data": {
+          "autoWired": true,
           "crossSection": 4,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
@@ -107,6 +114,7 @@
       },
       {
         "data": {
+          "autoWired": true,
           "crossSection": 6,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
@@ -123,6 +131,7 @@
       },
       {
         "data": {
+          "autoWired": true,
           "crossSection": 2.5,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
@@ -137,6 +146,7 @@
       },
       {
         "data": {
+          "autoWired": true,
           "crossSection": 10,
           "dropWarning": false,
           "edgeDomain": "Solar",
@@ -153,6 +163,7 @@
       },
       {
         "data": {
+          "autoWired": true,
           "crossSection": 10,
           "dropWarning": false,
           "edgeDomain": "Solar",

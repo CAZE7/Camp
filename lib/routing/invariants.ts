@@ -135,8 +135,8 @@ function isPortBundleOverlap(
     stubs.some((stub) => {
       if (!sameAxis(stub, s1)) return false;
       const coords = stubCoords(stub);
-      const lo = Math.min(coords[0]!, coords[1]!);
-      const hi = Math.max(coords[0]!, coords[1]!);
+      const lo = Math.min(coords[0], coords[1]);
+      const hi = Math.max(coords[0], coords[1]);
       return interval.lo >= lo - EPS && interval.hi <= hi + EPS;
     });
   return withinStub(a.ports) && withinStub(b.ports);

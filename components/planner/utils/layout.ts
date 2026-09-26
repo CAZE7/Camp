@@ -1,5 +1,6 @@
 import { type Node, type Edge } from '@xyflow/react';
 import { nodeHeight, nodeWidth } from '../../edges/utils/nodeGeometry';
+import { safeText } from '../../../lib/safeText'; // AUDIT T1
 
 /** Visual fallbacks for nodes that React Flow has not measured yet. */
 export const DEFAULT_NODE_WIDTH = 192;
@@ -119,7 +120,7 @@ export const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'L
     column.sort((a, b) => {
       const byType = hierarchyOrder(a) - hierarchyOrder(b);
       if (byType !== 0) return byType;
-      const byLabel = String(a.data?.label || '').localeCompare(String(b.data?.label || ''), 'de');
+      const byLabel = safeText(a.data?.label).localeCompare(safeText(b.data?.label), 'de');
       return byLabel || a.id.localeCompare(b.id);
     });
   }

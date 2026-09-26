@@ -106,6 +106,10 @@ export const NODE_DATA_SCHEMA: Record<string, Record<string, NodeDataFieldSpec>>
     hasRcd: { type: 'boolean' },
     rating: { type: 'number', allowZero: true },
     acCurrentA: { type: 'number', allowZero: true },
+    // AUDIT N1: gemessener/angegebener prospektiver Kurzschlussstrom der
+    // Einspeisestelle — 0 A ist unsinnig, aber `allowZero` hält die
+    // Persistenz tolerant (die Auswertung verwirft Werte <= 0 selbst).
+    prospectiveIkA: { type: 'number', allowZero: true },
   },
   solar: {
     ...COMMON_FIELDS,
@@ -113,13 +117,14 @@ export const NODE_DATA_SCHEMA: Record<string, Record<string, NodeDataFieldSpec>>
     amps: { type: 'number', allowZero: true },
     voc: { type: 'number', allowZero: true },
     isc: { type: 'number', allowZero: true },
-    tempCoefficient: { type: 'number' }, // negativ erlaubt, 0 unsinnig aber ungiftig
+    // Bruch pro Kelvin (−0,0035 = −0,35 %/K), negativ — AUDIT S1.
+    tempCoefficient: { type: 'number' },
   },
   roofSolar: {
     ...COMMON_FIELDS,
     voc: { type: 'number', allowZero: true },
     isc: { type: 'number', allowZero: true },
-    tempCoefficient: { type: 'number' },
+    tempCoefficient: { type: 'number' }, // Bruch pro Kelvin (AUDIT S1)
   },
   shunt: { ...COMMON_FIELDS },
   ground: { ...COMMON_FIELDS },

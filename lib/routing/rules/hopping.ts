@@ -62,7 +62,7 @@ export const HOP_PRIORITY_WEIGHTS = Object.freeze({
     DC_12V: 100,
     water: 50,
     unknown: 0,
-  }) as Readonly<Record<HopDomain, number>>,
+  }),
   /** Faktor je mm² Querschnitt; bei 70 mm² (Normobergrenze) gedeckelt. */
   crossSectionFactor: 4,
   crossSectionCap: 70,
