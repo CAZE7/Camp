@@ -1049,3 +1049,47 @@ Wasser-Graph), `components/planner/utils/classFlags.test.ts` (4 Tests),
 Gate: `npx vitest run` → 167 Testdateien / 2297 Tests, beide `tsc`-Profile,
 `eslint`, `prettier`, Golden Master 13 byte-identisch, Regression 50,
 `routing:audit` I1–I7 = 0 / fallback 0, `perf:edge-routing` 41,7 ms (≤ 60 ms).
+
+### 2026-09-26 — Elfte Fassung: Auch Aktions-Pfade schreiben nur mit Wirkung (Rule Q, Nachtrag)
+
+Der Sweep über alle Stellen, die Knoten-/Kantenobjekte neu bauen, fand drei
+weitere Fälle derselben Fehlerklasse — diesmal in **Aktionen**, nicht in
+Change-Handlern:
+
+1. **`focusElement` („Beheben“ aus der Warn-Zentrale)** markierte jedes Element
+   per `map((e) => ({ ...e, selected: … }))` neu. Ein Klick auf „Beheben“
+   erzeugte damit für **alle** Knoten und Kanten neue Objekte; React Flow
+   adoptierte und maß neu, die Layout-Signatur folgte mit einem weiteren
+   Routing-Lauf. Zusätzlich galt `undefined !== false` als Änderung: Elemente
+   ohne `selected`-Feld bekamen selbst dann ein neues Objekt, wenn gar keine
+   Marke gesetzt war. Neu: `withSelection()` (fehlendes `selected` zählt als
+   „nicht markiert“; gleiche Marke ⇒ dasselbe Objekt) und `keepIfSame()` für die
+   unbeteiligten Listen; ist schon alles wie gewünscht (z. B. wiederholtes
+   „Beheben“ an derselben Leitung), bleibt der Zustand unberührt.
+2. **`deleteSelected` ohne Auswahl** schrieb einen Zustand samt **Undo-Schritt**
+   für eine Löschung, die nie stattgefunden hat — der Nutzer drückt danach
+   „Rückgängig“ und es passiert nichts. Jetzt: früher Ausstieg, wenn weder
+   Knoten noch Kanten markiert sind.
+3. **id-adressierte Daten-Aktionen** (`updateNodeData`, `handleChangeLength`,
+   `-FuseSize`, `-FuseOffset`, `-FuseType`, `-AcProtection`) bauen ihre Listen
+   über `map`/`filter`. Findet keine ID, entstand ein inhaltlich identisches
+   Array — plus Snapshot. Neu: `withHistoryIfChanged` (`graphInternals.ts`)
+   vergleicht den Patch elementweise per Identität und läuft nur bei echter
+   Änderung in den normalen Pfad (Snapshot, `canUndo`). Der Validierungs-Zweig,
+   der bei ungültigen Eingaben schon die **alte** Liste zurückgibt
+   (AUDIT ELE-004/DOM-001/002), erzeugt damit ebenfalls keinen Phantom-Schritt
+   mehr.
+
+Nachweis (`store/slices/changeNoise.test.ts`, jetzt 15 Tests): wiederholtes
+„Beheben“ desselben Knotens/der Leitung ⇒ Zustandsobjekt identisch; Fokus
+markiert nur den Ziel-Knoten (unbeteiligte Knoten, Wasser-Graph und Kanten
+bleiben dieselben Objekte); fremde Marke wird entfernt, ohne die übrigen
+Elemente zu ersetzen; `deleteSelected`/`updateNodeData`/`handleChangeLength`
+ohne Wirkung ⇒ Zustand identisch **und** `historyPast` unverändert; zwei
+Kontrollproben (bekannte ID schreibt weiterhin mit Undo-Schritt; Löschen mit
+Auswahl bleibt strukturell). Der Startzustand der Suite setzt jetzt auch
+`selectedNodes`/`selectedEdges` zurück — vorher trug ein Test die Marke des
+vorherigen weiter.
+
+Gate: `npx vitest run` → 167 Testdateien / 2306 Tests, `npm run check` grün
+(lint, prettier, beide `tsc`-Profile, Coverage).

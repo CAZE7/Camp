@@ -17,6 +17,7 @@ import {
   graphSnapshot,
   sameElements,
   withHistory,
+  withHistoryIfChanged,
   pathDropCache,
   plannerGraphSignature,
   HISTORY_LIMIT,
@@ -82,6 +83,41 @@ export type GraphSlice = Pick<
   | 'calculatePathVoltageDrop'
   | 'onLayoutV2'
 >;
+
+/**
+ * Setzt die Auswahl-Marke nur dort neu, wo sie sich wirklich ändert.
+ *
+ * `items.map((item) => ({ ...item, selected: item.id === id }))` erzeugt für
+ * **jedes** Element ein neues Objekt — auch für die, deren Marke schon stimmt.
+ * React Flow übernimmt einen Knoten/eine Kante nur bei identischem Objekt
+ * unverändert (`adoptUserNodes`/`checkEquality`) und **messt** sonst neu; die
+ * Layout-Signatur stößt darüber einen weiteren Routing-Lauf an
+ * (Bug 2026-09-26, Rule Q). Deshalb: gleiche Marke ⇒ dasselbe Objekt.
+ */
+function withSelection<T extends { id: string; selected?: boolean }>(items: T[], id: string): T[] {
+  let changed = false;
+  const next = items.map((item) => {
+    const shouldSelect = item.id === id;
+    // Fehlendes `selected` zählt als „nicht markiert“ — sonst gälte
+    // `undefined !== false` als Änderung und jedes Element bekäme ein neues
+    // Objekt, obwohl sich nichts ändert.
+    if ((item.selected ?? false) === shouldSelect) return item;
+    changed = true;
+    return { ...item, selected: shouldSelect };
+  });
+  // Auch das Array selbst bleibt dasselbe: React Flow vergleicht die Listen und
+  // jeder neue Array-Prop-Wert kostet einen Durchlauf über alle Elemente.
+  return changed ? next : items;
+}
+
+/**
+ * Gibt die alte Liste zurück, wenn sich inhaltlich nichts geändert hat.
+ * Wird ein Element geändert, dürfen die **unbeteiligten** Listen nicht
+ * mitwandern — sonst verliert React Flow ihre Identität (Rule Q).
+ */
+function keepIfSame<T>(before: T[], after: T[]): T[] {
+  return sameElements(before, after) ? before : after;
+}
 
 export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
   nodes: [],
@@ -181,28 +217,52 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
   focusElement: (id, elementType) => {
     set((state) => {
       if (elementType === 'edge') {
-        const edges = state.edges.map((e) => ({ ...e, selected: e.id === id }));
-        const waterEdges = state.waterEdges.map((e) => ({ ...e, selected: e.id === id }));
+        const edges = withSelection(state.edges, id);
+        const waterEdges = withSelection(state.waterEdges, id);
         const nodes = state.nodes.map((n) => (n.selected ? { ...n, selected: false } : n));
         const target = edges.find((e) => e.id === id) || waterEdges.find((e) => e.id === id) || null;
+        const selectedEdges = target ? [target] : [];
+        const selectedNodes = state.selectedNodes.length === 0 ? state.selectedNodes : [];
+        // Ist schon alles so, wie es sein soll (z. B. wiederholtes „Beheben“
+        // an derselben Leitung), bleibt der Zustand unberührt.
+        if (
+          sameElements(state.edges, edges) &&
+          sameElements(state.waterEdges, waterEdges) &&
+          sameElements(state.nodes, nodes) &&
+          sameElements(state.selectedEdges, selectedEdges) &&
+          selectedNodes === state.selectedNodes
+        ) {
+          return state;
+        }
         return {
-          edges,
-          waterEdges,
-          nodes,
-          selectedEdges: target ? [target] : [],
-          selectedNodes: [],
+          edges: keepIfSame(state.edges, edges),
+          waterEdges: keepIfSame(state.waterEdges, waterEdges),
+          nodes: keepIfSame(state.nodes, nodes),
+          selectedEdges: keepIfSame(state.selectedEdges, selectedEdges),
+          selectedNodes,
         };
       }
-      const nodes = state.nodes.map((n) => ({ ...n, selected: n.id === id }));
-      const waterNodes = state.waterNodes.map((n) => ({ ...n, selected: n.id === id }));
+      const nodes = withSelection(state.nodes, id);
+      const waterNodes = withSelection(state.waterNodes, id);
       const edges = state.edges.map((e) => (e.selected ? { ...e, selected: false } : e));
       const target = nodes.find((n) => n.id === id) || waterNodes.find((n) => n.id === id) || null;
+      const selectedNodes = target ? [target] : [];
+      const selectedEdges = state.selectedEdges.length === 0 ? state.selectedEdges : [];
+      if (
+        sameElements(state.nodes, nodes) &&
+        sameElements(state.waterNodes, waterNodes) &&
+        sameElements(state.edges, edges) &&
+        sameElements(state.selectedNodes, selectedNodes) &&
+        selectedEdges === state.selectedEdges
+      ) {
+        return state;
+      }
       return {
-        nodes,
-        waterNodes,
-        edges,
-        selectedNodes: target ? [target] : [],
-        selectedEdges: [],
+        nodes: keepIfSame(state.nodes, nodes),
+        waterNodes: keepIfSame(state.waterNodes, waterNodes),
+        edges: keepIfSame(state.edges, edges),
+        selectedNodes,
+        selectedEdges,
       };
     });
     if (typeof window !== 'undefined') {
@@ -211,6 +271,9 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
   },
   deleteSelected: () =>
     set((state) => {
+      // Nichts markiert ⇒ nichts zu löschen (Rule Q): vorher entstand ein
+      // Undo-Schritt ohne Wirkung und ein neuer Zustand ohne Änderung.
+      if (state.selectedNodes.length === 0 && state.selectedEdges.length === 0) return state;
       const nodeIdsSet = new Set<string>();
       for (const node of state.selectedNodes) {
         nodeIdsSet.add(node.id);
@@ -237,7 +300,7 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
     }),
   updateNodeData: (id, data) =>
     set((state) =>
-      withHistory(state, {
+      withHistoryIfChanged(state, {
         nodes: state.nodes.map((n) => {
           if (n.id === id) {
             return { ...n, data: { ...n.data, ...data } };
@@ -254,7 +317,7 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
     ),
   handleChangeLength: (id, length) =>
     set((state) =>
-      withHistory(state, {
+      withHistoryIfChanged(state, {
         edges: state.edges.map((e) => {
           if (e.id === id) {
             return { ...e, data: { ...e.data!, length } };
@@ -271,13 +334,13 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
     ),
   handleChangeFuseSize: (id, fuseSize) =>
     set((state) =>
-      withHistory(state, {
+      withHistoryIfChanged(state, {
         edges: state.edges.map((e) => (e.id === id ? { ...e, data: { ...e.data!, fuseSize } } : e)),
       })
     ),
   handleChangeFuseOffset: (id, fuseOffset) =>
     set((state) =>
-      withHistory(state, {
+      withHistoryIfChanged(state, {
         // AUDIT ELE-004: Nur endliche, nicht-negative Offsets speichern —
         // ungültige Eingaben ändern den Zustand nicht.
         edges:
@@ -288,7 +351,7 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
     ),
   handleChangeFuseType: (id, fuseType) =>
     set((state) =>
-      withHistory(state, {
+      withHistoryIfChanged(state, {
         // AUDIT DOM-002: Bauform (Abschaltvermögens-Check) — defensiv gegen
         // unbekannte Werte validiert (Import/Persistenz), leeren String als
         // „Feld zurücksetzen“ lesen.
@@ -300,7 +363,7 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
     ),
   handleChangeAcProtection: (id, acProtection) =>
     set((state) =>
-      withHistory(state, {
+      withHistoryIfChanged(state, {
         // AUDIT DOM-001: AC-Schutzorgan (LS/RCBO, B/C, 6/10 kA); die
         // Regelauswertung (A8) validiert defensiv erneut, hier wird die
         // Auswahl des Inspektors ehrlich gespeichert. `undefined` löscht

@@ -97,6 +97,33 @@ export function affectsStructure(changes: readonly { type: string }[]): boolean 
   return changes.some((change) => change.type === 'add' || change.type === 'remove');
 }
 
+/**
+ * Wie `withHistory`, aber **ohne** Wirkung ohne Änderung (Rule Q).
+ *
+ * Die id-adressierten Daten-Aktionen bauen ihre Listen über `map`/`filter`.
+ * Findet keine ID, entsteht ein inhaltlich identisches Array — plus ein
+ * Undo-Schritt für eine Änderung, die nie stattgefunden hat (der Nutzer drückt
+ * „Rückgängig“ und es passiert nichts) und ein neuer Zustand, der React Flow
+ * und die Routing-Signatur beschäftigt. Verglichen wird die Element-Identität,
+ * dieselbe Prüfung wie in den Change-Handlern; sobald irgendein Feld des
+ * Patches abweicht, läuft der normale Pfad inklusive Snapshot.
+ */
+export function withHistoryIfChanged<T extends Partial<PlannerState>>(
+  state: PlannerState,
+  update: T
+): PlannerState | (T & Pick<PlannerState, 'historyPast' | 'historyFuture' | 'canUndo' | 'canRedo'>) {
+  for (const key of Object.keys(update)) {
+    const before: unknown = state[key as keyof PlannerState];
+    const after: unknown = update[key as keyof T];
+    if (Array.isArray(before) && Array.isArray(after)) {
+      if (!sameElements<unknown>(before, after)) return withHistory(state, update);
+    } else if (before !== after) {
+      return withHistory(state, update);
+    }
+  }
+  return state;
+}
+
 const HISTORY_LIMIT = 50;
 
 /**

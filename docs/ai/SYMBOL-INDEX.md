@@ -117,6 +117,7 @@ Kein Anspruch auf Vollständigkeit — es fehlen bewusst UI-Helfer und reine Ren
 | `sameElements`             | `store/slices/graphInternals.ts`   | identische Element-Liste?        | `changeNoise.test.ts`      |
 | `affectsStructure`         | dto.                               | `add`/`remove` in der Liste      | dto.                       |
 | `stripNodeMeasurement`     | `store/slices/persistence.ts`      | Messwerte raus (Rule R)          | `persistence.test.ts`      |
+| `withHistoryIfChanged`     | `store/slices/graphInternals.ts`   | Patch ohne Treffer ⇒ No-op       | `changeNoise.test.ts`      |
 | `withClassFlag`            | `planner/utils/classFlags.ts`      | identitätsstabile CSS-Marke      | `classFlags.test.ts`       |
 | `createDebouncedStorage`   | `store/storage.ts`                 | Schreib-Debounce 200 ms          | `storage.test.ts`          |
 | `newEntityId`              | `lib/id.ts`                        | IDs ohne Secure-Context          | `id.test.ts`               |

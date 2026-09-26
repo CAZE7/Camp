@@ -31,6 +31,10 @@ const seed = () => {
     historyFuture: [],
     canUndo: false,
     canRedo: false,
+    // Auswahl gehört zum Startzustand: sonst schleppt ein Test die Marke des
+    // vorherigen mit (deleteSelected würde dann wirklich löschen).
+    selectedNodes: [],
+    selectedEdges: [],
   });
 };
 
@@ -145,5 +149,131 @@ describe('Change-Handler ohne Treffer erzeugen keinen neuen Zustand', () => {
     expect(state.nodes[0]?.position).toEqual({ x: 40, y: 60 });
     // Während des Ziehens entsteht KEIN Undo-Schritt (bestehendes Verhalten).
     expect(state.historyPast).toHaveLength(0);
+  });
+});
+
+/**
+ * Regel Q gilt auch für die Aktions-Pfade: `focusElement` (Knopf „Beheben“ in
+ * der Warn-Zentrale) erzeugte vorher per `map((e) => ({ ...e, selected: … }))`
+ * für **jedes** Element ein neues Objekt. React Flow adoptiert dann alle Knoten
+ * und Kanten neu, misst neu — und die Layout-Signatur stößt einen weiteren
+ * Routing-Lauf an. Nur die Elemente, deren Auswahl sich wirklich ändert,
+ * dürfen ein neues Objekt bekommen.
+ */
+describe('focusElement — nur die geänderte Auswahl erzeugt neue Objekte', () => {
+  beforeEach(seed);
+
+  it('wiederholtes Fokussieren desselben Knotens ist ein No-op', () => {
+    usePlannerStore.getState().focusElement('a', 'node');
+    const afterFirst = usePlannerStore.getState();
+    expect(afterFirst.selectedNodes.map((node) => node.id)).toEqual(['a']);
+
+    usePlannerStore.getState().focusElement('a', 'node');
+
+    // Zustandsobjekt, Arrays und Elemente bleiben identisch.
+    expect(usePlannerStore.getState()).toBe(afterFirst);
+    expect(usePlannerStore.getState().nodes).toBe(afterFirst.nodes);
+    expect(usePlannerStore.getState().edges).toBe(afterFirst.edges);
+  });
+
+  it('markiert nur den Ziel-Knoten, alles andere bleibt identisch', () => {
+    const before = usePlannerStore.getState();
+
+    usePlannerStore.getState().focusElement('a', 'node');
+
+    const after = usePlannerStore.getState();
+    expect(after.nodes).not.toBe(before.nodes);
+    expect(after.nodes[0]?.selected).toBe(true);
+    // Unbeteiligte Knoten (ohne `selected`-Feld) behalten ihre Identität …
+    expect(after.nodes[1]).toBe(nodeB);
+    // … ebenso Wasser-Graph und Kanten: keine Marke hat sich geändert.
+    expect(after.waterNodes).toBe(before.waterNodes);
+    expect(after.waterEdges).toBe(before.waterEdges);
+    expect(after.edges).toBe(before.edges);
+  });
+
+  it('entfernt eine fremde Marke, ohne die übrigen Elemente zu ersetzen', () => {
+    usePlannerStore.getState().onNodesChange([{ type: 'select', id: 'b', selected: true }]);
+    const before = usePlannerStore.getState();
+    const markedB = before.nodes[1]!;
+
+    usePlannerStore.getState().focusElement('a', 'node');
+
+    const after = usePlannerStore.getState();
+    expect(after.nodes[1]).not.toBe(markedB);
+    expect(after.nodes[1]?.selected).toBe(false);
+    expect(after.nodes[0]?.selected).toBe(true);
+    expect(after.edges).toBe(before.edges);
+  });
+
+  it('Kontrollprobe: eine markierte Leitung wird weiterhin fokussiert', () => {
+    usePlannerStore.getState().focusElement('e1', 'edge');
+
+    const state = usePlannerStore.getState();
+    expect(state.selectedEdges.map((edge) => edge.id)).toEqual(['e1']);
+    expect(state.edges[0]?.selected).toBe(true);
+    expect(state.selectedNodes).toHaveLength(0);
+    // Zweiter Aufruf: keine Änderung mehr.
+    const second = usePlannerStore.getState();
+    usePlannerStore.getState().focusElement('e1', 'edge');
+    expect(usePlannerStore.getState()).toBe(second);
+  });
+});
+
+/**
+ * Rule Q für die Aktions-Pfade: Ein Aufruf **ohne Wirkung** darf weder einen
+ * Undo-Schritt noch einen neuen Zustand erzeugen. Vorher entstand z. B. beim
+ * Löschen ohne Auswahl ein Undo-Schritt, der nichts zurücknimmt, und eine
+ * Daten-Aktion mit unbekannter ID schrieb einen Snapshot für eine Änderung,
+ * die nie stattgefunden hat.
+ */
+describe('Aktionen ohne Wirkung erzeugen keinen Zustand', () => {
+  beforeEach(seed);
+
+  it('deleteSelected ohne Auswahl ist ein No-op (kein Undo-Schritt)', () => {
+    usePlannerStore.setState({ selectedNodes: [], selectedEdges: [] });
+    const before = usePlannerStore.getState();
+    usePlannerStore.getState().deleteSelected();
+
+    const after = usePlannerStore.getState();
+    expect(after).toBe(before);
+    expect(after.historyPast).toHaveLength(0);
+    expect(after.canUndo).toBe(false);
+  });
+
+  it('updateNodeData mit unbekannter ID ist ein No-op', () => {
+    const before = usePlannerStore.getState();
+    usePlannerStore.getState().updateNodeData('ghost', { label: 'x' });
+
+    expect(usePlannerStore.getState()).toBe(before);
+    expect(usePlannerStore.getState().historyPast).toHaveLength(0);
+  });
+
+  it('handleChangeLength mit unbekannter Kanten-ID ist ein No-op', () => {
+    const before = usePlannerStore.getState();
+    usePlannerStore.getState().handleChangeLength('ghost-edge', 7);
+
+    expect(usePlannerStore.getState()).toBe(before);
+    expect(usePlannerStore.getState().historyPast).toHaveLength(0);
+  });
+
+  it('Kontrollprobe: eine bekannte ID schreibt weiterhin — mit Undo-Schritt', () => {
+    usePlannerStore.getState().updateNodeData('a', { label: 'Batterie' });
+
+    const state = usePlannerStore.getState();
+    expect(state.nodes[0]?.data?.label).toBe('Batterie');
+    expect(state.historyPast).toHaveLength(1);
+    expect(state.canUndo).toBe(true);
+    // Nicht betroffene Knoten bleiben identisch.
+    expect(state.nodes[1]).toBe(nodeB);
+  });
+
+  it('Kontrollprobe: Löschen mit Auswahl bleibt strukturell (mit Undo-Schritt)', () => {
+    usePlannerStore.setState({ selectedNodes: [nodeB], selectedEdges: [] });
+    usePlannerStore.getState().deleteSelected();
+
+    const state = usePlannerStore.getState();
+    expect(state.nodes.map((node) => node.id)).toEqual(['a']);
+    expect(state.historyPast.length).toBeGreaterThan(0);
   });
 });

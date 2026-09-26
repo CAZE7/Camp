@@ -190,6 +190,13 @@ Elemente **identisch** zurück (`components/planner/utils/classFlags.ts`
 `withClassFlag`, `nodeInteractionState.ts`, `backboneGroup.ts`). Änderungen mit
 `add`/`remove` bleiben immer strukturell.
 
+Das gilt auch für **Aktionen**: `withHistoryIfChanged` (`graphInternals.ts`)
+statt `withHistory`, wenn ein Patch eine ID adressiert (kein Treffer ⇒ kein
+Snapshot, kein Phantom-Undo); `focusElement` markiert über `withSelection` nur
+das Ziel und lässt unbeteiligte Listen identisch (`keepIfSame`);
+`deleteSelected` steigt ohne Auswahl aus; fehlendes `selected` zählt als
+„nicht markiert“.
+
 - Tests: `store/slices/changeNoise.test.ts`,
   `components/planner/utils/classFlags.test.ts`,
   `components/planner/utils/nodeInteractionState.test.ts`,
