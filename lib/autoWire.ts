@@ -52,7 +52,7 @@ import {
   type Volts,
 } from './units';
 import {
-  AUTO_EDGE_PREFIX,
+  isAutoWiredEdge,
   connectionKey,
   edgeCrossSection,
   chemistriesParallelSafe,
@@ -80,7 +80,7 @@ import {
 } from './autoWire/routing';
 
 export { isStarterBatteryLabel };
-export { AUTO_EDGE_PREFIX } from './autoWire/primitives';
+export { AUTO_EDGE_PREFIX, isAutoWiredEdge } from './autoWire/primitives';
 export {
   cumulativeDropAt,
   relevantCumulativeDrop,
@@ -110,14 +110,25 @@ export function performAutoWiring(
     return meters(Math.max(1, Math.hypot((b.x ?? 0) - (a.x ?? 0), (b.y ?? 0) - (a.y ?? 0)) / PX_PER_METER));
   };
   let userEdges: CableEdge[] = existingEdges
-    .filter((e) => !e.id.startsWith(AUTO_EDGE_PREFIX))
+    .filter((e) => !isAutoWiredEdge(e))
     .map((e) => ({
       ...e,
+      // AUDIT D1: `...e.data` statt einer Feld-Whitelist. Die Whitelist
+      // (length, crossSection, fuseSize, edgeDomain) warf bei JEDEM
+      // AutoWire-Klick alles andere still weg — darunter die vom Nutzer
+      // eingetragenen Datenblattwerte `fuseType`, `fuseOffset`,
+      // `fuseBreakingCapacity` und `acProtection` sowie die Warnmarker
+      // `dropWarning`/`fuseWarning`. Ein Datenverlust im Schreibpfad, den
+      // kein Test sah: keiner verglich die Key-Menge einer Nutzerkante
+      // vor/nach performAutoWiring (Regressionstest jetzt in autoWire.test.ts).
       data: {
+        ...(e.data ?? {}),
+        // Kanten ohne gespeicherte Länge bekommen weiterhin die
+        // Geometrie-Schätzung (Issue 6) — sonst unverändert.
         length: e.data?.length ?? geometricLength(e),
-        crossSection: e.data?.crossSection,
-        fuseSize: e.data?.fuseSize,
-        edgeDomain: e.data?.edgeDomain,
+        // AUDIT D2: Herkunft als Datenfeld festschreiben. Ab hier entscheidet
+        // nie wieder eine ID über „Auto" oder „Nutzer".
+        autoWired: false,
       },
     }));
   const newEdges: CableEdge[] = [];
@@ -203,7 +214,7 @@ export function performAutoWiring(
       );
     }
     const totalSolarWatts = solars.reduce(
-      (sum, n) => addWatts(sum, quantityOr((n.data as Record<string, unknown>)?.watts, watts, ZERO_WATTS)),
+      (sum, n) => addWatts(sum, quantityOr(n.data?.watts, watts, ZERO_WATTS)),
       ZERO_WATTS
     );
     const requiredAmps = Math.ceil(currentFromPower(totalSolarWatts, sysVoltage));
@@ -302,8 +313,7 @@ export function performAutoWiring(
   // ungeprüft — 24 V landeten auf der 12-V-Schiene). Fehlende Werte werden
   // auf die aufgelöste Systemspannung normiert und jeder Kandidat gegen
   // JEDE bereits akzeptierte Batterie geprüft.
-  const voltageOf = (b: Node): Volts =>
-    quantityOr((b.data as Record<string, unknown>)?.nominalVoltage, volts, sysVoltage);
+  const voltageOf = (b: Node): Volts => quantityOr(b.data?.nominalVoltage, volts, sysVoltage);
   // AUDIT AUTO-003: chemiegenau statt nur „Blei vs. Li" — AGM ‖ Gel wird
   // genauso blockiert wie LiFePO4 ‖ Li-Ion (Ladeschlussspannungen/-
   // spannungsfenster vertragen sich nicht).

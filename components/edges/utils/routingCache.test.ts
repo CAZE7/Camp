@@ -7,8 +7,14 @@ import {
   crossingSegmentsNear,
 } from './routingCache';
 
-const makeNode = (id: string, x: number, y: number, width?: number, height?: number): Node =>
-  ({ id, type: 'consumer', position: { x, y }, width, height, data: { label: id } }) as Node;
+const makeNode = (id: string, x: number, y: number, width?: number, height?: number): Node => ({
+  id,
+  type: 'consumer',
+  position: { x, y },
+  width,
+  height,
+  data: { label: id },
+});
 
 describe('routingCache', () => {
   it('baut die Rect-Map mit Fallback-Maßen auf, wenn width/height fehlen', () => {

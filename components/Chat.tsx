@@ -59,12 +59,27 @@ export default function Chat({ defaultOpen = false }: { defaultOpen?: boolean })
 
   const isLoading = status === 'submitted' || status === 'streaming';
 
+  // AUDIT T1 (no-misused-promises): `handleSubmit` hing als async-Funktion an
+  // einem `onSubmit`, das `void` erwartet. Eine Ablehnung von `sendMessage`
+  // war damit ein unbeobachtetes Promise: Die Eingabe blieb stehen, der Nutzer
+  // sah aber nichts — weder Erfolg noch Fehler. Jetzt wird der Fehler gefangen
+  // und gesagt; die Eingabe bleibt absichtlich erhalten (erneut versuchen).
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;
+    setSubmitError(null);
 
-    await sendMessage({ text: input });
-    setInput('');
+    try {
+      await sendMessage({ text: input });
+      setInput('');
+    } catch (error) {
+      console.error('[Chat] Nachricht konnte nicht gesendet werden:', error);
+      setSubmitError(
+        'Nachricht konnte nicht gesendet werden. Bitte verbinde dich erneut und versuche es noch einmal.'
+      );
+    }
   };
 
   if (!isOpen) {
@@ -107,7 +122,7 @@ export default function Chat({ defaultOpen = false }: { defaultOpen?: boolean })
                   msg.role === 'user' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-900'
                 }`}
               >
-                {getMessageText(msg as UIMessage)}
+                {getMessageText(msg)}
               </div>
             </div>
           ))
@@ -115,7 +130,19 @@ export default function Chat({ defaultOpen = false }: { defaultOpen?: boolean })
       </div>
 
       {/* Input */}
-      <ChatInputForm input={input} setInput={setInput} onSubmit={handleSubmit} isLoading={isLoading} />
+      {submitError && (
+        <p role="alert" className="border-t border-border bg-signal/10 px-4 py-2 text-sm text-signal">
+          {submitError}
+        </p>
+      )}
+      <ChatInputForm
+        input={input}
+        setInput={setInput}
+        onSubmit={(e) => {
+          void handleSubmit(e);
+        }}
+        isLoading={isLoading}
+      />
     </div>
   );
 }

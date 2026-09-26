@@ -4,7 +4,6 @@ import { Handle, Position, useEdges } from '@xyflow/react';
 import type { ConduitNodeData } from './types';
 import { type CableEdgeData } from '../edges/CableEdge';
 import {
-  type VDE_CONDUIT_INNER_DIAMETERS,
   VDE_MAX_CONDUIT_FILL_PERCENT,
   calculateConduitFillPercent,
   recommendConduitType,
@@ -21,7 +20,7 @@ import { NodeSymbol } from './NodeSymbol';
 const ConduitNode = function ({ data, selected }: { id: string; data: ConduitNodeData; selected?: boolean }) {
   const edges = useEdges();
 
-  const conduitType = (data.conduitType || 'EN 20') as keyof typeof VDE_CONDUIT_INNER_DIAMETERS;
+  const conduitType = data.conduitType || 'EN 20';
   // Referenzstabil über Renders mit gleichem data.assignedEdges — ohne dieses
   // Memo wäre das fillStats-Memo bei jedem Render invalidiert (neues []-Array).
   const assignedEdgeIds = useMemo(() => data.assignedEdges || [], [data.assignedEdges]);

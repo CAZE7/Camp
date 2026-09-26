@@ -446,9 +446,13 @@ export function ExpertPanel() {
   }, [selectedNodes]);
 
   // Reset expanded tip when the knowledge context changes
-  useEffect(() => {
+  // AUDIT T1 (react-hooks/set-state-in-effect): zur Render-Zeit statt in einem
+  // zweiten Commit.
+  const [syncedKnowledge, setSyncedKnowledge] = useState(currentKnowledge);
+  if (syncedKnowledge !== currentKnowledge) {
+    setSyncedKnowledge(currentKnowledge);
     setExpandedTip(0);
-  }, [currentKnowledge]);
+  }
 
   return (
     <div

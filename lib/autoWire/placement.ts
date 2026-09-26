@@ -1,5 +1,6 @@
 import type { Node } from '../domain/graph'; // ARCH-001
 import { ROUTING_TOKENS } from '../routing/tokens';
+import { safeText } from '../safeText'; // AUDIT T1
 
 /**
  * R-8 (Routing-Qualität, M11-2): AutoWire-Platzierung.
@@ -189,10 +190,13 @@ export function applyFlowLayout(nodes: Node[], edges: FlowEdge[], movableIds: Se
   }
 
   const sortKey = (node: Node): string => {
-    const data = (node.data ?? {}) as Record<string, unknown>;
+    const data = node.data ?? {};
     // label+type ist stabil über Läufe (UUIDs wären es nicht — die ändert
     // crypto.randomUUID bei jedem Auto-Wire).
-    return `${String(data.label ?? '')}\u0000${node.type}\u0000${node.id}`;
+    // safeText statt String(): ein Objekt-Label würde den Sortierschlüssel
+    // zu '[object Object]' machen — und damit zwei verschiedene Bauteile
+    // gleich aussehen lassen (Determinismus, AGENTS.md §3.6).
+    return `${safeText(data.label)}\u0000${node.type}\u0000${node.id}`;
   };
 
   /**

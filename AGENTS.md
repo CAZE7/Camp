@@ -56,7 +56,15 @@ Modul-READMEs (jeweils: Was ist es · Public API · Besitz · Verbote · schütz
 5. Kollisionen nur über `lib/routing/rules/collision.ts` — nie neu erfinden.
 6. Determinismus erhalten: kein `Math.random`, keine ungeordnete Iteration.
 7. `npx tsx scripts/routing/audit.ts` → I1–I7 müssen **0** bleiben, Fallback **0**.
-8. `npm run perf:edge-routing` → Median **≤ 16 ms**.
+8. `npm run perf:edge-routing` → **zwei** Gates, beide grün (Exit-Code 1 bei Überschreitung):
+   - Render-Pfad (Einzelkante, Frame-Cache, ADR 0012): Median **≤ 16 ms** — gemessen ≈ 3,3 ms.
+   - Live-Pfad (`routeAllCables`, kompletter Plan in einem Pass, AUDIT P1): Median **≤ 60 ms**
+     als **Ratchet** — gemessen ≈ 40 ms. Das Ratchet hält den Ist-Zustand und verbietet
+     Rückfall; Ziel bleibt 16 ms, wer den Pfad schneller macht, zieht
+     `LIVE_PATH_RATCHET_MS` in `benchmarks/edgeRoutingPerf.bench.ts` nach unten.
+     Vorher stand hier nur „Median ≤ 16 ms" — für denselben Befehl, dessen zweites Gate
+     bewusst mit 60 ms läuft (AUDIT N3: eine Doku-Zahl, die das eigene Gate nicht beschreibt,
+     wird zur falschen Zusage an den nächsten Beitragenden).
 9. `npm run test:regression` → Layout, Metriken und **byte-exakte SVGs** unverändert
    (Abweichung ⇒ bewusste Entscheidung + Recapture + Begründung im PR).
 10. Kein Routing-Fix darf `crossSection`, `fuseSize`, `edgeDomain` oder `length` anfassen.
@@ -116,6 +124,13 @@ Details: [ARCHITECTURE-RULES.md](docs/ai/ARCHITECTURE-RULES.md) und
 ## 7. Befehle
 
 - `npm run dev` · `npm run build` · `npm test` (Vitest) · `npm run typecheck` · `npm run lint`
+- `npm run lint` läuft **typbewusst** (`recommendedTypeChecked` + ProjectService,
+  react-hooks v7 `recommended-latest`, ARCH-001 und Determinismus als
+  `no-restricted-*`): ~30 s statt 8 s, dafür sieht das Gate `any` hinter
+  Assertions, verworfene Promises und `[object Object]` in Nutzertexten.
+  `tsc` bleibt autoritativ für Signaturen — Einzelheiten und die eine
+  begründet ausgeschaltete Regel: `eslint.config.mjs`,
+  [ARCHITECTURE-CHANGES.md](docs/ARCHITECTURE-CHANGES.md) „Siebte Fassung".
 - E2E: einmalig `npm run e2e:install`, dann `npm run e2e`
 - Routing: `npm run routing:audit` (I1–I7 über 6 Pläne) · `npm run routing:domain-probe`
   (Wirksamkeit der Domänen-Trennregeln) · `npm run routing:gallery`

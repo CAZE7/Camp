@@ -35,7 +35,7 @@
  *    (AUDIT-AUTOWIRE Issue 4).
  */
 
-export type HandleDomainValue = 'DC_12V' | 'AC_230V';
+export type HandleDomainValue = 'DC_12V' | 'AC_230V' | 'Solar';
 
 export type HandleType = 'source' | 'target';
 
@@ -65,7 +65,9 @@ const isIn = (list: readonly string[], value: string | null | undefined): boolea
  * (`isValidConnection`) und beim Anlegen der Kante gelten muss.
  *
  * Unbekannte Knoten/Handles sind DC_12V (konservativ: DC-Regeln sind die
- * strengeren, was Querschnitt und Sicherung angeht).
+ * strengeren, was Querschnitt und Sicherung angeht). Ob ein unbekannter Typ
+ * überhaupt verbindbar ist, entscheidet davon getrennt
+ * `lib/domain/connectionPolicy.ts` (Deny-by-default, AUDIT V1).
  */
 export function handleDomain(
   nodeType: string | undefined,
@@ -73,6 +75,14 @@ export function handleDomain(
   handleType: HandleType | undefined
 ): HandleDomainValue {
   if (!nodeType) return 'DC_12V';
+  // AUDIT N2: Solar-Knoten sind 'Solar' — auf Handle-Ebene, nicht erst auf
+  // Kanten-Ebene. Vorher kannte diese Funktion nur AC/DC und antwortete für
+  // ein Panel `DC_12V`, während `getEdgeDomain` dieselbe Kante als 'Solar'
+  // einstufte: Beim Ziehen galt eine Grundlage, nach dem Speichern eine
+  // andere (gemessen: `solar/plus/source → handle=DC_12V, edge=Solar`).
+  // Genau an dieser Naht wird live validiert und beim Speichern dimensioniert
+  // (`voltageDrop.ts` → `solarDropBasisVoltageOf`, MPP-Bemessungsspannung).
+  if (SOLAR_NODE_TYPES.includes(nodeType)) return 'Solar';
   if (AC_NODE_TYPES.includes(nodeType)) return 'AC_230V';
 
   if (nodeType === 'acBatteryCharger') {
@@ -95,6 +105,10 @@ export function handleDomain(
 /**
  * Domäne **einer Kante** aus beiden Endpunkten — dieselbe Tabelle, nur
  * richtungsbewusst auf Quell- und Zielseite angewandt.
+ *
+ * Vorrangfolge Solar → AC → DC, identisch zu `getEdgeDomain` in
+ * lib/electrical.ts (das seit AUDIT N2 nur noch delegiert): Panel-Zuleitungen
+ * führen MPP-Strom und sind weder 12-V- noch 230-V-Kreise.
  */
 export function edgeDomainOf(
   sourceNodeType: string | undefined,
@@ -102,7 +116,9 @@ export function edgeDomainOf(
   sourceHandle: string | null | undefined,
   targetHandle: string | null | undefined
 ): HandleDomainValue {
-  if (handleDomain(sourceNodeType, sourceHandle, 'source') === 'AC_230V') return 'AC_230V';
-  if (handleDomain(targetNodeType, targetHandle, 'target') === 'AC_230V') return 'AC_230V';
+  const sourceDomain = handleDomain(sourceNodeType, sourceHandle, 'source');
+  const targetDomain = handleDomain(targetNodeType, targetHandle, 'target');
+  if (sourceDomain === 'Solar' || targetDomain === 'Solar') return 'Solar';
+  if (sourceDomain === 'AC_230V' || targetDomain === 'AC_230V') return 'AC_230V';
   return 'DC_12V';
 }

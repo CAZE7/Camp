@@ -1,15 +1,18 @@
+/** AUDIT T1: `mockImplementation` gibt `any` zurück — benannte, typisierte Factory. */
+const createMatchMediaStub = (query: string) => ({
+  matches: false,
+  media: query,
+  onchange: null,
+  addListener: vi.fn(), // Deprecated
+  removeListener: vi.fn(), // Deprecated
+  addEventListener: vi.fn(),
+  removeEventListener: vi.fn(),
+  dispatchEvent: vi.fn(),
+});
+
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
-  value: vi.fn().mockImplementation((query) => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addListener: vi.fn(), // Deprecated
-    removeListener: vi.fn(), // Deprecated
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-    dispatchEvent: vi.fn(),
-  })),
+  value: vi.fn(createMatchMediaStub),
 });
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
@@ -21,7 +24,11 @@ describe('RootLayout', () => {
     // it complains about <html> inside <div>.
     // However, we can just call RootLayout as a function to inspect its output React elements instead of rendering it.
 
-    const element = RootLayout({ children: <div data-testid="child">Test Child</div> });
+    // `RootLayout` liefert ein JSX-Element, dessen `props` typseitig `any`
+    // sind (AUDIT T1) — die erwartete Form wird hier ausdrücklich benannt.
+    const element = RootLayout({
+      children: <div data-testid="child">Test Child</div>,
+    }) as React.ReactElement<{ lang?: string; children?: React.ReactNode }>;
 
     expect(element.type).toBe('html');
     expect(element.props.lang).toBe('de');

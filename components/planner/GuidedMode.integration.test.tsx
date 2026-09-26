@@ -21,7 +21,7 @@ import type { PlannerFlowNode } from '../nodes/types';
  */
 
 function node(id: string, type: string): PlannerFlowNode {
-  return { id, type, position: { x: 0, y: 0 }, data: {} } as unknown as PlannerFlowNode;
+  return { id, type, position: { x: 0, y: 0 }, data: {} };
 }
 
 describe('Geführter Modus (Integration über den echten Store)', () => {

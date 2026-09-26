@@ -82,8 +82,18 @@ export interface SolarNodeData extends CommonNodeData {
   /** Kurzschlussstrom Isc laut Datenblatt (ELE-007). Fehlt: Schätzung 1,25 × Imp. */
   isc?: number;
   /**
-   * Temperaturkoeffizient der Voc in %/K (negativ, z. B. −0.35).
-   * Default ohne Datenblatt: −0,35 %/K (schlechtester typischer c-Si-Wert).
+   * Temperaturkoeffizient der Voc als **Bruch pro Kelvin** (negativ,
+   * z. B. −0.0035 = −0,35 %/K). Default ohne Datenblatt:
+   * `SOLAR_VOC_TEMP_COEFF_PER_KELVIN` = −0,0035 (schlechtester typischer
+   * c-Si-Wert).
+   *
+   * AUDIT S1: Die Einheit war doppeldeutig — dieses Feld war als „%/K"
+   * dokumentiert, `lib/solar.ts` rechnete aber mit einem Bruch, und der
+   * Inspektor schrieb den Prozentwert unverändert hinein. Ein 22-V-Panel
+   * ergab damit 368,5 V Kalt-Voc statt 25,5 V (Faktor 14,5 auf eine
+   * Sicherheitsprüfung). Kanonisch ist jetzt der Bruch; der Inspektor
+   * rechnet %/K ↔ Bruch an seiner Grenze um, und
+   * `solarTempCoefficientPerKelvin` normalisiert Altdaten beim Lesen.
    */
   tempCoefficient?: number;
 }
@@ -135,6 +145,16 @@ export interface ShorePowerNodeData extends CommonNodeData {
   rating?: number;
   /** Modellierter AC-Verbrauch in A; sonst aus der Last abgeleitet. */
   acCurrentA?: number;
+  /**
+   * Prospektiver Kurzschlussstrom I_k an der Einspeisestelle in Ampere —
+   * angegeben (Verteilungsplan des Stellplatzes/Hafens) oder gemessen
+   * (AUDIT N1). Eine Eigenschaft der EINSPEISUNG, nicht der einzelnen
+   * Leitung: ohne diesen Wert rechnet `evaluateAcEdgeProtection` den I_k aus
+   * der Netzimpedanz-Annahme, und das Abschaltvermögen kann dann nur gegen
+   * diese Annahme geprüft werden — die Reichweite dieser Annahme wird am
+   * Verdikt ausgewiesen (`breaking-capacity-reach`).
+   */
+  prospectiveIkA?: number;
 }
 
 export interface ConduitNodeData extends CommonNodeData {

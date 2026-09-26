@@ -180,8 +180,12 @@ describe('VDE Berechnungsfunktionen', () => {
 
 describe('VDE-Standards mit typsicheren Einheiten (K1b)', () => {
   describe('getSystemVoltage', () => {
-    const battery = (id: string = 'b1', data: Record<string, unknown> = {}): Node =>
-      ({ id, type: 'battery', position: { x: 0, y: 0 }, data }) as Node;
+    const battery = (id: string = 'b1', data: Record<string, unknown> = {}): Node => ({
+      id,
+      type: 'battery',
+      position: { x: 0, y: 0 },
+      data,
+    });
 
     it('liefert die Default-Spannung ohne Batterie', () => {
       expect(getSystemVoltage([])).toBe(DEFAULT_SYSTEM_VOLTAGE);
@@ -224,8 +228,12 @@ describe('VDE-Standards mit typsicheren Einheiten (K1b)', () => {
   });
 
   describe('calculateEdgeCurrent', () => {
-    const node = (type: string, data: Record<string, unknown>): Node =>
-      ({ id: `${type}-1`, type, position: { x: 0, y: 0 }, data }) as Node;
+    const node = (type: string, data: Record<string, unknown>): Node => ({
+      id: `${type}-1`,
+      type,
+      position: { x: 0, y: 0 },
+      data,
+    });
 
     it('rechnet Verbraucherleistung mit der Entladeschlussspannung in Strom um (ELE-005)', () => {
       const consumer = node('consumer', { watts: 60 });
@@ -307,20 +315,23 @@ describe('VDE-Standards mit typsicheren Einheiten (K1b)', () => {
       // fremden/unverbundenen 1500-W-Verbraucher wurde auf 137,9 A statt 46 A
       // dimensioniert (falsch in beide Richtungen: über- UND dimensioniert,
       // je nachdem wo die Verbraucher wirklich hängen).
-      const withId = (id: string, type: string, data: Record<string, unknown>): Node =>
-        ({ id, type, position: { x: 0, y: 0 }, data }) as Node;
+      const withId = (id: string, type: string, data: Record<string, unknown>): Node => ({
+        id,
+        type,
+        position: { x: 0, y: 0 },
+        data,
+      });
       const inv1 = withId('inv1', 'inverter', { watts: 500 });
       const inv2 = withId('inv2', 'inverter', { watts: 300 });
       const socket1 = withId('s1', 'consumer230v', { watts: 300 });
       const bigLoad = withId('s2', 'consumer230v', { watts: 1500 });
       const nodes = [inv1, inv2, socket1, bigLoad];
-      const acEdge = (id: string, s: string, t: string): Edge =>
-        ({
-          id,
-          source: s,
-          target: t,
-          data: { edgeDomain: 'AC_230V' },
-        }) as Edge;
+      const acEdge = (id: string, s: string, t: string): Edge => ({
+        id,
+        source: s,
+        target: t,
+        data: { edgeDomain: 'AC_230V' },
+      });
       const edges = [acEdge('e1', 'inv1', 's1'), acEdge('e2', 'inv2', 's2')];
 
       // inv1 führt max(500 W Dauerleistung, 300 W Insel) = 500 W.
@@ -338,13 +349,12 @@ describe('VDE-Standards mit typsicheren Einheiten (K1b)', () => {
       const battery = withId('b1', 'battery', {});
       const busbar = withId('bus1', 'busbar', {});
       const allNodes = [battery, busbar, ...nodes];
-      const dcEdge = (id: string, s: string, t: string): Edge =>
-        ({
-          id,
-          source: s,
-          target: t,
-          data: { edgeDomain: 'DC_12V' },
-        }) as Edge;
+      const dcEdge = (id: string, s: string, t: string): Edge => ({
+        id,
+        source: s,
+        target: t,
+        data: { edgeDomain: 'DC_12V' },
+      });
       const allEdges = [dcEdge('e3', 'b1', 'bus1'), ...edges];
       expect(calculateEdgeCurrent(battery, busbar, allNodes, volts(12.8), allEdges)).toBeCloseTo(
         (500 / 12.0 + 1500 / 12.0) / VDE_INVERTER_EFFICIENCY,

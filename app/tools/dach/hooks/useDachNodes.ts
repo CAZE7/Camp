@@ -97,7 +97,7 @@ export function useDachNodes(selectedVehicle: VehicleTemplate) {
     (changes: NodeChange[]) => {
       setNodes((nds: Node<RoofNodeData>[]) => {
         const nextNodes = applyNodeChanges(changes, nds);
-        return validateNodes(nextNodes as Node<RoofNodeData>[]);
+        return validateNodes(nextNodes);
       });
     },
     [setNodes, validateNodes]

@@ -186,7 +186,7 @@ describe('migratePlannerPersisted', () => {
 
 describe('S5 — persistierte Stände können den Prototypen nicht verseuchen', () => {
   it('entfernt __proto__/constructor/prototype rekursiv aus Knoten- und Kantendaten', () => {
-    const hostile = JSON.parse(
+    const hostile: unknown = JSON.parse(
       '{"id":"bat","type":"battery","position":{"x":0,"y":0},"data":{"__proto__":{"polluted":1},"constructor":{"prototype":{"x":1}},"volts":12,"nested":{"__proto__":{"deep":true}}}}'
     );
     const migrated = migratePlannerPersisted({ nodes: [hostile] }, PLANNER_STORAGE_VERSION);

@@ -12,6 +12,7 @@ import {
 } from '../../../lib/shortCircuit'; // DOM-002
 import {
   UPSTREAM_IMPEDANCE_ASSUMPTION_OHM,
+  UPSTREAM_IMPEDANCE_MIN_OHM, // AUDIT N1: Niederimpedanz-Grenze der Einspeisung
   acSourceKindOf,
   evaluateAcEdgeProtection,
 } from '../../../lib/acProtection'; // DOM-001
@@ -21,6 +22,9 @@ import { calculateEdgeCurrent } from '../../../lib/vde-standards';
 import { acCurrentA } from '../../../lib/autoWire/sizing';
 import { assessCableSelection, designAmpacity, isThermallyOverloaded } from '../../../lib/electrical';
 import { PX_PER_METER } from '../../../lib/units';
+// AUDIT T1: Diagnose-Texte (Typ statt `[object Object]`) kommen aus derselben
+// Stelle wie alle anderen Modellwert-Texte — keine zweite Implementierung.
+import { diagnosticText } from '../../../lib/safeText';
 
 export interface ValidationWarning {
   id: string;
@@ -52,6 +56,46 @@ export const SEVERITY_ORDER: Record<ValidationWarning['type'], number> = {
   warning: 1,
   info: 2,
 };
+
+/**
+ * AUDIT T1 — Nutzertext ohne `[object Object]`.
+ *
+ * Diese Datei baut Warnmeldungen aus Knotendaten, deren Felder typseitig lose
+ * sind (`label` kommt als `{}` an, Rohwerte als `unknown`). In einem
+ * Template-Literal wird daraus stillschweigend die Default-Stringifikation von
+ * Object: Die Warn-Zentrale zeigte dann „[object Object]" statt des Bauteils —
+ * in genau den Meldungen, die der Nutzer lesen soll, um einen Fehler zu finden.
+ * `String(x)` war dabei keine Rettung, sondern dieselbe Falle mit Funktion drum.
+ *
+ * Bewusst NICHT `safeText` aus `lib/safeText.ts`: Das ist die join-kompatible
+ * Variante für Sortierschlüssel und Cache-Signaturen (`true` -> `'true'`,
+ * `NaN` -> `'NaN'`). Hier geht es um Nutzertext in einer Warnmeldung, also
+ * gilt die Anzeige-Konvention: Boolesche als `ja`/`nein`, Leerzeichen-only und
+ * nicht endliche Zahlen als Fallback. Zwei Verträge, zwei Funktionen — aber
+ * derselbe Grundsatz, und `diagnosticText` (Diagnose ungültiger Eingaben) ist
+ * identisch und liegt deshalb gemeinsam in `lib/safeText.ts`.
+ */
+function displayText(value: unknown, fallback: string): string {
+  if (typeof value === 'string') return value.trim() === '' ? fallback : value;
+  if (typeof value === 'number') return Number.isFinite(value) ? String(value) : fallback;
+  if (typeof value === 'boolean') return value ? 'ja' : 'nein';
+  return fallback;
+}
+
+/** Anzeigename eines Knotens: Label, sonst Typ, sonst der übergebene Fallback. */
+function nodeLabel(node: { type?: string; data?: unknown } | undefined, fallback: string): string {
+  const data = node?.data as { label?: unknown } | undefined;
+  const label = displayText(data?.label, '');
+  if (label !== '') return label;
+  const type = displayText(node?.type, '');
+  return type !== '' ? type : fallback;
+}
+
+/** Ein benanntes Datenfeld eines Knotens als Text (z. B. `chemistry`). */
+function nodeField(node: { data?: unknown } | undefined, field: string, fallback: string): string {
+  const data = node?.data as Record<string, unknown> | undefined;
+  return displayText(data?.[field], fallback);
+}
 
 export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
   return useMemo(() => {
@@ -197,7 +241,7 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
               title: 'Sicherung fehlt',
               focusId: edge.id,
               focusType: 'edge',
-              message: `⚠️ Kritisch: Quellschutz fehlt! Die Leitung von ${sourceNode?.data?.label || sourceNode?.type} muss direkt am Anfang abgesichert werden (Kabel-Sicherung oder Sicherungsblock).`,
+              message: `⚠️ Kritisch: Quellschutz fehlt! Die Leitung von ${nodeLabel(sourceNode, '?')} muss direkt am Anfang abgesichert werden (Kabel-Sicherung oder Sicherungsblock).`,
             });
           }
         }
@@ -269,17 +313,11 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
         focusId: edge.id,
         focusType: 'edge',
         ruleId: 'AUTO-003-parallel-chemistry',
-        measuredValue: `${String(sourceNode.data?.chemistry || '?')} ‖ ${String(
-          targetNode.data?.chemistry || '?'
-        )}`,
+        measuredValue: `${nodeField(sourceNode, 'chemistry', '?')} ‖ ${nodeField(targetNode, 'chemistry', '?')}`,
         expectedValue: 'identische Chemie (z. B. AGM ‖ AGM)',
         unit: '',
         source: 'Modell: Ladeschlussspannungen/Fenster je Chemie (AGM ~14,4–14,7 V, Gel ~14,1–14,4 V)',
-        message: `⚠️ Kritisch: „${sourceNode.data?.label || 'Batterie'}“ (${String(
-          sourceNode.data?.chemistry || '?'
-        )}) und „${targetNode.data?.label || 'Batterie'}“ (${String(
-          targetNode.data?.chemistry || '?'
-        )}) sind parallel geschaltet. Unterschiedliche Chemien haben unterschiedliche Ladeschlussspannungen — ein Partner wird dauerhaft über- oder unterladen (Sulfatierung/Gasung). Trenne die Verbindung oder verwende identische Chemien.`,
+        message: `⚠️ Kritisch: „${nodeLabel(sourceNode, 'Batterie')}“ (${nodeField(sourceNode, 'chemistry', '?')}) und „${nodeLabel(targetNode, 'Batterie')}“ (${nodeField(targetNode, 'chemistry', '?')}) sind parallel geschaltet. Unterschiedliche Chemien haben unterschiedliche Ladeschlussspannungen — ein Partner wird dauerhaft über- oder unterladen (Sulfatierung/Gasung). Trenne die Verbindung oder verwende identische Chemien.`,
       });
     });
 
@@ -334,7 +372,7 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
         }
       }
       const connectedNodes = nodes.filter((n) => visited.has(n.id));
-      const { stringVoc, missingVoc } = stringColdVocOf(connectedNodes, edges);
+      const { stringVoc, missingVoc, uncomputableVoc } = stringColdVocOf(connectedNodes, edges);
       const worst = stringVoc.length > 0 ? Math.max(...stringVoc) : 0;
       if (worst > maxPvVoltage) {
         warnings.push({
@@ -351,9 +389,10 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
           source: 'Modellannahme: Voc(T_min) = Voc_STC · (1 + |TK|·ΔT); TK-Default −0,35 %/K (c-Si)',
           message: `⚠️ Kritisch: Die Leerlaufspannung des Solar-Strings steigt in der Kälte auf ≈ ${Math.round(
             worst
-          )} V (Auslegungstemperatur ${SOLAR_DESIGN_MIN_TEMPERATURE_C} °C) — der Laderegler „${
-            (mppt.data as Record<string, unknown>)?.label || 'MPPT'
-          }“ erlaubt aber max. ${maxPvVoltage} V. Überspannung zerstört den Regler. Strings kürzen (weniger Panels in Serie) oder Regler mit höherem PV-Eingangsbereich wählen.`,
+          )} V (Auslegungstemperatur ${SOLAR_DESIGN_MIN_TEMPERATURE_C} °C) — der Laderegler „${nodeLabel(
+            mppt,
+            'MPPT'
+          )}“ erlaubt aber max. ${maxPvVoltage} V. Überspannung zerstört den Regler. Strings kürzen (weniger Panels in Serie) oder Regler mit höherem PV-Eingangsbereich wählen.`,
         });
       } else if (missingVoc) {
         warnings.push({
@@ -369,6 +408,28 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
           unit: 'V',
           source: 'Modell: Voc-Fensterprüfung nur mit Datenblattwert (schätzen wäre unehrlich)',
           message: `ℹ️ Hinweis: Für die Kalt-Voc-Prüfung des Ladereglers fehlt bei mindestens einem Panel der Datenblattwert „Leerlaufspannung Voc“. Trage ihn im Panel-Inspektor ein, damit das Eingangsfenster geprüft werden kann.`,
+        });
+      }
+      // AUDIT S1: Voc ist eingetragen, aber die Kalt-Voc ist nicht auswertbar —
+      // der Temperaturfaktor (1 + |TK|·ΔT) ist nicht positiv. Früher flog hier
+      // ein uncaught RangeError aus lib/units.ts (volts() lehnt negative Werte
+      // ab), jetzt liefert das Modell null. Die Prüfung fällt damit aus und
+      // muss das SELBST sagen: ein still unterschätztes Voc-Fenster (das Panel
+      // zahlt 0 V ein) wäre die gefährlichere Variante.
+      if (uncomputableVoc) {
+        warnings.push({
+          id: `solar-voc-uncomputable-${mppt.id}`,
+          category: 'estimation',
+          type: 'warning',
+          title: 'Kalt-Voc nicht auswertbar — Temperaturkoeffizient prüfen',
+          focusId: mppt.id,
+          focusType: 'node',
+          ruleId: 'ELE-007-voc-uncomputable',
+          measuredValue: 'Voc vorhanden, Temperaturfaktor ≤ 0',
+          expectedValue: 'TK im Bereich −0,20…−0,50 %/K (c-Si)',
+          unit: '%/K',
+          source: 'Modell: Voc(T) = Voc_STC · (1 + |TK|·(25 °C − T)); Faktor muss positiv sein',
+          message: `⚠️ Warnung: Bei mindestens einem Panel ist die kalte Leerlaufspannung nicht berechenbar — der eingetragene Temperaturkoeffizient Voc liegt außerhalb des Modellbereichs (üblich sind −0,20 bis −0,50 %/K für c-Si). Die Voc-Fensterprüfung des Ladereglers ist damit AUSGEFALLEN, nicht bestanden. Wert im Panel-Inspektor korrigieren.`,
         });
       }
     });
@@ -425,9 +486,10 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
         expectedValue: 'RCD/FI ≤ 30 mA (Typ A) im AC-Ausgangskreis',
         unit: '',
         source: 'Schutz bei indirektem Berühren, 230-V-Fahrzeugkreis (DIN VDE 0100-721-Kontext)',
-        message: `⚠️ Kritisch: Der Wechselrichter „${
-          inverter.data?.label || 'Wechselrichter'
-        }“ speist ${consumerCount} 230-V-Verbraucher, der AC-Kreis hat aber keinen FI-Schutzschalter (RCD ≤ 30 mA, Typ A). Auch ohne Landstrom besteht Berührungsgefahr an 230 V. Lass diese Schutzmaßnahme von einer Elektrofachkraft einplanen.`,
+        message: `⚠️ Kritisch: Der Wechselrichter „${nodeLabel(
+          inverter,
+          'Wechselrichter'
+        )}“ speist ${consumerCount} 230-V-Verbraucher, der AC-Kreis hat aber keinen FI-Schutzschalter (RCD ≤ 30 mA, Typ A). Auch ohne Landstrom besteht Berührungsgefahr an 230 V. Lass diese Schutzmaßnahme von einer Elektrofachkraft einplanen.`,
       });
     });
 
@@ -446,7 +508,7 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
           expectedValue: 'RCD <= 30 mA',
           unit: 'mA',
           source: 'DIN VDE 0100-721 (Landstromanschluss Wohnmobil)',
-          message: `Am Landstromanschluss „${sp.data?.label || 'Landstrom'}" fehlt ein FI-Schutzschalter mit höchstens 30 mA (RCD ≤ 30 mA). Nach DIN VDE 0100-721 ist dieser zwingend vorgeschrieben — Stromschlaggefahr. Lass den 230-V-Schutz von einer Elektrofachkraft einplanen.`,
+          message: `Am Landstromanschluss „${nodeLabel(sp, 'Landstrom')}" fehlt ein FI-Schutzschalter mit höchstens 30 mA (RCD ≤ 30 mA). Nach DIN VDE 0100-721 ist dieser zwingend vorgeschrieben — Stromschlaggefahr. Lass den 230-V-Schutz von einer Elektrofachkraft einplanen.`,
         });
       }
     });
@@ -475,7 +537,7 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
             category: 'topology',
             type: 'critical',
             title: 'Solar ohne Laderegler',
-            message: `Kritisch: Das Solarmodul "${solarNode.data?.label || 'Solar'}" ist direkt mit "${otherNode.data?.label || otherNode.type}" verbunden. Solarmodule müssen zwingend über einen Laderegler (MPPT) an das System angeschlossen werden!`,
+            message: `Kritisch: Das Solarmodul "${nodeLabel(solarNode, 'Solar')}" ist direkt mit "${nodeLabel(otherNode, '?')}" verbunden. Solarmodule müssen zwingend über einen Laderegler (MPPT) an das System angeschlossen werden!`,
             focusId: edge.id,
             focusType: 'edge',
             ruleId: 'ELE-009-solar-direct',
@@ -513,8 +575,8 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
     // eingetragener Grenze prüfen wir die berechneten DC-Ströme der
     // Batterie-Hauptleitungen.
     for (const battery of batteries) {
-      const dischargeLimit = Number((battery.data as Record<string, unknown>)?.bmsContinuousDischarge || 0);
-      const chargeLimit = Number((battery.data as Record<string, unknown>)?.bmsContinuousCharge || 0);
+      const dischargeLimit = Number(battery.data?.bmsContinuousDischarge || 0);
+      const chargeLimit = Number(battery.data?.bmsContinuousCharge || 0);
       for (const edge of edges) {
         const sourceNode = nodeMap.get(edge.source);
         const targetNode = nodeMap.get(edge.target);
@@ -535,9 +597,10 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
             expectedValue: `max. ${dischargeLimit} A`,
             unit: 'A',
             source: 'Batteriemodell: bmsContinuousDischarge (BMS-Grenze)',
-            message: `⚠️ Kritisch: Die Leitung von „${
-              battery.data?.label || 'Batterie'
-            }“ wird mit ≈${Math.round(I)} A belastet, das BMS erlaubt dauerhaft nur ${dischargeLimit} A. Kabeldimensionierung und Sicherung schützen das Kabel, nicht das BMS — die Batterie kann abgeschaltet werden oder Schaden nehmen.`,
+            message: `⚠️ Kritisch: Die Leitung von „${nodeLabel(
+              battery,
+              'Batterie'
+            )}“ wird mit ≈${Math.round(I)} A belastet, das BMS erlaubt dauerhaft nur ${dischargeLimit} A. Kabeldimensionierung und Sicherung schützen das Kabel, nicht das BMS — die Batterie kann abgeschaltet werden oder Schaden nehmen.`,
           });
         }
         if (chargeLimit > 0 && isBatteryTargetPlus && I > chargeLimit) {
@@ -553,9 +616,10 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
             expectedValue: `max. ${chargeLimit} A`,
             unit: 'A',
             source: 'Batteriemodell: bmsContinuousCharge (BMS-Grenze)',
-            message: `⚠️ Kritisch: Der Ladezweig zu „${
-              battery.data?.label || 'Batterie'
-            }“ führt ≈${Math.round(I)} A, das BMS erlaubt dauerhaft nur ${chargeLimit} A Ladestrom.`,
+            message: `⚠️ Kritisch: Der Ladezweig zu „${nodeLabel(
+              battery,
+              'Batterie'
+            )}“ führt ≈${Math.round(I)} A, das BMS erlaubt dauerhaft nur ${chargeLimit} A Ladestrom.`,
           });
         }
       }
@@ -600,15 +664,7 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
         for (const edge of edges) {
           const isBatterySourcePlus = edge.source === battery.id && !!edge.sourceHandle?.includes('plus');
           if (!isBatterySourcePlus) continue;
-          const edgeData = edge.data as
-            | {
-                fuseSize?: number;
-                fuseType?: string;
-                fuseBreakingCapacity?: number;
-                fuseOffset?: number;
-                crossSection?: number;
-              }
-            | undefined;
+          const edgeData = edge.data;
           if (!(Number(edgeData?.fuseSize) > 0)) continue;
           const capacity = breakingCapacityAOf(
             edgeData?.fuseType,
@@ -676,9 +732,18 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
     // bleibt ein Hinweis, kein OK.
     {
       const anyUpstreamRcd = [...shorePowerNodes, ...chargers].some((n) => n.data?.hasRcd === true);
+      // AUDIT N1: ein angegebener/gemessener prospektiver Kurzschlussstrom an
+      // der Einspeisestelle schlägt beide Netzimpedanz-Annahmen. Er ist eine
+      // Eigenschaft der Einspeisung, nicht der einzelnen Leitung — mehrere
+      // Landstrom-Knoten ergeben den ungünstigsten (größten) bekannten Wert.
+      const declaredIkValues = shorePowerNodes
+        .map((n) => n.data?.prospectiveIkA)
+        .filter((v): v is number => typeof v === 'number' && Number.isFinite(v) && v > 0);
+      const supplyProspectiveIkA = declaredIkValues.length > 0 ? Math.max(...declaredIkValues) : undefined;
       let acProtectionNotePushed = false;
       let acLengthNotePushed = false;
       let acAssumptionNotePushed = false;
+      let acReachNotePushed = false;
       for (const edge of edges) {
         const sourceNode = nodeMap.get(edge.source);
         const targetNode = nodeMap.get(edge.target);
@@ -704,6 +769,7 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
           crossSection: typeof edge.data?.crossSection === 'number' ? edge.data.crossSection : undefined,
           sourceKind,
           upstreamRcd: anyUpstreamRcd,
+          supplyProspectiveIkA,
         });
 
         const fmt = (value: number | null) => (value === null ? '—' : `≈ ${value.toFixed(2)} Ω`);
@@ -713,6 +779,41 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
           unit: 'Ω',
           source: `Schätzung nach IEC 60364-4-41 (Zs·Ia ≤ U0, 2/3-Regel); vorgelagert angenommen ${UPSTREAM_IMPEDANCE_ASSUMPTION_OHM} Ω, PE nach IEC 60364-5-54 Tab. 54.2; lib/acProtection.ts`,
         };
+
+        // AUDIT N1: Reichweitengrenze der Abschaltvermögens-Prüfung. Ohne
+        // gemessenen I_k kann das Modell nur gegen die hochohmige Annahme
+        // (Campingplatz-Pitch) prüfen; reicht Icn nicht bis zur
+        // Niederimpedanz-Grenze, ist das ein Hinweis auf die Reichweite des
+        // Verdikts — kein Datenfehler und kein PASS ohne Anmerkung.
+        if (
+          assessment.limitation === 'breaking-capacity-reach' &&
+          assessment.verdict !== 'breaking-capacity-fail'
+        ) {
+          if (!acReachNotePushed) {
+            acReachNotePushed = true;
+            warnings.push({
+              ...base,
+              id: 'ac-breaking-capacity-reach',
+              category: 'estimation',
+              type: 'warning',
+              title: 'Abschaltvermögen nur für hochohmige Einspeisung nachgewiesen',
+              focusId: edge.id,
+              focusType: 'edge',
+              ruleId: 'DOM-001-breaking-capacity-reach',
+              measuredValue:
+                assessment.prospectiveIkA !== null
+                  ? `I_p ≈ ${(assessment.prospectiveIkA / 1000).toFixed(2)} kA (Annahme)`
+                  : '—',
+              expectedValue:
+                assessment.prospectiveIkUpperBoundA !== null
+                  ? `Icn ≥ ${(assessment.prospectiveIkUpperBoundA / 1000).toFixed(2)} kA bei niederimpedanter Einspeisung`
+                  : 'Icn ≥ I_p',
+              source: `Zwei deklarierte Annahmen in lib/acProtection.ts: ${UPSTREAM_IMPEDANCE_ASSUMPTION_OHM} Ω vorgelagert (Campingplatz-Pitch, typisch) und ${UPSTREAM_IMPEDANCE_MIN_OHM} Ω (Niederimpedanz-Grenze: netznahe Einspeisung/Generator). Ein gemessener I_k am Landstrom-Knoten schlägt beide.`,
+              message: `Hinweis: ${assessment.reason} Trage den gemessenen oder vom Platzbetreiber genannten prospektiven Kurzschlussstrom am Landstrom-Knoten ein, um die Prüfung scharf zu stellen — sonst gilt sie nur für den hochohmigen Einspeisefall.`,
+            });
+          }
+        }
+
         switch (assessment.verdict) {
           case 'fail':
             warnings.push({
@@ -1083,7 +1184,7 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
           }
         }
       }
-      const isStarterBatteryNode = (n: Node | undefined) => /starter/i.test(String(n?.data?.label || ''));
+      const isStarterBatteryNode = (n: Node | undefined) => /starter/i.test(String(nodeLabel(n, '')));
       const isMonitoredBattery = (n: Node | undefined) => {
         if (!n || n.type !== 'battery' || isStarterBatteryNode(n)) return false;
         if (shuntBatteryIds.size === 0) return true;
@@ -1109,7 +1210,7 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
               title: 'Shunt wird umgangen',
               focusId: edge.id,
               focusType: 'edge',
-              message: `⚠️ Kritisch: Der Shunt wird umgangen! Relevante Minus-Verbindungen (wie von ${otherNode.data?.label || otherNode.type}) dürfen nicht am Shunt vorbei direkt an Batterie-Minus hängen.`,
+              message: `⚠️ Kritisch: Der Shunt wird umgangen! Relevante Minus-Verbindungen (wie von ${nodeLabel(otherNode, '?')}) dürfen nicht am Shunt vorbei direkt an Batterie-Minus hängen.`,
             });
           }
         }
@@ -1135,12 +1236,12 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
             focusId: node.id,
             focusType: 'node',
             ruleId: 'DATA-001-invalid-load-value',
-            measuredValue: String(raw),
+            measuredValue: diagnosticText(raw),
             expectedValue: 'endlicher Wert ≥ 0',
             source: 'Datenmodell: watts/amps ≥ 0 (Import-/Altdaten-Validierung)',
-            message: `⚠️ Kritisch: Bei „${node.data?.label || node.type}“ ist ${
+            message: `⚠️ Kritisch: Bei „${nodeLabel(node, '?')}“ ist ${
               field === 'watts' ? 'die Leistung' : 'der Strom'
-            } ungültig (${String(raw)}). Der Wert wird intern als 0 A behandelt und kann zu dünn dimensionierte Leitungen verbergen. Korrigiere die Angabe im Inspektor.`,
+            } ungültig (${diagnosticText(raw)}). Der Wert wird intern als 0 A behandelt und kann zu dünn dimensionierte Leitungen verbergen. Korrigiere die Angabe im Inspektor.`,
           });
         }
       }

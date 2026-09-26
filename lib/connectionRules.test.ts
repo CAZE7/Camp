@@ -7,7 +7,11 @@ import { isConnectionAllowed, type ConnectionNode } from './connectionRules';
  * 1:1 (Verhaltens-Charakterisierung vor dem Refactoring).
  */
 
-const node = (id: string, type: string): ConnectionNode => ({ id, type });
+const node = (id: string, type: string, data: Record<string, unknown> = {}): ConnectionNode => ({
+  id,
+  type,
+  data,
+});
 const nodes = new Map<string, ConnectionNode>(
   [
     node('bat', 'battery'),
@@ -18,7 +22,19 @@ const nodes = new Map<string, ConnectionNode>(
     node('sol2', 'solar'),
     node('bat2', 'battery'),
     node('gray', 'grayWaterTank'),
+    node('gray2', 'grayWaterTank'),
+    node('fresh', 'freshWaterTank'),
     node('sink', 'sink'),
+    node('pump', 'pump'),
+    // AUDIT V1: Typen, die der Planer nicht (oder nicht hier) kennt.
+    node('roofwin', 'roofWindow'),
+    node('unknown', 'dachluke'),
+    node('lifelife', 'battery', { chemistry: 'LiFePO4' }),
+    node('agm', 'battery', { chemistry: 'AGM' }),
+    node('plusRail', 'busbar', { role: 'positive', label: 'Plus-Schiene' }),
+    node('minusRail', 'busbar', { role: 'negative', label: 'Minus-Schiene' }),
+    node('unlabeledRail', 'busbar', {}),
+    node('mppt', 'mpptController'),
   ].map((n) => [n.id, n])
 );
 
@@ -95,6 +111,92 @@ describe('ARCH-002 — Verbindungsregeln als reine Funktion (lib/connectionRules
 
   it('Wasser-Modus: Grauwasser → Spüle ist blockiert, Rest erlaubt', () => {
     expect(check(conn('gray', 'sink'), { viewMode: 'water' })).toBe(false);
-    expect(check(conn('gray', 'gray'), { viewMode: 'water' })).toBe(true);
+    // Vorher stand hier `conn('gray', 'gray')` → true: dieselbe Knoten-ID auf
+    // beiden Seiten, also ein Self-Loop. Der Test belegte damit unbeabsichtigt
+    // das fail-open-Verhalten (AUDIT V1). Erlaubt ist eine echte Verbindung.
+    expect(check(conn('fresh', 'pump'), { viewMode: 'water' })).toBe(true);
+    expect(check(conn('gray', 'gray2'), { viewMode: 'water' })).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AUDIT V1 — Deny-by-default
+// ---------------------------------------------------------------------------
+describe('V1 — Verbindungsregeln sind deny-by-default', () => {
+  // Die fünf Fälle, die vor der Härtung alle ALLOWED waren.
+  it('lehnt einen Self-Loop ab (Quelle = Ziel)', () => {
+    expect(check(conn('bat', 'bat', 'plus', 'plus'))).toBe(false);
+    expect(check(conn('con', 'con', 'minus', 'minus'))).toBe(false);
+    expect(check(conn('gray', 'gray'), { viewMode: 'water' })).toBe(false);
+  });
+
+  it('lehnt unbekannte Bauteiltypen ab statt sie als DC_12V durchzuwinken', () => {
+    expect(check(conn('unknown', 'bat', 'plus', 'plus'))).toBe(false);
+    expect(check(conn('bat', 'unknown', 'plus', 'plus'))).toBe(false);
+  });
+
+  it('lehnt nicht-elektrische Bauteile im Stromplan ab (Dachfenster → Batterie)', () => {
+    expect(check(conn('roofwin', 'bat', 'plus', 'plus'))).toBe(false);
+    expect(check(conn('bat', 'roofwin', 'plus', 'plus'))).toBe(false);
+  });
+
+  it('lehnt fehlende Endpunkte ab', () => {
+    expect(check(conn('', 'bat', 'plus', 'plus'))).toBe(false);
+    expect(check(conn('bat', '', 'plus', 'plus'))).toBe(false);
+    // Knoten-ID, die im Plan nicht existiert:
+    expect(
+      isConnectionAllowed({
+        connection: conn('bat', 'gibt-es-nicht', 'plus', 'plus'),
+        getNode: (id) => nodes.get(id),
+        viewMode: 'electric',
+        activeEdges: [],
+      })
+    ).toBe(false);
+  });
+
+  it('lehnt Bauteile des falschen Modus ab', () => {
+    // Wasserbauteil im Stromplan und umgekehrt.
+    expect(check(conn('pump', 'bat', 'plus', 'plus'))).toBe(false);
+    expect(check(conn('bat', 'con', 'plus', 'plus'), { viewMode: 'water' })).toBe(false);
+  });
+
+  it('lehnt Batterie ‖ Batterie anderer Chemie ab (Parität zu AUTO-003)', () => {
+    expect(check(conn('lifelife', 'agm', 'plus', 'plus'))).toBe(false);
+    expect(check(conn('agm', 'lifelife', 'plus', 'plus'))).toBe(false);
+    // Positivkontrolle: gleiche Chemie bleibt erlaubt, sonst wäre der Test
+    // auch durch ein pauschales Batterie-Verbot grün.
+    expect(check(conn('bat', 'bat2', 'plus', 'plus'))).toBe(true);
+    // Bekannte Chemie ↔ unbekannte Chemie fällt auf die Familienregel zurück
+    // (Blei ↔ Nicht-Blei blockiert, innerhalb der Familie erlaubt) — exakt das
+    // dokumentierte AUTO-003-Verhalten. Bewusst KEINE eigene Verschärfung hier:
+    // Ziehen und AutoWire müssen dieselbe Autorität benutzen
+    // (`chemistriesParallelSafe`), sonst entsteht der nächste Drift.
+    expect(check(conn('agm', 'bat2', 'plus', 'plus'))).toBe(false); // Blei ↔ Nicht-Blei
+    expect(check(conn('lifelife', 'bat2', 'plus', 'plus'))).toBe(true); // beides Nicht-Blei
+  });
+
+  it('lehnt Plus-Schiene ↔ Minus-Schiene ab (Kurzschluss über die Batterie)', () => {
+    // Gleicher Handle-Name, entgegengesetzte Rolle — die Polaritätsregel sieht
+    // das nicht (AUDIT AW-RAIL-01).
+    expect(check(conn('plusRail', 'minusRail', 'plus', 'plus'))).toBe(false);
+    expect(check(conn('minusRail', 'plusRail', 'minus', 'minus'))).toBe(false);
+    // Positivkontrolle: gleiche Rolle und unbekannte Rolle bleiben erlaubt.
+    expect(check(conn('plusRail', 'unlabeledRail', 'plus', 'plus'))).toBe(true);
+  });
+
+  it('Polarität kommt aus der Rollen-Tabelle, nicht aus dem Handle-Namen', () => {
+    // `includes('plus')` machte aus Fantasie-Ids Pole: 'in-plus' galt als Plus.
+    expect(check(conn('bat', 'con', 'plus', 'in-plus'))).toBe(false);
+    expect(check(conn('bat', 'con', 'surplus', 'plus'))).toBe(false);
+    // Die echten Handle-Ids der Bauteile bleiben erlaubt:
+    expect(check(conn('bat', 'con', 'plus', 'plus'))).toBe(true);
+    expect(check(conn('con', 'bat', 'minus', 'minus'))).toBe(true);
+  });
+
+  it('Solar bleibt an den Laderegler angebunden (Domäne Solar ↔ DC als Brücke)', () => {
+    expect(check(conn('sol1', 'mppt', 'plus', 'plus'))).toBe(true);
+    expect(check(conn('sol1', 'sol2', 'plus', 'minus'))).toBe(true); // String
+    expect(check(conn('sol1', 'bat', 'plus', 'plus'))).toBe(false);
+    expect(check(conn('sol1', 'shore', 'plus', 'plus'))).toBe(false); // Solar ↔ AC
   });
 });

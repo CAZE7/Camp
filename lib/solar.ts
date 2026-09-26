@@ -61,8 +61,7 @@ export const SOLAR_STC_TEMPERATURE_C = 25;
 
 const isSolarType = (type: string | undefined): boolean => type === 'solar' || type === 'roofSolar';
 
-const dataOf = (node: Node | undefined): Record<string, unknown> | undefined =>
-  node?.data as Record<string, unknown> | undefined;
+const dataOf = (node: Node | undefined): Record<string, unknown> | undefined => node?.data;
 
 /** Alle Solar-Panels (solar/roofSolar) eines Plans. */
 export function solarPanelsOf(nodes: Node[]): Node[] {
@@ -102,11 +101,55 @@ export function solarFuseFloorOf(node: Node | undefined): Amps {
 }
 
 /**
+ * Grenze, ab der ein gespeicherter Temperaturkoeffizient als PROZENTANGABE
+ * (%/K) und nicht als Bruch (1/K) gelesen wird.
+ *
+ * Physikalisch gibt es keine Überschneidung: c-Si-Module liegen bei
+ * −0,20…−0,50 %/K, also −0,0020…−0,0050 als Bruch. Die Größenordnungen
+ * unterscheiden sich um Faktor 100 — ein Schwellwert dazwischen ist damit
+ * keine Raterei, sondern eine trennende Messgröße.
+ */
+export const SOLAR_TEMP_COEFF_PERCENT_THRESHOLD = 0.05;
+
+/**
+ * Temperaturkoeffizient Voc als BRUCH pro Kelvin — die einzige Lesestelle
+ * dieses Datenfelds (AUDIT S1).
+ *
+ * Das Feld war doppeldeutig: Die UI beschriftete es mit „%/K" und schrieb
+ * `−Math.abs(val)`, also **−0,35**; das Modell rechnete mit einem Bruch
+ * (Default **−0,0035**). Beides stand im selben Feld. Gemessene Folge für ein
+ * 22-V-Panel bei −20 °C: 25,47 V mit dem Default, **368,5 V** mit dem
+ * UI-Wert — Faktor 14,5 auf eine Sicherheitsprüfung (Voc-Fenster des
+ * Ladereglers). Die Anzeige behauptete „%/K", der Code rechnete „1/K".
+ *
+ * Hier wird normalisiert, und zwar an der Lesegrenze statt per Migration:
+ *  - |TK| ≥ 0,05 ⇒ Prozentangabe ⇒ /100 (Altpläne und UI-Schreibweise),
+ *  - |TK| < 0,05  ⇒ bereits ein Bruch (Datenblatt-Schreibweise des Modells),
+ *  - fehlend/positiv/unsinnig ⇒ dokumentierter Default.
+ * Der Schwellwert ist begründet (s. Konstante), nicht geraten.
+ */
+export function solarTempCoefficientPerKelvin(raw: unknown): number {
+  const value = typeof raw === 'number' && Number.isFinite(raw) ? raw : Number.NaN;
+  // Positiv oder unlesbar: ein positiver TK würde bedeuten, Voc STEIGE in der
+  // Kälte — physikalisch falsch für c-Si. Default statt stiller Übernahme.
+  if (Number.isNaN(value) || value >= 0) return SOLAR_VOC_TEMP_COEFF_PER_KELVIN;
+  return value <= -SOLAR_TEMP_COEFF_PERCENT_THRESHOLD ? value / 100 : value;
+}
+
+/**
  * Kalte Leerlaufspannung EINES Panels:
  *   Voc(T_min) = Voc_STC · (1 + |TK| · (STC − T_min))
  * Liefert null, wenn kein Datenblatt-Voc (node.data.voc > 0) vorliegt —
  * raten (z. B. aus Vmp hochrechnen) wäre unehrlich; die Validierung
  * fordert stattdessen den Datenblattwert an.
+ *
+ * null auch dann, wenn der Temperaturfaktor nicht positiv ist (AUDIT S1):
+ * Bei Zelltemperaturen über STC wird der Faktor kleiner als 1, und mit einem
+ * unsinnigen Koeffizienten oder einer Auslegungstemperatur weit über 25 °C
+ * (z. B. +60 °C NOCT-Fall) kippt er ins Negative. `volts()` wirft dort
+ * RangeError — in der Live-Validierung ein uncaught Exception, der das Panel
+ * beim Tippen einer Zahl abraumen ließ. Ehrliche Antwort ist „nicht
+ * bewertbar" (null), dieselbe wie bei fehlendem Datenblatt-Voc.
  */
 export function solarColdVocOf(
   node: Node | undefined,
@@ -115,11 +158,9 @@ export function solarColdVocOf(
   const data = dataOf(node);
   const voc = quantityOr(data?.voc, volts, volts(0));
   if (voc <= 0) return null;
-  const coeff =
-    typeof data?.tempCoefficient === 'number' && data.tempCoefficient < 0
-      ? data.tempCoefficient
-      : SOLAR_VOC_TEMP_COEFF_PER_KELVIN;
+  const coeff = solarTempCoefficientPerKelvin(data?.tempCoefficient);
   const factor = 1 + Math.abs(coeff) * (SOLAR_STC_TEMPERATURE_C - minTempC);
+  if (!(factor > 0)) return null; // auch NaN: `!(NaN > 0)` ist true
   return volts(voc * factor);
 }
 
@@ -163,28 +204,42 @@ export function solarStringsOf(nodes: Node[], edges: Edge[]): Node[][] {
   return strings;
 }
 
+/** Liegt ein Datenblatt-Voc vor? Trennt „Wert fehlt" von „Wert nicht auswertbar". */
+export function solarHasDatasheetVoc(node: Node | undefined): boolean {
+  return quantityOr(dataOf(node)?.voc, volts, volts(0)) > 0;
+}
+
 /**
  * Maximale KALT-Voc je String: Summe der Kalt-Voc der Panels im String.
- * Panels ohne Datenblatt-Voc zahlen 0 ein und heben das `missingVoc`-Flag
- * (statt die Stringspannung still zu unterschätzen).
+ *
+ * Panels, deren Kalt-Voc nicht ermittelt werden kann, zahlen 0 ein und heben
+ * ein Flag — statt die Stringspannung still zu unterschätzen. Zwei Flags,
+ * weil zwei Ursachen (AUDIT S1): `missingVoc` = kein Datenblatt-Voc
+ * eingetragen, `uncomputableVoc` = Voc ist da, aber der Temperaturfaktor ist
+ * nicht positiv (unsinniger Koeffizient oder Auslegungstemperatur so hoch,
+ * dass das Modell außerhalb seines Geltungsbereichs wäre). Beides in einem
+ * Flag zu melden hieße, dem Nutzer „Wert fehlt" zu sagen, wenn er einen
+ * eingetragen hat.
  */
 export function stringColdVocOf(
   nodes: Node[],
   edges: Edge[],
   minTempC?: number
-): { stringVoc: Volts[]; missingVoc: boolean } {
+): { stringVoc: Volts[]; missingVoc: boolean; uncomputableVoc: boolean } {
   let missingVoc = false;
+  let uncomputableVoc = false;
   const stringVoc = solarStringsOf(nodes, edges).map((chain) =>
     chain.reduce((sum, panel) => {
       const voc = solarColdVocOf(panel, minTempC);
       if (voc === null) {
-        missingVoc = true;
+        if (solarHasDatasheetVoc(panel)) uncomputableVoc = true;
+        else missingVoc = true;
         return sum;
       }
       return volts(sum + voc);
     }, volts(0))
   );
-  return { stringVoc, missingVoc };
+  return { stringVoc, missingVoc, uncomputableVoc };
 }
 
 /** Das Panel-Endpunkt einer Kante, falls eines existiert (sonst undefined). */

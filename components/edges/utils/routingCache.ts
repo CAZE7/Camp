@@ -134,10 +134,10 @@ function buildCrossingBase(nodes: RoutableNode[], edges: CrossingEdgeRef[]): Cro
 }
 
 function getCrossingBase(nodes: RoutableNode[], edges: CrossingEdgeRef[]): CrossingBase {
-  let byNodes = CROSSING_BASE_CACHE.get(edges as unknown as Edge[]);
+  let byNodes = CROSSING_BASE_CACHE.get(edges);
   if (!byNodes) {
     byNodes = new WeakMap<RoutableNode[], CrossingBase>();
-    CROSSING_BASE_CACHE.set(edges as unknown as Edge[], byNodes);
+    CROSSING_BASE_CACHE.set(edges, byNodes);
   }
   let base = byNodes.get(nodes);
   if (!base) {

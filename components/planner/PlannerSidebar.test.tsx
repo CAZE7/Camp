@@ -6,11 +6,17 @@ import { PlannerSidebar } from './PlannerSidebar';
 
 // Mock usePlannerStore
 const mockToggleSidebar = vi.fn();
+// AUDIT T1: Zustand als Modul-Konstante, damit der Selektor einen Typ hat
+// (Name beginnt mit `mock`, damit Vitest die Referenz in der Factory erlaubt).
+const mockSidebarStoreState = {
+  viewMode: 'electric',
+  isSidebarOpen: true,
+  toggleSidebar: mockToggleSidebar,
+};
 vi.mock('../../store/usePlannerStore', () => ({
-  usePlannerStore: vi.fn((selector) => {
-    const state = { viewMode: 'electric', isSidebarOpen: true, toggleSidebar: mockToggleSidebar };
-    return selector(state);
-  }),
+  usePlannerStore: vi.fn((selector: (state: typeof mockSidebarStoreState) => unknown) =>
+    selector(mockSidebarStoreState)
+  ),
 }));
 
 // Mock Sidebar component

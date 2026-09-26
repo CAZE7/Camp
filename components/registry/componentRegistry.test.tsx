@@ -190,7 +190,7 @@ describe('Registry — ein neues Bauteil ist isoliert ergänzbar', () => {
 
     expect(nodeDomains(node)).toEqual(['AC_230V']);
     // Farbe kommt aus der Domäne, nicht aus einer Typ-Tabelle.
-    expect(nodeMinimapColor(node)).toBe(nodeMinimapColor({ ...node, type: 'consumer230v' } as Node));
+    expect(nodeMinimapColor(node)).toBe(nodeMinimapColor({ ...node, type: 'consumer230v' }));
   });
 
   it('liefert Label und Zweck für die Stückliste', () => {

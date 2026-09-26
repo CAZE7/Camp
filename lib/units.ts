@@ -193,20 +193,131 @@ export const toFixedNumber = (quantity: PhysicalQuantity, digits: Scalar = 1): n
 type Parser<Q extends PhysicalQuantity> = (value: number) => Q;
 
 /**
+ * Zerlegt den Ziffernteil einer Zahl in Integer- und Dezimalanteil — oder
+ * liefert `null`, wenn die Schreibweise MEHRDEUTIG ist.
+ *
+ * Regeln (bewusst entschieden, nicht geraten):
+ *  1. Komma UND Punkt im Text ⇒ der RECHTE ist das Dezimalzeichen, der linke
+ *     ein Tausender-Trenner: `"1.234,56"` (deutsch) und `"1,234.56"`
+ *     (englisch) sind damit beide eindeutig und beide korrekt lesbar.
+ *  2. Ein Trenner genau einmal ⇒ Dezimalzeichen. Komma ⇒ Dezimalkomma
+ *     (UI-Sprache Deutsch), Punkt ⇒ Dezimalpunkt (Schreibweise von
+ *     `<input type="number">` und JSON).
+ *  3. Derselbe Trenner mehrfach ⇒ Tausender-Trenner, aber nur als echte
+ *     Dreiergruppen (`"1.000.000"` ✓, `"1.2.3"` ✗).
+ */
+function splitDecimalBody(body: string): { intPart: string; fracPart: string | null } | null {
+  const isDigits = (text: string): boolean => /^\d+$/.test(text);
+  const thousandsGroups = (text: string, separator: string): string | null => {
+    const groups = text.split(separator);
+    const head = groups[0];
+    if (head === undefined || !/^\d{1,3}$/.test(head)) return null;
+    return groups.slice(1).every((group) => /^\d{3}$/.test(group)) ? groups.join('') : null;
+  };
+  /** Teilt genau einmal — `null`, wenn der Trenner fehlt oder mehrfach steht. */
+  const splitOnce = (text: string, separator: string): [string, string] | null => {
+    const parts = text.split(separator);
+    const head = parts[0];
+    const tail = parts[1];
+    if (parts.length !== 2 || head === undefined || tail === undefined) return null;
+    return [head, tail];
+  };
+
+  const commas = body.split(',').length - 1;
+  const dots = body.split('.').length - 1;
+
+  // Fall 1: beide Trennerarten — der rechte trennt die Dezimalstellen.
+  if (commas > 0 && dots > 0) {
+    const decimalSep = body.lastIndexOf(',') > body.lastIndexOf('.') ? ',' : '.';
+    const pair = splitOnce(body, decimalSep);
+    if (!pair) return null; // "1,2,3.4" — mehrdeutig
+    const [rawInt, fracPart] = pair;
+    if (!isDigits(fracPart)) return null;
+    const thousandsSep = decimalSep === ',' ? '.' : ',';
+    const intPart = rawInt.includes(thousandsSep)
+      ? thousandsGroups(rawInt, thousandsSep)
+      : rawInt === '' || isDigits(rawInt)
+        ? rawInt
+        : null;
+    if (intPart === null) return null;
+    return { intPart, fracPart };
+  }
+
+  // Fall 3: ein Trenner mehrfach — Tausender-Gruppen, keine Dezimalstellen.
+  if (commas > 1) {
+    const intPart = thousandsGroups(body, ',');
+    return intPart === null ? null : { intPart, fracPart: null };
+  }
+  if (dots > 1) {
+    const intPart = thousandsGroups(body, '.');
+    return intPart === null ? null : { intPart, fracPart: null };
+  }
+
+  // Fall 2: ein Trenner genau einmal — Dezimalzeichen.
+  if (commas === 1 || dots === 1) {
+    const pair = splitOnce(body, commas === 1 ? ',' : '.');
+    if (!pair) return null;
+    const [intPart, fracPart] = pair;
+    if (!isDigits(fracPart)) return null;
+    if (intPart !== '' && !isDigits(intPart)) return null;
+    return { intPart, fracPart };
+  }
+
+  return isDigits(body) ? { intPart: body, fracPart: null } : null;
+}
+
+/**
+ * Zahl aus einem String — locale-tolerant, aber streng (AUDIT S2/S4).
+ *
+ * Warum nicht `parseFloat`: `parseFloat` liest einen PRÄFIX und schweigt zum
+ * Rest. `"2,5"` wurde zu `2` (Dezimalkomma ignoriert), `"2.5mm"` zu `2.5`
+ * (Einheit verschluckt) — in beiden Fällen meldete die Eingabe einen gültigen
+ * Wert, der ein anderer war als der getippte. Bei Leitungsquerschnitten und
+ * Sicherungsströmen ist das eine Unterdimensionierung mit Anschein von
+ * Korrektheit. `parseFloat`-Verhalten ist hier deshalb ausdrücklich verboten:
+ * Diese Funktion liefert nur dann eine Zahl, wenn der GESAMTE Text eine Zahl
+ * ist, sonst `null`.
+ *
+ * Akzeptiert: `"12"`, `"12.5"`, `"12,5"`, `"+12,5"`, `"−12,5"` (Unicode-Minus),
+ * `"1.234,56"`, `"1,234.56"`, `"12 345,6"` (Leer-/Tausenderzeichen), `".5"`.
+ * Abgelehnt (`null`): `""`, `"abc"`, `"2.5mm"`, `"1,2,3"`, `"1.23.456"`, `"--1"`.
+ */
+export function parseDecimalString(input: string): number | null {
+  // Unicode-Minus (U+2212) und Leer-/Tausenderzeichen (geschützt, schmal,
+  // U+2000–U+200A) kommen aus Copy-Paste und Tabellenkalkulation — `\s`
+  // deckt sie in JS ab. Beides sind echte Nutzereingaben, kein Müll.
+  const normalized = input.replace(/\u2212/g, '-').replace(/\s+/g, '');
+  if (normalized === '') return null;
+
+  const negative = normalized.startsWith('-');
+  const body = negative || normalized.startsWith('+') ? normalized.slice(1) : normalized;
+  if (body === '' || !/^[\d.,]+$/.test(body)) return null;
+
+  const split = splitDecimalBody(body);
+  if (!split) return null;
+
+  const value = Number(`${split.intPart || '0'}${split.fracPart ? `.${split.fracPart}` : ''}`);
+  if (!Number.isFinite(value)) return null;
+  return negative ? -value : value;
+}
+
+/**
  * Liest einen unbekannten Wert (Formulareingabe, geladenes JSON, `node.data`)
  * und gibt `null` zurück, wenn er keine gültige Größe ergibt.
  *
- * Akzeptiert Zahlen und Zahl-Strings (`"12.5"`, `"12,5"`), aber weder
- * leere Strings noch `null`, `undefined`, Booleans oder Objekte.
+ * Akzeptiert Zahlen und Zahl-Strings (`"12.5"`, `"12,5"`, `"1.234,5"`), aber
+ * weder leere Strings noch `null`, `undefined`, Booleans oder Objekte.
+ * Strings werden über `parseDecimalString` gelesen — ein Text, der nicht
+ * vollständig eine Zahl ist, ergibt `null` statt eines still gekürzten Werts.
  */
 export function parseQuantity<Q extends PhysicalQuantity>(input: unknown, parser: Parser<Q>): Q | null {
   let raw: number;
   if (typeof input === 'number') {
     raw = input;
   } else if (typeof input === 'string') {
-    const trimmed = input.trim().replace(',', '.');
-    if (trimmed === '') return null;
-    raw = Number(trimmed);
+    const parsed = parseDecimalString(input);
+    if (parsed === null) return null;
+    raw = parsed;
   } else {
     return null;
   }

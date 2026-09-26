@@ -6,7 +6,6 @@ import { PIPE_COLORS } from './utils/edgeColors';
 import { usePlannerStore } from '../../store/usePlannerStore';
 import { calculateEdgePath, edgeLabelNudge } from './utils/pathUtils';
 import { findCablePath, nodesToObstacles } from './utils/pathfinding';
-import type { RoutableNode } from './utils/nodeGeometry';
 import { fanOutLanesForEdge, type RouteEdgeRef } from './utils/routeAll';
 import { useCableRoute } from './utils/cableRouteStore';
 
@@ -47,11 +46,7 @@ const WaterPipeEdge = function ({
       // R8: Port-Fan-Out-Lanes wie im globalen Pass — sonst fahren zwei
       // Wasserstrecken an derselben Bauteilseite im Übergangsfenster (bis zur
       // nächsten Veröffentlichung des globalen Passes) exakt übereinander.
-      const lanes = fanOutLanesForEdge(
-        nodes as unknown as RoutableNode[],
-        siblingEdges as unknown as RouteEdgeRef[],
-        id
-      );
+      const lanes = fanOutLanesForEdge(nodes, siblingEdges as unknown as RouteEdgeRef[], id);
       const routed = findCablePath({
         sourceX,
         sourceY,

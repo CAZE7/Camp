@@ -16,10 +16,11 @@ import { volts } from './units';
 import type { CableEdgeData } from '../components/edges/CableEdge';
 import { FUSE_MAP, VDE_SIZES } from './electrical';
 import { isStarterBattery } from './autoWire/validation';
+import { safeText } from './safeText'; // AUDIT T1
 import { getSystemVoltage } from './vde-standards';
 
 function n(id: string, type: string, data: Record<string, unknown> = {}, position = { x: 0, y: 0 }): Node {
-  return { id, type, position, data } as Node;
+  return { id, type, position, data };
 }
 
 function e(over: Partial<Edge<CableEdgeData>> & { source: string; target: string }): Edge<CableEdgeData> {
@@ -29,7 +30,7 @@ function e(over: Partial<Edge<CableEdgeData>> & { source: string; target: string
     targetHandle: 'plus',
     type: 'cableEdge',
     ...over,
-  } as Edge<CableEdgeData>;
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -150,7 +151,7 @@ describe('autoWire — performAutoWiring', () => {
       n('dcdc', 'dcdcCharger', { label: 'Booster', amps: 30 }),
     ];
     const out = performAutoWiring(nodes)!;
-    const labels = out.nodes.map((x) => String(x.data?.label || ''));
+    const labels = out.nodes.map((x) => safeText(x.data?.label));
     expect(labels.some((l) => /starter/i.test(l))).toBe(true);
   });
 
@@ -208,12 +209,128 @@ describe('autoWire — performAutoWiring', () => {
         },
       },
     ];
-    sizeAcEdges(edges as never, custom);
+    sizeAcEdges(edges, custom);
     expect(edges[0]!.data.acProtection).toEqual({
       kind: 'rcbo',
       characteristic: 'C',
       breakingCapacityKA: 10,
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AUDIT D1/D2 — Persistenzvertrag der Nutzerkante
+// ---------------------------------------------------------------------------
+describe('autoWire — Persistenzvertrag Nutzerkante (AUDIT D1/D2)', () => {
+  const batteryAndConsumer = () => [
+    n('b1', 'battery', { label: 'Aufbaubatterie', capacity: 100, chemistry: 'LiFePO4' }),
+    n('c1', 'consumer', { label: 'LED', watts: 20 }),
+  ];
+
+  it('D1: behält JEDES Datenfeld der Nutzerkante (Key-Menge vor/nach identisch)', () => {
+    // Vorher baute performAutoWiring die Daten einer Nutzerkante aus einer
+    // Whitelist von vier Feldern neu auf (length, crossSection, fuseSize,
+    // edgeDomain). Alles andere — die vom Nutzer eingetragenen Datenblattwerte
+    // der Sicherung und die Warnmarker — verschwand bei jedem AutoWire-Klick.
+    const userData: CableEdgeData = {
+      length: 2,
+      crossSection: 2.5,
+      fuseSize: 15,
+      edgeDomain: 'DC_12V',
+      fuseType: 'mrbf',
+      fuseOffset: 0.18,
+      fuseBreakingCapacity: 10000,
+      acProtection: { kind: 'rcbo', characteristic: 'C', breakingCapacityKA: 10 },
+      dropWarning: true,
+      fuseWarning: true,
+    };
+    const user = e({ id: 'user-full', source: 'b1', target: 'c1', data: { ...userData } });
+
+    const out = performAutoWiring(batteryAndConsumer(), [user])!;
+    const after = out.edges.find((x) => x.id === 'user-full');
+
+    expect(after, 'die Nutzerkante muss erhalten bleiben').toBeDefined();
+    // Der eigentliche Vertrag: kein Feld darf verschwinden.
+    expect(
+      Object.keys(after!.data!).sort(),
+      'AutoWire darf die Daten einer Nutzerkante nicht auf eine Feld-Whitelist kürzen'
+    ).toEqual([...Object.keys(userData), 'autoWired'].sort());
+    // Datenblattwerte gehören dem Nutzer — AutoWire darf sie nicht überschreiben
+    // (applyFuseTypes respektiert vorhandene Angaben ausdrücklich).
+    expect(after!.data!.fuseType).toBe('mrbf');
+    expect(after!.data!.fuseOffset).toBe(0.18);
+    expect(after!.data!.fuseBreakingCapacity).toBe(10000);
+    expect(after!.data!.acProtection).toEqual({ kind: 'rcbo', characteristic: 'C', breakingCapacityKA: 10 });
+    // Warnmarker sind BERECHNETE Felder (markInfeasibleSizing) — ihr Wert darf
+    // sich ändern, ihr Vorhandensein nicht.
+    expect('dropWarning' in after!.data!).toBe(true);
+    expect('fuseWarning' in after!.data!).toBe(true);
+  });
+
+  it('D1-Positivkontrolle: derselbe Lauf schreibt auch weiterhin Querschnitt/Sicherung', () => {
+    // Ohne diese Kontrolle wäre der Test oben auch durch ein AutoWire grün,
+    // das Nutzerkanten gar nicht mehr anfasst.
+    const user = e({
+      id: 'user-sized',
+      source: 'b1',
+      target: 'c1',
+      data: { length: 2, crossSection: 0.5, edgeDomain: 'DC_12V' },
+    });
+    const out = performAutoWiring(batteryAndConsumer(), [user])!;
+    const after = out.edges.find((x) => x.id === 'user-sized')!;
+    expect(after.data!.crossSection, '0,5 mm² unterliegt der Normreihe und muss wachsen').toBeGreaterThan(
+      0.5
+    );
+  });
+
+  it('D2: eine Nutzerkante mit Auto-ID überlebt, sobald sie als Nutzerkante markiert ist', () => {
+    // Vorher entschied `id.startsWith('e-auto-')` über die Herkunft: Diese
+    // Kante wurde gelöscht und durch zwei Auto-Kanten ersetzt — Datenverlust
+    // allein wegen eines Strings.
+    const user = e({
+      id: 'e-auto-99',
+      source: 'b1',
+      target: 'c1',
+      data: { length: 2, crossSection: 2.5, edgeDomain: 'DC_12V', autoWired: false },
+    });
+    const out = performAutoWiring(batteryAndConsumer(), [user])!;
+    expect(out.edges.some((x) => x.id === 'e-auto-99')).toBe(true);
+    expect(out.edges.find((x) => x.id === 'e-auto-99')!.data!.autoWired).toBe(false);
+  });
+
+  it('D2-Positivkontrolle: echte Auto-Kanten früherer Läufe werden weiterhin ersetzt', () => {
+    // Idempotenz darf durch das Flag nicht kippen — sonst wachsen bei jedem
+    // Klick neue Parallelkanten in den Plan.
+    const first = performAutoWiring(batteryAndConsumer())!;
+    const autoCount = first.edges.filter((x) => x.data?.autoWired === true).length;
+    expect(autoCount, 'AutoWire muss seine Kanten als eigene markieren').toBeGreaterThan(0);
+
+    const second = performAutoWiring(first.nodes, first.edges)!;
+    expect(second.edges.length).toBe(first.edges.length);
+    expect(second.edges.filter((x) => x.data?.autoWired === true).length).toBe(autoCount);
+  });
+
+  it('D2-Migration: Altplan ohne Flag wird weiterhin am ID-Präfix erkannt', () => {
+    // Gespeicherte Pläne von vor dem Flag tragen die Herkunft nur in der ID.
+    // Ohne diesen Fallback würden alte Auto-Kanten zu Nutzerkanten und blieben
+    // als Doppelte stehen. Die ID selbst ist kein Beweis (der Zähler beginnt
+    // bei 1, `e-auto-1` wird neu vergeben) — erkannt wird die Kante an ihrem
+    // unverwechselbaren Inhalt.
+    const legacy = [
+      e({
+        id: 'e-auto-1',
+        source: 'b1',
+        target: 'c1',
+        data: { length: 42, crossSection: 42, edgeDomain: 'DC_12V' },
+      }),
+    ];
+    const out = performAutoWiring(batteryAndConsumer(), legacy)!;
+    expect(
+      out.edges.some((x) => x.data?.length === 42),
+      'die Alt-Auto-Kante muss ersetzt sein'
+    ).toBe(false);
+    // Und der Ersatz trägt das Flag — der Präfix-Fallback ist einmalig nötig.
+    expect(out.edges.every((x) => typeof x.data?.autoWired === 'boolean')).toBe(true);
   });
 });
 
@@ -934,9 +1051,7 @@ describe('autoWire mit typsicheren Einheiten (K1c)', () => {
 
   it('verkraftet unbrauchbare Längen und Querschnitte in edge.data', () => {
     const nodes = [battery, consumer];
-    const broken = [
-      e({ source: 'b1', target: 'c1', data: { length: -5, crossSection: 0 } as CableEdgeData }),
-    ];
+    const broken = [e({ source: 'b1', target: 'c1', data: { length: -5, crossSection: 0 } })];
     const out = performAutoWiring(nodes, broken);
     expect(out).not.toBeNull();
     for (const edge of out!.edges) {
@@ -1108,7 +1223,7 @@ describe('autoWire — behobene Audit-Fehler', () => {
       n('b1', 'battery', { label: 'Starterbatterie', chemistry: 'AGM' }),
       n('d1', 'dcdcCharger', { label: 'Booster', amps: 30 }),
     ])!;
-    const house = out.nodes.find((x) => x.type === 'battery' && !String(x.data?.label ?? '').match(/start/i));
+    const house = out.nodes.find((x) => x.type === 'battery' && !safeText(x.data?.label).match(/start/i));
     expect(house).toBeDefined();
     // Der Booster wird an Starter UND Schiene angelegt, nie nur an die Batterie.
     const boosterToStarter = out.edges.find((x) => x.source === 'b1' && x.target === 'd1');
@@ -1248,7 +1363,7 @@ describe('M6-8 — AUDIT-Testgruppen', () => {
   it('normalisiert einen Ladegerät-Direktabgang an Batterie-Plus auf die Schiene (Issue 5b)', () => {
     const nodes = [n('b1', 'battery', { label: 'Aufbau' }), n('ch', 'charger', { amps: 20 })];
     const user = [e({ id: 'dup', source: 'b1', target: 'ch', data: { length: 2, edgeDomain: 'DC_12V' } })];
-    const res = performAutoWiring(nodes, user as never)!;
+    const res = performAutoWiring(nodes, user)!;
     const plusRail = res.nodes.find((nd) => nd.type === 'busbar' && nd.data?.role === 'positive')!;
     expect(res.edges.some((x) => x.source === 'b1' && x.target === 'ch')).toBe(false);
     expect(res.edges.filter((x) => x.source === 'ch' && x.target === plusRail.id)).toHaveLength(1);

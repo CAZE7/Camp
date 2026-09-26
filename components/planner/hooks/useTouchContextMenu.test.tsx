@@ -41,7 +41,7 @@ describe('useTouchContextMenu', () => {
     });
     expect(onOpen).not.toHaveBeenCalled();
 
-    act(() => vi.advanceTimersByTime(1));
+    void act(() => vi.advanceTimersByTime(1));
     expect(onOpen).toHaveBeenCalledWith({
       x: 80,
       y: 120,

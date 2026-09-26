@@ -7,7 +7,7 @@ import type { PlannerFlowNode } from '../../nodes/types';
 import type { GuidedEdgeRef } from '../utils/guidedSteps';
 
 function node(id: string, type: string): PlannerFlowNode {
-  return { id, type, position: { x: 0, y: 0 }, data: {} } as unknown as PlannerFlowNode;
+  return { id, type, position: { x: 0, y: 0 }, data: {} };
 }
 
 /** Kanten, wie sie der Store liefert — die Leiste liest nur source/target. */

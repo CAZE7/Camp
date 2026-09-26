@@ -457,7 +457,7 @@ type PlanFixture = {
 
 function wirePlan(planName: keyof typeof GOLDEN_PLANS): PlanFixture {
   const plan = GOLDEN_PLANS[planName]!;
-  const wired = performAutoWiring(plan.nodes as never[], plan.edges as never[]);
+  const wired = performAutoWiring(plan.nodes, plan.edges);
   expect(wired).not.toBeNull();
   const nodes = wired!.nodes as Node[];
   const edges = wired!.edges as RouteEdgeRef[];
@@ -496,7 +496,7 @@ const countsOf = (report: InvariantReport): Record<InvariantId, number> =>
   Object.fromEntries(INVARIANT_IDS.map((id) => [id, report[id].length])) as Record<InvariantId, number>;
 
 describe('Bestandsrouter (A-Stern-Pass) — Ratchet gegen Baseline', () => {
-  for (const planName of Object.keys(LEGACY_BASELINE) as (keyof typeof GOLDEN_PLANS)[]) {
+  for (const planName of Object.keys(LEGACY_BASELINE)) {
     it(`${planName}: keine Invariante verschlechtert sich, Kreuzungen ≤ Baseline`, () => {
       const fixture = wirePlan(planName);
       const routed = routeLegacy(fixture);
@@ -514,7 +514,7 @@ describe('Bestandsrouter (A-Stern-Pass) — Ratchet gegen Baseline', () => {
   }
 
   it('I9: gleicher Input ⇒ byte-identischer Output (auch bei permutierter Kantenliste)', () => {
-    for (const planName of Object.keys(LEGACY_BASELINE) as (keyof typeof GOLDEN_PLANS)[]) {
+    for (const planName of Object.keys(LEGACY_BASELINE)) {
       const fixture = wirePlan(planName);
       const first = serializeRoutes(routeLegacy(fixture));
       const second = serializeRoutes(routeLegacy(fixture));
@@ -528,7 +528,7 @@ describe('Bestandsrouter (A-Stern-Pass) — Ratchet gegen Baseline', () => {
   it('keine Routing-Routen dürfen auf den Fallback (usedSearch="fallback" inkl. Hindernis) zurückfallen', () => {
     // ROUTE-001 / Performance / Qualität: Ein Fallback-Pfad, der durch ein Hindernis
     // bricht, darf in normalen Plänen (≤ 150 Knoten, normale Dichte) nicht das Endresultat sein.
-    for (const planName of Object.keys(LEGACY_BASELINE) as (keyof typeof GOLDEN_PLANS)[]) {
+    for (const planName of Object.keys(LEGACY_BASELINE)) {
       const fixture = wirePlan(planName);
       const routed = routeAllCables(
         fixture.nodes,
@@ -551,7 +551,7 @@ describe('Bestandsrouter (A-Stern-Pass) — Ratchet gegen Baseline', () => {
 });
 
 describe('ELK-Pass — strikt wo erfüllt, Ratchet für Stubs', () => {
-  for (const planName of Object.keys(ELK_BASELINE) as (keyof typeof GOLDEN_PLANS)[]) {
+  for (const planName of Object.keys(ELK_BASELINE)) {
     it(`${planName}: I1–I4 und I7 strikt null, I5/I6/Kreuzungen ≤ Baseline`, async () => {
       const fixture = wirePlan(planName);
       const { edges, nodeRects } = await routeElk(fixture);

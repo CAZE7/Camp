@@ -116,8 +116,7 @@ export const BATTERY_RI_MILLIOHM_AT_100AH: Record<string, number> = {
   Gel: 6,
 };
 
-const dataOf = (node: Node | undefined): Record<string, unknown> | undefined =>
-  node?.data as Record<string, unknown> | undefined;
+const dataOf = (node: Node | undefined): Record<string, unknown> | undefined => node?.data;
 
 const finitePositive = (value: unknown): number | null =>
   typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : null;

@@ -1,7 +1,9 @@
 import React from 'react';
 import { type Edge } from '@xyflow/react';
 import { type CableEdgeData } from '../edges/CableEdge';
-import { ValidatingInput, COMMON_RULES } from '../ui/ValidatingInput';
+import { ValidatingInput, COMMON_RULES, type ValidationRule } from '../ui/ValidatingInput';
+import { solarTempCoefficientPerKelvin } from '../../lib/solar'; // AUDIT S1: %/K ↔ 1/K
+import { UPSTREAM_IMPEDANCE_ASSUMPTION_OHM } from '../../lib/acProtection'; // AUDIT N1: I_k der Einspeisung
 import { isStarterBatteryLabel } from '../../lib/vde-standards'; // AUTO-003: Rollen-Fallback
 import {
   type NodeDataPatch,
@@ -493,6 +495,33 @@ export function ShorePowerInspector({
           Ein FI-Schutzschalter (max. 30mA) ist bei Landstromanschlüssen vorgeschrieben (DIN VDE 0100-721).
         </div>
       )}
+      <div className="mt-2">
+        <label
+          htmlFor={`${node.id}-prospectiveIkA`}
+          className="mb-1 block text-sm font-medium text-foreground"
+        >
+          Prospektiver Kurzschlussstrom I<sub>k</sub> der Einspeisung in Ampere
+        </label>
+        <ValidatingInput
+          id={`${node.id}-prospectiveIkA`}
+          type="number"
+          min="1"
+          step="1"
+          allowEmpty
+          value={node.data?.prospectiveIkA ?? ''}
+          rules={[COMMON_RULES.strictlyPositive]}
+          onValidChange={(val) => onUpdateNodeData?.(node.id, { prospectiveIkA: val })}
+          onEmptyChange={() => onUpdateNodeData?.(node.id, { prospectiveIkA: undefined })}
+          className="min-h-11 rounded border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+        />
+        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+          Optional, aber der stärkste Wert, den du hier eintragen kannst: Steht der gemessene oder vom
+          Platzbetreiber genannte Kurzschlussstrom an der Einspeisestelle fest, prüft der Planer das
+          Abschaltvermögen (Icn) deiner AC-Schutzorgane gegen diese Zahl statt gegen eine Annahme. Bleibt das
+          Feld leer, rechnet der Planer mit {UPSTREAM_IMPEDANCE_ASSUMPTION_OHM} Ω vorgelagert
+          (Campingplatz-Pitch) und weist die Reichweite dieser Annahme am Verdikt aus.
+        </p>
+      </div>
     </div>
   );
 }
@@ -634,6 +663,31 @@ export function Consumer230VInspector({
   );
 }
 
+/**
+ * Anzeige des Temperaturkoeffizienten in %/K (AUDIT S1).
+ *
+ * Gespeichert wird der Bruch 1/K (`lib/solar.ts` rechnet damit); das
+ * Datenblatt und dieses Feld sprechen %/K. Die Normalisierungsfunktion der
+ * Domäne kennt beide Schreibweisen — auch die Altpläne, in denen der
+ * Prozentwert direkt im Feld stand.
+ */
+function solarTempCoefficientPercentOf(raw: unknown): number {
+  return solarTempCoefficientPerKelvin(raw) * 100;
+}
+
+/**
+ * Gültiger Bereich in %/K. Vorher galt hier `COMMON_RULES.positive`, das den
+ * laut Beschriftung „negativen" Wert pauschal ablehnte — ein Feld, dessen
+ * eigener Label-Wert seine Validierung nicht besteht. Der Betrag ist die
+ * physikalisch relevante Größe: c-Si liegt bei 0,20…0,50 %/K, alles darüber ist ein
+ * Tippfehler (z. B. 35 statt 0,35) und würde die Kalt-Voc um Faktor 100
+ * aufblasen.
+ */
+const TEMP_COEFF_PERCENT_RULE: ValidationRule = {
+  validate: (v: number) => Math.abs(v) > 0 && Math.abs(v) <= 1,
+  message: 'Temp.-Koeffizient muss zwischen −1 und 0 %/K liegen (c-Si typisch −0,25 bis −0,35).',
+};
+
 export function SolarInspector({
   node,
   onUpdateNodeData,
@@ -747,16 +801,21 @@ export function SolarInspector({
           className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
           htmlFor={`${node.id}-tempCoefficient`}
         >
-          Temp.-Koeffizient Voc (%/K, negativ)
+          Temp.-Koeffizient Voc (%/K)
         </label>
         <ValidatingInput
           id={`${node.id}-tempCoefficient`}
           type="number"
           step="0.01"
           isFloat={true}
-          value={node.data?.tempCoefficient ?? -0.35}
-          rules={[COMMON_RULES.positive]}
-          onValidChange={(val) => onUpdateNodeData?.(node.id, { tempCoefficient: -Math.abs(val) })}
+          // AUDIT S1: Beschriftung und gespeicherter Wert müssen dieselbe
+          // Einheit haben. Angezeigt wird %/K (Datenblatt-Schreibweise),
+          // gespeichert der Bruch 1/K (Modell-Schreibweise) — Umrechnung an
+          // genau dieser Grenze. `solarTempCoefficientPerKelvin` normalisiert
+          // auch Altpläne, die den Prozentwert gespeichert hatten.
+          value={solarTempCoefficientPercentOf(node.data?.tempCoefficient)}
+          rules={[TEMP_COEFF_PERCENT_RULE]}
+          onValidChange={(val) => onUpdateNodeData?.(node.id, { tempCoefficient: -Math.abs(val) / 100 })}
           className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
         />
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">

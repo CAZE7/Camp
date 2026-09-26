@@ -162,9 +162,13 @@ export function CanvasDisplayOptions(props: CanvasDisplayOptionsProps) {
   const [open, setOpen] = useState(false);
   const popoverRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
+  // AUDIT T1 (react-hooks/set-state-in-effect): „Kein Kompakt-Modus -> kein
+  // Popover“ zur Render-Zeit statt in einem zweiten Commit.
+  const [syncedCompact, setSyncedCompact] = useState(compact);
+  if (syncedCompact !== compact) {
+    setSyncedCompact(compact);
     if (!compact) setOpen(false);
-  }, [compact]);
+  }
 
   useEffect(() => {
     if (!open) return;

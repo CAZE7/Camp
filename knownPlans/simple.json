@@ -3,6 +3,7 @@
     "edges": [
       {
         "data": {
+          "autoWired": true,
           "crossSection": 1.5,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
@@ -19,6 +20,7 @@
       },
       {
         "data": {
+          "autoWired": true,
           "crossSection": 1.5,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
@@ -33,6 +35,7 @@
       },
       {
         "data": {
+          "autoWired": true,
           "crossSection": 1.5,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
@@ -47,6 +50,7 @@
       },
       {
         "data": {
+          "autoWired": true,
           "crossSection": 1.5,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
@@ -63,6 +67,7 @@
       },
       {
         "data": {
+          "autoWired": true,
           "crossSection": 1.5,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
@@ -77,6 +82,7 @@
       },
       {
         "data": {
+          "autoWired": true,
           "crossSection": 1.5,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
@@ -93,6 +99,7 @@
       },
       {
         "data": {
+          "autoWired": true,
           "crossSection": 1.5,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
@@ -107,6 +114,7 @@
       },
       {
         "data": {
+          "autoWired": true,
           "crossSection": 2.5,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
@@ -123,6 +131,7 @@
       },
       {
         "data": {
+          "autoWired": true,
           "crossSection": 2.5,
           "dropWarning": false,
           "edgeDomain": "DC_12V",

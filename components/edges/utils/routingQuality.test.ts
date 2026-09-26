@@ -132,7 +132,7 @@ describe('Node-Schnitt-Freiheit (R-10)', () => {
       type: string,
       position = { x: 0, y: 0 },
       data: Record<string, unknown> = {}
-    ): Node => ({ id, type, position, width: 192, height: 120, data }) as unknown as Node;
+    ): Node => ({ id, type, position, width: 192, height: 120, data });
     const nodes = [
       makeNode('bat-1', 'battery', { x: 0, y: 0 }, { capacity: 100, chemistry: 'LiFePO4' }),
       makeNode('solar-1', 'solar', { x: 0, y: -400 }, { watts: 200 }),

@@ -37,6 +37,7 @@ import { PlannerStatusBar } from './ui/PlannerStatusBar';
 import { useSequentialTapConnect } from './hooks/useSequentialTapConnect';
 import { usePlannerDragDrop } from './hooks/usePlannerDragDrop';
 import { useCoarsePointer } from './hooks/useMediaCapabilities';
+import { useSaveFailure } from './hooks/useSaveFailure';
 import { useLongPressNodeDrag } from './hooks/useLongPressNodeDrag';
 import {
   getFlowInteractionProps,
@@ -184,7 +185,13 @@ export function FlowCanvas() {
   }, [showConnectionFeedback]);
 
   React.useEffect(() => {
-    const handleFitView = () => fitView({ duration: 400, padding: PLANNER_FIT_PADDING });
+    // React Flow gibt für fitView/setCenter/setViewport Promises zurück. Eine
+    // Viewport-Animation ist fire-and-forget: Es gibt nichts nachzuholen und
+    // keinen Nutzerfehler zu melden — `void` markiert das ausdrücklich,
+    // statt das Promise still wegzuschmeißen (AUDIT T1, no-floating-promises).
+    const handleFitView = () => {
+      void fitView({ duration: 400, padding: PLANNER_FIT_PADDING });
+    };
     const handleFocusElement = (event: Event) => {
       const { id, elementType } = (event as CustomEvent<{ id: string; elementType: 'node' | 'edge' }>).detail;
       if (elementType === 'node') {
@@ -193,7 +200,10 @@ export function FlowCanvas() {
           // Messgrenze (RF 12): gemessene Größe steht in `measured`.
           const width = nodeWidth(node, 200);
           const height = nodeHeight(node, 120);
-          setCenter(node.position.x + width / 2, node.position.y + height / 2, { zoom: 1.15, duration: 450 });
+          void setCenter(node.position.x + width / 2, node.position.y + height / 2, {
+            zoom: 1.15,
+            duration: 450,
+          });
         }
         return;
       }
@@ -202,7 +212,7 @@ export function FlowCanvas() {
       const source = edge ? getNode(edge.source) : undefined;
       const target = edge ? getNode(edge.target) : undefined;
       if (source && target) {
-        setCenter(
+        void setCenter(
           (source.position.x + target.position.x) / 2 + 100,
           (source.position.y + target.position.y) / 2 + 60,
           { zoom: 1.05, duration: 450 }
@@ -293,8 +303,8 @@ export function FlowCanvas() {
     const saved = viewportsRef.current[viewMode];
     previousViewMode.current = viewMode;
     window.requestAnimationFrame(() => {
-      if (saved) setViewport(saved, { duration: 200 });
-      else fitView({ duration: 400, padding: PLANNER_FIT_PADDING });
+      if (saved) void setViewport(saved, { duration: 200 });
+      else void fitView({ duration: 400, padding: PLANNER_FIT_PADDING });
     });
   }, [viewMode, fitView, getViewport, setViewport]);
 
@@ -618,8 +628,23 @@ export function FlowCanvas() {
     [onConnect, showConnectionFeedback]
   );
 
+  // AUDIT D3: Ein voller/blockierter localStorage brach den Debounce-Flush
+  // bisher still ab — der Plan sah gespeichert aus und war es nicht. Der
+  // Adapter meldet den Fehlschlag, hier wird er sichtbar.
+  const saveFailure = useSaveFailure();
+
   return (
     <>
+      {saveFailure && (
+        <div
+          role="alert"
+          className="absolute left-1/2 top-8 z-50 w-11/12 -translate-x-1/2 rounded-lg border border-signal bg-signal/10 p-3 text-center text-sm font-semibold text-signal shadow-lg md:w-auto"
+        >
+          Plan konnte nicht gespeichert werden ({saveFailure.message}). Änderungen gehen beim Neuladen
+          verloren — Browser-Speicher freigeben und den Plan erneut öffnen.
+        </div>
+      )}
+
       {waterWarning && (
         <div
           role="status"
@@ -836,7 +861,9 @@ export function FlowCanvas() {
               <button
                 type="button"
                 data-testid="mobile-overview"
-                onClick={() => fitView({ duration: 400, padding: PLANNER_FIT_PADDING })}
+                onClick={() => {
+                  void fitView({ duration: 400, padding: PLANNER_FIT_PADDING });
+                }}
                 className="flex min-h-12 items-center gap-2 rounded-full border border-border bg-card px-4 text-sm font-semibold text-foreground shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 aria-label="Planübersicht anzeigen"
               >

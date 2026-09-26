@@ -7,6 +7,7 @@ import {
 } from '@/components/nodes/types';
 import { type Node, type Edge } from '@xyflow/react';
 import { getSystemVoltage } from '../utils/voltage';
+import { safeText } from '../../../lib/safeText'; // AUDIT T1
 import {
   VDE_INVERTER_EFFICIENCY,
   VDE_BATTERY_DOD,
@@ -183,7 +184,7 @@ function calculateDailyConsumption(
     let consumption = (w / sysVoltage) * h;
 
     // Seasonal adjustment only for heaters
-    const label = String(n.data?.label || '').toLowerCase();
+    const label = safeText(n.data?.label).toLowerCase();
     const isHeater =
       n.type === 'heater' || label.includes('heiz') || label.includes('heater') || label.includes('autoterm');
 

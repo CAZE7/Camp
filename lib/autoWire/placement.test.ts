@@ -1,5 +1,6 @@
 import { ROUTING_TOKENS } from '../routing/tokens';
 import { describe, expect, it } from 'vitest';
+import { safeText } from '../safeText'; // AUDIT T1
 import type { Node } from '@xyflow/react';
 import {
   applyFlowLayout,
@@ -29,7 +30,7 @@ const makeNode = (
   type: string,
   position = { x: 0, y: 0 },
   data: Record<string, unknown> = {}
-): Node => ({ id, type, position, data }) as Node;
+): Node => ({ id, type, position, data });
 
 describe('Raster-Platzierung (R-8)', () => {
   it('snapToGrid rastet auf 16 px', () => {
@@ -70,7 +71,7 @@ describe('Raster-Platzierung (R-8)', () => {
     expect(a).not.toBeNull();
     expect(b).not.toBeNull();
     const positions = (r: NonNullable<ReturnType<typeof run>>) =>
-      r.nodes.map((n) => `${n.data.label}:${n.position.x},${n.position.y}`).sort();
+      r.nodes.map((n) => `${safeText(n.data.label)}:${n.position.x},${n.position.y}`).sort();
     expect(positions(a!)).toEqual(positions(b!));
   });
 });
@@ -271,7 +272,7 @@ describe('Platzierung ohne Überlappung (ADR 0017)', () => {
   it('kein Bauteil überdeckt ein anderes — auf allen Golden-Master-Plänen', () => {
     const offenders: string[] = [];
     for (const [planName, plan] of Object.entries(GOLDEN_PLANS)) {
-      const wired = performAutoWiring(plan.nodes as never, plan.edges as never);
+      const wired = performAutoWiring(plan.nodes, plan.edges);
       if (!wired) continue;
       const placed = wired.nodes as unknown as { id: string; position: { x: number; y: number } }[];
       for (let i = 0; i < placed.length; i++) {

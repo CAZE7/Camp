@@ -53,6 +53,20 @@ const dcPassThrough: HandleSpec[] = [
   { id: 'minus', type: 'source', domain: 'DC_12V' },
 ];
 
+/**
+ * Solar-Anschlusspaar: dieselben Handle-Ids wie DC (das Node-Markup ist
+ * identisch), aber Domäne 'Solar' — AUDIT N2. Beim Ziehen und beim Speichern
+ * muss dieselbe Grundlage gelten; die Panel-Zuleitung wird gegen die
+ * MPP-Bemessungsspannung gerechnet (`solarDropBasisVoltageOf`), nicht gegen
+ * 12,8 V.
+ */
+const solarPassThrough: HandleSpec[] = [
+  { id: 'plus', type: 'target', domain: 'Solar' },
+  { id: 'minus', type: 'target', domain: 'Solar' },
+  { id: 'plus', type: 'source', domain: 'Solar' },
+  { id: 'minus', type: 'source', domain: 'Solar' },
+];
+
 const waterPassThrough: HandleSpec[] = [
   { id: 'in', type: 'target', domain: 'WATER' },
   { id: 'out', type: 'source', domain: 'WATER' },
@@ -179,7 +193,7 @@ export const BUILTIN_COMPONENT_SPECS: readonly ComponentSpec[] = [
     domains: ['Solar'],
     icon: Sun,
     node: SolarNode,
-    handles: dcPassThrough,
+    handles: solarPassThrough,
     defaults: { watts: 200 },
   },
   {

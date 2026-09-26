@@ -113,9 +113,13 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
     return () => window.removeEventListener('open-warning-center', openPanel);
   }, []);
 
-  useEffect(() => {
+  // AUDIT T1 (react-hooks/set-state-in-effect): „Keine Warnungen -> Popover zu“
+  // zur Render-Zeit statt in einem zweiten Commit.
+  const [syncedWarningCount, setSyncedWarningCount] = useState(warnings.length);
+  if (syncedWarningCount !== warnings.length) {
+    setSyncedWarningCount(warnings.length);
     if (warnings.length === 0) setOpen(false);
-  }, [warnings.length]);
+  }
 
   useEffect(() => {
     if (!open) return;

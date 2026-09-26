@@ -55,6 +55,24 @@ const COPPER_RESISTIVITY_OHM_MM2_PER_M = COPPER_RESISTIVITY_OHM_MM2_PER_M_SOURCE
  */
 export const UPSTREAM_IMPEDANCE_ASSUMPTION_OHM = 0.8;
 
+/**
+ * Untere Grenze der vorgelagerten Netzimpedanz — die **Niederimpedanz-Seite**
+ * derselben Einspeisung (AUDIT N1).
+ *
+ * `UPSTREAM_IMPEDANCE_ASSUMPTION_OHM` (0,8 Ω) ist der typische Fall: ein
+ * Campingplatz-Pitch über eine lange CEE-Zuleitung. Sie ist aber nicht der
+ * ungünstigste Fall. Steht das Fahrzeug an einer netznahen Einspeisung
+ * (Werkstatt/Garage nahe der Unterverteilung) oder an einem Generator mit
+ * großem Zuleitungsquerschnitt, wird die vorgelagerte Impedanz deutlich
+ * kleiner und der prospektive Kurzschlussstrom deutlich größer.
+ *
+ * Mit 0,15 Ω ergibt sich an der Einspeisestelle I_k ≈ 1,5 kA — die Größen-
+ * ordnung, die für eine kurze, dicke Niederspannungszuleitung realistisch ist.
+ * UNVERIFIED wie die 0,8 Ω: ein Messwert vor Ort schlägt beide. Genau dafür
+ * gibt es `supplyProspectiveIkA` (gemessener/angegebener Wert gewinnt immer).
+ */
+export const UPSTREAM_IMPEDANCE_MIN_OHM = 0.15;
+
 /** Referenzspannung der 230-V-Modellebene (Bordnetz-AC) in Volt. */
 export const AC_MODEL_VOLTAGE_V = 230;
 
@@ -187,7 +205,19 @@ export function acSourceKindOf(sourceNodeType: string | undefined): AcSourceKind
  * niemals als PASS.
  */
 export type AcLimitation =
-  'missing-length' | 'missing-cross-section' | 'missing-rated-current' | 'missing-descriptor';
+  | 'missing-length'
+  | 'missing-cross-section'
+  | 'missing-rated-current'
+  | 'missing-descriptor'
+  /**
+   * AUDIT N1: Das Abschaltvermögen reicht für die TYPISCHE Einspeisung
+   * (0,8 Ω vorgelagert), aber nicht für die niederimpedante Grenze
+   * (`UPSTREAM_IMPEDANCE_MIN_OHM`). Kein Datenfehler wie die vier Fälle
+   * darüber, sondern eine ausgewiesene Reichweitengrenze des Verdikts:
+   * `ok-with-assumption` ohne diesen Hinweis behauptete eine Gültigkeit, die
+   * das Modell nicht belegt.
+   */
+  | 'breaking-capacity-reach';
 
 /** Ergebnis der Abschaltbedingungs-Schätzung. */
 export type AcTripVerdict =
@@ -220,9 +250,20 @@ export type AcTripAssessment = {
    * Prospektiver Kurzschlussstrom am Kantenanfang [A], geschätzt aus der
    * deklarierten Netzimpedanz-Annahme: I_p = U0 / Zs. UNVERIFIED wie die
    * Annahme selbst — aber eine Zahl statt eines dekorativen Icn-Feldes
-   * (AUDIT ELE-005).
+   * (AUDIT ELE-005). Liegt ein angegebener/gemessener Wert vor
+   * (`supplyProspectiveIkA`), steht hier dieser.
    */
   prospectiveIkA: number | null;
+  /**
+   * Oberer Rand desselben Stroms aus der Niederimpedanz-Annahme
+   * (`UPSTREAM_IMPEDANCE_MIN_OHM`) bzw. identisch zu `prospectiveIkA`, wenn
+   * ein Wert angegeben/gemessen wurde (AUDIT N1). Die Abschaltvermögens-
+   * Prüfung ist gegen `prospectiveIkA` scharf; gegen diese Grenze wird die
+   * REICHWEITE des Verdikts ausgewiesen.
+   */
+  prospectiveIkUpperBoundA: number | null;
+  /** Woher `prospectiveIkA` stammt: Angabe/Messung oder Modellannahme. */
+  prospectiveIkSource: 'declared' | 'assumed' | null;
   /** Grund, warum nicht bewertet werden konnte (UNKNOWN, nie PASS). */
   limitation?: AcLimitation;
   /**
@@ -245,6 +286,12 @@ export type AcTripAssessment = {
  * @param params.sourceKind    Speisung: shore/inverter/unknown (s. oben).
  * @param params.upstreamRcd   30-mA-FI am Einspeisepunkt vorhanden
  *                             (shorePower/acdcCharger `hasRcd`).
+ * @param params.supplyProspectiveIkA
+ *                             Prospektiver Kurzschlussstrom I_k an der
+ *                             Einspeisestelle [A] — angegeben oder gemessen
+ *                             (AUDIT N1). Schlägt BEIDE Impedanz-Annahmen:
+ *                             Ein Messwert vor Ort ist mehr wert als jede
+ *                             Modellzahl.
  */
 export function evaluateAcEdgeProtection(params: {
   ratedCurrentA?: number;
@@ -253,8 +300,15 @@ export function evaluateAcEdgeProtection(params: {
   crossSection?: number;
   sourceKind?: AcSourceKind;
   upstreamRcd?: boolean;
+  supplyProspectiveIkA?: number;
 }): AcTripAssessment {
   const { sourceKind = 'unknown', upstreamRcd = false } = params;
+  const declaredIkA =
+    typeof params.supplyProspectiveIkA === 'number' &&
+    Number.isFinite(params.supplyProspectiveIkA) &&
+    params.supplyProspectiveIkA > 0
+      ? params.supplyProspectiveIkA
+      : null;
   const rated = params.ratedCurrentA ?? 0;
 
   /**
@@ -280,6 +334,8 @@ export function evaluateAcEdgeProtection(params: {
     cableLoopOhm,
     zsEstimateOhm: null,
     descriptor: null,
+    prospectiveIkUpperBoundA: null,
+    prospectiveIkSource: null,
   };
 
   // Wechselrichter-Ausgang: kein TN-Schleifenmodell — die Stromquelle ist
@@ -347,8 +403,8 @@ export function evaluateAcEdgeProtection(params: {
   const descriptor = descriptorAssumed
     ? { kind: 'mcb' as const, characteristic: 'C' as const, breakingCapacityKA: 6 }
     : {
-        kind: kind as AcProtectionKind,
-        characteristic: characteristic as McbCharacteristic,
+        kind: kind,
+        characteristic: characteristic,
         breakingCapacityKA: Number(breaking),
       };
   const assumptionNote = descriptorAssumed
@@ -357,6 +413,9 @@ export function evaluateAcEdgeProtection(params: {
   const iaA = guaranteedTripCurrentA(rated, descriptor.characteristic);
   const zsMaxOhm = maxLoopImpedanceOhm(rated, descriptor.characteristic);
   const zsEstimateOhm = UPSTREAM_IMPEDANCE_ASSUMPTION_OHM + cableLoopOhm;
+  // AUDIT N1: dieselbe Rechnung an der unteren Impedanz-Grenze — der
+  // ungünstigste plausible Fall derselben Einspeisung (netznah/Generator).
+  const zsLowerBoundOhm = UPSTREAM_IMPEDANCE_MIN_OHM + cableLoopOhm;
 
   /**
    * AUDIT ELE-005: Das Abschaltvermögen Icn war dekorativ — geprüft wurde nur
@@ -370,8 +429,24 @@ export function evaluateAcEdgeProtection(params: {
    * Datenblatt-Werten an, die zur Installation nicht passen. Die Annahme ist
    * UNVERIFIED (ein Messwert vor Ort schlägt sie), aber sie ist wenigstens
    * gerechnet und steht als Zahl in UI/Audit — nicht als stiller Haken.
+   *
+   * AUDIT N1 — die Reichweite dieser Annahme wird jetzt ausgewiesen:
+   * I_p = U0/Zs ist mit Zs ≥ 0,8 Ω + Kabelleitung bei ≈ 0,29 kA gedeckelt.
+   * Damit konnte die Prüfung für KEIN real erfasstes Gerät kippen (die UI
+   * bietet 6 und 10 kA an). Zwei Konsequenzen:
+   * 1. Ein angegebener/gemessener I_k an der Einspeisestelle
+   *    (`supplyProspectiveIkA`) schlägt beide Annahmen und macht die Prüfung
+   *    scharf — bei I_k = 6 kA fällt ein 4,5-kA-Gerät durch.
+   * 2. Ohne Angabe wird die Niederimpedanz-Grenze mitgerechnet. Reicht Icn
+   *    nur für den typischen (hochohmigen) Fall, steht das als
+   *    `breaking-capacity-reach` am Verdikt — vorher sah der Nutzer ein
+   *    `ok-with-assumption` ohne Hinweis auf diese Grenze.
    */
-  const prospectiveIkA = zsEstimateOhm > 0 ? AC_MODEL_VOLTAGE_V / zsEstimateOhm : null;
+  const prospectiveIkA = declaredIkA ?? (zsEstimateOhm > 0 ? AC_MODEL_VOLTAGE_V / zsEstimateOhm : null);
+  const prospectiveIkUpperBoundA =
+    declaredIkA ?? (zsLowerBoundOhm > 0 ? AC_MODEL_VOLTAGE_V / zsLowerBoundOhm : null);
+  const prospectiveIkSource: AcTripAssessment['prospectiveIkSource'] =
+    declaredIkA !== null ? 'declared' : prospectiveIkA !== null ? 'assumed' : null;
   const breakingCapacityA = descriptor.breakingCapacityKA * 1000;
   if (prospectiveIkA !== null && prospectiveIkA > breakingCapacityA) {
     return {
@@ -383,9 +458,43 @@ export function evaluateAcEdgeProtection(params: {
       prospectiveIkA,
       descriptorAssumed,
       verdict: 'breaking-capacity-fail',
-      reason: `Abschaltvermögen Icn = ${descriptor.breakingCapacityKA} kA liegt unter dem geschätzten prospektiven Kurzschlussstrom ≈ ${(prospectiveIkA / 1000).toFixed(2)} kA (I_p = U0 / Zs aus der Netzimpedanz-Annahme ${UPSTREAM_IMPEDANCE_ASSUMPTION_OHM} Ω).${assumptionNote}`,
+      prospectiveIkUpperBoundA,
+      prospectiveIkSource,
+      limitation: 'breaking-capacity-reach',
+      reason: `Abschaltvermögen Icn = ${descriptor.breakingCapacityKA} kA liegt unter dem prospektiven Kurzschlussstrom ≈ ${(prospectiveIkA / 1000).toFixed(2)} kA (${
+        declaredIkA !== null
+          ? 'angegebener/gemessener Wert an der Einspeisestelle'
+          : `I_p = U0 / Zs aus der Netzimpedanz-Annahme ${UPSTREAM_IMPEDANCE_ASSUMPTION_OHM} Ω`
+      }).${assumptionNote}`,
     };
   }
+
+  /**
+   * AUDIT N1: Reicht das Abschaltvermögen nur für den typischen (hochohmigen)
+   * Einspeisefall? Dann bekommt jedes folgende Verdikt die Reichweitengrenze
+   * als `limitation` UND als Satz im Klartext — ein `ok-with-assumption`, das
+   * die Grenze seiner eigenen Annahme verschweigt, ist ein stiller Haken.
+   * Bei angegebenem/gemessenem I_k ist die Grenze identisch zum geprüften
+   * Wert: Dann hat entweder der Fail-Zweig oben gegriffen oder Icn reicht
+   * nachweislich — hier ist nichts mehr anzumerken.
+   */
+  const reachExceeded =
+    declaredIkA === null && prospectiveIkUpperBoundA !== null && prospectiveIkUpperBoundA > breakingCapacityA;
+  const reachNote =
+    reachExceeded && prospectiveIkUpperBoundA !== null
+      ? ` Reichweitengrenze: Bei niederimpedanter Einspeisung (${UPSTREAM_IMPEDANCE_MIN_OHM} Ω vorgelagert, z. B. netznahe Steckdose oder Generator mit kurzem Zuleitungsweg) läge der prospektive Kurzschlussstrom bei ≈ ${(prospectiveIkUpperBoundA / 1000).toFixed(2)} kA — über dem Abschaltvermögen Icn = ${descriptor.breakingCapacityKA} kA. Das Verdikt gilt nur für die hochohmige Einspeisung (Campingplatz-Pitch). Einen gemessenen I_k der Einspeisestelle eintragen, um das endgültig zu entscheiden.`
+      : '';
+  const reachLimitation: AcLimitation | undefined = reachExceeded ? 'breaking-capacity-reach' : undefined;
+
+  /**
+   * Ein angegebener/gemessener I_k ist der stärkste Wert in dieser Rechnung —
+   * der Klartext muss ihn nennen, sonst sieht das Verdikt aus wie eines aus
+   * der Annahme (und der Nutzer weiß nicht, dass sein Messwert gezogen hat).
+   */
+  const declaredIkNote =
+    declaredIkA !== null
+      ? ` Prospektiver Kurzschlussstrom der Einspeisung angegeben/gemessen: ≈ ${(declaredIkA / 1000).toFixed(2)} kA — das Abschaltvermögen Icn = ${descriptor.breakingCapacityKA} kA wurde gegen diesen Wert geprüft, nicht gegen eine Netzimpedanz-Annahme.`
+      : '';
 
   // FI-Falle: 30-mA-Fehlerschutz deckt Personen-/Fehlerschutz auch dann,
   // wenn die magnetische Abschaltbedingung knapp oder gerissen wäre.
@@ -400,8 +509,11 @@ export function evaluateAcEdgeProtection(params: {
         descriptor,
         prospectiveIkA,
         descriptorAssumed,
+        prospectiveIkUpperBoundA,
+        prospectiveIkSource,
+        limitation: reachLimitation,
         verdict: 'rcd-covered',
-        reason: `Geschätzte Schleifenimpedanz ≈ ${zsEstimateOhm.toFixed(2)} Ω über dem TN-Zulasswert ${zsMaxOhm.toFixed(2)} Ω — Fehlerschutz über den 30-mA-FI${descriptor.kind === 'rcbo' ? ' des FI/LS' : ' am Einspeisepunkt'} gedeckt; Messung vor Ort bleibt Pflicht.${assumptionNote}`,
+        reason: `Geschätzte Schleifenimpedanz ≈ ${zsEstimateOhm.toFixed(2)} Ω über dem TN-Zulasswert ${zsMaxOhm.toFixed(2)} Ω — Fehlerschutz über den 30-mA-FI${descriptor.kind === 'rcbo' ? ' des FI/LS' : ' am Einspeisepunkt'} gedeckt; Messung vor Ort bleibt Pflicht.${assumptionNote}${declaredIkNote}${reachNote}`,
       };
     }
     return {
@@ -412,8 +524,11 @@ export function evaluateAcEdgeProtection(params: {
       descriptor,
       prospectiveIkA,
       descriptorAssumed,
+      prospectiveIkUpperBoundA,
+      prospectiveIkSource,
+      limitation: reachLimitation,
       verdict: 'fail',
-      reason: `Geschätzte Schleifenimpedanz ≈ ${zsEstimateOhm.toFixed(2)} Ω über dem zulässigen ${zsMaxOhm.toFixed(2)} Ω (Ia = ${Math.round(iaA)} A, 2/3-Regel) — magnetische Abschaltung im Fehlerfall nicht gesichert.${assumptionNote}`,
+      reason: `Geschätzte Schleifenimpedanz ≈ ${zsEstimateOhm.toFixed(2)} Ω über dem zulässigen ${zsMaxOhm.toFixed(2)} Ω (Ia = ${Math.round(iaA)} A, 2/3-Regel) — magnetische Abschaltung im Fehlerfall nicht gesichert.${assumptionNote}${declaredIkNote}${reachNote}`,
     };
   }
 
@@ -428,8 +543,11 @@ export function evaluateAcEdgeProtection(params: {
       descriptor,
       prospectiveIkA,
       descriptorAssumed,
+      prospectiveIkUpperBoundA,
+      prospectiveIkSource,
+      limitation: reachLimitation,
       verdict: 'borderline',
-      reason: `Leitungsanteil ≈ ${cableLoopOhm.toFixed(2)} Ω beträgt mehr als die Hälfte des zulässigen ${zsMaxOhm.toFixed(2)} Ω — Abschaltbedingung hängt an der (angenommenen) Netzimpedanz; Schleifenimpedanz messen lassen.${assumptionNote}`,
+      reason: `Leitungsanteil ≈ ${cableLoopOhm.toFixed(2)} Ω beträgt mehr als die Hälfte des zulässigen ${zsMaxOhm.toFixed(2)} Ω — Abschaltbedingung hängt an der (angenommenen) Netzimpedanz; Schleifenimpedanz messen lassen.${assumptionNote}${declaredIkNote}${reachNote}`,
     };
   }
 
@@ -441,8 +559,11 @@ export function evaluateAcEdgeProtection(params: {
     descriptor,
     prospectiveIkA,
     descriptorAssumed,
+    prospectiveIkUpperBoundA,
+    prospectiveIkSource,
+    limitation: reachLimitation,
     verdict: 'ok-with-assumption',
-    reason: `Abschaltbedingung rechnerisch erfüllt unter Annahmen (vorgelagert ≈ ${UPSTREAM_IMPEDANCE_ASSUMPTION_OHM} Ω, 2/3-Regel, ρ_Cu 20 °C): ≈ ${zsEstimateOhm.toFixed(2)} Ω ≤ ${zsMaxOhm.toFixed(2)} Ω.${assumptionNote}`,
+    reason: `Abschaltbedingung rechnerisch erfüllt unter Annahmen (vorgelagert ≈ ${UPSTREAM_IMPEDANCE_ASSUMPTION_OHM} Ω, 2/3-Regel, ρ_Cu 20 °C): ≈ ${zsEstimateOhm.toFixed(2)} Ω ≤ ${zsMaxOhm.toFixed(2)} Ω.${assumptionNote}${declaredIkNote}${reachNote}`,
   };
 }
 

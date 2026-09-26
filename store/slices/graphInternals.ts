@@ -1,6 +1,10 @@
 import { type Node, type Edge } from '@xyflow/react';
 import type { Volts } from '../../lib/units';
 import type { GraphSnapshot, PlannerState } from './types';
+// AUDIT T1: join() rief für Objekt-Werte '[object Object]' auf — dieselbe
+// Signatur für zwei verschiedene Pläne. safeText ist join-kompatibel für alle
+// Primitiven, die hier tatsächlich vorkommen.
+import { safeText } from '../../lib/safeText';
 
 /**
  * Graph-interne Hilfsstrukturen des Planner-Stores (M6-5).
@@ -99,7 +103,9 @@ export function plannerGraphSignature(nodes: Node[], edges: Edge[]): string {
         n.data?.bmsContinuousCharge,
         n.data?.hasInternalBms,
         n.data?.hasExternalBms,
-      ].join('|')
+      ]
+        .map((value) => safeText(value))
+        .join('|')
     )
     .join('~');
   const edgeSig = edges
@@ -113,7 +119,9 @@ export function plannerGraphSignature(nodes: Node[], edges: Edge[]): string {
         e.data?.length ?? '',
         e.data?.crossSection ?? '',
         e.data?.edgeDomain ?? '',
-      ].join('|')
+      ]
+        .map((value) => safeText(value))
+        .join('|')
     )
     .join('~');
   lastPlannerGraphSignature = `${nodeSig}#${edgeSig}`;

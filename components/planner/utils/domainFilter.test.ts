@@ -26,7 +26,7 @@ const edges: Edge<CableEdgeData>[] = [
 
 describe('edgeDomainOf', () => {
   it('uses the data domain when present', () => {
-    expect(edgeDomainOf(edges[0]!, nodes[0]!, nodes[1]!)).toBe('DC_12V');
+    expect(edgeDomainOf(edges[0]!, nodes[0], nodes[1])).toBe('DC_12V');
   });
 
   it('overrides to Solar when a solar node is involved', () => {

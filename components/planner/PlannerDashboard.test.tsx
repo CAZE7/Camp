@@ -25,7 +25,9 @@ const mockClearPlan = vi.fn();
 const mockSetGuidedMode = vi.fn();
 
 vi.mock('../../store/usePlannerStore', () => ({
-  usePlannerStore: vi.fn((selector) => {
+  // AUDIT T1: Der Mock-Zustand ist ein Test-Double eigener Form — der
+  // Selektor bekommt `unknown`, damit Aufruf und Rückgabe nicht `any` sind.
+  usePlannerStore: vi.fn((selector: (state: unknown) => unknown) => {
     const state = {
       viewMode: 'electric',
       setViewMode: mockSetViewMode,
@@ -121,7 +123,7 @@ describe('PlannerDashboard - Action Buttons', () => {
     vi.restoreAllMocks();
   });
 
-  it('dispatches show-bom-modal when clicking Stückliste (BOM liest den Store selbst)', async () => {
+  it('dispatches show-bom-modal when clicking Stückliste (BOM liest den Store selbst)', () => {
     render(<PlannerDashboard />);
     const dispatchEventSpy = vi.spyOn(window, 'dispatchEvent');
 
@@ -315,11 +317,11 @@ describe('PlannerDashboard - Image Export', () => {
         if (tagName === 'a') {
           Object.defineProperty(el, 'download', {
             get: () => mockLink.download,
-            set: (val) => (mockLink.download = val),
+            set: (val: string) => (mockLink.download = val),
           });
           Object.defineProperty(el, 'href', {
             get: () => mockLink.href,
-            set: (val) => (mockLink.href = val),
+            set: (val: string) => (mockLink.href = val),
           });
           el.click = mockLink.click;
         }

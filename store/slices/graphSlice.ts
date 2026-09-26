@@ -380,11 +380,16 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
         // „eingetragen“.)
         crossSection: edgeDomain === 'AC_230V' ? 1.5 : 2.5,
         edgeDomain,
+        // AUDIT D2: Jede im Schreibpfad erzeugte Kante trägt ihre Herkunft als
+        // Datenfeld. AutoWire darf eine Nutzerkante nie wieder anhand ihrer ID
+        // für eine eigene halten (und löschen) — auch dann nicht, wenn die ID
+        // zufällig mit `e-auto-` beginnt.
+        autoWired: false,
       },
     };
     set((state) =>
       withHistory(state, {
-        edges: addEdge(newEdge, state.edges) as Edge<CableEdgeData>[],
+        edges: addEdge(newEdge, state.edges),
       })
     );
   },
@@ -489,8 +494,20 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
     get().addNode(type, label, position, wattsStr ? Number(wattsStr) : undefined);
   },
   onCustomDrop: (event, screenToFlowPosition) => {
-    const customEvent = event as CustomEvent;
-    const { clientX, clientY, type, label, watts } = customEvent.detail;
+    // AUDIT T1: `event as CustomEvent` ist `CustomEvent<any>` — damit liefen
+    // Typ, Label und Watts ungeprüft als `any` in `addNode`. Das Event kommt
+    // von einer DOM-Grenze (components/sidebar/drag.ts dispatcht es), also
+    // wird die Detail-Form hier geprüft statt vorausgesetzt. Ein Drop ohne
+    // verwertbaren Typ legt keinen Knoten an (wie `onDrop` oben).
+    const detail = (event as CustomEvent<unknown>).detail as
+      { clientX?: unknown; clientY?: unknown; type?: unknown; label?: unknown; watts?: unknown } | undefined;
+    const clientX = Number(detail?.clientX);
+    const clientY = Number(detail?.clientY);
+    const type = typeof detail?.type === 'string' ? detail.type : '';
+    if (type === '' || !Number.isFinite(clientX) || !Number.isFinite(clientY)) return;
+    const label = typeof detail?.label === 'string' && detail.label !== '' ? detail.label : type;
+    const watts =
+      typeof detail?.watts === 'number' && Number.isFinite(detail.watts) ? detail.watts : undefined;
 
     const position = screenToFlowPosition({
       x: clientX,

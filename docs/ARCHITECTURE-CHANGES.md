@@ -422,3 +422,471 @@ liegt, (b) kein Marker ohne Grenzverletzung gesetzt ist, (c) automatisch
 gewählte Sicherungen Last und Leiter koordinieren (I_B ≤ I_n ≤ FUSE_MAP[cs])
 und (d) keine Pipeline AC-Schutzorgan-Daten erfindet. Der Test wäre gegen die
 dritte Fassung rot gewesen: genau das war der Befund.
+
+### 2026-09-25 — Fünfte Fassung: Kanten-Herkunft als Datenfeld, Nutzerdaten ohne Whitelist (AUDIT D1/D2)
+
+`npm run goldenmaster:capture` — alle sechs Referenzpläne neu erfasst. Der Diff
+gegenüber der vierten Fassung ist **rein additiv**: 60× `"autoWired": true`
+(Auto-Kanten) und 19× `"autoWired": false` (Nutzerkanten). Ids, Geometrie,
+Routing, Ströme, Spannungsfall und SVGs sind byte-identisch; der
+`routing`-Block und die Metriken des Vergleichs blieben unberührt.
+
+Zwei Befunde, eine Ursache — die Kante wurde beim AutoWire-Lauf **neu
+aufgebaut** statt durchgereicht:
+
+1. **D1 (Datenverlust).** `performAutoWiring` erzeugte die `data` jeder
+   Nutzerkante aus einer Whitelist von vier Feldern (`length`, `crossSection`,
+   `fuseSize`, `edgeDomain`). Alles andere verschwand bei _jedem_ Klick auf
+   „Automatisch verbinden" — darunter die vom Nutzer eingetragenen
+   Datenblattwerte `fuseType`, `fuseOffset`, `fuseBreakingCapacity` und
+   `acProtection` sowie die Marker `dropWarning`/`fuseWarning`. Neu:
+   `data: { ...e.data }` (Durchreichen), nur `length` wird wie bisher
+   nachgeschätzt. `applyFuseTypes` respektiert vorhandene Angaben weiterhin
+   (es überspringt Kanten mit `fuseType`/`fuseBreakingCapacity`), die
+   Datenblattwerte des Nutzers schlagen also nach wie vor die Automatik.
+2. **D2 (Identität über einen String).** Ob eine Kante „Auto" oder „Nutzer"
+   war, entschied `id.startsWith('e-auto-')`. Eine Nutzerkante mit einer
+   zufällig so beginnenden Id (Import, Hand-Edit, Fremd-Tool) wurde gelöscht
+   und durch zwei Auto-Kanten ersetzt. Neu: `data.autoWired: boolean` ist die
+   Autorität — gesetzt vom Schreibpfad (`store/slices/graphSlice.ts`,
+   `autoWired: false`), von `addDcEdge`/`addAcEdge` (`true`) und von
+   `performAutoWiring` auf jeder überlebenden Nutzerkante. Der Präfix-Vergleich
+   bleibt als ausdrücklich kommentierter Migrations-Fallback in
+   `isAutoWiredEdge` (`lib/autoWire/primitives.ts`) und greift **nur**, solange
+   das Flag fehlt — also genau für Pläne, die vor dieser Fassung gespeichert
+   wurden. Ohne ihn würden alte Auto-Kanten zu Nutzerkanten und als Doppelte
+   stehen bleiben.
+
+Begründung „bewusst besser, weil …": Die Fixtures dokumentieren jetzt die
+Herkunft jeder Kante als Datenfeld, statt sie aus einem Id-Präfix raten zu
+lassen — derselbe Sachstand, den die Oberfläche und der Persistenzvertrag
+brauchen. Abgesichert durch `lib/autoWire.test.ts` →
+„Persistenzvertrag Nutzerkante (AUDIT D1/D2)": Key-Mengen-Vergleich vor/nach
+`performAutoWiring`, Erhalt der Datenblattwerte, Überleben einer Nutzerkante
+mit Auto-Id, plus **zwei Positivkontrollen** (Querschnitt wird weiterhin
+nachdimensioniert; echte Auto-Kanten früherer Läufe werden weiterhin ersetzt —
+Idempotenz).
+
+### 2026-09-25 — Sechste Fassung: Einheiten, Speicherversagen, Längenherkunft, Abschaltvermögen (AUDIT S1/D3/L1/N1/N3/T7)
+
+Sechs Befunde aus dem Dritt-Audit zu PR #451. Gemeinsames Muster: eine Zahl
+oder ein Zustand wurde **behauptet**, wo das Modell ihn nicht belegen konnte —
+und die Stelle, die es hätte wissen müssen, schwieg.
+
+1. **S1 (Einheitslücke Temperaturkoeffizient).** Das Feld war mit „%/K"
+   beschriftet und schrieb den Wert unverändert nach `node.data.tempCoefficient`,
+   während `lib/solar.ts` mit einem **Bruch** rechnete (Default −0,0035). Ein
+   22-V-Panel mit eingetragenen −0,35 ergab Faktor 16,75 und damit 368,5 V
+   Kalt-Voc statt 25,5 V — Faktor 14,5 auf die Prüfung des MPPT-Eingangsfensters.
+   Neu: `solarTempCoefficientPerKelvin()` normalisiert an einer Stelle
+   (|Wert| ≥ 0,05 ⇒ Prozentangabe ⇒ /100), die UI zeigt %/K und schreibt den
+   Bruch, `lib/solar.ts` und `lib/nodeSchema.ts` nennen den Bruch als
+   kanonische Speichereinheit. Zweitbefund derselben Zeile: bei +60 °C wurde der
+   Korrekturfaktor negativ und `Math.pow` warf einen **RangeError** in der
+   Live-Validierung. `solarColdVocOf` gibt jetzt `null` zurück, und
+   `stringColdVocOf` unterscheidet zwei Ursachen mit je einem eigenen Flag:
+   `missingVoc` (kein Datenblattwert) und `uncomputableVoc` (Wert da, aber
+   Koeffizient unsinnig) — die Live-Validierung meldet beides getrennt
+   (`ELE-007-voc-missing-data` Info, `ELE-007-voc-uncomputable` Warnung).
+2. **D3 (Speicherversagen ohne Zeugen).** `flush()` schrieb alle Schlüssel in
+   einem `try` — ein `QuotaExceededError` beim ersten Schlüssel warf den Timer
+   um, die übrigen Werte blieben ungeschrieben, und die UI zeigte weiter einen
+   gespeicherten Plan. Neu: try/catch **je Schlüssel**, fehlgeschlagene Werte
+   bleiben in `pending` und werden beim nächsten Tick erneut versucht,
+   `visibilitychange → hidden` flushet (letzter sicherer Zeitpunkt mobil), und
+   ein Modul-Signal (`getSaveFailure`/`subscribeSaveFailure`, bewusst NICHT im
+   persistierten Store) trägt den Zustand über `useSaveFailure()` in einen
+   `role="alert"`-Banner im `FlowCanvas`. Die Meldung dedupliziert nach
+   Schlüssel+Text und erlischt, sobald wieder geschrieben werden kann.
+3. **L1 (erfundene Längen in der Stückliste).** `edgeLengthM` nahm den
+   eingetragenen Wert und fragte nie nach der Route. AutoWire trägt als Länge
+   die **Luftlinie** aus der Knotengeometrie ein, der Router kennt den
+   Verlegeweg: im Referenzplan `camper` standen 22,10 m eingetragen gegen
+   38,05 m geroutet — Faktor 1,72. Neu: `edgeLengthOf()` liefert Länge **und
+   Quelle** (`stored`/`routed`/`fallback`); liegen beide Quellen vor, zählt die
+   größere (Material wird zu kurz bestellt, nicht zu lang), und eine Abweichung
+   über 10 % wird im Dialog benannt — ebenso jede Platzhalterlänge als das, was
+   sie ist: erfunden. Die Annahmen reisen im kopierten JSON mit.
+4. **N1 (unerreichbare Abschaltvermögens-Prüfung).** `I_p = U0/Zs` war durch
+   `UPSTREAM_IMPEDANCE_ASSUMPTION_OHM = 0,8` bei ≈ 0,29 kA gedeckelt; die UI
+   bietet 6 und 10 kA an — der Vergleich `I_p > Icn` konnte für kein real
+   erfasstes Gerät kippen. Neu, zweigeteilt: (a) `supplyProspectiveIkA`, ein
+   angegebener/gemessener Kurzschlussstrom der Einspeisung (Feld am
+   Landstrom-Knoten, optional und löschbar), schlägt beide Annahmen und macht
+   die Prüfung scharf — bei I_k = 6 kA fällt ein 4,5-kA-Gerät durch;
+   (b) `UPSTREAM_IMPEDANCE_MIN_OHM = 0,15` als Niederimpedanz-Grenze derselben
+   Einspeisung. Reicht Icn nur für den hochohmigen Fall, trägt das Verdikt
+   `limitation: 'breaking-capacity-reach'` und sagt die Grenze im Klartext —
+   vorher stand dort ein `ok-with-assumption` ohne Hinweis (Nebenbefund des
+   Audits). Die Abschalt**bedingung** (Zs·Ia ≤ U0) rechnet unverändert gegen
+   0,8 Ω: kein Zweckwechsel der Annahme.
+5. **N3 (Doku-Zahl gegen eigenes Gate).** AGENTS.md §3.8 versprach für
+   `npm run perf:edge-routing` „Median ≤ 16 ms" — derselbe Befehl fährt zwei
+   Gates: Render-Pfad ≤ 16 ms (gemessen ≈ 3,3 ms) und Live-Pfad
+   (`routeAllCables`) mit einem **Ratchet** von 60 ms (gemessen ≈ 40 ms).
+   Die Dokumentation beschreibt jetzt beide Grenzen und sagt, warum die zweite
+   ein Ratchet ist und wer es nach unten zieht.
+6. **T7 (stiller Trigger-Rot).** `deploy.yml` trägt unter `on.push.branches`
+   eine handgeschriebene Liste (GitHub Actions wertet dort keine Ausdrücke aus),
+   die Jobs prüfen dagegen `github.event.repository.default_branch`. Wird der
+   Default-Branch umbenannt, triggert der Workflow **gar nicht mehr**: kein
+   Fehlschlag, keine Meldung, nur kein Deploy. Neu:
+   `scripts/ci/verifyDeployTrigger.ts` (npm `ci:verify-deploy-trigger`) läuft
+   als Schritt im Quality Gate und vergleicht Liste gegen den tatsächlichen
+   Default-Branch; bei Abweichung, Wildcards, leerer Liste oder unlesbarer
+   Trigger-Sektion scheitert es mit Handlungsanweisung. Ohne Repo-Kontext
+   (lokal) prüft es nur die Form — und sagt das, statt still durchzuwinken.
+
+Begründung „bewusst besser, weil …": Jede der sechs Stellen nennt jetzt ihre
+Quelle oder ihre Grenze. Die Tests pinnen die Nähte, an denen die Befunde
+saßen, nicht die Symptome: `lib/solar.test.ts` + `components/inspector/NodeInspectors.test.tsx`
+(S1: Anzeige %/K ↔ Bruch ↔ Kalt-Voc, Ende-zu-Ende 25,465 V statt 368,5 V),
+`store/storage.test.ts` + `components/planner/hooks/useSaveFailure.test.tsx`
+(D3: Retry nach Quota, ein kaputter Schlüssel blockiert die anderen nicht,
+Signal → React-Update), `components/planner/BOMModal.test.tsx` (L1: größere
+Länge gewinnt, Widerspruch benannt, Platzhalter als erfunden gekennzeichnet,
+Route ohne Eintrag ist keine Annahme), `lib/acProtection.test.ts` (N1: zweiter
+Term, Reichweitengrenze, I_k-Angabe macht 4,5 kA zum Fail, unsinnige Angaben
+fallen auf die Annahme zurück), `components/ui/ValidatingInput.test.tsx`
+(optionales Feld bleibt löschbar — der Sync-Effekt holte den geleerten Wert
+sonst zurück), `scripts/ci/verifyDeployTrigger.test.ts` + `scripts/ci/workflows.test.ts`
+(T7: Wächterlogik und seine Verankerung im Gate).
+
+Kein Golden-Master-Recapture nötig: Ids, Geometrie, Routing, Ströme,
+Spannungsfall und SVGs bleiben unberührt (BOM und AC-Bewertung sind keine
+Teile der erfassten Plan-Dateien).
+
+### 2026-09-26 — Siebte Fassung: Lint-Gate mit Typinformation + react-hooks v7 (AUDIT T1)
+
+Das Gate nannte sich „Industriestandard" (AGENTS.md M6-1), lief aber **ohne
+Typinformation**: `tseslint.configs.recommended` sieht weder ein `any`, das über
+eine Assertion hereinkommt, noch ein verworfenes Promise, noch den Vergleich
+unvergleichbarer Typen. Die Konfiguration trug diese Entscheidung sogar als
+Kommentar („bewusst keine type-checked Rule-Sets … für die Team-Latenz zu
+teuer") — unbelegt. Dazu: ARCH-001 (Schichtgrenze `lib/**`) existierte nur als
+Test, der Determinismus-Anspruch aus AGENTS.md §3.6 war gar nicht erzwingbar,
+und react-hooks lief in der Fassung von zwei Regeln.
+
+Neu: `recommendedTypeChecked` + ProjectService, `no-restricted-imports` und
+`no-restricted-syntax` für die beiden Hausregeln, react-hooks v7
+(`configs.flat['recommended-latest']`).
+
+1. **Messung statt Behauptung.** Gleiche Maschine, gleicher Baum: 8 s ohne
+   Typinformation, ~30 s mit. Im CI unkritisch (das Quality Gate läuft dort
+   ohnehin Minuten), lokal über den Watch-Modus tragbar. Der Preis eines
+   nicht-typbewussten Gates ist höher als seine Laufzeit: `no-floating-promises`
+   findet im Static Export unsichtbar abgebrochene Speicher-/Clipboard-Vorgänge,
+   `no-unsafe-*` findet `any`, das über eine DOM-Grenze hereinkommt — beides
+   Klassen, die `tsc` per Design nicht meldet und die Tests nur zufällig sehen.
+2. **252 Befunde auf dem Vorher-Stand** (reproduzierbar: Worktree auf
+   `8bbdde9` + diese Konfiguration; 52 Dateien, alles Errors):
+
+   | Befunde | Regel                             |
+   | ------: | :-------------------------------- |
+   |      68 | `no-unsafe-member-access`         |
+   |      52 | `no-unsafe-assignment`            |
+   |      33 | `no-base-to-string`               |
+   |      20 | `no-unsafe-call`                  |
+   |      16 | `no-unsafe-return`                |
+   |      15 | `no-unsafe-argument`              |
+   |      14 | `restrict-template-expressions`   |
+   |       9 | `react-hooks/set-state-in-effect` |
+   |       8 | `no-misused-promises`             |
+   |       5 | `no-floating-promises`            |
+   |       4 | `require-await`                   |
+   |       3 | `no-duplicate-type-constituents`  |
+   |       3 | `unbound-method`                  |
+   |       2 | `react-hooks/immutability`        |
+
+3. **144 real behoben, 108 dokumentiert aufgeschoben.** Die 108 sitzen in vier
+   Dateien Werft-Altbestand (`app/api/chat/route.ts` + `route.test.ts`,
+   `lib/db.test.ts`, `components/Chat.test.tsx`), deren gemeinsame Ursache
+   `any` in den AI-SDK-Mocks ist. Sie tragen einen Disable-Header, der Ursache,
+   Geltungsbereich und FOLLOW-UP nennt; `--fix` hat die Header auf genau die
+   verletzten `no-unsafe-*`-Regeln gestutzt (fünf überflüssige Einträge weg).
+   Die abgeleiteten Regeln einzeln zu verbieten, ohne die Ursache zu beheben,
+   hätte 100+ Einzel-Disables erzeugt — der Block ist die Grenze des
+   aufgeschobenen Bereichs, nicht seine Auflösung.
+4. **`lib/safeText.ts`: eine Stelle, an der Modellwerte zu Text werden.** Die
+   33 `no-base-to-string`- und 14 `restrict-template-expressions`-Befunde kamen
+   aus Warnmeldungen, Sortierschlüsseln, Cache-Signaturen und AutoWire-Ids, die
+   per Template-Literal aus `data?: Record<string, unknown>` (React-Flow-Sicht:
+   `{}`) gebaut wurden — ein Objekt wird dort stillschweigend zu
+   `[object Object]`, und zwar genau in den Meldungen, die der Nutzer lesen
+   soll. `safeText` ist **join-kompatibel** (`true` → `'true'`, `NaN` → `'NaN'`,
+   `null`/`undefined` → Fallback): `store/slices/graphInternals.ts` baut aus
+   denselben Werten Cache-Signaturen, jede andere Stringifizierung hätte
+   bestehende Caches invalidiert — ein Verhaltensunterschied, den niemand
+   bestellt hat. Der Beweis steht im Golden Master: 13 Referenzpläne,
+   byte-identisch, **ohne** Neuerfassung. `nodeLabelOf` (Anzeigename) trennt
+   ausdrücklich zwischen Nutzertext und Signaturschlüssel: Letzterer darf nicht
+   auf den Knotentyp ausweichen, weil er zwischen Läufen stabil bleiben muss.
+   Die Live-Validierung hat daneben eigene Anzeige-Helfer (`displayText`,
+   `nodeLabel`, `nodeField`) mit Anzeige-Konvention (`ja`/`nein`,
+   nicht-endliche Zahlen → Fallback) — zwei Verträge, zwei Funktionen;
+   `diagnosticText` (Diagnose ungültiger Eingaben) ist identisch und liegt
+   deshalb nur noch einmal in `lib/safeText.ts`.
+5. **Promises: `void` mit Begründung statt stiller Verwurf.** `FlowCanvas`
+   hatte 4 `no-floating-promises` und 3 `no-misused-promises` — React Flow gibt
+   für `fitView`/`setCenter`/`setViewport` Promises zurück, die als
+   Event-Handler-Rückgabe „misused" sind. Eine Viewport-Animation ist
+   fire-and-forget: nichts nachzuholen, kein Nutzerfehler zu melden. `void`
+   markiert die Absicht, ein `.catch` hätte einen Fehlerpfad erfunden.
+   `graphSlice.onCustomDrop` war der inhaltlich schwerste Befund:
+   `event as CustomEvent` ist `CustomEvent<any>`, Typ/Label/Watts liefen
+   ungeprüft in `addNode`. Neu wird die Detail-Form an der DOM-Grenze geprüft;
+   ein Drop ohne verwertbaren Typ legt keinen Knoten an (wie `onDrop`).
+6. **`no-unnecessary-type-assertion` bleibt AUS — mit belegtem Fehlalarm.**
+   `screen.getByLabelText(/x/i) as HTMLInputElement` meldet die Regel als
+   „ändert den Typ nicht", `tsc` bricht ohne den Cast mit TS2339 ab
+   (`Property 'value' does not exist on type 'HTMLElement'`). Ursache ist die
+   generische Signatur `getByLabelText<T extends HTMLElement = HTMLElement>`:
+   typescript-eslint sieht vor und nach der Assertion denselben Typ, `tsc`
+   nicht. Nachgewiesen an `app/tools/heizung/page.test.tsx` plus Minimal-Repro
+   (ein Import, ein Cast, ein `.value`-Zugriff). Ein `--fix` dieser Regel
+   löscht **notwendige** Casts und macht beide Typecheck-Profile rot
+   (24 Stellen). Ein Gate, das nötige Casts entfernt, ist schlechter als keines
+   — `tsc` bleibt hier autoritativ, und `no-explicit-any` (hart, M6-1) deckt
+   dieselbe Fehlerklasse an der Wurzel ab. Es ist die einzige Regel des Sets,
+   die ausgeschaltet ist; die Begründung steht in `eslint.config.mjs`.
+7. **Hausregeln als Lint-Regeln.** ARCH-001 (ADR 0008): `lib/**` darf nicht aus
+   `components/`, `store/`, `app/`, `benchmarks/` importieren — bisher nur
+   `scripts/architecture/libBoundary.test.ts`, der einen Verstoß erst **nach**
+   dem Commit sieht; als Lint-Regel schlägt er beim Schreiben fehl. Testdateien
+   sind ausgenommen (Harness-Nutznießer dürfen beide Seiten ziehen) — dieselbe
+   Ausnahme, dieselbe Begründung wie im Test. AGENTS.md §3.6: kein
+   `Math.random` in `lib/routing/**` (Invariante I-Determinismus; Zufall macht
+   die byte-exakten Golden-Master wertlos). Der Riegel gilt dem Router, nicht
+   dem Repo: `lib/id.ts` behält seinen dokumentierten Zufalls-Fallback für Ids.
+8. **react-hooks v7: 12 Befunde, alle behoben — keine davon mit Disable.**
+   Zwei Hinweise zur Konfiguration: Es muss
+   `reactHooks.configs.flat['recommended-latest']` sein; die Variante ohne
+   `.flat` ist das alte eslintrc-Format (`plugins: ['react-hooks']`) und lässt
+   ESLint 10 beim Laden der Flat Config hart abbrechen, nicht warnen. Und das
+   Set ist nicht kostenlos: 2× `immutability` (`BOMModal`: die
+   `useState`-Deklarationen für `copied`/`copyError` standen **unter** dem
+   Effekt, der sie schreibt — Reihenfolge getauscht, sonst nichts) und
+   10× `set-state-in-effect`, durchweg die Klasse „lokaler State folgt einem
+   Prop oder abgeleiteten Wert".
+   Umgestellt auf das offizielle Muster: Vergleichszustand + **bedingtes**
+   `setState` während des Renders — ein Commit statt zwei, und der
+   Zwischenzustand (erst Prop-alt gerendert, dann korrigiert) verschwindet:
+
+   | Stelle                               | Auslöser                                          | Folge                                                         |
+   | :----------------------------------- | :------------------------------------------------ | :------------------------------------------------------------ |
+   | `app/tools/dach/page.tsx`            | `placementCount`                                  | Onboarding schließt                                           |
+   | `components/Inspector.tsx`           | neuer `node`                                      | Label übernehmen                                              |
+   | `components/planner/ExpertPanel.tsx` | `currentKnowledge`                                | `expandedTip` auf 0                                           |
+   | `hooks/useLongPressNodeDrag.ts`      | `!enabled`                                        | Node entsperren (Effekt hängt weiterhin nur die Listener aus) |
+   | `ui/CanvasDisplayOptions.tsx`        | `!compact`                                        | Popover zu                                                    |
+   | `ui/WarningCenter.tsx`               | keine Warnungen                                   | Popover zu                                                    |
+   | `ui/ValidatingInput.tsx`             | value/localValue/error/allowEmpty/clearedOptional | Anzeige nachziehen, Marke löschen                             |
+   | `ui/ValidatingNumberInput.tsx`       | value/isFocused                                   | Anzeige nachziehen (nicht beim Tippen)                        |
+
+   Zwei Sonderfälle mit eigener Begründung:
+   `components/planner/hooks/usePlannerTheme.ts` liest die Media-Query jetzt
+   über `useSyncExternalStore` — die Quelle ist objektiv extern
+   (`MediaQueryList`), `getSnapshot` liefert `mql.matches`, `subscribe` hängt
+   den change-Listener an. Der „Initial sync (SSR/hydration safety)"-Effekt und
+   damit der zweite Render-Durchlauf fallen weg, der Server-Snapshot bleibt
+   `false` (unverändert hell).
+   Bei `ValidatingInput`/`ValidatingNumberInput` trägt der Vergleichszustand
+   **alle** alten Effekt-Abhängigkeiten, nicht nur `value`. Nur auf `value` zu
+   keyen hätte das Verhalten geändert, wenn die Eltern den Prop nicht
+   zurückspielen — genau der Fall, für den die sechste Fassung die Marke
+   `clearedOptional` eingeführt hat („optionales Feld bleibt löschbar",
+   `components/ui/ValidatingInput.test.tsx`). Auch die Reihenfolge der beiden
+   alten Effekte ist erhalten: erst Anzeige aus dem Prop nachziehen, dann die
+   Marke löschen.
+
+9. **Test-Helfer statt `any`-Matchern.** `expect.stringContaining` und
+   `expect.closeTo` sind in den Vitest-4-Typings `any` — jede Verwendung war
+   ein `no-unsafe-assignment`. `test-helpers/matchers.ts` legt
+   `textContaining`/`closeTo` als typisierte Wrapper darüber (ein Ort, ein
+   Cast), `test-helpers/reactflowMocks.ts` bekam `MockBaseEdgeProps`. Dazu:
+   typisierte `matchMedia`-Stubs, `vi.spyOn` statt ungebundener
+   Methodenreferenzen (`unbound-method`), gebundenes `crypto.randomUUID`,
+   `void act(...)` statt verworfener Promises.
+
+Begründung „bewusst besser, weil …": Ein Gate, das seine eigene Behauptung
+nicht prüft, ist teurer als keines — es erzeugt Vertrauen, das der Baum nicht
+einlöst. Die 144 behobenen Befunde sind keine Stilfragen: `[object Object]` in
+einer Warnmeldung, ein ungeprüftes `CustomEvent<any>` im Drop-Pfad, verworfene
+Promises im Static Export und zehn Stellen, die bei jeder Prop-Änderung zweimal
+renderten, sind Sachfehler, die ohne Typinformation unsichtbar bleiben. Die
+einzige ausgeschaltete Regel ist mit Repro belegt und begründet, die einzigen
+Disables sind vier Dateien Altbestand mit Ursache und FOLLOW-UP im Header.
+
+Nachweis: `npx eslint .` → **0 Errors / 0 Warnings** (inkl. react-hooks v7);
+`tsc -p tsconfig.typecheck.json` und `tsc -p tsconfig.tests.json` clean;
+`npx prettier --check .` clean; `npx vitest run` → 159 Dateien / 2230 Tests;
+`npm run test:goldenmaster` → 13 Pläne byte-identisch **ohne** Neuerfassung
+(`safeText` ist join-kompatibel, die Render-Zeit-Abgleiche ändern keinen
+Commit-Inhalt); `npm run test:regression` → 50 Tests.
+
+### 2026-09-26 — Achte Fassung: Verbindungen, Domänen, Zahlen-Eingabe, Impressum (AUDIT V1/N2/S2/S4, A2)
+
+Die restlichen Punkte des Dritt-Audits zu PR #451. Umgesetzt wurden sie in
+diesem Branch **vor** T1 (siebte Fassung); das Ledger zählt die Reihenfolge der
+Dokumentation, nicht die der Commits. Gemeinsames Muster der ersten vier: eine
+Regel behauptete Strenge, während ihr Default „ja" sagte.
+
+1. **V1 — Verbindungsregeln waren fail-open.** `isValidConnection` erlaubte
+   alles, was keine der wenigen expliziten Negativregeln traf. Fünf messbare
+   Folgen, alle durchgewinkt: Dachfenster → Batterie, unbekannter/fehlender
+   Bauteiltyp → Batterie, Verbraucher → Batterie im fremden Modus,
+   Batterie ‖ Batterie anderer Chemie, Self-Loop (Quelle = Ziel). Die Ursache
+   war strukturell: Ein unbekannter Knoten lieferte über
+   `getHandleDomain(undefined, …)` den Default `DC_12V` — „konservativ" heißt an
+   dieser Stelle „dieselbe Domäne wie fast alles andere", die Domänen-Trennung
+   konnte also nur greifen, wenn **beide** Endpunkte bekannt waren. Neu ist die
+   Reihenfolge umgedreht: erst die Existenzfragen (zwei verschiedene, bekannte,
+   im aktiven Modus verbindbare Endpunkte), dann die fachlichen Negativregeln —
+   der Default ist NEIN. Deny-by-default braucht eine Liste dessen, was der
+   Planer kennt; die liegt in `lib/domain/connectionPolicy.ts` und **nicht** in
+   `components/registry/builtinComponents.ts`, weil `lib/` nach ARCH-001 nicht
+   von `components/` abhängen darf. `connectionPolicy.test.ts` vergleicht die
+   Tabelle in beide Richtungen gegen die Registry und gegen die deklarierten
+   Node-Typen der App — eine dritte Kopie kann so nicht unbemerkt entstehen.
+   Bewusst **erlaubt** bleibt `consumer → battery` gleichpolig: Das Modell kennt
+   auf DC-Handles keine Quell-/Senken-Semantik, AutoWire erzeugt selbst
+   `Schiene → Verbraucher` (Plus) und `Verbraucher → Schiene` (Minus-Rückleiter),
+   und ein Verbot bräuchte ein Rollenmodell je Bauteiltyp — eine eigene
+   Entscheidung, keine Nebenwirkung dieser Härtung (im Code als Modellgrenze
+   dokumentiert).
+2. **N2 — `handleDomain` kannte die Domäne Solar nicht.** Der Rückgabetyp war
+   `'DC_12V' | 'AC_230V'`, Solar-Knoten liefen als `DC_12V`, während
+   `getEdgeDomain` dieselbe Kante als `'Solar'` einstufte — zwei Wahrheiten über
+   dieselbe Kante (gemessen: `solar/plus/source → handle=DC_12V, edge=Solar`).
+   Neu: `HandleDomainValue = 'DC_12V' | 'AC_230V' | 'Solar'`,
+   `SOLAR_NODE_TYPES = ['solar', 'roofSolar']` als eine gemeinsame Liste, und
+   dieselbe Vorrangfolge Solar → AC → DC wie in `getEdgeDomain`. Handle- und
+   Kanten-Sicht widersprechen sich nicht mehr; die Polarität kommt aus der
+   Rollen-Tabelle, nicht aus einem Namens-Präfix.
+3. **S2 — die Zahlen-Eingabe las einen Präfix.** `parseFloat("2,5")` ergibt `2`
+   (Dezimalkomma ignoriert), `parseFloat("2.5mm")` ergibt `2.5` (Einheit
+   verschluckt). In beiden Fällen meldete das Feld einen gültigen Wert, der ein
+   anderer war als der getippte — bei Leitungsquerschnitten und
+   Sicherungsströmen eine Unterdimensionierung mit dem Anschein von Korrektheit.
+   Neu: `parseDecimalString` (`lib/units.ts`) liefert nur dann eine Zahl, wenn
+   der **gesamte** Text eine Zahl ist, sonst `null`; `parseFloat`-Verhalten ist
+   dort ausdrücklich verboten und begründet. Akzeptiert werden Dezimalkomma und
+   -punkt, Tausenderzeichen (Leer, geschützt, schmal), Unicode-Minus (U+2212)
+   und Vorzeichen — alles echte Copy-Paste-Eingaben aus Tabellenkalkulationen,
+   kein Müll. Abgelehnt: `""`, `"abc"`, `"2.5mm"`, `"1,2,3"`, `"1.23.456"`,
+   `"--1"`. `parseQuantity` liest unbekannte Werte (Formular, geladenes JSON,
+   `node.data`) ausschließlich darüber.
+4. **S4 — Kürzung galt als Tatsache.** Ganzzahlige Felder prüften mit
+   `parseInt`: `"2.5"` wurde zu `2` gekürzt und als gültig gemeldet. Neu:
+   `Number.isInteger`-Prüfung mit eigener Meldung, und `INPUT_ERROR_MESSAGES`
+   ist die **eine** Quelle für UI und Tests (`required`, `invalidNumber`,
+   `integerRequired`) — vorher standen dieselben Sätze als Literale in beiden,
+   und ein Test konnte die Anzeige nicht von der Logik unterscheiden.
+5. **A2 — axe-Ausschluss des Canvas: beantwortet, nicht offen.** Der Befund
+   lautete, das Barrierefreiheits-Gate klammere mit `.react-flow` ausgerechnet
+   die komplexeste Oberfläche aus. Sachstand: `builder.exclude('.react-flow')`
+   gilt nur für `/elektrik-planung/`, nur dem Editor-Canvas, und ist sowohl im
+   Spec-Header als auch an der Stelle selbst begründet — React Flow ist eine
+   Zeiger-/Tastatur-Anwendung (Pfeiltasten-Verschieben, Verbindungsmodus) und
+   kein Dokumenten-Fließtext; Dokumentstruktur-Regeln (z. B. `region` je
+   verschachteltem Node-Element) beschreiben dort nicht das Bedienmodell. Die
+   restliche Planer-Shell bleibt vollständig im Gate, alle vier geprüften Seiten
+   laufen mit `wcag2a/aa` + `wcag21a/aa` und scheitern an `critical`/`serious`.
+   Das Bedienmodell des Canvas ist davon unabhängig getestet:
+   `components/planner/FlowCanvas.test.tsx` (ARIA-Status `aria-pressed` an den
+   Umschaltern, `aria-label` an den Zeiger-Zielen, Katalog-Eintrag per Tastatur
+   **und** Tap) sowie `components/planner/utils/flowInteraction.test.ts`
+   (Interaktionen, die eine Hardware-Tastatur voraussetzen, sind auf Touch
+   abgeschaltet statt unerreichbar). Keine Code-Änderung in dieser Fassung.
+   FOLLOW-UP, falls gewünscht: ein eigenes axe-Regelprofil für den Canvas —
+   das wäre eine neue Prüfung, nicht die Reparatur eines Gate-Lochs.
+6. **Impressum-Placeholder — ein Ort für die Angaben, ein Wächter im Deploy.**
+   Die Seite stand seit dem Relaunch als Placeholder im Baum (`Werft —
+Projekt-Placeholder`, `kontakt@example.org`, „Bitte hier eintragen"), und
+   nichts hat es gemeldet — dabei wird sie öffentlich ausgeliefert (Static
+   Export auf GitHub Pages), und eine unvollständige Anbieterkennzeichnung ist
+   nach § 5 DDG abmahnfähig. Erfinden lassen sich die Angaben nicht (ein
+   erfundener Betreiber wäre schlimmer als ein Platzhalter: rechtswidrig **und**
+   plausibel). Neu, dreiteilig:
+   - `lib/siteLegal.ts` — die fünf Pflichtangaben als Daten, mit
+     `LEGAL_PLACEHOLDER`-Marke und `missingLegalFields()`/`isProviderComplete()`.
+     Ein halb ausgefülltes Impressum zählt als unvollständig, weil es
+     vollständig aussieht und niemand mehr nachsieht (dasselbe Muster wie
+     `ok-with-assumption` ohne Hinweis, AUDIT N1).
+   - `app/impressum/page.tsx` zeigt die echten Angaben, sobald sie da sind, und
+     bis dahin **zeichenidentisch** die bisherigen Aufforderungstexte — dieser
+     Zweig ist Teil der eingefrorenen Pixel-Baseline
+     (`tests/e2e/visual.spec.ts-snapshots/route-impressum-{light,dark}.png`),
+     ein Textwechsel dort verschiebt das visuelle Gate und braucht UI-Freigabe.
+   - `scripts/ci/verifyLegalNotice.ts` (`npm run ci:verify-legal-notice`) nennt
+     die offenen Felder mit Bezeichner, Grund und Ort und läuft als Schritt im
+     **Deploy**-Workflow (`deploy.yml`, Job `build`, nach `npm ci`, vor dem
+     Build) — Meldung im Log, als Run-Annotation (`::warning`) und in der
+     Step-Summary. Bewusst nicht im Quality Gate: Ein Pull Request ist keine
+     Veröffentlichung.
+     Stufe per Env: `LEGAL_NOTICE_GATE=warn` (Default, Betreiber-Entscheidung
+     2026-09-26) meldet und lässt den Deploy laufen, `LEGAL_NOTICE_GATE=block`
+     stoppt ihn bei offenen Angaben; ein unbekannter Wert fällt auf `warn`
+     zurück **und sagt das** (keine stille dritte Stufe). Die Umschaltung ist
+     getestet, `warn` ist also eine eingestellte Stufe und kein zahnloser
+     Hinweis. Folge für den Betrieb: Der Deploy läuft, die öffentliche Seite
+     zeigt bis zum Eintragen der Angaben ihre Platzhalter-Texte — und jeder
+     Deploy-Lauf schreibt die fehlenden Felder in seine Zusammenfassung.
+     FOLLOW-UP: Die sichtbaren Zitate lauten noch § 5 TMG und § 55 Abs. 2 RStV —
+     gültig sind § 5 DDG (seit 05/2024) und § 18 Abs. 2 MStV. Die Korrektur
+     ändert den gerenderten Text und damit die Pixel-Baseline; sie gehört
+     zusammen mit dem Eintragen der Angaben in einen freigegebenen UI-Schritt
+     (`npx playwright test tests/e2e/visual.spec.ts --update-snapshots`).
+
+Begründung „bewusst besser, weil …": Vier der sechs Punkte waren dieselbe
+Fehlerklasse wie die übrigen Audit-Befunde — eine Prüfung, die im Zweifel für
+die Eingabe entscheidet (fail-open bei Verbindungen, Präfix-Lesen bei Zahlen,
+Kürzen statt Ablehnen, Platzhalter ohne Meldung). Ein Planungswerkzeug, das
+falsche Verbindungen erlaubt und „2.5mm" als 2,5 A liest, erzeugt keine
+sichtbaren Fehler, sondern plausible falsche Pläne. Der Wächter fürs Impressum
+ist deshalb im Deploy und nicht im Quality Gate verankert, weil nur dort aus dem
+Mangel ein Rechtsrisiko wird — und weil ein Gate, das die Entwicklung blockiert,
+abgeschaltet wird statt benutzt zu werden. Die Stufe des Impressum-Wächters ist
+`warn` statt `block` — ebenfalls eine Betreiber-Entscheidung: Die fünf Angaben
+kann nur er liefern, und ein Block würde die gesamte Veröffentlichung für ein
+Dokument stoppen, das er selbst nachtragen muss. Sichtbar bleibt der Mangel
+trotzdem an der Stelle, an der er zum Rechtsrisiko wird (Deploy-Run), und
+`LEGAL_NOTICE_GATE=block` ist eine getestete Env-Variable entfernt.
+
+Nachweis: `lib/connectionRules.test.ts` (V1: Self-Loop, unbekannter Typ,
+Dachfenster → Batterie, fehlende Endpunkte, falscher Modus, Chemie-Parität zu
+AUTO-003, Plus-Schiene ↔ Minus-Schiene, Polarität aus der Rollen-Tabelle) und
+`lib/domain/connectionPolicy.test.ts` (Tabelle gegen Registry **und** gegen die
+deklarierten Node-Typen, beide Richtungen), `lib/domain/handleDomains.test.ts`
+(N2), `lib/units.test.ts` (S2/S4: locale-tolerant, aber streng — ganze
+Eingabe oder `null`) und `components/ui/ValidatingInput.test.tsx` (S4: Kürzung
+ist keine Tatsache; optionales Feld bleibt löschbar), `lib/siteLegal.test.ts` +
+`scripts/ci/verifyLegalNotice.test.ts` (Prüflogik, Stufen-Umschaltung
+`warn`/`block` inkl. unbekanntem Wert **und** Verankerung im Deploy-Workflow,
+einschließlich der begründeten Abwesenheit im Quality Gate) +
+`app/impressum/page.test.tsx` (beide Anzeige-Zweige, keine Marke im gerenderten
+Text). **Hinweis zur Auslieferung (2026-09-26).** Zwei Änderungen dieses Branches
+liegen als Patch bei (`workflow-changes.patch`) und sind im gepushten Baum
+bewusst **nicht** enthalten: die Workflow-Schritte selbst
+(`.github/workflows/quality.yml` für den Deploy-Trigger-Wächter, AUDIT T7, und
+`.github/workflows/deploy.yml` für den Impressum-Wächter), ihre 1:1-Spiegelung
+in `docs/ci/workflows/` und die beiden Wiring-Tests
+(`scripts/ci/deployTriggerWiring.test.ts`, `scripts/ci/legalNoticeWiring.test.ts`).
+Grund: Die GitHub-App des Agenten darf ohne `workflows`-Berechtigung keine
+Workflow-Dateien pushen (`remote rejected`). Wäre nur ein Teil gepusht worden,
+hätte die Spiegelungsprüfung (`scripts/ci/workflows.test.ts`) oder die
+Wiring-Tests rot gestanden. Beide Wächter-Skripte selbst sind im Baum,
+getestet und lokal lauffähig (`npm run ci:verify-deploy-trigger`,
+`npm run ci:verify-legal-notice`); sie sind bis zum Anwenden des Patches nur
+nicht im CI verdrahtet. `git apply workflow-changes.patch` stellt den
+vollständigen Zustand her — Workflow, Spiegelung und Wiring-Tests zusammen,
+der Baum ist davor und danach grün.
+
+Gate (`npm run check` vollständig, plus Build): `npx eslint .` 0 Errors /
+0 Warnings, beide `tsc`-Profile, `prettier --check`, `npx vitest run` →
+162 Testdateien / 2249 Tests, Coverage-Schwelle `lib/**` gehalten
+(Zeilen 98,3 %, Zweige 91,6 %, Funktionen 98,5 %, Statements 96,6 %; die neuen
+Module `lib/siteLegal.ts`, `lib/safeText.ts`, `lib/domain/connectionPolicy.ts`
+je 100 %), Golden Master 13 byte-identisch ohne Neuerfassung, Regression 50,
+`npm run build` → 13 statische Seiten, `/impressum/` im gebauten HTML
+unverändert und ohne Platzhalter-Marke.

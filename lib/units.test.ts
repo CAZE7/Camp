@@ -10,6 +10,7 @@ import {
   toNumber,
   toFixedNumber,
   parseQuantity,
+  parseDecimalString,
   quantityOr,
   power,
   currentFromPower,
@@ -126,6 +127,48 @@ describe('lib/units — Grenzen zur Außenwelt', () => {
     expect(parseQuantity('abc', amps)).toBeNull();
     expect(parseQuantity(-3, amps)).toBeNull();
     expect(parseQuantity(0, mm2)).toBeNull();
+  });
+
+  // ── AUDIT S2: Locale-Parsing ───────────────────────────────────────────────
+  // Vorher: `input.trim().replace(',', '.')` — ersetzte nur das ERSTE Komma.
+  // "1.234,56" wurde zu "1.234.56" = NaN = null = stiller Ersatzwert, obwohl
+  // der Nutzer eine eindeutige deutsche Zahl getippt hatte.
+  describe('parseDecimalString (AUDIT S2)', () => {
+    it('liest Tausender-Trenner in deutscher und englischer Schreibweise', () => {
+      expect(parseDecimalString('1.234,56')).toBeCloseTo(1234.56, 10);
+      expect(parseDecimalString('1,234.56')).toBeCloseTo(1234.56, 10);
+      expect(parseDecimalString('1.000.000')).toBe(1000000);
+      expect(parseDecimalString('12 345,6')).toBeCloseTo(12345.6, 10);
+    });
+
+    it('liest Vorzeichen, Unicode-Minus und führende Leerzeichen', () => {
+      expect(parseDecimalString('-2,5')).toBe(-2.5);
+      expect(parseDecimalString('\u22120,35')).toBeCloseTo(-0.35, 10);
+      expect(parseDecimalString('+16')).toBe(16);
+      expect(parseDecimalString(' 16 ')).toBe(16);
+      expect(parseDecimalString(',5')).toBeCloseTo(0.5, 10);
+    });
+
+    // ── AUDIT S4: Rundung/Kürzung ist keine Tatsache ─────────────────────────
+    // `parseFloat("2.5mm")` = 2.5 und `parseFloat("2,5")` = 2: beide meldeten
+    // einen gültigen Wert, der nicht der getippte war. Bei Querschnitten und
+    // Sicherungsströmen ist das eine Unterdimensionierung mit gutem Gewissen.
+    it('liefert null, wenn der Text nicht VOLLSTÄNDIG eine Zahl ist', () => {
+      expect(parseDecimalString('2.5mm')).toBeNull();
+      expect(parseDecimalString('2,5 A')).toBeNull();
+      expect(parseDecimalString('12abc')).toBeNull();
+      expect(parseDecimalString('1.2.3')).toBeNull();
+      expect(parseDecimalString('1,2,3')).toBeNull();
+      expect(parseDecimalString('12.34')).not.toBeNull(); // Punkt = Dezimalpunkt
+      expect(parseDecimalString('1.23.456')).toBeNull(); // keine Dreiergruppen
+      expect(parseDecimalString('--1')).toBeNull();
+      expect(parseDecimalString('')).toBeNull();
+    });
+  });
+
+  it('parseQuantity nutzt denselben strengen Parser wie die Formulare', () => {
+    expect(parseQuantity('1.234,5', volts)).toBeCloseTo(1234.5, 10);
+    expect(parseQuantity('2.5mm', mm2)).toBeNull();
   });
 
   it('quantityOr setzt den Ersatzwert nur bei ungültiger Eingabe ein', () => {

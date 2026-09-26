@@ -139,8 +139,6 @@ describe('components/nodes/types', () => {
       | SolarNodeData
       | ChargerNodeData
       | MpptControllerNodeData
-      | DcdcChargerNodeData
-      | AcBatteryChargerNodeData
       | BusbarNodeData
       | CommonNodeData;
     expectTypeOf<PlannerNodeData>().toMatchTypeOf<ExpectedPlannerNodeData>();

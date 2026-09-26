@@ -7,6 +7,7 @@ import {
   SOLAR_STC_TEMPERATURE_C,
   SOLAR_VOC_TEMP_COEFF_PER_KELVIN,
   solarColdVocOf,
+  solarTempCoefficientPerKelvin,
   solarDesignCurrentOf,
   solarFuseFloorOf,
   solarImpOf,
@@ -78,6 +79,57 @@ describe('ELE-007 — Solar-Auslegungsmodell (lib/solar.ts)', () => {
     );
     // Ohne Datenblatt-Voc: null statt Schätzung (ehrlich — Warnung fordert Wert an).
     expect(solarColdVocOf(panel('p', { watts: 200 }))).toBeNull();
+  });
+
+  // ── AUDIT S1: Einheit des Temperaturkoeffizienten ──────────────────────────
+  describe('Temperaturkoeffizient Voc — eine Einheit an der Lesegrenze (AUDIT S1)', () => {
+    it('Prozentangabe (UI/Datenblatt) und Bruch (Modell) ergeben dieselbe Kalt-Voc', () => {
+      // Die Audit-Probe: 22-V-Panel, −20 °C. Mit dem Bruch −0,0035 kamen
+      // 25,47 V heraus, mit dem UI-Wert −0,35 (als Bruch missverstanden)
+      // 368,5 V — Faktor 14,5 auf eine Sicherheitsprüfung.
+      const viaFraction = solarColdVocOf(panel('p', { voc: 22, tempCoefficient: -0.0035 }));
+      const viaPercent = solarColdVocOf(panel('p', { voc: 22, tempCoefficient: -0.35 }));
+      expect(viaFraction).toBeCloseTo(22 * 1.1575, 6);
+      expect(viaPercent).toEqual(viaFraction);
+      // Gegenprobe, dass hier nicht einfach alles auf den Default fällt:
+      const other = solarColdVocOf(panel('p', { voc: 22, tempCoefficient: -0.27 }));
+      expect(other).toBeCloseTo(22 * (1 + 0.0027 * 45), 6);
+      expect(other).not.toEqual(viaFraction);
+    });
+
+    it('normalisiert an der Lesegrenze und fällt auf den Default zurück', () => {
+      expect(solarTempCoefficientPerKelvin(-0.35)).toBeCloseTo(-0.0035, 12);
+      expect(solarTempCoefficientPerKelvin(-0.0035)).toBeCloseTo(-0.0035, 12);
+      // Fehlend, unsinnig oder positiv → dokumentierter Default.
+      expect(solarTempCoefficientPerKelvin(undefined)).toBe(SOLAR_VOC_TEMP_COEFF_PER_KELVIN);
+      expect(solarTempCoefficientPerKelvin(0.35)).toBe(SOLAR_VOC_TEMP_COEFF_PER_KELVIN);
+      expect(solarTempCoefficientPerKelvin('−0,35')).toBe(SOLAR_VOC_TEMP_COEFF_PER_KELVIN);
+      expect(solarTempCoefficientPerKelvin(Number.NaN)).toBe(SOLAR_VOC_TEMP_COEFF_PER_KELVIN);
+    });
+
+    it('wirft bei heißen Zelltemperaturen nicht, sondern meldet „nicht bewertbar"', () => {
+      // +60 °C (NOCT-Fall) mit einem unsinnigen Koeffizienten kippte den
+      // Temperaturfaktor ins Negative — volts() warf RangeError, in der
+      // Live-Validierung ein uncaught Exception beim Tippen einer Zahl.
+      const absurd = panel('p', { voc: 22, tempCoefficient: -50 });
+      expect(() => solarColdVocOf(absurd, 60)).not.toThrow();
+      expect(solarColdVocOf(absurd, 60)).toBeNull();
+      expect(() => solarColdVocOf(panel('p', { voc: 22 }), Number.NaN)).not.toThrow();
+      expect(solarColdVocOf(panel('p', { voc: 22 }), Number.NaN)).toBeNull();
+      // Positivkontrolle: der normale Kalt-Fall bleibt eine Zahl.
+      expect(solarColdVocOf(panel('p', { voc: 22 }), -20)).not.toBeNull();
+      // Und der String-Pfad (Live-Validierung) erbt dasselbe Verhalten — mit
+      // getrennten Flags, weil die Ursachen verschieden sind: Hier IST ein Voc
+      // eingetragen, er ist nur nicht auswertbar.
+      const { stringVoc, missingVoc, uncomputableVoc } = stringColdVocOf([absurd], [], 60);
+      expect(uncomputableVoc).toBe(true);
+      expect(missingVoc).toBe(false);
+      expect(stringVoc).toEqual([0]);
+      // Gegenprobe: ein Panel OHNE Voc hebt das andere Flag.
+      const missing = stringColdVocOf([panel('q', { watts: 200 })], []);
+      expect(missing.missingVoc).toBe(true);
+      expect(missing.uncomputableVoc).toBe(false);
+    });
   });
 
   it('Series-Strings: Verbundkomponenten über Solar↔Solar-Kanten', () => {

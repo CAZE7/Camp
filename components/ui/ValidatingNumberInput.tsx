@@ -25,11 +25,16 @@ export function ValidatingNumberInput({
   );
   const [isFocused, setIsFocused] = React.useState(false);
 
-  React.useEffect(() => {
+  // AUDIT T1 (react-hooks/set-state-in-effect): derselbe Abgleich zur
+  // Render-Zeit — Vergleichszustand sind genau die beiden alten Effekt-
+  // Abhängigkeiten (value, isFocused).
+  const [syncState, setSyncState] = React.useState({ value, isFocused });
+  if (syncState.value !== value || syncState.isFocused !== isFocused) {
+    setSyncState({ value, isFocused });
     if (!isFocused) {
       setLocalValue(value === null || value === undefined ? '' : value.toString());
     }
-  }, [value, isFocused]);
+  }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;

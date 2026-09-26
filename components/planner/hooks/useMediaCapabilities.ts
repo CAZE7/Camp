@@ -27,16 +27,15 @@ function getEntry(query: string): Entry | null {
   // Safari < 14 kennt addEventListener auf MediaQueryList noch nicht.
   if (typeof mql.addEventListener === 'function') {
     mql.addEventListener('change', notify);
-  } else if (typeof (mql as MediaQueryList).addListener === 'function') {
-    (mql as MediaQueryList).addListener(notify);
+  } else if (typeof mql.addListener === 'function') {
+    mql.addListener(notify);
   }
   entry = {
     mql,
     listeners,
     cleanup: () => {
       if (typeof mql.removeEventListener === 'function') mql.removeEventListener('change', notify);
-      else if (typeof (mql as MediaQueryList).removeListener === 'function')
-        (mql as MediaQueryList).removeListener(notify);
+      else if (typeof mql.removeListener === 'function') mql.removeListener(notify);
     },
   };
   registry.set(query, entry);
