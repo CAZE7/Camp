@@ -32,3 +32,19 @@ export const PLANNER_SNAP_GRID: [number, number] = [16, 16];
  * außerhalb der sichtbaren Fläche.
  */
 export const PANE_WAIT_FRAMES = 30;
+
+/**
+ * Fußabdruck eines neu platzierten Bauteils. `placeAtCanvasCenter` zentriert
+ * den Knoten mit der Hälfte davon auf den Pane-Mittelpunkt — die Zahl ist also
+ * bereits im Versatz `initialPosition` enthalten und darf nicht auseinanderlaufen.
+ */
+export const NODE_FOOTPRINT = { width: 192, height: 120 } as const;
+
+/**
+ * Sichtbarer Rand, den ein Bauteil im Pane halten muss. `app/globals.css` setzt
+ * `.react-flow__handle` auf 44 × 44 px Touch-Trefferfläche, die zur Hälfte
+ * außerhalb des Node-Rechtecks sitzt — 22 px überstehen also. Wird der Rand
+ * unterschritten, liegt der Anschluss unter der Kopf- bzw. Schrittleiste und
+ * ist per Finger nicht mehr erreichbar.
+ */
+export const NODE_TOUCH_MARGIN = 22;

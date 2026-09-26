@@ -16,7 +16,7 @@
  * Aufruf:  npm run ci:verify-lockfile-gate
  * Exit 0 = Gate greift, Exit 1 = Gate ist wirkungslos.
  */
-import { execFileSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname, resolve } from 'node:path';
@@ -24,20 +24,35 @@ import { fileURLToPath } from 'node:url';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
-/** Führt `npm ci --dry-run` in `cwd` aus und liefert Exit-Code + Ausgabe. */
+/**
+ * Führt `npm ci --dry-run` in `cwd` aus und liefert Exit-Code + Ausgabe.
+ *
+ * `spawnSync` statt `execFileSync`: seit den Node-Sicherheitspatches (18.20.2 /
+ * 20.12.2 / 21.7.2) darf eine `.cmd`-Datei auf Windows nicht mehr ohne
+ * `shell: true` gestartet werden — `execFileSync('npm.cmd', …)` warf dort
+ * `EINVAL`. Der Fehler wurde als „npm ci ist gescheitert" gelesen, der
+ * Hauptfall dieses Skripts meldete also GRÜN, obwohl npm nie gelaufen war.
+ * Ein Gate, das aus einem falschen Grund besteht, ist ärger als ein fehlendes.
+ */
 function npmCiDryRun(cwd) {
-  try {
-    const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-    const stdout = execFileSync(npmCommand, ['ci', '--dry-run', '--no-audit', '--no-fund'], {
-      cwd,
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
-    return { code: 0, output: stdout };
-  } catch (error) {
-    const output = `${error.stdout ?? ''}${error.stderr ?? ''}`;
-    return { code: typeof error.status === 'number' ? error.status : 1, output };
+  const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+  // Ein einzelner Befehlsstring statt args-Array: vermeidet Node DEP0190
+  // (Argumente werden bei `shell: true` nur konkateniert, nicht escaped).
+  // Die Argumente sind hier fest — keine benutzerkontrollierte Zeichenkette.
+  const result = spawnSync(`${npmCommand} ci --dry-run --no-audit --no-fund`, {
+    cwd,
+    encoding: 'utf8',
+    shell: true,
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  if (result.error) {
+    // Ein nicht startbares npm ist kein Testergebnis, sondern ein Abbruch.
+    throw new Error(`npm ci --dry-run konnte nicht gestartet werden in ${cwd}: ${result.error.message}`);
   }
+  return {
+    code: typeof result.status === 'number' ? result.status : 1,
+    output: `${result.stdout ?? ''}${result.stderr ?? ''}`,
+  };
 }
 
 function makeSandbox() {
