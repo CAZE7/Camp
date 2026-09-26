@@ -384,22 +384,64 @@ Legende Severity: **hoch** = Agent kann falschen Code ändern / falsche Sicherhe
 
 ---
 
-## TEST-001 — E2E-Suite lokal nicht ausgeführt (im CI **grün**)
+## TEST-001 — E2E-Gate blockierte 16 Tage lang jeden Deploy — **behoben 2026-09-26**
 
-- **AREA:** Tests
-- **FILE:** `tests/e2e/*.spec.ts`, `docs/E2E-TESTS.md`
-- **DESCRIPTION:** Die Playwright-Suite ist vollständig geschrieben und im CI eingebunden
-  (`quality.yml`, Job `e2e`, Chromium). In der Entwicklungsumgebung war der Browser-Download
-  blockiert; ein lokaler Beleg fehlt weiterhin.
-- **CURRENT BEHAVIOR:** E2E-Ergebnisse stammen aus dem CI, nicht vom lokalen Lauf.
-- **EXPECTED BEHAVIOR:** lokaler Lauf möglich (`npm run e2e:install` setzt Netzwerkzugang voraus).
-- **SEVERITY:** niedrig (kein Risiko für die Aussagekraft — der CI-Beleg existiert)
-- **BELEG (2026-09-09, PR #428):** Beide Jobs der Quality-Pipeline liefen grün —
-  `Typecheck, Tests & Build` in 3:29 min, `End-to-End (Playwright)` in 2:53 min.
-  Die E2E-Suite ist damit nicht nur geschrieben, sondern **ausgeführt und bestanden**.
-- **WORKAROUND:** Selektor-Vertrag ohne Browser prüfen: `components/e2eSelectors.test.tsx`.
-- **RELATED TEST:** `tests/e2e/*` (a11y, planner-flow, persistence, responsive, touch,
-  controls-overlap, expert-panel, visual)
+- **AREA:** Tests / Deployment
+- **FILE:** `tests/e2e/touch.spec.ts`, `components/planner/FlowCanvas.tsx`,
+  `.github/workflows/quality.yml`, `.github/workflows/deploy.yml`
+- **DESCRIPTION:** Der Eintrag behauptete bis heute „im CI **grün**" und belegte das
+  mit PR #428 vom 09.09.2026. Diese Aussage war falsch und hat einen realen
+  Ausfall verdeckt: Die Deploy-Runs 277 (25.09.), 278 (25.09.) und 279 (26.09.)
+  scheiterten alle im Job `End-to-End (Playwright)` am Schritt `E2E-Tests`;
+  `Pages-Build` und `Deploy` standen auf `skipped`. Letzter grüner Deploy war
+  Run 276 am **10.09.2026**. Ausgelöst durch `1f173c1` (geführter Planungsmodus,
+  24.09.): `placeAtCanvasCenter` übergab die View an `findNearestFreePosition`,
+  das belegte Flächen umgeht — und durfte dabei über den sichtbaren Rand
+  hinausgehen. Bei 393 px Breite landete das Busbar-Handle geometrisch bei
+  `y=85`, die `.react-flow`-Fläche beginnt aber erst bei `y=142` (darunter:
+  Header 53 px + Schrittleiste 89 px). Der Tap traf deshalb den
+  `pointer-events-auto`-Button der Leiste (`GuidedPlanRail.tsx:163`).
+- **CURRENT BEHAVIOR (behoben):** `FlowCanvas.tsx` prüft nach jedem Zusatz, ob der
+  neue Knoten samt seiner 44-px-Touch-Trefferfläche (`NODE_TOUCH_MARGIN`) im
+  sichtbaren Pane liegt, und fit die View **nur dann** nach. Ein Zusatz, der
+  ohnehin sichtbar ist, springt weiterhin nicht — die bewusste Entscheidung aus
+  dem Kommentar zu `PANE_WAIT_FRAMES` bleibt erhalten.
+- **EXPECTED BEHAVIOR:** Der Deploy-Pfad ist nur durch funktionale Defekte blockiert,
+  nicht durch Pixel-Drift. Siehe unten.
+- **SEVERITY:** hoch (funktional: 16 Tage keine Veröffentlichung; zusätzlich
+  Doku-Lüge an der Stelle, die den Ausfall hätte melden müssen)
+- **BELEG (2026-09-26, lokal reproduziert und fixiert):**
+  `npx playwright test tests/e2e/touch.spec.ts --project=touch-pixel5` →
+  **7 passed** nach dem Fix (zuvor `1 failed`, zweimal hintereinander
+  deterministisch, kein Flake). Volle Suite: 109 passed, 0 failed.
+- **ZWEITE URSACHE (strukturell, ebenfalls behoben):** `deploy.yml` hängt mit
+  `needs: quality` am Quality-Gate, und dieses Gate führte den Pixel-Vergleich
+  im selben Job aus wie die Funktionaltests. Damit hatte ein einzelner
+  Baseline-Diff dieselbe Macht wie ein echter Produktfehler. Der Pixel-Vergleich
+  läuft jetzt als eigener Job `visual` mit `continue-on-error: true` — er meldet
+  (roter Job, Annotation, Diff-Artefakt), aber stoppt die Veröffentlichung nicht
+  mehr. Die funktionalen Szenarien bleiben blockierend.
+  **Wichtig:** Die Baselines sind NICHT veraltet — ein Abgleich der
+  `desktop-1440`-Spezifikation gegen die ausgelieferten `-linux.png` aus
+  `9cf9194` (06.09.) ging 10/10 durch. Der Ausfall war allein der Touch-Defekt.
+- **DRITTE URSACHE (warum niemand es sah):** Der Smoke-Check prüfte ausschließlich
+  `HTTP 200` auf der Startseite. Eine ausgelieferte **Altversion** beantwortet das
+  mit 200. Der Check prüft jetzt, dass alle im Build referenzierten Bundle-Dateinamen
+  in der ausgelieferten Seite stecken, und dass ein Bundle unter seinem Base-Pfad
+  antwortet. Gegenprobe auf die live stehende Version von 2026-09-10:
+  `fehlend: 1rf7cpxz7j1km.js turbopack-2mu24kaq2df4v.js` → ROT (korrekt);
+  Live gegen Live → GRÜN (kein False-Positive).
+- **VIERTES (verwandter Befund, behoben):** `scripts/ci/verify-lockfile-gate.mjs`
+  startete `execFileSync('npm.cmd', …)`. Seit den Node-Sicherheitspatches wirft das
+  auf Windows `EINVAL`; der Catch las das als „npm ci ist gescheitert" — das Skript
+  meldete den Hauptfall als BESTANDEN, obwohl npm nie gelaufen war. Es ist zudem in
+  keinem Workflow aufgerufen worden. Jetzt `spawnSync` mit Befehlsstring, und als
+  Schritt `Lockfile-Gate bewiesen?` im Quality Gate verdrahtet.
+- **WORKAROUND:** keiner mehr nötig.
+- **RELATED TEST:** `scripts/ci/workflows.test.ts` (erzwingt die 1:1-Kopie von
+  `docs/ci/workflows/`), `tests/e2e/touch.spec.ts`
+- **RELATED ISSUE:** AGENTS.md §9 (Touch First-Class), M11-2 (Platzierung),
+  AUDIT T7 (Deploy-Trigger), `docs/CI.md`
 
 ---
 

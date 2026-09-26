@@ -67,6 +67,8 @@ jobs:
     outputs:
       artifact_size: ${{ steps.size.outputs.size }}
       page_count: ${{ steps.size.outputs.pages }}
+      asset_list: ${{ steps.size.outputs.asset_list }}
+      smoke_asset: ${{ steps.size.outputs.asset }}
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -93,6 +95,16 @@ jobs:
       - name: Install (reproduzierbar)
         run: npm ci
 
+      - name: Impressum vollständig? (AUDIT „Impressum-Placeholder")
+        # `app/impressum/page.tsx` wird öffentlich ausgeliefert; ein unvollständiges
+        # Impressum ist abmahnfähig. Der Wächter läuft hier und nicht im Quality
+        # Gate: ein Pull Request ist keine Veröffentlichung.
+        # Stufe ist Entscheidung des Betreibers (2026-09-26): `warn` meldet offen
+        # an der Stelle des Risikos, `block` stoppt die Veröffentlichung.
+        env:
+          LEGAL_NOTICE_GATE: warn
+        run: npm run ci:verify-legal-notice
+
       - name: Pages konfigurieren
         id: pages
         uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
@@ -117,6 +129,21 @@ jobs:
           PAGES=$(find ./out -name "index.html" | wc -l | tr -d ' ')
           echo "size=${SIZE}" >> "$GITHUB_OUTPUT"
           echo "pages=${PAGES}" >> "$GITHUB_OUTPUT"
+          # Referenz für den Smoke-Check im Deploy-Job: ALLE im HTML
+          # referenzierten Bundle-Dateinamen, nicht einer. Ein einzelner
+          # Chunk-Name ist über zwei Builds hinweg identisch — belegt: die
+          # ausgelieferte Version von 2026-09-10 teilte mehrere Chunk-Namen mit
+          # einem frischen Build, nur die Menge unterscheidet die Baustellen.
+          # Basenames, weil GitHub Pages den Base-Pfad vorstellt und der sonst
+          # mitverglichen würde.
+          FILES=$(grep -oE '"/[^"]*_next/static/[^"]*\.js"' ./out/index.html | tr -d '"' | xargs -n1 basename | sort -u)
+          if [ -z "$FILES" ]; then
+            echo "::error file=out/index.html::Kein referenziertes Bundle in ./out/index.html — der Smoke-Check hätte keine Referenz und wäre eine leere Behauptung."
+            exit 1
+          fi
+          echo "asset_list=$(echo "$FILES" | tr '\n' ' ')" >> "$GITHUB_OUTPUT"
+          FIRST=$(printf '%s\n' "$FILES" | head -1)
+          echo "asset=$(grep -oE "\"[^\"]*${FIRST}\"" ./out/index.html | head -1 | tr -d '"')" >> "$GITHUB_OUTPUT"
 
       - name: Pages-Artefakt hochladen
         uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
@@ -142,17 +169,54 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
 
-      - name: Smoke-Check (HTTP 200)
+      - name: Smoke-Check (Auslieferung identisch zum gebauten Stand)
         env:
           DEPLOYED_URL: ${{ steps.deployment.outputs.page_url }}
+          SMOKE_ASSET: ${{ needs.build.outputs.smoke_asset }}
+          ASSET_LIST: ${{ needs.build.outputs.asset_list }}
         run: |
-          echo "Prüfe Erreichbarkeit von ${DEPLOYED_URL}..."
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" -L --retry 3 --retry-delay 5 "${DEPLOYED_URL}")
-          if [ "$STATUS" -ne 200 ]; then
-            echo "::error::Smoke-Check fehlgeschlagen: HTTP-Status $STATUS (erwartet: 200) für ${DEPLOYED_URL}"
+          set -eu
+          # Pages übernimmt die Umgebung asynchron. Gewartet wird auf Inhalt,
+          # nicht auf Zeit: ein HTTP 200 auf eine noch ausgelieferte Altversion
+          # wäre kein Beleg für diesen Deploy — genau diesen Zustand hat der
+          # alte Check übersehen, und die Seite lief 16 Tage lang gegen einen
+          # Build von 2026-09-10.
+          ATTEMPT=0
+          MATCHED=0
+          MISSING=""
+          while [ "$ATTEMPT" -lt 12 ]; do
+            ATTEMPT=$((ATTEMPT + 1))
+            HTML=$(curl -s -L --max-time 20 "${DEPLOYED_URL}" || true)
+            MISSING=""
+            if [ -n "${HTML}" ]; then
+              for f in ${ASSET_LIST}; do
+                case "${HTML}" in
+                  *"${f}"*) ;;
+                  *) MISSING="${MISSING} ${f}" ;;
+                esac
+              done
+            fi
+            if [ -n "${HTML}" ] && [ -z "${MISSING}" ]; then
+              MATCHED=1
+              break
+            fi
+            sleep 5
+          done
+          if [ "${MATCHED}" -ne 1 ]; then
+            echo "::error::Die ausgelieferte Seite ist NICHT der gebaute Stand. Fehlende Bundles:${MISSING} (nach ${ATTEMPT} Versuchen). Entweder wurde eine ältere Version ausgeliefert, oder die Seite ist kaputt."
             exit 1
           fi
-          echo "✔ Smoke-Check erfolgreich: ${DEPLOYED_URL} antwortet mit HTTP 200"
+          set -- ${ASSET_LIST}
+          echo "✔ Ausgelieferte Seite ist der gebaute Stand ($# Bundles alle nachgewiesen)."
+          # Jedes referenzierte Bundle muss unter seinem Base-Pfad antworten,
+          # sonst ist die Seite zwar 200, aber weiß.
+          ORIGIN=$(printf '%s' "${DEPLOYED_URL}" | sed -E 's#^(https?://[^/]+).*#\1#')
+          ASSET_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -L --max-time 20 "${ORIGIN}${SMOKE_ASSET}" || echo 000)
+          if [ "${ASSET_STATUS}" != "200" ]; then
+            echo "::error::Referenziertes Asset ${SMOKE_ASSET} antwortet mit ${ASSET_STATUS} (erwartet 200) — Base-Pfad oder Auslieferung fehlerhaft."
+            exit 1
+          fi
+          echo "✔ Asset erreichbar: ${SMOKE_ASSET}"
 
       - name: Zusammenfassung
         run: |
@@ -165,5 +229,5 @@ jobs:
             echo "| Größe | ${{ needs.build.outputs.artifact_size }} |"
             echo "| Seiten | ${{ needs.build.outputs.page_count }} |"
             echo "| Commit | \`${{ github.sha }}\` |"
-            echo "| Smoke-Check | ✅ HTTP 200 |"
+            echo "| Smoke-Check | ✅ ausgelieferte Bundles = gebaute Bundles, Asset 200 |"
           } >> "$GITHUB_STEP_SUMMARY"

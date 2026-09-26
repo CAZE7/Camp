@@ -1,2 +1,10 @@
 # Auto-detect text files and normalize line endings to LF
 * text=auto eol=lf
+
+# Die 40 PNGs sind Playwright-Pixel-Baselines (tests/e2e/*.spec.ts-snapshots/)
+# und Source-Maps-lose Auslieferungsware. `text=auto` verschont sie nur, weil
+# gits Heuristik ein NUL-Byte früh in der Datei findet — für PNG zufällig
+# wahr. Ausgedrückt statt vorausgesetzt: Baselines dürfen nie durch eine
+# Zeilenenden-Konvertierung ihre Byte-Identität verlieren, denn der
+# Visual-Vergleich vergleicht Bytes.
+*.png binary

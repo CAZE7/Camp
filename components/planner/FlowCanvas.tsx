@@ -29,6 +29,8 @@ import {
   PANE_WAIT_FRAMES,
   PLANNER_FIT_PADDING,
   PLANNER_SNAP_GRID,
+  NODE_FOOTPRINT,
+  NODE_TOUCH_MARGIN,
 } from './constants';
 import { usePlannerStore } from '../../store/usePlannerStore';
 import { useAppStore } from '../../lib/store';
@@ -360,6 +362,29 @@ export function FlowCanvas() {
       );
       state.addNode(type, label, position, watts);
       showConnectionFeedback(`${label} wurde in der aktuellen Ansicht hinzugefügt.`, 2200);
+
+      // `findNearestFreePosition` weicht belegten Flächen aus und darf den
+      // Knoten dafür über die sichtbare Pane-Ränder hinaus schieben. Dann ist
+      // das Bauteil — und vor allem sein 44-px-Touch-Anschluss — unerreichbar,
+      // weil die Leiste darüber liegt. Gefitt wird nur in diesem Fall: ein
+      // Zusatz, der ohnehin sichtbar ist, springt weiterhin nicht (Kommentar
+      // oben).
+      const visibleTopLeft = screenToFlowPosition({
+        x: bounds.left + NODE_TOUCH_MARGIN,
+        y: bounds.top + NODE_TOUCH_MARGIN,
+      });
+      const visibleBottomRight = screenToFlowPosition({
+        x: bounds.right - NODE_TOUCH_MARGIN,
+        y: bounds.bottom - NODE_TOUCH_MARGIN,
+      });
+      const outsideVisibleArea =
+        position.x < visibleTopLeft.x ||
+        position.y < visibleTopLeft.y ||
+        position.x + NODE_FOOTPRINT.width > visibleBottomRight.x ||
+        position.y + NODE_FOOTPRINT.height > visibleBottomRight.y;
+      if (outsideVisibleArea) {
+        void fitView({ duration: 300, padding: PLANNER_FIT_PADDING });
+      }
     };
 
     const onAddAtCanvasCenter = (event: Event) => {
@@ -372,7 +397,7 @@ export function FlowCanvas() {
       window.cancelAnimationFrame(rafId);
       window.removeEventListener('planner-add-at-canvas-center', onAddAtCanvasCenter);
     };
-  }, [screenToFlowPosition, showConnectionFeedback]);
+  }, [screenToFlowPosition, showConnectionFeedback, fitView]);
 
   const calculatedSolarWatts = useAppStore((state) => state.calculatedSolarWatts);
   const { onDragOver, onDrop } = usePlannerDragDrop(screenToFlowPosition);
