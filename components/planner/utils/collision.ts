@@ -1,5 +1,6 @@
 import type { Node, XYPosition } from '@xyflow/react';
 import { getNodeLayoutSize } from './layout';
+import { isPresentationOnlyNode } from '../../edges/utils/routableNodes';
 import { PLANNER_SNAP_GRID } from '../constants';
 
 export type NodeRect = { left: number; top: number; right: number; bottom: number };
@@ -21,10 +22,15 @@ export function rectsOverlap(a: NodeRect, b: NodeRect): boolean {
 
 export function collidingNodeIds(node: Node, nodes: Node[], position: XYPosition = node.position): string[] {
   const candidate = nodeRect(node, position);
-  return nodes
-    .filter((other) => other.id !== node.id && other.type !== 'backboneGroup')
-    .filter((other) => rectsOverlap(candidate, nodeRect(other)))
-    .map((other) => other.id);
+  return (
+    nodes
+      // Der Rahmen des Hauptstromkreises ist reine Darstellung und deshalb kein
+      // Kollisionspartner — dieselbe Grenze wie im Routing
+      // (`edges/utils/routableNodes.ts`), nicht eine zweite Kopie des Typs.
+      .filter((other) => other.id !== node.id && !isPresentationOnlyNode(other))
+      .filter((other) => rectsOverlap(candidate, nodeRect(other)))
+      .map((other) => other.id)
+  );
 }
 
 const snap = (value: number, grid: number): number => Math.round(value / grid) * grid;

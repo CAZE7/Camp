@@ -151,6 +151,23 @@ Quelle: `lib/routing/rules/collision.ts`.
 - Routing-Ausnahmen werden **sichtbar gemacht** (`PathResult.fallbackHitsObstacles`,
   `PathResult.tightMarginUsed`) statt verworfen.
 
+### Rule P — Darstellungs-Knoten erreichen den Router nicht. **(erzwungen, ADR 0022)**
+
+Knoten, die nur gezeichnet werden (Hauptstromkreis-Rahmen, künftige Overlays),
+sind **kein** Routing-Input: kein Hindernis, kein Port, kein Prüfgegenstand —
+und sie stehen nicht in der Layout-Signatur. Kennzeichnung:
+`data.presentationOnly === true` oder `type === 'backboneGroup'`; die Grenze
+ist `components/edges/utils/routableNodes.ts` und wird in `routeAllCables`,
+`computeCableRouteFinalValidation` und `CableRouteSync` durchgesetzt.
+
+- Tests: `components/edges/utils/routableNodes.test.ts`,
+  `components/edges/utils/routeAll.test.ts`,
+  `components/edges/utils/cableRouteStore.test.ts`.
+- Gegenstück: Darstellungs-Knoten müssen **identitätsstabil** sein
+  (`backboneGroup.test.ts`, `nodeInteractionState.test.ts`) — ein bei jedem
+  Render neu erzeugtes Objekt lässt React Flow neu messen und löst über die
+  Signatur einen weiteren Routing-Lauf aus (Bug 2026-09-26).
+
 ### Rule N — Ungültige Daten sind kein gültiger Zustand. **(Konvention)**
 
 `lib/nodeSchema.ts` + `store/slices/persistence.ts`: bekannte Felder mit falschem Laufzeit-Typ
@@ -180,3 +197,4 @@ werden **entfernt** (nicht durch 0 ersetzt); unbekannte Felder bleiben erhalten.
 | K               | `npm run test:goldenmaster` · `npm run test:regression` · `npm run routing:audit`                      |
 | L               | `npx vitest run lib/routing/rules/collision.test.ts` · `npx vitest run lib/routing/invariants.test.ts` |
 | F               | `npm run routing:audit` (Spalten I1–I3, fallback)                                                      |
+| P               | `npx vitest run components/edges/utils/routableNodes.test.ts components/edges/utils/routeAll.test.ts`  |

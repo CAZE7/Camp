@@ -13,6 +13,8 @@ cableRouteStore.ts   React-Anbindung, Cache, Drossel, Live-Final-Report
 nudge.ts             Überlappungen paralleler Trassen auflösen
 pathUtils.ts         Waypoints → SVG (mit Hop-Bögen), Label-Geometrie
 nodeGeometry.ts      React-Flow-12-Adapter (measured/internals/handleBounds)
+routableNodes.ts     Präsentations-Grenze: welche Knoten der Router sehen darf
+routingDebug.ts      Diagnose des Live-Routings (NEXT_PUBLIC_ROUTING_DEBUG=1)
 voltageDrop.ts       Anzeige-Größen einer Kante (delegiert an lib/)
 orthogonalRouting.ts LEGACY-Router (nur Galerie + Tests) — siehe unten
 routingScenarios.ts  25 konstruierte Galerie-Szenarien
@@ -51,6 +53,8 @@ routingQuality.ts    Qualitätsmetriken (kein Gate, nutzt den Legacy-Router)
 | `pathfindingFallbackCount`, `resetPathfindingTelemetry`, `clearPathfindingCache` | `pathfinding.ts`     | Telemetrie/Cache                                        |
 | `CableRouteSync`, `useCableRoute`, `useCableRouteFinalValidation`                | `cableRouteStore.ts` | Render-Anbindung                                        |
 | `nodeLayoutSignature`, `edgeTopologySignature`, `createThrottledRunner`          | `cableRouteStore.ts` | Invalidierung, Drossel (100 ms)                         |
+| `isPresentationOnlyNode`, `routableNodes`, `collectRoutableNodes`                | `routableNodes.ts`   | Darstellungs-Knoten aus dem Routing-Input entfernen     |
+| `routingDebugEnabled`, `logRoutingRun`, `formatRoutingDebugRun`                  | `routingDebug.ts`    | Diagnose pro Routing-Lauf (standardmäßig aus)           |
 | `nudgeOrthogonalPaths(paths, {obstacles})`                                       | `nudge.ts`           | Trassen separieren                                      |
 | `waypointsToPath`, `waypointsToPathWithHops`, `polylineMidpoint`                 | `pathUtils.ts`       | SVG-Erzeugung                                           |
 | `edgeDropInputs`, `hasVoltageDropError`                                          | `voltageDrop.ts`     | Anzeige-Größen (delegiert an `lib/`)                    |
@@ -65,6 +69,12 @@ routingQuality.ts    Qualitätsmetriken (kein Gate, nutzt den Legacy-Router)
 
 ## What must not happen here?
 
+0. **Kein Darstellungs-Knoten im Router.** Der Hauptstromkreis-Rahmen (und jedes
+   künftige Overlay) ist kein Hindernis, kein Port und kein Prüfgegenstand
+   (Rule P, ADR 0022). Die Grenze ist `routableNodes.ts`; `routeAllCables`,
+   `computeCableRouteFinalValidation` und `CableRouteSync` filtern selbst, damit
+   kein Aufrufer die Regel vergessen kann. Gegenprobe in
+   `routeAll.test.ts` / `cableRouteStore.test.ts`.
 1. **Keine elektrische Semantik ändern.** Routing schreibt keine `crossSection`, `fuseSize`
    oder `edgeDomain` (Rule C). Es liest sie nur für die Hop-Priorität.
 2. **Kein Lesen von `edge.data.geometry`** — verboten per
@@ -92,7 +102,9 @@ Zugehörige Invarianten: **R1–R7** in `docs/ROUTING-INVARIANTS.md` — nicht z
 | `pathfinding.test.ts` (801)                                  | Katalog, A*, Kehren, Kurzsegmente, Cache, Seedszenen        |
 | `hananGridMasks.test.ts`                                     | Äquivalenz der Index-Markierung zur alten Schleife          |
 | `nudge.test.ts`, `pathUtils.test.ts`, `nodeGeometry.test.ts` | Nachbearbeitung, SVG, Geometrie-Adapter                     |
-| `cableRouteStore.test.ts`                                    | Signaturen, Drossel, Live-Report                            |
+| `cableRouteStore.test.ts`                                    | Signaturen, Drossel, Live-Report, Darstellungs-Grenze       |
+| `routableNodes.test.ts`                                      | Präsentations-Grenze (Typ + `data.presentationOnly`)        |
+| `routingDebug.test.ts`                                       | Diagnoseformat inkl. „gemessen ⇄ nicht gemessen“            |
 | `routingGallery.test.ts`                                     | 25 Galerie-Szenarien (Legacy-Router)                        |
 | `routingQuality.test.ts`                                     | Qualitätsmetriken (Legacy-Router)                           |
 | `scripts/routing/finalValidation.test.ts`                    | I1–I3 Ratchet über die Referenzpläne                        |

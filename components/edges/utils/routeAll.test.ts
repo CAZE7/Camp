@@ -359,3 +359,58 @@ describe('routeAllCables — Hops', () => {
     }
   });
 });
+
+/**
+ * Regression (Bug 2026-09-26): Der Hauptstromkreis-Rahmen ist reine
+ * Darstellung. Er lief über `nodeLookup` in `routeAllCables` und war dort ein
+ * Hindernis — die Routen liefen um die Rahmenbox herum, und ob die Box
+ * gemessen war, entschied über das Ergebnis. Der Test friert die Grenze ein:
+ * derselbe Plan muss mit und ohne Rahmen identisch geroutet werden.
+ */
+describe('Darstellungs-Knoten sind kein Hindernis (Bug 2026-09-26)', () => {
+  const frame: Node = {
+    id: '__planner-backbone-group',
+    type: 'backboneGroup',
+    position: { x: -44, y: -56 },
+    width: 1200,
+    height: 900,
+    measured: { width: 1200, height: 900 },
+    data: { label: 'Hauptstromkreis', presentationOnly: true },
+  };
+
+  const waypointsOf = (routes: Map<string, { waypoints: Point[] }>): string =>
+    [...routes.entries()]
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([id, route]) => `${id}:${route.waypoints.map((p) => `${p.x},${p.y}`).join(';')}`)
+      .join('|');
+
+  it('routet mit Rahmen exakt wie ohne', () => {
+    const { nodes, edges } = buildSeededPlan(SEED);
+    const withoutFrame = routeAllCables(nodes, edges);
+    const withFrame = routeAllCables([frame, ...nodes], edges);
+
+    expect([...withFrame.keys()].sort()).toEqual([...withoutFrame.keys()].sort());
+    expect(waypointsOf(withFrame)).toBe(waypointsOf(withoutFrame));
+    expect(buildSeededPlan(SEED).nodes.length).toBeGreaterThan(2); // Plan ist echt belegt
+  });
+
+  it('Kontrollprobe: ein echter Kasten an derselben Stelle verändert die Routen', () => {
+    const { nodes, edges } = buildSeededPlan(SEED);
+    // Gleiche Bauform, aber ein Bauteil: Die Batterie→Verteilung-Leitung muss
+    // ausweichen — der Rahmen darüber darf es nicht.
+    const asComponent: Node = {
+      ...frame,
+      type: 'conduit',
+      position: { x: 220, y: 0 },
+      width: 120,
+      height: 140,
+      measured: { width: 120, height: 140 },
+      data: { label: 'Leerrohr' },
+    };
+
+    const withoutComponent = routeAllCables(nodes, edges);
+    const withComponent = routeAllCables([asComponent, ...nodes], edges);
+
+    expect(waypointsOf(withComponent)).not.toBe(waypointsOf(withoutComponent));
+  });
+});

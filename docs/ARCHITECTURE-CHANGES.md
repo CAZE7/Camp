@@ -890,3 +890,78 @@ Module `lib/siteLegal.ts`, `lib/safeText.ts`, `lib/domain/connectionPolicy.ts`
 je 100 %), Golden Master 13 byte-identisch ohne Neuerfassung, Regression 50,
 `npm run build` → 13 statische Seiten, `/impressum/` im gebauten HTML
 unverändert und ohne Platzhalter-Marke.
+
+### 2026-09-26 — Neunte Fassung: Darstellungs-Knoten sind kein Routing-Input (Bug „0 ↔ 20 Zwänge“)
+
+Der Planer zeigte ein pendelndes Routing-Badge („Routing verifiziert“ ↔
+„Routing: 20 Zwänge nicht erreicht“) und sichtbar neu verlegte Kabel. Kein
+Timer, kein periodisches Auto-Wire — die Ursache lag in der Verbindung aus
+React Flow, Node-Darstellung und Live-Router. Zwei Fehler griffen ineinander:
+
+1. **Der Hauptstromkreis-Rahmen lief im Router mit.** `withBackboneGroup()`
+   erzeugt einen Knoten `type: 'backboneGroup'` mit dem Kommentar
+   „presentation-only“ — er landete aber als Prop in `<ReactFlow>`, damit in
+   React Flows `nodeLookup`, und `CableRouteSync` las `[...nodeLookup.values()]`
+   ungefiltert. Der Rahmen war damit Hindernis (`routeAllCables`) **und**
+   Prüfgegenstand (`validateFinalRouting`). Er umschließt die Kern-Bauteile:
+   Jede Leitung, die ein Kern-Bauteil verlässt, schneidet seinen Rand und
+   zählte als I1 — obwohl kein Kabel durch ein Bauteil läuft. Das waren die 20.
+2. **Seine Geometrie hing an der DOM-Messung.** React Flow 12 übernimmt einen
+   Knoten nur bei **identischem** Objekt unverändert (`adoptUserNodes`,
+   `checkEquality`); sonst baut es den internen Knoten neu auf und setzt
+   `measured` auf den Wert des neuen Objekts — `undefined`, weil der Rahmen nie
+   in den Planner-Store zurückgeschrieben wird. Der ResizeObserver maß danach
+   erneut. 844 × 392 und der 192 × 120-Fallback sind zwei Hindernisbilder und
+   damit zwei Validierungs-Reports: das sichtbare 0 ↔ 20. Dasselbe Muster traf
+   auf Touch-Geräten **alle** Knoten, weil `interactiveNodes` bei jedem
+   Store-Schreibvorgang neue Objekte erzeugte (`{ ...node, className }` bzw.
+   `dragHandle`).
+
+Behoben (ADR 0022, Rule P in `docs/ai/ARCHITECTURE-RULES.md`):
+
+- **Grenze statt Konvention:** `components/edges/utils/routableNodes.ts`
+  (`isPresentationOnlyNode` / `routableNodes` / `collectRoutableNodes`). Der
+  Rahmen trägt `data.presentationOnly === true` **und** seinen UI-Typ, damit
+  auch gespeicherte Pläne ohne Marker geschützt sind.
+- **Filterung an der Grenze, nicht an der Aufrufstelle:** `routeAllCables`
+  filtert seinen Eingang selbst, `computeCableRouteFinalValidation` ebenfalls;
+  `CableRouteSync` filtert zusätzlich die Layout-Signatur (eine Änderung, die
+  den Router nicht betrifft, darf keinen Lauf auslösen). `collidingNodeIds`
+  nutzt jetzt dieselbe Grenze statt einer zweiten Kopie des Typs.
+- **Identitätsstabilität als Vertrag:** `withBackboneGroup` liefert für
+  unveränderte Kern-Geometrie dasselbe Rahmen-Objekt (Geometrie-Key-Cache) und
+  trägt zusätzlich `width`/`height` — seine Box hängt nicht mehr an einer
+  DOM-Messung. Die Interaktions-Flags (`planner-node-collision`,
+  `node-drag-armed`, `dragHandle`) laufen über
+  `components/planner/utils/nodeInteractionState.ts` (WeakMap-Cache): gleicher
+  Basis-Knoten plus gleiche Flags ⇒ dasselbe Objekt.
+- **Diagnose zuschaltbar:** `components/edges/utils/routingDebug.ts` schreibt
+  pro Lauf Anzahl gerouteter/übersprungener Knoten plus die Änderung gegenüber
+  dem vorherigen Lauf (`id x,y:B×H → x,y:B×H`, `—` = nicht gemessen). Aktiv mit
+  `NEXT_PUBLIC_ROUTING_DEBUG=1` oder `globalThis.__PLANNER_ROUTING_DEBUG__ = true`;
+  standardmäßig aus (Konsole bleibt still, `console.warn` als erlaubter Kanal).
+- `nodeGeometry.ts` bekam `nodeGeometrySnapshot()` — die Diagnose liest
+  Messwerte damit weiterhin ausschließlich an der Messgrenze
+  (`app/handleGeometry.test.ts` verbietet Direktzugriffe).
+
+Bewusst **nicht** angefasst: `performAutoWiring` (nachweislich nicht die
+periodische Ursache) und der Routing-Algorithmus selbst. Der Perf-Ratchet
+bleibt bei 60 ms (gemessen 41,7 ms, unverändert zum Stand davor); die
+Golden-Master-Pläne und die Regressions-SVGs sind byte-identisch, der
+`routing:audit` bleibt bei I1–I7 = 0 / fallback 0.
+
+Nachweis: `components/edges/utils/routableNodes.test.ts` (Grenze, Identität,
+`data.presentationOnly` nur bei `true`), `routeAll.test.ts` (derselbe Plan
+routet mit und ohne Rahmen **identisch**; ein echtes Bauteil an derselben
+Stelle ändert die Routen — Kontrollprobe), `cableRouteStore.test.ts` (der
+Rahmen erzeugt keine I1-Verletzung und keine Signaturänderung; dieselbe Box als
+Bauteil schon), `components/planner/utils/backboneGroup.test.ts` (gleiche
+Geometrie ⇒ dasselbe Objekt), `nodeInteractionState.test.ts` (Flags erzeugen
+höchstens eine Variante je Basis-Knoten), `routingDebug.test.ts` (Format inkl.
+Erkennung „gemessen ⇄ nicht gemessen“, `app/handleGeometry.test.ts` weiter grün.
+
+Gate (`npm run check` + Build): `npx eslint .` 0 Errors / 0 Warnings, beide
+`tsc`-Profile, `prettier --check`, `npx vitest run` → 165 Testdateien /
+2279 Tests, Golden Master 13 byte-identisch ohne Neuerfassung, Regression 50,
+`npx tsx scripts/routing/audit.ts` I1–I7 = 0 / fallback 0,
+`npm run perf:edge-routing` Live-Pfad 41,7 ms (≤ 60 ms).
