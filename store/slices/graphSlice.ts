@@ -13,7 +13,9 @@ import { type CableEdgeData } from '../../components/edges/CableEdge';
 import {
   getDerivedSystemState,
   getNodeMap,
+  affectsStructure,
   graphSnapshot,
+  sameElements,
   withHistory,
   pathDropCache,
   plannerGraphSignature,
@@ -111,6 +113,10 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
   onNodesChange: (changes) =>
     set((state) => {
       const newNodes = applyNodeChanges(changes, state.nodes);
+      // Kein Treffer ⇒ keine neue Array-Referenz (Begründung: `sameElements`
+      // in graphInternals.ts). Betrifft real die Mess-Meldungen von React
+      // Flow für Knoten, die nur dargestellt werden (Hauptstromkreis-Rahmen).
+      if (!affectsStructure(changes) && sameElements(state.nodes, newNodes)) return state;
       const deletedNodeIds = new Set<string>();
       for (const change of changes) {
         if (change.type === 'remove') deletedNodeIds.add(change.id);
@@ -133,12 +139,14 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
   onEdgesChange: (changes) =>
     set((state) => {
       const nextEdges = applyEdgeChanges(changes, state.edges) as Edge<CableEdgeData>[];
-      const structural = changes.some((change) => change.type === 'add' || change.type === 'remove');
+      const structural = affectsStructure(changes);
+      if (!structural && sameElements(state.edges, nextEdges)) return state;
       return structural ? withHistory(state, { edges: nextEdges }) : { edges: nextEdges };
     }),
   onWaterNodesChange: (changes) =>
     set((state) => {
       const newWaterNodes = applyNodeChanges(changes, state.waterNodes);
+      if (!affectsStructure(changes) && sameElements(state.waterNodes, newWaterNodes)) return state;
       const deletedNodeIds = new Set<string>();
       for (const change of changes) {
         if (change.type === 'remove') deletedNodeIds.add(change.id);
@@ -161,6 +169,7 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
   onWaterEdgesChange: (changes) =>
     set((state) => {
       const nextEdges = applyEdgeChanges(changes, state.waterEdges);
+      if (!affectsStructure(changes) && sameElements(state.waterEdges, nextEdges)) return state;
       return changes.some((change) => change.type === 'remove')
         ? withHistory(state, { waterEdges: nextEdges })
         : { waterEdges: nextEdges };

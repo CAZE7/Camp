@@ -219,6 +219,7 @@ Branch Protection: `docs/CI.md`.
 | [0019](docs/adr/0019-final-gate-konsumiert-kollisionsmodell.md)             | Gate nutzt Kollisionsmodell   | I1/I2/I3 leiten aus `lib/routing/rules/collision.ts` ab, ohne eigene Schwelle  |
 | [0020](docs/adr/0020-routing-fehlerkorrektur-stub-und-fanout.md)            | Routing-Fehlerkorrektur       | Stub-Modell, Port-Fan-Out, Freigabe-Rangfolge: 179 → 0 Invarianten-Verstöße    |
 | [0021](docs/adr/0021-ki-assistent-und-api-route-im-statischen-export.md)    | KI-Assistent im Export        | **vorgeschlagen, offen:** `/api/chat` wird nicht exportiert (`out/api` fehlt)  |
+| [0022](docs/adr/0022-darstellungs-knoten-sind-kein-routing-input.md)        | Darstellung ≠ Routing-Input   | Rahmen/Hilfsknoten sind kein Hindernis, kein Prüfgegenstand, keine Signatur    |
 
 ## Weitere Nachweise
 

@@ -62,6 +62,8 @@ import { useTouchContextMenu } from './hooks/useTouchContextMenu';
 import { applyCircuitTrace, circuitTraceLabel, traceCircuit } from './utils/circuitTrace';
 import { collidingNodeIds, findNearestFreePosition } from './utils/collision';
 import { withBackboneGroup } from './utils/backboneGroup';
+import { isPresentationOnlyNode, PRESENTATION_GROUP_TYPE } from '../edges/utils/routableNodes';
+import { withNodeInteractionState } from './utils/nodeInteractionState';
 import { BackboneGroupNode } from './ui/BackboneGroupNode';
 import { withNodePresentations } from './ui/NodePresentation';
 import dynamic from 'next/dynamic';
@@ -425,7 +427,7 @@ export function FlowCanvas() {
   const nodeTypes = useMemo(() => {
     const presented = withNodePresentations(NODE_TYPES);
     const interactive = coarsePointer ? withNodeDragHandles(presented) : presented;
-    return { ...interactive, backboneGroup: BackboneGroupNode };
+    return { ...interactive, [PRESENTATION_GROUP_TYPE]: BackboneGroupNode };
   }, [coarsePointer]);
   const rawNodes = viewMode === 'water' ? waterNodes : nodes;
   const rawEdges = viewMode === 'water' ? waterEdges : edges;
@@ -524,38 +526,44 @@ export function FlowCanvas() {
     [rawNodes, selectedTrace]
   );
 
-  /** Adds visual grouping, collision state and touch drag semantics. */
+  /**
+   * Darstellungs-Gruppierung als eigener Schritt.
+   *
+   * `withBackboneGroup` liefert für unveränderte Kern-Geometrie dasselbe
+   * Rahmen-Objekt zurück (siehe dort): Ohne diese Zusage würde React Flow den
+   * Rahmen bei jedem Store-Schreibvorgang neu übernehmen und neu messen —
+   * und damit über die Layout-Signatur einen zweiten Routing-Lauf auslösen.
+   */
+  const groupedNodes = useMemo(
+    () => (viewMode === 'electric' ? withBackboneGroup(displayedNodes, backboneGrouping) : displayedNodes),
+    [displayedNodes, viewMode, backboneGrouping]
+  );
+
+  /**
+   * Adds visual grouping, collision state and touch drag semantics.
+   *
+   * Die Flags laufen über `withNodeInteractionState`, das bei unverändertem
+   * Knoten **dasselbe Objekt** zurückgibt. Früher entstand hier bei jedem
+   * Aufruf (also bei jeder Änderung von `displayedNodes`, z. B. bei jeder
+   * Selektion) für jeden Knoten ein neues Objekt; React Flow übernahm daraufhin
+   * alle Knoten neu und maß sie neu.
+   */
   const interactiveNodes = useMemo(() => {
-    const grouped =
-      viewMode === 'electric' ? withBackboneGroup(displayedNodes, backboneGrouping) : displayedNodes;
-    return grouped.map((node) => {
-      if (node.type === 'backboneGroup') return node;
-      const collisionClass = node.id === collidingNodeId ? 'planner-node-collision' : '';
+    return groupedNodes.map((node) => {
+      if (isPresentationOnlyNode(node)) return node;
+      const collision = node.id === collidingNodeId;
       if (!interaction.requiresDragHandle) {
-        return collisionClass
-          ? { ...node, className: `${node.className || ''} ${collisionClass}`.trim() }
-          : node;
+        return withNodeInteractionState(node, { collision, dragHandle: 'inherit' });
       }
       return node.id === armedNodeId
-        ? {
-            ...node,
-            dragHandle: undefined,
-            className: `${node.className || ''} node-drag-armed ${collisionClass}`.trim(),
-          }
-        : {
-            ...node,
-            dragHandle: NODE_DRAG_HANDLE_SELECTOR,
-            className: `${node.className || ''} ${collisionClass}`.trim(),
-          };
+        ? withNodeInteractionState(node, { collision, dragHandle: 'armed' })
+        : withNodeInteractionState(node, {
+            collision,
+            dragHandle: 'handle',
+            handleSelector: NODE_DRAG_HANDLE_SELECTOR,
+          });
     });
-  }, [
-    displayedNodes,
-    viewMode,
-    backboneGrouping,
-    collidingNodeId,
-    interaction.requiresDragHandle,
-    armedNodeId,
-  ]);
+  }, [groupedNodes, collidingNodeId, interaction.requiresDragHandle, armedNodeId]);
 
   const openContextMenu = React.useCallback(
     (
@@ -590,7 +598,7 @@ export function FlowCanvas() {
   // v12 reicht das native Event durch (v11: React-SyntheticEvent).
   const handleNodeDrag = React.useCallback(
     (_event: MouseEvent | TouchEvent, node: Node) => {
-      if (node.type === 'backboneGroup') return;
+      if (isPresentationOnlyNode(node)) return;
       const domainNodes =
         viewMode === 'water' ? usePlannerStore.getState().waterNodes : usePlannerStore.getState().nodes;
       setCollidingNodeId(collidingNodeIds(node, domainNodes).length > 0 ? node.id : null);
@@ -601,7 +609,7 @@ export function FlowCanvas() {
   const handleNodeDragStop = React.useCallback(
     (_event: MouseEvent | TouchEvent, node: Node) => {
       setContextMenu(null);
-      if (node.type === 'backboneGroup') return;
+      if (isPresentationOnlyNode(node)) return;
       const state = usePlannerStore.getState();
       const domainNodes = viewMode === 'water' ? state.waterNodes : state.nodes;
       const current = domainNodes.find((candidate) => candidate.id === node.id);

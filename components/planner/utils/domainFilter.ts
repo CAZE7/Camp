@@ -3,6 +3,7 @@ import type { CableEdgeData } from '../../edges/CableEdge';
 import { getEdgeDomain } from '../../../lib/electrical';
 import { getComponentSpec } from '../../registry';
 import { cssToken } from '../../edges/utils/edgeColors';
+import { withClassFlag } from './classFlags';
 
 /**
  * Domänen-Filter für den Elektrikplan (12V DC, 230V AC, Solar).
@@ -123,9 +124,6 @@ export function edgeDomainOf(edge: Edge<CableEdgeData>, sourceNode?: Node, targe
 
 const DIM = 'planner-domain-dim';
 
-const addClass = (className: string | undefined, flag: string): string =>
-  [className, flag].filter(Boolean).join(' ');
-
 /**
  * Markiert Kanten/Nodes deaktivierter Domänen mit einer Dim-Klasse.
  * Nodes bleiben aktiv, solange sie über mindestens eine Kante mit einer
@@ -159,11 +157,14 @@ export function applyDomainFilter<N extends Node, E extends Edge<CableEdgeData>>
       const active = hasEdges
         ? nodeHasActiveEdge.get(node.id) === true
         : nodeDomains(node).some((d) => activeDomains.has(d));
-      return active ? node : { ...node, className: addClass(node.className, DIM) };
+      // `withClassFlag`: unveränderte Elemente bleiben dieselben Objekte —
+      // ein Domänen-Umschalten darf nicht den ganzen Graphen neu aufbauen
+      // (Bug 2026-09-26, „object recreation“).
+      return active ? node : withClassFlag(node, DIM);
     }),
     edges: edges.map((edge) => {
       const active = edgeIsActive.get(edge.id) === true;
-      return active ? edge : { ...edge, className: addClass(edge.className, DIM) };
+      return active ? edge : withClassFlag(edge, DIM);
     }),
   };
 }
