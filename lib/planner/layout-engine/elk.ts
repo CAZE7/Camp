@@ -60,9 +60,27 @@ export class ElkLayoutEngine implements PlannerLayoutEngine {
     const plan: ElkPlan = {
       nodes: nodes.map((node) => {
         const size = sizeById.get(node.id)!;
-        return { id: node.id, x: 0, y: 0, width: size.width, height: size.height };
+        return {
+          id: node.id,
+          x: 0,
+          y: 0,
+          width: size.width,
+          height: size.height,
+          // Finding 2026-09-27: Ohne Ports wusste ELK nicht, dass plus/minus
+          // links/rechts liegen und `ac_in` oben — `FIXED_ORDER` in
+          // `buildElkGraph` greift nur, wenn der Knoten Ports mitbringt.
+          ...(node.ports && node.ports.length > 0
+            ? { ports: node.ports.map((entry) => ({ id: entry.id, side: entry.side, index: entry.index })) }
+            : {}),
+        };
       }),
-      edges: edges.map((edge) => ({ id: edge.id, source: edge.source, target: edge.target })),
+      edges: edges.map((edge) => ({
+        id: edge.id,
+        source: edge.source,
+        target: edge.target,
+        ...(edge.sourcePort ? { sourcePort: edge.sourcePort } : {}),
+        ...(edge.targetPort ? { targetPort: edge.targetPort } : {}),
+      })),
       direction: request.direction ?? 'LR',
     };
 

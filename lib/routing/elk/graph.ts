@@ -14,6 +14,12 @@ import type { Point } from '../geometry';
 
 /** Anschluss (Handle) eines Knotens — Reihenfolge ist Teil des Vertrags. */
 export type ElkPlanPort = {
+  /**
+   * Graphweit eindeutige ID. elkjs löst Kanten-Endpunkte über einen globalen
+   * Namensraum auf: Zwei Knoten mit derselben Port-ID führen dazu, dass die
+   * Kante am falschen Knoten andockt (verifiziert). Die Planner-Seite bildet
+   * sie deshalb als `<node>::<role>:<handle>` (layout-engine/ports.ts).
+   */
   id: string;
   /** Seite der Node-Karte. */
   side: 'NORTH' | 'SOUTH' | 'EAST' | 'WEST';
@@ -37,6 +43,7 @@ export type ElkPlanEdge = {
   id: string;
   source: string;
   target: string;
+  /** Muss EXAKT der `id` eines Ports des Quell-/Zielknotens entsprechen. */
   sourcePort?: string;
   targetPort?: string;
   /** Sichtbarer Label-Text (ELK reserviert Platz, zentriert). */

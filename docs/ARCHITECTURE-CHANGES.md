@@ -1213,3 +1213,80 @@ Gate: `npx vitest run` → 167 Testdateien / 2332 Tests, `npm run typecheck`,
 `npm run typecheck:tests`, `npx eslint .`, `npx prettier --check` grün. Golden
 Master unberührt (keine Geometrie, keine Dimensionierung, keine Fixture trägt
 eine abweichende Nutzerlänge ein).
+
+### 2026-09-27 — Vierzehnte Fassung: Platzierung — vier Befunde an einem Symptom (AUDIT D4)
+
+Der Nutzer meldete: „Der Router ist nicht das Problem — die Platzierung ist es.",
+
+mit vier belegten Ursachen. Alle vier sind im Code bestätigt und behoben; der
+A*-Router selbst blieb unangetastet (`npm run routing:audit`: I1–I7 = 0,
+Fallback 0, größter Umweg-Faktor 1,65, keine 180°-Wenden).
+
+1. **AutoWire setzte sein Raster absolut am Canvas-Ursprung**
+   (`lib/autoWire/placement.ts`). Die automatisch erzeugten Bauteile (Schienen,
+   Sicherungskasten, Shunt) standen deshalb unabhängig davon, wo der Plan des
+   Nutzers lag, bei (0,0) — die Kabel folgten der Platzierung quer über die
+   Karte (Nutzer-Messung: 12.512 px statt 704 px auf derselben Anlage).
+   `flowAnchor()` nimmt jetzt die linke obere Ecke der nicht verschobenen
+   Bauteile als Bezug und rundet sie auf das **globale** Spalten-/Zeilenraster
+   (288/192) ab — dadurch ist die Rasterlage unabhängig von der
+   Planposition (Determinismus, ADR 0010), und Pläne nahe dem Ursprung
+   behalten exakt die bisherige Platzierung.
+2. **ELK bekam die Token-Defaults 120 × 80 statt der gemessenen Kartengrößen**
+   und schrieb sie anschließend als `width`/`height` auf die Knoten zurück
+   (`lib/planner/routingV2Adapter.ts`). Folge: Karten überlappten nach „Plan
+   ordnen", und der Router bekam zu kleine Hindernisboxen (Leitungen durch
+   Karten). Der Adapter liest jetzt `node.measured` (React Flow 12 hält dort
+   die gemessene Größe) und schreibt **nur noch Positionen** zurück.
+3. **ELK bekam keine Ports** (`lib/planner/layout-engine/`). `buildElkGraph`
+   setzt `elk.portConstraints: 'FIXED_ORDER'` nur, wenn ein Knoten Ports
+   mitbringt — ohne sie durfte ELK Karten so anordnen, dass Leitungen an der
+   falschen Kartenseite ankommen. `ports.ts` liefert die Anschlussseiten je
+   Bauteiltyp (Eingänge WEST, Ausgänge EAST, `plus` vor `minus`,
+   Wechselrichter-`ac_in` NORTH) samt **graphweit eindeutigen** Port-IDs; der
+   Vertrag (`LayoutPort`, `sourcePort`/`targetPort`) ist dokumentiert und die
+   Registry-Parität getestet.
+4. **„Aufräumen" ignorierte die Kanten** (`components/planner/utils/layout.ts`).
+   Die Typ-Stapelung bleibt Basis, aber der Planer prüft jetzt drei Varianten
+   (Stapelung, Barycenter-Ordnung, Barycenter + Spalten-Versatz) und wählt die
+   mit der kürzesten Kabellänge (Proxymaß). Gleichstand behält die bisherige
+   Ordnung — das Aufräumen wird also nie schlechter als vorher.
+
+**Messungen** (über `scripts/goldenmaster/pipeline.ts`, echter Router; sechs
+Referenzpläne, Summe):
+
+| Größe                                      | vorher    | nachher             |
+| ------------------------------------------ | --------- | ------------------- |
+| Kabelweg, Plan am Ursprung                 | 30.269 px | 30.269 px           |
+| Kabelweg, derselbe Plan bei (1200, 800)    | 88.693 px | 29.789 px           |
+| Final-Invariante I1/I2/I3, Plan verschoben | 4         | 0                   |
+| Kabellänge „Aufräumen" (Proxymaß)          | 56.988 px | 48.228 px (−15,4 %) |
+
+Überlappungen: 0 vor und nach dem Aufräumen. Der Nutzer-Fall (Karten relativ
+zueinander verschieben) verliert damit die Positionsabhängigkeit der
+Kabellänge vollständig.
+
+Nachweis: `lib/autoWire/placement.test.ts` (17 Tests; +2: Auto-Bauteile folgen
+einer Planverschiebung, kein Auto-Bauteil landet fernab des Plans — beide
+fallen mit dem Ursprungs-Anker), `lib/planner/routingV2Adapter.test.ts`
+(6 Tests; gemessene Maße 192/132 werden durchgereicht, keine Größe
+zurückgeschrieben, Anschlüsse mit Seiten und `FIXED_ORDER` im ELK-Graphen,
+echtes elkjs akzeptiert die Port-Verweise), `lib/planner/layout-engine/ports.test.ts`
+(6 Tests; Registry-Parität, Seiten-Konvention, Eindeutigkeit der Port-IDs,
+echtes elkjs dockt die Landstromleitung an der OBEREN und die AC-Leitung an
+der RECHTEN Kante des Wechselrichters an), `components/planner/utils/layout.test.ts`
+(10 Tests; +3: Kanten verkürzen die Kabellänge, keine Überlappung,
+Determinismus). Alle vier Gegenproben sind in der Sitzung gefahren: ohne Fix
+fällt jeweils genau der neue Test.
+
+Gate: `npx vitest run` → 168 Testdateien / 2346 Tests, `npm run typecheck`,
+`npm run typecheck:tests`, `npx eslint .`, `npx prettier --check` grün.
+
+**Golden Master und Regression bleiben unberührt — kein Recapture.** Der neue
+Anker rundet auf das globale Raster; die sechs Referenzpläne liegen bei
+x ≥ 80, y ≥ 60, ihr Anker ist also weiterhin (0,0) und die Platzierung
+identisch. Geprüft mit `npm run test:goldenmaster` (13/13) und
+`npm run test:regression` (50/50) — die eingefrorene Wahrheit (AGENTS.md §6,
+`knownPlans/*`, `scripts/goldenmaster/snapshots/*`,
+`scripts/regression/__snapshots__/*`) blieb damit unverändert; eine
+Neuerfassung nach AGENTS.md §5 Nr. 6 war nicht nötig.

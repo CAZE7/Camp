@@ -212,6 +212,75 @@ describe('Kabel-Metrik des Auto-Wire-Referenzplans (R-8)', () => {
  * eines Bauteils in der Box eines anderen liegt, KANN kein Router mehr
  * kollisionsfrei arbeiten. Der A*-Start liegt bereits im Hindernis.
  */
+describe('AutoWire-Platzierung folgt dem Plan (Finding 2026-09-27)', () => {
+  /**
+   * Gemeldeter Fall: „Der Router ist nicht das Problem — die Platzierung ist
+   * es.“ AutoWire setzte seine Schienen, Sicherungskasten und den Shunt am
+   * Canvas-URSPRUNG ab, egal wo der Plan stand. Ein Nutzerplan bei (1200, 800)
+   * bekam seine Verteilung damit ~1,5 k px entfernt; die Kabel folgten
+   * (gemessen: 13.004 px statt 2.693 px auf demselben Plan).
+   */
+  const plan = (dx: number, dy: number) => [
+    makeNode('bat-1', 'battery', { x: 80 + dx, y: 80 + dy }, { capacity: 100, chemistry: 'LiFePO4' }),
+    makeNode('cons-1', 'consumer', { x: 680 + dx, y: 280 + dy }, { watts: 60, hours: 2 }),
+  ];
+  const inputIds = new Set(['bat-1', 'cons-1']);
+  const autoNodesOf = (nodes: Node[]): Node[] => nodes.filter((node) => !inputIds.has(node.id));
+
+  it('verschiebt der Nutzer seinen Plan, wandern die Auto-Bauteile mit', () => {
+    const atOrigin = performAutoWiring(plan(0, 0))!;
+    const shifted = performAutoWiring(plan(1200, 800))!;
+    const before = autoNodesOf(atOrigin.nodes);
+    const after = autoNodesOf(shifted.nodes);
+    expect(before.length).toBeGreaterThan(0);
+    expect(after.map((n) => n.type)).toEqual(before.map((n) => n.type));
+
+    for (let i = 0; i < before.length; i++) {
+      const deltaX = after[i]!.position.x - before[i]!.position.x - 1200;
+      const deltaY = after[i]!.position.y - before[i]!.position.y - 800;
+      // Der Anker rastet auf das globale Spalten-/Zeilenraster: Die
+      // Verschiebung darf daher um weniger als eine Rasterzelle danebenliegen —
+      // aber niemals in der Größenordnung des Plans selbst (vorher −1200/−800).
+      expect(Math.abs(deltaX), `Auto-Knoten ${before[i]!.id} folgt der X-Verschiebung`).toBeLessThan(
+        FLOW_COLUMN_SPACING
+      );
+      expect(Math.abs(deltaY), `Auto-Knoten ${before[i]!.id} folgt der Y-Verschiebung`).toBeLessThan(
+        FLOW_ROW_SPACING
+      );
+    }
+  });
+
+  it('kein Auto-Bauteil landet fernab des Plans (Abstand ≤ Planspanne + Rasterzelle)', () => {
+    for (const shift of [
+      { dx: 0, dy: 0 },
+      { dx: 1200, dy: 800 },
+      { dx: 2400, dy: 0 },
+    ]) {
+      const nodes = plan(shift.dx, shift.dy);
+      const result = performAutoWiring(nodes)!;
+      // Bezugsgröße ist der Plan selbst: Der weiteste Auto-Knoten darf nicht
+      // weiter entfernt liegen als die Spannweite des Plans plus eine
+      // Rasterzelle. Vor dem Fix lag er bei einem Plan bei (1200, 800) rund
+      // 1.500 px entfernt (Spanne 800 px).
+      const xs = nodes.map((n) => n.position.x);
+      const ys = nodes.map((n) => n.position.y);
+      const span = Math.max(...xs) - Math.min(...xs) + (Math.max(...ys) - Math.min(...ys));
+      const bound = span + FLOW_COLUMN_SPACING + FLOW_ROW_SPACING;
+      for (const auto of autoNodesOf(result.nodes)) {
+        const nearest = Math.min(
+          ...nodes.map(
+            (n) => Math.abs(auto.position.x - n.position.x) + Math.abs(auto.position.y - n.position.y)
+          )
+        );
+        expect(
+          nearest,
+          `Auto-Knoten ${auto.id} bei (${auto.position.x}, ${auto.position.y}) liegt zu weit vom Plan (${shift.dx}, ${shift.dy})`
+        ).toBeLessThanOrEqual(bound);
+      }
+    }
+  });
+});
+
 describe('Platzierung ohne Überlappung (ADR 0017)', () => {
   const boxOf = (node: { position: { x: number; y: number } }) => ({
     x: node.position.x,

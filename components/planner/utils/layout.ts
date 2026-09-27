@@ -92,10 +92,143 @@ export const getNodeLayoutSize = (node: Node): { width: number; height: number }
 
 const hierarchyOrder = (node: Node): number => (node.type ? (LAYOUT_TYPE_ORDER[node.type] ?? 999) : 999);
 
+const compareNodes = (a: Node, b: Node): number => {
+  const byType = hierarchyOrder(a) - hierarchyOrder(b);
+  if (byType !== 0) return byType;
+  const byLabel = safeText(a.data?.label).localeCompare(safeText(b.data?.label), 'de');
+  return byLabel || a.id.localeCompare(b.id);
+};
+
+type NodeSize = { width: number; height: number };
+type Positioned = { x: number; y: number; cx: number; cy: number };
+
+/**
+ * Kantennachbarschaft (beidseitig), nur zwischen vorhandenen Knoten.
+ *
+ * Finding 2026-09-27: „Aufräumen" ordnete allein nach Bauteiltyp und sah die
+ * Leitungen nicht an. Ein Verbraucher, der am Sicherungskasten hing, wurde
+ * trotzdem weit weg von ihm gestapelt — die Kabellänge konnte sich dadurch
+ * mehr als verdoppeln, während die Rückmeldung „aufgeräumt" meldete.
+ */
+const buildNeighbours = (nodes: Node[], edges: Edge[]): Map<string, string[]> => {
+  const present = new Set(nodes.map((node) => node.id));
+  const neighbours = new Map<string, string[]>(nodes.map((node) => [node.id, []]));
+  for (const edge of edges) {
+    if (!present.has(edge.source) || !present.has(edge.target) || edge.source === edge.target) continue;
+    neighbours.get(edge.source)!.push(edge.target);
+    neighbours.get(edge.target)!.push(edge.source);
+  }
+  return neighbours;
+};
+
+/** Setzt Spalten mit fester Kartenreihenfolge und optionalem Spalten-Versatz. */
+const placementOf = (
+  orders: Node[][],
+  shifts: number[],
+  sizes: Map<string, NodeSize>,
+  columnX: number[]
+): Map<string, Positioned> => {
+  const placed = new Map<string, Positioned>();
+  orders.forEach((column, colIdx) => {
+    const x = columnX[colIdx];
+    if (x === undefined) throw new RangeError(`columnX ohne Spalte ${colIdx} — Zip-Invariante gebrochen`);
+    let y = LAYOUT_MARGIN + (shifts[colIdx] ?? 0);
+    for (const node of column) {
+      const size = sizes.get(node.id) ?? { width: DEFAULT_NODE_WIDTH, height: DEFAULT_NODE_HEIGHT };
+      placed.set(node.id, { x, y, cx: x + size.width / 2, cy: y + size.height / 2 });
+      y += size.height + LAYOUT_NODESEP;
+    }
+  });
+  return placed;
+};
+
+/**
+ * Barycenter-Ordnung je Spalte (Sugiyama-Schritt): Knoten werden nach dem
+ * Mittel ihrer Nachbarhöhen sortiert, damit Leitungen kurz bleiben. Die
+ * Basisordnung (Typ/Label) bleibt Tie-Break — ohne Kanten ändert sich nichts.
+ */
+const refineColumnOrders = (
+  baseOrders: Node[][],
+  sizes: Map<string, NodeSize>,
+  columnX: number[],
+  neighbours: Map<string, string[]>
+): Node[][] => {
+  const baseIndex = new Map<string, number>();
+  baseOrders.forEach((column) => column.forEach((node, index) => baseIndex.set(node.id, index)));
+  const zeros = baseOrders.map(() => 0);
+  let orders = baseOrders.map((column) => [...column]);
+
+  for (let pass = 0; pass < 3; pass += 1) {
+    const columnOrder = baseOrders.map((_, index) =>
+      pass % 2 === 0 ? index : baseOrders.length - 1 - index
+    );
+    for (const colIdx of columnOrder) {
+      const centres = placementOf(orders, zeros, sizes, columnX);
+      const keyed = orders[colIdx]!.map((node) => {
+        const values = (neighbours.get(node.id) ?? [])
+          .map((id) => centres.get(id)?.cy)
+          .filter((value): value is number => value !== undefined);
+        const key = values.length
+          ? values.reduce((sum, value) => sum + value, 0) / values.length
+          : (centres.get(node.id)?.cy ?? 0);
+        return { node, key, tie: baseIndex.get(node.id) ?? 0 };
+      });
+      keyed.sort((a, b) => a.key - b.key || a.tie - b.tie || compareNodes(a.node, b.node));
+      orders = orders.map((column, index) => (index === colIdx ? keyed.map((entry) => entry.node) : column));
+    }
+  }
+  return orders;
+};
+
+/**
+ * Spalten-Versatz, damit jede Spalte auf der Höhe ihrer Nachbarn steht.
+ * Begrenzt auf zwei Kartenabstände nach unten, damit das Bild zusammenbleibt.
+ */
+const columnShifts = (
+  orders: Node[][],
+  sizes: Map<string, NodeSize>,
+  columnX: number[],
+  neighbours: Map<string, string[]>
+): number[] => {
+  const zeros = orders.map(() => 0);
+  const centres = placementOf(orders, zeros, sizes, columnX);
+  const limit = LAYOUT_NODESEP * 2;
+  return orders.map((column) => {
+    const neighbourYs: number[] = [];
+    for (const node of column) {
+      for (const id of neighbours.get(node.id) ?? []) {
+        const centre = centres.get(id);
+        if (centre) neighbourYs.push(centre.cy);
+      }
+    }
+    if (neighbourYs.length === 0) return 0;
+    const mean = (values: number[]) => values.reduce((sum, value) => sum + value, 0) / values.length;
+    const own = mean(column.map((node) => centres.get(node.id)?.cy ?? 0));
+    const wanted = mean(neighbourYs) - own;
+    return Math.min(Math.max(wanted, 0), limit);
+  });
+};
+
+/** Kabellänge als Proxymaß: Manhattan zwischen den Kartenmitten. */
+const cableProxyLength = (positions: Map<string, Positioned>, edges: Edge[]): number =>
+  edges.reduce((sum, edge) => {
+    const from = positions.get(edge.source);
+    const to = positions.get(edge.target);
+    if (!from || !to) return sum;
+    return sum + Math.abs(from.cx - to.cx) + Math.abs(from.cy - to.cy);
+  }, 0);
+
 /**
  * Deterministic E-CAD industry pipeline layout. Horizontal and vertical constants
  * are gaps between bounding boxes, so cards cannot overlap. Position changes
  * are animated by FlowCanvas for 300 ms.
+ *
+ * Seit dem Finding 2026-09-27 werden die Kanten mitgelesen: Aus der
+ * Typ-Stapelung (kantenblind), einer Barycenter-Ordnung und derselben Ordnung
+ * mit Spalten-Versatz gewinnt die Variante mit der kürzesten Kabellänge
+ * (Proxymaß). Die kantenblinde Ordnung bleibt Kandidat und Tie-Break — das
+ * Aufräumen kann also nie schlechter werden als vorher, es wird nur besser,
+ * wenn der Plan es hergibt.
  */
 export const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'LR') => {
   if (direction !== 'LR') {
@@ -116,14 +249,7 @@ export const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'L
   // Filter out empty ranks to dynamically compact active columns
   const activeColumns = rawRanks.filter((col) => col.length > 0);
 
-  for (const column of activeColumns) {
-    column.sort((a, b) => {
-      const byType = hierarchyOrder(a) - hierarchyOrder(b);
-      if (byType !== 0) return byType;
-      const byLabel = safeText(a.data?.label).localeCompare(safeText(b.data?.label), 'de');
-      return byLabel || a.id.localeCompare(b.id);
-    });
-  }
+  const baseOrders = activeColumns.map((column) => [...column].sort(compareNodes));
 
   // Calculate X positions for active columns
   const columnWidths = activeColumns.map((column) =>
@@ -137,19 +263,36 @@ export const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'L
     currentX += width + LAYOUT_RANKSEP;
   }
 
-  const placed = new Map<string, Node>();
-  activeColumns.forEach((column, colIdx) => {
-    let y = LAYOUT_MARGIN;
-    for (const node of column) {
-      const x = columnX[colIdx];
-      if (x === undefined) throw new RangeError(`columnX ohne Spalte ${colIdx} — Zip-Invariante gebrochen`);
-      placed.set(node.id, { ...node, position: { x, y } });
-      y += getNodeLayoutSize(node).height + LAYOUT_NODESEP;
+  const sizes = new Map<string, NodeSize>(nodes.map((node) => [node.id, getNodeLayoutSize(node)]));
+  const neighbours = buildNeighbours(nodes, edges);
+  const refinedOrders = refineColumnOrders(baseOrders, sizes, columnX, neighbours);
+  const shifts = columnShifts(refinedOrders, sizes, columnX, neighbours);
+
+  const zeroShifts = baseOrders.map(() => 0);
+  const candidates: Array<{ orders: Node[][]; shifts: number[] }> = [
+    { orders: baseOrders, shifts: zeroShifts },
+    { orders: refinedOrders, shifts: zeroShifts },
+    { orders: refinedOrders, shifts },
+  ];
+
+  let best = candidates[0]!;
+  let bestLength = cableProxyLength(placementOf(best.orders, best.shifts, sizes, columnX), edges);
+  for (const candidate of candidates.slice(1)) {
+    const length = cableProxyLength(placementOf(candidate.orders, candidate.shifts, sizes, columnX), edges);
+    // Nur echte Verbesserungen übernehmen — Gleichstand behält die stabilere Ordnung.
+    if (length < bestLength) {
+      best = candidate;
+      bestLength = length;
     }
-  });
+  }
+
+  const placed = placementOf(best.orders, best.shifts, sizes, columnX);
 
   return {
-    nodes: nodes.map((node) => placed.get(node.id) ?? node),
+    nodes: nodes.map((node) => {
+      const position = placed.get(node.id);
+      return position ? { ...node, position: { x: position.x, y: position.y } } : node;
+    }),
     edges,
   };
 };

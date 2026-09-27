@@ -17,9 +17,25 @@
 import type { Edge, Node } from '@xyflow/react';
 import type { CableEdgeData } from '../domain/cableEdgeData'; // ARCH-001: Domänen-Datenform, nicht UI
 import type { LayoutRequest, LayoutResult } from './layout-engine/contract';
+import { layoutPortForHandle, portsForNode } from './layout-engine/ports';
 
 export type V2Node = Node;
 export type V2CableEdge = Edge<CableEdgeData>;
+
+/**
+ * Echte Kartenmaße eines Knotens (React Flow 12).
+ *
+ * `node.width/height` sind die vom Nutzer GESETZTEN Maße und bei Karten fast
+ * immer leer; die gemessene Größe liegt in `node.measured`. Wer nur
+ * `node.width` liest, rechnet mit den Engine-Defaults (120 × 80) und legt
+ * damit Karten übereinander, die real 192–208 px breit sind.
+ */
+function measuredSize(node: V2Node): { width?: number; height?: number } {
+  return {
+    width: node.measured?.width ?? node.width ?? undefined,
+    height: node.measured?.height ?? node.height ?? undefined,
+  };
+}
 
 /** Die beiden Engine-Namen, die dieser Adapter produzieren kann. */
 export type LayoutEngineName = 'elk' | 'dagre';
@@ -45,21 +61,39 @@ export async function applyAdvancedLayout<E extends Edge = V2CableEdge>(
   const { ElkLayoutEngine } = await import('./layout-engine/elk');
   const { DagreLayoutEngine } = await import('./layout-engine/dagre');
 
+  const kindById = new Map(
+    nodes.map((node) => [node.id, typeof node.type === 'string' ? node.type : undefined])
+  );
+
   const request: LayoutRequest = {
-    nodes: nodes.map((node) => ({
-      id: node.id,
-      kind: typeof node.type === 'string' ? node.type : 'unknown',
-      width: typeof node.width === 'number' ? node.width : undefined,
-      height: typeof node.height === 'number' ? node.height : undefined,
-    })),
+    nodes: nodes.map((node) => {
+      const size = measuredSize(node);
+      const kind = typeof node.type === 'string' ? node.type : 'unknown';
+      const ports = portsForNode(node.id, kind);
+      return {
+        id: node.id,
+        kind,
+        width: size.width,
+        height: size.height,
+        ...(ports.length > 0 ? { ports } : {}),
+      };
+    }),
     edges: edges
       .filter((edge) => Boolean(edge.source) && Boolean(edge.target))
-      .map((edge) => ({
-        id: edge.id,
-        source: edge.source,
-        target: edge.target,
-        kind: edge.type === 'waterPipe' ? 'waterPipe' : 'cable',
-      })),
+      .map((edge) => {
+        const sourceKind = kindById.get(edge.source);
+        const targetKind = kindById.get(edge.target);
+        const sourcePort = layoutPortForHandle(edge.source, sourceKind, 'source', edge.sourceHandle);
+        const targetPort = layoutPortForHandle(edge.target, targetKind, 'target', edge.targetHandle);
+        return {
+          id: edge.id,
+          source: edge.source,
+          target: edge.target,
+          kind: edge.type === 'waterPipe' ? 'waterPipe' : 'cable',
+          ...(sourcePort ? { sourcePort } : {}),
+          ...(targetPort ? { targetPort } : {}),
+        };
+      }),
     direction,
   };
 
@@ -70,22 +104,19 @@ export async function applyAdvancedLayout<E extends Edge = V2CableEdge>(
     layoutResult = await new DagreLayoutEngine().layout(request);
   }
 
-  const positionById = new Map(
-    layoutResult.nodes.map((node) => [
-      node.id,
-      { x: node.x, y: node.y, width: node.width, height: node.height },
-    ])
-  );
+  const positionById = new Map(layoutResult.nodes.map((node) => [node.id, { x: node.x, y: node.y }]));
 
   const layoutedNodes = nodes.map((node) => {
     const position = positionById.get(node.id);
     if (!position) return node;
-    return {
-      ...node,
-      position: { x: position.x, y: position.y },
-      width: position.width,
-      height: position.height,
-    };
+    // NUR die Position ist das Ergebnis dieser Schicht (Moduldoku oben).
+    // Vorher schrieb der Adapter `width`/`height` aus dem Layout-Ergebnis
+    // zurück — bei ungemessenen Knoten waren das die Engine-Defaults
+    // (120 × 80). Danach war die Node-Karte im Store auf 120 × 80 gesetzt,
+    // während ihr Inhalt real 192–208 px breit rendert: sichtbare
+    // Überlappungen nach „Plan ordnen“ (Finding 2026-09-27) und ein
+    // Hindernis-Modell, das die Karte für schmaler hält als sie ist.
+    return { ...node, position: { x: position.x, y: position.y } };
   });
 
   return {
