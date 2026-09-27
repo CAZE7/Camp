@@ -156,14 +156,13 @@ export function traceCircuit(nodes: Node[], edges: Edge[], seed: TraceSeed): Cir
 
 /**
  * Markiert Strompfad (aktiv) und Rest (gedimmt) — mit **identitätsstabilen**
- * Objekten: Unveränderte Elemente kommen unverändert zurück (Bug 2026-09-26,
- * „object recreation“).
+ * Objekten: Unveränderte Elemente kommen unverändert zurück.
  *
- * Vorher entstand hier bei jedem Aufruf für jedes Element ein neues Objekt.
- * Da `selectedTrace` an den Store-Arrays hängt, passierte das während eines
- * Drags in jedem Frame — React Flow sah damit alle Knoten als geändert an,
- * baute jeden internen Knoten neu auf und maß neu (Re-Routing über die
- * Layout-Signatur). Die Klassen selbst sind unverändert.
+ * So werden Kopien bei jedem Aufruf vermieden. Eine Kopie kann React Flow zu
+ * einer Neuübernahme/Messung veranlassen; ob sich daraus eine Änderung der
+ * gerouteten Geometrie ergibt, ist eine Laufzeitfrage und ohne Browser-Trace
+ * kein belegter Auslöser der gemeldeten Oszillation. Die Klassen bleiben
+ * inhaltlich unverändert.
  */
 export function applyCircuitTrace<N extends Node, E extends Edge>(
   nodes: N[],

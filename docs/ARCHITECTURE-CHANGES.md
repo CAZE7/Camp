@@ -1093,3 +1093,113 @@ vorherigen weiter.
 
 Gate: `npx vitest run` → 167 Testdateien / 2306 Tests, `npm run check` grün
 (lint, prettier, beide `tsc`-Profile, Coverage).
+
+### 2026-09-26 — Auto-Edge-Identität und Routing-Trace-Artefakte
+
+AutoWire vergibt neue Auto-Edge-IDs in festen Verdrahtungsphasen und mit einer
+kanonischen top-down/left-right/ID-Sortierung der jeweils beteiligten Node-
+Kategorien. Damit hängt die Zuordnung `ID → Verbindung` nicht mehr von der
+Node-Array-Reihenfolge ab. Beim erneuten Wiring werden IDs über Quelle, Ziel,
+Handles und elektrische Domäne auf dieselbe Verbindung zurückgeführt;
+Nutzer-IDs und historische Auto-IDs sind für neue Vergaben reserviert. Eine
+Regressionsprobe vergleicht die vollständige Auto-Edge-ID-Zuordnung nach
+Node-Permutation, prüft Übernahme einer bestehenden ID und einen weiteren
+idempotenten Auto-Wire-Lauf. Golden-Master-Aufnahme wurde über alle sechs Pläne
+ausgeführt; `knownPlans/` blieb byte-identisch, also keine Snapshot-Umschreibung.
+Der Dependency-Audit fand zunächst eine High- und vier Moderate-Meldungen in
+`browserslist`/`baseline-browser-mapping` und Vitest. Die kompatiblen
+Lockfile-Versionen wurden auf gepatchte Releases gehoben; `npm audit` meldet
+nun null Schwachstellen.
+
+`tests/e2e/routing-stability.spec.ts` hängt den vollständigen strukturierten
+Routing-Ringpuffer samt Teststatus in einem `finally` als JSON-Attachment an.
+Auf Wunsch des Nutzers bleiben die CI-Workflow-Dateien in diesem PR unverändert;
+der bestehende Quality-Workflow lädt `playwright-report` und `test-results`
+weiterhin nur bei Fehlschlag hoch. Das Attachment wird daher nicht als
+Erfolgsartefakt aufbewahrt.
+
+Nachweis: `lib/autoWire.test.ts` (ID→Verbindung unter Node-Permutationen,
+Erhalt alter ID, Wiederholung, Nutzer-ID-Kollision), Golden Master 13 Tests,
+`npm run routing:audit` (simple/camper/solar/inverter/acdc/complex: I1–I7 je 0,
+`determ=true`), `npm run check`, `npm run build` und
+`npm run perf:edge-routing` (Live-Pfad Median 47,57 ms, p90 56,08 ms,
+Ratchet 60 ms: OK; ADR-Ziel 16 ms bleibt nicht erreicht).
+
+**Runtime-Grenze (Stand dieses Eintrags):** Der Playwright-E2E-Test konnte lokal
+nicht im Browser laufen, weil der Chromium-Download mit `ECONNRESET` scheiterte.
+Der Eintrag vom 27.09.2026 unten aktualisiert den inzwischen reproduzierten
+H-Cluster-Befund, die absichtlich erneuerten Routing-Baselines und den aktuellen
+E2E-/CI-Artefakt-Status.
+
+### 2026-09-27 — H-Cluster-Reflow, Baseline-Refresh und Abschluss-Audit
+
+**Korrektur/Ergänzung zum Eintrag vom 26.09.:** Die damalige Aussage, `knownPlans/`
+sei nach der Golden-Master-Aufnahme byte-identisch geblieben, galt nur für den
+Zwischenstand. Nach Prüfung der resultierenden Routen wurden die geänderten
+Routen nun bewusst eingefroren: `knownPlans/{simple,camper,inverter,acdc,complex}.json`
+sowie Regressionen p02, p04 und p13. Die Golden-Master- und
+Regressionstests vergleichen wieder exakt gegen diese geprüften Fixtures.
+
+**H-Cluster-Ursache und Fix:** Nudge weist Lanes deterministisch, aber greedily
+Pfad für Pfad zu. Im reproduzierten Vier-Kanten-Cluster (e-auto-4 bis e-auto-7)
+wurde e-auto-6 in der ersten Runde geprüft, solange e-auto-4 noch auf y=536
+lag. Dadurch hätte die sichere Kandidatenlane y=536 vorübergehend eine
+zusätzliche Überdeckung erzeugt. Die alternativen Kandidaten waren nicht
+zulässig: y=520 überdeckte e-auto-5, y=552 kreuzte die noch nicht verschobene
+Route, y=568 verletzte die Mindest-Stub-Länge und y=504 traf das reale Hindernis
+x=700..720 / y=500..514. Nachdem e-auto-4 später auf y=552 verschoben war,
+war y=536 für e-auto-6 sicher (keine zusätzliche Überdeckung, orthogonal,
+Stub-konform, hindernisfrei), wurde aber in derselben greedy Runde nicht erneut
+geprüft. Eine zweite, strikt begrenzte Reflow-Runde bewertet Kandidaten gegen
+die bereits aktualisierten Routen; sie verschiebt e-auto-6 reproduzierbar auf
+y=536. Das neue Regressionstestszenario prüft alle vier Routen gegen denselben
+Hinderniskörper sowie feste Endpunkte, Orthogonalität und Mindest-Stubs.
+
+Der Cluster wird **nicht als starre Gruppe translatiert**: Handles bleiben an
+Ort und Stelle; jedes Innenstück wird individuell auf eine sichere Lane
+reflowed. In der geprüften Geometrie liegen die vier langen Runs danach auf
+Y=552 (e-auto-4), 520 (e-auto-5) und 536 (e-auto-6/e-auto-7); die letzten
+beiden Teilstücke sind benachbart und überdecken sich nicht.
+
+**Geprüfte Routing-Baselines (Länge / Knicke / Kreuzungen, vorher → jetzt):**
+
+| Plan     |            Vorher |            Jetzt |
+| -------- | ----------------: | ---------------: |
+| simple   |       unverändert |      unverändert |
+| camper   |  3804.8 / 32 / 10 | 3709.2 / 30 / 10 |
+| solar    |       unverändert |      unverändert |
+| inverter |     3888 / 22 / 4 |  3880.8 / 22 / 4 |
+| acdc     |  5770.4 / 30 / 14 | 5710.4 / 30 / 10 |
+| complex  | 10908.8 / 60 / 54 | 8601.6 / 54 / 52 |
+
+Regression p02: Länge 7609.33→7252, Knicke 42→34, Kreuzungen 5 unverändert;
+p04: Länge 2656→2648, Knicke 14 unverändert, Kreuzungen 4→2; p13 unverändert
+bei Länge 3324, 16 Knicken und 0 Kreuzungen. Alle drei haben null
+Clearance-Verletzungen.
+
+**Nachweise:** `npm run check` erfolgreich (168 Testdateien / 2335 Tests,
+ESLint, Prettier, beide TypeScript-Profile und Coverage); `npm run test:goldenmaster`
+13/13, `npm run test:regression` 50/50, `npm run routing:audit` über alle sechs
+Pläne ohne I1–I7-, harte, Orthogonalitäts-, Überlappungs- oder Fallback-Verletzung
+und mit `determ=true`; `npm audit` ohne Schwachstellen. Golden Master und
+Regression wurden nach Sichtung der Metriken bewusst aktualisiert.
+
+**Performance (frischer Lauf):** Das alte Render-Gate N=36/E=134 liegt bei
+Median 2.50 ms / p90 2.74 ms (16-ms-Budget: OK). Der echte `routeAllCables`-
+Pfad liegt bei Median 51.74 ms / p90 69.92 ms; das 60-ms-Ratchet prüft den
+Median und besteht, das ADR-Ziel von 16 ms bleibt verfehlt. Scaling: Kette
+N=500/E=499 173.7 ms; planweite Spannkanten N=500/E=250 3321.6 ms
+(Median 3174.9, Maximum 3388.8), jeweils null Fallback-Routen. Der lange
+Spannkantenfall bleibt ein deutlich langsamer synthetischer Worst Case und ist
+als Restrisiko dokumentiert.
+
+**E2E-Status — supersedes den Runtime-Hinweis oben:** Der aktuelle Static Export
+wurde mit `npm run build` erfolgreich erzeugt. Ein echter Playwright-Lauf ist
+weiterhin nicht erfolgt: `npx playwright install chromium` scheitert beim
+Chromium-CDN mit `ECONNRESET`, und es ist kein System-Chromium vorhanden. Der
+E2E-Test hängt den Routing-Trace als JSON an; die Workflow-Dateien bleiben auf
+Wunsch unverändert, sodass das bestehende CI-Artefakt weiterhin nur bei
+Fehlschlag hochgeladen wird. Ein erfolgreicher CI-Artefakt-Upload ist damit
+außerhalb dieses PR-Scopes. Die Nudge-Ursache ist inzwischen durch den
+Vier-Routen-Test und den Test mit gemessener React-Flow-Geometrie reproduziert;
+`complex` ist nicht mehr die einzige Probe.

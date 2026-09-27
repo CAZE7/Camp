@@ -163,10 +163,12 @@ ist `components/edges/utils/routableNodes.ts` und wird in `routeAllCables`,
 - Tests: `components/edges/utils/routableNodes.test.ts`,
   `components/edges/utils/routeAll.test.ts`,
   `components/edges/utils/cableRouteStore.test.ts`.
-- Gegenstück: Darstellungs-Knoten müssen **identitätsstabil** sein
-  (`backboneGroup.test.ts`, `nodeInteractionState.test.ts`) — ein bei jedem
-  Render neu erzeugtes Objekt lässt React Flow neu messen und löst über die
-  Signatur einen weiteren Routing-Lauf aus (Bug 2026-09-26).
+- Gegenstück: Darstellungs-Knoten sollen **identitätsstabil** sein
+  (`backboneGroup.test.ts`, `nodeInteractionState.test.ts`), um unnötige
+  React-Flow-Neuübernahmen zu vermeiden. Eine Messänderung kann Routing
+  beeinflussen, falls der betroffene Knoten zur Routing-Signatur gehört; der
+  Zusammenhang mit der gemeldeten Oszillation ist ohne Browser-Trace nicht
+  belegt.
 
 ### Rule Q — Änderungen ohne Wirkung erzeugen keinen Zustand. **(erzwungen)**
 
@@ -179,9 +181,10 @@ Domänen-Filter) neue Elementobjekte. Beides ist nicht harmlos:
 - Eine neue Array-Referenz lässt jeden `usePlannerStore((s) => s.nodes)`-Konsumenten
   rendern (u. a. jede `CableEdge`) und baut die identitätsgebundenen Caches
   (`getDerivedSystemState`, `getObstacleMap`, Routing-Nachbarschaft) neu auf.
-- Ein neues Knotenobjekt lässt React Flow den internen Knoten neu aufbauen, neu
-  **messen** und — über die Layout-Signatur — einen weiteren Routing-Lauf
-  starten (Bug 2026-09-26).
+- Ein neues Knotenobjekt kann React Flow zur Neuübernahme und Messung veranlassen.
+  Nur wenn sich dadurch eine in der Routing-Signatur erfasste Geometrie ändert,
+  folgt ein weiterer Routing-Lauf. Die Neuübernahme ist ein Performance-Risiko,
+  aber ohne Browser-Trace kein belegter Auslöser der gemeldeten Oszillation.
 
 Regel: Change-Handler schreiben bei unverändertem Inhalt gar nicht
 (`sameElements` + `affectsStructure` → `return state`, zustand überspringt dann

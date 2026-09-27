@@ -89,10 +89,11 @@ export type GraphSlice = Pick<
  *
  * `items.map((item) => ({ ...item, selected: item.id === id }))` erzeugt für
  * **jedes** Element ein neues Objekt — auch für die, deren Marke schon stimmt.
- * React Flow übernimmt einen Knoten/eine Kante nur bei identischem Objekt
- * unverändert (`adoptUserNodes`/`checkEquality`) und **messt** sonst neu; die
- * Layout-Signatur stößt darüber einen weiteren Routing-Lauf an
- * (Bug 2026-09-26, Rule Q). Deshalb: gleiche Marke ⇒ dasselbe Objekt.
+ * React Flow kann identische Objekte wiederverwenden (`adoptUserNodes` /
+ * `checkEquality`); eine Kopie kann eine Neuübernahme/Messung auslösen. Nur
+ * eine geänderte, geroutete Geometrie ändert die Routing-Signatur. Deshalb:
+ * gleiche Marke ⇒ dasselbe Objekt. Der Identitätsbefund beweist nicht die
+ * Ursache der gemeldeten Browser-Oszillation.
  */
 function withSelection<T extends { id: string; selected?: boolean }>(items: T[], id: string): T[] {
   let changed = false;

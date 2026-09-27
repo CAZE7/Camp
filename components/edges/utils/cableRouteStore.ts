@@ -1,16 +1,28 @@
 import { useRef, useLayoutEffect, useSyncExternalStore } from 'react';
 import { useStore, useStoreApi, type Edge } from '@xyflow/react';
 import {
-  measuredHeight,
-  measuredWidth,
+  nodeHandleBounds,
+  nodeHeight,
   nodeOriginX,
   nodeOriginY,
+  nodeWidth,
   type GeometryNode,
   type RoutableNode,
 } from './nodeGeometry';
-import { nodeObstacleMap } from './pathfinding';
+import { NODE_FALLBACK_HEIGHT, NODE_FALLBACK_WIDTH, nodeObstacleMap } from './pathfinding';
 import { collectRoutableNodes } from './routableNodes';
-import { logRoutingRun, routingDebugEnabled } from './routingDebug';
+import {
+  createRoutingTraceSnapshot,
+  describeRoutingStateChange,
+  detectAlternatingRoutingCycle,
+  logRoutingInputChange,
+  logRoutingResult,
+  routingDebugEnabled,
+  routingDebugGeometrySignature,
+  type RoutingDebugNode,
+  type RoutingTraceSnapshot,
+  type RoutingTraceTriggerReference,
+} from './routingDebug';
 import { validateFinalRouting, type FinalValidationReport } from '../../../lib/routing/finalValidation';
 import type { NodeRect, RoutedEdge } from '../../../lib/routing/invariants';
 import { routeAllCables, type RouteEdgeRef } from './routeAll';
@@ -22,32 +34,79 @@ import type { PathResult } from './pathfinding';
  * Die alte `nodeVersion` war die SUMME aller Positionen und Maße — ein
  * Verschieben um (+10, −10) ließ sie unverändert, und die Kabel blieben
  * auf der alten Trasse (stiller Stale-Pfad). Die Signaturen hier sind
- * vollständig: jede Positions-, Größen- oder Topologie-Änderung ändert
- * den String. Move, Resize, Delete, Connect und Undo/Redo laufen damit
- * über dieselbe, inhaltsbasierte Invalidierung.
+ * vollständig: jede Routing-relevante Positions-, Größen-, Handle-, Typ-,
+ * Topologie- oder Hop-Prioritätsänderung ändert den String. Move, Resize,
+ * Delete, Connect, Undo/Redo und Hop-Änderungen laufen damit über dieselbe,
+ * inhaltsbasierte Invalidierung.
  */
 
-/** Signatur aller Node-Geometrien (absolute Position, gemessene Maße). */
-export function nodeLayoutSignature(nodes: ({ id: string } & GeometryNode)[]): string {
+/** Signatur aller routingrelevanten Node-Eingaben: Geometrie, Handles und Typ. */
+export function nodeLayoutSignature(
+  nodes: readonly ({ id: string; type?: string | null } & GeometryNode)[]
+): string {
   const parts: string[] = [];
   for (const node of nodes) {
     if (!node) continue;
+    const handles = nodeHandleBounds(node);
     parts.push(
-      `${node.id}:${nodeOriginX(node)},${nodeOriginY(node)}` +
-        `:${measuredWidth(node) ?? ''}x${measuredHeight(node) ?? ''}`
+      JSON.stringify([
+        node.id,
+        nodeOriginX(node),
+        nodeOriginY(node),
+        nodeWidth(node, NODE_FALLBACK_WIDTH),
+        nodeHeight(node, NODE_FALLBACK_HEIGHT),
+        node.type ?? null,
+        // Die Listenreihenfolge bleibt erhalten: resolveHandlePoint nimmt
+        // bei fehlender/unerwarteter ID das erste Handle der Gruppe.
+        handles?.source == null
+          ? null
+          : handles.source.map((handle) => [
+              handle.id ?? null,
+              handle.x,
+              handle.y,
+              handle.width,
+              handle.height,
+              handle.position,
+            ]),
+        handles?.target == null
+          ? null
+          : handles.target.map((handle) => [
+              handle.id ?? null,
+              handle.x,
+              handle.y,
+              handle.width,
+              handle.height,
+              handle.position,
+            ]),
+      ]) ?? ''
     );
   }
-  return parts.sort().join('|');
+  return JSON.stringify(parts.sort()) ?? '[]';
 }
 
-/** Signatur der Kantentopologie (id, Enden, Handles). */
-export function edgeTopologySignature(
-  edges: Pick<Edge, 'id' | 'source' | 'target' | 'sourceHandle' | 'targetHandle'>[]
-): string {
-  return edges
-    .map((e) => `${e.id}:${e.source}:${e.target}:${e.sourceHandle ?? ''}:${e.targetHandle ?? ''}`)
-    .sort()
-    .join('|');
+/** Signatur der Topologie und aller von resolveHops gelesenen Edge-Merkmale. */
+type EdgeTopologySignatureInput = Pick<Edge, 'id' | 'source' | 'target' | 'sourceHandle' | 'targetHandle'> & {
+  data?: unknown;
+};
+
+export function edgeTopologySignature(edges: readonly EdgeTopologySignatureInput[]): string {
+  const parts: string[] = [];
+  for (const edge of edges) {
+    const data = edge.data as RouteEdgeRef['data'];
+    parts.push(
+      JSON.stringify([
+        edge.id,
+        edge.source,
+        edge.target,
+        edge.sourceHandle ?? null,
+        edge.targetHandle ?? null,
+        data?.edgeDomain ?? null,
+        data?.crossSection ?? null,
+        data?.locked ?? null,
+      ]) ?? ''
+    );
+  }
+  return JSON.stringify(parts.sort()) ?? '[]';
 }
 
 /**
@@ -102,6 +161,7 @@ export function createThrottledRunner(
 export const ROUTE_THROTTLE_MS = 100;
 
 let current = new Map<string, PathResult>();
+const EMPTY_ROUTES: ReadonlyMap<string, PathResult> = new Map();
 const listeners = new Set<() => void>();
 
 /** Final-Validation-Report des zuletzt gerouteten Plans (AUDIT F-07). */
@@ -148,9 +208,9 @@ export function computeCableRouteFinalValidation(
   edges: readonly RouteEdgeRef[],
   routes: Map<string, PathResult>
 ): FinalValidationReport {
-  // Reine Darstellungs-Knoten sind kein Prüfgegenstand: Der Rahmen des
-  // Hauptstromkreises umschließt die Kern-Bauteile, jedes Kabel, das sie
-  // verlässt, schnitte seinen Rand — und hätte damit als „I1“ gezählt,
+  // Reine Darstellungs-Knoten sind kein Prüfgegenstand: Würde der Rahmen des
+  // Hauptstromkreises ungefiltert übergeben, könnte eine Leitung, die ein
+  // Kern-Bauteil verlässt, den Rahmenrand schneiden und als I1 erscheinen,
   // obwohl kein Kabel durch ein Bauteil läuft (siehe `routableNodes.ts`).
   nodes = collectRoutableNodes(nodes).routable;
   const routed: RoutedEdge[] = [];
@@ -183,6 +243,15 @@ export function useCableRouteFinalValidation(): FinalValidationReport | undefine
   return useSyncExternalStore(subscribeValidation, getCableRouteFinalValidation, () => undefined);
 }
 
+/** Subscribe to the whole immutable route snapshot (e.g. FlowCanvas diagnostics). */
+export function useCableRoutes(): ReadonlyMap<string, PathResult> {
+  return useSyncExternalStore(
+    subscribe,
+    () => current,
+    () => EMPTY_ROUTES
+  );
+}
+
 export function useCableRoute(id: string): PathResult | undefined {
   return useSyncExternalStore(
     subscribe,
@@ -197,54 +266,103 @@ export function useCableRoute(id: string): PathResult | undefined {
  */
 export function CableRouteSync() {
   const store = useStoreApi();
-  // R-9: inhaltsbasierte Signatur (Move/Resize/Delete/Connect/Undo/Redo
-  // ändern sie zuverlässig — die alte Positionssumme tat das nicht).
-  const signature = useStore((s) => {
-    // v12: `nodeLookup` ersetzt `nodeInternals` und liefert InternalNodes —
-    // gemessene Maße unter `measured`, absolute Position unter `internals`.
-    //
-    // Darstellungs-Knoten stehen NICHT in der Signatur: Sie beeinflussen kein
-    // Routing-Ergebnis, dürfen also auch keinen Lauf auslösen. Vorher war der
-    // Rahmen des Hauptstromkreises enthalten — solange React Flow ihn nach
-    // jedem Store-Schreibvorgang neu maß, löste allein das einen zweiten
-    // Routing-Lauf aus („0 → 20 → 0“).
-    const nodes = nodeLayoutSignature(collectRoutableNodes(s.nodeLookup.values()).routable);
-    const edges = edgeTopologySignature(s.edges);
-    return `${nodes}#${edges}`;
-  });
+  // v12: `nodeLookup` enthält gemessene Maße, absolute Position und Handles.
+  // Nur routbare Bauteile bilden die Route-Signatur; separat halten wir die
+  // Presentation-Signatur, aber nur mit aktivierter Diagnose.
+  const signatureState = useStore(
+    (s) => {
+      const { routable } = collectRoutableNodes(s.nodeLookup.values());
+      return {
+        routing: `${nodeLayoutSignature(routable)}#${edgeTopologySignature(s.edges)}`,
+        diagnosticGeometry: routingDebugEnabled()
+          ? routingDebugGeometrySignature(s.nodeLookup.values() as Iterable<RoutingDebugNode>)
+          : '',
+      };
+    },
+    (before, after) =>
+      before.routing === after.routing &&
+      (!routingDebugEnabled() || before.diagnosticGeometry === after.diagnosticGeometry)
+  );
 
-  // R-9: Live-Re-Routing gedrosselt — während des Draggens ändert sich die
-  // Signatur pro Frame; Rechnen UND Veröffentlichen laufen so höchstens
-  // alle ROUTE_THROTTLE_MS plus ein garantiertes trailing nach dem
-  // Loslassen (Endzustand immer aktuell).
+  const previousSignatureRef = useRef<string | undefined>(undefined);
+  const previousTraceSnapshotRef = useRef<RoutingTraceSnapshot | undefined>(undefined);
+  const recentSignatureHashesRef = useRef<string[]>([]);
+  const pendingTriggersRef = useRef<RoutingTraceTriggerReference[]>([]);
+
+  // Diagnostic observation is intentionally separate from route scheduling:
+  // a measured/changed presentation-only node gets a trace record but can
+  // never cancel a pending route or schedule a new one.
+  useLayoutEffect(() => {
+    const state = store.getState();
+    const all = [...state.nodeLookup.values()] as unknown as RoutableNode[];
+    const edgeRefs = state.edges as RouteEdgeRef[];
+    const { routable } = collectRoutableNodes(all);
+    const routingSignature = `${nodeLayoutSignature(routable)}#${edgeTopologySignature(edgeRefs)}`;
+    const routingChanged = previousSignatureRef.current !== routingSignature;
+
+    if (routingDebugEnabled()) {
+      const snapshot = createRoutingTraceSnapshot(all, edgeRefs, routingSignature);
+      const change = describeRoutingStateChange(previousTraceSnapshotRef.current, snapshot);
+      if (
+        previousTraceSnapshotRef.current === undefined ||
+        change.changedNodes.length > 0 ||
+        change.changedEdges.length > 0
+      ) {
+        const cycle = routingChanged
+          ? detectAlternatingRoutingCycle(recentSignatureHashesRef.current, snapshot.routingSignatureHash)
+          : undefined;
+        const trigger = logRoutingInputChange(snapshot, change, cycle);
+        if (routingChanged) {
+          pendingTriggersRef.current.push(trigger);
+          recentSignatureHashesRef.current = [
+            ...recentSignatureHashesRef.current,
+            snapshot.routingSignatureHash,
+          ].slice(-6);
+        }
+        previousTraceSnapshotRef.current = snapshot;
+      }
+    }
+
+    previousSignatureRef.current = routingSignature;
+  }, [signatureState.routing, signatureState.diagnosticGeometry, store]);
+
+  // R-9: Routing input changes use the existing leading + trailing throttle.
+  // Presentation-only state never reaches the scheduling effect.
   const runnerRef = useRef<ReturnType<typeof createThrottledRunner> | null>(null);
-  if (runnerRef.current === null) {
-    runnerRef.current = createThrottledRunner(() => {
+  useLayoutEffect(() => {
+    const runner = createThrottledRunner(() => {
+      const startedAt = Date.now();
       const state = store.getState();
-      // InternalNodes statt `getNodes()` (in v12 nicht mehr am Store):
-      // sie tragen gemessene Größe UND Handle-Rechtecke.
+      // InternalNodes tragen die vom Router konsumierten Maße und Handle-Bounds.
       const all = [...state.nodeLookup.values()] as unknown as RoutableNode[];
-      // Einmal an der Grenze trennen: nur Bauteile routen, Darstellung nur
-      // protokollieren (NEXT_PUBLIC_ROUTING_DEBUG=1, siehe routingDebug.ts).
       const { routable: nodes } = collectRoutableNodes(all);
-      if (routingDebugEnabled()) logRoutingRun(all);
       const edgeRefs = state.edges as RouteEdgeRef[];
+      const routingSignature = `${nodeLayoutSignature(nodes)}#${edgeTopologySignature(edgeRefs)}`;
       const routes = routeAllCables(nodes, edgeRefs);
-      publishCableRoutes(routes);
 
-      // AUDIT F-07: Die finale Routing-Invariante (I1/I2/I3) wird im Rendering
-      // mitgeführt statt nur im CI. `routeAllCables` liefert bereits exakt
-      // die Waypoints, die die UI zeichnet — derselbe Report erscheint damit
-      // sichtbar, solange der Plan Rest-Überdeckungen hat.
-      publishCableRouteFinalValidation(computeCableRouteFinalValidation(nodes, edgeRefs, routes));
+      // AUDIT F-07: Die Validierung prüft genau die Routen, die die UI zeichnet.
+      const report = computeCableRouteFinalValidation(nodes, edgeRefs, routes);
+      publishCableRoutes(routes);
+      publishCableRouteFinalValidation(report);
+
+      if (routingDebugEnabled()) {
+        const snapshot = createRoutingTraceSnapshot(all, edgeRefs, routingSignature);
+        logRoutingResult(snapshot, routes, report, pendingTriggersRef.current, Date.now() - startedAt);
+        pendingTriggersRef.current = [];
+      }
     }, ROUTE_THROTTLE_MS);
-  }
+    runnerRef.current = runner;
+    return () => {
+      runner.cancel();
+      runnerRef.current = null;
+    };
+  }, [store]);
 
   useLayoutEffect(() => {
     const runner = runnerRef.current;
     if (runner) runner.schedule();
     return () => runner?.cancel();
-  }, [signature]);
+  }, [signatureState.routing]);
 
   return null;
 }

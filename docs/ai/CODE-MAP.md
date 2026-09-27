@@ -346,8 +346,10 @@ CAMP
 - **Files:** `lib/id.ts` — `newEntityId()`; Stufen `crypto.randomUUID` → `crypto.getRandomValues`
   → `Math.random` (kein Secure-Context nötig, weil LAN-HTTP-Tests).
 - **Tests:** `lib/id.test.ts`.
-- **Hinweis:** IDs sind **nicht** deterministisch; die Golden-Master-Pipeline normalisiert
-  Auto-Knoten-IDs zu `auto:<index>:<slug>` (`scripts/goldenmaster/pipeline.ts`).
+- **Hinweis:** `newEntityId()` bleibt für interaktive Nutzeraktionen zufällig. AutoWire
+  erzeugt neue Knoten-IDs deterministisch und bindet Auto-Edge-IDs an die Verbindungsidentität;
+  vorhandene IDs bleiben nach Möglichkeit erhalten. Die Golden-Master-Pipeline normalisiert nur
+  neue Knoten-IDs zu `auto:<index>:<slug>` (`scripts/goldenmaster/pipeline.ts`).
 
 ### 5.3 Harnesses & Skripte
 

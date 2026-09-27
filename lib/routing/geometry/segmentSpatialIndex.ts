@@ -62,12 +62,22 @@ export class SegmentSpatialIndex {
    * `segmentsIntersect`.)
    */
   queryRect(rect: Rect): Segment[] {
+    const out: Segment[] = [];
+    this.queryRectInto(rect, out, new Set<Segment>());
+    return out;
+  }
+
+  /**
+   * Reusable-output variant for hot scans. The caller owns `out` and `seen`
+   * and may reuse them for the next rectangle after consuming this result.
+   */
+  queryRectInto(rect: Rect, out: Segment[], seen: Set<Segment>): void {
+    out.length = 0;
+    seen.clear();
     const minCx = Math.floor(rect.x / this.cellSize);
     const maxCx = Math.floor((rect.x + rect.width) / this.cellSize);
     const minCy = Math.floor(rect.y / this.cellSize);
     const maxCy = Math.floor((rect.y + rect.height) / this.cellSize);
-    const out: Segment[] = [];
-    const seen = new Set<Segment>();
     for (let cx = minCx; cx <= maxCx; cx++) {
       for (let cy = minCy; cy <= maxCy; cy++) {
         const bucket = this.cells.get(cellKey(cx, cy));
@@ -79,7 +89,6 @@ export class SegmentSpatialIndex {
         }
       }
     }
-    return out;
   }
 
   /**

@@ -5,13 +5,13 @@ import type { Node } from '@xyflow/react';
  *
  * ## Warum das nicht inline im Render passiert (Bug 2026-09-26)
  *
- * React Flow 12 übernimmt eine Node unverändert in seinen internen Bestand,
- * wenn das Objekt identisch geblieben ist (`adoptUserNodes`, `checkEquality`).
- * Ein `nodes.map((node) => ({ ...node, className }))` erzeugt bei jedem
- * Aufruf neue Objekte — React Flow baut dann für **jeden** Knoten den
- * internen Knoten neu auf (`internals.userNode`, Position, zIndex). Auf
- * Touch-Geräten betraf das wegen `dragHandle` jeden Knoten, und der
- * Neuaufbau ist der Auslöser der Re-Mess-/Routing-Schleife.
+ * React Flow 12 kann eine Node intern wiederverwenden, wenn das Objekt
+ * identisch geblieben ist (`adoptUserNodes`, `checkEquality`). Ein
+ * `nodes.map((node) => ({ ...node, className }))` erzeugt bei jedem Aufruf neue
+ * Objekte und kann eine Neuübernahme bewirken. Ob der ResizeObserver danach
+ * andere Maße liefert und damit die Routing-Signatur ändert, hängt von der
+ * Laufzeitgeometrie ab; ein Zusammenhang mit der gemeldeten Oszillation ist
+ * ohne Browser-Trace nicht belegt.
  *
  * Der Cache hier macht aus „gleicher Knoten + gleiche Flags“ wieder
  * „dasselbe Objekt“. Er hängt an der Objekt-Identität des Eingangs

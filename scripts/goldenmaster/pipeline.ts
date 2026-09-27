@@ -20,10 +20,12 @@ import type { GoldenPlanInput } from './plans';
  * identisch bleiben oder **bewusst besser** werden (mit Begründung im PR und
  * im Change Ledger `docs/ARCHITECTURE-CHANGES.md`).
  *
- * Determinismus: Die einzige Zufallsquelle der Pipeline sind die IDs
- * automatisch erzeugter Knoten (`newEntityId()`); sie werden hier auf stabile
- * Namen (`auto:<index>:<label-slug>`) normalisiert, in Erzeugungsreihenfolge.
- * Auto-Kanten-IDs (`e-auto-<n>`) sind bereits deterministisch.
+ * Determinismus: AutoWire vergibt neue Knoten-IDs deterministisch und neue
+ * Auto-Edge-IDs in festen Phasen mit kanonisch sortierten Node-Kategorien;
+ * vorhandene Edge-IDs werden über die Verbindungsidentität erhalten. Die Pipeline normalisiert die
+ * Knoten-IDs zusätzlich auf Fixture-Namen (`auto:<index>:<label-slug>`), damit
+ * Golden-Master-Diffs nicht von der konkreten Produktions-ID-Namenspolitik
+ * abhängen. Auto-Edge-IDs bleiben Teil des Golden-Master-Ergebnisses.
  */
 
 export type GoldenNode = {
@@ -79,7 +81,7 @@ const slug = (value: unknown): string =>
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
 
-/** Ersetzt zufällige IDs auto-erzeugter Knoten durch stabile Namen. */
+/** Normalisiert AutoWire-Knoten-IDs auf stabile Golden-Master-Namen. */
 function normalizeAutoIds(
   inputNodeIds: Set<string>,
   nodes: Node[],

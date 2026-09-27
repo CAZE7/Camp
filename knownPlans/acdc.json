@@ -479,7 +479,7 @@
     },
     "e-auto-10": {
       "bends": 2,
-      "crossings": 1,
+      "crossings": 0,
       "length": 488,
       "usedSearch": "astar",
       "waypoints": [
@@ -503,7 +503,7 @@
     },
     "e-auto-11": {
       "bends": 6,
-      "crossings": 2,
+      "crossings": 1,
       "length": 832,
       "usedSearch": "astar",
       "waypoints": [
@@ -664,7 +664,7 @@
     "e-auto-8": {
       "bends": 6,
       "crossings": 2,
-      "length": 1287.2,
+      "length": 1303.2,
       "usedSearch": "astar",
       "waypoints": [
         {
@@ -681,11 +681,11 @@
         },
         {
           "x": 286,
-          "y": 46
+          "y": 38
         },
         {
           "x": 669,
-          "y": 46
+          "y": 38
         },
         {
           "x": 669,
@@ -751,8 +751,8 @@
     },
     "e-auto-ac-13": {
       "bends": 4,
-      "crossings": 3,
-      "length": 608,
+      "crossings": 1,
+      "length": 532,
       "usedSearch": "astar",
       "waypoints": [
         {
@@ -760,19 +760,19 @@
           "y": 96
         },
         {
-          "x": 368,
+          "x": 366,
           "y": 96
         },
         {
-          "x": 368,
-          "y": 208
+          "x": 366,
+          "y": 46
         },
         {
-          "x": 656,
-          "y": 208
+          "x": 653,
+          "y": 46
         },
         {
-          "x": 656,
+          "x": 653,
           "y": 120
         },
         {

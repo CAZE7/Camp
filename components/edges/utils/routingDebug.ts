@@ -1,41 +1,41 @@
 import { isPresentationOnlyNode, type PresentationAwareNode } from './routableNodes';
-import { nodeGeometrySnapshot, type GeometryNode, type NodeGeometrySnapshot } from './nodeGeometry';
+import {
+  nodeGeometrySnapshot,
+  nodeGeometryTraceSnapshot,
+  nodeHeight,
+  nodeWidth,
+  type GeometryNode,
+  type NodeGeometrySnapshot,
+  type NodeGeometryTraceSnapshot,
+} from './nodeGeometry';
+import type { FinalValidationReport } from '../../../lib/routing/finalValidation';
+import { NODE_FALLBACK_HEIGHT, NODE_FALLBACK_WIDTH, type PathResult } from './pathfinding';
 
 /**
- * Diagnose des Live-Routings („Routing springt zwischen 0 und 20“).
+ * Opt-in Diagnose des Live-Routings. Standardmäßig aus, da große Pläne
+ * umfangreiche Mess- und Routendaten erzeugen können.
  *
- * Standardmäßig **aus**: Der Router läuft pro Drag-Frame-Serie dutzende
- * Male, eine unbedingte Ausgabe würde die Konsole fluten und im
- * Produktivbetrieb Kosten ohne Nutzen erzeugen.
+ * Aktivierung beim Start:
+ * `NEXT_PUBLIC_ROUTING_DEBUG=1 npm run dev`
  *
- * Einschalten:
+ * Aktivierung in der Browser-Konsole vor einer Änderung:
+ * `globalThis.__PLANNER_ROUTING_DEBUG__ = true`
  *
- * ```bash
- * NEXT_PUBLIC_ROUTING_DEBUG=1 npm run dev
- * ```
- *
- * oder zur Laufzeit (Browser-Konsole, vor dem nächsten Routing-Lauf):
- *
- * ```js
- * globalThis.__PLANNER_ROUTING_DEBUG__ = true;
- * ```
- *
- * Ausgegeben wird pro Lauf: Anzahl der gerouteten und der ausgeschlossenen
- * (reinen Darstellungs-)Knoten, sowie die Änderung gegenüber dem vorherigen
- * Lauf (`x,y` und `Breite×Höhe` je geänderter Knoten-ID). Damit ist die
- * Frage „warum läuft das Routing schon wieder?“ direkt beantwortbar — und
- * ein Wechsel zwischen „gemessen“ und „nicht gemessen“ ist als `—` sichtbar.
- *
- * `console.warn` ist hier bewusst gewählt: Die ESLint-Konfiguration des
- * Projekts erlaubt ausschließlich `warn`/`error`, und ein Diagnosekanal,
- * den man erst umkonfigurieren muss, wird nicht benutzt.
+ * Für automatisierte Laufzeit-Traces kann zusätzlich vor dem Laden der Seite
+ * `globalThis.__PLANNER_ROUTING_TRACE__ = []` gesetzt werden. Der Ringpuffer
+ * enthält strukturierte Input-, Presentation-only- und Routing-Ergebnis-Events.
  */
 
 const ENV_FLAG = process.env.NEXT_PUBLIC_ROUTING_DEBUG;
+const MAX_TRACE_EVENTS = 200;
 
 export const ROUTING_DEBUG_GLOBAL = '__PLANNER_ROUTING_DEBUG__';
+export const ROUTING_TRACE_GLOBAL = '__PLANNER_ROUTING_TRACE__';
 
-type DebugGlobal = { [ROUTING_DEBUG_GLOBAL]?: unknown };
+type DebugGlobal = {
+  [ROUTING_DEBUG_GLOBAL]?: unknown;
+  [ROUTING_TRACE_GLOBAL]?: unknown;
+};
 
 /** Ist die Diagnose aktiv (Build-Zeit-Flag oder Laufzeit-Global)? */
 export function routingDebugEnabled(): boolean {
@@ -45,37 +45,34 @@ export function routingDebugEnabled(): boolean {
 
 /** Node-Form, die die Diagnose lesen kann (RF-Node, InternalNode, Fixture). */
 export type RoutingDebugNode = PresentationAwareNode & { id: string } & GeometryNode;
-
 export type RoutingNodeGeometry = NodeGeometrySnapshot;
 
 /** Geometrie eines Knotens in der Form, die der Router liest. */
-export const routingNodeGeometry = (node: RoutingDebugNode): RoutingNodeGeometry =>
+export const routingNodeGeometry = (node: RoutingDebugNode): NodeGeometrySnapshot =>
   nodeGeometrySnapshot(node);
 
-const formatGeometry = (geometry: RoutingNodeGeometry): string =>
+const formatGeometry = (geometry: NodeGeometrySnapshot): string =>
   `${geometry.x},${geometry.y}:${geometry.width ?? '—'}×${geometry.height ?? '—'}`;
 
 let runNumber = 0;
 let previous = new Map<string, string>();
+let traceSequence = 0;
 
 /** Zähler und Vergleichsbasis zurücksetzen (Tests, Planwechsel). */
 export function resetRoutingDebug(): void {
   runNumber = 0;
   previous = new Map();
+  traceSequence = 0;
 }
 
 export type RoutingDebugSnapshot = {
-  routable: RoutingNodeGeometry[];
-  presentation: RoutingNodeGeometry[];
+  routable: NodeGeometrySnapshot[];
+  presentation: NodeGeometrySnapshot[];
 };
 
 /**
  * Formatiert einen Lauf als Textzeilen — reine Funktion, damit sie ohne
  * Konsole getestet werden kann.
- *
- * Erste Zeile: Anzahl + Dauer-Kontext. Zweite Zeile: die Änderung
- * gegenüber dem vorherigen Lauf (nur geänderte IDs, alphabetisch). Ab der
- * dritten: alle Routing-relevanten Knoten, danach die ausgeschlossenen.
  */
 export function formatRoutingDebugRun(
   run: number,
@@ -125,8 +122,8 @@ export function formatRoutingDebugRun(
  * genau die Knoten, die sich seither geändert haben.
  */
 export function logRoutingRun(nodes: readonly RoutingDebugNode[]): void {
-  const routable: RoutingNodeGeometry[] = [];
-  const presentation: RoutingNodeGeometry[] = [];
+  const routable: NodeGeometrySnapshot[] = [];
+  const presentation: NodeGeometrySnapshot[] = [];
   for (const node of nodes) {
     const geometry = routingNodeGeometry(node);
     if (isPresentationOnlyNode(node)) presentation.push(geometry);
@@ -137,4 +134,312 @@ export function logRoutingRun(nodes: readonly RoutingDebugNode[]): void {
   const lines = formatRoutingDebugRun(runNumber, { routable, presentation }, previous);
   previous = new Map([...routable, ...presentation].map((node) => [node.id, formatGeometry(node)]));
   for (const line of lines) console.warn(line);
+}
+
+export type RoutingTraceEdgeInput = {
+  id: string;
+  source: string;
+  target: string;
+  sourceHandle?: string | null;
+  targetHandle?: string | null;
+  data?: unknown;
+};
+
+export type RoutingTraceNode = NodeGeometryTraceSnapshot & { presentationOnly: boolean };
+
+export type RoutingTraceEdge = {
+  id: string;
+  source: string;
+  target: string;
+  sourceHandle: string | null;
+  targetHandle: string | null;
+  edgeDomain: string | null;
+  crossSection: number | null;
+  locked: boolean | null;
+};
+
+export type RoutingTraceSnapshot = {
+  routingSignature: string;
+  routingSignatureHash: string;
+  nodeHash: string;
+  presentationHash: string;
+  edgeHash: string;
+  graphHash: string;
+  routableNodes: RoutingTraceNode[];
+  presentationNodes: RoutingTraceNode[];
+  edges: RoutingTraceEdge[];
+};
+
+export type RoutingTraceEntityChange<T> = {
+  id: string;
+  change: 'added' | 'removed' | 'updated';
+  fields: string[];
+  before?: T;
+  after?: T;
+};
+
+export type RoutingTraceStateChange = {
+  kind: 'initial' | 'routing-input-change' | 'presentation-only-change' | 'non-routing-geometry-change';
+  routingInputChanged: boolean;
+  presentationOnlyChanged: boolean;
+  previousSignatureHash: string | null;
+  changedNodes: RoutingTraceEntityChange<RoutingTraceNode>[];
+  changedEdges: RoutingTraceEntityChange<RoutingTraceEdge>[];
+};
+
+export type RoutingTraceCycle = {
+  period: 2;
+  signatureHashes: [string, string];
+};
+
+export type RoutingTraceTriggerReference = {
+  sequence: number;
+  timestamp: string;
+  kind: RoutingTraceStateChange['kind'];
+  routingInputChanged: boolean;
+  changedNodeIds: string[];
+  changedEdgeIds: string[];
+  routingSignatureHash: string;
+};
+
+function hashText(text: string): string {
+  // FNV-1a is a compact diagnostic fingerprint, not a security hash.
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return (hash >>> 0).toString(16).padStart(8, '0');
+}
+
+function hashValue(value: unknown): string {
+  return hashText(JSON.stringify(value) ?? 'undefined');
+}
+
+function traceNode(node: RoutingDebugNode): RoutingTraceNode {
+  return {
+    ...nodeGeometryTraceSnapshot(node, {
+      width: nodeWidth(node, NODE_FALLBACK_WIDTH),
+      height: nodeHeight(node, NODE_FALLBACK_HEIGHT),
+    }),
+    presentationOnly: isPresentationOnlyNode(node),
+  };
+}
+
+/** Raw declared/measured geometry signature used only when tracing is enabled. */
+export function routingDebugGeometrySignature(nodes: Iterable<RoutingDebugNode>): string {
+  return JSON.stringify(byId([...nodes].map(traceNode)));
+}
+
+function traceEdge(edge: RoutingTraceEdgeInput): RoutingTraceEdge {
+  const data =
+    typeof edge.data === 'object' && edge.data !== null ? (edge.data as Record<string, unknown>) : undefined;
+  return {
+    id: edge.id,
+    source: edge.source,
+    target: edge.target,
+    sourceHandle: edge.sourceHandle ?? null,
+    targetHandle: edge.targetHandle ?? null,
+    edgeDomain: typeof data?.edgeDomain === 'string' ? data.edgeDomain : null,
+    crossSection: typeof data?.crossSection === 'number' ? data.crossSection : null,
+    locked: typeof data?.locked === 'boolean' ? data.locked : null,
+  };
+}
+
+const byId = <T extends { id: string }>(items: readonly T[]): T[] =>
+  [...items].sort((a, b) => a.id.localeCompare(b.id));
+
+/** Creates a complete, deterministic snapshot of the inputs and their hashes. */
+export function createRoutingTraceSnapshot(
+  nodes: readonly RoutingDebugNode[],
+  edges: readonly RoutingTraceEdgeInput[],
+  routingSignature: string
+): RoutingTraceSnapshot {
+  const routableNodes: RoutingTraceNode[] = [];
+  const presentationNodes: RoutingTraceNode[] = [];
+  for (const node of nodes) {
+    const snapshot = traceNode(node);
+    if (snapshot.presentationOnly) presentationNodes.push(snapshot);
+    else routableNodes.push(snapshot);
+  }
+
+  const routable = byId(routableNodes);
+  const presentation = byId(presentationNodes);
+  const edgeSnapshots = byId(edges.map(traceEdge));
+  const nodeHash = hashValue(routable);
+  const presentationHash = hashValue(presentation);
+  const edgeHash = hashValue(edgeSnapshots);
+
+  return {
+    routingSignature,
+    routingSignatureHash: hashText(routingSignature),
+    nodeHash,
+    presentationHash,
+    edgeHash,
+    graphHash: hashValue({ routable, edges: edgeSnapshots }),
+    routableNodes: routable,
+    presentationNodes: presentation,
+    edges: edgeSnapshots,
+  };
+}
+
+function changedFields<T extends object>(before: T | undefined, after: T | undefined): string[] {
+  if (!before || !after) return ['*'];
+  const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
+  return [...keys]
+    .filter((key) => JSON.stringify(before[key as keyof T]) !== JSON.stringify(after[key as keyof T]))
+    .sort((a, b) => a.localeCompare(b));
+}
+
+function diffById<T extends { id: string }>(
+  before: readonly T[],
+  after: readonly T[]
+): RoutingTraceEntityChange<T>[] {
+  const beforeById = new Map(before.map((item) => [item.id, item]));
+  const afterById = new Map(after.map((item) => [item.id, item]));
+  const ids = [...new Set([...beforeById.keys(), ...afterById.keys()])].sort((a, b) => a.localeCompare(b));
+  const changes: RoutingTraceEntityChange<T>[] = [];
+
+  for (const id of ids) {
+    const prior = beforeById.get(id);
+    const next = afterById.get(id);
+    if (!prior && next) changes.push({ id, change: 'added', fields: ['*'], after: next });
+    else if (prior && !next) changes.push({ id, change: 'removed', fields: ['*'], before: prior });
+    else if (prior && next) {
+      const fields = changedFields(prior, next);
+      if (fields.length > 0) changes.push({ id, change: 'updated', fields, before: prior, after: next });
+    }
+  }
+  return changes;
+}
+
+/** Explains which routing-visible state changes triggered a new signature. */
+export function describeRoutingStateChange(
+  before: RoutingTraceSnapshot | undefined,
+  after: RoutingTraceSnapshot
+): RoutingTraceStateChange {
+  const changedNodes = diffById(
+    [...(before?.routableNodes ?? []), ...(before?.presentationNodes ?? [])],
+    [...after.routableNodes, ...after.presentationNodes]
+  );
+  const changedEdges = diffById(before?.edges ?? [], after.edges);
+  const routingInputChanged = before === undefined || before.routingSignature !== after.routingSignature;
+  const presentationOnlyChanged = before === undefined || before.presentationHash !== after.presentationHash;
+
+  const anyGeometryChanged = changedNodes.length > 0 || changedEdges.length > 0;
+
+  return {
+    kind:
+      before === undefined
+        ? 'initial'
+        : routingInputChanged
+          ? 'routing-input-change'
+          : presentationOnlyChanged
+            ? 'presentation-only-change'
+            : 'non-routing-geometry-change',
+    routingInputChanged,
+    presentationOnlyChanged,
+    previousSignatureHash: before?.routingSignatureHash ?? null,
+    changedNodes: anyGeometryChanged ? changedNodes : [],
+    changedEdges,
+  };
+}
+
+/** Detects an A → B → A routing-input oscillation in observed signatures. */
+export function detectAlternatingRoutingCycle(
+  history: readonly string[],
+  currentSignatureHash: string
+): RoutingTraceCycle | undefined {
+  const previous = history.at(-1);
+  const alternating = history.at(-2);
+  if (
+    !previous ||
+    !alternating ||
+    previous === currentSignatureHash ||
+    alternating !== currentSignatureHash
+  ) {
+    return undefined;
+  }
+  return { period: 2, signatureHashes: [alternating, previous] };
+}
+
+function emitTrace(event: Record<string, unknown>): void {
+  const global = globalThis as DebugGlobal;
+  const rawBuffer = global[ROUTING_TRACE_GLOBAL];
+  if (Array.isArray(rawBuffer)) {
+    const buffer: unknown[] = rawBuffer;
+    buffer.push(event);
+    if (buffer.length > MAX_TRACE_EVENTS) buffer.splice(0, buffer.length - MAX_TRACE_EVENTS);
+  }
+  console.warn(`[ROUTING_TRACE] ${JSON.stringify(event)}`);
+}
+
+/** Logs each signature transition and returns a compact link for the route event. */
+export function logRoutingInputChange(
+  snapshot: RoutingTraceSnapshot,
+  change: RoutingTraceStateChange,
+  cycle?: RoutingTraceCycle
+): RoutingTraceTriggerReference {
+  const sequence = ++traceSequence;
+  const timestamp = new Date().toISOString();
+  const reference: RoutingTraceTriggerReference = {
+    sequence,
+    timestamp,
+    kind: change.kind,
+    routingInputChanged: change.routingInputChanged,
+    changedNodeIds: change.changedNodes.map((item) => item.id),
+    changedEdgeIds: change.changedEdges.map((item) => item.id),
+    routingSignatureHash: snapshot.routingSignatureHash,
+  };
+
+  emitTrace({
+    event: 'input-change',
+    epochMs: Date.now(),
+    ...reference,
+    triggerStateChange: change,
+    ...(cycle ? { detectedCycle: cycle } : {}),
+    input: snapshot,
+  });
+  return reference;
+}
+
+/** Logs the route geometry and exact final-validation outcome for an input. */
+export function logRoutingResult(
+  snapshot: RoutingTraceSnapshot,
+  routes: ReadonlyMap<string, PathResult>,
+  report: FinalValidationReport,
+  triggers: readonly RoutingTraceTriggerReference[],
+  runtimeMs: number
+): void {
+  const routeGeometry = [...routes.entries()]
+    .map(([id, route]) => ({ id, waypoints: route.waypoints }))
+    .sort((a, b) => a.id.localeCompare(b.id));
+  const violationCount =
+    report.counts.edgeNodeCollisions + report.counts.edgeEdgeOverlaps + report.counts.clearanceViolations;
+
+  emitTrace({
+    event: 'route-result',
+    epochMs: Date.now(),
+    timestamp: new Date().toISOString(),
+    routingSignature: snapshot.routingSignature,
+    routingSignatureHash: snapshot.routingSignatureHash,
+    nodeHash: snapshot.nodeHash,
+    edgeHash: snapshot.edgeHash,
+    graphHash: snapshot.graphHash,
+    routeHash: hashValue(routeGeometry),
+    cableCount: routes.size,
+    violationCount,
+    validationStatus: report.status,
+    validationCounts: report.counts,
+    tightMarginRoutes: report.tightMarginRoutes ?? 0,
+    edgeCount: report.edgeCount,
+    violations: report.violations.map(({ invariant, edgeId, otherId, detail }) => ({
+      invariant,
+      edgeId,
+      otherId: otherId ?? null,
+      detail,
+    })),
+    triggerStateChanges: triggers,
+    runtimeMs,
+  });
 }

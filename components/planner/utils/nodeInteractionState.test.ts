@@ -8,11 +8,10 @@ import {
 } from './nodeInteractionState';
 
 /**
- * Regression (Bug 2026-09-26): `interactiveNodes` erzeugte bei jedem Aufruf
- * neue Node-Objekte (`{ ...node, className }`). React Flow 12 übernimmt einen
- * Knoten nur bei identischem Objekt unverändert in seinen Bestand
- * (`adoptUserNodes`, `checkEquality`) — sonst baut es den internen Knoten neu
- * auf und misst neu. Genau dieser Neuaufbau trieb die Re-Routing-Schleife.
+ * Statische Identitäts-Regression: `interactiveNodes` soll bei unveränderten
+ * Flags dieselben Node-Objekte liefern. Eine Kopie kann React Flow zu einer
+ * Neuübernahme veranlassen; eine Änderung der Routing-Geometrie ist davon
+ * abhängig und ohne Browser-Trace nicht als Oszillationsursache belegt.
  */
 
 const makeNode = (id = 'load'): Node => ({

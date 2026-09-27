@@ -113,8 +113,9 @@ function sanitizeNodeData<T extends Node>(node: T): T {
  * Messwert behauptet beim nächsten Laden eine Größe, die in dieser Sitzung
  * nie gemessen wurde: `fitView`/`translateExtent` starten mit dem alten Kasten,
  * und bis der ResizeObserver korrigiert, routet der A*-Pass um eine Box, die es
- * so nicht (mehr) gibt — dieselbe Fehlerklasse wie der Darstellungs-Rahmen, der
- * als „nicht gemessen“ zwischen zwei Hindernisbildern pendelte.
+ * so nicht (mehr) gibt. Das ist ein eigenständiges Risiko für den ersten
+ * Routing-Pass nach dem Laden; ohne Browser-Trace ist es kein Beleg für die
+ * Ursache der separat gemeldeten Oszillation.
  *
  * Deshalb gilt: Messwerte werden beim Speichern entfernt und beim Laden
  * verworfen; sie entstehen immer neu aus der DOM-Messung. `initialWidth`/

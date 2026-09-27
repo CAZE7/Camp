@@ -41,9 +41,14 @@ Projekte (Viewports) aus `playwright.config.ts`:
 - **Isolierte Kontexte.** Playwright-Standard; ein Test belegt zusätzlich
   explizit, dass ein frischer Kontext mit leerem `localStorage` startet.
 - **Retry nur zur Diagnose.** Lokal `retries: 0`, in CI `retries: 1`.
-- **Traces und Failure-Screenshots nur als Artefakt** bei Fehlschlag. Der
-  absichtliche Pixel-Vergleich lebt ausschließlich in `tests/e2e/visual.spec.ts`
-  und nutzt die Baselines aus `tests/e2e/visual.spec.ts-snapshots/`.
+- **Traces und Failure-Screenshots** werden bei Fehlschlag als Artefakt
+  gesichert. Zusätzlich hängt `tests/e2e/routing-stability.spec.ts` einen
+  strukturierten Routing-Trace als JSON an jeden ausgeführten Test. Die
+  bestehenden Workflow-Dateien bleiben in diesem PR unverändert; CI-Artefakte
+  werden daher weiterhin nur bei Fehlschlag hochgeladen, nicht nach Erfolg.
+  Der absichtliche Pixel-Vergleich lebt ausschließlich in
+  `tests/e2e/visual.spec.ts` und nutzt die Baselines aus
+  `tests/e2e/visual.spec.ts-snapshots/`.
 
 ## 4. Ausführen
 
