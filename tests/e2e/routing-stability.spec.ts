@@ -7,82 +7,12 @@ const plan = complexPlan.autoWire as {
   edges: Array<Record<string, unknown>>;
 };
 
-type TraceEntityChange = {
-  id?: string;
-  change?: string;
-  fields?: string[];
-  before?: Record<string, unknown>;
-  after?: Record<string, unknown>;
-};
-
 type TraceEvent = Record<string, unknown> & {
   event?: string;
   epochMs?: number;
   cableCount?: number;
-  routingSignatureHash?: string;
-  nodeHash?: string;
-  edgeHash?: string;
-  graphHash?: string;
-  routeHash?: string;
-  runtimeMs?: number;
-  triggerStateChange?: {
-    kind?: string;
-    routingInputChanged?: boolean;
-    changedNodes?: TraceEntityChange[];
-    changedEdges?: TraceEntityChange[];
-  };
-  triggerStateChanges?: Array<Record<string, unknown>>;
+  triggerStateChange?: { kind?: string; routingInputChanged?: boolean };
 };
-
-function compactGeometry(value: Record<string, unknown> | undefined): unknown {
-  if (!value) return undefined;
-  return {
-    type: value.type,
-    position: value.position,
-    absolutePosition: value.absolutePosition,
-    dimensions: value.dimensions,
-    declared: value.declared,
-    measured: value.measured,
-    handles: value.handles,
-  };
-}
-
-function summarizeRoutingTrace(events: TraceEvent[]): unknown[] {
-  return events.map((event) => {
-    if (event.event === 'input-change') {
-      const change = event.triggerStateChange;
-      return {
-        event: event.event,
-        epochMs: event.epochMs,
-        kind: change?.kind,
-        routingInputChanged: change?.routingInputChanged,
-        routingSignatureHash: event.routingSignatureHash,
-        changedNodes: change?.changedNodes?.map((node) => ({
-          id: node.id,
-          change: node.change,
-          fields: node.fields,
-          before: compactGeometry(node.before),
-          after: compactGeometry(node.after),
-        })),
-        changedEdges: change?.changedEdges,
-      };
-    }
-    if (event.event === 'route-result') {
-      return {
-        event: event.event,
-        epochMs: event.epochMs,
-        routingSignatureHash: event.routingSignatureHash,
-        nodeHash: event.nodeHash,
-        edgeHash: event.edgeHash,
-        graphHash: event.graphHash,
-        routeHash: event.routeHash,
-        triggerStateChanges: event.triggerStateChanges,
-        runtimeMs: event.runtimeMs,
-      };
-    }
-    return { event: event.event, epochMs: event.epochMs };
-  });
-}
 
 async function readRoutingTrace(page: Page): Promise<TraceEvent[]> {
   return page.evaluate(() => {
@@ -162,7 +92,8 @@ async function verifyPresentationInteractions(page: Page): Promise<void> {
   expect(beforePresentation).toBeGreaterThan(0);
 
   const displayOptions = page.getByTestId('canvas-display-options');
-  if (await displayOptions.isVisible()) await displayOptions.click();
+  const hasCompactDisplayOptions = await displayOptions.isVisible();
+  if (hasCompactDisplayOptions) await displayOptions.click();
   const backboneToggle = page.getByRole('button', { name: 'Hauptstromkreis' });
   await expect(backboneToggle).toBeVisible();
 
@@ -186,18 +117,23 @@ async function verifyPresentationInteractions(page: Page): Promise<void> {
   await waitForRoutingTraceToSettle(page);
   expect(await routeResultCount(page)).toBe(beforePresentation);
 
-  // Selecting and visually tracing a real component can replace presentation
+  // The compact mobile/tablet display controls stay open after a toggle. Close
+  // them before selecting a node so the click cannot hit an overlapping
+  // detail-level button instead of the node.
+  if (hasCompactDisplayOptions) {
+    await page.getByRole('button', { name: 'Ansichtsoptionen schließen' }).click();
+    await expect(displayOptions).toHaveAttribute('aria-expanded', 'false');
+  }
+  await expect(page.locator('.planner-canvas')).toHaveClass(/planner-detail-detail/);
+
+  // Selecting and visually tracing a real component may replace presentation
   // wrappers, but must not cause the planner to recalculate cable geometry.
-  const traceLengthBeforeSelection = (await readRoutingTrace(page)).length;
-  await page.locator('.react-flow__node[data-id="battery-1"]').click({ force: true });
+  const batteryNode = page.locator('.react-flow__node[data-id="battery-1"]');
+  await batteryNode.click();
+  await expect(page.locator('.react-flow__node[data-id="battery-1"].selected')).toHaveCount(1);
+  await expect(page.locator('.planner-canvas')).toHaveClass(/planner-detail-detail/);
   await waitForRoutingTraceToSettle(page);
-  trace = await readRoutingTrace(page);
-  const selectionTrace = trace.slice(traceLengthBeforeSelection);
-  const routeResultsAfterSelection = trace.filter((event) => event.event === 'route-result').length;
-  expect(
-    routeResultsAfterSelection,
-    `Routing trace after selecting battery-1:\n${JSON.stringify(summarizeRoutingTrace(selectionTrace), null, 2)}`
-  ).toBe(beforePresentation);
+  expect(await routeResultCount(page)).toBe(beforePresentation);
 
   const pane = page.locator('.react-flow__pane');
   const bounds = await pane.boundingBox();
