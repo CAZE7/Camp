@@ -1408,6 +1408,12 @@ PREFER_EDGES`) und `LAYOUT_TOKENS.rankSpacing` ist der Seed:
    Test-Ratchet für beide Router-Pässe existierte bereits
    (`lib/routing/invariants.test.ts`).
 
+3. **Die Kabellänge ist messbar.** `npm run routing:audit` zeigt je Plan `Kabelweg` und
+   `laengste` Leitung, `scripts/routing/cableLength.test.ts` hält die ABSOLUTE Länge je
+   Referenzplan als Ratchet (plus Positionstest ±15 %; gegen die alte Platzierung fällt er).
+   Vorher maß nur `routingQuality.ts` — und zwar den Legacy-Router, weshalb der Nutzerfall
+   („alles grün bei 14.752 px“) durch jedes Gate fiel.
+
 Nachweis: `lib/planner/layout-engine/rankLayers.test.ts` (4 Tests:
 Rang-Tabelle, Einheit mit dem Aufräumen, x-Seed + Optionen im ELK-Graphen,
 echtes ELK hält Quelle < Speicher < Wechselrichter < Verbraucher),
@@ -1429,3 +1435,56 @@ Gate: `npx vitest run` → 171 Testdateien / 2364 Tests, `npm run typecheck`,
 Rang-Seed wirkt ausschließlich im ELK-Platzierungspfad; die Referenzpläne
 laufen ohne ELK. Beide Suiten sind Teil des vollen Laufs
 (`npm run test:goldenmaster` 13/13, `npm run test:regression` 50/50).
+
+### 2026-09-27 — Siebzehnte Fassung: Kantenkosten kommen aus dem Kostenmodell (ROUTE-002, Teil 1)
+
+Die beiden Nutzer-Prioritäten P1 (Rollen-Schichten, Kreuzungs-Ratchet) sind in
+der Sechzehnten Fassung erledigt. In derselben Scheibe ist der erste Teil des
+P2-Punkts `ROUTE-002` gefolgt: Der Produktivrouter optimiert „knick- und
+kreuzungsarm“ — die Preise dafür standen aber als lokale Konstanten in
+`components/edges/utils/pathfinding.ts` (`BEND_COST = 80`, `U_TURN_COST = 400`),
+während nur die Kreuzung (`COST_WEIGHTS.crossing = 120`) aus dem generierten
+Kostenmodell kam.
+
+1. **Das Modell ist die Quelle.** `CostWeights` hat jetzt `bend` und `uTurn`,
+   `COST_FACTORS` die Ableitungen `bendPerLaneGrid: 5` und
+   `uTurnPerLaneGrid: 25`. `pathfinding.ts` liest sie:
+   `BEND_COST = COST_WEIGHTS.bend`, `U_TURN_COST = COST_WEIGHTS.uTurn`. Die
+   Werte sind **wertgleich** zu den bisherigen Hardcodes (5 × 16 = 80,
+   25 × 16 = 400; die Kehre bleibt so teuer wie eine Clearance-Verletzung) —
+   Golden Master und Regression bleiben deshalb unberührt, **kein Recapture**.
+   Damit ist auch der ROUTE-004-Rest „`BEND_COST`/`U_TURN_COST` außerhalb der
+   Tokens“ geschlossen; offen bleiben nur `MAX_EXPANSIONS` (Suchbudget) und
+   `MAX_ACCEPTABLE_CROSSINGS` (Abbruchschwelle) — beides keine Preise.
+
+2. **Die verbleibende Hälfte ist vermessen, nicht vergessen.** `segmentExtraCost`
+   und `preferredLaneBonus` haben weiterhin keinen Produktiv-Konsumenten. Die
+   Messung über die sechs Referenzpläne (Produktivpfad, geroutete Trassen,
+   Paare **verschiedener** Kanten) zeigt, warum ein Anschließen kein Stecker
+   ist:
+
+   | Klasse                        | Paare | Bedeutung im Bestand                                   |
+   | ----------------------------- | ----- | ------------------------------------------------------ |
+   | `hard` (kollinear)            | 47    | **alle** Port-Bündel-Ausnahme (ADR 0009), echte I2 = 0 |
+   | `weighted` (Touch/Clearance)  | 82    | Port-Nähe, kein Verstoß                                |
+   | `nearby` (< Clearance + Lane) | 121   | gewollte Bündel-Lanes (16-px-Raster)                   |
+   | `soft` (Kreuzung)             | 48    | exakt die Audit-Kreuzungen (2/5/2/2/8/29)              |
+
+   Ein blindes `hard ⇒ Infinity` würde 47 legitime gemeinsame Stubs als
+   unmöglich verwerfen; `nearbyLane` (16 px je Paar) würde gegen die bewusst
+   gebündelten Trassen drücken. Vor dem Produktiv-Einsatz muss die
+   Stub-Kenntnis des Nachbarn in das Modell (die Ausnahme lebt heute in
+   `checkEdgeEdgeOverlaps`, `lib/routing/invariants.ts`), der Lane-Bonus
+   braucht die LaneRegistry (`ROUTE-001`). Beides steht als Teil 2 in
+   `KNOWN-PROBLEMS.md` (`ROUTE-002`) und ist bewusst **nicht** Teil dieser
+   Scheibe: es ändert die Produktiv-Geometrie und braucht einen eigenen,
+   einzeln begründeten Recapture-Schritt (AGENTS.md §5 Nr. 6).
+
+Nachweis: `lib/routing/rules/costModel.test.ts` (20 Tests — u. a.
+Faktor-Ableitung für `bend`/`uTurn`, Ordnung Kehre > Kreuzung > Biegung >
+Nah-Lane und die Abgrenzung zur Port-Bündel-Ausnahme) und
+`components/edges/utils/pathfinding.test.ts` (51 Tests — Sync von
+`BEND_COST`/`U_TURN_COST` mit dem Modell).
+
+Gate: `npx vitest run` → 171 Testdateien / 2369 Tests, `npm run typecheck`,
+`npm run typecheck:tests`, `npx eslint .`, `npx prettier --check` grün.

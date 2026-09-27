@@ -131,13 +131,33 @@ Legende Severity: **hoch** = Agent kann falschen Code ändern / falsche Sicherhe
   aufgerufen. Im Produktivpfad nutzt `pathfinding.ts` ausschließlich
   `COST_WEIGHTS.crossing` (120) in `scorePath`.
 - **CURRENT BEHAVIOR:** Clearance-Verletzungen, Nachbar-Lanes und Registry-Bonus sind im
-  A*-Lauf **nicht** bepreist; nur Kreuzungen fließen in die Kosten ein.
+  A*-Lauf **nicht** bepreist. Biegung, Kehre und Kreuzung sind es — aber erst seit dem
+  2026-09-27 aus dem Modell statt aus lokalen Konstanten (siehe STATUS).
 - **EXPECTED BEHAVIOR:** vollständige Kostenfunktion im inkrementellen Pass (Zielbild WP-6/WP-8).
 - **SEVERITY:** mittel
 - **WORKAROUND:** Kostenänderungen nur an `scorePath`/`routeDefectScore` vornehmen — nur dort
   wirken sie heute.
 - **RELATED TEST:** `lib/routing/rules/costModel.test.ts`
 - **RELATED ISSUE:** WP-6 (#396).
+- **STATUS (2026-09-27, Teil 1 erledigt):** Die drei Kanten-Kosten, die der Bestandsrouter
+  tatsächlich optimiert, kommen jetzt **aus dem Modell**: `crossing` (7,5 × `laneGrid`) wie
+  bisher, zusätzlich `bend` (5 × = 80) und `uTurn` (25 × = 400) als `COST_WEIGHTS.bend` /
+  `.uTurn` (`pathfinding.ts` liest sie, keine eigenen Konstanten mehr; Sync-Test in
+  `costModel.test.ts` **und** `pathfinding.test.ts`). Wertgleich zum bisherigen Hardcode ⇒
+  Golden Master unverändert. Damit ist der frühere ROUTE-004-Rest „`BEND_COST`,
+  `U_TURN_COST` außerhalb der Tokens" geschlossen.
+- **STATUS (2026-09-27, Teil 2 vermessen und bewusst offen):** `segmentExtraCost` und
+  `preferredLaneBonus` lassen sich **nicht** mechanisch anschließen. Messung über die sechs
+  Referenzpläne (Produktivpfad, geroutete Trassen, nur Paare **verschiedener** Kanten):
+  47 × `hard` · 82 × `weighted` · 121 × `nearby` · 48 × `soft`. Die 48 `soft` sind exakt die
+  Kreuzungen des Audits (2/5/2/2/8/29), die **47 `hard` sind alle die Port-Bündel-Ausnahme**
+  (ADR 0009: zwei Leitungen am selben Handle teilen sich den Stub; echte I2-Verstöße: 0 — der
+  Ausnahme-Check lebt in `lib/routing/invariants.ts`). Ein blindes `hard ⇒ Infinity` würde
+  also 47 legitime Stubs als unmöglich verwerfen, und `nearbyLane` (16 px je Paar) würde
+  gegen die gewollten Bündel-Lanes (16-px-Raster) drücken. Nächster Schritt: die
+  Stub-Kenntnis des Nachbarn in das Modell geben (bzw. `segmentExtraCost` mit einer
+  Ausnahme-Option) — dann kann der Suchloop Überdeckungen als hart behandeln. Der Bonus
+  braucht die LaneRegistry (`ROUTE-001`).
 
 ---
 
@@ -192,10 +212,13 @@ Legende Severity: **hoch** = Agent kann falschen Code ändern / falsche Sicherhe
 - **STATUS (2026-09-10):** Teilweise behoben — `CLEARANCE_GOAL` → `cableClearance`-Token,
   Kontur-Puffer → `laneGrid`-Token, `OBSTACLE_REGION_PAD` →
   `LEGACY_ROUTING_TOKENS.obstacleRegionPad` mit Drift-Guard (≥ 2 × `alternativeRouteGap()`),
-  Test in `tokens.test.ts` erweitert. Verbleibt: `BEND_COST`, `U_TURN_COST`,
-  `MAX_EXPANSIONS`, `MAX_ACCEPTABLE_CROSSINGS` (kostenmodell-seitige Werte,
-  passen bewusst nicht in das reine Geometrie-Token-Modell — Eindokumentieren
-  oder eigene Kosten-Tokens sind separat zu entscheiden).
+  Test in `tokens.test.ts` erweitert. Verbleibt: `MAX_EXPANSIONS`,
+  `MAX_ACCEPTABLE_CROSSINGS` (Budget bzw. Abbruchschwelle — keine Preise, eigene
+  Kosten-Tokens sind separat zu entscheiden).
+- **STATUS (2026-09-27):** `BEND_COST` und `U_TURN_COST` sind **erledigt**: sie sind keine
+  lokalen Konstanten mehr, sondern `COST_WEIGHTS.bend` / `.uTurn` aus dem generierten
+  Kostenmodell (5 bzw. 25 × `laneGrid`; siehe ROUTE-002 Teil 1). Der Drift-Guard steht in
+  `costModel.test.ts` und `pathfinding.test.ts`.
 
 ---
 

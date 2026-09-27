@@ -16,6 +16,8 @@ import { ROUTING_TOKENS, type RoutingTokens } from '../tokens';
  * | overlap             | Infinity    | hard (ADR 0009) — garantiert unmöglich |
  * | clearance violation | VERY_HIGH   | 25 × laneGrid = 400 (= U_TURN_COST: schlimmer als jede Kehre) |
  * | crossing            | HIGH        | 7,5 × laneGrid = 120 (Bestandswert des Routers, s. Sync-Test) |
+ * | u-turn (180°)       | U_TURN      | 25 × laneGrid = 400 (Bestandswert `U_TURN_COST`, s. Sync-Test) |
+ * | bend (90°)          | BEND        | 5 × laneGrid = 80 (Bestandswert `BEND_COST`, s. Sync-Test) |
  * | nearby lane         | MEDIUM      | 1 × laneGrid = 16 (eine Lane Ausweichen ist billiger) |
  * | preferred lane      | BONUS       | −laneGrid/2 = −8 (zieht auf die Registry-Lane, WP-5) |
  * | free space          | LOW         | 0 (nur die Weglänge zählt)          |
@@ -26,9 +28,27 @@ import { ROUTING_TOKENS, type RoutingTokens } from '../tokens';
  * als weiche Hindernisse); alle Abstands-/Kollinearitäts-Checks kommen aus
  * der Geometrie-Schicht (WP-2).
  *
- * Einbau-Reihenfolge: Der Bestandsrouter konsumiert ab sofort den
- * Kreuzungswert (`scorePath`, wertgleich 120 — Golden Master unverändert);
- * die vollständige Kostenfunktion übernimmt der inkrementelle Pass in WP-8.
+ * Einbau-Reihenfolge (ROUTE-002): Der Bestandsrouter liest die drei
+ * Kanten-Kosten, die er tatsächlich optimiert, seit 2026-09-27 AUS dem Modell
+ * — `crossing` (7,5 × laneGrid), `bend` und `uTurn` (5 bzw. 25 × laneGrid).
+ * Die Werte sind wertgleich zu den früher hier hart gepflegten Konstanten
+ * `BEND_COST = 80` / `U_TURN_COST = 400` (Sync-Test in `costModel.test.ts`),
+ * der Golden Master bleibt deshalb unverändert.
+ *
+ * Was noch fehlt, ist die *räumliche* Hälfte: `segmentExtraCost` und
+ * `preferredLaneBonus` haben weiterhin keinen Produktiv-Konsumenten. Das ist
+ * **kein** vergessener Stecker, sondern eine gemessene Grenze: Über die sechs
+ * Referenzpläne (Produktivpfad, geroutete Trassen) zählt die Klassifikation
+ * 47 fremde `hard`-Paare, 82 `weighted`-Paare und 121 `nearby`-Paare — die 47
+ * harten sind **alle** die Port-Bündel-Ausnahme (ADR 0009: zwei Leitungen am
+ * selben Handle teilen sich den Stub; die Ausnahme lebt in
+ * `lib/routing/invariants.ts`, `checkEdgeEdgeOverlaps`), echte I2-Verstöße
+ * sind 0. Ein blindes Anschließen würde also 47 legitime Stubs als
+ * unmöglich verwerfen, und `nearbyLane` würde gegen die gewollten
+ * Bündel-Lanes (16 px Raster) drücken. Vor dem Produktiv-Einsatz muss die
+ * Ausnahme in das Modell wandern (`segmentExtraCost` braucht Kenntnis der
+ * Stubs des Nachbarn), der Bonus braucht die LaneRegistry (ROUTE-001).
+ * Details: ROUTE-002 in `docs/ai/KNOWN-PROBLEMS.md`.
  */
 
 export type CostWeights = {
@@ -38,6 +58,10 @@ export type CostWeights = {
   readonly clearanceViolation: number;
   /** Echte Kreuzung (soft — minimieren, nicht verbieten). */
   readonly crossing: number;
+  /** 90°-Biegung einer Leitung (Bestandswert `BEND_COST`). */
+  readonly bend: number;
+  /** 180°-Kehre einer Leitung (Bestandswert `U_TURN_COST`). */
+  readonly uTurn: number;
   /** Nachbarschaft einer fremden Lane (innerhalb einer Lane-Breite über der Clearance). */
   readonly nearbyLane: number;
   /** Bonus (negativ) für die von der LaneRegistry bevorzugte Lane (WP-5). */
@@ -50,6 +74,8 @@ export type CostWeights = {
 export const COST_FACTORS = Object.freeze({
   clearancePerLaneGrid: 25,
   crossingPerLaneGrid: 7.5,
+  bendPerLaneGrid: 5,
+  uTurnPerLaneGrid: 25,
   nearbyPerLaneGrid: 1,
   preferredBonusPerLaneGrid: -0.5,
 });
@@ -60,6 +86,8 @@ export function buildCostWeights(tokens: RoutingTokens = ROUTING_TOKENS): CostWe
     overlap: Infinity,
     clearanceViolation: COST_FACTORS.clearancePerLaneGrid * tokens.laneGrid,
     crossing: COST_FACTORS.crossingPerLaneGrid * tokens.laneGrid,
+    bend: COST_FACTORS.bendPerLaneGrid * tokens.laneGrid,
+    uTurn: COST_FACTORS.uTurnPerLaneGrid * tokens.laneGrid,
     nearbyLane: COST_FACTORS.nearbyPerLaneGrid * tokens.laneGrid,
     preferredLaneBonus: COST_FACTORS.preferredBonusPerLaneGrid * tokens.laneGrid,
     freeSpace: 0,

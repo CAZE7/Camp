@@ -69,16 +69,23 @@ export const NODE_FALLBACK_HEIGHT = 120;
 /**
  * Kostenmodell (R-2, agent.md): alle Kosten sind **px-äquivalent** —
  * 1 Kosteneinheit entspricht 1 px Leitungslänge (`scorePath` addiert
- * Länge + BEND_COST · Biegungen + 120 · Kreuzungen).
+ * Länge + Biegung + Kreuzung).
  *
- * - `BEND_COST = 80`: eine 90°-Biegung kostet so viel wie 80 px Extraweg.
- *   Der Router nimmt also höchstens 80 px Detour in Kauf, um eine Ecke zu
- *   sparen — logisch ruhige Leitungen mit wenigen Knicken schlagen kürzere
- *   zickzackige. Muss die Leitung mehr als 80 px Umweg laufen, gewinnt die
- *   Abkürzung. Nach unten korrigieren → mehr Biegungen, oben → mehr Länge.
+ * ROUTE-002 (2026-09-27): Die Werte sind keine lokalen Konstanten mehr,
+ * sondern kommen aus dem generierten Kostenmodell
+ * (`lib/routing/rules/costModel.ts`, Faktoren × `laneGrid`) — dieselbe
+ * Quelle wie die Kreuzungsstrafe. Wertgleich zu den früheren Hardcodes
+ * (`BEND_COST = 80` = 5 × laneGrid, `U_TURN_COST = 400` = 25 × laneGrid);
+ * der Sync-Test in `costModel.test.ts` friert das ein.
  *
- * - `U_TURN_COST = 400` (= 5 Biegungen): eine 180°-Kehre ist teurer als
- *   jeder Zickzack-Bogen aus bis zu 4 Ecken und wird nur gewählt, wenn die
+ * - Eine 90°-Biegung kostet so viel wie 80 px Extraweg. Der Router nimmt
+ *   also höchstens 80 px Detour in Kauf, um eine Ecke zu sparen — logisch
+ *   ruhige Leitungen mit wenigen Knicken schlagen kürzere zickzackige.
+ *   Muss die Leitung mehr als 80 px Umweg laufen, gewinnt die Abkürzung.
+ *   Nach unten korrigieren → mehr Biegungen, oben → mehr Länge.
+ *
+ * - Eine 180°-Kehre kostet 400 px (= 5 Biegungen): teurer als jeder
+ *   Zickzack-Bogen aus bis zu 4 Ecken, sie wird nur gewählt, wenn die
  *   Geometrie sie erzwingt (Ziel hinter der Quelle). Die A*-Heuristik
  *   (`remainingCostLowerBound`) schätzt Kehren mit
  *   `Math.min(U_TURN_COST, 2 * BEND_COST)` = 160 — damit bleibt sie
@@ -87,8 +94,8 @@ export const NODE_FALLBACK_HEIGHT = 120;
  * Geprüft wird die Ordnung in `orthogonalRouting.invariants.test.ts`
  * (Abschnitt „Kostenmodell (R-2)“): Gerade < L < Z < Zickzack, Kehre zuletzt.
  */
-export const BEND_COST = 80;
-export const U_TURN_COST = 400;
+export const BEND_COST = COST_WEIGHTS.bend;
+export const U_TURN_COST = COST_WEIGHTS.uTurn;
 
 /** Abstand der Rücklauflane vom Stub bei erzwungenen U-Loops (2 Parallellanes). */
 export const U_TURN_LANE_SPREAD = 2 * ROUTING_TOKENS.laneGrid;
