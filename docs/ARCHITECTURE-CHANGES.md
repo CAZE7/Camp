@@ -1488,3 +1488,53 @@ Nah-Lane und die Abgrenzung zur Port-Bündel-Ausnahme) und
 
 Gate: `npx vitest run` → 171 Testdateien / 2369 Tests, `npm run typecheck`,
 `npm run typecheck:tests`, `npx eslint .`, `npx prettier --check` grün.
+
+### 2026-09-27 — Achtzehnte Fassung: Port-Bündel ist eine Regel für Modell, Invariante und Diagnose (ROUTE-002 Teil 2a, ADR 0025)
+
+Der Auftrag „Stub-Kenntnis des Nachbarn ins Modell, Bonus erst mit der
+LaneRegistry“ ist in zwei Teilen umgesetzt — und hat unterwegs einen
+Widerspruch aufgedeckt, den der Nutzer in seiner Kritik vorweggenommen hatte
+(„Meldungen, die einander widersprechen“).
+
+1. **Die Ausnahme ist eine Regel, nicht drei.** Die Port-Bündel-Ausnahme
+   (ADR 0009: der gemeinsame Stub zweier Leitungen an derselben
+   Anschlussstelle ist erlaubt, solange die Überdeckung vollständig in den
+   Stubs beider Kanten liegt) lebte als private Funktion in
+   `lib/routing/invariants.ts` — und in einer **zweiten, abweichenden Fassung**
+   im Diagnose-Skript (`stubMin`-Fenster um den Port). Folge: `routing:audit`
+   meldete `ovl=3/1 · 7/3 · 2/2 · 1/3 · 3/7 · 6/9`, also 25 Überdeckungen
+   „außerhalb des Ports“ — während I2 im selben Lauf **0** sagte. Die Regel
+   lebt jetzt in `lib/routing/rules/portBundle.ts` (`routedPathGeometry`,
+   `sharesPort`, `overlapInterval`, `isPortBundleOverlap`) und wird von I2,
+   vom Kostenmodell und vom Audit gelesen.
+
+2. **Das Modell kann Bündel erkennen.** `segmentExtraCost` nimmt optional
+   `portBundle: { own, otherOf }` entgegen: eine kollineare Überdeckung, die
+   die Ausnahme erfüllt, kostet nichts und wird als `portBundleShared` gezählt
+   statt als `Infinity` gemeldet. Ohne Kenntnis bleibt alles hart
+   (**fail-safe**) — ein fälschlich verworfenes Segment wäre schlimmer als ein
+   nicht ausgenutztes Bündel. Messung über die sechs Referenzpläne (Produktivpfad,
+   ungeordnete Kantenpaare wie I2): **47 kollineare Paare, alle 47 sind
+   Port-Bündel**, 0 echte I2-Verstöße; ohne Kenntnis liefert das Modell für
+   genau diese 47 Paare `Infinity`, mit Kenntnis für keines. Das Audit zeigt
+   jetzt `ovl=4/0 · 10/0 · 4/0 · 4/0 · 10/0 · 15/0` statt der 25 Phantomfehler.
+
+3. **Die Kopplung ist ein Gate.** `audit.ts` prüft hart
+   `(elsewhere > 0) !== (I2 > 0)` ⇒ Exit 1: Diagnose und Invariante dürfen sich
+   nicht mehr widersprechen. `npm run routing:audit` ist Exit 0.
+
+4. **Der Bonus bleibt liegen — mit Begründung.** `preferredLaneBonus` und der
+   Produktiv-Aufruf von `segmentExtraCost` im Suchloop sind bewusst nicht
+   erfolgt: 121 `nearby`-Paare liegen innerhalb einer Lane-Breite über der
+   Freigabe — das sind die gewollten Bündel-Lanes (16-px-Raster), und
+   `nearbyLane` würde als Strafe gegen sie drücken. Bewertbar ist das erst mit
+   der LaneRegistry (`ROUTE-001`), die den Bündel-Begriff zentralisiert.
+   Kein Recapture in dieser Scheibe; Golden Master und Regression unberührt.
+
+Nachweis: `scripts/routing/portBundleModel.test.ts` (8 Tests über die sechs
+Referenzpläne: I2 = 0, 47 kollineare Paare alle Bündel, Modell ohne/mit
+Kenntnis, Audit `atPort`/`elsewhere`, Ratchet-Zahlen), `lib/routing/rules/portBundle.test.ts`
+(10), `lib/routing/rules/costModel.test.ts` (23, +4), `npm run routing:audit`.
+
+Gate: `npm run check` — 173 Testdateien / 2390 Tests, eslint, prettier,
+typecheck, typecheck:tests, Coverage grün.

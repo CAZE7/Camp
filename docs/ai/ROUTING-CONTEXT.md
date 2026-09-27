@@ -127,8 +127,11 @@ Reihenfolge der Prüfung ist Teil des Vertrags: **Overlap (hard) → Crossing (s
 
 1. **Port-Bündel-Ausnahme (I2).** Zwei Kanten, die sich eine Anschlussstelle teilen, verlassen sie
    auf demselben Stub. Erlaubt ist genau der gemeinsame Abschnitt, **wenn er vollständig in den
-   Stubs beider Kanten liegt**. Alles darüber hinaus bleibt hart
-   (`isPortBundleOverlap`, `lib/routing/invariants.ts`).
+   Stubs beider Kanten liegt**. Alles darüber hinaus bleibt hart. Die Entscheidung ist **eine
+   Regel** in `lib/routing/rules/portBundle.ts` (`isPortBundleOverlap`) und wird von I2
+   (`lib/routing/invariants.ts`), vom Kostenmodell (`segmentExtraCost`, ADR 0025) und vom Audit
+   (`analyzeOverlaps`) gelesen — gemessen: 47 solche Paare in den sechs Referenzplänen, 0
+   Überdeckungen außerhalb der Stubs.
 2. **Eigene Bauteile.** Quell- und Ziel-Node der Kante sind kein Hindernis. Fremde Boxen, die
    Start/Ziel enthalten, **bleiben** Hindernis (`PathRequest.ownObstacles`).
 3. **Stub-Toleranz („Stub-Recht“, R-7).** Klebt ein Bauteil so nah am Handle, dass Stub-Länge und

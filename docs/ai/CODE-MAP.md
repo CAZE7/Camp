@@ -261,7 +261,8 @@ CAMP
 | ----------------------- | --------------------------------------------------------------------------------------------- | ---------------------- |
 | `rules/collision.ts`    | Kollisionsmodell (`classifyCollision`, Klassen hard/soft/weighted/none) + Domänen-Trennregeln | `collision.test.ts`    |
 | `rules/portFanOut.ts`   | Lane-Vergabe am Port-Bündel (`assignFanOut`, `portNormal`, `portCross`)                       | `portFanOut.test.ts`   |
-| `rules/costModel.ts`    | A*-Kostenmatrix, **aus Tokens abgeleitet** (`COST_WEIGHTS`)                                   | `costModel.test.ts`    |
+| `rules/costModel.ts`    | A*-Kostenmatrix, **aus Tokens abgeleitet** (`COST_WEIGHTS`, `segmentExtraCost`)               | `costModel.test.ts`    |
+| `rules/portBundle.ts`   | Port-Bündel-Ausnahme (ADR 0009) — geteilt von I2, Kostenmodell und Audit (ADR 0025)           | `portBundle.test.ts`   |
 | `rules/laneRegistry.ts` | deterministische Lane-Registry (**nicht im Produktivpfad**, s. LEGACY)                        | `laneRegistry.test.ts` |
 | `rules/hopping.ts`      | Kreuzungs-Hopping: Priorität, wer hüpft, Bogen-Mittelpunkte                                   | `hopping.test.ts`      |
 

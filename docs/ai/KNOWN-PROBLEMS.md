@@ -120,6 +120,11 @@ Legende Severity: **hoch** = Agent kann falschen Code ändern / falsche Sicherhe
   wirksame Mechanik.
 - **RELATED TEST:** `lib/routing/rules/laneRegistry.test.ts` (grün, aber ohne Produktionswirkung)
 - **RELATED ISSUE:** WP-5 (#394) / WP-8, dokumentiert im Modulkommentar.
+- **NACHTRAG (2026-09-27):** Der Anschluss ist jetzt der **letzte** fehlende Baustein der
+  räumlichen Routing-Kosten (ROUTE-002 Teil 2b): `segmentExtraCost` kann die Port-Bündel
+  (ADR 0025) unterscheiden, `preferredLaneBonus` wartet auf Registry-Lanes. Ohne die Registry
+  würde eine Produktiv-Schaltung 121 gewollte Nachbar-Trassen als Strafe drücken — deshalb
+  zuerst hier anbinden.
 
 ---
 
@@ -146,18 +151,24 @@ Legende Severity: **hoch** = Agent kann falschen Code ändern / falsche Sicherhe
   `costModel.test.ts` **und** `pathfinding.test.ts`). Wertgleich zum bisherigen Hardcode ⇒
   Golden Master unverändert. Damit ist der frühere ROUTE-004-Rest „`BEND_COST`,
   `U_TURN_COST` außerhalb der Tokens" geschlossen.
-- **STATUS (2026-09-27, Teil 2 vermessen und bewusst offen):** `segmentExtraCost` und
-  `preferredLaneBonus` lassen sich **nicht** mechanisch anschließen. Messung über die sechs
-  Referenzpläne (Produktivpfad, geroutete Trassen, nur Paare **verschiedener** Kanten):
-  47 × `hard` · 82 × `weighted` · 121 × `nearby` · 48 × `soft`. Die 48 `soft` sind exakt die
-  Kreuzungen des Audits (2/5/2/2/8/29), die **47 `hard` sind alle die Port-Bündel-Ausnahme**
-  (ADR 0009: zwei Leitungen am selben Handle teilen sich den Stub; echte I2-Verstöße: 0 — der
-  Ausnahme-Check lebt in `lib/routing/invariants.ts`). Ein blindes `hard ⇒ Infinity` würde
-  also 47 legitime Stubs als unmöglich verwerfen, und `nearbyLane` (16 px je Paar) würde
-  gegen die gewollten Bündel-Lanes (16-px-Raster) drücken. Nächster Schritt: die
-  Stub-Kenntnis des Nachbarn in das Modell geben (bzw. `segmentExtraCost` mit einer
-  Ausnahme-Option) — dann kann der Suchloop Überdeckungen als hart behandeln. Der Bonus
-  braucht die LaneRegistry (`ROUTE-001`).
+- **STATUS (2026-09-27, Teil 2a erledigt):** `segmentExtraCost` kann die Port-Bündel-Ausnahme
+  jetzt anwenden. Messung über die sechs Referenzpläne (Produktivpfad, geroutete Trassen,
+  **ungeordnete** Kantenpaare wie I2): 47 kollinear überdeckte Kantenpaare · 82 `weighted` ·
+  121 `nearby` · 48 Kreuzungen (die Audit-Werte 2/5/2/2/8/29). Von den 47 kollinearen Paaren
+  sind **alle 47 die Port-Bündel-Ausnahme**, echte I2-Verstöße 0. Ohne Stub-Kenntnis liefert
+  `segmentExtraCost` für jedes dieser Paare `Infinity` (fail-safe) — mit
+  `options.portBundle` (`own` + `otherOf`) lässt es genau sie durch und zählt sie als
+  `portBundleShared`. Die Ausnahme ist dabei **eine** Regel: sie lebt in
+  `lib/routing/rules/portBundle.ts` und wird von I2 (`invariants.ts`), vom Modell und vom
+  Audit benutzt (ADR 0025). Test: `scripts/routing/portBundleModel.test.ts`,
+  `lib/routing/rules/portBundle.test.ts`, `costModel.test.ts`.
+- **STATUS (2026-09-27, Teil 2b offen):** Der **Aufruf** von `segmentExtraCost` im Suchloop
+  (`pathfinding.ts`) ist bewusst nicht erfolgt: 121 `nearby`-Paare liegen innerhalb einer
+  Lane-Breite über der Freigabe — das sind die gewollten Bündel-Lanes (16-px-Raster), und
+  `nearbyLane` würde als Strafe gegen sie drücken. Ebenso fehlt `preferredLaneBonus` die
+  Registry-Lane. Beides gehört an die LaneRegistry (`ROUTE-001`), die den Bündel-Begriff
+  zentralisiert; erst danach ist der Suchloop-Anschluss bewertbar. Kein Recapture in dieser
+  Scheibe.
 
 ---
 

@@ -12,6 +12,7 @@ import {
   type Segment,
 } from './geometry';
 import { classifySegmentAgainstNode, classifySegmentAgainstSegment } from './rules/collision';
+import { isPortBundleOverlap, routedPathGeometry } from './rules/portBundle';
 
 /**
  * WP-10 (#399): Routing-Invarianten (ROUTING-V2.md §12) als reine, für
@@ -91,90 +92,27 @@ export function checkEdgeNodeCollisions(
   return violations;
 }
 
-const samePoint = (a: Point, b: Point): boolean => Math.abs(a.x - b.x) <= EPS && Math.abs(a.y - b.y) <= EPS;
-
-/**
- * Gemeinsamer Abschnitt zweier kollinearer Segmente als [von, bis] entlang
- * der gemeinsamen Achse — `null`, wenn sie sich nicht echt überdecken.
- */
-function overlapInterval(s1: Segment, s2: Segment): { lo: number; hi: number } | null {
-  const horizontal = Math.abs(s1[0].y - s1[1].y) <= EPS;
-  const lo1 = horizontal ? Math.min(s1[0].x, s1[1].x) : Math.min(s1[0].y, s1[1].y);
-  const hi1 = horizontal ? Math.max(s1[0].x, s1[1].x) : Math.max(s1[0].y, s1[1].y);
-  const lo2 = horizontal ? Math.min(s2[0].x, s2[1].x) : Math.min(s2[0].y, s2[1].y);
-  const hi2 = horizontal ? Math.max(s2[0].x, s2[1].x) : Math.max(s2[0].y, s2[1].y);
-  const lo = Math.max(lo1, lo2);
-  const hi = Math.min(hi1, hi2);
-  return hi - lo > EPS ? { lo, hi } : null;
-}
-
-/**
- * Port-Bündel-Ausnahme (ADR 0009 „Touch am gemeinsamen Handle ist kein
- * Overlap“): Zwei Kanten, die sich EINE Anschlussstelle teilen, verlassen sie
- * naturgemäß auf demselben Stub. Erlaubt ist genau das — der gemeinsame
- * Abschnitt muss vollständig in den Stubs BEIDER Kanten liegen. Jede
- * Überdeckung darüber hinaus bleibt ein harter Verstoß: Spätestens am
- * Lane-Punkt (Port-Fan-Out) müssen sich die Trassen trennen.
- */
-function isPortBundleOverlap(
-  a: { segments: Segment[]; ports: Segment[]; points: Point[] },
-  b: { segments: Segment[]; ports: Segment[]; points: Point[] },
-  s1: Segment,
-  s2: Segment
-): boolean {
-  const sharesPort =
-    a.points.some((pa) => b.points.some((pb) => samePoint(pa, pb))) &&
-    (samePoint(a.points[0]!, b.points[0]!) ||
-      samePoint(a.points[0]!, b.points[b.points.length - 1]!) ||
-      samePoint(a.points[a.points.length - 1]!, b.points[0]!) ||
-      samePoint(a.points[a.points.length - 1]!, b.points[b.points.length - 1]!));
-  if (!sharesPort) return false;
-  const interval = overlapInterval(s1, s2);
-  if (!interval) return false;
-  const withinStub = (stubs: readonly Segment[]): boolean =>
-    stubs.some((stub) => {
-      if (!sameAxis(stub, s1)) return false;
-      const coords = stubCoords(stub);
-      const lo = Math.min(coords[0], coords[1]);
-      const hi = Math.max(coords[0], coords[1]);
-      return interval.lo >= lo - EPS && interval.hi <= hi + EPS;
-    });
-  return withinStub(a.ports) && withinStub(b.ports);
-}
-
-/** Liegen beide Segmente auf derselben Achsrichtung (beide waagerecht/senkrecht)? */
-const sameAxis = (a: Segment, b: Segment): boolean =>
-  Math.abs(a[0].y - a[1].y) <= EPS === Math.abs(b[0].y - b[1].y) <= EPS;
-
-/** Endkoordinaten eines achsenparallelen Segments entlang seiner Achse. */
-const stubCoords = (segment: Segment): [number, number] =>
-  Math.abs(segment[0].y - segment[1].y) <= EPS ? [segment[0].x, segment[1].x] : [segment[0].y, segment[1].y];
-
 /** I2 — keine kollineare Überdeckung zwischen VERSCHIEDENEN Kanten. */
 export function checkEdgeEdgeOverlaps(edges: readonly RoutedEdge[]): InvariantViolation[] {
   const violations: InvariantViolation[] = [];
   const segmentsById = edges.map((edge) => {
-    const points = simplifyWaypoints(edge.waypoints);
-    const segments = waypointsToSegments(points);
-    return {
-      edge,
-      segments,
-      points,
-      // Stubs = erstes und letztes Segment (die einzigen, die sich zwei
-      // Kanten an einem gemeinsamen Port teilen dürfen).
-      ports: segments.length > 0 ? [segments[0]!, segments[segments.length - 1]!] : [],
-    };
+    // Die Port-Bündel-Ausnahme (Stützpunkte, Segmente, Stubs) kommt aus
+    // `rules/portBundle.ts` — dieselbe Funktion, die das Kostenmodell und das
+    // Audit benutzen (ROUTE-002). `geometry` ist das vorberechnete
+    // `RoutedPathGeometry` der Kante.
+    const geometry = routedPathGeometry(edge.waypoints);
+    return { edge, geometry };
   });
   for (let i = 0; i < segmentsById.length; i++) {
     for (let j = i + 1; j < segmentsById.length; j++) {
       const a = segmentsById[i]!;
       const b = segmentsById[j]!;
       let overlapping = false;
-      for (const s1 of a.segments) {
-        for (const s2 of b.segments) {
+      for (const s1 of a.geometry.segments) {
+        for (const s2 of b.geometry.segments) {
           // 'hard' (edge-edge-overlap) des Modells IS die I2-Bedingung (ADR 0019).
           if (classifySegmentAgainstSegment(s1, s2).class !== 'hard') continue;
-          if (isPortBundleOverlap(a, b, s1, s2)) continue;
+          if (isPortBundleOverlap(a.geometry, b.geometry, s1, s2)) continue;
           overlapping = true;
           break;
         }
