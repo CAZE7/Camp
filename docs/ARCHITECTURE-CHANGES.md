@@ -1538,3 +1538,86 @@ Kenntnis, Audit `atPort`/`elsewhere`, Ratchet-Zahlen), `lib/routing/rules/portBu
 
 Gate: `npm run check` — 173 Testdateien / 2390 Tests, eslint, prettier,
 typecheck, typecheck:tests, Coverage grün.
+
+### 2026-09-27 — Neunzehnte Fassung: Die LaneRegistry speist das Nudging (ROUTE-001 / ROUTE-006, ADR 0026)
+
+Die LaneRegistry (WP-5) hatte bis hierher **keinen Produktiv-Konsumenten**
+(ROUTE-001); ihr angekündigter Konsument ist das gescopede Nudging (WP-8).
+Dort lagen zwei belegte Lücken, beide mit derselben Frage: „Wohin darf ein
+Lauf ausweichen?“
+
+1. **Die Cluster-Schwelle war größer als die Invariante.** Der Nudge gruppierte
+   parallele Innenstücke erst ab 12 px gemeinsamer Länge (`NUDGE_MIN_OVERLAP`),
+   während I2 bei JEDER kollinearen Überdeckung > 0 greift — ein 8-px-Stück auf
+   derselben Linie blieb stehen. Kollineare Paare zählen jetzt ab jeder Länge;
+   für bloß benachbarte Parallelen bleibt die alte Schwelle.
+
+2. **Ein einzelner beweglicher Teilnehmer wurde ignoriert.** Der Cluster-Pass
+   verteilt nur Gruppen mit mindestens zwei beweglichen Segmenten. Die
+   gemessenen Restfälle hatten alle dieselbe Wurzel: eine Seite ist nicht
+   beweglich — der 4-Punkt-Zulauf auf denselben Ziel-Port
+   (`e-batt-minus ↔ e-auto-8`, V @964, 40 px), der Freiwinkel-Lauf über einem
+   fremden Stub (`e-fuse-fan ↔ e-auto-5`, H @405, 26 px) und ein 8-px-Zulauf.
+   Neu `displaceSingleMovers`: der bewegliche Teilnehmer zieht auf die
+   nächstgelegene FREIE Lane, Kandidaten aus der Registry
+   (`laneCandidates`, `coord ± k · laneGrid`, deterministisch). Gegenüber
+   stehen ALLE Segmente fremder Pfade (Stubs eingeschlossen), und zwar aus dem
+   AKTUELLEN Arbeitsstand — sonst zögen zwei Partner auf dieselbe Lane.
+
+3. **Beweger dürfen den Ellbogen neben dem Stub mitnehmen.** `movableSegment`
+   verlangte „beide Enden freie Innenknoten“ und schloss damit genau die
+   Port-Zuläufe aus. Jetzt genügt „beide Enden sind Innenpunkte“ — zulässig,
+   weil ein Segment nur als Ganzes wandert (ROUTE-BUG-17) und quer zu seinen
+   Nachbarn liegt: die Stubs bleiben auf ihrer Achse, nur ihre LÄNGE ändert
+   sich (genau der Lane-Begriff des Port-Fan-Outs, hier geometrisch).
+
+4. **Die Akzeptanz ist streng und wurde zweimal nachgeschärft** — je nach
+   gemessener Wirkung: **Stubs ≥ `stubMin`** (I5, dieser Zug verkürzt sie ja),
+   **keine neue kollineare Überdeckung** (aus derselben Regel wie die
+   Invariante, ADR 0025), **keine neuen Kreuzungen** (die erste Fassung
+   erzeugte in p02 vier zusätzliche: 9 statt 5) und **keine zusätzliche
+   Länge** (ohne diesen Wächter: +105 px in p02). Laterale Züge sind
+   längenneutral, wenn die Nachbarsegmente gegenläufig wachsen — genau die
+   bleiben übrig.
+
+**Messung (ELK-Pfad = `performAutoWiring → applyAdvancedLayout →
+routeAllCables → checkInvariants`, sechs Referenzpläne):**
+
+| Stand                                                      | I1  | I2    | I3  |
+| ---------------------------------------------------------- | --- | ----- | --- |
+| ELK-Kartenabstand allein (ADR 0023, damaliger Optionssatz) | 0   | 9     | 1   |
+| + Rollen-Schichten (ADR 0024, Rang-Seed)                   | 0   | 3     | 3   |
+| + LaneRegistry im Nudge (diese Fassung)                    | 0   | **1** | 3   |
+
+Offen bleibt das 8-px-Bündel in `camper` (`e-auto-4 ↔ e-auto-8`, V @704
+[300, 308]): isoliert greift der Zug (der Lauf wandert auf die Registry-Lane
+688), im echten Plan liegen die Kandidaten-Leitern (±16 px) in den aufgeblähten
+Karten-Boxen — die Akzeptanz verwirft ihn deshalb korrekt. Nächster Hebel:
+Stub-/Fan-Out-Ebene (ROUTE-002 Teil 2b).
+
+**Bewusste Neuerfassung der Regressions-Referenz (p02).** Im Stress-Szenario
+„1 Batterie + 10 Verbraucher“ sinkt I2 von **2 auf 1**; die Metrik-Budgets
+bleiben exakt gleich (Kreuzungen 5, Bends 42, Länge 7.609 px, Freigabe-Verstöße
+0). Der Capture-Diff (`npm run regression:capture`) umfasst genau EINE Trasse —
+zwei Stützpunkte, 16 px = eine Registry-Lane — plus das zugehörige SVG; die
+anderen 14 Szenarien sind byte-identisch. Begründung nach der Konvention des
+Capture-Skripts: ein Invarianten-Verstoß weniger bei unveränderten Metriken.
+
+**Die Regressionssuite sieht I2 jetzt.** `ScenarioMetrics` führt zusätzlich
+`edgeOverlaps` (`checkEdgeEdgeOverlaps`), das Metrik-Budget prüft ihn als
+Ratchet (≤ Baseline). Genau diese Invariante hatte in der Suite gefehlt — dort
+lebten die zwei Überdeckungen von p02 unbemerkt, während die geführten
+Metriken grün blieben. Baseline: p02 = 1, alle übrigen 14 Szenarien = 0.
+
+**Golden Master unverändert (13/13 byte-identisch) und `routing:audit`
+unverändert** (Kreuzungen 2/5/2/2/8/29, Kabellängen 2.697 … 10.909 px): Die
+sechs Referenzpläne haben I2 = 0, es gibt dort keine kollineare Überdeckung,
+die eines der neuen Gates auslösen könnte.
+
+Nachweis: `components/edges/utils/nudge.test.ts` (+4 Tests),
+`lib/routing/rules/laneRegistry.test.ts` (+3). **Nicht in dieser Scheibe:**
+`preferredLaneBonus` und die Lane-Frage auf der Stub-/Fan-Out-Ebene
+(ROUTE-002 Teil 2b) — erst danach ist der Bonus bewertbar.
+
+Gate: `npm run check` — **173 Testdateien / 2397 Tests** (im Lauf dieser
+Scheibe), eslint, prettier, typecheck, typecheck:tests, Coverage grün.

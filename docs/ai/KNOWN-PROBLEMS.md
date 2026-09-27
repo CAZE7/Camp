@@ -120,11 +120,22 @@ Legende Severity: **hoch** = Agent kann falschen Code ändern / falsche Sicherhe
   wirksame Mechanik.
 - **RELATED TEST:** `lib/routing/rules/laneRegistry.test.ts` (grün, aber ohne Produktionswirkung)
 - **RELATED ISSUE:** WP-5 (#394) / WP-8, dokumentiert im Modulkommentar.
-- **NACHTRAG (2026-09-27):** Der Anschluss ist jetzt der **letzte** fehlende Baustein der
-  räumlichen Routing-Kosten (ROUTE-002 Teil 2b): `segmentExtraCost` kann die Port-Bündel
-  (ADR 0025) unterscheiden, `preferredLaneBonus` wartet auf Registry-Lanes. Ohne die Registry
-  würde eine Produktiv-Schaltung 121 gewollte Nachbar-Trassen als Strafe drücken — deshalb
-  zuerst hier anbinden.
+- **STATUS (2026-09-27, teilweise erledigt):** Das **gescopede Nudging** (WP-8) konsumiert die
+  Registry jetzt: `laneCandidates` liefert die Korridor-Leiter (`coord ± k · laneGrid`) als
+  Ausweich-Kandidaten, und `components/edges/utils/nudge.ts` zieht kollineare
+  Einzel-Überdeckungen auf die nächstgelegene freie Leiter (ADR 0026). Gemessen über den
+  ELK-Pfad der sechs Referenzpläne: **I2 3 → 1** (I1 = 0, I3 = 3 unverändert; offen bleibt ein
+  8-px-Bündel in `camper`, dessen Ausweich-Leitern in Karten-Boxen liegen); Golden Master
+  13/13 und `routing:audit` byte-identisch, die Regressions-Referenz p02 wurde für EINEN
+  Invarianten weniger (I2 2 → 1, Metriken unverändert) bewusst neu aufgenommen (ADR 0026).
+- **ABDECKUNG (2026-09-27):** Die Regressionssuite führt I2 jetzt selbst
+  (`ScenarioMetrics.edgeOverlaps`, Ratchet ≤ Baseline) — vorher waren
+  Trassenüberdeckungen in den 15 Stress-Szenarien unsichtbar.
+- **OFFEN (2026-09-27):** `preferredLaneBonus` (Zug auf die von der Registry BEVORZUGTE Lane)
+  und die Lane-Frage auf der **Stub-/Fan-Out-Ebene** — dort entscheidet `portFanOut`
+  (`assignFanOut`) weiter allein. Erst wenn der Port-Pfad die Registry befragt, ist auch der
+  Bonus sinnvoll bewertbar; bis dahin würde er 121 gewollte Nachbar-Trassen als Strafe drücken
+  (ROUTE-002 Teil 2b).
 
 ---
 
@@ -265,10 +276,23 @@ Legende Severity: **hoch** = Agent kann falschen Code ändern / falsche Sicherhe
      Versatz in beide Richtungen (Σ 25 vorher, Σ 24 nachher) — sie ist die Grenze, die
      Punkt 1 beschreibt, und wird hier dokumentiert statt versteckt.
 
-  3. **„Plan ordnen“ (ELK, ADR 0023) ist nicht fehlerfrei.** Über die sechs Referenzpläne
-     bleiben nach der Korrektur des Kartenabstands **I2 = 9** (Trassenüberdeckungen,
-     überwiegend Paare am gemeinsamen Port) und **I3 = 1**; **I1 = 0**. Der Nutzer hatte
-     1–2 Rest-I2 auf seinem Plan gemeldet — dieselbe Größenordnung, andere Grundmenge.
+  3. **„Plan ordnen“ (ELK, ADR 0023) ist nicht fehlerfrei — aber die Trassenüberdeckungen
+     sind aufgelöst.** Stand nach den Korrekturen: **I1 = 0**, **I3 = 3**. Die
+     Trassenüberdeckungen (I2) gingen in zwei Schritten von 9 auf **1**:
+     Ausgangsstand mit dem ELK-Kartenabstand allein: I2 = 9, I3 = 1 (ADR 0023, dort mit dem
+     damaligen Optionssatz gemessen) · mit den Rollen-Schichten (ADR 0024, Rang-Seed):
+     I2 = 3, I3 = 3 · nach der LaneRegistry-Anbindung des Nudgings (ADR 0026):
+     **I2 = 1, I3 = 3**. Zwei der drei Fälle des Zwischenstands sind aufgelöst, alle mit
+     derselben Wurzel
+     („nur eine Seite beweglich“): 8-px-Kollinearität zweier Zuläufe (`e-auto-4 ↔ e-auto-8`,
+     V @704), 40-px-Zulauf auf denselben Ziel-Port (`e-batt-minus ↔ e-auto-8`, V @964) und
+     ein Freiwinkel-Lauf über einem fremden Stub (`e-fuse-fan ↔ e-auto-5`, H @405, 26 px).
+     Offen bleibt das 8-px-Bündel `e-auto-4 ↔ e-auto-8`: isoliert zieht der Nudge den Lauf
+     auf die Kandidaten-Lane, im Plan liegen die Leitern (±16 px) aber in den aufgeblähten
+     Karten-Boxen — die Akzeptanz verwirft den Zug korrekt (gemessen). Die verbleibenden
+     **I3 = 3** sind Freigabe-Unterschreitungen ohne Berührung (kein
+     Bauteil-Durchlauf, I1 = 0) — der nächste Hebel dort ist der Stub-/Fan-Out-Pfad
+     (ROUTE-002 Teil 2b), nicht mehr der Nudge.
   4. **Die Kabellänge stand in keinem Gate.** `routingQuality.ts` misst den Legacy-Router,
      der Umweg-Faktor ist gegen die Platzierung blind (das Optimum wandert mit). Jetzt
      steht `Kabelweg`/`laengste` in `npm run routing:audit`, und

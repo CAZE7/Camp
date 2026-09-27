@@ -37,7 +37,8 @@
         "crossings": 0,
         "bends": 0,
         "length": 576,
-        "clearanceViolations": 0
+        "clearanceViolations": 0,
+        "edgeOverlaps": 0
       }
     },
     {
@@ -160,11 +161,11 @@
               "y": 734
             },
             {
-              "x": 1016,
+              "x": 1000,
               "y": 734
             },
             {
-              "x": 1016,
+              "x": 1000,
               "y": 356
             },
             {
@@ -360,7 +361,8 @@
         "crossings": 5,
         "bends": 42,
         "length": 7609.333333333334,
-        "clearanceViolations": 0
+        "clearanceViolations": 0,
+        "edgeOverlaps": 1
       }
     },
     {
@@ -506,7 +508,8 @@
         "crossings": 0,
         "bends": 14,
         "length": 3680.8,
-        "clearanceViolations": 0
+        "clearanceViolations": 0,
+        "edgeOverlaps": 0
       }
     },
     {
@@ -626,7 +629,8 @@
         "crossings": 4,
         "bends": 14,
         "length": 2656,
-        "clearanceViolations": 0
+        "clearanceViolations": 0,
+        "edgeOverlaps": 0
       }
     },
     {
@@ -677,7 +681,8 @@
         "crossings": 0,
         "bends": 0,
         "length": 656,
-        "clearanceViolations": 0
+        "clearanceViolations": 0,
+        "edgeOverlaps": 0
       }
     },
     {
@@ -744,7 +749,8 @@
         "crossings": 0,
         "bends": 4,
         "length": 1184,
-        "clearanceViolations": 0
+        "clearanceViolations": 0,
+        "edgeOverlaps": 0
       }
     },
     {
@@ -845,7 +851,8 @@
         "crossings": 0,
         "bends": 6,
         "length": 1608,
-        "clearanceViolations": 0
+        "clearanceViolations": 0,
+        "edgeOverlaps": 0
       }
     },
     {
@@ -870,7 +877,8 @@
         "crossings": 0,
         "bends": 0,
         "length": 568,
-        "clearanceViolations": 0
+        "clearanceViolations": 0,
+        "edgeOverlaps": 0
       }
     },
     {
@@ -911,7 +919,8 @@
         "crossings": 0,
         "bends": 4,
         "length": 708,
-        "clearanceViolations": 0
+        "clearanceViolations": 0,
+        "edgeOverlaps": 0
       }
     },
     {
@@ -962,7 +971,8 @@
         "crossings": 0,
         "bends": 0,
         "length": 1464,
-        "clearanceViolations": 0
+        "clearanceViolations": 0,
+        "edgeOverlaps": 0
       }
     },
     {
@@ -1016,7 +1026,8 @@
         "crossings": 0,
         "bends": 4,
         "length": 1896,
-        "clearanceViolations": 0
+        "clearanceViolations": 0,
+        "edgeOverlaps": 1
       }
     },
     {
@@ -1054,7 +1065,8 @@
         "crossings": 1,
         "bends": 0,
         "length": 1608,
-        "clearanceViolations": 0
+        "clearanceViolations": 0,
+        "edgeOverlaps": 0
       }
     },
     {
@@ -1208,7 +1220,8 @@
         "crossings": 0,
         "bends": 16,
         "length": 3324,
-        "clearanceViolations": 0
+        "clearanceViolations": 0,
+        "edgeOverlaps": 0
       }
     },
     {
@@ -1275,7 +1288,8 @@
         "crossings": 0,
         "bends": 4,
         "length": 984,
-        "clearanceViolations": 0
+        "clearanceViolations": 0,
+        "edgeOverlaps": 0
       }
     },
     {
@@ -1384,7 +1398,8 @@
         "crossings": 0,
         "bends": 8,
         "length": 2040,
-        "clearanceViolations": 0
+        "clearanceViolations": 0,
+        "edgeOverlaps": 0
       }
     }
   ]

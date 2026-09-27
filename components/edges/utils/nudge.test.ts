@@ -169,3 +169,115 @@ describe('resolveHandlePoint via routeAll', () => {
     expect(Position.Right).toBe('right');
   });
 });
+
+/**
+ * ROUTE-001 / WP-8 (2026-09-27): Der Nudge zieht Ausweich-Trassen aus der
+ * LaneRegistry-Leiter und sieht kollineare Überdeckungen ab jeder Länge
+ * (I2-Begriff) — nicht mehr nur ab `NUDGE_MIN_OVERLAP` (12 px).
+ */
+const custom = (id: string, waypoints: [number, number][]): { id: string; waypoints: Point[] } => ({
+  id,
+  waypoints: waypoints.map(([x, y]) => ({ x, y })),
+});
+
+describe('nudgeOrthogonalPaths — kollineare Einzel-Überdeckungen (ROUTE-001)', () => {
+  it('sieht eine kollineare Überdeckung ab 8 px (I2), nicht erst ab 12 px', () => {
+    // Beide Innenstücke liegen exakt auf y = 40 und überdecken sich 8 px
+    // (x ∈ [168, 176]) — für I2 längst ein Verstoß, für den alten Nudge
+    // (Schwelle 12 px) unsichtbar.
+    const a = custom('a', [
+      [0, 0],
+      [24, 0],
+      [24, 40],
+      [176, 40],
+      [176, 80],
+      [200, 80],
+    ]);
+    const b = custom('b', [
+      [0, 60],
+      [200, 60],
+      [200, 40],
+      [168, 40],
+      [168, 100],
+      [200, 100],
+    ]);
+    const out = nudgeOrthogonalPaths([a, b]);
+    const ya = out.get('a')![2]!.y;
+    const yb = out.get('b')![2]!.y;
+    expect(ya, 'die beiden kollinearen Läufe müssen getrennt werden').not.toBe(yb);
+    expect(out.get('a')![0]).toEqual({ x: 0, y: 0 });
+    expect(out.get('b')![0]).toEqual({ x: 0, y: 60 });
+  });
+
+  it('lässt disjunkte Parallelen in Ruhe (keine Überdeckung, kein Zug)', () => {
+    const a = custom('a', [
+      [0, 0],
+      [24, 0],
+      [24, 40],
+      [176, 40],
+      [176, 80],
+      [200, 80],
+    ]);
+    const b = custom('b', [
+      [0, 60],
+      [200, 60],
+      [200, 40],
+      [180, 40],
+      [180, 100],
+      [200, 100],
+    ]);
+    const out = nudgeOrthogonalPaths([a, b]);
+    expect(out.get('a')).toEqual(a.waypoints);
+    expect(out.get('b')).toEqual(b.waypoints);
+  });
+
+  it('zieht einen beweglichen Lauf, der auf einem fremden Stub liegt, auf eine Registry-Lane', () => {
+    // b hat nur zwei Segmente (kein Innenstück) — sein erster Lauf ist ein
+    // Stub. a überdeckt ihn kollinear: nur a ist beweglich.
+    const a = custom('a', [
+      [0, 0],
+      [40, 0],
+      [40, 120],
+      [160, 120],
+      [160, 0],
+      [200, 0],
+    ]);
+    const b = custom('b', [
+      [100, 120],
+      [300, 120],
+      [300, 200],
+    ]);
+    const out = nudgeOrthogonalPaths([a, b]);
+    const moved = out.get('a')!;
+    const laneY = moved[2]!.y;
+    expect(laneY, 'der Lauf muss die Linie y = 120 verlassen').not.toBe(120);
+    // Registry-Leiter: Korridor (auf halbes laneGrid gerastet) ± k · laneGrid.
+    const step = NUDGE_GAP;
+    const offset = Math.abs(laneY - 120);
+    expect(offset % step).toBe(0);
+    expect(offset).toBeLessThanOrEqual(2 * step);
+    expect(isOrthogonalPath(moved)).toBe(true);
+    expect(b.waypoints[0]).toEqual({ x: 100, y: 120 });
+  });
+
+  it('verwirft den Zug, wenn die Ausweich-Lane durch ein Hindernis versperrt ist', () => {
+    const a = custom('a', [
+      [0, 0],
+      [40, 0],
+      [40, 120],
+      [160, 120],
+      [160, 0],
+      [200, 0],
+    ]);
+    const b = custom('b', [
+      [100, 120],
+      [300, 120],
+      [300, 200],
+    ]);
+    // Hindernis über allen Kandidaten-Leitern (±1 bis ±3) im Bereich des
+    // Laufs — der Nudge darf nicht durch die Wand ausweichen.
+    const wall = { x: 20, y: 60, width: 180, height: 120 };
+    const out = nudgeOrthogonalPaths([a, b], { obstacles: [wall] });
+    expect(out.get('a')).toEqual(a.waypoints);
+  });
+});

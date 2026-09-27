@@ -263,8 +263,9 @@ CAMP
 | `rules/portFanOut.ts`   | Lane-Vergabe am Port-Bündel (`assignFanOut`, `portNormal`, `portCross`)                       | `portFanOut.test.ts`   |
 | `rules/costModel.ts`    | A*-Kostenmatrix, **aus Tokens abgeleitet** (`COST_WEIGHTS`, `segmentExtraCost`)               | `costModel.test.ts`    |
 | `rules/portBundle.ts`   | Port-Bündel-Ausnahme (ADR 0009) — geteilt von I2, Kostenmodell und Audit (ADR 0025)           | `portBundle.test.ts`   |
-| `rules/laneRegistry.ts` | deterministische Lane-Registry (**nicht im Produktivpfad**, s. LEGACY)                        | `laneRegistry.test.ts` |
-| `rules/hopping.ts`      | Kreuzungs-Hopping: Priorität, wer hüpft, Bogen-Mittelpunkte                                   | `hopping.test.ts`      |
+| `rules/laneRegistry.ts` | deterministische Lane-Leiter; `laneCandidates` speist das Nudging (ADR 0026)                  | `laneRegistry.test.ts` |
+
+| `rules/hopping.ts` | Kreuzungs-Hopping: Priorität, wer hüpft, Bogen-Mittelpunkte | `hopping.test.ts` |
 
 ### 4.4 Engine: Hanan-A* (Produktivpfad)
 

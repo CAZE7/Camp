@@ -5,8 +5,18 @@ import {
   containsPoint,
   stitchOrthogonal,
   routeDefectScore,
+  manhattan,
+  countCrossings,
+  pathLength,
 } from './pathfinding';
 import { ROUTING_TOKENS } from '../../../lib/routing/tokens';
+import {
+  LaneRegistry,
+  laneCandidates,
+  type CorridorDirection,
+} from '../../../lib/routing/rules/laneRegistry';
+import { classifySegmentAgainstSegment } from '../../../lib/routing/rules/collision';
+import { isPortBundleOverlap, routedPathGeometry } from '../../../lib/routing/rules/portBundle';
 
 /**
  * Globales orthogonales Nudging (libavoid-Phase 2).
@@ -47,6 +57,31 @@ const clonePaths = (paths: NudgePath[]): Point[][] =>
 
 const rangesOverlap = (aLo: number, aHi: number, bLo: number, bHi: number): boolean =>
   aHi >= bLo + NUDGE_MIN_OVERLAP && bHi >= aLo + NUDGE_MIN_OVERLAP;
+
+/** Echte Überdeckung — jede Länge > EPS, genau der I2-Begriff. */
+const rangesOverlapAny = (aLo: number, aHi: number, bLo: number, bHi: number): boolean =>
+  aHi > bLo + EPS && bHi > aLo + EPS;
+
+/** Liegen zwei Segmente derselben Achse kollinear (gleiche Querkoordinate)? */
+const collinear = (a: PerpSpan, b: PerpSpan): boolean => Math.abs(a.perp - b.perp) <= EPS;
+
+type PerpSpan = { lo: number; hi: number; perp: number };
+
+/**
+ * Gehören zwei Innenstücke in dieselbe Gruppe?
+ *
+ * ROUTE-006 / ROUTE-002-Teil-2b (2026-09-27): I2 greift bei JEDER kollinearen
+ * Überdeckung > EPS. Der Nudge sah bis hierher nur Paare mit mindestens
+ * `NUDGE_MIN_OVERLAP` (12 px) gemeinsamer Länge — ein 8-px-Stück auf
+ * derselben Linie blieb damit stehen (gemessen im ELK-Pfad). Kollineare
+ * Paare zählen jetzt ab jeder Länge; für bloß benachbarte Parallelen bleibt
+ * die alte Schwelle.
+ */
+const sameNudgeGroup = (a: PerpSpan, b: PerpSpan): boolean => {
+  if (Math.abs(a.perp - b.perp) > NUDGE_THRESHOLD) return false;
+  if (collinear(a, b)) return rangesOverlapAny(a.lo, a.hi, b.lo, b.hi);
+  return rangesOverlap(a.lo, a.hi, b.lo, b.hi);
+};
 
 /**
  * Segmente zwischen Stub und Gegen-Stub (i = 1 .. n-3).
@@ -105,8 +140,7 @@ const clustersOf = (segs: Seg[]): number[][] => {
 
   for (let i = 0; i < n; i++) {
     for (let j = i + 1; j < n; j++) {
-      if (Math.abs(at(segs, i).perp - at(segs, j).perp) > NUDGE_THRESHOLD) continue;
-      if (!rangesOverlap(at(segs, i).lo, at(segs, i).hi, at(segs, j).lo, at(segs, j).hi)) continue;
+      if (!sameNudgeGroup(at(segs, i), at(segs, j))) continue;
       union(i, j);
     }
   }
@@ -212,6 +246,188 @@ const obstaclesForPath = (obstacles: Rect[], start: Point, end: Point): Rect[] =
 };
 
 /**
+ * Ist dieses Segment als Ganzes verschiebbar?
+ *
+ * Beide Enden müssen Innenpunkte sein (kein Handle). Bewusst NICHT auf
+ * `isFreeVertex` eingeschränkt (ROUTE-006, 2026-09-27): Genau die Läufe, die
+ * einander am Port überdecken, haben einen Ellbogen direkt neben dem Stub —
+ * `i0 = 1` bzw. `i1 = n−2`. Ihr Versatz ist zulässig, weil ein Segment nur
+ * ALS GANZES wandert (ROUTE-BUG-17) und quer zu seinen Nachbarn liegt: Die
+ * Anschluss-Stubs bleiben dadurch auf ihrer Achse, nur ihre Länge ändert sich.
+ * Diese Länge ist die Stub-Verlängerung — genau der Lane-Begriff des
+ * Port-Fan-Outs (`lane`), hier geometrisch statt am Port gerechnet.
+ */
+const movableSegment = (seg: Seg, n: number): boolean =>
+  seg.i0 >= 1 && seg.i1 >= 1 && seg.i0 <= n - 2 && seg.i1 <= n - 2;
+
+/**
+ * Kreuzungen eines Pfads gegen die übrigen Pfade (harte X-Schnitte,
+ * `countCrossings`). Der Zug darf keine Kreuzung erzeugen: Gemessen kostete
+ * die erste Fassung dieses Passes im Stress-Szenario „1 Batterie +
+ * 10 Verbraucher“ vier zusätzliche Kreuzungen (9 statt 5) — eine
+ * Überdeckung auflösen ist kein Freibrief für ein Kreuzungsmeer.
+ */
+const crossingsAgainstOthers = (candidate: Point[], others: readonly Point[][]): number =>
+  countCrossings(
+    candidate,
+    others.flatMap((other) => [...routedPathGeometry(other).segments])
+  );
+
+/** Länge des ersten/letzten Segments (Stubs) — Vertrag mit I5. */
+const stubLengthsOk = (pts: Point[]): boolean => {
+  if (pts.length < 2) return true;
+  const first = manhattan(at(pts, 0), at(pts, 1));
+  const last = manhattan(at(pts, pts.length - 2), at(pts, pts.length - 1));
+  return first >= ROUTING_TOKENS.stubMin - EPS && last >= ROUTING_TOKENS.stubMin - EPS;
+};
+
+/** Verschiebt beide Enden eines Segments quer zur Achse (nur Innenpunkte). */
+const shiftSegment = (pts: Point[], seg: Seg, axis: 'h' | 'v', delta: number): void => {
+  for (const idx of [seg.i0, seg.i1]) {
+    if (axis === 'h') at(pts, idx).y += delta;
+    else at(pts, idx).x += delta;
+  }
+};
+
+/**
+ * Zählt harte kollineare Überdeckungen (I2) eines Pfads gegen alle anderen —
+ * die Port-Bündel-Ausnahme (ADR 0009) kommt aus derselben Regel wie die
+ * Invariante, damit der Nudge sie nicht wegoptimiert.
+ */
+const hardOverlapsAgainstOthers = (candidate: Point[], others: readonly Point[][]): number => {
+  const geoA = routedPathGeometry(candidate);
+  let count = 0;
+  for (const other of others) {
+    const geoB = routedPathGeometry(other);
+    for (const s1 of geoA.segments) {
+      for (const s2 of geoB.segments) {
+        if (classifySegmentAgainstSegment(s1, s2).class !== 'hard') continue;
+        if (isPortBundleOverlap(geoA, geoB, s1, s2)) continue;
+        count += 1;
+      }
+    }
+  }
+  return count;
+};
+
+/**
+ * ROUTE-001 / WP-8 (2026-09-27): Auflösung kollinearer Einzel-Überdeckungen.
+ *
+ * Der Cluster-Pass oben verteilt nur Gruppen mit mindestens ZWEI beweglichen
+ * Teilnehmern. Gemessen im ELK-Pfad bleiben genau die Fälle übrig, in denen
+ * nur EINE Seite beweglich ist: ein Freiwinkel-Pfad kreuzt die Linie eines
+ * 4-Punkt-Pfads (dessen Innenknoten nicht frei ist) oder läuft auf den Stub
+ * einer anderen Kante. Hier zieht der bewegliche Teilnehmer deshalb auf die
+ * nächstgelegene FREIE Lane — die Kandidaten kommen aus der LaneRegistry
+ * (`laneCandidates`, WP-5), also aus derselben Leiter
+ * (`laneIndex × laneGrid` um die Korridor-Referenz), die auch die
+ * Lane-Vergabe benutzt.
+ *
+ * Gegenüber stehen dabei **alle** Segmente fremder Pfade — Stubs
+ * eingeschlossen; nur der Beweger muss ein bewegliches Innenstück sein.
+ * Bewertet wird mit denselben Bedingungen wie oben (orthogonal,
+ * hindernisfrei, Mängel-Strafe nicht schlechter) plus einer harten
+ * Zusatzbedingung: **der Zug darf keine neue kollineare Überdeckung
+ * erzeugen** (I2) — sonst würde der Nudge an einer Stelle reparieren, was er
+ * an der anderen anrichtet. Die Port-Bündel-Ausnahme (ADR 0009) gilt dabei,
+ * kommt aber aus derselben Regel wie die Invariante.
+ *
+ * Deterministisch: Kandidatenreihenfolge aus der Registry, Pfade in
+ * Index-Reihenfolge, erster passender Kandidat gewinnt (ADR 0010).
+ */
+const displaceSingleMovers = (
+  clones: Point[][],
+  originals: Point[][],
+  pathIds: string[],
+  axis: 'h' | 'v',
+  gap: number,
+  obstacles: Rect[]
+): void => {
+  const spansOf = (pts: Point[]): PerpSpan[] => {
+    const out: PerpSpan[] = [];
+    for (let i = 0; i + 1 < pts.length; i++) {
+      const a = at(pts, i);
+      const b = at(pts, i + 1);
+      const onAxis = axis === 'h' ? Math.abs(a.y - b.y) <= EPS : Math.abs(a.x - b.x) <= EPS;
+      if (!onAxis) continue;
+      const lo = axis === 'h' ? Math.min(a.x, b.x) : Math.min(a.y, b.y);
+      const hi = axis === 'h' ? Math.max(a.x, b.x) : Math.max(a.y, b.y);
+      out.push({ lo, hi, perp: axis === 'h' ? a.y : a.x });
+    }
+    return out;
+  };
+
+  const registry = new LaneRegistry();
+  const direction: CorridorDirection = axis === 'h' ? 'horizontal' : 'vertical';
+  const handled = new Set<string>();
+
+  for (let p = 0; p < originals.length; p++) {
+    const n = at(originals, p).length;
+    const interiors = collectInterior(at(originals, p), axis);
+    for (let k = 0; k < interiors.length; k++) {
+      const mover = at(interiors, k);
+      if (!movableSegment(mover, n)) continue; // nur verschiebbare Segmente sind Beweger
+      const key = `${at(pathIds, p)}|${axis}|${mover.perp}`;
+      if (handled.has(key)) continue;
+
+      // Fremdgeometrie aus dem AKTUELLEN Arbeitsstand: Hat schon ein anderer
+      // Pfad ausgewichen, sieht dieser Beweger die neue Lage — sonst zögen
+      // beide auf dieselbe Lane und die Überdeckung bliebe stehen.
+      const foreign = originals
+        .map((_, idx) => idx)
+        .filter((idx) => idx !== p)
+        .flatMap((idx) => spansOf(at(clones, idx)));
+      const blocked = foreign.some(
+        (f) => collinear(f, mover) && rangesOverlapAny(f.lo, f.hi, mover.lo, mover.hi)
+      );
+      if (!blocked) continue;
+      handled.add(key);
+
+      const working = at(clones, p);
+      const baselinePath = at(originals, p);
+      const othersNow = clones.filter((_, idx) => idx !== p);
+      const corridor = registry.corridorFor(direction, mover.perp, mover.lo, mover.hi);
+      const baselineDefect = routeDefectScore(baselinePath);
+      const baselineLength = pathLength(baselinePath);
+      const baselineCrossings = crossingsAgainstOthers(baselinePath, othersNow);
+      const candidates = laneCandidates(corridor, gap, { limit: 6 });
+
+      for (const coord of candidates) {
+        const delta = coord - mover.perp;
+        if (Math.abs(delta) < EPS) continue;
+        const trial = working.map((pt) => ({ x: pt.x, y: pt.y }));
+        shiftSegment(trial, mover, axis, delta);
+        trial[0] = { x: at(working, 0).x, y: at(working, 0).y };
+        trial[trial.length - 1] = {
+          x: at(working, working.length - 1).x,
+          y: at(working, working.length - 1).y,
+        };
+        const repaired = stitchOrthogonal(trial);
+        const relevant = obstaclesForPath(
+          obstacles,
+          at(baselinePath, 0),
+          at(baselinePath, baselinePath.length - 1)
+        );
+        const ok =
+          isOrthogonalPath(repaired) &&
+          (relevant.length === 0 || !pathHitsObstacles(repaired, relevant)) &&
+          // Gegenüber dem ORIGINAL, damit die Summe mehrerer Züge nicht doch
+          // schlechter wird als der Ausgangszustand.
+          routeDefectScore(repaired) <= baselineDefect + EPS &&
+          pathLength(repaired) <= baselineLength + 1e-6 &&
+          stubLengthsOk(repaired) &&
+          hardOverlapsAgainstOthers(repaired, othersNow) === 0 &&
+          crossingsAgainstOthers(repaired, othersNow) <= baselineCrossings;
+        if (!ok) continue;
+        working.length = 0;
+        for (const pt of repaired) working.push({ x: pt.x, y: pt.y });
+        break;
+      }
+    }
+  }
+};
+
+/**
  * Schiebt parallele Innenstücke auseinander. Start- und Zielpunkte bleiben.
  * Pfade, die danach ein fremdes Hindernis schneiden, fallen auf das Original zurück.
  */
@@ -230,6 +446,9 @@ export function nudgeOrthogonalPaths(
 
   applyAxis(clones, originals, ids, 'h', gap);
   applyAxis(clones, originals, ids, 'v', gap);
+  // ROUTE-001: Einzel-Überdeckungen, die der Cluster-Pass nicht sieht.
+  displaceSingleMovers(clones, originals, ids, 'h', gap, obstacles);
+  displaceSingleMovers(clones, originals, ids, 'v', gap, obstacles);
 
   for (let i = 0; i < paths.length; i++) {
     const id = at(ids, i);

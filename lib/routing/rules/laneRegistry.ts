@@ -82,6 +82,38 @@ export function symmetricLaneIndex(position: number, count: number): number {
   return position - (count - 1) / 2;
 }
 
+/**
+ * WP-5 / ROUTE-001: Kandidaten-Koordinaten einer freien Lane im Korridor.
+ *
+ * Die Registry vergibt Lanes als `laneIndex × laneGrid` um die
+ * Korridor-Referenz (auf halbes `laneGrid` gerastet). Das gescopede Nudging
+ * (WP-8, ROUTE-006) braucht dieselbe Leiter als *Auswahl*: „weiche auf die
+ * nächstgelegene freie Lane aus“ statt „irgendwie ±gap“. Zurückgegeben werden
+ * die Korridor-Leitern (±1, ±2, … × `gap`) nach Abstand geordnet; `accept`
+ * filtert belegte Koordinaten heraus.
+ *
+ * Rein und deterministisch: gleiche Eingabe ⇒ gleiche Liste (ADR 0010).
+ */
+export function laneCandidates(
+  corridor: Corridor,
+  gap: number,
+  options?: { limit?: number; accept?: (coord: number) => boolean }
+): number[] {
+  const limit = options?.limit ?? 4;
+  const accept = options?.accept ?? (() => true);
+  const out: number[] = [];
+  // Ringe nach außen; `limit` zählt die AKZEPTIERTEN Kandidaten, die
+  // Ringgrenze hält die Schleife in jedem Fall endlich.
+  outer: for (let ring = 1; ring <= limit * 2; ring++) {
+    for (const sign of [1, -1] as const) {
+      if (out.length >= limit) break outer;
+      const coord = corridor.coord + sign * ring * gap;
+      if (accept(coord)) out.push(coord);
+    }
+  }
+  return out;
+}
+
 export class LaneRegistry {
   private readonly corridors = new Map<string, { corridor: Corridor; requests: LaneRequest[] }>();
   private readonly tokens: RoutingTokens;

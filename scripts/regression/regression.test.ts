@@ -77,7 +77,7 @@ describe('Metrik-Budget — Delta gegen Baseline ≤ 0', () => {
   const golden = loadGolden();
 
   for (const scenario of REGRESSION_SCENARIOS) {
-    it(`${scenario.id}: Kreuzungen/Bends/Länge ≤ Baseline, Clearance-Verstöße = 0`, () => {
+    it(`${scenario.id}: Kreuzungen/Bends/Länge/I2 ≤ Baseline, Clearance-Verstöße = 0`, () => {
       const baseline = golden.scenarios.find((s) => s.id === scenario.id)!.metrics;
       const routed = routeScenario(scenario);
       const metrics = measureScenario(routed, scenarioNodeRects(scenario.nodes));
@@ -85,6 +85,9 @@ describe('Metrik-Budget — Delta gegen Baseline ≤ 0', () => {
       expect(metrics.bends, 'Bends').toBeLessThanOrEqual(baseline.bends);
       expect(metrics.length, 'Trassenlänge').toBeLessThanOrEqual(baseline.length);
       expect(metrics.clearanceViolations, 'Clearance-Verstöße').toBe(0);
+      // ADR 0026: kollineare Trassenüberdeckungen waren in dieser Suite
+      // unsichtbar — als Ratchet geführt, damit sie es nicht wieder werden.
+      expect(metrics.edgeOverlaps, 'I2-Überdeckungen').toBeLessThanOrEqual(baseline.edgeOverlaps);
     });
   }
 });
