@@ -16,6 +16,7 @@ import { volts } from './units';
 import type { CableEdgeData } from '../components/edges/CableEdge';
 import { FUSE_MAP, VDE_SIZES } from './electrical';
 import { isStarterBattery } from './autoWire/validation';
+import { connectionKey } from './autoWire/primitives';
 import { safeText } from './safeText'; // AUDIT T1
 import { getSystemVoltage } from './vde-standards';
 
@@ -325,8 +326,13 @@ describe('autoWire — Persistenzvertrag Nutzerkante (AUDIT D1/D2)', () => {
       }),
     ];
     const out = performAutoWiring(batteryAndConsumer(), legacy)!;
+    // Fingerprint ist ab AUDIT D3 der QUERSCHNITT, nicht mehr die Länge: Die
+    // Länge einer Auto-Kante wird bewusst weitergereicht (Nutzerangabe, s.
+    // D3-Test), der Querschnitt dagegen ist AutoWires Ergebnis und wird bei
+    // jedem Lauf neu bestimmt. Ein 42-mm²-Wert kann deshalb nur aus einem
+    // NICHT ersetzten Altbestand stammen.
     expect(
-      out.edges.some((x) => x.data?.length === 42),
+      out.edges.some((x) => x.data?.crossSection === 42),
       'die Alt-Auto-Kante muss ersetzt sein'
     ).toBe(false);
     // Und der Ersatz trägt das Flag — der Präfix-Fallback ist einmalig nötig.
@@ -1543,5 +1549,106 @@ describe('M6-8 — AUDIT-Testgruppen', () => {
     const before = sig(dc);
     sizeDcEdges(dc, res.nodes, res.edges, volts(12.8));
     expect(sig(dc)).toBe(before);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AUDIT D3 — Nutzerangaben an Auto-Kanten überleben den nächsten Lauf
+// ---------------------------------------------------------------------------
+describe('autoWire — Nutzerangaben an Auto-Kanten (AUDIT D3)', () => {
+  const plan = () => [
+    n('b1', 'battery', { label: 'Aufbaubatterie', capacity: 100, chemistry: 'LiFePO4' }),
+    n('s1', 'solar', { label: '400W Solar', watts: 400 }),
+    n('c1', 'consumer', { label: 'LED-Beleuchtung', watts: 20 }),
+  ];
+
+  /** Erster Lauf — die Solar-Plus-Kante der Vorlage trägt die Planungslänge 5 m. */
+  const firstRun = () => {
+    const first = performAutoWiring(plan())!;
+    const solar = first.edges.find((x) => x.data?.edgeDomain === 'Solar' && x.sourceHandle === 'plus')!;
+    expect(solar.data!.length, 'Planungslänge der Solar-Zuleitung').toBe(5);
+    return { first, solar };
+  };
+
+  it('die im Inspektor eingegebene Länge überschreibt die Planungslänge — auch nach dem nächsten Klick', () => {
+    // Gemeldeter Fehler: „wenn ich bei den 5 meter 2 meter eingebe und dann
+    // auto wire drücke, springt er wieder auf 5 meter zurück“. AutoWire
+    // ersetzt seine Kanten und baute sie dabei mit der festen Planungslänge
+    // neu auf — jede Nutzereingabe war Wegwerfarbeit.
+    const { first, solar } = firstRun();
+    const edited = first.edges.map((x) => (x.id === solar.id ? { ...x, data: { ...x.data, length: 2 } } : x));
+
+    const second = performAutoWiring(first.nodes, edited)!;
+    const again = second.edges.find((x) => connectionKey(x) === connectionKey(solar))!;
+    expect(again.data!.length, 'die Nutzerangabe 2 m muss stehen bleiben').toBe(2);
+    expect(again.data!.autoWired, 'die Kante bleibt eine Auto-Kante (Idempotenz)').toBe(true);
+  });
+
+  it('die erhaltene Länge fließt in die Dimensionierung ein (Spannungsfall)', () => {
+    // Kontrollprobe: Wäre die Länge nur ein Anzeigewert, könnte der Querschnitt
+    // für 5 m gerechnet sein. Bei 2 m muss die Leitung nicht dicker werden —
+    // der Test vergleicht gegen den unveränderten Lauf.
+    const { first, solar } = firstRun();
+    const untouched = performAutoWiring(first.nodes, first.edges)!;
+    const long = untouched.edges.find((x) => connectionKey(x) === connectionKey(solar))!;
+
+    const edited = first.edges.map((x) =>
+      x.id === solar.id ? { ...x, data: { ...x.data, length: 0.5 } } : x
+    );
+    const short = performAutoWiring(first.nodes, edited)!.edges.find(
+      (x) => connectionKey(x) === connectionKey(solar)
+    )!;
+
+    expect(short.data!.length).toBe(0.5);
+    expect(short.data!.crossSection!).toBeLessThanOrEqual(long.data!.crossSection!);
+  });
+
+  it('Querschnitt und Sicherung bleiben AutoWires Ergebnis (kein Einfrieren)', () => {
+    // Gegenprobe zur Länge: Die Dimensionierung darf NICHT mitgeschleppt
+    // werden — sonst würde „Automatisch verbinden“ nichts mehr nachrechnen.
+    const { first, solar } = firstRun();
+    const tampered = first.edges.map((x) =>
+      x.id === solar.id ? { ...x, data: { ...x.data, crossSection: 0.5 } } : x
+    );
+    const second = performAutoWiring(first.nodes, tampered)!;
+    const again = second.edges.find((x) => connectionKey(x) === connectionKey(solar))!;
+    expect(again.data!.crossSection!, '0,5 mm² wird hochdimensioniert').toBeGreaterThan(0.5);
+  });
+
+  it('Datenblattwerte des Schutzorgans und fuseOffset überleben ebenfalls', () => {
+    const { first, solar } = firstRun();
+    const edited = first.edges.map((x) =>
+      x.id === solar.id
+        ? {
+            ...x,
+            data: {
+              ...x.data,
+              fuseOffset: 0.18,
+              fuseBreakingCapacity: 10000,
+              acProtection: { kind: 'rcbo', characteristic: 'C', breakingCapacityKA: 10 },
+            },
+          }
+        : x
+    );
+    const again = performAutoWiring(first.nodes, edited)!.edges.find(
+      (x) => connectionKey(x) === connectionKey(solar)
+    )!;
+    expect(again.data!.fuseOffset).toBe(0.18);
+    expect(again.data!.fuseBreakingCapacity).toBe(10000);
+    expect(again.data!.acProtection).toEqual({
+      kind: 'rcbo',
+      characteristic: 'C',
+      breakingCapacityKA: 10,
+    });
+  });
+
+  it('unveränderte Auto-Kanten behalten ihre Planungslänge (kein Datenwachstum)', () => {
+    // Gegenprobe nach oben: Ohne Nutzereingabe bleibt die Vorlagenlänge 5 m,
+    // und der Lauf bleibt idempotent.
+    const { first, solar } = firstRun();
+    const second = performAutoWiring(first.nodes, first.edges)!;
+    const again = second.edges.find((x) => connectionKey(x) === connectionKey(solar))!;
+    expect(again.data!.length).toBe(5);
+    expect(second.edges.length).toBe(first.edges.length);
   });
 });

@@ -284,9 +284,15 @@ export const collectEdgeErrors = (input: {
         errors.push({
           ruleId: 'fuse-below-minimum',
           severity: 'critical',
+          // Die Zahlen gehören in den Chip: Auf einer 70-mm²-Leitung mit
+          // 306 A Last steht als Kabelgrenze „Max: 100A“ direkt daneben — der
+          // nackte Satz „Sicherung zu klein!“ las sich dann wie ein
+          // Widerspruch zu dieser 100-A-Grenze (Prüfbericht). Mit
+          // „(100A < 306A Last)“ ist sichtbar, WAS zu klein ist: nicht die
+          // Leitung, sondern jedes noch so große Schutzorgan für diese Last.
           message: isSolarRule
             ? `Sicherung zu klein (Solar: ≥ 1,56 × Isc = ${Math.ceil(minimumFuseCurrent)}A)!`
-            : 'Sicherung zu klein!',
+            : `Sicherung zu klein (${data.fuseSize}A < ${Math.ceil(minimumFuseCurrent)}A Last)!`,
           measuredValue: data.fuseSize,
           expectedValue: Math.ceil(minimumFuseCurrent * 10) / 10,
           unit: 'A',

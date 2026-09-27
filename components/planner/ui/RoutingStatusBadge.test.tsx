@@ -52,6 +52,10 @@ describe('RoutingStatusBadge (AUDIT F-07)', () => {
     expect(bad).toBeInTheDocument();
     expect(bad.getAttribute('aria-label')).toBe('Routing: 1 Zwang nicht erreicht');
     expect(bad.getAttribute('title')).toContain('nicht layout-verifiziert');
+    // ADR 0014: Kabel werden immer automatisch verlegt — der Hinweis darf
+    // keine Handlung verlangen, die die App nicht anbietet.
+    expect(bad.getAttribute('title')).not.toContain('Leitungen umlegen');
+    expect(bad.getAttribute('title')).toContain('Verschiebe die Bauteile');
   });
 
   it('nennt die Not-Freigabe auch im VALID-Badge (ROUTE-BUG-36)', () => {

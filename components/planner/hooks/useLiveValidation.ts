@@ -176,7 +176,10 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
           ruleId: 'ELE-008-voltage-unknown',
           measuredValue: `${batteries.length - declaredVoltages.length} × ohne Angabe`,
           expectedValue: 'Nennspannung je Batterie eintragen',
-          unit: 'V',
+          // Kein Einheitenfeld: Der Messwert ist eine ANZAHL ohne Angabe, keine
+          // Spannung. Vorher stand hier „V“ und die Zeile las sich
+          // „Ist: 2 × ohne Angabe V“ (AUDIT UX-001, Einheiten-Disziplin).
+          unit: '',
           source: 'Datenmodell: battery.nominalVoltage (NodeInspector)',
           message:
             'ℹ️ Hinweis: Bei mindestens einer Batterie ist die Nennspannung nicht eingetragen. Die Mischspannungs-Prüfung (12 V / 24 V) kann diese Batterie nicht einbeziehen — trage die Nennspannung im Batterie-Inspektor ein.',
@@ -345,7 +348,7 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
           ruleId: 'ELE-007-voc-window-unknown',
           measuredValue: 'maxPvVoltage fehlt',
           expectedValue: 'max. PV-Eingangsspannung laut Datenblatt',
-          unit: 'V',
+          unit: '',
           source: 'Regel M: fehlende Eingabe ⇒ UNKNOWN; Modell prüft Voc(T_min) gegen maxPvVoltage',
           message:
             '⚠️ Hinweis: Am Laderegler ist die maximale PV-Eingangsspannung nicht eingetragen. Die Kalt-Voc-Prüfung (Strings können bei −10 °C über die Leerlaufspannung hinausgehen) ist damit unbewertet. Wert im Regler-Inspektor eintragen — erst dann prüft das Modell das Eingangsfenster.',
@@ -405,7 +408,7 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
           ruleId: 'ELE-007-voc-missing-data',
           measuredValue: 'Voc nicht angegeben',
           expectedValue: 'Voc (STC) je Panel',
-          unit: 'V',
+          unit: '',
           source: 'Modell: Voc-Fensterprüfung nur mit Datenblattwert (schätzen wäre unehrlich)',
           message: `ℹ️ Hinweis: Für die Kalt-Voc-Prüfung des Ladereglers fehlt bei mindestens einem Panel der Datenblattwert „Leerlaufspannung Voc“. Trage ihn im Panel-Inspektor ein, damit das Eingangsfenster geprüft werden kann.`,
         });
@@ -427,7 +430,7 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
           ruleId: 'ELE-007-voc-uncomputable',
           measuredValue: 'Voc vorhanden, Temperaturfaktor ≤ 0',
           expectedValue: 'TK im Bereich −0,20…−0,50 %/K (c-Si)',
-          unit: '%/K',
+          unit: '',
           source: 'Modell: Voc(T) = Voc_STC · (1 + |TK|·(25 °C − T)); Faktor muss positiv sein',
           message: `⚠️ Warnung: Bei mindestens einem Panel ist die kalte Leerlaufspannung nicht berechenbar — der eingetragene Temperaturkoeffizient Voc liegt außerhalb des Modellbereichs (üblich sind −0,20 bis −0,50 %/K für c-Si). Die Voc-Fensterprüfung des Ladereglers ist damit AUSGEFALLEN, nicht bestanden. Wert im Panel-Inspektor korrigieren.`,
         });
@@ -505,8 +508,8 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
           focusType: 'node',
           ruleId: 'A2-shore-rcd',
           measuredValue: 'kein FI',
-          expectedValue: 'RCD <= 30 mA',
-          unit: 'mA',
+          expectedValue: 'RCD ≤ 30 mA',
+          unit: '',
           source: 'DIN VDE 0100-721 (Landstromanschluss Wohnmobil)',
           message: `Am Landstromanschluss „${nodeLabel(sp, 'Landstrom')}" fehlt ein FI-Schutzschalter mit höchstens 30 mA (RCD ≤ 30 mA). Nach DIN VDE 0100-721 ist dieser zwingend vorgeschrieben — Stromschlaggefahr. Lass den 230-V-Schutz von einer Elektrofachkraft einplanen.`,
         });
@@ -652,7 +655,7 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
             ruleId: 'DOM-002-bank-ik-unknown',
             measuredValue: 'Ik Schätzung nicht möglich',
             expectedValue: 'Kapazität/Chemie oder Innenwiderstand je Batterie',
-            unit: 'kA',
+            unit: '',
             source: 'Modell: Ik-Schätzung aus Innenwiderstand oder Chemie-Faustwert (lib/shortCircuit.ts)',
             message:
               '⚠️ Hinweis: Für die Batteriebank fehlen die Angaben, aus denen der Kurzschlussstrom geschätzt wird (Kapazität/Chemie oder Innenwiderstand). Das Abschaltvermögen der Sicherungen ist damit NICHT geprüft — Datenblattwerte im Batterie-Inspektor eintragen.',
@@ -776,7 +779,16 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
         const base = {
           focusId: edge.id,
           focusType: 'edge' as const,
-          unit: 'Ω',
+          /**
+           * Kein `unit` mehr im gemeinsamen Rumpf.
+           *
+           * Hier stand `unit: 'Ω'` für ALLE AC-Befunde. Die meisten tragen
+           * tatsächlich eine Schleifenimpedanz — der Annahme-Hinweis
+           * („LS C, 6 kA (Annahme)“) und der Kurzschlussstrom-Hinweis
+           * („I_p ≈ 0,83 kA“) aber nicht. Die Warn-Zentrale hängte die Einheit
+           * an und zeigte „Ist: LS C, 6 kA (Annahme) Ω“ (Prüfbericht).
+           * Die Einheit steht jetzt an dem Befund, zu dem sie gehört.
+           */
           source: `Schätzung nach IEC 60364-4-41 (Zs·Ia ≤ U0, 2/3-Regel); vorgelagert angenommen ${UPSTREAM_IMPEDANCE_ASSUMPTION_OHM} Ω, PE nach IEC 60364-5-54 Tab. 54.2; lib/acProtection.ts`,
         };
 
@@ -808,6 +820,7 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
                 assessment.prospectiveIkUpperBoundA !== null
                   ? `Icn ≥ ${(assessment.prospectiveIkUpperBoundA / 1000).toFixed(2)} kA bei niederimpedanter Einspeisung`
                   : 'Icn ≥ I_p',
+              unit: 'kA',
               source: `Zwei deklarierte Annahmen in lib/acProtection.ts: ${UPSTREAM_IMPEDANCE_ASSUMPTION_OHM} Ω vorgelagert (Campingplatz-Pitch, typisch) und ${UPSTREAM_IMPEDANCE_MIN_OHM} Ω (Niederimpedanz-Grenze: netznahe Einspeisung/Generator). Ein gemessener I_k am Landstrom-Knoten schlägt beide.`,
               message: `Hinweis: ${assessment.reason} Trage den gemessenen oder vom Platzbetreiber genannten prospektiven Kurzschlussstrom am Landstrom-Knoten ein, um die Prüfung scharf zu stellen — sonst gilt sie nur für den hochohmigen Einspeisefall.`,
             });
@@ -823,6 +836,7 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
               type: 'critical',
               title: 'AC-Abschaltbedingung nicht gesichert (Schleifenimpedanz)',
               ruleId: 'DOM-001-trip-condition',
+              unit: 'Ω',
               measuredValue: fmt(assessment.zsEstimateOhm),
               expectedValue: `≤ ${assessment.zsMaxOhm?.toFixed(2)} Ω (Ia = ${Math.round(assessment.iaA ?? 0)} A)`,
               message: `⚠️ Kritisch: ${assessment.reason} Die geschätzte magnetische Abschaltung des LS-Schalters ist im Fehlerfall nicht gesichert — 30-mA-FI am Landstromanschluss aktivieren oder FI/LS (RCBO) statt LS wählen, Schleifenimpedanz vor Ort messen lassen. Ohne FI kann ein Körperschluss die Leitung dauerhaft gefährlich spannungsführend halten.`,
@@ -836,6 +850,7 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
               type: 'warning',
               title: 'AC-Abschaltbedingung knapp (Leitungslänge treibt Schleifenimpedanz)',
               ruleId: 'DOM-001-trip-borderline',
+              unit: 'Ω',
               measuredValue: fmt(assessment.zsEstimateOhm),
               expectedValue: `≤ ${assessment.zsMaxOhm?.toFixed(2)} Ω`,
               message: `Hinweis: ${assessment.reason} Die Abschaltung hängt damit an der angenommenen Netzimpedanz — Schleifenimpedanz messen lassen oder Leitung kürzen/verstärken.`,
@@ -849,6 +864,7 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
               type: 'info',
               title: 'AC-Fehlerschutz über 30-mA-FI gedeckt (TN-Grenze überschritten)',
               ruleId: 'DOM-001-trip-rcd-covered',
+              unit: 'Ω',
               measuredValue: fmt(assessment.zsEstimateOhm),
               expectedValue: `≤ ${assessment.zsMaxOhm?.toFixed(2)} Ω`,
               message: `Hinweis: ${assessment.reason}`,
@@ -872,6 +888,7 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
                 ruleId: 'DOM-001-descriptor-assumed',
                 measuredValue: 'LS C, 6 kA (Annahme)',
                 expectedValue: 'Bauform (LS/RCBO), Charakteristik B/C, Icn laut Datenblatt',
+                unit: '',
                 source:
                   'Annahme in lib/acProtection.ts: ungünstigste übliche Charakteristik C (10 × In) statt B (5 × In) — Zs,max(C16) = 0,96 Ω statt 1,92 Ω. Eine Leitung, die damit besteht, besteht auch mit jedem real verbauten B-Gerät.',
                 message: `Hinweis: Für mindestens eine 230-V-Leitung ist kein Schutzorgan hinterlegt. Gerechnet wurde deshalb mit der UNGÜNSTIGSTEN üblichen Charakteristik (LS C, 6 kA) — das Ergebnis liegt damit auf der sicheren Seite, ist aber eine Annahme. Trage Bauform, Charakteristik und Abschaltvermögen im Leitungs-Inspektor ein, dann prüft der Plan gegen das echte Gerät.`,
@@ -902,6 +919,7 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
                   ruleId: 'DOM-001-trip-unknown-input',
                   measuredValue: limitation === 'missing-length' ? 'Länge fehlt' : 'Querschnitt fehlt',
                   expectedValue: 'Länge [m] und Querschnitt [mm²] an der Leitung',
+                  unit: '',
                   source:
                     'Regel M (kein stiller Fallback): fehlende Eingabe ⇒ UNKNOWN, niemals PASS; lib/acProtection.ts',
                   message: `${assessment.reason} Ohne diese Angabe ist die Abschaltbedingung der 230-V-Leitung unbekannt — der Plan darf sie nicht als geprüft ausweisen.`,
@@ -922,6 +940,7 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
                 ruleId: 'DOM-001-protection-not-modeled',
                 measuredValue: 'Sicherung als Zahl',
                 expectedValue: 'Bauform (LS/RCBO), Charakteristik B/C, Icn 6/10 kA',
+                unit: '',
                 source:
                   'DOM-001: AC-Schutzdaten fehlen — Bewertung erst mit Datenblatt-Angaben (Edge-Inspektor)',
                 message: `Hinweis: Für mindestens eine 230-V-Leitung ist die Sicherung nur als Bemessungsstrom eingetragen. Bauform (LS oder FI/LS), Charakteristik (B/C) und Abschaltvermögen im Leitungs-Inspektor angeben — erst dann wird die Abschaltbedingung geschätzt geprüft (IEC 60898-1 / 60364-4-41). Ohne diese Angaben ist sie UNBEKANNT, nicht erfüllt.`,
@@ -1036,7 +1055,7 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
               I
             )} A, dauerhaft zulässig sind ${Math.round(
               iz
-            )} A (Tabellenwert × 0,7 für Bündelung/Temperatur). Last reduzieren, Parallelverlegung planen oder — falls möglich — den nächsten Normquerschnitt über 70 mm² wählen.`,
+            )} A (Tabellenwert × 0,7 für Bündelung/Temperatur). Last reduzieren, Leitung parallel verlegen oder die Systemspannung erhöhen — oberhalb von 70 mm² kennt der Planer keinen Normquerschnitt, der diesen Strom noch führt.`,
           });
         }
 
@@ -1054,10 +1073,10 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
             ruleId: 'AUTO-003-drop-warning',
             measuredValue: '3 %-Budget gerissen',
             expectedValue: '≤ 3 % bis zum Verbraucher',
-            unit: '%',
+            unit: '',
             source: 'AutoWire-Dimensionierung (lib/autoWire/sizing.ts): Pfad bleibt bei 70 mm² über Budget',
             message:
-              '⚠️ Kritisch: Auch mit dem größten Normquerschnitt (70 mm²) bleibt der Spannungsfall auf dieser Versorgungskette über dem 3-%-Budget. Die Last ist an 12 V so nicht ausführbar — kürzere Wege, Querschnitt-Erhöhung über die Normreihe oder eine höhere Systemspannung planen.',
+              '⚠️ Kritisch: Auch mit dem größten Normquerschnitt (70 mm²) bleibt der Spannungsfall auf dieser Versorgungskette über dem 3-%-Budget. Die Last ist so nicht ausführbar — Wege kürzen, Last aufteilen oder eine höhere Systemspannung (24/48 V) planen; eine Normstufe oberhalb von 70 mm² kennt der Planer nicht.',
           });
         }
         if (edge.data?.fuseWarning) {

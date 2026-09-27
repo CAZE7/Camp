@@ -1093,3 +1093,123 @@ vorherigen weiter.
 
 Gate: `npx vitest run` → 167 Testdateien / 2306 Tests, `npm run check` grün
 (lint, prettier, beide `tsc`-Profile, Coverage).
+
+### 2026-09-27 — Zwölfte Fassung: Prüfbericht-Meldungen ohne Widersprüche (UX-001-Nacharbeit)
+
+Ein Nutzer schickte den Text der Warn-Zentrale und sieben Screenshots. Kein
+Rechenfehler, aber vier Stellen, an denen die App sich selbst widersprach oder
+etwas versprach, das es nicht gibt. Alle vier sind behoben, jede mit Test.
+
+1. **Doppelte/erfremdete Einheiten.** `measuredValue` trägt die Einheit längst
+   selbst („306 A“, „≈ 0,83 kA“, „70 mm²“), `unit` wiederholte sie — auf dem
+   Bildschirm stand **„Ist: 306 A A“**. Der AC-Rumpf setzte `unit: 'Ω'` für
+   _alle_ DOM-001-Befunde und hängte Ohm an einen Textwert: „Ist: LS C, 6 kA
+   (Annahme) **Ω**“. Ebenso „Ist: maxPvVoltage fehlt **V**“, „2 × ohne Angabe
+   **V**“, „kein FI **mA**“. Jetzt: `unit` nur bei echten Größen (AC-Familie
+   bekommt Ω nur an den Zs-Befunden, kA am Reichweiten-Hinweis, sonst `''`), und
+   die Anzeige hängt die Einheit nur an nackte Zahlen (neuer Export
+   `valueWithUnit`).
+2. **Falscher Lösungshinweis.** `nextStep()` prüfte
+   `startsWith('solar-voc-window')` — das trifft auch
+   `solar-voc-window-unknown-<id>`. Die Warnung „maximale PV-Eingangsspannung
+   nicht eingetragen“ bekam damit die Anleitung „weniger Panels in Serie“.
+   Reihenfolge ist jetzt Semantik (UNKNOWN zuerst) und für
+   `thermal-overload`, `fuse-not-possible`, `cross-section-undersized`,
+   `drop-not-solvable`, `solar-voc-uncomputable` und die beiden
+   AC-Datenlücken gibt es eigene Hinweise.
+3. **Empfehlung außerhalb der Normreihe.** Die thermische Überlast empfahl „den
+   nächsten Normquerschnitt über 70 mm²“ — `VDE_SIZES` endet bei 70 mm²
+   (Iz_design 120,4 A), die Stufe existiert im Modell nicht (dieselbe
+   Ehrlichkeit, die schon `fuse-not-possible` hatte: Last aufteilen,
+   parallellegen, 24/48 V). Gleiches im `drop-not-solvable`-Text.
+4. **Zwei Zahlen, beide „kritisch“ genannt.** Das Abzeichen zeigte
+   `warnings.length` mit dem Wort der schwersten Stufe („18 Kritisch“), während
+   die Leiste darunter „14 kritische Probleme offen“ meldete. Jetzt nennt es die
+   kritische Zahl vorn und die Gesamtzahl dahinter („14 von 18 kritisch“), und
+   nur wenn nichts kritisch ist, steht dort die Gesamtzahl mit der Schwere-
+   Wortwahl der schwersten Stufe; der `aria-label` trägt beide Zahlen.
+   Dazu die Folge-Zeile: Datenlücken meldeten „Folge: Reichweite, Ladezeit oder
+   Leistung können schlechter sein als erwartet“ (Kategorie `estimation`) — bei
+   „AC-Schutzorgan ohne Datenblatt“ oder „MPPT-Eingangsspannung fehlt“ ist die
+   zutreffende Folge „ungeprüft“ (`isUnverifiedFinding`, benannte Liste statt
+   `missing`-Heuristik, damit „Sicherung fehlt“ weiter die Sicherheitsfolge hat).
+5. **Chip-Widerspruch auf derselben Leitung.** Auf einer 70-mm²-Leitung mit
+   100-A-Sicherung stand „Max: 100A“ neben dem Chip „Sicherung zu klein!“ —
+   ohne Zahlen nicht von einem Widerspruch zu unterscheiden. Der Chip nennt
+   jetzt beide Werte: „Sicherung zu klein (100A < 306A Last)!“.
+
+6. **Handlungsanweisung ohne Handlung.** Das Routing-Badge riet im
+   Schlechtfall: „Bitte Leitungen umlegen bzw. Abstände vergrößern.“ Seit
+   ADR 0014 werden Kabel ausschließlich automatisch verlegt — es gibt keinen
+   Griff, mit dem man eine Trasse von Hand verschiebt (im FlowCanvas ist nur
+   `edgesFocusable` gesetzt, kein `onEdgeUpdate`/`reconnect`). Die erste
+   Hälfte des Satzes war also nicht befolgbar. Der Hinweis nennt jetzt den
+   echten Hebel: Bauteile mit mehr Abstand zueinander verschieben, danach
+   läuft das Routing erneut. Die Zahl selbst („n Zwänge nicht erreicht“ =
+   I1+I2+I3 aus `validateFinalRouting`) bleibt unverändert ehrlich; sie ist
+   weiterhin eine Messung des letzten Laufs, keine Schätzung.
+
+Bewusst **nicht** angefasst: das Strommodell. `calculateEdgeCurrent` schätzt die
+Last auf Verteil-Leitungen weiterhin konservativ über die Plansumme (Fallback 6),
+weil eine topologische Lastzuordnung das Strommodell, die AutoWire-Dimensionierung
+und damit alle sieben Golden-Master-Fixtures ändert — das ist ein eigener
+Change mit Recapture, nicht ein Begleitschaden einer Textkorrektur. Das Szenario
+ist reproduziert und festgeschrieben (`useLiveValidation.test.ts`, „Prüfbericht:
+3000-W-Wechselrichter an 12 V“): 3000 W / 12,0 V / 0,85 ≈ 294 A plus ~12 A
+DC-Last = 306 A auf dem Batterie-Hauptstrang, 70 mm² (120,4 A) ⇒ Kaskade aus
+„thermisch überlastet“ und „keine Normsicherung“ — arithmetisch korrekt, und ab
+jetzt ohne die vier Widersprüche oben.
+
+Nachweis: `components/planner/ui/WarningCenter.test.tsx` (17 Tests:
+Wert/Einheit inkl. „306 A A“-Regression, Abzeichen-Zahlen, `nextStep`-Zuordnung,
+`consequence`-Zuordnung, `valueWithUnit`), `useLiveValidation.test.ts`
+(55 Tests: Einheiten-Disziplin der AC-Familie, `mixed-voltage-unknown`,
+`thermal-overload`-Text, Bericht-Szenario), `CableEdge.test.tsx` (24),
+`RoutingStatusBadge.test.tsx` (4, inkl. „keine Handlung ohne Handlungsmöglichkeit“)
+und `store/usePlannerStoreExtended.test.ts` unverändert grün.
+
+Gate: `npx vitest run` → 167 Testdateien / 2332 Tests, `npm run typecheck`,
+`npm run typecheck:tests`, `npx eslint .`, `npx prettier --check` grün. Golden
+Master und Regression unberührt (keine Geometrie, keine Dimensionierung, keine
+Fixture berührt). Die 6 zusätzlichen Tests (5 in `lib/autoWire.test.ts`, 1 in
+`store/usePlannerStoreExtended.test.ts`) gehören zur dreizehnten Fassung.
+
+### 2026-09-27 — Dreizehnte Fassung: Auto-Wire lässt Nutzereingaben an seinen Kanten stehen (AUDIT D3)
+
+Der Nutzer meldete: „wenn ich bei den 5 meter 2 meter eingebe und dann auto wire
+drücke springt er wieder auf 5 meter zurück“. Kein Anzeigefehler:
+`performAutoWiring` ersetzt bei jedem Lauf **seine** Kanten (Idempotenz) und baute
+sie dabei mit den festen Planungslängen aus `addDcEdge` neu auf (Batterie→Schiene
+0,2 m, Panel→Regler 5 m, Verbraucher 3 m). Jede Eingabe im Leitungs-Inspektor war
+damit Wegwerfarbeit.
+
+Die Reparatur folgt dem bestehenden Besitz-Vertrag (AUDIT D1/D2) und dehnt ihn
+auf die Auto-Kanten selbst aus: Deren **Nutzerangaben** werden über die
+Verbindung geschlüsselt (`connectionKey`, nicht die bei jedem Lauf neu vergebene
+ID) in den nächsten Lauf übernommen.
+
+- `length` — Tatsache der Verkabelung (wie `watts` am Verbraucher); sie fließt in
+  die Neuberechnung ein, statt sie einzufrieren (kürzere Leitung darf den
+  Querschnitt senken, längere ihn heben).
+- `fuseOffset`, `fuseType`, `fuseBreakingCapacity`, `acProtection` —
+  Datenblattwerte des Schutzorgans, die `applyFuseTypes` ohnehin als
+  Nutzerangabe respektiert.
+- Querschnitt, Sicherungsgröße und die Warnmarker bleiben berechnet — sonst
+  würde „Automatisch verbinden“ nichts mehr nachrechnen; die Gegenprobe
+  („0,5 mm² wird hochdimensioniert“) steht im Test.
+
+Der D2-Migrationstest für Altpläne prüft den unverwechselbaren Inhalt jetzt am
+Querschnitt statt an der Länge: Die Länge ist ab dieser Fassung kein Beweis für
+„nicht ersetzt“ mehr.
+
+Nachweis: `lib/autoWire.test.ts` (90 Tests; +5: eingegebene Länge überlebt den
+Lauf, Länge wirkt auf die Dimensionierung, Querschnitt wird weiter gerechnet,
+Schutzorgan-Daten überleben, unveränderte Auto-Kante behält ihre 5 m),
+`store/usePlannerStoreExtended.test.ts` (59 Tests; +1: UI-Pfad verdrahten →
+`handleChangeLength` → verdrahten). Beide Tests fallen ohne die Übernahme (in
+einer Sitzung gegengeprüft).
+
+Gate: `npx vitest run` → 167 Testdateien / 2332 Tests, `npm run typecheck`,
+`npm run typecheck:tests`, `npx eslint .`, `npx prettier --check` grün. Golden
+Master unberührt (keine Geometrie, keine Dimensionierung, keine Fixture trägt
+eine abweichende Nutzerlänge ein).

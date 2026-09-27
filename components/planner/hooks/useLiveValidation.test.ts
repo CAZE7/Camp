@@ -2,6 +2,8 @@ import { renderHook } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { useLiveValidation } from './useLiveValidation';
 import { textContaining } from '../../../test-helpers/matchers'; // AUDIT T1
+import { performAutoWiring } from '../../../lib/autoWire';
+import { TEMPLATE_AUTARK } from '../templates';
 import { type Node, type Edge } from '@xyflow/react';
 import { type CableEdgeData } from '../../edges/CableEdge';
 
@@ -809,6 +811,23 @@ describe('Rule A7: Kurzschlussstrom vs. Abschaltvermögen (AUDIT DOM-002)', () =
       expect(result.current.some((w) => w.ruleId === 'DOM-001-inverter-output')).toBe(false);
     });
 
+    it('der Annahme-Hinweis trägt keine Ohm-Einheit (Wert ist ein Schutzorgan, keine Impedanz)', () => {
+      // Prüfbericht: „Ist: LS C, 6 kA (Annahme) Ω“ — die Warn-Zentrale hängte die
+      // Einheit aus dem gemeinsamen AC-Rumpf an einen Textwert.
+      const nodes = [shore('sp1'), acConsumer('c1')];
+      const edges = [acEdge('e1', 'sp1', 'c1', { length: 5 })];
+      const { result } = renderHook(() => useLiveValidation(nodes, edges));
+      const note = result.current.find((w) => w.id === 'ac-descriptor-assumed');
+      expect(note).toEqual(expect.objectContaining({ unit: '', measuredValue: 'LS C, 6 kA (Annahme)' }));
+    });
+
+    it('echte Impedanz-Befunde behalten die Einheit Ω', () => {
+      const nodes = [shore('sp1'), acConsumer('c1')];
+      const edges = [acEdge('e1', 'sp1', 'c1', { length: 200, acProtection: b16 })];
+      const { result } = renderHook(() => useLiveValidation(nodes, edges));
+      expect(result.current.find((w) => w.id === 'ac-trip-e1')?.unit).toBe('Ω');
+    });
+
     it('Sicherung nur als Zahl → Annahme wird benannt (konservative C-Charakteristik)', () => {
       // AUDIT ELE-004: Früher stempelte AutoWire selbst ein erfundenes
       // Datenblatt (LS B, 6 kA) auf die Kante, sodass hier „geprüft & still“
@@ -829,5 +848,107 @@ describe('Rule A7: Kurzschlussstrom vs. Abschaltvermögen (AUDIT DOM-002)', () =
       expect(note!.source).toContain('0,96');
       expect(note!.measuredValue).toContain('C');
     });
+  });
+});
+
+describe('Einheiten-Disziplin und Dimensionierungs-Grenze (Prüfbericht)', () => {
+  const battery: Node = {
+    id: 'b1',
+    type: 'battery',
+    data: { label: '200Ah Lithium', capacity: 200, chemistry: 'LiFePO4' },
+    position: { x: 0, y: 0 },
+  };
+
+  it('„Batterie-Nennspannung fehlt“ nennt keine Spannung als Messwert-Einheit', () => {
+    // Vorher: „Ist: 2 × ohne Angabe V“ — eine Anzahl mit Volt-Suffix.
+    const nodes: Node[] = [battery, { ...battery, id: 'b2', data: { ...battery.data } }];
+    const { result } = renderHook(() => useLiveValidation(nodes, []));
+    const warning = result.current.find((w) => w.id === 'mixed-voltage-unknown');
+    expect(warning).toEqual(expect.objectContaining({ unit: '', measuredValue: '2 × ohne Angabe' }));
+  });
+
+  it('thermische Überlast verweist nicht auf einen Normquerschnitt über 70 mm²', () => {
+    // 3000 W Wechselrichter an 12 V: der Batterie-Hauptstrang führt 294 A,
+    // zulässig sind 120 A (70 mm² × 0,7). Der frühere Rat („nächsten
+    // Normquerschnitt über 70 mm² wählen“) verwies auf eine Stufe, die
+    // VDE_SIZES nicht kennt — der Nutzer suchte sie vergeblich.
+    const inverter: Node = {
+      id: 'inv1',
+      type: 'inverter',
+      data: { label: '2000W Inverter', watts: 2000, continuousPower: 3000, hasRcd: true },
+      position: { x: 0, y: 0 },
+    };
+    const edges: Edge<CableEdgeData>[] = [
+      {
+        id: 'e-batt-plus',
+        source: 'b1',
+        target: 'inv1',
+        sourceHandle: 'plus',
+        targetHandle: 'plus',
+        data: { length: 0.5, crossSection: 70, edgeDomain: 'DC_12V' },
+      },
+    ];
+    const { result } = renderHook(() => useLiveValidation([battery, inverter], edges));
+    const warning = result.current.find((w) => w.ruleId === 'ELE-002-thermal-overload');
+    expect(warning).toBeDefined();
+    expect(warning!.message).not.toContain('über 70 mm² wählen');
+    expect(warning!.message).toContain('oberhalb von 70 mm² kennt der Planer keinen Normquerschnitt');
+  });
+});
+
+/**
+ * Prüfbericht-Szenario (2026-09-27): „AUTARK"-Vorlage mit einem 2000-W-Inverter,
+ * dessen Dauerleistung im Inspektor auf 3000 W steht. An 12 V sind das
+ * 3000 / 12,0 / 0,85 ≈ 294 A Wechselrichterstrom plus ~12 A DC-Lasten = 306 A
+ * auf dem Batterie-Hauptstrang — bei 70 mm² (Iz_design 120,4 A) ergibt das
+ * genau die Kaskade aus dem Bericht („Leitung thermisch überlastet“ +
+ * „Keine Normsicherung …“). Der Test hält fest, dass die Meldungen dabei
+ * ehrlich bleiben: mit Zahlen, mit der Modellgrenze als Sollwert und ohne
+ * Verweis auf eine Normstufe, die es nicht gibt.
+ */
+describe('Prüfbericht: 3000-W-Wechselrichter an 12 V (AUTARK-Vorlage)', () => {
+  const buildPlan = () => {
+    const base = TEMPLATE_AUTARK as unknown as { nodes: Node[]; edges: Edge<CableEdgeData>[] };
+    const nodes = base.nodes.map((n) => {
+      if (n.type === 'inverter')
+        return { ...n, data: { ...n.data, label: '2000W Inverter', watts: 2000, continuousPower: 3000 } };
+      if (n.type === 'consumer230v') return { ...n, data: { ...n.data, watts: 1800 } };
+      if (n.id === 'charger-2') return { ...n, data: { ...n.data, amps: 50 } };
+      if (n.id === 'charger-1') return { ...n, data: { ...n.data, amps: 32 } };
+      return n;
+    }) as Node[];
+    const wired = performAutoWiring(nodes, base.edges);
+    if (!wired) throw new Error('performAutoWiring ohne Ergebnis');
+    return wired;
+  };
+
+  it('meldet die nicht ausführbare Dimensionierung mit Zahlen statt Platzhaltern', () => {
+    const { nodes, edges } = buildPlan();
+    const { result } = renderHook(() => useLiveValidation(nodes, edges as never));
+
+    const thermal = result.current.find((w) => w.ruleId === 'ELE-002-thermal-overload');
+    const fuse = result.current.find((w) => w.ruleId === 'ELE-001-fuse-not-feasible');
+    expect(thermal, 'thermische Überlast am Hauptstrang').toBeDefined();
+    expect(fuse, 'nicht absicherbare Dimensionierung').toBeDefined();
+
+    // Werte und Einheiten bleiben maschinenlesbar; die Anzeige hängt die
+    // Einheit nur noch bei nackten Zahlen an (WarningCenter-Test).
+    expect(thermal!.measuredValue).toMatch(/^\d+ A$/);
+    expect(thermal!.expectedValue).toBe('120 A');
+    expect(fuse!.expectedValue).toContain('≤ 120 A');
+
+    // Keine Empfehlung außerhalb der Normreihe des Modells (70 mm² ist das Ende).
+    expect(thermal!.message).not.toContain('über 70 mm² wählen');
+    expect(fuse!.message).toContain('Last aufteilen');
+  });
+
+  it('der 12-V-Zweig zum Sicherungskasten wird nicht als Hauptstrang gemeldet', () => {
+    // Kontrollprobe zur Größenordnung: Die kleinen Abgänge (Kühlschrank & Co.)
+    // bleiben unter der Kabelgrenze — sonst wäre die Warnliste Rauschen.
+    const { nodes, edges } = buildPlan();
+    const { result } = renderHook(() => useLiveValidation(nodes, edges as never));
+    const overloaded = result.current.filter((w) => w.ruleId === 'ELE-002-thermal-overload');
+    expect(overloaded.map((w) => w.id)).toContain('thermal-overload-e-batt-plus');
+    expect(overloaded.map((w) => w.id)).not.toContain('thermal-overload-e-fuse-fridge');
   });
 });
