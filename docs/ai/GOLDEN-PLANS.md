@@ -28,8 +28,11 @@ GoldenMaster = {
 };
 ```
 
-Auto-erzeugte Knoten-IDs werden auf `auto:<index>:<label-slug>` normalisiert, damit zufällige
-UUIDs den Diff nicht verfälschen. Auto-Kanten-IDs (`e-auto-<n>`) sind ohnehin deterministisch.
+AutoWire vergibt neue Knoten- und Kanten-IDs deterministisch. Auto-Edge-IDs folgen festen
+Verdrahtungsphasen und einer kanonischen Sortierung der beteiligten Nodes, bleiben bei
+Node-Permutationen derselben Verbindung zugeordnet und werden für unveränderte Auto-Kanten aus
+dem Eingabegraph über deren Verbindungsidentität übernommen. Die Pipeline normalisiert nur neue
+Knoten-IDs auf `auto:<index>:<label-slug>`; Auto-Edge-IDs bleiben als Teil des Fixtures erhalten.
 
 ---
 

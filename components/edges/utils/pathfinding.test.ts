@@ -16,6 +16,7 @@ import {
   containsPoint,
   countCrossings,
   nodesToObstacles,
+  nodeObstacleMap,
   clearPathfindingCache,
   pathfindingFallbackCount,
   resetPathfindingTelemetry,
@@ -429,8 +430,31 @@ describe('nodesToObstacles / cache / svg', () => {
     expect(rects).toHaveLength(1);
     expect(rects[0]!.x).toBe(94); // 100 − 6
     expect(rects[0]!.y).toBe(100);
-    expect(rects[0]!.width).toBe(198); // bis 190 + 8 = 198? → 292+6 … tatsächlich max(292, 198+?)…
+    expect(rects[0]!.width).toBe(204); // von x=94 bis zum Handle-Ende bei x=298
     expect(rects[0]!.height).toBe(126); // bis 100 + 118 + 8 = 226 → 126
+  });
+
+  it('R-10: Handle-Union bleibt unabhängig von der Reihenfolge relativ zum Node-Ursprung', () => {
+    const left = { id: 'left', x: -20, y: 40, width: 20, height: 10, position: Position.Left };
+    const right = { id: 'right', x: 100, y: 40, width: 20, height: 10, position: Position.Right };
+    const withHandles = (source: (typeof left)[]) =>
+      ({
+        id: 'a',
+        position: { x: 0, y: 0 },
+        width: 100,
+        height: 100,
+        data: {},
+        handleBounds: { source },
+      }) as unknown as Node;
+
+    const leftFirst = withHandles([left, right]);
+    const rightFirst = withHandles([right, left]);
+    const expected = { x: -20, y: 0, width: 140, height: 100 };
+
+    expect(nodesToObstacles([leftFirst], new Set())[0]).toEqual(expected);
+    expect(nodesToObstacles([rightFirst], new Set())[0]).toEqual(expected);
+    // Das Routing und die Abschlussvalidierung lesen dieselbe gemeinsame Box.
+    expect(nodeObstacleMap([leftFirst]).get('a')).toEqual(expected);
   });
 
   it('R-10: ohne handleBounds bleibt es bei der gemessenen Node-Box', () => {
@@ -594,6 +618,24 @@ describe('Fallback-Verhalten (R-3)', () => {
       expect(isOrthogonalPath(result.waypoints)).toBe(true);
     }
     expect(pathfindingFallbackCount()).toBe(0);
+  });
+
+  it('behandelt gleichgerichtete, aber rückwärts liegende Handles nicht als Facing-Paar', () => {
+    const frame = portFrame({
+      sourceX: 571,
+      sourceY: 104.25,
+      sourcePosition: Position.Right,
+      targetX: 381,
+      targetY: 538.25,
+      targetPosition: Position.Left,
+      lane: 32,
+      laneTarget: 16,
+    });
+
+    expect(frame.ds).toEqual({ x: 1, y: 0 });
+    expect(frame.dt).toEqual({ x: 1, y: 0 });
+    expect(frame.stub).toBeGreaterThanOrEqual(ROUTING_TOKENS.stubMin);
+    expect(frame.stubTarget).toBeGreaterThanOrEqual(ROUTING_TOKENS.stubMin);
   });
 
   // ROUTE-BUG-31: Die Lane-Staffelung verlängert den Stub. Steht ein Bauteil

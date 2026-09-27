@@ -18,7 +18,7 @@ import '@xyflow/react/dist/style.css';
 import { useShallow } from 'zustand/react/shallow';
 
 import WaterPipeEdge from '../edges/WaterPipeEdge';
-import { CableRouteSync } from '../edges/utils/cableRouteStore';
+import { CableRouteSync, useCableRoutes } from '../edges/utils/cableRouteStore';
 import { cssToken } from '../edges/utils/edgeColors';
 import { EmptyState } from '../ui/EmptyState';
 import {
@@ -148,6 +148,7 @@ function useAccessibleHandles() {
 export function FlowCanvas() {
   const { screenToFlowPosition, fitView, getNode, setCenter, getViewport, setViewport } = useReactFlow();
   const zoom = useStore((state) => state.transform[2]);
+  const cableRoutes = useCableRoutes();
   const viewportsRef = useRef<Partial<Record<'electric' | 'water', Viewport>>>({});
   const previousViewMode = useRef<'electric' | 'water' | null>(null);
   // Zeigerklasse statt Fensterbreite: ein iPad quer ist 1024 px breit und
@@ -513,13 +514,16 @@ export function FlowCanvas() {
       outNodes = filtered.nodes;
       outEdges = filtered.edges;
       // Fehler-Kanten oberhalb der Nodes rendern.
-      outEdges = markErrorEdgesZIndex(outEdges, rawNodes, (sourceId) =>
-        usePlannerStore.getState().calculatePathVoltageDrop(sourceId, nodes, edges)
+      outEdges = markErrorEdgesZIndex(
+        outEdges,
+        rawNodes,
+        (sourceId) => usePlannerStore.getState().calculatePathVoltageDrop(sourceId, nodes, edges),
+        (edgeId) => cableRoutes.get(edgeId)?.length
       );
     }
 
     return { nodes: outNodes, edges: outEdges };
-  }, [rawNodes, rawEdges, selectedTrace, focusSeedIds, viewMode, activeDomains, nodes, edges]);
+  }, [rawNodes, rawEdges, selectedTrace, focusSeedIds, viewMode, activeDomains, nodes, edges, cableRoutes]);
 
   const traceLabel = useMemo(
     () => (selectedTrace ? circuitTraceLabel(rawNodes, selectedTrace) : null),
@@ -530,9 +534,9 @@ export function FlowCanvas() {
    * Darstellungs-Gruppierung als eigener Schritt.
    *
    * `withBackboneGroup` liefert für unveränderte Kern-Geometrie dasselbe
-   * Rahmen-Objekt zurück (siehe dort): Ohne diese Zusage würde React Flow den
-   * Rahmen bei jedem Store-Schreibvorgang neu übernehmen und neu messen —
-   * und damit über die Layout-Signatur einen zweiten Routing-Lauf auslösen.
+   * Rahmen-Objekt zurück (siehe dort), um unnötige Neuübernahmen zu vermeiden.
+   * Der presentation-only-Rahmen ist aus der Routing-Signatur gefiltert; dieser
+   * Identitätsvertrag ist eine Schutzmaßnahme, kein Beleg der Oszillationsursache.
    */
   const groupedNodes = useMemo(
     () => (viewMode === 'electric' ? withBackboneGroup(displayedNodes, backboneGrouping) : displayedNodes),
@@ -543,10 +547,10 @@ export function FlowCanvas() {
    * Adds visual grouping, collision state and touch drag semantics.
    *
    * Die Flags laufen über `withNodeInteractionState`, das bei unverändertem
-   * Knoten **dasselbe Objekt** zurückgibt. Früher entstand hier bei jedem
-   * Aufruf (also bei jeder Änderung von `displayedNodes`, z. B. bei jeder
-   * Selektion) für jeden Knoten ein neues Objekt; React Flow übernahm daraufhin
-   * alle Knoten neu und maß sie neu.
+   * Knoten **dasselbe Objekt** zurückgibt. Das vermeidet unnötige Neuübernahmen
+   * bei reinen Presentation-Updates. Ob eine frühere Neuübernahme tatsächlich
+   * gemessene Routing-Geometrie und die gemeldete Oszillation verändert hat,
+   * ist ohne Browser-Runtime-Trace nicht belegt.
    */
   const interactiveNodes = useMemo(() => {
     return groupedNodes.map((node) => {

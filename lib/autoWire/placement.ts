@@ -235,8 +235,8 @@ export function applyFlowLayout(nodes: Node[], edges: FlowEdge[], movableIds: Se
 
   const sortKey = (node: Node): string => {
     const data = node.data ?? {};
-    // label+type ist stabil über Läufe (UUIDs wären es nicht — die ändert
-    // crypto.randomUUID bei jedem Auto-Wire).
+    // label+type ist der semantische Sortierschlüssel; die deterministische
+    // AutoWire-ID bleibt nur der letzte Tie-Breaker.
     // safeText statt String(): ein Objekt-Label würde den Sortierschlüssel
     // zu '[object Object]' machen — und damit zwei verschiedene Bauteile
     // gleich aussehen lassen (Determinismus, AGENTS.md §3.6).

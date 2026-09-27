@@ -43,12 +43,12 @@ describe('applyNeighborhoodFocus', () => {
 });
 
 /**
- * Regression (Bug 2026-09-26, „object recreation“): Die Fokus-Markierung
- * erzeugte für JEDES Element ein neues Objekt — bei jedem Hover und während
- * eines Drags in jedem Frame. React Flow 12 übernimmt einen Knoten nur bei
- * identischem Objekt unverändert in seinen internen Bestand und mess­t ihn
- * sonst neu; die Layout-Signatur stößt daraufhin einen weiteren Routing-Lauf
- * an. Unveränderte Elemente müssen deshalb unverändert zurückkommen.
+ * Statische Identitäts-Regression (2026-09-26, „object recreation“): Die
+ * Fokus-Markierung soll unveränderte Elemente nicht kopieren. React Flow 12
+ * kann identische Objekte wiederverwenden; eine Kopie kann eine erneute
+ * Übernahme/Messung auslösen. Nur eine geänderte, tatsächlich geroutete
+ * Geometrie ändert die Routing-Signatur. Der Test belegt diese Identitätsregel,
+ * nicht die Ursache der gemeldeten Browser-Oszillation.
  */
 describe('applyFocusHighlight — identitätsstabil', () => {
   const node = (id: string, className?: string): Node => ({

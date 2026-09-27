@@ -34,12 +34,127 @@ function e(over: Partial<Edge<CableEdgeData>> & { source: string; target: string
   };
 }
 
+function autoEdgeIdMapping(edges: Edge<CableEdgeData>[]) {
+  return edges
+    .filter((edge) => edge.data?.autoWired === true)
+    .map((edge) => ({
+      id: edge.id,
+      source: edge.source,
+      target: edge.target,
+      sourceHandle: edge.sourceHandle ?? null,
+      targetHandle: edge.targetHandle ?? null,
+      edgeDomain: edge.data?.edgeDomain ?? null,
+    }))
+    .sort((left, right) => left.id.localeCompare(right.id));
+}
+
 // ---------------------------------------------------------------------------
 // performAutoWiring — öffentliche Top-Level-Funktion
 // ---------------------------------------------------------------------------
 describe('autoWire — performAutoWiring', () => {
   it('gibt null ohne Batterie zurück', () => {
     expect(performAutoWiring([n('c1', 'consumer', { watts: 50 })])).toBeNull();
+  });
+
+  it('liefert für denselben frischen Eingabeplan byte-identische IDs und Ergebnisse', () => {
+    const input = [
+      n('b1', 'battery', { label: 'Aufbaubatterie', capacity: 100, chemistry: 'LiFePO4' }),
+      n('c1', 'consumer', { label: 'Kühlbox', watts: 60 }, { x: 420, y: 120 }),
+      n('s1', 'solar', { label: 'Dachpanel', watts: 200 }, { x: 240, y: -200 }),
+    ];
+
+    const first = performAutoWiring(input)!;
+    const second = performAutoWiring(input)!;
+
+    expect(second).toEqual(first);
+  });
+
+  it('bindet Auto-Kanten-IDs bei permutierten Eingabeknoten stabil an dieselben Verbindungen', () => {
+    const input = [
+      n('b1', 'battery', { label: 'Aufbaubatterie', capacity: 100, chemistry: 'LiFePO4' }),
+      n('c1', 'consumer', { label: 'Kühlbox', watts: 60 }, { x: 420, y: 120 }),
+      n('c2', 'consumer', { label: 'Licht', watts: 40 }, { x: 620, y: 120 }),
+      n('s1', 'solar', { label: 'Dachpanel A', watts: 200 }, { x: 240, y: -200 }),
+      n('s2', 'solar', { label: 'Dachpanel B', watts: 180 }, { x: 440, y: -200 }),
+    ];
+    const permuted = [input[0]!, input[4]!, input[3]!, input[2]!, input[1]!];
+    const first = performAutoWiring(input)!;
+    const second = performAutoWiring(permuted)!;
+    const nodesById = (nodes: Node[]) => [...nodes].sort((a, b) => a.id.localeCompare(b.id));
+    const edgeTopology = (edges: Edge<CableEdgeData>[]) =>
+      edges
+        .map(({ source, target, sourceHandle, targetHandle, data }) => ({
+          source,
+          target,
+          sourceHandle,
+          targetHandle,
+          data,
+        }))
+        .sort((a, b) =>
+          `${a.source}|${a.target}|${a.sourceHandle}|${a.targetHandle}`.localeCompare(
+            `${b.source}|${b.target}|${b.sourceHandle}|${b.targetHandle}`
+          )
+        );
+
+    // Array order is serialized input; these comparisons check stable generated
+    // identities and the semantic graph, not array byte-order.
+    expect(nodesById(second.nodes)).toEqual(nodesById(first.nodes));
+    expect(edgeTopology(second.edges)).toEqual(edgeTopology(first.edges));
+    expect(autoEdgeIdMapping(second.edges)).toEqual(autoEdgeIdMapping(first.edges));
+  });
+
+  it('bewahrt die ID einer bestehenden Auto-Kante für dieselbe Verbindung', () => {
+    const input = [
+      n('b1', 'battery', { label: 'Aufbaubatterie', capacity: 100, chemistry: 'LiFePO4' }),
+      n('c1', 'consumer', { label: 'Kühlbox', watts: 60 }, { x: 420, y: 120 }),
+      n('s1', 'solar', { label: 'Dachpanel', watts: 200 }, { x: 240, y: -200 }),
+    ];
+    const first = performAutoWiring(input)!;
+    const previousEdge = first.edges.find((edge) => edge.data?.autoWired === true)!;
+    const retainedId = `persisted:${previousEdge.id}`;
+    const previousEdges = first.edges.map((edge) =>
+      edge.id === previousEdge.id ? { ...edge, id: retainedId } : edge
+    );
+
+    const second = performAutoWiring([...first.nodes].reverse(), previousEdges)!;
+    const retainedEdge = second.edges.find(
+      (edge) =>
+        edge.data?.autoWired === true &&
+        edge.source === previousEdge.source &&
+        edge.target === previousEdge.target &&
+        edge.sourceHandle === previousEdge.sourceHandle &&
+        edge.targetHandle === previousEdge.targetHandle &&
+        edge.data?.edgeDomain === previousEdge.data?.edgeDomain
+    );
+
+    expect(retainedEdge?.id).toBe(retainedId);
+    expect(autoEdgeIdMapping(second.edges)).toHaveLength(autoEdgeIdMapping(first.edges).length);
+    expect(new Set(second.edges.map((edge) => edge.id)).size).toBe(second.edges.length);
+
+    const third = performAutoWiring(second.nodes, second.edges)!;
+    expect(autoEdgeIdMapping(third.edges)).toEqual(autoEdgeIdMapping(second.edges));
+  });
+
+  it('löst Kollisionen mit vorhandenen IDs erzeugter Knoten deterministisch auf', () => {
+    const generatedFuseId = 'auto-node:fuse:12V%20Sicherungskasten';
+    const input = [
+      n('b1', 'battery', { label: 'Aufbaubatterie', capacity: 100, chemistry: 'LiFePO4' }),
+      n(generatedFuseId, 'consumer', { label: 'Nutzerknoten mit kollidierender ID', watts: 20 }),
+      n(`${generatedFuseId}:1`, 'consumer', { label: 'Zweiter Nutzerknoten', watts: 20 }),
+    ];
+
+    const first = performAutoWiring(input)!;
+    const second = performAutoWiring(input)!;
+    const fuse = first.nodes.find(
+      (node) => node.type === 'fuse' && node.data.label === '12V Sicherungskasten'
+    );
+
+    expect(fuse?.id).toBe(`${generatedFuseId}:2`);
+    expect(first.nodes.filter((node) => node.type === 'consumer').map((node) => node.id)).toContain(
+      generatedFuseId
+    );
+    expect(new Set(first.nodes.map((node) => node.id)).size).toBe(first.nodes.length);
+    expect(second).toEqual(first);
   });
 
   it('erzeugt einen Sicherungskasten, Shunt und Busbars für eine Batterie + Verbraucher', () => {
@@ -297,6 +412,59 @@ describe('autoWire — Persistenzvertrag Nutzerkante (AUDIT D1/D2)', () => {
     const out = performAutoWiring(batteryAndConsumer(), [user])!;
     expect(out.edges.some((x) => x.id === 'e-auto-99')).toBe(true);
     expect(out.edges.find((x) => x.id === 'e-auto-99')!.data!.autoWired).toBe(false);
+  });
+
+  it('D3: generierte Kanten-IDs kollidieren nicht mit erhaltenen Nutzer-IDs', () => {
+    const user = e({
+      id: 'e-auto-1',
+      source: 'b1',
+      target: 'c1',
+      data: { length: 2, crossSection: 2.5, edgeDomain: 'DC_12V', autoWired: false },
+    });
+
+    const first = performAutoWiring(batteryAndConsumer(), [user])!;
+    const ids = first.edges.map((edge) => edge.id);
+
+    expect(ids).toContain('e-auto-1');
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(
+      first.edges.filter((edge) => edge.data?.autoWired === true).every((edge) => edge.id !== 'e-auto-1')
+    ).toBe(true);
+
+    const second = performAutoWiring(first.nodes, first.edges)!;
+    expect(second.edges.map((edge) => edge.id)).toEqual(ids);
+    expect(new Set(second.edges.map((edge) => edge.id)).size).toBe(second.edges.length);
+  });
+
+  it('D3: Nutzer-ID kollidiert auch im AC-AutoWire-Namensraum nicht', () => {
+    const nodes = [
+      n('b1', 'battery', { label: 'Batterie', capacity: 100, chemistry: 'LiFePO4' }),
+      n('sp1', 'shorePower', { label: 'Landstrom' }),
+      n('ac1', 'consumer230v', { label: 'Steckdose', watts: 300 }),
+      n('c1', 'consumer', { label: 'Verbraucher 1', watts: 20 }),
+      n('c2', 'consumer', { label: 'Verbraucher 2', watts: 20 }),
+    ];
+    const baseline = performAutoWiring(nodes)!;
+    const acId = baseline.edges.find((edge) => edge.data?.edgeDomain === 'AC_230V')!.id;
+    const user = e({
+      id: acId,
+      source: 'c1',
+      target: 'c2',
+      data: { length: 1, crossSection: 1.5, edgeDomain: 'DC_12V', autoWired: false },
+    });
+
+    const first = performAutoWiring(nodes, [user])!;
+    const ids = first.edges.map((edge) => edge.id);
+    expect(ids).toContain(acId);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(
+      first.edges
+        .filter((edge) => edge.data?.autoWired === true && edge.data.edgeDomain === 'AC_230V')
+        .every((edge) => edge.id !== acId)
+    ).toBe(true);
+
+    const second = performAutoWiring(first.nodes, first.edges)!;
+    expect(autoEdgeIdMapping(second.edges)).toEqual(autoEdgeIdMapping(first.edges));
   });
 
   it('D2-Positivkontrolle: echte Auto-Kanten früherer Läufe werden weiterhin ersetzt', () => {

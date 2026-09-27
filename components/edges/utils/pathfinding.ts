@@ -143,14 +143,14 @@ const at = <T>(arr: readonly T[], i: number): T => {
  * Messung (Audit-Nachbau, 250 Knoten mit planweiten Spannkanten): ~95 % der
  * Laufzeit lagen in den verworfenen Clearance-Distanzen — 203 s pro Pass.
  */
-export function segmentHitsAny(a: Point, b: Point, obstacles: Rect[]): boolean {
+export function segmentHitsAny(a: Point, b: Point, obstacles: readonly Rect[]): boolean {
   for (let i = 0; i < obstacles.length; i++) {
     if (segmentHitsRect(a, b, at(obstacles, i))) return true;
   }
   return false;
 }
 
-export function pathHitsObstacles(points: Point[], obstacles: Rect[]): boolean {
+export function pathHitsObstacles(points: Point[], obstacles: readonly Rect[]): boolean {
   for (let i = 0; i < points.length - 1; i++) {
     if (segmentHitsAny(at(points, i), at(points, i + 1), obstacles)) return true;
   }
@@ -363,7 +363,10 @@ const GRID_MIN_GAP = ROUTING_TOKENS.segmentMin;
  * liegen, entfallen: keine Mini-Zellen, keine Rundungs-Stummel.
  */
 const uniqueSorted = (values: number[], exact: readonly number[] = []): number[] => {
-  const sorted = [...values].sort((a, b) => a - b);
+  // Obstacle and tube edges repeat heavily across a Hanan grid. Drop exact
+  // duplicates before sorting; the following tolerance-aware pass still owns
+  // near-duplicate and exact-start/goal semantics.
+  const sorted = [...new Set(values)].sort((a, b) => a - b);
   const isExact = (v: number): boolean => {
     for (let i = 0; i < exact.length; i++) {
       if (Math.abs(at(exact, i) - v) <= EPS) return true;
@@ -591,6 +594,9 @@ const capStep = (wanted: number, limit: number, rank: number, tie: number = 0): 
   return Math.min(limit, Math.max(ROUTE_MIN_STUB, stub));
 };
 
+const portsFaceEachOther = (source: Point, target: Point, ds: Point, dt: Point): boolean =>
+  ds.x === dt.x && ds.y === dt.y && (target.x - source.x) * ds.x + (target.y - source.y) * ds.y > EPS;
+
 const stubLength = (
   port: Point,
   other: Point,
@@ -619,8 +625,12 @@ export function portFrame(input: PortInput): PortFrame {
   const T: Point = { x: input.targetX, y: input.targetY };
   const lane = input.lane ?? 0;
   const laneTarget = input.laneTarget ?? lane;
-  // Sich anzeigende Ports: beide Austrittsrichtungen zeigen aufeinander.
-  const facing = ds.x === dt.x && ds.y === dt.y;
+  // Gleichgerichtete Port-Normalen zeigen nur dann aufeinander, wenn das
+  // Ziel auch vor der Quelle in dieser Richtung liegt. Ein negativer
+  // Projektionsabstand (gemessene React-Flow-Geometrie, ROUTE-BUG-36)
+  // bedeutet rückwärts gerichtete Ports — deren Stub darf nicht auf 0
+  // gekappt werden.
+  const facing = portsFaceEachOther(S, T, ds, dt);
   const outTarget = { x: -dt.x, y: -dt.y };
   const stub = stubLength(
     S,
@@ -662,8 +672,8 @@ export function portFrame(input: PortInput): PortFrame {
   };
 }
 
-/** Liegen sich die Ports auf derselben Achse gegenüber? */
-const isFacing = (f: PortFrame): boolean => f.ds.x === f.dt.x && f.ds.y === f.dt.y;
+/** Zeigen die Port-Normalen aufeinander (einschließlich positiver Projektion)? */
+const isFacing = (f: PortFrame): boolean => portsFaceEachOther(f.S, f.T, f.ds, f.dt);
 
 /** Ziel liegt in Fahrtrichtung vor dem Lane-Punkt der Quelle? */
 const isForward = (f: PortFrame): boolean => {
@@ -1631,6 +1641,13 @@ function searchFrame(
       return { waypoints: full, usedSearch: 'astar' };
     }
 
+    // Trassen sind keine Bauteil-Freigabe: Die Stub-Ausnahme darunter darf
+    // ausschließlich engere Node-Margins tolerieren. Früher prüfte sie nur
+    // `obstacles`, nicht `tubes`, und akzeptierte dadurch selbst eine
+    // Innenstrecke, die eine fremde Kabeltrasse schnitt (gemessen: 372 px
+    // I2-Überdeckung im React-Flow-Snapshot).
+    if (tubes.length > 0 && pathHitsObstacles(full, tubes)) return null;
+
     // Stub-Toleranz (R-7): Bleiben Verletzungen, die NUR die Port-Segmente
     // (S→S2, S2→S3 bzw. T3→T2, T2→T) gegen eine entzerrte Box betreffen, wird
     // der Pfad akzeptiert — der Stub wiegt schwerer als die letzten 12 px
@@ -1874,25 +1891,27 @@ export function nodesToObstacles(nodes: RoutableNode[], excludeIds: Set<string>)
     // R-10: Gemessene Bounds sind die Pflichtquelle (React Flow misst
     // width/height nach dem Mount); der Fallback bleibt nur für
     // ungemessene Knoten (Tests, erster Frame) und ist dokumentiert.
-    let x = nodeOriginX(node);
-    let y = nodeOriginY(node);
-    let width = nodeWidth(node, NODE_FALLBACK_WIDTH);
-    let height = nodeHeight(node, NODE_FALLBACK_HEIGHT);
+    const originX = nodeOriginX(node);
+    const originY = nodeOriginY(node);
+    let minX = originX;
+    let minY = originY;
+    let maxX = originX + nodeWidth(node, NODE_FALLBACK_WIDTH);
+    let maxY = originY + nodeHeight(node, NODE_FALLBACK_HEIGHT);
     // R-10: Handles (inkl. überstehender Anschlusspunkte) gehören zur
-    // belegten Fläche — die Box wächst auf die Handle-Ausdehnung.
+    // belegten Fläche — die Box wächst auf die Handle-Ausdehnung. Ihre
+    // Koordinaten sind relativ zum unveränderten Node-Ursprung, nicht zum
+    // bereits erweiterten Ursprung der bisherigen Box.
     const bounds = readHandleBounds(node);
     const groups = bounds ? [...(bounds.source ?? []), ...(bounds.target ?? [])] : [];
     for (const hb of groups) {
-      const hx = x + hb.x;
-      const hy = y + hb.y;
-      const x2 = Math.max(x + width, hx + hb.width);
-      const y2 = Math.max(y + height, hy + hb.height);
-      x = Math.min(x, hx);
-      y = Math.min(y, hy);
-      width = x2 - x;
-      height = y2 - y;
+      const hx = originX + hb.x;
+      const hy = originY + hb.y;
+      minX = Math.min(minX, hx);
+      minY = Math.min(minY, hy);
+      maxX = Math.max(maxX, hx + hb.width);
+      maxY = Math.max(maxY, hy + hb.height);
     }
-    rects.push({ x, y, width, height });
+    rects.push({ x: minX, y: minY, width: maxX - minX, height: maxY - minY });
   }
   return rects;
 }

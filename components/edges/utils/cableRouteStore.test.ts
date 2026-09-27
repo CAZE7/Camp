@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Edge, Node } from '@xyflow/react';
+import { Position, type Edge, type Node } from '@xyflow/react';
 import {
   clearCableRoutes,
   computeCableRouteFinalValidation,
@@ -15,7 +15,7 @@ import {
 import { collectRoutableNodes } from './routableNodes';
 import type { RouteEdgeRef } from './routeAll';
 import type { RoutableNode } from './nodeGeometry';
-import type { PathResult } from './pathfinding';
+import { NODE_FALLBACK_HEIGHT, NODE_FALLBACK_WIDTH, type PathResult } from './pathfinding';
 import { totalViolations, validateFinalRouting } from '../../../lib/routing/finalValidation';
 import type { NodeRect, RoutedEdge } from '../../../lib/routing/invariants';
 
@@ -52,6 +52,18 @@ describe('Invalidierungs-Signaturen (R-9)', () => {
     expect(resized).not.toBe(before);
   });
 
+  it('eine Messung derselben effektiven Fallback-Größe invalidiert das Routing nicht', () => {
+    const unmeasured = { id: 'a', position: { x: 0, y: 0 } };
+    const measuredAtFallback = {
+      ...unmeasured,
+      measured: { width: NODE_FALLBACK_WIDTH, height: NODE_FALLBACK_HEIGHT },
+    };
+    const measuredAtNewSize = { ...unmeasured, measured: { width: 240, height: 160 } };
+
+    expect(nodeLayoutSignature([measuredAtFallback])).toBe(nodeLayoutSignature([unmeasured]));
+    expect(nodeLayoutSignature([measuredAtNewSize])).not.toBe(nodeLayoutSignature([unmeasured]));
+  });
+
   it('Delete: fehlender Node ändert die Signatur', () => {
     const before = nodeLayoutSignature(nodeSet([makeNode('a', 0, 0), makeNode('b', 100, 100)]));
     const after = nodeLayoutSignature(nodeSet([makeNode('a', 0, 0)]));
@@ -70,6 +82,29 @@ describe('Invalidierungs-Signaturen (R-9)', () => {
     const a = { ...makeNode('a', 0, 0), positionAbsolute: { x: 5, y: 7 } };
     const plain = makeNode('a', 0, 0);
     expect(nodeLayoutSignature([a])).not.toBe(nodeLayoutSignature([plain]));
+  });
+
+  it('Änderungen an gemessenen Handle-Rechtecken invalidieren das Routing', () => {
+    const withHandleAt = (y: number) => ({
+      ...makeNode('a', 0, 0),
+      internals: {
+        handleBounds: {
+          source: [{ id: 'port', x: -15, y, width: 10, height: 10, position: Position.Left }],
+        },
+      },
+    });
+
+    const at15 = nodeLayoutSignature([withHandleAt(15)]);
+    const at45 = nodeLayoutSignature([withHandleAt(45)]);
+
+    expect(at45).not.toBe(at15);
+  });
+
+  it('Knotentypen invalidieren Backbone-Hop-Prioritäten', () => {
+    const battery = { ...makeNode('a', 0, 0), type: 'battery' };
+    const consumer = { ...makeNode('a', 0, 0), type: 'consumer' };
+
+    expect(nodeLayoutSignature([consumer])).not.toBe(nodeLayoutSignature([battery]));
   });
 
   it('Connect/Delete/Topologie: jede Kantensignatur-Änderung ist sichtbar', () => {
@@ -95,6 +130,21 @@ describe('Invalidierungs-Signaturen (R-9)', () => {
     ]);
     expect(plain).not.toBe(withHandle);
     expect(handled).not.toBe(withHandle);
+  });
+
+  it('Hop-Prioritätsmerkmale invalidieren die Kantensignatur', () => {
+    const base = {
+      ...makeEdge('e1', 'a', 'b'),
+      data: { edgeDomain: 'AC_230V', crossSection: 2.5, locked: false },
+    };
+    const changedDomain = { ...base, data: { ...base.data, edgeDomain: 'DC_12V' } };
+    const changedSection = { ...base, data: { ...base.data, crossSection: 35 } };
+    const locked = { ...base, data: { ...base.data, locked: true } };
+    const signature = edgeTopologySignature([base]);
+
+    expect(edgeTopologySignature([changedDomain])).not.toBe(signature);
+    expect(edgeTopologySignature([changedSection])).not.toBe(signature);
+    expect(edgeTopologySignature([locked])).not.toBe(signature);
   });
 });
 
@@ -244,22 +294,23 @@ describe('Final-Validation-Publikation (AUDIT F-07)', () => {
   });
 
   /**
-   * Regression (Bug 2026-09-26): Der Status-Badge wechselte zwischen
-   * „Routing verifiziert“ (0) und „20 Zwänge nicht erreicht“. Ursache war der
-   * Hauptstromkreis-Rahmen: Er lief als Bauteil in `validateFinalRouting`, und
-   * ob er gerade gemessen war, hing an der React-Flow-Übernahme. Der Test
-   * friert beide Hälften des Befunds ein — der Rahmen ist kein Prüfgegenstand,
-   * und seine Messung ist keine Signaturänderung.
+   * Statische Regression: Ein Rahmen, der irrtümlich als Bauteil in
+   * `validateFinalRouting` oder `routeAllCables` landet, kann die Ausgabe
+   * ändern. Dieser Unit-Test belegt die Filterwirkung; er belegt NICHT, dass
+   * der Rahmen die gemeldete Browser-Oszillation verursacht hat.
    */
-  describe('Darstellungs-Knoten sind kein Routing-Input (Bug 2026-09-26)', () => {
-    // Wie im Produktivpfad: Die Größe steht als `style` (Geometrie aus den
-    // Kern-Bauteilen), die MESSUNG kommt von React Flow und kann fehlen.
-    const frameAt = (measured: boolean) => ({
+  describe('Darstellungs-Knoten sind kein Routing-Input', () => {
+    // Entspricht `withBackboneGroup`: deklarierte width/height und style
+    // stehen bereits vor der DOM-Messung. Eine tatsächliche Messung darf
+    // abweichen; der Diagnose-Snapshot sieht sie, die Route-Signatur nicht.
+    const frameAt = (measured: boolean, width = 844, height = 392) => ({
       id: '__planner-backbone-group',
       type: 'backboneGroup',
       position: { x: -44, y: -56 },
+      width: 844,
+      height: 392,
       style: { width: 844, height: 392 },
-      ...(measured ? { measured: { width: 844, height: 392 } } : {}),
+      ...(measured ? { measured: { width, height } } : {}),
       data: { label: 'Hauptstromkreis', presentationOnly: true },
     });
 
@@ -324,13 +375,13 @@ describe('Final-Validation-Publikation (AUDIT F-07)', () => {
       expect(totalViolations(report.counts)).toBeGreaterThan(0);
     });
 
-    it('die Messung des Rahmens erzeugt keine Signaturänderung (kein Routing-Lauf)', () => {
+    it('eine Messabweichung des Rahmens wird beobachtbar, löst aber kein Routing aus', () => {
       const { nodes } = plan();
-      const measured = [...nodes, frameAt(true) as unknown as RoutableNode];
+      const measured = [...nodes, frameAt(true, 900, 420) as unknown as RoutableNode];
       const unmeasured = [...nodes, frameAt(false) as unknown as RoutableNode];
 
-      // Kontrollprobe: MIT Rahmen in der Eingabe unterscheiden sich die
-      // Signaturen — genau das löste früher den zweiten Routing-Lauf aus.
+      // Kontrollprobe: ohne Filter würde eine von den deklarierten Maßen
+      // abweichende DOM-Messung die Geometrie-Signatur ändern.
       expect(nodeLayoutSignature(measured)).not.toBe(nodeLayoutSignature(unmeasured));
 
       const signature = (input: RoutableNode[]) => nodeLayoutSignature(collectRoutableNodes(input).routable);

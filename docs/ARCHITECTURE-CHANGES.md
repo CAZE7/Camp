@@ -1094,6 +1094,116 @@ vorherigen weiter.
 Gate: `npx vitest run` → 167 Testdateien / 2306 Tests, `npm run check` grün
 (lint, prettier, beide `tsc`-Profile, Coverage).
 
+### 2026-09-26 — Auto-Edge-Identität und Routing-Trace-Artefakte
+
+AutoWire vergibt neue Auto-Edge-IDs in festen Verdrahtungsphasen und mit einer
+kanonischen top-down/left-right/ID-Sortierung der jeweils beteiligten Node-
+Kategorien. Damit hängt die Zuordnung `ID → Verbindung` nicht mehr von der
+Node-Array-Reihenfolge ab. Beim erneuten Wiring werden IDs über Quelle, Ziel,
+Handles und elektrische Domäne auf dieselbe Verbindung zurückgeführt;
+Nutzer-IDs und historische Auto-IDs sind für neue Vergaben reserviert. Eine
+Regressionsprobe vergleicht die vollständige Auto-Edge-ID-Zuordnung nach
+Node-Permutation, prüft Übernahme einer bestehenden ID und einen weiteren
+idempotenten Auto-Wire-Lauf. Golden-Master-Aufnahme wurde über alle sechs Pläne
+ausgeführt; `knownPlans/` blieb byte-identisch, also keine Snapshot-Umschreibung.
+Der Dependency-Audit fand zunächst eine High- und vier Moderate-Meldungen in
+`browserslist`/`baseline-browser-mapping` und Vitest. Die kompatiblen
+Lockfile-Versionen wurden auf gepatchte Releases gehoben; `npm audit` meldet
+nun null Schwachstellen.
+
+`tests/e2e/routing-stability.spec.ts` hängt den vollständigen strukturierten
+Routing-Ringpuffer samt Teststatus in einem `finally` als JSON-Attachment an.
+Auf Wunsch des Nutzers bleiben die CI-Workflow-Dateien in diesem PR unverändert;
+der bestehende Quality-Workflow lädt `playwright-report` und `test-results`
+weiterhin nur bei Fehlschlag hoch. Das Attachment wird daher nicht als
+Erfolgsartefakt aufbewahrt.
+
+Nachweis: `lib/autoWire.test.ts` (ID→Verbindung unter Node-Permutationen,
+Erhalt alter ID, Wiederholung, Nutzer-ID-Kollision), Golden Master 13 Tests,
+`npm run routing:audit` (simple/camper/solar/inverter/acdc/complex: I1–I7 je 0,
+`determ=true`), `npm run check`, `npm run build` und
+`npm run perf:edge-routing` (Live-Pfad Median 47,57 ms, p90 56,08 ms,
+Ratchet 60 ms: OK; ADR-Ziel 16 ms bleibt nicht erreicht).
+
+**Runtime-Grenze (Stand dieses Eintrags):** Der Playwright-E2E-Test konnte lokal
+nicht im Browser laufen, weil der Chromium-Download mit `ECONNRESET` scheiterte.
+Der Eintrag vom 27.09.2026 unten aktualisiert den inzwischen reproduzierten
+H-Cluster-Befund, die absichtlich erneuerten Routing-Baselines und den aktuellen
+E2E-/CI-Artefakt-Status.
+
+### 2026-09-27 — H-Cluster-Reflow, Baseline-Refresh und Abschluss-Audit
+
+**Korrektur/Ergänzung zum Eintrag vom 26.09.:** Die damalige Aussage, `knownPlans/`
+sei nach der Golden-Master-Aufnahme byte-identisch geblieben, galt nur für den
+Zwischenstand. Nach Prüfung der resultierenden Routen wurden die geänderten
+Routen nun bewusst eingefroren: `knownPlans/{simple,camper,inverter,acdc,complex}.json`
+sowie Regressionen p02, p04 und p13. Die Golden-Master- und
+Regressionstests vergleichen wieder exakt gegen diese geprüften Fixtures.
+
+**H-Cluster-Ursache und Fix:** Nudge weist Lanes deterministisch, aber greedily
+Pfad für Pfad zu. Im reproduzierten Vier-Kanten-Cluster (e-auto-4 bis e-auto-7)
+wurde e-auto-6 in der ersten Runde geprüft, solange e-auto-4 noch auf y=536
+lag. Dadurch hätte die sichere Kandidatenlane y=536 vorübergehend eine
+zusätzliche Überdeckung erzeugt. Die alternativen Kandidaten waren nicht
+zulässig: y=520 überdeckte e-auto-5, y=552 kreuzte die noch nicht verschobene
+Route, y=568 verletzte die Mindest-Stub-Länge und y=504 traf das reale Hindernis
+x=700..720 / y=500..514. Nachdem e-auto-4 später auf y=552 verschoben war,
+war y=536 für e-auto-6 sicher (keine zusätzliche Überdeckung, orthogonal,
+Stub-konform, hindernisfrei), wurde aber in derselben greedy Runde nicht erneut
+geprüft. Eine zweite, strikt begrenzte Reflow-Runde bewertet Kandidaten gegen
+die bereits aktualisierten Routen; sie verschiebt e-auto-6 reproduzierbar auf
+y=536. Das neue Regressionstestszenario prüft alle vier Routen gegen denselben
+Hinderniskörper sowie feste Endpunkte, Orthogonalität und Mindest-Stubs.
+
+Der Cluster wird **nicht als starre Gruppe translatiert**: Handles bleiben an
+Ort und Stelle; jedes Innenstück wird individuell auf eine sichere Lane
+reflowed. In der geprüften Geometrie liegen die vier langen Runs danach auf
+Y=552 (e-auto-4), 520 (e-auto-5) und 536 (e-auto-6/e-auto-7); die letzten
+beiden Teilstücke sind benachbart und überdecken sich nicht.
+
+**Geprüfte Routing-Baselines (Länge / Knicke / Kreuzungen, vorher → jetzt):**
+
+| Plan     |            Vorher |            Jetzt |
+| -------- | ----------------: | ---------------: |
+| simple   |       unverändert |      unverändert |
+| camper   |  3804.8 / 32 / 10 | 3709.2 / 30 / 10 |
+| solar    |       unverändert |      unverändert |
+| inverter |     3888 / 22 / 4 |  3880.8 / 22 / 4 |
+| acdc     |  5770.4 / 30 / 14 | 5710.4 / 30 / 10 |
+| complex  | 10908.8 / 60 / 54 | 8601.6 / 54 / 52 |
+
+Regression p02: Länge 7609.33→7252, Knicke 42→34, Kreuzungen 5 unverändert;
+p04: Länge 2656→2648, Knicke 14 unverändert, Kreuzungen 4→2; p13 unverändert
+bei Länge 3324, 16 Knicken und 0 Kreuzungen. Alle drei haben null
+Clearance-Verletzungen.
+
+**Nachweise:** `npm run check` erfolgreich (168 Testdateien / 2335 Tests,
+ESLint, Prettier, beide TypeScript-Profile und Coverage); `npm run test:goldenmaster`
+13/13, `npm run test:regression` 50/50, `npm run routing:audit` über alle sechs
+Pläne ohne I1–I7-, harte, Orthogonalitäts-, Überlappungs- oder Fallback-Verletzung
+und mit `determ=true`; `npm audit` ohne Schwachstellen. Golden Master und
+Regression wurden nach Sichtung der Metriken bewusst aktualisiert.
+
+**Performance (frischer Lauf):** Das alte Render-Gate N=36/E=134 liegt bei
+Median 2.50 ms / p90 2.74 ms (16-ms-Budget: OK). Der echte `routeAllCables`-
+Pfad liegt bei Median 51.74 ms / p90 69.92 ms; das 60-ms-Ratchet prüft den
+Median und besteht, das ADR-Ziel von 16 ms bleibt verfehlt. Scaling: Kette
+N=500/E=499 173.7 ms; planweite Spannkanten N=500/E=250 3321.6 ms
+(Median 3174.9, Maximum 3388.8), jeweils null Fallback-Routen. Der lange
+Spannkantenfall bleibt ein deutlich langsamer synthetischer Worst Case und ist
+als Restrisiko dokumentiert.
+
+**E2E-Status — supersedes den Runtime-Hinweis oben:** Der aktuelle Static Export
+wurde mit `npm run build` erfolgreich erzeugt. Ein echter Playwright-Lauf ist
+weiterhin nicht erfolgt: `npx playwright install chromium` scheitert beim
+Chromium-CDN mit `ECONNRESET`, und es ist kein System-Chromium vorhanden. Der
+E2E-Test hängt den Routing-Trace als JSON an; die Workflow-Dateien bleiben auf
+Wunsch unverändert, sodass das bestehende CI-Artefakt weiterhin nur bei
+Fehlschlag hochgeladen wird. Ein erfolgreicher CI-Artefakt-Upload ist damit
+außerhalb dieses PR-Scopes. Die Nudge-Ursache ist inzwischen durch den
+Vier-Routen-Test und den Test mit gemessener React-Flow-Geometrie reproduziert;
+`complex` ist nicht mehr die einzige Probe.
+
 ### 2026-09-27 — Zwölfte Fassung: Prüfbericht-Meldungen ohne Widersprüche (UX-001-Nacharbeit)
 
 Ein Nutzer schickte den Text der Warn-Zentrale und sieben Screenshots. Kein
@@ -1539,85 +1649,86 @@ Kenntnis, Audit `atPort`/`elsewhere`, Ratchet-Zahlen), `lib/routing/rules/portBu
 Gate: `npm run check` — 173 Testdateien / 2390 Tests, eslint, prettier,
 typecheck, typecheck:tests, Coverage grün.
 
-### 2026-09-27 — Neunzehnte Fassung: Die LaneRegistry speist das Nudging (ROUTE-001 / ROUTE-006, ADR 0026)
+### 2026-09-27 — Zwanzigste Fassung: Merge mit dem Trunk, I2 als Regressionsmetrik, Ratchet nachgezogen
 
-Die LaneRegistry (WP-5) hatte bis hierher **keinen Produktiv-Konsumenten**
-(ROUTE-001); ihr angekündigter Konsument ist das gescopede Nudging (WP-8).
-Dort lagen zwei belegte Lücken, beide mit derselben Frage: „Wohin darf ein
-Lauf ausweichen?“
+Diese Fassung dokumentiert die Integration des Arena-Zweigs mit dem Trunk-Stand
+(„stabilize planning and safe route reflow, Auto-Edge-Identität, H-Cluster-Reflow",
+2026-09-26/27). Beide Seiten hatten dieselbe Baustelle angefasst; der Merge hat
+sie zusammengeführt, nicht verdoppelt.
 
-1. **Die Cluster-Schwelle war größer als die Invariante.** Der Nudge gruppierte
-   parallele Innenstücke erst ab 12 px gemeinsamer Länge (`NUDGE_MIN_OVERLAP`),
-   während I2 bei JEDER kollinearen Überdeckung > 0 greift — ein 8-px-Stück auf
-   derselben Linie blieb stehen. Kollineare Paare zählen jetzt ab jeder Länge;
-   für bloß benachbarte Parallelen bleibt die alte Schwelle.
+**1. Der Nudge-Reflow des Trunk-Zweigs löst die Frage, für die der Leiter-Pass
+gedacht war — er ist deshalb nicht ausgeliefert.** Der Zweig brachte einen
+eigenen Pass mit (`displaceSingleMovers`: Kandidaten aus der LaneRegistry-Leiter
+`coord ± k · laneGrid`, Gegenüber aus dem aktuellen Arbeitsstand, Stub-Achsen-
+Beweger). Gemessen nach dem Merge: **im ELK-Pfad ändert er nichts** (I2 = 5 mit
+und ohne), in den Regressions-Szenarien nur Geometrie **ohne Metrikgewinn**
+(p02: I2 = 0 in beiden Fällen, Kreuzungen/Bends/Länge identisch). Der Trunk-Reflow
+selbst (Kandidaten `ideale Lane ± k · Raster`, Lane-Reservierung, zweite begrenzte
+Runde, `isSafeNudgeVertex`) deckt dieselbe Klasse ab. Der Pass wurde entfernt —
+samt der Regeln, die dafür im globalen Qualitäts-Gate nötig waren. Was bleibt:
+`laneCandidates` (getestet, vorbereitet) — sein **nächster Konsument ist die
+Port-Bündel-/Fan-Out-Ebene** (ROUTE-002 Teil 2b), und die Doku sagt das jetzt
+ausdrücklich (ROUTE-001 ist damit „teilweise, Konsument offen").
 
-2. **Ein einzelner beweglicher Teilnehmer wurde ignoriert.** Der Cluster-Pass
-   verteilt nur Gruppen mit mindestens zwei beweglichen Segmenten. Die
-   gemessenen Restfälle hatten alle dieselbe Wurzel: eine Seite ist nicht
-   beweglich — der 4-Punkt-Zulauf auf denselben Ziel-Port
-   (`e-batt-minus ↔ e-auto-8`, V @964, 40 px), der Freiwinkel-Lauf über einem
-   fremden Stub (`e-fuse-fan ↔ e-auto-5`, H @405, 26 px) und ein 8-px-Zulauf.
-   Neu `displaceSingleMovers`: der bewegliche Teilnehmer zieht auf die
-   nächstgelegene FREIE Lane, Kandidaten aus der Registry
-   (`laneCandidates`, `coord ± k · laneGrid`, deterministisch). Gegenüber
-   stehen ALLE Segmente fremder Pfade (Stubs eingeschlossen), und zwar aus dem
-   AKTUELLEN Arbeitsstand — sonst zögen zwei Partner auf dieselbe Lane.
+**2. Die Regressionssuite führt I2 jetzt selbst — und findet sofort einen
+Bestandsfall.** `ScenarioMetrics` hat `edgeOverlaps` (aus `checkEdgeEdgeOverlaps`,
+also mit der Port-Bündel-Ausnahme derselben Regel wie die Invariante), das
+Metrik-Budget prüft „≤ Baseline". Vorher waren Trassenüberdeckungen in den 15
+Stress-Szenarien unsichtbar: p02 hatte zwei, `p11-zwangskreuzung` hat eine über
+**440 px** (`e-down ↔ e-up`, H @536 [256, 696]). Beide überdeckten Läufe sind
+Handle-Stubs — der Nudge darf sie bauartbedingt nicht anfassen (die Trasse kommt
+so aus dem A*-Router, der unangetastet bleibt). Festgehalten als Ratchet ≤ 1,
+sichtbar statt versteckt. Die Regressions-Referenz wurde dafür neu erfasst —
+und der Capture-Diff gegen den Trunk-Stand enthält **ausschließlich das neue
+Feld**: keine einzige Trasse, kein SVG, keine Metrik der 15 Szenarien ändert
+sich durch diesen Zweig.
 
-3. **Beweger dürfen den Ellbogen neben dem Stub mitnehmen.** `movableSegment`
-   verlangte „beide Enden freie Innenknoten“ und schloss damit genau die
-   Port-Zuläufe aus. Jetzt genügt „beide Enden sind Innenpunkte“ — zulässig,
-   weil ein Segment nur als Ganzes wandert (ROUTE-BUG-17) und quer zu seinen
-   Nachbarn liegt: die Stubs bleiben auf ihrer Achse, nur ihre LÄNGE ändert
-   sich (genau der Lane-Begriff des Port-Fan-Outs, hier geometrisch).
+**3. Kreuzungs-Ratchet nachgezogen (der Audit bittet darum).** Der
+Trunk-Reflow hat die Kreuzungen gesenkt; gemessen statt geschätzt:
 
-4. **Die Akzeptanz ist streng und wurde zweimal nachgeschärft** — je nach
-   gemessener Wirkung: **Stubs ≥ `stubMin`** (I5, dieser Zug verkürzt sie ja),
-   **keine neue kollineare Überdeckung** (aus derselben Regel wie die
-   Invariante, ADR 0025), **keine neuen Kreuzungen** (die erste Fassung
-   erzeugte in p02 vier zusätzliche: 9 statt 5) und **keine zusätzliche
-   Länge** (ohne diesen Wächter: +105 px in p02). Laterale Züge sind
-   längenneutral, wenn die Nachbarsegmente gegenläufig wachsen — genau die
-   bleiben übrig.
+| Plan    | vorher  | jetzt       |
+| ------- | ------- | ----------- |
+| acdc    | 8       | **6**       |
+| complex | 29      | **27**      |
+| übrige  | 2/5/2/2 | unverändert |
 
-**Messung (ELK-Pfad = `performAutoWiring → applyAdvancedLayout →
-routeAllCables → checkInvariants`, sechs Referenzpläne):**
+`CROSSING_RATCHET` steht damit bei `{simple 2, camper 5, solar 2, inverter 2,
+acdc 6, complex 27}` — die Unterschreitung ist eingefroren, nicht nur gemeldet
+(der Audit-Hinweis verschwindet damit).
 
-| Stand                                                      | I1  | I2    | I3  |
-| ---------------------------------------------------------- | --- | ----- | --- |
-| ELK-Kartenabstand allein (ADR 0023, damaliger Optionssatz) | 0   | 9     | 1   |
-| + Rollen-Schichten (ADR 0024, Rang-Seed)                   | 0   | 3     | 3   |
-| + LaneRegistry im Nudge (diese Fassung)                    | 0   | **1** | 3   |
+Dieselbe Nachzieh-Pflicht greift für die **Kabellänge**: der Trunk-Reflow
+verlegt camper, inverter, acdc und complex kürzer (3.709 statt 3.805, 3.881
+statt 3.888, 5.710 statt 5.770, 8.602 statt 10.909 px; simple und solar
+unverändert). `scripts/routing/cableLength.test.ts` verlangt das Nachziehen
+selbst („Verbesserungen müssen nachgezogen werden") — `BASELINE_PX` steht jetzt
+auf den gemessenen Werten.
 
-Offen bleibt das 8-px-Bündel in `camper` (`e-auto-4 ↔ e-auto-8`, V @704
-[300, 308]): isoliert greift der Zug (der Lauf wandert auf die Registry-Lane
-688), im echten Plan liegen die Kandidaten-Leitern (±16 px) in den aufgeblähten
-Karten-Boxen — die Akzeptanz verwirft ihn deshalb korrekt. Nächster Hebel:
-Stub-/Fan-Out-Ebene (ROUTE-002 Teil 2b).
+**4. Merge-Konflikte inhaltlich gelöst (nicht „einfach eine Seite nehmen"):**
 
-**Bewusste Neuerfassung der Regressions-Referenz (p02).** Im Stress-Szenario
-„1 Batterie + 10 Verbraucher“ sinkt I2 von **2 auf 1**; die Metrik-Budgets
-bleiben exakt gleich (Kreuzungen 5, Bends 42, Länge 7.609 px, Freigabe-Verstöße
-0). Der Capture-Diff (`npm run regression:capture`) umfasst genau EINE Trasse —
-zwei Stützpunkte, 16 px = eine Registry-Lane — plus das zugehörige SVG; die
-anderen 14 Szenarien sind byte-identisch. Begründung nach der Konvention des
-Capture-Skripts: ein Invarianten-Verstoß weniger bei unveränderten Metriken.
+- `lib/autoWire.ts`: Der Trunk bewahrt **IDs** über die Verbindungs-Identität
+  (`autoEdgeIdentityKey`, Reservierung von Nutzer- und historischen Auto-IDs),
+  der Zweig bewahrt **Nutzerangaben** (`length`, `fuseOffset`, `fuseType`,
+  `fuseBreakingCapacity`, `acProtection`). Beides ist geblieben; der Daten-Block
+  ist auf denselben Identitätsschlüssel umgestellt (`autoEdgeIdentityKey` statt
+  `connectionKey`) — vorher hätte eine AC/DC-Parallelverbindung ihre Angaben
+  vertauschen können.
+- `components/edges/utils/nudge.ts`: Trunk-Stand übernommen (siehe 1).
+- `components/edges/utils/routeAll.test.ts`: nur Import-Kopf — beide Seiten
+  additiv, vereinigt.
+- `docs/ARCHITECTURE-CHANGES.md`: beide Einträge, Trunk zuerst.
+- Golden-Artefakte (`p02`-SVG, `goldenLayouts.json`): Trunk-Stand übernommen,
+  anschließend mit dem neuen Feld **bewusst** neu erfasst (siehe 2).
 
-**Die Regressionssuite sieht I2 jetzt.** `ScenarioMetrics` führt zusätzlich
-`edgeOverlaps` (`checkEdgeEdgeOverlaps`), das Metrik-Budget prüft ihn als
-Ratchet (≤ Baseline). Genau diese Invariante hatte in der Suite gefehlt — dort
-lebten die zwei Überdeckungen von p02 unbemerkt, während die geführten
-Metriken grün blieben. Baseline: p02 = 1, alle übrigen 14 Szenarien = 0.
+**5. Stand nach dem Merge (gemessen):**
 
-**Golden Master unverändert (13/13 byte-identisch) und `routing:audit`
-unverändert** (Kreuzungen 2/5/2/2/8/29, Kabellängen 2.697 … 10.909 px): Die
-sechs Referenzpläne haben I2 = 0, es gibt dort keine kollineare Überdeckung,
-die eines der neuen Gates auslösen könnte.
+- ELK-Pfad, sechs Referenzpläne: **I1 = 0, I2 = 5, I3 = 3.** Die fünf
+  Überdeckungen sind port-nah (vier an einem geteilten Port, dort blockiert
+  `stubMin` den seitlichen Zug; der fünfte kostet zwei Kreuzungen) — Details,
+  Paare und Längen in `docs/ai/KNOWN-PROBLEMS.md` unter ROUTE-006.
+- `npm run routing:audit`: I1–I7 = 0, `determ=true`, Kreuzungen 2/5/2/2/6/27,
+  Kabelweg 2.697/3.709/3.200/3.881/5.710/8.602 px.
+- Golden Master 13/13 unverändert (der Trunk hat seine Fixtures bewusst
+  eingefroren), Regression 50/50 nach dem Capture unter 2.
 
-Nachweis: `components/edges/utils/nudge.test.ts` (+4 Tests),
-`lib/routing/rules/laneRegistry.test.ts` (+3). **Nicht in dieser Scheibe:**
-`preferredLaneBonus` und die Lane-Frage auf der Stub-/Fan-Out-Ebene
-(ROUTE-002 Teil 2b) — erst danach ist der Bonus bewertbar.
-
-Gate: `npm run check` — **173 Testdateien / 2397 Tests** (im Lauf dieser
-Scheibe), eslint, prettier, typecheck, typecheck:tests, Coverage grün.
+Gate: `npm run check` — **175 Testdateien / 2.4xx Tests**, eslint, prettier,
+typecheck, typecheck:tests, Coverage grün; Pre-Push inkl. E2E grün.

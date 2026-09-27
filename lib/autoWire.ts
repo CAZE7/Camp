@@ -53,6 +53,7 @@ import {
   type Volts,
 } from './units';
 import {
+  AUTO_EDGE_PREFIX,
   isAutoWiredEdge,
   connectionKey,
   edgeCrossSection,
@@ -93,11 +94,50 @@ export {
 } from './autoWire/sizing';
 export { resolveRails, healUserEdges, pickHouseBattery } from './autoWire/routing';
 
+/** Stable identity for one generated cable, including parallel AC/DC domains. */
+function autoEdgeIdentityKey(edge: CableEdge): string {
+  return JSON.stringify([
+    edge.source,
+    edge.target,
+    edge.sourceHandle ?? '',
+    edge.targetHandle ?? '',
+    edge.data?.edgeDomain ?? '',
+  ]);
+}
+
+function compareStrings(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
+}
+
+/** Canonical top-to-bottom, left-to-right order for node-category traversals. */
+function stableNodeOrder(nodes: readonly Node[]): Node[] {
+  return [...nodes].sort((left, right) => {
+    const leftY = Number.isFinite(left.position?.y) ? left.position.y : 0;
+    const rightY = Number.isFinite(right.position?.y) ? right.position.y : 0;
+    const leftX = Number.isFinite(left.position?.x) ? left.position.x : 0;
+    const rightX = Number.isFinite(right.position?.x) ? right.position.x : 0;
+    return leftY - rightY || leftX - rightX || compareStrings(left.id, right.id);
+  });
+}
+
 export function performAutoWiring(
   initialNodes: Node[],
   existingEdges: CableEdge[] = []
 ): { nodes: Node[]; edges: CableEdge[] } | null {
   const currentNodes = initialNodes.map((n) => ({ ...n, data: { ...(n.data || {}) } }));
+  // Keep prior IDs attached to their generated connection across recalculation.
+  // Sorting each bucket makes even malformed duplicate historical IDs independent
+  // of the incoming edge-array order.
+  const previousAutoEdgeIdsByConnection = new Map<string, string[]>();
+  for (const edge of existingEdges) {
+    if (!isAutoWiredEdge(edge)) continue;
+    const identity = autoEdgeIdentityKey(edge);
+    const ids = previousAutoEdgeIdsByConnection.get(identity) ?? [];
+    ids.push(edge.id);
+    previousAutoEdgeIdsByConnection.set(identity, ids);
+  }
+  for (const ids of previousAutoEdgeIdsByConnection.values()) ids.sort(compareStrings);
+
   // Issue 6: Eine fehlende Nutzerkanten-Länge wurde pauschal als 1 m
   // festgeschrieben — bei Importen mit langer realer Strecke zu dünn
   // dimensioniert und auf dem Canvas unsichtbar (der Renderer-Fallback auf
@@ -136,7 +176,10 @@ export function performAutoWiring(
     }));
   const newEdges: CableEdge[] = [];
   const dcEdges: CableEdge[] = [];
-  const edgeIdRef = { counter: 1 };
+  // AutoWire IDs share the imported/user edge namespace. Reserving every
+  // preserved ID before generation prevents React Flow Map-key collisions,
+  // including a user edge whose ID happens to use an AutoWire prefix.
+  const edgeIdRef = { counter: 1, usedIds: new Set(userEdges.map((edge) => edge.id)) };
 
   const existingConnections = new Set<string>();
   for (const e of userEdges) {
@@ -145,11 +188,13 @@ export function performAutoWiring(
 
   const { nodesByType, nodesByLabel } = buildDictionaries(currentNodes);
   const batteries = nodesByType['battery'] || [];
+  const orderedBatteries = stableNodeOrder(batteries);
   let batteryNode = pickHouseBattery(batteries);
   if (!batteryNode) return null;
   const autoCreatedNodeIds = new Set<string>();
 
   const dcdcChargers = nodesByType['dcdcCharger'] || [];
+  const orderedDcdcChargers = stableNodeOrder(dcdcChargers);
   // Ein Booster braucht eine getrennte Aufbaubatterie und eine Starterseite.
   // Liegt nur eine Starterbatterie vor, würde der Booster sonst auf dieselbe
   // Schiene wie die Batterie verdrahtet (Bezug auf sich selbst). Stattdessen
@@ -197,7 +242,7 @@ export function performAutoWiring(
     80
   );
 
-  const solars = [...(nodesByType['solar'] || []), ...(nodesByType['roofSolar'] || [])];
+  const solars = stableNodeOrder([...(nodesByType['solar'] || []), ...(nodesByType['roofSolar'] || [])]);
 
   let mpptNode: Node | undefined;
   if (solars.length > 0) {
@@ -323,7 +368,7 @@ export function performAutoWiring(
   const safeToParallel = (a: Node, b: Node): boolean =>
     voltageOf(a) === voltageOf(b) && chemistriesParallelSafe(a, b);
   const acceptedParallel: Node[] = [batteryNode];
-  for (const extra of batteries) {
+  for (const extra of orderedBatteries) {
     if (extra.id === batteryNode.id) continue;
     if (starterBatteryNode && extra.id === starterBatteryNode.id) continue;
     if (!acceptedParallel.every((a) => safeToParallel(a, extra))) continue;
@@ -350,7 +395,7 @@ export function performAutoWiring(
     );
   }
 
-  for (const consumer of nodesByType['consumer'] || []) {
+  for (const consumer of stableNodeOrder(nodesByType['consumer'] || [])) {
     addDcEdge(
       newEdges,
       dcEdges,
@@ -374,7 +419,8 @@ export function performAutoWiring(
   }
 
   const inverters = nodesByType['inverter'] || [];
-  for (const inverter of inverters) {
+  const orderedInverters = stableNodeOrder(inverters);
+  for (const inverter of orderedInverters) {
     if (!inverter.data.continuousPower && inverter.data.watts) {
       inverter.data.continuousPower = inverter.data.watts;
     }
@@ -448,10 +494,10 @@ export function performAutoWiring(
   }
 
   const allChargers = [
-    ...(nodesByType['charger'] || []),
-    ...(nodesByType['mpptController'] || []),
-    ...(nodesByType['dcdcCharger'] || []),
-    ...(nodesByType['acBatteryCharger'] || []),
+    ...stableNodeOrder(nodesByType['charger'] || []),
+    ...stableNodeOrder(nodesByType['mpptController'] || []),
+    ...orderedDcdcChargers,
+    ...stableNodeOrder(nodesByType['acBatteryCharger'] || []),
   ];
   for (const charger of allChargers) {
     if (mpptNode && charger.id === mpptNode.id) continue;
@@ -478,7 +524,7 @@ export function performAutoWiring(
   }
 
   if (starterBatteryNode) {
-    for (const booster of dcdcChargers) {
+    for (const booster of orderedDcdcChargers) {
       // Lange Strecke Starter→Booster ist fachgerecht (Motorraum); Sicherung sitzt am Plus.
       addDcEdge(
         newEdges,
@@ -507,8 +553,8 @@ export function performAutoWiring(
   // Ob ein 30-mA-FI (RCD) vorhanden ist, muss am Bauteil gepflegt und von der
   // Live-Validierung nach DIN VDE 0100-721 angemahnt werden. Ein automatisches
   // Setzen würde einen fehlenden FI verschleiern (Stromschlaggefahr).
-  const shorePowers = nodesByType['shorePower'] || [];
-  const consumers230v = nodesByType['consumer230v'] || [];
+  const shorePowers = stableNodeOrder(nodesByType['shorePower'] || []);
+  const consumers230v = stableNodeOrder(nodesByType['consumer230v'] || []);
   const mainInverter = inverters.at(0);
   if (mainInverter) {
     for (const c of consumers230v) {
@@ -526,7 +572,7 @@ export function performAutoWiring(
     }
     // Jeder Wechselrichter bekommt den Landstrom-Eingang; die 230-V-Verbraucher
     // hängen am ersten WR, damit nicht zwei WR parallel einen Kreis speisen.
-    for (const inverter of inverters) {
+    for (const inverter of orderedInverters) {
       for (const sp of shorePowers) {
         addAcEdge(
           newEdges,
@@ -549,7 +595,7 @@ export function performAutoWiring(
     }
   }
 
-  for (const acCharger of nodesByType['acBatteryCharger'] || []) {
+  for (const acCharger of stableNodeOrder(nodesByType['acBatteryCharger'] || [])) {
     for (const sp of shorePowers) {
       addAcEdge(
         newEdges,
@@ -565,7 +611,7 @@ export function performAutoWiring(
     }
   }
 
-  const grounds = nodesByType['ground'] || [];
+  const grounds = stableNodeOrder(nodesByType['ground'] || []);
   for (const ground of grounds) {
     const groundId = ground.id;
     // Nur eine echte direkte Anbindung an die Minus-Schiene bzw. den Shunt
@@ -610,6 +656,36 @@ export function performAutoWiring(
     }
   }
 
+  // Generated edges are emitted in fixed wiring phases; every node-category
+  // traversal uses stable top-to-bottom/left-to-right ordering. Preserve that
+  // route order while retaining prior IDs by connection identity. Both imported
+  // user IDs and historical auto IDs are reserved before allocation.
+  const orderedAutoEdges = [...newEdges];
+  const assignedIds = new Set(userEdges.map((edge) => edge.id));
+  const reservedIds = new Set(assignedIds);
+  for (const ids of previousAutoEdgeIdsByConnection.values()) {
+    for (const id of ids) reservedIds.add(id);
+  }
+  const preservedAutoEdges = new Set<CableEdge>();
+  for (const edge of orderedAutoEdges) {
+    const previousIds = previousAutoEdgeIdsByConnection.get(autoEdgeIdentityKey(edge));
+    const previousId = previousIds?.find((id) => !assignedIds.has(id));
+    if (previousId === undefined) continue;
+    edge.id = previousId;
+    assignedIds.add(previousId);
+    preservedAutoEdges.add(edge);
+  }
+
+  let nextEdgeNumber = 1;
+  for (const edge of orderedAutoEdges) {
+    if (preservedAutoEdges.has(edge)) continue;
+    const prefix = edge.data?.edgeDomain === 'AC_230V' ? 'e-auto-ac-' : AUTO_EDGE_PREFIX;
+    let id = `${prefix}${nextEdgeNumber++}`;
+    while (reservedIds.has(id)) id = `${prefix}${nextEdgeNumber++}`;
+    edge.id = id;
+    reservedIds.add(id);
+  }
+
   // ── Nutzerangaben an Auto-Kanten überleben den nächsten Lauf (AUDIT D3) ──
   //
   // AutoWire ersetzt bei jedem Lauf SEINE Kanten (Idempotenz) und baut sie neu
@@ -631,10 +707,10 @@ export function performAutoWiring(
   // die sich bei jedem Lauf ändert.
   const previousAutoEdgeData = new Map<string, CableEdgeData>();
   for (const e of existingEdges) {
-    if (isAutoWiredEdge(e)) previousAutoEdgeData.set(connectionKey(e), e.data ?? {});
+    if (isAutoWiredEdge(e)) previousAutoEdgeData.set(autoEdgeIdentityKey(e), e.data ?? {});
   }
   for (const edge of newEdges) {
-    const previous = previousAutoEdgeData.get(connectionKey(edge));
+    const previous = previousAutoEdgeData.get(autoEdgeIdentityKey(edge));
     if (!previous || !edge.data) continue;
     const previousLength = parseQuantity(previous.length, meters);
     if (previousLength !== null) edge.data.length = previousLength;

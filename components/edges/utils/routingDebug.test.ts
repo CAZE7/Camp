@@ -1,12 +1,21 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  createRoutingTraceSnapshot,
+  describeRoutingStateChange,
+  detectAlternatingRoutingCycle,
   formatRoutingDebugRun,
+  logRoutingInputChange,
+  logRoutingResult,
   logRoutingRun,
+  routingDebugGeometrySignature,
   ROUTING_DEBUG_GLOBAL,
+  ROUTING_TRACE_GLOBAL,
   routingDebugEnabled,
   type RoutingNodeGeometry,
   type RoutingDebugNode,
 } from './routingDebug';
+import type { PathResult } from './pathfinding';
+import type { FinalValidationReport } from '../../../lib/routing/finalValidation';
 
 /**
  * Die Diagnose aus dem Bugreport („Routing springt zwischen 0 und 20“) muss
@@ -119,6 +128,173 @@ describe('Routing-Diagnose', () => {
       expect(calls[0]).toBe('[ROUTING] Lauf 1: 1 geroutet, 0 übersprungen (Darstellung)');
       expect(calls).toContain('[ROUTING] Lauf 2: 1 geroutet, 1 übersprungen (Darstellung)');
       expect(calls.some((line) => line.includes('a 0,0:192×120 → 0,0:—×—'))).toBe(true);
+    });
+  });
+
+  describe('strukturierter Laufzeit-Trace', () => {
+    beforeEach(() => {
+      vi.spyOn(console, 'warn').mockImplementation(() => {});
+      vi.stubGlobal(ROUTING_DEBUG_GLOBAL, true);
+      vi.stubGlobal(ROUTING_TRACE_GLOBAL, []);
+    });
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      vi.restoreAllMocks();
+    });
+
+    it('protokolliert effektive, deklarierte und rohe Messmaße getrennt', () => {
+      const snapshot = createRoutingTraceSnapshot([node('unmeasured', 0, 0, null)], [], 'signature');
+
+      expect(snapshot.routableNodes[0]).toMatchObject({
+        id: 'unmeasured',
+        dimensions: { width: 192, height: 120 },
+        declared: { width: null, height: null },
+        measured: { width: null, height: null },
+      });
+    });
+
+    it('enthält getrennte Hashes für geroutete Nodes, Presentation Nodes und Kanten', () => {
+      const routable = node('a', 10, 20, { width: 192, height: 120 });
+      const frame = {
+        ...node('frame', -44, -56, { width: 844, height: 392 }, 'backboneGroup'),
+        data: { presentationOnly: true },
+      };
+      const edges = [
+        { id: 'e1', source: 'a', target: 'b', sourceHandle: 'plus', data: { edgeDomain: 'DC_12V' } },
+      ];
+      const snapshot = createRoutingTraceSnapshot([routable, frame], edges, 'route-input-1');
+
+      expect(snapshot.routingSignatureHash).toMatch(/^[\da-f]{8}$/);
+      expect(snapshot.nodeHash).toMatch(/^[\da-f]{8}$/);
+      expect(snapshot.presentationHash).toMatch(/^[\da-f]{8}$/);
+      expect(snapshot.edgeHash).toMatch(/^[\da-f]{8}$/);
+      expect(snapshot.graphHash).toMatch(/^[\da-f]{8}$/);
+      expect(snapshot.routableNodes[0]).toMatchObject({
+        id: 'a',
+        position: { x: 10, y: 20 },
+        dimensions: { width: 192, height: 120 },
+        measured: { width: 192, height: 120 },
+        presentationOnly: false,
+      });
+      expect(snapshot.presentationNodes[0]).toMatchObject({
+        id: 'frame',
+        dimensions: { width: 844, height: 392 },
+        presentationOnly: true,
+      });
+      expect(snapshot.edges[0]).toMatchObject({ id: 'e1', source: 'a', target: 'b', edgeDomain: 'DC_12V' });
+    });
+
+    it('unterscheidet eine Routing-Eingabeänderung von einer Presentation-only-Messung', () => {
+      const base = createRoutingTraceSnapshot(
+        [node('a', 0, 0, { width: 192, height: 120 })],
+        [{ id: 'e1', source: 'a', target: 'b' }],
+        'signature-a'
+      );
+      const resized = createRoutingTraceSnapshot(
+        [node('a', 0, 0, { width: 240, height: 120 })],
+        [{ id: 'e1', source: 'a', target: 'b' }],
+        'signature-b'
+      );
+      const frameNode = {
+        ...node('frame', -44, -56, null, 'backboneGroup'),
+        width: 844,
+        height: 392,
+        data: { presentationOnly: true },
+      };
+      const frameSized = createRoutingTraceSnapshot(
+        [node('a', 0, 0, { width: 192, height: 120 }), frameNode],
+        [{ id: 'e1', source: 'a', target: 'b' }],
+        'signature-a'
+      );
+      const measuredFrame = createRoutingTraceSnapshot(
+        [
+          node('a', 0, 0, { width: 192, height: 120 }),
+          { ...frameNode, measured: { width: 844, height: 392 } },
+        ],
+        [{ id: 'e1', source: 'a', target: 'b' }],
+        'signature-a'
+      );
+
+      expect(describeRoutingStateChange(base, resized)).toMatchObject({
+        kind: 'routing-input-change',
+        routingInputChanged: true,
+      });
+      expect(describeRoutingStateChange(frameSized, measuredFrame)).toMatchObject({
+        kind: 'presentation-only-change',
+        routingInputChanged: false,
+        presentationOnlyChanged: true,
+      });
+    });
+
+    it('unterscheidet deklarierte Maße von gleich großen DOM-Messwerten', () => {
+      const declared = {
+        ...node('frame', -44, -56, null, 'backboneGroup'),
+        width: 844,
+        height: 392,
+        data: { presentationOnly: true },
+      };
+      const measured = { ...declared, measured: { width: 844, height: 392 } };
+
+      expect(routingDebugGeometrySignature([declared])).not.toBe(routingDebugGeometrySignature([measured]));
+    });
+
+    it('erkennt den Wechsel A → B → A als Routing-Oszillation', () => {
+      expect(detectAlternatingRoutingCycle(['a', 'b'], 'a')).toEqual({
+        period: 2,
+        signatureHashes: ['a', 'b'],
+      });
+      expect(detectAlternatingRoutingCycle(['a', 'b'], 'c')).toBeUndefined();
+      expect(detectAlternatingRoutingCycle(['a', 'a'], 'a')).toBeUndefined();
+    });
+
+    it('protokolliert Mess-Trigger, Routenzahl und Final-Validation strukturiert', () => {
+      const input = createRoutingTraceSnapshot(
+        [node('a', 0, 0, { width: 192, height: 120 })],
+        [{ id: 'e1', source: 'a', target: 'b' }],
+        'signature-a'
+      );
+      const change = describeRoutingStateChange(undefined, input);
+      const trigger = logRoutingInputChange(input, change);
+      const route: PathResult = {
+        path: 'M 0 0 L 200 0',
+        hops: [],
+        waypoints: [
+          { x: 0, y: 0 },
+          { x: 200, y: 0 },
+        ],
+        labelX: 100,
+        labelY: 0,
+        offsetX: 0,
+        offsetY: 0,
+        length: 200,
+        bends: 0,
+        crossings: 0,
+        usedSearch: 'astar',
+      };
+      const report: FinalValidationReport = {
+        status: 'VALID',
+        counts: { edgeNodeCollisions: 0, edgeEdgeOverlaps: 0, clearanceViolations: 0 },
+        violations: [],
+        edgeCount: 1,
+      };
+      logRoutingResult(input, new Map([['e1', route]]), report, [trigger], 2);
+
+      const buffer = (globalThis as unknown as Record<string, unknown>)[ROUTING_TRACE_GLOBAL] as unknown[];
+      expect(buffer).toHaveLength(2);
+      expect(buffer[0]).toMatchObject({
+        event: 'input-change',
+        triggerStateChange: { kind: 'initial', routingInputChanged: true },
+      });
+      expect(buffer[1]).toMatchObject({
+        event: 'route-result',
+        cableCount: 1,
+        violationCount: 0,
+        validationStatus: 'VALID',
+        triggerStateChanges: [{ sequence: trigger.sequence }],
+      });
+      expect(
+        vi.mocked(console.warn).mock.calls.every(([line]) => String(line).startsWith('[ROUTING_TRACE] '))
+      ).toBe(true);
     });
   });
 });

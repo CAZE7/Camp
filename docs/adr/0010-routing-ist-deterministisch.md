@@ -42,17 +42,23 @@ exakt denselben Plan wieder her; Bug-Reproduktion wird trivial.
 Seeds/Strategien); Sortierschlüssel-Disziplin bei jedem neuen Vergleich;
 Performance-Optimierungen dürfen Reihenfolgen nicht „opportunistisch“ ändern.
 
-**Geltungsbereich (AUDIT AUTO-004, 2026-09-07):** „gleicher Input ⇒
-identischer Output" gilt für das **elektrische/flammfähige Ergebnis**
-(Querschnitte, Sicherungen, Längen, Warnungen) und das **Routing-Resultat**
-— nachweisbar durch Doppellauf-Tests und Golden Master. **Nicht** garantiert
-wird Byte-Identität der von AutoWire _erzeugten_ Node-/Edge-IDs: `newEntityId`
-verwendet Zufalls-UUIDs, zwei Läufe auf demselben frischen Input erzeugen
-also unterschiedliche IDs (elektrisch identische Ergebnisse). Der Golden
-Master normalisiert IDs deshalb explizit (`auto:<i>:<slug>`). Auf dem
-Ergebnis eines vorherigen Laufs ist AutoWire idempotent (Wiederverwendung
-über Label/Role). Wer Byte-Identität braucht, muss die IDs vor dem Vergleich
-normalisieren.
+**Geltungsbereich (aktualisiert 2026-09-26):** „gleicher serialisierter
+Eingabegraph ⇒ identischer AutoWire- und Routing-Output“ umfasst auch die IDs
+neu erzeugter AutoWire-Knoten/-Kanten. AutoWire vergibt deterministische
+Knoten-IDs aus Typ/Rolle und Label; neue Kanten-IDs werden in festen
+AutoWire-Phasen mit einer kanonischen top-down/left-right/ID-Sortierung der
+beteiligten Node-Kategorien vergeben, nicht in Eingabe-Array-Reihenfolge.
+Bestehende Auto-Kanten-IDs werden über die Verbindungsidentität (Quelle, Ziel,
+Handles, elektrische Domäne) für dieselbe Verbindung übernommen. Nutzer- und
+historische Auto-IDs werden bei neuen Vergaben reserviert; Kollisionen werden
+deterministisch übersprungen. IDs interaktiver
+Nutzeraktionen bleiben sitzungs-eindeutige Zufalls-UUIDs und sind Eingaben,
+keine Routing-Ausgabe. Doppellauf-Regressionen sichern die Byte-Identität bei
+identischer serialisierter Eingabe; eine Permutationsprobe vergleicht
+explizit die Zuordnung Auto-Edge-ID → Verbindung. Der Golden Master normalisiert
+neue AutoWire-Knoten-IDs weiterhin (`auto:<i>:<slug>`), hält Auto-Edge-IDs aber
+bewusst fest, damit ihre Stabilität und ihre Routing-Zuordnung regressionsgeprüft
+werden.
 
 ## Alternativen
 

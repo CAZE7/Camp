@@ -116,12 +116,16 @@ vi.mock('@xyflow/react', async () => {
 // React-Flow-Store (useStoreApi/useStore). Im Test ist ReactFlow gemockt,
 // daher wird der Routing-Sync als No-Op gestubbt — geroutete Pfade werden
 // hier nicht geprüft (dafür existieren CableEdge/WaterPipeEdge-Tests).
-vi.mock('../edges/utils/cableRouteStore', () => ({
-  CableRouteSync: () => null,
-  useCableRoute: () => undefined,
-  publishCableRoutes: vi.fn(),
-  getCableRoute: () => undefined,
-}));
+vi.mock('../edges/utils/cableRouteStore', () => {
+  const emptyRoutes = new Map();
+  return {
+    CableRouteSync: () => null,
+    useCableRoute: () => undefined,
+    useCableRoutes: () => emptyRoutes,
+    publishCableRoutes: vi.fn(),
+    getCableRoute: () => undefined,
+  };
+});
 
 // Mock hooks
 vi.mock('./hooks/useDashboardMetrics', () => ({
@@ -221,11 +225,10 @@ describe('FlowCanvas', () => {
   });
 
   /**
-   * Regression (Bug 2026-09-26, „Routing springt zwischen 0 und 20“): Der
-   * Rahmen des Hauptstromkreises muss als reine Darstellung an React Flow
-   * gehen (Marker für die Routing-Grenze) — und die Bauteile dürfen dabei
-   * nicht kopiert werden: Jede Kopie lässt React Flow den internen Knoten neu
-   * aufbauen und neu messen.
+   * Statische Routing-Grenze: Der Rahmen wird als reine Darstellung an React
+   * Flow übergeben, während Bauteil-Objekte ihre Identität behalten. Das schützt
+   * vor unnötiger Neuübernahme; es beweist nicht die Ursache der gemeldeten
+   * Browser-Oszillation.
    */
   it('übergibt den Hauptstromkreis-Rahmen als Darstellung und kopiert keine Bauteile', () => {
     const coreNodes = [

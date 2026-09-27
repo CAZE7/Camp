@@ -1,27 +1,26 @@
 /**
  * Präsentations-Grenze des Routings.
  *
- * ## Befund (2026-09-26, „Routing springt zwischen 0 und 20 Zwängen“)
+ * ## Statischer Befund (2026-09-26; Ursache der gemeldeten Oszillation unbewiesen)
  *
- * Der Hauptstromkreis-Rahmen (`backboneGroup`) ist laut eigener Doku
- * „presentation-only“ — er landete aber ungefiltert im Routing:
+ * Die Code-Grenze erlaubt einen klaren Fehlerpfad, falls der
+ * Hauptstromkreis-Rahmen (`backboneGroup`) ungefiltert an Routing oder
+ * Abschlussvalidierung übergeben wird:
  *
  * ```text
- * <FlowCanvas>  →  withBackboneGroup()          Rahmen entsteht
- *               →  <ReactFlow nodes>            Rahmen ist eine Node
- *               →  nodeLookup                   Rahmen ist gemessen
- *               →  routeAllCables(nodes)        Rahmen ist ein Hindernis
- *               →  validateFinalRouting(rects)  Rahmen ist ein Bauteil
+ * <FlowCanvas> → withBackboneGroup() → <ReactFlow nodes>
+ *                                  → nodeLookup
+ *                                  → routeAllCables / validateFinalRouting
  * ```
  *
- * Der Rahmen umschließt die Kern-Bauteile. Jede Leitung, die ein
- * Kern-Bauteil verlässt, schneidet damit seinen Rand und zählt als
- * **I1-Verletzung (edge × node)** — obwohl kein Kabel durch ein Bauteil
- * läuft. Zusätzlich routete der A*-Pass um die Rahmenbox herum (Umwege),
- * und die Rahmenbox hing an der DOM-Messung: kein `measured` ⇒
- * 192 × 120 statt 844 × 392 ⇒ andere Hindernisse ⇒ **anderes Routing**.
- * Genau daraus entstand das sichtbare Umschalten des Status-Badges
- * zwischen „verifiziert“ und „20 Zwänge nicht erreicht“.
+ * Weil der Rahmen Kern-Bauteile umschließt, könnte er dann als Hindernis
+ * Umwege erzeugen und als Prüfknoten Kollisionen zählen. Das ist ein
+ * statisch prüfbarer Risikopfad; Unit-Tests belegen die Filterwirkung im
+ * aktuellen Code. Ohne Browser-Runtime-Trace belegt dieser Befund NICHT, dass
+ * er die gemeldete Umschaltung des Status-Badges verursacht hat. Die frühere
+ * konkrete Behauptung eines Messwert-Wechsels 192×120 ↔ 844×392 war nicht
+ * durch einen echten Runtime-Trace abgesichert und wird hier nicht als
+ * nachgewiesene Root Cause geführt.
  *
  * ## Regel
  *

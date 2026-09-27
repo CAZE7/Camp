@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { HOP_PRIORITY_WEIGHTS, hopRadius, resolveHops, routingPriority, type HopEdge } from './hopping';
+import {
+  analyzeRouteCrossings,
+  HOP_PRIORITY_WEIGHTS,
+  hopRadius,
+  resolveHops,
+  routingPriority,
+  type Hop,
+  type HopEdge,
+} from './hopping';
 import { ROUTING_TOKENS } from '../tokens';
-import type { Point } from '../geometry';
+import { segmentIntersectionPoint, waypointsToSegments, type Point, type Segment } from '../geometry';
 
 /**
  * WP-7 (#395): Kreuzungs-Hopping.
@@ -120,6 +128,133 @@ describe('resolveHops — wer hüpft', () => {
     const hops = resolveHops([vertical('a', 10), horizontal('b', 10)]);
     expect(hops.get('a')).toEqual([]);
     expect(hops.get('b')).toEqual([{ x: 10, y: 10, orientation: 'horizontal' }]);
+  });
+});
+
+describe('analyzeRouteCrossings — gemeinsamer Hop-/Crossing-Scan', () => {
+  it('zählt jede fremde Kante einmal und liefert dieselben Hops wie resolveHops', () => {
+    const horizontalEdge = horizontal('thin', 100, { crossSection: 1 });
+    const multiCrossingEdge: HopEdge = {
+      id: 'thick',
+      waypoints: wp([50, 0], [50, 200], [150, 200], [150, 0]),
+      crossSection: 70,
+    };
+    const edges = [horizontalEdge, multiCrossingEdge];
+    const analysis = analyzeRouteCrossings(edges);
+
+    expect(analysis.crossingCountsByEdge).toEqual(
+      new Map([
+        ['thin', 1],
+        ['thick', 1],
+      ])
+    );
+    expect(analysis.hopsByEdge).toEqual(resolveHops(edges));
+    expect(analysis.hopsByEdge.get('thin')).toEqual([
+      { x: 50, y: 100, orientation: 'horizontal' },
+      { x: 150, y: 100, orientation: 'horizontal' },
+    ]);
+  });
+
+  it('zählt Kreuzungen auch dann, wenn beide Kanten fixiert sind und kein Hop entsteht', () => {
+    const analysis = analyzeRouteCrossings([
+      horizontal('locked-h', 50, { locked: true }),
+      vertical('locked-v', 50, { locked: true }),
+    ]);
+    expect(analysis.crossingCountsByEdge).toEqual(
+      new Map([
+        ['locked-h', 1],
+        ['locked-v', 1],
+      ])
+    );
+    expect([...analysis.hopsByEdge.values()].flat()).toEqual([]);
+  });
+
+  it('matches the pairwise reference for deterministic mixed orthogonal routes', () => {
+    let state = 0x21a0;
+    const randomInt = (limit: number): number => {
+      state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+      return state % limit;
+    };
+    const coordinate = (): number => (randomInt(21) - 10) * 20;
+    const edges: HopEdge[] = Array.from({ length: 40 }, (_, i) => {
+      const x0 = coordinate();
+      const y0 = coordinate();
+      const x1 = coordinate();
+      const y1 = coordinate();
+      const x2 = coordinate();
+      const y2 = coordinate();
+      return {
+        id: `edge-${String(i).padStart(2, '0')}`,
+        waypoints: wp([x0, y0], [x1, y0], [x1, y1], [x2, y1], [x2, y2]),
+        domain: i % 3 === 0 ? 'AC_230V' : 'DC_12V',
+        backbone: i % 7 === 0,
+        crossSection: ((i % 8) + 1) * 1.5,
+        locked: i % 17 === 0,
+      };
+    });
+
+    const sorted = [...edges].sort((a, b) => a.id.localeCompare(b.id));
+    const referenceCounts = new Map(sorted.map((edge) => [edge.id, 0]));
+    const referenceHops = new Map<string, Hop[]>(sorted.map((edge) => [edge.id, []]));
+    const chooseHopper = (a: HopEdge, b: HopEdge): string | undefined => {
+      if (a.locked && b.locked) return undefined;
+      if (a.locked) return b.id;
+      if (b.locked) return a.id;
+      const priorityA = routingPriority(a);
+      const priorityB = routingPriority(b);
+      if (priorityA !== priorityB) return priorityA < priorityB ? a.id : b.id;
+      return a.id.localeCompare(b.id) > 0 ? a.id : b.id;
+    };
+
+    for (let i = 0; i < sorted.length; i++) {
+      const a = sorted[i]!;
+      const segmentsA: Segment[] = waypointsToSegments(a.waypoints);
+      for (let j = i + 1; j < sorted.length; j++) {
+        const b = sorted[j]!;
+        const segmentsB = waypointsToSegments(b.waypoints);
+        let crossed = false;
+        let hopperResolved = false;
+        let hopperId: string | undefined;
+        for (const segmentA of segmentsA) {
+          for (const segmentB of segmentsB) {
+            const point = segmentIntersectionPoint(segmentA, segmentB);
+            if (!point) continue;
+            crossed = true;
+            if (!hopperResolved) {
+              hopperId = chooseHopper(a, b);
+              hopperResolved = true;
+            }
+            if (!hopperId) continue;
+            const carrier = hopperId === a.id ? segmentA : segmentB;
+            const horizontalSegment = Math.abs(carrier[0].y - carrier[1].y) < 1e-6;
+            const verticalSegment = Math.abs(carrier[0].x - carrier[1].x) < 1e-6;
+            if (!horizontalSegment && !verticalSegment) continue;
+            referenceHops.get(hopperId)?.push({
+              x: point.x,
+              y: point.y,
+              orientation: horizontalSegment ? 'horizontal' : 'vertical',
+            });
+          }
+        }
+        if (crossed) {
+          referenceCounts.set(a.id, referenceCounts.get(a.id)! + 1);
+          referenceCounts.set(b.id, referenceCounts.get(b.id)! + 1);
+        }
+      }
+    }
+
+    for (const [id, hops] of referenceHops) {
+      const unique = new Map<string, Hop>();
+      for (const hop of hops) unique.set(`${hop.x.toFixed(3)},${hop.y.toFixed(3)},${hop.orientation}`, hop);
+      referenceHops.set(
+        id,
+        [...unique.values()].sort((a, b) => a.x - b.x || a.y - b.y)
+      );
+    }
+
+    const analysis = analyzeRouteCrossings(edges);
+    expect(analysis.crossingCountsByEdge).toEqual(referenceCounts);
+    expect(analysis.hopsByEdge).toEqual(referenceHops);
   });
 });
 

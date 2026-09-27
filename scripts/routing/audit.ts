@@ -255,8 +255,10 @@ const CROSSING_RATCHET: Readonly<Record<string, number>> = {
   camper: 5,
   solar: 2,
   inverter: 2,
-  acdc: 8,
-  complex: 29,
+  // Nachgezogen 2026-09-27 (Merge des Arena-Zweigs „stabilize planning and
+  // safe route reflow“): gemessen acdc 6 statt 8, complex 27 statt 29.
+  acdc: 6,
+  complex: 27,
 };
 
 export function auditAllPlans(): PlanAudit[] {

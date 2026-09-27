@@ -2,13 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { addClassFlag, hasClassFlag, withClassFlag } from './classFlags';
 
 /**
- * Regression (Bug 2026-09-26, „object recreation“): Jede reine
- * Darstellungs-Transformation (Fokus, Strompfad, Domänen-Filter) erzeugte für
- * jedes Element ein neues Objekt — bei jedem Hover, jedem Domänen-Klick und
- * während eines Drags in jedem Frame. React Flow 12 übernimmt einen Knoten nur
- * bei identischem Objekt unverändert in seinen internen Bestand (`adoptUserNodes`,
- * `checkEquality`) und misst ihn sonst neu; über die Layout-Signatur folgt ein
- * weiterer Routing-Lauf.
+ * Statische Identitäts-Regression (2026-09-26, „object recreation“): Reine
+ * Darstellungs-Transformationen sollen unveränderte Elemente nicht kopieren.
+ * React Flow 12 kann identische Objekte wiederverwenden; eine Kopie kann eine
+ * Neuübernahme/Messung auslösen. Ein Routing-Effekt entsteht jedoch nur, wenn
+ * sich dadurch tatsächlich geroutete Geometrie ändert. Dieser Test belegt den
+ * Identitätsvertrag, nicht die Ursache der gemeldeten Browser-Oszillation.
  *
  * Die Marke selbst muss dabei idempotent sein: Sonst wächst der Klassen-String
  * bei jedem Durchlauf (`planner-domain-dim planner-domain-dim …`) und das

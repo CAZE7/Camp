@@ -30,7 +30,7 @@ export type ScenarioMetrics = {
   /** I1- + I3-Verletzungen gegen unbeteiligte Nodes (Ziel: 0). */
   clearanceViolations: number;
   /**
-   * I2 — kollineare Trassenüberdeckungen (ADR 0026).
+   * I2 — kollineare Trassenüberdeckungen (I2-Regel, ADR 0025/0026-Erbe).
    *
    * Die Suite hatte diese Invariante bis hierher gar nicht im Blick; genau
    * dort lebten im Stress-Szenario p02 zwei Überdeckungen unbemerkt. Geführt

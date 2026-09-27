@@ -121,6 +121,24 @@ describe('edgeDropInputs', () => {
     // 30 px → 0,3 m (früher: Math.max(1, …) → 1,0 m)
     expect(inputs.length).toBe(0.3);
   });
+
+  it('verwendet bei fehlender gespeicherter Länge den gerouteten Weg vor der Luftlinie', () => {
+    const nodes = [
+      { id: 'a', type: 'battery', position: { x: 0, y: 0 }, data: {} },
+      { id: 'b', type: 'consumer', position: { x: 30, y: 0 }, data: { watts: 12 } },
+    ] as Node[];
+    const inputs = edgeDropInputs(
+      { id: 'e1', source: 'a', target: 'b', data: { crossSection: 4 } },
+      nodes[0],
+      nodes[1],
+      nodes,
+      [],
+      1000
+    );
+
+    // Route 1000 px = 10 m; die Luftlinie wären nur 0,3 m.
+    expect(inputs.length).toBe(10);
+  });
 });
 
 describe('edgeDropInputs — Solar-Bewertung auf MPP-Basis (AUDIT ELE-007)', () => {

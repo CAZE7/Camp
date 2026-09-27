@@ -16,6 +16,36 @@ import { COPPER_CONDUCTIVITY_MS_PER_MM2 } from '../../../lib/materials';
  * Änderungen an den Berechnungen in lib/electrical.ts.
  */
 
+export type CableLengthResolution = { length: number; estimated: boolean };
+
+/**
+ * Resolves the electrical length shown/used for a cable edge. Explicit plan
+ * data wins; otherwise use the routed path in canvas pixels, then the endpoint
+ * distance, and finally the caller's fallback when geometry is unavailable.
+ */
+export function resolveCableLength(
+  rawLength: unknown,
+  sourcePosition: { x: number; y: number } | undefined,
+  targetPosition: { x: number; y: number } | undefined,
+  routeLengthPx?: number,
+  fallbackMeters = 1
+): CableLengthResolution {
+  if (typeof rawLength === 'number' && Number.isFinite(rawLength) && rawLength >= 0) {
+    return { length: rawLength, estimated: false };
+  }
+
+  if (typeof routeLengthPx === 'number' && Number.isFinite(routeLengthPx) && routeLengthPx >= 0) {
+    return { length: routeLengthPx / PX_PER_METER, estimated: true };
+  }
+
+  if (sourcePosition && targetPosition) {
+    const distancePx = Math.hypot(targetPosition.x - sourcePosition.x, targetPosition.y - sourcePosition.y);
+    if (Number.isFinite(distancePx)) return { length: distancePx / PX_PER_METER, estimated: true };
+  }
+
+  return { length: fallbackMeters, estimated: true };
+}
+
 export type EdgeDropInputs = {
   isAC: boolean;
   I: number;
@@ -51,19 +81,26 @@ export function edgeDropInputs(
   sourceNode: Node | undefined,
   targetNode: Node | undefined,
   nodes: Node[],
-  edges: Edge[] = []
+  edges: Edge[] = [],
+  routeLengthPx?: number
 ): EdgeDropInputs {
   const domain =
     edge.data?.edgeDomain ||
     getEdgeDomain(sourceNode?.type, targetNode?.type, edge.sourceHandle, edge.targetHandle);
+  const { length } = resolveCableLength(
+    edge.data?.length,
+    sourceNode?.position,
+    targetNode?.position,
+    routeLengthPx,
+    domain === 'AC_230V' ? 2 : 1
+  );
 
   if (domain === 'AC_230V') {
     // AC-Leitungen tragen den AC-Laststrom; der Querschnitt wird mit dem
     // AC-Spannungsfall-Budget (2 % konservativ) dimensioniert — nicht mehr
     // pauschal 0 A / 1,5 mm².
-    // AUDIT AUTO-002: negative Längen fallen auf den AC-Standard (2 m) zurück.
-    const rawLength = edge.data?.length;
-    const length = typeof rawLength === 'number' && rawLength >= 0 ? rawLength : 2;
+    // Die Länge folgt derselben Priorität wie CableEdge: gespeicherter Wert,
+    // gerouteter Verlegeweg, Luftlinie; 2 m nur ohne verwertbare Geometrie.
     // AUDIT ELE-004/ELE-009: Die Anzeige verwendet dieselbe per-Kanten-
     // AC-Stromquelle wie die AutoWire-Dimensionierung (`acCurrentA`,
     // lib/autoWire/sizing.ts). Es gibt genau EINEN AC-Strompfad — die frühere
@@ -86,20 +123,8 @@ export function edgeDropInputs(
 
   const sysVoltage = getSystemVoltage(nodes);
   const I = calculateEdgeCurrent(sourceNode, targetNode, nodes, sysVoltage, edges); // ELE-005: Insel-BFS
-  // Ohne 1-m-Mindestclamp: kurze Leitungen behalten ihre echte Länge
-  // (`??` statt `||`, damit length: 0 nicht durch den Schätzwert ersetzt wird).
-  // AUDIT AUTO-002: negative Längen (Import/Altdaten) sind ungültig und
-  // fallen hier ebenfalls auf die geometrische Schätzung zurück, statt den
-  // Spannungsfall zu verkleinern.
-  const physical =
-    sourceNode && targetNode
-      ? Math.hypot(
-          targetNode.position.x - sourceNode.position.x,
-          targetNode.position.y - sourceNode.position.y
-        ) / PX_PER_METER
-      : 1;
-  const rawLength = edge.data?.length;
-  const length = typeof rawLength === 'number' && rawLength >= 0 ? rawLength : physical;
+  // `resolveCableLength` erhält gespeicherte Nullen, schätzt fehlende/ungültige
+  // Werte aus Route oder Geometrie und vermeidet einen 1-m-Mindestclamp.
   const selection = assessCableSelection(I, length, edge.data?.crossSection, 'DC_12V');
   const crossSection = selection.installedCrossSection;
   const recommendedCrossSection = selection.recommendedCrossSection;

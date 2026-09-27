@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { nudgeOrthogonalPaths, NUDGE_GAP } from './nudge';
 import { isOrthogonalPath, pathHitsObstacles, type Point, type Rect } from './pathfinding';
 import { routeAllCables } from './routeAll';
+import { hasMinimumStubs } from '../../../lib/routing/geometry';
 import { Position, type Node } from '@xyflow/react';
 
 const z = (id: string, y: number): { id: string; waypoints: Point[] } => ({
@@ -51,6 +52,86 @@ describe('nudgeOrthogonalPaths', () => {
     expect(isOrthogonalPath(out.get('b')!)).toBe(true);
   });
 
+  it('reflows a blocked H-cluster instead of reverting to a shared lane', () => {
+    const paths = [
+      {
+        id: 'e-auto-4',
+        waypoints: [
+          { x: 710.4, y: 576 },
+          { x: 710.4, y: 536 },
+          { x: 514.4, y: 536 },
+          { x: 514.4, y: 280 },
+        ],
+      },
+      {
+        id: 'e-auto-5',
+        waypoints: [
+          { x: 710.4, y: 576 },
+          { x: 710.4, y: 552 },
+          { x: 726.4, y: 552 },
+          { x: 726.4, y: 524 },
+          { x: 666, y: 524 },
+          { x: 666, y: 204 },
+          { x: 814.4, y: 204 },
+          { x: 814.4, y: 180 },
+        ],
+      },
+      {
+        id: 'e-auto-6',
+        waypoints: [
+          { x: 710.4, y: 576 },
+          { x: 710.4, y: 528 },
+          { x: 646.4, y: 528 },
+          { x: 646.4, y: 364 },
+          { x: 814.4, y: 364 },
+          { x: 814.4, y: 340 },
+        ],
+      },
+      {
+        id: 'e-auto-7',
+        waypoints: [
+          { x: 710.4, y: 576 },
+          { x: 710.4, y: 524 },
+          { x: 814.4, y: 524 },
+          { x: 814.4, y: 500 },
+        ],
+      },
+    ];
+    const blockedLane: Rect = { x: 700, y: 500, width: 20, height: 14 };
+    const out = nudgeOrthogonalPaths(paths, { obstacles: [blockedLane] });
+    const edge4 = out.get('e-auto-4')!;
+    const edge5 = out.get('e-auto-5')!;
+    const edge6 = out.get('e-auto-6')!;
+    const edge7 = out.get('e-auto-7')!;
+    const longRunY = (points: Point[]) =>
+      points.find(
+        (a, i) =>
+          i < points.length - 1 &&
+          Math.abs(a.x - points[i + 1]!.x) > 40 &&
+          Math.abs(a.y - points[i + 1]!.y) < 1e-6
+      )!.y;
+
+    expect(longRunY(edge4)).toBe(552);
+    expect(longRunY(edge5)).toBe(520);
+    expect(longRunY(edge6)).toBe(536);
+    expect(longRunY(edge7)).toBe(536);
+
+    // The first greedy pass reaches e-auto-6 before e-auto-4 has left y=536,
+    // so its otherwise-safe y=536 candidate would temporarily add an overlap.
+    // The bounded second pass revisits the cluster after e-auto-4 has moved.
+    // Exercise the whole four-route cluster against the real blocker: each
+    // route keeps its handles and valid stubs, and no member is left crossing
+    // the obstacle just because a neighboring lane was reflowed.
+    for (const path of paths) {
+      const routed = out.get(path.id)!;
+      expect(routed[0]).toEqual(path.waypoints[0]);
+      expect(routed[routed.length - 1]).toEqual(path.waypoints[path.waypoints.length - 1]);
+      expect(pathHitsObstacles(routed, [blockedLane])).toBe(false);
+      expect(isOrthogonalPath(routed)).toBe(true);
+      expect(hasMinimumStubs(routed)).toBe(true);
+    }
+  });
+
   it('spreads the long run of a 5-point L without moving handles', () => {
     const l = (id: string): { id: string; waypoints: Point[] } => ({
       id,
@@ -77,6 +158,31 @@ describe('nudgeOrthogonalPaths', () => {
     // Lauf hier stehen; gespreizt wird, wo beide Enden frei sind (Test oben).
     expect(longRunY(a)).toBe(80);
     expect(longRunY(b)).toBe(80);
+  });
+
+  it('separates coincident inner runs at horizontal stubs without breaking stub direction', () => {
+    const path = (id: string) => ({
+      id,
+      waypoints: [
+        { x: 0, y: 0 },
+        { x: 40, y: 0 },
+        { x: 40, y: 100 },
+        { x: 200, y: 100 },
+      ],
+    });
+    const out = nudgeOrthogonalPaths([path('a'), path('b')]);
+    const a = out.get('a')!;
+    const b = out.get('b')!;
+
+    expect(a[0]).toEqual({ x: 0, y: 0 });
+    expect(b[0]).toEqual({ x: 0, y: 0 });
+    expect(a[a.length - 1]).toEqual({ x: 200, y: 100 });
+    expect(b[b.length - 1]).toEqual({ x: 200, y: 100 });
+    expect(Math.abs(a[1]!.x - b[1]!.x)).toBe(NUDGE_GAP);
+    expect(isOrthogonalPath(a)).toBe(true);
+    expect(isOrthogonalPath(b)).toBe(true);
+    expect(hasMinimumStubs(a)).toBe(true);
+    expect(hasMinimumStubs(b)).toBe(true);
   });
 
   it('is deterministic (id order, not input order)', () => {
@@ -181,34 +287,6 @@ const custom = (id: string, waypoints: [number, number][]): { id: string; waypoi
 });
 
 describe('nudgeOrthogonalPaths — kollineare Einzel-Überdeckungen (ROUTE-001)', () => {
-  it('sieht eine kollineare Überdeckung ab 8 px (I2), nicht erst ab 12 px', () => {
-    // Beide Innenstücke liegen exakt auf y = 40 und überdecken sich 8 px
-    // (x ∈ [168, 176]) — für I2 längst ein Verstoß, für den alten Nudge
-    // (Schwelle 12 px) unsichtbar.
-    const a = custom('a', [
-      [0, 0],
-      [24, 0],
-      [24, 40],
-      [176, 40],
-      [176, 80],
-      [200, 80],
-    ]);
-    const b = custom('b', [
-      [0, 60],
-      [200, 60],
-      [200, 40],
-      [168, 40],
-      [168, 100],
-      [200, 100],
-    ]);
-    const out = nudgeOrthogonalPaths([a, b]);
-    const ya = out.get('a')![2]!.y;
-    const yb = out.get('b')![2]!.y;
-    expect(ya, 'die beiden kollinearen Läufe müssen getrennt werden').not.toBe(yb);
-    expect(out.get('a')![0]).toEqual({ x: 0, y: 0 });
-    expect(out.get('b')![0]).toEqual({ x: 0, y: 60 });
-  });
-
   it('lässt disjunkte Parallelen in Ruhe (keine Überdeckung, kein Zug)', () => {
     const a = custom('a', [
       [0, 0],
@@ -229,55 +307,5 @@ describe('nudgeOrthogonalPaths — kollineare Einzel-Überdeckungen (ROUTE-001)'
     const out = nudgeOrthogonalPaths([a, b]);
     expect(out.get('a')).toEqual(a.waypoints);
     expect(out.get('b')).toEqual(b.waypoints);
-  });
-
-  it('zieht einen beweglichen Lauf, der auf einem fremden Stub liegt, auf eine Registry-Lane', () => {
-    // b hat nur zwei Segmente (kein Innenstück) — sein erster Lauf ist ein
-    // Stub. a überdeckt ihn kollinear: nur a ist beweglich.
-    const a = custom('a', [
-      [0, 0],
-      [40, 0],
-      [40, 120],
-      [160, 120],
-      [160, 0],
-      [200, 0],
-    ]);
-    const b = custom('b', [
-      [100, 120],
-      [300, 120],
-      [300, 200],
-    ]);
-    const out = nudgeOrthogonalPaths([a, b]);
-    const moved = out.get('a')!;
-    const laneY = moved[2]!.y;
-    expect(laneY, 'der Lauf muss die Linie y = 120 verlassen').not.toBe(120);
-    // Registry-Leiter: Korridor (auf halbes laneGrid gerastet) ± k · laneGrid.
-    const step = NUDGE_GAP;
-    const offset = Math.abs(laneY - 120);
-    expect(offset % step).toBe(0);
-    expect(offset).toBeLessThanOrEqual(2 * step);
-    expect(isOrthogonalPath(moved)).toBe(true);
-    expect(b.waypoints[0]).toEqual({ x: 100, y: 120 });
-  });
-
-  it('verwirft den Zug, wenn die Ausweich-Lane durch ein Hindernis versperrt ist', () => {
-    const a = custom('a', [
-      [0, 0],
-      [40, 0],
-      [40, 120],
-      [160, 120],
-      [160, 0],
-      [200, 0],
-    ]);
-    const b = custom('b', [
-      [100, 120],
-      [300, 120],
-      [300, 200],
-    ]);
-    // Hindernis über allen Kandidaten-Leitern (±1 bis ±3) im Bereich des
-    // Laufs — der Nudge darf nicht durch die Wand ausweichen.
-    const wall = { x: 20, y: 60, width: 180, height: 120 };
-    const out = nudgeOrthogonalPaths([a, b], { obstacles: [wall] });
-    expect(out.get('a')).toEqual(a.waypoints);
   });
 });

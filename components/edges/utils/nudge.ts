@@ -2,21 +2,17 @@ import type { Point, Rect } from './pathfinding';
 import {
   isOrthogonalPath,
   pathHitsObstacles,
+  segmentHitsAny,
   containsPoint,
   stitchOrthogonal,
   routeDefectScore,
-  manhattan,
-  countCrossings,
   pathLength,
+  simplifyWaypoints,
+  waypointsToSegments,
+  type Segment,
 } from './pathfinding';
+import { countBends, hasMinimumStubs, segmentsCross, segmentsOverlap } from '../../../lib/routing/geometry';
 import { ROUTING_TOKENS } from '../../../lib/routing/tokens';
-import {
-  LaneRegistry,
-  laneCandidates,
-  type CorridorDirection,
-} from '../../../lib/routing/rules/laneRegistry';
-import { classifySegmentAgainstSegment } from '../../../lib/routing/rules/collision';
-import { isPortBundleOverlap, routedPathGeometry } from '../../../lib/routing/rules/portBundle';
 
 /**
  * Globales orthogonales Nudging (libavoid-Phase 2).
@@ -29,6 +25,8 @@ import { isPortBundleOverlap, routedPathGeometry } from '../../../lib/routing/ru
 export const NUDGE_GAP = ROUTING_TOKENS.laneGrid; // WP-1: Token `laneGrid`
 export const NUDGE_THRESHOLD = 10;
 export const NUDGE_MIN_OVERLAP = ROUTING_TOKENS.cableClearance; // WP-1: Token `cableClearance`
+const MAX_NUDGE_REFLOW_STEPS = 3;
+const MAX_NUDGE_REFLOW_PASSES = 2;
 
 const EPS = 1e-6;
 
@@ -57,31 +55,6 @@ const clonePaths = (paths: NudgePath[]): Point[][] =>
 
 const rangesOverlap = (aLo: number, aHi: number, bLo: number, bHi: number): boolean =>
   aHi >= bLo + NUDGE_MIN_OVERLAP && bHi >= aLo + NUDGE_MIN_OVERLAP;
-
-/** Echte Überdeckung — jede Länge > EPS, genau der I2-Begriff. */
-const rangesOverlapAny = (aLo: number, aHi: number, bLo: number, bHi: number): boolean =>
-  aHi > bLo + EPS && bHi > aLo + EPS;
-
-/** Liegen zwei Segmente derselben Achse kollinear (gleiche Querkoordinate)? */
-const collinear = (a: PerpSpan, b: PerpSpan): boolean => Math.abs(a.perp - b.perp) <= EPS;
-
-type PerpSpan = { lo: number; hi: number; perp: number };
-
-/**
- * Gehören zwei Innenstücke in dieselbe Gruppe?
- *
- * ROUTE-006 / ROUTE-002-Teil-2b (2026-09-27): I2 greift bei JEDER kollinearen
- * Überdeckung > EPS. Der Nudge sah bis hierher nur Paare mit mindestens
- * `NUDGE_MIN_OVERLAP` (12 px) gemeinsamer Länge — ein 8-px-Stück auf
- * derselben Linie blieb damit stehen (gemessen im ELK-Pfad). Kollineare
- * Paare zählen jetzt ab jeder Länge; für bloß benachbarte Parallelen bleibt
- * die alte Schwelle.
- */
-const sameNudgeGroup = (a: PerpSpan, b: PerpSpan): boolean => {
-  if (Math.abs(a.perp - b.perp) > NUDGE_THRESHOLD) return false;
-  if (collinear(a, b)) return rangesOverlapAny(a.lo, a.hi, b.lo, b.hi);
-  return rangesOverlap(a.lo, a.hi, b.lo, b.hi);
-};
 
 /**
  * Segmente zwischen Stub und Gegen-Stub (i = 1 .. n-3).
@@ -138,10 +111,57 @@ const clustersOf = (segs: Seg[]): number[][] => {
     if (a !== b) parent[b] = a;
   };
 
+  const cells = new Map<number, Map<number, number[]>>();
+  const seen = new Set<number>();
+  const candidateIndices: number[] = [];
+  const alongCellSize = NUDGE_MIN_OVERLAP;
+
   for (let i = 0; i < n; i++) {
-    for (let j = i + 1; j < n; j++) {
-      if (!sameNudgeGroup(at(segs, i), at(segs, j))) continue;
+    const segment = at(segs, i);
+    if (segment.hi - segment.lo < alongCellSize) continue;
+    const perpendicularCell = Math.floor(segment.perp / NUDGE_THRESHOLD);
+    const minAlongCell = Math.floor(segment.lo / alongCellSize);
+    const maxAlongCell = Math.floor(segment.hi / alongCellSize);
+    seen.clear();
+    candidateIndices.length = 0;
+
+    // Any pair close enough in the perpendicular axis occupies either the
+    // same perpendicular cell or one of its neighbors. Overlap >= one along
+    // cell guarantees at least one shared along cell. Restore ascending input
+    // order before unioning so component roots and downstream lane order match
+    // the previous all-pairs scan exactly.
+    for (let neighborPerp = perpendicularCell - 1; neighborPerp <= perpendicularCell + 1; neighborPerp++) {
+      const perpBuckets = cells.get(neighborPerp);
+      if (!perpBuckets) continue;
+      for (let alongCell = minAlongCell; alongCell <= maxAlongCell; alongCell++) {
+        const bucket = perpBuckets.get(alongCell);
+        if (!bucket) continue;
+        for (let bucketIndex = 0; bucketIndex < bucket.length; bucketIndex++) {
+          const j = at(bucket, bucketIndex);
+          if (seen.has(j)) continue;
+          seen.add(j);
+          candidateIndices.push(j);
+        }
+      }
+    }
+    candidateIndices.sort((a, b) => a - b);
+    for (let candidateIndex = 0; candidateIndex < candidateIndices.length; candidateIndex++) {
+      const j = at(candidateIndices, candidateIndex);
+      const other = at(segs, j);
+      if (Math.abs(segment.perp - other.perp) > NUDGE_THRESHOLD) continue;
+      if (!rangesOverlap(segment.lo, segment.hi, other.lo, other.hi)) continue;
       union(i, j);
+    }
+
+    let perpBuckets = cells.get(perpendicularCell);
+    if (!perpBuckets) {
+      perpBuckets = new Map<number, number[]>();
+      cells.set(perpendicularCell, perpBuckets);
+    }
+    for (let alongCell = minAlongCell; alongCell <= maxAlongCell; alongCell++) {
+      const bucket = perpBuckets.get(alongCell);
+      if (bucket) bucket.push(i);
+      else perpBuckets.set(alongCell, [i]);
     }
   }
 
@@ -155,16 +175,145 @@ const clustersOf = (segs: Seg[]): number[][] => {
   return Array.from(buckets.values()).filter((g) => g.length > 1);
 };
 
-/** Nur echte Innenpunkte verschieben — Stubs bekommen später einen Ellbogen. */
-const isFreeVertex = (index: number, n: number): boolean => index >= 2 && index <= n - 3;
+/**
+ * Bewegt innere Punkte sowie Stub-Endpunkte nur entlang ihrer Stub-Achse.
+ * Damit bleiben Quell-/Ziel-Handle und Austrittsrichtung erhalten.
+ */
+const isSafeNudgeVertex = (points: Point[], index: number, axis: 'h' | 'v', delta: number): boolean => {
+  const n = points.length;
+  if (index < 1 || index > n - 2) return false;
+  if (index !== 1 && index !== n - 2) return true;
+  const first = at(points, index === 1 ? 0 : n - 2);
+  const last = at(points, index === 1 ? 1 : n - 1);
+  const verticalStub = Math.abs(first.x - last.x) <= EPS;
+  if (axis === 'h' ? !verticalStub : verticalStub) return false;
+  const before = axis === 'h' ? last.y - first.y : last.x - first.x;
+  const after = before + (index === 1 ? delta : -delta);
+  return Math.sign(after) === Math.sign(before) && Math.abs(after) >= ROUTING_TOKENS.stubMin - EPS;
+};
 
-const applyAxis = (
+const obstaclesForPath = (obstacles: Rect[], start: Point, end: Point): Rect[] => {
+  const out: Rect[] = [];
+  for (let i = 0; i < obstacles.length; i++) {
+    const r = at(obstacles, i);
+    if (containsPoint(r, start) || containsPoint(r, end)) continue;
+    out.push(r);
+  }
+  return out;
+};
+
+const groupSegmentsAt = (points: Point[], segs: Seg[], indices: number[], axis: 'h' | 'v'): Seg[] => {
+  const out: Seg[] = [];
+  for (let i = 0; i < indices.length; i++) {
+    const seg = at(segs, at(indices, i));
+    const a = at(points, seg.i0);
+    const b = at(points, seg.i1);
+    const aAlong = axis === 'h' ? a.x : a.y;
+    const bAlong = axis === 'h' ? b.x : b.y;
+    out.push({
+      ...seg,
+      lo: Math.min(aAlong, bAlong),
+      hi: Math.max(aAlong, bAlong),
+      perp: axis === 'h' ? a.y : a.x,
+    });
+  }
+  return out;
+};
+
+const sameLaneOverlap = (a: Seg, b: Seg): boolean =>
+  Math.abs(a.perp - b.perp) <= EPS && Math.min(a.hi, b.hi) - Math.max(a.lo, b.lo) > EPS;
+
+/** Wie pathfinding.countCrossings, aber ohne die für Nudge irrelevante Clearance-Distanz. */
+const crossingOrOverlapCount = (points: Point[], others: Segment[]): number => {
+  const own = waypointsToSegments(points);
+  let count = 0;
+  for (let i = 0; i < others.length; i++) {
+    const other = at(others, i);
+    const oMinX = Math.min(other[0].x, other[1].x);
+    const oMaxX = Math.max(other[0].x, other[1].x);
+    const oMinY = Math.min(other[0].y, other[1].y);
+    const oMaxY = Math.max(other[0].y, other[1].y);
+    for (let j = 0; j < own.length; j++) {
+      const self = at(own, j);
+      if (
+        Math.max(self[0].x, self[1].x) < oMinX ||
+        oMaxX < Math.min(self[0].x, self[1].x) ||
+        Math.max(self[0].y, self[1].y) < oMinY ||
+        oMaxY < Math.min(self[0].y, self[1].y)
+      ) {
+        continue;
+      }
+      if (segmentsOverlap(self, other) || segmentsCross(self, other)) {
+        count++;
+        break;
+      }
+    }
+  }
+  return count;
+};
+
+const conflictsWithPlacedSegments = (candidate: Seg[], placed: Map<number, Seg[]>): boolean => {
+  for (const [otherPath, otherSegments] of placed) {
+    if (candidate.length > 0 && at(candidate, 0).path === otherPath) continue;
+    for (let i = 0; i < candidate.length; i++) {
+      for (let j = 0; j < otherSegments.length; j++) {
+        if (sameLaneOverlap(at(candidate, i), at(otherSegments, j))) return true;
+      }
+    }
+  }
+  return false;
+};
+
+type CandidateSafetyContext = {
+  relevantObstacles: Rect[];
+  originalDefect: number;
+  originalHitsObstacles: boolean;
+};
+
+const pathHitsChangedSegments = (points: Point[], original: Point[], obstacles: Rect[]): boolean => {
+  if (points.length !== original.length) return pathHitsObstacles(points, obstacles);
+  for (let i = 0; i < points.length - 1; i++) {
+    const start = at(points, i);
+    const end = at(points, i + 1);
+    const originalStart = at(original, i);
+    const originalEnd = at(original, i + 1);
+    if (
+      start.x !== originalStart.x ||
+      start.y !== originalStart.y ||
+      end.x !== originalEnd.x ||
+      end.y !== originalEnd.y
+    ) {
+      if (segmentHitsAny(start, end, obstacles)) return true;
+    }
+  }
+  return false;
+};
+
+const candidateIsSafe = (
+  candidate: Point[],
+  original: Point[],
+  context: CandidateSafetyContext
+): Point[] | null => {
+  const repaired = stitchOrthogonal(candidate);
+  if (!isOrthogonalPath(repaired) || !hasMinimumStubs(repaired)) return null;
+  if (context.relevantObstacles.length > 0) {
+    const hitsObstacles = context.originalHitsObstacles
+      ? pathHitsObstacles(repaired, context.relevantObstacles)
+      : pathHitsChangedSegments(repaired, original, context.relevantObstacles);
+    if (hitsObstacles) return null;
+  }
+  return routeDefectScore(repaired) <= context.originalDefect + EPS ? repaired : null;
+};
+
+const applyAxisPass = (
   clones: Point[][],
   originals: Point[][],
   pathIds: string[],
   axis: 'h' | 'v',
-  gap: number
-): void => {
+  gap: number,
+  safetyByPath: CandidateSafetyContext[]
+): boolean => {
+  let changed = false;
   const segs: Seg[] = [];
   for (let p = 0; p < originals.length; p++) {
     const found = collectInterior(at(originals, p), axis);
@@ -174,8 +323,9 @@ const applyAxis = (
       segs.push(seg);
     }
   }
-  if (segs.length < 2) return;
+  if (segs.length < 2) return false;
 
+  const segmentsByPath = clones.map((path) => waypointsToSegments(path));
   const groups = clustersOf(segs);
   for (let g = 0; g < groups.length; g++) {
     const group = at(groups, g);
@@ -202,229 +352,166 @@ const applyAxis = (
     }
     mean /= pathOrder.length;
 
+    // A centered assignment can be locally impossible: the lane may shorten
+    // a target stub below stubMin, or an obstacle may occupy it. Reflow in
+    // stable laneGrid increments instead of reverting each blocked path to
+    // its overlapping original lane (the Camper I2 regression).
+    const placed = new Map<number, Seg[]>();
+    const laneStep = Math.abs(gap);
     for (let k = 0; k < pathOrder.length; k++) {
       const p = at(pathOrder, k);
-      const target = mean + (k - (pathOrder.length - 1) / 2) * gap;
-      const delta = target - at(segs, firstSegIndexOf(p)).perp;
-      if (Math.abs(delta) < EPS) continue;
-      const pts = at(clones, p);
-      const n = pts.length;
-      const moved = new Set<number>();
+      const first = at(segs, firstSegIndexOf(p));
+      const ideal = mean + (k - (pathOrder.length - 1) / 2) * gap;
+      const originalPath = at(originals, p);
+      const currentPath = at(clones, p);
       const list = byPath.get(p)!;
-      for (let s = 0; s < list.length; s++) {
-        const seg = at(segs, at(list, s));
-        const ends = [seg.i0, seg.i1];
-        // ROUTE-BUG-17: Ein Segment wandert nur als Ganzes. Wandert nur ein
-        // Ende (das andere gehört zu einem Stub), entsteht eine Diagonale,
-        // die `stitchOrthogonal` mit einem Ellbogen flickt — die Kante macht
-        // dann einen Haken am Handle (I4) oder ein Kurzsegment (I6).
-        let movable = true;
-        for (let e = 0; e < 2; e++) {
-          if (!isFreeVertex(at(ends, e), n)) movable = false;
+      const otherSegments: Segment[] = [];
+      for (let other = 0; other < segmentsByPath.length; other++) {
+        if (other !== p) otherSegments.push(...at(segmentsByPath, other));
+      }
+      const currentCrossings = crossingOrOverlapCount(currentPath, otherSegments);
+      let accepted: Point[] | undefined;
+      let acceptedSegments: Seg[] | undefined;
+      // Bound the local search in laneGrid units. If no candidate survives all
+      // geometry, obstacle, stub, crossing and placed-lane checks, keep this
+      // member's existing route rather than accepting an unsafe detour.
+      const maxSearch = Math.min(pathOrder.length, MAX_NUDGE_REFLOW_STEPS);
+
+      for (let distance = 0; distance <= maxSearch && !accepted; distance++) {
+        const offsets = distance === 0 ? [0] : [distance * laneStep, -distance * laneStep];
+        for (let oi = 0; oi < offsets.length; oi++) {
+          const target = ideal + at(offsets, oi);
+          const currentLane = axis === 'h' ? at(currentPath, first.i0).y : at(currentPath, first.i0).x;
+          const delta = target - currentLane;
+          const candidate = currentPath.map((point) => ({ x: point.x, y: point.y }));
+          const moved = new Set<number>();
+
+          for (let s = 0; s < list.length; s++) {
+            const seg = at(segs, at(list, s));
+            const ends = [seg.i0, seg.i1];
+            let movable = true;
+            for (let e = 0; e < 2; e++) {
+              if (!isSafeNudgeVertex(originalPath, at(ends, e), axis, delta)) movable = false;
+            }
+            if (!movable) continue;
+            for (let e = 0; e < 2; e++) {
+              const idx = at(ends, e);
+              if (moved.has(idx)) continue;
+              moved.add(idx);
+              if (axis === 'h') at(candidate, idx).y += delta;
+              else at(candidate, idx).x += delta;
+            }
+          }
+
+          if (moved.size === 0 && Math.abs(delta) > EPS) continue;
+          const repaired = candidateIsSafe(candidate, originalPath, at(safetyByPath, p));
+          if (!repaired) continue;
+          const candidateCrossings = crossingOrOverlapCount(repaired, otherSegments);
+          if (candidateCrossings > currentCrossings) continue;
+          const candidateSegments = groupSegmentsAt(candidate, segs, list, axis);
+          if (conflictsWithPlacedSegments(candidateSegments, placed)) continue;
+          accepted = candidate;
+          acceptedSegments = candidateSegments;
+          break;
         }
-        if (!movable) continue;
-        for (let e = 0; e < 2; e++) {
-          const idx = at(ends, e);
-          if (moved.has(idx)) continue;
-          moved.add(idx);
-          if (axis === 'h') at(pts, idx).y += delta;
-          else at(pts, idx).x += delta;
+      }
+
+      if (accepted && acceptedSegments) {
+        for (let i = 0; i < currentPath.length; i++) {
+          if (at(currentPath, i).x !== at(accepted, i).x || at(currentPath, i).y !== at(accepted, i).y) {
+            changed = true;
+          }
+          at(currentPath, i).x = at(accepted, i).x;
+          at(currentPath, i).y = at(accepted, i).y;
         }
+        segmentsByPath[p] = waypointsToSegments(currentPath);
+        placed.set(p, acceptedSegments);
+      } else {
+        // Keep the existing path, but reserve its actual lane so later members
+        // do not choose the same blocked slot.
+        placed.set(p, groupSegmentsAt(currentPath, segs, list, axis));
       }
     }
   }
-};
-
-const obstaclesForPath = (obstacles: Rect[], start: Point, end: Point): Rect[] => {
-  const out: Rect[] = [];
-  for (let i = 0; i < obstacles.length; i++) {
-    const r = at(obstacles, i);
-    if (containsPoint(r, start) || containsPoint(r, end)) continue;
-    out.push(r);
-  }
-  return out;
+  return changed;
 };
 
 /**
- * Ist dieses Segment als Ganzes verschiebbar?
- *
- * Beide Enden müssen Innenpunkte sein (kein Handle). Bewusst NICHT auf
- * `isFreeVertex` eingeschränkt (ROUTE-006, 2026-09-27): Genau die Läufe, die
- * einander am Port überdecken, haben einen Ellbogen direkt neben dem Stub —
- * `i0 = 1` bzw. `i1 = n−2`. Ihr Versatz ist zulässig, weil ein Segment nur
- * ALS GANZES wandert (ROUTE-BUG-17) und quer zu seinen Nachbarn liegt: Die
- * Anschluss-Stubs bleiben dadurch auf ihrer Achse, nur ihre Länge ändert sich.
- * Diese Länge ist die Stub-Verlängerung — genau der Lane-Begriff des
- * Port-Fan-Outs (`lane`), hier geometrisch statt am Port gerechnet.
+ * A single greedy pass can reject a lane only because a later member of the
+ * same cluster has not moved yet. Revisit once after all members settle; this
+ * bounded second pass uses the updated obstacles/crossing context and cannot
+ * loop or change the electrical plan.
  */
-const movableSegment = (seg: Seg, n: number): boolean =>
-  seg.i0 >= 1 && seg.i1 >= 1 && seg.i0 <= n - 2 && seg.i1 <= n - 2;
-
-/**
- * Kreuzungen eines Pfads gegen die übrigen Pfade (harte X-Schnitte,
- * `countCrossings`). Der Zug darf keine Kreuzung erzeugen: Gemessen kostete
- * die erste Fassung dieses Passes im Stress-Szenario „1 Batterie +
- * 10 Verbraucher“ vier zusätzliche Kreuzungen (9 statt 5) — eine
- * Überdeckung auflösen ist kein Freibrief für ein Kreuzungsmeer.
- */
-const crossingsAgainstOthers = (candidate: Point[], others: readonly Point[][]): number =>
-  countCrossings(
-    candidate,
-    others.flatMap((other) => [...routedPathGeometry(other).segments])
-  );
-
-/** Länge des ersten/letzten Segments (Stubs) — Vertrag mit I5. */
-const stubLengthsOk = (pts: Point[]): boolean => {
-  if (pts.length < 2) return true;
-  const first = manhattan(at(pts, 0), at(pts, 1));
-  const last = manhattan(at(pts, pts.length - 2), at(pts, pts.length - 1));
-  return first >= ROUTING_TOKENS.stubMin - EPS && last >= ROUTING_TOKENS.stubMin - EPS;
-};
-
-/** Verschiebt beide Enden eines Segments quer zur Achse (nur Innenpunkte). */
-const shiftSegment = (pts: Point[], seg: Seg, axis: 'h' | 'v', delta: number): void => {
-  for (const idx of [seg.i0, seg.i1]) {
-    if (axis === 'h') at(pts, idx).y += delta;
-    else at(pts, idx).x += delta;
-  }
-};
-
-/**
- * Zählt harte kollineare Überdeckungen (I2) eines Pfads gegen alle anderen —
- * die Port-Bündel-Ausnahme (ADR 0009) kommt aus derselben Regel wie die
- * Invariante, damit der Nudge sie nicht wegoptimiert.
- */
-const hardOverlapsAgainstOthers = (candidate: Point[], others: readonly Point[][]): number => {
-  const geoA = routedPathGeometry(candidate);
-  let count = 0;
-  for (const other of others) {
-    const geoB = routedPathGeometry(other);
-    for (const s1 of geoA.segments) {
-      for (const s2 of geoB.segments) {
-        if (classifySegmentAgainstSegment(s1, s2).class !== 'hard') continue;
-        if (isPortBundleOverlap(geoA, geoB, s1, s2)) continue;
-        count += 1;
-      }
-    }
-  }
-  return count;
-};
-
-/**
- * ROUTE-001 / WP-8 (2026-09-27): Auflösung kollinearer Einzel-Überdeckungen.
- *
- * Der Cluster-Pass oben verteilt nur Gruppen mit mindestens ZWEI beweglichen
- * Teilnehmern. Gemessen im ELK-Pfad bleiben genau die Fälle übrig, in denen
- * nur EINE Seite beweglich ist: ein Freiwinkel-Pfad kreuzt die Linie eines
- * 4-Punkt-Pfads (dessen Innenknoten nicht frei ist) oder läuft auf den Stub
- * einer anderen Kante. Hier zieht der bewegliche Teilnehmer deshalb auf die
- * nächstgelegene FREIE Lane — die Kandidaten kommen aus der LaneRegistry
- * (`laneCandidates`, WP-5), also aus derselben Leiter
- * (`laneIndex × laneGrid` um die Korridor-Referenz), die auch die
- * Lane-Vergabe benutzt.
- *
- * Gegenüber stehen dabei **alle** Segmente fremder Pfade — Stubs
- * eingeschlossen; nur der Beweger muss ein bewegliches Innenstück sein.
- * Bewertet wird mit denselben Bedingungen wie oben (orthogonal,
- * hindernisfrei, Mängel-Strafe nicht schlechter) plus einer harten
- * Zusatzbedingung: **der Zug darf keine neue kollineare Überdeckung
- * erzeugen** (I2) — sonst würde der Nudge an einer Stelle reparieren, was er
- * an der anderen anrichtet. Die Port-Bündel-Ausnahme (ADR 0009) gilt dabei,
- * kommt aber aus derselben Regel wie die Invariante.
- *
- * Deterministisch: Kandidatenreihenfolge aus der Registry, Pfade in
- * Index-Reihenfolge, erster passender Kandidat gewinnt (ADR 0010).
- */
-const displaceSingleMovers = (
+const applyAxis = (
   clones: Point[][],
   originals: Point[][],
   pathIds: string[],
   axis: 'h' | 'v',
   gap: number,
-  obstacles: Rect[]
+  safetyByPath: CandidateSafetyContext[]
 ): void => {
-  const spansOf = (pts: Point[]): PerpSpan[] => {
-    const out: PerpSpan[] = [];
-    for (let i = 0; i + 1 < pts.length; i++) {
-      const a = at(pts, i);
-      const b = at(pts, i + 1);
-      const onAxis = axis === 'h' ? Math.abs(a.y - b.y) <= EPS : Math.abs(a.x - b.x) <= EPS;
-      if (!onAxis) continue;
-      const lo = axis === 'h' ? Math.min(a.x, b.x) : Math.min(a.y, b.y);
-      const hi = axis === 'h' ? Math.max(a.x, b.x) : Math.max(a.y, b.y);
-      out.push({ lo, hi, perp: axis === 'h' ? a.y : a.x });
-    }
-    return out;
-  };
+  for (let pass = 0; pass < MAX_NUDGE_REFLOW_PASSES; pass++) {
+    if (!applyAxisPass(clones, originals, pathIds, axis, gap, safetyByPath)) break;
+  }
+};
 
-  const registry = new LaneRegistry();
-  const direction: CorridorDirection = axis === 'h' ? 'horizontal' : 'vertical';
-  const handled = new Set<string>();
+type NudgeQuality = { overlaps: number; crossings: number; bends: number; length: number };
 
-  for (let p = 0; p < originals.length; p++) {
-    const n = at(originals, p).length;
-    const interiors = collectInterior(at(originals, p), axis);
-    for (let k = 0; k < interiors.length; k++) {
-      const mover = at(interiors, k);
-      if (!movableSegment(mover, n)) continue; // nur verschiebbare Segmente sind Beweger
-      const key = `${at(pathIds, p)}|${axis}|${mover.perp}`;
-      if (handled.has(key)) continue;
+const hasCollinearOverlap = (a: Segment, b: Segment): boolean => {
+  const aHorizontal = Math.abs(a[0].y - a[1].y) <= EPS;
+  const bHorizontal = Math.abs(b[0].y - b[1].y) <= EPS;
+  if (aHorizontal !== bHorizontal) return false;
+  if (aHorizontal) {
+    if (Math.abs(a[0].y - b[0].y) > EPS) return false;
+    return (
+      Math.min(Math.max(a[0].x, a[1].x), Math.max(b[0].x, b[1].x)) -
+        Math.max(Math.min(a[0].x, a[1].x), Math.min(b[0].x, b[1].x)) >
+      EPS
+    );
+  }
+  if (Math.abs(a[0].x - b[0].x) > EPS) return false;
+  return (
+    Math.min(Math.max(a[0].y, a[1].y), Math.max(b[0].y, b[1].y)) -
+      Math.max(Math.min(a[0].y, a[1].y), Math.min(b[0].y, b[1].y)) >
+    EPS
+  );
+};
 
-      // Fremdgeometrie aus dem AKTUELLEN Arbeitsstand: Hat schon ein anderer
-      // Pfad ausgewichen, sieht dieser Beweger die neue Lage — sonst zögen
-      // beide auf dieselbe Lane und die Überdeckung bliebe stehen.
-      const foreign = originals
-        .map((_, idx) => idx)
-        .filter((idx) => idx !== p)
-        .flatMap((idx) => spansOf(at(clones, idx)));
-      const blocked = foreign.some(
-        (f) => collinear(f, mover) && rangesOverlapAny(f.lo, f.hi, mover.lo, mover.hi)
-      );
-      if (!blocked) continue;
-      handled.add(key);
-
-      const working = at(clones, p);
-      const baselinePath = at(originals, p);
-      const othersNow = clones.filter((_, idx) => idx !== p);
-      const corridor = registry.corridorFor(direction, mover.perp, mover.lo, mover.hi);
-      const baselineDefect = routeDefectScore(baselinePath);
-      const baselineLength = pathLength(baselinePath);
-      const baselineCrossings = crossingsAgainstOthers(baselinePath, othersNow);
-      const candidates = laneCandidates(corridor, gap, { limit: 6 });
-
-      for (const coord of candidates) {
-        const delta = coord - mover.perp;
-        if (Math.abs(delta) < EPS) continue;
-        const trial = working.map((pt) => ({ x: pt.x, y: pt.y }));
-        shiftSegment(trial, mover, axis, delta);
-        trial[0] = { x: at(working, 0).x, y: at(working, 0).y };
-        trial[trial.length - 1] = {
-          x: at(working, working.length - 1).x,
-          y: at(working, working.length - 1).y,
-        };
-        const repaired = stitchOrthogonal(trial);
-        const relevant = obstaclesForPath(
-          obstacles,
-          at(baselinePath, 0),
-          at(baselinePath, baselinePath.length - 1)
-        );
-        const ok =
-          isOrthogonalPath(repaired) &&
-          (relevant.length === 0 || !pathHitsObstacles(repaired, relevant)) &&
-          // Gegenüber dem ORIGINAL, damit die Summe mehrerer Züge nicht doch
-          // schlechter wird als der Ausgangszustand.
-          routeDefectScore(repaired) <= baselineDefect + EPS &&
-          pathLength(repaired) <= baselineLength + 1e-6 &&
-          stubLengthsOk(repaired) &&
-          hardOverlapsAgainstOthers(repaired, othersNow) === 0 &&
-          crossingsAgainstOthers(repaired, othersNow) <= baselineCrossings;
-        if (!ok) continue;
-        working.length = 0;
-        for (const pt of repaired) working.push({ x: pt.x, y: pt.y });
-        break;
+const nudgeQuality = (paths: Point[][]): NudgeQuality => {
+  const segments = paths.map((points) => waypointsToSegments(simplifyWaypoints(points)));
+  let overlaps = 0;
+  let crossings = 0;
+  for (let i = 0; i < segments.length; i++) {
+    for (let j = i + 1; j < segments.length; j++) {
+      const a = at(segments, i);
+      const b = at(segments, j);
+      let hasOverlap = false;
+      for (let ai = 1; ai < a.length - 1; ai++) {
+        for (let bi = 1; bi < b.length - 1; bi++) {
+          if (hasCollinearOverlap(at(a, ai), at(b, bi))) hasOverlap = true;
+        }
+      }
+      if (hasOverlap) overlaps++;
+      for (let ai = 0; ai < a.length; ai++) {
+        for (let bi = 0; bi < b.length; bi++) {
+          if (segmentsCross(at(a, ai), at(b, bi))) crossings++;
+        }
       }
     }
   }
+  return {
+    overlaps,
+    crossings,
+    bends: paths.reduce((sum, points) => sum + countBends(points), 0),
+    length: paths.reduce((sum, points) => sum + pathLength(points), 0),
+  };
+};
+
+const nudgeImprovesQuality = (before: NudgeQuality, after: NudgeQuality): boolean => {
+  if (before.overlaps !== after.overlaps) return after.overlaps < before.overlaps;
+  if (before.crossings !== after.crossings) return after.crossings < before.crossings;
+  if (before.bends !== after.bends) return after.bends < before.bends;
+  return after.length < before.length - EPS;
 };
 
 /**
@@ -443,12 +530,16 @@ export function nudgeOrthogonalPaths(
   const ids = paths.map((p) => p.id);
   const gap = options?.gap ?? NUDGE_GAP;
   const obstacles = options?.obstacles ?? [];
-
-  applyAxis(clones, originals, ids, 'h', gap);
-  applyAxis(clones, originals, ids, 'v', gap);
-  // ROUTE-001: Einzel-Überdeckungen, die der Cluster-Pass nicht sieht.
-  displaceSingleMovers(clones, originals, ids, 'h', gap, obstacles);
-  displaceSingleMovers(clones, originals, ids, 'v', gap, obstacles);
+  const safetyByPath = originals.map((original) => {
+    const relevantObstacles = obstaclesForPath(obstacles, at(original, 0), at(original, original.length - 1));
+    return {
+      relevantObstacles,
+      originalDefect: routeDefectScore(original),
+      originalHitsObstacles: relevantObstacles.length > 0 && pathHitsObstacles(original, relevantObstacles),
+    };
+  });
+  applyAxis(clones, originals, ids, 'h', gap, safetyByPath);
+  applyAxis(clones, originals, ids, 'v', gap, safetyByPath);
 
   for (let i = 0; i < paths.length; i++) {
     const id = at(ids, i);
@@ -463,7 +554,8 @@ export function nudgeOrthogonalPaths(
       (p, j) => Math.abs(p.x - at(orig, j).x) > EPS || Math.abs(p.y - at(orig, j).y) > EPS
     );
     const repaired = changed ? stitchOrthogonal(clone) : orig;
-    const relevant = obstaclesForPath(obstacles, start, end);
+    const safety = at(safetyByPath, i);
+    const relevant = safety.relevantObstacles;
     // ROUTE-BUG-8: Nudging darf eine Route nur verbessern. Ein verschobener
     // Punkt kann den Ellbogen neben einem Stub entstehen lassen — der Pfad
     // bleibt dann zwar orthogonal, kehrt aber am Handle um (I4) oder baut ein
@@ -472,9 +564,27 @@ export function nudgeOrthogonalPaths(
     // nicht erhöht.
     const ok =
       isOrthogonalPath(repaired) &&
-      (relevant.length === 0 || !pathHitsObstacles(repaired, relevant)) &&
-      routeDefectScore(repaired) <= routeDefectScore(orig) + EPS;
+      hasMinimumStubs(repaired) &&
+      (relevant.length === 0 ||
+        !(safety.originalHitsObstacles
+          ? pathHitsObstacles(repaired, relevant)
+          : pathHitsChangedSegments(repaired, orig, relevant))) &&
+      routeDefectScore(repaired) <= safety.originalDefect + EPS;
     out.set(id, ok ? repaired : orig);
+  }
+
+  const finalPaths = paths.map((path, index) => out.get(path.id) ?? at(originals, index));
+  const changed = finalPaths.some((points, index) => {
+    const original = at(originals, index);
+    if (points.length !== original.length) return true;
+    return points.some(
+      (point, pointIndex) =>
+        Math.abs(point.x - at(original, pointIndex).x) > EPS ||
+        Math.abs(point.y - at(original, pointIndex).y) > EPS
+    );
+  });
+  if (changed && !nudgeImprovesQuality(nudgeQuality(originals), nudgeQuality(finalPaths))) {
+    for (let i = 0; i < paths.length; i++) out.set(at(ids, i), at(originals, i));
   }
   return out;
 }

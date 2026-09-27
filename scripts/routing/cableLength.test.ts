@@ -34,11 +34,16 @@ import { captureGoldenMaster } from '../goldenmaster/pipeline';
 /** Gemessen am 2026-09-27 (nach dem Platzierungs-Fix, Plan am Ursprung). */
 const BASELINE_PX: Record<string, number> = {
   simple: 2697,
-  camper: 3805,
+  // Nachgezogen 2026-09-27 (Merge des Arena-Zweigs „stabilize planning and safe
+  // route reflow“): der Trunk-Reflow verlegt camper, inverter, acdc und complex
+  // kürzer — gemessen 3709 / 3881 / 5710 / 8602 px statt 3805 / 3888 / 5770 /
+  // 10909 px. Der Test verlangt das Nachziehen selbst („Verbesserungen müssen
+  // nachgezogen werden“); simple und solar sind unverändert.
+  camper: 3709,
   solar: 3200,
-  inverter: 3888,
-  acdc: 5770,
-  complex: 10909,
+  inverter: 3881,
+  acdc: 5710,
+  complex: 8602,
 };
 
 /**

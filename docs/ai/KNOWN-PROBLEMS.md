@@ -110,8 +110,7 @@ Legende Severity: **hoch** = Agent kann falschen Code ändern / falsche Sicherhe
 - **FILE:** `lib/routing/rules/laneRegistry.ts`
 - **DESCRIPTION:** Die Registry (`LaneRegistry`, `corridorFor`, `assign`, `assignByEdge`) wird
   ausschließlich von ihrem eigenen Test importiert. Der Produktiv-Router vergibt Lanes weiter
-  über `portFanOut.assignFanOut` (Port-Ebene) und die Ausweich-Heuristik
-  `ALTERNATIVE_ROUTE_GAP` (±48/±96 px, `ALTERNATIVE_LANE_STEP = 3`).
+  über `portFanOut.assignFanOut` (Port-Ebene) und den Nudge-Reflow (Ausweich-Lanes).
 - **CURRENT BEHAVIOR:** Korridor-Lanes sind nicht stabil registriert; die Ausweich-Trassen
   stammen aus einer Heuristik, nicht aus der Registry.
 - **EXPECTED BEHAVIOR:** Registry-Lanes steuern Ausweich- und Bündel-Trassen (Zielbild WP-5/WP-8).
@@ -120,24 +119,18 @@ Legende Severity: **hoch** = Agent kann falschen Code ändern / falsche Sicherhe
   wirksame Mechanik.
 - **RELATED TEST:** `lib/routing/rules/laneRegistry.test.ts` (grün, aber ohne Produktionswirkung)
 - **RELATED ISSUE:** WP-5 (#394) / WP-8, dokumentiert im Modulkommentar.
-- **STATUS (2026-09-27, teilweise erledigt):** Das **gescopede Nudging** (WP-8) konsumiert die
-  Registry jetzt: `laneCandidates` liefert die Korridor-Leiter (`coord ± k · laneGrid`) als
-  Ausweich-Kandidaten, und `components/edges/utils/nudge.ts` zieht kollineare
-  Einzel-Überdeckungen auf die nächstgelegene freie Leiter (ADR 0026). Gemessen über den
-  ELK-Pfad der sechs Referenzpläne: **I2 3 → 1** (I1 = 0, I3 = 3 unverändert; offen bleibt ein
-  8-px-Bündel in `camper`, dessen Ausweich-Leitern in Karten-Boxen liegen); Golden Master
-  13/13 und `routing:audit` byte-identisch, die Regressions-Referenz p02 wurde für EINEN
-  Invarianten weniger (I2 2 → 1, Metriken unverändert) bewusst neu aufgenommen (ADR 0026).
-- **ABDECKUNG (2026-09-27):** Die Regressionssuite führt I2 jetzt selbst
-  (`ScenarioMetrics.edgeOverlaps`, Ratchet ≤ Baseline) — vorher waren
-  Trassenüberdeckungen in den 15 Stress-Szenarien unsichtbar.
-- **OFFEN (2026-09-27):** `preferredLaneBonus` (Zug auf die von der Registry BEVORZUGTE Lane)
-  und die Lane-Frage auf der **Stub-/Fan-Out-Ebene** — dort entscheidet `portFanOut`
-  (`assignFanOut`) weiter allein. Erst wenn der Port-Pfad die Registry befragt, ist auch der
-  Bonus sinnvoll bewertbar; bis dahin würde er 121 gewollte Nachbar-Trassen als Strafe drücken
-  (ROUTE-002 Teil 2b).
-
----
+- **STATUS (2026-09-27):** **teilweise erledigt, Konsument noch offen.** `laneCandidates`
+  liefert die Korridor-Leiter (`coord ± k · laneGrid`) als Auswahl-Kandidaten und ist getestet;
+  ein zusätzlicher Nudge-Pass, der sie produktiv nutzte, wurde nach Messung **nicht
+  ausgeliefert** — der Nudge-Reflow des Trunk-Zweigs („stabilize planning and safe route
+  reflow", 2026-09-26/27) löst dieselbe Frage bereits selbst (Kandidaten `ideale Lane ± k ·
+Raster`, Lane-Reservierung, zweite begrenzte Runde, Stub-Achsen-Sicherheit). Gemessen:
+  mit dem Leiter-Pass unverändert I2 = 5 im ELK-Pfad, in den Regressions-Szenarien gleiche
+  Metriken bei anderer Geometrie — also kein Nutzen, nur Risiko.
+- **NÄCHSTER KONSUMENT (ROUTE-002 Teil 2b):** die **Port-Bündel-/Fan-Out-Ebene**
+  (`components/edges/utils/routeAll.ts::portFanOutLanes`). Dort liegen die verbleibenden I2 der
+  ELK-Pläne (alle port-nah, s. ROUTE-006) — und dort ist die Lane eine **Vergabe-**, keine
+  Ausweichfrage; `preferredLaneBonus` bleibt bis dahin gesperrt.
 
 ## ROUTE-002 — Kostenmodell nur teilweise angebunden
 
@@ -276,23 +269,40 @@ Legende Severity: **hoch** = Agent kann falschen Code ändern / falsche Sicherhe
      Versatz in beide Richtungen (Σ 25 vorher, Σ 24 nachher) — sie ist die Grenze, die
      Punkt 1 beschreibt, und wird hier dokumentiert statt versteckt.
 
-  3. **„Plan ordnen“ (ELK, ADR 0023) ist nicht fehlerfrei — aber die Trassenüberdeckungen
-     sind aufgelöst.** Stand nach den Korrekturen: **I1 = 0**, **I3 = 3**. Die
-     Trassenüberdeckungen (I2) gingen in zwei Schritten von 9 auf **1**:
-     Ausgangsstand mit dem ELK-Kartenabstand allein: I2 = 9, I3 = 1 (ADR 0023, dort mit dem
-     damaligen Optionssatz gemessen) · mit den Rollen-Schichten (ADR 0024, Rang-Seed):
-     I2 = 3, I3 = 3 · nach der LaneRegistry-Anbindung des Nudgings (ADR 0026):
-     **I2 = 1, I3 = 3**. Zwei der drei Fälle des Zwischenstands sind aufgelöst, alle mit
-     derselben Wurzel
-     („nur eine Seite beweglich“): 8-px-Kollinearität zweier Zuläufe (`e-auto-4 ↔ e-auto-8`,
-     V @704), 40-px-Zulauf auf denselben Ziel-Port (`e-batt-minus ↔ e-auto-8`, V @964) und
-     ein Freiwinkel-Lauf über einem fremden Stub (`e-fuse-fan ↔ e-auto-5`, H @405, 26 px).
-     Offen bleibt das 8-px-Bündel `e-auto-4 ↔ e-auto-8`: isoliert zieht der Nudge den Lauf
-     auf die Kandidaten-Lane, im Plan liegen die Leitern (±16 px) aber in den aufgeblähten
-     Karten-Boxen — die Akzeptanz verwirft den Zug korrekt (gemessen). Die verbleibenden
-     **I3 = 3** sind Freigabe-Unterschreitungen ohne Berührung (kein
-     Bauteil-Durchlauf, I1 = 0) — der nächste Hebel dort ist der Stub-/Fan-Out-Pfad
-     (ROUTE-002 Teil 2b), nicht mehr der Nudge.
+  3. **„Plan ordnen“ (ELK) hat Rest-Überdeckungen an Ports.** Stand nach dem Merge des
+     Arena-Zweigs (2026-09-27, ELK-Pfad `performAutoWiring → applyAdvancedLayout →
+routeAllCables → checkInvariants`, sechs Referenzpläne, Kartenmaß 192 × 120):
+     **I1 = 0, I2 = 5, I3 = 3**. Die fünf Überdeckungen sind vollständig port-nah:
+
+     | Plan     | Paar                        | Überdeckung              | geteilter Port |
+     | -------- | --------------------------- | ------------------------ | -------------- |
+     | camper   | `e-fuse-light ↔ e-fuse-usb` | V @964 [220, 260], 40 px | ja             |
+     | inverter | `e-auto-4 ↔ e-auto-8`       | V @704 [300, 308], 8 px  | ja             |
+     | inverter | `e-auto-5 ↔ e-auto-9`       | V @720 [136, 176], 40 px | ja             |
+     | complex  | `e-batt-minus ↔ e-auto-8`   | V @964 [537, 577], 40 px | ja             |
+     | complex  | `e-fuse-heat ↔ e-auto-3`    | V @1452 [569, 577], 8 px | nein           |
+
+     Vier davon sind **Fan-Out/Fan-In an einem geteilten Port**: zwei Kanten laufen nach
+     dem Port-Stub auf DERSELBEN Quer-Lane weiter. Der Nudge kann das nicht lösen — die
+     Läufe sitzen an den Stubs, und ein seitlicher Zug verletzt `stubMin` (alle vier
+     gemessen: beide Anschluss-Stubs liegen bei 24–28 px, `stubMin` = 24). Das ist die
+     **Port-Bündel-/Fan-Out-Ebene** (`portFanOutLanes`, ROUTE-002 Teil 2b) — dort ist die
+     Lane eine Vergabe-, keine Ausweichfrage.
+     Der fünfte Fall (`e-fuse-heat ↔ e-auto-3`, 8 px, kein geteilter Port) wäre über die
+     Lane-Leiter lösbar, kostet aber **zwei zusätzliche Kreuzungen** (gemessen: 9 statt 8
+     Kreuzungs-/Überdeckungskontakte) — die Akzeptanz verwirft ihn deshalb, denn die
+     Kreuzungs-Ratchet ist ein hartes Gate. Dokumentiert, nicht versteckt.
+     Zur Historie: derselbe ELK-Pfad hatte vor den Korrekturen **I2 = 21, I3 = 17, I1 = 3**
+     (ADR 0023 mit dem damaligen Optionssatz: I2 = 9, I3 = 1; ADR 0024: I2 = 3, I3 = 3).
+     Die verbleibenden **I3 = 3** sind Freigabe-Unterschreitungen ohne Berührung
+     (kein Bauteil-Durchlauf, I1 = 0).
+     Nebenbei: die **Regressionssuite führt I2 jetzt selbst** (`ScenarioMetrics.edgeOverlaps`,
+     Ratchet ≤ Baseline) — vorher waren Trassenüberdeckungen in den 15 Stress-Szenarien
+     unsichtbar. Sie hat sofort einen Bestandsfall gefunden: `p11-zwangskreuzung` hat EINE
+     Überdeckung über 440 px (`e-down ↔ e-up`, H @536 [256, 696]) — beide überdeckten Läufe
+     sind **Handle-Stubs**, die der Nudge bauartbedingt nicht anfassen darf; festgehalten
+     als Ratchet ≤ 1.
+
   4. **Die Kabellänge stand in keinem Gate.** `routingQuality.ts` misst den Legacy-Router,
      der Umweg-Faktor ist gegen die Platzierung blind (das Optimum wandert mit). Jetzt
      steht `Kabelweg`/`laengste` in `npm run routing:audit`, und

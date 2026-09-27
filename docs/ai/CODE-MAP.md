@@ -263,7 +263,7 @@ CAMP
 | `rules/portFanOut.ts`   | Lane-Vergabe am Port-Bündel (`assignFanOut`, `portNormal`, `portCross`)                       | `portFanOut.test.ts`   |
 | `rules/costModel.ts`    | A*-Kostenmatrix, **aus Tokens abgeleitet** (`COST_WEIGHTS`, `segmentExtraCost`)               | `costModel.test.ts`    |
 | `rules/portBundle.ts`   | Port-Bündel-Ausnahme (ADR 0009) — geteilt von I2, Kostenmodell und Audit (ADR 0025)           | `portBundle.test.ts`   |
-| `rules/laneRegistry.ts` | deterministische Lane-Leiter; `laneCandidates` speist das Nudging (ADR 0026)                  | `laneRegistry.test.ts` |
+| `rules/laneRegistry.ts` | deterministische Lane-Leiter; `laneCandidates` bereit für die Port-Ebene (ROUTE-002 Teil 2b)  | `laneRegistry.test.ts` |
 
 | `rules/hopping.ts` | Kreuzungs-Hopping: Priorität, wer hüpft, Bogen-Mittelpunkte | `hopping.test.ts` |
 
@@ -348,8 +348,10 @@ CAMP
 - **Files:** `lib/id.ts` — `newEntityId()`; Stufen `crypto.randomUUID` → `crypto.getRandomValues`
   → `Math.random` (kein Secure-Context nötig, weil LAN-HTTP-Tests).
 - **Tests:** `lib/id.test.ts`.
-- **Hinweis:** IDs sind **nicht** deterministisch; die Golden-Master-Pipeline normalisiert
-  Auto-Knoten-IDs zu `auto:<index>:<slug>` (`scripts/goldenmaster/pipeline.ts`).
+- **Hinweis:** `newEntityId()` bleibt für interaktive Nutzeraktionen zufällig. AutoWire
+  erzeugt neue Knoten-IDs deterministisch und bindet Auto-Edge-IDs an die Verbindungsidentität;
+  vorhandene IDs bleiben nach Möglichkeit erhalten. Die Golden-Master-Pipeline normalisiert nur
+  neue Knoten-IDs zu `auto:<index>:<slug>` (`scripts/goldenmaster/pipeline.ts`).
 
 ### 5.3 Harnesses & Skripte
 

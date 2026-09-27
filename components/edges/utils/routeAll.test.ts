@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { Position, type Node } from '@xyflow/react';
+import complexPlan from '../../../knownPlans/complex.json';
+import measuredComplexGeometry from '../../../tests/fixtures/routing/complex-measured-geometry.json';
+import { computeCableRouteFinalValidation } from './cableRouteStore';
 import {
   routeAllCables,
   portFanOutLanes,
@@ -65,6 +68,35 @@ function buildSeededPlan(seed: number): { nodes: Node[]; edges: RouteEdgeRef[] }
 }
 
 describe('routeAll-Nachoptimierung (R-6)', () => {
+  it('hält gemessene React-Flow-Geometrie der Charger-/DCDC-Busbar-Routen I2-frei', () => {
+    const geometryById = new Map(measuredComplexGeometry.nodes.map((node) => [node.id, node]));
+    const nodes = (complexPlan.autoWire.nodes as unknown as Node[]).map((node) => {
+      const geometry = geometryById.get(node.id);
+      expect(geometry, `missing measured geometry for ${node.id}`).toBeDefined();
+      return {
+        ...node,
+        measured: geometry!.measured,
+        internals: {
+          positionAbsolute: geometry!.position,
+          handleBounds: geometry!.handleBounds,
+        },
+      } as Node;
+    });
+    const edges = complexPlan.autoWire.edges as unknown as RouteEdgeRef[];
+    const routes = routeAllCables(nodes, edges);
+    const report = computeCableRouteFinalValidation(nodes, edges, routes);
+    const affectedPair = report.violations.filter(
+      (violation) =>
+        violation.invariant === 'I2' &&
+        new Set([violation.edgeId, violation.otherId]).size === 2 &&
+        [violation.edgeId, violation.otherId].includes('e-charger-busbar') &&
+        [violation.edgeId, violation.otherId].includes('e-dcdc-busbar')
+    );
+
+    expect(affectedPair).toEqual([]);
+    expect(report.status).toBe('VALID');
+  });
+
   it('ist deterministisch: fixer Seed ⇒ identische Routen über zwei Läufe', () => {
     const { nodes, edges } = buildSeededPlan(SEED);
     const first = routeAllCables(nodes, edges);
@@ -371,11 +403,9 @@ describe('routeAllCables — Hops', () => {
 });
 
 /**
- * Regression (Bug 2026-09-26): Der Hauptstromkreis-Rahmen ist reine
- * Darstellung. Er lief über `nodeLookup` in `routeAllCables` und war dort ein
- * Hindernis — die Routen liefen um die Rahmenbox herum, und ob die Box
- * gemessen war, entschied über das Ergebnis. Der Test friert die Grenze ein:
- * derselbe Plan muss mit und ohne Rahmen identisch geroutet werden.
+ * Statische Routing-Grenze: Ein presentation-only-Rahmen, falls übergeben,
+ * darf das Routing nicht verändern. Dieser Test prüft den konkreten Codepfad;
+ * er belegt nicht, dass er die gemeldete Browser-Oszillation ausgelöst hat.
  */
 describe('Darstellungs-Knoten sind kein Hindernis (Bug 2026-09-26)', () => {
   const frame: Node = {
