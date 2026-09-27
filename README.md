@@ -220,6 +220,8 @@ Branch Protection: `docs/CI.md`.
 | [0020](docs/adr/0020-routing-fehlerkorrektur-stub-und-fanout.md)            | Routing-Fehlerkorrektur       | Stub-Modell, Port-Fan-Out, Freigabe-Rangfolge: 179 → 0 Invarianten-Verstöße    |
 | [0021](docs/adr/0021-ki-assistent-und-api-route-im-statischen-export.md)    | KI-Assistent im Export        | **vorgeschlagen, offen:** `/api/chat` wird nicht exportiert (`out/api` fehlt)  |
 | [0022](docs/adr/0022-darstellungs-knoten-sind-kein-routing-input.md)        | Darstellung ≠ Routing-Input   | Rahmen/Hilfsknoten sind kein Hindernis, kein Prüfgegenstand, keine Signatur    |
+| [0023](docs/adr/0023-elk-kartenabstand-port-freigabe.md)                    | ELK-Kartenabstand             | ELK hält die Port-Freigabe (52 px) ein — `spacing.nodeNode` aus dem Token      |
+| [0024](docs/adr/0024-rollen-schichten-als-elk-nebenbedingung.md)            | Rollen-Schichten in ELK       | Quelle→…→Verbraucher als INTERACTIVE-Layering; Kreuzungen Σ 42 → 34            |
 
 ## Weitere Nachweise
 

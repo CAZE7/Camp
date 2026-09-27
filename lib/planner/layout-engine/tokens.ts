@@ -39,6 +39,15 @@ export const LAYOUT_TOKENS = {
   /** Abstand zwischen Bauteilen/Strängen. */
   componentComponentSpacing: ROUTING_TOKENS.cableClearance * 2,
 
+  /**
+   * Seed-Abstand der Rollen-Spalten für die INTERACTIVE-Layering-
+   * Nebenbedingung (ADR 0024): ELK liest die x-Positionen und hält die
+   * Rollenfolge ein (Quelle → Wandler → Verteilung → Wechselrichter →
+   * Verbraucher). Nur die REIHENFOLGE wirkt — ELK setzt die endgültigen
+   * Abstände selbst.
+   */
+  rankSpacing: 240,
+
   /** Vorgabebreite, wenn ein Knoten keine gemessene Breite mitbringt. */
   defaultNodeWidth: 120,
 

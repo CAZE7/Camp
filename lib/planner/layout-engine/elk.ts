@@ -35,6 +35,7 @@ import type {
   PlannerLayoutEngine,
 } from './contract';
 import { LAYOUT_TOKENS } from './tokens';
+import { getLayoutRank } from './ranks';
 import type { ElkPlan } from '../../routing/elk/graph';
 import { layoutWithElk } from '../../routing/elk/runner';
 
@@ -57,12 +58,18 @@ export class ElkLayoutEngine implements PlannerLayoutEngine {
       ])
     );
 
+    // Rollen-Schichten als INTERACTIVE-Layering-Nebenbedingung (ADR 0024):
+    // ELK liest die x-Positionen und hält die fachliche Reihenfolge ein
+    // (Quelle → Wandler → Verteilung → Wechselrichter → Verbraucher). Ohne
+    // den Seed lagen alle Knoten auf x = 0 und ELK durfte die Rollenfolge
+    // allein nach Kreuzungsminimum brechen.
     const plan: ElkPlan = {
+      ranked: true,
       nodes: nodes.map((node) => {
         const size = sizeById.get(node.id)!;
         return {
           id: node.id,
-          x: 0,
+          x: getLayoutRank(node.kind) * LAYOUT_TOKENS.rankSpacing,
           y: 0,
           width: size.width,
           height: size.height,

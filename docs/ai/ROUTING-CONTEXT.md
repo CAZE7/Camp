@@ -143,7 +143,7 @@ Reihenfolge der Prüfung ist Teil des Vertrags: **Overlap (hard) → Crossing (s
 
 **Domänen-Trennung** (`buildDomainSeparationRules`): `electrical ↔ water` und `ac230 ↔ dc12`
 fordern `crossDomainSpacing` (24 px) statt `cableClearance` (12 px). Die Regeln **existieren**,
-sind aber **nicht an den Produktiv-Router angebunden** → [KNOWN-PROBLEMS.md](./KNOWN-PROBLEMS.md) `ROUTE-005`.
+sind aber **nicht an den Produktiv-Router angebunden** → [KNOWN-PROBLEMS.md](./KNOWN-PROBLEMS.md) `ROUTE-003`.
 
 **Verbindungsregeln (greifen vor dem Routing):** AC/DC-Trennung, Polarität, Solar-Sonderfälle,
 Duplikat-Verbot — `lib/connectionRules.ts` (`isConnectionAllowed`).

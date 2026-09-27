@@ -120,6 +120,60 @@ export function resolveHandlePoint(
     : { x: originX + w * t, y: originY, position: Position.Top };
 }
 
+/**
+ * Label-Box (halbe Ausdehnung) für die Kollisionsprüfung. Konservativ
+ * geschätzt: Der Chip im Canvas ist eine Zeile mit Padding; 112 × 28 px
+ * deckt „2,5 mm² · 5 m" samt Rahmen ab.
+ */
+export const LABEL_HALF_WIDTH = 56;
+export const LABEL_HALF_HEIGHT = 14;
+
+const labelBoxFree = (x: number, y: number, rects: readonly Rect[]): boolean =>
+  rects.every(
+    (rect) =>
+      x + LABEL_HALF_WIDTH <= rect.x ||
+      x - LABEL_HALF_WIDTH >= rect.x + rect.width ||
+      y + LABEL_HALF_HEIGHT <= rect.y ||
+      y - LABEL_HALF_HEIGHT >= rect.y + rect.height
+  );
+
+/**
+ * Finding 2026-09-27 (Screenshot „Label verdeckt Bauteilkarte"): Der
+ * Label-Anker war schlicht der Trassenmittelpunkt. Liegt der auf einer Karte,
+ * verdeckt der Text das Bauteil — `edgeLabelNudge` trennt nur Labels
+ * desselben Kantenpaars. Diese Funktion sucht entlang der Trasse den
+ * nächstgelegenen Punkt zum Mittelpunkt, an dem die Label-Box frei steht.
+ * Wird nichts gefunden (die Trasse liegt komplett über Karten), bleibt der
+ * Mittelpunkt — lieber ein verdecktes Label als eines ohne Bezug zur Leitung.
+ */
+export const labelAnchorClearOfNodes = (
+  anchor: Point,
+  waypoints: readonly Point[],
+  rects: readonly Rect[]
+): Point => {
+  if (labelBoxFree(anchor.x, anchor.y, rects)) return anchor;
+  const samples: Point[] = [];
+  const step = 8;
+  for (let i = 0; i < waypoints.length - 1; i++) {
+    const from = waypoints[i];
+    const to = waypoints[i + 1];
+    if (!from || !to) continue;
+    const steps = Math.max(1, Math.ceil(Math.hypot(to.x - from.x, to.y - from.y) / step));
+    for (let s = 0; s <= steps; s++) {
+      samples.push({
+        x: from.x + ((to.x - from.x) * s) / steps,
+        y: from.y + ((to.y - from.y) * s) / steps,
+      });
+    }
+  }
+  const distance = (point: Point): number => Math.hypot(point.x - anchor.x, point.y - anchor.y);
+  samples.sort((a, b) => distance(a) - distance(b));
+  for (const sample of samples.slice(0, 64)) {
+    if (labelBoxFree(sample.x, sample.y, rects)) return sample;
+  }
+  return anchor;
+};
+
 const rebuild = (
   waypoints: Point[],
   crossings: number,
@@ -748,16 +802,21 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
     if (!item) continue;
     const wp = finalWaypoints.get(id) ?? item.waypoints;
     const crossings = crossingsByEdge.get(id) ?? 0;
+    const routed = rebuild(
+      wp,
+      crossings,
+      item.result.usedSearch,
+      hopsByEdge.get(id) ?? [],
+      item.result.fallbackHitsObstacles,
+      item.result.tightMarginUsed
+    );
+    // Beschriftung darf keine Karte verdecken (Finding 2026-09-27).
+    const label = labelAnchorClearOfNodes({ x: routed.labelX, y: routed.labelY }, wp, allObstacles);
     out.set(
       id,
-      rebuild(
-        wp,
-        crossings,
-        item.result.usedSearch,
-        hopsByEdge.get(id) ?? [],
-        item.result.fallbackHitsObstacles,
-        item.result.tightMarginUsed
-      )
+      label.x === routed.labelX && label.y === routed.labelY
+        ? routed
+        : { ...routed, labelX: label.x, labelY: label.y }
     );
   }
   return out;

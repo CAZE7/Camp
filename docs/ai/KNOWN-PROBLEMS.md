@@ -199,6 +199,62 @@ Legende Severity: **hoch** = Agent kann falschen Code ändern / falsche Sicherhe
 
 ---
 
+## ROUTE-006 — Platzierung außerhalb der Referenzkoordinaten: Restfehler, Rasterlage, Kabellänge
+
+- **AREA:** Platzierung / Routing
+- **FILE:** `lib/autoWire/placement.ts` (`flowAnchor`), `components/edges/utils/routeAll.ts`
+  (`labelAnchorClearOfNodes`), `scripts/routing/audit.ts`, `scripts/routing/cableLength.test.ts`
+- **DESCRIPTION:** Vier Messungen vom 2026-09-27 zeigen dieselbe Grenze — die geprüfte
+  Konfiguration ist die eingefrorene; jede Änderung der Anordnung von Auto-Raster und
+  Karten zueinander ist eine neue Konfiguration:
+  1. **Der relative Versatz ist tragend, nicht die Phase.** Eine reine Übersetzung des
+     fertigen Layouts (Nutzer- und Auto-Knoten gemeinsam) um (8, 8), (13, 0) und (1200, 800)
+     lässt I1–I7 auf allen sechs Referenzplänen bei **0** (gemessen). Verschiebt sich dagegen
+     nur einer der beiden Teile, entstehen kurze Segmente: `acdc` bei Δ(8, 8) → **12-px-Segment**
+     (I6 + I7) — genau die Beobachtung des Nutzers („schon eine reine X-Verschiebung des
+     Rasters erzeugt 12-px-Segmente“). Fünf translationsinvariante Platzierungsvarianten
+     (Raster folgt dem Plan, Batterie-Anker, Nachbar-Schwerpunkt, Plan-Schwerpunkt) wurden
+     gemessen und verworfen; das absolute Raster bleibt (ADR 0017).
+  2. **Der Flow-Anker entfernt die harten Überdeckungen verschobener Pläne.** Sechs
+     Referenzpläne, volle Pipeline, Planposition Δ — Σ(I1..I3) und Kabelweg:
+
+     | Δ          | vorher: Σ hart / px | mit Flow-Anker: Σ hart / px |
+     | ---------- | ------------------- | --------------------------- |
+     | (0, 0)     | 0 / 30.269          | 0 / 30.269                  |
+     | (8, 8)     | 0 / 30.728          | 0 / 30.728                  |
+     | (296,196)  | 5 / 38.910          | **0** / 30.909              |
+     | (600,400)  | 3 / 54.949          | **0** / 30.373              |
+     | (1200,800) | 4 / 88.693          | **0** / 29.789              |
+     | (2400, 0)  | 2 / 102.837         | **0** / 32.610              |
+
+     Die Zahl der Qualitätsmeldungen (I4–I7, keine Überdeckungen) schwankt mit dem relativen
+     Versatz in beide Richtungen (Σ 25 vorher, Σ 24 nachher) — sie ist die Grenze, die
+     Punkt 1 beschreibt, und wird hier dokumentiert statt versteckt.
+
+  3. **„Plan ordnen“ (ELK, ADR 0023) ist nicht fehlerfrei.** Über die sechs Referenzpläne
+     bleiben nach der Korrektur des Kartenabstands **I2 = 9** (Trassenüberdeckungen,
+     überwiegend Paare am gemeinsamen Port) und **I3 = 1**; **I1 = 0**. Der Nutzer hatte
+     1–2 Rest-I2 auf seinem Plan gemeldet — dieselbe Größenordnung, andere Grundmenge.
+  4. **Die Kabellänge stand in keinem Gate.** `routingQuality.ts` misst den Legacy-Router,
+     der Umweg-Faktor ist gegen die Platzierung blind (das Optimum wandert mit). Jetzt
+     steht `Kabelweg`/`laengste` in `npm run routing:audit`, und
+     `scripts/routing/cableLength.test.ts` hält die absolute Länge je Referenzplan als
+     Ratchet (mit Gegenprobe: ohne den Flow-Anker fällt der Positionstest).
+- **CURRENT BEHAVIOR:** Ein um wenige Pixel verschobener Plan kann kurze Segmente melden
+  (I4–I7, **keine** Überdeckung). Absolutwerte stehen in Audit, Ratchet und Invarianten-Test.
+- **EXPECTED BEHAVIOR:** An jeder Planposition kein Kabel durch ein Bauteil und keine
+  Trassenüberdeckung (I1–I3); kurze Segmente bleiben eine dokumentierte Qualitätsgrenze.
+- **SEVERITY:** niedrig (keine harten Verletzungen; Sichtbarkeit hergestellt)
+- **WORKAROUND:** Für die geprüfte Konfiguration den Plan nahe dem Ursprung halten; für
+  kompakte Layouts „Plan ordnen“ (ELK) verwenden — 2–44 % kürzer, I1 = 0.
+- **RELATED TEST:** `scripts/routing/cableLength.test.ts`,
+  `lib/planner/layout-engine/elkSpacing.test.ts`,
+  `components/edges/utils/routeAll.test.ts` (Beschriftung verdeckt keine Karte),
+  `lib/routing/invariants.test.ts`, `scripts/routing/finalValidation.test.ts`
+- **RELATED ISSUE:** ADR 0023, ADR 0017, ROUTE-BUG-32; Finding 2026-09-27 (§ Reihenfolge).
+
+---
+
 ## ARCH-001 — Server-Route und Postgres-Pool im statischen Export
 
 - **AREA:** Architektur

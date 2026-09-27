@@ -6,6 +6,7 @@ import {
   alternativeRouteGap,
   generateElkLayoutOptions,
   generateElkInteractiveOptions,
+  generateElkRankedOptions,
   type RoutingTokens,
 } from './tokens';
 import {
@@ -40,6 +41,7 @@ describe('Routing-Tokens (Single Source of Truth)', () => {
     expect(ROUTING_TOKENS).toEqual({
       cableClearance: 12,
       elkEdgeNodeSpacing: 16,
+      portFacingClearance: 52,
       stubMin: 24,
       laneGrid: 16,
       segmentMin: 16,
@@ -60,6 +62,11 @@ describe('Routing-Tokens (Single Source of Truth)', () => {
     expect(ROUTING_TOKENS.crossDomainSpacing).toBeGreaterThanOrEqual(ROUTING_TOKENS.cableClearance);
     // Übergangswert deckt das Clearance-Ziel (R-10) mit Reserve.
     expect(LEGACY_ROUTING_TOKENS.obstacleMargin).toBeGreaterThanOrEqual(ROUTING_TOKENS.cableClearance);
+    // ROUTE-BUG-32: Die Port-Freigabe ist die Summe ihrer Bestandteile, nicht
+    // eine zweite Zahl — Stub + genau ein Lane-Schritt + Clearance.
+    expect(ROUTING_TOKENS.portFacingClearance).toBe(
+      ROUTING_TOKENS.stubMin + ROUTING_TOKENS.laneGrid + ROUTING_TOKENS.cableClearance
+    );
   });
 });
 
@@ -71,12 +78,15 @@ describe('ELK-Config-Sync (generiert, nicht gepflegt)', () => {
       ...ROUTING_TOKENS,
       cableClearance: 7,
       elkEdgeNodeSpacing: 33,
+      portFacingClearance: 44,
     });
     const options = generateElkLayoutOptions(probe);
     expect(options['elk.spacing.edgeEdge']).toBe('7');
     expect(options['elk.spacing.edgeNode']).toBe('33');
     expect(options['elk.layered.spacing.edgeNodeBetweenLayers']).toBe('33');
     expect(options['elk.layered.spacing.edgeEdgeBetweenLayers']).toBe('7');
+    expect(options['elk.spacing.nodeNode']).toBe('44');
+    expect(options['elk.layered.spacing.nodeNodeBetweenLayers']).toBe('44');
   });
 
   it('Default-Optionen tragen die Spec-Werte und die Spec-Schalter', () => {
@@ -86,10 +96,24 @@ describe('ELK-Config-Sync (generiert, nicht gepflegt)', () => {
       'elk.edgeRouting': 'ORTHOGONAL',
       'elk.spacing.edgeEdge': '12',
       'elk.spacing.edgeNode': '16',
+      'elk.spacing.nodeNode': '52',
+      'elk.layered.spacing.nodeNodeBetweenLayers': '52',
       'elk.layered.mergeEdges': 'false',
       'elk.portConstraints': 'FIXED_ORDER',
       'elk.junctionPoints': 'true',
     });
+  });
+
+  it('Gerankte Optionen setzen die Layering-Nebenbedingung ohne semiInteractive', () => {
+    const base = generateElkLayoutOptions();
+    const ranked = generateElkRankedOptions();
+    expect(ranked).toMatchObject(base);
+    expect(ranked['elk.layered.layering.strategy']).toBe('INTERACTIVE');
+    expect(ranked['elk.layered.considerModelOrder.strategy']).toBe('PREFER_EDGES');
+    // Gemessen (Finding 2026-09-27): semiInteractive hebt die
+    // Kreuzungsminimierung auf (Σ 36 → 44) — im Rollen-Modus bleibt beides aus.
+    expect(ranked['elk.layered.crossingMinimization.semiInteractive']).toBeUndefined();
+    expect(ranked['elk.layered.cycleBreaking.strategy']).toBeUndefined();
   });
 
   it('Interaktiver Modus erweitert die Basis, ohne sie zu verändern', () => {

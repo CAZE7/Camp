@@ -1,4 +1,9 @@
-import { generateElkInteractiveOptions, generateElkLayoutOptions, type RoutingTokens } from '../tokens';
+import {
+  generateElkInteractiveOptions,
+  generateElkLayoutOptions,
+  generateElkRankedOptions,
+  type RoutingTokens,
+} from '../tokens';
 import type { Point } from '../geometry';
 
 /**
@@ -55,6 +60,13 @@ export type ElkPlan = {
   edges: ElkPlanEdge[];
   /** Nutzerplatzierungen respektieren (Spec §6.2)? */
   interactive?: boolean;
+  /**
+   * Rollen-Schichten als Nebenbedingung (ADR 0024): Die x-Positionen der
+   * Knoten sind der Rang-Seed (`Rang × LAYOUT_TOKENS.rankSpacing`), ELK hält
+   * die fachliche Reihenfolge Quelle → … → Verbraucher ein.
+   * Hat Vorrang vor `interactive`, wenn beides gesetzt ist.
+   */
+  ranked?: boolean;
   /** Layout-Richtung; ohne Angabe bleibt ELKs Vorgabe bestehen. */
   direction?: 'LR' | 'TB';
 };
@@ -95,9 +107,11 @@ const LABEL_HEIGHT = 20;
 
 /** Baut den elkjs-Eingabegraphen; Optionen ausschließlich aus den Tokens. */
 export function buildElkGraph(plan: ElkPlan, tokens?: RoutingTokens): ElkGraph {
-  const layoutOptions = plan.interactive
-    ? generateElkInteractiveOptions(tokens, plan.direction)
-    : generateElkLayoutOptions(tokens, plan.direction);
+  const layoutOptions = plan.ranked
+    ? generateElkRankedOptions(tokens, plan.direction)
+    : plan.interactive
+      ? generateElkInteractiveOptions(tokens, plan.direction)
+      : generateElkLayoutOptions(tokens, plan.direction);
   return {
     id: 'root',
     layoutOptions,

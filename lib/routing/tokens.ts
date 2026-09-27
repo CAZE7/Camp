@@ -21,6 +21,17 @@ export type RoutingTokens = {
   readonly cableClearance: number;
   /** ELK `spacing.edgeNode` / `spacing.edgeNodeBetweenLayers`. */
   readonly elkEdgeNodeSpacing: number;
+  /**
+   * Mindestabstand zweier Karten, deren Anschlüsse einander zugewandt sind
+   * (ROUTE-BUG-32 = `stubMin + laneGrid + cableClearance`). Das ist die
+   * Fläche, die der Router zwischen zwei Anschlüssen braucht: Stub, genau
+   * ein Lane-Schritt für den Fan-Out, plus Clearance. ELK muss sie beim
+   * Platzieren einhalten (`elk.spacing.nodeNode`) — mit seinem Default
+   * (~10 px) liefert „Plan ordnen" Karten, zwischen denen keine Leitung
+   * kollisionsfrei passt (I1 = 3, I2 = 21, I3 = 17 über die Referenzpläne;
+   * mit dem Token I1 = 0, I2 = 9, I3 = 1 — ADR 0023).
+   */
+  readonly portFacingClearance: number;
   /** Mindestlänge vor erstem Bend; Mindestlänge der Stubs (px). */
   readonly stubMin: number;
   /**
@@ -45,6 +56,7 @@ export type RoutingTokens = {
 export const ROUTING_TOKENS: RoutingTokens = Object.freeze({
   cableClearance: 12,
   elkEdgeNodeSpacing: 16,
+  portFacingClearance: 52,
   stubMin: 24,
   laneGrid: 16,
   segmentMin: 16,
@@ -118,6 +130,11 @@ export function generateElkLayoutOptions(
     'elk.edgeRouting': 'ORTHOGONAL',
     'elk.spacing.edgeEdge': String(tokens.cableClearance),
     'elk.spacing.edgeNode': String(tokens.elkEdgeNodeSpacing),
+    // Kartenabstand: ohne diese Zeile nahm ELK seinen Default (~10 px) und
+    // „Plan ordnen" produzierte Pläne, die der Router nicht kollisionsfrei
+    // verlegen kann (Finding 2026-09-27, ROUTE-BUG-32).
+    'elk.spacing.nodeNode': String(tokens.portFacingClearance),
+    'elk.layered.spacing.nodeNodeBetweenLayers': String(tokens.portFacingClearance),
     'elk.layered.spacing.edgeNodeBetweenLayers': String(tokens.elkEdgeNodeSpacing),
     'elk.layered.spacing.edgeEdgeBetweenLayers': String(tokens.cableClearance),
     'elk.layered.mergeEdges': 'false',
@@ -127,6 +144,35 @@ export function generateElkLayoutOptions(
     // Nur setzen, wenn der Aufrufer eine Richtung vorgibt — sonst bleibt
     // ELKs Vorgabe erhalten und bestehende Aufrufer ändern ihr Ergebnis nicht.
     ...(direction ? { 'elk.direction': direction === 'TB' ? 'DOWN' : 'RIGHT' } : {}),
+  };
+}
+
+/**
+ * Gerankte Rollen-Schichten (ADR 0024): ELK bekommt die fachliche Reihenfolge
+ * Quelle → Wandler → Verteilung → Wechselrichter → Verbraucher als
+ * `layering.strategy: INTERACTIVE` — die x-Positionen der Knoten sind der
+ * Seed (der Planner setzt sie auf `Rang × Layout-Token`).
+ *
+ * `considerModelOrder.strategy: PREFER_EDGES` hält den Modell-Vorzug als
+ * Tie-Break, damit die Rollenfolge bei Gleichstand entscheidet, ohne das
+ * Kreuzungsminimum zu verdrängen.
+ *
+ * BEWUSST NICHT enthalten (gemessen, Finding 2026-09-27):
+ * `crossingMinimization.semiInteractive` friert die Reihenfolge INNERHALB der
+ * Schicht ein und hebt damit die Kreuzungsminimierung auf — mit ihm stiegen
+ * die Kreuzungen der sechs Referenzpläne von 36 auf 44 (Σ, ELK-Platzierung +
+ * Produktiv-Router); `cycleBreaking.strategy: INTERACTIVE` kostete weitere 11
+ * (Σ 47). Beides bleibt dem echten Nutzerplatzierungs-Modus
+ * (`generateElkInteractiveOptions`) vorbehalten.
+ */
+export function generateElkRankedOptions(
+  tokens: RoutingTokens = ROUTING_TOKENS,
+  direction?: 'LR' | 'TB'
+): Record<string, string> {
+  return {
+    ...generateElkLayoutOptions(tokens, direction),
+    'elk.layered.layering.strategy': 'INTERACTIVE',
+    'elk.layered.considerModelOrder.strategy': 'PREFER_EDGES',
   };
 }
 

@@ -11,8 +11,9 @@
  *
  * Gemessen wird, was die Spezifikation verlangt (`docs/ROUTING-V2.md` §12):
  * die Invarianten I1–I7, dazu Orthogonalität, Determinismus (Doppellauf),
- * Fallback-Quote, Selbstüberlappungen und die Plausibilität der gemeldeten
- * Kreuzungszahl. Dieselben Zahlen prüft `finalValidation.test.ts` als Gate
+ * Fallback-Quote, Selbstüberlappungen, die Kabellänge (Produktivpfad — sonst
+ * steht die Platzierungsgüte in keinem Report, Finding 2026-09-27) und die
+ * Plausibilität der gemeldeten Kreuzungszahl. Dieselben Zahlen prüft `finalValidation.test.ts` als Gate
  * (I1 hart auf 0, I2 + I3 über eine Ratchet-Obergrenze je Plan) — dieses
  * Skript ist die Diagnose dazu, nicht das Gate selbst. Geometrie- und
  * Verhaltenstreue prüft zusätzlich `scripts/regression/regression.test.ts`
@@ -66,6 +67,18 @@ export type PlanAudit = {
   overlapsElsewhere: number;
   fallbacks: number;
   deterministic: boolean;
+  /**
+   * Summe der Kabellängen in px (Produktivpfad, `routeAllCables`).
+   *
+   * Finding 2026-09-27: Bis hierher stand die Länge in KEINEM Gate. `routingQuality.ts`
+   * misst den Legacy-Router, und der Umweg-Faktor ist gegen die Platzierung blind —
+   * das Optimum wandert mit. Ein Plan, dessen Kabel 14.752 px statt 2.697 px lang
+   * waren, blieb deshalb „grün“. Die Zahl steht jetzt in der Diagnose; die Ratchet
+   * führt `scripts/routing/cableLength.test.ts`.
+   */
+  cableLength: number;
+  /** Längste Einzelleitung (px) — Ausreißer sofort sichtbar. */
+  longestEdge: number;
   reportedCrossings: number;
   realCrossings: number;
   /** Beispiele (max. 3) für schnelle Diagnose. */
@@ -79,6 +92,8 @@ function routePlan(planName: string): {
   rects: NodeRect[];
   usedSearch: string[];
   reportedCrossings: number;
+  cableLength: number;
+  longestEdge: number;
 } {
   const plan = GOLDEN_PLANS[planName];
   if (!plan) throw new Error(`Unbekannter Referenzplan "${planName}"`);
@@ -91,11 +106,15 @@ function routePlan(planName: string): {
   const routed: RoutedEdge[] = [];
   const usedSearch: string[] = [];
   let reportedCrossings = 0;
+  let cableLength = 0;
+  let longestEdge = 0;
   for (const edge of edges) {
     const result = routes.get(edge.id);
     if (!result) continue;
     usedSearch.push(result.usedSearch);
     reportedCrossings += result.crossings;
+    cableLength += result.length;
+    longestEdge = Math.max(longestEdge, result.length);
     routed.push({ id: edge.id, source: edge.source, target: edge.target, waypoints: result.waypoints });
   }
   // Exakt die Boxen, die der Router selbst als Hindernisse behandelt.
@@ -103,7 +122,7 @@ function routePlan(planName: string): {
     const [rect] = nodesToObstacles([node], new Set<string>());
     return { id: (node as { id?: string }).id ?? `n${index}`, ...rect! };
   });
-  return { routed, rects, usedSearch, reportedCrossings };
+  return { routed, rects, usedSearch, reportedCrossings, cableLength, longestEdge };
 }
 
 /** Echte Kreuzungen (Segment-Paare) zwischen verschiedenen Kanten. */
@@ -189,7 +208,7 @@ function selfOverlapping(routed: readonly RoutedEdge[]): number {
 
 /** Vollständiger Bericht für einen Referenzplan. */
 export function auditPlan(planName: string): PlanAudit {
-  const { routed, rects, usedSearch, reportedCrossings } = routePlan(planName);
+  const { routed, rects, usedSearch, reportedCrossings, cableLength, longestEdge } = routePlan(planName);
   const report = checkInvariants(routed, rects);
   const violations = Object.fromEntries(
     Object.entries(report).map(([key, value]) => [key as InvariantId, value.length])
@@ -223,11 +242,31 @@ export function auditPlan(planName: string): PlanAudit {
     overlapsElsewhere: overlaps.elsewhere,
     fallbacks: usedSearch.filter((search) => search === 'fallback').length,
     deterministic,
+    cableLength: Math.round(cableLength),
+    longestEdge: Math.round(longestEdge),
     reportedCrossings,
     realCrossings: realCrossingPairs(routed),
     samples,
   };
 }
+
+/**
+ * Kreuzungs-Ratchet (Finding 2026-09-27): Die Tabelle zeigt die Kreuzungen,
+ * aber ohne Grenze war „übersichtlich" nicht erzwingbar. Obergrenze ist der
+ * gemessene Stand je Referenzplan; sie darf nur sinken.
+ *
+ * Die Test-Ratchet existiert zusätzlich in `lib/routing/invariants.test.ts`
+ * (beide Pässe, `LEGACY_BASELINE`/`ELK_BASELINE`) — dieses Skript ist das
+ * Gate, das die Nutzer-Sicht prüft.
+ */
+const CROSSING_RATCHET: Readonly<Record<string, number>> = {
+  simple: 2,
+  camper: 5,
+  solar: 2,
+  inverter: 2,
+  acdc: 8,
+  complex: 29,
+};
 
 export function auditAllPlans(): PlanAudit[] {
   return Object.keys(GOLDEN_PLANS).map(auditPlan);
@@ -352,7 +391,8 @@ if (isCli) {
     process.stdout.write(`${JSON.stringify(audits, null, 2)}\n`);
   } else {
     const header =
-      'Plan       Kanten  I1  I2  I3  I4  I5  I6  I7 | hart  orth  overlap  fallback  determ  kreuzungen';
+      'Plan       Kanten  I1  I2  I3  I4  I5  I6  I7 | hart  orth  overlap  fallback  determ  ' +
+      'kreuzungen   Kabelweg  laengste';
     process.stdout.write(`${header}\n`);
     for (const a of audits) {
       const v = a.violations;
@@ -364,7 +404,8 @@ if (isCli) {
           `${String(a.nonOrthogonal).padStart(4)}  ${String(a.selfOverlaps).padStart(7)}  ` +
           `${String(a.fallbacks).padStart(8)}  ${String(a.deterministic).padStart(6)}  ` +
           `ovl=${a.overlapsAtPort}/${a.overlapsElsewhere}  ` +
-          `${String(a.realCrossings).padStart(10)}\n`
+          `${String(a.realCrossings).padStart(10)}  ` +
+          `${String(a.cableLength).padStart(12)} px  ${String(a.longestEdge).padStart(9)} px\n`
       );
       for (const sample of a.samples) process.stdout.write(`    ${sample}\n`);
     }
@@ -386,15 +427,34 @@ if (isCli) {
   const hardFailures = audits.filter(
     (a) => a.hardViolations > 0 || a.nonOrthogonal > 0 || a.fallbacks > 0 || !a.deterministic
   );
-  if (hardFailures.length > 0) {
+  // P1 (Finding 2026-09-27): Kreuzungen sind ab hier eine Obergrenze, kein
+  // Bericht. Eine Verbesserung senkt den Wert hier — dann muss die Ratchet
+  // mitgezogen werden (das Skript weist darauf hin).
+  const crossingFailures = audits.filter(
+    (a) => a.realCrossings > (CROSSING_RATCHET[a.plan] ?? Number.POSITIVE_INFINITY)
+  );
+  const crossingImprovements = audits.filter(
+    (a) => a.realCrossings < (CROSSING_RATCHET[a.plan] ?? Number.NEGATIVE_INFINITY)
+  );
+  if (hardFailures.length > 0 || crossingFailures.length > 0) {
     process.stderr.write(
-      `\nRouting-Gate ROT: ${hardFailures
-        .map(
+      `\nRouting-Gate ROT: ${[
+        ...hardFailures.map(
           (a) =>
             `${a.plan} (I1..I3=${a.hardViolations}, orth=${a.nonOrthogonal}, fallback=${a.fallbacks}, determ=${a.deterministic})`
-        )
-        .join('; ')}\n`
+        ),
+        ...crossingFailures.map(
+          (a) => `${a.plan} (Kreuzungen ${a.realCrossings} > Ratchet ${CROSSING_RATCHET[a.plan] ?? '∞'})`
+        ),
+      ].join('; ')}\n`
     );
     process.exitCode = 1;
+  }
+  if (crossingImprovements.length > 0 && process.exitCode !== 1) {
+    process.stderr.write(
+      `\nHinweis: Kreuzungen unter der Ratchet — bitte CROSSING_RATCHET nachziehen: ${crossingImprovements
+        .map((a) => `${a.plan} ${a.realCrossings} < ${CROSSING_RATCHET[a.plan] ?? '∞'}`)
+        .join('; ')}\n`
+    );
   }
 }

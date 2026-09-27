@@ -55,8 +55,7 @@ export const NODE_BOX_HEIGHT = 120;
  * (Rang-Treppe in der Kappung, ROUTE-BUG-34) statt dass die Platzierung
  * Bauteile beliebig auseinanderschiebt.
  */
-export const PORT_FACING_CLEARANCE =
-  ROUTING_TOKENS.stubMin + ROUTING_TOKENS.laneGrid + ROUTING_TOKENS.cableClearance;
+export const PORT_FACING_CLEARANCE = ROUTING_TOKENS.portFacingClearance;
 
 /** Spaltenabstand in Flussrichtung (192 px Node + 96 px Korridor). */
 export const FLOW_COLUMN_SPACING = NODE_BOX_WIDTH + 96;

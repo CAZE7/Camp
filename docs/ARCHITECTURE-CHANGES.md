@@ -1290,3 +1290,142 @@ identisch. Geprüft mit `npm run test:goldenmaster` (13/13) und
 `knownPlans/*`, `scripts/goldenmaster/snapshots/*`,
 `scripts/regression/__snapshots__/*`) blieb damit unverändert; eine
 Neuerfassung nach AGENTS.md §5 Nr. 6 war nicht nötig.
+
+### 2026-09-27 — Fünfzehnte Fassung: ELK-Kartenabstand, Beschriftung, sichtbare Kabellänge (ADR 0023)
+
+Der Nutzer hat die Analyse der Vierzehnten Fassung präzisiert und dazu eigene
+Messungen vorgelegt. Zwei davon sind bestätigt und haben die Richtung bestimmt:
+
+- **Nicht das Raster ist der Hebel für die Router-Invarianten.** Fünf
+  translationsinvariante Platzierungsvarianten zerbrachen jeweils I2/I3/I6, und
+  „schon eine reine X-Verschiebung des Rasters erzeugt 12-px-Segmente“. Das ist
+  nachgemessen und reproduziert: `acdc` liefert bei Δ(8, 8) ein 12-px-Segment
+  (I6 + I7). Entscheidend ist der **relative** Versatz zwischen Auto-Raster und
+  Karten, nicht die absolute Phase — eine **reine Übersetzung** des fertigen
+  Layouts (Nutzer- und Auto-Knoten gemeinsam) um (8, 8), (13, 0) und (1200, 800)
+  lässt I1–I7 auf allen sechs Referenzplänen bei **0**. Der Flow-Anker der
+  Vierzehnten Fassung bleibt deshalb, aber seine Wirkung ist jetzt vermessen und
+  begrenzt: Er beseitigt an jeder geprüften Planposition die **harten**
+  Überdeckungen (Σ(I1..I3) vorher 5/3/4/2 bei Δ(296,196)/(600,400)/(1200,800)/(2400,0)
+  → **0**) und senkt den Kabelweg um bis zu 68 % (102.837 → 32.610 px); er macht
+  die Platzierung **nicht** invarianter als das Raster erlaubt (Σ Qualitätsmeldungen
+  I4–I7 25 → 24, in Einzelpositionen beidseitig).
+- **Der Hebel ist die ELK-Fütterung.** Korrekt gefüttert ist ELK über 2–44 %
+  kürzer (gleiche Metrik `routeAllCables`) — simple 2.697 → 2.520 px · camper
+  3.805 → 3.734 · solar 3.200 → 2.496 · inverter 3.888 → 2.188 · acdc 5.770 →
+  4.557 · complex 10.909 → 7.470 (Σ 30.269 → 22.965 px, −24 %).
+
+Drei Lücken sind geschlossen, eine ist dokumentiert:
+
+1. **ELK bekam für den Kartenabstand seinen Default (~10 px)** statt der
+   Port-Freigabe (ROUTE-BUG-32 = `stubMin + laneGrid + cableClearance` = 52 px).
+   Der Wert ist jetzt ein Token (`ROUTING_TOKENS.portFacingClearance`, ADR 0023),
+   `PORT_FACING_CLEARANCE` liest ihn nur noch, und `generateElkLayoutOptions`
+   setzt `spacing.nodeNode` sowie `spacing.nodeNodeBetweenLayers`. Gemessen über
+   die sechs Referenzpläne (ELK-Platzierung + echter Router):
+
+   | ELK-Abstand   | I1  | I2  | I3  | Σ   | Kabelweg  |
+   | ------------- | --- | --- | --- | --- | --------- |
+   | ELK-Default   | 3   | 21  | 17  | 41  | 18.431 px |
+   | Port-Freigabe | 0   | 9   | 1   | 10  | 22.965 px |
+
+   I1 fällt auf 0, I3 von 17 auf 1; der längere Weg ist der Preis dafür, dass
+   zwischen zwei Karten überhaupt verlegt werden kann. Nachweis:
+   `lib/planner/layout-engine/elkSpacing.test.ts` (echtes ELK, misst den
+   Kartenabstand; Gegenprobe ohne Option: `Kartenabstand 20 px < Port-Freigabe
+52 px`), `lib/routing/tokens.test.ts` (Token-Summe + Options-Generator).
+
+2. **Die Kabelbeschriftung lag auf fremden Karten.** `edgeLabelNudge` trennt nur
+   Labels desselben Kantenpaars; der Anker war der Trassenmittelpunkt. Gemessen
+   über die sechs Referenzpläne: **17 Beschriftungen auf fremden Karten**. Neu:
+   `labelAnchorClearOfNodes` sucht entlang der Leitung den nächstgelegenen freien
+   Punkt (Label-Box 112 × 28 px); Ergebnis **0**. Bleibt keine freie Stelle, bleibt
+   der Mittelpunkt — ein verdecktes Label ist besser als eines ohne Bezug.
+   Nachweis: `components/edges/utils/routeAll.test.ts` (4 neue Tests, u. a. der
+   Sechs-Plan-Lauf; Gegenprobe ohne den Fix: 17 Fundstellen).
+3. **Die Kabellänge stand in keinem Bericht.** `routingQuality.ts` misst den
+   Legacy-Router (LEGACY L-1), der Umweg-Faktor ist gegen die Platzierung blind —
+   ein Plan mit 14.752 px Kabelweg blieb grün. Jetzt führt
+   `npm run routing:audit` die Spalten `Kabelweg`/`laengste`, und
+   `scripts/routing/cableLength.test.ts` hält die absolute Länge je Referenzplan
+   als Ratchet plus die Positionsunabhängigkeit (±15 %; mit dem Flow-Anker
+   Σ 29.789 px gegenüber 30.269 px am Ursprung, ohne ihn fällt der Test).
+
+**Dokumentiert statt versteckt:** `ROUTE-006` (`docs/ai/KNOWN-PROBLEMS.md`) hält
+die Restfehler fest — kurze Segmente bei verschobenen Plänen (keine Überdeckung)
+und die 9 I2 + 1 I3 der ELK-Platzierung (Trassenüberdeckungen, überwiegend am
+gemeinsamen Port). Nebenbei korrigiert: `ROUTING-CONTEXT.md` verwies für die
+Domänen-Trennregeln auf ein nicht existierendes `ROUTE-005` — der Eintrag heißt
+`ROUTE-003`.
+
+Gate: `npx vitest run` → 170 Testdateien / 2359 Tests, `npm run typecheck`,
+`npm run typecheck:tests`, `npx eslint .`, `npx prettier --check` grün.
+
+**Golden Master und Regression bleiben unberührt — kein Recapture.** Der
+Kartenabstand wirkt nur im ELK-Pfad („Plan ordnen"), die Beschriftung ist reine
+Darstellung, und der Flow-Anker liefert am Ursprung exakt die eingefrorene
+Platzierung (Anker (0,0) für alle sechs Pläne). Geprüft mit
+`npm run test:goldenmaster` (13/13) und `npm run test:regression` (50/50).
+
+### 2026-09-27 — Sechzehnte Fassung: Rollen-Schichten als ELK-Nebenbedingung + Kreuzungs-Ratchet (ADR 0024)
+
+Der Nutzer hat die nächsten zwei Punkte priorisiert (P1): die fachliche
+Rang-Logik als ELK-Nebenbedingung einspeisen und die Kreuzungszahl dauerhaft
+begrenzen.
+
+1. **Rollen-Schichten erreichen ELK (ADR 0024).** Die fünfstufige Rangfolge
+   (Quelle → Wandler → Verteilung → Wechselrichter → Verbraucher) lebte nur im
+   UI-Aufräumen; `ElkLayoutEngine` setzte alle Knoten auf `x = 0` und ließ ELK
+   allein nach Kreuzungsminimum legen. Jetzt lebt die Rang-Tabelle in
+   `lib/planner/layout-engine/ranks.ts` (das Aufräumen importiert sie — eine
+   Wahrheit), `ElkPlan.ranked` wählt `generateElkRankedOptions`
+   (`layering.strategy: INTERACTIVE`, `considerModelOrder.strategy:
+PREFER_EDGES`) und `LAYOUT_TOKENS.rankSpacing` ist der Seed:
+   `x = Rang × rankSpacing`. Gemessen über die sechs Referenzpläne
+   (ELK-Platzierung → Produktiv-Router → Kreuzungen):
+
+   | Optionen                                        | Σ Kreuzungen     |
+   | ----------------------------------------------- | ---------------- |
+   | ohne Rang-Seed (vorher)                         | 41               |
+   | `interactive` mit `semiInteractive`             | 44               |
+   | `interactive` ohne `semiInteractive`            | 47               |
+   | layering INTERACTIVE + `PREFER_EDGES` (gewählt) | **36**           |
+   | gewählt + `y`-Seed (Index bzw. Ist-Position)    | 36 (wirkungslos) |
+
+   Im Produktivpfad (`applyAdvancedLayout` → `routeAllCables` → Kreuzungen)
+   sinkt die Summe **42 → 34**: solar 3 → 0 · complex 17 → 11 · camper 6 → 4 ·
+   acdc 8 → 6, dazu simple 4 → 5 und inverter 4 → 8. Die Summe sinkt deutlich,
+   einzelne Pläne werden um wenige Kreuzungen schlechter — die Ratchet steht
+   deshalb auf dem gemessenen Stand nach dieser Änderung (kein Wunschwert).
+   `semiInteractive` bleibt aus, weil es die Reihenfolge innerhalb der Schicht
+   einfriert und die Minimierung aufhebt (Σ 36 → 44, gemessen).
+
+2. **Kreuzungen sind ab jetzt eine Grenze.** `npm run routing:audit` führt je
+   Plan eine Ratchet (`CROSSING_RATCHET`, Stand der Messung: simple 2 · camper 5
+   · solar 2 · inverter 2 · acdc 8 · complex 29); Überschreitung ⇒ Exit 1,
+   Unterschreitung ⇒ Nachzieh-Hinweis. Die Audit-Zahlen selbst sind unverändert
+   — sie messen den AutoWire-Pfad, der ELK-Pfad ist nicht Teil des Audits. Die
+   Test-Ratchet für beide Router-Pässe existierte bereits
+   (`lib/routing/invariants.test.ts`).
+
+Nachweis: `lib/planner/layout-engine/rankLayers.test.ts` (4 Tests:
+Rang-Tabelle, Einheit mit dem Aufräumen, x-Seed + Optionen im ELK-Graphen,
+echtes ELK hält Quelle < Speicher < Wechselrichter < Verbraucher),
+`lib/routing/tokens.test.ts` (+1: die gerankten Optionen enthalten
+`INTERACTIVE`/`PREFER_EDGES`, aber kein `semiInteractive`).
+
+**Nicht in dieser Scheibe (P2, bewusst offen):** die vollständige Anbindung
+des Kostenmodells (`ROUTE-002`: `segmentExtraCost`/`preferredLaneBonus` haben
+weiterhin nur Test-Konsumenten) und das Rest-I2 der ELK-Geometrie
+(`ROUTE-006`, Zielbild `LaneRegistry`, `ROUTE-001`). Beide ändern die
+Produktiv-Geometrie und damit die eingefrorene Wahrheit
+(`knownPlans/*`, `scripts/regression/__snapshots__/*`) — das ist ein eigener,
+einzeln begründeter Recapture-Schritt nach AGENTS.md §5 Nr. 6, kein Beifang.
+
+Gate: `npx vitest run` → 171 Testdateien / 2364 Tests, `npm run typecheck`,
+`npm run typecheck:tests`, `npx eslint .`, `npx prettier --check` grün.
+
+**Golden Master und Regression bleiben unberührt — kein Recapture.** Der
+Rang-Seed wirkt ausschließlich im ELK-Platzierungspfad; die Referenzpläne
+laufen ohne ELK. Beide Suiten sind Teil des vollen Laufs
+(`npm run test:goldenmaster` 13/13, `npm run test:regression` 50/50).

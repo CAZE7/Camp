@@ -1,6 +1,7 @@
 import { type Node, type Edge } from '@xyflow/react';
 import { nodeHeight, nodeWidth } from '../../edges/utils/nodeGeometry';
 import { safeText } from '../../../lib/safeText'; // AUDIT T1
+import { getLayoutRank } from '../../../lib/planner/layout-engine/ranks';
 
 /** Visual fallbacks for nodes that React Flow has not measured yet. */
 export const DEFAULT_NODE_WIDTH = 192;
@@ -23,19 +24,10 @@ export const NODE_SIZE_BY_TYPE: Record<string, { width: number; height: number }
  * Rank 2: Storage & Main Distribution Backbone (House Battery, Shunt, Plus/Minus Busbars, Fuse Box)
  * Rank 3: Inverters & Sub-distribution (Inverter)
  * Rank 4: End Consumers & Ground (12V & 230V Loads, Sinks, Showers, Ground)
+ *
+ * Die Rang-Tabelle selbst lebt in `lib/planner/layout-engine/ranks.ts`; dieser
+ * feinere Typ-Orden sortiert INNERHALB einer Rolle (Aufräumen).
  */
-const PRIMARY_SOURCE_TYPES = new Set(['solar', 'roofSolar', 'shorePower', 'freshWaterTank']);
-const CHARGER_CONVERTER_TYPES = new Set([
-  'mpptController',
-  'dcdcCharger',
-  'acBatteryCharger',
-  'charger',
-  'preFilter',
-  'pump',
-]);
-const CORE_DISTRIBUTION_TYPES = new Set(['battery', 'shunt', 'busbar', 'fuse', 'conduit', 'accumulator']);
-const INVERTER_TYPES = new Set(['inverter']);
-const CONSUMER_TYPES = new Set(['consumer', 'consumer230v', 'sink', 'shower', 'grayWaterTank', 'ground']);
 
 export const LAYOUT_TYPE_ORDER: Record<string, number> = {
   solar: 0,
@@ -67,14 +59,13 @@ export const LAYOUT_TYPE_ORDER: Record<string, number> = {
   ground: 45,
 };
 
-export const getNodeLayoutRank = (node: Node): number => {
-  if (node.type && PRIMARY_SOURCE_TYPES.has(node.type)) return 0;
-  if (node.type && CHARGER_CONVERTER_TYPES.has(node.type)) return 1;
-  if (node.type && CORE_DISTRIBUTION_TYPES.has(node.type)) return 2;
-  if (node.type && INVERTER_TYPES.has(node.type)) return 3;
-  if (node.type && CONSUMER_TYPES.has(node.type)) return 4;
-  return 2; // Default to distribution layer
-};
+/**
+ * Rollen-Rang fürs Aufräumen. Die Rang-Tabelle lebt in
+ * `lib/planner/layout-engine/ranks.ts`, weil ELK denselben Rang als
+ * INTERACTIVE-Layering-Seed bekommt (ADR 0024) — zwei Tabellen wären zwei
+ * Wahrheiten (lib-Grenze, Rule K).
+ */
+export const getNodeLayoutRank = (node: Node): number => getLayoutRank(node.type);
 
 /**
  * Kartenmaße fürs Auto-Layout. Liest über die Messgrenze: React Flow 12 hält
