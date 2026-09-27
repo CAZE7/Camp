@@ -143,8 +143,14 @@ Verlegen mit echten Längen überschreiben kann.
   geänderter Plan eine Kette wieder lösbar machen kann; `fuseWarning` wird je Kante **neu
   gesetzt** (`true`/`false` in `applyFuseSizes`, `true` in `sizeAcEdges`). Ein Marker darf
   nicht veralten.
-- Selbst erzeugte Knoten-IDs sind zufällig (`lib/id.ts`); die Golden-Master-Pipeline
-  normalisiert sie zu `auto:<index>:<slug>`, damit Diffs stabil sind.
+- AutoWire-Knoten-IDs sind für gleiche Eingaben deterministisch. Neue Auto-Edge-IDs
+  folgen festen AutoWire-Phasen und einer kanonischen top-down/left-right/ID-Sortierung
+  der Node-Kategorien, nicht der Node-Array-Reihenfolge. Vorhandene Auto-IDs werden
+  über Quelle, Ziel, Handles und elektrische Domäne derselben unveränderten Verbindung
+  zugeordnet; Nutzer- und historische Auto-IDs werden bei neuen Vergaben reserviert. Regressionen vergleichen die
+  Zuordnung `Auto-Edge-ID → Verbindung` nach Node-Permutationen und erneutem
+  Auto-Wire. Die Golden-Master-Pipeline normalisiert nur neue Knoten-IDs zu
+  `auto:<index>:<slug>`; Auto-Edge-IDs bleiben explizit im Fixture.
 
 ---
 

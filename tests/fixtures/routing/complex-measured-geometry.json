@@ -1,0 +1,798 @@
+{
+  "source": "Chromium 152.0.7977.0 Playwright runtime trace of knownPlans/complex.json, captured 2026-09-26.",
+  "nodes": [
+    {
+      "id": "auto:0:smart-shunt",
+      "position": {
+        "x": 288,
+        "y": 960
+      },
+      "measured": {
+        "width": 192,
+        "height": 126
+      },
+      "handleBounds": {
+        "source": [
+          {
+            "id": "plus",
+            "type": "source",
+            "nodeId": "auto:0:smart-shunt",
+            "position": "right",
+            "x": 169,
+            "y": 16.25,
+            "width": 44,
+            "height": 44
+          },
+          {
+            "id": "minus",
+            "type": "source",
+            "nodeId": "auto:0:smart-shunt",
+            "position": "right",
+            "x": 169,
+            "y": 65.90625,
+            "width": 44,
+            "height": 44
+          }
+        ],
+        "target": [
+          {
+            "id": "plus",
+            "type": "target",
+            "nodeId": "auto:0:smart-shunt",
+            "position": "left",
+            "x": -21,
+            "y": 16.25,
+            "width": 44,
+            "height": 44
+          },
+          {
+            "id": "minus",
+            "type": "target",
+            "nodeId": "auto:0:smart-shunt",
+            "position": "left",
+            "x": -21,
+            "y": 65.90625,
+            "width": 44,
+            "height": 44
+          }
+        ]
+      }
+    },
+    {
+      "id": "battery-1",
+      "position": {
+        "x": 80,
+        "y": 600
+      },
+      "measured": {
+        "width": 192,
+        "height": 146
+      },
+      "handleBounds": {
+        "source": [
+          {
+            "id": "plus",
+            "type": "source",
+            "nodeId": "battery-1",
+            "position": "right",
+            "x": 169,
+            "y": 22.25,
+            "width": 44,
+            "height": 44
+          },
+          {
+            "id": "minus",
+            "type": "source",
+            "nodeId": "battery-1",
+            "position": "right",
+            "x": 169,
+            "y": 79.90625,
+            "width": 44,
+            "height": 44
+          }
+        ],
+        "target": [
+          {
+            "id": "plus",
+            "type": "target",
+            "nodeId": "battery-1",
+            "position": "left",
+            "x": -21,
+            "y": 22.25,
+            "width": 44,
+            "height": 44
+          },
+          {
+            "id": "minus",
+            "type": "target",
+            "nodeId": "battery-1",
+            "position": "left",
+            "x": -21,
+            "y": 79.90625,
+            "width": 44,
+            "height": 44
+          }
+        ]
+      }
+    },
+    {
+      "id": "busbar-minus",
+      "position": {
+        "x": 380,
+        "y": 680
+      },
+      "measured": {
+        "width": 192,
+        "height": 126
+      },
+      "handleBounds": {
+        "source": [
+          {
+            "id": "plus",
+            "type": "source",
+            "nodeId": "busbar-minus",
+            "position": "right",
+            "x": 169,
+            "y": 16.25,
+            "width": 44,
+            "height": 44
+          },
+          {
+            "id": "minus",
+            "type": "source",
+            "nodeId": "busbar-minus",
+            "position": "right",
+            "x": 169,
+            "y": 65.90625,
+            "width": 44,
+            "height": 44
+          }
+        ],
+        "target": [
+          {
+            "id": "plus",
+            "type": "target",
+            "nodeId": "busbar-minus",
+            "position": "left",
+            "x": -21,
+            "y": 16.25,
+            "width": 44,
+            "height": 44
+          },
+          {
+            "id": "minus",
+            "type": "target",
+            "nodeId": "busbar-minus",
+            "position": "left",
+            "x": -21,
+            "y": 65.90625,
+            "width": 44,
+            "height": 44
+          }
+        ]
+      }
+    },
+    {
+      "id": "busbar-plus",
+      "position": {
+        "x": 380,
+        "y": 500
+      },
+      "measured": {
+        "width": 192,
+        "height": 126
+      },
+      "handleBounds": {
+        "source": [
+          {
+            "id": "plus",
+            "type": "source",
+            "nodeId": "busbar-plus",
+            "position": "right",
+            "x": 169,
+            "y": 16.25,
+            "width": 44,
+            "height": 44
+          },
+          {
+            "id": "minus",
+            "type": "source",
+            "nodeId": "busbar-plus",
+            "position": "right",
+            "x": 169,
+            "y": 65.90625,
+            "width": 44,
+            "height": 44
+          }
+        ],
+        "target": [
+          {
+            "id": "plus",
+            "type": "target",
+            "nodeId": "busbar-plus",
+            "position": "left",
+            "x": -21,
+            "y": 16.25,
+            "width": 44,
+            "height": 44
+          },
+          {
+            "id": "minus",
+            "type": "target",
+            "nodeId": "busbar-plus",
+            "position": "left",
+            "x": -21,
+            "y": 65.90625,
+            "width": 44,
+            "height": 44
+          }
+        ]
+      }
+    },
+    {
+      "id": "charger-1",
+      "position": {
+        "x": 380,
+        "y": 60
+      },
+      "measured": {
+        "width": 192,
+        "height": 146
+      },
+      "handleBounds": {
+        "source": [
+          {
+            "id": "plus",
+            "type": "source",
+            "nodeId": "charger-1",
+            "position": "right",
+            "x": 169,
+            "y": 22.25,
+            "width": 44,
+            "height": 44
+          },
+          {
+            "id": "minus",
+            "type": "source",
+            "nodeId": "charger-1",
+            "position": "right",
+            "x": 169,
+            "y": 79.90625,
+            "width": 44,
+            "height": 44
+          }
+        ],
+        "target": [
+          {
+            "id": "plus",
+            "type": "target",
+            "nodeId": "charger-1",
+            "position": "left",
+            "x": -21,
+            "y": 22.25,
+            "width": 44,
+            "height": 44
+          },
+          {
+            "id": "minus",
+            "type": "target",
+            "nodeId": "charger-1",
+            "position": "left",
+            "x": -21,
+            "y": 79.90625,
+            "width": 44,
+            "height": 44
+          }
+        ]
+      }
+    },
+    {
+      "id": "charger-2",
+      "position": {
+        "x": 380,
+        "y": 240
+      },
+      "measured": {
+        "width": 192,
+        "height": 146
+      },
+      "handleBounds": {
+        "source": [
+          {
+            "id": "plus",
+            "type": "source",
+            "nodeId": "charger-2",
+            "position": "right",
+            "x": 169,
+            "y": 22.25,
+            "width": 44,
+            "height": 44
+          },
+          {
+            "id": "minus",
+            "type": "source",
+            "nodeId": "charger-2",
+            "position": "right",
+            "x": 169,
+            "y": 79.90625,
+            "width": 44,
+            "height": 44
+          }
+        ],
+        "target": [
+          {
+            "id": "plus",
+            "type": "target",
+            "nodeId": "charger-2",
+            "position": "left",
+            "x": -21,
+            "y": 22.25,
+            "width": 44,
+            "height": 44
+          },
+          {
+            "id": "minus",
+            "type": "target",
+            "nodeId": "charger-2",
+            "position": "left",
+            "x": -21,
+            "y": 79.90625,
+            "width": 44,
+            "height": 44
+          }
+        ]
+      }
+    },
+    {
+      "id": "cons-fan",
+      "position": {
+        "x": 980,
+        "y": 380
+      },
+      "measured": {
+        "width": 192,
+        "height": 146
+      },
+      "handleBounds": {
+        "source": [
+          {
+            "id": "plus",
+            "type": "source",
+            "nodeId": "cons-fan",
+            "position": "right",
+            "x": 169,
+            "y": 22.25,
+            "width": 44,
+            "height": 44
+          },
+          {
+            "id": "minus",
+            "type": "source",
+            "nodeId": "cons-fan",
+            "position": "right",
+            "x": 169,
+            "y": 79.90625,
+            "width": 44,
+            "height": 44
+          }
+        ],
+        "target": [
+          {
+            "id": "plus",
+            "type": "target",
+            "nodeId": "cons-fan",
+            "position": "left",
+            "x": -21,
+            "y": 22.25,
+            "width": 44,
+            "height": 44
+          },
+          {
+            "id": "minus",
+            "type": "target",
+            "nodeId": "cons-fan",
+            "position": "left",
+            "x": -21,
+            "y": 79.90625,
+            "width": 44,
+            "height": 44
+          }
+        ]
+      }
+    },
+    {
+      "id": "cons-fridge",
+      "position": {
+        "x": 980,
+        "y": 60
+      },
+      "measured": {
+        "width": 192,
+        "height": 146
+      },
+      "handleBounds": {
+        "source": [
+          {
+            "id": "plus",
+            "type": "source",
+            "nodeId": "cons-fridge",
+            "position": "right",
+            "x": 169,
+            "y": 22.25,
+            "width": 44,
+            "height": 44
+          },
+          {
+            "id": "minus",
+            "type": "source",
+            "nodeId": "cons-fridge",
+            "position": "right",
+            "x": 169,
+            "y": 79.90625,
+            "width": 44,
+            "height": 44
+          }
+        ],
+        "target": [
+          {
+            "id": "plus",
+            "type": "target",
+            "nodeId": "cons-fridge",
+            "position": "left",
+            "x": -21,
+            "y": 22.25,
+            "width": 44,
+            "height": 44
+          },
+          {
+            "id": "minus",
+            "type": "target",
+            "nodeId": "cons-fridge",
+            "position": "left",
+            "x": -21,
+            "y": 79.90625,
+            "width": 44,
+            "height": 44
+          }
+        ]
+      }
+    },
+    {
+      "id": "cons-heat",
+      "position": {
+        "x": 980,
+        "y": 220
+      },
+      "measured": {
+        "width": 192,
+        "height": 146
+      },
+      "handleBounds": {
+        "source": [
+          {
+            "id": "plus",
+            "type": "source",
+            "nodeId": "cons-heat",
+            "position": "right",
+            "x": 169,
+            "y": 22.25,
+            "width": 44,
+            "height": 44
+          },
+          {
+            "id": "minus",
+            "type": "source",
+            "nodeId": "cons-heat",
+            "position": "right",
+            "x": 169,
+            "y": 79.90625,
+            "width": 44,
+            "height": 44
+          }
+        ],
+        "target": [
+          {
+            "id": "plus",
+            "type": "target",
+            "nodeId": "cons-heat",
+            "position": "left",
+            "x": -21,
+            "y": 22.25,
+            "width": 44,
+            "height": 44
+          },
+          {
+            "id": "minus",
+            "type": "target",
+            "nodeId": "cons-heat",
+            "position": "left",
+            "x": -21,
+            "y": 79.90625,
+            "width": 44,
+            "height": 44
+          }
+        ]
+      }
+    },
+    {
+      "id": "cons-induct",
+      "position": {
+        "x": 980,
+        "y": 540
+      },
+      "measured": {
+        "width": 192,
+        "height": 166
+      },
+      "handleBounds": {
+        "source": null,
+        "target": [
+          {
+            "id": "plus",
+            "type": "target",
+            "nodeId": "cons-induct",
+            "position": "left",
+            "x": -21,
+            "y": 61.078125,
+            "width": 44,
+            "height": 44
+          }
+        ]
+      }
+    },
+    {
+      "id": "fusebox-1",
+      "position": {
+        "x": 680,
+        "y": 200
+      },
+      "measured": {
+        "width": 192,
+        "height": 126
+      },
+      "handleBounds": {
+        "source": [
+          {
+            "id": "plus",
+            "type": "source",
+            "nodeId": "fusebox-1",
+            "position": "right",
+            "x": 169,
+            "y": 16.25,
+            "width": 44,
+            "height": 44
+          },
+          {
+            "id": "minus",
+            "type": "source",
+            "nodeId": "fusebox-1",
+            "position": "right",
+            "x": 169,
+            "y": 65.90625,
+            "width": 44,
+            "height": 44
+          }
+        ],
+        "target": [
+          {
+            "id": "plus",
+            "type": "target",
+            "nodeId": "fusebox-1",
+            "position": "left",
+            "x": -21,
+            "y": 16.25,
+            "width": 44,
+            "height": 44
+          },
+          {
+            "id": "minus",
+            "type": "target",
+            "nodeId": "fusebox-1",
+            "position": "left",
+            "x": -21,
+            "y": 65.90625,
+            "width": 44,
+            "height": 44
+          }
+        ]
+      }
+    },
+    {
+      "id": "inverter-1",
+      "position": {
+        "x": 680,
+        "y": 480
+      },
+      "measured": {
+        "width": 192,
+        "height": 202
+      },
+      "handleBounds": {
+        "source": [
+          {
+            "id": "plus",
+            "type": "source",
+            "nodeId": "inverter-1",
+            "position": "right",
+            "x": 169,
+            "y": 79.078125,
+            "width": 44,
+            "height": 44
+          }
+        ],
+        "target": [
+          {
+            "id": "ac_in",
+            "type": "target",
+            "nodeId": "inverter-1",
+            "position": "top",
+            "x": 74,
+            "y": -21,
+            "width": 44,
+            "height": 44
+          },
+          {
+            "id": "plus",
+            "type": "target",
+            "nodeId": "inverter-1",
+            "position": "left",
+            "x": -21,
+            "y": 39.046875,
+            "width": 44,
+            "height": 44
+          },
+          {
+            "id": "minus",
+            "type": "target",
+            "nodeId": "inverter-1",
+            "position": "left",
+            "x": -21,
+            "y": 119.109375,
+            "width": 44,
+            "height": 44
+          }
+        ]
+      }
+    },
+    {
+      "id": "shore-1",
+      "position": {
+        "x": 80,
+        "y": 420
+      },
+      "measured": {
+        "width": 192,
+        "height": 146
+      },
+      "handleBounds": {
+        "source": [
+          {
+            "id": "plus",
+            "type": "source",
+            "nodeId": "shore-1",
+            "position": "right",
+            "x": 169,
+            "y": 51.078125,
+            "width": 44,
+            "height": 44
+          }
+        ],
+        "target": null
+      }
+    },
+    {
+      "id": "solar-1",
+      "position": {
+        "x": 80,
+        "y": 60
+      },
+      "measured": {
+        "width": 192,
+        "height": 166
+      },
+      "handleBounds": {
+        "source": [
+          {
+            "id": "plus",
+            "type": "source",
+            "nodeId": "solar-1",
+            "position": "right",
+            "x": 169,
+            "y": 28.25,
+            "width": 44,
+            "height": 44
+          },
+          {
+            "id": "minus",
+            "type": "source",
+            "nodeId": "solar-1",
+            "position": "right",
+            "x": 169,
+            "y": 93.90625,
+            "width": 44,
+            "height": 44
+          }
+        ],
+        "target": [
+          {
+            "id": "plus",
+            "type": "target",
+            "nodeId": "solar-1",
+            "position": "left",
+            "x": -21,
+            "y": 28.25,
+            "width": 44,
+            "height": 44
+          },
+          {
+            "id": "minus",
+            "type": "target",
+            "nodeId": "solar-1",
+            "position": "left",
+            "x": -21,
+            "y": 93.90625,
+            "width": 44,
+            "height": 44
+          }
+        ]
+      }
+    },
+    {
+      "id": "starter-1",
+      "position": {
+        "x": 80,
+        "y": 240
+      },
+      "measured": {
+        "width": 192,
+        "height": 146
+      },
+      "handleBounds": {
+        "source": [
+          {
+            "id": "plus",
+            "type": "source",
+            "nodeId": "starter-1",
+            "position": "right",
+            "x": 169,
+            "y": 22.25,
+            "width": 44,
+            "height": 44
+          },
+          {
+            "id": "minus",
+            "type": "source",
+            "nodeId": "starter-1",
+            "position": "right",
+            "x": 169,
+            "y": 79.90625,
+            "width": 44,
+            "height": 44
+          }
+        ],
+        "target": [
+          {
+            "id": "plus",
+            "type": "target",
+            "nodeId": "starter-1",
+            "position": "left",
+            "x": -21,
+            "y": 22.25,
+            "width": 44,
+            "height": 44
+          },
+          {
+            "id": "minus",
+            "type": "target",
+            "nodeId": "starter-1",
+            "position": "left",
+            "x": -21,
+            "y": 79.90625,
+            "width": 44,
+            "height": 44
+          }
+        ]
+      }
+    }
+  ]
+}

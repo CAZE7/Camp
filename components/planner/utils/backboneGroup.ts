@@ -11,23 +11,18 @@ const PADDING_BOTTOM = 36;
 /**
  * Adds a presentation-only React Flow node behind the main circuit.
  *
- * ## Warum hier zwischengespeichert wird (Bug 2026-09-26)
+ * ## Identitätsvertrag und statisches Risiko (2026-09-26)
  *
- * React Flow 12 übernimmt eine Node nur dann unverändert in seinen internen
- * Bestand, wenn das Objekt **identisch** geblieben ist
- * (`adoptUserNodes`, `checkEquality`). Bei einem neuen Objekt baut React Flow
- * den internen Knoten neu auf und setzt dabei `measured` auf den Wert des
- * neuen Objekts — also auf `undefined`, denn der Rahmen wird nie in den
- * Planner-Store zurückgeschrieben (seine `dimensions`-Change läuft ins Leere).
- * Der ResizeObserver misst danach erneut. Für das Routing war das ein
- * Zustandswechsel von „Rahmen 844 × 392“ zu „Rahmen nicht gemessen“.
+ * React Flow 12 kann ein unverändertes Node-Objekt über `adoptUserNodes` /
+ * `checkEquality` wiederverwenden. Bei einem neuen Objekt kann der interne
+ * Knoten neu aufgebaut und vom ResizeObserver erneut gemessen werden. Das
+ * könnte unnötige Presentation-Updates und — falls sie in einer Routing-
+ * Eingabe-Signatur landen — zusätzliche Routing-Arbeit verursachen.
  *
- * Ein bei jedem Render neu erzeugtes Rahmen-Objekt (früher: bei jeder
- * Änderung von `displayedNodes`, also bei jedem Store-Schreibvorgang) löste
- * damit genau dieses Pendeln aus. Der Cache hält den Rahmen über Aufrufe
- * hinweg am Leben, solange seine Geometrie gleich bleibt: gleiche Geometrie ⇒
- * **dasselbe Objekt** ⇒ React Flow misst nicht neu ⇒ keine überflüssigen
- * Routing-Läufe.
+ * Der Objekt-Cache hält den Rahmen deshalb stabil, solange seine Geometrie
+ * gleich bleibt. Das ist eine strukturelle Schutzmaßnahme, kein Beweis, dass
+ * genau dieser Pfad die gemeldete Browser-Oszillation ausgelöst hat; dafür
+ * fehlt weiterhin ein Runtime-Trace.
  *
  * Der Rahmen trägt zusätzlich `width`/`height` (die beabsichtigte Größe aus
  * der Geometrie der Kern-Bauteile) — so hängt seine Box nicht länger an einer

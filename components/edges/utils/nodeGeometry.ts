@@ -164,3 +164,49 @@ export function nodeGeometrySnapshot(
     height: measuredHeight(node) ?? null,
   };
 }
+
+/**
+ * Full geometry record for opt-in routing diagnostics. Keep raw DOM-measured
+ * values separate from declared dimensions and the effective dimensions used
+ * by routing, so a fallback never masquerades as a React Flow measurement.
+ */
+export type NodeGeometryTraceSnapshot = {
+  id: string;
+  type: string | null;
+  position: XYPosition;
+  absolutePosition: XYPosition;
+  /** Effective dimensions consumed by routing, including its configured fallback. */
+  dimensions: { width: number | null; height: number | null };
+  /** Explicit React Flow dimensions, if any. */
+  declared: { width: number | null; height: number | null };
+  /** Raw `node.measured` values; null means React Flow has not measured it. */
+  measured: { width: number | null; height: number | null };
+  handles: { source: HandleBox[] | null; target: HandleBox[] | null } | null;
+};
+
+export function nodeGeometryTraceSnapshot(
+  node: GeometryNode & { id: string; type?: string | null },
+  effectiveDimensions?: { width: number; height: number }
+): NodeGeometryTraceSnapshot {
+  const bounds = nodeHandleBounds(node);
+  const handles = bounds
+    ? {
+        source: bounds.source ? bounds.source.map((handle) => ({ ...handle, id: handle.id ?? null })) : null,
+        target: bounds.target ? bounds.target.map((handle) => ({ ...handle, id: handle.id ?? null })) : null,
+      }
+    : null;
+
+  return {
+    id: node.id,
+    type: node.type ?? null,
+    position: { x: node.position.x, y: node.position.y },
+    absolutePosition: { x: nodeOriginX(node), y: nodeOriginY(node) },
+    dimensions: effectiveDimensions ?? {
+      width: measuredWidth(node) ?? null,
+      height: measuredHeight(node) ?? null,
+    },
+    declared: { width: node.width ?? null, height: node.height ?? null },
+    measured: { width: node.measured?.width ?? null, height: node.measured?.height ?? null },
+    handles,
+  };
+}

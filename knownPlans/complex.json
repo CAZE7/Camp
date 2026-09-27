@@ -964,7 +964,7 @@
     },
     "e-auto-2": {
       "bends": 4,
-      "crossings": 4,
+      "crossings": 5,
       "length": 660,
       "usedSearch": "catalog",
       "waypoints": [
@@ -974,14 +974,14 @@
         },
         {
           "x": 514.4,
-          "y": 648
+          "y": 652
         },
         {
-          "x": 664.4,
-          "y": 648
+          "x": 658.8,
+          "y": 652
         },
         {
-          "x": 664.4,
+          "x": 658.8,
           "y": 344
         },
         {
@@ -996,7 +996,7 @@
     },
     "e-auto-3": {
       "bends": 4,
-      "crossings": 8,
+      "crossings": 7,
       "length": 1100,
       "usedSearch": "astar",
       "waypoints": [
@@ -1006,14 +1006,14 @@
         },
         {
           "x": 514.4,
-          "y": 632
+          "y": 636
         },
         {
-          "x": 966,
-          "y": 632
+          "x": 934.5,
+          "y": 636
         },
         {
-          "x": 966,
+          "x": 934.5,
           "y": 204
         },
         {
@@ -1027,9 +1027,9 @@
       ]
     },
     "e-auto-4": {
-      "bends": 6,
-      "crossings": 1,
-      "length": 1360,
+      "bends": 4,
+      "crossings": 2,
+      "length": 868,
       "usedSearch": "astar",
       "waypoints": [
         {
@@ -1045,16 +1045,8 @@
           "y": 716
         },
         {
-          "x": 1186,
-          "y": 716
-        },
-        {
-          "x": 1186,
-          "y": 320
-        },
-        {
           "x": 940,
-          "y": 320
+          "y": 716
         },
         {
           "x": 940,
@@ -1067,9 +1059,9 @@
       ]
     },
     "e-auto-5": {
-      "bends": 8,
-      "crossings": 4,
-      "length": 2232,
+      "bends": 4,
+      "crossings": 1,
+      "length": 740,
       "usedSearch": "astar",
       "waypoints": [
         {
@@ -1085,27 +1077,11 @@
           "y": 780
         },
         {
-          "x": 1198,
+          "x": 948,
           "y": 780
         },
         {
-          "x": 1198,
-          "y": 46
-        },
-        {
-          "x": 886,
-          "y": 46
-        },
-        {
-          "x": 886,
-          "y": 480
-        },
-        {
-          "x": 940,
-          "y": 480
-        },
-        {
-          "x": 940,
+          "x": 948,
           "y": 464
         },
         {
@@ -1133,7 +1109,7 @@
     "e-auto-7": {
       "bends": 4,
       "crossings": 5,
-      "length": 796.8,
+      "length": 659.2,
       "usedSearch": "astar",
       "waypoints": [
         {
@@ -1145,11 +1121,11 @@
           "y": 226
         },
         {
-          "x": 366,
+          "x": 594,
           "y": 226
         },
         {
-          "x": 366,
+          "x": 594,
           "y": 656
         },
         {
@@ -1164,8 +1140,8 @@
     },
     "e-auto-8": {
       "bends": 4,
-      "crossings": 5,
-      "length": 491.2,
+      "crossings": 4,
+      "length": 463.2,
       "usedSearch": "astar",
       "waypoints": [
         {
@@ -1177,11 +1153,11 @@
           "y": 486
         },
         {
-          "x": 600,
+          "x": 586,
           "y": 486
         },
         {
-          "x": 600,
+          "x": 586,
           "y": 640
         },
         {
@@ -1198,7 +1174,7 @@
       "bends": 0,
       "crossings": 1,
       "length": 108,
-      "usedSearch": "astar",
+      "usedSearch": "catalog",
       "waypoints": [
         {
           "x": 272,
@@ -1236,20 +1212,20 @@
     },
     "e-batt-plus": {
       "bends": 2,
-      "crossings": 1,
+      "crossings": 0,
       "length": 208,
-      "usedSearch": "astar",
+      "usedSearch": "catalog",
       "waypoints": [
         {
           "x": 272,
           "y": 636
         },
         {
-          "x": 356,
+          "x": 296,
           "y": 636
         },
         {
-          "x": 356,
+          "x": 296,
           "y": 536
         },
         {
@@ -1259,8 +1235,8 @@
       ]
     },
     "e-busbar-fuse": {
-      "bends": 2,
-      "crossings": 2,
+      "bends": 4,
+      "crossings": 3,
       "length": 408,
       "usedSearch": "astar",
       "waypoints": [
@@ -1274,6 +1250,14 @@
         },
         {
           "x": 626,
+          "y": 504
+        },
+        {
+          "x": 642.8,
+          "y": 504
+        },
+        {
+          "x": 642.8,
           "y": 236
         },
         {
@@ -1283,7 +1267,7 @@
       ]
     },
     "e-busbar-inv-minus": {
-      "bends": 4,
+      "bends": 2,
       "crossings": 2,
       "length": 308,
       "usedSearch": "astar",
@@ -1293,16 +1277,8 @@
           "y": 764
         },
         {
-          "x": 596,
-          "y": 764
-        },
-        {
-          "x": 596,
-          "y": 700
-        },
-        {
           "x": 626,
-          "y": 700
+          "y": 764
         },
         {
           "x": 626,
@@ -1316,7 +1292,7 @@
     },
     "e-busbar-inv-plus": {
       "bends": 2,
-      "crossings": 3,
+      "crossings": 4,
       "length": 128,
       "usedSearch": "astar",
       "waypoints": [
@@ -1341,7 +1317,7 @@
     "e-charger-busbar": {
       "bends": 4,
       "crossings": 3,
-      "length": 620.8,
+      "length": 463.2,
       "usedSearch": "astar",
       "waypoints": [
         {
@@ -1353,16 +1329,16 @@
           "y": 220
         },
         {
-          "x": 588,
+          "x": 366,
           "y": 220
         },
         {
-          "x": 588,
-          "y": 406
+          "x": 366,
+          "y": 476
         },
         {
           "x": 437.6,
-          "y": 406
+          "y": 476
         },
         {
           "x": 437.6,
@@ -1402,14 +1378,14 @@
         },
         {
           "x": 926,
-          "y": 400
+          "y": 268
         },
         {
-          "x": 956,
-          "y": 400
+          "x": 950.5,
+          "y": 268
         },
         {
-          "x": 956,
+          "x": 950.5,
           "y": 416
         },
         {
@@ -1420,9 +1396,9 @@
     },
     "e-fuse-fridge": {
       "bends": 2,
-      "crossings": 1,
+      "crossings": 0,
       "length": 248,
-      "usedSearch": "astar",
+      "usedSearch": "catalog",
       "waypoints": [
         {
           "x": 872,
@@ -1444,7 +1420,7 @@
     },
     "e-fuse-heat": {
       "bends": 2,
-      "crossings": 2,
+      "crossings": 1,
       "length": 128,
       "usedSearch": "astar",
       "waypoints": [
@@ -1453,11 +1429,11 @@
           "y": 236
         },
         {
-          "x": 956,
+          "x": 950.5,
           "y": 236
         },
         {
-          "x": 956,
+          "x": 950.5,
           "y": 256
         },
         {
@@ -1468,7 +1444,7 @@
     },
     "e-inv-induct": {
       "bends": 2,
-      "crossings": 1,
+      "crossings": 3,
       "length": 168,
       "usedSearch": "astar",
       "waypoints": [
@@ -1477,11 +1453,11 @@
           "y": 516
         },
         {
-          "x": 956,
+          "x": 950.5,
           "y": 516
         },
         {
-          "x": 956,
+          "x": 950.5,
           "y": 576
         },
         {
@@ -1501,11 +1477,11 @@
           "y": 456
         },
         {
-          "x": 656,
+          "x": 626.8,
           "y": 456
         },
         {
-          "x": 656,
+          "x": 626.8,
           "y": 540
         },
         {

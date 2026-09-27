@@ -222,13 +222,12 @@ describe('S5 — persistierte Stände können den Prototypen nicht verseuchen', 
 });
 
 /**
- * Regression (Bug 2026-09-26, „measured.width/height“): React Flow schreibt
- * über `dimensions`-Changes (`setAttributes: true`) `measured` **und**
- * `width`/`height` in den Store-Knoten. Diese Werte sind ein Ergebnis der
- * aktuellen Darstellung, kein Planinhalt. Wurden sie mitgespeichert, startete
- * der nächste Ladevorgang mit einer Box, die in dieser Sitzung nie gemessen
- * wurde — `fitView`/`translateExtent` rechneten damit, und der A*-Pass routete
- * bis zur Korrektur um eine Box, die es so nicht mehr gibt.
+ * Statische Persistenz-Regression: React Flow schreibt über `dimensions`-
+ * Changes (`setAttributes: true`) `measured` **und** `width`/`height` in den
+ * Store-Knoten. Diese Werte sind ein Ergebnis der aktuellen Darstellung,
+ * kein Planinhalt. Ein persistierter Messwert könnte daher beim nächsten Laden
+ * einen temporär veralteten Startzustand erzeugen; dieser Test sichert das
+ * Strippen ab, nicht die Ursache der gemeldeten Browser-Oszillation.
  */
 describe('Messwerte sind kein Planinhalt', () => {
   const measured = {

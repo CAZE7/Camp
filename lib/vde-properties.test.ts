@@ -39,6 +39,9 @@ import { crossSectionForDrop } from './autoWire/primitives';
  *  G4  Monotonie der Querschnittsauswahl: mehr Strom ⇒ nie kleinerer Querschnitt.
  *  G5  Idempotenz: performAutoWiring(performAutoWiring(x)) == performAutoWiring(x).
  *  G6  AC/DC-Trennung: keine erzeugte Verbindung mischt die Domänen.
+ *  G7  sizeDcEdges-Konvergenz: die Nacherschleife terminiert stabil.
+ *  G8  Graph-Integrität: IDs eindeutig und alle Kantenendpunkte vorhanden.
+ *  G9  DC-Erreichbarkeit: Verbraucher haben Plus-Zuleitung und Minus-Rückweg.
  *
  * Reproduzierbarkeit
  * ==================
@@ -414,6 +417,43 @@ function signature(result: {
   };
 }
 
+type ConnectivityEdge = {
+  source: string;
+  target: string;
+  sourceHandle?: string | null;
+  targetHandle?: string | null;
+  data?: { edgeDomain?: string | null };
+};
+
+/** Undirected reachability for conductors of one polarity (topology only). */
+function isPolarityConnected(
+  startId: string,
+  targetId: string,
+  edges: readonly ConnectivityEdge[],
+  polarity: 'plus' | 'minus'
+): boolean {
+  const adjacency = new Map<string, string[]>();
+  for (const edge of edges) {
+    if (edge.data?.edgeDomain === 'AC_230V') continue;
+    if (!edge.sourceHandle?.includes(polarity) || !edge.targetHandle?.includes(polarity)) continue;
+    adjacency.set(edge.source, [...(adjacency.get(edge.source) ?? []), edge.target]);
+    adjacency.set(edge.target, [...(adjacency.get(edge.target) ?? []), edge.source]);
+  }
+
+  const pending = [startId];
+  const visited = new Set(pending);
+  for (let index = 0; index < pending.length; index += 1) {
+    const current = pending[index]!;
+    if (current === targetId) return true;
+    for (const neighbor of adjacency.get(current) ?? []) {
+      if (visited.has(neighbor)) continue;
+      visited.add(neighbor);
+      pending.push(neighbor);
+    }
+  }
+  return false;
+}
+
 describe('G5 — Idempotenz von performAutoWiring', () => {
   it('ein zweiter Lauf ändert weder Knoten noch Kanten', () => {
     fc.assert(
@@ -600,6 +640,54 @@ describe('G6 — AC/DC-Trennung jeder erzeugten Verbindung', () => {
           const target = edge.targetHandle ?? '';
           expect(source.includes('plus')).toBe(target.includes('plus'));
           expect(source.includes('minus')).toBe(target.includes('minus'));
+        }
+      }),
+      propertyConfig
+    );
+  });
+});
+
+describe('G8 — Graph-Integrität nach AutoWire', () => {
+  it('hat eindeutige Node-/Edge-IDs und nur existierende Endpunkte', () => {
+    fc.assert(
+      fc.property(planWithUserEdgesArbitrary, ({ nodes, edges }) => {
+        const result = performAutoWiring(nodes, edges);
+        expect(result).not.toBeNull();
+
+        const nodeIds = result!.nodes.map((node) => node.id);
+        const edgeIds = result!.edges.map((edge) => edge.id);
+        const knownNodeIds = new Set(nodeIds);
+        expect(new Set(nodeIds).size).toBe(nodeIds.length);
+        expect(new Set(edgeIds).size).toBe(edgeIds.length);
+
+        for (const edge of result!.edges) {
+          expect(knownNodeIds.has(edge.source), `Quelle ${edge.source} fehlt`).toBe(true);
+          expect(knownNodeIds.has(edge.target), `Ziel ${edge.target} fehlt`).toBe(true);
+        }
+      }),
+      propertyConfig
+    );
+  });
+});
+
+describe('G9 — DC-Erreichbarkeit der Verbraucher', () => {
+  it('verbindet jeden 12-V-Verbraucher mit Batterie-Plus und dem Minus-Rückweg', () => {
+    fc.assert(
+      fc.property(planArbitrary, (nodes) => {
+        const result = performAutoWiring(nodes);
+        expect(result).not.toBeNull();
+        const battery = result!.nodes.find((node) => node.id === 'battery-1');
+        expect(battery).toBeDefined();
+
+        for (const consumer of result!.nodes.filter((node) => node.type === 'consumer')) {
+          expect(
+            isPolarityConnected(battery!.id, consumer.id, result!.edges, 'plus'),
+            `Verbraucher ${consumer.id} hat keinen Plus-Pfad zur Aufbaubatterie`
+          ).toBe(true);
+          expect(
+            isPolarityConnected(battery!.id, consumer.id, result!.edges, 'minus'),
+            `Verbraucher ${consumer.id} hat keinen Minus-Rückpfad zur Aufbaubatterie`
+          ).toBe(true);
         }
       }),
       propertyConfig

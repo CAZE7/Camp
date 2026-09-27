@@ -8,11 +8,10 @@ import {
 } from './routableNodes';
 
 /**
- * Regression (Bug 2026-09-26, „Routing springt zwischen 0 und 20 Zwängen“):
- * Der Rahmen des Hauptstromkreises ist reine Darstellung und darf den Router
- * nicht erreichen. Vorher zählte er als Bauteil (jedes Kabel, das ein
- * Kern-Bauteil verlässt, schnitt seinen Rand = I1) und als Hindernis
- * (Umwege) — beides abhängig davon, ob React Flow ihn gerade gemessen hatte.
+ * Statische Grenztests: Darstellungs-Knoten dürfen den Router nicht erreichen.
+ * Falls ungefiltert übergeben, könnte ein Rahmen sowohl Routen als auch
+ * Abschlussprüfung beeinflussen. Unit-Tests belegen diese Filterregel, nicht
+ * die Ursache der gemeldeten Browser-Oszillation.
  */
 
 const component = (id: string, type = 'consumer') => ({

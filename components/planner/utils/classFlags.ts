@@ -5,11 +5,11 @@
  * (Bug 2026-09-26, „object recreation“):
  *
  * 1. **Identitätsstabil** — ist das Element schon markiert, kommt dasselbe
- *    Objekt zurück. React Flow 12 übernimmt einen Knoten nur bei identischem
- *    Objekt unverändert in seinen internen Bestand (`adoptUserNodes`,
- *    `checkEquality`); jede Kopie lässt es den internen Knoten neu aufbauen und
- *    neu messen — und das löst über die Layout-Signatur einen weiteren
- *    Routing-Lauf aus.
+ *    Objekt zurück. React Flow 12 kann unveränderte Objekte intern
+ *    wiederverwenden (`adoptUserNodes`, `checkEquality`); eine Kopie kann eine
+ *    Neuübernahme und Messung auslösen. Nur eine dadurch geänderte, tatsächlich
+ *    geroutete Geometrie ändert die Routing-Signatur. Das ist ein statischer
+ *    Schutzgrund, kein Nachweis der gemeldeten Oszillation.
  * 2. **Idempotent** — die Klasse wird nur ergänzt, wenn sie fehlt. Sonst wächst
  *    der Klassen-String bei jedem Durchlauf (`a a a …`), und die
  *    Darstellung hinge davon ab, wie oft eine reine Anzeige-Funktion lief.

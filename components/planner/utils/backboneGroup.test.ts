@@ -42,11 +42,10 @@ describe('backbone visual grouping', () => {
 });
 
 /**
- * Regression (Bug 2026-09-26, „Routing springt zwischen 0 und 20“): Ein bei
- * jedem Store-Schreibvorgang neu erzeugtes Rahmen-Objekt hat React Flow dazu
- * gebracht, den Rahmen neu zu übernehmen und neu zu messen — und das war über
- * die Layout-Signatur ein zweiter Routing-Lauf mit anderem Hindernisbild.
- * Gleiche Geometrie muss dasselbe Objekt liefern.
+ * Statische Identitäts-Regression: Ein neu erzeugtes Rahmen-Objekt kann von
+ * React Flow erneut übernommen und gemessen werden. Gleiche Geometrie soll
+ * deshalb dieselbe Objektidentität liefern. Dieser Unit-Test belegt den
+ * Identitätsvertrag, nicht die Ursache der unbestätigten Browser-Oszillation.
  */
 describe('Stabile Identität des Rahmen-Knotens', () => {
   const nodes = [

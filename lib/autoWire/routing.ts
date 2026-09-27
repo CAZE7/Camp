@@ -1,6 +1,5 @@
 import type { Node } from '../domain/graph'; // ARCH-001
 import { type Meters, type Mm2 } from '../units';
-import { newEntityId } from '../id';
 import { safeText } from '../safeText'; // AUDIT T1
 import { CHARGER_TYPES, type CableEdge, connectionKey, isLeadChemistry, labelOf } from './primitives';
 import { isStarterBattery, looksLikeMinusBusbar, looksLikePlusBusbar } from './validation';
@@ -23,6 +22,18 @@ export function buildDictionaries(currentNodes: Node[]) {
 
 import { relativeGridPosition } from './placement';
 
+function deterministicAutoNodeId(currentNodes: readonly Node[], type: string, label: string): string {
+  const base = `auto-node:${encodeURIComponent(type)}:${encodeURIComponent(label)}`;
+  const used = new Set(currentNodes.map((node) => node.id));
+  if (!used.has(base)) return base;
+
+  // Deterministic collision handling: an imported/user id is never replaced,
+  // and the same graph always selects the same first free suffix.
+  let suffix = 1;
+  while (used.has(`${base}:${suffix}`)) suffix += 1;
+  return `${base}:${suffix}`;
+}
+
 export function ensureNode(
   currentNodes: Node[],
   nodesByType: Record<string, Node[]>,
@@ -44,7 +55,7 @@ export function ensureNode(
   let node = nodesByLabel.get(key);
   if (!node) {
     node = {
-      id: newEntityId(),
+      id: deterministicAutoNodeId(currentNodes, type, label),
       type,
       // R-8 (M11-2): Platzierung in Flussrichtung auf dem 16-px-Raster —
       // Issue 11 (Härtung gegen fehlende Position) bleibt erhalten.
@@ -58,10 +69,19 @@ export function ensureNode(
   return node;
 }
 
+type AutoEdgeIdRef = { counter: number; usedIds: Set<string> };
+
+function nextAutoEdgeId(edgeIdRef: AutoEdgeIdRef, prefix: 'e-auto-' | 'e-auto-ac-'): string {
+  let id = `${prefix}${edgeIdRef.counter++}`;
+  while (edgeIdRef.usedIds.has(id)) id = `${prefix}${edgeIdRef.counter++}`;
+  edgeIdRef.usedIds.add(id);
+  return id;
+}
+
 export function addDcEdge(
   newEdges: CableEdge[],
   dcEdges: CableEdge[],
-  edgeIdRef: { counter: number },
+  edgeIdRef: AutoEdgeIdRef,
   existingConnections: Set<string>,
   sourceId: string,
   targetId: string,
@@ -73,7 +93,7 @@ export function addDcEdge(
   if (existingConnections.has(key)) return null;
   existingConnections.add(key);
   const edge: CableEdge = {
-    id: `e-auto-${edgeIdRef.counter++}`,
+    id: nextAutoEdgeId(edgeIdRef, 'e-auto-'),
     source: sourceId,
     target: targetId,
     sourceHandle: handle,
@@ -90,7 +110,7 @@ export function addDcEdge(
 
 export function addAcEdge(
   newEdges: CableEdge[],
-  edgeIdRef: { counter: number },
+  edgeIdRef: AutoEdgeIdRef,
   existingConnections: Set<string>,
   sourceId: string,
   targetId: string,
@@ -103,7 +123,7 @@ export function addAcEdge(
   if (existingConnections.has(key)) return;
   existingConnections.add(key);
   newEdges.push({
-    id: `e-auto-ac-${edgeIdRef.counter++}`,
+    id: nextAutoEdgeId(edgeIdRef, 'e-auto-ac-'),
     source: sourceId,
     target: targetId,
     sourceHandle,

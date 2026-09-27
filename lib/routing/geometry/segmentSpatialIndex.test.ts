@@ -27,6 +27,21 @@ describe('SegmentSpatialIndex (R-4)', () => {
     expect(hits).not.toContain(far);
   });
 
+  it('queryRectInto reuses its buffers and clears stale candidates', () => {
+    const near = seg(0, 0, 100, 0);
+    const far = seg(1000, 1000, 1100, 1000);
+    const index = new SegmentSpatialIndex([near, far]);
+    const out: Segment[] = [far];
+    const seen = new Set<Segment>([far]);
+
+    index.queryRectInto({ x: -10, y: -10, width: 120, height: 20 }, out, seen);
+    expect(out).toEqual([near]);
+    expect(out).toEqual(index.queryRect({ x: -10, y: -10, width: 120, height: 20 }));
+
+    index.queryRectInto({ x: 990, y: 990, width: 120, height: 20 }, out, seen);
+    expect(out).toEqual([far]);
+  });
+
   it('queryNear padet die Bounding-Box der Strecke in alle Richtungen', () => {
     const above = seg(50, -100, 60, -90);
     const below = seg(50, 300, 60, 310);

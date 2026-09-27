@@ -3,19 +3,14 @@ import type { Node } from '@xyflow/react';
 import { usePlannerStore } from '../usePlannerStore';
 
 /**
- * Regression (Bug 2026-09-26, „object recreation“ / „onNodesChange“):
- * `applyNodeChanges`/`applyEdgeChanges` geben IMMER ein neues Array zurück —
- * auch wenn keine Änderung ein Element getroffen hat. Genau das passiert im
- * Betrieb: React Flows ResizeObserver meldet `dimensions` für **jeden**
- * gemounteten Knoten, also auch für den Darstellungs-Rahmen des
- * Hauptstromkreises, den der Planner-Store nicht kennt. Die Änderung lief
- * durch `onNodesChange`, fand kein Element — und hinterließ trotzdem eine neue
- * Array-Referenz.
- *
- * Folge: jeder `state.nodes`-Konsument rendert neu (u. a. jede `CableEdge`),
- * die identitätsgebundenen WeakMap-Caches des Graphen und der
- * Routing-Nachbarschaft bauen sich neu auf, und React Flow übernimmt die
- * Knoten erneut. Deshalb schreiben die Handler ohne echte Änderung nicht mehr.
+ * Statische Regression (2026-09-26, „object recreation“ / „onNodesChange“):
+ * `applyNodeChanges`/`applyEdgeChanges` können ein neues Array zurückgeben,
+ * auch wenn keine Änderung ein Element getroffen hat. Falls React Flow etwa
+ * eine `dimensions`-Änderung für einen nur präsentationsseitigen Knoten meldet,
+ * könnte der Planner-Store so eine folgenlose Referenzänderung übernehmen.
+ * Das würde Store-Konsumenten und identitätsgebundene Caches unnötig
+ * beschäftigen. Der Test sichert ab, dass dieser No-op keinen Store-Schreib-
+ * vorgang auslöst; er ist kein Browser-Beleg für die gemeldete Oszillation.
  */
 
 const nodeA: Node = { id: 'a', type: 'battery', position: { x: 0, y: 0 }, data: {} };
@@ -154,11 +149,11 @@ describe('Change-Handler ohne Treffer erzeugen keinen neuen Zustand', () => {
 
 /**
  * Regel Q gilt auch für die Aktions-Pfade: `focusElement` (Knopf „Beheben“ in
- * der Warn-Zentrale) erzeugte vorher per `map((e) => ({ ...e, selected: … }))`
- * für **jedes** Element ein neues Objekt. React Flow adoptiert dann alle Knoten
- * und Kanten neu, misst neu — und die Layout-Signatur stößt einen weiteren
- * Routing-Lauf an. Nur die Elemente, deren Auswahl sich wirklich ändert,
- * dürfen ein neues Objekt bekommen.
+ * der Warn-Zentrale) soll nur Elemente kopieren, deren Auswahl sich wirklich
+ * ändert. Eine flächige Objektkopie kann React Flow zu Neuübernahmen und
+ * Messungen veranlassen; ob sich dadurch geroutete Maße ändern, ist eine
+ * Laufzeitfrage. Dieser Store-Test belegt den No-op-/Identitätsvertrag, nicht
+ * die Ursache der gemeldeten Browser-Oszillation.
  */
 describe('focusElement — nur die geänderte Auswahl erzeugt neue Objekte', () => {
   beforeEach(seed);

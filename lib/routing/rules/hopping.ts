@@ -1,4 +1,11 @@
-import { segmentIntersectionPoint, waypointsToSegments, type Point, type Segment } from '../geometry';
+import {
+  SegmentSpatialIndex,
+  segmentIntersectionPoint,
+  waypointsToSegments,
+  type Point,
+  type Rect,
+  type Segment,
+} from '../geometry';
 import { ROUTING_TOKENS, type RoutingTokens } from '../tokens';
 
 /**
@@ -114,27 +121,6 @@ const AXIS_EPS = 1e-6;
 const isHorizontal = (segment: Segment): boolean => Math.abs(segment[1].y - segment[0].y) < AXIS_EPS;
 const isVertical = (segment: Segment): boolean => Math.abs(segment[1].x - segment[0].x) < AXIS_EPS;
 
-/** Achsparalleles Hüllrechteck einer Kante — Grobfilter vor dem Segmentvergleich. */
-type Bounds = { minX: number; minY: number; maxX: number; maxY: number };
-
-const boundsOf = (points: readonly Point[]): Bounds | undefined => {
-  if (points.length === 0) return undefined;
-  let minX = Infinity;
-  let minY = Infinity;
-  let maxX = -Infinity;
-  let maxY = -Infinity;
-  for (const p of points) {
-    if (p.x < minX) minX = p.x;
-    if (p.x > maxX) maxX = p.x;
-    if (p.y < minY) minY = p.y;
-    if (p.y > maxY) maxY = p.y;
-  }
-  return { minX, minY, maxX, maxY };
-};
-
-const boundsDisjoint = (a: Bounds, b: Bounds): boolean =>
-  a.maxX < b.minX || b.maxX < a.minX || a.maxY < b.minY || b.maxY < a.minY;
-
 /**
  * Entscheidet, welche der beiden Leitungen an einer Kreuzung hüpft.
  *
@@ -178,53 +164,239 @@ const dedupeKey = (hop: Hop): string => `${hop.x.toFixed(3)},${hop.y.toFixed(3)}
  * Ein Hop, den der Renderer nicht zeichnen kann, darf hier gar nicht erst
  * gemeldet werden: `PathResult.hops` und der Pfad müssen dasselbe sagen.
  */
-export function resolveHops(edges: readonly HopEdge[]): Map<string, Hop[]> {
-  const result = new Map<string, Hop[]>();
-  for (const edge of edges) result.set(edge.id, []);
+export type RouteCrossingAnalysis = {
+  /** Render-Hops, wie bisher von `resolveHops` geliefert. */
+  hopsByEdge: Map<string, Hop[]>;
+  /** Zahl verschiedener fremder Kanten, die jede Route echt schneiden. */
+  crossingCountsByEdge: Map<string, number>;
+};
 
+const segmentBounds = (segment: Segment): Rect => {
+  const [a, b] = segment;
+  return {
+    x: Math.min(a.x, b.x),
+    y: Math.min(a.y, b.y),
+    width: Math.abs(a.x - b.x),
+    height: Math.abs(a.y - b.y),
+  };
+};
+
+/**
+ * Berechnet Hops UND echte Fremdkanten-Kreuzungszahlen in EINEM Scan.
+ *
+ * Beides konsumiert dieselbe Geometrieprädikatsmenge. Der frühere
+ * Render-Pass lief `resolveHops` und zählte direkt danach dieselben
+ * Segmentpaare ein zweites Mal für die Kreuzungsmetadaten. Für orthogonale
+ * Routen nutzt der Scan einen x-Sweep; diagonal gemischte Eingaben verwenden
+ * den räumlichen Segmentindex. Beide Wege besuchen jedes Kantenpaar einmal
+ * und leiten beide Ergebnisse aus demselben exakten Schnittpunkt ab.
+ */
+export function analyzeRouteCrossings(edges: readonly HopEdge[]): RouteCrossingAnalysis {
   const sorted = [...edges].sort((a, b) => a.id.localeCompare(b.id));
-  const segmentsById = new Map<string, Segment[]>(
-    sorted.map((edge) => [edge.id, waypointsToSegments(edge.waypoints)])
-  );
-
-  const boundsById = new Map(sorted.map((edge) => [edge.id, boundsOf(edge.waypoints)]));
+  const hopsByEdge = new Map<string, Hop[]>();
+  const crossingCountsByEdge = new Map<string, number>();
+  const segmentsById = new Map<string, Segment[]>();
+  const ownerBySegment = new Map<Segment, string>();
+  const allSegments: Segment[] = [];
+  const horizontalSegments: Segment[] = [];
+  const verticalSegments: Segment[] = [];
+  const diagonalSegments: Segment[] = [];
+  const indexById = new Map<string, number>();
 
   for (let i = 0; i < sorted.length; i++) {
+    const edge = sorted[i]!;
+    const segments = waypointsToSegments(edge.waypoints);
+    indexById.set(edge.id, i);
+    segmentsById.set(edge.id, segments);
+    hopsByEdge.set(edge.id, []);
+    crossingCountsByEdge.set(edge.id, 0);
+    for (const segment of segments) {
+      allSegments.push(segment);
+      ownerBySegment.set(segment, edge.id);
+      if (segment[0].y === segment[1].y) horizontalSegments.push(segment);
+      else if (segment[0].x === segment[1].x) verticalSegments.push(segment);
+      else diagonalSegments.push(segment);
+    }
+  }
+
+  const seenCrossingPairs = new Set<number>();
+  const hopperByPair = new Map<number, string | null>();
+  const edgeCount = sorted.length;
+  const recordCrossing = (i: number, segA: Segment, j: number, segB: Segment, point: Point): void => {
+    if (i > j) return;
     const a = sorted[i]!;
-    const boundsA = boundsById.get(a.id);
-    if (!boundsA) continue;
-    const segmentsA = segmentsById.get(a.id) ?? [];
-    for (let j = i + 1; j < sorted.length; j++) {
-      const b = sorted[j]!;
-      const boundsB = boundsById.get(b.id);
-      if (!boundsB || boundsDisjoint(boundsA, boundsB)) continue;
-      const hopperId = hoppingEdgeId(a, b);
-      if (!hopperId) continue;
-      const segmentsB = segmentsById.get(b.id) ?? [];
-      for (const segA of segmentsA) {
-        for (const segB of segmentsB) {
-          const carrier = hopperId === a.id ? segA : segB;
-          const horizontal = isHorizontal(carrier);
-          if (!horizontal && !isVertical(carrier)) continue;
-          const point = segmentIntersectionPoint(segA, segB);
-          if (!point) continue;
-          result.get(hopperId)?.push({
-            x: point.x,
-            y: point.y,
-            orientation: horizontal ? 'horizontal' : 'vertical',
+    const b = sorted[j]!;
+    const pairKey = i * edgeCount + j;
+    if (!seenCrossingPairs.has(pairKey)) {
+      seenCrossingPairs.add(pairKey);
+      crossingCountsByEdge.set(a.id, (crossingCountsByEdge.get(a.id) ?? 0) + 1);
+      crossingCountsByEdge.set(b.id, (crossingCountsByEdge.get(b.id) ?? 0) + 1);
+    }
+
+    let hopperId = hopperByPair.get(pairKey);
+    if (hopperId === undefined) {
+      hopperId = hoppingEdgeId(a, b) ?? null;
+      hopperByPair.set(pairKey, hopperId);
+    }
+    if (!hopperId) return;
+
+    const carrier = hopperId === a.id ? segA : segB;
+    const horizontal = isHorizontal(carrier);
+    if (!horizontal && !isVertical(carrier)) return;
+    hopsByEdge.get(hopperId)?.push({
+      x: point.x,
+      y: point.y,
+      orientation: horizontal ? 'horizontal' : 'vertical',
+    });
+  };
+
+  if (diagonalSegments.length === 0) {
+    // Orthogonal fast path: a sweep over x keeps only active horizontal
+    // segments, then queries the y interval of each vertical segment. This
+    // avoids materializing spatial-grid buckets for the overwhelmingly
+    // common route geometry while retaining the exact intersection predicate.
+    type Horizontal = {
+      edgeIndex: number;
+      edgeId: string;
+      segment: Segment;
+      minX: number;
+      maxX: number;
+      y: number;
+    };
+    type Vertical = { edgeIndex: number; segment: Segment; x: number; minY: number; maxY: number };
+    type Event =
+      | { x: number; kind: 'start'; horizontal: Horizontal }
+      | { x: number; kind: 'end'; horizontal: Horizontal }
+      | { x: number; kind: 'vertical'; vertical: Vertical };
+
+    const events: Event[] = [];
+    for (let i = 0; i < sorted.length; i++) {
+      const edge = sorted[i]!;
+      for (const segment of segmentsById.get(edge.id) ?? []) {
+        if (segment[0].y === segment[1].y) {
+          const horizontal: Horizontal = {
+            edgeIndex: i,
+            edgeId: edge.id,
+            segment,
+            minX: Math.min(segment[0].x, segment[1].x),
+            maxX: Math.max(segment[0].x, segment[1].x),
+            y: segment[0].y,
+          };
+          events.push(
+            { x: horizontal.minX, kind: 'start', horizontal },
+            { x: horizontal.maxX, kind: 'end', horizontal }
+          );
+        } else {
+          events.push({
+            x: segment[0].x,
+            kind: 'vertical',
+            vertical: {
+              edgeIndex: i,
+              segment,
+              x: segment[0].x,
+              minY: Math.min(segment[0].y, segment[1].y),
+              maxY: Math.max(segment[0].y, segment[1].y),
+            },
           });
+        }
+      }
+    }
+
+    const eventOrder = { end: 0, vertical: 1, start: 2 } as const;
+    events.sort((a, b) => a.x - b.x || eventOrder[a.kind] - eventOrder[b.kind]);
+    const active: Horizontal[] = [];
+    const compareHorizontal = (a: Horizontal, b: Horizontal): number =>
+      a.y - b.y || a.edgeId.localeCompare(b.edgeId) || a.minX - b.minX || a.maxX - b.maxX;
+
+    for (const event of events) {
+      if (event.kind === 'start') {
+        let lo = 0;
+        let hi = active.length;
+        while (lo < hi) {
+          const mid = (lo + hi) >>> 1;
+          if (compareHorizontal(active[mid]!, event.horizontal) <= 0) lo = mid + 1;
+          else hi = mid;
+        }
+        active.splice(lo, 0, event.horizontal);
+        continue;
+      }
+      if (event.kind === 'end') {
+        const index = active.indexOf(event.horizontal);
+        if (index >= 0) active.splice(index, 1);
+        continue;
+      }
+
+      const vertical = event.vertical;
+      let lo = 0;
+      let hi = active.length;
+      while (lo < hi) {
+        const mid = (lo + hi) >>> 1;
+        if (active[mid]!.y <= vertical.minY) lo = mid + 1;
+        else hi = mid;
+      }
+      for (let i = lo; i < active.length; i++) {
+        const horizontal = active[i]!;
+        if (horizontal.y >= vertical.maxY) break;
+        if (horizontal.edgeIndex === vertical.edgeIndex) continue;
+        if (vertical.x <= horizontal.minX || vertical.x >= horizontal.maxX) continue;
+        const horizontalFirst = horizontal.edgeIndex < vertical.edgeIndex;
+        const point = horizontalFirst
+          ? segmentIntersectionPoint(horizontal.segment, vertical.segment)
+          : segmentIntersectionPoint(vertical.segment, horizontal.segment);
+        if (!point) continue;
+        if (horizontalFirst) {
+          recordCrossing(
+            horizontal.edgeIndex,
+            horizontal.segment,
+            vertical.edgeIndex,
+            vertical.segment,
+            point
+          );
+        } else {
+          recordCrossing(
+            vertical.edgeIndex,
+            vertical.segment,
+            horizontal.edgeIndex,
+            horizontal.segment,
+            point
+          );
+        }
+      }
+    }
+  } else {
+    // Pure routing rules may also receive diagonal segments; retain the
+    // complete spatial-index path for those uncommon inputs.
+    const index = new SegmentSpatialIndex(allSegments);
+    const candidateSegments: Segment[] = [];
+    const seenCandidates = new Set<Segment>();
+    for (let i = 0; i < sorted.length; i++) {
+      const edge = sorted[i]!;
+      for (const segA of segmentsById.get(edge.id) ?? []) {
+        index.queryRectInto(segmentBounds(segA), candidateSegments, seenCandidates);
+        for (const segB of candidateSegments) {
+          const otherId = ownerBySegment.get(segB);
+          if (otherId === undefined) continue;
+          const j = indexById.get(otherId);
+          if (j === undefined || j <= i) continue;
+          const point = segmentIntersectionPoint(segA, segB);
+          if (point) recordCrossing(i, segA, j, segB, point);
         }
       }
     }
   }
 
-  for (const [id, hops] of result) {
+  for (const [id, hops] of hopsByEdge) {
     const unique = new Map<string, Hop>();
     for (const hop of hops) unique.set(dedupeKey(hop), hop);
-    result.set(
+    hopsByEdge.set(
       id,
       [...unique.values()].sort((p, q) => p.x - q.x || p.y - q.y)
     );
   }
-  return result;
+
+  return { hopsByEdge, crossingCountsByEdge };
+}
+
+export function resolveHops(edges: readonly HopEdge[]): Map<string, Hop[]> {
+  return analyzeRouteCrossings(edges).hopsByEdge;
 }

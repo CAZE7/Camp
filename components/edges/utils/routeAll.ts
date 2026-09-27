@@ -11,7 +11,6 @@ import {
 import {
   findCablePath,
   nodesToObstacles,
-  nodeObstacleMap,
   rectsIntersect,
   inflateRect,
   pathLength,
@@ -34,13 +33,16 @@ import {
   portNormal,
   type FanOutRequest,
 } from '../../../lib/routing/rules/portFanOut';
-import { hopRadius, resolveHops, type HopDomain, type HopEdge } from '../../../lib/routing/rules/hopping';
+import {
+  analyzeRouteCrossings,
+  hopRadius,
+  type HopDomain,
+  type HopEdge,
+} from '../../../lib/routing/rules/hopping';
 import { isBackboneConnection } from '../../planner/utils/backbone';
 import {
   isOrthogonalPath,
   mergeCloseBends,
-  SegmentSpatialIndex,
-  segmentsCross,
   simplifyWaypoints,
   waypointsToSegments,
   type Segment,
@@ -355,62 +357,6 @@ export function portFanOutLanes(
   return lanes;
 }
 
-/**
- * Echte Kreuzungen je Kante aus der fertig gerouteten Geometrie.
- *
- * Eine Kreuzung = eine fremde Kante, deren Verlauf diesen Weg schneidet
- * (nicht: Zahl der Segmentpaare). Räumlich vorgefiltert über den
- * `SegmentSpatialIndex`, damit große Pläne im Frame-Budget bleiben (R-4).
- */
-function countRealCrossings(order: readonly string[], waypoints: Map<string, Point[]>): Map<string, number> {
-  const segmentsByEdge = new Map<string, Segment[]>();
-  const all: Segment[] = [];
-  const edgeOfSegment = new Map<Segment, string>();
-  for (const id of order) {
-    const segments = waypointsToSegments(waypoints.get(id) ?? []);
-    segmentsByEdge.set(id, segments);
-    for (const segment of segments) {
-      all.push(segment);
-      edgeOfSegment.set(segment, id);
-    }
-  }
-  const index = new SegmentSpatialIndex(all);
-  const out = new Map<string, number>();
-  for (const id of order) {
-    const own = segmentsByEdge.get(id) ?? [];
-    if (own.length === 0) {
-      out.set(id, 0);
-      continue;
-    }
-    let minX = Infinity;
-    let minY = Infinity;
-    let maxX = -Infinity;
-    let maxY = -Infinity;
-    for (const points of [waypoints.get(id) ?? []]) {
-      for (const p of points) {
-        minX = Math.min(minX, p.x);
-        maxX = Math.max(maxX, p.x);
-        minY = Math.min(minY, p.y);
-        maxY = Math.max(maxY, p.y);
-      }
-    }
-    const candidates = index.queryRect({ x: minX, y: minY, width: maxX - minX, height: maxY - minY });
-    const crossed = new Set<string>();
-    for (const candidate of candidates) {
-      const otherId = edgeOfSegment.get(candidate);
-      if (otherId === undefined || otherId === id || crossed.has(otherId)) continue;
-      for (const segment of own) {
-        if (segmentsCross(segment, candidate)) {
-          crossed.add(otherId);
-          break;
-        }
-      }
-    }
-    out.set(id, crossed.size);
-  }
-  return out;
-}
-
 // R8-Härtung des Rückfalls: Der Prädikat hat in `nodeGeometry.ts` zu Hause
 // (einzige Leseseite für die Messgrenze, siehe app/handleGeometry.test.ts).
 const routableNodeHasGeometry = nodePositionAvailable;
@@ -427,18 +373,31 @@ function makeHandleResolver(nodes: RoutableNode[]) {
     const node = nodes[i];
     if (node && routableNodeHasGeometry(node)) nodeById.set(node.id, node);
   }
+  const resolvedByEdge = new Map<
+    string,
+    {
+      source: { x: number; y: number; position: Position };
+      target: { x: number; y: number; position: Position };
+    }
+  >();
   return (edge: RouteEdgeRef, kind: 'source' | 'target'): { x: number; y: number; position: Position } => {
-    const srcNode = nodeById.get(edge.source);
-    const tgtNode = nodeById.get(edge.target);
-    const flow = centerDelta(srcNode, tgtNode);
-    return kind === 'source'
-      ? resolveHandlePoint(srcNode, edge.sourceHandle, 'source', flow)
-      : resolveHandlePoint(
+    let resolved = resolvedByEdge.get(edge.id);
+    if (!resolved) {
+      const srcNode = nodeById.get(edge.source);
+      const tgtNode = nodeById.get(edge.target);
+      const flow = centerDelta(srcNode, tgtNode);
+      resolved = {
+        source: resolveHandlePoint(srcNode, edge.sourceHandle, 'source', flow),
+        target: resolveHandlePoint(
           tgtNode,
           edge.targetHandle,
           'target',
           flow ? { x: -flow.x, y: -flow.y } : undefined
-        );
+        ),
+      };
+      resolvedByEdge.set(edge.id, resolved);
+    }
+    return resolved[kind];
   };
 }
 
@@ -488,7 +447,13 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
   // ROUTE_GAP — Ausweichtrassen bleiben innerhalb des gefilterten Fensters,
   // und ein Pfad kann per Konstruktion die Box nie verlassen, sodass
   // ausgefilterte Hindernisse nicht getroffen werden können (außerhalb).
-  const obstacleById = nodeObstacleMap(nodes);
+  const obstacleById = new Map<string, Rect>();
+  let obstacleIndex = 0;
+  for (const node of nodes) {
+    if (!node) continue;
+    const rect = allObstacles[obstacleIndex++];
+    if (rect) obstacleById.set(node.id, rect);
+  }
   // ROUTE-004: Zentraler Token (Drift-Guard: ≥ 2 × alternativeRouteGap(),
   // siehe lib/routing/tokens.ts und tokens.test.ts).
   const OBSTACLE_REGION_PAD = LEGACY_ROUTING_TOKENS.obstacleRegionPad;
@@ -523,10 +488,11 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
   };
   // R-6/R-7: Port-Reihenfolge vor dem Einzel-Routing festlegen
   // (deterministisch); die Handle-Seite folgt der Flussrichtung.
-  const portLanes = portFanOutLanes(edges, makeHandleResolver(nodes));
+  const resolveHandle = makeHandleResolver(nodes);
+  const portLanes = portFanOutLanes(edges, resolveHandle);
 
   const raw: { id: string; waypoints: Point[]; result: PathResult }[] = [];
-  const dynamicRoutedSegments: { edgeId: string; segment: Segment }[] = [];
+  const dynamicRoutedSegments: Segment[] = [];
   // ROUTE-BUG-16: wächst mit jeder verlegten Kante (siehe `addTubes`).
   const tubes: Rect[] = [];
 
@@ -540,16 +506,8 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
   for (let i = 0; i < edges.length; i++) {
     const edge = edges[i];
     if (!edge) continue;
-    const srcNode = nodeById.get(edge.source);
-    const tgtNode = nodeById.get(edge.target);
-    const flow = centerDelta(srcNode, tgtNode);
-    const src = resolveHandlePoint(srcNode, edge.sourceHandle, 'source', flow);
-    const tgt = resolveHandlePoint(
-      tgtNode,
-      edge.targetHandle,
-      'target',
-      flow ? { x: -flow.x, y: -flow.y } : undefined
-    );
+    const src = resolveHandle(edge, 'source');
+    const tgt = resolveHandle(edge, 'target');
     const exclude = new Set([edge.source, edge.target]);
     const region: Rect = {
       x: Math.min(src.x, tgt.x) - OBSTACLE_REGION_PAD,
@@ -596,7 +554,9 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
       ownObstacles: [obstacleById.get(edge.source), obstacleById.get(edge.target)].filter(
         (r): r is Rect => r !== undefined
       ),
-      crossingSegments: dynamicRoutedSegments.filter((s) => s.edgeId !== edge.id).map((s) => s.segment),
+      // The array contains only routes from earlier loop iterations; the
+      // current edge is not present and needs no filter/copy.
+      crossingSegments: dynamicRoutedSegments,
     };
     let request_ = request;
     let result = findCablePath({ ...request_, cableTubes: tubesForRegion(tubes, region) });
@@ -652,7 +612,7 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
     raw.push({ id: edge.id, waypoints: result.waypoints, result });
     addTubes(tubes, result.waypoints);
     const segments = waypointsToSegments(result.waypoints);
-    for (const seg of segments) dynamicRoutedSegments.push({ edgeId: edge.id, segment: seg });
+    dynamicRoutedSegments.push(...segments);
   }
 
   const inflated: Rect[] = allObstacles.map((r) => inflateRect(r, OBSTACLE_MARGIN));
@@ -713,10 +673,10 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
     })
   );
 
-  // WP-7 (#395): Hops erst NACH Ausrichtung und Nudge bestimmen — vorher
-  // liegen die Kreuzungen noch woanders. Reine Darstellung: die Waypoints
-  // bleiben unangetastet, Länge/Knicke/Kreuzungen ändern sich nicht.
-  const hopsByEdge = resolveHops(
+  // WP-7 (#395) / ROUTE-BUG-5: Hops und echte Fremdkanten-Kreuzungszahlen
+  // werden erst NACH Ausrichtung/Nudge bestimmt — und in EINEM Scan, weil
+  // beide dieselben Segment-Schnittpunkte konsumieren.
+  const crossingAnalysis = analyzeRouteCrossings(
     order.map<HopEdge>((id) => {
       const edge = edgeById.get(id);
       return {
@@ -732,16 +692,7 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
       };
     })
   );
-
-  // ROUTE-BUG-5: Kreuzungen aus der TATSÄCHLICH gerouteten Geometrie.
-  // Früher wurde gegen Mittelpunkts-Näherungen aller Kanten gezählt — und
-  // weil als „aktuelle Kante“ ein Platzhalter übergeben wurde, zählte jede
-  // Leitung auch ihre eigene Näherungsstrecke mit (gemessen: 133 gemeldete
-  // gegen 60 echte Kreuzungen über die sechs Referenzpläne). Gezählt werden
-  // jetzt echte Schnitte (`segmentsCross`) gegen die Wegpunkte der anderen
-  // Kanten, eine Kreuzung je fremder Kante — exakt die Punkte, an denen auch
-  // die Hop-Bögen sitzen.
-  const crossingsByEdge = countRealCrossings(order, finalWaypoints);
+  const { hopsByEdge, crossingCountsByEdge: crossingsByEdge } = crossingAnalysis;
 
   for (const id of order) {
     const item = byId.get(id);

@@ -72,11 +72,10 @@ describe('circuit tracing', () => {
 });
 
 /**
- * Regression (Bug 2026-09-26, „object recreation“): `applyCircuitTrace` erzeugte
- * für jedes Element ein neues Objekt — pro Render, und der Strompfad hängt an
- * den Store-Arrays (also auch während eines Drags). React Flow sah damit alle
- * Knoten als geändert und baute sie neu auf. Unveränderte Elemente müssen
- * unverändert zurückkommen.
+ * Statische Identitäts-Regression (2026-09-26, „object recreation“):
+ * `applyCircuitTrace` soll unveränderte Elemente nicht kopieren. Dieser Test
+ * belegt die Objektidentität bei Presentation-Updates, nicht die Ursache der
+ * gemeldeten Browser-Oszillation.
  */
 describe('applyCircuitTrace — identitätsstabil', () => {
   it('markiert alle Elemente, lässt aber die Objekte unangetastet, die schon passen', () => {

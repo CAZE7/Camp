@@ -11,7 +11,7 @@ import { cableStrokeWidth } from './utils/cableStyle';
 import { useCoarsePointer, useMediaQuery, MOBILE_QUERY } from '../planner/hooks/useMediaCapabilities';
 import { isBackboneConnection } from '../planner/utils/backbone';
 import { getWireColor, WIRE_COLORS } from './utils/edgeColors';
-import { hasVoltageDropError } from './utils/voltageDrop';
+import { hasVoltageDropError, resolveCableLength } from './utils/voltageDrop';
 import {
   assessCableSelection,
   calculateStrokeWidth,
@@ -24,7 +24,6 @@ import {
 } from '../../lib/electrical';
 import { AC_SYSTEM_VOLTAGE, calculateEdgeCurrent, getSystemVoltage } from '../../lib/vde-standards';
 import { acCurrentA } from '../../lib/autoWire/sizing';
-import { PX_PER_METER } from '../../lib/units';
 
 /** Wie lange ein angetipptes Kabel sein Label als Tooltip zeigt (Touch). */
 export const TAP_LABEL_TIMEOUT_MS = 5000;
@@ -546,29 +545,19 @@ const CableEdge = function ({
     edgeDomain,
     sysVoltage,
   } = useMemo(() => {
-    // Pixel/PX_PER_METER als physische Näherung, OHNE 1-m-Mindestclamp: Der
-    // frühere Math.max(1, …) machte jede Verbindung unter 1 m zu „1,0 m“ —
-    // falsch für kurze Stichleitungen. `??` statt `||`, damit ein
-    // gespeichertes `length: 0` (z. B. Sammelschiene) nicht stillschweigend
-    // durch den Schätzwert ersetzt wird.
-    // AUDIT AUTO-002: NEGATIVE Längen (Import/Altdaten) sind ungültig — sie
-    // fallen auf die geometrische Schätzung zurück; collectEdgeErrors
-    // meldet zusätzlich „Ungültige (negative) Länge!“.
-    //
-    // R1: Schätzung ist die GEROUTETE Verlegelänge (routeLengthPx), nicht
-    // die Luftlinie — der Router kennt den tatsächlichen Weg inklusive aller
-    // Hindernis-Umwege, und Spannungsfall/Querschnitt/BOM dürfen ihn nicht
-    // mehr unterschätzen (gemessen +23…+70 % Gesamtlänge auf den
-    // Referenzplänen gegenüber der Luftlinie). Luftlinie bleibt als
-    // Rückfall, solange keine Route bekannt ist.
-    const physicalDistance = Math.hypot(targetX - sourceX, targetY - sourceY) / PX_PER_METER;
-    const estimatedLength = routeLengthPx !== undefined ? routeLengthPx / PX_PER_METER : physicalDistance;
-    const rawLength = data?.length;
-    const length = typeof rawLength === 'number' && rawLength >= 0 ? rawLength : estimatedLength;
-    // Herkunft für Anzeige/Barrierefreiheit: Manuell gesetzte Längen haben
-    // immer Vorrang; ohne sie ist der Wert eine Verlegeweg-Schätzung, die
-    // sich beim Verschieben der Bauteile live mitbewegt (gedrosselt).
-    const lengthIsEstimated = !(typeof rawLength === 'number' && rawLength >= 0);
+    // Gemeinsame Auflösung mit der Fehlerkanten-Berechnung: gespeicherte
+    // Länge, gerouteter Verlegeweg, Luftlinie. Null bleibt ein gültiger Wert;
+    // negative und nicht-endliche Altdaten fallen auf die Schätzung zurück.
+    const lengthResolution = resolveCableLength(
+      data?.length,
+      { x: sourceX, y: sourceY },
+      { x: targetX, y: targetY },
+      routeLengthPx
+    );
+    const { length } = lengthResolution;
+    // Ohne gespeicherte Länge ist der Wert eine Schätzung, die sich aus der
+    // Route (oder bis zur ersten Route aus der Luftlinie) ergeben kann.
+    const lengthIsEstimated = lengthResolution.estimated;
     const sourceNode = getNode(source);
     const targetNode = getNode(target);
 
