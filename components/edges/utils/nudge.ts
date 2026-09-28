@@ -13,6 +13,7 @@ import {
 } from './pathfinding';
 import { countBends, hasMinimumStubs, segmentsCross, segmentsOverlap } from '../../../lib/routing/geometry';
 import { ROUTING_TOKENS } from '../../../lib/routing/tokens';
+import { compareIds } from '../../../lib/sortOrder';
 
 /**
  * Globales orthogonales Nudging (libavoid-Phase 2).
@@ -343,7 +344,7 @@ const applyAxisPass = (
     const pathOrder = Array.from(byPath.keys()).sort((pa, pb) => {
       const da = at(segs, firstSegIndexOf(pa)).perp - at(segs, firstSegIndexOf(pb)).perp;
       if (Math.abs(da) > EPS) return da;
-      return at(pathIds, pa).localeCompare(at(pathIds, pb));
+      return compareIds(at(pathIds, pa), at(pathIds, pb));
     });
 
     let mean = 0;

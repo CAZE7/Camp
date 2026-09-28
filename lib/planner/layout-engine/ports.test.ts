@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { BUILTIN_COMPONENT_SPECS } from '../../../components/registry/builtinComponents';
 import { layoutWithElk } from '../../routing/elk/runner';
 import { layoutPortId, layoutPortForHandle, portSpecsForKind, portsForNode } from './ports';
+import { compareIds } from '../../sortOrder';
 
 /**
  * Finding 2026-09-27 („Ports fehlen"): ELK bekam keine Anschlüsse, also war
@@ -15,12 +16,10 @@ import { layoutPortId, layoutPortForHandle, portSpecsForKind, portsForNode } fro
 describe('Layout-Ports (Finding 2026-09-27)', () => {
   it('jede Registry-Handle hat genau einen Port mit passender Rolle', () => {
     for (const spec of BUILTIN_COMPONENT_SPECS) {
-      const expected = spec.handles
-        .map((handle) => `${handle.type}:${handle.id}`)
-        .sort((a, b) => a.localeCompare(b));
+      const expected = spec.handles.map((handle) => `${handle.type}:${handle.id}`).sort(compareIds);
       const actual = portSpecsForKind(spec.id)
         .map((port) => `${port.role}:${port.handle}`)
-        .sort((a, b) => a.localeCompare(b));
+        .sort(compareIds);
       expect(actual, `Ports für ${spec.id}`).toEqual(expected);
     }
   });

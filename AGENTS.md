@@ -217,7 +217,7 @@ Details: [ARCHITECTURE-RULES.md](docs/ai/ARCHITECTURE-RULES.md) und
 ## 12. Kontext
 
 - Detaillierte Arbeitsdokumentation: [`docs/ai/`](docs/ai/).
-- **ADRs 0001–0029:** Übersicht mit Kurzfassung je Entscheidung im
+- **ADRs 0001–0030:** Übersicht mit Kurzfassung je Entscheidung im
   [`README.md`](README.md#architektur-entscheidungen-adrs) (Abschnitt
   „Architektur-Entscheidungen“); die Volltexte liegen in `docs/adr/`.
   **ADR 0026 fehlt** (Nummer nicht vergeben — keine Datei, kein Verweis); ADR 0021

@@ -13,6 +13,7 @@ import {
 } from './geometry';
 import { classifySegmentAgainstNode, classifySegmentAgainstSegment } from './rules/collision';
 import { isPortBundleOverlap, routedPathGeometry } from './rules/portBundle';
+import { compareIds } from '../sortOrder';
 
 /**
  * WP-10 (#399): Routing-Invarianten (ROUTING-V2.md §12) als reine, für
@@ -320,7 +321,7 @@ export function countCrossings(edges: readonly RoutedEdge[]): number {
 export function serializeRoutes(edges: readonly RoutedEdge[]): string {
   return JSON.stringify(
     [...edges]
-      .sort((a, b) => a.id.localeCompare(b.id))
+      .sort((a, b) => compareIds(a.id, b.id))
       .map((edge) => ({ id: edge.id, waypoints: edge.waypoints }))
   );
 }

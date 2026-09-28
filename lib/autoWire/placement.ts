@@ -1,6 +1,7 @@
 import type { Node } from '../domain/graph'; // ARCH-001
 import { ROUTING_TOKENS } from '../routing/tokens';
 import { safeText } from '../safeText'; // AUDIT T1
+import { compareLabels } from '../sortOrder';
 
 /**
  * R-8 (Routing-Qualität, M11-2): AutoWire-Platzierung.
@@ -300,7 +301,7 @@ export function applyFlowLayout(nodes: Node[], edges: FlowEdge[], movableIds: Se
   const anchor = flowAnchor(blocked);
   for (const l of layers) {
     const bucket = byLayer.get(l)!;
-    bucket.sort((a, b) => sortKey(a).localeCompare(sortKey(b)));
+    bucket.sort((a, b) => compareLabels(sortKey(a), sortKey(b)));
     // Obergrenze gegen Endlossuche in pathologischen Plänen: Selbst wenn
     // jede Zeile belegt wäre, ist nach so vielen Schritten Platz.
     const maxRow = nodes.length * 2 + bucket.length + 8;

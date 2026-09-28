@@ -55,6 +55,7 @@ import { ROUTING_TOKENS } from '../../lib/routing/tokens';
 import { classifySegmentAgainstSegment } from '../../lib/routing/rules/collision';
 import { isPortBundleOverlap, routedPathGeometry, sharesPort } from '../../lib/routing/rules/portBundle';
 import { GOLDEN_PLANS, type GoldenPlanInput } from '../goldenmaster/plans';
+import { compareIds } from '../../lib/sortOrder';
 
 export type PlanAudit = {
   plan: string;
@@ -381,7 +382,7 @@ export function dumpPlan(planName: string): string {
   const edges = wired.edges as never as RouteEdgeRef[];
   const routes = routeAllCables(wired.nodes as never, edges);
   const lines: string[] = [];
-  for (const edge of [...edges].sort((a, b) => a.id.localeCompare(b.id))) {
+  for (const edge of [...edges].sort((a, b) => compareIds(a.id, b.id))) {
     const route = routes.get(edge.id);
     if (!route) continue;
     lines.push(
@@ -442,7 +443,7 @@ export function dumpPorts(planName: string): string {
 
   const lanes = portFanOutLanes(edges, resolve);
   const lines: string[] = [];
-  for (const edge of [...edges].sort((a, b) => a.id.localeCompare(b.id))) {
+  for (const edge of [...edges].sort((a, b) => compareIds(a.id, b.id))) {
     const src = resolve(edge, 'source');
     const tgt = resolve(edge, 'target');
     const lane = lanes.get(edge.id);

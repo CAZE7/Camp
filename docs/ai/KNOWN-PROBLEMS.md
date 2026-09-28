@@ -289,17 +289,32 @@ cableClearance` — an einer Klemme hängen im Referenzbestand regelmäßig zwei
 - **SEVERITY:** mittel
 - **WORKAROUND:** Bei Arbeiten an der Domänentrennung zuerst den Konsumenten schaffen —
   die Regel ist fertig, die Anbindung fehlt.
-- **GEMESSENE WIRKUNG (2026-09-09, `npm run routing:domain-probe`):**
-  84 gemischte Kantenpaare in den sechs Referenzplänen (inverter 9, acdc 33, complex 42).
-  Davon **12 kreuzend** (acdc 4, complex 8) und **0 in zu enger Parallellage**.
-  → Eine Clearance-Regel mit 24 px würde die heutigen Trassen **nicht** verändern.
-  → Nur wenn die Regel auch Kreuzungen verbieten würde, verschöben sich 12 Paare — das
-  widerspricht ADR 0009 (Kreuzungen erlaubt, Überdeckungen verboten).
-  → Empfehlung: Anbindung als **Clearance** (wie I3, nur mit 24 px für gemischte Paare).
-  Der sichtbare Nutzen entsteht erst, wenn Wasser-Rohre geroutet werden
-  (`electrical ↔ water`); auf reinen Elektro-Plänen bleibt er bei null.
-- **RELATED TEST:** `lib/routing/rules/collision.test.ts`, `npm run routing:domain-probe`
-  (`scripts/routing/domainProbe.ts`)
+- **GEMESSENE WIRKUNG (2026-09-28, korrigiert — vorher falsch berichtet):** Der frühere
+  Eintrag „0 in zu enger Parallellage" (2026-09-09) war ein **Blindfleck der Sonde**, kein
+  Messergebnis: Sie las die Domäne nur aus `edge.data.edgeDomain` und fiel sonst auf `dc12`
+  zurück — AutoWire-Kanten tragen das Feld nicht, also galt jede 230-V-Leitung ohne Feld als
+  Gleichstrom. Die Sonde leitet die Domäne jetzt mit derselben Autorität ab wie Anzeige und
+  Sizing (`edgeDomainOf` aus Knotentyp + Handle) und zählt die Abstände je **Segmentpaar** über
+  das Kollisionsmodell (`classifySegmentAgainstSegment`; Kreuzungen `soft` und Überdeckungen
+  `hard` zählen nicht mit, ADR 0009/0019).
+  Ergebnis über die sechs Referenzpläne (`npm run routing:domain-probe`):
+  **80 gemischte Paare**, davon **12 kreuzend**, darunter **23 zu nahe Segmentpaare**
+  (inverter 0, acdc 5, complex 18; übrige Pläne 0), engstes Paar
+  `e-busbar-fuse × e-shore-inv` = **0,8 px**. Betroffen sind 7 Kantenpaare (acdc 1,
+  complex 6) — überwiegend die 230-V-Zuleitungen am Wechselrichter (`e-shore-inv`,
+  `e-inv-induct`) entlang der 12-V-Sammelschienen.
+  → Die Regel ist also **nicht** wirkungslos-neutral: Eine Anbindung würde die eingefrorenen
+  Referenzpläne verschieben (Kabellängen, Kreuzungen, Golden Master, Ratchets) — sie ist
+  eine Layout-/Port-Entscheidung, keine reine Kostenmodell-Änderung.
+  → Zweiter Versuch erst mit **getrennten AC-/DC-Korridoren an den Ports** (eigene Lane je
+  Domäne im Port-Fan-Out, `lib/routing/rules/portFanOut.ts`) oder mit Wasser-Routing, wo der
+  Nutzen fachlich sichtbar wird (`electrical ↔ water`). Reine Tuben-Aufblähung im
+  A*-Lauf wurde am 2026-09-28 gebaut und gemessen: sie ändert die eingefrorenen Pläne
+  nicht (Audit unverändert), lässt aber die nahen Paare stehen — die Stubs der Bündel sind
+  von der Trassensperre ausgenommen, und genau dort laufen die gemischten Leitungen
+  zusammen. Der Versuch ist deshalb **nicht** ausgeliefert.
+- **RELATED TEST:** `lib/routing/rules/collision.test.ts`, `scripts/routing/domainProbe.test.ts`
+  (Ratchet der gemessenen Zahlen), `npm run routing:domain-probe` (`scripts/routing/domainProbe.ts`)
 - **RELATED ISSUE:** ROUTING-V2 §4.2.
 
 ---
@@ -529,9 +544,16 @@ routeAllCables → checkInvariants`, sechs Referenzpläne, Kartenmaß 192 × 120
 - **CURRENT BEHAVIOR:** Große Pläne werden im Live-Betrieb durch die 100-ms-Drossel
   (`ROUTE_THROTTLE_MS`) erträglich, nicht durch Laufzeit. Ab N≈500 mit planweiten Kanten
   übersteigt ein einzelner vollständiger Durchlauf die Drossel deutlich (≈2 s).
-- **EXPECTED BEHAVIOR:** Entweder ein zweiter, dokumentierter Messpunkt im Gate
-  (nicht-blockierend) oder eine Optimierung mit eigenem ADR. **Kein** stilles Anheben des
-  Budgets und kein Entfernen des Gates.
+- **ZWEITER MESSPUNKT (2026-09-28, ADR 0030):** Der Live-Pfad-Ratchet wertet jetzt zusätzlich
+  die **Streuung aus denselben Messproben** aus: `p90 ≤ 2 × Median`, blockierend
+  (Exit-Code 1). Gemessen über zehn Läufe lag das Verhältnis bei 1,11–1,56; die erste
+  Fassung mit 1,5 scheiterte sofort an einem 1,56-Lauf (der Median schwankt stärker als der
+  Schwanz) — deshalb 2. Ein absolutes p90-Budget bleibt verworfen: 292 ms bei unverändertem
+  Code unter Nebenlast. Median-Ratchet (60 ms) und 16-ms-Ziel bleiben unangetastet.
+- **EXPECTED BEHAVIOR:** Der zweite, dokumentierte Messpunkt ist umgesetzt (ADR 0030).
+  Offen bleibt die **absolute** Seite: große Pläne über dem 16-ms-Ziel brauchen eine
+  Optimierung mit eigenem ADR. **Kein** stilles Anheben des Budgets und kein Entfernen des
+  Gates.
 - **TEILWEISE UMGESETZT (2026-09-25, AUDIT P1):** Vorher maß das CI-Gate ausschließlich
   `buildOrthogonalPath` — den **Legacy-Router**, den die Fläche seit ADR 0014 nicht mehr
   zeichnet. `npm run perf:edge-routing` misst jetzt zusätzlich die **Live-Pipeline**
@@ -551,7 +573,8 @@ routeAllCables → checkInvariants`, sechs Referenzpläne, Kartenmaß 192 × 120
 - **WORKAROUND:** Drossel nutzen; Änderungen am A\*-Innenloop immer mit beiden Benchmarks
   gegenmessen. Einzelmessungen großer Pläne streuen um Faktor >2 — immer den Median nehmen.
 - **RELATED TEST:** `npm run perf:edge-routing` (CI-Gate), `npm run perf:route-scaling` (Probe)
-- **RELATED ISSUE:** ADR 0012, historisch AUDIT PERF-001 (Region-Filter; sechsstellig → ms).
+- **RELATED ISSUE:** ADR 0012, **ADR 0030** (Streuungs-Ratchet), historisch AUDIT PERF-001
+  (Region-Filter; sechsstellig → ms).
 
 ---
 

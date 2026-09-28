@@ -202,6 +202,19 @@ bench('Sehr groß', 120, 5);
  */
 const LIVE_PATH_RATCHET_MS = 60;
 const LIVE_PATH_REVOLUTIONS = 15;
+/**
+ * Streuungs-Ratchet (ADR 0030, PERF-001): Der Median allein sieht den Schwanz
+ * nicht — gemessen lag p90 bei 59–67 ms, während der Median 49–51 ms meldete
+ * (isoliert; unter Nebenlast 292 ms p90 bei unverändertem Code). Absolute
+ * Millisekunden sind auf geteilten Runnern nicht portabel, ein Verhältnis aus
+ * DENSELBEN Messproben schon: Last oder Takt bewegen Median und p90 gemeinsam.
+ * Erlaubt ist deshalb p90 ≤ Faktor × Median. Der Faktor ist bewusst locker
+ * (gemessene Spanne 1,15–1,56 über sieben Läufe, 2026-09-28) — er fängt die
+ * GROBE Entgleisung (eine Kante mit ausufernder Suche hebt den Schwanz um ein
+ * Vielfaches), nicht das Rauschen eines geteilten Runners. Wer den Schwanz
+ * wirklich senkt, zieht ihn nach unten (wie den Median-Ratchet).
+ */
+const LIVE_PATH_TAIL_FACTOR = 2;
 
 function livePathGate(): boolean {
   const { nodes, edges } = buildPlan(GATE_NODE_COUNT, GATE_EDGES_PER_NODE);
@@ -218,13 +231,21 @@ function livePathGate(): boolean {
   samples.sort((a, b) => a - b);
   const median = samples[Math.floor(samples.length / 2)]!;
   const p90 = samples[Math.floor(samples.length * 0.9)]!;
-  const passed = median <= LIVE_PATH_RATCHET_MS;
+  const medianOk = median <= LIVE_PATH_RATCHET_MS;
+  // 0 kann bei absurden Uhren vorkommen; dann ist die Streuung nicht bewertbar
+  // und der Median-Ratchet entscheidet (kein falsch-grünes Verhältnis).
+  const tailRatio = median > 0 ? p90 / median : Number.POSITIVE_INFINITY;
+  const tailOk = tailRatio <= LIVE_PATH_TAIL_FACTOR;
+  const passed = medianOk && tailOk;
 
   console.log(
     `\nPerf-Gate Live-Pfad (routeAllCables, AUDIT P1): N=${GATE_NODE_COUNT} E=${routeEdges.length}  ` +
       `Median ${median.toFixed(2)} ms  p90 ${p90.toFixed(2)} ms  Ratchet ${LIVE_PATH_RATCHET_MS} ms ` +
-      `(ADR-0012-Ziel 16 ms)  → ` +
-      (passed ? 'OK' : 'ÜBERSCHRITTEN')
+      `(ADR-0012-Ziel 16 ms)  ·  Streuung p90/Median ${tailRatio.toFixed(2)} ≤ ${LIVE_PATH_TAIL_FACTOR} ` +
+      `(ADR 0030)  → ` +
+      (passed
+        ? 'OK'
+        : `ÜBERSCHRITTEN (${[medianOk ? null : 'Median', tailOk ? null : 'Streuung'].filter(Boolean).join(' + ')})`)
   );
   return passed;
 }

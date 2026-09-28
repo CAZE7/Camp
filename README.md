@@ -22,7 +22,7 @@ keine Abnahme durch eine Fachkraft.
 ```bash
 npm ci          # exakte Abhängigkeiten aus dem Lockfile
 npm run dev     # http://localhost:3000/elektrik-planung/
-npm run check   # Lint + Format + Typecheck (2 Profile) + 2454 Tests
+npm run check   # Lint + Format + Typecheck (2 Profile) + 2476 Tests
 npm run build   # Static Export nach ./out
 ```
 
@@ -141,7 +141,7 @@ Alle Angaben stammen aus Läufen auf dem aktuellen Stand
 | Typecheck (inkl. Tests)     | `npm run typecheck:tests`                   | **0 Fehler** — Einheiten und Indexschärfe gelten auch in Tests                            |
 | Lint (ESLint 10, flat)      | `npm run lint`                              | **0 Fehler** — u. a. consistent-type-imports, Tailwind-Sortierung                         |
 | Format (Prettier)           | `npm run format:check`                      | sauber, inkl. Tailwind-Klassensortierung                                                  |
-| Unit-/Komponententests      | `npm test`                                  | **2454 Tests, 179 Dateien, grün**                                                         |
+| Unit-/Komponententests      | `npm test`                                  | **2476 Tests, 181 Dateien, grün**                                                         |
 | Coverage-Gate (lib/**)      | `npm run test:coverage`                     | Schwellen: Zeilen 90, Branches 85, Funktionen 90, Statements 95                           |
 | Property-Tests (VDE)        | `npx vitest run lib/vde-properties.test.ts` | 35 Tests, ~17.000 generierte Fälle                                                        |
 | Routing-Invarianten         | `npx vitest run components/edges/utils`     | 25 Szenarien × 7 Invarianten                                                              |
@@ -227,6 +227,7 @@ Branch Protection: `docs/CI.md`.
 | [0027](docs/adr/0027-elk-port-freigabe-zwei-lane-schritte.md)               | Port-Freigabe: zwei Lanes     | 68 px statt 52: ELK-Pfad I2 5 → **0**, −15 Kreuzungspaare, Kabel +11,3 %            |
 | [0028](docs/adr/0028-elk-spaltenabstand-drei-trassen.md)                    | ELK-Spaltenkorridor           | 100 px statt 68: ELK-Pfad mit echten Kartenboxen I2 1 → **0**, Kabel +13,6 %        |
 | [0029](docs/adr/0029-kartenbox-ist-routing-input.md)                        | Kartenbox ist Routing-Input   | Übersicht blendet nur aus statt zu schrumpfen — Badge kippt nicht mehr mit Stufe    |
+| [0030](docs/adr/0030-perf-streuungs-ratchet.md)                             | Streuungs-Ratchet (p90)       | Live-Pfad: p90 ≤ 2 × Median aus denselben Proben — absolute ms sind nicht portabel  |
 
 ## Weitere Nachweise
 

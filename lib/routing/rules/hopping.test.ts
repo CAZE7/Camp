@@ -10,6 +10,7 @@ import {
 } from './hopping';
 import { ROUTING_TOKENS } from '../tokens';
 import { segmentIntersectionPoint, waypointsToSegments, type Point, type Segment } from '../geometry';
+import { compareIds } from '../../sortOrder';
 
 /**
  * WP-7 (#395): Kreuzungs-Hopping.
@@ -193,7 +194,7 @@ describe('analyzeRouteCrossings — gemeinsamer Hop-/Crossing-Scan', () => {
       };
     });
 
-    const sorted = [...edges].sort((a, b) => a.id.localeCompare(b.id));
+    const sorted = [...edges].sort((a, b) => compareIds(a.id, b.id));
     const referenceCounts = new Map(sorted.map((edge) => [edge.id, 0]));
     const referenceHops = new Map<string, Hop[]>(sorted.map((edge) => [edge.id, []]));
     const chooseHopper = (a: HopEdge, b: HopEdge): string | undefined => {
@@ -203,7 +204,7 @@ describe('analyzeRouteCrossings — gemeinsamer Hop-/Crossing-Scan', () => {
       const priorityA = routingPriority(a);
       const priorityB = routingPriority(b);
       if (priorityA !== priorityB) return priorityA < priorityB ? a.id : b.id;
-      return a.id.localeCompare(b.id) > 0 ? a.id : b.id;
+      return compareIds(a.id, b.id) > 0 ? a.id : b.id;
     };
 
     for (let i = 0; i < sorted.length; i++) {

@@ -7,6 +7,7 @@ import { relevantCumulativeDrop } from '../../lib/autoWire/sizing';
 import type { CableEdge } from '../../lib/autoWire/primitives';
 import { routeAllCables, type RouteEdgeRef } from '../../components/edges/utils/routeAll';
 import type { GoldenPlanInput } from './plans';
+import { compareIds } from '../../lib/sortOrder';
 
 /**
  * WP-0b (#402): Golden-Master-Pipeline.
@@ -118,7 +119,7 @@ const toGoldenEdge = (e: Edge | CableEdge): GoldenEdge => ({
   data: (e.data ?? {}) as Record<string, unknown>,
 });
 
-const byId = <T extends { id: string }>(arr: T[]): T[] => [...arr].sort((a, b) => a.id.localeCompare(b.id));
+const byId = <T extends { id: string }>(arr: T[]): T[] => [...arr].sort((a, b) => compareIds(a.id, b.id));
 
 /** Führt die volle Alt-System-Pipeline aus und friert jede Stufe ein. */
 export function captureGoldenMaster(input: GoldenPlanInput): GoldenMaster {

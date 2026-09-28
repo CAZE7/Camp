@@ -1958,3 +1958,42 @@ Der Rest-I2 sind Trassenkollisionen verschobener Bündel
 TESTING-CONTEXT sind nachgezogen, und der `edgeSchema`-Test prüft jetzt
 Feld-für-Feld gegen `EDGE_DATA_SCHEMA` statt nur die sieben
 Unbekanntes-bleibt-Fälle.
+
+### 2026-09-28 — Sechsundzwanzigste Fassung: Sortier-Determinismus, Streuungs-Ratchet (ADR 0030), korrigierte Domänen-Messung
+
+**1. Die Sortierung hing von der Prozess-Locale ab (Roadmap §8 Nr. 10).** `String.prototype.localeCompare`
+ohne zweites Argument sortiert mit der ICU-Standard-Locale des laufenden Prozesses — unter `de` anders
+als unter `tr_TR`, und in beiden Fällen anders als der Codepoint-Vergleich, den die Golden Master
+einfrieren. Betroffen waren **32 Aufrufe in 17 Dateien** (u. a. Trassen-Ausgabe und Nudge in
+`routeAll`/`nudge`, Port-Fan-Out, Circuit-Trace-Ranking, Kabellängen-Ausgabe im Audit) — Stellen, die
+Reihenfolgen und damit Geometrie erzeugen, also nicht bloß Kosmetik. Neu ist `lib/sortOrder.ts` mit zwei
+bewusst getrennten Funktionen: `compareIds` (Codepoint-Vergleich, locale-frei — für Kennungen, IDs,
+Keys, Ausgabereihenfolgen) und `compareLabels` (`Intl.Collator('de')` — für Nutzertexte wie den
+`sortKey` der AutoWire-Platzierung). Alle Stellen sind migriert; `lib/sortOrder.test.ts` (6 Tests)
+belegt Ordnungsgleichheit mit dem String-Default, die Umlaut-Weiche beider Funktionen, totale Ordnung
+und Unabhängigkeit von `LC_ALL=tr_TR`.
+
+**2. PERF-001: das Live-Gate prüfte nur den Median (ADR 0030).** Der 60-ms-Ratchet des Live-Pfads hing
+am Median; gemessene Läufe lagen dort bei 40–50 ms, während das p90 59–67 ms erreichte — ein gestreuter
+Lauf konnte das Gate also passieren. Der Nachtrag prüft den Schwanz: **p90 ≤ 2 × Median** aus denselben
+Proben (ein absolutes p90-Budget wurde verworfen: 292 ms unter Last, also nicht reproduzierbar). Die
+engere Fassung mit Faktor 1,5 fiel an einem Lauf mit 1,56 — der Median schwankt stärker als der Schwanz;
+gemessene Spanne 1,11–1,56 aus zehn Läufen. ADR 0030 hält die Entscheidung fest, KNOWN-PROBLEMS
+PERF-001 den zweiten Messpunkt; die absolute Seite (Optimierung großer Pläne) bleibt ausdrücklich offen.
+
+**3. ROUTE-003: die Sonde meldete zu wenig — Messung korrigiert.** `routing:domain-probe` las die
+Domäne ausschließlich aus `edge.data.edgeDomain` und fiel sonst auf `dc12` zurück. AutoWire-Kanten
+tragen das Feld nicht, also galt jede 230-V-Leitung ohne Feld als Gleichstrom — die Sonde meldete
+„0 zu nah", obwohl es Stellen unter 24 px gibt. Sie leitet die Domäne jetzt mit derselben Autorität ab
+wie Anzeige und Sizing (`edgeDomainOf` aus Knotentyp + Handle, persistierte Domäne zuerst) und zählt je
+**Segmentpaar** über das Kollisionsmodell. Ergebnis: **80 gemischte Paare, 12 kreuzend, 23 zu nahe
+Segmentpaare** (acdc 5, complex 18; engstes `e-busbar-fuse × e-shore-inv` = 0,8 px). Eine
+domänenabhängige Tuben-Aufblähung im A*-Lauf wurde gebaut und gemessen: die eingefrorenen Pläne bleiben
+unverändert, die nahen Paare bleiben stehen — die Bündel-Stubs sind von der Trassensperre ausgenommen,
+und genau dort laufen die gemischten Leitungen zusammen. Der Versuch ist deshalb **nicht** ausgeliefert;
+`scripts/routing/domainProbe.test.ts` friert die Zahlen als Ratchet ein (inkl. Regressionsfall für den
+Blindfleck selbst), und der KNOWN-PROBLEMS-Eintrag nennt die Bedingung für einen zweiten Versuch
+(getrennte AC-/DC-Lanes im Port-Fan-Out oder Wasser-Routing).
+
+**4. Zahlen.** `npm test` steht bei **2476 Tests / 181 Dateien** (2026-09-28); README,
+`docs/ai/README.md` und TESTING-CONTEXT sind nachgezogen.
