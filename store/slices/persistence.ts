@@ -1,4 +1,5 @@
 import { sanitizeNodeDataBySchema } from '../../lib/nodeSchema'; // DOM-003
+import { sanitizeEdgeDataBySchema } from '../../lib/edgeSchema'; // DOM-004
 import { createJSONStorage, type PersistOptions } from 'zustand/middleware';
 import { type Node, type Edge } from '@xyflow/react';
 import { plannerDebouncedStorage } from '../storage';
@@ -133,9 +134,17 @@ export function stripNodeMeasurement<T extends Node>(node: T): T {
   return out;
 }
 
+/**
+ * DOM-004: Falsch getippte BEKANNTE Kantenfelder werden entfernt statt
+ * „geheilt" — die Leseschicht fällt auf ihren dokumentierten Default zurück
+ * (`lib/edgeSchema.ts`, symmetrisch zu `sanitizeNodeData` für `node.data`).
+ * Unbekannte Felder bleiben erhalten (Forward-Kompatibilität).
+ */
 function sanitizeEdgeData<T extends Edge>(edge: T): T {
   if (!edge.data || typeof edge.data !== 'object') return { ...edge, data: {} };
-  return edge;
+  const { data, removedFields } = sanitizeEdgeDataBySchema(edge.data as Record<string, unknown>);
+  if (removedFields.length === 0) return edge;
+  return { ...edge, data };
 }
 
 /**

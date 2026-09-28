@@ -7,7 +7,7 @@ Zweck: verhindern, dass ein Agent eine alte und eine neue Implementierung vermis
 
 ## L-1 — Iterativer Router `orthogonalRouting.ts`
 
-- **Was:** `components/edges/utils/orthogonalRouting.ts` (628 Zeilen) mit
+- **Was:** `components/edges/utils/orthogonalRouting.ts` (649 Zeilen, inkl. geteilter Geometrie-Bausteine) mit
   `buildOrthogonalPath`, `orthogonalWaypoints`, `routeWaypoints`, `avoidObstacles`.
   Invariantensystem **R1–R7** (`docs/ROUTING-INVARIANTS.md`).
 - **Warum existiert er:** Er war der erste Router des Projekts (vor A*). Er blieb, weil die

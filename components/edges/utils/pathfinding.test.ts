@@ -24,9 +24,12 @@ import {
   BEND_COST,
   U_TURN_COST,
   OBSTACLE_MARGIN,
+  MAX_EXPANSIONS,
+  MAX_ACCEPTABLE_CROSSINGS,
   type Point,
   type Rect,
 } from './pathfinding';
+import { MAX_ACCEPTABLE_CROSSINGS as LEGACY_MAX_ACCEPTABLE_CROSSINGS } from './orthogonalRouting';
 import { waypointsToPath, polarityPathOffset, edgeLabelNudge } from './pathUtils';
 import { ROUTING_SCENARIOS } from './routingScenarios';
 import { ROUTING_TOKENS } from '../../../lib/routing/tokens';
@@ -848,5 +851,26 @@ describe('Kostenmodell-Anbindung (ROUTE-002)', () => {
     expect(BEND_COST).toBeGreaterThan(COST_WEIGHTS.nearbyLane);
     // Eine Kehre bleibt teurer als zwei Biegungen (sonst kippt die A*-Heuristik).
     expect(U_TURN_COST).toBeGreaterThan(2 * BEND_COST);
+  });
+});
+
+/**
+ * ROUTE-004 (Rest): `MAX_EXPANSIONS` und `MAX_ACCEPTABLE_CROSSINGS` sind
+ * Budget bzw. Abbruchschwelle — keine geometrischen Preise. Sie stehen
+ * deshalb nicht in `lib/routing/tokens.ts`; dieser Drift-Guard hält sie
+ * stattdessen fest. Wer sie ändert, muss hier bewusst nachziehen (und den
+ * Perf-/Qualitätseffekt messen), statt sie unbemerkt zu verschieben.
+ */
+describe('Budget- und Abbruchschwellen (ROUTE-004)', () => {
+  it('hält das Expansions-Budget des A*-Laufs fest', () => {
+    expect(MAX_EXPANSIONS).toBe(48_000);
+  });
+
+  it('hält die Kreuzungs-Abbruchschwelle fest (und synchron zur Legacy-Engine)', () => {
+    expect(MAX_ACCEPTABLE_CROSSINGS).toBe(2);
+    // Die Legacy-Engine führt denselben Namen weiter; laufen die beiden
+    // Schwellen auseinander, ist eine der beiden Seiten absichtlich geändert
+    // worden — dann gehört die andere Seite mitgezogen.
+    expect(LEGACY_MAX_ACCEPTABLE_CROSSINGS).toBe(MAX_ACCEPTABLE_CROSSINGS);
   });
 });

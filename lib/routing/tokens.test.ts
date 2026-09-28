@@ -7,6 +7,7 @@ import {
   generateElkLayoutOptions,
   generateElkInteractiveOptions,
   generateElkRankedOptions,
+  elkColumnSpacing,
   type RoutingTokens,
 } from './tokens';
 import {
@@ -88,7 +89,8 @@ describe('ELK-Config-Sync (generiert, nicht gepflegt)', () => {
     expect(options['elk.layered.spacing.edgeNodeBetweenLayers']).toBe('33');
     expect(options['elk.layered.spacing.edgeEdgeBetweenLayers']).toBe('7');
     expect(options['elk.spacing.nodeNode']).toBe('44');
-    expect(options['elk.layered.spacing.nodeNodeBetweenLayers']).toBe('44');
+    // Zwischen den Schichten gilt der Korridor-Token: 44 + 2·16 = 76.
+    expect(options['elk.layered.spacing.nodeNodeBetweenLayers']).toBe('76');
   });
 
   it('Default-Optionen tragen die Spec-Werte und die Spec-Schalter', () => {
@@ -99,11 +101,29 @@ describe('ELK-Config-Sync (generiert, nicht gepflegt)', () => {
       'elk.spacing.edgeEdge': '12',
       'elk.spacing.edgeNode': '16',
       'elk.spacing.nodeNode': '68',
-      'elk.layered.spacing.nodeNodeBetweenLayers': '68',
+      'elk.layered.spacing.nodeNodeBetweenLayers': '100',
       'elk.layered.mergeEdges': 'false',
       'elk.portConstraints': 'FIXED_ORDER',
       'elk.junctionPoints': 'true',
     });
+  });
+
+  /**
+   * ADR 0028: Der Korridor zwischen zwei Spalten ist breiter als der
+   * Kartenabstand derselben Spalte. Herleitung (Handle-Überstand 2×21 px +
+   * 2·cableClearance + 2·laneGrid = 98 px) und Messung stehen am Token; hier
+   * wird die Summe gepinnt, damit sie nicht still auseinanderläuft.
+   */
+  it('Korridor zwischen ELK-Spalten ist Port-Freigabe + zwei Lane-Schritte', () => {
+    expect(elkColumnSpacing()).toBe(ROUTING_TOKENS.portFacingClearance + 2 * ROUTING_TOKENS.laneGrid);
+    expect(elkColumnSpacing()).toBe(100);
+    expect(elkColumnSpacing()).toBeGreaterThan(ROUTING_TOKENS.portFacingClearance);
+    // Der Zwischenraum muss drei Trassen mit voller Freigabe tragen: die
+    // Handle-Boxen (2×21 px) plus 2·cableClearance + 2·laneGrid.
+    expect(elkColumnSpacing()).toBeGreaterThanOrEqual(
+      2 * 21 + 2 * ROUTING_TOKENS.cableClearance + 2 * ROUTING_TOKENS.laneGrid
+    );
+    expect(elkColumnSpacing({ ...ROUTING_TOKENS, laneGrid: 24 })).toBe(116);
   });
 
   it('Gerankte Optionen setzen die Layering-Nebenbedingung ohne semiInteractive', () => {

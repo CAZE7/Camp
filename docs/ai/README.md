@@ -76,7 +76,7 @@ Der Datenfluss einer Planänderung:
 
 ```bash
 npm run check              # lint + format + typecheck (2 Profile) + Tests
-npm test                   # Vitest, 2018 Tests / 145 Dateien
+npm test                   # Vitest, 2444 Tests / 177 Dateien
 npm run typecheck:tests    # tsc inklusive Testdateien (Units wirken dort)
 npm run routing:audit      # Routing-Invarianten I1–I7 über die sechs Referenzpläne
 npm run test:goldenmaster  # Golden-Master-Diff

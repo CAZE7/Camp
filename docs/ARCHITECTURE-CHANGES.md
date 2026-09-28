@@ -1833,3 +1833,79 @@ Modulkommentar in `rules/costModel.ts`. **Keine** Router-Änderung, **kein** Rec
 Golden-Bewegung. Für einen zweiten Versuch sind zwei Bedingungen dokumentiert: die Vergabe
 muss **global** statt gierig entschieden werden, oder das A*-Gitter muss von der
 Tube-Envelope entkoppelt werden.
+
+### 2026-09-28 — Dreiundzwanzigste Fassung: Auto-Verbinden strukturiert (ELK-Korridor + Anzeige-Invariante) (ADR 0028, ADR 0029)
+
+**1. Zwei Ursachen für ein Symptom.** Das Badge „Routing: 5 Zwänge nicht erreicht"
+des Nutzers war reproduzierbar, aber kein Planfehler: Auf **denselben**
+ELK-Positionen ergibt die Detail-Kartenbox (192×126…202) **1× I2**, die
+Übersichtsbox (~120×84) dagegen **3× I2 + 2× I3 = 5**. Die Anzeige-Entscheidung
+„Übersichtlich" war damit ein Routing-Input (der Router liest die _gemessene_
+Karte), und der ELK-Spaltenkorridor war mit 68 px um eine Lane zu eng.
+
+**2. Anzeige-Invariante (ADR 0029).** Die Übersichtsstufe skaliert die Karte nicht
+mehr; sie blendet nur noch die Messwerte aus — `visibility: hidden` statt
+`display: none`, damit die Messzeilen ihren Platz behalten. Die alte
+`.planner-detail-overview .node-card`-Regel (width/min-width/padding) ist entfernt.
+Wächter: `components/planner/FlowCanvas.test.tsx` pinnt die Abwesenheit der
+Kartenbox-Regel und das `visibility`-Ausblenden; der Schaltertitel sagt jetzt
+„Messwerte ausblenden — Kartengröße bleibt (Routing-Stabilität)".
+
+**3. ELK-Korridor als eigener Token (ADR 0028).** `elkColumnSpacing()`
+= `portFacingClearance + 2·laneGrid` = **100 px** gilt nur noch für
+`elk.layered.spacing.nodeNodeBetweenLayers`; `elk.spacing.nodeNode` (Karten
+derselben Spalte) bleibt 68 px. Messung mit echten Kartenboxen (`complex`/`autark`,
+AutoWire, 23 Kanten): 68 px → **INVALID, 1× I2** (8 396/8 436 px Kabelweg);
+100 px → **VALID, I1=I2=I3=0** (9 540/9 580 px, +13,6 %). Auflösung über sieben
+Pläne (einheitliche 192×146-Karten): Korridor 68/84/86 → 3/7 valid, 88–98 → 5/7,
+100 → **7/7**. Der Wert ist aus der Geometrie hergeleitet (Handle-Überstand
+2×21 px + drei Trassen 2·cableClearance + 2·laneGrid = 98 px) und im Token-Test
+gepinnt.
+
+**4. „Automatisch verbinden" strukturiert (Wunsch 2026-09-28).** `autoWireSystem`
+fordert den ELK-Lauf nur noch **an** (`autoStructurePending`); der Canvas startet
+`structureAutoWiring`, sobald der Store für **alle** Knoten Maße kennt — ohne
+diesen Riegel rechnet ELK mit den Engine-Defaults (120×80) und legt Karten
+übereinander (gemessen: I1 = 49). Der Lauf nutzt den Sequenz-Guard
+(„letzte Anfrage gewinnt"), schreibt Positionen + Kanten **ohne zweiten
+Undo-Schritt** (ein Undo nimmt Verbinden und Strukturieren zusammen zurück) und
+räumt das Flag bei `clearPlan`, Undo/Redo, `applyTemplate` und manuellem
+`onLayout`/`onLayoutV2` ab. Store-Test: `store/autoStructure.test.ts`.
+
+**5. Gemessen und abgesichert.** Sieben Pläne (sechs Referenzpläne +
+AutoWire-Autark) sind nach Auto-Wire + ELK-Strukturierung **VALID** (I1–I3 = 0;
+`complex`/`autark` je 2 Leitungen mit Not-Freigabe — im grünen Badge benannt).
+Fest-Raster-Audit, Golden Master und Ratchets bleiben unverändert (**kein
+Recapture**). Nicht entschieden und damit eigene Scheiben: eine echte
+Kompaktstufe für große Pläne (ADR 0029) und der Fest-Raster-Korridor (ADR 0028).
+
+### 2026-09-28 — Vierundzwanzigste Fassung: Daten- und Legacy-Hygiene (DOM-004, ARCH-002, ROUTE-004, DOC-001/004)
+
+**1. Kanten-Schema beim Rehydrate (DOM-004).** `lib/edgeSchema.ts` deklariert die
+bekannten Felder aus `lib/domain/cableEdgeData.ts` (Zahl/String/Boolean, Enum
+`edgeDomain`, Deskriptor-Objekt `acProtection`) und `store/slices/persistence.ts`
+wendet es in `sanitizeEdgeData` an — dieselbe Semantik wie `lib/nodeSchema.ts` für
+`node.data`: falsch getippte BEKANNTE Felder werden entfernt (kein stilles „Heilen“,
+die Leseschicht fällt auf ihren dokumentierten Default), unbekannte Felder bleiben
+erhalten. Wächter: `lib/edgeSchema.test.ts`, `store/slices/persistence.test.ts`.
+
+**2. Legacy-Kennzeichnung statt Vermischung (ARCH-002/DOC-004).** Der Dateikopf von
+`components/edges/utils/orthogonalRouting.ts` markiert die Router-Kernfunktionen
+(`buildOrthogonalPath`, `orthogonalWaypoints`, `avoidObstacles`, `routeWaypoints`,
+R1–R7) als Legacy-/Galerie-Werkzeug und benennt die geteilten Bausteine, die der
+Produktivpfad weiterhin importiert (`readHandleBounds` in `pathfinding.ts`;
+`NODE_FALLBACK_*` und Typen in `routingCache.ts`). `orthogonalRouting.invariants.test.ts`
+trägt denselben Hinweis. Keine Mechanik-Änderung.
+
+**3. Budget-/Abbruchschwellen mit Drift-Guard (ROUTE-004).** `MAX_EXPANSIONS` (48 000)
+und `MAX_ACCEPTABLE_CROSSINGS` (2) bleiben lokale Schwellen — keine geometrischen
+Preise, also keine Tokens; sie sind jetzt in `pathfinding.test.ts` gepinnt, inklusive
+Gleichlauf mit der Legacy-Engine.
+
+**4. Doku-Status (DOC-001, DOC-004).** Die LESER-HINWEISE der beiden eingefrorenen
+Dokumente sind der dokumentierte Stand; die KNOWN-PROBLEMS-Einträge stehen auf
+„behoben“ (Body bleibt bewusst historisch).
+
+**5. Zahlen.** README, `docs/ai/README.md` und TESTING-CONTEXT nennen jetzt den
+gemessenen Stand **2444 Tests / 177 Dateien** (2026-09-28); das Design-Token-Gate
+174 Tests, die VDE-Property-Suite 35 Tests.

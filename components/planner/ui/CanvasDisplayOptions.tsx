@@ -23,8 +23,22 @@ type CanvasDisplayOptionsProps = {
   onSelectDetailLevel: (level: PlannerDetailLevel) => void;
 };
 
+/**
+ * Detailgrad der Karten.
+ *
+ * Die Übersichtsstufe blendet die Messwerte aus, lässt die Kartenbox aber
+ * unverändert (siehe `app/globals.css`): Die Box ist Routing-Input — eine
+ * kleinere Karte verschiebt die Anschlüsse, und der Status-Chip
+ * „Routing: n Zwänge“ würde mit der Ansichtsstufe kippen. Der Titel sagt
+ * deshalb, was der Schalter wirklich tut, statt eine kleinere Karte zu
+ * versprechen (die es aus Routing-Gründen nicht gibt).
+ */
 const DETAIL_OPTIONS: { level: PlannerDetailLevel; label: string; title: string }[] = [
-  { level: 'overview', label: 'Übersichtlich', title: 'Nur Symbol und Name — für große Pläne' },
+  {
+    level: 'overview',
+    label: 'Übersichtlich',
+    title: 'Messwerte ausblenden — Kartengröße bleibt (Routing-Stabilität)',
+  },
   { level: 'detail', label: 'Mit Werten', title: 'Volle Karte mit Messwerten' },
 ];
 

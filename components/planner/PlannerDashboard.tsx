@@ -367,7 +367,7 @@ function ActionsSection({
         onClick={runAutoWire}
         disabled={busy !== null}
         className="min-h-11 min-w-11 gap-1.5 px-3"
-        title="Verbindungen, Querschnitte und Sicherungen automatisch berechnen"
+        title="Verbindungen, Querschnitte und Sicherungen automatisch berechnen; strukturiert den Plan anschließend nach ELK"
         aria-label="Automatisch verbinden"
       >
         {busy === 'wire' ? (

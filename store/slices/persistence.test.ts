@@ -187,6 +187,35 @@ describe('migratePlannerPersisted', () => {
     // dokumentierte Defaults), unbekannte bleiben:
     expect(muell?.data).toEqual({ label: 'Alt' });
   });
+
+  it('DOM-004: Schema-Validierung entfernt falsch getippte bekannte Kantenfelder', () => {
+    const persisted = {
+      edges: [
+        {
+          id: 'ok',
+          source: 'batt',
+          target: 'fuse',
+          data: { crossSection: 16, edgeDomain: 'DC_12V', autoWired: true, notiz: 'bleibt' },
+        },
+        {
+          id: 'muell',
+          source: 'batt',
+          target: 'shunt',
+          data: { crossSection: '2,5', fuseSize: 'ja', edgeDomain: 'HV_400V', autoWired: 1 },
+        },
+      ],
+    };
+    const result = migratePlannerPersisted(persisted, 1);
+    expect(result.edges?.find((e) => e.id === 'ok')?.data).toEqual({
+      crossSection: 16,
+      edgeDomain: 'DC_12V',
+      autoWired: true,
+      notiz: 'bleibt',
+    });
+    // Aus 'muell' fällt JEDES falsch getippte Feld heraus — kein stilles
+    // „Heilen“, der leere Rest bleibt als Objekt bestehen.
+    expect(result.edges?.find((e) => e.id === 'muell')?.data).toEqual({});
+  });
 });
 
 describe('S5 — persistierte Stände können den Prototypen nicht verseuchen', () => {

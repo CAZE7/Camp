@@ -125,6 +125,35 @@ export const alternativeRouteGap = (tokens: RoutingTokens = ROUTING_TOKENS): num
   ALTERNATIVE_LANE_STEP * tokens.laneGrid;
 
 /**
+ * Kartenabstand ZWISCHEN zwei ELK-Spalten (Schichten) — der Korridor, in dem
+ * die Leitungen von einer Rolle zur nächsten laufen (ADR 0028).
+ *
+ * `portFacingClearance + 2·laneGrid` = 100 px. Die Summe ist aus der Geometrie
+ * hergeleitet, nicht gesetzt:
+ *
+ * - Die **Handle-Boxen** stehen 21 px über die Karte hinaus (44 px breit, Mitte
+ *   auf dem Kartenrand). Auf beiden Seiten eines Korridors gehen davon 42 px
+ *   ab — bei 68 px blieben 26 px, und damit passt **eine** Trasse, nicht zwei
+ *   (gemessen: I2 bleibt im ELK-Pfad, `complex`/`autark` je 1 Paar).
+ * - Drei parallele Trassen brauchen `2·cableClearance + 2·laneGrid` = 56 px
+ *   (12 px Freigabe zur Karte, zwei Lane-Schritte zwischen den Trassen).
+ * - 42 + 56 = 98 px; 100 px sind die nächste Summe aus Tokens und halten den
+ *   Puffer für die Trassen-Rundung.
+ *
+ * Gemessen über sieben Pläne (sechs Referenzpläne + AutoWire-Autark,
+ * `applyAdvancedLayout` → `routeAllCables` → Abschlussvalidierung):
+ * mit 68 px bleibt I2 ≠ 0, mit 100 px sind alle sieben in I1–I3 = 0. Preis:
+ * +13,6 % Kabelweg im ELK-Pfad (complex 8 396 → 9 540 px) — wie in ADR 0027
+ * benannt und in Kauf genommen.
+ *
+ * `elk.spacing.nodeNode` (Karten derselben Spalte) bleibt bei
+ * `portFacingClearance`: Dort ist der Engpass die Port-Staffel am Bauteil,
+ * nicht der Trassen-Korridor.
+ */
+export const elkColumnSpacing = (tokens: RoutingTokens = ROUTING_TOKENS): number =>
+  tokens.portFacingClearance + 2 * tokens.laneGrid;
+
+/**
  * ELK-Layered-Optionsstruktur, GENERIERT aus den Tokens
  * (`docs/ROUTING-V2.md` §6.1). Konsumiert ab WP-4 vom elkjs-Adapter;
  * bis dahin sichert der Config-Sync-Test, dass niemand parallel eine
@@ -146,7 +175,12 @@ export function generateElkLayoutOptions(
     // „Plan ordnen" produzierte Pläne, die der Router nicht kollisionsfrei
     // verlegen kann (Finding 2026-09-27, ROUTE-BUG-32).
     'elk.spacing.nodeNode': String(tokens.portFacingClearance),
-    'elk.layered.spacing.nodeNodeBetweenLayers': String(tokens.portFacingClearance),
+    // Korridor zwischen den Rollen-Spalten: portFacingClearance + 2·laneGrid
+    // (Herleitung und Messung in `elkColumnSpacing`, ADR 0028). Mit der
+    // Port-Freigabe allein (68 px) bleiben im ELK-Pfad zwei parallele Trassen
+    // auf derselben Linie (I2) — der Korridor ist dann von den Handle-Boxen
+    // bis auf 26 px eingeengt.
+    'elk.layered.spacing.nodeNodeBetweenLayers': String(elkColumnSpacing(tokens)),
     'elk.layered.spacing.edgeNodeBetweenLayers': String(tokens.elkEdgeNodeSpacing),
     'elk.layered.spacing.edgeEdgeBetweenLayers': String(tokens.cableClearance),
     'elk.layered.mergeEdges': 'false',

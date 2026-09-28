@@ -8,8 +8,13 @@ Legende Severity: **hoch** = Agent kann falschen Code ändern / falsche Sicherhe
 
 ---
 
-## DOC-001 — `docs/ROUTING-V2.md` beschreibt gelöschte Verzeichnisse
+## DOC-001 — `docs/ROUTING-V2.md` beschreibt gelöschte Verzeichnisse — **behoben 2026-09-28**
 
+- **STATUS:** behoben über den **LESER-HINWEIS** am Dokumentkopf (2026-09-10): Er nennt die
+  gelöschten Verzeichnisse, verweist auf den realen Pfad (`lib/routing/*` +
+  `components/edges/utils/*`) und korrigiert den ELK-Status (produktiv seit ADR 0018).
+  Der eingefrorene Spec-Text bleibt bewusst historisch (FROZEN, Zielbild) — die verbindliche
+  Beschreibung des Ist-Zustands liegt in `docs/ai/ROUTING-CONTEXT.md`.
 - **AREA:** Dokumentation / Routing
 - **FILE:** `docs/ROUTING-V2.md`
 - **DESCRIPTION:** Die Spec nennt `lib/planner/geometry`, `lib/planner/routing-core` und
@@ -49,7 +54,7 @@ Legende Severity: **hoch** = Agent kann falschen Code ändern / falsche Sicherhe
 
 ## DOC-003 — Veraltete Zahlen im `README.md` — **behoben 2026-09-09**
 
-- **STATUS:** behoben. `README.md` nennt jetzt 2018 Tests / 145 Dateien, React Flow
+- **STATUS:** behoben. `README.md` nennt jetzt die jeweils aktuelle Zahl (2026-09-28: 2444 Tests / 177 Dateien), React Flow
   (`@xyflow/react`) 12.11 und als Routing-Engine den produktiven globalen Pass
   (`components/edges/utils/routeAll.ts`) statt des Legacy-Moduls `orthogonalRouting.ts`.
 - **AREA:** Dokumentation
@@ -64,8 +69,13 @@ Legende Severity: **hoch** = Agent kann falschen Code ändern / falsche Sicherhe
 
 ---
 
-## DOC-004 — `docs/ROUTING-INVARIANTS.md` beschreibt die falsche Engine
+## DOC-004 — `docs/ROUTING-INVARIANTS.md` beschreibt die falsche Engine — **behoben 2026-09-28**
 
+- **STATUS:** behoben über den **LESER-HINWEIS** am Dokumentkopf (2026-09-10): R1–R7 sind
+  dort ausdrücklich als Invarianten des LEGACY-Einzelrouten-Routers markiert, die produktiven
+  Invarianten I1–I10 (`lib/routing/invariants.ts`, `npm run routing:audit`, Report je Kante
+  unter `useCableRouteFinalValidation`) sind benannt; ebenso, dass die Galerie die
+  Legacy-Geometrie zeigt. Die R1–R7-Kapitel bleiben als Referenz des Legacy-Vertrags stehen.
 - **AREA:** Dokumentation / Routing
 - **FILE:** `docs/ROUTING-INVARIANTS.md`, `components/edges/utils/orthogonalRouting.ts`
 - **DESCRIPTION:** Das Dokument definiert die Invarianten **R1–R7** für
@@ -294,7 +304,7 @@ cableClearance` — an einer Klemme hängen im Referenzbestand regelmäßig zwei
 
 ---
 
-## ROUTE-004 — Geometrie-Zahlen außerhalb der Tokens
+## ROUTE-004 — Geometrie-Zahlen außerhalb der Tokens — **behoben 2026-09-28**
 
 - **AREA:** Routing
 - **FILE:** `components/edges/utils/pathfinding.ts` (`searchFrame`), `components/edges/utils/routeAll.ts`
@@ -323,6 +333,11 @@ cableClearance` — an einer Klemme hängen im Referenzbestand regelmäßig zwei
   lokalen Konstanten mehr, sondern `COST_WEIGHTS.bend` / `.uTurn` aus dem generierten
   Kostenmodell (5 bzw. 25 × `laneGrid`; siehe ROUTE-002 Teil 1). Der Drift-Guard steht in
   `costModel.test.ts` und `pathfinding.test.ts`.
+- **STATUS (2026-09-28): erledigt.** `MAX_EXPANSIONS` (48 000) und
+  `MAX_ACCEPTABLE_CROSSINGS` (2) bleiben bewusst lokale **Budget-/Abbruchschwellen** —
+  keine geometrischen Preise, also keine Tokens (die Entscheidung dazu steht im Modul).
+  Sie sind jetzt per Drift-Guard in `pathfinding.test.ts` gepinnt, inklusive Gleichlauf
+  mit der Legacy-Engine (`orthogonalRouting.ts`): eine einseitige Änderung fällt auf.
 
 ---
 
@@ -445,8 +460,17 @@ routeAllCables → checkInvariants`, sechs Referenzpläne, Kartenmaß 192 × 120
 
 ---
 
-## ARCH-002 — Legacy-Router lebt weiter (628 Zeilen + zwei Testdateien)
+## ARCH-002 — Legacy-Router lebt weiter (649 Zeilen + zwei Testdateien) — **behoben 2026-09-28**
 
+- **STATUS (2026-09-28): behoben (Kennzeichnung).** Der Dateikopf von
+  `components/edges/utils/orthogonalRouting.ts` markiert die Router-Kernfunktionen jetzt
+  ausdrücklich als **Legacy-/Galerie-Werkzeug** (R1–R7 sind nicht der Produktivpfad; dieser
+  ist I1–I10 über `routeAllCables` → `findCablePath`) und benennt zugleich die geteilten
+  Bausteine, die der Produktivpfad weiterhin importiert (`readHandleBounds` in
+  `pathfinding.ts`; `NODE_FALLBACK_*` und die Typen in `routingCache.ts`).
+  `orthogonalRouting.invariants.test.ts` trägt denselben Hinweis. Der Code bleibt, weil die
+  Routing-Galerie auf ihm aufbaut (Entfernen wäre eine eigene Entscheidung über die Galerie,
+  LEGACY.md L-1).
 - **AREA:** Routing / Legacy
 - **FILE:** `components/edges/utils/orthogonalRouting.ts`
 - **DESCRIPTION:** `buildOrthogonalPath`, `orthogonalWaypoints`, `avoidObstacles` werden nur von
@@ -541,10 +565,16 @@ routeAllCables → checkInvariants`, sechs Referenzpläne, Kartenmaß 192 × 120
 
 ---
 
-## DOM-004 — Kantendaten werden beim Laden nicht schemageprüft
+## DOM-004 — Kantendaten werden beim Laden nicht schemageprüft — **behoben 2026-09-28**
 
+- **STATUS:** behoben. `lib/edgeSchema.ts` deklariert die bekannten Felder aus
+  `lib/domain/cableEdgeData.ts` (Zahl/String/Boolean/Enum `edgeDomain`, Objekt
+  `acProtection`); `store/slices/persistence.ts` wendet es in `sanitizeEdgeData` an —
+  dieselbe Semantik wie `lib/nodeSchema.ts` für `node.data`: falsch getippte BEKANNTE
+  Felder werden entfernt (kein stilles „Heilen“, die Leseschicht fällt auf ihren
+  dokumentierten Default), unbekannte Felder bleiben erhalten.
 - **AREA:** Domäne / Persistenz
-- **FILE:** `store/slices/persistence.ts` (`sanitizeEdgeData`)
+- **FILE:** `store/slices/persistence.ts` (`sanitizeEdgeData`), `lib/edgeSchema.ts`
 - **DESCRIPTION:** Die Migration wendet `lib/nodeSchema` nur auf `node.data` an.
   `sanitizeEdgeData` prüft lediglich, dass `data` ein Objekt ist. Falsch getippte Felder in
   `edge.data` (z. B. `crossSection: '2,5'`, `fuseSize: 'ja'`) überleben den Rehydrate.
@@ -554,21 +584,28 @@ routeAllCables → checkInvariants`, sechs Referenzpläne, Kartenmaß 192 × 120
 - **SEVERITY:** mittel
 - **WORKAROUND:** Beim Lesen von `edge.data` immer `parseQuantity`/`quantityOr` bzw. die
   Marker-Kurzschlüsse aus `lib/autoWire/validation.ts` nutzen.
-- **RELATED TEST:** `store/slices/persistence.test.ts`, `lib/nodeSchema.test.ts`
+- **RELATED TEST:** `lib/edgeSchema.test.ts`, `store/slices/persistence.test.ts`
+  (DOM-004-Fall: falsch getippte bekannte Felder fliegen, unbekannte bleiben)
 
 ---
 
-## DOM-005 — `CableEdgeData.geometry` ist ein totes Feld
+## DOM-005 — `CableEdgeData.geometry` ist ein totes Feld — **behoben 2026-09-28**
 
 - **AREA:** Domäne / Routing
 - **FILE:** `lib/domain/cableEdgeData.ts`
 - **DESCRIPTION:** `geometry?: {points}` ist deklariert, wird aber von **keinem** Produktivcode
   gelesen — `scripts/routing/architecture.test.ts` verbietet das Lesen ausdrücklich (ADR 0014).
   Es ist das Einfallstor der entfernten zweiten Routing-Engine.
-- **CURRENT BEHAVIOR:** Das Feld ist Teil des persistierten Schemas, ohne Wirkung.
-- **EXPECTED BEHAVIOR:** Entfernen oder als ausdrücklich verboten markieren.
+- **STATUS:** behoben. Das Feld ist aus `CableEdgeData` entfernt; der Dateikopf
+  benennt an seiner Stelle ausdrücklich das Verbot („Kabelgeometrie lebt
+  ausschließlich im Route-Publish des globalen Passes“, ADR 0014). Der Wächter
+  `scripts/routing/architecture.test.ts` verbietet Produktivcode-Zugriffe auf
+  `edge.data.geometry` (inkl. Destrukturierung) weiterhin.
+- **CURRENT BEHAVIOR:** (historisch) Das Feld war Teil des persistierten Schemas, ohne Wirkung.
+- **EXPECTED BEHAVIOR:** Entfernen oder als ausdrücklich verboten markieren — erledigt.
 - **SEVERITY:** niedrig
-- **WORKAROUND:** Nicht lesen, nicht schreiben (es gibt kein `Polyline` mehr, das es füllt).
+- **WORKAROUND:** (historisch) Nicht lesen, nicht schreiben (es gibt kein `Polyline` mehr,
+  das es füllt).
 - **RELATED TEST:** `scripts/routing/architecture.test.ts`
 
 ---
