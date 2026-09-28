@@ -1,10 +1,21 @@
 /**
  * scripts/routing/laneProbe.ts
  *
- * Vorstudie zu ROUTE-002 Teil 3: Wie wirksam wäre `preferredLaneBonus`
- * (`lib/routing/rules/costModel.ts`, WP-6) im Produktivpfad?
+ * Entscheidungswerkzeug zu ROUTE-002 Teil 3: Wie viel Potenzial hätte
+ * `preferredLaneBonus` (`lib/routing/rules/costModel.ts`, WP-6) im
+ * Produktivpfad?
  *
  *   npm run routing:lane-probe
+ *
+ * **Ergebnis (2026-09-28):** Potenzial ist da (50 freie, ungenutzte
+ * Registry-Linien im ELK-Pfad, 22 im Fest-Raster) — die Verdrahtung wurde
+ * trotzdem **nicht ausgeliefert**: Von vier gebauten Varianten kostet die beste
+ * (`acdc` −483 px, Kreuzungen 107 → 104 im ELK-Pfad) 44 px mehr Kabellänge in
+ * `complex` und scheitert damit an der Längen-Ratchet
+ * (`scripts/routing/cableLength.test.ts`). Die Probe bleibt als
+ * reproduzierbarer Nachweis stehen: Steigt die Zahl der freien Linien deutlich,
+ * ist die Entscheidung neu zu bewerten. Details: ROUTE-002 Teil 3 in
+ * `docs/ai/KNOWN-PROBLEMS.md`.
  *
  * Der Bonus soll den A*-Lauf auf die von der LaneRegistry vergebene Linie
  * ziehen. Er ist nur sinnvoll, wenn es überhaupt Fälle gibt, in denen diese

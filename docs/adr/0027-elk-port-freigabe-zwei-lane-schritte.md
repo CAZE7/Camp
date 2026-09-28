@@ -105,3 +105,11 @@ erstmals frei (die Bündel-Lanes sind ausdrückbar) — die Anbindung selbst ist
 eigene Scheibe (ROUTE-002, ROUTE-001). Ebenso bleibt offen, ob die dritte Lane
 eines Bündels eine weitere Erhöhung rechtfertigt: `capStep` degradiert dort
 weiterhin kontrolliert (dokumentiert, sichtbar als I2).
+
+**Nachtrag (2026-09-28, nach der Messung):** Der Registry-Anschluss
+(`preferredLaneBonus`) ist inzwischen gebaut und gemessen — vier Varianten, jede
+über beide Pfade. Potenzial ist belegt (50 freie, ungenutzte Registry-Linien im
+ELK-Pfad, 22 im Fest-Raster), die beste Variante kürzt `acdc` um 483 px und senkt
+die Kreuzungen 107 → 104, verlängert aber `complex` um 44 px und verletzt damit
+die Längen-Ratchet. Entscheidung: **nicht ausgeliefert**; Werkzeug und Zahlen in
+`npm run routing:lane-probe` bzw. `docs/ai/KNOWN-PROBLEMS.md` (ROUTE-002 Teil 3).
