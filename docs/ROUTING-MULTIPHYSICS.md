@@ -1045,6 +1045,103 @@ _Global → Detailed_ beschreibt und die heute ELK (Knoten) + A\* (Kanten) über
 
 ## 6. Gap-Analyse & Roadmap (Gate-konform)
 
+### 6.1 Ergebnisse Phase 0 — Messung, Baseline, Kill-Gate-Entscheidung
+
+**Stand:** 2026-09-28 · Commit `e1682c1` · Rohdaten `benchmarks/baseline.json`
+(`capturedAt`, `machine`, `gitCommit`, `method`, Per-Plan-Zeilen in
+`subsets.regression15.perPlan`). Absolute Millisekunden sind maschinenabhängig
+(ADR-0030) — Vergleiche nur gegen dieselbe Maschine/Datum.
+
+**Methodik (vier Sonden, ohne Flags, `tsx` nach `docs/ai/TESTING-CONTEXT.md`):**
+
+```bash
+npm run perf:edge-routing            # Zwei-Gate-Frame-Budget, Live-Pfad, Edit-Sweeps
+npm run perf:route-scaling           # Full-Route-Skalierung: Kette + Worst-Case-Spannkanten
+npx tsx benchmarks/phase0Baseline.ts # Stufe 0: 15 Regressionspläne / 25 Galerie-Szenarien / 120×240 → benchmarks/baseline.json
+npx tsx scripts/routing/audit.ts     # I1–I7 über 6 GOLDEN_PLANS
+```
+
+_Full-Route_ = ein kompletter Plan durch `routeAllCables` (`routeAll.ts:482`) —
+derselbe Aufruf wie im Live-Pfad-Gate. _Inkrementell_ = pro Kante
+Frame-Cache-Read (`obstaclesExcluding`/`crossingSegmentsExcluding`,
+`routingCache.ts:55/157`) + `buildOrthogonalPath` (`orthogonalRouting.ts:561`)
+mit zentrierten Endpunkten, Right/Left-Ports und `polarityPathOffset`
+(`pathUtils.ts:90`) — Muster aus `benchmarks/edgeRoutingPerf.bench.ts`;
+_pathOnly_ isoliert den Pfadbau ohne Cache-Read. Prozentile über **rohen**
+Samples (Index $\lfloor n\cdot q\rfloor$), keine Perzentil-Überlagerung.
+
+**Skalenplan 120×240 (Teilmenge c):** Raster 420/220 px wie
+`benchmarks/routeAllScaling.probe.ts` (`makeNodes` — routbare Abstände),
+Kantenmuster nach `edgeRoutingPerf.bench.ts` (`buildPlan`,
+$n_{i-1-j}\to n_i$, 8 Spalten ⇒ 237 Kanten) + 3 planweite Spannkanten
+($n_0\!\to\!n_{119}$, $n_0\!\to\!n_{118}$, $n_3\!\to\!n_{117}$ = exakt 240).
+Das engmaschige 220-px-Raster des Render-Fixtures wurde gemessen und
+**bewusst nicht** als Gate-Teilmenge genommen: 28-px-Spaltenlücken ⇒ 676
+Clearance-Verletzungen und Pfad-Fallbacks — ein nicht-routbarer Plan darf kein
+Kill-Gate tragen.
+
+**Referenz-Gates (perf-Skripte, 2026-09-28)**
+
+| Sonde                                         | Szenario                                                    | Ergebnis                                                | Budget                   | Status                 |
+| --------------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------- | ------------------------ | ---------------------- |
+| `perf:edge-routing` Render                    | N=36/E=134                                                  | p50 1,89 ms · p90 2,04 ms                               | 16 ms                    | ✅                     |
+| `perf:edge-routing` Live (`routeAllCables`)   | N=36/E=134                                                  | p50 40,39 ms · p90 54,28 ms · Tail 1,34×                | Ratchet 60 ms · Tail ≤ 2 | ✅                     |
+| Edit-Sweeps (vorher→nachher)                  | Klein 8/13 · Mittel 24/66 · Groß 60/230 · Sehr groß 120/585 | 1,07→0,49 · 9,98→7,73 · 4,67→3,89 · 17,35→13,29 ms      | —                        | alle verbessert        |
+| `perf:route-scaling` Kette                    | N=10/50/100/250/500 (E=9/49/99/249/499)                     | 0,8 · 3,4 · 10,8 · 39,2 · 154,1 ms (0,08→0,31 ms/Kante) | —                        | fallbacks 0            |
+| `perf:route-scaling` Worst Case (Spannkanten) | N=100/250/500 (E=50/125/250)                                | 40,3 · 285,0 · 2561,3 ms                                | —                        | dominante Kostenquelle |
+
+**Stufe-0-Messung (`benchmarks/phase0Baseline.ts`, Rohdaten `benchmarks/baseline.json`)**
+
+| Teilmenge        | Full-Route p50 · p95 · p99 [ms]                  | Inkrementell p50 · p95 · p99 [ms] | pathOnly p50 [ms] | n (Full/Edit) |
+| ---------------- | ------------------------------------------------ | --------------------------------- | ----------------- | ------------- |
+| (a) regression15 | 0,283 · 6,054 · 7,230                            | 0,022 · 0,380 · 0,837             | 0,018             | 105 / 171     |
+| (b) gallery25    | 0,004 · 0,051 · 0,130 (Einzelroute, Full = Edit) | identisch (1 Pfadbau je Szene)    | —                 | 475           |
+| (c) scale120×240 | **692,754 · 739,884 · 739,884**                  | 0,693 · 6,406 · 6,793             | 0,691             | 7 / 720       |
+
+**R-1-Qualitäts-Dashboard** (agent.md „Done ohne Metrik-Nachweis";
+Quellen: `buildRoutingQualityReport` (`routingQuality.ts`), `measureScenario`
+(`scripts/regression/layout.ts`), `countUTurns`, `scripts/routing/audit.ts`):
+
+| Teilmenge               | Länge/Manhattan (Ziel ≤ 1,3)                                                        | Bends   | U-Turns | Kreuzungen                      | Clearance | Overlaps                        | Fallbacks |
+| ----------------------- | ----------------------------------------------------------------------------------- | ------- | ------- | ------------------------------- | --------- | ------------------------------- | --------- |
+| (b) gallery25           | worst 1,33 (Szene 07; Baseline-Ratchet 1,33 in `routingQuality.test.ts`)            | 59 (Σ)  | 1       | 22 (Σ; davon 12 Stressszene 22) | 4 (Σ)     | —                               | —         |
+| (a) regression15        | worst 0,885 (p09) · alle ≤ 0,89                                                     | 108 (Σ) | 0       | 8 (Σ)                           | 0         | max 1 (p11, Ratchet ≤ Baseline) | 0         |
+| (c) scale120×240        | 0,905                                                                               | 688     | 1       | 436                             | 0         | 54 (Doppelkanten-Muster)        | 0         |
+| I1–I7 (`routing:audit`) | 6 GOLDEN_PLANS: hart/orth/overlap/fallback je 0 · I1–I7 je 0 · Determinismus `true` | —       | —       | —                               | —         | —                               | —         |
+
+Bewertung: (a)/(b) liegen im eingefrorenen Bestand, kein Ratchet-Bruch. Die
+Galerie-Stressszenarien 15/22 tragen die Kreuzungssumme; Ziel „Kreuzungen ≤ 2"
+gilt planweise und wird in (c) durch den Doppelkanten-Graphen
+(436 planweite Kreuzungen) überschritten — **gemeldeter Bestand, kein neues
+Gate**; Stufen 1–3 belegen Verbesserungen über genau diese Tabelle.
+Überdeckungen in (c) folgen aus dem Kantenmuster (Diagonalverbindungen der
+Doppelkette), nicht aus den Regressionsplänen.
+
+**Kill-Gate (MISSION Stufe 0).** Regel aus dem Missionstext (Grenzwerte sind
+Vorgabe, nicht gemessen): Full-Route-Median ≤ 50 ms **UND** Inkrementell-Median
+≤ 4 ms ⇒ kein Stufe-4-Track. Evaluiert auf Teilmenge (c) — die Teilmenge, die
+das Gate entscheidet; (a)/(b) als Zusatz:
+
+- Full-Route-Median (c): 692,754 ms ≤ 50 ms → **erfüllt? nein**
+- Inkrementell-Median (c): 0,693 ms ≤ 4 ms → **erfüllt? ja**
+- UND-Regel ⇒ **Kill-Gate nicht erfüllt.**
+- Zusatz: (a) 0,283 ms / 0,022 ms und (b) 0,004 ms erfüllen beide Grenzen
+  großzügig; Kette N=250/E=249 = 39,2 ms ≤ 50. In (c) dominieren planweite
+  Spannkanten (Worst-Case-Sonde 2561 ms bei 500/250) und der dichte
+  Diagonal-Graph.
+
+**Entscheidung:** Das Kill-Gate tötet den GPU-Track **nicht** — Stufe 4 bleibt
+zulässig, ist aber nach der strikten Reihenfolge erst nach Stufen 1–3 fällig;
+GPU-Code ausschließlich hinter Flag `ROUTING_GPU` (default off, nie in
+Regression/Golden/E2E/Coverage-Gates, kein zweites Pfad-Verhalten in CI) und
+nur mit Begründung aus dem damaligen Gate-Stand. Stufen 1–3 greifen die
+gemessenen dominierenden Kostenquellen an (Suchaufwand bei Dichte,
+Spannkanten-Längen, Inkrementell-Overhead im Cache-Lesepfad). Damit ist
+**Phase 0 abgeschlossen**: beide perf-Skripte, drei Teilmengen, Baseline-JSON
+mit Datum/Maschine/p50/p95/p99, R-1-Dashboard, dokumentierte Gate-Entscheidung.
+
+### 6.2 Lücken & Maßnahmen (Roadmap)
+
 | #   | Lücke                                                             | Maßnahme                                                                                                                                        | Gate/Wächter                                                                                         |
 | --- | ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
 | L1  | $k_B(n)$-Häufungsfaktoren fehlen (pauschal 0,7)                   | Tabelle transkribieren (Zitatprüfung!), `VDE_GROUP_FACTORS` neben `VDE_AMPACITY`; `designAmpacity(A, n)` erweitern; Bestandswert bleibt Default | `vde-properties.test.ts` G1–G7, `vde-consistency.test.ts`; nie optimistischer als 0,7 ohne Recapture |
@@ -1090,6 +1187,8 @@ _Global → Detailed_ beschreibt und die heute ELK (Knoten) + A\* (Kanten) über
 npm run routing:audit        # I1–I7 über 6 Referenzpläne (+ --shifts)
 npm run routing:lane-probe   # Wirksamkeit bevorzugter Lanes (Gegenprobe zu L4)
 npm run perf:edge-routing    # Frame-Budget-Gate (Zwei-Gate-Exit)
+npm run perf:route-scaling   # Full-Route-Skalierung + Worst-Case-Spannkanten
+npx tsx benchmarks/phase0Baseline.ts  # Stufe-0-Baseline → benchmarks/baseline.json
 npm run test:regression      # Layout/Metriken/SVG byte-exakt
 npm run test:goldenmaster    # Eingefrorene Geometrie
 npm run check                # Gate vor Commit: lint, format, 2× typecheck, Coverage

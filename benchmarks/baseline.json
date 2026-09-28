@@ -1,0 +1,784 @@
+{
+  "capturedAt": "2026-09-28T15:16:32.362Z",
+  "phase": "PHASE-0 (MISSION Stufe 0)",
+  "gitCommit": "e1682c1",
+  "machine": {
+    "cpu": "Intel(R) Xeon(R) Processor @ 2.60GHz",
+    "cores": 2,
+    "memGB": 3.8,
+    "platform": "linux 6.1.158+",
+    "arch": "x64",
+    "node": "v22.22.3",
+    "loadavg1": 0.25
+  },
+  "method": {
+    "fullRoute": "routeAllCables (produktiver Live-Pfad), Warmup 1 + 7 Messungen je Plan",
+    "incrementalEdit": "pro Kante: Frame-Cache-Read (obstaclesExcluding/crossingSegmentsExcluding) + buildOrthogonalPath, zentrierte Endpunkte, Right/Left-Ports (Muster benchmarks/edgeRoutingPerf.bench.ts)",
+    "pathOnly": "nur buildOrthogonalPath auf vorbereiteten Inputs (isoliert die Suche pro Kante)",
+    "gallery": "buildOrthogonalPath(scenario.input), Warmup 1 + 19 Wiederholungen × 25 Szenarien",
+    "percentiles": "p50/p95/p99 über ALLE Samples der Teilmenge (sortiert, Index floor(n·q))",
+    "note": "Absolute ms sind maschinenabhängig (ADR-0030); Vergleiche nur gegen dieselbe Maschine/Datum."
+  },
+  "referenceGates": {
+    "capturedFrom": "npm run perf:edge-routing + npm run perf:route-scaling am 2026-09-28",
+    "edgeRouting": {
+      "renderPath": {
+        "plan": "N=36 E=134",
+        "p50Ms": 1.89,
+        "p90Ms": 2.04,
+        "budgetMs": 16,
+        "ok": true
+      },
+      "livePath": {
+        "plan": "N=36 E=134",
+        "p50Ms": 40.39,
+        "p90Ms": 54.28,
+        "ratchetMs": 60,
+        "tailRatio": 1.34,
+        "ok": true
+      }
+    },
+    "routeScaling": {
+      "chain": [
+        {
+          "n": 10,
+          "e": 9,
+          "ms": 0.8
+        },
+        {
+          "n": 50,
+          "e": 49,
+          "ms": 3.4
+        },
+        {
+          "n": 100,
+          "e": 99,
+          "ms": 10.8
+        },
+        {
+          "n": 250,
+          "e": 249,
+          "ms": 39.2
+        },
+        {
+          "n": 500,
+          "e": 499,
+          "ms": 154.1
+        }
+      ],
+      "worstCaseSpanners": [
+        {
+          "n": 100,
+          "e": 50,
+          "ms": 40.3
+        },
+        {
+          "n": 250,
+          "e": 125,
+          "ms": 285
+        },
+        {
+          "n": 500,
+          "e": 250,
+          "ms": 2561.3
+        }
+      ]
+    }
+  },
+  "subsets": {
+    "regression15": {
+      "plans": 15,
+      "fullRouteMs": {
+        "p50": 0.283,
+        "p95": 6.054,
+        "p99": 7.23,
+        "min": 0.061,
+        "max": 8.676,
+        "samples": 105
+      },
+      "incrementalEditMs": {
+        "p50": 0.022,
+        "p95": 0.38,
+        "p99": 0.837,
+        "min": 0.004,
+        "max": 0.858,
+        "samples": 171
+      },
+      "pathOnlyMs": {
+        "p50": 0.018,
+        "p95": 0.322,
+        "p99": 1.36,
+        "min": 0.003,
+        "max": 3.223,
+        "samples": 171
+      },
+      "perPlan": [
+        {
+          "id": "p01-batterie-1-verbraucher",
+          "fullRouteMs": {
+            "p50": 0.399,
+            "p95": 0.834,
+            "p99": 0.834,
+            "min": 0.135,
+            "max": 0.834,
+            "samples": 7
+          },
+          "quality": {
+            "edges": 2,
+            "length": 576,
+            "manhattanOptimum": 960,
+            "ratio": 0.6,
+            "bends": 0,
+            "uTurns": 0,
+            "crossings": 0,
+            "clearanceViolations": 0,
+            "edgeOverlaps": 0,
+            "fallbacks": 0
+          }
+        },
+        {
+          "id": "p02-batterie-10-verbraucher",
+          "fullRouteMs": {
+            "p50": 4.545,
+            "p95": 7.207,
+            "p99": 7.207,
+            "min": 2.823,
+            "max": 7.207,
+            "samples": 7
+          },
+          "quality": {
+            "edges": 11,
+            "length": 7252,
+            "manhattanOptimum": 8960,
+            "ratio": 0.809,
+            "bends": 34,
+            "uTurns": 0,
+            "crossings": 5,
+            "clearanceViolations": 0,
+            "edgeOverlaps": 0,
+            "fallbacks": 0
+          }
+        },
+        {
+          "id": "p03-busbar-fanout",
+          "fullRouteMs": {
+            "p50": 0.535,
+            "p95": 1.02,
+            "p99": 1.02,
+            "min": 0.447,
+            "max": 1.02,
+            "samples": 7
+          },
+          "quality": {
+            "edges": 6,
+            "length": 3680.8,
+            "manhattanOptimum": 4320,
+            "ratio": 0.852,
+            "bends": 14,
+            "uTurns": 0,
+            "crossings": 0,
+            "clearanceViolations": 0,
+            "edgeOverlaps": 0,
+            "fallbacks": 0
+          }
+        },
+        {
+          "id": "p04-parallele-verbraucher",
+          "fullRouteMs": {
+            "p50": 0.784,
+            "p95": 6.305,
+            "p99": 6.305,
+            "min": 0.723,
+            "max": 6.305,
+            "samples": 7
+          },
+          "quality": {
+            "edges": 4,
+            "length": 2648,
+            "manhattanOptimum": 3360,
+            "ratio": 0.788,
+            "bends": 14,
+            "uTurns": 0,
+            "crossings": 2,
+            "clearanceViolations": 0,
+            "edgeOverlaps": 0,
+            "fallbacks": 0
+          }
+        },
+        {
+          "id": "p05-solar-mppt",
+          "fullRouteMs": {
+            "p50": 0.153,
+            "p95": 6.054,
+            "p99": 6.054,
+            "min": 0.128,
+            "max": 6.054,
+            "samples": 7
+          },
+          "quality": {
+            "edges": 3,
+            "length": 656,
+            "manhattanOptimum": 1160,
+            "ratio": 0.566,
+            "bends": 0,
+            "uTurns": 0,
+            "crossings": 0,
+            "clearanceViolations": 0,
+            "edgeOverlaps": 0,
+            "fallbacks": 0
+          }
+        },
+        {
+          "id": "p06-inverter",
+          "fullRouteMs": {
+            "p50": 0.223,
+            "p95": 0.413,
+            "p99": 0.413,
+            "min": 0.17,
+            "max": 0.413,
+            "samples": 7
+          },
+          "quality": {
+            "edges": 3,
+            "length": 1184,
+            "manhattanOptimum": 1760,
+            "ratio": 0.673,
+            "bends": 4,
+            "uTurns": 0,
+            "crossings": 0,
+            "clearanceViolations": 0,
+            "edgeOverlaps": 0,
+            "fallbacks": 0
+          }
+        },
+        {
+          "id": "p07-acdc-mischung",
+          "fullRouteMs": {
+            "p50": 0.365,
+            "p95": 8.676,
+            "p99": 8.676,
+            "min": 0.254,
+            "max": 8.676,
+            "samples": 7
+          },
+          "quality": {
+            "edges": 5,
+            "length": 1608,
+            "manhattanOptimum": 2440,
+            "ratio": 0.659,
+            "bends": 6,
+            "uTurns": 0,
+            "crossings": 0,
+            "clearanceViolations": 0,
+            "edgeOverlaps": 0,
+            "fallbacks": 0
+          }
+        },
+        {
+          "id": "p08-enger-raum",
+          "fullRouteMs": {
+            "p50": 0.066,
+            "p95": 0.101,
+            "p99": 0.101,
+            "min": 0.061,
+            "max": 0.101,
+            "samples": 7
+          },
+          "quality": {
+            "edges": 1,
+            "length": 568,
+            "manhattanOptimum": 760,
+            "ratio": 0.747,
+            "bends": 0,
+            "uTurns": 0,
+            "crossings": 0,
+            "clearanceViolations": 0,
+            "edgeOverlaps": 0,
+            "fallbacks": 0
+          }
+        },
+        {
+          "id": "p09-node-im-weg",
+          "fullRouteMs": {
+            "p50": 0.105,
+            "p95": 0.203,
+            "p99": 0.203,
+            "min": 0.098,
+            "max": 0.203,
+            "samples": 7
+          },
+          "quality": {
+            "edges": 1,
+            "length": 708,
+            "manhattanOptimum": 800,
+            "ratio": 0.885,
+            "bends": 4,
+            "uTurns": 0,
+            "crossings": 0,
+            "clearanceViolations": 0,
+            "edgeOverlaps": 0,
+            "fallbacks": 0
+          }
+        },
+        {
+          "id": "p10-parallele-trassen",
+          "fullRouteMs": {
+            "p50": 0.143,
+            "p95": 0.185,
+            "p99": 0.185,
+            "min": 0.12,
+            "max": 0.185,
+            "samples": 7
+          },
+          "quality": {
+            "edges": 3,
+            "length": 1464,
+            "manhattanOptimum": 2040,
+            "ratio": 0.718,
+            "bends": 0,
+            "uTurns": 0,
+            "crossings": 0,
+            "clearanceViolations": 0,
+            "edgeOverlaps": 0,
+            "fallbacks": 0
+          }
+        },
+        {
+          "id": "p11-zwangskreuzung",
+          "fullRouteMs": {
+            "p50": 0.386,
+            "p95": 3.067,
+            "p99": 3.067,
+            "min": 0.238,
+            "max": 3.067,
+            "samples": 7
+          },
+          "quality": {
+            "edges": 2,
+            "length": 1896,
+            "manhattanOptimum": 2280,
+            "ratio": 0.832,
+            "bends": 4,
+            "uTurns": 0,
+            "crossings": 0,
+            "clearanceViolations": 0,
+            "edgeOverlaps": 1,
+            "fallbacks": 0
+          }
+        },
+        {
+          "id": "p12-backbone-kreuzung",
+          "fullRouteMs": {
+            "p50": 0.102,
+            "p95": 0.125,
+            "p99": 0.125,
+            "min": 0.091,
+            "max": 0.125,
+            "samples": 7
+          },
+          "quality": {
+            "edges": 2,
+            "length": 1608,
+            "manhattanOptimum": 1920,
+            "ratio": 0.838,
+            "bends": 0,
+            "uTurns": 0,
+            "crossings": 1,
+            "clearanceViolations": 0,
+            "edgeOverlaps": 0,
+            "fallbacks": 0
+          }
+        },
+        {
+          "id": "p13-drag-zentraler-node",
+          "fullRouteMs": {
+            "p50": 1.478,
+            "p95": 7.23,
+            "p99": 7.23,
+            "min": 0.732,
+            "max": 7.23,
+            "samples": 7
+          },
+          "quality": {
+            "edges": 6,
+            "length": 3324,
+            "manhattanOptimum": 4320,
+            "ratio": 0.769,
+            "bends": 16,
+            "uTurns": 0,
+            "crossings": 0,
+            "clearanceViolations": 0,
+            "edgeOverlaps": 0,
+            "fallbacks": 0
+          }
+        },
+        {
+          "id": "p14-undo-redo",
+          "fullRouteMs": {
+            "p50": 0.155,
+            "p95": 0.398,
+            "p99": 0.398,
+            "min": 0.139,
+            "max": 0.398,
+            "samples": 7
+          },
+          "quality": {
+            "edges": 3,
+            "length": 984,
+            "manhattanOptimum": 1560,
+            "ratio": 0.631,
+            "bends": 4,
+            "uTurns": 0,
+            "crossings": 0,
+            "clearanceViolations": 0,
+            "edgeOverlaps": 0,
+            "fallbacks": 0
+          }
+        },
+        {
+          "id": "p15-pass-wechsel",
+          "fullRouteMs": {
+            "p50": 0.299,
+            "p95": 5.944,
+            "p99": 5.944,
+            "min": 0.214,
+            "max": 5.944,
+            "samples": 7
+          },
+          "quality": {
+            "edges": 5,
+            "length": 2040,
+            "manhattanOptimum": 3000,
+            "ratio": 0.68,
+            "bends": 8,
+            "uTurns": 0,
+            "crossings": 0,
+            "clearanceViolations": 0,
+            "edgeOverlaps": 0,
+            "fallbacks": 0
+          }
+        }
+      ]
+    },
+    "gallery25": {
+      "scenarios": 25,
+      "singleRouteMs": {
+        "p50": 0.004,
+        "p95": 0.051,
+        "p99": 0.13,
+        "min": 0.002,
+        "max": 6.89,
+        "samples": 475
+      },
+      "quality": {
+        "rows": [
+          {
+            "id": "01-direct-right-left",
+            "length": 400,
+            "optimum": 400,
+            "ratio": 1,
+            "bends": 0,
+            "uTurns": 0,
+            "crossings": 0,
+            "clearanceHits": 0
+          },
+          {
+            "id": "02-vertical-offset",
+            "length": 660,
+            "optimum": 660,
+            "ratio": 1,
+            "bends": 2,
+            "uTurns": 0,
+            "crossings": 0,
+            "clearanceHits": 0
+          },
+          {
+            "id": "03-backwards-loop",
+            "length": 400,
+            "optimum": 400,
+            "ratio": 1,
+            "bends": 0,
+            "uTurns": 0,
+            "crossings": 0,
+            "clearanceHits": 0
+          },
+          {
+            "id": "04-diagonal-source-target",
+            "length": 700,
+            "optimum": 700,
+            "ratio": 1,
+            "bends": 1,
+            "uTurns": 0,
+            "crossings": 0,
+            "clearanceHits": 0
+          },
+          {
+            "id": "05-vertical-stack",
+            "length": 400,
+            "optimum": 400,
+            "ratio": 1,
+            "bends": 0,
+            "uTurns": 0,
+            "crossings": 0,
+            "clearanceHits": 0
+          },
+          {
+            "id": "06-single-obstacle",
+            "length": 748,
+            "optimum": 600,
+            "ratio": 1.2466666666666666,
+            "bends": 4,
+            "uTurns": 0,
+            "crossings": 0,
+            "clearanceHits": 0
+          },
+          {
+            "id": "07-two-obstacles",
+            "length": 1196,
+            "optimum": 900,
+            "ratio": 1.3288888888888888,
+            "bends": 8,
+            "uTurns": 0,
+            "crossings": 0,
+            "clearanceHits": 0
+          },
+          {
+            "id": "08-obstacle-above",
+            "length": 728,
+            "optimum": 600,
+            "ratio": 1.2133333333333334,
+            "bends": 4,
+            "uTurns": 0,
+            "crossings": 0,
+            "clearanceHits": 0
+          },
+          {
+            "id": "09-labyrinth-3-rows",
+            "length": 1324,
+            "optimum": 1000,
+            "ratio": 1.324,
+            "bends": 12,
+            "uTurns": 0,
+            "crossings": 0,
+            "clearanceHits": 0
+          },
+          {
+            "id": "10-labyrinth-vertical-gap",
+            "length": 700,
+            "optimum": 700,
+            "ratio": 1,
+            "bends": 0,
+            "uTurns": 0,
+            "crossings": 0,
+            "clearanceHits": 0
+          },
+          {
+            "id": "11-parallel-lane-0",
+            "length": 620,
+            "optimum": 620,
+            "ratio": 1,
+            "bends": 2,
+            "uTurns": 0,
+            "crossings": 0,
+            "clearanceHits": 0
+          },
+          {
+            "id": "12-parallel-lane-plus-16",
+            "length": 620,
+            "optimum": 620,
+            "ratio": 1,
+            "bends": 2,
+            "uTurns": 0,
+            "crossings": 0,
+            "clearanceHits": 0
+          },
+          {
+            "id": "13-parallel-lane-minus-16",
+            "length": 620,
+            "optimum": 620,
+            "ratio": 1,
+            "bends": 2,
+            "uTurns": 0,
+            "crossings": 0,
+            "clearanceHits": 0
+          },
+          {
+            "id": "14-crossing-avoidance",
+            "length": 600,
+            "optimum": 600,
+            "ratio": 1,
+            "bends": 0,
+            "uTurns": 0,
+            "crossings": 0,
+            "clearanceHits": 0
+          },
+          {
+            "id": "15-crossing-dense-grid",
+            "length": 840,
+            "optimum": 840,
+            "ratio": 1,
+            "bends": 2,
+            "uTurns": 0,
+            "crossings": 10,
+            "clearanceHits": 0
+          },
+          {
+            "id": "16-target-top-entry",
+            "length": 700,
+            "optimum": 700,
+            "ratio": 1,
+            "bends": 1,
+            "uTurns": 0,
+            "crossings": 0,
+            "clearanceHits": 0
+          },
+          {
+            "id": "17-target-bottom-entry-with-obstacle",
+            "length": 1012,
+            "optimum": 800,
+            "ratio": 1.265,
+            "bends": 5,
+            "uTurns": 0,
+            "crossings": 0,
+            "clearanceHits": 0
+          },
+          {
+            "id": "18-same-point",
+            "length": 0,
+            "optimum": 0,
+            "ratio": 1,
+            "bends": 0,
+            "uTurns": 0,
+            "crossings": 0,
+            "clearanceHits": 0
+          },
+          {
+            "id": "19-very-short-hop",
+            "length": 24,
+            "optimum": 24,
+            "ratio": 1,
+            "bends": 0,
+            "uTurns": 0,
+            "crossings": 0,
+            "clearanceHits": 0
+          },
+          {
+            "id": "20-enclosed-target",
+            "length": 500,
+            "optimum": 500,
+            "ratio": 1,
+            "bends": 0,
+            "uTurns": 0,
+            "crossings": 0,
+            "clearanceHits": 1
+          },
+          {
+            "id": "21-source-enclosed",
+            "length": 500,
+            "optimum": 500,
+            "ratio": 1,
+            "bends": 0,
+            "uTurns": 0,
+            "crossings": 0,
+            "clearanceHits": 1
+          },
+          {
+            "id": "22-stress-scene",
+            "length": 2000,
+            "optimum": 1700,
+            "ratio": 1.1764705882352942,
+            "bends": 6,
+            "uTurns": 1,
+            "crossings": 12,
+            "clearanceHits": 2
+          },
+          {
+            "id": "23-obstacle-touching-source",
+            "length": 748,
+            "optimum": 600,
+            "ratio": 1.2466666666666666,
+            "bends": 4,
+            "uTurns": 0,
+            "crossings": 0,
+            "clearanceHits": 0
+          },
+          {
+            "id": "24-long-haul",
+            "length": 3000,
+            "optimum": 3000,
+            "ratio": 1,
+            "bends": 2,
+            "uTurns": 0,
+            "crossings": 0,
+            "clearanceHits": 0
+          },
+          {
+            "id": "25-bottom-to-top",
+            "length": 400,
+            "optimum": 400,
+            "ratio": 1,
+            "bends": 0,
+            "uTurns": 0,
+            "crossings": 0,
+            "clearanceHits": 0
+          }
+        ],
+        "worstRatio": 1.3288888888888888,
+        "sumUTurns": 1,
+        "sumCrossings": 22,
+        "sumClearanceHits": 4
+      }
+    },
+    "scale120x240": {
+      "nodes": 120,
+      "edges": 240,
+      "construction": "Raster 420/220 px wie benchmarks/routeAllScaling.probe.ts (makeNodes), Kantenmuster wie edgeRoutingPerf.bench.ts buildPlan (n_{i-1-j}→n_i, 8 Spalten) + 3 Spannkanten n0→n119, n0→n118, n3→n117",
+      "fullRouteMs": {
+        "p50": 692.754,
+        "p95": 739.884,
+        "p99": 739.884,
+        "min": 654.53,
+        "max": 739.884,
+        "samples": 7
+      },
+      "incrementalEditMs": {
+        "p50": 0.693,
+        "p95": 6.406,
+        "p99": 6.793,
+        "min": 0.249,
+        "max": 13.111,
+        "samples": 720
+      },
+      "pathOnlyMs": {
+        "p50": 0.691,
+        "p95": 6.362,
+        "p99": 6.881,
+        "min": 0.242,
+        "max": 15.212,
+        "samples": 720
+      },
+      "fallbacks": 0,
+      "quality": {
+        "edges": 240,
+        "length": 231932.114,
+        "manhattanOptimum": 256200,
+        "ratio": 0.905,
+        "bends": 688,
+        "uTurns": 1,
+        "crossings": 436,
+        "clearanceViolations": 0,
+        "edgeOverlaps": 54,
+        "fallbacks": 0
+      }
+    }
+  },
+  "killGate": {
+    "rule": "Full-Route-Median ≤ 50 ms UND Inkrementell-Median ≤ 4 ms (MISSION Stufe 0), evaluiert auf scale120x240",
+    "fullRouteMedianMs": 692.754,
+    "incrementalMedianMs": 0.693,
+    "regressionFullRouteMedianMs": 0.283,
+    "regressionIncrementalMedianMs": 0.022,
+    "passed": false,
+    "decision": "Kill-Gate NICHT erfüllt: Stufe 4 darf vorbereitet werden (Flag ROUTING_GPU, ohne CI-Beteiligung); Stufen 1–3 laufen zuerst."
+  }
+}
