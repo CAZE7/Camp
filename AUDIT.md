@@ -72,6 +72,30 @@ Zusätzlich verletzt die mehrfache Nutzung von `text-[10px]`/`text-[11px]` in `N
 - ✅ `CableEdge.tsx` und `WaterPipeEdge.tsx` importieren beide `calculateEdgePath` aus `pathUtils` — keine lokalen Bezier-Pfade mehr.
 - ✅ Node-Fokus-Dimmen: `applyNeighborhoodFocus` in `components/planner/utils/focusHighlight.ts` wird in `FlowCanvas.tsx` (Z. 24/179/265) verwendet; CSS `.planner-focus-dim { opacity: var(--canvas-dim) }` greift.
 - ✅ Zoom-Detailstufen: `PLANNER_OVERVIEW_ZOOM=0.7`, `.planner-zoom-overview .node-details/.edge-label { display:none }`; `minZoom=0.25`, `maxZoom=2`.
+
+> **Nachtrag 2026-09-28 (Branch `arena/01a0e82d-camp`): teilweise erledigt — und in zwei
+> Punkten korrigiert.** Die Liste unten wurde damals per `grep` über `app/` erstellt; das
+> übersieht Verzeichnis-Importe und zählt Kommentar-Erwähnungen mit. Nachgeprüft mit einem
+> echten Import-Graph (Auflösung von `@/`- und relativen Importen über alle `app|components|lib|store|scripts|benchmarks`-Einstiegspunkte):
+>
+> - **Tatsächlich tot und am 2026-09-28 entfernt (nur Produktion gezählt):**
+>   `components/NavigationSidebar.tsx` (428) + Test, `components/layout/MainLayout.tsx` (148),
+>   `components/DachNode.tsx` (23), `components/nodes/BaseNode.tsx` (67) + Test,
+>   `components/nodes/handleLayout.ts` (35) + Test, `components/planner/ui/DashboardPanel.tsx` (86) + Test,
+>   `components/planner/utils/solarCalculations.ts` (26) + Test, `components/ui/ValidatingNumberInput.tsx` (82) + Test
+>   = **8 Module, 14 Dateien, 1400 Zeilen**, davon 7 mit grünem Unit-Test.
+> - **NICHT tot (Audit-Befund war falsch):** `components/registry/index.ts` wird über den
+>   Verzeichnis-Import `'../registry'` aus `BOMModal` benutzt (`PlannerInner → FlowCanvas → BOMModal`).
+>   `components/Sidebar.tsx` und `components/Inspector.tsx` werden heute von `PlannerSidebar`
+>   bzw. `PlannerInspector` importiert — der damalige Befund war zum Prüfzeitpunkt richtig,
+>   ist es jetzt nicht mehr.
+> - **Bewusst behalten:** `components/edges/utils/routingQuality.ts` (176) ist kein UI-Rest,
+>   sondern das R-1-Messdashboard (25 Referenzszenarien, eingefrorene Baseline), auf das
+>   `docs/ROUTING-INVARIANTS.md` verweist — gelöscht wurde nur, was niemand mehr braucht.
+> - **Folgefund:** `components/e2eSelectors.test.tsx` forderte `data-testid="planner-node"`,
+>   das ausschließlich die tote `BaseNode.tsx` trug — die E2E-Suite zählt Knoten über
+>   `.react-flow__node`. Der Vertragseintrag ist entfernt.
+
 - 🟡 **DEAD-001 (MEDIUM):** Die Routing/Layout-Migration hat einen ~989-zeiligen toten Cluster hinterlassen, der von keiner produktiven Seite importiert wird (geprüft per `grep` über `app/`):
   - `components/layout/MainLayout.tsx` (161) — importiert seinerseits `NavigationSidebar` und alten `Sidebar`
   - `components/Sidebar.tsx` (276) — wird nur von `MainLayout` (tot) und `DachPlanerFlow` (tot) importiert; der Planner nutzt `PlannerSidebar`

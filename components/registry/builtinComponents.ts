@@ -40,8 +40,9 @@ import type { ComponentSpec, HandleSpec } from './componentRegistry';
  * Einträge (Sidebar, NODE_TYPES, Stückliste, Domänen-Filter, Minimap).
  *
  * Die Anschluss-Listen spiegeln exakt das Markup der Node-Komponenten
- * (`components/nodes/*.tsx`, siehe `handleLayout.ts`). Sie sind Dokumentation
- * **und** Prüfgrundlage: `builtinComponents.test.ts` vergleicht sie mit den
+ * (`components/nodes/*.tsx`; Seiten- und Reihenfolge-Konvention in
+ * `lib/planner/layout-engine/ports.ts`). Sie sind Dokumentation **und**
+ * Prüfgrundlage: `builtinComponents.test.ts` vergleicht sie mit den
  * tatsächlich gerenderten Handles.
  */
 

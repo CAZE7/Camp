@@ -115,6 +115,12 @@ export function EdgeInspector({
             überschreibt die Schätzung dauerhaft.
           </p>
         )}
+        {typeof edge.data?.length === 'number' && edge.data.lengthIsAssumption === true && (
+          <p className="mt-1 text-xs text-muted-foreground">
+            Planungsannahme aus der Vorlage (kein Messwert) — nach dem Verlegen den echten Wert eintragen; er
+            überschreibt die Annahme dauerhaft.
+          </p>
+        )}
       </div>
       {!isAc && onChangeFuseSize && (
         <div className="flex flex-col">

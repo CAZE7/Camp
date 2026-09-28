@@ -48,6 +48,10 @@ describe('Routing-Tokens (Single Source of Truth)', () => {
       segmentMin: 16,
       bendRadius: 8,
       crossDomainSpacing: 24,
+      labelBoxWidth: 156,
+      labelBoxHeight: 22,
+      labelClearance: 4,
+      parallelLabelSpread: 24,
     });
   });
 
@@ -61,6 +65,9 @@ describe('Routing-Tokens (Single Source of Truth)', () => {
     expect(2 * ROUTING_TOKENS.bendRadius).toBeLessThanOrEqual(ROUTING_TOKENS.stubMin);
     // Domain-Trennung ist strenger als die allgemeine Clearance.
     expect(ROUTING_TOKENS.crossDomainSpacing).toBeGreaterThanOrEqual(ROUTING_TOKENS.cableClearance);
+    // Gestapelte Labels (eine Lane-Stufe Versatz) dürfen sich nicht berühren.
+    expect(ROUTING_TOKENS.parallelLabelSpread).toBeGreaterThanOrEqual(ROUTING_TOKENS.labelBoxHeight);
+    expect(ROUTING_TOKENS.labelBoxWidth).toBeGreaterThan(ROUTING_TOKENS.labelBoxHeight);
     // Übergangswert deckt das Clearance-Ziel (R-10) mit Reserve.
     expect(LEGACY_ROUTING_TOKENS.obstacleMargin).toBeGreaterThanOrEqual(ROUTING_TOKENS.cableClearance);
     // ROUTE-BUG-32 / ADR 0027: Die Port-Freigabe ist die Summe ihrer

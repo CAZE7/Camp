@@ -6,6 +6,8 @@ import {
   crossSectionForVoltageDrop,
   meters,
   mm2,
+  PX_PER_METER,
+  parseQuantity,
   quantityOr,
   voltageDrop,
   ZERO_AMPS,
@@ -32,9 +34,68 @@ import { COPPER_CONDUCTIVITY_MS_PER_MM2 } from '../materials';
 /** κ von Kupfer bei 20 °C — eine Quelle (lib/materials.ts, AUDIT ELE-010). */
 export const COPPER_CONDUCTIVITY = COPPER_CONDUCTIVITY_MS_PER_MM2;
 
-/** Standardlänge einer Kante ohne gespeicherte Länge. */
+/** Standardlänge einer Kante ohne gespeicherte Länge UND ohne Geometrie. */
 
 export const DEFAULT_EDGE_LENGTH: Meters = meters(1);
+
+/**
+ * Kleinste Planungslänge. Ein Verlegeweg ist nie null: Knoten mit identischer
+ * Position (gestapelte Karten, fehlende Koordinaten in Altdaten) ergäben sonst
+ * eine Luftlinie von 0 m — und damit rechnerisch keinen Spannungsfall. In den
+ * sechs Referenzplänen trifft das 11 von 79 Kanten (gemessen 2026-09-28), ihre
+ * tatsächlich geroutete Länge liegt zwischen 0,72 m und 2,88 m; der Boden von
+ * 1 m ist dort die ehrlichere Annahme als die Null.
+ */
+
+export const MIN_PLANNING_LENGTH: Meters = meters(1);
+
+/** Ein Punkt aus dem Plan — Altdaten dürfen Koordinaten verloren haben. */
+
+export type PlanningPoint = { x?: number | undefined; y?: number | undefined };
+
+/** Liefert die Position eines Knotens, wenn der Plan sie kennt. */
+
+export type PointOf = (nodeId: string) => PlanningPoint | undefined;
+
+/**
+ * PLANUNGSLÄNGE einer Kante — die eine Regel für „wie lang wird diese Leitung?".
+ *
+ * Reihenfolge: eingetragene Länge → Luftlinie aus der Knotengeometrie → `undefined`.
+ * `undefined` heißt ausdrücklich „nicht ableitbar": Der Aufrufer entscheidet,
+ * welcher Ersatzwert in SEINEM Zusammenhang richtig ist (Dimensionierung 1 m,
+ * AC 2 m, Anzeige: die Route) — die Schätzung selbst erfindet keinen Wert. Die Luftlinie ist der einzige Wert, der im Planungsschritt ohne
+ * Route ehrlich zur Verfügung steht: Sie ist aus derselben Geometrie abgeleitet,
+ * die der Nutzer auf dem Canvas sieht, und sie ist eine untere Schranke des
+ * echten Verlegewegs (gemessen an den sechs Referenzplänen: der Router braucht
+ * im Median 0,82 × Luftlinie — die Route läuft von Anschluss zu Anschluss und
+ * ist damit meist kürzer als Mitte-zu-Mitte —, im 90. Perzentil 1,74 ×, im
+ * Extremfall 3,87 ×).
+ *
+ * Was hier NICHT mehr passiert: eine feste Konstante je Kantenklasse als
+ * Tatsache eintragen. Die früheren Planungslängen (0,2 m Schiene, 1 m
+ * Verbraucher, 3 m Backbone, 5 m Panel) lagen gegenüber der gerouteten
+ * Verlegelänge im Median um Faktor 1,92 zu niedrig und im Extremfall um 41,7 —
+ * daraus folgte ein zu dünner Querschnitt (siehe `docs/ARCHITECTURE-CHANGES.md`,
+ * dreißigste Fassung). Die Restunsicherheit dieser Schätzung ist nicht
+ * versteckt: Die Spannungsfall-Anzeige rechnet mit der ECHTEN Route, sobald eine
+ * vorliegt (`resolveCableLength`), und die Stückliste nennt ihre Längenquelle.
+ */
+
+export const planningLength = (
+  edge: { source: string; target: string; data?: CableEdgeData | undefined },
+  pointOf: PointOf
+): Meters | undefined => {
+  const stored = parseQuantity(edge.data?.length, meters);
+  if (stored !== null) return stored;
+
+  const a = pointOf(edge.source);
+  const b = pointOf(edge.target);
+  if (!a || !b) return undefined;
+
+  const distancePx = Math.hypot((b.x ?? 0) - (a.x ?? 0), (b.y ?? 0) - (a.y ?? 0));
+  if (!Number.isFinite(distancePx)) return undefined;
+  return meters(Math.max(MIN_PLANNING_LENGTH, distancePx / PX_PER_METER));
+};
 /** Standardquerschnitt einer Kante ohne gespeicherten Querschnitt. */
 
 export const DEFAULT_EDGE_CROSS_SECTION: Mm2 = mm2(2.5);
@@ -44,14 +105,6 @@ export const MIN_CROSS_SECTION: Mm2 = mm2(1.5);
 /** Größter Querschnitt der Normreihe. */
 
 export const MAX_CROSS_SECTION: Mm2 = mm2(70);
-
-/**
- * Persistenzgrenze: Länge einer Kante aus `edge.data` lesen.
- * Fehlende, negative oder unlesbare Werte ergeben den Ersatzwert.
- */
-
-export const edgeLength = (edge: CableEdge, fallback: Meters = DEFAULT_EDGE_LENGTH): Meters =>
-  quantityOr(edge.data?.length, meters, fallback);
 
 /** Persistenzgrenze: Querschnitt einer Kante aus `edge.data` lesen. */
 

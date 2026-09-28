@@ -153,7 +153,7 @@ Layout-Engines (schreiben `position`).
 **Registry-Spiegel:** `components/registry/builtinComponents.ts` definiert je `id` Label,
 Kategorie, Beschreibung, Zweck, `mode` (`electric|water`), `domains`, Icon, Node-Komponente,
 Handles und Defaults. `components/registry/componentRegistry.test.tsx` prüft die Konsistenz;
-`components/nodes/handleLayout.test.ts` prüft die Handles gegen das Markup.
+`components/registry/componentRegistry.test.tsx` prüft die Handles gegen das gerenderte Markup.
 
 **Neues Bauteil anlegen:** Registry-Eintrag + Eintrag in `NodeDataRegistry`
 (`components/nodes/types.ts`) + Feldspiegel in `lib/nodeSchema.ts`. Sonst nichts.
@@ -182,7 +182,7 @@ Handles und Defaults. `components/registry/componentRegistry.test.tsx` prüft di
 - Die Anschluss-Listen der Registry spiegeln **exakt** das Markup der Node-Komponenten
   (Test: `components/registry/componentRegistry.test.tsx`, Block „Konsistenz der
   eingebauten Bauteile“ und „Konsumenten bleiben synchron“; Layout-Grundlage
-  `components/nodes/handleLayout.ts` + `components/nodes/handleLayout.test.ts`).
+  `lib/planner/layout-engine/ports.ts`, geprüft in `ports.test.ts`).
 - Handles sitzen seit M11-1 ±22 px **außerhalb** der Node-Karte → sie zählen zur Hindernis-Box
   (`inflateObstacle`, `lib/routing/geometry/rects.ts`). Ohne das verletzt der Stub die Clearance
   am eigenen Bauteil.

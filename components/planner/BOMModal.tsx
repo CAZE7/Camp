@@ -10,7 +10,7 @@ import { getCableRoute } from '../edges/utils/cableRouteStore';
 import { PX_PER_METER } from '../../lib/units';
 
 /** Woher eine Stücklisten-Länge kommt (AUDIT L1). */
-type LengthSource = 'stored' | 'routed' | 'fallback';
+type LengthSource = 'stored' | 'assumed' | 'routed' | 'fallback';
 
 type EdgeLength = {
   /** Für den Materialbedarf verwendete Länge in Metern. */
@@ -47,7 +47,12 @@ const LENGTH_DIVERGENCE_TOLERANCE = 0.1;
  * sie ist: erfunden. Wasserstrecken haben nur dann eine Route, wenn der
  * Wasser-Plan zuletzt im Vordergrund geroutet wurde (geteilter Route-Store).
  */
-function edgeLengthOf(edgeId: string, stored: number | undefined, fallback: number): EdgeLength {
+function edgeLengthOf(
+  edgeId: string,
+  stored: number | undefined,
+  fallback: number,
+  isAssumption = false
+): EdgeLength {
   const storedM = typeof stored === 'number' && Number.isFinite(stored) && stored >= 0 ? stored : undefined;
   const route = getCableRoute(edgeId);
   const routedM = route ? route.length / PX_PER_METER : undefined;
@@ -55,12 +60,15 @@ function edgeLengthOf(edgeId: string, stored: number | undefined, fallback: numb
   if (storedM !== undefined && routedM !== undefined) {
     return {
       meters: Math.max(storedM, routedM),
-      source: storedM >= routedM ? 'stored' : 'routed',
+      source: storedM >= routedM ? (isAssumption ? 'assumed' : 'stored') : 'routed',
       storedM,
       routedM,
     };
   }
-  if (storedM !== undefined) return { meters: storedM, source: 'stored', storedM };
+  // Eine Planungsannahme ist keine Nutzereingabe: Die Stückliste muss sie als
+  // Annahme nennen können, sonst liest sich „eingetragen" wie eine Messung
+  // (dreißigste Fassung).
+  if (storedM !== undefined) return { meters: storedM, source: isAssumption ? 'assumed' : 'stored', storedM };
   if (routedM !== undefined) return { meters: routedM, source: 'routed', routedM };
   return { meters: fallback, source: 'fallback' };
 }
@@ -149,7 +157,7 @@ export function BOMModal() {
         const t = nodesMap.get(edge.target);
         const isAc = edge.data?.edgeDomain === 'AC_230V';
         let cs = edge.data?.crossSection;
-        const length = edgeLengthOf(edge.id, edge.data?.length, 1);
+        const length = edgeLengthOf(edge.id, edge.data?.length, 1, edge.data?.lengthIsAssumption === true);
         if (!cs) {
           if (isAc) {
             cs = 2.5;
@@ -173,6 +181,8 @@ export function BOMModal() {
       const pipeLengths: Record<string, number> = {};
       waterEdges.forEach((edge) => {
         const type = String(edge.data?.pipeType || 'fresh');
+        // Wasserstrecken legt kein AutoWire an — es gibt dort keine
+        // Planungsannahme, jede eingetragene Länge ist eine Nutzereingabe.
         const length = edgeLengthOf(edge.id, edge.data?.length, 2);
         pipeLengths[type] = (pipeLengths[type] || 0) + length.meters;
         if (length.source === 'fallback' || diverges(length)) {
@@ -251,7 +261,7 @@ export function BOMModal() {
       open={open}
       onClose={() => setOpen(false)}
       title="Stückliste"
-      description="Das brauchst du für den aktuellen Plan. Verwendet wird je Strecke die größere aus eingetragener und gerouteter Länge (der Router kennt Umwege, eine Luftlinie unterschätzt). Abweichungen und fehlende Längen stehen unten ausdrücklich – rechne für die Montage trotzdem eine Reserve hinzu."
+      description="Das brauchst du für den aktuellen Plan. Verwendet wird je Strecke die größere aus eingetragener (oder angenommener) und gerouteter Länge (der Router kennt Umwege, eine Luftlinie unterschätzt). Abweichungen und fehlende Längen stehen unten ausdrücklich – rechne für die Montage trotzdem eine Reserve hinzu."
       className="max-w-2xl"
     >
       <div className="flex-1 space-y-6 overflow-y-auto p-5">
@@ -334,7 +344,9 @@ export function BOMModal() {
                     ? 'Längen weichen ab oder fehlen'
                     : inventedLengths.length > 0
                       ? 'Längen fehlen im Plan'
-                      : 'Eingetragene und geroutete Länge weichen ab'}
+                      : divergingLengths.every((entry) => entry.source === 'assumed')
+                        ? 'Planungsannahmen und geroutete Länge weichen ab'
+                        : 'Eingetragene und geroutete Länge weichen ab'}
                 </h3>
                 {inventedLengths.length > 0 && (
                   <p className="text-sm">
@@ -362,8 +374,9 @@ export function BOMModal() {
                         </>
                       ) : (
                         <>
-                          {entry.meters.toFixed(1)} m verwendet (eingetragen {entry.storedM?.toFixed(1)} m,
-                          geroutet {entry.routedM?.toFixed(1)} m)
+                          {entry.meters.toFixed(1)} m verwendet (
+                          {entry.source === 'assumed' ? 'Planungsannahme' : 'eingetragen'}{' '}
+                          {entry.storedM?.toFixed(1)} m, geroutet {entry.routedM?.toFixed(1)} m)
                         </>
                       )}
                     </li>

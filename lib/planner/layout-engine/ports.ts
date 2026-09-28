@@ -10,19 +10,35 @@ import type { LayoutPort, LayoutPortSide } from './contract';
  * gegeneinander zeigen — der Router bekam anschließend Kanten, die quer über
  * die Karte mussten.
  *
- * Die Konvention steht in `components/nodes/handleLayout.ts` (Markup-Wahrheit)
- * und in der Bauteil-Registry (`handles`, geprüft gegen das Markup). Diese
- * Datei ist die Domänen-Kopie für die Layoutschicht — `lib` darf aus
- * Architekturgründen (ADR-0008) nicht auf `components/` zugreifen. Ein Test
- * (`ports.test.ts`) vergleicht sie deshalb gegen die Registry: eine vierte,
- * unbemerkt driftende Kopie kann so nicht entstehen.
+ * Markup-Wahrheit sind die Node-Komponenten (`components/nodes/*.tsx`) und die
+ * Bauteil-Registry (`handles` in `components/registry/builtinComponents.ts`,
+ * geprüft gegen das gerenderte Markup). Diese Datei ist die Domänen-Kopie für
+ * die Layoutschicht — `lib` darf aus Architekturgründen (ADR-0008) nicht auf
+ * `components/` zugreifen. Ein Test (`ports.test.ts`) vergleicht sie deshalb
+ * gegen die Registry: eine vierte, unbemerkt driftende Kopie kann so nicht
+ * entstehen.
  *
- * Konvention:
+ * Konvention (Anschluss-Seiten):
  *  - Eingänge (target) links (WEST), Ausgänge (source) rechts (EAST).
  *  - Innerhalb einer Seite: `plus` 0, `minus` 1 (im Markup 30 %/70 %) — die
  *    Reihenfolge ist der `index` in `FIXED_ORDER`.
  *  - Wechselrichter: `ac_in` oben (NORTH) — die dokumentierte Ausnahme.
  *  - Wasser und Leerrohr: `in` links, `out` rechts, je Index 0.
+ *
+ * Konvention (vertikale Lage im Markup, `top`-Werte der `<Handle>`):
+ *  - DC-Paare: `plus` 30 %, `minus` 70 % — so bleiben Plus/Minus-Paare achsen-
+ *    parallel. Die Werte stehen inline in den Node-Komponenten.
+ *  - AC / Wasser / Masse: Mitte (50 %) — sie sind keine Plus/Minus-Paare.
+ *  - Bewusste Abweichungen, die NICHT auf das Plus/Minus-Schema „vereinheitlicht"
+ *    werden dürfen: ShorePower (Quelle `plus` @ 50 %, AC-Ausgang),
+ *    Consumer230V (Ziel `plus` @ 50 %, AC-Eingang), Inverter (`ac_in` oben,
+ *    DC links, AC-Ausgang als Quelle `plus` @ 50 %), Ground (nur `minus` @ 50 %),
+ *    Water (`in`/`out` @ 50 %), Conduit (Dummy-Handles ohne Verbindungsfunktion).
+ *    Die Handle-IDs sind Teil des Auto-Wire-/`getHandleDomain`-Vertrags und
+ *    dürfen sich nicht ändern.
+ *
+ * Pixel-Regeln der Handles prüft `app/handleGeometry.test.ts` (React-Flow-12-
+ * Offsets) — dort, wo sie als CSS-Regel wirken, nicht als Konstante im Code.
  *
  * Port-IDs sind **global eindeutig**, denn elkjs löst Kanten-Endpunkte über
  * einen graphweiten Namensraum auf (verifiziert: zwei Knoten mit derselben

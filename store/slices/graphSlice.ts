@@ -324,7 +324,10 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
       withHistoryIfChanged(state, {
         edges: state.edges.map((e) => {
           if (e.id === id) {
-            return { ...e, data: { ...e.data!, length } };
+            // Mit der Nutzereingabe endet der Annahme-Status: Der Wert ist ab
+            // jetzt ein Messwert des Nutzers (dreißigste Fassung) — sonst
+            // stünde am Ende seine eigene Zahl als „Planungsannahme" da.
+            return { ...e, data: { ...e.data!, length, lengthIsAssumption: false } };
           }
           return e;
         }),
