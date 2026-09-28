@@ -2051,3 +2051,234 @@ visuelle Lauf **40/40** grün und die gesamte E2E-Suite **113 passed, 31 skipped
 
 **4. Zahlen.** `npm test` steht bei **2485 Tests / 181 Dateien** (2026-09-28); README,
 `docs/ai/README.md` und `docs/ai/TESTING-CONTEXT.md` sind nachgezogen.
+
+### 2026-09-28 — Achtundzwanzigste Fassung: Tote UI-Welt entfernt und Labels auf eine Wahrheit gestellt (DEAD-001, LABEL-001)
+
+Zwei Befunde aus dem Nutzer-Review der Werkbank, beide vorher per Import-Graph bzw. Messung
+nachgeprüft statt geglaubt.
+
+**1. DEAD-001 — die nie ausgelieferte zweite UI-Welt ist weg.** Grundlage war ein echter
+Import-Graph (Auflösung von `@/`- und relativen Importen, Verzeichnis-Importe, über alle
+Einstiegspunkte `app/**/page|layout`, `scripts/`, `benchmarks/` und Tests) — nicht `grep`.
+Entfernt: `components/NavigationSidebar.tsx` (428) + Test, `components/layout/MainLayout.tsx` (148),
+`components/DachNode.tsx` (23), `components/nodes/BaseNode.tsx` (67) + Test,
+`components/nodes/handleLayout.ts` (35) + Test, `components/planner/ui/DashboardPanel.tsx` (86) + Test,
+`components/planner/utils/solarCalculations.ts` (26) + Test, `components/ui/ValidatingNumberInput.tsx` (82) + Test
+— **14 Dateien, 1400 Zeilen, 8 Module, davon 7 mit grünem Unit-Test** („gepflegt aussehend, nie erreichbar").
+Mit der Datei verschwanden die vier toten Links (`/tools/wassersystem`, `/guides`, `/forum`, `/community`)
+und die letzte Stelle mit `text-[10px]`/`text-[11px]` gegen die eigene Typo-Regel.
+
+Drei Korrekturen am Befund selbst, damit der Baum nicht aus einem Vorurteil aufgeräumt wird:
+`components/registry/index.ts` ist **nicht** tot (Verzeichnis-Import `'../registry'` aus `BOMModal`);
+`components/Sidebar.tsx` und `components/Inspector.tsx` sind es ebenfalls nicht (sie hängen heute über
+`PlannerSidebar`/`PlannerInspector` im Live-Baum — der Audit-Befund von 2026-08-20 war damals richtig
+und ist es jetzt nicht mehr); `components/edges/utils/routingQuality.ts` ist kein UI-Rest, sondern das
+R-1-Messdashboard (25 Referenzszenarien, eingefrorene Baseline) und **bleibt**.
+
+Zwei Folgearbeiten, die die Löschung erst ehrlich gemacht hat: Der Vertragstest
+`components/e2eSelectors.test.tsx` forderte `data-testid="planner-node"` — erfüllt wurde er
+ausschließlich von der toten `BaseNode.tsx`, während die E2E-Suite Knoten über
+`.react-flow__node:not(.react-flow__node-backboneGroup)` zählt. Der Eintrag ist entfernt (der
+Selektor war nie erreichbar). Und `lib/designTokens.test.ts` prüfte die Auswahl-1-px-Linie an
+`BaseNode.tsx`, das sie nie gerendert hat; der Test prüft jetzt die lebende Mechanik
+(`node-card--selected` in `BatteryNode` + `.node-card--selected { border-color: var(--accent-line) }`
+in `globals.css`). Die Ausnahmeliste `WERFT_LEGACY_TOKEN_DEBT` schrumpft von sechs Einträgen auf zwei
+(`Chat.tsx`, `ScrollSidebar.tsx`) — darunter war ein Eintrag für `app/tools/dach/components/DachPlanerFlow.tsx`,
+eine Datei, die es nicht mehr gibt. Die Handle-Konvention, die nur im Docstring der gelöschten
+`handleLayout.ts` stand (30 %/70 %, AC/Mitte, die begründeten Ausnahmen), ist in
+`lib/planner/layout-engine/ports.ts` übernommen — sonst wäre Wissen mit der Datei verschwunden.
+
+**2. LABEL-001 — das Label-Modell hatte zwei Wahrheiten und beide waren zu klein.** Die Platzierung
+rechnete mit `routeAll.LABEL_HALF_*` (112 × 28), die Prüfung mit `pathUtils.LABEL_BOX_*` (88 × 20) —
+gerendert wird (12 px fett, `padding: 2px 6px`, 1 px Rahmen) rund **156 × 22**. Gemessen an
+`knownPlans/complex.json` mit gemessener React-Flow-Geometrie: mit dem ehrlichen Maß lagen **11 von 23**
+Labels auf einer Bauteilkarte, mit der alten 88er-Box sah dieselbe Prüfung 4. Beide Konstanten sind
+jetzt **eine** (`LABEL_BOX_WIDTH/HEIGHT = 156 × 22`, `LABEL_CLEARANCE = 4`), die Platzierung zieht sie.
+
+Zweiter Teil: `CableEdge` addierte den Bündel-Versatz (`edgeLabelNudge`) **nach** der Platzierung auf
+die fertige Position — geprüft wurde also eine andere Lage als die gerenderte, und eine Auflösung
+über den ganzen Plan war unmöglich, weil nur Labels desselben Knotenpaars getrennt wurden. Der Versatz
+läuft jetzt **im** Routing-Pass (`routeAllCables`), die Kante addiert ihn nur noch im Einzelfall-Fallback
+(0, solange `globalRoute` da ist, sonst zählte er doppelt). Dazu zwei Ergänzungen: eine zweite
+Suchstufe, die Beschriftungen **seitlich** der Trasse um Spread-Stufen versetzt (in dichten Plänen liegt
+ein Trassenstück oft komplett unter einer 192 px breiten Karte, dann gab es auf der Trasse keine freie
+Stelle — der alte Test „bleibt beim Mittelpunkt, wenn die ganze Trasse über Karten läuft" hielt genau
+dieses Aufgeben fest), und ein `z-index` für `.react-flow__edgelabel-renderer`. Letzteres ist die
+strukturelle Wurzel: React Flow rendert den Label-Container **vor** der Node-Ebene (im DOM-Nachweis in
+`@xyflow/react`), ohne z-index malen die Karten also über den Text — im Screenshot lag „SOLAR · 25 mm²"
+halb hinter der PV-Karte. Gemessen nach dem Umbau: **8** Labels über Karten (statt 11), Label über Label
+**0** als Gate, deterministisch über zwei Läufe; Golden Master (13 Pläne) und Regression (50) unverändert,
+weil nur Label-Positionen betroffen sind, keine Trasse.
+
+Bewusst **nicht** behauptet: dass der Screenshot-Fall „… 3.0 m · 4.0 m" damit reproduziert sei. In den
+Fixture-Plänen ließ sich keine Überdeckung fremder Labels nachweisen (auch nicht auf dem Stand davor) —
+der Mechanismus, der ihn erzeugt (nur paarweise Trennung, kein Pass über den ganzen Plan), ist jetzt
+abgedeckt und in `components/edges/utils/labelPlacement.test.ts` als Gate gesetzt, der Beweis steht aber
+auf dem Screenshot des Nutzers, nicht auf einem Test. Dritter Teil, klein und doch der Spec geschuldet (§5.3, „Kollisionsabstand als Token"): Die
+Label-Geometrie ist jetzt ein Routing-Token — `labelBoxWidth` (156), `labelBoxHeight` (22),
+`labelClearance` (4), `parallelLabelSpread` (24) in `lib/routing/tokens.ts`, mit Konsistenzregel
+`parallelLabelSpread >= labelBoxHeight` im Token-Test. `pathUtils` und `routeAll` leiten ihre
+Konstanten daraus ab; die Zahl steht damit einmal, nicht dreimal.
+
+**Offen, und zwar gemessen — nicht geändert** (jede Änderung hier berührt Golden Plans, Referenz-SVGs
+oder die Bildsprache und braucht eine Freigabe):
+
+- **Feste Schienen-Koordinaten (M11-2).** `lib/autoWire/routing.ts:163-164` legt die Plus-Schiene auf
+  (280, −120) und die Minus-Schiene auf (560, 80), unabhängig von der Batterieposition; der
+  Sicherungskasten folgt derselben Systematik. Liegen die Bauteile des Nutzers links/unten, läuft jede
+  AutoWire-Leitung quer über das Blatt.
+- **Erfundene Längen auf AutoWire-Kanten.** `lib/autoWire.ts` setzt feste Werte (gezählt: 0,2 m ×4,
+  0,5 m ×1, 1 m ×5, 2 m ×6, 3 m ×6, 5 m ×2) — ein gespeicherter Wert gewinnt in `CableEdge`, die
+  geroutete Verlegelänge wird dort für AutoWire-Kanten nie benutzt. A2 („keine pauschalen 3 m mehr",
+  `store/slices/graphSlice.ts:449`) gilt bisher nur für Nutzerkanten. **Messung** über die sechs
+  Referenzpläne, AutoWire frisch erzeugt, geroutete Länge / `PX_PER_METER` (100): Faktor Median
+  **2,46×**, Maximum **35,2×** (Konstante 0,2 m „Batterie → Plus-Schiene" gegen 7,0 m Route); in
+  komplex 14 von 23 Kanten mehr als doppelt so lang wie gespeichert, über alle Pläne 47 von 79. Die
+  Abweichung wirkt in die gefährliche Richtung: `calculateCrossSection` ist linear in der Länge, ein
+  zu kurzer Eintrag unterschätzt den Spannungsfall. Vorschlag als eigene Aufgabe: `meters(2/3)` durch
+  `undefined` ersetzen, damit die Route gilt — **mit** Neuerfassung der Goldens und Begründung.
+
+> **Nachtrag (dreißigste Fassung, 2026-09-28): Die Zahl ist richtig, ihre Deutung war es nicht.**
+> Die Messung vergleicht die geroutete **Zeichnung** mit der Planungsannahme. Laut
+> `docs/ai/AUTOWIRE-CONTEXT.md` §7.3 sind die Kantenlängen aber ausdrücklich **keine Messwerte**,
+> sondern Annahmen, die das Spannungsfall-Budget abstecken. Die Ratios sagen also „die Zeichnung ist
+> größer als die Annahme", nicht „der Querschnitt ist zu dünn" — die daraus abgeleitete
+> Sicherheitsfolgerung war falsch. Nachgemessen (dreifach, siehe dreißigste Fassung): die
+> Planautoren tragen in denselben Plänen selbst 0,2–1 m für Strecken ein, die 3–4 m groß gezeichnet
+> sind; würde die Zeichnung als physische Länge gelten, wären die Referenzpläne rechnerisch
+> unrealisierbar (komplex: 17 von 23 Auto-Kanten auf dem 70-mm²-Deckel mit Spannungsfall-Warnung)
+> und die Invariante „nach AutoWire keine Warnungen" unerfüllbar. Die frühere Zeilenangabe zur
+> Nachmessung (Median 1,92×, Maximum 41,7× über dieselben 79 Kanten) bleibt als Messwert gültig.
+
+- **Zwei Bedienebenen im Planner** (geführte Schrittleiste + klassische Werkzeugleiste) und die
+  Kreuzungs-Hops (28 auf `knownPlans/complex.json`, die „Seilschlingen" an den Bündeln).
+- **Rechtsdaten im Impressum** (`lib/siteLegal.ts` ist in allen fünf Feldern Platzhalter; die
+  Infrastruktur samt Deploy-Wächter steht, es fehlen nur die Angaben des Betreibers).
+
+**3. Zahlen.** `npm test` steht bei **2452 Tests / 176 Dateien** (2026-09-28); README,
+`docs/ai/README.md` und `docs/ai/TESTING-CONTEXT.md` sind nachgezogen. `npm run lint`,
+`tsc` (beide Profile), `prettier --check .`, `test:goldenmaster` (13) und `test:regression` (50) sind grün.
+
+### 2026-09-28 — Neunundzwanzigste Fassung: Der Ladebooster-Pfad wird wirklich geprüft (TOPO-002, Prüfbericht Teil 1+2)
+
+**1. Was AutoWire tut — bestätigt.** Jeder Lader (auch `dcdcCharger`) wird an die Schienen gehängt,
+nicht an die Batterie (`lib/autoWire.ts`, Laderschleife `charger.id → rails.plus/minus`), die Batterie
+hängt über den Backbone an denselben Schienen (`battery → rails.plus`, `battery → shunt → rails.minus`),
+und die Starterseite läuft separat (`starterBattery → booster`). Elektrisch ist das richtig — die
+Sammelschiene ist der Verteilpunkt. Der Eindruck „keine Linie von der Booster-Karte zur Batterie-Karte"
+ist damit eine Bildsprache-Frage, kein Verdrahtungsfehler. **Nicht geändert.**
+
+**2. Und der Verdacht war trotzdem berechtigt — das war ein stiller Fallback.** Regel E prüfte nur,
+DASS ein Ladebooster einen Ein- und einen Ausgang hat (`hasInput`/`hasOutput`). Eine Kante
+Booster → Schiene genügte damit auch dann, wenn die Schiene mit keiner Aufbaubatterie verbunden war;
+die eigene Meldung versprach dabei „Starterseite (Eingang) und Aufbaubatterie-Pfad (Ausgang) prüfen".
+Ein Versprechen ohne Prüfung ist genau die Sorte „sieht geprüft aus, ist es nicht" (Regel M).
+Eine Pfadprüfung gab es nirgends im Baum.
+
+**Neu: `TOPO-002-dcdc-house-path`** (`components/planner/hooks/useLiveValidation.ts`, Fachlogik in
+`lib/autoWire/validation.ts`). Der Pfad wird jetzt tatsächlich gelaufen — undirektional über die
+Schienen (`reachableNodeIds`), weil die Aufbaubatterie in Richtung Batterie → Schiene verdrahtet ist
+und der Lader in Richtung Lader → Schiene; gerichtet gäbe es den Pfad nie. Die **Starterseite zählt
+nicht als Ziel** (`isHouseBattery` = `type === 'battery' && !isStarterBattery`): Sie hängt direkt am
+Lader und würde die Prüfung sonst immer erfüllen — das war der Kern des Fehlers. Zwei Fälle, zwei
+ehrliche Meldungen statt einer pauschalen: keine Aufbaubatterie im Plan (dann kann keine erreicht
+werden) oder vorhanden, aber nicht angeschlossen. Der `ruleId` folgt der Konvention („bei Neu- oder
+Umbauten immer `ruleId`", `docs/ai/VALIDATION-CONTEXT.md`); die historische Regel E bleibt ohne ID und
+unverändert — sie meldet weiter den unvollständigen Anschluss, die neue Regel den fehlenden Pfad, ohne
+Doppelmeldung für denselben Sachverhalt.
+
+**3. Dabei eine vierte Kopie derselben Suche entfernt.** Die Breitensuche „erreichbar ab Knoten X über
+alle Kanten" lag bereits dreimal im Baum (AC-Insel in `lib/vde-standards.ts`, Panel-Erreichbarkeit in
+`useLiveValidation`, und sie wäre für TOPO-002 ein viertes Mal entstanden). Die beiden Aufrufe in der
+Plan-Validierung nutzen jetzt `reachableNodeIds` (`lib/domain/graph.ts`) — die AC-Insel in
+`vde-standards` bleibt bewusst für sich, weil sie nach Domäne filtert und ihre Signatur Teil der
+Berechnungs-API ist.
+
+**Nachweis.** 5 neue Hook-Tests (u. a. der gemeldete Fall „Booster erreicht nur die Starterseite",
+der AutoWire-Vertrag und ein **echter** AutoWire-Plan, dem die Hausseiten-Kanten entfernt wurden —
+dort feuert die Regel) plus 14 Unit-Tests (`lib/autoWire/validation.test.ts`,
+`lib/domain/graph.test.ts`). **Fehlalarm-Messung:** über die sechs Referenzpläne und die Vorlagen
+(`complex`, `acdc`, `camper`, `inverter`, `simple`, `solar`, `TEMPLATE_AUTARK`) nach `performAutoWiring`
+**0** TOPO-002-Meldungen bei 0–19 Meldungen gesamt je Plan. Offen bleibt die Reihenfolge der
+Prüfungen im Detail: `TOPO-002` ist `warning` (Funktionsdefekt), nicht `critical` — ein Booster ohne
+Hausseiten-Pfad lädt nicht, er gefährdet aber niemanden; die Sicherheitsregeln bleiben unangetastet.
+
+**Offen (unverändert, mit Freigabebedarf):** (b) die festen AutoWire-Längen (Messung in der
+achtundzwanzigsten Fassung: Faktor Median 2,46×, Maximum 35,2×), M11-2 (feste Schienen-Koordinaten),
+die zwei Bedienebenen im Planner und die Rechtsdaten im Impressum.
+
+### 2026-09-28 — Dreißigste Fassung: Die Planungslänge ist eine Annahme — und steht ab jetzt auch so da (AUDIT L1 / A2)
+
+**Ausgangslage.** Der Prüfbericht zu (b) sah in den festen AutoWire-Längen einen Sicherheitsmangel:
+Sie seien „im Median 2,46×, im Maximum 35,2×" kürzer als die Route, und daraus folge ein zu dünner
+Querschnitt. Der Vorschlag lautete, die Konstanten durch `undefined` zu ersetzen, damit die geroutete
+Länge gewinnt. Ich habe das gebaut — und dabei gemessen, dass es falsch ist.
+
+**Was die drei Messungen zeigen (alle auf den sechs Referenzplänen, AutoWire frisch erzeugt):**
+
+| Frage                                                         | Ergebnis                                                                                                                                                                   |
+| ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Route ÷ Annahme (79 Kanten mit Annahme)                       | Median **1,92×**, Maximum **41,7×**; pro Klasse: 0,2 m → 18,3×, 0,5 m → 2,16×, 1 m → 3,08×, 2 m → 2,38×, **3 m → 0,95×**, **5 m → 0,22×** (also _zu großzügig_)            |
+| Eingetragene Nutzerlängen derselben Pläne gegen die Zeichnung | `complex`: Batterie→Plus-Schiene **0,5 m** eingetragen bei 3,16 m Zeichnung; `camper`: Batterie→Sicherung **0,2 m** bei 3,0 m; Schiene→Sicherungskasten **1 m** bei 4,24 m |
+| Wenn die Zeichnung als physische Länge gilt                   | `complex` 17 von 23 Auto-Kanten auf dem 70-mm²-Deckel, 17 Spannungsfall-Warnungen (heute: 6 auf dem Deckel, 0 Warnungen); `acdc` 11/14, `inverter` 9/10                    |
+
+Dazu die beiden normativen Quellen im Baum: `AUTOWIRE-CONTEXT.md` §7.3 nennt die Längen
+„**Planungsannahmen** … bewusst keine Messwerte: sie stecken das Drop-Budget ab, das der Nutzer nach
+dem Verlegen mit echten Längen überschreiben kann", und `ADR 0006` §1 erklärt 100 px = 1 m zu einer
+Zeichenkonvention für plausible Verhältnisse bei typischen 1–3 m Camper-Strecken. Der Router kennt
+Umwege **in der Zeichnung** — die Zeichnung ist aber keine Maßzeichnung des Fahrzeugs. Gegengeprüft
+mit der Invariante, die das Repo selbst testet (`store/usePlannerStoreExtended.test.ts`: „Auto-Wire:
+keine Warnungen nach performAutoWiring"): Mit der Zeichnung als Dimensionierungsgrundlage ist sie
+unmöglich zu erfüllen. Die Konstanten sind also die richtige elektrische Basis; der Fehler lag nicht
+in ihrem Wert.
+
+**Der Fehler lag in ihrer Herkunft, so wie das Werkzeug sie zeigte.** Alle vier Anzeigen behaupteten,
+die Zahl sei vom Nutzer eingetragen:
+
+- Kanten-Tooltip: „5.00 m **(eingetragen)**" auf einer Kante, die niemand angefasst hatte.
+- Inspector-Längenfeld: keine Unterscheidung zwischen Annahme und Messwert.
+- BOM-Längenquelle: `'stored'` hieß auch für Vorlagenwerte „eingetragen".
+- `CableEdgeData.length` selbst: ein Feld, ein Wahrheitsanspruch für zwei verschiedene Dinge.
+
+**Was jetzt gilt (dreißigste Fassung).**
+
+1. **`lengthIsAssumption`** (`lib/domain/cableEdgeData.ts`): AutoWire kennzeichnet jede von ihm
+   gesetzte Länge als Annahme (`addDcEdge`/`addAcEdge` in `lib/autoWire/routing.ts`).
+2. **Der Status wandert mit.** `handleChangeLength` (`store/slices/graphSlice.ts`) setzt ihn auf
+   `false`, sobald der Nutzer einen Wert einträgt; AutoWires Erhaltungslogik führt ihn bei der
+   Regeneration mit — ein Messwert des Nutzers wird nicht nachträglich zur Annahme erklärt.
+3. **Vier Anzeigen nennen die Annahme beim Namen**: Kanten-Tooltip und `aria-label`, Inspector-Hinweis
+   („Planungsannahme aus der Vorlage (kein Messwert) — nach dem Verlegen den echten Wert eintragen"),
+   Stücklisten-Quelle `'assumed'` („Planungsannahme 1,0 m, geroutet 4,2 m"). Das sichtbare
+   Kanten-Label bleibt pixelgleich; geändert wurden Tooltip, Vorlesetext, Hinweistext und
+   Stücklisten-Zeile.
+4. **Eine Regel statt zweier Kopien**: `planningLength` (`lib/autoWire/primitives.ts`) ist die eine
+   Längenregel — eingetragene Länge → Luftlinie aus der Geometrie → `undefined` (der Aufrufer wählt
+   seinen Ersatzwert). Die Dimensionierung nutzt sie statt des blinden 1-m-Ersatzwerts; die lokale
+   Kopie in `lib/autoWire.ts` (Issue 6) ist entfallen. Bei fehlenden Positionen bleibt es beim
+   Ersatzwert — verhaltensgleich zu vorher.
+5. **Boden statt Null**: `MIN_PLANNING_LENGTH` = 1 m. 11 von 79 Kanten verbinden Knoten mit
+   identischer Position (gestapelte Karten, Altdaten ohne Koordinaten); ihre Luftlinie wäre 0 m und
+   damit rechnerisch kein Spannungsfall.
+
+**Nachweis.** 13 neue Tests: 7 für `planningLength` (`lib/autoWire/primitives.test.ts`), 2 für die
+Kennzeichnung und ihre Weitergabe (`lib/autoWire.test.ts`), 1 für `handleChangeLength`
+(`store/usePlannerStoreExtended.test.ts`), 2 für den Inspector-Hinweis, 2 für den Tooltip. Die
+Invarianten-Suite „keine Warnungen nach AutoWire" bleibt grün, ebenso Konvergenz- und
+AUDIT-D3-Gruppe — ohne dass eine Erwartung angepasst werden musste.
+
+**Goldens neu erfasst** (`npm run goldenmaster:capture`, der im Repo dafür vorgesehene Weg): Der
+Tiefenvergleich aller sechs Dateien zeigt **ausschließlich neue Schlüssel** — 60 ×
+`lengthIsAssumption: true` (acdc 14, camper 7, complex 9, inverter 10, simple 9, solar 11) und
+**keine einzige Wertänderung**: kein Querschnitt, keine Länge, kein Knoten, keine Route. Genau das
+war die Absicht: Die Kennzeichnung dokumentiert, bewertet aber nichts um.
+
+**Nicht geändert (bewusst).** Die Annahmewerte selbst (0,2 m … 5 m), die Dimensionierungsgrundlage,
+das Drop-Budget und die Sicherheitsregeln. Der geroutete Verlegeweg bleibt die Anzeige- und
+Materialbasis (Stückliste nimmt weiter die größere der beiden Längen und nennt die Quelle).
+
+**Offen — eine Produktentscheidung, keine Reparatur.** Ob die _gezeichnete_ Geometrie irgendwo als
+physische Länge gelten soll, ist mit diesem Stand beantwortet: nein, sie ist Zeichenkonvention. Wer
+das anders will, entscheidet damit auch, dass die sechs Referenzpläne elektrisch unerfüllbar sind
+(Zahlen oben) — und dass AutoWires Kanten dann dickere Querschnitte empfehlen, als die Vorlagen
+meinen. Beides gehört bewusst entschieden, nicht durch einen Konstantenwechsel nebenbei.

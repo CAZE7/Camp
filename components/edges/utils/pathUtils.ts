@@ -23,11 +23,29 @@ export const laneOffset = (lanes: number): number => lanes * PARALLEL_LANE_SPREA
 /** Polaritäts-Lanes: Plus auf 1,5 Lanes, Minus eine ganze Lane darunter. */
 export const PLUS_PATH_OFFSET = laneOffset(1.5); // 24
 export const MINUS_PATH_OFFSET = laneOffset(2.5); // 40
-export const PARALLEL_LABEL_SPREAD = 24;
+export const PARALLEL_LABEL_SPREAD = ROUTING_TOKENS.parallelLabelSpread;
 
 /** Kabel-Label-Box für Kollisionsprüfung (M8-3 / M10-1). */
-export const LABEL_BOX_WIDTH = 88;
-export const LABEL_BOX_HEIGHT = 20;
+/**
+ * Größe der Label-Box in Modell-Einheiten — **eine** Wahrheit für Platzierung
+ * (`routeAll.labelAnchorClearOfNodes`) und Prüfung (Galerie, Label-Regression).
+ *
+ * Bis 2026-09-28 standen hier 88 × 20, während die Platzierung mit eigenen
+ * 112 × 28 rechnete (`routeAll.LABEL_HALF_*`). Beide Werte waren kleiner als
+ * das, was `CableEdge` tatsächlich rendert: 12 px fett (Inter), `padding:
+ * 2px 6px`, 1 px Rahmen — ein Kern-Label wie „DC- · 1.5 mm² · 3.0 m“ (21
+ * Zeichen) misst rund 150 px Breite und 22 px Höhe. Gemessen an
+ * `knownPlans/complex.json` mit gemessener Geometrie (23 Kanten) lagen
+ * deshalb 11 Labels über Bauteilkarten (mit 88 × 20 gerechnet: 4 — die
+ * Prüfung sah den Text nicht, den der Nutzer sah).
+ *
+ * Die Werte sind ein **konservativer Umschlag** für die üblichen Labels
+ * (Typ-Kürzel · Querschnitt · Länge), nicht die Breite jedes Einzeltexts:
+ * Die exakte Breite hinge an Schriftmetrik und Inhalt; ein Modell mit
+ * zwei Wahrheiten war der Fehler, nicht seine Rundung.
+ */
+export const LABEL_BOX_WIDTH = ROUTING_TOKENS.labelBoxWidth;
+export const LABEL_BOX_HEIGHT = ROUTING_TOKENS.labelBoxHeight;
 
 export type LabelBox = { x: number; y: number; width: number; height: number };
 

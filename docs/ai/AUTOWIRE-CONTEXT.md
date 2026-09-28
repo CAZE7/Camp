@@ -35,7 +35,7 @@ Analysis
   ↓  buildDictionaries (nodesByType / nodesByLabel)
   ↓  pickHouseBattery  (role='house' > kein Starter-Label > erste Batterie)
   ↓  getSystemVoltage  (Aufbaubatterie hat Vorrang)
-  ↓  Längenschätzung für Nutzer-Kanten ohne data.length (px / PX_PER_METER, min 1 m)
+  ↓  Längenschätzung für Kanten ohne data.length (`planningLength`: px / PX_PER_METER, min 1 m)
 Topology (Knoten anlegen/heilen)
   ↓  resolveRails()          Plus-/Minus-Schiene (find-or-create)
   ↓  findOrCreate()          Sicherungskasten, Smart Shunt, MPPT (nur bei Solar)
@@ -81,6 +81,15 @@ Lader 3 m · Booster 3 m · AC 2 m · Masse 1 m.
 
 Sie sind bewusst keine Messwerte: sie stecken das Drop-Budget ab, das der Nutzer nach dem
 Verlegen mit echten Längen überschreiben kann.
+
+Damit das auch sichtbar ist, trägt jede so gesetzte Kante `lengthIsAssumption: true`
+(`lib/domain/cableEdgeData.ts`): Kanten-Tooltip und Vorlesetext nennen sie „Planungsannahme aus der
+Vorlage", der Inspector zeigt einen entsprechenden Hinweis, die Stückliste führt sie unter
+`assumed` statt `stored`. Sobald der Nutzer im Inspector einen Wert einträgt, setzt
+`handleChangeLength` die Kennzeichnung auf `false` — ab da ist es sein Messwert, und AutoWire führt
+den Status bei der Regeneration mit. Ohne diese Kennzeichnung las sich eine Vorlagenannahme in
+Tooltip und Stückliste wie eine Nutzereingabe (dreißigste Fassung,
+`docs/ARCHITECTURE-CHANGES.md`).
 
 ---
 

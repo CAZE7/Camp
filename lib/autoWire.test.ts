@@ -1732,11 +1732,14 @@ describe('autoWire — Nutzerangaben an Auto-Kanten (AUDIT D3)', () => {
     n('c1', 'consumer', { label: 'LED-Beleuchtung', watts: 20 }),
   ];
 
-  /** Erster Lauf — die Solar-Plus-Kante der Vorlage trägt die Planungslänge 5 m. */
+  /** Erster Lauf — die Solar-Plus-Kante der Vorlage trägt die Planungsannahme 5 m. */
   const firstRun = () => {
     const first = performAutoWiring(plan())!;
     const solar = first.edges.find((x) => x.data?.edgeDomain === 'Solar' && x.sourceHandle === 'plus')!;
-    expect(solar.data!.length, 'Planungslänge der Solar-Zuleitung').toBe(5);
+    expect(solar.data!.length, 'Planungsannahme der Solar-Zuleitung').toBe(5);
+    // Dreißigste Fassung: Die Zahl ist eine Annahme, kein Messwert — ohne
+    // Kennzeichnung las der Nutzer sie im Inspektor wie eine eigene Eingabe.
+    expect(solar.data!.lengthIsAssumption, 'Länge ist als Annahme gekennzeichnet').toBe(true);
     return { first, solar };
   };
 
@@ -1746,12 +1749,26 @@ describe('autoWire — Nutzerangaben an Auto-Kanten (AUDIT D3)', () => {
     // ersetzt seine Kanten und baute sie dabei mit der festen Planungslänge
     // neu auf — jede Nutzereingabe war Wegwerfarbeit.
     const { first, solar } = firstRun();
-    const edited = first.edges.map((x) => (x.id === solar.id ? { ...x, data: { ...x.data, length: 2 } } : x));
+    // So schreibt der Store (handleChangeLength): eigener Wert, und die
+    // Kennzeichnung „Annahme" fällt weg — der Wert ist ab jetzt ein Messwert.
+    const edited = first.edges.map((x) =>
+      x.id === solar.id ? { ...x, data: { ...x.data, length: 2, lengthIsAssumption: false } } : x
+    );
 
     const second = performAutoWiring(first.nodes, edited)!;
     const again = second.edges.find((x) => connectionKey(x) === connectionKey(solar))!;
     expect(again.data!.length, 'die Nutzerangabe 2 m muss stehen bleiben').toBe(2);
     expect(again.data!.autoWired, 'die Kante bleibt eine Auto-Kante (Idempotenz)').toBe(true);
+    // Der Status wandert mit: Aus der Annahme ist ein Messwert des Nutzers
+    // geworden — AutoWire darf ihn nicht nachträglich zur Annahme erklären.
+    expect(again.data!.lengthIsAssumption, 'eigener Wert ist keine Annahme mehr').toBeFalsy();
+  });
+
+  it('ohne Nutzereingabe bleibt der Annahme-Status über den nächsten Lauf erhalten', () => {
+    const { first, solar } = firstRun();
+    const second = performAutoWiring(first.nodes, first.edges)!;
+    const again = second.edges.find((x) => connectionKey(x) === connectionKey(solar))!;
+    expect(again.data!.lengthIsAssumption, 'unveränderte Annahme bleibt Annahme').toBe(true);
   });
 
   it('die erhaltene Länge fließt in die Dimensionierung ein (Spannungsfall)', () => {
@@ -1812,8 +1829,8 @@ describe('autoWire — Nutzerangaben an Auto-Kanten (AUDIT D3)', () => {
     });
   });
 
-  it('unveränderte Auto-Kanten behalten ihre Planungslänge (kein Datenwachstum)', () => {
-    // Gegenprobe nach oben: Ohne Nutzereingabe bleibt die Vorlagenlänge 5 m,
+  it('unveränderte Auto-Kanten behalten ihre Planungsannahme (kein Datenwachstum)', () => {
+    // Gegenprobe nach oben: Ohne Nutzereingabe bleibt die Vorlagenannahme 5 m,
     // und der Lauf bleibt idempotent.
     const { first, solar } = firstRun();
     const second = performAutoWiring(first.nodes, first.edges)!;

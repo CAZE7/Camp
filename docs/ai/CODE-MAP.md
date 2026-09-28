@@ -59,7 +59,7 @@ CAMP
 - **Purpose:** Rahmenseite des Planers; Responsive-/Touch-Verhalten, Panel-Breakpoints.
 - **Input:** Store-State (`usePlannerStore`), URL-Route.
 - **Output:** gerenderte App Shell.
-- **Depends On:** `store/`, `components/planner/*`, `components/layout/MainLayout.tsx`.
+- **Depends On:** `store/`, `components/planner/*`.
 - **Called By:** `app/elektrik-planung/page.tsx`.
 - **Files:** `components/PlannerInner.tsx`, `components/Planner.tsx`, `components/planner/PlannerSidebar.tsx`, `components/planner/PlannerInspector.tsx`.
 - **Tests:** `components/Planner.test.tsx`, `components/PlannerInner.test.tsx`, `components/planner/PlannerSidebar.test.tsx`, `components/planner/PlannerInspector.test.tsx`.

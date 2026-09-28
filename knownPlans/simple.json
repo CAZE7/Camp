@@ -10,7 +10,8 @@
           "fuseSize": 7.5,
           "fuseType": "anl",
           "fuseWarning": false,
-          "length": 0.2
+          "length": 0.2,
+          "lengthIsAssumption": true
         },
         "id": "e-auto-1",
         "source": "battery-1",
@@ -25,7 +26,8 @@
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseWarning": false,
-          "length": 0.2
+          "length": 0.2,
+          "lengthIsAssumption": true
         },
         "id": "e-auto-2",
         "source": "battery-1",
@@ -40,7 +42,8 @@
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseWarning": false,
-          "length": 0.5
+          "length": 0.5,
+          "lengthIsAssumption": true
         },
         "id": "e-auto-3",
         "source": "auto:2:smart-shunt",
@@ -57,7 +60,8 @@
           "fuseSize": 7.5,
           "fuseType": "anl",
           "fuseWarning": false,
-          "length": 1
+          "length": 1,
+          "lengthIsAssumption": true
         },
         "id": "e-auto-4",
         "source": "auto:0:plus-schiene",
@@ -72,7 +76,8 @@
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseWarning": false,
-          "length": 1
+          "length": 1,
+          "lengthIsAssumption": true
         },
         "id": "e-auto-5",
         "source": "auto:1:minus-schiene",
@@ -89,7 +94,8 @@
           "fuseSize": 5,
           "fuseType": "anl",
           "fuseWarning": false,
-          "length": 3
+          "length": 3,
+          "lengthIsAssumption": true
         },
         "id": "e-auto-6",
         "source": "fusebox-1",
@@ -104,7 +110,8 @@
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseWarning": false,
-          "length": 3
+          "length": 3,
+          "lengthIsAssumption": true
         },
         "id": "e-auto-7",
         "source": "auto:1:minus-schiene",
@@ -121,7 +128,8 @@
           "fuseSize": 5,
           "fuseType": "anl",
           "fuseWarning": false,
-          "length": 3
+          "length": 3,
+          "lengthIsAssumption": true
         },
         "id": "e-auto-8",
         "source": "fusebox-1",
@@ -136,7 +144,8 @@
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseWarning": false,
-          "length": 3
+          "length": 3,
+          "lengthIsAssumption": true
         },
         "id": "e-auto-9",
         "source": "auto:1:minus-schiene",

@@ -33,16 +33,17 @@ import {
   type Watts,
 } from '../units';
 import {
-  type CableEdge,
+  DEFAULT_EDGE_LENGTH,
   MAX_CROSS_SECTION,
   MIN_CROSS_SECTION,
   VDE_MAX_DC_DROP_FRACTION,
   VDE_MAX_DC_DROP_PER_EDGE_FRACTION,
   crossSectionForDrop,
   edgeCrossSection,
-  edgeLength,
   edgeVoltageDrop,
   nextStandardCrossSection,
+  planningLength,
+  type CableEdge,
 } from './primitives';
 import { isVoltageDropStopType } from './validation';
 import { solarDesignCurrentOf, solarDropBasisVoltageOf, solarFuseFloorOf, solarPanelEndOf } from '../solar'; // ELE-007
@@ -72,6 +73,7 @@ export function cumulativeDropAt(
   visited: Set<string>
 ): PathDropResult {
   if (visited.has(nodeId)) return NO_DROP;
+  const pointOf = (id: string) => nodeMap.get(id)?.position;
   const node = nodeMap.get(nodeId);
   if (!node) return NO_DROP;
   if (node.type === 'battery' || node.type === 'shorePower') {
@@ -92,7 +94,11 @@ export function cumulativeDropAt(
     hasIncoming = true;
     const sourceNode = nodeMap.get(edge.source);
     const I = calculateEdgeCurrent(sourceNode, node, nodes, sysVoltage);
-    const ownDrop = edgeVoltageDrop(I, edgeLength(edge), edgeCrossSection(edge));
+    const ownDrop = edgeVoltageDrop(
+      I,
+      planningLength(edge, pointOf) ?? DEFAULT_EDGE_LENGTH,
+      edgeCrossSection(edge)
+    );
     const sub = cumulativeDropAt(edge.source, nodeMap, edges, nodes, sysVoltage, nextVisited);
 
     const cumAny = addVolts(ownDrop, sub.any);
@@ -127,6 +133,7 @@ export function sizeDcEdges(
   sysVoltage: Volts,
   nodeMap: Map<string, Node> = new Map(nodes.map((n) => [n.id, n]))
 ): void {
+  const pointOf = (id: string) => nodeMap.get(id)?.position;
   const dropLimit = scaleVolts(sysVoltage, VDE_MAX_DC_DROP_FRACTION);
   const perEdgeCap = scaleVolts(sysVoltage, VDE_MAX_DC_DROP_PER_EDGE_FRACTION);
   // AUDIT ELE-007 (Restpunkt, nachgezogen 2026-09-08): Panel-Zuleitungen
@@ -147,7 +154,7 @@ export function sizeDcEdges(
     // mit dem höheren Strom gerechnet (sichere Richtung).
     const panel = solarPanelEndOf(sourceNode, targetNode);
     const sizingI = panel ? solarDesignCurrentOf(panel) : I;
-    const length = edgeLength(edge);
+    const length = planningLength(edge, pointOf) ?? DEFAULT_EDGE_LENGTH;
     const currentCs = edgeCrossSection(edge, MIN_CROSS_SECTION);
 
     let requiredCs: Mm2 = MAX_CROSS_SECTION;
@@ -185,7 +192,7 @@ export function sizeDcEdges(
       const I = calculateEdgeCurrent(sourceNode, targetNode, nodes, sysVoltage, allEdges); // ELE-005
       const currentCs = edgeCrossSection(edge, MIN_CROSS_SECTION);
       const cumAtSource = relevantCumulativeDrop(edge.source, nodeMap, allEdges, nodes, sysVoltage);
-      const ownDrop = edgeVoltageDrop(I, edgeLength(edge), currentCs);
+      const ownDrop = edgeVoltageDrop(I, planningLength(edge, pointOf) ?? DEFAULT_EDGE_LENGTH, currentCs);
 
       // ELE-007: Budget der Panel-Kante an der MPP-Basis bemessen.
       const panel = solarPanelEndOf(sourceNode, targetNode);
@@ -253,7 +260,7 @@ export function sizeDcEdges(
             sysVoltage,
             allEdges
           ), // ELE-005
-          edgeLength(edge),
+          planningLength(edge, pointOf) ?? DEFAULT_EDGE_LENGTH,
           cs
         );
         if (!victim || own > victimDrop) {
@@ -282,6 +289,7 @@ export function applyFuseSizes(
   nodes: Node[],
   sysVoltage: Volts,
   nodeMap: Map<string, Node> = new Map(nodes.map((n) => [n.id, n])),
+
   /** ELE-005: volle Kantenliste für die Insel-BFS der Wechselrichter-Last. */
   allEdges: CableEdge[] = []
 ): void {
@@ -444,6 +452,7 @@ function shoreSupplyRating(node: Node | undefined): Amps | undefined {
 
 export function sizeAcEdges(edges: CableEdge[], nodes: Node[]): void {
   const nodeMap = new Map(nodes.map((n) => [n.id, n]));
+  const pointOf = (id: string) => nodeMap.get(id)?.position;
   for (const edge of edges) {
     if (edge.data?.edgeDomain !== 'AC_230V') continue;
     if (!edge.data) edge.data = {};
@@ -463,7 +472,7 @@ export function sizeAcEdges(edges: CableEdge[], nodes: Node[]): void {
     const sourceNode = nodeMap.get(edge.source);
     const targetNode = nodeMap.get(edge.target);
     const I = acCurrentA(sourceNode, targetNode, nodes, edges);
-    const length = edgeLength(edge, DEFAULT_AC_LENGTH);
+    const length = planningLength(edge, pointOf) ?? DEFAULT_AC_LENGTH;
 
     // AUDIT CRASH-001: calculateCrossSection gibt Nutzer-/Import-Querschnitte
     // > 70 mm² bewusst unverändert durch — der DC-Pfad (applyFuseSizes)

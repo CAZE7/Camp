@@ -3,7 +3,7 @@
 Welcher Testtyp existiert, was er beweist und **welcher Typ für welche Änderung verpflichtend
 ist**.
 
-**Baseline (verifiziert 2026-09-28):** `npm test` → **2485 Tests / 181 Dateien, grün**.
+**Baseline (verifiziert 2026-09-28):** `npm test` → **2485 Tests / 179 Dateien, grün**.
 `npm run typecheck` und `npm run typecheck:tests` grün. `npm run routing:audit`: I1–I7 = 0,
 Fallback 0, deterministisch.
 
@@ -54,7 +54,7 @@ Zeilen 90 %, Branches 85 %, Funktionen 90 %, Statements 95 %.
 | **Domänenmodell** (Typ, Feld, Schema)                                | `lib/nodeSchema.test.ts` · `store/slices/persistence.test.ts` · `components/nodes/types.test.ts`                                                                                                                                                                    |
 | **Store / Persistenz**                                               | `store/usePlannerStore*.test.ts` · `persistence.test.ts` · Migrationstest (Altstand)                                                                                                                                                                                |
 | **UI (Canvas, Panels, Nodes)**                                       | Komponententest (RTL) · E2E für den Bedienpfad · bei Optik: Vorher/Nachher-Screenshots 375/768/1440                                                                                                                                                                 |
-| **Neues Bauteil**                                                    | `componentRegistry.test.tsx` · `handleLayout.test.ts` · Node-Komponententest · AutoWire-Verhalten (wird es verdrahtet?)                                                                                                                                             |
+| **Neues Bauteil**                                                    | `componentRegistry.test.tsx` · Node-Komponententest · `app/handleGeometry.test.ts` (Handle-Pixel) · AutoWire-Verhalten (wird es verdrahtet?)                                                                                                                        |
 | **ELK / Layout**                                                     | `lib/routing/elk/elk.test.ts` · `routingV2Adapter.test.ts` · `PlannerDashboard.test.tsx` (Engine wird gemeldet)                                                                                                                                                     |
 | **Performance**                                                      | Benchmark-Sonde + dokumentierte Messung im PR (kein Gate, aber Nachweis)                                                                                                                                                                                            |
 

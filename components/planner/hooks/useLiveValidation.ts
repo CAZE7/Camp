@@ -4,6 +4,8 @@ import { type CableEdgeData } from '../../edges/CableEdge';
 import { getEdgeDomain } from '../../../lib/electrical';
 import { SOLAR_DESIGN_MIN_TEMPERATURE_C, stringColdVocOf } from '../../../lib/solar'; // ELE-007
 import { chemistriesParallelSafe } from '../../../lib/autoWire/primitives'; // AUTO-003
+import { isHouseBattery, reachesHouseBattery } from '../../../lib/autoWire/validation'; // TOPO-002
+import { reachableNodeIds } from '../../../lib/domain/graph';
 import {
   FUSE_BREAKING_CAPACITY_A,
   bankShortCircuitCurrentA,
@@ -355,25 +357,11 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
         });
         return;
       }
-      // Erreichbare Panels per BFS über alle Kanten ab dem Regler.
-      const adjacent = new Map<string, string[]>();
-      edges.forEach((edge) => {
-        if (!adjacent.has(edge.source)) adjacent.set(edge.source, []);
-        if (!adjacent.has(edge.target)) adjacent.set(edge.target, []);
-        adjacent.get(edge.source)!.push(edge.target);
-        adjacent.get(edge.target)!.push(edge.source);
-      });
-      const visited = new Set<string>([mppt.id]);
-      const queue = [mppt.id];
-      while (queue.length > 0) {
-        const currentId = queue.shift()!;
-        for (const next of adjacent.get(currentId) ?? []) {
-          if (!visited.has(next)) {
-            visited.add(next);
-            queue.push(next);
-          }
-        }
-      }
+      // Erreichbare Panels ab dem Regler — undirektional über alle Kanten.
+      // Die Breitensuche stand hier als dritte Kopie derselben Logik im Baum;
+      // sie liegt jetzt in `reachableNodeIds` (lib/domain/graph.ts), das auch
+      // die Pfadprüfung des Ladeboosters (TOPO-002) benutzt.
+      const visited = reachableNodeIds(mppt.id, edges);
       const connectedNodes = nodes.filter((n) => visited.has(n.id));
       const { stringVoc, missingVoc, uncomputableVoc } = stringColdVocOf(connectedNodes, edges);
       const worst = stringVoc.length > 0 ? Math.max(...stringVoc) : 0;
@@ -1185,6 +1173,71 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
         });
       }
     });
+
+    /**
+     * Rule E2 (TOPO-002): Der Ladebooster erreicht keine Aufbaubatterie.
+     *
+     * Warum es diese Regel gibt (Prüfbericht 2026-09-28): Regel E prüft nur,
+     * DASS ein Ein- und ein Ausgang existiert. Eine Kante Booster → Schiene
+     * genügte damit auch dann, wenn die Schiene mit keiner Aufbaubatterie
+     * verbunden war — während die Meldung „Aufbaubatterie-Pfad (Ausgang)
+     * prüfen" genau das versprach. Ein Versprechen ohne Prüfung ist ein
+     * stiller Fallback: Der Plan sah geprüft aus und war es nicht.
+     *
+     * Hier wird der Pfad tatsächlich gelaufen (`reachesHouseBattery`) — über
+     * die Schienen, undirektional, weil die Aufbaubatterie in Richtung
+     * Batterie → Schiene verdrahtet ist und der Lader in Richtung Lader →
+     * Schiene. Zwei Fälle, zwei ehrliche Meldungen: keine Aufbaubatterie im
+     * Plan (dann kann keine erreicht werden) oder vorhanden, aber nicht
+     * angeschlossen.
+     */
+    if (dcdcChargers.length > 0) {
+      const houseBatteries = batteries.filter(isHouseBattery);
+      for (const charger of dcdcChargers) {
+        const hasInput = (edgesByTarget.get(charger.id)?.length ?? 0) > 0;
+        const hasOutput = (edgesBySource.get(charger.id)?.length ?? 0) > 0;
+        // Unvollständig angeschlossen ⇒ Regel E meldet es bereits; hier gäbe
+        // es sonst zwei Meldungen für denselben Sachverhalt.
+        if (!hasInput || !hasOutput) continue;
+
+        if (houseBatteries.length === 0) {
+          warnings.push({
+            id: `dcdc-no-house-battery-${charger.id}`,
+            category: 'topology',
+            type: 'warning',
+            title: 'Ladebooster ohne Aufbaubatterie im Plan',
+            focusId: charger.id,
+            focusType: 'node',
+            ruleId: 'TOPO-002-dcdc-house-path',
+            measuredValue: '0 Aufbaubatterien',
+            expectedValue: '≥ 1 Aufbaubatterie am Ladepfad',
+            unit: '',
+            source:
+              'Regel E2: Pfadprüfung Lader → Verteilung → Aufbaubatterie (Regel M: fehlendes Ziel ist UNKNOWN, nicht OK)',
+            message: `⚠️ Hinweis: Im Plan ist keine Aufbaubatterie vorhanden — der Ladebooster kann nichts laden. Eine Batterie mit Rolle „Aufbau" anlegen; die Starterseite zählt nicht.`,
+          });
+          continue;
+        }
+
+        if (!reachesHouseBattery(charger.id, nodes, edges)) {
+          warnings.push({
+            id: `dcdc-house-path-${charger.id}`,
+            category: 'topology',
+            type: 'warning',
+            title: 'Ladebooster erreicht die Aufbaubatterie nicht',
+            focusId: charger.id,
+            focusType: 'node',
+            ruleId: 'TOPO-002-dcdc-house-path',
+            measuredValue: '0 erreichbare Aufbaubatterien',
+            expectedValue: '≥ 1 erreichbare Aufbaubatterie',
+            unit: '',
+            source:
+              'Regel E2: Pfadprüfung Lader → Verteilung → Aufbaubatterie (Regel M: keine stille Annahme „angeschlossen")',
+            message: `⚠️ Hinweis: Der Ladebooster hat Ein- und Ausgang, aber vom Ausgang führt kein Pfad zu einer Aufbaubatterie — geladen wird nur die Starterseite. Verbindung zur Verteilung/Sammelschiene prüfen, an der die Aufbaubatterie hängt.`,
+          });
+        }
+      }
+    }
 
     // --- Rule F: Der Shunt wird umgangen ---
     // Nur die Aufbaubatterie, an der der Shunt hängt. Die Starterbatterie

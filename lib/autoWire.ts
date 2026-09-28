@@ -48,8 +48,6 @@ import {
   volts,
   watts,
   ZERO_WATTS,
-  PX_PER_METER,
-  type Meters,
   type Volts,
 } from './units';
 import {
@@ -58,6 +56,7 @@ import {
   connectionKey,
   edgeCrossSection,
   chemistriesParallelSafe,
+  planningLength,
   type CableEdge,
 } from './autoWire/primitives';
 import { isAcEdge, isSolarEdge, isStarterBattery } from './autoWire/validation';
@@ -145,13 +144,11 @@ export function performAutoWiring(
   // Schätzung aus der Knotengeometrie (PX_PER_METER, konsistent mit der
   // Anzeigeebene); ohne Positionen bleibt der Wert undefined und jeder
   // Lesezugriff nutzt seinen definierten Fallback.
+  // Eine gemeinsame Regel statt einer zweiten Kopie: `planningLength`
+  // (lib/autoWire/primitives.ts) liefert eingetragene Länge → Luftlinie →
+  // undefined. Dieselbe Regel benutzt die Dimensionierung.
   const nodePositions = new Map(initialNodes.map((nd) => [nd.id, nd.position]));
-  const geometricLength = (e: { source: string; target: string }): Meters | undefined => {
-    const a = nodePositions.get(e.source);
-    const b = nodePositions.get(e.target);
-    if (!a || !b) return undefined;
-    return meters(Math.max(1, Math.hypot((b.x ?? 0) - (a.x ?? 0), (b.y ?? 0) - (a.y ?? 0)) / PX_PER_METER));
-  };
+  const pointOf = (nodeId: string) => nodePositions.get(nodeId);
   let userEdges: CableEdge[] = existingEdges
     .filter((e) => !isAutoWiredEdge(e))
     .map((e) => ({
@@ -168,7 +165,7 @@ export function performAutoWiring(
         ...(e.data ?? {}),
         // Kanten ohne gespeicherte Länge bekommen weiterhin die
         // Geometrie-Schätzung (Issue 6) — sonst unverändert.
-        length: e.data?.length ?? geometricLength(e),
+        length: planningLength(e, pointOf),
         // AUDIT D2: Herkunft als Datenfeld festschreiben. Ab hier entscheidet
         // nie wieder eine ID über „Auto" oder „Nutzer".
         autoWired: false,
@@ -713,7 +710,12 @@ export function performAutoWiring(
     const previous = previousAutoEdgeData.get(autoEdgeIdentityKey(edge));
     if (!previous || !edge.data) continue;
     const previousLength = parseQuantity(previous.length, meters);
-    if (previousLength !== null) edge.data.length = previousLength;
+    if (previousLength !== null) {
+      edge.data.length = previousLength;
+      // Der Status wandert mit: Hatte der Nutzer die Länge eingetragen, bleibt
+      // sie ein Messwert und wird nicht nachträglich zur Annahme erklärt.
+      edge.data.lengthIsAssumption = previous.lengthIsAssumption === true;
+    }
     if (previous.fuseOffset !== undefined) edge.data.fuseOffset = previous.fuseOffset;
     if (isFuseType(previous.fuseType)) edge.data.fuseType = previous.fuseType;
     if (Number(previous.fuseBreakingCapacity) > 0)

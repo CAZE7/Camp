@@ -167,7 +167,13 @@ describe('M7 — Struktur der Planer-Oberfläche', () => {
   });
 
   it('selektiert Bauteile mit 1 px Akzent-Linie (M7-3)', () => {
-    expect(read('components/nodes/BaseNode.tsx')).toContain('ring-1 ring-[color:var(--accent-line)]');
+    // Live-Mechanik: die Knotenkomponenten setzen bei Auswahl die Klasse
+    // `node-card--selected`; die 1-px-Linie kommt aus `.node-card`
+    // (`border: 1px solid …`) und dem Token `--accent-line`. Der frühere
+    // Träger dieser Regel (`components/nodes/BaseNode.tsx`) war toter Code
+    // und ist am 2026-09-28 entfernt — der Test prüft jetzt das, was läuft.
+    expect(read('components/nodes/BatteryNode.tsx')).toContain("selected ? 'node-card--selected'");
+    expect(css).toMatch(/\.node-card--selected\s*\{[^}]*border-color:\s*var\(--accent-line\)/);
   });
 
   it('bindet Inter als UI-Schrift und Outfit als Display-Schrift ein (D-2/M7-2)', () => {
@@ -314,14 +320,16 @@ describe('D-1 Werft-Token-Hygiene — keine Farbliterale außerhalb globals.css'
    * Design-Tokens umgestellt (FOLLOW-UP: Tokenisierung). Bewusst als
    * explizite Ausnahmeliste statt globaler Schwächung dieser Regel —
    * jede neue Datei fällt wieder unter die Hygiene.
+   *
+   * Verkleinert am 2026-09-28: Die toten Module wurden entfernt statt
+   * tokenisiert (`components/DachNode.tsx`, `components/NavigationSidebar.tsx`,
+   * `components/layout/MainLayout.tsx`), und der Eintrag
+   * `app/tools/dach/components/DachPlanerFlow.tsx` zeigte auf eine Datei, die
+   * es nicht mehr gibt. Übrig bleibt echter, erreichbarer Altbestand.
    */
   const WERFT_LEGACY_TOKEN_DEBT = new Set([
     'app/guides/camper-ausbauguide/ScrollSidebar.tsx',
-    'app/tools/dach/components/DachPlanerFlow.tsx',
     'components/Chat.tsx',
-    'components/DachNode.tsx',
-    'components/NavigationSidebar.tsx',
-    'components/layout/MainLayout.tsx',
   ]);
 
   /** Hex-/rgb-/hsl-Farbliterale (z. B. #dc2626, rgba(0,0,0,.4)). */

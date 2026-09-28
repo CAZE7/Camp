@@ -141,7 +141,7 @@ Alle Angaben stammen aus Läufen auf dem aktuellen Stand
 | Typecheck (inkl. Tests)     | `npm run typecheck:tests`                   | **0 Fehler** — Einheiten und Indexschärfe gelten auch in Tests                            |
 | Lint (ESLint 10, flat)      | `npm run lint`                              | **0 Fehler** — u. a. consistent-type-imports, Tailwind-Sortierung                         |
 | Format (Prettier)           | `npm run format:check`                      | sauber, inkl. Tailwind-Klassensortierung                                                  |
-| Unit-/Komponententests      | `npm test`                                  | **2485 Tests, 181 Dateien, grün**                                                         |
+| Unit-/Komponententests      | `npm test`                                  | **2485 Tests, 179 Dateien, grün**                                                         |
 | Coverage-Gate (lib/**)      | `npm run test:coverage`                     | Schwellen: Zeilen 90, Branches 85, Funktionen 90, Statements 95                           |
 | Property-Tests (VDE)        | `npx vitest run lib/vde-properties.test.ts` | 35 Tests, ~17.000 generierte Fälle                                                        |
 | Routing-Invarianten         | `npx vitest run components/edges/utils`     | 25 Szenarien × 7 Invarianten                                                              |

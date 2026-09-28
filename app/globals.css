@@ -859,6 +859,19 @@
     outline-offset: 4px;
   }
 
+  /* Label-Ebene über die Bauteilkarten heben (Befund 2026-09-28).
+     React Flow rendert den Label-Container VOR der Node-Ebene im DOM
+     (beide ohne z-index) — gemalte Karten deckten den Text deshalb zu,
+     sobald eine Trasse unter einer Karte hindurchlief (Screenshot:
+     „SOLAR · 25 mm²" halb hinter der PV-Karte). z-index 4 liegt über den
+     Karten (0), unter den Panels (`.react-flow__panel`, 5) und unter
+     ausgewählten Karten (React Flow setzt dort 1000) — Bedienelemente
+     bleiben also erreichbar. Die Platzierung hält Labels trotzdem von
+     Karten frei (`routeAll`); diese Regel ist die Rückfallebene. */
+  .react-flow__edgelabel-renderer {
+    z-index: 4;
+  }
+
   /* Kabel-Labels bleiben bei jedem Zoom sichtbar (M8-1). Auf schmalen
      Displays nur die Schrift etwas dichter, nie display:none —
      D-2 hält die 12-px-Lesbarkeitsgrenze ein. */

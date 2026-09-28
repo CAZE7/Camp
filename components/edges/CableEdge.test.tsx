@@ -104,6 +104,27 @@ describe('CableEdge', () => {
     // expect(getByText('5.00 m')).toBeInTheDocument(); // Smart labeling hides this
   });
 
+  // Dreißigste Fassung: Eine Planungsannahme darf nicht als „eingetragen"
+  // gelesen werden — genau dieses Wort stand vorher im Tooltip einer
+  // AutoWire-Kante, deren Zahl niemand eingegeben hatte.
+  it('nennt eine Planungsannahme im Tooltip als Annahme, nicht als Eingabe', () => {
+    const { container } = renderEdge(
+      <CableEdge {...defaultProps} data={{ length: 5, lengthIsAssumption: true }} />
+    );
+    const title = container.querySelector('title')?.textContent ?? '';
+    expect(title).toContain('Planungsannahme');
+    expect(title).not.toContain('(eingetragen)');
+  });
+
+  it('nennt einen eigenen Wert weiterhin „eingetragen"', () => {
+    const { container } = renderEdge(
+      <CableEdge {...defaultProps} data={{ length: 5, lengthIsAssumption: false }} />
+    );
+    const title = container.querySelector('title')?.textContent ?? '';
+    expect(title).toContain('(eingetragen)');
+    expect(title).not.toContain('Planungsannahme');
+  });
+
   it('uses orthogonal routing with rounded corners (no bezier)', () => {
     const { getByTestId } = renderEdge(<CableEdge {...defaultProps} />);
 

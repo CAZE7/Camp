@@ -95,10 +95,12 @@ describe('Routing-Galerie — visuelle Regression', () => {
     });
   }
 
-  it('M10-1: 25 Szenarien, je Szene 0 Label-Kollisionen (88×20-Box)', () => {
+  it('M10-1: 25 Szenarien, Label-Box in gerenderter Größe', () => {
     expect(gallery).toHaveLength(25);
-    expect(LABEL_BOX_WIDTH).toBe(88);
-    expect(LABEL_BOX_HEIGHT).toBe(20);
+    // Gerenderte Label-Größe (Befund 2026-09-28) — vorher standen hier
+    // 88 × 20, während der Canvas ~156 × 22 px malt.
+    expect(LABEL_BOX_WIDTH).toBe(156);
+    expect(LABEL_BOX_HEIGHT).toBe(22);
     for (const entry of gallery) {
       const box = labelBoundingBox(entry.label.x, entry.label.y);
       expect(Number.isFinite(box.x)).toBe(true);

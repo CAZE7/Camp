@@ -21,9 +21,26 @@ export type CableEdgeData = {
    * Leitungslänge in Metern. Optional, weil Kanten aus älteren gespeicherten
    * Plänen, Vorlagen und Importen sie nicht zwingend mitbringen. Jeder
    * Lesezugriff in der Fachlogik hat deshalb einen benannten Ersatzwert
-   * (`edgeLength` in lib/autoWire.ts, `quantityOr` in lib/vde-standards.ts).
+   * (`planningLength` in lib/autoWire/primitives.ts — eingetragene Länge,
+   * sonst Luftlinie aus der Geometrie; `quantityOr` in lib/vde-standards.ts).
    */
   length?: number;
+  /**
+   * Ist `length` eine PLANUNGSANNAHME statt eines Messwerts?
+   *
+   * AutoWire legt seine Kanten mit Annahmen an (0,2 m Backbone, 3 m
+   * Verbraucher, 5 m Solar-Zuleitung …), die laut
+   * `docs/ai/AUTOWIRE-CONTEXT.md` §7.3 ausdrücklich **keine Messwerte** sind:
+   * Sie stecken das Spannungsfall-Budget ab, bis der Nutzer die verlegten
+   * Längen einträgt. Ohne diese Kennzeichnung stand im Tooltip „(eingetragen)“
+   * und der Nutzer konnte eine Vorlagen-Annahme nicht von seiner eigenen
+   * Messung unterscheiden — dieselbe Sorte stiller Behauptung wie ein
+   * erfundener Datenblattwert.
+   *
+   * Der Inspektor setzt das Feld auf `false`, sobald ein eigener Wert
+   * eingegeben wird; AutoWire führt es bei der Regeneration mit.
+   */
+  lengthIsAssumption?: boolean;
   crossSection?: number;
   fuseSize?: number;
   /**
