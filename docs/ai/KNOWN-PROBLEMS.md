@@ -614,6 +614,35 @@ routeAllCables → checkInvariants`, sechs Referenzpläne, Kartenmaß 192 × 120
 
 ---
 
+## TEST-002 — Das visuelle Gate meldet Pixel-Drift (nicht blockierend, Baseline-Stand offen)
+
+- **AREA:** UI / CI
+- **FILE:** `tests/e2e/visual.spec.ts` (+ Baselines in `tests/e2e/visual.spec.ts-snapshots/`),
+  Job „Visuelles Gate (nicht blockierend)" in `.github/workflows/quality.yml`
+- **DESCRIPTION:** Der Pixel-Vergleich der Kernrouten (Homepage, Dach, Heizung,
+  Elektrik-Planung, Impressum; hell/dunkel; 375/768/1440) liegt über der Schwelle von
+  `maxDiffPixelRatio = 0.02`. Der Job ist bewusst `continue-on-error: true` — er blockiert
+  weder Workflow noch Deploy, sondern meldet UI-Drift zur Bewertung.
+- **EVIDENCE (2026-09-28):** Der Job scheitert **auch auf dem Default-Branch** — Runs
+  `36396267377` und `36395471654` (`feature/react-flow-cable-editor-7322653268250495059`)
+  melden für den visuellen Job `failure`, während Workflow, Pages-Build und Deploy
+  `success` sind. Der Arena-Branch (`36413722168`, PR #468) zeigt dasselbe Bild. Die Drift
+  ist damit **kein** Regress dieses Branchs, sondern ein offener Baseline-Stand.
+- **CURRENT BEHAVIOR:** Der visuelle Job ist rot, der Rest der Suite grün; die Abweichung
+  ist im CI-Log/Artefakt (`visual-diff`) sichtbar.
+- **EXPECTED BEHAVIOR:** Baselines nach **UI-Freigabe** neu aufnehmen, dann ist der Job
+  wieder grün und schützt weiter gegen unbeabsichtigte Layout-/Farb-Brüche.
+- **SEVERITY:** niedrig (nicht blockierend), aber es kostet jedem PR eine rote Zeile.
+- **WORKAROUND:** `npx playwright test tests/e2e/visual.spec.ts --update-snapshots` **in
+  einer Umgebung mit Browser** (im Sandkasten dieser Session nicht möglich: der
+  Chromium-Download ist gesperrt, `npx playwright install chromium` scheitert mit
+  `Download failure`). Die Baseline-Prüfung selbst ist dokumentiert in `docs/UI-BASELINE.md`
+  (Freeze-Punkt, Refresh-Regel).
+- **RELATED TEST:** `tests/e2e/visual.spec.ts` (`--grep "hält die Baseline"`), Artefakt
+  `visual-diff`
+- **RELATED ISSUE:** `docs/UI-BASELINE.md`, TEST-001 (E2E-Gate blockierte 16 Tage lang
+  jeden Deploy)
+
 ## DOM-004 — Kantendaten werden beim Laden nicht schemageprüft — **behoben 2026-09-28**
 
 - **STATUS:** behoben. `lib/edgeSchema.ts` deklariert die bekannten Felder aus

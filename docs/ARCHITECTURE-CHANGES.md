@@ -1944,10 +1944,11 @@ kein I1 über alle Pläne und Versätze) und **Ratchet** für I2/I3 je Plan
 (Rest camper 2, acdc 10; Verbesserungen müssen nachgezogen werden).
 `scripts/routing/shiftInvariance.test.ts` prüft dasselbe in `npm test` — damit
 läuft das Gate in CI über die Unit-Tests. Ein **zusätzlicher** Workflow-Schritt
-ist bewusst nicht gepusht: die GitHub-App dieser Session hat keine
+fehlt dagegen im Branch: die GitHub-App dieser Session hat keine
 `workflows`-Berechtigung für `.github/workflows/quality.yml` (dieselbe Grenze
-wie bei der `routing:audit`-Zeile am 2026-09-25). Wer die Berechtigung hat,
-ergänzt nach dem `routing:audit`-Schritt:
+wie bei der `routing:audit`-Zeile am 2026-09-25) — ein Push mit dieser Datei
+wird abgelehnt. Die Zeile ist hier festgehalten; wer die Berechtigung hat,
+ergänzt sie nach dem `routing:audit`-Schritt:
 `run: npm run routing:audit -- --shifts` (die 1:1-Kopie in
 `docs/ci/workflows/` muss mit — `scripts/ci/workflows.test.ts` prüft sie).
 Der Rest-I2 sind Trassenkollisionen verschobener Bündel
