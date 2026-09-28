@@ -263,6 +263,8 @@ export function FlowCanvas() {
     detailLevel,
     setDetailLevel,
     isLayoutPending,
+    autoStructurePending,
+    structureAutoWiring,
   } = usePlannerStore(
     useShallow((state) => ({
       viewMode: state.viewMode,
@@ -295,8 +297,35 @@ export function FlowCanvas() {
       detailLevel: state.detailLevel,
       setDetailLevel: state.setDetailLevel,
       isLayoutPending: state.isLayoutPending,
+      autoStructurePending: state.autoStructurePending,
+      structureAutoWiring: state.structureAutoWiring,
     }))
   );
+
+  /**
+   * „Automatisch verbinden" strukturiert den Plan nach ELK (Wunsch 2026-09-28).
+   *
+   * Der Lauf wartet auf die MESSUNG: ELK rechnet mit den gemessenen Kartenmaßen
+   * (ADR 0018/0024). Ein frisch erzeugtes Bauteil — der automatisch ergänzte
+   * Shunt — ist unmittelbar nach dem Verbinden noch nicht gerendert; ELK bekäme
+   * die Engine-Defaults (120 × 80) und legte Karten übereinander (gemessen mit
+   * ungemessenen Knoten: I1 = 49). Deshalb fordert `autoWireSystem` nur an
+   * (`autoStructurePending`); gestartet wird hier, sobald der Store für ALLE
+   * Knoten Maße kennt. Ohne diesen Riegel bliebe die Struktur aus, wenn ein
+   * Knoten nie gemessen wird (Canvas nicht gemountet) — dann passiert bewusst
+   * nichts statt eines falsch gerechneten Layouts.
+   */
+  const allNodesMeasured = React.useMemo(
+    () =>
+      nodes.length > 0 &&
+      nodes.every((node) => measuredWidth(node) !== undefined && measuredHeight(node) !== undefined),
+    [nodes]
+  );
+
+  React.useEffect(() => {
+    if (!autoStructurePending || !allNodesMeasured) return;
+    void structureAutoWiring();
+  }, [autoStructurePending, allNodesMeasured, structureAutoWiring]);
 
   React.useEffect(() => {
     if (previousViewMode.current === null) {

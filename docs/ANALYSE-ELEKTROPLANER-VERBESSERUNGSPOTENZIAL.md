@@ -250,11 +250,16 @@ Wirkung (die Repo-eigene `domainProbe`-Lektion aus ROUTE-003).
 ### R6 — Domänen-Trennregeln sind wirkungslos **[bekannt: ROUTE-003]**
 
 `electrical ↔ water` und `ac230 ↔ dc12` → 24 px existieren
-(`buildDomainSeparationRules`), werden aber nicht ausgewertet. Probe sagt:
-12 kreuzende gemischte Paare, 0 in zu enger Parallellage — eine 24-px-
-Clearance würde heute **nichts** ändern. **Vorschlag:** Anbindung wahlweise
-(a) als Clearance (I3-artig, domänenpaar-abhängige Tube-Breite in `addTubes`)
-oder (b) ehrlich in der Doku abschließen. Wichtige Klarstellung, die im Repo
+(`buildDomainSeparationRules`), werden aber nicht ausgewertet. Korrigierte
+Probe (2026-09-28, `npm run routing:domain-probe`): 80 gemischte Paare,
+12 kreuzend, **23 Segmentpaare unter 24 px** (acdc 5, complex 18; engstes
+0,8 px) — die frühere Angabe „0 in zu enger Parallellage" war ein Blindfleck
+der Sonde (Domäne nur aus `data.edgeDomain` gelesen). Eine domänenabhängige
+Tube-Breite in `addTubes` wurde gebaut und gemessen: die eingefrorenen Pläne
+bleiben unverändert, die nahen Paare bleiben stehen (die Bündel-Stubs sind von
+der Trassensperre ausgenommen). **Vorschlag:** Anbindung wahlweise
+(a) mit getrennten AC-/DC-Lanes im Port-Fan-Out (I3-artig, domänenpaar-
+abhängige Breite) oder (b) ehrlich in der Doku abschließen. Wichtige Klarstellung, die im Repo
 fehlt: Zwischen den Ebenen Elektro/Wasser sind solche Regeln **per
 Konstruktion gar nicht nötig** — beide liegen in getrennten Plan-Layouts, die
 sich den Canvas zwar teilen, aber nie gemeinsam geroutet werden. Der

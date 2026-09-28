@@ -19,6 +19,7 @@ import { isStarterBattery } from './autoWire/validation';
 import { connectionKey } from './autoWire/primitives';
 import { safeText } from './safeText'; // AUDIT T1
 import { getSystemVoltage } from './vde-standards';
+import { compareIds } from './sortOrder';
 
 function n(id: string, type: string, data: Record<string, unknown> = {}, position = { x: 0, y: 0 }): Node {
   return { id, type, position, data };
@@ -45,7 +46,7 @@ function autoEdgeIdMapping(edges: Edge<CableEdgeData>[]) {
       targetHandle: edge.targetHandle ?? null,
       edgeDomain: edge.data?.edgeDomain ?? null,
     }))
-    .sort((left, right) => left.id.localeCompare(right.id));
+    .sort((left, right) => compareIds(left.id, right.id));
 }
 
 // ---------------------------------------------------------------------------
@@ -80,7 +81,7 @@ describe('autoWire — performAutoWiring', () => {
     const permuted = [input[0]!, input[4]!, input[3]!, input[2]!, input[1]!];
     const first = performAutoWiring(input)!;
     const second = performAutoWiring(permuted)!;
-    const nodesById = (nodes: Node[]) => [...nodes].sort((a, b) => a.id.localeCompare(b.id));
+    const nodesById = (nodes: Node[]) => [...nodes].sort((a, b) => compareIds(a.id, b.id));
     const edgeTopology = (edges: Edge<CableEdgeData>[]) =>
       edges
         .map(({ source, target, sourceHandle, targetHandle, data }) => ({
@@ -91,7 +92,8 @@ describe('autoWire — performAutoWiring', () => {
           data,
         }))
         .sort((a, b) =>
-          `${a.source}|${a.target}|${a.sourceHandle}|${a.targetHandle}`.localeCompare(
+          compareIds(
+            `${a.source}|${a.target}|${a.sourceHandle}|${a.targetHandle}`,
             `${b.source}|${b.target}|${b.sourceHandle}|${b.targetHandle}`
           )
         );

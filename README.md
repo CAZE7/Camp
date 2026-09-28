@@ -22,7 +22,7 @@ keine Abnahme durch eine Fachkraft.
 ```bash
 npm ci          # exakte Abhängigkeiten aus dem Lockfile
 npm run dev     # http://localhost:3000/elektrik-planung/
-npm run check   # Lint + Format + Typecheck (2 Profile) + 2018 Tests
+npm run check   # Lint + Format + Typecheck (2 Profile) + 2485 Tests
 npm run build   # Static Export nach ./out
 ```
 
@@ -133,25 +133,26 @@ docs/                   Architektur-Entscheidungen und Nachweise
 ## Qualitätsstand
 
 Alle Angaben stammen aus Läufen auf dem aktuellen Stand
-(Commit-Reihe K1–K7, 2026-08-21, Node 22.22.3).
+(Testzahlen: 2026-09-28; übrige Angaben: Commit-Reihe K1–K7, 2026-08-21; Node 22.22.3).
 
-| Prüfung                     | Befehl                                      | Ergebnis                                                          |
-| --------------------------- | ------------------------------------------- | ----------------------------------------------------------------- |
-| Typecheck (Produktionscode) | `npm run typecheck`                         | **0 Fehler**, `noUncheckedIndexedAccess` in der Basis-tsconfig    |
-| Typecheck (inkl. Tests)     | `npm run typecheck:tests`                   | **0 Fehler** — Einheiten und Indexschärfe gelten auch in Tests    |
-| Lint (ESLint 10, flat)      | `npm run lint`                              | **0 Fehler** — u. a. consistent-type-imports, Tailwind-Sortierung |
-| Format (Prettier)           | `npm run format:check`                      | sauber, inkl. Tailwind-Klassensortierung                          |
-| Unit-/Komponententests      | `npm test`                                  | **2018 Tests, 145 Dateien, grün**                                 |
-| Coverage-Gate (lib/**)      | `npm run test:coverage`                     | Schwellen: Zeilen 90, Branches 85, Funktionen 90, Statements 95   |
-| Property-Tests (VDE)        | `npx vitest run lib/vde-properties.test.ts` | 30 Tests, ~17.000 generierte Fälle                                |
-| Routing-Invarianten         | `npx vitest run components/edges/utils`     | 25 Szenarien × 7 Invarianten                                      |
-| Design-Token-Gate           | `npx vitest run lib/designTokens.test.ts`   | 46 Tests, CSS per postcss geparst, WCAG-Kontrastpaare geprüft     |
-| Build                       | `npm run build`                             | erfolgreich, `./out` Static Export                                |
-| Lockfile-Gate               | `npm run ci:verify-lockfile-gate`           | greift (npm ci scheitert bei Drift)                               |
-| Dead-Code-Audit             | `npm run audit:dead-code`                   | knip: aktuell ohne Befund (bewusst kein CI-Gate, siehe ADR 0006)  |
-| Accessibility (axe, E2E)    | `npm run e2e -- a11y`                       | axe-Scan des gebauten Exports: critical/serious = Fail            |
-| Lighthouse Accessibility    | Report vom 2026-08-20, Lighthouse 13.4.1    | **100 / 100** historisch; der laufende Gate ist axe (Zeile oben)  |
-| End-to-End (REST der Suite) | `npm run e2e`                               | Playwright vs. gebauter Export, Chromium in CI installiert        |
+| Prüfung                     | Befehl                                      | Ergebnis                                                                                  |
+| --------------------------- | ------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Typecheck (Produktionscode) | `npm run typecheck`                         | **0 Fehler**, `noUncheckedIndexedAccess` in der Basis-tsconfig                            |
+| Typecheck (inkl. Tests)     | `npm run typecheck:tests`                   | **0 Fehler** — Einheiten und Indexschärfe gelten auch in Tests                            |
+| Lint (ESLint 10, flat)      | `npm run lint`                              | **0 Fehler** — u. a. consistent-type-imports, Tailwind-Sortierung                         |
+| Format (Prettier)           | `npm run format:check`                      | sauber, inkl. Tailwind-Klassensortierung                                                  |
+| Unit-/Komponententests      | `npm test`                                  | **2485 Tests, 181 Dateien, grün**                                                         |
+| Coverage-Gate (lib/**)      | `npm run test:coverage`                     | Schwellen: Zeilen 90, Branches 85, Funktionen 90, Statements 95                           |
+| Property-Tests (VDE)        | `npx vitest run lib/vde-properties.test.ts` | 35 Tests, ~17.000 generierte Fälle                                                        |
+| Routing-Invarianten         | `npx vitest run components/edges/utils`     | 25 Szenarien × 7 Invarianten                                                              |
+| Routing-Versatz (P0)        | `npm run routing:audit -- --shifts`         | 7×7-Plan-Translation: 0 Notfallpfade, 0× I1; I2 je Plan über Ratchet (Gate in `npm test`) |
+| Design-Token-Gate           | `npx vitest run lib/designTokens.test.ts`   | 174 Tests, CSS per postcss geparst, WCAG-Kontrastpaare geprüft                            |
+| Build                       | `npm run build`                             | erfolgreich, `./out` Static Export                                                        |
+| Lockfile-Gate               | `npm run ci:verify-lockfile-gate`           | greift (npm ci scheitert bei Drift)                                                       |
+| Dead-Code-Audit             | `npm run audit:dead-code`                   | knip: letzter Lauf ohne Befund; braucht viel RAM (kein CI-Gate, ADR 0006)                 |
+| Accessibility (axe, E2E)    | `npm run e2e -- a11y`                       | axe-Scan des gebauten Exports: critical/serious = Fail                                    |
+| Lighthouse Accessibility    | Report vom 2026-08-20, Lighthouse 13.4.1    | **100 / 100** historisch; der laufende Gate ist axe (Zeile oben)                          |
+| End-to-End (REST der Suite) | `npm run e2e`                               | Playwright vs. gebauter Export, Chromium in CI installiert                                |
 
 **Offener Punkt (ehrlich benannt):** Die Playwright-Suite (inklusive des
 axe-a11y-Gates `tests/e2e/a11y.spec.ts`) ist vollständig geschrieben und in
@@ -224,6 +225,9 @@ Branch Protection: `docs/CI.md`.
 | [0024](docs/adr/0024-rollen-schichten-als-elk-nebenbedingung.md)            | Rollen-Schichten in ELK       | Quelle→…→Verbraucher als INTERACTIVE-Layering; Kreuzungen Σ 42 → 34                 |
 | [0025](docs/adr/0025-port-buendel-ausnahme-eine-wahrheit.md)                | Port-Bündel: eine Regel       | I2, Kostenmodell und Audit lesen `rules/portBundle.ts`; 47 Bündel, 0 Phantomfehler  |
 | [0027](docs/adr/0027-elk-port-freigabe-zwei-lane-schritte.md)               | Port-Freigabe: zwei Lanes     | 68 px statt 52: ELK-Pfad I2 5 → **0**, −15 Kreuzungspaare, Kabel +11,3 %            |
+| [0028](docs/adr/0028-elk-spaltenabstand-drei-trassen.md)                    | ELK-Spaltenkorridor           | 100 px statt 68: ELK-Pfad mit echten Kartenboxen I2 1 → **0**, Kabel +13,6 %        |
+| [0029](docs/adr/0029-kartenbox-ist-routing-input.md)                        | Kartenbox ist Routing-Input   | Übersicht blendet nur aus statt zu schrumpfen — Badge kippt nicht mehr mit Stufe    |
+| [0030](docs/adr/0030-perf-streuungs-ratchet.md)                             | Streuungs-Ratchet (p90)       | Live-Pfad: p90 ≤ 2 × Median aus denselben Proben — absolute ms sind nicht portabel  |
 
 ## Weitere Nachweise
 

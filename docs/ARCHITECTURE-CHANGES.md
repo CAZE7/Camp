@@ -1833,3 +1833,221 @@ Modulkommentar in `rules/costModel.ts`. **Keine** Router-Änderung, **kein** Rec
 Golden-Bewegung. Für einen zweiten Versuch sind zwei Bedingungen dokumentiert: die Vergabe
 muss **global** statt gierig entschieden werden, oder das A*-Gitter muss von der
 Tube-Envelope entkoppelt werden.
+
+### 2026-09-28 — Dreiundzwanzigste Fassung: Auto-Verbinden strukturiert (ELK-Korridor + Anzeige-Invariante) (ADR 0028, ADR 0029)
+
+**1. Zwei Ursachen für ein Symptom.** Das Badge „Routing: 5 Zwänge nicht erreicht"
+des Nutzers war reproduzierbar, aber kein Planfehler: Auf **denselben**
+ELK-Positionen ergibt die Detail-Kartenbox (192×126…202) **1× I2**, die
+Übersichtsbox (~120×84) dagegen **3× I2 + 2× I3 = 5**. Die Anzeige-Entscheidung
+„Übersichtlich" war damit ein Routing-Input (der Router liest die _gemessene_
+Karte), und der ELK-Spaltenkorridor war mit 68 px um eine Lane zu eng.
+
+**2. Anzeige-Invariante (ADR 0029).** Die Übersichtsstufe skaliert die Karte nicht
+mehr; sie blendet nur noch die Messwerte aus — `visibility: hidden` statt
+`display: none`, damit die Messzeilen ihren Platz behalten. Die alte
+`.planner-detail-overview .node-card`-Regel (width/min-width/padding) ist entfernt.
+Wächter: `components/planner/FlowCanvas.test.tsx` pinnt die Abwesenheit der
+Kartenbox-Regel und das `visibility`-Ausblenden; der Schaltertitel sagt jetzt
+„Messwerte ausblenden — Kartengröße bleibt (Routing-Stabilität)".
+
+**3. ELK-Korridor als eigener Token (ADR 0028).** `elkColumnSpacing()`
+= `portFacingClearance + 2·laneGrid` = **100 px** gilt nur noch für
+`elk.layered.spacing.nodeNodeBetweenLayers`; `elk.spacing.nodeNode` (Karten
+derselben Spalte) bleibt 68 px. Messung mit echten Kartenboxen (`complex`/`autark`,
+AutoWire, 23 Kanten): 68 px → **INVALID, 1× I2** (8 396/8 436 px Kabelweg);
+100 px → **VALID, I1=I2=I3=0** (9 540/9 580 px, +13,6 %). Auflösung über sieben
+Pläne (einheitliche 192×146-Karten): Korridor 68/84/86 → 3/7 valid, 88–98 → 5/7,
+100 → **7/7**. Der Wert ist aus der Geometrie hergeleitet (Handle-Überstand
+2×21 px + drei Trassen 2·cableClearance + 2·laneGrid = 98 px) und im Token-Test
+gepinnt.
+
+**4. „Automatisch verbinden" strukturiert (Wunsch 2026-09-28).** `autoWireSystem`
+fordert den ELK-Lauf nur noch **an** (`autoStructurePending`); der Canvas startet
+`structureAutoWiring`, sobald der Store für **alle** Knoten Maße kennt — ohne
+diesen Riegel rechnet ELK mit den Engine-Defaults (120×80) und legt Karten
+übereinander (gemessen: I1 = 49). Der Lauf nutzt den Sequenz-Guard
+(„letzte Anfrage gewinnt"), schreibt Positionen + Kanten **ohne zweiten
+Undo-Schritt** (ein Undo nimmt Verbinden und Strukturieren zusammen zurück) und
+räumt das Flag bei `clearPlan`, Undo/Redo, `applyTemplate` und manuellem
+`onLayout`/`onLayoutV2` ab. Store-Test: `store/autoStructure.test.ts`.
+
+**5. Gemessen und abgesichert.** Sieben Pläne (sechs Referenzpläne +
+AutoWire-Autark) sind nach Auto-Wire + ELK-Strukturierung **VALID** (I1–I3 = 0;
+`complex`/`autark` je 2 Leitungen mit Not-Freigabe — im grünen Badge benannt).
+Fest-Raster-Audit, Golden Master und Ratchets bleiben unverändert (**kein
+Recapture**). Nicht entschieden und damit eigene Scheiben: eine echte
+Kompaktstufe für große Pläne (ADR 0029) und der Fest-Raster-Korridor (ADR 0028).
+
+### 2026-09-28 — Vierundzwanzigste Fassung: Daten- und Legacy-Hygiene (DOM-004, ARCH-002, ROUTE-004, DOC-001/004)
+
+**1. Kanten-Schema beim Rehydrate (DOM-004).** `lib/edgeSchema.ts` deklariert die
+bekannten Felder aus `lib/domain/cableEdgeData.ts` (Zahl/String/Boolean, Enum
+`edgeDomain`, Deskriptor-Objekt `acProtection`) und `store/slices/persistence.ts`
+wendet es in `sanitizeEdgeData` an — dieselbe Semantik wie `lib/nodeSchema.ts` für
+`node.data`: falsch getippte BEKANNTE Felder werden entfernt (kein stilles „Heilen“,
+die Leseschicht fällt auf ihren dokumentierten Default), unbekannte Felder bleiben
+erhalten. Wächter: `lib/edgeSchema.test.ts`, `store/slices/persistence.test.ts`.
+
+**2. Legacy-Kennzeichnung statt Vermischung (ARCH-002/DOC-004).** Der Dateikopf von
+`components/edges/utils/orthogonalRouting.ts` markiert die Router-Kernfunktionen
+(`buildOrthogonalPath`, `orthogonalWaypoints`, `avoidObstacles`, `routeWaypoints`,
+R1–R7) als Legacy-/Galerie-Werkzeug und benennt die geteilten Bausteine, die der
+Produktivpfad weiterhin importiert (`readHandleBounds` in `pathfinding.ts`;
+`NODE_FALLBACK_*` und Typen in `routingCache.ts`). `orthogonalRouting.invariants.test.ts`
+trägt denselben Hinweis. Keine Mechanik-Änderung.
+
+**3. Budget-/Abbruchschwellen mit Drift-Guard (ROUTE-004).** `MAX_EXPANSIONS` (48 000)
+und `MAX_ACCEPTABLE_CROSSINGS` (2) bleiben lokale Schwellen — keine geometrischen
+Preise, also keine Tokens; sie sind jetzt in `pathfinding.test.ts` gepinnt, inklusive
+Gleichlauf mit der Legacy-Engine.
+
+**4. Doku-Status (DOC-001, DOC-004).** Die LESER-HINWEISE der beiden eingefrorenen
+Dokumente sind der dokumentierte Stand; die KNOWN-PROBLEMS-Einträge stehen auf
+„behoben“ (Body bleibt bewusst historisch).
+
+**5. Zahlen.** README, `docs/ai/README.md` und TESTING-CONTEXT nennen jetzt den
+gemessenen Stand **2454 Tests / 179 Dateien** (2026-09-28, inklusive der neuen
+Versatz-Gate-Tests der 25. Fassung); das Design-Token-Gate 174 Tests, die
+VDE-Property-Suite 35 Tests.
+
+### 2026-09-28 — Fünfundzwanzigste Fassung: Versatz-Gate + Platzierungs-Mindestluft (ROUTE-006)
+
+**1. Der Nutzer-Versatz galt bisher als gemessen, war aber nur ein Datenpunkt.**
+`routing:audit` und `finalValidation.test.ts` prüfen die **eingefrorenen
+Referenzpositionen**; der Bericht vom 2026-09-27 hatte für einzelne Δ-Werte
+(8, 8), (13, 0) und (1200, 800) „I1–I7 = 0“ festgehalten. Die Messung über eine
+7×7-Matrix (Δ ∈ ±400, ±96, ±16, 0 px; 294 Läufe) zeigt: Verschiebt der Nutzer
+**nur seine Bauteile**, rastet die AutoWire-Platzierung (`flowAnchor`, globale
+Rasterlinien) auf eine andere Zeile — ein Teil der so entstehenden
+Konfigurationen war für den Router nicht lösbar. **Vorher: 51 Läufe hart
+verletzt (I1 30, I2 53, I3 44), darunter 20 Notfallpfade**, bei denen die
+Leitung durch ein fremdes Bauteil lief. Gemessen auf dem Produktivpfad
+(`performAutoWiring → routeAllCables → checkInvariants`).
+
+**2. Ursache war die Mindestluft der Platzierung.** `NODE_MIN_GAP` in
+`lib/autoWire/placement.ts` verlangte `2 × cableClearance` (24 px) zwischen
+Bauteilen. Ein Kabel an einem gegenüberliegenden Port braucht aber `stubMin`
+(24) + mindestens einen `laneGrid`-Schritt (16), bevor es abbiegen kann — bei
+24 px ist das geometrisch nicht ausdrückbar, der Router nimmt den Notfallpfad.
+**Nachher: 10 von 294 Läufen, 12 × I2, kein Notfallpfad, kein I1.** Die
+Referenzkonfiguration bleibt dabei unverändert (Kabelwege
+2 697/3 709/3 200/3 881/5 710/8 602 px, Kreuzungen 2/5/2/2/6/27, Port-Bündel
+4/10/4/4/10/15 — alles wie zuvor). Gewählter Wert
+`NODE_MIN_GAP = stubMin + laneGrid` (40 px); 36 px ließ noch 32 Läufe, ab 44 px
+verschieben sich die eingefrorenen Referenzpläne selbst (Kreuzungs- und
+Kabellängen-Ratchet schlagen an) — die Messreihe steht im Code-Kommentar.
+
+**3. Das Gate gehört in CI und in die Suite.** `npm run routing:audit --
+--shifts` fährt die Matrix und wertet zweistufig: **hart** (kein Notfallpfad,
+kein I1 über alle Pläne und Versätze) und **Ratchet** für I2/I3 je Plan
+(Rest camper 2, acdc 10; Verbesserungen müssen nachgezogen werden).
+`scripts/routing/shiftInvariance.test.ts` prüft dasselbe in `npm test` — damit
+läuft das Gate in CI über die Unit-Tests. Ein **zusätzlicher** Workflow-Schritt
+fehlt dagegen im Branch: die GitHub-App dieser Session hat keine
+`workflows`-Berechtigung für `.github/workflows/quality.yml` (dieselbe Grenze
+wie bei der `routing:audit`-Zeile am 2026-09-25) — ein Push mit dieser Datei
+wird abgelehnt. Die Zeile ist hier festgehalten; wer die Berechtigung hat,
+ergänzt sie nach dem `routing:audit`-Schritt:
+`run: npm run routing:audit -- --shifts` (die 1:1-Kopie in
+`docs/ci/workflows/` muss mit — `scripts/ci/workflows.test.ts` prüft sie).
+Der Rest-I2 sind Trassenkollisionen verschobener Bündel
+(Port-Fan-Out-Ebene) und in `docs/ai/KNOWN-PROBLEMS.md` ROUTE-006 dokumentiert.
+
+**4. Nebenbei, ehrlich mitgezählt.** `npm test` wächst mit dem neuen Gate auf
+**2454 Tests / 179 Dateien**; die Zahlen in README, `docs/ai/README.md` und
+TESTING-CONTEXT sind nachgezogen, und der `edgeSchema`-Test prüft jetzt
+Feld-für-Feld gegen `EDGE_DATA_SCHEMA` statt nur die sieben
+Unbekanntes-bleibt-Fälle.
+
+### 2026-09-28 — Sechsundzwanzigste Fassung: Sortier-Determinismus, Streuungs-Ratchet (ADR 0030), korrigierte Domänen-Messung
+
+**1. Die Sortierung hing von der Prozess-Locale ab (Roadmap §8 Nr. 10).** `String.prototype.localeCompare`
+ohne zweites Argument sortiert mit der ICU-Standard-Locale des laufenden Prozesses — unter `de` anders
+als unter `tr_TR`, und in beiden Fällen anders als der Codepoint-Vergleich, den die Golden Master
+einfrieren. Betroffen waren **32 Aufrufe in 17 Dateien** (u. a. Trassen-Ausgabe und Nudge in
+`routeAll`/`nudge`, Port-Fan-Out, Circuit-Trace-Ranking, Kabellängen-Ausgabe im Audit) — Stellen, die
+Reihenfolgen und damit Geometrie erzeugen, also nicht bloß Kosmetik. Neu ist `lib/sortOrder.ts` mit zwei
+bewusst getrennten Funktionen: `compareIds` (Codepoint-Vergleich, locale-frei — für Kennungen, IDs,
+Keys, Ausgabereihenfolgen) und `compareLabels` (`Intl.Collator('de')` — für Nutzertexte wie den
+`sortKey` der AutoWire-Platzierung). Alle Stellen sind migriert; `lib/sortOrder.test.ts` (6 Tests)
+belegt Ordnungsgleichheit mit dem String-Default, die Umlaut-Weiche beider Funktionen, totale Ordnung
+und Unabhängigkeit von `LC_ALL=tr_TR`.
+
+**2. PERF-001: das Live-Gate prüfte nur den Median (ADR 0030).** Der 60-ms-Ratchet des Live-Pfads hing
+am Median; gemessene Läufe lagen dort bei 40–50 ms, während das p90 59–67 ms erreichte — ein gestreuter
+Lauf konnte das Gate also passieren. Der Nachtrag prüft den Schwanz: **p90 ≤ 2 × Median** aus denselben
+Proben (ein absolutes p90-Budget wurde verworfen: 292 ms unter Last, also nicht reproduzierbar). Die
+engere Fassung mit Faktor 1,5 fiel an einem Lauf mit 1,56 — der Median schwankt stärker als der Schwanz;
+gemessene Spanne 1,11–1,56 aus zehn Läufen. ADR 0030 hält die Entscheidung fest, KNOWN-PROBLEMS
+PERF-001 den zweiten Messpunkt; die absolute Seite (Optimierung großer Pläne) bleibt ausdrücklich offen.
+
+**3. ROUTE-003: die Sonde meldete zu wenig — Messung korrigiert.** `routing:domain-probe` las die
+Domäne ausschließlich aus `edge.data.edgeDomain` und fiel sonst auf `dc12` zurück. AutoWire-Kanten
+tragen das Feld nicht, also galt jede 230-V-Leitung ohne Feld als Gleichstrom — die Sonde meldete
+„0 zu nah", obwohl es Stellen unter 24 px gibt. Sie leitet die Domäne jetzt mit derselben Autorität ab
+wie Anzeige und Sizing (`edgeDomainOf` aus Knotentyp + Handle, persistierte Domäne zuerst) und zählt je
+**Segmentpaar** über das Kollisionsmodell. Ergebnis: **80 gemischte Paare, 12 kreuzend, 23 zu nahe
+Segmentpaare** (acdc 5, complex 18; engstes `e-busbar-fuse × e-shore-inv` = 0,8 px). Eine
+domänenabhängige Tuben-Aufblähung im A*-Lauf wurde gebaut und gemessen: die eingefrorenen Pläne bleiben
+unverändert, die nahen Paare bleiben stehen — die Bündel-Stubs sind von der Trassensperre ausgenommen,
+und genau dort laufen die gemischten Leitungen zusammen. Der Versuch ist deshalb **nicht** ausgeliefert;
+`scripts/routing/domainProbe.test.ts` friert die Zahlen als Ratchet ein (inkl. Regressionsfall für den
+Blindfleck selbst), und der KNOWN-PROBLEMS-Eintrag nennt die Bedingung für einen zweiten Versuch
+(getrennte AC-/DC-Lanes im Port-Fan-Out oder Wasser-Routing).
+
+**4. Zahlen.** `npm test` steht bei **2476 Tests / 181 Dateien** (2026-09-28); README,
+`docs/ai/README.md` und TESTING-CONTEXT sind nachgezogen.
+
+### 2026-09-28 — Siebenundzwanzigste Fassung: Der Assistent sagt, wenn er keinen Endpunkt hat (ARCH-001); Diagnose zählt vollständig (ROUTE-007)
+
+**1. ARCH-001 (der einzige offene hoch-Eintrag): das Schein-Feature ist weg.** Der Produktbuild ist ein
+statischer Export (`next.config.ts` → `output: 'export'`, ADR 0001); `app/api/chat/route.ts` erscheint im
+Build als `ƒ` (Dynamic) und liegt **nicht** in `out/` — `/ki-assistent` sendete also ohne
+`NEXT_PUBLIC_CHAT_API_URL` bei jeder Nachricht gegen ein 404 und sah dabei funktionsfähig aus.
+`components/Chat.tsx` leitet den Endpunkt jetzt über `resolveChatEndpoint` ab: eine gesetzte Variable
+gewinnt (getrimmt), sonst gibt es den lokalen Pfad `/api/chat` **nur** im Development-Server (`next dev`
+startet die Route), sonst `null`. Im Export-Fall rendert die Seite einen klaren Hinweis („Kein Assistent
+konfiguriert“ — mit Grund und Weg über die Variable) statt eines Eingabefelds; der `useChat`-Hook wird
+gar nicht erst aufgerufen, es kann nichts ins Leere senden. `.env.example` beschreibt das Verhalten (der
+tote `NEXT_PUBLIC_CHAT_TOKEN`-Eintrag ist entfernt), ADR 0021 ist auf „Punkt 2 umgesetzt, Punkt 1 offen“
+fortgeschrieben. Gemessen: `npm run build` und `out/ki-assistent/index.html` enthält den Hinweis und die
+Variable, kein Eingabefeld. Tests: `components/Chat.test.tsx` (13 — Export-Fall, Development-Fall,
+Leerraum, „sendet nichts und ruft den Hook nicht auf“). Offen bleibt allein die **Produktentscheidung**
+aus ADR 0021 Punkt 1 (Route/`lib/db.ts` behalten oder in ein eigenes Deployment schieben) — sie ist im
+KNOWN-PROBLEMS-Eintrag als solche benannt, nicht stillschweigend entschieden.
+
+**2. ROUTE-007: Die Überdeckungs-Diagnose ließ Paare ohne gemeinsame Anschlussstelle aus.**
+`analyzeOverlaps` (Audit) hatte einen Vorfilter `if (!sharesPort(a, b)) continue;`. Als Abkürzung für die
+Port-Bündel-Ausnahme gedacht, wirkte er als Lücke: Kollineare Überdeckungen zwischen Kanten **ohne**
+gemeinsame Anschlussstelle wurden weder als `atPort` noch als `elsewhere` gezählt. Gemessen in der
+Versatz-Matrix: `acdc Δ(-96,-96)` hat I2 = 1, die Diagnose meldete `elsewhere = 0` — der Widerspruch, den
+die Kopplungsprüfung des Gates (`elsewhere > 0 ⇔ I2 > 0`) auf den eingefrorenen Positionen als hartes Rot
+meldet, war in den verschobenen Läufen unsichtbar. `isPortBundleOverlap` prüft die gemeinsame
+Anschlussstelle selbst und liefert sonst `false`; der Vorfilter ist entfernt, die Ausnahme unverändert.
+Zwei Fälle in `scripts/routing/portBundleModel.test.ts` halten die Vollständigkeit fest; die
+Referenzpläne bleiben unverändert (I2 = 0, `atPort`-Zahlen identisch).
+
+**3. Das visuelle Gate ist grün — die Abweichung war ein Rennen, keine UI-Drift (TEST-002).**
+Der Job „Visuelles Gate (nicht blockierend)“ scheiterte seit dem ersten Lauf dieses Branchs
+**und ebenso auf dem Default-Branch** — die Zuordnung „nicht blockierend“ verdeckte dabei, dass
+es sich um einen reproduzierbaren Testfehler handelte. Die Check-Run-Annotationen des CI-Jobs
+benennen ihn genau: ausschließlich `/elektrik-planung/` bei **768 px**, in beiden Schemata
+(light 17 166 px = 2,18 %, dark 18 886 px = 2,40 %). Die beiden Tablet-Baselines zeigen einen
+**halb hydratisierten** Planner-Frame: Onboarding-Dialog und Canvas-Hintergrund sind da,
+Schrittleiste („1 Anlage … 5 Ergebnis“ / „Batterie hinzufügen“), die Hinweis-Abzeichen
+(„Keine Hinweise“) und die Kopfzeilen-Aktionen („Ansicht“) fehlen — der Screenshot lag **vor**
+dem dynamischen Import des Dashboards (`components/PlannerInner.tsx`). Der visuelle Test wartete
+nur auf `load` und die Schriften; die E2E-Helfer (`openPlanner`) warten dagegen seit jeher auf
+`data-testid="planner-shell"`. Bei 1440/375 lag derselbe Unterschied mit 1,8–4,1 % nur zufällig
+unter der 2-%-Schwelle und blieb deshalb unbemerkt.
+**Fix:** `tests/e2e/visual.spec.ts` wartet über `ready: 'planner-shell'` auf die montierte Shell
+(zwei Frames Ruhe obendrauf); `docs/UI-BASELINE.md` hält den eingefrorenen Zustand jetzt
+ausdrücklich fest (hydratisierter Erstbesuch), und die **zwei** veralteten Tablet-Bilder sind neu
+aufgenommen — die übrigen **sechs** Planner-Baselines waren byte-identisch und blieben unberührt.
+**Nachweis:** Der Lauf vor dem Fix reproduzierte CI exakt (`2 failed, 38 passed`, dieselben
+Snapshot-Namen, 17 222/19 098 Diff-Pixel gegen 17 166/18 886 in CI — ±1 %), danach ist der
+visuelle Lauf **40/40** grün und die gesamte E2E-Suite **113 passed, 31 skipped**.
+
+**4. Zahlen.** `npm test` steht bei **2485 Tests / 181 Dateien** (2026-09-28); README,
+`docs/ai/README.md` und `docs/ai/TESTING-CONTEXT.md` sind nachgezogen.

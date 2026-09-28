@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import React from 'react';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { FlowCanvas } from './FlowCanvas';
 import { PANE_WAIT_FRAMES } from './constants';
@@ -149,6 +149,8 @@ const mockOnCustomDropFromStore = vi.fn();
 const mockIsValidConnection = vi.fn().mockReturnValue(true);
 const mockOnConnect = vi.fn();
 
+const mockStructureAutoWiring = vi.fn(async () => {});
+
 const defaultPlannerStoreState = {
   viewMode: 'electric',
   // React Flow 12 misst Knoten beim Übernehmen (`adoptUserNodes`) und setzt
@@ -181,6 +183,8 @@ const defaultPlannerStoreState = {
   detailLevel: 'detail',
   setDetailLevel: vi.fn(),
   isLayoutPending: false,
+  autoStructurePending: false,
+  structureAutoWiring: mockStructureAutoWiring,
   selectedNodes: [],
   selectedEdges: [],
   setSelectedNodes: vi.fn(),
@@ -711,13 +715,87 @@ describe('FlowCanvas · Detailgrad (UX-Reset 2026-09 / RECHERCHE C1)', () => {
    * CSS-Wächter: Der Schalter ist ohne Regel wertlos. Wie in
    * PlannerDashboard.test.tsx (Warnungs-Deduplizierung) wird das Stylesheet
    * festgezurrt — Messwerte ausblenden, Warnflächen aber sichtbar lassen.
+   *
+   * Zusätzlich wird die Routing-Invariante gepinnt: Die Übersichtsstufe darf
+   * die Kartenbox nicht verändern. Diese Box ist Routing-Input (Anschlüsse,
+   * Hindernisse, Lane-Korridore); eine kleinere Karte verschiebt die Ports und
+   * lässt den Status-Chip „Routing: n Zwänge“ mit der Ansichtsstufe kippen
+   * (gemessen: 3× I2 + 2× I3 statt 1× I2 auf denselben Positionen).
    */
   it('hinterlegt die Übersichtsstufe in globals.css', () => {
     const css = readFileSync(resolve(process.cwd(), 'app/globals.css'), 'utf8');
     expect(css).toContain('.planner-detail-overview .node-card .measure');
-    expect(css).toContain('.planner-detail-overview .node-card > div:not(.node-symbol)');
     // Sicherheit vor Kompaktheit: Der Status-Rand bleibt unangetastet.
     expect(css).not.toContain('.planner-detail-overview .node-card--error');
+    // Messwerte werden unsichtbar, ihr Platz bleibt im Layout.
+    expect(css).toMatch(/\.planner-detail-overview \.node-card \.measure\s*\{[^}]*visibility:\s*hidden/);
+    expect(css).not.toMatch(/\.planner-detail-overview \.node-card \.measure\s*\{[^}]*display:\s*none/);
+  });
+
+  it('lässt die Kartenbox in der Übersichtsstufe unverändert (Routing-Input)', () => {
+    const css = readFileSync(resolve(process.cwd(), 'app/globals.css'), 'utf8');
+    // Es gibt bewusst KEINE Kartenbox-Regel für die Übersichtsstufe: jede
+    // Größen-/Innenabstands-Änderung an `.node-card` verschiebt die Anschlüsse
+    // und damit das Routing (siehe Kommentar in globals.css).
+    expect(css).not.toContain('.planner-detail-overview .node-card {');
+    // Einzige Regel der Stufe ist das Ausblenden der Messwerte (mit Platz).
+    expect(css).toContain('.planner-detail-overview .node-card .measure');
+  });
+});
+
+/**
+ * Wunsch 2026-09-28: „Automatisch verbinden" strukturiert den Plan nach ELK.
+ * Der Lauf darf erst starten, wenn ALLE Kartenboxen gemessen sind — sonst
+ * rechnet ELK mit den Engine-Defaults (120 × 80) und legt Karten übereinander.
+ */
+describe('FlowCanvas · ELK-Strukturierung nach dem Auto-Wire', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const renderWith = (overrides: Partial<typeof defaultPlannerStoreState>) => {
+    const state = { ...defaultPlannerStoreState, ...overrides };
+    vi.mocked(usePlannerStore).mockImplementation(
+      (selector: (s: typeof defaultPlannerStoreState) => unknown) => selector(state)
+    );
+    return render(<FlowCanvas />);
+  };
+
+  afterEach(() => {
+    vi.mocked(usePlannerStore).mockImplementation(
+      (selector: (s: typeof defaultPlannerStoreState) => unknown) => selector(defaultPlannerStoreState)
+    );
+  });
+
+  const node = (measured?: { width: number; height: number }) => ({
+    id: '1',
+    type: 'battery',
+    position: { x: 0, y: 0 },
+    data: {},
+    ...(measured ? { measured } : {}),
+  });
+
+  it('wartet auf die gemessene Kartenbox', async () => {
+    const view = renderWith({ autoStructurePending: true, nodes: [node()] });
+    await act(async () => {});
+    expect(mockStructureAutoWiring).not.toHaveBeenCalled();
+    view.unmount();
+  });
+
+  it('startet die Struktur, sobald alle Karten gemessen sind', async () => {
+    const view = renderWith({
+      autoStructurePending: true,
+      nodes: [node({ width: 192, height: 126 })],
+    });
+    await waitFor(() => expect(mockStructureAutoWiring).toHaveBeenCalledTimes(1));
+    view.unmount();
+  });
+
+  it('tut ohne Anforderung nichts', async () => {
+    const view = renderWith({ nodes: [node({ width: 192, height: 126 })] });
+    await act(async () => {});
+    expect(mockStructureAutoWiring).not.toHaveBeenCalled();
+    view.unmount();
   });
 });
 

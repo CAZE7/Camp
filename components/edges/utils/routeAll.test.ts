@@ -19,6 +19,7 @@ import { dedupe, orthogonalWaypoints } from './orthogonalRouting';
 import type { Point } from './orthogonalRouting';
 import { ROUTING_SCENARIOS } from './routingScenarios';
 import { ROUTING_TOKENS } from '../../../lib/routing/tokens';
+import { compareIds } from '../../../lib/sortOrder';
 
 /**
  * R-6 (Routing-Qualität): Globale Nachoptimierung.
@@ -420,7 +421,7 @@ describe('Darstellungs-Knoten sind kein Hindernis (Bug 2026-09-26)', () => {
 
   const waypointsOf = (routes: Map<string, { waypoints: Point[] }>): string =>
     [...routes.entries()]
-      .sort((a, b) => a[0].localeCompare(b[0]))
+      .sort((a, b) => compareIds(a[0], b[0]))
       .map(([id, route]) => `${id}:${route.waypoints.map((p) => `${p.x},${p.y}`).join(';')}`)
       .join('|');
 

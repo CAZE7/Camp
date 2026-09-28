@@ -7,6 +7,7 @@ import {
   type Segment,
 } from '../geometry';
 import { ROUTING_TOKENS, type RoutingTokens } from '../tokens';
+import { compareIds } from '../../sortOrder';
 
 /**
  * WP-7 (#395): Kreuzungs-Hopping — Schicht 2 (Routing Rules) + Schicht 3
@@ -140,7 +141,7 @@ function hoppingEdgeId(a: HopEdge, b: HopEdge): string | undefined {
   const pa = routingPriority(a);
   const pb = routingPriority(b);
   if (pa !== pb) return pa < pb ? a.id : b.id;
-  return a.id.localeCompare(b.id) > 0 ? a.id : b.id;
+  return compareIds(a.id, b.id) > 0 ? a.id : b.id;
 }
 
 const dedupeKey = (hop: Hop): string => `${hop.x.toFixed(3)},${hop.y.toFixed(3)},${hop.orientation}`;
@@ -192,7 +193,7 @@ const segmentBounds = (segment: Segment): Rect => {
  * und leiten beide Ergebnisse aus demselben exakten Schnittpunkt ab.
  */
 export function analyzeRouteCrossings(edges: readonly HopEdge[]): RouteCrossingAnalysis {
-  const sorted = [...edges].sort((a, b) => a.id.localeCompare(b.id));
+  const sorted = [...edges].sort((a, b) => compareIds(a.id, b.id));
   const hopsByEdge = new Map<string, Hop[]>();
   const crossingCountsByEdge = new Map<string, number>();
   const segmentsById = new Map<string, Segment[]>();
@@ -306,7 +307,7 @@ export function analyzeRouteCrossings(edges: readonly HopEdge[]): RouteCrossingA
     events.sort((a, b) => a.x - b.x || eventOrder[a.kind] - eventOrder[b.kind]);
     const active: Horizontal[] = [];
     const compareHorizontal = (a: Horizontal, b: Horizontal): number =>
-      a.y - b.y || a.edgeId.localeCompare(b.edgeId) || a.minX - b.minX || a.maxX - b.maxX;
+      a.y - b.y || compareIds(a.edgeId, b.edgeId) || a.minX - b.minX || a.maxX - b.maxX;
 
     for (const event of events) {
       if (event.kind === 'start') {

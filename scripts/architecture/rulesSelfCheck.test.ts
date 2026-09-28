@@ -108,6 +108,24 @@ describe('Regel E — genau eine Datei definiert Abstände', () => {
       findCableClearanceLiterals([prod('c.ts', 'const cableClearance = TOKENS.cableClearance * 2;')])
     ).toEqual([]);
   });
+
+  it('erkennt die umbenannte Zweitkonstante mit Token-Wert (Befund 2026-09-28)', () => {
+    // 12 ist `cableClearance`: gleicher Wert, anderer Name — die
+    // namensbasierte Suche sah das nicht.
+    expect(findCableClearanceLiterals([prod('d.ts', 'export const MIN_ROUTE_CLEARANCE = 12;')])).toEqual([
+      'd.ts',
+    ]);
+  });
+
+  it('lässt Ableitungen und unbeteiligte Konstanten in Ruhe', () => {
+    expect(
+      findCableClearanceLiterals([prod('e.ts', 'const MIN_ROUTE_CLEARANCE = ROUTING_TOKENS.cableClearance;')])
+    ).toEqual([]);
+    // Gleicher Name, aber kein Token-Wert (48 ist kein Token-Abstand):
+    expect(findCableClearanceLiterals([prod('f.ts', 'const ALTERNATIVE_ROUTE_GAP = 48;')])).toEqual([]);
+    // Token-Wert, aber kein Abstands-Name:
+    expect(findCableClearanceLiterals([prod('g.ts', 'const RETRY_COUNT = 12;')])).toEqual([]);
+  });
 });
 
 describe('Regel A — lib importiert keine App-Schichten, in jeder Importform', () => {

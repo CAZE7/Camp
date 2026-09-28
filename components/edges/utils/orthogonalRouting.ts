@@ -12,6 +12,27 @@ import { LEGACY_ROUTING_TOKENS, ROUTING_TOKENS } from '../../../lib/routing/toke
 import { segmentsIntersect } from '../../../lib/routing/geometry';
 
 /**
+ * LEGACY-KENNZEICHNUNG (ARCH-002, LEGACY.md L-1). Dieses Modul trägt zwei Dinge:
+ *
+ * 1. Der ALTE Einzelrouten-Router — `buildOrthogonalPath`, `orthogonalWaypoints`,
+ *    `avoidObstacles`, `routeWaypoints` samt Invariantensystem R1–R7 — ist NICHT im
+ *    Render-Pfad. Der Canvas zeichnet ausschließlich über
+ *    `routeAllCables` → `findCablePath` (Hanan-A*, ADR 0014/0018); die produktiven
+ *    Invarianten sind I1–I10 (`lib/routing/invariants.ts`, `npm run routing:audit`).
+ *    Konsumenten der Router-Kernfunktionen sind nur `orthogonalRouting*.test.ts`,
+ *    `routingGallery.test.ts`, `routingQuality.ts` und
+ *    `scripts/routing/generate-gallery.ts` (`npm run routing:gallery`) — Änderungen
+ *    hier sind KEINE Verhaltensänderung am Planer.
+ * 2. Geteilte Geometrie-Bausteine, die der Produktivpfad weiterhin nutzt:
+ *    `readHandleBounds` (`components/edges/utils/pathfinding.ts`) sowie
+ *    `NODE_FALLBACK_WIDTH`/`NODE_FALLBACK_HEIGHT` und die Typen `Point`, `Rect`,
+ *    `Segment` (`components/edges/utils/routingCache.ts`). Vor dem Umbau prüfen,
+ *    wer sie importiert.
+ *
+ * Details und Entfernbarkeit: `docs/ai/LEGACY.md` L-1.
+ */
+
+/**
  * Orthogonales Kabel-Routing mit Hindernisvermeidung und parallelen Lanes.
  *
  * Die Basis ist ein rechtwinkliger Pfad (Manhattan, abgerundete Ecken) zwischen

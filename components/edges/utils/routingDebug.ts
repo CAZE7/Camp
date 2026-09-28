@@ -10,6 +10,7 @@ import {
 } from './nodeGeometry';
 import type { FinalValidationReport } from '../../../lib/routing/finalValidation';
 import { NODE_FALLBACK_HEIGHT, NODE_FALLBACK_WIDTH, type PathResult } from './pathfinding';
+import { compareIds } from '../../../lib/sortOrder';
 
 /**
  * Opt-in Diagnose des Live-Routings. Standardmäßig aus, da große Pläne
@@ -96,7 +97,7 @@ export function formatRoutingDebugRun(
   for (const id of before.keys()) {
     if (!current.has(id)) changed.push(`${id} ${before.get(id)} → (entfernt)`);
   }
-  changed.sort((a, b) => a.localeCompare(b));
+  changed.sort(compareIds);
   lines.push(changed.length > 0 ? `[ROUTING] Δ ${changed.join(' | ')}` : '[ROUTING] Δ (unverändert)');
 
   if (snapshot.routable.length > 0) {
@@ -247,7 +248,7 @@ function traceEdge(edge: RoutingTraceEdgeInput): RoutingTraceEdge {
 }
 
 const byId = <T extends { id: string }>(items: readonly T[]): T[] =>
-  [...items].sort((a, b) => a.id.localeCompare(b.id));
+  [...items].sort((a, b) => compareIds(a.id, b.id));
 
 /** Creates a complete, deterministic snapshot of the inputs and their hashes. */
 export function createRoutingTraceSnapshot(
@@ -288,7 +289,7 @@ function changedFields<T extends object>(before: T | undefined, after: T | undef
   const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
   return [...keys]
     .filter((key) => JSON.stringify(before[key as keyof T]) !== JSON.stringify(after[key as keyof T]))
-    .sort((a, b) => a.localeCompare(b));
+    .sort(compareIds);
 }
 
 function diffById<T extends { id: string }>(
@@ -297,7 +298,7 @@ function diffById<T extends { id: string }>(
 ): RoutingTraceEntityChange<T>[] {
   const beforeById = new Map(before.map((item) => [item.id, item]));
   const afterById = new Map(after.map((item) => [item.id, item]));
-  const ids = [...new Set([...beforeById.keys(), ...afterById.keys()])].sort((a, b) => a.localeCompare(b));
+  const ids = [...new Set([...beforeById.keys(), ...afterById.keys()])].sort(compareIds);
   const changes: RoutingTraceEntityChange<T>[] = [];
 
   for (const id of ids) {
@@ -413,7 +414,7 @@ export function logRoutingResult(
 ): void {
   const routeGeometry = [...routes.entries()]
     .map(([id, route]) => ({ id, waypoints: route.waypoints }))
-    .sort((a, b) => a.id.localeCompare(b.id));
+    .sort((a, b) => compareIds(a.id, b.id));
   const violationCount =
     report.counts.edgeNodeCollisions + report.counts.edgeEdgeOverlaps + report.counts.clearanceViolations;
 

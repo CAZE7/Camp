@@ -8,8 +8,13 @@ Legende Severity: **hoch** = Agent kann falschen Code ändern / falsche Sicherhe
 
 ---
 
-## DOC-001 — `docs/ROUTING-V2.md` beschreibt gelöschte Verzeichnisse
+## DOC-001 — `docs/ROUTING-V2.md` beschreibt gelöschte Verzeichnisse — **behoben 2026-09-28**
 
+- **STATUS:** behoben über den **LESER-HINWEIS** am Dokumentkopf (2026-09-10): Er nennt die
+  gelöschten Verzeichnisse, verweist auf den realen Pfad (`lib/routing/*` +
+  `components/edges/utils/*`) und korrigiert den ELK-Status (produktiv seit ADR 0018).
+  Der eingefrorene Spec-Text bleibt bewusst historisch (FROZEN, Zielbild) — die verbindliche
+  Beschreibung des Ist-Zustands liegt in `docs/ai/ROUTING-CONTEXT.md`.
 - **AREA:** Dokumentation / Routing
 - **FILE:** `docs/ROUTING-V2.md`
 - **DESCRIPTION:** Die Spec nennt `lib/planner/geometry`, `lib/planner/routing-core` und
@@ -49,7 +54,7 @@ Legende Severity: **hoch** = Agent kann falschen Code ändern / falsche Sicherhe
 
 ## DOC-003 — Veraltete Zahlen im `README.md` — **behoben 2026-09-09**
 
-- **STATUS:** behoben. `README.md` nennt jetzt 2018 Tests / 145 Dateien, React Flow
+- **STATUS:** behoben. `README.md` nennt jetzt die jeweils aktuelle Zahl (2026-09-28: 2454 Tests / 179 Dateien), React Flow
   (`@xyflow/react`) 12.11 und als Routing-Engine den produktiven globalen Pass
   (`components/edges/utils/routeAll.ts`) statt des Legacy-Moduls `orthogonalRouting.ts`.
 - **AREA:** Dokumentation
@@ -64,8 +69,13 @@ Legende Severity: **hoch** = Agent kann falschen Code ändern / falsche Sicherhe
 
 ---
 
-## DOC-004 — `docs/ROUTING-INVARIANTS.md` beschreibt die falsche Engine
+## DOC-004 — `docs/ROUTING-INVARIANTS.md` beschreibt die falsche Engine — **behoben 2026-09-28**
 
+- **STATUS:** behoben über den **LESER-HINWEIS** am Dokumentkopf (2026-09-10): R1–R7 sind
+  dort ausdrücklich als Invarianten des LEGACY-Einzelrouten-Routers markiert, die produktiven
+  Invarianten I1–I10 (`lib/routing/invariants.ts`, `npm run routing:audit`, Report je Kante
+  unter `useCableRouteFinalValidation`) sind benannt; ebenso, dass die Galerie die
+  Legacy-Geometrie zeigt. Die R1–R7-Kapitel bleiben als Referenz des Legacy-Vertrags stehen.
 - **AREA:** Dokumentation / Routing
 - **FILE:** `docs/ROUTING-INVARIANTS.md`, `components/edges/utils/orthogonalRouting.ts`
 - **DESCRIPTION:** Das Dokument definiert die Invarianten **R1–R7** für
@@ -279,22 +289,37 @@ cableClearance` — an einer Klemme hängen im Referenzbestand regelmäßig zwei
 - **SEVERITY:** mittel
 - **WORKAROUND:** Bei Arbeiten an der Domänentrennung zuerst den Konsumenten schaffen —
   die Regel ist fertig, die Anbindung fehlt.
-- **GEMESSENE WIRKUNG (2026-09-09, `npm run routing:domain-probe`):**
-  84 gemischte Kantenpaare in den sechs Referenzplänen (inverter 9, acdc 33, complex 42).
-  Davon **12 kreuzend** (acdc 4, complex 8) und **0 in zu enger Parallellage**.
-  → Eine Clearance-Regel mit 24 px würde die heutigen Trassen **nicht** verändern.
-  → Nur wenn die Regel auch Kreuzungen verbieten würde, verschöben sich 12 Paare — das
-  widerspricht ADR 0009 (Kreuzungen erlaubt, Überdeckungen verboten).
-  → Empfehlung: Anbindung als **Clearance** (wie I3, nur mit 24 px für gemischte Paare).
-  Der sichtbare Nutzen entsteht erst, wenn Wasser-Rohre geroutet werden
-  (`electrical ↔ water`); auf reinen Elektro-Plänen bleibt er bei null.
-- **RELATED TEST:** `lib/routing/rules/collision.test.ts`, `npm run routing:domain-probe`
-  (`scripts/routing/domainProbe.ts`)
+- **GEMESSENE WIRKUNG (2026-09-28, korrigiert — vorher falsch berichtet):** Der frühere
+  Eintrag „0 in zu enger Parallellage" (2026-09-09) war ein **Blindfleck der Sonde**, kein
+  Messergebnis: Sie las die Domäne nur aus `edge.data.edgeDomain` und fiel sonst auf `dc12`
+  zurück — AutoWire-Kanten tragen das Feld nicht, also galt jede 230-V-Leitung ohne Feld als
+  Gleichstrom. Die Sonde leitet die Domäne jetzt mit derselben Autorität ab wie Anzeige und
+  Sizing (`edgeDomainOf` aus Knotentyp + Handle) und zählt die Abstände je **Segmentpaar** über
+  das Kollisionsmodell (`classifySegmentAgainstSegment`; Kreuzungen `soft` und Überdeckungen
+  `hard` zählen nicht mit, ADR 0009/0019).
+  Ergebnis über die sechs Referenzpläne (`npm run routing:domain-probe`):
+  **80 gemischte Paare**, davon **12 kreuzend**, darunter **23 zu nahe Segmentpaare**
+  (inverter 0, acdc 5, complex 18; übrige Pläne 0), engstes Paar
+  `e-busbar-fuse × e-shore-inv` = **0,8 px**. Betroffen sind 7 Kantenpaare (acdc 1,
+  complex 6) — überwiegend die 230-V-Zuleitungen am Wechselrichter (`e-shore-inv`,
+  `e-inv-induct`) entlang der 12-V-Sammelschienen.
+  → Die Regel ist also **nicht** wirkungslos-neutral: Eine Anbindung würde die eingefrorenen
+  Referenzpläne verschieben (Kabellängen, Kreuzungen, Golden Master, Ratchets) — sie ist
+  eine Layout-/Port-Entscheidung, keine reine Kostenmodell-Änderung.
+  → Zweiter Versuch erst mit **getrennten AC-/DC-Korridoren an den Ports** (eigene Lane je
+  Domäne im Port-Fan-Out, `lib/routing/rules/portFanOut.ts`) oder mit Wasser-Routing, wo der
+  Nutzen fachlich sichtbar wird (`electrical ↔ water`). Reine Tuben-Aufblähung im
+  A*-Lauf wurde am 2026-09-28 gebaut und gemessen: sie ändert die eingefrorenen Pläne
+  nicht (Audit unverändert), lässt aber die nahen Paare stehen — die Stubs der Bündel sind
+  von der Trassensperre ausgenommen, und genau dort laufen die gemischten Leitungen
+  zusammen. Der Versuch ist deshalb **nicht** ausgeliefert.
+- **RELATED TEST:** `lib/routing/rules/collision.test.ts`, `scripts/routing/domainProbe.test.ts`
+  (Ratchet der gemessenen Zahlen), `npm run routing:domain-probe` (`scripts/routing/domainProbe.ts`)
 - **RELATED ISSUE:** ROUTING-V2 §4.2.
 
 ---
 
-## ROUTE-004 — Geometrie-Zahlen außerhalb der Tokens
+## ROUTE-004 — Geometrie-Zahlen außerhalb der Tokens — **behoben 2026-09-28**
 
 - **AREA:** Routing
 - **FILE:** `components/edges/utils/pathfinding.ts` (`searchFrame`), `components/edges/utils/routeAll.ts`
@@ -323,14 +348,20 @@ cableClearance` — an einer Klemme hängen im Referenzbestand regelmäßig zwei
   lokalen Konstanten mehr, sondern `COST_WEIGHTS.bend` / `.uTurn` aus dem generierten
   Kostenmodell (5 bzw. 25 × `laneGrid`; siehe ROUTE-002 Teil 1). Der Drift-Guard steht in
   `costModel.test.ts` und `pathfinding.test.ts`.
+- **STATUS (2026-09-28): erledigt.** `MAX_EXPANSIONS` (48 000) und
+  `MAX_ACCEPTABLE_CROSSINGS` (2) bleiben bewusst lokale **Budget-/Abbruchschwellen** —
+  keine geometrischen Preise, also keine Tokens (die Entscheidung dazu steht im Modul).
+  Sie sind jetzt per Drift-Guard in `pathfinding.test.ts` gepinnt, inklusive Gleichlauf
+  mit der Legacy-Engine (`orthogonalRouting.ts`): eine einseitige Änderung fällt auf.
 
 ---
 
 ## ROUTE-006 — Platzierung außerhalb der Referenzkoordinaten: Restfehler, Rasterlage, Kabellänge
 
 - **AREA:** Platzierung / Routing
-- **FILE:** `lib/autoWire/placement.ts` (`flowAnchor`), `components/edges/utils/routeAll.ts`
-  (`labelAnchorClearOfNodes`), `scripts/routing/audit.ts`, `scripts/routing/cableLength.test.ts`
+- **FILE:** `lib/autoWire/placement.ts` (`flowAnchor`, `NODE_MIN_GAP`),
+  `components/edges/utils/routeAll.ts` (`labelAnchorClearOfNodes`), `scripts/routing/audit.ts`
+  (`--shifts`), `scripts/routing/shiftInvariance.test.ts`, `scripts/routing/cableLength.test.ts`
 - **DESCRIPTION:** Vier Messungen vom 2026-09-27 zeigen dieselbe Grenze — die geprüfte
   Konfiguration ist die eingefrorene; jede Änderung der Anordnung von Auto-Raster und
   Karten zueinander ist eine neue Konfiguration:
@@ -403,22 +434,72 @@ routeAllCables → checkInvariants`, sechs Referenzpläne, Kartenmaß 192 × 120
      steht `Kabelweg`/`laengste` in `npm run routing:audit`, und
      `scripts/routing/cableLength.test.ts` hält die absolute Länge je Referenzplan als
      Ratchet (mit Gegenprobe: ohne den Flow-Anker fällt der Positionstest).
-- **CURRENT BEHAVIOR:** Ein um wenige Pixel verschobener Plan kann kurze Segmente melden
-  (I4–I7, **keine** Überdeckung). Absolutwerte stehen in Audit, Ratchet und Invarianten-Test.
+  5. **Der Nutzer-Versatz ist ein eigener Fehlerfall (2026-09-28).** Punkt 2 maß nur die
+     eingefrorenen Δ-Werte; die 7×7-Matrix (Δ ∈ ±400, ±96, ±16, 0 px, 294 Läufe,
+     `npm run routing:audit -- --shifts`) zeigt: Verschiebt der Nutzer **nur seine
+     Bauteile**, rastet die AutoWire-Platzierung (`flowAnchor`, globale Rasterlinien) auf
+     eine andere Zeile — und ein Teil der so entstehenden Konfigurationen war für den
+     Router nicht lösbar. **51 von 294 Läufen hart verletzt** (I1 30, I2 53, I3 44),
+     darunter **20 Notfallpfade**: die Leitung lief quer durch ein fremdes Bauteil.
+     Ursache war die Mindestluft der Platzierung — `NODE_MIN_GAP` verlangte
+     2 × `cableClearance` (24 px), während ein Kabel an einem gegenüberliegenden Port
+     `stubMin` (24) + `laneGrid` (16) braucht, bevor es abbiegen kann. Mit
+     `NODE_MIN_GAP = stubMin + laneGrid` (40 px): **10 Läufe, 12 × I2, sonst 0** — kein
+     Notfallpfad, kein I1, und die eingefrorene Referenzkonfiguration bleibt unverändert
+     (gleiche Kabellängen, gleiche Kreuzungen, gleiche Port-Bündel). Das Gate steht in
+     `routing:audit -- --shifts` (hart: kein Notfallpfad, kein I1; Ratchet: I2/I3 je Plan —
+     Rest camper 2, acdc 10) und in `scripts/routing/shiftInvariance.test.ts`. Der Rest-I2
+     sind Trassenkollisionen verschobener Bündel (Port-Fan-Out-Ebene), kein Durchlauf.
+- **CURRENT BEHAVIOR:** Ein verschobener Plan kann kurze Segmente melden (I4–I7) und — je
+  nach Rasterphase — Trassenüberdeckungen (I2); **kein** Bauteil-Durchlauf (I1) und
+  **kein** Notfallpfad mehr (Versatz-Gate, 2026-09-28). Absolutwerte und Reste stehen in
+  Audit (Tabelle + `--shifts`), Ratchet und Invarianten-Test.
 - **EXPECTED BEHAVIOR:** An jeder Planposition kein Kabel durch ein Bauteil und keine
   Trassenüberdeckung (I1–I3); kurze Segmente bleiben eine dokumentierte Qualitätsgrenze.
-- **SEVERITY:** niedrig (keine harten Verletzungen; Sichtbarkeit hergestellt)
-- **WORKAROUND:** Für die geprüfte Konfiguration den Plan nahe dem Ursprung halten; für
-  kompakte Layouts „Plan ordnen“ (ELK) verwenden — 2–44 % kürzer, I1 = 0.
-- **RELATED TEST:** `scripts/routing/cableLength.test.ts`,
-  `lib/planner/layout-engine/elkSpacing.test.ts`,
+- **SEVERITY:** niedrig (kein I1/kein Notfallpfad an jeder Planposition; Rest-I2 über
+  Ratchet sichtbar)
+- **WORKAROUND:** Für kompakte Layouts „Plan ordnen“ (ELK) verwenden — 2–44 % kürzer,
+  I1 = 0. Der Ursprung ist als Standort nicht mehr nötig (Versatz-Gate).
+- **RELATED TEST:** `scripts/routing/shiftInvariance.test.ts` (Versatz-Gate),
+  `scripts/routing/cableLength.test.ts`, `lib/planner/layout-engine/elkSpacing.test.ts`,
   `components/edges/utils/routeAll.test.ts` (Beschriftung verdeckt keine Karte),
   `lib/routing/invariants.test.ts`, `scripts/routing/finalValidation.test.ts`
 - **RELATED ISSUE:** ADR 0023, ADR 0017, ROUTE-BUG-32; Finding 2026-09-27 (§ Reihenfolge).
 
 ---
 
-## ARCH-001 — Server-Route und Postgres-Pool im statischen Export
+## ROUTE-007 — Überdeckungen ohne gemeinsame Anschlussstelle fehlten in der Diagnose — **behoben 2026-09-28**
+
+- **STATUS:** behoben — der Vorfilter `if (!sharesPort(a, b)) continue;` in `analyzeOverlaps`
+  ist entfernt; `isPortBundleOverlap` prüft die gemeinsame Anschlussstelle selbst und liefert
+  sonst `false`. Die Port-Bündel-Ausnahme ist unverändert, die Zahl vollständig. Zwei Fälle in
+  `scripts/routing/portBundleModel.test.ts` halten das fest (Überdeckung ohne gemeinsamen Port →
+  `elsewhere = 1` und I2 = 1; Bündel am gemeinsamen Port bleibt `atPort`). Die Referenzpläne
+  sind unverändert (I2 = 0, `atPort`-Zahlen identisch).
+- **AREA:** Diagnose / Routing
+- **FILE:** `scripts/routing/audit.ts` (`analyzeOverlaps`), `scripts/routing/portBundleModel.test.ts`
+- **DESCRIPTION:** Der Vorfilter war als Abkürzung für die Port-Bündel-Ausnahme gedacht, wirkte
+  aber als Lücke: Kollineare Überdeckungen zwischen Kanten **ohne** gemeinsame Anschlussstelle
+  wurden weder als `atPort` noch als `elsewhere` gezählt — sie tauchten in der Diagnose gar nicht
+  auf. Gemessen in der Versatz-Matrix: `acdc Δ(-96,-96)` hat I2 = 1, die Diagnose meldete
+  `elsewhere = 0`.
+- **CURRENT BEHAVIOR (behoben):** `elsewhere` zählt jede harte Überdeckung, die kein Port-Bündel
+  ist — unabhängig davon, ob die Kanten eine Anschlussstelle teilen.
+- **EXPECTED BEHAVIOR:** Diagnose und Invariante (`checkEdgeEdgeOverlaps`) zählen dieselbe
+  Grundmenge; die Kopplungsprüfung des Gates (`elsewhere > 0 ⇔ I2 > 0`) gilt an jeder Stelle.
+- **SEVERITY:** niedrig (Diagnose — die Invariante I2 selbst zählte korrekt, und das Gate prüft
+  die Kopplung auf den eingefrorenen Positionen; in den verschobenen Läufen war die Zahl nur
+  Diagnose)
+- **WORKAROUND:** entfällt.
+- **RELATED TEST:** `scripts/routing/portBundleModel.test.ts`,
+  `scripts/routing/shiftInvariance.test.ts` (Rest-I2 der Versätze)
+- **RELATED ISSUE:** ROUTE-002 Teil 2a (ADR 0025), ROUTE-006 Punkt 5.
+
+---
+
+## ARCH-001 — Server-Route und Postgres-Pool im statischen Export — **teilweise behoben 2026-09-28**
+
+(Schein-Feature weg, Produktentscheidung offen)
 
 - **AREA:** Architektur
 - **FILE:** `app/api/chat/route.ts`, `lib/db.ts`, `components/Chat.tsx`, `app/ki-assistent/page.tsx`
@@ -429,14 +510,30 @@ routeAllCables → checkInvariants`, sechs Referenzpläne, Kartenmaß 192 × 120
   - `npm run build` weist `/api/chat` als **`ƒ` (Dynamic, server-rendered on demand)** aus —
     der Export enthält **kein** `out/api` (geprüft).
   - Ohne gesetzte `NEXT_PUBLIC_CHAT_API_URL` sendet die Seite ins Leere (404) und wirkt dabei
-    funktionsfähig.
+    funktionsfähig. — **behoben 2026-09-28, s. STATUS.**
   - `.env.example` behauptete „No environment variables are required“ — die Variable war dort
     nicht dokumentiert (mit ADR 0021 ergänzt).
   - Abgesichert ist die Route nur durch Unit-Tests mit gemocktem `pg` (578 Zeilen):
     grün, aber ohne Bezug zum ausgelieferten Artefakt.
+- **STATUS (2026-09-28): das Schein-Feature ist weg (ADR 0021 Punkt 2 umgesetzt).**
+  `components/Chat.tsx` leitet den Endpunkt jetzt über `resolveChatEndpoint` ab: gesetzte
+  `NEXT_PUBLIC_CHAT_API_URL` gewinnt (getrimmt), sonst gibt es **nur** im Development-Server
+  den lokalen Pfad `/api/chat` — der Produktbuild ist `output: 'export'` (kein `out/api`,
+  `next start` gar nicht möglich), dort ist der Endpunkt `null`. In diesem Fall rendert
+  `/ki-assistent` einen klaren Hinweis („Kein Assistent konfiguriert“, mit Grund und Weg über
+  die Env-Variable) statt eines Eingabefelds; der `useChat`-Hook wird gar nicht erst
+  aufgerufen, es kann also nichts ins Leere senden. `.env.example` beschreibt das Verhalten
+  und der tote `NEXT_PUBLIC_CHAT_TOKEN`-Eintrag ist entfernt (S1: kein clientseitiges
+  „Secret“). Tests: `components/Chat.test.tsx` (13, u. a. Export-Fall ohne Endpunkt).
+  **Offen bleibt die Produktentscheidung (ADR 0021 Punkt 1):** ob `app/api/chat/route.ts`,
+  `lib/db.ts` (`pg`-Pool) und `app/api/chat/route.test.ts` (578 gemockte Zeilen) im Baum
+  bleiben oder mit einem externen Endpunkt in ein eigenes Deployment wandern.
 - **EXPECTED BEHAVIOR:** Entweder externer Endpunkt + dokumentierte Konfiguration, oder
-  Route/Seite entfernen.
-- **SEVERITY:** hoch (funktional), niedrig (Sicherheit: kein Secret im Repo)
+  Route/Seite entfernen. (Der Konfigurationsweg ist umgesetzt; das Entfernen der Route ist
+  die offene Produktentscheidung.)
+- **SEVERITY:** war hoch (funktional) — **behoben 2026-09-28**, kein Leerlauf-Versand mehr;
+  niedrig (Sicherheit: kein Secret im Repo). Verbleibend ist eine Produktentscheidung
+  (Punkt 1), kein Fehler.
 - **WORKAROUND:** Nicht als lauffähiges Feature behandeln. Vor Änderungen prüfen, ob der
   KI-Assistent Teil des Produkts sein soll.
 - **RELATED TEST:** `app/api/chat/route.test.ts` (578 Zeilen, komplett gemockt),
@@ -445,8 +542,17 @@ routeAllCables → checkInvariants`, sechs Referenzpläne, Kartenmaß 192 × 120
 
 ---
 
-## ARCH-002 — Legacy-Router lebt weiter (628 Zeilen + zwei Testdateien)
+## ARCH-002 — Legacy-Router lebt weiter (649 Zeilen + zwei Testdateien) — **behoben 2026-09-28**
 
+- **STATUS (2026-09-28): behoben (Kennzeichnung).** Der Dateikopf von
+  `components/edges/utils/orthogonalRouting.ts` markiert die Router-Kernfunktionen jetzt
+  ausdrücklich als **Legacy-/Galerie-Werkzeug** (R1–R7 sind nicht der Produktivpfad; dieser
+  ist I1–I10 über `routeAllCables` → `findCablePath`) und benennt zugleich die geteilten
+  Bausteine, die der Produktivpfad weiterhin importiert (`readHandleBounds` in
+  `pathfinding.ts`; `NODE_FALLBACK_*` und die Typen in `routingCache.ts`).
+  `orthogonalRouting.invariants.test.ts` trägt denselben Hinweis. Der Code bleibt, weil die
+  Routing-Galerie auf ihm aufbaut (Entfernen wäre eine eigene Entscheidung über die Galerie,
+  LEGACY.md L-1).
 - **AREA:** Routing / Legacy
 - **FILE:** `components/edges/utils/orthogonalRouting.ts`
 - **DESCRIPTION:** `buildOrthogonalPath`, `orthogonalWaypoints`, `avoidObstacles` werden nur von
@@ -471,23 +577,30 @@ routeAllCables → checkInvariants`, sechs Referenzpläne, Kartenmaß 192 × 120
 - **DESCRIPTION:** ADR 0012 bindet das 16-ms-Budget **ausdrücklich an den Referenzplan
   N=36 / E=134** — nicht an jede Plangröße. Große Pläne liegen darüber:
 
-  | Messung                             | Plan        | Wert                            | Budget     |
-  | ----------------------------------- | ----------- | ------------------------------- | ---------- |
-  | `npm run perf:edge-routing` (Gate)  | N=36 E=134  | Median **2,57 ms**, p90 2,67 ms | 16 ms → OK |
-  | dto., Durchlauf „Sehr groß“         | N=120 E=585 | **21,3 ms**                     | über 16 ms |
-  | `npm run perf:route-scaling`, Kette | N=100 E=99  | 13,8 ms (0,14 ms/Kante)         | —          |
-  | dto.                                | N=500 E=499 | 215 ms (0,43 ms/Kante)          | —          |
-  | dto., Worst Case Spannkanten        | N=250 E=125 | 121 ms (0,97 ms/Kante)          | —          |
-  | dto.                                | N=500 E=250 | 2 125 ms (8,50 ms/Kante)        | —          |
+  | Messung                             | Plan        | Wert                                  | Budget     |
+  | ----------------------------------- | ----------- | ------------------------------------- | ---------- |
+  | `npm run perf:edge-routing` (Gate)  | N=36 E=134  | Median **2,3–3,1 ms**, p90 3,3–4,4 ms | 16 ms → OK |
+  | dto., Durchlauf „Sehr groß“         | N=120 E=585 | **21,3 ms**                           | über 16 ms |
+  | `npm run perf:route-scaling`, Kette | N=100 E=99  | 13,8 ms (0,14 ms/Kante)               | —          |
+  | dto.                                | N=500 E=499 | 215 ms (0,43 ms/Kante)                | —          |
+  | dto., Worst Case Spannkanten        | N=250 E=125 | 121 ms (0,97 ms/Kante)                | —          |
+  | dto.                                | N=500 E=250 | 2 125 ms (8,50 ms/Kante)              | —          |
 
-  (Medians aus 3 Läufen, 2026-09-09; die Scaling-Probe meldet min/max mit.)
+  (Render-Zahlen aus drei Läufen, 2026-09-28; die Scaling-Probe meldet min/max mit.)
 
 - **CURRENT BEHAVIOR:** Große Pläne werden im Live-Betrieb durch die 100-ms-Drossel
   (`ROUTE_THROTTLE_MS`) erträglich, nicht durch Laufzeit. Ab N≈500 mit planweiten Kanten
   übersteigt ein einzelner vollständiger Durchlauf die Drossel deutlich (≈2 s).
-- **EXPECTED BEHAVIOR:** Entweder ein zweiter, dokumentierter Messpunkt im Gate
-  (nicht-blockierend) oder eine Optimierung mit eigenem ADR. **Kein** stilles Anheben des
-  Budgets und kein Entfernen des Gates.
+- **ZWEITER MESSPUNKT (2026-09-28, ADR 0030):** Der Live-Pfad-Ratchet wertet jetzt zusätzlich
+  die **Streuung aus denselben Messproben** aus: `p90 ≤ 2 × Median`, blockierend
+  (Exit-Code 1). Gemessen über zehn Läufe lag das Verhältnis bei 1,11–1,56; die erste
+  Fassung mit 1,5 scheiterte sofort an einem 1,56-Lauf (der Median schwankt stärker als der
+  Schwanz) — deshalb 2. Ein absolutes p90-Budget bleibt verworfen: 292 ms bei unverändertem
+  Code unter Nebenlast. Median-Ratchet (60 ms) und 16-ms-Ziel bleiben unangetastet.
+- **EXPECTED BEHAVIOR:** Der zweite, dokumentierte Messpunkt ist umgesetzt (ADR 0030).
+  Offen bleibt die **absolute** Seite: große Pläne über dem 16-ms-Ziel brauchen eine
+  Optimierung mit eigenem ADR. **Kein** stilles Anheben des Budgets und kein Entfernen des
+  Gates.
 - **TEILWEISE UMGESETZT (2026-09-25, AUDIT P1):** Vorher maß das CI-Gate ausschließlich
   `buildOrthogonalPath` — den **Legacy-Router**, den die Fläche seit ADR 0014 nicht mehr
   zeichnet. `npm run perf:edge-routing` misst jetzt zusätzlich die **Live-Pipeline**
@@ -497,11 +610,18 @@ routeAllCables → checkInvariants`, sechs Referenzpläne, Kartenmaß 192 × 120
   der Ist-Zustand ist festgehalten und Rückfall verboten; das Ziel bleibt 16 ms und wird
   durch echte Optimierung (nicht durch Anheben) erreicht. Offen bleibt die
   Skalierungsspitze N≈500 (≈2 s, s. Tabelle).
+- **STATUS (2026-09-28):** Das Gate vergleicht **nur den Median**. Drei isolierte Läufe:
+  Live-Median 48,7–51,4 ms, **p90 59,0–65,4 ms** — der p90 liegt damit an bzw. über der
+  60-ms-Ratchet, während das Gate grün meldet. Unter Nebenlast (parallele Builds) gemessen:
+  Median 124 ms, p90 292 ms bei **unverändertem** Code → der Ratchet ist keine
+  lastnormalisierte Aussage. Ein p90-Budget braucht eine Kalibrierung im selben Prozess
+  (eigener ADR-0012-Nachtrag), kein stilles Anheben.
 - **SEVERITY:** mittel
 - **WORKAROUND:** Drossel nutzen; Änderungen am A\*-Innenloop immer mit beiden Benchmarks
   gegenmessen. Einzelmessungen großer Pläne streuen um Faktor >2 — immer den Median nehmen.
 - **RELATED TEST:** `npm run perf:edge-routing` (CI-Gate), `npm run perf:route-scaling` (Probe)
-- **RELATED ISSUE:** ADR 0012, historisch AUDIT PERF-001 (Region-Filter; sechsstellig → ms).
+- **RELATED ISSUE:** ADR 0012, **ADR 0030** (Streuungs-Ratchet), historisch AUDIT PERF-001
+  (Region-Filter; sechsstellig → ms).
 
 ---
 
@@ -541,10 +661,70 @@ routeAllCables → checkInvariants`, sechs Referenzpläne, Kartenmaß 192 × 120
 
 ---
 
-## DOM-004 — Kantendaten werden beim Laden nicht schemageprüft
+## TEST-002 — Das visuelle Gate meldete Pixel-Drift — **behoben 2026-09-28**
 
+- **AREA:** UI / CI
+- **FILE:** `tests/e2e/visual.spec.ts` (+ Baselines in `tests/e2e/visual.spec.ts-snapshots/`),
+  Job „Visuelles Gate (nicht blockierend)" in `.github/workflows/quality.yml`
+- **DESCRIPTION:** Der Pixel-Vergleich der Kernrouten (Homepage, Dach, Heizung,
+  Elektrik-Planung, Impressum; hell/dunkel; 375/768/1440) liegt über der Schwelle von
+  `maxDiffPixelRatio = 0.02`. Der Job ist bewusst `continue-on-error: true` — er blockiert
+  weder Workflow noch Deploy, sondern meldet UI-Drift zur Bewertung.
+- **EVIDENCE (2026-09-28):** Der Job scheitert **auch auf dem Default-Branch** — Runs
+  `36396267377` und `36395471654` (`feature/react-flow-cable-editor-7322653268250495059`)
+  melden für den visuellen Job `failure`, während Workflow, Pages-Build und Deploy
+  `success` sind. Der Arena-Branch (`36413722168`, PR #468) zeigt dasselbe Bild. Die Drift
+  ist damit **kein** Regress dieses Branchs, sondern ein offener Baseline-Stand.
+- **CURRENT BEHAVIOR:** Der visuelle Job ist rot, der Rest der Suite grün; die Abweichung
+  ist im CI-Log/Artefakt (`visual-diff`) sichtbar.
+- **EXPECTED BEHAVIOR:** Baselines nach **UI-Freigabe** neu aufnehmen, dann ist der Job
+  wieder grün und schützt weiter gegen unbeabsichtigte Layout-/Farb-Brüche.
+- **SEVERITY:** niedrig (nicht blockierend), aber es kostet jedem PR eine rote Zeile.
+- **WORKAROUND:** `npx playwright test tests/e2e/visual.spec.ts --update-snapshots` **in
+  einer Umgebung mit Browser**. Die Baseline-Prüfung selbst ist dokumentiert in
+  `docs/UI-BASELINE.md` (Freeze-Punkt, Refresh-Regel).
+- **STATUS (2026-09-28): behoben — Ursache war ein Rennen, nicht UI-Drift.** Die
+  Abweichung lag ausschließlich auf `/elektrik-planung/` bei **768 px**, in beiden Schemata
+  (light 17 166 px = 2,18 %, dark 18 886 px = 2,40 %; Identifikation aus den
+  Check-Run-Annotationen des CI-Jobs). Die beiden Tablet-Baselines zeigten einen **halb
+  hydratisierten** Frame des Planers: Onboarding-Dialog und Canvas-Hintergrund waren da,
+  aber Schrittleiste („1 Anlage … 5 Ergebnis“ / „Batterie hinzufügen“), die
+  Hinweis-Abzeichen („Keine Hinweise“) und die Kopfzeilen-Aktionen („Ansicht“) fehlten —
+  der Screenshot war eine Momentaufnahme **vor** dem dynamischen Import des Dashboards
+  (`components/PlannerInner.tsx`). Der Test wartete nur auf `load` + Schriften; die
+  E2E-Helfer (`openPlanner` in `tests/e2e/helpers.ts`) warten dagegen seit jeher auf
+  `planner-shell`.
+  **Fix:** `tests/e2e/visual.spec.ts` wartet mit `ready: 'planner-shell'` auf dieselbe
+  Kennung (plus zwei Frames Ruhe) — bei 1440/375 lag derselbe Unterschied mit 1,8–4,1 %
+  nur zufällig unter der 2-%-Schwelle und blieb deshalb unsichtbar. Danach die zwei
+  veralteten Tablet-Bilder neu aufgenommen; die übrigen **sechs** Planner-Baselines waren
+  byte-identisch zum hydratisierten Zustand und blieben unverändert.
+  **Nachweis:** vollständiger Lauf lokal **40/40 visuell**, gesamte E2E-Suite **113 passed,
+  31 skipped**; die Reproduktion vor dem Fix traf CI exakt (`2 failed, 38 passed` mit
+  denselben Snapshot-Namen und 17 222/19 098 Diff-Pixeln gegen 17 166/18 886 in CI, ±1 %);
+  CI-Run `36425006580` (Commit `3ce09e3`) ist **vollständig grün**, inklusive des visuellen
+  Jobs. Der lokale Lauf war möglich, obwohl `cdn.playwright.dev` gesperrt ist — Rezept in
+  `docs/E2E-TESTS.md` §4 („Wenn `cdn.playwright.dev` nicht erreichbar ist“).
+- **FOLGESCHRITT (bewusst offen):** Der Job ist weiterhin `continue-on-error: true`. Jetzt,
+  wo er reproduzierbar grün ist, kann er **blockierend** werden (Zeile entfernen) — das ist
+  eine CI-Politik-Entscheidung und eine Änderung an `.github/workflows/quality.yml`, für die
+  diese Session keine `workflows`-Berechtigung hat (dieselbe Sperre wie beim
+  `--shifts`-Schritt).
+- **RELATED TEST:** `tests/e2e/visual.spec.ts` (`--grep "hält die Baseline"`), Artefakt
+  `visual-diff`
+- **RELATED ISSUE:** `docs/UI-BASELINE.md`, TEST-001 (E2E-Gate blockierte 16 Tage lang
+  jeden Deploy)
+
+## DOM-004 — Kantendaten werden beim Laden nicht schemageprüft — **behoben 2026-09-28**
+
+- **STATUS:** behoben. `lib/edgeSchema.ts` deklariert die bekannten Felder aus
+  `lib/domain/cableEdgeData.ts` (Zahl/String/Boolean/Enum `edgeDomain`, Objekt
+  `acProtection`); `store/slices/persistence.ts` wendet es in `sanitizeEdgeData` an —
+  dieselbe Semantik wie `lib/nodeSchema.ts` für `node.data`: falsch getippte BEKANNTE
+  Felder werden entfernt (kein stilles „Heilen“, die Leseschicht fällt auf ihren
+  dokumentierten Default), unbekannte Felder bleiben erhalten.
 - **AREA:** Domäne / Persistenz
-- **FILE:** `store/slices/persistence.ts` (`sanitizeEdgeData`)
+- **FILE:** `store/slices/persistence.ts` (`sanitizeEdgeData`), `lib/edgeSchema.ts`
 - **DESCRIPTION:** Die Migration wendet `lib/nodeSchema` nur auf `node.data` an.
   `sanitizeEdgeData` prüft lediglich, dass `data` ein Objekt ist. Falsch getippte Felder in
   `edge.data` (z. B. `crossSection: '2,5'`, `fuseSize: 'ja'`) überleben den Rehydrate.
@@ -554,21 +734,28 @@ routeAllCables → checkInvariants`, sechs Referenzpläne, Kartenmaß 192 × 120
 - **SEVERITY:** mittel
 - **WORKAROUND:** Beim Lesen von `edge.data` immer `parseQuantity`/`quantityOr` bzw. die
   Marker-Kurzschlüsse aus `lib/autoWire/validation.ts` nutzen.
-- **RELATED TEST:** `store/slices/persistence.test.ts`, `lib/nodeSchema.test.ts`
+- **RELATED TEST:** `lib/edgeSchema.test.ts`, `store/slices/persistence.test.ts`
+  (DOM-004-Fall: falsch getippte bekannte Felder fliegen, unbekannte bleiben)
 
 ---
 
-## DOM-005 — `CableEdgeData.geometry` ist ein totes Feld
+## DOM-005 — `CableEdgeData.geometry` ist ein totes Feld — **behoben 2026-09-28**
 
 - **AREA:** Domäne / Routing
 - **FILE:** `lib/domain/cableEdgeData.ts`
 - **DESCRIPTION:** `geometry?: {points}` ist deklariert, wird aber von **keinem** Produktivcode
   gelesen — `scripts/routing/architecture.test.ts` verbietet das Lesen ausdrücklich (ADR 0014).
   Es ist das Einfallstor der entfernten zweiten Routing-Engine.
-- **CURRENT BEHAVIOR:** Das Feld ist Teil des persistierten Schemas, ohne Wirkung.
-- **EXPECTED BEHAVIOR:** Entfernen oder als ausdrücklich verboten markieren.
+- **STATUS:** behoben. Das Feld ist aus `CableEdgeData` entfernt; der Dateikopf
+  benennt an seiner Stelle ausdrücklich das Verbot („Kabelgeometrie lebt
+  ausschließlich im Route-Publish des globalen Passes“, ADR 0014). Der Wächter
+  `scripts/routing/architecture.test.ts` verbietet Produktivcode-Zugriffe auf
+  `edge.data.geometry` (inkl. Destrukturierung) weiterhin.
+- **CURRENT BEHAVIOR:** (historisch) Das Feld war Teil des persistierten Schemas, ohne Wirkung.
+- **EXPECTED BEHAVIOR:** Entfernen oder als ausdrücklich verboten markieren — erledigt.
 - **SEVERITY:** niedrig
-- **WORKAROUND:** Nicht lesen, nicht schreiben (es gibt kein `Polyline` mehr, das es füllt).
+- **WORKAROUND:** (historisch) Nicht lesen, nicht schreiben (es gibt kein `Polyline` mehr,
+  das es füllt).
 - **RELATED TEST:** `scripts/routing/architecture.test.ts`
 
 ---
@@ -695,10 +882,9 @@ Einträgen oben:
   Architektur-Regeln sind prüfbare Funktionen mit Positivkontrollen
   (`scripts/architecture/rulesSelfCheck.test.ts`); `routing:audit` gibt einen
   Exit-Code zurück (I1/Orthogonalität/Fallback/Determinismus). **Offen:**
-  Der zugehörige CI-Schritt in `.github/workflows/quality.yml` ließ sich nicht
-  pushen — die GitHub-App der Session hat keine `workflows`-Berechtigung. Die
-  Zeile muss einmal von Hand ergänzt werden:
-  `run: npm run routing:audit` vor dem Perf-Gate.
+  **Erledigt (2026-09-28):** `.github/workflows/quality.yml` enthält den Schritt
+  `run: npm run routing:audit` (vor dem Perf-Gate) — die damalige
+  Berechtigungs-Blockade der Session ist damit gegenstandslos.
 - **Barrierefreiheit (A1/A4/A5/A6)** — Tastaturfokus im Canvas sichtbar,
   Label-Kontrast auf `--ink`, Schwere als Wort, Live-Region immer vorhanden.
 - **Chat/Endpunkt (S1/S2)** — kein clientseitiges „Secret“ mehr, keine

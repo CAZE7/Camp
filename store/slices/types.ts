@@ -134,6 +134,25 @@ export interface PlannerState {
   isValidConnection: (connection: Connection | Edge<CableEdgeData>) => boolean;
   onConnect: (connection: Connection) => void;
   autoWireSystem: () => void;
+  /**
+   * ELK-Strukturierung nach dem automatischen Verbinden (Wunsch 2026-09-28:
+   * „Automatisch verbinden soll auch nach ELK strukturiert werden").
+   *
+   * Wartet auf die Messung: Ein frisch erzeugtes Bauteil hat noch keine
+   * Kartenbox; ELK würde mit den Engine-Defaults (120 × 80) rechnen und Karten
+   * übereinanderlegen. Der Aufrufer (FlowCanvas) startet den Lauf, sobald der
+   * Store für alle Knoten gemessene Maße kennt — siehe `autoStructurePending`.
+   *
+   * Ohne eigenen Undo-Schritt: Der Snapshot VOR dem Verbinden steht bereits in
+   * `historyPast`; ein Undo macht Verbinden UND Strukturieren zusammen
+   * rückgängig.
+   */
+  structureAutoWiring: () => Promise<void>;
+  /**
+   * Steht nach `autoWireSystem()` auf `true`, bis die ELK-Strukturierung
+   * gelaufen ist (oder verworfen wurde — Undo, Template, anderes Layout).
+   */
+  autoStructurePending: boolean;
   onLayout: () => void;
   /**
    * ELK-Layout (ADR 0018): globaler Layout-Pass für Knotenpositionen.

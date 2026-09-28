@@ -2,6 +2,7 @@ import { type Node, type Edge } from '@xyflow/react';
 import { nodeHeight, nodeWidth } from '../../edges/utils/nodeGeometry';
 import { safeText } from '../../../lib/safeText'; // AUDIT T1
 import { getLayoutRank } from '../../../lib/planner/layout-engine/ranks';
+import { compareIds } from '../../../lib/sortOrder';
 
 /** Visual fallbacks for nodes that React Flow has not measured yet. */
 export const DEFAULT_NODE_WIDTH = 192;
@@ -87,7 +88,7 @@ const compareNodes = (a: Node, b: Node): number => {
   const byType = hierarchyOrder(a) - hierarchyOrder(b);
   if (byType !== 0) return byType;
   const byLabel = safeText(a.data?.label).localeCompare(safeText(b.data?.label), 'de');
-  return byLabel || a.id.localeCompare(b.id);
+  return byLabel || compareIds(a.id, b.id);
 };
 
 type NodeSize = { width: number; height: number };

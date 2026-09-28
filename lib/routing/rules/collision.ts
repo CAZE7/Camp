@@ -147,6 +147,41 @@ export function buildDomainSeparationRules(tokens: RoutingTokens = ROUTING_TOKEN
 
 export const domainSeparationRules: DomainSeparationRules = buildDomainSeparationRules();
 
+/**
+ * Vokabular der Aufrufer: `HandleDomainValue` (`lib/domain/handleDomains.ts`,
+ * Anschluss-Ebene) und `HopDomain` (`hopping.ts`, Prioritäts-/Darstellungs-
+ * Ebene, inkl. `water` und `unknown`). Beide Mengen sind Teilmengen dieser
+ * Literale — die Übersetzung steht hier, weil `RoutingDomain` hier definiert
+ * ist und die Paarregeln hier leben.
+ */
+export type DomainVocabulary = 'DC_12V' | 'AC_230V' | 'Solar' | 'water' | 'unknown';
+
+/**
+ * Übersetzung der Aufrufer-Vokabulare in die Routing-Domäne der Paarregeln
+ * (ROUTE-003).
+ *
+ * `Solar` gehört zur OBER-Domäne `electrical`: Die Regeln kennen
+ * `electrical ↔ water` und `ac230 ↔ dc12`; eine Solarleitung ist elektrisch
+ * und erbt damit den Wasser-Abstand, hat aber keinen eigenen Mindestabstand
+ * zu DC (die beiden Leiter eines Strings sind ohnehin dieselbe Domäne).
+ * `unknown` und fehlende Angaben lösen KEINE Paarregel aus — es gilt die
+ * Basis-Clearance (heutiges Verhalten; keine erfundene Strenge).
+ */
+export function routingDomainOf(domain: DomainVocabulary | undefined): RoutingDomain | undefined {
+  switch (domain) {
+    case 'AC_230V':
+      return 'ac230';
+    case 'DC_12V':
+      return 'dc12';
+    case 'Solar':
+      return 'electrical';
+    case 'water':
+      return 'water';
+    default:
+      return undefined;
+  }
+}
+
 /** Ober-Domäne für Regel-Lookups: dc12/ac230 sind elektrische Unterdomänen. */
 const parentDomain = (d: RoutingDomain): RoutingDomain | null =>
   d === 'dc12' || d === 'ac230' ? 'electrical' : null;

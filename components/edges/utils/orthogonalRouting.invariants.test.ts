@@ -22,6 +22,10 @@ import { ROUTING_SCENARIOS, manhattanDistance } from './routingScenarios';
 /**
  * Routing-Invarianten (AGENTS.md K3).
  *
+ * LEGACY: prüft R1–R7 des alten Einzelrouten-Routers, nicht den Render-Pfad
+ * (siehe Dateikopf `orthogonalRouting.ts` und `docs/ROUTING-INVARIANTS.md`).
+ * Produktive Invarianten: I1–I10 via `npm run routing:audit`.
+ *
  * `buildOrthogonalPath` ist eine deterministische, reine Funktion. Diese
  * Datei hält fest, was das konkret bedeutet, und prüft es sowohl gegen die
  * 25 festen Szenarien aus `routingScenarios.ts` als auch gegen zufällige

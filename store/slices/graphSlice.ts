@@ -72,6 +72,8 @@ export type GraphSlice = Pick<
   | 'isValidConnection'
   | 'onConnect'
   | 'autoWireSystem'
+  | 'structureAutoWiring'
+  | 'autoStructurePending'
   | 'onLayout'
   | 'applyTemplate'
   | 'onDrop'
@@ -147,6 +149,7 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
   historyFuture: [],
   canUndo: false,
   canRedo: false,
+  autoStructurePending: false,
   onNodesChange: (changes) =>
     set((state) => {
       const newNodes = applyNodeChanges(changes, state.nodes);
@@ -486,7 +489,19 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
     // Flussrichtung wieder auf (Kabel-Umwege, M11-2) und verschob
     // handplatzierte Bauteile. Das Spalten-Layout bleibt dem expliziten
     // „Aufräumen“-Knopf (onLayout) vorbehalten.
-    set((state) => withHistory(state, { nodes: [...result.nodes], edges: [...result.edges] }));
+    //
+    // Stattdessen wird die ELK-Strukturierung angefordert (Wunsch 2026-09-28):
+    // `ranked` hält dabei die Rollenfolge Quelle → Wandler → Verteilung →
+    // Verbraucher ein (ADR 0024), also gerade die Flussrichtung, die der
+    // verworfene Spalten-Pass aufhob. Der Lauf startet erst, wenn alle
+    // Kartenboxen gemessen sind (`structureAutoWiring`).
+    set((state) =>
+      withHistory(state, {
+        nodes: [...result.nodes],
+        edges: [...result.edges],
+        autoStructurePending: true,
+      })
+    );
 
     if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
       window.requestAnimationFrame(() => {
@@ -497,7 +512,63 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
       });
     }
   },
+  /**
+   * ELK-Strukturierung nach dem automatischen Verbinden (Wunsch 2026-09-28).
+   *
+   * Warum ein eigener Schritt und nicht ein Aufruf direkt in `autoWireSystem`:
+   * ELK rechnet mit den GEMESSENEN Kartenmaßen. Ein frisch erzeugtes Bauteil
+   * (z. B. der automatisch ergänzte Shunt) ist im Moment des Verbindens noch
+   * nicht gerendert — ELK bekäme die Engine-Defaults (120 × 80) und legte
+   * Karten übereinander (gemessen mit ungemessenen Knoten: I1 = 49). Deshalb
+   * fordert `autoWireSystem` nur an (`autoStructurePending`); den Lauf startet
+   * der Canvas, sobald der Store für alle Knoten Maße kennt.
+   *
+   * Dieselbe „letzte Anfrage gewinnt“-Disziplin wie `onLayoutV2` (P-6):
+   * Ein zwischenzeitliches „Plan ordnen“ gewinnt, ein veralteter Lauf schreibt
+   * nicht.
+   */
+  structureAutoWiring: async (): Promise<void> => {
+    if (!get().autoStructurePending) return;
+    const { nodes, edges } = get();
+    if (nodes.length === 0) {
+      set({ autoStructurePending: false });
+      return;
+    }
+
+    const mySeq = ++layoutV2Seq;
+    set({ isLayoutPending: true });
+
+    let result: Awaited<ReturnType<typeof applyAdvancedLayout>>;
+    try {
+      // Immer die Elektrik: `performAutoWiring` verdrahtet Stromkreise, der
+      // Wasserplan bleibt von diesem Knopf unberührt.
+      result = await applyAdvancedLayout(nodes, edges, 'LR');
+    } catch {
+      if (mySeq === layoutV2Seq) set({ isLayoutPending: false, autoStructurePending: false });
+      return;
+    }
+
+    if (mySeq !== layoutV2Seq) return;
+
+    // Bewusst OHNE eigenen History-Schritt: `historyPast` trägt bereits den
+    // Stand vor dem Verbinden — ein Undo nimmt Verbinden UND Strukturieren
+    // zusammen zurück (ADR 0018: Positionen sind das Ergebnis dieser Schicht).
+    set({
+      nodes: [...result.nodes],
+      edges: [...result.edges],
+      isLayoutPending: false,
+      autoStructurePending: false,
+    });
+
+    if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+      window.requestAnimationFrame(() => {
+        window.dispatchEvent(new CustomEvent('planner-fit-view'));
+      });
+    }
+  },
   onLayout: () => {
+    // Wie bei onLayoutV2: Das Aufräumen erledigt die Auto-Wire-Struktur mit.
+    if (get().autoStructurePending) set({ autoStructurePending: false });
     const { viewMode, nodes, edges, waterNodes, waterEdges } = get();
     if (viewMode === 'water') {
       const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
@@ -544,6 +615,8 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
           // waterEdges war Datenverlust (nur über Undo erkennbar zurückholbar).
           selectedNodes: [],
           selectedEdges: [],
+          // Eine offene ELK-Strukturierung gehört zum ersetzten Plan.
+          autoStructurePending: false,
         })
       );
     }
@@ -637,6 +710,10 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
   // Geometrie gehört exklusiv dem A*-Pass).
   onLayoutV2: async (): Promise<LayoutV2Outcome> => {
     const mySeq = ++layoutV2Seq;
+    // Ein manuelles Layout erledigt die Struktur-Anforderung aus dem
+    // Auto-Wire mit: sonst liefe kurz danach ein zweiter ELK-Pass über den
+    // bereits geordneten Plan.
+    if (get().autoStructurePending) set({ autoStructurePending: false });
     const { viewMode, nodes, edges, waterNodes, waterEdges } = get();
     const sourceNodes = viewMode === 'water' ? waterNodes : nodes;
     const sourceEdges = viewMode === 'water' ? waterEdges : edges;
@@ -700,6 +777,9 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
         historyFuture: nextFuture,
         canUndo: nextPast.length > 0,
         canRedo: true,
+        // Ein Schritt zurück nimmt eine offene Struktur-Anforderung mit —
+        // sonst ordnete ELK einen Plan, den es so nicht mehr gibt.
+        autoStructurePending: false,
       };
     }),
   redo: () =>
@@ -717,6 +797,7 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
         historyFuture: nextFuture,
         canUndo: true,
         canRedo: nextFuture.length > 0,
+        autoStructurePending: false,
       };
     }),
   clearPlan: () =>
@@ -729,6 +810,8 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
         selectedNodes: [],
         selectedEdges: [],
         firstTappedHandle: null,
+        // Eine offene ELK-Strukturierung gehört zum gelöschten Plan.
+        autoStructurePending: false,
       })
     ),
   calculatePathVoltageDrop: (targetNodeId, customNodes, customEdges) => {

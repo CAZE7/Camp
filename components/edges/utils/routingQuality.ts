@@ -1,6 +1,7 @@
 import { orthogonalWaypoints, segmentCrossesRect, waypointsToSegments } from './orthogonalRouting';
 import type { OrthogonalPathInput, Point, Rect, Segment } from './orthogonalRouting';
 import { ROUTING_SCENARIOS, manhattanDistance } from './routingScenarios';
+import { ROUTING_TOKENS } from '../../../lib/routing/tokens';
 
 /**
  * R-1 (Routing-Qualität): Messung vor Behebung.
@@ -21,7 +22,7 @@ import { ROUTING_SCENARIOS, manhattanDistance } from './routingScenarios';
  */
 
 /** Geforderte Mindestfreigabe zwischen Leitung und Hindernis. */
-export const MIN_ROUTE_CLEARANCE = 12;
+export const MIN_ROUTE_CLEARANCE = ROUTING_TOKENS.cableClearance;
 
 /** Box um `margin` in alle Richtungen vergrößern. */
 const inflate = (r: Rect, margin: number): Rect => ({

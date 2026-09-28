@@ -48,6 +48,7 @@ import {
   type Segment,
 } from '../../../lib/routing/geometry';
 import { LEGACY_ROUTING_TOKENS, ROUTING_TOKENS } from '../../../lib/routing/tokens';
+import { compareIds } from '../../../lib/sortOrder';
 
 export type RouteEdgeRef = {
   id: string;
@@ -367,7 +368,7 @@ export function portFanOutLanes(
     // Quelle und Ziel eingeschlossen (ROUTE-BUG-12) —, deshalb reicht EINE
     // Rangfolge pro Gruppe. Gleichstand deterministisch per Edge-ID.
     const ranked = [...assignments].sort(
-      (a, b) => Math.abs(b.offset) - Math.abs(a.offset) || a.edgeId.localeCompare(b.edgeId)
+      (a, b) => Math.abs(b.offset) - Math.abs(a.offset) || compareIds(a.edgeId, b.edgeId)
     );
     const rankOf = new Map(ranked.map((assignment, index) => [assignment.edgeId, index] as const));
     // ROUTE-BUG-35: Zwillinge zählen — Rang −1 und +1 haben denselben Betrag.
@@ -480,7 +481,7 @@ export function fanOutLanesForEdge(
  */
 export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Map<string, PathResult> {
   nodes = routableNodes(nodes);
-  edges = [...edges].sort((a, b) => a.id.localeCompare(b.id));
+  edges = [...edges].sort((a, b) => compareIds(a.id, b.id));
   const out = new Map<string, PathResult>();
   if (edges.length === 0) return out;
 
@@ -718,7 +719,7 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
   }
 
   // Deterministische Ausgabereihenfolge: nach Edge-ID, nicht nach Eingabereihenfolge.
-  const order = raw.map((r) => r.id).sort((a, b) => a.localeCompare(b));
+  const order = raw.map((r) => r.id).sort(compareIds);
   const byId = new Map(raw.map((r) => [r.id, r]));
   const finalWaypoints = new Map<string, Point[]>(
     order.map((id) => {

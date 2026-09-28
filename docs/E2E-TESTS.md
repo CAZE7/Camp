@@ -48,7 +48,10 @@ Projekte (Viewports) aus `playwright.config.ts`:
   werden daher weiterhin nur bei Fehlschlag hochgeladen, nicht nach Erfolg.
   Der absichtliche Pixel-Vergleich lebt ausschließlich in
   `tests/e2e/visual.spec.ts` und nutzt die Baselines aus
-  `tests/e2e/visual.spec.ts-snapshots/`.
+  `tests/e2e/visual.spec.ts-snapshots/`. Fotografiert wird der **hydratisierte**
+  Zustand: Für die Planner-Route wartet der Test auf `data-testid="planner-shell"`
+  (dynamischer Import des Dashboards), damit kein halb montierter Zufallsframe
+  eingefroren wird (TEST-002, behoben 2026-09-28).
 
 ## 4. Ausführen
 

@@ -7,9 +7,9 @@
  * nur eine Ebene tiefer. Mit den echten Typen verschwindet beides zusammen.
  */
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import Chat from './Chat';
+import Chat, { CHAT_API_URL_ENV, resolveChatEndpoint } from './Chat';
 import { useChat } from '@ai-sdk/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 vi.mock('@ai-sdk/react', () => ({
   useChat: vi.fn(),
@@ -18,14 +18,42 @@ vi.mock('@ai-sdk/react', () => ({
 const mockSendMessage = vi.fn();
 const mockUseChat = vi.mocked(useChat);
 
+/** Konfigurierter Fall: nur mit gesetztem Endpunkt gibt es ein Eingabefeld. */
+const CONFIGURED_ENDPOINT = 'https://chat.example.test/api';
+
+describe('resolveChatEndpoint — ADR 0021 / ARCH-001', () => {
+  it('nimmt einen konfigurierten Endpunkt (getrimmt)', () => {
+    expect(resolveChatEndpoint('  https://assistent.example.test/api  ', 'production')).toBe(
+      'https://assistent.example.test/api'
+    );
+  });
+
+  it('nutzt den lokalen Route-Pfad nur im Development-Server', () => {
+    expect(resolveChatEndpoint(undefined, 'development')).toBe('/api/chat');
+  });
+
+  it('liefert im statischen Export ohne Variable keinen Endpunkt', () => {
+    expect(resolveChatEndpoint(undefined, 'production')).toBeNull();
+  });
+
+  it('behandelt Leerraum wie „nicht gesetzt“', () => {
+    expect(resolveChatEndpoint('   ', 'production')).toBeNull();
+  });
+});
+
 describe('Chat Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubEnv(CHAT_API_URL_ENV, CONFIGURED_ENDPOINT);
     mockUseChat.mockReturnValue({
       messages: [],
       sendMessage: mockSendMessage,
       status: 'idle',
     } as any);
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 
   describe('Rendering', () => {
@@ -75,5 +103,50 @@ describe('Chat Component', () => {
         expect(mockSendMessage).toHaveBeenCalledWith({ text: 'Test message' });
       });
     });
+  });
+});
+
+/**
+ * Der ausgelieferte Zustand: statischer Export, kein `out/api`, keine
+ * `NEXT_PUBLIC_CHAT_API_URL`. Vorher zeigte die Seite hier ein Eingabefeld,
+ * das bei jeder Nachricht ins Leere sendete (404) — siehe KNOWN-PROBLEMS
+ * ARCH-001 und ADR 0021 Punkt 2.
+ */
+describe('Chat ohne konfigurierten Endpunkt', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.stubEnv(CHAT_API_URL_ENV, '');
+    vi.stubEnv('NODE_ENV', 'production');
+    mockUseChat.mockReturnValue({
+      messages: [],
+      sendMessage: mockSendMessage,
+      status: 'idle',
+    } as any);
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('zeigt den Hinweis statt eines Eingabefelds', () => {
+    render(<Chat defaultOpen />);
+
+    expect(screen.getByText('Kein Assistent konfiguriert')).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText('Schreib deine Nachricht...')).not.toBeInTheDocument();
+    expect(screen.queryByText('Senden')).not.toBeInTheDocument();
+  });
+
+  it('nennt den Weg über die Env-Variable', () => {
+    render(<Chat defaultOpen />);
+
+    expect(screen.getByText(/NEXT_PUBLIC_CHAT_API_URL/)).toBeInTheDocument();
+    expect(screen.getByText(/\.env\.example/)).toBeInTheDocument();
+  });
+
+  it('sendet nichts und ruft den Chat-Hook nicht auf', () => {
+    render(<Chat defaultOpen />);
+
+    expect(mockUseChat).not.toHaveBeenCalled();
+    expect(mockSendMessage).not.toHaveBeenCalled();
   });
 });

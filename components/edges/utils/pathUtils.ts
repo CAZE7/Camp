@@ -1,6 +1,7 @@
 import { type Position, getSmoothStepPath } from '@xyflow/react';
 import type { Point } from './pathfinding';
 import { LEGACY_ROUTING_TOKENS, ROUTING_TOKENS } from '../../../lib/routing/tokens';
+import { compareIds } from '../../../lib/sortOrder';
 
 export const SMOOTH_STEP_BORDER_RADIUS = LEGACY_ROUTING_TOKENS.routeBorderRadius;
 
@@ -147,7 +148,7 @@ export const edgeLabelNudge = (input: {
   const inputHandle = input.sourceHandle ?? null;
   const group = input.siblingEdges
     .filter((edge) => sharePair(edge, { id: input.edgeId, source: input.source, target: input.target }))
-    .sort((a, b) => cableTypeRank(a) - cableTypeRank(b) || a.id.localeCompare(b.id));
+    .sort((a, b) => cableTypeRank(a) - cableTypeRank(b) || compareIds(a.id, b.id));
   if (group.length <= 1) return 0;
   const sameHandleGroup = group.filter((edge) => (edge.sourceHandle ?? null) === inputHandle);
   if (sameHandleGroup.length <= 1) return 0;

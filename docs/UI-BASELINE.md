@@ -1,6 +1,7 @@
 # UI-BASELINE — Werft-Relaunch-Freeze
 
-Stand: 2026-09-06 · Baseline-Quelle: `3148348` (`stack/s-1 + routing-v2/wp-7`).
+Stand: 2026-09-06 · Baseline-Quelle: `3148348` (`stack/s-1 + routing-v2/wp-7`) ·
+Nachtrag 2026-09-28 (Freeze-Zustand präzisiert, zwei Tablet-Bilder neu aufgenommen — §4).
 
 Dieses Dokument ist der feste UI-Freeze-Punkt für den wiederhergestellten Werft-Stand.
 Es schützt das Erscheinungsbild vor künftigen Architektur-Refactors: V2 darf auf die UI
@@ -57,6 +58,16 @@ Die verbindlichen Pixel-Baselines liegen hier:
 - Test: `tests/e2e/visual.spec.ts`
 - Snapshots: `tests/e2e/visual.spec.ts-snapshots/*.png`
 
+**Eingefrorener Zustand (2026-09-28 präzisiert):** Der Planner wird **hydratisiert**
+fotografiert — Erstbesuch mit Onboarding-Dialog, aber mit montierter App-Shell
+(Schrittleiste, Hinweis-Abzeichen, Kopfzeilen-Aktionen). Der Test wartet dafür auf
+`data-testid="planner-shell"` (`ready` in `tests/e2e/visual.spec.ts`) — dieselbe Kennung,
+die die E2E-Helfer (`openPlanner`) und der Vertragstest
+`components/e2eSelectors.test.tsx` verwenden. Vorher wartete der visuelle Test nur auf
+`load`; die beiden Tablet-Bilder aus der eingefrorenen Aufnahme zeigten dadurch einen halb
+montierten Frame (Schrittleiste und Hinweis-Abzeichen fehlten) und wichen in beiden
+Schemata ab — 2,18 % hell / 2,40 % dunkel gegen die 2-%-Schwelle (TEST-002, behoben).
+
 Abgedeckte Matrix:
 
 | Bereich                        | Baselines                                              |
@@ -93,6 +104,12 @@ Regeln für Snapshot-Updates:
 - Vorher/Nachher-Bilder gehören in den PR-Kommentar, wenn Pixel-Baselines geändert werden.
 - Ohne Browser in der lokalen Umgebung ist der Playwright-Lauf im CI nachzuholen; die
   vorhandenen PNGs bleiben trotzdem die Review-Referenz.
+
+**Durchgeführter Refresh (2026-09-28, TEST-002)** — kein UI-Umbau, sondern die Behebung
+eines Rennens im Test: nur `route-planung-{light,dark}-tablet-768-linux.png` wurden neu
+aufgenommen (Halb-Frame → hydratisierter Zustand), sechs Planner-Bilder blieben
+byte-identisch. Zusätzlich wartet der Test jetzt auf die montierte Shell, damit kein
+künftiger Lauf wieder einen Zufallsframe einfriert.
 
 ## 5. Lokale Nicht-Pixel-Gates
 

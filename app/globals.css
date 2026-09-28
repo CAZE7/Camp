@@ -686,20 +686,21 @@
      umschlagende Karten desorientieren. Diese Erkenntnis bleibt gültig,
      deshalb steht der Schalter explizit im Panel und nicht am Zoomfaktor.
 
-     `overview` = Symbol + Name. Alles andere bleibt unberührt, insbesondere
-     Warnflächen (z. B. „Überlastung!“ am Wechselrichter) und der Status-Rand:
-     Sicherheit geht vor Kompaktheit (Rule F). */
-  .planner-detail-overview .node-card {
-    width: auto;
-    min-width: 7.5rem;
-    padding: 0.375rem 0.625rem;
-  }
+     WICHTIG — Routing-Invariante: Die Übersichtsstufe blendet NUR die
+     Messwerte aus; die Kartenbox bleibt Pixel für Pixel die der Detailstufe.
+     Grund: Die gemessene Box ist Routing-Input (Anschlüsse, Hindernisse,
+     Lane-Korridore). Schrumpft sie, rechnen Router und Abschlussvalidierung
+     mit anderen Anschlüssen als die Karte zeichnet — und der Status-Chip
+     „Routing: n Zwänge“ kippt mit der Ansichtsstufe. Gemessen an denselben
+     ELK-Positionen: Detailboxen (192×126…202) → 1× I2; Übersichtsboxen
+     (~120×84) → 3× I2 + 2× I3 = 5. `visibility` statt `display`, damit die
+     Messzeilen ihren Platz im Layout behalten; `width`/`padding` dürfen hier
+     NICHT überschrieben werden (genau das tat die frühere Fassung).
+
+     Sicherheit vor Kompaktheit: Warnflächen (z. B. „Überlastung!“ am
+     Wechselrichter) und der Status-Rand bleiben unberührt (Rule F). */
   .planner-detail-overview .node-card .measure {
-    display: none;
-  }
-  /* Der Name trägt sonst `mb-2` auf die (jetzt ausgeblendeten) Messwerte. */
-  .planner-detail-overview .node-card > div:not(.node-symbol) {
-    margin-bottom: 0;
+    visibility: hidden;
   }
 
   /* --- Planer-Layout: feste Spaltenbreiten als Variablen -------------

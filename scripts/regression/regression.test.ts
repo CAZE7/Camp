@@ -16,6 +16,7 @@ import { serializeRoutes } from '../../lib/routing/invariants';
 import { layoutWithElk } from '../../lib/routing/elk/runner';
 import { toElkPlan } from '../../lib/routing/elk/ab-compare';
 import type { RouteEdgeRef } from '../../components/edges/utils/routeAll';
+import { compareIds } from '../../lib/sortOrder';
 
 /**
  * WP-11 (#400): Golden-Layout-Regression über die 15 Szenarien.
@@ -160,7 +161,7 @@ describe('Verhalten — dynamische Szenarien 13–15', () => {
     const elkSecond = await layoutWithElk(plan);
 
     const snapshot = (r: typeof elkFirst) =>
-      JSON.stringify([...r.routes.entries()].sort(([a], [b]) => a.localeCompare(b)));
+      JSON.stringify([...r.routes.entries()].sort(([a], [b]) => compareIds(a, b)));
     expect(snapshot(elkSecond)).toBe(snapshot(elkFirst));
   });
 

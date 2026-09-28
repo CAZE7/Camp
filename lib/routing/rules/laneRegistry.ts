@@ -1,5 +1,6 @@
 import { laneOffset, type Segment } from '../geometry';
 import { ROUTING_TOKENS, type RoutingTokens } from '../tokens';
+import { compareIds } from '../../sortOrder';
 
 /**
  * WP-5 (#394): Deterministisches Lane-System — LaneRegistry (Schicht 2).
@@ -210,7 +211,7 @@ export class LaneRegistry {
       }
     }
     // Deterministische Reihenfolge je Kante (Korridor-Schlüssel).
-    for (const list of byEdge.values()) list.sort((x, y) => x.corridor.key.localeCompare(y.corridor.key));
+    for (const list of byEdge.values()) list.sort((x, y) => compareIds(x.corridor.key, y.corridor.key));
     return byEdge;
   }
 }

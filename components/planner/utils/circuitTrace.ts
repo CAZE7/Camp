@@ -3,6 +3,7 @@ import { AC_SYSTEM_VOLTAGE, calculateEdgeCurrent, getSystemVoltage } from '../..
 import { acCurrentA } from '../../../lib/autoWire/sizing';
 import { nodeLabelOf } from '../../../lib/safeText'; // AUDIT T1
 import { withClassFlag } from './classFlags';
+import { compareIds } from '../../../lib/sortOrder';
 
 const ACTIVE = 'planner-trace-active';
 const DIM = 'planner-trace-dim';
@@ -57,7 +58,7 @@ function primaryUpstream(
 ): string[] {
   if (seen.has(id)) return [id];
   seen.add(id);
-  const incoming = (incomingEdgesMap.get(id) || []).slice().sort((a, b) => a.id.localeCompare(b.id));
+  const incoming = (incomingEdgesMap.get(id) || []).slice().sort((a, b) => compareIds(a.id, b.id));
   const first = incoming.at(0);
   if (!first) return [id];
   return [...primaryUpstream(first.source, incomingEdgesMap, seen), id];
@@ -71,7 +72,7 @@ function primaryDownstream(
 ): string[] {
   if (seen.has(id)) return [id];
   seen.add(id);
-  const outgoing = (outgoingEdgesMap.get(id) || []).slice().sort((a, b) => a.id.localeCompare(b.id));
+  const outgoing = (outgoingEdgesMap.get(id) || []).slice().sort((a, b) => compareIds(a.id, b.id));
   const first = outgoing.at(0);
   if (!first) return [id];
   return [id, ...primaryDownstream(first.target, outgoingEdgesMap, seen)];
