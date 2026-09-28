@@ -2028,5 +2028,26 @@ Anschlussstelle selbst und liefert sonst `false`; der Vorfilter ist entfernt, di
 Zwei Fälle in `scripts/routing/portBundleModel.test.ts` halten die Vollständigkeit fest; die
 Referenzpläne bleiben unverändert (I2 = 0, `atPort`-Zahlen identisch).
 
-**3. Zahlen.** `npm test` steht bei **2485 Tests / 181 Dateien** (2026-09-28); README,
+**3. Das visuelle Gate ist grün — die Abweichung war ein Rennen, keine UI-Drift (TEST-002).**
+Der Job „Visuelles Gate (nicht blockierend)“ scheiterte seit dem ersten Lauf dieses Branchs
+**und ebenso auf dem Default-Branch** — die Zuordnung „nicht blockierend“ verdeckte dabei, dass
+es sich um einen reproduzierbaren Testfehler handelte. Die Check-Run-Annotationen des CI-Jobs
+benennen ihn genau: ausschließlich `/elektrik-planung/` bei **768 px**, in beiden Schemata
+(light 17 166 px = 2,18 %, dark 18 886 px = 2,40 %). Die beiden Tablet-Baselines zeigen einen
+**halb hydratisierten** Planner-Frame: Onboarding-Dialog und Canvas-Hintergrund sind da,
+Schrittleiste („1 Anlage … 5 Ergebnis“ / „Batterie hinzufügen“), die Hinweis-Abzeichen
+(„Keine Hinweise“) und die Kopfzeilen-Aktionen („Ansicht“) fehlen — der Screenshot lag **vor**
+dem dynamischen Import des Dashboards (`components/PlannerInner.tsx`). Der visuelle Test wartete
+nur auf `load` und die Schriften; die E2E-Helfer (`openPlanner`) warten dagegen seit jeher auf
+`data-testid="planner-shell"`. Bei 1440/375 lag derselbe Unterschied mit 1,8–4,1 % nur zufällig
+unter der 2-%-Schwelle und blieb deshalb unbemerkt.
+**Fix:** `tests/e2e/visual.spec.ts` wartet über `ready: 'planner-shell'` auf die montierte Shell
+(zwei Frames Ruhe obendrauf); `docs/UI-BASELINE.md` hält den eingefrorenen Zustand jetzt
+ausdrücklich fest (hydratisierter Erstbesuch), und die **zwei** veralteten Tablet-Bilder sind neu
+aufgenommen — die übrigen **sechs** Planner-Baselines waren byte-identisch und blieben unberührt.
+**Nachweis:** Der Lauf vor dem Fix reproduzierte CI exakt (`2 failed, 38 passed`, dieselben
+Snapshot-Namen, 17 222/19 098 Diff-Pixel gegen 17 166/18 886 in CI — ±1 %), danach ist der
+visuelle Lauf **40/40** grün und die gesamte E2E-Suite **113 passed, 31 skipped**.
+
+**4. Zahlen.** `npm test` steht bei **2485 Tests / 181 Dateien** (2026-09-28); README,
 `docs/ai/README.md` und `docs/ai/TESTING-CONTEXT.md` sind nachgezogen.

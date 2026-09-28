@@ -661,7 +661,7 @@ routeAllCables → checkInvariants`, sechs Referenzpläne, Kartenmaß 192 × 120
 
 ---
 
-## TEST-002 — Das visuelle Gate meldet Pixel-Drift (nicht blockierend, Baseline-Stand offen)
+## TEST-002 — Das visuelle Gate meldete Pixel-Drift — **behoben 2026-09-28**
 
 - **AREA:** UI / CI
 - **FILE:** `tests/e2e/visual.spec.ts` (+ Baselines in `tests/e2e/visual.spec.ts-snapshots/`),
@@ -681,10 +681,27 @@ routeAllCables → checkInvariants`, sechs Referenzpläne, Kartenmaß 192 × 120
   wieder grün und schützt weiter gegen unbeabsichtigte Layout-/Farb-Brüche.
 - **SEVERITY:** niedrig (nicht blockierend), aber es kostet jedem PR eine rote Zeile.
 - **WORKAROUND:** `npx playwright test tests/e2e/visual.spec.ts --update-snapshots` **in
-  einer Umgebung mit Browser** (im Sandkasten dieser Session nicht möglich: der
-  Chromium-Download ist gesperrt, `npx playwright install chromium` scheitert mit
-  `Download failure`). Die Baseline-Prüfung selbst ist dokumentiert in `docs/UI-BASELINE.md`
-  (Freeze-Punkt, Refresh-Regel).
+  einer Umgebung mit Browser**. Die Baseline-Prüfung selbst ist dokumentiert in
+  `docs/UI-BASELINE.md` (Freeze-Punkt, Refresh-Regel).
+- **STATUS (2026-09-28): behoben — Ursache war ein Rennen, nicht UI-Drift.** Die
+  Abweichung lag ausschließlich auf `/elektrik-planung/` bei **768 px**, in beiden Schemata
+  (light 17 166 px = 2,18 %, dark 18 886 px = 2,40 %; Identifikation aus den
+  Check-Run-Annotationen des CI-Jobs). Die beiden Tablet-Baselines zeigten einen **halb
+  hydratisierten** Frame des Planers: Onboarding-Dialog und Canvas-Hintergrund waren da,
+  aber Schrittleiste („1 Anlage … 5 Ergebnis“ / „Batterie hinzufügen“), die
+  Hinweis-Abzeichen („Keine Hinweise“) und die Kopfzeilen-Aktionen („Ansicht“) fehlten —
+  der Screenshot war eine Momentaufnahme **vor** dem dynamischen Import des Dashboards
+  (`components/PlannerInner.tsx`). Der Test wartete nur auf `load` + Schriften; die
+  E2E-Helfer (`openPlanner` in `tests/e2e/helpers.ts`) warten dagegen seit jeher auf
+  `planner-shell`.
+  **Fix:** `tests/e2e/visual.spec.ts` wartet mit `ready: 'planner-shell'` auf dieselbe
+  Kennung (plus zwei Frames Ruhe) — bei 1440/375 lag derselbe Unterschied mit 1,8–4,1 %
+  nur zufällig unter der 2-%-Schwelle und blieb deshalb unsichtbar. Danach die zwei
+  veralteten Tablet-Bilder neu aufgenommen; die übrigen **sechs** Planner-Baselines waren
+  byte-identisch zum hydratisierten Zustand und blieben unverändert.
+  **Nachweis:** vollständiger Lauf lokal **40/40 visuell**, gesamte E2E-Suite **113 passed,
+  31 skipped**; die Reproduktion vor dem Fix traf CI exakt (`2 failed, 38 passed` mit
+  denselben Snapshot-Namen und 17 222/19 098 Diff-Pixeln gegen 17 166/18 886 in CI, ±1 %).
 - **RELATED TEST:** `tests/e2e/visual.spec.ts` (`--grep "hält die Baseline"`), Artefakt
   `visual-diff`
 - **RELATED ISSUE:** `docs/UI-BASELINE.md`, TEST-001 (E2E-Gate blockierte 16 Tage lang
