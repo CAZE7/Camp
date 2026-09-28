@@ -17,10 +17,12 @@
     "postinstall": "node -e \"try { require('child_process').execSync('git config core.hooksPath scripts/git-hooks') } catch {}\"",
     "routing:gallery": "tsx scripts/routing/generate-gallery.ts",
     "routing:audit": "tsx scripts/routing/audit.ts",
+    "routing:conflict-probe": "tsx scripts/routing/conflictProbe.ts",
     "routing:domain-probe": "tsx scripts/routing/domainProbe.ts",
     "routing:lane-probe": "tsx scripts/routing/laneProbe.ts",
     "goldenmaster:capture": "tsx scripts/goldenmaster/capture.ts",
     "test:goldenmaster": "vitest run scripts/goldenmaster/goldenMaster.test.ts",
+    "test:gpu": "ROUTING_GPU=1 tsx scripts/routing/gpuEdtParity.ts",
     "regression:capture": "tsx scripts/regression/capture.ts",
     "test:regression": "vitest run scripts/regression/regression.test.ts",
     "perf:edge-routing": "tsx benchmarks/edgeRoutingPerf.bench.ts",
@@ -109,7 +111,8 @@
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.68.0",
-    "vitest": "^4.1.6"
+    "vitest": "^4.1.6",
+    "webgpu": "0.4.0"
   },
   "packageManager": "npm@10.9.8"
 }
