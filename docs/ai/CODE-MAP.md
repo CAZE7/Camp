@@ -355,16 +355,17 @@ CAMP
 
 ### 5.3 Harnesses & Skripte
 
-| Pfad                                                            | Zweck                                                  | Befehl                                               |
-| --------------------------------------------------------------- | ------------------------------------------------------ | ---------------------------------------------------- |
-| `scripts/goldenmaster/`                                         | 6 Referenzpläne → AutoWire/Electrical/Routing-Fixtures | `npm run goldenmaster:capture` / `test:goldenmaster` |
-| `scripts/regression/`                                           | 15 Routing-Szenarien (Layout/Metrik/SVG/Verhalten)     | `npm run regression:capture` / `test:regression`     |
-| `scripts/routing/audit.ts`                                      | Invariantentabelle über die Referenzpläne              | `npm run routing:audit`                              |
-| `scripts/routing/domainProbe.ts`                                | Wirksamkeit der Domänen-Trennregeln (ROUTE-003)        | `npm run routing:domain-probe`                       |
-| `scripts/routing/generate-gallery.ts`                           | 25 Geometrie-Szenarien → SVG + JSON                    | `npm run routing:gallery`                            |
-| `scripts/architecture/`, `scripts/routing/architecture.test.ts` | Architektur-Gates                                      | `npm test`                                           |
-| `scripts/ci/`                                                   | Workflow-Guard, Lockfile-Gate                          | `npm run ci:verify-lockfile-gate`                    |
-| `benchmarks/`                                                   | Perf-Sonden (kein CI-Gate)                             | `npm run perf:edge-routing`, `perf:route-scaling`    |
+| Pfad                                                            | Zweck                                                                                   | Befehl                                               |
+| --------------------------------------------------------------- | --------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| `scripts/goldenmaster/`                                         | 6 Referenzpläne → AutoWire/Electrical/Routing-Fixtures                                  | `npm run goldenmaster:capture` / `test:goldenmaster` |
+| `scripts/regression/`                                           | 15 Routing-Szenarien (Layout/Metrik/SVG/Verhalten)                                      | `npm run regression:capture` / `test:regression`     |
+| `scripts/routing/audit.ts`                                      | Invariantentabelle über die Referenzpläne                                               | `npm run routing:audit`                              |
+| `scripts/routing/domainProbe.ts`                                | Wirksamkeit der Domänen-Trennregeln (ROUTE-003)                                         | `npm run routing:domain-probe`                       |
+| `scripts/routing/laneProbe.ts`                                  | Potenzial von `preferredLaneBonus` (ROUTE-002 Teil 3; Entscheidung: nicht ausgeliefert) | `npm run routing:lane-probe`                         |
+| `scripts/routing/generate-gallery.ts`                           | 25 Geometrie-Szenarien → SVG + JSON                                                     | `npm run routing:gallery`                            |
+| `scripts/architecture/`, `scripts/routing/architecture.test.ts` | Architektur-Gates                                                                       | `npm test`                                           |
+| `scripts/ci/`                                                   | Workflow-Guard, Lockfile-Gate                                                           | `npm run ci:verify-lockfile-gate`                    |
+| `benchmarks/`                                                   | Perf-Sonden (kein CI-Gate)                                                              | `npm run perf:edge-routing`, `perf:route-scaling`    |
 
 ---
 

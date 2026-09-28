@@ -1794,3 +1794,42 @@ der Test fordert dann wieder einen Schritt.
 **Offen (unverändert):** `preferredLaneBonus` ohne Produktiv-Konsumenten — mit
 68 px ist der Boden dafür erstmals frei, weil die Bündel-Lanes ausdrückbar sind.
 Die Anbindung bleibt eine eigene Scheibe (ROUTE-002/ROUTE-001).
+
+### 2026-09-28 — Zweiundzwanzigste Fassung: `preferredLaneBonus` geprüft und verworfen (ROUTE-002 Teil 3)
+
+Nach ADR 0027 war der Boden frei (die Bündel-Lanes sind mit 68 px ausdrückbar), also wurde der
+letzte offene Posten des Kostenmodell-Pakets geprüft: `preferredLaneBonus` („zieht den
+A*-Lauf auf die Registry-Lane", WP-6).
+
+**1. Potenzial ist da — reproduzierbar gemessen.** `npm run routing:lane-probe`
+(`scripts/routing/laneProbe.ts`, Konvention wie `routing:domain-probe`) füllt die
+`LaneRegistry` mit den **Ideal-Routen** (Katalog, port-treu) und fragt je Ideal-Segment, ob
+die bevorzugte Linie **frei** ist und ob die geroutete Trasse sie **fährt**. Über 428
+Ideal-Segmente (6 Referenzpläne + 15 Regressions-Szenarien) sind **50** (ELK-Pfad) bzw.
+**22** (Fest-Raster) frei **und** ungenutzt — der Bonus hätte also etwas zu tun.
+
+**2. Vier Varianten verdrahtet und über beide Pfade gemessen — keine netto-positiv.**
+
+| Variante                                               | ELK-Pfad                                              | Fest-Raster                                                                      |
+| ------------------------------------------------------ | ----------------------------------------------------- | -------------------------------------------------------------------------------- |
+| A gewichtet (Bewertung + A*-Gitterlinie)               | Kreuzungen 107 → 109, **I3 3 → 4**, +144 px           | camper Kreuzungen 5 → **1**, acdc 6 → **7** (Ratchet), acdc −364 px              |
+| B nur Kreuzungs-Tie-Break in der Katalogwahl           | inert                                                 | inert                                                                            |
+| C wie B mit Bonus                                      | Kreuzungen 107 → 106, **I3 3 → 4**, +144 px           | camper Kreuzungen **1**, acdc 6 (hält), acdc −483 px, camper +9 px               |
+| **D Bonus nur in der Bewertung** (ohne A*-Gitterlinie) | Kreuzungen 107 → **104**, Überdeckung −10 px, +144 px | acdc −483 px (längste Kante 1303 → **835**), inverter −27 px, **complex +44 px** |
+
+Nur D bleibt ohne Regelverstoß (I3 unverändert, Kreuzungen sinken, Überdeckung sinkt) —
+scheitert aber an der **Kabellängen-Ratchet** (`complex` 8602 → 8646 px), deren Test
+ausdrücklich sagt: „Ursache suchen (Platzierung/Router) — **nicht die Baseline anheben**".
+Die Ursache ist gemessen: kein Bonus-Entscheid, sondern eine **Tube-/Envelope-Kaskade** des
+gierigen sequenziellen Routings (`e-batt-plus` wählt bei Gleichstand eine andere Mittellinie,
+deren Tube die Envelope des A*-Gitters verschiebt; der Nachbar läuft danach auf 344 statt 366
+und zahlt +44 px).
+
+**3. Entscheidung: nicht ausliefern, Werkzeug behalten.** `preferredLaneBonus` bleibt ohne
+Produktiv-Konsumenten. Ausgeliefert wird die **Probe** (`npm run routing:lane-probe`) plus
+Test (`scripts/routing/laneProbe.test.ts`: Struktur der Messung, keine Layout-Zahlen), die
+aktualisierte Dokumentation (ROUTE-002 Teil 3, ROUTE-001, CODE-MAP, TESTING-CONTEXT) und der
+Modulkommentar in `rules/costModel.ts`. **Keine** Router-Änderung, **kein** Recapture, keine
+Golden-Bewegung. Für einen zweiten Versuch sind zwei Bedingungen dokumentiert: die Vergabe
+muss **global** statt gierig entschieden werden, oder das A*-Gitter muss von der
+Tube-Envelope entkoppelt werden.

@@ -37,19 +37,33 @@ import { isPortBundleOverlap, type RoutedPathGeometry } from './portBundle';
  * `BEND_COST = 80` / `U_TURN_COST = 400` (Sync-Test in `costModel.test.ts`),
  * der Golden Master bleibt deshalb unverändert.
  *
- * Was noch fehlt, ist die *räumliche* Hälfte: `segmentExtraCost` und
- * `preferredLaneBonus` haben weiterhin keinen Produktiv-Konsumenten. Das ist
- * **kein** vergessener Stecker, sondern eine gemessene Grenze: Über die sechs
- * Referenzpläne (Produktivpfad, geroutete Trassen) zählt die Klassifikation
- * 47 fremde `hard`-Paare, 82 `weighted`-Paare und 121 `nearby`-Paare — die 47
- * harten sind **alle** die Port-Bündel-Ausnahme (ADR 0009: zwei Leitungen am
- * selben Handle teilen sich den Stub; die Ausnahme lebt in
- * `lib/routing/invariants.ts`, `checkEdgeEdgeOverlaps`), echte I2-Verstöße
- * sind 0. Ein blindes Anschließen würde also 47 legitime Stubs als
- * unmöglich verwerfen, und `nearbyLane` würde gegen die gewollten
- * Bündel-Lanes (16 px Raster) drücken. Vor dem Produktiv-Einsatz muss die
- * Ausnahme in das Modell wandern (`segmentExtraCost` braucht Kenntnis der
- * Stubs des Nachbarn), der Bonus braucht die LaneRegistry (ROUTE-001).
+ * Was fehlt, ist die *räumliche* Hälfte: `segmentExtraCost` und
+ * `preferredLaneBonus` haben keinen Produktiv-Konsumenten. Das ist **kein**
+ * vergessener Stecker, sondern eine gemessene Grenze (ROUTE-002 Teil 2, 3):
+ *
+ * - **`segmentExtraCost`** verwirft ohne Stub-Kenntnis jedes legitime Bündel
+ *   als `Infinity` (gemessen: 47 `hard`-Paare über die sechs Referenzpläne,
+ *   **alle** Port-Bündel, echte I2-Verstöße 0). Es kann die Ausnahme seit
+ *   2026-09-27 entgegennehmen (`options.portBundle`, ADR 0025), und die
+ *   Anbindung an den Suchloop wurde gebaut und gemessen (Teil 2b) — sie fand
+ *   in 7 von 8 Fällen keinen überdeckungsfreien Kandidaten, änderte im
+ *   Produktivpfad nur Geometrie, die der Nudge ohnehin bereinigt, und wurde
+ *   deshalb **nicht ausgeliefert**.
+ * - **`preferredLaneBonus`** zieht Trassen auf die Registry-Lane. Das
+ *   Potenzial dafür ist gemessen (`npm run routing:lane-probe`: über 428
+ *   Ideal-Segmente sind 50 im ELK-Pfad und 22 im Fest-Raster **frei und
+ *   unbenutzt**) — die vier gebauten Varianten einer Verdrahtung sind es aber
+ *   nicht wert: Jede kostet an anderer Stelle mehr, als sie bringt. Die beste
+ *   (Bonus nur in der Bewertung, ohne A*-Gitterlinie) senkt die Kreuzungen im
+ *   ELK-Pfad 107 → 104 und kürzt `acdc` um 483 px, verlängert aber `complex`
+ *   um 44 px — und die Längen-Ratchet verbietet ausdrücklich, die Baseline
+ *   dafür anzuheben (`scripts/routing/cableLength.test.ts`). Ursache der
+ *   +44 px ist eine Tube-/Envelope-Kaskade des gierigen Routings, nicht der
+ *   Bonus-Entscheid selbst.
+ *
+ * Beide bleiben damit bewusst ohne Produktiv-Konsumenten; wer sie anschließt,
+ * nimmt `npm run routing:lane-probe` als Gegenprobe und `npm run
+ * routing:audit` + `npm run test:regression` als Wächter.
  * Details: ROUTE-002 in `docs/ai/KNOWN-PROBLEMS.md`.
  */
 

@@ -127,13 +127,20 @@ Legende Severity: **hoch** = Agent kann falschen Code ändern / falsche Sicherhe
 Raster`, Lane-Reservierung, zweite begrenzte Runde, Stub-Achsen-Sicherheit). Gemessen:
   mit dem Leiter-Pass unverändert I2 = 5 im ELK-Pfad, in den Regressions-Szenarien gleiche
   Metriken bei anderer Geometrie — also kein Nutzen, nur Risiko.
-- **KONSUMENT GEPRÜFT (ROUTE-002 Teil 2b, 2026-09-27):** Die Port-Bündel-/Fan-Out-Ebene
-  (`components/edges/utils/routeAll.ts::portFanOutLanes`) ist der richtige Ort — aber **kein
-  Auslieferungsstand**: vier Varianten einer Lane-Vergabe wurden gebaut und über beide Pfade
-  gemessen, jede kostet im dichtesten Referenzplan `complex` mehr, als sie im ELK-Pfad bringt
-  (Messungen in ROUTE-002, „Teil 2b"). Der Grund ist gemessen, nicht vermutet: die betroffenen
-  Stubs liegen im Kappungs-Regime (ROUTE-BUG-34), in dem eine Lane-Treppe keinen Platz hat —
-  dort ist die Lane gar nicht ausdrückbar. `preferredLaneBonus` bleibt deshalb gesperrt.
+- **KONSUMENT GEPRÜFT (ROUTE-002 Teil 2b/3, 2026-09-28):** Beide in Frage kommenden Konsumenten
+  sind untersucht — **beide ohne Auslieferung**. Teil 2b (Port-Bündel-/Fan-Out-Ebene,
+  `components/edges/utils/routeAll.ts::portFanOutLanes`): vier Varianten einer Lane-Vergabe
+  gebaut und über beide Pfade gemessen, jede kostet im dichtesten Referenzplan `complex` mehr,
+  als sie im ELK-Pfad bringt — die betroffenen Stubs lagen im Kappungs-Regime (ROUTE-BUG-34);
+  gelöst wurde die Ursache stattdessen über die Platzierungs-Freigabe (ADR 0027). Teil 3
+  (`preferredLaneBonus`): die Potenzialanalyse `npm run routing:lane-probe` findet über 428
+  Ideal-Segmente **50** freie, ungenutzte Registry-Linien im ELK-Pfad und **22** im Fest-Raster
+  — das Potenzial ist also real. Vier Verdrahtungs-Varianten wurden gebaut und gemessen; die
+  beste senkt die Kreuzungen im ELK-Pfad 107 → 104 und kürzt `acdc` um 483 px, verlängert aber
+  `complex` um 44 px und scheitert damit an der Kabellängen-Ratchet. Die Registry bleibt damit
+  ein **getesteter Baustein ohne Produktiv-Konsumenten** — mit reproduzierbarem Nachweis statt
+  Vermutung, inklusive der Bedingung für einen zweiten Versuch (globale statt gierige Vergabe
+  bzw. Entkopplung des A*-Gitters von der Tube-Envelope).
 
 ## ROUTE-002 — Kostenmodell nur teilweise angebunden
 
@@ -209,6 +216,52 @@ cableClearance` — an einer Klemme hängen im Referenzbestand regelmäßig zwei
   Sampling identisch, **kein Recapture**. `preferredLaneBonus` bleibt weiterhin ohne
   Produktiv-Konsumenten: mit 68 px ist der Boden dafür erstmals frei (die Bündel-Lanes sind
   ausdrückbar), die Anbindung ist eine eigene Scheibe.
+
+- **STATUS (2026-09-28, Teil 3 gemessen — vier Varianten gebaut, keine ausgeliefert):** Mit
+  ADR 0027 war der Boden frei (die Bündel-Lanes sind ausdrückbar), also wurde
+  `preferredLaneBonus` geprüft — erst mit einer **Potenzialanalyse**, dann mit echter
+  Verdrahtung.
+
+  **1. Es gibt Potenzial.** `npm run routing:lane-probe` (`scripts/routing/laneProbe.ts`)
+  füllt die `LaneRegistry` mit den **Ideal-Routen** (Katalog, port-treu — so würde ein
+  Produktiv-Anschluss sie füttern) und fragt je Ideal-Segment: Ist die bevorzugte Linie
+  (`corridor.coord + offset`) über die Spanne **frei** (keine Hindernis-Box, keine fremde
+  Trasse innerhalb der Clearance) und **fährt die geroutete Trasse sie**? „frei ∧ nicht
+  gefahren" ist das Potenzial:
+
+  | Datenbasis                             | Ideal-Segmente | gefahren | **frei ∧ unbenutzt** | belegt |
+  | -------------------------------------- | -------------- | -------- | -------------------- | ------ |
+  | ELK-Pfad (6 Referenzpläne)             | 289            | 46       | **50**               | 193    |
+  | Fest-Raster (15 Regressions-Szenarien) | 139            | 17       | **22**               | 100    |
+
+  **2. Die Realisierung ist trotzdem kein Nettogewinn.** Vier Varianten wurden verdrahtet und
+  über **beide** Pfade gemessen (ELK-Pfad: Invarianten + Kreuzungspaare + Kabelweg über die
+  sechs Referenzpläne; Fest-Raster: `npm run routing:audit` auf den eingefrorenen Goldens):
+
+  | Variante                                                        | ELK-Pfad                                                        | Fest-Raster                                                                                |
+  | --------------------------------------------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+  | A gewichtet (Bonus in der Bewertung **und** als A*-Gitterlinie) | Kreuzungen 107 → 109, **I3 3 → 4**, Kabel +144 px               | camper Kreuzungen 5 → **1**, acdc Kreuzungen 6 → **7** (Ratchet!), acdc −364 px            |
+  | B zusätzlich Kreuzungs-Tie-Break in der Katalogwahl             | —                                                               | allein **inert** (identisch zu Baseline)                                                   |
+  | C wie B mit Bonus                                               | Kreuzungen 107 → 106, **I3 3 → 4**, Kabel +144 px               | camper Kreuzungen **1**, acdc Kreuzungen 6 (Ratchet hält), acdc −483 px, camper +9 px      |
+  | **D Bonus nur in der Bewertung** (keine A*-Gitterlinie)         | Kreuzungen 107 → **104**, Überdeckung −10 px, Kabel **+144 px** | acdc −483 px (längste Kante 1303 → **835**), inverter −27 px, **complex +44 px** (Ratchet) |
+
+  Nur Variante D kommt ohne Regelverstoß aus (I3 unverändert, Kreuzungen sinken), scheitert
+  aber an der **Kabellängen-Ratchet**: `complex` 8602 → 8646 px. Deren Test sagt ausdrücklich
+  „Kabellänge gestiegen: Ursache suchen (Platzierung/Router) — **nicht die Baseline
+  anheben**" (`scripts/routing/cableLength.test.ts`). Die Ursache ist gemessen und liegt
+  **nicht** im Bonus-Entscheid selbst: `e-batt-plus` wählt bei Gleichstand eine andere
+  Mittellinie (296 → 356, eigene Länge unverändert), deren Tube die Envelope des A*-Gitters
+  verschiebt; `e-charger-busbar` läuft danach auf der Gitterlinie 344 statt 366 und zahlt
+  +44 px. Also ein **Kaskadeneffekt des gierigen, sequenziellen Routings** über eine
+  Gitterlinien-Envelope — kein Fehler des Bonus, aber auch kein Gewinn, den man dafür
+  eintauschen möchte.
+
+  **3. Entscheidung: nicht ausliefern.** `preferredLaneBonus` bleibt ohne
+  Produktiv-Konsumenten; ausgeliefert wird nur die **Probe** samt npm-Skript und Test
+  (`scripts/routing/laneProbe.test.ts` — prüft die Struktur der Messung, nicht die
+  Layout-Zahlen). Eine spätere Scheibe müsste entweder die Vergabe **global** statt gierig
+  entscheiden (Tube-Kaskade) oder das A*-Gitter von der Tube-Envelope entkoppeln; beides ist
+  eine eigene, größere Aufgabe. Kein Recapture, keine Router-Änderung.
 
 ---
 
