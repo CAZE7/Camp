@@ -29,6 +29,82 @@ export const VDE_AMPACITY: Record<number, number> = {
 };
 
 /**
+ * Häufungsfaktoren $k_B(n)$ (f_H) für gebündelte Stromkreise — Mission
+ * Stufe 2, L1 aus `docs/ROUTING-MULTIPHYSICS.md` §3.2/§6.2.
+ *
+ * ZITATPRÜFUNG 2026-09-28 — Transkription der Zeile „Gebündelt, direkt auf
+ * der Wand, dem Fußboden, im Elektroinstallationsrohr/-kanal, auf oder in
+ * der Wand" (Referenzverlegearten B/C, 100 % Nennlast im Dauerbetrieb,
+ * einlagige Gruppe, gleiche Querschnitte) aus zwei unabhängigen, sich für
+ * n = 1…9 deckenden Publikationen:
+ *
+ *   [Q1] electrical-installation.org, „Bestimmung des Leiterquerschnittes
+ *        von Kabeln und Leitungen nach ihrer Verlegeart", Abschnitt
+ *        „Häufung von Leitern und Kabeln" (G16 = VDE 0298-4 Tabelle 22
+ *        nach IEC 60364-5-52); Seite Stand 2020-12-29, abgerufen 2026-09-28.
+ *   [Q2] elekrechner.com, „Strombelastbarkeit Tabelle nach DIN VDE 0298-4",
+ *        Abschnitt „Häufung gebündelter Leitungen" (DIN VDE 0298-4:2017);
+ *        Seite Stand 2026-03-07, abgerufen 2026-09-28.
+ *
+ * Gemeinsame Werte n = 1…9: 1,00 · 0,80 · 0,70 · 0,65 · 0,60 · 0,57 ·
+ * 0,54 · 0,52 · 0,50.
+ *
+ * BEWUSST NICHT GEMISCHT / VERWORFEN: DIN VDE 0298-4:2003 (Ältere Ausgabe,
+ * zitiert u. a. in der ABB-Unterlage 2CDC400027D0104) nennt für n = 7…9
+ * 0,52 / 0,48 / 0,45; Grob-Tabellen mit „6–8: 0,55" u. ä. sind vereinfachte
+ * Nachbildungen. Es wird EINE Tabelle transkribiert (Hausregel, wie
+ * `VDE_AMPACITY`) — keine Auswahl nach Wunschrichtung.
+ *
+ * KEINE Klausel-Referenz: Der Normtext ist nicht lizenziert; die Werte sind
+ * eine dokumentierte Sekundärquellen-Transkription (vgl. AUDIT NORM-003).
+ *
+ * Mission-Vorgabe: n > 9 ist in der Tabelle NICHT definiert — `groupFactor`
+ * wirft (Fehler statt Schätzung, Regel M). Der PRODUKTIVWERT bleibt bis zu
+ * einem begründeten Recapture der pauschale `DERATE_FACTOR` 0,7 —
+ * „nie optimistischer als 0,7 ohne Recapture": f_H(2) = 0,80 läge darüber,
+ * dürfte also den Ist-Wert nicht still ersetzen.
+ */
+export const VDE_GROUP_FACTORS: Record<number, number> = Object.freeze({
+  1: 1.0,
+  2: 0.8,
+  3: 0.7,
+  4: 0.65,
+  5: 0.6,
+  6: 0.57,
+  7: 0.54,
+  8: 0.52,
+  9: 0.5,
+});
+
+/** Höchste in der Tabelle definierte Anzahl belasteter Stromkreise (größeres n ⇒ Fehler). */
+export const VDE_GROUP_FACTORS_MAX_N = 9;
+
+/**
+ * Häufungsfaktor $k_B(n)$ — ganzzahlig 1…`VDE_GROUP_FACTORS_MAX_N`.
+ *
+ * @throws RangeError bei n > 9 (Tabelle endet — Mission: „n>9 error"),
+ *   Nicht-Ganzzahl oder n < 1. Kein stiller Default (Regel M).
+ */
+export function groupFactor(bundleCircuits: number): number {
+  if (!Number.isInteger(bundleCircuits) || bundleCircuits < 1) {
+    throw new RangeError(
+      `groupFactor: Anzahl belasteter Stromkreise muss ganze Zahl ≥ 1 sein (erhielt ${bundleCircuits})`
+    );
+  }
+  if (bundleCircuits > VDE_GROUP_FACTORS_MAX_N) {
+    throw new RangeError(
+      `groupFactor: n = ${bundleCircuits} überschreitet ${VDE_GROUP_FACTORS_MAX_N} — Häufungsfaktor laut VDE-0298-4-Tabelle nicht definiert (Mission Stufe 2: Fehler statt Schätzung)`
+    );
+  }
+  const factor = VDE_GROUP_FACTORS[bundleCircuits];
+  if (factor === undefined) {
+    // Unerreichbar bei obigen Guardsl — trotzdem kein `?? …`-Fallback.
+    throw new RangeError(`groupFactor: kein Eintrag für n = ${bundleCircuits}`);
+  }
+  return factor;
+}
+
+/**
  * Einheitlicher Korrekturfaktor (Derating), der Umgebungstemperatur > 30 °C und
  * Bündelung pauschal abdeckt, weil individuelle Korrekturfaktoren (DIN VDE
  * 0298-4 Tab. 3/4) nicht modelliert sind. Bewusst konservativ (0.7).
@@ -284,9 +360,24 @@ export const assessCableSelection = (
   };
 };
 
-/** Design-Belastbarkeit Iz = Tabellenwert × Derating für einen Querschnitt. */
-export const designAmpacity = (crossSection: number): number =>
-  (VDE_AMPACITY[crossSection] ?? 0) * DERATE_FACTOR;
+/**
+ * Design-Belastbarkeit $I_z^{design}(A)$ = Tabellenwert × Derating.
+ *
+ * 1-Argument (PRODUKTIV, unverändert): × `DERATE_FACTOR` 0,7 — die
+ * „Ist"-Wahrheit von AUDIT ELE-001; sizing/fuse/validierung rufen so auf
+ * und bleiben byte-stabil.
+ *
+ * 2. Argument (MISSION Stufe 2, Evaluierung/Validierung): × $k_B(n)$ aus
+ * `groupFactor` — die Spec-Formel $I_{z,eff} = I_{z,Tabelle} \cdot
+ * k_\vartheta \cdot k_B \cdot k_V$ (§3.2) mit Basis B2/30 °C
+ * ($k_\vartheta = k_V = 1$). NICHT für automatische Dimensionierung:
+ * f_H(2) = 0,80 wäre optimistischer als die Pauschale 0,7 — Einsatz nur
+ * nach begründetem Recapture (L1-Regel, Drift-Guard im Test).
+ */
+export const designAmpacity = (crossSection: number, bundleCircuits?: number): number => {
+  const table = VDE_AMPACITY[crossSection] ?? 0;
+  return bundleCircuits === undefined ? table * DERATE_FACTOR : table * groupFactor(bundleCircuits);
+};
 
 /**
  * Thermische Überlast eines KONKRETEN Querschnitts: der Strom übersteigt
@@ -298,6 +389,46 @@ export const isThermallyOverloaded = (I: number, crossSection: number): boolean 
   const iz = designAmpacity(crossSection);
   return iz > 0 && I > iz + 1e-9;
 };
+
+// ── ΔU %-Stufen (MISSION Stufe 2: „ΔU% 1/3/4 %") ─────────────────────────
+//
+// Semantik der drei Missionsschwellen, abgeleitet aus der bestehenden
+// Quellenlage (kein Normzitat — die 0298-4 kennt keine Spannungsfall-
+// grenzwerte, AUDIT ELE-010; die 3 % sind dokumentierte Planungsannahme):
+//   1 %  — Zielband der Evaluierung (μ-Kalibrierung §3.4: 1 % ≡ k px)
+//   3 %  — bestehende Planungsgrenze (0,36 V @ 12 V; `hasVoltageDropError`
+//          feuert strikt > 3, unverändert)
+//   4 %  — kritische Stufe: Werte > 4 % gelten im Report als driftschwer.
+
+/** Zielband ΔU % (MISSION Stufe 2). */
+export const VOLTAGE_DROP_PCT_TARGET = 1;
+/** Bestehende Planungsgrenze ΔU % (0,36 V @ 12 V, AUDIT ELE-010). */
+export const VOLTAGE_DROP_PCT_PLAN_LIMIT = 3;
+/** Kritische Stufe ΔU % (MISSION Stufe 2). */
+export const VOLTAGE_DROP_PCT_CRITICAL = 4;
+
+export type VoltageDropBand = 'ziel' | 'planungsgrenze' | 'verstoss' | 'kritisch';
+
+/**
+ * Einordnung eines Spannungsfall-Prozents in die Stufen 1/3/4 %.
+ *
+ * Kanten-konsistent mit dem Produktivverdict: (3, …] ⇒ `verstoss` ab
+ * `> VOLTAGE_DROP_PCT_PLAN_LIMIT`, weil `hasVoltageDropError` dort feuert;
+ * Werte > 4 % werden zusätzlich als `kritisch` ausgezeichnet (härtere
+ * Reportklasse, kein zweites Produktivverdict).
+ *
+ * @throws RangeError bei nicht-endlichem oder negativem Eingangswert
+ *   (Regel M: fehlende/ungültige Eingabe wird nicht still „ok").
+ */
+export function classifyVoltageDropPercent(percent: number): VoltageDropBand {
+  if (!Number.isFinite(percent) || percent < 0) {
+    throw new RangeError(`classifyVoltageDropPercent: ungültiger Prozentwert ${percent}`);
+  }
+  if (percent <= VOLTAGE_DROP_PCT_TARGET) return 'ziel';
+  if (percent <= VOLTAGE_DROP_PCT_PLAN_LIMIT) return 'planungsgrenze';
+  if (percent <= VOLTAGE_DROP_PCT_CRITICAL) return 'verstoss';
+  return 'kritisch';
+}
 
 /** ρ des Modells — für Kurzschluss-/Schleifenimpedanz-Rechnungen. */
 export const COPPER_RESISTIVITY = COPPER_RESISTIVITY_OHM_MM2_PER_M;

@@ -1164,6 +1164,43 @@ mit Datum/Maschine/p50/p95/p99, R-1-Dashboard, dokumentierte Gate-Entscheidung.
 4. Neue Konstanten: zuerst Token in `lib/routing/tokens.ts` mit Herleitung — nie
    ein Literal im Router (Architektur-Gate findet es).
 
+### 6.3 Ergebnisse Stufe 2 — Physik-Fixpoint (2026-09-28)
+
+**Umfang (Evaluation-first, §6.2 L1–L3):**
+
+- **L1 — VDE-0298-4-Häufungsfaktoren:** `VDE_GROUP_FACTORS` (n=1..9:
+  1,00/0,80/0,70/0,65/0,60/0,57/0,54/0,52/0,50) in `lib/electrical.ts`,
+  Quellen im Code-Kommentar (web-geprüft 2026-09-28; abweichende Varianten
+  VDE 0298-4:2003 und grobe „6–8: 0,55"-Tabellen dokumentiert, nicht
+  verwendet). `groupFactor(n)` wirft `RangeError` bei n>9 (Rule M — kein
+  stilles Abschneiden). `designAmpacity` behält 1-Argument byte-stabil ×0,7
+  (Bestands-Default, keine Optimierung ohne Recapture).
+- **ΔU-Bänder:** `classifyVoltageDropPercent` (≤1 % Ziel / ≤3 % Planungsgrenze
+  / ≤4 % Verstoß / >4 % kritisch) — kantenkonsistent zu
+  `hasVoltageDropError` (>3 %).
+- **L2 — Bündel-Detektion:** `lib/routing/rules/thermalBundle.ts` —
+  `detectThermalBundles` (Kanal 32 px = 2·laneGrid, Mindest-Overlap 64 px =
+  4·laneGrid, kanonische sortierte Komponenten, jedes Segment-Paar genau
+  einmal gezählt), `bundleMargin`/`classifyBundleMargin` (<1,0 Überlast,
+  <1,25 Strafe; unbekannter Querschnitt ⇒ 0 ⇒ Überlast — fail-safe).
+- **Fixpoint-Modul:** `lib/routing/rules/thermalFixpoint.ts` —
+  `thermalFixpoint` (≤12 Iterationen, ≤0,05 K, explizites
+  `converged:false` statt stummes Abbrechen), `jouleHeatingStep` (alle
+  Parameter Eingaben, keine Defaults).
+
+**Bewusst NICHT in dieser Stufe (L3-Stage-Regel):** keine
+Produktiv-Validierung, keine Kostenaktivierung, keine Golden-Master-
+Recapture — Module sind zunächst nur Bewertung. Die EDT-Kostenanhebung
+(L8, Token `edtNearObstaclePerLaneGrid`) bleibt ausstehend und gehört in
+eine eigene Recapture-Stage mit Ledger.
+
+**Gates (2026-09-28):** `npm run check` ✓ (Coverage-Schwelle) ·
+`test:regression` 50/50 byte-stabil ✓ · `test:goldenmaster` 13/13 ✓ ·
+`routing:audit` I1–I7=0, deterministisch ✓ · `perf:edge-routing` Median
+41,95 ms (Baseline 40,39 ms — neutral) ✓ · e2e 113 bestanden/0 fehlgeschlagen
+✓. Neue Tests: `electrical.groupFactors.test.ts` (13),
+`thermalBundle.test.ts` (16), `thermalFixpoint.test.ts` (11).
+
 ---
 
 ## Anhang A — Symbolverzeichnis
