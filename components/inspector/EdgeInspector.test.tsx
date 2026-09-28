@@ -26,6 +26,22 @@ describe('EdgeInspector Component', () => {
     expect(input.value).toBe('3');
   });
 
+  it('nennt eine Planungsannahme beim Namen (dreißigste Fassung)', () => {
+    // AutoWire legt Längen als Annahme an. Vorher stand so ein Wert im
+    // Inspektor wie eine Nutzereingabe da; jetzt steht dabei, dass er keine ist.
+    const edgeWithAssumption = { ...defaultEdge, data: { length: 3, lengthIsAssumption: true } };
+    render(<EdgeInspector edge={edgeWithAssumption} onChangeLength={mockOnChangeLength} />);
+
+    expect(screen.getByText(/Planungsannahme aus der Vorlage/i)).toBeInTheDocument();
+  });
+
+  it('schweigt über Annahmen, wenn der Wert vom Nutzer stammt', () => {
+    const edgeWithOwnLength = { ...defaultEdge, data: { length: 3, lengthIsAssumption: false } };
+    render(<EdgeInspector edge={edgeWithOwnLength} onChangeLength={mockOnChangeLength} />);
+
+    expect(screen.queryByText(/Planungsannahme aus der Vorlage/i)).not.toBeInTheDocument();
+  });
+
   it('renders correctly with provided length', () => {
     const edgeWithLength = { ...defaultEdge, data: { length: 5.5 } };
     render(<EdgeInspector edge={edgeWithLength} onChangeLength={mockOnChangeLength} />);

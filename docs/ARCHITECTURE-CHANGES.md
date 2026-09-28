@@ -2137,6 +2137,19 @@ oder die Bildsprache und braucht eine Freigabe):
   Abweichung wirkt in die gefährliche Richtung: `calculateCrossSection` ist linear in der Länge, ein
   zu kurzer Eintrag unterschätzt den Spannungsfall. Vorschlag als eigene Aufgabe: `meters(2/3)` durch
   `undefined` ersetzen, damit die Route gilt — **mit** Neuerfassung der Goldens und Begründung.
+
+> **Nachtrag (dreißigste Fassung, 2026-09-28): Die Zahl ist richtig, ihre Deutung war es nicht.**
+> Die Messung vergleicht die geroutete **Zeichnung** mit der Planungsannahme. Laut
+> `docs/ai/AUTOWIRE-CONTEXT.md` §7.3 sind die Kantenlängen aber ausdrücklich **keine Messwerte**,
+> sondern Annahmen, die das Spannungsfall-Budget abstecken. Die Ratios sagen also „die Zeichnung ist
+> größer als die Annahme", nicht „der Querschnitt ist zu dünn" — die daraus abgeleitete
+> Sicherheitsfolgerung war falsch. Nachgemessen (dreifach, siehe dreißigste Fassung): die
+> Planautoren tragen in denselben Plänen selbst 0,2–1 m für Strecken ein, die 3–4 m groß gezeichnet
+> sind; würde die Zeichnung als physische Länge gelten, wären die Referenzpläne rechnerisch
+> unrealisierbar (komplex: 17 von 23 Auto-Kanten auf dem 70-mm²-Deckel mit Spannungsfall-Warnung)
+> und die Invariante „nach AutoWire keine Warnungen" unerfüllbar. Die frühere Zeilenangabe zur
+> Nachmessung (Median 1,92×, Maximum 41,7× über dieselben 79 Kanten) bleibt als Messwert gültig.
+
 - **Zwei Bedienebenen im Planner** (geführte Schrittleiste + klassische Werkzeugleiste) und die
   Kreuzungs-Hops (28 auf `knownPlans/complex.json`, die „Seilschlingen" an den Bündeln).
 - **Rechtsdaten im Impressum** (`lib/siteLegal.ts` ist in allen fünf Feldern Platzhalter; die
@@ -2193,3 +2206,79 @@ Hausseiten-Pfad lädt nicht, er gefährdet aber niemanden; die Sicherheitsregeln
 **Offen (unverändert, mit Freigabebedarf):** (b) die festen AutoWire-Längen (Messung in der
 achtundzwanzigsten Fassung: Faktor Median 2,46×, Maximum 35,2×), M11-2 (feste Schienen-Koordinaten),
 die zwei Bedienebenen im Planner und die Rechtsdaten im Impressum.
+
+### 2026-09-28 — Dreißigste Fassung: Die Planungslänge ist eine Annahme — und steht ab jetzt auch so da (AUDIT L1 / A2)
+
+**Ausgangslage.** Der Prüfbericht zu (b) sah in den festen AutoWire-Längen einen Sicherheitsmangel:
+Sie seien „im Median 2,46×, im Maximum 35,2×" kürzer als die Route, und daraus folge ein zu dünner
+Querschnitt. Der Vorschlag lautete, die Konstanten durch `undefined` zu ersetzen, damit die geroutete
+Länge gewinnt. Ich habe das gebaut — und dabei gemessen, dass es falsch ist.
+
+**Was die drei Messungen zeigen (alle auf den sechs Referenzplänen, AutoWire frisch erzeugt):**
+
+| Frage                                                         | Ergebnis                                                                                                                                                                   |
+| ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Route ÷ Annahme (79 Kanten mit Annahme)                       | Median **1,92×**, Maximum **41,7×**; pro Klasse: 0,2 m → 18,3×, 0,5 m → 2,16×, 1 m → 3,08×, 2 m → 2,38×, **3 m → 0,95×**, **5 m → 0,22×** (also _zu großzügig_)            |
+| Eingetragene Nutzerlängen derselben Pläne gegen die Zeichnung | `complex`: Batterie→Plus-Schiene **0,5 m** eingetragen bei 3,16 m Zeichnung; `camper`: Batterie→Sicherung **0,2 m** bei 3,0 m; Schiene→Sicherungskasten **1 m** bei 4,24 m |
+| Wenn die Zeichnung als physische Länge gilt                   | `complex` 17 von 23 Auto-Kanten auf dem 70-mm²-Deckel, 17 Spannungsfall-Warnungen (heute: 6 auf dem Deckel, 0 Warnungen); `acdc` 11/14, `inverter` 9/10                    |
+
+Dazu die beiden normativen Quellen im Baum: `AUTOWIRE-CONTEXT.md` §7.3 nennt die Längen
+„**Planungsannahmen** … bewusst keine Messwerte: sie stecken das Drop-Budget ab, das der Nutzer nach
+dem Verlegen mit echten Längen überschreiben kann", und `ADR 0006` §1 erklärt 100 px = 1 m zu einer
+Zeichenkonvention für plausible Verhältnisse bei typischen 1–3 m Camper-Strecken. Der Router kennt
+Umwege **in der Zeichnung** — die Zeichnung ist aber keine Maßzeichnung des Fahrzeugs. Gegengeprüft
+mit der Invariante, die das Repo selbst testet (`store/usePlannerStoreExtended.test.ts`: „Auto-Wire:
+keine Warnungen nach performAutoWiring"): Mit der Zeichnung als Dimensionierungsgrundlage ist sie
+unmöglich zu erfüllen. Die Konstanten sind also die richtige elektrische Basis; der Fehler lag nicht
+in ihrem Wert.
+
+**Der Fehler lag in ihrer Herkunft, so wie das Werkzeug sie zeigte.** Alle vier Anzeigen behaupteten,
+die Zahl sei vom Nutzer eingetragen:
+
+- Kanten-Tooltip: „5.00 m **(eingetragen)**" auf einer Kante, die niemand angefasst hatte.
+- Inspector-Längenfeld: keine Unterscheidung zwischen Annahme und Messwert.
+- BOM-Längenquelle: `'stored'` hieß auch für Vorlagenwerte „eingetragen".
+- `CableEdgeData.length` selbst: ein Feld, ein Wahrheitsanspruch für zwei verschiedene Dinge.
+
+**Was jetzt gilt (dreißigste Fassung).**
+
+1. **`lengthIsAssumption`** (`lib/domain/cableEdgeData.ts`): AutoWire kennzeichnet jede von ihm
+   gesetzte Länge als Annahme (`addDcEdge`/`addAcEdge` in `lib/autoWire/routing.ts`).
+2. **Der Status wandert mit.** `handleChangeLength` (`store/slices/graphSlice.ts`) setzt ihn auf
+   `false`, sobald der Nutzer einen Wert einträgt; AutoWires Erhaltungslogik führt ihn bei der
+   Regeneration mit — ein Messwert des Nutzers wird nicht nachträglich zur Annahme erklärt.
+3. **Vier Anzeigen nennen die Annahme beim Namen**: Kanten-Tooltip und `aria-label`, Inspector-Hinweis
+   („Planungsannahme aus der Vorlage (kein Messwert) — nach dem Verlegen den echten Wert eintragen"),
+   Stücklisten-Quelle `'assumed'` („Planungsannahme 1,0 m, geroutet 4,2 m"). Das sichtbare
+   Kanten-Label bleibt pixelgleich; geändert wurden Tooltip, Vorlesetext, Hinweistext und
+   Stücklisten-Zeile.
+4. **Eine Regel statt zweier Kopien**: `planningLength` (`lib/autoWire/primitives.ts`) ist die eine
+   Längenregel — eingetragene Länge → Luftlinie aus der Geometrie → `undefined` (der Aufrufer wählt
+   seinen Ersatzwert). Die Dimensionierung nutzt sie statt des blinden 1-m-Ersatzwerts; die lokale
+   Kopie in `lib/autoWire.ts` (Issue 6) ist entfallen. Bei fehlenden Positionen bleibt es beim
+   Ersatzwert — verhaltensgleich zu vorher.
+5. **Boden statt Null**: `MIN_PLANNING_LENGTH` = 1 m. 11 von 79 Kanten verbinden Knoten mit
+   identischer Position (gestapelte Karten, Altdaten ohne Koordinaten); ihre Luftlinie wäre 0 m und
+   damit rechnerisch kein Spannungsfall.
+
+**Nachweis.** 13 neue Tests: 7 für `planningLength` (`lib/autoWire/primitives.test.ts`), 2 für die
+Kennzeichnung und ihre Weitergabe (`lib/autoWire.test.ts`), 1 für `handleChangeLength`
+(`store/usePlannerStoreExtended.test.ts`), 2 für den Inspector-Hinweis, 2 für den Tooltip. Die
+Invarianten-Suite „keine Warnungen nach AutoWire" bleibt grün, ebenso Konvergenz- und
+AUDIT-D3-Gruppe — ohne dass eine Erwartung angepasst werden musste.
+
+**Goldens neu erfasst** (`npm run goldenmaster:capture`, der im Repo dafür vorgesehene Weg): Der
+Tiefenvergleich aller sechs Dateien zeigt **ausschließlich neue Schlüssel** — 60 ×
+`lengthIsAssumption: true` (acdc 14, camper 7, complex 9, inverter 10, simple 9, solar 11) und
+**keine einzige Wertänderung**: kein Querschnitt, keine Länge, kein Knoten, keine Route. Genau das
+war die Absicht: Die Kennzeichnung dokumentiert, bewertet aber nichts um.
+
+**Nicht geändert (bewusst).** Die Annahmewerte selbst (0,2 m … 5 m), die Dimensionierungsgrundlage,
+das Drop-Budget und die Sicherheitsregeln. Der geroutete Verlegeweg bleibt die Anzeige- und
+Materialbasis (Stückliste nimmt weiter die größere der beiden Längen und nennt die Quelle).
+
+**Offen — eine Produktentscheidung, keine Reparatur.** Ob die _gezeichnete_ Geometrie irgendwo als
+physische Länge gelten soll, ist mit diesem Stand beantwortet: nein, sie ist Zeichenkonvention. Wer
+das anders will, entscheidet damit auch, dass die sechs Referenzpläne elektrisch unerfüllbar sind
+(Zahlen oben) — und dass AutoWires Kanten dann dickere Querschnitte empfehlen, als die Vorlagen
+meinen. Beides gehört bewusst entschieden, nicht durch einen Konstantenwechsel nebenbei.

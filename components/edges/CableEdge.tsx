@@ -551,6 +551,7 @@ const CableEdge = function ({
   const {
     length,
     lengthIsEstimated,
+    lengthIsAssumption,
     crossSection,
     maxFuse,
     animationDuration,
@@ -575,6 +576,11 @@ const CableEdge = function ({
     // Ohne gespeicherte Länge ist der Wert eine Schätzung, die sich aus der
     // Route (oder bis zur ersten Route aus der Luftlinie) ergeben kann.
     const lengthIsEstimated = lengthResolution.estimated;
+    // Drei Zustände, nicht zwei (dreißigste Fassung): Eine Vorlagen-Annahme ist
+    // kein Messwert des Nutzers. Vorher stand für sie „(eingetragen)" im
+    // Tooltip — dieselbe Sorte stiller Behauptung wie ein erfundener
+    // Datenblattwert.
+    const lengthIsAssumption = data?.lengthIsAssumption === true;
     const sourceNode = getNode(source);
     const targetNode = getNode(target);
 
@@ -619,6 +625,7 @@ const CableEdge = function ({
     return {
       length,
       lengthIsEstimated,
+      lengthIsAssumption,
       crossSection,
       recommendedCrossSection,
       crossSectionUndersized,
@@ -924,7 +931,7 @@ const CableEdge = function ({
         style={{ cursor: 'pointer' }}
         role="button"
         tabIndex={0}
-        aria-label={`${edgeDomain === 'AC_230V' ? '230 Volt Wechselstromleitung' : edgeDomain === 'Solar' ? 'Solarleitung' : 'Gleichstromleitung'}, ${crossSection} Quadratmillimeter, ${length.toFixed(1)} Meter${lengthIsEstimated ? ' (geschätzt aus Verlegeweg)' : ''}${routeInvalid ? ', Achtung: Routing ohne Hindernis-Freigabe' : routeTight ? ', Hinweis: minimale Bauteil-Freigabe unterschritten' : ''}`}
+        aria-label={`${edgeDomain === 'AC_230V' ? '230 Volt Wechselstromleitung' : edgeDomain === 'Solar' ? 'Solarleitung' : 'Gleichstromleitung'}, ${crossSection} Quadratmillimeter, ${length.toFixed(1)} Meter${lengthIsAssumption ? ' (Planungsannahme aus der Vorlage)' : lengthIsEstimated ? ' (geschätzt aus Verlegeweg)' : ''}${routeInvalid ? ', Achtung: Routing ohne Hindernis-Freigabe' : routeTight ? ', Hinweis: minimale Bauteil-Freigabe unterschritten' : ''}`}
         onClick={() => {
           revealLabel();
           usePlannerStore.getState().focusElement(id, 'edge');
@@ -940,7 +947,7 @@ const CableEdge = function ({
         onMouseLeave={() => setIsHovered(false)}
       >
         <title>
-          {`${length.toFixed(2)} m${lengthIsEstimated ? ' (Schätzung: gerouteter Verlegeweg)' : ' (eingetragen)'} | ${crossSection} mm²${routeCrossings > 0 ? ` | ${routeCrossings} Kreuzung(en)` : ''}${routeInvalid ? ' | Routing ohne Hindernis-Freigabe' : routeTight ? ' | eng an Bauteil (< Freigabe)' : ''}`}
+          {`${length.toFixed(2)} m${lengthIsAssumption ? ' (Planungsannahme aus der Vorlage — im Inspektor überschreibbar)' : lengthIsEstimated ? ' (Schätzung: gerouteter Verlegeweg)' : ' (eingetragen)'} | ${crossSection} mm²${routeCrossings > 0 ? ` | ${routeCrossings} Kreuzung(en)` : ''}${routeInvalid ? ' | Routing ohne Hindernis-Freigabe' : routeTight ? ' | eng an Bauteil (< Freigabe)' : ''}`}
         </title>
       </path>
     </>

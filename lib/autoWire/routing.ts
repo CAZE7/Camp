@@ -101,7 +101,12 @@ export function addDcEdge(
     type: 'cableEdge',
     // AUDIT D2: Herkunft als DATENFELD, nicht als ID-Präfix — AutoWire
     // erkennt seine eigenen Kanten am Flag wieder und ersetzt nur die.
-    data: { length, edgeDomain: domain, autoWired: true },
+    //
+    // `lengthIsAssumption` (dreißigste Fassung): Die übergebene Länge ist eine
+    // Planungsannahme (siehe `docs/ai/AUTOWIRE-CONTEXT.md` §7.3), kein
+    // Messwert. Sie muss als solche erkennbar sein — sonst zeigt der Inspector
+    // sie wie eine Nutzereingabe an.
+    data: { length, lengthIsAssumption: true, edgeDomain: domain, autoWired: true },
   };
   newEdges.push(edge);
   dcEdges.push(edge);
@@ -130,7 +135,8 @@ export function addAcEdge(
     targetHandle,
     type: 'cableEdge',
     // AUDIT D2: s. addDcEdge — Flag statt String-Präfix.
-    data: { length, crossSection, edgeDomain: 'AC_230V', autoWired: true },
+    // `lengthIsAssumption`: s. addDcEdge.
+    data: { length, lengthIsAssumption: true, crossSection, edgeDomain: 'AC_230V', autoWired: true },
   });
 }
 

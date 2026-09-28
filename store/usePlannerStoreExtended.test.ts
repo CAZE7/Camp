@@ -287,6 +287,27 @@ describe('usePlannerStore - extended coverage', () => {
       expect(updated.data?.crossSection).toBe(2.5);
     });
 
+    it('nimmt einer Planungsannahme den Annahme-Status (dreißigste Fassung)', () => {
+      // AutoWire legt seine Längen als Annahme an (`lengthIsAssumption: true`).
+      // Sobald der Nutzer einen Wert einträgt, ist es sein Messwert — bliebe die
+      // Kennzeichnung stehen, stünde seine eigene Zahl als „Planungsannahme" da.
+      const edge: Edge<CableEdgeData> = {
+        id: 'e-annahme',
+        source: 'a',
+        target: 'b',
+        data: { length: 3, lengthIsAssumption: true, crossSection: 2.5 },
+      };
+      usePlannerStore.setState({ edges: [edge] });
+
+      usePlannerStore.getState().handleChangeLength('e-annahme', 2);
+
+      const updated = usePlannerStore.getState().edges[0];
+      if (!updated) throw new Error('Kante fehlt nach Update');
+      expect(updated.data?.length).toBe(2);
+      expect(updated.data?.lengthIsAssumption).toBe(false);
+      expect(updated.data?.crossSection, 'andere Felder bleiben').toBe(2.5);
+    });
+
     it('should not change other edges when updating one', () => {
       const e1: Edge<CableEdgeData> = {
         id: 'e1',
