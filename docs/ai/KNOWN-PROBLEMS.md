@@ -701,7 +701,15 @@ routeAllCables → checkInvariants`, sechs Referenzpläne, Kartenmaß 192 × 120
   byte-identisch zum hydratisierten Zustand und blieben unverändert.
   **Nachweis:** vollständiger Lauf lokal **40/40 visuell**, gesamte E2E-Suite **113 passed,
   31 skipped**; die Reproduktion vor dem Fix traf CI exakt (`2 failed, 38 passed` mit
-  denselben Snapshot-Namen und 17 222/19 098 Diff-Pixeln gegen 17 166/18 886 in CI, ±1 %).
+  denselben Snapshot-Namen und 17 222/19 098 Diff-Pixeln gegen 17 166/18 886 in CI, ±1 %);
+  CI-Run `36425006580` (Commit `3ce09e3`) ist **vollständig grün**, inklusive des visuellen
+  Jobs. Der lokale Lauf war möglich, obwohl `cdn.playwright.dev` gesperrt ist — Rezept in
+  `docs/E2E-TESTS.md` §4 („Wenn `cdn.playwright.dev` nicht erreichbar ist“).
+- **FOLGESCHRITT (bewusst offen):** Der Job ist weiterhin `continue-on-error: true`. Jetzt,
+  wo er reproduzierbar grün ist, kann er **blockierend** werden (Zeile entfernen) — das ist
+  eine CI-Politik-Entscheidung und eine Änderung an `.github/workflows/quality.yml`, für die
+  diese Session keine `workflows`-Berechtigung hat (dieselbe Sperre wie beim
+  `--shifts`-Schritt).
 - **RELATED TEST:** `tests/e2e/visual.spec.ts` (`--grep "hält die Baseline"`), Artefakt
   `visual-diff`
 - **RELATED ISSUE:** `docs/UI-BASELINE.md`, TEST-001 (E2E-Gate blockierte 16 Tage lang
