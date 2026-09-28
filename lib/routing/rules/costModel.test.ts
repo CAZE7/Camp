@@ -36,6 +36,20 @@ describe('Kostenmatrix (generiert, nicht gepflegt)', () => {
     expect(probe.bend).toBe(COST_FACTORS.bendPerLaneGrid * 10);
     expect(probe.uTurn).toBe(COST_FACTORS.uTurnPerLaneGrid * 10);
     expect(probe.preferredLaneBonus).toBe(COST_FACTORS.preferredBonusPerLaneGrid * 10);
+    expect(probe.edtNearObstacle).toBe(COST_FACTORS.edtNearObstaclePerLaneGrid * 10);
+  });
+
+  it('Stufe 1 (EDT): Nähe-Kostenfaktor eingefroren bei 0 — Anhebung erst Stufe 2 + Recapture', () => {
+    // Mission Stufe 1: Das A*-Plumbing für das Distanzfeld ist gebaut
+    // (lib/routing/geometry/edt.ts → hananAStar), aber der Kostenfaktor
+    // bleibt token-gated 0, solange kein begründeter Golden-Master-
+    // Recapture (Ledger) vorliegt. Der Guard hat Goldene Wert gefunden,
+    // bevor sie gebaut wurden: Wer ihn anhebt, muss das begründen.
+    expect(COST_FACTORS.edtNearObstaclePerLaneGrid).toBe(0);
+    expect(COST_WEIGHTS.edtNearObstacle).toBe(0);
+    expect(COST_WEIGHTS.edtNearObstacle).toBe(
+      COST_FACTORS.edtNearObstaclePerLaneGrid * ROUTING_TOKENS.laneGrid
+    );
   });
 
   it('Spec-Ordnung: overlap > clearance > crossing > nearby > free; Bonus negativ', () => {

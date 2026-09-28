@@ -1151,6 +1151,7 @@ mit Datum/Maschine/p50/p95/p99, R-1-Dashboard, dokumentierte Gate-Entscheidung.
 | L5  | Kein Kapazitätsgraph/$n_{\max}$ im Pass                           | Stufen 3–4 (§5.2) als Ausbau von `routeAllCables`; Tokens bleiben Quelle                                                                        | Perf-Gate, Determinismus-Doppellauf, I1–I7                                                           |
 | L6  | Kein Druckverlustmodell Wasser                                    | §3.5 als reines Domänenmodul, NUR Bewertung zuerst                                                                                              | `domainProbe` (Trennregeln unberührt)                                                                |
 | L7  | RSMT-Trunk-Pass fehlt                                             | MST-auf-Hanan als Global-Pass-Schritt 2b (§5.3), austauschbar hinter ADR 0018                                                                   | `ab-compare`-Muster: A/B gegen Ist-Baseline                                                          |
+| L8  | EDT-Feld (Stufe 1) gebaut, Kosten-Gate aber Token-0               | Stufe 2: `edtNearObstaclePerLaneGrid` begründet anheben (Physik-Masken speisen dieselbe Kanal), Recapture mit Ledger                            | Drift-Guard `costModel.test.ts` + `pathfinding.edt.test.ts` + `routing:audit` + Golden Master        |
 
 **Änderungsregelwerk (unverhandelbar, aus AGENTS.md):**
 

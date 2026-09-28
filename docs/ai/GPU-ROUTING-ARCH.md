@@ -134,6 +134,18 @@ unterschätzt die gerasterte Distanz die kontinuierliche niemals im schädlichen
 $d^2 < c^2$, wurzelfrei. Hart-Assertion: $d^2 < 2^{31}$ (entspricht $d < 46{,}341$ px)
 — Fehler statt Wraparound.
 
+**Umsetzung (Mission Stufe 1, 2026-09-28):** implementiert als
+`lib/routing/geometry/edt.ts` (`squaredEdt2D`, `rasterizeObstaclesConservative`,
+`buildObstacleEdt`, `edtSquaredAt`), Property-Test `lib/routing/geometry/edt.test.ts`
+≡ Brute-Force-Orakel über derselben Rasterisierung (450 zufällige Felder + Degenerierte,
+exakte Kreuzvergleiche in der Enveloppe). Die Integration in `hananAStar`
+(`components/edges/utils/pathfinding.ts`) läuft token-gated über
+`COST_FACTORS.edtNearObstaclePerLaneGrid` in `lib/routing/rules/costModel.ts` —
+**eingefroren auf 0** (Drift-Guard `costModel.test.ts`): bei 0 wird kein Feld gebaut
+und jeder Schritt ergibt +0, der Suchlauf ist bitweise unverändert (Golden Master
+byte-stabil, nachgewiesen über `test:regression` + `test:goldenmaster`). Die Anhebung
+gehört zu Stufe 2 und erfordert einen begründeten Recapture mit Ledger.
+
 ---
 
 ## 2.3′ — Physik-Feedback-Loop (CPU-first)

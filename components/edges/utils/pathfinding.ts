@@ -3,6 +3,7 @@ import { nodeHeight, nodeOriginX, nodeOriginY, nodeWidth, type RoutableNode } fr
 import { polylineMidpoint, waypointsToPath } from './pathUtils';
 import { LEGACY_ROUTING_TOKENS, ROUTING_TOKENS, alternativeRouteGap } from '../../../lib/routing/tokens';
 import { COST_WEIGHTS } from '../../../lib/routing/rules/costModel';
+import { buildObstacleEdt, edtSquaredAt, type EdtField } from '../../../lib/routing/geometry/edt';
 import {
   inflateRect,
   containsPoint,
@@ -101,6 +102,12 @@ export const U_TURN_COST = COST_WEIGHTS.uTurn;
 export const U_TURN_LANE_SPREAD = 2 * ROUTING_TOKENS.laneGrid;
 export const MAX_EXPANSIONS = 48_000;
 export const MAX_ACCEPTABLE_CROSSINGS = 2;
+/**
+ * Stufe 1 (Mission EDT): Rand in px, den das Distanzfeld um die Box aller
+ * Hindernisse legt — derselbe Wert wie der Clip-Fenster-Pad in `hananAStar`
+ * (dort `pad = 32`), damit Feld und Suchfenster deckungsgleich bleiben.
+ */
+const EDT_PROXIMITY_PAD = 32;
 
 /** Ausweich-Trassen (R-5): 3 und 6 Lanes à `laneGrid` — siehe orthogonalRouting. */
 export const ALTERNATIVE_ROUTE_GAP = alternativeRouteGap();
@@ -1160,6 +1167,24 @@ function hananAStar(
   }
 
   const { blocked, hClosed, vClosed } = buildHananGridMasks(xs, ys, solids);
+
+  // Stufe-1-Plumbing (Mission, token-gated — siehe `edtProximityFactor`):
+  // exaktes Distanzfeld über die Hindernisse nur bei Faktor > 0; der
+  // Ist-Faktor 0 lässt diesen Block komplett neutral (kein Feld, keine
+  // Kosten, bitweise identischer Suchlauf wie vor Stufe 1).
+  const proximityFactor = edtProximityFactor();
+  const proximityField = proximityFactor > 0 ? buildObstacleEdt(solids, EDT_PROXIMITY_PAD) : null;
+  const penaltyAt =
+    proximityField === null
+      ? (): number => 0
+      : (ix: number, iy: number): number =>
+          edtProximityPenalty(
+            proximityField,
+            proximityFactor,
+            ROUTING_TOKENS.cableClearance,
+            at(xs, ix),
+            at(ys, iy)
+          );
   // R-7 „Stub-Recht", eng gefasst: Start- und Zielzelle sind frei, und die
   // vier angrenzenden Gittersegmente ebenfalls — sonst kommt die Suche aus
   // der Zelle nicht heraus, wenn ein Bauteil bis an den Handle reicht.
@@ -1267,7 +1292,7 @@ function hananAStar(
       const niy = cur.iy + dir.y;
       const step = Math.abs(at(xs, nix) - at(xs, cur.ix)) + Math.abs(at(ys, niy) - at(ys, cur.iy));
       if (step <= EPS) continue;
-      const g = cur.g + step + turnCost(cur.hd, nd);
+      const g = cur.g + step + turnCost(cur.hd, nd) + penaltyAt(nix, niy);
       const nkey = pack(nix, niy, nd);
       const prev = gScore.get(nkey);
       if (prev !== undefined && g >= prev - EPS) continue;
@@ -1428,6 +1453,43 @@ export const resetPathfindingTelemetry = (): void => {
 export const clearPathfindingCache = (): void => {
   cache.clear();
 };
+
+// ── Stufe 1 (Mission EDT): token-gated Nähe-Kosten im A* ─────────────────
+//
+// Plumbing gebaut, Faktor bewusst 0 (Token `edtNearObstaclePerLaneGrid` in
+// `lib/routing/rules/costModel.ts`): Bei 0 wird kein Distanzfeld gebaut und
+// jede Anfrage liefert exakt +0 — der Suchlauf ist bitweise unverändert
+// (Golden Master byte-stabil). Die Anhebung gehört zu Stufe 2 und erfordert
+// einen begründeten Golden-Master-/Regression-Recapture (Ledger).
+
+/** Test-/Stufe-2-Override des Faktors; `null` = Token-Wert (Hausmuster: `setElkInstanceForTest`). */
+export const setEdtProximityFactorForTest = (factor: number | null): void => {
+  if (factor !== null && (!Number.isFinite(factor) || factor < 0)) {
+    throw new RangeError(`edtProximity: ungültiger Faktor ${factor}`);
+  }
+  edtProximityOverride = factor;
+};
+
+let edtProximityOverride: number | null = null;
+
+const edtProximityFactor = (): number => edtProximityOverride ?? COST_WEIGHTS.edtNearObstacle;
+
+/**
+ * Zuschlag pro Schritt am Gitterknoten (x, y): `factor` px-äquivalent, wenn
+ * die gerasterte Distanz zum nächsten Hindernis strikt unter der
+ * Mindest-Clearance liegt — wurzelfrei als $d^2 < c^2$ (§2.2″).
+ * `factor ≤ 0` ⇒ 0 (Token-Gate); außerhalb des Feldes ⇒ 0 (konservativ).
+ */
+export function edtProximityPenalty(
+  field: EdtField,
+  factor: number,
+  clearance: number,
+  x: number,
+  y: number
+): number {
+  if (factor <= 0) return 0;
+  return edtSquaredAt(field, x, y) < clearance * clearance ? factor : 0;
+}
 
 const obstacleKey = (obstacles: readonly Rect[]): string => {
   if (obstacles.length === 0) return '';
