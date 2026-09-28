@@ -24,7 +24,18 @@ export default defineConfig({
       // Coverage-Gate nur für den Engine-Kern: lib/** ist die Domänenlogik
       // (Elektrik, VDE, Units, AutoWire) — dort zählt jede Zeile. Der UI-Baum
       // bleibt bewusst ungeschwellt (Gerüsttests wären Scheinsicherheit).
-      exclude: ['node_modules/**', 'coverage/**', 'dist/**', '.next/**', 'out/**', 'lib/planner/**'],
+      // lib/routing/gpu/** bleibt NICHT in der Coverage: Mission-Policy §5′-3
+      // („GPU-Modus in CI/E2E per Feature-Flag immer aus" — ausdrücklich auch
+      // Coverage). Die Flag-/Token-Disziplin-Tests laufen trotzdem (Flag aus).
+      exclude: [
+        'node_modules/**',
+        'coverage/**',
+        'dist/**',
+        '.next/**',
+        'out/**',
+        'lib/planner/**',
+        'lib/routing/gpu/**',
+      ],
       thresholds: {
         'lib/**': {
           lines: 90,

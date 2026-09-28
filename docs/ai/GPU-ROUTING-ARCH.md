@@ -146,6 +146,19 @@ und jeder Schritt ergibt +0, der Suchlauf ist bitweise unverändert (Golden Mast
 byte-stabil, nachgewiesen über `test:regression` + `test:goldenmaster`). Die Anhebung
 gehört zu Stufe 2 und erfordert einen begründeten Recapture mit Ledger.
 
+**Umsetzung GPU-Kern (Mission Stufe 4, 2026-09-28):** `lib/routing/gpu/edt.wgsl`
+(echte WGSL-Datei, zwei Entrypoints `edtRowPass`/`edtColPass` = die zwei Dispatches
+von §2.2″) + `lib/routing/gpu/gpuEdt.ts` (`gpuSquaredEdt2D` hinter Flag
+`ROUTING_GPU`, default off; Init/INF-Clamp/`EDT_MAX_DIM`-Assertions identisch zu
+`squaredEdt2D`; Token-Slot `EDT_MAX_D2` mit Drift-Guard `gpuEdt.test.ts`). Der
+Kern rechnet pro Zielzelle den direkten Min über die Quellenlinie
+(definitionsgleich zum FH-Unteren-Envelope in `transform1D`, d. h. **exakt dieselbe
+Ausgabe**) — Arbeit O(W²·H + H²·W) statt des FH-O(W·H)-Sweeps; Optimierung auf
+echter GPU erst nach Messung (§5′-4 Durchsatz: SwiftShader-Emulation ~109 ms/Call
+256×128 vs. CPU 1,69 ms). Parität CPU ≡ GPU ≡ Orakel: `npm run test:gpu`
+(`scripts/routing/gpuEdtParity.ts`); Stabilitätsblockade des automatisierten Laufs
+sowie Flags/ICD-Messwerte: §5′-4.
+
 ---
 
 ## 2.3′ — Physik-Feedback-Loop (CPU-first)
@@ -219,14 +232,49 @@ gehört zu einer Recapture-Stage mit Ledger.
 3. **Golden-Master-Policy (hart):** GPU-Modus in CI/E2E per Feature-Flag immer aus;
    persistierte Geometrie ausschließlich CPU-Ursprungs. Recapture von Goldens nur mit
    Begründung, nie wegen Device-Wechsel.
-4. **WebGPU-Smoke:** Playwright ist CI-fähig vorhanden (`"e2e": "playwright test"`
-   bestätigt). Das Flag-Set wird im Spike **gemessen** und dann hier dokumentiert —
-   v1/v2 nannten konkrete Flags unbelegt; bekanntes Ist: Headless-Chromium-WebGPU
-   benötigt typischerweise `--enable-unsafe-webgpu` plus Backend-Auswahl
-   (Dawn/Vulkan/SwiftShader, plattformabhängig), SwiftShader-Smoke im Runner explizit
-   als Emulation gekennzeichnet. Vorgehen: Spike-Messlauf → messbare Ergebnisse →
-   Ersetzung dieses Absatzes durch die gemessenen Werte. Kein unbelegter Gate-Name im
-   Dokument.
+4. **WebGPU-Smoke — GEMESSEN (Spike-Messlauf 2026-09-28, Mission Stufe 4):**
+   - **Browser-Pfad negativ:** sparticuz-Chromium 153.0.8010.0 (einziger
+     verfügbarer Browser; Playwright-CDN, apt, googleapis, launchpad,
+     objects.githubusercontent in dieser Sandbox gesperrt) liefert bei **sieben
+     Flag-Sätzen** (`--enable-unsafe-webgpu`; +Vulkan-Features;
+     `--use-webgpu-adapter=swiftshader --enable-unsafe-swiftshader`;
+     Kombiset; `--enable-blink-features=WebGPU`; `--enable-features=WebGPU,WebGPUService`;
+     Trial-Kombi) konstant `navigator.gpu === undefined` — WebGPU ist im Build
+     nicht enthalten. Browser-Smoke in dieser Umgebung nicht messbar.
+   - **Node/Dawn-Pfad positiv:** npm-Paket `webgpu` (Dawn-Bindings).
+     Version **0.4.0 ist die neueste ohne `GLIBCXX_3.4.31+`-Bedarf** (0.5.0
+     verlangt 3.4.31/32, der Host-Debian-12-libstdc++ endet bei 3.4.30; beide
+     Installationen md5-identisch `49e035eb…`). ICD: SwiftShader aus
+     `@sparticuz/chromium` (`vk_swiftshader_icd.json` + `libvulkan.so.1` +
+     `libvk_swiftshader.so`), gesetzt über `VK_ICD_FILENAMES` und
+     `LD_LIBRARY_PATH`. Gemessen: Adapter `google / SwiftShader driver 5.0.0`,
+     Device ok, trivialer Compute-Dispatch `2,4,6,8` korrekt; `device.limits.
+maxStorageBufferBindingSize = 134217728`.
+   - **Parität:** `npm run test:gpu` (`scripts/routing/gpuEdtParity.ts`)
+     vergleicht GPU ≡ CPU ≡ Brute-Force-Orakel. In vollendeten Läufen waren die
+     Ergebnisse korrekt (Degenerierte bis 65×33, Zufallsfeld 64×64, iso 256×128
+     byte-gleich gegen `squaredEdt2D`).
+   - **Stabilitätsbefund (ehrlich, Stopp-Regel nach erfolgloser Isolation):**
+     dawn 0.4.0 + SwiftShader crasht in der Treiber-Kombination **`gpuEdt.ts`-
+     Pfad** deterministisch (10/10 SIGSEGV/Abort beim `mapAsync` nach Submit),
+     während identische GPU-Operationen über reine Referenz-Treiber stabil
+     laufen (3×100 Läufe `create`/`dispatch`/`mapAsync` sauber). Geprüft und
+     verworfen als Alleinursache: Vite-Dynamic-Import (Fix auf `createRequire`
+     senkte die Vitest-Rate, eliminierte sie nicht), `device.limits`-Getter,
+     Layout-Caching, Await-Position, `destroy()`, erzwungener GC,
+     SwiftShader-Thread-Env-Vars. Root Cause in dawn/SwiftShader nicht isoliert
+     → automatisierter Paritäts-Gate-Lauf vorerst blockiert; Flag-Policy unberührt
+     (`ROUTING_GPU` default off, nie in CI/E2E/Coverage — Ausschluss in
+     `vitest.config.ts`).
+   - **Durchsatz (Emulation, ehrlich):** SwiftShader ≈ **109 ms/Call** für
+     256×128 (100 Calls/10 914 ms, Referenz-Treiber, Pipelines gecacht, inkl.
+     Buffervorbereitung + 2 Dispatches + Readback) gegen CPU-Referenz
+     `squaredEdt2D` **1,69 ms** (256×128, 10-Lauf-Mittel) bzw. **8,70 ms**
+     (512×256) — Software-Emulation, kein Geschwindigkeitsnachweis; ein
+     T1-Zugewinn setzt echte GPU-Hardware voraus und ist erneut zu messen.
+   - **Invocation:** `VK_ICD_FILENAMES=…/vk_swiftshader_icd.json
+LD_LIBRARY_PATH=… npm run test:gpu` (ICD-Pfad je Umgebung, Aufbau s.
+     Anhang B der MULTIPHYSICS).
 5. **WGSL-Tooling:** echte `.wgsl`-Dateien + Codegen mit Token-Slot; jede Token-Drift
    löst den Differential-Lauf aus (Drift-Guard-Disziplin existiert:
    `lib/routing/tokens.test.ts`, WP-1).
@@ -287,6 +335,18 @@ A/B gemessen mit `npm run routing:conflict-probe`, 21 Pläne, Cache-frei):**
 - **px-Ganzzahlskala + Sättigung** (`lib/routing/rules/intCosts.ts` →
   `hananAStar`): gebaut, Gate `ROUTING_GATES.integerMilliPxCosts` = **0** —
   Messdetails und Recapture-Bedingung in §3″ (Umsetzung).
+
+**Umsetzungsstatus (Mission Stufe 4, 2026-09-28 — WebGPU-Spike & EDT-Kern):**
+
+- **WebGPU-Ausführungsschicht:** Spike geliefert (§5′-4: Browser negativ, Node/Dawn
+  positiv inkl. ICD-Setup; Zugewinn weiterhin „reine Beschleunigung“ —
+  Kill-Gate-Entscheidung aus Stufe 0 bleibt damit unberührt, Sperrung bleibt
+  Scope-Entscheid der nächsten Stufen). Erster Kern gebaut: `edt.wgsl` +
+  `gpuSquaredEdt2D` hinter `ROUTING_GPU` (default off, nie in CI/E2E/Coverage);
+  WGSL-Token-Drift-Guard und Flag-Disziplin laufen grün in `npm run check`.
+  Automatisierter Paritäts-Lauf (`npm run test:gpu`) durch dawn-0.4.0-Restinstabilität
+  blockiert (Diagnose §5′-4, Stopp-Regel). Uniform-Lattice-Grob-Pass und
+  Physik-Feedback-GPU: weiterhin optional und ungebaut.
 
 ---
 

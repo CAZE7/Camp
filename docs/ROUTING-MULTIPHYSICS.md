@@ -1256,6 +1256,43 @@ p90 56,80 ms (Ratchet 60, Tail 1,18 ≤ 2) ✓ · e2e 113/0 ✓. Neue Tests:
 
 ---
 
+### 6.5 Ergebnisse Stufe 4 — WebGPU-Spike & EDT-Kern (2026-09-28)
+
+**Flag-Policy:** `ROUTING_GPU`, default off, nie in Regression/Golden/E2E/
+Coverage (Coverage-Ausschluss `lib/routing/gpu/**` in `vitest.config.ts`).
+
+**Spike („Messen vor Bauen“, GPU-ROUTING-ARCH §5′-4 mit allen Messwerten):**
+
+- Browser: sieben Flag-Sätze auf sparticuz-Chromium 153 → `navigator.gpu`
+  konstant absent (WebGPU nicht gebaut); keine Download-Quelle für einen
+  anderen Browser in dieser Sandbox.
+- Node/Dawn: `webgpu@0.4.0` (neueste ohne `GLIBCXX_3.4.31+`), SwiftShader-ICD
+  aus `@sparticuz/chromium` → Adapter `google / SwiftShader driver 5.0.0`,
+  Device ok, Compute-Readback korrekt.
+- Durchsatz: SwiftShader ≈ 109 ms/Call (256×128) vs. CPU `squaredEdt2D`
+  1,69 ms — Emulation, **kein** Zugewinnsnachweis; echte GPU erst danach.
+
+**Gebaut:** `lib/routing/gpu/edt.wgsl` (zwei Dispatches, Token-Slot
+`EDT_MAX_D2`) + `gpuSquaredEdt2D` (Parität-Design gegen `squaredEdt2D`:
+Init, INF-Clamp, `EDT_MAX_DIM` identisch) + `scripts/routing/gpuEdtParity.ts`
+(`npm run test:gpu`: Degenerierte + seeded Zufallsfelder + Doppel-Lauf).
+
+**Befund/Blockade (Stopp-Regel):** dawn 0.4.0 + SwiftShader crasht den
+`gpuEdt.ts`-Pfad deterministisch (10/10, Crash-Point `mapAsync` nach Submit),
+während identische Operationen in reinen Referenz-Treibern stabil laufen
+(3×100). Isolation (Vite-Import, limits-Getter, Layout-Caching, Await-Lage,
+`destroy()`, GC, Thread-Env) ohne Treffer → Root Cause in dawn/SwiftShader
+offen; automatisierter Paritäts-Lauf vorerst blockiert und in §5′-4
+dokumentiert. Flag-Disziplin und WGSL-Token-Drift-Guard laufen in
+`npm run check` (immer aktiv,4 Tests).
+
+**Gates (2026-09-28):** `npm run check` ✓ · `test:regression` 50/50 ✓ ·
+`test:goldenmaster` 13/13 ✓ · `routing:audit` I1–I7 = 0 ✓ ·
+`perf:edge-routing` ✓ · e2e 113/0 ✓ · `test:gpu`-Status wie oben (blockiert,
+nicht Teil der Gates).
+
+---
+
 ## Anhang A — Symbolverzeichnis
 
 | Symbol                      | Bedeutung                                   | Quelle                               |
@@ -1283,4 +1320,7 @@ npx tsx benchmarks/phase0Baseline.ts  # Stufe-0-Baseline → benchmarks/baseline
 npm run test:regression      # Layout/Metriken/SVG byte-exakt
 npm run test:goldenmaster    # Eingefrorene Geometrie
 npm run check                # Gate vor Commit: lint, format, 2× typecheck, Coverage
+# Stufe 4 (nicht Teil der Gates, Flag default off — GPU-Parität):
+ROUTING_GPU=1 VK_ICD_FILENAMES=…/vk_swiftshader_icd.json \
+  LD_LIBRARY_PATH=… npm run test:gpu   # ICD aus @sparticuz/chromium; Details GPU-ARCH §5′-4
 ```
