@@ -37,7 +37,12 @@ const REQUIRED_TESTIDS = [
   'sidebar',
   'sidebar-search',
   'sidebar-item',
-  'planner-node',
+  // 'planner-node' ist am 2026-09-28 entfernt: Der Eintrag wurde NUR von der
+  // toten `components/nodes/BaseNode.tsx` erfüllt (sie trug das Attribut, wurde
+  // aber von keiner Seite gerendert) — die E2E-Suite zählt Knoten über
+  // `.react-flow__node:not(.react-flow__node-backboneGroup)`
+  // (`tests/e2e/helpers.ts`) und hat den Selektor nie benutzt. Der Vertrag
+  // forderte damit ein Attribut, das in der App nirgends ankam.
   'action-autowire',
   'action-more',
   'action-bom',

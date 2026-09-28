@@ -210,9 +210,15 @@ describe('Label-Sortierung derselben Node-Paar-Gruppe (M10-1)', () => {
 });
 
 describe('M8-3 / M10-1 Label-Boxen', () => {
-  it('PARALLEL_LABEL_SPREAD hält 88×20-Boxen auseinander', () => {
-    expect(LABEL_BOX_WIDTH).toBe(88);
-    expect(LABEL_BOX_HEIGHT).toBe(20);
+  it('PARALLEL_LABEL_SPREAD hält die Label-Boxen auseinander', () => {
+    // Die Box ist die GERENDERTE Größe (12 px fett + Padding + Rahmen), nicht
+    // die alte Schätzung 88 × 20 — sie war zu klein, sodass die Prüfung
+    // Überdeckungen durchwinkte, die im Bild sichtbar waren (Befund
+    // 2026-09-28, `labelPlacement.test.ts`).
+    expect(LABEL_BOX_WIDTH).toBe(156);
+    expect(LABEL_BOX_HEIGHT).toBe(22);
+    // Eine Stufe Spread muss eine ganze Boxhöhe trennen, sonst berühren sich
+    // gestapelte Labels.
     expect(PARALLEL_LABEL_SPREAD).toBeGreaterThanOrEqual(LABEL_BOX_HEIGHT);
 
     const siblings = [

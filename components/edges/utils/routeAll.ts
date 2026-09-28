@@ -24,7 +24,19 @@ import {
   type PathResult,
   type Rect,
 } from './pathfinding';
-import { polylineMidpoint, waypointsToPath, waypointsToPathWithHops, type PathHop } from './pathUtils';
+import {
+  LABEL_BOX_HEIGHT,
+  LABEL_BOX_WIDTH,
+  PARALLEL_LABEL_SPREAD,
+  boxesOverlap,
+  edgeLabelNudge,
+  labelBoundingBox,
+  polylineMidpoint,
+  waypointsToPath,
+  waypointsToPathWithHops,
+  type LabelBox,
+  type PathHop,
+} from './pathUtils';
 import { nudgeOrthogonalPaths } from './nudge';
 import { routableNodes } from './routableNodes';
 import {
@@ -124,12 +136,37 @@ export function resolveHandlePoint(
 }
 
 /**
- * Label-Box (halbe Ausdehnung) für die Kollisionsprüfung. Konservativ
- * geschätzt: Der Chip im Canvas ist eine Zeile mit Padding; 112 × 28 px
- * deckt „2,5 mm² · 5 m" samt Rahmen ab.
+ * Label-Box (halbe Ausdehnung) für die Kollisionsprüfung.
+ *
+ * Die Maße kommen aus `pathUtils.LABEL_BOX_WIDTH/HEIGHT` — **eine** Wahrheit
+ * für Platzierung und Prüfung (Befund 2026-09-28: hier rechnete die
+ * Platzierung mit 112 × 28, während die Prüfung 88 × 20 annahm und das
+ * gerenderte Label ≈ 156 × 22 px ist). `LABEL_CLEARANCE` ist der
+ * Sicherheitsabstand, den ein Chip zu Karte und Nachbar-Chip halten soll.
  */
-export const LABEL_HALF_WIDTH = 56;
-export const LABEL_HALF_HEIGHT = 14;
+export const LABEL_CLEARANCE = 4;
+export const LABEL_HALF_WIDTH = LABEL_BOX_WIDTH / 2 + LABEL_CLEARANCE;
+export const LABEL_HALF_HEIGHT = LABEL_BOX_HEIGHT / 2 + LABEL_CLEARANCE;
+
+/**
+ * Seitliche Ausweichstellen für Beschriftungen — in Spread-Stufen, damit der
+ * Versatz zur gestapelten Bündel-Bildsprache passt (`PARALLEL_LABEL_SPREAD`).
+ * Erst senkrecht, dann waagerecht, dann die Doppelstufen: Die Reihenfolge ist
+ * die Suchreihenfolge und damit Teil des deterministischen Ergebnisses.
+ */
+const SPREAD = PARALLEL_LABEL_SPREAD;
+export const LABEL_SIDE_OFFSETS: ReadonlyArray<Point> = [
+  { x: 0, y: SPREAD },
+  { x: 0, y: -SPREAD },
+  { x: SPREAD, y: 0 },
+  { x: -SPREAD, y: 0 },
+  { x: 0, y: 2 * SPREAD },
+  { x: 0, y: -2 * SPREAD },
+  { x: 2 * SPREAD, y: 0 },
+  { x: -2 * SPREAD, y: 0 },
+  { x: 0, y: 3 * SPREAD },
+  { x: 0, y: -3 * SPREAD },
+];
 
 const labelBoxFree = (x: number, y: number, rects: readonly Rect[]): boolean =>
   rects.every(
@@ -171,11 +208,76 @@ export const labelAnchorClearOfNodes = (
   }
   const distance = (point: Point): number => Math.hypot(point.x - anchor.x, point.y - anchor.y);
   samples.sort((a, b) => distance(a) - distance(b));
-  for (const sample of samples.slice(0, 64)) {
+  const nearest = samples.slice(0, 64);
+  for (const sample of nearest) {
     if (labelBoxFree(sample.x, sample.y, rects)) return sample;
+  }
+
+  // Stufe 2 — **seitlich** der Trasse (Befund 2026-09-28).
+  //
+  // Stufe 1 sucht nur AUF der Leitung. In dichten Plänen läuft ein Trassenstück
+  // zwischen zwei Karten komplett innerhalb einer von beiden (die Karten sind
+  // 192 px breit, die Gassen dazwischen oft schmaler als das Label mit 156 px):
+  // Dann gibt es auf der Trasse keine freie Stelle, und die Beschriftung landete
+  // auf der Karte — der alte Test „bleibt beim Mittelpunkt, wenn die ganze
+  // Trasse über Karten läuft" hielt dieses Aufgeben fest.
+  //
+  // Versetzt man den Chip um eine Spread-Stufe zur Seite, findet er fast immer
+  // Platz, ohne den Bezug zur Leitung zu verlieren (dieselbe Bildsprache wie
+  // die gestapelten Bündel-Labels). Die Reihenfolge ist fest und achsenparallel
+  // — deterministisch, keine Winkelrechnung.
+  for (const sample of nearest.slice(0, 16)) {
+    for (const offset of LABEL_SIDE_OFFSETS) {
+      if (labelBoxFree(sample.x + offset.x, sample.y + offset.y, rects)) {
+        return { x: sample.x + offset.x, y: sample.y + offset.y };
+      }
+    }
   }
   return anchor;
 };
+
+/**
+ * Label gegen **fremde** Labels (Befund 2026-09-28).
+ *
+ * `edgeLabelNudge` trennt nur Labels desselben Kantenpaars am selben Handle.
+ * Zwei Leitungen, die verschiedene Paare verbinden, aber auf demselben
+ * Trassenmittelpunkt landen, bekamen dadurch exakt denselben Anker — im
+ * Screenshot las man „… 3.0 m · 4.0 m" als ein Label. Gemessen an
+ * `knownPlans/complex.json`: 6 solcher Paare, zwei davon mit Δy = 0/1 px.
+ *
+ * Diese Funktion weicht **vertikal** in Stufen von `PARALLEL_LABEL_SPREAD`
+ * aus (dieselbe Bildsprache wie `edgeLabelNudge`: gestapelte Chips, nicht
+ * verschobene). Reihenfolge und Ergebnis sind deterministisch: Die Aufrufer
+ * (Route-All) laufen in sortierter Kanten-Reihenfolge, die Suche selbst ist
+ * eine feste Stufenfolge. Wird nichts frei, bleibt der Anker — ein
+ * überlappendes Label ist besser als ein Label ohne Bezug zur Leitung.
+ */
+export const LABEL_PLACEMENT_STEPS = [0, 1, -1, 2, -2, 3, -3] as const;
+
+export function placeLabelClearOfLabels(
+  anchor: Point,
+  rects: readonly Rect[],
+  placed: readonly LabelBox[]
+): Point {
+  const candidateAt = (step: number): Point => ({
+    x: anchor.x,
+    y: anchor.y + step * PARALLEL_LABEL_SPREAD,
+  });
+  const hitsLabel = (point: Point): boolean => {
+    const box = labelBoundingBox(point.x, point.y);
+    return placed.some((other) => boxesOverlap(box, other));
+  };
+
+  // Frei von Karten UND von anderen Labels. „Karte" ist die harte Regel
+  // (Finding 2026-09-27, Gate über die sechs Referenzpläne) — sie wird hier
+  // nicht aufgeweicht; der Versatz sucht eine Stelle, die beides erfüllt.
+  for (const step of LABEL_PLACEMENT_STEPS) {
+    const candidate = candidateAt(step);
+    if (labelBoxFree(candidate.x, candidate.y, rects) && !hitsLabel(candidate)) return candidate;
+  }
+  // Kein Platz für beides: Karte gewinnt (Produktregel), der Anker bleibt.
+  return anchor;
+}
 
 const rebuild = (
   waypoints: Point[],
@@ -749,6 +851,13 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
   );
   const { hopsByEdge, crossingCountsByEdge: crossingsByEdge } = crossingAnalysis;
 
+  /**
+   * Bereits platzierte Label-Boxen DIESES Plans. Der Pass läuft in der
+   * deterministischen `order`-Reihenfolge (sortierte Kanten-IDs), damit zwei
+   * Läufe desselben Plans dasselbe Bild ergeben.
+   */
+  const placedLabels: LabelBox[] = [];
+
   for (const id of order) {
     const item = byId.get(id);
     if (!item) continue;
@@ -762,8 +871,28 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
       item.result.fallbackHitsObstacles,
       item.result.tightMarginUsed
     );
-    // Beschriftung darf keine Karte verdecken (Finding 2026-09-27).
-    const label = labelAnchorClearOfNodes({ x: routed.labelX, y: routed.labelY }, wp, allObstacles);
+    // Bündel-Versatz desselben Kantenpaars — gehört hierher, nicht in die
+    // Kante: Nur der globale Pass sieht alle Kanten und kann den Versatz
+    // zusammen mit der Kollisionsauflösung einrechnen (Befund 2026-09-28:
+    // vorher addierte `CableEdge` ihn nachträglich auf die fertige Position,
+    // womit die Kollisionsprüfung eine andere Lage prüfte als die gerenderte).
+    const edgeRef = edgeById.get(id);
+    const bundleNudge = edgeLabelNudge({
+      edgeId: id,
+      source: edgeRef?.source ?? '',
+      target: edgeRef?.target ?? '',
+      sourceHandle: edgeRef?.sourceHandle,
+      siblingEdges: edges,
+    });
+    // Beschriftung darf keine Karte verdecken (Finding 2026-09-27) …
+    const clearOfNodes = labelAnchorClearOfNodes(
+      { x: routed.labelX, y: routed.labelY + bundleNudge },
+      wp,
+      allObstacles
+    );
+    // … und nicht auf einer fremden Beschriftung liegen (Befund 2026-09-28).
+    const label = placeLabelClearOfLabels(clearOfNodes, allObstacles, placedLabels);
+    placedLabels.push(labelBoundingBox(label.x, label.y));
     out.set(
       id,
       label.x === routed.labelX && label.y === routed.labelY

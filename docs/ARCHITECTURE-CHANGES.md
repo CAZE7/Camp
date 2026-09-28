@@ -2051,3 +2051,74 @@ visuelle Lauf **40/40** grün und die gesamte E2E-Suite **113 passed, 31 skipped
 
 **4. Zahlen.** `npm test` steht bei **2485 Tests / 181 Dateien** (2026-09-28); README,
 `docs/ai/README.md` und `docs/ai/TESTING-CONTEXT.md` sind nachgezogen.
+
+### 2026-09-28 — Achtundzwanzigste Fassung: Tote UI-Welt entfernt und Labels auf eine Wahrheit gestellt (DEAD-001, LABEL-001)
+
+Zwei Befunde aus dem Nutzer-Review der Werkbank, beide vorher per Import-Graph bzw. Messung
+nachgeprüft statt geglaubt.
+
+**1. DEAD-001 — die nie ausgelieferte zweite UI-Welt ist weg.** Grundlage war ein echter
+Import-Graph (Auflösung von `@/`- und relativen Importen, Verzeichnis-Importe, über alle
+Einstiegspunkte `app/**/page|layout`, `scripts/`, `benchmarks/` und Tests) — nicht `grep`.
+Entfernt: `components/NavigationSidebar.tsx` (428) + Test, `components/layout/MainLayout.tsx` (148),
+`components/DachNode.tsx` (23), `components/nodes/BaseNode.tsx` (67) + Test,
+`components/nodes/handleLayout.ts` (35) + Test, `components/planner/ui/DashboardPanel.tsx` (86) + Test,
+`components/planner/utils/solarCalculations.ts` (26) + Test, `components/ui/ValidatingNumberInput.tsx` (82) + Test
+— **14 Dateien, 1400 Zeilen, 8 Module, davon 7 mit grünem Unit-Test** („gepflegt aussehend, nie erreichbar").
+Mit der Datei verschwanden die vier toten Links (`/tools/wassersystem`, `/guides`, `/forum`, `/community`)
+und die letzte Stelle mit `text-[10px]`/`text-[11px]` gegen die eigene Typo-Regel.
+
+Drei Korrekturen am Befund selbst, damit der Baum nicht aus einem Vorurteil aufgeräumt wird:
+`components/registry/index.ts` ist **nicht** tot (Verzeichnis-Import `'../registry'` aus `BOMModal`);
+`components/Sidebar.tsx` und `components/Inspector.tsx` sind es ebenfalls nicht (sie hängen heute über
+`PlannerSidebar`/`PlannerInspector` im Live-Baum — der Audit-Befund von 2026-08-20 war damals richtig
+und ist es jetzt nicht mehr); `components/edges/utils/routingQuality.ts` ist kein UI-Rest, sondern das
+R-1-Messdashboard (25 Referenzszenarien, eingefrorene Baseline) und **bleibt**.
+
+Zwei Folgearbeiten, die die Löschung erst ehrlich gemacht hat: Der Vertragstest
+`components/e2eSelectors.test.tsx` forderte `data-testid="planner-node"` — erfüllt wurde er
+ausschließlich von der toten `BaseNode.tsx`, während die E2E-Suite Knoten über
+`.react-flow__node:not(.react-flow__node-backboneGroup)` zählt. Der Eintrag ist entfernt (der
+Selektor war nie erreichbar). Und `lib/designTokens.test.ts` prüfte die Auswahl-1-px-Linie an
+`BaseNode.tsx`, das sie nie gerendert hat; der Test prüft jetzt die lebende Mechanik
+(`node-card--selected` in `BatteryNode` + `.node-card--selected { border-color: var(--accent-line) }`
+in `globals.css`). Die Ausnahmeliste `WERFT_LEGACY_TOKEN_DEBT` schrumpft von sechs Einträgen auf zwei
+(`Chat.tsx`, `ScrollSidebar.tsx`) — darunter war ein Eintrag für `app/tools/dach/components/DachPlanerFlow.tsx`,
+eine Datei, die es nicht mehr gibt. Die Handle-Konvention, die nur im Docstring der gelöschten
+`handleLayout.ts` stand (30 %/70 %, AC/Mitte, die begründeten Ausnahmen), ist in
+`lib/planner/layout-engine/ports.ts` übernommen — sonst wäre Wissen mit der Datei verschwunden.
+
+**2. LABEL-001 — das Label-Modell hatte zwei Wahrheiten und beide waren zu klein.** Die Platzierung
+rechnete mit `routeAll.LABEL_HALF_*` (112 × 28), die Prüfung mit `pathUtils.LABEL_BOX_*` (88 × 20) —
+gerendert wird (12 px fett, `padding: 2px 6px`, 1 px Rahmen) rund **156 × 22**. Gemessen an
+`knownPlans/complex.json` mit gemessener React-Flow-Geometrie: mit dem ehrlichen Maß lagen **11 von 23**
+Labels auf einer Bauteilkarte, mit der alten 88er-Box sah dieselbe Prüfung 4. Beide Konstanten sind
+jetzt **eine** (`LABEL_BOX_WIDTH/HEIGHT = 156 × 22`, `LABEL_CLEARANCE = 4`), die Platzierung zieht sie.
+
+Zweiter Teil: `CableEdge` addierte den Bündel-Versatz (`edgeLabelNudge`) **nach** der Platzierung auf
+die fertige Position — geprüft wurde also eine andere Lage als die gerenderte, und eine Auflösung
+über den ganzen Plan war unmöglich, weil nur Labels desselben Knotenpaars getrennt wurden. Der Versatz
+läuft jetzt **im** Routing-Pass (`routeAllCables`), die Kante addiert ihn nur noch im Einzelfall-Fallback
+(0, solange `globalRoute` da ist, sonst zählte er doppelt). Dazu zwei Ergänzungen: eine zweite
+Suchstufe, die Beschriftungen **seitlich** der Trasse um Spread-Stufen versetzt (in dichten Plänen liegt
+ein Trassenstück oft komplett unter einer 192 px breiten Karte, dann gab es auf der Trasse keine freie
+Stelle — der alte Test „bleibt beim Mittelpunkt, wenn die ganze Trasse über Karten läuft" hielt genau
+dieses Aufgeben fest), und ein `z-index` für `.react-flow__edgelabel-renderer`. Letzteres ist die
+strukturelle Wurzel: React Flow rendert den Label-Container **vor** der Node-Ebene (im DOM-Nachweis in
+`@xyflow/react`), ohne z-index malen die Karten also über den Text — im Screenshot lag „SOLAR · 25 mm²"
+halb hinter der PV-Karte. Gemessen nach dem Umbau: **8** Labels über Karten (statt 11), Label über Label
+**0** als Gate, deterministisch über zwei Läufe; Golden Master (13 Pläne) und Regression (50) unverändert,
+weil nur Label-Positionen betroffen sind, keine Trasse.
+
+Bewusst **nicht** behauptet: dass der Screenshot-Fall „… 3.0 m · 4.0 m" damit reproduziert sei. In den
+Fixture-Plänen ließ sich keine Überdeckung fremder Labels nachweisen (auch nicht auf dem Stand davor) —
+der Mechanismus, der ihn erzeugt (nur paarweise Trennung, kein Pass über den ganzen Plan), ist jetzt
+abgedeckt und in `components/edges/utils/labelPlacement.test.ts` als Gate gesetzt, der Beweis steht aber
+auf dem Screenshot des Nutzers, nicht auf einem Test. Offen und **nicht** Teil dieser Fassung, weil es
+die Bildsprache ändert und eine Freigabe braucht: die Zahl der Kreuzungs-Hops (28 auf
+`knownPlans/complex.json` — die „Seilschlingen" an den Bündeln), die zwei Bedienebenen im Planner
+(Schrittleiste + Werkzeugleiste) und die Rechtsdaten im Impressum.
+
+**3. Zahlen.** `npm test` steht bei **2452 Tests / 176 Dateien** (2026-09-28); README,
+`docs/ai/README.md` und `docs/ai/TESTING-CONTEXT.md` sind nachgezogen. `npm run lint`,
+`tsc` (beide Profile), `prettier --check .`, `test:goldenmaster` (13) und `test:regression` (50) sind grün.

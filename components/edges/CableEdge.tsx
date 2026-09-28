@@ -523,17 +523,28 @@ const CableEdge = function ({
     crossingSegments,
   ]);
 
-  const labelNudgeY = useMemo(
-    () =>
-      edgeLabelNudge({
-        edgeId: id,
-        source,
-        target,
-        sourceHandle: resolvedSourceHandle,
-        siblingEdges,
-      }),
-    [id, source, target, resolvedSourceHandle, siblingEdges]
-  );
+  /**
+   * Bündel-Versatz für Labels an demselben Knotenpaar/Handle.
+   *
+   * Er wird seit dem Befund 2026-09-28 **im globalen Routing-Pass** gerechnet
+   * (`routeAllCables` → `edgeLabelNudge` + `placeLabelClearOfLabels`), weil
+   * nur dort alle Kanten gleichzeitig bekannt sind: So kann die
+   * Kollisionsauflösung die Position prüfen, die tatsächlich gerendert wird.
+   * Vorher addierte diese Komponente den Versatz nachträglich auf die fertige
+   * Route — die Prüfung sah eine andere Lage als der Nutzer. Nur der
+   * Einzelfall-Fallback (bevor der Pass publiziert ist, ≤ ROUTE_THROTTLE_MS)
+   * braucht ihn noch lokal; sonst zählte er doppelt.
+   */
+  const labelNudgeY = useMemo(() => {
+    if (globalRoute) return 0;
+    return edgeLabelNudge({
+      edgeId: id,
+      source,
+      target,
+      sourceHandle: resolvedSourceHandle,
+      siblingEdges,
+    });
+  }, [globalRoute, id, source, target, resolvedSourceHandle, siblingEdges]);
 
   const isPlus = !!resolvedSourceHandle?.includes('plus');
 
