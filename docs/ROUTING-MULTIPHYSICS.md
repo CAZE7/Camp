@@ -1201,6 +1201,59 @@ eine eigene Recapture-Stage mit Ledger.
 ✓. Neue Tests: `electrical.groupFactors.test.ts` (13),
 `thermalBundle.test.ts` (16), `thermalFixpoint.test.ts` (11).
 
+### 6.4 Ergebnisse Stufe 3 — Konfliktgraph-Batching & Integer-Milli-px (2026-09-28)
+
+**Umfang (GPU-ARCH §8, beide CPU-Bausteine „auch ohne GPU wertvoll“):**
+
+- **Konfliktgraph-Batching:** `lib/routing/rules/conflictGraph.ts`
+  (`buildConflictAdjacency` = geteilte Anschlussstelle ODER überlappte
+  Korridor-AABB, `conflictComponents` kanonisch, `greedyConflictOrder` =
+  §5.2-Stufenregel) eingebettet in `routeAllCables` über
+  `ROUTING_GATES.conflictGraphBatching` (Standard 0 = exakt die bisherige
+  `compareIds`-Ordnung) + Test-Hook `setConflictGraphBatchingForTest`
+  (Boolesch ODER Reihenfolge-Funktion für A/B-Varianten).
+- **px-Ganzzahlskala + Sättigung:** `lib/routing/rules/intCosts.ts`
+  (§3″-Gleichung, `g_max + s_max = INF` konstruktiv, floor-Heuristik bleibt
+  zulässig) eingebettet in `hananAStar` über
+  `ROUTING_GATES.integerMilliPxCosts` (Standard 0) + Modus im
+  `requestKey` des Routen-Caches.
+
+**A/B-Messung (`npm run routing:conflict-probe`, 6 Referenz- + 15
+Regressionspläne, Cache-leer, doppelt ⇒ deterministisch):**
+
+| Variante (gegen Gate 0)             | byte-gleich | Kreuzungen | Bends     | Länge (px)   | Overlaps | Σ I1–I7 |
+| ----------------------------------- | ----------- | ---------- | --------- | ------------ | -------- | ------- |
+| Gate 0 (Referenz, `compareIds`)     | 21/21       | 52         | 290       | 57 996       | 1        | 6       |
+| Batching `desc` (Spec §5.2)         | 9/21        | **63** ✗   | 292       | **59 653** ✗ | 2        | **2** ✓ |
+| Batching `asc` (Spiegel)            | 12/21       | **58** ✗   | **276** ✓ | **57 842** ✓ | 2        | **2** ✓ |
+| Batching `global` (Ref. 2026-09-09) | 9/21        | 63         | 292       | 59 653       | 2        | 2       |
+| Integer-Milli-px                    | 20/21       | 52         | 292       | 58 028       | 1        | 6       |
+
+**Verdikt (bewusst nicht ausgeliefert, beide Gates auf 0 — Werte in
+`ROUTING_GATES`, Drift-Guard `costModel.test.ts`):**
+
+- **Batching:** Keine Variante hält Längen- UND Kreuzungs-Ratchet
+  (`scripts/routing/cableLength.test.ts`); `desc` ≡ `global`, weil
+  Knoten-Chaining die Konfliktkomponenten auf ganze Pläne kollabiert
+  (größte = 23 Kanten, Pad-unempfindlich 23/23/23). Reproduziert den
+  verworfenen Versuch vom 2026-09-09 (routeAll.ts-Kommentar) mit heutiger
+  Messung. Heal-only-Funde: `reg:p13` (I3 → 0), `reg:p04` (I2 → 0).
+- **Integer-Kosten:** Kalter Golden Master mit Gate 1 bricht `acdc`
+  (Waypoint 669 → 698,4 px), Längen-Ratchet (5710 → 5742 px) und
+  `domainProbe.test`; `test:regression` hielt 50/50. Erste Probe „bewies“
+  fälschlich 21/21 byte-gleich — Cache-Treffer der Float-Variante, weil der
+  `requestKey` den Modus nicht kannte; seit Stufe 3 steht der Modus drin,
+  die Probe leert den Cache zwischen den Läufen.
+- Komplementäres Gate der Aktivierung: **Längen-Win ≥ Recapture-Preis**
+  (Ledger), sonst Ratchet-Verbot.
+
+**Gates (2026-09-28, beide Gates 0):** `npm run check` ✓ · `test:regression`
+50/50 byte-exakt ✓ · `test:goldenmaster` 13/13 byte-exakt ✓ · `routing:audit`
+I1–I7 = 0, deterministisch ✓ · `perf:edge-routing` Median 48,18 ms /
+p90 56,80 ms (Ratchet 60, Tail 1,18 ≤ 2) ✓ · e2e 113/0 ✓. Neue Tests:
+`conflictGraph.test.ts` (11), `intCosts.test.ts` (13),
+`pathfinding.intCosts.test.ts` (4), Drift-Guard in `costModel.test.ts`.
+
 ---
 
 ## Anhang A — Symbolverzeichnis

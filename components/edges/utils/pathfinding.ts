@@ -2,7 +2,15 @@ import { Position } from '@xyflow/react';
 import { nodeHeight, nodeOriginX, nodeOriginY, nodeWidth, type RoutableNode } from './nodeGeometry';
 import { polylineMidpoint, waypointsToPath } from './pathUtils';
 import { LEGACY_ROUTING_TOKENS, ROUTING_TOKENS, alternativeRouteGap } from '../../../lib/routing/tokens';
-import { COST_WEIGHTS } from '../../../lib/routing/rules/costModel';
+import { COST_WEIGHTS, ROUTING_GATES } from '../../../lib/routing/rules/costModel';
+import {
+  costToMilliPx,
+  heuristicToMilliPx,
+  intCostBudget,
+  maxStepPxOfGrid,
+  saturatingAddMilli,
+  type IntCostBudget,
+} from '../../../lib/routing/rules/intCosts';
 import { buildObstacleEdt, edtSquaredAt, type EdtField } from '../../../lib/routing/geometry/edt';
 import {
   inflateRect,
@@ -1243,7 +1251,25 @@ function hananAStar(
   const startKey = pack(six, siy, startHeading);
   gScore.set(startKey, 0);
   const heap = new MinHeap();
-  const h0 = remainingCostLowerBound(
+
+  // ── Stufe 3 (Mission): Integer-Milli-px-Sättigung der Label (§3″) ──────
+  // Gate `ROUTING_GATES.integerMilliPxCosts` (Standard 0 = bisherige
+  // Float-Rechnung, byte-stabil). Bei 1 rechnen g/h/f in ganzzahligen
+  // Milli-px; jedes Label-Update sättigt über `budget` (Per-Zellen-Maximal-
+  // schritt aus DISEM Grid + Turn-/Zuschlagsrate) gegen G_max — der Sentinel
+  // INF bleibt per Konstruktion unerreichbar (intCosts.ts).
+  const intMode = integerMilliPxEnabled();
+  const budget: IntCostBudget | null = intMode
+    ? intCostBudget(maxStepPxOfGrid(xs, ys), COST_WEIGHTS.uTurn + COST_WEIGHTS.edtNearObstacle)
+    : null;
+  let saturationLogged = false;
+  const onSaturate = (): void => {
+    if (saturationLogged) return;
+    saturationLogged = true;
+    // §3″: geloggter Gegenmaßnahmen-Pfad — niemals still (Rule M).
+    console.warn('[pathfinding] Kapazität erschöpft — CPU-Reroute (Milli-px-Sättigung, Stufe 3)');
+  };
+  const h0raw = remainingCostLowerBound(
     at(xs, six),
     at(ys, siy),
     startHeading,
@@ -1251,6 +1277,7 @@ function hananAStar(
     at(ys, giy),
     goalHeading
   );
+  const h0 = intMode ? heuristicToMilliPx(h0raw) : h0raw;
   heap.push({ f: h0, g: 0, h: h0, ix: six, iy: siy, hd: startHeading });
 
   let expansions = 0;
@@ -1268,13 +1295,15 @@ function hananAStar(
     const cur = heap.pop()!;
     const key = pack(cur.ix, cur.iy, cur.hd);
     const known = gScore.get(key);
-    if (known !== undefined && cur.g > known + EPS) continue;
+    if (known !== undefined && (intMode ? cur.g > known : cur.g > known + EPS)) continue;
 
     expansions++;
     if (expansions > MAX_EXPANSIONS) break;
 
     if (cur.ix === gix && cur.iy === giy) {
-      const finish = cur.g + turnCost(cur.hd, goalHeading);
+      const finish = intMode
+        ? saturatingAddMilli(cur.g, costToMilliPx(turnCost(cur.hd, goalHeading)), budget!, onSaturate)
+        : cur.g + turnCost(cur.hd, goalHeading);
       if (finish < bestGoalG) {
         bestGoalG = finish;
         bestGoalKey = key;
@@ -1292,13 +1321,28 @@ function hananAStar(
       const niy = cur.iy + dir.y;
       const step = Math.abs(at(xs, nix) - at(xs, cur.ix)) + Math.abs(at(ys, niy) - at(ys, cur.iy));
       if (step <= EPS) continue;
-      const g = cur.g + step + turnCost(cur.hd, nd) + penaltyAt(nix, niy);
+      const g = intMode
+        ? saturatingAddMilli(
+            cur.g,
+            costToMilliPx(step) + costToMilliPx(turnCost(cur.hd, nd)) + costToMilliPx(penaltyAt(nix, niy)),
+            budget!,
+            onSaturate
+          )
+        : cur.g + step + turnCost(cur.hd, nd) + penaltyAt(nix, niy);
       const nkey = pack(nix, niy, nd);
       const prev = gScore.get(nkey);
-      if (prev !== undefined && g >= prev - EPS) continue;
+      if (prev !== undefined && (intMode ? g >= prev : g >= prev - EPS)) continue;
       gScore.set(nkey, g);
       parent.set(nkey, key);
-      const h = remainingCostLowerBound(at(xs, nix), at(ys, niy), nd, at(xs, gix), at(ys, giy), goalHeading);
+      const hRaw = remainingCostLowerBound(
+        at(xs, nix),
+        at(ys, niy),
+        nd,
+        at(xs, gix),
+        at(ys, giy),
+        goalHeading
+      );
+      const h = intMode ? heuristicToMilliPx(hRaw) : hRaw;
       heap.push({ f: g + h, g, h, ix: nix, iy: niy, hd: nd });
     }
   }
@@ -1491,6 +1535,24 @@ export function edtProximityPenalty(
   return edtSquaredAt(field, x, y) < clearance * clearance ? factor : 0;
 }
 
+// ── Stufe 3 (Mission Integer-Milli-px): token-gated Label-Währung ─────────
+//
+// Gate `ROUTING_GATES.integerMilliPxCosts` (Standard 0): Bei 0 ist die
+// Float-Rechnung unverändert (Golden Master byte-stabil). Bei 1 rechnen
+// g/h/f in Milli-px-Ganzzahlen mit Sättigung (GPU-ARCH §3″, `intCosts.ts`);
+// A/B-Messung über `npm run routing:conflict-probe`. Aktivierung erst mit
+// begründetem Recapture-Ledger.
+
+/** Test-/Probe-Override; `null` = Token-Wert (Hausmuster `setEdtProximityFactorForTest`). */
+export const setIntegerMilliPxCostsForTest = (on: boolean | null): void => {
+  integerMilliPxCostsOverride = on;
+};
+
+let integerMilliPxCostsOverride: boolean | null = null;
+
+const integerMilliPxEnabled = (): boolean =>
+  integerMilliPxCostsOverride ?? ROUTING_GATES.integerMilliPxCosts === 1;
+
 const obstacleKey = (obstacles: readonly Rect[]): string => {
   if (obstacles.length === 0) return '';
   let s = `${obstacles.length}:`;
@@ -1525,7 +1587,13 @@ const requestKey = (input: PathRequest, obstacles: Rect[]): string =>
   // unterschiedlicher Hindernis-/Trassenbelegung dasselbe (falsche) Ergebnis.
   `${(input.ownObstacles ?? []).length},` +
   `${obstacleKey(obstacles)},${segmentsKey(input.crossingSegments)},` +
-  `${obstacleKey(input.cableTubes ?? [])}`;
+  `${obstacleKey(input.cableTubes ?? [])},` +
+  // Stufe 3: Auch die Label-Währung gehört in den Schlüssel — sonst gibt
+  // der Float-Lauf dem Milli-px-Lauf sein Ergebnis zurück (gemessen in der
+  // ersten A/B-Probe: scheinbare Byte-Gleichheit durch Cache-Treffer,
+  // während der kalte Golden Master acdc brach). Bei stabilem Gate ist der
+  // Bestandteil konstant; beim Modus-Flip trennt er die Läufe sauber.
+  `${integerMilliPxEnabled() ? 'i' : 'f'}`;
 
 const cacheGet = (key: string): PathResult | undefined => {
   const hit = cache.get(key);

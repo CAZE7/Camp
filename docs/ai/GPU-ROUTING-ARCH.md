@@ -191,6 +191,22 @@ $G_{\max}$ muss der Router einen geloggten Gegenmaßnahmen-Pfad einschlagen
 („Kapazität erschöpft — CPU-Reroute"), analog dem Repo-Verbot stiller Fallbacks
 (`safety-no-silent-fallback.test.ts`-Disziplin).
 
+**Umsetzung (Mission Stufe 3, 2026-09-28):** implementiert als
+`lib/routing/rules/intCosts.ts` (`costToMilliPx`, `heuristicToMilliPx` — floor bleibt
+zulässig, `intCostBudget` mit `g_max + s_max = INF` exakt, `saturatingAddMilli` mit
+`onSaturate`-Gegenmaßnahmen-Pfad, `maxStepPxOfGrid` als Per-Zellen-Budget aus dem
+konkreten Suchgrid), Property-Tests `intCosts.test.ts` (Seed 20260928: zufällige
+Update-Ketten erreichen nie `INF`). Integration in `hananAStar`
+(`components/edges/utils/pathfinding.ts`) token-gated über
+`ROUTING_GATES.integerMilliPxCosts` in `lib/routing/rules/costModel.ts` —
+**eingefroren auf 0**: Der kalte Golden Master mit 1 brach `acdc` (Waypoint
+669 → 698,4 px), den Längen-Ratchet (≤ 5710 px) und `domainProbe.test`, obwohl
+`test:regression` 50/50 hielt (`npm run routing:conflict-probe`, Cache-frei
+gemessen: 20/21 Pläne byte-gleich, acdc 5710 → 5742 px). Der Modus steht seit
+Stufe 3 im `requestKey` des Routen-Caches — die erste A/B-Runde hatte die
+Byte-Gleichheit nur durch Cache-Treffer der Float-Variante „bewiesen“. Aktivierung
+gehört zu einer Recapture-Stage mit Ledger.
+
 ---
 
 ## 5′ — Verifikations-Pyramide & CI-Policy
@@ -252,6 +268,25 @@ Vorzugs-Lanes (weiche Vorbelegung, bestehende Festlegung unverletzt).
 | px-Ganzzahlskala + Sättigung            | Ja — Determinismus-Vertiefung, Vorbereitung paralleler Varianten                   | 0 mandatory   |
 | Uniform-Lattice-Grob-Pass (GAMER-artig) | Bedingt — nur bei gemessenem Korridor-Orchestrierungs-Anteil > 20 % der Route-Zeit | 1+ optional   |
 | WebGPU-Ausführungsschicht               | Nein (reine Beschleunigung) — Kill-Kandidat per Phase-0-Gate                       | optional      |
+
+**Umsetzungsstatus (Mission Stufe 3, 2026-09-28 — beide CPU-Bausteine gebaut;
+A/B gemessen mit `npm run routing:conflict-probe`, 21 Pläne, Cache-frei):**
+
+- **Konfliktgraph-Batching** (`lib/routing/rules/conflictGraph.ts` →
+  `routeAllCables`): gebaut, Gate `ROUTING_GATES.conflictGraphBatching` = **0**.
+  Gemessen verliert die Spec-Regel (Längenrang absteigend, Master-Spec §5.2
+  Stufe 3) netto: Kreuzungen 52 → 63, Länge 57 996 → 59 653 px — identisch mit
+  der globalen Variante, weil Knoten-Chaining die Komponenten auf ganze Pläne
+  kollabieren lässt (größte Komponente = 23 Kanten; Pad-Empfindlichkeit
+  23/23/23 Komponenten bei pad 0/16/48 px). Die Spiegel-Variante (aufsteigend)
+  holt Länge −154 px, Bends −14 und die Verstöß-Fixes (Σ I1–I7: 6 → 2), geht
+  aber bei Kreuzungen 52 → 58 verloren. Reproduziert den verworfenen Versuch
+  vom 2026-09-09 — Gate bleibt 0, bis eine Variante Längen- UND Kreuzungs-
+  Ratchet gleichzeitig hält. Pläne, die allein die Reihenfolge heilt:
+  `reg:p13` (I3 → 0, Bends 16 → 10) und `reg:p04` (I2 → 0).
+- **px-Ganzzahlskala + Sättigung** (`lib/routing/rules/intCosts.ts` →
+  `hananAStar`): gebaut, Gate `ROUTING_GATES.integerMilliPxCosts` = **0** —
+  Messdetails und Recapture-Bedingung in §3″ (Umsetzung).
 
 ---
 

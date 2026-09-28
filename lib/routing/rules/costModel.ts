@@ -137,6 +137,39 @@ export function buildCostWeights(tokens: RoutingTokens = ROUTING_TOKENS): CostWe
 /** Default-Gewichte (Spec-Tokens). */
 export const COST_WEIGHTS: CostWeights = buildCostWeights();
 
+/**
+ * Mission Stufe 3 — Pass-Gates der plattformneutralen Bausteine
+ * (`docs/ai/GPU-ROUTING-ARCH.md` §8: „Konfliktgraph-Batching“ und
+ * „px-Ganzzahlskala + Sättigung“ — beide „auch ohne GPU wertvoll“).
+ *
+ * Beide Gates stehen auf **0**: Der Golden Master und die Regressions-SVGs
+ * sind byte-stabil, solange die Pässe aus sind (Gesetz jeder Mission-Stufe).
+ * Aktivierung (1) erfordert einen begründeten Recapture mit Ledger —
+ * gemessene A/B-Zahlen liefert `npm run routing:conflict-probe`.
+ *
+ * Drift-Guard in `costModel.test.ts`: Defaults frieren auf 0, Struktur
+ * unverändert — derselbe Einbau wie `edtNearObstaclePerLaneGrid`.
+ */
+export const ROUTING_GATES = Object.freeze({
+  /** Arbeitsreihenfolge in `routeAllCables` über den Konfliktgraphen (0/1). */
+  conflictGraphBatching: 0 as number,
+  /**
+   * A*-Label in ganzzahligen Milli-px mit Sättigung (0/1).
+   *
+   * **Eingefroren auf 0** — gemessen 2026-09-28: Mit 1 bricht der kalte
+   * Golden Master (`test:goldenmaster`) den Plan `acdc` (Waypoint x 669 →
+   * 698,4 px), der Längen-Ratchet (`cableLength.test`, acdc ≤ 5710 px) und
+   * `domainProbe.test` (eingefrorene Summe) — auch wenn `test:regression`
+   * (50/50) hielt. Der erste A/B-Lauf der Probe hatte das Gegenteil
+   * „bewiesen“, weil `requestKey` den Modus nicht kannte (Cache-Treffer der
+   * Float-Variante); der Modus gehört deshalb seit Stufe 3 in den
+   * Cache-Schlüssel, und die Probe leert den Cache zwischen den Läufen.
+   * Aktivierung erst mit begründetem Recapture-Ledger (bessere Zahl als
+   * 5710 px, sonst Längen-Ratchet-Verbot).
+   */
+  integerMilliPxCosts: 0 as number,
+});
+
 export type SegmentCostBreakdown = {
   /** Summierte Zusatzkosten (ohne Weglänge); Infinity bei Overlap. */
   cost: number;

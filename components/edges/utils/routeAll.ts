@@ -60,7 +60,39 @@ import {
   type Segment,
 } from '../../../lib/routing/geometry';
 import { LEGACY_ROUTING_TOKENS, ROUTING_TOKENS } from '../../../lib/routing/tokens';
+import { ROUTING_GATES } from '../../../lib/routing/rules/costModel';
+import { greedyConflictOrder, type ConflictCandidate } from '../../../lib/routing/rules/conflictGraph';
 import { compareIds } from '../../../lib/sortOrder';
+
+// ── Stufe 3 (Mission Konfliktgraph-Batching): token-gated Arbeitsreihenfolge ──
+//
+// Gate `ROUTING_GATES.conflictGraphBatching` (Standard 0): Bei 0 wird exakt
+// die bisherige `compareIds`-Reihenfolge gefahren — der Golden Master ist
+// byte-stabil, solange das Gate aus steht. Bei 1 ordnet
+// `greedyConflictOrder` (Konfliktkomponenten, Längenrang absteigend innerhalb
+// der Gruppe) die Schleifen-Reihenfolge; gemessene A/B-Zahlen über
+// `npm run routing:conflict-probe`. Aktivierung erst mit begründetem
+// Recapture-Ledger.
+let conflictGraphBatchingOverride: boolean | ConflictOrderFn | null = null;
+
+/**
+ * Reihenfolge je Arbeitsgang: `true` = Spec-Regel (`greedyConflictOrder`,
+ * Längenrang absteigend), eine Funktion = Probe-Override für A/B-Varianten
+ * (Hausmuster `setEdtProximityFactorForTest`), `null` = Token-Wert (0).
+ */
+export type ConflictOrderFn = (candidates: readonly ConflictCandidate[]) => string[];
+
+export const setConflictGraphBatchingForTest = (on: boolean | ConflictOrderFn | null): void => {
+  conflictGraphBatchingOverride = on;
+};
+
+const conflictGraphOrderFn = (): ConflictOrderFn | null => {
+  const override = conflictGraphBatchingOverride;
+  if (override === false) return null;
+  if (override === true) return greedyConflictOrder;
+  if (typeof override === 'function') return override;
+  return ROUTING_GATES.conflictGraphBatching === 1 ? greedyConflictOrder : null;
+};
 
 export type RouteEdgeRef = {
   id: string;
@@ -648,6 +680,23 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
   const resolveHandle = makeHandleResolver(nodes);
   const portLanes = portFanOutLanes(edges, resolveHandle);
 
+  // Stufe 3 (Mission): Arbeitsreihenfolge — Gate 0 = exakt `edges`
+  // (compareIds, wie bisher), Gate 1 = Konfliktgraph-Batching über die
+  // aufgelösten Ports (dieselbe Geometrie-Quelle wie die Suche selbst).
+  const orderFn: ConflictOrderFn | null = conflictGraphOrderFn();
+  const workOrder: readonly RouteEdgeRef[] =
+    orderFn !== null
+      ? (() => {
+          const candidates: ConflictCandidate[] = edges.map((edge) => {
+            const src = resolveHandle(edge, 'source');
+            const tgt = resolveHandle(edge, 'target');
+            return { id: edge.id, source: edge.source, target: edge.target, from: src, to: tgt };
+          });
+          const byId = new Map(edges.map((edge) => [edge.id, edge]));
+          return orderFn(candidates).map((id) => byId.get(id)!);
+        })()
+      : edges;
+
   const raw: { id: string; waypoints: Point[]; result: PathResult }[] = [];
   const dynamicRoutedSegments: Segment[] = [];
   // ROUTE-BUG-16: wächst mit jeder verlegten Kante (siehe `addTubes`).
@@ -660,8 +709,8 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
   // (complex 28 → 41), dazu 2 × I6 und 3 × I7 mehr. Die langen Kanten auf
   // Lane 0 legen sich quer durch die Mitte und zwingen damit jede kurze
   // Kante zum Kreuzen. Die Store-Reihenfolge bleibt.
-  for (let i = 0; i < edges.length; i++) {
-    const edge = edges[i];
+  for (let i = 0; i < workOrder.length; i++) {
+    const edge = workOrder[i];
     if (!edge) continue;
     const src = resolveHandle(edge, 'source');
     const tgt = resolveHandle(edge, 'target');

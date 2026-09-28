@@ -4,6 +4,7 @@ import {
   COST_FACTORS,
   COST_WEIGHTS,
   preferredLaneBonus,
+  ROUTING_GATES,
   segmentExtraCost,
 } from './costModel';
 import { classifyCollision } from './collision';
@@ -50,6 +51,25 @@ describe('Kostenmatrix (generiert, nicht gepflegt)', () => {
     expect(COST_WEIGHTS.edtNearObstacle).toBe(
       COST_FACTORS.edtNearObstaclePerLaneGrid * ROUTING_TOKENS.laneGrid
     );
+  });
+
+  it('Stufe 3: Pass-Gates eingefroren bei 0 — beide gemessen, keiner ausgeliefert', () => {
+    // Mission Stufe 3: Beide Pässe sind gebaut; der Guard zwingt jede
+    // Wertänderung über diesen Test (bewusste Änderung, kein stilles Flippen).
+    //
+    // - `conflictGraphBatching`: gemessen NETTO SCHLECHTER (Probe
+    //   2026-09-28, Cache-leer: Kreuzungen 52 → 63, Länge +1657 px über
+    //   21 Pläne — reproduziert den verworfenen Versuch vom 2026-09-09;
+    //   asc-Variante: L −154 px, aber Kreuzungen +6). Bleibt 0, bis eine
+    //   Variante Längen- UND Kreuzungs-Ratchet hält.
+    // - `integerMilliPxCosts`: kalter Golden Master mit 1 bricht `acdc`
+    //   (669 → 698,4 px), Längen-Ratchet (≤ 5710) und domainProbe-Summe;
+    //   `test:regression` hielt 50/50. Trotz uint-Vorteil: 0 bis ein
+    //   begründeter Recapture-Win vorliegt (Ledger).
+    expect(ROUTING_GATES.conflictGraphBatching).toBe(0);
+    expect(ROUTING_GATES.integerMilliPxCosts).toBe(0);
+    expect(Object.keys(ROUTING_GATES).sort()).toEqual(['conflictGraphBatching', 'integerMilliPxCosts']);
+    expect(Object.isFrozen(ROUTING_GATES)).toBe(true);
   });
 
   it('Spec-Ordnung: overlap > clearance > crossing > nearby > free; Bonus negativ', () => {
