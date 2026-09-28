@@ -385,9 +385,11 @@ describe('Platzierung ohne Überlappung (ADR 0017)', () => {
  */
 describe('Freigabe an gegenüberliegenden Ports (ROUTE-BUG-32)', () => {
   it('Spalten- und Zeilenkorridor sind mindestens stubMin + cableClearance', () => {
-    // Stub + EIN Lane-Schritt des Bündels + Freigabe (ROUTE-BUG-32).
+    // Stub + ZWEI Lane-Schritte des Bündels + Freigabe (ROUTE-BUG-32,
+    // ADR 0027: erst mit zwei Schritten ist ein Zwei-Leitungs-Bündel ohne
+    // Stub-Kappung ausdrückbar — ROUTE-002 Teil 2b).
     expect(PORT_FACING_CLEARANCE).toBe(
-      ROUTING_TOKENS.stubMin + ROUTING_TOKENS.laneGrid + ROUTING_TOKENS.cableClearance
+      ROUTING_TOKENS.stubMin + 2 * ROUTING_TOKENS.laneGrid + ROUTING_TOKENS.cableClearance
     );
     expect(FLOW_COLUMN_SPACING - NODE_BOX_WIDTH).toBeGreaterThanOrEqual(PORT_FACING_CLEARANCE);
     expect(FLOW_ROW_SPACING - NODE_BOX_HEIGHT).toBeGreaterThanOrEqual(PORT_FACING_CLEARANCE);

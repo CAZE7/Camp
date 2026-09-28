@@ -23,13 +23,25 @@ export type RoutingTokens = {
   readonly elkEdgeNodeSpacing: number;
   /**
    * Mindestabstand zweier Karten, deren Anschlüsse einander zugewandt sind
-   * (ROUTE-BUG-32 = `stubMin + laneGrid + cableClearance`). Das ist die
-   * Fläche, die der Router zwischen zwei Anschlüssen braucht: Stub, genau
-   * ein Lane-Schritt für den Fan-Out, plus Clearance. ELK muss sie beim
+   * (ROUTE-BUG-32 = `stubMin + 2·laneGrid + cableClearance`). Das ist die
+   * Fläche, die der Router zwischen zwei Anschlüssen braucht: Stub, ZWEI
+   * Lane-Schritte für den Fan-Out, plus Clearance. ELK muss sie beim
    * Platzieren einhalten (`elk.spacing.nodeNode`) — mit seinem Default
    * (~10 px) liefert „Plan ordnen" Karten, zwischen denen keine Leitung
    * kollisionsfrei passt (I1 = 3, I2 = 21, I3 = 17 über die Referenzpläne;
-   * mit dem Token I1 = 0, I2 = 9, I3 = 1 — ADR 0023).
+   * mit einem Lane-Schritt I1 = 0, I2 = 9, I3 = 1 — ADR 0023).
+   *
+   * **Ein Lane-Schritt (52 px) reichte nicht** (ROUTE-002 Teil 2b, ADR 0027):
+   * Steht die Freigabe bei `stubMin + laneGrid`, greift bei zwei Leitungen an
+   * einem Handle durchgehend die Stub-Kappung (`capStep`, ROUTE-BUG-31/34) —
+   * die Lanes der Bündel sind dann nicht mehr ausdrückbar und laufen
+   * kollinear übereinander (gemessen im ELK-Pfad: I2 = 5, alle port-nah).
+   * Mit zwei Schritten (68 px) ist der ELK-Pfad bei I2 = 0 und 15
+   * Kreuzungspaare weniger. Der Preis: die Karten liegen weiter auseinander,
+   * die Kabel im ELK-Pfad werden rund 11 % länger (2 838 px über die sechs
+   * Referenzpläne). Der Fest-Raster-Pfad (AutoWire) ändert sich NICHT — seine
+   * Korridore (96/72 px) erfüllen beide Werte, und die Plan-Fixtures tragen
+   * absolute Koordinaten; Goldens, Regression und Ratchets bleiben identisch.
    */
   readonly portFacingClearance: number;
   /** Mindestlänge vor erstem Bend; Mindestlänge der Stubs (px). */
@@ -56,7 +68,7 @@ export type RoutingTokens = {
 export const ROUTING_TOKENS: RoutingTokens = Object.freeze({
   cableClearance: 12,
   elkEdgeNodeSpacing: 16,
-  portFacingClearance: 52,
+  portFacingClearance: 68,
   stubMin: 24,
   laneGrid: 16,
   segmentMin: 16,

@@ -41,7 +41,7 @@ describe('Routing-Tokens (Single Source of Truth)', () => {
     expect(ROUTING_TOKENS).toEqual({
       cableClearance: 12,
       elkEdgeNodeSpacing: 16,
-      portFacingClearance: 52,
+      portFacingClearance: 68,
       stubMin: 24,
       laneGrid: 16,
       segmentMin: 16,
@@ -62,10 +62,12 @@ describe('Routing-Tokens (Single Source of Truth)', () => {
     expect(ROUTING_TOKENS.crossDomainSpacing).toBeGreaterThanOrEqual(ROUTING_TOKENS.cableClearance);
     // Übergangswert deckt das Clearance-Ziel (R-10) mit Reserve.
     expect(LEGACY_ROUTING_TOKENS.obstacleMargin).toBeGreaterThanOrEqual(ROUTING_TOKENS.cableClearance);
-    // ROUTE-BUG-32: Die Port-Freigabe ist die Summe ihrer Bestandteile, nicht
-    // eine zweite Zahl — Stub + genau ein Lane-Schritt + Clearance.
+    // ROUTE-BUG-32 / ADR 0027: Die Port-Freigabe ist die Summe ihrer
+    // Bestandteile, nicht eine zweite Zahl — Stub + zwei Lane-Schritte +
+    // Clearance (zwei, weil erst dann beide Lanes eines Zwei-Leitungs-Bündels
+    // ohne Stub-Kappung ausdrückbar sind; ROUTE-002 Teil 2b).
     expect(ROUTING_TOKENS.portFacingClearance).toBe(
-      ROUTING_TOKENS.stubMin + ROUTING_TOKENS.laneGrid + ROUTING_TOKENS.cableClearance
+      ROUTING_TOKENS.stubMin + 2 * ROUTING_TOKENS.laneGrid + ROUTING_TOKENS.cableClearance
     );
   });
 });
@@ -96,8 +98,8 @@ describe('ELK-Config-Sync (generiert, nicht gepflegt)', () => {
       'elk.edgeRouting': 'ORTHOGONAL',
       'elk.spacing.edgeEdge': '12',
       'elk.spacing.edgeNode': '16',
-      'elk.spacing.nodeNode': '52',
-      'elk.layered.spacing.nodeNodeBetweenLayers': '52',
+      'elk.spacing.nodeNode': '68',
+      'elk.layered.spacing.nodeNodeBetweenLayers': '68',
       'elk.layered.mergeEdges': 'false',
       'elk.portConstraints': 'FIXED_ORDER',
       'elk.junctionPoints': 'true',

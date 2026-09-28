@@ -47,13 +47,18 @@ export const NODE_BOX_HEIGHT = 120;
  * Der Router fängt den Fall inzwischen ab (ROUTE-BUG-31 kappt den Stub),
  * aber die Platzierung soll ihn gar nicht erst erzeugen.
  *
- * Ein Lane-Raster kommt dazu, weil an einer Klemme meist mehr als eine
- * Leitung hängt: Das Bündel staffelt um `laneGrid` (R-7), die zweite
- * Leitung braucht also `stubMin + laneGrid` Stub plus Freigabe. Größer als
- * EIN Schritt ist die Forderung bewusst nicht — die Bündelgröße ist offen,
- * und ab der dritten Lane degradiert der Router kontrolliert
- * (Rang-Treppe in der Kappung, ROUTE-BUG-34) statt dass die Platzierung
- * Bauteile beliebig auseinanderschiebt.
+ * Zwei Lane-Raster kommen dazu, weil an einer Klemme meist mehr als eine
+ * Leitung hängt: Das Bündel staffelt um `laneGrid` (R-7), zwei Leitungen
+ * brauchen also `stubMin + 2·laneGrid` Stub plus Freigabe. Gemessen
+ * (ROUTE-002 Teil 2b, ADR 0027): Mit nur EINEM Schritt (52 px) greift bei
+ * jedem Zwei-Leitungs-Bündel die Stub-Kappung (`capStep`, ROUTE-BUG-31/34),
+ * die Lanes sind dann nicht mehr ausdrückbar und laufen kollinear
+ * übereinander — der ELK-Pfad hatte I2 = 5; mit zwei Schritten (68 px) ist er
+ * bei I2 = 0 (Preis: rund 11 % längere Kabel im ELK-Pfad, keine Änderung am
+ * Fest-Raster-Pfad). Größer als zwei Schritte ist die Forderung bewusst
+ * nicht — die Bündelgröße ist offen, und ab der dritten Lane degradiert der
+ * Router kontrolliert (Rang-Treppe in der Kappung, ROUTE-BUG-34) statt dass
+ * die Platzierung Bauteile beliebig auseinanderschiebt.
  */
 export const PORT_FACING_CLEARANCE = ROUTING_TOKENS.portFacingClearance;
 

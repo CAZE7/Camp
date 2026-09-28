@@ -169,7 +169,7 @@ Raster`, Lane-Reservierung, zweite begrenzte Runde, Stub-Achsen-Sicherheit). Gem
   `lib/routing/rules/portBundle.ts` und wird von I2 (`invariants.ts`), vom Modell und vom
   Audit benutzt (ADR 0025). Test: `scripts/routing/portBundleModel.test.ts`,
   `lib/routing/rules/portBundle.test.ts`, `costModel.test.ts`.
-- **STATUS (2026-09-27, Teil 2b gemessen — kein Auslieferungsstand):** Die Anbindung von
+- **STATUS (2026-09-28, Teil 2b abgeschlossen — ADR 0027):** Die Anbindung von
   `segmentExtraCost`/`preferredLaneBonus` an den Produktivpfad wurde in vier Varianten gebaut
   und auf **beiden** Pfaden gemessen (ELK-Pfad: `routeAllCables` über `applyAdvancedLayout` der
   sechs Referenzpläne; Produktivpfad: `npm run routing:audit` auf den eingefrorenen Goldens).
@@ -193,20 +193,22 @@ Raster`, Lane-Reservierung, zweite begrenzte Runde, Stub-Achsen-Sicherheit). Gem
      Zuführung): ELK **I2 5 → 4** (nur das inverter-Paar ist überhaupt lösbar); Produktivpfad
      `complex` bekommt **I2 = 1 (vorher 0)** und **+5 Kreuzungen**.
 
-  **Ursache (gemessen, Tabelle in ROUTE-006):** Vier der fünf ELK-Paare sind an **beiden Enden
-  gekappt** (`actual < stubMin + |lane|`, Caps ≤ 52 px), das fünfte (inverter
-  `e-auto-4 ↔ e-auto-8`, Stubs 40/40) wäre über die Lane lösbar — kostet aber den Golden-Stand
-  des dichtesten Plans. Die Kappung ist die dokumentierte Rangfolge (ROUTE-BUG-31/34/35:
-  „lieber I2 als erfundene Geometrie"), und die Platzierungs-Freigabe 52 px =
-  `stubMin + 1·laneGrid + cableClearance` ist laut ADR 0023 (Punkt 4) bewusst genau **ein**
-  Lane-Schritt. Gegenprobe (nur Messung, Token danach unverändert): mit
-  `portFacingClearance = 68` (= `stubMin + 2·laneGrid + cableClearance`) fällt der ELK-Pfad auf
-  **I2 = 0**, kein Stub greift mehr auf die Kappung. **Wertung:** Der Hebel ist die Platzierung
-  (ADR 0023), nicht die Lane-Vergabe; die Token-Änderung ist eine Layout-Entscheidung — sie
-  rückt in BEIDEN Platzierungspfaden jede Karte weiter auseinander (längere Kabel, neue
-  Goldens) und liegt damit beim Nutzer. `preferredLaneBonus` bleibt ohne Produktiv-Konsumenten:
-  ohne ausdrückbare Lane hätte der Bonus im Kappungs-Regime keine Wirkung. Kein Recapture in
-  dieser Scheibe.
+  **Ursache (gemessen):** Vier der fünf ELK-Paare sind an **beiden Enden gekappt**
+  (`actual < stubMin + |lane|`; gemessene Stubs 24–28 px gegen gewünschte 40–56 px), in diesem
+  Regime hat keine Lane-Treppe Platz — die Vergabe kann sie nicht trennen. Die Kappung ist die
+  dokumentierte Rangfolge (ROUTE-BUG-31/34/35: „lieber I2 als erfundene Geometrie“), und die
+  Platzierungs-Freigabe war `stubMin + 1·laneGrid + cableClearance` = 52 px — laut ADR 0023
+  bewusst **ein** Lane-Schritt.
+
+  **Entschieden (ADR 0027):** `portFacingClearance = 68` = `stubMin + 2·laneGrid +
+cableClearance` — an einer Klemme hängen im Referenzbestand regelmäßig zwei Leitungen, und erst
+  mit zwei Lane-Schritten ist jede der beiden Lanes ohne Stub-Kappung ausdrückbar. Gemessen im
+  ELK-Pfad: **I2 5 → 0**, I6/I7 (complex) 2/1 → **0/0**, Kreuzungs-Paare 122 → **107**; Preis:
+  Kabelweg 25 129 → 27 967 px (**+11,3 %**). Der Fest-Raster-Pfad bleibt **unverändert**
+  (Korridore 96/72 px, absolute Fixture-Koordinaten) — Goldens, Regression, Ratchets und
+  Sampling identisch, **kein Recapture**. `preferredLaneBonus` bleibt weiterhin ohne
+  Produktiv-Konsumenten: mit 68 px ist der Boden dafür erstmals frei (die Bündel-Lanes sind
+  ausdrückbar), die Anbindung ist eine eigene Scheibe.
 
 ---
 
@@ -321,12 +323,13 @@ routeAllCables → checkInvariants`, sechs Referenzpläne, Kartenmaß 192 × 120
      Läufe sitzen an den Stubs, und ein seitlicher Zug verletzt `stubMin` (alle vier
      gemessen: beide Anschluss-Stubs liegen bei 24–28 px, `stubMin` = 24). Das ist die
      **Port-Bündel-/Fan-Out-Ebene** (`portFanOutLanes`, ROUTE-002 Teil 2b) — dort ist die
-     Lane eine Vergabe-, keine Ausweichfrage. **Nachgemessen 2026-09-27** (ROUTE-002, „Teil
-     2b"): vier der fünf Paare sind an **beiden** Enden gekappt (`actual < stubMin + |lane|`;
-     gemessene Stubs 24–28 px gegen gewünschte 40–56 px), in diesem Regime hat keine
-     Lane-Treppe Platz — die Vergabe kann sie nicht trennen. Gegenprobe: mit
-     `portFacingClearance = 68` (zwei Lane-Schritte statt einem) ist der ELK-Pfad bei
-     **I2 = 0**.
+     Lane eine Vergabe-, keine Ausweichfrage. **Nachgemessen und geschlossen 2026-09-28**
+     (ROUTE-002 Teil 2b, ADR 0027): vier der fünf Paare waren an **beiden** Enden gekappt
+     (`actual < stubMin + |lane|`; Stubs 24–28 px gegen gewünschte 40–56 px), dort hat keine
+     Lane-Treppe Platz — die Vergabe kann sie nicht trennen. Deshalb wurde die
+     Platzierungs-Freigabe auf **zwei** Lane-Schritte gehoben
+     (`portFacingClearance = 68`): der ELK-Pfad ist damit bei **I2 = 0**, die Tabelle oben
+     beschreibt den Stand davor.
      Der fünfte Fall (`e-fuse-heat ↔ e-auto-3`, 8 px, kein geteilter Port) wäre über die
      Lane-Leiter lösbar, kostet aber **zwei zusätzliche Kreuzungen** (gemessen: 9 statt 8
      Kreuzungs-/Überdeckungskontakte) — die Akzeptanz verwirft ihn deshalb, denn die

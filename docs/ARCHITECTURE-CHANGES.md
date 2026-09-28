@@ -1732,3 +1732,65 @@ auf den gemessenen Werten.
 
 Gate: `npm run check` — **175 Testdateien / 2.4xx Tests**, eslint, prettier,
 typecheck, typecheck:tests, Coverage grün; Pre-Push inkl. E2E grün.
+
+### 2026-09-28 — Einundzwanzigste Fassung: Port-Freigabe auf zwei Lane-Schritte (ROUTE-002 Teil 2b, ADR 0027)
+
+Diese Fassung schließt ROUTE-002 Teil 2b ab — mit einem Befund, der die
+Vermutung des Backlogs widerlegt: **Der Hebel ist nicht die Lane-Vergabe am
+Port, sondern die Platzierungs-Freigabe.** Vier Varianten einer Vergabe wurden
+gebaut und gemessen (Stub-Achsen-Gate, `segmentExtraCost`-Schiedsrichter im
+Suchloop, zwei Enden-Staffelungen); keine verbesserte den ELK-Pfad ohne Schaden
+im Produktivpfad. Die Zahlen stehen vollständig in `KNOWN-PROBLEMS.md` unter
+ROUTE-002.
+
+**1. Die Ursache liegt in der Kappung, nicht in der Vergabe.** Die fünf I2-Paare
+des ELK-Pfads sind vier Fan-Out/Fan-In-Fälle an einem geteilten Handle plus ein
+Nachbarfall. Vier davon sind an **beiden** Enden gekappt: Der Korridor ist 52 px
+breit, die Freigabe frisst 12 px, für den Stub bleiben 40 — und `capStep`
+(ROUTE-BUG-31/34/35) kappt bei zwei Leitungen an einer Klemme auf `stubMin`
+(24 px), weil die Rang-Treppe nur im Band `cap − stubMin` Platz hat. In diesem
+Regime ist die vergebene Lane **nicht ausdrückbar**; jede Vergabe-Variante
+verschiebt nur, wem die Überdeckung passiert.
+
+**2. Die Freigabe wächst um einen Lane-Schritt: 52 → 68 px.**
+`ROUTING_TOKENS.portFacingClearance = stubMin + 2·laneGrid + cableClearance`.
+Begründung: An einer Klemme hängen im Referenzbestand regelmäßig **zwei**
+Leitungen; erst mit zwei Schritten ist jede der beiden Lanes ohne Kappung
+darstellbar. Die Konsistenz-Pins in `tokens.test.ts` und `placement.test.ts`
+tragen die Summe jetzt mit zwei Schritten (ADR 0027 ersetzt die „genau ein
+Schritt"-Festlegung aus ADR 0023 Punkt 4).
+
+**3. Gemessen (ELK-Pfad, sechs Referenzpläne, `applyAdvancedLayout` →
+`routeAllCables`):**
+
+| Metrik            | 52 px         | 68 px         |
+| ----------------- | ------------- | ------------- |
+| I1 / I2 / I3      | 0 / **5** / 3 | 0 / **0** / 3 |
+| I6 / I7 (complex) | 2 / 1         | **0 / 0**     |
+| Kreuzungs-Paare   | 122           | **107**       |
+| Kabelweg Σ        | 25 129 px     | 27 967 px     |
+| längste Kante     | 1 360 px      | 1 597 px      |
+
+Die Überdeckungs-**Länge** steigt (1 039 → 1 155 px), obwohl I2 = 0: Die
+verbleibenden kollinearen Abschnitte sind die erlaubten Port-Bündel-Stubs
+(ADR 0025), und die werden mit größerem Kartenabstand länger. I2 zählt genau die
+Verstöße außerhalb der Stubs.
+
+**4. Kein eingefrorener Referenzstand ändert sich.** Der Fest-Raster-Pfad
+(AutoWire) liest den Token nicht: Seine Korridore (96/72 px) erfüllen beide
+Werte, und die Plan-Fixtures tragen absolute Koordinaten. `npm run
+routing:audit` liefert mit 52 und 68 **dieselbe Tabelle** (Kreuzungen
+2/5/2/2/6/27, Kabelweg 2.697/3.709/3.200/3.881/5.710/8.602 px), Golden Master
+und Regression bleiben unverändert — **kein Recapture**. Geändert werden nur der
+Token, seine Dokumentation (ADR 0027, KNOWN-PROBLEMS, README-ADR-Tabelle) und
+die zwei Pin-Tests der Summe.
+
+**5. Der Preis steht im Dokument.** Im ELK-Pfad liegen die Karten weiter
+auseinander, die Kabel wachsen um 2 838 px (+11,3 %). Die Abwägung wurde mit
+genau diesen Zahlen entschieden (I2 = 0 und −15 Kreuzungspaare gegen längere
+Kabel) — wer kurze Kabel höher gewichtet, kann den Token auf 52 zurückdrehen;
+der Test fordert dann wieder einen Schritt.
+
+**Offen (unverändert):** `preferredLaneBonus` ohne Produktiv-Konsumenten — mit
+68 px ist der Boden dafür erstmals frei, weil die Bündel-Lanes ausdrückbar sind.
+Die Anbindung bleibt eine eigene Scheibe (ROUTE-002/ROUTE-001).
