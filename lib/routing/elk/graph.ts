@@ -1,4 +1,9 @@
-import { generateElkInteractiveOptions, generateElkLayoutOptions, type RoutingTokens } from '../tokens';
+import {
+  generateElkInteractiveOptions,
+  generateElkLayoutOptions,
+  generateElkRankedOptions,
+  type RoutingTokens,
+} from '../tokens';
 import type { Point } from '../geometry';
 
 /**
@@ -14,6 +19,12 @@ import type { Point } from '../geometry';
 
 /** Anschluss (Handle) eines Knotens — Reihenfolge ist Teil des Vertrags. */
 export type ElkPlanPort = {
+  /**
+   * Graphweit eindeutige ID. elkjs löst Kanten-Endpunkte über einen globalen
+   * Namensraum auf: Zwei Knoten mit derselben Port-ID führen dazu, dass die
+   * Kante am falschen Knoten andockt (verifiziert). Die Planner-Seite bildet
+   * sie deshalb als `<node>::<role>:<handle>` (layout-engine/ports.ts).
+   */
   id: string;
   /** Seite der Node-Karte. */
   side: 'NORTH' | 'SOUTH' | 'EAST' | 'WEST';
@@ -37,6 +48,7 @@ export type ElkPlanEdge = {
   id: string;
   source: string;
   target: string;
+  /** Muss EXAKT der `id` eines Ports des Quell-/Zielknotens entsprechen. */
   sourcePort?: string;
   targetPort?: string;
   /** Sichtbarer Label-Text (ELK reserviert Platz, zentriert). */
@@ -48,6 +60,13 @@ export type ElkPlan = {
   edges: ElkPlanEdge[];
   /** Nutzerplatzierungen respektieren (Spec §6.2)? */
   interactive?: boolean;
+  /**
+   * Rollen-Schichten als Nebenbedingung (ADR 0024): Die x-Positionen der
+   * Knoten sind der Rang-Seed (`Rang × LAYOUT_TOKENS.rankSpacing`), ELK hält
+   * die fachliche Reihenfolge Quelle → … → Verbraucher ein.
+   * Hat Vorrang vor `interactive`, wenn beides gesetzt ist.
+   */
+  ranked?: boolean;
   /** Layout-Richtung; ohne Angabe bleibt ELKs Vorgabe bestehen. */
   direction?: 'LR' | 'TB';
 };
@@ -88,9 +107,11 @@ const LABEL_HEIGHT = 20;
 
 /** Baut den elkjs-Eingabegraphen; Optionen ausschließlich aus den Tokens. */
 export function buildElkGraph(plan: ElkPlan, tokens?: RoutingTokens): ElkGraph {
-  const layoutOptions = plan.interactive
-    ? generateElkInteractiveOptions(tokens, plan.direction)
-    : generateElkLayoutOptions(tokens, plan.direction);
+  const layoutOptions = plan.ranked
+    ? generateElkRankedOptions(tokens, plan.direction)
+    : plan.interactive
+      ? generateElkInteractiveOptions(tokens, plan.direction)
+      : generateElkLayoutOptions(tokens, plan.direction);
   return {
     id: 'root',
     layoutOptions,

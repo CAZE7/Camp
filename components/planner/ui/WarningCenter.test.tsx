@@ -1,7 +1,7 @@
 import React from 'react';
 import { describe, expect, it } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import { WarningCenter } from './WarningCenter';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { WarningCenter, consequence, nextStep, valueWithUnit } from './WarningCenter';
 import type { ValidationWarning } from '../hooks/useLiveValidation';
 
 /**
@@ -29,6 +29,12 @@ const warning = (over: Partial<ValidationWarning> = {}): ValidationWarning => ({
   ...over,
 });
 
+/** Panel öffnen — die Wert-/Lösungszeilen existieren nur im aufgeklappten Zustand. */
+function openPanel(warnings: ValidationWarning[]) {
+  render(<WarningCenter warnings={warnings} />);
+  fireEvent.click(screen.getByRole('button', { name: /Prüfhinweise anzeigen/ }));
+}
+
 describe('WarningCenter — Barrierefreiheit (AUDIT A5/A6)', () => {
   it('A6: die Live-Region existiert AUCH im Zustand „keine Hinweise“', () => {
     render(<WarningCenter warnings={[]} />);
@@ -51,17 +57,162 @@ describe('WarningCenter — Barrierefreiheit (AUDIT A5/A6)', () => {
     expect(screen.getByRole('status')).toHaveTextContent('2 Prüfhinweise im Plan, davon 1 kritisch.');
   });
 
-  it('A5: „Kritisch“ steht als Wort im Abzeichen, nicht nur als Rotton', () => {
+  it('A5: die Schwere steht als Wort im Abzeichen, nicht nur als Rotton', () => {
     render(<WarningCenter warnings={[warning()]} />);
 
-    expect(screen.getByRole('button', { name: /1 Prüfhinweise anzeigen/ })).toHaveTextContent('Kritisch');
+    expect(screen.getByRole('button', { name: /1 Prüfhinweise anzeigen/ })).toHaveTextContent('1 kritisch');
   });
 
   it('A5: bei bloßen Hinweisen steht die Schwere ebenfalls als Wort da', () => {
     render(<WarningCenter warnings={[warning({ type: 'info', category: 'estimation' })]} />);
 
     const badge = screen.getByRole('button', { name: /1 Prüfhinweise anzeigen/ });
-    expect(badge).toHaveTextContent('Hinweis');
-    expect(badge).not.toHaveTextContent('Kritisch');
+    expect(badge).toHaveTextContent('1 Hinweis');
+    expect(badge).not.toHaveTextContent('kritisch');
+  });
+
+  it('die Zahl im Abzeichen ist die Zahl der KRITISCHEN Hinweise, nicht die Gesamtzahl', () => {
+    // Vorher stand hier `warnings.length` mit dem Wort der schwersten Stufe:
+    // 3 Hinweise (2 kritisch) lasen sich als „3 Kritisch“, während die
+    // Leiste darunter „2 kritische Probleme offen“ meldete.
+    render(
+      <WarningCenter
+        warnings={[
+          warning(),
+          warning({ id: 'w2' }),
+          warning({ id: 'w3', type: 'info', category: 'estimation' }),
+        ]}
+      />
+    );
+
+    const badge = screen.getByRole('button', { name: /3 Prüfhinweise anzeigen/ });
+    // Genau diese Zeile war vorher „3 Kritisch“ — die Gesamtzahl mit dem
+    // Wort der schwersten Stufe.
+    expect(badge).toHaveTextContent(/^2 von 3 kritisch$/);
+  });
+
+  it('Warnstufe ohne kritische Hinweise nennt sich „Warnung“, nicht „Hinweis“', () => {
+    render(
+      <WarningCenter
+        warnings={[
+          warning({ type: 'warning', category: 'estimation' }),
+          warning({ id: 'w2', type: 'warning' }),
+        ]}
+      />
+    );
+
+    expect(screen.getByRole('button', { name: /2 Prüfhinweise anzeigen/ })).toHaveTextContent('2 Warnungen');
+  });
+});
+
+describe('WarningCenter — Wert/Einheit und Lösungshinweis (AUDIT UX-001)', () => {
+  it('hängt die Einheit NICHT doppelt an, wenn der Wert sie schon trägt', () => {
+    // „Ist: 306 A A“ aus dem Prüfbericht: der Melder schreibt die Einheit in
+    // `measuredValue`, `unit` wiederholte sie.
+    openPanel([
+      warning({
+        measuredValue: '306 A',
+        expectedValue: '≤ 120 A',
+        unit: 'A',
+      }),
+    ]);
+
+    expect(screen.getByText(/Ist:/)).toHaveTextContent('Ist: 306 A · Soll: ≤ 120 A');
+    expect(screen.getByText(/Ist:/).textContent).not.toContain('306 A A');
+  });
+
+  it('ergänzt die Einheit bei einem nackten Zahlenwert weiterhin', () => {
+    openPanel([warning({ measuredValue: '306', unit: 'A' })]);
+
+    expect(screen.getByText(/Ist:/)).toHaveTextContent('Ist: 306 A');
+  });
+
+  it('hängt die Einheit nicht an beschreibende Texte („maxPvVoltage fehlt V“)', () => {
+    openPanel([warning({ measuredValue: 'maxPvVoltage fehlt', unit: 'V' })]);
+
+    const line = screen.getByText(/Ist:/);
+    expect(line).toHaveTextContent('Ist: maxPvVoltage fehlt');
+    expect(line.textContent).not.toContain('fehlt V');
+  });
+});
+
+describe('nextStep — der Lösungshinweis muss zum Befund passen', () => {
+  it('UNBEKANNTES MPPT-Fenster → Eingabe anfordern (nicht: Panels reduzieren)', () => {
+    // Vorher traf `startsWith('solar-voc-window')` beide Fälle: Die Warnung
+    // „maximale PV-Eingangsspannung nicht eingetragen“ bekam die Anleitung
+    // „weniger Panels in Serie“ — ein Ratschlag zum falschen Problem.
+    const unknown = nextStep(warning({ id: 'solar-voc-window-unknown-mppt-1' }));
+    expect(unknown).toContain('maximale PV-Eingangsspannung');
+    expect(unknown).not.toContain('Anzahl der Panels');
+
+    const exceeded = nextStep(warning({ id: 'solar-voc-window-mppt-1' }));
+    expect(exceeded).toContain('Anzahl der Panels');
+  });
+
+  it('thermische Überlast → nennt keine Normstufe über 70 mm²', () => {
+    const text = nextStep(warning({ id: 'thermal-overload-e-1' }));
+
+    expect(text).not.toContain('über 70 mm² wählen');
+    expect(text).toContain('oberhalb von 70 mm² kennt der Planer keinen Normquerschnitt');
+    expect(text).toContain('parallel');
+  });
+
+  it('nicht absicherbare Leitung, Querschnitt und Spannungsfall haben eigene Hinweise', () => {
+    expect(nextStep(warning({ id: 'fuse-not-possible-e-1' }))).toContain('Last aufteilen');
+    expect(nextStep(warning({ id: 'cross-section-undersized-e-1' }))).toContain('Querschnitt');
+    expect(nextStep(warning({ id: 'drop-not-solvable-e-1' }))).toContain('24/48 V');
+  });
+
+  it('AC-Schutzorgan ohne Datenblatt → Datenblattwerte eintragen', () => {
+    for (const id of ['ac-descriptor-assumed', 'ac-protection-not-modeled']) {
+      expect(nextStep(warning({ id }))).toContain('Leitungs-Inspektor');
+    }
+  });
+});
+
+describe('valueWithUnit', () => {
+  it('liefert den Platzhalter für einen fehlenden Wert', () => {
+    expect(valueWithUnit(undefined, 'A')).toBe('—');
+  });
+
+  it('ergänzt nur nackte Zahlen (auch mit ≈/≤)', () => {
+    expect(valueWithUnit('12', 'A')).toBe('12 A');
+    expect(valueWithUnit('≈ 12', 'A')).toBe('≈ 12 A');
+    expect(valueWithUnit('12 A', 'A')).toBe('12 A');
+    expect(valueWithUnit('Voc fehlt', 'V')).toBe('Voc fehlt');
+    expect(valueWithUnit('2 × ohne Angabe', 'V')).toBe('2 × ohne Angabe');
+  });
+});
+
+describe('consequence — Folge-Zeile passt zum Befund', () => {
+  const gaps = [
+    'mixed-voltage-unknown',
+    'solar-voc-window-unknown-charger-1',
+    'solar-voc-missing-solar-1',
+    'solar-voc-uncomputable-solar-1',
+    'ac-descriptor-assumed',
+    'ac-protection-not-modeled',
+    'ac-breaking-capacity-reach',
+    'ac-missing-input-missing-length',
+    'sc-bank-unknown',
+    'sc-fuse-type-unknown',
+  ];
+
+  it('Datenlücken melden „ungeprüft“ statt einer falschen Schätzfolge', () => {
+    for (const id of gaps) {
+      const text = consequence(warning({ id, category: 'estimation' }));
+      expect(text, id).toContain('ungeprüft');
+      expect(text, id).not.toContain('Reichweite');
+    }
+  });
+
+  it('echte Defekte behalten die Kategorie-Folge', () => {
+    // „missing-fuse“/„missing-rcd“ klingen wie die Lücken, sind aber Defekte:
+    // Ihre Folge ist die Sicherheitsfolge, nicht „ungeprüft“.
+    for (const id of ['missing-fuse-e1', 'missing-rcd-shore-1', 'inverter-missing-rcd-inv-1']) {
+      const text = consequence(warning({ id }));
+      expect(text, id).toContain('Stromschlaggefahr');
+    }
+    expect(consequence(warning({ id: 'battery-capacity', category: 'estimation' }))).toContain('Reichweite');
   });
 });

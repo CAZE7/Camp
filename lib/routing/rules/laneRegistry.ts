@@ -82,6 +82,48 @@ export function symmetricLaneIndex(position: number, count: number): number {
   return position - (count - 1) / 2;
 }
 
+/**
+ * WP-5 / ROUTE-001: Kandidaten-Koordinaten einer freien Lane im Korridor.
+ *
+ * Die Registry vergibt Lanes als `laneIndex × laneGrid` um die
+ * Korridor-Referenz (auf halbes `laneGrid` gerastet). Diese Funktion stellt
+ * dieselbe Leiter als *Auswahl* bereit: „weiche auf die nächstgelegene freie
+ * Lane aus“ statt „irgendwie ±gap“. Zurückgegeben werden die Korridor-Leitern
+ * (±1, ±2, … × `gap`) nach Abstand geordnet; `accept` filtert belegte
+ * Koordinaten heraus. Rein und deterministisch (ADR 0010).
+ *
+ * **Stand 2026-09-27: vorbereiteter Baustein ohne Produktiv-Konsumenten.**
+ * Der Weg, für den die Leiter gedacht war — das Auflösen kollinearer
+ * Überdeckungen im Nudging —, ist inzwischen vom Reflow des Nudge selbst
+ * gelöst (Kandidaten `ideale Lane ± k · laneGrid`, Lane-Reservierung, zweite
+ * begrenzte Runde; Messung 2026-09-27: ein zusätzlicher Leiter-Pass ändert im
+ * ELK-Pfad nichts und in den Regressions-Szenarien nur Geometrie ohne
+ * Metrikgewinn — er wurde deshalb NICHT ausgeliefert). Die Leiter wird
+ * gebraucht, sobald die **Port-Bündel-/Fan-Out-Ebene** dran ist (ROUTE-002
+ * Teil 2b, `components/edges/utils/routeAll.ts::portFanOutLanes`): dort liegen
+ * die verbleibenden I2 der ELK-Pläne, und dort ist die Lane eine Vergabe-,
+ * keine Ausweichfrage.
+ */
+export function laneCandidates(
+  corridor: Corridor,
+  gap: number,
+  options?: { limit?: number; accept?: (coord: number) => boolean }
+): number[] {
+  const limit = options?.limit ?? 4;
+  const accept = options?.accept ?? (() => true);
+  const out: number[] = [];
+  // Ringe nach außen; `limit` zählt die AKZEPTIERTEN Kandidaten, die
+  // Ringgrenze hält die Schleife in jedem Fall endlich.
+  outer: for (let ring = 1; ring <= limit * 2; ring++) {
+    for (const sign of [1, -1] as const) {
+      if (out.length >= limit) break outer;
+      const coord = corridor.coord + sign * ring * gap;
+      if (accept(coord)) out.push(coord);
+    }
+  }
+  return out;
+}
+
 export class LaneRegistry {
   private readonly corridors = new Map<string, { corridor: Corridor; requests: LaneRequest[] }>();
   private readonly tokens: RoutingTokens;

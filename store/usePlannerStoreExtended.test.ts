@@ -904,6 +904,39 @@ describe('Auto-Wire: Topologie-Heilung & reale Templates', () => {
     assertFusesMatchVde(e);
   }, 15000);
 
+  it('Inspektor-Länge an einer Auto-Kante überlebt den nächsten Auto-Wire-Lauf (AUDIT D3)', () => {
+    // Gemeldeter Fehler: „wenn ich bei den 5 meter 2 meter eingebe und dann
+    // auto wire drücke, springt er wieder auf 5 meter zurück.“ Dieser Test
+    // geht exakt den UI-Pfad: verdrahten → handleChangeLength (Inspektor) →
+    // verdrahten. Die Solar-Planungslänge von Auto-Wire beträgt 5 m.
+    const plan = [
+      makeNode('b1', 'battery', { label: 'Batterie', capacity: 100, chemistry: 'LiFePO4' }),
+      makeNode('s1', 'solar', { label: 'Panel', watts: 200 }),
+      makeNode('m1', 'mpptController', { label: 'MPPT', amps: 30 }),
+    ];
+    const first = runAutoWire(plan);
+    const solar = first.edges.find((edge) => edge.source === 's1' && edge.sourceHandle === 'plus');
+    if (!solar) throw new Error('Auto-Wire muss eine Solar-Plus-Kante anlegen');
+    expect(solar.data?.length).toBe(5);
+
+    act(() => {
+      usePlannerStore.getState().handleChangeLength(solar.id, 2);
+    });
+    expect(usePlannerStore.getState().edges.find((edge) => edge.id === solar.id)?.data?.length).toBe(2);
+
+    act(() => {
+      usePlannerStore.getState().autoWireSystem();
+    });
+    const after = usePlannerStore
+      .getState()
+      .edges.find((edge) => edge.source === 's1' && edge.sourceHandle === 'plus');
+    expect(after?.data?.length, 'die eingegebenen 2 m müssen stehen bleiben').toBe(2);
+    expect(after?.data?.autoWired, 'die Kante bleibt AutoWires Eigentum').toBe(true);
+
+    // Und die Anlage bleibt danach warnungsfrei — die Länge ist kein Sonderfall.
+    assertNoSafetyWarnings(usePlannerStore.getState().nodes, usePlannerStore.getState().edges);
+  });
+
   it('Legacy-Laderegler (type charger) wird als MPPT wiederverwendet', () => {
     const nodes = [
       makeNode('b1', 'battery', { label: 'Batterie', capacity: 200, chemistry: 'LiFePO4' }),

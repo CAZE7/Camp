@@ -12,6 +12,21 @@ Vier Validierungsebenen mit unterschiedlicher Wirkung:
 Alle Meldungen sind **strukturiert**: `ruleId`, `measuredValue`, `expectedValue`, `unit`,
 `source` (UX-001). Keine Meldung behauptet eine Norm, die der Code nicht nennt.
 
+**Einheiten-Disziplin (2026-09-27):** `unit` beschreibt ausschließlich den **Messwert**
+(`measuredValue`) und nur, wenn dieser eine Größe ist. Liegt zu einem Befund keine Zahl vor
+(„kein FI“, „maxPvVoltage fehlt“, „2 × ohne Angabe“), steht dort `''` — nicht die Einheit, die
+fachlich zum Thema passt. Die Anzeige (`components/planner/ui/WarningCenter.tsx`,
+`valueWithUnit`) hängt die Einheit nur an **nackte Zahlen** an (optional mit `≈ / ≤ / <`), damit
+aus einem Wert mit Einheit kein „306 A A“ wird. Warum das nicht bloß Kosmetik ist: `unit` ist
+Teil der maschinenlesbaren Meldung (Export, Tests, KI-Kontext) — ein falsches Ω an einem
+kA-Befund wandert dort weiter.
+
+Ebenso gehören Folgen und Lösungen zum Befund: `consequence()` und `nextStep()`
+(WarningCenter) unterscheiden **Lücke** und **Defekt**. Eine Datenlücke („ungeprüft“) nennt
+nicht die Schätzfolge („Reichweite, Ladezeit …“) und bekommt die Anleitung zum Eintragen des
+fehlenden Werts, nicht die des Verletzungsfalls (Beispiel: `solar-voc-window-unknown` ←
+„maximale PV-Eingangsspannung eintragen“, NICHT „Panels in Serie reduzieren“).
+
 ---
 
 ## 8.1 Connection Validation

@@ -6,11 +6,27 @@
  * only produces a starting placement.
  */
 
+/**
+ * Anschluss-Seite einer Karte. `NORTH` ist die dokumentierte Ausnahme
+ * (Wechselrichter `ac_in`), alles Übrige folgt der Konvention
+ * „Eingänge links, Ausgänge rechts“ (ports.ts).
+ */
+export type LayoutPortSide = 'NORTH' | 'SOUTH' | 'EAST' | 'WEST';
+
+export type LayoutPort = {
+  readonly id: string;
+  readonly side: LayoutPortSide;
+  /** Ordnung auf derselben Seite (ELK `FIXED_ORDER`): plus 0, minus 1. */
+  readonly index: number;
+};
+
 export type LayoutNodeInput = {
   readonly id: string;
   readonly kind: string;
   readonly width?: number;
   readonly height?: number;
+  /** Anschlüsse des Bauteils — ohne sie ist `FIXED_ORDER` wirkungslos. */
+  readonly ports?: readonly LayoutPort[];
 };
 
 export type LayoutEdgeInput = {
@@ -18,6 +34,9 @@ export type LayoutEdgeInput = {
   readonly source: string;
   readonly target: string;
   readonly kind: 'cable' | 'waterPipe';
+  /** Port-IDs aus `ports` des jeweiligen Knotens (ports.ts). */
+  readonly sourcePort?: string;
+  readonly targetPort?: string;
 };
 
 export type LayoutDirection = 'LR' | 'TB';

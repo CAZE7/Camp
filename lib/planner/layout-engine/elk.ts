@@ -35,6 +35,7 @@ import type {
   PlannerLayoutEngine,
 } from './contract';
 import { LAYOUT_TOKENS } from './tokens';
+import { getLayoutRank } from './ranks';
 import type { ElkPlan } from '../../routing/elk/graph';
 import { layoutWithElk } from '../../routing/elk/runner';
 
@@ -57,12 +58,36 @@ export class ElkLayoutEngine implements PlannerLayoutEngine {
       ])
     );
 
+    // Rollen-Schichten als INTERACTIVE-Layering-Nebenbedingung (ADR 0024):
+    // ELK liest die x-Positionen und hält die fachliche Reihenfolge ein
+    // (Quelle → Wandler → Verteilung → Wechselrichter → Verbraucher). Ohne
+    // den Seed lagen alle Knoten auf x = 0 und ELK durfte die Rollenfolge
+    // allein nach Kreuzungsminimum brechen.
     const plan: ElkPlan = {
+      ranked: true,
       nodes: nodes.map((node) => {
         const size = sizeById.get(node.id)!;
-        return { id: node.id, x: 0, y: 0, width: size.width, height: size.height };
+        return {
+          id: node.id,
+          x: getLayoutRank(node.kind) * LAYOUT_TOKENS.rankSpacing,
+          y: 0,
+          width: size.width,
+          height: size.height,
+          // Finding 2026-09-27: Ohne Ports wusste ELK nicht, dass plus/minus
+          // links/rechts liegen und `ac_in` oben — `FIXED_ORDER` in
+          // `buildElkGraph` greift nur, wenn der Knoten Ports mitbringt.
+          ...(node.ports && node.ports.length > 0
+            ? { ports: node.ports.map((entry) => ({ id: entry.id, side: entry.side, index: entry.index })) }
+            : {}),
+        };
       }),
-      edges: edges.map((edge) => ({ id: edge.id, source: edge.source, target: edge.target })),
+      edges: edges.map((edge) => ({
+        id: edge.id,
+        source: edge.source,
+        target: edge.target,
+        ...(edge.sourcePort ? { sourcePort: edge.sourcePort } : {}),
+        ...(edge.targetPort ? { targetPort: edge.targetPort } : {}),
+      })),
       direction: request.direction ?? 'LR',
     };
 

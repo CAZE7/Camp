@@ -275,3 +275,37 @@ describe('resolveHandlePoint via routeAll', () => {
     expect(Position.Right).toBe('right');
   });
 });
+
+/**
+ * ROUTE-001 / WP-8 (2026-09-27): Der Nudge zieht Ausweich-Trassen aus der
+ * LaneRegistry-Leiter und sieht kollineare Überdeckungen ab jeder Länge
+ * (I2-Begriff) — nicht mehr nur ab `NUDGE_MIN_OVERLAP` (12 px).
+ */
+const custom = (id: string, waypoints: [number, number][]): { id: string; waypoints: Point[] } => ({
+  id,
+  waypoints: waypoints.map(([x, y]) => ({ x, y })),
+});
+
+describe('nudgeOrthogonalPaths — kollineare Einzel-Überdeckungen (ROUTE-001)', () => {
+  it('lässt disjunkte Parallelen in Ruhe (keine Überdeckung, kein Zug)', () => {
+    const a = custom('a', [
+      [0, 0],
+      [24, 0],
+      [24, 40],
+      [176, 40],
+      [176, 80],
+      [200, 80],
+    ]);
+    const b = custom('b', [
+      [0, 60],
+      [200, 60],
+      [200, 40],
+      [180, 40],
+      [180, 100],
+      [200, 100],
+    ]);
+    const out = nudgeOrthogonalPaths([a, b]);
+    expect(out.get('a')).toEqual(a.waypoints);
+    expect(out.get('b')).toEqual(b.waypoints);
+  });
+});

@@ -22,6 +22,7 @@ import {
   resetPathfindingTelemetry,
   remainingCostLowerBound,
   BEND_COST,
+  U_TURN_COST,
   OBSTACLE_MARGIN,
   type Point,
   type Rect,
@@ -29,6 +30,7 @@ import {
 import { waypointsToPath, polarityPathOffset, edgeLabelNudge } from './pathUtils';
 import { ROUTING_SCENARIOS } from './routingScenarios';
 import { ROUTING_TOKENS } from '../../../lib/routing/tokens';
+import { COST_FACTORS, COST_WEIGHTS } from '../../../lib/routing/rules/costModel';
 
 beforeEach(() => {
   clearPathfindingCache();
@@ -821,5 +823,30 @@ describe('ROUTE-001 ownObstacles — überlappende Fremd-Nodes', () => {
     expect(pathHitsObstacles(result.waypoints, [blocker])).toBe(false);
     expect(isOrthogonalPath(result.waypoints)).toBe(true);
     resetPathfindingTelemetry();
+  });
+});
+
+/**
+ * ROUTE-002: Der Produktivpfad pflegt keine eigenen Kostenkonstanten mehr —
+ * Biegung und Kehre kommen aus dem generierten Kostenmodell (Faktoren ×
+ * laneGrid). Der Test friert beide Seiten ein; wer einen der Werte ändert,
+ * muss den Golden Master bewusst neu aufnehmen.
+ */
+describe('Kostenmodell-Anbindung (ROUTE-002)', () => {
+  it('BEND_COST und U_TURN_COST sind wörtlich die Werte des Kostenmodells', () => {
+    expect(BEND_COST).toBe(COST_WEIGHTS.bend);
+    expect(U_TURN_COST).toBe(COST_WEIGHTS.uTurn);
+    expect(BEND_COST).toBe(COST_FACTORS.bendPerLaneGrid * ROUTING_TOKENS.laneGrid);
+    expect(U_TURN_COST).toBe(COST_FACTORS.uTurnPerLaneGrid * ROUTING_TOKENS.laneGrid);
+  });
+
+  it('Kreuzung ist teurer als eine Biegung, diese teurer als eine Nah-Lane', () => {
+    // Die Ordnung der Kantenkosten ist der Vertrag des Modells: eine Kreuzung
+    // (120) wird stärker gemieden als eine Biegung (80) — genau die Reihenfolge
+    // „kreuzungsarm vor knickarm“, die `scorePath` optimiert.
+    expect(COST_WEIGHTS.crossing).toBeGreaterThan(BEND_COST);
+    expect(BEND_COST).toBeGreaterThan(COST_WEIGHTS.nearbyLane);
+    // Eine Kehre bleibt teurer als zwei Biegungen (sonst kippt die A*-Heuristik).
+    expect(U_TURN_COST).toBeGreaterThan(2 * BEND_COST);
   });
 });

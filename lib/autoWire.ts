@@ -43,6 +43,7 @@ import {
   currentFromPower,
   meters,
   mm2,
+  parseQuantity,
   quantityOr,
   volts,
   watts,
@@ -60,6 +61,8 @@ import {
   type CableEdge,
 } from './autoWire/primitives';
 import { isAcEdge, isSolarEdge, isStarterBattery } from './autoWire/validation';
+import { isFuseType } from './shortCircuit'; // DOM-002: Datenblattwerte der Sicherung
+import type { CableEdgeData } from './domain/cableEdgeData';
 import { applyFlowLayout } from './autoWire/placement';
 import {
   sizeDcEdges,
@@ -681,6 +684,41 @@ export function performAutoWiring(
     while (reservedIds.has(id)) id = `${prefix}${nextEdgeNumber++}`;
     edge.id = id;
     reservedIds.add(id);
+  }
+
+  // ── Nutzerangaben an Auto-Kanten überleben den nächsten Lauf (AUDIT D3) ──
+  //
+  // AutoWire ersetzt bei jedem Lauf SEINE Kanten (Idempotenz) und baut sie neu
+  // auf — mit den festen Planungslängen aus `addDcEdge` (Batterie→Schiene
+  // 0,2 m, Panel→Regler 5 m, Verbraucher 3 m). Alles, was der Nutzer im
+  // Leitungs-Inspektor an einer solchen Kante eingetragen hatte, war damit beim
+  // nächsten Klick auf „Automatisch verbinden“ weg: „5 m → 2 m eingegeben, nach
+  // dem Lauf standen wieder 5 m da“.
+  //
+  // Erhalten werden genau die ANGABEN, die AutoWire nicht rechnet: die Länge
+  // (Tatsache der Verkabelung, wie `watts` am Verbraucher), die
+  // Datenblattwerte des Schutzorgans (`fuseOffset`, `fuseType`,
+  // `fuseBreakingCapacity`, `acProtection`). Querschnitt, Sicherungsgröße und
+  // die Warnmarker bleiben berechnet — dafür ist der Knopf da; die erhaltene
+  // Länge fließt in diese Rechnung ein (Spannungsfall).
+  //
+  // Die Quelle sind ausschließlich Auto-Kanten FRÜHERER Läufe
+  // (`isAutoWiredEdge`), geschlüsselt über die Verbindung — nicht über die ID,
+  // die sich bei jedem Lauf ändert.
+  const previousAutoEdgeData = new Map<string, CableEdgeData>();
+  for (const e of existingEdges) {
+    if (isAutoWiredEdge(e)) previousAutoEdgeData.set(autoEdgeIdentityKey(e), e.data ?? {});
+  }
+  for (const edge of newEdges) {
+    const previous = previousAutoEdgeData.get(autoEdgeIdentityKey(edge));
+    if (!previous || !edge.data) continue;
+    const previousLength = parseQuantity(previous.length, meters);
+    if (previousLength !== null) edge.data.length = previousLength;
+    if (previous.fuseOffset !== undefined) edge.data.fuseOffset = previous.fuseOffset;
+    if (isFuseType(previous.fuseType)) edge.data.fuseType = previous.fuseType;
+    if (Number(previous.fuseBreakingCapacity) > 0)
+      edge.data.fuseBreakingCapacity = previous.fuseBreakingCapacity;
+    if (previous.acProtection !== undefined) edge.data.acProtection = previous.acProtection;
   }
 
   // Nutzer-DC-Kanten mitdimensionieren (thermisch + Spannungsfall, Sicherungen korrigieren)

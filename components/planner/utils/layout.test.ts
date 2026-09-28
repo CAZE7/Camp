@@ -97,6 +97,81 @@ describe('three-column cleanup layout', () => {
     }
   });
 
+  /**
+   * Finding 2026-09-27: „Aufräumen" sortierte allein nach Bauteiltyp. Ein
+   * Verbraucher, der am Sicherungskasten hing, wurde trotzdem weit weg von
+   * ihm gestapelt — die Kabellänge verdoppelte sich, gemeldet wurde trotzdem
+   * „aufgeräumt". Der Test pinnt, dass die Kanten mitgelesen werden: Dasselbe
+   * Netz aus demselben Plan ist mit Kanten kürzer als ohne.
+   */
+  describe('kantenbewusstes Aufräumen (Finding 2026-09-27)', () => {
+    const cableProxy = (result: { nodes: Node[] }, edges: Edge[]): number => {
+      const centre = new Map(
+        result.nodes.map((item) => {
+          const size = getNodeLayoutSize(item);
+          return [item.id, { x: item.position.x + size.width / 2, y: item.position.y + size.height / 2 }];
+        })
+      );
+      return edges.reduce((sum, edge) => {
+        const from = centre.get(edge.source);
+        const to = centre.get(edge.target);
+        if (!from || !to) return sum;
+        return sum + Math.abs(from.x - to.x) + Math.abs(from.y - to.y);
+      }, 0);
+    };
+
+    // Batterie und Busbar stehen untereinander; `zzz` hängt an der oberen
+    // Zuleitung (Wechselrichter), `aaa` an der unteren (Busbar). Die blinde
+    // Typ-Sortierung stapelt `aaa` zuerst — genau verkehrt herum.
+    const plan = (): Node[] => [
+      node('battery', 'battery', { label: 'Batterie' }),
+      node('busbar', 'busbar', { label: 'Busbar' }),
+      node('inv', 'inverter', { label: 'Wechselrichter' }),
+      node('aaa', 'consumer', { label: 'aaa' }),
+      node('zzz', 'consumer', { label: 'zzz' }),
+    ];
+    const edges: Edge[] = [
+      { id: 'e1', source: 'battery', target: 'busbar' },
+      { id: 'e2', source: 'battery', target: 'inv' },
+      { id: 'e3', source: 'inv', target: 'zzz' },
+      { id: 'e4', source: 'busbar', target: 'aaa' },
+    ];
+
+    it('verkürzt die Kabellänge gegenüber der kantenblinden Stapelung', () => {
+      const aware = getLayoutedElements(plan(), edges);
+      const blind = getLayoutedElements(plan(), []);
+      expect(cableProxy(aware, edges)).toBeLessThan(cableProxy(blind, edges));
+    });
+
+    it('erzeugt mit Kanten keine Überlappungen', () => {
+      const { nodes } = getLayoutedElements(plan(), edges);
+      for (let a = 0; a < nodes.length; a += 1) {
+        for (let b = a + 1; b < nodes.length; b += 1) {
+          const one = nodes[a]!;
+          const two = nodes[b]!;
+          const s1 = getNodeLayoutSize(one);
+          const s2 = getNodeLayoutSize(two);
+          const overlap =
+            one.position.x < two.position.x + s2.width &&
+            one.position.x + s1.width > two.position.x &&
+            one.position.y < two.position.y + s2.height &&
+            one.position.y + s1.height > two.position.y;
+          expect(overlap, `${one.id} überlappt ${two.id}`).toBe(false);
+        }
+      }
+    });
+
+    it('bleibt deterministisch und lässt Karten im Raster (48 px Rand, 120 px Abstand)', () => {
+      const first = getLayoutedElements(plan(), edges);
+      const second = getLayoutedElements(plan(), edges);
+      expect(first.nodes.map((item) => item.position)).toEqual(second.nodes.map((item) => item.position));
+      for (const item of first.nodes) {
+        expect(item.position.x).toBeGreaterThanOrEqual(LAYOUT_MARGIN);
+        expect(item.position.y).toBeGreaterThanOrEqual(LAYOUT_MARGIN);
+      }
+    });
+  });
+
   it('uses the same three-column model for water', () => {
     const { nodes } = getLayoutedElements(
       [node('tank', 'freshWaterTank'), node('pump', 'pump'), node('sink', 'sink')],

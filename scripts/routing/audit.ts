@@ -11,8 +11,9 @@
  *
  * Gemessen wird, was die Spezifikation verlangt (`docs/ROUTING-V2.md` §12):
  * die Invarianten I1–I7, dazu Orthogonalität, Determinismus (Doppellauf),
- * Fallback-Quote, Selbstüberlappungen und die Plausibilität der gemeldeten
- * Kreuzungszahl. Dieselben Zahlen prüft `finalValidation.test.ts` als Gate
+ * Fallback-Quote, Selbstüberlappungen, die Kabellänge (Produktivpfad — sonst
+ * steht die Platzierungsgüte in keinem Report, Finding 2026-09-27) und die
+ * Plausibilität der gemeldeten Kreuzungszahl. Dieselben Zahlen prüft `finalValidation.test.ts` als Gate
  * (I1 hart auf 0, I2 + I3 über eine Ratchet-Obergrenze je Plan) — dieses
  * Skript ist die Diagnose dazu, nicht das Gate selbst. Geometrie- und
  * Verhaltenstreue prüft zusätzlich `scripts/regression/regression.test.ts`
@@ -50,6 +51,8 @@ import {
   type Point,
 } from '../../lib/routing/geometry';
 import { ROUTING_TOKENS } from '../../lib/routing/tokens';
+import { classifySegmentAgainstSegment } from '../../lib/routing/rules/collision';
+import { isPortBundleOverlap, routedPathGeometry, sharesPort } from '../../lib/routing/rules/portBundle';
 import { GOLDEN_PLANS } from '../goldenmaster/plans';
 
 export type PlanAudit = {
@@ -60,12 +63,28 @@ export type PlanAudit = {
   hardViolations: number;
   nonOrthogonal: number;
   selfOverlaps: number;
-  /** I2-Überdeckungen am gemeinsamen Port (Bündel) … */
+  /**
+   * Kollineare Überdeckungen fremder Kantenpaare am gemeinsamen Port (Bündel,
+   * ADR 0009) …  — gezählt über dieselbe Regel wie I2
+   * (`rules/portBundle.ts`).
+   */
   overlapsAtPort: number;
-  /** … und außerhalb der Port-Region (echte Fehler). */
+  /** … und außerhalb der Port-Stubs (echte Fehler; > 0 ⇔ I2 > 0). */
   overlapsElsewhere: number;
   fallbacks: number;
   deterministic: boolean;
+  /**
+   * Summe der Kabellängen in px (Produktivpfad, `routeAllCables`).
+   *
+   * Finding 2026-09-27: Bis hierher stand die Länge in KEINEM Gate. `routingQuality.ts`
+   * misst den Legacy-Router, und der Umweg-Faktor ist gegen die Platzierung blind —
+   * das Optimum wandert mit. Ein Plan, dessen Kabel 14.752 px statt 2.697 px lang
+   * waren, blieb deshalb „grün“. Die Zahl steht jetzt in der Diagnose; die Ratchet
+   * führt `scripts/routing/cableLength.test.ts`.
+   */
+  cableLength: number;
+  /** Längste Einzelleitung (px) — Ausreißer sofort sichtbar. */
+  longestEdge: number;
   reportedCrossings: number;
   realCrossings: number;
   /** Beispiele (max. 3) für schnelle Diagnose. */
@@ -79,6 +98,8 @@ function routePlan(planName: string): {
   rects: NodeRect[];
   usedSearch: string[];
   reportedCrossings: number;
+  cableLength: number;
+  longestEdge: number;
 } {
   const plan = GOLDEN_PLANS[planName];
   if (!plan) throw new Error(`Unbekannter Referenzplan "${planName}"`);
@@ -91,11 +112,15 @@ function routePlan(planName: string): {
   const routed: RoutedEdge[] = [];
   const usedSearch: string[] = [];
   let reportedCrossings = 0;
+  let cableLength = 0;
+  let longestEdge = 0;
   for (const edge of edges) {
     const result = routes.get(edge.id);
     if (!result) continue;
     usedSearch.push(result.usedSearch);
     reportedCrossings += result.crossings;
+    cableLength += result.length;
+    longestEdge = Math.max(longestEdge, result.length);
     routed.push({ id: edge.id, source: edge.source, target: edge.target, waypoints: result.waypoints });
   }
   // Exakt die Boxen, die der Router selbst als Hindernisse behandelt.
@@ -103,7 +128,7 @@ function routePlan(planName: string): {
     const [rect] = nodesToObstacles([node], new Set<string>());
     return { id: (node as { id?: string }).id ?? `n${index}`, ...rect! };
   });
-  return { routed, rects, usedSearch, reportedCrossings };
+  return { routed, rects, usedSearch, reportedCrossings, cableLength, longestEdge };
 }
 
 /** Echte Kreuzungen (Segment-Paare) zwischen verschiedenen Kanten. */
@@ -124,45 +149,30 @@ function realCrossingPairs(routed: readonly RoutedEdge[]): number {
 
 /**
  * Überdeckungen zweier Kanten, aufgeteilt nach Ursache:
- *  - `atPort`:   die gemeinsame Strecke liegt vollständig innerhalb
- *                `stubMin` um einen gemeinsamen Anschlusspunkt (Port-Fan-Out,
- *                siehe `checkEdgeEdgeOverlaps`) — legitime Bündelung.
- *  - `elsewhere`: Überdeckung außerhalb der Port-Region — Routing-Fehler.
+ *  - `atPort`:    die gemeinsame Strecke liegt vollständig in den Stubs beider
+ *                 Kanten, die sich eine Anschlussstelle teilen — legitime
+ *                 Bündelung (ADR 0009). Die Entscheidung trifft
+ *                 `isPortBundleOverlap` aus `lib/routing/rules/portBundle.ts`;
+ *                 VORHER stand hier eine zweite, abweichende Fassung
+ *                 (`stubMin`-Fenster um den Port), die andere Zahlen lieferte
+ *                 als der Invarianten-Check (2026-09-27 vereinheitlicht).
+ *  - `elsewhere`: Überdeckung außerhalb der Port-Stubs — Routing-Fehler. Diese
+ *                 Zahl ist jetzt zwangsläufig genau dann > 0, wenn I2 > 0 ist
+ *                 (beide lesen dieselbe Regel); das Gate prüft die Kopplung.
  */
 export function analyzeOverlaps(routed: readonly RoutedEdge[]): { atPort: number; elsewhere: number } {
-  const stub = ROUTING_TOKENS.stubMin;
-  const samePoint = (a: Point, b: Point): boolean => Math.abs(a.x - b.x) < 1e-6 && Math.abs(a.y - b.y) < 1e-6;
+  const geometry = routed.map((edge) => routedPathGeometry(edge.waypoints));
   let atPort = 0;
   let elsewhere = 0;
-  for (let i = 0; i < routed.length; i++) {
-    for (let j = i + 1; j < routed.length; j++) {
-      const a = routed[i]!;
-      const b = routed[j]!;
-      const shared: Point[] = [];
-      for (const pa of [a.waypoints[0], a.waypoints[a.waypoints.length - 1]]) {
-        for (const pb of [b.waypoints[0], b.waypoints[b.waypoints.length - 1]]) {
-          if (pa && pb && samePoint(pa, pb)) shared.push(pa);
-        }
-      }
-      for (const s1 of waypointsToSegments(a.waypoints)) {
-        for (const s2 of waypointsToSegments(b.waypoints)) {
-          if (!segmentsOverlap(s1, s2)) continue;
-          const horizontal = Math.abs(s1[0].y - s1[1].y) < 1e-6;
-          const lo = Math.max(Math.min(s1[0].x, s1[1].x), Math.min(s2[0].x, s2[1].x));
-          const hi = Math.min(Math.max(s1[0].x, s1[1].x), Math.max(s2[0].x, s2[1].x));
-          const loY = Math.max(Math.min(s1[0].y, s1[1].y), Math.min(s2[0].y, s2[1].y));
-          const hiY = Math.min(Math.max(s1[0].y, s1[1].y), Math.max(s2[0].y, s2[1].y));
-          const coveredByPort = shared.some((port) => {
-            if (horizontal) {
-              return (
-                Math.abs(port.y - s1[0].y) < 1e-6 && lo >= port.x - stub - 1e-6 && hi <= port.x + stub + 1e-6
-              );
-            }
-            return (
-              Math.abs(port.x - s1[0].x) < 1e-6 && loY >= port.y - stub - 1e-6 && hiY <= port.y + stub + 1e-6
-            );
-          });
-          if (coveredByPort) atPort += 1;
+  for (let i = 0; i < geometry.length; i++) {
+    for (let j = i + 1; j < geometry.length; j++) {
+      const a = geometry[i]!;
+      const b = geometry[j]!;
+      if (!sharesPort(a, b)) continue;
+      for (const s1 of a.segments) {
+        for (const s2 of b.segments) {
+          if (classifySegmentAgainstSegment(s1, s2).class !== 'hard') continue;
+          if (isPortBundleOverlap(a, b, s1, s2)) atPort += 1;
           else elsewhere += 1;
         }
       }
@@ -189,7 +199,7 @@ function selfOverlapping(routed: readonly RoutedEdge[]): number {
 
 /** Vollständiger Bericht für einen Referenzplan. */
 export function auditPlan(planName: string): PlanAudit {
-  const { routed, rects, usedSearch, reportedCrossings } = routePlan(planName);
+  const { routed, rects, usedSearch, reportedCrossings, cableLength, longestEdge } = routePlan(planName);
   const report = checkInvariants(routed, rects);
   const violations = Object.fromEntries(
     Object.entries(report).map(([key, value]) => [key as InvariantId, value.length])
@@ -223,11 +233,33 @@ export function auditPlan(planName: string): PlanAudit {
     overlapsElsewhere: overlaps.elsewhere,
     fallbacks: usedSearch.filter((search) => search === 'fallback').length,
     deterministic,
+    cableLength: Math.round(cableLength),
+    longestEdge: Math.round(longestEdge),
     reportedCrossings,
     realCrossings: realCrossingPairs(routed),
     samples,
   };
 }
+
+/**
+ * Kreuzungs-Ratchet (Finding 2026-09-27): Die Tabelle zeigt die Kreuzungen,
+ * aber ohne Grenze war „übersichtlich" nicht erzwingbar. Obergrenze ist der
+ * gemessene Stand je Referenzplan; sie darf nur sinken.
+ *
+ * Die Test-Ratchet existiert zusätzlich in `lib/routing/invariants.test.ts`
+ * (beide Pässe, `LEGACY_BASELINE`/`ELK_BASELINE`) — dieses Skript ist das
+ * Gate, das die Nutzer-Sicht prüft.
+ */
+const CROSSING_RATCHET: Readonly<Record<string, number>> = {
+  simple: 2,
+  camper: 5,
+  solar: 2,
+  inverter: 2,
+  // Nachgezogen 2026-09-27 (Merge des Arena-Zweigs „stabilize planning and
+  // safe route reflow“): gemessen acdc 6 statt 8, complex 27 statt 29.
+  acdc: 6,
+  complex: 27,
+};
 
 export function auditAllPlans(): PlanAudit[] {
   return Object.keys(GOLDEN_PLANS).map(auditPlan);
@@ -352,7 +384,8 @@ if (isCli) {
     process.stdout.write(`${JSON.stringify(audits, null, 2)}\n`);
   } else {
     const header =
-      'Plan       Kanten  I1  I2  I3  I4  I5  I6  I7 | hart  orth  overlap  fallback  determ  kreuzungen';
+      'Plan       Kanten  I1  I2  I3  I4  I5  I6  I7 | hart  orth  overlap  fallback  determ  ' +
+      'kreuzungen   Kabelweg  laengste';
     process.stdout.write(`${header}\n`);
     for (const a of audits) {
       const v = a.violations;
@@ -364,7 +397,8 @@ if (isCli) {
           `${String(a.nonOrthogonal).padStart(4)}  ${String(a.selfOverlaps).padStart(7)}  ` +
           `${String(a.fallbacks).padStart(8)}  ${String(a.deterministic).padStart(6)}  ` +
           `ovl=${a.overlapsAtPort}/${a.overlapsElsewhere}  ` +
-          `${String(a.realCrossings).padStart(10)}\n`
+          `${String(a.realCrossings).padStart(10)}  ` +
+          `${String(a.cableLength).padStart(12)} px  ${String(a.longestEdge).padStart(9)} px\n`
       );
       for (const sample of a.samples) process.stdout.write(`    ${sample}\n`);
     }
@@ -378,23 +412,52 @@ if (isCli) {
    *   · I1 = 0 (keine Leitung durch ein fremdes Bauteil, ADR 0017 — hart)
    *   · keine nicht-orthogonalen Segmente
    *   · Determinismus (Doppellauf identisch)
+   *   · Kopplung Diagnose ↔ Gate: `elsewhere` (Überdeckung außerhalb der
+   *     Port-Stubs) ist genau dann > 0, wenn I2 > 0 ist. Beide lesen
+   *     `rules/portBundle.ts`; die Prüfung fängt eine künftige Drift.
    *
    * Die RATCHETS für I2/I3 bleiben in `scripts/routing/finalValidation.test.ts`
    * (dort mit je-Plan-Obergrenzen dokumentiert) — dieses Skript bewertet nichts
    * doppelt, sondern das, was es selbst als „hart“ ausweist.
    */
   const hardFailures = audits.filter(
-    (a) => a.hardViolations > 0 || a.nonOrthogonal > 0 || a.fallbacks > 0 || !a.deterministic
+    (a) =>
+      a.hardViolations > 0 ||
+      a.nonOrthogonal > 0 ||
+      a.fallbacks > 0 ||
+      !a.deterministic ||
+      // Diagnose und Gate müssen dasselbe sagen (gemeinsame Port-Bündel-Regel).
+      a.overlapsElsewhere > 0 !== a.violations.I2 > 0
   );
-  if (hardFailures.length > 0) {
+  // P1 (Finding 2026-09-27): Kreuzungen sind ab hier eine Obergrenze, kein
+  // Bericht. Eine Verbesserung senkt den Wert hier — dann muss die Ratchet
+  // mitgezogen werden (das Skript weist darauf hin).
+  const crossingFailures = audits.filter(
+    (a) => a.realCrossings > (CROSSING_RATCHET[a.plan] ?? Number.POSITIVE_INFINITY)
+  );
+  const crossingImprovements = audits.filter(
+    (a) => a.realCrossings < (CROSSING_RATCHET[a.plan] ?? Number.NEGATIVE_INFINITY)
+  );
+  if (hardFailures.length > 0 || crossingFailures.length > 0) {
     process.stderr.write(
-      `\nRouting-Gate ROT: ${hardFailures
-        .map(
+      `\nRouting-Gate ROT: ${[
+        ...hardFailures.map(
           (a) =>
-            `${a.plan} (I1..I3=${a.hardViolations}, orth=${a.nonOrthogonal}, fallback=${a.fallbacks}, determ=${a.deterministic})`
-        )
-        .join('; ')}\n`
+            `${a.plan} (I1..I3=${a.hardViolations}, orth=${a.nonOrthogonal}, fallback=${a.fallbacks}, ` +
+            `determ=${a.deterministic}, I2=${a.violations.I2} vs elsewhere=${a.overlapsElsewhere})`
+        ),
+        ...crossingFailures.map(
+          (a) => `${a.plan} (Kreuzungen ${a.realCrossings} > Ratchet ${CROSSING_RATCHET[a.plan] ?? '∞'})`
+        ),
+      ].join('; ')}\n`
     );
     process.exitCode = 1;
+  }
+  if (crossingImprovements.length > 0 && process.exitCode !== 1) {
+    process.stderr.write(
+      `\nHinweis: Kreuzungen unter der Ratchet — bitte CROSSING_RATCHET nachziehen: ${crossingImprovements
+        .map((a) => `${a.plan} ${a.realCrossings} < ${CROSSING_RATCHET[a.plan] ?? '∞'}`)
+        .join('; ')}\n`
+    );
   }
 }

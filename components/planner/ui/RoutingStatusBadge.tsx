@@ -79,7 +79,12 @@ export function RoutingStatusBadge() {
             `weil Port-Stub und Mindestabstand geometrisch nicht gleichzeitig passen`,
         ]
       : []),
-    'Der Plan ist damit nicht layout-verifiziert. Bitte Leitungen umlegen bzw. Abstände vergrößern.',
+    // ADR 0014: Es gibt kein manuelles Leitungs-Legen mehr — „Leitungen
+    // umlegen“ war eine Anleitung zu einer Handlung, die die App nicht
+    // anbietet. Genannt wird jetzt der Hebel, den der Nutzer wirklich hat:
+    // Bauteile verschieben, danach routet der nächste Lauf von selbst.
+    'Der Plan ist damit nicht layout-verifiziert. Die Leitungen werden automatisch verlegt: ' +
+      'Verschiebe die Bauteile mit mehr Abstand zueinander, danach läuft das Routing erneut.',
   ].join(' — ');
   return (
     <span

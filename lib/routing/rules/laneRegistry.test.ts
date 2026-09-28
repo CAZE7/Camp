@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { LaneRegistry, compareLaneRequests, symmetricLaneIndex, type LaneRequest } from './laneRegistry';
+import {
+  LaneRegistry,
+  compareLaneRequests,
+  laneCandidates,
+  symmetricLaneIndex,
+  type LaneRequest,
+} from './laneRegistry';
 import { ROUTING_TOKENS } from '../tokens';
 import type { Segment } from '../geometry';
 
@@ -143,5 +149,39 @@ describe('LaneRegistry', () => {
     const byEdge = registry.assignByEdge();
     expect(byEdge.get('e-1')!.map((a) => a.corridor.direction)).toEqual(['horizontal', 'vertical']);
     expect(byEdge.get('e-2')!).toHaveLength(1);
+  });
+});
+
+/**
+ * ROUTE-001 / WP-8 (2026-09-27): Die Registry-Leiter als Auswahl für das
+ * gescopede Nudging — Kandidaten sind `corridor.coord ± k · gap`, nach
+ * Abstand geordnet, deterministisch.
+ */
+describe('laneCandidates (ROUTE-001 / WP-8)', () => {
+  it('liefert die Korridor-Leiter nach Abstand, erst +, dann −', () => {
+    const registry = new LaneRegistry();
+    const corridor = registry.corridorFor('horizontal', 300, 0, 100);
+    expect(corridor.coord).toBe(304); // 300 → halbes laneGrid (8) rastet auf 304
+    expect(laneCandidates(corridor, 16, { limit: 4 })).toEqual([320, 288, 336, 272]);
+  });
+
+  it('filtert belegte Koordinaten über accept heraus', () => {
+    const registry = new LaneRegistry();
+    const corridor = registry.corridorFor('vertical', 704, 0, 100);
+    const out = laneCandidates(corridor, 16, {
+      limit: 4,
+      accept: (coord) => Math.abs(coord - 720) > 1e-6,
+    });
+    expect(out).not.toContain(720);
+    expect(out[0]).toBe(688);
+  });
+
+  it('ist deterministisch und respektiert das Limit', () => {
+    const registry = new LaneRegistry();
+    const corridor = registry.corridorFor('horizontal', 120, 0, 50);
+    const a = laneCandidates(corridor, 16, { limit: 3 });
+    const b = laneCandidates(corridor, 16, { limit: 3 });
+    expect(a).toEqual(b);
+    expect(a).toHaveLength(3);
   });
 });

@@ -47,16 +47,20 @@ export const NODE_BOX_HEIGHT = 120;
  * Der Router fängt den Fall inzwischen ab (ROUTE-BUG-31 kappt den Stub),
  * aber die Platzierung soll ihn gar nicht erst erzeugen.
  *
- * Ein Lane-Raster kommt dazu, weil an einer Klemme meist mehr als eine
- * Leitung hängt: Das Bündel staffelt um `laneGrid` (R-7), die zweite
- * Leitung braucht also `stubMin + laneGrid` Stub plus Freigabe. Größer als
- * EIN Schritt ist die Forderung bewusst nicht — die Bündelgröße ist offen,
- * und ab der dritten Lane degradiert der Router kontrolliert
- * (Rang-Treppe in der Kappung, ROUTE-BUG-34) statt dass die Platzierung
- * Bauteile beliebig auseinanderschiebt.
+ * Zwei Lane-Raster kommen dazu, weil an einer Klemme meist mehr als eine
+ * Leitung hängt: Das Bündel staffelt um `laneGrid` (R-7), zwei Leitungen
+ * brauchen also `stubMin + 2·laneGrid` Stub plus Freigabe. Gemessen
+ * (ROUTE-002 Teil 2b, ADR 0027): Mit nur EINEM Schritt (52 px) greift bei
+ * jedem Zwei-Leitungs-Bündel die Stub-Kappung (`capStep`, ROUTE-BUG-31/34),
+ * die Lanes sind dann nicht mehr ausdrückbar und laufen kollinear
+ * übereinander — der ELK-Pfad hatte I2 = 5; mit zwei Schritten (68 px) ist er
+ * bei I2 = 0 (Preis: rund 11 % längere Kabel im ELK-Pfad, keine Änderung am
+ * Fest-Raster-Pfad). Größer als zwei Schritte ist die Forderung bewusst
+ * nicht — die Bündelgröße ist offen, und ab der dritten Lane degradiert der
+ * Router kontrolliert (Rang-Treppe in der Kappung, ROUTE-BUG-34) statt dass
+ * die Platzierung Bauteile beliebig auseinanderschiebt.
  */
-export const PORT_FACING_CLEARANCE =
-  ROUTING_TOKENS.stubMin + ROUTING_TOKENS.laneGrid + ROUTING_TOKENS.cableClearance;
+export const PORT_FACING_CLEARANCE = ROUTING_TOKENS.portFacingClearance;
 
 /** Spaltenabstand in Flussrichtung (192 px Node + 96 px Korridor). */
 export const FLOW_COLUMN_SPACING = NODE_BOX_WIDTH + 96;
@@ -119,6 +123,41 @@ function boxAt(node: Node, x: number, y: number): Box {
  */
 const NODE_MIN_GAP = ROUTING_TOKENS.cableClearance * 2;
 
+/**
+ * Bezugspunkt des Auto-Rasters: linke obere Ecke des BESTEHENDEN Plans.
+ *
+ * Ohne ihn lag das Raster im Ursprung (0,0) und die automatisch erzeugten
+ * Bauteile standen dort, egal wo der Plan des Nutzers lag — die Kabel folgten
+ * der Platzierung quer über die Karte (Nutzer-Messung am eigenen Plan:
+ * 12.512 px statt 704 px auf derselben Anlage, Faktor 17,7).
+ *
+ * Gerundet wird auf das GLOBALE Spalten-/Zeilenraster
+ * (`FLOW_COLUMN_SPACING`/`FLOW_ROW_SPACING`), nicht auf den Plan: So bleibt
+ * die Rasterlage unabhängig von der Planposition (Determinismus, ADR 0010),
+ * und ein Plan nahe am Ursprung behält exakt die bisherige Platzierung —
+ * gemessen über die sechs Referenzpläne: 30.269 px Kabelweg wie zuvor, aber
+ * 29.789 px statt 88.693 px, wenn derselbe Plan bei (1200, 800) steht.
+ *
+ * Ohne nicht verschobene Bauteile (theoretischer Fall) bleibt (0,0).
+ */
+function flowAnchor(blocked: readonly Box[]): { x: number; y: number } {
+  if (blocked.length === 0) return { x: 0, y: 0 };
+  let minX = Number.POSITIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  for (const box of blocked) {
+    minX = Math.min(minX, box.x);
+    minY = Math.min(minY, box.y);
+  }
+  // Auf das GLOBALE Raster abgerundet, nicht auf den Plan gerundet: So bleibt
+  // die Rasterlage der Spalten weltweit dieselbe (Determinismus, ADR 0010) —
+  // und ein Plan, der wie die Referenzpläne nahe am Ursprung liegt, behält
+  // exakt die bisherige Platzierung.
+  return {
+    x: Math.floor(minX / FLOW_COLUMN_SPACING) * FLOW_COLUMN_SPACING,
+    y: Math.floor(minY / FLOW_ROW_SPACING) * FLOW_ROW_SPACING,
+  };
+}
+
 /** Flächenüberdeckung inklusive der geforderten Mindestluft. */
 function boxesOverlap(a: Box, b: Box, gap = NODE_MIN_GAP): boolean {
   return (
@@ -129,10 +168,20 @@ function boxesOverlap(a: Box, b: Box, gap = NODE_MIN_GAP): boolean {
 
 /**
  * Optionales Auto-Layout nach dem Verdrahten (dagre-Ersatz, rein und
- * deterministisch): Schicht = längster Pfad von Wurzelknoten (ohne
- * eingehende Kante), x = Schicht × FLOW_COLUMN_SPACING, y = Zeilenindex ×
- * FLOW_ROW_SPACING innerhalb der Schicht (sortiert nach ID). Nur Knoten in
- * `movableIds` werden verändert — alle anderen bleiben, wo sie sind.
+ * deterministisch): Schicht = kürzester Abstand von den Wurzelknoten (ohne
+ * eingehende Kante), x = Bezugspunkt + Schicht × FLOW_COLUMN_SPACING,
+ * y = Zeilenindex × FLOW_ROW_SPACING innerhalb der Schicht (sortiert nach
+ * ID). Nur Knoten in `movableIds` werden verändert — alle anderen bleiben,
+ * wo sie sind.
+ *
+ * **Bezugspunkt ist der bestehende Plan** (`flowAnchor`): die linke obere
+ * Ecke der nicht verschobenen Bauteile. Vorher rechnete das Raster vom
+ * Canvas-Ursprung — wo die Nutzerbauteile standen, war egal. Ein Plan bei
+ * (1200, 800) bekam seine Schienen, Sicherungskasten und Shunt damit am
+ * Ursprung, also bis zu ~1,5 k px von der Batterie entfernt; die Kabel
+ * folgten der Platzierung (gemessen: 12.512 px statt 704 px auf demselben
+ * Plan, Reporting 2026-09-27). Verschoben wird weiterhin nur, was AutoWire
+ * selbst erzeugt hat.
  *
  * Eingabe wird nicht verändert; die Rückgabe enthält dieselben Node-
  * Objekte mit aktualisierten `position`-Werten (Auftraggeber reicht
@@ -227,6 +276,7 @@ export function applyFlowLayout(nodes: Node[], edges: FlowEdge[], movableIds: Se
   // Spalten in aufsteigender Schichtnummer: Die Belegung wächst über die
   // Spalten hinweg mit, deshalb muss die Reihenfolge festliegen (ADR 0010).
   const layers = [...byLayer.keys()].sort((a, b) => a - b);
+  const anchor = flowAnchor(blocked);
   for (const l of layers) {
     const bucket = byLayer.get(l)!;
     bucket.sort((a, b) => sortKey(a).localeCompare(sortKey(b)));
@@ -235,11 +285,11 @@ export function applyFlowLayout(nodes: Node[], edges: FlowEdge[], movableIds: Se
     const maxRow = nodes.length * 2 + bucket.length + 8;
     let row = 0;
     for (const node of bucket) {
-      const x = snapToGrid(l * FLOW_COLUMN_SPACING);
-      let candidate = boxAt(node, x, snapToGrid(row * FLOW_ROW_SPACING));
+      const x = snapToGrid(anchor.x + l * FLOW_COLUMN_SPACING);
+      let candidate = boxAt(node, x, snapToGrid(anchor.y + row * FLOW_ROW_SPACING));
       while (row < maxRow && blocked.some((other) => boxesOverlap(candidate, other))) {
         row++;
-        candidate = boxAt(node, x, snapToGrid(row * FLOW_ROW_SPACING));
+        candidate = boxAt(node, x, snapToGrid(anchor.y + row * FLOW_ROW_SPACING));
       }
       node.position = { x: candidate.x, y: candidate.y };
       blocked.push(candidate);

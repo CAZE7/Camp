@@ -53,7 +53,41 @@ function toPlainExplanation(message: string) {
     .trim();
 }
 
-function consequence(warning: ValidationWarning) {
+/**
+ * Befunde, die keine Verletzung melden, sondern eine **Lücke**: Sie sagen
+ * „nicht geprüft“, nicht „kaputt“. Für sie ist die Folge-Zeile der Kategorie
+ * falsch — der Prüfbericht zeigte bei „AC-Schutzorgan ohne Datenblatt“ und
+ * „MPPT-Eingangsspannung nicht angegeben“ die Zeile „Folge: Reichweite,
+ * Ladezeit oder Leistung können schlechter sein als erwartet.“ (Kategorie
+ * `estimation`). Das ist die Folge eines falsch geschätzten Verbrauchs, nicht
+ * die einer fehlenden Eingabe; die echte Folge ist, dass der Plan den Punkt
+ * nicht bewertet hat — und das darf er nicht als „in Ordnung“ aussehen lassen
+ * (Regel M: fehlende Eingabe ⇒ UNKNOWN, niemals PASS).
+ *
+ * Bewusst eine benannte Liste statt einer Muster-Heuristik: „missing-“
+ * (Sicherung/FI fehlt) ist ein DEFEKT und behält seine Sicherheits-Folge,
+ * „…-missing-…“ (Datenblattwert fehlt) dagegen ist eine Lücke.
+ */
+const UNVERIFIED_WARNING_PREFIXES = [
+  'mixed-voltage-unknown',
+  'solar-voc-window-unknown',
+  'solar-voc-missing',
+  'solar-voc-uncomputable',
+  'ac-descriptor-assumed',
+  'ac-protection-not-modeled',
+  'ac-breaking-capacity-reach',
+  'ac-missing-input-',
+  'sc-bank-unknown',
+  'sc-fuse-type-unknown',
+];
+
+export function isUnverifiedFinding(warning: ValidationWarning): boolean {
+  return UNVERIFIED_WARNING_PREFIXES.some((prefix) => warning.id.startsWith(prefix));
+}
+
+export function consequence(warning: ValidationWarning) {
+  if (isUnverifiedFinding(warning))
+    return 'Folge: Dieser Punkt ist ungeprüft — der Plan weist ihn weder als erfüllt noch als verletzt aus.';
   if (warning.category === 'safety')
     return 'Folge: Leitung oder Gerät kann überhitzen; bei 230 V besteht zusätzlich Stromschlaggefahr.';
   if (warning.category === 'topology')
@@ -63,7 +97,30 @@ function consequence(warning: ValidationWarning) {
   return 'Folge: Reichweite, Ladezeit oder Leistung können schlechter sein als erwartet.';
 }
 
-function nextStep(warning: ValidationWarning) {
+/**
+ * Messwert-Zeile ohne doppelte Einheit.
+ *
+ * Bis hierher hing die Warn-Zentrale `warning.unit` unbedingt an `measuredValue`
+ * an. Die Melder schreiben die Einheit aber längst in den Wert selbst
+ * („306 A“, „≈ 0,83 kA“, „70 mm²“) — auf dem Bildschirm stand dann
+ * **„Ist: 306 A A“**, „Ist: LS C, 6 kA (Annahme) Ω“ oder „Ist: maxPvVoltage
+ * fehlt V“. Dieselbe Doppelung betraf den Soll-Wert.
+ *
+ * `unit` bleibt damit, was die Dokumentation (UX-001) verspricht: das
+ * maschinenlesbare Feld. Angehängt wird es in der Anzeige nur dann, wenn der
+ * Wert wirklich eine nackte Zahl ist (optional mit „≈/≤/<“-Präfix) — bei
+ * jedem beschreibenden Text („Voc fehlt“, „kein FI“) hätte ein Suffix keine
+ * Bedeutung und war schlicht falsch.
+ */
+const MEASURED_NUMBER = /^[≈≤<>~+-]?\s*\d+(?:[.,]\d+)?\s*$/;
+
+export function valueWithUnit(value: string | undefined, unit: string | undefined): string {
+  if (value === undefined) return '—';
+  if (!unit) return value;
+  return MEASURED_NUMBER.test(value) ? `${value} ${unit}` : value;
+}
+
+export function nextStep(warning: ValidationWarning) {
   if (warning.id.startsWith('missing-fuse'))
     return 'So löst du es: Füge am Anfang der Plusleitung eine passende Sicherung oder einen Sicherungskasten ein.';
   if (warning.id.startsWith('reversed-polarity'))
@@ -72,8 +129,30 @@ function nextStep(warning: ValidationWarning) {
     return 'So löst du es: Setze am Wechselrichter-Ausgang einen FI/LS (RCD, ≤ 30 mA) — im Inspektor des Wechselrichters als vorhanden markieren, sobald verbaut.';
   if (warning.id.startsWith('battery-parallel-chemistry'))
     return 'So löst du es: Trenne die Parallelschaltung und verwende Batterien derselben Chemie (z. B. nur AGM oder nur Gel).';
+  // Reihenfolge ist Semantik: Der UNBEKANNT-Fall (`…-window-unknown-…`) darf
+  // nicht in den Ratschlag des Überschreitungsfalls fallen. Vorher tat er es
+  // (`startsWith('solar-voc-window')` trifft beide) — die Warnung „maximale
+  // PV-Eingangsspannung fehlt“ bekam damit die Anleitung „weniger Panels in
+  // Serie“, obwohl dem Nutzer ein einziges Eingabefeld fehlte.
+  if (warning.id.startsWith('solar-voc-window-unknown'))
+    return 'So löst du es: Trage im Inspektor des Ladereglers die maximale PV-Eingangsspannung aus dem Datenblatt ein — erst dann wird das Kalt-Voc-Fenster bewertet.';
   if (warning.id.startsWith('solar-voc-window'))
     return 'So löst du es: Reduziere die Anzahl der Panels in Serie oder wähle einen Laderegler mit höherer maximaler PV-Eingangsspannung.';
+  if (warning.id.startsWith('solar-voc-uncomputable'))
+    return 'So löst du es: Korrigiere den Temperaturkoeffizienten Voc im Panel-Inspektor (für c-Si üblich: −0,20 bis −0,50 %/K).';
+  // Die Dimensionierungsgrenze des Modells ist 70 mm² (VDE_SIZES) mit 100 A.
+  // Der frühere Text („den nächsten Normquerschnitt über 70 mm² wählen“)
+  // verwies auf eine Stufe, die es hier nicht gibt — der Nutzer suchte sie.
+  if (warning.id.startsWith('thermal-overload'))
+    return 'So löst du es: Last reduzieren, die Leitung parallel verlegen (gleiche Länge, gleicher Querschnitt) oder die Systemspannung erhöhen — oberhalb von 70 mm² kennt der Planer keinen Normquerschnitt.';
+  if (warning.id.startsWith('fuse-not-possible'))
+    return 'So löst du es: Last aufteilen (eigene Leitung je Großverbraucher), Parallelverlegung oder Sammelschiene planen oder die Systemspannung erhöhen (12 V → 24/48 V).';
+  if (warning.id.startsWith('cross-section-undersized'))
+    return 'So löst du es: Querschnitt im Leitungs-Inspektor auf den geforderten Wert anheben oder die Leitung kürzen (der Spannungsfall hängt an der Länge).';
+  if (warning.id.startsWith('drop-not-solvable'))
+    return 'So löst du es: Weg kürzen oder Last aufteilen — bei 12 V ist der Spannungsfall-Bedarf hier größer als die Normreihe bis 70 mm² hergibt (24/48 V planen).';
+  if (warning.id.startsWith('ac-descriptor-assumed') || warning.id.startsWith('ac-protection-not-modeled'))
+    return 'So löst du es: Bauform (LS oder FI/LS), Charakteristik (B/C) und Abschaltvermögen des Schutzorgans im Leitungs-Inspektor eintragen — dann prüft der Plan gegen das echte Gerät statt gegen eine Annahme.';
   if (warning.id.startsWith('solar-voc-missing'))
     return 'So löst du es: Trage im Panel-Inspektor die Leerlaufspannung (Voc) aus dem Datenblatt ein — erst dann kann das Regler-Fenster geprüft werden.';
   if (warning.id === 'solar-overload')
@@ -168,6 +247,30 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
   const topType: ValidationWarning['type'] =
     counts.critical > 0 ? 'critical' : counts.warning > 0 ? 'warning' : 'info';
 
+  /**
+   * A5 (Schwere ohne Farbe) bleibt: Die Schwere steht als Wort da.
+   *
+   * Neu ist, dass die Zahl davor nicht mehr lügt. Vorher stand im Abzeichen
+   * `warnings.length` mit dem Wort der schwersten Stufe — bei 18 Hinweisen und
+   * 14 kritischen las man **„18 Kritisch“**, während die Leiste darunter
+   * „14 kritische Probleme offen“ sagte. Zwei Zahlen für dieselbe Eigenschaft,
+   * beide als „kritisch“ beschriftet. Jetzt nennt das Abzeichen die kritische
+   * Zahl und dahinter die Gesamtzahl, und nur wenn nichts kritisch ist, steht
+   * dort die Gesamtzahl mit der Schwere-Wortwahl der schwersten Stufe.
+   */
+  const badgeLabel =
+    counts.critical > 0
+      ? warnings.length > counts.critical
+        ? `${counts.critical} von ${warnings.length} kritisch`
+        : `${counts.critical} kritisch`
+      : topType === 'warning'
+        ? warnings.length === 1
+          ? '1 Warnung'
+          : `${warnings.length} Warnungen`
+        : warnings.length === 1
+          ? '1 Hinweis'
+          : `${warnings.length} Hinweise`;
+
   return (
     <div className="relative" ref={containerRef}>
       {liveRegion}
@@ -176,7 +279,9 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
         aria-haspopup="dialog"
-        aria-label={`${warnings.length} Prüfhinweise anzeigen`}
+        aria-label={`${warnings.length} Prüfhinweise anzeigen${
+          counts.critical > 0 ? `, davon ${counts.critical} kritisch` : ''
+        }`}
         className={`flex min-h-11 items-center gap-1.5 rounded-lg px-3 text-sm font-semibold shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${TYPE_STYLES[topType].badge}`}
       >
         {topType === 'critical' ? (
@@ -186,13 +291,7 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
         ) : (
           <Info className="h-4 w-4" aria-hidden="true" />
         )}
-        <span>{warnings.length}</span>
-        {/* A5: Die Schwere hing unter 1280 px allein am Hintergrund (Farbe).
-            Das Wort steht jetzt immer da — „Kritisch“ ist auch auf dem Handy
-            als Wort lesbar, nicht nur als Rotton. */}
-        <span className="whitespace-nowrap">
-          {topType === 'critical' ? 'Kritisch' : warnings.length === 1 ? 'Hinweis' : 'Hinweise'}
-        </span>
+        <span className="whitespace-nowrap">{badgeLabel}</span>
         <ChevronDown className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
@@ -233,10 +332,9 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
                       </p>
                       {(warning.measuredValue !== undefined || warning.expectedValue !== undefined) && (
                         <p className="mt-1 font-mono text-xs leading-relaxed text-ink-soft">
-                          Ist: {warning.measuredValue ?? '—'}
-                          {warning.measuredValue !== undefined && warning.unit ? ` ${warning.unit}` : ''}
+                          Ist: {valueWithUnit(warning.measuredValue, warning.unit)}
                           {' · Soll: '}
-                          {warning.expectedValue ?? '—'}
+                          {valueWithUnit(warning.expectedValue, warning.unit)}
                           {warning.source ? ` · Regel: ${warning.source}` : ''}
                         </p>
                       )}

@@ -22,7 +22,7 @@ Verifiziert am 2026-09-09 mit `npm run routing:audit` über die sechs Referenzpl
 | **Route / PathResult** | `PathResult`                                                       | `components/edges/utils/pathfinding.ts`                                       | `path` (SVG), `waypoints`, `length`, `bends`, `crossings`, `usedSearch`, `hops`, `fallbackHitsObstacles`, `tightMarginUsed`.                                |
 | **Waypoints**          | `Point[]`                                                          | überall                                                                       | **Die Wahrheit.** SVG-Pfade werden daraus erzeugt (`waypointsToPath`), nie umgekehrt.                                                                       |
 | **Lane**               | `number` (px, vorzeichenbehaftet)                                  | `lib/routing/rules/portFanOut.ts`                                             | Port-Bündel-Versatz: `laneIndex × laneGrid`. Wirkt zweifach: (1) Stub-Verlängerung um `                                                                     | lane | `, (2) Seitenschritt um `lane` px senkrecht zur Port-Achse. |
-| **Lane (Korridor)**    | `LaneRegistry`, `Corridor`, `LaneAssignment`                       | `lib/routing/rules/laneRegistry.ts`                                           | **Nicht im Produktivpfad** (vorbereitete Mechanik). Siehe LEGACY.                                                                                           |
+| **Lane (Korridor)**    | `LaneRegistry`, `Corridor`, `LaneAssignment`                       | `lib/routing/rules/laneRegistry.ts`                                           | **Nicht im Produktivpfad** (Mechanik); Potenzial: `routing:lane-probe` (ROUTE-002 Teil 3). Siehe LEGACY.                                                    |
 | **Stub**               | erstes/letztes Segment                                             | `pathfinding.ts` `portFrame`                                                  | `stubMin` (24 px) + Lane-Staffelung; gekappt durch die Bauteil-Freigabe (`stubCap`, ROUTE-BUG-31).                                                          |
 | **Collision**          | `RoutingConstraint` `{class, kind, distance?, requiredClearance?}` | `lib/routing/rules/collision.ts`                                              | `class: 'hard' \| 'soft' \| 'weighted' \| 'none'`; `kind: 'edge-node' \| 'edge-edge-overlap' \| 'edge-edge-crossing' \| 'clearance' \| 'none'`.             |
 | **Crossing**           | `segmentsCross(s1, s2)`                                            | `lib/routing/geometry/segments.ts`                                            | **Echte** Kreuzung: ein innerer Schnittpunkt beider Strecken. Touch und kollineare Überdeckung sind **kein** Crossing.                                      |
@@ -127,8 +127,11 @@ Reihenfolge der Prüfung ist Teil des Vertrags: **Overlap (hard) → Crossing (s
 
 1. **Port-Bündel-Ausnahme (I2).** Zwei Kanten, die sich eine Anschlussstelle teilen, verlassen sie
    auf demselben Stub. Erlaubt ist genau der gemeinsame Abschnitt, **wenn er vollständig in den
-   Stubs beider Kanten liegt**. Alles darüber hinaus bleibt hart
-   (`isPortBundleOverlap`, `lib/routing/invariants.ts`).
+   Stubs beider Kanten liegt**. Alles darüber hinaus bleibt hart. Die Entscheidung ist **eine
+   Regel** in `lib/routing/rules/portBundle.ts` (`isPortBundleOverlap`) und wird von I2
+   (`lib/routing/invariants.ts`), vom Kostenmodell (`segmentExtraCost`, ADR 0025) und vom Audit
+   (`analyzeOverlaps`) gelesen — gemessen: 47 solche Paare in den sechs Referenzplänen, 0
+   Überdeckungen außerhalb der Stubs.
 2. **Eigene Bauteile.** Quell- und Ziel-Node der Kante sind kein Hindernis. Fremde Boxen, die
    Start/Ziel enthalten, **bleiben** Hindernis (`PathRequest.ownObstacles`).
 3. **Stub-Toleranz („Stub-Recht“, R-7).** Klebt ein Bauteil so nah am Handle, dass Stub-Länge und
@@ -143,7 +146,7 @@ Reihenfolge der Prüfung ist Teil des Vertrags: **Overlap (hard) → Crossing (s
 
 **Domänen-Trennung** (`buildDomainSeparationRules`): `electrical ↔ water` und `ac230 ↔ dc12`
 fordern `crossDomainSpacing` (24 px) statt `cableClearance` (12 px). Die Regeln **existieren**,
-sind aber **nicht an den Produktiv-Router angebunden** → [KNOWN-PROBLEMS.md](./KNOWN-PROBLEMS.md) `ROUTE-005`.
+sind aber **nicht an den Produktiv-Router angebunden** → [KNOWN-PROBLEMS.md](./KNOWN-PROBLEMS.md) `ROUTE-003`.
 
 **Verbindungsregeln (greifen vor dem Routing):** AC/DC-Trennung, Polarität, Solar-Sonderfälle,
 Duplikat-Verbot — `lib/connectionRules.ts` (`isConnectionAllowed`).

@@ -398,6 +398,34 @@ describe('collectEdgeErrors — AUDIT ELE-003/008', () => {
   });
 });
 
+describe('collectEdgeErrors — Sicherung/Load-Widerspruch (Prüfbericht)', () => {
+  it('nennt im „Sicherung zu klein“-Chip beide Zahlen (Last und Sicherung)', () => {
+    // Screenshot: „100A Sicherung / Max: 100A“ plus Chip „Sicherung zu klein!“
+    // auf derselben Kante — ohne Zahlen nicht als „Last > jede zulässige
+    // Sicherung“ lesbar.
+    const errors = collectEdgeErrors({
+      edgeDomain: 'DC_12V',
+      data: { length: 0.5, crossSection: 70, edgeDomain: 'DC_12V', fuseSize: 100 },
+      I: 306,
+      maxFuse: 100,
+      crossSection: 70,
+      isPlus: true,
+      sourceNodeType: 'battery',
+      targetNodeType: 'busbar',
+      length: 0.5,
+      totalDropPercentage: 1,
+    });
+    const rule = errors.find((e) => e.ruleId === 'fuse-below-minimum');
+    expect(rule).toBeDefined();
+    expect(rule!.message).toContain('100A < 306A Last');
+    expect(rule!.message).not.toBe('Sicherung zu klein!');
+    // Die thermische Überlast derselben Kante bleibt der zweite, ebenso
+    // konkrete Befund — beide tragen jetzt Zahlen.
+    const thermal = errors.find((e) => e.ruleId === 'thermal-overload');
+    expect(thermal!.message).toContain('306A > 120A');
+  });
+});
+
 describe('ELE-004 — 20-cm-Hauptsicherungsregel, normativ verankert', () => {
   const base = {
     edgeDomain: 'DC_12V' as const,

@@ -261,9 +261,11 @@ CAMP
 | ----------------------- | --------------------------------------------------------------------------------------------- | ---------------------- |
 | `rules/collision.ts`    | Kollisionsmodell (`classifyCollision`, Klassen hard/soft/weighted/none) + Domänen-Trennregeln | `collision.test.ts`    |
 | `rules/portFanOut.ts`   | Lane-Vergabe am Port-Bündel (`assignFanOut`, `portNormal`, `portCross`)                       | `portFanOut.test.ts`   |
-| `rules/costModel.ts`    | A*-Kostenmatrix, **aus Tokens abgeleitet** (`COST_WEIGHTS`)                                   | `costModel.test.ts`    |
-| `rules/laneRegistry.ts` | deterministische Lane-Registry (**nicht im Produktivpfad**, s. LEGACY)                        | `laneRegistry.test.ts` |
-| `rules/hopping.ts`      | Kreuzungs-Hopping: Priorität, wer hüpft, Bogen-Mittelpunkte                                   | `hopping.test.ts`      |
+| `rules/costModel.ts`    | A*-Kostenmatrix, **aus Tokens abgeleitet** (`COST_WEIGHTS`, `segmentExtraCost`)               | `costModel.test.ts`    |
+| `rules/portBundle.ts`   | Port-Bündel-Ausnahme (ADR 0009) — geteilt von I2, Kostenmodell und Audit (ADR 0025)           | `portBundle.test.ts`   |
+| `rules/laneRegistry.ts` | deterministische Lane-Leiter; `laneCandidates` bereit für die Port-Ebene (ROUTE-002 Teil 2b)  | `laneRegistry.test.ts` |
+
+| `rules/hopping.ts` | Kreuzungs-Hopping: Priorität, wer hüpft, Bogen-Mittelpunkte | `hopping.test.ts` |
 
 ### 4.4 Engine: Hanan-A* (Produktivpfad)
 
@@ -353,16 +355,17 @@ CAMP
 
 ### 5.3 Harnesses & Skripte
 
-| Pfad                                                            | Zweck                                                  | Befehl                                               |
-| --------------------------------------------------------------- | ------------------------------------------------------ | ---------------------------------------------------- |
-| `scripts/goldenmaster/`                                         | 6 Referenzpläne → AutoWire/Electrical/Routing-Fixtures | `npm run goldenmaster:capture` / `test:goldenmaster` |
-| `scripts/regression/`                                           | 15 Routing-Szenarien (Layout/Metrik/SVG/Verhalten)     | `npm run regression:capture` / `test:regression`     |
-| `scripts/routing/audit.ts`                                      | Invariantentabelle über die Referenzpläne              | `npm run routing:audit`                              |
-| `scripts/routing/domainProbe.ts`                                | Wirksamkeit der Domänen-Trennregeln (ROUTE-003)        | `npm run routing:domain-probe`                       |
-| `scripts/routing/generate-gallery.ts`                           | 25 Geometrie-Szenarien → SVG + JSON                    | `npm run routing:gallery`                            |
-| `scripts/architecture/`, `scripts/routing/architecture.test.ts` | Architektur-Gates                                      | `npm test`                                           |
-| `scripts/ci/`                                                   | Workflow-Guard, Lockfile-Gate                          | `npm run ci:verify-lockfile-gate`                    |
-| `benchmarks/`                                                   | Perf-Sonden (kein CI-Gate)                             | `npm run perf:edge-routing`, `perf:route-scaling`    |
+| Pfad                                                            | Zweck                                                                                   | Befehl                                               |
+| --------------------------------------------------------------- | --------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| `scripts/goldenmaster/`                                         | 6 Referenzpläne → AutoWire/Electrical/Routing-Fixtures                                  | `npm run goldenmaster:capture` / `test:goldenmaster` |
+| `scripts/regression/`                                           | 15 Routing-Szenarien (Layout/Metrik/SVG/Verhalten)                                      | `npm run regression:capture` / `test:regression`     |
+| `scripts/routing/audit.ts`                                      | Invariantentabelle über die Referenzpläne                                               | `npm run routing:audit`                              |
+| `scripts/routing/domainProbe.ts`                                | Wirksamkeit der Domänen-Trennregeln (ROUTE-003)                                         | `npm run routing:domain-probe`                       |
+| `scripts/routing/laneProbe.ts`                                  | Potenzial von `preferredLaneBonus` (ROUTE-002 Teil 3; Entscheidung: nicht ausgeliefert) | `npm run routing:lane-probe`                         |
+| `scripts/routing/generate-gallery.ts`                           | 25 Geometrie-Szenarien → SVG + JSON                                                     | `npm run routing:gallery`                            |
+| `scripts/architecture/`, `scripts/routing/architecture.test.ts` | Architektur-Gates                                                                       | `npm test`                                           |
+| `scripts/ci/`                                                   | Workflow-Guard, Lockfile-Gate                                                           | `npm run ci:verify-lockfile-gate`                    |
+| `benchmarks/`                                                   | Perf-Sonden (kein CI-Gate)                                                              | `npm run perf:edge-routing`, `perf:route-scaling`    |
 
 ---
 

@@ -3,8 +3,18 @@ import { Position, type Node } from '@xyflow/react';
 import complexPlan from '../../../knownPlans/complex.json';
 import measuredComplexGeometry from '../../../tests/fixtures/routing/complex-measured-geometry.json';
 import { computeCableRouteFinalValidation } from './cableRouteStore';
-import { routeAllCables, portFanOutLanes, resolveHandlePoint, type RouteEdgeRef } from './routeAll';
-import { simplifyWaypoints } from './pathfinding';
+import {
+  routeAllCables,
+  portFanOutLanes,
+  resolveHandlePoint,
+  labelAnchorClearOfNodes,
+  LABEL_HALF_WIDTH,
+  LABEL_HALF_HEIGHT,
+  type RouteEdgeRef,
+} from './routeAll';
+import { nodesToObstacles, simplifyWaypoints } from './pathfinding';
+import { GOLDEN_PLANS } from '../../../scripts/goldenmaster/plans';
+import { performAutoWiring } from '../../../lib/autoWire';
 import { dedupe, orthogonalWaypoints } from './orthogonalRouting';
 import type { Point } from './orthogonalRouting';
 import { ROUTING_SCENARIOS } from './routingScenarios';
@@ -443,4 +453,77 @@ describe('Darstellungs-Knoten sind kein Hindernis (Bug 2026-09-26)', () => {
 
     expect(waypointsOf(withComponent)).not.toBe(waypointsOf(withoutComponent));
   });
+});
+
+/**
+ * Finding 2026-09-27, Screenshot „Label verdeckt Bauteilkarte": Der
+ * Label-Anker war der Trassenmittelpunkt. `edgeLabelNudge` trennt nur Labels
+ * desselben Kantenpaars — gegen Karten gab es keine Ausweichung. Gemessen über
+ * die sechs Referenzpläne lagen 17 Beschriftungen auf einer fremden Karte;
+ * `labelAnchorClearOfNodes` weicht entlang der Leitung aus.
+ */
+describe('Beschriftung verdeckt keine fremde Karte (Finding 2026-09-27)', () => {
+  const boxFree = (x: number, y: number, rect: { x: number; y: number; width: number; height: number }) =>
+    x + LABEL_HALF_WIDTH <= rect.x ||
+    x - LABEL_HALF_WIDTH >= rect.x + rect.width ||
+    y + LABEL_HALF_HEIGHT <= rect.y ||
+    y - LABEL_HALF_HEIGHT >= rect.y + rect.height;
+
+  it('weicht einer Karte aus und bleibt auf der Leitung', () => {
+    const waypoints: Point[] = [
+      { x: 0, y: 0 },
+      { x: 400, y: 0 },
+    ];
+    // Karte liegt genau um den Mittelpunkt (200, 0).
+    const card = { x: 170, y: -50, width: 60, height: 100 };
+
+    expect(labelAnchorClearOfNodes({ x: 200, y: 0 }, waypoints, [card])).not.toEqual({ x: 200, y: 0 });
+    const moved = labelAnchorClearOfNodes({ x: 200, y: 0 }, waypoints, [card]);
+    expect(moved.y).toBe(0); // bleibt auf der Trasse (y konstant)
+    expect(boxFree(moved.x, moved.y, card)).toBe(true);
+    expect(Math.abs(moved.x - 200)).toBeLessThanOrEqual(200);
+  });
+
+  it('lässt den Anker stehen, wenn nichts im Weg ist', () => {
+    const waypoints: Point[] = [
+      { x: 0, y: 0 },
+      { x: 400, y: 0 },
+    ];
+    const card = { x: 1000, y: 1000, width: 60, height: 60 };
+    expect(labelAnchorClearOfNodes({ x: 200, y: 0 }, waypoints, [card])).toEqual({ x: 200, y: 0 });
+  });
+
+  it('bleibt beim Mittelpunkt, wenn die ganze Trasse über Karten läuft', () => {
+    const waypoints: Point[] = [
+      { x: 0, y: 0 },
+      { x: 400, y: 0 },
+    ];
+    const wall = { x: -1000, y: -1000, width: 5000, height: 5000 };
+    expect(labelAnchorClearOfNodes({ x: 200, y: 0 }, waypoints, [wall])).toEqual({ x: 200, y: 0 });
+  });
+
+  it('kein Label liegt auf einer fremden Karte — auf allen sechs Referenzplänen', () => {
+    const offenders: string[] = [];
+    for (const [planName, plan] of Object.entries(GOLDEN_PLANS)) {
+      const wired = performAutoWiring(plan.nodes as never[], plan.edges as never[]);
+      if (!wired) continue;
+      const nodes = wired.nodes as unknown as Node[];
+      const edges = wired.edges as unknown as RouteEdgeRef[];
+      const rects = nodesToObstacles(nodes, new Set<string>());
+      const routes = routeAllCables(nodes, edges);
+      for (const [id, route] of routes) {
+        const edge = edges.find((item) => item.id === id);
+        if (!edge) continue;
+        for (let index = 0; index < nodes.length; index += 1) {
+          const node = nodes[index]!;
+          if (node.id === edge.source || node.id === edge.target) continue;
+          const rect = rects[index];
+          if (rect && !boxFree(route.labelX, route.labelY, rect)) {
+            offenders.push(`${planName}:${id} auf ${node.id}`);
+          }
+        }
+      }
+    }
+    expect(offenders, `Labels auf fremden Karten: ${offenders.join(', ')}`).toEqual([]);
+  }, 120_000);
 });

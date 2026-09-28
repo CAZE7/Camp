@@ -1203,3 +1203,633 @@ Fehlschlag hochgeladen wird. Ein erfolgreicher CI-Artefakt-Upload ist damit
 außerhalb dieses PR-Scopes. Die Nudge-Ursache ist inzwischen durch den
 Vier-Routen-Test und den Test mit gemessener React-Flow-Geometrie reproduziert;
 `complex` ist nicht mehr die einzige Probe.
+
+### 2026-09-27 — Zwölfte Fassung: Prüfbericht-Meldungen ohne Widersprüche (UX-001-Nacharbeit)
+
+Ein Nutzer schickte den Text der Warn-Zentrale und sieben Screenshots. Kein
+Rechenfehler, aber vier Stellen, an denen die App sich selbst widersprach oder
+etwas versprach, das es nicht gibt. Alle vier sind behoben, jede mit Test.
+
+1. **Doppelte/erfremdete Einheiten.** `measuredValue` trägt die Einheit längst
+   selbst („306 A“, „≈ 0,83 kA“, „70 mm²“), `unit` wiederholte sie — auf dem
+   Bildschirm stand **„Ist: 306 A A“**. Der AC-Rumpf setzte `unit: 'Ω'` für
+   _alle_ DOM-001-Befunde und hängte Ohm an einen Textwert: „Ist: LS C, 6 kA
+   (Annahme) **Ω**“. Ebenso „Ist: maxPvVoltage fehlt **V**“, „2 × ohne Angabe
+   **V**“, „kein FI **mA**“. Jetzt: `unit` nur bei echten Größen (AC-Familie
+   bekommt Ω nur an den Zs-Befunden, kA am Reichweiten-Hinweis, sonst `''`), und
+   die Anzeige hängt die Einheit nur an nackte Zahlen (neuer Export
+   `valueWithUnit`).
+2. **Falscher Lösungshinweis.** `nextStep()` prüfte
+   `startsWith('solar-voc-window')` — das trifft auch
+   `solar-voc-window-unknown-<id>`. Die Warnung „maximale PV-Eingangsspannung
+   nicht eingetragen“ bekam damit die Anleitung „weniger Panels in Serie“.
+   Reihenfolge ist jetzt Semantik (UNKNOWN zuerst) und für
+   `thermal-overload`, `fuse-not-possible`, `cross-section-undersized`,
+   `drop-not-solvable`, `solar-voc-uncomputable` und die beiden
+   AC-Datenlücken gibt es eigene Hinweise.
+3. **Empfehlung außerhalb der Normreihe.** Die thermische Überlast empfahl „den
+   nächsten Normquerschnitt über 70 mm²“ — `VDE_SIZES` endet bei 70 mm²
+   (Iz_design 120,4 A), die Stufe existiert im Modell nicht (dieselbe
+   Ehrlichkeit, die schon `fuse-not-possible` hatte: Last aufteilen,
+   parallellegen, 24/48 V). Gleiches im `drop-not-solvable`-Text.
+4. **Zwei Zahlen, beide „kritisch“ genannt.** Das Abzeichen zeigte
+   `warnings.length` mit dem Wort der schwersten Stufe („18 Kritisch“), während
+   die Leiste darunter „14 kritische Probleme offen“ meldete. Jetzt nennt es die
+   kritische Zahl vorn und die Gesamtzahl dahinter („14 von 18 kritisch“), und
+   nur wenn nichts kritisch ist, steht dort die Gesamtzahl mit der Schwere-
+   Wortwahl der schwersten Stufe; der `aria-label` trägt beide Zahlen.
+   Dazu die Folge-Zeile: Datenlücken meldeten „Folge: Reichweite, Ladezeit oder
+   Leistung können schlechter sein als erwartet“ (Kategorie `estimation`) — bei
+   „AC-Schutzorgan ohne Datenblatt“ oder „MPPT-Eingangsspannung fehlt“ ist die
+   zutreffende Folge „ungeprüft“ (`isUnverifiedFinding`, benannte Liste statt
+   `missing`-Heuristik, damit „Sicherung fehlt“ weiter die Sicherheitsfolge hat).
+5. **Chip-Widerspruch auf derselben Leitung.** Auf einer 70-mm²-Leitung mit
+   100-A-Sicherung stand „Max: 100A“ neben dem Chip „Sicherung zu klein!“ —
+   ohne Zahlen nicht von einem Widerspruch zu unterscheiden. Der Chip nennt
+   jetzt beide Werte: „Sicherung zu klein (100A < 306A Last)!“.
+
+6. **Handlungsanweisung ohne Handlung.** Das Routing-Badge riet im
+   Schlechtfall: „Bitte Leitungen umlegen bzw. Abstände vergrößern.“ Seit
+   ADR 0014 werden Kabel ausschließlich automatisch verlegt — es gibt keinen
+   Griff, mit dem man eine Trasse von Hand verschiebt (im FlowCanvas ist nur
+   `edgesFocusable` gesetzt, kein `onEdgeUpdate`/`reconnect`). Die erste
+   Hälfte des Satzes war also nicht befolgbar. Der Hinweis nennt jetzt den
+   echten Hebel: Bauteile mit mehr Abstand zueinander verschieben, danach
+   läuft das Routing erneut. Die Zahl selbst („n Zwänge nicht erreicht“ =
+   I1+I2+I3 aus `validateFinalRouting`) bleibt unverändert ehrlich; sie ist
+   weiterhin eine Messung des letzten Laufs, keine Schätzung.
+
+Bewusst **nicht** angefasst: das Strommodell. `calculateEdgeCurrent` schätzt die
+Last auf Verteil-Leitungen weiterhin konservativ über die Plansumme (Fallback 6),
+weil eine topologische Lastzuordnung das Strommodell, die AutoWire-Dimensionierung
+und damit alle sieben Golden-Master-Fixtures ändert — das ist ein eigener
+Change mit Recapture, nicht ein Begleitschaden einer Textkorrektur. Das Szenario
+ist reproduziert und festgeschrieben (`useLiveValidation.test.ts`, „Prüfbericht:
+3000-W-Wechselrichter an 12 V“): 3000 W / 12,0 V / 0,85 ≈ 294 A plus ~12 A
+DC-Last = 306 A auf dem Batterie-Hauptstrang, 70 mm² (120,4 A) ⇒ Kaskade aus
+„thermisch überlastet“ und „keine Normsicherung“ — arithmetisch korrekt, und ab
+jetzt ohne die vier Widersprüche oben.
+
+Nachweis: `components/planner/ui/WarningCenter.test.tsx` (17 Tests:
+Wert/Einheit inkl. „306 A A“-Regression, Abzeichen-Zahlen, `nextStep`-Zuordnung,
+`consequence`-Zuordnung, `valueWithUnit`), `useLiveValidation.test.ts`
+(55 Tests: Einheiten-Disziplin der AC-Familie, `mixed-voltage-unknown`,
+`thermal-overload`-Text, Bericht-Szenario), `CableEdge.test.tsx` (24),
+`RoutingStatusBadge.test.tsx` (4, inkl. „keine Handlung ohne Handlungsmöglichkeit“)
+und `store/usePlannerStoreExtended.test.ts` unverändert grün.
+
+Gate: `npx vitest run` → 167 Testdateien / 2332 Tests, `npm run typecheck`,
+`npm run typecheck:tests`, `npx eslint .`, `npx prettier --check` grün. Golden
+Master und Regression unberührt (keine Geometrie, keine Dimensionierung, keine
+Fixture berührt). Die 6 zusätzlichen Tests (5 in `lib/autoWire.test.ts`, 1 in
+`store/usePlannerStoreExtended.test.ts`) gehören zur dreizehnten Fassung.
+
+### 2026-09-27 — Dreizehnte Fassung: Auto-Wire lässt Nutzereingaben an seinen Kanten stehen (AUDIT D3)
+
+Der Nutzer meldete: „wenn ich bei den 5 meter 2 meter eingebe und dann auto wire
+drücke springt er wieder auf 5 meter zurück“. Kein Anzeigefehler:
+`performAutoWiring` ersetzt bei jedem Lauf **seine** Kanten (Idempotenz) und baute
+sie dabei mit den festen Planungslängen aus `addDcEdge` neu auf (Batterie→Schiene
+0,2 m, Panel→Regler 5 m, Verbraucher 3 m). Jede Eingabe im Leitungs-Inspektor war
+damit Wegwerfarbeit.
+
+Die Reparatur folgt dem bestehenden Besitz-Vertrag (AUDIT D1/D2) und dehnt ihn
+auf die Auto-Kanten selbst aus: Deren **Nutzerangaben** werden über die
+Verbindung geschlüsselt (`connectionKey`, nicht die bei jedem Lauf neu vergebene
+ID) in den nächsten Lauf übernommen.
+
+- `length` — Tatsache der Verkabelung (wie `watts` am Verbraucher); sie fließt in
+  die Neuberechnung ein, statt sie einzufrieren (kürzere Leitung darf den
+  Querschnitt senken, längere ihn heben).
+- `fuseOffset`, `fuseType`, `fuseBreakingCapacity`, `acProtection` —
+  Datenblattwerte des Schutzorgans, die `applyFuseTypes` ohnehin als
+  Nutzerangabe respektiert.
+- Querschnitt, Sicherungsgröße und die Warnmarker bleiben berechnet — sonst
+  würde „Automatisch verbinden“ nichts mehr nachrechnen; die Gegenprobe
+  („0,5 mm² wird hochdimensioniert“) steht im Test.
+
+Der D2-Migrationstest für Altpläne prüft den unverwechselbaren Inhalt jetzt am
+Querschnitt statt an der Länge: Die Länge ist ab dieser Fassung kein Beweis für
+„nicht ersetzt“ mehr.
+
+Nachweis: `lib/autoWire.test.ts` (90 Tests; +5: eingegebene Länge überlebt den
+Lauf, Länge wirkt auf die Dimensionierung, Querschnitt wird weiter gerechnet,
+Schutzorgan-Daten überleben, unveränderte Auto-Kante behält ihre 5 m),
+`store/usePlannerStoreExtended.test.ts` (59 Tests; +1: UI-Pfad verdrahten →
+`handleChangeLength` → verdrahten). Beide Tests fallen ohne die Übernahme (in
+einer Sitzung gegengeprüft).
+
+Gate: `npx vitest run` → 167 Testdateien / 2332 Tests, `npm run typecheck`,
+`npm run typecheck:tests`, `npx eslint .`, `npx prettier --check` grün. Golden
+Master unberührt (keine Geometrie, keine Dimensionierung, keine Fixture trägt
+eine abweichende Nutzerlänge ein).
+
+### 2026-09-27 — Vierzehnte Fassung: Platzierung — vier Befunde an einem Symptom (AUDIT D4)
+
+Der Nutzer meldete: „Der Router ist nicht das Problem — die Platzierung ist es.",
+
+mit vier belegten Ursachen. Alle vier sind im Code bestätigt und behoben; der
+A*-Router selbst blieb unangetastet (`npm run routing:audit`: I1–I7 = 0,
+Fallback 0, größter Umweg-Faktor 1,65, keine 180°-Wenden).
+
+1. **AutoWire setzte sein Raster absolut am Canvas-Ursprung**
+   (`lib/autoWire/placement.ts`). Die automatisch erzeugten Bauteile (Schienen,
+   Sicherungskasten, Shunt) standen deshalb unabhängig davon, wo der Plan des
+   Nutzers lag, bei (0,0) — die Kabel folgten der Platzierung quer über die
+   Karte (Nutzer-Messung: 12.512 px statt 704 px auf derselben Anlage).
+   `flowAnchor()` nimmt jetzt die linke obere Ecke der nicht verschobenen
+   Bauteile als Bezug und rundet sie auf das **globale** Spalten-/Zeilenraster
+   (288/192) ab — dadurch ist die Rasterlage unabhängig von der
+   Planposition (Determinismus, ADR 0010), und Pläne nahe dem Ursprung
+   behalten exakt die bisherige Platzierung.
+2. **ELK bekam die Token-Defaults 120 × 80 statt der gemessenen Kartengrößen**
+   und schrieb sie anschließend als `width`/`height` auf die Knoten zurück
+   (`lib/planner/routingV2Adapter.ts`). Folge: Karten überlappten nach „Plan
+   ordnen", und der Router bekam zu kleine Hindernisboxen (Leitungen durch
+   Karten). Der Adapter liest jetzt `node.measured` (React Flow 12 hält dort
+   die gemessene Größe) und schreibt **nur noch Positionen** zurück.
+3. **ELK bekam keine Ports** (`lib/planner/layout-engine/`). `buildElkGraph`
+   setzt `elk.portConstraints: 'FIXED_ORDER'` nur, wenn ein Knoten Ports
+   mitbringt — ohne sie durfte ELK Karten so anordnen, dass Leitungen an der
+   falschen Kartenseite ankommen. `ports.ts` liefert die Anschlussseiten je
+   Bauteiltyp (Eingänge WEST, Ausgänge EAST, `plus` vor `minus`,
+   Wechselrichter-`ac_in` NORTH) samt **graphweit eindeutigen** Port-IDs; der
+   Vertrag (`LayoutPort`, `sourcePort`/`targetPort`) ist dokumentiert und die
+   Registry-Parität getestet.
+4. **„Aufräumen" ignorierte die Kanten** (`components/planner/utils/layout.ts`).
+   Die Typ-Stapelung bleibt Basis, aber der Planer prüft jetzt drei Varianten
+   (Stapelung, Barycenter-Ordnung, Barycenter + Spalten-Versatz) und wählt die
+   mit der kürzesten Kabellänge (Proxymaß). Gleichstand behält die bisherige
+   Ordnung — das Aufräumen wird also nie schlechter als vorher.
+
+**Messungen** (über `scripts/goldenmaster/pipeline.ts`, echter Router; sechs
+Referenzpläne, Summe):
+
+| Größe                                      | vorher    | nachher             |
+| ------------------------------------------ | --------- | ------------------- |
+| Kabelweg, Plan am Ursprung                 | 30.269 px | 30.269 px           |
+| Kabelweg, derselbe Plan bei (1200, 800)    | 88.693 px | 29.789 px           |
+| Final-Invariante I1/I2/I3, Plan verschoben | 4         | 0                   |
+| Kabellänge „Aufräumen" (Proxymaß)          | 56.988 px | 48.228 px (−15,4 %) |
+
+Überlappungen: 0 vor und nach dem Aufräumen. Der Nutzer-Fall (Karten relativ
+zueinander verschieben) verliert damit die Positionsabhängigkeit der
+Kabellänge vollständig.
+
+Nachweis: `lib/autoWire/placement.test.ts` (17 Tests; +2: Auto-Bauteile folgen
+einer Planverschiebung, kein Auto-Bauteil landet fernab des Plans — beide
+fallen mit dem Ursprungs-Anker), `lib/planner/routingV2Adapter.test.ts`
+(6 Tests; gemessene Maße 192/132 werden durchgereicht, keine Größe
+zurückgeschrieben, Anschlüsse mit Seiten und `FIXED_ORDER` im ELK-Graphen,
+echtes elkjs akzeptiert die Port-Verweise), `lib/planner/layout-engine/ports.test.ts`
+(6 Tests; Registry-Parität, Seiten-Konvention, Eindeutigkeit der Port-IDs,
+echtes elkjs dockt die Landstromleitung an der OBEREN und die AC-Leitung an
+der RECHTEN Kante des Wechselrichters an), `components/planner/utils/layout.test.ts`
+(10 Tests; +3: Kanten verkürzen die Kabellänge, keine Überlappung,
+Determinismus). Alle vier Gegenproben sind in der Sitzung gefahren: ohne Fix
+fällt jeweils genau der neue Test.
+
+Gate: `npx vitest run` → 168 Testdateien / 2346 Tests, `npm run typecheck`,
+`npm run typecheck:tests`, `npx eslint .`, `npx prettier --check` grün.
+
+**Golden Master und Regression bleiben unberührt — kein Recapture.** Der neue
+Anker rundet auf das globale Raster; die sechs Referenzpläne liegen bei
+x ≥ 80, y ≥ 60, ihr Anker ist also weiterhin (0,0) und die Platzierung
+identisch. Geprüft mit `npm run test:goldenmaster` (13/13) und
+`npm run test:regression` (50/50) — die eingefrorene Wahrheit (AGENTS.md §6,
+`knownPlans/*`, `scripts/goldenmaster/snapshots/*`,
+`scripts/regression/__snapshots__/*`) blieb damit unverändert; eine
+Neuerfassung nach AGENTS.md §5 Nr. 6 war nicht nötig.
+
+### 2026-09-27 — Fünfzehnte Fassung: ELK-Kartenabstand, Beschriftung, sichtbare Kabellänge (ADR 0023)
+
+Der Nutzer hat die Analyse der Vierzehnten Fassung präzisiert und dazu eigene
+Messungen vorgelegt. Zwei davon sind bestätigt und haben die Richtung bestimmt:
+
+- **Nicht das Raster ist der Hebel für die Router-Invarianten.** Fünf
+  translationsinvariante Platzierungsvarianten zerbrachen jeweils I2/I3/I6, und
+  „schon eine reine X-Verschiebung des Rasters erzeugt 12-px-Segmente“. Das ist
+  nachgemessen und reproduziert: `acdc` liefert bei Δ(8, 8) ein 12-px-Segment
+  (I6 + I7). Entscheidend ist der **relative** Versatz zwischen Auto-Raster und
+  Karten, nicht die absolute Phase — eine **reine Übersetzung** des fertigen
+  Layouts (Nutzer- und Auto-Knoten gemeinsam) um (8, 8), (13, 0) und (1200, 800)
+  lässt I1–I7 auf allen sechs Referenzplänen bei **0**. Der Flow-Anker der
+  Vierzehnten Fassung bleibt deshalb, aber seine Wirkung ist jetzt vermessen und
+  begrenzt: Er beseitigt an jeder geprüften Planposition die **harten**
+  Überdeckungen (Σ(I1..I3) vorher 5/3/4/2 bei Δ(296,196)/(600,400)/(1200,800)/(2400,0)
+  → **0**) und senkt den Kabelweg um bis zu 68 % (102.837 → 32.610 px); er macht
+  die Platzierung **nicht** invarianter als das Raster erlaubt (Σ Qualitätsmeldungen
+  I4–I7 25 → 24, in Einzelpositionen beidseitig).
+- **Der Hebel ist die ELK-Fütterung.** Korrekt gefüttert ist ELK über 2–44 %
+  kürzer (gleiche Metrik `routeAllCables`) — simple 2.697 → 2.520 px · camper
+  3.805 → 3.734 · solar 3.200 → 2.496 · inverter 3.888 → 2.188 · acdc 5.770 →
+  4.557 · complex 10.909 → 7.470 (Σ 30.269 → 22.965 px, −24 %).
+
+Drei Lücken sind geschlossen, eine ist dokumentiert:
+
+1. **ELK bekam für den Kartenabstand seinen Default (~10 px)** statt der
+   Port-Freigabe (ROUTE-BUG-32 = `stubMin + laneGrid + cableClearance` = 52 px).
+   Der Wert ist jetzt ein Token (`ROUTING_TOKENS.portFacingClearance`, ADR 0023),
+   `PORT_FACING_CLEARANCE` liest ihn nur noch, und `generateElkLayoutOptions`
+   setzt `spacing.nodeNode` sowie `spacing.nodeNodeBetweenLayers`. Gemessen über
+   die sechs Referenzpläne (ELK-Platzierung + echter Router):
+
+   | ELK-Abstand   | I1  | I2  | I3  | Σ   | Kabelweg  |
+   | ------------- | --- | --- | --- | --- | --------- |
+   | ELK-Default   | 3   | 21  | 17  | 41  | 18.431 px |
+   | Port-Freigabe | 0   | 9   | 1   | 10  | 22.965 px |
+
+   I1 fällt auf 0, I3 von 17 auf 1; der längere Weg ist der Preis dafür, dass
+   zwischen zwei Karten überhaupt verlegt werden kann. Nachweis:
+   `lib/planner/layout-engine/elkSpacing.test.ts` (echtes ELK, misst den
+   Kartenabstand; Gegenprobe ohne Option: `Kartenabstand 20 px < Port-Freigabe
+52 px`), `lib/routing/tokens.test.ts` (Token-Summe + Options-Generator).
+
+2. **Die Kabelbeschriftung lag auf fremden Karten.** `edgeLabelNudge` trennt nur
+   Labels desselben Kantenpaars; der Anker war der Trassenmittelpunkt. Gemessen
+   über die sechs Referenzpläne: **17 Beschriftungen auf fremden Karten**. Neu:
+   `labelAnchorClearOfNodes` sucht entlang der Leitung den nächstgelegenen freien
+   Punkt (Label-Box 112 × 28 px); Ergebnis **0**. Bleibt keine freie Stelle, bleibt
+   der Mittelpunkt — ein verdecktes Label ist besser als eines ohne Bezug.
+   Nachweis: `components/edges/utils/routeAll.test.ts` (4 neue Tests, u. a. der
+   Sechs-Plan-Lauf; Gegenprobe ohne den Fix: 17 Fundstellen).
+3. **Die Kabellänge stand in keinem Bericht.** `routingQuality.ts` misst den
+   Legacy-Router (LEGACY L-1), der Umweg-Faktor ist gegen die Platzierung blind —
+   ein Plan mit 14.752 px Kabelweg blieb grün. Jetzt führt
+   `npm run routing:audit` die Spalten `Kabelweg`/`laengste`, und
+   `scripts/routing/cableLength.test.ts` hält die absolute Länge je Referenzplan
+   als Ratchet plus die Positionsunabhängigkeit (±15 %; mit dem Flow-Anker
+   Σ 29.789 px gegenüber 30.269 px am Ursprung, ohne ihn fällt der Test).
+
+**Dokumentiert statt versteckt:** `ROUTE-006` (`docs/ai/KNOWN-PROBLEMS.md`) hält
+die Restfehler fest — kurze Segmente bei verschobenen Plänen (keine Überdeckung)
+und die 9 I2 + 1 I3 der ELK-Platzierung (Trassenüberdeckungen, überwiegend am
+gemeinsamen Port). Nebenbei korrigiert: `ROUTING-CONTEXT.md` verwies für die
+Domänen-Trennregeln auf ein nicht existierendes `ROUTE-005` — der Eintrag heißt
+`ROUTE-003`.
+
+Gate: `npx vitest run` → 170 Testdateien / 2359 Tests, `npm run typecheck`,
+`npm run typecheck:tests`, `npx eslint .`, `npx prettier --check` grün.
+
+**Golden Master und Regression bleiben unberührt — kein Recapture.** Der
+Kartenabstand wirkt nur im ELK-Pfad („Plan ordnen"), die Beschriftung ist reine
+Darstellung, und der Flow-Anker liefert am Ursprung exakt die eingefrorene
+Platzierung (Anker (0,0) für alle sechs Pläne). Geprüft mit
+`npm run test:goldenmaster` (13/13) und `npm run test:regression` (50/50).
+
+### 2026-09-27 — Sechzehnte Fassung: Rollen-Schichten als ELK-Nebenbedingung + Kreuzungs-Ratchet (ADR 0024)
+
+Der Nutzer hat die nächsten zwei Punkte priorisiert (P1): die fachliche
+Rang-Logik als ELK-Nebenbedingung einspeisen und die Kreuzungszahl dauerhaft
+begrenzen.
+
+1. **Rollen-Schichten erreichen ELK (ADR 0024).** Die fünfstufige Rangfolge
+   (Quelle → Wandler → Verteilung → Wechselrichter → Verbraucher) lebte nur im
+   UI-Aufräumen; `ElkLayoutEngine` setzte alle Knoten auf `x = 0` und ließ ELK
+   allein nach Kreuzungsminimum legen. Jetzt lebt die Rang-Tabelle in
+   `lib/planner/layout-engine/ranks.ts` (das Aufräumen importiert sie — eine
+   Wahrheit), `ElkPlan.ranked` wählt `generateElkRankedOptions`
+   (`layering.strategy: INTERACTIVE`, `considerModelOrder.strategy:
+PREFER_EDGES`) und `LAYOUT_TOKENS.rankSpacing` ist der Seed:
+   `x = Rang × rankSpacing`. Gemessen über die sechs Referenzpläne
+   (ELK-Platzierung → Produktiv-Router → Kreuzungen):
+
+   | Optionen                                        | Σ Kreuzungen     |
+   | ----------------------------------------------- | ---------------- |
+   | ohne Rang-Seed (vorher)                         | 41               |
+   | `interactive` mit `semiInteractive`             | 44               |
+   | `interactive` ohne `semiInteractive`            | 47               |
+   | layering INTERACTIVE + `PREFER_EDGES` (gewählt) | **36**           |
+   | gewählt + `y`-Seed (Index bzw. Ist-Position)    | 36 (wirkungslos) |
+
+   Im Produktivpfad (`applyAdvancedLayout` → `routeAllCables` → Kreuzungen)
+   sinkt die Summe **42 → 34**: solar 3 → 0 · complex 17 → 11 · camper 6 → 4 ·
+   acdc 8 → 6, dazu simple 4 → 5 und inverter 4 → 8. Die Summe sinkt deutlich,
+   einzelne Pläne werden um wenige Kreuzungen schlechter — die Ratchet steht
+   deshalb auf dem gemessenen Stand nach dieser Änderung (kein Wunschwert).
+   `semiInteractive` bleibt aus, weil es die Reihenfolge innerhalb der Schicht
+   einfriert und die Minimierung aufhebt (Σ 36 → 44, gemessen).
+
+2. **Kreuzungen sind ab jetzt eine Grenze.** `npm run routing:audit` führt je
+   Plan eine Ratchet (`CROSSING_RATCHET`, Stand der Messung: simple 2 · camper 5
+   · solar 2 · inverter 2 · acdc 8 · complex 29); Überschreitung ⇒ Exit 1,
+   Unterschreitung ⇒ Nachzieh-Hinweis. Die Audit-Zahlen selbst sind unverändert
+   — sie messen den AutoWire-Pfad, der ELK-Pfad ist nicht Teil des Audits. Die
+   Test-Ratchet für beide Router-Pässe existierte bereits
+   (`lib/routing/invariants.test.ts`).
+
+3. **Die Kabellänge ist messbar.** `npm run routing:audit` zeigt je Plan `Kabelweg` und
+   `laengste` Leitung, `scripts/routing/cableLength.test.ts` hält die ABSOLUTE Länge je
+   Referenzplan als Ratchet (plus Positionstest ±15 %; gegen die alte Platzierung fällt er).
+   Vorher maß nur `routingQuality.ts` — und zwar den Legacy-Router, weshalb der Nutzerfall
+   („alles grün bei 14.752 px“) durch jedes Gate fiel.
+
+Nachweis: `lib/planner/layout-engine/rankLayers.test.ts` (4 Tests:
+Rang-Tabelle, Einheit mit dem Aufräumen, x-Seed + Optionen im ELK-Graphen,
+echtes ELK hält Quelle < Speicher < Wechselrichter < Verbraucher),
+`lib/routing/tokens.test.ts` (+1: die gerankten Optionen enthalten
+`INTERACTIVE`/`PREFER_EDGES`, aber kein `semiInteractive`).
+
+**Nicht in dieser Scheibe (P2, bewusst offen):** die vollständige Anbindung
+des Kostenmodells (`ROUTE-002`: `segmentExtraCost`/`preferredLaneBonus` haben
+weiterhin nur Test-Konsumenten) und das Rest-I2 der ELK-Geometrie
+(`ROUTE-006`, Zielbild `LaneRegistry`, `ROUTE-001`). Beide ändern die
+Produktiv-Geometrie und damit die eingefrorene Wahrheit
+(`knownPlans/*`, `scripts/regression/__snapshots__/*`) — das ist ein eigener,
+einzeln begründeter Recapture-Schritt nach AGENTS.md §5 Nr. 6, kein Beifang.
+
+Gate: `npx vitest run` → 171 Testdateien / 2364 Tests, `npm run typecheck`,
+`npm run typecheck:tests`, `npx eslint .`, `npx prettier --check` grün.
+
+**Golden Master und Regression bleiben unberührt — kein Recapture.** Der
+Rang-Seed wirkt ausschließlich im ELK-Platzierungspfad; die Referenzpläne
+laufen ohne ELK. Beide Suiten sind Teil des vollen Laufs
+(`npm run test:goldenmaster` 13/13, `npm run test:regression` 50/50).
+
+### 2026-09-27 — Siebzehnte Fassung: Kantenkosten kommen aus dem Kostenmodell (ROUTE-002, Teil 1)
+
+Die beiden Nutzer-Prioritäten P1 (Rollen-Schichten, Kreuzungs-Ratchet) sind in
+der Sechzehnten Fassung erledigt. In derselben Scheibe ist der erste Teil des
+P2-Punkts `ROUTE-002` gefolgt: Der Produktivrouter optimiert „knick- und
+kreuzungsarm“ — die Preise dafür standen aber als lokale Konstanten in
+`components/edges/utils/pathfinding.ts` (`BEND_COST = 80`, `U_TURN_COST = 400`),
+während nur die Kreuzung (`COST_WEIGHTS.crossing = 120`) aus dem generierten
+Kostenmodell kam.
+
+1. **Das Modell ist die Quelle.** `CostWeights` hat jetzt `bend` und `uTurn`,
+   `COST_FACTORS` die Ableitungen `bendPerLaneGrid: 5` und
+   `uTurnPerLaneGrid: 25`. `pathfinding.ts` liest sie:
+   `BEND_COST = COST_WEIGHTS.bend`, `U_TURN_COST = COST_WEIGHTS.uTurn`. Die
+   Werte sind **wertgleich** zu den bisherigen Hardcodes (5 × 16 = 80,
+   25 × 16 = 400; die Kehre bleibt so teuer wie eine Clearance-Verletzung) —
+   Golden Master und Regression bleiben deshalb unberührt, **kein Recapture**.
+   Damit ist auch der ROUTE-004-Rest „`BEND_COST`/`U_TURN_COST` außerhalb der
+   Tokens“ geschlossen; offen bleiben nur `MAX_EXPANSIONS` (Suchbudget) und
+   `MAX_ACCEPTABLE_CROSSINGS` (Abbruchschwelle) — beides keine Preise.
+
+2. **Die verbleibende Hälfte ist vermessen, nicht vergessen.** `segmentExtraCost`
+   und `preferredLaneBonus` haben weiterhin keinen Produktiv-Konsumenten. Die
+   Messung über die sechs Referenzpläne (Produktivpfad, geroutete Trassen,
+   Paare **verschiedener** Kanten) zeigt, warum ein Anschließen kein Stecker
+   ist:
+
+   | Klasse                        | Paare | Bedeutung im Bestand                                   |
+   | ----------------------------- | ----- | ------------------------------------------------------ |
+   | `hard` (kollinear)            | 47    | **alle** Port-Bündel-Ausnahme (ADR 0009), echte I2 = 0 |
+   | `weighted` (Touch/Clearance)  | 82    | Port-Nähe, kein Verstoß                                |
+   | `nearby` (< Clearance + Lane) | 121   | gewollte Bündel-Lanes (16-px-Raster)                   |
+   | `soft` (Kreuzung)             | 48    | exakt die Audit-Kreuzungen (2/5/2/2/8/29)              |
+
+   Ein blindes `hard ⇒ Infinity` würde 47 legitime gemeinsame Stubs als
+   unmöglich verwerfen; `nearbyLane` (16 px je Paar) würde gegen die bewusst
+   gebündelten Trassen drücken. Vor dem Produktiv-Einsatz muss die
+   Stub-Kenntnis des Nachbarn in das Modell (die Ausnahme lebt heute in
+   `checkEdgeEdgeOverlaps`, `lib/routing/invariants.ts`), der Lane-Bonus
+   braucht die LaneRegistry (`ROUTE-001`). Beides steht als Teil 2 in
+   `KNOWN-PROBLEMS.md` (`ROUTE-002`) und ist bewusst **nicht** Teil dieser
+   Scheibe: es ändert die Produktiv-Geometrie und braucht einen eigenen,
+   einzeln begründeten Recapture-Schritt (AGENTS.md §5 Nr. 6).
+
+Nachweis: `lib/routing/rules/costModel.test.ts` (20 Tests — u. a.
+Faktor-Ableitung für `bend`/`uTurn`, Ordnung Kehre > Kreuzung > Biegung >
+Nah-Lane und die Abgrenzung zur Port-Bündel-Ausnahme) und
+`components/edges/utils/pathfinding.test.ts` (51 Tests — Sync von
+`BEND_COST`/`U_TURN_COST` mit dem Modell).
+
+Gate: `npx vitest run` → 171 Testdateien / 2369 Tests, `npm run typecheck`,
+`npm run typecheck:tests`, `npx eslint .`, `npx prettier --check` grün.
+
+### 2026-09-27 — Achtzehnte Fassung: Port-Bündel ist eine Regel für Modell, Invariante und Diagnose (ROUTE-002 Teil 2a, ADR 0025)
+
+Der Auftrag „Stub-Kenntnis des Nachbarn ins Modell, Bonus erst mit der
+LaneRegistry“ ist in zwei Teilen umgesetzt — und hat unterwegs einen
+Widerspruch aufgedeckt, den der Nutzer in seiner Kritik vorweggenommen hatte
+(„Meldungen, die einander widersprechen“).
+
+1. **Die Ausnahme ist eine Regel, nicht drei.** Die Port-Bündel-Ausnahme
+   (ADR 0009: der gemeinsame Stub zweier Leitungen an derselben
+   Anschlussstelle ist erlaubt, solange die Überdeckung vollständig in den
+   Stubs beider Kanten liegt) lebte als private Funktion in
+   `lib/routing/invariants.ts` — und in einer **zweiten, abweichenden Fassung**
+   im Diagnose-Skript (`stubMin`-Fenster um den Port). Folge: `routing:audit`
+   meldete `ovl=3/1 · 7/3 · 2/2 · 1/3 · 3/7 · 6/9`, also 25 Überdeckungen
+   „außerhalb des Ports“ — während I2 im selben Lauf **0** sagte. Die Regel
+   lebt jetzt in `lib/routing/rules/portBundle.ts` (`routedPathGeometry`,
+   `sharesPort`, `overlapInterval`, `isPortBundleOverlap`) und wird von I2,
+   vom Kostenmodell und vom Audit gelesen.
+
+2. **Das Modell kann Bündel erkennen.** `segmentExtraCost` nimmt optional
+   `portBundle: { own, otherOf }` entgegen: eine kollineare Überdeckung, die
+   die Ausnahme erfüllt, kostet nichts und wird als `portBundleShared` gezählt
+   statt als `Infinity` gemeldet. Ohne Kenntnis bleibt alles hart
+   (**fail-safe**) — ein fälschlich verworfenes Segment wäre schlimmer als ein
+   nicht ausgenutztes Bündel. Messung über die sechs Referenzpläne (Produktivpfad,
+   ungeordnete Kantenpaare wie I2): **47 kollineare Paare, alle 47 sind
+   Port-Bündel**, 0 echte I2-Verstöße; ohne Kenntnis liefert das Modell für
+   genau diese 47 Paare `Infinity`, mit Kenntnis für keines. Das Audit zeigt
+   jetzt `ovl=4/0 · 10/0 · 4/0 · 4/0 · 10/0 · 15/0` statt der 25 Phantomfehler.
+
+3. **Die Kopplung ist ein Gate.** `audit.ts` prüft hart
+   `(elsewhere > 0) !== (I2 > 0)` ⇒ Exit 1: Diagnose und Invariante dürfen sich
+   nicht mehr widersprechen. `npm run routing:audit` ist Exit 0.
+
+4. **Der Bonus bleibt liegen — mit Begründung.** `preferredLaneBonus` und der
+   Produktiv-Aufruf von `segmentExtraCost` im Suchloop sind bewusst nicht
+   erfolgt: 121 `nearby`-Paare liegen innerhalb einer Lane-Breite über der
+   Freigabe — das sind die gewollten Bündel-Lanes (16-px-Raster), und
+   `nearbyLane` würde als Strafe gegen sie drücken. Bewertbar ist das erst mit
+   der LaneRegistry (`ROUTE-001`), die den Bündel-Begriff zentralisiert.
+   Kein Recapture in dieser Scheibe; Golden Master und Regression unberührt.
+
+Nachweis: `scripts/routing/portBundleModel.test.ts` (8 Tests über die sechs
+Referenzpläne: I2 = 0, 47 kollineare Paare alle Bündel, Modell ohne/mit
+Kenntnis, Audit `atPort`/`elsewhere`, Ratchet-Zahlen), `lib/routing/rules/portBundle.test.ts`
+(10), `lib/routing/rules/costModel.test.ts` (23, +4), `npm run routing:audit`.
+
+Gate: `npm run check` — 173 Testdateien / 2390 Tests, eslint, prettier,
+typecheck, typecheck:tests, Coverage grün.
+
+### 2026-09-27 — Zwanzigste Fassung: Merge mit dem Trunk, I2 als Regressionsmetrik, Ratchet nachgezogen
+
+Diese Fassung dokumentiert die Integration des Arena-Zweigs mit dem Trunk-Stand
+(„stabilize planning and safe route reflow, Auto-Edge-Identität, H-Cluster-Reflow",
+2026-09-26/27). Beide Seiten hatten dieselbe Baustelle angefasst; der Merge hat
+sie zusammengeführt, nicht verdoppelt.
+
+**1. Der Nudge-Reflow des Trunk-Zweigs löst die Frage, für die der Leiter-Pass
+gedacht war — er ist deshalb nicht ausgeliefert.** Der Zweig brachte einen
+eigenen Pass mit (`displaceSingleMovers`: Kandidaten aus der LaneRegistry-Leiter
+`coord ± k · laneGrid`, Gegenüber aus dem aktuellen Arbeitsstand, Stub-Achsen-
+Beweger). Gemessen nach dem Merge: **im ELK-Pfad ändert er nichts** (I2 = 5 mit
+und ohne), in den Regressions-Szenarien nur Geometrie **ohne Metrikgewinn**
+(p02: I2 = 0 in beiden Fällen, Kreuzungen/Bends/Länge identisch). Der Trunk-Reflow
+selbst (Kandidaten `ideale Lane ± k · Raster`, Lane-Reservierung, zweite begrenzte
+Runde, `isSafeNudgeVertex`) deckt dieselbe Klasse ab. Der Pass wurde entfernt —
+samt der Regeln, die dafür im globalen Qualitäts-Gate nötig waren. Was bleibt:
+`laneCandidates` (getestet, vorbereitet) — sein **nächster Konsument ist die
+Port-Bündel-/Fan-Out-Ebene** (ROUTE-002 Teil 2b), und die Doku sagt das jetzt
+ausdrücklich (ROUTE-001 ist damit „teilweise, Konsument offen").
+
+**2. Die Regressionssuite führt I2 jetzt selbst — und findet sofort einen
+Bestandsfall.** `ScenarioMetrics` hat `edgeOverlaps` (aus `checkEdgeEdgeOverlaps`,
+also mit der Port-Bündel-Ausnahme derselben Regel wie die Invariante), das
+Metrik-Budget prüft „≤ Baseline". Vorher waren Trassenüberdeckungen in den 15
+Stress-Szenarien unsichtbar: p02 hatte zwei, `p11-zwangskreuzung` hat eine über
+**440 px** (`e-down ↔ e-up`, H @536 [256, 696]). Beide überdeckten Läufe sind
+Handle-Stubs — der Nudge darf sie bauartbedingt nicht anfassen (die Trasse kommt
+so aus dem A*-Router, der unangetastet bleibt). Festgehalten als Ratchet ≤ 1,
+sichtbar statt versteckt. Die Regressions-Referenz wurde dafür neu erfasst —
+und der Capture-Diff gegen den Trunk-Stand enthält **ausschließlich das neue
+Feld**: keine einzige Trasse, kein SVG, keine Metrik der 15 Szenarien ändert
+sich durch diesen Zweig.
+
+**3. Kreuzungs-Ratchet nachgezogen (der Audit bittet darum).** Der
+Trunk-Reflow hat die Kreuzungen gesenkt; gemessen statt geschätzt:
+
+| Plan    | vorher  | jetzt       |
+| ------- | ------- | ----------- |
+| acdc    | 8       | **6**       |
+| complex | 29      | **27**      |
+| übrige  | 2/5/2/2 | unverändert |
+
+`CROSSING_RATCHET` steht damit bei `{simple 2, camper 5, solar 2, inverter 2,
+acdc 6, complex 27}` — die Unterschreitung ist eingefroren, nicht nur gemeldet
+(der Audit-Hinweis verschwindet damit).
+
+Dieselbe Nachzieh-Pflicht greift für die **Kabellänge**: der Trunk-Reflow
+verlegt camper, inverter, acdc und complex kürzer (3.709 statt 3.805, 3.881
+statt 3.888, 5.710 statt 5.770, 8.602 statt 10.909 px; simple und solar
+unverändert). `scripts/routing/cableLength.test.ts` verlangt das Nachziehen
+selbst („Verbesserungen müssen nachgezogen werden") — `BASELINE_PX` steht jetzt
+auf den gemessenen Werten.
+
+**4. Merge-Konflikte inhaltlich gelöst (nicht „einfach eine Seite nehmen"):**
+
+- `lib/autoWire.ts`: Der Trunk bewahrt **IDs** über die Verbindungs-Identität
+  (`autoEdgeIdentityKey`, Reservierung von Nutzer- und historischen Auto-IDs),
+  der Zweig bewahrt **Nutzerangaben** (`length`, `fuseOffset`, `fuseType`,
+  `fuseBreakingCapacity`, `acProtection`). Beides ist geblieben; der Daten-Block
+  ist auf denselben Identitätsschlüssel umgestellt (`autoEdgeIdentityKey` statt
+  `connectionKey`) — vorher hätte eine AC/DC-Parallelverbindung ihre Angaben
+  vertauschen können.
+- `components/edges/utils/nudge.ts`: Trunk-Stand übernommen (siehe 1).
+- `components/edges/utils/routeAll.test.ts`: nur Import-Kopf — beide Seiten
+  additiv, vereinigt.
+- `docs/ARCHITECTURE-CHANGES.md`: beide Einträge, Trunk zuerst.
+- Golden-Artefakte (`p02`-SVG, `goldenLayouts.json`): Trunk-Stand übernommen,
+  anschließend mit dem neuen Feld **bewusst** neu erfasst (siehe 2).
+
+**5. Stand nach dem Merge (gemessen):**
+
+- ELK-Pfad, sechs Referenzpläne: **I1 = 0, I2 = 5, I3 = 3.** Die fünf
+  Überdeckungen sind port-nah (vier an einem geteilten Port, dort blockiert
+  `stubMin` den seitlichen Zug; der fünfte kostet zwei Kreuzungen) — Details,
+  Paare und Längen in `docs/ai/KNOWN-PROBLEMS.md` unter ROUTE-006.
+- `npm run routing:audit`: I1–I7 = 0, `determ=true`, Kreuzungen 2/5/2/2/6/27,
+  Kabelweg 2.697/3.709/3.200/3.881/5.710/8.602 px.
+- Golden Master 13/13 unverändert (der Trunk hat seine Fixtures bewusst
+  eingefroren), Regression 50/50 nach dem Capture unter 2.
+
+Gate: `npm run check` — **175 Testdateien / 2.4xx Tests**, eslint, prettier,
+typecheck, typecheck:tests, Coverage grün; Pre-Push inkl. E2E grün.
+
+### 2026-09-28 — Einundzwanzigste Fassung: Port-Freigabe auf zwei Lane-Schritte (ROUTE-002 Teil 2b, ADR 0027)
+
+Diese Fassung schließt ROUTE-002 Teil 2b ab — mit einem Befund, der die
+Vermutung des Backlogs widerlegt: **Der Hebel ist nicht die Lane-Vergabe am
+Port, sondern die Platzierungs-Freigabe.** Vier Varianten einer Vergabe wurden
+gebaut und gemessen (Stub-Achsen-Gate, `segmentExtraCost`-Schiedsrichter im
+Suchloop, zwei Enden-Staffelungen); keine verbesserte den ELK-Pfad ohne Schaden
+im Produktivpfad. Die Zahlen stehen vollständig in `KNOWN-PROBLEMS.md` unter
+ROUTE-002.
+
+**1. Die Ursache liegt in der Kappung, nicht in der Vergabe.** Die fünf I2-Paare
+des ELK-Pfads sind vier Fan-Out/Fan-In-Fälle an einem geteilten Handle plus ein
+Nachbarfall. Vier davon sind an **beiden** Enden gekappt: Der Korridor ist 52 px
+breit, die Freigabe frisst 12 px, für den Stub bleiben 40 — und `capStep`
+(ROUTE-BUG-31/34/35) kappt bei zwei Leitungen an einer Klemme auf `stubMin`
+(24 px), weil die Rang-Treppe nur im Band `cap − stubMin` Platz hat. In diesem
+Regime ist die vergebene Lane **nicht ausdrückbar**; jede Vergabe-Variante
+verschiebt nur, wem die Überdeckung passiert.
+
+**2. Die Freigabe wächst um einen Lane-Schritt: 52 → 68 px.**
+`ROUTING_TOKENS.portFacingClearance = stubMin + 2·laneGrid + cableClearance`.
+Begründung: An einer Klemme hängen im Referenzbestand regelmäßig **zwei**
+Leitungen; erst mit zwei Schritten ist jede der beiden Lanes ohne Kappung
+darstellbar. Die Konsistenz-Pins in `tokens.test.ts` und `placement.test.ts`
+tragen die Summe jetzt mit zwei Schritten (ADR 0027 ersetzt die „genau ein
+Schritt"-Festlegung aus ADR 0023 Punkt 4).
+
+**3. Gemessen (ELK-Pfad, sechs Referenzpläne, `applyAdvancedLayout` →
+`routeAllCables`):**
+
+| Metrik            | 52 px         | 68 px         |
+| ----------------- | ------------- | ------------- |
+| I1 / I2 / I3      | 0 / **5** / 3 | 0 / **0** / 3 |
+| I6 / I7 (complex) | 2 / 1         | **0 / 0**     |
+| Kreuzungs-Paare   | 122           | **107**       |
+| Kabelweg Σ        | 25 129 px     | 27 967 px     |
+| längste Kante     | 1 360 px      | 1 597 px      |
+
+Die Überdeckungs-**Länge** steigt (1 039 → 1 155 px), obwohl I2 = 0: Die
+verbleibenden kollinearen Abschnitte sind die erlaubten Port-Bündel-Stubs
+(ADR 0025), und die werden mit größerem Kartenabstand länger. I2 zählt genau die
+Verstöße außerhalb der Stubs.
+
+**4. Kein eingefrorener Referenzstand ändert sich.** Der Fest-Raster-Pfad
+(AutoWire) liest den Token nicht: Seine Korridore (96/72 px) erfüllen beide
+Werte, und die Plan-Fixtures tragen absolute Koordinaten. `npm run
+routing:audit` liefert mit 52 und 68 **dieselbe Tabelle** (Kreuzungen
+2/5/2/2/6/27, Kabelweg 2.697/3.709/3.200/3.881/5.710/8.602 px), Golden Master
+und Regression bleiben unverändert — **kein Recapture**. Geändert werden nur der
+Token, seine Dokumentation (ADR 0027, KNOWN-PROBLEMS, README-ADR-Tabelle) und
+die zwei Pin-Tests der Summe.
+
+**5. Der Preis steht im Dokument.** Im ELK-Pfad liegen die Karten weiter
+auseinander, die Kabel wachsen um 2 838 px (+11,3 %). Die Abwägung wurde mit
+genau diesen Zahlen entschieden (I2 = 0 und −15 Kreuzungspaare gegen längere
+Kabel) — wer kurze Kabel höher gewichtet, kann den Token auf 52 zurückdrehen;
+der Test fordert dann wieder einen Schritt.
+
+**Offen (unverändert):** `preferredLaneBonus` ohne Produktiv-Konsumenten — mit
+68 px ist der Boden dafür erstmals frei, weil die Bündel-Lanes ausdrückbar sind.
+Die Anbindung bleibt eine eigene Scheibe (ROUTE-002/ROUTE-001).
+
+### 2026-09-28 — Zweiundzwanzigste Fassung: `preferredLaneBonus` geprüft und verworfen (ROUTE-002 Teil 3)
+
+Nach ADR 0027 war der Boden frei (die Bündel-Lanes sind mit 68 px ausdrückbar), also wurde der
+letzte offene Posten des Kostenmodell-Pakets geprüft: `preferredLaneBonus` („zieht den
+A*-Lauf auf die Registry-Lane", WP-6).
+
+**1. Potenzial ist da — reproduzierbar gemessen.** `npm run routing:lane-probe`
+(`scripts/routing/laneProbe.ts`, Konvention wie `routing:domain-probe`) füllt die
+`LaneRegistry` mit den **Ideal-Routen** (Katalog, port-treu) und fragt je Ideal-Segment, ob
+die bevorzugte Linie **frei** ist und ob die geroutete Trasse sie **fährt**. Über 428
+Ideal-Segmente (6 Referenzpläne + 15 Regressions-Szenarien) sind **50** (ELK-Pfad) bzw.
+**22** (Fest-Raster) frei **und** ungenutzt — der Bonus hätte also etwas zu tun.
+
+**2. Vier Varianten verdrahtet und über beide Pfade gemessen — keine netto-positiv.**
+
+| Variante                                               | ELK-Pfad                                              | Fest-Raster                                                                      |
+| ------------------------------------------------------ | ----------------------------------------------------- | -------------------------------------------------------------------------------- |
+| A gewichtet (Bewertung + A*-Gitterlinie)               | Kreuzungen 107 → 109, **I3 3 → 4**, +144 px           | camper Kreuzungen 5 → **1**, acdc 6 → **7** (Ratchet), acdc −364 px              |
+| B nur Kreuzungs-Tie-Break in der Katalogwahl           | inert                                                 | inert                                                                            |
+| C wie B mit Bonus                                      | Kreuzungen 107 → 106, **I3 3 → 4**, +144 px           | camper Kreuzungen **1**, acdc 6 (hält), acdc −483 px, camper +9 px               |
+| **D Bonus nur in der Bewertung** (ohne A*-Gitterlinie) | Kreuzungen 107 → **104**, Überdeckung −10 px, +144 px | acdc −483 px (längste Kante 1303 → **835**), inverter −27 px, **complex +44 px** |
+
+Nur D bleibt ohne Regelverstoß (I3 unverändert, Kreuzungen sinken, Überdeckung sinkt) —
+scheitert aber an der **Kabellängen-Ratchet** (`complex` 8602 → 8646 px), deren Test
+ausdrücklich sagt: „Ursache suchen (Platzierung/Router) — **nicht die Baseline anheben**".
+Die Ursache ist gemessen: kein Bonus-Entscheid, sondern eine **Tube-/Envelope-Kaskade** des
+gierigen sequenziellen Routings (`e-batt-plus` wählt bei Gleichstand eine andere Mittellinie,
+deren Tube die Envelope des A*-Gitters verschiebt; der Nachbar läuft danach auf 344 statt 366
+und zahlt +44 px).
+
+**3. Entscheidung: nicht ausliefern, Werkzeug behalten.** `preferredLaneBonus` bleibt ohne
+Produktiv-Konsumenten. Ausgeliefert wird die **Probe** (`npm run routing:lane-probe`) plus
+Test (`scripts/routing/laneProbe.test.ts`: Struktur der Messung, keine Layout-Zahlen), die
+aktualisierte Dokumentation (ROUTE-002 Teil 3, ROUTE-001, CODE-MAP, TESTING-CONTEXT) und der
+Modulkommentar in `rules/costModel.ts`. **Keine** Router-Änderung, **kein** Recapture, keine
+Golden-Bewegung. Für einen zweiten Versuch sind zwei Bedingungen dokumentiert: die Vergabe
+muss **global** statt gierig entschieden werden, oder das A*-Gitter muss von der
+Tube-Envelope entkoppelt werden.

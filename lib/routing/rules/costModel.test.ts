@@ -9,6 +9,8 @@ import {
 import { classifyCollision } from './collision';
 import { SegmentSpatialIndex } from '../geometry/segmentSpatialIndex';
 import { ROUTING_TOKENS } from '../tokens';
+import { checkEdgeEdgeOverlaps } from '../invariants';
+import { routedPathGeometry } from './portBundle';
 import type { Segment } from '../geometry';
 
 /**
@@ -31,6 +33,8 @@ describe('Kostenmatrix (generiert, nicht gepflegt)', () => {
     expect(probe.clearanceViolation).toBe(COST_FACTORS.clearancePerLaneGrid * 10);
     expect(probe.crossing).toBe(COST_FACTORS.crossingPerLaneGrid * 10);
     expect(probe.nearbyLane).toBe(COST_FACTORS.nearbyPerLaneGrid * 10);
+    expect(probe.bend).toBe(COST_FACTORS.bendPerLaneGrid * 10);
+    expect(probe.uTurn).toBe(COST_FACTORS.uTurnPerLaneGrid * 10);
     expect(probe.preferredLaneBonus).toBe(COST_FACTORS.preferredBonusPerLaneGrid * 10);
   });
 
@@ -45,6 +49,22 @@ describe('Kostenmatrix (generiert, nicht gepflegt)', () => {
   it('Sync mit dem Bestandsrouter: crossing = 120 (7,5 × laneGrid = bisheriger scorePath-Wert)', () => {
     expect(COST_WEIGHTS.crossing).toBe(120);
     expect(COST_WEIGHTS.crossing).toBe(COST_FACTORS.crossingPerLaneGrid * grid);
+  });
+
+  it('Sync ROUTE-002: Biegung = 80 und Kehre = 400 (5 bzw. 25 × laneGrid) aus dem Modell', () => {
+    // Die Produktivkonstanten in components/edges/utils/pathfinding.ts lesen
+    // diese Werte; die Gegenseite friert `pathfinding.test.ts` ein (Drift-Guard).
+    expect(COST_WEIGHTS.bend).toBe(5 * grid);
+    expect(COST_WEIGHTS.bend).toBe(80);
+    expect(COST_WEIGHTS.uTurn).toBe(25 * grid);
+    expect(COST_WEIGHTS.uTurn).toBe(400);
+  });
+
+  it('Ordnung der Kantenkosten: Kehre > Kreuzung > Biegung > Nah-Lane', () => {
+    expect(COST_WEIGHTS.uTurn).toBeGreaterThan(COST_WEIGHTS.crossing);
+    expect(COST_WEIGHTS.uTurn).toBe(COST_WEIGHTS.clearanceViolation);
+    expect(COST_WEIGHTS.crossing).toBeGreaterThan(COST_WEIGHTS.bend);
+    expect(COST_WEIGHTS.bend).toBeGreaterThan(COST_WEIGHTS.nearbyLane);
   });
 
   it('Matrix ist eingefroren (Object.freeze)', () => {
@@ -148,5 +168,83 @@ describe('preferredLaneBonus (WP-5-Anbindung)', () => {
     expect(preferredLaneBonus(16, 16)).toBe(COST_WEIGHTS.preferredLaneBonus);
     expect(preferredLaneBonus(0, 16)).toBe(0);
     expect(preferredLaneBonus(16, undefined)).toBe(0);
+  });
+});
+
+/**
+ * ROUTE-002 (gemessene Grenze, 2026-09-27): Die `hard`-Klasse des Modells
+ * kennt die Port-Bündel-Ausnahme (ADR 0009) NICHT — sie lebt im
+ * Invarianten-Check (`checkEdgeEdgeOverlaps`). Über die sechs Referenzpläne
+ * zählt die Klassifikation 47 fremde `hard`-Paare, und alle 47 sind genau
+ * diese Ausnahme (I2 selbst: 0). Deshalb kann `segmentExtraCost` nicht
+ * unverändert der Auswahl im Produktivpfad vorgeschaltet werden — wer das
+ * tut, muss die Stub-Kenntnis mitbringen. Dieser Test hält den Grund fest.
+ */
+
+describe('segmentExtraCost — Port-Bündel-Ausnahme (ROUTE-002 Teil 2, ADR 0009)', () => {
+  // Zwei Leitungen verlassen denselben Handle nach rechts und teilen sich
+  // dort den Stub (a 60 px, b 90 px weit).
+  const a = routedPathGeometry([
+    { x: 0, y: 0 },
+    { x: 60, y: 0 },
+    { x: 60, y: 80 },
+  ]);
+  const b = routedPathGeometry([
+    { x: 0, y: 0 },
+    { x: 90, y: 0 },
+    { x: 90, y: 70 },
+  ]);
+  // Nur b's Stub im Index — der Fall soll die Ausnahme isolieren, nicht die
+  // übrigen Wechselwirkungen zweier Bündel-Kanten mittesten.
+  const stubIndex = () => new SegmentSpatialIndex([b.stubs[0]!]);
+
+  it('ohne Stub-Kenntnis bleibt der gemeinsame Stub hart (fail-safe)', () => {
+    const r = segmentExtraCost(a.stubs[0]!, stubIndex());
+    expect(r.cost).toBe(Infinity);
+    expect(r.overlaps).toBe(1);
+    expect(r.portBundleShared).toBe(0);
+  });
+
+  it('mit Stub-Kenntnis ist genau dieselbe Überdeckung erlaubt und kostenfrei', () => {
+    const r = segmentExtraCost(a.stubs[0]!, stubIndex(), { portBundle: { own: a, otherOf: () => b } });
+    expect(r.cost).toBe(0);
+    expect(r.overlaps).toBe(0);
+    expect(r.portBundleShared).toBe(1);
+  });
+
+  it('dieselben zwei Kanten sind für I2 kein Verstoß — Modell und Invariante sind einig', () => {
+    const routed = [
+      { id: 'a', source: 'n1', target: 'n2', waypoints: a.points as { x: number; y: number }[] },
+      { id: 'b', source: 'n1', target: 'n3', waypoints: b.points as { x: number; y: number }[] },
+    ];
+    expect(checkEdgeEdgeOverlaps(routed)).toHaveLength(0);
+  });
+
+  it('Rückkehr auf die Stub-Linie über ein Mittelstück bleibt auch mit Kenntnis hart', () => {
+    // Längere Kante, deren Stub bis x=300 reicht …
+    const long = routedPathGeometry([
+      { x: 0, y: 0 },
+      { x: 300, y: 0 },
+      { x: 300, y: 80 },
+    ]);
+    // … und eine Kante, die über ein MITTLERES Segment auf die Linie y=0
+    // zurückkehrt: die Überdeckung [150, 200] liegt im Stub der langen Kante,
+    // aber außerhalb der Stubs dieser Kante (ADR 0009).
+    const back = routedPathGeometry([
+      { x: 0, y: 0 },
+      { x: 0, y: 60 },
+      { x: 200, y: 60 },
+      { x: 200, y: 0 },
+      { x: 150, y: 0 },
+      { x: 150, y: 100 },
+    ]);
+    const middle = back.segments.find((s) => s[0].y === 0 && s[1].y === 0)!;
+    expect(middle).toBeDefined();
+    const r = segmentExtraCost(long.stubs[0]!, new SegmentSpatialIndex([middle]), {
+      portBundle: { own: long, otherOf: () => back },
+    });
+    expect(r.cost).toBe(Infinity);
+    expect(r.overlaps).toBe(1);
+    expect(r.portBundleShared).toBe(0);
   });
 });

@@ -3,6 +3,7 @@ import { routeAllCables, type RouteEdgeRef } from '../../components/edges/utils/
 import { countBends, pathLength, type Point } from '../../lib/routing/geometry';
 import {
   checkClearance,
+  checkEdgeEdgeOverlaps,
   checkEdgeNodeCollisions,
   countCrossings,
   type NodeRect,
@@ -28,6 +29,14 @@ export type ScenarioMetrics = {
   length: number;
   /** I1- + I3-Verletzungen gegen unbeteiligte Nodes (Ziel: 0). */
   clearanceViolations: number;
+  /**
+   * I2 — kollineare Trassenüberdeckungen (I2-Regel, ADR 0025/0026-Erbe).
+   *
+   * Die Suite hatte diese Invariante bis hierher gar nicht im Blick; genau
+   * dort lebten im Stress-Szenario p02 zwei Überdeckungen unbemerkt. Geführt
+   * als Ratchet (≤ Baseline), damit sich der Stand nur verbessern kann.
+   */
+  edgeOverlaps: number;
 };
 
 export type ScenarioLayout = {
@@ -69,6 +78,7 @@ export function measureScenario(edges: readonly RoutedEdge[], nodes: readonly No
     bends: edges.reduce((sum, e) => sum + countBends(e.waypoints), 0),
     length: edges.reduce((sum, e) => sum + pathLength(e.waypoints), 0),
     clearanceViolations: checkEdgeNodeCollisions(edges, nodes).length + checkClearance(edges, nodes).length,
+    edgeOverlaps: checkEdgeEdgeOverlaps(edges).length,
   };
 }
 
