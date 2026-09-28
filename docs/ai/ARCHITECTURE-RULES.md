@@ -62,7 +62,10 @@ Anzeige-Helfer (`components/edges/utils/voltageDrop.ts`,
 Alle Routing-Abstände kommen aus `lib/routing/tokens.ts`.
 
 - Erzwungen: nur `lib/routing/tokens.ts` darf `cableClearance: <Zahl>` definieren
-  (`scripts/routing/architecture.test.ts`).
+  (`scripts/routing/architecture.test.ts`). Die Suche ist **namens- und wertbasiert**:
+  neben Eigenschaft und Zuweisung schlägt auch eine anders benannte Strecken-Konstante mit
+  dem Wert einer Token-Größe an (`const MIN_ROUTE_CLEARANCE = 12` → Befund 2026-09-28;
+  Ableitungen wie `= ROUTING_TOKENS.cableClearance` bleiben erlaubt).
 - Erzwungen: Drift-Guards — Router-Konstanten sind Re-Exports der Tokens
   (`lib/routing/tokens.test.ts`).
 - **Nicht** erzwungen: Kostenkonstanten (`BEND_COST`, `U_TURN_COST`), Suchbudgets

@@ -54,7 +54,7 @@ Legende Severity: **hoch** = Agent kann falschen Code ändern / falsche Sicherhe
 
 ## DOC-003 — Veraltete Zahlen im `README.md` — **behoben 2026-09-09**
 
-- **STATUS:** behoben. `README.md` nennt jetzt die jeweils aktuelle Zahl (2026-09-28: 2444 Tests / 177 Dateien), React Flow
+- **STATUS:** behoben. `README.md` nennt jetzt die jeweils aktuelle Zahl (2026-09-28: 2454 Tests / 179 Dateien), React Flow
   (`@xyflow/react`) 12.11 und als Routing-Engine den produktiven globalen Pass
   (`components/edges/utils/routeAll.ts`) statt des Legacy-Moduls `orthogonalRouting.ts`.
 - **AREA:** Dokumentation
@@ -344,8 +344,9 @@ cableClearance` — an einer Klemme hängen im Referenzbestand regelmäßig zwei
 ## ROUTE-006 — Platzierung außerhalb der Referenzkoordinaten: Restfehler, Rasterlage, Kabellänge
 
 - **AREA:** Platzierung / Routing
-- **FILE:** `lib/autoWire/placement.ts` (`flowAnchor`), `components/edges/utils/routeAll.ts`
-  (`labelAnchorClearOfNodes`), `scripts/routing/audit.ts`, `scripts/routing/cableLength.test.ts`
+- **FILE:** `lib/autoWire/placement.ts` (`flowAnchor`, `NODE_MIN_GAP`),
+  `components/edges/utils/routeAll.ts` (`labelAnchorClearOfNodes`), `scripts/routing/audit.ts`
+  (`--shifts`), `scripts/routing/shiftInvariance.test.ts`, `scripts/routing/cableLength.test.ts`
 - **DESCRIPTION:** Vier Messungen vom 2026-09-27 zeigen dieselbe Grenze — die geprüfte
   Konfiguration ist die eingefrorene; jede Änderung der Anordnung von Auto-Raster und
   Karten zueinander ist eine neue Konfiguration:
@@ -418,15 +419,34 @@ routeAllCables → checkInvariants`, sechs Referenzpläne, Kartenmaß 192 × 120
      steht `Kabelweg`/`laengste` in `npm run routing:audit`, und
      `scripts/routing/cableLength.test.ts` hält die absolute Länge je Referenzplan als
      Ratchet (mit Gegenprobe: ohne den Flow-Anker fällt der Positionstest).
-- **CURRENT BEHAVIOR:** Ein um wenige Pixel verschobener Plan kann kurze Segmente melden
-  (I4–I7, **keine** Überdeckung). Absolutwerte stehen in Audit, Ratchet und Invarianten-Test.
+  5. **Der Nutzer-Versatz ist ein eigener Fehlerfall (2026-09-28).** Punkt 2 maß nur die
+     eingefrorenen Δ-Werte; die 7×7-Matrix (Δ ∈ ±400, ±96, ±16, 0 px, 294 Läufe,
+     `npm run routing:audit -- --shifts`) zeigt: Verschiebt der Nutzer **nur seine
+     Bauteile**, rastet die AutoWire-Platzierung (`flowAnchor`, globale Rasterlinien) auf
+     eine andere Zeile — und ein Teil der so entstehenden Konfigurationen war für den
+     Router nicht lösbar. **51 von 294 Läufen hart verletzt** (I1 30, I2 53, I3 44),
+     darunter **20 Notfallpfade**: die Leitung lief quer durch ein fremdes Bauteil.
+     Ursache war die Mindestluft der Platzierung — `NODE_MIN_GAP` verlangte
+     2 × `cableClearance` (24 px), während ein Kabel an einem gegenüberliegenden Port
+     `stubMin` (24) + `laneGrid` (16) braucht, bevor es abbiegen kann. Mit
+     `NODE_MIN_GAP = stubMin + laneGrid` (40 px): **10 Läufe, 12 × I2, sonst 0** — kein
+     Notfallpfad, kein I1, und die eingefrorene Referenzkonfiguration bleibt unverändert
+     (gleiche Kabellängen, gleiche Kreuzungen, gleiche Port-Bündel). Das Gate steht in
+     `routing:audit -- --shifts` (hart: kein Notfallpfad, kein I1; Ratchet: I2/I3 je Plan —
+     Rest camper 2, acdc 10) und in `scripts/routing/shiftInvariance.test.ts`. Der Rest-I2
+     sind Trassenkollisionen verschobener Bündel (Port-Fan-Out-Ebene), kein Durchlauf.
+- **CURRENT BEHAVIOR:** Ein verschobener Plan kann kurze Segmente melden (I4–I7) und — je
+  nach Rasterphase — Trassenüberdeckungen (I2); **kein** Bauteil-Durchlauf (I1) und
+  **kein** Notfallpfad mehr (Versatz-Gate, 2026-09-28). Absolutwerte und Reste stehen in
+  Audit (Tabelle + `--shifts`), Ratchet und Invarianten-Test.
 - **EXPECTED BEHAVIOR:** An jeder Planposition kein Kabel durch ein Bauteil und keine
   Trassenüberdeckung (I1–I3); kurze Segmente bleiben eine dokumentierte Qualitätsgrenze.
-- **SEVERITY:** niedrig (keine harten Verletzungen; Sichtbarkeit hergestellt)
-- **WORKAROUND:** Für die geprüfte Konfiguration den Plan nahe dem Ursprung halten; für
-  kompakte Layouts „Plan ordnen“ (ELK) verwenden — 2–44 % kürzer, I1 = 0.
-- **RELATED TEST:** `scripts/routing/cableLength.test.ts`,
-  `lib/planner/layout-engine/elkSpacing.test.ts`,
+- **SEVERITY:** niedrig (kein I1/kein Notfallpfad an jeder Planposition; Rest-I2 über
+  Ratchet sichtbar)
+- **WORKAROUND:** Für kompakte Layouts „Plan ordnen“ (ELK) verwenden — 2–44 % kürzer,
+  I1 = 0. Der Ursprung ist als Standort nicht mehr nötig (Versatz-Gate).
+- **RELATED TEST:** `scripts/routing/shiftInvariance.test.ts` (Versatz-Gate),
+  `scripts/routing/cableLength.test.ts`, `lib/planner/layout-engine/elkSpacing.test.ts`,
   `components/edges/utils/routeAll.test.ts` (Beschriftung verdeckt keine Karte),
   `lib/routing/invariants.test.ts`, `scripts/routing/finalValidation.test.ts`
 - **RELATED ISSUE:** ADR 0023, ADR 0017, ROUTE-BUG-32; Finding 2026-09-27 (§ Reihenfolge).
@@ -495,16 +515,16 @@ routeAllCables → checkInvariants`, sechs Referenzpläne, Kartenmaß 192 × 120
 - **DESCRIPTION:** ADR 0012 bindet das 16-ms-Budget **ausdrücklich an den Referenzplan
   N=36 / E=134** — nicht an jede Plangröße. Große Pläne liegen darüber:
 
-  | Messung                             | Plan        | Wert                            | Budget     |
-  | ----------------------------------- | ----------- | ------------------------------- | ---------- |
-  | `npm run perf:edge-routing` (Gate)  | N=36 E=134  | Median **2,57 ms**, p90 2,67 ms | 16 ms → OK |
-  | dto., Durchlauf „Sehr groß“         | N=120 E=585 | **21,3 ms**                     | über 16 ms |
-  | `npm run perf:route-scaling`, Kette | N=100 E=99  | 13,8 ms (0,14 ms/Kante)         | —          |
-  | dto.                                | N=500 E=499 | 215 ms (0,43 ms/Kante)          | —          |
-  | dto., Worst Case Spannkanten        | N=250 E=125 | 121 ms (0,97 ms/Kante)          | —          |
-  | dto.                                | N=500 E=250 | 2 125 ms (8,50 ms/Kante)        | —          |
+  | Messung                             | Plan        | Wert                                  | Budget     |
+  | ----------------------------------- | ----------- | ------------------------------------- | ---------- |
+  | `npm run perf:edge-routing` (Gate)  | N=36 E=134  | Median **2,3–3,1 ms**, p90 3,3–4,4 ms | 16 ms → OK |
+  | dto., Durchlauf „Sehr groß“         | N=120 E=585 | **21,3 ms**                           | über 16 ms |
+  | `npm run perf:route-scaling`, Kette | N=100 E=99  | 13,8 ms (0,14 ms/Kante)               | —          |
+  | dto.                                | N=500 E=499 | 215 ms (0,43 ms/Kante)                | —          |
+  | dto., Worst Case Spannkanten        | N=250 E=125 | 121 ms (0,97 ms/Kante)                | —          |
+  | dto.                                | N=500 E=250 | 2 125 ms (8,50 ms/Kante)              | —          |
 
-  (Medians aus 3 Läufen, 2026-09-09; die Scaling-Probe meldet min/max mit.)
+  (Render-Zahlen aus drei Läufen, 2026-09-28; die Scaling-Probe meldet min/max mit.)
 
 - **CURRENT BEHAVIOR:** Große Pläne werden im Live-Betrieb durch die 100-ms-Drossel
   (`ROUTE_THROTTLE_MS`) erträglich, nicht durch Laufzeit. Ab N≈500 mit planweiten Kanten
@@ -521,6 +541,12 @@ routeAllCables → checkInvariants`, sechs Referenzpläne, Kartenmaß 192 × 120
   der Ist-Zustand ist festgehalten und Rückfall verboten; das Ziel bleibt 16 ms und wird
   durch echte Optimierung (nicht durch Anheben) erreicht. Offen bleibt die
   Skalierungsspitze N≈500 (≈2 s, s. Tabelle).
+- **STATUS (2026-09-28):** Das Gate vergleicht **nur den Median**. Drei isolierte Läufe:
+  Live-Median 48,7–51,4 ms, **p90 59,0–65,4 ms** — der p90 liegt damit an bzw. über der
+  60-ms-Ratchet, während das Gate grün meldet. Unter Nebenlast (parallele Builds) gemessen:
+  Median 124 ms, p90 292 ms bei **unverändertem** Code → der Ratchet ist keine
+  lastnormalisierte Aussage. Ein p90-Budget braucht eine Kalibrierung im selben Prozess
+  (eigener ADR-0012-Nachtrag), kein stilles Anheben.
 - **SEVERITY:** mittel
 - **WORKAROUND:** Drossel nutzen; Änderungen am A\*-Innenloop immer mit beiden Benchmarks
   gegenmessen. Einzelmessungen großer Pläne streuen um Faktor >2 — immer den Median nehmen.
@@ -732,10 +758,9 @@ Einträgen oben:
   Architektur-Regeln sind prüfbare Funktionen mit Positivkontrollen
   (`scripts/architecture/rulesSelfCheck.test.ts`); `routing:audit` gibt einen
   Exit-Code zurück (I1/Orthogonalität/Fallback/Determinismus). **Offen:**
-  Der zugehörige CI-Schritt in `.github/workflows/quality.yml` ließ sich nicht
-  pushen — die GitHub-App der Session hat keine `workflows`-Berechtigung. Die
-  Zeile muss einmal von Hand ergänzt werden:
-  `run: npm run routing:audit` vor dem Perf-Gate.
+  **Erledigt (2026-09-28):** `.github/workflows/quality.yml` enthält den Schritt
+  `run: npm run routing:audit` (vor dem Perf-Gate) — die damalige
+  Berechtigungs-Blockade der Session ist damit gegenstandslos.
 - **Barrierefreiheit (A1/A4/A5/A6)** — Tastaturfokus im Canvas sichtbar,
   Label-Kontrast auf `--ink`, Schwere als Wort, Live-Region immer vorhanden.
 - **Chat/Endpunkt (S1/S2)** — kein clientseitiges „Secret“ mehr, keine

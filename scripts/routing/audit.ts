@@ -3,8 +3,9 @@
  *
  * Routing-Qualitätsbericht über alle Referenzpläne (`knownPlans/`-Pipeline).
  *
- *   npm run routing:audit          Menschenlesbare Tabelle
+ *   npm run routing:audit            Menschenlesbare Tabelle
  *   npm run routing:audit -- --json  Maschinenlesbar (CI/Dashboards)
+ *   npm run routing:audit -- --shifts Plan-Translation (Versatz-Gate, P0)
  *
  * Exit-Code 1, sobald ein Plan die HARTEN Invarianten verletzt (I1, Orthogonalität,
  * Fallback-Quote, Determinismus) — siehe Kommentar am Ende der Datei (G3).
@@ -53,7 +54,7 @@ import {
 import { ROUTING_TOKENS } from '../../lib/routing/tokens';
 import { classifySegmentAgainstSegment } from '../../lib/routing/rules/collision';
 import { isPortBundleOverlap, routedPathGeometry, sharesPort } from '../../lib/routing/rules/portBundle';
-import { GOLDEN_PLANS } from '../goldenmaster/plans';
+import { GOLDEN_PLANS, type GoldenPlanInput } from '../goldenmaster/plans';
 
 export type PlanAudit = {
   plan: string;
@@ -93,18 +94,23 @@ export type PlanAudit = {
 
 type Wired = Parameters<typeof nodesToObstacles>[0];
 
-function routePlan(planName: string): {
+type RouteOutcome = {
   routed: RoutedEdge[];
   rects: NodeRect[];
   usedSearch: string[];
   reportedCrossings: number;
   cableLength: number;
   longestEdge: number;
-} {
-  const plan = GOLDEN_PLANS[planName];
-  if (!plan) throw new Error(`Unbekannter Referenzplan "${planName}"`);
+};
+
+/**
+ * Kabelwege eines Plankörpers. Getrennt von `routePlan`, damit die
+ * Versatz-Matrix (`auditShiftMatrix`) dieselbe Pipeline auf verschobenen
+ * Kopien fahren kann, ohne sie ein zweites Mal zu beschreiben.
+ */
+function routePlanInput(plan: GoldenPlanInput, label: string): RouteOutcome {
   const wired = performAutoWiring(plan.nodes as never, plan.edges as never);
-  if (!wired) throw new Error(`AutoWire lieferte kein Ergebnis für "${planName}"`);
+  if (!wired) throw new Error(`AutoWire lieferte kein Ergebnis für "${label}"`);
   const nodes = wired.nodes as never as Wired;
   const edges = wired.edges as never as RouteEdgeRef[];
   const routes = routeAllCables(nodes as never, edges);
@@ -129,6 +135,12 @@ function routePlan(planName: string): {
     return { id: (node as { id?: string }).id ?? `n${index}`, ...rect! };
   });
   return { routed, rects, usedSearch, reportedCrossings, cableLength, longestEdge };
+}
+
+function routePlan(planName: string): RouteOutcome {
+  const plan = GOLDEN_PLANS[planName];
+  if (!plan) throw new Error(`Unbekannter Referenzplan "${planName}"`);
+  return routePlanInput(plan, planName);
 }
 
 /** Echte Kreuzungen (Segment-Paare) zwischen verschiedenen Kanten. */
@@ -239,6 +251,99 @@ export function auditPlan(planName: string): PlanAudit {
     realCrossings: realCrossingPairs(routed),
     samples,
   };
+}
+
+/**
+ * Versatz-Matrix (P0-Befund 2026-09-28): Hält eine reine Plan-Translation die
+ * harten Invarianten ein?
+ *
+ * Der Befund: Die AutoWire-Platzierung liegt auf einem globalen Raster, dessen
+ * Bezugspunkt (`flowAnchor`) auf die linke obere Ecke des Plans gerundet wird.
+ * Verschiebt der Nutzer seinen Plan, rastet die Platzierung auf eine andere
+ * Rasterzeile; ein Teil der so entstehenden Konfigurationen war für den Router
+ * nicht lösbar — er nahm den Notfallpfad und die Leitung lief durch ein
+ * fremdes Bauteil. Kein Gate prüfte das: `routing:audit` maß nur die
+ * eingefrorenen Referenzpositionen, `finalValidation.test.ts` ebenso.
+ *
+ * Die Matrix ist bewusst klein und deterministisch (7×7, feste Offsets in
+ * Rastervielfachen, feste Planreihenfolge) — ein Wächter, kein Suchlauf.
+ * Geprüft wird:
+ *
+ *   · hart: kein Notfallpfad und kein I1 (Leitung durch ein Bauteil) über alle
+ *     Pläne und Versätze — der Router darf nirgends ausweichen müssen
+ *   · Ratchet je Plan: I2/I3-Summen als Obergrenze; sie dürfen nur sinken
+ *
+ * Die Ursache der früheren Ausfälle steckte in der Platzierung
+ * (`NODE_MIN_GAP` in `lib/autoWire/placement.ts`, dort die Messung); der
+ * verbleibende Rest sind Trassenkollisionen verschobener Bündel (I2) und steht
+ * in `docs/ai/KNOWN-PROBLEMS.md` (ROUTE-006). Wer die Zahlen verbessert, zieht
+ * `SHIFT_RATCHET` nach — das Gate weist darauf hin.
+ */
+export const SHIFT_OFFSETS = [-400, -96, -16, 0, 16, 96, 400] as const;
+
+export type ShiftMatrixEntry = {
+  plan: string;
+  runs: number;
+  /** Läufe, in denen I1∪I2∪I3 > 0 ist. */
+  hardRuns: number;
+  I1: number;
+  I2: number;
+  I3: number;
+  fallbacks: number;
+};
+
+/** Obergrenze je Plan (Summen über die 49 Läufe), gemessen 2026-09-28. */
+export const SHIFT_RATCHET: Readonly<Record<string, { I2: number; I3: number }>> = {
+  simple: { I2: 0, I3: 0 },
+  camper: { I2: 2, I3: 0 },
+  solar: { I2: 0, I3: 0 },
+  inverter: { I2: 0, I3: 0 },
+  acdc: { I2: 10, I3: 0 },
+  complex: { I2: 0, I3: 0 },
+};
+
+/** Reine Plan-Translation (nur Nutzerknoten; AutoWire platziert danach neu). */
+export function shiftPlan(plan: GoldenPlanInput, dx: number, dy: number): GoldenPlanInput {
+  return {
+    ...plan,
+    nodes: plan.nodes.map((node) => ({
+      ...node,
+      position: { x: node.position.x + dx, y: node.position.y + dy },
+    })),
+  };
+}
+
+export function auditShiftMatrix(): ShiftMatrixEntry[] {
+  return Object.entries(GOLDEN_PLANS).map(([planName, plan]) => {
+    const entry: ShiftMatrixEntry = {
+      plan: planName,
+      runs: 0,
+      hardRuns: 0,
+      I1: 0,
+      I2: 0,
+      I3: 0,
+      fallbacks: 0,
+    };
+    for (const dx of SHIFT_OFFSETS) {
+      for (const dy of SHIFT_OFFSETS) {
+        const { routed, rects, usedSearch } = routePlanInput(
+          shiftPlan(plan, dx, dy),
+          `${planName} Δ(${dx},${dy})`
+        );
+        const report = checkInvariants(routed, rects);
+        const I1 = report.I1.length;
+        const I2 = report.I2.length;
+        const I3 = report.I3.length;
+        entry.runs += 1;
+        entry.I1 += I1;
+        entry.I2 += I2;
+        entry.I3 += I3;
+        entry.fallbacks += usedSearch.filter((search) => search === 'fallback').length;
+        if (I1 + I2 + I3 > 0) entry.hardRuns += 1;
+      }
+    }
+    return entry;
+  });
 }
 
 /**
@@ -364,7 +469,69 @@ export function dumpPorts(planName: string): string {
   return `${lines.join('\n')}\n`;
 }
 
+/** Ausgabe der Versatz-Matrix (Menschenlicht). */
+function printShiftMatrix(entries: readonly ShiftMatrixEntry[]): void {
+  process.stdout.write('Plan       Läufe  hart   I1   I2   I3  fallback\n');
+  for (const entry of entries) {
+    process.stdout.write(
+      `${entry.plan.padEnd(10)} ${String(entry.runs).padStart(5)}  ${String(entry.hardRuns).padStart(4)}  ` +
+        `${String(entry.I1).padStart(3)}  ${String(entry.I2).padStart(3)}  ${String(entry.I3).padStart(3)}  ` +
+        `${String(entry.fallbacks).padStart(8)}\n`
+    );
+  }
+}
+
+/**
+ * Bewertung der Versatz-Matrix.
+ *
+ * Hart (kein Ratchet): Notfallpfade und I1 müssen 0 sein — ein Kabel, das
+ * durch ein fremdes Bauteil läuft, ist keine Qualitätsgrenze, sondern ein
+ * Fehler. I2/I3 laufen über die je-Plan-Ratchet; ein Wert UNTER der Ratchet
+ * wird als Hinweis gemeldet, damit Verbesserungen nicht still verpuffen.
+ */
+function evaluateShiftMatrix(entries: readonly ShiftMatrixEntry[]): {
+  failing: string[];
+  improvements: string[];
+} {
+  const failing: string[] = [];
+  const improvements: string[] = [];
+  for (const entry of entries) {
+    if (entry.fallbacks > 0 || entry.I1 > 0) {
+      failing.push(`${entry.plan} (Notfallpfade ${entry.fallbacks}, I1 ${entry.I1} — hart)`);
+    }
+    const ratchet = SHIFT_RATCHET[entry.plan];
+    if (!ratchet) {
+      failing.push(`${entry.plan} (keine SHIFT_RATCHET hinterlegt)`);
+      continue;
+    }
+    if (entry.I2 > ratchet.I2 || entry.I3 > ratchet.I3) {
+      failing.push(`${entry.plan} (I2 ${entry.I2} > ${ratchet.I2} oder I3 ${entry.I3} > ${ratchet.I3})`);
+    } else if (entry.I2 < ratchet.I2 || entry.I3 < ratchet.I3) {
+      improvements.push(`${entry.plan} (I2 ${entry.I2} < ${ratchet.I2} oder I3 ${entry.I3} < ${ratchet.I3})`);
+    }
+  }
+  return { failing, improvements };
+}
+
 if (isCli) {
+  if (process.argv.includes('--shifts')) {
+    const entries = auditShiftMatrix();
+    if (process.argv.includes('--json')) {
+      process.stdout.write(`${JSON.stringify(entries, null, 2)}\n`);
+    } else {
+      printShiftMatrix(entries);
+    }
+    const { failing, improvements } = evaluateShiftMatrix(entries);
+    if (failing.length > 0) {
+      process.stderr.write(`\nVersatz-Gate ROT: ${failing.join('; ')}\n`);
+      process.exitCode = 1;
+    } else if (improvements.length > 0) {
+      process.stderr.write(
+        `\nHinweis: Versatz-Gate unter der Ratchet — bitte SHIFT_RATCHET nachziehen: ${improvements.join('; ')}\n`
+      );
+    }
+    process.exit(process.exitCode ?? 0);
+  }
   const portsFlag = process.argv.indexOf('--ports');
   if (portsFlag >= 0) {
     const name = process.argv[portsFlag + 1];

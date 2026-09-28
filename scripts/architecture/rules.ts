@@ -24,6 +24,8 @@
  * anschlägt. Eine Regel, die nicht fallen kann, ist keine Regel.
  */
 
+import { ROUTING_TOKENS } from '../../lib/routing/tokens';
+
 export type SourceFile = { file: string; text: string; isTest?: boolean };
 
 /** Kommentare ausblenden — Prosa über die Historie ist erlaubt. */
@@ -108,14 +110,57 @@ export function findPersistedGeometryReads(files: SourceFile[]): string[] {
 // ── Regel E: genau eine Datei definiert Abstände ────────────────────────────
 
 /**
- * Dateien, die `cableClearance` als **Literalzahl** belegen — Eigenschaft
- * (`cableClearance: 42`) ODER Zuweisung (`const cableClearance = 42`).
- * Die alte Regex verlangte den Doppelpunkt und ließ die Zuweisung durch.
+ * Abstands-Werte der Routing-Tokens — die Wert-Klasse, gegen die eine
+ * zweitdefinierte Strecken-Konstante auffällt.
+ */
+const DISTANCE_TOKEN_VALUES: ReadonlySet<number> = new Set(
+  Object.values(ROUTING_TOKENS).filter((value): value is number => typeof value === 'number')
+);
+
+/**
+ * Namen, die semantisch einen Routing-Abstand meinen. Ein GLEICHNAMIGES
+ * Literal war schon verboten; ein anders benanntes mit demselben WERT
+ * (`MIN_ROUTE_CLEARANCE = 12`) blieb für die namensbasierte Suche unsichtbar
+ * und wäre bei einer Token-Änderung still zurückgeblieben (Befund 2026-09-28).
+ */
+const DISTANCE_NAME_RE = /(?:CLEARANCE|GAP)/;
+
+/** `const NAME = <Zahl>;` — bewusst punktfrei, damit keine Fremdmodule nötig sind. */
+const CONST_NUMBER_RE = /\b(?:export\s+)?const\s+([A-Z][A-Z0-9_]*)\s*=\s*(\d+(?:\.\d+)?)\s*;/g;
+
+/**
+ * Trägt der Quelltext eine Strecken-Konstante, deren Wert exakt einer
+ * Token-Größe entspricht? Ableitungen (`= ROUTING_TOKENS.cableClearance`)
+ * sind ausdrücklich erlaubt und schlagen hier nicht an.
+ */
+export function hasTokenValuedDistanceConstant(source: string): boolean {
+  CONST_NUMBER_RE.lastIndex = 0;
+  let match: RegExpExecArray | null;
+  while ((match = CONST_NUMBER_RE.exec(source)) !== null) {
+    const name = match[1];
+    const value = match[2];
+    if (!name || value === undefined) continue;
+    if (!DISTANCE_NAME_RE.test(name)) continue;
+    if (DISTANCE_TOKEN_VALUES.has(Number(value))) return true;
+  }
+  return false;
+}
+
+/**
+ * Dateien, die einen Abstandswert **zweitdefinieren** — Eigenschaft
+ * (`cableClearance: 42`), Zuweisung (`const cableClearance = 42`) ODER eine
+ * anders benannte Strecken-Konstante mit dem Wert einer Token-Größe
+ * (`const MIN_ROUTE_CLEARANCE = 12`).
+ * Die alte Regex verlangte den Doppelpunkt und ließ so die Zuweisung durch;
+ * die zweite Erweiterung schließt die Umbenennung.
  */
 export function findCableClearanceLiterals(files: SourceFile[]): string[] {
   const RE = /\bcableClearance\b\s*[:=]\s*\d/;
   return productionOnly(files)
-    .filter((file) => RE.test(stripComments(file.text)))
+    .filter((file) => {
+      const text = stripComments(file.text);
+      return RE.test(text) || hasTokenValuedDistanceConstant(text);
+    })
     .map((file) => file.file);
 }
 

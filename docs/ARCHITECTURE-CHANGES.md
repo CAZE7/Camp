@@ -1907,5 +1907,49 @@ Dokumente sind der dokumentierte Stand; die KNOWN-PROBLEMS-Einträge stehen auf
 „behoben“ (Body bleibt bewusst historisch).
 
 **5. Zahlen.** README, `docs/ai/README.md` und TESTING-CONTEXT nennen jetzt den
-gemessenen Stand **2444 Tests / 177 Dateien** (2026-09-28); das Design-Token-Gate
-174 Tests, die VDE-Property-Suite 35 Tests.
+gemessenen Stand **2454 Tests / 179 Dateien** (2026-09-28, inklusive der neuen
+Versatz-Gate-Tests der 25. Fassung); das Design-Token-Gate 174 Tests, die
+VDE-Property-Suite 35 Tests.
+
+### 2026-09-28 — Fünfundzwanzigste Fassung: Versatz-Gate + Platzierungs-Mindestluft (ROUTE-006)
+
+**1. Der Nutzer-Versatz galt bisher als gemessen, war aber nur ein Datenpunkt.**
+`routing:audit` und `finalValidation.test.ts` prüfen die **eingefrorenen
+Referenzpositionen**; der Bericht vom 2026-09-27 hatte für einzelne Δ-Werte
+(8, 8), (13, 0) und (1200, 800) „I1–I7 = 0“ festgehalten. Die Messung über eine
+7×7-Matrix (Δ ∈ ±400, ±96, ±16, 0 px; 294 Läufe) zeigt: Verschiebt der Nutzer
+**nur seine Bauteile**, rastet die AutoWire-Platzierung (`flowAnchor`, globale
+Rasterlinien) auf eine andere Zeile — ein Teil der so entstehenden
+Konfigurationen war für den Router nicht lösbar. **Vorher: 51 Läufe hart
+verletzt (I1 30, I2 53, I3 44), darunter 20 Notfallpfade**, bei denen die
+Leitung durch ein fremdes Bauteil lief. Gemessen auf dem Produktivpfad
+(`performAutoWiring → routeAllCables → checkInvariants`).
+
+**2. Ursache war die Mindestluft der Platzierung.** `NODE_MIN_GAP` in
+`lib/autoWire/placement.ts` verlangte `2 × cableClearance` (24 px) zwischen
+Bauteilen. Ein Kabel an einem gegenüberliegenden Port braucht aber `stubMin`
+(24) + mindestens einen `laneGrid`-Schritt (16), bevor es abbiegen kann — bei
+24 px ist das geometrisch nicht ausdrückbar, der Router nimmt den Notfallpfad.
+**Nachher: 10 von 294 Läufen, 12 × I2, kein Notfallpfad, kein I1.** Die
+Referenzkonfiguration bleibt dabei unverändert (Kabelwege
+2 697/3 709/3 200/3 881/5 710/8 602 px, Kreuzungen 2/5/2/2/6/27, Port-Bündel
+4/10/4/4/10/15 — alles wie zuvor). Gewählter Wert
+`NODE_MIN_GAP = stubMin + laneGrid` (40 px); 36 px ließ noch 32 Läufe, ab 44 px
+verschieben sich die eingefrorenen Referenzpläne selbst (Kreuzungs- und
+Kabellängen-Ratchet schlagen an) — die Messreihe steht im Code-Kommentar.
+
+**3. Das Gate gehört in CI und in die Suite.** `npm run routing:audit --
+--shifts` fährt die Matrix und wertet zweistufig: **hart** (kein Notfallpfad,
+kein I1 über alle Pläne und Versätze) und **Ratchet** für I2/I3 je Plan
+(Rest camper 2, acdc 10; Verbesserungen müssen nachgezogen werden).
+`scripts/routing/shiftInvariance.test.ts` prüft dasselbe in `npm test`,
+`.github/workflows/quality.yml` (und die 1:1-Kopie in `docs/ci/workflows/`)
+führt den Schritt als Gate. Der Rest-I2 sind Trassenkollisionen verschobener
+Bündel (Port-Fan-Out-Ebene) und in `docs/ai/KNOWN-PROBLEMS.md` ROUTE-006
+dokumentiert.
+
+**4. Nebenbei, ehrlich mitgezählt.** `npm test` wächst mit dem neuen Gate auf
+**2454 Tests / 179 Dateien**; die Zahlen in README, `docs/ai/README.md` und
+TESTING-CONTEXT sind nachgezogen, und der `edgeSchema`-Test prüft jetzt
+Feld-für-Feld gegen `EDGE_DATA_SCHEMA` statt nur die sieben
+Unbekanntes-bleibt-Fälle.

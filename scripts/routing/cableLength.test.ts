@@ -48,10 +48,15 @@ const BASELINE_PX: Record<string, number> = {
 
 /**
  * Toleranz für den Positions-Test: Die Platzierung rundet den Anker auf das
- * globale Raster, deshalb darf die Länge um bis zu 15 % abweichen. Gemessene
- * Werte bei (1200, 800): simple 2693, camper 3515, solar 3438, inverter 3502,
- * acdc 6059, complex 10582 — alle innerhalb der Toleranz, in Summe 1,6 %
- * KÜRZER als am Ursprung.
+ * globale Raster, deshalb darf die Länge um bis zu 15 % abweichen. Gemessen am
+ * 2026-09-28 bei (1200, 800): simple 2693, camper 3515, solar 3438, inverter
+ * 3694, acdc 5354, complex 8538 — alle innerhalb der Toleranz, in Summe
+ * 27 232 px = 2,0 % KÜRZER als am Ursprung (27 799 px).
+ *
+ * Achtung: Toleranz ist kein Invarianten-Ersatz. Derselbe Test misst nur die
+ * LÄNGE; I1–I3 bei verschobenem Plan prüft er nicht (Befund 2026-09-28:
+ * 31 von 330 Versätzen verletzen die harten Invarianten — siehe
+ * KNOWN-PROBLEMS.md ROUTE-006, offener Punkt „Positions-Unabhängigkeit“).
  */
 const SHIFT_TOLERANCE = 1.15;
 const SHIFT_X = 1200;

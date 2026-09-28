@@ -112,7 +112,7 @@ function boxAt(node: Node, x: number, y: number): Box {
 }
 
 /**
- * Mindestluft zwischen zwei Bauteilen: beidseits eine Kabelfreigabe.
+ * Mindestluft zwischen zwei Bauteilen an gegenüberliegenden Ports.
  *
  * Reine Überlappungsfreiheit genügt nicht. Zwei bündig aneinander stehende
  * Bauteile lassen keinen Platz für die Leitung, die zwischen ihnen
@@ -120,8 +120,29 @@ function boxAt(node: Node, x: number, y: number): Box {
  * und verletzt `cableClearance` (I3), statt in ein Bauteil zu laufen (I1).
  * Ohne diesen Puffer verschiebt sich das Problem nur von I1 nach I3
  * (gemessen: I1 72 → 2, dafür I3 13 → 20).
+ *
+ * Der Wert ist der kleinste, der die Kabelgeometrie auch bei beliebiger
+ * Planposition trägt: Ein Kabel verlässt den Port mit `stubMin` (24) Stub und
+ * staffelt sich bei mehreren Leitungen um je `laneGrid` (16); steht das
+ * Nachbarbauteil näher, ist der Stub nicht mehr ausdrückbar und der Router
+ * weicht auf den Notfallpfad aus (I1 durch das Bauteil).
+ *
+ * Gemessen am 2026-09-28 über die 7×7-Versatzmatrix der sechs Referenzpläne
+ * (`npm run routing:audit -- --shifts`, 294 Läufe):
+ *
+ *   · 2×`cableClearance` (24 px): 51 Läufe hart verletzt (I1 30, I2 53, I3 44,
+ *     20 Notfallpfade)
+ *   · 36 px: 0 Notfallpfade, 0× I1 — aber noch 32 Läufe mit I2
+ *   · 40 px (`stubMin` + `laneGrid`): 10 Läufe, 12× I2, sonst 0 — und die
+ *     eingefrorene Referenzkonfiguration bleibt unverändert
+ *   · ab 44 px verschieben sich die Referenzpläne selbst (Kreuzungs- und
+ *     Kabellängen-Ratchet in `routing:audit` schlagen an) — der Preis wäre
+ *     eine neue Konfiguration, kein besserer Router
+ *
+ * Deshalb bleibt es bei der Token-Ableitung unten, nicht bei einem runden
+ * Wunschwert (ADR 0017: eingefrorene Konfiguration, keine stillen Umzüge).
  */
-const NODE_MIN_GAP = ROUTING_TOKENS.cableClearance * 2;
+const NODE_MIN_GAP = ROUTING_TOKENS.stubMin + ROUTING_TOKENS.laneGrid;
 
 /**
  * Bezugspunkt des Auto-Rasters: linke obere Ecke des BESTEHENDEN Plans.

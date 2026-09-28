@@ -57,7 +57,8 @@ Modul-READMEs (jeweils: Was ist es · Public API · Besitz · Verbote · schütz
 6. Determinismus erhalten: kein `Math.random`, keine ungeordnete Iteration.
 7. `npx tsx scripts/routing/audit.ts` → I1–I7 müssen **0** bleiben, Fallback **0**.
 8. `npm run perf:edge-routing` → **zwei** Gates, beide grün (Exit-Code 1 bei Überschreitung):
-   - Render-Pfad (Einzelkante, Frame-Cache, ADR 0012): Median **≤ 16 ms** — gemessen ≈ 3,3 ms.
+   - Render-Pfad (Einzelkante, Frame-Cache, ADR 0012): Median **≤ 16 ms** —
+     gemessen 2,3–3,1 ms (drei Isolationsläufe, 2026-09-28; p90 3,3–4,4 ms).
    - Live-Pfad (`routeAllCables`, kompletter Plan in einem Pass, AUDIT P1): Median **≤ 60 ms**
      als **Ratchet** — gemessen ≈ 40 ms. Das Ratchet hält den Ist-Zustand und verbietet
      Rückfall; Ziel bleibt 16 ms, wer den Pfad schneller macht, zieht
@@ -132,7 +133,8 @@ Details: [ARCHITECTURE-RULES.md](docs/ai/ARCHITECTURE-RULES.md) und
   begründet ausgeschaltete Regel: `eslint.config.mjs`,
   [ARCHITECTURE-CHANGES.md](docs/ARCHITECTURE-CHANGES.md) „Siebte Fassung".
 - E2E: einmalig `npm run e2e:install`, dann `npm run e2e`
-- Routing: `npm run routing:audit` (I1–I7 über 6 Pläne) · `npm run routing:domain-probe`
+- Routing: `npm run routing:audit` (I1–I7 über 6 Pläne; `-- --shifts` = Versatz-Gate,
+  Plan-Translation) · `npm run routing:domain-probe`
   (Wirksamkeit der Domänen-Trennregeln) · `npm run routing:gallery`
 - Elektrik/Routing eingefroren: `npm run goldenmaster:capture` → `npm run test:goldenmaster`
 - Regression: `npm run regression:capture` → `npm run test:regression`
@@ -215,9 +217,10 @@ Details: [ARCHITECTURE-RULES.md](docs/ai/ARCHITECTURE-RULES.md) und
 ## 12. Kontext
 
 - Detaillierte Arbeitsdokumentation: [`docs/ai/`](docs/ai/).
-- **ADRs 0001–0021:** Übersicht mit Kurzfassung je Entscheidung im
+- **ADRs 0001–0029:** Übersicht mit Kurzfassung je Entscheidung im
   [`README.md`](README.md#architektur-entscheidungen-adrs) (Abschnitt
   „Architektur-Entscheidungen“); die Volltexte liegen in `docs/adr/`.
-  ADR 0021 ist **vorgeschlagen** und offen.
+  **ADR 0026 fehlt** (Nummer nicht vergeben — keine Datei, kein Verweis); ADR 0021
+  ist **vorgeschlagen** und offen.
 - Historische Audits: `AUDIT.md`, `AUDIT-AUTOWIRE.md`, `AUDIT-EXTREM-2026-09.md`,
   `docs/` (ADRs, CI-Referenzen). Historie: Git-Log.

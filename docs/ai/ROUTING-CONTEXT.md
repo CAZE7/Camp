@@ -4,8 +4,8 @@
 Produktivpfad. Abweichungen davon sind in [KNOWN-PROBLEMS.md](./KNOWN-PROBLEMS.md) und
 [LEGACY.md](./LEGACY.md) vermerkt.
 
-Verifiziert am 2026-09-09 mit `npm run routing:audit` über die sechs Referenzpläne:
-**I1–I7 = 0, Fallback-Quote = 0, deterministisch, 79 Kanten, 48 Kreuzungen.**
+Verifiziert am 2026-09-28 mit `npm run routing:audit` über die sechs Referenzpläne:
+**I1–I7 = 0, Fallback-Quote = 0, deterministisch, 79 Kanten, 44 Kreuzungen.**
 
 ---
 
@@ -223,7 +223,7 @@ Alle Schwellen kommen aus den Tokens.
 **Nicht** als Invariante modelliert (bewusst): Kabellänge ≤ Faktor × Manhattan (das ist eine
 **Qualitätsmetrik** in `components/edges/utils/routingQuality.ts`, kein Gate).
 
-### Gemessener Stand (`npm run routing:audit`, 2026-09-09)
+### Gemessener Stand (`npm run routing:audit`, 2026-09-28)
 
 | Plan     | Kanten |  I1 |  I2 |  I3 |  I4 |  I5 |  I6 |  I7 | Fallback | determ. | Kreuzungen |
 | -------- | -----: | --: | --: | --: | --: | --: | --: | --: | -------: | ------- | ---------: |
@@ -231,16 +231,16 @@ Alle Schwellen kommen aus den Tokens.
 | camper   |     12 |   0 |   0 |   0 |   0 |   0 |   0 |   0 |        0 | true    |          5 |
 | solar    |     11 |   0 |   0 |   0 |   0 |   0 |   0 |   0 |        0 | true    |          2 |
 | inverter |     10 |   0 |   0 |   0 |   0 |   0 |   0 |   0 |        0 | true    |          2 |
-| acdc     |     14 |   0 |   0 |   0 |   0 |   0 |   0 |   0 |        0 | true    |          8 |
-| complex  |     23 |   0 |   0 |   0 |   0 |   0 |   0 |   0 |        0 | true    |         29 |
+| acdc     |     14 |   0 |   0 |   0 |   0 |   0 |   0 |   0 |        0 | true    |          6 |
+| complex  |     23 |   0 |   0 |   0 |   0 |   0 |   0 |   0 |        0 | true    |         27 |
 
 **Zwei Kreuzungsbegriffe — nicht verwechseln:**
 
 - `PathResult.crossings` (in `knownPlans/*.json` je Kante): Zahl der **fremden Kanten**, die
   diese Leitung schneidet. Über alle Kanten summiert zählt jedes Paar doppelt.
 - `realCrossingPairs` (Spalte „Kreuzungen“ in `npm run routing:audit`): Zahl der kreuzenden
-  **Segment-Paare**. Ein Kantenpaar kann zweimal kreuzen — daher complex 29 (Paare) vs. 54
-  (per-edge-Summe = 27 Paare × 2).
+  **Segment-Paare**. Ein Kantenpaar kann zweimal kreuzen — daher complex 27 (Segment-Paare)
+  vs. 52 (per-edge-Summe = 26 Kantenpaare × 2).
 
 **Zwei Überdeckungsbegriffe — nicht verwechseln:**
 Das Audit zählt zusätzlich `overlapsAtPort` / `overlapsElsewhere` (`analyzeOverlaps` in
@@ -252,12 +252,15 @@ beider** Kanten liegt. Deshalb gilt: `overlapsElsewhere > 0` bei gleichzeitig `I
 
 | Plan     | overlapsAtPort | overlapsElsewhere |  I2 |
 | -------- | -------------: | ----------------: | --: |
-| simple   |              3 |                 1 |   0 |
-| camper   |              7 |                 3 |   0 |
-| solar    |              2 |                 2 |   0 |
-| inverter |              1 |                 3 |   0 |
-| acdc     |              3 |                 7 |   0 |
-| complex  |              6 |                 9 |   0 |
+| simple   |              4 |                 0 |   0 |
+| camper   |             10 |                 0 |   0 |
+| solar    |              4 |                 0 |   0 |
+| inverter |              4 |                 0 |   0 |
+| acdc     |             10 |                 0 |   0 |
+| complex  |             15 |                 0 |   0 |
+
+Stand 2026-09-28: `overlapsElsewhere` ist in **allen** sechs Plänen 0 — die strengere
+Diagnose ist damit derzeit leer (sie war am 2026-09-09 noch 1/3/2/3/7/9).
 
 Historisch (Stand 2026-09-07, vor ADR 0017 + ROUTE-BUG-Serie): 122 Verletzungen gesamt.
 Diese Zahl steht **noch** im Kommentar von `lib/routing/finalValidation.ts` und ist veraltet →
