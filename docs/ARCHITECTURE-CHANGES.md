@@ -1942,11 +1942,16 @@ Kabellängen-Ratchet schlagen an) — die Messreihe steht im Code-Kommentar.
 --shifts` fährt die Matrix und wertet zweistufig: **hart** (kein Notfallpfad,
 kein I1 über alle Pläne und Versätze) und **Ratchet** für I2/I3 je Plan
 (Rest camper 2, acdc 10; Verbesserungen müssen nachgezogen werden).
-`scripts/routing/shiftInvariance.test.ts` prüft dasselbe in `npm test`,
-`.github/workflows/quality.yml` (und die 1:1-Kopie in `docs/ci/workflows/`)
-führt den Schritt als Gate. Der Rest-I2 sind Trassenkollisionen verschobener
-Bündel (Port-Fan-Out-Ebene) und in `docs/ai/KNOWN-PROBLEMS.md` ROUTE-006
-dokumentiert.
+`scripts/routing/shiftInvariance.test.ts` prüft dasselbe in `npm test` — damit
+läuft das Gate in CI über die Unit-Tests. Ein **zusätzlicher** Workflow-Schritt
+ist vorbereitet, aber in dieser Session nicht pushbar: die GitHub-App der
+Session hat keine `workflows`-Berechtigung für `.github/workflows/quality.yml`
+(dieselbe Grenze wie bei der `routing:audit`-Zeile am 2026-09-25). Wer die
+Berechtigung hat, ergänzt nach dem `routing:audit`-Schritt:
+`run: npm run routing:audit -- --shifts` (die 1:1-Kopie in
+`docs/ci/workflows/` muss mit — `scripts/ci/workflows.test.ts` prüft sie).
+Der Rest-I2 sind Trassenkollisionen verschobener Bündel
+(Port-Fan-Out-Ebene) und in `docs/ai/KNOWN-PROBLEMS.md` ROUTE-006 dokumentiert.
 
 **4. Nebenbei, ehrlich mitgezählt.** `npm test` wächst mit dem neuen Gate auf
 **2454 Tests / 179 Dateien**; die Zahlen in README, `docs/ai/README.md` und
