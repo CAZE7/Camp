@@ -2145,3 +2145,51 @@ oder die Bildsprache und braucht eine Freigabe):
 **3. Zahlen.** `npm test` steht bei **2452 Tests / 176 Dateien** (2026-09-28); README,
 `docs/ai/README.md` und `docs/ai/TESTING-CONTEXT.md` sind nachgezogen. `npm run lint`,
 `tsc` (beide Profile), `prettier --check .`, `test:goldenmaster` (13) und `test:regression` (50) sind grün.
+
+### 2026-09-28 — Neunundzwanzigste Fassung: Der Ladebooster-Pfad wird wirklich geprüft (TOPO-002, Prüfbericht Teil 1+2)
+
+**1. Was AutoWire tut — bestätigt.** Jeder Lader (auch `dcdcCharger`) wird an die Schienen gehängt,
+nicht an die Batterie (`lib/autoWire.ts`, Laderschleife `charger.id → rails.plus/minus`), die Batterie
+hängt über den Backbone an denselben Schienen (`battery → rails.plus`, `battery → shunt → rails.minus`),
+und die Starterseite läuft separat (`starterBattery → booster`). Elektrisch ist das richtig — die
+Sammelschiene ist der Verteilpunkt. Der Eindruck „keine Linie von der Booster-Karte zur Batterie-Karte"
+ist damit eine Bildsprache-Frage, kein Verdrahtungsfehler. **Nicht geändert.**
+
+**2. Und der Verdacht war trotzdem berechtigt — das war ein stiller Fallback.** Regel E prüfte nur,
+DASS ein Ladebooster einen Ein- und einen Ausgang hat (`hasInput`/`hasOutput`). Eine Kante
+Booster → Schiene genügte damit auch dann, wenn die Schiene mit keiner Aufbaubatterie verbunden war;
+die eigene Meldung versprach dabei „Starterseite (Eingang) und Aufbaubatterie-Pfad (Ausgang) prüfen".
+Ein Versprechen ohne Prüfung ist genau die Sorte „sieht geprüft aus, ist es nicht" (Regel M).
+Eine Pfadprüfung gab es nirgends im Baum.
+
+**Neu: `TOPO-002-dcdc-house-path`** (`components/planner/hooks/useLiveValidation.ts`, Fachlogik in
+`lib/autoWire/validation.ts`). Der Pfad wird jetzt tatsächlich gelaufen — undirektional über die
+Schienen (`reachableNodeIds`), weil die Aufbaubatterie in Richtung Batterie → Schiene verdrahtet ist
+und der Lader in Richtung Lader → Schiene; gerichtet gäbe es den Pfad nie. Die **Starterseite zählt
+nicht als Ziel** (`isHouseBattery` = `type === 'battery' && !isStarterBattery`): Sie hängt direkt am
+Lader und würde die Prüfung sonst immer erfüllen — das war der Kern des Fehlers. Zwei Fälle, zwei
+ehrliche Meldungen statt einer pauschalen: keine Aufbaubatterie im Plan (dann kann keine erreicht
+werden) oder vorhanden, aber nicht angeschlossen. Der `ruleId` folgt der Konvention („bei Neu- oder
+Umbauten immer `ruleId`", `docs/ai/VALIDATION-CONTEXT.md`); die historische Regel E bleibt ohne ID und
+unverändert — sie meldet weiter den unvollständigen Anschluss, die neue Regel den fehlenden Pfad, ohne
+Doppelmeldung für denselben Sachverhalt.
+
+**3. Dabei eine vierte Kopie derselben Suche entfernt.** Die Breitensuche „erreichbar ab Knoten X über
+alle Kanten" lag bereits dreimal im Baum (AC-Insel in `lib/vde-standards.ts`, Panel-Erreichbarkeit in
+`useLiveValidation`, und sie wäre für TOPO-002 ein viertes Mal entstanden). Die beiden Aufrufe in der
+Plan-Validierung nutzen jetzt `reachableNodeIds` (`lib/domain/graph.ts`) — die AC-Insel in
+`vde-standards` bleibt bewusst für sich, weil sie nach Domäne filtert und ihre Signatur Teil der
+Berechnungs-API ist.
+
+**Nachweis.** 5 neue Hook-Tests (u. a. der gemeldete Fall „Booster erreicht nur die Starterseite",
+der AutoWire-Vertrag und ein **echter** AutoWire-Plan, dem die Hausseiten-Kanten entfernt wurden —
+dort feuert die Regel) plus 14 Unit-Tests (`lib/autoWire/validation.test.ts`,
+`lib/domain/graph.test.ts`). **Fehlalarm-Messung:** über die sechs Referenzpläne und die Vorlagen
+(`complex`, `acdc`, `camper`, `inverter`, `simple`, `solar`, `TEMPLATE_AUTARK`) nach `performAutoWiring`
+**0** TOPO-002-Meldungen bei 0–19 Meldungen gesamt je Plan. Offen bleibt die Reihenfolge der
+Prüfungen im Detail: `TOPO-002` ist `warning` (Funktionsdefekt), nicht `critical` — ein Booster ohne
+Hausseiten-Pfad lädt nicht, er gefährdet aber niemanden; die Sicherheitsregeln bleiben unangetastet.
+
+**Offen (unverändert, mit Freigabebedarf):** (b) die festen AutoWire-Längen (Messung in der
+achtundzwanzigsten Fassung: Faktor Median 2,46×, Maximum 35,2×), M11-2 (feste Schienen-Koordinaten),
+die zwei Bedienebenen im Planner und die Rechtsdaten im Impressum.

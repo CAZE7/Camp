@@ -3,6 +3,7 @@ import { describe, it, expect } from 'vitest';
 import { useLiveValidation } from './useLiveValidation';
 import { textContaining } from '../../../test-helpers/matchers'; // AUDIT T1
 import { performAutoWiring } from '../../../lib/autoWire';
+import { isStarterBattery } from '../../../lib/autoWire/validation';
 import { TEMPLATE_AUTARK } from '../templates';
 import { type Node, type Edge } from '@xyflow/react';
 import { type CableEdgeData } from '../../edges/CableEdge';
@@ -370,6 +371,144 @@ describe('useLiveValidation', () => {
       ];
       const { result } = renderHook(() => useLiveValidation(nodes, edges));
       expect(result.current.filter((w) => w.id.includes('dcdc-unconnected'))).toHaveLength(0);
+    });
+  });
+
+  /**
+   * Rule E2 (TOPO-002) — Prüfbericht 2026-09-28.
+   *
+   * Regel E prüfte nur, DASS Ein- und Ausgang existieren; ihre Meldung
+   * versprach zusätzlich den „Aufbaubatterie-Pfad (Ausgang)". Genau der war
+   * ungeprüft: Eine Kante Booster → Schiene genügte, auch wenn die Schiene mit
+   * keiner Aufbaubatterie verbunden war. Diese Tests halten beides fest — den
+   * gemeldeten Fall UND den AutoWire-Vertrag (dort darf nichts stehen).
+   */
+  describe('Rule E2 (TOPO-002): Ladebooster erreicht die Aufbaubatterie', () => {
+    const starterBattery: Node = {
+      id: 'starter',
+      type: 'battery',
+      data: { label: 'Starterbatterie' },
+      position: { x: 0, y: 0 },
+    };
+    const houseBattery: Node = {
+      id: 'house',
+      type: 'battery',
+      data: { role: 'house', label: 'Aufbaubatterie 200 Ah' },
+      position: { x: 0, y: 0 },
+    };
+    const booster: Node = {
+      id: 'booster',
+      type: 'dcdcCharger',
+      data: { label: 'Booster' },
+      position: { x: 0, y: 0 },
+    };
+    const plusRail: Node = {
+      id: 'plus-rail',
+      type: 'busbar',
+      data: { label: 'Plus-Schiene' },
+      position: { x: 0, y: 0 },
+    };
+    const minusRail: Node = {
+      id: 'minus-rail',
+      type: 'busbar',
+      data: { label: 'Minus-Schiene' },
+      position: { x: 0, y: 0 },
+    };
+    const edge = (
+      id: string,
+      source: string,
+      target: string,
+      data: Record<string, unknown> = {}
+    ): Edge<CableEdgeData> => ({ id, source, target, data });
+
+    it('warnt, wenn der Booster nur die Starterseite erreicht', () => {
+      // Schienen vorhanden, aber OHNE Verbindung zur Aufbaubatterie — der
+      // gemeldete Fall: „geladen wird nur die Starterseite".
+      const nodes = [starterBattery, booster, plusRail, minusRail, houseBattery];
+      const edges = [
+        edge('e-starter-plus', 'starter', 'booster'),
+        edge('e-starter-minus', 'starter', 'booster'),
+        edge('e-booster-plus', 'booster', 'plus-rail'),
+        edge('e-booster-minus', 'booster', 'minus-rail'),
+      ];
+      const { result } = renderHook(() => useLiveValidation(nodes, edges));
+      const warning = result.current.find((w) => w.id === 'dcdc-house-path-booster');
+      expect(warning).toEqual(
+        expect.objectContaining({
+          category: 'topology',
+          type: 'warning',
+          ruleId: 'TOPO-002-dcdc-house-path',
+          focusId: 'booster',
+          focusType: 'node',
+          measuredValue: '0 erreichbare Aufbaubatterien',
+        })
+      );
+      expect(warning!.message).toContain('kein Pfad');
+    });
+
+    it('bleibt still, wenn die Aufbaubatterie an denselben Schienen hängt', () => {
+      const nodes = [starterBattery, booster, plusRail, minusRail, houseBattery];
+      const edges = [
+        edge('e-starter-plus', 'starter', 'booster'),
+        edge('e-booster-plus', 'booster', 'plus-rail'),
+        edge('e-booster-minus', 'booster', 'minus-rail'),
+        edge('e-house-plus', 'house', 'plus-rail'),
+        edge('e-house-minus', 'house', 'minus-rail'),
+      ];
+      const { result } = renderHook(() => useLiveValidation(nodes, edges));
+      expect(result.current.filter((w) => w.ruleId === 'TOPO-002-dcdc-house-path')).toEqual([]);
+    });
+
+    it('meldet ehrlich, wenn im Plan gar keine Aufbaubatterie existiert', () => {
+      const nodes = [starterBattery, booster, plusRail, minusRail];
+      const edges = [
+        edge('e-starter-plus', 'starter', 'booster'),
+        edge('e-booster-plus', 'booster', 'plus-rail'),
+      ];
+      const { result } = renderHook(() => useLiveValidation(nodes, edges));
+      const warning = result.current.find((w) => w.id === 'dcdc-no-house-battery-booster');
+      expect(warning?.ruleId).toBe('TOPO-002-dcdc-house-path');
+      expect(warning!.message).toContain('keine Aufbaubatterie');
+    });
+
+    it('schweigt bei unvollständigem Anschluss — das meldet Regel E', () => {
+      const { result } = renderHook(() => useLiveValidation([booster], []));
+      expect(result.current.filter((w) => w.ruleId === 'TOPO-002-dcdc-house-path')).toEqual([]);
+      expect(result.current.some((w) => w.id === 'dcdc-unconnected-booster')).toBe(true);
+    });
+
+    it('feuert im echten AutoWire-Plan, sobald die Verbindung zur Aufbaubatterie fehlt', () => {
+      // Der gemeldete Fall in Reinform: Der Plan ist vollständig verdrahtet,
+      // nur die Hausseite hängt an den Schienen nicht mehr dran (Kante gelöscht
+      // oder nie entstanden). Regel E schweigt weiter — der Booster hat ja
+      // Ein- und Ausgang —, genau deshalb braucht es diese Prüfung.
+      const base = TEMPLATE_AUTARK as unknown as { nodes: Node[]; edges: Edge<CableEdgeData>[] };
+      const wired = performAutoWiring(base.nodes, base.edges)!;
+      const houseIds = new Set(
+        wired.nodes.filter((n) => n.type === 'battery' && !isStarterBattery(n as never)).map((n) => n.id)
+      );
+      expect(houseIds.size, 'Aufbaubatterie im verdrahteten Plan').toBeGreaterThan(0);
+      const withoutHouseSide = (wired.edges as Edge<CableEdgeData>[]).filter(
+        (e) => !houseIds.has(e.source) && !houseIds.has(e.target)
+      );
+      const { result } = renderHook(() =>
+        useLiveValidation(wired.nodes as Node[], withoutHouseSide as never)
+      );
+      const warning = result.current.find((w) => w.ruleId === 'TOPO-002-dcdc-house-path');
+      expect(warning, 'Booster-Pfadmeldung nach Trennung der Hausseite').toBeDefined();
+      expect(warning!.id).toContain('dcdc-house-path');
+    });
+
+    it('AutoWire-Pläne erfüllen die Pfadprüfung (kein stiller Durchlauf, kein Fehlalarm)', () => {
+      const base = TEMPLATE_AUTARK as unknown as { nodes: Node[]; edges: Edge<CableEdgeData>[] };
+      const wired = performAutoWiring(base.nodes, base.edges);
+      if (!wired) throw new Error('performAutoWiring ohne Ergebnis');
+      // Kontrollprobe gegen einen vakuösen Test: Ohne Booster und ohne
+      // Aufbaubatterie im verdrahteten Plan prüft der Test gar nichts.
+      expect(wired.nodes.some((n) => n.type === 'dcdcCharger')).toBe(true);
+      expect(wired.nodes.some((n) => n.type === 'battery')).toBe(true);
+      const { result } = renderHook(() => useLiveValidation(wired.nodes as Node[], wired.edges as never));
+      expect(result.current.filter((w) => w.ruleId === 'TOPO-002-dcdc-house-path')).toEqual([]);
     });
   });
 
