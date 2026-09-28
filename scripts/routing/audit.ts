@@ -53,7 +53,7 @@ import {
 } from '../../lib/routing/geometry';
 import { ROUTING_TOKENS } from '../../lib/routing/tokens';
 import { classifySegmentAgainstSegment } from '../../lib/routing/rules/collision';
-import { isPortBundleOverlap, routedPathGeometry, sharesPort } from '../../lib/routing/rules/portBundle';
+import { isPortBundleOverlap, routedPathGeometry } from '../../lib/routing/rules/portBundle';
 import { GOLDEN_PLANS, type GoldenPlanInput } from '../goldenmaster/plans';
 import { compareIds } from '../../lib/sortOrder';
 
@@ -71,7 +71,14 @@ export type PlanAudit = {
    * (`rules/portBundle.ts`).
    */
   overlapsAtPort: number;
-  /** … und außerhalb der Port-Stubs (echte Fehler; > 0 ⇔ I2 > 0). */
+  /**
+   * … und außerhalb der Port-Stubs (echte Fehler; > 0 ⇔ I2 > 0).
+   *
+   * Seit 2026-09-28 vollständig: Vorher übersprang der Zähler Paare **ohne
+   * gemeinsame Anschlussstelle** (Vorfilter in `analyzeOverlaps`) — genau die
+   * Paare, für die die Bündel-Ausnahme ohnehin nie greift. In verschobenen
+   * acdc-Läufen stand dort I2 = 1 neben `elsewhere = 0` (ROUTE-007).
+   */
   overlapsElsewhere: number;
   fallbacks: number;
   deterministic: boolean;
@@ -181,10 +188,18 @@ export function analyzeOverlaps(routed: readonly RoutedEdge[]): { atPort: number
     for (let j = i + 1; j < geometry.length; j++) {
       const a = geometry[i]!;
       const b = geometry[j]!;
-      if (!sharesPort(a, b)) continue;
       for (const s1 of a.segments) {
         for (const s2 of b.segments) {
           if (classifySegmentAgainstSegment(s1, s2).class !== 'hard') continue;
+          // ROUTE-006-Rest (2026-09-28): Hier stand ein `if (!sharesPort(a, b))
+          // continue;` — als Vorfilter gedacht, in der Wirkung eine Lücke:
+          // Überdeckungen zwischen Kanten OHNE gemeinsame Anschlussstelle
+          // wurden gar nicht gezählt (weder `atPort` noch `elsewhere`), obwohl
+          // sie immer Routing-Fehler sind. Gemessen: verschobene acdc-Läufe mit
+          // I2 = 1 und `elsewhere = 0`. `isPortBundleOverlap` prüft die
+          // gemeinsame Anschlussstelle selbst und gibt sonst `false` zurück —
+          // die Ausnahme bleibt also unverändert, nur die Zahl ist jetzt
+          // vollständig.
           if (isPortBundleOverlap(a, b, s1, s2)) atPort += 1;
           else elsewhere += 1;
         }

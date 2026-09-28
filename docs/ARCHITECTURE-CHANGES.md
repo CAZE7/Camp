@@ -1998,3 +1998,35 @@ Blindfleck selbst), und der KNOWN-PROBLEMS-Eintrag nennt die Bedingung für eine
 
 **4. Zahlen.** `npm test` steht bei **2476 Tests / 181 Dateien** (2026-09-28); README,
 `docs/ai/README.md` und TESTING-CONTEXT sind nachgezogen.
+
+### 2026-09-28 — Siebenundzwanzigste Fassung: Der Assistent sagt, wenn er keinen Endpunkt hat (ARCH-001); Diagnose zählt vollständig (ROUTE-007)
+
+**1. ARCH-001 (der einzige offene hoch-Eintrag): das Schein-Feature ist weg.** Der Produktbuild ist ein
+statischer Export (`next.config.ts` → `output: 'export'`, ADR 0001); `app/api/chat/route.ts` erscheint im
+Build als `ƒ` (Dynamic) und liegt **nicht** in `out/` — `/ki-assistent` sendete also ohne
+`NEXT_PUBLIC_CHAT_API_URL` bei jeder Nachricht gegen ein 404 und sah dabei funktionsfähig aus.
+`components/Chat.tsx` leitet den Endpunkt jetzt über `resolveChatEndpoint` ab: eine gesetzte Variable
+gewinnt (getrimmt), sonst gibt es den lokalen Pfad `/api/chat` **nur** im Development-Server (`next dev`
+startet die Route), sonst `null`. Im Export-Fall rendert die Seite einen klaren Hinweis („Kein Assistent
+konfiguriert“ — mit Grund und Weg über die Variable) statt eines Eingabefelds; der `useChat`-Hook wird
+gar nicht erst aufgerufen, es kann nichts ins Leere senden. `.env.example` beschreibt das Verhalten (der
+tote `NEXT_PUBLIC_CHAT_TOKEN`-Eintrag ist entfernt), ADR 0021 ist auf „Punkt 2 umgesetzt, Punkt 1 offen“
+fortgeschrieben. Gemessen: `npm run build` und `out/ki-assistent/index.html` enthält den Hinweis und die
+Variable, kein Eingabefeld. Tests: `components/Chat.test.tsx` (13 — Export-Fall, Development-Fall,
+Leerraum, „sendet nichts und ruft den Hook nicht auf“). Offen bleibt allein die **Produktentscheidung**
+aus ADR 0021 Punkt 1 (Route/`lib/db.ts` behalten oder in ein eigenes Deployment schieben) — sie ist im
+KNOWN-PROBLEMS-Eintrag als solche benannt, nicht stillschweigend entschieden.
+
+**2. ROUTE-007: Die Überdeckungs-Diagnose ließ Paare ohne gemeinsame Anschlussstelle aus.**
+`analyzeOverlaps` (Audit) hatte einen Vorfilter `if (!sharesPort(a, b)) continue;`. Als Abkürzung für die
+Port-Bündel-Ausnahme gedacht, wirkte er als Lücke: Kollineare Überdeckungen zwischen Kanten **ohne**
+gemeinsame Anschlussstelle wurden weder als `atPort` noch als `elsewhere` gezählt. Gemessen in der
+Versatz-Matrix: `acdc Δ(-96,-96)` hat I2 = 1, die Diagnose meldete `elsewhere = 0` — der Widerspruch, den
+die Kopplungsprüfung des Gates (`elsewhere > 0 ⇔ I2 > 0`) auf den eingefrorenen Positionen als hartes Rot
+meldet, war in den verschobenen Läufen unsichtbar. `isPortBundleOverlap` prüft die gemeinsame
+Anschlussstelle selbst und liefert sonst `false`; der Vorfilter ist entfernt, die Ausnahme unverändert.
+Zwei Fälle in `scripts/routing/portBundleModel.test.ts` halten die Vollständigkeit fest; die
+Referenzpläne bleiben unverändert (I2 = 0, `atPort`-Zahlen identisch).
+
+**3. Zahlen.** `npm test` steht bei **2485 Tests / 181 Dateien** (2026-09-28); README,
+`docs/ai/README.md` und `docs/ai/TESTING-CONTEXT.md` sind nachgezogen.

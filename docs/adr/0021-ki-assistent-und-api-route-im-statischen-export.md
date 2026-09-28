@@ -1,7 +1,13 @@
 # ADR 0021 — KI-Assistent und `/api/chat` im statischen Export
 
-**Status:** vorgeschlagen (Entscheidung offen) · **Datum:** 2026-09-09 ·
-**Bezug:** ADR 0001, ARCH-001 (KNOWN-PROBLEMS)
+**Status:** teilweise umgesetzt (Punkt 2 umgesetzt, Punkt 1 offen) · **Datum:** 2026-09-09 ·
+**Nachtrag:** 2026-09-28 · **Bezug:** ADR 0001, ARCH-001 (KNOWN-PROBLEMS)
+
+> **Umsetzungsstand 2026-09-28:** Punkt 2 ist umgesetzt — `components/Chat.tsx` zeigt ohne
+> gesetzten Endpunkt einen Hinweis statt eines Eingabefelds (`resolveChatEndpoint`, Tests in
+> `components/Chat.test.tsx`); Punkt 3 war mit dem ADR geliefert. Punkt 1 (Route/`lib/db.ts`
+> behalten oder entfernen) ist weiterhin eine **Produktentscheidung**: der Produktbuild bleibt
+> statisch, die Route liegt nur im Development-Server.
 
 ## Kontext
 

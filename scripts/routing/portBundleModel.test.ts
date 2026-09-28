@@ -184,3 +184,56 @@ describe('Port-Bündel-Ausnahme über die Referenzpläne — Modell, I2 und Audi
     }
   });
 });
+
+/**
+ * ROUTE-006-Rest (2026-09-28): `analyzeOverlaps` ließ Kantenpaare OHNE
+ * gemeinsame Anschlussstelle komplett aus (Vorfilter `sharesPort`). Ein solches
+ * Paar konnte sich vollständig überdecken, und die Diagnose meldete
+ * `elsewhere = 0`, während der Invarianten-Check I2 zählte — in verschobenen
+ * acdc-Läufen gemessen (I2 = 1, elsewhere = 0). Der Vorfilter ist entfernt
+ * (die Ausnahme prüft `isPortBundleOverlap` selbst); diese Fälle halten die
+ * Vollständigkeit und die Kopplung Diagnose ↔ Gate fest.
+ */
+describe('analyzeOverlaps — Vollständigkeit außerhalb gemeinsamer Anschlussstellen', () => {
+  const edge = (id: string, source: string, target: string, waypoints: { x: number; y: number }[]) => ({
+    id,
+    source,
+    target,
+    waypoints,
+  });
+
+  it('zählt eine Überdeckung ohne gemeinsame Anschlussstelle als elsewhere', () => {
+    const routed = [
+      edge('a', 'n1', 'n2', [
+        { x: 100, y: 100 },
+        { x: 300, y: 100 },
+      ]),
+      edge('b', 'n3', 'n4', [
+        { x: 120, y: 100 },
+        { x: 280, y: 100 },
+      ]),
+    ];
+    expect(analyzeOverlaps(routed)).toEqual({ atPort: 0, elsewhere: 1 });
+    // Kopplung Diagnose ↔ Gate: eine Überdeckung ohne Port-Bündel ist I2.
+    expect(checkInvariants(routed, [] as NodeRect[]).I2).toHaveLength(1);
+  });
+
+  it('zählt ein legitim gebündeltes Port-Paar weiterhin als atPort', () => {
+    const routed = [
+      edge('a', 'n1', 'n2', [
+        { x: 0, y: 0 },
+        { x: 200, y: 0 },
+        { x: 200, y: 200 },
+      ]),
+      edge('b', 'n1', 'n3', [
+        { x: 0, y: 0 },
+        { x: 120, y: 0 },
+        { x: 120, y: 300 },
+      ]),
+    ];
+    const overlaps = analyzeOverlaps(routed);
+    expect(overlaps.atPort).toBe(1);
+    expect(overlaps.elsewhere).toBe(0);
+    expect(checkInvariants(routed, [] as NodeRect[]).I2).toHaveLength(0);
+  });
+});

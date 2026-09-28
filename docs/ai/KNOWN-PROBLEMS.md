@@ -468,7 +468,38 @@ routeAllCables → checkInvariants`, sechs Referenzpläne, Kartenmaß 192 × 120
 
 ---
 
-## ARCH-001 — Server-Route und Postgres-Pool im statischen Export
+## ROUTE-007 — Überdeckungen ohne gemeinsame Anschlussstelle fehlten in der Diagnose — **behoben 2026-09-28**
+
+- **STATUS:** behoben — der Vorfilter `if (!sharesPort(a, b)) continue;` in `analyzeOverlaps`
+  ist entfernt; `isPortBundleOverlap` prüft die gemeinsame Anschlussstelle selbst und liefert
+  sonst `false`. Die Port-Bündel-Ausnahme ist unverändert, die Zahl vollständig. Zwei Fälle in
+  `scripts/routing/portBundleModel.test.ts` halten das fest (Überdeckung ohne gemeinsamen Port →
+  `elsewhere = 1` und I2 = 1; Bündel am gemeinsamen Port bleibt `atPort`). Die Referenzpläne
+  sind unverändert (I2 = 0, `atPort`-Zahlen identisch).
+- **AREA:** Diagnose / Routing
+- **FILE:** `scripts/routing/audit.ts` (`analyzeOverlaps`), `scripts/routing/portBundleModel.test.ts`
+- **DESCRIPTION:** Der Vorfilter war als Abkürzung für die Port-Bündel-Ausnahme gedacht, wirkte
+  aber als Lücke: Kollineare Überdeckungen zwischen Kanten **ohne** gemeinsame Anschlussstelle
+  wurden weder als `atPort` noch als `elsewhere` gezählt — sie tauchten in der Diagnose gar nicht
+  auf. Gemessen in der Versatz-Matrix: `acdc Δ(-96,-96)` hat I2 = 1, die Diagnose meldete
+  `elsewhere = 0`.
+- **CURRENT BEHAVIOR (behoben):** `elsewhere` zählt jede harte Überdeckung, die kein Port-Bündel
+  ist — unabhängig davon, ob die Kanten eine Anschlussstelle teilen.
+- **EXPECTED BEHAVIOR:** Diagnose und Invariante (`checkEdgeEdgeOverlaps`) zählen dieselbe
+  Grundmenge; die Kopplungsprüfung des Gates (`elsewhere > 0 ⇔ I2 > 0`) gilt an jeder Stelle.
+- **SEVERITY:** niedrig (Diagnose — die Invariante I2 selbst zählte korrekt, und das Gate prüft
+  die Kopplung auf den eingefrorenen Positionen; in den verschobenen Läufen war die Zahl nur
+  Diagnose)
+- **WORKAROUND:** entfällt.
+- **RELATED TEST:** `scripts/routing/portBundleModel.test.ts`,
+  `scripts/routing/shiftInvariance.test.ts` (Rest-I2 der Versätze)
+- **RELATED ISSUE:** ROUTE-002 Teil 2a (ADR 0025), ROUTE-006 Punkt 5.
+
+---
+
+## ARCH-001 — Server-Route und Postgres-Pool im statischen Export — **teilweise behoben 2026-09-28**
+
+(Schein-Feature weg, Produktentscheidung offen)
 
 - **AREA:** Architektur
 - **FILE:** `app/api/chat/route.ts`, `lib/db.ts`, `components/Chat.tsx`, `app/ki-assistent/page.tsx`
@@ -479,14 +510,30 @@ routeAllCables → checkInvariants`, sechs Referenzpläne, Kartenmaß 192 × 120
   - `npm run build` weist `/api/chat` als **`ƒ` (Dynamic, server-rendered on demand)** aus —
     der Export enthält **kein** `out/api` (geprüft).
   - Ohne gesetzte `NEXT_PUBLIC_CHAT_API_URL` sendet die Seite ins Leere (404) und wirkt dabei
-    funktionsfähig.
+    funktionsfähig. — **behoben 2026-09-28, s. STATUS.**
   - `.env.example` behauptete „No environment variables are required“ — die Variable war dort
     nicht dokumentiert (mit ADR 0021 ergänzt).
   - Abgesichert ist die Route nur durch Unit-Tests mit gemocktem `pg` (578 Zeilen):
     grün, aber ohne Bezug zum ausgelieferten Artefakt.
+- **STATUS (2026-09-28): das Schein-Feature ist weg (ADR 0021 Punkt 2 umgesetzt).**
+  `components/Chat.tsx` leitet den Endpunkt jetzt über `resolveChatEndpoint` ab: gesetzte
+  `NEXT_PUBLIC_CHAT_API_URL` gewinnt (getrimmt), sonst gibt es **nur** im Development-Server
+  den lokalen Pfad `/api/chat` — der Produktbuild ist `output: 'export'` (kein `out/api`,
+  `next start` gar nicht möglich), dort ist der Endpunkt `null`. In diesem Fall rendert
+  `/ki-assistent` einen klaren Hinweis („Kein Assistent konfiguriert“, mit Grund und Weg über
+  die Env-Variable) statt eines Eingabefelds; der `useChat`-Hook wird gar nicht erst
+  aufgerufen, es kann also nichts ins Leere senden. `.env.example` beschreibt das Verhalten
+  und der tote `NEXT_PUBLIC_CHAT_TOKEN`-Eintrag ist entfernt (S1: kein clientseitiges
+  „Secret“). Tests: `components/Chat.test.tsx` (13, u. a. Export-Fall ohne Endpunkt).
+  **Offen bleibt die Produktentscheidung (ADR 0021 Punkt 1):** ob `app/api/chat/route.ts`,
+  `lib/db.ts` (`pg`-Pool) und `app/api/chat/route.test.ts` (578 gemockte Zeilen) im Baum
+  bleiben oder mit einem externen Endpunkt in ein eigenes Deployment wandern.
 - **EXPECTED BEHAVIOR:** Entweder externer Endpunkt + dokumentierte Konfiguration, oder
-  Route/Seite entfernen.
-- **SEVERITY:** hoch (funktional), niedrig (Sicherheit: kein Secret im Repo)
+  Route/Seite entfernen. (Der Konfigurationsweg ist umgesetzt; das Entfernen der Route ist
+  die offene Produktentscheidung.)
+- **SEVERITY:** war hoch (funktional) — **behoben 2026-09-28**, kein Leerlauf-Versand mehr;
+  niedrig (Sicherheit: kein Secret im Repo). Verbleibend ist eine Produktentscheidung
+  (Punkt 1), kein Fehler.
 - **WORKAROUND:** Nicht als lauffähiges Feature behandeln. Vor Änderungen prüfen, ob der
   KI-Assistent Teil des Produkts sein soll.
 - **RELATED TEST:** `app/api/chat/route.test.ts` (578 Zeilen, komplett gemockt),
