@@ -2114,10 +2114,33 @@ Bewusst **nicht** behauptet: dass der Screenshot-Fall „… 3.0 m · 4.0 m" dam
 Fixture-Plänen ließ sich keine Überdeckung fremder Labels nachweisen (auch nicht auf dem Stand davor) —
 der Mechanismus, der ihn erzeugt (nur paarweise Trennung, kein Pass über den ganzen Plan), ist jetzt
 abgedeckt und in `components/edges/utils/labelPlacement.test.ts` als Gate gesetzt, der Beweis steht aber
-auf dem Screenshot des Nutzers, nicht auf einem Test. Offen und **nicht** Teil dieser Fassung, weil es
-die Bildsprache ändert und eine Freigabe braucht: die Zahl der Kreuzungs-Hops (28 auf
-`knownPlans/complex.json` — die „Seilschlingen" an den Bündeln), die zwei Bedienebenen im Planner
-(Schrittleiste + Werkzeugleiste) und die Rechtsdaten im Impressum.
+auf dem Screenshot des Nutzers, nicht auf einem Test. Dritter Teil, klein und doch der Spec geschuldet (§5.3, „Kollisionsabstand als Token"): Die
+Label-Geometrie ist jetzt ein Routing-Token — `labelBoxWidth` (156), `labelBoxHeight` (22),
+`labelClearance` (4), `parallelLabelSpread` (24) in `lib/routing/tokens.ts`, mit Konsistenzregel
+`parallelLabelSpread >= labelBoxHeight` im Token-Test. `pathUtils` und `routeAll` leiten ihre
+Konstanten daraus ab; die Zahl steht damit einmal, nicht dreimal.
+
+**Offen, und zwar gemessen — nicht geändert** (jede Änderung hier berührt Golden Plans, Referenz-SVGs
+oder die Bildsprache und braucht eine Freigabe):
+
+- **Feste Schienen-Koordinaten (M11-2).** `lib/autoWire/routing.ts:163-164` legt die Plus-Schiene auf
+  (280, −120) und die Minus-Schiene auf (560, 80), unabhängig von der Batterieposition; der
+  Sicherungskasten folgt derselben Systematik. Liegen die Bauteile des Nutzers links/unten, läuft jede
+  AutoWire-Leitung quer über das Blatt.
+- **Erfundene Längen auf AutoWire-Kanten.** `lib/autoWire.ts` setzt feste Werte (gezählt: 0,2 m ×4,
+  0,5 m ×1, 1 m ×5, 2 m ×6, 3 m ×6, 5 m ×2) — ein gespeicherter Wert gewinnt in `CableEdge`, die
+  geroutete Verlegelänge wird dort für AutoWire-Kanten nie benutzt. A2 („keine pauschalen 3 m mehr",
+  `store/slices/graphSlice.ts:449`) gilt bisher nur für Nutzerkanten. **Messung** über die sechs
+  Referenzpläne, AutoWire frisch erzeugt, geroutete Länge / `PX_PER_METER` (100): Faktor Median
+  **2,46×**, Maximum **35,2×** (Konstante 0,2 m „Batterie → Plus-Schiene" gegen 7,0 m Route); in
+  komplex 14 von 23 Kanten mehr als doppelt so lang wie gespeichert, über alle Pläne 47 von 79. Die
+  Abweichung wirkt in die gefährliche Richtung: `calculateCrossSection` ist linear in der Länge, ein
+  zu kurzer Eintrag unterschätzt den Spannungsfall. Vorschlag als eigene Aufgabe: `meters(2/3)` durch
+  `undefined` ersetzen, damit die Route gilt — **mit** Neuerfassung der Goldens und Begründung.
+- **Zwei Bedienebenen im Planner** (geführte Schrittleiste + klassische Werkzeugleiste) und die
+  Kreuzungs-Hops (28 auf `knownPlans/complex.json`, die „Seilschlingen" an den Bündeln).
+- **Rechtsdaten im Impressum** (`lib/siteLegal.ts` ist in allen fünf Feldern Platzhalter; die
+  Infrastruktur samt Deploy-Wächter steht, es fehlen nur die Angaben des Betreibers).
 
 **3. Zahlen.** `npm test` steht bei **2452 Tests / 176 Dateien** (2026-09-28); README,
 `docs/ai/README.md` und `docs/ai/TESTING-CONTEXT.md` sind nachgezogen. `npm run lint`,

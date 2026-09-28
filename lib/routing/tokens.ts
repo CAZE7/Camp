@@ -63,6 +63,27 @@ export type RoutingTokens = {
   readonly bendRadius: number;
   /** Wert für Domain-Trennung — die Paar-Regel lebt in WP-3 (px). */
   readonly crossDomainSpacing: number;
+  /**
+   * Gerenderte Größe einer Kabel-Beschriftung (px): 12 px fett, `padding:
+   * 2px 6px`, 1 px Rahmen — gemessen rund 156 × 22 für „DC- · 1.5 mm² · 3.0 m".
+   *
+   * Warum als Token (Spec §5.3, Befund 2026-09-28): Vorher rechnete die
+   * Platzierung mit 112 × 28 und die Prüfung mit 88 × 20 — beide kleiner als
+   * das Gerenderte, weshalb Beschriftungen auf Karten lagen, ohne dass eine
+   * Prüfung anschlug. Eine Zahl, die die Darstellung beschreibt, gehört zur
+   * Geometrie des Routings, nicht in zwei Module.
+   */
+  readonly labelBoxWidth: number;
+  /** Höhe der Label-Box (px) — Drift-Guard: `<= laneGrid`, sonst berühren sich gestapelte Labels. */
+  readonly labelBoxHeight: number;
+  /** Kollisionsabstand Label ↔ Karte (px), zusätzlich zur Box. */
+  readonly labelClearance: number;
+  /**
+   * Versatz, in dem Labels desselben Bündels gestapelt und seitlich der Trasse
+   * gesucht werden (px). Wird auch als Ausweich-Stufe benutzt — Konsistenzregel
+   * im Token-Test: `>= labelBoxHeight`, sonst berühren sich gestapelte Labels.
+   */
+  readonly parallelLabelSpread: number;
 };
 
 export const ROUTING_TOKENS: RoutingTokens = Object.freeze({
@@ -74,6 +95,10 @@ export const ROUTING_TOKENS: RoutingTokens = Object.freeze({
   segmentMin: 16,
   bendRadius: 8,
   crossDomainSpacing: 24,
+  labelBoxWidth: 156,
+  labelBoxHeight: 22,
+  labelClearance: 4,
+  parallelLabelSpread: 24,
 });
 
 /**

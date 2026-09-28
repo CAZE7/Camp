@@ -144,7 +144,7 @@ export function resolveHandlePoint(
  * gerenderte Label ≈ 156 × 22 px ist). `LABEL_CLEARANCE` ist der
  * Sicherheitsabstand, den ein Chip zu Karte und Nachbar-Chip halten soll.
  */
-export const LABEL_CLEARANCE = 4;
+export const LABEL_CLEARANCE = ROUTING_TOKENS.labelClearance;
 export const LABEL_HALF_WIDTH = LABEL_BOX_WIDTH / 2 + LABEL_CLEARANCE;
 export const LABEL_HALF_HEIGHT = LABEL_BOX_HEIGHT / 2 + LABEL_CLEARANCE;
 
