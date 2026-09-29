@@ -1,12 +1,21 @@
 import { renderHook } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
-import { useLiveValidation } from './useLiveValidation';
+import { useLiveValidation, type ValidationWarning } from './useLiveValidation';
 import { textContaining } from '../../../test-helpers/matchers'; // AUDIT T1
 import { performAutoWiring } from '../../../lib/autoWire';
 import { isStarterBattery } from '../../../lib/autoWire/validation';
 import { TEMPLATE_AUTARK } from '../templates';
 import { type Node, type Edge } from '@xyflow/react';
 import { type CableEdgeData } from '../../edges/CableEdge';
+
+/**
+ * Befunde der Verifikations-Engine tragen `verify-`-IDs. Dieses Helferchen
+ * hält die Tests der PLANER-Regeln frei von Engine-Befunden: Beide Quellen
+ * speisen dieselbe Liste (so gewollt), aber die Engine hat ihre eigenen Tests
+ * in `lib/verify/` — hier wird nur geprüft, was diese Datei beisteuert.
+ */
+const plannerWarnings = (warnings: ValidationWarning[]) =>
+  warnings.filter((w) => !w.id.startsWith('verify-'));
 
 describe('useLiveValidation', () => {
   it('should return empty warnings for empty nodes and edges', () => {
@@ -155,102 +164,81 @@ describe('useLiveValidation', () => {
     });
   });
 
-  describe('Rule A: Missing Fuse on High Power Component', () => {
-    it('should generate critical warning if fuse is missing on positive line from high power source', () => {
-      const nodes: Node[] = [
-        { id: '1', type: 'battery', data: { label: 'Battery' }, position: { x: 0, y: 0 } },
-        { id: '2', type: 'consumer', data: { label: 'Consumer' }, position: { x: 100, y: 0 } },
-      ];
-      const edges: Edge<CableEdgeData>[] = [
-        { id: 'e1-2', source: '1', target: '2', sourceHandle: 'plus-out', data: { fuseSize: undefined } },
-      ];
+  describe('Quellschutz (0,2-m-Regel) — Engine-Regel AMP-003 statt Planer-Regel', () => {
+    /**
+     * Die Planer-Regel „missing-fuse-*“ ist entfernt. Die 0,2-m-Regel steht in
+     * der Regelmatrix der Engine (`AMP-003`) und rechnet dort mit Länge,
+     * Querschnitt, Domäne und Schutzorgan. Diese Tests halten die Übergabe
+     * fest — inklusive der Zusage, dass KEINE zweite Implementierung derselben
+     * Aussage danebensteht: ohne die frühere Doppelmeldung „Quellschutz fehlt“
+     * und ohne Engines Befund zu wiederholen.
+     */
+    const battery: Node = {
+      id: 'b',
+      type: 'battery',
+      data: { label: 'Batterie', capacity: 100, chemistry: 'LiFePO4', internalResistanceMilliOhm: 15 },
+      position: { x: 0, y: 0 },
+    };
+    const consumer: Node = {
+      id: 'c',
+      type: 'consumer',
+      data: { label: 'Kühli', watts: 60 },
+      position: { x: 100, y: 0 },
+    };
+    const cable = (data: Record<string, unknown>): Edge<CableEdgeData>[] => [
+      { id: 'e1', source: 'b', target: 'c', sourceHandle: 'plus', targetHandle: 'plus', data },
+    ];
 
-      const { result } = renderHook(() => useLiveValidation(nodes, edges));
+    it('meldet 2 m ungeschützte Leitung ab der Quelle als kritischen Befund', () => {
+      const { result } = renderHook(() =>
+        useLiveValidation([battery, consumer], cable({ crossSection: 2.5, length: 2 }))
+      );
 
-      expect(result.current).toHaveLength(1);
-      expect(result.current[0]).toEqual(
+      const warning = result.current.find((w) => w.ruleId === 'AMP-003-source-protection-position');
+      expect(warning).toEqual(
         expect.objectContaining({
-          id: 'missing-fuse-e1-2',
           category: 'safety',
           type: 'critical',
-          message: textContaining('Quellschutz fehlt'),
+          focusId: 'e1',
+          focusType: 'edge',
+          measuredValue: '2',
+          expectedValue: '0,2',
+          unit: 'm',
         })
       );
+      expect(warning!.message).toContain('ohne Schutzorgan');
+      // Abhilfe kommt als fertiger Vorschlag aus dem Ereignis (kein zweiter Textpfad).
+      expect(warning!.remedy).toContain('Sicherung');
+      expect(warning!.source).toContain('ISO 10133');
     });
 
-    it('should generate critical warning if target is a busbar without fuse on edge', () => {
-      const nodes: Node[] = [
-        { id: '1', type: 'battery', data: { label: 'Battery' }, position: { x: 0, y: 0 } },
-        { id: '2', type: 'busbar', data: { label: 'Busbar' }, position: { x: 100, y: 0 } },
-      ];
-      const edges: Edge<CableEdgeData>[] = [
-        { id: 'e1-2', source: '1', target: '2', sourceHandle: 'plus-out', data: { fuseSize: undefined } },
-      ];
-
-      const { result } = renderHook(() => useLiveValidation(nodes, edges));
-      expect(result.current).toHaveLength(1);
-      expect(result.current[0]!.id).toBe('missing-fuse-e1-2');
+    it('meldet dieselbe Aussage nicht mehr unter der alten Planer-ID', () => {
+      const { result } = renderHook(() =>
+        useLiveValidation([battery, consumer], cable({ crossSection: 2.5, length: 2 }))
+      );
+      expect(result.current.filter((w) => w.id.startsWith('missing-fuse'))).toEqual([]);
     });
 
-    it('should not generate warning if fuse size is set', () => {
-      const nodes: Node[] = [
-        { id: '1', type: 'battery', data: { label: 'Battery' }, position: { x: 0, y: 0 } },
-        { id: '2', type: 'consumer', data: { label: 'Consumer' }, position: { x: 100, y: 0 } },
-      ];
-      const edges: Edge<CableEdgeData>[] = [
-        { id: 'e1-2', source: '1', target: '2', sourceHandle: 'plus-out', data: { fuseSize: 100 } },
-      ];
-
-      const { result } = renderHook(() => useLiveValidation(nodes, edges));
-      // Diese Prüfung gilt der Quellschutz-Regel; die (korrekte) Meldung
-      // „Bank-Ik nicht schätzbar“ gehört zu DOM-002 und wird dort geprüft.
-      expect(result.current.filter((w) => w.id === 'missing-fuse-e1-2')).toEqual([]);
-      expect(result.current.every((w) => w.category !== 'safety')).toBe(true);
+    it('meldet mit Sicherung keine AMP-003-Verletzung (ohne Länge keine erfundene)', () => {
+      const { result } = renderHook(() =>
+        useLiveValidation([battery, consumer], cable({ crossSection: 2.5, length: 2, fuseSize: 10 }))
+      );
+      const violations = result.current.filter(
+        (w) => w.ruleId === 'AMP-003-source-protection-position' && w.type !== 'info'
+      );
+      expect(violations).toEqual([]);
     });
 
-    it('should not generate warning if target is a fuse', () => {
-      const nodes: Node[] = [
-        { id: '1', type: 'battery', data: { label: 'Battery' }, position: { x: 0, y: 0 } },
-        { id: '2', type: 'fuse', data: { label: 'Fuse' }, position: { x: 100, y: 0 } },
-      ];
-      const edges: Edge<CableEdgeData>[] = [
-        { id: 'e1-2', source: '1', target: '2', sourceHandle: 'plus-out', data: { fuseSize: undefined } },
-      ];
-
-      const { result } = renderHook(() => useLiveValidation(nodes, edges));
-      expect(result.current).toEqual([]);
-    });
-
-    it('should not generate warning if edgeDomain is AC_230V', () => {
-      const nodes: Node[] = [
-        { id: '1', type: 'inverter', data: { label: 'Inverter' }, position: { x: 0, y: 0 } },
-        { id: '2', type: 'consumer', data: { label: 'Consumer' }, position: { x: 100, y: 0 } },
-      ];
-      const edges: Edge<CableEdgeData>[] = [
-        {
-          id: 'e1-2',
-          source: '1',
-          target: '2',
-          sourceHandle: 'plus-out',
-          data: { edgeDomain: 'AC_230V', fuseSize: undefined },
-        },
-      ];
-
-      const { result } = renderHook(() => useLiveValidation(nodes, edges));
-      expect(result.current.filter((w) => w.id.includes('missing-fuse'))).toEqual([]);
-    });
-
-    it('should not generate warning if source handle is not positive', () => {
-      const nodes: Node[] = [
-        { id: '1', type: 'battery', data: { label: 'Battery' }, position: { x: 0, y: 0 } },
-        { id: '2', type: 'consumer', data: { label: 'Consumer' }, position: { x: 100, y: 0 } },
-      ];
-      const edges: Edge<CableEdgeData>[] = [
-        { id: 'e1-2', source: '1', target: '2', sourceHandle: 'minus-out', data: { fuseSize: 10 } },
-      ];
-
-      const { result } = renderHook(() => useLiveValidation(nodes, edges));
-      expect(result.current).toEqual([]);
+    it('ohne Querschnitt und Länge bleibt die ungeschützte Länge „nicht entscheidbar“', () => {
+      // Die Engine erfindet keine Länge: Ohne Eingaben ist der 0,2-m-Vergleich
+      // nicht führbar — der Befund ist ein Hinweis auf die Lücke, keine
+      // Behauptung über eine Verletzung.
+      const { result } = renderHook(() => useLiveValidation([battery, consumer], cable({})));
+      const gap = result.current.find(
+        (w) => w.ruleId === 'AMP-003-source-protection-position' && w.type === 'info'
+      );
+      expect(gap).toBeDefined();
+      expect(gap!.unverified).toBe(true);
     });
   });
 
@@ -270,9 +258,10 @@ describe('useLiveValidation', () => {
       ];
 
       const { result } = renderHook(() => useLiveValidation(nodes, []));
+      const warnings = plannerWarnings(result.current);
 
-      expect(result.current).toHaveLength(1);
-      expect(result.current[0]).toEqual(
+      expect(warnings).toHaveLength(1);
+      expect(warnings[0]).toEqual(
         expect.objectContaining({
           id: 'solar-overload',
           category: 'estimation',
@@ -295,57 +284,59 @@ describe('useLiveValidation', () => {
       ];
 
       const { result } = renderHook(() => useLiveValidation(nodes, []));
-      expect(result.current).toEqual([]);
+      expect(plannerWarnings(result.current)).toEqual([]);
     });
   });
 
-  describe('Rule C: Battery Capacity Alert', () => {
-    it('should generate info warning if daily consumed Ah > total battery Ah', () => {
+  describe('Energiebilanz — Engine-Regel PWR-001 statt Planer-Regel „battery-capacity“', () => {
+    /**
+     * Die Planer-Regel „battery-capacity“ ist entfernt: Tagesbedarf gegen
+     * nutzbare Kapazität rechnet die Engine (Peukert-gewichtet, mit
+     * Datenblattfeldern aus `lib/peukert.ts`). Sie ist eine
+     * Verfügbarkeitsaussage (EFFICIENCY_WARNING), keine Personengefahr —
+     * deshalb erscheint sie als Warnung, nicht als kritischer Befund.
+     */
+    it('meldet knappe Kapazität als Warnung der Engine', () => {
       const nodes: Node[] = [
         { id: '1', type: 'battery', data: { capacity: 100 }, position: { x: 0, y: 0 } },
-        { id: '2', type: 'consumer', data: { watts: 300, hours: 5 }, position: { x: 100, y: 0 } }, // 300W * 5h / 12V = 125Ah
+        { id: '2', type: 'consumer', data: { watts: 300, hours: 5 }, position: { x: 100, y: 0 } },
       ];
-
       const { result } = renderHook(() => useLiveValidation(nodes, []));
 
-      expect(result.current).toHaveLength(1);
-      expect(result.current[0]).toEqual(
+      const warning = result.current.find((w) => w.ruleId === 'PWR-001-energy-balance');
+      expect(warning).toEqual(
         expect.objectContaining({
-          id: 'battery-capacity',
           category: 'estimation',
-          type: 'info',
-          message: textContaining('Deine Batterie könnte knapp werden'),
+          type: 'warning',
+          unit: 'Ah',
+          measuredValue: '117,19',
+          expectedValue: '90',
         })
       );
+      expect(warning!.message).toContain('Energiebilanz');
     });
 
-    it('should not generate warning if daily consumed Ah <= total battery Ah', () => {
+    it('bleibt still, wenn die nutzbare Kapazität den Tagesbedarf deckt', () => {
       const nodes: Node[] = [
         { id: '1', type: 'battery', data: { capacity: 150 }, position: { x: 0, y: 0 } },
-        { id: '2', type: 'consumer', data: { watts: 300, hours: 5 }, position: { x: 100, y: 0 } }, // 300W * 5h / 12V = 125Ah
+        { id: '2', type: 'consumer', data: { watts: 300, hours: 5 }, position: { x: 100, y: 0 } },
       ];
-
       const { result } = renderHook(() => useLiveValidation(nodes, []));
-      expect(result.current).toEqual([]);
+      expect(result.current.filter((w) => w.ruleId === 'PWR-001-energy-balance')).toEqual([]);
     });
 
-    it('should default to 4 hours if hours not specified', () => {
+    it('meldet fehlende Verbrauchsangaben als „nicht entscheidbar“, nicht als Pass', () => {
       const nodes: Node[] = [
         { id: '1', type: 'battery', data: { capacity: 50 }, position: { x: 0, y: 0 } },
-        { id: '2', type: 'consumer', data: { watts: 300 }, position: { x: 100, y: 0 } }, // 300W * 4h / 12V = 100Ah
+        { id: '2', type: 'consumer', data: { watts: 300 }, position: { x: 100, y: 0 } },
       ];
-
       const { result } = renderHook(() => useLiveValidation(nodes, []));
 
-      expect(result.current).toHaveLength(1);
-      expect(result.current[0]).toEqual(
-        expect.objectContaining({
-          id: 'battery-capacity',
-          category: 'estimation',
-          type: 'info',
-          message: textContaining('Deine Batterie könnte knapp werden'),
-        })
-      );
+      const gap = result.current.find((w) => w.ruleId === 'PWR-001-energy-balance');
+      expect(gap?.type).toBe('info');
+      expect(gap?.unverified).toBe(true);
+      expect(gap?.focusId).toBe('2');
+      expect(gap?.message).toContain('Nutzungsdauer');
     });
   });
 
@@ -355,8 +346,9 @@ describe('useLiveValidation', () => {
         { id: '1', type: 'dcdcCharger', data: { label: 'Booster' }, position: { x: 0, y: 0 } },
       ];
       const { result } = renderHook(() => useLiveValidation(nodes, []));
-      expect(result.current).toHaveLength(1);
-      expect(result.current[0]!.id).toBe('dcdc-unconnected-1');
+      const warnings = plannerWarnings(result.current);
+      expect(warnings).toHaveLength(1);
+      expect(warnings[0]!.id).toBe('dcdc-unconnected-1');
     });
 
     it('should not warn if dcdcCharger has input and output', () => {
@@ -512,124 +504,6 @@ describe('useLiveValidation', () => {
     });
   });
 
-  describe('Rule F: Smart Shunt Bypass', () => {
-    it('should warn if a non-shunt is connected directly to battery minus when a shunt exists', () => {
-      const nodes: Node[] = [
-        { id: '1', type: 'battery', data: {}, position: { x: 0, y: 0 } },
-        { id: '2', type: 'consumer', data: {}, position: { x: 0, y: 0 } },
-        { id: '3', type: 'shunt', data: {}, position: { x: 0, y: 0 } },
-      ];
-      const edges: Edge<CableEdgeData>[] = [
-        { id: 'e1', source: '2', target: '1', targetHandle: 'minus-in', data: {} },
-      ];
-      const { result } = renderHook(() => useLiveValidation(nodes, edges));
-      expect(result.current.filter((w) => w.id.includes('shunt-bypass'))).toHaveLength(1);
-    });
-
-    it('does not flag starter-battery minus to DC-DC when the shunt sits on the house battery', () => {
-      const nodes: Node[] = [
-        { id: 'house', type: 'battery', data: { label: 'Aufbau' }, position: { x: 0, y: 0 } },
-        { id: 'starter', type: 'battery', data: { label: 'Startbatterie' }, position: { x: 0, y: 0 } },
-        { id: 'shunt', type: 'shunt', data: {}, position: { x: 0, y: 0 } },
-        { id: 'booster', type: 'dcdcCharger', data: { label: 'Booster' }, position: { x: 0, y: 0 } },
-      ];
-      const edges: Edge<CableEdgeData>[] = [
-        {
-          id: 'e-house-shunt',
-          source: 'house',
-          target: 'shunt',
-          sourceHandle: 'minus',
-          targetHandle: 'minus',
-          data: {},
-        },
-        {
-          id: 'e-starter-plus',
-          source: 'starter',
-          target: 'booster',
-          sourceHandle: 'plus',
-          targetHandle: 'plus',
-          data: { fuseSize: 40 },
-        },
-        {
-          id: 'e-starter-minus',
-          source: 'starter',
-          target: 'booster',
-          sourceHandle: 'minus',
-          targetHandle: 'minus',
-          data: {},
-        },
-        {
-          id: 'e-booster-out',
-          source: 'booster',
-          target: 'house',
-          sourceHandle: 'plus',
-          targetHandle: 'plus',
-          data: { fuseSize: 40 },
-        },
-      ];
-      const { result } = renderHook(() => useLiveValidation(nodes, edges));
-      expect(result.current.filter((w) => w.id.includes('shunt-bypass'))).toHaveLength(0);
-    });
-  });
-
-  describe('Rule G: Inverter Protection', () => {
-    it('should warn if inverter has no fuse on positive edge and source is not fuse', () => {
-      const nodes: Node[] = [
-        { id: '1', type: 'battery', data: {}, position: { x: 0, y: 0 } },
-        { id: '2', type: 'inverter', data: {}, position: { x: 0, y: 0 } },
-      ];
-      // Note: testing both unprotected and missing minus
-      const edges: Edge<CableEdgeData>[] = [
-        { id: 'e1', source: '1', target: '2', targetHandle: 'plus-in', data: { fuseSize: undefined } },
-      ];
-      const { result } = renderHook(() => useLiveValidation(nodes, edges));
-      expect(result.current.filter((w) => w.id.includes('inverter-unprotected'))).toHaveLength(1);
-      expect(result.current.find((w) => w.id.includes('inverter-unprotected'))?.category).toBe('safety');
-      expect(result.current.filter((w) => w.id.includes('inverter-no-minus'))).toHaveLength(1);
-      expect(result.current.find((w) => w.id.includes('inverter-no-minus'))?.category).toBe('topology');
-    });
-
-    it('should not warn if inverter has fuse on edge and has minus', () => {
-      const nodes: Node[] = [
-        { id: '1', type: 'battery', data: {}, position: { x: 0, y: 0 } },
-        { id: '2', type: 'inverter', data: {}, position: { x: 0, y: 0 } },
-      ];
-      const edges: Edge<CableEdgeData>[] = [
-        { id: 'e1', source: '1', target: '2', targetHandle: 'plus-in', data: { fuseSize: 200 } },
-        { id: 'e2', source: '1', target: '2', targetHandle: 'minus-in', data: {} },
-      ];
-      const { result } = renderHook(() => useLiveValidation(nodes, edges));
-      expect(result.current.filter((w) => w.id.includes('inverter-unprotected'))).toHaveLength(0);
-      expect(result.current.filter((w) => w.id.includes('inverter-no-minus'))).toHaveLength(0);
-    });
-  });
-
-  describe('RCD / FI-Schutz (DIN VDE 0100-721)', () => {
-    it('warnt kritisch, wenn ein Landstromanschluss keinen RCD hat', () => {
-      const nodes: Node[] = [
-        {
-          id: '1',
-          type: 'shorePower',
-          data: { label: 'Landstrom', hasRcd: false },
-          position: { x: 0, y: 0 },
-        },
-      ];
-      const { result } = renderHook(() => useLiveValidation(nodes, []));
-      const rcd = result.current.find((w) => w.id === 'missing-rcd-1');
-      expect(rcd).toBeDefined();
-      expect(rcd?.type).toBe('critical');
-      expect(rcd?.message).toContain('FI-Schutzschalter');
-    });
-
-    it('warnt nicht, wenn der Landstromanschluss einen RCD hat', () => {
-      const nodes: Node[] = [
-        { id: '1', type: 'shorePower', data: { label: 'Landstrom', hasRcd: true }, position: { x: 0, y: 0 } },
-      ];
-      const { result } = renderHook(() => useLiveValidation(nodes, []));
-      expect(result.current.find((w) => w.id === 'missing-rcd-1')).toBeUndefined();
-    });
-  });
-
   describe('AUDIT ELE-002/003/005/009', () => {
     it('warnt kritisch bei direkter Solar→Batterie-Verbindung (ELE-009)', () => {
       const nodes: Node[] = [
@@ -643,18 +517,6 @@ describe('useLiveValidation', () => {
       const warning = result.current.find((w) => w.id === 'solar-direct-direct');
       expect(warning).toBeDefined();
       expect(warning?.ruleId).toBe('ELE-009-solar-direct');
-    });
-
-    it('warnt kritisch, wenn eine Solarzuleitung keine Sicherung hat', () => {
-      const nodes: Node[] = [
-        { id: 'p1', type: 'solar', data: { label: 'Panel', watts: 200, isc: 14 }, position: { x: 0, y: 0 } },
-        { id: 'm1', type: 'mpptController', data: { label: 'MPPT', amps: 30 }, position: { x: 0, y: 0 } },
-      ];
-      const edges: Edge<CableEdgeData>[] = [
-        { id: 'pv', source: 'p1', target: 'm1', sourceHandle: 'plus', targetHandle: 'plus', data: {} },
-      ];
-      const { result } = renderHook(() => useLiveValidation(nodes, edges));
-      expect(result.current.some((w) => w.id === 'missing-fuse-pv')).toBe(true);
     });
 
     it('warnt bei BMS-Dauerstromüberschreitung', () => {
@@ -688,23 +550,12 @@ describe('useLiveValidation', () => {
     });
   });
 
-  describe('Missing coverage: verpolte Batterie, Mischspannung, Inverter-RCD', () => {
+  describe('Mischspannung (ELE-008) — Planer-Regel, nicht Engine-Regel', () => {
     const node = (id: string, type: string, data: Record<string, unknown>): Node => ({
       id,
       type,
       position: { x: 0, y: 0 },
       data,
-    });
-
-    it('warnt bei verpolter Batterie (ELE-003)', () => {
-      const nodes = [node('b1', 'battery', {}), node('b2', 'battery', {})];
-      const edges: Edge<CableEdgeData>[] = [
-        { id: 'e1', source: 'b1', target: 'b2', sourceHandle: 'plus', targetHandle: 'minus' },
-      ];
-      const { result } = renderHook(() => useLiveValidation(nodes, edges));
-      const warning = result.current.find((w) => w.ruleId === 'ELE-003-reversed-polarity');
-      expect(warning).toBeDefined();
-      expect(warning!.measuredValue).toBe('plus → minus');
     });
 
     it('warnt bei Mischspannungsplan (ELE-008) — über das ECHTE Feld nominalVoltage', () => {
@@ -721,373 +572,5 @@ describe('useLiveValidation', () => {
       expect(warning!.measuredValue).toMatch(/12 V/);
       expect(warning!.measuredValue).toMatch(/24 V/);
     });
-
-    it('warnt bei Inverter ohne RCD (AC-001)', () => {
-      const nodes = [node('inv', 'inverter', { hasRcd: false }), node('c1', 'consumer230v', {})];
-      const edges: Edge<CableEdgeData>[] = [
-        {
-          id: 'e1',
-          source: 'inv',
-          target: 'c1',
-          sourceHandle: 'acOut',
-          targetHandle: 'acIn',
-          data: { edgeDomain: 'AC_230V' },
-        },
-      ];
-      const { result } = renderHook(() => useLiveValidation(nodes, edges));
-      const warning = result.current.find((w) => w.ruleId === 'AC-001-inverter-rcd');
-      expect(warning).toBeDefined();
-      expect(warning!.measuredValue).toBe('1 × 230-V-Verbraucher ohne FI');
-    });
-  });
-});
-
-describe('Rule A7: Kurzschlussstrom vs. Abschaltvermögen (AUDIT DOM-002)', () => {
-  const battery = (id: string, data: Record<string, unknown> = {}): Node => ({
-    id,
-    type: 'battery',
-    data: { label: 'Batterie', capacity: 100, chemistry: 'LiFePO4', ...data },
-    position: { x: 0, y: 0 },
-  });
-  const fused = (edgeData: Record<string, unknown>): Edge<CableEdgeData>[] => [
-    { id: 'e1', source: 'b1', target: 'bus1', sourceHandle: 'plus', targetHandle: 'plus', data: edgeData },
-  ];
-
-  it('meldet kritisch, wenn die Bauform den Bank-Ik nicht trennt (ATO 1 kA < ≈ 4,27 kA)', () => {
-    const nodes = [battery('b1'), { id: 'bus1', type: 'busbar', data: {}, position: { x: 0, y: 0 } } as Node];
-    const { result } = renderHook(() => useLiveValidation(nodes, fused({ fuseSize: 100, fuseType: 'ato' })));
-    const warning = result.current.find((w) => w.ruleId === 'DOM-002-breaking-capacity');
-    expect(warning).toBeDefined();
-    expect(warning!.type).toBe('critical');
-    expect(warning!.category).toBe('safety');
-    expect(warning!.expectedValue).toBe('≤ 1000 A');
-    // Ik ≈ 12,8 V / 3 mΩ = 4267 A (gerundet)
-    expect(warning!.measuredValue).toBe('≈ 4267 A');
-    expect(warning!.focusId).toBe('e1');
-  });
-
-  it('gibt bei ausreichendem Abschaltvermögen (Class T 20 kA) Ruhe', () => {
-    const nodes = [battery('b1'), { id: 'bus1', type: 'busbar', data: {}, position: { x: 0, y: 0 } } as Node];
-    const { result } = renderHook(() =>
-      useLiveValidation(nodes, fused({ fuseSize: 100, fuseType: 'classT' }))
-    );
-    expect(result.current.filter((w) => w.ruleId === 'DOM-002-breaking-capacity')).toEqual([]);
-  });
-
-  it('weist ohne Bauform einmal auf den offenen Abschaltvermögens-Check hin', () => {
-    const nodes = [battery('b1'), { id: 'bus1', type: 'busbar', data: {}, position: { x: 0, y: 0 } } as Node];
-    const edges = [
-      ...fused({ fuseSize: 100 }),
-      {
-        id: 'e2',
-        source: 'b1',
-        target: 'bus1',
-        sourceHandle: 'plus',
-        targetHandle: 'plus',
-        data: { fuseSize: 50 },
-      },
-    ];
-    const { result } = renderHook(() => useLiveValidation(nodes, edges));
-    const notes = result.current.filter((w) => w.ruleId === 'DOM-002-fuse-type-unknown');
-    expect(notes.length).toBe(1); // ein Hinweis pro Plan, nicht pro Kante
-    expect(notes[0]!.type).toBe('warning');
-    expect(notes[0]!.category).toBe('estimation');
-    expect(result.current.filter((w) => w.ruleId === 'DOM-002-breaking-capacity')).toEqual([]);
-  });
-
-  it('bewertet mit explizitem Datenblatt-Abschaltvermögen statt Bauform', () => {
-    const nodes = [
-      battery('b1', { internalResistance: 1 }),
-      { id: 'bus1', type: 'busbar', data: {}, position: { x: 0, y: 0 } } as Node,
-    ];
-    // Ri = 1 mΩ → Ik = 12 800 A; MRBF 3000 A reicht nicht, 15 000 A explizit reicht.
-    const low = renderHook(() => useLiveValidation(nodes, fused({ fuseSize: 150, fuseType: 'mrbf' })));
-    expect(low.result.current.some((w) => w.ruleId === 'DOM-002-breaking-capacity')).toBe(true);
-    const ok = renderHook(() =>
-      useLiveValidation(nodes, fused({ fuseSize: 150, fuseType: 'mrbf', fuseBreakingCapacity: 15000 }))
-    );
-    expect(ok.result.current.some((w) => w.ruleId === 'DOM-002-breaking-capacity')).toBe(false);
-    expect(ok.result.current.some((w) => w.ruleId === 'DOM-002-fuse-type-unknown')).toBe(false);
-  });
-
-  it('meldet UNKNOWN statt zu schweigen, wenn die Bank nicht schätzbar ist (AUDIT ELE-008)', () => {
-    // Vorher: `if (bankIk === null) break;` — die Kurzschlussprüfung
-    // verschwand lautlos. „Ehrlich schweigen“ ist hier unsichtbar: Der Nutzer
-    // sah nicht, dass GAR NICHT geprüft wurde.
-    const nodes = [
-      battery('b1', { capacity: undefined, chemistry: undefined }),
-      { id: 'bus1', type: 'busbar', data: {}, position: { x: 0, y: 0 } } as Node,
-    ];
-    const { result } = renderHook(() => useLiveValidation(nodes, fused({ fuseSize: 100, fuseType: 'ato' })));
-    const unknown = result.current.find((w) => w.ruleId === 'DOM-002-bank-ik-unknown');
-    expect(unknown).toBeDefined();
-    expect(unknown!.type).toBe('warning');
-    expect(result.current.some((w) => w.ruleId === 'DOM-002-breaking-capacity')).toBe(false);
-  });
-
-  it('bleibt still, wenn gar keine Sicherung eingetragen ist (nichts zu prüfen)', () => {
-    const nodes = [
-      battery('b1', { capacity: undefined, chemistry: undefined }),
-      { id: 'bus1', type: 'busbar', data: {}, position: { x: 0, y: 0 } } as Node,
-    ];
-    const { result } = renderHook(() => useLiveValidation(nodes, fused({})));
-    expect(result.current.filter((w) => w.ruleId?.startsWith('DOM-002'))).toEqual([]);
-  });
-
-  it('berücksichtigt die Kabeldämpfung Pol → Sicherung über fuseOffset/Querschnitt', () => {
-    const nodes = [battery('b1'), { id: 'bus1', type: 'busbar', data: {}, position: { x: 0, y: 0 } } as Node];
-    // Sicherung 10 m entfernt auf 95 mm²: R_loop = 2·10/(58·95) = 3,629 mΩ
-    // → Ik = 12,8 / (3 + 3,629) mΩ ≈ 1932 A — MRBF 3000 A würde reichen…
-    const far = renderHook(() =>
-      useLiveValidation(nodes, fused({ fuseSize: 100, fuseType: 'mrbf', fuseOffset: 10, crossSection: 95 }))
-    );
-    expect(far.result.current.some((w) => w.ruleId === 'DOM-002-breaking-capacity')).toBe(false);
-    // … direkt am Pol dagegen: Ik = 4267 A > ATO 1000 A (Gegenprobe am offensichtlichen Fall).
-    const near = renderHook(() =>
-      useLiveValidation(nodes, fused({ fuseSize: 100, fuseType: 'ato', fuseOffset: 0.15, crossSection: 95 }))
-    );
-    expect(near.result.current.some((w) => w.ruleId === 'DOM-002-breaking-capacity')).toBe(true);
-  });
-
-  describe('Rule A8: AC-Abschaltbedingung / Mehrleiter-Schutz (DOM-001)', () => {
-    const shore = (id: string, hasRcd = false): Node => ({
-      id,
-      type: 'shorePower',
-      data: { label: 'Landstrom', rating: 16, hasRcd },
-      position: { x: 0, y: 0 },
-    });
-    const acConsumer = (id: string): Node => ({
-      id,
-      type: 'consumer230v',
-      data: { label: '230-V-Gerät', watts: 500 },
-      position: { x: 0, y: 0 },
-    });
-    const acEdge = (
-      id: string,
-      source: string,
-      target: string,
-      data: CableEdgeData
-    ): Edge<CableEdgeData> => ({
-      id,
-      source,
-      target,
-      sourceHandle: 'plus',
-      targetHandle: 'plus',
-      data: { edgeDomain: 'AC_230V', fuseSize: 16, crossSection: 2.5, ...data },
-    });
-    const b16 = { kind: 'mcb', characteristic: 'B', breakingCapacityKA: 6 };
-
-    it('sehr lange AC-Leitung ohne FI → kritisch (Abschaltung ungesichert)', () => {
-      const nodes = [shore('sp1'), acConsumer('c1')];
-      const edges = [acEdge('e1', 'sp1', 'c1', { length: 200, acProtection: b16 })];
-      const { result } = renderHook(() => useLiveValidation(nodes, edges));
-      const warning = result.current.find((w) => w.id === 'ac-trip-e1');
-      expect(warning).toEqual(
-        expect.objectContaining({
-          category: 'safety',
-          type: 'critical',
-          ruleId: 'DOM-001-trip-condition',
-          unit: 'Ω',
-        })
-      );
-    });
-
-    it('dieselbe Leitung mit 30-mA-FI am Landstrom → FI-gedeckt (Info, nicht kritisch)', () => {
-      const nodes = [shore('sp1', true), acConsumer('c1')];
-      const edges = [acEdge('e1', 'sp1', 'c1', { length: 200, acProtection: b16 })];
-      const { result } = renderHook(() => useLiveValidation(nodes, edges));
-      expect(result.current.some((w) => w.id === 'ac-trip-e1' && w.type === 'critical')).toBe(false);
-      expect(result.current.some((w) => w.id === 'ac-trip-rcd-e1' && w.type === 'info')).toBe(true);
-    });
-
-    it('da ein FI/LS (RCBO) gewählt ist, deckt er den Fall auch ohne Landstrom-FI', () => {
-      const nodes = [shore('sp1'), acConsumer('c1')];
-      const edges = [
-        acEdge('e1', 'sp1', 'c1', {
-          length: 200,
-          acProtection: { kind: 'rcbo', characteristic: 'B', breakingCapacityKA: 6 },
-        }),
-      ];
-      const { result } = renderHook(() => useLiveValidation(nodes, edges));
-      expect(result.current.some((w) => w.id === 'ac-trip-rcd-e1')).toBe(true);
-      expect(result.current.some((w) => w.type === 'critical' && w.id.startsWith('ac-trip'))).toBe(false);
-    });
-
-    it('kurze Leitung: Abschaltbedingung erfüllt — keine A8-Meldung', () => {
-      const nodes = [shore('sp1'), acConsumer('c1')];
-      const edges = [acEdge('e1', 'sp1', 'c1', { length: 5, acProtection: b16 })];
-      const { result } = renderHook(() => useLiveValidation(nodes, edges));
-      expect(result.current.filter((w) => w.ruleId?.startsWith('DOM-001'))).toEqual([]);
-    });
-
-    it('Grenzfall: Leitungsanteil > 50 % des Zulasswerts → „knapp“-Warnung', () => {
-      const nodes = [shore('sp1'), acConsumer('c1')];
-      const edges = [acEdge('e1', 'sp1', 'c1', { length: 70, acProtection: b16 })];
-      const { result } = renderHook(() => useLiveValidation(nodes, edges));
-      const warning = result.current.find((w) => w.id === 'ac-trip-e1');
-      expect(warning).toEqual(
-        expect.objectContaining({ type: 'warning', ruleId: 'DOM-001-trip-borderline' })
-      );
-    });
-
-    it('Wechselrichter-Ausgang: keine Schleifenrechnung und bewusst stumm (Limit steht am Kanten-Chip)', () => {
-      const inverter: Node = {
-        id: 'inv1',
-        type: 'inverter',
-        data: { label: 'WR', continuousPower: 1000, hasRcd: true },
-        position: { x: 0, y: 0 },
-      };
-      const nodes = [inverter, acConsumer('c1'), acConsumer('c2')];
-      const edges = [
-        acEdge('e1', 'inv1', 'c1', { length: 200, acProtection: b16 }),
-        acEdge('e2', 'inv1', 'c2', { length: 250, acProtection: b16 }),
-      ];
-      const { result } = renderHook(() => useLiveValidation(nodes, edges));
-      // Weder kritisch noch ein „inverter-limited"-Hinweis: der Status bar
-      // bleibt meldungsfrei (Auto-Wire-Vertrag), die Ehrlichkeit liegt am
-      // 230-V-Kanten-Chip (elektronisch begrenzt → Datenblatt).
-      expect(result.current.some((w) => w.id.startsWith('ac-trip'))).toBe(false);
-      expect(result.current.some((w) => w.ruleId === 'DOM-001-inverter-output')).toBe(false);
-    });
-
-    it('der Annahme-Hinweis trägt keine Ohm-Einheit (Wert ist ein Schutzorgan, keine Impedanz)', () => {
-      // Prüfbericht: „Ist: LS C, 6 kA (Annahme) Ω“ — die Warn-Zentrale hängte die
-      // Einheit aus dem gemeinsamen AC-Rumpf an einen Textwert.
-      const nodes = [shore('sp1'), acConsumer('c1')];
-      const edges = [acEdge('e1', 'sp1', 'c1', { length: 5 })];
-      const { result } = renderHook(() => useLiveValidation(nodes, edges));
-      const note = result.current.find((w) => w.id === 'ac-descriptor-assumed');
-      expect(note).toEqual(expect.objectContaining({ unit: '', measuredValue: 'LS C, 6 kA (Annahme)' }));
-    });
-
-    it('echte Impedanz-Befunde behalten die Einheit Ω', () => {
-      const nodes = [shore('sp1'), acConsumer('c1')];
-      const edges = [acEdge('e1', 'sp1', 'c1', { length: 200, acProtection: b16 })];
-      const { result } = renderHook(() => useLiveValidation(nodes, edges));
-      expect(result.current.find((w) => w.id === 'ac-trip-e1')?.unit).toBe('Ω');
-    });
-
-    it('Sicherung nur als Zahl → Annahme wird benannt (konservative C-Charakteristik)', () => {
-      // AUDIT ELE-004: Früher stempelte AutoWire selbst ein erfundenes
-      // Datenblatt (LS B, 6 kA) auf die Kante, sodass hier „geprüft & still“
-      // herauskam. Jetzt wird mit der UNGÜNSTIGSTEN üblichen Charakteristik
-      // gerechnet und die Annahme ausdrücklich gemeldet.
-      const nodes = [shore('sp1'), acConsumer('c1')];
-      const edges = [acEdge('e1', 'sp1', 'c1', { length: 5 })];
-      const { result } = renderHook(() => useLiveValidation(nodes, edges));
-      const note = result.current.find((w) => w.id === 'ac-descriptor-assumed');
-      expect(note).toEqual(
-        expect.objectContaining({
-          type: 'warning',
-          category: 'estimation',
-          ruleId: 'DOM-001-descriptor-assumed',
-        })
-      );
-      // Die Annahme ist die strengere: C16 ⇒ Zs,max = 0,958 Ω (B: 1,917 Ω).
-      expect(note!.source).toContain('0,96');
-      expect(note!.measuredValue).toContain('C');
-    });
-  });
-});
-
-describe('Einheiten-Disziplin und Dimensionierungs-Grenze (Prüfbericht)', () => {
-  const battery: Node = {
-    id: 'b1',
-    type: 'battery',
-    data: { label: '200Ah Lithium', capacity: 200, chemistry: 'LiFePO4' },
-    position: { x: 0, y: 0 },
-  };
-
-  it('„Batterie-Nennspannung fehlt“ nennt keine Spannung als Messwert-Einheit', () => {
-    // Vorher: „Ist: 2 × ohne Angabe V“ — eine Anzahl mit Volt-Suffix.
-    const nodes: Node[] = [battery, { ...battery, id: 'b2', data: { ...battery.data } }];
-    const { result } = renderHook(() => useLiveValidation(nodes, []));
-    const warning = result.current.find((w) => w.id === 'mixed-voltage-unknown');
-    expect(warning).toEqual(expect.objectContaining({ unit: '', measuredValue: '2 × ohne Angabe' }));
-  });
-
-  it('thermische Überlast verweist nicht auf einen Normquerschnitt über 70 mm²', () => {
-    // 3000 W Wechselrichter an 12 V: der Batterie-Hauptstrang führt 294 A,
-    // zulässig sind 120 A (70 mm² × 0,7). Der frühere Rat („nächsten
-    // Normquerschnitt über 70 mm² wählen“) verwies auf eine Stufe, die
-    // VDE_SIZES nicht kennt — der Nutzer suchte sie vergeblich.
-    const inverter: Node = {
-      id: 'inv1',
-      type: 'inverter',
-      data: { label: '2000W Inverter', watts: 2000, continuousPower: 3000, hasRcd: true },
-      position: { x: 0, y: 0 },
-    };
-    const edges: Edge<CableEdgeData>[] = [
-      {
-        id: 'e-batt-plus',
-        source: 'b1',
-        target: 'inv1',
-        sourceHandle: 'plus',
-        targetHandle: 'plus',
-        data: { length: 0.5, crossSection: 70, edgeDomain: 'DC_12V' },
-      },
-    ];
-    const { result } = renderHook(() => useLiveValidation([battery, inverter], edges));
-    const warning = result.current.find((w) => w.ruleId === 'ELE-002-thermal-overload');
-    expect(warning).toBeDefined();
-    expect(warning!.message).not.toContain('über 70 mm² wählen');
-    expect(warning!.message).toContain('oberhalb von 70 mm² kennt der Planer keinen Normquerschnitt');
-  });
-});
-
-/**
- * Prüfbericht-Szenario (2026-09-27): „AUTARK"-Vorlage mit einem 2000-W-Inverter,
- * dessen Dauerleistung im Inspektor auf 3000 W steht. An 12 V sind das
- * 3000 / 12,0 / 0,85 ≈ 294 A Wechselrichterstrom plus ~12 A DC-Lasten = 306 A
- * auf dem Batterie-Hauptstrang — bei 70 mm² (Iz_design 120,4 A) ergibt das
- * genau die Kaskade aus dem Bericht („Leitung thermisch überlastet“ +
- * „Keine Normsicherung …“). Der Test hält fest, dass die Meldungen dabei
- * ehrlich bleiben: mit Zahlen, mit der Modellgrenze als Sollwert und ohne
- * Verweis auf eine Normstufe, die es nicht gibt.
- */
-describe('Prüfbericht: 3000-W-Wechselrichter an 12 V (AUTARK-Vorlage)', () => {
-  const buildPlan = () => {
-    const base = TEMPLATE_AUTARK as unknown as { nodes: Node[]; edges: Edge<CableEdgeData>[] };
-    const nodes = base.nodes.map((n) => {
-      if (n.type === 'inverter')
-        return { ...n, data: { ...n.data, label: '2000W Inverter', watts: 2000, continuousPower: 3000 } };
-      if (n.type === 'consumer230v') return { ...n, data: { ...n.data, watts: 1800 } };
-      if (n.id === 'charger-2') return { ...n, data: { ...n.data, amps: 50 } };
-      if (n.id === 'charger-1') return { ...n, data: { ...n.data, amps: 32 } };
-      return n;
-    }) as Node[];
-    const wired = performAutoWiring(nodes, base.edges);
-    if (!wired) throw new Error('performAutoWiring ohne Ergebnis');
-    return wired;
-  };
-
-  it('meldet die nicht ausführbare Dimensionierung mit Zahlen statt Platzhaltern', () => {
-    const { nodes, edges } = buildPlan();
-    const { result } = renderHook(() => useLiveValidation(nodes, edges as never));
-
-    const thermal = result.current.find((w) => w.ruleId === 'ELE-002-thermal-overload');
-    const fuse = result.current.find((w) => w.ruleId === 'ELE-001-fuse-not-feasible');
-    expect(thermal, 'thermische Überlast am Hauptstrang').toBeDefined();
-    expect(fuse, 'nicht absicherbare Dimensionierung').toBeDefined();
-
-    // Werte und Einheiten bleiben maschinenlesbar; die Anzeige hängt die
-    // Einheit nur noch bei nackten Zahlen an (WarningCenter-Test).
-    expect(thermal!.measuredValue).toMatch(/^\d+ A$/);
-    expect(thermal!.expectedValue).toBe('120 A');
-    expect(fuse!.expectedValue).toContain('≤ 120 A');
-
-    // Keine Empfehlung außerhalb der Normreihe des Modells (70 mm² ist das Ende).
-    expect(thermal!.message).not.toContain('über 70 mm² wählen');
-    expect(fuse!.message).toContain('Last aufteilen');
-  });
-
-  it('der 12-V-Zweig zum Sicherungskasten wird nicht als Hauptstrang gemeldet', () => {
-    // Kontrollprobe zur Größenordnung: Die kleinen Abgänge (Kühlschrank & Co.)
-    // bleiben unter der Kabelgrenze — sonst wäre die Warnliste Rauschen.
-    const { nodes, edges } = buildPlan();
-    const { result } = renderHook(() => useLiveValidation(nodes, edges as never));
-    const overloaded = result.current.filter((w) => w.ruleId === 'ELE-002-thermal-overload');
-    expect(overloaded.map((w) => w.id)).toContain('thermal-overload-e-batt-plus');
-    expect(overloaded.map((w) => w.id)).not.toContain('thermal-overload-e-fuse-fridge');
   });
 });

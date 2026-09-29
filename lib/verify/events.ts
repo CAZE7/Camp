@@ -48,6 +48,11 @@ export interface AuditEventInput {
   counterexample?: readonly string[];
   /** Override der Gleichung (Standard: `formalTest` der Regel). */
   equation?: string;
+  /**
+   * Abdeckungs-Ereignis statt Befund: Die Regel hatte im Plan keine Eingabe.
+   * Wird an `AuditEvent.coverageOnly` durchgereicht (siehe `isCoverageEvent`).
+   */
+  coverageOnly?: true;
 }
 
 /**
@@ -86,6 +91,7 @@ export function auditEvent(input: AuditEventInput): AuditEvent {
     message: input.message,
     autoFixRemedy: remedy,
     ...(input.counterexample ? { counterexample: input.counterexample } : {}),
+    ...(input.coverageOnly ? { coverageOnly: true } : {}),
   };
 }
 
@@ -126,6 +132,7 @@ export function checkFromEvents(
               message: `Regel „${ruleSpec(ruleId).title}“ wurde nicht angewandt: Die Prüfung hatte keine Eingabe (0 betrachtete Entitäten).`,
               autoFixRemedy:
                 'Plan um die für diese Regel nötigen Bauteile/Angaben ergänzen, damit die Prüfung tatsächlich läuft.',
+              coverageOnly: true,
             }),
           ],
     evaluatedEntities,
@@ -150,6 +157,21 @@ export function checkOrNotApplicable(
 ): CheckResult {
   if (events.length === 0 && evaluatedEntities === 0) return passedCheck(ruleId, 0);
   return checkFromEvents(ruleId, events, evaluatedEntities);
+}
+
+/**
+ * Ist das Ereignis NUR eine Abdeckungs-Auskunft der Engine („Regel hatte keine
+ * Eingabe“) und kein Befund über ein Bauteil des Plans?
+ *
+ * Die Anzeige braucht diese Unterscheidung: Ein Plan, in dem eine Regel keinen
+ * Gegenstand hat, erzeugt für jede solche Regel ein Ereignis — als
+ * »Prüfhinweis« wäre das für den Nutzer eine Wand aus Meldungen ohne
+ * Handlung. Die Aussage geht nicht verloren: Sie steht im Prüfbericht
+ * (Abdeckung, `limitations`), und das Verdikt bleibt davon unberührt
+ * (UNPROVABLE ⇒ INCOMPLETE).
+ */
+export function isCoverageEvent(event: AuditEvent): boolean {
+  return event.coverageOnly === true;
 }
 
 /** Status über einer Ereignismenge (Reihenfolge: FAIL schlägt UNPROVABLE). */

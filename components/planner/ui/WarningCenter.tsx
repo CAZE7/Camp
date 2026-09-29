@@ -82,7 +82,12 @@ const UNVERIFIED_WARNING_PREFIXES = [
 ];
 
 export function isUnverifiedFinding(warning: ValidationWarning): boolean {
-  return UNVERIFIED_WARNING_PREFIXES.some((prefix) => warning.id.startsWith(prefix));
+  // Engine-Befunde tragen die Aussage »nicht entscheidbar« ausdrücklich mit
+  // sich (`unverified`); die Präfixliste bleibt für die Altbefunde, deren
+  // Semantik an ihrer ID hing.
+  return (
+    warning.unverified === true || UNVERIFIED_WARNING_PREFIXES.some((prefix) => warning.id.startsWith(prefix))
+  );
 }
 
 export function consequence(warning: ValidationWarning) {
@@ -121,6 +126,10 @@ export function valueWithUnit(value: string | undefined, unit: string | undefine
 }
 
 export function nextStep(warning: ValidationWarning) {
+  // Befunde der Verifikations-Engine bringen ihre Abhilfe mit: Sie kennen die
+  // Zahlen (Querschnittsstufe, Nennstrom, Einbauort) und dürfen nicht von
+  // einer zweiten, ID-basierten Textzuordnung überschrieben werden.
+  if (warning.remedy) return `So löst du es: ${warning.remedy}`;
   if (warning.id.startsWith('missing-fuse'))
     return 'So löst du es: Füge am Anfang der Plusleitung eine passende Sicherung oder einen Sicherungskasten ein.';
   if (warning.id.startsWith('reversed-polarity'))

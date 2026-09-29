@@ -209,6 +209,43 @@ describe('lib/verify/topology — Shunt-Invariante (TOPO-002/003)', () => {
     expect(check.events[0]?.entity.id).toBe('e-bypass');
   });
 
+  it('TOPO-002: die Startbatterie (Booster-Starterseite) ist ausgenommen', () => {
+    // Anlass (Prüfbericht am eigenen Template): AutoWire verdrahtet die
+    // Startbatterie-Minusseite direkt zum Ladebooster. Das ist fachgerecht —
+    // dieser Strom gehört nicht auf die Aufbau-Messseite. Ohne die
+    // Rollen-Ausnahme meldete die Regel den eigenen, korrekten Plan als
+    // kritische Verletzung.
+    const plan = healthyDcPlan();
+    plan.nodes.push(
+      fixtureNode('start1', 'battery', { label: 'Startbatterie' }),
+      fixtureNode('dcdc1', 'dcdcCharger', { label: 'Ladebooster', amps: 30 })
+    );
+    plan.edges.push(
+      fixtureEdge('e-start-dcdc', 'start1', 'minus', 'dcdc1', 'minus', { crossSection: 4, length: 1 }),
+      fixtureEdge('e-start-dcdc-plus', 'start1', 'plus', 'dcdc1', 'plus', {
+        crossSection: 4,
+        length: 1,
+        fuseSize: 30,
+      })
+    );
+    const check = checkFor(runPlan(plan).pass2, 'TOPO-002-shunt-direct-bypass');
+    expect(check.events).toEqual([]);
+    expect(check.status).toBe('PASS');
+  });
+
+  it('TOPO-002: eine Aufbaubatterie bleibt auch ohne Label erfasst', () => {
+    // Gegenprobe zur Ausnahme: Die Ausnahme hängt an der ROLLE, nicht am
+    // Freitext. Eine Aufbaubatterie (role: house) mit Verbraucher am Minus
+    // bleibt eine Verletzung.
+    const plan = plusEdge(
+      healthyDcPlan(),
+      fixtureEdge('e-bypass', 'bat1', 'minus', 'load1', 'minus', { crossSection: 4, length: 1 })
+    );
+    const check = checkFor(runPlan(plan).pass2, 'TOPO-002-shunt-direct-bypass');
+    expect(check.status).toBe('FAIL');
+    expect(check.events[0]?.entity.id).toBe('e-bypass');
+  });
+
   it('TOPO-003: Umweg über eine Sammelschiene wird als Schnittverletzung erkannt', () => {
     const plan = healthyDcPlan();
     plan.nodes.push(fixtureNode('bus1', 'busbar', { label: 'Minusschiene', role: 'negative' }));

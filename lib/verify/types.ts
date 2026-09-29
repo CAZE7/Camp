@@ -498,6 +498,16 @@ export interface AuditEvent {
   autoFixRemedy: string;
   /** Gegenbeispiel/Trace (z. B. Pfad Knoten→Knoten), falls vorhanden. */
   counterexample?: readonly string[];
+  /**
+   * REINES ABDECKUNGS-EREIGNIS: Die Regel gehörte im Profil/Kontext zum Lauf,
+   * hatte aber im Plan **keine Eingabe** (0 betrachtete Entitäten). Es ist
+   * kein Befund über ein Bauteil, sondern die Selbstauskunft der Engine über
+   * ihre Reichweite — dieselbe Aussage steht in `coverage.notApplicable` bzw.
+   * `limitations` („Regeln ohne Eingabe im Plan“). Anzeigen trennen beides:
+   * `isCoverageEvent` (siehe `./events`) unterscheidet sie von Befunden, die
+   * der Nutzer im Plan beheben kann.
+   */
+  coverageOnly?: true;
 }
 
 /** Ergebnis eines Regeltests über den gesamten Plan. */

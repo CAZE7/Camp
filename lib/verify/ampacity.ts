@@ -34,6 +34,7 @@ import {
   VDE_CONDUIT_INNER_DIAMETERS,
   VDE_MAX_CONDUIT_FILL_PERCENT,
   calculateConduitFillPercent,
+  recommendConduitType,
 } from '../vde-standards';
 
 import { bundledCircuitsFor, type PassContext } from './context';
@@ -703,6 +704,39 @@ function energySelectivity(
 // AMP-006 — Leerrohr-Füllgrad
 // ============================================================================
 
+/**
+ * Ergebnis der Füllgrad-Rechnung EINES Leerrohrs.
+ *
+ * Drei Ausgänge statt einer Zahl: Ein unbekannter Rohrtyp oder ein fehlender
+ * Kabelquerschnitt ergibt **keine** Zahl (und vor allem keine 0 %). Dieselbe
+ * Funktion speist die Regel AMP-006 und die Anzeige auf der Leerrohr-Karte —
+ * damit zeigen Plan und Prüfbericht nie zwei verschiedene Füllgrade.
+ */
+export type ConduitFillOutcome =
+  | { kind: 'known'; percent: number; overfilled: boolean; recommendedType: string | null }
+  | { kind: 'unknown-type' }
+  | { kind: 'missing-cross-section'; index: number };
+
+export function conduitFillOutcome(
+  rawType: string | null,
+  crossSections: readonly (number | null)[]
+): ConduitFillOutcome {
+  if (rawType === null || !Object.prototype.hasOwnProperty.call(VDE_CONDUIT_INNER_DIAMETERS, rawType)) {
+    return { kind: 'unknown-type' };
+  }
+  const index = crossSections.findIndex((value) => value === null || !Number.isFinite(value));
+  if (index >= 0) return { kind: 'missing-cross-section', index };
+  const sections = crossSections.map((value) => mm2(value as number));
+  const percent = calculateConduitFillPercent(rawType, sections);
+  const overfilled = percent > VDE_MAX_CONDUIT_FILL_PERCENT;
+  return {
+    kind: 'known',
+    percent,
+    overfilled,
+    recommendedType: overfilled ? recommendConduitType(sections) : null,
+  };
+}
+
 export function checkConduitFill(context: PassContext): CheckResult {
   const ruleId = 'AMP-006-conduit-fill' as const;
   const events: AuditEvent[] = [];
@@ -722,19 +756,6 @@ export function checkConduitFill(context: PassContext): CheckResult {
       ? (data.assignedEdges as unknown[]).filter((entry): entry is string => typeof entry === 'string')
       : null;
 
-    if (rawType === null || !Object.prototype.hasOwnProperty.call(VDE_CONDUIT_INNER_DIAMETERS, rawType)) {
-      events.push(
-        auditEvent({
-          ruleId,
-          entity,
-          kind: 'UNVERIFIABLE',
-          message: `Leerrohr ${label}: Typ „${rawType ?? '(nicht angegeben)'}“ hat keinen Innendurchmesser in der Tabelle — der Füllgrad ist nicht bestimmbar.`,
-          autoFixRemedy: `Leerrohrtyp aus der Tabelle wählen (${Object.keys(VDE_CONDUIT_INNER_DIAMETERS).join(', ')}).`,
-        })
-      );
-      continue;
-    }
-
     if (assigned === null) {
       events.push(
         auditEvent({
@@ -749,19 +770,28 @@ export function checkConduitFill(context: PassContext): CheckResult {
       continue;
     }
 
-    const crossSections = [];
-    let missing: string | null = null;
-    for (const edgeId of [...assigned].sort()) {
-      const cable = context.graph.cableById.get(edgeId);
-      if (!cable) continue; // keine elektrische Leitung (z. B. Wasser) — zählt nicht
-      if (cable.crossSectionMm2 === null) {
-        missing = edgeId;
-        break;
-      }
-      crossSections.push(mm2(cable.crossSectionMm2));
+    const assignedSorted = [...assigned].sort();
+    const assignedCables = assignedSorted
+      .map((edgeId) => ({ edgeId, cable: context.graph.cableById.get(edgeId) }))
+      .filter((entry): entry is { edgeId: string; cable: CableModel } => entry.cable !== undefined);
+    const crossSections = assignedCables.map((entry) => entry.cable.crossSectionMm2);
+    const outcome = conduitFillOutcome(rawType, crossSections);
+
+    if (outcome.kind === 'unknown-type') {
+      events.push(
+        auditEvent({
+          ruleId,
+          entity,
+          kind: 'UNVERIFIABLE',
+          message: `Leerrohr ${label}: Typ „${rawType ?? '(nicht angegeben)'}“ hat keinen Innendurchmesser in der Tabelle — der Füllgrad ist nicht bestimmbar.`,
+          autoFixRemedy: `Leerrohrtyp aus der Tabelle wählen (${Object.keys(VDE_CONDUIT_INNER_DIAMETERS).join(', ')}).`,
+        })
+      );
+      continue;
     }
 
-    if (missing !== null) {
+    if (outcome.kind === 'missing-cross-section') {
+      const missing = assignedCables[outcome.index]?.edgeId ?? '(unbekannt)';
       events.push(
         auditEvent({
           ruleId,
@@ -775,18 +805,18 @@ export function checkConduitFill(context: PassContext): CheckResult {
       continue;
     }
 
-    const fill = calculateConduitFillPercent(rawType, crossSections);
-    if (fill > VDE_MAX_CONDUIT_FILL_PERCENT) {
+    if (outcome.overfilled) {
       events.push(
         auditEvent({
           ruleId,
           entity,
-          calculatedValue: fill,
+          calculatedValue: outcome.percent,
           allowedLimit: VDE_MAX_CONDUIT_FILL_PERCENT,
           unit: '%',
-          message: `Leerrohr ${label} (${rawType}): Füllgrad ${fill.toFixed(0)} % überschreitet die zulässigen ${VDE_MAX_CONDUIT_FILL_PERCENT} %.`,
-          autoFixRemedy:
-            'Größeres Leerrohr wählen oder Kabel auf ein zweites Rohr verteilen, bis der Füllgrad ≤ 40 % liegt.',
+          message: `Leerrohr ${label} (${rawType}): Füllgrad ${outcome.percent.toFixed(0)} % überschreitet die zulässigen ${VDE_MAX_CONDUIT_FILL_PERCENT} %.`,
+          autoFixRemedy: outcome.recommendedType
+            ? `Größeres Leerrohr wählen (mindestens ${outcome.recommendedType}) oder Kabel auf ein zweites Rohr verteilen, bis der Füllgrad ≤ 40 % liegt.`
+            : 'Kabel auf ein zweites Rohr verteilen oder die Leitung kürzen — auch das größte Rohr der Tabelle reicht bei diesem Bündel nicht.',
         })
       );
     }

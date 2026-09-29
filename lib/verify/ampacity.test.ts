@@ -10,6 +10,7 @@ import {
   checkI2VsIz,
   checkSelectivity,
   checkSourceProtectionPosition,
+  conduitFillOutcome,
   runPass3,
 } from './ampacity';
 import {
@@ -450,5 +451,32 @@ describe('lib/verify/ampacity — Datenlücken und Randfälle', () => {
     expect(check.events[0]?.message).toContain('KLEINER als das nachgelagerte');
     expect(check.events[0]?.calculatedValue).toBe(10);
     expect(check.events[0]?.allowedLimit).toBe(20);
+  });
+});
+
+describe('lib/verify/ampacity — conduitFillOutcome (gemeinsame Quelle für Regel und Anzeige)', () => {
+  it('rechnet einen bekannten Typ mit bekannten Querschnitten', () => {
+    const outcome = conduitFillOutcome('EN 40', [4, 2.5]);
+    expect(outcome.kind).toBe('known');
+    if (outcome.kind !== 'known') throw new Error('erwartet: known');
+    expect(outcome.percent).toBeGreaterThan(0);
+    expect(outcome.percent).toBeLessThan(40);
+    expect(outcome.overfilled).toBe(false);
+    expect(outcome.recommendedType).toBeNull();
+  });
+
+  it('empfiehlt bei Überfüllung das kleinste ausreichende Rohr', () => {
+    const outcome = conduitFillOutcome('EN 20', [50]);
+    expect(outcome.kind).toBe('known');
+    if (outcome.kind !== 'known') throw new Error('erwartet: known');
+    expect(outcome.overfilled).toBe(true);
+    expect(outcome.recommendedType).toBe('EN 25');
+  });
+
+  it('verweigert die Zahl bei unbekanntem Typ und fehlendem Querschnitt', () => {
+    expect(conduitFillOutcome('M20', [4])).toEqual({ kind: 'unknown-type' });
+    expect(conduitFillOutcome(null, [4])).toEqual({ kind: 'unknown-type' });
+    expect(conduitFillOutcome('EN 20', [4, null, 2.5])).toEqual({ kind: 'missing-cross-section', index: 1 });
+    expect(conduitFillOutcome('EN 20', [Number.NaN])).toEqual({ kind: 'missing-cross-section', index: 0 });
   });
 });

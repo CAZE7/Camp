@@ -126,13 +126,20 @@ describe('VDE-Konsistenz: keine hardcoded Magic-Numbers', () => {
     expect(content).not.toMatch(/[/]\s*0\.85\b/);
   });
 
-  it('ConduitNode.tsx rechnet über die zentrale Füllgrad-Funktion statt mit eigenen Tabellen', () => {
+  it('ConduitNode.tsx bezieht den Füllgrad aus der Engine statt aus eigenen Tabellen', () => {
     const content = fs.readFileSync(path.join(REPO_ROOT, 'components/nodes/ConduitNode.tsx'), 'utf-8');
     expect(content).not.toMatch(/const\s+CONDUIT_SIZES\s*=/);
     expect(content).not.toMatch(/const\s+CABLE_OUTER_DIAMETERS\s*=/);
-    expect(content).toMatch(/calculateConduitFillPercent/);
-    expect(content).toMatch(/recommendConduitType/);
-    expect(content).toMatch(/VDE_MAX_CONDUIT_FILL_PERCENT/);
+    // Genau EINE Quelle für Füllgrad, Überfüllung und Empfehlung:
+    // `conduitFillOutcome` aus lib/verify — dieselbe Funktion, mit der die
+    // Warn-Zentrale und die Prüfung arbeiten. Sie meldet fehlende Angaben als
+    // „nicht bewertet“; die Karte darf die Zahl deshalb nicht selbst rechnen
+    // und erst recht keinen Ersatzquerschnitt (2,5 mm²) unterstellen.
+    expect(content).toMatch(/conduitFillOutcome/);
+    expect(content).not.toMatch(
+      /calculateConduitFillPercent|recommendConduitType|VDE_MAX_CONDUIT_FILL_PERCENT/
+    );
+    expect(content).not.toMatch(/mm2\(2\.5\)/);
   });
 });
 

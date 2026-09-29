@@ -4,6 +4,7 @@ import {
   auditEvent,
   checkFromEvents,
   checkOrNotApplicable,
+  isCoverageEvent,
   formatEvent,
   formatNumber,
   highestSeverity,
@@ -57,6 +58,10 @@ describe('lib/verify/events — Statusableitung (kein stiller Pass)', () => {
     expect(withoutInput.status).toBe('UNPROVABLE');
     expect(withoutInput.events).toHaveLength(1);
     expect(withoutInput.events[0]?.autoFixRemedy.length).toBeGreaterThan(10);
+    // Das Ereignis ist eine Abdeckungs-Auskunft (Regel ohne Eingabe), kein
+    // Befund über ein Bauteil — die Anzeige filtert es damit heraus.
+    expect(withoutInput.events[0]?.coverageOnly).toBe(true);
+    expect(isCoverageEvent(withoutInput.events[0]!)).toBe(true);
   });
 
   it('unterscheidet »nicht anwendbar« von »nicht beweisbar«', () => {

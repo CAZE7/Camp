@@ -463,7 +463,17 @@ function checkShuntDirectBypass(graph: ConductionGraph): CheckResult {
   const events: AuditEvent[] = [];
   let evaluated = 0;
   for (const shunt of graph.shunts) {
-    const batteryIds = dcSourceNodeIds(graph);
+    // Nur die AUFBAU-Batterie: Das Minus einer Startbatterie läuft
+    // fachgerecht direkt auf den Karosserie-Massepunkt und NICHT über den
+    // Aufbau-Shunt — ein Booster-Strom auf der Starterseite ist kein
+    // Aufbau-Verbrauch. Die Rollenlogik (`role`-Feld, sonst Label) ist
+    // dieselbe wie in der App; ohne diese Ausnahme meldete die Regel genau
+    // die Starterseite, die die App selbst so verdrahtet (Regel-Limitation
+    // dieser Regel: „Startbatterien … sind ausgenommen“).
+    const batteryIds = dcSourceNodeIds(graph).filter((nodeId) => {
+      const behavior = behaviorOf(graph, nodeId);
+      return behavior.kind === 'SOURCE' && behavior.role === 'house-battery';
+    });
     for (const batteryId of batteryIds) {
       for (const cable of sortedCablesAt(graph, batteryId)) {
         const batteryPort = cable.from.nodeId === batteryId ? cable.from : cable.to;
