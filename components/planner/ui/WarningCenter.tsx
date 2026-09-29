@@ -143,6 +143,17 @@ export function nextStep(warning: ValidationWarning) {
   // (`startsWith('solar-voc-window')` trifft beide) — die Warnung „maximale
   // PV-Eingangsspannung fehlt“ bekam damit die Anleitung „weniger Panels in
   // Serie“, obwohl dem Nutzer ein einziges Eingabefeld fehlte.
+  // Der einzige Hinweis ohne eigene Vorgabe fiel in den Auffangtext
+  // „Zeige die betroffene Stelle im Plan und ergänze die dort beschriebene
+  // Komponente." — die Karte nannte das Feld (`battery.nominalVoltage`) und den
+  // Inspektor bereits im Problemtext, die Abhilfe-Zeile wiederholte davon
+  // nichts und blieb damit ohne Anweisung.
+  if (warning.id.startsWith('mixed-voltage-unknown'))
+    return 'So löst du es: Trage die Nennspannung (z. B. 12 V oder 24 V) im Inspektor jeder Batterie ein — ohne sie kann der Plan 12-V- und 24-V-Batterien nicht gegeneinander prüfen.';
+  // Reihenfolge ist Semantik: `mixed-voltage-batteries` ist der DEFEKT
+  // (kritisch), `mixed-voltage-unknown` die LÜCKE davor (info).
+  if (warning.id.startsWith('mixed-voltage-batteries'))
+    return 'So löst du es: Führe den Plan auf EINE Nennspannung — ist die Starterbatterie bewusst 12 V und die Aufbaubank 24 V, müssen beide galvanisch getrennt sein (z. B. über einen DC-DC-Ladebooster); diese Trennung gehört als Verbindung in den Plan.';
   if (warning.id.startsWith('solar-voc-window-unknown'))
     return 'So löst du es: Trage im Inspektor des Ladereglers die maximale PV-Eingangsspannung aus dem Datenblatt ein — erst dann wird das Kalt-Voc-Fenster bewertet.';
   if (warning.id.startsWith('solar-voc-window'))

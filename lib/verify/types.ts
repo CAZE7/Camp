@@ -326,7 +326,15 @@ export type FuseProductClass =
 /** Bauform des DC-Überstromschutzorgans inkl. Produktklasse. */
 export interface FuseDevice {
   type: 'fuse';
-  productClass: FuseProductClass;
+  /**
+   * Produktklasse — `null`, wenn die Bauform (`variant`) fehlt oder unbekannt
+   * ist. Sie wird dann NICHT geraten: Vorher stand hier ein stiller
+   * Rückgriff auf `'bolt-down'`, der im Report als Tatsache auftauchte
+   * („Sicherung 100 A (bolt-down)") und gleichzeitig dem `variant`-Feld
+   * direkt darunter widersprach („Fehlt sie, bleibt der Tabellenwert
+   * unbelegt: kein stiller Rückgriff auf die kleinste Bauform"). Regel M.
+   */
+  productClass: FuseProductClass | null;
   /**
    * Konkrete Bauform des Planers (`lib/shortCircuit.ts` FUSE_TYPES) — nötig,
    * um Tabellenwerte (Abschaltvermögen) zuzuordnen. Fehlt sie, bleibt der

@@ -708,10 +708,19 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
   // Gemessen das Gegenteil: Kreuzungen 42 → 58 über die Referenzpläne
   // (complex 28 → 41), dazu 2 × I6 und 3 × I7 mehr. Die langen Kanten auf
   // Lane 0 legen sich quer durch die Mitte und zwingen damit jede kurze
-  // Kante zum Kreuzen. Die Store-Reihenfolge bleibt.
+  // Kante zum Kreuzen. Die ID-Sortierung (compareIds :618) bleibt — sie ist
+  // deterministisch, auch wenn Doc §4.2 und ein veralteter Kommentar unten
+  // noch „Store-Reihenfolge" behaupten.
   for (let i = 0; i < workOrder.length; i++) {
     const edge = workOrder[i];
     if (!edge) continue;
+    // AUDIT ROUTE-017: Hängekanten — Quelle oder Ziel referenziert einen
+    // Node, der keine Geometrie hat (fehlend, ungemessen, gelöscht).
+    // resolveHandlePoint(undefined, …) liefert (0,0) und der Router
+    // produziert eine sinnlose Route zum Ursprung. Besser: überspringen.
+    const srcNode = nodeById.get(edge.source);
+    const tgtNode = nodeById.get(edge.target);
+    if (!srcNode && !tgtNode) continue;
     const src = resolveHandle(edge, 'source');
     const tgt = resolveHandle(edge, 'target');
     const exclude = new Set([edge.source, edge.target]);

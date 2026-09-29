@@ -210,6 +210,27 @@ describe('lib/verify/graph — Schutzorgane an Kanten', () => {
     expect(edgeOvercurrentDevice({ fuseSize: Number.NaN })).toBeNull();
   });
 
+  it('erfindet keine Produktklasse, wenn die Bauform fehlt', () => {
+    // Kante: `fuseSize` ohne `fuseType`. Vorher stand hier 'bolt-down' —
+    // eine erfundene Zuordnung, die im Report als Tatsache auftauchte.
+    expect(edgeOvercurrentDevice({ fuseSize: 100 })).toMatchObject({
+      type: 'fuse',
+      ratedCurrentA: 100,
+      variant: null,
+      productClass: null,
+    });
+
+    // Derselbe Fall am Sicherungskasten-KNOTEN (`rating` ohne `fuseType`).
+    const behavior = componentBehavior(
+      fixtureNode('fuse1', 'fuse', { label: 'Sicherungskasten', rating: 100 })
+    );
+    if (behavior.kind !== 'PROTECTION') throw new Error('erwartet PROTECTION');
+    const device = behavior.device;
+    if (device.type !== 'fuse') throw new Error('erwartet Sicherung');
+    expect(device.variant).toBeNull();
+    expect(device.productClass).toBeNull();
+  });
+
   it('liest AC-Schutzbeschreibungen als MCB (+ RCD bei FI/LS)', () => {
     const devices = edgeAcDevices({
       fuseSize: 16,

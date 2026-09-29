@@ -1,5 +1,6 @@
 import { ROUTING_TOKENS, type RoutingTokens } from './tokens';
 import {
+  distanceSegmentToSegment,
   facingStubLength,
   hasMinimumStubs,
   manhattan,
@@ -93,7 +94,7 @@ export function checkEdgeNodeCollisions(
   return violations;
 }
 
-/** I2 — keine kollineare Überdeckung zwischen VERSCHIEDENEN Kanten. */
+/** I2 — keine kollineare Überdeckung zwischen VERSCHIEDENEN Kanten und innerhalb EINER Kante. */
 export function checkEdgeEdgeOverlaps(edges: readonly RoutedEdge[]): InvariantViolation[] {
   const violations: InvariantViolation[] = [];
   const segmentsById = edges.map((edge) => {
@@ -105,6 +106,25 @@ export function checkEdgeEdgeOverlaps(edges: readonly RoutedEdge[]): InvariantVi
     return { edge, geometry };
   });
   for (let i = 0; i < segmentsById.length; i++) {
+    // AUDIT ROUTE-011: Selbstüberlappung — zwei Segmente Derselben Kante
+    // überdecken sich kollinear (z. B. U-förmiger Pfad). Die bisherige
+    // Schleife (j = i + 1) verglich nur Kantenpaare und verfehlte diesen Fall.
+    const own = segmentsById[i]!;
+    for (let si = 0; si < own.geometry.segments.length; si++) {
+      for (let sj = si + 1; sj < own.geometry.segments.length; sj++) {
+        if (classifySegmentAgainstSegment(own.geometry.segments[si]!, own.geometry.segments[sj]!).class === 'hard') {
+          violations.push({
+            invariant: 'I2',
+            edgeId: own.edge.id,
+            otherId: own.edge.id,
+            detail: `Kante ${own.edge.id} überdeckt sich selbst kollinear (Segmente ${si}↔${sj})`,
+          });
+          // Eine Selbstüberlappung pro Kante reicht.
+          si = own.geometry.segments.length;
+          break;
+        }
+      }
+    }
     for (let j = i + 1; j < segmentsById.length; j++) {
       const a = segmentsById[i]!;
       const b = segmentsById[j]!;
@@ -133,15 +153,19 @@ export function checkEdgeEdgeOverlaps(edges: readonly RoutedEdge[]): InvariantVi
 }
 
 /**
- * I3 — jedes Segment hält `cableClearance` Abstand zu unbeteiligten Nodes.
+ * I3 — jedes Segment hält `cableClearance` Abstand zu unbeteiligten Nodes
+ * UND zu Segmenten fremder Kanten.
+ *
  * Segmente, die den Node treffen, meldet bereits I1 ('hard') — hier zählt
  * nur die Unterschreitung der Freigabe ohne Berührung ('weighted').
+ * Segment×Segment-Clearance war bisher nicht geprüft (nur Segment×Node);
+ * die Doc-Tabelle (ROUTING-CONTEXT.md:123) verspricht „Abstand < clearance
+ * ohne Berührung → weighted, Zählung als Verletzung, I3" auch für den
+ * Segment×Segment-Fall.
  *
- * Das Modell (`classifySegmentAgainstNode`) liefert beides aus demselben
- * Aufruf: hard ⇒ I1, weighted ⇒ I3. Die bisher hier geführte EPS-Toleranz
- * (1e-6 px unter der Schwelle) entfällt — das Modell definiert `< clearance`
- * exakt. Der Golden-Master-Ratchet über die realen Pläne zeigt: keine
- * Zähländerung (ADR 0019).
+ * AUDIT ROUTE-012: Erweiterung um Segment×Segment via
+ * `classifySegmentAgainstSegment` — dasselbe Modell, das I2 (hard) und
+ * Crossing (soft) liefert, liefert hier den `weighted`-Fall.
  */
 export function checkClearance(
   edges: readonly RoutedEdge[],
@@ -149,18 +173,45 @@ export function checkClearance(
   tokens: RoutingTokens = ROUTING_TOKENS
 ): InvariantViolation[] {
   const violations: InvariantViolation[] = [];
+  const clearance = tokens.cableClearance;
+  // Segment × Node (bisheriger Pfad)
   for (const edge of edges) {
     const rects = foreignRects(edge, nodes);
     for (const segment of waypointsToSegments(edge.waypoints)) {
       for (const rect of rects) {
-        const verdict = classifySegmentAgainstNode(segment, rect, tokens.cableClearance);
+        const verdict = classifySegmentAgainstNode(segment, rect, clearance);
         if (verdict.class === 'weighted' && verdict.distance !== undefined) {
           violations.push({
             invariant: 'I3',
             edgeId: edge.id,
             otherId: rect.id,
-            detail: `Abstand ${verdict.distance.toFixed(1)}px < cableClearance ${tokens.cableClearance}px zu Node ${rect.id}`,
+            detail: `Abstand ${verdict.distance.toFixed(1)}px < cableClearance ${clearance}px zu Node ${rect.id}`,
           });
+        }
+      }
+    }
+  }
+  // Segment × Segment (neu): Abstand < cableClearance zwischen Kanten
+  // verschiedener Kanten — selbes Modell wie I2, aber der weighted-Fall.
+  const segmentsByEdge = edges.map((edge) => ({
+    edge,
+    segments: waypointsToSegments(edge.waypoints),
+  }));
+  for (let i = 0; i < segmentsByEdge.length; i++) {
+    for (let j = i + 1; j < segmentsByEdge.length; j++) {
+      const a = segmentsByEdge[i]!;
+      const b = segmentsByEdge[j]!;
+      for (const s1 of a.segments) {
+        for (const s2 of b.segments) {
+          const verdict = classifySegmentAgainstSegment(s1, s2, clearance);
+          if (verdict.class === 'weighted' && verdict.distance !== undefined) {
+            violations.push({
+              invariant: 'I3',
+              edgeId: a.edge.id,
+              otherId: b.edge.id,
+              detail: `Abstand ${verdict.distance.toFixed(1)}px < cableClearance ${clearance}px zwischen Kanten ${a.edge.id} und ${b.edge.id}`,
+            });
+          }
         }
       }
     }

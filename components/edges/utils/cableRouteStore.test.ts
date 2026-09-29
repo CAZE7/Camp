@@ -290,7 +290,7 @@ describe('Final-Validation-Publikation (AUDIT F-07)', () => {
     ]);
     const report = computeCableRouteFinalValidation(nodes, edges, routes);
     expect(report.status).toBe('INVALID');
-    expect(report.counts).toEqual({ edgeNodeCollisions: 1, edgeEdgeOverlaps: 0, clearanceViolations: 0 });
+    expect(report.counts).toEqual({ edgeNodeCollisions: 1, edgeEdgeOverlaps: 0, clearanceViolations: 0, sanityViolations: 0 });
   });
 
   /**

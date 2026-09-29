@@ -266,7 +266,7 @@ function fuseNodeDevice(data: Record<string, unknown> | undefined): ProtectionDe
   const repoVariant: FuseType | null = isFuseType(variant) ? variant : null;
   return {
     type: 'fuse',
-    productClass: repoVariant ? productClassOfFuseType(repoVariant) : 'bolt-down',
+    productClass: repoVariant ? productClassOfFuseType(repoVariant) : null,
     variant: repoVariant,
     ratedCurrentA: rating ?? 0,
     i2A: numberField(data, 'i2A'),
@@ -392,7 +392,7 @@ export function edgeOvercurrentDevice(data: CableEdgeData | undefined): Protecti
   const variant = isFuseType(data?.fuseType) ? data.fuseType : null;
   return {
     type: 'fuse',
-    productClass: variant ? productClassOfFuseType(variant) : 'bolt-down',
+    productClass: variant ? productClassOfFuseType(variant) : null,
     variant,
     ratedCurrentA: size,
     i2A: null,

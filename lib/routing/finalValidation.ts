@@ -64,10 +64,12 @@ export type RoutingStatus = 'VALID' | 'INVALID';
 export type FinalValidationCounts = {
   /** I1 — Segment schneidet die Box eines unbeteiligten Knotens. */
   edgeNodeCollisions: number;
-  /** I2 — kollineare Überdeckung zweier verschiedener Kanten. */
+  /** I2 — kollineare Überdeckung zweier verschiedener Kanten (inkl. Selbstüberlappung). */
   edgeEdgeOverlaps: number;
   /** I3 — Unterschreitung von `cableClearance` ohne Berührung. */
   clearanceViolations: number;
+  /** AUDIT ROUTE-013: NaN/±Infinity/Koordinaten außerhalb des Plans. */
+  sanityViolations?: number;
 };
 
 export type FinalValidationReport = {
@@ -87,15 +89,16 @@ export type FinalValidationReport = {
 
 /** Summe aller harten Verletzungen. */
 export const totalViolations = (counts: FinalValidationCounts): number =>
-  counts.edgeNodeCollisions + counts.edgeEdgeOverlaps + counts.clearanceViolations;
+  counts.edgeNodeCollisions + counts.edgeEdgeOverlaps + counts.clearanceViolations + (counts.sanityViolations ?? 0);
 
 /**
  * Prüft ein fertiges Routing gegen die Final-Invariante.
  *
  * Reine Funktion ohne Seiteneffekte: gleiche Eingabe ⇒ gleicher Report
- * (ADR 0010). Wird bewusst NICHT im Render-Pfad aufgerufen — die Prüfung
- * ist O(E²) über die Kantenpaare und würde das 16-ms-Frame-Budget
- * (ADR 0012) sprengen. Ihr Platz ist das CI-Gate und die Diagnose.
+ * (ADR 0010). Läuft sowohl im CI-Gate als auch im Live-Throttle-Pfad
+ * (cableRouteStore → computeCableRouteFinalValidation, R-9). Die Prüfung
+ * ist O(E²) über die Kantenpaare; im Throttle-Fenster (100 ms) ist das
+ * für die sechs Referenzpläne (< 24 Kanten) unkritisch.
  */
 export function validateFinalRouting(
   edges: readonly RoutedEdge[],
@@ -106,16 +109,46 @@ export function validateFinalRouting(
   const i2 = checkEdgeEdgeOverlaps(edges);
   const i3 = checkClearance(edges, nodes, tokens);
 
+  // AUDIT ROUTE-013: Sanity-Check der Wegpunkte — NaN, ±Infinity oder
+  // Koordinaten weit außerhalb des Plans bedeuten, dass der Router
+  // degenerierte Ausgabe produziert hat (defensive Meldung, kein Gate mit
+  // Toleranz). Die Grenze 1e6 px ist konservativ: die größten
+  // Referenzpläne (< 24 Kanten) liegen unter 10 000 px.
+  const MAX_COORD = 1_000_000;
+  const sanity: InvariantViolation[] = [];
+  for (const edge of edges) {
+    for (let i = 0; i < edge.waypoints.length; i++) {
+      const wp = edge.waypoints[i]!;
+      if (!Number.isFinite(wp.x) || !Number.isFinite(wp.y)) {
+        sanity.push({
+          invariant: 'I3',
+          edgeId: edge.id,
+          detail: `Wegpunkt ${i}: NaN/Infinity (${wp.x}, ${wp.y})`,
+        });
+        break;
+      }
+      if (Math.abs(wp.x) > MAX_COORD || Math.abs(wp.y) > MAX_COORD) {
+        sanity.push({
+          invariant: 'I3',
+          edgeId: edge.id,
+          detail: `Wegpunkt ${i}: Koordinate außerhalb ±${MAX_COORD}px (${wp.x}, ${wp.y})`,
+        });
+        break;
+      }
+    }
+  }
+
   const counts: FinalValidationCounts = {
     edgeNodeCollisions: i1.length,
     edgeEdgeOverlaps: i2.length,
     clearanceViolations: i3.length,
+    sanityViolations: sanity.length,
   };
 
   return {
     status: totalViolations(counts) === 0 ? 'VALID' : 'INVALID',
     counts,
-    violations: [...i1, ...i2, ...i3],
+    violations: [...i1, ...i2, ...i3, ...sanity],
     edgeCount: edges.length,
   };
 }
@@ -123,10 +156,10 @@ export function validateFinalRouting(
 /** Kurzfassung für Logs und Testausgaben. */
 export function formatFinalValidation(report: FinalValidationReport): string {
   const { counts: c } = report;
-  return (
+  const base =
     `${report.status} — ${report.edgeCount} Kanten, ` +
     `I1(edge×node)=${c.edgeNodeCollisions}, ` +
     `I2(edge×edge)=${c.edgeEdgeOverlaps}, ` +
-    `I3(clearance)=${c.clearanceViolations}`
-  );
+    `I3(clearance)=${c.clearanceViolations}`;
+  return c.sanityViolations ? `${base}, sanity=${c.sanityViolations}` : base;
 }

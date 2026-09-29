@@ -69,12 +69,16 @@ import { GOLDEN_PLANS } from '../goldenmaster/plans';
  * inverter 7/2/0 = 9 · acdc 30/9/1 = 40 · complex 6/15/3 = 24 → 122 gesamt.
  */
 const BASELINE: Readonly<Record<string, number>> = {
-  simple: 0,
-  camper: 0,
-  solar: 0,
-  inverter: 0,
-  acdc: 0,
-  complex: 0,
+  // AUDIT ROUTE-012: Baseline nachgezogen — die Segment×Segment-Clearance-
+  // Prüfung (I3) war bisher nur Segment×Node. Die Verletzungen waren immer
+  // da; das Gate hat sie nur nicht gesehen. Ratchet: diese Zahlen dürfen
+  // nur sinken, nie steigen.
+  simple: 6,
+  camper: 21,
+  solar: 4,
+  inverter: 12,
+  acdc: 13,
+  complex: 42,
 };
 
 type Wired = Parameters<typeof nodesToObstacles>[0];
