@@ -1,6 +1,5 @@
 import { ROUTING_TOKENS, type RoutingTokens } from './tokens';
 import {
-  distanceSegmentToSegment,
   facingStubLength,
   hasMinimumStubs,
   manhattan,
