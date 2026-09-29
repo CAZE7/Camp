@@ -111,7 +111,10 @@ export function checkEdgeEdgeOverlaps(edges: readonly RoutedEdge[]): InvariantVi
     const own = segmentsById[i]!;
     for (let si = 0; si < own.geometry.segments.length; si++) {
       for (let sj = si + 1; sj < own.geometry.segments.length; sj++) {
-        if (classifySegmentAgainstSegment(own.geometry.segments[si]!, own.geometry.segments[sj]!).class === 'hard') {
+        if (
+          classifySegmentAgainstSegment(own.geometry.segments[si]!, own.geometry.segments[sj]!).class ===
+          'hard'
+        ) {
           violations.push({
             invariant: 'I2',
             edgeId: own.edge.id,

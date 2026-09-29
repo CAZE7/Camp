@@ -1,5 +1,12 @@
 import { Position } from '@xyflow/react';
-import { nodeHeight, nodeOriginX, nodeOriginY, nodePositionAvailable, nodeWidth, type RoutableNode } from './nodeGeometry';
+import {
+  nodeHeight,
+  nodeOriginX,
+  nodeOriginY,
+  nodePositionAvailable,
+  nodeWidth,
+  type RoutableNode,
+} from './nodeGeometry';
 import { polylineMidpoint, waypointsToPath } from './pathUtils';
 import { LEGACY_ROUTING_TOKENS, ROUTING_TOKENS, alternativeRouteGap } from '../../../lib/routing/tokens';
 import { COST_WEIGHTS, ROUTING_GATES } from '../../../lib/routing/rules/costModel';
@@ -1589,8 +1596,7 @@ const segmentsKey = (segments: Segment[] | undefined): string => {
     // symmetrisch (a↔b ergab denselben Beitrag). Die Koeffizienten
     // unterscheiden jetzt Start- und Endpunkt: 3·a.x + 5·a.y + 7·b.x + 11·b.y.
     h =
-      (Math.imul(h, 31) +
-        (quantize(a.x) * 3 + quantize(a.y) * 5 + quantize(b.x) * 7 + quantize(b.y) * 11)) |
+      (Math.imul(h, 31) + (quantize(a.x) * 3 + quantize(a.y) * 5 + quantize(b.x) * 7 + quantize(b.y) * 11)) |
       0;
   }
   return `${segments.length}:${h}`;
