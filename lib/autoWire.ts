@@ -269,6 +269,14 @@ export function performAutoWiring(
   }
 
   let starterBatteryNode = pickExistingStarter(batteries, batteryNode, dcdcChargers.length > 0);
+  if (starterBatteryNode && !isStarterBattery(starterBatteryNode)) {
+    // Die Entscheidung »diese vorhandene Batterie ist die Starterseite des
+    // Boosters« wird IM PLAN festgehalten: Ohne `role` hinge sie an einer
+    // Heuristik, die nur dieser Lauf kennt. Anzeige und Prüf-Engine sähen
+    // dann eine zweite Aufbaubatterie, deren Minus direkt am Booster hängt —
+    // und meldeten zu Recht einen Bypass der Messseite (TOPO-002/003).
+    starterBatteryNode.data = { ...starterBatteryNode.data, role: 'starter' };
+  }
   // Keine zweite Starterbatterie anlegen, wenn die einzige Batterie schon die Starterseite ist.
   if (dcdcChargers.length > 0 && !starterBatteryNode && !isStarterBattery(batteryNode)) {
     starterBatteryNode = ensureNode(

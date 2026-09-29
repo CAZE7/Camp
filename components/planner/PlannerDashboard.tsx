@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { AccessibleDialog } from '@/components/ui/AccessibleDialog';
-import { safeText } from '@/lib/safeText'; // AUDIT T1
 import {
   Package,
   Zap,
@@ -31,13 +30,13 @@ import type { LayoutV2Outcome } from '../../store/slices/types';
 import { useAppStore } from '../../lib/store';
 import { useShallow } from 'zustand/react/shallow';
 import { getNodesBounds, getViewportForBounds } from '@xyflow/react';
-import { useLiveValidation, type ValidationWarning } from './hooks/useLiveValidation';
+import { useLiveValidation, useVerificationReport, type ValidationWarning } from './hooks/useLiveValidation';
 import { RoutingStatusBadge } from './ui/RoutingStatusBadge';
 import { WarningCenter } from './ui/WarningCenter';
+import { VerificationSeal } from './ui/VerificationSeal';
 import { GuidedPlanRail } from './ui/GuidedPlanRail';
 import { autoWireFeedbackFor } from './utils/guidedSteps';
-import { calculateConduitFillPercent, VDE_MAX_CONDUIT_FILL_PERCENT } from '../../lib/vde-standards';
-import { mm2, quantityOr } from '../../lib/units';
+import { verificationSummary } from './utils/verificationWarnings';
 
 function NavigationSection({
   viewMode,
@@ -640,7 +639,11 @@ export function PlannerDashboard() {
     }))
   );
 
-  const liveWarnings = useLiveValidation(nodes, edges);
+  // EIN Prüfbericht für Warn-Liste UND Prüfsiegel: Die Engine rechnet einmal,
+  // beide Anzeigen lesen dasselbe Ergebnis (gleicher Hash, gleiche Abdeckung).
+  const verificationReport = useVerificationReport(nodes, edges);
+  const verification = useMemo(() => verificationSummary(verificationReport), [verificationReport]);
+  const liveWarnings = useLiveValidation(nodes, edges, verificationReport);
   const warnings = useMemo(() => {
     const supplemental: ValidationWarning[] = [];
     // Landstrom/RCD wird nicht mehr dupliziert: die kanonische Regel
@@ -667,30 +670,11 @@ export function PlannerDashboard() {
             message: `Die gleichzeitig ausgewählten Geräte benötigen ${total} W, der Wechselrichter liefert dauerhaft nur ${node.data.continuousPower} W. Reduziere die gleichzeitige Nutzung oder plane ein stärkeres Gerät.`,
           });
       });
-    nodes
-      .filter((node) => node.type === 'conduit')
-      .forEach((node) => {
-        const conduitType = safeText(node.data?.conduitType, 'EN 20');
-        // Persistenzgrenze: `assignedEdges` kommt als unbekannte Feldform aus
-        // dem Store und wird hier auf die erwartete ID-Liste eingegrenzt.
-        const assigned = new Set<string>((node.data?.assignedEdges as string[] | undefined) || []);
-        // Persistenzgrenze: `edge.data.crossSection` kommt aus dem Store und
-        // wird hier geprüft in mm² überführt (Standardkabel 2.5 mm² als Ersatz).
-        const crossSections = edges
-          .filter((edge) => assigned.has(edge.id))
-          .map((edge) => quantityOr(edge.data?.crossSection, mm2, mm2(2.5)));
-        const fill = calculateConduitFillPercent(conduitType, crossSections);
-        if (fill > VDE_MAX_CONDUIT_FILL_PERCENT)
-          supplemental.push({
-            id: `conduit-overfill-${node.id}`,
-            category: 'safety',
-            type: 'warning',
-            title: 'Leerrohr zu voll',
-            focusId: node.id,
-            focusType: 'node',
-            message: `Das Leerrohr ist zu ${fill.toFixed(0)} Prozent gefüllt. Verwende ein größeres Rohr oder verteile die Kabel auf mehrere Rohre.`,
-          });
-      });
+    // Leerrohr-Füllgrad wird hier NICHT mehr zweitgeprüft: Die Regel
+    // AMP-006 der Verifikations-Engine rechnet ihn (über `conduitFillOutcome`)
+    // und meldet fehlende Angaben als „nicht entscheidbar“ statt mit einem
+    // unterstellten Kabel. Eine zweite Rechnung an dieser Stelle war die
+    // Quelle eines erfundenen 2,5-mm²-Füllgrads (Regel M).
     if (waterWarning)
       supplemental.push({
         id: 'water-flow-hint',
@@ -700,7 +684,7 @@ export function PlannerDashboard() {
         message: `${waterWarning} Ergänze zwischen Pumpe und Entnahmestelle ein Druckausgleichsgefäß.`,
       });
     return [...liveWarnings, ...supplemental];
-  }, [liveWarnings, nodes, edges, waterWarning]);
+  }, [liveWarnings, nodes, waterWarning]);
 
   const handleFix = useCallback(
     (warning: ValidationWarning) => {
@@ -752,11 +736,22 @@ export function PlannerDashboard() {
 
   return (
     <>
-      <header className="relative flex w-full shrink-0 flex-nowrap items-center gap-2 overflow-visible border-b border-border bg-card px-2 py-1">
-        {/* Wraps statt zu überlappen: dockt der Inspector an (≥1280 px),
-            verliert der Canvas 288–320 px und die Kopfzeile mit ihm — bei
-            `nowrap` schoben sich Tabs und Buttons sonst ineinander. */}
-        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 overflow-visible">
+      <header className="relative flex w-full shrink-0 flex-wrap items-center gap-2 overflow-visible border-b border-border bg-card px-2 py-1">
+        {/* Umbruch statt Überlagerung — auf BEIDEN Ebenen, weil Überlagern
+            unbedienbare Knöpfe bedeutet (gemessen: bei 375 px deckte die
+            rechte Gruppe mit dem Prüfsiegel den Knopf »Automatisch
+            verbinden« zu; Playwright verweigerte den Klick zu Recht).
+
+            1. Kopfzeile (`flex-wrap`): Passt die rechte Gruppe nicht mehr
+               neben die linke (schmaler Viewport, angedockter Inspector ab
+               1280 px, zusätzliches Prüfsiegel), rutscht sie als Ganzes in
+               die nächste Zeile und bleibt rechtsbündig.
+            2. Linke Gruppe (`flex-auto` + `flex-wrap`): Sie fordert ihre
+               INHALTSBREITE an, nicht 0 — sonst würde sie sich auf 0 px
+               zusammenschieben, ihre Knöpfe liefen sichtbar nach rechts aus
+               und die rechte Gruppe läge darüber. Reicht der Platz nicht,
+               bricht sie intern um, statt zu überlappen. */}
+        <div className="flex min-w-0 flex-auto flex-wrap items-center gap-2 overflow-visible">
           <NavigationSection viewMode={viewMode} setViewMode={setViewMode} />
           <ActionsSection
             season={season}
@@ -793,6 +788,10 @@ export function PlannerDashboard() {
             {season === 'summer' ? 'Sommer' : 'Winter'}
           </span>
           {viewMode === 'electric' && <RoutingStatusBadge />}
+          {/* Prüfsiegel erst, wenn es etwas zu prüfen gibt: Ein leerer Plan
+              würde »unvollständig belegt« melden (0 Regeln angewandt) — eine
+              Aussage über einen Plan, den es noch nicht gibt. */}
+          {viewMode === 'electric' && nodes.length > 0 && <VerificationSeal summary={verification} />}
           <WarningCenter warnings={warnings} onFix={handleFix} />
         </div>
 
