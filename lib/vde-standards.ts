@@ -447,8 +447,13 @@ export function calculateEdgeCurrent(
     }
     return total;
   };
+  // AUDIT (konsistent zu lib/autoWire/sizing.ts): `||` liest 0 als "fehlt"
+  // und würde auf watts zurückfallen, selbst wenn der Nutzer den Inverter
+  // bewusst auf 0 Dauerleistung gesetzt hat. Lieber explizit lesen.
   const inverterLoad = (data: Record<string, unknown> | undefined, owner: Node | undefined): Watts => {
-    const own = quantityOr(data?.continuousPower || data?.watts, watts, ZERO_WATTS);
+    const cpParsed = parseQuantity(data?.continuousPower, watts);
+    const wParsed = parseQuantity(data?.watts, watts);
+    const own = cpParsed !== null ? cpParsed : wParsed ?? ZERO_WATTS;
     return maxWatts(own, acConsumerLoad(owner));
   };
   if (sourceNode?.type === 'inverter') {

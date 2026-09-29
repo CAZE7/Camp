@@ -1319,6 +1319,25 @@ export function useLiveValidation(nodes: Node[], edges: Edge<CableEdgeData>[]) {
       }
     }
 
-    return warnings;
+    // AUDIT: ID-basierte Deduplizierung. Mehrere Regeln können dieselbe
+    // `id` produzieren (z. B. solar-voc-window + solar-voc-window-unknown
+    // für denselben MPPT — nein, eigener Schlüssel —, oder zukünftige
+    // Sammelregeln, die denselben Knoten mehrfach anfassen). Die UI
+    // (`WarningCenter`) gruppiert nach `id` und sonst hätte ein Knoten mit
+    // „critical + warning“ zur selben `id` einen unsichtbaren Eintrag.
+    // Wir behalten die strengste Variante (critical > warning > info).
+    const severityRank: Record<ValidationWarning['type'], number> = {
+      critical: 3,
+      warning: 2,
+      info: 1,
+    };
+    const dedup = new Map<string, ValidationWarning>();
+    for (const w of warnings) {
+      const existing = dedup.get(w.id);
+      if (!existing || severityRank[w.type] > severityRank[existing.type]) {
+        dedup.set(w.id, w);
+      }
+    }
+    return Array.from(dedup.values());
   }, [nodes, edges]);
 }

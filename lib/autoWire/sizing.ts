@@ -18,6 +18,7 @@ import {
   maxAmps,
   meters,
   mm2,
+  parseQuantity,
   quantityOr,
   scaleVolts,
   subtractVolts,
@@ -419,7 +420,11 @@ export function acCurrentA(
     // Die AC-Zuleitung (Landstrom→ac_in bzw. WR→Gerät) trägt den tatsächlichen
     // 230-V-Laststrom. Bei mehreren 230-V-Verbrauchern ist der WR nur Nennlast;
     // die Summe der Geräte ist maßgeblich, sonst wird die Leitung zu dünn.
-    const ownLoad = quantityOr(inverter.data?.continuousPower || inverter.data?.watts, watts, ZERO_WATTS);
+    // AUDIT: 0-Dauerleistung ist ein gültiger Wert (WR abgeschaltet) und
+    // darf NICHT auf `watts` zurückfallen.
+    const cpParsed = parseQuantity(inverter.data?.continuousPower, watts);
+    const wParsed = parseQuantity(inverter.data?.watts, watts);
+    const ownLoad = cpParsed !== null ? cpParsed : wParsed ?? ZERO_WATTS;
     const connectedLoad = acIslandLoad(inverter);
     const load = ownLoad > connectedLoad ? ownLoad : connectedLoad;
     return currentFromPower(load, AC_VOLTAGE);
