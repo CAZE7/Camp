@@ -69,13 +69,21 @@ export function VerificationSeal({ summary }: VerificationSealProps) {
         data-testid="verification-seal-toggle"
         aria-expanded={open}
         aria-controls={panelId}
+        // Der zugängliche Name sagt auf jeder Breite dasselbe. Auf schmalen
+        // Geräten ist nur das Symbol sichtbar (Platz in der Kopfzeile, wie
+        // beim Speicher-Indikator); die Bewertung selbst steht im Bericht.
+        aria-label={`Prüfbericht: ${summary.label}. ${summary.exercised} Regeln angewandt, ${percent} % entschieden.`}
         onClick={() => setOpen((value) => !value)}
-        className={`inline-flex min-h-8 items-center gap-2 rounded border bg-card px-2 py-1 text-xs font-semibold text-foreground ${tone.border}`}
+        className={`inline-flex min-h-11 min-w-0 max-w-full shrink items-center gap-2 rounded border bg-card px-2 py-1 text-xs font-semibold text-foreground ${tone.border}`}
         title="Bericht der Verifikations-Engine: Verdikt, Abdeckung, Modellgrenzen und Zertifikat"
       >
         {tone.icon}
-        <span>{tone.label}:</span>
-        <span className={`rounded px-1.5 py-0.5 text-[11px] font-bold ${tone.badge}`}>{summary.label}</span>
+        <span className="hidden sm:inline">{tone.label}:</span>
+        <span
+          className={`hidden truncate rounded px-1.5 py-0.5 text-[11px] font-bold sm:inline ${tone.badge}`}
+        >
+          {summary.label}
+        </span>
         <span className="hidden font-normal text-muted-foreground sm:inline">
           {summary.exercised} Regeln angewandt · {percent} % entschieden
         </span>

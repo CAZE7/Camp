@@ -736,11 +736,22 @@ export function PlannerDashboard() {
 
   return (
     <>
-      <header className="relative flex w-full shrink-0 flex-nowrap items-center gap-2 overflow-visible border-b border-border bg-card px-2 py-1">
-        {/* Wraps statt zu überlappen: dockt der Inspector an (≥1280 px),
-            verliert der Canvas 288–320 px und die Kopfzeile mit ihm — bei
-            `nowrap` schoben sich Tabs und Buttons sonst ineinander. */}
-        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 overflow-visible">
+      <header className="relative flex w-full shrink-0 flex-wrap items-center gap-2 overflow-visible border-b border-border bg-card px-2 py-1">
+        {/* Umbruch statt Überlagerung — auf BEIDEN Ebenen, weil Überlagern
+            unbedienbare Knöpfe bedeutet (gemessen: bei 375 px deckte die
+            rechte Gruppe mit dem Prüfsiegel den Knopf »Automatisch
+            verbinden« zu; Playwright verweigerte den Klick zu Recht).
+
+            1. Kopfzeile (`flex-wrap`): Passt die rechte Gruppe nicht mehr
+               neben die linke (schmaler Viewport, angedockter Inspector ab
+               1280 px, zusätzliches Prüfsiegel), rutscht sie als Ganzes in
+               die nächste Zeile und bleibt rechtsbündig.
+            2. Linke Gruppe (`flex-auto` + `flex-wrap`): Sie fordert ihre
+               INHALTSBREITE an, nicht 0 — sonst würde sie sich auf 0 px
+               zusammenschieben, ihre Knöpfe liefen sichtbar nach rechts aus
+               und die rechte Gruppe läge darüber. Reicht der Platz nicht,
+               bricht sie intern um, statt zu überlappen. */}
+        <div className="flex min-w-0 flex-auto flex-wrap items-center gap-2 overflow-visible">
           <NavigationSection viewMode={viewMode} setViewMode={setViewMode} />
           <ActionsSection
             season={season}
@@ -777,7 +788,10 @@ export function PlannerDashboard() {
             {season === 'summer' ? 'Sommer' : 'Winter'}
           </span>
           {viewMode === 'electric' && <RoutingStatusBadge />}
-          {viewMode === 'electric' && <VerificationSeal summary={verification} />}
+          {/* Prüfsiegel erst, wenn es etwas zu prüfen gibt: Ein leerer Plan
+              würde »unvollständig belegt« melden (0 Regeln angewandt) — eine
+              Aussage über einen Plan, den es noch nicht gibt. */}
+          {viewMode === 'electric' && nodes.length > 0 && <VerificationSeal summary={verification} />}
           <WarningCenter warnings={warnings} onFix={handleFix} />
         </div>
 
