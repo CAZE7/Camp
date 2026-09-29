@@ -8,7 +8,7 @@ import {
   type NodeGeometrySnapshot,
   type NodeGeometryTraceSnapshot,
 } from './nodeGeometry';
-import type { FinalValidationReport } from '../../../lib/routing/finalValidation';
+import { totalViolations, type FinalValidationReport } from '../../../lib/routing/finalValidation';
 import { NODE_FALLBACK_HEIGHT, NODE_FALLBACK_WIDTH, type PathResult } from './pathfinding';
 import { compareIds } from '../../../lib/sortOrder';
 
@@ -415,8 +415,7 @@ export function logRoutingResult(
   const routeGeometry = [...routes.entries()]
     .map(([id, route]) => ({ id, waypoints: route.waypoints }))
     .sort((a, b) => compareIds(a.id, b.id));
-  const violationCount =
-    report.counts.edgeNodeCollisions + report.counts.edgeEdgeOverlaps + report.counts.clearanceViolations;
+  const violationCount = totalViolations(report.counts);
 
   emitTrace({
     event: 'route-result',

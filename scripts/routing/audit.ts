@@ -310,12 +310,17 @@ export type ShiftMatrixEntry = {
 
 /** Obergrenze je Plan (Summen über die 49 Läufe), gemessen 2026-09-28. */
 export const SHIFT_RATCHET: Readonly<Record<string, { I2: number; I3: number }>> = {
-  simple: { I2: 0, I3: 0 },
-  camper: { I2: 2, I3: 0 },
-  solar: { I2: 0, I3: 0 },
-  inverter: { I2: 0, I3: 0 },
-  acdc: { I2: 10, I3: 0 },
-  complex: { I2: 0, I3: 0 },
+  // AUDIT ROUTE-011/012: Ratchet nachgezogen — die Selbstüberlappungs-
+  // (I2) und Segment×Segment-Clearance-Prüfung (I3) war bisher nur
+  // Kante×Kante bzw. Segment×Node. Die Verletzungen waren immer da;
+  // das Gate hat sie nur nicht gesehen. Ratchet: diese Zahlen dürfen
+  // nur sinken, nie steigen.
+  simple: { I2: 6, I3: 425 },
+  camper: { I2: 8, I3: 1074 },
+  solar: { I2: 2, I3: 261 },
+  inverter: { I2: 0, I3: 367 },
+  acdc: { I2: 12, I3: 680 },
+  complex: { I2: 2, I3: 2040 },
 };
 
 /** Reine Plan-Translation (nur Nutzerknoten; AutoWire platziert danach neu). */

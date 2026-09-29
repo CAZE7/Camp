@@ -168,6 +168,24 @@ describe('nextStep — der Lösungshinweis muss zum Befund passen', () => {
       expect(nextStep(warning({ id }))).toContain('Leitungs-Inspektor');
     }
   });
+
+  it('fehlende Batterie-Nennspannung → nennt Feld und Inspektor statt des Auffangtextes', () => {
+    // Der Hinweis trug keine eigene Vorgabe und fiel in „Zeige die betroffene
+    // Stelle im Plan und ergänze die dort beschriebene Komponente." — die Karte
+    // nannte Feld (`battery.nominalVoltage`) und Inspektor längst im Problemtext,
+    // die Lösungszeile wiederholte davon nichts.
+    const text = nextStep(warning({ id: 'mixed-voltage-unknown' }));
+    expect(text).toContain('Nennspannung');
+    expect(text).toContain('Inspektor jeder Batterie');
+    expect(text).not.toContain('Zeige die betroffene Stelle im Plan');
+  });
+
+  it('jeder Altbefund hat eine eigene Vorgabe — der Auffangtext bleibt die Ausnahme', () => {
+    const legacyIds = ['mixed-voltage-unknown', 'mixed-voltage-batteries', 'solar-overload'];
+    for (const id of legacyIds) {
+      expect(nextStep(warning({ id })), id).not.toContain('Zeige die betroffene Stelle im Plan');
+    }
+  });
 });
 
 describe('valueWithUnit', () => {

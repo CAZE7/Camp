@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1072" height="1440" viewBox="0 0 1072 1440">
   <title>p13-drag-zentraler-node — Drag eines zentralen Nodes</title>
   <rect width="100%" height="100%" fill="#0b0f14"/>
-  <text x="60" y="32" fill="#8b98a5" font-family="monospace" font-size="14">p13-drag-zentraler-node: X=0 Bends=16 L=3324 Clearance=0</text>
+  <text x="60" y="32" fill="#8b98a5" font-family="monospace" font-size="14">p13-drag-zentraler-node: X=0 Bends=16 L=3324 Clearance=11</text>
   <rect x="60" y="500" width="192" height="120" fill="#151b23" stroke="#31404f" stroke-width="1.5" rx="8"/>
   <text x="70" y="524" fill="#c7d0d9" font-family="monospace" font-size="13">batt</text>
   <rect x="420" y="660" width="192" height="120" fill="#151b23" stroke="#31404f" stroke-width="1.5" rx="8"/>

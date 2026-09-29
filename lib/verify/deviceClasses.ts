@@ -131,6 +131,18 @@ export function conventionalOperatingCurrentI2(device: ProtectionDevice): Conven
     };
   }
 
+  if (device.productClass === null) {
+    // Bauform fehlt ⇒ keine Produktnorm benennbar. Der Rückgriff auf eine
+    // Klasse (vorher 'bolt-down') war eine erfundene Zuordnung.
+    return {
+      i2A: null,
+      ratio: null,
+      source: 'Bauform (`fuseType`) nicht angegeben — keine Produktnorm benennbar',
+      provenance: 'UNVERIFIED',
+      remedy: DATASHEET_REMEDY,
+    };
+  }
+
   switch (device.productClass) {
     case 'iec60269-gg': {
       const ratio = iec60269Ratio(device.ratedCurrentA);
@@ -206,7 +218,7 @@ export function tableBreakingCapacityA(variant: FuseType): number {
 export function describeDevice(device: ProtectionDevice): string {
   if (device.type === 'fuse') {
     const variant = device.variant ? ` ${device.variant}` : '';
-    return `Sicherung ${device.ratedCurrentA} A (${device.productClass}${variant})`;
+    return `Sicherung ${device.ratedCurrentA} A (${device.productClass ?? 'Bauform nicht angegeben'}${variant})`;
   }
   if (device.type === 'mcb') {
     return `LS-Schalter ${device.characteristic}${device.ratedCurrentA}${device.poles ? `, ${device.poles}-polig` : ''}`;

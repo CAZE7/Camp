@@ -102,6 +102,34 @@ describe('lib/verify/deviceClasses — konventioneller Auslösestrom I₂', () =
   });
 });
 
+describe('lib/verify/deviceClasses — fehlende Bauform wird nicht geraten', () => {
+  /**
+   * `productClass: null` ist der Zustand „Bauform fehlt". Vorher setzte
+   * `lib/verify/graph.ts` still `'bolt-down'` ein — der Report behauptete dann
+   * „Sicherung 100 A (bolt-down)", obwohl niemand eine Bauform angegeben
+   * hatte. Das Verdikt blieb korrekt UNPROVABLE, aber die BEZEICHNUNG war
+   * erfunden (Regel M).
+   */
+  const unknown = fuse({ productClass: null, variant: null });
+
+  it('nennt die fehlende Bauform statt einer erfundenen Produktklasse', () => {
+    const result = conventionalOperatingCurrentI2(unknown);
+    expect(result.i2A).toBeNull();
+    expect(result.provenance).toBe('UNVERIFIED');
+    expect(result.source).toContain('Bauform');
+    expect(result.source).not.toContain('bolt-down');
+  });
+
+  it('beschreibt das Gerät als „Bauform nicht angegeben"', () => {
+    expect(describeDevice(unknown)).toBe('Sicherung 20 A (Bauform nicht angegeben)');
+    expect(describeDevice(unknown)).not.toContain('bolt-down');
+  });
+
+  it('bleibt beim Abschaltvermögen unbelegt (kein Tabellenwert ohne Bauform)', () => {
+    expect(breakingCapacityOf(unknown)).toBeNull();
+  });
+});
+
 describe('lib/verify/deviceClasses — Abschaltvermögen', () => {
   it('nimmt Datenblatt vor Tabelle und meldet Unbelegtes als null', () => {
     expect(breakingCapacityOf(fuse({ breakingCapacityA: 3000 }))).toBe(3000);

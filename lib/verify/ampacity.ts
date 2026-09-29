@@ -26,7 +26,13 @@
  * Zweig, der bei fehlenden Daten »passt schon« sagt.
  */
 
-import { FUSE_MAX_UNPROTECTED_LENGTH_M, VDE_SIZES, maxFuseForDisplay, selectFuseSize } from '../electrical';
+import {
+  DERATE_FACTOR,
+  FUSE_MAX_UNPROTECTED_LENGTH_M,
+  VDE_SIZES,
+  maxFuseForDisplay,
+  selectFuseSize,
+} from '../electrical';
 import { bankShortCircuitCurrentA, shortCircuitAtFuseA } from '../shortCircuit';
 import type { Node } from '../domain/graph';
 import { mm2 } from '../units';
@@ -43,6 +49,7 @@ import {
   conventionalOperatingCurrentI2,
   describeDevice,
   isOvercurrentProtection,
+  type OvercurrentProtectionDevice,
 } from './deviceClasses';
 import { auditEvent, checkOrNotApplicable } from './events';
 import { behaviorOf, labelOfNode } from './graph';
@@ -54,6 +61,7 @@ import {
   upstreamChain,
   type OvercurrentPlacement,
   type UpstreamChain,
+  type UpstreamDevice,
 } from './pathSearch';
 
 /**
@@ -114,36 +122,258 @@ function nextCrossSectionFor(currentMm2: number): number | null {
   return null;
 }
 
-/** Remediation, wenn I_b > I_z: Querschnitt erhöhen ODER Laststrom senken. */
-function remedyForAmpacity(currentA: number, currentMm2: number): string {
-  const needed = nextCrossSectionFor(currentMm2);
-  const fuseForCurrent = selectFuseSize(currentA, currentMm2);
-  if (needed !== null) {
-    return `Querschnitt ${currentMm2} mm² → ${needed} mm² wählen oder Betriebsstrom auf ≤ ${maxFuseForDisplay(needed)} A senken; aktuell verträgt die Leitung nur die Sicherung bis ${maxFuseForDisplay(currentMm2)} A (Vorschlag: ${fuseForCurrent} A nur nach Querschnittserhöhung).`;
-  }
-  return `Betriebsstrom senken oder Leitung aufteilen: ${currentMm2} mm² ist der größte Normquerschnitt der Auslegung und deckt ${currentA.toFixed(1)} A unter den angesetzten Korrekturfaktoren nicht.`;
+/**
+ * Deutsche Zahlenschreibweise in Vorgabetexten („120,4 A").
+ *
+ * Der Report schreibt Ist/Soll über die eigenen Felder; in den Klartext-
+ * vorgaben stand bisher `toFixed` mit Punkt — „I_z = 120.4 A" neben
+ * „Ist: 158,73 A". Ein Dokument, das zwei Dezimaltrennzeichen mischt,
+ * liest sich wie ein Zahlendreher.
+ */
+const formatA = (value: number): string => value.toFixed(1).replace('.', ',');
+
+/** Verhältnis-Zahl mit deutschem Dezimaltrennzeichen („1,6:1", nicht „1.6:1"). */
+const formatRatio = (value: number): string => value.toFixed(1).replace('.', ',');
+
+/**
+ * Auswege, wenn der Strom größer ist als das, was die Normreihe bis zum
+ * größten Querschnitt unter den angesetzten Korrekturfaktoren tragen kann.
+ *
+ * Genau die drei Hebel, die AUDIT ELE-002 als EXPECTED BEHAVIOR für die
+ * thermische Sättigung vorgibt (Parallelleitung / höhere Systemspannung /
+ * Lastverlagerung). Vorher stand hier nur „Betriebsstrom senken oder Leitung
+ * aufteilen" — ohne Zielwert und ohne einen der drei Wege zu benennen.
+ *
+ * Bewusst KEINE Parallelrechnung (n × A, Strom je Leiter) und kein
+ * umgerechneter Zielwert: Das Modell führt parallel geführte Leiter nicht als
+ * eine Leitung, eine ausgerechnete Zahl wäre eine Angabe ohne Gegenstand im
+ * Plan (Regel M). Deshalb wird benannt, welcher Nachweis vor dem Umbau zu
+ * führen ist — nicht sein Ergebnis. Die Bedingungen für Parallelleiter
+ * (gleiche Länge, gleicher Querschnitt, gemeinsame Absicherung) sind wörtlich
+ * die aus AUDIT ELE-002 (NORM/SOURCE), kein eigenes Normzitat.
+ */
+function structuralRemedy(): string {
+  return (
+    `dann muss die Last selbst kleiner werden: Systemspannung erhöhen (doppelte Spannung halbiert den Strom ` +
+    `für dieselbe Leistung), große Verbraucher auf einen eigenen, höher gespannten Strang verlagern oder die ` +
+    `Leitung in mehrere parallele Abgänge aufteilen — gleiche Länge, gleicher Querschnitt, gemeinsame ` +
+    `Absicherung; dieser Prüflauf rechnet parallele Leiter nicht als eine Leitung, ihr Nachweis gehört vor ` +
+    `dem Umbau geführt.`
+  );
 }
 
-/** Remediation, wenn I_n > I_z: kleinere Sicherung ODER größerer Querschnitt. */
-function remedyForFuseLargerThanAmpacity(crossSectionMm2: number, izA: number): string {
-  return `Sicherung auf ≤ ${maxFuseForDisplay(crossSectionMm2)} A verringern (I_z = ${izA.toFixed(1)} A nach Korrekturfaktoren) oder Querschnitt erhöhen, bis I_n ≤ I_z gilt.`;
+/**
+ * Remediation, wenn I_b > I_z: Querschnitt erhöhen ODER Laststrom senken.
+ *
+ * Obergrenze für „Betriebsstrom senken" ist in BEIDEN Zweigen I_z (die
+ * angesetzte Belastbarkeit) — nicht die Sicherungsstufe. Die alte Fassung
+ * nannte `maxFuseForDisplay(nächster Querschnitt)`: Die Norm-Sicherung liegt
+ * unter I_z (z. B. 35 mm² → I_z 77,7 A, aber Sicherungsstufe 63 A), also
+ * wurde ein schärferer Zielwert ausgegeben als die Normungleichung verlangt.
+ *
+ * @param izA       angesetzte Belastbarkeit des GEPRÜFTEN Kabels.
+ * @param izNextA   angesetzte Belastbarkeit des vorgeschlagenen Querschnitts
+ *   (derselbe Rechenweg wie beim geprüften Kabel — `effectiveAmpacityA`),
+ *   `null`, wenn der Vorschlag nicht in der Belastbarkeitstabelle steht.
+ */
+function remedyForAmpacity(
+  currentA: number,
+  currentMm2: number,
+  izA: number,
+  izNextA: number | null
+): string {
+  const needed = nextCrossSectionFor(currentMm2);
+  if (needed === null || izNextA === null) {
+    return (
+      `Betriebsstrom auf ≤ ${formatA(izA)} A senken — mehr trägt ${currentMm2} mm² unter den angesetzten ` +
+      `Korrekturfaktoren nicht, und ${currentMm2} mm² ist der größte Querschnitt der Auslegungstabelle ` +
+      `(Sicherungsstufe höchstens ${maxFuseForDisplay(currentMm2)} A). Reicht das nicht, ` +
+      `${structuralRemedy()}`
+    );
+  }
+  return (
+    `Querschnitt ${currentMm2} mm² → ${needed} mm² erhöhen (trägt dann I_z = ${formatA(izNextA)} A, ` +
+    `Sicherungsstufe bis ${maxFuseForDisplay(needed)} A) oder Betriebsstrom auf ≤ ${formatA(izA)} A senken ` +
+    `(I_z des verlegten ${currentMm2} mm²).`
+  );
+}
+
+/**
+ * Remediation, wenn I_n > I_z: kleinere Sicherung ODER größerer Querschnitt.
+ *
+ * Der Vorschlag braucht I_b. Ohne ihn empfahl die alte Fassung pauschal
+ * „Sicherung auf ≤ FUSE_MAP[Querschnitt] A verringern" — bei I_b = 158,7 A auf
+ * 70 mm² also „Sicherung auf ≤ 100 A". Damit wäre I_b > I_n gebrochen:
+ * dieselbe Bedingung (1) des §433.1, die diese Karte gerade prüft, und im
+ * Betrieb eine auslösende Anlage. Eine Abhilfe, die den Befund gegen einen
+ * anderen tauscht, ist keine.
+ */
+function remedyForFuseLargerThanAmpacity(ibA: number, crossSectionMm2: number, izA: number): string {
+  const maxFuse = maxFuseForDisplay(crossSectionMm2);
+  if (ibA <= maxFuse + EPSILON_A) {
+    return (
+      `Sicherung auf ${selectFuseSize(ibA, crossSectionMm2)} A verringern — kleinste Normstufe, die ` +
+      `I_b = ${formatA(ibA)} A trägt und mit I_n ≤ I_z = ${formatA(izA)} A vereinbar ist ` +
+      `(zulässig bis ${maxFuse} A).`
+    );
+  }
+  return (
+    `Eine kleinere Sicherung löst diesen Fall nicht: I_b = ${formatA(ibA)} A liegt bereits über ` +
+    `I_z = ${formatA(izA)} A, und I_n muss ≥ I_b und ≤ I_z sein — Bedingung (1) ist für diese Leitung ` +
+    `nicht erfüllbar. Eine Sicherung ≤ ${maxFuse} A würde im Normalbetrieb auslösen und den Befund nur ` +
+    `auf I_b > I_n verschieben; ${structuralRemedy()}`
+  );
+}
+
+/** Vorgelagertes Organ, das wirklich gegen Überstrom schützt (RCD fällt heraus). */
+type OvercurrentUpstream = { entry: UpstreamDevice; device: OvercurrentProtectionDevice };
+
+/**
+ * Typprädikat über das GESAMTE Kettenglied: `isOvercurrentProtection` verengt
+ * `placement.device` nicht, wenn es als Callback über `entry` läuft — die
+ * Verengung muss am zurückgegebenen Typ hängen, nicht an einem Argument.
+ */
+function isOvercurrentUpstream(entry: UpstreamDevice): entry is UpstreamDevice & {
+  placement: OvercurrentPlacement;
+} {
+  return isOvercurrentProtection(entry.placement.device);
+}
+
+/**
+ * Obergrenze für den Nennstrom eines VORGELAGERTEN Schutzorgans — `null`,
+ * wenn sie nicht bestimmbar ist.
+ *
+ * Sitzt das Organ in einer Leitung (`fuseSize` auf einer Kante), begrenzt
+ * deren angesetzte Belastbarkeit I_z den Nennstrom: AMP-001 verlangt
+ * I_n ≤ I_z für genau diese Leitung. Sitzt es als eigener Knoten
+ * (Sicherungskasten) in Reihe, gibt es keine Leitung, die diesem Organ
+ * zugeordnet wäre — dann ist die Grenze unbekannt und wird nicht erfunden.
+ */
+function upstreamRatingCeilingA(context: PassContext, entry: UpstreamDevice): number | null {
+  if (entry.placement.host !== 'edge-data') return null;
+  const cable = context.graph.cableById.get(entry.hostId);
+  if (!cable) return null;
+  const ampacity = ampacityOf(context, cable);
+  if (ampacity === null) return null;
+  return maxFuseForDisplay(cable.crossSectionMm2 ?? 0);
+}
+
+/**
+ * Vorgabe für die Selektivitäts-Abhilfe: Nennstrom, den das vorgelagerte Organ
+ * für das Verhältnis ≥ 1,6:1 bräuchte — gekappt an dem, was seine eigene
+ * Leitung zulässt.
+ *
+ * Der unkapierte Wert war eine selbstzerstörende Vorgabe: Bei 100 A/100 A auf
+ * einer 70-mm²-Kaskade stand dort „Vorgelagertes Schutzorgan auf ≥ 160,0 A
+ * vergrößern" — 160 A über I_z = 120,4 A derselben Leitung, also genau der
+ * AMP-001-Befund (I_n > I_z), den der Nutzer im selben Report bereits hat.
+ * Eine Abhilfe, die einen kritischen Befund erzeugt, um einen anderen zu
+ * schließen, ist keine.
+ */
+type SelectivityTarget =
+  | { kind: 'raise'; ratingA: number }
+  | { kind: 'capped'; ratingA: number; ceilingA: number }
+  | { kind: 'unknown-ceiling'; ratingA: number };
+
+function selectivityTargetA(downstreamA: number, ceilingA: number | null): SelectivityTarget {
+  const needed = downstreamA * SELECTIVITY_RATIO_HEURISTIC;
+  if (ceilingA === null) return { kind: 'unknown-ceiling', ratingA: needed };
+  if (needed <= ceilingA + EPSILON_A) return { kind: 'raise', ratingA: needed };
+  return { kind: 'capped', ratingA: needed, ceilingA };
+}
+
+/** Abhilfe-Text zur Selektivitätsvorgabe (beide Richtungen der Kaskade). */
+function selectivityRemedy(target: SelectivityTarget): string {
+  const prove = 'oder Hersteller-Selektivitätstabelle für dieses Paar nachweisen';
+  switch (target.kind) {
+    case 'raise':
+      return (
+        `Vorgelagertes Schutzorgan auf I_n ≥ ${formatA(target.ratingA)} A vergrößern ` +
+        `(Verhältnis ≥ ${formatRatio(SELECTIVITY_RATIO_HEURISTIC)}:1) ${prove}.`
+      );
+    case 'capped':
+      return (
+        `Über den Nennstrom ist diese Kaskade nicht selektiv zu bekommen: ≥ ${formatA(target.ratingA)} A ` +
+        `wären für das Verhältnis ${formatRatio(SELECTIVITY_RATIO_HEURISTIC)}:1 nötig, die Leitung des ` +
+        `vorgelagerten Organs lässt aber höchstens ${target.ceilingA} A zu (I_n ≤ I_z, AMP-001). ` +
+        `Das nachgelagerte Organ auf ≤ ${formatA(target.ceilingA / SELECTIVITY_RATIO_HEURISTIC)} A ` +
+        `verkleinern (I_b beachten), den Querschnitt der vorgelagerten Leitung erhöhen ${prove}.`
+      );
+    case 'unknown-ceiling':
+      return (
+        `Vorgelagertes Schutzorgan auf I_n ≥ ${formatA(target.ratingA)} A vergrößern ` +
+        `(Verhältnis ≥ ${formatRatio(SELECTIVITY_RATIO_HEURISTIC)}:1) — die Leitung, auf der dieses Organ ` +
+        `sitzt, ist hier nicht zugeordnet, ihre Belastbarkeitsgrenze wurde deshalb nicht mitgeprüft; ` +
+        `I_n ≤ I_z dieser Zuleitung ist gesondert nachzuweisen — ${prove}.`
+      );
+    default: {
+      const exhaustive: never = target;
+      throw new RangeError(`selectivityRemedy: unbekannter Zieltyp ${String(exhaustive)}`);
+    }
+  }
+}
+
+/**
+ * Herkunft des angesetzten Faktors — Reportpflicht.
+ *
+ * Die Engine setzt `min(DERATE_FACTOR, f₁·f₂)` (`physics.effectiveAmpacityA`).
+ * Sind Umgebung und Häufung auf Referenz (f₁ = f₂ = 1,000), entscheidet die
+ * Planer-Pauschale — im Report stand dann „Basis 172 A × 0.700; f₁ = 1.000,
+ * f₂ = 1.000" ohne ein Wort dazu, woher die 0,700 kommen. 172 × 1 × 1 = 120,4
+ * liest sich wie ein Rechenfehler, ist aber die dokumentierte Modellannahme
+ * (AUDIT ELE-001: EINE Iz-Wahrheit für Dimensionierung und Sicherungsgrenze).
+ */
+function deratingExplanation(result: ReturnType<typeof effectiveAmpacityA>): string {
+  const physics = result.ambientFactor * result.groupingFactor;
+  if (Math.abs(result.combinedFactor - DERATE_FACTOR) <= 1e-12 && physics > DERATE_FACTOR + 1e-12) {
+    return (
+      ` — die ${DERATE_FACTOR.toFixed(3).replace('.', ',')} ist die pauschale Planer-Abminderung ` +
+      `(DERATE_FACTOR, AUDIT ELE-001), nicht f₁/f₂: Umgebung und Häufung liegen auf Tabellenreferenz, ` +
+      `die Pauschale ist hier der strengere der beiden Werte`
+    );
+  }
+  return '';
 }
 
 /**
  * Zulässige Belastbarkeit I_z einer Leitung unter den Annahmen des Laufs.
  * `null`, wenn der Querschnitt fehlt oder nicht in der Tabelle steht.
  */
-function ampacityOf(context: PassContext, cable: CableModel): ReturnType<typeof effectiveAmpacityA> | null {
-  if (cable.crossSectionMm2 === null) return null;
+function ampacityAt(
+  crossSectionMm2: number | null,
+  conditions: Parameters<typeof effectiveAmpacityA>[1]
+): ReturnType<typeof effectiveAmpacityA> | null {
+  if (crossSectionMm2 === null) return null;
   try {
-    return effectiveAmpacityA(cable.crossSectionMm2, {
-      ambientC: context.options.ampacity.ambientC,
-      insulation: context.options.ampacity.insulation,
-      bundledCircuits: bundledCircuitsFor(context, cable.edgeId),
-    });
+    return effectiveAmpacityA(crossSectionMm2, conditions);
   } catch {
     return null;
   }
+}
+
+function ampacityOf(context: PassContext, cable: CableModel): ReturnType<typeof effectiveAmpacityA> | null {
+  return ampacityAt(cable.crossSectionMm2, {
+    ambientC: context.options.ampacity.ambientC,
+    insulation: context.options.ampacity.insulation,
+    bundledCircuits: bundledCircuitsFor(context, cable.edgeId),
+  });
+}
+
+/**
+ * Angesetzte Belastbarkeit des NÄCHSTEN größeren Normquerschnitts — unter
+ * denselben Bedingungen wie das geprüfte Kabel (Umgebung, Isolierstoff,
+ * Häufung). Ohne ihn kann die Abhilfe nur raten, was ein dickerer Leiter
+ * hier tatsächlich tragen würde; `null`, wenn es keine größere Stufe gibt
+ * oder der Vorschlag nicht in der Belastbarkeitstabelle steht.
+ */
+function ampacityOfNextCrossSection(context: PassContext, cable: CableModel): number | null {
+  const next = cable.crossSectionMm2 === null ? null : nextCrossSectionFor(cable.crossSectionMm2);
+  const result = ampacityAt(next, {
+    ambientC: context.options.ampacity.ambientC,
+    insulation: context.options.ampacity.insulation,
+    bundledCircuits: bundledCircuitsFor(context, cable.edgeId),
+  });
+  return result?.izA ?? null;
 }
 
 // ============================================================================
@@ -213,8 +443,13 @@ export function checkIbInIz(context: PassContext): CheckResult {
           calculatedValue: ib,
           allowedLimit: ampacity.izA,
           unit: 'A',
-          message: `Kabel ${label}: I_b = ${ib.toFixed(1)} A überschreitet die korrigierte Belastbarkeit I_z = ${ampacity.izA.toFixed(1)} A (Basis ${ampacity.baseAmpacityA} A × ${ampacity.combinedFactor.toFixed(3)}; f₁ = ${ampacity.ambientFactor.toFixed(3)}, f₂ = ${ampacity.groupingFactor.toFixed(3)}).`,
-          autoFixRemedy: remedyForAmpacity(ib, cable.crossSectionMm2),
+          message: `Kabel ${label}: I_b = ${ib.toFixed(1)} A überschreitet die korrigierte Belastbarkeit I_z = ${ampacity.izA.toFixed(1)} A (Basis ${ampacity.baseAmpacityA} A × ${ampacity.combinedFactor.toFixed(3)}; f₁ = ${ampacity.ambientFactor.toFixed(3)}, f₂ = ${ampacity.groupingFactor.toFixed(3)})${deratingExplanation(ampacity)}.`,
+          autoFixRemedy: remedyForAmpacity(
+            ib,
+            cable.crossSectionMm2,
+            ampacity.izA,
+            ampacityOfNextCrossSection(context, cable)
+          ),
         })
       );
     }
@@ -280,7 +515,7 @@ export function checkIbInIz(context: PassContext): CheckResult {
           unit: 'A',
           equation: 'I_b ≤ I_n ≤ I_z (hier: I_n > I_z)',
           message: `Kabel ${label}: Nennstrom I_n = ${device.ratedCurrentA} A des Schutzorgans liegt über der Leitungsbelastbarkeit I_z = ${ampacity.izA.toFixed(1)} A.`,
-          autoFixRemedy: remedyForFuseLargerThanAmpacity(cable.crossSectionMm2, ampacity.izA),
+          autoFixRemedy: remedyForFuseLargerThanAmpacity(ib, cable.crossSectionMm2, ampacity.izA),
         })
       );
     }
@@ -606,13 +841,14 @@ export function checkSelectivity(context: PassContext): CheckResult {
     if (!downstream) continue;
 
     const upstream = chain.devices
-      .map((entry) => entry.placement)
-      .filter((placement): placement is OvercurrentPlacement => isOvercurrentProtection(placement.device))
+      .filter(isOvercurrentUpstream)
+      .map((entry): OvercurrentUpstream => ({ entry, device: entry.placement.device }))
       .sort((a, b) => b.device.ratedCurrentA - a.device.ratedCurrentA)[0];
     if (!upstream) continue;
 
     const downstreamA = downstream.device.ratedCurrentA;
     const upstreamA = upstream.device.ratedCurrentA;
+    const selectivity = selectivityTargetA(downstreamA, upstreamRatingCeilingA(context, upstream.entry));
     if (!(downstreamA > 0) || !(upstreamA > 0)) continue;
 
     evaluated += 1;
@@ -632,7 +868,7 @@ export function checkSelectivity(context: PassContext): CheckResult {
           allowedLimit: downstreamA,
           unit: 'A',
           message: `Kabel ${label}: vorgelagertes Schutzorgan ist KLEINER als das nachgelagerte (${pair}) — im Fehlerfall spricht die vorgelagerte Einrichtung zuerst an, die nachgelagerte kann nicht selektiv sein.`,
-          autoFixRemedy: `Vorgelagertes Schutzorgan auf I_n ≥ ${(downstreamA * SELECTIVITY_RATIO_HEURISTIC).toFixed(1)} A erhöhen (Verhältnis ≥ ${SELECTIVITY_RATIO_HEURISTIC}:1) oder das nachgelagerte Organ verkleinern.`,
+          autoFixRemedy: selectivityRemedy(selectivity),
         })
       );
       continue;
@@ -679,8 +915,8 @@ export function checkSelectivity(context: PassContext): CheckResult {
         entity,
         calculatedValue: ratio,
         allowedLimit: SELECTIVITY_RATIO_HEURISTIC,
-        message: `Kabel ${label}: Selektivität nicht belegt (${pair}) — Verhältnis ${ratio.toFixed(2)}:1 liegt unter ${SELECTIVITY_RATIO_HEURISTIC}:1.`,
-        autoFixRemedy: `Vorgelagertes Schutzorgan auf ≥ ${(downstreamA * SELECTIVITY_RATIO_HEURISTIC).toFixed(1)} A vergrößern oder Hersteller-Selektivitätstabelle für dieses Paar nachweisen.`,
+        message: `Kabel ${label}: Selektivität nicht belegt (${pair}) — Verhältnis ${ratio.toFixed(2).replace('.', ',')}:1 liegt unter ${formatRatio(SELECTIVITY_RATIO_HEURISTIC)}:1.`,
+        autoFixRemedy: selectivityRemedy(selectivity),
       })
     );
   }

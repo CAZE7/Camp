@@ -1,5 +1,5 @@
 import { Position } from '@xyflow/react';
-import { nodeHeight, nodeOriginX, nodeOriginY, nodeWidth, type RoutableNode } from './nodeGeometry';
+import { nodeHeight, nodeOriginX, nodeOriginY, nodePositionAvailable, nodeWidth, type RoutableNode } from './nodeGeometry';
 import { polylineMidpoint, waypointsToPath } from './pathUtils';
 import { LEGACY_ROUTING_TOKENS, ROUTING_TOKENS, alternativeRouteGap } from '../../../lib/routing/tokens';
 import { COST_WEIGHTS, ROUTING_GATES } from '../../../lib/routing/rules/costModel';
@@ -108,7 +108,18 @@ export const U_TURN_COST = COST_WEIGHTS.uTurn;
 
 /** Abstand der Rücklauflane vom Stub bei erzwungenen U-Loops (2 Parallellanes). */
 export const U_TURN_LANE_SPREAD = 2 * ROUTING_TOKENS.laneGrid;
+/**
+ * AUDIT ROUTE-004 (Budget): Abbruchschwelle für A*-Expansionen.
+ * Kein geometrischer Wert — steht deshalb nicht in `lib/routing/tokens.ts`.
+ * Drift-Guard: `pathfinding.test.ts` prüft, dass dieser Wert bewusst
+ * geändert wird (mit Begründung und Perf-/Qualitätsmessung).
+ */
 export const MAX_EXPANSIONS = 48_000;
+/**
+ * AUDIT ROUTE-004 (Budget): Maximale akzeptable Kreuzungen pro Kante.
+ * Wird in der A*-Nachoptimierung verwendet, um übermäßige Kreuzungen
+ * abzufangen. Synchron mit `LEGACY_MAX_ACCEPTABLE_CROSSINGS`.
+ */
 export const MAX_ACCEPTABLE_CROSSINGS = 2;
 /**
  * Stufe 1 (Mission EDT): Rand in px, den das Distanzfeld um die Box aller
@@ -814,6 +825,12 @@ const assembleCatalog = (f: PortFrame, core: Point[]): Point[] =>
 /**
  * Klassischer orthogonaler Katalog: Gerade, L, Z, U — port-treu.
  * Länge ist manhattan (bzw. manhattan + 2·Loop bei U). Wenn frei, optimal.
+ *
+ * AUDIT ROUTE-007 (Lane side-step): Der Seitenschritt (laneStep/laneStepTarget)
+ * wird in `portFrame` abgeleitet. `catalogCandidates` generiert beide Varianten
+ * (mit und ohne Schritt), falls Schritt ≠ 0. Der einfache Katalog hier verwendet
+ * immer den Port-Rahmen mit Schritt — falls dieser nicht frei ist, übernimmt
+ * A* die Suche mit beiden Varianten aus `catalogCandidates`.
  */
 export function catalogWaypoints(input: PortInput): Point[] {
   const f = portFrame(input);
@@ -1568,7 +1585,13 @@ const segmentsKey = (segments: Segment[] | undefined): string => {
   let h = segments.length | 0;
   for (let i = 0; i < segments.length; i++) {
     const [a, b] = at(segments, i);
-    h = (Math.imul(h, 31) + (quantize(a.x) * 2 + quantize(a.y) + quantize(b.x) + quantize(b.y))) | 0;
+    // AUDIT ROUTE-014: Richtungssensitiver Hash — a.x*2+a.y+b.x+b.y war
+    // symmetrisch (a↔b ergab denselben Beitrag). Die Koeffizienten
+    // unterscheiden jetzt Start- und Endpunkt: 3·a.x + 5·a.y + 7·b.x + 11·b.y.
+    h =
+      (Math.imul(h, 31) +
+        (quantize(a.x) * 3 + quantize(a.y) * 5 + quantize(b.x) * 7 + quantize(b.y) * 11)) |
+      0;
   }
   return `${segments.length}:${h}`;
 };
@@ -1593,7 +1616,12 @@ const requestKey = (input: PathRequest, obstacles: Rect[]): string =>
   // ersten A/B-Probe: scheinbare Byte-Gleichheit durch Cache-Treffer,
   // während der kalte Golden Master acdc brach). Bei stabilem Gate ist der
   // Bestandteil konstant; beim Modus-Flip trennt er die Läufe sauber.
-  `${integerMilliPxEnabled() ? 'i' : 'f'}`;
+  `${integerMilliPxEnabled() ? 'i' : 'f'},` +
+  // AUDIT ROUTE-015: edtProximityFactor gehört in den Schlüssel — sonst
+  // liefert der Cache eine Route, die mit einem anderen Faktor berechnet
+  // wurde. Der Faktor ist token-gated (0 = neutral); der Test-Override
+  // (`setEdtProximityFactorForTest`) muss den Cache trennen.
+  `${edtProximityFactor()}`;
 
 const cacheGet = (key: string): PathResult | undefined => {
   const hit = cache.get(key);
@@ -2018,6 +2046,11 @@ export function nodesToObstacles(nodes: RoutableNode[], excludeIds: Set<string>)
   for (let i = 0; i < nodes.length; i++) {
     const node = nodes[i];
     if (!node || excludeIds.has(node.id)) continue;
+    // AUDIT ROUTE-016: Ohne position/positionAbsolute wäre nodeOriginX
+    // ein TypeError ("reading 'x' of undefined"). Solche Nodes sind
+    // ungemessen und noch nicht im DOM — sie werden als Hindernis
+    // übersprungen (dasselbe Verhalten wie ein fehlender Node).
+    if (!nodePositionAvailable(node)) continue;
     // R-10: Gemessene Bounds sind die Pflichtquelle (React Flow misst
     // width/height nach dem Mount); der Fallback bleibt nur für
     // ungemessene Knoten (Tests, erster Frame) und ist dokumentiert.

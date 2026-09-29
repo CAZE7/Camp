@@ -363,7 +363,7 @@ describe('lib/verify/ampacity — Datenlücken und Randfälle', () => {
     );
     expect(overload).toBeDefined();
     expect(overload?.allowedLimit).toBeCloseTo(172 * 0.7, 6);
-    expect(overload?.autoFixRemedy).toContain('Betriebsstrom senken oder Leitung aufteilen');
+    expect(overload?.autoFixRemedy).not.toContain('mm² erhöhen');
   });
 
   it('unterscheidet fehlende Kabelzuordnung von einer Zuordnung ins Leere', () => {
@@ -451,6 +451,183 @@ describe('lib/verify/ampacity — Datenlücken und Randfälle', () => {
     expect(check.events[0]?.message).toContain('KLEINER als das nachgelagerte');
     expect(check.events[0]?.calculatedValue).toBe(10);
     expect(check.events[0]?.allowedLimit).toBe(20);
+  });
+
+  /** 100 A / 100 A auf derselben Stufe — die Kaskade aus dem Prüfbericht. */
+  const equalCascade = (upstreamCrossSection: number): FixturePlan => ({
+    nodes: [
+      fixtureNode('bat1', 'battery', {
+        label: 'Batterie',
+        role: 'house',
+        capacity: 200,
+        chemistry: 'LiFePO4',
+      }),
+      fixtureNode('b1', 'busbar', { label: 'Schiene' }),
+      fixtureNode('load1', 'consumer', { label: 'Kühlbox', watts: 100, hours: 4 }),
+    ],
+    edges: [
+      fixtureEdge('e1', 'bat1', 'plus', 'b1', 'plus', {
+        crossSection: upstreamCrossSection,
+        length: 0.3,
+        fuseSize: 100,
+        fuseType: 'ato',
+      }),
+      fixtureEdge('e2', 'b1', 'plus', 'load1', 'plus', {
+        crossSection: 4,
+        length: 2,
+        fuseSize: 100,
+        fuseType: 'ato',
+      }),
+    ],
+  });
+
+  it('kappt die Selektivitäts-Vorgabe an der Belastbarkeit der vorgelagerten Leitung', () => {
+    // Vorgelagert: 100 A auf 70 mm² (I_z = 120,4 A ⇒ Sicherungsstufe max. 100 A).
+    // Nötig für 1,6:1 wären 160 A — das ist derselbe AMP-001-Befund (I_n > I_z),
+    // den der Nutzer für diese Leitung schon im Report hat. Die alte Fassung
+    // schlug genau das vor: „auf ≥ 160,0 A vergrößern".
+    const check = checkSelectivity(contextOf(equalCascade(70)));
+    expect(check.status).toBe('FAIL');
+    const remedy = check.events[0]?.autoFixRemedy ?? '';
+    // 160 A dürfen GENANNT werden (so viel wäre nötig) — aber nicht als Vorgabe:
+    // „auf ≥ 160 A vergrößern/erhöhen" war der selbstzerstörende Altvorschlag.
+    expect(remedy).not.toMatch(/auf (I_n )?≥ 160,0 A (vergrößern|erhöhen)/);
+    expect(remedy).toContain('≥ 160,0 A wären für das Verhältnis 1,6:1 nötig');
+    expect(remedy).toContain('höchstens 100 A');
+    expect(remedy).toContain('AMP-001');
+    expect(remedy).toContain('nachgelagerte Organ auf ≤ 62,5 A');
+    // Deutsches Dezimaltrennzeichen auch im Verhältnis (vorher „1.00:1 … 1.6:1").
+    expect(check.events[0]?.message).toContain('1,00:1 liegt unter 1,6:1');
+  });
+
+  it('schlägt die Vergrößerung vor, wenn die vorgelagerte Leitung sie trägt', () => {
+    // 100 A nachgelagert, vorgelagert auf 95 mm²: 95 mm² steht nicht in
+    // VDE_AMPACITY ⇒ I_z nicht bestimmbar ⇒ die Grenze ist UNBEKANNT und wird
+    // nicht erfunden; die Vorgabe bleibt die reine Verhältnisrechnung.
+    const unknown = checkSelectivity(contextOf(equalCascade(95)));
+    expect(unknown.events[0]?.autoFixRemedy).toContain('I_n ≥ 160,0 A');
+    expect(unknown.events[0]?.autoFixRemedy).toContain('nicht zugeordnet');
+  });
+
+  it('prüft die Belastbarkeitsgrenze nicht mit, wenn das Organ ein Knoten ist', () => {
+    // Ein Sicherungskasten als vorgelagerter KNOTEN hat keine Leitung, die ihm
+    // zugeordnet wäre — keine erfundene Grenze, aber die Ansage, dass I_n ≤ I_z
+    // der Zuleitung gesondert nachzuweisen ist.
+    const cascade: FixturePlan = {
+      nodes: [
+        fixtureNode('bat1', 'battery', {
+          label: 'Batterie',
+          role: 'house',
+          capacity: 200,
+          chemistry: 'LiFePO4',
+        }),
+        fixtureNode('fuse1', 'fuse', { label: 'Sicherungskasten', rating: 20, fuseType: 'ato' }),
+        fixtureNode('load1', 'consumer', { label: 'Kühlbox', watts: 100, hours: 4 }),
+      ],
+      edges: [
+        fixtureEdge('e1', 'bat1', 'plus', 'fuse1', 'plus', { crossSection: 16, length: 0.3 }),
+        fixtureEdge('e2', 'fuse1', 'plus', 'load1', 'plus', {
+          crossSection: 4,
+          length: 2,
+          fuseSize: 20,
+          fuseType: 'ato',
+        }),
+      ],
+    };
+    const check = checkSelectivity(contextOf(cascade));
+    expect(check.status).toBe('FAIL');
+    const remedy = check.events[0]?.autoFixRemedy ?? '';
+    expect(remedy).toContain('I_n ≥ 32,0 A');
+    expect(remedy).toContain('nicht zugeordnet');
+    expect(remedy).toContain('gesondert nachzuweisen');
+  });
+});
+
+/**
+ * Abhilfe-Texte bei thermischer Sättigung (AUDIT ELE-002).
+ *
+ * Der Befund selbst ist korrekt — 1500–2000 W am 12-V-Strang sprengen die
+ * Normreihe, die bei 70 mm² endet. Was vorher nicht stimmte, war die Vorgabe:
+ * Sie nannte keinen Zielwert, keinen der drei Auswege (Parallelleitung /
+ * höhere Systemspannung / Lastverlagerung) und empfahl bei I_n > I_z eine
+ * Sicherung UNTER dem Betriebsstrom — also das Brechen derselben Bedingung (1)
+ * des §433.1, die die Karte gerade prüft.
+ */
+describe('lib/verify/ampacity — Abhilfe bei thermischer Sättigung', () => {
+  /** 70 mm², 2000 W am 12-V-Strang: I_b = 166,7 A > I_z = 120,4 A, Sicherung 160 A. */
+  const saturatedPlan = (): FixturePlan =>
+    withEdge(withLoadWatts(basePlan(), 2000), 'e-fuse-load', {
+      crossSection: 70,
+      length: 3,
+      fuseSize: 160,
+      fuseType: 'anl',
+    });
+
+  /**
+   * Abhilfe-Text EINES Befunds. Ohne die Kanteneinschränkung griffe `find`
+   * den ersten Treffer im Plan — bei `I_b ≤ I_n ≤ I_z` ist das die formale
+   * Standardformel der Regel und damit oft eine andere Leitung.
+   */
+  const remedyOf = (plan: FixturePlan, equationPart: string, edgeId = 'e-fuse-load'): string => {
+    const event = checkIbInIz(contextOf(plan)).events.find(
+      (entry) => entry.entity.id === edgeId && entry.equation.includes(equationPart)
+    );
+    if (!event) throw new Error(`kein Befund für „${equationPart}“ auf ${edgeId}`);
+    return event.autoFixRemedy;
+  };
+
+  it('nennt bei I_n > I_z keine Sicherung unter dem Betriebsstrom', () => {
+    const remedy = remedyOf(saturatedPlan(), 'I_n > I_z');
+    // Der Altbefund: „Sicherung auf ≤ 100 A verringern“ bei I_b = 166,7 A —
+    // I_b > I_n, im Betrieb eine auslösende Anlage.
+    expect(remedy).not.toContain('Sicherung auf ≤ 100 A verringern');
+    expect(remedy).toContain('I_b = 166,7 A');
+    expect(remedy).toContain('Bedingung (1)');
+  });
+
+  it('schlägt eine kleinere Sicherung nur vor, wenn sie den Betriebsstrom trägt', () => {
+    // 100 W Kühlbox (I_b = 8,33 A) auf 1,5 mm² mit 16-A-Sicherung
+    // (I_z = 11,55 A): Hier IST eine kleinere Sicherung die Lösung.
+    const plan = withEdge(basePlan(), 'e-fuse-load', { crossSection: 1.5, fuseSize: 16 });
+    const remedy = remedyOf(plan, 'I_n > I_z');
+    expect(remedy).toContain('Sicherung auf 10 A verringern');
+    expect(remedy).toContain('I_b = 8,3 A');
+    expect(remedy).toContain('I_z = 11,5 A');
+  });
+
+  it('nennt im Sättigungsfall einen Zielwert und die drei Auswege', () => {
+    const overload = remedyOf(saturatedPlan(), 'I_b ≤ I_n');
+    expect(overload).toContain('≤ 120,4 A');
+    for (const exit of ['Systemspannung erhöhen', 'höher gespannten Strang verlagern', 'parallele Abgänge']) {
+      expect(overload, exit).toContain(exit);
+    }
+    // Parallelleiter sind im Modell keine Leitung — der Text verspricht keine
+    // ausgerechnete Aufteilung, er benennt den ausstehenden Nachweis.
+    expect(overload).toContain('rechnet parallele Leiter nicht als eine Leitung');
+
+    const tooBigFuse = remedyOf(saturatedPlan(), 'I_n > I_z');
+    expect(tooBigFuse).toContain('Systemspannung erhöhen');
+  });
+
+  it('erklärt die Planer-Pauschale, wenn f₁ und f₂ auf Referenz liegen', () => {
+    // 172 A × 0,700 bei f₁ = f₂ = 1,000 las sich wie ein Rechenfehler.
+    const message = checkIbInIz(contextOf(saturatedPlan())).events.find((entry) =>
+      entry.message.includes('überschreitet die korrigierte Belastbarkeit')
+    )?.message;
+    expect(message).toContain('f₁ = 1.000');
+    expect(message).toContain('pauschale Planer-Abminderung');
+
+    // Ist die Physik strenger als die Pauschale (55 °C ⇒ f₁ = 0,612 < 0,7),
+    // entscheidet f₁ — dann darf die Pauschale nicht als Grund genannt werden.
+    const hot: PassContext = {
+      ...contextOf(saturatedPlan()),
+      options: verificationOptions({ ampacity: { ambientC: 55, insulation: 'PVC', bundledCircuits: 1 } }),
+    };
+    const hotMessage = checkIbInIz(hot).events.find((entry) =>
+      entry.message.includes('überschreitet die korrigierte Belastbarkeit')
+    )?.message;
+    expect(hotMessage).toContain('× 0.612');
+    expect(hotMessage).not.toContain('pauschale Planer-Abminderung');
   });
 });
 
