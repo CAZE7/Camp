@@ -91,7 +91,7 @@ describe('WaterNode Component', () => {
     const { container } = render(<WaterNode id="1" data={{}} selected={true} />);
     const mainDiv = container.firstChild as HTMLElement;
     expect(mainDiv.getAttribute('data-selected')).toBe('true');
-    expect(mainDiv.className).toContain('node-card--selected');
+    expect(mainDiv.className).toContain('node-card--selected de-node-card--selected');
     expect(mainDiv.getAttribute('data-selected')).toBe('true');
   });
 

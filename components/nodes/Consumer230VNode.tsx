@@ -19,7 +19,7 @@ const Consumer230VNode = function ({
       role="group"
       data-selected={selected || undefined}
       aria-label={`${data.label || '230-V-Gerät'}. Komponente im Plan.`}
-      className={`node-card custom-drag-handle w-48 p-3 ${selected ? 'node-card--selected' : ''}`}
+      className={`node-card de-node-card custom-drag-handle w-48 p-3 ${selected ? 'node-card--selected' : ''} ${selected ? 'de-node-card--selected' : ''}`}
     >
       <NodeSymbol kind="consumer-ac" />
       {editingField === 'label' ? (

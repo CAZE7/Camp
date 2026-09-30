@@ -1,0 +1,91 @@
+{
+  "de": {
+    "grid": {
+      "unit": { "value": "4", "type": "spacing", "description": "4px Subgrid" },
+      "layout": { "value": "8", "type": "spacing", "description": "8px Layoutgrid" },
+      "space": {
+        "1": { "value": "4", "type": "spacing" },
+        "2": { "value": "8", "type": "spacing" },
+        "4": { "value": "16", "type": "spacing" },
+        "6": { "value": "24", "type": "spacing" },
+        "fluid-4": { "value": "clamp(12px, 0.75rem + 0.5vw, 20px)", "type": "spacing", "description": "Fluid 375→1440px+" }
+      },
+      "node": {
+        "w-sm": { "value": "192", "type": "sizing", "description": "48u — Fuse, Shunt" },
+        "w-md": { "value": "224", "type": "sizing", "description": "56u — Battery, Standard" },
+        "w-lg": { "value": "256", "type": "sizing", "description": "64u — Inverter" },
+        "header-h": { "value": "40", "type": "sizing" },
+        "port-visual": { "value": "12", "type": "sizing" },
+        "port-hit": { "value": "44", "type": "sizing", "description": "WCAG 2.5.5" }
+      }
+    },
+    "typography": {
+      "font": {
+        "sans": { "value": "Inter Variable", "type": "fontFamilies" },
+        "mono": { "value": "IBM Plex Mono", "type": "fontFamilies" }
+      },
+      "size": {
+        "11": { "value": "11", "type": "fontSizes", "description": "Port-Labels, DIN" },
+        "12": { "value": "12", "type": "fontSizes" },
+        "13": { "value": "13", "type": "fontSizes" },
+        "14": { "value": "14", "type": "fontSizes" },
+        "fluid-13": { "value": "clamp(0.8125rem, 0.78rem + 0.18vw, 0.875rem)", "type": "fontSizes" }
+      }
+    },
+    "surface": {
+      "canvas-base": { "value": "#0a0d10", "type": "color", "description": "L*4% tiefes Basisschwarz", "wcag": "AAA 15.2:1 with text-high" },
+      "0": { "value": "#0e1114", "type": "color" },
+      "1": { "value": "#161a1f", "type": "color" },
+      "2": { "value": "#1e242c", "type": "color" },
+      "overlay": { "value": "rgba(22, 26, 31, 0.88)", "type": "color", "description": "+ blur 20px" }
+    },
+    "rule": {
+      "DEFAULT": { "value": "#1f262e", "type": "color" },
+      "strong": { "value": "#2c3542", "type": "color" },
+      "highlight": { "value": "#3a4758", "type": "color" }
+    },
+    "text": {
+      "high": { "value": "#e8ebee", "type": "color", "wcag": "15.2:1 on surface-0 AAA" },
+      "med": { "value": "#a6adb3", "type": "color", "wcag": "7.1:1 AAA" },
+      "low": { "value": "#7a838b", "type": "color", "wcag": "4.6:1 AA" }
+    },
+    "accent": {
+      "DEFAULT": { "value": "#e2a86a", "type": "color", "description": "Präzisions-Bernstein" },
+      "hover": { "value": "#e8b87e", "type": "color" }
+    },
+    "wire": {
+      "dc-12v-plus": { "value": "#ff6b6b", "type": "color", "description": "Vermillion 5.8:1", "shape": "● Kreis", "colorblind": "Okabe-Ito" },
+      "dc-12v-minus": { "value": "#8e9aaf", "type": "color", "shape": "■ Rechteck" },
+      "dc-24v": { "value": "#ff8e53", "type": "color" },
+      "dc-48v": { "value": "#ffb26b", "type": "color" },
+      "ac-l": { "value": "#6aa6ff", "type": "color", "description": "Phase L DIN VDE 0100", "shape": "◆ Raute" },
+      "ac-n": { "value": "#a9c6ff", "type": "color", "shape": "◆ Raute hell" },
+      "ac-pe": { "value": "#6fe7a0", "type": "color", "description": "PE Grün 9.1:1", "shape": "▲ Dreieck" },
+      "ac-pe-striped": { "value": "repeating-linear-gradient(45deg, #6fe7a0 0 4px, #f9c846 4px 8px)", "type": "color", "description": "DIN Grün/Gelb gestreift" },
+      "solar": { "value": "#ffc857", "type": "color", "description": "Solar Amber 8.5:1" },
+      "can-h": { "value": "#b18cff", "type": "color", "shape": "● Violet" },
+      "can-l": { "value": "#8b6fcc", "type": "color" },
+      "sensor": { "value": "#5dd9c1", "type": "color", "description": "Teal 8.0:1" }
+    },
+    "pipe": {
+      "fresh": { "value": "#5ac8fa", "type": "color", "wcag": "7.8:1" },
+      "gray": { "value": "#9aa0a6", "type": "color" },
+      "hot": { "value": "#ff7a7a", "type": "color" }
+    },
+    "status": {
+      "ok": { "value": "#6fcf97", "type": "color", "wcag": "8.2:1" },
+      "warn": { "value": "#e5b45b", "type": "color", "wcag": "7.3:1" },
+      "error": { "value": "#ff7a7a", "type": "color", "wcag": "7.1:1 AAA Alarm" }
+    },
+    "motion": {
+      "ease-out": { "value": "cubic-bezier(0.16, 1, 0.3, 1)", "type": "cubicBezier" },
+      "duration-100": { "value": "100", "type": "transitionDuration" },
+      "duration-150": { "value": "150", "type": "transitionDuration" },
+      "duration-160": { "value": "160", "type": "transitionDuration", "description": "Max per Spec Modul 4" }
+    },
+    "border": {
+      "radius": { "value": "4", "type": "borderRadius", "description": "≤4px per M7" },
+      "width": { "value": "1", "type": "borderWidth", "description": "Kein 0.5px, nur 1px physikalisch" }
+    }
+  }
+}

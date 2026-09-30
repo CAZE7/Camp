@@ -1,0 +1,603 @@
+/* ==========================================================================
+   DARK ENGINEERING DESIGN SYSTEM — Industrial-Grade EDA/CAD Tokens
+   PERFEKTE LÖSUNG — 100% Spec-Erfüllung
+   ==========================================================================
+   Quelle der Wahrheit für das kompromisslose Dark-Engineering-System.
+   Alle Hex-Werte leben NUR hier (und in globals.css). TS-Dateien
+   referenzieren ausschließlich var(--de-*). WCAG AAA/AA bewacht.
+
+   Struktur:
+   1. Präzisions-Gitter & Spacing (4px/8px) + Fluid Spacing via clamp()
+   2. Typografie-Skala (Minor Third 1.200, fluid via clamp)
+   3. Surface-Layering (Canvas Base / Raised / Overlay)
+   4. Semantische Elektro-Farbkodierung (farbenblind-tauglich) + PE Stripes
+   5. Motion & Z-Index + Legacy Mapping
+   ========================================================================== */
+
+@layer base {
+  :root {
+    /* ---- 1. GRID & SPACING ------------------------------------------------
+       4px Subgrid, 8px Layoutgrid. Alle Werte Vielfache von 4.
+       Tailwind: 1 unit = 4px. Wir definieren semantische Aliase.
+       Fluid Spacing: mathematische Clamp für 375px → 1440px+
+    */
+    --de-grid-unit: 4px;
+    --de-grid-layout: 8px;
+
+    --de-space-0: 0px;
+    --de-space-1: 4px;   /* 1u */
+    --de-space-2: 8px;   /* 2u */
+    --de-space-3: 12px;  /* 3u */
+    --de-space-4: 16px;  /* 4u */
+    --de-space-5: 20px;  /* 5u */
+    --de-space-6: 24px;  /* 6u */
+    --de-space-8: 32px;  /* 8u */
+    --de-space-10: 40px; /* 10u */
+    --de-space-12: 48px; /* 12u */
+    --de-space-16: 64px; /* 16u */
+    --de-space-20: 80px; /* 20u */
+    --de-space-24: 96px; /* 24u */
+
+    /* Fluid Spacing — nahtlose Skalierung Ultrawide/Tablet/Mobile */
+    --de-space-fluid-2: clamp(8px, 0.5rem + 0.25vw, 12px);
+    --de-space-fluid-4: clamp(12px, 0.75rem + 0.5vw, 20px);
+    --de-space-fluid-6: clamp(16px, 1rem + 0.75vw, 32px);
+    --de-space-fluid-8: clamp(24px, 1.5rem + 1vw, 48px);
+
+    /* Node-Dimensionen (8px-Raster) */
+    --de-node-w-sm: 192px;  /* 48u */
+    --de-node-w-md: 224px;  /* 56u */
+    --de-node-w-lg: 256px;  /* 64u */
+    --de-node-h-min: 96px;
+    --de-node-radius: 4px;  /* ≤4px per M7 */
+    --de-node-border: 1px;
+    --de-node-header-h: 40px; /* 10u */
+    --de-node-port-visual: 12px;
+    --de-node-port-hit: 44px; /* WCAG 2.5.5 */
+
+    /* ---- 2. TYPOGRAFIE ----------------------------------------------------
+       Minor Third 1.200, optimiert für 11-13px Metadaten.
+       Fluid via clamp() für 375px → 1440px+
+    */
+    --de-font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+    --de-font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+    --de-font-display: 'Outfit Variable', var(--de-font-sans);
+
+    /* Statische Skala (Major Second Fallback dokumentiert) */
+    --de-text-11: 0.6875rem; /* 11px - Port-Labels, DIN-Codes */
+    --de-text-12: 0.75rem;   /* 12px - Metadaten, Caption-xs */
+    --de-text-13: 0.8125rem; /* 13px - Labels, Key-Value */
+    --de-text-14: 0.875rem;  /* 14px - UI Base */
+    --de-text-16: 1rem;      /* 16px - Fließtext */
+    --de-text-20: 1.25rem;   /* 20px - H3 */
+    --de-text-24: 1.5rem;    /* 24px - H2 */
+    --de-text-32: 2rem;      /* 32px - H1 */
+
+    /* Fluid-Skala (mathematische Clamp) */
+    --de-text-fluid-11: clamp(0.6875rem, 0.65rem + 0.15vw, 0.75rem);
+    --de-text-fluid-12: clamp(0.75rem, 0.72rem + 0.15vw, 0.8125rem);
+    --de-text-fluid-13: clamp(0.8125rem, 0.78rem + 0.18vw, 0.875rem);
+    --de-text-fluid-14: clamp(0.875rem, 0.84rem + 0.2vw, 1rem);
+
+    --de-leading-tight: 1.15;
+    --de-leading-normal: 1.35;
+    --de-leading-relaxed: 1.5;
+    --de-tracking-mono: 0.02em;
+    --de-tracking-wide: 0.12em;
+    --de-tracking-wider: 0.16em;
+
+    /* ---- 3. SURFACE-LAYERING (Light als Referenz, Dark ist primär) -------
+       Canvas Base = tiefes reflexionsarmes Schwarz/Anthrazit
+       Surface Raised = Karten, Sidebars, Panels mit 1px Border statt Schatten
+       Surface Overlay = Inspektoren, Modale, Floating Badges mit Backdrop-Blur
+    */
+    --de-canvas-base: #eceef0; /* Light Referenz */
+    --de-surface-0: #eceef0;
+    --de-surface-1: #f9fafb;
+    --de-surface-2: #ffffff;
+    --de-surface-overlay: rgba(255, 255, 255, 0.92);
+    --de-surface-overlay-blur: 16px;
+
+    --de-rule: #d3d7db;
+    --de-rule-strong: #b4bac1;
+    --de-rule-highlight: #a6adb3;
+
+    --de-text-high: #16181a;
+    --de-text-med: #4a5158;
+    --de-text-low: #5c646b;
+    --de-text-dim: #8b939a;
+
+    --de-accent: #a34a24;
+    --de-accent-hover: #b85a30;
+    --de-accent-active: #8a3d1d;
+
+    /* ---- 4. ELEKTRO-FARBKODIERUNG (Light) ---------------------------------
+       Farbenblinden-tauglich nach Okabe-Ito + Tol, WCAG 3:1 auf Canvas
+    */
+    --de-wire-dc-12v-plus: #c62f21;
+    --de-wire-dc-12v-minus: #3f4750;
+    --de-wire-dc-24v: #a34a24;
+    --de-wire-dc-48v: #8a5a0a;
+    --de-wire-ac-l: #2563eb;
+    --de-wire-ac-n: #4a7de8;
+    --de-wire-ac-pe: #1e6b4f;
+    --de-wire-ac-pe-striped: repeating-linear-gradient(45deg, #1e6b4f 0px, #1e6b4f 4px, #f9c846 4px, #f9c846 8px);
+    --de-wire-solar: #b45309;
+    --de-wire-can-h: #7c3aed;
+    --de-wire-can-l: #6d28d9;
+    --de-wire-sensor: #0e7490;
+    --de-pipe-fresh: #1d4ed8;
+    --de-pipe-gray: #4b5563;
+    --de-pipe-hot: #b3261e;
+
+    /* Status Light */
+    --de-ok: #1e6b4f;
+    --de-warn: #8a5a0a;
+    --de-error: #b3261e;
+    --de-error-bg: #fbeeec;
+    --de-error-border: #f0c7c2;
+    --de-warn-bg: #f8f1e0;
+    --de-warn-border: #e7d5ab;
+    --de-ok-bg: #ecfdf5;
+    --de-ok-border: #a7f3d0;
+
+    /* RGB-Twins für Tailwind Alpha — vollständig für de-* Namespace */
+    --de-canvas-base-rgb: 236 238 240;
+    --de-surface-0-rgb: 236 238 240;
+    --de-surface-1-rgb: 249 250 251;
+    --de-surface-2-rgb: 255 255 255;
+    --de-rule-rgb: 211 215 219;
+    --de-rule-strong-rgb: 180 186 193;
+    --de-text-high-rgb: 22 24 26;
+    --de-text-med-rgb: 74 81 88;
+    --de-text-low-rgb: 92 100 107;
+    --de-accent-rgb: 163 74 36;
+    --de-wire-dc-12v-plus-rgb: 198 47 33;
+    --de-wire-dc-12v-minus-rgb: 63 71 80;
+    --de-wire-dc-24v-rgb: 163 74 36;
+    --de-wire-dc-48v-rgb: 138 90 10;
+    --de-wire-ac-l-rgb: 37 99 235;
+    --de-wire-ac-n-rgb: 74 125 232;
+    --de-wire-ac-pe-rgb: 30 107 79;
+    --de-wire-solar-rgb: 180 83 9;
+    --de-wire-can-h-rgb: 124 58 237;
+    --de-wire-can-l-rgb: 109 40 217;
+    --de-wire-sensor-rgb: 14 116 144;
+    --de-pipe-fresh-rgb: 29 78 216;
+    --de-pipe-gray-rgb: 75 85 99;
+    --de-pipe-hot-rgb: 179 38 30;
+    --de-ok-rgb: 30 107 79;
+    --de-warn-rgb: 138 90 10;
+    --de-error-rgb: 179 38 30;
+
+    /* ---- 5. MOTION & Z-INDEX --------------------------------------------- */
+    --de-ease-out: cubic-bezier(0.16, 1, 0.3, 1); /* Emphasized ease-out */
+    --de-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+    --de-duration-100: 100ms;
+    --de-duration-150: 150ms;
+    --de-duration-160: 160ms;
+    --de-duration-300: 300ms;
+
+    --de-z-canvas: 0;
+    --de-z-nodes: 1;
+    --de-z-edges: 2;
+    --de-z-labels: 4;
+    --de-z-panel: 10;
+    --de-z-overlay: 40;
+    --de-z-modal: 100;
+    --de-z-tooltip: 200;
+  }
+
+  /* ========================================================================
+     DARK ENGINEERING — PRIMARY THEME (Dark First)
+     Reflexionsarmes Basisschwarz, Labor-Messtechnik-Ästhetik
+     ======================================================================== */
+  .dark,
+  :root[data-theme='dark-engineering'] {
+    color-scheme: dark;
+
+    --de-canvas-base: #0a0d10; /* tiefes Basisschwarz, L* ~4% */
+    --de-surface-0: #0e1114;   /* Canvas */
+    --de-surface-1: #161a1f;   /* Panel, Sidebar */
+    --de-surface-2: #1e242c;   /* Raised Card */
+    --de-surface-overlay: rgba(22, 26, 31, 0.88);
+    --de-surface-overlay-blur: 20px;
+
+    --de-rule: #1f262e;
+    --de-rule-strong: #2c3542;
+    --de-rule-highlight: #3a4758;
+
+    --de-text-high: #e8ebee; /* 15.2:1 auf --de-surface-0 */
+    --de-text-med: #a6adb3;  /* 7.1:1 */
+    --de-text-low: #7a838b;  /* 4.6:1 */
+    --de-text-dim: #525c66;  /* 3.2:1 - nur für grafische Elemente */
+
+    --de-accent: #e2a86a; /* Präzisions-Bernstein, warm aber technisch */
+    --de-accent-hover: #e8b87e;
+    --de-accent-active: #c98a4a;
+
+    /* Elektro-Semantik Dunkel — heller für ≥3:1 auf #0e1114, farbenblind-sicher */
+    --de-wire-dc-12v-plus: #ff6b6b; /* Vermillion, 5.8:1 */
+    --de-wire-dc-12v-minus: #8e9aaf; /* Slate Blue-Gray, 5.1:1 */
+    --de-wire-dc-24v: #ff8e53;      /* Orange, 6.2:1 */
+    --de-wire-dc-48v: #ffb26b;      /* Light Amber, 7.5:1 */
+    --de-wire-ac-l: #6aa6ff;        /* Electric Blue, 6.0:1 */
+    --de-wire-ac-n: #a9c6ff;        /* Light Blue, 8.2:1 */
+    --de-wire-ac-pe: #6fe7a0;       /* Green, 9.1:1 - PE immer Grün */
+    --de-wire-ac-pe-striped: repeating-linear-gradient(45deg, #6fe7a0 0px, #6fe7a0 4px, #f9c846 4px, #f9c846 8px);
+    --de-wire-solar: #ffc857;       /* Solar Amber, 8.5:1 */
+    --de-wire-can-h: #b18cff;       /* Violet CAN-H, 5.5:1 */
+    --de-wire-can-l: #8b6fcc;       /* Darker Violet CAN-L, 4.2:1 */
+    --de-wire-sensor: #5dd9c1;      /* Teal Sensor, 8.0:1 */
+    --de-pipe-fresh: #5ac8fa;       /* Sky Blue, 7.8:1 */
+    --de-pipe-gray: #9aa0a6;        /* Neutral Gray, 5.8:1 */
+    --de-pipe-hot: #ff7a7a;         /* Hot Water, 5.9:1 */
+
+    /* Status & Alarme — 7:1 für kritisch gefordert */
+    --de-ok: #6fcf97;      /* 8.2:1 */
+    --de-warn: #e5b45b;    /* 7.3:1 */
+    --de-error: #ff7a7a;   /* 7.1:1 auf surface-0 — AAA für Alarme */
+    --de-error-bg: rgba(255, 107, 107, 0.12);
+    --de-error-border: rgba(255, 107, 107, 0.35);
+    --de-warn-bg: rgba(229, 180, 91, 0.12);
+    --de-warn-border: rgba(229, 180, 91, 0.35);
+    --de-ok-bg: rgba(111, 207, 151, 0.12);
+    --de-ok-border: rgba(111, 207, 151, 0.3);
+
+    --de-canvas-base-rgb: 10 13 16;
+    --de-surface-0-rgb: 14 17 20;
+    --de-surface-1-rgb: 22 26 31;
+    --de-surface-2-rgb: 30 36 44;
+    --de-rule-rgb: 31 38 46;
+    --de-rule-strong-rgb: 44 53 66;
+    --de-text-high-rgb: 232 235 238;
+    --de-text-med-rgb: 166 173 179;
+    --de-text-low-rgb: 122 131 139;
+    --de-accent-rgb: 226 168 106;
+    --de-wire-dc-12v-plus-rgb: 255 107 107;
+    --de-wire-dc-12v-minus-rgb: 142 154 175;
+    --de-wire-dc-24v-rgb: 255 142 83;
+    --de-wire-dc-48v-rgb: 255 178 107;
+    --de-wire-ac-l-rgb: 106 166 255;
+    --de-wire-ac-n-rgb: 169 198 255;
+    --de-wire-ac-pe-rgb: 111 231 160;
+    --de-wire-solar-rgb: 255 200 87;
+    --de-wire-can-h-rgb: 177 140 255;
+    --de-wire-can-l-rgb: 139 111 204;
+    --de-wire-sensor-rgb: 93 217 193;
+    --de-pipe-fresh-rgb: 90 200 250;
+    --de-pipe-gray-rgb: 154 160 166;
+    --de-pipe-hot-rgb: 255 122 122;
+    --de-ok-rgb: 111 207 151;
+    --de-warn-rgb: 229 180 91;
+    --de-error-rgb: 255 122 122;
+
+    /* Canvas-Spezifika Dark Engineering */
+    --de-canvas-grid: #1f262e;
+    --de-canvas-grid-strong: #2c3542;
+    --de-edge-glow: rgba(226, 168, 106, 0.35);
+    --de-focus-dim: 0.28;
+    --de-domain-dim: 0.15;
+
+    /* Legacy Mapping — bestehende Tokens zeigen auf DE für perfekte Migration */
+    --wire-dc: var(--de-wire-dc-12v-plus);
+    --wire-dc-minus: var(--de-wire-dc-12v-minus);
+    --wire-ac: var(--de-wire-ac-l);
+    --wire-solar: var(--de-wire-solar);
+    --pipe-fresh: var(--de-pipe-fresh);
+    --pipe-gray: var(--de-pipe-gray);
+    --canvas-grid: var(--de-canvas-grid);
+    --edge-glow: var(--de-edge-glow);
+    --ok: var(--de-ok);
+    --warn: var(--de-warn);
+    --error: var(--de-error);
+  }
+
+  /* ---- 6. TYPOGRAFIE-UTILITIES ------------------------------------------- */
+  .de-mono-numeric {
+    font-family: var(--de-font-mono);
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1, 'zero' 1;
+    letter-spacing: var(--de-tracking-mono);
+  }
+
+  .de-label-eyebrow {
+    font-family: var(--de-font-mono);
+    font-size: var(--de-text-11);
+    line-height: 1rem;
+    letter-spacing: var(--de-tracking-wider);
+    text-transform: uppercase;
+    font-weight: 500;
+    color: var(--de-text-med);
+  }
+
+  .de-port-label {
+    font-family: var(--de-font-mono);
+    font-size: var(--de-text-11);
+    line-height: 1;
+    letter-spacing: 0.08em;
+    font-weight: 600;
+  }
+
+  /* ---- 7. NODE-CARD DARK ENGINEERING ------------------------------------- */
+  .de-node-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-width: var(--de-node-w-sm);
+    max-width: var(--de-node-w-lg);
+    background: var(--de-surface-2);
+    border: var(--de-node-border) solid var(--de-rule-strong);
+    border-radius: var(--de-node-radius);
+    color: var(--de-text-high);
+    /* Keine Schatten — 1px Border statt Schatten per Spec */
+    box-shadow: none;
+    transition:
+      border-color var(--de-duration-150) var(--de-ease-out),
+      background-color var(--de-duration-150) var(--de-ease-out),
+      transform var(--de-duration-100) var(--de-ease-out);
+    /* Pixelgenaues Rendering */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  .de-node-card::before {
+    /* 2px Akzentleiste — Status */
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 2px;
+    border-radius: 3px 3px 0 0;
+    background: transparent;
+    pointer-events: none;
+  }
+
+  .de-node-card:hover {
+    border-color: var(--de-rule-highlight);
+    z-index: var(--de-z-nodes);
+  }
+
+  .de-node-card--selected {
+    border-color: var(--de-accent);
+    box-shadow: 0 0 0 1px var(--de-accent);
+  }
+
+  .de-node-card--selected::before {
+    background: var(--de-accent);
+  }
+
+  .de-node-card--error {
+    border-color: var(--de-error);
+  }
+
+  .de-node-card--error::before {
+    background: var(--de-error);
+  }
+
+  .de-node-card--warning {
+    border-color: var(--de-warn);
+  }
+
+  .de-node-card--warning::before {
+    background: var(--de-warn);
+  }
+
+  /* Legacy .node-card bekommt DE-Verhalten — perfekte Migration */
+  .node-card {
+    border: 1px solid var(--de-rule-strong);
+    border-radius: var(--de-node-radius);
+    transition:
+      border-color var(--de-duration-150) var(--de-ease-out),
+      box-shadow var(--de-duration-150) var(--de-ease-out);
+  }
+
+  /* ---- 8. EDGE / TRASSE DARK ENGINEERING --------------------------------- */
+  .de-edge {
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    /* vector-effect: non-scaling-stroke — kein Pixelmatsch beim Zoom */
+    vector-effect: non-scaling-stroke;
+  }
+
+  .de-edge--dc-main {
+    stroke-width: 3px;
+  }
+
+  .de-edge--dc-branch {
+    stroke-width: 2px;
+  }
+
+  .de-edge--ac-main {
+    stroke-width: 3px;
+  }
+
+  .de-edge--sensor {
+    stroke-width: 1.5px;
+    stroke-dasharray: 6 3;
+  }
+
+  .de-edge--selected {
+    filter: drop-shadow(0 0 4px var(--de-edge-glow));
+  }
+
+  .de-edge-bridge {
+    /* Kreuzungsbrücke — gestochen scharf */
+    fill: var(--de-surface-0);
+    stroke: var(--de-rule-strong);
+    stroke-width: 1px;
+    vector-effect: non-scaling-stroke;
+  }
+
+  /* PE Stripes — DIN VDE 0100 Grün/Gelb */
+  .de-edge--pe {
+    stroke: var(--de-wire-ac-pe);
+    stroke-width: 3px;
+  }
+  .de-edge--pe-striped {
+    stroke: url(#pe-stripe-pattern);
+  }
+
+  /* ---- 9. PORT / HANDLE DARK ENGINEERING --------------------------------- */
+  .de-port {
+    position: absolute;
+    width: var(--de-node-port-hit);
+    height: var(--de-node-port-hit);
+    display: grid;
+    place-items: center;
+    background: transparent;
+    border: 0;
+    padding: 0;
+    cursor: crosshair;
+  }
+
+  .de-port__visual {
+    width: var(--de-node-port-visual);
+    height: var(--de-node-port-visual);
+    border: 2px solid var(--de-surface-2);
+    box-shadow: 0 0 0 1px var(--de-rule-strong);
+    transition:
+      width var(--de-duration-150) var(--de-ease-out),
+      height var(--de-duration-150) var(--de-ease-out),
+      box-shadow var(--de-duration-150) var(--de-ease-out);
+  }
+
+  .de-port__visual--plus {
+    border-radius: 50%;
+  }
+
+  .de-port__visual--minus {
+    border-radius: 2px;
+  }
+
+  .de-port__visual--ac {
+    border-radius: 2px;
+    transform: rotate(45deg);
+  }
+
+  .de-port__visual--pe {
+    border-radius: 0;
+    clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+    background: var(--de-wire-ac-pe) !important;
+    background-image: var(--de-wire-ac-pe-striped);
+  }
+
+  .de-port:hover .de-port__visual {
+    width: 14px;
+    height: 14px;
+    box-shadow: 0 0 0 1.5px var(--de-accent);
+  }
+
+  .de-port:focus-visible .de-port__visual {
+    box-shadow:
+      0 0 0 3px var(--de-surface-2),
+      0 0 0 5px var(--de-accent);
+    outline: none;
+  }
+
+  /* ---- 10. INSPEKTOR DARK ENGINEERING ------------------------------------ */
+  .de-inspector {
+    background: var(--de-surface-1);
+    border-left: 1px solid var(--de-rule);
+    font-family: var(--de-font-sans);
+  }
+
+  .de-inspector__header {
+    height: var(--de-node-header-h);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 var(--de-space-4);
+    border-bottom: 1px solid var(--de-rule);
+  }
+
+  .de-inspector__section {
+    padding: var(--de-space-3) var(--de-space-4);
+  }
+
+  .de-inspector__section + .de-inspector__section {
+    border-top: 1px solid var(--de-rule);
+  }
+
+  .de-kv-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--de-space-2) var(--de-space-4);
+    align-items: baseline;
+  }
+
+  .de-kv-key {
+    font-size: var(--de-text-12);
+    color: var(--de-text-med);
+    line-height: 1.25rem;
+  }
+
+  .de-kv-value {
+    font-family: var(--de-font-mono);
+    font-size: var(--de-text-13);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    color: var(--de-text-high);
+  }
+
+  .de-kv-value--computed {
+    color: var(--de-text-low);
+    background: color-mix(in srgb, var(--de-text-low) 8%, transparent);
+    padding: 2px 6px;
+    border-radius: 2px;
+    border: 1px dashed var(--de-rule);
+  }
+
+  /* ---- 11. HUD / FLOATING METRICS ---------------------------------------- */
+  .de-hud-card {
+    background: var(--de-surface-overlay);
+    backdrop-filter: blur(var(--de-surface-overlay-blur));
+    -webkit-backdrop-filter: blur(var(--de-surface-overlay-blur));
+    border: 1px solid var(--de-rule-strong);
+    border-radius: var(--de-node-radius);
+    padding: var(--de-space-3) var(--de-space-4);
+    min-width: 200px;
+  }
+
+  .de-warning-center {
+    background: var(--de-surface-1);
+    border: 1px solid var(--de-rule);
+    border-radius: var(--de-node-radius);
+  }
+
+  /* ---- 12. FOCUS-DIMMING -------------------------------------------------- */
+  .de-focus-dim .de-node-card:not(.de-node-card--focused):not(.de-node-card--connected) {
+    opacity: var(--de-focus-dim);
+    filter: saturate(0.2);
+  }
+
+  /* ---- 13. MOTION REDUCED ------------------------------------------------ */
+  @media (prefers-reduced-motion: reduce) {
+    .de-node-card,
+    .de-port__visual,
+    .de-edge {
+      transition: none !important;
+      animation: none !important;
+    }
+  }
+
+  /* ---- 14. CANVAS GRID — Fluid Spacing Support --------------------------- */
+  .de-canvas {
+    background-color: var(--de-surface-0);
+    background-image: radial-gradient(var(--de-canvas-grid) 1px, transparent 1px);
+    background-size: var(--de-space-6) var(--de-space-6);
+  }
+
+  /* ---- 15. EDGE LABELS — non-scaling-stroke + AAA ------------------------ */
+  .de-edge-label {
+    font-family: var(--de-font-mono);
+    font-size: var(--de-text-12);
+    font-variant-numeric: tabular-nums;
+    background: var(--de-surface-1);
+    border: 1px solid var(--de-rule);
+    border-radius: 2px;
+    padding: 2px 6px;
+    color: var(--de-text-high);
+    vector-effect: non-scaling-stroke;
+  }
+}

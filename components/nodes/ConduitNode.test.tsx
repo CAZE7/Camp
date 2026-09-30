@@ -92,7 +92,7 @@ describe('ConduitNode Component', () => {
     // Check if the overfill token classes are present
     const mainDiv = container.firstChild as HTMLElement;
     expect(mainDiv.className).toContain('bg-warn-critical-bg');
-    expect(mainDiv.className).toContain('node-card--error');
+    expect(mainDiv.className).toContain('node-card--error de-node-card--error');
   });
 
   it('does not invent a percentage for an unknown conduit type', () => {
@@ -120,7 +120,7 @@ describe('ConduitNode Component', () => {
     const { container } = render(<ConduitNode id="1" data={{ conduitType: 'EN 20' }} selected={true} />);
     const mainDiv = container.firstChild as HTMLElement;
     expect(mainDiv.getAttribute('data-selected')).toBe('true');
-    expect(mainDiv.className).toContain('node-card--selected');
+    expect(mainDiv.className).toContain('node-card--selected de-node-card--selected');
   });
 
   it('renders Handle components properly', () => {
