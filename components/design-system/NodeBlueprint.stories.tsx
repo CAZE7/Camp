@@ -1,5 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { NodeBlueprint, BatteryNodeExample, InverterNodeExample, NODE_STATES, NODE_STATE_CLASSES } from './NodeBlueprint';
+import {
+  NodeBlueprint,
+  BatteryNodeExample,
+  InverterNodeExample,
+  NODE_STATES,
+  NODE_STATE_CLASSES,
+} from './NodeBlueprint';
 
 /**
  * Storybook CSF — Dark Engineering Node-Card
@@ -41,7 +47,9 @@ type Story = StoryObj<typeof NodeBlueprint>;
 
 export const Battery: Story = {
   render: () => <BatteryNodeExample />,
-  parameters: { docs: { description: { story: 'Standard 224px, 4px Radius, 1px Border, mono tabular-nums, 44px Hit' } } },
+  parameters: {
+    docs: { description: { story: 'Standard 224px, 4px Radius, 1px Border, mono tabular-nums, 44px Hit' } },
+  },
 };
 
 export const InverterWarning: Story = {
@@ -64,7 +72,8 @@ export const AllStates: Story = {
   parameters: {
     docs: {
       description: {
-        story: '9-State Matrix: Default, Hover, Active, Focus-Visible, Selected, Dragging, Disabled, Error, Warning — jeder State muss definiert sein (Modul 5)',
+        story:
+          '9-State Matrix: Default, Hover, Active, Focus-Visible, Selected, Dragging, Disabled, Error, Warning — jeder State muss definiert sein (Modul 5)',
       },
     },
   },
@@ -87,7 +96,10 @@ export const DINCompliance: Story = {
   render: () => (
     <div className="flex gap-4">
       {['battery', 'fuse', 'ground', 'inverter', 'solar'].map((k) => (
-        <div key={k} className="flex flex-col items-center gap-2 rounded-[2px] border border-[var(--de-rule)] bg-[var(--de-surface-1)] p-3">
+        <div
+          key={k}
+          className="flex flex-col items-center gap-2 rounded-[2px] border border-[var(--de-rule)] bg-[var(--de-surface-1)] p-3"
+        >
           <span className="font-mono text-[10px] uppercase">{k}</span>
           <div className="h-8 w-8 rounded-[2px] border bg-[var(--de-surface-2)]" />
           <span className="font-mono text-[8px] opacity-60">DIN 72552</span>

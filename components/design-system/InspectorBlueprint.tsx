@@ -25,16 +25,13 @@ interface FieldSpec {
   hint?: string;
 }
 
-function ValidatingNumberField({
-  spec,
-  onChange,
-}: {
-  spec: FieldSpec;
-  onChange?: (v: number) => void;
-}) {
+function ValidatingNumberField({ spec, onChange }: { spec: FieldSpec; onChange?: (v: number) => void }) {
   const [val, setVal] = useState(String(spec.value));
   const num = Number(val);
-  const invalid = Number.isNaN(num) || (spec.min !== undefined && num < spec.min) || (spec.max !== undefined && num > spec.max);
+  const invalid =
+    Number.isNaN(num) ||
+    (spec.min !== undefined && num < spec.min) ||
+    (spec.max !== undefined && num > spec.max);
 
   return (
     <div className="flex flex-col gap-1">
@@ -54,7 +51,7 @@ function ValidatingNumberField({
           }}
           className={[
             'h-8 w-full rounded-[2px] border bg-[var(--de-surface-2)] px-2 pr-12',
-            'font-mono text-[13px] tabular-nums text-right',
+            'text-right font-mono text-[13px] tabular-nums',
             'focus:outline-none focus:ring-1',
             invalid
               ? 'border-[var(--de-error)] focus:ring-[var(--de-error)]'
@@ -92,18 +89,16 @@ function ValidatingNumberField({
           </button>
         </div>
       </div>
-      {spec.hint && (
-        <span className="font-mono text-[11px] text-[var(--de-text-low)]">{spec.hint}</span>
-      )}
+      {spec.hint && <span className="font-mono text-[11px] text-[var(--de-text-low)]">{spec.hint}</span>}
       {spec.status && (
         <span
           className={[
             'inline-flex w-fit rounded-[2px] px-1.5 py-0.5 font-mono text-[11px]',
             spec.status === 'ok'
-              ? 'bg-[var(--de-ok-bg)] text-[var(--de-ok)] border border-[var(--de-ok-border)]'
+              ? 'border border-[var(--de-ok-border)] bg-[var(--de-ok-bg)] text-[var(--de-ok)]'
               : spec.status === 'warn'
-                ? 'bg-[var(--de-warn-bg)] text-[var(--de-warn)] border border-[var(--de-warn-border)]'
-                : 'bg-[var(--de-error-bg)] text-[var(--de-error)] border border-[var(--de-error-border)]',
+                ? 'border border-[var(--de-warn-border)] bg-[var(--de-warn-bg)] text-[var(--de-warn)]'
+                : 'border border-[var(--de-error-border)] bg-[var(--de-error-bg)] text-[var(--de-error)]',
           ].join(' ')}
         >
           {spec.status === 'ok' ? '● OK' : spec.status === 'warn' ? '▲ WARN' : '■ ERR'} {spec.hint}
@@ -113,7 +108,19 @@ function ValidatingNumberField({
   );
 }
 
-function KVRow({ label, value, computed, unit, status }: { label: string; value: string; computed?: boolean; unit?: string; status?: 'ok' | 'warn' | 'error' }) {
+function KVRow({
+  label,
+  value,
+  computed,
+  unit,
+  status,
+}: {
+  label: string;
+  value: string;
+  computed?: boolean;
+  unit?: string;
+  status?: 'ok' | 'warn' | 'error';
+}) {
   return (
     <div className="grid grid-cols-2 items-baseline gap-4 py-1">
       <span className="de-kv-key">{label}</span>
@@ -124,7 +131,11 @@ function KVRow({ label, value, computed, unit, status }: { label: string; value:
           <span
             className={[
               'ml-2 inline-block h-2 w-2 rounded-full',
-              status === 'ok' ? 'bg-[var(--de-ok)]' : status === 'warn' ? 'bg-[var(--de-warn)]' : 'bg-[var(--de-error)]',
+              status === 'ok'
+                ? 'bg-[var(--de-ok)]'
+                : status === 'warn'
+                  ? 'bg-[var(--de-warn)]'
+                  : 'bg-[var(--de-error)]',
             ].join(' ')}
           />
         )}
@@ -148,10 +159,34 @@ export function InspectorBlueprint() {
           Konfiguration (Eingabe)
         </h3>
         <div className="grid grid-cols-2 gap-3">
-          <ValidatingNumberField spec={{ key: 'capacity', label: 'Kapazität', value: 100, unit: 'Ah', min: 10, max: 1000, step: 10 }} />
-          <ValidatingNumberField spec={{ key: 'voltage', label: 'Nennspannung', value: 12.8, unit: 'V', min: 10, max: 15, step: 0.1 }} />
-          <ValidatingNumberField spec={{ key: 'cable', label: 'Leitung', value: 2.5, unit: 'm', min: 0.1, max: 20, step: 0.1 }} />
-          <ValidatingNumberField spec={{ key: 'cross', label: 'Querschnitt', value: 16, unit: 'mm²', min: 0.5, max: 70, step: 1 }} />
+          <ValidatingNumberField
+            spec={{
+              key: 'capacity',
+              label: 'Kapazität',
+              value: 100,
+              unit: 'Ah',
+              min: 10,
+              max: 1000,
+              step: 10,
+            }}
+          />
+          <ValidatingNumberField
+            spec={{
+              key: 'voltage',
+              label: 'Nennspannung',
+              value: 12.8,
+              unit: 'V',
+              min: 10,
+              max: 15,
+              step: 0.1,
+            }}
+          />
+          <ValidatingNumberField
+            spec={{ key: 'cable', label: 'Leitung', value: 2.5, unit: 'm', min: 0.1, max: 20, step: 0.1 }}
+          />
+          <ValidatingNumberField
+            spec={{ key: 'cross', label: 'Querschnitt', value: 16, unit: 'mm²', min: 0.5, max: 70, step: 1 }}
+          />
         </div>
       </div>
 
@@ -182,7 +217,7 @@ export function InspectorBlueprint() {
         <button className="h-8 flex-1 rounded-[2px] border border-[var(--de-rule-strong)] bg-[var(--de-surface-2)] font-mono text-[12px] font-medium hover:border-[var(--de-rule-highlight)]">
           Duplizieren
         </button>
-        <button className="h-8 flex-1 rounded-[2px] bg-[var(--de-error)] font-mono text-[12px] font-medium text-[var(--on-signal)] hover:bg-[var(--de-error)]/90">
+        <button className="hover:bg-[var(--de-error)]/90 h-8 flex-1 rounded-[2px] bg-[var(--de-error)] font-mono text-[12px] font-medium text-[var(--on-signal)]">
           Löschen
         </button>
       </div>

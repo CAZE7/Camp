@@ -746,7 +746,7 @@ export function FlowCanvas() {
         />
       )}
 
-      <div className="relative h-full w-full flex-1 de-canvas">
+      <div className="de-canvas relative h-full w-full flex-1">
         <FloatingMetricsCard />
         <ReactFlow
           nodes={interactiveNodes}

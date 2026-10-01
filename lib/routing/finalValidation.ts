@@ -89,7 +89,10 @@ export type FinalValidationReport = {
 
 /** Summe aller harten Verletzungen. */
 export const totalViolations = (counts: FinalValidationCounts): number =>
-  counts.edgeNodeCollisions + counts.edgeEdgeOverlaps + counts.clearanceViolations + (counts.sanityViolations ?? 0);
+  counts.edgeNodeCollisions +
+  counts.edgeEdgeOverlaps +
+  counts.clearanceViolations +
+  (counts.sanityViolations ?? 0);
 
 /**
  * Prüft ein fertiges Routing gegen die Final-Invariante.

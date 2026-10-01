@@ -6,12 +6,12 @@
 
 ## 1. Quellen der Wahrheit
 
-| Quelle | Inhalt | Guard |
-|--------|--------|-------|
-| `app/dark-engineering.css` | Alle Hex + RGB-Twins + Fluid Clamp + PE Stripes + Legacy Mapping | `designTokens.test.ts` 216 Tests |
-| `lib/design-system/figma-tokens.json` | Figma Tokens Sync (W3C Format) | Style Dictionary Build |
-| `lib/design-system/tokens.ts` | TS API `var(--de-*)` only | Token-Hygiene: kein Hex in TSX |
-| `tailwind.config.ts` | `de.*` Namespace mit RGB-Twins | `jedes *-rgb existiert in :root` |
+| Quelle                                | Inhalt                                                           | Guard                            |
+| ------------------------------------- | ---------------------------------------------------------------- | -------------------------------- |
+| `app/dark-engineering.css`            | Alle Hex + RGB-Twins + Fluid Clamp + PE Stripes + Legacy Mapping | `designTokens.test.ts` 216 Tests |
+| `lib/design-system/figma-tokens.json` | Figma Tokens Sync (W3C Format)                                   | Style Dictionary Build           |
+| `lib/design-system/tokens.ts`         | TS API `var(--de-*)` only                                        | Token-Hygiene: kein Hex in TSX   |
+| `tailwind.config.ts`                  | `de.*` Namespace mit RGB-Twins                                   | `jedes *-rgb existiert in :root` |
 
 **Regel:** Hex nur in CSS, nie in TS/TSX. Verstoß → CI rot.
 
@@ -27,12 +27,12 @@ Default, Hover, Active, Focus-Visible, Selected, Dragging, Disabled, Error, Warn
 
 Inventar:
 
-| Komponente | Stories | Visual Tests |
-|------------|---------|--------------|
-| Node-Card | `NodeBlueprint.stories.tsx` — Battery, AllStates, PortHitTargets, DINCompliance | `visual-de.spec.ts` — node-default/hover/focus/selected |
-| Edge | `EdgeBlueprint.stories.tsx` — Hierarchy, NonScalingStroke, PEStripes | `visual-de.spec.ts` — edge non-scaling-stroke |
-| Inspector | `InspectorBlueprint` — KV-Grid, Validating Field, Ampel | `visual.spec.ts` — responsive |
-| HUD | `HUDBlueprint` — KPI + Warning Center | `visual.spec.ts` |
+| Komponente | Stories                                                                         | Visual Tests                                            |
+| ---------- | ------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| Node-Card  | `NodeBlueprint.stories.tsx` — Battery, AllStates, PortHitTargets, DINCompliance | `visual-de.spec.ts` — node-default/hover/focus/selected |
+| Edge       | `EdgeBlueprint.stories.tsx` — Hierarchy, NonScalingStroke, PEStripes            | `visual-de.spec.ts` — edge non-scaling-stroke           |
+| Inspector  | `InspectorBlueprint` — KV-Grid, Validating Field, Ampel                         | `visual.spec.ts` — responsive                           |
+| HUD        | `HUDBlueprint` — KPI + Warning Center                                           | `visual.spec.ts`                                        |
 
 **Chromatic / Percy:** `chromatic: { diffThreshold: 0.02 }` in Story-Meta — 2% Schwelle wie bestehende `visual.spec.ts`.
 
@@ -42,15 +42,15 @@ Inventar:
 
 **Kriterien (Modul 5):**
 
-| Kriterium | Test | Erwartung |
-|-----------|------|-----------|
-| Text-Wrapping | `visual-de` | Kein Umbruch bei 192px Node-Breite |
-| SVG Stroke | `non-scaling-stroke` | 1-3px bei jedem Zoom |
-| Font-Rendering | `tabular-nums` | Kein Jitter bei Wertänderung |
-| CLS | PerformanceObserver | CLS <0.01 |
-| Kontrast | `designTokens.test.ts` | Text ≥4.5:1, Alarme ≥7:1, Grafik ≥3:1 |
-| Hit-Target | CSS | ≥44px Touch, ≥24px Pointer |
-| Fokus-Ring | `globals.css` | 2px solid accent !important |
+| Kriterium      | Test                   | Erwartung                             |
+| -------------- | ---------------------- | ------------------------------------- |
+| Text-Wrapping  | `visual-de`            | Kein Umbruch bei 192px Node-Breite    |
+| SVG Stroke     | `non-scaling-stroke`   | 1-3px bei jedem Zoom                  |
+| Font-Rendering | `tabular-nums`         | Kein Jitter bei Wertänderung          |
+| CLS            | PerformanceObserver    | CLS <0.01                             |
+| Kontrast       | `designTokens.test.ts` | Text ≥4.5:1, Alarme ≥7:1, Grafik ≥3:1 |
+| Hit-Target     | CSS                    | ≥44px Touch, ≥24px Pointer            |
+| Fokus-Ring     | `globals.css`          | 2px solid accent !important           |
 
 **Playwright:**
 
@@ -73,6 +73,7 @@ npx style-dictionary build --config lib/design-system/style-dictionary.config.js
 ```
 
 Generiert:
+
 - `app/dark-engineering.css` (validiert)
 - `lib/design-system/tokens.generated.ts`
 - `lib/design-system/tailwind.generated.js`

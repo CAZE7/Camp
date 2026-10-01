@@ -79,7 +79,11 @@ export function cssToken(name: string, fallback: string): string {
  *
  * Shape-Coding: Farbe + Form + Label für Farbenblindheit
  */
-export function getWireColor(input: { edgeDomain: WireDomain; isPlus?: boolean; polarity?: WirePolarity }): string {
+export function getWireColor(input: {
+  edgeDomain: WireDomain;
+  isPlus?: boolean;
+  polarity?: WirePolarity;
+}): string {
   // AC 230V — Phase/Neutral/PE nach DIN VDE 0100
   if (input.edgeDomain === 'AC_230V') {
     if (input.polarity === 'PE') return WIRE_COLORS.acPE;

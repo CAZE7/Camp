@@ -88,7 +88,9 @@ describe('Metrik-Budget — Delta gegen Baseline ≤ 0', () => {
       // AUDIT ROUTE-011/012: Clearance-Verstöße (I3) sind jetzt sichtbar
       // (Segment×Segment-Prüfung). Die Verletzungen waren immer da, das
       // Gate hat sie nur nicht gesehen. Ratchet: sie dürfen nicht steigen.
-      expect(metrics.clearanceViolations, 'Clearance-Verstöße').toBeLessThanOrEqual(baseline.clearanceViolations);
+      expect(metrics.clearanceViolations, 'Clearance-Verstöße').toBeLessThanOrEqual(
+        baseline.clearanceViolations
+      );
       // Kollineare Trassenüberdeckungen waren in dieser Suite unsichtbar —
       // jetzt als Ratchet geführt, damit sie es nicht wieder werden.
       expect(metrics.edgeOverlaps, 'I2-Überdeckungen').toBeLessThanOrEqual(baseline.edgeOverlaps);
