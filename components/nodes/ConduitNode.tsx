@@ -54,7 +54,7 @@ const ConduitNode = function ({ data, selected }: { id: string; data: ConduitNod
         percentage === null ? ' Füllgrad nicht bewertet.' : ` Füllgrad ${percentage.toFixed(1)} Prozent.`
       } Komponente im Plan.`}
       data-selected={selected || undefined}
-      className={`node-card custom-drag-handle w-64 p-3 ${overfilled ? 'node-card--error bg-warn-critical-bg' : ''} ${
+      className={`node-card de-node-card custom-drag-handle w-64 p-3 ${overfilled ? 'node-card--error' : ''} ${overfilled ? 'de-node-card--error bg-warn-critical-bg' : ''} ${
         selected ? 'node-card--selected' : ''
       }`}
     >

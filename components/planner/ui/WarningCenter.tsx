@@ -292,7 +292,7 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
           : `${warnings.length} Hinweise`;
 
   return (
-    <div className="relative" ref={containerRef}>
+    <div className="relative de-warning-center" ref={containerRef}>
       {liveRegion}
       <button
         type="button"
@@ -302,7 +302,7 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
         aria-label={`${warnings.length} Prüfhinweise anzeigen${
           counts.critical > 0 ? `, davon ${counts.critical} kritisch` : ''
         }`}
-        className={`flex min-h-11 items-center gap-1.5 rounded-lg px-3 text-sm font-semibold shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${TYPE_STYLES[topType].badge}`}
+        className={`flex min-h-11 items-center gap-1.5 rounded-[4px] px-3 font-mono text-[12px] font-semibold shadow-none transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${TYPE_STYLES[topType].badge} border border-[var(--de-rule-strong)]`}
       >
         {topType === 'critical' ? (
           <OctagonAlert className="h-4 w-4" aria-hidden="true" />

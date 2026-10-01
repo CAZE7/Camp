@@ -14,7 +14,7 @@ const FuseNode = function ({ id, data, isConnectable, selected }: PlannerNodePro
       role="group"
       data-selected={selected || undefined}
       aria-label={`${data.label || 'Sicherungskasten'}. Komponente im Plan.`}
-      className={`node-card custom-drag-handle w-48 p-3 ${selected ? 'node-card--selected' : ''}`}
+      className={`node-card de-node-card custom-drag-handle w-48 p-3 ${selected ? 'node-card--selected' : ''} ${selected ? 'de-node-card--selected' : ''}`}
     >
       <NodeSymbol kind="fuse" />
       {editingField === 'label' ? (

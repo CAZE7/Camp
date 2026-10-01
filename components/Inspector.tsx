@@ -192,8 +192,8 @@ const NodeInspector = ({
   return (
     // panel-section: ohne Innenabstand standen Felder randlos an der
     // Spaltenkante und Inputs liefen über die 288-px-Spalte hinaus
-    // (Kanten-Inspector nutzte den Abstand bereits).
-    <div className="panel-section flex flex-col gap-4">
+    // (Kanten-Inspector nutzte den Abstand bereits). DE: 4px/8px Grid + de-inspector__section
+    <div className="panel-section de-inspector__section flex flex-col gap-4">
       <div>
         <label className="mb-1 block text-xs font-medium text-foreground" htmlFor={`${node.id}-label`}>
           Bezeichnung
@@ -261,9 +261,9 @@ export default function Inspector({
   const hasSelection = selectedNode || selectedEdge;
 
   return (
-    <div tabIndex={0} className="panel relative flex h-full w-full flex-col overflow-y-auto text-foreground">
-      <div className="panel-header sticky top-0 z-10">
-        <h2 className="panel-title">Details</h2>
+    <div tabIndex={0} className="panel de-inspector relative flex h-full w-full flex-col overflow-y-auto text-foreground">
+      <div className="panel-header de-inspector__header sticky top-0 z-10">
+        <h2 className="panel-title de-label-eyebrow">Details</h2>
       </div>
 
       {!hasSelection ? (

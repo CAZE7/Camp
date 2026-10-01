@@ -10,7 +10,7 @@ const GroundNode = function ({ data, isConnectable, selected }: PlannerNodeProps
       role="group"
       data-selected={selected || undefined}
       aria-label={`${data.label || 'Massepunkt'}. Komponente im Plan.`}
-      className={`node-card custom-drag-handle flex w-32 flex-col items-center p-3 ${selected ? 'node-card--selected' : ''}`}
+      className={`node-card de-node-card custom-drag-handle flex w-32 flex-col items-center p-3 ${selected ? 'node-card--selected' : ''} ${selected ? 'de-node-card--selected' : ''}`}
     >
       <NodeSymbol kind="ground" />
       <div className="mb-1 text-center text-sm font-bold">{data.label || 'Massepunkt'}</div>

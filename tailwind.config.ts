@@ -128,6 +128,44 @@ const config: Config = {
           '4': 'rgb(var(--chart-4-rgb) / <alpha-value>)',
           '5': 'rgb(var(--chart-5-rgb) / <alpha-value>)',
         },
+        // Dark Engineering Namespace — industrial-grade EDA/CAD (per Modul 1)
+        de: {
+          canvas: 'rgb(var(--de-canvas-base-rgb) / <alpha-value>)',
+          surface: {
+            0: 'rgb(var(--de-surface-0-rgb) / <alpha-value>)',
+            1: 'rgb(var(--de-surface-1-rgb) / <alpha-value>)',
+            2: 'rgb(var(--de-surface-2-rgb) / <alpha-value>)',
+          },
+          rule: 'rgb(var(--de-rule-rgb) / <alpha-value>)',
+          'rule-strong': 'rgb(var(--de-rule-strong-rgb) / <alpha-value>)',
+          text: {
+            high: 'rgb(var(--de-text-high-rgb) / <alpha-value>)',
+            med: 'rgb(var(--de-text-med-rgb) / <alpha-value>)',
+            low: 'rgb(var(--de-text-low-rgb) / <alpha-value>)',
+          },
+          accent: 'rgb(var(--de-accent-rgb) / <alpha-value>)',
+          wire: {
+            'dc-12v-plus': 'rgb(var(--de-wire-dc-12v-plus-rgb) / <alpha-value>)',
+            'dc-12v-minus': 'rgb(var(--de-wire-dc-12v-minus-rgb) / <alpha-value>)',
+            'dc-24v': 'rgb(var(--de-wire-dc-24v-rgb) / <alpha-value>)',
+            'dc-48v': 'rgb(var(--de-wire-dc-48v-rgb) / <alpha-value>)',
+            'ac-l': 'rgb(var(--de-wire-ac-l-rgb) / <alpha-value>)',
+            'ac-n': 'rgb(var(--de-wire-ac-n-rgb) / <alpha-value>)',
+            'ac-pe': 'rgb(var(--de-wire-ac-pe-rgb) / <alpha-value>)',
+            solar: 'rgb(var(--de-wire-solar-rgb) / <alpha-value>)',
+            'can-h': 'rgb(var(--de-wire-can-h-rgb) / <alpha-value>)',
+            'can-l': 'rgb(var(--de-wire-can-l-rgb) / <alpha-value>)',
+            sensor: 'rgb(var(--de-wire-sensor-rgb) / <alpha-value>)',
+          },
+          pipe: {
+            fresh: 'rgb(var(--de-pipe-fresh-rgb) / <alpha-value>)',
+            gray: 'rgb(var(--de-pipe-gray-rgb) / <alpha-value>)',
+            hot: 'rgb(var(--de-pipe-hot-rgb) / <alpha-value>)',
+          },
+          ok: 'rgb(var(--de-ok-rgb) / <alpha-value>)',
+          warn: 'rgb(var(--de-warn-rgb) / <alpha-value>)',
+          error: 'rgb(var(--de-error-rgb) / <alpha-value>)',
+        },
       },
       opacity: {
         // 15/45 fehlen in Tailwinds Standardskala, sind aber im Planer im

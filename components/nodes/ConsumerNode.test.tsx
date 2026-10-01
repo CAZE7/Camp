@@ -47,7 +47,7 @@ describe('ConsumerNode Component', () => {
     const { container } = render(<ConsumerNode id="1" data={{}} selected={true} />);
     const mainDiv = container.firstChild as HTMLElement;
     expect(mainDiv.getAttribute('data-selected')).toBe('true');
-    expect(mainDiv.className).toContain('node-card--selected');
+    expect(mainDiv.className).toContain('node-card--selected de-node-card--selected');
   });
 
   it('does not apply selected styling when selected is false', () => {

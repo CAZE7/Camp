@@ -1,3 +1,5 @@
+@import './dark-engineering.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -1006,6 +1008,15 @@
   .react-flow__node.planner-domain-dim,
   .react-flow__edge.planner-domain-dim {
     opacity: var(--canvas-domain-dim);
+  }
+
+  /* --- Dark Engineering: Kanten gestochen scharf, kein Pixelmatsch (Modul 2/5) ---
+     vector-effect: non-scaling-stroke — Stroke bleibt 1-3px bei jedem Zoom,
+     kein Aufblähen, keine unsauberen Splines. Null-Toleranz visuelle Regression. */
+  .react-flow__edge-path,
+  .de-edge,
+  .de-edge-bridge {
+    vector-effect: non-scaling-stroke;
   }
 
   /* Fehler-Kabel: "marschierende" gestrichelte Linie als zusätzliches Signal. */

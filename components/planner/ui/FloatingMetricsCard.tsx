@@ -22,7 +22,7 @@ export function FloatingMetricsCard() {
 
   return (
     <aside
-      className={`pointer-events-none absolute right-3 top-28 z-40 hidden overflow-hidden rounded-lg border border-border bg-card shadow-lg transition-all sm:block ${expanded ? 'w-80' : 'w-auto'}`}
+      className={`pointer-events-none absolute right-3 top-28 z-40 hidden overflow-hidden rounded-[4px] border border-[var(--de-rule-strong)] bg-[var(--de-surface-overlay)] backdrop-blur-[16px] shadow-none transition-all duration-150 sm:block ${expanded ? 'w-80' : 'w-auto'} de-hud-card`}
       aria-label="Aktuelle Kennzahlen des Elektrikplans"
     >
       <div className="pointer-events-auto p-4">

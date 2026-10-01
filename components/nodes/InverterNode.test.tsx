@@ -48,7 +48,7 @@ describe('InverterNode Component', () => {
     const { container } = render(<InverterNode id="1" data={{ continuousPower: 1500 }} selected={true} />);
     const mainDiv = container.firstChild as HTMLElement;
     expect(mainDiv.getAttribute('data-selected')).toBe('true');
-    expect(mainDiv.className).toContain('node-card--selected');
+    expect(mainDiv.className).toContain('node-card--selected de-node-card--selected');
   });
 
   it('does not apply selected styling when selected is false', () => {
@@ -76,7 +76,7 @@ describe('InverterNode Component', () => {
     expect(screen.getByText(/Überlastung!/)).toBeInTheDocument();
 
     const mainDiv = container.firstChild as HTMLElement;
-    expect(mainDiv.className).toContain('node-card--error');
+    expect(mainDiv.className).toContain('node-card--error de-node-card--error');
     expect(mainDiv.className).toContain('bg-warn-critical-bg');
   });
 
@@ -89,10 +89,10 @@ describe('InverterNode Component', () => {
     );
 
     const mainDiv = container.firstChild as HTMLElement;
-    expect(mainDiv.className).toContain('node-card--error');
+    expect(mainDiv.className).toContain('node-card--error de-node-card--error');
     expect(mainDiv.className).toContain('bg-warn-critical-bg');
     expect(mainDiv.getAttribute('data-selected')).toBe('true');
-    expect(mainDiv.className).toContain('node-card--error');
+    expect(mainDiv.className).toContain('node-card--error de-node-card--error');
     expect(mainDiv.className).not.toContain('ring-[color:var(--accent-line)]');
   });
 
