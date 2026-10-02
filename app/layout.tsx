@@ -3,6 +3,8 @@ import '@fontsource-variable/inter';
 import '@fontsource-variable/outfit';
 import '@fontsource/ibm-plex-mono/400.css';
 import '@fontsource/ibm-plex-mono/500.css';
+import mono400LatinUrl from '@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-400-normal.woff2';
+import mono500LatinUrl from '@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-500-normal.woff2';
 import type { Metadata, Viewport } from 'next';
 
 import { SystemThemeSync } from '@/components/theme/SystemThemeSync';
@@ -115,6 +117,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: siteDescriptionJsonLd() }} />
+        {/* Vorladen der lateinischen Schnitte der Werteschrift: ohne Preload
+            beginnt ihr Download erst nach dem CSS-Parsen, und der Austausch der
+            Ersatzschrift gegen IBM Plex Mono bricht denselben Text eine Zeile
+            später um. Das Gate „CLS sollte 0 sein" in tests/e2e/visual-de.spec.ts
+            misst genau diese Verschiebung (gemessen 0,0158 bei 375 px). */}
+        <link rel="preload" as="font" type="font/woff2" href={mono400LatinUrl} crossOrigin="anonymous" />
+        <link rel="preload" as="font" type="font/woff2" href={mono500LatinUrl} crossOrigin="anonymous" />
       </head>
       <body className="min-h-screen font-sans">
         <SystemThemeSync />
