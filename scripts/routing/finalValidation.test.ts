@@ -9,6 +9,7 @@ import {
 } from '../../lib/routing/finalValidation';
 import type { NodeRect, RoutedEdge } from '../../lib/routing/invariants';
 import { GOLDEN_PLANS } from '../goldenmaster/plans';
+import { FINAL_VALIDATION_RATCHET } from './finalValidationRatchet';
 
 /**
  * CI-Gate der Final-Invariante (ADR 0015, ADR 0017).
@@ -54,32 +55,13 @@ import { GOLDEN_PLANS } from '../goldenmaster/plans';
 
 /**
  * Obergrenze der Verletzungen JE PLAN (I2 + I3; I1 wird hart auf 0 geprüft).
- * Gemessen am 2026-09-07 nach ADR 0017. Obergrenze, kein Ziel.
  *
- * Nachgezogen am 2026-09-09 (Routing-Fehlerkorrektur ROUTE-BUG-1…24):
- * simple 4 → 0 · camper 18 → 0 · solar 2 → 0 · inverter 3 → 0 · acdc 5 → 0 ·
- * complex 13 → 0. Seit ROUTE-BUG-31 (Stub-Kappung an der
- * Bauteil-Freigabe), -34 (Rang-Treppe innerhalb der Kappung) und -35
- * (Gleichstand im Bündel weicht nach innen aus) ist auch der dichteste Plan
- * in I1–I3 fehlerfrei. Gesamt 45 → 0.
- * Messbar mit `npm run routing:audit`.
- *
- * Zum Vergleich der Stand davor (I1/I2/I3 = Summe):
- * simple 8/2/0 = 10 · camper 13/6/9 = 28 · solar 8/3/0 = 11 ·
- * inverter 7/2/0 = 9 · acdc 30/9/1 = 40 · complex 6/15/3 = 24 → 122 gesamt.
+ * Die Zahlen stehen in `scripts/routing/finalValidationRatchet.ts` — dort
+ * zusammen mit `routing:audit`, damit beide Tore dieselbe Messung mit
+ * derselben Obergrenze bewerten und nicht auseinanderlaufen können. Hier
+ * bleibt nur der Verweis; die Historie der Werte steht am Fundort.
  */
-const BASELINE: Readonly<Record<string, number>> = {
-  // AUDIT ROUTE-012: Baseline nachgezogen — die Segment×Segment-Clearance-
-  // Prüfung (I3) war bisher nur Segment×Node. Die Verletzungen waren immer
-  // da; das Gate hat sie nur nicht gesehen. Ratchet: diese Zahlen dürfen
-  // nur sinken, nie steigen.
-  simple: 6,
-  camper: 21,
-  solar: 4,
-  inverter: 12,
-  acdc: 13,
-  complex: 42,
-};
+const BASELINE = FINAL_VALIDATION_RATCHET;
 
 type Wired = Parameters<typeof nodesToObstacles>[0];
 

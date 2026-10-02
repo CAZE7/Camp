@@ -1,3 +1,5 @@
+import type { Metadata } from 'next';
+
 import { SiteHeader } from '@/components/brand/SiteHeader';
 import { SiteFooter } from '@/components/brand/SiteFooter';
 // AUDIT „Impressum-Placeholder": Die Angaben stehen in `lib/siteLegal.ts` —
@@ -5,9 +7,13 @@ import { SiteFooter } from '@/components/brand/SiteFooter';
 // (`npm run ci:verify-legal-notice`, Schritt im Deploy-Workflow).
 import { SITE_LEGAL, isPlaceholderText, isProviderComplete } from '@/lib/siteLegal';
 
-export const metadata = {
-  title: 'Impressum — Werft',
-};
+import { pageMetadata } from '@/app/siteMetadata';
+
+export const metadata: Metadata = pageMetadata({
+  title: 'Impressum',
+  description: 'Anbieterkennzeichnung nach § 5 DDG: Anbieter, Anschrift und Kontakt dieser Seite.',
+  path: '/impressum/',
+});
 
 export default function ImpressumPage() {
   const legal = SITE_LEGAL;

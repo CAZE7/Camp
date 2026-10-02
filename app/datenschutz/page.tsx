@@ -1,9 +1,16 @@
+import type { Metadata } from 'next';
+
 import { SiteHeader } from '@/components/brand/SiteHeader';
 import { SiteFooter } from '@/components/brand/SiteFooter';
 
-export const metadata = {
-  title: 'Datenschutz — Werft',
-};
+import { pageMetadata } from '@/app/siteMetadata';
+
+export const metadata: Metadata = pageMetadata({
+  title: 'Datenschutz',
+  description:
+    'Welche Daten diese Seite verarbeitet, wo sie gespeichert werden und welche Rechte du nach DSGVO hast.',
+  path: '/datenschutz/',
+});
 
 export default function DatenschutzPage() {
   return (

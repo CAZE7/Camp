@@ -1,6 +1,18 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { SiteHeader } from '@/components/brand/SiteHeader';
 import { SiteFooter } from '@/components/brand/SiteFooter';
+
+/**
+ * Die Fehlerseite ist kein Inhalt, sondern ein Hinweis: Sie bekommt einen
+ * eigenen Titel (sonst trüge sie den der Startseite) und wird nicht in den
+ * Index aufgenommen — eine 404-Seite in Ergebnislisten hilft niemandem.
+ */
+export const metadata: Metadata = {
+  title: 'Seite nicht gefunden',
+  description: 'Die aufgerufene Adresse führt ins Leere. Wege zurück zu den Werkzeugen und Guides.',
+  robots: { index: false, follow: true },
+};
 
 const LINKS = [
   { href: '/', label: 'Zur Startseite' },

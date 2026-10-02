@@ -7,8 +7,11 @@
  *   npm run routing:audit -- --json  Maschinenlesbar (CI/Dashboards)
  *   npm run routing:audit -- --shifts Plan-Translation (Versatz-Gate, P0)
  *
- * Exit-Code 1, sobald ein Plan die HARTEN Invarianten verletzt (I1, Orthogonalität,
- * Fallback-Quote, Determinismus) — siehe Kommentar am Ende der Datei (G3).
+ * Exit-Code 1, sobald ein Plan eine der HARTEN Invarianten verletzt (I1,
+ * Orthogonalität, Fallback-Quote, Determinismus, Kopplung Diagnose ↔ Gate).
+ * I2/I3 werden gegen dieselbe Ratchet je Plan geprüft, die auch
+ * `finalValidation.test.ts` führt (`./finalValidationRatchet.ts`) — siehe
+ * Kommentar am Ende der Datei (G3).
  *
  * Gemessen wird, was die Spezifikation verlangt (`docs/ROUTING-V2.md` §12):
  * die Invarianten I1–I7, dazu Orthogonalität, Determinismus (Doppellauf),
@@ -56,12 +59,17 @@ import { classifySegmentAgainstSegment } from '../../lib/routing/rules/collision
 import { isPortBundleOverlap, routedPathGeometry } from '../../lib/routing/rules/portBundle';
 import { GOLDEN_PLANS, type GoldenPlanInput } from '../goldenmaster/plans';
 import { compareIds } from '../../lib/sortOrder';
+import { finalValidationRatchetOf } from './finalValidationRatchet';
 
 export type PlanAudit = {
   plan: string;
   edges: number;
   violations: Record<InvariantId, number>;
-  /** Summe I1+I2+I3 — die harte Final-Invariante (ADR 0015). */
+  /**
+   * Summe I1+I2+I3 — Diagnosezahl der Final-Invariante (ADR 0015). Hart ist
+   * davon I1; I2/I3 sind über die Ratchet je Plan begrenzt
+   * (`./finalValidationRatchet.ts`).
+   */
   hardViolations: number;
   nonOrthogonal: number;
   selfOverlaps: number;
@@ -595,7 +603,8 @@ if (isCli) {
   /**
    * G3 (AUDIT-Befund): Das Skript war reine Ausgabe — Exit-Code immer 0, damit
    * „grün“ für alles. Die Dokumentation führt `routing:audit` aber als Gate
-   * (ARCHITECTURE-RULES, Tabelle K/F). Ab hier ist es eines:
+   * (ARCHITECTURE-RULES, Tabelle K/F). Ab hier ist es eines — mit derselben
+   * Trennung wie ADR 0015 und `finalValidation.test.ts`:
    *
    *   · I1 = 0 (keine Leitung durch ein fremdes Bauteil, ADR 0017 — hart)
    *   · keine nicht-orthogonalen Segmente
@@ -603,19 +612,29 @@ if (isCli) {
    *   · Kopplung Diagnose ↔ Gate: `elsewhere` (Überdeckung außerhalb der
    *     Port-Stubs) ist genau dann > 0, wenn I2 > 0 ist. Beide lesen
    *     `rules/portBundle.ts`; die Prüfung fängt eine künftige Drift.
+   *   · I2 + I3 je Plan nicht über der Ratchet (Obergrenze, kein Ziel) —
+   *     dieselbe Zahl, die `finalValidation.test.ts` erzwingt.
    *
-   * Die RATCHETS für I2/I3 bleiben in `scripts/routing/finalValidation.test.ts`
-   * (dort mit je-Plan-Obergrenzen dokumentiert) — dieses Skript bewertet nichts
-   * doppelt, sondern das, was es selbst als „hart“ ausweist.
+   * Vorher prüfte dieser Block I1..I3 gemeinsam hart. Das widersprach der
+   * eigenen Beschreibung („bewertet nur, was es selbst als hart ausweist“)
+   * und der Entscheidung aus ADR 0015, I2/I3 als Ratchet zu führen, weil eine
+   * Layout-Änderung Verletzungen zwischen den Kategorien verschiebt.
    */
   const hardFailures = audits.filter(
     (a) =>
-      a.hardViolations > 0 ||
+      a.violations.I1 > 0 ||
       a.nonOrthogonal > 0 ||
       a.fallbacks > 0 ||
       !a.deterministic ||
       // Diagnose und Gate müssen dasselbe sagen (gemeinsame Port-Bündel-Regel).
       a.overlapsElsewhere > 0 !== a.violations.I2 > 0
+  );
+  // Ratchet je Plan (I2 + I3), identisch mit `finalValidation.test.ts`.
+  const ratchetFailures = audits.filter(
+    (a) => a.violations.I2 + a.violations.I3 > finalValidationRatchetOf(a.plan)
+  );
+  const ratchetImprovements = audits.filter(
+    (a) => a.violations.I2 + a.violations.I3 < finalValidationRatchetOf(a.plan)
   );
   // P1 (Finding 2026-09-27): Kreuzungen sind ab hier eine Obergrenze, kein
   // Bericht. Eine Verbesserung senkt den Wert hier — dann muss die Ratchet
@@ -626,13 +645,18 @@ if (isCli) {
   const crossingImprovements = audits.filter(
     (a) => a.realCrossings < (CROSSING_RATCHET[a.plan] ?? Number.NEGATIVE_INFINITY)
   );
-  if (hardFailures.length > 0 || crossingFailures.length > 0) {
+  if (hardFailures.length > 0 || ratchetFailures.length > 0 || crossingFailures.length > 0) {
     process.stderr.write(
       `\nRouting-Gate ROT: ${[
         ...hardFailures.map(
           (a) =>
-            `${a.plan} (I1..I3=${a.hardViolations}, orth=${a.nonOrthogonal}, fallback=${a.fallbacks}, ` +
+            `${a.plan} (I1=${a.violations.I1}, orth=${a.nonOrthogonal}, fallback=${a.fallbacks}, ` +
             `determ=${a.deterministic}, I2=${a.violations.I2} vs elsewhere=${a.overlapsElsewhere})`
+        ),
+        ...ratchetFailures.map(
+          (a) =>
+            `${a.plan} (I2+I3=${a.violations.I2 + a.violations.I3} > Ratchet ` +
+            `${finalValidationRatchetOf(a.plan)})`
         ),
         ...crossingFailures.map(
           (a) => `${a.plan} (Kreuzungen ${a.realCrossings} > Ratchet ${CROSSING_RATCHET[a.plan] ?? '∞'})`
@@ -640,6 +664,13 @@ if (isCli) {
       ].join('; ')}\n`
     );
     process.exitCode = 1;
+  }
+  if (ratchetImprovements.length > 0 && process.exitCode !== 1) {
+    process.stderr.write(
+      `\nHinweis: I2+I3 unter der Ratchet — bitte in finalValidationRatchet.ts nachziehen: ${ratchetImprovements
+        .map((a) => `${a.plan} ${a.violations.I2 + a.violations.I3} < ${finalValidationRatchetOf(a.plan)}`)
+        .join('; ')}\n`
+    );
   }
   if (crossingImprovements.length > 0 && process.exitCode !== 1) {
     process.stderr.write(

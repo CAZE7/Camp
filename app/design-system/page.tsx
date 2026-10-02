@@ -12,7 +12,7 @@ import { HUDBlueprint } from '@/components/design-system/HUDBlueprint';
 
 export default function DesignSystemPage() {
   return (
-    <div className="min-h-screen bg-[var(--de-surface-0)] p-6 text-[var(--de-text-high)]">
+    <main id="main" className="min-h-screen bg-[var(--de-surface-0)] p-6 text-[var(--de-text-high)]">
       <header className="mb-8 border-b border-[var(--de-rule)] pb-6">
         <h1 className="font-mono text-[24px] font-bold tracking-tight">DARK ENGINEERING DESIGN SYSTEM</h1>
         <p className="mt-2 max-w-3xl font-mono text-[13px] leading-relaxed text-[var(--de-text-med)]">
@@ -179,6 +179,6 @@ export default function DesignSystemPage() {
         Quelle: app/dark-engineering.css (Hex) + lib/design-system/tokens.ts (TS) +
         docs/DARK-ENGINEERING-DESIGN-SYSTEM.md
       </footer>
-    </div>
+    </main>
   );
 }
