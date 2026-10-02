@@ -210,6 +210,10 @@ jobs:
         # Production-Deploy für 16 Tage gestoppt, weil `deploy.yml` an diesem
         # Job hängt. Funktionalität und Pixelgenauigkeit haben nicht dieselbe
         # Schwere und dürfen nicht dieselbe Wirkung haben.
+        # Die Trennung läuft über einen Titeltext; seine Quelle ist
+        # `tests/e2e/pixelMarker.ts`. Dass kein Pixelvergleich ohne diese
+        # Kennzeichnung in diesen Lauf rutscht, prüft
+        # `scripts/ci/e2eGatePartition.test.ts` im Job `quality`.
         run: npx playwright test --grep-invert "hält die Baseline"
 
       - name: Report hochladen
