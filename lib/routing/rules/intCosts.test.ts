@@ -98,6 +98,9 @@ describe('saturatingAddMilli', () => {
     expect(calls).toBe(2);
   });
 
+  // 50 × 5 000 Iterationen mit je drei Assertions: 7,0 s im Einzellauf, bis
+  // 19,0 s im Parallel-Lauf der vollen Suite (11 Worker). Deswegen ein eigenes
+  // Timeout statt des Suite-Default von 15 s — die Aussage bleibt unverändert.
   it('Property (Seed 20260928): zufällige Update-Ketten erreichen nie INF', () => {
     const rnd = mulberry32(20260928);
     for (let run = 0; run < 50; run++) {
@@ -110,7 +113,7 @@ describe('saturatingAddMilli', () => {
         expect(g).toBeLessThan(INT_COST_INF);
       }
     }
-  });
+  }, 30_000);
 
   it('Property: current über g_max oder negatives Update wirft', () => {
     expect(() => saturatingAddMilli(budget.gMax + 1, 0, budget)).toThrow(RangeError);
