@@ -1,0 +1,86 @@
+name: Pixel-Baselines aufnehmen
+
+# Erzeugt die Bildvergleiche der Kernrouten und des Design-Systems auf dem
+# Browser-System, auf dem auch das Gate läuft: die Baselines heißen
+# `*-linux.png` und entstehen deshalb nur auf einem Ubuntu-Runner. Ein Windows-
+# oder macOS-Rechner schreibt `*-win32.png`/`*-darwin.png`, die das Gate nie
+# findet.
+#
+# Bewusst NUR per `workflow_dispatch` auslösbar und ohne Schreibrecht im Repo:
+# Die Bilder kommen als Artefakt zurück und werden nach optischer Freigabe von
+# Hand committet (`docs/UI-BASELINE.md`: „Refresh nur nach UI-Freigabe",
+# `docs/GOVERNANCE.md` §3). Ein Lauf, der Baselines automatisch eincheckt, wäre
+# ein selbstgemachtes Gate.
+#
+# Inputs gibt es keine: ein in die Shell interpolierter Spec-Pfad wäre
+# Befehlseinspeisung durch jeden, der den Workflow starten darf.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  NEXT_TELEMETRY_DISABLED: 1
+
+concurrency:
+  group: baselines-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  baselines:
+    name: Baselines erzeugen und als Artefakt liefern
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Node (Version aus .nvmrc)
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install (reproduzierbar)
+        run: npm ci
+
+      - name: Playwright-Browser installieren
+        run: npx playwright install --with-deps chromium
+
+      - name: Build (Static Export)
+        run: npm run build
+
+      - name: Baselines neu aufnehmen
+        # Nur die beiden Pixel-Specs: die Kennzeichnung „hält die Baseline" ist
+        # hier zweitrangig, die Dateiauswahl entscheidet, was neu geschrieben wird.
+        run: npx playwright test tests/e2e/visual.spec.ts tests/e2e/visual-de-pixel.spec.ts --update-snapshots
+
+      - name: Baselines hochladen
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: pixel-baselines
+          path: |
+            tests/e2e/visual.spec.ts-snapshots
+            tests/e2e/visual-de-pixel.spec.ts-snapshots
+          retention-days: 14
+
+      - name: Befund zusammenfassen
+        run: |
+          {
+            echo "## Pixel-Baselines"
+            echo ""
+            echo "Artefakt \`pixel-baselines\` — Inhalt nach dem Entpacken in die Repository-Wurzel legen, Bilder optisch prüfen und erst dann committen."
+            echo ""
+            echo "| Spec | Bilder |"
+            echo "|------|--------|"
+            for dir in tests/e2e/visual.spec.ts-snapshots tests/e2e/visual-de-pixel.spec.ts-snapshots; do
+              echo "| \`${dir}\` | $(find "$dir" -name '*.png' 2>/dev/null | wc -l | tr -d ' ') |"
+            done
+            echo "| Commit | \`${{ github.sha }}\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
