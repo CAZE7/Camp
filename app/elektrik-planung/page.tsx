@@ -228,7 +228,12 @@ export default function ElektrikPlanung() {
                 Leiter den Strom thermisch tragen. Die Tabelle nennt die Werte des Modells für Kupfer,
                 Verlegeart B2, 30 °C und zwei belastete Adern — ohne Häufung mehrerer Leitungen.
               </p>
-              <div className="mt-4 overflow-x-auto">
+              <div
+                className="mt-4 overflow-x-auto"
+                role="region"
+                aria-labelledby="belastbarkeit-titel"
+                tabIndex={0}
+              >
                 <table className="w-full border-collapse text-md">
                   <caption className="sr-only">
                     Strombelastbarkeit, Design-Belastbarkeit und größte Normsicherung je Querschnitt
