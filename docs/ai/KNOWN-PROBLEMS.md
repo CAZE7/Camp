@@ -8,6 +8,45 @@ Legende Severity: **hoch** = Agent kann falschen Code ändern / falsche Sicherhe
 
 ---
 
+## ROUTE-008 — I3-Rest: 41 echte Freigabe-Unterschreitungen über die Referenzpläne
+
+- **AREA:** Routing / Invarianten
+- **FILE:** `lib/routing/invariants.ts` (`checkClearance`),
+  `scripts/routing/finalValidationRatchet.ts`, `scripts/routing/audit.ts` (`SHIFT_RATCHET`)
+- **DESCRIPTION:** I3 (Clearance ≥ 12 px) hat einen echten Rest von **41** Meldungen über die
+  sechs Referenzpläne (simple 2 · camper 7 · solar 0 · inverter 6 · acdc 3 · complex 23;
+  Versatz-Matrix 2026-10-02: 125/423/36/63/140/1127). Seit **ADR 0031** zählt die Invariante
+  nur noch echte Fälle: Die strukturelle Port-Bündel-Konvergenz (zwei Kanten am gemeinsamen
+  Handle berühren sich zwangsläufig auf Stub/Fan-Out-Jog — 69 der früheren 98 Meldungen)
+  ist symmetrisch zur I2-Ausnahme von ADR 0009/0025 freigestellt
+  (`isPortBundleProximity` in `lib/routing/rules/portBundle.ts`). Vorher war die Invariante
+  für jeden Plan mit geteiltem Port unerfüllbar by construction, und die echten Fälle
+  versteckten sich im Rauschen.
+- **CURRENT BEHAVIOR:** Jede verbleibende Meldung ist eines von zwei Profilen:
+  (a) Paar ohne gemeinsamen Port — überwiegend feste Port-Rahmen verschiedener Anschlüsse,
+  die an dichter Bebauung vorbeilaufen (engster Fall `e-busbar-fuse × e-shore-inv` = 0,8 px
+  im Plan complex); (b) freie (gesuchte) Trassensegmente, die näher als 12 px an fremden
+  Korridoren laufen (u. a. Folge des all-or-nothing Tube-Drops: Trifft der FESTE Port-Rahmen
+  eine Trassensperre, verwirft `findCablePath` den gesamten Tube-Satz für diese Kante —
+  ROUTE-BUG-16-Rangfolge: lieber Nähe als Durchlauf durch ein Bauteil).
+- **EXPECTED BEHAVIOR:** I3 = 0. Die Hebel sind bekannt und gemessen: Port-Fan-Out-/Lane-
+  Vergabe (vier Varianten in ROUTE-002 Teil 2b gemessen und verworfen — jede kostete
+  Kreuzungen oder Kabelweg), Platzierungs-Freigabe (ADR 0027 hat damit den ELK-Pfad auf
+  I2 = 0 gehoben) und eine ggf. scoped Tube-Relaxation (nur die vom festen Rahmen getroffenen
+  Tubes opfern statt alle — ändert Golden-Master-Geometrie, braucht Recapture-Ledger).
+- **SEVERITY:** mittel (Qualität; I1/I2 bleiben hart 0, keine elektrische Folge — die
+  Meldungen sind über `RoutingStatusBadge` sichtbar und über Ratchets gedeckelt)
+- **WORKAROUND:** Ratchets in `finalValidationRatchet.ts` / `SHIFT_RATCHET` beachten — nur
+  sinken erlaubt. Wer am Router arbeitet, muss BOTH Pfade messen (Referenzpläne am Ursprung
+  UND `routing:audit -- --shifts`).
+- **RELATED TEST:** `scripts/routing/portBundleModel.test.ts` (ADR-0031-Block: Buchhaltung
+  je Kantenpaar + I3_RESIDUE-Ratchet), `lib/routing/rules/portBundle.test.ts`,
+  `lib/routing/invariants.test.ts` (ADR-0031-Regression),
+  `scripts/routing/finalValidation.test.ts`, `scripts/routing/shiftInvariance.test.ts`
+- **RELATED ISSUE:** ADR 0031, ADR 0025, ADR 0009, ADR 0015; ROUTE-002 Teil 2b/3, ROUTE-006
+
+---
+
 ## DOC-001 — `docs/ROUTING-V2.md` beschreibt gelöschte Verzeichnisse — **behoben 2026-09-28**
 
 - **STATUS:** behoben über den **LESER-HINWEIS** am Dokumentkopf (2026-09-10): Er nennt die

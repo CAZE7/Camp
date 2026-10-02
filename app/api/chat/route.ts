@@ -1,23 +1,19 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument --
- * Werft-Altbestand (übernommen 2026-09): nutzt noch `any` für AI-SDK-
- * Mocks/Datenstrukturen. FOLLOW-UP: typisieren, dann Disable entfernen.
- *
- * AUDIT T1 ergänzt die abgeleiteten Regeln: `no-unsafe-*` ist dieselbe
- * Entscheidung eine Ebene tiefer — jeder Zugriff auf ein `any`-Feld wäre ein
- * eigener Befund, solange die Typen fehlen. Die Teile einzeln zu verbieten,
- * ohne die Ursache zu beheben, hätte 100+ Einzel-Disables erzeugt und den
- * Aufschub unlesbar gemacht. Die Ursache (`any`) steht oben und bleibt ein
- * FOLLOW-UP; dieser Block ist die Grenze des aufgeschobenen Bereichs.
- *
- * Hinweis zum Kontext: Dieser Endpunkt läuft im Static Export
+/*
+ * Chat-Endpunkt (Development-Server, ADR 0021): Läuft im Static Export
  * (`output: 'export'`) nicht — die App verweist ihn über
  * NEXT_PUBLIC_CHAT_API_URL auf einen externen Serverless-Endpoint.
+ *
+ * Typisierung (FOLLOW-UP aus dem Werft-Altbestand, 2026-10-02 erledigt):
+ * Client-Nachrichten kommen als `unknown` herein und werden in
+ * `validateMessages` zur Laufzeit geprüft; erst danach tragen sie den
+ * `Message`-Typ. Datenbankzeilen werden an der Kante in benannte Row-Typen
+ * überführt — keine `any`-Flucht mehr (AGENTS.md M6-1).
  */
 import { createOpenAI } from '@ai-sdk/openai';
 import { streamText, embed, convertToModelMessages } from 'ai';
+import type { UIMessage } from 'ai';
 import pool from '../../../lib/db';
 import type { PoolClient } from 'pg';
-import type { UIMessage } from 'ai';
 
 interface Message {
   id: string;
@@ -25,6 +21,27 @@ interface Message {
   content: string;
   parts?: UIMessage['parts'];
 }
+
+/** Zeile der Knowledge-Chunks-Tabelle (nur die gelesenen Spalten). */
+type KnowledgeRow = { content: unknown };
+
+/** Zeile der Produktabfrage (nur die gelesenen Spalten). */
+type ProductRow = {
+  name: string;
+  brand: string;
+  price: number;
+  cross_section: number;
+};
+
+/** Validiertes Kabel aus einer Nutzer-Stückliste. */
+type BomCable = { crossSection: number; length?: number };
+
+/** Empfehlung für die Antwort, gruppiert nach Querschnitt. */
+type BomRecommendation = {
+  needed_crossSection: number;
+  length: number | undefined;
+  recommendations: ProductRow[];
+};
 
 const openai = createOpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -155,106 +172,71 @@ function applySecurityHeaders(headers: Headers): Headers {
   return headers;
 }
 
-function validateMessages(messages: any[]): Response | null {
+const badRequest = (error: string): Response =>
+  new Response(JSON.stringify({ error }), {
+    status: 400,
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+function validateMessages(messages: unknown[]): Response | null {
   const MAX_MESSAGES = 100;
   const MAX_CONTENT_LENGTH = 10000;
   const MAX_PARTS = 10;
 
   if (!Array.isArray(messages) || messages.length === 0) {
-    return new Response(JSON.stringify({ error: 'messages must be a non-empty array' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return badRequest('messages must be a non-empty array');
   }
 
   if (messages.length > MAX_MESSAGES) {
-    return new Response(JSON.stringify({ error: `Too many messages. Maximum is ${MAX_MESSAGES}` }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return badRequest(`Too many messages. Maximum is ${MAX_MESSAGES}`);
   }
 
   for (const msg of messages) {
-    if (!msg || typeof msg !== 'object') {
-      return new Response(JSON.stringify({ error: 'Invalid message format' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      });
+    if (!isRecord(msg)) {
+      return badRequest('Invalid message format');
     }
 
-    if (!msg.id || typeof msg.id !== 'string') {
-      return new Response(JSON.stringify({ error: 'Message id is required and must be a string' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      });
+    if (typeof msg.id !== 'string' || msg.id.length === 0) {
+      return badRequest('Message id is required and must be a string');
     }
 
     // S2 (AUDIT): Der Client konnte `role: 'system'` mitschicken und damit
     // eigene Anweisungen auf Systemebene in den Prompt legen. Die Rolle des
     // Systemprompts vergibt ausschließlich der Server (siehe unten).
     if (msg.role === 'system') {
-      return new Response(JSON.stringify({ error: 'Message role not allowed' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return badRequest('Message role not allowed');
     }
 
-    if (!['user', 'assistant', 'tool', 'data'].includes(msg.role)) {
-      return new Response(JSON.stringify({ error: 'Invalid message role' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      });
+    if (msg.role !== 'user' && msg.role !== 'assistant' && msg.role !== 'tool' && msg.role !== 'data') {
+      return badRequest('Invalid message role');
     }
 
     if (msg.content !== undefined && typeof msg.content !== 'string') {
-      return new Response(JSON.stringify({ error: 'Message content must be a string' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return badRequest('Message content must be a string');
     }
 
-    if (msg.content && msg.content.length > MAX_CONTENT_LENGTH) {
-      return new Response(
-        JSON.stringify({ error: `Message content too long. Maximum is ${MAX_CONTENT_LENGTH} characters` }),
-        {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
+    if (typeof msg.content === 'string' && msg.content.length > MAX_CONTENT_LENGTH) {
+      return badRequest(`Message content too long. Maximum is ${MAX_CONTENT_LENGTH} characters`);
     }
 
-    if (msg.parts) {
+    if (msg.parts !== undefined) {
       if (!Array.isArray(msg.parts)) {
-        return new Response(JSON.stringify({ error: 'Message parts must be an array' }), {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' },
-        });
+        return badRequest('Message parts must be an array');
       }
 
       if (msg.parts.length > MAX_PARTS) {
-        return new Response(JSON.stringify({ error: `Too many message parts. Maximum is ${MAX_PARTS}` }), {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' },
-        });
+        return badRequest(`Too many message parts. Maximum is ${MAX_PARTS}`);
       }
 
       for (const part of msg.parts) {
-        if (!part || typeof part !== 'object' || !part.type) {
-          return new Response(JSON.stringify({ error: 'Invalid message part format' }), {
-            status: 400,
-            headers: { 'Content-Type': 'application/json' },
-          });
+        if (!isRecord(part) || typeof part.type !== 'string' || part.type.length === 0) {
+          return badRequest('Invalid message part format');
         }
-        if (part.type === 'text' && part.text && part.text.length > MAX_CONTENT_LENGTH) {
-          return new Response(
-            JSON.stringify({
-              error: `Message part text too long. Maximum is ${MAX_CONTENT_LENGTH} characters`,
-            }),
-            {
-              status: 400,
-              headers: { 'Content-Type': 'application/json' },
-            }
-          );
+        if (part.type === 'text' && typeof part.text === 'string' && part.text.length > MAX_CONTENT_LENGTH) {
+          return badRequest(`Message part text too long. Maximum is ${MAX_CONTENT_LENGTH} characters`);
         }
       }
     }
@@ -276,7 +258,8 @@ async function performKnowledgeRAG(client: PoolClient, userQuery: string): Promi
     LIMIT 3
   `;
   const knowledgeRes = await client.query(knowledgeQuery, [JSON.stringify(embedding)]);
-  return knowledgeRes.rows.map((row: any) => row.content).join('\n\n');
+  const rows = knowledgeRes.rows as KnowledgeRow[];
+  return rows.map((row) => String(row.content)).join('\n\n');
 }
 
 /**
@@ -292,44 +275,47 @@ function extractBomJson(userQuery: string): string | null {
   return match[1].trim();
 }
 
+/** Querschnitt ist eine endliche, positive Zahl in einem plausiblen Bereich (mm²). */
+const isValidCrossSection = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isFinite(value) && value > 0 && value < 1000;
+
+/** Länge ist optional; wenn vorhanden, eine endliche, nicht-negative Zahl (m). */
+const isValidLength = (value: unknown): boolean =>
+  value === undefined || (typeof value === 'number' && Number.isFinite(value) && value >= 0);
+
+/** Type-Guard für ein Kabelobjekt aus der Nutzer-Stückliste. */
+function isBomCable(value: unknown): value is BomCable {
+  return isRecord(value) && isValidCrossSection(value.crossSection) && isValidLength(value.length);
+}
+
 async function extractAndProcessBOM(client: PoolClient, userQuery: string): Promise<string> {
   const bomContent = extractBomJson(userQuery);
   if (!bomContent) {
     return '';
   }
 
-  let bom: any;
+  let bom: unknown;
   try {
     bom = JSON.parse(bomContent);
   } catch (e) {
     console.error('Failed to parse BOM JSON:', e);
     return '';
   }
-
   // Security: Validate parsed JSON structure and types
-  if (!bom || typeof bom !== 'object' || !Array.isArray(bom.cables)) {
+  if (!isRecord(bom) || !Array.isArray(bom.cables)) {
     return '';
   }
 
   // DoS Protection: Limit the number of items processed
   const MAX_BOM_CABLES = 50;
-  const rawCables = bom.cables.slice(0, MAX_BOM_CABLES);
+  const rawCables: unknown[] = bom.cables.slice(0, MAX_BOM_CABLES);
 
   // Input Validation: Filter for valid cable objects with numeric cross-sections
-  const validCables = rawCables.filter(
-    (c: any) =>
-      c &&
-      typeof c === 'object' &&
-      typeof c.crossSection === 'number' &&
-      !isNaN(c.crossSection) &&
-      c.crossSection > 0 &&
-      c.crossSection < 1000 && // Reasonable upper limit for cross-section (mm²)
-      (c.length === undefined || (typeof c.length === 'number' && !isNaN(c.length) && c.length >= 0))
-  );
+  const validCables = rawCables.filter(isBomCable);
 
-  const uniqueCrossSections = Array.from(new Set(validCables.map((c: any) => c.crossSection)));
+  const uniqueCrossSections = Array.from(new Set(validCables.map((cable) => cable.crossSection)));
 
-  const recommendedProducts: any[] = [];
+  const recommendedProducts: BomRecommendation[] = [];
 
   if (uniqueCrossSections.length > 0) {
     // Optimized: Fetch all matching products for all unique crossSections in a single query
@@ -347,22 +333,19 @@ async function extractAndProcessBOM(client: PoolClient, userQuery: string): Prom
       ORDER BY cross_section, price ASC
     `;
     const productRes = await client.query(productQuery, [uniqueCrossSections]);
+    const productRows = productRes.rows as ProductRow[];
 
     // Group the database results by cross_section for efficient lookup
-    const productsByCrossSection = new Map<number, any[]>();
-    for (const row of productRes.rows) {
+    const productsByCrossSection = new Map<number, ProductRow[]>();
+    for (const row of productRows) {
       const cs = row.cross_section;
-      let arr = productsByCrossSection.get(cs);
-      if (!arr) {
-        arr = [];
-        productsByCrossSection.set(cs, arr);
-      }
+      const arr = productsByCrossSection.get(cs) ?? [];
       arr.push(row);
+      productsByCrossSection.set(cs, arr);
     }
 
     // Map back to the validated cables list to preserve order and include lengths
-    for (let i = 0; i < validCables.length; i++) {
-      const cable = validCables[i];
+    for (const cable of validCables) {
       const recommendations = productsByCrossSection.get(cable.crossSection);
       if (recommendations) {
         recommendedProducts.push({
@@ -379,6 +362,15 @@ async function extractAndProcessBOM(client: PoolClient, userQuery: string): Prom
   }
 
   return '';
+}
+
+/** Erster nicht-leerer Text-Part der Nachricht, sonst der Inhalt (Legacy-Format). */
+function userQueryOf(message: Message | undefined): string {
+  if (!message) return '';
+  const textParts = message.parts
+    ?.map((part) => (part.type === 'text' ? part.text : null))
+    .filter((text): text is string => Boolean(text));
+  return (textParts && textParts.length > 0 ? textParts[0] : message.content) || '';
 }
 
 export async function POST(req: Request) {
@@ -403,10 +395,10 @@ export async function POST(req: Request) {
     });
   }
 
-  let body;
+  let body: unknown;
   try {
     body = await req.json();
-  } catch (error) {
+  } catch {
     const headers = applySecurityHeaders(new Headers());
     return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
       status: 400,
@@ -414,7 +406,7 @@ export async function POST(req: Request) {
     });
   }
 
-  if (!body || typeof body !== 'object' || !Array.isArray(body.messages) || body.messages.length === 0) {
+  if (!isRecord(body) || !Array.isArray(body.messages) || body.messages.length === 0) {
     const headers = applySecurityHeaders(new Headers());
     return new Response(JSON.stringify({ error: 'messages must be a non-empty array' }), {
       status: 400,
@@ -422,7 +414,10 @@ export async function POST(req: Request) {
     });
   }
 
-  const { messages }: { messages: Message[] } = body;
+  // Die Laufzeitprüfung in validateMessages ist die Quelle dieses Typs: Sie
+  // prüft id (nicht-leerer String), Rolle (user/assistant/tool/data — system
+  // wird zurückgewiesen), content (String, Länge) und parts (Array, Text-Länge).
+  const messages = body.messages as Message[];
 
   const validationError = validateMessages(messages);
   if (validationError) {
@@ -430,11 +425,7 @@ export async function POST(req: Request) {
   }
 
   const latestMessage = messages[messages.length - 1];
-  // Use map to avoid type inference issues with find on union types
-  const textParts = latestMessage?.parts
-    ?.map((p: any) => (p.type === 'text' ? p.text : null))
-    .filter(Boolean);
-  const userQuery = textParts && textParts.length > 0 ? textParts[0] : latestMessage?.content || '';
+  const userQuery = userQueryOf(latestMessage);
 
   let contextText = '';
   let productRecommendations = '';
@@ -488,14 +479,18 @@ Antworte auf Deutsch, sei hilfreich und verständlich.
   `;
 
   // 5. Call LLM with the injected system prompt
-  const modelMessages = await convertToModelMessages(messages as any);
+  // Die Nachrichten sind laufzeitgeprüft (validateMessages); die SDK-Typen
+  // verlangen die vollständige UIMessage-Struktur, die der Client zusätzlich
+  // mitschickt — der Cast über unknown macht die geprüfte Annahme sichtbar,
+  // statt `any` durchzureichen.
+  const modelMessages = await convertToModelMessages(messages as unknown as UIMessage[]);
   const result = streamText({
     model: openai('gpt-4o-mini'),
     messages: [{ role: 'system', content: systemPrompt }, ...modelMessages],
   });
 
   const response = result.toUIMessageStreamResponse({
-    originalMessages: messages as any,
+    originalMessages: messages as unknown as UIMessage[],
     generateMessageId: () => `msg_${Date.now()}`,
   });
 

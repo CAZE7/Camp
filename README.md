@@ -228,6 +228,7 @@ Branch Protection: `docs/CI.md`.
 | [0028](docs/adr/0028-elk-spaltenabstand-drei-trassen.md)                    | ELK-Spaltenkorridor           | 100 px statt 68: ELK-Pfad mit echten Kartenboxen I2 1 → **0**, Kabel +13,6 %        |
 | [0029](docs/adr/0029-kartenbox-ist-routing-input.md)                        | Kartenbox ist Routing-Input   | Übersicht blendet nur aus statt zu schrumpfen — Badge kippt nicht mehr mit Stufe    |
 | [0030](docs/adr/0030-perf-streuungs-ratchet.md)                             | Streuungs-Ratchet (p90)       | Live-Pfad: p90 ≤ 2 × Median aus denselben Proben — absolute ms sind nicht portabel  |
+| [0031](docs/adr/0031-port-buendel-ausnahme-symmetrisch-i2-i3.md)            | Bündel-Ausnahme symmetrisch   | I3 zählt Port-Bündel-Konvergenz nicht mehr (wie I2 seit ADR 0009) — I3-Rest 98 → 41 |
 
 ## Weitere Nachweise
 

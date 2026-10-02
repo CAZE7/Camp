@@ -316,19 +316,24 @@ export type ShiftMatrixEntry = {
   fallbacks: number;
 };
 
-/** Obergrenze je Plan (Summen über die 49 Läufe), gemessen 2026-09-28. */
+/** Obergrenze je Plan (Summen über die 49 Läufe), gemessen 2026-10-02 (ADR 0031). */
 export const SHIFT_RATCHET: Readonly<Record<string, { I2: number; I3: number }>> = {
   // AUDIT ROUTE-011/012: Ratchet nachgezogen — die Selbstüberlappungs-
   // (I2) und Segment×Segment-Clearance-Prüfung (I3) war bisher nur
   // Kante×Kante bzw. Segment×Node. Die Verletzungen waren immer da;
   // das Gate hat sie nur nicht gesehen. Ratchet: diese Zahlen dürfen
   // nur sinken, nie steigen.
-  simple: { I2: 6, I3: 425 },
-  camper: { I2: 8, I3: 1074 },
-  solar: { I2: 2, I3: 261 },
-  inverter: { I2: 0, I3: 367 },
-  acdc: { I2: 12, I3: 680 },
-  complex: { I2: 2, I3: 2040 },
+  // ADR 0031 (2026-10-02) nachgezogen: Die I3-Zahlen sanken um ~60–85 %
+  // (z. B. complex 2040 → 1127, solar 261 → 36), weil die Port-Bündel-
+  // Ausnahme jetzt symmetrisch für I2 und I3 gilt (gemeinsame
+  // Anschlussstelle + Korridor-Segmente). Der Rest sind echte
+  // Freigabe-Unterschreitungen verschobener Konfigurationen.
+  simple: { I2: 6, I3: 125 },
+  camper: { I2: 8, I3: 423 },
+  solar: { I2: 2, I3: 36 },
+  inverter: { I2: 0, I3: 63 },
+  acdc: { I2: 12, I3: 140 },
+  complex: { I2: 2, I3: 1127 },
 };
 
 /** Reine Plan-Translation (nur Nutzerknoten; AutoWire platziert danach neu). */

@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { isPortBundleOverlap, overlapInterval, routedPathGeometry, sharesPort } from './portBundle';
+import {
+  isPortBundleOverlap,
+  isPortBundleProximity,
+  overlapInterval,
+  portCorridor,
+  routedPathGeometry,
+  sharesPort,
+} from './portBundle';
 import type { Point } from '../geometry';
 
 /**
@@ -84,5 +91,93 @@ describe('isPortBundleOverlap — erlaubt ist nur der gemeinsame Stub', () => {
     expect(middle).toBeDefined();
     expect(sharesPort(a, b)).toBe(true);
     expect(isPortBundleOverlap(a, b, a.segments[0]!, middle)).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// ADR 0031 — Port-Korridor und die Freigabe-Seite der Ausnahme (I3).
+// ---------------------------------------------------------------------------
+
+describe('portCorridor — Stub + Fan-Out-Jog je Route-Ende', () => {
+  it('n≥3: erste zwei und letzte zwei Segmente sind Korridor', () => {
+    const g = path([0, 0], [40, 0], [40, 16], [200, 16], [200, 100], [240, 100]);
+    // 6 Stützpunkte → 5 Segmente (Index 0–4): Start-Korridor [0, 1],
+    // Ende-Korridor [3, 4].
+    const corridor = portCorridor(g);
+    expect(corridor.start).toHaveLength(2);
+    expect(corridor.start[0]).toEqual(g.segments[0]);
+    expect(corridor.start[1]).toEqual(g.segments[1]);
+    expect(corridor.end).toHaveLength(2);
+    expect(corridor.end[0]).toEqual(g.segments[3]);
+    expect(corridor.end[1]).toEqual(g.segments[4]);
+  });
+
+  it('n=2: nur das jeweilige Endsegment ist Korridor (kein Jog vorhanden)', () => {
+    const g = path([0, 0], [100, 0], [100, 80]);
+    const corridor = portCorridor(g);
+    expect(corridor.start).toEqual([g.segments[0]]);
+    expect(corridor.end).toEqual([g.segments[1]]);
+  });
+
+  it('n=1: das einzige Segment ist BOTH-Ende-Korridor (reine Stub-Verbindung)', () => {
+    const g = path([0, 0], [100, 0]);
+    const corridor = portCorridor(g);
+    expect(corridor.start).toEqual([g.segments[0]]);
+    expect(corridor.end).toEqual([g.segments[0]]);
+  });
+
+  it('leere Geometrie hat keinen Korridor', () => {
+    expect(portCorridor(path([5, 5]))).toEqual({ start: [], end: [] });
+  });
+});
+
+describe('isPortBundleProximity — ADR 0031, Freigabe-Seite der Bündel-Ausnahme', () => {
+  it('zwei Stubs am gemeinsamen Handle (Abstand 0 durch Konvergenz) sind erlaubt', () => {
+    // Klassischer Bündelfall: beide Kanten verlassen denselben Punkt;
+    // ihre Stubs liegen kollinear übereinander (I2-Ausnahme) und sind
+    // damit zwangsläufig auch < 12 px voneinander entfernt (I3).
+    const a = path([0, 0], [60, 0], [60, 80]);
+    const b = path([0, 0], [40, 0], [0, 90]);
+    expect(isPortBundleProximity(a, b, a.segments[0]!, b.segments[0]!)).toBe(true);
+  });
+
+  it('Fan-Out-Jog gegen den weiterlaufenden Stub des Nachbarn ist erlaubt', () => {
+    // Gemessener Referenzfall (complex: e-auto-2↔e-auto-7): b weicht am
+    // Stub-Ende auf seine Lane aus und kreuzt dabei a's längeren Stub.
+    const a = path([0, 0], [84, 0], [84, 200]);
+    const b = path([0, 0], [54, 0], [54, 32], [200, 32]);
+    // b's Jog (Segment 1) läuft a's Stub (Segment 0) in x=54..84 quer an.
+    expect(isPortBundleProximity(a, b, a.segments[0]!, b.segments[1]!)).toBe(true);
+  });
+
+  it('Ende-gegen-Ende am gemeinsamen Port ist erlaubt (Fan-In)', () => {
+    const a = path([0, 200], [60, 200], [60, 100], [100, 100]);
+    const b = path([0, 0], [40, 0], [40, 100], [100, 100]);
+    expect(isPortBundleProximity(a, b, a.segments[2]!, b.segments[2]!)).toBe(true);
+  });
+
+  it('freies Trassensegment ist nie freigestellt — auch nicht am gemeinsamen Port', () => {
+    // a's drittes Segment (Index 2, freie Trasse) läuft b's Stub nah —
+    // gesuchte Geometrie, der Router hätte sie fernhalten können.
+    const a = path([0, 0], [40, 0], [40, 16], [200, 16], [200, 100], [240, 100]);
+    const b = path([0, 0], [40, 0], [40, 32], [200, 32]);
+    expect(isPortBundleProximity(a, b, a.segments[3]!, b.segments[2]!)).toBe(false);
+  });
+
+  it('Korridor am GEGENÜBERLIEGenden Ende zählt nicht für den gemeinsamen Port', () => {
+    // Paar teilt den START-Port; die Unterschreitung liegt an a's Ziel-Stub
+    // gegen b's freie Trasse — das ist keine Bündel-Konvergenz am Start.
+    const a = path([0, 0], [40, 0], [40, 16], [200, 16], [200, 100], [240, 100]);
+    const b = path([0, 0], [40, 0], [40, 32], [240, 32]);
+    // a hat 5 Segmente (Index 0–4): der Ziel-Stub ist Index 4.
+    expect(isPortBundleProximity(a, b, a.segments[4]!, b.segments[2]!)).toBe(false);
+  });
+
+  it('ohne gemeinsamen Port bleibt jede Unterschreitung gemeldet', () => {
+    // Parallelverkehr zweier fremder Kanten (gemessener Referenzfall
+    // complex: e-busbar-fuse↔e-shore-inv, 0,8 px) — kein Bündel.
+    const a = path([0, 0], [100, 0], [100, 80]);
+    const b = path([20, 8], [90, 8], [90, 60]);
+    expect(isPortBundleProximity(a, b, a.segments[0]!, b.segments[0]!)).toBe(false);
   });
 });

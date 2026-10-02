@@ -12,7 +12,7 @@ import {
   type Segment,
 } from './geometry';
 import { classifySegmentAgainstNode, classifySegmentAgainstSegment } from './rules/collision';
-import { isPortBundleOverlap, routedPathGeometry } from './rules/portBundle';
+import { isPortBundleOverlap, isPortBundleProximity, routedPathGeometry } from './rules/portBundle';
 import { compareIds } from '../sortOrder';
 
 /**
@@ -168,6 +168,22 @@ export function checkEdgeEdgeOverlaps(edges: readonly RoutedEdge[]): InvariantVi
  * AUDIT ROUTE-012: Erweiterung um Segment×Segment via
  * `classifySegmentAgainstSegment` — dasselbe Modell, das I2 (hard) und
  * Crossing (soft) liefert, liefert hier den `weighted`-Fall.
+ *
+ * ADR 0031 (2026-10-02): Die Port-Bündel-Ausnahme gilt jetzt für BEIDE
+ * Invarianten symmetrisch. Zwei Kanten, die sich eine Anschlussstelle
+ * teilen, laufen auf ihrem gemeinsamen Stub kollinear übereinander — das
+ * ist die dokumentierte Bündel-Ausnahme von I2 (ADR 0009/0025). Dieselbe
+ * Geometrie ist notwendig auch eine Abstands-Unterschreitung (Abstand 0
+ * auf dem gemeinsamen Abschnitt, plus das Lane-Ausweichen am Fan-Out):
+ * I3 zählte sie trotzdem als Verletzung. Die Invariante war damit für
+ * JEDEN Plan mit geteiltem Port unerfüllbar by construction, und echte
+ * Verletzungen (29 von 98 über die sechs Referenzpläne) versteckten sich
+ * im strukturellen Rauschen. `isPortBundleProximity` (Rules-Schicht, neben
+ * `isPortBundleOverlap` — eine Wahrheit) gibt genau die Bündel-Fälle frei:
+ * gemeinsame Anschlussstelle UND beide beteiligten Segmente im Port-
+ * Korridor (Stub + Fan-Out-Jog) der jeweiligen Kante. Alles andere —
+ * insbesondere freie Trassensegmente und Paare ohne gemeinsamen Port —
+ * bleibt gemeldete Verletzung.
  */
 export function checkClearance(
   edges: readonly RoutedEdge[],
@@ -193,18 +209,24 @@ export function checkClearance(
       }
     }
   }
-  // Segment × Segment (neu): Abstand < cableClearance zwischen Kanten
+  // Segment × Segment: Abstand < cableClearance zwischen Segmenten
   // verschiedener Kanten — selbes Modell wie I2, aber der weighted-Fall.
-  const segmentsByEdge = edges.map((edge) => ({
+  // Die Segmente kommen aus `routedPathGeometry` (vereinfacht) — dieselbe
+  // Sicht wie `checkEdgeEdgeOverlaps`: eine Geometrie-Wahrheit für beide
+  // Invarianten, keine Doppelzählung durch Kollinear-Splits in rohen
+  // Stützpunkten.
+  const geometryByEdge = edges.map((edge) => ({
     edge,
-    segments: waypointsToSegments(edge.waypoints),
+    geometry: routedPathGeometry(edge.waypoints),
   }));
-  for (let i = 0; i < segmentsByEdge.length; i++) {
-    for (let j = i + 1; j < segmentsByEdge.length; j++) {
-      const a = segmentsByEdge[i]!;
-      const b = segmentsByEdge[j]!;
-      for (const s1 of a.segments) {
-        for (const s2 of b.segments) {
+  for (let i = 0; i < geometryByEdge.length; i++) {
+    for (let j = i + 1; j < geometryByEdge.length; j++) {
+      const a = geometryByEdge[i]!;
+      const b = geometryByEdge[j]!;
+      for (const s1 of a.geometry.segments) {
+        for (const s2 of b.geometry.segments) {
+          // ADR 0009/0031: legitime Port-Bündelung zählt nicht.
+          if (isPortBundleProximity(a.geometry, b.geometry, s1, s2)) continue;
           const verdict = classifySegmentAgainstSegment(s1, s2, clearance);
           if (verdict.class === 'weighted' && verdict.distance !== undefined) {
             violations.push({

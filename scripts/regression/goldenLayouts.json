@@ -329,7 +329,7 @@
         "crossings": 5,
         "bends": 34,
         "length": 7252,
-        "clearanceViolations": 41,
+        "clearanceViolations": 7,
         "edgeOverlaps": 0
       }
     },
@@ -476,7 +476,7 @@
         "crossings": 0,
         "bends": 14,
         "length": 3680.8,
-        "clearanceViolations": 2,
+        "clearanceViolations": 0,
         "edgeOverlaps": 0
       }
     },
@@ -597,7 +597,7 @@
         "crossings": 2,
         "bends": 14,
         "length": 2648,
-        "clearanceViolations": 11,
+        "clearanceViolations": 3,
         "edgeOverlaps": 0
       }
     },
@@ -717,7 +717,7 @@
         "crossings": 0,
         "bends": 4,
         "length": 1184,
-        "clearanceViolations": 1,
+        "clearanceViolations": 0,
         "edgeOverlaps": 0
       }
     },
@@ -819,7 +819,7 @@
         "crossings": 0,
         "bends": 6,
         "length": 1608,
-        "clearanceViolations": 1,
+        "clearanceViolations": 0,
         "edgeOverlaps": 0
       }
     },
@@ -1188,7 +1188,7 @@
         "crossings": 0,
         "bends": 16,
         "length": 3324,
-        "clearanceViolations": 11,
+        "clearanceViolations": 4,
         "edgeOverlaps": 0
       }
     },
@@ -1256,7 +1256,7 @@
         "crossings": 0,
         "bends": 4,
         "length": 984,
-        "clearanceViolations": 1,
+        "clearanceViolations": 0,
         "edgeOverlaps": 0
       }
     },
@@ -1366,7 +1366,7 @@
         "crossings": 0,
         "bends": 8,
         "length": 2040,
-        "clearanceViolations": 3,
+        "clearanceViolations": 0,
         "edgeOverlaps": 0
       }
     }

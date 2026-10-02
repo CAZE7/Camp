@@ -207,32 +207,39 @@ Duplikat-Verbot — `lib/connectionRules.ts` (`isConnectionAllowed`).
 Quelle: `lib/routing/invariants.ts` (Checker) + `lib/routing/finalValidation.ts` (binäres Gate).
 Alle Schwellen kommen aus den Tokens.
 
-| ID      | Invariante                                                                                        | Checker                                                   | Im CI-Gate                                               |
-| ------- | ------------------------------------------------------------------------------------------------- | --------------------------------------------------------- | -------------------------------------------------------- |
-| **I1**  | Kein Segment schneidet die Box eines **unbeteiligten** Bauteils                                   | `checkEdgeNodeCollisions`                                 | **hart = 0** (`scripts/routing/finalValidation.test.ts`) |
-| **I2**  | Keine kollineare Überdeckung zweier **verschiedener** Kanten (außerhalb der Port-Bündel-Ausnahme) | `checkEdgeEdgeOverlaps`                                   | Ratchet (Obergrenze 0)                                   |
-| **I3**  | Jedes Segment hält `cableClearance` (12 px) zu unbeteiligten Bauteilen                            | `checkClearance`                                          | Ratchet (Obergrenze 0)                                   |
-| **I4**  | Kein U-Turn direkt am Handle (erste/zweite bzw. vorletzte/letzte Segmente)                        | `checkUTurnAtHandle`                                      | `npm run routing:audit`                                  |
-| **I5**  | Stubs ≥ geforderter Länge (`stubMin`, bei gegenüberliegenden Ports `facingStubLength`)            | `checkStubs`                                              | `npm run routing:audit`                                  |
-| **I6**  | Jedes Segment ≥ `segmentMin` (= `laneGrid`), herabgesetzt auf den bei I5 verfügbaren Raum         | `checkSegmentLengths`                                     | `npm run routing:audit`                                  |
-| **I7**  | Kein entfernbares Treppenmuster (`mergeCloseBends` reduziert nichts mehr)                         | `checkStairs`                                             | `npm run routing:audit`                                  |
-| **I8**  | Deterministische Lane-Vergabe (keine Lane-Flips bei Re-Layout/Undo/Redo/Permutation)              | `lib/routing/rules/laneRegistry.ts` + Determinismus-Läufe | `laneRegistry.test.ts`, `regression.test.ts` (p14)       |
-| **I9**  | Deterministisches Gesamtergebnis (Doppellauf byte-identisch)                                      | `serializeRoutes`                                         | `goldenMaster.test.ts`, `regression.test.ts` (p13–p15)   |
-| **I10** | Kreuzungen nur, wo unvermeidbar (minimieren, nicht verbieten)                                     | `countCrossings`                                          | `regression.test.ts` (Metrik-Budget Δ ≤ 0)               |
+| ID      | Invariante                                                                                                                                                   | Checker                                                   | Im CI-Gate                                               |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------- | -------------------------------------------------------- |
+| **I1**  | Kein Segment schneidet die Box eines **unbeteiligten** Bauteils                                                                                              | `checkEdgeNodeCollisions`                                 | **hart = 0** (`scripts/routing/finalValidation.test.ts`) |
+| **I2**  | Keine kollineare Überdeckung zweier **verschiedener** Kanten (außerhalb der Port-Bündel-Ausnahme)                                                            | `checkEdgeEdgeOverlaps`                                   | **hart = 0** (seit ADR 0027)                             |
+| **I3**  | Jedes Segment hält `cableClearance` (12 px) zu unbeteiligten Bauteilen UND fremden Kanten — außerhalb der Port-Bündel-Ausnahme (ADR 0031, symmetrisch zu I2) | `checkClearance`                                          | Ratchet je Plan (`finalValidationRatchet.ts`)            |
+| **I4**  | Kein U-Turn direkt am Handle (erste/zweite bzw. vorletzte/letzte Segmente)                                                                                   | `checkUTurnAtHandle`                                      | `npm run routing:audit`                                  |
+| **I5**  | Stubs ≥ geforderter Länge (`stubMin`, bei gegenüberliegenden Ports `facingStubLength`)                                                                       | `checkStubs`                                              | `npm run routing:audit`                                  |
+| **I6**  | Jedes Segment ≥ `segmentMin` (= `laneGrid`), herabgesetzt auf den bei I5 verfügbaren Raum                                                                    | `checkSegmentLengths`                                     | `npm run routing:audit`                                  |
+| **I7**  | Kein entfernbares Treppenmuster (`mergeCloseBends` reduziert nichts mehr)                                                                                    | `checkStairs`                                             | `npm run routing:audit`                                  |
+| **I8**  | Deterministische Lane-Vergabe (keine Lane-Flips bei Re-Layout/Undo/Redo/Permutation)                                                                         | `lib/routing/rules/laneRegistry.ts` + Determinismus-Läufe | `laneRegistry.test.ts`, `regression.test.ts` (p14)       |
+| **I9**  | Deterministisches Gesamtergebnis (Doppellauf byte-identisch)                                                                                                 | `serializeRoutes`                                         | `goldenMaster.test.ts`, `regression.test.ts` (p13–p15)   |
+| **I10** | Kreuzungen nur, wo unvermeidbar (minimieren, nicht verbieten)                                                                                                | `countCrossings`                                          | `regression.test.ts` (Metrik-Budget Δ ≤ 0)               |
 
 **Nicht** als Invariante modelliert (bewusst): Kabellänge ≤ Faktor × Manhattan (das ist eine
 **Qualitätsmetrik** in `components/edges/utils/routingQuality.ts`, kein Gate).
 
-### Gemessener Stand (`npm run routing:audit`, 2026-09-28)
+### Gemessener Stand (`npm run routing:audit`, 2026-10-02 / ADR 0031)
 
 | Plan     | Kanten |  I1 |  I2 |  I3 |  I4 |  I5 |  I6 |  I7 | Fallback | determ. | Kreuzungen |
 | -------- | -----: | --: | --: | --: | --: | --: | --: | --: | -------: | ------- | ---------: |
-| simple   |      9 |   0 |   0 |   0 |   0 |   0 |   0 |   0 |        0 | true    |          2 |
-| camper   |     12 |   0 |   0 |   0 |   0 |   0 |   0 |   0 |        0 | true    |          5 |
+| simple   |      9 |   0 |   0 |   2 |   0 |   0 |   0 |   0 |        0 | true    |          2 |
+| camper   |     12 |   0 |   0 |   7 |   0 |   0 |   0 |   0 |        0 | true    |          5 |
 | solar    |     11 |   0 |   0 |   0 |   0 |   0 |   0 |   0 |        0 | true    |          2 |
-| inverter |     10 |   0 |   0 |   0 |   0 |   0 |   0 |   0 |        0 | true    |          2 |
-| acdc     |     14 |   0 |   0 |   0 |   0 |   0 |   0 |   0 |        0 | true    |          6 |
-| complex  |     23 |   0 |   0 |   0 |   0 |   0 |   0 |   0 |        0 | true    |         27 |
+| inverter |     10 |   0 |   0 |   6 |   0 |   0 |   0 |   0 |        0 | true    |          2 |
+| acdc     |     14 |   0 |   0 |   3 |   0 |   0 |   0 |   0 |        0 | true    |          6 |
+| complex  |     23 |   0 |   0 |  23 |   0 |   0 |   0 |   0 |        0 | true    |         27 |
+
+I3 ist der ehrliche Rest: Seit ADR 0031 zählt die Invariante die strukturelle
+Port-Bündel-Konvergenz (zwei Kanten am gemeinsamen Handle berühren sich
+zwangsläufig — 69 der früheren 98 Meldungen) nicht mehr, symmetrisch zur
+I2-Ausnahme von ADR 0009/0025. Jede verbleibende Meldung ist ein Paar ohne
+gemeinsamen Port oder eine Unterschreitung an freier (gesuchter) Trasse.
+Vorher (AUDIT ROUTE-012, 2026-09-28, inkl. Bündel-Rauschen): 6/21/4/12/13/42.
 
 **Zwei Kreuzungsbegriffe — nicht verwechseln:**
 

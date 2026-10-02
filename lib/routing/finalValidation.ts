@@ -36,10 +36,15 @@ import {
  * eine Verletzung vorliegt — unabhängig davon, wie gut der Rest ist und
  * unabhängig davon, ob das gerade bequem ist.
  *
- * ## Stand: die Invariante ist erfüllt (2026-09-09)
+ * ## Stand (2026-10-02): I1 = 0, I2 = 0, I3 = 41 über die Referenzpläne
  *
  * Gemessen über die sechs Golden-Master-Pläne (79 Kanten) mit
- * `npm run routing:audit` liegen **I1, I2 und I3 bei 0**.
+ * `npm run routing:audit`: **I1 = 0, I2 = 0**; I3 hat einen echten Rest von
+ * **41** Meldungen (simple 2 · camper 7 · solar 0 · inverter 6 · acdc 3 ·
+ * complex 23) — Paare ohne gemeinsame Anschlussstelle und Unterschreitungen
+ * an freien Trassensegmenten. Seit ADR 0031 zählt I3 die strukturelle
+ * Port-Bündel-Konvergenz nicht mehr (69 der früheren 98 Meldungen); die
+ * Segment×Segment-Prüfung selbst (AUDIT ROUTE-012) bleibt unverändert scharf.
  *
  * Historie (nicht mehr aktuell, aber der Grund für das Ratchet-Design): Bei
  * Einführung dieses Gates am 2026-09-07 waren es **72 × I1, 37 × I2,
@@ -50,9 +55,10 @@ import {
  * (Kollisionsmodell als eine Quelle) und ADR 0020 (Stub-Modell, Port-Fan-Out,
  * Freigabe-Rangfolge).
  *
- * Das Gate lebt in `scripts/routing/finalValidation.test.ts`: **I1 wird hart
- * auf 0 geprüft**, I2 + I3 über eine Ratchet-Obergrenze je Plan (heute 0 —
- * sie darf sinken, niemals steigen).
+ * Das Gate lebt in `scripts/routing/finalValidation.test.ts`: **I1 und I2
+ * werden hart auf 0 geprüft**, I3 über eine Ratchet-Obergrenze je Plan
+ * (Zahlen in `scripts/routing/finalValidationRatchet.ts` — sie darf sinken,
+ * niemals steigen).
  *
  * Diese Funktion selbst kennt keine Baseline und keine Toleranz — die
  * Aufweichung lebt ausschließlich im Test, wo sie sichtbar und

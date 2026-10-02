@@ -213,6 +213,83 @@ describe('I3 — Clearance ≥ cableClearance', () => {
       )
     ).toHaveLength(0);
   });
+
+  // ── ADR 0031: Port-Bündel-Freigabe, symmetrisch zur I2-Ausnahme ──────────
+
+  it('ADR 0031: konvergierende Stubs am gemeinsamen Port sind KEINE I3-Verletzung', () => {
+    // Zwei Kanten enden am selben Punkt (common handle) mit senkrecht
+    // aufeinander stehenden Stubs: Sie berühren sich exakt im Port
+    // (Touch ⇒ weighted, Abstand 0). Vor ADR 0031 zählte I3 genau das —
+    // die Invariante war für jeden Plan mit geteiltem Port unerfüllbar
+    // by construction, obwohl dieselbe Konvergenz von I2 seit ADR 0009
+    // als Bündel freigestellt ist.
+    const a = edge('e-a', [
+      { x: 0, y: 0 },
+      { x: 0, y: 200 },
+    ]);
+    const b = edge('e-b', [
+      { x: 0, y: 0 },
+      { x: 200, y: 0 },
+    ]);
+    expect(checkClearance([a, b], [])).toHaveLength(0);
+  });
+
+  it('ADR 0031: Fan-Out-Jog am gemeinsamen Port ist KEINE I3-Verletzung', () => {
+    // Gemessener Referenzfall (complex, e-auto-2↔e-auto-7): b weicht am
+    // Stub-Ende auf seine Lane aus und läuft dabei a's längeren Stub
+    // näher als cableClearance — Teil der Bündel-Konvergenz am Port.
+    const a = edge('e-a', [
+      { x: 0, y: 0 },
+      { x: 84, y: 0 },
+      { x: 84, y: 200 },
+    ]);
+    const b = edge('e-b', [
+      { x: 0, y: 0 },
+      { x: 54, y: 0 },
+      { x: 54, y: 32 },
+      { x: 200, y: 32 },
+    ]);
+    expect(checkClearance([a, b], [])).toHaveLength(0);
+  });
+
+  it('ADR 0031: dieselbe Geometrie OHNE gemeinsamen Port BLEIBT eine I3-Verletzung', () => {
+    // Gegenprobe: keine identischen Endpunkte ⇒ kein Bündel ⇒ gemeldet.
+    const a = edge('e-a', [
+      { x: 0, y: 0 },
+      { x: 60, y: 0 },
+      { x: 60, y: 200 },
+    ]);
+    const b = edge('e-b', [
+      { x: 10, y: 0 },
+      { x: 50, y: 0 },
+      { x: 10, y: 90 },
+    ]);
+    const violations = checkClearance([a, b], []);
+    expect(violations.length).toBeGreaterThan(0);
+    expect(violations.every((v) => v.invariant === 'I3')).toBe(true);
+  });
+
+  it('ADR 0031: freies Trassensegment am gemeinsamen Port BLEIBT gemeldet', () => {
+    // Nur because zwei Kanten einen Port teilen, ist nicht jede Nähe
+    // Bündel: a's freie Trasse (Segment-Index 3) läuft b's Korridor nahe —
+    // gesuchte Geometrie, der Router hätte sie fernhalten können.
+    const a = edge('e-a', [
+      { x: 0, y: 0 },
+      { x: 40, y: 0 },
+      { x: 40, y: 16 },
+      { x: 200, y: 16 },
+      { x: 200, y: 100 },
+    ]);
+    const b = edge('e-b', [
+      { x: 0, y: 0 },
+      { x: 40, y: 0 },
+      { x: 40, y: 32 },
+      { x: 200, y: 32 },
+    ]);
+    const violations = checkClearance([a, b], []);
+    expect(violations.length).toBeGreaterThan(0);
+    expect(violations.every((v) => v.invariant === 'I3')).toBe(true);
+  });
 });
 
 describe('I4 — kein U-Turn direkt am Handle', () => {
@@ -425,22 +502,32 @@ describe('I10 — Crossing nur, wenn kein konfliktfreier Weg existiert', () => {
  * versetzt. Kreuzungen sind Normalfall mit Hopping, doppelte
  * Trassenbelegung ist ein Fehler — der Tausch ist derselbe wie oben.
  *
+ * Stand 2026-10-02 (ADR 0031): Die Port-Bündel-Ausnahme gilt symmetrisch
+ * für I2 und I3 — I3 zählt die zwangsläufige Konvergenz zweier
+ * Kanten an derselben Anschlussstelle (gemeinsamer Stub/Fan-Out-Jog)
+ * nicht mehr als Verletzung. Die Baseline darunter ist der gemessene
+ * Rest: Paare ohne gemeinsamen Port und Unterschreitungen an freien
+ * (gesuchten) Trassensegmenten (Σ 41 statt Σ 98, solar vollständig 0).
+ * I1–I2 bleiben 0; I4–I7 unverändert 0; Kreuzungen unverändert.
+ *
+ * Vorher (AUDIT ROUTE-012, 2026-09-28): I3 6/21/4/12/13/42 — davon 69
+ * strukturelle Bündel-Fälle, die I2 längst freigestellt hatte.
+ *
  * Vorher (WP-10, mit überlappenden Bauteilen):
  * simple 8/2/0/6/2/6/1 · camper 13/6/9/7/3/11/1 · solar 8/3/0/3/5/10/0 ·
  * inverter 7/2/0/4/4/9/1 · acdc 30/9/1/4/5/15/1 · complex 6/15/3/0/8/15/0
  */
 const LEGACY_BASELINE: Record<string, Record<InvariantId, number> & { crossings: number }> = {
-  // AUDIT ROUTE-012: I3-Baseline nachgezogen — die Segment×Segment-
-  // Clearance-Prüfung war bisher nur Segment×Node. Die Verletzungen
-  // waren immer da (Kabel am gemeinsamen Port < cableClearance); das
-  // Gate hat sie nur nicht gesehen. Ratchet: diese Zahlen dürfen nur
-  // sinken, nie steigen.
-  simple: { I1: 0, I2: 0, I3: 6, I4: 0, I5: 0, I6: 0, I7: 0, crossings: 2 },
-  camper: { I1: 0, I2: 0, I3: 21, I4: 0, I5: 0, I6: 0, I7: 0, crossings: 5 },
-  solar: { I1: 0, I2: 0, I3: 4, I4: 0, I5: 0, I6: 0, I7: 0, crossings: 2 },
-  inverter: { I1: 0, I2: 0, I3: 12, I4: 0, I5: 0, I6: 0, I7: 0, crossings: 2 },
-  acdc: { I1: 0, I2: 0, I3: 13, I4: 0, I5: 0, I6: 0, I7: 0, crossings: 8 },
-  complex: { I1: 0, I2: 0, I3: 42, I4: 0, I5: 0, I6: 0, I7: 0, crossings: 29 },
+  // ADR 0031 (2026-10-02): I3-Baseline nachgezogen — Port-Bündel-
+  // Konvergenz zählt nicht mehr (symmetrisch zur I2-Ausnahme von
+  // ADR 0009/0025). Der Rest sind echte Freigabe-Unterschreitungen.
+  // Ratchet: diese Zahlen dürfen nur sinken, nie steigen.
+  simple: { I1: 0, I2: 0, I3: 2, I4: 0, I5: 0, I6: 0, I7: 0, crossings: 2 },
+  camper: { I1: 0, I2: 0, I3: 7, I4: 0, I5: 0, I6: 0, I7: 0, crossings: 5 },
+  solar: { I1: 0, I2: 0, I3: 0, I4: 0, I5: 0, I6: 0, I7: 0, crossings: 2 },
+  inverter: { I1: 0, I2: 0, I3: 6, I4: 0, I5: 0, I6: 0, I7: 0, crossings: 2 },
+  acdc: { I1: 0, I2: 0, I3: 3, I4: 0, I5: 0, I6: 0, I7: 0, crossings: 8 },
+  complex: { I1: 0, I2: 0, I3: 23, I4: 0, I5: 0, I6: 0, I7: 0, crossings: 29 },
 };
 
 const ELK_BASELINE: Record<string, { I3: number; I5: number; I6: number; crossings: number }> = {
