@@ -37,7 +37,7 @@ function ValidatingNumberField({ spec, onChange }: { spec: FieldSpec; onChange?:
     <div className="flex flex-col gap-1">
       <div className="flex items-center justify-between">
         <label className="text-[12px] font-medium text-[var(--de-text-med)]">{spec.label}</label>
-        {spec.computed && <span className="de-label-eyebrow text-[10px]">berechnet</span>}
+        {spec.computed && <span className="de-label-eyebrow text-[11px]">berechnet</span>}
       </div>
       <div className="relative flex items-center">
         <input
@@ -68,7 +68,7 @@ function ValidatingNumberField({ spec, onChange }: { spec: FieldSpec; onChange?:
         {/* Stepper */}
         <div className="absolute right-8 flex flex-col">
           <button
-            className="h-4 w-4 text-[10px] leading-none hover:bg-[var(--de-surface-1)]"
+            className="h-4 w-4 text-[11px] leading-none hover:bg-[var(--de-surface-1)]"
             onClick={() => {
               const next = (Number(val) || 0) + (spec.step ?? 1);
               setVal(String(next));
@@ -78,7 +78,7 @@ function ValidatingNumberField({ spec, onChange }: { spec: FieldSpec; onChange?:
             ▲
           </button>
           <button
-            className="h-4 w-4 text-[10px] leading-none hover:bg-[var(--de-surface-1)]"
+            className="h-4 w-4 text-[11px] leading-none hover:bg-[var(--de-surface-1)]"
             onClick={() => {
               const next = (Number(val) || 0) - (spec.step ?? 1);
               setVal(String(next));
@@ -224,7 +224,7 @@ export function InspectorBlueprint() {
 
       {/* Fluchtlinien-Hilfe (nur Blueprint) */}
       <div className="border-t border-dashed border-[var(--de-rule)] p-2">
-        <span className="font-mono text-[10px] text-[var(--de-text-dim)]">
+        <span className="font-mono text-[11px] text-[var(--de-text-dim)]">
           4px Grid • 12px/16px Innenabstand • tabular-nums rechtsbündig
         </span>
       </div>
