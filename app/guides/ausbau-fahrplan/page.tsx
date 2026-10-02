@@ -2,6 +2,10 @@ import React from 'react';
 import Link from 'next/link';
 import { SiteHeader } from '@/components/brand/SiteHeader';
 import { SiteFooter } from '@/components/brand/SiteFooter';
+import { JsonLd } from '@/components/seo/JsonLd';
+import { jsonLdGraph, pageMetadata } from '@/lib/seo/pages';
+
+export const metadata = pageMetadata('/guides/ausbau-fahrplan');
 
 interface StepData {
   id: string;
@@ -317,6 +321,7 @@ const stepsData: StepData[] = [
 export default function AusbauFahrplanPage() {
   return (
     <div className="flex min-h-screen flex-col bg-paper text-ink">
+      <JsonLd graph={jsonLdGraph('/guides/ausbau-fahrplan')} />
       <SiteHeader />
       <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col md:flex-row">
         <aside

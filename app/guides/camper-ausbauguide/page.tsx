@@ -3,19 +3,19 @@ import Link from 'next/link';
 import RoadTripAnimation from './RoadTripAnimation';
 import { SiteHeader } from '@/components/brand/SiteHeader';
 import { SiteFooter } from '@/components/brand/SiteFooter';
+import { JsonLd } from '@/components/seo/JsonLd';
+import { jsonLdGraph, pageMetadata } from '@/lib/seo/pages';
 import { cn } from '@/lib/utils';
 
 // Outfit wird lokal über @fontsource-variable/outfit gebündelt (offline-fähiger Build).
 const outfit = { className: 'font-outfit' };
 
-export const metadata = {
-  title: 'Der ultimative Camper Ausbauguide',
-  description: 'Von der leeren Blechbüchse zum rollenden Zuhause. Technik, Normen und Profi-Tipps.',
-};
+export const metadata = pageMetadata('/guides/camper-ausbauguide');
 
 export default function CamperAusbauguide() {
   return (
     <div className="flex min-h-screen flex-col bg-paper text-ink">
+      <JsonLd graph={jsonLdGraph('/guides/camper-ausbauguide')} />
       <SiteHeader />
       <div id="ausbau-page" className="relative flex-1 overflow-hidden bg-paper px-4 pb-24 pt-12 sm:px-6">
         {/* GSAP Animation Sidebar / Background track */}

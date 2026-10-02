@@ -11,6 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { StepperSlider } from '@/components/ui/StepperSlider';
 import { SiteHeader } from '@/components/brand/SiteHeader';
 import { SiteFooter } from '@/components/brand/SiteFooter';
+import { HeizungsExplainer } from '@/components/seo/HeizungsExplainer';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import {
@@ -1122,6 +1123,8 @@ export default function HeatingCalculatorPage() {
             </div>
           </div>
         </div>
+
+        <HeizungsExplainer />
       </main>
       <SiteFooter />
     </div>

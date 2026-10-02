@@ -2,6 +2,10 @@ import Link from 'next/link';
 import { ArrowRight, CalendarCheck, Flame, Map as MapIcon, Sun, Zap } from 'lucide-react';
 import { SiteHeader } from '@/components/brand/SiteHeader';
 import { SiteFooter } from '@/components/brand/SiteFooter';
+import { JsonLd } from '@/components/seo/JsonLd';
+import { jsonLdGraph, pageMetadata } from '@/lib/seo/pages';
+
+export const metadata = pageMetadata('/');
 
 /**
  * D-7 Startseite: Hero mit klarem Nutzenversprechen, die drei Werkzeuge
@@ -66,6 +70,7 @@ const GUIDES = [
 export default function Home() {
   return (
     <div className="flex min-h-screen flex-col bg-paper text-ink">
+      <JsonLd graph={jsonLdGraph('/')} />
       <SiteHeader />
 
       <main id="main" className="container-page flex-1">

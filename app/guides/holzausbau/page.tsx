@@ -2,6 +2,10 @@ import React from 'react';
 import Link from 'next/link';
 import { SiteHeader } from '@/components/brand/SiteHeader';
 import { SiteFooter } from '@/components/brand/SiteFooter';
+import { JsonLd } from '@/components/seo/JsonLd';
+import { jsonLdGraph, pageMetadata } from '@/lib/seo/pages';
+
+export const metadata = pageMetadata('/guides/holzausbau');
 
 const STEPS = [
   {
@@ -45,6 +49,7 @@ const STEPS = [
 export default function HolzausbauGuide() {
   return (
     <div className="flex min-h-screen flex-col bg-paper text-ink">
+      <JsonLd graph={jsonLdGraph('/guides/holzausbau')} />
       <SiteHeader />
 
       <main id="main" className="container-page prose-measure flex-1">

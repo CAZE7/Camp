@@ -5,11 +5,41 @@ import '@fontsource/ibm-plex-mono/400.css';
 import '@fontsource/ibm-plex-mono/500.css';
 import type { Metadata, Viewport } from 'next';
 import { SystemThemeSync } from '@/components/theme/SystemThemeSync';
+import { HOME_DESCRIPTION, HOME_TITLE, OG_IMAGE, SITE_LOCALE, SITE_NAME, SITE_ORIGIN } from '@/lib/seo/site';
 
+/**
+ * Root-Metadaten: alles, was für jede Route gilt. Titel und Description einer
+ * einzelnen Seite stehen in `lib/seo/pages.ts` — hier nur die Schablone.
+ *
+ * `metadataBase` muss die Auslieferungs-URL inklusive Base-Path sein, sonst
+ * werden relative Canonicals und OG-Bilder auf dem Host ins Leere gestellt.
+ */
 export const metadata: Metadata = {
-  title: 'Werft — Erst der Plan. Dann das Blech.',
-  description:
-    'Werkstatt für den Camper-Ausbau. 12V-Schaltplan, Dachfläche, Heizlast und Normen — geplant, bevor gebohrt wird.',
+  metadataBase: new URL(`${SITE_ORIGIN}/`),
+  title: {
+    default: `${HOME_TITLE} | ${SITE_NAME}`,
+    template: `%s | ${SITE_NAME}`,
+  },
+  description: HOME_DESCRIPTION,
+  applicationName: SITE_NAME,
+  authors: [{ name: SITE_NAME, url: SITE_ORIGIN }],
+  creator: SITE_NAME,
+  publisher: SITE_NAME,
+  formatDetection: { email: false, address: false, telephone: false },
+  openGraph: {
+    siteName: SITE_NAME,
+    locale: SITE_LOCALE,
+    type: 'website',
+    url: `${SITE_ORIGIN}/`,
+    images: [{ ...OG_IMAGE }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: `${HOME_TITLE} | ${SITE_NAME}`,
+    description: HOME_DESCRIPTION,
+    images: [OG_IMAGE.url],
+  },
+  robots: { index: true, follow: true },
 };
 
 /**

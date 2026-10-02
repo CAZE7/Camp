@@ -18,6 +18,7 @@ import { type RoofNodeData } from '@/components/nodes/types';
 import { SAFE_MARGINS } from './validation';
 import { SiteHeader } from '@/components/brand/SiteHeader';
 import { SiteFooter } from '@/components/brand/SiteFooter';
+import { DachExplainer } from '@/components/seo/DachExplainer';
 import { Plus, AlertTriangle, Sparkles, ArrowRight, Info, X as XIcon } from 'lucide-react';
 
 // Outfit wird lokal über @fontsource-variable/outfit gebündelt.
@@ -428,6 +429,8 @@ function DachPlanerInner() {
             </ReactFlow>
           </div>
         </div>
+
+        <DachExplainer />
       </main>
       <SiteFooter />
     </div>

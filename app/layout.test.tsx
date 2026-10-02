@@ -17,6 +17,7 @@ Object.defineProperty(window, 'matchMedia', {
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import RootLayout, { metadata } from './layout';
+import { HOME_DESCRIPTION, HOME_TITLE, SITE_NAME, SITE_ORIGIN } from '@/lib/seo/site';
 
 describe('RootLayout', () => {
   it('renders children correctly', () => {
@@ -61,11 +62,15 @@ describe('RootLayout', () => {
     expect(childElement?.props.children).toBe('Test Child');
   });
 
-  it('exports the correct metadata', () => {
-    expect(metadata).toEqual({
-      title: 'Werft — Erst der Plan. Dann das Blech.',
-      description:
-        'Werkstatt für den Camper-Ausbau. 12V-Schaltplan, Dachfläche, Heizlast und Normen — geplant, bevor gebohrt wird.',
-    });
+  it('exports the shared metadata shell every page builds on', () => {
+    expect(metadata.metadataBase?.toString()).toBe(`${SITE_ORIGIN}/`);
+
+    const title = metadata.title as { default?: string; template?: string };
+    expect(title.default).toBe(`${HOME_TITLE} | ${SITE_NAME}`);
+    expect(title.template).toBe(`%s | ${SITE_NAME}`);
+
+    expect(metadata.description).toBe(HOME_DESCRIPTION);
+    expect(metadata.openGraph?.images).toHaveLength(1);
+    expect(metadata.robots).toEqual({ index: true, follow: true });
   });
 });

@@ -1,13 +1,14 @@
 import { SiteHeader } from '@/components/brand/SiteHeader';
 import { SiteFooter } from '@/components/brand/SiteFooter';
+import { JsonLd } from '@/components/seo/JsonLd';
+import { jsonLdGraph, pageMetadata } from '@/lib/seo/pages';
 
-export const metadata = {
-  title: 'Datenschutz — Werft',
-};
+export const metadata = pageMetadata('/datenschutz');
 
 export default function DatenschutzPage() {
   return (
     <div className="flex min-h-screen flex-col bg-paper text-ink">
+      <JsonLd graph={jsonLdGraph('/datenschutz')} />
       <SiteHeader />
       <main id="main" className="container-page prose-measure flex-1">
         <h1 className="font-display text-2xl font-semibold tracking-tight">Datenschutz</h1>
