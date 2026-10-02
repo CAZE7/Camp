@@ -364,8 +364,15 @@ export default function ElektrikPlanung() {
               </p>
             </article>
           </section>
+        </div>
 
-          <section id="planer" aria-labelledby="planer-titel" className="scroll-mt-20">
+        {/* Die Zeichenfläche steht außerhalb der Lesespalte und bekommt die volle
+            Fensterbreite: Der Planer führt feste Spaltenbreiten (Katalog ab 260 px,
+            Zeichenfläche mindestens 600 px, Eigenschaften bis 320 px) und liefe in
+            der auf 64 rem begrenzten Spalte über. Die feste Höhe hält den
+            Layoutsprung beim Nachladen bei null (CLS). */}
+        <section id="planer" aria-labelledby="planer-titel" className="scroll-mt-20">
+          <div className="container-page pb-6 md:pb-8">
             <h2 id="planer-titel" className="font-display text-xl font-semibold text-ink">
               Schaltplan zeichnen und automatisch verdrahten
             </h2>
@@ -374,14 +381,13 @@ export default function ElektrikPlanung() {
               Querschnitt, Sicherung und Längen landen gleichzeitig in der Stückliste. Der Plan liegt lokal im
               Browser, du kannst ihn also unterbrechen und später weiterführen.
             </p>
-            {/* Feste Höhe hält den Layoutsprung beim Nachladen des Planers bei null (CLS);
-                auf dem Handy läuft die Zeichenfläche über die Seitenränder hinaus, damit
-                der Canvas die volle Bildschirmbreite behält. */}
-            <div className="-mx-5 mt-6 h-dvh overflow-hidden border-y border-rule bg-bone md:mx-0 md:h-[46rem] md:border">
-              <Planner />
-            </div>
-          </section>
+          </div>
+          <div className="h-dvh overflow-hidden border-y border-rule bg-bone">
+            <Planner />
+          </div>
+        </section>
 
+        <div className="container-page space-y-16">
           <section id="faq" aria-labelledby="faq-titel" className="scroll-mt-20">
             <h2 id="faq-titel" className="font-display text-xl font-semibold text-ink">
               Häufige Fragen zur Wohnmobil-Elektrik
