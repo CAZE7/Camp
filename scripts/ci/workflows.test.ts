@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { load } from 'js-yaml';
 
@@ -76,7 +76,12 @@ function needsOf(job: Job): string[] {
   return Array.isArray(job.needs) ? job.needs : [job.needs];
 }
 
-const WORKFLOW_FILES = ['quality.yml', 'ci.yml', 'deploy.yml'];
+// Die Verzeichnisliste statt einer Handliste: eine neue Workflow-Datei kann
+// sich so nicht den Prüfungen unten entziehen (Pinning, npm ci, .nvmrc,
+// persist-credentials, Minimalrechte).
+const WORKFLOW_FILES = readdirSync(WORKFLOW_DIR)
+  .filter((file) => file.endsWith('.yml'))
+  .sort();
 
 describe('GitHub-Actions-Workflows', () => {
   it('alle Workflow-Dateien sind syntaktisch gültiges YAML mit jobs', () => {
