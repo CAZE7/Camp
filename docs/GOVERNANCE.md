@@ -27,12 +27,12 @@ Default, Hover, Active, Focus-Visible, Selected, Dragging, Disabled, Error, Warn
 
 Inventar:
 
-| Komponente | Stories                                                                         | Visual Tests                                            |
-| ---------- | ------------------------------------------------------------------------------- | ------------------------------------------------------- |
-| Node-Card  | `NodeBlueprint.stories.tsx` — Battery, AllStates, PortHitTargets, DINCompliance | `visual-de.spec.ts` — node-default/hover/focus/selected |
-| Edge       | `EdgeBlueprint.stories.tsx` — Hierarchy, NonScalingStroke, PEStripes            | `visual-de.spec.ts` — edge non-scaling-stroke           |
-| Inspector  | `InspectorBlueprint` — KV-Grid, Validating Field, Ampel                         | `visual.spec.ts` — responsive                           |
-| HUD        | `HUDBlueprint` — KPI + Warning Center                                           | `visual.spec.ts`                                        |
+| Komponente | Stories                                                                         | Visual Tests                                                  |
+| ---------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| Node-Card  | `NodeBlueprint.stories.tsx` — Battery, AllStates, PortHitTargets, DINCompliance | `visual-de-pixel.spec.ts` — node-default/hover/focus/selected |
+| Edge       | `EdgeBlueprint.stories.tsx` — Hierarchy, NonScalingStroke, PEStripes            | `visual-de.spec.ts` — edge non-scaling-stroke                 |
+| Inspector  | `InspectorBlueprint` — KV-Grid, Validating Field, Ampel                         | `visual.spec.ts` — responsive                                 |
+| HUD        | `HUDBlueprint` — KPI + Warning Center                                           | `visual.spec.ts`                                              |
 
 **Chromatic / Percy:** `chromatic: { diffThreshold: 0.02 }` in Story-Meta — 2% Schwelle wie bestehende `visual.spec.ts`.
 
@@ -52,13 +52,19 @@ Inventar:
 | Hit-Target     | CSS                    | ≥44px Touch, ≥24px Pointer            |
 | Fokus-Ring     | `globals.css`          | 2px solid accent !important           |
 
-**Playwright:**
+**Playwright — Baselines neu aufnehmen (nur nach optischer Freigabe):**
 
 ```bash
-npx playwright test tests/e2e/visual-de.spec.ts --update-snapshots
+npx playwright test tests/e2e/visual-de-pixel.spec.ts --update-snapshots
 ```
 
-**CI Gate:** `.github/workflows/visual-de.yml` — läuft bei jedem PR der `app/*`, `components/*`, `lib/design-system/*` ändert.
+**CI Gate:** ein eigener Workflow `visual-de.yml` existiert nicht. Beide Läufe hängen an
+`.github/workflows/quality.yml`: der Job `e2e` (blockierend) fährt die Verhaltensprüfungen
+`visual-de.spec.ts` — CLS, 11px-Floor, `non-scaling-stroke` —, der Job `visual`
+(`continue-on-error: true`, meldend) die Pixelvergleiche. Getrennt wird über
+`--grep`/`--grep-invert` mit `PIXEL_MARKER` aus `tests/e2e/pixelMarker.ts`; dass kein
+Pixelvergleich ohne diese Kennzeichnung in den blockierenden Lauf rutscht, prüft
+`scripts/ci/e2eGatePartition.test.ts`.
 
 ---
 
@@ -100,7 +106,7 @@ Neue Komponenten: direkt `var(--de-*)`.
 1. `node-card de-node-card` + `node-card--selected de-node-card--selected` (dual-class für alten Guard)
 2. `NodeSymbol` mit DIN SVG + `data-din` Attribut
 3. Ports: `de-port` 44px hit, `de-port__visual` 12px + Shape-Coding
-4. Story in `*.stories.tsx` + Screenshot in `visual-de.spec.ts`
+4. Story in `*.stories.tsx` + Screenshot in `visual-de-pixel.spec.ts`
 
 ---
 
@@ -119,7 +125,7 @@ Neue Komponenten: direkt `var(--de-*)`.
 - [ ] 9 States definiert + Stories?
 - [ ] Fokus-Ring `!important`?
 - [ ] `designTokens.test.ts` grün (216)?
-- [ ] `visual-de.spec.ts` Screenshots aktualisiert?
+- [ ] `visual-de-pixel.spec.ts` Screenshots aktualisiert?
 - [ ] Kein Hex in TSX, kein `text-white`?
 
 ---

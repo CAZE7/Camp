@@ -167,8 +167,8 @@ export function NodeBlueprint({
 
       {/* === VISUELLE HILFEN (nur Blueprint) === */}
       <div className="pointer-events-none absolute -bottom-6 left-0 right-0 flex justify-between px-1">
-        <span className="font-mono text-[10px] text-[var(--de-text-dim)]">8px GRID</span>
-        <span className="font-mono text-[10px] text-[var(--de-text-dim)]">HIT ≥24×24</span>
+        <span className="font-mono text-[11px] text-[var(--de-text-dim)]">8px GRID</span>
+        <span className="font-mono text-[11px] text-[var(--de-text-dim)]">HIT ≥24×24</span>
       </div>
     </div>
   );

@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test';
 
+import { PIXEL_MARKER } from './pixelMarker';
+
 /**
  * D-9 / UI-BASELINE: Visuelles Gate des Werft-Relaunchs.
  *
@@ -50,7 +52,7 @@ for (const scheme of SCHEMES) {
     test.use({ colorScheme: scheme });
 
     for (const route of ROUTES) {
-      test(`${route.name} hält die Baseline`, async ({ page }) => {
+      test(`${route.name} ${PIXEL_MARKER}`, async ({ page }) => {
         await page.goto(route.path, { waitUntil: 'load' });
         // Onboarding-Dialoge sind Teil des Erstbesuchs-Erlebnisses und damit
         // deterministisch — sie werden NICHT weggeklickt. Gewartet wird nur

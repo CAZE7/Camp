@@ -71,11 +71,22 @@ export default function DesignSystemPage() {
                   ['CAN-H', 'var(--de-wire-can-h)', '●'],
                   ['Sensor', 'var(--de-wire-sensor)', '●'],
                 ].map(([label, color, shape]) => (
-                  <div key={label} className="flex items-center gap-2 font-mono text-[11px]">
-                    <span className="h-3 w-3 rounded-full" style={{ background: color as string }} />
-                    <span>{shape}</span>
-                    <span className="text-[var(--de-text-med)]">{label}</span>
-                    <span className="ml-auto text-[var(--de-text-low)]">{color}</span>
+                  // Beide Zeilen mit fester Zeilenhöhe und ohne Umbruch: hinge die
+                  // Zeilenzahl des Token-Namens an den Metriken der noch nicht
+                  // geladenen Ersatzschrift, verschiebt der Webfont-Swap das
+                  // gesamte Layout (Gate „CLS sollte 0 sein").
+                  <div key={label} className="flex flex-col font-mono text-[11px] leading-4">
+                    <span className="flex items-center gap-2 text-[var(--de-text-med)]">
+                      <span
+                        className="h-3 w-3 shrink-0 rounded-full"
+                        style={{ background: color as string }}
+                      />
+                      <span className="shrink-0">{shape}</span>
+                      <span className="truncate">{label}</span>
+                    </span>
+                    <span className="truncate text-[var(--de-text-low)]" title={color as string}>
+                      {color}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -165,7 +176,7 @@ export default function DesignSystemPage() {
                 className={`h-20 rounded-[4px] border bg-[var(--de-surface-2)] p-3 transition-all duration-150 ${cls}`}
               >
                 <span className="font-mono text-[11px]">{label}</span>
-                <div className="mt-2 font-mono text-[10px] text-[var(--de-text-low)]">150ms ease-out</div>
+                <div className="mt-2 font-mono text-[11px] text-[var(--de-text-low)]">150ms ease-out</div>
               </div>
             ))}
           </div>

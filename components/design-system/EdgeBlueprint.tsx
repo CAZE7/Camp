@@ -143,7 +143,7 @@ function BridgeExample() {
           strokeLinecap="round"
         />
       </svg>
-      <span className="absolute -bottom-2 left-0 font-mono text-[10px] text-[var(--de-text-dim)]">
+      <span className="absolute -bottom-2 left-0 font-mono text-[11px] text-[var(--de-text-dim)]">
         CROSSING BRIDGE — gestochen scharf, 1px Border, Surface-0 Fill
       </span>
     </div>
@@ -170,7 +170,7 @@ function FlowIndicatorExample() {
           <polygon points="160,8 168,12 160,16" fill="var(--de-wire-dc-12v-plus)" opacity={0.3} />
         </g>
       </svg>
-      <span className="font-mono text-[10px] text-[var(--de-text-dim)]">
+      <span className="font-mono text-[11px] text-[var(--de-text-dim)]">
         FLUSSINDIKATOR — diskret, 3 Stufen Opacity, keine Dauer-Animation
       </span>
     </div>

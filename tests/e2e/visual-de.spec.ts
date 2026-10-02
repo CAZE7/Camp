@@ -1,17 +1,20 @@
-import { test, expect } from '@playwright/test';
+import { expect, test } from '@playwright/test';
+
+/**
+ * Visuelle Regeln des Dark-Engineering-Design-Systems — ohne Pixelvergleich.
+ *
+ * Diese Szenarien laufen im blockierenden E2E-Job, weil sie Verhalten messen
+ * (Layout-Stabilität, Schriftgrößen-Untergrenze, SVG-Stroke), nicht Anstrich.
+ * Die eingefrorenen Bilder derselben Ansicht liegen in
+ * `visual-de-pixel.spec.ts` und gehören in den meldenden Job: ein Baseline-Diff
+ * darf einen Production-Deploy nicht stoppen (Begründung im Kommentar von
+ * `.github/workflows/quality.yml`, Auftrag im Job `visual`).
+ */
 
 type LayoutShiftEntry = PerformanceEntry & {
   hadRecentInput: boolean;
   value: number;
 };
-
-/**
- * Visual Regression — Dark Engineering Design System
- * Modul 5: Null-Toleranz bei Text-Wrapping, SVG-Stroke, Font-Rendering, CLS=0
- *
- * Prüft die /design-system Showcase-Seite in light/dark × 375/768/1440
- * und hält die 9-State Matrix der Node-Cards fest.
- */
 
 test.describe('Dark Engineering Visual', () => {
   const viewports = [
@@ -24,7 +27,7 @@ test.describe('Dark Engineering Visual', () => {
 
   for (const theme of themes) {
     for (const vp of viewports) {
-      test(`design-system ${theme} ${vp.name}`, async ({ page }) => {
+      test(`design-system ${theme} ${vp.name} ohne Layout-Shift`, async ({ page }) => {
         await page.setViewportSize({ width: vp.width, height: vp.height });
         // Theme via class — layout.tsx setzt .dark via SystemThemeSync
         await page.emulateMedia({ colorScheme: theme === 'dark' ? 'dark' : 'light' });
@@ -48,37 +51,9 @@ test.describe('Dark Engineering Visual', () => {
           });
         });
         expect(cls, `CLS sollte 0 sein, war ${cls}`).toBeLessThan(0.01);
-
-        // Screenshot mit 2% Schwelle (wie bestehende visual.spec.ts)
-        await expect(page).toHaveScreenshot(`de-design-system-${theme}-${vp.name}.png`, {
-          maxDiffPixelRatio: 0.02,
-          fullPage: true,
-        });
       });
     }
   }
-
-  test('node-card states — 9-State Matrix', async ({ page }) => {
-    await page.goto('/design-system');
-    await page.waitForSelector('.de-node-card');
-
-    const node = page.locator('.de-node-card').first();
-
-    // Default
-    await expect(node).toHaveScreenshot('de-node-default.png', { maxDiffPixelRatio: 0.02 });
-
-    // Hover
-    await node.hover();
-    await expect(node).toHaveScreenshot('de-node-hover.png', { maxDiffPixelRatio: 0.02 });
-
-    // Focus-Visible
-    await page.keyboard.press('Tab');
-    await expect(node).toHaveScreenshot('de-node-focus.png', { maxDiffPixelRatio: 0.02 });
-
-    // Selected
-    await node.click();
-    await expect(node).toHaveScreenshot('de-node-selected.png', { maxDiffPixelRatio: 0.02 });
-  });
 
   test('edge non-scaling-stroke & bridge', async ({ page }) => {
     await page.goto('/design-system');

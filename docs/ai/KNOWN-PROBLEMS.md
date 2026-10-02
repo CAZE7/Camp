@@ -790,6 +790,76 @@ routeAllCables → checkInvariants`, sechs Referenzpläne, Kartenmaß 192 × 120
 
 ---
 
+## TEST-003 — Pixelvergleiche einer neuen Spec liefen im blockierenden Lauf — **behoben 2026-10-02**
+
+- **AREA:** Tests / Deployment
+- **FILE:** `tests/e2e/visual-de.spec.ts`, `tests/e2e/visual-de-pixel.spec.ts`,
+  `tests/e2e/pixelMarker.ts`, `scripts/ci/e2eGatePartition.test.ts`,
+  `quality.yml` (Jobs `e2e` und `visual`)
+- **DESCRIPTION:** Die Trennung von blockierendem und meldendem Playwright-Lauf
+  hängt an einem **Titeltext**: `--grep "hält die Baseline"` wählt den meldenden
+  Job, alles andere fährt der blockierende. Eine Spec, die den Text nicht trägt,
+  rotiert still den Deploy. `visual-de.spec.ts` (26.09.2026) brachte
+  Pixelvergleiche mit, ohne die Kennzeichnung zu übernehmen.
+- **EVIDENCE (2026-10-02):** Run `37025456409` auf `1aa297a`: Job `End-to-End
+(Playwright)` failure, `Pages-Build` und `Deploy` übersprungen. Im Artefakt
+  `playwright-report` 46 Ergebnisverzeichnisse, davon 40 aus `visual-de` — die
+  Bildvergleiche also im blockierenden Lauf.
+- **VERDECKTE BEFUNDE:** Der Anschein „nur Baseline-Drift" stimmte nicht. Drei
+  der vier Fehlerfamilien waren echte Defekte, die ohne die Umleitung nie
+  aufgefallen wären: axe `scrollable-region-focusable` (serious) auf
+  `/elektrik-planung/`, 10px-Text gegen die 11px-Untergrenze, CLS 0,0197 durch
+  Webfont-Swap (siehe TEST-004). Die vierte Familie war nie aufnehmbare
+  Baseline: `visual-de.spec.ts-snapshots/` existiert im Repository nicht
+  (`git ls-files` = 0 Treffer), solche Tests können in CI nicht grün werden.
+- **FIX:** Verhaltensprüfungen (CLS, 11px, `non-scaling-stroke`) bleiben
+  blockierend in `visual-de.spec.ts`; die Bilder ziehen in
+  `visual-de-pixel.spec.ts` mit der Kennzeichnung um. Der Text kommt jetzt aus
+  `tests/e2e/pixelMarker.ts`, und `scripts/ci/e2eGatePartition.test.ts` prüft
+  beide Richtungen (Pixelvergleich ohne Kennzeichnung, Kennzeichnung ohne
+  Pixelvergleich) sowie den Abgleich mit dem Workflow-Filter. Wirkung der
+  Prüfung nachgewiesen: ein eingebauter Pixelvergleich ohne Kennzeichnung dreht
+  sie rot.
+- **RELATED TEST:** `scripts/ci/e2eGatePartition.test.ts`,
+  `scripts/ci/workflows.test.ts`
+- **RELATED ISSUE:** TEST-001 (16 Tage Deploy-Stopps durch denselben Job)
+
+---
+
+## TEST-004 — CLS auf /design-system war Webfont-Swap, nicht Layout-Fehler — **behoben 2026-10-02**
+
+- **AREA:** Tests / Auslieferung
+- **FILE:** `app/layout.tsx`, `types/fonts.d.ts`, `app/design-system/page.tsx`,
+  `tests/e2e/visual-de.spec.ts`
+- **DESCRIPTION:** Das Gate „CLS sollte 0 sein" (Schwelle 0,01) rotierte auf
+  jeder Breite, deren Mono-Text umbricht. Kein Flaky: dieselben Werte über alle
+  Projekte desselben Laufs.
+- **EVIDENCE (2026-10-02):** PerformanceObserver mit `sources` über die vier
+  Projekte × zwei Schemata × drei Breiten: die Shifts fallen zeitlich exakt auf
+  `document.fonts.status: loading → loaded` (145–190 ms), `clientWidth` und
+  Rasterspaltenzahl bleiben unverändert, die Zeilenhöhe springt von 17 auf
+  33 px. Gegenprobe: `font-display: block` (per Antwortumschreibung) verbessert
+  nichts — bei 375 px gemessen 0,0139 statt 0,0158.
+- **URSACHE:** Die Schriften kommen aus `@fontsource`-CSS mit
+  `font-display: swap`. Der Download startet erst nach dem CSS-Parsen, bis dahin
+  misst der Browser mit der Ersatzschrift des Betriebssystems. Deren Vorschritte
+  unterscheiden sich von IBM Plex Mono (Windows/Consolas 0,55 em gegen 0,60 em),
+  deshalb ist die Höhe einer Textzeile von der Plattform abhängig — und jede
+  metrische Korrektur über `size-adjust` würde nur für eine Plattform gelten.
+- **FIX:** Vorrangig die lateinischen Schnitte im Kopf vorladen (`<link
+rel="preload" as="font">`, Adresse aus dem Asset-Import statt gepflegtem
+  Hash), damit die Schrift vor dem ersten Paint da ist. Danach gemessen:
+  Maximum 0,0004 über alle 24 Kombinationen (Schwelle 0,01). Zweitens die
+  Elektro-Semantik-Zeilen: Token-Name fest in die zweite Zeile, `truncate` statt
+  Umbruch — ihre Höhe hängt damit nicht mehr an den Metriken der Ersatzschrift.
+- **FOLGERUNG FÜR NEUE GATES:** Ein Schwellenwert für Stabilität muss die
+  Schriftlade-Phase erklären, sonst misst er die Ersatzschrift des Rechners.
+  Vorher messen, ob der Shift von Metrik- oder von Inhaltsänderung kommt.
+- **RELATED TEST:** `tests/e2e/visual-de.spec.ts` (CLS-Szenarien),
+  `tests/e2e/a11y.spec.ts`
+
+---
+
 ## TEST-001 — E2E-Gate blockierte 16 Tage lang jeden Deploy — **behoben 2026-09-26**
 
 - **AREA:** Tests / Deployment

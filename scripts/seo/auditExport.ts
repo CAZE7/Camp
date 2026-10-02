@@ -16,7 +16,7 @@
  * wird.
  */
 import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { join, relative, sep } from 'node:path';
 
 import { SITE_ORIGIN, SITE_BASE_PATH } from '../../lib/site';
 import {
@@ -55,6 +55,16 @@ const TECHNISCHE_SEITEN = ['/404/', '/_not-found/'];
 const OUT = 'out';
 
 const BASE = SITE_BASE_PATH ? `${SITE_ORIGIN}${SITE_BASE_PATH}` : SITE_ORIGIN;
+
+/** Seitenadresse einer Export-Datei (`out/a/index.html` → `/a/`). */
+function pagePathOf(file: string): string {
+  // `relative()` liefert unter Windows Rückstriche; Adressen im HTML stehen mit
+  // Vorstrichen — ohne Normierung gilt dort jede Unterseite als unerreichbar.
+  return `/${relative(OUT, file)
+    .replace(/index\.html$/, '')
+    .split(sep)
+    .join('/')}`;
+}
 
 /** Datei, die eine Seitenadresse bedient (`/a/` → `out/a/index.html`). */
 function fileForPath(path: string): string | null {
@@ -103,7 +113,7 @@ function main(): void {
 
   for (const page of pages) {
     const html = readFileSync(page, 'utf8');
-    const path = `/${relative(OUT, page).replace(/index\.html$/, '')}`;
+    const path = pagePathOf(page);
     const indexable = indexablePaths.has(path);
     const technisch = TECHNISCHE_SEITEN.includes(path);
 
@@ -154,7 +164,7 @@ function main(): void {
     }
   }
 
-  for (const path of pages.map((page) => `/${relative(OUT, page).replace(/index\.html$/, '')}`)) {
+  for (const path of pages.map(pagePathOf)) {
     if (!reachable.has(path) && !nonIndexablePaths.has(path) && !TECHNISCHE_SEITEN.includes(path)) {
       const file = fileForPath(path)!;
       findings.push({
