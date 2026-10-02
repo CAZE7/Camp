@@ -11,6 +11,12 @@ export const metadata: Metadata = pageMetadata({
   description:
     'Vom Entkernen bis zum Möbelbau: die Reihenfolge für den Camper-Ausbau, mit den Fehlern, die dich sonst zwei Schritte zurückwerfen.',
   path: '/guides/ausbau-fahrplan/',
+  image: {
+    path: '/og/ausbau-fahrplan.png',
+    width: 1200,
+    height: 630,
+    alt: 'Ausbau-Fahrplan: Reihenfolge der Gewerke',
+  },
 });
 
 interface StepData {

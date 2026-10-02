@@ -11,6 +11,12 @@ export const metadata: Metadata = pageMetadata({
   description:
     'Möbelbau im Camper in sechs Schritten: Unterkonstruktion, Wandverkleidung, Stauraum, Befestigung und Oberflächen — mit Materialwahl und Gewicht.',
   path: '/guides/holzausbau/',
+  image: {
+    path: '/og/holzausbau.png',
+    width: 1200,
+    height: 630,
+    alt: 'Holzausbau im Camper: sechs Schritte',
+  },
 });
 
 const STEPS = [

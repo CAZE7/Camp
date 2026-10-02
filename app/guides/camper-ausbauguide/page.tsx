@@ -16,6 +16,12 @@ export const metadata: Metadata = pageMetadata({
   description:
     'Wissen für den Ausbau: Karosserie, Dämmung, 12-V-Elektrik, Gas und TÜV — verständlich erklärt, mit Normbezug und Praxiswerten.',
   path: '/guides/camper-ausbauguide/',
+  image: {
+    path: '/og/camper-guide.png',
+    width: 1200,
+    height: 630,
+    alt: 'Camper-Ausbauguide: Technik, Normen und Praxis',
+  },
 });
 
 export default function CamperAusbauguide() {

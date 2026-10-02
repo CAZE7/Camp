@@ -14,6 +14,12 @@ export const metadata: Metadata = pageMetadata({
   description:
     'Solarpanels, Dachluken und Kabeldurchlässe auf der Dachfläche platzieren, Belegung prüfen und die Gesamtleistung in Watt ablesen.',
   path: '/tools/dach/',
+  image: {
+    path: '/og/dach.png',
+    width: 1200,
+    height: 630,
+    alt: 'Solarpanels auf dem Dach eines Campers',
+  },
 });
 
 export default function DachLayout({ children }: { children: React.ReactNode }) {
