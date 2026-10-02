@@ -494,8 +494,9 @@ describe('DE — Dark Engineering Token-Vollständigkeit & Kontraste', () => {
     let value: string | undefined = block.get(name) ?? deRoot.get(name) ?? rootTokens.get(name);
     if (!value) throw new Error(`DE Token --${name} fehlt`);
     for (let i = 0; i < 10; i++) {
-      const ref = value.match(/^var\(--([\w-]+)\)$/)?.[1];
-      if (!ref) break;
+      const refMatch: RegExpMatchArray | null = value.match(/^var\(--([\w-]+)\)$/);
+      const ref: string | undefined = refMatch?.[1] ?? undefined;
+      if (ref === undefined) break;
       value = block.get(ref) ?? deRoot.get(ref) ?? rootTokens.get(ref) ?? '';
     }
     const hex = value.match(/^#([0-9a-fA-F]{6})$/)?.[1];

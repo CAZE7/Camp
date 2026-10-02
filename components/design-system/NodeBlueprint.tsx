@@ -130,9 +130,7 @@ export function NodeBlueprint({
             <span className="font-mono text-[11px] font-bold leading-none tracking-[0.12em] text-[var(--de-text-med)]">
               {typeCode}
             </span>
-            <span className="max-w-[100px] truncate text-[13px] font-semibold leading-tight">
-              {label}
-            </span>
+            <span className="max-w-[100px] truncate text-[13px] font-semibold leading-tight">{label}</span>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -147,10 +145,7 @@ export function NodeBlueprint({
       {/* === BODY-ZONE: Key-Value-Telemetrie === */}
       <div className="flex flex-col gap-1 p-3">
         {telemetry.map((row) => (
-          <div
-            key={row.key}
-            className="flex items-baseline justify-between gap-2 text-[12px] leading-4"
-          >
+          <div key={row.key} className="flex items-baseline justify-between gap-2 text-[12px] leading-4">
             <span className="text-[var(--de-text-med)]">{row.key}</span>
             <span
               className={[
@@ -159,9 +154,7 @@ export function NodeBlueprint({
               ].join(' ')}
             >
               {row.value}
-              {row.unit ? (
-                <span className="ml-1 text-[var(--de-text-low)]">{row.unit}</span>
-              ) : null}
+              {row.unit ? <span className="ml-1 text-[var(--de-text-low)]">{row.unit}</span> : null}
             </span>
           </div>
         ))}
@@ -175,9 +168,7 @@ export function NodeBlueprint({
       {/* === VISUELLE HILFEN (nur Blueprint) === */}
       <div className="pointer-events-none absolute -bottom-6 left-0 right-0 flex justify-between px-1">
         <span className="font-mono text-[10px] text-[var(--de-text-dim)]">8px GRID</span>
-        <span className="font-mono text-[10px] text-[var(--de-text-dim)]">
-          HIT ≥24×24
-        </span>
+        <span className="font-mono text-[10px] text-[var(--de-text-dim)]">HIT ≥24×24</span>
       </div>
     </div>
   );
@@ -247,7 +238,8 @@ export const NODE_STATE_CLASSES: Record<(typeof NODE_STATES)[number], string> = 
   Default: 'de-node-card',
   Hover: 'de-node-card hover:border-[var(--de-rule-highlight)]',
   Active: 'de-node-card active:scale-[0.99]',
-  'Focus-Visible': 'de-node-card focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--de-accent)]',
+  'Focus-Visible':
+    'de-node-card focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--de-accent)]',
   Selected: 'de-node-card de-node-card--selected',
   Dragging: 'de-node-card opacity-90 rotate-[0.5deg] shadow-none',
   Disabled: 'de-node-card opacity-40 pointer-events-none',

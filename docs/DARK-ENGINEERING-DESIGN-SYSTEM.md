@@ -88,7 +88,9 @@ Monospaced Ziffern Pflicht:
 ```css
 .de-mono-numeric {
   font-variant-numeric: tabular-nums;
-  font-feature-settings: 'tnum' 1, 'zero' 1;
+  font-feature-settings:
+    'tnum' 1,
+    'zero' 1;
 }
 ```
 
@@ -142,39 +144,39 @@ Nach Okabe-Ito + Tol, getestet mit Deuteranopie/Protanopie/Tritanopie Simulatore
 
 **DC-Systeme:**
 
-| Token | Hex Dark | Hex Light | Bedeutung | Form | Kontrast Dark |
-|-------|----------|-----------|-----------|------|---------------|
-| `--de-wire-dc-12v-plus` | #FF6B6B | #C62F21 | 12V DC Plus | ● Kreis | 5.8:1 |
-| `--de-wire-dc-12v-minus` | #8E9AAF | #3F4750 | 12V DC Minus | ■ Rechteck | 5.1:1 |
-| `--de-wire-dc-24v` | #FF8E53 | #A34A24 | 24V DC | ● Orange | 6.2:1 |
-| `--de-wire-dc-48v` | #FFB26B | #8A5A0A | 48V DC | ● Amber | 7.5:1 |
+| Token                    | Hex Dark | Hex Light | Bedeutung    | Form       | Kontrast Dark |
+| ------------------------ | -------- | --------- | ------------ | ---------- | ------------- |
+| `--de-wire-dc-12v-plus`  | #FF6B6B  | #C62F21   | 12V DC Plus  | ● Kreis    | 5.8:1         |
+| `--de-wire-dc-12v-minus` | #8E9AAF  | #3F4750   | 12V DC Minus | ■ Rechteck | 5.1:1         |
+| `--de-wire-dc-24v`       | #FF8E53  | #A34A24   | 24V DC       | ● Orange   | 6.2:1         |
+| `--de-wire-dc-48v`       | #FFB26B  | #8A5A0A   | 48V DC       | ● Amber    | 7.5:1         |
 
 **AC 230V (DIN VDE 0100):**
 
-| Token | Hex Dark | Bedeutung | Kontrast |
-|-------|----------|-----------|----------|
-| `--de-wire-ac-l` | #6AA6FF | Phase L (Braun/Schwarz → Blau im Dark) | 6.0:1 |
-| `--de-wire-ac-n` | #A9C6FF | Neutral N (Blau → Hellblau) | 8.2:1 |
-| `--de-wire-ac-pe` | #6FE7A0 | PE (Grün/Gelb → Grün) | 9.1:1 |
+| Token             | Hex Dark | Bedeutung                              | Kontrast |
+| ----------------- | -------- | -------------------------------------- | -------- |
+| `--de-wire-ac-l`  | #6AA6FF  | Phase L (Braun/Schwarz → Blau im Dark) | 6.0:1    |
+| `--de-wire-ac-n`  | #A9C6FF  | Neutral N (Blau → Hellblau)            | 8.2:1    |
+| `--de-wire-ac-pe` | #6FE7A0  | PE (Grün/Gelb → Grün)                  | 9.1:1    |
 
 PE immer Grün, zusätzlich Dreiecks-Form für Shape-Coding.
 
 **Busse & Sensorik:**
 
-| Token | Hex Dark | Bedeutung |
-|-------|----------|-----------|
-| `--de-wire-solar` | #FFC857 | PV / Solar |
-| `--de-wire-can-h` | #B18CFF | CAN-H |
-| `--de-wire-can-l` | #8B6FCC | CAN-L (dunkler) |
-| `--de-wire-sensor` | #5DD9C1 | Sensorik / 1-Wire |
+| Token              | Hex Dark | Bedeutung         |
+| ------------------ | -------- | ----------------- |
+| `--de-wire-solar`  | #FFC857  | PV / Solar        |
+| `--de-wire-can-h`  | #B18CFF  | CAN-H             |
+| `--de-wire-can-l`  | #8B6FCC  | CAN-L (dunkler)   |
+| `--de-wire-sensor` | #5DD9C1  | Sensorik / 1-Wire |
 
 **Wasser:**
 
-| Token | Hex Dark | Bedeutung |
-|-------|----------|-----------|
-| `--de-pipe-fresh` | #5AC8FA | Frischwasser |
-| `--de-pipe-gray` | #9AA0A6 | Grauwasser |
-| `--de-pipe-hot` | #FF7A7A | Warmwasser |
+| Token             | Hex Dark | Bedeutung    |
+| ----------------- | -------- | ------------ |
+| `--de-pipe-fresh` | #5AC8FA  | Frischwasser |
+| `--de-pipe-gray`  | #9AA0A6  | Grauwasser   |
+| `--de-pipe-hot`   | #FF7A7A  | Warmwasser   |
 
 **Status — 7:1 für kritisch gefordert:**
 
@@ -242,17 +244,17 @@ RGB-Twins für Tailwind Alpha (`bg-* /10` etc.):
 
 **Node-State-Matrix (Governance):**
 
-| State | Klasse | Border | Before (2px Leiste) | Sonstiges |
-|-------|--------|--------|---------------------|-----------|
-| Default | de-node-card | rule-strong | transparent | — |
-| Hover | :hover | rule-highlight | transparent | z-index +1 |
-| Active | :active | accent | accent | scale 0.99 |
-| Focus-Visible | :focus-visible | accent | accent | outline 2px accent offset 2px |
-| Selected | --selected | accent | accent | box-shadow 0 0 0 1px accent |
-| Dragging | dragging | accent | accent | opacity 0.9, rotate 0.5deg |
-| Disabled | disabled | rule | transparent | opacity 0.4, pointer-events none |
-| Error | --error | error | error | — |
-| Warning | --warning | warn | warn | — |
+| State         | Klasse         | Border         | Before (2px Leiste) | Sonstiges                        |
+| ------------- | -------------- | -------------- | ------------------- | -------------------------------- |
+| Default       | de-node-card   | rule-strong    | transparent         | —                                |
+| Hover         | :hover         | rule-highlight | transparent         | z-index +1                       |
+| Active        | :active        | accent         | accent              | scale 0.99                       |
+| Focus-Visible | :focus-visible | accent         | accent              | outline 2px accent offset 2px    |
+| Selected      | --selected     | accent         | accent              | box-shadow 0 0 0 1px accent      |
+| Dragging      | dragging       | accent         | accent              | opacity 0.9, rotate 0.5deg       |
+| Disabled      | disabled       | rule           | transparent         | opacity 0.4, pointer-events none |
+| Error         | --error        | error          | error               | —                                |
+| Warning       | --warning      | warn           | warn                | —                                |
 
 Siehe `NodeBlueprint.tsx` für implementierte Klassen.
 
@@ -305,7 +307,9 @@ Siehe `EdgeBlueprint.tsx`.
 **Zweispaltiges Key-Value-Layout mit perfekter vertikaler Fluchtlinie:**
 
 ```tsx
-<div className="de-kv-grid"> // grid-cols-2, gap 8px 16px
+<div className="de-kv-grid">
+  {' '}
+  // grid-cols-2, gap 8px 16px
   <span className="de-kv-key">Kapazität</span>
   <span className="de-kv-value de-mono-numeric">100 Ah</span>
 </div>
@@ -378,7 +382,7 @@ Siehe `HUDBlueprint.tsx`.
 **Verboten:**
 
 - Bounce, Elastic, Spring mit Overshoot
-- >200ms für Hover/Selektion
+- > 200ms für Hover/Selektion
 - Rotation >1deg außer Dragging
 - Blur-Animation (teuer, nur statischer Blur für Overlay)
 
@@ -390,24 +394,30 @@ Siehe `HUDBlueprint.tsx`.
 
 ### 4.2 Touch- & Desktop-Parität
 
-| Feature | Desktop (pointer: fine) | Touch (coarse) |
-|---------|------------------------|----------------|
-| Hover | Tooltip via ::after, 12px Mono, Panel Fläche | Kein Hover, Tap-Reveal |
-| Zoom | Mausrad + Controls 44px | Pinch + Controls 44px |
-| Drag | Ganzer Node draggable | Nur Drag-Handle 44px oben, Long-Press arm |
-| Connect | Drag von Port zu Port | Sequential-Tap: Tap Quelle → Tap Ziel |
-| Context | Rechtsklick | Long-Press 500ms → Context Menu |
-| Hit-Targets | 24px min (WCAG 2.5.8) | 44px min (Apple HIG, WCAG 2.5.5) |
+| Feature     | Desktop (pointer: fine)                      | Touch (coarse)                            |
+| ----------- | -------------------------------------------- | ----------------------------------------- |
+| Hover       | Tooltip via ::after, 12px Mono, Panel Fläche | Kein Hover, Tap-Reveal                    |
+| Zoom        | Mausrad + Controls 44px                      | Pinch + Controls 44px                     |
+| Drag        | Ganzer Node draggable                        | Nur Drag-Handle 44px oben, Long-Press arm |
+| Connect     | Drag von Port zu Port                        | Sequential-Tap: Tap Quelle → Tap Ziel     |
+| Context     | Rechtsklick                                  | Long-Press 500ms → Context Menu           |
+| Hit-Targets | 24px min (WCAG 2.5.8)                        | 44px min (Apple HIG, WCAG 2.5.5)          |
 
 **Intelligente Umschaltung:**
 
 ```css
 @media (pointer: fine) {
-  .node-drag-handle { display: none; } /* Ganzer Node greifbar */
+  .node-drag-handle {
+    display: none;
+  } /* Ganzer Node greifbar */
 }
 @media (pointer: coarse) {
-  .edge-label { display: none; } /* Nur bei Selektion */
-  .edge-label--revealed { display: flex; }
+  .edge-label {
+    display: none;
+  } /* Nur bei Selektion */
+  .edge-label--revealed {
+    display: flex;
+  }
 }
 ```
 
@@ -419,15 +429,15 @@ Siehe `HUDBlueprint.tsx`.
 
 **Inventar:**
 
-| Komponente | Datei | States |
-|------------|-------|--------|
-| Node-Card | NodeBlueprint.tsx | 9 States (siehe 2.1) |
-| Port-Handle | NodeBlueprint.tsx | Default, Hover, Focus, Connecting, Valid, Invalid |
-| Edge | EdgeBlueprint.tsx | Default, Hover, Selected, Error, Tight, Invalid |
-| Inspector Field | InspectorBlueprint.tsx | Default, Focus, Invalid, Disabled, Computed |
-| Button | button.tsx | Default, Hover, Active, Focus, Disabled, Loading |
-| HUD Card | HUDBlueprint.tsx | Collapsed, Expanded |
-| Warning Item | HUDBlueprint.tsx | Critical, Warning, Info |
+| Komponente      | Datei                  | States                                            |
+| --------------- | ---------------------- | ------------------------------------------------- |
+| Node-Card       | NodeBlueprint.tsx      | 9 States (siehe 2.1)                              |
+| Port-Handle     | NodeBlueprint.tsx      | Default, Hover, Focus, Connecting, Valid, Invalid |
+| Edge            | EdgeBlueprint.tsx      | Default, Hover, Selected, Error, Tight, Invalid   |
+| Inspector Field | InspectorBlueprint.tsx | Default, Focus, Invalid, Disabled, Computed       |
+| Button          | button.tsx             | Default, Hover, Active, Focus, Disabled, Loading  |
+| HUD Card        | HUDBlueprint.tsx       | Collapsed, Expanded                               |
+| Warning Item    | HUDBlueprint.tsx       | Critical, Warning, Info                           |
 
 **State-Matrix Pflicht:** Jeder interaktive Zustand muss definiert sein:
 
@@ -448,15 +458,15 @@ Für jeden State: Border, Background, Text, Shadow, Opacity, Transform, Cursor, 
 
 **Null-Toleranz-Kriterien:**
 
-| Kriterium | Test | Erwartung |
-|-----------|------|-----------|
-| Text-Wrapping | Visual | Kein Umbruch in Node-Cards bei 192px Breite |
-| SVG-Stroke | `vector-effect: non-scaling-stroke` | Stroke bleibt 1-3px bei jedem Zoom |
-| Font-Rendering | `antialiased` + `tabular-nums` | Keine Layout-Jitter bei Wertänderung |
-| Layout-Shift | CLS | CLS = 0 — keine spontane Größenänderung |
-| Kontrast | designTokens.test.ts | ≥4.5:1 Text, ≥7:1 Alarme, ≥3:1 Grafik |
-| Hit-Target | CSS | ≥44px Touch, ≥24px Pointer |
-| Fokus-Ring | globals.css | 2px solid accent, offset 2px, !important gegen Bibliothek |
+| Kriterium      | Test                                | Erwartung                                                 |
+| -------------- | ----------------------------------- | --------------------------------------------------------- |
+| Text-Wrapping  | Visual                              | Kein Umbruch in Node-Cards bei 192px Breite               |
+| SVG-Stroke     | `vector-effect: non-scaling-stroke` | Stroke bleibt 1-3px bei jedem Zoom                        |
+| Font-Rendering | `antialiased` + `tabular-nums`      | Keine Layout-Jitter bei Wertänderung                      |
+| Layout-Shift   | CLS                                 | CLS = 0 — keine spontane Größenänderung                   |
+| Kontrast       | designTokens.test.ts                | ≥4.5:1 Text, ≥7:1 Alarme, ≥3:1 Grafik                     |
+| Hit-Target     | CSS                                 | ≥44px Touch, ≥24px Pointer                                |
+| Fokus-Ring     | globals.css                         | 2px solid accent, offset 2px, !important gegen Bibliothek |
 
 **Playwright Beispiel:**
 
@@ -487,7 +497,12 @@ Verwendung:
 ```tsx
 import { darkEngineeringTokens } from '@/lib/design-system/tokens';
 
-<div style={{ background: darkEngineeringTokens.surfaces.surface2, borderColor: darkEngineeringTokens.surfaces.ruleStrong }} />
+<div
+  style={{
+    background: darkEngineeringTokens.surfaces.surface2,
+    borderColor: darkEngineeringTokens.surfaces.ruleStrong,
+  }}
+/>;
 ```
 
 ### 2. Komponenten-Blaupause (Component Anatomy)
@@ -501,18 +516,18 @@ Alle Blueprints sind lauffähige React-Komponenten mit Tailwind + CSS-Variablen,
 
 ### 3. Visuelle Richtlinien & Do's/Don'ts
 
-| Kategorie | Do's (Best Practice) | Don'ts (No-Go) |
-|-----------|---------------------|----------------|
-| **Farben** | Semantische Tokens via var(--de-*), farbenblind-tauglich (Farbe + Form), WCAG AAA | Hex-Literale in TS/TSX, Tailwind-Palettenklassen (bg-red-500), Farbmissbrauch (Rot für Erfolg) |
-| **Typografie** | Inter UI, IBM Plex Mono für Werte, tabular-nums, 11px min, clamp fluid | Text unter 11px, Outfit im Canvas, zentrierte Zahlenkolonnen, variable Breite bei sich ändernden Werten |
-| **Grid** | 4px/8px Vielfache, Node 192/224/256px, Header 40px | Off-Grid Werte (13px Padding, 7px Margin), Radius >4px |
-| **Surfaces** | 1px Border, Surface-Layering, Overlay mit Blur 16-20px | Box-Shadow auf Cards, harte Schatten, Schatten statt Border |
-| **Nodes** | 3 Zonen, DIN-Symbol, Status-Dot, Port-Shape-Coding, 44px Hit | Nur Farbe für Status, kleiner Hit-Target <24px, Schatten, verspielte Icons |
-| **Edges** | Orthogonale 90°, Hierarchie via Dicke (3px/2px/1.5px), Bridge mit non-scaling-stroke, Label nie über Node | Diagonale, Dicke = Querschnitt, Pixelmatsch-Brücken, Label über Node |
-| **Inspector** | 2-spaltig Fluchtlinie, Einheit als Suffix, Computed = dashed + tint, Ampel für ΔU | 1-spaltig zentriert, Einheit im Label, kein Unterschied Input/Computed, kein Feedback |
-| **Motion** | 100-160ms ease-out, utilitaristisch, Focus-Dimming | Bounce, >200ms Hover, Dauer-Animation für Fluss, Blur-Animation |
-| **Touch** | 44px Touch-Target, Sequential-Tap-Connect, Long-Press Context | 24px Touch-Target, nur Drag-Connect, kein Touch-Handling |
-| **A11y** | Fokus-Ring 2px accent !important, tabular-nums rechts, AAA Kontraste | Kein Fokus-Ring (Bibliothek überschreibt), kein tabular-nums (Jitter), <4.5:1 Kontrast |
+| Kategorie      | Do's (Best Practice)                                                                                      | Don'ts (No-Go)                                                                                          |
+| -------------- | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| **Farben**     | Semantische Tokens via var(--de-*), farbenblind-tauglich (Farbe + Form), WCAG AAA                         | Hex-Literale in TS/TSX, Tailwind-Palettenklassen (bg-red-500), Farbmissbrauch (Rot für Erfolg)          |
+| **Typografie** | Inter UI, IBM Plex Mono für Werte, tabular-nums, 11px min, clamp fluid                                    | Text unter 11px, Outfit im Canvas, zentrierte Zahlenkolonnen, variable Breite bei sich ändernden Werten |
+| **Grid**       | 4px/8px Vielfache, Node 192/224/256px, Header 40px                                                        | Off-Grid Werte (13px Padding, 7px Margin), Radius >4px                                                  |
+| **Surfaces**   | 1px Border, Surface-Layering, Overlay mit Blur 16-20px                                                    | Box-Shadow auf Cards, harte Schatten, Schatten statt Border                                             |
+| **Nodes**      | 3 Zonen, DIN-Symbol, Status-Dot, Port-Shape-Coding, 44px Hit                                              | Nur Farbe für Status, kleiner Hit-Target <24px, Schatten, verspielte Icons                              |
+| **Edges**      | Orthogonale 90°, Hierarchie via Dicke (3px/2px/1.5px), Bridge mit non-scaling-stroke, Label nie über Node | Diagonale, Dicke = Querschnitt, Pixelmatsch-Brücken, Label über Node                                    |
+| **Inspector**  | 2-spaltig Fluchtlinie, Einheit als Suffix, Computed = dashed + tint, Ampel für ΔU                         | 1-spaltig zentriert, Einheit im Label, kein Unterschied Input/Computed, kein Feedback                   |
+| **Motion**     | 100-160ms ease-out, utilitaristisch, Focus-Dimming                                                        | Bounce, >200ms Hover, Dauer-Animation für Fluss, Blur-Animation                                         |
+| **Touch**      | 44px Touch-Target, Sequential-Tap-Connect, Long-Press Context                                             | 24px Touch-Target, nur Drag-Connect, kein Touch-Handling                                                |
+| **A11y**       | Fokus-Ring 2px accent !important, tabular-nums rechts, AAA Kontraste                                      | Kein Fokus-Ring (Bibliothek überschreibt), kein tabular-nums (Jitter), <4.5:1 Kontrast                  |
 
 ---
 

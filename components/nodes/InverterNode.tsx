@@ -37,7 +37,7 @@ const InverterNode = function ({ id, data, isConnectable, selected }: PlannerNod
       role="group"
       data-selected={selected || undefined}
       aria-label={`${data.label || 'Wechselrichter'}. Komponente im Plan.`}
-      className={`node-card de-node-card custom-drag-handle w-48 p-3 ${overloadStats.isOverloaded ? 'node-card--error' : ''} ${overloaded ? 'de-node-card--error bg-warn-critical-bg' : ''} ${selected ? 'node-card--selected' : ''} ${selected ? 'de-node-card--selected' : ''}`}
+      className={`node-card de-node-card custom-drag-handle w-48 p-3 ${overloadStats.isOverloaded ? 'node-card--error' : ''} ${overloadStats.isOverloaded ? 'de-node-card--error bg-warn-critical-bg' : ''} ${selected ? 'node-card--selected' : ''} ${selected ? 'de-node-card--selected' : ''}`}
     >
       <NodeSymbol kind="inverter" />
       {editingField === 'label' ? (

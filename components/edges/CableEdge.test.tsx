@@ -202,17 +202,17 @@ describe('CableEdge', () => {
 
   it('renders DC plus with the red plus token', () => {
     const { getByTestId } = renderEdge(<CableEdge {...defaultProps} sourceHandle="plus" />);
-    expect(getByTestId('base-edge')).toHaveStyle({ stroke: 'var(--wire-dc)' });
+    expect(getByTestId('base-edge')).toHaveStyle({ stroke: 'var(--de-wire-dc-12v-plus)' });
   });
 
   it('renders DC minus with the dark minus token', () => {
     const { getByTestId } = renderEdge(<CableEdge {...defaultProps} sourceHandle="minus" />);
-    expect(getByTestId('base-edge')).toHaveStyle({ stroke: 'var(--wire-dc-minus)' });
+    expect(getByTestId('base-edge')).toHaveStyle({ stroke: 'var(--de-wire-dc-12v-minus)' });
   });
 
   it('keeps the domain color when selected (selection is glow, not a color swap)', () => {
     const { getByTestId } = renderEdge(<CableEdge {...defaultProps} sourceHandle="plus" selected={true} />);
-    expect(getByTestId('base-edge')).toHaveStyle({ stroke: 'var(--wire-dc)' });
+    expect(getByTestId('base-edge')).toHaveStyle({ stroke: 'var(--de-wire-dc-12v-plus)' });
   });
 
   it('renders AC edges with the blue AC token', () => {
@@ -224,7 +224,7 @@ describe('CableEdge', () => {
     const { getByTestId } = renderEdge(
       <CableEdge {...defaultProps} sourceHandle="plus" data={{ length: 5, edgeDomain: 'AC_230V' }} />
     );
-    expect(getByTestId('base-edge')).toHaveStyle({ stroke: 'var(--wire-ac)' });
+    expect(getByTestId('base-edge')).toHaveStyle({ stroke: 'var(--de-wire-ac-l)' });
   });
 
   it('renders fuseSize if provided in data', () => {

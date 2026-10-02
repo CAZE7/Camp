@@ -1,7 +1,11 @@
 'use client';
 
 import React from 'react';
-import { NodeBlueprint, BatteryNodeExample, InverterNodeExample } from '@/components/design-system/NodeBlueprint';
+import {
+  NodeBlueprint,
+  BatteryNodeExample,
+  InverterNodeExample,
+} from '@/components/design-system/NodeBlueprint';
 import { InspectorBlueprint } from '@/components/design-system/InspectorBlueprint';
 import { EdgeBlueprint } from '@/components/design-system/EdgeBlueprint';
 import { HUDBlueprint } from '@/components/design-system/HUDBlueprint';
@@ -12,14 +16,23 @@ export default function DesignSystemPage() {
       <header className="mb-8 border-b border-[var(--de-rule)] pb-6">
         <h1 className="font-mono text-[24px] font-bold tracking-tight">DARK ENGINEERING DESIGN SYSTEM</h1>
         <p className="mt-2 max-w-3xl font-mono text-[13px] leading-relaxed text-[var(--de-text-med)]">
-          Industrial-Grade EDA/CAD — 4px Subgrid / 8px Layoutgrid, Minor Third 1.200 Typografie, Surface-Layering mit 1px Border statt Schatten,
-          farbenblind-taugliche Elektro-Semantik, WCAG AAA/AA. Quelle: app/dark-engineering.css + lib/design-system/tokens.ts
+          Industrial-Grade EDA/CAD — 4px Subgrid / 8px Layoutgrid, Minor Third 1.200 Typografie,
+          Surface-Layering mit 1px Border statt Schatten, farbenblind-taugliche Elektro-Semantik, WCAG AAA/AA.
+          Quelle: app/dark-engineering.css + lib/design-system/tokens.ts
         </p>
         <div className="mt-4 flex gap-2">
-          <span className="rounded-[2px] border border-[var(--de-rule)] bg-[var(--de-surface-1)] px-2 py-1 font-mono text-[11px]">GRID 4px/8px</span>
-          <span className="rounded-[2px] border border-[var(--de-rule)] bg-[var(--de-surface-1)] px-2 py-1 font-mono text-[11px]">RADIUS ≤4px</span>
-          <span className="rounded-[2px] border border-[var(--de-rule)] bg-[var(--de-surface-1)] px-2 py-1 font-mono text-[11px]">MOTION 100-160ms</span>
-          <span className="rounded-[2px] border border-[var(--de-ok-border)] bg-[var(--de-ok-bg)] px-2 py-1 font-mono text-[11px] text-[var(--de-ok)]">WCAG AAA</span>
+          <span className="rounded-[2px] border border-[var(--de-rule)] bg-[var(--de-surface-1)] px-2 py-1 font-mono text-[11px]">
+            GRID 4px/8px
+          </span>
+          <span className="rounded-[2px] border border-[var(--de-rule)] bg-[var(--de-surface-1)] px-2 py-1 font-mono text-[11px]">
+            RADIUS ≤4px
+          </span>
+          <span className="rounded-[2px] border border-[var(--de-rule)] bg-[var(--de-surface-1)] px-2 py-1 font-mono text-[11px]">
+            MOTION 100-160ms
+          </span>
+          <span className="rounded-[2px] border border-[var(--de-ok-border)] bg-[var(--de-ok-bg)] px-2 py-1 font-mono text-[11px] text-[var(--de-ok)]">
+            WCAG AAA
+          </span>
         </div>
       </header>
 
@@ -31,10 +44,18 @@ export default function DesignSystemPage() {
             <div className="rounded-[4px] border border-[var(--de-rule)] bg-[var(--de-surface-1)] p-4">
               <h3 className="mb-2 font-mono text-[12px] font-bold">Surface-Layering</h3>
               <div className="flex flex-col gap-2">
-                <div className="h-8 rounded-[2px] border border-[var(--de-rule)] bg-[var(--de-canvas-base)] flex items-center px-2 font-mono text-[11px]">Canvas Base --de-canvas-base</div>
-                <div className="h-8 rounded-[2px] border border-[var(--de-rule)] bg-[var(--de-surface-0)] flex items-center px-2 font-mono text-[11px]">Surface-0 --de-surface-0</div>
-                <div className="h-8 rounded-[2px] border border-[var(--de-rule)] bg-[var(--de-surface-1)] flex items-center px-2 font-mono text-[11px]">Surface-1 --de-surface-1</div>
-                <div className="h-8 rounded-[2px] border border-[var(--de-rule)] bg-[var(--de-surface-2)] flex items-center px-2 font-mono text-[11px]">Surface-2 --de-surface-2</div>
+                <div className="flex h-8 items-center rounded-[2px] border border-[var(--de-rule)] bg-[var(--de-canvas-base)] px-2 font-mono text-[11px]">
+                  Canvas Base --de-canvas-base
+                </div>
+                <div className="flex h-8 items-center rounded-[2px] border border-[var(--de-rule)] bg-[var(--de-surface-0)] px-2 font-mono text-[11px]">
+                  Surface-0 --de-surface-0
+                </div>
+                <div className="flex h-8 items-center rounded-[2px] border border-[var(--de-rule)] bg-[var(--de-surface-1)] px-2 font-mono text-[11px]">
+                  Surface-1 --de-surface-1
+                </div>
+                <div className="flex h-8 items-center rounded-[2px] border border-[var(--de-rule)] bg-[var(--de-surface-2)] px-2 font-mono text-[11px]">
+                  Surface-2 --de-surface-2
+                </div>
               </div>
             </div>
             <div className="rounded-[4px] border border-[var(--de-rule)] bg-[var(--de-surface-1)] p-4">
@@ -62,7 +83,9 @@ export default function DesignSystemPage() {
             <div className="rounded-[4px] border border-[var(--de-rule)] bg-[var(--de-surface-1)] p-4">
               <h3 className="mb-2 font-mono text-[12px] font-bold">Typography — Minor Third 1.200</h3>
               <div className="flex flex-col gap-1">
-                <span style={{ fontSize: 'var(--de-text-11)' }} className="font-mono">11px — Port-Labels, DIN</span>
+                <span style={{ fontSize: 'var(--de-text-11)' }} className="font-mono">
+                  11px — Port-Labels, DIN
+                </span>
                 <span style={{ fontSize: 'var(--de-text-12)' }}>12px — Metadaten</span>
                 <span style={{ fontSize: 'var(--de-text-13)' }}>13px — Labels, Key-Value</span>
                 <span style={{ fontSize: 'var(--de-text-14)' }}>14px — UI Base</span>
@@ -137,7 +160,10 @@ export default function DesignSystemPage() {
               ['Selected', 'border-[var(--de-accent)] shadow-[0_0_0_1px_var(--de-accent)]'],
               ['Error', 'border-[var(--de-error)]'],
             ].map(([label, cls]) => (
-              <div key={label} className={`h-20 rounded-[4px] border bg-[var(--de-surface-2)] p-3 transition-all duration-150 ${cls}`}>
+              <div
+                key={label}
+                className={`h-20 rounded-[4px] border bg-[var(--de-surface-2)] p-3 transition-all duration-150 ${cls}`}
+              >
                 <span className="font-mono text-[11px]">{label}</span>
                 <div className="mt-2 font-mono text-[10px] text-[var(--de-text-low)]">150ms ease-out</div>
               </div>
@@ -147,9 +173,11 @@ export default function DesignSystemPage() {
       </div>
 
       <footer className="mt-12 border-t border-[var(--de-rule)] pt-6 font-mono text-[11px] text-[var(--de-text-low)]">
-        Dark Engineering Design System — WCAG AAA/AA, 4px/8px Grid, 1px Border statt Schatten, 100-160ms Motion, Shape-Coding für Farbenblindheit.
+        Dark Engineering Design System — WCAG AAA/AA, 4px/8px Grid, 1px Border statt Schatten, 100-160ms
+        Motion, Shape-Coding für Farbenblindheit.
         <br />
-        Quelle: app/dark-engineering.css (Hex) + lib/design-system/tokens.ts (TS) + docs/DARK-ENGINEERING-DESIGN-SYSTEM.md
+        Quelle: app/dark-engineering.css (Hex) + lib/design-system/tokens.ts (TS) +
+        docs/DARK-ENGINEERING-DESIGN-SYSTEM.md
       </footer>
     </div>
   );

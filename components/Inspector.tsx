@@ -261,7 +261,10 @@ export default function Inspector({
   const hasSelection = selectedNode || selectedEdge;
 
   return (
-    <div tabIndex={0} className="panel de-inspector relative flex h-full w-full flex-col overflow-y-auto text-foreground">
+    <div
+      tabIndex={0}
+      className="panel de-inspector relative flex h-full w-full flex-col overflow-y-auto text-foreground"
+    >
       <div className="panel-header de-inspector__header sticky top-0 z-10">
         <h2 className="panel-title de-label-eyebrow">Details</h2>
       </div>

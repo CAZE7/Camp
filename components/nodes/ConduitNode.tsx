@@ -56,7 +56,7 @@ const ConduitNode = function ({ data, selected }: { id: string; data: ConduitNod
       data-selected={selected || undefined}
       className={`node-card de-node-card custom-drag-handle w-64 p-3 ${overfilled ? 'node-card--error' : ''} ${overfilled ? 'de-node-card--error bg-warn-critical-bg' : ''} ${
         selected ? 'node-card--selected' : ''
-      }`}
+      } ${selected ? 'de-node-card--selected' : ''}`}
     >
       <NodeSymbol kind="conduit" />
 

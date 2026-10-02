@@ -74,6 +74,7 @@ export default tseslint.config(
     // typbewusste Regeln sonst ohne Typinformation auf sie treffen
     // (allowDefaultProject nimmt sie in das Default-Projekt auf).
     files: ['**/*.{ts,tsx,mts,cts,mjs}'],
+
     languageOptions: {
       parserOptions: {
         projectService: {
@@ -82,6 +83,30 @@ export default tseslint.config(
         tsconfigRootDir: import.meta.dirname,
       },
     },
+  },
+
+  // JavaScript config files are parsed without project type information, so
+  // keep the type-aware TypeScript rules scoped away from them.
+  {
+    ...tseslint.configs.disableTypeChecked,
+    files: ['**/*.{js,cjs}'],
+  },
+
+  {
+    files: ['lib/design-system/style-dictionary.config.js'],
+    languageOptions: {
+      globals: {
+        module: 'readonly',
+      },
+    },
+  },
+
+  // Story files are documented design references but there is no Storybook
+  // build in this repository. Keep syntax/rule linting without requiring their
+  // Storybook-only types or attaching them to the app's TypeScript project.
+  {
+    ...tseslint.configs.disableTypeChecked,
+    files: ['**/*.stories.tsx'],
   },
 
   {

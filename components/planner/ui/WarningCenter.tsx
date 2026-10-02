@@ -292,7 +292,7 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
           : `${warnings.length} Hinweise`;
 
   return (
-    <div className="relative de-warning-center" ref={containerRef}>
+    <div className="de-warning-center relative" ref={containerRef}>
       {liveRegion}
       <button
         type="button"

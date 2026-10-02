@@ -1,5 +1,10 @@
 import { test, expect } from '@playwright/test';
 
+type LayoutShiftEntry = PerformanceEntry & {
+  hadRecentInput: boolean;
+  value: number;
+};
+
 /**
  * Visual Regression — Dark Engineering Design System
  * Modul 5: Null-Toleranz bei Text-Wrapping, SVG-Stroke, Font-Rendering, CLS=0
@@ -31,7 +36,7 @@ test.describe('Dark Engineering Visual', () => {
           return new Promise<number>((resolve) => {
             let clsValue = 0;
             const observer = new PerformanceObserver((list) => {
-              for (const entry of list.getEntries() as any) {
+              for (const entry of list.getEntries() as LayoutShiftEntry[]) {
                 if (!entry.hadRecentInput) clsValue += entry.value;
               }
             });
@@ -81,16 +86,17 @@ test.describe('Dark Engineering Visual', () => {
 
     // Prüft dass SVG Pfade vector-effect: non-scaling-stroke haben
     const hasNonScaling = await page.evaluate(() => {
-      const style = getComputedStyle(document.documentElement);
       // Check CSS rule existence
       const sheets = Array.from(document.styleSheets);
       for (const sheet of sheets) {
         try {
           const rules = Array.from(sheet.cssRules);
           for (const rule of rules) {
-            if ((rule as any).cssText?.includes('non-scaling-stroke')) return true;
+            if (rule.cssText.includes('non-scaling-stroke')) return true;
           }
-        } catch {}
+        } catch {
+          // Cross-origin stylesheets may deny CSSOM access; skip those sheets.
+        }
       }
       return false;
     });
@@ -101,13 +107,16 @@ test.describe('Dark Engineering Visual', () => {
     await page.goto('/design-system');
     await page.waitForSelector('.de-mono-numeric');
 
-    const monoStyle = await page.locator('.de-mono-numeric').first().evaluate((el) => {
-      const cs = getComputedStyle(el);
-      return {
-        fontVariantNumeric: cs.fontVariantNumeric,
-        fontSize: cs.fontSize,
-      };
-    });
+    const monoStyle = await page
+      .locator('.de-mono-numeric')
+      .first()
+      .evaluate((el) => {
+        const cs = getComputedStyle(el);
+        return {
+          fontVariantNumeric: cs.fontVariantNumeric,
+          fontSize: cs.fontSize,
+        };
+      });
 
     expect(monoStyle.fontVariantNumeric).toContain('tabular-nums');
 

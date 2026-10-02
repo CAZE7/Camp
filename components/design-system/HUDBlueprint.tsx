@@ -20,7 +20,7 @@ function KPICard({ metrics, title }: { metrics: Metric[]; title: string }) {
     <div className="de-hud-card w-[280px]">
       <div className="mb-3 flex items-center justify-between">
         <h3 className="de-label-eyebrow">{title}</h3>
-        <span className="h-2 w-2 rounded-full bg-[var(--de-ok)] animate-pulse" />
+        <span className="h-2 w-2 animate-pulse rounded-full bg-[var(--de-ok)]" />
       </div>
       <div className="flex flex-col gap-2">
         {metrics.map((m) => (
@@ -33,7 +33,11 @@ function KPICard({ metrics, title }: { metrics: Metric[]; title: string }) {
                 <span
                   className={[
                     'ml-2 inline-block h-1.5 w-1.5 rounded-full',
-                    m.status === 'ok' ? 'bg-[var(--de-ok)]' : m.status === 'warn' ? 'bg-[var(--de-warn)]' : 'bg-[var(--de-error)]',
+                    m.status === 'ok'
+                      ? 'bg-[var(--de-ok)]'
+                      : m.status === 'warn'
+                        ? 'bg-[var(--de-warn)]'
+                        : 'bg-[var(--de-error)]',
                   ].join(' ')}
                 />
               )}
@@ -138,10 +142,35 @@ export function HUDBlueprint() {
   ];
 
   const warnings: WarningItem[] = [
-    { id: '1', severity: 'critical', ruleId: 'fuse-missing', message: 'Sicherung fehlt auf DC+ Hauptleitung', nodeId: 'BAT-01', edgeId: 'cable-03' },
-    { id: '2', severity: 'critical', ruleId: 'drop-exceeded', message: 'Gesamt-Drop 3.4% > 3% (VDE)', edgeId: 'cable-07' },
-    { id: '3', severity: 'warning', ruleId: 'cross-section-undersized', message: 'Querschnitt 2.5mm² < empf. 4mm²', edgeId: 'cable-02' },
-    { id: '4', severity: 'info', ruleId: 'main-fuse-distance', message: 'Hauptsicherung >20cm vom Pol', nodeId: 'BAT-01' },
+    {
+      id: '1',
+      severity: 'critical',
+      ruleId: 'fuse-missing',
+      message: 'Sicherung fehlt auf DC+ Hauptleitung',
+      nodeId: 'BAT-01',
+      edgeId: 'cable-03',
+    },
+    {
+      id: '2',
+      severity: 'critical',
+      ruleId: 'drop-exceeded',
+      message: 'Gesamt-Drop 3.4% > 3% (VDE)',
+      edgeId: 'cable-07',
+    },
+    {
+      id: '3',
+      severity: 'warning',
+      ruleId: 'cross-section-undersized',
+      message: 'Querschnitt 2.5mm² < empf. 4mm²',
+      edgeId: 'cable-02',
+    },
+    {
+      id: '4',
+      severity: 'info',
+      ruleId: 'main-fuse-distance',
+      message: 'Hauptsicherung >20cm vom Pol',
+      nodeId: 'BAT-01',
+    },
   ];
 
   return (
@@ -165,7 +194,9 @@ export function HUDBlueprint() {
           </ul>
         </div>
         <div className="rounded-[2px] border border-[var(--de-error-border)] bg-[var(--de-error-bg)] p-3">
-          <h4 className="mb-2 font-mono text-[11px] font-bold uppercase text-[var(--de-error)]">HUD Don&apos;ts</h4>
+          <h4 className="mb-2 font-mono text-[11px] font-bold uppercase text-[var(--de-error)]">
+            HUD Don&apos;ts
+          </h4>
           <ul className="space-y-1 font-mono text-[11px]">
             <li className="text-[var(--de-error)]">✗ Keine dauerhaft eingeblendeten Metriken über Canvas</li>
             <li className="text-[var(--de-error)]">✗ Keine bunten Schatten, nur 1px Border + Blur</li>
