@@ -6,6 +6,26 @@ import sitemap from './sitemap';
 
 const ERLAUBTE_FREQUENZEN = ['always', 'hourly', 'daily', 'weekly', 'monthly', 'yearly', 'never'];
 
+/** Seiten, die im Index stehen sollen — genau diese gehören in die Sitemap. */
+const INDEXIERBARE_SEITEN = [
+  '/',
+  '/elektrik-planung/',
+  '/tools/dach/',
+  '/tools/heizung/',
+  '/guides/ausbau-fahrplan/',
+  '/guides/camper-ausbauguide/',
+  '/guides/holzausbau/',
+  '/impressum/',
+  '/datenschutz/',
+];
+
+/**
+ * Ansichten ohne eigenen Inhalt für Ergebnislisten: Sie tragen `noindex`
+ * (`pageMetadata`) und dürfen deshalb nicht in der Sitemap auftauchen — eine
+ * Sitemap, die nicht indexierte Adressen anbietet, ist ein Widerspruch.
+ */
+const NICHT_IN_DER_SITEMAP = ['/design-system/', '/ki-assistent/'];
+
 describe('sitemap', () => {
   const entries = sitemap();
 
@@ -33,6 +53,19 @@ describe('sitemap', () => {
       expect(entry.priority).toBeGreaterThan(0);
       expect(entry.priority).toBeLessThanOrEqual(1);
       expect(ERLAUBTE_FREQUENZEN).toContain(entry.changeFrequency);
+    }
+  });
+
+  it('enthält genau die indexierbaren Seiten', () => {
+    expect(entries.map((entry) => entry.url).sort()).toEqual(
+      INDEXIERBARE_SEITEN.map((path) => siteUrl(path)).sort()
+    );
+  });
+
+  it('bietet keine Seite an, die auf noindex steht', () => {
+    const urls = entries.map((entry) => entry.url);
+    for (const path of NICHT_IN_DER_SITEMAP) {
+      expect(urls).not.toContain(siteUrl(path));
     }
   });
 });

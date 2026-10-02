@@ -1,7 +1,17 @@
+import type { Metadata } from 'next';
 import React from 'react';
 import Link from 'next/link';
 import { SiteHeader } from '@/components/brand/SiteHeader';
 import { SiteFooter } from '@/components/brand/SiteFooter';
+
+import { pageMetadata } from '@/app/siteMetadata';
+
+export const metadata: Metadata = pageMetadata({
+  title: 'Ausbau-Fahrplan: Reihenfolge der Gewerke',
+  description:
+    'Vom Entkernen bis zum Möbelbau: die Reihenfolge für den Camper-Ausbau, mit den Fehlern, die dich sonst zwei Schritte zurückwerfen.',
+  path: '/guides/ausbau-fahrplan/',
+});
 
 interface StepData {
   id: string;
@@ -341,6 +351,9 @@ export default function AusbauFahrplanPage() {
               className="mt-6 inline-flex min-h-11 items-center text-sm text-copper"
             >
               Holzausbau →
+            </Link>
+            <Link href="/elektrik-planung" className="mt-2 flex min-h-11 items-center text-sm text-copper">
+              Schaltplan zeichnen →
             </Link>
           </div>
         </aside>

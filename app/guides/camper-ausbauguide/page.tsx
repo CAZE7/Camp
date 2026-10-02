@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import React from 'react';
 import Link from 'next/link';
 import RoadTripAnimation from './RoadTripAnimation';
@@ -5,13 +6,17 @@ import { SiteHeader } from '@/components/brand/SiteHeader';
 import { SiteFooter } from '@/components/brand/SiteFooter';
 import { cn } from '@/lib/utils';
 
+import { pageMetadata } from '@/app/siteMetadata';
+
 // Outfit wird lokal über @fontsource-variable/outfit gebündelt (offline-fähiger Build).
 const outfit = { className: 'font-outfit' };
 
-export const metadata = {
-  title: 'Der ultimative Camper Ausbauguide',
-  description: 'Von der leeren Blechbüchse zum rollenden Zuhause. Technik, Normen und Profi-Tipps.',
-};
+export const metadata: Metadata = pageMetadata({
+  title: 'Camper-Ausbauguide: Technik, Normen und Praxis',
+  description:
+    'Wissen für den Ausbau: Karosserie, Dämmung, 12-V-Elektrik, Gas und TÜV — verständlich erklärt, mit Normbezug und Praxiswerten.',
+  path: '/guides/camper-ausbauguide/',
+});
 
 export default function CamperAusbauguide() {
   return (

@@ -16,6 +16,7 @@ import {
   serializeJsonLd,
 } from '@/components/elektrik/structuredData';
 import { Button } from '@/components/ui/button';
+import { pageMetadata } from '@/app/siteMetadata';
 import { SiteFooter } from '@/components/brand/SiteFooter';
 import { SiteHeader } from '@/components/brand/SiteHeader';
 import {
@@ -26,7 +27,6 @@ import {
   designAmpacity,
 } from '@/lib/electrical';
 import { COPPER_CONDUCTIVITY_MS_PER_MM2 } from '@/lib/materials';
-import { SITE_NAME, siteUrl } from '@/lib/site';
 import { VDE_BATTERY_DOD } from '@/lib/vde-standards';
 import Planner from '../../components/Planner';
 
@@ -75,42 +75,18 @@ const NORMEN: readonly { norm: string; bereich: string }[] = [
   },
 ];
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: PAGE_TITLE,
   description: PAGE_DESCRIPTION,
-  alternates: {
-    canonical: siteUrl(ELEKTRIK_PLANUNG_PATH),
+  path: ELEKTRIK_PLANUNG_PATH,
+  absoluteTitle: true,
+  image: {
+    path: '/og/elektrik-planung.png',
+    width: 1200,
+    height: 630,
+    alt: 'Werft — Camper-Elektrik berechnen und 12-V-Anlage sicher dimensionieren',
   },
-  robots: {
-    index: true,
-    follow: true,
-    'max-image-preview': 'large',
-    'max-snippet': -1,
-    'max-video-preview': -1,
-  },
-  openGraph: {
-    type: 'website',
-    locale: 'de_DE',
-    siteName: SITE_NAME,
-    url: siteUrl(ELEKTRIK_PLANUNG_PATH),
-    title: PAGE_TITLE,
-    description: PAGE_DESCRIPTION,
-    images: [
-      {
-        url: siteUrl('/og/elektrik-planung.png'),
-        width: 1200,
-        height: 630,
-        alt: 'Werft — Camper-Elektrik berechnen und 12-V-Anlage sicher dimensionieren',
-      },
-    ],
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: PAGE_TITLE,
-    description: PAGE_DESCRIPTION,
-    images: [siteUrl('/og/elektrik-planung.png')],
-  },
-};
+});
 
 export default function ElektrikPlanung() {
   const jsonLd = buildElektrikPlanungJsonLd();
@@ -123,7 +99,20 @@ export default function ElektrikPlanung() {
       <main id="main" className="flex-1">
         <div className="container-page space-y-16">
           <section aria-labelledby="seite-titel">
-            <p className="label-eyebrow text-copper">Elektroplanung</p>
+            <nav aria-label="Pfad">
+              <ol className="flex flex-wrap items-center gap-2 text-sm text-ink-soft">
+                <li>
+                  <Link href="/" className="underline-offset-2 hover:text-ink hover:underline">
+                    Startseite
+                  </Link>
+                </li>
+                <li aria-hidden="true">/</li>
+                <li aria-current="page" className="text-ink">
+                  Elektrik-Planung
+                </li>
+              </ol>
+            </nav>
+            <p className="label-eyebrow mt-6 text-copper">Elektroplanung</p>
             <h1 id="seite-titel" className="mt-3 font-display text-2xl font-semibold tracking-tight text-ink">
               Camper-Elektrik berechnen
             </h1>

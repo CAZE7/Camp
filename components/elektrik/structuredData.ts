@@ -9,7 +9,7 @@
  * speisen sich aus denselben Textkonstanten (`electricContent.ts`).
  */
 
-import { SITE_NAME, siteUrl } from '@/lib/site';
+import { siteNodeId, siteUrl } from '@/lib/site';
 
 import { APPLICATION_FEATURES, ELEKTRIK_FAQ, PAGE_DESCRIPTION, PAGE_TITLE } from './electricContent';
 
@@ -26,12 +26,12 @@ export type JsonLdGraph = {
 /** Baut den Beschreibungsgraphen der Seite aus den Anzeigetexten. */
 export function buildElektrikPlanungJsonLd(): JsonLdGraph {
   const pageUrl = siteUrl(ELEKTRIK_PLANUNG_PATH);
-  const siteUrl_ = siteUrl('/');
-
   const pageId = `${pageUrl}#webpage`;
   const applicationId = `${pageUrl}#webapplication`;
   const faqId = `${pageUrl}#faq`;
-  const siteId = `${siteUrl_}#website`;
+  const breadcrumbId = `${pageUrl}#breadcrumb`;
+  const siteId = siteNodeId('website');
+  const siteRoot = siteUrl('/');
 
   return {
     '@context': 'https://schema.org',
@@ -44,15 +44,29 @@ export function buildElektrikPlanungJsonLd(): JsonLdGraph {
         description: PAGE_DESCRIPTION,
         inLanguage: 'de-DE',
         isPartOf: { '@id': siteId },
+        publisher: { '@id': siteNodeId('organization') },
         mainEntity: { '@id': applicationId },
-        hasPart: { '@id': faqId },
+        hasPart: [{ '@id': faqId }, { '@id': breadcrumbId }],
+        breadcrumb: { '@id': breadcrumbId },
       },
       {
-        '@type': 'WebSite',
-        '@id': siteId,
-        url: siteUrl_,
-        name: SITE_NAME,
+        '@type': 'BreadcrumbList',
+        '@id': breadcrumbId,
         inLanguage: 'de-DE',
+        itemListElement: [
+          {
+            '@type': 'ListItem',
+            position: 1,
+            name: 'Startseite',
+            item: siteRoot,
+          },
+          {
+            '@type': 'ListItem',
+            position: 2,
+            name: 'Elektrik-Planung',
+            item: pageUrl,
+          },
+        ],
       },
       {
         '@type': 'WebApplication',

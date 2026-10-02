@@ -61,11 +61,16 @@ describe('RootLayout', () => {
     expect(childElement?.props.children).toBe('Test Child');
   });
 
-  it('exports the correct metadata', () => {
-    expect(metadata).toEqual({
-      title: 'Werft — Erst der Plan. Dann das Blech.',
-      description:
-        'Werkstatt für den Camper-Ausbau. 12V-Schaltplan, Dachfläche, Heizlast und Normen — geplant, bevor gebohrt wird.',
+  it('beschreibt die Auslieferung mit Titelvorlage, Bezugsadresse und Vorschaubild', () => {
+    expect(metadata.metadataBase?.toString()).toBe('https://caze7.github.io/');
+    expect(metadata.title).toEqual({
+      default: 'Camper-Ausbau planen: Elektrik, Dach und Heizlast | Werft',
+      template: '%s | Werft',
     });
+    expect(metadata.alternates?.canonical).toBe('https://caze7.github.io/');
+    expect(metadata.openGraph?.images).toBeDefined();
+    // `Twitter` ist eine Vereinigung mehrerer Kartenformen; geprüft wird die
+    // Kartenangabe als Teilmenge, ohne auf ein einzelnes Mitglied zu verengen.
+    expect(metadata.twitter).toMatchObject({ card: 'summary_large_image' });
   });
 });

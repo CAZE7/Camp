@@ -24,6 +24,15 @@ export const SITE_NAME = 'Werft';
 export const SITE_BASE_PATH = (process.env.NEXT_PUBLIC_BASE_PATH ?? '').replace(/\/+$/, '');
 
 /**
+ * Kennung eines Knotens der strukturierten Beschreibung (`@id`). Der Wert
+ * steht hier, weil Wurzel-Layout und Seiten ihn gemeinsam benutzen: Der
+ * Wurzel-Layout beschreibt Website und Organisation, die Seiten verweisen mit
+ * derselben Kennung darauf — statt die Adresse ein zweites Mal zu bilden.
+ */
+export const siteNodeId = (fragment: string, basePath: string = SITE_BASE_PATH): string =>
+  `${siteUrl('/', basePath)}#${fragment}`;
+
+/**
  * Setzt eine absolute Adresse aus Herkunft, Basis-Pfad und Seitenpfad
  * zusammen. Der Seitenpfad darf mit oder ohne führenden Schrägstrich
  * übergeben werden; der Basis-Pfad ist als Parameter überschreibbar, damit

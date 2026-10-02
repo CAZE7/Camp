@@ -1,7 +1,17 @@
+import type { Metadata } from 'next';
 import React from 'react';
 import Link from 'next/link';
 import { SiteHeader } from '@/components/brand/SiteHeader';
 import { SiteFooter } from '@/components/brand/SiteFooter';
+
+import { pageMetadata } from '@/app/siteMetadata';
+
+export const metadata: Metadata = pageMetadata({
+  title: 'Holzausbau im Camper: sechs Schritte',
+  description:
+    'Möbelbau im Camper in sechs Schritten: Unterkonstruktion, Wandverkleidung, Stauraum, Befestigung und Oberflächen — mit Materialwahl und Gewicht.',
+  path: '/guides/holzausbau/',
+});
 
 const STEPS = [
   {
@@ -53,6 +63,12 @@ export default function HolzausbauGuide() {
           className="inline-flex min-h-11 items-center text-sm text-ink-soft hover:text-ink"
         >
           ← Ausbau-Fahrplan
+        </Link>
+        <Link
+          href="/elektrik-planung"
+          className="ml-4 inline-flex min-h-11 items-center text-sm text-ink-soft hover:text-ink"
+        >
+          Schaltplan zeichnen →
         </Link>
         <h1 className="mt-4 font-display text-2xl font-semibold tracking-tight md:text-2xl">
           Holzausbau nach BEDMAS
