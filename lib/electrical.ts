@@ -98,7 +98,7 @@ export function groupFactor(bundleCircuits: number): number {
   }
   const factor = VDE_GROUP_FACTORS[bundleCircuits];
   if (factor === undefined) {
-    // Unerreichbar bei obigen Guardsl — trotzdem kein `?? …`-Fallback.
+    // Unerreichbar bei obigen Guards — trotzdem kein `?? …`-Fallback.
     throw new RangeError(`groupFactor: kein Eintrag für n = ${bundleCircuits}`);
   }
   return factor;

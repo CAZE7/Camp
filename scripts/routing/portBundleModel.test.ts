@@ -2,11 +2,18 @@ import { describe, expect, it } from 'vitest';
 import { GOLDEN_PLANS } from '../goldenmaster/plans';
 import { captureGoldenMaster } from '../goldenmaster/pipeline';
 import { analyzeOverlaps } from './audit';
-import { checkInvariants, type NodeRect, type RoutedEdge } from '../../lib/routing/invariants';
+import {
+  checkClearance,
+  checkInvariants,
+  type NodeRect,
+  type RoutedEdge,
+} from '../../lib/routing/invariants';
 import { SegmentSpatialIndex } from '../../lib/routing/geometry';
+import { ROUTING_TOKENS } from '../../lib/routing/tokens';
 import { segmentExtraCost } from '../../lib/routing/rules/costModel';
 import {
   isPortBundleOverlap,
+  isPortBundleProximity,
   routedPathGeometry,
   type RoutedPathGeometry,
 } from '../../lib/routing/rules/portBundle';
@@ -235,5 +242,115 @@ describe('analyzeOverlaps — Vollständigkeit außerhalb gemeinsamer Anschlusss
     expect(overlaps.atPort).toBe(1);
     expect(overlaps.elsewhere).toBe(0);
     expect(checkInvariants(routed, [] as NodeRect[]).I2).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// ADR 0031 — I3-Rest ist ehrlich: keine strukturelle Bündel-Überschreitung
+// zählt noch als Verletzung, und jede gemeldete Verletzung ist echt.
+// ---------------------------------------------------------------------------
+
+/**
+ * Ratchet des I3-RESTS je Referenzplan (Segment×Segment, ohne Segment×Node —
+ * der liefert seit ROUTE-012 ohnehin 0). Gemessen 2026-10-03 am Produktivpfad
+ * (Referenzpläne am Ursprung) unter der LOCUS-Regel (ADR 0031 v2):
+ * Freistellung nur, wenn die nächste Annäherung beider Pfade innerhalb
+ * `portFacingClearance` vom gemeinsamen Port liegt. Die Fenster-Fassung
+ * (v1, 2026-10-02: 2/7/0/6/3/23) stellte 8 Paare zu Unrecht frei — u. a.
+ * solar e-auto-1↔e-auto-10 (Berührung ohne gemeinsamen Port). Der Router-
+ * Output ist byte-identisch zur v1-Messung (Recapture-Ledger in
+ * scripts/routing/finalValidationRatchet.ts). Vor ADR 0031:
+ * 6/21/4/12/13/42 — davon 69 strukturelle Port-Bündel-Fälle.
+ * Diese Zahlen dürfen nur sinken.
+ */
+const I3_RESIDUE: Record<string, number> = {
+  simple: 2,
+  camper: 7,
+  solar: 1,
+  inverter: 7,
+  acdc: 7,
+  complex: 25,
+};
+
+describe('ADR 0031 — I3 zählt nur noch echte Restfälle über die Referenzpläne', () => {
+  it('genau die nicht freigestellten weighted-Paare werden gemeldet — keines mehr, keines weniger', () => {
+    // Buchhaltungs-Beweis je Kantenpaar: I3 zählt ein Segmentpaar genau
+    // dann, wenn das Kollisionsmodell `weighted` liefert UND die Port-
+    // Bündel-Ausnahme (gemeinsame Anschlussstelle + Korridor-Segmente)
+    // NICHT greift. Ein Paar kann beides haben — legitime Bündel-Nähe am
+    // gemeinsamen Port UND eine echte Unterschreitung an freier Trasse;
+    // nur Letztere darf zählen.
+    for (const [planName, expectedResidue] of Object.entries(I3_RESIDUE)) {
+      const model = models.get(planName)!;
+      const report = checkClearance(model.routed, [] as NodeRect[]);
+      const segmentViolations = report.filter((v) => v.detail.includes('zwischen Kanten'));
+      expect(
+        segmentViolations,
+        `${planName}: I3-Rest ${segmentViolations.length} statt ${expectedResidue} — I3_RESIDUE nachziehen (nur sinken erlaubt)`
+      ).toHaveLength(expectedResidue);
+
+      const violationsByPair = new Map<string, number>();
+      for (const violation of segmentViolations) {
+        const key = [violation.edgeId, violation.otherId].sort().join('↔');
+        violationsByPair.set(key, (violationsByPair.get(key) ?? 0) + 1);
+      }
+
+      // Ungeordnete Paare wie im Checker: nachzählen und abgleichen.
+      const countedByPair = new Map<string, number>();
+      let exemptWeighted = 0;
+      for (let i = 0; i < model.routed.length; i++) {
+        for (let j = i + 1; j < model.routed.length; j++) {
+          const left = model.routed[i]!;
+          const right = model.routed[j]!;
+          const leftGeometry = routedPathGeometry(left.waypoints);
+          const rightGeometry = routedPathGeometry(right.waypoints);
+          const key = [left.id, right.id].sort().join('↔');
+          for (const s1 of leftGeometry.segments) {
+            for (const s2 of rightGeometry.segments) {
+              if (classifySegmentAgainstSegment(s1, s2).class !== 'weighted') continue;
+              if (
+                isPortBundleProximity(leftGeometry, rightGeometry, s1, s2, ROUTING_TOKENS.portFacingClearance)
+              ) {
+                exemptWeighted += 1;
+                continue;
+              }
+              countedByPair.set(key, (countedByPair.get(key) ?? 0) + 1);
+            }
+          }
+        }
+      }
+      // Jede gemeldete Verletzung entspricht einem nicht freigestellten
+      // weighted-Paar — und jedes nicht freigestellte weighted-Paar ist
+      // gemeldet. Die Ausnahme schweigt nie still und zählt nie doppelt.
+      expect([...countedByPair.entries()].sort()).toEqual([...violationsByPair.entries()].sort());
+      // Es gibt weiterhin legitime Bündel-Nähe (die Ausnahme wirkt überhaupt):
+      // mindestens in den Plänen mit Port-Bündel-Paaren.
+      if ((PORT_BUNDLE_PAIRS[planName] ?? 0) > 0 && expectedResidue > 0) {
+        expect(exemptWeighted, `${planName}: Ausnahme muss greifen`).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('solar hat genau einen echten I3-Rest — die Fenster-Regel hielt ihn zu Unrecht für 0', () => {
+    // ADR 0031 v2 (Locus-Regel): Die v1-Fassung dieses Tests behauptete
+    // „solar vollständig I3-frei — Beweis, dass 0 erreichbar ist". Der
+    // Beweis war ein Artefakt der über-freistellenden Segment-Fenster-
+    // Regel: Das Paar e-auto-1↔e-auto-10 läuft sich an einer Ecke berühren
+    // (Abstand 0 px) und teilt KEINEN gemeinsamen Port — kein Bündelfall,
+    // also ein echter Verstoß. Die Locus-Regel zählt ihn ehrlich. Damit ist
+    // 0 für solar (noch) NICHT erreicht; der Test sichert stattdessen die
+    // exakte Identität des Restfalls, damit er nicht still weiterwächst.
+    const model = models.get('solar')!;
+    const report = checkClearance(model.routed, [] as NodeRect[]);
+    expect(report).toHaveLength(1);
+    const violation = report[0]!;
+    expect([violation.edgeId, violation.otherId].sort()).toEqual(['e-auto-1', 'e-auto-10']);
+    // Der Restfall ist KEIN Bündelfall: kein gemeinsamer Port.
+    const left = model.routed.find((e) => e.id === 'e-auto-1')!;
+    const right = model.routed.find((e) => e.id === 'e-auto-10')!;
+    const sharedPort =
+      (left.source === right.source || left.source === right.target) &&
+      (left.target === right.source || left.target === right.target);
+    expect(sharedPort, 'e-auto-1↔e-auto-10 teilt einen Port — dann wäre es ein Bündelfall').toBe(false);
   });
 });

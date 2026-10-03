@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1312" height="1360" viewBox="0 0 1312 1360">
   <title>p02-batterie-10-verbraucher — 1 Batterie + 10 Verbraucher</title>
   <rect width="100%" height="100%" fill="#0b0f14"/>
-  <text x="60" y="32" fill="#8b98a5" font-family="monospace" font-size="14">p02-batterie-10-verbraucher: X=5 Bends=34 L=7252 Clearance=41</text>
+  <text x="60" y="32" fill="#8b98a5" font-family="monospace" font-size="14">p02-batterie-10-verbraucher: X=5 Bends=34 L=7268 Clearance=20</text>
   <rect x="60" y="660" width="192" height="120" fill="#151b23" stroke="#31404f" stroke-width="1.5" rx="8"/>
   <text x="70" y="684" fill="#c7d0d9" font-family="monospace" font-size="13">batt</text>
   <rect x="380" y="660" width="192" height="120" fill="#151b23" stroke="#31404f" stroke-width="1.5" rx="8"/>
@@ -38,14 +38,14 @@
   <circle cx="572" cy="696" r="4" fill="#39b2f5"/>
   <path d="M 572 696 L 716 696 L 716 656 L 740 656" fill="none" stroke="#39b2f5" stroke-width="2.5"/>
   <circle cx="572" cy="696" r="4" fill="#39b2f5"/>
-  <path d="M 572 696 L 676 696 L 676 768 L 1036 768 L 1036 656 L 1060 656" fill="none" stroke="#39b2f5" stroke-width="2.5"/>
+  <path d="M 572 696 L 676 696 L 676 776 L 1036 776 L 1036 656 L 1060 656" fill="none" stroke="#39b2f5" stroke-width="2.5"/>
   <circle cx="572" cy="696" r="4" fill="#39b2f5"/>
   <path d="M 572 696 L 596 696 L 596 936 L 740 936" fill="none" stroke="#39b2f5" stroke-width="2.5"/>
   <circle cx="572" cy="696" r="4" fill="#39b2f5"/>
-  <path d="M 572 696 L 654 696 L 654 784 L 1036 784 L 1036 936 L 1060 936" fill="none" stroke="#39b2f5" stroke-width="2.5"/>
+  <path d="M 572 696 L 708 696 L 708 824 L 1036 824 L 1036 936 L 1060 936" fill="none" stroke="#39b2f5" stroke-width="2.5"/>
   <circle cx="572" cy="696" r="4" fill="#39b2f5"/>
   <path d="M 437.60 780 L 437.60 1156 L 797.60 1156 L 797.60 1180" fill="none" stroke="#39b2f5" stroke-width="2.5"/>
   <circle cx="437.60" cy="780" r="4" fill="#39b2f5"/>
-  <path d="M 572 696 L 670 696 L 670 840 L 1028 840 L 1028 1216 L 1060 1216" fill="none" stroke="#39b2f5" stroke-width="2.5"/>
+  <path d="M 572 696 L 664 696 L 664 840 L 1028 840 L 1028 1216 L 1060 1216" fill="none" stroke="#39b2f5" stroke-width="2.5"/>
   <circle cx="572" cy="696" r="4" fill="#39b2f5"/>
 </svg>

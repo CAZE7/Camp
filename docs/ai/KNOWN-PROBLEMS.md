@@ -8,6 +8,86 @@ Legende Severity: **hoch** = Agent kann falschen Code ändern / falsche Sicherhe
 
 ---
 
+## ROUTE-009 — Kreuzungs-Ausweichlauf ist blind für gewichtete Clearance (p02-Kaskade)
+
+- **AREA:** Routing / Kostenmodell
+- **FILE:** `components/edges/utils/pathfinding.ts` (`findCablePath`, Kreuzungs-Ausweichlauf
+  ROUTE-BUG-27; `scorePath`), `scripts/regression/goldenLayouts.json` (p02-Baseline)
+- **DESCRIPTION:** Der Ausweichlauf für kreuzungsreiche Standardrouten vergleicht Kandidaten
+  über `scorePath` (Länge + Bends + `routeDefectScore` + Kreuzungen). **Gewichtete
+  Clearance-Verstöße gegen bereits verlegte Kanten gehen nicht ein** — `routeDefectScore`
+  ist eine rein interne Bewertung (Kehren, Selbstüberdeckung, Kurzsegmente). Sichtbar
+  geworden durch den Leiter-Frühstopp-Fix (ADR 0032, 2026-10-03): defekte Ersttreffer
+  sperren die rangniedrigeren Versuche nicht mehr, der Ausweichlauf sieht dadurch andere
+  Kandidaten — und wählt in Szenario p02 eine Trasse, die bei unveränderten
+  Kreuzungen/Bends/Länge (bis +16 px) **+13 gewichtete Verstöße** (7 → 20) gegenüber der
+  alten Wahl kauft. Vorher war dieselbe Lücke vorhanden; der vorzeitige Abbruch verdeckte
+  sie zufällig. Die p02-Baseline wurde mit Begründung neu eingefroren (ADR 0032,
+  ARCHITECTURE-CHANGES 2026-10-03): die harte Überdeckung (Score 102) wiegt mehr als die
+  gewichteten Restfälle — Messung ohne Reparatur: 23 statt 20 gewichtete Verstöße.
+- **CURRENT BEHAVIOR:** Kandidaten mit weniger internen Mängeln/Länge/Kreuzungen gewinnen
+  auch dann, wenn sie dafür näher an fremden Trassen laufen (I3-Klasse). Referenzpläne
+  sind nicht betroffen (byte-identisch); die Versatz-Matrix wird über `SHIFT_RATCHET`
+  gedeckelt.
+- **EXPECTED BEHAVIOR:** Gewichtete Verstöße der gesuchten Mittelstücke gegen
+  `crossingSegments` (mit echter Bündel-Freistellung — die braucht die Prior-Geometrie,
+  `crossingSegments` müsste sie mitführen, s. ADR 0032 „Offene Punkte") gehen als
+  Sekundärkriterium in den Ausweichlauf-Vergleich. Eigenes ADR: Die Kandidatenwahl
+  driftet erfahrungsgemäß weit (zwei Varianten mit angenäherter Freistellung wurden
+  gemessen und verworfen — acdc: +2 Kreuzungen, +44 px für −2 gewichtete Verstöße).
+- **SEVERITY:** niedrig (Qualität; Referenzpläne unverändert, Budgets ratchet-gedeckelt)
+- **WORKAROUND:** p02-Metrik-Baseline (Länge 7268, Clearance 20) und `SHIFT_RATCHET`
+  beachten; Änderungen am Ausweichlauf gegen beide messen.
+- **RELATED TEST:** `scripts/regression/regression.test.ts` (p02 Metrik-Budget + Goldens;
+  ADR-0032-Block „intern mangelfrei"), `scripts/routing/audit.ts --shifts`
+- **RELATED ISSUE:** ADR 0032 (Frühstopp-Fix, Reparatur, verworfene Varianten), ROUTE-008
+
+---
+
+## ROUTE-008 — I3-Rest: 49 echte Freigabe-Unterschreitungen über die Referenzpläne
+
+- **AREA:** Routing / Invarianten
+- **FILE:** `lib/routing/invariants.ts` (`checkClearance`),
+  `scripts/routing/finalValidationRatchet.ts`, `scripts/routing/audit.ts` (`SHIFT_RATCHET`)
+- **DESCRIPTION:** I3 (Clearance ≥ 12 px) hat einen echten Rest von **49** Meldungen über die
+  sechs Referenzpläne (simple 2 · camper 7 · solar 1 · inverter 7 · acdc 7 · complex 25;
+  Versatz-Matrix 2026-10-03: 130/469/45/75/180/1225). Seit **ADR 0031 v2 (Locus-Regel)**
+  zählt die Invariante nur noch echte Fälle: Die strukturelle Port-Bündel-Konvergenz
+  (zwei Kanten am gemeinsamen Handle berühren sich zwangsläufig auf Stub/Fan-Out-Jog —
+  69 der früheren 98 Meldungen) ist symmetrisch zur I2-Ausnahme von ADR 0009/0025
+  freigestellt (`isPortBundleProximity` in `lib/routing/rules/portBundle.ts`). Die
+  v1-Fassung (2026-10-02, Segment-Fenster: 41 Meldungen) stellte **8 Paare zu Unrecht
+  frei** — u. a. solar e-auto-1↔e-auto-10 (Berührung 0 px ohne gemeinsamen Port); die
+  Locus-Regel (nächste Annäherung innerhalb `portFacingClearance` = 68 px Bogenlänge vom
+  gemeinsamen Port, beide Pfade) zählt sie ehrlich. Der Router-Output ist zur v1-Messung
+  byte-identisch — die Recaptures (solar 0→1, inverter 6→7, acdc 3→7, complex 23→25)
+  sind reine Checker-Verschärfung (Ledger in `finalValidationRatchet.ts`).
+- **CURRENT BEHAVIOR:** Jede verbleibende Meldung ist eines von zwei Profilen:
+  (a) Paar ohne gemeinsamen Port — überwiegend feste Port-Rahmen verschiedener Anschlüsse,
+  die an dichter Bebauung vorbeilaufen (engster Fall `e-busbar-fuse × e-shore-inv` = 0,8 px
+  im Plan complex); (b) freie (gesuchte) Trassensegmente, die näher als 12 px an fremden
+  Korridoren laufen (u. a. Folge des all-or-nothing Tube-Drops: Trifft der FESTE Port-Rahmen
+  eine Trassensperre, verwirft `findCablePath` den gesamten Tube-Satz für diese Kante —
+  ROUTE-BUG-16-Rangfolge: lieber Nähe als Durchlauf durch ein Bauteil).
+- **EXPECTED BEHAVIOR:** I3 = 0. Die Hebel sind bekannt und gemessen: Port-Fan-Out-/Lane-
+  Vergabe (vier Varianten in ROUTE-002 Teil 2b gemessen und verworfen — jede kostete
+  Kreuzungen oder Kabelweg), Platzierungs-Freigabe (ADR 0027 hat damit den ELK-Pfad auf
+  I2 = 0 gehoben) und die scoped Tube-Reparatur (**ADR 0032**, umgesetzt 2026-10-03:
+  Hard-Gate + Budget-Guards — beseitigt Tube-Drop-Überdeckungen, ohne die Referenzpläne
+  zu verändern; die gewichteten Restfälle des Drops bleiben bewusst liegen, s. dort).
+- **SEVERITY:** mittel (Qualität; I1/I2 bleiben hart 0, keine elektrische Folge — die
+  Meldungen sind über `RoutingStatusBadge` sichtbar und über Ratchets gedeckelt)
+- **WORKAROUND:** Ratchets in `finalValidationRatchet.ts` / `SHIFT_RATCHET` beachten — nur
+  sinken erlaubt. Wer am Router arbeitet, muss BOTH Pfade messen (Referenzpläne am Ursprung
+  UND `routing:audit -- --shifts`).
+- **RELATED TEST:** `scripts/routing/portBundleModel.test.ts` (ADR-0031-Block: Buchhaltung
+  je Kantenpaar + I3_RESIDUE-Ratchet), `lib/routing/rules/portBundle.test.ts`,
+  `lib/routing/invariants.test.ts` (ADR-0031-Regression),
+  `scripts/routing/finalValidation.test.ts`, `scripts/routing/shiftInvariance.test.ts`
+- **RELATED ISSUE:** ADR 0031, ADR 0025, ADR 0009, ADR 0015; ROUTE-002 Teil 2b/3, ROUTE-006
+
+---
+
 ## DOC-001 — `docs/ROUTING-V2.md` beschreibt gelöschte Verzeichnisse — **behoben 2026-09-28**
 
 - **STATUS:** behoben über den **LESER-HINWEIS** am Dokumentkopf (2026-09-10): Er nennt die
@@ -450,6 +530,15 @@ routeAllCables → checkInvariants`, sechs Referenzpläne, Kartenmaß 192 × 120
      `routing:audit -- --shifts` (hart: kein Notfallpfad, kein I1; Ratchet: I2/I3 je Plan —
      Rest camper 2, acdc 10) und in `scripts/routing/shiftInvariance.test.ts`. Der Rest-I2
      sind Trassenkollisionen verschobener Bündel (Port-Fan-Out-Ebene), kein Durchlauf.
+     **Nachmessung 2026-10-03 (ADR 0031 v2 + ADR 0032):** Shift-I3 steigt checker-bedingt
+     (+5/+46/+9/+12/+40/+98, Router-Output byte-identisch — Locus-Regel zählt ehrlicher);
+     Shift-I2 verbessert sich durch den Leiter-Frühstopp-Fix auf solar 2 → 0 und acdc
+     12 → 10, camper verteilt sich 8 → 12 um (Gesamtsumme 30 → 30). `SHIFT_RATCHET`
+     entsprechend nachgezogen (Recapture-Ledger in `scripts/routing/audit.ts`); der einzige
+     Anstieg (camper 8 → 12) ist der dokumentierte Trade für den Wurzelfix — intern
+     mangelfreie Kandidaten aus rangniedrigeren Versuchen können Bündel-nah überdecken,
+     solange die Hart-Prüfung der Leiter-Auswahl die Prior-Geometrie nicht sieht
+     (zwei Varianten gemessen und verworfen, s. ADR 0032 „Alternativen“ und ROUTE-009).
 - **CURRENT BEHAVIOR:** Ein verschobener Plan kann kurze Segmente melden (I4–I7) und — je
   nach Rasterphase — Trassenüberdeckungen (I2); **kein** Bauteil-Durchlauf (I1) und
   **kein** Notfallpfad mehr (Versatz-Gate, 2026-09-28). Absolutwerte und Reste stehen in

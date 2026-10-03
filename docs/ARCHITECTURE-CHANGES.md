@@ -2282,3 +2282,104 @@ physische Länge gelten soll, ist mit diesem Stand beantwortet: nein, sie ist Ze
 das anders will, entscheidet damit auch, dass die sechs Referenzpläne elektrisch unerfüllbar sind
 (Zahlen oben) — und dass AutoWires Kanten dann dickere Querschnitte empfehlen, als die Vorlagen
 meinen. Beides gehört bewusst entschieden, nicht durch einen Konstantenwechsel nebenbei.
+
+### 2026-10-02 — Einunddreißigste Fassung: Die Port-Bündel-Ausnahme gilt symmetrisch für I2 und I3 (ADR 0031)
+
+**Ausgangslage.** Die I3-Prüfung (Clearance ≥ `cableClearance`, `weighted`) zählte seit
+AUDIT ROUTE-012 jede Segment×Segment-Abstandsunterschreitung — inklusive der
+Port-Bündel-Geometrie, die I2 (`hard`) seit ADR 0009/0025 über `isPortBundleOverlap`
+ausdrücklich freistellt. Zwei Kanten an derselben Anschlussstelle berühren sich
+zwangsläufig (Abstand 0 auf dem gemeinsamen Stub; das Lane-Ausweichen am Fan-Out
+kreuzt die Strecke der Nachbarkante). Gemessen über die sechs Referenzpläne: 98
+I3-Meldungen, davon **69 strukturelle Bündel-Fälle** — die Invariante war für jeden
+Plan mit geteiltem Port unerfüllbar by construction, und 29 echte Verletzungen
+versteckten sich im Rauschen. Dieselbe Diskrepanz wie vor ADR 0025, nur spiegelbildlich:
+Die Ausnahme lebte in der härteren Invariante, die weichere zählte die freigestellte
+Geometrie.
+
+**Was jetzt gilt (einunddreißigste Fassung).**
+
+1. **Die Freigabe-Ausnahme steht neben der Überdeckungs-Ausnahme** in
+   `lib/routing/rules/portBundle.ts` (die EINE Wahrheit, ADR 0025):
+   `portCorridor` (Stub + Fan-Out-Jog je Route-Ende) und `isPortBundleProximity`
+   (gemeinsame Anschlussstelle + beide beteiligten Segmente im Korridor am
+   gemeinsamen Port). Freie Trassensegmente und Paare ohne gemeinsamen Port
+   bleiben gemeldet — die Ausnahme ist nicht aufgeweicht, sie ist symmetrisch.
+2. **`checkClearance` konsumiert sie** und prüft Segment×Segment über dieselbe
+   vereinfachte Geometrie wie I2 (`routedPathGeometry`): eine Geometrie-Wahrheit
+   für beide Invarianten, keine Doppelzählung durch Kollinear-Splits.
+3. **Der Router ist unangetastet** — gemessen: Kreuzungen, Kabelweg, Bends,
+   Determinismus und Fallbacks über alle sechs Pläne unverändert. Die
+   Golden-Master-Fixtures (Topologie, Ströme, Querschnitte) sind unberührt;
+   einzig die `clearanceViolations`-Metrik der Regressions-Szenarien sank
+   (41→7, 2→0, 11→3, … gesamt 72→14), weshalb `goldenLayouts.json` und die
+   SVG-Header neu erfasst wurden (Refresh gemäß WP-11-Konvention, nur
+   Metrikzahlen, Wegpunkte byte-identisch).
+4. **Ratchets nachgezogen** (nur sinken erlaubt): `FINAL_VALIDATION_RATCHET`
+   6/21/4/12/13/42 → 2/7/0/6/3/23 (Σ 98 → 41), `LEGACY_BASELINE` in
+   `invariants.test.ts`, `SHIFT_RATCHET` in `audit.ts` (I3 −60 bis −85 %,
+   z. B. complex 2040 → 1127).
+5. **Neue Beweis-Tests**: `portBundle.test.ts` (Korridor, Fan-Out, Fan-In,
+   freie Trasse, Gegen-Ende, ohne gemeinsamen Port), `invariants.test.ts`
+   (ADR-0031-Regression: konvergierende Stubs/Jogs zählen nicht; dieselbe
+   Geometrie ohne gemeinsamen Port und freie Trasse bleiben gemeldet),
+   `portBundleModel.test.ts` (Buchhaltungs-Beweis je Kantenpaar: I3 zählt
+   genau die nicht freigestellten weighted-Paare; solar vollständig I3-frei).
+6. **Ehrliche Doku statt Behauptung**: Der Dateikopf von `finalValidation.ts`
+   behauptete „I1, I2 und I3 bei 0 (2026-09-09)" — die Ratchet lebte
+   tatsächlich bei Σ 98. Korrigiert, zusammen mit dem `finalValidation.test.ts`-Kopf,
+   `finalValidationRatchet.ts` („33 der 34 I2-Restfälle" — I2 ist seit ADR 0027
+   0), `ROUTING-CONTEXT.md` §4.5 (Mess-Tabelle 2026-10-02) und
+   KNOWN-PROBLEMS.md (neuer Eintrag ROUTE-008 mit Hebeln und gemessenen
+   Profilen des Rests).
+
+**Offen — echte Arbeit am Port-Fan-Out/Platzierung.** Der verbleibende I3-Rest
+(41 Referenzplan-Meldungen) ist echt: Paare ohne gemeinsamen Port (überwiegend
+feste Port-Rahmen, engster Fall 0,8 px) und freie Trassensegmente nach dem
+all-or-nothing Tube-Drop (ROUTE-BUG-16-Rangfolge). Die Hebel — Lane-Vergabe
+(vier in ROUTE-002 Teil 2b gemessene, verworfene Varianten), Platzierungs-
+Freigabe (ADR 0027) und eine potenziell scoped Tube-Relaxation — sind in
+ADR 0031 „Alternativen" und ROUTE-008 dokumentiert; jede Änderung dort braucht
+Recapture beider Pfade (Referenzpositionen UND Versatz-Matrix).
+
+### 2026-10-03 — Zweiunddreißigste Fassung: Ehrliche Locus-Regel und chirurgische Tube-Reparatur (ADR 0031 v2, ADR 0032)
+
+1. **ADR 0031 v2 — Locus-Regel statt Segment-Fenster:** Die v1-Fassung der
+   Port-Bündel-Freistellung für I3 („erste zwei bzw. letzte zwei Segmente")
+   stellte 8 Paare zu Unrecht frei (u. a. solar e-auto-1↔e-auto-10, Berührung
+   0 px ohne gemeinsamen Port). Korridor-Maß ist jetzt die Bogenlänge der
+   nächsten Annäherung vom gemeinsamen Port (`portFacingClearance` = 68 px,
+   `arcAt` mit `portAtStart`-Richtungskorrektur) — auf BEIDEN Pfaden, dieselbe
+   Messweise wie die I2-Ausnahme. `portCorridor` (Fenster) ist entfernt.
+   **Der Router-Output aller sechs Referenzpläne ist byte-identisch**
+   (`serializeRoutes`, gegen b9da1a5) — die I3-Erhöhungen sind reine
+   Checker-Verschärfung: 41 → 49 Meldungen, Recapture-Ledger in
+   `finalValidationRatchet.ts` (solar 0→1, inverter 6→7, acdc 3→7,
+   complex 23→25) plus `SHIFT_RATCHET`/`LEGACY_BASELINE`-Nachzug; beim
+   Absenken geblieben: Kreuzungs-Basenlines acdc 8→6, complex 29→27.
+2. **ADR 0032 — Leiter-Wurzelfixes + scoped Tube-Reparatur:** (a)
+   `hasSelfOverlap` erkennt ADJAZENTE Rückwärtsfaltungen (A→B→A′) über
+   `segmentsOverlap` — vorher war die Faltung für `routeDefectScore`
+   unsichtbar, während die I2-Invariante sie zählte (e-auto-8, Plan complex);
+   (b) Leiter-Frühstopp nur bei mangelfreiem Treffer — defekte Ersttreffer
+   (I4-Portkehren) sperren die rangniedrigeren Versuche nicht mehr
+   (p04/p13: Defekt-Score 80 → 0 je Kante); (c) Reparatur nach der Leiter für
+   Tube-Drop-Gewinner MIT hartem Verstoß: scoped Tubes (alle außer den vom
+   festen Port-Rahmen getroffenen), Selbstüberdeckungs-Gate, Budget-Guards
+   (Kreuzungen ≤ Basis, Länge ≤ Basis), Abweichungs-Maß gegen Kaskade,
+   Gleichstand = Originalpfad. Drei Alternativen gemessen und verworfen
+   (globale Scoped-Leiter: complex I3 25→33, +1932 px; Hart-Kriterium in der
+   Leiter-Auswahl in zwei Varianten: acdc-Kreuzungs-/Längen-Ratchet-Bruch).
+3. **Stress-Szenarien (Refresh gemäß WP-11-Konvention, mit Begründung):**
+   p02 verliert die harte Überdeckung (Score 102 → 0, Kantenlänge neutral
+   728→728 px, Kreuzungen 1→1; Kaskade +16 px, gewichtete Verstöße 7→20 —
+   ohne Reparatur 23; Begründung und offener Punkt ROUTE-009: Ausweichlauf
+   blind für gewichtete Clearance); p04/p13 verlieren je eine I4-Portkehre
+   (Bends −2/−6, Länge −56/−12 px, Clearance 3→0/4→0). Neue Beweis-Tests:
+   „finale Routen sind intern mangelfrei" (`regression.test.ts`) und 5
+   Faltungs-Unit-Tests (`pathfinding.test.ts`); `portBundle.test.ts` mit 9
+   Locus-Fällen; `portBundleModel.test.ts` auf ehrliche Restfälle
+   umgeschrieben (solar-Restfall exakt identifiziert statt „0 erreichbar").
+4. **Diagnose-Vereinheitlichung:** `audit.ts` zählt Selbstüberlappungen jetzt
+   über `hasSelfOverlap` (eine Wahrheit — die hiesige Eigenimplementierung
+   hatte dieselbe Adjazenz-Lücke).

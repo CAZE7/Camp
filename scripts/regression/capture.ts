@@ -27,7 +27,7 @@ const SVG_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', 'do
 
 function main(): void {
   const file: GoldenLayoutFile = {
-    capturedAt: '2026-09-06',
+    capturedAt: '2026-10-02',
     note: 'Golden Layouts WP-11 (#400) — Abweichung = CI-Fail. Refresh: npx tsx scripts/regression/capture.ts + PR-Begründung.',
     scenarios: REGRESSION_SCENARIOS.map((scenario) => buildScenarioLayout(scenario)),
   };

@@ -39,7 +39,7 @@ import {
   nodeWidth,
   type RoutableNode,
 } from '../../components/edges/utils/nodeGeometry';
-import { nodesToObstacles, portFrame } from '../../components/edges/utils/pathfinding';
+import { hasSelfOverlap, nodesToObstacles, portFrame } from '../../components/edges/utils/pathfinding';
 import {
   checkInvariants,
   serializeRoutes,
@@ -47,13 +47,7 @@ import {
   type NodeRect,
   type RoutedEdge,
 } from '../../lib/routing/invariants';
-import {
-  isOrthogonalPath,
-  segmentsCross,
-  segmentsOverlap,
-  waypointsToSegments,
-  type Point,
-} from '../../lib/routing/geometry';
+import { isOrthogonalPath, segmentsCross, waypointsToSegments, type Point } from '../../lib/routing/geometry';
 import { ROUTING_TOKENS } from '../../lib/routing/tokens';
 import { classifySegmentAgainstSegment } from '../../lib/routing/rules/collision';
 import { isPortBundleOverlap, routedPathGeometry } from '../../lib/routing/rules/portBundle';
@@ -219,16 +213,14 @@ export function analyzeOverlaps(routed: readonly RoutedEdge[]): { atPort: number
 
 /** Kanten, deren eigener Verlauf kollinear in sich zurückläuft. */
 function selfOverlapping(routed: readonly RoutedEdge[]): number {
+  // EINE Wahrheit: `hasSelfOverlap` (pathfinding) prüft über
+  // `segmentsOverlap` ALLE Paarungen — inklusive ADJAZENTER Rückwärts-
+  // faltungen (A→B→A′), die die hiesige frühere Eigenimplementierung
+  // (j ab i+2) übersah. Dieselbe Lücke hatte `routeDefectScore`;
+  // behoben 2026-10-03 (gemessen: e-auto-8 im Plan complex, Segmente 3↔4).
   let count = 0;
   for (const edge of routed) {
-    const segments = waypointsToSegments(edge.waypoints);
-    let overlap = false;
-    for (let i = 0; i < segments.length && !overlap; i++) {
-      for (let j = i + 2; j < segments.length && !overlap; j++) {
-        if (segmentsOverlap(segments[i]!, segments[j]!)) overlap = true;
-      }
-    }
-    if (overlap) count += 1;
+    if (hasSelfOverlap(edge.waypoints)) count += 1;
   }
   return count;
 }
@@ -316,19 +308,42 @@ export type ShiftMatrixEntry = {
   fallbacks: number;
 };
 
-/** Obergrenze je Plan (Summen über die 49 Läufe), gemessen 2026-09-28. */
+/** Obergrenze je Plan (Summen über die 49 Läufe), gemessen 2026-10-03 (ADR 0031 v2). */
 export const SHIFT_RATCHET: Readonly<Record<string, { I2: number; I3: number }>> = {
   // AUDIT ROUTE-011/012: Ratchet nachgezogen — die Selbstüberlappungs-
   // (I2) und Segment×Segment-Clearance-Prüfung (I3) war bisher nur
   // Kante×Kante bzw. Segment×Node. Die Verletzungen waren immer da;
   // das Gate hat sie nur nicht gesehen. Ratchet: diese Zahlen dürfen
   // nur sinken, nie steigen.
-  simple: { I2: 6, I3: 425 },
-  camper: { I2: 8, I3: 1074 },
-  solar: { I2: 2, I3: 261 },
-  inverter: { I2: 0, I3: 367 },
-  acdc: { I2: 12, I3: 680 },
-  complex: { I2: 2, I3: 2040 },
+  //
+  // Zahlenstand 2026-10-03 (ADR 0031 v2 — Locus-Regel):
+  //   I3: +5/+46/+9/+12/+40/+98 — reine CHECKER-Verschärfung. Die
+  //   Locus-Fassung der Port-Bündel-Ausnahme (Bogenlänge der nächsten
+  //   Annäherung vom gemeinsamen Port statt Segment-Fenster) zählt Paare,
+  //   die die Fenster-Fassung zu Unrecht freigestellt hat. Der Router-
+  //   Output ist byte-identisch zum Stand der alten Messung (alle sechs
+  //   Referenzpläne, `serializeRoutes` gegen b9da1a5).
+  //   I2: solar 2 → 0 und acdc 12 → 10 sind echte Verbesserungen durch
+  //   den Leiter-Frühstopp-Fix (ein defekter Treffer — z. B. kollineare
+  //   Rückwärtsfaltung — sperrt die rangniedrigeren Versuche nicht mehr;
+  //   `hasSelfOverlap` sieht seit 2026-10-03 auch ADJAZENTE Faltungen).
+  //   camper 8 → 12 ist der Gegeneffekt desselben Fixes: Intern saubere
+  //   Kandidaten aus rangniedrigeren Versuchen können Bündel-nah
+  //   kollinear überdecken, ohne dass die Auswahl das sieht — die
+  //   Hart-Prüfung gegen verlegte Kanten braucht die Geometrie BEIDER
+  //   Kanten und bleibt deshalb der ADR-0032-Reparatur vorbehalten
+  //   (gemessene Sackgassen: Korridor-Näherung bricht acdc-Kreuzungs-
+  //   und Längen-Ratchet, s. ADR 0032 „Alternativen“). Gesamtbilanz
+  //   über alle Pläne: 30 → 30 (Umverteilung, kein Niveau-Anstieg).
+  //   RECATURE-LEDGER: camper-I2 8 → 12 ist der einzige Anstieg —
+  //   dokumentierter Trade für den Frühstopp-Wurzelfix, kein Gate der
+  //   Referenzpläne berührt.
+  simple: { I2: 6, I3: 130 },
+  camper: { I2: 12, I3: 469 },
+  solar: { I2: 0, I3: 45 },
+  inverter: { I2: 0, I3: 75 },
+  acdc: { I2: 10, I3: 180 },
+  complex: { I2: 2, I3: 1225 },
 };
 
 /** Reine Plan-Translation (nur Nutzerknoten; AutoWire platziert danach neu). */

@@ -15,6 +15,8 @@ import {
   inflateRect,
   containsPoint,
   countCrossings,
+  hasSelfOverlap,
+  routeDefectScore,
   nodesToObstacles,
   nodeObstacleMap,
   clearPathfindingCache,
@@ -872,5 +874,81 @@ describe('Budget- und Abbruchschwellen (ROUTE-004)', () => {
     // Schwellen auseinander, ist eine der beiden Seiten absichtlich geändert
     // worden — dann gehört die andere Seite mitgezogen.
     expect(LEGACY_MAX_ACCEPTABLE_CROSSINGS).toBe(MAX_ACCEPTABLE_CROSSINGS);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// ADR 0032 (2026-10-03) — R-2 Selbstüberdeckung: ADJAZENTE Rückwärtsfaltung.
+// `hasSelfOverlap` prüfte Paare erst ab j = i + 2; die Faltung A→B→A′ auf
+// derselben Linie (Segmente i↔i+1) war für `routeDefectScore` unsichtbar.
+// Folge (gemessen, Plan complex): Die Leiter stoppte vorzeitig auf dem
+// gefalteten Kandidaten von e-auto-8 (I2 = 1), obwohl der nächste Versuch
+// einen sauberen Pfad hatte. Die I2-Invariante zählte die Faltung — Checker
+// und Router sahen dieselbe Geometrie unterschiedlich (eine Wahrheit
+// verletzt).
+// ---------------------------------------------------------------------------
+describe('R-2 Selbstüberdeckung — adjazente Rückwärtsfaltung (ADR 0032)', () => {
+  it('erkennt A→B→A′ auf derselben Linie (adjazentes Paar, e-auto-8-Klasse)', () => {
+    expect(
+      hasSelfOverlap([
+        { x: 0, y: 0 },
+        { x: 100, y: 0 },
+        { x: 40, y: 0 },
+      ])
+    ).toBe(true);
+  });
+
+  it('erkennt die adjazente Faltung über segmentsOverlap auch am Pfadende', () => {
+    expect(
+      hasSelfOverlap([
+        { x: 0, y: 0 },
+        { x: 100, y: 0 },
+        { x: 100, y: 40 },
+        { x: 60, y: 40 },
+        { x: 60, y: 0 },
+        { x: 20, y: 0 },
+      ])
+    ).toBe(true);
+  });
+
+  it('vorwärts-kollineare Nachbarn A→B→C sind keine Überdeckung (Berührung nur in B)', () => {
+    expect(
+      hasSelfOverlap([
+        { x: 0, y: 0 },
+        { x: 100, y: 0 },
+        { x: 200, y: 0 },
+      ])
+    ).toBe(false);
+  });
+
+  it('nicht-adjazente kollineare Überdeckung bleibt erkannt (Regressionsschutz)', () => {
+    expect(
+      hasSelfOverlap([
+        { x: 0, y: 0 },
+        { x: 200, y: 0 },
+        { x: 200, y: 80 },
+        { x: 300, y: 80 },
+        { x: 300, y: 0 },
+        { x: 150, y: 0 },
+      ])
+    ).toBe(true);
+  });
+
+  it('routeDefectScore preist die adjazente Faltung — die Leiter stoppt nicht vorzeitig auf ihr', () => {
+    const folded: Point[] = [
+      { x: 0, y: 0 },
+      { x: 100, y: 0 },
+      { x: 40, y: 0 },
+    ];
+    const straight: Point[] = [
+      { x: 0, y: 0 },
+      { x: 100, y: 0 },
+    ];
+    expect(routeDefectScore(folded)).toBeGreaterThan(routeDefectScore(straight));
+    // Vollständige Preisung der Faltung: 1 × Selbstüberdeckung (U_TURN_COST)
+    // + 2 × I4-Portkehren — die Paare [0,1] und [len-2,len-1] sind bei einem
+    // Zwei-Segment-Pfad dasselbe Paar, jede Kehre kostet U_TURN_COST. Kein
+    // Rabatt für Adjazenz: Die Faltung ist der teuerste interne Defekt.
+    expect(routeDefectScore(folded) - routeDefectScore(straight)).toBe(3 * U_TURN_COST);
   });
 });

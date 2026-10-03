@@ -33,8 +33,11 @@ import { FINAL_VALIDATION_RATCHET } from './finalValidationRatchet';
  * arbeiten. Seit die Platzierung Überlappungen auflöst, ist I1 in allen
  * sechs Plänen null.
  *
- * I2 und I3 sind noch nicht null. Für sie gilt weiter ein Ratchet, aber auf
- * der **Plansumme** statt je Invariante einzeln — mit Begründung:
+ * I2 ist seit ADR 0027 (Platzierungs-Freigabe, zwei Lane-Schritte) null;
+ * der frühere Rest (33 Port-Überdeckungen, „Kabelpaare, die sich ein Bauteil
+ * teilen") ist behoben. I3 hat einen echten Rest (2026-10-02: 41 über alle
+ * sechs Pläne) und läuft weiter über ein Ratchet auf der **Plansumme**
+ * statt je Invariante einzeln — mit Begründung:
  *
  * Eine Layout-Änderung verschiebt Verletzungen zwischen den Kategorien. Rücken
  * Bauteile auseinander, verschwinden Durchdringungen (I1) und es entstehen
@@ -44,10 +47,13 @@ import { FINAL_VALIDATION_RATCHET } from './finalValidationRatchet';
  * Summe je Plan hält den Druck aufrecht, ohne echte Verbesserungen zu
  * bestrafen. I1 bleibt davon unberührt und hart.
  *
- * Bekannter Rest bei I2: 33 der 34 verbleibenden Überdeckungen betreffen
- * Kabelpaare, die sich ein Bauteil teilen — sie laufen am gemeinsamen
- * Anschluss zusammen. Das ist Arbeit am Port-Fan-Out und in ADR 0017 als
- * nächster Schritt festgehalten.
+ * Seit ADR 0031 zählt I3 nur noch ECHTE Restfälle: Die strukturelle
+ * Port-Bündel-Konvergenz (gemeinsamer Stub/Fan-Out-Jog an derselben
+ * Anschlussstelle — 69 der früheren 98 Meldungen) ist symmetrisch zur
+ * I2-Ausnahme von ADR 0009/0025 freigestellt. Jede verbleibende Meldung ist
+ * ein Paar ohne gemeinsamen Port oder eine Unterschreitung an freier
+ * (gesuchter) Trasse — Arbeit am Port-Fan-Out/Platzierung, Hebel in ADR 0027
+ * und ROUTE-002 Teil 2b/3 dokumentiert.
  *
  * `validateFinalRouting()` selbst kennt weder Baseline noch Toleranz. Sie
  * meldet kompromisslos `INVALID`, sobald eine Verletzung vorliegt.
