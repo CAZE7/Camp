@@ -9,7 +9,7 @@
  * ohne Rewrite-Magie, die es dort nicht gibt. Dieser Server kann bewusst nur:
  *
  *   - Datei ausliefern, wenn sie existiert
- *   - `/pfad/` → `/pfad/index.html` (trailingSlash: true in next.config.ts)
+ *   - `/pfad/` → `/pfad/index.html` (trailingSlash: true in next.config.mjs)
  *   - `/pfad`  → 308 auf `/pfad/` (wie GitHub Pages)
  *   - sonst 404 mit `out/404.html`
  *

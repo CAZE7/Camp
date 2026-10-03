@@ -5,6 +5,7 @@ import {
   checkPage,
   checkSitemap,
   checkStructuredData,
+  exportFileCandidates,
   heavyLibrariesLoaded,
   internalLinkTargets,
   metaContent,
@@ -297,5 +298,27 @@ describe('Hilfsfunktionen', () => {
 
   it('lässt einen Verweis ohne Basis-Pfad unverändert', () => {
     expect(internalLinkTargets('<a href="/a/">x</a>', ORIGIN, '')).toEqual(['/a/']);
+  });
+});
+
+describe('exportFileCandidates', () => {
+  it('verlangt für Adressen mit Schrägstrich die Verzeichnisform', () => {
+    // Der Befund vom 2026-10-03: Ein flacher Export liefert `a.html` aus, die
+    // Adresse `/a/` beantwortet GitHub Pages damit aber mit 404. Wäre die
+    // flache Datei hier eine gültige Antwort, bliebe der Lauf grün.
+    expect(exportFileCandidates('/camper-elektrik/')).toEqual(['camper-elektrik/index.html']);
+    expect(exportFileCandidates('/')).toEqual(['index.html']);
+  });
+
+  it('ordnet Adressen ohne Schrägstrich der flachen Datei zu', () => {
+    expect(exportFileCandidates('/camper-elektrik')).toEqual([
+      'camper-elektrik.html',
+      'camper-elektrik/index.html',
+    ]);
+  });
+
+  it('behandelt Dateien mit Endung als Dateien, nicht als Seiten', () => {
+    expect(exportFileCandidates('/icon.svg')).toEqual(['icon.svg']);
+    expect(exportFileCandidates('/_next/static/chunks/abc.js')).toEqual(['_next/static/chunks/abc.js']);
   });
 });

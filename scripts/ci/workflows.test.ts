@@ -258,6 +258,26 @@ describe('GitHub-Actions-Workflows', () => {
     });
   });
 
+  it('basePath steht in Paarform — configure-pages ersetzt sonst den Schlüssel', () => {
+    // Die Pipeline patcht die Next-Konfiguration über configure-pages
+    // (`output`, `basePath`, `images.unoptimized`). Der Patch ersetzt den
+    // Wertknoten der gefundenen Eigenschaft. In Kurzschreibweise (`basePath,`)
+    // ist der Wertknoten der Schlüssel selbst: Es entstünde `"/Camp",` — eine
+    // ungültige Datei, die den Build abbricht. Befund vom 2026-10-03.
+    const config = readFileSync(join(process.cwd(), 'next.config.mjs'), 'utf8');
+    expect(config).toMatch(/basePath:\s*\S/);
+    expect(config).not.toMatch(/^\s*basePath,\s*$/m);
+  });
+
+  it('Next-Konfiguration liegt in einer Endung, die keine Schattenkopie provoziert', () => {
+    // Die Action (und jede Nachahmung) erzeugt eine `next.config.js`, wenn
+    // keine `.js`/`.cjs`/`.mjs`-Konfiguration existiert. Genau diese Kopie
+    // verdrängt die eigene Konfiguration — deshalb darf es sie nicht geben.
+    const configs = readdirSync(process.cwd()).filter((name) => name.startsWith('next.config.'));
+    expect(configs).toHaveLength(1);
+    expect(['.js', '.cjs', '.mjs'].some((extension) => configs[0]!.endsWith(extension))).toBe(true);
+  });
+
   it('Berechtigungen sind minimal: Standard nur contents:read', () => {
     for (const file of WORKFLOW_FILES) {
       const workflow = readWorkflow(file);

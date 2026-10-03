@@ -10,7 +10,7 @@
  * Adressen zeigt, ist schlimmer als keine.
  *
  * Der Basis-Pfad kommt aus derselben Umgebungsvariablen, die
- * `next.config.ts` als `basePath` setzt; ohne gesetzte Variable ist er leer
+ * `next.config.mjs` als `basePath` setzt; ohne gesetzte Variable ist er leer
  * (Entwicklung und Prüfbau ohne Basis-Pfad).
  */
 

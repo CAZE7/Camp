@@ -28,6 +28,7 @@ import {
   checkPage,
   checkSitemap,
   checkStructuredData,
+  exportFileCandidates,
   internalLinkTargets,
   metaContent,
 } from './checks';
@@ -75,16 +76,17 @@ function pagePathOf(file: string): string {
     .join('/')}`;
 }
 
-/** Datei, die eine Seitenadresse bedient (`/a/` → `out/a/index.html`). */
+/**
+ * Datei, die eine Seitenadresse bedient (`/a/` → `out/a/index.html`).
+ *
+ * Die Zuordnung ist formtreu: Adressen mit Schrägstrich verlangen die
+ * Verzeichnisform (`exportFileCandidates` in `checks.ts` erklärt, warum eine
+ * flache Datei diese Adresse auf GitHub Pages nicht bedient).
+ */
 function fileForPath(path: string): string | null {
-  const relativePath = path.replace(/^\/+/, '').replace(/\/$/, '');
-  const candidates = [
-    join(OUT, relativePath, 'index.html'),
-    join(OUT, `${relativePath}.html`),
-    join(OUT, relativePath),
-  ];
-  for (const candidate of candidates) {
-    if (existsSync(candidate) && statSync(candidate).isFile()) return candidate;
+  for (const candidate of exportFileCandidates(path)) {
+    const file = join(OUT, candidate);
+    if (existsSync(file) && statSync(file).isFile()) return file;
   }
   return null;
 }

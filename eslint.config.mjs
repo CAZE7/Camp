@@ -37,7 +37,7 @@ export default tseslint.config(
       'lighthouse-report/**',
       'public/**',
       'postcss.config.js',
-      'next.config.ts',
+      'next.config.mjs',
     ],
   },
 

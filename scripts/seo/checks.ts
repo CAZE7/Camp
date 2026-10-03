@@ -105,6 +105,33 @@ export function internalLinkTargets(html: string, origin: string, basePath = '')
 }
 
 /**
+ * Dateien im Export, die eine Adresse ausliefern — in der Form, die GitHub
+ * Pages tatsächlich bedient.
+ *
+ * Der Unterschied ist keine Feinheit: Pages stellt die Formen nicht
+ * ineinander um, es kennt nur zwei Regeln — `a/b.html` beantwortet `/a/b`
+ * (Endung fällt weg) und `a/b/index.html` beantwortet `/a/b/` (die
+ * kürzere Adresse leitet per 308 dorthin um). Ein flaches `a/b.html`
+ * beantwortet `/a/b/` deshalb mit 404.
+ *
+ * Genau daran scheiterte die Auslieferung am 2026-10-03: Die Pipeline baute
+ * eine fremde `next.config.js` ohne `trailingSlash`, der Export lag flach vor,
+ * und diese Prüfung akzeptierte die flache Datei auch für die Adresse mit
+ * Schrägstrich — Sitemap, Canonicals und Verweise zeigten also auf 404, der
+ * Lauf blieb grün. Für angekündigte Adressen mit Schrägstrich wird die
+ * Verzeichnisform deshalb verlangt, ohne Ausweichlösung.
+ */
+export function exportFileCandidates(path: string): string[] {
+  const relative = path.replace(/^\/+/, '');
+  if (path.endsWith('/')) return [relative === '' ? 'index.html' : `${relative}index.html`];
+  // Adressen mit Dateiendung (Bilder, Schriften, Symbole) liegen als Datei vor.
+  if (/\.[a-z0-9]+$/i.test(relative)) return [relative];
+  // Ohne Schrägstrich und ohne Endung: `a.html` ist die exakte Antwort,
+  // `a/index.html` ist zulässig, weil Pages `/a` per 308 auf `/a/` umleitet.
+  return [`${relative}.html`, `${relative}/index.html`];
+}
+
+/**
  * Große Abhängigkeiten aus dem Planer-Umfeld. Sie dürfen auf statischen
  * Inhaltsseiten nicht im Erstaufbau landen: Ein Kabelquerschnitt-Ratgeber, der
  * elkjs oder GSAP lädt, kostet auf Mobilfunk hunderte Kilobyte für eine
