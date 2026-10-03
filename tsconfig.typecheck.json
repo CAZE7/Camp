@@ -6,7 +6,7 @@
     // Produktionscode- und Test-Profil laufen mit derselben Schärfe
     // (kein Profil-Drift).
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx"],
+  "include": ["next-env.d.ts", "next.config.mjs", "**/*.ts", "**/*.tsx"],
   "exclude": [
     "node_modules",
     ".next",

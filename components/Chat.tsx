@@ -16,7 +16,7 @@ export const CHAT_API_URL_ENV = 'NEXT_PUBLIC_CHAT_API_URL';
  * ARCH-001).
  *
  * Warum diese Funktion und nicht mehr `… || '/api/chat'`: Der Produktbuild ist
- * ein **statischer Export** (`next.config.ts` → `output: 'export'`,
+ * ein **statischer Export** (`next.config.mjs` → `output: 'export'`,
  * ADR 0001). Er enthält kein `out/api`, und `next start` ist damit gar nicht
  * möglich — `/api/chat` wäre im ausgelieferten Artefakt immer ein 404. Die
  * Route in `app/api/chat/route.ts` existiert nur im Development-Server
