@@ -1,8 +1,8 @@
 # Camp SEO — Analyse und Vision
 
-_Suchraum, Befunde und Zielbild für die organische Sichtbarkeit · Stand 2026-10-03 · Commit feb1b82_
+_Suchraum, Befunde und Zielbild für die organische Sichtbarkeit · Stand 2026-10-03 · Commit 59060c8_
 
-Stand: 2026-10-03 · Commit: `feb1b82` (2026-10-03) · Grundlage: gebauter Static Export unter `out/`, ohne JavaScript gemessen.
+Stand: 2026-10-03 · Commit: `59060c8` (2026-10-03) · Grundlage: gebauter Static Export unter `out/`, ohne JavaScript gemessen.
 
 ## Ausgangslage
 
