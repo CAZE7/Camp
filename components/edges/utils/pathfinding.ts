@@ -1176,6 +1176,34 @@ export function buildHananGridMasks(
   return { blocked, hClosed, vClosed };
 }
 
+/**
+ * Arbeitsspeicher eines A*-Laufs: `gScore` (`Infinity` = unbesucht) und
+ * `parent` (`-1` = kein Vorgänger, zugleich Startkennung).
+ *
+ * PERF-002 (2026-10-03): Der Puffer wird modulweit wiederverwendet und nur
+ * bei Bedarf vergrößert — die Suchen laufen streng nacheinander (kein
+ * verschachtelter Aufruf, nur der Clip-Sonderfall ruft `hananAStar` erneut,
+ * und der initialisiert den Puffer selbst). Das vermeidet pro Kante ein
+ * `Map`-Paar plus dessen Aufbau und gibt dem JIT dichte, typisierte Zugriffe.
+ */
+let astarGScore = new Float64Array(0);
+let astarParent = new Int32Array(0);
+
+const astarScratch = (size: number): { gScore: Float64Array; parent: Int32Array } => {
+  if (astarGScore.length < size) {
+    // Wachstum in Zweierpotenzen: die großen Pläne routen hunderte Kanten mit
+    // ähnlicher Gittergröße — ohne Rundung würde bei jeder Kante neu allokiert.
+    const grown = 1 << (32 - Math.clz32(Math.max(1, size - 1)));
+    astarGScore = new Float64Array(grown);
+    astarParent = new Int32Array(grown);
+  }
+  const gScore = astarGScore.subarray(0, size);
+  const parent = astarParent.subarray(0, size);
+  gScore.fill(Number.POSITIVE_INFINITY);
+  parent.fill(-1);
+  return { gScore, parent };
+};
+
 function hananAStar(
   start: Point,
   goal: Point,
@@ -1318,11 +1346,18 @@ function hananAStar(
   }
 
   const pack = (ix: number, iy: number, hd: number): number => (iy * nx + ix) * 4 + hd;
-  const gScore = new Map<number, number>();
-  const parent = new Map<number, number>();
+  // PERF-002 (2026-10-03): gScore/parent als typisierte Felder statt `Map`.
+  // Die Zustandsmenge ist ein dichtes, bekanntes Intervall `[0, nx·ny·4)` —
+  // genau der Fall, für den ein `Float64Array` gebaut ist. Gemessen im
+  // 500-Knoten-Spannkanten-Szenario: `Map.get`/`Map.set` waren 6,4 % der
+  // Gesamtlaufzeit allein im Selbstanteil (CPU-Profil). Semantik unverändert:
+  // „nicht gesetzt" ist `Infinity` (g) bzw. `-1` (Vorgänger) — dieselben
+  // Vergleiche wie vorher mit `undefined`.
+  const stateCount = nx * ny * 4;
+  const { gScore, parent } = astarScratch(stateCount);
 
   const startKey = pack(six, siy, startHeading);
-  gScore.set(startKey, 0);
+  gScore[startKey] = 0;
   const heap = new MinHeap();
 
   // ── Stufe 3 (Mission): Integer-Milli-px-Sättigung der Label (§3″) ──────
@@ -1367,8 +1402,8 @@ function hananAStar(
   while (heap.size > 0) {
     const cur = heap.pop()!;
     const key = pack(cur.ix, cur.iy, cur.hd);
-    const known = gScore.get(key);
-    if (known !== undefined && (intMode ? cur.g > known : cur.g > known + EPS)) continue;
+    const known = gScore[key]!;
+    if (known !== Number.POSITIVE_INFINITY && (intMode ? cur.g > known : cur.g > known + EPS)) continue;
 
     expansions++;
     if (expansions > MAX_EXPANSIONS) break;
@@ -1403,10 +1438,10 @@ function hananAStar(
           )
         : cur.g + step + turnCost(cur.hd, nd) + penaltyAt(nix, niy);
       const nkey = pack(nix, niy, nd);
-      const prev = gScore.get(nkey);
-      if (prev !== undefined && (intMode ? g >= prev : g >= prev - EPS)) continue;
-      gScore.set(nkey, g);
-      parent.set(nkey, key);
+      const prev = gScore[nkey]!;
+      if (prev !== Number.POSITIVE_INFINITY && (intMode ? g >= prev : g >= prev - EPS)) continue;
+      gScore[nkey] = g;
+      parent[nkey] = key;
       const hRaw = remainingCostLowerBound(
         at(xs, nix),
         at(ys, niy),
@@ -1432,8 +1467,8 @@ function hananAStar(
     const ix = cell % nx;
     const iy = (cell / nx) | 0;
     pts.push({ x: at(xs, ix), y: at(ys, iy) });
-    const p = parent.get(k);
-    if (p === undefined) break;
+    const p = parent[k]!;
+    if (p < 0) break;
     k = p;
   }
   pts.reverse();

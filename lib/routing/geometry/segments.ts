@@ -30,16 +30,43 @@ export const pointOnSegment = (p: Point, s: Segment): boolean =>
   orientation(s[0], p, s[1]) === 0 && onSegmentBox(s[0], p, s[1]);
 
 /**
- * Berühren oder schneiden sich zwei Strecken? (Touch zählt mit —
- * das ist der bisherige Router-Begriff für die Kreuzungszählung.)
+ * Die vier Orientierungs-Prädikate eines Streckenpaares, EINMAL berechnet.
+ *
+ * PERF-002 (2026-10-03): `segmentsIntersect`, `segmentsCross` und
+ * `segmentsOverlap` bestimmten dieselben vier Werte jeweils neu — ein
+ * Klassifikationsaufruf des Kollisionsmodells kostete bis zu 10
+ * `orientation`-Aufrufe. Im 500-Knoten-Spannkanten-Szenario lag
+ * `classifySegmentAgainstSegment` damit bei 55 % der Gesamtlaufzeit
+ * (CPU-Profil, s. `benchmarks/routeAllWorstCase.probe.ts`). Die Werte hier
+ * einmal zu berechnen ändert **kein** Urteil: Alle drei Funktionen lesen
+ * ausschließlich diese vier Zahlen plus die Box-Prädikate.
+ *
+ * Reihenfolge im Tupel: `[o(p1,q1,p2), o(p1,q1,q2), o(p2,q2,p1), o(p2,q2,q1)]`.
  */
-export function segmentsIntersect(s1: Segment, s2: Segment): boolean {
+export type Orientations = readonly [number, number, number, number];
+
+/** Die vier Orientierungen eines Streckenpaares (Reihenfolge s. `Orientations`). */
+export const orientationsOf = (s1: Segment, s2: Segment): Orientations => {
   const [p1, q1] = s1;
   const [p2, q2] = s2;
-  const o1 = orientation(p1, q1, p2);
-  const o2 = orientation(p1, q1, q2);
-  const o3 = orientation(p2, q2, p1);
-  const o4 = orientation(p2, q2, q1);
+  return [orientation(p1, q1, p2), orientation(p1, q1, q2), orientation(p2, q2, p1), orientation(p2, q2, q1)];
+};
+
+/**
+ * `segmentsIntersect` mit vorberechneten Orientierungen.
+ *
+ * Semantisch identisch zur öffentlichen Funktion (dieselbe Reihenfolge der
+ * Prüfungen, dieselben Box-Prädikate) — nur ohne die zweite Berechnung der
+ * Orientierungen. Wer das Paar ohnehin schon klassifiziert, spart hier den
+ * Hauptteil der Arbeit.
+ */
+export function segmentsIntersectWith(s1: Segment, s2: Segment, o: Orientations): boolean {
+  const [p1, q1] = s1;
+  const [p2, q2] = s2;
+  const o1 = o[0];
+  const o2 = o[1];
+  const o3 = o[2];
+  const o4 = o[3];
   if (o1 !== o2 && o3 !== o4) return true;
   if (o1 === 0 && onSegmentBox(p1, p2, q1)) return true;
   if (o2 === 0 && onSegmentBox(p1, q2, q1)) return true;
@@ -48,10 +75,21 @@ export function segmentsIntersect(s1: Segment, s2: Segment): boolean {
   return false;
 }
 
+/**
+ * Berühren oder schneiden sich zwei Strecken? (Touch zählt mit —
+ * das ist der bisherige Router-Begriff für die Kreuzungszählung.)
+ */
+export function segmentsIntersect(s1: Segment, s2: Segment): boolean {
+  return segmentsIntersectWith(s1, s2, orientationsOf(s1, s2));
+}
+
 /** Sind beide Strecken kollinear (auf derselben Geraden)? */
 export function areCollinear(s1: Segment, s2: Segment): boolean {
   return orientation(s1[0], s1[1], s2[0]) === 0 && orientation(s1[0], s1[1], s2[1]) === 0;
 }
+
+/** Kollinearität aus vorberechneten Orientierungen (`o1 === 0 && o2 === 0`). */
+export const areCollinearWith = (o: Orientations): boolean => o[0] === 0 && o[1] === 0;
 
 /**
  * Kollineare Überlappung mit echter gemeinsamer Länge (> EPS).
@@ -59,6 +97,16 @@ export function areCollinear(s1: Segment, s2: Segment): boolean {
  */
 export function segmentsOverlap(s1: Segment, s2: Segment): boolean {
   if (!areCollinear(s1, s2)) return false;
+  return collinearOverlap(s1, s2);
+}
+
+/**
+ * Überdeckungs-Teil von `segmentsOverlap`, ohne die Kollinearitätsprüfung:
+ * Der Aufrufer hat sie (über die Orientierungen) bereits. Projiziert wird auf
+ * die dominante Achse — bei kollinearen Strecken liefert das dieselbe Länge
+ * wie entlang der gemeinsamen Geraden.
+ */
+export function collinearOverlap(s1: Segment, s2: Segment): boolean {
   const [a1, a2] = s1;
   const [b1, b2] = s2;
   // Entlang der dominanten Achse projizieren (funktioniert auch diagonal,
@@ -78,16 +126,16 @@ export function segmentsOverlap(s1: Segment, s2: Segment): boolean {
  * klassifiziert sie anders (Touch: none/weighted, Overlap: hard).
  */
 export function segmentsCross(s1: Segment, s2: Segment): boolean {
-  const [p1, q1] = s1;
-  const [p2, q2] = s2;
-  const o1 = orientation(p1, q1, p2);
-  const o2 = orientation(p1, q1, q2);
-  const o3 = orientation(p2, q2, p1);
-  const o4 = orientation(p2, q2, q1);
-  // Nur der strikte Fall: beide Endpunkte je Strecke auf verschiedenen
-  // Seiten der anderen — kollinear (0) schließt „echt" aus.
-  return o1 !== 0 && o2 !== 0 && o3 !== 0 && o4 !== 0 && o1 !== o2 && o3 !== o4;
+  return segmentsCrossWith(orientationsOf(s1, s2));
 }
+
+/**
+ * `segmentsCross` aus vorberechneten Orientierungen: Nur der strikte Fall —
+ * beide Endpunkte je Strecke auf verschiedenen Seiten der anderen, kollinear
+ * (0) schließt „echt" aus.
+ */
+export const segmentsCrossWith = (o: Orientations): boolean =>
+  o[0] !== 0 && o[1] !== 0 && o[2] !== 0 && o[3] !== 0 && o[0] !== o[1] && o[2] !== o[3];
 
 /**
  * Schnittpunkt zweier ECHT kreuzender Strecken (`segmentsCross`).
@@ -110,27 +158,86 @@ export function segmentIntersectionPoint(s1: Segment, s2: Segment): Point | unde
   return { x: p1.x + t * r.x, y: p1.y + t * r.y };
 }
 
-/** Abstand Punkt ↔ Strecke (euklidisch). */
-export function distancePointToSegment(p: Point, s: Segment): number {
+/**
+ * Quadratischer Abstand Punkt ↔ Strecke.
+ *
+ * PERF-002 (2026-10-03): interne Rechenform — `Math.hypot` ist rund 10×
+ * teurer als eine Multiplikation, und Vergleiche brauchen keine Wurzel.
+ * `distancePointToSegment` bleibt die öffentliche, exakt gleichwertige
+ * Fassung (Wurzel des Quadrats).
+ */
+export const squaredDistancePointToSegment = (p: Point, s: Segment): number => {
   const [a, b] = s;
   const dx = b.x - a.x;
   const dy = b.y - a.y;
   const lenSq = dx * dx + dy * dy;
-  if (lenSq <= EPS * EPS) return Math.hypot(p.x - a.x, p.y - a.y);
+  if (lenSq <= EPS * EPS) {
+    const px = p.x - a.x;
+    const py = p.y - a.y;
+    return px * px + py * py;
+  }
   const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / lenSq));
-  return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
+  const qx = p.x - (a.x + t * dx);
+  const qy = p.y - (a.y + t * dy);
+  return qx * qx + qy * qy;
+};
+
+/** Abstand Punkt ↔ Strecke (euklidisch). */
+export function distancePointToSegment(p: Point, s: Segment): number {
+  return Math.sqrt(squaredDistancePointToSegment(p, s));
 }
+
+/** Quadratischer Abstand zweier Strecken, die sich NICHT schneiden. */
+export const squaredDistanceBetweenDisjointSegments = (s1: Segment, s2: Segment): number =>
+  Math.min(
+    squaredDistancePointToSegment(s1[0], s2),
+    squaredDistancePointToSegment(s1[1], s2),
+    squaredDistancePointToSegment(s2[0], s1),
+    squaredDistancePointToSegment(s2[1], s1)
+  );
+
+/**
+ * Abstand zweier Strecken, die sich **nicht** schneiden.
+ *
+ * PERF-002: Der Aufrufer hat Schnitt/Berührung (Orientierungen, Box-Prädikate)
+ * bereits ausgeschlossen; die zweite `segmentsIntersect`-Prüfung entfällt.
+ * Exakt derselbe Wert wie `distanceSegmentToSegment` — nur ohne die Arbeit,
+ * die der Aufrufer schon geleistet hat.
+ */
+export const distanceBetweenDisjointSegments = (s1: Segment, s2: Segment): number =>
+  Math.sqrt(squaredDistanceBetweenDisjointSegments(s1, s2));
 
 /** Abstand Strecke ↔ Strecke (0 bei Schnitt/Berührung). */
 export function distanceSegmentToSegment(s1: Segment, s2: Segment): number {
   if (segmentsIntersect(s1, s2)) return 0;
-  return Math.min(
-    distancePointToSegment(s1[0], s2),
-    distancePointToSegment(s1[1], s2),
-    distancePointToSegment(s2[0], s1),
-    distancePointToSegment(s2[1], s1)
-  );
+  return distanceBetweenDisjointSegments(s1, s2);
 }
+
+/**
+ * Liegen zwei Strecken weiter als `distance` auseinander?
+ *
+ * Billige, **exakte** Vorprüfung über die achsenparallelen Hüllboxen: Berührt
+ * die um `distance` aufgeblasene Box von A die Box von B nicht, ist der
+ * Abstand beider Strecken sicher > `distance` (denn für jedes Punktpaar gilt
+ * dann |Δx| > distance ODER |Δy| > distance).
+ *
+ * Der Umkehrschluss ist nur ein Notwendigkeitskriterium — die Vorprüfung
+ * spart Arbeit, sie entscheidet nichts: Wer `false` bekommt, klassifiziert
+ * wie bisher. PERF-002: In den Suchschleifen des Routers liegt der weit
+ * überwiegende Teil der Paare außerhalb jeder Freigabe; dort ersetzt diese
+ * Prüfung vier Wurzeln durch vier Vergleiche.
+ */
+export const segmentsApartByMoreThan = (s1: Segment, s2: Segment, distance: number): boolean => {
+  const aMinX = Math.min(s1[0].x, s1[1].x);
+  const aMaxX = Math.max(s1[0].x, s1[1].x);
+  const aMinY = Math.min(s1[0].y, s1[1].y);
+  const aMaxY = Math.max(s1[0].y, s1[1].y);
+  const bMinX = Math.min(s2[0].x, s2[1].x);
+  const bMaxX = Math.max(s2[0].x, s2[1].x);
+  const bMinY = Math.min(s2[0].y, s2[1].y);
+  const bMaxY = Math.max(s2[0].y, s2[1].y);
+  return bMinX > aMaxX + distance || bMaxX < aMinX - distance || bMinY > aMaxY + distance || bMaxY < aMinY - distance;
+};
 
 /** Abstand Strecke ↔ Rechteck (0, wenn die Strecke die Box berührt/schneidet). */
 export function distanceSegmentToRect(s: Segment, r: Rect): number {
