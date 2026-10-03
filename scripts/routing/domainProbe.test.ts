@@ -123,17 +123,25 @@ describe('countDomainConflicts — Zähl-Semantik', () => {
 
 describe('domainProbe — Referenzpläne (Ratchet)', () => {
   /**
-   * Gemessen 2026-09-28 mit der korrigierten Ableitung. Sinkt eine Zahl,
-   * gehört die neue Zahl hierher (Ratchet nach unten); steigt sie, ist das
-   * ein Rückschritt in der Domänentrennung — nicht die Erwartung anpassen.
+   * Gemessen 2026-09-28 mit der korrigierten Ableitung, nachgezogen
+   * 2026-10-03 (ADR 0033 — Trenngang). Sinkt eine Zahl, gehört die neue Zahl
+   * hierher (Ratchet nach unten); steigt sie, ist das ein Rückschritt in der
+   * Domänentrennung — nicht die Erwartung anpassen.
+   *
+   * Nachzug 2026-10-03: `tooClose` acdc 5 → 4 und complex 18 → 12 (Σ 23 →
+   * 16), weil der Trenngang Freigabe zwischen fremden Kabeln herstellt. Die
+   * gemischten Paare und Kreuzungen bleiben gleich (Σ mixedPairs 80,
+   * Kreuzungen 12): Der Trenngang zieht segs um, er trennt keine Domänen um;
+   * gemischte Nachbarschaft unterhalb der Domain-Clearance ist damit
+   * weitgehend weg, gemischte Nachbarschaft an sich nicht.
    */
   const RATCHET: Record<string, { mixedPairs: number; crossing: number; tooClose: number }> = {
     simple: { mixedPairs: 0, crossing: 0, tooClose: 0 },
     camper: { mixedPairs: 0, crossing: 0, tooClose: 0 },
     solar: { mixedPairs: 0, crossing: 0, tooClose: 0 },
     inverter: { mixedPairs: 9, crossing: 0, tooClose: 0 },
-    acdc: { mixedPairs: 33, crossing: 2, tooClose: 5 },
-    complex: { mixedPairs: 38, crossing: 10, tooClose: 18 },
+    acdc: { mixedPairs: 33, crossing: 2, tooClose: 4 },
+    complex: { mixedPairs: 38, crossing: 10, tooClose: 12 },
   };
 
   it.each(Object.keys(GOLDEN_PLANS))('%s', (plan) => {
@@ -150,7 +158,8 @@ describe('domainProbe — Referenzpläne (Ratchet)', () => {
     const rows = Object.keys(GOLDEN_PLANS).map(probePlan);
     const sum = (key: 'mixedPairs' | 'crossing' | 'tooClose'): number =>
       rows.reduce((acc, row) => acc + (row?.[key] ?? 0), 0);
-    expect([sum('mixedPairs'), sum('crossing'), sum('tooClose')]).toEqual([80, 12, 23]);
+    // tooClose 23 → 16 nachgezogen 2026-10-03 (ADR 0033, s. RATCHET-Kommentar).
+    expect([sum('mixedPairs'), sum('crossing'), sum('tooClose')]).toEqual([80, 12, 16]);
   });
 
   it('benennt das engste Paar der Referenzpläne', () => {
@@ -159,6 +168,11 @@ describe('domainProbe — Referenzpläne (Ratchet)', () => {
       .map((row) => row?.closest)
       .filter((c): c is { pair: string; gap: number } => c !== undefined)
       .sort((a, b) => a.gap - b.gap)[0];
-    expect(closest).toEqual({ pair: 'e-busbar-fuse × e-shore-inv', gap: 0.8 });
+    // Vor ADR 0033 lag das engste gemischte Paar bei 0,8 px
+    // (`e-busbar-fuse × e-shore-inv`, complex) — ein ECHTER Verstoß unter der
+    // Domain-Clearance. Der Trenngang hat ihn beseitigt: das engste Paar liegt
+    // jetzt exakt auf der Clearance (12 px). Sinkt ein `gap` wieder unter die
+    // Clearance, meldet die Sonde `tooClose` und der Test oben schlägt an.
+    expect(closest).toEqual({ pair: 'e-shore-inv × e-auto-2', gap: 12 });
   });
 });

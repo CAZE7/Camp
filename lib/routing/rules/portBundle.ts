@@ -267,11 +267,23 @@ function closestLocusArcs(
   }
   // Kandidaten: Endpunkte des einen auf die Spanne des anderen projiziert.
   // Feste Reihenfolge, strikt kleinere Distanz gewinnt (Determinismus).
+  //
+  // WICHTIG (Fix 2026-10-03): `hs`/`vs` können gegenüber `(s1, s2)` VERTAUSCHT
+  // sein — nämlich dann, wenn `s1` senkrecht ist. Jeder Kandidat muss deshalb
+  // auf der Seite abgelegt werden, auf der er tatsächlich liegt; sonst misst
+  // `pointLocusArcs` den Bogen auf dem falschen Pfad und liefert `NaN`, sobald
+  // der Punkt dort nicht liegt. Genau das ist passiert: `complex`,
+  // `e-fuse-fridge ↔ e-fuse-fan` (2 px, gemeinsamer Fusebox-Port, Bögen 38/40
+  // < 68) ist ein legitimer Bündel-Fall, wurde aber als I3 gezählt, weil der
+  // Punkt `(912,236)` auf dem Weg der Gegenseite gesucht wurde.
   const dist = (p: Point, q: Point): number => Math.abs(p.x - q.x) + Math.abs(p.y - q.y);
+  const hsIsS1 = h1;
   let best: { pA: Point; pB: Point; d: number } | undefined;
-  const consider = (pA: Point, pB: Point): void => {
-    const d = dist(pA, pB);
-    if (!best || d < best.d - EPS) best = { pA, pB, d };
+  const consider = (pHs: Point, pVs: Point): void => {
+    const d = dist(pHs, pVs);
+    if (!best || d < best.d - EPS) {
+      best = hsIsS1 ? { pA: pHs, pB: pVs, d } : { pA: pVs, pB: pHs, d };
+    }
   };
   for (const endpoint of hs) {
     consider(endpoint, { x: ox, y: clampCoord(endpoint.y, yV0, yV1) });

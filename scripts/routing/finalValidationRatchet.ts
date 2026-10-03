@@ -25,6 +25,32 @@
  *   bestrafen. Die Werte dürfen sinken — dann sind sie nachzuziehen —, aber
  *   nie steigen.
  *
+ * Zahlenstand 2026-10-03 (ADR 0033 — Trenngang + Korridor-Kapazität): Alle
+ * sechs Pläne stehen bei **0**. Drei gemessene Ursachen des Rests sind
+ * behoben, jede mit eigener Regression:
+ *
+ *  1. Der Abschluss-Gang `separateCableClearance` (ADR 0033) stellt die
+ *     Freigabe her, statt sie nur teuer zu machen: er verschiebt innere
+ *     Segmente und nimmt einen Zug nur bei STRENG sinkender Verstoßzahl an
+ *     (plus Wächter gegen neue Hindernis-Treffer, neue Kreuzungen und
+ *     Umweg-Länge). Ergebnis ohne jede Layout-Änderung: camper 7→0,
+ *     inverter 7→0, acdc 7→2, complex 25→3.
+ *  2. `closestLocusArcs` ordnete im senkrechten Zweig die Kandidatenpunkte
+ *     dem falschen Pfad zu (`hs`/`vs` sind gegenüber `(s1,s2)` vertauscht).
+ *     Ein legitimer Bündel-Fall (complex: e-fuse-fridge ↔ e-fuse-fan, Bögen
+ *     38/40 im Korridor) zählte deshalb als I3. Fix + Regression in
+ *     `lib/routing/rules/portBundle.test.ts` (complex 3→0 bzw. acdc 2→0).
+ *  3. Der Referenzplan `complex` hatte am Minus-Port ein übervolles Bündel:
+ *     48 px freier Korridor, vier Leitungen brauchen 72 px
+ *     (`lib/routing/rules/portCapacity.ts`). Die harte Kappung erzeugte zwei
+ *     4-px-Parallelläufe. Korrektur der Vorlage (`busbar-plus` 500→496,
+ *     `busbar-minus` 680→688) — danach ist KEIN Port-Bündel der sechs Pläne
+ *     über Kapazität (Test: `scripts/routing/portCapacity.test.ts`).
+ *
+ * Kreuzungen: complex 27→25 (Ratchet nachgezogen), alle übrigen unverändert.
+ * Der Versatz-Gate (`SHIFT_RATCHET`) verbessert sich mit: I3 je Plan
+ * 25/26/0/10/24/0 statt 130/469/45/75/180/1225.
+ *
  * Zahlenstand 2026-10-03 (ADR 0031 v2 — Locus-Regel): Die erste Fassung der
  * Port-Bündel-Ausnahme (2026-10-02) steckte die Freistellung in ein
  * SEGMENT-FENSTER (die ersten N Stützpunkte je Kante). Das Fenster war
@@ -54,12 +80,12 @@
  * unverändert scharf.
  */
 export const FINAL_VALIDATION_RATCHET: Readonly<Record<string, number>> = {
-  simple: 2,
-  camper: 7,
-  solar: 1,
-  inverter: 7,
-  acdc: 7,
-  complex: 25,
+  simple: 0,
+  camper: 0,
+  solar: 0,
+  inverter: 0,
+  acdc: 0,
+  complex: 0,
 };
 
 /**

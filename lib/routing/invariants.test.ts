@@ -531,12 +531,15 @@ const LEGACY_BASELINE: Record<string, Record<InvariantId, number> & { crossings:
   // Kreuzungen: acdc 8→6 und complex 29→27 auf den gemessenen Stand
   // abgesenkt (Nachzug des Audit-Gates von 2026-09-27, der hier
   // vergessen wurde).
-  simple: { I1: 0, I2: 0, I3: 2, I4: 0, I5: 0, I6: 0, I7: 0, crossings: 2 },
-  camper: { I1: 0, I2: 0, I3: 7, I4: 0, I5: 0, I6: 0, I7: 0, crossings: 5 },
-  solar: { I1: 0, I2: 0, I3: 1, I4: 0, I5: 0, I6: 0, I7: 0, crossings: 2 },
-  inverter: { I1: 0, I2: 0, I3: 7, I4: 0, I5: 0, I6: 0, I7: 0, crossings: 2 },
-  acdc: { I1: 0, I2: 0, I3: 7, I4: 0, I5: 0, I6: 0, I7: 0, crossings: 6 },
-  complex: { I1: 0, I2: 0, I3: 25, I4: 0, I5: 0, I6: 0, I7: 0, crossings: 27 },
+  // Nachgezogen 2026-10-03 (ADR 0033 — Trenngang + Korridor-Kapazität):
+  // I3 fällt überall auf 0 (der Trenngang stellt die Freigabe her), I2 auf 0,
+  // Kreuzungen simple 2→1, camper 5→4, complex 27→25. Ratchet: nur sinken.
+  simple: { I1: 0, I2: 0, I3: 0, I4: 0, I5: 0, I6: 0, I7: 0, crossings: 1 },
+  camper: { I1: 0, I2: 0, I3: 0, I4: 0, I5: 0, I6: 0, I7: 0, crossings: 4 },
+  solar: { I1: 0, I2: 0, I3: 0, I4: 0, I5: 0, I6: 0, I7: 0, crossings: 2 },
+  inverter: { I1: 0, I2: 0, I3: 0, I4: 0, I5: 0, I6: 0, I7: 0, crossings: 2 },
+  acdc: { I1: 0, I2: 0, I3: 0, I4: 0, I5: 0, I6: 0, I7: 0, crossings: 6 },
+  complex: { I1: 0, I2: 0, I3: 0, I4: 0, I5: 0, I6: 0, I7: 0, crossings: 25 },
 };
 
 const ELK_BASELINE: Record<string, { I3: number; I5: number; I6: number; crossings: number }> = {

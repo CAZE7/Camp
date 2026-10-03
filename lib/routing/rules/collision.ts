@@ -1,10 +1,13 @@
 import {
+  areCollinearWith,
+  collinearOverlap,
+  distanceBetweenDisjointSegments,
   distanceSegmentToRect,
-  distanceSegmentToSegment,
+  orientationsOf,
   segmentHitsRect,
-  segmentsCross,
-  segmentsIntersect,
-  segmentsOverlap,
+  segmentsApartByMoreThan,
+  segmentsCrossWith,
+  segmentsIntersectWith,
   type Rect,
   type Segment,
 } from '../geometry';
@@ -60,6 +63,17 @@ export function classifySegmentAgainstNode(
   obstacle: Rect,
   clearance: number = ROUTING_TOKENS.cableClearance
 ): RoutingConstraint {
+  // PERF-002 (2026-10-03): dieselbe ergebnisneutrale Hüllbox-Vorprüfung wie
+  // im Segment×Segment-Fall — liegt die Strecken-Box weiter als `clearance`
+  // von der Bauteil-Box, ist weder `hard` noch `weighted` möglich.
+  if (
+    Math.min(segment[0].x, segment[1].x) > obstacle.x + obstacle.width + clearance ||
+    Math.max(segment[0].x, segment[1].x) < obstacle.x - clearance ||
+    Math.min(segment[0].y, segment[1].y) > obstacle.y + obstacle.height + clearance ||
+    Math.max(segment[0].y, segment[1].y) < obstacle.y - clearance
+  ) {
+    return NONE;
+  }
   if (segmentHitsRect(segment[0], segment[1], obstacle)) {
     return { class: 'hard', kind: 'edge-node' };
   }
@@ -85,17 +99,27 @@ export function classifySegmentAgainstSegment(
   b: Segment,
   clearance: number = ROUTING_TOKENS.cableClearance
 ): RoutingConstraint {
-  if (segmentsOverlap(a, b)) {
+  // PERF-002 (2026-10-03): Hüllbox-Vorprüfung, ergebnisneutral. Ohne sie
+  // zahlte JEDES Paar in den Suchschleifen vier Wurzelziehungen; im
+  // 500-Knoten-Spannkanten-Szenario waren das 55 % der Laufzeit (CPU-Profil,
+  // `benchmarks/routeAllWorstCase.probe.ts`). Liegen die Boxen weiter als
+  // `clearance` auseinander, kann kein Zweig unten greifen: `hard`/`soft`
+  // setzen Berührung voraus, `weighted` einen Abstand < `clearance`.
+  if (segmentsApartByMoreThan(a, b, clearance)) return NONE;
+  const o = orientationsOf(a, b);
+  if (areCollinearWith(o) && collinearOverlap(a, b)) {
     return { class: 'hard', kind: 'edge-edge-overlap' };
   }
-  if (segmentsCross(a, b)) {
+  if (segmentsCrossWith(o)) {
     return { class: 'soft', kind: 'edge-edge-crossing' };
   }
-  if (segmentsIntersect(a, b)) {
+  if (segmentsIntersectWith(a, b, o)) {
     // Touch: Berührung ohne echte Kreuzung.
     return { class: 'weighted', kind: 'clearance', distance: 0, requiredClearance: clearance };
   }
-  const distance = distanceSegmentToSegment(a, b);
+  // Schnitt und Berührung sind ausgeschlossen — der Abstand braucht die
+  // (dritte) Schnittprüfung in `distanceSegmentToSegment` nicht mehr.
+  const distance = distanceBetweenDisjointSegments(a, b);
   if (distance < clearance) {
     return { class: 'weighted', kind: 'clearance', distance, requiredClearance: clearance };
   }

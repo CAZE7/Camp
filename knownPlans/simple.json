@@ -472,9 +472,9 @@
       ]
     },
     "e-auto-7": {
-      "bends": 6,
-      "crossings": 2,
-      "length": 600.8,
+      "bends": 4,
+      "crossings": 1,
+      "length": 568.8,
       "usedSearch": "astar",
       "waypoints": [
         {
@@ -483,14 +483,6 @@
         },
         {
           "x": 710.4,
-          "y": 552
-        },
-        {
-          "x": 726.4,
-          "y": 552
-        },
-        {
-          "x": 726.4,
           "y": 414
         },
         {
@@ -530,11 +522,11 @@
           "y": 212
         },
         {
-          "x": 656,
+          "x": 654,
           "y": 212
         },
         {
-          "x": 656,
+          "x": 654,
           "y": 316
         },
         {
@@ -545,7 +537,7 @@
     },
     "e-auto-9": {
       "bends": 4,
-      "crossings": 1,
+      "crossings": 0,
       "length": 280,
       "usedSearch": "astar",
       "waypoints": [
