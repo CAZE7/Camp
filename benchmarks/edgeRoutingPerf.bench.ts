@@ -200,7 +200,39 @@ bench('Sehr groß', 120, 5);
  *
  * Aufruf: npm run perf:edge-routing
  */
-const LIVE_PATH_RATCHET_MS = 60;
+/**
+ * Ratchet nachgezogen 2026-10-03 (ADR 0033 — Trenngang).
+ *
+ * Der Live-Pfad enthält seit dem Kabel-Freigabe-Garantie-Gang einen
+ * zusätzlichen Durchgang über die Verstöße. Gemessen an DIESEM Referenzplan
+ * (36 Knoten / 134 Kettenkanten — ein bewusst pathologisches Szenario: die
+ * Kanten liegen fast alle im selben Korridor und erzeugen 1 807
+ * Freigabe-Verstöße, von denen der Gang keinen einzigen auflösen kann, weil
+ * jede Lane von Bauteilen belegt ist):
+ *
+ *   ohne Trenngang   58–73 ms   (Median, diese Maschine, 2 Läufe)
+ *   mit Trenngang   203–211 ms  (Median, nach den ergebnisidentischen
+ *                                Optimierungen: ein Klassifikations-Durchgang
+ *                                je Paar, Hüllbox-Vorprüfungen, Zug-Caches,
+ *                                Längenprüfung vor den Ableitungen)
+ *
+ * Der Zuwachs ist der Preis einer NEUEN Zusicherung (I3 = 0), nicht ein
+ * Rückfall derselben Rechnung: Auf den sechs Referenzplänen kostet der Gang
+ * gemessen ~1,2× Audit-Zeit, und das 500-Knoten-Spannkanten-Szenario aus
+ * Punkt 2 bleibt bei 5,7 s (Median). Das 16-ms-Ziel aus ADR 0012 gilt
+ * weiterhin für das reine Kanten-Rendern — dieser erste Gate-Block ist grün
+ * (2,3 ms) — und der Live-Pfad bleibt der ausdrücklich benannte, ungelöste
+ * Zielkonflikt (ADR 0012/0030): Der Ratchet hält nur den Ist-Zustand fest.
+ *
+ * 300 ms = gemessener Wert (203–235 ms über vier Läufe) + ~25 % Kopfraum für
+ * geteilte Runner; die Streuung selbst ist über `LIVE_PATH_TAIL_FACTOR` separat
+ * abgesichert. Der Ratchet fängt weiterhin die grobe Entgleisung (eine
+ * quadratisch gewordene Verstoß- oder Bilanzschleife hebt diesen Wert um ein
+ * Vielfaches). Wer den Pfad schneller macht, zieht nach unten — der nächste
+ * ausgewiesene Hebel ist „lokale statt globale Berechnung" (Punkt 2 des
+ * Auftrags, s. ADR 0033 „Offene Punkte").
+ */
+const LIVE_PATH_RATCHET_MS = 300;
 const LIVE_PATH_REVOLUTIONS = 15;
 /**
  * Streuungs-Ratchet (ADR 0030, PERF-001): Der Median allein sieht den Schwanz
