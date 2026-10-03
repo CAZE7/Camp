@@ -64,7 +64,11 @@ for (const edge of edges) {
     `\n  ${edge.id}  ${edge.source} → ${edge.target}  search=${route.usedSearch} len=${route.length.toFixed(1)} x=${route.crossings}` +
       `  lane=${lane?.lane ?? 0}(r${lane?.laneRank ?? '-'},t${lane?.laneTie ?? '-'}) laneTarget=${lane?.laneTarget ?? 0}(r${lane?.laneTargetRank ?? '-'},t${lane?.laneTargetTie ?? '-'})`
   );
-  console.log(`     srcPort=(${src.x.toFixed(1)},${src.y.toFixed(1)}) ${src.position}   tgtPort=(${tgt.x.toFixed(1)},${tgt.y.toFixed(1)}) ${tgt.position}`);
+  console.log(
+    `     srcPort=(${src.x.toFixed(1)},${src.y.toFixed(1)}) ${src.position}   tgtPort=(${tgt.x.toFixed(1)},${tgt.y.toFixed(1)}) ${tgt.position}`
+  );
   const pts = simplifyWaypoints(route.waypoints);
-  console.log(`     waypoints(${pts.length}): ${pts.map((p) => `(${p.x.toFixed(1)},${p.y.toFixed(1)})`).join(' → ')}`);
+  console.log(
+    `     waypoints(${pts.length}): ${pts.map((p) => `(${p.x.toFixed(1)},${p.y.toFixed(1)})`).join(' → ')}`
+  );
 }

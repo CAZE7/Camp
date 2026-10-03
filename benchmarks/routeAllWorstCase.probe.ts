@@ -64,7 +64,9 @@ for (let i = 0; i < runs; i++) {
   result.forEach((r) => {
     if (r.usedSearch === 'fallback') fallbacks++;
   });
-  console.log(`N=${n} E=${edges.length}  ${ms.toFixed(1)} ms  geroutet=${result.size} fallbacks=${fallbacks}`);
+  console.log(
+    `N=${n} E=${edges.length}  ${ms.toFixed(1)} ms  geroutet=${result.size} fallbacks=${fallbacks}`
+  );
 }
 
 if (process.env.CAMP_PROBE_DUMP) {

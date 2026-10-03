@@ -99,7 +99,9 @@ function closestPoints(s1: Segment, s2: Segment): { a: Point; b: Point } {
   if (h1 === h2) {
     // Parallel: Projektion der Spannen-Enden deckt den Überlappungs-/Spaltfall ab.
     const span = (s: Segment, horizontal: boolean): [number, number] =>
-      horizontal ? [Math.min(s[0].x, s[1].x), Math.max(s[0].x, s[1].x)] : [Math.min(s[0].y, s[1].y), Math.max(s[0].y, s[1].y)];
+      horizontal
+        ? [Math.min(s[0].x, s[1].x), Math.max(s[0].x, s[1].x)]
+        : [Math.min(s[0].y, s[1].y), Math.max(s[0].y, s[1].y)];
     const [l1, u1] = span(s1, h1);
     const [l2, u2] = span(s2, h2);
     const lo = Math.max(l1, l2);
@@ -138,7 +140,12 @@ export function i3CasesOfPlan(planName: string): I3Case[] {
     .map((edge) => {
       const route = routes.get(edge.id)!;
       const points = simplifyWaypoints(route.waypoints);
-      return { edge, points, geometry: routedPathGeometry(route.waypoints), segments: waypointsToSegments(points) };
+      return {
+        edge,
+        points,
+        geometry: routedPathGeometry(route.waypoints),
+        segments: waypointsToSegments(points),
+      };
     });
 
   const clearance = ROUTING_TOKENS.cableClearance;
@@ -151,7 +158,8 @@ export function i3CasesOfPlan(planName: string): I3Case[] {
         for (let sj = 0; sj < b.segments.length; sj++) {
           const s1 = a.segments[si]!;
           const s2 = b.segments[sj]!;
-          if (isPortBundleProximity(a.geometry, b.geometry, s1, s2, ROUTING_TOKENS.portFacingClearance)) continue;
+          if (isPortBundleProximity(a.geometry, b.geometry, s1, s2, ROUTING_TOKENS.portFacingClearance))
+            continue;
           const verdict = classifySegmentAgainstSegment(s1, s2, clearance);
           if (verdict.class !== 'weighted' || verdict.distance === undefined) continue;
           if (verdict.distance >= clearance) continue;

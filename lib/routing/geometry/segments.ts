@@ -236,7 +236,12 @@ export const segmentsApartByMoreThan = (s1: Segment, s2: Segment, distance: numb
   const bMaxX = Math.max(s2[0].x, s2[1].x);
   const bMinY = Math.min(s2[0].y, s2[1].y);
   const bMaxY = Math.max(s2[0].y, s2[1].y);
-  return bMinX > aMaxX + distance || bMaxX < aMinX - distance || bMinY > aMaxY + distance || bMaxY < aMinY - distance;
+  return (
+    bMinX > aMaxX + distance ||
+    bMaxX < aMinX - distance ||
+    bMinY > aMaxY + distance ||
+    bMaxY < aMinY - distance
+  );
 };
 
 /** Abstand Strecke ↔ Rechteck (0, wenn die Strecke die Box berührt/schneidet). */
