@@ -74,6 +74,7 @@ function ValidatingNumberField({ spec, onChange }: { spec: FieldSpec; onChange?:
               setVal(String(next));
               onChange?.(next);
             }}
+            aria-label="Wert erhöhen"
           >
             ▲
           </button>
@@ -84,6 +85,7 @@ function ValidatingNumberField({ spec, onChange }: { spec: FieldSpec; onChange?:
               setVal(String(next));
               onChange?.(next);
             }}
+            aria-label="Wert verringern"
           >
             ▼
           </button>
