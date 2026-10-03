@@ -6,8 +6,15 @@ import { useState } from 'react';
 import { Mark } from './Mark';
 import { cn } from '@/lib/utils';
 
+/**
+ * Hauptnavigation. „Elektrik" führt bewusst auf den Pillar
+ * (`/camper-elektrik/`) und nicht direkt auf den Planer: Der Planer ist das
+ * Ziel innerhalb des Themas, das Thema ist der Einstieg — und der Pillar
+ * verteilt die Verweise in alle Unterthemen (siehe §11, interne Verlinkung).
+ */
 const NAV = [
-  { href: '/elektrik-planung', label: 'Schaltplan' },
+  { href: '/camper-elektrik', label: 'Elektrik' },
+  { href: '/rechner', label: 'Rechner' },
   { href: '/tools/dach', label: 'Dach' },
   { href: '/tools/heizung', label: 'Heizlast' },
   { href: '/guides/ausbau-fahrplan', label: 'Guides' },

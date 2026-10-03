@@ -1,0 +1,580 @@
+%PDF-1.7
+%âãÏÓ
+1 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+2 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Courier /Encoding /WinAnsiEncoding >>
+endobj
+4 0 obj
+<< /Length 6350 >>
+stream
+BT /F2 21 Tf 1 0 0 1 56.00 756.89 Tm (CAMP SEO GROWTH REPORT) Tj ET
+BT /F1 11 Tf 1 0 0 1 56.00 734.54 Tm (Organische Sichtbarkeit für Camper-Elektrik und der Weg in den Planer - Stand 2026-10-03 -) Tj ET
+BT /F1 11 Tf 1 0 0 1 56.00 718.04 Tm (Commit feb1b82) Tj ET
+BT /F1 9 Tf 1 0 0 1 56.00 689.54 Tm (Stand: 2026-10-03 - Commit: `feb1b82` \(2026-10-03\) - Grundlage: gebauter Static Export unter `out/`, ohne) Tj ET
+BT /F1 9 Tf 1 0 0 1 56.00 676.04 Tm (JavaScript gemessen.) Tj ET
+BT /F2 14 Tf 1 0 0 1 56.00 640.54 Tm (Ergebnis) Tj ET
+0.85 0.85 0.85 RG 0.8 w 56 632.54 m 539.28 632.54 l S
+BT /F1 10 Tf 1 0 0 1 56.00 614.54 Tm (Vor dieser Arbeit hatte die Auslieferung 9 indexierbare Seiten: Startseite, Planer, zwei Werkzeuge, drei Guides) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 599.54 Tm (und die Pflichtseiten. Es gab keine Seite für "Kabelquerschnitt 12 V", keine für "Spannungsabfall", keine für) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 584.54 Tm ("LiFePO4 im Camper" - die Fragen, mit denen die Zielgruppe sucht, hatten kein Ziel. Diese Arbeit baut die) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 569.54 Tm (Inhalts- und Rechnerebene auf, verbindet sie mit dem vorhandenen Planer und sichert die Zusagen maschinell) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 554.54 Tm (ab. Sie erfindet keine zweite technische Infrastruktur: Kopfdaten, Sitemap, Robotik und die Exportprüfung) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 539.54 Tm (bleiben die bestehenden Systeme, sie lesen jetzt nur aus einer gemeinsamen Datenquelle \(lib/seo/\).) Tj ET
+BT /F2 14 Tf 1 0 0 1 56.00 503.54 Tm (Kennzahlen) Tj ET
+0.85 0.85 0.85 RG 0.8 w 56 495.54 m 539.28 495.54 l S
+0.94 0.94 0.94 rg 56 467.84 483.28 19.70 re f 0 g
+BT /F2 9 Tf 1 0 0 1 60.00 474.54 Tm (Kennzahl) Tj ET
+BT /F2 9 Tf 1 0 0 1 185.65 474.54 Tm (Wert) Tj ET
+BT /F2 9 Tf 1 0 0 1 253.31 474.54 Tm (Anmerkung) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 467.84 m 539.28 467.84 l S
+BT /F1 9 Tf 1 0 0 1 60.00 454.84 Tm (Indexierbare Seiten) Tj ET
+BT /F1 9 Tf 1 0 0 1 185.65 454.84 Tm (26) Tj ET
+BT /F1 9 Tf 1 0 0 1 253.31 454.84 Tm (30 Dateien im Export, davon 4 ohne Indexaufnahme \(zwei Ansichten,) Tj ET
+BT /F1 9 Tf 1 0 0 1 253.31 443.14 Tm (zwei Fehlerseiten\).) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 436.44 m 539.28 436.44 l S
+BT /F1 9 Tf 1 0 0 1 60.00 423.44 Tm (Pillar-Seiten) Tj ET
+BT /F1 9 Tf 1 0 0 1 185.65 423.44 Tm (1) Tj ET
+BT /F1 9 Tf 1 0 0 1 253.31 423.44 Tm (Eine Übersichtsseite trägt das Thema Camper-Elektrik - sie verlinkt) Tj ET
+BT /F1 9 Tf 1 0 0 1 253.31 411.74 Tm (alle Unterthemen.) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 405.04 m 539.28 405.04 l S
+BT /F1 9 Tf 1 0 0 1 60.00 392.04 Tm (Rechner-Landingpages) Tj ET
+BT /F1 9 Tf 1 0 0 1 185.65 392.04 Tm (4) Tj ET
+BT /F1 9 Tf 1 0 0 1 253.31 392.04 Tm (Vier Rechnerseiten mit eigenem Text, Formel, Quellen und Grenzen;) Tj ET
+BT /F1 9 Tf 1 0 0 1 253.31 380.34 Tm (dazu die beiden Werkzeuge Dach und Heizlast.) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 373.64 m 539.28 373.64 l S
+BT /F1 9 Tf 1 0 0 1 60.00 360.64 Tm (Suchintentionen abgedeckt) Tj ET
+BT /F1 9 Tf 1 0 0 1 185.65 360.64 Tm (29 von 35) Tj ET
+BT /F1 9 Tf 1 0 0 1 253.31 360.64 Tm (4 teilweise abgedeckt, 2 offen. Keine offene P0-Intention \(0\).) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 353.94 m 539.28 353.94 l S
+BT /F1 9 Tf 1 0 0 1 60.00 340.94 Tm (Waisenseiten) Tj ET
+BT /F1 9 Tf 1 0 0 1 185.65 340.94 Tm (0) Tj ET
+BT /F1 9 Tf 1 0 0 1 253.31 340.94 Tm (Seiten ohne einen einzigen internen Verweis. Jede indexierbare Seite) Tj ET
+BT /F1 9 Tf 1 0 0 1 253.31 329.24 Tm (ist über mindestens einen Verweis erreichbar.) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 322.54 m 539.28 322.54 l S
+BT /F1 9 Tf 1 0 0 1 60.00 309.54 Tm (Dünne Seiten) Tj ET
+BT /F1 9 Tf 1 0 0 1 185.65 309.54 Tm (1) Tj ET
+BT /F1 9 Tf 1 0 0 1 253.31 309.54 Tm (Unter 300 Wörtern ohne JavaScript gemessen. /tools/dach/ \(207\)) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 302.84 m 539.28 302.84 l S
+BT /F1 9 Tf 1 0 0 1 60.00 289.84 Tm (Doppelte Metadaten) Tj ET
+BT /F1 9 Tf 1 0 0 1 185.65 289.84 Tm (0) Tj ET
+BT /F1 9 Tf 1 0 0 1 253.31 289.84 Tm (Titel und Beschreibungen sind über alle Seiten eindeutig \(Prüfregeln) Tj ET
+BT /F1 9 Tf 1 0 0 1 253.31 278.14 Tm (`titel-doppelt` und `beschreibung-doppelt`\).) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 271.44 m 539.28 271.44 l S
+BT /F1 9 Tf 1 0 0 1 60.00 258.44 Tm (Interne Verlinkung) Tj ET
+BT /F1 9 Tf 1 0 0 1 185.65 258.44 Tm (100 %) Tj ET
+BT /F1 9 Tf 1 0 0 1 253.31 258.44 Tm (Jede indexierbare Seite hat mindestens einen eingehenden Verweis;) Tj ET
+BT /F1 9 Tf 1 0 0 1 253.31 246.74 Tm (im Mittel 14.0. Größte Tiefe ab Startseite: 2 Klicks.) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 240.04 m 539.28 240.04 l S
+BT /F1 9 Tf 1 0 0 1 60.00 227.04 Tm (Inhalt ohne JavaScript) Tj ET
+BT /F1 9 Tf 1 0 0 1 185.65 227.04 Tm (26 von 26) Tj ET
+BT /F1 9 Tf 1 0 0 1 253.31 227.04 Tm (Jede indexierbare Seite liefert im Roh-HTML genau eine H1 und ihren) Tj ET
+BT /F1 9 Tf 1 0 0 1 253.31 215.34 Tm (Text - geprüft ohne Skriptausführung.) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 208.64 m 539.28 208.64 l S
+BT /F1 9 Tf 1 0 0 1 60.00 195.64 Tm (Strukturierte Daten) Tj ET
+BT /F1 9 Tf 1 0 0 1 185.65 195.64 Tm (bestanden) Tj ET
+BT /F1 9 Tf 1 0 0 1 253.31 195.64 Tm (JSON-LD jeder Seite ist gültig, nennt schema.org und beschreibt nur,) Tj ET
+BT /F1 9 Tf 1 0 0 1 253.31 183.94 Tm (was sichtbar ist \(Prüfregeln `strukturierte-daten-*`\).) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 177.24 m 539.28 177.24 l S
+BT /F1 9 Tf 1 0 0 1 60.00 164.24 Tm (Sitemap und Robots) Tj ET
+BT /F1 9 Tf 1 0 0 1 185.65 164.24 Tm (bestanden) Tj ET
+BT /F1 9 Tf 1 0 0 1 253.31 164.24 Tm (Sitemap führt genau die indexierbaren Seiten \(26 Einträge\) unter dem) Tj ET
+BT /F1 9 Tf 1 0 0 1 253.31 152.54 Tm (Basis-Pfad; robots.txt verweist darauf.) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 145.84 m 539.28 145.84 l S
+BT /F1 9 Tf 1 0 0 1 60.00 132.84 Tm (Planner-Bundle auf) Tj ET
+BT /F1 9 Tf 1 0 0 1 60.00 121.14 Tm (Inhaltsseiten) Tj ET
+BT /F1 9 Tf 1 0 0 1 185.65 132.84 Tm (bestanden) Tj ET
+BT /F1 9 Tf 1 0 0 1 253.31 132.84 Tm (Keine Inhaltsseite lädt elkjs, dagre, react-flow oder GSAP im) Tj ET
+BT /F1 9 Tf 1 0 0 1 253.31 121.14 Tm (Erstaufbau \(Prüfregel `bundle-schwer`\). Werkzeuge dürfen ihre eigene) Tj ET
+BT /F1 9 Tf 1 0 0 1 253.31 109.44 Tm (Bibliothek laden.) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 102.74 m 539.28 102.74 l S
+0.5 0.5 0.5 rg BT /F1 8 Tf 1 0 0 1 56 40 Tm (CAMP SEO GROWTH REPORT) Tj ET 0 g
+0.5 0.5 0.5 rg BT /F1 8 Tf 1 0 0 1 492.70 40 Tm (Seite 1 von 5) Tj ET 0 g
+endstream
+endobj
+5 0 obj
+<< /Length 8332 >>
+stream
+BT /F2 14 Tf 1 0 0 1 56.00 751.89 Tm (Was entstanden ist) Tj ET
+0.85 0.85 0.85 RG 0.8 w 56 743.89 m 539.28 743.89 l S
+BT /F1 10 Tf 1 0 0 1 56.00 725.89 Tm (Die Inhalte liegen als Daten in `lib/seo/content/` und werden von gemeinsamen Gerüsten gerendert. Ein) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 710.89 Tm (Themenbaum \(`lib/seo/topics.ts`\) bestimmt Verlinkung, Brotkrumen und Reihenfolge; die Suchintentionen) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 695.89 Tm (stehen in `lib/seo/opportunities.ts`; das Inventar \(`lib/seo/inventory.ts`\) speist Sitemap und Prüfung aus) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 680.89 Tm (einer Quelle.) Tj ET
+0.94 0.94 0.94 rg 56 651.19 483.28 19.70 re f 0 g
+BT /F2 9 Tf 1 0 0 1 60.00 657.89 Tm (Seite) Tj ET
+BT /F2 9 Tf 1 0 0 1 190.49 657.89 Tm (Art) Tj ET
+BT /F2 9 Tf 1 0 0 1 243.65 657.89 Tm (Bediente Anfrage) Tj ET
+BT /F2 9 Tf 1 0 0 1 378.96 657.89 Tm (Absicht) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 651.19 m 539.28 651.19 l S
+BT /F1 9 Tf 1 0 0 1 60.00 638.19 Tm (/camper-elektrik/) Tj ET
+BT /F1 9 Tf 1 0 0 1 190.49 638.19 Tm (pillar) Tj ET
+BT /F1 9 Tf 1 0 0 1 243.65 638.19 Tm (camper elektrik planen) Tj ET
+BT /F1 9 Tf 1 0 0 1 378.96 638.19 Tm (Eine Elektrik im Camper wird nicht) Tj ET
+BT /F1 9 Tf 1 0 0 1 378.96 626.49 Tm (gezeichnet, sondern gerechnet: E?) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 619.79 m 539.28 619.79 l S
+BT /F1 9 Tf 1 0 0 1 60.00 606.79 Tm (/camper-elektrik/kabelquerschnitt/) Tj ET
+BT /F1 9 Tf 1 0 0 1 190.49 606.79 Tm (cluster) Tj ET
+BT /F1 9 Tf 1 0 0 1 243.65 606.79 Tm (12v kabelquerschnitt berechnen) Tj ET
+BT /F1 9 Tf 1 0 0 1 378.96 606.79 Tm (Bei 12 V entscheidet nicht die) Tj ET
+BT /F1 9 Tf 1 0 0 1 378.96 595.09 Tm (Strombelastbarkeit über den Querschn?) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 588.39 m 539.28 588.39 l S
+BT /F1 9 Tf 1 0 0 1 60.00 575.39 Tm (/camper-elektrik/spannungsabfall/) Tj ET
+BT /F1 9 Tf 1 0 0 1 190.49 575.39 Tm (cluster) Tj ET
+BT /F1 9 Tf 1 0 0 1 243.65 575.39 Tm (spannungsabfall 12v berechnen) Tj ET
+BT /F1 9 Tf 1 0 0 1 378.96 575.39 Tm (Eine Leitung ist kein idealer Leiter:) Tj ET
+BT /F1 9 Tf 1 0 0 1 378.96 563.69 Tm (Über Hin- und Rückleitung fäl?) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 556.99 m 539.28 556.99 l S
+BT /F1 9 Tf 1 0 0 1 60.00 543.99 Tm (/camper-elektrik/sicherungen/) Tj ET
+BT /F1 9 Tf 1 0 0 1 190.49 543.99 Tm (cluster) Tj ET
+BT /F1 9 Tf 1 0 0 1 243.65 543.99 Tm (camper sicherung richtig) Tj ET
+BT /F1 9 Tf 1 0 0 1 243.65 532.29 Tm (dimensionieren) Tj ET
+BT /F1 9 Tf 1 0 0 1 378.96 543.99 Tm (Eine Sicherung schützt nicht das Gerät,) Tj ET
+BT /F1 9 Tf 1 0 0 1 378.96 532.29 Tm (sondern die Leitung - und s?) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 525.59 m 539.28 525.59 l S
+BT /F1 9 Tf 1 0 0 1 60.00 512.59 Tm (/camper-elektrik/batterie/) Tj ET
+BT /F1 9 Tf 1 0 0 1 190.49 512.59 Tm (cluster) Tj ET
+BT /F1 9 Tf 1 0 0 1 243.65 512.59 Tm (camper batterie dimensionieren) Tj ET
+BT /F1 9 Tf 1 0 0 1 378.96 512.59 Tm (Nicht die Nennkapazität auf dem) Tj ET
+BT /F1 9 Tf 1 0 0 1 378.96 500.89 Tm (Etikett entscheidet über die Autark?) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 494.19 m 539.28 494.19 l S
+BT /F1 9 Tf 1 0 0 1 60.00 481.19 Tm (/camper-elektrik/lifepo4/) Tj ET
+BT /F1 9 Tf 1 0 0 1 190.49 481.19 Tm (cluster) Tj ET
+BT /F1 9 Tf 1 0 0 1 243.65 481.19 Tm (lifepo4 camper dimensionieren) Tj ET
+BT /F1 9 Tf 1 0 0 1 378.96 481.19 Tm (Lithium-Eisenphosphat liefert fast die) Tj ET
+BT /F1 9 Tf 1 0 0 1 378.96 469.49 Tm (doppelte nutzbare Kapazität ?) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 462.79 m 539.28 462.79 l S
+BT /F1 9 Tf 1 0 0 1 60.00 449.79 Tm (/camper-elektrik/agm/) Tj ET
+BT /F1 9 Tf 1 0 0 1 190.49 449.79 Tm (cluster) Tj ET
+BT /F1 9 Tf 1 0 0 1 243.65 449.79 Tm (agm oder lifepo4 camper) Tj ET
+BT /F1 9 Tf 1 0 0 1 378.96 449.79 Tm (AGM und Gel sind robust, günstig und) Tj ET
+BT /F1 9 Tf 1 0 0 1 378.96 438.09 Tm (in fast jedem Fahrzeug zu find?) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 431.39 m 539.28 431.39 l S
+BT /F1 9 Tf 1 0 0 1 60.00 418.39 Tm (/camper-elektrik/solar/) Tj ET
+BT /F1 9 Tf 1 0 0 1 190.49 418.39 Tm (cluster) Tj ET
+BT /F1 9 Tf 1 0 0 1 243.65 418.39 Tm (solar camper winter auslegung) Tj ET
+BT /F1 9 Tf 1 0 0 1 378.96 418.39 Tm (Die Frage "wie viel Watt passen aufs) Tj ET
+BT /F1 9 Tf 1 0 0 1 378.96 406.69 Tm (Dach?" ist die falsche Reihenf?) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 399.99 m 539.28 399.99 l S
+BT /F1 9 Tf 1 0 0 1 60.00 386.99 Tm (/camper-elektrik/mppt/) Tj ET
+BT /F1 9 Tf 1 0 0 1 190.49 386.99 Tm (cluster) Tj ET
+BT /F1 9 Tf 1 0 0 1 243.65 386.99 Tm (mppt laderegler camper) Tj ET
+BT /F1 9 Tf 1 0 0 1 243.65 375.29 Tm (auslegen) Tj ET
+BT /F1 9 Tf 1 0 0 1 378.96 386.99 Tm (Der Laderegler ist die Schnittstelle) Tj ET
+BT /F1 9 Tf 1 0 0 1 378.96 375.29 Tm (zwischen Modul und Batterie. W?) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 368.59 m 539.28 368.59 l S
+BT /F1 9 Tf 1 0 0 1 60.00 355.59 Tm (/camper-elektrik/wechselrichter/) Tj ET
+BT /F1 9 Tf 1 0 0 1 190.49 355.59 Tm (cluster) Tj ET
+BT /F1 9 Tf 1 0 0 1 243.65 355.59 Tm (wechselrichter camper) Tj ET
+BT /F1 9 Tf 1 0 0 1 243.65 343.89 Tm (auslegen kabel) Tj ET
+BT /F1 9 Tf 1 0 0 1 378.96 355.59 Tm (Ein Wechselrichter zieht bei 12 V) Tj ET
+BT /F1 9 Tf 1 0 0 1 378.96 343.89 Tm (Ströme, die jede andere Last im F?) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 337.19 m 539.28 337.19 l S
+BT /F1 9 Tf 1 0 0 1 60.00 324.19 Tm (/camper-elektrik/230v/) Tj ET
+BT /F1 9 Tf 1 0 0 1 190.49 324.19 Tm (cluster) Tj ET
+BT /F1 9 Tf 1 0 0 1 243.65 324.19 Tm (230v camper fi schutzschalter) Tj ET
+BT /F1 9 Tf 1 0 0 1 378.96 324.19 Tm (Die 230-V-Seite ist der Teil der) Tj ET
+BT /F1 9 Tf 1 0 0 1 378.96 312.49 Tm (Camper-Elektrik, der nicht in Eige?) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 305.79 m 539.28 305.79 l S
+BT /F1 9 Tf 1 0 0 1 60.00 292.79 Tm (/camper-elektrik/schaltplan/) Tj ET
+BT /F1 9 Tf 1 0 0 1 190.49 292.79 Tm (cluster) Tj ET
+BT /F1 9 Tf 1 0 0 1 243.65 292.79 Tm (schaltplan camper 12v) Tj ET
+BT /F1 9 Tf 1 0 0 1 378.96 292.79 Tm (Ein Schaltplan ist kein Dokument für) Tj ET
+BT /F1 9 Tf 1 0 0 1 378.96 281.09 Tm (die Schublade: Er ist die Arbe?) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 274.39 m 539.28 274.39 l S
+BT /F1 9 Tf 1 0 0 1 60.00 261.39 Tm (/rechner/) Tj ET
+BT /F1 9 Tf 1 0 0 1 190.49 261.39 Tm (rechner) Tj ET
+BT /F1 9 Tf 1 0 0 1 243.65 261.39 Tm (rechner camper ausbau) Tj ET
+BT /F1 9 Tf 1 0 0 1 378.96 261.39 Tm (Sechs Rechenwerkzeuge für die) Tj ET
+BT /F1 9 Tf 1 0 0 1 378.96 249.69 Tm (häufigsten Fragen beim Ausbau - vom) Tj ET
+BT /F1 9 Tf 1 0 0 1 378.96 237.99 Tm (K?) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 231.29 m 539.28 231.29 l S
+BT /F1 9 Tf 1 0 0 1 60.00 218.29 Tm (/rechner/spannungsabfall-12v/) Tj ET
+BT /F1 9 Tf 1 0 0 1 190.49 218.29 Tm (rechner) Tj ET
+BT /F1 9 Tf 1 0 0 1 243.65 218.29 Tm (spannungsabfall rechner 12v) Tj ET
+BT /F1 9 Tf 1 0 0 1 378.96 218.29 Tm (Dieser Rechner bewertet eine Leitung,) Tj ET
+BT /F1 9 Tf 1 0 0 1 378.96 206.59 Tm (die es schon gibt oder geben ?) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 199.89 m 539.28 199.89 l S
+BT /F1 9 Tf 1 0 0 1 60.00 186.89 Tm (/rechner/batteriekapazitaet/) Tj ET
+BT /F1 9 Tf 1 0 0 1 190.49 186.89 Tm (rechner) Tj ET
+BT /F1 9 Tf 1 0 0 1 243.65 186.89 Tm (batteriekapazität camper) Tj ET
+BT /F1 9 Tf 1 0 0 1 243.65 175.19 Tm (berechnen ah) Tj ET
+BT /F1 9 Tf 1 0 0 1 378.96 186.89 Tm (Dieser Rechner beantwortet die Frage,) Tj ET
+BT /F1 9 Tf 1 0 0 1 378.96 175.19 Tm (wie groß die Aufbaubatterie s?) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 168.49 m 539.28 168.49 l S
+BT /F1 9 Tf 1 0 0 1 60.00 155.49 Tm (/rechner/solaranlage/) Tj ET
+BT /F1 9 Tf 1 0 0 1 190.49 155.49 Tm (rechner) Tj ET
+BT /F1 9 Tf 1 0 0 1 243.65 155.49 Tm (camper solar wie viel watt) Tj ET
+BT /F1 9 Tf 1 0 0 1 378.96 155.49 Tm (Dieser Rechner beantwortet zwei) Tj ET
+BT /F1 9 Tf 1 0 0 1 378.96 143.79 Tm (Fragen in einer: Wie viel Modulleis?) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 137.09 m 539.28 137.09 l S
+BT /F1 9 Tf 1 0 0 1 60.00 124.09 Tm (/ueber-werft/) Tj ET
+BT /F1 9 Tf 1 0 0 1 190.49 124.09 Tm (vertrauen) Tj ET
+BT /F1 9 Tf 1 0 0 1 243.65 124.09 Tm (wie genau rechnet der camper) Tj ET
+BT /F1 9 Tf 1 0 0 1 243.65 112.39 Tm (planer) Tj ET
+BT /F1 9 Tf 1 0 0 1 378.96 124.09 Tm (Werft ist ein Planungs- und) Tj ET
+BT /F1 9 Tf 1 0 0 1 378.96 112.39 Tm (Rechenwerkzeug für den) Tj ET
+BT /F1 9 Tf 1 0 0 1 378.96 100.69 Tm (Camper-Ausbau: E?) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 93.99 m 539.28 93.99 l S
+0.5 0.5 0.5 rg BT /F1 8 Tf 1 0 0 1 56 40 Tm (CAMP SEO GROWTH REPORT) Tj ET 0 g
+0.5 0.5 0.5 rg BT /F1 8 Tf 1 0 0 1 492.70 40 Tm (Seite 2 von 5) Tj ET 0 g
+endstream
+endobj
+6 0 obj
+<< /Length 6522 >>
+stream
+BT /F2 14 Tf 1 0 0 1 56.00 751.89 Tm (Prüfungen und ihre Aussage) Tj ET
+0.85 0.85 0.85 RG 0.8 w 56 743.89 m 539.28 743.89 l S
+0.94 0.94 0.94 rg 56 716.19 483.28 19.70 re f 0 g
+BT /F2 9 Tf 1 0 0 1 60.00 722.89 Tm (Prüfung) Tj ET
+BT /F2 9 Tf 1 0 0 1 204.98 722.89 Tm (Ergebnis) Tj ET
+BT /F2 9 Tf 1 0 0 1 272.64 722.89 Tm (Wo sie läuft) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 716.19 m 539.28 716.19 l S
+BT /F1 9 Tf 1 0 0 1 60.00 703.19 Tm (Strukturierte Daten \(JSON-LD\)) Tj ET
+BT /F1 9 Tf 1 0 0 1 204.98 703.19 Tm (bestanden) Tj ET
+BT /F1 9 Tf 1 0 0 1 272.64 703.19 Tm (scripts/seo/auditExport.ts im Build, Regel) Tj ET
+BT /F1 9 Tf 1 0 0 1 272.64 691.49 Tm (`strukturierte-daten-*`) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 684.79 m 539.28 684.79 l S
+BT /F1 9 Tf 1 0 0 1 60.00 671.79 Tm (Sitemap und Robots) Tj ET
+BT /F1 9 Tf 1 0 0 1 204.98 671.79 Tm (bestanden) Tj ET
+BT /F1 9 Tf 1 0 0 1 272.64 671.79 Tm (App-Routen + Exportprüfung \(`sitemap-*`, `robots-*`\)) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 665.09 m 539.28 665.09 l S
+BT /F1 9 Tf 1 0 0 1 60.00 652.09 Tm (Inhalt ohne JavaScript) Tj ET
+BT /F1 9 Tf 1 0 0 1 204.98 652.09 Tm (bestanden) Tj ET
+BT /F1 9 Tf 1 0 0 1 272.64 652.09 Tm (Messung am Roh-HTML \(measureExport\)) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 645.39 m 539.28 645.39 l S
+BT /F1 9 Tf 1 0 0 1 60.00 632.39 Tm (Planner-Bundle auf Inhaltsseiten) Tj ET
+BT /F1 9 Tf 1 0 0 1 204.98 632.39 Tm (bestanden) Tj ET
+BT /F1 9 Tf 1 0 0 1 272.64 632.39 Tm (Regel `bundle-schwer` \(Neu\)) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 625.69 m 539.28 625.69 l S
+BT /F1 9 Tf 1 0 0 1 60.00 612.69 Tm (Interne Verlinkung und Waisen) Tj ET
+BT /F1 9 Tf 1 0 0 1 204.98 612.69 Tm (bestanden) Tj ET
+BT /F1 9 Tf 1 0 0 1 272.64 612.69 Tm (Regeln `verwaiste-seite`, `verweis-ohne-ziel`) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 605.99 m 539.28 605.99 l S
+BT /F1 9 Tf 1 0 0 1 60.00 592.99 Tm (Kopfdaten \(Titel, Beschreibung,) Tj ET
+BT /F1 9 Tf 1 0 0 1 60.00 581.29 Tm (Canonical\)) Tj ET
+BT /F1 9 Tf 1 0 0 1 204.98 592.99 Tm (bestanden) Tj ET
+BT /F1 9 Tf 1 0 0 1 272.64 592.99 Tm (Regeln `titel*`, `beschreibung*`, `canonical*`) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 574.59 m 539.28 574.59 l S
+BT /F1 9 Tf 1 0 0 1 60.00 561.59 Tm (SEO-CI \(Gesamtlauf\)) Tj ET
+BT /F1 9 Tf 1 0 0 1 204.98 561.59 Tm (PASS) Tj ET
+BT /F1 9 Tf 1 0 0 1 272.64 561.59 Tm (npm run build -> seo:audit, Exit-Code 0) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 554.89 m 539.28 554.89 l S
+BT /F2 14 Tf 1 0 0 1 56.00 518.89 Tm (Offene Punkte nach Priorität) Tj ET
+0.85 0.85 0.85 RG 0.8 w 56 510.89 m 539.28 510.89 l S
+BT /F1 10 Tf 1 0 0 1 56.00 492.89 Tm (-) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 492.89 Tm (P0 - erledigt: Suchintentionen inventarisiert, Pillar und Cluster gebaut, die stärksten Rechner als) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 477.89 Tm (Landingpages aufgesetzt, interne Verlinkung geschlossen, Waisen und Dubletten maschinell) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 462.89 Tm (ausgeschlossen.) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 445.89 Tm (-) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 445.89 Tm (P1 - Werkzeugseiten erklären: /tools/dach/ \(207 Wörter, keine H2\) und /tools/heizung/ \(436 Wörter, keine) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 430.89 Tm (H2\) brauchen einen erklärenden Textteil; /guides/camper-ausbauguide/ braucht eine Kurzfassung oben) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 415.89 Tm (\(1027 Wörter Gesamttext\).) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 398.89 Tm (-) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 398.89 Tm (P1 - Echte Bilder: Die Inhaltsseiten arbeiten mit Tabellen und Rechenbeispielen, aber ohne eigene Fotos) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 383.89 Tm (oder Diagramme; zwei <img> in der ganzen Auslieferung sind zu wenig für ein visuell geprägtes Thema) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 368.89 Tm (\(Ausbau, Dach, Verkabelung\).) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 351.89 Tm (-) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 351.89 Tm (P1 - Search Console anschließen: Die Anfrageliste ist bislang eine begründete Annahme \(Quelle) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 336.89 Tm (`annahme`\). Erst echte Daten erlauben, Reihenfolge und Titel zu schärfen - Workflow in) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 321.89 Tm (docs/seo/SEARCH-CONSOLE.md.) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 304.89 Tm (-) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 304.89 Tm (P2 - Ladebooster/DC-DC und Sinus-Wechselrichter-Vergleich: zwei Intentionen mit klarer Nachfrage,) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 289.89 Tm (aber ohne Seite.) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 272.89 Tm (-) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 272.89 Tm (P2 - Internationalisierung: Die Architektur ist bereit \(Inhalte als Daten, Texte getrennt von Darstellung\),) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 257.89 Tm (aber es gibt keinen englischen Zweig - bewusst nicht begonnen, solange die deutsche Ebene nicht in den) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 242.89 Tm (Suchdaten steht.) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 225.89 Tm (-) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 225.89 Tm (P3 - Fahrzeugspezifische Seiten \(etwa VW T6\): nur mit echtem, belegbarem Inhalt je Fahrzeug;) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 210.89 Tm (Massenerzeugung ist ausgeschlossen.) Tj ET
+BT /F2 14 Tf 1 0 0 1 56.00 173.89 Tm (Top 20 Content-Chancen) Tj ET
+0.85 0.85 0.85 RG 0.8 w 56 165.89 m 539.28 165.89 l S
+BT /F1 10 Tf 1 0 0 1 56.00 147.89 Tm (Reihenfolge nach Priorität, Lage und Wirkung. "Lage" ist der Abdeckungsgrad der Anfrage, "Wirkung" die) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 132.89 Tm (erwartete Bedeutung für das Thema - keine Suchvolumenzahl: Die Anfragen sind Modellannahmen \(Quelle) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 117.89 Tm (`annahme`\), bis Search-Console-Daten vorliegen.) Tj ET
+0.94 0.94 0.94 rg 56 88.19 483.28 19.70 re f 0 g
+BT /F2 9 Tf 1 0 0 1 60.00 94.89 Tm (#) Tj ET
+BT /F2 9 Tf 1 0 0 1 84.16 94.89 Tm (Anfrage) Tj ET
+BT /F2 9 Tf 1 0 0 1 229.15 94.89 Tm (Intention) Tj ET
+BT /F2 9 Tf 1 0 0 1 282.31 94.89 Tm (Ziel) Tj ET
+BT /F2 9 Tf 1 0 0 1 398.30 94.89 Tm (Lage) Tj ET
+BT /F2 9 Tf 1 0 0 1 451.46 94.89 Tm (Nächster Schritt) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 88.19 m 539.28 88.19 l S
+BT /F1 9 Tf 1 0 0 1 60.00 75.19 Tm (1) Tj ET
+BT /F1 9 Tf 1 0 0 1 84.16 75.19 Tm (camper ausbau guide elektrik) Tj ET
+BT /F1 9 Tf 1 0 0 1 229.15 75.19 Tm (ratgeber) Tj ET
+BT /F1 9 Tf 1 0 0 1 282.31 75.19 Tm (/guides/camper-ausbauguide/) Tj ET
+BT /F1 9 Tf 1 0 0 1 398.30 75.19 Tm (teilweise) Tj ET
+BT /F1 9 Tf 1 0 0 1 451.46 75.19 Tm (verlinkung-verbessern) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 68.49 m 539.28 68.49 l S
+0.5 0.5 0.5 rg BT /F1 8 Tf 1 0 0 1 56 40 Tm (CAMP SEO GROWTH REPORT) Tj ET 0 g
+0.5 0.5 0.5 rg BT /F1 8 Tf 1 0 0 1 492.70 40 Tm (Seite 3 von 5) Tj ET 0 g
+endstream
+endobj
+7 0 obj
+<< /Length 10070 >>
+stream
+0.94 0.94 0.94 rg 56 758.19 483.28 19.70 re f 0 g
+BT /F2 9 Tf 1 0 0 1 60.00 764.89 Tm (#) Tj ET
+BT /F2 9 Tf 1 0 0 1 84.16 764.89 Tm (Anfrage) Tj ET
+BT /F2 9 Tf 1 0 0 1 229.15 764.89 Tm (Intention) Tj ET
+BT /F2 9 Tf 1 0 0 1 282.31 764.89 Tm (Ziel) Tj ET
+BT /F2 9 Tf 1 0 0 1 398.30 764.89 Tm (Lage) Tj ET
+BT /F2 9 Tf 1 0 0 1 451.46 764.89 Tm (Nächster Schritt) Tj ET
+BT /F1 9 Tf 1 0 0 1 60.00 745.19 Tm (2) Tj ET
+BT /F1 9 Tf 1 0 0 1 84.16 745.19 Tm (wie viele solarpanels passen aufs) Tj ET
+BT /F1 9 Tf 1 0 0 1 84.16 733.49 Tm (dach) Tj ET
+BT /F1 9 Tf 1 0 0 1 229.15 745.19 Tm (planung) Tj ET
+BT /F1 9 Tf 1 0 0 1 282.31 745.19 Tm (/tools/dach/) Tj ET
+BT /F1 9 Tf 1 0 0 1 398.30 745.19 Tm (teilweise) Tj ET
+BT /F1 9 Tf 1 0 0 1 451.46 745.19 Tm (beispiel-ergaenzen) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 726.79 m 539.28 726.79 l S
+BT /F1 9 Tf 1 0 0 1 60.00 713.79 Tm (3) Tj ET
+BT /F1 9 Tf 1 0 0 1 84.16 713.79 Tm (ladebooster camper lichtmaschine) Tj ET
+BT /F1 9 Tf 1 0 0 1 84.16 702.09 Tm (dimensionieren) Tj ET
+BT /F1 9 Tf 1 0 0 1 229.15 713.79 Tm (ratgeber) Tj ET
+BT /F1 9 Tf 1 0 0 1 282.31 713.79 Tm (neu) Tj ET
+BT /F1 9 Tf 1 0 0 1 398.30 713.79 Tm (luecke) Tj ET
+BT /F1 9 Tf 1 0 0 1 451.46 713.79 Tm (neue-seite) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 695.39 m 539.28 695.39 l S
+BT /F1 9 Tf 1 0 0 1 60.00 682.39 Tm (4) Tj ET
+BT /F1 9 Tf 1 0 0 1 84.16 682.39 Tm (welche standheizung für welches) Tj ET
+BT /F1 9 Tf 1 0 0 1 84.16 670.69 Tm (fahrzeug) Tj ET
+BT /F1 9 Tf 1 0 0 1 229.15 682.39 Tm (ratgeber) Tj ET
+BT /F1 9 Tf 1 0 0 1 282.31 682.39 Tm (/tools/heizung/) Tj ET
+BT /F1 9 Tf 1 0 0 1 398.30 682.39 Tm (teilweise) Tj ET
+BT /F1 9 Tf 1 0 0 1 451.46 682.39 Tm (seite-erweitern) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 663.99 m 539.28 663.99 l S
+BT /F1 9 Tf 1 0 0 1 60.00 650.99 Tm (5) Tj ET
+BT /F1 9 Tf 1 0 0 1 84.16 650.99 Tm (sinus wechselrichter unterschied) Tj ET
+BT /F1 9 Tf 1 0 0 1 84.16 639.29 Tm (reiner sinus) Tj ET
+BT /F1 9 Tf 1 0 0 1 229.15 650.99 Tm (vergleich) Tj ET
+BT /F1 9 Tf 1 0 0 1 282.31 650.99 Tm (/camper-elektrik/wechselrichter/) Tj ET
+BT /F1 9 Tf 1 0 0 1 398.30 650.99 Tm (teilweise) Tj ET
+BT /F1 9 Tf 1 0 0 1 451.46 650.99 Tm (beispiel-ergaenzen) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 632.59 m 539.28 632.59 l S
+BT /F1 9 Tf 1 0 0 1 60.00 619.59 Tm (6) Tj ET
+BT /F1 9 Tf 1 0 0 1 84.16 619.59 Tm (elektrik vw t6 ausbau) Tj ET
+BT /F1 9 Tf 1 0 0 1 229.15 619.59 Tm (planung) Tj ET
+BT /F1 9 Tf 1 0 0 1 282.31 619.59 Tm (neu) Tj ET
+BT /F1 9 Tf 1 0 0 1 398.30 619.59 Tm (luecke) Tj ET
+BT /F1 9 Tf 1 0 0 1 451.46 619.59 Tm (neue-seite) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 612.89 m 539.28 612.89 l S
+BT /F1 9 Tf 1 0 0 1 60.00 599.89 Tm (7) Tj ET
+BT /F1 9 Tf 1 0 0 1 84.16 599.89 Tm (camper elektrik planen) Tj ET
+BT /F1 9 Tf 1 0 0 1 229.15 599.89 Tm (planung) Tj ET
+BT /F1 9 Tf 1 0 0 1 282.31 599.89 Tm (/camper-elektrik/) Tj ET
+BT /F1 9 Tf 1 0 0 1 398.30 599.89 Tm (abgedeckt) Tj ET
+BT /F1 9 Tf 1 0 0 1 451.46 599.89 Tm (beobachten / Titel) Tj ET
+BT /F1 9 Tf 1 0 0 1 451.46 588.19 Tm (schärfen) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 581.49 m 539.28 581.49 l S
+BT /F1 9 Tf 1 0 0 1 60.00 568.49 Tm (8) Tj ET
+BT /F1 9 Tf 1 0 0 1 84.16 568.49 Tm (schaltplan camper 12v) Tj ET
+BT /F1 9 Tf 1 0 0 1 229.15 568.49 Tm (planung) Tj ET
+BT /F1 9 Tf 1 0 0 1 282.31 568.49 Tm (/camper-elektrik/schaltplan/) Tj ET
+BT /F1 9 Tf 1 0 0 1 398.30 568.49 Tm (abgedeckt) Tj ET
+BT /F1 9 Tf 1 0 0 1 451.46 568.49 Tm (beobachten / Titel) Tj ET
+BT /F1 9 Tf 1 0 0 1 451.46 556.79 Tm (schärfen) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 550.09 m 539.28 550.09 l S
+BT /F1 9 Tf 1 0 0 1 60.00 537.09 Tm (9) Tj ET
+BT /F1 9 Tf 1 0 0 1 84.16 537.09 Tm (wohnmobil elektrik planer online) Tj ET
+BT /F1 9 Tf 1 0 0 1 229.15 537.09 Tm (planung) Tj ET
+BT /F1 9 Tf 1 0 0 1 282.31 537.09 Tm (/elektrik-planung/) Tj ET
+BT /F1 9 Tf 1 0 0 1 398.30 537.09 Tm (abgedeckt) Tj ET
+BT /F1 9 Tf 1 0 0 1 451.46 537.09 Tm (beobachten / Titel) Tj ET
+BT /F1 9 Tf 1 0 0 1 451.46 525.39 Tm (schärfen) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 518.69 m 539.28 518.69 l S
+BT /F1 9 Tf 1 0 0 1 60.00 505.69 Tm (10) Tj ET
+BT /F1 9 Tf 1 0 0 1 84.16 505.69 Tm (12v kabelquerschnitt berechnen) Tj ET
+BT /F1 9 Tf 1 0 0 1 229.15 505.69 Tm (rechner) Tj ET
+BT /F1 9 Tf 1 0 0 1 282.31 505.69 Tm (/camper-elektrik/kabelquerschnitt/) Tj ET
+BT /F1 9 Tf 1 0 0 1 398.30 505.69 Tm (abgedeckt) Tj ET
+BT /F1 9 Tf 1 0 0 1 451.46 505.69 Tm (beobachten / Titel) Tj ET
+BT /F1 9 Tf 1 0 0 1 451.46 493.99 Tm (schärfen) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 487.29 m 539.28 487.29 l S
+BT /F1 9 Tf 1 0 0 1 60.00 474.29 Tm (11) Tj ET
+BT /F1 9 Tf 1 0 0 1 84.16 474.29 Tm (welchen kabelquerschnitt camper) Tj ET
+BT /F1 9 Tf 1 0 0 1 229.15 474.29 Tm (ratgeber) Tj ET
+BT /F1 9 Tf 1 0 0 1 282.31 474.29 Tm (/camper-elektrik/kabelquerschnitt/) Tj ET
+BT /F1 9 Tf 1 0 0 1 398.30 474.29 Tm (abgedeckt) Tj ET
+BT /F1 9 Tf 1 0 0 1 451.46 474.29 Tm (beobachten / Titel) Tj ET
+BT /F1 9 Tf 1 0 0 1 451.46 462.59 Tm (schärfen) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 455.89 m 539.28 455.89 l S
+BT /F1 9 Tf 1 0 0 1 60.00 442.89 Tm (12) Tj ET
+BT /F1 9 Tf 1 0 0 1 84.16 442.89 Tm (spannungsabfall 12v berechnen) Tj ET
+BT /F1 9 Tf 1 0 0 1 229.15 442.89 Tm (rechner) Tj ET
+BT /F1 9 Tf 1 0 0 1 282.31 442.89 Tm (/camper-elektrik/spannungsabfall/) Tj ET
+BT /F1 9 Tf 1 0 0 1 398.30 442.89 Tm (abgedeckt) Tj ET
+BT /F1 9 Tf 1 0 0 1 451.46 442.89 Tm (beobachten / Titel) Tj ET
+BT /F1 9 Tf 1 0 0 1 451.46 431.19 Tm (schärfen) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 424.49 m 539.28 424.49 l S
+BT /F1 9 Tf 1 0 0 1 60.00 411.49 Tm (13) Tj ET
+BT /F1 9 Tf 1 0 0 1 84.16 411.49 Tm (camper sicherung richtig) Tj ET
+BT /F1 9 Tf 1 0 0 1 84.16 399.79 Tm (dimensionieren) Tj ET
+BT /F1 9 Tf 1 0 0 1 229.15 411.49 Tm (ratgeber) Tj ET
+BT /F1 9 Tf 1 0 0 1 282.31 411.49 Tm (/camper-elektrik/sicherungen/) Tj ET
+BT /F1 9 Tf 1 0 0 1 398.30 411.49 Tm (abgedeckt) Tj ET
+BT /F1 9 Tf 1 0 0 1 451.46 411.49 Tm (beobachten / Titel) Tj ET
+BT /F1 9 Tf 1 0 0 1 451.46 399.79 Tm (schärfen) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 393.09 m 539.28 393.09 l S
+BT /F1 9 Tf 1 0 0 1 60.00 380.09 Tm (14) Tj ET
+BT /F1 9 Tf 1 0 0 1 84.16 380.09 Tm (welche sicherung bei welchem) Tj ET
+BT /F1 9 Tf 1 0 0 1 84.16 368.39 Tm (kabelquerschnitt) Tj ET
+BT /F1 9 Tf 1 0 0 1 229.15 380.09 Tm (rechner) Tj ET
+BT /F1 9 Tf 1 0 0 1 282.31 380.09 Tm (/camper-elektrik/sicherungen/) Tj ET
+BT /F1 9 Tf 1 0 0 1 398.30 380.09 Tm (abgedeckt) Tj ET
+BT /F1 9 Tf 1 0 0 1 451.46 380.09 Tm (beobachten / Titel) Tj ET
+BT /F1 9 Tf 1 0 0 1 451.46 368.39 Tm (schärfen) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 361.69 m 539.28 361.69 l S
+BT /F1 9 Tf 1 0 0 1 60.00 348.69 Tm (15) Tj ET
+BT /F1 9 Tf 1 0 0 1 84.16 348.69 Tm (camper batterie dimensionieren) Tj ET
+BT /F1 9 Tf 1 0 0 1 229.15 348.69 Tm (planung) Tj ET
+BT /F1 9 Tf 1 0 0 1 282.31 348.69 Tm (/camper-elektrik/batterie/) Tj ET
+BT /F1 9 Tf 1 0 0 1 398.30 348.69 Tm (abgedeckt) Tj ET
+BT /F1 9 Tf 1 0 0 1 451.46 348.69 Tm (beobachten / Titel) Tj ET
+BT /F1 9 Tf 1 0 0 1 451.46 336.99 Tm (schärfen) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 330.29 m 539.28 330.29 l S
+BT /F1 9 Tf 1 0 0 1 60.00 317.29 Tm (16) Tj ET
+BT /F1 9 Tf 1 0 0 1 84.16 317.29 Tm (batteriekapazität camper) Tj ET
+BT /F1 9 Tf 1 0 0 1 84.16 305.59 Tm (berechnen ah) Tj ET
+BT /F1 9 Tf 1 0 0 1 229.15 317.29 Tm (rechner) Tj ET
+BT /F1 9 Tf 1 0 0 1 282.31 317.29 Tm (/rechner/batteriekapazitaet/) Tj ET
+BT /F1 9 Tf 1 0 0 1 398.30 317.29 Tm (abgedeckt) Tj ET
+BT /F1 9 Tf 1 0 0 1 451.46 317.29 Tm (beobachten / Titel) Tj ET
+BT /F1 9 Tf 1 0 0 1 451.46 305.59 Tm (schärfen) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 298.89 m 539.28 298.89 l S
+BT /F1 9 Tf 1 0 0 1 60.00 285.89 Tm (17) Tj ET
+BT /F1 9 Tf 1 0 0 1 84.16 285.89 Tm (lifepo4 camper dimensionieren) Tj ET
+BT /F1 9 Tf 1 0 0 1 229.15 285.89 Tm (ratgeber) Tj ET
+BT /F1 9 Tf 1 0 0 1 282.31 285.89 Tm (/camper-elektrik/lifepo4/) Tj ET
+BT /F1 9 Tf 1 0 0 1 398.30 285.89 Tm (abgedeckt) Tj ET
+BT /F1 9 Tf 1 0 0 1 451.46 285.89 Tm (beobachten / Titel) Tj ET
+BT /F1 9 Tf 1 0 0 1 451.46 274.19 Tm (schärfen) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 267.49 m 539.28 267.49 l S
+BT /F1 9 Tf 1 0 0 1 60.00 254.49 Tm (18) Tj ET
+BT /F1 9 Tf 1 0 0 1 84.16 254.49 Tm (agm oder lifepo4 camper) Tj ET
+BT /F1 9 Tf 1 0 0 1 229.15 254.49 Tm (vergleich) Tj ET
+BT /F1 9 Tf 1 0 0 1 282.31 254.49 Tm (/camper-elektrik/agm/) Tj ET
+BT /F1 9 Tf 1 0 0 1 398.30 254.49 Tm (abgedeckt) Tj ET
+BT /F1 9 Tf 1 0 0 1 451.46 254.49 Tm (beobachten / Titel) Tj ET
+BT /F1 9 Tf 1 0 0 1 451.46 242.79 Tm (schärfen) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 236.09 m 539.28 236.09 l S
+BT /F1 9 Tf 1 0 0 1 60.00 223.09 Tm (19) Tj ET
+BT /F1 9 Tf 1 0 0 1 84.16 223.09 Tm (agm batterie camper entladetiefe) Tj ET
+BT /F1 9 Tf 1 0 0 1 229.15 223.09 Tm (ratgeber) Tj ET
+BT /F1 9 Tf 1 0 0 1 282.31 223.09 Tm (/camper-elektrik/agm/) Tj ET
+BT /F1 9 Tf 1 0 0 1 398.30 223.09 Tm (abgedeckt) Tj ET
+BT /F1 9 Tf 1 0 0 1 451.46 223.09 Tm (beobachten / Titel) Tj ET
+BT /F1 9 Tf 1 0 0 1 451.46 211.39 Tm (schärfen) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 204.69 m 539.28 204.69 l S
+BT /F1 9 Tf 1 0 0 1 60.00 191.69 Tm (20) Tj ET
+BT /F1 9 Tf 1 0 0 1 84.16 191.69 Tm (peukert effekt camper batterie) Tj ET
+BT /F1 9 Tf 1 0 0 1 229.15 191.69 Tm (ratgeber) Tj ET
+BT /F1 9 Tf 1 0 0 1 282.31 191.69 Tm (/camper-elektrik/batterie/) Tj ET
+BT /F1 9 Tf 1 0 0 1 398.30 191.69 Tm (abgedeckt) Tj ET
+BT /F1 9 Tf 1 0 0 1 451.46 191.69 Tm (beobachten / Titel) Tj ET
+BT /F1 9 Tf 1 0 0 1 451.46 179.99 Tm (schärfen) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 173.29 m 539.28 173.29 l S
+BT /F2 14 Tf 1 0 0 1 56.00 137.29 Tm (Nächste Schritte) Tj ET
+0.85 0.85 0.85 RG 0.8 w 56 129.29 m 539.28 129.29 l S
+BT /F1 10 Tf 1 0 0 1 56.00 111.29 Tm (-) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 111.29 Tm (Search Console verbinden und die Anfragen der letzten 28 Tage exportieren; die Liste in) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 96.29 Tm (lib/seo/opportunities.ts auf `source: 'search-console'` umstellen.) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 79.29 Tm (-) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 79.29 Tm (P1: Werkzeugseiten um einen erklärenden Textteil ergänzen \(je 300-500 Wörter, zwei H2, FAQ nur bei) Tj ET
+0.5 0.5 0.5 rg BT /F1 8 Tf 1 0 0 1 56 40 Tm (CAMP SEO GROWTH REPORT) Tj ET 0 g
+0.5 0.5 0.5 rg BT /F1 8 Tf 1 0 0 1 492.70 40 Tm (Seite 4 von 5) Tj ET 0 g
+endstream
+endobj
+8 0 obj
+<< /Length 3049 >>
+stream
+BT /F1 10 Tf 1 0 0 1 74.00 767.89 Tm (echten Fragen\).) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 750.89 Tm (-) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 750.89 Tm (P1: Bilder und Diagramme mit beschreibenden Alternativtexten ergänzen - Querschnittstabelle als Grafik,) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 735.89 Tm (Beispielverkabelung, Dachbelegung.) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 718.89 Tm (-) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 718.89 Tm (P2: Ladebooster/DC-DC als Cluster unter /camper-elektrik/ anlegen \(Rechnung aus dem vorhandenen) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 703.89 Tm (Modell: Strom, Spannungsfall, Sicherung, Leitungslänge\).) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 686.89 Tm (-) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 686.89 Tm (Nach jeder Änderung: npm run build \(führt die Exportprüfung aus\), npx tsx scripts/seo/report.ts für die) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 671.89 Tm (aktualisierten Zahlen.) Tj ET
+BT /F2 14 Tf 1 0 0 1 56.00 634.89 Tm (Grenzen dieses Berichts) Tj ET
+0.85 0.85 0.85 RG 0.8 w 56 626.89 m 539.28 626.89 l S
+BT /F1 10 Tf 1 0 0 1 56.00 608.89 Tm (-) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 608.89 Tm (Alle Anfragen sind Annahmen aus Fachsprache und Support-Fragen, keine Messwerte. Erst `source:) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 593.89 Tm ('search-console'` belegt eine Anfrage.) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 576.89 Tm (-) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 576.89 Tm ("Indexierbar" heißt: Die Seite steht auf index und in der Sitemap. Ob sie tatsächlich in den Index) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 561.89 Tm (aufgenommen und gerankt wird, entscheidet die Suchmaschine - das ist nicht messbar ohne Search) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 546.89 Tm (Console.) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 529.89 Tm (-) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 529.89 Tm (Die fachlichen Aussagen stützen sich auf die Modelle der Anwendung \(VDE-Nennwerte, Kupferkennwerte,) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 514.89 Tm (Peukert\) und die genannten Normbezüge. Es gibt keine Prüfung durch Dritte; Annahmen und Grenzen) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 499.89 Tm (stehen auf jeder Seite.) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 482.89 Tm (-) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 482.89 Tm (Die Bundle-Größen sind unkomprimiert gemessen. Für Übertragungsbudgets zählt die komprimierte Größe) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 467.89 Tm (- die Rangfolge der Seiten bleibt davon unberührt.) Tj ET
+BT /F2 14 Tf 1 0 0 1 56.00 430.89 Tm (Nachvollziehen) Tj ET
+0.85 0.85 0.85 RG 0.8 w 56 422.89 m 539.28 422.89 l S
+BT /F3 9 Tf 1 0 0 1 64.00 405.89 Tm (npm ci) Tj ET
+BT /F3 9 Tf 1 0 0 1 64.00 393.29 Tm (npm run build            # baut den Export und prüft ihn \(seo:audit\)) Tj ET
+BT /F3 9 Tf 1 0 0 1 64.00 380.69 Tm (npx tsx scripts/seo/measureExport.ts   # Zahlen dieses Berichts) Tj ET
+BT /F3 9 Tf 1 0 0 1 64.00 368.09 Tm (npx tsx scripts/seo/report.ts          # erzeugt AUDIT, ANALYSE-UND-VISION und diesen Bericht neu) Tj ET
+0.5 0.5 0.5 rg BT /F1 8 Tf 1 0 0 1 56 40 Tm (CAMP SEO GROWTH REPORT) Tj ET 0 g
+0.5 0.5 0.5 rg BT /F1 8 Tf 1 0 0 1 492.70 40 Tm (Seite 5 von 5) Tj ET 0 g
+endstream
+endobj
+9 0 obj
+<< /Type /Page /Parent 9 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R >> >> /Contents 4 0 R >>
+endobj
+10 0 obj
+<< /Type /Page /Parent 9 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R >> >> /Contents 5 0 R >>
+endobj
+11 0 obj
+<< /Type /Page /Parent 9 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R >> >> /Contents 6 0 R >>
+endobj
+12 0 obj
+<< /Type /Page /Parent 9 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R >> >> /Contents 7 0 R >>
+endobj
+13 0 obj
+<< /Type /Page /Parent 9 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R >> >> /Contents 8 0 R >>
+endobj
+14 0 obj
+<< /Type /Pages /Count 5 /Kids [9 0 R 10 0 R 11 0 R 12 0 R 13 0 R] >>
+endobj
+15 0 obj
+<< /Type /Catalog /Pages 14 0 R >>
+endobj
+16 0 obj
+<< /Title (CAMP SEO GROWTH REPORT) /Author (Werft - Camp) /Producer (Camp SEO-Bericht) /CreationDate (D:20261003000000Z) >>
+endobj
+xref
+0 17
+0000000000 65535 f 
+0000000015 00000 n 
+0000000112 00000 n 
+0000000214 00000 n 
+0000000309 00000 n 
+0000006711 00000 n 
+0000015095 00000 n 
+0000021669 00000 n 
+0000031792 00000 n 
+0000034893 00000 n 
+0000035045 00000 n 
+0000035198 00000 n 
+0000035351 00000 n 
+0000035504 00000 n 
+0000035657 00000 n 
+0000035743 00000 n 
+0000035794 00000 n 
+trailer
+<< /Size 17 /Root 15 0 R /Info 16 0 R >>
+startxref
+35934
+%%EOF

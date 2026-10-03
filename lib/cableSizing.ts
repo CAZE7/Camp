@@ -20,10 +20,13 @@
  */
 
 import {
+  VOLTAGE_DROP_PCT_CRITICAL,
   VOLTAGE_DROP_PCT_PLAN_LIMIT,
+  VDE_AMPACITY,
   VDE_SIZES,
   calculateCrossSection,
   calculateMaxFuse,
+  designAmpacity,
   lookupThermalCrossSection,
   selectFuseSize,
 } from './electrical';
@@ -121,4 +124,100 @@ export function sizeCable(currentA: number, lengthM: number): CableSizing {
     criterion,
     exceedsStandardRange,
   };
+}
+
+/** Bewertung eines Spannungsfalls gegenüber den Grenzen des Modells. */
+export type VoltageDropVerdict = 'ziel' | 'planungsgrenze' | 'verstoss' | 'kritisch';
+
+export type VoltageDropResult = {
+  /** Querschnitt, für den gerechnet wurde (mm²). */
+  crossSectionMm2: number;
+  /** Spannungsfall über Hin- und Rückleitung in Volt. */
+  dropV: number;
+  /** Spannungsfall in Prozent der Systemspannung. */
+  dropPercent: number;
+  /** Einordnung gegen 1 / 3 / 4 % des Modells (`lib/electrical.ts`). */
+  verdict: VoltageDropVerdict;
+  /** Querschnitt, den die 3-%-Grenze für Strom und Länge fordert (Normgröße). */
+  recommendedCrossSectionMm2: number;
+  /**
+   * true = mit dem gewählten Querschnitt wird die 3-%-Planungsgrenze
+   * überschritten. Ab 4 % meldet der Planer zusätzlich einen Verstoß
+   * (`VOLTAGE_DROP_PCT_CRITICAL`) — die Anzeige entscheidet, wie sie das
+   * benennt (Rule M: keine stille Empfehlung).
+   */
+  exceedsPlanLimit: boolean;
+};
+
+/**
+ * Spannungsfall einer bereits gewählten Leitung.
+ *
+ * Der Unterschied zu `sizeCable`: Dort wird der Querschnitt GESUCHT, hier wird
+ * ein vorhandener bewertet. Beide Wege benutzen dieselbe Formel
+ * (ΔU = I · 2L / (κ · A), `lib/units.ts`) und dieselben Grenzen
+ * (`lib/electrical.ts`) — es gibt keinen zweiten Rechenweg.
+ *
+ * @throws RangeError wenn Strom, Länge oder Querschnitt keine gültigen Größen
+ *   sind (NaN, unendlich oder ≤ 0 — `lib/units.ts` prüft die Einheiten).
+ */
+export function voltageDropFor(
+  currentA: number,
+  lengthM: number,
+  crossSectionMm2: number,
+  systemVoltageV: number = DC_NOMINAL_VOLTAGE_V
+): VoltageDropResult {
+  const current = amps(currentA);
+  const length = meters(lengthM);
+  const section = mm2(crossSectionMm2);
+  const system = volts(systemVoltageV);
+
+  const drop = voltageDrop(current, length, section, COPPER_CONDUCTIVITY_MS_PER_MM2);
+  const percent = dropPercent(drop, system);
+  const verdict: VoltageDropVerdict =
+    percent <= 1
+      ? 'ziel'
+      : percent <= VOLTAGE_DROP_PCT_PLAN_LIMIT
+        ? 'planungsgrenze'
+        : percent <= VOLTAGE_DROP_PCT_CRITICAL
+          ? 'verstoss'
+          : 'kritisch';
+
+  return {
+    crossSectionMm2,
+    dropV: drop,
+    dropPercent: percent,
+    verdict,
+    recommendedCrossSectionMm2: sizeCable(currentA, lengthM).crossSectionMm2,
+    exceedsPlanLimit: percent > VOLTAGE_DROP_PCT_PLAN_LIMIT,
+  };
+}
+
+/**
+ * Größter Strom, den ein Querschnitt auf einer Länge führen darf, ohne die
+ * 3-%-Grenze zu überschreiten — die Umkehrung der Spannungsfall-Formel
+ * (I = κ · A · ΔU / 2L). Für Tabellen („so weit trägt welcher Querschnitt").
+ *
+ * @throws RangeError bei ungültigem Querschnitt oder ungültiger Länge.
+ */
+export function maxCurrentForPlanLimit(
+  crossSectionMm2: number,
+  lengthM: number,
+  systemVoltageV: number = DC_NOMINAL_VOLTAGE_V
+): number {
+  const section = mm2(crossSectionMm2);
+  const length = meters(lengthM);
+  const allowedDrop = (systemVoltageV * VOLTAGE_DROP_PCT_PLAN_LIMIT) / 100;
+  return (COPPER_CONDUCTIVITY_MS_PER_MM2 * section * allowedDrop) / (2 * length);
+}
+
+/**
+ * Strom, den ein Querschnitt thermisch führen darf — Tabellenwert der
+ * DIN VDE 0298-4 (Verlegeart B2) mit dem Derating des Modells. Bewusst ein
+ * eigener Name: In Tabellen steht daneben der Spannungskriterium-Wert, und
+ * beide werden ständig verwechselt („das Kabel darf 38 A" ist ohne
+ * Verlegeart keine Aussage).
+ */
+export function thermalCurrentFor(crossSectionMm2: number): { tableA: number | null; designA: number } {
+  const tableA = VDE_AMPACITY[crossSectionMm2] ?? null;
+  return { tableA, designA: designAmpacity(mm2(crossSectionMm2)) };
 }

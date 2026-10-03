@@ -9,18 +9,22 @@
  * werden gemeldet, ohne den Lauf zu kippen — sie sind Entscheidungen des
  * Betreibers (z. B. ein längerer Titel), keine Defekte.
  *
- * Die Liste der indexierbaren Seiten steht hier ausdrücklich und nicht
- * abgeleitet: Eine Prüfung, die ihre Erwartung aus dem Prüfling zieht, prüft
- * nichts. Wer eine Seite ergänzt, trägt sie hier und in `app/sitemap.ts` ein —
- * die Prüfung meldet die Abweichung, falls eine der beiden Stellen vergessen
- * wird.
+ * Die Zusage, WELCHE Seiten es geben soll, kommt aus `lib/seo/inventory.ts` —
+ * einer Erklärung des Betreibers, nicht aus dem Prüfling. Geprüft wird der
+ * gebaute Export dagegen: Fehlt eine erklärte Seite, ist ein Titel doppelt
+ * oder steht eine Seite auf noindex, obwohl sie indexierbar sein soll, meldet
+ * das die Prüfung. Eine hier kopierte Liste wäre die dritte Stelle, an der
+ * eine Seite vergessen werden kann.
  */
 import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 
 import { SITE_ORIGIN, SITE_BASE_PATH } from '../../lib/site';
+import { indexablePages, nonIndexablePages, pageByPath, TECHNICAL_PAGES } from '../../lib/seo/inventory';
 import {
   type Finding,
+  type HeavyLibrary,
+  checkHeavyLibraries,
   checkPage,
   checkSitemap,
   checkStructuredData,
@@ -28,21 +32,11 @@ import {
   metaContent,
 } from './checks';
 
-/** Seiten, die in den Index gehören — Gegenstück zu `app/sitemap.ts`. */
-const INDEXIERBARE_SEITEN = [
-  '/',
-  '/elektrik-planung/',
-  '/tools/dach/',
-  '/tools/heizung/',
-  '/guides/ausbau-fahrplan/',
-  '/guides/camper-ausbauguide/',
-  '/guides/holzausbau/',
-  '/impressum/',
-  '/datenschutz/',
-];
+/** Seiten, die in den Index gehören — erklärt im Inventar, geprüft im Export. */
+const INDEXIERBARE_SEITEN = indexablePages().map((page) => page.path);
 
 /** Seiten ohne eigenen Inhalt für Ergebnislisten — sie tragen `noindex`. */
-const NICHT_INDEXIERBARE_SEITEN = ['/design-system/', '/ki-assistent/'];
+const NICHT_INDEXIERBARE_SEITEN = nonIndexablePages().map((page) => page.path);
 
 /**
  * Technische Seiten der Auslieferung: von Next erzeugt, nirgends verlinkt und
@@ -50,7 +44,22 @@ const NICHT_INDEXIERBARE_SEITEN = ['/design-system/', '/ki-assistent/'];
  * werden. Prüfungen auf eigene Adresse, doppelte Titel und Erreichbarkeit
  * laufen ins Leere, weil alle drei Ausprägungen dieselbe Fehlerseite sind.
  */
-const TECHNISCHE_SEITEN = ['/404/', '/_not-found/'];
+const TECHNISCHE_SEITEN = TECHNICAL_PAGES;
+
+/**
+ * Werkzeugseiten dürfen ihre eigene schwere Bibliothek laden — die Ansicht
+ * braucht sie. Für jede andere Seite ist eine solche Abhängigkeit ein Fehler:
+ * Sie kostet Ladezeit und bringt der Seite nichts (§34, §35).
+ */
+const ERLAUBTE_BIBLIOTHEKEN: Record<string, readonly HeavyLibrary[]> = {
+  '/tools/dach/': ['react-flow', 'dagre', 'elkjs'],
+};
+
+/** Wortzahl, unter der eine Inhaltsseite als dünn gilt (Hinweis, kein Fehler). */
+const WOERTER_MINDESTBESTAND = 300;
+
+/** Seitenarten, für die der Mindestbestand gilt — Rechtliches und Ansichten ausgenommen. */
+const ARTEN_MIT_MINDESTBESTAND = ['pillar', 'cluster', 'rechner', 'ratgeber', 'werkzeug'];
 
 const OUT = 'out';
 
@@ -126,6 +135,40 @@ function main(): void {
       })
     );
     findings.push(...checkStructuredData(page, html, { origin: SITE_ORIGIN, basePath: SITE_BASE_PATH }));
+    findings.push(
+      ...checkHeavyLibraries(page, html, {
+        resolveChunk: (source) => {
+          const relative = source.split('?')[0]!.replace(/^\//, '');
+          const withoutBase =
+            SITE_BASE_PATH && relative.startsWith(SITE_BASE_PATH.replace(/^\//, ''))
+              ? relative.slice(SITE_BASE_PATH.replace(/^\//, '').length + 1)
+              : relative;
+          const file = join(OUT, withoutBase);
+          return existsSync(file) ? readFileSync(file, 'utf8') : null;
+        },
+        allowed: ERLAUBTE_BIBLIOTHEKEN[path] ?? [],
+      })
+    );
+
+    // Dünne Seiten: Ein Hinweis, kein Fehler — die Entscheidung, ob eine kurze
+    // Seite ihren Zweck erfüllt, ist eine redaktionelle, keine technische.
+    const entry = pageByPath(path);
+    if (entry && ARTEN_MIT_MINDESTBESTAND.includes(entry.kind) && entry.indexability === 'index') {
+      const words = html
+        .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+        .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+        .replace(/<[^>]+>/g, ' ')
+        .split(/\s+/)
+        .filter((token) => token.length > 0).length;
+      if (words < WOERTER_MINDESTBESTAND) {
+        findings.push({
+          severity: 'hinweis',
+          file: page,
+          rule: 'seite-duenn',
+          message: `${words} Wörter — unter dem Mindestbestand von ${WOERTER_MINDESTBESTAND} für Seitenart "${entry.kind}".`,
+        });
+      }
+    }
 
     // Technische Seiten (Fehlerseite) sind dreimal dieselbe Datei: Sie werden
     // weder auf doppelte Titel geprüft noch verlinkt oder beworben.

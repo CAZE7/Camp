@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  checkHeavyLibraries,
   checkPage,
   checkSitemap,
   checkStructuredData,
+  heavyLibrariesLoaded,
   internalLinkTargets,
   metaContent,
+  scriptSources,
   titleOf,
   unescapeHtml,
 } from './checks';
@@ -204,6 +207,55 @@ describe('checkSitemap', () => {
   it('lässt eine vollständige Sitemap durch', () => {
     const locs = ['/', '/a/', '/b/'].map((path) => `${ORIGIN}${BASE}${path}`);
     expect(checkSitemap('f', sitemap(locs), options)).toEqual([]);
+  });
+});
+
+describe('checkHeavyLibraries', () => {
+  const SEITE = `<html><head><script src="/_next/static/chunks/app.js"></script><script src="/_next/static/chunks/gsap.js"></script></head><body><h1>x</h1></body></html>`;
+  const CHUNKS: Record<string, string> = {
+    '/_next/static/chunks/app.js': 'console.log("app");',
+    '/_next/static/chunks/gsap.js': 'var gsap=function(){},GreenSock=1;',
+    '/_next/static/chunks/elk.js': 'require("elkjs");org.eclipse.elk={};',
+  };
+  const resolve = (source: string) => CHUNKS[source] ?? null;
+
+  it('sammelt die Quelladressen der Skripte', () => {
+    expect(scriptSources(SEITE)).toEqual(['/_next/static/chunks/app.js', '/_next/static/chunks/gsap.js']);
+  });
+
+  it('erkennt die geladenen großen Abhängigkeiten', () => {
+    expect(heavyLibrariesLoaded(SEITE, resolve)).toEqual(['gsap']);
+    expect(heavyLibrariesLoaded('<script src="/_next/static/chunks/elk.js"></script>', resolve)).toEqual([
+      'elkjs',
+    ]);
+  });
+
+  it('meldet eine schwere Abhängigkeit auf einer Inhaltsseite als Fehler', () => {
+    const findings = checkHeavyLibraries('out/seite/index.html', SEITE, { resolveChunk: resolve });
+    expect(findings).toHaveLength(1);
+    expect(findings[0]!.rule).toBe('bundle-schwer');
+    expect(findings[0]!.message).toContain('gsap');
+  });
+
+  it('lässt eine erlaubte Abhängigkeit auf einer Werkzeugseite durch', () => {
+    expect(
+      checkHeavyLibraries('out/tools/dach/index.html', SEITE, {
+        resolveChunk: resolve,
+        allowed: ['gsap'],
+      })
+    ).toEqual([]);
+  });
+
+  it('meldet eine saubere Seite nicht', () => {
+    expect(
+      checkHeavyLibraries('out/seite/index.html', '<script src="/_next/static/chunks/app.js"></script>', {
+        resolveChunk: resolve,
+      })
+    ).toEqual([]);
+  });
+
+  it('verträgt ein Bündel, das nicht im Export liegt', () => {
+    expect(heavyLibrariesLoaded('<script src="/fehlt.js"></script>', resolve)).toEqual([]);
   });
 });
 

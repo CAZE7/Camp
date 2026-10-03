@@ -21,6 +21,14 @@ const PAGES: Array<{ path: string; name: string }> = [
   { path: '/tools/dach/', name: 'Dachplaner' },
   { path: '/tools/heizung/', name: 'Heizlast-Rechner' },
   { path: '/elektrik-planung/', name: 'Elektrik-Planer' },
+  // Die inhaltsgetriebenen Seiten teilen sich ein Gerüst (`components/seo/`).
+  // Sie stehen hier stellvertretend für die drei Seitentypen — Pillar,
+  // Cluster mit Rechner, Vertrauensseite —, damit ein Fehler im Gerüst nicht
+  // unbemerkt bleibt. Weitere Themen nutzen dieselben Bausteine.
+  { path: '/camper-elektrik/', name: 'Elektrik-Pillar' },
+  { path: '/camper-elektrik/kabelquerschnitt/', name: 'Kabelquerschnitt' },
+  { path: '/rechner/spannungsabfall-12v/', name: 'Spannungsabfall-Rechner' },
+  { path: '/ueber-werft/', name: 'Über Werft' },
 ];
 
 for (const { path, name } of PAGES) {
