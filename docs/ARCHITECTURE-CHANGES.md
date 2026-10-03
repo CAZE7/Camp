@@ -2459,7 +2459,20 @@ routing:audit` Exit 0 ohne Hinweis, `FINAL_VALIDATION_RATCHET` auf 0/0/0/0/0/0.
    „Änderungs-Region" bilanzieren — war schneller, aber NICHT ergebnisidentisch
    (Stitching verschmilzt kollineare Segmente, und der Klassifikator zählt je
    Segmentpaar: acdc I2+I3 = 3, complex 7, Kreuzungen 26) und wurde verworfen.
-8. **Neue Tests.** `components/edges/utils/separation.test.ts` (8 Fälle:
+8. **Live-Pfad-Ratchet nachgezogen** (`benchmarks/edgeRoutingPerf.bench.ts`
+   60 → 300 ms, ADR 0033): Der Produktivpfad `routeAllCables` läuft auf dem
+   36-Knoten/134-Kanten-Gate-Plan weiterhin grün, aber teurer — gemessen
+   58–73 ms ohne und 203–235 ms mit Trenngang (Median, dieselbe Maschine).
+   Der Plan ist pathologisch (1 807 Verstöße, keine auflösbar, weil jede Lane
+   von Bauteilen belegt ist); der Zuwachs ist der Preis einer neuen Zusicherung,
+   nicht ein Rückfall derselben Rechnung. Das 16-ms-Ziel aus ADR 0012 (reines
+   Kanten-Rendern, 2,3 ms) bleibt unberührt; die sechs Referenzpläne zahlen
+   ~1,2× (Audit ~1,2 s inkl. Start), das 500-Knoten-Szenario 5,7 s (Median).
+   Ergebnisidentische Optimierungen, die den Wert von 294 auf 203–235 ms
+   brachten: Zug-Ergebnis-Cache je Durchgang, „vorher"-Bilanz und
+   Hindernis-Treffer je Pfad einmal statt je Verstoß, Längenprüfung vor den
+   abgeleiteten Objekten und vor der Akzeptanzprüfung.
+9. **Neue Tests.** `components/edges/utils/separation.test.ts` (8 Fälle:
    Determinismus, Eingabereihenfolge, Fixpunkt, feste Ports, keine neuen
    Hindernis-Treffer, Kreuzungs-Wächter, Schwellenverhalten),
    `scripts/routing/portCapacity.test.ts` (5 Fälle: Token-Arithmetik,
