@@ -249,7 +249,22 @@ function Section({ section }: { section: ContentSection }) {
           {section.table.caption && (
             <figcaption className="caption-xs mb-2 text-ink-soft">{section.table.caption}</figcaption>
           )}
-          <div className="overflow-x-auto border border-rule bg-bone">
+          {/*
+            Auf schmalen Geräten ist die Tabelle breiter als der Text und wird
+            seitlich scrollbar. Ohne Fokussierbarkeit wäre sie per Tastatur
+            nicht erreichbar — genau das meldet die axe-Regel
+            `scrollable-region-focusable` (WCAG 2.1.1) und ließ den
+            Barrierefreiheitslauf rot werden. Deshalb: eigener Tab-Schritt mit
+            sichtbarem Fokusring und einem Namen, der die Tabelle benennt.
+            `role="group"` statt eines nackten `<div>`: Ein Element ohne Rolle
+            darf kein `aria-label` tragen.
+          */}
+          <div
+            role="group"
+            aria-label={`Tabelle: ${section.heading}`}
+            tabIndex={0}
+            className="overflow-x-auto border border-rule bg-bone focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-oxide"
+          >
             <table className="w-full text-base">
               <thead>
                 <tr className="border-b border-rule">
