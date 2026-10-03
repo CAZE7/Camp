@@ -67,6 +67,8 @@
 
 **Learning:** Standalone toggle buttons and segmented controls acting as pseudo-radio groups (like the 'Sommer'/'Winter' toggles) must convey which option is currently active to assistive technologies. Without this, screen reader users cannot perceive the current state or understand the result of their selection.
 **Action:** Always add `aria-pressed={condition}` to any button that visually toggles between active and inactive states.
+
 ## 2025-10-03 - [Missing ARIA label on icon-only stepper buttons]
+
 **Learning:** Icon-only buttons (containing only "▲" and "▼" text symbols) lacked descriptive accessible labels. Screen readers read them as text which might be confusing or not descriptive of their function ("Wert erhöhen" / "Wert verringern").
 **Action:** Always apply `aria-label` attributes to icon-only buttons (e.g., buttons containing only an SVG, Icon component, or purely geometric text symbols like '▲'/'▼' without visible text) to ensure screen reader accessibility.
