@@ -62,6 +62,7 @@ import {
 import { LEGACY_ROUTING_TOKENS, ROUTING_TOKENS } from '../../../lib/routing/tokens';
 import { ROUTING_GATES } from '../../../lib/routing/rules/costModel';
 import { greedyConflictOrder, type ConflictCandidate } from '../../../lib/routing/rules/conflictGraph';
+import { separateCableClearance } from './separation';
 import { compareIds } from '../../../lib/sortOrder';
 
 // ── Stufe 3 (Mission Konfliktgraph-Batching): token-gated Arbeitsreihenfolge ──
@@ -878,13 +879,30 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
     cleaned.set(id, worthIt ? merged : waypoints);
   }
 
+  // Abschluss-Gang der Trassen-Trennung (I3): Bis hierher ist die Kabel-Freigabe
+  // eine Ermunterung (Kosten, Tubes, Nudge-Lanes), keine Garantie — das Gate
+  // zählte über die sechs Referenzpläne 49 Unterschreitungen (2026-10-03).
+  // `separateCableClearance` bewertet mit DERSELBEN Regel wie das Gate
+  // (`checkClearance`) und nimmt eine Verschiebung nur an, wenn die Zahl der
+  // Verstöße streng sinkt — er kann also nichts verschlechtern. Reine
+  // Geometrie: keine elektrische Semantik (Rule C), keine Zahlen außerhalb
+  // der Tokens.
   // Deterministische Ausgabereihenfolge: nach Edge-ID, nicht nach Eingabereihenfolge.
   const order = raw.map((r) => r.id).sort(compareIds);
+  // Hindernisse sind hier die ROHEN Bauteil-Boxen: genau die Boxen, gegen die
+  // I1 (`classifySegmentAgainstNode` = hard) und I3 (weighted) prüfen. Die
+  // aufgeblähte Variante (`inflated`) wäre strenger als das Gate (14 px Rand
+  // statt 12 px Freigabe) und würde zulässige Züge blockieren.
+  const separated = separateCableClearance(
+    order.map((id) => ({ id, waypoints: cleaned.get(id) ?? nudged.get(id) ?? [] })),
+    { obstacles: allObstacles, maxLaneSteps: 6 }
+  );
+
   const byId = new Map(raw.map((r) => [r.id, r]));
   const finalWaypoints = new Map<string, Point[]>(
     order.map((id) => {
       const item = byId.get(id);
-      return [id, cleaned.get(id) ?? nudged.get(id) ?? item?.waypoints ?? []];
+      return [id, separated.get(id) ?? cleaned.get(id) ?? nudged.get(id) ?? item?.waypoints ?? []];
     })
   );
 

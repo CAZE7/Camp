@@ -128,6 +128,32 @@ describe('isPortBundleProximity — ADR 0031, Locus-Regel', () => {
     expect(isPortBundleProximity(a, b, a.segments[0]!, b.segments[2]!, MAXArc)).toBe(true);
   });
 
+  it('senkrechte Ecke am gemeinsamen Port: Locus wird auf der RICHTIGEN Seite gemessen', () => {
+    // Echter Messfall (complex, 2026-10-03, vor dem Fix als I3 gezählt):
+    // Zwei Leitungen verlassen denselben Fusebox-Port (872,236). a biegt nach
+    // 40 px ab und läuft senkrecht weiter (912,236)→(912,96); b endet mit
+    // seinem 38-px-Stub 2 px davor bei (910,236). Die nächste Annäherung
+    // liegt auf BEIDEN Wegen im Korridor (Bögen 40 und 38 ≤ 68) — das ist
+    // legitime Bündelung, kein Verstoß.
+    //
+    // Ursache des Fehlzählung: Im senkrechten Zweig von `closestLocusArcs`
+    // sind `hs`/`vs` gegenüber `(s1, s2)` vertauscht; die Kandidatenpunkte
+    // wurden nicht der Seite zugeordnet, auf der sie liegen. Dadurch suchte
+    // `arcAt` den Punkt (912,236) auf b's Weg — dort existiert er nicht → NaN
+    // → Ausnahme kam nie zum Tragen. Der Test hält die Zuordnung fest.
+    const a = path([872, 236], [912, 236], [912, 96], [980, 96]);
+    const b = path([872, 236], [910, 236], [910, 268], [950.5, 268], [950.5, 416], [980, 416]);
+    expect(isPortBundleProximity(a, b, a.segments[1]!, b.segments[0]!, MAXArc)).toBe(true);
+  });
+
+  it('dieselbe senkrechte Ecke JENSEITS des Korridors bleibt gemeldet', () => {
+    // Gleiche Form, aber die Ecke liegt 100 px hinter dem Port: Beide Wege
+    // sind dort längst auf eigener Trasse — keine Bündelung mehr.
+    const a = path([872, 236], [992, 236], [992, 96], [1060, 96]);
+    const b = path([872, 236], [990, 236], [990, 268], [1030, 268]);
+    expect(isPortBundleProximity(a, b, a.segments[1]!, b.segments[0]!, MAXArc)).toBe(false);
+  });
+
   it('Ende-gegen-Ende am gemeinsamen Port ist erlaubt (Fan-In)', () => {
     const a = path([0, 200], [52, 200], [52, 100], [100, 100]);
     const b = path([0, 0], [44, 0], [44, 100], [100, 100]);

@@ -33,17 +33,29 @@ import { captureGoldenMaster } from '../goldenmaster/pipeline';
 
 /** Gemessen am 2026-09-27 (nach dem Platzierungs-Fix, Plan am Ursprung). */
 const BASELINE_PX: Record<string, number> = {
-  simple: 2697,
+  // Nachgezogen 2026-10-03 (ADR 0033): Der Trenngang stellt die
+  // Kabel-Freigabe her (I3 49 → 0) und sein Längen-Nachlauf zieht die dabei
+  // entstandenen Umwege wieder zusammen. Fünf Pläne werden dadurch KÜRZER
+  // (Summe 27 799 → 27 544 px, −0,9 %): simple 2697→2665, camper 3709→3677,
+  // inverter 3881→3710, acdc 5710→5646. Der sechste (`complex`) wächst um
+  // +44 px (8602→8646, +0,5 %): Die einzige Geometrie, die I1–I7 = 0 UND die
+  // Kreuzungs-Ratchet (≤ 25) hält, verlangt `busbar-plus` 496 /
+  // `busbar-minus` 688 (gemessenes Gate-Gitter, s. ADR 0033) — acht Pixels
+  // mehr Minus-Korridor kosten die vier Minus-Leitungen. Die Alternative wäre,
+  // vier 4-px-Freigabeverstöße stehen zu lassen; ADR 0015 führt I3 als
+  // harte Klasse. Bewusster, dokumentierter Tausch, kein schleichender
+  // Qualitätsverlust (Netto über alle Pläne: −223 px).
+  simple: 2665,
   // Nachgezogen 2026-09-27 (Merge des Arena-Zweigs „stabilize planning and safe
   // route reflow“): der Trunk-Reflow verlegt camper, inverter, acdc und complex
   // kürzer — gemessen 3709 / 3881 / 5710 / 8602 px statt 3805 / 3888 / 5770 /
   // 10909 px. Der Test verlangt das Nachziehen selbst („Verbesserungen müssen
   // nachgezogen werden“); simple und solar sind unverändert.
-  camper: 3709,
+  camper: 3677,
   solar: 3200,
-  inverter: 3881,
-  acdc: 5710,
-  complex: 8602,
+  inverter: 3710,
+  acdc: 5646,
+  complex: 8646,
 };
 
 /**

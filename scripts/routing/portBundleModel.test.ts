@@ -8,7 +8,7 @@ import {
   type NodeRect,
   type RoutedEdge,
 } from '../../lib/routing/invariants';
-import { SegmentSpatialIndex } from '../../lib/routing/geometry';
+import { SegmentSpatialIndex, distanceSegmentToSegment } from '../../lib/routing/geometry';
 import { ROUTING_TOKENS } from '../../lib/routing/tokens';
 import { segmentExtraCost } from '../../lib/routing/rules/costModel';
 import {
@@ -42,14 +42,24 @@ import { classifySegmentAgainstSegment } from '../../lib/routing/rules/collision
  * Fehler, den dieser Test meldet.
  */
 
-/** Gemessen am 2026-09-27 (Produktivpfad, Referenzpläne am Ursprung). */
+/**
+ * Gemessen am 2026-09-27 (Produktivpfad, Referenzpläne am Ursprung);
+ * nachgezogen 2026-10-03 (ADR 0033): `complex` 15 → 12, Σ 47 → 44.
+ *
+ * Grund für den Nachzug: Die ADR-0033-Korrektur der Trassenlage
+ * (`busbar-plus` 496 / `busbar-minus` 688, Trenngang + Längen-Nachlauf) führt
+ * drei bisher kollinear gebündelte complex-Paare auf getrennten Achsen — sie
+ * sind keine Port-Bündel mehr, sondern Abstand. Eine SENKENDE Zahl ist der
+ * einzige zulässige Nachzug; steigt `hardPairs`, meldet der Test unten
+ * „Baseline ist nicht zu locker" und das Audit I2.
+ */
 const PORT_BUNDLE_PAIRS: Record<string, number> = {
   simple: 4,
   camper: 10,
   solar: 4,
   inverter: 4,
   acdc: 10,
-  complex: 15,
+  complex: 12,
 };
 
 const TOTAL = Object.values(PORT_BUNDLE_PAIRS).reduce((sum, n) => sum + n, 0);
@@ -264,12 +274,17 @@ describe('analyzeOverlaps — Vollständigkeit außerhalb gemeinsamer Anschlusss
  * Diese Zahlen dürfen nur sinken.
  */
 const I3_RESIDUE: Record<string, number> = {
-  simple: 2,
-  camper: 7,
-  solar: 1,
-  inverter: 7,
-  acdc: 7,
-  complex: 25,
+  // Nachgezogen 2026-10-03 (ADR 0033): Der Trenngang stellt die
+  // Kabel-Freigabe her, deshalb ist der Rest über ALLEN Plänen 0. Die
+  // Buchhaltung unten (Modell ↔ Checker ↔ Audit) bleibt unverändert scharf:
+  // Sie prüft die Zahl nicht gegen sich selbst, sondern Paar für Paar gegen
+  // `classifySegmentAgainstSegment` + `isPortBundleProximity`.
+  simple: 0,
+  camper: 0,
+  solar: 0,
+  inverter: 0,
+  acdc: 0,
+  complex: 0,
 };
 
 describe('ADR 0031 — I3 zählt nur noch echte Restfälle über die Referenzpläne', () => {
@@ -323,34 +338,121 @@ describe('ADR 0031 — I3 zählt nur noch echte Restfälle über die Referenzpl�
       // weighted-Paar — und jedes nicht freigestellte weighted-Paar ist
       // gemeldet. Die Ausnahme schweigt nie still und zählt nie doppelt.
       expect([...countedByPair.entries()].sort()).toEqual([...violationsByPair.entries()].sort());
-      // Es gibt weiterhin legitime Bündel-Nähe (die Ausnahme wirkt überhaupt):
-      // mindestens in den Plänen mit Port-Bündel-Paaren.
-      if ((PORT_BUNDLE_PAIRS[planName] ?? 0) > 0 && expectedResidue > 0) {
+      // Es gibt weiterhin legitime Bündel-Nähe (die Ausnahme wirkt überhaupt).
+      // Die Bedingung hängt NUR an den Port-Bündel-Paaren — nicht mehr am
+      // I3-Rest: Sonst würde sie mit dem Rest auf 0 still verschwinden (und
+      // damit die einzige Prüfung, dass die Ausnahme überhaupt greift).
+      if ((PORT_BUNDLE_PAIRS[planName] ?? 0) > 0) {
         expect(exemptWeighted, `${planName}: Ausnahme muss greifen`).toBeGreaterThan(0);
       }
     }
   });
 
-  it('solar hat genau einen echten I3-Rest — die Fenster-Regel hielt ihn zu Unrecht für 0', () => {
-    // ADR 0031 v2 (Locus-Regel): Die v1-Fassung dieses Tests behauptete
-    // „solar vollständig I3-frei — Beweis, dass 0 erreichbar ist". Der
-    // Beweis war ein Artefakt der über-freistellenden Segment-Fenster-
-    // Regel: Das Paar e-auto-1↔e-auto-10 läuft sich an einer Ecke berühren
-    // (Abstand 0 px) und teilt KEINEN gemeinsamen Port — kein Bündelfall,
-    // also ein echter Verstoß. Die Locus-Regel zählt ihn ehrlich. Damit ist
-    // 0 für solar (noch) NICHT erreicht; der Test sichert stattdessen die
-    // exakte Identität des Restfalls, damit er nicht still weiterwächst.
+  it('kein Referenzplan hat noch einen echten I3-Rest — auch der Ecken-Kontakt ist weg', () => {
+    // Historie: ADR 0031 v2 (Locus-Regel) hatte den Fenster-Blindfleck
+    // geschlossen und dabei in `solar` einen ECHTEN Restfall sichtbar gemacht:
+    // `e-auto-1↔e-auto-10` berührten sich an einer Ecke (Abstand 0 px) und
+    // teilten keinen gemeinsamen Port — kein Bündelfall, also musste der
+    // Router ihn lösen, nicht der Checker freistellen.
+    //
+    // ADR 0033 (2026-10-03) hat ihn gelöst: Der Trenngang zieht die Pfade
+    // auseinander. Der Checker blieb dabei unangetastet — die Prüfung unten
+    // schaut ausdrücklich NACH, dass das Paar weiterhin existiert und jetzt
+    // getrennt läuft; sie verschwindet also nicht mit dem Verstoß.
     const model = models.get('solar')!;
-    const report = checkClearance(model.routed, [] as NodeRect[]);
-    expect(report).toHaveLength(1);
-    const violation = report[0]!;
-    expect([violation.edgeId, violation.otherId].sort()).toEqual(['e-auto-1', 'e-auto-10']);
-    // Der Restfall ist KEIN Bündelfall: kein gemeinsamer Port.
-    const left = model.routed.find((e) => e.id === 'e-auto-1')!;
-    const right = model.routed.find((e) => e.id === 'e-auto-10')!;
-    const sharedPort =
-      (left.source === right.source || left.source === right.target) &&
-      (left.target === right.source || left.target === right.target);
-    expect(sharedPort, 'e-auto-1↔e-auto-10 teilt einen Port — dann wäre es ein Bündelfall').toBe(false);
+    expect(checkClearance(model.routed, [] as NodeRect[])).toHaveLength(0);
+
+    const left = model.routed.find((e) => e.id === 'e-auto-1');
+    const right = model.routed.find((e) => e.id === 'e-auto-10');
+    expect(left, 'e-auto-1 fehlt — der Vergleich setzt die Kante voraus').toBeDefined();
+    expect(right, 'e-auto-10 fehlt — der Vergleich setzt die Kante voraus').toBeDefined();
+
+    const geometryLeft = routedPathGeometry(left!.waypoints);
+    const geometryRight = routedPathGeometry(right!.waypoints);
+    let minimumGap = Infinity;
+    let touching:
+      { s1: (typeof geometryLeft.segments)[number]; s2: (typeof geometryRight.segments)[number] } | undefined;
+    for (const s1 of geometryLeft.segments) {
+      for (const s2 of geometryRight.segments) {
+        const gap = distanceSegmentToSegment(s1, s2);
+        if (gap < minimumGap) {
+          minimumGap = gap;
+          touching = { s1, s2 };
+        }
+      }
+    }
+    // Der ehemalige Restfall existiert noch (die beiden Pfade laufen sich am
+    // gemeinsamen Zielanschluss in die Quere) …
+    expect(minimumGap, 'Der ehemalige Restfall ist verschwunden — Test prüft ins Leere').toBeLessThan(
+      ROUTING_TOKENS.cableClearance
+    );
+    // … ist aber jetzt ein LEGITIMER Bündel-Fall: beide Pfade enden am selben
+    // Anschluss, und die engste Stelle liegt im Port-Korridor. Genau diese
+    // Begründung nimmt der Checker (dieselbe Funktion!) — der Verstoß ist
+    // nicht stummgeschaltet, sondern strukturell aufgelöst.
+    expect(left!.waypoints.at(-1), 'e-auto-1 endet nicht mehr am gemeinsamen Ziel').toEqual(
+      right!.waypoints.at(-1)
+    );
+    expect(
+      isPortBundleProximity(
+        geometryLeft,
+        geometryRight,
+        touching!.s1,
+        touching!.s2,
+        ROUTING_TOKENS.portFacingClearance
+      ),
+      'Die engste Stelle liegt NICHT im Port-Korridor eines gemeinsamen Anschlusses — dann wäre es ein echter Verstoß'
+    ).toBe(true);
+  });
+
+  it('die Locus-Regel lässt einen echten Ecken-Kontakt ohne gemeinsamen Port nicht durch', () => {
+    // Gegenprobe zum Plan-Beweis oben: Über die Referenzpläne ist der Rest auf
+    // 0 — das darf nicht heißen, dass die Ausnahme alles durchlässt. Diese
+    // beiden Geometrien sind die Minimalform des damaligen solar-Falls
+    // (Berührung im Punkt, kein gemeinsamer Anschluss) gegen die Minimalform
+    // eines echten Bündels (Ecke AM gemeinsamen Port).
+    const touching: RoutedEdge[] = [
+      {
+        id: 'l',
+        source: 'n1',
+        target: 'n2',
+        waypoints: [
+          { x: 0, y: 0 },
+          { x: 200, y: 0 },
+        ],
+      },
+      {
+        id: 'r',
+        source: 'n3',
+        target: 'n4',
+        waypoints: [
+          { x: 120, y: 0 },
+          { x: 120, y: 200 },
+        ],
+      },
+    ];
+    expect(checkClearance(touching, [] as NodeRect[])).toHaveLength(1);
+
+    const bundled: RoutedEdge[] = [
+      {
+        id: 'l',
+        source: 'n1',
+        target: 'n2',
+        waypoints: [
+          { x: 0, y: 0 },
+          { x: 200, y: 0 },
+        ],
+      },
+      {
+        id: 'r',
+        source: 'n2',
+        target: 'n4',
+        waypoints: [
+          { x: 200, y: 0 },
+          { x: 200, y: 200 },
+        ],
+      },
+    ];
+    expect(checkClearance(bundled, [] as NodeRect[])).toHaveLength(0);
   });
 });

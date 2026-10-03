@@ -407,7 +407,7 @@
         "id": "busbar-minus",
         "position": {
           "x": 380,
-          "y": 680
+          "y": 688
         },
         "type": "busbar"
       },
@@ -419,7 +419,7 @@
         "id": "busbar-plus",
         "position": {
           "x": 380,
-          "y": 500
+          "y": 496
         },
         "type": "busbar"
       },
@@ -795,7 +795,7 @@
         "id": "busbar-minus",
         "position": {
           "x": 380,
-          "y": 680
+          "y": 688
         },
         "type": "busbar"
       },
@@ -806,7 +806,7 @@
         "id": "busbar-plus",
         "position": {
           "x": 380,
-          "y": 500
+          "y": 496
         },
         "type": "busbar"
       },
@@ -972,25 +972,21 @@
       ]
     },
     "e-auto-2": {
-      "bends": 4,
-      "crossings": 5,
-      "length": 660,
+      "bends": 3,
+      "crossings": 4,
+      "length": 668,
       "usedSearch": "catalog",
       "waypoints": [
         {
           "x": 514.4,
-          "y": 680
+          "y": 688
         },
         {
-          "x": 514.4,
-          "y": 652
+          "x": 668,
+          "y": 688
         },
         {
-          "x": 658.8,
-          "y": 652
-        },
-        {
-          "x": 658.8,
+          "x": 668,
           "y": 344
         },
         {
@@ -1005,24 +1001,24 @@
     },
     "e-auto-3": {
       "bends": 4,
-      "crossings": 7,
-      "length": 1100,
+      "crossings": 6,
+      "length": 1108,
       "usedSearch": "astar",
       "waypoints": [
         {
           "x": 514.4,
-          "y": 680
+          "y": 688
         },
         {
           "x": 514.4,
-          "y": 636
+          "y": 644
         },
         {
-          "x": 934.5,
-          "y": 636
+          "x": 924,
+          "y": 644
         },
         {
-          "x": 934.5,
+          "x": 924,
           "y": 204
         },
         {
@@ -1038,27 +1034,27 @@
     "e-auto-4": {
       "bends": 4,
       "crossings": 2,
-      "length": 868,
+      "length": 876,
       "usedSearch": "astar",
       "waypoints": [
         {
           "x": 572,
-          "y": 764
+          "y": 772
         },
         {
           "x": 644,
-          "y": 764
+          "y": 772
         },
         {
           "x": 644,
-          "y": 716
+          "y": 724
         },
         {
-          "x": 940,
-          "y": 716
+          "x": 936,
+          "y": 724
         },
         {
-          "x": 940,
+          "x": 936,
           "y": 304
         },
         {
@@ -1070,24 +1066,24 @@
     "e-auto-5": {
       "bends": 4,
       "crossings": 1,
-      "length": 740,
+      "length": 748,
       "usedSearch": "astar",
       "waypoints": [
         {
           "x": 572,
-          "y": 764
+          "y": 772
         },
         {
           "x": 612,
-          "y": 764
+          "y": 772
         },
         {
           "x": 612,
-          "y": 780
+          "y": 788
         },
         {
           "x": 948,
-          "y": 780
+          "y": 788
         },
         {
           "x": 948,
@@ -1117,8 +1113,8 @@
     },
     "e-auto-7": {
       "bends": 4,
-      "crossings": 5,
-      "length": 659.2,
+      "crossings": 4,
+      "length": 675.2,
       "usedSearch": "astar",
       "waypoints": [
         {
@@ -1130,27 +1126,27 @@
           "y": 226
         },
         {
-          "x": 594,
+          "x": 598,
           "y": 226
         },
         {
-          "x": 594,
-          "y": 656
+          "x": 598,
+          "y": 664
         },
         {
           "x": 514.4,
-          "y": 656
+          "y": 664
         },
         {
           "x": 514.4,
-          "y": 680
+          "y": 688
         }
       ]
     },
     "e-auto-8": {
       "bends": 4,
-      "crossings": 4,
-      "length": 463.2,
+      "crossings": 3,
+      "length": 471.2,
       "usedSearch": "astar",
       "waypoints": [
         {
@@ -1159,23 +1155,23 @@
         },
         {
           "x": 514.4,
-          "y": 486
+          "y": 482
         },
         {
           "x": 586,
-          "y": 486
+          "y": 482
         },
         {
           "x": 586,
-          "y": 640
+          "y": 632
         },
         {
           "x": 514.4,
-          "y": 640
+          "y": 632
         },
         {
           "x": 514.4,
-          "y": 680
+          "y": 688
         }
       ]
     },
@@ -1198,7 +1194,7 @@
     "e-batt-minus": {
       "bends": 2,
       "crossings": 0,
-      "length": 252,
+      "length": 244,
       "usedSearch": "catalog",
       "waypoints": [
         {
@@ -1215,14 +1211,14 @@
         },
         {
           "x": 514.4,
-          "y": 800
+          "y": 808
         }
       ]
     },
     "e-batt-plus": {
       "bends": 2,
       "crossings": 0,
-      "length": 208,
+      "length": 212,
       "usedSearch": "catalog",
       "waypoints": [
         {
@@ -1235,35 +1231,35 @@
         },
         {
           "x": 296,
-          "y": 536
+          "y": 532
         },
         {
           "x": 380,
-          "y": 536
+          "y": 532
         }
       ]
     },
     "e-busbar-fuse": {
       "bends": 4,
       "crossings": 3,
-      "length": 408,
+      "length": 404,
       "usedSearch": "astar",
       "waypoints": [
         {
           "x": 572,
-          "y": 536
+          "y": 532
         },
         {
           "x": 626,
-          "y": 536
+          "y": 532
         },
         {
           "x": 626,
-          "y": 504
+          "y": 500
         },
         {
           "x": 642.8,
-          "y": 504
+          "y": 500
         },
         {
           "x": 642.8,
@@ -1278,16 +1274,16 @@
     "e-busbar-inv-minus": {
       "bends": 2,
       "crossings": 2,
-      "length": 308,
+      "length": 316,
       "usedSearch": "astar",
       "waypoints": [
         {
           "x": 572,
-          "y": 764
+          "y": 772
         },
         {
           "x": 626,
-          "y": 764
+          "y": 772
         },
         {
           "x": 626,
@@ -1302,16 +1298,16 @@
     "e-busbar-inv-plus": {
       "bends": 2,
       "crossings": 4,
-      "length": 128,
+      "length": 124,
       "usedSearch": "astar",
       "waypoints": [
         {
           "x": 572,
-          "y": 536
+          "y": 532
         },
         {
           "x": 640,
-          "y": 536
+          "y": 532
         },
         {
           "x": 640,
@@ -1326,7 +1322,7 @@
     "e-charger-busbar": {
       "bends": 4,
       "crossings": 3,
-      "length": 463.2,
+      "length": 459.2,
       "usedSearch": "astar",
       "waypoints": [
         {
@@ -1343,22 +1339,22 @@
         },
         {
           "x": 366,
-          "y": 476
+          "y": 472
         },
         {
           "x": 437.6,
-          "y": 476
+          "y": 472
         },
         {
           "x": 437.6,
-          "y": 500
+          "y": 496
         }
       ]
     },
     "e-dcdc-busbar": {
       "bends": 0,
       "crossings": 1,
-      "length": 140,
+      "length": 136,
       "usedSearch": "astar",
       "waypoints": [
         {
@@ -1367,7 +1363,7 @@
         },
         {
           "x": 437.6,
-          "y": 500
+          "y": 496
         }
       ]
     },
@@ -1382,11 +1378,11 @@
           "y": 236
         },
         {
-          "x": 926,
+          "x": 910,
           "y": 236
         },
         {
-          "x": 926,
+          "x": 910,
           "y": 268
         },
         {
@@ -1462,11 +1458,11 @@
           "y": 516
         },
         {
-          "x": 950.5,
+          "x": 902.5,
           "y": 516
         },
         {
-          "x": 950.5,
+          "x": 902.5,
           "y": 576
         },
         {
@@ -1486,11 +1482,11 @@
           "y": 456
         },
         {
-          "x": 626.8,
+          "x": 656,
           "y": 456
         },
         {
-          "x": 626.8,
+          "x": 656,
           "y": 540
         },
         {

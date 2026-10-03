@@ -338,12 +338,17 @@ export const SHIFT_RATCHET: Readonly<Record<string, { I2: number; I3: number }>>
   //   RECATURE-LEDGER: camper-I2 8 → 12 ist der einzige Anstieg —
   //   dokumentierter Trade für den Frühstopp-Wurzelfix, kein Gate der
   //   Referenzpläne berührt.
-  simple: { I2: 6, I3: 130 },
-  camper: { I2: 12, I3: 469 },
-  solar: { I2: 0, I3: 45 },
-  inverter: { I2: 0, I3: 75 },
-  acdc: { I2: 10, I3: 180 },
-  complex: { I2: 2, I3: 1225 },
+  // Nachgezogen 2026-10-03 (ADR 0033 — Trenngang + Korridor-Kapazität):
+  // Die Versatz-Matrix verbessert sich deutlich, weil der Trenngang die
+  // verschobenen Bündel jetzt wirklich auseinanderzieht (I3 je Plan
+  // 130→25, 469→26, 45→0, 75→10, 180→24, 1225→0) und acdc zusätzlich eine
+  // kollineare Überdeckung verliert (10→2). Gemessen mit `--shifts`.
+  simple: { I2: 0, I3: 25 },
+  camper: { I2: 6, I3: 26 },
+  solar: { I2: 0, I3: 0 },
+  inverter: { I2: 0, I3: 10 },
+  acdc: { I2: 2, I3: 24 },
+  complex: { I2: 0, I3: 0 },
 };
 
 /** Reine Plan-Translation (nur Nutzerknoten; AutoWire platziert danach neu). */
@@ -400,14 +405,21 @@ export function auditShiftMatrix(): ShiftMatrixEntry[] {
  * Gate, das die Nutzer-Sicht prüft.
  */
 const CROSSING_RATCHET: Readonly<Record<string, number>> = {
-  simple: 2,
-  camper: 5,
+  // Nachgezogen 2026-10-03 (ADR 0033): simple 2→1 und camper 5→4 durch den
+  // Längen-Nachlauf des Trenngangs (er zieht Kurven zusammen, die vorher als
+  // Umweg standen).
+  simple: 1,
+  camper: 4,
   solar: 2,
   inverter: 2,
   // Nachgezogen 2026-09-27 (Merge des Arena-Zweigs „stabilize planning and
   // safe route reflow“): gemessen acdc 6 statt 8, complex 27 statt 29.
+  // Nachgezogen 2026-10-03 (ADR 0033, Trenngang + Korridor-Kapazität):
+  // complex 25 statt 27 — der Trenngang hat einen Kreuzungs-Wächter, kann
+  // die Zahl also nur senken; die Layout-Korrektur der Vorlage tat ihr Übriges
+  // (Messung in `docs/ARCHITECTURE-CHANGES.md`).
   acdc: 6,
-  complex: 27,
+  complex: 25,
 };
 
 export function auditAllPlans(): PlanAudit[] {

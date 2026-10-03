@@ -35,6 +35,16 @@ import { compareIds } from '../sortOrder';
  * hart kodiert. Die Checker geben Verletzungslisten zurück; die Testsuite
  * (`invariants.test.ts`) macht daraus CI-Blocker.
  *
+ * ADR 0033 / Auftrag Punkt 1 (2026-10-03): I3 ist über die sechs
+ * Referenzpläne **0** (I1, I2 und I4–I7 ebenfalls) — hergestellt durch den
+ * Trenngang `components/edges/utils/separation.ts` als Abschluss der
+ * Trassenführung (streng sinkende Verstoßzahl, Wächter gegen neue
+ * Hindernisse/Kreuzungen/Umweg), den Locus-Zuordnungs-Fix in
+ * `rules/portBundle.ts` und die Korridor-Korrektur der Vorlage
+ * (`rules/portCapacity.ts`). Die Ratchet in
+ * `scripts/routing/finalValidationRatchet.ts` steht auf 0 und darf nur
+ * sinken — die Checker selbst bleiben unverändert scharf.
+ *
  * ADR 0019 / AUDIT ROUTE-003 (Fix 2026-09-08): I1/I2/I3 besitzen KEINE eigene
  * Kollisions-/Abstandsbegriffswelt mehr. Die harten Freigabe-Urteile werden
  * aus dem geteilten Modell `rules/collision.ts` abgeleitet — hard ist I1/I2,

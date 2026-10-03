@@ -44,7 +44,27 @@ Legende Severity: **hoch** = Agent kann falschen Code ändern / falsche Sicherhe
 
 ---
 
-## ROUTE-008 — I3-Rest: 49 echte Freigabe-Unterschreitungen über die Referenzpläne
+## ROUTE-008 — GELÖST (2026-10-03, ADR 0033): I3 = 0 über alle Referenzpläne
+
+- **STATUS:** geschlossen. Σ I3 49 → **0** (simple/camper/solar/inverter/acdc/complex), dazu
+  I1 = I2 = I4–I7 = 0 und camper-I2 1 → 0 (`npm run routing:audit`, Exit 0 ohne Hinweis).
+  Drei gemessene Ursachen behoben: (1) der Trenngang `separateCableClearance` stellt die
+  Freigabe als Abschluss der Trassenführung her (streng sinkende Verstoßzahl, Wächter gegen
+  neue Hindernisse/Kreuzungen/Umweg), (2) `closestLocusArcs` maß im senkrechten Zweig den
+  Bogen auf dem falschen Pfad (NaN ⇒ legitime Bündel-Nähe zählte als Verstoß), (3) die
+  Vorlage `TEMPLATE_AUTARK` hatte am Minus-Port ein übervolles Bündel (48 px Korridor,
+  vier Leitungen brauchen 72 px) — `busbar-plus` 500→496, `busbar-minus` 680→688. Ratchets
+  auf 0 nachgezogen (`FINAL_VALIDATION_RATCHET`), Kreuzungen complex 27→25. Details:
+  `docs/adr/0033-trenngang-korridor-kapazitaet.md`, Change Ledger 2026-10-03 (33. Fassung).
+- **RESTRISIKO:** Der Trenngang arbeitet lokal (ein Segment je Zug, `maxRounds` 200);
+  strukturelle Fälle (beide Segmente Stubs, alle Lanes durch Hindernisse belegt) bleiben
+  Aufgabe der Platzierung. Neuer Wächter: `scripts/routing/portCapacity.test.ts` misst die
+  Port-Bündel der sechs Pläne gegen die Korridor-Kapazität und führt die eine verbliebene
+  Über-Kapazität (`camper`, Minus-Schiene, K = 4 / Kapazität 3 — läuft sauber) in einer
+  begründeten Liste.
+
+<details>
+<summary>Historische Fassung (Stand vor ADR 0033)</summary>
 
 - **AREA:** Routing / Invarianten
 - **FILE:** `lib/routing/invariants.ts` (`checkClearance`),
@@ -85,6 +105,8 @@ Legende Severity: **hoch** = Agent kann falschen Code ändern / falsche Sicherhe
   `lib/routing/invariants.test.ts` (ADR-0031-Regression),
   `scripts/routing/finalValidation.test.ts`, `scripts/routing/shiftInvariance.test.ts`
 - **RELATED ISSUE:** ADR 0031, ADR 0025, ADR 0009, ADR 0015; ROUTE-002 Teil 2b/3, ROUTE-006
+
+</details>
 
 ---
 

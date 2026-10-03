@@ -299,8 +299,8 @@ export const TEMPLATE_AUTARK = {
       position: { x: 380, y: 240 },
       data: { label: 'DC-DC Ladebooster', amps: 30 },
     },
-    { id: 'busbar-plus', type: 'busbar', position: { x: 380, y: 500 }, data: { label: 'Plus Busbar' } },
-    { id: 'busbar-minus', type: 'busbar', position: { x: 380, y: 680 }, data: { label: 'Minus Busbar' } },
+    { id: 'busbar-plus', type: 'busbar', position: { x: 380, y: 496 }, data: { label: 'Plus Busbar' } },
+    { id: 'busbar-minus', type: 'busbar', position: { x: 380, y: 688 }, data: { label: 'Minus Busbar' } },
     { id: 'fusebox-1', type: 'fuse', position: { x: 680, y: 200 }, data: { label: 'Sicherungskasten' } },
     // AUDIT ELE-001: Die absicherbare Grenze des Modells ist 70 mm² mit
     // max. 100 A (FUSE_MAP, 70 % der Tabellen-Belastbarkeit). Der

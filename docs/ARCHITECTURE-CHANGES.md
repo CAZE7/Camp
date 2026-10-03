@@ -2383,3 +2383,85 @@ Recapture beider Pfade (Referenzpositionen UND Versatz-Matrix).
 4. **Diagnose-Vereinheitlichung:** `audit.ts` zählt Selbstüberlappungen jetzt
    über `hasSelfOverlap` (eine Wahrheit — die hiesige Eigenimplementierung
    hatte dieselbe Adjazenz-Lücke).
+
+### 2026-10-03 — Dreiunddreißigste Fassung: Kabel-Freigabe als Garantie (ADR 0033)
+
+**Auftrag Punkt 1: „Routing I3 vollständig auf 0".** Ausgangslage Σ 49
+Meldungen (simple 2, camper 7, solar 1, inverter 7, acdc 7, complex 25) plus
+camper-I2 = 1. Endstand: **I1–I7 = 0 auf allen sechs Plänen**, `npm run
+routing:audit` Exit 0 ohne Hinweis, `FINAL_VALIDATION_RATCHET` auf 0/0/0/0/0/0.
+
+1. **Trenngang (neu, `components/edges/utils/separation.ts`).** Abschluss der
+   Trassenführung in `routeAllCables` (nach `const order = …`): bewertet
+   Verstöße mit derselben Regel wie das Gate (Kollisionsmodell +
+   `isPortBundleProximity`), verschiebt ausschließlich innere Segmente,
+   verbindet über `stitchOrthogonal` neu und nimmt nur Züge mit **streng
+   sinkender Verstoßzahl** an. Zusätzliche Wächter: kein neuer Hindernis-Treffer
+   (I1), keine neue Kreuzung (Ratchet), kein Umweg (zwei globale Durchgänge:
+   erst längenneutral, dann verlängernd). Ohne Layout-Änderung: camper 7→0,
+   inverter 7→0, acdc 7→2, complex 25→3, camper-I2 1→0. Ein dritter Durchlauf
+   („Längen-Nachlauf“) nimmt danach nur noch **kürzende** Züge an, die die
+   Freigabe nicht verschlechtern — er senkt die Umweg-Kosten des Hauptlaufs
+   (inverter −170,4 px, acdc −64 px, simple/camper je −32 px).
+2. **Locus-Fix (`rules/portBundle.ts`).** `closestLocusArcs` ordnete im
+   senkrechten Zweig die Kandidatenpunkte dem falschen Pfad zu (`hs`/`vs`
+   vertauscht) ⇒ `arcAt` → `NaN` ⇒ legitime Bündel-Nähe zählte als I3
+   (gemessen complex: `e-fuse-fridge ↔ e-fuse-fan`, 2 px, Bögen 38/40 im
+   68-px-Korridor). Fix + zwei Regressionstests (positiv/negativ).
+3. **Korridor-Kapazität (`rules/portCapacity.ts`).** Neues Regelmodul mit den
+   Formeln `stubMin + (K−1)·laneGrid` (nötig) und `1 + ⌊(frei − stubMin)/laneGrid⌋`
+   (Kapazität). `TEMPLATE_AUTARK` (Referenzplan `complex`) hatte am Minus-Port
+   48 px freien Korridor für vier Leitungen (nötig 72 px) ⇒ zwei
+   4-px-Parallelläufe (`e-auto-2↔e-auto-7`, `e-auto-3↔e-auto-8`). Vorlage
+   korrigiert: `busbar-plus` 500→496, `busbar-minus` 680→688 (kein Bündel der
+   sechs Pläne über Kapazität; Test + dokumentierte Ausnahmeliste für camper).
+4. **Messwerte nach der Änderung.** Kreuzungen **1/4/2/2/6/25** (complex
+   27→25, simple 2→1, camper 5→4; `CROSSING_RATCHET` nachgezogen); Länge
+   2665/3677/3200/3710/5646/8646 px — Summe 27 798,8 → 27 544,4 px (−254,4 px,
+   −0,9 %), einziger Zuwachs `complex` 8601,6→8645,6 (+44 px, Preis der
+   Vorlagenkorrektur), größte Senkung `inverter` −170,4 px (`BASELINE_PX`
+   nachgezogen). Versatz-Matrix I3 25/26/0/10/24/0 statt 130/469/45/75/180/1225,
+   I2 0/6/0/0/2/0 (`SHIFT_RATCHET` nachgezogen). Nebenrechnungen, die mitziehen
+   mussten: Port-Bündel-Paare complex 15→12 (Σ 47→44,
+   `portBundleModel.test.ts`), Domänen-Sonde `tooClose` Σ 23→16
+   (`domainProbe.test.ts`), engstes gemischtes Paar 0,8 px → 12 px. Der
+   ADR-0031-Restfall (`solar`, `e-auto-1↔e-auto-10`) ist jetzt ein legitimer
+   Port-Bündel-Fall; der Nachfolgetest prüft das positiv und stellt einen
+   synthetischen Ecken-Kontakt ohne gemeinsamen Port als Gegenprobe daneben.
+   Stress-Szene p02: Kreuzungen 5→3, Clearance-Verstöße 20→2, Länge 7268 =
+   Baseline.
+5. **Neuerfassungen.** `knownPlans/*.json` (AutoWire/Electrical byte-identisch
+   außer `complex`, dort AutoWire wegen der Vorlagenpositionen; Routen
+   geändert: simple 3/9, camper 4/12, solar 1/11, inverter 3/10, acdc 3/14,
+   complex 16/23) und `scripts/regression/goldenLayouts.json` + SVG p02
+   (Begründung s. o.: messbar besser, nicht schlechter). Beide Pfade sind im
+   PR zu begründen.
+6. **Verworfene Auswahlregeln** (dokumentiert, damit sie nicht wiederkehren):
+   „bester Kandidat statt erster Treffer“ (größter Abbau / kleinstes Delta /
+   größter Abstand) lässt `complex` mit einem Rest-I3 stehen — gemessen, nicht
+   geschätzt.
+7. **Laufzeit (Punkt 1 mit Punkt 2 versöhnt).** Der erste Einbau des
+   Trenngangs hob das 500-Knoten-Spannkanten-Szenario auf 10 901 ms (Kriterium
+   des Auftrags: < 10 s) und das dichte 250-Knoten-Szenario von 291 ms auf
+   10 939 ms. Ursache waren drei getrennte Durchgänge über jedes Segmentpaar,
+   volle Pfad-Bilanzen je Kandidat und ein Hindernis-Scan je Kandidat über alle
+   Bauteile. Gemessene, ergebnisidentische Gegenmaßnahmen: EIN
+   Klassifikations-Durchgang je Paar (`measureBetween`), Hüllbox-Vorprüfungen
+   auf Pfad- und Bauteilebene, „vorher"-Bilanz je Zug einmal statt je Kandidat,
+   Frühausstieg, Längenprüfung vor den abgeleiteten Objekten, entfallene
+   Abstands-Summe (wurde nicht mehr gelesen). Ergebnis (Median,
+   `npm run perf:route-scaling` / `benchmarks/routeAllWorstCase.probe.ts 500`):
+   **500 Knoten 10 901 → 5 741 ms** (Stand ohne Trenngang 5 110 ms), **250 Knoten
+   dicht 10 939 → 2 568 ms**, Kette 10/50/100/250/500 = 1,7/13,7/13,7/62,0/198,5 ms.
+   Beweis der Ergebnisgleichheit: goldene Meister byte-identisch,
+   `test:regression` unverändert (53), Audit-Zahlen unverändert (I1–I7 = 0,
+   dieselben Längen/Kreuzungen). Ein Zwischenweg — nur gegen die
+   „Änderungs-Region" bilanzieren — war schneller, aber NICHT ergebnisidentisch
+   (Stitching verschmilzt kollineare Segmente, und der Klassifikator zählt je
+   Segmentpaar: acdc I2+I3 = 3, complex 7, Kreuzungen 26) und wurde verworfen.
+8. **Neue Tests.** `components/edges/utils/separation.test.ts` (8 Fälle:
+   Determinismus, Eingabereihenfolge, Fixpunkt, feste Ports, keine neuen
+   Hindernis-Treffer, Kreuzungs-Wächter, Schwellenverhalten),
+   `scripts/routing/portCapacity.test.ts` (5 Fälle: Token-Arithmetik,
+   Monotonie, gemessener Anlass, Referenzplan-Bündel + Ausnahmeliste), zwei
+   neue Locus-Fälle in `lib/routing/rules/portBundle.test.ts`.

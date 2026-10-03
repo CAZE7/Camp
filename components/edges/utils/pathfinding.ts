@@ -591,8 +591,12 @@ const distanceAlongAxis = (from: Point, dir: Point, boxes: readonly Rect[]): num
  * unterschiedlich lange Stubs behalten. Sie behebt die kollineare Trasse
  * `e-auto-2 ↔ e-auto-3` nicht, kostet aber complex +1 I2, +5 I3, +2 I6,
  * +2 I7, Kreuzungen 29 → 38 und inverter +1 I2. Die harte Kappung bleibt.
+ *
+ * Die Formel dahinter (wie viel Korridor braucht ein Bündel von K Kabeln?)
+ * steht als reine Token-Arithmetik in `lib/routing/rules/portCapacity.ts` —
+ * dieselbe Quelle für Platzierung, Referenzplan-Prüfung und Diagnose.
  */
-const stubCapFor = (from: Point, outward: Point, boxes: readonly Rect[]): number => {
+export const stubCapFor = (from: Point, outward: Point, boxes: readonly Rect[]): number => {
   const distance = distanceAlongAxis(from, outward, boxes);
   if (!Number.isFinite(distance)) return Number.POSITIVE_INFINITY;
   return Math.max(ROUTE_MIN_STUB, distance - ROUTING_TOKENS.cableClearance);
