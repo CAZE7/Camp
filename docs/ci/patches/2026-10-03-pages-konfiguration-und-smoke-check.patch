@@ -1,0 +1,174 @@
+diff --git a/.github/workflows/deploy.yml b/.github/workflows/deploy.yml
+index af71ced..016846d 100644
+--- a/.github/workflows/deploy.yml
++++ b/.github/workflows/deploy.yml
+@@ -108,8 +108,22 @@ jobs:
+       - name: Pages konfigurieren
+         id: pages
+         uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
+-        with:
+-          static_site_generator: next
++        # BEWUSST OHNE `with: static_site_generator:` — Befund vom 2026-10-03:
++        # Mit diesem Eingang patcht die Action die Framework-Konfiguration
++        # (src/set-pages-config.js der Action). Sie kennt nur `.js`, `.cjs` und
++        # `.mjs` — bei ausschließlich `next.config.ts` legt sie deshalb eine
++        # eigene `next.config.js` an. Next lädt `next.config.js` VOR
++        # `next.config.ts` (CONFIG_FILES in next/dist/shared/lib/constants),
++        # der Build lief also ohne `trailingSlash: true`: Der Export lag flach
++        # als `x.html` vor, während Sitemap, Canonicals und interne Verweise
++        # `/x/` ankündigten. Alle 25 Unterseiten (Adressen außer der Startseite) antworteten live mit 404,
++        # während der Build grün blieb (die Prüfung akzeptierte auch die flache
++        # Datei für die Adresse mit Schrägstrich).
++        # Ohne den Eingang liefert die Action nur Basis-Pfad und `GITHUB_PAGES`
++        # (src/index.js: `if (staticSiteGenerator) …`) — der Build nutzt damit
++        # die committete Konfiguration unverändert. Wächter: die Tests
++        # „configure-pages patcht keine Next-Konfiguration" und „Next-Konfiguration
++        # liegt in einer Endung ohne Schattenkopie" in scripts/ci/workflows.test.ts.
+ 
+       - name: Build (Static Export)
+         env:
+@@ -218,6 +232,50 @@ jobs:
+           fi
+           echo "✔ Asset erreichbar: ${SMOKE_ASSET}"
+ 
++          # ── Unterseiten: jede Adresse der Sitemap einzeln ───────────────
++          # Alles oberhalb prüft ausschließlich die Startseite. Genau deshalb
++          # war dieser Check am 2026-10-03 grün, während alle 25 Unterseiten
++          # mit 404 antworteten: Die Auslieferung lag in der flachen Form
++          # (`x.html`) vor, alle Adressen in Sitemap und Verweisen enden aber
++          # auf `/` — und GitHub Pages beantwortet eine Adresse mit
++          # Schrägstrich nur aus `x/index.html`. Die Sitemap ist die Liste
++          # dessen, was Suchmaschinen angeboten wird; sie wird deshalb
++          # vollständig abgefragt, bevor der Deploy als erfolgreich gilt.
++          LOCS=""
++          ATTEMPT=0
++          while [ "${ATTEMPT}" -lt 12 ]; do
++            ATTEMPT=$((ATTEMPT + 1))
++            LOCS=$(curl -s -L --max-time 20 "${DEPLOYED_URL}sitemap.xml" | grep -o '<loc>[^<]*</loc>' | sed -E 's#</?loc>##g' || true)
++            if [ -n "${LOCS}" ]; then break; fi
++            sleep 5
++          done
++          if [ -z "${LOCS}" ]; then
++            echo "::error::Die Sitemap ist unter ${DEPLOYED_URL}sitemap.xml nicht abrufbar — Unterseiten können so nicht geprüft werden."
++            exit 1
++          fi
++          ROUND=0
++          FAILED=""
++          CHECKED=0
++          while [ "${ROUND}" -lt 4 ]; do
++            ROUND=$((ROUND + 1))
++            FAILED=""
++            CHECKED=0
++            for LOC in ${LOCS}; do
++              STATUS=$(curl -s -o /dev/null -w "%{http_code}" -L --max-time 20 "${LOC}" || echo 000)
++              CHECKED=$((CHECKED + 1))
++              if [ "${STATUS}" != "200" ]; then
++                FAILED="${FAILED} ${STATUS}:${LOC}"
++              fi
++            done
++            if [ -z "${FAILED}" ]; then break; fi
++            sleep 5
++          done
++          if [ -n "${FAILED}" ]; then
++            echo "::error::${CHECKED} Sitemap-Adressen geprüft, diese antworten nicht mit 200:${FAILED} (nach ${ROUND} Versuchen). Form der Auslieferung und basePath prüfen."
++            exit 1
++          fi
++          echo "✔ Alle ${CHECKED} Adressen der Sitemap antworten mit 200."
++
+       - name: Zusammenfassung
+         run: |
+           {
+@@ -229,5 +287,5 @@ jobs:
+             echo "| Größe | ${{ needs.build.outputs.artifact_size }} |"
+             echo "| Seiten | ${{ needs.build.outputs.page_count }} |"
+             echo "| Commit | \`${{ github.sha }}\` |"
+-            echo "| Smoke-Check | ✅ ausgelieferte Bundles = gebaute Bundles, Asset 200 |"
++            echo "| Smoke-Check | ✅ ausgelieferte Bundles = gebaute Bundles, Asset 200, alle Sitemap-Adressen 200 |"
+           } >> "$GITHUB_STEP_SUMMARY"
+diff --git a/docs/ci/workflows/deploy.yml b/docs/ci/workflows/deploy.yml
+index af71ced..016846d 100644
+--- a/docs/ci/workflows/deploy.yml
++++ b/docs/ci/workflows/deploy.yml
+@@ -108,8 +108,22 @@ jobs:
+       - name: Pages konfigurieren
+         id: pages
+         uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
+-        with:
+-          static_site_generator: next
++        # BEWUSST OHNE `with: static_site_generator:` — Befund vom 2026-10-03:
++        # Mit diesem Eingang patcht die Action die Framework-Konfiguration
++        # (src/set-pages-config.js der Action). Sie kennt nur `.js`, `.cjs` und
++        # `.mjs` — bei ausschließlich `next.config.ts` legt sie deshalb eine
++        # eigene `next.config.js` an. Next lädt `next.config.js` VOR
++        # `next.config.ts` (CONFIG_FILES in next/dist/shared/lib/constants),
++        # der Build lief also ohne `trailingSlash: true`: Der Export lag flach
++        # als `x.html` vor, während Sitemap, Canonicals und interne Verweise
++        # `/x/` ankündigten. Alle 25 Unterseiten (Adressen außer der Startseite) antworteten live mit 404,
++        # während der Build grün blieb (die Prüfung akzeptierte auch die flache
++        # Datei für die Adresse mit Schrägstrich).
++        # Ohne den Eingang liefert die Action nur Basis-Pfad und `GITHUB_PAGES`
++        # (src/index.js: `if (staticSiteGenerator) …`) — der Build nutzt damit
++        # die committete Konfiguration unverändert. Wächter: die Tests
++        # „configure-pages patcht keine Next-Konfiguration" und „Next-Konfiguration
++        # liegt in einer Endung ohne Schattenkopie" in scripts/ci/workflows.test.ts.
+ 
+       - name: Build (Static Export)
+         env:
+@@ -218,6 +232,50 @@ jobs:
+           fi
+           echo "✔ Asset erreichbar: ${SMOKE_ASSET}"
+ 
++          # ── Unterseiten: jede Adresse der Sitemap einzeln ───────────────
++          # Alles oberhalb prüft ausschließlich die Startseite. Genau deshalb
++          # war dieser Check am 2026-10-03 grün, während alle 25 Unterseiten
++          # mit 404 antworteten: Die Auslieferung lag in der flachen Form
++          # (`x.html`) vor, alle Adressen in Sitemap und Verweisen enden aber
++          # auf `/` — und GitHub Pages beantwortet eine Adresse mit
++          # Schrägstrich nur aus `x/index.html`. Die Sitemap ist die Liste
++          # dessen, was Suchmaschinen angeboten wird; sie wird deshalb
++          # vollständig abgefragt, bevor der Deploy als erfolgreich gilt.
++          LOCS=""
++          ATTEMPT=0
++          while [ "${ATTEMPT}" -lt 12 ]; do
++            ATTEMPT=$((ATTEMPT + 1))
++            LOCS=$(curl -s -L --max-time 20 "${DEPLOYED_URL}sitemap.xml" | grep -o '<loc>[^<]*</loc>' | sed -E 's#</?loc>##g' || true)
++            if [ -n "${LOCS}" ]; then break; fi
++            sleep 5
++          done
++          if [ -z "${LOCS}" ]; then
++            echo "::error::Die Sitemap ist unter ${DEPLOYED_URL}sitemap.xml nicht abrufbar — Unterseiten können so nicht geprüft werden."
++            exit 1
++          fi
++          ROUND=0
++          FAILED=""
++          CHECKED=0
++          while [ "${ROUND}" -lt 4 ]; do
++            ROUND=$((ROUND + 1))
++            FAILED=""
++            CHECKED=0
++            for LOC in ${LOCS}; do
++              STATUS=$(curl -s -o /dev/null -w "%{http_code}" -L --max-time 20 "${LOC}" || echo 000)
++              CHECKED=$((CHECKED + 1))
++              if [ "${STATUS}" != "200" ]; then
++                FAILED="${FAILED} ${STATUS}:${LOC}"
++              fi
++            done
++            if [ -z "${FAILED}" ]; then break; fi
++            sleep 5
++          done
++          if [ -n "${FAILED}" ]; then
++            echo "::error::${CHECKED} Sitemap-Adressen geprüft, diese antworten nicht mit 200:${FAILED} (nach ${ROUND} Versuchen). Form der Auslieferung und basePath prüfen."
++            exit 1
++          fi
++          echo "✔ Alle ${CHECKED} Adressen der Sitemap antworten mit 200."
++
+       - name: Zusammenfassung
+         run: |
+           {
+@@ -229,5 +287,5 @@ jobs:
+             echo "| Größe | ${{ needs.build.outputs.artifact_size }} |"
+             echo "| Seiten | ${{ needs.build.outputs.page_count }} |"
+             echo "| Commit | \`${{ github.sha }}\` |"
+-            echo "| Smoke-Check | ✅ ausgelieferte Bundles = gebaute Bundles, Asset 200 |"
++            echo "| Smoke-Check | ✅ ausgelieferte Bundles = gebaute Bundles, Asset 200, alle Sitemap-Adressen 200 |"
+           } >> "$GITHUB_STEP_SUMMARY"
