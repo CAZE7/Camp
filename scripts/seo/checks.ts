@@ -105,6 +105,72 @@ export function internalLinkTargets(html: string, origin: string, basePath = '')
 }
 
 /**
+ * Große Abhängigkeiten aus dem Planer-Umfeld. Sie dürfen auf statischen
+ * Inhaltsseiten nicht im Erstaufbau landen: Ein Kabelquerschnitt-Ratgeber, der
+ * elkjs oder GSAP lädt, kostet auf Mobilfunk hunderte Kilobyte für eine
+ * Leistung, die er nicht erbringt.
+ *
+ * Die Kennungen sind bewusst spezifisch (kein „ELK" — das wäre in einem
+ * 1,4-MB-Bündel ein Zufallstreffer): gesucht wird nach Bibliotheksnamen, die
+ * nur in der jeweiligen Abhängigkeit vorkommen.
+ */
+export const HEAVY_LIBRARIES = [
+  { name: 'elkjs', markers: ['org.eclipse.elk', 'elkjs'] },
+  { name: 'dagre', markers: ['dagre'] },
+  { name: 'react-flow', markers: ['@xyflow', 'reactflow'] },
+  { name: 'gsap', markers: ['gsap', 'GreenSock'] },
+] as const;
+
+export type HeavyLibrary = (typeof HEAVY_LIBRARIES)[number]['name'];
+
+/** Quelladressen aller `<script src=…>`-Elemente einer Seite. */
+export function scriptSources(html: string): string[] {
+  return [...html.matchAll(/<script[^>]*\ssrc="([^"]+)"/gi)].map((match) => unescapeHtml(match[1]!));
+}
+
+/**
+ * Namen der großen Abhängigkeiten, die eine Seite lädt.
+ *
+ * `resolveChunk` liefert den Inhalt eines Bündels zu einer Quelladresse (oder
+ * `null`, wenn die Datei nicht existiert). Als reine Funktion bleibt die
+ * Erkennung ohne Dateisystem prüfbar.
+ */
+export function heavyLibrariesLoaded(
+  html: string,
+  resolveChunk: (source: string) => string | null
+): HeavyLibrary[] {
+  const loaded = new Set<HeavyLibrary>();
+  for (const source of scriptSources(html)) {
+    const code = resolveChunk(source);
+    if (code === null) continue;
+    for (const library of HEAVY_LIBRARIES) {
+      if (library.markers.some((marker) => code.includes(marker))) loaded.add(library.name);
+    }
+  }
+  return [...loaded].sort();
+}
+
+/**
+ * Prüft, dass eine Inhaltsseite ohne die schweren Planer-Abhängigkeiten
+ * auskommt. `allowed` nennt die Ausnahmen je Seite — eine Werkzeugseite darf
+ * ihre eigene Bibliothek laden, eine Textseite keine.
+ */
+export function checkHeavyLibraries(
+  file: string,
+  html: string,
+  options: { resolveChunk: (source: string) => string | null; allowed?: readonly HeavyLibrary[] }
+): Finding[] {
+  const allowed = new Set(options.allowed ?? []);
+  const loaded = heavyLibrariesLoaded(html, options.resolveChunk).filter((library) => !allowed.has(library));
+  return loaded.map((library) => ({
+    severity: 'fehler' as const,
+    file,
+    rule: 'bundle-schwer',
+    message: `${library} wird auf einer Inhaltsseite geladen — gehört nur in Werkzeug-Ansichten.`,
+  }));
+}
+
+/**
  * Prüft eine Seite gegen die Regeln, die für sie allein entscheidbar sind.
  *
  * @param file    Datei im Export (für die Meldung)

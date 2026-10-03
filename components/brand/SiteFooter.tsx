@@ -1,8 +1,19 @@
 import Link from 'next/link';
 
+/**
+ * Fußnavigation: die Wissensseiten und die rechtlichen Pflichtseiten.
+ *
+ * Sie ist die zweite Verbindung zwischen den Bereichen — jede Seite der
+ * Auslieferung verweist damit auf das Elektrik-Thema, die Rechnerübersicht und
+ * die Vertrauensseite. Eine SEO-Seite ohne eingehenden Verweis kann so nicht
+ * entstehen (Wächter: `scripts/seo/auditExport.ts`).
+ */
 const FOOTER_LINKS = [
   { href: '/', label: 'Startseite' },
+  { href: '/camper-elektrik', label: 'Camper-Elektrik' },
+  { href: '/rechner', label: 'Rechner' },
   { href: '/guides/ausbau-fahrplan', label: 'Ausbau-Fahrplan' },
+  { href: '/ueber-werft', label: 'Über Werft' },
   { href: '/impressum', label: 'Impressum' },
   { href: '/datenschutz', label: 'Datenschutz' },
 ];

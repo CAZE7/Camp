@@ -1,31 +1,19 @@
 import { describe, expect, it } from 'vitest';
 
+import { indexablePages, nonIndexablePages, SITEMAP_ROUTES } from '@/lib/seo/inventory';
 import { siteUrl } from '@/lib/site';
 
 import sitemap from './sitemap';
 
 const ERLAUBTE_FREQUENZEN = ['always', 'hourly', 'daily', 'weekly', 'monthly', 'yearly', 'never'];
 
-/** Seiten, die im Index stehen sollen — genau diese gehören in die Sitemap. */
-const INDEXIERBARE_SEITEN = [
-  '/',
-  '/elektrik-planung/',
-  '/tools/dach/',
-  '/tools/heizung/',
-  '/guides/ausbau-fahrplan/',
-  '/guides/camper-ausbauguide/',
-  '/guides/holzausbau/',
-  '/impressum/',
-  '/datenschutz/',
-];
-
 /**
- * Ansichten ohne eigenen Inhalt für Ergebnislisten: Sie tragen `noindex`
- * (`pageMetadata`) und dürfen deshalb nicht in der Sitemap auftauchen — eine
- * Sitemap, die nicht indexierte Adressen anbietet, ist ein Widerspruch.
+ * Die Sitemap entsteht aus dem Seiteninventar. Geprüft wird deshalb beides:
+ * dass sie die Zusage der Auslieferung einhält (Basis-Pfad, keine
+ * Zeitstempel, gültige Werte) und dass sie zum Inventar passt — eine
+ * indexierbare Seite ohne Sitemap-Eintrag ist ein Fehler, ein Eintrag ohne
+ * Indexierbarkeit ebenfalls.
  */
-const NICHT_IN_DER_SITEMAP = ['/design-system/', '/ki-assistent/'];
-
 describe('sitemap', () => {
   const entries = sitemap();
 
@@ -56,16 +44,25 @@ describe('sitemap', () => {
     }
   });
 
-  it('enthält genau die indexierbaren Seiten', () => {
+  it('enthält genau die indexierbaren Seiten des Inventars', () => {
     expect(entries.map((entry) => entry.url).sort()).toEqual(
-      INDEXIERBARE_SEITEN.map((path) => siteUrl(path)).sort()
+      indexablePages()
+        .map((page) => siteUrl(page.path))
+        .sort()
     );
   });
 
   it('bietet keine Seite an, die auf noindex steht', () => {
     const urls = entries.map((entry) => entry.url);
-    for (const path of NICHT_IN_DER_SITEMAP) {
-      expect(urls).not.toContain(siteUrl(path));
+    for (const page of nonIndexablePages()) {
+      expect(urls).not.toContain(siteUrl(page.path));
+    }
+  });
+
+  it('führt jede Route mit Änderungsfrequenz und Priorität', () => {
+    for (const route of SITEMAP_ROUTES) {
+      expect(ERLAUBTE_FREQUENZEN).toContain(route.changeFrequency);
+      expect(route.priority).toBeGreaterThan(0);
     }
   });
 });

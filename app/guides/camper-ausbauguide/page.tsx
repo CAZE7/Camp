@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import React from 'react';
 import Link from 'next/link';
-import RoadTripAnimation from './RoadTripAnimation';
+import RoadTripAnimationLazy from './RoadTripAnimationLazy';
 import { SiteHeader } from '@/components/brand/SiteHeader';
 import { SiteFooter } from '@/components/brand/SiteFooter';
 import { cn } from '@/lib/utils';
@@ -29,8 +29,8 @@ export default function CamperAusbauguide() {
     <div className="flex min-h-screen flex-col bg-paper text-ink">
       <SiteHeader />
       <div id="ausbau-page" className="relative flex-1 overflow-hidden bg-paper px-4 pb-24 pt-12 sm:px-6">
-        {/* GSAP Animation Sidebar / Background track */}
-        <RoadTripAnimation />
+        {/* GSAP-Animation als Hintergrundspur — nachgeladen, siehe Wrapper */}
+        <RoadTripAnimationLazy />
 
         {/* Main Content Area - Shifted slightly to the right to make room for the fixed animation on larger screens */}
         <main id="main" className="relative z-20 mx-auto max-w-3xl lg:ml-56 xl:mx-auto">
@@ -403,6 +403,47 @@ export default function CamperAusbauguide() {
                   Sicherung schützt das KABEL vor dem Durchschmoren, nicht das Endgerät!
                 </p>
               </div>
+
+              {/* Brücke vom Ratgeber in das Elektrik-Thema: Der Guide erklärt die
+                  Reihenfolge, die Themenseiten rechnen die Werte aus (§11). */}
+              <aside className="mt-10 border border-rule bg-bone p-6" aria-labelledby="guide-elektrik-titel">
+                <h3
+                  id="guide-elektrik-titel"
+                  className={cn('text-xl font-semibold text-ink', outfit.className)}
+                >
+                  Weiterlesen: Elektrik im Detail
+                </h3>
+                <p className="mt-2 text-base leading-relaxed text-ink-soft">
+                  Kabelquerschnitt, Sicherung und Spannungsfall hängen zusammen — diese Seiten rechnen sie
+                  einzeln durch, mit Formel, Normreihe und Beispiel:
+                </p>
+                <ul className="mt-4 space-y-2">
+                  <li>
+                    <Link
+                      href="/camper-elektrik/kabelquerschnitt/"
+                      className="underline underline-offset-2 hover:text-ink"
+                    >
+                      Kabelquerschnitt für 12 V berechnen
+                    </Link>
+                    <span className="text-ink-soft"> — Formel, Normreihe und Rechner.</span>
+                  </li>
+                  <li>
+                    <Link
+                      href="/camper-elektrik/sicherungen/"
+                      className="underline underline-offset-2 hover:text-ink"
+                    >
+                      Sicherung und Leitung richtig paaren
+                    </Link>
+                    <span className="text-ink-soft"> — Ort, Größe und Abschaltvermögen.</span>
+                  </li>
+                  <li>
+                    <Link href="/elektrik-planung/" className="underline underline-offset-2 hover:text-ink">
+                      Anlage im Camper-Elektroplaner zeichnen
+                    </Link>
+                    <span className="text-ink-soft"> — jede Leitung geprüft, Stückliste inklusive.</span>
+                  </li>
+                </ul>
+              </aside>
 
               <hr className="my-12 border-rule" />
 

@@ -1,0 +1,269 @@
+%PDF-1.7
+%âãÏÓ
+1 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+2 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Courier /Encoding /WinAnsiEncoding >>
+endobj
+4 0 obj
+<< /Length 5792 >>
+stream
+BT /F2 21 Tf 1 0 0 1 56.00 756.89 Tm (Camp SEO - Analyse und Vision) Tj ET
+BT /F1 11 Tf 1 0 0 1 56.00 734.54 Tm (Suchraum, Befunde und Zielbild für die organische Sichtbarkeit - Stand 2026-10-03 - Commit) Tj ET
+BT /F1 11 Tf 1 0 0 1 56.00 718.04 Tm (1d4137a) Tj ET
+BT /F1 9 Tf 1 0 0 1 56.00 689.54 Tm (Stand: 2026-10-03 - Commit: `1d4137a` \(2026-10-03\) - Grundlage: gebauter Static Export unter `out/`, ohne) Tj ET
+BT /F1 9 Tf 1 0 0 1 56.00 676.04 Tm (JavaScript gemessen.) Tj ET
+BT /F2 14 Tf 1 0 0 1 56.00 640.54 Tm (Ausgangslage) Tj ET
+0.85 0.85 0.85 RG 0.8 w 56 632.54 m 539.28 632.54 l S
+BT /F1 10 Tf 1 0 0 1 56.00 614.54 Tm (Camp ist ein Planungswerkzeug: Der Nutzer zeichnet seine 12-V-Anlage, das Werkzeug prüft jede Leitung) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 599.54 Tm (gegen Strombelastbarkeit, Spannungsfall und Sicherung und erzeugt daraus eine Stückliste. Das ist ein) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 584.54 Tm (starkes Ziel für Besucher mit einer konkreten Absicht - aber es ist kein Einstieg. Wer "kabelquerschnitt 12v) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 569.54 Tm (camper" sucht, will zuerst wissen, wie gerechnet wird, nicht sofort zeichnen. Zwischen dieser Frage und) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 554.54 Tm (dem Planer lag vor dieser Arbeit nichts: Die Auslieferung hatte neun indexierbare Seiten, und keine einzige) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 539.54 Tm (beantwortete eine 12-V-Fachfrage.) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 519.54 Tm (Die Messung des gebauten Exports bestätigt das: Die Startseite hatte 186 Wörter ohne JavaScript, die) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 504.54 Tm (Werkzeugseiten 207 \(Dach\) und 436 \(Heizung\) Wörter und keine einzige Zwischenüberschrift. Es gab keine) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 489.54 Tm (Pillar-Seite, keine Rechnerseite mit erklärendem Text, keine Vertrauensseite und keine Verlinkung zwischen) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 474.54 Tm (den Bereichen. Gleichzeitig - und das ist der wichtigste Befund - war die technische Zusage intakt: genau) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 459.54 Tm (eine H1 je Seite, vollständiger Inhalt ohne JavaScript, gültige strukturierte Daten, Sitemap und Robots in) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 444.54 Tm (Ordnung. Das Problem war nicht die Technik, sondern die Sprache: Es fehlten Seiten für die Fragen der) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 429.54 Tm (Nutzer.) Tj ET
+BT /F2 14 Tf 1 0 0 1 56.00 393.54 Tm (Der Suchraum) Tj ET
+0.85 0.85 0.85 RG 0.8 w 56 385.54 m 539.28 385.54 l S
+BT /F1 10 Tf 1 0 0 1 56.00 367.54 Tm (Der Suchraum zerfällt in fünf Absichten, die unterschiedliche Seitentypen verlangen. Die Zuordnung ist die) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 352.54 Tm (Grundlage der Informationsarchitektur.) Tj ET
+0.94 0.94 0.94 rg 56 322.84 483.28 19.70 re f 0 g
+BT /F2 9 Tf 1 0 0 1 60.00 329.54 Tm (Absicht) Tj ET
+BT /F2 9 Tf 1 0 0 1 122.83 329.54 Tm (Beispielfrage) Tj ET
+BT /F2 9 Tf 1 0 0 1 258.14 329.54 Tm (Seitentyp) Tj ET
+BT /F2 9 Tf 1 0 0 1 403.13 329.54 Tm (Weg danach) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 322.84 m 539.28 322.84 l S
+BT /F1 9 Tf 1 0 0 1 60.00 309.84 Tm (Rechnen) Tj ET
+BT /F1 9 Tf 1 0 0 1 122.83 309.84 Tm ("kabelquerschnitt 12v) Tj ET
+BT /F1 9 Tf 1 0 0 1 122.83 298.14 Tm (berechnen") Tj ET
+BT /F1 9 Tf 1 0 0 1 258.14 309.84 Tm (Rechnerseite mit Erklärung,) Tj ET
+BT /F1 9 Tf 1 0 0 1 258.14 298.14 Tm (Formel, Beispiel) Tj ET
+BT /F1 9 Tf 1 0 0 1 403.13 309.84 Tm (Ergebnis in den Planer) Tj ET
+BT /F1 9 Tf 1 0 0 1 403.13 298.14 Tm (übertragen) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 291.44 m 539.28 291.44 l S
+BT /F1 9 Tf 1 0 0 1 60.00 278.44 Tm (Verstehen) Tj ET
+BT /F1 9 Tf 1 0 0 1 122.83 278.44 Tm ("spannungsabfall 12v formel") Tj ET
+BT /F1 9 Tf 1 0 0 1 258.14 278.44 Tm (Clusterseite mit Herleitung,) Tj ET
+BT /F1 9 Tf 1 0 0 1 258.14 266.74 Tm (Tabelle, Grenzen) Tj ET
+BT /F1 9 Tf 1 0 0 1 403.13 278.44 Tm (Querschnitt und Sicherung) Tj ET
+BT /F1 9 Tf 1 0 0 1 403.13 266.74 Tm (auslegen) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 260.04 m 539.28 260.04 l S
+BT /F1 9 Tf 1 0 0 1 60.00 247.04 Tm (Auslegen) Tj ET
+BT /F1 9 Tf 1 0 0 1 122.83 247.04 Tm ("batterie camper berechnen ah") Tj ET
+BT /F1 9 Tf 1 0 0 1 258.14 247.04 Tm (Rechnerseite mit Annahmen und) Tj ET
+BT /F1 9 Tf 1 0 0 1 258.14 235.34 Tm (Quellen) Tj ET
+BT /F1 9 Tf 1 0 0 1 403.13 247.04 Tm (Solar und Verbraucherbilanz) Tj ET
+BT /F1 9 Tf 1 0 0 1 403.13 235.34 Tm (prüfen) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 228.64 m 539.28 228.64 l S
+BT /F1 9 Tf 1 0 0 1 60.00 215.64 Tm (Vergleichen) Tj ET
+BT /F1 9 Tf 1 0 0 1 122.83 215.64 Tm ("lifepo4 oder agm camper") Tj ET
+BT /F1 9 Tf 1 0 0 1 258.14 215.64 Tm (Clusterseite mit Vergleichstabelle) Tj ET
+BT /F1 9 Tf 1 0 0 1 403.13 215.64 Tm (Chemie wählen, Kapazität) Tj ET
+BT /F1 9 Tf 1 0 0 1 403.13 203.94 Tm (rechnen) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 197.24 m 539.28 197.24 l S
+BT /F1 9 Tf 1 0 0 1 60.00 184.24 Tm (Planen) Tj ET
+BT /F1 9 Tf 1 0 0 1 122.83 184.24 Tm ("schaltplan camper 12v") Tj ET
+BT /F1 9 Tf 1 0 0 1 258.14 184.24 Tm (Pillar und Cluster mit Beispielplan) Tj ET
+BT /F1 9 Tf 1 0 0 1 403.13 184.24 Tm (Anlage im Planer zeichnen) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 177.54 m 539.28 177.54 l S
+BT /F1 10 Tf 1 0 0 1 56.00 157.54 Tm (Zwei Absichten fehlen bewusst: "Kaufen" \(Produkt- und Preisvergleiche\) und "Reparieren" \(Fehlersuche an) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 142.54 Tm (bestehenden Anlagen\). Beide gehören nicht zu einem Planungswerkzeug, und beide würden die inhaltliche) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 127.54 Tm (Verantwortung verwässern: Wer Preise nennt, muss sie pflegen; wer Reparaturen beschreibt, muss Fahrzeuge) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 112.54 Tm (kennen, die wir nicht kennen.) Tj ET
+0.5 0.5 0.5 rg BT /F1 8 Tf 1 0 0 1 56 40 Tm (Camp SEO - Analyse und Vision) Tj ET 0 g
+0.5 0.5 0.5 rg BT /F1 8 Tf 1 0 0 1 492.70 40 Tm (Seite 1 von 3) Tj ET 0 g
+endstream
+endobj
+5 0 obj
+<< /Length 6222 >>
+stream
+BT /F2 14 Tf 1 0 0 1 56.00 751.89 Tm (Befunde aus dem Audit) Tj ET
+0.85 0.85 0.85 RG 0.8 w 56 743.89 m 539.28 743.89 l S
+BT /F1 10 Tf 1 0 0 1 56.00 725.89 Tm (-) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 725.89 Tm (Es fehlte die Inhaltsebene: Aus neun indexierbaren Seiten wurden 26 - Pillar, elf Cluster, vier) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 710.89 Tm (Rechner-Landingpages und eine Vertrauensseite.) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 693.89 Tm (-) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 693.89 Tm (Die stärksten Rechner waren nicht adressierbar: Der Kabelquerschnittrechner steckte im Planer, der) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 678.89 Tm (Spannungsabfall hatte keine eigene Rechnerseite, Batterie- und Solarrechnung existierten nur als) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 663.89 Tm (Formeln.) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 646.89 Tm (-) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 646.89 Tm (Die Werkzeuge erklären sich nicht: /tools/dach/ \(207 Wörter\) und /tools/heizung/ \(436 Wörter\) haben) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 631.89 Tm (keine Zwischenüberschrift und keinen erklärenden Text - sie liefern die Funktion, aber nicht die Antwort) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 616.89 Tm (auf "wofür und wie lese ich das?".) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 599.89 Tm (-) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 599.89 Tm (Der Ausbauguide lud GSAP \(rund 136 KB\) im Erstaufbau einer Textseite; die Animation ist Dekoration und) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 584.89 Tm (wird jetzt nachgeladen.) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 567.89 Tm (-) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 567.89 Tm (Es gab keine Vertrauensseite: Wer einem Rechner folgt, will wissen, wie er rechnet, worauf er sich stützt) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 552.89 Tm (und wo er irrt - diese Angaben stehen jetzt auf jeder Seite und gebündelt unter /ueber-werft/.) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 535.89 Tm (-) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 535.89 Tm (Die Verlinkung war sternförmig: Alles hing an der Startseite. Jetzt führt ein Themenbaum von der Pillar in) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 520.89 Tm (die Cluster und von jedem Cluster über ein bis zwei Schritte in den Planer.) Tj ET
+BT /F2 14 Tf 1 0 0 1 56.00 483.89 Tm (Zielbild) Tj ET
+0.85 0.85 0.85 RG 0.8 w 56 475.89 m 539.28 475.89 l S
+BT /F1 10 Tf 1 0 0 1 56.00 457.89 Tm (Die Zielstruktur hat vier Ebenen und eine Richtung: von der Frage zur Zeichnung. Jede Ebene hat genau eine) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 442.89 Tm (Aufgabe, und jede Seite verweist auf die nächste.) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 422.89 Tm (1.) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 422.89 Tm (Pillar \(/camper-elektrik/\): das Thema als Ganzes - Reihenfolge der Auslegung, Überblick über alle) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 407.89 Tm (Unterthemen, Einstieg für "camper elektrik" und "elektrik ausbau".) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 390.89 Tm (2.) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 390.89 Tm (Cluster: je eine Frage - Kabelquerschnitt, Spannungsabfall, Sicherungen, Batterie, LiFePO4, AGM, Solar,) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 375.89 Tm (MPPT, Wechselrichter, 230 V, Schaltplan. Jede Seite rechnet mit denselben Modellwerten wie der Planer.) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 358.89 Tm (3.) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 358.89 Tm (Rechner-Landingpages \(/rechner/?\): die Absicht "berechnen" mit Eingabe, Ergebnis, Einordnung und) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 343.89 Tm (Beispielen - ohne Umweg über den Planer.) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 326.89 Tm (4.) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 326.89 Tm (Werkzeug und Planer: das Ziel. Wer die Werte kennt, zeichnet die Anlage im Planer und lässt sie prüfen -) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 311.89 Tm (dort entstehen Stückliste und Fehlermeldungen.) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 290.89 Tm (Quer dazu stehen zwei Zusagen, die für ein Thema mit Sicherheitsbezug nicht optional sind: Transparenz) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 275.89 Tm (\(Quellen, Annahmen, Grenzen und Stand auf jeder Seite\) und Bescheidenheit \(keine erfundenen Prüfsiegel,) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 260.89 Tm (keine Bewertungen, keine Preise\). Beides ist nicht nur eine Haltung, sondern auch die einzige belastbare) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 245.89 Tm (Grundlage für Sichtbarkeit in einem Themenfeld, in dem falsche Angaben Schaden anrichten können.) Tj ET
+BT /F2 14 Tf 1 0 0 1 56.00 209.89 Tm (Funnel: von der Suche in den Planer) Tj ET
+0.85 0.85 0.85 RG 0.8 w 56 201.89 m 539.28 201.89 l S
+0.94 0.94 0.94 rg 56 174.19 483.28 19.70 re f 0 g
+BT /F2 9 Tf 1 0 0 1 60.00 180.89 Tm (Stufe) Tj ET
+BT /F2 9 Tf 1 0 0 1 122.83 180.89 Tm (Seite) Tj ET
+BT /F2 9 Tf 1 0 0 1 238.81 180.89 Tm (Was der Nutzer tut) Tj ET
+BT /F2 9 Tf 1 0 0 1 412.79 180.89 Tm (Was danach folgt) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 174.19 m 539.28 174.19 l S
+BT /F1 9 Tf 1 0 0 1 60.00 161.19 Tm (Frage) Tj ET
+BT /F1 9 Tf 1 0 0 1 122.83 161.19 Tm (Cluster) Tj ET
+BT /F1 9 Tf 1 0 0 1 238.81 161.19 Tm (liest, rechnet nach, prüft eine Zahl) Tj ET
+BT /F1 9 Tf 1 0 0 1 412.79 161.19 Tm (Link "Im Planer) Tj ET
+BT /F1 9 Tf 1 0 0 1 412.79 149.49 Tm (weiterrechnen") Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 142.79 m 539.28 142.79 l S
+BT /F1 9 Tf 1 0 0 1 60.00 129.79 Tm (Rechnung) Tj ET
+BT /F1 9 Tf 1 0 0 1 122.83 129.79 Tm (Rechner-Landingpage) Tj ET
+BT /F1 9 Tf 1 0 0 1 238.81 129.79 Tm (gibt Werte ein, liest das Ergebnis) Tj ET
+BT /F1 9 Tf 1 0 0 1 412.79 129.79 Tm (Übernahme in die Anlage) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 123.09 m 539.28 123.09 l S
+BT /F1 9 Tf 1 0 0 1 60.00 110.09 Tm (Zeichnung) Tj ET
+BT /F1 9 Tf 1 0 0 1 122.83 110.09 Tm (/elektrik-planung/) Tj ET
+BT /F1 9 Tf 1 0 0 1 238.81 110.09 Tm (legt Leitungen, prüft Fehlermeldungen) Tj ET
+BT /F1 9 Tf 1 0 0 1 412.79 110.09 Tm (Stückliste, Ausdruck) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 103.39 m 539.28 103.39 l S
+BT /F1 9 Tf 1 0 0 1 60.00 90.39 Tm (Vertrauen) Tj ET
+BT /F1 9 Tf 1 0 0 1 122.83 90.39 Tm (/ueber-werft/) Tj ET
+BT /F1 9 Tf 1 0 0 1 238.81 90.39 Tm (prüft Methodik, Quellen, Grenzen) Tj ET
+BT /F1 9 Tf 1 0 0 1 412.79 90.39 Tm (teilt den Link weiter) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 83.69 m 539.28 83.69 l S
+0.5 0.5 0.5 rg BT /F1 8 Tf 1 0 0 1 56 40 Tm (Camp SEO - Analyse und Vision) Tj ET 0 g
+0.5 0.5 0.5 rg BT /F1 8 Tf 1 0 0 1 492.70 40 Tm (Seite 2 von 3) Tj ET 0 g
+endstream
+endobj
+6 0 obj
+<< /Length 5312 >>
+stream
+BT /F1 10 Tf 1 0 0 1 56.00 767.89 Tm (Der Übergang von der Rechnung in den Planer ist der wichtigste Klick der ganzen Struktur. Deshalb steht er) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 752.89 Tm (auf jeder Inhaltsseite als eigener Abschnitt, und deshalb gibt es keine Popups und keine Zwischenseiten: Wer) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 737.89 Tm (eine Zahl sucht, bekommt sie zuerst.) Tj ET
+BT /F2 14 Tf 1 0 0 1 56.00 701.89 Tm (Messung und Erfolgskriterien) Tj ET
+0.85 0.85 0.85 RG 0.8 w 56 693.89 m 539.28 693.89 l S
+BT /F1 10 Tf 1 0 0 1 56.00 675.89 Tm (-) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 675.89 Tm (Was der Bau messen kann: Seitenzahl, Wortzahl ohne JavaScript, Überschriftenstruktur, interne) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 660.89 Tm (Verlinkung, Waisen, doppelte Metadaten, Struktur der strukturierten Daten, Sitemap, Bundles. Diese) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 645.89 Tm (Zahlen entstehen bei jedem Bau neu \(docs/seo/AUDIT.md\).) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 628.89 Tm (-) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 628.89 Tm (Was nur die Search Console messen kann: Impressionen, Klicks, durchschnittliche Position je Anfrage,) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 613.89 Tm (welche Seiten tatsächlich in den Index kommen. Der Ablauf steht in docs/seo/SEARCH-CONSOLE.md.) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 596.89 Tm (-) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 596.89 Tm (Erfolgskriterium 90 Tage: Für die zehn wichtigsten Anfragen des Elektrik-Themas steht mindestens eine) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 581.89 Tm (Seite in den Top-20 der Search Console, und der Planer erhält messbar mehr Aufrufe aus organischer) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 566.89 Tm (Suche als vorher \(Basiswert beim Anschließen festhalten\).) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 549.89 Tm (-) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 549.89 Tm (Erfolgskriterium Inhalt: Kein Cluster unter 700 Wörtern ohne JavaScript, jeder Rechner mit Formel,) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 534.89 Tm (Annahmen, Grenzen und mindestens zwei Rechenbeispielen.) Tj ET
+BT /F2 14 Tf 1 0 0 1 56.00 497.89 Tm (Roadmap) Tj ET
+0.85 0.85 0.85 RG 0.8 w 56 489.89 m 539.28 489.89 l S
+0.94 0.94 0.94 rg 56 462.19 483.28 19.70 re f 0 g
+BT /F2 9 Tf 1 0 0 1 60.00 468.89 Tm (Stufe) Tj ET
+BT /F2 9 Tf 1 0 0 1 108.33 468.89 Tm (Inhalt) Tj ET
+BT /F2 9 Tf 1 0 0 1 470.79 468.89 Tm (Zustand) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 462.19 m 539.28 462.19 l S
+BT /F1 9 Tf 1 0 0 1 60.00 449.19 Tm (P0) Tj ET
+BT /F1 9 Tf 1 0 0 1 108.33 449.19 Tm (Suchraum inventarisieren, Pillar und elf Cluster, Rechnerseiten, Verlinkung, Waisen- und) Tj ET
+BT /F1 9 Tf 1 0 0 1 108.33 437.49 Tm (Dublettenprüfung, Vertrauensseite) Tj ET
+BT /F1 9 Tf 1 0 0 1 470.79 449.19 Tm (erledigt) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 430.79 m 539.28 430.79 l S
+BT /F1 9 Tf 1 0 0 1 60.00 417.79 Tm (P1) Tj ET
+BT /F1 9 Tf 1 0 0 1 108.33 417.79 Tm (Werkzeugseiten erklären, echte Bilder und Diagramme, Search Console anschließen, Titel) Tj ET
+BT /F1 9 Tf 1 0 0 1 108.33 406.09 Tm (anhand von Daten schärfen) Tj ET
+BT /F1 9 Tf 1 0 0 1 470.79 417.79 Tm (offen) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 399.39 m 539.28 399.39 l S
+BT /F1 9 Tf 1 0 0 1 60.00 386.39 Tm (P2) Tj ET
+BT /F1 9 Tf 1 0 0 1 108.33 386.39 Tm (Ladebooster/DC-DC, Sinus-Wechselrichter-Vergleich, englische Fassung der stärksten) Tj ET
+BT /F1 9 Tf 1 0 0 1 108.33 374.69 Tm (Seiten) Tj ET
+BT /F1 9 Tf 1 0 0 1 470.79 386.39 Tm (offen) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 367.99 m 539.28 367.99 l S
+BT /F1 9 Tf 1 0 0 1 60.00 354.99 Tm (P3) Tj ET
+BT /F1 9 Tf 1 0 0 1 108.33 354.99 Tm (Fahrzeugspezifische Seiten mit belegbarem Inhalt, weitere Rechner \(Kabelverluste,) Tj ET
+BT /F1 9 Tf 1 0 0 1 108.33 343.29 Tm (Laderegler-Auslegung\)) Tj ET
+BT /F1 9 Tf 1 0 0 1 470.79 354.99 Tm (offen) Tj ET
+0.8 0.8 0.8 RG 0.5 w 56 336.59 m 539.28 336.59 l S
+BT /F2 14 Tf 1 0 0 1 56.00 300.59 Tm (Risiken und ihre Behandlung) Tj ET
+0.85 0.85 0.85 RG 0.8 w 56 292.59 m 539.28 292.59 l S
+BT /F1 10 Tf 1 0 0 1 56.00 274.59 Tm (-) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 274.59 Tm (Fachliche Genauigkeit: Alle Zahlen kommen aus dem Modell der Anwendung, nicht aus fremden Quellen.) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 259.59 Tm (Wo das Modell etwas nicht weiß \(Ladespannungen, Temperaturfenster einzelner Chemien\), steht es als) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 244.59 Tm (Herstellerangabe gekennzeichnet oder fehlt bewusst.) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 227.59 Tm (-) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 227.59 Tm (Regulatorik: 230-V-Anlagen sind abnahmepflichtig. Jede Seite mit Landstrombezug nennt das; die) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 212.59 Tm (Vertrauensseite wiederholt es.) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 195.59 Tm (-) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 195.59 Tm (Erwartungen: Kein Ranking-Versprechen. Die Prüfungen belegen technische Zusagen, nicht Platzierungen) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 180.59 Tm (- der Bericht sagt das ausdrücklich.) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.00 163.59 Tm (-) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 163.59 Tm (Überproduktion: Neue Seiten entstehen nur für belegte oder klar benannte Intentionen. Die Anfrageliste ist) Tj ET
+BT /F1 10 Tf 1 0 0 1 74.00 148.59 Tm (die Bremse gegen beliebige Textmengen.) Tj ET
+0.5 0.5 0.5 rg BT /F1 8 Tf 1 0 0 1 56 40 Tm (Camp SEO - Analyse und Vision) Tj ET 0 g
+0.5 0.5 0.5 rg BT /F1 8 Tf 1 0 0 1 492.70 40 Tm (Seite 3 von 3) Tj ET 0 g
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 7 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R >> >> /Contents 4 0 R >>
+endobj
+8 0 obj
+<< /Type /Page /Parent 7 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R >> >> /Contents 5 0 R >>
+endobj
+9 0 obj
+<< /Type /Page /Parent 7 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R >> >> /Contents 6 0 R >>
+endobj
+10 0 obj
+<< /Type /Pages /Count 3 /Kids [7 0 R 8 0 R 9 0 R] >>
+endobj
+11 0 obj
+<< /Type /Catalog /Pages 10 0 R >>
+endobj
+12 0 obj
+<< /Title (Camp SEO - Analyse und Vision) /Author (Werft - Camp) /Producer (Camp SEO-Bericht) /CreationDate (D:20261003000000Z) >>
+endobj
+xref
+0 13
+0000000000 65535 f 
+0000000015 00000 n 
+0000000112 00000 n 
+0000000214 00000 n 
+0000000309 00000 n 
+0000006153 00000 n 
+0000012427 00000 n 
+0000017791 00000 n 
+0000017943 00000 n 
+0000018095 00000 n 
+0000018247 00000 n 
+0000018317 00000 n 
+0000018368 00000 n 
+trailer
+<< /Size 13 /Root 11 0 R /Info 12 0 R >>
+startxref
+18515
+%%EOF
