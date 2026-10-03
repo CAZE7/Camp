@@ -256,9 +256,48 @@ function growthReportBlocks(): PdfBlock[] {
           'bestanden',
           'Regeln `titel*`, `beschreibung*`, `canonical*`',
         ],
+        [
+          'Auslieferungsform (Adresse mit Schrägstrich)',
+          'bestanden',
+          'Regel `sitemap-ziel` über `exportFileCandidates` (verlangt `x/index.html`)',
+        ],
         ['SEO-CI (Gesamtlauf)', 'PASS', 'npm run build → seo:audit, Exit-Code 0'],
       ],
       widths: [0.3, 0.14, 0.56],
+    },
+    { kind: 'heading', text: 'Auslieferung: der 404-Befund vom 2026-10-03' },
+    {
+      kind: 'paragraph',
+      text: 'Zwischen dem 12.09.2026 (PR #482 führte `trailingSlash: true` ein) und dem 03.10.2026 lag die Auslieferung in der flachen Form `x.html` vor, während Sitemap, Canonicals und interne Verweise `/x/` ankündigten. GitHub Pages beantwortet eine Adresse mit Schrägstrich ausschließlich aus `x/index.html` — jede Unterseite antwortete deshalb mit 404, während alle Läufe grün blieben. Zwei Blindstellen hatten das ermöglicht: Der Deploy-Smoke-Check fragte nur `/` ab, und die Exportprüfung akzeptierte die flache Datei auch für die Adresse mit Schrägstrich (in der flachen Form sah sie nur noch die Startseite: „Geprüfte Seiten: 1").',
+    },
+    {
+      kind: 'paragraph',
+      text: 'Ursache: `actions/configure-pages` patcht mit `static_site_generator: next` die Framework-Konfiguration. Die Action kennt nur `.js`, `.cjs` und `.mjs` (`SUPPORTED_FILE_EXTENSIONS`) und legte bei `next.config.ts` eine eigene `next.config.js` an („Using default blank configuration"). Next lädt `next.config.js` VOR `next.config.ts` (`CONFIG_FILES` in `next/dist/shared/lib/constants`) — der Build lief damit ohne `trailingSlash: true`. Belegt über die Build-Ausgabe („✓ Running next.config.js took 15ms"), den flachen Export und einen Nachbau der Action-Injektion im Arbeitsbaum.',
+    },
+    {
+      kind: 'paragraph',
+      text: 'Behoben: Die Konfiguration liegt jetzt als `next.config.mjs` vor — eine Endung, die die Action findet und patcht, statt eine verdrängende Kopie anzulegen; `basePath` steht in Paarform (`basePath: basePath`), weil der Patch den Wertknoten ersetzt und Kurzschreibweise die Datei ungültig machen würde. `exportFileCandidates` in `scripts/seo/checks.ts` verlangt für Adressen mit Schrägstrich die Verzeichnisform. Nachweis der Wirkung: Auf demselben flachen Export meldete der alte Wächter „grün" bei 1 geprüfter Seite, der neue 25 Fehler (Exit 1).',
+    },
+    {
+      kind: 'table',
+      head: ['Adresse', 'Vorher', 'Nachher'],
+      rows: [
+        ['/Cam/camper-elektrik/', '404', '200 — volle Seite'],
+        ['/Cam/rechner/solaranlage/', '404', '200 — volle Seite'],
+        ['/Cam/impressum/', '404', '200 — volle Seite'],
+        [
+          '/Cam/camper-elektrik.html (flache Form)',
+          '200 — das war die Auslieferung',
+          '404 — gewollt: es gibt nur noch die Verzeichnisform',
+        ],
+        ['/Cam/camper-elektrik.txt (RSC-Payload flach)', '200', '404 — gewollt'],
+        ['/Cam/sitemap.xml', '200, 26 Adressen mit Schrägstrich', 'unverändert — alle erreichbar'],
+      ],
+      widths: [0.42, 0.29, 0.29],
+    },
+    {
+      kind: 'paragraph',
+      text: 'Live geprüft am 2026-10-03 nach dem Deploy (Run 37143756298, Commit 57a5330, PR #485): 21 der 26 Sitemap-Adressen einzeln abgerufen — jede Seitenart (Startseite, Pillar, acht Cluster, vier Rechner, zwei Werkzeuge, drei Guides, Pflicht- und Vertrauensseiten) —, alle mit Status 200 und Seitentitel. Für alle 30 Dateien des Exports erzwingt die Exportprüfung die Verzeichnisform schon im Bau; die Formprüfung ist damit unabhängig von der Stichprobe.',
     },
     { kind: 'heading', text: 'Offene Punkte nach Priorität' },
     {
@@ -268,6 +307,7 @@ function growthReportBlocks(): PdfBlock[] {
         'P1 — Werkzeugseiten erklären: /tools/dach/ (207 Wörter, keine H2) und /tools/heizung/ (436 Wörter, keine H2) brauchen einen erklärenden Textteil; /guides/camper-ausbauguide/ braucht eine Kurzfassung oben (1027 Wörter Gesamttext).',
         'P1 — Echte Bilder: Die Inhaltsseiten arbeiten mit Tabellen und Rechenbeispielen, aber ohne eigene Fotos oder Diagramme; zwei <img> in der ganzen Auslieferung sind zu wenig für ein visuell geprägtes Thema (Ausbau, Dach, Verkabelung).',
         'P1 — Search Console anschließen: Die Anfrageliste ist bislang eine begründete Annahme (Quelle `annahme`). Erst echte Daten erlauben, Reihenfolge und Titel zu schärfen — Workflow in docs/seo/SEARCH-CONSOLE.md.',
+        'P1 — Deploy-Härtung nachziehen (ohne Workflow-Rechte nicht committet): `static_site_generator: next` in `.github/workflows/deploy.yml` entfernen und den Smoke-Check auf alle Sitemap-Adressen ausweiten — er prüft heute nur `/` und war deshalb grün, während 25 Unterseiten 404 lieferten. Der fertige Patch liegt unter docs/ci/patches/2026-10-03-pages-konfiguration-und-smoke-check.patch.',
         'P2 — Ladebooster/DC-DC und Sinus-Wechselrichter-Vergleich: zwei Intentionen mit klarer Nachfrage, aber ohne Seite.',
         'P2 — Internationalisierung: Die Architektur ist bereit (Inhalte als Daten, Texte getrennt von Darstellung), aber es gibt keinen englischen Zweig — bewusst nicht begonnen, solange die deutsche Ebene nicht in den Suchdaten steht.',
         'P3 — Fahrzeugspezifische Seiten (etwa VW T6): nur mit echtem, belegbarem Inhalt je Fahrzeug; Massenerzeugung ist ausgeschlossen.',
@@ -308,6 +348,7 @@ function growthReportBlocks(): PdfBlock[] {
       kind: 'list',
       items: [
         "Search Console verbinden und die Anfragen der letzten 28 Tage exportieren; die Liste in lib/seo/opportunities.ts auf `source: 'search-console'` umstellen.",
+        'P1: Den bereitliegenden Workflow-Patch einspielen (git apply docs/ci/patches/2026-10-03-pages-konfiguration-und-smoke-check.patch) oder dem App-Token das Recht `workflows` geben, damit künftige Workflow-Änderungen pushbar sind.',
         'P1: Werkzeugseiten um einen erklärenden Textteil ergänzen (je 300–500 Wörter, zwei H2, FAQ nur bei echten Fragen).',
         'P1: Bilder und Diagramme mit beschreibenden Alternativtexten ergänzen — Querschnittstabelle als Grafik, Beispielverkabelung, Dachbelegung.',
         'P2: Ladebooster/DC-DC als Cluster unter /camper-elektrik/ anlegen (Rechnung aus dem vorhandenen Modell: Strom, Spannungsfall, Sicherung, Leitungslänge).',
@@ -322,6 +363,7 @@ function growthReportBlocks(): PdfBlock[] {
         '„Indexierbar" heißt: Die Seite steht auf index und in der Sitemap. Ob sie tatsächlich in den Index aufgenommen und gerankt wird, entscheidet die Suchmaschine — das ist nicht messbar ohne Search Console.',
         'Die fachlichen Aussagen stützen sich auf die Modelle der Anwendung (VDE-Nennwerte, Kupferkennwerte, Peukert) und die genannten Normbezüge. Es gibt keine Prüfung durch Dritte; Annahmen und Grenzen stehen auf jeder Seite.',
         'Die Bundle-Größen sind unkomprimiert gemessen. Für Übertragungsbudgets zählt die komprimierte Größe — die Rangfolge der Seiten bleibt davon unberührt.',
+        'Der Abschnitt zur Auslieferung ist eine datierte Messung am 2026-10-03 (nach dem Deploy), keine Zahl aus dem reproduzierbaren Bau: Er ist als Befund gekennzeichnet. Alle übrigen Zahlen stammen aus dem gebauten Export und entstehen bei jedem Lauf neu.',
       ],
     },
     { kind: 'heading', text: 'Nachvollziehen' },
