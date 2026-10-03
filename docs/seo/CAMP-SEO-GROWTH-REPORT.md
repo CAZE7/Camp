@@ -1,8 +1,8 @@
 # CAMP SEO GROWTH REPORT
 
-_Organische Sichtbarkeit für Camper-Elektrik und der Weg in den Planer · Stand 2026-10-03 · Commit 57a5330_
+_Organische Sichtbarkeit für Camper-Elektrik und der Weg in den Planer · Stand 2026-10-03 · Commit 2854f82_
 
-Stand: 2026-10-03 · Commit: `57a5330` (2026-10-03) · Grundlage: gebauter Static Export unter `out/`, ohne JavaScript gemessen.
+Stand: 2026-10-03 · Commit: `2854f82` (2026-10-03) · Grundlage: gebauter Static Export unter `out/`, ohne JavaScript gemessen.
 
 ## Ergebnis
 
@@ -79,7 +79,7 @@ Behoben: Die Konfiguration liegt jetzt als `next.config.mjs` vor — eine Endung
 | /Cam/camper-elektrik.txt (RSC-Payload flach) | 200                               | 404 — gewollt                                       |
 | /Cam/sitemap.xml                             | 200, 26 Adressen mit Schrägstrich | unverändert — alle erreichbar                       |
 
-Live geprüft am 2026-10-03 nach dem Deploy (Run 37143756298, Commit 57a5330, PR #485): 21 der 26 Sitemap-Adressen einzeln abgerufen — jede Seitenart (Startseite, Pillar, acht Cluster, vier Rechner, zwei Werkzeuge, drei Guides, Pflicht- und Vertrauensseiten) —, alle mit Status 200 und Seitentitel. Für alle 30 Dateien des Exports erzwingt die Exportprüfung die Verzeichnisform schon im Bau; die Formprüfung ist damit unabhängig von der Stichprobe.
+Live geprüft am 2026-10-03 nach dem Deploy (Runs 37143756298 und 37145175495, Commits 57a5330 und c2ca513): alle 26 Adressen der Sitemap einzeln abgerufen — Startseite, Planer, Pillar, elf Themen-Cluster, vier Rechner-Adressen, zwei Werkzeuge, drei Guides, zwei Pflicht- und eine Vertrauensseite —, jede mit Status 200 und eigenem Seitentitel. Gegenprobe in derselben Messung: die flache Datei `camper-elektrik.txt` antwortet mit 404, die Sitemap führt unverändert 26 Adressen mit Schrägstrich. Für alle 30 Dateien des Exports erzwingt die Exportprüfung die Verzeichnisform schon im Bau — die Zusage hängt damit nicht an der Stichprobe.
 
 ## Offene Punkte nach Priorität
 

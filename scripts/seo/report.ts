@@ -297,7 +297,7 @@ function growthReportBlocks(): PdfBlock[] {
     },
     {
       kind: 'paragraph',
-      text: 'Live geprüft am 2026-10-03 nach dem Deploy (Run 37143756298, Commit 57a5330, PR #485): 21 der 26 Sitemap-Adressen einzeln abgerufen — jede Seitenart (Startseite, Pillar, acht Cluster, vier Rechner, zwei Werkzeuge, drei Guides, Pflicht- und Vertrauensseiten) —, alle mit Status 200 und Seitentitel. Für alle 30 Dateien des Exports erzwingt die Exportprüfung die Verzeichnisform schon im Bau; die Formprüfung ist damit unabhängig von der Stichprobe.',
+      text: 'Live geprüft am 2026-10-03 nach dem Deploy (Runs 37143756298 und 37145175495, Commits 57a5330 und c2ca513): alle 26 Adressen der Sitemap einzeln abgerufen — Startseite, Planer, Pillar, elf Themen-Cluster, vier Rechner-Adressen, zwei Werkzeuge, drei Guides, zwei Pflicht- und eine Vertrauensseite —, jede mit Status 200 und eigenem Seitentitel. Gegenprobe in derselben Messung: die flache Datei `camper-elektrik.txt` antwortet mit 404, die Sitemap führt unverändert 26 Adressen mit Schrägstrich. Für alle 30 Dateien des Exports erzwingt die Exportprüfung die Verzeichnisform schon im Bau — die Zusage hängt damit nicht an der Stichprobe.',
     },
     { kind: 'heading', text: 'Offene Punkte nach Priorität' },
     {
