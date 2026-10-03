@@ -80,8 +80,23 @@ export type CableSizing = {
 };
 
 /**
- * Bemessung einer 12-V-Leitung.
+ * Prüft eine Eingabe auf „endlich und positiv" (Rule M).
  *
+ * Die Einheitenkonstruktoren in `lib/units.ts` sichern den Typ, nicht den
+ * Wertebereich: `meters(0)` ist ein gültiger Wert des Typs `Meters`, aber
+ * keine sinnvolle Leitung. Ohne diese Prüfung entstünde aus einer Länge von
+ * null ein Strom von unendlich — eine stille Ersatzantwort statt eines
+ * Fehlers.
+ */
+function requirePositive(value: number, name: string): void {
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new RangeError(`${name} muss eine positive Zahl sein, war ${value}`);
+  }
+}
+
+/**
+ * Bemessung einer 12-V-Leitung.
+
  * Der Spannungsfall-Term wird mit `crossSectionForVoltageDrop` unabhängig
  * nachgerechnet, obwohl `calculateCrossSection` ihn intern enthält. Grund:
  * Nur so ist erkennbar, ob die Normreihe überhaupt ausreicht — die
@@ -166,6 +181,11 @@ export function voltageDropFor(
   crossSectionMm2: number,
   systemVoltageV: number = DC_NOMINAL_VOLTAGE_V
 ): VoltageDropResult {
+  requirePositive(currentA, 'Strom');
+  requirePositive(lengthM, 'Länge');
+  requirePositive(crossSectionMm2, 'Querschnitt');
+  requirePositive(systemVoltageV, 'Systemspannung');
+
   const current = amps(currentA);
   const length = meters(lengthM);
   const section = mm2(crossSectionMm2);
@@ -204,6 +224,10 @@ export function maxCurrentForPlanLimit(
   lengthM: number,
   systemVoltageV: number = DC_NOMINAL_VOLTAGE_V
 ): number {
+  requirePositive(crossSectionMm2, 'Querschnitt');
+  requirePositive(lengthM, 'Länge');
+  requirePositive(systemVoltageV, 'Systemspannung');
+
   const section = mm2(crossSectionMm2);
   const length = meters(lengthM);
   const allowedDrop = (systemVoltageV * VOLTAGE_DROP_PCT_PLAN_LIMIT) / 100;
@@ -218,6 +242,8 @@ export function maxCurrentForPlanLimit(
  * Verlegeart keine Aussage).
  */
 export function thermalCurrentFor(crossSectionMm2: number): { tableA: number | null; designA: number } {
+  requirePositive(crossSectionMm2, 'Querschnitt');
+
   const tableA = VDE_AMPACITY[crossSectionMm2] ?? null;
   return { tableA, designA: designAmpacity(mm2(crossSectionMm2)) };
 }

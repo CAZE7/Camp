@@ -2,11 +2,12 @@
 
 _Seiteninventar, Verweise und Bündel des gebauten Exports. Automatisch erzeugt von scripts/seo/report.ts._
 
-Stand: 2026-10-03 · Commit: `59060c8` (2026-10-03) · Grundlage: gebauter Static Export unter `out/`, ohne JavaScript gemessen.
+Stand: 2026-10-03 · Commit: `e737485` (2026-10-03) · Grundlage: gebauter Static Export unter `out/`, ohne JavaScript gemessen.
 
 ## Wie gemessen wird
 
 Gemessen wird der gebaute Export, nicht die Absicht im Quelltext: Die Skripte lesen out/**/index.html, entfernen Skripte und Stile und zählen den sichtbaren Text. Damit entspricht die Wortzahl dem, was ein Crawler ohne JavaScript sieht. Verweise werden ohne Fragmente und Fremdadressen ausgewertet; die Tiefe ist der kürzeste Weg ab der Startseite über interne Verweise. Die Bündelgröße ist die Summe der im HTML verwiesenen Skriptdateien (unkomprimiert), die schweren Abhängigkeiten werden über Kennungen in diesen Dateien erkannt.
+
 - Werkzeug: `npx tsx scripts/seo/measureExport.ts` (Tabelle) und dieser Bericht (Datei und PDF).
 - Prüfregeln: `npm run seo:audit` — Teil des Builds; Exit-Code 1 nur bei echten Fehlern.
 - Wiederholbar: gleicher Commit und gleicher Bau ergeben dieselben Zahlen.
@@ -48,62 +49,63 @@ Gemessen wird der gebaute Export, nicht die Absicht im Quelltext: Die Skripte le
 
 ## Kennzahlen
 
-| Kennzahl | Wert |
-| --- | --- |
-| Indexierbare Seiten | 26 |
-| Pillar-Seiten | 1 |
-| Rechner-Landingpages | 4 |
-| Suchintentionen abgedeckt | 29 von 35 |
-| Waisenseiten | 0 |
-| Dünne Seiten | 1 |
-| Doppelte Metadaten | 0 |
-| Interne Verlinkung | 100 % |
-| Inhalt ohne JavaScript | 26 von 26 |
-| Strukturierte Daten | bestanden |
-| Sitemap und Robots | bestanden |
+| Kennzahl                         | Wert      |
+| -------------------------------- | --------- |
+| Indexierbare Seiten              | 26        |
+| Pillar-Seiten                    | 1         |
+| Rechner-Landingpages             | 4         |
+| Suchintentionen abgedeckt        | 29 von 35 |
+| Waisenseiten                     | 0         |
+| Dünne Seiten                     | 1         |
+| Doppelte Metadaten               | 0         |
+| Interne Verlinkung               | 100 %     |
+| Inhalt ohne JavaScript           | 26 von 26 |
+| Strukturierte Daten              | bestanden |
+| Sitemap und Robots               | bestanden |
 | Planner-Bundle auf Inhaltsseiten | bestanden |
 
 ## Suchintentionen
 
-| Intention (Annahme) | Lage | Zielseite | Nächster Schritt |
-| --- | --- | --- | --- |
-| camper elektrik planen | abgedeckt | /camper-elektrik/ | keine |
-| schaltplan camper 12v | abgedeckt | /camper-elektrik/schaltplan/ | keine |
-| wohnmobil elektrik planer online | abgedeckt | /elektrik-planung/ | keine |
-| 12v kabelquerschnitt berechnen | abgedeckt | /camper-elektrik/kabelquerschnitt/ | keine |
-| welchen kabelquerschnitt camper | abgedeckt | /camper-elektrik/kabelquerschnitt/ | keine |
-| spannungsabfall 12v berechnen | abgedeckt | /camper-elektrik/spannungsabfall/ | keine |
-| camper sicherung richtig dimensionieren | abgedeckt | /camper-elektrik/sicherungen/ | keine |
-| welche sicherung bei welchem kabelquerschnitt | abgedeckt | /camper-elektrik/sicherungen/ | keine |
-| camper batterie dimensionieren | abgedeckt | /camper-elektrik/batterie/ | keine |
-| batteriekapazität camper berechnen ah | abgedeckt | /rechner/batteriekapazitaet/ | keine |
-| lifepo4 camper dimensionieren | abgedeckt | /camper-elektrik/lifepo4/ | keine |
-| agm oder lifepo4 camper | abgedeckt | /camper-elektrik/agm/ | keine |
-| agm batterie camper entladetiefe | abgedeckt | /camper-elektrik/agm/ | keine |
-| peukert effekt camper batterie | abgedeckt | /camper-elektrik/batterie/ | keine |
-| camper solar wie viel watt | abgedeckt | /rechner/solaranlage/ | keine |
-| solar camper winter auslegung | abgedeckt | /camper-elektrik/solar/ | keine |
-| mppt laderegler camper auslegen | abgedeckt | /camper-elektrik/mppt/ | keine |
-| mppt oder pwm laderegler unterschied | abgedeckt | /camper-elektrik/mppt/ | keine |
-| wechselrichter camper auslegen kabel | abgedeckt | /camper-elektrik/wechselrichter/ | keine |
-| wie viel strom zieht ein wechselrichter 12v | abgedeckt | /camper-elektrik/wechselrichter/ | keine |
-| 230v camper fi schutzschalter | abgedeckt | /camper-elektrik/230v/ | keine |
-| landstrom anschluss camper cee | abgedeckt | /camper-elektrik/230v/ | keine |
-| heizlast wohnmobil berechnen | abgedeckt | /tools/heizung/ | keine |
-| welche standheizung für welches fahrzeug | teilweise | /tools/heizung/ | seite-erweitern |
-| wie viele solarpanels passen aufs dach | teilweise | /tools/dach/ | beispiel-ergaenzen |
-| camper ausbau reihenfolge gewerke | abgedeckt | /guides/ausbau-fahrplan/ | keine |
-| camper ausbau guide elektrik | teilweise | /guides/camper-ausbauguide/ | verlinkung-verbessern |
-| wie genau rechnet der camper planer | abgedeckt | /ueber-werft/ | keine |
-| elektrik vw t6 ausbau | luecke | — (neu) | neue-seite |
-| ladebooster camper lichtmaschine dimensionieren | luecke | — (neu) | neue-seite |
-| sinus wechselrichter unterschied reiner sinus | teilweise | /camper-elektrik/wechselrichter/ | beispiel-ergaenzen |
-| rechner camper ausbau | abgedeckt | /rechner/ | keine |
-| spannungsabfall rechner 12v | abgedeckt | /rechner/spannungsabfall-12v/ | keine |
-| camper ausbau planung online | abgedeckt | / | keine |
-| holzausbau camper unterbau | abgedeckt | /guides/holzausbau/ | keine |
+| Intention (Annahme)                             | Lage      | Zielseite                          | Nächster Schritt      |
+| ----------------------------------------------- | --------- | ---------------------------------- | --------------------- |
+| camper elektrik planen                          | abgedeckt | /camper-elektrik/                  | keine                 |
+| schaltplan camper 12v                           | abgedeckt | /camper-elektrik/schaltplan/       | keine                 |
+| wohnmobil elektrik planer online                | abgedeckt | /elektrik-planung/                 | keine                 |
+| 12v kabelquerschnitt berechnen                  | abgedeckt | /camper-elektrik/kabelquerschnitt/ | keine                 |
+| welchen kabelquerschnitt camper                 | abgedeckt | /camper-elektrik/kabelquerschnitt/ | keine                 |
+| spannungsabfall 12v berechnen                   | abgedeckt | /camper-elektrik/spannungsabfall/  | keine                 |
+| camper sicherung richtig dimensionieren         | abgedeckt | /camper-elektrik/sicherungen/      | keine                 |
+| welche sicherung bei welchem kabelquerschnitt   | abgedeckt | /camper-elektrik/sicherungen/      | keine                 |
+| camper batterie dimensionieren                  | abgedeckt | /camper-elektrik/batterie/         | keine                 |
+| batteriekapazität camper berechnen ah           | abgedeckt | /rechner/batteriekapazitaet/       | keine                 |
+| lifepo4 camper dimensionieren                   | abgedeckt | /camper-elektrik/lifepo4/          | keine                 |
+| agm oder lifepo4 camper                         | abgedeckt | /camper-elektrik/agm/              | keine                 |
+| agm batterie camper entladetiefe                | abgedeckt | /camper-elektrik/agm/              | keine                 |
+| peukert effekt camper batterie                  | abgedeckt | /camper-elektrik/batterie/         | keine                 |
+| camper solar wie viel watt                      | abgedeckt | /rechner/solaranlage/              | keine                 |
+| solar camper winter auslegung                   | abgedeckt | /camper-elektrik/solar/            | keine                 |
+| mppt laderegler camper auslegen                 | abgedeckt | /camper-elektrik/mppt/             | keine                 |
+| mppt oder pwm laderegler unterschied            | abgedeckt | /camper-elektrik/mppt/             | keine                 |
+| wechselrichter camper auslegen kabel            | abgedeckt | /camper-elektrik/wechselrichter/   | keine                 |
+| wie viel strom zieht ein wechselrichter 12v     | abgedeckt | /camper-elektrik/wechselrichter/   | keine                 |
+| 230v camper fi schutzschalter                   | abgedeckt | /camper-elektrik/230v/             | keine                 |
+| landstrom anschluss camper cee                  | abgedeckt | /camper-elektrik/230v/             | keine                 |
+| heizlast wohnmobil berechnen                    | abgedeckt | /tools/heizung/                    | keine                 |
+| welche standheizung für welches fahrzeug        | teilweise | /tools/heizung/                    | seite-erweitern       |
+| wie viele solarpanels passen aufs dach          | teilweise | /tools/dach/                       | beispiel-ergaenzen    |
+| camper ausbau reihenfolge gewerke               | abgedeckt | /guides/ausbau-fahrplan/           | keine                 |
+| camper ausbau guide elektrik                    | teilweise | /guides/camper-ausbauguide/        | verlinkung-verbessern |
+| wie genau rechnet der camper planer             | abgedeckt | /ueber-werft/                      | keine                 |
+| elektrik vw t6 ausbau                           | luecke    | — (neu)                            | neue-seite            |
+| ladebooster camper lichtmaschine dimensionieren | luecke    | — (neu)                            | neue-seite            |
+| sinus wechselrichter unterschied reiner sinus   | teilweise | /camper-elektrik/wechselrichter/   | beispiel-ergaenzen    |
+| rechner camper ausbau                           | abgedeckt | /rechner/                          | keine                 |
+| spannungsabfall rechner 12v                     | abgedeckt | /rechner/spannungsabfall-12v/      | keine                 |
+| camper ausbau planung online                    | abgedeckt | /                                  | keine                 |
+| holzausbau camper unterbau                      | abgedeckt | /guides/holzausbau/                | keine                 |
 
 ## Befunde
+
 - Dünnste Seite: / (186 Wörter), /tools/dach/ (207 Wörter), /guides/holzausbau/ (408 Wörter).
 - Seiten ohne H2: /tools/dach/, /tools/heizung/.
 - Größte Bündel: /tools/dach/ (965 KB), /tools/heizung/ (797 KB), /camper-elektrik/230v/ (662 KB).

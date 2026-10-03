@@ -500,9 +500,30 @@ function visionBlocks(): PdfBlock[] {
   ];
 }
 
+/**
+ * Markdown hübsch setzen: Der Bericht ist eine Datei im Repository, und das
+ * Repository prüft seine Formatierung (`format:check` im Pre-Push-Gate und in
+ * der CI). Ohne diesen Schritt würde jeder Berichtslauf die Formatprüfung
+ * brechen — nicht wegen des Inhalts, sondern wegen fehlender Ausrichtung in
+ * Tabellen. Fehlt Prettier (etwa in einer Umgebung ohne dev-Abhängigkeiten),
+ * bleibt der Rohtext stehen; der Bericht ist auch dann vollständig.
+ */
+function formatMarkdown(markdown: string, name: string): string {
+  try {
+    return execFileSync('npx', ['prettier', '--stdin-filepath', `${name}.md`], {
+      input: markdown,
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'ignore'],
+    });
+  } catch {
+    return markdown;
+  }
+}
+
 function writeDoc(name: string, blocks: readonly PdfBlock[], title: string): void {
   mkdirSync(DOCS, { recursive: true });
-  writeFileSync(join(DOCS, `${name}.md`), `${renderMarkdown(blocks)}\n`, 'utf8');
+  const markdown = `${renderMarkdown(blocks)}\n`;
+  writeFileSync(join(DOCS, `${name}.md`), formatMarkdown(markdown, name), 'utf8');
   writeFileSync(join(DOCS, `${name}.pdf`), renderPdf(blocks, { title, author: 'Werft — Camp' }));
 }
 
