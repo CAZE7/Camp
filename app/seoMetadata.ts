@@ -1,23 +1,37 @@
 import type { Metadata } from 'next';
 
 import { pageMetadata } from '@/app/siteMetadata';
+import { pageByPath } from '@/lib/seo/inventory';
 import type { SeoPageContent } from '@/lib/seo/types';
 
 /**
- * app/seoMetadata.ts — Brücke zwischen dem SEO-Inhaltsmodell und der
- * bestehenden Kopfdaten-Infrastruktur (`app/siteMetadata.ts`).
+ * Brücke zwischen Seiteninventar und Next-Metadaten.
  *
- * Es gibt genau EINEN Weg, Kopfdaten zu bauen: `pageMetadata`. Dieses Modul
- * setzt die Felder einer inhaltsgetriebenen Seite darauf — es dupliziert
- * nichts, es übersetzt nur. `absoluteTitle` gilt für Seiten, deren Titel
- * bereits vollständig ist; ansonsten hängt der Wurzel-Layout die Marke an.
+ * `lib/seo/inventory.ts` ist die Quelle der statischen Routenkopfdaten; Inhalte
+ * aus `lib/seo/content/` liefern ihre Werte an dasselbe Inventar. Canonical,
+ * robots, Open Graph und Twitter werden anschließend ausschließlich vom
+ * zentralen Builder in `app/siteMetadata.ts` erzeugt.
  */
-export function metadataFor(content: SeoPageContent, path: string = content.path): Metadata {
+export function metadataForPage(path: string): Metadata {
+  const page = pageByPath(path);
+  if (!page) throw new Error(`Route "${path}" fehlt im SEO-Inventar.`);
+
   return pageMetadata({
-    title: content.title,
-    description: content.description,
-    path,
-    absoluteTitle: content.absoluteTitle ?? false,
-    ...(content.ogImage ? { image: content.ogImage } : {}),
+    title: page.title,
+    description: page.description,
+    path: page.path,
+    absoluteTitle: page.absoluteTitle ?? false,
+    index: page.indexability === 'index',
+    ...(page.ogImage ? { image: page.ogImage } : {}),
   });
+}
+
+/** Übergang für datengetriebene Routen; Inhalt und Inventar müssen übereinstimmen. */
+export function metadataFor(content: SeoPageContent, path: string = content.path): Metadata {
+  const page = pageByPath(path);
+  if (!page) throw new Error(`Inhaltsroute "${path}" fehlt im SEO-Inventar.`);
+  if (page.title !== content.title || page.description !== content.description) {
+    throw new Error(`Metadaten und Inhalt für "${path}" weichen voneinander ab.`);
+  }
+  return metadataForPage(path);
 }

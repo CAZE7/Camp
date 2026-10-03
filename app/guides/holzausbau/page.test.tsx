@@ -10,7 +10,7 @@ describe('HolzausbauGuide Component', () => {
     // Check if the main h1 heading is present
     const mainHeading = screen.getByRole('heading', { level: 1 });
     expect(mainHeading).toBeInTheDocument();
-    expect(mainHeading).toHaveTextContent('Holzausbau nach BEDMAS');
+    expect(mainHeading).toHaveTextContent('Holzausbau im Camper: sechs Schritte');
   });
 
   it('renders all 6 BEDMAS section headings', () => {

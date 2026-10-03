@@ -61,16 +61,17 @@ describe('RootLayout', () => {
     expect(childElement?.props.children).toBe('Test Child');
   });
 
-  it('beschreibt die Auslieferung mit Titelvorlage, Bezugsadresse und Vorschaubild', () => {
+  it('liefert nur globale Standards; Canonical und Vorschaukarten gehören zur jeweiligen Route', () => {
     expect(metadata.metadataBase?.toString()).toBe('https://caze7.github.io/');
     expect(metadata.title).toEqual({
       default: 'Camper-Ausbau planen: Elektrik, Dach und Heizlast | Werft',
       template: '%s | Werft',
     });
-    expect(metadata.alternates?.canonical).toBe('https://caze7.github.io/');
-    expect(metadata.openGraph?.images).toBeDefined();
-    // `Twitter` ist eine Vereinigung mehrerer Kartenformen; geprüft wird die
-    // Kartenangabe als Teilmenge, ohne auf ein einzelnes Mitglied zu verengen.
-    expect(metadata.twitter).toMatchObject({ card: 'summary_large_image' });
+    // Ein vererbter Homepage-Canonical oder ein Homepage-Open-Graph auf einer
+    // Fehlerroute wäre widersprüchlich. Indexierbare Seiten setzen beides über
+    // metadataForPage() selbst.
+    expect(metadata.alternates).toBeUndefined();
+    expect(metadata.openGraph).toBeUndefined();
+    expect(metadata.twitter).toBeUndefined();
   });
 });

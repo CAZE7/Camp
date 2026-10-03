@@ -27,6 +27,11 @@ export type PageKind =
   | 'rechtliches'
   | 'ansicht';
 
+/** Seitenarten, deren No-JS-Inhalt sinnvoll per Wortzahl eingeordnet wird.
+ * Interaktive Werkzeuge haben funktionale Oberfläche und Bedienhinweise; ein
+ * Artikel-Mindestwert würde dort künstlichen Fülltext belohnen. */
+export const THIN_CONTENT_KINDS: readonly PageKind[] = ['pillar', 'cluster', 'rechner', 'ratgeber'];
+
 /** Prioritätsstufe der Content-Roadmap (siehe docs/seo/AUDIT.md). */
 export type PriorityTier = 'P0' | 'P1' | 'P2' | 'P3';
 
@@ -186,7 +191,14 @@ export type PageEntry = {
   sitemap?: { changeFrequency: 'monthly' | 'yearly'; priority: number };
   /** Herkunft der Seite im Quelltext (Nachschlagehilfe für Beitragende). */
   source: string;
-  /** Titel/Beschreibung nur bei inhaltsgetriebenen Seiten (sonst im Code der Seite). */
-  title?: string;
-  description?: string;
+  /** Titel ohne Markenzusatz; `absoluteTitle` steuert die Titelvorlage. */
+  title: string;
+  /** Einzigartige Beschreibung für Suchergebnisse und Vorschaukarten. */
+  description: string;
+  /** true = Titel enthält bereits den Markenzusatz und ist vollständig. */
+  absoluteTitle?: boolean;
+  /** Optionales Vorschaubild; ohne Angabe gilt das Bild der Website. */
+  ogImage?: { path: string; width: number; height: number; alt: string };
+  /** Eingebaute interaktive Rechner, die die Seite tatsächlich rendert. */
+  calculators?: readonly CalculatorId[];
 };

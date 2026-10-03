@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { siteUrl } from '@/lib/site';
 
-import { ELEKTRIK_FAQ, PAGE_DESCRIPTION, PAGE_TITLE } from './electricContent';
+import { ELEKTRIK_FAQ, PAGE_DESCRIPTION, PAGE_H1 } from './electricContent';
 import { buildElektrikPlanungJsonLd, serializeJsonLd } from './structuredData';
 
 /**
@@ -30,7 +30,7 @@ describe('buildElektrikPlanungJsonLd', () => {
   it('beschreibt die Anwendung mit Kategorie, System und kostenlosem Angebot', () => {
     const application = byType('WebApplication')[0]!;
 
-    expect(application['name']).toBe(PAGE_TITLE);
+    expect(application['name']).toBe(PAGE_H1);
     expect(application['applicationCategory']).toBe('UtilityApplication');
     expect(application['operatingSystem']).toBe('All');
     expect(application['browserRequirements']).toBe('HTML5, JavaScript');
@@ -57,7 +57,7 @@ describe('buildElektrikPlanungJsonLd', () => {
 
   it('nennt die Beschreibung der Seite, die auch im Kopfbereich steht', () => {
     const page = byType('WebPage')[0]!;
-    expect(page['name']).toBe(PAGE_TITLE);
+    expect(page['name']).toBe(PAGE_H1);
     expect(page['description']).toBe(PAGE_DESCRIPTION);
     expect(page['url']).toBe(siteUrl('/elektrik-planung/'));
   });

@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 
-import { pageMetadata } from '@/app/siteMetadata';
+import { metadataForPage } from '@/app/seoMetadata';
 
 /**
  * Kopfdaten der Design-System-Ansicht.
@@ -9,12 +9,7 @@ import { pageMetadata } from '@/app/siteMetadata';
  * Inhalt für Ergebnislisten — sie wird deshalb nicht in den Index aufgenommen
  * und steht auch nicht in der Sitemap.
  */
-export const metadata: Metadata = pageMetadata({
-  title: 'Design-System',
-  description: 'Interne Übersicht der Bausteine, Zustände und Typografiestufen des Planers.',
-  path: '/design-system/',
-  index: false,
-});
+export const metadata: Metadata = metadataForPage('/design-system/');
 
 export default function DesignSystemLayout({ children }: { children: React.ReactNode }) {
   return children;

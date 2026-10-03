@@ -1,20 +1,17 @@
 import type { Metadata } from 'next';
 
+import { metadataForPage } from '@/app/seoMetadata';
+
 import { SiteHeader } from '@/components/brand/SiteHeader';
 import { SiteFooter } from '@/components/brand/SiteFooter';
+import { PageStructuredData } from '@/components/seo/PageStructuredData';
 
-import { pageMetadata } from '@/app/siteMetadata';
-
-export const metadata: Metadata = pageMetadata({
-  title: 'Datenschutz',
-  description:
-    'Welche Daten diese Seite verarbeitet, wo sie gespeichert werden und welche Rechte du nach DSGVO hast.',
-  path: '/datenschutz/',
-});
+export const metadata: Metadata = metadataForPage('/datenschutz/');
 
 export default function DatenschutzPage() {
   return (
     <div className="flex min-h-screen flex-col bg-paper text-ink">
+      <PageStructuredData path="/datenschutz/" />
       <SiteHeader />
       <main id="main" className="container-page prose-measure flex-1">
         <h1 className="font-display text-2xl font-semibold tracking-tight">Datenschutz</h1>

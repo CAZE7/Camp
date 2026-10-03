@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  calculatorBundlesLoaded,
+  checkCalculatorBundles,
   checkHeavyLibraries,
+  checkInitialScriptBudget,
   checkPage,
   checkSitemap,
   checkStructuredData,
@@ -32,11 +35,20 @@ const SAUBERE_SEITE = `<!doctype html><html lang="de"><head>
 <meta property="og:title" content="Titel"/>
 <meta property="og:description" content="Beschreibung"/>
 <meta property="og:url" content="${ORIGIN}${BASE}/seite/"/>
+<meta property="og:site_name" content="Werft"/>
+<meta property="og:locale" content="de_DE"/>
 <meta property="og:image" content="${ORIGIN}${BASE}/og/seite.png"/>
+<meta property="og:image:alt" content="Vorschaubild"/>
+<meta property="og:image:width" content="1200"/>
+<meta property="og:image:height" content="630"/>
 <meta property="og:type" content="website"/>
 <meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:title" content="Titel"/>
+<meta name="twitter:description" content="Beschreibung"/>
+<meta name="twitter:image" content="${ORIGIN}${BASE}/og/seite.png"/>
+<meta name="twitter:image:alt" content="Vorschaubild"/>
 <link rel="icon" href="${BASE}/icon.svg"/>
-</head><body><main><h1>Überschrift</h1><h2>Abschnitt</h2><img src="a.png" alt="Beschreibung"/></main></body></html>`;
+</head><body><main><h1>Überschrift</h1><h2>Abschnitt</h2><p>${'x'.repeat(100)}</p><img src="a.png" alt="Beschreibung"/></main></body></html>`;
 
 const OPTIONS = { canonical: `${ORIGIN}${BASE}/seite/`, basePath: BASE, indexable: true };
 
@@ -89,6 +101,42 @@ describe('checkPage', () => {
     expect(findings.map((f) => f.rule)).toContain('crawler');
   });
 
+  it('vergleicht Titel, Beschreibung und H1 mit den erwarteten Inventardaten', () => {
+    const findings = checkPage('f', SAUBERE_SEITE, {
+      ...OPTIONS,
+      expectedTitle: 'Anderer Titel',
+      expectedDescription: 'Andere Beschreibung',
+      expectedH1: 'Andere H1',
+    });
+    expect(findings.map((finding) => finding.rule)).toEqual(
+      expect.arrayContaining(['titel-inventar', 'beschreibung-inventar', 'h1-inventar'])
+    );
+  });
+
+  it('verbietet Canonical und Social-Metadata auf technischen Fehlerseiten', () => {
+    const noindex = SAUBERE_SEITE.replace('index, follow', 'noindex, follow').replace(
+      /<meta (?:property="og:[^"]+"|name="twitter:[^"]+")[^>]*\/>/g,
+      ''
+    );
+    const cleanErrorPage = noindex.replace(/<link rel="canonical"[^>]*\/>/, '');
+    const options = {
+      ...OPTIONS,
+      indexable: false,
+      forbidCanonical: true,
+      forbidSocialMetadata: true,
+      checkSocialMetadata: false,
+    };
+    expect(checkPage('404', cleanErrorPage, options)).toEqual([]);
+
+    const inherited = cleanErrorPage.replace(
+      '</head>',
+      `<link rel="canonical" href="${ORIGIN}${BASE}/"/><meta property="og:title" content="Home"/></head>`
+    );
+    expect(checkPage('404', inherited, options).map((finding) => finding.rule)).toEqual(
+      expect.arrayContaining(['canonical-verboten', 'vorschaukarte-verboten'])
+    );
+  });
+
   it('meldet einen zu langen Titel nur als Hinweis', () => {
     const html = SAUBERE_SEITE.replace('Eine saubere Seite mit ausreichender Laenge', 'x'.repeat(90));
     const findings = checkPage('f', html, OPTIONS);
@@ -121,6 +169,16 @@ describe('checkStructuredData', () => {
     expect(rules).toContain('json-ld-pflichtfeld');
   });
 
+  it('meldet seitenspezifische Schema-Typen, die das Inventar nicht ankündigt', () => {
+    const html = graph([{ '@type': 'WebPage' }, { '@type': 'NewsArticle' }]);
+    const rules = checkStructuredData('f', html, {
+      origin: ORIGIN,
+      basePath: BASE,
+      expectedTypes: ['WebPage'],
+    }).map((finding) => finding.rule);
+    expect(rules).toContain('json-ld-inventar');
+  });
+
   it('verlangt Text und Antwort je Frage', () => {
     const html = graph([{ '@type': 'FAQPage', mainEntity: [{ '@type': 'Question', name: 'Frage?' }] }]);
     expect(checkStructuredData('f', html, { origin: ORIGIN, basePath: BASE }).map((f) => f.rule)).toContain(
@@ -143,11 +201,22 @@ describe('checkStructuredData', () => {
       {
         '@type': 'WebPage',
         '@id': `${ORIGIN}${BASE}/seite/#webpage`,
+        url: `${ORIGIN}${BASE}/seite/`,
+        name: 'Überschrift',
+        description: 'Beschreibung der Testseite.',
         isPartOf: { '@id': `${ORIGIN}${BASE}/#website` },
       },
       {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Startseite', item: `${ORIGIN}${BASE}/` },
+          { '@type': 'ListItem', position: 2, name: 'Überschrift', item: `${ORIGIN}${BASE}/seite/` },
+        ],
+      },
+      {
         '@type': 'WebApplication',
-        name: 'Rechner',
+        name: 'Überschrift',
+        description: 'Beschreibung der Testseite.',
         url: `${ORIGIN}${BASE}/seite/`,
         applicationCategory: 'UtilityApplication',
         operatingSystem: 'All',
@@ -164,7 +233,30 @@ describe('checkStructuredData', () => {
         ],
       },
     ]);
-    expect(checkStructuredData('f', html, { origin: ORIGIN, basePath: BASE })).toEqual([]);
+    const visible = `
+      <nav aria-label="Pfad"><ol>
+        <li><a href="${BASE}/">Startseite</a></li>
+        <li><span aria-current="page">Überschrift</span></li>
+      </ol></nav>
+      <main><h1>Überschrift</h1>
+        <section><h2>Häufige Fragen</h2>
+          <details><summary>Frage?</summary><p>Antwort.</p></details>
+        </section>
+      </main>`;
+    const options = {
+      origin: ORIGIN,
+      basePath: BASE,
+      expectedTypes: ['WebPage', 'BreadcrumbList', 'WebApplication', 'FAQPage'],
+      expectedCanonical: `${ORIGIN}${BASE}/seite/`,
+      expectedH1: 'Überschrift',
+      expectedDescription: 'Beschreibung der Testseite.',
+    };
+    expect(checkStructuredData('f', html + visible, options)).toEqual([]);
+    expect(
+      checkStructuredData('f', html + visible.replace('Antwort.', 'Andere Antwort.'), options).map(
+        (finding) => finding.rule
+      )
+    ).toContain('json-ld-faq-abgleich');
   });
 });
 
@@ -188,13 +280,14 @@ describe('checkSitemap', () => {
     expect(findings.map((f) => f.rule)).toContain('sitemap-ziel');
   });
 
-  it('meldet eine noindex-Seite in der Sitemap', () => {
-    const findings = checkSitemap('f', sitemap([`${ORIGIN}${BASE}/a/`]), {
+  it('meldet noindex- und technische Fehlerseiten in der Sitemap', () => {
+    const findings = checkSitemap('f', sitemap([`${ORIGIN}${BASE}/a/`, `${ORIGIN}${BASE}/404/`]), {
       ...options,
       indexable: [],
-      nonIndexable: ['/a/'],
+      nonIndexable: ['/a/', '/404/'],
+      exists: (path) => path === '/a/' || path === '/404/',
     });
-    expect(findings.map((f) => f.rule)).toContain('sitemap-noindex');
+    expect(findings.filter((finding) => finding.rule === 'sitemap-noindex')).toHaveLength(2);
   });
 
   it('meldet doppelte Adressen', () => {
@@ -203,6 +296,18 @@ describe('checkSitemap', () => {
       indexable: ['/a/'],
     });
     expect(findings.map((f) => f.rule)).toContain('sitemap-doppelt');
+  });
+
+  it('verlangt den eigenen Host und die kanonische Verzeichnisform', () => {
+    const findings = checkSitemap('f', sitemap(['https://other.test/Camp/a']), {
+      ...options,
+      indexable: ['/a/'],
+      origin: ORIGIN,
+      exists: () => true,
+    });
+    expect(findings.map((finding) => finding.rule)).toEqual(
+      expect.arrayContaining(['sitemap-host', 'sitemap-canonical', 'sitemap-fehlend'])
+    );
   });
 
   it('lässt eine vollständige Sitemap durch', () => {
@@ -257,6 +362,51 @@ describe('checkHeavyLibraries', () => {
 
   it('verträgt ein Bündel, das nicht im Export liegt', () => {
     expect(heavyLibrariesLoaded('<script src="/fehlt.js"></script>', resolve)).toEqual([]);
+  });
+});
+
+describe('Calculator-Code-Split', () => {
+  const page = '<script src="/chunks/article.js"></script><script src="/chunks/calculators.js"></script>';
+
+  it('zählt Script- und Module-Preloads zum initialen Download', () => {
+    expect(
+      scriptSources(
+        '<link rel="preload" as="script" href="/preload.js"/><link rel="modulepreload" href="/module.js"/>'
+      )
+    ).toEqual(['/preload.js', '/module.js']);
+  });
+  const chunks: Record<string, string> = {
+    '/chunks/article.js': 'console.log("Textseite");',
+    '/chunks/calculators.js': 'id="rechner-strom" id="batterie-energie" id="solar-ertrag"',
+  };
+  const resolve = (source: string) => chunks[source] ?? null;
+
+  it('erkennt Rechner anhand ihrer eindeutigen Eingabekennungen', () => {
+    expect(calculatorBundlesLoaded(page, resolve)).toEqual([
+      'batteriekapazitaet',
+      'kabelquerschnitt',
+      'solaranlage',
+    ]);
+  });
+
+  it('verbietet nicht gerenderte Rechner auf SEO-Seiten, erlaubt inventarisierte Rechner', () => {
+    const findings = checkCalculatorBundles('out/article/index.html', page, { resolveChunk: resolve });
+    expect(findings).toHaveLength(3);
+    expect(findings.every((finding) => finding.rule === 'rechner-bundle')).toBe(true);
+    expect(
+      checkCalculatorBundles('out/calc/index.html', page, {
+        resolveChunk: resolve,
+        allowed: ['batteriekapazitaet', 'kabelquerschnitt', 'solaranlage'],
+      })
+    ).toEqual([]);
+  });
+
+  it('hält die gemessene Erstaufbaugröße innerhalb eines klaren Seitenbudgets', () => {
+    expect(checkInitialScriptBudget('out/article/index.html', 700 * 1024, 700 * 1024)).toEqual([]);
+    expect(checkInitialScriptBudget('out/article/index.html', 701 * 1024, 700 * 1024)[0]?.rule).toBe(
+      'initial-js-budget'
+    );
+    expect(() => checkInitialScriptBudget('out/article/index.html', -1, 700)).toThrow(RangeError);
   });
 });
 

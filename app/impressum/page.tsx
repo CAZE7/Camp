@@ -2,18 +2,15 @@ import type { Metadata } from 'next';
 
 import { SiteHeader } from '@/components/brand/SiteHeader';
 import { SiteFooter } from '@/components/brand/SiteFooter';
+import { PageStructuredData } from '@/components/seo/PageStructuredData';
 // AUDIT „Impressum-Placeholder": Die Angaben stehen in `lib/siteLegal.ts` —
 // eine Stelle zum Ausfüllen, eine maschinell prüfbare Vollständigkeit
 // (`npm run ci:verify-legal-notice`, Schritt im Deploy-Workflow).
 import { SITE_LEGAL, isPlaceholderText, isProviderComplete } from '@/lib/siteLegal';
 
-import { pageMetadata } from '@/app/siteMetadata';
+import { metadataForPage } from '@/app/seoMetadata';
 
-export const metadata: Metadata = pageMetadata({
-  title: 'Impressum',
-  description: 'Anbieterkennzeichnung nach § 5 DDG: Anbieter, Anschrift und Kontakt dieser Seite.',
-  path: '/impressum/',
-});
+export const metadata: Metadata = metadataForPage('/impressum/');
 
 export default function ImpressumPage() {
   const legal = SITE_LEGAL;
@@ -23,6 +20,7 @@ export default function ImpressumPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-paper text-ink">
+      <PageStructuredData path="/impressum/" />
       <SiteHeader />
       <main id="main" className="container-page prose-measure flex-1">
         <h1 className="font-display text-2xl font-semibold tracking-tight">Impressum</h1>

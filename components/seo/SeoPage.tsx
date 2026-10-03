@@ -1,10 +1,7 @@
 import Link from 'next/link';
 
 import { FaqAkkordeon } from '@/components/elektrik/FaqAkkordeon';
-import { KabelquerschnittRechner } from '@/components/elektrik/KabelquerschnittRechner';
-import { BatteriekapazitaetRechner } from '@/components/rechner/BatteriekapazitaetRechner';
-import { SolaranlageRechner } from '@/components/rechner/SolaranlageRechner';
-import { SpannungsabfallRechner } from '@/components/rechner/SpannungsabfallRechner';
+import { CalculatorRenderer } from '@/components/rechner/CalculatorRenderer';
 import { SiteFooter } from '@/components/brand/SiteFooter';
 import { SiteHeader } from '@/components/brand/SiteHeader';
 import {
@@ -17,7 +14,7 @@ import {
   webPageNode,
 } from '@/lib/seo/jsonLd';
 import { topicOf } from '@/lib/seo/topics';
-import type { CalculatorId, ContentSection, SeoPageContent } from '@/lib/seo/types';
+import type { ContentSection, SeoPageContent } from '@/lib/seo/types';
 
 import { Breadcrumbs, breadcrumbsFor } from './Breadcrumbs';
 import { RichText } from './RichText';
@@ -33,13 +30,6 @@ import { RichText } from './RichText';
  *
  * Der Inhalt kommt aus `lib/seo/content/` — hier steht nur, WIE er erscheint.
  */
-
-const CALCULATORS: Record<CalculatorId, () => React.JSX.Element> = {
-  kabelquerschnitt: KabelquerschnittRechner,
-  spannungsabfall: SpannungsabfallRechner,
-  batteriekapazitaet: BatteriekapazitaetRechner,
-  solaranlage: SolaranlageRechner,
-};
 
 /** Beschreibung dieser Seite als `@graph` — Texte aus derselben Quelle wie die Anzeige. */
 export function jsonLdFor(page: SeoPageContent) {
@@ -210,10 +200,7 @@ function Section({ section }: { section: ContentSection }) {
 
       {section.calculator && (
         <div className="mt-5">
-          {(() => {
-            const Calculator = CALCULATORS[section.calculator];
-            return <Calculator />;
-          })()}
+          <CalculatorRenderer calculator={section.calculator} />
         </div>
       )}
 

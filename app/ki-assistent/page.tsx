@@ -3,20 +3,14 @@ import type { Metadata } from 'next';
 import { SiteHeader } from '@/components/brand/SiteHeader';
 import Chat from '@/components/Chat';
 
-import { pageMetadata } from '@/app/siteMetadata';
+import { metadataForPage } from '@/app/seoMetadata';
 
 /**
  * Die Assistenten-Ansicht ruft eine Server-Schnittstelle auf, die es in der
  * statischen Auslieferung nicht gibt. Sie bleibt erreichbar, wird aber nicht
  * in den Index aufgenommen und steht nicht in der Sitemap.
  */
-export const metadata: Metadata = pageMetadata({
-  title: 'Camper-Assistent',
-  description:
-    'Fragen zum Camper-Ausbau im Dialog — als Ergänzung zu Schaltplan, Dach-Planer und Heizlast-Rechner.',
-  path: '/ki-assistent/',
-  index: false,
-});
+export const metadata: Metadata = metadataForPage('/ki-assistent/');
 
 export default function KiAssistent() {
   return (

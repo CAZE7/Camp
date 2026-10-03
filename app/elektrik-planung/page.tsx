@@ -6,17 +6,12 @@ import { KabelquerschnittRechner } from '@/components/elektrik/KabelquerschnittR
 import {
   APPLICATION_FEATURES,
   ELEKTRIK_FAQ,
-  PAGE_DESCRIPTION,
+  PAGE_H1,
   PAGE_LEAD,
-  PAGE_TITLE,
 } from '@/components/elektrik/electricContent';
-import {
-  ELEKTRIK_PLANUNG_PATH,
-  buildElektrikPlanungJsonLd,
-  serializeJsonLd,
-} from '@/components/elektrik/structuredData';
+import { buildElektrikPlanungJsonLd, serializeJsonLd } from '@/components/elektrik/structuredData';
 import { Button } from '@/components/ui/button';
-import { pageMetadata } from '@/app/siteMetadata';
+import { metadataForPage } from '@/app/seoMetadata';
 import { SiteFooter } from '@/components/brand/SiteFooter';
 import { SiteHeader } from '@/components/brand/SiteHeader';
 import {
@@ -75,18 +70,7 @@ const NORMEN: readonly { norm: string; bereich: string }[] = [
   },
 ];
 
-export const metadata: Metadata = pageMetadata({
-  title: PAGE_TITLE,
-  description: PAGE_DESCRIPTION,
-  path: ELEKTRIK_PLANUNG_PATH,
-  absoluteTitle: true,
-  image: {
-    path: '/og/elektrik-planung.png',
-    width: 1200,
-    height: 630,
-    alt: 'Werft — Camper-Elektrik berechnen und 12-V-Anlage sicher dimensionieren',
-  },
-});
+export const metadata: Metadata = metadataForPage('/elektrik-planung/');
 
 export default function ElektrikPlanung() {
   const jsonLd = buildElektrikPlanungJsonLd();
@@ -114,7 +98,7 @@ export default function ElektrikPlanung() {
             </nav>
             <p className="label-eyebrow mt-6 text-copper">Elektroplanung</p>
             <h1 id="seite-titel" className="mt-3 font-display text-2xl font-semibold tracking-tight text-ink">
-              Camper-Elektrik berechnen
+              {PAGE_H1}
             </h1>
             <p className="mt-4 max-w-3xl text-md leading-relaxed text-ink-soft">{PAGE_LEAD}</p>
             <div className="mt-6 flex flex-wrap gap-3">
@@ -368,6 +352,38 @@ export default function ElektrikPlanung() {
                 Regelwerke, keine Rechtsprüfung.
               </p>
             </article>
+          </section>
+
+          <section aria-labelledby="wissen-vertiefen-titel" className="prose-measure">
+            <h2 id="wissen-vertiefen-titel" className="font-display text-xl font-semibold text-ink">
+              Auslegung und Grundlagen vertiefen
+            </h2>
+            <p className="mt-2 text-md text-ink-soft">
+              Der Planer rechnet die Anlage als Ganzes. Wenn du einen einzelnen Zusammenhang nachschlagen
+              möchtest, findest du hier die Herleitung und Grenzen des jeweiligen Modells.
+            </p>
+            <ul className="mt-4 grid gap-3 sm:grid-cols-2">
+              <li>
+                <Link href="/camper-elektrik/kabelquerschnitt/" className="font-medium text-ink underline">
+                  Kabelquerschnitt für 12 V bemessen
+                </Link>
+              </li>
+              <li>
+                <Link href="/camper-elektrik/spannungsabfall/" className="font-medium text-ink underline">
+                  Spannungsabfall einer Leitung verstehen
+                </Link>
+              </li>
+              <li>
+                <Link href="/camper-elektrik/sicherungen/" className="font-medium text-ink underline">
+                  Sicherungen passend zur Leitung auswählen
+                </Link>
+              </li>
+              <li>
+                <Link href="/camper-elektrik/batterie/" className="font-medium text-ink underline">
+                  Batterie, Verbrauch und Autarkie dimensionieren
+                </Link>
+              </li>
+            </ul>
           </section>
         </div>
 

@@ -1,21 +1,16 @@
 import type { Metadata } from 'next';
 
-import { pageMetadata } from '@/app/siteMetadata';
+import { metadataForPage } from '@/app/seoMetadata';
+import { PageStructuredData } from '@/components/seo/PageStructuredData';
 
-/** Kopfdaten der Heizlast-Route (die Seite selbst ist eine Client-Komponente). */
-export const metadata: Metadata = pageMetadata({
-  title: 'Heizlast-Rechner für Wohnmobil und Camper',
-  description:
-    'Benötigte Heizleistung aus Fahrzeuggröße, Dämmung und Wunschtemperatur berechnen — inklusive Empfehlung, welches Heizgerät passt.',
-  path: '/tools/heizung/',
-  image: {
-    path: '/og/heizung.png',
-    width: 1200,
-    height: 630,
-    alt: 'Heizlast-Rechner für Wohnmobil und Camper',
-  },
-});
+/** Kopfdaten und strukturierte Beschreibung der Client-Route. */
+export const metadata: Metadata = metadataForPage('/tools/heizung/');
 
 export default function HeizungLayout({ children }: { children: React.ReactNode }) {
-  return children;
+  return (
+    <>
+      <PageStructuredData path="/tools/heizung/" />
+      {children}
+    </>
+  );
 }

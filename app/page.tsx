@@ -1,13 +1,18 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowRight, CalendarCheck, Flame, Map as MapIcon, Sun, Zap } from 'lucide-react';
+import { metadataForPage } from '@/app/seoMetadata';
 import { SiteHeader } from '@/components/brand/SiteHeader';
 import { SiteFooter } from '@/components/brand/SiteFooter';
+import { PageStructuredData } from '@/components/seo/PageStructuredData';
 
 /**
  * D-7 Startseite: Hero mit klarem Nutzenversprechen, die drei Werkzeuge
  * (Elektrik/Dach/Heizung) plus Fahrplan im selben Card-System, darunter
  * die Guide-Teaser. Ein H1, konsistente CTAs, einheitliche Sektionen.
  */
+
+export const metadata: Metadata = metadataForPage('/');
 
 const TOOLS = [
   {
@@ -66,6 +71,7 @@ const GUIDES = [
 export default function Home() {
   return (
     <div className="flex min-h-screen flex-col bg-paper text-ink">
+      <PageStructuredData path="/" />
       <SiteHeader />
 
       <main id="main" className="container-page flex-1">
