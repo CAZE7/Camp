@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { ROUTING_TOKENS } from '../tokens';
 import {
   isPortBundleOverlap,
   isPortBundleProximity,
   overlapInterval,
-  portCorridor,
   routedPathGeometry,
   sharesPort,
 } from './portBundle';
@@ -95,82 +95,75 @@ describe('isPortBundleOverlap — erlaubt ist nur der gemeinsame Stub', () => {
 });
 
 // ---------------------------------------------------------------------------
-// ADR 0031 — Port-Korridor und die Freigabe-Seite der Ausnahme (I3).
+// ADR 0031 (verschärft 2026-10-03) — Locus-Regel der Freigabe-Seite (I3).
 // ---------------------------------------------------------------------------
 
-describe('portCorridor — Stub + Fan-Out-Jog je Route-Ende', () => {
-  it('n≥3: erste zwei und letzte zwei Segmente sind Korridor', () => {
-    const g = path([0, 0], [40, 0], [40, 16], [200, 16], [200, 100], [240, 100]);
-    // 6 Stützpunkte → 5 Segmente (Index 0–4): Start-Korridor [0, 1],
-    // Ende-Korridor [3, 4].
-    const corridor = portCorridor(g);
-    expect(corridor.start).toHaveLength(2);
-    expect(corridor.start[0]).toEqual(g.segments[0]);
-    expect(corridor.start[1]).toEqual(g.segments[1]);
-    expect(corridor.end).toHaveLength(2);
-    expect(corridor.end[0]).toEqual(g.segments[3]);
-    expect(corridor.end[1]).toEqual(g.segments[4]);
-  });
+describe('isPortBundleProximity — ADR 0031, Locus-Regel', () => {
+  // Korridor-Maß wie im Produktiv-Check: portFacingClearance (ADR 0027)
+  // = stubMin + 2·laneGrid + cableClearance = 68.
+  const MAXArc = ROUTING_TOKENS.portFacingClearance;
 
-  it('n=2: nur das jeweilige Endsegment ist Korridor (kein Jog vorhanden)', () => {
-    const g = path([0, 0], [100, 0], [100, 80]);
-    const corridor = portCorridor(g);
-    expect(corridor.start).toEqual([g.segments[0]]);
-    expect(corridor.end).toEqual([g.segments[1]]);
-  });
-
-  it('n=1: das einzige Segment ist BOTH-Ende-Korridor (reine Stub-Verbindung)', () => {
-    const g = path([0, 0], [100, 0]);
-    const corridor = portCorridor(g);
-    expect(corridor.start).toEqual([g.segments[0]]);
-    expect(corridor.end).toEqual([g.segments[0]]);
-  });
-
-  it('leere Geometrie hat keinen Korridor', () => {
-    expect(portCorridor(path([5, 5]))).toEqual({ start: [], end: [] });
-  });
-});
-
-describe('isPortBundleProximity — ADR 0031, Freigabe-Seite der Bündel-Ausnahme', () => {
-  it('zwei Stubs am gemeinsamen Handle (Abstand 0 durch Konvergenz) sind erlaubt', () => {
-    // Klassischer Bündelfall: beide Kanten verlassen denselben Punkt;
-    // ihre Stubs liegen kollinear übereinander (I2-Ausnahme) und sind
-    // damit zwangsläufig auch < 12 px voneinander entfernt (I3).
-    const a = path([0, 0], [60, 0], [60, 80]);
-    const b = path([0, 0], [40, 0], [0, 90]);
-    expect(isPortBundleProximity(a, b, a.segments[0]!, b.segments[0]!)).toBe(true);
+  it('zwei Stubs am gemeinsamen Handle (Berührung im Port) sind erlaubt', () => {
+    // Klassischer Bündelfall: beide Kanten enden im selben Punkt; die
+    // nächsten Annäherungen liegen bei Bogenlänge 0.
+    const a = path([0, 0], [0, 200]);
+    const b = path([0, 0], [200, 0]);
+    expect(isPortBundleProximity(a, b, a.segments[0]!, b.segments[0]!, MAXArc)).toBe(true);
   });
 
   it('Fan-Out-Jog gegen den weiterlaufenden Stub des Nachbarn ist erlaubt', () => {
     // Gemessener Referenzfall (complex: e-auto-2↔e-auto-7): b weicht am
     // Stub-Ende auf seine Lane aus und kreuzt dabei a's längeren Stub.
+    // Locus = Kreuzung (54, 0), Bogenlänge 54 auf beiden Pfaden ≤ 68.
     const a = path([0, 0], [84, 0], [84, 200]);
     const b = path([0, 0], [54, 0], [54, 32], [200, 32]);
-    // b's Jog (Segment 1) läuft a's Stub (Segment 0) in x=54..84 quer an.
-    expect(isPortBundleProximity(a, b, a.segments[0]!, b.segments[1]!)).toBe(true);
+    expect(isPortBundleProximity(a, b, a.segments[0]!, b.segments[1]!, MAXArc)).toBe(true);
+  });
+
+  it('Parallellauf im Korridor (ganze Region ≤ 68) ist erlaubt', () => {
+    // Bündel fächert auf: a läuft weiter, b biegt auf die Nachbarspur.
+    // Die parallele Annäherung liegt komplett innerhalb des Korridors.
+    const a = path([0, 0], [60, 0]);
+    const b = path([0, 0], [20, 0], [20, 8], [60, 8]);
+    expect(isPortBundleProximity(a, b, a.segments[0]!, b.segments[2]!, MAXArc)).toBe(true);
   });
 
   it('Ende-gegen-Ende am gemeinsamen Port ist erlaubt (Fan-In)', () => {
-    const a = path([0, 200], [60, 200], [60, 100], [100, 100]);
-    const b = path([0, 0], [40, 0], [40, 100], [100, 100]);
-    expect(isPortBundleProximity(a, b, a.segments[2]!, b.segments[2]!)).toBe(true);
+    const a = path([0, 200], [52, 200], [52, 100], [100, 100]);
+    const b = path([0, 0], [44, 0], [44, 100], [100, 100]);
+    expect(isPortBundleProximity(a, b, a.segments[1]!, b.segments[1]!, MAXArc)).toBe(true);
   });
 
-  it('freies Trassensegment ist nie freigestellt — auch nicht am gemeinsamen Port', () => {
-    // a's drittes Segment (Index 2, freie Trasse) läuft b's Stub nah —
-    // gesuchte Geometrie, der Router hätte sie fernhalten können.
+  it('Annäherung JENSEITS des Korridors zählt — auch an gemeinsamen Ports', () => {
+    // Locus (Kreuzung bei 84, 0) liegt mit Bogenlänge 84 > 68 jenseits des
+    // Korridors: Beide Segmente sind hier gesuchte Geometrie (der Stub ist
+    // 24 px; bis 84 px ist die Kante längst auf ihrer eigenen Trasse).
+    // Die frühere Segment-Fenster-Fassung hat genau diesen Fall freigestellt.
+    const a = path([0, 0], [200, 0], [200, 100]);
+    const b = path([0, 0], [84, 0], [84, 8], [200, 8]);
+    expect(isPortBundleProximity(a, b, a.segments[0]!, b.segments[1]!, MAXArc)).toBe(false);
+  });
+
+  it('Parallele Annäherung, die über das Korridor-Ende hinausreicht, zählt', () => {
+    // Die Überlappungspanne beginnt im Korridor und endet bei 200 —
+    // die GANZE Region muss im Korridor liegen, sonst zählt der Fall.
+    const a = path([0, 0], [200, 0]);
+    const b = path([0, 0], [84, 0], [84, 8], [200, 8]);
+    expect(isPortBundleProximity(a, b, a.segments[0]!, b.segments[2]!, MAXArc)).toBe(false);
+  });
+
+  it('Korridor-Grenze: Locus bei 60 zählt noch als Bündel, bei 84 nicht mehr', () => {
+    // Dieselbe Geometrie wie beim 84-px-Fall, nur dichter am Port:
+    // 60 ≤ 68 — Konvergenz innerhalb des designeden Korridors.
+    const a = path([0, 0], [200, 0], [200, 100]);
+    const b = path([0, 0], [60, 0], [60, 8], [200, 8]);
+    expect(isPortBundleProximity(a, b, a.segments[0]!, b.segments[1]!, MAXArc)).toBe(true);
+  });
+
+  it('freies Trassensegment weitab des gemeinsamen Ports zählt', () => {
     const a = path([0, 0], [40, 0], [40, 16], [200, 16], [200, 100], [240, 100]);
     const b = path([0, 0], [40, 0], [40, 32], [200, 32]);
-    expect(isPortBundleProximity(a, b, a.segments[3]!, b.segments[2]!)).toBe(false);
-  });
-
-  it('Korridor am GEGENÜBERLIEGenden Ende zählt nicht für den gemeinsamen Port', () => {
-    // Paar teilt den START-Port; die Unterschreitung liegt an a's Ziel-Stub
-    // gegen b's freie Trasse — das ist keine Bündel-Konvergenz am Start.
-    const a = path([0, 0], [40, 0], [40, 16], [200, 16], [200, 100], [240, 100]);
-    const b = path([0, 0], [40, 0], [40, 32], [240, 32]);
-    // a hat 5 Segmente (Index 0–4): der Ziel-Stub ist Index 4.
-    expect(isPortBundleProximity(a, b, a.segments[4]!, b.segments[2]!)).toBe(false);
+    expect(isPortBundleProximity(a, b, a.segments[3]!, b.segments[2]!, MAXArc)).toBe(false);
   });
 
   it('ohne gemeinsamen Port bleibt jede Unterschreitung gemeldet', () => {
@@ -178,6 +171,6 @@ describe('isPortBundleProximity — ADR 0031, Freigabe-Seite der Bündel-Ausnahm
     // complex: e-busbar-fuse↔e-shore-inv, 0,8 px) — kein Bündel.
     const a = path([0, 0], [100, 0], [100, 80]);
     const b = path([20, 8], [90, 8], [90, 60]);
-    expect(isPortBundleProximity(a, b, a.segments[0]!, b.segments[0]!)).toBe(false);
+    expect(isPortBundleProximity(a, b, a.segments[0]!, b.segments[0]!, MAXArc)).toBe(false);
   });
 });

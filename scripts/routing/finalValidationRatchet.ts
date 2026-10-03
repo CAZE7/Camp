@@ -25,23 +25,41 @@
  *   bestrafen. Die Werte dürfen sinken — dann sind sie nachzuziehen —, aber
  *   nie steigen.
  *
- * Zahlenstand 2026-10-02 (ADR 0031): Seit die Port-Bündel-Ausnahme
- * (ADR 0009/0025) SYMMETRISCH für I2 und I3 gilt — zwei Kanten an
- * derselben Anschlussstelle konvergieren zwangsläufig auf gemeinsamem
- * Stub/Fan-Out-Jog; I3 zählte genau diese Geometrie als Verletzung —,
- * zählt die Ratchet nur noch ECHTE Restfälle: Paare ohne gemeinsame
- * Anschlussstelle sowie Unterschreitungen an freien (gesuchten)
- * Trassensegmenten. Davor: 6/21/4/12/13/42 (Σ 98), davon 69 strukturelle
- * Bündel-Fälle. Die I3-Segment×Segment-Prüfung selbst (AUDIT ROUTE-012)
- * bleibt unverändert scharf.
+ * Zahlenstand 2026-10-03 (ADR 0031 v2 — Locus-Regel): Die erste Fassung der
+ * Port-Bündel-Ausnahme (2026-10-02) steckte die Freistellung in ein
+ * SEGMENT-FENSTER (die ersten N Stützpunkte je Kante). Das Fenster war
+ * zu grob: Es hat 8 Paare über-freigestellt, die KEINE legitimen
+ * Bündel-Fälle sind (nächste Annäherung weiter als `portFacingClearance`
+ * vom gemeinsamen Port, oder gar kein gemeinsamer Port). Die Locus-Fassung
+ * misst stattdessen die Bogenlänge der nächsten Annäherung auf BEIDEN
+ * Pfaden vom gemeinsamen Port aus (`isPortBundleProximity`,
+ * `arcAt` mit `portAtStart`) — dieselbe Messweise wie die I2-Ausnahme,
+ * eine Wahrheit (ADR 0031).
+ *
+ * RECATURE-LEDGER 2026-10-03 (Ratchet darf grundsätzlich nur sinken —
+ * Anstieg nur mit dokumentierter Begründung): Die vier angestiegenen
+ * Werte (solar 0→1, inverter 6→7, acdc 3→7, complex 23→25) sind reine
+ * CHECKER-Verschärfung, KEINE Router-Änderung: Der Routing-Output aller
+ * sechs Referenzpläne ist byte-identisch zum Stand der alten Messung
+ * (verify via `serializeRoutes`, gemessen gegen Commit b9da1a5). Die
+ * Fenster-Regel hat diese Verstöße schlicht nicht gezählt; die Locus-
+ * Regel zählt sie ehrlich. Referenzfälle: solar e-auto-1↔e-auto-10
+ * (Berührung 0 px ohne gemeinsamen Port), complex e-busbar-fuse↔
+ * e-shore-inv (0,8 px, kein gemeinsamer Port).
+ *
+ * Zahlenstand 2026-10-02 (ADR 0031 v1, Segment-Fenster — ersetzt): Seit
+ * die Port-Bündel-Ausnahme SYMMETRISCH für I2 und I3 galt, zählte die
+ * Ratchet nur noch Restfälle: 2/7/0/6/3/23 (Σ 41), davor 6/21/4/12/13/42
+ * (Σ 98, AUDIT ROUTE-012). Die I3-Segment×Segment-Prüfung selbst bleibt
+ * unverändert scharf.
  */
 export const FINAL_VALIDATION_RATCHET: Readonly<Record<string, number>> = {
   simple: 2,
   camper: 7,
-  solar: 0,
-  inverter: 6,
-  acdc: 3,
-  complex: 23,
+  solar: 1,
+  inverter: 7,
+  acdc: 7,
+  complex: 25,
 };
 
 /**

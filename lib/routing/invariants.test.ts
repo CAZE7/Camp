@@ -518,16 +518,25 @@ describe('I10 — Crossing nur, wenn kein konfliktfreier Weg existiert', () => {
  * inverter 7/2/0/4/4/9/1 · acdc 30/9/1/4/5/15/1 · complex 6/15/3/0/8/15/0
  */
 const LEGACY_BASELINE: Record<string, Record<InvariantId, number> & { crossings: number }> = {
-  // ADR 0031 (2026-10-02): I3-Baseline nachgezogen — Port-Bündel-
-  // Konvergenz zählt nicht mehr (symmetrisch zur I2-Ausnahme von
-  // ADR 0009/0025). Der Rest sind echte Freigabe-Unterschreitungen.
-  // Ratchet: diese Zahlen dürfen nur sinken, nie steigen.
+  // ADR 0031 v2 (2026-10-03, Locus-Regel): I3-Baseline nachgezogen. Die
+  // Werte vom 2026-10-02 stammten aus der Segment-Fenster-Fassung der
+  // Port-Bündel-Ausnahme, die 8 Paare zu Unrecht freigestellt hat
+  // (kein gemeinsamer Port oder nächste Annäherung außerhalb des
+  // Port-Korridors). Die Locus-Fassung zählt sie ehrlich; der Router-
+  // Output ist byte-identisch zur alten Messung (`serializeRoutes` gegen
+  // b9da1a5) — die Anstiege solar 0→1, inverter 6→7, acdc 3→7 und
+  // complex 23→25 sind reine Checker-Verschärfung (Recapture-Ledger in
+  // scripts/routing/finalValidationRatchet.ts). Ratchet: diese Zahlen
+  // dürfen nur sinken, nie steigen.
+  // Kreuzungen: acdc 8→6 und complex 29→27 auf den gemessenen Stand
+  // abgesenkt (Nachzug des Audit-Gates von 2026-09-27, der hier
+  // vergessen wurde).
   simple: { I1: 0, I2: 0, I3: 2, I4: 0, I5: 0, I6: 0, I7: 0, crossings: 2 },
   camper: { I1: 0, I2: 0, I3: 7, I4: 0, I5: 0, I6: 0, I7: 0, crossings: 5 },
-  solar: { I1: 0, I2: 0, I3: 0, I4: 0, I5: 0, I6: 0, I7: 0, crossings: 2 },
-  inverter: { I1: 0, I2: 0, I3: 6, I4: 0, I5: 0, I6: 0, I7: 0, crossings: 2 },
-  acdc: { I1: 0, I2: 0, I3: 3, I4: 0, I5: 0, I6: 0, I7: 0, crossings: 8 },
-  complex: { I1: 0, I2: 0, I3: 23, I4: 0, I5: 0, I6: 0, I7: 0, crossings: 29 },
+  solar: { I1: 0, I2: 0, I3: 1, I4: 0, I5: 0, I6: 0, I7: 0, crossings: 2 },
+  inverter: { I1: 0, I2: 0, I3: 7, I4: 0, I5: 0, I6: 0, I7: 0, crossings: 2 },
+  acdc: { I1: 0, I2: 0, I3: 7, I4: 0, I5: 0, I6: 0, I7: 0, crossings: 6 },
+  complex: { I1: 0, I2: 0, I3: 25, I4: 0, I5: 0, I6: 0, I7: 0, crossings: 27 },
 };
 
 const ELK_BASELINE: Record<string, { I3: number; I5: number; I6: number; crossings: number }> = {

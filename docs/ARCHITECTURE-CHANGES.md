@@ -2341,3 +2341,45 @@ all-or-nothing Tube-Drop (ROUTE-BUG-16-Rangfolge). Die Hebel — Lane-Vergabe
 Freigabe (ADR 0027) und eine potenziell scoped Tube-Relaxation — sind in
 ADR 0031 „Alternativen" und ROUTE-008 dokumentiert; jede Änderung dort braucht
 Recapture beider Pfade (Referenzpositionen UND Versatz-Matrix).
+
+### 2026-10-03 — Zweiunddreißigste Fassung: Ehrliche Locus-Regel und chirurgische Tube-Reparatur (ADR 0031 v2, ADR 0032)
+
+1. **ADR 0031 v2 — Locus-Regel statt Segment-Fenster:** Die v1-Fassung der
+   Port-Bündel-Freistellung für I3 („erste zwei bzw. letzte zwei Segmente")
+   stellte 8 Paare zu Unrecht frei (u. a. solar e-auto-1↔e-auto-10, Berührung
+   0 px ohne gemeinsamen Port). Korridor-Maß ist jetzt die Bogenlänge der
+   nächsten Annäherung vom gemeinsamen Port (`portFacingClearance` = 68 px,
+   `arcAt` mit `portAtStart`-Richtungskorrektur) — auf BEIDEN Pfaden, dieselbe
+   Messweise wie die I2-Ausnahme. `portCorridor` (Fenster) ist entfernt.
+   **Der Router-Output aller sechs Referenzpläne ist byte-identisch**
+   (`serializeRoutes`, gegen b9da1a5) — die I3-Erhöhungen sind reine
+   Checker-Verschärfung: 41 → 49 Meldungen, Recapture-Ledger in
+   `finalValidationRatchet.ts` (solar 0→1, inverter 6→7, acdc 3→7,
+   complex 23→25) plus `SHIFT_RATCHET`/`LEGACY_BASELINE`-Nachzug; beim
+   Absenken geblieben: Kreuzungs-Basenlines acdc 8→6, complex 29→27.
+2. **ADR 0032 — Leiter-Wurzelfixes + scoped Tube-Reparatur:** (a)
+   `hasSelfOverlap` erkennt ADJAZENTE Rückwärtsfaltungen (A→B→A′) über
+   `segmentsOverlap` — vorher war die Faltung für `routeDefectScore`
+   unsichtbar, während die I2-Invariante sie zählte (e-auto-8, Plan complex);
+   (b) Leiter-Frühstopp nur bei mangelfreiem Treffer — defekte Ersttreffer
+   (I4-Portkehren) sperren die rangniedrigeren Versuche nicht mehr
+   (p04/p13: Defekt-Score 80 → 0 je Kante); (c) Reparatur nach der Leiter für
+   Tube-Drop-Gewinner MIT hartem Verstoß: scoped Tubes (alle außer den vom
+   festen Port-Rahmen getroffenen), Selbstüberdeckungs-Gate, Budget-Guards
+   (Kreuzungen ≤ Basis, Länge ≤ Basis), Abweichungs-Maß gegen Kaskade,
+   Gleichstand = Originalpfad. Drei Alternativen gemessen und verworfen
+   (globale Scoped-Leiter: complex I3 25→33, +1932 px; Hart-Kriterium in der
+   Leiter-Auswahl in zwei Varianten: acdc-Kreuzungs-/Längen-Ratchet-Bruch).
+3. **Stress-Szenarien (Refresh gemäß WP-11-Konvention, mit Begründung):**
+   p02 verliert die harte Überdeckung (Score 102 → 0, Kantenlänge neutral
+   728→728 px, Kreuzungen 1→1; Kaskade +16 px, gewichtete Verstöße 7→20 —
+   ohne Reparatur 23; Begründung und offener Punkt ROUTE-009: Ausweichlauf
+   blind für gewichtete Clearance); p04/p13 verlieren je eine I4-Portkehre
+   (Bends −2/−6, Länge −56/−12 px, Clearance 3→0/4→0). Neue Beweis-Tests:
+   „finale Routen sind intern mangelfrei" (`regression.test.ts`) und 5
+   Faltungs-Unit-Tests (`pathfinding.test.ts`); `portBundle.test.ts` mit 9
+   Locus-Fällen; `portBundleModel.test.ts` auf ehrliche Restfälle
+   umgeschrieben (solar-Restfall exakt identifiziert statt „0 erreichbar").
+4. **Diagnose-Vereinheitlichung:** `audit.ts` zählt Selbstüberlappungen jetzt
+   über `hasSelfOverlap` (eine Wahrheit — die hiesige Eigenimplementierung
+   hatte dieselbe Adjazenz-Lücke).

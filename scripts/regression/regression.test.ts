@@ -17,6 +17,7 @@ import { layoutWithElk } from '../../lib/routing/elk/runner';
 import { toElkPlan } from '../../lib/routing/elk/ab-compare';
 import type { RouteEdgeRef } from '../../components/edges/utils/routeAll';
 import { compareIds } from '../../lib/sortOrder';
+import { routeDefectScore } from '../../components/edges/utils/pathfinding';
 
 /**
  * WP-11 (#400): Golden-Layout-Regression über die 15 Szenarien.
@@ -176,4 +177,35 @@ describe('Verhalten — dynamische Szenarien 13–15', () => {
     await layoutWithElk(toElkPlan(scenario.nodes as Node[], scenario.edges as RouteEdgeRef[]));
     expect(serializeRoutes(routeScenario(scenario))).toBe(before);
   });
+});
+
+// ---------------------------------------------------------------------------
+// ADR 0032 (2026-10-03) — Leiter-Frühstopp und Tube-Reparatur.
+// Der Frühstopp „if (bestFound) break" sperrte die rangniedrigeren Versuche
+// auch dann, wenn der gefundene Kandidat INTERN defekt war (I4-Portkehren,
+// Selbstüberdeckung). Gemessen: p04 (e-b) und p13 (e-bus-c) endeten mit
+// Defekt-Score 80; die Reparatur beseitigte in p02 eine harte Überdeckung
+// gegen eine verlegte Trasse bei neutraler Kantenlänge (728 → 728 px).
+// Diese Tests sichern den Effekt direkt: Die finalen Routen sind intern
+// mangelfrei — ein Revert des Frühstopp-Fixes lässt sie rot werden.
+// ---------------------------------------------------------------------------
+describe('ADR 0032 — defekte Versuchs-Gewinner werden ersetzt (Frühstopp-Fix)', () => {
+  const cases = [
+    { id: 'p02-batterie-10-verbraucher', note: 'Tube-Reparatur: harte Überdeckung beseitigt' },
+    { id: 'p04-parallele-verbraucher', note: 'I4-Portkehre der Kante e-b ersetzt (penalty 80 → 0)' },
+    { id: 'p13-drag-zentraler-node', note: 'I4-Portkehre der Kante e-bus-c ersetzt (penalty 80 → 0)' },
+  ];
+  for (const { id, note } of cases) {
+    it(`${id}: finale Routen sind intern mangelfrei (Σ Defekt-Score = 0) — ${note}`, () => {
+      const scenario = REGRESSION_SCENARIOS.find((s) => s.id === id)!;
+      const routed = routeScenario(scenario);
+      expect(routed.length).toBeGreaterThan(0);
+      for (const edge of routed) {
+        expect(
+          routeDefectScore(edge.waypoints),
+          `${edge.id}: interne Mängel (Kehren/Selbstüberdeckung/Kurzsegment)`
+        ).toBe(0);
+      }
+    });
+  }
 });

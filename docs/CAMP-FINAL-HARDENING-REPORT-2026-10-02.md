@@ -345,14 +345,41 @@ Produktfrage, keine Reparatur; beide Seiten dokumentiert.
 
 ## 15. Verbleibende TODOs (priorisiert, mit Hebeln)
 
-1. **I3-Rest → 0** (ROUTE-008): Port-Fan-Out/Lane-Vergabe messen (Vorarbeiten und
-   4 verworfene Varianten in ROUTE-002 Teil 2b), ggf. scoped Tube-Relaxation
-   (Golden-Master-Recapture-Pflicht, Ledger vorbereitet).
+> **Perfection-Drive-Update 2026-10-03 („Dann mache es perfekt")** — Punkt 1
+> angefasst, Teilziele erreicht, Rest neu bewertet:
+>
+> - **I3-Checker ehrlich (ADR 0031 v2, Locus-Regel):** Die v1-Fassung stellte
+>   8 Paare zu Unrecht frei. Ehrlicher Rest: **49** Meldungen (2/7/1/7/7/25),
+>   Router-Output **byte-identisch** zu b9da1a5 (per `serializeRoutes`
+>   bewiesen). Recapture-Ledger in `finalValidationRatchet.ts` (nur
+>   Checker-Verschärfung, kein Router-Verhalten).
+> - **I3 → 0 ist NICHT erreichbar ohne Router-Redesign** — der Rest sind
+>   feste Port-Rahmen an dichter Bebauung (0–11 px) und freie Trassen nach
+>   dokumentierter ROUTE-BUG-16-Rangfolge („lieber Nähe als Durchlauf durch
+>   ein Bauteil"). Die Akzeptanz „I3 = 0" wird damit als Ziel begraben und
+>   durch ehrliche Ratchets + Profile ersetzt (Regel 26: kein grünes Test
+>   als Korrektheitsbeweis — und kein rotes Gate als Druckmittel ohne
+>   reellen Hebel).
+> - **Tube-Drop hart adressiert (ADR 0032):** Leiter-Wurzelfixes (adjazente
+>   Faltung sichtbar, defekte Ersttreffer sperren nicht mehr) +
+>   chirurgische Reparatur (Hard-Gate, Budget-Guards). Referenzpläne
+>   byte-identisch; p02/p04/p13 messbar besser (harte Überdeckung und
+>   I4-Kehren eliminiert). Drei Alternativen gemessen und verworfen.
+> - **Neu dokumentiert:** ROUTE-009 (Ausweichlauf blind für gewichtete
+>   Clearance — p02-Kaskade, Hebel beschrieben), SHIFT_RATCHET-Recapture
+>   (camper-I2 8→12 als dokumentierter Trade, solar 2→0/acdc 12→10 besser).
+
+1. **I3-Rest weiter senken** (ROUTE-008, jetzt 49 ehrlich): Hebel unverändert
+   — Port-Fan-Out/Lane-Vergabe (4 verworfene Varianten in ROUTE-002 Teil 2b),
+   Platzierung; die scoped Tube-Reparatur (ADR 0032) ist umgesetzt und greift
+   nur bei harten Verstößen.
 2. **ROUTE-003 Domänentrennung produktiv binden** (230 V neben 12 V — überlappt
    den I3-Rest; Mess-Skript vorhanden).
 3. **ROUTE-001/ROUTE-002-Teil-3:** laneRegistry/preferredLaneBonus in den
    Produktivpfad binden oder entfernen (derzeit getestet, aber ungebunden).
-4. **ROUTE-006:** Versatz-I2-Rest (camper 8/acdc 12) über Platzierung senken.
+4. **ROUTE-006/ROUTE-009:** Versatz-I2 (camper 12/acdc 10) und die
+   p02-Kaskade (gewichtete Clearance im Ausweichlauf) — beide brauchen die
+   Prior-Geometrie in `crossingSegments` (ADR 0032 „Offene Punkte").
 5. **PERF-001:** Live-Median Richtung 16 ms-Ziel.
 6. **ARCH-001:** Produktentscheidung Chat-Route.
 7. **ELE-002:** 0,8 Ω-Quelle verifizieren oder als Annahme konservativer setzen.
@@ -362,5 +389,5 @@ Produktfrage, keine Reparatur; beide Seiten dokumentiert.
 
 **Fazit:** Kein grünes Test-ergebnis wurde als Korrektheitsbeweis verkauft (Regel 26):
 Der Widerspruch zwischen Gates, Doku, Checker-Semantik und realer Geometrie ist
-aufgelöst — die verbleibenden 41 Meldungen sind echte Befunde mit Budget, Profilen
-und dokumentierten Hebeln.
+aufgelöst — die verbleibenden Meldungen (Referenzpläne: 49, ehrlich gezählt) sind
+echte Befunde mit Budget, Profilen und dokumentierten Hebeln.
