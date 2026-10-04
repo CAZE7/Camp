@@ -295,8 +295,12 @@ export function buildAcSystem(nodes: readonly Node[], edges: readonly Edge[]): A
 export function resolveAcSourceForLoad(loadId: string, model: AcSystemModel): string | undefined {
   const assigned = model.sourceOfLoad.get(loadId);
   if (assigned) return assigned;
-  if (assigned === null) return undefined;
-  // Unbekannter Verbraucher (noch nicht verdrahtet): Bei GENAU einer Quelle
-  // im Plan ist die Zuordnung eindeutig und keine Annahme.
+  // Ein echter Zuordnungskonflikt (zwei Quellen, unbekannter Verweis) bleibt
+  // unentschieden. „Noch nicht verdrahtet" ist dagegen KEIN Konflikt: Bei
+  // genau einer Quelle im Plan ist die Zuordnung eindeutig und keine Annahme.
+  const blocking = model.conflicts.some(
+    (conflict) => conflict.loadId === loadId && conflict.kind !== 'no-source'
+  );
+  if (blocking) return undefined;
   return model.sources.length === 1 ? model.sources[0]!.id : undefined;
 }
