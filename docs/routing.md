@@ -100,12 +100,27 @@ Messung `npx tsx scripts/routing/audit.ts` (2026-10-04, unverändert zur Baselin
 zu einer Haupttrasse; die Anzeige schaltet `trunkMode` / `backboneGrouping`. Die Trasse ist
 eine **Darstellungs- und Kostenentscheidung**, keine zusätzliche elektrische Verbindung.
 
-## Gesperrte Routen
+## Gesperrte Routen — was „Fixiert" heute wirklich tut
 
-`isRouteLocked(edge)` (nur `data.locked === true`) nimmt eine Kante aus der Neuberechnung:
-Ihre Wegpunkte bleiben, der Router weicht ihr aus. Gesetzt wird das im Inspector
-(„Fixiert"). `user` allein sperrt die Route **nicht** — Topologie und Kabelweg sind zwei
-verschiedene Zusagen.
+Gesetzt wird die Sperre im Inspector („Fixiert" → `data.locked = true`). `user` allein
+sperrt die Route **nicht**: Topologie und Kabelweg sind zwei verschiedene Zusagen.
+
+Wirkung im Routing, präzise:
+
+1. **Vorrang beim Hopping** (`lib/routing/rules/hopping.ts`): `manualLock` erhöht die
+   Priorität; treffen zwei Kanten aufeinander, bekommt die gesperrte **keinen** Hop-Bogen
+   — die andere weicht aus. Sind beide gesperrt, hüpft keine.
+2. **Teil der Topologie-Signatur** (`cableRouteStore.ts`): Ein Wechsel der Sperre ist eine
+   echte Eingabeänderung und erzeugt eine neue Routing-Generation.
+
+**Was es (noch) nicht tut:** Die Wegpunkte einer gesperrten Kante werden weiterhin bei
+jedem Pass neu berechnet. Ein echtes Einfrieren der Geometrie — gespeicherte Wegpunkte,
+die der Router unverändert übernimmt und als Hindernis behandelt — ist **nicht**
+implementiert (offener Befund **V2-LOCK-001**). Wer heute „Fixiert" wählt, bekommt
+Vorrang und Stabilität durch Priorität, keine eingefrorene Linie.
+
+`isRouteLocked(edge)` aus `lib/electricalGraph/intent.ts` ist die dafür vorgesehene
+Abfrage; der Produktivpfad liest derzeit direkt `data.locked`.
 
 ## Skalierung (gemessen 2026-10-04, `tests/scale/plannerScale.test.ts`)
 
