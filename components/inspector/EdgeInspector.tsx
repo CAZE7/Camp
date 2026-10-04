@@ -52,7 +52,7 @@ const INTENT_CHOICES: { value: 'auto' | 'user' | 'locked'; label: string; hint: 
     label: 'Fixiert',
     hint: 'Zusätzlich bleibt der Kabelweg unverändert: Das Routing rechnet um diese Leitung herum.',
   },
-]
+];
 
 export function EdgeInspector({
   edge,
