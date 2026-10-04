@@ -69,6 +69,8 @@ const INITIAL_SCRIPT_BUDGETS: Record<string, number> = {
   '/elektrik-planung/': 750 * 1024,
   '/tools/heizung/': 900 * 1024,
   '/tools/dach/': 1100 * 1024,
+  // Auch ohne Indexstatus soll die Chat-Ansicht das AI-SDK erst nach Klick laden.
+  '/ki-assistent/': 700 * 1024,
 };
 
 /** Wortzahl, unter der eine Inhaltsseite als dünn gilt (Hinweis, kein Fehler). */
@@ -219,7 +221,8 @@ function main(): void {
         allowed: entry?.calculators ?? [],
       })
     );
-    if (indexable) {
+    const hasExplicitScriptBudget = INITIAL_SCRIPT_BUDGETS[path] !== undefined;
+    if (indexable || hasExplicitScriptBudget) {
       const initialScriptBytes = scriptSources(html).reduce((total, source) => {
         const code = resolveChunk(source);
         return code === null ? total : total + Buffer.byteLength(code, 'utf8');

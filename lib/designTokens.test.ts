@@ -347,10 +347,7 @@ describe('D-1 Werft-Token-Hygiene — keine Farbliterale außerhalb globals.css'
    * `app/tools/dach/components/DachPlanerFlow.tsx` zeigte auf eine Datei, die
    * es nicht mehr gibt. Übrig bleibt echter, erreichbarer Altbestand.
    */
-  const WERFT_LEGACY_TOKEN_DEBT = new Set([
-    'app/guides/camper-ausbauguide/ScrollSidebar.tsx',
-    'components/Chat.tsx',
-  ]);
+  const WERFT_LEGACY_TOKEN_DEBT = new Set(['app/guides/camper-ausbauguide/ScrollSidebar.tsx']);
 
   /** Hex-/rgb-/hsl-Farbliterale (z. B. #dc2626, rgba(0,0,0,.4)). */
   const COLOR_LITERAL = /#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?\b|rgba?\(|hsla?\(/;
