@@ -6,6 +6,7 @@ import { PX_PER_METER } from '../../lib/units';
 import { ValidatingInput, COMMON_RULES } from '../ui/ValidatingInput';
 import { FUSE_MAP } from '../../lib/electrical';
 import { FUSE_BREAKING_CAPACITY_A, FUSE_TYPE_LABELS, FUSE_TYPES, isFuseType } from '../../lib/shortCircuit';
+import { edgeIntentOf } from '../../lib/electricalGraph/intent';
 import {
   MCB_BREAKING_CAPACITY_KA_OPTIONS,
   UPSTREAM_IMPEDANCE_ASSUMPTION_OHM,
@@ -24,7 +25,34 @@ export interface EdgeInspectorProps {
   onChangeFuseType?: (id: string, fuseType: string | undefined) => void;
   /** AUDIT DOM-001: AC-Schutzorgan (LS/RCBO, Charakteristik, Icn). */
   onChangeAcProtection?: (id: string, acProtection: AcProtectionDescriptor | undefined) => void;
+  /** V2-INTENT-002: Verbindlichkeit der Leitung gegenüber der Automatik. */
+  onChangeIntent?: (id: string, intent: 'auto' | 'user' | 'locked') => void;
 }
+
+/**
+ * Die drei Stufen, die der Nutzer von Hand setzen darf.
+ *
+ * `required` (Regel) und `suggested` (Vorschlag) fehlen bewusst: Beides sind
+ * Aussagen des Systems über sich selbst. Könnte man sie hier wählen, hieße
+ * das, eine Regel per Klick zu behaupten.
+ */
+const INTENT_CHOICES: { value: 'auto' | 'user' | 'locked'; label: string; hint: string }[] = [
+  {
+    value: 'auto',
+    label: 'Automatik',
+    hint: 'Die Auto-Verdrahtung darf diese Leitung umbauen oder ersetzen.',
+  },
+  {
+    value: 'user',
+    label: 'Meine Entscheidung',
+    hint: 'Topologie bleibt, wie du sie gezogen hast. Widerspricht sie einer Regel, erscheint eine Warnung — geändert wird nichts.',
+  },
+  {
+    value: 'locked',
+    label: 'Fixiert',
+    hint: 'Zusätzlich bleibt der Kabelweg unverändert: Das Routing rechnet um diese Leitung herum.',
+  },
+];
 
 export function EdgeInspector({
   edge,
@@ -33,7 +61,16 @@ export function EdgeInspector({
   onChangeFuseOffset,
   onChangeFuseType,
   onChangeAcProtection,
+  onChangeIntent,
 }: EdgeInspectorProps) {
+  // Die angezeigte Stufe kommt aus DERSELBEN Ableitung, die AutoWire und
+  // Routing lesen (`edgeIntentOf`) — nicht aus einem zweiten Feldvergleich im
+  // UI. Sonst zeigte der Inspector „Automatik", während AutoWire die Kante
+  // längst als Nutzerkante behandelt. `required`/`suggested` fallen für die
+  // Anzeige auf die nächstliegende wählbare Stufe zurück.
+  const intent = edgeIntentOf(edge);
+  const selectedIntent: 'auto' | 'user' | 'locked' =
+    intent === 'locked' ? 'locked' : intent === 'auto' || intent === 'suggested' ? 'auto' : 'user';
   const isAc = edge.data?.edgeDomain === 'AC_230V';
   const storedCs = edge.data?.crossSection;
   // R1: Ohne eingetragene Länge zeigt das Feld die geroutete Verlegelänge
@@ -91,6 +128,35 @@ export function EdgeInspector({
   return (
     <div className="flex flex-col space-y-4">
       <h3 className="text-sm font-semibold text-foreground">Kabel</h3>
+
+      {/* V2-INTENT-002: Vorher gab es keinen Weg, eine bewusste Entscheidung
+          zu erklären — jeder Auto-Wire-Lauf konnte sie einsammeln. */}
+      {onChangeIntent && (
+        <fieldset className="flex flex-col">
+          <legend className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            Verbindlichkeit
+          </legend>
+          <div role="radiogroup" aria-label="Verbindlichkeit" className="flex gap-1">
+            {INTENT_CHOICES.map((choice) => (
+              <button
+                key={choice.value}
+                type="button"
+                role="radio"
+                data-testid={`edge-intent-${choice.value}`}
+                aria-checked={selectedIntent === choice.value}
+                title={choice.hint}
+                onClick={() => onChangeIntent(edge.id, choice.value)}
+                className="min-h-11 flex-1 rounded border border-border px-2 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-checked:border-accent aria-checked:bg-accent aria-checked:text-foreground"
+              >
+                {choice.label}
+              </button>
+            ))}
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {INTENT_CHOICES.find((choice) => choice.value === selectedIntent)?.hint}
+          </p>
+        </fieldset>
+      )}
       <div className="flex flex-col">
         <label
           className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"

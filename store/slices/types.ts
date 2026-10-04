@@ -3,6 +3,7 @@ import type { Volts } from '../../lib/units';
 import { type CableEdgeData } from '../../components/edges/CableEdge';
 import { type NodeDataPatch, type PlannerFlowNode } from '../../components/nodes/types';
 import { type WaterPipeEdgeData } from '../../components/edges/WaterPipeEdge';
+import type { AutoWireReport } from '../../lib/autoWire/conflicts';
 
 export type { PlannerFlowNode };
 
@@ -34,6 +35,23 @@ export type LayoutV2Outcome =
  * diese Erkenntnis bleibt gültig, der Schalter ist ein zweiter, expliziter Weg.
  */
 export type PlannerDetailLevel = 'overview' | 'detail';
+
+/**
+ * Arbeitsmodus des Elektroplaners (V2).
+ *
+ * Der Planer beantwortet drei verschiedene Fragen, die bisher gleichzeitig auf
+ * einem Bildschirm standen — mit dem Ergebnis, dass keine davon gut zu
+ * beantworten war:
+ *
+ *   `planung`  WAS gehört zusammen? Elektrische Topologie, Bänke, Stromkreise.
+ *              Kabelwege sind hier Nebensache.
+ *   `physisch` WO liegt es? Einbauorte, Leitungslängen, Kabelführung.
+ *   `pruefung` STIMMT es? Befunde, Grenzen, offene Entscheidungen.
+ *
+ * Der Modus ändert ausschließlich die ANZEIGE. Er verändert weder Topologie
+ * noch Geometrie — sonst wäre er ein versteckter Editiermodus (ADR 0008).
+ */
+export type PlannerMode = 'planung' | 'physisch' | 'pruefung';
 
 export interface PlannerState {
   viewMode: 'electric' | 'water';
@@ -103,6 +121,21 @@ export interface PlannerState {
   detailLevel: PlannerDetailLevel;
   setDetailLevel: (level: PlannerDetailLevel) => void;
 
+  /** Arbeitsmodus Planung / Physisch / Prüfung — siehe `PlannerMode`. */
+  plannerMode: PlannerMode;
+  setPlannerMode: (mode: PlannerMode) => void;
+
+  /**
+   * Bericht des letzten Auto-Wire-Laufs (V2).
+   *
+   * Auto-Wire darf Nutzerentscheidungen nicht stillschweigend überschreiben.
+   * Der Bericht trägt genau die Fälle, in denen der Automat etwas NICHT
+   * entschieden hat (offene Fragen) oder in denen seine Regel der Eingabe des
+   * Nutzers widerspricht. Er liegt im Store, weil ihn das Warn-Center zeigt —
+   * sonst stünde die Erkenntnis nur in der Konsole.
+   */
+  autoWireReport: AutoWireReport | null;
+
   onNodesChange: (changes: import('@xyflow/react').NodeChange[]) => void;
   onEdgesChange: (changes: import('@xyflow/react').EdgeChange[]) => void;
   onWaterNodesChange: (changes: import('@xyflow/react').NodeChange[]) => void;
@@ -114,6 +147,16 @@ export interface PlannerState {
   handleChangeLength: (id: string, length: number) => void;
   handleChangeFuseSize: (id: string, fuseSize: number) => void;
   handleChangeFuseType: (id: string, fuseType: string | undefined) => void;
+  /**
+   * V2-INTENT-002: Verbindlichkeit einer Leitung setzen (Inspector).
+   *
+   * `'auto'` gibt die Leitung wieder an die Automatik zurück (Pin lösen),
+   * `'user'` erklärt sie zur bewussten Entscheidung (AutoWire meldet
+   * Regelkonflikte, ändert aber nichts), `'locked'` nagelt zusätzlich die
+   * Route fest. Mehr Stufen bietet die Oberfläche nicht an: `required` setzt
+   * eine Regel, `suggested` ein Vorschlag — beides nicht von Hand.
+   */
+  setEdgeIntent: (id: string, intent: 'auto' | 'user' | 'locked') => void;
   /**
    * AUDIT DOM-001: AC-Schutzorgan an einer AC-Kante ändern
    * (Bauform/Charakteristik/Abschaltvermögen nach IEC 60898-1).

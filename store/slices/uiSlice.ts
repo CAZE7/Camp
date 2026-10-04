@@ -42,6 +42,9 @@ export type UiSlice = Pick<
   | 'setGuidedMode'
   | 'detailLevel'
   | 'setDetailLevel'
+  | 'plannerMode'
+  | 'setPlannerMode'
+  | 'autoWireReport'
 >;
 
 export const createUiSlice: PlannerSlice<UiSlice> = (set, get) => ({
@@ -98,4 +101,11 @@ export const createUiSlice: PlannerSlice<UiSlice> = (set, get) => ({
   // die er vorher gesehen hat. „Übersichtlich" ist ein bewusster Klick.
   detailLevel: 'detail',
   setDetailLevel: (level) => set({ detailLevel: level }),
+  // V2: Einstieg ist die PLANUNG — erst die elektrische Wahrheit, dann der
+  // Einbauort, dann die Prüfung. Der Modus ist reine Anzeige (ADR 0008).
+  plannerMode: 'planung',
+  setPlannerMode: (mode) => set({ plannerMode: mode }),
+  // Erst ein Auto-Wire-Lauf erzeugt einen Bericht; `null` heißt „noch nie
+  // gelaufen“ und ist bewusst von „gelaufen, keine Konflikte“ unterscheidbar.
+  autoWireReport: null,
 });

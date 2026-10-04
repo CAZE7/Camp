@@ -1,4 +1,5 @@
 import type { AcProtectionDescriptor } from '../acProtection';
+import type { EdgeIntent } from '../electricalGraph/intent';
 
 /**
  * lib/domain/cableEdgeData.ts — Datenform einer elektrischen Kante.
@@ -100,4 +101,26 @@ export type CableEdgeData = {
    * solange das Flag fehlt, und der Schreibpfad setzt es seitdem immer.
    */
   autoWired?: boolean;
+  /**
+   * VERBINDLICHKEIT der Verbindung (V2, `lib/electricalGraph/intent.ts`).
+   *
+   * `autoWired` beantwortet „wer hat die Kante gebaut?". Diese Frage reicht
+   * nicht: AutoWire musste wissen, ob es sie ÄNDERN darf. Vorher hat
+   * `healUserEdges` Nutzerkanten umgehängt und gelöscht, ohne dass im Plan
+   * stand, ob der Nutzer diese Topologie bewusst wollte.
+   *
+   * Rangfolge `locked > user > required > auto > suggested`. Eine
+   * ausdrücklich gesetzte Absicht (`locked`/`user`/`required`) wird von
+   * AutoWire NIE überschrieben — stattdessen entsteht ein Konflikt-Hinweis.
+   * Fehlt das Feld, gilt die Ableitung aus `autoWired` (Rückwärts-
+   * kompatibilität für gespeicherte Pläne).
+   */
+  intent?: EdgeIntent;
+  /**
+   * Vom Nutzer FESTGENAGELTE Leitung: weder Topologie noch Kabelweg werden
+   * automatisch geändert (`docs/ROUTING-V2.md` §8 — die Hop-Priorität liest
+   * das Feld bereits seit WP-7). Eine gesperrte Leitung, die einen Konflikt
+   * erzeugt, wird gemeldet, nicht verschoben.
+   */
+  locked?: boolean;
 };

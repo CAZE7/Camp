@@ -24,6 +24,11 @@ import {
   type RoutingTraceTriggerReference,
 } from './routingDebug';
 import { validateFinalRouting, type FinalValidationReport } from '../../../lib/routing/finalValidation';
+import {
+  createRouteGenerationTracker,
+  routingInputHash,
+  type RouteGenerationStatus,
+} from '../../../lib/routing/generation';
 import type { NodeRect, RoutedEdge } from '../../../lib/routing/invariants';
 import { routeAllCables, type RouteEdgeRef } from './routeAll';
 import type { PathResult } from './pathfinding';
@@ -168,12 +173,43 @@ const listeners = new Set<() => void>();
 let currentValidation: FinalValidationReport | undefined;
 const validationListeners = new Set<() => void>();
 
+/**
+ * V2: Stand der zuletzt veröffentlichten Routen.
+ *
+ * Vorher war nicht feststellbar, zu WELCHER Eingabe die angezeigten Kabel
+ * gehören. Mit Hash und Generation ist das prüfbar — und die
+ * Konvergenzschranke (`MAX_ROUTE_REVISIONS_PER_GRAPH`) wird sichtbar, statt
+ * als endlose Wiederholung im Hintergrund zu laufen.
+ */
+let currentGeneration: RouteGenerationStatus | undefined;
+const generationListeners = new Set<() => void>();
+
+export const getCableRouteGeneration = (): RouteGenerationStatus | undefined => currentGeneration;
+
+export const publishCableRouteGeneration = (status: RouteGenerationStatus | undefined): void => {
+  currentGeneration = status;
+  generationListeners.forEach((l) => l());
+};
+
+const subscribeGeneration = (cb: () => void): (() => void) => {
+  generationListeners.add(cb);
+  return () => {
+    generationListeners.delete(cb);
+  };
+};
+
+export function useCableRouteGeneration(): RouteGenerationStatus | undefined {
+  return useSyncExternalStore(subscribeGeneration, getCableRouteGeneration, () => undefined);
+}
+
 /** Alle zwischengespeicherten Routen verwerfen (Reset/Tests, R-9). */
 export const clearCableRoutes = (): void => {
   current = new Map<string, PathResult>();
   currentValidation = undefined;
+  currentGeneration = undefined;
   listeners.forEach((l) => l());
   validationListeners.forEach((l) => l());
+  generationListeners.forEach((l) => l());
 };
 
 export const getCableRoute = (id: string): PathResult | undefined => current.get(id);
@@ -329,7 +365,9 @@ export function CableRouteSync() {
   // R-9: Routing input changes use the existing leading + trailing throttle.
   // Presentation-only state never reaches the scheduling effect.
   const runnerRef = useRef<ReturnType<typeof createThrottledRunner> | null>(null);
+  const generationRef = useRef(createRouteGenerationTracker());
   useLayoutEffect(() => {
+    const tracker = generationRef.current;
     const runner = createThrottledRunner(() => {
       const startedAt = Date.now();
       const state = store.getState();
@@ -337,7 +375,18 @@ export function CableRouteSync() {
       const all = [...state.nodeLookup.values()] as unknown as RoutableNode[];
       const { routable: nodes } = collectRoutableNodes(all);
       const edgeRefs = state.edges as RouteEdgeRef[];
-      const routingSignature = `${nodeLayoutSignature(nodes)}#${edgeTopologySignature(edgeRefs)}`;
+      const nodeSignature = nodeLayoutSignature(nodes);
+      const edgeSignature = edgeTopologySignature(edgeRefs);
+      const routingSignature = `${nodeSignature}#${edgeSignature}`;
+
+      // V2-ROUTE-001: Jeder Lauf meldet sich an. Wiederholt dieselbe Eingabe
+      // die Schranke, wird NICHT erneut geroutet — die bestehenden Routen
+      // bleiben stehen und der Zustand wird als „nicht konvergiert"
+      // veröffentlicht. Kein Timer, keine wachsende Toleranz: ein Zähler.
+      const status = tracker.begin(routingInputHash(nodeSignature, edgeSignature));
+      publishCableRouteGeneration(status);
+      if (!status.allowed) return;
+
       const routes = routeAllCables(nodes, edgeRefs);
 
       // AUDIT F-07: Die Validierung prüft genau die Routen, die die UI zeichnet.

@@ -35,9 +35,10 @@ import { FINAL_VALIDATION_RATCHET } from './finalValidationRatchet';
  *
  * I2 ist seit ADR 0027 (Platzierungs-Freigabe, zwei Lane-Schritte) null;
  * der frühere Rest (33 Port-Überdeckungen, „Kabelpaare, die sich ein Bauteil
- * teilen") ist behoben. I3 hat einen echten Rest (2026-10-02: 41 über alle
- * sechs Pläne) und läuft weiter über ein Ratchet auf der **Plansumme**
- * statt je Invariante einzeln — mit Begründung:
+ * teilen") ist behoben. I3 ist seit 2026-10-04 ebenfalls null (gemessen mit
+ * `npm run routing:audit`; Zwischenstand 2026-10-02 war ein Rest von 41 über
+ * alle sechs Pläne). Das Ratchet läuft weiter über die **Plansumme** statt je
+ * Invariante einzeln — mit Begründung:
  *
  * Eine Layout-Änderung verschiebt Verletzungen zwischen den Kategorien. Rücken
  * Bauteile auseinander, verschwinden Durchdringungen (I1) und es entstehen

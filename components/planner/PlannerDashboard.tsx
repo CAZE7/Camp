@@ -643,7 +643,10 @@ export function PlannerDashboard() {
   // beide Anzeigen lesen dasselbe Ergebnis (gleicher Hash, gleiche Abdeckung).
   const verificationReport = useVerificationReport(nodes, edges);
   const verification = useMemo(() => verificationSummary(verificationReport), [verificationReport]);
-  const liveWarnings = useLiveValidation(nodes, edges, verificationReport);
+  // V2-CONFLICT-001: Der Auto-Wire-Bericht ist Teil derselben Liste — offene
+  // Entscheidungen und Regelkonflikte stehen dort, wo der Nutzer Befunde sucht.
+  const autoWireReport = usePlannerStore((state) => state.autoWireReport);
+  const liveWarnings = useLiveValidation(nodes, edges, verificationReport, autoWireReport);
   const warnings = useMemo(() => {
     const supplemental: ValidationWarning[] = [];
     // Landstrom/RCD wird nicht mehr dupliziert: die kanonische Regel

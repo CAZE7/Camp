@@ -27,6 +27,68 @@ Die prüfbaren Findings wurden im Code umgesetzt. Die Gesamttestsuite ist nach d
 
 ---
 
+## 0a. V2-Revision (2026-10-04) — jede Aussage gegen den heutigen Code geprüft
+
+> **Methode:** Jedes Finding dieses Dokuments wurde erneut im Quellcode nachgelesen und —
+> wo sinnvoll — mit einem Test belegt. Ein Audit-Dokument ist eine Momentaufnahme; die
+> Kennzeichnung unten sagt, was davon heute noch gilt. Statuswerte:
+> **FIXED** · **TEILWEISE** · **OFFEN** · **REGRESSION** · **FALSCH-POSITIV**.
+>
+> Testlage dieser Runde: **231 Dateien / 3176 Tests grün**, `npm run check` grün
+> (Lint, Format, Typecheck, Test-Typecheck, Coverage-Schwellen).
+> Routing-Audit: **I1–I7 = 0 auf allen sechs Referenzplänen**, Fallback 0.
+
+### Alt-Findings F-01 … F-10
+
+| ID   | Status        | Beleg heute                                                                                                                                                                                                                                                                                                                                                               |
+| ---- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| F-01 | **FIXED**     | `isConnectionAllowed` verbietet Batterie×Batterie plus↔minus; `healUserEdges` verwirft Alt-Kanten. Regressionstests in `lib/autoWire.test.ts`.                                                                                                                                                                                                                            |
+| F-02 | **FIXED**     | Solar↔Batterie/Verbraucher blockiert; Live-Regel `ELE-009-solar-direct` kritisch.                                                                                                                                                                                                                                                                                         |
+| F-03 | **FIXED**     | `solar`/`roofSolar` in `HIGH_POWER_SOURCE_TYPES`; fehlende Solar-Sicherung ⇒ Befund.                                                                                                                                                                                                                                                                                      |
+| F-04 | **FIXED**     | Anzeige und Sizing lesen dieselbe `acCurrentA`-Quelle.                                                                                                                                                                                                                                                                                                                    |
+| F-05 | **TEILWEISE** | BMS-Überschreitung ist **kritisch** (`ELE-005-bms-discharge/-charge`, Test: „meldet die BMS-Überschreitung als KRITISCH"), und die BMS-Grenze ist Teil des Strombudgets (`lib/electricalGraph/currentBudget.ts`, Vorrang vor allen anderen Grenzen). **Offen bleibt:** `sizeDcEdges` dimensioniert Kabel/Sicherung weiterhin aus dem Laststrom, nicht aus der BMS-Grenze. |
+| F-06 | **FIXED**     | Templates auf `FUSE_MAP`-konforme Werte korrigiert; Golden Master eingefroren.                                                                                                                                                                                                                                                                                            |
+| F-07 | **FIXED**     | Nicht mehr nur „sichtbar", sondern **erfüllt**: `npm run routing:audit` meldet I1–I7 = 0 für alle sechs Pläne; die Ratchet in `finalValidationRatchet.ts` steht auf 0. `RoutingStatusBadge` zeigt den Zustand weiterhin an.                                                                                                                                               |
+| F-08 | **FIXED**     | AC-Kanten tragen `maxFuseForDisplay`; zu große AC-Sicherung ⇒ `fuse-too-large`.                                                                                                                                                                                                                                                                                           |
+| F-09 | **TEILWEISE** | `invalid-load-*` meldet negative/nicht-endliche Werte; ein harter Publikations-Blocker fehlt weiterhin.                                                                                                                                                                                                                                                                   |
+| F-10 | **FIXED**     | `acCurrentA` summiert über die AC-Insel des betroffenen Inverters.                                                                                                                                                                                                                                                                                                        |
+
+### Neue V2-Befunde dieser Runde
+
+| ID              | Thema                                 | Status        | Kern                                                                                                                                                                                       |
+| --------------- | ------------------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| V2-INTENT-001   | Kante kannte nur `autoWired`          | **FIXED**     | Modell `locked > user > required > auto > suggested` (`lib/electricalGraph/intent.ts`), rückwärtskompatibel abgeleitet.                                                                    |
+| V2-INTENT-002   | Absicht war nicht setzbar             | **FIXED**     | `setEdgeIntent` im Store + Schalter „Automatik / Meine Entscheidung / Fixiert" im EdgeInspector (`store/edgeIntent.test.ts`).                                                              |
+| V2-VOLT-001     | 12 V als stiller Rückfall             | **TEILWEISE** | Klassen 12/24/48 V mit `unknown` statt Rückfall (`powerSystem.ts`); AutoWire baut 24-V-Serienbänke noch nicht selbst.                                                                      |
+| V2-CONSTRAINTS  | `node.type ===` verstreut             | **FIXED**     | `resolveComponentConstraints` als eine Tabelle; unbekannter Typ ⇒ keine Behauptung.                                                                                                        |
+| V2-BANK-001     | Zwei Batterien = „parallel" geraten   | **FIXED**     | `deriveBatteryBanks` fragt statt zu raten (`AUTO-BANK-001`). **Bewusste Verhaltensänderung**, 4 Alt-Tests umgeschrieben.                                                                   |
+| V2-BUDGET-001   | Grenzwerte nicht vergleichbar         | **FIXED**     | `computeCurrentBudget` = min(BMS, Bauteil, Sicherung, Kabel, System), unbekannt ⇒ `undefined` + Warnung.                                                                                   |
+| V2-AC-001       | AC-Quelle nicht deterministisch       | **FIXED**     | `buildAcSystem` trennt Kreise (`ac:shore`, `ac:inv`), meldet `multiple-sources`/`no-source`.                                                                                               |
+| V2-GRAPH-001    | kein geometriefreier Inhalts-Hash     | **FIXED**     | `electricalGraphHash` (FNV-1a), invariant gegen Verschieben/Umsortieren.                                                                                                                   |
+| V2-ROUTE-001    | kein Konvergenzschutz im Routing      | **FIXED**     | `routingInputHash` + `MAX_ROUTE_REVISIONS_PER_GRAPH = 4` als **Zähler**, in `CableRouteSync` verdrahtet.                                                                                   |
+| V2-LIMIT-001    | nur BMS geprüft, andere Grenzen blind | **FIXED**     | Live-Regel `ELE-010-component-limit` prüft jede eingetragene Bauteilgrenze; Überschreitung = kritisch.                                                                                     |
+| V2-CONFLICT-001 | AutoWire-Bericht verschwand           | **FIXED**     | `autoWireReport` im Store → Warn-Zentrale (Konflikte + offene Fragen).                                                                                                                     |
+| V2-CONFLICT-002 | Schwere hing an der Meldereihenfolge  | **FIXED**     | Dedup-Schlüssel ohne Schwere ließ „erster gewinnt" zu; jetzt gewinnt die **stärkere** Aussage (gefunden durch Eigenschaftstest E9).                                                        |
+| V2-UX-001       | drei Fragen auf einem Bildschirm      | **FIXED**     | Arbeitsmodi PLANUNG / PHYSISCH / PRÜFUNG, reine Anzeige (ADR 0008).                                                                                                                        |
+| V2-LOCK-001     | „Fixiert" friert die Route nicht ein  | **OFFEN**     | `data.locked` wirkt als Hop-Vorrang und geht in die Topologie-Signatur ein, die Wegpunkte werden aber weiterhin neu berechnet. Route-Pinning (gespeicherte Geometrie als Hindernis) fehlt. |
+| V2-PERF-001     | Live-Pfad über Perf-Ratchet           | **OFFEN**     | `perf:edge-routing` misst 310–330 ms gegen 60 ms Ratchet — **vorbestehend**: Basis-Commit misst auf derselben Maschine 303–330 ms.                                                         |
+| V2-SCALE-001    | Routing skaliert überlinear           | **OFFEN**     | 250 Knoten: 62 s Routing + 66 s Invariantenprüfung (`tests/scale/plannerScale.test.ts`, `SCALE_250=1`).                                                                                    |
+
+### Korrekturen an diesem Dokument
+
+Die Abschnitte 3–5 unten stammen aus der Audit-Session vom Oktober 2026 und enthalten
+Aussagen, die **heute überholt** sind:
+
+- „Final-Routing-Validierung bleibt bei Referenzplänen `INVALID`" (Ziele 9/10/11,
+  Abschnitte 4b und 5) → **überholt**: I1–I7 = 0, Status `VALID`.
+- „camper: I2=9/I3=9; complex: I2=11/I3=3" → **überholt**, heute 0.
+- „BMS-Grenzen bleiben Warnung" (4a Punkt 1) → **überholt**, der Befund ist kritisch;
+  offen bleibt allein die Dimensionierung aus der BMS-Grenze.
+
+Die Originaltexte bleiben unverändert stehen, damit der Verlauf nachvollziehbar ist.
+
+---
+
 ## 1. Findings
 
 ### F-01 · P0 · SAFETY CRITICAL · AutoWire erzeugt aus einer Serien-Verbindung einen Kurzschluss

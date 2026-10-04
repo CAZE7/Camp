@@ -541,6 +541,101 @@ describe('useLiveValidation', () => {
       expect(result.current.some((w) => w.id.startsWith('bms-discharge-b1'))).toBe(true);
     });
 
+    it('meldet die BMS-Überschreitung als KRITISCH, nicht als Hinweis', () => {
+      const nodes: Node[] = [
+        {
+          id: 'b1',
+          type: 'battery',
+          data: { label: 'Batterie', capacity: 100, bmsContinuousDischarge: 50, nominalVoltage: 12.8 },
+          position: { x: 0, y: 0 },
+        },
+        {
+          id: 'i1',
+          type: 'inverter',
+          data: { label: 'Inverter', continuousPower: 1500 },
+          position: { x: 0, y: 0 },
+        },
+      ];
+      const edges: Edge<CableEdgeData>[] = [
+        { id: 'inv', source: 'b1', target: 'i1', sourceHandle: 'plus', targetHandle: 'plus', data: {} },
+      ];
+      const { result } = renderHook(() => useLiveValidation(nodes, edges));
+      const warning = result.current.find((w) => w.id.startsWith('bms-discharge-b1'));
+      expect(warning?.type).toBe('critical');
+      expect(warning?.category).toBe('safety');
+      expect(warning?.ruleId).toBe('ELE-005-bms-discharge');
+    });
+
+    // V2-LIMIT-001: Vorher wurde AUSSCHLIESSLICH das BMS geprüft. Jede andere
+    // eingetragene Bauteilgrenze war unsichtbar.
+    describe('Rule CMP: Bauteilgrenzen (V2-LIMIT-001)', () => {
+      const overloadedBusbar = (rating: number): Node[] => [
+        {
+          id: 'b1',
+          type: 'battery',
+          data: { label: 'Batterie', capacity: 200, nominalVoltage: 12.8 },
+          position: { x: 0, y: 0 },
+        },
+        {
+          id: 'rail',
+          type: 'busbar',
+          data: { label: 'Plus-Schiene', role: 'positive', rating },
+          position: { x: 0, y: 0 },
+        },
+        {
+          id: 'i1',
+          type: 'inverter',
+          data: { label: 'Wechselrichter', continuousPower: 2000 },
+          position: { x: 0, y: 0 },
+        },
+      ];
+      const edges: Edge<CableEdgeData>[] = [
+        { id: 'e1', source: 'b1', target: 'rail', sourceHandle: 'plus', targetHandle: 'plus', data: {} },
+        { id: 'e2', source: 'rail', target: 'i1', sourceHandle: 'plus', targetHandle: 'plus', data: {} },
+      ];
+
+      it('eine überlastete Sammelschiene ist ein kritischer Befund', () => {
+        const { result } = renderHook(() => useLiveValidation(overloadedBusbar(100), edges));
+        const warning = result.current.find((w) => w.id === 'component-limit-rail');
+        expect(warning?.type).toBe('critical');
+        expect(warning?.ruleId).toBe('ELE-010-component-limit');
+        expect(warning?.expectedValue).toBe('max. 100 A');
+        expect(warning?.focusType).toBe('edge');
+      });
+
+      it('eine ausreichend dimensionierte Schiene erzeugt keinen Befund', () => {
+        const { result } = renderHook(() => useLiveValidation(overloadedBusbar(300), edges));
+        expect(result.current.some((w) => w.id === 'component-limit-rail')).toBe(false);
+      });
+
+      it('ohne eingetragene Grenze wird nichts behauptet (kein Lärm)', () => {
+        const nodes = overloadedBusbar(100).map((node) =>
+          node.id === 'rail' ? { ...node, data: { label: 'Plus-Schiene', role: 'positive' } } : node
+        );
+        const { result } = renderHook(() => useLiveValidation(nodes, edges));
+        expect(result.current.some((w) => w.id === 'component-limit-rail')).toBe(false);
+      });
+
+      it('Nennbetrieb an der Grenze ist kein Befund (30-A-Regler liefert 30 A)', () => {
+        const nodes: Node[] = [
+          {
+            id: 'b1',
+            type: 'battery',
+            data: { label: 'Batterie', capacity: 100, nominalVoltage: 12.8 },
+            position: { x: 0, y: 0 },
+          },
+          { id: 'm1', type: 'mpptController', data: { label: 'MPPT', amps: 30 }, position: { x: 0, y: 0 } },
+          { id: 's1', type: 'solar', data: { label: 'Panel', watts: 384 }, position: { x: 0, y: 0 } },
+        ];
+        const solarEdges: Edge<CableEdgeData>[] = [
+          { id: 'e1', source: 's1', target: 'm1', sourceHandle: 'plus', targetHandle: 'plus', data: {} },
+          { id: 'e2', source: 'm1', target: 'b1', sourceHandle: 'plus', targetHandle: 'plus', data: {} },
+        ];
+        const { result } = renderHook(() => useLiveValidation(nodes, solarEdges));
+        expect(result.current.some((w) => w.id === 'component-limit-m1')).toBe(false);
+      });
+    });
+
     it('warnt bei ungültigen negativen Watt-Werten', () => {
       const nodes: Node[] = [
         { id: 'c1', type: 'consumer', data: { label: 'Gerät', watts: -60 }, position: { x: 0, y: 0 } },

@@ -3,6 +3,9 @@ import { type Meters, type Mm2 } from '../units';
 import { safeText } from '../safeText'; // AUDIT T1
 import { CHARGER_TYPES, type CableEdge, connectionKey, isLeadChemistry, labelOf } from './primitives';
 import { isStarterBattery, looksLikeMinusBusbar, looksLikePlusBusbar } from './validation';
+import { isIntentPinned } from '../electricalGraph/intent';
+import { compareIds } from '../sortOrder';
+import type { ConflictCollector } from './conflicts';
 
 // lib/autoWire/routing.ts — Rails, Node-/Edge-Erzeugung, Nutzerkanten-Heilung (M6-6).
 
@@ -276,6 +279,12 @@ export interface HealContext {
   minusRailId: string;
   fuseBoxId: string;
   existingConnections: Set<string>;
+  /**
+   * Protokoll der Eingriffe (V2). Fehlt es, arbeitet die Heilung wie bisher —
+   * aber dann weiß niemand, was passiert ist; `performAutoWiring` übergibt
+   * immer einen Sammler.
+   */
+  report?: ConflictCollector;
 }
 
 export function healUserEdges(userEdges: CableEdge[], ctx: HealContext): CableEdge[] {
@@ -284,12 +293,78 @@ export function healUserEdges(userEdges: CableEdge[], ctx: HealContext): CableEd
   // fehleranfällig in der Aufrufreihenfolge: shuntId/plusRailId ließen sich
   // ohne Compiler-Hinweis vertauschen).
   const { nodeMap, houseBatteryId, shuntId, plusRailId, minusRailId, fuseBoxId, existingConnections } = ctx;
+  const report = ctx.report;
   const dropIds = new Set<string>();
   const chargerTypeSet = new Set<string>(CHARGER_TYPES);
 
   for (const edge of userEdges) {
     const sourceNode = nodeMap.get(edge.source);
     const targetNode = nodeMap.get(edge.target);
+
+    // ── V2-AUTO-001: Nutzerabsicht schlägt Regel ───────────────────────────
+    // Eine festgenagelte Kante (`locked`) oder eine ausdrücklich erklärte
+    // Absicht (`intent: 'user' | 'required'`) wird NICHT umgebaut. Der
+    // Konflikt wird benannt — entscheiden darf nur der Mensch.
+    const pinned = isIntentPinned(edge);
+    const nodeIds = [edge.source, edge.target];
+
+    /**
+     * Wendet eine Heilungsregel an. Gibt `true` zurück, wenn die Kante
+     * behandelt wurde (der Aufrufer macht dann `continue`).
+     */
+    const heal = (
+      ruleId: string,
+      what: string,
+      severityWhenPinned: 'warning' | 'critical',
+      action: 'drop' | { source?: string; target?: string }
+    ): void => {
+      if (pinned) {
+        report?.add({
+          kind: 'pinned-edge-violates-rule',
+          severity: severityWhenPinned,
+          ruleId,
+          message: `Benutzerentscheidung widerspricht Regel ${ruleId}: ${what} Die Verbindung wurde unverändert gelassen.`,
+          edgeIds: [edge.id],
+          nodeIds,
+        });
+        return;
+      }
+      if (action === 'drop') {
+        existingConnections.delete(connectionKey(edge));
+        dropIds.add(edge.id);
+        report?.add({
+          kind: 'dropped-user-edge',
+          severity: 'warning',
+          ruleId,
+          message: `Verbindung entfernt (Regel ${ruleId}): ${what}`,
+          edgeIds: [edge.id],
+          nodeIds,
+        });
+        return;
+      }
+      const before = `${edge.source} → ${edge.target}`;
+      if (retargetEdge(edge, action, existingConnections) === 'drop') {
+        dropIds.add(edge.id);
+        report?.add({
+          kind: 'dropped-user-edge',
+          severity: 'warning',
+          ruleId,
+          message: `Verbindung entfernt (Regel ${ruleId}): ${what} Nach dem Umlegen wäre sie ein zweiter, paralleler Pfad gewesen.`,
+          edgeIds: [edge.id],
+          nodeIds,
+        });
+        return;
+      }
+      report?.add({
+        kind: 'healed-user-edge',
+        severity: 'info',
+        ruleId,
+        message: `Verbindung umgelegt (Regel ${ruleId}): ${what} ${before} → ${edge.source} → ${edge.target}.`,
+        edgeIds: [edge.id],
+        nodeIds,
+      });
+    };
+
     const sourceIsHouseMinus = edge.source === houseBatteryId && !!edge.sourceHandle?.includes('minus');
     const targetIsHouseMinus = edge.target === houseBatteryId && !!edge.targetHandle?.includes('minus');
 
@@ -305,8 +380,12 @@ export function healUserEdges(userEdges: CableEdge[], ctx: HealContext): CableEd
       const sMinus = !!edge.sourceHandle?.includes('minus');
       const tPlus = !!edge.targetHandle?.includes('plus');
       if ((sPlus && tMinus) || (sMinus && tPlus)) {
-        existingConnections.delete(connectionKey(edge));
-        dropIds.add(edge.id);
+        heal(
+          'ELE-001',
+          'Plus und Minus zweier Batterien direkt verbunden — ohne erklärte Reihenschaltung (bankTopology) ist das ein Kurzschlusspfad.',
+          'critical',
+          'drop'
+        );
         continue;
       }
     }
@@ -322,16 +401,23 @@ export function healUserEdges(userEdges: CableEdge[], ctx: HealContext): CableEd
       const solarPair = sourceSolar && targetSolar;
       const otherIsController = other?.type === 'mpptController' || other?.type === 'charger';
       if (!solarPair && !otherIsController) {
-        existingConnections.delete(connectionKey(edge));
-        dropIds.add(edge.id);
+        heal(
+          'ELE-002',
+          'Solarmodul ohne Laderegler verbunden — die Modulspannung liegt ungeregelt am Ziel an.',
+          'critical',
+          'drop'
+        );
         continue;
       }
     }
 
     if (sourceIsHouseMinus && edge.target !== shuntId && targetNode?.type !== 'battery') {
-      if (retargetEdge(edge, { source: shuntId }, existingConnections) === 'drop') {
-        dropIds.add(edge.id);
-      }
+      heal(
+        'AUTO-SHUNT-BYPASS',
+        'Minus-Abgang direkt an der Batterie umgeht den Batteriecomputer (Shunt) — er misst dann nicht den gesamten Strom.',
+        'warning',
+        { source: shuntId }
+      );
       continue;
     }
     if (targetIsHouseMinus && edge.source !== shuntId && sourceNode?.type !== 'battery') {
@@ -340,9 +426,12 @@ export function healUserEdges(userEdges: CableEdge[], ctx: HealContext): CableEd
       // landen auf der Minus-SCHIENE, Richtung normalisiert (Schiene -> X),
       // damit die Kante mit der Auto-Kante dedupliziert statt parallel zu
       // stehen (key: rail|X|minus|minus, identisch zu addDcEdge).
-      if (retargetEdge(edge, { source: minusRailId, target: edge.source }, existingConnections) === 'drop') {
-        dropIds.add(edge.id);
-      }
+      heal(
+        'AUTO-SHUNT-BYPASS',
+        'Rückleiter direkt auf die Batterieklemme umgeht den Batteriecomputer (Shunt).',
+        'warning',
+        { source: minusRailId, target: edge.source }
+      );
       continue;
     }
 
@@ -358,43 +447,62 @@ export function healUserEdges(userEdges: CableEdge[], ctx: HealContext): CableEd
       if (edge.source === minusRailId) {
         // Schiene -> Shunt-Batteriepin umgeht alle Lasten; die korrekte
         // Shunt->Schiene-Kante stellt das Auto-Wiring. Diese Kante entfällt.
-        existingConnections.delete(connectionKey(edge));
-        dropIds.add(edge.id);
+        heal(
+          'AUTO-SHUNT-BYPASS',
+          'Minus-Schiene direkt auf den Batterie-Pin des Shunts gelegt — das überbrückt die Messstrecke.',
+          'warning',
+          'drop'
+        );
         continue;
       }
-      if (retargetEdge(edge, { source: minusRailId, target: edge.source }, existingConnections) === 'drop') {
-        dropIds.add(edge.id);
-      }
+      heal(
+        'AUTO-SHUNT-BYPASS',
+        'Verbindung auf den Batterie-Pin des Shunts umgeht die Messstrecke.',
+        'warning',
+        { source: minusRailId, target: edge.source }
+      );
       continue;
     }
 
     const sourceIsHousePlus = edge.source === houseBatteryId && !!edge.sourceHandle?.includes('plus');
     if (sourceIsHousePlus) {
       if (targetNode?.type === 'consumer') {
-        if (retargetEdge(edge, { source: fuseBoxId }, existingConnections) === 'drop') {
-          dropIds.add(edge.id);
-        }
+        heal(
+          'AUTO-FUSE-BYPASS',
+          'Verbraucher direkt an der Batterie-Plusklemme — die Leitung ist dann nicht abgesichert.',
+          'critical',
+          { source: fuseBoxId }
+        );
         continue;
       }
       if (targetNode?.type === 'inverter') {
-        if (retargetEdge(edge, { source: plusRailId }, existingConnections) === 'drop') {
-          dropIds.add(edge.id);
-        }
+        heal(
+          'AUTO-RAIL-NORMALISE',
+          'Wechselrichter wird über die Plus-Schiene gespeist, nicht direkt von der Klemme.',
+          'warning',
+          { source: plusRailId }
+        );
         continue;
       }
       if (targetNode?.type === 'fuse' && edge.target !== plusRailId) {
-        if (retargetEdge(edge, { source: plusRailId }, existingConnections) === 'drop') {
-          dropIds.add(edge.id);
-        }
+        heal(
+          'AUTO-RAIL-NORMALISE',
+          'Sicherung sitzt im Abgang der Plus-Schiene, nicht direkt an der Klemme.',
+          'warning',
+          { source: plusRailId }
+        );
         continue;
       }
       // Issue 5b: Ladegeräte hängen nie direkt an der Batterie-Plus-Klemme.
       // Richtung normalisieren (charger -> Plus-Schiene); dedupliziert gegen
       // die Auto-Zuleitung, statt sie parallel zu verdoppeln.
       if (targetNode && chargerTypeSet.has(targetNode.type || '')) {
-        if (retargetEdge(edge, { source: edge.target, target: plusRailId }, existingConnections) === 'drop') {
-          dropIds.add(edge.id);
-        }
+        heal(
+          'AUTO-RAIL-NORMALISE',
+          'Ladequelle speist über die Plus-Schiene, nicht direkt auf die Batterieklemme.',
+          'warning',
+          { source: edge.target, target: plusRailId }
+        );
         continue;
       }
       // Issue 5a: Eine 12-V-Batterie speist nie direkt eine 230-V-Seite.
@@ -406,14 +514,38 @@ export function healUserEdges(userEdges: CableEdge[], ctx: HealContext): CableEd
         targetNode?.type === 'shorePower' ||
         targetNode?.type === 'acBatteryCharger'
       ) {
-        const inverter = [...nodeMap.values()].find((nd) => nd.type === 'inverter');
+        // V2-AUTO-002: `find()` nahm den ERSTEN Wechselrichter im Array —
+        // bei zwei Geräten entschied die Einfügereihenfolge. Jetzt gilt die
+        // kleinste ID (stabil), und bei Mehrdeutigkeit wird gefragt.
+        const inverters = [...nodeMap.values()]
+          .filter((nd) => nd.type === 'inverter')
+          .sort((left, right) => compareIds(left.id, right.id));
+        const inverter = inverters[0];
+        if (inverters.length > 1) {
+          report?.add({
+            kind: 'ambiguous-ac-source',
+            severity: 'warning',
+            ruleId: 'AUTO-AC-SOURCE',
+            message:
+              'Mehrere Wechselrichter vorhanden — die 230-V-Verbindung wurde dem Gerät mit der kleinsten ID zugeordnet. Bitte die Quelle am Verbraucher ausdrücklich setzen (Feld „acSourceId“).',
+            edgeIds: [edge.id],
+            nodeIds: inverters.map((nd) => nd.id),
+          });
+        }
         if (inverter) {
-          if (retargetEdge(edge, { source: inverter.id }, existingConnections) === 'drop') {
-            dropIds.add(edge.id);
-          }
+          heal(
+            'ELE-AC-DIRECT',
+            '230-V-Gerät direkt an der 12-V-Batterie — die Verbindung gehört an den Wechselrichter-Ausgang.',
+            'critical',
+            { source: inverter.id }
+          );
         } else {
-          existingConnections.delete(connectionKey(edge));
-          dropIds.add(edge.id);
+          heal(
+            'ELE-AC-DIRECT',
+            '230-V-Gerät direkt an der Batterie, aber kein Wechselrichter im Plan — die Verbindung ist fachlich nicht herstellbar.',
+            'critical',
+            'drop'
+          );
         }
         continue;
       }
@@ -421,9 +553,12 @@ export function healUserEdges(userEdges: CableEdge[], ctx: HealContext): CableEd
 
     if (sourceNode && chargerTypeSet.has(sourceNode.type || '') && edge.target === houseBatteryId) {
       const rail = edge.sourceHandle?.includes('minus') ? minusRailId : plusRailId;
-      if (retargetEdge(edge, { target: rail }, existingConnections) === 'drop') {
-        dropIds.add(edge.id);
-      }
+      heal(
+        'AUTO-RAIL-NORMALISE',
+        'Ladequelle speist über die Sammelschiene, nicht direkt auf die Batterieklemme.',
+        'warning',
+        { target: rail }
+      );
     }
   }
 

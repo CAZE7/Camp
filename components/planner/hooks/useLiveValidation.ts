@@ -9,7 +9,17 @@ import type { VerificationReport } from '../../../lib/verify';
 
 import { getSystemVoltage } from '../utils/voltage';
 import { calculateEdgeCurrent } from '../../../lib/vde-standards';
+// V2: Bauteilgrenzen und Strombudget kommen aus der elektrischen Ebene —
+// eine Tabelle statt verstreuter `node.type ===`-Zweige.
+import {
+  componentCurrentLimit,
+  computeCurrentBudget,
+  evaluateLoadFeasibility,
+  resolveComponentConstraints,
+} from '../../../lib/electricalGraph';
+import { amps } from '../../../lib/units';
 import { verificationReportFor, verificationWarnings } from '../utils/verificationWarnings';
+import type { AutoWireConflict, AutoWireReport } from '../../../lib/autoWire/conflicts';
 // AUDIT T1: Diagnose-Texte (Typ statt `[object Object]`) kommen aus derselben
 // Stelle wie alle anderen Modellwert-Texte — keine zweite Implementierung.
 import { diagnosticText } from '../../../lib/safeText';
@@ -142,7 +152,8 @@ export function useVerificationReport(nodes: Node[], edges: Edge<CableEdgeData>[
 export function useLiveValidation(
   nodes: Node[],
   edges: Edge<CableEdgeData>[],
-  report?: VerificationReport
+  report?: VerificationReport,
+  autoWireReport?: AutoWireReport | null
 ): ValidationWarning[] {
   return useMemo(() => {
     if (!nodes || !edges) return [];
@@ -510,6 +521,75 @@ export function useLiveValidation(
       }
     }
 
+    // --- Rule CMP: Bauteilgrenzen (V2-LIMIT-001) ---
+    //
+    // Befund: Geprüft wurden bisher NUR die BMS-Werte der Batterie. Jede
+    // andere eingetragene Grenze — Nennstrom der Sammelschiene, Ladestrom des
+    // Reglers, Dauerstrom des Boosters — stand im Plan, wurde aber von keiner
+    // Regel gelesen. Eine 150-A-Schiene mit 300 A Last war ein „fertig
+    // dimensionierter\" Plan mit grünem Haken.
+    //
+    // Die Grenzen kommen aus `resolveComponentConstraints` (eine Tabelle, kein
+    // Typ-Vergleich), der Strom aus der EINEN Quelle `calculateEdgeCurrent`.
+    // Es wird ausschließlich geprüft, was ausdrücklich eingetragen ist —
+    // fehlende Angaben erzeugen hier keine Meldung (das wäre Lärm), sondern
+    // bleiben in der Domänenschicht als „nicht bewertbar\" sichtbar.
+    for (const node of nodes) {
+      if (node.type === 'battery') continue; // deckt Rule BMMS ab
+      const constraints = resolveComponentConstraints({
+        type: node.type,
+        data: node.data as Record<string, unknown>,
+      });
+      if (!constraints.allowedDomains?.includes('DC_12V')) continue;
+      const limit = componentCurrentLimit(constraints);
+      if (limit === undefined) continue;
+
+      let worst = 0;
+      let worstEdgeId: string | undefined;
+      for (const edge of edges) {
+        if (edge.source !== node.id && edge.target !== node.id) continue;
+        if (edge.data?.edgeDomain === 'AC_230V') continue;
+        const current = calculateEdgeCurrent(
+          nodeMap.get(edge.source),
+          nodeMap.get(edge.target),
+          nodes,
+          sysVoltage,
+          edges
+        );
+        if (current > worst) {
+          worst = current;
+          worstEdgeId = edge.id;
+        }
+      }
+      if (worst <= 0) continue;
+
+      const verdict = evaluateLoadFeasibility(
+        amps(worst),
+        computeCurrentBudget({ component: limit }),
+        `„${nodeLabel(node, 'Bauteil')}“`
+      );
+      // Nur die ÜBERSCHREITUNG ist ein Befund. Die 90-%-Reserve aus
+      // `evaluateLoadFeasibility` gilt für Abschaltschwellen (BMS), nicht für
+      // den Nennbetrieb eines Bauteils: Ein 30-A-Laderegler, der 30 A liefert,
+      // tut genau das, wofür er gekauft wurde — eine Warnung darüber wäre
+      // Lärm und würde echte Befunde zudecken.
+      if (verdict.feasible) continue;
+      warnings.push({
+        id: `component-limit-${node.id}`,
+        category: 'safety',
+        type: 'critical',
+        title: 'Bauteil über seiner Belastungsgrenze',
+        focusId: worstEdgeId ?? node.id,
+        focusType: worstEdgeId ? 'edge' : 'node',
+        ruleId: 'ELE-010-component-limit',
+        measuredValue: `${Math.round(worst)} A`,
+        expectedValue: `max. ${Math.round(limit)} A`,
+        unit: 'A',
+        source: 'Bauteildaten (Nennstrom/Dauerstrom laut Eingabe)',
+        message: `⚠️ Kritisch: ${verdict.message} Die Leitung ist zwar passend dimensioniert, das Bauteil selbst trägt diesen Strom aber nicht.`,
+      });
+    }
+
     // --- Rule E: DC-DC Charger Connection ---
     dcdcChargers.forEach((charger) => {
       const hasInput = (edgesByTarget.get(charger.id)?.length ?? 0) > 0;
@@ -623,6 +703,92 @@ export function useLiveValidation(
       }
     }
 
+    // --- Auto-Wire-Bericht (V2-CONFLICT-001) ---------------------------
+    // Der Automat entscheidet nicht heimlich. Was er NICHT entscheiden
+    // konnte (offene Fragen) und wo seine Regel der Nutzereingabe
+    // widerspricht, steht hier in derselben Liste wie jeder andere Befund —
+    // vorher verschwand der Bericht im Rückgabewert von `performAutoWiring`.
+    if (autoWireReport) {
+      warnings.push(...autoWireWarnings(autoWireReport, nodeMap, edges));
+    }
+
     return warnings;
-  }, [nodes, edges, report]);
+  }, [nodes, edges, report, autoWireReport]);
 }
+
+/**
+ * Bildet den Auto-Wire-Bericht auf Warnungen ab.
+ *
+ * Der Bericht ist eine MOMENTAUFNAHME des letzten Laufs. Befunde, deren
+ * Bauteile oder Leitungen es nicht mehr gibt, werden deshalb verworfen:
+ * Sonst stünde nach dem Löschen einer Batterie noch die Frage nach ihrer
+ * Verschaltung in der Liste. Was der Nutzer dagegen NICHT geändert hat,
+ * bleibt stehen, bis Auto-Wire erneut läuft — eine offene Entscheidung
+ * verschwindet nicht dadurch, dass man woanders klickt.
+ */
+function autoWireWarnings(
+  report: AutoWireReport,
+  nodeMap: Map<string, Node>,
+  edges: Edge<CableEdgeData>[]
+): ValidationWarning[] {
+  const edgeIds = new Set(edges.map((edge) => edge.id));
+  const stillPresent = (conflict: AutoWireConflict) =>
+    conflict.nodeIds.every((id) => nodeMap.has(id)) && conflict.edgeIds.every((id) => edgeIds.has(id));
+
+  const out: ValidationWarning[] = [];
+  for (const conflict of report.conflicts) {
+    if (!stillPresent(conflict)) continue;
+    const focusEdge = conflict.edgeIds[0];
+    const focusNode = conflict.nodeIds[0];
+    out.push({
+      id: `autowire-${conflict.ruleId}-${focusEdge ?? focusNode ?? 'plan'}`,
+      category: AUTO_WIRE_CATEGORY[conflict.kind],
+      type: conflict.severity,
+      title: AUTO_WIRE_TITLE[conflict.kind],
+      message: conflict.message,
+      ruleId: conflict.ruleId,
+      source: 'Auto-Verdrahtung',
+      ...(focusEdge
+        ? { focusId: focusEdge, focusType: 'edge' as const }
+        : focusNode
+          ? { focusId: focusNode, focusType: 'node' as const }
+          : {}),
+    });
+  }
+
+  // Offene Fragen sind keine Fehler, sondern fehlende Entscheidungen. Sie
+  // stehen als Hinweis in der Liste, damit sie beantwortet werden — geraten
+  // wird nicht (AUTO-BANK-001 / AUTO-AC-001).
+  for (const [index, question] of report.questions.entries()) {
+    out.push({
+      id: `autowire-question-${index}`,
+      category: 'topology',
+      type: 'info',
+      title: 'Offene Entscheidung',
+      message: `❓ ${question}`,
+      ruleId: 'AUTO-OPEN-QUESTION',
+      source: 'Auto-Verdrahtung',
+    });
+  }
+  return out;
+}
+
+const AUTO_WIRE_CATEGORY: Readonly<Record<AutoWireConflict['kind'], ValidationWarning['category']>> = {
+  'pinned-edge-violates-rule': 'topology',
+  'healed-user-edge': 'topology',
+  'dropped-user-edge': 'topology',
+  'ambiguous-battery-topology': 'topology',
+  'ambiguous-ac-source': 'topology',
+  'load-exceeds-limit': 'safety',
+  'voltage-mismatch': 'safety',
+};
+
+const AUTO_WIRE_TITLE: Readonly<Record<AutoWireConflict['kind'], string>> = {
+  'pinned-edge-violates-rule': 'Benutzerentscheidung widerspricht einer Regel',
+  'healed-user-edge': 'Eigene Leitung wurde eingefädelt',
+  'dropped-user-edge': 'Eigene Leitung wurde entfernt',
+  'ambiguous-battery-topology': 'Batterie-Verschaltung ist nicht erklärt',
+  'ambiguous-ac-source': '230-V-Quelle ist nicht eindeutig',
+  'load-exceeds-limit': 'Last übersteigt die zulässige Belastbarkeit',
+  'voltage-mismatch': 'Bauteil passt nicht zur Spannungsebene',
+};

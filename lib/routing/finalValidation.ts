@@ -36,13 +36,21 @@ import {
  * eine Verletzung vorliegt — unabhängig davon, wie gut der Rest ist und
  * unabhängig davon, ob das gerade bequem ist.
  *
- * ## Stand (2026-10-02): I1 = 0, I2 = 0, I3 = 41 über die Referenzpläne
+ * ## Stand (2026-10-04): I1 = I2 = I3 = 0 über alle sechs Referenzpläne
  *
- * Gemessen über die sechs Golden-Master-Pläne (79 Kanten) mit
- * `npm run routing:audit`: **I1 = 0, I2 = 0**; I3 hat einen echten Rest von
- * **41** Meldungen (simple 2 · camper 7 · solar 0 · inverter 6 · acdc 3 ·
- * complex 23) — Paare ohne gemeinsame Anschlussstelle und Unterschreitungen
- * an freien Trassensegmenten. Seit ADR 0031 zählt I3 die strukturelle
+ * Gemessen mit `npm run routing:audit` (79 Kanten): **I1 = 0, I2 = 0,
+ * I3 = 0**, Fallback 0, Determinismus-Vergleich bestanden. Die Ratchet in
+ * `scripts/routing/finalValidationRatchet.ts` steht folgerichtig auf 0 für
+ * jeden Plan.
+ *
+ * Diese Null ist eine Rückfallsperre, KEIN Qualitätsziel: Sie sagt nur, dass
+ * kein Kabel durch ein Bauteil läuft, keines deckungsgleich mit einem anderen
+ * liegt und keines den Mindestabstand unterschreitet. Über Lesbarkeit,
+ * Kreuzungszahl oder Kabelweglänge sagt sie nichts.
+ *
+ * Zwischenstand 2026-10-02 (überholt, als Verlauf dokumentiert): I3 hatte
+ * einen Rest von 41 Meldungen (simple 2 · camper 7 · solar 0 · inverter 6 ·
+ * acdc 3 · complex 23). Seit ADR 0031 zählt I3 die strukturelle
  * Port-Bündel-Konvergenz nicht mehr (69 der früheren 98 Meldungen); die
  * Segment×Segment-Prüfung selbst (AUDIT ROUTE-012) bleibt unverändert scharf.
  *
