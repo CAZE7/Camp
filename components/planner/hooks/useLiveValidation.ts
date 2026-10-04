@@ -9,6 +9,15 @@ import type { VerificationReport } from '../../../lib/verify';
 
 import { getSystemVoltage } from '../utils/voltage';
 import { calculateEdgeCurrent } from '../../../lib/vde-standards';
+// V2: Bauteilgrenzen und Strombudget kommen aus der elektrischen Ebene —
+// eine Tabelle statt verstreuter `node.type ===`-Zweige.
+import {
+  componentCurrentLimit,
+  computeCurrentBudget,
+  evaluateLoadFeasibility,
+  resolveComponentConstraints,
+} from '../../../lib/electricalGraph';
+import { amps } from '../../../lib/units';
 import { verificationReportFor, verificationWarnings } from '../utils/verificationWarnings';
 // AUDIT T1: Diagnose-Texte (Typ statt `[object Object]`) kommen aus derselben
 // Stelle wie alle anderen Modellwert-Texte — keine zweite Implementierung.
@@ -508,6 +517,75 @@ export function useLiveValidation(
           });
         }
       }
+    }
+
+    // --- Rule CMP: Bauteilgrenzen (V2-LIMIT-001) ---
+    //
+    // Befund: Geprüft wurden bisher NUR die BMS-Werte der Batterie. Jede
+    // andere eingetragene Grenze — Nennstrom der Sammelschiene, Ladestrom des
+    // Reglers, Dauerstrom des Boosters — stand im Plan, wurde aber von keiner
+    // Regel gelesen. Eine 150-A-Schiene mit 300 A Last war ein „fertig
+    // dimensionierter\" Plan mit grünem Haken.
+    //
+    // Die Grenzen kommen aus `resolveComponentConstraints` (eine Tabelle, kein
+    // Typ-Vergleich), der Strom aus der EINEN Quelle `calculateEdgeCurrent`.
+    // Es wird ausschließlich geprüft, was ausdrücklich eingetragen ist —
+    // fehlende Angaben erzeugen hier keine Meldung (das wäre Lärm), sondern
+    // bleiben in der Domänenschicht als „nicht bewertbar\" sichtbar.
+    for (const node of nodes) {
+      if (node.type === 'battery') continue; // deckt Rule BMMS ab
+      const constraints = resolveComponentConstraints({
+        type: node.type,
+        data: node.data as Record<string, unknown>,
+      });
+      if (!constraints.allowedDomains?.includes('DC_12V')) continue;
+      const limit = componentCurrentLimit(constraints);
+      if (limit === undefined) continue;
+
+      let worst = 0;
+      let worstEdgeId: string | undefined;
+      for (const edge of edges) {
+        if (edge.source !== node.id && edge.target !== node.id) continue;
+        if (edge.data?.edgeDomain === 'AC_230V') continue;
+        const current = calculateEdgeCurrent(
+          nodeMap.get(edge.source),
+          nodeMap.get(edge.target),
+          nodes,
+          sysVoltage,
+          edges
+        );
+        if (current > worst) {
+          worst = current;
+          worstEdgeId = edge.id;
+        }
+      }
+      if (worst <= 0) continue;
+
+      const verdict = evaluateLoadFeasibility(
+        amps(worst),
+        computeCurrentBudget({ component: limit }),
+        `„${nodeLabel(node, 'Bauteil')}“`
+      );
+      // Nur die ÜBERSCHREITUNG ist ein Befund. Die 90-%-Reserve aus
+      // `evaluateLoadFeasibility` gilt für Abschaltschwellen (BMS), nicht für
+      // den Nennbetrieb eines Bauteils: Ein 30-A-Laderegler, der 30 A liefert,
+      // tut genau das, wofür er gekauft wurde — eine Warnung darüber wäre
+      // Lärm und würde echte Befunde zudecken.
+      if (verdict.feasible) continue;
+      warnings.push({
+        id: `component-limit-${node.id}`,
+        category: 'safety',
+        type: 'critical',
+        title: 'Bauteil über seiner Belastungsgrenze',
+        focusId: worstEdgeId ?? node.id,
+        focusType: worstEdgeId ? 'edge' : 'node',
+        ruleId: 'ELE-010-component-limit',
+        measuredValue: `${Math.round(worst)} A`,
+        expectedValue: `max. ${Math.round(limit)} A`,
+        unit: 'A',
+        source: 'Bauteildaten (Nennstrom/Dauerstrom laut Eingabe)',
+        message: `⚠️ Kritisch: ${verdict.message} Die Leitung ist zwar passend dimensioniert, das Bauteil selbst trägt diesen Strom aber nicht.`,
+      });
     }
 
     // --- Rule E: DC-DC Charger Connection ---

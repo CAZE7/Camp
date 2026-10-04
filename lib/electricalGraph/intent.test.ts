@@ -57,7 +57,7 @@ describe('V2-INTENT — Absichtsmodell einer Verbindung', () => {
     it('ID-Präfix bleibt Migrationspfad für Pläne ohne Flag', () => {
       expect(edgeIntentOf(edge(`${AUTO_EDGE_PREFIX}7`))).toBe('auto');
       // Dieselbe Rangfolge wie der bestehende Herkunftstest — keine zweite Wahrheit.
-      expect(isAutoWiredEdge({ id: `${AUTO_EDGE_PREFIX}7`, source: 'a', target: 'b' })).toBe(true);
+      expect(isAutoWiredEdge({ id: `${AUTO_EDGE_PREFIX}7` })).toBe(true);
     });
 
     it('Kante unbekannter Herkunft gehört im Zweifel dem Nutzer', () => {
