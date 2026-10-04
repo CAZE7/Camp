@@ -117,6 +117,11 @@ verschiedene Zusagen.
 | 100    | 12,3 s              | 7,5 s              |
 | 250    | 62,4 s              | 65,7 s             |
 
+(Gemessen ohne Coverage-Instrument. Im Gate `npm run check` laufen die Tests unter
+V8-Coverage und brauchen rund das Dreifache — deshalb sichert `tests/scale/` **keine**
+Laufzeit zu, sondern nur Korrektheit, Determinismus und Konvergenz. Laufzeit gehört in
+`benchmarks/`.)
+
 Das ist **kein Erfolg, sondern ein Befund**: Der Aufwand wächst deutlich überlinear
 (`validateFinalRouting` ist O(E²) über Kantenpaare, die Wegsuche arbeitet gegen alle
 Fremdsegmente). Für die realistische Plangröße (< 60 Bauteile) ist es tragbar, für 250
