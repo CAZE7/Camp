@@ -860,13 +860,42 @@ describe('autoWire — AUTO-003: Chemie-Parallelen und Rollen-Feld', () => {
     expect(plusEdgesFromGel).toHaveLength(0);
   });
 
-  it('identische Chemie (AGM ‖ AGM) wird weiter parallel geschaltet', () => {
+  // V2: Identische Chemie ist KEINE Erlaubnis zur Parallelschaltung mehr.
+  // Zwei 12-V-AGM können parallel, in Reihe oder getrennte Bänke sein — diese
+  // Annahme entscheidet über Systemspannung und jede Sicherung im Plan.
+  it('identische Chemie ohne erklärte Bank wird NICHT geraten (V2-AUTO-003)', () => {
     const out = performAutoWiring([
       n('b1', 'battery', { label: 'Aufbau 1', capacity: 100, chemistry: 'AGM' }),
       n('b2', 'battery', { label: 'Aufbau 2', capacity: 100, chemistry: 'AGM' }),
       n('c1', 'consumer', { label: 'Pumpe', watts: 40 }),
     ])!;
+    expect(out.edges.some((edge) => edge.source === 'b2' || edge.target === 'b2')).toBe(false);
+    expect(out.report.conflicts.some((c) => c.kind === 'ambiguous-battery-topology')).toBe(true);
+    expect(out.report.questions.length).toBeGreaterThan(0);
+  });
+
+  it('erklärte Parallelbank (bankId + bankTopology) wird verdrahtet', () => {
+    const bank = { capacity: 100, chemistry: 'AGM', bankId: 'haus', bankTopology: 'parallel' };
+    const out = performAutoWiring([
+      n('b1', 'battery', { label: 'Aufbau 1', ...bank }),
+      n('b2', 'battery', { label: 'Aufbau 2', ...bank }),
+      n('c1', 'consumer', { label: 'Pumpe', watts: 40 }),
+    ])!;
     expect(out.edges.some((edge) => edge.source === 'b2' || edge.target === 'b2')).toBe(true);
+    expect(out.report.conflicts.some((c) => c.kind === 'ambiguous-battery-topology')).toBe(false);
+  });
+
+  it('erklärte Bank hebt die Chemie-Sperre NICHT auf (AUDIT AUTO-003 bleibt)', () => {
+    const out = performAutoWiring([
+      n('b1', 'battery', {
+        label: 'Aufbau 1',
+        chemistry: 'LiFePO4',
+        bankId: 'haus',
+        bankTopology: 'parallel',
+      }),
+      n('b2', 'battery', { label: 'Aufbau 2', chemistry: 'AGM', bankId: 'haus', bankTopology: 'parallel' }),
+    ])!;
+    expect(out.edges.some((edge) => edge.source === 'b2' || edge.target === 'b2')).toBe(false);
   });
 
   it("role='house' gewinnt über das Label 'Starter…' (kein stiller Rollenwechsel)", () => {
@@ -1441,10 +1470,15 @@ describe('M6-8 — AUDIT-Testgruppen', () => {
 
   // Gruppe 1 (Issue 2) ── 3+ Batterien, paarweise Kompatibilität ───────────
   it('verdrahtet eine inkompatible Zweitbatterie nicht auf die 12-V-Schiene (Issue 2)', () => {
+    // V2: Die verträgliche Batterie (x1) ist jetzt ausdrücklich als Teil der
+    // Hausbank erklärt — nur dann verdrahtet AutoWire sie. Die 24-V-Batterie
+    // (x2) bleibt auch MIT Erklärung außen vor: eine Erklärung macht eine
+    // unzulässige Verschaltung nicht zulässig.
+    const bank = { bankId: 'haus', bankTopology: 'parallel' };
     const nodes = [
-      n('h', 'battery', { label: 'Aufbau', chemistry: 'LiFePO4' }),
-      n('x1', 'battery', { label: 'Zweit', chemistry: 'LiFePO4', nominalVoltage: 12.8 }),
-      n('x2', 'battery', { label: 'Dritt', chemistry: 'LiFePO4', nominalVoltage: 24 }),
+      n('h', 'battery', { label: 'Aufbau', chemistry: 'LiFePO4', ...bank }),
+      n('x1', 'battery', { label: 'Zweit', chemistry: 'LiFePO4', nominalVoltage: 12.8, ...bank }),
+      n('x2', 'battery', { label: 'Dritt', chemistry: 'LiFePO4', nominalVoltage: 24, ...bank }),
     ];
     const res = performAutoWiring(nodes);
     expect(res).not.toBeNull();
@@ -1453,9 +1487,10 @@ describe('M6-8 — AUDIT-Testgruppen', () => {
   });
 
   it('legt zwei verträgliche Batterien parallel auf Schiene und Shunt (Issue 2)', () => {
+    // V2: mit erklärter Bank (ohne Erklärung wird nicht mehr geraten).
     const nodes = [
-      n('h', 'battery', { label: 'Aufbau', chemistry: 'LiFePO4' }),
-      n('x1', 'battery', { label: 'Zweit', chemistry: 'LiFePO4' }),
+      n('h', 'battery', { label: 'Aufbau', chemistry: 'LiFePO4', bankId: 'haus', bankTopology: 'parallel' }),
+      n('x1', 'battery', { label: 'Zweit', chemistry: 'LiFePO4', bankId: 'haus', bankTopology: 'parallel' }),
     ];
     const res = performAutoWiring(nodes)!;
     const plusRail = res.nodes.find((nd) => nd.type === 'busbar' && nd.data?.role === 'positive')!;

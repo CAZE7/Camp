@@ -1003,9 +1003,12 @@ describe('Auto-Wire: Topologie-Heilung & reale Templates', () => {
   });
 
   it('Zweite Aufbaubatterie wird parallel auf Schiene und Shunt gelegt, nicht als Starter missbraucht', () => {
+    // V2: Die Parallelschaltung muss ERKLÄRT sein (bankId + bankTopology) —
+    // AutoWire rät sie nicht mehr aus „gleiche Spannung, gleiche Chemie".
+    const bank = { bankId: 'haus', bankTopology: 'parallel' };
     const nodes = [
-      makeNode('b1', 'battery', { label: 'Batterie 1', capacity: 100, chemistry: 'LiFePO4' }),
-      makeNode('b2', 'battery', { label: 'Batterie 2', capacity: 100, chemistry: 'LiFePO4' }),
+      makeNode('b1', 'battery', { label: 'Batterie 1', capacity: 100, chemistry: 'LiFePO4', ...bank }),
+      makeNode('b2', 'battery', { label: 'Batterie 2', capacity: 100, chemistry: 'LiFePO4', ...bank }),
       makeNode('c1', 'consumer', { label: 'LED', watts: 20, hours: 2 }),
     ];
     const { nodes: n, edges: e } = runAutoWire(nodes);

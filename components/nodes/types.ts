@@ -59,6 +59,18 @@ export interface BatteryNodeData extends CommonNodeData {
   internalResistance?: number;
   /** DOM-002-Nachpflege: Peukert-Exponent (k ≥ 1, Datenblatt) — schlägt den Chemie-Faustwert. */
   peukertExponent?: number;
+  /**
+   * V2-Bankmodell (`lib/electricalGraph/batteryBank.ts`): Zugehörigkeit zu
+   * einer Batteriebank. Ohne Angabe ist jede Batterie ihre eigene Gruppe —
+   * zwei Akkus gleicher Spannung sind AUSDRÜCKLICH nicht automatisch parallel.
+   */
+  bankId?: string;
+  /** Verschaltung der Bank. Fehlt sie bei mehreren Akkus: Rückfrage statt Annahme. */
+  bankTopology?: 'single' | 'series' | 'parallel' | 'series-parallel';
+  /** Stränge in Reihe (nur `series-parallel`). */
+  bankSeries?: number;
+  /** Parallele Stränge (nur `series-parallel`). */
+  bankParallel?: number;
 }
 
 export interface ConsumerNodeData extends CommonNodeData {
@@ -68,6 +80,12 @@ export interface ConsumerNodeData extends CommonNodeData {
 
 export interface Consumer230VNodeData extends CommonNodeData {
   hours?: number;
+  /**
+   * V2-AC-Modell (`lib/electricalGraph/acSystem.ts`): ID der speisenden
+   * 230-V-Quelle. Pflicht, sobald der Plan mehrere Quellen hat — vorher
+   * entschied `inverters.at(0)`, also die Reihenfolge im Knoten-Array.
+   */
+  acSourceId?: string;
 }
 
 export interface SolarNodeData extends CommonNodeData {
@@ -112,7 +130,10 @@ export type MpptControllerNodeData = ChargerNodeData & {
   maxPvVoltage?: number;
 };
 export type DcdcChargerNodeData = ChargerNodeData;
-export type AcBatteryChargerNodeData = ChargerNodeData;
+export type AcBatteryChargerNodeData = ChargerNodeData & {
+  /** Speisende 230-V-Quelle (s. `Consumer230VNodeData.acSourceId`). */
+  acSourceId?: string;
+};
 
 export interface BusbarNodeData extends CommonNodeData {
   role?: 'positive' | 'negative';
@@ -136,6 +157,8 @@ export interface InverterNodeData extends CommonNodeData {
   continuousPower?: number;
   /** Vorhandensein eines FI/LS (RCD ≤ 30 mA) im AC-Ausgangskreis. */
   hasRcd?: boolean;
+  /** Speisende 230-V-Quelle am Landstrom-EINGANG (s. `Consumer230VNodeData.acSourceId`). */
+  acSourceId?: string;
 }
 
 export interface ShorePowerNodeData extends CommonNodeData {

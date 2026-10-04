@@ -81,6 +81,11 @@ import {
   pickHouseBattery,
   pickExistingStarter,
 } from './autoWire/routing';
+import { createConflictCollector, type AutoWireReport } from './autoWire/conflicts';
+import { deriveBatteryBanks, primaryHouseBank, type BatteryBank } from './electricalGraph/batteryBank';
+import { buildAcSystem, resolveAcSourceForLoad } from './electricalGraph/acSystem';
+import { compareIds } from './sortOrder';
+import { safeText } from './safeText';
 
 export { isStarterBatteryLabel };
 export { AUTO_EDGE_PREFIX, isAutoWiredEdge } from './autoWire/primitives';
@@ -92,6 +97,15 @@ export {
   sizeAcEdges,
 } from './autoWire/sizing';
 export { resolveRails, healUserEdges, pickHouseBattery } from './autoWire/routing';
+export {
+  createConflictCollector,
+  hasCriticalConflict,
+  EMPTY_AUTO_WIRE_REPORT,
+  type AutoWireConflict,
+  type AutoWireConflictKind,
+  type AutoWireConflictSeverity,
+  type AutoWireReport,
+} from './autoWire/conflicts';
 
 /** Stable identity for one generated cable, including parallel AC/DC domains. */
 function autoEdgeIdentityKey(edge: CableEdge): string {
@@ -119,10 +133,21 @@ function stableNodeOrder(nodes: readonly Node[]): Node[] {
   });
 }
 
+/**
+ * Ergebnis eines AutoWire-Laufs.
+ *
+ * `report` (V2) ist NEU und bewusst Teil des Rückgabewerts, nicht eines
+ * Seitenkanals: Ein Lauf, der Nutzerkanten umlegt oder eine Frage offen
+ * lässt, muss das dem Aufrufer mitteilen können. Bestehende Aufrufer, die
+ * `{ nodes, edges }` destrukturieren, bleiben unverändert gültig.
+ */
+export type AutoWireResult = { nodes: Node[]; edges: CableEdge[]; report: AutoWireReport };
+
 export function performAutoWiring(
   initialNodes: Node[],
   existingEdges: CableEdge[] = []
-): { nodes: Node[]; edges: CableEdge[] } | null {
+): AutoWireResult | null {
+  const conflicts = createConflictCollector();
   const currentNodes = initialNodes.map((n) => ({ ...n, data: { ...(n.data || {}) } }));
   // Keep prior IDs attached to their generated connection across recalculation.
   // Sorting each bucket makes even malformed duplicate historical IDs independent
@@ -211,7 +236,21 @@ export function performAutoWiring(
     autoCreatedNodeIds.add(batteryNode.id);
   }
 
-  const sysVoltage = getSystemVoltage(currentNodes, batteryNode.id);
+  // ── Batteriebänke: ERKLÄRTE Verschaltung schlägt Einzelbatterie ──────────
+  // `getSystemVoltage` kennt nur einzelne Akkus. Eine erklärte Reihenschaltung
+  // (2 × 12 V = 24 V) wäre damit unsichtbar geblieben und die gesamte
+  // Dimensionierung hätte mit der halben Spannung gerechnet — doppelter Strom,
+  // doppelter Querschnitt, falsche Sicherungen. Die Bank gewinnt, sobald sie
+  // im Plan steht; ohne Erklärung bleibt alles wie bisher.
+  const bankModel = deriveBatteryBanks(currentNodes, getSystemVoltage(currentNodes, batteryNode.id));
+  const houseBank = primaryHouseBank(bankModel);
+  const sysVoltage =
+    houseBank && houseBank.declared && houseBank.batteryIds.includes(batteryNode.id)
+      ? houseBank.nominalVoltage
+      : getSystemVoltage(currentNodes, batteryNode.id);
+  for (const question of bankModel.questions) {
+    conflicts.ask(question.question);
+  }
 
   const rails = resolveRails(currentNodes, nodesByType, nodesByLabel, batteryNode, autoCreatedNodeIds);
   const fuseBoxNode = findOrCreate(
@@ -302,6 +341,7 @@ export function performAutoWiring(
     minusRailId: rails.minus.id,
     fuseBoxId: fuseBoxNode.id,
     existingConnections,
+    report: conflicts,
   });
 
   // ── Backbone: Batterie+ → Plus-Schiene, Batterie- → Shunt → Minus-Schiene ──
@@ -356,27 +396,67 @@ export function performAutoWiring(
     meters(1)
   );
 
-  // Weitere Aufbaubatterien parallel auf dieselben Schienen (nicht die Starterbatterie).
-  // Parallelschaltung unterschiedlicher Chemien/Nennspannungen ist fachlich
-  // unzulässig (Lade-/Entladeprofile, Innenwiderstände, Spannungsfenster).
-  // Solche Batterien werden NICHT auf die Schiene gelegt, statt eine
-  // gefährliche 24-V-auf-12-V- bzw. AGM-auf-LiFePO4-Verbindung zu erzeugen.
-  // Issue 2: Ein fehlender nominalVoltage war bisher ein stiller
-  // Freifahrtschein (Haustür-Vergleich house↔extra, extras untereinander
-  // ungeprüft — 24 V landeten auf der 12-V-Schiene). Fehlende Werte werden
-  // auf die aufgelöste Systemspannung normiert und jeder Kandidat gegen
-  // JEDE bereits akzeptierte Batterie geprüft.
+  // ── Weitere Aufbaubatterien: ERKLÄRTE Bank statt geratener Parallelschaltung ──
+  //
+  // Befund V2-AUTO-003 (das teuerste Raten im alten Stand): Zwei Batterien
+  // gleicher Spannung und Chemie wurden automatisch parallel auf dieselben
+  // Schienen gelegt. Diese Annahme entscheidet über Systemspannung,
+  // Bankkapazität, Kurzschlussstrom und JEDE Sicherung im Plan — und sie kann
+  // schlicht falsch sein: Zwei 12-V-Akkus können genauso gut eine
+  // 24-V-Reihenschaltung oder zwei getrennte Bänke (Aufbau/Reserve) sein.
+  // AutoWire rät das nicht mehr. Es verdrahtet, was ERKLÄRT ist
+  // (`bankId` + `bankTopology`, s. lib/electricalGraph/batteryBank.ts), und
+  // stellt sonst eine Frage.
+  //
+  // Weiterhin gilt die fachliche Sperre aus AUDIT AUTO-003: Unterschiedliche
+  // Chemien oder Nennspannungen werden AUCH DANN NICHT parallel gelegt, wenn
+  // jemand sie in dieselbe Bank schreibt — eine Erklärung macht eine
+  // unzulässige Verschaltung nicht zulässig.
+  //
+  // Issue 2 (fehlender nominalVoltage) bleibt beantwortet: Fehlende Werte
+  // werden auf die aufgelöste Systemspannung normiert und jeder Kandidat
+  // gegen JEDE bereits akzeptierte Batterie geprüft.
   const voltageOf = (b: Node): Volts => quantityOr(b.data?.nominalVoltage, volts, sysVoltage);
   // AUDIT AUTO-003: chemiegenau statt nur „Blei vs. Li" — AGM ‖ Gel wird
   // genauso blockiert wie LiFePO4 ‖ Li-Ion (Ladeschlussspannungen/-
   // spannungsfenster vertragen sich nicht).
   const safeToParallel = (a: Node, b: Node): boolean =>
     voltageOf(a) === voltageOf(b) && chemistriesParallelSafe(a, b);
+
+  const houseBankOfBattery = new Map<string, BatteryBank>();
+  for (const bank of bankModel.banks) {
+    for (const memberId of bank.batteryIds) houseBankOfBattery.set(memberId, bank);
+  }
+  const homeBank = houseBankOfBattery.get(batteryNode.id);
+
   const acceptedParallel: Node[] = [batteryNode];
   for (const extra of orderedBatteries) {
     if (extra.id === batteryNode.id) continue;
     if (starterBatteryNode && extra.id === starterBatteryNode.id) continue;
     if (!acceptedParallel.every((a) => safeToParallel(a, extra))) continue;
+
+    const bank = houseBankOfBattery.get(extra.id);
+    const sameDeclaredBank = !!bank && !!homeBank && bank.id === homeBank.id;
+    const declaredParallel = sameDeclaredBank && bank.topology === 'parallel';
+
+    if (!declaredParallel) {
+      // Keine Verdrahtung ohne Erklärung. Die Batterie bleibt im Plan und
+      // sichtbar unverbunden — das ist der ehrliche Zustand: Der Planer weiß
+      // nicht, wie sie verschaltet ist.
+      conflicts.add({
+        kind: 'ambiguous-battery-topology',
+        severity: 'warning',
+        ruleId: 'AUTO-BANK-001',
+        message:
+          sameDeclaredBank && bank
+            ? `Batterie „${safeText(extra.data?.label) || extra.id}" gehört zur Bank „${bank.id}", deren Verschaltung „${bank.topology}" AutoWire nicht selbst verdrahtet. Bitte die Bank-Verbindungen von Hand zeichnen.`
+            : `Verschaltung von „${safeText(extra.data?.label) || extra.id}" ist nicht erklärt — AutoWire nimmt NICHT an, dass sie parallel zur Aufbaubatterie liegt. Bitte am Akku „bankId" und „bankTopology" setzen (z. B. beide auf dieselbe Bank mit „parallel").`,
+        edgeIds: [],
+        nodeIds: [extra.id, batteryNode.id],
+      });
+      continue;
+    }
+
     acceptedParallel.push(extra);
     addDcEdge(
       newEdges,
@@ -560,60 +640,132 @@ export function performAutoWiring(
   // Setzen würde einen fehlenden FI verschleiern (Stromschlaggefahr).
   const shorePowers = stableNodeOrder(nodesByType['shorePower'] || []);
   const consumers230v = stableNodeOrder(nodesByType['consumer230v'] || []);
-  const mainInverter = inverters.at(0);
-  if (mainInverter) {
-    for (const c of consumers230v) {
-      addAcEdge(
-        newEdges,
-        edgeIdRef,
-        existingConnections,
-        mainInverter.id,
-        c.id,
-        'plus',
-        'plus',
-        meters(2),
-        mm2(1.5)
+  const acChargers = stableNodeOrder(nodesByType['acBatteryCharger'] || []);
+
+  // ── 230 V: WELCHE Quelle speist WELCHEN Verbraucher? ─────────────────────
+  //
+  // Befund V2-AUTO-002: Der alte Stand nahm `inverters.at(0)` — den ersten
+  // Wechselrichter in der Array-Reihenfolge. Bei zwei Geräten entschied damit
+  // die Einfügereihenfolge über den Stromkreis, und derselbe Plan konnte nach
+  // einem Reload anders verdrahtet sein. Ebenso wurden ALLE Landstromdosen
+  // mit JEDEM AC-Ladegerät verbunden — zwei Quellen auf einem Kreis.
+  //
+  // Neue Regel, in dieser Reihenfolge und ohne Raten:
+  //   1. ausdrückliche Zuordnung am Bauteil (`data.acSourceId`),
+  //   2. bestehende Verdrahtung (aus dem AC-Modell gelesen),
+  //   3. genau EIN Wechselrichter im Plan → er ist der Verteilpunkt
+  //      (Landstrom speist ihn, er speist die Verbraucher — die Standard-
+  //      Topologie mit Umschalter, keine Annahme zwischen Gleichrangigen),
+  //   4. kein Wechselrichter und genau EINE Landstromdose → diese,
+  //   5. sonst: NICHT verdrahten, Frage stellen.
+  const acModel = buildAcSystem(currentNodes, userEdges);
+  const acSourceNodes = new Map<string, Node>();
+  for (const source of acModel.sources) {
+    const node = nodeMap.get(source.id);
+    if (node) acSourceNodes.set(source.id, node);
+  }
+  const singleInverter = orderedInverters.length === 1 ? orderedInverters[0] : undefined;
+  const singleShore = shorePowers.length === 1 ? shorePowers[0] : undefined;
+
+  /** Quelle für einen 230-V-Verbraucher — `undefined` heißt „nicht entschieden". */
+  const acSourceFor = (load: Node, allowInverter: boolean): Node | undefined => {
+    const declared = safeText(load.data?.acSourceId);
+    if (declared) {
+      const node = acSourceNodes.get(declared) ?? nodeMap.get(declared);
+      if (node) return node;
+      conflicts.add({
+        kind: 'ambiguous-ac-source',
+        severity: 'warning',
+        ruleId: 'AUTO-AC-002',
+        message: `„${safeText(load.data?.label) || load.id}" verweist auf die Quelle „${declared}", die es im Plan nicht gibt.`,
+        edgeIds: [],
+        nodeIds: [load.id],
+      });
+      return undefined;
+    }
+    const wired = resolveAcSourceForLoad(load.id, acModel);
+    if (wired) {
+      const node = acSourceNodes.get(wired);
+      if (node && (allowInverter || node.type !== 'inverter')) return node;
+    }
+    if (allowInverter && singleInverter) return singleInverter;
+    if (singleShore && (!allowInverter || !singleInverter)) return singleShore;
+
+    const candidates = allowInverter
+      ? [...orderedInverters, ...shorePowers]
+      : [...shorePowers, ...orderedInverters];
+    conflicts.add({
+      kind: 'ambiguous-ac-source',
+      severity: 'warning',
+      ruleId: 'AUTO-AC-001',
+      message:
+        candidates.length === 0
+          ? `„${safeText(load.data?.label) || load.id}" hat keine 230-V-Quelle im Plan — ohne Wechselrichter oder Landstrom bleibt das Gerät unversorgt.`
+          : `„${safeText(load.data?.label) || load.id}" könnte von mehreren 230-V-Quellen gespeist werden. AutoWire entscheidet das nicht; bitte am Gerät die Quelle setzen (Feld „acSourceId").`,
+      edgeIds: [],
+      nodeIds: [load.id, ...candidates.map((node) => node.id)].sort(compareIds),
+    });
+    if (candidates.length > 0) {
+      conflicts.ask(
+        `Welche 230-V-Quelle speist „${safeText(load.data?.label) || load.id}" — ${candidates
+          .map((node) => `„${safeText(node.data?.label) || node.id}"`)
+          .join(' oder ')}?`
       );
     }
-    // Jeder Wechselrichter bekommt den Landstrom-Eingang; die 230-V-Verbraucher
-    // hängen am ersten WR, damit nicht zwei WR parallel einen Kreis speisen.
-    for (const inverter of orderedInverters) {
-      for (const sp of shorePowers) {
-        addAcEdge(
-          newEdges,
-          edgeIdRef,
-          existingConnections,
-          sp.id,
-          inverter.id,
-          'plus',
-          'ac_in',
-          meters(2),
-          mm2(2.5)
-        );
-      }
-    }
-  } else {
-    for (const sp of shorePowers) {
-      for (const c of consumers230v) {
-        addAcEdge(newEdges, edgeIdRef, existingConnections, sp.id, c.id, 'plus', 'plus', meters(2), mm2(1.5));
-      }
-    }
+    return undefined;
+  };
+
+  for (const consumer of consumers230v) {
+    const source = acSourceFor(consumer, true);
+    if (!source) continue;
+    addAcEdge(
+      newEdges,
+      edgeIdRef,
+      existingConnections,
+      source.id,
+      consumer.id,
+      'plus',
+      'plus',
+      meters(2),
+      mm2(1.5)
+    );
   }
 
-  for (const acCharger of stableNodeOrder(nodesByType['acBatteryCharger'] || [])) {
-    for (const sp of shorePowers) {
-      addAcEdge(
-        newEdges,
-        edgeIdRef,
-        existingConnections,
-        sp.id,
-        acCharger.id,
-        'plus',
-        'plus',
-        meters(2),
-        mm2(2.5)
-      );
-    }
+  // Landstrom → Wechselrichter-Eingang: Jeder Wechselrichter bekommt den
+  // Landstromanschluss (Ladefunktion/Durchleitung). Bei mehreren Dosen ist
+  // auch das eine Zuordnungsfrage.
+  for (const inverter of orderedInverters) {
+    if (shorePowers.length === 0) continue;
+    const feed = acSourceFor(inverter, false);
+    if (!feed || feed.type !== 'shorePower') continue;
+    addAcEdge(
+      newEdges,
+      edgeIdRef,
+      existingConnections,
+      feed.id,
+      inverter.id,
+      'plus',
+      'ac_in',
+      meters(2),
+      mm2(2.5)
+    );
+  }
+
+  for (const acCharger of acChargers) {
+    if (shorePowers.length === 0) continue;
+    const feed = acSourceFor(acCharger, false);
+    if (!feed) continue;
+    addAcEdge(
+      newEdges,
+      edgeIdRef,
+      existingConnections,
+      feed.id,
+      acCharger.id,
+      'plus',
+      'plus',
+      meters(2),
+      mm2(2.5)
+    );
   }
 
   const grounds = stableNodeOrder(nodesByType['ground'] || []);
@@ -782,5 +934,5 @@ export function performAutoWiring(
     autoCreatedNodeIds
   );
 
-  return { nodes: currentNodes, edges: allEdges };
+  return { nodes: currentNodes, edges: allEdges, report: conflicts.report() };
 }

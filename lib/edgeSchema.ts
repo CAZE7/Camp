@@ -43,6 +43,13 @@ export const EDGE_DATA_SCHEMA: Record<string, EdgeDataFieldSpec> = {
   acProtection: { type: 'object' },
   fuseBreakingCapacity: { type: 'number' },
   autoWired: { type: 'boolean' },
+  // V2 (Intent-Modell, lib/electricalGraph/intent.ts): Verbindlichkeit einer
+  // Verbindung. Ein ungültiger Enum-Wert wird entfernt und fällt damit auf
+  // die dokumentierte Ableitung aus `autoWired` zurück — NICHT auf 'user'
+  // (das wäre eine stille Behauptung über die Absicht des Nutzers).
+  intent: { type: 'string', enumValues: ['locked', 'user', 'required', 'auto', 'suggested'] },
+  locked: { type: 'boolean' },
+  lengthIsAssumption: { type: 'boolean' },
 };
 
 function fieldIsValid(value: unknown, spec: EdgeDataFieldSpec): boolean {

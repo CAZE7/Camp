@@ -66,6 +66,21 @@ export const NODE_DATA_SCHEMA: Record<string, Record<string, NodeDataFieldSpec>>
     // DOM-002-Nachpflege: Peukert-Exponent (k ≥ 1, Datenblatt) — schlägt den
     // Chemie-Faustwert in lib/peukert.ts.
     peukertExponent: { type: 'number' },
+    // ── V2: EXPLIZITES BANK-MODELL (lib/electricalGraph/batteryBank.ts) ──
+    // Vorher leitete AutoWire „parallel“ aus Spannung + Chemie ab — eine
+    // Annahme, die über Systemspannung, Kapazität und jede Sicherung
+    // entscheidet. Die Verschaltung wird deshalb ERKLÄRT, nicht geraten.
+    /** Zugehörigkeit zu einer Batteriebank (frei wählbarer Name). */
+    bankId: { type: 'string' },
+    /** Verschaltung der Bank. Fehlt sie bei mehreren Akkus: Rückfrage. */
+    bankTopology: {
+      type: 'string',
+      enumValues: ['single', 'series', 'parallel', 'series-parallel'],
+    },
+    /** Stränge in Reihe (nur `series-parallel`). */
+    bankSeries: { type: 'number' },
+    /** Parallele Stränge (nur `series-parallel`). */
+    bankParallel: { type: 'number' },
   },
   busbar: {
     ...COMMON_FIELDS,
@@ -93,13 +108,24 @@ export const NODE_DATA_SCHEMA: Record<string, Record<string, NodeDataFieldSpec>>
     ...COMMON_FIELDS,
     amps: { type: 'number', allowZero: true },
     efficiency: { type: 'number', allowZero: true },
+    /** Speisende 230-V-Quelle (s. consumer230v.acSourceId). */
+    acSourceId: { type: 'string' },
   },
   consumer: { ...COMMON_FIELDS, hours: { type: 'number', allowZero: true } },
-  consumer230v: { ...COMMON_FIELDS, hours: { type: 'number', allowZero: true } },
+  consumer230v: {
+    ...COMMON_FIELDS,
+    hours: { type: 'number', allowZero: true },
+    // V2 (lib/electricalGraph/acSystem.ts): Welche 230-V-Quelle speist dieses
+    // Gerät? Pflicht, sobald der Plan mehr als eine Quelle hat — vorher
+    // entschied `inverters.at(0)`, also die Array-Reihenfolge.
+    acSourceId: { type: 'string' },
+  },
   inverter: {
     ...COMMON_FIELDS,
     // continuousPower steckt in COMMON_FIELDS (ELE-006).
     hasRcd: { type: 'boolean' },
+    /** Landstrom-Quelle am AC-Eingang (s. consumer230v.acSourceId). */
+    acSourceId: { type: 'string' },
   },
   shorePower: {
     ...COMMON_FIELDS,
