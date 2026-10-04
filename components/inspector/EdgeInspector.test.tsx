@@ -69,3 +69,54 @@ describe('EdgeInspector Component', () => {
     expect(mockOnChangeLength).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * V2-INTENT-002: Ohne diesen Schalter war die Absicht des Nutzers im Modell
+ * vorhanden, aber unerreichbar — jede gezogene Leitung blieb Freiwild für
+ * den nächsten Auto-Wire-Lauf.
+ */
+describe('V2-INTENT-002: Verbindlichkeit', () => {
+  const edge = (data: CableEdgeData): Edge<CableEdgeData> => ({
+    id: 'edge-1',
+    source: 'node-1',
+    target: 'node-2',
+    data,
+  });
+
+  it('zeigt den Schalter nur, wenn der Aufrufer ihn bedienen kann', () => {
+    render(<EdgeInspector edge={edge({})} onChangeLength={vi.fn()} />);
+    expect(screen.queryByRole('radiogroup', { name: 'Verbindlichkeit' })).toBeNull();
+  });
+
+  it('eine selbst gezogene Leitung steht auf „Meine Entscheidung“', () => {
+    render(
+      <EdgeInspector edge={edge({ autoWired: false })} onChangeLength={vi.fn()} onChangeIntent={vi.fn()} />
+    );
+    expect(screen.getByTestId('edge-intent-user')).toHaveAttribute('aria-checked', 'true');
+  });
+
+  it('eine Auto-Kante steht auf „Automatik“', () => {
+    render(
+      <EdgeInspector edge={edge({ autoWired: true })} onChangeLength={vi.fn()} onChangeIntent={vi.fn()} />
+    );
+    expect(screen.getByTestId('edge-intent-auto')).toHaveAttribute('aria-checked', 'true');
+  });
+
+  it('die Sperre schlägt ein widersprüchliches Etikett (gleiche Ableitung wie AutoWire)', () => {
+    render(
+      <EdgeInspector
+        edge={edge({ locked: true, intent: 'auto' })}
+        onChangeLength={vi.fn()}
+        onChangeIntent={vi.fn()}
+      />
+    );
+    expect(screen.getByTestId('edge-intent-locked')).toHaveAttribute('aria-checked', 'true');
+  });
+
+  it('meldet die Wahl mit Kanten-ID weiter', () => {
+    const onChangeIntent = vi.fn();
+    render(<EdgeInspector edge={edge({})} onChangeLength={vi.fn()} onChangeIntent={onChangeIntent} />);
+    fireEvent.click(screen.getByTestId('edge-intent-locked'));
+    expect(onChangeIntent).toHaveBeenCalledWith('edge-1', 'locked');
+  });
+});

@@ -87,13 +87,28 @@ export function createConflictCollector(): ConflictCollector {
       ]
         .sort(compareIds)
         .join(',')}`;
-      if (!byKey.has(key)) {
-        byKey.set(key, {
-          ...conflict,
-          edgeIds: [...conflict.edgeIds].sort(compareIds),
-          nodeIds: [...conflict.nodeIds].sort(compareIds),
-        });
+      const normalised: AutoWireConflict = {
+        ...conflict,
+        edgeIds: [...conflict.edgeIds].sort(compareIds),
+        nodeIds: [...conflict.nodeIds].sort(compareIds),
+      };
+      const existing = byKey.get(key);
+      if (existing === undefined) {
+        byKey.set(key, normalised);
+        return;
       }
+      // BEFUND V2-CONFLICT-002 (Eigenschaftstest E9): Der Schlüssel enthält
+      // die Schwere NICHT. „Erster gewinnt" hieß deshalb: Meldet Phase 1
+      // dieselbe Tatsache als Hinweis und Phase 2 als kritisch, sah der
+      // Nutzer einen Hinweis — und beim Umsortieren der Phasen plötzlich
+      // einen kritischen Befund. Das verletzt DETERMINISMUS und SICHERHEIT
+      // zugleich. Deshalb gewinnt die STÄRKERE Aussage über dieselbe Sache,
+      // bei Gleichstand die lexikografisch kleinere Meldung (eine Wahl, die
+      // nicht von der Aufrufreihenfolge abhängt).
+      const strongerSeverity = SEVERITY_RANK[normalised.severity] < SEVERITY_RANK[existing.severity];
+      const sameSeverityEarlierMessage =
+        normalised.severity === existing.severity && compareIds(normalised.message, existing.message) < 0;
+      if (strongerSeverity || sameSeverityEarlierMessage) byKey.set(key, normalised);
     },
     ask(question) {
       questions.add(question);

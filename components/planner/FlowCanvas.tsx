@@ -57,6 +57,7 @@ import {
   resolveMinimapPalette,
 } from './utils/domainFilter';
 import { CanvasDisplayOptions } from './ui/CanvasDisplayOptions';
+import { PlannerModeSwitch } from './ui/PlannerModeSwitch';
 import { markErrorEdgesZIndex } from './utils/errorEdges';
 import { useTouchContextMenu } from './hooks/useTouchContextMenu';
 import { applyCircuitTrace, circuitTraceLabel, traceCircuit } from './utils/circuitTrace';
@@ -262,6 +263,8 @@ export function FlowCanvas() {
     setBackboneGrouping,
     detailLevel,
     setDetailLevel,
+    plannerMode,
+    setPlannerMode,
     isLayoutPending,
     autoStructurePending,
     structureAutoWiring,
@@ -296,6 +299,8 @@ export function FlowCanvas() {
       setBackboneGrouping: state.setBackboneGrouping,
       detailLevel: state.detailLevel,
       setDetailLevel: state.setDetailLevel,
+      plannerMode: state.plannerMode,
+      setPlannerMode: state.setPlannerMode,
       isLayoutPending: state.isLayoutPending,
       autoStructurePending: state.autoStructurePending,
       structureAutoWiring: state.structureAutoWiring,
@@ -886,6 +891,14 @@ export function FlowCanvas() {
               </p>
             </div>
           </Panel>
+
+          {/* V2-UX-001: Der Arbeitsmodus steht VOR den Anzeigefiltern — er
+              beantwortet, welche Frage gerade bearbeitet wird. */}
+          {viewMode === 'electric' && (
+            <Panel position="top-center" className="m-2 sm:m-3">
+              <PlannerModeSwitch mode={plannerMode} onSelect={setPlannerMode} />
+            </Panel>
+          )}
 
           {viewMode === 'electric' && (
             <Panel position="top-right" className="m-2 sm:m-3">

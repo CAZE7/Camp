@@ -68,6 +68,7 @@ export type GraphSlice = Pick<
   | 'handleChangeFuseSize'
   | 'handleChangeFuseOffset'
   | 'handleChangeFuseType'
+  | 'setEdgeIntent'
   | 'handleChangeAcProtection'
   | 'isValidConnection'
   | 'onConnect'
@@ -368,6 +369,38 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
             : state.edges,
       })
     ),
+  // V2-INTENT-002: Die Absicht ist Nutzerwissen, kein abgeleiteter Zustand.
+  // Geschrieben werden beide Felder, weil `edgeIntentOf` die Sperre als
+  // Tatsache über dem Etikett liest: `locked` ohne `intent` wäre bei einem
+  // späteren Herabstufen sonst nicht mehr vom Etikett zu unterscheiden.
+  setEdgeIntent: (id, intent) =>
+    set((state) =>
+      withHistoryIfChanged(state, {
+        edges: state.edges.map((e) => {
+          if (e.id !== id) return e;
+          const nextIntent = intent === 'auto' ? undefined : intent;
+          const nextLocked = intent === 'locked';
+          // Eine von Hand erklärte Absicht ist keine Auto-Kante mehr: Bliebe
+          // `autoWired` stehen, sammelte der nächste AutoWire-Lauf sie als
+          // eigenes Erzeugnis wieder ein und ersetzte sie.
+          const nextAutoWired = intent === 'auto' ? e.data?.autoWired : false;
+          // Unverändert heißt DASSELBE Objekt — nicht eine gleich aussehende
+          // Kopie. Sonst zählt `withHistoryIfChanged` einen Schritt, und React
+          // Flow übernimmt die Kante neu (Mess-/Routing-Runde ohne Anlass).
+          if (
+            e.data?.intent === nextIntent &&
+            (e.data?.locked ?? false) === nextLocked &&
+            e.data?.autoWired === nextAutoWired
+          ) {
+            return e;
+          }
+          return {
+            ...e,
+            data: { ...e.data!, intent: nextIntent, locked: nextLocked, autoWired: nextAutoWired },
+          };
+        }),
+      })
+    ),
   handleChangeAcProtection: (id, acProtection) =>
     set((state) =>
       withHistoryIfChanged(state, {
@@ -480,6 +513,13 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
       get().setSystemMessage('Bitte zuerst eine Batterie platzieren, bevor Komponenten verbunden werden.');
       return;
     }
+
+    // V2: Der Bericht geht in den Store, BEVOR der Graph gesetzt wird — die
+    // offenen Fragen des Automaten („zwei 12-V-Batterien: seriell oder
+    // parallel?") und seine Regelkonflikte gehören vor die Augen des Nutzers,
+    // nicht in ein verworfenes Rückgabeobjekt. Bewusst ohne History-Eintrag:
+    // Der Bericht ist ein Befund über den Graphen, nicht Teil des Graphen.
+    set({ autoWireReport: result.report });
 
     // Nutzer-Kanten bleiben erhalten; nur Auto-Kanten früherer Läufe
     // werden durch die frisch berechneten ersetzt (Idempotenz).
