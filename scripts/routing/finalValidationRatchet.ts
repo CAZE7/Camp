@@ -73,11 +73,12 @@
  * (Berührung 0 px ohne gemeinsamen Port), complex e-busbar-fuse↔
  * e-shore-inv (0,8 px, kein gemeinsamer Port).
  *
- * Zahlenstand 2026-10-02 (ADR 0031 v1, Segment-Fenster — ersetzt): Seit
- * die Port-Bündel-Ausnahme SYMMETRISCH für I2 und I3 galt, zählte die
- * Ratchet nur noch Restfälle: 2/7/0/6/3/23 (Σ 41), davor 6/21/4/12/13/42
- * (Σ 98, AUDIT ROUTE-012). Die I3-Segment×Segment-Prüfung selbst bleibt
- * unverändert scharf.
+ * Zahlenstand 2026-10-04: Alle sechs Pläne stehen auf **0** — die Tabelle
+ * unten ist damit kein Zugeständnis mehr, sondern die harte Forderung
+ * „keine einzige Verletzung". Verlauf: 2026-10-02 noch 2/7/0/6/3/23 (Σ 41),
+ * davor 6/21/4/12/13/42 (Σ 98, AUDIT ROUTE-012). Die I3-Segment×Segment-
+ * Prüfung selbst blieb dabei unverändert scharf; gesunken ist die Zahl der
+ * echten Verstöße, nicht die Strenge der Messung.
  */
 export const FINAL_VALIDATION_RATCHET: Readonly<Record<string, number>> = {
   simple: 0,

@@ -36,6 +36,29 @@ für die gesamte Normreihe.
 `seed: 20260821` und `numRuns: 1000` sind fest verdrahtet — jeder Lauf ist
 exakt wiederholbar, ein Gegenbeispiel damit reproduzierbar.
 
+### Gesetze des elektrischen Graphen (V2)
+
+`lib/electricalGraph/properties.test.ts` und `lib/autoWire/conflicts.test.ts`,
+je `seed: 20261004`, `numRuns: 300`:
+
+| ID  | Gesetz                                                                     |
+| --- | -------------------------------------------------------------------------- |
+| E1  | Absicht ist total: jede Kante erhält genau einen Wert aus `EDGE_INTENTS`   |
+| E2  | `mayOverride` ist strikt (gleich stark ersetzt nicht) und transitiv        |
+| E3  | Spannungsklassen sind disjunkt; außerhalb gilt `unknown`, nie ein Rückfall |
+| E4  | Jede Batterie liegt in genau einer Bank                                    |
+| E5  | Bankspannung wächst monoton mit der Zahl der Serienglieder                 |
+| E6  | `allowedCurrent` ist das Minimum und nie größer als jede Einzelgrenze      |
+| E7  | AC-Kreise partitionieren die AC-Knoten                                     |
+| E8  | `electricalGraphHash` ist invariant gegen Verschieben und Umsortieren      |
+| E9  | Der AutoWire-Bericht hängt nicht von der Meldereihenfolge ab               |
+| E10 | Deduplizierung schluckt keinen fachlich anderen Befund                     |
+
+**E9 hat einen echten Fehler gefunden** (V2-CONFLICT-002): Der Dedup-Schlüssel
+des Konfliktsammlers enthielt die Schwere nicht, „erster gewinnt" machte aus
+einem kritischen Befund einen Hinweis, sobald eine andere Phase dieselbe
+Tatsache zuerst milder meldete. Seitdem gewinnt die stärkere Aussage.
+
 ## 3. Generatoren
 
 Realistische Wertebereiche statt „alles was `number` kann“:
