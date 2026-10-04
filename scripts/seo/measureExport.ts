@@ -19,8 +19,9 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 
 import { pageByPath, PAGES } from '../../lib/seo/inventory';
-import type { PageKind } from '../../lib/seo/types';
-import { heavyLibrariesLoaded, internalLinkTargets, metaContent, titleOf } from './checks';
+import { THIN_CONTENT_KINDS, type PageKind } from '../../lib/seo/types';
+import { heavyLibrariesLoaded, metaContent, scriptSources, titleOf } from './checks';
+import { analyzeInternalLinkGraph } from './linkGraph';
 
 export const OUT = 'out';
 
@@ -56,6 +57,7 @@ export type ExportMeasurement = {
     pillar: number;
     calculator: number;
     orphans: readonly string[];
+    rootUnreachable: readonly string[];
     thin: readonly PageMeasurement[];
     duplicateTitles: readonly string[];
     duplicateDescriptions: readonly string[];
@@ -109,10 +111,6 @@ export function wordCount(html: string): number {
 
 function headingCount(html: string, level: number): number {
   return (html.match(new RegExp(`<h${level}[\\s>]`, 'gi')) ?? []).length;
-}
-
-function scriptSources(html: string): string[] {
-  return [...html.matchAll(/<script[^>]*\ssrc="([^"]+)"/gi)].map((match) => match[1]!);
 }
 
 function resolveChunk(dir: string, basePath: string, source: string): string | null {
@@ -189,28 +187,55 @@ export function measureExport(
   });
 
   const byPath = new Map(measurements.map((page) => [page.path, page]));
-  const inbound = new Map<string, number>();
-  for (const { path, html } of raw) {
-    const targets = internalLinkTargets(html, origin, basePath);
-    const self = byPath.get(path);
-    if (self) self.outbound = targets.length;
-    for (const target of targets) {
-      if (target === path) continue;
-      inbound.set(target, (inbound.get(target) ?? 0) + 1);
+  const sitemapXml = existsSync(join(dir, 'sitemap.xml'))
+    ? readFileSync(join(dir, 'sitemap.xml'), 'utf8')
+    : '';
+  const sitemapPaths = [...sitemapXml.matchAll(/<loc>([^<]*)<\/loc>/g)].flatMap((match) => {
+    try {
+      const pathname = new URL(match[1]!).pathname || '/';
+      if (!basePath) return [pathname];
+      if (pathname === basePath || pathname === `${basePath}/`) return ['/'];
+      return pathname.startsWith(`${basePath}/`) ? [pathname.slice(basePath.length) || '/'] : [pathname];
+    } catch {
+      return [];
     }
-  }
-  for (const page of measurements) page.inbound = inbound.get(page.path) ?? 0;
+  });
+  const graph = analyzeInternalLinkGraph({
+    pages: raw.map(({ path, html }) => ({ path, html, entry: pageByPath(path) })),
+    origin,
+    basePath,
+    sitemapPaths,
+  });
+  const inboundSources = new Map<string, Set<string>>();
+  const outboundTargets = new Map<string, Set<string>>();
+  const targetsBySource = new Map<string, Set<string>>();
+  for (const edge of graph.edges) {
+    const incoming = inboundSources.get(edge.to) ?? new Set<string>();
+    incoming.add(edge.from);
+    inboundSources.set(edge.to, incoming);
 
-  // Tiefe ab der Startseite (Breitensuche über interne Verweise).
+    const outgoing = outboundTargets.get(edge.from) ?? new Set<string>();
+    outgoing.add(edge.to);
+    outboundTargets.set(edge.from, outgoing);
+
+    const targets = targetsBySource.get(edge.from) ?? new Set<string>();
+    targets.add(edge.to);
+    targetsBySource.set(edge.from, targets);
+  }
+  for (const page of measurements) {
+    page.inbound = inboundSources.get(page.path)?.size ?? 0;
+    page.outbound = outboundTargets.get(page.path)?.size ?? 0;
+  }
+
+  // Tiefe ab der Startseite: nur echte HTML-Anker zählen, keine Canonicals,
+  // Icons oder Social-Metadata.
   const queue: { path: string; depth: number }[] = [{ path: '/', depth: 0 }];
   const seen = new Set(['/']);
   while (queue.length > 0) {
     const { path, depth } = queue.shift()!;
     const page = byPath.get(path);
     if (page) page.depth = depth;
-    const file = join(dir, path.replace(/^\//, '').replace(/\/$/, ''), 'index.html');
-    if (!existsSync(file)) continue;
-    for (const target of internalLinkTargets(readFileSync(file, 'utf8'), origin, basePath)) {
+    for (const target of targetsBySource.get(path) ?? []) {
       if (seen.has(target)) continue;
       seen.add(target);
       queue.push({ path: target, depth: depth + 1 });
@@ -218,13 +243,10 @@ export function measureExport(
   }
 
   const indexable = measurements.filter((page) => page.indexable);
-  const contentKinds: PageKind[] = ['pillar', 'cluster', 'rechner', 'ratgeber', 'werkzeug'];
   const thin = indexable.filter(
-    (page) => contentKinds.includes(page.kind as PageKind) && page.words < THIN_WORDS
+    (page) => THIN_CONTENT_KINDS.includes(page.kind as PageKind) && page.words < THIN_WORDS
   );
-  const orphans = indexable
-    .filter((page) => page.path !== '/' && page.inbound === 0)
-    .map((page) => page.path);
+  const orphans = [...graph.orphanPages];
   const heavyOnContentPages = indexable
     .filter((page) => page.heavy.length > 0 && page.kind !== 'werkzeug')
     .map((page) => ({ path: page.path, heavy: page.heavy }));
@@ -241,6 +263,7 @@ export function measureExport(
       pillar: indexable.filter((page) => page.kind === 'pillar').length,
       calculator: indexable.filter((page) => page.kind === 'rechner').length,
       orphans,
+      rootUnreachable: [...graph.rootUnreachable],
       thin,
       duplicateTitles: [...titles.entries()]
         .filter(([, paths]) => paths.length > 1)
@@ -289,9 +312,13 @@ function main(): void {
   process.stdout.write(`\nGemessene Seiten: ${measurement.summary.totalPages}\n`);
   process.stdout.write(`Indexierbar: ${measurement.summary.indexable}\n`);
   process.stdout.write(
+    `No-JS-HTML mit sichtbarem Text und genau einer H1: ${measurement.summary.noJsPagesWithContent}/${measurement.summary.indexable}\n`
+  );
+  process.stdout.write(
     `Pillar: ${measurement.summary.pillar} · Rechner: ${measurement.summary.calculator}\n`
   );
-  process.stdout.write(`Waisen: ${measurement.summary.orphans.length}\n`);
+  process.stdout.write(`Waisen (ohne Eingang): ${measurement.summary.orphans.length}\n`);
+  process.stdout.write(`Von Startseite unerreichbar: ${measurement.summary.rootUnreachable.length}\n`);
   process.stdout.write(`Dünne Seiten (< ${THIN_WORDS} Wörter): ${measurement.summary.thin.length}\n`);
   process.stdout.write(
     `Interne Verlinkung: ${(measurement.summary.inboundCoverage * 100).toFixed(0)} % der Seiten mit eingehendem Verweis, ø ${measurement.summary.averageInbound.toFixed(1)} eingehende Verweise\n`

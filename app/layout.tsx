@@ -10,8 +10,6 @@ import type { Metadata, Viewport } from 'next';
 import { SystemThemeSync } from '@/components/theme/SystemThemeSync';
 import { SITE_NAME, SITE_ORIGIN, siteNodeId, siteUrl } from '@/lib/site';
 
-import { DEFAULT_PREVIEW_IMAGE, INDEXABLE_ROBOTS } from './siteMetadata';
-
 /**
  * Kopfdaten der gesamten Auslieferung.
  *
@@ -28,32 +26,7 @@ export const metadata: Metadata = {
     default: 'Camper-Ausbau planen: Elektrik, Dach und Heizlast | Werft',
     template: `%s | ${SITE_NAME}`,
   },
-  description:
-    'Werkstatt für den Camper-Ausbau: Schaltplan mit Kabelquerschnitt und Absicherung, Dachbelegung, Heizlast und die Reihenfolge der Gewerke.',
   applicationName: SITE_NAME,
-  alternates: { canonical: siteUrl('/') },
-  robots: INDEXABLE_ROBOTS,
-  openGraph: {
-    type: 'website',
-    locale: 'de_DE',
-    siteName: SITE_NAME,
-    url: siteUrl('/'),
-    title: 'Camper-Ausbau planen: Elektrik, Dach und Heizlast',
-    description:
-      'Werkstatt für den Camper-Ausbau: Schaltplan mit Kabelquerschnitt und Absicherung, Dachbelegung, Heizlast und die Reihenfolge der Gewerke.',
-    images: [
-      {
-        url: siteUrl(DEFAULT_PREVIEW_IMAGE.path),
-        width: DEFAULT_PREVIEW_IMAGE.width,
-        height: DEFAULT_PREVIEW_IMAGE.height,
-        alt: DEFAULT_PREVIEW_IMAGE.alt,
-      },
-    ],
-  },
-  twitter: {
-    card: 'summary_large_image',
-    images: [{ url: siteUrl(DEFAULT_PREVIEW_IMAGE.path), alt: DEFAULT_PREVIEW_IMAGE.alt }],
-  },
   formatDetection: { telephone: false, address: false, email: false },
 };
 

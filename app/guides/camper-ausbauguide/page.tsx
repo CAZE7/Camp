@@ -4,29 +4,20 @@ import Link from 'next/link';
 import RoadTripAnimationLazy from './RoadTripAnimationLazy';
 import { SiteHeader } from '@/components/brand/SiteHeader';
 import { SiteFooter } from '@/components/brand/SiteFooter';
+import { PageStructuredData } from '@/components/seo/PageStructuredData';
 import { cn } from '@/lib/utils';
 
-import { pageMetadata } from '@/app/siteMetadata';
+import { metadataForPage } from '@/app/seoMetadata';
 
 // Outfit wird lokal über @fontsource-variable/outfit gebündelt (offline-fähiger Build).
 const outfit = { className: 'font-outfit' };
 
-export const metadata: Metadata = pageMetadata({
-  title: 'Camper-Ausbauguide: Technik, Normen und Praxis',
-  description:
-    'Wissen für den Ausbau: Karosserie, Dämmung, 12-V-Elektrik, Gas und TÜV — verständlich erklärt, mit Normbezug und Praxiswerten.',
-  path: '/guides/camper-ausbauguide/',
-  image: {
-    path: '/og/camper-guide.png',
-    width: 1200,
-    height: 630,
-    alt: 'Camper-Ausbauguide: Technik, Normen und Praxis',
-  },
-});
+export const metadata: Metadata = metadataForPage('/guides/camper-ausbauguide/');
 
 export default function CamperAusbauguide() {
   return (
     <div className="flex min-h-screen flex-col bg-paper text-ink">
+      <PageStructuredData path="/guides/camper-ausbauguide/" />
       <SiteHeader />
       <div id="ausbau-page" className="relative flex-1 overflow-hidden bg-paper px-4 pb-24 pt-12 sm:px-6">
         {/* GSAP-Animation als Hintergrundspur — nachgeladen, siehe Wrapper */}
@@ -49,8 +40,7 @@ export default function CamperAusbauguide() {
                 outfit.className
               )}
             >
-              Der ultimative Camper-Ausbau-Guide:
-              <br />
+              Der ultimative Camper-Ausbau-Guide: <br />
               <span className="text-copper">Von der leeren Blechbüchse zum rollenden Zuhause</span>
             </h1>
 

@@ -1,23 +1,13 @@
 import type { Metadata } from 'next';
+
+import { metadataForPage } from '@/app/seoMetadata';
 import React from 'react';
 import Link from 'next/link';
 import { SiteHeader } from '@/components/brand/SiteHeader';
 import { SiteFooter } from '@/components/brand/SiteFooter';
+import { PageStructuredData } from '@/components/seo/PageStructuredData';
 
-import { pageMetadata } from '@/app/siteMetadata';
-
-export const metadata: Metadata = pageMetadata({
-  title: 'Ausbau-Fahrplan: Reihenfolge der Gewerke',
-  description:
-    'Vom Entkernen bis zum Möbelbau: die Reihenfolge für den Camper-Ausbau, mit den Fehlern, die dich sonst zwei Schritte zurückwerfen.',
-  path: '/guides/ausbau-fahrplan/',
-  image: {
-    path: '/og/ausbau-fahrplan.png',
-    width: 1200,
-    height: 630,
-    alt: 'Ausbau-Fahrplan: Reihenfolge der Gewerke',
-  },
-});
+export const metadata: Metadata = metadataForPage('/guides/ausbau-fahrplan/');
 
 interface StepData {
   id: string;
@@ -333,6 +323,7 @@ const stepsData: StepData[] = [
 export default function AusbauFahrplanPage() {
   return (
     <div className="flex min-h-screen flex-col bg-paper text-ink">
+      <PageStructuredData path="/guides/ausbau-fahrplan/" />
       <SiteHeader />
       <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col md:flex-row">
         <aside

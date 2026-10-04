@@ -3,21 +3,11 @@ import React from 'react';
 import Link from 'next/link';
 import { SiteHeader } from '@/components/brand/SiteHeader';
 import { SiteFooter } from '@/components/brand/SiteFooter';
+import { PageStructuredData } from '@/components/seo/PageStructuredData';
 
-import { pageMetadata } from '@/app/siteMetadata';
+import { metadataForPage } from '@/app/seoMetadata';
 
-export const metadata: Metadata = pageMetadata({
-  title: 'Holzausbau im Camper: sechs Schritte',
-  description:
-    'Möbelbau im Camper in sechs Schritten: Unterkonstruktion, Wandverkleidung, Stauraum, Befestigung und Oberflächen — mit Materialwahl und Gewicht.',
-  path: '/guides/holzausbau/',
-  image: {
-    path: '/og/holzausbau.png',
-    width: 1200,
-    height: 630,
-    alt: 'Holzausbau im Camper: sechs Schritte',
-  },
-});
+export const metadata: Metadata = metadataForPage('/guides/holzausbau/');
 
 const STEPS = [
   {
@@ -61,6 +51,7 @@ const STEPS = [
 export default function HolzausbauGuide() {
   return (
     <div className="flex min-h-screen flex-col bg-paper text-ink">
+      <PageStructuredData path="/guides/holzausbau/" />
       <SiteHeader />
 
       <main id="main" className="container-page prose-measure flex-1">
@@ -77,7 +68,7 @@ export default function HolzausbauGuide() {
           Schaltplan zeichnen →
         </Link>
         <h1 className="mt-4 font-display text-2xl font-semibold tracking-tight md:text-2xl">
-          Holzausbau nach BEDMAS
+          Holzausbau im Camper: sechs Schritte
         </h1>
         <p className="mt-2 text-sm text-ink-soft">
           Reihenfolge: entkernen, Kabel, Luken, Verankerung, Wasser, dann Holz.

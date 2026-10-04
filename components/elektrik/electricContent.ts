@@ -9,12 +9,14 @@
  * Zeichenkette wie die strukturierte.
  */
 
-/** Titel der Seite — bleibt innerhalb der üblichen Länge für Suchergebnisse. */
-export const PAGE_TITLE = 'Camper Elektrik berechnen: 12V Kabelquerschnitt & Batterie-Planer';
+import { pageByPath } from '@/lib/seo/inventory';
 
-/** Beschreibung der Seite für Inhaltsverzeichnisse und Vorschaukarten. */
-export const PAGE_DESCRIPTION =
-  'Wohnmobil-Elektrik präzise dimensionieren: Leitungsquerschnitt nach DIN berechnen, Batteriekapazität bestimmen und autarkes 12V-System sicher planen.';
+const PLANER_PAGE = pageByPath('/elektrik-planung/');
+if (!PLANER_PAGE) throw new Error('Die Elektrik-Planung fehlt im SEO-Inventar.');
+
+/** Beschreibung und H1 kommen aus derselben Inventarzeile wie Metadaten und Schema. */
+export const PAGE_DESCRIPTION = PLANER_PAGE.description;
+export const PAGE_H1 = PLANER_PAGE.h1;
 
 /** Einleitungssatz unter der Überschrift. */
 export const PAGE_LEAD =

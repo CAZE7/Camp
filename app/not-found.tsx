@@ -5,13 +5,12 @@ import { SiteFooter } from '@/components/brand/SiteFooter';
 
 /**
  * Die Fehlerseite ist kein Inhalt, sondern ein Hinweis: Sie bekommt einen
- * eigenen Titel (sonst trüge sie den der Startseite) und wird nicht in den
- * Index aufgenommen — eine 404-Seite in Ergebnislisten hilft niemandem.
+ * eigenen Titel (sonst trüge sie den der Startseite). Next setzt für diese
+ * Fehlerroute selbst `noindex`; ein zweiter robots-Tag wäre widersprüchlich.
  */
 export const metadata: Metadata = {
   title: 'Seite nicht gefunden',
   description: 'Die aufgerufene Adresse führt ins Leere. Wege zurück zu den Werkzeugen und Guides.',
-  robots: { index: false, follow: true },
 };
 
 const LINKS = [

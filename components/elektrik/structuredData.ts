@@ -24,7 +24,7 @@ import {
 import type { JsonLdGraph, JsonLdNode } from '@/lib/seo/jsonLd';
 import { siteUrl } from '@/lib/site';
 
-import { APPLICATION_FEATURES, ELEKTRIK_FAQ, PAGE_DESCRIPTION, PAGE_TITLE } from './electricContent';
+import { APPLICATION_FEATURES, ELEKTRIK_FAQ, PAGE_DESCRIPTION, PAGE_H1 } from './electricContent';
 
 export type { JsonLdGraph, JsonLdNode };
 export { serializeJsonLd };
@@ -42,7 +42,7 @@ export function buildElektrikPlanungJsonLd(): JsonLdGraph {
   return jsonLdGraph([
     webPageNode({
       path: ELEKTRIK_PLANUNG_PATH,
-      name: PAGE_TITLE,
+      name: PAGE_H1,
       description: PAGE_DESCRIPTION,
       mainEntityId: applicationId,
       hasPartIds: [faqId, breadcrumbId],
@@ -57,7 +57,7 @@ export function buildElektrikPlanungJsonLd(): JsonLdGraph {
     }),
     webApplicationNode({
       path: ELEKTRIK_PLANUNG_PATH,
-      name: PAGE_TITLE,
+      name: PAGE_H1,
       description: PAGE_DESCRIPTION,
       subCategory: 'Elektroplanung',
       browserRequirements: 'HTML5, JavaScript',

@@ -5,6 +5,7 @@ import { indexablePages, nonIndexablePages, PAGES, pageByPath } from './inventor
 import { OPPORTUNITIES } from './opportunities';
 import { childTopics, topicOf, TOPICS, topicTrail } from './topics';
 import { DESCRIPTION_MAX, TITLE_MAX } from '../../scripts/seo/checks';
+import { THIN_CONTENT_KINDS } from './types';
 
 /**
  * Der Vertrag der SEO-Datenebene.
@@ -25,12 +26,36 @@ describe('Seiteninventar', () => {
     }
   });
 
-  it('führt jede indexierbare Seite mit Titel, Beschreibung und Sitemap-Angabe', () => {
+  it('wertet interaktive Werkzeuge nicht mit einem Artikel-Mindestwert ab', () => {
+    expect(THIN_CONTENT_KINDS).not.toContain('werkzeug');
+    expect(THIN_CONTENT_KINDS).toEqual(expect.arrayContaining(['pillar', 'cluster', 'rechner', 'ratgeber']));
+  });
+
+  it('führt jede indexierbare Seite mit eindeutigen Kopfdaten und Sitemap-Angabe', () => {
+    const titles = indexablePages().map((page) => page.title);
+    const descriptions = indexablePages().map((page) => page.description);
+    expect(new Set(titles).size).toBe(titles.length);
+    expect(new Set(descriptions).size).toBe(descriptions.length);
+
     for (const page of indexablePages()) {
       expect(page.sitemap, `Sitemap-Angabe fehlt: ${page.path}`).toBeDefined();
-      if (page.title !== undefined) expect(page.title.length).toBeLessThanOrEqual(TITLE_MAX);
-      if (page.description !== undefined)
-        expect(page.description.length).toBeLessThanOrEqual(DESCRIPTION_MAX);
+      expect(page.title.trim(), `Titel fehlt: ${page.path}`).not.toBe('');
+      expect(page.description.trim(), `Beschreibung fehlt: ${page.path}`).not.toBe('');
+      expect(page.title.length).toBeLessThanOrEqual(TITLE_MAX);
+      expect(page.description.length).toBeLessThanOrEqual(DESCRIPTION_MAX);
+    }
+  });
+
+  it('verlangt Titel und Beschreibung auch für noindex-Routen, ohne sie in die Sitemap zu setzen', () => {
+    const titles = nonIndexablePages().map((page) => page.title);
+    const descriptions = nonIndexablePages().map((page) => page.description);
+    expect(new Set(titles).size).toBe(titles.length);
+    expect(new Set(descriptions).size).toBe(descriptions.length);
+
+    for (const page of nonIndexablePages()) {
+      expect(page.title.trim(), `Titel fehlt: ${page.path}`).not.toBe('');
+      expect(page.description.trim(), `Beschreibung fehlt: ${page.path}`).not.toBe('');
+      expect(page.sitemap, `Noindex-Seite in der Sitemap: ${page.path}`).toBeUndefined();
     }
   });
 

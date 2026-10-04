@@ -1,31 +1,29 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { CHAT_API_URL_ENV } from '@/components/chat/constants';
 import KiAssistent from './page';
 
-// Mock the Chat component
-vi.mock('../../components/Chat', () => ({
-  default: () => <div data-testid="mock-chat">Mocked Chat</div>,
-}));
-
 describe('KiAssistent Page', () => {
-  it('renders the main container with correct classes', () => {
-    const { container } = render(<KiAssistent />);
-
-    // Check if main element exists
-    const mainElement = container.querySelector('main');
-    expect(mainElement).not.toBeNull();
-
-    // Check for the specific CSS classes
-    expect(mainElement?.className).toContain('relative');
-    expect(mainElement?.className).toContain('flex-1');
+  beforeEach(() => {
+    vi.stubEnv(CHAT_API_URL_ENV, '');
   });
 
-  it('renders the Chat component', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('keeps its heading in the document', () => {
     render(<KiAssistent />);
 
-    // Check if the mocked Chat is rendered
-    const chatElement = screen.getByTestId('mock-chat');
-    expect(chatElement).toBeInTheDocument();
-    expect(chatElement).toHaveTextContent('Mocked Chat');
+    expect(screen.getByRole('heading', { level: 1, name: 'Camper-Assistent' })).toBeInTheDocument();
+  });
+
+  it('renders the lightweight static-export fallback without a chat input', () => {
+    render(<KiAssistent />);
+
+    expect(screen.getByText('Kein Assistent konfiguriert')).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText('Schreib deine Nachricht...')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Chat schließen')).toBeInTheDocument();
   });
 });
