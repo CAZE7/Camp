@@ -74,26 +74,54 @@ function summarizeReport(report: AutoWireReport, previousEdgeCount: number, next
   };
 }
 
+/**
+ * Farb-Töne für Konflikte — nutzt zentrale Warn-Tokens (`--warn-*`) statt
+ * Tailwind-Palettenklassen. Siehe lib/designTokens.test.ts D-1.
+ */
 const SEVERITY_STYLES: Readonly<
-  Record<AutoWireConflict['severity'], { ring: string; icon: React.ElementType; label: string; tone: string }>
+  Record<
+    AutoWireConflict['severity'],
+    {
+      ring: string;
+      boxStyle: React.CSSProperties;
+      icon: React.ElementType;
+      label: string;
+      toneStyle: React.CSSProperties;
+    }
+  >
 > = {
   critical: {
-    ring: 'border-red-400 bg-red-50 text-red-900',
+    ring: 'aw-tone aw-tone--critical',
+    boxStyle: {
+      background: 'var(--warn-critical-bg)',
+      borderColor: 'var(--warn-critical-border)',
+      color: 'var(--warn-critical)',
+    },
     icon: AlertTriangle,
     label: 'Kritisch',
-    tone: 'text-red-700',
+    toneStyle: { color: 'var(--warn-critical)' },
   },
   warning: {
-    ring: 'border-amber-300 bg-amber-50 text-amber-900',
+    ring: 'aw-tone aw-tone--warning',
+    boxStyle: {
+      background: 'var(--warn-warning-bg)',
+      borderColor: 'var(--warn-warning-border)',
+      color: 'var(--warn-warning)',
+    },
     icon: Wrench,
     label: 'Hinweis',
-    tone: 'text-amber-700',
+    toneStyle: { color: 'var(--warn-warning)' },
   },
   info: {
-    ring: 'border-sky-300 bg-sky-50 text-sky-900',
+    ring: 'aw-tone aw-tone--info',
+    boxStyle: {
+      background: 'var(--warn-info-bg)',
+      borderColor: 'var(--warn-info-border)',
+      color: 'var(--warn-info)',
+    },
     icon: CheckCircle2,
     label: 'Info',
-    tone: 'text-sky-700',
+    toneStyle: { color: 'var(--warn-info)' },
   },
 };
 
@@ -150,12 +178,17 @@ export function AutoWireReviewModal({ forceOpen = false }: Props) {
       <div className="space-y-4 px-1 pt-2 text-sm">
         {/* Kennzahlen */}
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <Stat icon={Zap} tone="text-emerald-700" label="Neue Leitungen" value={summary.safeNew} />
-          <Stat icon={Wrench} tone="text-sky-700" label="Geheilt" value={summary.healed} />
-          <Stat icon={X} tone="text-slate-600" label="Entfernt" value={summary.dropped} />
+          <Stat icon={Zap} tone={{ color: 'var(--ok)' }} label="Neue Leitungen" value={summary.safeNew} />
+          <Stat icon={Wrench} tone={{ color: 'var(--warn-info)' }} label="Geheilt" value={summary.healed} />
+          <Stat
+            icon={X}
+            tone={{ color: 'var(--text-muted, var(--foreground))' }}
+            label="Entfernt"
+            value={summary.dropped}
+          />
           <Stat
             icon={AlertTriangle}
-            tone={hasCritical ? 'text-red-700' : 'text-amber-700'}
+            tone={{ color: hasCritical ? 'var(--warn-critical)' : 'var(--warn-warning)' }}
             label="Konflikte / Fragen"
             value={summary.warnings + summary.critical + summary.questions}
           />
@@ -165,18 +198,27 @@ export function AutoWireReviewModal({ forceOpen = false }: Props) {
         {preview.report.questions.length > 0 && (
           <section
             aria-labelledby="aw-questions-heading"
-            className="rounded border border-amber-300 bg-amber-50 p-3"
+            className="aw-section"
+            style={{
+              background: 'var(--warn-warning-bg)',
+              borderColor: 'var(--warn-warning-border)',
+              color: 'var(--warn-warning)',
+            }}
           >
-            <h3 id="aw-questions-heading" className="flex items-center gap-2 font-semibold text-amber-900">
+            <h3
+              id="aw-questions-heading"
+              className="flex items-center gap-2 font-semibold"
+              style={{ color: 'var(--warn-warning)' }}
+            >
               <HelpCircle className="h-4 w-4" aria-hidden="true" />
               Offene Fragen ({preview.report.questions.length})
             </h3>
-            <ul className="mt-2 list-disc space-y-1 pl-6 text-amber-900">
+            <ul className="mt-2 list-disc space-y-1 pl-6" style={{ color: 'var(--warn-warning)' }}>
               {preview.report.questions.map((q) => (
                 <li key={q}>{q}</li>
               ))}
             </ul>
-            <p className="mt-2 text-xs text-amber-800">
+            <p className="mt-2 text-xs" style={{ opacity: 0.8 }}>
               Diese Entscheidungen kann die Automatik nicht ohne Deine Angabe treffen. Die Leitungen sind mit
               der sicheren Annahme verdrahtet; bitte im Inspektor die endgültige Verschaltung wählen.
             </p>
@@ -188,7 +230,8 @@ export function AutoWireReviewModal({ forceOpen = false }: Props) {
           <section aria-labelledby="aw-conflicts-heading" className="space-y-2">
             <h3
               id="aw-conflicts-heading"
-              className={`flex items-center gap-2 font-semibold ${hasCritical ? 'text-red-800' : 'text-amber-800'}`}
+              className="flex items-center gap-2 font-semibold"
+              style={{ color: hasCritical ? 'var(--warn-critical)' : 'var(--warn-warning)' }}
             >
               <AlertTriangle className="h-4 w-4" aria-hidden="true" />
               Hinweise und Konflikte ({preview.report.conflicts.length})
@@ -203,7 +246,14 @@ export function AutoWireReviewModal({ forceOpen = false }: Props) {
 
         {/* Erklärung bei leerer Liste */}
         {preview.report.conflicts.length === 0 && preview.report.questions.length === 0 && (
-          <p className="rounded border border-emerald-300 bg-emerald-50 p-3 text-emerald-900">
+          <p
+            className="aw-section"
+            style={{
+              background: 'color-mix(in srgb, var(--ok) 12%, var(--surface-panel, white))',
+              borderColor: 'color-mix(in srgb, var(--ok) 50%, transparent)',
+              color: 'var(--ok)',
+            }}
+          >
             <CheckCircle2 className="mr-2 inline h-4 w-4 align-text-bottom" aria-hidden="true" />
             Der Vorschlag enthält keine Konflikte und keine offenen Fragen. Alle neuen Verbindungen folgen der
             Flussrichtung Quelle → Wandler → Verteilung → Verbraucher; bestehende, von Dir gesetzte Leitungen
@@ -236,14 +286,18 @@ function Stat({
   value,
 }: {
   icon: React.ElementType;
-  tone: string;
+  tone: React.CSSProperties;
   label: string;
   value: number;
 }) {
   return (
-    <div className="rounded border border-border bg-white/60 p-2 text-center">
+    <div
+      className="rounded border border-border p-2 text-center"
+      style={{ background: 'color-mix(in srgb, var(--surface-panel, white) 60%, transparent)' }}
+    >
       <div
-        className={`flex items-center justify-center gap-1 text-xs font-semibold ${tone}`}
+        className="flex items-center justify-center gap-1 text-xs font-semibold"
+        style={tone}
         aria-hidden="true"
       >
         <Icon className="h-3.5 w-3.5" />
@@ -260,12 +314,12 @@ function ConflictItem({ conflict }: { conflict: AutoWireConflict }) {
   const style = SEVERITY_STYLES[conflict.severity];
   const Icon = style.icon;
   return (
-    <li className={`rounded border p-2 ${style.ring}`}>
+    <li className={style.ring} style={style.boxStyle}>
       <div className="flex items-start gap-2">
-        <Icon className={`mt-0.5 h-4 w-4 shrink-0 ${style.tone}`} aria-hidden="true" />
+        <Icon className="mt-0.5 h-4 w-4 shrink-0" style={style.toneStyle} aria-hidden="true" />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 text-xs font-semibold">
-            <span className={style.tone}>{style.label}</span>
+            <span style={style.toneStyle}>{style.label}</span>
             <span className="text-xs text-muted-foreground">{conflict.ruleId}</span>
           </div>
           <p className="mt-0.5 text-sm">{conflict.message}</p>

@@ -521,9 +521,13 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
     get().previewAutoWire();
     const preview = get().autoWirePreview;
     if (!preview) return;
-    const hasConflicts = preview.report.conflicts.length > 0;
+    // Dialog nur, wenn es KRITISCHE Konflikte oder offene Fragen gibt.
+    // Reine Hinweise (healed-user-edge, AUTO-SHUNT-BYPASS u. ä.) werden
+    // automatisch angewendet — der Nutzer sieht das Ergebnis im Report,
+    // der über den Store abrufbar bleibt, muss aber nicht bestätigen.
+    const hasCritical = preview.report.conflicts.some((c) => c.severity === 'critical');
     const hasQuestions = preview.report.questions.length > 0;
-    if (hasConflicts || hasQuestions) {
+    if (hasCritical || hasQuestions) {
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('planner-auto-wire-review'));
       }
