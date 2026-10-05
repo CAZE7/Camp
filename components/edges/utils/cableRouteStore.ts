@@ -89,15 +89,43 @@ export function nodeLayoutSignature(
   return JSON.stringify(parts.sort()) ?? '[]';
 }
 
-/** Signatur der Topologie und aller von resolveHops gelesenen Edge-Merkmale. */
+/** Signatur der Topologie und aller von resolveHops gelesenen Edge-Merkmale.
+ *
+ *  Spec #17 (Routing Input Hash) verlangt mindestens:
+ *    edge IDs, edge endpoints, edge intent, obstacles (via nodes),
+ *    routing settings, routing constraints.
+ *  Obstacles sind bereits in `nodeLayoutSignature` enthalten (Knoten-Geometrie).
+ *  Routing-Tokens werden über `ROUTING_TOKENS_VERSION` einbezogen (s. unten).
+ */
 type EdgeTopologySignatureInput = Pick<Edge, 'id' | 'source' | 'target' | 'sourceHandle' | 'targetHandle'> & {
   data?: unknown;
 };
 
+/**
+ * Versionierung der Routing-Tokens. Bei Änderungen an `ROUTING_TOKENS`
+ * (clearance, Biegeradius, Lane-Grid …) MUSS dieser Zähler hochgezählt
+ * werden, damit alte Caches nicht für neue Parameter wiederverwendet werden.
+ * So fließen die Routing-Einstellungen in den Hash ein — ohne Abhängigkeit
+ * von der Geometrie-Schicht.
+ */
+export const ROUTING_TOKENS_VERSION = 2;
+
 export function edgeTopologySignature(edges: readonly EdgeTopologySignatureInput[]): string {
   const parts: string[] = [];
   for (const edge of edges) {
-    const data = edge.data as RouteEdgeRef['data'];
+    // Breiter Cast: EdgeTopologySignatureInput.data ist `unknown` (React-Flow-
+    // Edge trägt alle CableEdgeData-Felder). Die Routing-Eingabe sind die
+    // echten Kanten aus dem Store, nicht die verengte RouteEdgeRef-Sicht —
+    // der Hash muss ALLE routingrelevanten Felder sehen.
+    const data = edge.data as Record<string, unknown> | null | undefined;
+    const locked = data?.locked === true;
+    const autoWired = data?.autoWired === true;
+    const declaredIntent = typeof data?.intent === 'string' ? data.intent : null;
+    const intent = declaredIntent ?? (locked ? 'locked' : autoWired ? 'auto' : 'user');
+    const waypointCount =
+      locked && Array.isArray((data as { waypoints?: unknown }).waypoints)
+        ? (data as { waypoints: unknown[] }).waypoints.length
+        : 0;
     parts.push(
       JSON.stringify([
         edge.id,
@@ -105,13 +133,21 @@ export function edgeTopologySignature(edges: readonly EdgeTopologySignatureInput
         edge.target,
         edge.sourceHandle ?? null,
         edge.targetHandle ?? null,
-        data?.edgeDomain ?? null,
-        data?.crossSection ?? null,
-        data?.locked ?? null,
+        (data?.edgeDomain as string | null | undefined) ?? null,
+        (data?.crossSection as number | null | undefined) ?? null,
+        locked,
+        // Spec #17: Edge-Intent muss den Hash ändern, damit eine Sperrung
+        // oder ein Pin die Trasse invalidiert (locked = andere Regeln).
+        intent,
+        // Spec #24: Eine gesperrte Route (waypoints) ist eine andere
+        // Eingabe als eine freie Kante — der Hash muss sie unterscheiden.
+        waypointCount,
       ]) ?? ''
     );
   }
-  return JSON.stringify(parts.sort()) ?? '[]';
+  // Token-Version an den Anfang, damit ein Token-Change den gesamten
+  // Hash ändert (einfacher vergleichbar, keine Mischung mit Geometrie).
+  return `tv=${ROUTING_TOKENS_VERSION}|${JSON.stringify(parts.sort()) ?? '[]'}`;
 }
 
 /**

@@ -473,6 +473,24 @@
     color: var(--warn-info);
   }
 
+  /* Auto-Wire Review-Dialog — Tone-Bänder für Konflikt-Items, Fragen und
+   * Erfolgsmeldung (Spec #29). Nutzt die zentralen --warn-* / --ok-Tokens
+   * statt Tailwind-Palettenklassen. Basis `aw-tone` ist nur Optikrahmen
+   * (rounded + border-width); die Farben werden per inline style gesetzt,
+   * damit Klassen nicht selbst Tailwind-Paletten enthalten. */
+  .aw-tone {
+    border-width: 1px;
+    border-style: solid;
+    border-radius: 0.375rem;
+    padding: 0.5rem;
+  }
+  .aw-section {
+    border-width: 1px;
+    border-style: solid;
+    border-radius: 0.375rem;
+    padding: 0.75rem;
+  }
+
   /* iOS Home-Indicator Safe-Area für schwebende UI (DachPanel etc.). */
   .safe-pb {
     padding-bottom: max(1.5rem, env(safe-area-inset-bottom));

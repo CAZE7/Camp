@@ -77,6 +77,13 @@ const DynamicBOMModal = dynamic(() => import('./BOMModal').then((mod) => mod.BOM
   loading: () => null,
 });
 
+// Auto-Wire-Review-Dialog (Spec #29): öffnet nur, wenn Auto-Wire einen
+// Vorschlag mit Konflikten oder offenen Fragen berechnet hat.
+const DynamicAutoWireReviewModal = dynamic(
+  () => import('./AutoWireReviewModal').then((mod) => mod.AutoWireReviewModal),
+  { ssr: false, loading: () => null }
+);
+
 function useAccessibleHandles() {
   React.useEffect(() => {
     let frame = 0;
@@ -981,6 +988,7 @@ export function FlowCanvas() {
       {contextMenu && <CanvasContextMenu state={contextMenu} onClose={() => setContextMenu(null)} />}
 
       <DynamicBOMModal />
+      <DynamicAutoWireReviewModal />
     </>
   );
 }

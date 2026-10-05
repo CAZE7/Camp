@@ -242,6 +242,17 @@ export function performAutoWiring(
   // Dimensionierung hätte mit der halben Spannung gerechnet — doppelter Strom,
   // doppelter Querschnitt, falsche Sicherungen. Die Bank gewinnt, sobald sie
   // im Plan steht; ohne Erklärung bleibt alles wie bisher.
+  // Starter-Seite zuerst auflösen (vor der Bank-Ableitung), damit eine
+  // erkannte AGM als Starter bereits `role='starter'` trägt, wenn
+  // `deriveBatteryBanks` die Bänke einteilt. Sonst wird bei „Lithium + AGM +
+  // Booster“ eine irrelevante Frage „Wie sollen diese Batterien verwendet
+  // werden?" gestellt, obwohl die Chemie-Heuristik die Starterseite eindeutig
+  // bestimmt (pickExistingStarter mit AGM-Fallback).
+  let starterBatteryNode = pickExistingStarter(batteries, batteryNode, dcdcChargers.length > 0);
+  if (starterBatteryNode && !isStarterBattery(starterBatteryNode)) {
+    starterBatteryNode.data = { ...starterBatteryNode.data, role: 'starter' };
+  }
+
   const bankModel = deriveBatteryBanks(currentNodes, getSystemVoltage(currentNodes, batteryNode.id));
   const houseBank = primaryHouseBank(bankModel);
   const sysVoltage =
@@ -307,15 +318,6 @@ export function performAutoWiring(
     }
   }
 
-  let starterBatteryNode = pickExistingStarter(batteries, batteryNode, dcdcChargers.length > 0);
-  if (starterBatteryNode && !isStarterBattery(starterBatteryNode)) {
-    // Die Entscheidung »diese vorhandene Batterie ist die Starterseite des
-    // Boosters« wird IM PLAN festgehalten: Ohne `role` hinge sie an einer
-    // Heuristik, die nur dieser Lauf kennt. Anzeige und Prüf-Engine sähen
-    // dann eine zweite Aufbaubatterie, deren Minus direkt am Booster hängt —
-    // und meldeten zu Recht einen Bypass der Messseite (TOPO-002/003).
-    starterBatteryNode.data = { ...starterBatteryNode.data, role: 'starter' };
-  }
   // Keine zweite Starterbatterie anlegen, wenn die einzige Batterie schon die Starterseite ist.
   if (dcdcChargers.length > 0 && !starterBatteryNode && !isStarterBattery(batteryNode)) {
     starterBatteryNode = ensureNode(

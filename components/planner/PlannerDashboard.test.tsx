@@ -51,6 +51,12 @@ vi.mock('../../store/usePlannerStore', () => ({
       clearPlan: mockClearPlan,
       guidedMode: true,
       setGuidedMode: mockSetGuidedMode,
+      // Auto-Wire-Report + PlannerError-Mapper (Sync aus useLiveValidation → Store)
+      autoWireReport: null,
+      plannerErrors: [],
+      setPlannerErrors: vi.fn(),
+      addPlannerError: vi.fn(),
+      clearPlannerErrors: vi.fn(),
     };
     return selector(state);
   }),

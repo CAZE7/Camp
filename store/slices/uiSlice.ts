@@ -1,3 +1,4 @@
+import { dedupePlannerErrors } from '../../lib/planner/plannerError';
 import type { PlannerSlice, PlannerState } from './types';
 
 /**
@@ -45,6 +46,10 @@ export type UiSlice = Pick<
   | 'plannerMode'
   | 'setPlannerMode'
   | 'autoWireReport'
+  | 'plannerErrors'
+  | 'addPlannerError'
+  | 'clearPlannerErrors'
+  | 'setPlannerErrors'
 >;
 
 export const createUiSlice: PlannerSlice<UiSlice> = (set, get) => ({
@@ -72,6 +77,11 @@ export const createUiSlice: PlannerSlice<UiSlice> = (set, get) => ({
   toggleInspector: () => set((state) => ({ isInspectorOpen: !state.isInspectorOpen })),
   systemMessage: null,
   setSystemMessage: (msg) => set({ systemMessage: msg }),
+  plannerErrors: [],
+  addPlannerError: (error) =>
+    set((state) => ({ plannerErrors: dedupePlannerErrors([...state.plannerErrors, error]) })),
+  clearPlannerErrors: () => set({ plannerErrors: [] }),
+  setPlannerErrors: (errors) => set({ plannerErrors: dedupePlannerErrors(errors) }),
   season: 'summer',
   setSeason: (season) => set({ season }),
   waterWarning: null,

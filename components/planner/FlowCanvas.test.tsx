@@ -35,13 +35,22 @@ type DragEventish = MouseEvent & {
   preventDefault: () => void;
 };
 
-// next/dynamic wird im Test synchron aufgelöst, damit der per next/dynamic
-// nachgeladene BOMModal (ssr:false) deterministisch hydriert statt in einer
-// nie auflösenden Suspense zu hängen.
+// next/dynamic wird im Test synchron aufgelöst, damit per next/dynamic
+// nachgeladene Dialoge (BOMModal + AutoWireReviewModal, beide ssr:false)
+// deterministisch hydrieren statt in einer nie auflösenden Suspense zu
+// hängen. Wir parsen den Loader-Quelltext, damit beide Dynamic-Chunks
+// ihren jeweiligen Component-Typ liefern (sonst würde der Auto-Wire-
+// Review-Import fälschlicherweise BOMModal zurückgeben und es gäbe
+// zwei „Stückliste"-Dialoge).
 vi.mock('next/dynamic', async () => {
   const { BOMModal } = await import('./BOMModal');
+  const { AutoWireReviewModal } = await import('./AutoWireReviewModal');
   return {
-    default: () => BOMModal,
+    default: (loader: () => Promise<unknown>) => {
+      const src = loader.toString();
+      if (src.includes('AutoWireReviewModal')) return AutoWireReviewModal;
+      return BOMModal;
+    },
   };
 });
 

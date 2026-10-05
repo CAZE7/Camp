@@ -1,5 +1,5 @@
-import { AlertTriangle, CheckCircle2 } from 'lucide-react';
-import { useCableRouteFinalValidation } from '../../edges/utils/cableRouteStore';
+import { AlertTriangle, CheckCircle2, Repeat2 } from 'lucide-react';
+import { useCableRouteFinalValidation, useCableRouteGeneration } from '../../edges/utils/cableRouteStore';
 import { totalViolations } from '../../../lib/routing/finalValidation';
 
 /**
@@ -22,6 +22,27 @@ import { totalViolations } from '../../../lib/routing/finalValidation';
  */
 export function RoutingStatusBadge() {
   const report = useCableRouteFinalValidation();
+  const generation = useCableRouteGeneration();
+
+  // Spec #19 (ROUTING_NOT_CONVERGED): Wenn der Tracker für dieselbe Eingabe
+  // zu viele Läufe gezählt hat und weitere Läufe verbietet, ist das ein
+  // eigener Zustand — nicht stillschweigend weitermachen. Die Meldung
+  // nennt die Ursache (Rückkopplung), nicht eine generische „Fehler\"-Floskel.
+  if (generation && generation.allowed === false) {
+    return (
+      <span
+        data-testid="routing-status-not-converged"
+        role="alert"
+        aria-live="polite"
+        aria-label="Routing konvergiert nicht"
+        title={`${generation.reason ?? 'Routing hat die Konvergenzschranke erreicht.'} Es entsteht keine Endlosschleife; der letzte gültige Stand wird angezeigt. Ein kleines Verschieben eines Bauteils löst das Problem üblicherweise.`}
+        className="border-error/50 bg-error/10 text-error inline-flex h-11 items-center justify-center gap-1 rounded border px-2 text-xs font-semibold"
+      >
+        <Repeat2 className="h-4 w-4" aria-hidden="true" />
+        <span className="hidden xl:inline">Routing: Konvergenzfehler</span>
+      </span>
+    );
+  }
 
   if (!report) {
     return (
