@@ -1,8 +1,18 @@
 import { type SegmentSpatialIndex } from '../geometry/segmentSpatialIndex';
-import { classifySegmentAgainstSegment } from './collision';
-import { distanceSegmentToSegment, type Segment } from '../geometry';
+import {
+  classifySegmentAgainstSegment,
+  domainSeparationRules,
+  requiredClearanceBetween,
+  type RoutingDomain,
+} from './collision';
+import { distanceSegmentToSegment, EPS, type Point, type Rect, type Segment } from '../geometry';
 import { ROUTING_TOKENS, type RoutingTokens } from '../tokens';
-import { isPortBundleOverlap, type RoutedPathGeometry } from './portBundle';
+import {
+  isPortBundleOverlap,
+  isPortBundleProximity,
+  routedPathGeometry,
+  type RoutedPathGeometry,
+} from './portBundle';
 
 /**
  * WP-6 (#396): A*-Kostenmodell — Schicht 2 (Routing Rules).
@@ -307,4 +317,338 @@ export function preferredLaneBonus(
 ): number {
   if (preferredOffset === undefined) return 0;
   return Math.abs(actualOffset - preferredOffset) < 1e-6 ? weights.preferredLaneBonus : 0;
+}
+
+/* ------------------------------------------------------------------ *
+ * Zentrales Kostenmodell: Kandidat gegen bereits liegende Trassen
+ * ------------------------------------------------------------------ */
+
+/**
+ * Eine bereits geroutete Trasse, gegen die ein Kandidat bewertet wird.
+ *
+ * Die Domäne (`electrical` / `water` / `dc12` / `ac230`) kommt aus derselben
+ * Quelle wie Anzeige, Dimensionierung und Endvalidierung
+ * (`routingDomainOf` → `buildDomainSeparationRules`) — es gibt keine zweite,
+ * konkurrierende Klassifikation.
+ */
+export type PriorRoute = {
+  readonly id: string;
+  readonly waypoints: readonly Point[];
+  readonly domain?: RoutingDomain;
+};
+
+/**
+ * Alle Kostenklassen des zentralen Modells (Doku §7):
+ *
+ *   HARD           — Überlappung zweier Trassen: physisch unmöglich → `Infinity`.
+ *   SOFT           — Kreuzung: zulässig, teuer.
+ *   WEIGHTED       — Abstand < Freigabe: stetig gewichtet, je enger desto teurer.
+ *   BUNDLE_SHARED  — gemeinsames Port-Bündel: zulässig, kleiner Aufschlag.
+ *   FREE           — nichts von alldem.
+ */
+export const ROUTE_COST_CLASSES = ['HARD', 'SOFT', 'WEIGHTED', 'BUNDLE_SHARED', 'FREE'] as const;
+export type RouteCostClass = (typeof ROUTE_COST_CLASSES)[number];
+
+const costClassRank = (cls: RouteCostClass): number => ROUTE_COST_CLASSES.indexOf(cls);
+
+/**
+ * Gewichte des zentralen Modells. Sie stehen genau einmal hier — kein Modul
+ * rechnet eine eigene Nähe-/Kreuzungsstrafe (Doku §7).
+ *
+ * `clearanceCostPerPx` greift pro fehlendem Pixel bis zur Freigabe; damit ist
+ * „zu nah" nicht binär, sondern stetig: von zwei Kandidaten unterhalb der
+ * Freigabe gewinnt der mit MEHR Abstand.
+ */
+export type RouteCostWeights = {
+  /** Aufschlag für eine Kreuzung mit einer bereits liegenden Trasse. */
+  readonly crossingCost: number;
+  /** Aufschlag pro fehlendem Pixel bis zur (domänenabhängigen) Freigabe. */
+  readonly clearanceCostPerPx: number;
+  /** Aufschlag für das Teilen eines Port-Bündels (erlaubt, aber nicht frei). */
+  readonly bundleSharedCost: number;
+};
+
+export const DEFAULT_ROUTE_COST_WEIGHTS: RouteCostWeights = Object.freeze({
+  // Aus derselben Matrix wie der A*-Lauf (`COST_WEIGHTS`) — keine zweite
+  // Zahlenquelle. 120 px je Kreuzung, 400 px bei 0 px Abstand.
+  crossingCost: COST_WEIGHTS.crossing,
+  // Stetig statt binär: die 400 px der Clearance-Verletzung fallen linear mit
+  // dem Abstand ab — 12 px Abstand kosten 0, 6 px kosten 200. Damit gewinnt
+  // von zwei zu engen Kandidaten der entferntere (Doku §6/§9).
+  clearanceCostPerPx: COST_WEIGHTS.clearanceViolation / ROUTING_TOKENS.cableClearance,
+  bundleSharedCost: 4,
+});
+
+export type RoutePairCost = {
+  /** Kosten dieses Paares (endlich, außer bei harter Überlappung). */
+  readonly cost: number;
+  /** Schwerste Kosteklasse dieses Paares. */
+  readonly worstClass: RouteCostClass;
+  /** Angewandte (domänenabhängige) Freigabe in px. */
+  readonly clearance: number;
+  /** Kleinster gemessener Segment-Abstand (Infinity, wenn vorab ausgeschlossen). */
+  readonly minDistance: number;
+  readonly crossings: number;
+};
+
+export type RouteCandidateCost = {
+  readonly total: number;
+  readonly worstClass: RouteCostClass;
+  /** Harte Überlappung mit mindestens einer Trasse. */
+  readonly hard: boolean;
+  /**
+   * Mindestens eine echte Freigabe-Unterschreitung (Kostenklasse
+   * WEIGHTED). Nur sie — nicht der reine Bündel-Aufschlag — rechtfertigt
+   * die teure Ausweich-Suche: Ein geteiltes Port-Bündel ist zulässig und
+   * in jedem dichten Plan der Normalfall.
+   */
+  readonly weighted: boolean;
+  /** Summe der Fehlbeträge bis zur Freigabe (Doku §9 „Bündel-Abstand"). */
+  readonly bundleDistance: number;
+  readonly crossings: number;
+  readonly byPrior: readonly RoutePairCost[];
+};
+
+/** Vorberechnete Geometrie einer Prior-Trasse + Bounding-Box für den Vorfilter. */
+export type PreparedPriorRoute = {
+  readonly id: string;
+  readonly segments: readonly Segment[];
+  readonly geometry: RoutedPathGeometry;
+  readonly domain?: RoutingDomain;
+  readonly box: Rect;
+};
+
+const boundsOf = (points: readonly Point[]): Rect => {
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const p of points) {
+    if (p.x < minX) minX = p.x;
+    if (p.y < minY) minY = p.y;
+    if (p.x > maxX) maxX = p.x;
+    if (p.y > maxY) maxY = p.y;
+  }
+  return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+};
+
+/** Achsenparallele Bounding-Box eines Pfades. */
+export const pathBounds = (waypoints: readonly Point[]): Rect => boundsOf(waypoints);
+
+const boxesWithin = (a: Rect, b: Rect, gap: number): boolean =>
+  a.x - gap <= b.x + b.width + EPS &&
+  b.x - gap <= a.x + a.width + EPS &&
+  a.y - gap <= b.y + b.height + EPS &&
+  b.y - gap <= a.y + a.height + EPS;
+
+/**
+ * Bereitet Prior-Trassen EINMALIG auf — `pathAgainstPriorCost` ist danach
+ * O(1) pro Paar dank Box-Vorfilter (PERF-001: die teure
+ * Segment/Segment-Klassifikation läuft nur bei echter Nähe).
+ */
+export function preparePriorRoutes(
+  routes: readonly PriorRoute[],
+  tokens: RoutingTokens = ROUTING_TOKENS,
+): PreparedPriorRoute[] {
+  const pad = Math.max(tokens.crossDomainSpacing, tokens.cableClearance);
+  const out: PreparedPriorRoute[] = [];
+  for (const r of routes) {
+    if (r.waypoints.length < 2) continue;
+    const geometry = routedPathGeometry(r.waypoints);
+    const b = boundsOf(r.waypoints);
+    out.push({
+      id: r.id,
+      segments: geometry.segments,
+      geometry,
+      domain: r.domain,
+      box: { x: b.x - pad, y: b.y - pad, width: b.width + 2 * pad, height: b.height + 2 * pad },
+    });
+  }
+  return out;
+}
+
+/**
+ * Domänenabhängige Freigabe zwischen zwei Kanten. Ohne Domäneninformation
+ * (bzw. ohne Paar-Regel) gilt `cableClearance`.
+ */
+export const clearanceForPair = (
+  own: RoutingDomain | undefined,
+  other: RoutingDomain | undefined,
+  tokens: RoutingTokens = ROUTING_TOKENS
+): number =>
+  own && other
+    ? requiredClearanceBetween(own, other, domainSeparationRules, tokens)
+    : tokens.cableClearance;
+
+/**
+ * Kosten eines Kandidaten gegen EINE bereits liegende Trasse.
+ *
+ * Die Freigabe ist domänenabhängig (`crossDomainSpacing` = 24 px zwischen
+ * `electrical` ↔ `water` und `ac230` ↔ `dc12`, sonst `cableClearance`
+ * = 12 px). Damit gilt die Domänentrennungsregel WÄHREND der Wegsuche und
+ * nicht erst in der Abschlussvalidierung (Doku §8–§10).
+ */
+export function pathAgainstPriorCost(
+  waypoints: readonly Point[],
+  ownSegments: readonly Segment[],
+  prior: PreparedPriorRoute,
+  ownDomain?: RoutingDomain,
+  tokens: RoutingTokens = ROUTING_TOKENS,
+  weights: RouteCostWeights = DEFAULT_ROUTE_COST_WEIGHTS,
+  domainOnly = false
+): RoutePairCost {
+  const clearance = clearanceForPair(ownDomain, prior.domain, tokens);
+  const ownGeometry = routedPathGeometry(waypoints);
+  let cost = 0;
+  let crossings = 0;
+  let worstClass: RouteCostClass = 'FREE';
+  let minDistance = Infinity;
+  const bump = (cls: RouteCostClass) => {
+    if (costClassRank(cls) < costClassRank(worstClass)) worstClass = cls;
+  };
+
+  for (const own of ownSegments) {
+    for (const other of prior.segments) {
+      const verdict = classifySegmentAgainstSegment(own, other, clearance);
+      if (verdict.class === 'none') continue;
+      if (verdict.class === 'soft') {
+        crossings += 1;
+        cost += weights.crossingCost;
+        bump('SOFT');
+        continue;
+      }
+      const d = verdict.distance ?? 0;
+      if (d < minDistance) minDistance = d;
+      if (verdict.class === 'hard' || d <= EPS) {
+        // Kollineare Überlappung — zulässig nur im gemeinsamen Port-Bündel.
+        if (
+          isPortBundleOverlap(ownGeometry, prior.geometry, own, other)
+        ) {
+          cost += weights.bundleSharedCost;
+          bump('BUNDLE_SHARED');
+          continue;
+        }
+        return {
+          cost: Number.POSITIVE_INFINITY,
+          worstClass: 'HARD',
+          clearance,
+          minDistance: d,
+          crossings,
+        };
+      }
+      // Abstand unterhalb der (domänenabhängigen) Freigabe.
+      if (
+        isPortBundleProximity(
+          ownGeometry,
+          prior.geometry,
+          own,
+          other,
+          tokens.portFacingClearance
+        )
+      ) {
+        cost += weights.bundleSharedCost;
+        bump('BUNDLE_SHARED');
+        continue;
+      }
+      cost += weights.clearanceCostPerPx * (clearance - d);
+      bump('WEIGHTED');
+    }
+  }
+  return { cost, worstClass, clearance, minDistance, crossings };
+}
+
+const FREE_PAIR: RoutePairCost = {
+  cost: 0,
+  worstClass: 'FREE',
+  clearance: 0,
+  minDistance: Infinity,
+  crossings: 0,
+};
+
+/** Gesamtkosten eines Kandidaten gegen ALLE bereits liegenden Trassen. */
+export function candidateCost(
+  waypoints: readonly Point[],
+  priors: readonly PreparedPriorRoute[],
+  ownDomain?: RoutingDomain,
+  tokens: RoutingTokens = ROUTING_TOKENS,
+  weights: RouteCostWeights = DEFAULT_ROUTE_COST_WEIGHTS,
+  domainOnly = false
+): RouteCandidateCost {
+  if (priors.length === 0) {
+    return {
+      total: 0,
+      worstClass: 'FREE',
+      hard: false,
+      weighted: false,
+      bundleDistance: 0,
+      crossings: 0,
+      byPrior: [],
+    };
+  }
+  const ownSegments = routedPathGeometry(waypoints).segments;
+  const ownBox = boundsOf(waypoints);
+  const reach = Math.max(tokens.crossDomainSpacing, tokens.cableClearance);
+
+  let total = 0;
+  let hard = false;
+  let weighted = false;
+  let crossings = 0;
+  let bundleDistance = 0;
+  let worstClass: RouteCostClass = 'FREE';
+  const byPrior: RoutePairCost[] = [];
+
+  for (const prior of priors) {
+    if (!boxesWithin(ownBox, prior.box, reach)) {
+      byPrior.push(FREE_PAIR);
+      continue;
+    }
+    const pair = pathAgainstPriorCost(
+      waypoints,
+      ownSegments,
+      prior,
+      ownDomain,
+      tokens,
+      weights,
+      domainOnly
+    );
+    byPrior.push(pair);
+    if (pair.worstClass === 'HARD') hard = true;
+    if (!Number.isFinite(pair.cost)) {
+      total = Number.POSITIVE_INFINITY;
+      continue;
+    }
+    total += pair.cost;
+    crossings += pair.crossings;
+    if (pair.worstClass === 'WEIGHTED') {
+      weighted = true;
+      bundleDistance += Math.max(0, pair.clearance - pair.minDistance);
+    }
+    if (costClassRank(pair.worstClass) < costClassRank(worstClass)) worstClass = pair.worstClass;
+  }
+  return { total, worstClass, hard, weighted, bundleDistance, crossings, byPrior };
+}
+
+/**
+ * Rangfolge zweier Kandidaten (Doku §6, §7, §9).
+ *
+ *   1. harte Überlappung vermeiden (unendliche Kosten)
+ *   2. gewichtete Gesamtkosten (Nähe + Kreuzungen)
+ *   3. Bündel-Abstand — gewinnt der Kandidat, der gemeinsame Wege am LÄNGSTEN
+ *      mit genügend Abstand nutzt (§9)
+ *   4. Länge
+ *   5. Reihenfolge im Kandidaten-Array (deterministischer Stich)
+ *
+ * Rückgabe < 0, wenn `a` besser ist.
+ */
+export function compareCandidates(
+  a: RouteCandidateCost,
+  b: RouteCandidateCost,
+  aLength: number,
+  bLength: number
+): number {
+  if (a.hard !== b.hard) return a.hard ? 1 : -1;
+  if (a.total !== b.total) return a.total - b.total;
+  if (a.bundleDistance !== b.bundleDistance) return a.bundleDistance - b.bundleDistance;
+  if (aLength !== bLength) return aLength - bLength;
+  return 0;
 }

@@ -18,6 +18,6 @@
   <circle cx="252" cy="456" r="4" fill="#39b2f5"/>
   <path d="M 252 456 L 276 456 L 276 576 L 660 576" fill="none" stroke="#39b2f5" stroke-width="2.5"/>
   <circle cx="252" cy="456" r="4" fill="#39b2f5"/>
-  <path d="M 252 456 L 292 456 L 292 488 L 636 488 L 636 816 L 660 816" fill="none" stroke="#39b2f5" stroke-width="2.5"/>
+  <path d="M 252 456 L 292 456 L 292 488 L 608 488 L 608 816 L 660 816" fill="none" stroke="#39b2f5" stroke-width="2.5"/>
   <circle cx="252" cy="456" r="4" fill="#39b2f5"/>
 </svg>

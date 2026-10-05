@@ -12,7 +12,12 @@ import {
   type GoldenLayoutFile,
 } from './layout';
 import { renderScenarioSvg } from './svg';
-import { serializeRoutes } from '../../lib/routing/invariants';
+import {
+  checkClearance,
+  checkEdgeEdgeOverlaps,
+  checkEdgeNodeCollisions,
+  serializeRoutes,
+} from '../../lib/routing/invariants';
 import { layoutWithElk } from '../../lib/routing/elk/runner';
 import { toElkPlan } from '../../lib/routing/elk/ab-compare';
 import type { RouteEdgeRef } from '../../components/edges/utils/routeAll';
@@ -71,6 +76,43 @@ describe('Golden Layouts — exakte Trassenstruktur (Abweichung = CI-Fail)', () 
       expect(actual.edges, `${scenario.id}: Trassenstruktur weicht von der Referenz ab`).toEqual(
         reference!.edges
       );
+    });
+  }
+});
+
+/**
+ * P0-HARTES GATE — I1 = I2 = I3 = 0 in JEDEM Szenario.
+ *
+ * Dies ist das Gate, das eine Ratchet NICHT ersetzen kann: „Delta ≤ 0"
+ * (Gate 2) belegt nur, dass nichts schlechter wurde. Es sagt nichts darüber,
+ * ob ein Szenario überhaupt regelkonform ist — ein Plan mit drei Verstößen
+ * bleibt drei Verstöße lang grün, solange er sich nicht verschlechtert.
+ * Genau deshalb steht dieses Gate daneben: Es verlangt die ABSOLUTE Null.
+ *
+ * Geprüft werden dieselben drei Invarianten, die auch `finalValidation.ts`
+ * fährt (I1 Bauteil-Durchdringung, I2 kollineare Trassenüberdeckung,
+ * I3 Kabel-Freigabe) — hier über die Szenarien der Regressions-Suite.
+ */
+describe('P0 — I1 = I2 = I3 = 0 in jedem Szenario (hart, nicht als Ratchet)', () => {
+  for (const scenario of REGRESSION_SCENARIOS) {
+    it(`${scenario.id}: keine Bauteil-Durchdringung, keine Überdeckung, keine Freigabe-Verletzung`, () => {
+      const routed = routeScenario(scenario);
+      const nodes = scenarioNodeRects(scenario.nodes);
+      const edges = routed.map((item) => ({
+        id: item.id,
+        source: item.source ?? '',
+        target: item.target ?? '',
+        waypoints: item.waypoints,
+      }));
+      // I1 — Kanten dürfen kein Bauteil schneiden.
+      const i1 = checkEdgeNodeCollisions(edges, nodes);
+      expect(i1.map((v) => `${v.edgeId}: ${v.otherId ?? ''} ${v.detail}`), 'I1 Bauteil-Durchdringungen').toEqual([]);
+      // I2 — zwei Kanten dürfen nicht kollinear aufeinander liegen.
+      const i2 = checkEdgeEdgeOverlaps(edges);
+      expect(i2.map((v) => `${v.edgeId}: ${v.otherId ?? ''} ${v.detail}`), 'I2 Trassenüberdeckungen').toEqual([]);
+      // I3 — zwei Kanten müssen die Kabel-Freigabe einhalten.
+      const i3 = checkClearance(edges, nodes);
+      expect(i3.map((v) => `${v.edgeId}: ${v.otherId ?? ''} ${v.detail}`), 'I3 Freigabe-Verstöße').toEqual([]);
     });
   }
 });

@@ -405,21 +405,26 @@ export function auditShiftMatrix(): ShiftMatrixEntry[] {
  * Gate, das die Nutzer-Sicht prüft.
  */
 const CROSSING_RATCHET: Readonly<Record<string, number>> = {
-  // Nachgezogen 2026-10-03 (ADR 0033): simple 2→1 und camper 5→4 durch den
-  // Längen-Nachlauf des Trenngangs (er zieht Kurven zusammen, die vorher als
-  // Umweg standen).
-  simple: 1,
-  camper: 4,
+  // Nachgezogen 2026-10-05 (ADR 0035, Auslaufkorridor-Schutz):
+  //   simple 1→0, camper 4→1, acdc 6→3 (gesenkt), complex 25→30 (GESTIEGEN).
+  // `complex` ist der einzige Plan, in dem die Kreuzungen zunehmen: 23
+  // Kanten auf engem Raum, viele Anschlüsse weit außen — der Korridor-Schutz
+  // zwingt dort Trassen auf Umwege, die sich häufiger kreuzen. Dafür fällt
+  // die SUMME über alle sechs Pläne 40 → 38, und `p11-zwangskreuzung`
+  // verliert eine 464 px lange kollineare Kabel-Überdeckung (zwei Kanten
+  // exakt aufeinander — ein Zeichenfehler, kein Schönheitsfehler).
+  // Vollständige Vorher/Nachher-Messung: docs/ARCHITECTURE-CHANGES.md,
+  // Eintrag ADR 0035. Wer `complex` unter 30 drücken will, muss den
+  // Korridor-Schutz selektiver machen — nicht die Zahl hier senken.
+  simple: 0,
+  camper: 1,
   solar: 2,
   inverter: 2,
   // Nachgezogen 2026-09-27 (Merge des Arena-Zweigs „stabilize planning and
   // safe route reflow“): gemessen acdc 6 statt 8, complex 27 statt 29.
-  // Nachgezogen 2026-10-03 (ADR 0033, Trenngang + Korridor-Kapazität):
-  // complex 25 statt 27 — der Trenngang hat einen Kreuzungs-Wächter, kann
-  // die Zahl also nur senken; die Layout-Korrektur der Vorlage tat ihr Übriges
-  // (Messung in `docs/ARCHITECTURE-CHANGES.md`).
-  acdc: 6,
-  complex: 25,
+  // Früherer Stand: acdc 8 → 6 (ADR 0033).
+  acdc: 3,
+  complex: 30,
 };
 
 export function auditAllPlans(): PlanAudit[] {

@@ -53,6 +53,7 @@ import {
 } from '../../../lib/routing/rules/hopping';
 import { isBackboneConnection } from '../../planner/utils/backbone';
 import {
+  EPS,
   isOrthogonalPath,
   mergeCloseBends,
   simplifyWaypoints,
@@ -60,8 +61,13 @@ import {
   type Segment,
 } from '../../../lib/routing/geometry';
 import { LEGACY_ROUTING_TOKENS, ROUTING_TOKENS } from '../../../lib/routing/tokens';
-import { ROUTING_GATES } from '../../../lib/routing/rules/costModel';
+import {
+  ROUTING_GATES,
+  preparePriorRoutes,
+  type PreparedPriorRoute,
+} from '../../../lib/routing/rules/costModel';
 import { greedyConflictOrder, type ConflictCandidate } from '../../../lib/routing/rules/conflictGraph';
+import { routingDomainOfEdge, type RoutingDomain } from '../../../lib/routing/rules/collision';
 import { separateCableClearance } from './separation';
 import { compareIds } from '../../../lib/sortOrder';
 
@@ -388,6 +394,60 @@ function nodeCenter(node: RoutableNode): { x: number; y: number } {
  * dort läuft ein Bündel by design gemeinsam (dokumentierte Bündel-Ausnahme
  * von Invariante I2).
  */
+/**
+ * Trassen-Anteil eines Weges: alle Segmente OHNE die Stubs — und bei sehr
+ * langen ersten/letzten Segmenten auch ohne deren Stub-Anteil.
+ *
+ * Warum das nötig ist (ROUTE-010, p11): `simplifyWaypoints` fasst einen Stub,
+ * der kollinear mit dem Kern liegt, mit diesem zusammen. Aus dem 24-px-Stub
+ * wird dann ein 464-px-„Stub", und die Trassensperre (`addTubes`) lässt die
+ * gesamte Strecke ungeschützt — die nächste Kante legt sich exactly darauf
+ * (`e-down`/`e-up` in p11: 464 px kollineare Überdeckung auf y = 536).
+ *
+ * Begrenzt wird auf `portFacingClearance` (ADR 0031) — dieselbe Bogenlänge,
+ * die die Port-Bündel-Ausnahme von I3 erlaubt. Damit sagen Trassensperre,
+ * I2 und I3 dasselbe: portnah darf geteilt werden, darüber nicht.
+ */
+const trunkSegmentsOf = (waypoints: readonly Point[]): Segment[] => {
+  const segments = trunkSegmentsOf(waypoints);
+  if (segments.length === 0) return [];
+  const corridor = ROUTING_TOKENS.portFacingClearance;
+  const trim = (seg: Segment, fromStart: boolean): Segment | null => {
+    const [a, b] = seg;
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const len = Math.abs(dx) + Math.abs(dy);
+    if (len <= corridor + EPS) return null;
+    const ux = dx / len;
+    const uy = dy / len;
+    if (fromStart) {
+      // Den Stub-Anteil am ANFANG abschneiden.
+      return [
+        { x: a.x + ux * corridor, y: a.y + uy * corridor },
+        { x: b.x, y: b.y },
+      ];
+    }
+    // Den Stub-Anteil am ENDE abschneiden.
+    return [
+      { x: a.x, y: a.y },
+      { x: b.x - ux * corridor, y: b.y - uy * corridor },
+    ];
+  };
+  const out: Segment[] = [];
+  const first = segments[0]!;
+  const trimmedFirst = trim(first, true);
+  if (trimmedFirst) out.push(trimmedFirst);
+  for (let i = 1; i < segments.length - 1; i++) {
+    const seg = segments[i];
+    if (seg) out.push(seg);
+  }
+  if (segments.length > 1) {
+    const trimmedLast = trim(segments[segments.length - 1]!, false);
+    if (trimmedLast) out.push(trimmedLast);
+  }
+  return out;
+};
+
 const addTubes = (tubes: Rect[], waypoints: readonly Point[]): void => {
   const segments = waypointsToSegments(simplifyWaypoints(waypoints));
   // Halbe Breite = voller Node-Abstand: Zwei Leitungen halten denselben
@@ -734,10 +794,126 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
   ];
   const lockedIds = new Set(edges.filter(isLockedRouteEdge).map((edge) => edge.id));
 
+/**
+ * Auswärts gerichtete Normale einer Handle-Seite (wie `sourceExitVector`,
+ * aber ohne Fluss-Fallback: die Seite ist bekannt).
+ */
+const handleNormal = (position: Position): Point => {
+  switch (position) {
+    case Position.Left:
+      return { x: -1, y: 0 };
+    case Position.Right:
+      return { x: 1, y: 0 };
+    case Position.Top:
+      return { x: 0, y: -1 };
+    default:
+      return { x: 0, y: 1 };
+  }
+};
+
+/**
+ * Alle Auslaufkorridore außer denen der eigenen Endpunkte. Die eigenen
+ * Bauteile sind ausgenommen: Ihre Kanten ENDEN dort, und der eigene Stub
+ * liegt per Definition im eigenen Korridor.
+ */
+const foreignPortCorridors = (
+  byNode: ReadonlyMap<string, Rect[]>,
+  exclude: ReadonlySet<string>
+): Rect[] => {
+  const out: Rect[] = [];
+  byNode.forEach((rects, id) => {
+    if (exclude.has(id)) return;
+    out.push(...rects);
+  });
+  return out;
+};
+
+  /**
+   * Auslaufkorridore fremder Anschlüsse (ROUTE-010 / p11).
+   *
+   * Eine Trasse, die im Auslaufkorridor eines fremden Handles liegt, nimmt
+   * der Kante dort jeden Weg: Sie muss aus genau diesem Korridor heraus.
+   * Genau das ist in `p11-zwangskreuzung` passiert — `e-down` legte ihre
+   * Haupttrasse 24 px vor den Anschluss von `e-up` auf dieselbe Linie, und
+   * die einzige verbleibende Route war die 464 px lange kollineare
+   * Überdeckung. Der Korridor ist `portFacingClearance` lang (ADR 0027 —
+   * derselbe Wert, den ELK zwischen zwei Karten freihält) und
+   * `cableClearance` breit.
+   */
+  const corridorsByNode = new Map<string, Rect[]>();
+  const addCorridor = (nodeId: string, handle: { x: number; y: number; position: Position }): void => {
+    const outward = handleNormal(handle.position);
+    const half = ROUTING_TOKENS.cableClearance;
+    const length = ROUTING_TOKENS.stubMin + ROUTING_TOKENS.cableClearance;
+    const x1 = handle.x + outward.x * length;
+    const y1 = handle.y + outward.y * length;
+    const rect: Rect = {
+      x: Math.min(handle.x, x1) - (outward.x === 0 ? half : 0),
+      y: Math.min(handle.y, y1) - (outward.y === 0 ? half : 0),
+      width: outward.x === 0 ? 2 * half : Math.abs(x1 - handle.x),
+      height: outward.y === 0 ? 2 * half : Math.abs(y1 - handle.y),
+    };
+    const list = corridorsByNode.get(nodeId);
+    if (list) list.push(rect);
+    else corridorsByNode.set(nodeId, [rect]);
+  };
+  // Nur Anschlüsse, die TATSÄCHLICH belegt sind, bekommen einen Korridor —
+  // die aufgelösten Handle-Punkte kommen aus demselben Resolver, den die
+  // Suche benutzt (`resolveHandle`). Ein Korridor an einem ungenutzten
+  // Handle würde Fläche sperren, die niemand braucht.
+  const degree = new Map<string, number>();
+  for (const edge of edges) {
+    degree.set(edge.source, (degree.get(edge.source) ?? 0) + 1);
+    degree.set(edge.target, (degree.get(edge.target) ?? 0) + 1);
+  }
+  for (const edge of edges) {
+    void degree;
+    addCorridor(edge.source, resolveHandle(edge, 'source'));
+    addCorridor(edge.target, resolveHandle(edge, 'target'));
+  }
+  // Korridore, die ohnehin in einem fremden Bauteil liegen, werden nicht
+  // gesperrt: Dort kann keine Trasse verlaufen (I1 verbietet es), die
+  // Sperre wäre wirkungslos und würde nur die Suche einengen.
+  const nodeBoxes = nodes
+    .map((node) => ({ id: node.id, box: obstacleById.get(node.id) }))
+    .filter((entry): entry is { id: string; box: Rect } => entry.box !== undefined);
+  corridorsByNode.forEach((rects, ownerId) => {
+    const kept = rects.filter((rect) =>
+      nodeBoxes.every(({ id, box }) => id === ownerId || !rectsIntersect(rect, box))
+    );
+    if (kept.length > 0) corridorsByNode.set(ownerId, kept);
+    else corridorsByNode.delete(ownerId);
+  });
+
   const raw: { id: string; waypoints: Point[]; result: PathResult }[] = [];
   const dynamicRoutedSegments: Segment[] = [];
   // ROUTE-BUG-16: wächst mit jeder verlegten Kante (siehe `addTubes`).
   const tubes: Rect[] = [];
+  // Zentrales Kostenmodell (Doku §6/§7/§9/§10): die bereits verlegten
+  // Trassen in vorberechneter Form. Sie tragen ihre Domäne, damit die
+  // Trennregeln (electrical ↔ water, ac230 ↔ dc12 = 24 px) WÄHREND der
+  // Wegsuche greifen und nicht erst in der Abschlussvalidierung.
+  const priorRoutes: PreparedPriorRoute[] = [];
+  // Domänen-Autorität: `data.edgeDomain` (kennt `water`) sonst Knotentyp +
+  // Handles — dieselbe Quelle wie Anzeige, Sizing und Validierung.
+  const domainNodeRefs = new Map<string, { type?: string | null }>();
+  nodeById.forEach((node, id) => {
+    domainNodeRefs.set(id, { type: (node as { type?: string | null }).type ?? null });
+  });
+  const domainOf = (ref: { id: string; source: string; target: string }): RoutingDomain | undefined =>
+    routingDomainOfEdge(
+      {
+        source: ref.source,
+        target: ref.target,
+        sourceHandle: (ref as RouteEdgeRef).sourceHandle,
+        targetHandle: (ref as RouteEdgeRef).targetHandle,
+        data: (ref as RouteEdgeRef).data,
+      },
+      domainNodeRefs
+    );
+  /** Domäne je Kante, einmal berechnet — auch der Trenngang liest sie. */
+  const domainById = new Map<string, RoutingDomain | undefined>();
+  for (const edge of routingOrder) domainById.set(edge.id, domainOf(edge));
 
   // Verworfener Versuch (gemessen 2026-09-09): die Arbeitsreihenfolge nach
   // der Luftlinie der Bauteile zu sortieren, lange Querleger zuerst. Die
@@ -809,6 +985,10 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
       // The array contains only routes from earlier loop iterations; the
       // current edge is not present and needs no filter/copy.
       crossingSegments: dynamicRoutedSegments,
+      // Kostenmodell gegen bereits verlegte Trassen (Doku §6/§7/§9).
+      priorRoutes,
+      ownDomain: domainOf(edge),
+      portCorridors: foreignPortCorridors(corridorsByNode, exclude),
     };
     let request_ = request;
     const storedLockedPath = isLockedRouteEdge(edge) ? validStoredLockedPath(edge) : undefined;
@@ -873,6 +1053,10 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
     addTubes(tubes, result.waypoints);
     const segments = waypointsToSegments(result.waypoints);
     dynamicRoutedSegments.push(...segments);
+    // Für die NACHFOLGENDEN Kanten: dieselbe Trasse als bewertete Prior-Route.
+    // Vorberechnet (Bounding-Box), damit die Kandidatenbewertung nicht bei
+    // jedem Paar die volle Geometrie aufbaut (PERF-001).
+    priorRoutes.push(...preparePriorRoutes([{ id: edge.id, waypoints: result.waypoints, domain: domainOf(edge) }]));
   }
 
   const inflated: Rect[] = allObstacles.map((r) => inflateRect(r, OBSTACLE_MARGIN));
@@ -947,14 +1131,29 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
       waypoints: cleaned.get(id) ?? nudged.get(id) ?? [],
       locked: lockedIds.has(id),
     })),
-    { obstacles: allObstacles, maxLaneSteps: 6 }
+    {
+      obstacles: allObstacles,
+      maxLaneSteps: 6,
+    }
+  );
+  // Zweiter Gang, diesmal mit der paarweisen (domänenabhängigen) Freigabe
+  // (Doku §8–§10): 24 px zwischen electrical↔water und ac230↔dc12. Er läuft
+  // NACH dem Basis-Gang und darf die Basis-Freigabe nicht verschlechtern
+  // (Veto in `candidateImproves`) — die harte Regel bleibt damit unangetastet.
+  const domainSeparated = separateCableClearance(
+    order.map((id) => ({
+      id,
+      waypoints: separated.get(id) ?? cleaned.get(id) ?? nudged.get(id) ?? [],
+      locked: lockedIds.has(id),
+    })),
+    { obstacles: allObstacles, maxLaneSteps: 6, domainOf: (id: string) => domainById.get(id) }
   );
 
   const byId = new Map(raw.map((r) => [r.id, r]));
   const finalWaypoints = new Map<string, Point[]>(
     order.map((id) => {
       const item = byId.get(id);
-      return [id, separated.get(id) ?? cleaned.get(id) ?? nudged.get(id) ?? item?.waypoints ?? []];
+      return [id, domainSeparated.get(id) ?? separated.get(id) ?? cleaned.get(id) ?? nudged.get(id) ?? item?.waypoints ?? []];
     })
   );
 

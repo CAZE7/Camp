@@ -12,10 +12,13 @@ import { hasMinimumStubs, pathLength } from '../../../lib/routing/geometry';
 import {
   classifySegmentAgainstNode,
   classifySegmentAgainstSegment,
+  requiredClearanceBetween,
+  type RoutingDomain,
 } from '../../../lib/routing/rules/collision';
 import {
   isPortBundleOverlap,
   isPortBundleProximity,
+  portBundleSizes,
   routedPathGeometry,
   type RoutedPathGeometry,
 } from '../../../lib/routing/rules/portBundle';
@@ -111,6 +114,33 @@ import { compareIds } from '../../../lib/sortOrder';
 /** Eine Kante, wie dieser Gang sie sieht — dieselbe Form wie beim Nudge. */
 export type SeparationPath = { id: string; waypoints: Point[]; locked?: boolean };
 
+/**
+ * Paarweise Kabel-Freigabe (Doku §8–§10).
+ *
+ * Standard ist die eine Zahl für alle Paare (`cableClearance`). Tragen die
+ * Kanten eine Domäne, gilt `requiredClearanceBetween`: `electrical ↔ water`
+ * und `ac230 ↔ dc12` brauchen `crossDomainSpacing` (24 px). Damit arbeitet
+ * der Trenngang mit derselben Regel, die Anzeige, Dimensionierung und
+ * Validierung lesen — nicht mit einer eigenen Zahl.
+ */
+export type PairClearance = (a: Working, b: Working) => number;
+
+export const constantPairClearance = (clearance: number): PairClearance => () => clearance;
+
+export function domainPairClearance(
+  domainOf: (id: string) => RoutingDomain | undefined,
+  base: number = ROUTING_TOKENS.cableClearance,
+  tokens: typeof ROUTING_TOKENS = ROUTING_TOKENS
+): PairClearance {
+  return (a, b) => {
+    const da = domainOf(a.id);
+    const db = domainOf(b.id);
+    if (!da || !db) return base;
+    const required = requiredClearanceBetween(da, db, undefined, tokens);
+    return Math.max(base, required);
+  };
+}
+
 export type SeparationOptions = {
   /** Hindernisse (Bauteil-Boxen inkl. Rand), gegen die ein Kandidat geprüft wird. */
   obstacles?: readonly Rect[];
@@ -124,6 +154,13 @@ export type SeparationOptions = {
   maxLaneSteps?: number;
   /** Obergrenze der Verstöße, die je Durchgang bearbeitet werden. */
   maxViolationsPerRound?: number;
+  /**
+   * Domäne einer Kante (`lib/routing/rules/collision.routingDomainOf`).
+   * Gesetzt, arbeitet der Gang mit der paarweisen Freigabe
+   * (`requiredClearanceBetween`) — 24 px zwischen electrical↔water und
+   * ac230↔dc12 (Doku §8–§10).
+   */
+  domainOf?: (id: string) => RoutingDomain | undefined;
 };
 
 const EPS = 1e-6;
@@ -183,6 +220,14 @@ const makeWorking = (path: SeparationPath, pad: number): Working => ({
 });
 
 /**
+ * Basis-Freigabe (`cableClearance`) — die harte Regel. Sie gilt für JEDES
+ * Paar, auch wenn die Paar-Freigabe (Domänenregel) größer ist: Ein Zug, der
+ * die Domänenregel erfüllt und dafür die Basis-Freigabe bricht, hat die
+ * härtere Regel verletzt und ist kein Fortschritt.
+ */
+let baseClearance = ROUTING_TOKENS.cableClearance;
+
+/**
  * Verstöße ZWISCHEN zwei Pfaden — dieselbe Regel wie `checkClearance` (I3),
  * inklusive der einen Port-Bündel-Freigabe.
  *
@@ -195,15 +240,25 @@ const makeWorking = (path: SeparationPath, pad: number): Working => ({
  * Spannkanten-Szenario: `samePoint`/`isPortBundleProximity` machten 1,3 s der
  * Separation aus, obwohl fast kein Paar die Clearance unterschritt.
  */
-const violationsBetween = (a: Working, b: Working, clearance: number, out: Violation[]): void => {
+const violationsBetween = (
+  a: Working,
+  b: Working,
+  pairClearance: PairClearance,
+  out: Violation[],
+  sizes?: ReadonlyMap<string, number>
+): void => {
   if (!boundsOverlap(a.bounds, b.bounds)) return;
+  const clearance = pairClearance(a, b);
   for (let i = 0; i < a.geometry.segments.length; i++) {
     const s1 = at(a.geometry.segments, i);
     for (let j = 0; j < b.geometry.segments.length; j++) {
       const s2 = at(b.geometry.segments, j);
       const verdict = classifySegmentAgainstSegment(s1, s2, clearance);
       if (verdict.class !== 'weighted' || verdict.distance === undefined) continue;
-      if (isPortBundleProximity(a.geometry, b.geometry, s1, s2, ROUTING_TOKENS.portFacingClearance)) continue;
+      if (
+        isPortBundleProximity(a.geometry, b.geometry, s1, s2, ROUTING_TOKENS.portFacingClearance, sizes)
+      )
+        continue;
       out.push({ a: 0, b: 0, sa: i, sb: j, distance: verdict.distance });
     }
   }
@@ -229,58 +284,89 @@ const violationsBetween = (a: Working, b: Working, clearance: number, out: Viola
  * Tie-Breaker einer verworfenen Auswahlregel (s. „Drei Phasen") und wurde beim
  * Entscheiden nicht mehr gelesen.
  */
-type PairMeasure = { count: number; hard: number; crossings: number };
+type PairMeasure = {
+  /** Verstöße gegen die PAARWEISE Freigabe (inkl. Domänenregel). */
+  count: number;
+  /** Verstöße gegen die BASIS-Freigabe (`cableClearance`) — harte Regel. */
+  baseCount: number;
+  hard: number;
+  crossings: number;
+};
 
-const measureBetween = (a: Working, b: Working, clearance: number): PairMeasure => {
+const measureBetween = (
+  a: Working,
+  b: Working,
+  pairClearance: PairClearance,
+  sizes?: ReadonlyMap<string, number>
+): PairMeasure => {
+  const clearance = pairClearance(a, b);
+  const base = baseClearance;
   let count = 0;
+  let baseCount = 0;
   let hard = 0;
   let crossings = 0;
   // Hüllbox-Vorprüfung (PERF-002, ergebnisneutral): Liegen die um `clearance`
   // erweiterten Boxen getrennt, kann kein Zweig greifen — die Bilanz ist exakt
   // `{0,0,0}`, ohne die Segmentpaare zu klassifizieren.
-  if (!boundsOverlap(a.bounds, b.bounds)) return { count, hard, crossings };
+  if (!boundsOverlap(a.bounds, b.bounds)) return { count, hard, baseCount, crossings };
   const left = a.geometry.segments;
   const right = b.geometry.segments;
+  // EINE Klassifikation mit der GRÖSSEREN der beiden Freigaben: Ein Paar
+  // unter der Basis-Freigabe ist immer auch eines unter der Paar-Freigabe
+  // (`clearance >= base`). So kostet die zweite Zählung keinen zweiten
+  // Segment-Durchlauf (PERF-001).
   for (let i = 0; i < left.length; i++) {
     const s1 = at(left, i);
     for (let j = 0; j < right.length; j++) {
       const s2 = at(right, j);
-      const verdict = classifySegmentAgainstSegment(s1, s2, clearance);
+      const verdict = classifySegmentAgainstSegment(s1, s2, Math.max(clearance, base));
       if (verdict.class === 'soft') {
         crossings += 1;
         continue;
       }
       if (verdict.class === 'hard') {
-        if (!isPortBundleOverlap(a.geometry, b.geometry, s1, s2)) hard += 1;
+        if (!isPortBundleOverlap(a.geometry, b.geometry, s1, s2)) {
+          hard += 1;
+          baseCount += 1;
+          count += 1;
+        }
         continue;
       }
       if (verdict.class !== 'weighted' || verdict.distance === undefined) continue;
-      if (isPortBundleProximity(a.geometry, b.geometry, s1, s2, ROUTING_TOKENS.portFacingClearance)) continue;
-      count += 1;
+      if (
+        isPortBundleProximity(a.geometry, b.geometry, s1, s2, ROUTING_TOKENS.portFacingClearance, sizes)
+      )
+        continue;
+      const d = verdict.distance;
+      if (d < base) baseCount += 1;
+      if (d < clearance) count += 1;
     }
   }
-  return { count, hard, crossings };
+  return { count, hard, baseCount, crossings };
 };
 
 /** Verstoß-Bilanz eines Pfades gegen alle übrigen — hängt nur von ihm ab. */
 const measurePathAgainstOthers = (
   working: readonly Working[],
   mover: number,
-  clearance: number
+  pairClearance: PairClearance,
+  sizes?: ReadonlyMap<string, number>
 ): PairMeasure => {
   const own = at(working, mover);
   let count = 0;
+  let baseCount = 0;
   let hard = 0;
   let crossings = 0;
   for (let other = 0; other < working.length; other++) {
     if (other === mover) continue;
     const peer = at(working, other);
-    const measured = measureBetween(own, peer, clearance);
+    const measured = measureBetween(own, peer, pairClearance, sizes);
     count += measured.count;
+    baseCount += measured.baseCount;
     hard += measured.hard;
     crossings += measured.crossings;
   }
-  return { count, hard, crossings };
+  return { count, baseCount, hard, crossings };
 };
 
 /**
@@ -294,20 +380,31 @@ const candidateImproves = (
   working: readonly Working[],
   mover: number,
   candidate: Working,
-  clearance: number,
-  before: PairMeasure
+  pairClearance: PairClearance,
+  before: PairMeasure,
+  sizes?: ReadonlyMap<string, number>
 ): boolean => {
   let count = 0;
+  let baseCount = 0;
   let hard = 0;
   let crossings = 0;
   for (let other = 0; other < working.length; other++) {
     if (other === mover) continue;
     const peer = at(working, other);
-    const measured = measureBetween(candidate, peer, clearance);
+    const measured = measureBetween(candidate, peer, pairClearance, sizes);
     count += measured.count;
+    baseCount += measured.baseCount;
     hard += measured.hard;
     crossings += measured.crossings;
-    if (count >= before.count || hard > before.hard || crossings > before.crossings) return false;
+    // Veto: die BASIS-Freigabe darf sich nie verschlechtern — sonst kauft
+    // der Gang die Domänenregel mit einem Verstoß gegen die harte Regel.
+    if (
+      count >= before.count ||
+      baseCount > before.baseCount ||
+      hard > before.hard ||
+      crossings > before.crossings
+    )
+      return false;
   }
   return count < before.count;
 };
@@ -325,12 +422,16 @@ const candidateImproves = (
  * Orientierungen, dieselbe `segmentsCrossWith`-Regel wie das Kreuzungs-Gate).
  */
 /** Alle Verstöße des Gesamtplans, deterministisch sortiert. */
-const collectViolations = (working: readonly Working[], clearance: number): Violation[] => {
+const collectViolations = (
+  working: readonly Working[],
+  pairClearance: PairClearance,
+  sizes?: ReadonlyMap<string, number>
+): Violation[] => {
   const out: Violation[] = [];
   for (let i = 0; i < working.length; i++) {
     for (let j = i + 1; j < working.length; j++) {
       const start = out.length;
-      violationsBetween(at(working, i), at(working, j), clearance, out);
+      violationsBetween(at(working, i), at(working, j), pairClearance, out, sizes);
       for (let k = start; k < out.length; k++) {
         const v = at(out, k);
         out[k] = { ...v, a: i, b: j };
@@ -515,16 +616,23 @@ export function separateCableClearance(
   options: SeparationOptions = {}
 ): Map<string, Point[]> {
   const clearance = options.clearance ?? ROUTING_TOKENS.cableClearance;
+  const pairClearance: PairClearance = options.domainOf
+    ? domainPairClearance(options.domainOf, clearance)
+    : constantPairClearance(clearance);
+  baseClearance = clearance;
   const gap = options.gap ?? ROUTING_TOKENS.laneGrid;
   const maxRounds = options.maxRounds ?? 200;
   const maxLaneSteps = options.maxLaneSteps ?? 4;
   const maxViolationsPerRound = options.maxViolationsPerRound ?? 24;
   const obstacles = options.obstacles ?? [];
-
+  // ADR 0034: Der Port-Korridor wächst mit dem Bündel — dieselben Größen wie
+  // im Invarianten-Check (I3), damit Trenngang und Tor dieselbe Sprache
+  // sprechen. Fehlt die Angabe, gilt das nackte Token (altes Verhalten).
   const result = new Map<string, Point[]>();
   // Deterministische Arbeitsreihenfolge — die Eingabereihenfolge darf das
   // Ergebnis nicht bestimmen (ADR 0010).
   const ordered = [...paths].sort((x, y) => compareIds(x.id, y.id));
+  const sizes = portBundleSizes(ordered.map((path) => ({ id: path.id, waypoints: path.waypoints })));
   for (const path of ordered) result.set(path.id, path.waypoints);
 
   if (ordered.length < 2) return result;
@@ -532,7 +640,7 @@ export function separateCableClearance(
   let working = ordered.map((path) => makeWorking(path, clearance));
 
   for (let round = 0; round < maxRounds; round++) {
-    const violations = collectViolations(working, clearance);
+    const violations = collectViolations(working, pairClearance, sizes);
     if (violations.length === 0) break;
     let improved = false;
     const limit = Math.min(violations.length, maxViolationsPerRound);
@@ -561,7 +669,9 @@ export function separateCableClearance(
       // ein Tie-Break.
       // Bilanz „vorher" je Seite — unabhängig vom Kandidaten, deshalb genau
       // einmal je Verstoß (nicht je Kandidat) berechnet.
-      const beforeMeasures = sides.map((side) => measurePathAgainstOthers(working, side.mover, clearance));
+      const beforeMeasures = sides.map((side) =>
+        measurePathAgainstOthers(working, side.mover, pairClearance, sizes)
+      );
       const sidesWithIndex = sides.map((side, index) => ({ ...side, index }));
       let applied = false;
       for (const allowLonger of [false, true]) {
@@ -581,7 +691,7 @@ export function separateCableClearance(
               maxLaneSteps,
               requiredStub,
               targetDelta,
-              clearance
+              pairClearance(at(working, side.mover), at(working, violation.a === side.mover ? violation.b : violation.a))
             )) {
               const shifted = shiftInteriorSegment(current.points, moveIndex, delta);
               if (!shifted) continue;
@@ -617,7 +727,16 @@ export function separateCableClearance(
               // neue Kreuzung. Die „vorher"-Bilanz des bewegten Pfades hängt
               // nur von diesem ab und wird deshalb EINMAL je Seite berechnet
               // (vor der Durchgangsschleife), nicht je Kandidat.
-              if (!candidateImproves(working, side.mover, candidate, clearance, beforeMeasures[sideIndex]!)) {
+              if (
+                !candidateImproves(
+                  working,
+                  side.mover,
+                  candidate,
+                  pairClearance,
+                  beforeMeasures[sideIndex]!,
+                  sizes
+                )
+              ) {
                 continue;
               }
 
@@ -700,15 +819,20 @@ export function separateCableClearance(
             // Die „vorher"-Bilanz hängt nur von (bewegter Pfad, Nachbar) ab —
             // Kandidaten desselben Pfades teilen sie. Ergebnisidentisch: Der
             // Wert ist derselbe, nur einmal statt je Kandidat gerechnet.
-            let b1 = overlapsBefore ? beforeCache.get(other) : { count: 0, hard: 0, crossings: 0 };
+            const zero: PairMeasure = { count: 0, baseCount: 0, hard: 0, crossings: 0 };
+            let b1 = overlapsBefore ? beforeCache.get(other) : zero;
             if (b1 === undefined) {
-              b1 = measureBetween(current, o, clearance);
+              b1 = measureBetween(current, o, pairClearance, sizes);
               beforeCache.set(other, b1);
             }
-            const b2 = overlapsAfter
-              ? measureBetween(candidate, o, clearance)
-              : { count: 0, hard: 0, crossings: 0 };
-            if (b2.count > b1.count || b2.hard > b1.hard || b2.crossings > b1.crossings) ok = false;
+            const b2 = overlapsAfter ? measureBetween(candidate, o, pairClearance, sizes) : zero;
+            if (
+              b2.count > b1.count ||
+              b2.baseCount > b1.baseCount ||
+              b2.hard > b1.hard ||
+              b2.crossings > b1.crossings
+            )
+              ok = false;
           }
           if (!ok) continue;
           const next = [...working];
@@ -733,7 +857,7 @@ export function countClearanceViolations(
   const working = [...paths]
     .sort((a, b) => compareIds(a.id, b.id))
     .map((path) => makeWorking(path, clearance));
-  return collectViolations(working, clearance).length;
+  return collectViolations(working, constantPairClearance(clearance)).length;
 }
 
 /** Nur für Tests/Diagnose: die Segmentliste eines Pfades als Tupel. */
