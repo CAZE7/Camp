@@ -120,13 +120,22 @@ describe('P0 — I1 = I2 = I3 = 0 in jedem Szenario (hart, nicht als Ratchet)', 
       }));
       // I1 — Kanten dürfen kein Bauteil schneiden.
       const i1 = checkEdgeNodeCollisions(edges, nodes);
-      expect(i1.map((v) => `${v.edgeId}: ${v.otherId ?? ''} ${v.detail}`), 'I1 Bauteil-Durchdringungen').toEqual([]);
+      expect(
+        i1.map((v) => `${v.edgeId}: ${v.otherId ?? ''} ${v.detail}`),
+        'I1 Bauteil-Durchdringungen'
+      ).toEqual([]);
       // I2 — zwei Kanten dürfen nicht kollinear aufeinander liegen.
       const i2 = checkEdgeEdgeOverlaps(edges);
-      expect(i2.map((v) => `${v.edgeId}: ${v.otherId ?? ''} ${v.detail}`), 'I2 Trassenüberdeckungen').toEqual([]);
+      expect(
+        i2.map((v) => `${v.edgeId}: ${v.otherId ?? ''} ${v.detail}`),
+        'I2 Trassenüberdeckungen'
+      ).toEqual([]);
       // I3 — zwei Kanten müssen die Kabel-Freigabe einhalten.
       const i3 = checkClearance(edges, nodes);
-      expect(i3.map((v) => `${v.edgeId}: ${v.otherId ?? ''} ${v.detail}`), 'I3 Freigabe-Verstöße').toEqual([]);
+      expect(
+        i3.map((v) => `${v.edgeId}: ${v.otherId ?? ''} ${v.detail}`),
+        'I3 Freigabe-Verstöße'
+      ).toEqual([]);
     });
   }
 

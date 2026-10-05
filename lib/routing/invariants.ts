@@ -245,7 +245,8 @@ export function checkClearance(
         for (const s2 of b.geometry.segments) {
           // ADR 0009/0031: legitime Port-Bündelung zählt nicht. Korridor-Maß
           // ist das Token (ADR 0027): Stub + zwei Lane-Schritte + Freigabe.
-          if (isPortBundleProximity(a.geometry, b.geometry, s1, s2, tokens.portFacingClearance, bundleSizes)) continue;
+          if (isPortBundleProximity(a.geometry, b.geometry, s1, s2, tokens.portFacingClearance, bundleSizes))
+            continue;
           const verdict = classifySegmentAgainstSegment(s1, s2, clearance);
           if (verdict.class === 'weighted' && verdict.distance !== undefined) {
             violations.push({

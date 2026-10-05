@@ -34,10 +34,10 @@ Danach gab es für `e-up` keinen Weg mehr (vollständig nachgerechnet, alle
 Kombinationen der Katalog-Varianten `primary` / `late` / `midX` / `midY`,
 jeweils mit und ohne A*-Seitenschritte):
 
-* `e-down` L@256, `e-up` L@256 → **464 px kollineare Überdeckung** (I2)
-* jede Z-Form einer Seite → die andere bleibt auf einer Linie, die durch die
+- `e-down` L@256, `e-up` L@256 → **464 px kollineare Überdeckung** (I2)
+- jede Z-Form einer Seite → die andere bleibt auf einer Linie, die durch die
   Tubes der ersten gesperrt ist
-* Weg unter der Startlinie → schneidet die eigene Karte (I1)
+- Weg unter der Startlinie → schneidet die eigene Karte (I1)
 
 Ergebnis: **1 × I2 + 2 × I3**.
 
@@ -45,7 +45,7 @@ Die Ursache ist nicht „die Kanten müssen sich kreuzen“ — eine Kreuzung is
 `soft` und erlaubt. Die Ursache ist: **Der Router darf eine Trasse in den
 Auslaufkorridor eines fremden Anschlusses legen und nimmt der Kante damit den
 einzigen Weg aus diesem Anschluss heraus.** Das ist ein Eingriff in die
-Topologie der *anderen* Leitung, nicht in die eigene.
+Topologie der _anderen_ Leitung, nicht in die eigene.
 
 ## Der Versuch
 
@@ -67,10 +67,10 @@ gehen in die Hindernisse für **Katalog und A\*** ein, **nicht** aufgebläht
 
 ### Was er gewinnt
 
-|  | vorher | mit Versuch |
-| --- | --- | --- |
+|                                   | vorher    | mit Versuch   |
+| --------------------------------- | --------- | ------------- |
 | `p11-zwangskreuzung` I1 / I2 / I3 | 0 / 1 / 2 | **0 / 0 / 0** |
-| Summe über p01–p15 | 0 / 1 / 2 | **0 / 0 / 0** |
+| Summe über p01–p15                | 0 / 1 / 2 | **0 / 0 / 0** |
 
 ### Was er kostet — der Ausschlussgrund
 
@@ -78,12 +78,12 @@ Das **Versatz-Gate** (`scripts/routing/shiftInvariance.test.ts`, 294 Läufe:
 6 Pläne × 7×7-Translationsmatrix) bricht. Eine reine Plan-Translation darf
 das Routing-Ergebnis nicht verändern; mit den Korridoren tut sie es:
 
-|  | ohne Korridore | mit Korridoren |
-| --- | --- | --- |
-| I1 über alle Läufe | **0** | **2** (`simple`) |
-| I2 / I3 `camper` | 6 / 22 | 8 / **41** |
-| I2 / I3 `solar` | 0 / 0 | 0 / **17** |
-| I2 / I3 `acdc` | 2 / 24 | 19 / **39** |
+|                    | ohne Korridore | mit Korridoren   |
+| ------------------ | -------------- | ---------------- |
+| I1 über alle Läufe | **0**          | **2** (`simple`) |
+| I2 / I3 `camper`   | 6 / 22         | 8 / **41**       |
+| I2 / I3 `solar`    | 0 / 0          | 0 / **17**       |
+| I2 / I3 `acdc`     | 2 / 24         | 19 / **39**      |
 
 Ursache: ob eine fremde Trasse in einem Korridor liegt, hängt von der
 absoluten Rasterlage ab. Verschiebt sich der Plan, fallen Korridore weg oder
@@ -94,15 +94,15 @@ Versatz-Gate nicht zulassen.
 
 ### Weitere Kosten
 
-| Plan | Kreuzungen vorher | mit Versuch | Länge vorher | mit Versuch |
-| --- | --- | --- | --- | --- |
-| simple | 1 | 0 | 2665 | 2719 |
-| camper | 4 | 1 | 3677 | 3672 |
-| solar | 2 | 2 | 3200 | 3274 |
-| inverter | 2 | 2 | 3710 | 3750 |
-| acdc | 6 | 3 | 5646 | 5943 |
-| complex | 25 | **30** | 8646 | 8799 |
-| **Summe** | **40** | **38** | **27544** | **28157** |
+| Plan      | Kreuzungen vorher | mit Versuch | Länge vorher | mit Versuch |
+| --------- | ----------------- | ----------- | ------------ | ----------- |
+| simple    | 1                 | 0           | 2665         | 2719        |
+| camper    | 4                 | 1           | 3677         | 3672        |
+| solar     | 2                 | 2           | 3200         | 3274        |
+| inverter  | 2                 | 2           | 3710         | 3750        |
+| acdc      | 6                 | 3           | 5646         | 5943        |
+| complex   | 25                | **30**      | 8646         | 8799        |
+| **Summe** | **40**            | **38**      | **27544**    | **28157**   |
 
 Summe der Kreuzungen sinkt (40 → 38), Trassenlänge steigt um **+2,2 %**, und
 `complex` wäre der einzige Ratchet-Eintrag im Gesamtwerk, der nach oben geht
@@ -110,32 +110,32 @@ Summe der Kreuzungen sinkt (40 → 38), Trassenlänge steigt um **+2,2 %**, und
 
 ## Was sonst versucht wurde (alles gemessen, alles verworfen)
 
-| Ansatz | Ergebnis |
-| --- | --- |
-| Korridor als Kosten-Term statt harter Sperre (HARD/WEIGHTED im Kostenmodell) | greift zu spät: der Katalog-Pfad wird vor jeder Kosten-Bewertung gewählt |
-| Reparatur nach der Wahl („Route liegt im Korridor ⇒ neu suchen“) | p11 unverändert; die Alternativen erzeugen wieder eine Überdeckung |
+| Ansatz                                                                                        | Ergebnis                                                                                                                           |
+| --------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Korridor als Kosten-Term statt harter Sperre (HARD/WEIGHTED im Kostenmodell)                  | greift zu spät: der Katalog-Pfad wird vor jeder Kosten-Bewertung gewählt                                                           |
+| Reparatur nach der Wahl („Route liegt im Korridor ⇒ neu suchen“)                              | p11 unverändert; die Alternativen erzeugen wieder eine Überdeckung                                                                 |
 | Dieselbe Reparatur, aber nur bei **gleichachsiger** Belegung (Längs = tabu, Queren = erlaubt) | Referenzpläne unberührt (complex bleibt 25), aber p11 bleibt bei 1 × I2: `e-up` landet 16 px hinter dem Trassenanfang von `e-down` |
-| Korridorlänge 28/32/36/40/44/52 px, Halbbreite 4/6/8/12 px gesweept | `complex` nie unter 26 Kreuzungen; bei 32/40/44 px zusätzlich I2/I3-Verstöße |
-| Korridor nur für Anschlüsse von Karten mit ≤ 1…3 Kanten | `complex` bleibt bei 30 |
-| Versuchsweise `midX`-Katalogvariante auch bei zugewandten Ports zulassen | ändert am Ergebnis nichts |
+| Korridorlänge 28/32/36/40/44/52 px, Halbbreite 4/6/8/12 px gesweept                           | `complex` nie unter 26 Kreuzungen; bei 32/40/44 px zusätzlich I2/I3-Verstöße                                                       |
+| Korridor nur für Anschlüsse von Karten mit ≤ 1…3 Kanten                                       | `complex` bleibt bei 30                                                                                                            |
+| Versuchsweise `midX`-Katalogvariante auch bei zugewandten Ports zulassen                      | ändert am Ergebnis nichts                                                                                                          |
 
 ## Was daraus bleibt
 
-* **ADR 0034 ist geblieben** und trägt den p02-Teil von ROUTE-010 allein:
+- **ADR 0034 ist geblieben** und trägt den p02-Teil von ROUTE-010 allein:
   Der Port-Korridor skaliert mit der Bündelgröße. p02 6 → 0 I3, p03 1 → 0.
-* **Die Domänenregel im Trenngang** kam mit diesem Versuch mit und ist
+- **Die Domänenregel im Trenngang** kam mit diesem Versuch mit und ist
   geblieben (paarweise Freigabe, zweiter Durchgang, Veto gegen
   Basis-Freigabe-Verschlechterung): parallele Mischpaare unter 24 px
   **16 → 8**.
-* **p11 bleibt offen.** Der nächste Versuch braucht etwas anderes als eine
-  zusätzliche Sperrfläche: Der Router müsste die *Reihenfolge* der zu
+- **p11 bleibt offen.** Der nächste Versuch braucht etwas anderes als eine
+  zusätzliche Sperrfläche: Der Router müsste die _Reihenfolge_ der zu
   verlegenden Kanten wählen können (hintereinander statt `compareIds`) oder
   eine koordinierte Umplanung beider Kanten zulassen. Beides ist eine
   Änderung am Ablauf, nicht am Kostenmodell.
 
 ## Verwandt
 
-* ADR 0034 — Korridor skaliert mit der Bündelgröße (bleibt, p02)
-* ADR 0033 — Trenngang als Garantiepunkt
-* ADR 0032 — scoped Tube-Reparatur (Sperrflächen gezielt weglassen — hier
+- ADR 0034 — Korridor skaliert mit der Bündelgröße (bleibt, p02)
+- ADR 0033 — Trenngang als Garantiepunkt
+- ADR 0032 — scoped Tube-Reparatur (Sperrflächen gezielt weglassen — hier
   umgekehrt, und hier zu teuer)

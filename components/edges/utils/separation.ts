@@ -125,7 +125,10 @@ export type SeparationPath = { id: string; waypoints: Point[]; locked?: boolean 
  */
 export type PairClearance = (a: Working, b: Working) => number;
 
-export const constantPairClearance = (clearance: number): PairClearance => () => clearance;
+export const constantPairClearance =
+  (clearance: number): PairClearance =>
+  () =>
+    clearance;
 
 export function domainPairClearance(
   domainOf: (id: string) => RoutingDomain | undefined,
@@ -255,9 +258,7 @@ const violationsBetween = (
       const s2 = at(b.geometry.segments, j);
       const verdict = classifySegmentAgainstSegment(s1, s2, clearance);
       if (verdict.class !== 'weighted' || verdict.distance === undefined) continue;
-      if (
-        isPortBundleProximity(a.geometry, b.geometry, s1, s2, ROUTING_TOKENS.portFacingClearance, sizes)
-      )
+      if (isPortBundleProximity(a.geometry, b.geometry, s1, s2, ROUTING_TOKENS.portFacingClearance, sizes))
         continue;
       out.push({ a: 0, b: 0, sa: i, sb: j, distance: verdict.distance });
     }
@@ -333,9 +334,7 @@ const measureBetween = (
         continue;
       }
       if (verdict.class !== 'weighted' || verdict.distance === undefined) continue;
-      if (
-        isPortBundleProximity(a.geometry, b.geometry, s1, s2, ROUTING_TOKENS.portFacingClearance, sizes)
-      )
+      if (isPortBundleProximity(a.geometry, b.geometry, s1, s2, ROUTING_TOKENS.portFacingClearance, sizes))
         continue;
       const d = verdict.distance;
       if (d < base) baseCount += 1;
@@ -691,7 +690,10 @@ export function separateCableClearance(
               maxLaneSteps,
               requiredStub,
               targetDelta,
-              pairClearance(at(working, side.mover), at(working, violation.a === side.mover ? violation.b : violation.a))
+              pairClearance(
+                at(working, side.mover),
+                at(working, violation.a === side.mover ? violation.b : violation.a)
+              )
             )) {
               const shifted = shiftInteriorSegment(current.points, moveIndex, delta);
               if (!shifted) continue;

@@ -17,42 +17,42 @@
 
 **Vorher / Nachher (gemessen, `npm run routing:audit`):**
 
-| Plan | I1–I7 | Kreuzungen | Länge | gemischte Paare < 24 px |
-| --- | --- | --- | --- | --- |
-| simple | 0 / 0 | 1 → 1 | 2665 → 2665 | 0 → 0 |
-| camper | 0 / 0 | 4 → 4 | 3677 → 3677 | 0 → 0 |
-| solar | 0 / 0 | 2 → 2 | 3200 → 3200 | 0 → 0 |
-| inverter | 0 / 0 | 2 → 2 | 3710 → 3710 | 0 → 0 |
-| acdc | 0 / 0 | 6 → **5** | 5646 → **5591** | 4 → **0** |
-| complex | 0 / 0 | 25 → 25 | 8646 → 8646 | 12 → **8** |
+| Plan     | I1–I7 | Kreuzungen | Länge           | gemischte Paare < 24 px |
+| -------- | ----- | ---------- | --------------- | ----------------------- |
+| simple   | 0 / 0 | 1 → 1      | 2665 → 2665     | 0 → 0                   |
+| camper   | 0 / 0 | 4 → 4      | 3677 → 3677     | 0 → 0                   |
+| solar    | 0 / 0 | 2 → 2      | 3200 → 3200     | 0 → 0                   |
+| inverter | 0 / 0 | 2 → 2      | 3710 → 3710     | 0 → 0                   |
+| acdc     | 0 / 0 | 6 → **5**  | 5646 → **5591** | 4 → **0**               |
+| complex  | 0 / 0 | 25 → 25    | 8646 → 8646     | 12 → **8**              |
 
 **Regressions-Szenarien (`scripts/regression/invariantProbe.ts`, I1/I2/I3):**
 
-| Szenario | vorher | nachher |
-| --- | --- | --- |
-| p02-batterie-10-verbraucher | 0 / 0 / **6** | 0 / 0 / **0** |
-| p03-busbar-fanout | 0 / 0 / **1** | 0 / 0 / **0** |
-| p11-zwangskreuzung | 0 / **1** / **2** | 0 / **1** / **2** (offen, ADR 0035) |
-| Summe p01–p15 | 0 / 1 / 8 | **0 / 1 / 2** |
+| Szenario                    | vorher            | nachher                             |
+| --------------------------- | ----------------- | ----------------------------------- |
+| p02-batterie-10-verbraucher | 0 / 0 / **6**     | 0 / 0 / **0**                       |
+| p03-busbar-fanout           | 0 / 0 / **1**     | 0 / 0 / **0**                       |
+| p11-zwangskreuzung          | 0 / **1** / **2** | 0 / **1** / **2** (offen, ADR 0035) |
+| Summe p01–p15               | 0 / 1 / 8         | **0 / 1 / 2**                       |
 
 `p07-acdc-mischung`: +56 px, +4 Bends (Domänen-Durchgang). `p02`: Kreuzungen
 6 → 5, Länge 7248 → 7268 px.
 
 **Ratchets — nur nach unten:**
 
-* `CROSSING_RATCHET.acdc` 6 → 5 (`scripts/routing/audit.ts`)
-* `BASELINE_PX.acdc` 5646 → 5591 (`scripts/routing/cableLength.test.ts`)
-* `SHIFT_RATCHET.camper.I3` 26 → 22 (`scripts/routing/audit.ts`)
-* `domainProbe`-Ratchet: acdc `{crossing 2, tooClose 4}` → `{1, 0}`,
+- `CROSSING_RATCHET.acdc` 6 → 5 (`scripts/routing/audit.ts`)
+- `BASELINE_PX.acdc` 5646 → 5591 (`scripts/routing/cableLength.test.ts`)
+- `SHIFT_RATCHET.camper.I3` 26 → 22 (`scripts/routing/audit.ts`)
+- `domainProbe`-Ratchet: acdc `{crossing 2, tooClose 4}` → `{1, 0}`,
   complex `tooClose` 12 → 8, Summe `[80, 12, 16]` → `[80, 11, 8]`
 
 **Kein** Ratchet-Eintrag steigt.
 
 **Neuerfassungen mit Begründung:**
 
-* `knownPlans/*.json` — simple, solar, inverter unverändert; camper, acdc,
+- `knownPlans/*.json` — simple, solar, inverter unverändert; camper, acdc,
   complex nur durch den Domänen-Durchgang berührt, nicht durch ADR 0034.
-* `scripts/regression/goldenLayouts.json` + SVGs p02, p04, p07, p11 —
+- `scripts/regression/goldenLayouts.json` + SVGs p02, p04, p07, p11 —
   geänderte Trassen, weil ADR 0034 den Fächer an Vier-fach-Ports anders
   bewertet und der Domänen-Durchgang gemischte Leitungen auseinanderzieht.
 
@@ -69,8 +69,6 @@ I3 24 → 39, I1 = 2 in `simple`. Vollständiges Protokoll:
 `docs/adr/0035-auslaufkorridor-fremder-ansa.md`.
 
 ---
-
-
 
 **Status: `FROZEN`** — Review-Dokumentation und Migrations-Roadmap.
 

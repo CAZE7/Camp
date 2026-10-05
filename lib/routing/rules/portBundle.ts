@@ -329,7 +329,8 @@ function closestLocusArcs(
  * Schlüssel einer Anschlussstelle (gerundet, damit Float-Artefakte dieselbe
  * Klemme nicht zweiteilen).
  */
-export const portKeyOf = (p: Point): string => `${Math.round(p.x * 100) / 100},${Math.round(p.y * 100) / 100}`;
+export const portKeyOf = (p: Point): string =>
+  `${Math.round(p.x * 100) / 100},${Math.round(p.y * 100) / 100}`;
 
 /** Minimaler Kantenbezug für die Bündelgrößen-Bestimmung. */
 export type BundledPath = { readonly id: string; readonly waypoints: readonly Point[] };
@@ -367,10 +368,7 @@ export function portBundleSizes(paths: readonly BundledPath[]): Map<string, numb
  * lang, wie der Fan-Out ihn braucht — und nicht einen Pixel länger. Jenseits
  * davon gilt unverändert die volle Freigabe.
  */
-export function bundleCorridor(
-  bundleSize: number,
-  tokens: RoutingTokens = ROUTING_TOKENS
-): number {
+export function bundleCorridor(bundleSize: number, tokens: RoutingTokens = ROUTING_TOKENS): number {
   return Math.max(tokens.portFacingClearance, requiredPortCorridor(bundleSize, tokens));
 }
 

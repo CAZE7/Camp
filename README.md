@@ -231,8 +231,8 @@ Branch Protection: `docs/CI.md`.
 | [0031](docs/adr/0031-port-buendel-ausnahme-symmetrisch-i2-i3.md)            | Bündel-Ausnahme (Locus-Regel)  | I3 stellt Port-Bündel frei, wenn die nächste Annäherung beider Pfade innerhalb 68 px Bogenlänge vom gemeinsamen Port liegt — ehrlicher Rest 49 statt Fenster-41                            |
 | [0032](docs/adr/0032-scoped-tube-reparatur.md)                              | Scoped Tube-Reparatur          | Leiter-Wurzelfixes (adjazente Faltung, mangelfreier Frühstopp) + Reparatur für Tube-Drop-Gewinner mit hartem Verstoß (Budget-Guards)                                                       |
 | [0033](docs/adr/0033-trenngang-korridor-kapazitaet.md)                      | Trenngang + Korridor-Kapazität | Eigener Kabel-Freigabe-Gang nach dem Routing (I3 49 → 0, 8 px-Freigaben werden aufgelöst) + Port-Korridor-Kapazität als Modell und Plan-Parameter (`busbar-plus` 496 / `busbar-minus` 688) |
-| [0034](docs/adr/0034-port-korridor-nach-buendelgroesse.md)                 | Korridor nach Bündelgröße      | Die Port-Bündel-Freigabe ist `max(portFacingClearance, requiredPortCorridor(K))` — löst den Widerspruch zwischen 68 px Token und Fächerregel ab K = 4 (p02: 6 → 0 I3)                      |
-| [0035](docs/adr/0035-auslaufkorridor-fremder-ansa.md)                       | Auslaufkorridor fremder Ports  | **verworfen, mit Messung belegt:** harte Sperre der Auslaufkorridore löst p11 (3 → 0), bricht aber die Versatz-Invarianz — Versuchsprotokoll, damit niemand denselben Weg zweimal geht    |
+| [0034](docs/adr/0034-port-korridor-nach-buendelgroesse.md)                  | Korridor nach Bündelgröße      | Die Port-Bündel-Freigabe ist `max(portFacingClearance, requiredPortCorridor(K))` — löst den Widerspruch zwischen 68 px Token und Fächerregel ab K = 4 (p02: 6 → 0 I3)                      |
+| [0035](docs/adr/0035-auslaufkorridor-fremder-ansa.md)                       | Auslaufkorridor fremder Ports  | **verworfen, mit Messung belegt:** harte Sperre der Auslaufkorridore löst p11 (3 → 0), bricht aber die Versatz-Invarianz — Versuchsprotokoll, damit niemand denselben Weg zweimal geht     |
 
 ## Weitere Nachweise
 

@@ -78,7 +78,9 @@ function main(): void {
   } else {
     process.stdout.write('Szenario                              I1   I2   I3\n');
     for (const r of rows) {
-      process.stdout.write(`${r.id.padEnd(36)} ${String(r.i1).padStart(3)} ${String(r.i2).padStart(4)} ${String(r.i3).padStart(4)}\n`);
+      process.stdout.write(
+        `${r.id.padEnd(36)} ${String(r.i1).padStart(3)} ${String(r.i2).padStart(4)} ${String(r.i3).padStart(4)}\n`
+      );
       if (detail) for (const d of r.details) process.stdout.write(`    - ${d}\n`);
     }
     const sum = rows.reduce((a, r) => ({ i1: a.i1 + r.i1, i2: a.i2 + r.i2, i3: a.i3 + r.i3 }), {
@@ -86,7 +88,9 @@ function main(): void {
       i2: 0,
       i3: 0,
     });
-    process.stdout.write(`${'SUMME'.padEnd(36)} ${String(sum.i1).padStart(3)} ${String(sum.i2).padStart(4)} ${String(sum.i3).padStart(4)}\n`);
+    process.stdout.write(
+      `${'SUMME'.padEnd(36)} ${String(sum.i1).padStart(3)} ${String(sum.i2).padStart(4)} ${String(sum.i3).padStart(4)}\n`
+    );
   }
   process.exitCode = rows.some((r) => r.i1 || r.i2 || r.i3) ? 1 : 0;
 }
