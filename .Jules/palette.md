@@ -67,6 +67,7 @@
 
 **Learning:** Standalone toggle buttons and segmented controls acting as pseudo-radio groups (like the 'Sommer'/'Winter' toggles) must convey which option is currently active to assistive technologies. Without this, screen reader users cannot perceive the current state or understand the result of their selection.
 **Action:** Always add `aria-pressed={condition}` to any button that visually toggles between active and inactive states.
+
 ## 2026-10-05 - Prevent broken aria-controls on conditionally rendered content
 
 **Learning:** When linking an accordion or panel toggle button to its content container using `aria-controls`, setting it to a static ID causes an accessibility error (invalid ARIA reference) if the target container is unmounted when closed (e.g. `{open && <div id={contentId}>}`). Screen readers and a11y checkers will complain that the referenced ID does not exist in the DOM.
