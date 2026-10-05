@@ -50,11 +50,7 @@ type Summary = {
 };
 
 /** Zählt aus dem Report die für den Nutzer wichtigen Kennzahlen. */
-function summarizeReport(
-  report: AutoWireReport,
-  previousEdgeCount: number,
-  nextEdgeCount: number
-): Summary {
+function summarizeReport(report: AutoWireReport, previousEdgeCount: number, nextEdgeCount: number): Summary {
   const byKind = new Map<string, number>();
   for (const conflict of report.conflicts) {
     byKind.set(conflict.kind, (byKind.get(conflict.kind) ?? 0) + 1);
@@ -78,7 +74,9 @@ function summarizeReport(
   };
 }
 
-const SEVERITY_STYLES: Readonly<Record<AutoWireConflict['severity'], { ring: string; icon: React.ElementType; label: string; tone: string }>> = {
+const SEVERITY_STYLES: Readonly<
+  Record<AutoWireConflict['severity'], { ring: string; icon: React.ElementType; label: string; tone: string }>
+> = {
   critical: {
     ring: 'border-red-400 bg-red-50 text-red-900',
     icon: AlertTriangle,
@@ -119,7 +117,8 @@ export function AutoWireReviewModal({ forceOpen = false }: Props) {
   // irrelevant — der Dialog öffnet sich allein, weil ein Preview mit Inhalt
   // vorliegt. (Der Event bleibt als Auslöser für den Fall, dass das
   // Dispatch-Event vor dem ersten Rendern des Dialogs eintrifft.)
-  const hasContent = !!preview && (preview.report.conflicts.length > 0 || preview.report.questions.length > 0);
+  const hasContent =
+    !!preview && (preview.report.conflicts.length > 0 || preview.report.questions.length > 0);
   const open = !!preview && (hasContent || forceOpen || eventFired);
 
   const summary = useMemo(() => {
@@ -151,24 +150,9 @@ export function AutoWireReviewModal({ forceOpen = false }: Props) {
       <div className="space-y-4 px-1 pt-2 text-sm">
         {/* Kennzahlen */}
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <Stat
-            icon={Zap}
-            tone="text-emerald-700"
-            label="Neue Leitungen"
-            value={summary.safeNew}
-          />
-          <Stat
-            icon={Wrench}
-            tone="text-sky-700"
-            label="Geheilt"
-            value={summary.healed}
-          />
-          <Stat
-            icon={X}
-            tone="text-slate-600"
-            label="Entfernt"
-            value={summary.dropped}
-          />
+          <Stat icon={Zap} tone="text-emerald-700" label="Neue Leitungen" value={summary.safeNew} />
+          <Stat icon={Wrench} tone="text-sky-700" label="Geheilt" value={summary.healed} />
+          <Stat icon={X} tone="text-slate-600" label="Entfernt" value={summary.dropped} />
           <Stat
             icon={AlertTriangle}
             tone={hasCritical ? 'text-red-700' : 'text-amber-700'}
@@ -179,7 +163,10 @@ export function AutoWireReviewModal({ forceOpen = false }: Props) {
 
         {/* Fragen */}
         {preview.report.questions.length > 0 && (
-          <section aria-labelledby="aw-questions-heading" className="rounded border border-amber-300 bg-amber-50 p-3">
+          <section
+            aria-labelledby="aw-questions-heading"
+            className="rounded border border-amber-300 bg-amber-50 p-3"
+          >
             <h3 id="aw-questions-heading" className="flex items-center gap-2 font-semibold text-amber-900">
               <HelpCircle className="h-4 w-4" aria-hidden="true" />
               Offene Fragen ({preview.report.questions.length})
@@ -190,9 +177,8 @@ export function AutoWireReviewModal({ forceOpen = false }: Props) {
               ))}
             </ul>
             <p className="mt-2 text-xs text-amber-800">
-              Diese Entscheidungen kann die Automatik nicht ohne Deine Angabe treffen. Die
-              Leitungen sind mit der sicheren Annahme verdrahtet; bitte im Inspektor die
-              endgültige Verschaltung wählen.
+              Diese Entscheidungen kann die Automatik nicht ohne Deine Angabe treffen. Die Leitungen sind mit
+              der sicheren Annahme verdrahtet; bitte im Inspektor die endgültige Verschaltung wählen.
             </p>
           </section>
         )}
@@ -219,9 +205,9 @@ export function AutoWireReviewModal({ forceOpen = false }: Props) {
         {preview.report.conflicts.length === 0 && preview.report.questions.length === 0 && (
           <p className="rounded border border-emerald-300 bg-emerald-50 p-3 text-emerald-900">
             <CheckCircle2 className="mr-2 inline h-4 w-4 align-text-bottom" aria-hidden="true" />
-            Der Vorschlag enthält keine Konflikte und keine offenen Fragen. Alle neuen
-            Verbindungen folgen der Flussrichtung Quelle → Wandler → Verteilung → Verbraucher;
-            bestehende, von Dir gesetzte Leitungen bleiben unverändert.
+            Der Vorschlag enthält keine Konflikte und keine offenen Fragen. Alle neuen Verbindungen folgen der
+            Flussrichtung Quelle → Wandler → Verteilung → Verbraucher; bestehende, von Dir gesetzte Leitungen
+            bleiben unverändert.
           </p>
         )}
 
@@ -256,7 +242,10 @@ function Stat({
 }) {
   return (
     <div className="rounded border border-border bg-white/60 p-2 text-center">
-      <div className={`flex items-center justify-center gap-1 text-xs font-semibold ${tone}`} aria-hidden="true">
+      <div
+        className={`flex items-center justify-center gap-1 text-xs font-semibold ${tone}`}
+        aria-hidden="true"
+      >
         <Icon className="h-3.5 w-3.5" />
         {label}
       </div>

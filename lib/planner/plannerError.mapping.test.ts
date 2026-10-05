@@ -6,10 +6,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import {
-  plannerErrorCodeFromRuleId,
-  plannerErrorCategoryFromValidation,
-} from './plannerError';
+import { plannerErrorCodeFromRuleId, plannerErrorCategoryFromValidation } from './plannerError';
 
 describe('plannerErrorCodeFromRuleId — Mapping ist spezifisch', () => {
   it('mappt BMS-Regeln auf BMS_CURRENT_EXCEEDED', () => {

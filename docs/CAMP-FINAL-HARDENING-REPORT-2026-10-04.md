@@ -27,16 +27,16 @@ ohne funktionierende Architektur zu ersetzen (Regel 2):
 
 ### Baseline nach dem Lauf
 
-| Metrik                                         | Wert                                                                 |
-| ---------------------------------------------- | -------------------------------------------------------------------- |
-| Typecheck `tsconfig.typecheck.json`            | ✅ EXIT 0                                                            |
-| Typecheck `tsconfig.tests.json`                | ✅ EXIT 0                                                            |
-| `npx eslint .`                                 | ✅ EXIT 0 (keine Warnings, keine `any`)                              |
-| `npm run routing:audit`                        | ✅ I1=0 · I2=0 · I3=0 für alle 6 Referenzpläne (simple, camper, solar, inverter, acdc, complex) |
-| Determinismus                                  | ✅ `determ = true` für alle 6 Pläne                                  |
-| Fallback-Notfallpfade                          | ✅ 0                                                                 |
-| Routing-Generations-Tracker                    | ✅ Konvergenzschranke (4 Revisionen) aktiv, UI-Sichtbarkeit hergestellt |
-| Auto-Wire-Idempotenz (Property-Test, 80 Runs)  | ✅                                                                   |
+| Metrik                                        | Wert                                                                                            |
+| --------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Typecheck `tsconfig.typecheck.json`           | ✅ EXIT 0                                                                                       |
+| Typecheck `tsconfig.tests.json`               | ✅ EXIT 0                                                                                       |
+| `npx eslint .`                                | ✅ EXIT 0 (keine Warnings, keine `any`)                                                         |
+| `npm run routing:audit`                       | ✅ I1=0 · I2=0 · I3=0 für alle 6 Referenzpläne (simple, camper, solar, inverter, acdc, complex) |
+| Determinismus                                 | ✅ `determ = true` für alle 6 Pläne                                                             |
+| Fallback-Notfallpfade                         | ✅ 0                                                                                            |
+| Routing-Generations-Tracker                   | ✅ Konvergenzschranke (4 Revisionen) aktiv, UI-Sichtbarkeit hergestellt                         |
+| Auto-Wire-Idempotenz (Property-Test, 80 Runs) | ✅                                                                                              |
 
 ---
 
@@ -60,38 +60,38 @@ Vollständige Prüfung nach Regel 1 (Code > Tests > Dokumentation):
 
 ## 3. Abgleich der 42 Hardening-Punkte gegen den Code
 
-| Kap.  | Punkt                                              | Zustand                 |
-| ----- | -------------------------------------------------- | ----------------------- |
-| 3     | Single Source of Truth (Schichten)                 | ✅ vorhanden (`lib/electricalGraph/graph.ts`) |
-| 4     | User-Intent-System (locked/user/required/auto/suggested) | ✅ vorhanden (`lib/electricalGraph/intent.ts`) |
-| 5     | Auto-Wire als Proposal/Completion                  | ✅ vorhanden (`lib/autoWire/conflicts.ts`, `lib/autoWire.ts`) |
-| 6     | Auto-Wire idempotent                               | ✅ vorhanden + neue Property-Tests |
-| 7     | Keine Topologie-Annahmen (unassigned/ambiguous)    | ✅ vorhanden (`lib/electricalGraph/batteryBank.ts`) |
-| 8     | Battery-Bank single/series/parallel/series-parallel | ✅ vorhanden mit korrekten Formeln |
-| 9     | Series-Topologie als echte elektrische Topologie   | ✅ vorhanden (Bank modelliert; Graph versteht die Verbindung) |
-| 10    | 12V / 24V / 48V                                    | ✅ vorhanden (`lib/electricalGraph/powerSystem.ts`) |
-| 11    | BMS als Design-Constraint (allowedCurrent = min)   | ✅ vorhanden (`lib/electricalGraph/currentBudget.ts`) |
-| 12    | ComponentConstraints zentral                       | ✅ vorhanden (`lib/electricalGraph/constraints.ts`) |
-| 13    | Dimensionierungs-Pipeline (Load→Current→…→Validation) | ✅ vorhanden (`lib/electrical.ts`, `lib/verify`) |
-| 14    | AC-System (mehrere Quellen/Kreise/Verbraucher)     | ✅ vorhanden (`lib/electricalGraph/acSystem.ts`) |
-| 15–20 | Routing-V2 (A*, obstacles, determinism, generations, convergence, no workarounds) | ✅ vorhanden |
-| 21    | I1=I2=I3=0                                         | ✅ nach routing:audit bestätigt |
-| 22    | Clearance (Edge-Node, Edge-Edge, Port-Port, crossings, obstacle) | ✅ vorhanden (`lib/routing/invariants.ts`, `lib/routing/rules/collision.ts`, `lib/routing/rules/hopping.ts`) |
-| 23    | Backbone/Trunk-Routing                             | ✅ vorhanden (`components/planner/utils/backbone.ts`, Trunk-Mode) |
-| 24    | Locked Routing respektiert                         | ✅ im Router (hop-policy) + Hash (neu) |
-| 25    | Physical Route ≠ Electrical Edge                   | ✅ (getrennte Modelle: `ElectricalConnection` vs. `PhysicalRoute`/waypoints) |
-| 26–28 | Planungs-/Physisch-/Prüfmodus                      | ✅ vorhanden (`PlannerMode`, `PlannerModeSwitch`) |
-| 29    | Auto-Wire UX (Review-Report vor Anwendung)         | ✅ AutoWireReport wird erzeugt und im Dashboard gezeigt; ausdrücklicher Review-Dialog für sichere/konfliktbehaftete Vorschläge als Produktentscheidung offen gelassen (keine stille Mutation) |
-| 30    | Große Pläne (10/25/50/100/250 Nodes)               | ✅ Performance-Messung in `benchmarks/routeAllScaling.probe.ts` (500 Nodes ~3 s) |
-| 31–33 | Test-Strategie + Regression + Property-Tests       | ✅ vorhanden; + neue Tests (s. Abschnitt 4) |
-| 34    | Audit-Dokumentation                                | ✅ dieser Bericht; Doku-Code-Konsistenz im Vorgängerbericht bereits hergestellt |
-| 35    | Code Quality (SRP, pure functions, keine Zyklen)   | ✅ Domäne seiteneffektfrei; UI-Logik in Components |
-| 36    | Strukturierter Fehler (PlannerError)               | 🆕 neu hinzugefügt (`lib/planner/plannerError.ts`) |
-| 37    | Performance (O(n²), unnötige Traversals)           | ✅ (im Audit des Vorgängers profiliert) |
-| 38    | Accessibility (Keyboard, Focus, ARIA)              | ✅ (PlannerModeSwitch/RoutingStatusBadge tragen `role`/`aria-label`/`aria-pressed`; Routing-Not-Converged nutzt `role=alert`) |
-| 39    | Definition of Done                                 | ✅ alle Kernzusagen erfüllt (s. unten) |
-| 40    | Prioritäten (Elektrische Korrektheit > UX)         | ✅ keine Regel abgeschwächt; keine Ratchets nach oben geschraubt |
-| 41–42 | Abschluss-Audit + Report                           | ✅ dieser Bericht |
+| Kap.  | Punkt                                                                             | Zustand                                                                                                                                                                                       |
+| ----- | --------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 3     | Single Source of Truth (Schichten)                                                | ✅ vorhanden (`lib/electricalGraph/graph.ts`)                                                                                                                                                 |
+| 4     | User-Intent-System (locked/user/required/auto/suggested)                          | ✅ vorhanden (`lib/electricalGraph/intent.ts`)                                                                                                                                                |
+| 5     | Auto-Wire als Proposal/Completion                                                 | ✅ vorhanden (`lib/autoWire/conflicts.ts`, `lib/autoWire.ts`)                                                                                                                                 |
+| 6     | Auto-Wire idempotent                                                              | ✅ vorhanden + neue Property-Tests                                                                                                                                                            |
+| 7     | Keine Topologie-Annahmen (unassigned/ambiguous)                                   | ✅ vorhanden (`lib/electricalGraph/batteryBank.ts`)                                                                                                                                           |
+| 8     | Battery-Bank single/series/parallel/series-parallel                               | ✅ vorhanden mit korrekten Formeln                                                                                                                                                            |
+| 9     | Series-Topologie als echte elektrische Topologie                                  | ✅ vorhanden (Bank modelliert; Graph versteht die Verbindung)                                                                                                                                 |
+| 10    | 12V / 24V / 48V                                                                   | ✅ vorhanden (`lib/electricalGraph/powerSystem.ts`)                                                                                                                                           |
+| 11    | BMS als Design-Constraint (allowedCurrent = min)                                  | ✅ vorhanden (`lib/electricalGraph/currentBudget.ts`)                                                                                                                                         |
+| 12    | ComponentConstraints zentral                                                      | ✅ vorhanden (`lib/electricalGraph/constraints.ts`)                                                                                                                                           |
+| 13    | Dimensionierungs-Pipeline (Load→Current→…→Validation)                             | ✅ vorhanden (`lib/electrical.ts`, `lib/verify`)                                                                                                                                              |
+| 14    | AC-System (mehrere Quellen/Kreise/Verbraucher)                                    | ✅ vorhanden (`lib/electricalGraph/acSystem.ts`)                                                                                                                                              |
+| 15–20 | Routing-V2 (A*, obstacles, determinism, generations, convergence, no workarounds) | ✅ vorhanden                                                                                                                                                                                  |
+| 21    | I1=I2=I3=0                                                                        | ✅ nach routing:audit bestätigt                                                                                                                                                               |
+| 22    | Clearance (Edge-Node, Edge-Edge, Port-Port, crossings, obstacle)                  | ✅ vorhanden (`lib/routing/invariants.ts`, `lib/routing/rules/collision.ts`, `lib/routing/rules/hopping.ts`)                                                                                  |
+| 23    | Backbone/Trunk-Routing                                                            | ✅ vorhanden (`components/planner/utils/backbone.ts`, Trunk-Mode)                                                                                                                             |
+| 24    | Locked Routing respektiert                                                        | ✅ im Router (hop-policy) + Hash (neu)                                                                                                                                                        |
+| 25    | Physical Route ≠ Electrical Edge                                                  | ✅ (getrennte Modelle: `ElectricalConnection` vs. `PhysicalRoute`/waypoints)                                                                                                                  |
+| 26–28 | Planungs-/Physisch-/Prüfmodus                                                     | ✅ vorhanden (`PlannerMode`, `PlannerModeSwitch`)                                                                                                                                             |
+| 29    | Auto-Wire UX (Review-Report vor Anwendung)                                        | ✅ AutoWireReport wird erzeugt und im Dashboard gezeigt; ausdrücklicher Review-Dialog für sichere/konfliktbehaftete Vorschläge als Produktentscheidung offen gelassen (keine stille Mutation) |
+| 30    | Große Pläne (10/25/50/100/250 Nodes)                                              | ✅ Performance-Messung in `benchmarks/routeAllScaling.probe.ts` (500 Nodes ~3 s)                                                                                                              |
+| 31–33 | Test-Strategie + Regression + Property-Tests                                      | ✅ vorhanden; + neue Tests (s. Abschnitt 4)                                                                                                                                                   |
+| 34    | Audit-Dokumentation                                                               | ✅ dieser Bericht; Doku-Code-Konsistenz im Vorgängerbericht bereits hergestellt                                                                                                               |
+| 35    | Code Quality (SRP, pure functions, keine Zyklen)                                  | ✅ Domäne seiteneffektfrei; UI-Logik in Components                                                                                                                                            |
+| 36    | Strukturierter Fehler (PlannerError)                                              | 🆕 neu hinzugefügt (`lib/planner/plannerError.ts`)                                                                                                                                            |
+| 37    | Performance (O(n²), unnötige Traversals)                                          | ✅ (im Audit des Vorgängers profiliert)                                                                                                                                                       |
+| 38    | Accessibility (Keyboard, Focus, ARIA)                                             | ✅ (PlannerModeSwitch/RoutingStatusBadge tragen `role`/`aria-label`/`aria-pressed`; Routing-Not-Converged nutzt `role=alert`)                                                                 |
+| 39    | Definition of Done                                                                | ✅ alle Kernzusagen erfüllt (s. unten)                                                                                                                                                        |
+| 40    | Prioritäten (Elektrische Korrektheit > UX)                                        | ✅ keine Regel abgeschwächt; keine Ratchets nach oben geschraubt                                                                                                                              |
+| 41–42 | Abschluss-Audit + Report                                                          | ✅ dieser Bericht                                                                                                                                                                             |
 
 ---
 
@@ -101,7 +101,7 @@ Vollständige Prüfung nach Regel 1 (Code > Tests > Dokumentation):
 
 - **Datei:** `components/edges/utils/cableRouteStore.ts`
 - **Problem:** Spec #17 verlangt, dass der Routing-Hash mindestens `edge IDs, edge
-  endpoints, edge intent, obstacles, routing settings, routing constraints`
+endpoints, edge intent, obstacles, routing settings, routing constraints`
   berücksichtigt. `edgeTopologySignature` enthielt bislang `locked` nicht aber den
   allgemeinen `intent`; eine nachträgliche Sperrung oder Intent-Änderung (user →
   auto) invalidierte deshalb nicht notwendigerweise den Cache. Außerdem konnten
@@ -183,12 +183,12 @@ Keine Umstrukturierung der Schichten; die bestehende Architektur
 (Electrical Graph → Constraints → Auto-Wire → Layout → Routing → Final Validation →
 Rendering) wurde bestätigt. Die Änderungen sind additiv:
 
-| Schicht             | Änderung                                                              |
-| ------------------- | --------------------------------------------------------------------- |
-| lib/planner/        | + `plannerError.ts` (strukturierte Fehlertypen, rein)                 |
-| components/edges/   | ~ `cableRouteStore.ts` (Hash um Intent, Waypoints, Token-Version)     |
-| components/planner/ui/ | ~ `RoutingStatusBadge.tsx` (NOT_CONVERGED-Zustand sichtbar)         |
-| lib/                | ~ `autoWire.test.ts` (Property-Tests Idempotenz)                      |
+| Schicht                | Änderung                                                          |
+| ---------------------- | ----------------------------------------------------------------- |
+| lib/planner/           | + `plannerError.ts` (strukturierte Fehlertypen, rein)             |
+| components/edges/      | ~ `cableRouteStore.ts` (Hash um Intent, Waypoints, Token-Version) |
+| components/planner/ui/ | ~ `RoutingStatusBadge.tsx` (NOT_CONVERGED-Zustand sichtbar)       |
+| lib/                   | ~ `autoWire.test.ts` (Property-Tests Idempotenz)                  |
 
 Keine zyklischen Abhängigkeiten eingeführt; `plannerError.ts` ist rein und hat
 keine UI- oder Routing-Importe.
@@ -227,8 +227,9 @@ keine UI- oder Routing-Importe.
 `computeCurrentBudget` berechnet `allowedCurrent = min(cable, fuse, component,
 bms, system)` und trägt `limitedBy` (Rangfolge: bms → component → fuse → cable
 → system). Lasten über dem Budget werden `critical` (nicht ausführbar), Lasten
->90% werden `warning`; bei fehlenden Grenzen wird `warning` („nicht bewertbar")
-geliefert, nie `ok` (Regel M: kein stiller Fallback).
+
+> 90% werden `warning`; bei fehlenden Grenzen wird `warning` („nicht bewertbar")
+> geliefert, nie `ok` (Regel M: kein stiller Fallback).
 
 ---
 
@@ -260,6 +261,7 @@ Routen-Output im Normalfall nicht: der bestehende Goldene-Master-Output ist
 deterministisch reproduzierbar.
 
 **Routing-Generationen (Konvergenz):**
+
 - Vorher: Tracker zählte Generationen/Revisionen, blockierte Endlos-Läufe,
   meldete den Zustand aber nur über `getCableRouteGeneration()` für Tests.
 - Nachher: Tracker weiterhin unverändert (HARTE Schranke bei 4 Revisionen pro
@@ -297,16 +299,16 @@ deterministisch reproduzierbar.
 
 ## 13. Tests
 
-| Suite                                             | Ergebnis                                    |
-| ------------------------------------------------- | ------------------------------------------- |
-| `npm run typecheck`                               | ✅ 0 Fehler                                  |
-| `npm run typecheck:tests`                         | ✅ 0 Fehler                                  |
-| `npm run lint`                                    | ✅ 0 Fehler, 0 Warnungen                     |
-| Domänen/Property-Tests (electricalGraph, autoWire, planner) | ✅ 126 Tests (vorher 122, +4) |
-| Routing-Audit (6 Pläne)                           | ✅ I1=I2=I3=0, 0 Fallbacks                   |
-| Generation-Tracker-Tests                          | ✅ 31 Tests grün                             |
-| **Neue Tests in diesem Lauf**                     | **+8** (4 PlannerError + 2 Idempotenz-Properties + 2 erweiterte Assertions) |
-| Deaktiviert/abgeschwächt                          | **0** (Regel 14)                            |
+| Suite                                                       | Ergebnis                                                                    |
+| ----------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `npm run typecheck`                                         | ✅ 0 Fehler                                                                 |
+| `npm run typecheck:tests`                                   | ✅ 0 Fehler                                                                 |
+| `npm run lint`                                              | ✅ 0 Fehler, 0 Warnungen                                                    |
+| Domänen/Property-Tests (electricalGraph, autoWire, planner) | ✅ 126 Tests (vorher 122, +4)                                               |
+| Routing-Audit (6 Pläne)                                     | ✅ I1=I2=I3=0, 0 Fallbacks                                                  |
+| Generation-Tracker-Tests                                    | ✅ 31 Tests grün                                                            |
+| **Neue Tests in diesem Lauf**                               | **+8** (4 PlannerError + 2 Idempotenz-Properties + 2 erweiterte Assertions) |
+| Deaktiviert/abgeschwächt                                    | **0** (Regel 14)                                                            |
 
 Hinweis: Die vollständige Vitest-Suite (>2900 Tests) wurde aufgrund der
 Sandbox-Laufzeitbegrenzung in diesem Audit nicht erneut als Ganzes ausgeführt;
@@ -339,14 +341,14 @@ Bericht dokumentiert und grün.
 
 ## 15. Geänderte Dateien
 
-| Datei                                               | Änderung                                            |
-| --------------------------------------------------- | --------------------------------------------------- |
-| `components/edges/utils/cableRouteStore.ts`         | Hash um `intent`, `waypointCount` und `ROUTING_TOKENS_VERSION` erweitert |
-| `components/planner/ui/RoutingStatusBadge.tsx`      | ROUTING_NOT_CONVERGED-Anzeige mit `role="alert"`    |
-| `lib/planner/plannerError.ts`                       | NEU — strukturierter Fehlertyp nach Spec #36        |
-| `lib/planner/plannerError.test.ts`                  | NEU — 4 Unit-Tests für createPlannerError/Deduplizierung/JSON |
-| `lib/autoWire.test.ts`                              | +fast-check-Import, +2 Idempotenz-Property-Tests (80 Runs) |
-| `docs/CAMP-FINAL-HARDENING-REPORT-2026-10-04.md`    | NEU — dieser Bericht                                |
+| Datei                                            | Änderung                                                                 |
+| ------------------------------------------------ | ------------------------------------------------------------------------ |
+| `components/edges/utils/cableRouteStore.ts`      | Hash um `intent`, `waypointCount` und `ROUTING_TOKENS_VERSION` erweitert |
+| `components/planner/ui/RoutingStatusBadge.tsx`   | ROUTING_NOT_CONVERGED-Anzeige mit `role="alert"`                         |
+| `lib/planner/plannerError.ts`                    | NEU — strukturierter Fehlertyp nach Spec #36                             |
+| `lib/planner/plannerError.test.ts`               | NEU — 4 Unit-Tests für createPlannerError/Deduplizierung/JSON            |
+| `lib/autoWire.test.ts`                           | +fast-check-Import, +2 Idempotenz-Property-Tests (80 Runs)               |
+| `docs/CAMP-FINAL-HARDENING-REPORT-2026-10-04.md` | NEU — dieser Bericht                                                     |
 
 ---
 

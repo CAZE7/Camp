@@ -124,7 +124,7 @@ export function edgeTopologySignature(edges: readonly EdgeTopologySignatureInput
     const intent = declaredIntent ?? (locked ? 'locked' : autoWired ? 'auto' : 'user');
     const waypointCount =
       locked && Array.isArray((data as { waypoints?: unknown }).waypoints)
-        ? ((data as { waypoints: unknown[] }).waypoints.length)
+        ? (data as { waypoints: unknown[] }).waypoints.length
         : 0;
     parts.push(
       JSON.stringify([

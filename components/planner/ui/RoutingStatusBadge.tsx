@@ -36,7 +36,7 @@ export function RoutingStatusBadge() {
         aria-live="polite"
         aria-label="Routing konvergiert nicht"
         title={`${generation.reason ?? 'Routing hat die Konvergenzschranke erreicht.'} Es entsteht keine Endlosschleife; der letzte gültige Stand wird angezeigt. Ein kleines Verschieben eines Bauteils löst das Problem üblicherweise.`}
-        className="inline-flex h-11 items-center justify-center gap-1 rounded border border-error/50 bg-error/10 px-2 text-xs font-semibold text-error"
+        className="border-error/50 bg-error/10 text-error inline-flex h-11 items-center justify-center gap-1 rounded border px-2 text-xs font-semibold"
       >
         <Repeat2 className="h-4 w-4" aria-hidden="true" />
         <span className="hidden xl:inline">Routing: Konvergenzfehler</span>

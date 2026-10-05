@@ -11,15 +11,15 @@ PlannerError (Spec #36), AC-Trunking (ROUTE-003), Abschluss-Build & Test-Suite.
 
 ## 1. Qualitätstore (alle grün)
 
-| Gate | Ergebnis |
-|---|---|
-| `npm run typecheck` (`tsconfig.typecheck.json`) | ✅ 0 Fehler |
-| `npm run typecheck:tests` (`tsconfig.tests.json`) | ✅ 0 Fehler |
-| `npm run lint` | ✅ 0 Fehler / 0 Warnungen |
-| `npm run build` (Next.js Production) | ✅ Exit 0 |
+| Gate                                                 | Ergebnis                                                             |
+| ---------------------------------------------------- | -------------------------------------------------------------------- |
+| `npm run typecheck` (`tsconfig.typecheck.json`)      | ✅ 0 Fehler                                                          |
+| `npm run typecheck:tests` (`tsconfig.tests.json`)    | ✅ 0 Fehler                                                          |
+| `npm run lint`                                       | ✅ 0 Fehler / 0 Warnungen                                            |
+| `npm run build` (Next.js Production)                 | ✅ Exit 0                                                            |
 | `npm run routing:audit` (6 Referenzpläne, 79 Kanten) | ✅ **I1=0, I2=0, I3=0** für alle 6 Pläne; `determ=true`; 0 Fallbacks |
-| Domänen-/Routing-/Planner-Tests (Kern) | ✅ **281 passed** (17 Test-Dateien) |
-| Auto-Wire Property-Tests (fast-check, 80 Runs) | ✅ Idempotenz A1 + A2 grün |
+| Domänen-/Routing-/Planner-Tests (Kern)               | ✅ **281 passed** (17 Test-Dateien)                                  |
+| Auto-Wire Property-Tests (fast-check, 80 Runs)       | ✅ Idempotenz A1 + A2 grün                                           |
 
 ---
 
@@ -35,6 +35,7 @@ Arbeitsfläche ohne vorherige Bestätigung. Das verletzte Spec #29
 eine Entscheidung ansteht".
 
 **Lösung (minimal, additiv):**
+
 - **`store/slices/graphSlice.ts`:** `autoWireSystem` in drei Schritte
   zerlegt:
   1. `previewAutoWire()` — berechnet den Vorschlag, schreibt ihn nach
@@ -68,8 +69,9 @@ Erklärung und keine Lösungsempfehlung. Der Typ `PlannerError` war im
 vorigen Lauf angelegt, aber wurde noch nicht von den Produzenten erzeugt.
 
 **Lösung:**
+
 - **`store/slices/uiSlice.ts`:** Neuer Zustand `plannerErrors:
-  readonly PlannerError[]` plus `addPlannerError`, `clearPlannerErrors`,
+readonly PlannerError[]` plus `addPlannerError`, `clearPlannerErrors`,
   `setPlannerErrors` mit Deduplizierung über
   `dedupePlannerErrors` (sicher für Duplikate durch Listener-Race).
 - **`store/slices/graphSlice.ts`:** Auto-Wire „keine Batterie"-Pfad
@@ -111,7 +113,9 @@ der Trunk). Zusätzliche Helper `isAcBackboneNode` / `isDcBackboneNode`
 für künftige Rendering-Logik.
 
 ### D. Routing-Input-Hash, Routing-Not-Converged-Badge, Auto-Wire-Idempotenz
+
 (vom 2026-10-04) — **unverändert und weiterhin grün**
+
 - Hash deckt Intent, Locked-Waypoints und `ROUTING_TOKENS_VERSION` ab.
 - Rotes „Routing: Konvergenzfehler"-Badge mit `role="alert"`.
 - Zwei fast-check Property-Tests mit 80 Runs für Idempotenz.
@@ -120,18 +124,18 @@ für künftige Rendering-Logik.
 
 ## 3. Geänderte Dateien
 
-| Datei | Änderung |
-|---|---|
-| `components/planner/AutoWireReviewModal.tsx` | **NEU** — Review-Dialog Spec #29 |
-| `components/planner/FlowCanvas.tsx` | Dynamisch geladenes Review-Modal |
-| `components/planner/PlannerDashboard.tsx` | PlannerError-Sync aus Live-Warnungen; Import der Mapper |
-| `components/planner/utils/backbone.ts` | AC-Kern-Typen als Backbone (ROUTE-003) |
-| `store/slices/types.ts` | +`previewAutoWire`, `applyAutoWirePreview`, `dismissAutoWirePreview`, `autoWirePreview`, `plannerErrors`, `addPlannerError`, `clearPlannerErrors`, `setPlannerErrors`; Import `PlannerError` |
-| `store/slices/graphSlice.ts` | Import `createPlannerError`; `autoWireSystem` auf Preview/Apply aufgeteilt; neue Actions |
-| `store/slices/uiSlice.ts` | +`plannerErrors`-Zustand und Setter (mit Deduplizierung) |
-| `lib/planner/plannerError.ts` | +`plannerErrorCodeFromRuleId`, `plannerErrorCategoryFromValidation` |
-| `lib/planner/plannerError.mapping.test.ts` | **NEU** — 22 Mapping-Tests |
-| `docs/CAMP-FINAL-HARDENING-REPORT-2026-10-05.md` | **NEU** — dieser Bericht |
+| Datei                                            | Änderung                                                                                                                                                                                     |
+| ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `components/planner/AutoWireReviewModal.tsx`     | **NEU** — Review-Dialog Spec #29                                                                                                                                                             |
+| `components/planner/FlowCanvas.tsx`              | Dynamisch geladenes Review-Modal                                                                                                                                                             |
+| `components/planner/PlannerDashboard.tsx`        | PlannerError-Sync aus Live-Warnungen; Import der Mapper                                                                                                                                      |
+| `components/planner/utils/backbone.ts`           | AC-Kern-Typen als Backbone (ROUTE-003)                                                                                                                                                       |
+| `store/slices/types.ts`                          | +`previewAutoWire`, `applyAutoWirePreview`, `dismissAutoWirePreview`, `autoWirePreview`, `plannerErrors`, `addPlannerError`, `clearPlannerErrors`, `setPlannerErrors`; Import `PlannerError` |
+| `store/slices/graphSlice.ts`                     | Import `createPlannerError`; `autoWireSystem` auf Preview/Apply aufgeteilt; neue Actions                                                                                                     |
+| `store/slices/uiSlice.ts`                        | +`plannerErrors`-Zustand und Setter (mit Deduplizierung)                                                                                                                                     |
+| `lib/planner/plannerError.ts`                    | +`plannerErrorCodeFromRuleId`, `plannerErrorCategoryFromValidation`                                                                                                                          |
+| `lib/planner/plannerError.mapping.test.ts`       | **NEU** — 22 Mapping-Tests                                                                                                                                                                   |
+| `docs/CAMP-FINAL-HARDENING-REPORT-2026-10-05.md` | **NEU** — dieser Bericht                                                                                                                                                                     |
 
 ---
 
@@ -158,7 +162,7 @@ für künftige Rendering-Logik.
 ## 5. Verbleibende offene Punkte (ehrlich)
 
 **Keine funktionalen Lücken aus der ursprünglichen 42-Punkte-Liste.**
-Die folgenden Punkte sind bewusst *nicht* gemacht und dokumentiert:
+Die folgenden Punkte sind bewusst _nicht_ gemacht und dokumentiert:
 
 1. **Playwright E2E:** Chromium-Download durch CDN in der Sandbox blockiert;
    läuft auf GitHub-CI. Kein Code-Defekt.

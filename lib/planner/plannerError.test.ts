@@ -1,10 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  createPlannerError,
-  dedupePlannerErrors,
-  samePlannerError,
-  type PlannerError,
-} from './plannerError';
+import { createPlannerError, dedupePlannerErrors, samePlannerError, type PlannerError } from './plannerError';
 
 describe('lib/planner/plannerError', () => {
   it('createPlannerError sortiert IDs deterministisch', () => {

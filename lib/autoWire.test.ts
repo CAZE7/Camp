@@ -1892,19 +1892,22 @@ describe('Auto-Wire Property: Idempotenz (Spec #6)', () => {
     x: fc.integer({ min: 0, max: 1000 }),
     y: fc.integer({ min: 0, max: 800 }),
   });
-  const arbPlan = fc
-    .array(arbPlanNode, { minLength: 1, maxLength: 6 })
-    .map((consumers) => {
-      const nodes: Node[] = [
-        n('bat1', 'battery', { label: 'Batterie', capacity: 100, chemistry: 'LiFePO4', nominalVoltage: 12 }, { x: 0, y: 0 }),
-        ...consumers.map((c, i) =>
-          n(`${c.type}-${i}-${c.idx}`, c.type, { label: `${c.type}-${i}`, watts: c.watts }, { x: c.x, y: c.y })
-        ),
-      ];
-      // Eindeutigkeit sicherstellen.
-      const seen = new Set<string>();
-      return nodes.filter((nd) => (seen.has(nd.id) ? false : (seen.add(nd.id), true)));
-    });
+  const arbPlan = fc.array(arbPlanNode, { minLength: 1, maxLength: 6 }).map((consumers) => {
+    const nodes: Node[] = [
+      n(
+        'bat1',
+        'battery',
+        { label: 'Batterie', capacity: 100, chemistry: 'LiFePO4', nominalVoltage: 12 },
+        { x: 0, y: 0 }
+      ),
+      ...consumers.map((c, i) =>
+        n(`${c.type}-${i}-${c.idx}`, c.type, { label: `${c.type}-${i}`, watts: c.watts }, { x: c.x, y: c.y })
+      ),
+    ];
+    // Eindeutigkeit sicherstellen.
+    const seen = new Set<string>();
+    return nodes.filter((nd) => (seen.has(nd.id) ? false : (seen.add(nd.id), true)));
+  });
 
   it('A1 — AutoWire(A) = A′, AutoWire(A′) = A′ (Idempotenz auf Kanten/Ziel-Knoten)', () => {
     fc.assert(
