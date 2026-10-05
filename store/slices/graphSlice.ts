@@ -9,6 +9,7 @@ import { isConnectionAllowed } from '../../lib/connectionRules'; // ARCH-002
 import { newEntityId } from '../../lib/id';
 import { getSystemVoltage } from '../../lib/vde-standards';
 import { performAutoWiring, relevantCumulativeDrop } from '../../lib/autoWire';
+import { createPlannerError } from '../../lib/planner/plannerError';
 import { type CableEdgeData } from '../../components/edges/CableEdge';
 import {
   getDerivedSystemState,
@@ -73,6 +74,10 @@ export type GraphSlice = Pick<
   | 'isValidConnection'
   | 'onConnect'
   | 'autoWireSystem'
+  | 'previewAutoWire'
+  | 'applyAutoWirePreview'
+  | 'dismissAutoWirePreview'
+  | 'autoWirePreview'
   | 'structureAutoWiring'
   | 'autoStructurePending'
   | 'onLayout'
@@ -150,6 +155,7 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
   historyFuture: [],
   canUndo: false,
   canRedo: false,
+  autoWirePreview: null,
   autoStructurePending: false,
   onNodesChange: (changes) =>
     set((state) => {
@@ -506,54 +512,81 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
     );
   },
   autoWireSystem: () => {
-    const { nodes, edges } = get();
-
-    const result = performAutoWiring(nodes, edges);
-    if (!result) {
-      get().setSystemMessage('Bitte zuerst eine Batterie platzieren, bevor Komponenten verbunden werden.');
+    // Spec #29 (Auto-Wire Review): Der Knopf berechnet den Vorschlag vor,
+    // wendet ihn aber NICHT direkt an. Der Nutzer sieht im Review-Dialog,
+    // was passiert (neue/geheilte/entfernte Kanten, Konflikte, offene
+    // Fragen) und drückt »Anwenden« oder »Abbrechen«. Sieht der Vorschlag
+    // sauber aus (keine Konflikte, keine Fragen), wird er SOFORT angewendet
+    // — der Nutzer bekommt keine leere Bestätigung für einen trivialen Lauf.
+    get().previewAutoWire();
+    const preview = get().autoWirePreview;
+    if (!preview) return;
+    const hasConflicts = preview.report.conflicts.length > 0;
+    const hasQuestions = preview.report.questions.length > 0;
+    if (hasConflicts || hasQuestions) {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('planner-auto-wire-review'));
+      }
       return;
     }
-
-    // V2: Der Bericht geht in den Store, BEVOR der Graph gesetzt wird — die
-    // offenen Fragen des Automaten („zwei 12-V-Batterien: seriell oder
-    // parallel?") und seine Regelkonflikte gehören vor die Augen des Nutzers,
-    // nicht in ein verworfenes Rückgabeobjekt. Bewusst ohne History-Eintrag:
-    // Der Bericht ist ein Befund über den Graphen, nicht Teil des Graphen.
-    set({ autoWireReport: result.report });
-
-    // Nutzer-Kanten bleiben erhalten; nur Auto-Kanten früherer Läufe
-    // werden durch die frisch berechneten ersetzt (Idempotenz).
-    //
-    // M11-2/R-8: performAutoWiring platziert automatisch erzeugte Knoten
-    // bereits in Flussrichtung auf dem 16-px-Raster (applyFlowLayout in
-    // lib/autoWire/placement.ts) und lässt Nutzerplatzierungen unberührt.
-    // Der frühere zusätzliche getLayoutedElements-Pass würde ALLE Knoten
-    // erneut in die Funktions-Pipeline-Spalten stapeln — das hob die
-    // Flussrichtung wieder auf (Kabel-Umwege, M11-2) und verschob
-    // handplatzierte Bauteile. Das Spalten-Layout bleibt dem expliziten
-    // „Aufräumen“-Knopf (onLayout) vorbehalten.
-    //
-    // Stattdessen wird die ELK-Strukturierung angefordert (Wunsch 2026-09-28):
-    // `ranked` hält dabei die Rollenfolge Quelle → Wandler → Verteilung →
-    // Verbraucher ein (ADR 0024), also gerade die Flussrichtung, die der
-    // verworfene Spalten-Pass aufhob. Der Lauf startet erst, wenn alle
-    // Kartenboxen gemessen sind (`structureAutoWiring`).
-    set((state) =>
-      withHistory(state, {
+    get().applyAutoWirePreview();
+  },
+  /** Berechnet Auto-Wire als Preview, ohne den echten Graphen zu verändern. */
+  previewAutoWire: () => {
+    const { nodes, edges } = get();
+    const result = performAutoWiring(nodes, edges);
+    if (!result) {
+      get().addPlannerError(
+        createPlannerError({
+          code: 'PLAN_INCOMPLETE',
+          severity: 'warning',
+          category: 'general',
+          message: 'Bitte zuerst eine Batterie platzieren, bevor Komponenten verbunden werden.',
+          explanation:
+            'Auto-Wire braucht mindestens eine Batterie als Energiequelle, um Stromkreise ableiten zu können.',
+          suggestedFix: 'Lege eine Aufbaubatterie auf die Arbeitsfläche und starte Auto-Wire erneut.',
+        })
+      );
+      set({ autoWirePreview: null });
+      return;
+    }
+    // Der Bericht geht immer in den Store; der Preview liegt getrennt
+    // davon, damit Dialog und Warn-Center beide die gleichen Fakten lesen.
+    set({
+      autoWireReport: result.report,
+      autoWirePreview: {
         nodes: [...result.nodes],
         edges: [...result.edges],
+        report: result.report,
+        previousEdgeCount: edges.length,
+        previousNodeCount: nodes.length,
+      },
+    });
+  },
+  /** Übernimmt den Preview in den echten Graphen (mit History-Eintrag). */
+  applyAutoWirePreview: () => {
+    const preview = get().autoWirePreview;
+    if (!preview) return;
+    set((state) =>
+      withHistory(state, {
+        nodes: [...preview.nodes],
+        edges: [...preview.edges],
         autoStructurePending: true,
+        autoWirePreview: null,
       })
     );
-
     if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
       window.requestAnimationFrame(() => {
         window.dispatchEvent(new CustomEvent('planner-fit-view'));
         window.dispatchEvent(
-          new CustomEvent('planner-auto-wired', { detail: { edgeCount: result.edges.length } })
+          new CustomEvent('planner-auto-wired', { detail: { edgeCount: preview.edges.length } })
         );
       });
     }
+  },
+  /** Bricht den Preview ab (Dialog schließen, nichts ändern). */
+  dismissAutoWirePreview: () => {
+    set({ autoWirePreview: null });
   },
   /**
    * ELK-Strukturierung nach dem automatischen Verbinden (Wunsch 2026-09-28).

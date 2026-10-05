@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import fc from 'fast-check';
 import type { Node, Edge } from '@xyflow/react';
 import {
   performAutoWiring,
@@ -1872,5 +1873,71 @@ describe('autoWire — Nutzerangaben an Auto-Kanten (AUDIT D3)', () => {
     const again = second.edges.find((x) => connectionKey(x) === connectionKey(solar))!;
     expect(again.data!.length).toBe(5);
     expect(second.edges.length).toBe(first.edges.length);
+  });
+});
+
+// ============================================================================
+// Property-Tests (Spec #6, #32) — Idempotenz, keine stillen Überschreibungen.
+// ============================================================================
+describe('Auto-Wire Property: Idempotenz (Spec #6)', () => {
+  // Generator für kleine, plausible Pläne (eine Batterie plus Konsumenten,
+  // optional Solar/Inverter) — ausreichend, um die Idempotenz-Eigenschaft
+  // über hunderte zufällige Konfigurationen zu prüfen, ohne auf golden-
+  // master-Plandaten angewiesen zu sein.
+  const nodeTypes = ['consumer', 'solar', 'inverter', 'busbar', 'fuse'] as const;
+  const arbPlanNode = fc.record({
+    idx: fc.integer({ min: 0, max: 8 }),
+    type: fc.constantFrom(...nodeTypes),
+    watts: fc.integer({ min: 5, max: 300 }),
+    x: fc.integer({ min: 0, max: 1000 }),
+    y: fc.integer({ min: 0, max: 800 }),
+  });
+  const arbPlan = fc
+    .array(arbPlanNode, { minLength: 1, maxLength: 6 })
+    .map((consumers) => {
+      const nodes: Node[] = [
+        n('bat1', 'battery', { label: 'Batterie', capacity: 100, chemistry: 'LiFePO4', nominalVoltage: 12 }, { x: 0, y: 0 }),
+        ...consumers.map((c, i) =>
+          n(`${c.type}-${i}-${c.idx}`, c.type, { label: `${c.type}-${i}`, watts: c.watts }, { x: c.x, y: c.y })
+        ),
+      ];
+      // Eindeutigkeit sicherstellen.
+      const seen = new Set<string>();
+      return nodes.filter((nd) => (seen.has(nd.id) ? false : (seen.add(nd.id), true)));
+    });
+
+  it('A1 — AutoWire(A) = A′, AutoWire(A′) = A′ (Idempotenz auf Kanten/Ziel-Knoten)', () => {
+    fc.assert(
+      fc.property(arbPlan, (nodes) => {
+        const first = performAutoWiring(nodes);
+        if (!first) return; // kein Plan ohne Batterie → nichts zu prüfen
+        const second = performAutoWiring(first.nodes, first.edges);
+        if (!second) throw new Error('Zweiter Lauf lieferte null — Idempotenz gebrochen');
+        // Der zweite Lauf darf keine neuen KNOTEN (Shunt/Sicherung/etc.) erfinden.
+        expect(second.nodes.map((n) => n.id).sort()).toEqual(first.nodes.map((n) => n.id).sort());
+        // Der zweite Lauf darf keine neue KANTENZAHL erzeugen.
+        expect(second.edges.length).toBe(first.edges.length);
+      }),
+      { numRuns: 80, seed: 20261004 }
+    );
+  });
+
+  it('A2 — AutoWire(A′) erzeugt keine Kanten mehr als AutoWire(A) (kein Wachstum)', () => {
+    fc.assert(
+      fc.property(arbPlan, (nodes) => {
+        const first = performAutoWiring(nodes);
+        if (!first) return;
+        const second = performAutoWiring(first.nodes, first.edges);
+        if (!second) throw new Error('Zweiter Lauf null');
+        // Die Kantenmenge (nach Connection-Key) darf nicht wachsen.
+        const keys = (es: Edge[]) => new Set(es.map((ed) => connectionKey(ed)));
+        const k1 = keys(first.edges);
+        const k2 = keys(second.edges);
+        for (const k of k2) {
+          expect(k1.has(k)).toBe(true);
+        }
+      }),
+      { numRuns: 80, seed: 20261004 }
+    );
   });
 });

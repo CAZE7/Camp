@@ -37,6 +37,11 @@ import { VerificationSeal } from './ui/VerificationSeal';
 import { GuidedPlanRail } from './ui/GuidedPlanRail';
 import { autoWireFeedbackFor } from './utils/guidedSteps';
 import { verificationSummary } from './utils/verificationWarnings';
+import {
+  createPlannerError,
+  plannerErrorCodeFromRuleId,
+  plannerErrorCategoryFromValidation,
+} from '../../lib/planner/plannerError';
 
 function NavigationSection({
   viewMode,
@@ -232,8 +237,16 @@ function ActionsSection({
   const runAutoWire = () => {
     setBusy('wire');
     autoWireSystem();
-    // Ein Satz für beide Einstiegspunkte (Toolbar und Schrittleiste).
-    setFeedback(autoWireFeedbackFor(nodes));
+    // Spec #29: Der Vorschlag ist bei Konflikten/Fragen erst nach Bestätigung
+    // im Review-Dialog angewendet. Erfolgs-Feedback also erst nach
+    // `planner-auto-wired` — ein sofortiger Toast würde sonst bei Abbruch
+    // von einer vollzogenen Verkabelung sprechen.
+    const onApplied = () => {
+      const latestNodes = usePlannerStore.getState().nodes;
+      setFeedback(autoWireFeedbackFor(latestNodes));
+      window.removeEventListener('planner-auto-wired', onApplied);
+    };
+    window.addEventListener('planner-auto-wired', onApplied);
     window.setTimeout(() => setBusy(null), 350);
   };
 
@@ -646,6 +659,7 @@ export function PlannerDashboard() {
   // V2-CONFLICT-001: Der Auto-Wire-Bericht ist Teil derselben Liste — offene
   // Entscheidungen und Regelkonflikte stehen dort, wo der Nutzer Befunde sucht.
   const autoWireReport = usePlannerStore((state) => state.autoWireReport);
+  const setPlannerErrors = usePlannerStore((state) => state.setPlannerErrors);
   const liveWarnings = useLiveValidation(nodes, edges, verificationReport, autoWireReport);
   const warnings = useMemo(() => {
     const supplemental: ValidationWarning[] = [];
@@ -689,6 +703,32 @@ export function PlannerDashboard() {
     return [...liveWarnings, ...supplemental];
   }, [liveWarnings, nodes, waterWarning]);
 
+  // Spec #36: Strukturierte Fehler im Store halten. Jede Warnung wird zu
+  // einem PlannerError umgewandelt; das Warn-Center und künftige Filter/
+  // Prüfmodus-Ansichten können damit ohne String-Parsing arbeiten.
+  useEffect(() => {
+    const errors = warnings.map((w) =>
+      createPlannerError({
+        code: plannerErrorCodeFromRuleId(w.ruleId),
+        severity: w.type === 'critical' ? 'critical' : w.type === 'warning' ? 'warning' : 'info',
+        category: plannerErrorCategoryFromValidation(w.category, w.ruleId),
+        nodeIds: w.focusType === 'node' && w.focusId ? [w.focusId] : [],
+        edgeIds: w.focusType === 'edge' && w.focusId ? [w.focusId] : [],
+        message: w.title ?? w.message,
+        explanation: w.message,
+        suggestedFix: w.remedy,
+        details: {
+          ruleId: w.ruleId ?? null,
+          measuredValue: w.measuredValue ?? null,
+          expectedValue: w.expectedValue ?? null,
+          unit: w.unit ?? null,
+          source: w.source ?? null,
+        },
+      })
+    );
+    setPlannerErrors(errors);
+  }, [warnings, setPlannerErrors]);
+
   const handleFix = useCallback(
     (warning: ValidationWarning) => {
       if (warning.focusId && warning.focusType) focusElement(warning.focusId, warning.focusType);
@@ -715,9 +755,21 @@ export function PlannerDashboard() {
     window.dispatchEvent(new CustomEvent('planner-open-catalog'));
   }, []);
   const handleGuidedAutoWire = useCallback(() => {
+    // Spec #29: autoWireSystem öffnet bei Konflikten/Fragen den Review-
+    // Dialog und wendet den Vorschlag erst nach Bestätigung an. Das
+    // Erfolgs-Feedback darf also NICHT sofort erscheinen (sonst wäre
+    // es eine Lüge bei „Abbrechen"). Das Feedback feuert erst, wenn
+    // `planner-auto-wired` dispatcht wird (nach applyAutoWirePreview).
     autoWireSystem();
-    setFeedback(autoWireFeedbackFor(nodes));
-  }, [autoWireSystem, nodes]);
+    const onApplied = () => {
+      // Zum Zeitpunkt des Events hat der Store bereits den neuen
+      // Graphen — die aktuellsten Nodes holen wir direkt aus dem Store.
+      const latestNodes = usePlannerStore.getState().nodes;
+      setFeedback(autoWireFeedbackFor(latestNodes));
+      window.removeEventListener('planner-auto-wired', onApplied);
+    };
+    window.addEventListener('planner-auto-wired', onApplied);
+  }, [autoWireSystem]);
 
   // Ctrl+S wird in PlannerInner abgefangen (kein Browser-Speichern-Dialog) und
   // hier sichtbar bestätigt — der Plan liegt ohnehin laufend im Local Storage.

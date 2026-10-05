@@ -4,6 +4,7 @@ import { type CableEdgeData } from '../../components/edges/CableEdge';
 import { type NodeDataPatch, type PlannerFlowNode } from '../../components/nodes/types';
 import { type WaterPipeEdgeData } from '../../components/edges/WaterPipeEdge';
 import type { AutoWireReport } from '../../lib/autoWire/conflicts';
+import type { PlannerError } from '../../lib/planner/plannerError';
 
 export type { PlannerFlowNode };
 
@@ -67,6 +68,21 @@ export interface PlannerState {
 
   systemMessage: string | null;
   setSystemMessage: (msg: string | null) => void;
+
+  /**
+   * Strukturierte Fehler (Spec #36). Ersetzt den freien String in
+   * `systemMessage` schrittweise: ein `PlannerError` trägt Code, Schweregrad,
+   * Kategorie, betroffene IDs, Nachricht, Erklärung und Lösungsvorschlag.
+   *
+   * Gesetzt werden die Fehler von den Aktionen, die sie erzeugen (z. B.
+   * autoWireSystem bei fehlender Batterie, useLiveValidation). Das
+   * Warn-Center rendert sie strukturiert; Klick springt zum betroffenen
+   * Bauteil.
+   */
+  plannerErrors: readonly PlannerError[];
+  addPlannerError: (error: PlannerError) => void;
+  clearPlannerErrors: () => void;
+  setPlannerErrors: (errors: readonly PlannerError[]) => void;
 
   nodes: PlannerFlowNode[];
   edges: Edge<CableEdgeData>[];
@@ -177,6 +193,22 @@ export interface PlannerState {
   isValidConnection: (connection: Connection | Edge<CableEdgeData>) => boolean;
   onConnect: (connection: Connection) => void;
   autoWireSystem: () => void;
+  /**
+   * AUTO-WIRE-REVIEW (Spec #29): Berechnet den Auto-Wire-Vorschlag, wendet
+   * ihn aber NOCH NICHT an. Stattdessen liegt der Vorschlag als Preview
+   * im Store; der Nutzer sieht im Review-Dialog, was passiert (sichere
+   * Verbindungen, Konflikte, Fragen), und entscheidet per Apply/Cancel.
+   */
+  previewAutoWire: () => void;
+  applyAutoWirePreview: () => void;
+  dismissAutoWirePreview: () => void;
+  autoWirePreview: {
+    nodes: PlannerFlowNode[];
+    edges: Edge<CableEdgeData>[];
+    report: AutoWireReport;
+    previousEdgeCount: number;
+    previousNodeCount: number;
+  } | null;
   /**
    * ELK-Strukturierung nach dem automatischen Verbinden (Wunsch 2026-09-28:
    * „Automatisch verbinden soll auch nach ELK strukturiert werden").
