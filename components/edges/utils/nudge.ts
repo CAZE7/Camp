@@ -312,7 +312,8 @@ const applyAxisPass = (
   pathIds: string[],
   axis: 'h' | 'v',
   gap: number,
-  safetyByPath: CandidateSafetyContext[]
+  safetyByPath: CandidateSafetyContext[],
+  fixedIds: ReadonlySet<string>
 ): boolean => {
   let changed = false;
   const segs: Seg[] = [];
@@ -358,9 +359,16 @@ const applyAxisPass = (
     // stable laneGrid increments instead of reverting each blocked path to
     // its overlapping original lane (the Camper I2 regression).
     const placed = new Map<number, Seg[]>();
+    // Locked routes keep their exact geometry but still reserve their lane so
+    // movable siblings route around the user's fixed choice.
+    for (const p of pathOrder) {
+      if (!fixedIds.has(at(pathIds, p))) continue;
+      placed.set(p, groupSegmentsAt(at(clones, p), segs, byPath.get(p)!, axis));
+    }
     const laneStep = Math.abs(gap);
     for (let k = 0; k < pathOrder.length; k++) {
       const p = at(pathOrder, k);
+      if (fixedIds.has(at(pathIds, p))) continue;
       const first = at(segs, firstSegIndexOf(p));
       const ideal = mean + (k - (pathOrder.length - 1) / 2) * gap;
       const originalPath = at(originals, p);
@@ -449,10 +457,11 @@ const applyAxis = (
   pathIds: string[],
   axis: 'h' | 'v',
   gap: number,
-  safetyByPath: CandidateSafetyContext[]
+  safetyByPath: CandidateSafetyContext[],
+  fixedIds: ReadonlySet<string>
 ): void => {
   for (let pass = 0; pass < MAX_NUDGE_REFLOW_PASSES; pass++) {
-    if (!applyAxisPass(clones, originals, pathIds, axis, gap, safetyByPath)) break;
+    if (!applyAxisPass(clones, originals, pathIds, axis, gap, safetyByPath, fixedIds)) break;
   }
 };
 
@@ -521,7 +530,7 @@ const nudgeImprovesQuality = (before: NudgeQuality, after: NudgeQuality): boolea
  */
 export function nudgeOrthogonalPaths(
   paths: NudgePath[],
-  options?: { obstacles?: Rect[]; gap?: number }
+  options?: { obstacles?: Rect[]; gap?: number; fixedIds?: ReadonlySet<string> }
 ): Map<string, Point[]> {
   const out = new Map<string, Point[]>();
   if (paths.length === 0) return out;
@@ -531,6 +540,7 @@ export function nudgeOrthogonalPaths(
   const ids = paths.map((p) => p.id);
   const gap = options?.gap ?? NUDGE_GAP;
   const obstacles = options?.obstacles ?? [];
+  const fixedIds = options?.fixedIds ?? new Set<string>();
   const safetyByPath = originals.map((original) => {
     const relevantObstacles = obstaclesForPath(obstacles, at(original, 0), at(original, original.length - 1));
     return {
@@ -539,8 +549,8 @@ export function nudgeOrthogonalPaths(
       originalHitsObstacles: relevantObstacles.length > 0 && pathHitsObstacles(original, relevantObstacles),
     };
   });
-  applyAxis(clones, originals, ids, 'h', gap, safetyByPath);
-  applyAxis(clones, originals, ids, 'v', gap, safetyByPath);
+  applyAxis(clones, originals, ids, 'h', gap, safetyByPath, fixedIds);
+  applyAxis(clones, originals, ids, 'v', gap, safetyByPath, fixedIds);
 
   for (let i = 0; i < paths.length; i++) {
     const id = at(ids, i);

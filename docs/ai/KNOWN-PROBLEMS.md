@@ -1,7 +1,8 @@
 # KNOWN-PROBLEMS
 
 Nur **echte, im Code nachweisbare** Probleme. Keine Wunschliste, keine allgemeinen TODOs.
-Jeder Eintrag ist am 2026-09-09 gegen den Code geprüft.
+Historische Einträge behalten ihren datierten Prüfstand; PERF-001, ROUTE-003 und ROUTE-010
+wurden am 2026-10-05 mit aktuellen Messungen nachgeprüft.
 
 Legende Severity: **hoch** = Agent kann falschen Code ändern / falsche Sicherheit annehmen ·
 **mittel** = Qualitäts- oder Konsistenzrisiko · **niedrig** = Komfort/Doku.
@@ -41,6 +42,35 @@ Legende Severity: **hoch** = Agent kann falschen Code ändern / falsche Sicherhe
 - **RELATED TEST:** `scripts/regression/regression.test.ts` (p02 Metrik-Budget + Goldens;
   ADR-0032-Block „intern mangelfrei"), `scripts/routing/audit.ts --shifts`
 - **RELATED ISSUE:** ADR 0032 (Frühstopp-Fix, Reparatur, verworfene Varianten), ROUTE-008
+
+---
+
+## ROUTE-010 — Regressionsratchet akzeptiert bestehende I2-/I3-Verstöße — **OPEN**
+
+- **AREA:** Routing / Regressionstests
+- **FILE:** `scripts/regression/layout.ts` (`measureScenario`),
+  `scripts/regression/regression.test.ts`, `scripts/regression/goldenLayouts.json`
+- **DESCRIPTION:** Der Regressionstest vergleicht Clearance- und Überdeckungsmetriken nur
+  mit `≤ Baseline`; er erzwingt nicht, dass I1/I2/I3 null sind. Eine aktuelle direkte
+  Messung aller 15 `REGRESSION_SCENARIOS` (2026-10-05) fand I1 = 0 in allen Fällen, aber
+  Nichtnull-Befunde in zwei Fällen:
+  - `p02-batterie-10-verbraucher`: zwei I3-Paare unter 12 px (0 px und 4 px):
+    `e-fuse-cons-1 × e-fuse-cons-4` und `e-fuse-cons-7 × e-fuse-cons-9`.
+  - `p11-zwangskreuzung`: eine I2-Überdeckung `e-down × e-up` sowie zwei I3-Meldungen
+    mit 0 px Abstand. Die beiden Trassen teilen außerhalb eines Anschlusses denselben
+    horizontalen Abschnitt bei y=536; das ist keine saubere rechtwinklige Zwangskreuzung.
+- **CURRENT BEHAVIOR:** `npm run test:regression` kann trotz dieser gespeicherten
+  Nichtnull-Baselines bestehen. Die sechs anderen `routing:audit`-Referenzpläne mit I1–I7 = 0
+  sind ein separates Set und heben diese Regression-Befunde nicht auf.
+- **EXPECTED BEHAVIOR:** I1/I2/I3 = 0 in jedem Regression-Szenario; Fehlerursache im Router
+  beheben und danach Layout-Baselines nur mit dokumentierter, gemessener Verbesserung ändern.
+- **STATUS (2026-10-05):** **OPEN.** Kein Testratchet wurde gelockert; der aktuelle
+  Abnahmewunsch „I1/I2/I3 = 0“ ist für die Regression-Suite nicht erfüllt.
+- **SEVERITY:** mittel (Routing-Korrektheit und irreführend grünes Ratchet)
+- **RELATED TEST:** `npm run test:regression`, `scripts/regression/regression.test.ts`,
+  `scripts/regression/goldenLayouts.json`; Gegenprobe via `checkEdgeNodeCollisions`,
+  `checkEdgeEdgeOverlaps`, `checkClearance`.
+- **RELATED ISSUE:** ROUTE-009 (gewichtete Clearance-Auswahl), ROUTE-003 (Domänentrennung).
 
 ---
 
@@ -399,15 +429,15 @@ cableClearance` — an einer Klemme hängen im Referenzbestand regelmäßig zwei
   Sizing (`edgeDomainOf` aus Knotentyp + Handle) und zählt die Abstände je **Segmentpaar** über
   das Kollisionsmodell (`classifySegmentAgainstSegment`; Kreuzungen `soft` und Überdeckungen
   `hard` zählen nicht mit, ADR 0009/0019).
-  Ergebnis über die sechs Referenzpläne (`npm run routing:domain-probe`):
-  **80 gemischte Paare**, davon **12 kreuzend**, darunter **23 zu nahe Segmentpaare**
-  (inverter 0, acdc 5, complex 18; übrige Pläne 0), engstes Paar
-  `e-busbar-fuse × e-shore-inv` = **0,8 px**. Betroffen sind 7 Kantenpaare (acdc 1,
-  complex 6) — überwiegend die 230-V-Zuleitungen am Wechselrichter (`e-shore-inv`,
-  `e-inv-induct`) entlang der 12-V-Sammelschienen.
-  → Die Regel ist also **nicht** wirkungslos-neutral: Eine Anbindung würde die eingefrorenen
-  Referenzpläne verschieben (Kabellängen, Kreuzungen, Golden Master, Ratchets) — sie ist
-  eine Layout-/Port-Entscheidung, keine reine Kostenmodell-Änderung.
+  **Aktuelle Messung (2026-10-05):** 80 gemischte Paare, davon 12 kreuzend; **16 parallele
+  Segmentpaare liegen unter 24 px** (acdc 4, complex 12; simple/camper/solar/inverter 0).
+  Engstes Paar in `acdc`: `e-auto-8 × e-auto-ac-13` = 16 px; in `complex`:
+  `e-shore-inv × e-auto-2` = 12 px. Die Messung bestätigt, dass das Produktivrouting die
+  deklarierte 24-px-Paarregel nicht durchsetzt. Die älteren Zahlen vom 2026-09-28 (23 Paare,
+  Minimum 0,8 px) sind durch diese Messung überholt.
+  → Eine Anbindung kann die eingefrorenen Referenzpläne verschieben (Kabellängen,
+  Kreuzungen, Golden Master, Ratchets) — sie ist eine Layout-/Port-Entscheidung, keine reine
+  Kostenmodell-Änderung.
   → Zweiter Versuch erst mit **getrennten AC-/DC-Korridoren an den Ports** (eigene Lane je
   Domäne im Port-Fan-Out, `lib/routing/rules/portFanOut.ts`) oder mit Wasser-Routing, wo der
   Nutzen fachlich sichtbar wird (`electrical ↔ water`). Reine Tuben-Aufblähung im
@@ -680,57 +710,53 @@ routeAllCables → checkInvariants`, sechs Referenzpläne, Kartenmaß 192 × 120
 
 ---
 
-## PERF-001 — Große Pläne liegen über dem Frame-Budget (kein Gate-Bruch)
+## PERF-001 — Live-Routing-Ratchet überschritten; große Pläne nicht interaktiv
 
 - **AREA:** Performance
 - **FILE:** `benchmarks/edgeRoutingPerf.bench.ts`, `benchmarks/routeAllScaling.probe.ts`,
-  `components/edges/utils/cableRouteStore.ts`
-- **DESCRIPTION:** ADR 0012 bindet das 16-ms-Budget **ausdrücklich an den Referenzplan
-  N=36 / E=134** — nicht an jede Plangröße. Große Pläne liegen darüber:
+  `components/edges/utils/cableRouteStore.ts`, `tests/scale/plannerScale.test.ts`
+- **DESCRIPTION:** ADR 0012 bindet das 16-ms-Ziel an den Referenzplan N=36/E=134. Zusätzlich
+  blockiert der Live-Pfad-Ratchet bei 60 ms Median oder p90/Median > 2. Beide Aussagen sind
+  getrennt zu lesen: Der Legacy-Einzelkanten-Renderpfad besteht sein 16-ms-Gate, der
+  produktive `routeAllCables`-Gesamtpass dagegen nicht.
+- **AKTUELLE MESSUNG (2026-10-05):**
 
-  | Messung                             | Plan        | Wert                                  | Budget     |
-  | ----------------------------------- | ----------- | ------------------------------------- | ---------- |
-  | `npm run perf:edge-routing` (Gate)  | N=36 E=134  | Median **2,3–3,1 ms**, p90 3,3–4,4 ms | 16 ms → OK |
-  | dto., Durchlauf „Sehr groß“         | N=120 E=585 | **21,3 ms**                           | über 16 ms |
-  | `npm run perf:route-scaling`, Kette | N=100 E=99  | 13,8 ms (0,14 ms/Kante)               | —          |
-  | dto.                                | N=500 E=499 | 215 ms (0,43 ms/Kante)                | —          |
-  | dto., Worst Case Spannkanten        | N=250 E=125 | 121 ms (0,97 ms/Kante)                | —          |
-  | dto.                                | N=500 E=250 | 2 125 ms (8,50 ms/Kante)              | —          |
+  | Messung / Pfad                            | Plan        |     Median |       p90 / min–max | Ergebnis / Grenze |
+  | ----------------------------------------- | ----------- | ---------: | ------------------: | ----------------- |
+  | Legacy-Render-Gate                        | N=36 E=134  |    2,07 ms |         p90 2,95 ms | 16 ms: PASS       |
+  | Live `routeAllCables`-Ratchet             | N=36 E=134  |  276,37 ms |       p90 297,03 ms | 60 ms: **FAIL**   |
+  | Routing-only Kette (`perf:route-scaling`) | N=500 E=499 |   178,2 ms |      175,1–180,5 ms | 0 Fallbacks       |
+  | Routing-only Spannkanten, Worst Case      | N=100 E=50  |   239,6 ms |      234,1–254,0 ms | 0 Fallbacks       |
+  | dto.                                      | N=250 E=125 | 2.244,4 ms |  2.166,8–2.301,0 ms | 0 Fallbacks       |
+  | dto.                                      | N=500 E=250 | 5.568,6 ms |  5.405,8–5.606,3 ms | 0 Fallbacks       |
+  | Scale-Routing + Final Validation          | N=250       |     54,1 s | Gesamt-Suite 71,7 s | I1/I2/I3: PASS    |
 
-  (Render-Zahlen aus drei Läufen, 2026-09-28; die Scaling-Probe meldet min/max mit.)
+  Die Routing-only-Probe misst keine I1/I2/I3-Finalvalidierung. Der 250er-Scale-Test
+  wurde explizit mit `SCALE_250=1` ausgeführt; der normale Coverage-Lauf überspringt nur
+  den teuren 250er-Routingtest. Ein vollständiger Auto-Wire-/Validierungslauf für 500
+  Knoten wurde nicht gemessen.
 
-- **CURRENT BEHAVIOR:** Große Pläne werden im Live-Betrieb durch die 100-ms-Drossel
-  (`ROUTE_THROTTLE_MS`) erträglich, nicht durch Laufzeit. Ab N≈500 mit planweiten Kanten
-  übersteigt ein einzelner vollständiger Durchlauf die Drossel deutlich (≈2 s).
-- **ZWEITER MESSPUNKT (2026-09-28, ADR 0030):** Der Live-Pfad-Ratchet wertet jetzt zusätzlich
-  die **Streuung aus denselben Messproben** aus: `p90 ≤ 2 × Median`, blockierend
-  (Exit-Code 1). Gemessen über zehn Läufe lag das Verhältnis bei 1,11–1,56; die erste
-  Fassung mit 1,5 scheiterte sofort an einem 1,56-Lauf (der Median schwankt stärker als der
-  Schwanz) — deshalb 2. Ein absolutes p90-Budget bleibt verworfen: 292 ms bei unverändertem
-  Code unter Nebenlast. Median-Ratchet (60 ms) und 16-ms-Ziel bleiben unangetastet.
-- **EXPECTED BEHAVIOR:** Der zweite, dokumentierte Messpunkt ist umgesetzt (ADR 0030).
-  Offen bleibt die **absolute** Seite: große Pläne über dem 16-ms-Ziel brauchen eine
-  Optimierung mit eigenem ADR. **Kein** stilles Anheben des Budgets und kein Entfernen des
-  Gates.
-- **TEILWEISE UMGESETZT (2026-09-25, AUDIT P1):** Vorher maß das CI-Gate ausschließlich
-  `buildOrthogonalPath` — den **Legacy-Router**, den die Fläche seit ADR 0014 nicht mehr
-  zeichnet. `npm run perf:edge-routing` misst jetzt zusätzlich die **Live-Pipeline**
-  (`routeAllCables` auf demselben Referenzplan N=36/E=134): Median **≈ 29 ms**, p90 ≈ 40 ms
-  auf der Entwicklungsmaschine — also rund doppelt über dem 16-ms-Frame-Budget. Das Gate
-  läuft deshalb als **Ratchet** (60 ms, Exit-Code bei Überschreitung), nicht als Behauptung:
-  der Ist-Zustand ist festgehalten und Rückfall verboten; das Ziel bleibt 16 ms und wird
-  durch echte Optimierung (nicht durch Anheben) erreicht. Offen bleibt die
-  Skalierungsspitze N≈500 (≈2 s, s. Tabelle).
-- **STATUS (2026-09-28):** Das Gate vergleicht **nur den Median**. Drei isolierte Läufe:
-  Live-Median 48,7–51,4 ms, **p90 59,0–65,4 ms** — der p90 liegt damit an bzw. über der
-  60-ms-Ratchet, während das Gate grün meldet. Unter Nebenlast (parallele Builds) gemessen:
-  Median 124 ms, p90 292 ms bei **unverändertem** Code → der Ratchet ist keine
-  lastnormalisierte Aussage. Ein p90-Budget braucht eine Kalibrierung im selben Prozess
-  (eigener ADR-0012-Nachtrag), kein stilles Anheben.
-- **SEVERITY:** mittel
-- **WORKAROUND:** Drossel nutzen; Änderungen am A\*-Innenloop immer mit beiden Benchmarks
-  gegenmessen. Einzelmessungen großer Pläne streuen um Faktor >2 — immer den Median nehmen.
-- **RELATED TEST:** `npm run perf:edge-routing` (CI-Gate), `npm run perf:route-scaling` (Probe)
+- **CURRENT BEHAVIOR:** `npm run perf:edge-routing` endete in diesem Lauf mit Exit-Code 1,
+  weil der Live-Median (276,37 ms) den 60-ms-Ratchet überschritt. `npm run perf:route-scaling`
+  zeigte 5,57 s beim 500-Knoten-Spannkantenfall — weit oberhalb der 100-ms-Drossel. Die
+  100-ms-Drossel macht einen vollständigen Durchlauf dieser Größenordnung nicht interaktiv.
+- **ATTRIBUTION:** Das ist ein bestätigter offener Gate-/Performance-Befund im aktuellen
+  Checkout. Die Messung beweist keinen Regress durch die hier vorgenommene Lock-Härtung;
+  ein sauberer A/B-Lauf gegen den Branch-Basis-Commit wurde in dieser Session nicht gemacht.
+- **EXPECTED BEHAVIOR:** Live-Pfad-Ratchet besteht ohne Toleranzanhebung; worst-case
+  Routingzeit sinkt durch eine separat gemessene Optimierung mit eigenem ADR. Kein stilles
+  Anheben des Budgets und kein Entfernen des Gates.
+- **STATUS (2026-10-05):** **OPEN.** ADR 0030 prüft zusätzlich `p90 ≤ 2 × Median`; das
+  Streuungsverhältnis war hier 1,07 und besteht. Der absolute Median-Ratchet von 60 ms fällt
+  aber deutlich durch. Frühere Messungen vom 2026-09-28 lagen ebenfalls weit über dem
+  16-ms-Ziel; sie ersetzen den heutigen, konkreten Gate-Ausfall nicht.
+- **SEVERITY:** mittel (interaktive Performance; kein elektrischer Regelverstoß)
+- **WORKAROUND:** Für 10–100 Knoten Scale-/Routingtests ausführen; Änderungen am A*-Innenloop
+  gegen beide Benchmarks messen. Die Worst-Case-Probe ist diagnostisch und ihr `0 Fallbacks`
+  ist kein Beweis für null Invariantenverletzungen.
+- **RELATED TEST:** `npm run perf:edge-routing` (Live-Ratchet),
+  `npm run perf:route-scaling` (Routing-only-Probe),
+  `SCALE_250=1 npx vitest run tests/scale/plannerScale.test.ts`
 - **RELATED ISSUE:** ADR 0012, **ADR 0030** (Streuungs-Ratchet), historisch AUDIT PERF-001
   (Region-Filter; sechsstellig → ms).
 

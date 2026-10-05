@@ -1,4 +1,4 @@
-import { renderHook } from '@testing-library/react';
+import { act, renderHook } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { useLiveValidation, type ValidationWarning } from './useLiveValidation';
 import { textContaining } from '../../../test-helpers/matchers'; // AUDIT T1
@@ -7,6 +7,7 @@ import { isStarterBattery } from '../../../lib/autoWire/validation';
 import { TEMPLATE_AUTARK } from '../templates';
 import { type Node, type Edge } from '@xyflow/react';
 import { type CableEdgeData } from '../../edges/CableEdge';
+import { clearCableRoutes, publishCableRouteFinalValidation } from '../../edges/utils/cableRouteStore';
 
 /**
  * Befunde der Verifikations-Engine tragen `verify-`-IDs. Dieses Helferchen
@@ -18,6 +19,74 @@ const plannerWarnings = (warnings: ValidationWarning[]) =>
   warnings.filter((w) => !w.id.startsWith('verify-'));
 
 describe('useLiveValidation', () => {
+  it('leitet gesperrte Kantenkonflikte aus der Final-Validation als klickbare Warnungen ab', () => {
+    act(() => clearCableRoutes());
+    publishCableRouteFinalValidation({
+      status: 'INVALID',
+      counts: {
+        edgeNodeCollisions: 1,
+        edgeEdgeOverlaps: 0,
+        clearanceViolations: 0,
+        lockedRouteViolations: 1,
+      },
+      violations: [
+        {
+          invariant: 'I1',
+          edgeId: 'locked-wire',
+          otherId: 'obstacle',
+          detail: 'Segment trifft das Bauteil obstacle.',
+        },
+      ],
+      lockedRouteViolations: [
+        {
+          code: 'ROUTE-LOCK-ENDPOINT',
+          edgeId: 'locked-wire',
+          detail: 'Der gespeicherte Weg endet nicht am aktuellen Anschluss.',
+        },
+      ],
+      edgeCount: 1,
+    });
+    const nodes: Node[] = [
+      { id: 'battery', type: 'battery', position: { x: 0, y: 0 }, data: { capacity: 100 } },
+      { id: 'load', type: 'consumer', position: { x: 300, y: 0 }, data: { watts: 60 } },
+    ];
+    const edges: Edge<CableEdgeData>[] = [
+      {
+        id: 'locked-wire',
+        source: 'battery',
+        target: 'load',
+        data: {
+          intent: 'locked',
+          locked: true,
+          lockedWaypoints: [
+            { x: 10, y: 10 },
+            { x: 20, y: 10 },
+          ],
+        },
+      },
+    ];
+    const { result } = renderHook(() => useLiveValidation(nodes, edges));
+    const collision = result.current.find((warning) => warning.id.startsWith('route-lock-I1-locked-wire'));
+    const endpoint = result.current.find((warning) => warning.id === 'ROUTE-LOCK-ENDPOINT-locked-wire');
+    expect(collision).toEqual(
+      expect.objectContaining({
+        category: 'routing',
+        focusType: 'edge',
+        focusId: 'locked-wire',
+        type: 'critical',
+      })
+    );
+    expect(endpoint).toEqual(
+      expect.objectContaining({
+        category: 'routing',
+        focusType: 'edge',
+        focusId: 'locked-wire',
+        ruleId: 'ROUTE-LOCK-ENDPOINT',
+      })
+    );
+    act(() => clearCableRoutes());
+  });
+
   it('should return empty warnings for empty nodes and edges', () => {
     const { result } = renderHook(() => useLiveValidation([], []));
     expect(result.current).toEqual([]);

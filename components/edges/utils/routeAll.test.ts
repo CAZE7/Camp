@@ -120,6 +120,73 @@ describe('routeAll-Nachoptimierung (R-6)', () => {
     }
   });
 
+  it('eine fixierte Leitung wird exakt aus dem gespeicherten Snapshot gerendert und validiert', () => {
+    const nodes = [makeNode('a', 0, 0), makeNode('b', 500, 0)];
+    const explicit: RouteEdgeRef = { id: 'e-lock', source: 'a', target: 'b' };
+    const initial = routeAllCables(nodes, [explicit]).get(explicit.id)!;
+    const fixed: RouteEdgeRef = {
+      ...explicit,
+      data: { locked: true, intent: 'locked', lockedWaypoints: initial.waypoints },
+    };
+    const routes = routeAllCables(nodes, [fixed]);
+    expect(routes.get(fixed.id)?.waypoints).toEqual(initial.waypoints);
+    expect(routes.get(fixed.id)?.usedSearch).toBe('locked');
+    const report = computeCableRouteFinalValidation(nodes, [fixed], routes);
+    expect(report.lockedRouteViolations).toBeUndefined();
+    expect(report.status).toBe('VALID');
+  });
+
+  it('fixiert gemeinsame Port-Lanes ohne Endpunkt-Falschmeldung', () => {
+    const { nodes, edges } = buildSeededPlan(SEED);
+    const initial = routeAllCables(nodes, edges);
+    for (const candidate of edges) {
+      const lockedEdges = edges.map((edge) =>
+        edge.id === candidate.id
+          ? {
+              ...edge,
+              data: { locked: true, intent: 'locked', lockedWaypoints: initial.get(edge.id)!.waypoints },
+            }
+          : edge
+      );
+      const routes = routeAllCables(nodes, lockedEdges);
+      const report = computeCableRouteFinalValidation(nodes, lockedEdges, routes);
+      expect(routes.get(candidate.id)?.waypoints, candidate.id).toEqual(initial.get(candidate.id)?.waypoints);
+      expect(report.lockedRouteViolations ?? [], candidate.id).toEqual([]);
+    }
+  });
+
+  it('meldet eine fixierte Trasse, deren gespeicherter Endpunkt vom Anschluss abweicht', () => {
+    const nodes = [makeNode('a', 0, 0), makeNode('b', 500, 0)];
+    const explicit: RouteEdgeRef = { id: 'e-lock', source: 'a', target: 'b' };
+    const initial = routeAllCables(nodes, [explicit]).get(explicit.id)!;
+    const fixed: RouteEdgeRef = {
+      ...explicit,
+      data: { locked: true, intent: 'locked', lockedWaypoints: initial.waypoints },
+    };
+    const movedNodes = nodes.map((node) =>
+      node.id === 'b' ? { ...node, position: { x: node.position.x, y: node.position.y + 80 } } : node
+    );
+    const routes = routeAllCables(movedNodes, [fixed]);
+    const report = computeCableRouteFinalValidation(movedNodes, [fixed], routes);
+    expect(routes.get(fixed.id)?.waypoints).toEqual(initial.waypoints);
+    expect(report.lockedRouteViolations).toContainEqual(
+      expect.objectContaining({ code: 'ROUTE-LOCK-ENDPOINT', edgeId: fixed.id })
+    );
+    expect(report.counts.lockedRouteViolations).toBe(1);
+    expect(report.status).toBe('INVALID');
+  });
+
+  it('erklärt ein Alt-Lock ohne Snapshot als nicht verifiziert statt seine Route zu behaupten', () => {
+    const nodes = [makeNode('a', 0, 0), makeNode('b', 500, 0)];
+    const fixed: RouteEdgeRef = { id: 'e-legacy-lock', source: 'a', target: 'b', data: { locked: true } };
+    const routes = routeAllCables(nodes, [fixed]);
+    const report = computeCableRouteFinalValidation(nodes, [fixed], routes);
+    expect(report.lockedRouteViolations).toContainEqual(
+      expect.objectContaining({ code: 'ROUTE-LOCK-MISSING', edgeId: fixed.id })
+    );
+    expect(report.status).toBe('INVALID');
+  });
+
   it('Port-Reihenfolge: Lanes am geteilten Handle folgen den Gegenenden', () => {
     // Drei Kanten verlassen denselben Quell-Handle (gleicher Punkt) zu
     // Zielen bei y = 60, 260, 460. Die Lane muss mit dem Quer-Versatz des

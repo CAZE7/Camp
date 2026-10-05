@@ -87,7 +87,13 @@ export interface BatteryBank {
 
 /** Offene Frage an den Nutzer — das Modell rät NICHT. */
 export interface BatteryBankQuestion {
-  kind: 'ambiguous-topology' | 'mixed-chemistry' | 'voltage-mismatch' | 'missing-counts';
+  kind:
+    | 'ambiguous-topology'
+    | 'mixed-chemistry'
+    | 'voltage-mismatch'
+    | 'missing-counts'
+    | 'member-count-mismatch'
+    | 'declaration-mismatch';
   bankId: string;
   batteryIds: readonly string[];
   /** Nutzertext (deutsch, ohne Fachjargon). */
@@ -145,9 +151,22 @@ type BankDraft = {
   role: BankRole;
   members: Node[];
   declaredTopology?: Exclude<BankTopology, 'unassigned'>;
+  topologyConflict?: boolean;
+  invalidTopology?: boolean;
   declaredSeries?: number;
   declaredParallel?: number;
+  countConflict?: boolean;
+  invalidSeriesCount?: boolean;
+  invalidParallelCount?: boolean;
 };
+
+const declaredPositiveInteger = (value: unknown): number | undefined => {
+  const raw = typeof value === 'number' ? value : Number(safeText(value).trim().replace(',', '.'));
+  return Number.isSafeInteger(raw) && raw > 0 ? raw : undefined;
+};
+
+const declarationWasProvided = (value: unknown): boolean =>
+  value !== undefined && value !== null && safeText(value).trim() !== '';
 
 /**
  * Batterien zu Bänken gruppieren.
@@ -174,11 +193,33 @@ function groupBatteries(batteries: readonly Node[]): BankDraft[] {
     draft.members.push(battery);
 
     const topology = data?.bankTopology;
-    if (isBankTopology(topology)) draft.declaredTopology = topology;
-    const series = numberOrUndefined(data?.bankSeries);
-    if (series !== undefined) draft.declaredSeries = Math.round(series);
-    const parallel = numberOrUndefined(data?.bankParallel);
-    if (parallel !== undefined) draft.declaredParallel = Math.round(parallel);
+    if (declarationWasProvided(topology)) {
+      if (!isBankTopology(topology)) {
+        draft.invalidTopology = true;
+      } else if (draft.declaredTopology !== undefined && draft.declaredTopology !== topology) {
+        draft.topologyConflict = true;
+      } else {
+        draft.declaredTopology = topology;
+      }
+    }
+
+    const declaredCounts = [
+      ['bankSeries', 'declaredSeries', 'invalidSeriesCount'],
+      ['bankParallel', 'declaredParallel', 'invalidParallelCount'],
+    ] as const;
+    for (const [field, valueKey, invalidKey] of declaredCounts) {
+      const raw = data?.[field];
+      if (!declarationWasProvided(raw)) continue;
+      const parsed = declaredPositiveInteger(raw);
+      if (parsed === undefined) {
+        draft[invalidKey] = true;
+        continue;
+      }
+      const previous = draft[valueKey];
+      if (previous !== undefined && previous !== parsed) draft.countConflict = true;
+      else draft[valueKey] = parsed;
+    }
+
     // Eine Starterbatterie in einer erklärten Bank macht die ganze Bank zur
     // Starterseite — sie ist nie Teil des Aufbau-Versorgungssystems.
     if (role === 'starter') draft.role = 'starter';
@@ -211,7 +252,12 @@ export function deriveBatteryBanks(
   // Er wird EINMAL gefragt (nicht je Batterie), damit die Oberfläche eine
   // Entscheidung einholen kann statt n gleichlautender Hinweise zu zeigen.
   const undeclaredHouse = drafts.filter(
-    (draft) => draft.role === 'house' && draft.members.length === 1 && draft.declaredTopology === undefined
+    (draft) =>
+      draft.role === 'house' &&
+      draft.members.length === 1 &&
+      draft.declaredTopology === undefined &&
+      !draft.invalidTopology &&
+      !draft.topologyConflict
   );
   const ambiguousHouse = undeclaredHouse.length > 1;
 
@@ -226,7 +272,18 @@ export function deriveBatteryBanks(
     const chemistry = chemistries.size === 1 ? [...chemistries][0]! : '';
 
     let topology: BankTopology;
-    if (draft.declaredTopology) {
+    if (draft.topologyConflict || draft.invalidTopology) {
+      topology = 'unassigned';
+      questions.push({
+        kind: 'declaration-mismatch',
+        bankId: draft.id,
+        batteryIds: memberIds,
+        question: draft.invalidTopology
+          ? `Die Batterie-Bank „${draft.id}" enthält eine unbekannte Verschaltungsangabe. Bitte eine gültige Topologie festlegen; bis dahin wird keine Verschaltung angenommen.`
+          : `Die Batterien der Bank „${draft.id}" deklarieren unterschiedliche Verschaltungen. Bitte für alle Mitglieder dieselbe Topologie festlegen; bis dahin wird keine Verschaltung angenommen.`,
+        options: [],
+      });
+    } else if (draft.declaredTopology) {
       topology = draft.declaredTopology;
     } else if (members.length === 1) {
       // Eine einzelne Batterie ohne weitere Aufbaubatterie ist eindeutig.
@@ -238,13 +295,27 @@ export function deriveBatteryBanks(
 
     let seriesCount = 1;
     let parallelCount = 1;
-    if (topology === 'series') {
-      seriesCount = draft.declaredSeries ?? members.length;
-      parallelCount = 1;
-    } else if (topology === 'parallel') {
-      seriesCount = 1;
-      parallelCount = draft.declaredParallel ?? members.length;
-    } else if (topology === 'series-parallel') {
+    let countMismatch: string | undefined;
+    if (!draft.topologyConflict && !draft.invalidTopology && topology === 'single') {
+      if (members.length !== 1)
+        countMismatch = `single verlangt genau 1 Mitglied, vorhanden sind ${members.length}`;
+      if (draft.declaredSeries !== undefined && draft.declaredSeries !== 1)
+        countMismatch = `bankSeries=${draft.declaredSeries}, für single wird 1 erwartet`;
+      if (draft.declaredParallel !== undefined && draft.declaredParallel !== 1)
+        countMismatch = `bankParallel=${draft.declaredParallel}, für single wird 1 erwartet`;
+    } else if (!draft.topologyConflict && !draft.invalidTopology && topology === 'series') {
+      seriesCount = members.length;
+      if (draft.declaredSeries !== undefined && draft.declaredSeries !== members.length)
+        countMismatch = `bankSeries=${draft.declaredSeries}, aber ${members.length} Mitglieder sind erklärt`;
+      if (draft.declaredParallel !== undefined && draft.declaredParallel !== 1)
+        countMismatch = `bankParallel=${draft.declaredParallel}, für series wird 1 erwartet`;
+    } else if (!draft.topologyConflict && !draft.invalidTopology && topology === 'parallel') {
+      parallelCount = members.length;
+      if (draft.declaredSeries !== undefined && draft.declaredSeries !== 1)
+        countMismatch = `bankSeries=${draft.declaredSeries}, für parallel wird 1 erwartet`;
+      if (draft.declaredParallel !== undefined && draft.declaredParallel !== members.length)
+        countMismatch = `bankParallel=${draft.declaredParallel}, aber ${members.length} Mitglieder sind erklärt`;
+    } else if (!draft.topologyConflict && !draft.invalidTopology && topology === 'series-parallel') {
       seriesCount = draft.declaredSeries ?? 0;
       parallelCount = draft.declaredParallel ?? 0;
       if (seriesCount < 1 || parallelCount < 1) {
@@ -259,7 +330,26 @@ export function deriveBatteryBanks(
         topology = 'unassigned';
         seriesCount = 1;
         parallelCount = 1;
+      } else if (seriesCount * parallelCount !== members.length) {
+        countMismatch = `${seriesCount} Reihen × ${parallelCount} parallele Stränge ergeben ${seriesCount * parallelCount} Batterien, vorhanden sind ${members.length}`;
       }
+    }
+
+    if (draft.countConflict)
+      countMismatch = 'Mitglieder derselben Bank deklarieren unterschiedliche Reihen-/Parallelzahlen';
+    if (draft.invalidSeriesCount || draft.invalidParallelCount)
+      countMismatch = 'bankSeries und bankParallel müssen positive ganze Zahlen sein';
+    if (countMismatch) {
+      questions.push({
+        kind: 'member-count-mismatch',
+        bankId: draft.id,
+        batteryIds: memberIds,
+        question: `Die Angaben zur Batterie-Bank „${draft.id}" passen nicht zu ihrer Mitgliederzahl: ${countMismatch}. Die Bank bleibt bis zur Korrektur unbewertet.`,
+        options: [],
+      });
+      topology = 'unassigned';
+      seriesCount = 1;
+      parallelCount = 1;
     }
 
     // Einzelbatterie-Kennwerte als Bezug. Bei ungleichen Spannungen ist die

@@ -10,7 +10,8 @@ import { newEntityId } from '../../lib/id';
 import { getSystemVoltage } from '../../lib/vde-standards';
 import { performAutoWiring, relevantCumulativeDrop } from '../../lib/autoWire';
 import { createPlannerError } from '../../lib/planner/plannerError';
-import { type CableEdgeData } from '../../components/edges/CableEdge';
+import { type CableEdgeData, type CableWaypoint } from '../../lib/domain/cableEdgeData';
+import { isRouteLocked } from '../../lib/electricalGraph/intent';
 import {
   getDerivedSystemState,
   getNodeMap,
@@ -70,6 +71,7 @@ export type GraphSlice = Pick<
   | 'handleChangeFuseOffset'
   | 'handleChangeFuseType'
   | 'setEdgeIntent'
+  | 'captureLockedWaypoints'
   | 'handleChangeAcProtection'
   | 'isValidConnection'
   | 'onConnect'
@@ -128,19 +130,153 @@ function keepIfSame<T>(before: T[], after: T[]): T[] {
   return sameElements(before, after) ? before : after;
 }
 
+type LockedMutation = 'move' | 'delete' | 'replace' | 'layout' | 'replace-plan';
+
+function reportLockedMutation(
+  actions: Pick<PlannerState, 'addPlannerError' | 'addLockedMutationError'>,
+  edge: Edge<CableEdgeData>,
+  action: LockedMutation,
+  nodeId?: string
+): void {
+  const actionText: Record<LockedMutation, string> = {
+    move: 'verschoben',
+    delete: 'gelöscht',
+    replace: 'verändert',
+    layout: 'durch ein Layout verändert',
+    'replace-plan': 'durch einen Planwechsel entfernt',
+  };
+  const error = createPlannerError({
+    code: 'ROUTING_LOCKED_MUTATION',
+    severity: 'warning',
+    category: 'routing',
+    nodeIds: nodeId ? [nodeId] : [],
+    edgeIds: [edge.id],
+    message: `Fixierte Leitung „${edge.id}" kann nicht ${actionText[action]} werden.`,
+    explanation:
+      'Die gespeicherte Trasse und ihre Endpunkte bleiben unverändert, bis die Leitung ausdrücklich entsperrt wird.',
+    suggestedFix:
+      'Leitung im Inspector oder Kontextmenü entsperren und die gewünschte Änderung erneut ausführen.',
+    details: { action, sourceId: edge.source, targetId: edge.target },
+  });
+  actions.addPlannerError(error);
+  actions.addLockedMutationError(error);
+}
+
+const lockedElectricalEdges = (edges: readonly Edge<CableEdgeData>[]) => edges.filter(isRouteLocked);
+
+const isCableWaypoint = (point: unknown): point is CableWaypoint => {
+  if (typeof point !== 'object' || point === null) return false;
+  const candidate = point as { x?: unknown; y?: unknown };
+  return (
+    typeof candidate.x === 'number' &&
+    Number.isFinite(candidate.x) &&
+    typeof candidate.y === 'number' &&
+    Number.isFinite(candidate.y)
+  );
+};
+
+const validLockedWaypoints = (points: unknown): points is readonly CableWaypoint[] =>
+  Array.isArray(points) && points.length >= 2 && points.every(isCableWaypoint);
+
+function lockedEdgeMutations(
+  currentNodes: readonly Node[],
+  currentEdges: readonly Edge<CableEdgeData>[],
+  nextNodes: readonly Node[],
+  nextEdges: readonly Edge<CableEdgeData>[],
+  allowExplicitUnlock = false
+): Array<{ edge: Edge<CableEdgeData>; action: 'move' | 'delete' | 'replace'; nodeId?: string }> {
+  const mutations: Array<{
+    edge: Edge<CableEdgeData>;
+    action: 'move' | 'delete' | 'replace';
+    nodeId?: string;
+  }> = [];
+  for (const edge of lockedElectricalEdges(currentEdges)) {
+    const nextEdge = nextEdges.find((candidate) => candidate.id === edge.id);
+    if (!nextEdge) {
+      mutations.push({ edge, action: 'delete' });
+      continue;
+    }
+    const sameEndpoints =
+      edge.source === nextEdge.source &&
+      edge.target === nextEdge.target &&
+      edge.sourceHandle === nextEdge.sourceHandle &&
+      edge.targetHandle === nextEdge.targetHandle;
+    const movedEndpoint = [edge.source, edge.target].find((id) => {
+      const before = currentNodes.find((node) => node.id === id);
+      const after = nextNodes.find((node) => node.id === id);
+      return (
+        !before || !after || before.position.x !== after.position.x || before.position.y !== after.position.y
+      );
+    });
+    // Undo/Redo ist selbst eine explizite Nutzeraktion. Erlaubt ist hier nur
+    // das reine Zurücknehmen/Wiederholen des Sperrstatus; Topologie und
+    // Endpunktposition müssen dabei unverändert bleiben.
+    if (allowExplicitUnlock && !isRouteLocked(nextEdge) && sameEndpoints && !movedEndpoint) continue;
+    if (
+      !isRouteLocked(nextEdge) ||
+      !sameEndpoints ||
+      JSON.stringify(edge.data?.lockedWaypoints ?? null) !==
+        JSON.stringify(nextEdge.data?.lockedWaypoints ?? null)
+    ) {
+      mutations.push({ edge, action: 'replace' });
+      continue;
+    }
+    if (movedEndpoint) mutations.push({ edge, action: 'move', nodeId: movedEndpoint });
+  }
+  return mutations;
+}
+
 export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
   nodes: [],
   edges: [],
-  setNodes: (update) =>
-    set((state) => {
-      const nodes = typeof update === 'function' ? update(state.nodes) : update;
-      return withHistory(state, { nodes });
-    }),
-  setEdges: (update) =>
-    set((state) => {
-      const edges = typeof update === 'function' ? update(state.edges) : update;
-      return withHistory(state, { edges });
-    }),
+  setNodes: (update) => {
+    const current = get();
+    const nodes = typeof update === 'function' ? update(current.nodes) : update;
+    const locked = lockedElectricalEdges(current.edges);
+    const changedLockedEndpoints = locked.flatMap((edge) => {
+      const affected = [edge.source, edge.target].some((id) => {
+        const before = current.nodes.find((node) => node.id === id);
+        const after = nodes.find((node) => node.id === id);
+        return (
+          !before ||
+          !after ||
+          before.position.x !== after.position.x ||
+          before.position.y !== after.position.y
+        );
+      });
+      return affected ? [edge] : [];
+    });
+    if (changedLockedEndpoints.length > 0) {
+      for (const edge of changedLockedEndpoints) {
+        const deleted = [edge.source, edge.target].some((id) => !nodes.some((node) => node.id === id));
+        reportLockedMutation(current, edge, deleted ? 'delete' : 'move');
+      }
+      return;
+    }
+    set((state) => withHistory(state, { nodes }));
+  },
+  setEdges: (update) => {
+    const current = get();
+    const edges = typeof update === 'function' ? update(current.edges) : update;
+    const changedLocked = lockedElectricalEdges(current.edges).filter((before) => {
+      const after = edges.find((edge) => edge.id === before.id);
+      return (
+        !after ||
+        !isRouteLocked(after) ||
+        before.source !== after.source ||
+        before.target !== after.target ||
+        before.sourceHandle !== after.sourceHandle ||
+        before.targetHandle !== after.targetHandle ||
+        JSON.stringify(before.data?.lockedWaypoints ?? null) !==
+          JSON.stringify(after.data?.lockedWaypoints ?? null)
+      );
+    });
+    if (changedLocked.length > 0) {
+      for (const edge of changedLocked) reportLockedMutation(current, edge, 'replace');
+      return;
+    }
+    set((state) => withHistory(state, { edges }));
+  },
   waterNodes: [],
   waterEdges: [],
   setWaterNodes: (update) =>
@@ -157,15 +293,54 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
   canRedo: false,
   autoWirePreview: null,
   autoStructurePending: false,
-  onNodesChange: (changes) =>
+  onNodesChange: (changes) => {
+    const current = get();
+    const locked = lockedElectricalEdges(current.edges);
+    const lockedByNode = new Map<string, Edge<CableEdgeData>[]>();
+    for (const edge of locked) {
+      for (const id of [edge.source, edge.target]) {
+        const existing = lockedByNode.get(id) ?? [];
+        existing.push(edge);
+        lockedByNode.set(id, existing);
+      }
+    }
+    const blocked = new Map<
+      string,
+      { action: 'move' | 'delete'; edge: Edge<CableEdgeData>; nodeId: string }
+    >();
+    const safeChanges = changes.filter((change) => {
+      if (change.type === 'add') return true;
+      const nodeId = change.id;
+      let action: 'move' | 'delete' | undefined;
+      if (change.type === 'remove') action = 'delete';
+      else if (change.type === 'position') {
+        const before = current.nodes.find((node) => node.id === nodeId);
+        if (
+          change.position &&
+          before &&
+          (change.position.x !== before.position.x || change.position.y !== before.position.y)
+        ) {
+          action = 'move';
+        }
+      }
+      const protectingEdges = action ? (lockedByNode.get(nodeId) ?? []) : [];
+      if (protectingEdges.length === 0 || action === undefined) return true;
+      for (const edge of protectingEdges) blocked.set(edge.id, { action, edge, nodeId });
+      return false;
+    });
+    for (const { action, edge, nodeId } of blocked.values()) {
+      reportLockedMutation(current, edge, action, nodeId);
+    }
+    if (safeChanges.length === 0) return;
+
     set((state) => {
-      const newNodes = applyNodeChanges(changes, state.nodes);
+      const newNodes = applyNodeChanges(safeChanges, state.nodes);
       // Kein Treffer ⇒ keine neue Array-Referenz (Begründung: `sameElements`
       // in graphInternals.ts). Betrifft real die Mess-Meldungen von React
       // Flow für Knoten, die nur dargestellt werden (Hauptstromkreis-Rahmen).
-      if (!affectsStructure(changes) && sameElements(state.nodes, newNodes)) return state;
+      if (!affectsStructure(safeChanges) && sameElements(state.nodes, newNodes)) return state;
       const deletedNodeIds = new Set<string>();
-      for (const change of changes) {
+      for (const change of safeChanges) {
         if (change.type === 'remove') deletedNodeIds.add(change.id);
       }
       if (deletedNodeIds.size > 0) {
@@ -178,18 +353,37 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
         });
       }
       // Während des Ziehens nicht jeden Pixel als eigenen Undo-Schritt speichern.
-      const shouldCheckpoint = changes.some(
+      const shouldCheckpoint = safeChanges.some(
         (change) => change.type === 'remove' || (change.type === 'position' && !change.dragging)
       );
       return shouldCheckpoint ? withHistory(state, { nodes: newNodes }) : { nodes: newNodes };
-    }),
-  onEdgesChange: (changes) =>
+    });
+  },
+  onEdgesChange: (changes) => {
+    const current = get();
+    const lockedById = new Map(lockedElectricalEdges(current.edges).map((edge) => [edge.id, edge]));
+    const blocked = new Map<string, { edge: Edge<CableEdgeData>; action: 'delete' | 'replace' }>();
+    const safeChanges = changes.filter((change) => {
+      const id = change.type === 'add' ? change.item.id : 'id' in change ? change.id : undefined;
+      if (!id || change.type === 'select') return true;
+      const locked = lockedById.get(id);
+      if (!locked) return true;
+      blocked.set(locked.id, {
+        edge: locked,
+        action: change.type === 'remove' ? 'delete' : 'replace',
+      });
+      return false;
+    });
+    for (const { edge, action } of blocked.values()) reportLockedMutation(current, edge, action);
+    if (safeChanges.length === 0) return;
+
     set((state) => {
-      const nextEdges = applyEdgeChanges(changes, state.edges) as Edge<CableEdgeData>[];
-      const structural = affectsStructure(changes);
+      const nextEdges = applyEdgeChanges(safeChanges, state.edges) as Edge<CableEdgeData>[];
+      const structural = affectsStructure(safeChanges);
       if (!structural && sameElements(state.edges, nextEdges)) return state;
       return structural ? withHistory(state, { edges: nextEdges }) : { edges: nextEdges };
-    }),
+    });
+  },
   onWaterNodesChange: (changes) =>
     set((state) => {
       const newWaterNodes = applyNodeChanges(changes, state.waterNodes);
@@ -280,35 +474,53 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
       window.dispatchEvent(new CustomEvent('planner-focus-element', { detail: { id, elementType } }));
     }
   },
-  deleteSelected: () =>
+  deleteSelected: () => {
+    const current = get();
+    // Nichts markiert ⇒ nichts zu löschen (Rule Q): vorher entstand ein
+    // Undo-Schritt ohne Wirkung und ein neuer Zustand ohne Änderung.
+    if (current.selectedNodes.length === 0 && current.selectedEdges.length === 0) return;
+    const requestedNodeIds = new Set(current.selectedNodes.map((node) => node.id));
+    const requestedEdgeIds = new Set(current.selectedEdges.map((edge) => edge.id));
+    const locked = lockedElectricalEdges(current.edges);
+    const protectedNodeIds = new Set<string>();
+    const protectedEdgeIds = new Set<string>();
+    for (const edge of locked) {
+      const requestedEndpoints = [edge.source, edge.target].filter((id) => requestedNodeIds.has(id));
+      for (const requestedEndpoint of requestedEndpoints) {
+        protectedNodeIds.add(requestedEndpoint);
+        reportLockedMutation(current, edge, 'delete', requestedEndpoint);
+      }
+      if (requestedEdgeIds.has(edge.id)) {
+        protectedEdgeIds.add(edge.id);
+        reportLockedMutation(current, edge, 'delete');
+      }
+    }
+
+    const nodeIdsSet = new Set([...requestedNodeIds].filter((id) => !protectedNodeIds.has(id)));
+    const edgeIdsSet = new Set([...requestedEdgeIds].filter((id) => !protectedEdgeIds.has(id)));
+    if (nodeIdsSet.size === 0 && edgeIdsSet.size === 0) return;
+
     set((state) => {
-      // Nichts markiert ⇒ nichts zu löschen (Rule Q): vorher entstand ein
-      // Undo-Schritt ohne Wirkung und ein neuer Zustand ohne Änderung.
-      if (state.selectedNodes.length === 0 && state.selectedEdges.length === 0) return state;
-      const nodeIdsSet = new Set<string>();
-      for (const node of state.selectedNodes) {
-        nodeIdsSet.add(node.id);
-      }
-
-      const edgeIdsSet = new Set<string>();
-      for (const edge of state.selectedEdges) {
-        edgeIdsSet.add(edge.id);
-      }
-
       const filterNode = (n: Node) => !nodeIdsSet.has(n.id);
       const filterEdge = (e: Edge) =>
         !nodeIdsSet.has(e.source) && !nodeIdsSet.has(e.target) && !edgeIdsSet.has(e.id);
-
       const nextNodes = state.nodes.filter(filterNode);
       return withHistory(state, {
         nodes: nextNodes,
-        edges: state.edges.filter(filterEdge),
+        // Defense in depth: even if an endpoint slips into `nodeIdsSet`, a
+        // locked connection is never silently removed with it.
+        edges: state.edges.filter((edge) =>
+          isRouteLocked(edge)
+            ? !nodeIdsSet.has(edge.source) && !nodeIdsSet.has(edge.target)
+            : filterEdge(edge)
+        ),
         waterNodes: state.waterNodes.filter(filterNode),
         waterEdges: state.waterEdges.filter(filterEdge),
-        selectedNodes: [],
-        selectedEdges: [],
+        selectedNodes: state.selectedNodes.filter((node) => protectedNodeIds.has(node.id)),
+        selectedEdges: state.selectedEdges.filter((edge) => protectedEdgeIds.has(edge.id)),
       });
-    }),
+    });
+  },
   updateNodeData: (id, data) =>
     set((state) =>
       withHistoryIfChanged(state, {
@@ -379,34 +591,93 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
   // Geschrieben werden beide Felder, weil `edgeIntentOf` die Sperre als
   // Tatsache über dem Etikett liest: `locked` ohne `intent` wäre bei einem
   // späteren Herabstufen sonst nicht mehr vom Etikett zu unterscheiden.
-  setEdgeIntent: (id, intent) =>
+  setEdgeIntent: (id, intent, lockedWaypoints) => {
+    const current = get();
+    const existingEdge = current.edges.find((edge) => edge.id === id);
+    // Ein zweites „Fixiert" ist idempotent — die Route darf nur nach einem
+    // expliziten Wechsel auf „Meine Entscheidung“/„Automatik“ neu erfasst werden.
+    if (intent === 'locked' && existingEdge && isRouteLocked(existingEdge)) return;
+    const existing = existingEdge?.data?.lockedWaypoints;
+    const snapshot = lockedWaypoints ?? existing;
+    if (intent === 'locked' && !validLockedWaypoints(snapshot)) {
+      const error = createPlannerError({
+        code: 'ROUTING_LOCKED_MISSING_PATH',
+        severity: 'warning',
+        category: 'routing',
+        edgeIds: [id],
+        message: `Leitung „${id}" kann ohne berechneten Kabelweg nicht fixiert werden.`,
+        explanation:
+          'Die Sperre schützt einen konkreten Wegpunktsnapshot. Ein fehlender Weg würde keine unveränderliche Trasse garantieren.',
+        suggestedFix: 'Warte auf das Routing-Ergebnis und fixiere die Leitung anschließend erneut.',
+      });
+      current.addPlannerError(error);
+      current.addLockedMutationError(error);
+      return;
+    }
+    if (intent !== 'locked') {
+      current.clearLockedMutationErrors(id);
+      current.setPlannerErrors(
+        current.plannerErrors.filter(
+          (error) =>
+            !(
+              error.edgeIds.includes(id) &&
+              (error.code === 'ROUTING_LOCKED_MUTATION' || error.code === 'ROUTING_LOCKED_MISSING_PATH')
+            )
+        )
+      );
+    }
     set((state) =>
       withHistoryIfChanged(state, {
         edges: state.edges.map((e) => {
           if (e.id !== id) return e;
           const nextIntent = intent === 'auto' ? undefined : intent;
           const nextLocked = intent === 'locked';
-          // Eine von Hand erklärte Absicht ist keine Auto-Kante mehr: Bliebe
-          // `autoWired` stehen, sammelte der nächste AutoWire-Lauf sie als
-          // eigenes Erzeugnis wieder ein und ersetzte sie.
-          const nextAutoWired = intent === 'auto' ? e.data?.autoWired : false;
+          // Nur der explizite Auto-Modus gibt AutoWire wieder das Eigentum.
+          // Eine bewusste Nutzerentscheidung beendet dagegen die Herkunft
+          // „AutoWire hat diese Kante erzeugt".
+          const nextAutoWired = intent === 'auto' ? true : false;
+          const previousData = e.data ?? {};
+          const snapshot = nextLocked ? (lockedWaypoints ?? previousData.lockedWaypoints) : undefined;
+          const { lockedWaypoints: _oldSnapshot, ...unlockedData } = previousData;
+          const nextData = {
+            ...unlockedData,
+            intent: nextIntent,
+            locked: nextLocked,
+            autoWired: nextAutoWired,
+            ...(snapshot === undefined
+              ? {}
+              : { lockedWaypoints: snapshot.map((point) => ({ x: point.x, y: point.y })) }),
+          };
           // Unverändert heißt DASSELBE Objekt — nicht eine gleich aussehende
           // Kopie. Sonst zählt `withHistoryIfChanged` einen Schritt, und React
           // Flow übernimmt die Kante neu (Mess-/Routing-Runde ohne Anlass).
-          if (
-            e.data?.intent === nextIntent &&
-            (e.data?.locked ?? false) === nextLocked &&
-            e.data?.autoWired === nextAutoWired
-          ) {
-            return e;
-          }
-          return {
-            ...e,
-            data: { ...e.data!, intent: nextIntent, locked: nextLocked, autoWired: nextAutoWired },
-          };
+          if (JSON.stringify(previousData) === JSON.stringify(nextData)) return e;
+          return { ...e, data: nextData };
         }),
       })
-    ),
+    );
+  },
+  captureLockedWaypoints: (id, lockedWaypoints) =>
+    set((state) => {
+      if (
+        lockedWaypoints.length < 2 ||
+        lockedWaypoints.some((point) => !Number.isFinite(point.x) || !Number.isFinite(point.y))
+      )
+        return state;
+      let changed = false;
+      const edges = state.edges.map((edge) => {
+        if (edge.id !== id || !isRouteLocked(edge) || Array.isArray(edge.data?.lockedWaypoints)) return edge;
+        changed = true;
+        return {
+          ...edge,
+          data: {
+            ...edge.data,
+            lockedWaypoints: lockedWaypoints.map((point) => ({ x: point.x, y: point.y })),
+          },
+        };
+      });
+      return changed ? { edges } : state;
+    }),
   handleChangeAcProtection: (id, acProtection) =>
     set((state) =>
       withHistoryIfChanged(state, {
@@ -569,8 +840,16 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
   },
   /** Übernimmt den Preview in den echten Graphen (mit History-Eintrag). */
   applyAutoWirePreview: () => {
-    const preview = get().autoWirePreview;
+    const current = get();
+    const preview = current.autoWirePreview;
     if (!preview) return;
+    const lockedMutations = lockedEdgeMutations(current.nodes, current.edges, preview.nodes, preview.edges);
+    if (lockedMutations.length > 0) {
+      for (const mutation of lockedMutations) {
+        reportLockedMutation(current, mutation.edge, mutation.action, mutation.nodeId);
+      }
+      return;
+    }
     set((state) =>
       withHistory(state, {
         nodes: [...preview.nodes],
@@ -614,6 +893,12 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
       set({ autoStructurePending: false });
       return;
     }
+    const locked = lockedElectricalEdges(edges);
+    if (locked.length > 0) {
+      for (const edge of locked) reportLockedMutation(get(), edge, 'layout');
+      set({ isLayoutPending: false, autoStructurePending: false });
+      return;
+    }
 
     const mySeq = ++layoutV2Seq;
     set({ isLayoutPending: true });
@@ -650,6 +935,14 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
     // Wie bei onLayoutV2: Das Aufräumen erledigt die Auto-Wire-Struktur mit.
     if (get().autoStructurePending) set({ autoStructurePending: false });
     const { viewMode, nodes, edges, waterNodes, waterEdges } = get();
+    if (viewMode !== 'water') {
+      const locked = lockedElectricalEdges(edges);
+      if (locked.length > 0) {
+        for (const edge of locked) reportLockedMutation(get(), edge, 'layout');
+        set({ isLayoutPending: false });
+        return;
+      }
+    }
     if (viewMode === 'water') {
       const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
         waterNodes,
@@ -685,11 +978,20 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
   applyTemplate: (templateId: string) => {
     const template = TEMPLATES_DICT[templateId];
     if (template) {
+      const current = get();
       const templateNodes = [...template.nodes];
+      const templateEdges = [...template.edges] as Edge<CableEdgeData>[];
+      const lockedMutations = lockedEdgeMutations(current.nodes, current.edges, templateNodes, templateEdges);
+      if (lockedMutations.length > 0) {
+        for (const mutation of lockedMutations) {
+          reportLockedMutation(current, mutation.edge, 'replace-plan', mutation.nodeId);
+        }
+        return;
+      }
       set((state) =>
         withHistory(state, {
           nodes: templateNodes,
-          edges: [...template.edges] as Edge<CableEdgeData>[],
+          edges: templateEdges,
           // Wasserbewusst NICHT zurücksetzen: die Templates beschreiben nur
           // den Elektrikplan. Ein stiller Kollateralschaden auf waterNodes/
           // waterEdges war Datenverlust (nur über Undo erkennbar zurückholbar).
@@ -800,6 +1102,14 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
     if (sourceNodes.length === 0) {
       return { applied: false, reason: 'empty' };
     }
+    if (viewMode !== 'water') {
+      const locked = lockedElectricalEdges(edges);
+      if (locked.length > 0) {
+        for (const edge of locked) reportLockedMutation(get(), edge, 'layout');
+        set({ isLayoutPending: false });
+        return { applied: false, reason: 'locked-edge' };
+      }
+    }
 
     set({ isLayoutPending: true });
     let result: Awaited<ReturnType<typeof applyAdvancedLayout>>;
@@ -842,10 +1152,18 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
     }
     return { applied: true, engine: result.engine };
   },
-  undo: () =>
+  undo: () => {
+    const current = get();
+    const previous = current.historyPast[current.historyPast.length - 1];
+    if (!previous) return;
+    const mutations = lockedEdgeMutations(current.nodes, current.edges, previous.nodes, previous.edges, true);
+    if (mutations.length > 0) {
+      for (const mutation of mutations) {
+        reportLockedMutation(current, mutation.edge, mutation.action, mutation.nodeId);
+      }
+      return;
+    }
     set((state) => {
-      const previous = state.historyPast[state.historyPast.length - 1];
-      if (!previous) return state;
       const nextPast = state.historyPast.slice(0, -1);
       const nextFuture = [graphSnapshot(state), ...state.historyFuture].slice(0, HISTORY_LIMIT);
       return {
@@ -861,11 +1179,20 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
         // sonst ordnete ELK einen Plan, den es so nicht mehr gibt.
         autoStructurePending: false,
       };
-    }),
-  redo: () =>
+    });
+  },
+  redo: () => {
+    const current = get();
+    const next = current.historyFuture[0];
+    if (!next) return;
+    const mutations = lockedEdgeMutations(current.nodes, current.edges, next.nodes, next.edges, true);
+    if (mutations.length > 0) {
+      for (const mutation of mutations) {
+        reportLockedMutation(current, mutation.edge, mutation.action, mutation.nodeId);
+      }
+      return;
+    }
     set((state) => {
-      const next = state.historyFuture[0];
-      if (!next) return state;
       const nextPast = [...state.historyPast, graphSnapshot(state)].slice(-HISTORY_LIMIT);
       const nextFuture = state.historyFuture.slice(1);
       return {
@@ -879,8 +1206,15 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
         canRedo: nextFuture.length > 0,
         autoStructurePending: false,
       };
-    }),
-  clearPlan: () =>
+    });
+  },
+  clearPlan: () => {
+    const current = get();
+    const locked = lockedElectricalEdges(current.edges);
+    if (locked.length > 0) {
+      for (const edge of locked) reportLockedMutation(current, edge, 'replace-plan');
+      return;
+    }
     set((state) =>
       withHistory(state, {
         nodes: [],
@@ -893,7 +1227,8 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
         // Eine offene ELK-Strukturierung gehört zum gelöschten Plan.
         autoStructurePending: false,
       })
-    ),
+    );
+  },
   calculatePathVoltageDrop: (targetNodeId, customNodes, customEdges) => {
     const edges = customEdges || get().edges;
     const nodes = customNodes || get().nodes;

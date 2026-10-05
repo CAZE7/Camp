@@ -1,6 +1,9 @@
 import type { AcProtectionDescriptor } from '../acProtection';
 import type { EdgeIntent } from '../electricalGraph/intent';
 
+/** Geometriepunkt eines gesperrten, persistierten Kabelwegs. */
+export type CableWaypoint = { x: number; y: number };
+
 /**
  * lib/domain/cableEdgeData.ts — Datenform einer elektrischen Kante.
  *
@@ -123,4 +126,6 @@ export type CableEdgeData = {
    * erzeugt, wird gemeldet, nicht verschoben.
    */
   locked?: boolean;
+  /** Exakte Wegpunkte des Nutzersnapshots; bleibt bis zum expliziten Entsperren erhalten. */
+  lockedWaypoints?: CableWaypoint[];
 };

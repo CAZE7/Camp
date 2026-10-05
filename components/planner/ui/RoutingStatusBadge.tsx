@@ -91,6 +91,9 @@ export function RoutingStatusBadge() {
     `I1 Leitungen × Bauteile: ${report.counts.edgeNodeCollisions}`,
     `I2 Leitung × Leitung: ${report.counts.edgeEdgeOverlaps}`,
     `I3 Mindestabstand: ${report.counts.clearanceViolations}`,
+    ...((report.counts.lockedRouteViolations ?? 0) > 0
+      ? [`Fixierte Trassen: ${report.counts.lockedRouteViolations} Konflikt(e)`]
+      : []),
     // ROUTE-BUG-23: Die Ursache nennen, nicht nur die Zahl. Eine Leitung mit
     // `tightMarginUsed` liegt enger am Bauteil als erlaubt, weil Port-Stub
     // und Mindestabstand dort geometrisch nicht gleichzeitig passen.

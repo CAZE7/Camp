@@ -110,16 +110,26 @@ export type RouteEdgeRef = {
   data?: {
     edgeDomain?: HopDomain;
     crossSection?: number;
-    /**
-     * Vom Nutzer fixierte Leitung — hoppt nie (`docs/ROUTING-V2.md` §8).
-     * Ein Lock-Feature gibt es in der UI noch nicht; die Regel ist hier
-     * bereits umgesetzt, damit sie nicht später nachgereicht werden muss.
-     */
+    /** Vom Nutzer fixierte Leitung — wird weder gehoppt noch geometrisch geändert. */
     locked?: boolean;
+    intent?: string;
+    /** Persistierter, vom Nutzer eingefrorener Weg; keine Rekonstruktion aus SVG. */
+    lockedWaypoints?: Point[];
   } | null;
 };
 
 type NodeWithHandles = RoutableNode;
+
+const isLockedRouteEdge = (edge: RouteEdgeRef): boolean =>
+  edge.data?.locked === true || edge.data?.intent === 'locked';
+
+const validStoredLockedPath = (edge: RouteEdgeRef): Point[] | undefined => {
+  const points = edge.data?.lockedWaypoints;
+  if (!Array.isArray(points) || points.length < 2) return undefined;
+  if (points.some((point) => !point || !Number.isFinite(point.x) || !Number.isFinite(point.y)))
+    return undefined;
+  return points.map((point) => ({ x: point.x, y: point.y }));
+};
 
 const NODE_W = 192;
 const NODE_H = 120;
@@ -318,7 +328,8 @@ const rebuild = (
   usedSearch: PathResult['usedSearch'],
   hops: PathHop[] = [],
   fallbackHitsObstacles?: boolean,
-  tightMarginUsed?: boolean
+  tightMarginUsed?: boolean,
+  locked?: boolean
 ): PathResult => {
   const mid = polylineMidpoint(waypoints);
   return {
@@ -341,6 +352,7 @@ const rebuild = (
     // wäre ein Fallback ohne Hindernisfreigabe an der UI/Invarianten-
     // Oberfläche unsichtbar.
     fallbackHitsObstacles,
+    locked,
     // ROUTE-BUG-23: Auch die Kennzeichnung „Freigabe geometrisch nicht
     // einhaltbar" muss den Rebuild überleben — sonst sieht die UI nur eine
     // unauffällige Leitung, wo der Router eine Ausnahme gemacht hat.
@@ -591,6 +603,22 @@ function makeHandleResolver(nodes: RoutableNode[]) {
   };
 }
 
+/** Aktuelle, vom selben Resolver wie `routeAllCables` verwendete Handle-Punkte. */
+export function resolveRoutingEndpoints(
+  nodes: RoutableNode[],
+  edges: readonly RouteEdgeRef[]
+): Map<string, { source: Point; target: Point }> {
+  const routable = routableNodes(nodes);
+  const resolveHandle = makeHandleResolver(routable);
+  const endpoints = new Map<string, { source: Point; target: Point }>();
+  for (const edge of [...edges].sort((left, right) => compareIds(left.id, right.id))) {
+    const source = resolveHandle(edge, 'source');
+    const target = resolveHandle(edge, 'target');
+    endpoints.set(edge.id, { source: { x: source.x, y: source.y }, target: { x: target.x, y: target.y } });
+  }
+  return endpoints;
+}
+
 /**
  * R8: Lane-Staffelung des Port-Fan-Outs für eine einzelne Kante — dieselbe
  * Eingabe wie `routeAllCables` (alle Geschwister-Kanten + Handle-Auflösung),
@@ -697,6 +725,14 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
           return orderFn(candidates).map((id) => byId.get(id)!);
         })()
       : edges;
+  // Festgelegte Wege werden vor freien Trassen registriert. So routet der
+  // normale Pfad an der unveränderlichen Nutzergeometrie vorbei; die Sperre
+  // ist nicht nur ein nachträglicher Hop-/Nudge-Hinweis.
+  const routingOrder = [
+    ...workOrder.filter(isLockedRouteEdge).sort((left, right) => compareIds(left.id, right.id)),
+    ...workOrder.filter((edge) => !isLockedRouteEdge(edge)),
+  ];
+  const lockedIds = new Set(edges.filter(isLockedRouteEdge).map((edge) => edge.id));
 
   const raw: { id: string; waypoints: Point[]; result: PathResult }[] = [];
   const dynamicRoutedSegments: Segment[] = [];
@@ -712,8 +748,8 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
   // Kante zum Kreuzen. Die ID-Sortierung (compareIds :618) bleibt — sie ist
   // deterministisch, auch wenn Doc §4.2 und ein veralteter Kommentar unten
   // noch „Store-Reihenfolge" behaupten.
-  for (let i = 0; i < workOrder.length; i++) {
-    const edge = workOrder[i];
+  for (let i = 0; i < routingOrder.length; i++) {
+    const edge = routingOrder[i];
     if (!edge) continue;
     // AUDIT ROUTE-017: Hängekanten — Quelle oder Ziel referenziert einen
     // Node, der keine Geometrie hat (fehlend, ungemessen, gelöscht).
@@ -775,55 +811,63 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
       crossingSegments: dynamicRoutedSegments,
     };
     let request_ = request;
-    let result = findCablePath({ ...request_, cableTubes: tubesForRegion(tubes, region) });
-    // ROUTE-BUG-24: Das Hindernis-Fenster (PERF-001) ist die Bounding-Box der
-    // beiden Ports plus Puffer. Verlässt die gefundene Route dieses Fenster,
-    // lagen Bauteile jenseits der Grenze außerhalb jeder Prüfung — die
-    // Leitung legt sich dann genau auf die Fenstergrenze und damit beliebig
-    // nah an ein Bauteil, das die Suche nie gesehen hat (gemessen: 2.4 px an
-    // drei Nachbarbauteilen, 4 × I3 im Referenzplan complex).
-    //
-    // Deshalb wird die Anfrage mit dem Fenster der TATSÄCHLICHEN Route
-    // wiederholt, bis der Hindernis-Satz stabil ist. Maximal drei Durchgänge:
-    // Jede Runde vergrößert das Fenster monoton und die Bauteil-Menge ist
-    // endlich, die Schleife terminiert also — und bleibt deterministisch.
-    let window = region;
-    for (let attempt = 0; attempt < 3; attempt++) {
-      const span = routeWindow(result.waypoints, OBSTACLE_REGION_PAD);
-      if (coversRect(window, span)) break;
-      const wider = obstaclesNear(exclude, span);
-      if (wider.length === request_.obstacles.length) break;
-      request_ = { ...request_, obstacles: wider };
-      window = span;
-      result = findCablePath({ ...request_, cableTubes: tubesForRegion(tubes, span) });
-    }
-    // ROUTE-BUG-24, Absicherung des Limits: Verlässt die Route das Fenster
-    // auch nach dem dritten Durchgang NOCH, lag die Drei-Runden-Schranke am
-    // Knick — Hindernisse jenseits der Grenze wären der Suche unsichtbar
-    // (verdecktes I1/I3). Dann EINmal mit dem vollständigen Bauteil-Satz
-    // der tatsächlichen Routen-Envelope neu routen. GEMESSEN und verworfen
-    // wurde die freiere Variante (Union-Fixpunkt ohne Limit): Sie änderte
-    // Hindernis-Sätze schon in der zweiten Runde und kostete p02 +2
-    // Kreuzungen (5 → 7) im Regression-Parcours. Diese Absicherung greift
-    // NUR im bislang verdeckten worst case und lässt alle Fixture-Pläne
-    // byte-identisch.
-    const finalSpan = routeWindow(result.waypoints, OBSTACLE_REGION_PAD);
-    if (!coversRect(window, finalSpan)) {
-      const full = obstaclesNear(exclude, routeWindow(result.waypoints, 0));
-      if (full.length > request_.obstacles.length) {
-        request_ = { ...request_, obstacles: full };
-        result = findCablePath({ ...request_, cableTubes: tubesForRegion(tubes, finalSpan) });
+    const storedLockedPath = isLockedRouteEdge(edge) ? validStoredLockedPath(edge) : undefined;
+    let result: PathResult;
+    if (storedLockedPath) {
+      // The snapshot is user-owned geometry: no A*, fallback, hop, or later
+      // optimization may change a point. Final validation reports conflicts.
+      result = rebuild([...storedLockedPath], 0, 'locked', [], false, false, true);
+    } else {
+      result = findCablePath({ ...request_, cableTubes: tubesForRegion(tubes, region) });
+      // ROUTE-BUG-24: Das Hindernis-Fenster (PERF-001) ist die Bounding-Box der
+      // beiden Ports plus Puffer. Verlässt die gefundene Route dieses Fenster,
+      // lagen Bauteile jenseits der Grenze außerhalb jeder Prüfung — die
+      // Leitung legt sich dann genau auf die Fenstergrenze und damit beliebig
+      // nah an ein Bauteil, das die Suche nie gesehen hat (gemessen: 2.4 px an
+      // drei Nachbarbauteilen, 4 × I3 im Referenzplan complex).
+      //
+      // Deshalb wird die Anfrage mit dem Fenster der TATSÄCHLICHEN Route
+      // wiederholt, bis der Hindernis-Satz stabil ist. Maximal drei Durchgänge:
+      // Jede Runde vergrößert das Fenster monoton und die Bauteil-Menge ist
+      // endlich, die Schleife terminiert also — und bleibt deterministisch.
+      let window = region;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const span = routeWindow(result.waypoints, OBSTACLE_REGION_PAD);
+        if (coversRect(window, span)) break;
+        const wider = obstaclesNear(exclude, span);
+        if (wider.length === request_.obstacles.length) break;
+        request_ = { ...request_, obstacles: wider };
+        window = span;
+        result = findCablePath({ ...request_, cableTubes: tubesForRegion(tubes, span) });
       }
-    }
-    // ROUTE-BUG-16 (Rangfolge der Garantien): Trassen-Belegung ist eine
-    // Qualitätsregel (I2), Hindernisfreiheit eine harte Regel (I1). Führt die
-    // Trassensperre in die Sackgasse — der Router liefert nur noch den
-    // Notfallpfad ohne Freigabe —, wird dieselbe Anfrage ohne Tubes erneut
-    // gestellt. Lieber zwei Kanten auf einer Trasse als eine Kante durch ein
-    // Bauteil.
-    if (result.usedSearch === 'fallback') {
-      const free = findCablePath({ ...request_, cableTubes: [] });
-      if (free.usedSearch !== 'fallback' || !free.fallbackHitsObstacles) result = free;
+      // ROUTE-BUG-24, Absicherung des Limits: Verlässt die Route das Fenster
+      // auch nach dem dritten Durchgang NOCH, lag die Drei-Runden-Schranke am
+      // Knick — Hindernisse jenseits der Grenze wären der Suche unsichtbar
+      // (verdecktes I1/I3). Dann EINmal mit dem vollständigen Bauteil-Satz
+      // der tatsächlichen Routen-Envelope neu routen. GEMESSEN und verworfen
+      // wurde die freiere Variante (Union-Fixpunkt ohne Limit): Sie änderte
+      // Hindernis-Sätze schon in der zweiten Runde und kostete p02 +2
+      // Kreuzungen (5 → 7) im Regression-Parcours. Diese Absicherung greift
+      // NUR im bislang verdeckten worst case und lässt alle Fixture-Pläne
+      // byte-identisch.
+      const finalSpan = routeWindow(result.waypoints, OBSTACLE_REGION_PAD);
+      if (!coversRect(window, finalSpan)) {
+        const full = obstaclesNear(exclude, routeWindow(result.waypoints, 0));
+        if (full.length > request_.obstacles.length) {
+          request_ = { ...request_, obstacles: full };
+          result = findCablePath({ ...request_, cableTubes: tubesForRegion(tubes, finalSpan) });
+        }
+      }
+      // ROUTE-BUG-16 (Rangfolge der Garantien): Trassen-Belegung ist eine
+      // Qualitätsregel (I2), Hindernisfreiheit eine harte Regel (I1). Führt die
+      // Trassensperre in die Sackgasse — der Router liefert nur noch den
+      // Notfallpfad ohne Freigabe —, wird dieselbe Anfrage ohne Tubes erneut
+      // gestellt. Lieber zwei Kanten auf einer Trasse als eine Kante durch ein
+      // Bauteil.
+      if (result.usedSearch === 'fallback') {
+        const free = findCablePath({ ...request_, cableTubes: [] });
+        if (free.usedSearch !== 'fallback' || !free.fallbackHitsObstacles) result = free;
+      }
     }
     raw.push({ id: edge.id, waypoints: result.waypoints, result });
     addTubes(tubes, result.waypoints);
@@ -852,7 +896,7 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
   // akzeptiert eine Variante nur, wenn sie die Route nicht verschlechtert.
   const nudged = nudgeOrthogonalPaths(
     raw.map((r) => ({ id: r.id, waypoints: r.waypoints })),
-    { obstacles: inflated }
+    { obstacles: inflated, fixedIds: lockedIds }
   );
 
   // Letzter Geometrie-Gang (ROUTE-BUG-19): Treppen und Mini-Stufen auflösen.
@@ -870,6 +914,10 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
   // und letzten Punkte nicht an.
   const cleaned = new Map<string, Point[]>();
   for (const [id, waypoints] of nudged) {
+    if (lockedIds.has(id)) {
+      cleaned.set(id, waypoints);
+      continue;
+    }
     const merged = mergeCloseBends(waypoints);
     const worthIt =
       merged.length < waypoints.length &&
@@ -894,7 +942,11 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
   // aufgeblähte Variante (`inflated`) wäre strenger als das Gate (14 px Rand
   // statt 12 px Freigabe) und würde zulässige Züge blockieren.
   const separated = separateCableClearance(
-    order.map((id) => ({ id, waypoints: cleaned.get(id) ?? nudged.get(id) ?? [] })),
+    order.map((id) => ({
+      id,
+      waypoints: cleaned.get(id) ?? nudged.get(id) ?? [],
+      locked: lockedIds.has(id),
+    })),
     { obstacles: allObstacles, maxLaneSteps: 6 }
   );
 
@@ -917,7 +969,7 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
         waypoints: finalWaypoints.get(id) ?? [],
         domain: edge?.data?.edgeDomain,
         crossSection: edge?.data?.crossSection,
-        locked: edge?.data?.locked,
+        locked: edge ? isLockedRouteEdge(edge) : false,
         backbone: isBackboneConnection(
           nodeById.get(edge?.source ?? '')?.type,
           nodeById.get(edge?.target ?? '')?.type
@@ -945,7 +997,8 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
       item.result.usedSearch,
       hopsByEdge.get(id) ?? [],
       item.result.fallbackHitsObstacles,
-      item.result.tightMarginUsed
+      item.result.tightMarginUsed,
+      item.result.locked || lockedIds.has(id)
     );
     // Bündel-Versatz desselben Kantenpaars — gehört hierher, nicht in die
     // Kante: Nur der globale Pass sieht alle Kanten und kann den Versatz

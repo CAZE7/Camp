@@ -6,6 +6,7 @@ import { usePlannerStore } from '../../store/usePlannerStore';
 import { useShallow } from 'zustand/react/shallow';
 import { useAppStore } from '../../lib/store';
 import { useDashboardMetrics } from './hooks/useDashboardMetrics';
+import { getCableRoute } from '../edges/utils/cableRouteStore';
 
 export function PlannerInspector() {
   const {
@@ -59,6 +60,13 @@ export function PlannerInspector() {
     nodes.find((n) => n.id === selectedNodeId) || waterNodes.find((n) => n.id === selectedNodeId) || null;
 
   const metrics = useDashboardMetrics(nodes, edges, season, calculatedSolarWatts);
+  const handleChangeIntent = React.useCallback(
+    (id: string, intent: 'auto' | 'user' | 'locked') => {
+      const waypoints = intent === 'locked' ? getCableRoute(id)?.waypoints : undefined;
+      setEdgeIntent(id, intent, waypoints);
+    },
+    [setEdgeIntent]
+  );
 
   return (
     <>
@@ -91,7 +99,7 @@ export function PlannerInspector() {
             onChangeFuseOffset={handleChangeFuseOffset}
             onChangeFuseType={handleChangeFuseType}
             onChangeAcProtection={handleChangeAcProtection}
-            onChangeIntent={setEdgeIntent}
+            onChangeIntent={handleChangeIntent}
             onDelete={deleteSelected}
             onUpdateNodeData={updateNodeData}
             edges={edges}

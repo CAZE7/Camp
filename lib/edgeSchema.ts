@@ -22,7 +22,7 @@
  * Schema; die Feldliste spiegelt `lib/domain/cableEdgeData.ts`.
  */
 
-export type EdgeDataFieldType = 'number' | 'string' | 'boolean' | 'object';
+export type EdgeDataFieldType = 'number' | 'string' | 'boolean' | 'object' | 'array';
 
 export interface EdgeDataFieldSpec {
   type: EdgeDataFieldType;
@@ -49,6 +49,8 @@ export const EDGE_DATA_SCHEMA: Record<string, EdgeDataFieldSpec> = {
   // (das wäre eine stille Behauptung über die Absicht des Nutzers).
   intent: { type: 'string', enumValues: ['locked', 'user', 'required', 'auto', 'suggested'] },
   locked: { type: 'boolean' },
+  // Die Punktstruktur wird im Router geprüft, nicht hier still „repariert".
+  lockedWaypoints: { type: 'array' },
   lengthIsAssumption: { type: 'boolean' },
 };
 
@@ -64,6 +66,8 @@ function fieldIsValid(value: unknown, spec: EdgeDataFieldSpec): boolean {
       return typeof value === 'boolean';
     case 'object':
       return typeof value === 'object' && value !== null && !Array.isArray(value);
+    case 'array':
+      return Array.isArray(value);
     default:
       return false;
   }

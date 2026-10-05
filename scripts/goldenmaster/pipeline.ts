@@ -58,7 +58,7 @@ export type GoldenRoute = {
   length: number;
   bends: number;
   crossings: number;
-  usedSearch: 'catalog' | 'astar' | 'fallback';
+  usedSearch: 'catalog' | 'astar' | 'fallback' | 'locked';
 };
 
 export type GoldenMaster = {

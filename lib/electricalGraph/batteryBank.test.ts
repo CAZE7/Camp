@@ -140,7 +140,22 @@ describe('V2-BANK — explizites Batteriebank-Modell', () => {
     expect(model.questions.some((question) => question.kind === 'missing-counts')).toBe(true);
   });
 
-  it('series-parallel mit Zahlen rechnet 2s2p korrekt', () => {
+  it('series-parallel verlangt genau series × parallel Mitglieder', () => {
+    const model = deriveBatteryBanks([
+      battery('b1', {
+        bankId: 'matrix',
+        bankTopology: 'series-parallel',
+        bankSeries: 2,
+        bankParallel: 2,
+      }),
+      battery('b2', { bankId: 'matrix', bankTopology: 'series-parallel' }),
+    ]);
+    expect(model.banks[0]!.topology).toBe('unassigned');
+    expect(model.banks[0]!.nominalVoltage).toBe(volts(12.8));
+    expect(model.questions.some((question) => question.kind === 'member-count-mismatch')).toBe(true);
+  });
+
+  it('series-parallel mit vier Mitgliedern rechnet eine erklärte 2s2p-Matrix korrekt', () => {
     const bank = bankOf(
       [
         battery('b1', {
@@ -151,12 +166,36 @@ describe('V2-BANK — explizites Batteriebank-Modell', () => {
           bmsContinuousDischarge: 100,
         }),
         battery('b2', { bankId: 'matrix', bankTopology: 'series-parallel', bmsContinuousDischarge: 100 }),
+        battery('b3', { bankId: 'matrix', bankTopology: 'series-parallel', bmsContinuousDischarge: 100 }),
+        battery('b4', { bankId: 'matrix', bankTopology: 'series-parallel', bmsContinuousDischarge: 100 }),
       ],
       'matrix'
     );
     expect(bank.nominalVoltage).toBe(volts(25.6));
     expect(bank.capacityAh).toBe(200);
     expect(bank.maxDischargeCurrent).toBe(amps(200));
+  });
+
+  it('eine deklarierte Reihenzahl muss der Mitgliederzahl entsprechen', () => {
+    const model = deriveBatteryBanks([
+      battery('b1', { bankId: 'reihe', bankTopology: 'series', bankSeries: 3 }),
+      battery('b2', { bankId: 'reihe', bankTopology: 'series' }),
+    ]);
+    expect(model.banks[0]!.topology).toBe('unassigned');
+    expect(model.questions.some((question) => question.kind === 'member-count-mismatch')).toBe(true);
+  });
+
+  it('widersprüchliche oder unbekannte Topologieangaben bleiben unzugewiesen', () => {
+    const conflict = deriveBatteryBanks([
+      battery('b1', { bankId: 'conflict', bankTopology: 'series' }),
+      battery('b2', { bankId: 'conflict', bankTopology: 'parallel' }),
+    ]);
+    expect(conflict.banks[0]!.topology).toBe('unassigned');
+    expect(conflict.questions.some((question) => question.kind === 'declaration-mismatch')).toBe(true);
+
+    const invalid = deriveBatteryBanks([battery('b1', { bankId: 'invalid', bankTopology: 'paralell' })]);
+    expect(invalid.banks[0]!.topology).toBe('unassigned');
+    expect(invalid.questions.some((question) => question.kind === 'declaration-mismatch')).toBe(true);
   });
 
   it('gemischte Chemie in einer erklärten Bank ist eine Frage, kein Kennwert', () => {
@@ -233,7 +272,7 @@ describe('V2-BANK — explizites Batteriebank-Modell', () => {
           bmsContinuousDischarge: 'viel',
           capacity: 0,
         }),
-        battery('b2', { bankId: 'haus', bankTopology: 'parallel', bankSeries: -2 }),
+        battery('b2', { bankId: 'haus', bankTopology: 'parallel' }),
       ],
       'haus'
     );

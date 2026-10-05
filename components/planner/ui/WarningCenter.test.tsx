@@ -91,6 +91,26 @@ describe('WarningCenter — Barrierefreiheit (AUDIT A5/A6)', () => {
     expect(badge).toHaveTextContent(/^2 von 3 kritisch$/);
   });
 
+  it('zeigt einen Routing-Lock-Konflikt anklickbar im Plan', () => {
+    const warningForLockedEdge = warning({
+      id: 'route-lock-I1-locked-wire-obstacle',
+      category: 'routing',
+      type: 'critical',
+      title: 'Fixierte Leitung kollidiert mit einem Bauteil',
+      focusId: 'locked-wire',
+      focusType: 'edge',
+      ruleId: 'ROUTE-LOCK-I1',
+      remedy: 'Leitung entsperren und die Bauteile anpassen.',
+      message: 'Segment trifft das Bauteil obstacle.',
+    });
+    const fixed: ValidationWarning[] = [];
+    render(<WarningCenter warnings={[warningForLockedEdge]} onFix={(value) => fixed.push(value)} />);
+    fireEvent.click(screen.getByRole('button', { name: /Prüfhinweise anzeigen/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Im Plan zeigen' }));
+
+    expect(fixed).toEqual([warningForLockedEdge]);
+  });
+
   it('Warnstufe ohne kritische Hinweise nennt sich „Warnung“, nicht „Hinweis“', () => {
     render(
       <WarningCenter

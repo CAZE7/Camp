@@ -41,7 +41,14 @@ index.ts         öffentliche API (nur hierüber importieren)
 - **Die Absicht** jeder Verbindung — und damit die Antwort auf „darf Auto-Wire das ändern?“.
 - **Die Spannungsebene** der Anlage (12/24/48 V) als benannter Begriff.
 - **Die Batteriebänke** mit ihrer ERKLÄRTEN Verschaltung und den daraus folgenden
-  Kennwerten (Spannung, Kapazität, Strombelastbarkeit).
+  Kennwerten (Spannung, Kapazität, Strombelastbarkeit). `series`/`parallel` müssen zur
+  Mitgliederzahl passen; `series-parallel` verlangt positive ganze Zahlen und exakt
+  `bankSeries × bankParallel = Mitgliederzahl`. Widersprüche/ungültige Angaben lassen die
+  Bank `unassigned` und erzeugen eine strukturierte Frage; dafür entstehen keine internen
+  Links. Eine gültige deklarierte Matrix wird im geometriefreien Graphen als deterministische
+  kanonische Verknüpfung repräsentiert (Mitglieder-ID-sortiert). Das ist **keine physische
+  Verdrahtungsanweisung** und wird nicht als React-Flow-Kabel gerendert; tatsächliche
+  Einbau-/String-Zuordnung bleibt separat zu planen.
 - **Die Grenzen** jedes Bauteils, inklusive BMS — als Daten, nicht als if-Kette.
 - **Die 230-V-Struktur**: welche Quelle speist welchen Kreis und welchen Verbraucher.
 - **Die offenen Fragen** (`questions`): alles, was das Modell NICHT entscheiden darf.

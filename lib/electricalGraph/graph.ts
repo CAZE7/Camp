@@ -79,6 +79,12 @@ export interface ElectricalConnection {
   intent: EdgeIntent;
   /** Hat der Nutzer die Absicht ausdrücklich erklärt? */
   pinned: boolean;
+  /** Quelle der Verbindung: sichtbare Kante oder aus Banktopologie abgeleitetes internes Kabel. */
+  origin?: 'plan-edge' | 'battery-bank';
+  /** Nur für aus einer Batterie-Bank abgeleitete interne Verbindungen. */
+  bankId?: string;
+  /** Art der internen Verbindung innerhalb der erklärten Bank. */
+  bankLink?: 'series' | 'parallel-positive' | 'parallel-negative';
 }
 
 /** Eine zusammenhängende DC-Insel bzw. ein AC-Stromkreis. */
@@ -132,6 +138,131 @@ function connectionDomain(edge: Edge, nodes: ReadonlyMap<string, Node>): HandleD
   );
 }
 
+function bankPort(nodeId: string, handle: 'plus' | 'minus'): ElectricalPort {
+  return { nodeId, handle, polarity: handlePolarity(handle) };
+}
+
+function bankConnection(
+  bankId: string,
+  id: string,
+  from: ElectricalPort,
+  to: ElectricalPort,
+  bankLink: NonNullable<ElectricalConnection['bankLink']>
+): ElectricalConnection {
+  return {
+    id,
+    from,
+    to,
+    domain: 'DC_12V',
+    intent: 'required',
+    pinned: true,
+    origin: 'battery-bank',
+    bankId,
+    bankLink,
+  };
+}
+
+/**
+ * Kanonische interne Verdrahtung einer erklärten Bank.
+ *
+ * Die Mitglieder werden bereits nach ID sortiert. Ihre Reihenfolge ist eine
+ * deterministische Darstellung der erklärten Serienmatrix; sie beeinflusst
+ * weder Spannung noch Kapazität. Ungültige/mehrdeutige Zählungen werden im
+ * Bankmodell auf `unassigned` gesetzt und erzeugen hier ausdrücklich KEINE
+ * geratenen Verbindungen.
+ */
+function internalBankConnections(banks: readonly BatteryBank[]): ElectricalConnection[] {
+  const out: ElectricalConnection[] = [];
+  const add = (
+    bank: BatteryBank,
+    suffix: string,
+    fromId: string,
+    fromHandle: 'plus' | 'minus',
+    toId: string,
+    toHandle: 'plus' | 'minus',
+    kind: NonNullable<ElectricalConnection['bankLink']>
+  ) => {
+    out.push(
+      bankConnection(
+        bank.id,
+        `bank:${encodeURIComponent(bank.id)}:${suffix}`,
+        bankPort(fromId, fromHandle),
+        bankPort(toId, toHandle),
+        kind
+      )
+    );
+  };
+
+  for (const bank of banks) {
+    const ids = bank.batteryIds;
+    if (bank.topology === 'series') {
+      for (let index = 0; index < ids.length - 1; index++) {
+        add(bank, `series:0:${index}`, ids[index]!, 'minus', ids[index + 1]!, 'plus', 'series');
+      }
+      continue;
+    }
+    if (bank.topology === 'parallel') {
+      const anchor = ids[0];
+      if (!anchor) continue;
+      for (let index = 1; index < ids.length; index++) {
+        add(bank, `parallel-positive:${index}`, anchor, 'plus', ids[index]!, 'plus', 'parallel-positive');
+        add(bank, `parallel-negative:${index}`, anchor, 'minus', ids[index]!, 'minus', 'parallel-negative');
+      }
+      continue;
+    }
+    if (bank.topology !== 'series-parallel') continue;
+
+    // Row-major layout: each parallel string contains `seriesCount` batteries.
+    for (let stringIndex = 0; stringIndex < bank.parallelCount; stringIndex++) {
+      const start = stringIndex * bank.seriesCount;
+      for (let seriesIndex = 0; seriesIndex < bank.seriesCount - 1; seriesIndex++) {
+        add(
+          bank,
+          `series:${stringIndex}:${seriesIndex}`,
+          ids[start + seriesIndex]!,
+          'minus',
+          ids[start + seriesIndex + 1]!,
+          'plus',
+          'series'
+        );
+      }
+    }
+    const firstPositive = ids[bank.seriesCount - 1];
+    const firstNegative = ids[0];
+    if (!firstPositive || !firstNegative) continue;
+    for (let stringIndex = 1; stringIndex < bank.parallelCount; stringIndex++) {
+      const start = stringIndex * bank.seriesCount;
+      add(
+        bank,
+        `parallel-positive:${stringIndex}`,
+        firstPositive,
+        'plus',
+        ids[start + bank.seriesCount - 1]!,
+        'plus',
+        'parallel-positive'
+      );
+      add(
+        bank,
+        `parallel-negative:${stringIndex}`,
+        firstNegative,
+        'minus',
+        ids[start]!,
+        'minus',
+        'parallel-negative'
+      );
+    }
+  }
+  return out.sort((left, right) => compareIds(left.id, right.id));
+}
+
+const connectionTerminalKey = (connection: ElectricalConnection): string =>
+  [
+    `${connection.from.nodeId}|${connection.from.handle ?? ''}`,
+    `${connection.to.nodeId}|${connection.to.handle ?? ''}`,
+  ]
+    .sort(compareIds)
+    .join('::');
+
 /**
  * Baut den elektrischen Graphen eines Plans.
  *
@@ -142,6 +273,8 @@ export function buildElectricalGraph(nodes: readonly Node[], edges: readonly Edg
   const byId = new Map(nodes.map((node) => [node.id, node]));
   const sortedNodes = [...nodes].sort((left, right) => compareIds(left.id, right.id));
   const sortedEdges = [...edges].sort((left, right) => compareIds(left.id, right.id));
+  const systemVoltage = getSystemVoltage([...sortedNodes]);
+  const bankModel = deriveBatteryBanks(sortedNodes, systemVoltage);
 
   const constraints = new Map<string, ComponentConstraints>();
   const electricalNodes: ElectricalNode[] = [];
@@ -181,12 +314,24 @@ export function buildElectricalGraph(nodes: readonly Node[], edges: readonly Edg
       domain,
       intent: edgeIntentOf(edge as { id: string; data?: Record<string, unknown> }),
       pinned: isIntentPinned(edge as { id: string; data?: Record<string, unknown> }),
+      origin: 'plan-edge',
     });
   }
 
+  // Deklarierte Batterie-Bänke haben reale interne Anschlussbeziehungen.
+  // Explizite Plan-Kanten behalten Vorrang, damit dieselbe physische Leitung
+  // nicht doppelt gezählt wird; nicht erklärte/inkonsistente Bänke erzeugen
+  // wegen `topology: unassigned` absichtlich keine erfundenen Verbindungen.
+  const explicitTerminals = new Set(connections.map(connectionTerminalKey));
+  for (const connection of internalBankConnections(bankModel.banks)) {
+    const key = connectionTerminalKey(connection);
+    if (explicitTerminals.has(key)) continue;
+    explicitTerminals.add(key);
+    connections.push(connection);
+    domainsPresent.add(connection.domain);
+  }
+
   // ── Batteriebänke und Spannungsebenen ────────────────────────────────────
-  const systemVoltage = getSystemVoltage([...sortedNodes]);
-  const bankModel = deriveBatteryBanks(sortedNodes, systemVoltage);
   const powerSystems: PowerSystem[] = bankModel.banks.map((bank) => ({
     id: `sys:${bank.id}`,
     voltageClass: bank.voltageClass,
@@ -333,7 +478,9 @@ export function electricalGraphHash(graph: ElectricalGraph): string {
     parts.push(
       `C|${connection.id}|${connection.from.nodeId}:${connection.from.handle ?? ''}|${
         connection.to.nodeId
-      }:${connection.to.handle ?? ''}|${connection.domain}|${connection.intent}`
+      }:${connection.to.handle ?? ''}|${connection.domain}|${connection.intent}|${connection.origin ?? 'plan-edge'}|${
+        connection.bankId ?? ''
+      }|${connection.bankLink ?? ''}`
     );
   }
   for (const bank of graph.batteryBanks) {

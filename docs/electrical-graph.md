@@ -73,7 +73,15 @@ Ersetzt die verstreuten `node.type ===`-Zweige durch eine Tabelle. Unbekannter T
   Zwei 12-V-Batterien sind nicht automatisch parallel: Dieselbe Zeichnung kann 12 V/200 Ah
   oder 24 V/100 Ah bedeuten — der Unterschied entscheidet über jede Sicherung im Plan.
 - Serie: Spannung × n, Kapazität = Minimum. Parallel: Kapazität summiert, Ströme nur,
-  wenn **alle** Werte vorliegen (`sumIfComplete`).
+  wenn **alle** Werte vorliegen (`sumIfComplete`). Series-Parallel: Spannung × Reihen,
+  Kapazität und vollständige BMS-Ströme × Parallelstränge.
+- `single`, `series` und `parallel` müssen zur Mitgliederzahl passen; `series-parallel`
+  verlangt positive ganze Zahlen mit `bankSeries × bankParallel = Mitgliederzahl`.
+  Widersprüchliche/ungültige Deklarationen führen zu `unassigned`, einer strukturierten
+  Frage und **keinen** abgeleiteten internen Verbindungen.
+- Gültige Deklarationen bekommen im Graphen deterministische interne Bankverbindungen.
+  Mitglieder-ID-Sortierung ist nur kanonische Graphdarstellung, **keine physische
+  Verdrahtungsanweisung**; diese internen Verbindungen erscheinen nicht als Planerkabel.
 - Jede Batterie gehört zu genau einer Bank (Invariante, property-getestet).
 
 ### 5. Strombudget (`currentBudget.ts`)
