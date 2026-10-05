@@ -42,6 +42,7 @@ import {
   plannerErrorCodeFromRuleId,
   plannerErrorCategoryFromValidation,
 } from '../../lib/planner/plannerError';
+import { isRouteLocked } from '../../lib/electricalGraph/intent';
 
 function NavigationSection({
   viewMode,
@@ -660,7 +661,41 @@ export function PlannerDashboard() {
   // Entscheidungen und Regelkonflikte stehen dort, wo der Nutzer Befunde sucht.
   const autoWireReport = usePlannerStore((state) => state.autoWireReport);
   const setPlannerErrors = usePlannerStore((state) => state.setPlannerErrors);
+  const lockedMutationErrors = usePlannerStore((state) => state.lockedMutationErrors);
   const liveWarnings = useLiveValidation(nodes, edges, verificationReport, autoWireReport);
+  const lockedMutationWarnings = useMemo<ValidationWarning[]>(
+    () =>
+      lockedMutationErrors.flatMap((error) => {
+        if (error.code !== 'ROUTING_LOCKED_MUTATION' && error.code !== 'ROUTING_LOCKED_MISSING_PATH')
+          return [];
+        return error.edgeIds.flatMap((edgeId) => {
+          const edge = edges.find((candidate) => candidate.id === edgeId);
+          if (!edge) return [];
+          if (error.code === 'ROUTING_LOCKED_MUTATION' && !isRouteLocked(edge)) return [];
+          return [
+            {
+              id: `locked-mutation-${error.code}-${edgeId}-${error.nodeIds.join('-')}`,
+              category: 'routing',
+              type: 'warning',
+              title:
+                error.code === 'ROUTING_LOCKED_MISSING_PATH'
+                  ? 'Leitung konnte nicht fixiert werden'
+                  : 'Änderung an fixierter Leitung blockiert',
+              focusId: edgeId,
+              focusType: 'edge',
+              ruleId:
+                error.code === 'ROUTING_LOCKED_MISSING_PATH'
+                  ? 'ROUTE-LOCK-MISSING-PATH'
+                  : 'ROUTE-LOCK-MUTATION',
+              source: 'Plan-Store: blockierte Mutation an einer explizit fixierten Leitung',
+              remedy: error.suggestedFix,
+              message: error.message,
+            } satisfies ValidationWarning,
+          ];
+        });
+      }),
+    [lockedMutationErrors, edges]
+  );
   const warnings = useMemo(() => {
     const supplemental: ValidationWarning[] = [];
     // Landstrom/RCD wird nicht mehr dupliziert: die kanonische Regel
@@ -700,8 +735,8 @@ export function PlannerDashboard() {
         title: 'Wasserfluss verbessern',
         message: `${waterWarning} Ergänze zwischen Pumpe und Entnahmestelle ein Druckausgleichsgefäß.`,
       });
-    return [...liveWarnings, ...supplemental];
-  }, [liveWarnings, nodes, waterWarning]);
+    return [...liveWarnings, ...lockedMutationWarnings, ...supplemental];
+  }, [liveWarnings, lockedMutationWarnings, nodes, waterWarning]);
 
   // Spec #36: Strukturierte Fehler im Store halten. Jede Warnung wird zu
   // einem PlannerError umgewandelt; das Warn-Center und künftige Filter/

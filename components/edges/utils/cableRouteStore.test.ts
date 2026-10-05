@@ -132,6 +132,31 @@ describe('Invalidierungs-Signaturen (R-9)', () => {
     expect(handled).not.toBe(withHandle);
   });
 
+  it('vollständige fixierte Wegpunktkoordinaten invalidieren den Routing-Hash', () => {
+    const base = {
+      ...makeEdge('e1', 'a', 'b'),
+      data: {
+        locked: true,
+        intent: 'locked',
+        lockedWaypoints: [
+          { x: 0, y: 0 },
+          { x: 100, y: 0 },
+        ],
+      },
+    };
+    const movedSnapshot = {
+      ...base,
+      data: {
+        ...base.data,
+        lockedWaypoints: [
+          { x: 0, y: 0 },
+          { x: 100, y: 10 },
+        ],
+      },
+    };
+    expect(edgeTopologySignature([movedSnapshot])).not.toBe(edgeTopologySignature([base]));
+  });
+
   it('Hop-Prioritätsmerkmale invalidieren die Kantensignatur', () => {
     const base = {
       ...makeEdge('e1', 'a', 'b'),

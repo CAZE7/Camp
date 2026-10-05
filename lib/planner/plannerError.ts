@@ -23,6 +23,8 @@ export type PlannerErrorCode =
   | 'BANK_MIXED_CHEMISTRY'
   | 'BANK_VOLTAGE_MISMATCH'
   | 'BANK_MISSING_COUNTS'
+  | 'BANK_MEMBER_COUNT_MISMATCH'
+  | 'BANK_DECLARATION_MISMATCH'
   // ── Spannungskompatibilität ─────────────────────────────────────────────
   | 'VOLTAGE_MISMATCH'
   | 'INVERTER_VOLTAGE_MISMATCH'
@@ -45,6 +47,8 @@ export type PlannerErrorCode =
   | 'ROUTING_NOT_CONVERGED'
   | 'ROUTING_LOCKED_CLEARANCE_VIOLATION'
   | 'ROUTING_LOCKED_IMPOSSIBLE'
+  | 'ROUTING_LOCKED_MUTATION'
+  | 'ROUTING_LOCKED_MISSING_PATH'
   | 'ROUTING_INVALID'
   | 'ROUTING_OBSTACLE_CONFLICT'
   | 'ROUTING_CLEARANCE_CONFLICT'
@@ -174,6 +178,16 @@ export function plannerErrorCodeFromRuleId(ruleId: string | undefined): PlannerE
   if (/fuse.*small|FUSE-SMALL/i.test(ruleId)) return 'FUSE_RATING_TOO_SMALL';
   if (/fuse.*large|FUSE-LARGE/i.test(ruleId)) return 'FUSE_RATING_TOO_LARGE';
   if (/cable|CBL|cross.sect/i.test(ruleId)) return 'CABLE_OVERLOAD';
+  if (/BANK-COUNT-MISMATCH/i.test(ruleId)) return 'BANK_MEMBER_COUNT_MISMATCH';
+  if (/BANK-DECLARATION-MISMATCH/i.test(ruleId)) return 'BANK_DECLARATION_MISMATCH';
+  if (/BANK-MISSING-COUNTS/i.test(ruleId)) return 'BANK_MISSING_COUNTS';
+  if (/ROUTE-LOCK-MUTATION/i.test(ruleId)) return 'ROUTING_LOCKED_MUTATION';
+  if (/ROUTE-LOCK-MISSING/i.test(ruleId)) return 'ROUTING_LOCKED_MISSING_PATH';
+  if (/ROUTE-LOCK-I3|ROUTE-LOCK-CLEARANCE/i.test(ruleId)) return 'ROUTING_LOCKED_CLEARANCE_VIOLATION';
+  if (/ROUTE-LOCK-(ENDPOINT|GEOMETRY|MISSING)/i.test(ruleId)) return 'ROUTING_LOCKED_IMPOSSIBLE';
+  if (/ROUTE-LOCK-I1|ROUTE-LOCK-OBSTACLE/i.test(ruleId)) return 'ROUTING_OBSTACLE_CONFLICT';
+  if (/ROUTE-LOCK-I2|ROUTE-LOCK-OVERLAP/i.test(ruleId)) return 'ROUTING_INVALID';
+  if (/route/i.test(ruleId)) return 'ROUTING_INVALID';
   if (/pinned/i.test(ruleId)) return 'PINNED_EDGE_VIOLATES_RULE';
   if (/shunt/i.test(ruleId)) return 'CONNECTION_SHUNT_BYPASS';
   if (/domain|cross/i.test(ruleId)) return 'CONNECTION_DOMAIN_CROSSING';
@@ -183,7 +197,7 @@ export function plannerErrorCodeFromRuleId(ruleId: string | undefined): PlannerE
 
 /** Mappt die Kategorie einer ValidationWarning auf PlannerErrorCategory. */
 export function plannerErrorCategoryFromValidation(
-  category: 'safety' | 'topology' | 'monitoring' | 'estimation' | undefined,
+  category: 'safety' | 'topology' | 'monitoring' | 'estimation' | 'routing' | undefined,
   ruleId: string | undefined
 ): PlannerErrorCategory {
   if (/bms|BMS/i.test(ruleId ?? '')) return 'bms';
@@ -193,6 +207,7 @@ export function plannerErrorCategoryFromValidation(
   if (/fuse|FUSE/i.test(ruleId ?? '')) return 'fuse';
   if (/route|ROUTE/i.test(ruleId ?? '')) return 'routing';
   if (/voltage|VOC|V-/i.test(ruleId ?? '')) return 'voltage';
+  if (category === 'routing') return 'routing';
   if (category === 'topology') return 'connection';
   if (category === 'safety') return 'protection';
   return 'general';

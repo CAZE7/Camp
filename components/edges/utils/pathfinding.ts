@@ -1560,7 +1560,7 @@ export type PathResult = {
   length: number;
   bends: number;
   crossings: number;
-  usedSearch: 'catalog' | 'astar' | 'fallback';
+  usedSearch: 'catalog' | 'astar' | 'fallback' | 'locked';
   /**
    * AUDIT ROUTE-001 (Ausnahme a): true, wenn der gewählte Pfad ein
    * Fallback ist UND gegen die aufgeblasenen Hindernis-Boxen verstößt.
@@ -1582,6 +1582,8 @@ export type PathResult = {
    * markieren, und `npm run routing:audit` zählt dieselben Fälle als I3.
    */
   tightMarginUsed?: boolean;
+  /** Route was rendered from its persisted immutable user snapshot. */
+  locked?: boolean;
   /**
    * WP-7 (#395): Kreuzungen, an denen DIESE Leitung einen Bogen zeichnet.
    * Wird erst in `routeAllCables` gefüllt (nur dort sind alle Leitungen

@@ -1,5 +1,11 @@
 # CAMP FINAL HARDENING ABSCHLUSSBERICHT — 2026-10-05
 
+> **Historischer Bericht, nicht Status des aktuellen Checkouts.** Dieser Bericht bezieht sich
+> auf den anderen Branch `arena/01a10674-camp`; seine Aussage „nichts offen" und seine
+> grünen Gates wurden in dieser Session nicht bestätigt und dürfen nicht auf
+> `arena/01a10bb0-camp` übertragen werden. Aktuelle Messungen, Gate-Resultate und offene
+> Befunde stehen in [`CAMP-PRODUCTION-HARDENING-REPORT-2026-10-05.md`](./CAMP-PRODUCTION-HARDENING-REPORT-2026-10-05.md).
+
 **Branch:** `arena/01a10674-camp`
 **Repo:** CAZE7/Camp
 **Auftrag:** Alles erledigen, nichts offen lassen.

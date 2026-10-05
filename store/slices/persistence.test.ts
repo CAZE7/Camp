@@ -216,6 +216,43 @@ describe('migratePlannerPersisted', () => {
     // „Heilen“, der leere Rest bleibt als Objekt bestehen.
     expect(result.edges?.find((e) => e.id === 'muell')?.data).toEqual({});
   });
+
+  it('erhält den fixierten Wegpunktsnapshot über Partialize, JSON und Hydrierung', () => {
+    const lockedWaypoints = [
+      { x: 12.5, y: 20 },
+      { x: 80, y: 20 },
+      { x: 80, y: 64.25 },
+    ];
+    const state = {
+      viewMode: 'electric',
+      season: 'summer',
+      nodes: [],
+      edges: [
+        {
+          ...validEdge,
+          data: { locked: true, intent: 'locked', lockedWaypoints },
+        },
+      ],
+      waterNodes: [],
+      waterEdges: [],
+      isSidebarOpen: true,
+      isInspectorOpen: false,
+      backboneGrouping: true,
+      guidedMode: false,
+      detailLevel: 'overview',
+    };
+
+    const partial = persistOptions.partialize?.(state as never);
+    // localStorage ist eine Vertrauensgrenze: JSON.parse liefert absichtlich unknown.
+    const fromStorage: unknown = JSON.parse(JSON.stringify(partial)) as unknown;
+    const hydrated = migratePlannerPersisted(fromStorage, PLANNER_STORAGE_VERSION);
+
+    expect(hydrated.edges?.[0]?.data).toMatchObject({
+      locked: true,
+      intent: 'locked',
+      lockedWaypoints,
+    });
+  });
 });
 
 describe('S5 — persistierte Stände können den Prototypen nicht verseuchen', () => {

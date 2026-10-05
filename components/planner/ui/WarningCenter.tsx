@@ -79,6 +79,7 @@ const UNVERIFIED_WARNING_PREFIXES = [
   'ac-missing-input-',
   'sc-bank-unknown',
   'sc-fuse-type-unknown',
+  'battery-bank-missing-counts-',
 ];
 
 export function isUnverifiedFinding(warning: ValidationWarning): boolean {
@@ -99,6 +100,8 @@ export function consequence(warning: ValidationWarning) {
     return 'Folge: Das System kann unvollständig sein oder nicht wie geplant funktionieren.';
   if (warning.category === 'monitoring')
     return 'Folge: Der Batteriestand wird falsch berechnet und ist nicht verlässlich.';
+  if (warning.category === 'routing')
+    return 'Folge: Die Leitung ist nicht routing-verifiziert; eine fixierte Trasse wird nicht automatisch verschoben.';
   return 'Folge: Reichweite, Ladezeit oder Leistung können schlechter sein als erwartet.';
 }
 

@@ -278,6 +278,24 @@ Regeln:
 - Nach jedem `applyHopPlan` werden Edge-Edge-Überlappungen **erneut geprüft**.
 - Beste Anzahl Hops ist Teil der Abnahme (G6).
 
+### Produktiver Sperrvertrag für fixierte Leitungen
+
+Im produktiven Router (`components/edges/utils/routeAll.ts`) ist `data.locked === true`
+oder `data.intent === 'locked'` eine harte Geometrie-Sperre, nicht bloß eine Hop-Priorität.
+Der Inspector speichert beim Fixieren den aktuellen Weg als `lockedWaypoints`; dieser
+Snapshot ist Teil der Routing-Signatur und wird unverändert gerendert. Nudge, Bend-Merge,
+Clearance-Separation und Hop-Analyse dürfen ihn nicht verschieben. Freie Routen werden
+zuerst um bereits fixierte Trassen herumgeführt.
+
+Endpunkt-/Snapshot-Abweichungen und I1/I2/I3-Verstöße werden aus dem publizierten
+Final-Validation-Report als strukturierte `ValidationWarning`s mit `focusId` der Kante in
+die Warn-Zentrale übernommen. Ein alter Lock ohne Snapshot ist `ROUTE-LOCK-MISSING` und
+nicht routing-verifiziert; der Planer erfindet keine historische Geometrie. Zum Bewegen,
+Löschen, Layouten oder Ersetzen eines Endpunkts/Plans muss die Leitung erst ausdrücklich
+entsperrt werden. Ein blockierter Versuch bleibt ebenfalls als anklickbare Warnung sichtbar.
+Undo/Redo dürfen den reinen Sperrstatus zurücknehmen/wiederholen, aber keine gesperrte
+Topologie oder Endpunktposition verändern.
+
 ---
 
 ## 9. ELK-Integration

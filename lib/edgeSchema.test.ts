@@ -67,6 +67,19 @@ describe('edgeSchema — Kantendaten-Schema (DOM-004)', () => {
     expect(sanitizeEdgeDataBySchema({ edgeDomain: 'HV_400V' }).removedFields).toEqual(['edgeDomain']);
   });
 
+  it('akzeptiert einen Wegpunktsnapshot als Array und verwirft einen falschen Grundtyp', () => {
+    const waypoints = [
+      { x: 0, y: 0 },
+      { x: 100, y: 0 },
+    ];
+    expect(sanitizeEdgeDataBySchema({ lockedWaypoints: waypoints }).data).toEqual({
+      lockedWaypoints: waypoints,
+    });
+    expect(sanitizeEdgeDataBySchema({ lockedWaypoints: '0,0 100,0' }).removedFields).toEqual([
+      'lockedWaypoints',
+    ]);
+  });
+
   it('akzeptiert für acProtection nur Objekt-Deskriptoren', () => {
     expect(sanitizeEdgeDataBySchema({ acProtection: { kind: 'rcbo' } }).data).toEqual({
       acProtection: { kind: 'rcbo' },

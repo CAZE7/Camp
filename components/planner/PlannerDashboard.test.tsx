@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import React from 'react';
-import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { act, render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { PlannerDashboard } from './PlannerDashboard';
 import { toPng } from 'html-to-image';
@@ -23,6 +23,17 @@ const mockUndo = vi.fn();
 const mockRedo = vi.fn();
 const mockClearPlan = vi.fn();
 const mockSetGuidedMode = vi.fn();
+const mockFocusElement = vi.fn();
+const mockEdges: Array<{ id: string; source: string; target: string; data: Record<string, unknown> }> = [];
+const mockLockedMutationErrors: Array<{
+  code: 'ROUTING_LOCKED_MUTATION';
+  severity: 'warning';
+  category: 'routing';
+  nodeIds: readonly string[];
+  edgeIds: readonly string[];
+  message: string;
+  suggestedFix: string;
+}> = [];
 
 vi.mock('../../store/usePlannerStore', () => ({
   // AUDIT T1: Der Mock-Zustand ist ein Test-Double eigener Form — der
@@ -38,9 +49,9 @@ vi.mock('../../store/usePlannerStore', () => ({
       onLayoutV2: mockOnLayoutV2,
       systemMessage: null,
       setSystemMessage: vi.fn(),
-      focusElement: vi.fn(),
+      focusElement: mockFocusElement,
       nodes: [],
-      edges: [],
+      edges: mockEdges,
       waterNodes: [],
       waterEdges: [],
       waterWarning: null,
@@ -54,6 +65,7 @@ vi.mock('../../store/usePlannerStore', () => ({
       // Auto-Wire-Report + PlannerError-Mapper (Sync aus useLiveValidation → Store)
       autoWireReport: null,
       plannerErrors: [],
+      lockedMutationErrors: mockLockedMutationErrors,
       setPlannerErrors: vi.fn(),
       addPlannerError: vi.fn(),
       clearPlannerErrors: vi.fn(),
@@ -445,5 +457,46 @@ describe('Warnungs-Deduplizierung (M11-1)', () => {
     const src = readFileSync(resolve(process.cwd(), 'components/planner/PlannerDashboard.tsx'), 'utf8');
     expect(src).not.toMatch(/id: `rcd-\$\{/);
     expect(src).not.toContain("type === 'shorePower'");
+  });
+});
+
+describe('blockierte Änderungen an fixierten Leitungen', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockEdges.splice(0);
+    mockLockedMutationErrors.splice(0);
+  });
+
+  it('zeigt den strukturierten Store-Befund anklickbar im WarningCenter', () => {
+    mockEdges.push({
+      id: 'edge-locked',
+      source: 'battery',
+      target: 'fuse',
+      data: {
+        locked: true,
+        intent: 'locked',
+        lockedWaypoints: [
+          { x: 10, y: 20 },
+          { x: 80, y: 20 },
+        ],
+      },
+    });
+    mockLockedMutationErrors.push({
+      code: 'ROUTING_LOCKED_MUTATION',
+      severity: 'warning',
+      category: 'routing',
+      nodeIds: ['battery'],
+      edgeIds: ['edge-locked'],
+      message: 'Änderung an fixierter Leitung wurde blockiert.',
+      suggestedFix: 'Leitung entsperren, bevor sie geändert wird.',
+    });
+
+    render(<PlannerDashboard />);
+    fireEvent.click(screen.getByRole('button', { name: /Prüfhinweise anzeigen/ }));
+
+    const finding = screen.getByText('Änderung an fixierter Leitung blockiert').closest('li');
+    expect(finding).not.toBeNull();
+    fireEvent.click(within(finding as HTMLElement).getByRole('button', { name: 'Im Plan zeigen' }));
+    expect(mockFocusElement).toHaveBeenCalledWith('edge-locked', 'edge');
   });
 });

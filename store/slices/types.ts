@@ -1,6 +1,6 @@
 import { type Edge, type Connection } from '@xyflow/react';
 import type { Volts } from '../../lib/units';
-import { type CableEdgeData } from '../../components/edges/CableEdge';
+import { type CableEdgeData, type CableWaypoint } from '../../lib/domain/cableEdgeData';
 import { type NodeDataPatch, type PlannerFlowNode } from '../../components/nodes/types';
 import { type WaterPipeEdgeData } from '../../components/edges/WaterPipeEdge';
 import type { AutoWireReport } from '../../lib/autoWire/conflicts';
@@ -25,7 +25,8 @@ export type GraphSnapshot = {
  * ehrlichen Verweigerungen — das UI sagt aus, was passiert ist.
  */
 export type LayoutV2Outcome =
-  { applied: true; engine: 'elk' | 'dagre' } | { applied: false; reason: 'empty' | 'stale' | 'error' };
+  | { applied: true; engine: 'elk' | 'dagre' }
+  | { applied: false; reason: 'empty' | 'stale' | 'error' | 'locked-edge' };
 
 /**
  * Detailgrad der Bauteilkarten im Canvas (UX-Reset 2026-09, RECHERCHE C1).
@@ -83,6 +84,10 @@ export interface PlannerState {
   addPlannerError: (error: PlannerError) => void;
   clearPlannerErrors: () => void;
   setPlannerErrors: (errors: readonly PlannerError[]) => void;
+  /** Ephemere, nicht von der Live-Validierung überschriebene Lock-Mutationsbefunde. */
+  lockedMutationErrors: readonly PlannerError[];
+  addLockedMutationError: (error: PlannerError) => void;
+  clearLockedMutationErrors: (edgeId?: string) => void;
 
   nodes: PlannerFlowNode[];
   edges: Edge<CableEdgeData>[];
@@ -172,7 +177,13 @@ export interface PlannerState {
    * Route fest. Mehr Stufen bietet die Oberfläche nicht an: `required` setzt
    * eine Regel, `suggested` ein Vorschlag — beides nicht von Hand.
    */
-  setEdgeIntent: (id: string, intent: 'auto' | 'user' | 'locked') => void;
+  setEdgeIntent: (
+    id: string,
+    intent: 'auto' | 'user' | 'locked',
+    lockedWaypoints?: readonly CableWaypoint[]
+  ) => void;
+  /** Speichert den deterministisch ermittelten Startweg für eine gesperrte Alt-Kante ohne Snapshot. */
+  captureLockedWaypoints: (id: string, lockedWaypoints: readonly CableWaypoint[]) => void;
   /**
    * AUDIT DOM-001: AC-Schutzorgan an einer AC-Kante ändern
    * (Bauform/Charakteristik/Abschaltvermögen nach IEC 60898-1).

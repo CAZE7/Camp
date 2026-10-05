@@ -109,7 +109,7 @@ import { compareIds } from '../../../lib/sortOrder';
  */
 
 /** Eine Kante, wie dieser Gang sie sieht — dieselbe Form wie beim Nudge. */
-export type SeparationPath = { id: string; waypoints: Point[] };
+export type SeparationPath = { id: string; waypoints: Point[]; locked?: boolean };
 
 export type SeparationOptions = {
   /** Hindernisse (Bauteil-Boxen inkl. Rand), gegen die ein Kandidat geprüft wird. */
@@ -136,6 +136,8 @@ type Working = {
   bounds: Rect;
   /** Manhattan-Länge — Wächter gegen „Freigabe gegen Umweg" (s. Annahme-Regel). */
   length: number;
+  /** Eine fixierte Leitung ist Prüfobjekt/Hindernis, aber nie Reparatur-Kandidat. */
+  locked: boolean;
 };
 
 /** Ein Verstoß: zwei Segmente unter `clearance`, ohne Berührung. */
@@ -177,6 +179,7 @@ const makeWorking = (path: SeparationPath, pad: number): Working => ({
   geometry: routedPathGeometry([...path.waypoints]),
   bounds: boundsOf(path.waypoints, pad),
   length: pathLength(path.waypoints),
+  locked: path.locked === true,
 });
 
 /**
@@ -542,7 +545,7 @@ export function separateCableClearance(
       const sides: Array<{ mover: number; other: number; segment: number }> = [
         { mover: violation.b, other: violation.a, segment: violation.sb },
         { mover: violation.a, other: violation.b, segment: violation.sa },
-      ];
+      ].filter((side) => !at(working, side.mover).locked);
       // Zwei Durchgänge über BEIDE Seiten: erst Züge OHNE Umweg (Länge ≤
       // vorher), dann — falls keiner die Zahl senkt — auch verlängernde. Die
       // Durchgänge müssen GLOBAL über beide Seiten laufen: Wird eine Seite
@@ -598,6 +601,7 @@ export function separateCableClearance(
                 geometry: routedPathGeometry(repaired),
                 bounds: boundsOf(repaired, clearance),
                 length: pathLength(repaired),
+                locked: current.locked,
               };
 
               // Längen-Wächter (1. Durchgang): Freigabe nicht gegen Umweg
@@ -648,6 +652,7 @@ export function separateCableClearance(
     let shortened = false;
     for (let mover = 0; mover < working.length && !shortened; mover++) {
       const current = at(working, mover);
+      if (current.locked) continue;
       const hitsBefore = obstacleHitCounts(current.points, obstacles);
       const requiredStub = requiredStubLength(current.points);
       // „vorher"-Bilanzen dieses Pfades je Nachbar — sie ändern sich erst mit
@@ -674,6 +679,7 @@ export function separateCableClearance(
             geometry: routedPathGeometry(repaired),
             bounds: boundsOf(repaired, clearance),
             length: pathLength(repaired),
+            locked: current.locked,
           };
           const hitsAfter = obstacleHitCounts(repaired, obstacles);
           if (hitsAfter.hard > hitsBefore.hard || hitsAfter.weighted > hitsBefore.weighted) continue;

@@ -104,6 +104,84 @@ describe('V2-GRAPH — elektrischer Graph (geometriefrei)', () => {
     );
     expect(systemVoltageOf(series)).toBe(volts(25.6));
     expect(series.powerSystems[0]?.voltageClass).toBe('24V');
+    const internalLinks = series.connections.filter((connection) => connection.origin === 'battery-bank');
+    expect(internalLinks).toHaveLength(1);
+    expect(internalLinks[0]).toMatchObject({
+      bankId: 'reihe',
+      bankLink: 'series',
+      intent: 'required',
+      pinned: true,
+      from: { nodeId: 'b1', handle: 'minus', polarity: 'minus' },
+      to: { nodeId: 'b2', handle: 'plus', polarity: 'plus' },
+    });
+    expect(series.circuits.find((circuit) => circuit.domain === 'DC_12V')?.nodeIds).toEqual(['b1', 'b2']);
+  });
+
+  it('repräsentiert eine gültige 2s2p-Bank mit Reihen- und Parallelverbindungen', () => {
+    const graph = buildElectricalGraph(
+      [
+        node('b1', 'battery', {
+          nominalVoltage: 12.8,
+          capacity: 100,
+          bankId: 'matrix',
+          bankTopology: 'series-parallel',
+          bankSeries: 2,
+          bankParallel: 2,
+        }),
+        node('b2', 'battery', {
+          nominalVoltage: 12.8,
+          capacity: 100,
+          bankId: 'matrix',
+          bankTopology: 'series-parallel',
+        }),
+        node('b3', 'battery', {
+          nominalVoltage: 12.8,
+          capacity: 100,
+          bankId: 'matrix',
+          bankTopology: 'series-parallel',
+        }),
+        node('b4', 'battery', {
+          nominalVoltage: 12.8,
+          capacity: 100,
+          bankId: 'matrix',
+          bankTopology: 'series-parallel',
+        }),
+      ],
+      []
+    );
+    expect(systemVoltageOf(graph)).toBe(volts(25.6));
+    expect(graph.batteryBanks[0]?.capacityAh).toBe(200);
+    expect(graph.connections.filter((connection) => connection.bankLink === 'series')).toHaveLength(2);
+    expect(
+      graph.connections.filter((connection) => connection.bankLink === 'parallel-positive')
+    ).toHaveLength(1);
+    expect(
+      graph.connections.filter((connection) => connection.bankLink === 'parallel-negative')
+    ).toHaveLength(1);
+    expect(graph.circuits.find((circuit) => circuit.domain === 'DC_12V')?.nodeIds).toEqual([
+      'b1',
+      'b2',
+      'b3',
+      'b4',
+    ]);
+  });
+
+  it('erzeugt für eine Bank mit unpassender Mitgliederzahl keine geratenen Serienlinks', () => {
+    const graph = buildElectricalGraph(
+      [
+        node('b1', 'battery', {
+          bankId: 'matrix',
+          bankTopology: 'series-parallel',
+          bankSeries: 2,
+          bankParallel: 2,
+        }),
+        node('b2', 'battery', { bankId: 'matrix', bankTopology: 'series-parallel' }),
+      ],
+      []
+    );
+    expect(graph.batteryBanks[0]?.topology).toBe('unassigned');
+    expect(graph.connections.filter((connection) => connection.origin === 'battery-bank')).toEqual([]);
+    expect(graph.questions.some((question) => question.kind === 'member-count-mismatch')).toBe(true);
   });
 
   it('ein Plan ohne Batterie bekommt eine benannte, keine erfundene Ebene', () => {

@@ -14,6 +14,7 @@ import { calculateEdgeCurrent } from '../../../lib/vde-standards';
 import {
   componentCurrentLimit,
   computeCurrentBudget,
+  deriveBatteryBanks,
   evaluateLoadFeasibility,
   resolveComponentConstraints,
 } from '../../../lib/electricalGraph';
@@ -23,10 +24,12 @@ import type { AutoWireConflict, AutoWireReport } from '../../../lib/autoWire/con
 // AUDIT T1: Diagnose-Texte (Typ statt `[object Object]`) kommen aus derselben
 // Stelle wie alle anderen Modellwert-Texte — keine zweite Implementierung.
 import { diagnosticText } from '../../../lib/safeText';
+import { isRouteLocked } from '../../../lib/electricalGraph/intent';
+import { useCableRouteFinalValidation } from '../../edges/utils/cableRouteStore';
 
 export interface ValidationWarning {
   id: string;
-  category: 'safety' | 'topology' | 'monitoring' | 'estimation';
+  category: 'safety' | 'topology' | 'monitoring' | 'estimation' | 'routing';
   type: 'critical' | 'warning' | 'info';
   message: string;
   /** Kurzer, laienverständlicher Titel für die Warn-Zentrale. */
@@ -155,6 +158,9 @@ export function useLiveValidation(
   report?: VerificationReport,
   autoWireReport?: AutoWireReport | null
 ): ValidationWarning[] {
+  // Quelle ist der vom globalen Router publizierte Final-Report (nicht der
+  // Kanten-Tooltip und nicht der separate PlannerError-Store).
+  const routingReport = useCableRouteFinalValidation();
   return useMemo(() => {
     if (!nodes || !edges) return [];
 
@@ -277,6 +283,44 @@ export function useLiveValidation(
     }
 
     const sysVoltage = getSystemVoltage(nodes);
+
+    // Die Bank-Topologie ist eine Eingabe, keine aus der Mitgliederzahl
+    // erratene Verschaltung. Deklarierte Zählfehler müssen deshalb schon vor
+    // Auto-Wire im Prüfzentrum sichtbar sein.
+    const bankModel = deriveBatteryBanks(nodes, sysVoltage);
+    const actionableBankQuestions = bankModel.questions.filter(
+      (question) =>
+        question.kind === 'member-count-mismatch' ||
+        question.kind === 'declaration-mismatch' ||
+        question.kind === 'missing-counts'
+    );
+    for (const question of actionableBankQuestions) {
+      const mismatch = question.kind !== 'missing-counts';
+      warnings.push({
+        id: `battery-bank-${question.kind}-${question.bankId}`,
+        category: 'topology',
+        type: mismatch ? 'critical' : 'warning',
+        title:
+          question.kind === 'member-count-mismatch'
+            ? 'Batterie-Bank: Mitgliederzahl stimmt nicht'
+            : question.kind === 'declaration-mismatch'
+              ? 'Batterie-Bank: widersprüchliche Deklaration'
+              : 'Batterie-Bank: Reihen-/Parallelzahlen fehlen',
+        focusId: question.batteryIds[0],
+        focusType: 'node',
+        ruleId:
+          question.kind === 'member-count-mismatch'
+            ? 'BANK-COUNT-MISMATCH'
+            : question.kind === 'declaration-mismatch'
+              ? 'BANK-DECLARATION-MISMATCH'
+              : 'BANK-MISSING-COUNTS',
+        expectedValue:
+          question.kind === 'missing-counts' ? 'bankSeries × bankParallel = Mitgliederzahl' : undefined,
+        unit: '',
+        source: 'Explizite Angaben am Batteriebank-Modell',
+        message: `${mismatch ? 'Kritisch' : 'Hinweis'}: ${question.question}`,
+      });
+    }
 
     // --- Rule A5: Parallelschaltung inkompatibler Batterie-Chemien (AUTO-003) ---
     // Auto-Wire legt AGM ‖ Gel nicht mehr auf die Schiene, aber Nutzer-Kanten
@@ -709,11 +753,78 @@ export function useLiveValidation(
     // widerspricht, steht hier in derselben Liste wie jeder andere Befund —
     // vorher verschwand der Bericht im Rückgabewert von `performAutoWiring`.
     if (autoWireReport) {
-      warnings.push(...autoWireWarnings(autoWireReport, nodeMap, edges));
+      const bankQuestionTexts = new Set(actionableBankQuestions.map((question) => question.question));
+      const autoWarnings = autoWireWarnings(autoWireReport, nodeMap, edges).filter(
+        (warning) =>
+          warning.ruleId !== 'AUTO-OPEN-QUESTION' ||
+          ![...bankQuestionTexts].some((question) => warning.message.includes(question))
+      );
+      warnings.push(...autoWarnings);
+    }
+
+    // Final-Validation ist die kanonische Routing-Diagnose. Ein Befund wird
+    // nur dann zur Lock-Warnung, wenn seine edgeId tatsächlich eine fixierte
+    // Plan-Kante ist; Tooltip-Prosa wird nie als Datenquelle geparst.
+    const lockedEdges = new Map(edges.filter(isRouteLocked).map((edge) => [edge.id, edge]));
+    for (const violation of routingReport?.violations ?? []) {
+      const lockedId = [violation.edgeId, violation.otherId].find(
+        (id) => id !== undefined && lockedEdges.has(id)
+      );
+      if (!lockedId) continue;
+      const invariant = violation.invariant;
+      warnings.push({
+        id: `route-lock-${invariant}-${lockedId}-${violation.otherId ?? 'node'}`,
+        category: 'routing',
+        type: invariant === 'I3' ? 'warning' : 'critical',
+        title:
+          invariant === 'I1'
+            ? 'Fixierte Leitung kollidiert mit einem Bauteil'
+            : invariant === 'I2'
+              ? 'Fixierte Leitung überdeckt eine andere Leitung'
+              : 'Fixierte Leitung unterschreitet den Mindestabstand',
+        focusId: lockedId,
+        focusType: 'edge',
+        ruleId: `ROUTE-LOCK-${invariant}`,
+        expectedValue:
+          invariant === 'I1'
+            ? 'keine Kollision'
+            : invariant === 'I2'
+              ? 'keine Überdeckung'
+              : 'Mindestabstand eingehalten',
+        source: 'Globaler Routing-Pass: Final-Validation der veröffentlichten Wegpunkte',
+        remedy: 'Leitung entsperren, die Bauteile/Leitungsführung anpassen und bei Bedarf erneut fixieren.',
+        message: violation.detail,
+      });
+    }
+    const lockRemedy = (code: string): string =>
+      code === 'ROUTE-LOCK-MISSING'
+        ? 'Leitung entsperren und erneut fixieren, damit ein unveränderlicher Wegpunktsnapshot gespeichert wird.'
+        : 'Leitung entsperren, Bauteilposition oder Verbindung korrigieren und nach der Prüfung erneut fixieren.';
+    const lockTitles: Record<string, string> = {
+      'ROUTE-LOCK-MISSING': 'Fixierte Leitung hat keinen Wegpunktsnapshot',
+      'ROUTE-LOCK-GEOMETRY': 'Fixierte Leitungsgeometrie wurde verändert',
+      'ROUTE-LOCK-ENDPOINT': 'Fixierte Leitung passt nicht mehr zu ihren Anschlüssen',
+      'ROUTE-LOCK-INVALID': 'Fixierter Leitungsweg ist ungültig',
+    };
+    for (const violation of routingReport?.lockedRouteViolations ?? []) {
+      if (!lockedEdges.has(violation.edgeId)) continue;
+      warnings.push({
+        id: `${violation.code}-${violation.edgeId}`,
+        category: 'routing',
+        type: 'critical',
+        title: lockTitles[violation.code] ?? 'Konflikt an fixierter Leitung',
+        focusId: violation.edgeId,
+        focusType: 'edge',
+        ruleId: violation.code,
+        expectedValue: 'gespeicherte Geometrie und aktuelle Anschlusspunkte stimmen überein',
+        source: 'Globaler Routing-Pass: Lock-Snapshot-/Endpunktprüfung',
+        remedy: lockRemedy(violation.code),
+        message: violation.detail,
+      });
     }
 
     return warnings;
-  }, [nodes, edges, report, autoWireReport]);
+  }, [nodes, edges, report, autoWireReport, routingReport]);
 }
 
 /**

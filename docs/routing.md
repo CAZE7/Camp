@@ -100,54 +100,70 @@ Messung `npx tsx scripts/routing/audit.ts` (2026-10-04, unverändert zur Baselin
 zu einer Haupttrasse; die Anzeige schaltet `trunkMode` / `backboneGrouping`. Die Trasse ist
 eine **Darstellungs- und Kostenentscheidung**, keine zusätzliche elektrische Verbindung.
 
-## Gesperrte Routen — was „Fixiert" heute wirklich tut
+## Gesperrte Routen — produktiver Vertrag
 
-Gesetzt wird die Sperre im Inspector („Fixiert" → `data.locked = true`). `user` allein
-sperrt die Route **nicht**: Topologie und Kabelweg sind zwei verschiedene Zusagen.
+`user` allein sperrt die Route **nicht**: Topologie und Kabelweg sind zwei verschiedene
+Zusagen. Beim expliziten Fixieren speichert der Inspector den aktuell veröffentlichten Weg
+als `data.lockedWaypoints`; ohne gültigen Snapshot wird die Sperre abgelehnt und eine
+strukturierte Warnung erzeugt.
 
-Wirkung im Routing, präzise:
+Im Produktivrouter (`components/edges/utils/routeAll.ts`) bedeutet `data.locked === true`
+oder `data.intent === 'locked'`:
 
-1. **Vorrang beim Hopping** (`lib/routing/rules/hopping.ts`): `manualLock` erhöht die
-   Priorität; treffen zwei Kanten aufeinander, bekommt die gesperrte **keinen** Hop-Bogen
-   — die andere weicht aus. Sind beide gesperrt, hüpft keine.
-2. **Teil der Topologie-Signatur** (`cableRouteStore.ts`): Ein Wechsel der Sperre ist eine
-   echte Eingabeänderung und erzeugt eine neue Routing-Generation.
+1. Die unveränderliche Snapshot-Geometrie wird vor freien Routen verarbeitet und in der
+   aktuellen Routing-Generation exakt übernommen.
+2. Der gesperrte Weg wird nicht mit A*, Fallback, Hop, Nudge, Bend-Merge oder
+   Clearance-Separation verändert. Freie Trassen weichen den gespeicherten Segmenten aus.
+3. Der Snapshot ist Teil der Routing-Signatur; ein echter Lock-/Geometriewechsel erzeugt
+   eine neue Generation.
+4. Unterstützte Store-Mutationspfade blockieren Löschen, Ersetzen, Umhängen und das
+   Verschieben von Endpunkten, solange die Leitung fixiert ist. Explizites Entsperren ist
+   der Weg, solche Änderungen vorzunehmen. Undo/Redo lassen höchstens die Sperre selbst
+   wechseln, nicht zugleich Topologie oder Endpunktposition.
 
-**Was es (noch) nicht tut:** Die Wegpunkte einer gesperrten Kante werden weiterhin bei
-jedem Pass neu berechnet. Ein echtes Einfrieren der Geometrie — gespeicherte Wegpunkte,
-die der Router unverändert übernimmt und als Hindernis behandelt — ist **nicht**
-implementiert (offener Befund **V2-LOCK-001**). Wer heute „Fixiert" wählt, bekommt
-Vorrang und Stabilität durch Priorität, keine eingefrorene Linie.
+Die unveränderte Trasse wird **nicht repariert**, wenn sie mit einem Bauteil, einer anderen
+Leitung oder dem Mindestabstand kollidiert. Die finale Validierung meldet Snapshot-,
+Endpunkt- und I1/I2/I3-Konflikte strukturiert und klickbar im `WarningCenter`; ein
+blockierter Mutationsversuch kommt ergänzend aus einem separaten flüchtigen Store-Befund.
+Beim expliziten Entsperren werden zugehörige Mutationswarnungen entfernt. Alte Locks ohne
+Snapshot erhalten eine „nicht verifizierbar"-Warnung; eine historische Trasse wird nicht
+erfunden.
 
-`isRouteLocked(edge)` aus `lib/electricalGraph/intent.ts` ist die dafür vorgesehene
-Abfrage; der Produktivpfad liest derzeit direkt `data.locked`.
+Die Absicht wird zentral über `isRouteLocked(edge)` aus
+`lib/electricalGraph/intent.ts` bestimmt. Siehe auch den produktiven Vertrag in
+[`ROUTING-V2.md`](./ROUTING-V2.md) §8.
 
-## Skalierung (gemessen 2026-10-04, `tests/scale/plannerScale.test.ts`)
+## Skalierung und Performance (Messung 2026-10-05)
 
-| Knoten | Auto-Wire + Routing | Invariantenprüfung |
-| ------ | ------------------- | ------------------ |
-| 10     | 0,3 s               | 0,07 s             |
-| 25     | 1,6 s               | 1,3 s              |
-| 50     | 6,0 s               | 4,5 s              |
-| 100    | 12,3 s              | 7,5 s              |
-| 250    | 62,4 s              | 65,7 s             |
+Der gezielte 250-Knoten-Lauf (`SCALE_250=1 npx vitest run tests/scale/plannerScale.test.ts`)
+bestand **25/25** Tests. Der 250-Knoten-I1/I2/I3-Routingtest dauerte 54,1 s; der volle
+Scale-Lauf 71,7 s. Die normale Suite überspringt nur diesen bewusst teuren 250er-Routingtest;
+Determinismus, Idempotenz, Intent und Generation werden weiterhin geprüft. Das ist korrekt,
+aber nicht interaktiv.
 
-(Gemessen ohne Coverage-Instrument. Im Gate `npm run check` laufen die Tests unter
-V8-Coverage und brauchen rund das Dreifache — deshalb sichert `tests/scale/` **keine**
-Laufzeit zu, sondern nur Korrektheit, Determinismus und Konvergenz. Laufzeit gehört in
-`benchmarks/`.)
+Die separate Routing-only-Probe (`npm run perf:route-scaling`, je drei Messläufe) ergab:
 
-Das ist **kein Erfolg, sondern ein Befund**: Der Aufwand wächst deutlich überlinear
-(`validateFinalRouting` ist O(E²) über Kantenpaare, die Wegsuche arbeitet gegen alle
-Fremdsegmente). Für die realistische Plangröße (< 60 Bauteile) ist es tragbar, für 250
-nicht interaktiv. Die beiden teuren 250er-Fälle laufen deshalb nur mit `SCALE_250=1`;
-alle Determinismus- und Konvergenzzusagen werden auch bei 250 Knoten in jedem Lauf
-geprüft.
+| Form / Größe        | Knoten | Kanten |     Median |            Min–Max | Fallbacks |
+| ------------------- | -----: | -----: | ---------: | -----------------: | --------: |
+| Kette               |     10 |      9 |     1,5 ms |         0,7–2,7 ms |         0 |
+| Kette               |     50 |     49 |    15,4 ms |       14,5–20,4 ms |         0 |
+| Kette               |    100 |     99 |    15,6 ms |       15,4–18,8 ms |         0 |
+| Kette               |    250 |    249 |    48,3 ms |       46,3–54,6 ms |         0 |
+| Kette               |    500 |    499 |   178,2 ms |     175,1–180,5 ms |         0 |
+| Spannkanten (Worst) |    100 |     50 |   239,6 ms |     234,1–254,0 ms |         0 |
+| Spannkanten (Worst) |    250 |    125 | 2.244,4 ms | 2.166,8–2.301,0 ms |         0 |
+| Spannkanten (Worst) |    500 |    250 | 5.568,6 ms | 5.405,8–5.606,3 ms |         0 |
 
-Live-Pfad-Benchmark (`npm run perf:edge-routing`, N=36/E=134) auf dieser Maschine:
-Median **310–330 ms** gegen einen Ratchet von 60 ms — **vor und nach** der V2-Arbeit
-gleich (Basis-Commit gemessen: 303/330 ms). Der Ratchet stammt von schnellerer Hardware;
-die Überschreitung ist vorbestehend und nicht durch V2 verursacht.
+Das ist nur Routing, keine Ende-zu-Ende-Aussage über Auto-Wire oder vollständige
+Validierung bei 500 Knoten. Die planweite Worst-Case-Spannkante liegt bei 500 Knoten deutlich
+über der 100-ms-Drossel; `0` Fallbacks in dieser Probe sind keine Aussage über I1/I2/I3.
+
+`npm run perf:edge-routing` wurde ebenfalls ausgeführt. Der alte Einzelkanten-Renderpfad
+bestand sein 16-ms-Gate (N=36/E=134: Median 2,07 ms, p90 2,95 ms). Der produktive
+`routeAllCables`-Pfad **verfehlte** jedoch den 60-ms-Ratchet: Median 276,37 ms, p90
+297,03 ms; der Befehl endete mit Exit-Code 1. Das bleibt ein offenes Performance-Problem,
+kein Grund, die Schwelle anzuheben oder den Gate-Ausfall zu verschweigen. Ein 500-Knoten-
+Ende-zu-Ende-Lauf ist hier nicht gemessen.
 
 ## Was hier verboten ist
 

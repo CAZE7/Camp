@@ -22,6 +22,11 @@ describe('V2-INTENT-002: setEdgeIntent', () => {
     ...patch,
   });
 
+  const routeSnapshot = [
+    { x: 96, y: 60 },
+    { x: 396, y: 60 },
+  ];
+
   beforeEach(() => {
     usePlannerStore.setState({
       nodes: [
@@ -49,14 +54,23 @@ describe('V2-INTENT-002: setEdgeIntent', () => {
   });
 
   it('„Fixiert“ sperrt zusätzlich die Route', () => {
-    usePlannerStore.getState().setEdgeIntent('e1', 'locked');
+    usePlannerStore.getState().setEdgeIntent('e1', 'locked', routeSnapshot);
     const result = currentEdge();
     expect(edgeIntentOf(result)).toBe('locked');
     expect(isRouteLocked(result)).toBe(true);
+    expect(result.data?.lockedWaypoints).toEqual(routeSnapshot);
+  });
+
+  it('verweigert die Sperre ohne konkrete, endliche Wegpunkte', () => {
+    usePlannerStore.getState().setEdgeIntent('e1', 'locked');
+    expect(isRouteLocked(currentEdge())).toBe(false);
+    expect(
+      usePlannerStore.getState().plannerErrors.some((error) => error.code === 'ROUTING_LOCKED_MISSING_PATH')
+    ).toBe(true);
   });
 
   it('„Automatik“ gibt die Kante wieder frei', () => {
-    usePlannerStore.getState().setEdgeIntent('e1', 'locked');
+    usePlannerStore.getState().setEdgeIntent('e1', 'locked', routeSnapshot);
     usePlannerStore.getState().setEdgeIntent('e1', 'auto');
     const result = currentEdge();
     expect(result.data?.locked).toBe(false);
@@ -81,7 +95,7 @@ describe('V2-INTENT-002: setEdgeIntent', () => {
   });
 
   it('ist rückgängig machbar (ein History-Schritt)', () => {
-    usePlannerStore.getState().setEdgeIntent('e1', 'locked');
+    usePlannerStore.getState().setEdgeIntent('e1', 'locked', routeSnapshot);
     expect(usePlannerStore.getState().canUndo).toBe(true);
     usePlannerStore.getState().undo();
     expect(currentEdge().data?.locked).toBeUndefined();
@@ -100,7 +114,7 @@ describe('V2-INTENT-002: setEdgeIntent', () => {
    * überlebt den Lauf mit IHRER Topologie.
    */
   it('eine gepinnte Kante überlebt einen Auto-Wire-Lauf', () => {
-    usePlannerStore.getState().setEdgeIntent('e1', 'locked');
+    usePlannerStore.getState().setEdgeIntent('e1', 'locked', routeSnapshot);
     const { nodes, edges } = usePlannerStore.getState();
     const result = performAutoWiring(nodes, edges);
     expect(result).not.toBeNull();

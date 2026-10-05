@@ -50,6 +50,9 @@ export type UiSlice = Pick<
   | 'addPlannerError'
   | 'clearPlannerErrors'
   | 'setPlannerErrors'
+  | 'lockedMutationErrors'
+  | 'addLockedMutationError'
+  | 'clearLockedMutationErrors'
 >;
 
 export const createUiSlice: PlannerSlice<UiSlice> = (set, get) => ({
@@ -82,6 +85,19 @@ export const createUiSlice: PlannerSlice<UiSlice> = (set, get) => ({
     set((state) => ({ plannerErrors: dedupePlannerErrors([...state.plannerErrors, error]) })),
   clearPlannerErrors: () => set({ plannerErrors: [] }),
   setPlannerErrors: (errors) => set({ plannerErrors: dedupePlannerErrors(errors) }),
+  // Separate Quelle: Dashboard ersetzt `plannerErrors` mit der jeweils
+  // aktuellen Validierungsliste; blockierte Lock-Mutationen müssen bis zum
+  // expliziten Entsperren trotzdem als Warnung sichtbar bleiben.
+  lockedMutationErrors: [],
+  addLockedMutationError: (error) =>
+    set((state) => ({ lockedMutationErrors: dedupePlannerErrors([...state.lockedMutationErrors, error]) })),
+  clearLockedMutationErrors: (edgeId) =>
+    set((state) => ({
+      lockedMutationErrors:
+        edgeId === undefined
+          ? []
+          : state.lockedMutationErrors.filter((error) => !error.edgeIds.includes(edgeId)),
+    })),
   season: 'summer',
   setSeason: (season) => set({ season }),
   waterWarning: null,

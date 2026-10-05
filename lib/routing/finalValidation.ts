@@ -84,6 +84,17 @@ export type FinalValidationCounts = {
   clearanceViolations: number;
   /** AUDIT ROUTE-013: NaN/±Infinity/Koordinaten außerhalb des Plans. */
   sanityViolations?: number;
+  /** Fixierte Routen ohne unveränderten Snapshot oder mit gelösten Endpunkten. */
+  lockedRouteViolations?: number;
+};
+
+export type LockedRouteViolationCode =
+  'ROUTE-LOCK-MISSING' | 'ROUTE-LOCK-GEOMETRY' | 'ROUTE-LOCK-ENDPOINT' | 'ROUTE-LOCK-INVALID';
+
+export type LockedRouteViolation = {
+  code: LockedRouteViolationCode;
+  edgeId: string;
+  detail: string;
 };
 
 export type FinalValidationReport = {
@@ -92,6 +103,8 @@ export type FinalValidationReport = {
   violations: InvariantViolation[];
   /** Zahl der geprüften Kanten — Kontext für die Zahlen oben. */
   edgeCount: number;
+  /** Strukturierte, kantenbezogene Konflikte aus unveränderlichen Trassen. */
+  lockedRouteViolations?: LockedRouteViolation[];
   /**
    * ROUTE-BUG-23: Wie viele Leitungen die Bauteil-Freigabe aus geometrischer
    * Not unterschreiten (`PathResult.tightMarginUsed`). Das sind dieselben
@@ -106,7 +119,8 @@ export const totalViolations = (counts: FinalValidationCounts): number =>
   counts.edgeNodeCollisions +
   counts.edgeEdgeOverlaps +
   counts.clearanceViolations +
-  (counts.sanityViolations ?? 0);
+  (counts.sanityViolations ?? 0) +
+  (counts.lockedRouteViolations ?? 0);
 
 /**
  * Prüft ein fertiges Routing gegen die Final-Invariante.
@@ -177,6 +191,7 @@ export function formatFinalValidation(report: FinalValidationReport): string {
     `${report.status} — ${report.edgeCount} Kanten, ` +
     `I1(edge×node)=${c.edgeNodeCollisions}, ` +
     `I2(edge×edge)=${c.edgeEdgeOverlaps}, ` +
-    `I3(clearance)=${c.clearanceViolations}`;
+    `I3(clearance)=${c.clearanceViolations}` +
+    ((c.lockedRouteViolations ?? 0) > 0 ? `, locked=${c.lockedRouteViolations}` : '');
   return c.sanityViolations ? `${base}, sanity=${c.sanityViolations}` : base;
 }
