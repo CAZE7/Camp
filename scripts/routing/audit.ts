@@ -344,7 +344,10 @@ export const SHIFT_RATCHET: Readonly<Record<string, { I2: number; I3: number }>>
   // 130→25, 469→26, 45→0, 75→10, 180→24, 1225→0) und acdc zusätzlich eine
   // kollineare Überdeckung verliert (10→2). Gemessen mit `--shifts`.
   simple: { I2: 0, I3: 25 },
-  camper: { I2: 6, I3: 26 },
+  // Nachgezogen 2026-10-05 (ADR 0034, paarweise Freigabe im Trenngang):
+  // camper I3 26 → 22 — der zweite Durchgang rückt auch die verschobenen
+  // Bündel domänenabhängig auseinander. Messung: `npm run routing:audit --shifts`.
+  camper: { I2: 6, I3: 22 },
   solar: { I2: 0, I3: 0 },
   inverter: { I2: 0, I3: 10 },
   acdc: { I2: 2, I3: 24 },
@@ -405,26 +408,26 @@ export function auditShiftMatrix(): ShiftMatrixEntry[] {
  * Gate, das die Nutzer-Sicht prüft.
  */
 const CROSSING_RATCHET: Readonly<Record<string, number>> = {
-  // Nachgezogen 2026-10-05 (ADR 0035, Auslaufkorridor-Schutz):
-  //   simple 1→0, camper 4→1, acdc 6→3 (gesenkt), complex 25→30 (GESTIEGEN).
-  // `complex` ist der einzige Plan, in dem die Kreuzungen zunehmen: 23
-  // Kanten auf engem Raum, viele Anschlüsse weit außen — der Korridor-Schutz
-  // zwingt dort Trassen auf Umwege, die sich häufiger kreuzen. Dafür fällt
-  // die SUMME über alle sechs Pläne 40 → 38, und `p11-zwangskreuzung`
-  // verliert eine 464 px lange kollineare Kabel-Überdeckung (zwei Kanten
-  // exakt aufeinander — ein Zeichenfehler, kein Schönheitsfehler).
-  // Vollständige Vorher/Nachher-Messung: docs/ARCHITECTURE-CHANGES.md,
-  // Eintrag ADR 0035. Wer `complex` unter 30 drücken will, muss den
-  // Korridor-Schutz selektiver machen — nicht die Zahl hier senken.
-  simple: 0,
-  camper: 1,
+  // Nachgezogen 2026-10-03 (ADR 0033): simple 2→1 und camper 5→4 durch den
+  // Längen-Nachlauf des Trenngangs (er zieht Kurven zusammen, die vorher als
+  // Umweg standen).
+  simple: 1,
+  camper: 4,
   solar: 2,
   inverter: 2,
   // Nachgezogen 2026-09-27 (Merge des Arena-Zweigs „stabilize planning and
   // safe route reflow“): gemessen acdc 6 statt 8, complex 27 statt 29.
-  // Früherer Stand: acdc 8 → 6 (ADR 0033).
-  acdc: 3,
-  complex: 30,
+  // Nachgezogen 2026-10-03 (ADR 0033, Trenngang + Korridor-Kapazität):
+  // complex 25 statt 27 — der Trenngang hat einen Kreuzungs-Wächter, kann
+  // die Zahl also nur senken; die Layout-Korrektur der Vorlage tat ihr Übriges
+  // (Messung in `docs/ARCHITECTURE-CHANGES.md`).
+  // Nachgezogen 2026-10-05 (ADR 0034, Domänen-Freigabe im Trenngang):
+  // acdc 5 statt 6 — der zweite Durchgang mit paarweiser Freigabe (24 px für
+  // ac230 ↔ dc12) schiebt die gemischten Leitungen auseinander und löst
+  // dabei eine Kreuzung mit auf. Messung: `npm run routing:audit`,
+  // vollständige Tabelle in `docs/ARCHITECTURE-CHANGES.md`.
+  acdc: 5,
+  complex: 25,
 };
 
 export function auditAllPlans(): PlanAudit[] {

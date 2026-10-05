@@ -45,7 +45,7 @@ Legende Severity: **hoch** = Agent kann falschen Code ändern / falsche Sicherhe
 
 ---
 
-## ROUTE-010 — Regressionsratchet akzeptiert bestehende I2-/I3-Verstöße — **OPEN**
+## ROUTE-010 — Regressionsratchet akzeptiert bestehende I2-/I3-Verstöße — **PARTIALLY FIXED**
 
 - **AREA:** Routing / Regressionstests
 - **FILE:** `scripts/regression/layout.ts` (`measureScenario`),
@@ -64,8 +64,35 @@ Legende Severity: **hoch** = Agent kann falschen Code ändern / falsche Sicherhe
   sind ein separates Set und heben diese Regression-Befunde nicht auf.
 - **EXPECTED BEHAVIOR:** I1/I2/I3 = 0 in jedem Regression-Szenario; Fehlerursache im Router
   beheben und danach Layout-Baselines nur mit dokumentierter, gemessener Verbesserung ändern.
-- **STATUS (2026-10-05):** **OPEN.** Kein Testratchet wurde gelockert; der aktuelle
-  Abnahmewunsch „I1/I2/I3 = 0“ ist für die Regression-Suite nicht erfüllt.
+- **STATUS (2026-10-05):** **PARTIALLY FIXED** (ADR 0034; ADR 0035 ist ein dokumentierter,
+  verworfener Versuch). p02 ist im Router behoben, p11 offen:
+  - **p02** — Widerspruch zwischen `portFacingClearance` (68 px, fest) und der Fächerregel
+    `requiredPortCorridor(K) = stubMin + (K−1)·laneGrid` (ab K = 4 sind es 72 px). Der
+    Router legte den Fächer vorschriftsmäßig, I3 meldete ihn anschließend. Behoben durch
+    `bundleCorridor() = max(portFacingClearance, requiredPortCorridor(K))` — identisch für
+    K ≤ 3, wachsend erst ab K = 4. Messung: **6 → 0** I3 in p02, 1 → 0 in p03.
+  - **p11 — weiterhin OFFEN (1 × I2 + 2 × I3).** `e-down` legt ihre Haupttrasse 24 px vor
+    den Anschluss von `e-up` auf dieselbe Linie und nimmt ihr damit den einzigen Weg aus
+    diesem Anschluss heraus; es bleibt eine 464 px kollineare Überdeckung. Es wurden sechs
+    Varianten gebaut und gemessen (harte Auslaufkorridore, Kosten-Term, Reparatur nach der
+    Wahl, gleichachsige Reparatur, Korridorlängen-Sweep, Grad-Begrenzung). Der wirksamste
+    davon — harte Auslaufkorridore für belegte Fremd-Ports — erreicht 0/0/0 in allen 15
+    Szenarien, **bricht aber das Versatz-Gate** (`shiftInvariance.test.ts`, 294 Läufe):
+    camper I3 22 → 41, solar I3 0 → 17, acdc I2 2 → 19 / I3 24 → 39, dazu I1 = 2 in
+    `simple`, weil eine zusätzliche Sperrfläche bei verschobenem Raster eine Route unmöglich
+    macht und der Notfallpfad dann durch ein Bauteil fährt. Vollständiges Versuchsprotokoll
+    in `docs/adr/0035-auslaufkorridor-fremder-ansa.md` (**verworfen**). Der nächste Versuch
+    braucht eine Änderung am ABLAUF, nicht am Kostenmodell: wählbare Verlege-Reihenfolge
+    (hintereinander statt `compareIds`) oder koordinierte Umplanung beider Kanten.
+  - Der offene p11-Befund ist in `scripts/regression/regression.test.ts` als **`it.fails`**
+    verdrahtet — kein übersprungener Test: grün, solange der Befund besteht, rot, sobald ihn
+    jemand repariert. Er zwingt dann, den Fall zurück in das harte Gate zu schieben.
+  - Neues **hartes Gate** in `scripts/regression/regression.test.ts`: I1 = I2 = I3 = 0 je
+    Szenario, absolut — eine Ratchet (Delta ≤ 0) kann das nicht ersetzen, weil ein Plan mit
+    Verstößen grün bleibt, solange er sich nicht verschlechtert.
+  - Preis der verbleibenden Änderungen, gemessen: `acdc` 6 → 5 Kreuzungen und
+    5646 → 5591 px (beides BESSER); `p07-acdc-mischung` +56 px und +4 Bends durch den
+    Domänen-Durchgang des Trenngangs. Kein einziger Ratchet-Eintrag steigt.
 - **SEVERITY:** mittel (Routing-Korrektheit und irreführend grünes Ratchet)
 - **RELATED TEST:** `npm run test:regression`, `scripts/regression/regression.test.ts`,
   `scripts/regression/goldenLayouts.json`; Gegenprobe via `checkEdgeNodeCollisions`,
@@ -445,9 +472,26 @@ cableClearance` — an einer Klemme hängen im Referenzbestand regelmäßig zwei
   nicht (Audit unverändert), lässt aber die nahen Paare stehen — die Stubs der Bündel sind
   von der Trassensperre ausgenommen, und genau dort laufen die gemischten Leitungen
   zusammen. Der Versuch ist deshalb **nicht** ausgeliefert.
+- **STATUS (2026-10-05):** **PARTIALLY FIXED** — die Regel wirkt jetzt im Routing, nicht mehr
+  nur in der Sonde. Der Trenngang (`components/edges/utils/separation.ts`) arbeitet in einem
+  zweiten Durchlauf mit der paarweisen Freigabe `requiredClearanceBetween` (`PairClearance`);
+  24 px für `electrical ↔ water` und `ac230 ↔ dc12`, 12 px sonst. Veto: kein Zug darf die
+  Basis-Freigabe verschlechtern (`baseCount` in `PairMeasure`), sonst kauft der Gang die
+  Domänenregel mit einem härteren Verstoß — gemessen hätte das in `complex` 6 neue I3
+  gekostet.
+  **Messung (`npm run routing:domain-probe`):** parallele Mischpaare unter 24 px
+  **16 → 8** (acdc 4 → 0, complex 12 → 8), engstes Paar jetzt
+  `e-shore-inv × e-auto-2` = 12 px. Alle sechs Referenzpläne bleiben I1–I7 = 0.
+  **Offen:** die verbleibenden 8 Paare liegen in `complex` in Stubs und dichten Bündeln, die
+  der Trenngang nicht mehr bewegen kann, ohne eine andere Regel zu brechen. Dafür braucht es
+  getrennte AC-/DC-Korridore an den Ports (eigene Lane je Domäne im Port-Fan-Out,
+  `lib/routing/rules/portFanOut.ts`) — eine Layout-Entscheidung, kein Kostenmodell-Thema.
+  Die **I3-Invariante** prüft die Domänenregel weiterhin nicht (`checkClearance` rechnet mit
+  `cableClearance`); das Gate „Domäne 24 px“ bleibt damit eine Messung, kein CI-Fail.
 - **RELATED TEST:** `lib/routing/rules/collision.test.ts`, `scripts/routing/domainProbe.test.ts`
-  (Ratchet der gemessenen Zahlen), `npm run routing:domain-probe` (`scripts/routing/domainProbe.ts`)
-- **RELATED ISSUE:** ROUTING-V2 §4.2.
+  (Ratchet der gemessenen Zahlen), `npm run routing:domain-probe` (`scripts/routing/domainProbe.ts`),
+  `scripts/regression/regression.test.ts` (I1/I2/I3 = 0 je Szenario)
+- **RELATED ISSUE:** ROUTING-V2 §4.2, ADR 0035.
 
 ---
 

@@ -1561,13 +1561,6 @@ export type PathRequest = {
    */
   priorRoutes?: readonly PreparedPriorRoute[];
   /**
-   * Auslaufkorridore FREMDER Anschlüsse — Sperrflächen, die nicht mit
-   * aufgebläht werden (ihre Breite ist bereits die Freigabe). Sie verhindern,
-   * dass eine Trasse genau dort liegt, wo eine andere Kante ihren Stub
-   * braucht (ROUTE-010 / p11).
-   */
-  portCorridors?: readonly Rect[];
-  /**
    * Domäne der gesuchten Kante (`lib/routing/rules/collision.routingDomainOf`).
    * Bestimmt zusammen mit der Domäne der Prior-Trasse die Freigabe
    * (`cableClearance` bzw. `crossDomainSpacing` für electrical↔water und
@@ -2269,18 +2262,6 @@ export function findCablePath(input: PathRequest): PathResult {
   const end: Point = { x: input.targetX, y: input.targetY };
   const relevant = relevantObstacles(allObstacles, start, end, input.ownObstacles);
   const obstacles = relevant.map((r) => inflateRect(r, OBSTACLE_MARGIN));
-  // Auslaufkorridore fremder Anschlüsse: Sperrflächen, NICHT aufgebläht
-  // (ihre Breite ist bereits `cableClearance`). Sie werden wie Hindernisse
-  // behandelt, damit Katalog und A* sie meiden (ROUTE-010 / p11).
-  const corridors = (input.portCorridors ?? []).filter((r) =>
-    rectsIntersect(r, {
-      x: Math.min(start.x, end.x) - LEGACY_ROUTING_TOKENS.obstacleRegionPad,
-      y: Math.min(start.y, end.y) - LEGACY_ROUTING_TOKENS.obstacleRegionPad,
-      width: Math.abs(start.x - end.x) + 2 * LEGACY_ROUTING_TOKENS.obstacleRegionPad,
-      height: Math.abs(start.y - end.y) + 2 * LEGACY_ROUTING_TOKENS.obstacleRegionPad,
-    })
-  );
-  const obstaclesWithCorridors = corridors.length > 0 ? [...obstacles, ...corridors] : obstacles;
   // ROUTE-BUG-31: Stub-Kappen aus den ROHboxen (nicht den aufgeblähten — die
   // Freigabe ist ja gerade das, was eingehalten werden soll). Die eigenen
   // Bauteile sind über `relevantObstacles` bereits raus.
@@ -2299,7 +2280,7 @@ export function findCablePath(input: PathRequest): PathResult {
   }
 
   const lane = input.lane ?? 0;
-  let best = searchOnce(capped, obstaclesWithCorridors, lane);
+  let best = searchOnce(capped, obstacles, lane);
   if (best.usedSearch === 'fallback' && pathHitsObstacles(best.waypoints, obstacles)) {
     const tight = relevantObstacles(allObstacles, start, end, input.ownObstacles).map((r) =>
       inflateRect(r, Math.max(2, OBSTACLE_MARGIN / 2))
@@ -2311,11 +2292,6 @@ export function findCablePath(input: PathRequest): PathResult {
       best = { ...retry, tight: true };
     }
   }
-  // ROUTE-010 / p11 — Auslaufkorridor-Fremdport-Reparatur: Liegt die
-  // gefundene Route im Auslaufkorridor eines FREMDEN Anschlusses, nimmt sie
-  // der Kante dort jeden Weg (in p11 blieb nur eine 464 px kollineare
-  // Überdeckung). Dann wird dieselbe Anfrage erneut gestellt — diesmal mit
-  // genau den Korridoren als Sperrfläche, die die Route belegt hat.
   let bestCross = countCrossings(best.waypoints, crossingSegments);
   let bestScore = scorePath(best.waypoints, bestCross);
 
@@ -2330,7 +2306,7 @@ export function findCablePath(input: PathRequest): PathResult {
       lane - ALTERNATIVE_ROUTE_GAP * 2,
     ];
     for (let i = 0; i < candidates.length; i++) {
-      const cand = searchOnce(capped, obstaclesWithCorridors, at(candidates, i));
+      const cand = searchOnce(capped, obstacles, at(candidates, i));
       // R-3/R-7: Ein Fallback-Kandidat (keine Freigabe-Garantie) gewinnt
       // nie gegen Katalog oder A* — auch nicht über weniger Kreuzungen.
       // ROUTE-BUG-27: Dasselbe gilt eine Stufe darunter — ein Kandidat aus

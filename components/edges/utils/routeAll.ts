@@ -794,97 +794,6 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
   ];
   const lockedIds = new Set(edges.filter(isLockedRouteEdge).map((edge) => edge.id));
 
-/**
- * Auswärts gerichtete Normale einer Handle-Seite (wie `sourceExitVector`,
- * aber ohne Fluss-Fallback: die Seite ist bekannt).
- */
-const handleNormal = (position: Position): Point => {
-  switch (position) {
-    case Position.Left:
-      return { x: -1, y: 0 };
-    case Position.Right:
-      return { x: 1, y: 0 };
-    case Position.Top:
-      return { x: 0, y: -1 };
-    default:
-      return { x: 0, y: 1 };
-  }
-};
-
-/**
- * Alle Auslaufkorridore außer denen der eigenen Endpunkte. Die eigenen
- * Bauteile sind ausgenommen: Ihre Kanten ENDEN dort, und der eigene Stub
- * liegt per Definition im eigenen Korridor.
- */
-const foreignPortCorridors = (
-  byNode: ReadonlyMap<string, Rect[]>,
-  exclude: ReadonlySet<string>
-): Rect[] => {
-  const out: Rect[] = [];
-  byNode.forEach((rects, id) => {
-    if (exclude.has(id)) return;
-    out.push(...rects);
-  });
-  return out;
-};
-
-  /**
-   * Auslaufkorridore fremder Anschlüsse (ROUTE-010 / p11).
-   *
-   * Eine Trasse, die im Auslaufkorridor eines fremden Handles liegt, nimmt
-   * der Kante dort jeden Weg: Sie muss aus genau diesem Korridor heraus.
-   * Genau das ist in `p11-zwangskreuzung` passiert — `e-down` legte ihre
-   * Haupttrasse 24 px vor den Anschluss von `e-up` auf dieselbe Linie, und
-   * die einzige verbleibende Route war die 464 px lange kollineare
-   * Überdeckung. Der Korridor ist `portFacingClearance` lang (ADR 0027 —
-   * derselbe Wert, den ELK zwischen zwei Karten freihält) und
-   * `cableClearance` breit.
-   */
-  const corridorsByNode = new Map<string, Rect[]>();
-  const addCorridor = (nodeId: string, handle: { x: number; y: number; position: Position }): void => {
-    const outward = handleNormal(handle.position);
-    const half = ROUTING_TOKENS.cableClearance;
-    const length = ROUTING_TOKENS.stubMin + ROUTING_TOKENS.cableClearance;
-    const x1 = handle.x + outward.x * length;
-    const y1 = handle.y + outward.y * length;
-    const rect: Rect = {
-      x: Math.min(handle.x, x1) - (outward.x === 0 ? half : 0),
-      y: Math.min(handle.y, y1) - (outward.y === 0 ? half : 0),
-      width: outward.x === 0 ? 2 * half : Math.abs(x1 - handle.x),
-      height: outward.y === 0 ? 2 * half : Math.abs(y1 - handle.y),
-    };
-    const list = corridorsByNode.get(nodeId);
-    if (list) list.push(rect);
-    else corridorsByNode.set(nodeId, [rect]);
-  };
-  // Nur Anschlüsse, die TATSÄCHLICH belegt sind, bekommen einen Korridor —
-  // die aufgelösten Handle-Punkte kommen aus demselben Resolver, den die
-  // Suche benutzt (`resolveHandle`). Ein Korridor an einem ungenutzten
-  // Handle würde Fläche sperren, die niemand braucht.
-  const degree = new Map<string, number>();
-  for (const edge of edges) {
-    degree.set(edge.source, (degree.get(edge.source) ?? 0) + 1);
-    degree.set(edge.target, (degree.get(edge.target) ?? 0) + 1);
-  }
-  for (const edge of edges) {
-    void degree;
-    addCorridor(edge.source, resolveHandle(edge, 'source'));
-    addCorridor(edge.target, resolveHandle(edge, 'target'));
-  }
-  // Korridore, die ohnehin in einem fremden Bauteil liegen, werden nicht
-  // gesperrt: Dort kann keine Trasse verlaufen (I1 verbietet es), die
-  // Sperre wäre wirkungslos und würde nur die Suche einengen.
-  const nodeBoxes = nodes
-    .map((node) => ({ id: node.id, box: obstacleById.get(node.id) }))
-    .filter((entry): entry is { id: string; box: Rect } => entry.box !== undefined);
-  corridorsByNode.forEach((rects, ownerId) => {
-    const kept = rects.filter((rect) =>
-      nodeBoxes.every(({ id, box }) => id === ownerId || !rectsIntersect(rect, box))
-    );
-    if (kept.length > 0) corridorsByNode.set(ownerId, kept);
-    else corridorsByNode.delete(ownerId);
-  });
-
   const raw: { id: string; waypoints: Point[]; result: PathResult }[] = [];
   const dynamicRoutedSegments: Segment[] = [];
   // ROUTE-BUG-16: wächst mit jeder verlegten Kante (siehe `addTubes`).
@@ -988,7 +897,6 @@ const foreignPortCorridors = (
       // Kostenmodell gegen bereits verlegte Trassen (Doku §6/§7/§9).
       priorRoutes,
       ownDomain: domainOf(edge),
-      portCorridors: foreignPortCorridors(corridorsByNode, exclude),
     };
     let request_ = request;
     const storedLockedPath = isLockedRouteEdge(edge) ? validStoredLockedPath(edge) : undefined;

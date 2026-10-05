@@ -1,5 +1,77 @@
 # ARCHITECTURE-CHANGES (Routing V2)
 
+## RECAPTURE-LEDGER 2026-10-05 — ADR 0034 (Port-Korridor nach Bündelgröße) + Domänen-Freigabe im Trenngang
+
+**Anlass (zwei gemessene Änderungen, beide im Router — keine Baseline-Kosmetik):**
+
+1. **ADR 0034** — `portFacingClearance` (68 px, fest) stand im Widerspruch zur
+   Fächerregel `requiredPortCorridor(K) = stubMin + (K−1)·laneGrid` (ab K = 4
+   sind es 72 px). Der Router legte den Fächer vorschriftsmäßig, I3 meldete ihn
+   anschließend — alle sechs p02-Verstöße lagen bei **Abstand 0,0 px** zwischen
+   vier Kanten an einem Anschluss. Behoben durch
+   `bundleCorridor() = max(portFacingClearance, requiredPortCorridor(K))`.
+2. **Domänen-Freigabe im Trenngang** — der Trenngang läuft jetzt in einem
+   zweiten Durchgang mit der paarweisen Freigabe `requiredClearanceBetween`
+   (24 px für `electrical ↔ water` und `ac230 ↔ dc12`), mit Veto gegen jede
+   Verschlechterung der Basis-Freigabe.
+
+**Vorher / Nachher (gemessen, `npm run routing:audit`):**
+
+| Plan | I1–I7 | Kreuzungen | Länge | gemischte Paare < 24 px |
+| --- | --- | --- | --- | --- |
+| simple | 0 / 0 | 1 → 1 | 2665 → 2665 | 0 → 0 |
+| camper | 0 / 0 | 4 → 4 | 3677 → 3677 | 0 → 0 |
+| solar | 0 / 0 | 2 → 2 | 3200 → 3200 | 0 → 0 |
+| inverter | 0 / 0 | 2 → 2 | 3710 → 3710 | 0 → 0 |
+| acdc | 0 / 0 | 6 → **5** | 5646 → **5591** | 4 → **0** |
+| complex | 0 / 0 | 25 → 25 | 8646 → 8646 | 12 → **8** |
+
+**Regressions-Szenarien (`scripts/regression/invariantProbe.ts`, I1/I2/I3):**
+
+| Szenario | vorher | nachher |
+| --- | --- | --- |
+| p02-batterie-10-verbraucher | 0 / 0 / **6** | 0 / 0 / **0** |
+| p03-busbar-fanout | 0 / 0 / **1** | 0 / 0 / **0** |
+| p11-zwangskreuzung | 0 / **1** / **2** | 0 / **1** / **2** (offen, ADR 0035) |
+| Summe p01–p15 | 0 / 1 / 8 | **0 / 1 / 2** |
+
+`p07-acdc-mischung`: +56 px, +4 Bends (Domänen-Durchgang). `p02`: Kreuzungen
+6 → 5, Länge 7248 → 7268 px.
+
+**Ratchets — nur nach unten:**
+
+* `CROSSING_RATCHET.acdc` 6 → 5 (`scripts/routing/audit.ts`)
+* `BASELINE_PX.acdc` 5646 → 5591 (`scripts/routing/cableLength.test.ts`)
+* `SHIFT_RATCHET.camper.I3` 26 → 22 (`scripts/routing/audit.ts`)
+* `domainProbe`-Ratchet: acdc `{crossing 2, tooClose 4}` → `{1, 0}`,
+  complex `tooClose` 12 → 8, Summe `[80, 12, 16]` → `[80, 11, 8]`
+
+**Kein** Ratchet-Eintrag steigt.
+
+**Neuerfassungen mit Begründung:**
+
+* `knownPlans/*.json` — simple, solar, inverter unverändert; camper, acdc,
+  complex nur durch den Domänen-Durchgang berührt, nicht durch ADR 0034.
+* `scripts/regression/goldenLayouts.json` + SVGs p02, p04, p07, p11 —
+  geänderte Trassen, weil ADR 0034 den Fächer an Vier-fach-Ports anders
+  bewertet und der Domänen-Durchgang gemischte Leitungen auseinanderzieht.
+
+**Neu verdrahtetes Gate:** `scripts/regression/regression.test.ts` verlangt
+jetzt absolut **I1 = I2 = I3 = 0** je Szenario (14 Szenarien; `p11` als
+`it.fails` geführt, s. ADR 0035). Eine Ratchet (Delta ≤ 0) kann das nicht
+ersetzen: Ein Plan mit drei Verstößen bleibt grün, solange er sich nicht
+verschlechtert.
+
+**Verworfen (mit Messung):** harte Auslaufkorridore für belegte Fremd-Ports
+lösen p11 vollständig (0/0/0 in allen 15 Szenarien), brechen aber das
+Versatz-Gate (294 Läufe): camper I3 22 → 41, solar 0 → 17, acdc I2 2 → 19 /
+I3 24 → 39, I1 = 2 in `simple`. Vollständiges Protokoll:
+`docs/adr/0035-auslaufkorridor-fremder-ansa.md`.
+
+---
+
+
+
 **Status: `FROZEN`** — Review-Dokumentation und Migrations-Roadmap.
 
 Dieses Dokument beantwortet systematisch die Review-Punkte und beschreibt, wie die
