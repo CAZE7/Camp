@@ -9,14 +9,7 @@ import {
 } from './nodeGeometry';
 import { polylineMidpoint, waypointsToPath } from './pathUtils';
 import { LEGACY_ROUTING_TOKENS, ROUTING_TOKENS, alternativeRouteGap } from '../../../lib/routing/tokens';
-import {
-  COST_WEIGHTS,
-  ROUTING_GATES,
-  candidateCost,
-  compareCandidates,
-  type PreparedPriorRoute,
-  type RouteCandidateCost,
-} from '../../../lib/routing/rules/costModel';
+import { COST_WEIGHTS, ROUTING_GATES } from '../../../lib/routing/rules/costModel';
 import {
   costToMilliPx,
   heuristicToMilliPx,
@@ -43,7 +36,7 @@ import {
   type Rect,
   type Segment,
 } from '../../../lib/routing/geometry';
-import { classifyCollision, type RoutingDomain } from '../../../lib/routing/rules/collision';
+import { classifyCollision } from '../../../lib/routing/rules/collision';
 import { portNormal } from '../../../lib/routing/rules/portFanOut';
 
 export {
@@ -1553,20 +1546,6 @@ export type PathRequest = {
    * werden verworfen.
    */
   ownObstacles?: readonly Rect[];
-  /**
-   * Bereits verlegte Trassen, vorberechnet für das zentrale Kostenmodell
-   * (`preparePriorRoutes`). Sie sind die Grundlage der Kostenklassen
-   * HARD / SOFT / WEIGHTED / BUNDLE_SHARED / FREE — die Ausweich-Suche
-   * bewertet jeden Kandidaten gegen sie, statt nur Kreuzungen zu zählen.
-   */
-  priorRoutes?: readonly PreparedPriorRoute[];
-  /**
-   * Domäne der gesuchten Kante (`lib/routing/rules/collision.routingDomainOf`).
-   * Bestimmt zusammen mit der Domäne der Prior-Trasse die Freigabe
-   * (`cableClearance` bzw. `crossDomainSpacing` für electrical↔water und
-   * ac230↔dc12). Ohne Angabe gilt `cableClearance`.
-   */
-  ownDomain?: RoutingDomain;
   /** Test-Hook: Cache umgehen. */
   skipCache?: boolean;
 };
@@ -1989,10 +1968,6 @@ function searchOnce(
   const crossingSegments = input.crossingSegments ?? [];
   const hard = tubes.length > 0 ? [...obstacles, ...tubes] : obstacles;
   const freeCatalog = bestFreeCatalog({ ...input, lane }, hard);
-  // Kostenklasse HARD (Doku §6/§7): Eine kollineare Überdeckung mit einer
-  // bereits verlegten Trasse ist unendlich teuer — ein freier Katalogpfad
-  // mit hartem Verstoß ist KEIN Erfolg. Er wird verworfen, damit A* mit den
-  // Trassensperren einen überlappungsfreien Weg sucht.
   if (freeCatalog) {
     return { waypoints: freeCatalog, usedSearch: 'catalog', tight: false };
   }
