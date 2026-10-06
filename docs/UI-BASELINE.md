@@ -111,6 +111,37 @@ aufgenommen (Halb-Frame → hydratisierter Zustand), sechs Planner-Bilder bliebe
 byte-identisch. Zusätzlich wartet der Test jetzt auf die montierte Shell, damit kein
 künftiger Lauf wieder einen Zufallsframe einfriert.
 
+**Durchgeführter Refresh (2026-10-06, PR „Perf-Gate reparieren")** — Freigabe durch den
+Repo-Eigentümer („Visuell egal. Gehe sicher, dass das Gate grün durchläuft"), Ziel war das
+Grün des meldenden Jobs `visual`. Zwei getrennte Ursachen:
+
+1. **Erstaufnahme der DE-Pixel-Baselines** (`tests/e2e/visual-de-pixel.spec.ts-snapshots/`,
+   40 PNG): Der Ordner existierte im Repo **nie** — die Szenarien wurden beim Auslösen aus
+   dem blockierenden Lauf in den meldenden Job verschoben, aber nie aufgenommen
+   (`baselines.yml` wurde bisher nie ausgeführt, der Workflow ist bewusst schreibfrei).
+   Damit waren alle 28 DE-Pixel-Vergleiche von Anfang an rot gemeldet.
+2. **Sechzehn Routen-Bilder** (`visual.spec.ts-snapshots`) mit echter UI-Drift: Auf
+   `/elektrik-planung` und `/` liegt der Erstbesuchsdialog „Dein Camper-Energieplan" über
+   dem Inhalt (Seitenhöhe u. a. 1173 → 1225 px bei 768 px Breite, 1769 → 1821 px bei
+   393 px) — dieselbe Fläche, die auch `/impressum` mobil verschiebt. Der Dialog ist
+   beabsichtigte UI, kein Routing-/Domänen-Refactor: Die Routen-Geometrie ist unverändert
+   (Golden Master und `routing:audit` byte-/zahlengleich, s. Ledger 2026-10-06).
+
+Aufnahmeumgebung und Nachweis: Der Lauf entstand **nicht** auf dem CI-Runner (dessen
+Browser-Download ist in der Sandbox gesperrt), sondern mit einem Ubuntu-kompatiblen
+Chromium 153 aus der npm-Registry. Dass die Umgebung die CI-Darstellung trifft, ist
+gemessen: Ein Lauf gegen die ALTEN Baselines erzeugte exakt dieselben 44 Fehlschläge wie
+der CI-Lauf `37509969279` inklusive derselben Größenänderungen; die Bilddifferenzen liegen
+mit 0,03–0,06 deutlich über der 2-%-Schwelle, während die 24 zuvor grünen Vergleiche auch
+lokal grün sind (AA-Unterschiede der Browser-Version also < 2 %). Endstand:
+`npx playwright test --grep "hält die Baseline"` → **68 passed** (vorher 44 failed).
+
+```bash
+PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/tmp/chromium \
+LD_LIBRARY_PATH=/tmp/al2023lib/lib FONTCONFIG_PATH=/tmp/fonts \
+npx playwright test --grep "hält die Baseline" --update-snapshots
+```
+
 ## 5. Lokale Nicht-Pixel-Gates
 
 Auch ohne Playwright-Browser schützen diese schnellen Checks die Baseline:

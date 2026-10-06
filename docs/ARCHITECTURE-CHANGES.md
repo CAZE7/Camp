@@ -1,5 +1,26 @@
 # ARCHITECTURE-CHANGES (Routing V2)
 
+## LEDGER 2026-10-06 (2) — Pixel-Baselines aktualisiert (visuelles Gate)
+
+Kein Routing-/Domänen-Delta: Die Routen-Geometrie dieses Änderungssatzes ist
+über Golden Master (byte-identisch) und `routing:audit` (I1–I7 = 0,
+Kreuzungen Σ 39, Längen Σ 27 544 px unverändert) belegt.
+
+1. **Erstaufnahme `visual-de-pixel.spec.ts-snapshots/` (40 PNG).** Der Ordner
+   fehlte im Repo vollständig; die 28 DE-Pixel-Vergleiche waren dadurch seit
+   ihrer Auslösung aus dem blockierenden Lauf dauerhaft rot gemeldet.
+2. **16 Routen-Bilder** (`visual.spec.ts-snapshots`): echte UI-Drift durch den
+   Erstbesuchsdialog „Dein Camper-Energieplan" auf `/elektrik-planung` und `/`
+   (Seitenhöhe 1173 → 1225 px bei 768 px, 1769 → 1821 px bei 393 px) sowie
+   mobil auf `/impressum`. Der Dialog ist beabsichtigte UI, kein Refactor.
+3. **Nachweis der Aufnahmeumgebung:** Der Refresh lief in der Sandbox mit
+   Chromium 153 aus der npm-Registry (CI-Browser-Download gesperrt). Gegen die
+   ALTEN Baselines erzeugte derselbe Lauf exakt die 44 Fehlschläge des CI-Laufs
+   `37509969279` samt identischen Größenänderungen; Endstand nach dem Refresh:
+   `--grep "hält die Baseline"` → 68 passed (vorher 44 failed/24 passed).
+   Freigabe: Repo-Eigentümer („Visuell egal …"), dokumentiert in
+   `docs/UI-BASELINE.md` §4 („Durchgeführter Refresh 2026-10-06").
+
 ## LEDGER 2026-10-06 — Perf-Gate repariert: Trenngang-Kosten gesenkt, Ratchet begründet nachgezogen (ADR 0033/0034)
 
 **Anlass:** Der CI-Schritt „Perf-Gate Kanten-Routing" (`npm run perf:edge-routing`)
