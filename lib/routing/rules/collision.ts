@@ -12,6 +12,7 @@ import {
   type Segment,
 } from '../geometry';
 import { ROUTING_TOKENS, type RoutingTokens } from '../tokens';
+import { edgeDomainOf } from '../../domain/handleDomains';
 
 /**
  * WP-3 (#391): Kollisionsmodell — Schicht 2 (Routing Rules).
@@ -209,6 +210,49 @@ export function routingDomainOf(domain: DomainVocabulary | undefined): RoutingDo
 /** Ober-Domäne für Regel-Lookups: dc12/ac230 sind elektrische Unterdomänen. */
 const parentDomain = (d: RoutingDomain): RoutingDomain | null =>
   d === 'dc12' || d === 'ac230' ? 'electrical' : null;
+
+/** Minimaler Kantenbezug für die Domänenbestimmung. */
+export type DomainEdgeRef = {
+  source: string;
+  target: string;
+  sourceHandle?: string | null;
+  targetHandle?: string | null;
+  data?: { edgeDomain?: string | null } | null;
+};
+
+/** Minimaler Knotenbezug für die Domänenbestimmung. */
+export type DomainNodeRef = { type?: string | null };
+
+/**
+ * Domäne EINER Kante — die eine Autorität, von Anzeige, Dimensionierung,
+ * Routing und Validierung gelesen (ROUTE-003, Doku §8/§10).
+ *
+ * Reihenfolge: persistierte Domäne der Kante (`data.edgeDomain`, kennt auch
+ * `water`), sonst Knotentypen + Handles (`edgeDomainOf`). AutoWire-Kanten
+ * tragen das Feld nicht — der Rückfall ist also der Normalfall, nicht die
+ * Ausnahme. Unbekannt bleibt unbekannt: es wird nichts unterstellt, es gilt
+ * dann die Basis-Clearance.
+ *
+ * Früher las nur die Mess-Sonde (`scripts/routing/domainProbe.ts`) die
+ * Domäne auf diese Weise und meldete deshalb 16 parallele Mischpaare unter
+ * 24 px, die der Router nie sah. Mit dieser Funktion im Produktivpfad
+ * greift die Regel WÄHREND der Wegsuche (Doku §10).
+ */
+export function routingDomainOfEdge(
+  edge: DomainEdgeRef,
+  nodeById: ReadonlyMap<string, DomainNodeRef>
+): RoutingDomain | undefined {
+  const persisted = routingDomainOf(edge.data?.edgeDomain as DomainVocabulary | undefined);
+  if (persisted) return persisted;
+  return routingDomainOf(
+    edgeDomainOf(
+      nodeById.get(edge.source)?.type ?? undefined,
+      nodeById.get(edge.target)?.type ?? undefined,
+      edge.sourceHandle,
+      edge.targetHandle
+    )
+  );
+}
 
 /**
  * Geforderte Clearance zwischen zwei Domänen: das Maximum aus der

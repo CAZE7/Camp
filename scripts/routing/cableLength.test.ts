@@ -54,7 +54,13 @@ const BASELINE_PX: Record<string, number> = {
   camper: 3677,
   solar: 3200,
   inverter: 3710,
-  acdc: 5646,
+
+  // Nachgezogen 2026-10-05 (ADR 0034, paarweise Freigabe im Trenngang):
+  // acdc 5646 → 5591 px. Der zweite Durchgang rückt die gemischten
+  // ac230-/dc12-Leitungen auf 24 px auseinander und löst dabei eine
+  // Kreuzung mit auf (Ratchet 6 → 5); die eine Leitung, die vorher den
+  // Umweg fuhr, fährt jetzt geradeaus. Messung: `npm run routing:audit`.
+  acdc: 5591,
   complex: 8646,
 };
 

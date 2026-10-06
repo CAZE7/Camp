@@ -1,4 +1,6 @@
 import { EPS, simplifyWaypoints, waypointsToSegments, type Point, type Segment } from '../geometry';
+import { ROUTING_TOKENS, type RoutingTokens } from '../tokens';
+import { requiredPortCorridor } from './portCapacity';
 
 /**
  * Port-Bündel-Ausnahme (ADR 0009) — die EINE Wahrheit.
@@ -323,12 +325,66 @@ function closestLocusArcs(
  *  Korridors lag. Die Locus-Regel schneidet das Segment-Fenster ab: Ein
  *  Segment, das vom Port bis weit läuft, ist nur bis Bogenlänge 68 freigestellt.
  */
+/**
+ * Schlüssel einer Anschlussstelle (gerundet, damit Float-Artefakte dieselbe
+ * Klemme nicht zweiteilen).
+ */
+export const portKeyOf = (p: Point): string =>
+  `${Math.round(p.x * 100) / 100},${Math.round(p.y * 100) / 100}`;
+
+/** Minimaler Kantenbezug für die Bündelgrößen-Bestimmung. */
+export type BundledPath = { readonly id: string; readonly waypoints: readonly Point[] };
+
+/**
+ * Wie viele Kanten teilen sich diese Anschlussstelle? (inklusive der Kante
+ * selbst — ein Bündel der Größe 1 ist kein Bündel.)
+ */
+export function portBundleSizes(paths: readonly BundledPath[]): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const path of paths) {
+    const first = path.waypoints[0];
+    const last = path.waypoints[path.waypoints.length - 1];
+    if (first) counts.set(portKeyOf(first), (counts.get(portKeyOf(first)) ?? 0) + 1);
+    if (last) {
+      const key = portKeyOf(last);
+      if (!first || key !== portKeyOf(first)) counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+  }
+  return counts;
+}
+
+/**
+ * Korridor, den ein Bündel der Größe `bundleSize` braucht (ADR 0034).
+ *
+ * `portFacingClearance` (ADR 0027, 68 px) ist auf ZWEI Lane-Schritte
+ * ausgelegt — für ein Bündel von 3 Kabeln. Der Port-Fan-Out staffelt aber
+ * `stubMin + (K−1)·laneGrid` (`requiredPortCorridor`): bei acht Kabeln an
+ * einer Klemme sind das 136 px. Zwei Wahrheiten, die sich widersprechen —
+ * der Fan-Out erzeugt planmäßig Geometrie, die das Tor als Verstoß zählt.
+ *
+ * Aufgelöst wird das, indem der Korridor MIT dem Bündel wächst: `max` aus
+ * dem Token und dem Fan-Out-Bedarf. Für K ≤ 3 ändert sich nichts
+ * (68 px bleibt maßgeblich); für größere Bündel ist der Korridor genau so
+ * lang, wie der Fan-Out ihn braucht — und nicht einen Pixel länger. Jenseits
+ * davon gilt unverändert die volle Freigabe.
+ */
+export function bundleCorridor(bundleSize: number, tokens: RoutingTokens = ROUTING_TOKENS): number {
+  return Math.max(tokens.portFacingClearance, requiredPortCorridor(bundleSize, tokens));
+}
+
+/**
+ * `isPortBundleProximity` mit bündelgrößen-abhängigem Korridor.
+ *
+ * `sizes` kommt aus `portBundleSizes` (einmal je Lauf). Fehlt es, gilt
+ * unverändert `maxArcFromPort` — kein Aufrufer verliert sein Verhalten.
+ */
 export function isPortBundleProximity(
   a: RoutedPathGeometry,
   b: RoutedPathGeometry,
   s1: Segment,
   s2: Segment,
-  maxArcFromPort: number
+  maxArcFromPort: number,
+  sizes?: ReadonlyMap<string, number>
 ): boolean {
   // Gemeinsamer Port (wie sharesPort, aber mit Fundstelle für die Seite).
   const a0 = a.points[0];
@@ -359,5 +415,11 @@ export function isPortBundleProximity(
   const arcsB = arcsFromEnd(b.points, portBAtStart);
   const locus = closestLocusArcs(a, arcsA, portAAtStart, b, arcsB, portBAtStart, s1, s2);
   if (!locus) return false;
-  return locus.aHi <= maxArcFromPort + EPS && locus.bHi <= maxArcFromPort + EPS;
+  let corridor = maxArcFromPort;
+  if (sizes) {
+    const shared = samePoint(a0, b0) || samePoint(a0, bN) ? a0 : aN;
+    const bundleSize = sizes.get(portKeyOf(shared)) ?? 1;
+    if (bundleSize > 1) corridor = Math.max(corridor, bundleCorridor(bundleSize));
+  }
+  return locus.aHi <= corridor + EPS && locus.bHi <= corridor + EPS;
 }

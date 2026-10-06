@@ -140,8 +140,14 @@ describe('domainProbe — Referenzpläne (Ratchet)', () => {
     camper: { mixedPairs: 0, crossing: 0, tooClose: 0 },
     solar: { mixedPairs: 0, crossing: 0, tooClose: 0 },
     inverter: { mixedPairs: 9, crossing: 0, tooClose: 0 },
-    acdc: { mixedPairs: 33, crossing: 2, tooClose: 4 },
-    complex: { mixedPairs: 38, crossing: 10, tooClose: 12 },
+    // Nachgezogen 2026-10-05 (ADR 0034): der Trenngang arbeitet ab jetzt in
+    // einem zweiten Durchlauf mit der paarweisen Freigabe
+    // (`requiredClearanceBetween` — 24 px für ac230 ↔ dc12 und
+    // electrical ↔ water) statt mit der einen Zahl für alle Paare.
+    // acdc: zu nahe Paare 4 → 0, Kreuzungen 2 → 1.
+    // complex: zu nahe Paare 12 → 8 (Rest in Stubs und dichten Bündeln).
+    acdc: { mixedPairs: 33, crossing: 1, tooClose: 0 },
+    complex: { mixedPairs: 38, crossing: 10, tooClose: 8 },
   };
 
   it.each(Object.keys(GOLDEN_PLANS))('%s', (plan) => {
@@ -158,8 +164,10 @@ describe('domainProbe — Referenzpläne (Ratchet)', () => {
     const rows = Object.keys(GOLDEN_PLANS).map(probePlan);
     const sum = (key: 'mixedPairs' | 'crossing' | 'tooClose'): number =>
       rows.reduce((acc, row) => acc + (row?.[key] ?? 0), 0);
-    // tooClose 23 → 16 nachgezogen 2026-10-03 (ADR 0033, s. RATCHET-Kommentar).
-    expect([sum('mixedPairs'), sum('crossing'), sum('tooClose')]).toEqual([80, 12, 16]);
+    // tooClose 23 → 16 nachgezogen 2026-10-03 (ADR 0033).
+    // tooClose 16 → 8, crossing 12 → 11 nachgezogen 2026-10-05 (ADR 0034,
+    // paarweise Freigabe im Trenngang — s. RATCHET-Kommentar oben).
+    expect([sum('mixedPairs'), sum('crossing'), sum('tooClose')]).toEqual([80, 11, 8]);
   });
 
   it('benennt das engste Paar der Referenzpläne', () => {

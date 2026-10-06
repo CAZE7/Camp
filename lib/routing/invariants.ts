@@ -12,7 +12,12 @@ import {
   type Segment,
 } from './geometry';
 import { classifySegmentAgainstNode, classifySegmentAgainstSegment } from './rules/collision';
-import { isPortBundleOverlap, isPortBundleProximity, routedPathGeometry } from './rules/portBundle';
+import {
+  isPortBundleOverlap,
+  isPortBundleProximity,
+  portBundleSizes,
+  routedPathGeometry,
+} from './rules/portBundle';
 import { compareIds } from '../sortOrder';
 
 /**
@@ -229,6 +234,9 @@ export function checkClearance(
     edge,
     geometry: routedPathGeometry(edge.waypoints),
   }));
+  // ADR 0034: Der Port-Korridor wächst mit dem Bündel — die Größe kommt aus
+  // derselben Geometrie, die auch geprüft wird (keine zweite Quelle).
+  const bundleSizes = portBundleSizes(edges.map((edge) => ({ id: edge.id, waypoints: edge.waypoints })));
   for (let i = 0; i < geometryByEdge.length; i++) {
     for (let j = i + 1; j < geometryByEdge.length; j++) {
       const a = geometryByEdge[i]!;
@@ -237,7 +245,8 @@ export function checkClearance(
         for (const s2 of b.geometry.segments) {
           // ADR 0009/0031: legitime Port-Bündelung zählt nicht. Korridor-Maß
           // ist das Token (ADR 0027): Stub + zwei Lane-Schritte + Freigabe.
-          if (isPortBundleProximity(a.geometry, b.geometry, s1, s2, tokens.portFacingClearance)) continue;
+          if (isPortBundleProximity(a.geometry, b.geometry, s1, s2, tokens.portFacingClearance, bundleSizes))
+            continue;
           const verdict = classifySegmentAgainstSegment(s1, s2, clearance);
           if (verdict.class === 'weighted' && verdict.distance !== undefined) {
             violations.push({

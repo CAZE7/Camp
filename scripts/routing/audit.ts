@@ -344,7 +344,10 @@ export const SHIFT_RATCHET: Readonly<Record<string, { I2: number; I3: number }>>
   // 130→25, 469→26, 45→0, 75→10, 180→24, 1225→0) und acdc zusätzlich eine
   // kollineare Überdeckung verliert (10→2). Gemessen mit `--shifts`.
   simple: { I2: 0, I3: 25 },
-  camper: { I2: 6, I3: 26 },
+  // Nachgezogen 2026-10-05 (ADR 0034, paarweise Freigabe im Trenngang):
+  // camper I3 26 → 22 — der zweite Durchgang rückt auch die verschobenen
+  // Bündel domänenabhängig auseinander. Messung: `npm run routing:audit --shifts`.
+  camper: { I2: 6, I3: 22 },
   solar: { I2: 0, I3: 0 },
   inverter: { I2: 0, I3: 10 },
   acdc: { I2: 2, I3: 24 },
@@ -418,7 +421,12 @@ const CROSSING_RATCHET: Readonly<Record<string, number>> = {
   // complex 25 statt 27 — der Trenngang hat einen Kreuzungs-Wächter, kann
   // die Zahl also nur senken; die Layout-Korrektur der Vorlage tat ihr Übriges
   // (Messung in `docs/ARCHITECTURE-CHANGES.md`).
-  acdc: 6,
+  // Nachgezogen 2026-10-05 (ADR 0034, Domänen-Freigabe im Trenngang):
+  // acdc 5 statt 6 — der zweite Durchgang mit paarweiser Freigabe (24 px für
+  // ac230 ↔ dc12) schiebt die gemischten Leitungen auseinander und löst
+  // dabei eine Kreuzung mit auf. Messung: `npm run routing:audit`,
+  // vollständige Tabelle in `docs/ARCHITECTURE-CHANGES.md`.
+  acdc: 5,
   complex: 25,
 };
 

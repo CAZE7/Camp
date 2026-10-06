@@ -62,6 +62,11 @@ import {
 import { LEGACY_ROUTING_TOKENS, ROUTING_TOKENS } from '../../../lib/routing/tokens';
 import { ROUTING_GATES } from '../../../lib/routing/rules/costModel';
 import { greedyConflictOrder, type ConflictCandidate } from '../../../lib/routing/rules/conflictGraph';
+import {
+  requiredClearanceBetween,
+  routingDomainOfEdge,
+  type RoutingDomain,
+} from '../../../lib/routing/rules/collision';
 import { separateCableClearance } from './separation';
 import { compareIds } from '../../../lib/sortOrder';
 
@@ -642,6 +647,31 @@ export function fanOutLanesForEdge(
  * (Canvas, Skripte, Tests), damit die Regel nicht an einer Aufrufstelle
  * hängt; Herkunft und Begründung in `routableNodes.ts`.
  */
+/**
+ * Gibt es im Plan mindestens ein Kantenpaar, für das die Domänen-Paarregel
+ * (`requiredClearanceBetween`) MEHR Freigabe fordert als `base`?
+ *
+ * Ohne ein solches Paar ist der zweite Trenngang eine Messung ohne Befund.
+ * Die Prüfung ist O(E²) über eine bereits berechnete Domänenliste — billig
+ * gegen einen zweiten Geometrie-Durchgang (PERF-001).
+ */
+const hasPairRuleAbove = (
+  domains: readonly (RoutingDomain | undefined)[],
+  base: number,
+  tokens: typeof ROUTING_TOKENS = ROUTING_TOKENS
+): boolean => {
+  // Über die VERSCHIEDENEN Domänen statt über die Kanten: Es gibt fünf
+  // (`dc12`, `ac230`, `dc12-negative`, `water`, `data`) — damit ist der
+  // Vergleich O(1) statt O(E²), auch in Plänen mit 500 Kanten.
+  const distinct = [...new Set(domains.filter((d): d is RoutingDomain => d !== undefined))];
+  for (let i = 0; i < distinct.length; i++) {
+    for (let j = i + 1; j < distinct.length; j++) {
+      if (requiredClearanceBetween(distinct[i]!, distinct[j]!, undefined, tokens) > base) return true;
+    }
+  }
+  return false;
+};
+
 export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Map<string, PathResult> {
   nodes = routableNodes(nodes);
   edges = [...edges].sort((a, b) => compareIds(a.id, b.id));
@@ -733,6 +763,35 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
     ...workOrder.filter((edge) => !isLockedRouteEdge(edge)),
   ];
   const lockedIds = new Set(edges.filter(isLockedRouteEdge).map((edge) => edge.id));
+
+  // Domänen-Autorität: `data.edgeDomain` (kennt `water`) sonst Knotentyp +
+  // Handles — dieselbe Quelle wie Anzeige, Sizing und Validierung
+  // (`routingDomainOfEdge`). Keine zweite Klassifikation.
+  const domainNodeRefs = new Map<string, { type?: string | null }>();
+  nodeById.forEach((node, id) => {
+    domainNodeRefs.set(id, { type: (node as { type?: string | null }).type ?? null });
+  });
+  const domainOf = (ref: {
+    id: string;
+    source: string;
+    target: string;
+    sourceHandle?: string | null;
+    targetHandle?: string | null;
+    data?: unknown;
+  }): RoutingDomain | undefined =>
+    routingDomainOfEdge(
+      {
+        source: ref.source,
+        target: ref.target,
+        sourceHandle: ref.sourceHandle,
+        targetHandle: ref.targetHandle,
+        data: ref.data as { edgeDomain?: string } | undefined,
+      },
+      domainNodeRefs
+    );
+  /** Domäne je Kante, einmal berechnet — der Trenngang liest sie. */
+  const domainById = new Map<string, RoutingDomain | undefined>();
+  for (const edge of routingOrder) domainById.set(edge.id, domainOf(edge as never));
 
   const raw: { id: string; waypoints: Point[]; result: PathResult }[] = [];
   const dynamicRoutedSegments: Segment[] = [];
@@ -949,12 +1008,47 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
     })),
     { obstacles: allObstacles, maxLaneSteps: 6 }
   );
+  // Zweiter Gang, diesmal mit der paarweisen (domänenabhängigen) Freigabe
+  // (Doku §8–§10): 24 px zwischen electrical↔water und ac230↔dc12. Er läuft
+  // NACH dem Basis-Gang und darf die Basis-Freigabe nicht verschlechtern
+  // (Veto in `candidateImproves`) — die harte Regel bleibt damit unangetastet.
+  //
+  // Er läuft AUSSERDEM nur, wenn der Plan überhaupt ein Paar enthält, für
+  // das die Paarregel eine größere Freigabe fordert als `cableClearance`.
+  // Ein reiner 12-V-Gleichstrom-Plan (der Regelfall im Perf-Parcours:
+  // 36 Knoten / 134 Kanten, durchweg `dc12`) hat keins — dann ist der
+  // zweite Gang eine Messung ohne jeden Befund und kostet nur Zeit.
+  const domainSeparated = hasPairRuleAbove(
+    order.map((id) => domainById.get(id)),
+    ROUTING_TOKENS.cableClearance
+  )
+    ? separateCableClearance(
+        order.map((id) => ({
+          id,
+          waypoints: separated.get(id) ?? cleaned.get(id) ?? nudged.get(id) ?? [],
+          locked: lockedIds.has(id),
+        })),
+        {
+          obstacles: allObstacles,
+          maxLaneSteps: 6,
+          domainOf: (id: string) => domainById.get(id),
+        }
+      )
+    : separated;
 
   const byId = new Map(raw.map((r) => [r.id, r]));
   const finalWaypoints = new Map<string, Point[]>(
     order.map((id) => {
       const item = byId.get(id);
-      return [id, separated.get(id) ?? cleaned.get(id) ?? nudged.get(id) ?? item?.waypoints ?? []];
+      return [
+        id,
+        domainSeparated.get(id) ??
+          separated.get(id) ??
+          cleaned.get(id) ??
+          nudged.get(id) ??
+          item?.waypoints ??
+          [],
+      ];
     })
   );
 
