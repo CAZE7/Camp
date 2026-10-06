@@ -1082,13 +1082,13 @@ Kill-Gate tragen.
 
 **Referenz-Gates (perf-Skripte, 2026-09-28)**
 
-| Sonde                                         | Szenario                                                    | Ergebnis                                                | Budget                   | Status                 |
-| --------------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------- | ------------------------ | ---------------------- |
-| `perf:edge-routing` Render                    | N=36/E=134                                                  | p50 1,89 ms · p90 2,04 ms                               | 16 ms                    | ✅                     |
-| `perf:edge-routing` Live (`routeAllCables`)   | N=36/E=134                                                  | p50 40,39 ms · p90 54,28 ms · Tail 1,34×                | Ratchet 60 ms · Tail ≤ 2 | ✅                     |
-| Edit-Sweeps (vorher→nachher)                  | Klein 8/13 · Mittel 24/66 · Groß 60/230 · Sehr groß 120/585 | 1,07→0,49 · 9,98→7,73 · 4,67→3,89 · 17,35→13,29 ms      | —                        | alle verbessert        |
-| `perf:route-scaling` Kette                    | N=10/50/100/250/500 (E=9/49/99/249/499)                     | 0,8 · 3,4 · 10,8 · 39,2 · 154,1 ms (0,08→0,31 ms/Kante) | —                        | fallbacks 0            |
-| `perf:route-scaling` Worst Case (Spannkanten) | N=100/250/500 (E=50/125/250)                                | 40,3 · 285,0 · 2561,3 ms                                | —                        | dominante Kostenquelle |
+| Sonde                                         | Szenario                                                    | Ergebnis                                                | Budget                    | Status                 |
+| --------------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------- | ------------------------- | ---------------------- |
+| `perf:edge-routing` Render                    | N=36/E=134                                                  | p50 1,89 ms · p90 2,04 ms                               | 16 ms                     | ✅                     |
+| `perf:edge-routing` Live (`routeAllCables`)   | N=36/E=134                                                  | p50 223–234 ms · Tail 1,04–1,23×                        | Ratchet 300 ms · Tail ≤ 2 | ✅                     |
+| Edit-Sweeps (vorher→nachher)                  | Klein 8/13 · Mittel 24/66 · Groß 60/230 · Sehr groß 120/585 | 1,07→0,49 · 9,98→7,73 · 4,67→3,89 · 17,35→13,29 ms      | —                         | alle verbessert        |
+| `perf:route-scaling` Kette                    | N=10/50/100/250/500 (E=9/49/99/249/499)                     | 0,8 · 3,4 · 10,8 · 39,2 · 154,1 ms (0,08→0,31 ms/Kante) | —                         | fallbacks 0            |
+| `perf:route-scaling` Worst Case (Spannkanten) | N=100/250/500 (E=50/125/250)                                | 40,3 · 285,0 · 2561,3 ms                                | —                         | dominante Kostenquelle |
 
 **Stufe-0-Messung (`benchmarks/phase0Baseline.ts`, Rohdaten `benchmarks/baseline.json`)**
 

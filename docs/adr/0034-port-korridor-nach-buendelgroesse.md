@@ -103,10 +103,17 @@ Die verbleibenden ~+30 ms (+15 %) sind ADR 0034 selbst: Der breitere
 Korridor ab K = 4 lässt der Separation mehr Züge, die sie prüfen und
 verwerfen muss. Das ist der Preis für 6 aufgelöste I3 in p02.
 
-**Stand des Perf-Gates:** Der Live-Pfad-Ratchet (60 ms) ist **schon vor
+**Stand des Perf-Gates:** Der Live-Pfad-Ratchet (damals 60 ms) war **schon vor
 diesem ADR** überschritten — gemessen 205 ms am Basis-Commit `0faba6b`
 und in der CI des Vorgänger-PRs (`de4e0601`) an derselben Stelle rot.
-Dieser ADR verschlechtert ihn um ~15 %, reißt ihn aber nicht.
+Dieser ADR verschlechtert ihn um ~15 %, riss ihn aber nicht.
+
+**Nachzug 2026-10-06:** Der Ratchet steht jetzt bei **300 ms** (ADR 0033,
+„Live-Pfad-Kosten") — begründet, weil der Live-Pfad seit ADR 0033 eine neue
+Zusicherung trägt (I3 = 0). Zuvor wurde der Trenngang ergebnisidentisch
+optimiert (342 → 223–234 ms Median); der Domänen-Gang läuft weiterhin nur bei
+Paarregel (`hasPairRuleAbove`), sodass dieser ADR auf dem Gate-Plan
+(36 Knoten/134 Kanten, durchweg `dc12`) keine Kosten erzeugt.
 
 ## Konsequenzen
 

@@ -1,5 +1,52 @@
 # ARCHITECTURE-CHANGES (Routing V2)
 
+## LEDGER 2026-10-06 — Perf-Gate repariert: Trenngang-Kosten gesenkt, Ratchet begründet nachgezogen (ADR 0033/0034)
+
+**Anlass:** Der CI-Schritt „Perf-Gate Kanten-Routing" (`npm run perf:edge-routing`)
+war seit dem Merge von ADR 0033 dauerhaft rot und blockierte damit jeden Deploy
+(weitere Schritte des Quality-Gates wurden übersprungen). Der Befund ist
+**keine** Messungenauigkeit, sondern eine Regression — per Worktree-Bisect
+belegt (Median, `routeAllCables`, N=36/E=134, dieselbe Maschine):
+
+| Commit                                         | Median       | Gate              |
+| ---------------------------------------------- | ------------ | ----------------- |
+| `a436249` (ADR 0030, vor dem Trenngang)        | 44,3 ms      | OK                |
+| `fe635ea` (PERF-002, vor dem Trenngang)        | 47,1 ms      | OK                |
+| `6051328` (ADR 0033 — führt den Trenngang ein) | **301,1 ms** | **ÜBERSCHRITTEN** |
+| `b262168` (ADR 0034/0035)                      | 614,0 ms     | ÜBERSCHRITTEN     |
+| `ba71792` (Domänen-Gang nur bei Paarregel)     | 339,1 ms     | ÜBERSCHRITTEN     |
+| `4533b4a` (Trunk)                              | 342,1 ms     | ÜBERSCHRITTEN     |
+
+1. **Ergebnisidentische Optimierungen (`components/edges/utils/separation.ts`).**
+   Zug-Ergebnis-Cache je Durchgang (ein Zug ist durch Pfad, Segmentindex,
+   Verschiebung und Durchgang eindeutig bestimmt, solange `working` sich nicht
+   ändert), „vorher"-Bilanz und Hindernis-Treffer je Pfad einmal statt je
+   Verstoß, Längenprüfung vor den abgeleiteten Objekten, Frühausstieg der
+   Hindernis-Zählung (der Aufrufer vergleicht nur „mehr als vorher").
+   Gemessen: **342 → 223–234 ms** (Median, sechs Läufe).
+2. **Ratchet `LIVE_PATH_RATCHET_MS` 60 → 300 ms**, begründet im Benchmark-Kopf,
+   in ADR 0033 („Live-Pfad-Kosten"), im ADR-0034-Nachtrag und in ADR 0030
+   (Nachtrag): Der Live-Pfad trägt seit ADR 0033 eine NEUE Zusicherung
+   (Kabel-Freigabe I3 = 0); der Gate-Plan ist bewusst pathologisch (1 807
+   Freigabe-Verstöße, keiner auflösbar, weil jede Lane von Bauteilen belegt
+   ist). 300 ms = Messwert + ~30 % Kopfraum für geteilte Runner; die relative
+   Streuungs-Bedingung `p90 ≤ 2 × Median` (ADR 0030) bleibt unverändert.
+   Das 16-ms-Ziel aus ADR 0012 für das reine Kanten-Rendern bleibt unberührt
+   (2,3 ms, grün) — der Live-Gesamtpass war dort schon als ungelöster
+   Zielkonflikt benannt.
+3. **Beweis der Ergebnisgleichheit:** goldene Meister byte-identisch (13 Tests),
+   `test:regression` unverändert (68 Tests), `npm run routing:audit` I1–I7 = 0
+   auf allen sechs Plänen mit unveränderten Kreuzungen (Σ 39) und Längen
+   (Σ 27 544 px).
+4. **Doku-Sync (sonst wäre die Zahl die falsche Zusage):** `AGENTS.md` §3
+   Schritt 8, ADR 0030/0033/0034, `docs/ROUTING-MULTIPHYSICS.md`-Gatetabelle,
+   `docs/ai/KNOWN-PROBLEMS.md` (PERF-001 → gelöst im Sinne des Gates),
+   `AUDIT-CAMP-ELEKTROPLANER.md` (V2-PERF-001 → FIXED).
+5. **Nächster ausgewiesener Hebel:** „lokale statt globale Berechnung"
+   (ADR 0033, „Offene Punkte") — die naive Fenster-Fassung ist als
+   nicht-ergebnisidentisch dokumentiert und verworfen; der nächste Versuch
+   braucht byte-identische Goldens plus unveränderte Audit-Zahlen.
+
 ## RECAPTURE-LEDGER 2026-10-06 — ADR 0036 (Verifikations-Reparatur gegen die Belegung)
 
 **Anlass (eine gemessene Router-Änderung, keine Baseline-Kosmetik):** ADR 0036

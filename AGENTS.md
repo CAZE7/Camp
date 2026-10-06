@@ -59,13 +59,18 @@ Modul-READMEs (jeweils: Was ist es · Public API · Besitz · Verbote · schütz
 8. `npm run perf:edge-routing` → **zwei** Gates, beide grün (Exit-Code 1 bei Überschreitung):
    - Render-Pfad (Einzelkante, Frame-Cache, ADR 0012): Median **≤ 16 ms** —
      gemessen 2,3–3,1 ms (drei Isolationsläufe, 2026-09-28; p90 3,3–4,4 ms).
-   - Live-Pfad (`routeAllCables`, kompletter Plan in einem Pass, AUDIT P1): Median **≤ 60 ms**
-     als **Ratchet** — gemessen ≈ 40 ms. Das Ratchet hält den Ist-Zustand und verbietet
-     Rückfall; Ziel bleibt 16 ms, wer den Pfad schneller macht, zieht
+   - Live-Pfad (`routeAllCables`, kompletter Plan in einem Pass, AUDIT P1): Median **≤ 300 ms**
+     als **Ratchet** — gemessen 223–234 ms (2026-10-06, nach den ergebnisidentischen
+     Optimierungen des Trenngangs; davor 342 ms, ohne Trenngang 47 ms). Das Ratchet hält den
+     Ist-Zustand und verbietet Rückfall; Ziel bleibt 16 ms, wer den Pfad schneller macht, zieht
      `LIVE_PATH_RATCHET_MS` in `benchmarks/edgeRoutingPerf.bench.ts` nach unten.
+     Der Wert kommt daher, dass der Live-Pfad seit ADR 0033 eine **neue Zusicherung** trägt
+     (Kabel-Freigabe I3 = 0, `separateCableClearance`) — der Ratchet wurde deshalb am
+     2026-10-06 begründet von 60 auf 300 ms nachgezogen, nicht stillschweigend (ADR 0033/0034).
+     Nächster ausgewiesener Hebel: „lokale statt globale Berechnung" (ADR 0033, „Offene Punkte").
      Vorher stand hier nur „Median ≤ 16 ms" — für denselben Befehl, dessen zweites Gate
-     bewusst mit 60 ms läuft (AUDIT N3: eine Doku-Zahl, die das eigene Gate nicht beschreibt,
-     wird zur falschen Zusage an den nächsten Beitragenden).
+     bewusst mit einem eigenen Ratchet läuft (AUDIT N3: eine Doku-Zahl, die das eigene Gate
+     nicht beschreibt, wird zur falschen Zusage an den nächsten Beitragenden).
 9. `npm run test:regression` → Layout, Metriken und **byte-exakte SVGs** unverändert
    (Abweichung ⇒ bewusste Entscheidung + Recapture + Begründung im PR).
 10. Kein Routing-Fix darf `crossSection`, `fuseSize`, `edgeDomain` oder `length` anfassen.

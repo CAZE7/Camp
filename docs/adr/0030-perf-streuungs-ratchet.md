@@ -34,6 +34,12 @@ Beide Zahlen und das Verhältnis werden ausgegeben; ein Verstoß lässt das Gate
 mit Exit-Code 1 fehlschlagen. Der Median-Ratchet (60 ms) und das 16-ms-Ziel
 bleiben **unverändert** — es wird nichts angehoben und nichts entfernt.
 
+> **Nachtrag 2026-10-06:** Der absolute Median-Ratchet wurde mit ADR 0033 auf
+> **300 ms** nachgezogen (neue Zusicherung Kabel-Freigabe I3 = 0; gemessen
+> 223–234 ms nach ergebnisidentischen Optimierungen). Die hier entschiedene
+> **relative** Bedingung `p90 ≤ 2 × Median` bleibt davon unberührt und ist der
+> eigentliche Regressionsschutz auf geteilten Runnern.
+
 ## Begründung
 
 - **Selbstkalibrierend:** Median und p90 stammen aus denselben Messproben. Eine
