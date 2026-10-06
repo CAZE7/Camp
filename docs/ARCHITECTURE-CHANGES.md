@@ -1,5 +1,77 @@
 # ARCHITECTURE-CHANGES (Routing V2)
 
+## RECAPTURE-LEDGER 2026-10-06 — ADR 0036 (Verifikations-Reparatur gegen die Belegung)
+
+**Anlass (eine gemessene Router-Änderung, keine Baseline-Kosmetik):** ADR 0036
+verifiziert den Gewinner einer Anfrage am Ende von `findCablePath` gegen die
+vollständige Geometrie aller früher verlegten Kanten (`priorVerdict`,
+`routedPathGeometry`) und ersetzt ihn bei einer **port-gebundenen kollinearen
+Überdeckung** (`hardEnds > 0`) durch den besten Katalogkandidaten, der den
+Verstoß auflöst (`bestOccupancyRepair`, Kandidaten inklusive der Z-Lagen über
+der mittleren Achse, Seitenschritte in Lane-Raster-Vielfachen). Auslöser ist
+die Invariante (I2 wie I3, `classifySegmentAgainstSegment` +
+`isPortBundleOverlap`), kein Szenario-Wissen, keine absolute Koordinate.
+
+**Vorher / Nachher (`npm run routing:audit`, I1–I7 = 0 in allen Plänen):**
+
+| Plan     | Kreuzungen | Länge | längste Kante |
+| -------- | ---------- | ----- | ------------- |
+| simple   | 1 → 1      | 2665  | 569           |
+| camper   | 4 → 4      | 3677  | 593           |
+| solar    | 2 → 2      | 3200  | 832           |
+| inverter | 2 → 2      | 3710  | 831           |
+| acdc     | 5 → 5      | 5591  | 1120          |
+| complex  | 25 → 25    | 8646  | 1108          |
+
+Alle sechs Referenzpläne sind **byte-identisch** zur Vormessung; die sechs
+`knownPlans/*.json` bleiben unverändert.
+
+**Regressions-Szenarien (I1/I2/I3, `p01`–`p15`):**
+
+| Szenario             | vorher            | nachher                        |
+| -------------------- | ----------------- | ------------------------------ |
+| `p11-zwangskreuzung` | 0 / **1** / **2** | **0 / 0 / 0**, X = 1 (erlaubt) |
+| Summe p01–p15        | 0 / 1 / 2         | **0 / 0 / 0**                  |
+
+**Neu verdrahtetes Gate (derselbe Fix):** Die p11-Ausnahme
+(`it.fails`-Platzhalter) ist entfernt; `p11-zwangskreuzung` läuft im harten
+Gate `I1 = I2 = I3 = 0` mit (`scripts/regression/regression.test.ts`,
+68 Tests). Der reparierte Fall ist eine **Zwangskreuzung**: Die Lösung quert
+genau einmal — erlaubt (I10, Hop, `COST_WEIGHTS.crossing`) und ohne
+Überdeckung/Freigabe-Verletzung.
+
+**Versatz-Gate:** `scripts/routing/shiftInvariance.test.ts` läuft für alle
+7 Offsets (inklusive `(1000, 1000)` und `(37, −53)`) grün; p11 und
+`p12-backbone-kreuzung` liefern je Versatz I1 = I2 = I3 = 0 mit identischen
+Wegen — `Route(T(Graph)) == T(Route(Graph))`.
+
+**Neuerfassungen mit Begründung:**
+
+- `scripts/regression/goldenLayouts.json`: **nur** der p11-Eintrag (Länge 1896,
+  6 Bends, Clearance 0; die Trassen selbst ändern sich: e-down läuft auf der
+  Nachbarlane, e-up quert über die mittlere Achse, statt die fremde Trasse zu
+  überdecken).
+- `docs/routing-regression/p11-zwangskreuzung.svg`: dieselbe Geometrie;
+  alle übrigen SVGs unverändert.
+
+**Kein** Ratchet-Eintrag steigt (`CROSSING_RATCHET`, `BASELINE_PX`,
+`SHIFT_RATCHET` unverändert); die Zählungen oben sind identisch zur
+Vormessung.
+
+**Performance (A/B gegen HEAD, `benchmarks/edgeRoutingPerf.bench.ts`,
+`benchmarks/routeAllScaling.probe.ts`):** WP-11 2,29 ms vs. 2,31 ms Median
+(Budget 16 ms); Live-Pfad 352 ms vs. 357 ms (vorbestehender
+Ratchet-Überlauf, unverändert); Skalierung normal N = 500/E = 499: 237 ms vs.
+235 ms; Worst Case N = 500/E = 250: 5,8–6,3 s vs. 5,65–5,85 s (Baseline-
+Streuung). Dabei gefunden und behoben: Die Leiter rief die tube-freien Stufen
+doppelt auf (`runAttempts(looseAttempts)` zweimal) — +33 % im Worst Case,
+nachweislich ergebnisneutral (p11, Audit und alle 68 Regressionstests
+identisch mit und ohne den zweiten Aufruf).
+
+**Vollständige Begründung:** `docs/adr/0036-verifikations-reparatur-belegung.md`.
+
+---
+
 ## RECAPTURE-LEDGER 2026-10-05 — ADR 0034 (Port-Korridor nach Bündelgröße) + Domänen-Freigabe im Trenngang
 
 **Anlass (zwei gemessene Änderungen, beide im Router — keine Baseline-Kosmetik):**

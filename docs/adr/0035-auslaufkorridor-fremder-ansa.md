@@ -8,8 +8,10 @@ ROUTE-010 (`p11-zwangskreuzung`), AUDIT ROUTE-011/012
 > **Warum steht ein verworfener Versuch im ADR-Register?**
 > Weil er gebaut, gemessen und eingecheckt war — und weil die Messung zeigt,
 > warum er wieder raus musste. Wer p11 als Nächstes angeht, soll nicht
-> denselben Weg ein zweites Mal gehen. Der Befund besteht weiter
-> (`p11-zwangskreuzung`: 1 × I2 + 2 × I3); er ist in
+> denselben Weg ein zweites Mal gehen. **Nachtrag 2026-10-06: p11 ist gelöst —
+> nicht auf diesem Weg, sondern über die Verifikations-Reparatur gegen die
+> verlegte Belegung (`docs/adr/0036-verifikations-reparatur-belegung.md`).**
+> Der damalige Befund (`p11-zwangskreuzung`: 1 × I2 + 2 × I3) war in
 > `docs/ai/KNOWN-PROBLEMS.md` (ROUTE-010) geführt und in
 > `scripts/regression/regression.test.ts` als `it.fails` verdrahtet: Der Test
 > ist grün, solange der Befund besteht, und wird rot, sobald jemand ihn

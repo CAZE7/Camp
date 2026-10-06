@@ -67,6 +67,7 @@ import {
   routingDomainOfEdge,
   type RoutingDomain,
 } from '../../../lib/routing/rules/collision';
+import { routedPathGeometry, type RoutedPathGeometry } from '../../../lib/routing/rules/portBundle';
 import { separateCableClearance } from './separation';
 import { compareIds } from '../../../lib/sortOrder';
 
@@ -400,6 +401,16 @@ const addTubes = (tubes: Rect[], waypoints: readonly Point[]): void => {
   // weder doppelte Trassenbelegung (I2) noch Engstellen unter 12 px (I3)
   // entstehen; die halbe Breite drückte Kanten in 6-px-Korridore
   // (Kurzsegmente I6, neue Überdeckungen).
+  //
+  // Erstes und letztes Segment bleiben ausgespart: Dort läuft ein Bündel am
+  // gemeinsamen Anschluss by design zusammen. Gemessen und VERWORFEN
+  // (2026-10-06): die Bündel-Zone als Länge (`stubMin` ab Port) statt als
+  // ganzes Segment — sie belegte die langen Endsegmente mit (p11s 464-px-
+  // Korridor) und brach dafür legal zusammenlaufende Leitungen: acdc und
+  // complex je 1 × I3, inverter +1 Kreuzung, complex +600 px Kabelweg.
+  // Die Belegungslücke langer Endsegmente schließt stattdessen die
+  // Verifikations-Reparatur in `pathfinding.ts` — dort, wo sie belegt ist
+  // (I2-Verstoß gegen die verlegte Geometrie).
   const half = ROUTING_TOKENS.cableClearance;
   for (let i = 1; i < segments.length - 1; i++) {
     const seg = segments[i];
@@ -797,6 +808,12 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
   const dynamicRoutedSegments: Segment[] = [];
   // ROUTE-BUG-16: wächst mit jeder verlegten Kante (siehe `addTubes`).
   const tubes: Rect[] = [];
+  // ROUTE-010 / p11: Geometrie der bereits verlegten Kanten (vollständig,
+  // inklusive Port-Stubs) — Eingabe der Verifikations-Reparatur
+  // (`priorVerdict` in `pathfinding.ts`). Die Stubs sind der Punkt: p11s I2
+  // ist die Überdeckung eines FREMDEN Port-Stubs, den die Trassensperre
+  // (`addTubes`) bewusst auslässt (Bündel-Zone).
+  const priorGeometries: RoutedPathGeometry[] = [];
 
   // Verworfener Versuch (gemessen 2026-09-09): die Arbeitsreihenfolge nach
   // der Luftlinie der Bauteile zu sortieren, lange Querleger zuerst. Die
@@ -868,6 +885,9 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
       // The array contains only routes from earlier loop iterations; the
       // current edge is not present and needs no filter/copy.
       crossingSegments: dynamicRoutedSegments,
+      // ROUTE-010 / p11: dieselben Kanten als vollständige Geometrie (mit
+      // Stubs) für die Verifikations-Reparatur.
+      priorGeometries,
     };
     let request_ = request;
     const storedLockedPath = isLockedRouteEdge(edge) ? validStoredLockedPath(edge) : undefined;
@@ -930,6 +950,7 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
     }
     raw.push({ id: edge.id, waypoints: result.waypoints, result });
     addTubes(tubes, result.waypoints);
+    priorGeometries.push(routedPathGeometry(result.waypoints));
     const segments = waypointsToSegments(result.waypoints);
     dynamicRoutedSegments.push(...segments);
   }

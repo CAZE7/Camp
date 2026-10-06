@@ -947,11 +947,11 @@
               "y": 76
             },
             {
-              "x": 256,
+              "x": 268,
               "y": 76
             },
             {
-              "x": 256,
+              "x": 268,
               "y": 536
             },
             {
@@ -968,11 +968,19 @@
               "y": 536
             },
             {
-              "x": 696,
+              "x": 256,
               "y": 536
             },
             {
-              "x": 696,
+              "x": 256,
+              "y": 520
+            },
+            {
+              "x": 476,
+              "y": 520
+            },
+            {
+              "x": 476,
               "y": 76
             },
             {
@@ -983,11 +991,11 @@
         }
       ],
       "metrics": {
-        "crossings": 0,
-        "bends": 4,
+        "crossings": 1,
+        "bends": 6,
         "length": 1896,
-        "clearanceViolations": 2,
-        "edgeOverlaps": 1
+        "clearanceViolations": 0,
+        "edgeOverlaps": 0
       }
     },
     {
