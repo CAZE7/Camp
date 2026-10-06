@@ -94,21 +94,19 @@ describe('Golden Layouts — exakte Trassenstruktur (Abweichung = CI-Fail)', () 
  * I3 Kabel-Freigabe) — hier über die Szenarien der Regressions-Suite.
  */
 /**
- * Offener P0-Befund: `p11-zwangskreuzung` erreicht I1=I2=I3=0 **nicht**
- * (1 × I2, 2 × I3). Ursache und Stand in `docs/ai/KNOWN-PROBLEMS.md`
- * (ROUTE-010) und in ADR 0035.
+ * ROUTE-010 / p11 (`p11-zwangskreuzung`) ist seit 2026-10-06 REPARIERT und
+ * läuft im harten Gate mit — der frühere `it.fails`-Platzhalter ist damit
+ * eingelöst (Befund und Ursache: `docs/ai/KNOWN-PROBLEMS.md`, ROUTE-010;
+ * verworfene Experimente: ADR 0035).
  *
- * `it.fails` ist hier bewusst gewählt und ist KEIN übersprungener Test:
- * Dieser Test ist grün, solange der Befund BESTEHT, und wird ROT, sobald
- * jemand p11 repariert. Er zwingt dann, den Fall zurück in das harte Gate
- * oben zu verschieben. Ein `it.skip` oder ein entschärfter Grenzwert würde
- * den Befund verstecken — genau das unterscheidet die beiden.
+ * Der reparierte Fall ist eine ZWANGSKREUZUNG: Zwei Kanten zwischen
+ * denselben vier Bauteilen müssen sich queren (Jordan-Kurve). Die Lösung
+ * quert genau einmal — erlaubt (I10, mit Hop gerendert, `COST_WEIGHTS.crossing`)
+ * und ohne Überdeckung/Freigabe-Verletzung.
  */
-const P11_ID = 'p11-zwangskreuzung';
 
 describe('P0 — I1 = I2 = I3 = 0 in jedem Szenario (hart, nicht als Ratchet)', () => {
   for (const scenario of REGRESSION_SCENARIOS) {
-    if (scenario.id === P11_ID) continue;
     it(`${scenario.id}: keine Bauteil-Durchdringung, keine Überdeckung, keine Freigabe-Verletzung`, () => {
       const routed = routeScenario(scenario);
       const nodes = scenarioNodeRects(scenario.nodes);
@@ -138,24 +136,6 @@ describe('P0 — I1 = I2 = I3 = 0 in jedem Szenario (hart, nicht als Ratchet)', 
       ).toEqual([]);
     });
   }
-
-  it.fails(
-    `${P11_ID}: OFFENER BEFUND — 1 × I2 + 2 × I3 (ROUTE-010 / ADR 0035). Grün = Befund besteht, rot = behoben, dann hierher zurück in das harte Gate`,
-    () => {
-      const scenario = REGRESSION_SCENARIOS.find((s) => s.id === P11_ID)!;
-      const routed = routeScenario(scenario);
-      const nodes = scenarioNodeRects(scenario.nodes);
-      const edges = routed.map((item) => ({
-        id: item.id,
-        source: item.source ?? '',
-        target: item.target ?? '',
-        waypoints: item.waypoints,
-      }));
-      expect(checkEdgeNodeCollisions(edges, nodes), 'I1').toHaveLength(0);
-      expect(checkEdgeEdgeOverlaps(edges), 'I2').toHaveLength(0);
-      expect(checkClearance(edges, nodes), 'I3').toHaveLength(0);
-    }
-  );
 });
 
 describe('Metrik-Budget — Delta gegen Baseline ≤ 0', () => {

@@ -2,7 +2,8 @@
 
 Nur **echte, im Code nachweisbare** Probleme. Keine Wunschliste, keine allgemeinen TODOs.
 Historische Einträge behalten ihren datierten Prüfstand; PERF-001, ROUTE-003 und ROUTE-010
-wurden am 2026-10-05 mit aktuellen Messungen nachgeprüft.
+wurden am 2026-10-05 mit aktuellen Messungen nachgeprüft; **ROUTE-010 ist am 2026-10-06
+geschlossen** (ADR 0036, `p11-zwangskreuzung` 0/0/0).
 
 Legende Severity: **hoch** = Agent kann falschen Code ändern / falsche Sicherheit annehmen ·
 **mittel** = Qualitäts- oder Konsistenzrisiko · **niedrig** = Komfort/Doku.
@@ -45,7 +46,7 @@ Legende Severity: **hoch** = Agent kann falschen Code ändern / falsche Sicherhe
 
 ---
 
-## ROUTE-010 — Regressionsratchet akzeptiert bestehende I2-/I3-Verstöße — **PARTIALLY FIXED**
+## ROUTE-010 — Regressionsratchet akzeptiert bestehende I2-/I3-Verstöße — **GELÖST (2026-10-06)**
 
 - **AREA:** Routing / Regressionstests
 - **FILE:** `scripts/regression/layout.ts` (`measureScenario`),
@@ -64,29 +65,44 @@ Legende Severity: **hoch** = Agent kann falschen Code ändern / falsche Sicherhe
   sind ein separates Set und heben diese Regression-Befunde nicht auf.
 - **EXPECTED BEHAVIOR:** I1/I2/I3 = 0 in jedem Regression-Szenario; Fehlerursache im Router
   beheben und danach Layout-Baselines nur mit dokumentierter, gemessener Verbesserung ändern.
-- **STATUS (2026-10-05):** **PARTIALLY FIXED** (ADR 0034; ADR 0035 ist ein dokumentierter,
-  verworfener Versuch). p02 ist im Router behoben, p11 offen:
+- **STATUS (2026-10-06):** **GELÖST — beide Befunde sind im Router behoben, nichts bleibt
+  offen.** p02 durch ADR 0034, p11 durch ADR 0036 (ADR 0035 bleibt als dokumentierter,
+  verworfener Versuch stehen). Historie:
   - **p02** — Widerspruch zwischen `portFacingClearance` (68 px, fest) und der Fächerregel
     `requiredPortCorridor(K) = stubMin + (K−1)·laneGrid` (ab K = 4 sind es 72 px). Der
     Router legte den Fächer vorschriftsmäßig, I3 meldete ihn anschließend. Behoben durch
     `bundleCorridor() = max(portFacingClearance, requiredPortCorridor(K))` — identisch für
     K ≤ 3, wachsend erst ab K = 4. Messung: **6 → 0** I3 in p02, 1 → 0 in p03.
-  - **p11 — weiterhin OFFEN (1 × I2 + 2 × I3).** `e-down` legt ihre Haupttrasse 24 px vor
-    den Anschluss von `e-up` auf dieselbe Linie und nimmt ihr damit den einzigen Weg aus
-    diesem Anschluss heraus; es bleibt eine 464 px kollineare Überdeckung. Es wurden sechs
-    Varianten gebaut und gemessen (harte Auslaufkorridore, Kosten-Term, Reparatur nach der
-    Wahl, gleichachsige Reparatur, Korridorlängen-Sweep, Grad-Begrenzung). Der wirksamste
-    davon — harte Auslaufkorridore für belegte Fremd-Ports — erreicht 0/0/0 in allen 15
-    Szenarien, **bricht aber das Versatz-Gate** (`shiftInvariance.test.ts`, 294 Läufe):
-    camper I3 22 → 41, solar I3 0 → 17, acdc I2 2 → 19 / I3 24 → 39, dazu I1 = 2 in
-    `simple`, weil eine zusätzliche Sperrfläche bei verschobenem Raster eine Route unmöglich
-    macht und der Notfallpfad dann durch ein Bauteil fährt. Vollständiges Versuchsprotokoll
-    in `docs/adr/0035-auslaufkorridor-fremder-ansa.md` (**verworfen**). Der nächste Versuch
-    braucht eine Änderung am ABLAUF, nicht am Kostenmodell: wählbare Verlege-Reihenfolge
-    (hintereinander statt `compareIds`) oder koordinierte Umplanung beider Kanten.
-  - Der offene p11-Befund ist in `scripts/regression/regression.test.ts` als **`it.fails`**
-    verdrahtet — kein übersprungener Test: grün, solange der Befund besteht, rot, sobald ihn
-    jemand repariert. Er zwingt dann, den Fall zurück in das harte Gate zu schieben.
+  - **p11 — GELÖST (2026-10-06, ADR 0036).** Ursache war nicht der Preis, sondern die
+    fehlende **Verifikation des Gewinners gegen die verlegte Belegung**: Die Stufen 2–4 der
+    Leiter fahren ohne Trassensperre, und die Trassensperre selbst ist eine Hüllbox über den
+    MITTELSTÜCKEN — ein fremdes port-gebundenes Endstück bleibt in ihr bewusst frei
+    (Bündel-Zone, ADR 0009/0031). Genau dort legten `e-down` und `e-up` ihre je 464 px langen
+    Endstücke kollinear auf dieselbe Linie `y = 536` (240 px Überdeckung = I2; die beiden
+    0-px-Abstände = die zwei I3-Meldungen). Weder die ADR-0032-Reparatur (prüft nur
+    Mittelstücke ab Index 2; ein L-Pfad hat keine) noch der Trenngang (verteilt nur parallele
+    INNENSEGMENTE) greift dort. Behoben mit der einen Wahrheit der Invarianten: Am Ende von
+    `findCablePath` klassifiziert `priorVerdict` den Gewinner gegen die vollständige Geometrie
+    aller früher verlegten Kanten (`routedPathGeometry`, inklusive Stubs; Bündel-Ausnahme
+    `isPortBundleOverlap`); eine kollineare Überdeckung, die ein Port-Segment BEIDER Kanten
+    trifft (`hardEnds > 0` — nur die sind nudge-fest), lässt `bestOccupancyRepair` übernehmen:
+    bester Katalogkandidat mit aufgelöstem Verstoß, Kandidatenvorrat zusätzlich mit den
+    Z-Lagen über der MITTLEREN Achse (bei zugewandten Ports: der einzige Weg, der quert statt
+    überdeckt) und Seitenschritt-Staffelung `laneStep ± {0,1,2} · laneGrid` (nicht `lane`:
+    das verlängert den Stub entlang der Port-Achse). Rein relative Geometrie, keine
+    Koordinaten-/ID-/Szenario-Prüfung. Messung: `p11` **0/0/0** mit genau einer erlaubten
+    Kreuzung (X = 1, Hop; I10), Summe p01–p15 0/1/2 → **0/0/0**; Versatz-Gate für alle
+    7 Offsets PASS, `p12` unverändert; die sechs Referenzpläne byte-identisch. Preis:
+    `e-up` nimmt einen Lane-Schritt Seitenversatz + Mittelachsen-Jog (948 px statt der
+    überdeckenden 948 px, 4 statt 2 Bends), `e-down` die Nachbarlane; WP-11 2,29 ms vs.
+    2,31 ms Baseline. Gemessen und VERWORFEN: harte Auslaufkorridore (ADR 0035 — bricht die
+    Versatz-Invarianz), endliche Auslauf-Strafe im Katalog (`COST_WEIGHTS.foreignPortExit`:
+    e-up 948 → 1508 px, camper 4 → 5, complex 25 → 32 Kreuzungen), Z-Lagen im Alltagskatalog
+    (simple 1 → 2, camper 4 → 5, complex 25 → 31), Reparatur bei `hart > 0` statt
+    `hardEnds > 0` (complex +2 × I3, +2 Kreuzungen). Golden-Recapture: nur p11 —
+    `docs/ARCHITECTURE-CHANGES.md`, RECAPTURE-LEDGER 2026-10-06.
+  - Der frühere `it.fails`-Platzhalter ist im selben Arbeitsgang **eingelöst**: p11 läuft
+    jetzt ohne Ausnahme im harten Gate (s. u.). Kein Befund bleibt als „erwartet rot“ stehen.
   - Neues **hartes Gate** in `scripts/regression/regression.test.ts`: I1 = I2 = I3 = 0 je
     Szenario, absolut — eine Ratchet (Delta ≤ 0) kann das nicht ersetzen, weil ein Plan mit
     Verstößen grün bleibt, solange er sich nicht verschlechtert.

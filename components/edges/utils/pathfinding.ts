@@ -36,7 +36,12 @@ import {
   type Rect,
   type Segment,
 } from '../../../lib/routing/geometry';
-import { classifyCollision } from '../../../lib/routing/rules/collision';
+import { classifyCollision, classifySegmentAgainstSegment } from '../../../lib/routing/rules/collision';
+import {
+  isPortBundleOverlap,
+  routedPathGeometry,
+  type RoutedPathGeometry,
+} from '../../../lib/routing/rules/portBundle';
 import { portNormal } from '../../../lib/routing/rules/portFanOut';
 
 export {
@@ -520,6 +525,20 @@ export type PortInput = {
   stubTie?: number;
   /** Dasselbe für den Ziel-Stub. */
   stubTieTarget?: number;
+  /**
+   * Bereits verlegte Kanten-Segmente (Geometrie der früheren Kanten in
+   * Verlegereihenfolge) — Grundlage des Kreuzungspreises am Ende der Anfrage
+   * (`scorePath`) und der ADR-0032-Reparatur.
+   */
+  crossingSegments?: readonly Segment[];
+  /**
+   * Dieselben früheren Kanten als VOLLSTÄNDIGE Geometrie (Stützpunkte,
+   * Segmente, Stubs) — Grundlage der Verifikations-Reparatur (`priorVerdict`,
+   * ROUTE-010/p11). Erst diese Sicht macht die Bündel-Ausnahme prüfbar: Ob
+   * eine kollineare Überdeckung erlaubt ist, entscheidet `isPortBundleOverlap`
+   * aus den Stubs BEIDER Kanten (ADR 0009/0031).
+   */
+  priorGeometries?: readonly RoutedPathGeometry[];
 };
 
 /**
@@ -770,7 +789,11 @@ const verticalLoop = (f: PortFrame): Point[] => {
  * Innerer Verlauf zwischen den Stub-Endpunkten S2 und T2 (ohne Stubs).
  * Formen: Gerade, L, Z, U — jeweils port-treu.
  */
-const coreWaypoints = (f: PortFrame, variant: 'primary' | 'midX' | 'midY' | 'late'): Point[] => {
+const coreWaypoints = (
+  f: PortFrame,
+  variant: 'primary' | 'midX' | 'midY' | 'late',
+  midAxisOnFacingPorts = false
+): Point[] => {
   const horizS = Math.abs(f.ds.x) === 1;
   const horizT = Math.abs(f.dt.x) === 1;
   const A = f.S3;
@@ -786,7 +809,13 @@ const coreWaypoints = (f: PortFrame, variant: 'primary' | 'midX' | 'midY' | 'lat
         { x: B.x, y: midY },
       ];
     }
-    if (variant === 'midX' && !isFacing(f)) {
+    if (variant === 'midX' && (midAxisOnFacingPorts || !isFacing(f))) {
+      // ROUTE-010 / p11: Der Z-Lauf über die MITTLERE LÄNGSACHSE. Am
+      // HEAD-Katalog fehlt er bei ZUGEWANDTEN Ports (`isFacing`) — genau
+      // dort ist er in `p11-zwangskreuzung` die einzige Form, die eine
+      // bereits verlegte Trasse IM RECHTEN WINKEL quert statt sie zu
+      // überdecken. Er steht deshalb `midAxisCandidates` (Belegungs-Stufe 1b)
+      // zur Verfügung, nicht dem Alltagskatalog — siehe dort.
       const midX = (A.x + B.x) / 2;
       return [
         { x: midX, y: A.y },
@@ -813,7 +842,10 @@ const coreWaypoints = (f: PortFrame, variant: 'primary' | 'midX' | 'midY' | 'lat
         { x: midX, y: B.y },
       ];
     }
-    if (variant === 'midY' && !isFacing(f)) {
+    if (variant === 'midY' && (midAxisOnFacingPorts || !isFacing(f))) {
+      // ROUTE-010 / p11: Spiegelfall zu `midX` oben (zugewandte SENKRECHTE
+      // Ports) — dieselbe Begründung, dasselbe Angebot nur für die
+      // Verifikations-Reparatur.
       const midY = (A.y + B.y) / 2;
       return [
         { x: A.x, y: midY },
@@ -857,6 +889,15 @@ export function catalogWaypoints(input: PortInput): Point[] {
  * Die Varianten unterscheiden sich in der Lage der Mittellane (L, Z über X,
  * Z über Y) — bewertet wird über Mängel (`routeDefectScore`), dann über
  * Länge + Knicke.
+ *
+ * ROUTE-010 / p11: Die Z-Lagen über der MITTLEREN Achse bleiben hier auf die
+ * Fälle beschränkt, die der HEAD-Katalog schon hatte (`!isFacing`, s.
+ * `coreWaypoints`). Bei zugewandten Ports kosten sie in den Referenzplänen
+ * Kreuzungen (gemessen: simple 1 → 2, camper 4 → 5, complex 25 → 31), weil
+ * sie dort gleichberechtigt gegen kollisionsfreie L-Formen antreten. Genau
+ * dort braucht sie die Belegungs-Stufe (`midAxisCandidates`, Stufe 1b): Sie
+ * werden erst angeboten, wenn die harte Trassensperre keinen mangelfreien
+ * Pfad mehr liefert.
  */
 export function catalogCandidates(input: PortInput): Point[][] {
   const out: Point[][] = [];
@@ -889,6 +930,48 @@ export function catalogCandidates(input: PortInput): Point[][] {
   }
   return unique;
 }
+
+/**
+ * ROUTE-010 / p11: Die Z-Lagen über der MITTLEREN Achse als ZUSÄTZLICHER
+ * Kandidatenvorrat der Verifikations-Reparatur (`bestOccupancyRepair`).
+ *
+ * Sie fehlen im Alltagskatalog bei zugewandten Ports (`isFacing`) — also
+ * genau dort, wo in `p11-zwangskreuzung` zwei Kanten ihre Anschlüsse
+ * gegenüberliegen und die kollisionsfreie Lösung nur über die Mitte
+ * existiert. Angeboten werden sie erst, wenn die harte Trassensperre keinen
+ * mangelfreien Pfad liefert: Dann sind die günstigeren L-Formen entweder
+ * blockiert oder sie legen sich auf die fremde Trasse (p11: 240 px kollinear,
+ * I2), während die Hüllbox-Suche zugleich die Kreuzung verbietet, die hier
+ * die einzige Lösung ist (I10: „Crossing nur, wenn unvermeidbar“).
+ *
+ * Rein geometrisch (Mittelachse des Port-Spanns), ohne Koordinaten oder
+ * Szenario-Kenntnis — translation-invariant wie der übrige Katalog.
+ */
+const midAxisCandidates = (input: PortInput): Point[][] => {
+  const step = input.laneStep ?? input.lane ?? 0;
+  const stepTarget = input.laneStepTarget ?? input.laneTarget ?? input.lane ?? 0;
+  const frames =
+    step === 0 && stepTarget === 0
+      ? [portFrame(input)]
+      : [portFrame(input), portFrame({ ...input, laneStep: 0, laneStepTarget: 0 })];
+  const out: Point[][] = [];
+  for (const f of frames) {
+    for (const variant of ['midX', 'midY'] as const) {
+      out.push(assembleCatalog(f, coreWaypoints(f, variant, true)));
+    }
+  }
+  const seen = new Set<string>();
+  const unique: Point[][] = [];
+  for (let i = 0; i < out.length; i++) {
+    const key = at(out, i)
+      .map((p) => `${p.x},${p.y}`)
+      .join('|');
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push(at(out, i));
+  }
+  return unique;
+};
 
 /** Kehre (180°) zwischen zwei aufeinanderfolgenden Segmenten? */
 const isUTurnPair = (s1: Segment, s2: Segment): boolean => {
@@ -936,6 +1019,19 @@ export function routeDefectScore(points: Point[]): number {
   return penalty;
 }
 
+/**
+ * Katalog-Bewertung: Länge + Knicke + Mängel (I4/I6/R-2).
+ *
+ * Bewusst OHNE die verlegte Belegung: Der Katalog ist die billige Vorstufe,
+ * die Belegungs-Stufe 1b bewertet Kreuzungen selbst (`COST_WEIGHTS.crossing`).
+ * Gemessen und verworfen (2026-10-06): eine endliche Strafe für das Belegen
+ * fremder Pflicht-Ausläufe (`COST_WEIGHTS.foreignPortExit`) — sie zwang
+ * Kanten in 500-px-Umwege (p11 e-up 948 → 1508 px) und kostete in den
+ * Referenzplänen Kreuzungen (camper 4 → 5, complex 25 → 32), ohne p11
+ * zusätzlich zu verbessern. Der Auslauf eines fremden Anschlusses ist keine
+ * harte Grenze (ADR 0035 bleibt verworfen), er ist aber auch kein Preis, den
+ * dieser Katalog erheben kann, ohne die globale Wahl zu verzerren.
+ */
 const scoreCatalog = (points: Point[]): number =>
   pathLength(points) + BEND_COST * countBends(points) + routeDefectScore(points);
 
@@ -955,12 +1051,162 @@ export function bestFreeCatalog(input: PortInput, obstacles: Rect[]): Point[] | 
   }
   return best;
 }
+
 /**
- * Selbstüberlappung (R-2): zwei achsenparallele Segmente desselben Pfads
- * liegen auf derselben Linie und überlappen auf einer Strecke > EPS — die
- * Leitung läuft optisch in sich zurück („doppelte Belegung“ einer Lane).
- * Solche Pfade sind immer ein Routing-Fehler und werden bevorzugt vermieden.
+ * Verstöße eines Kandidaten gegen die GEOMETRIE bereits verlegter Kanten —
+ * dieselbe Wahrheit wie die Invarianten I2/I3: `classifyCollision` für die
+ * Klasse, `isPortBundleOverlap` für die dokumentierte Bündel-Ausnahme am
+ * gemeinsamen Anschluss (ADR 0009/0031). Getrennt gezählt, weil nur HARTE
+ * Überdeckungen eine Trassenänderung rechtfertigen: `weighted` ist die
+ * Freigabe-Seite derselben Route, `soft` (echte Kreuzung, I10) ist erlaubt.
+ *
+ * Die Ausnahme befreit nur `hard` — sie ist als kollineare Überdeckung
+ * definiert (`overlapInterval`) und deckt genau den Fall ab, den I2
+ * freistellt. Rein relative Geometrie — translation-invariant.
  */
+const priorVerdict = (
+  points: readonly Point[],
+  priors: readonly RoutedPathGeometry[],
+  clearance: number = ROUTING_TOKENS.cableClearance
+): { hard: number; hardEnds: number; weighted: number; crossings: number } => {
+  const self = routedPathGeometry(points);
+  let hard = 0;
+  // Harte Überdeckungen, die ein PORT-SEGMENT betreffen (erstes/letztes
+  // Segment dieses Kandidaten UND der früheren Kante). Nur sie sind
+  // nudge-fest: Der Trenngang (`nudgeOrthogonalPaths`) verteilt
+  // PARALLELLAUFENDE INNENSEGMENTE auf eigene Lanes — er bewegt bewusst
+  // keine port-gebundenen Endstücke. Eine Überdeckung dort bleibt also
+  // bestehen (genau p11: 240 px zwischen den beiden Endstücken auf y=536);
+  // eine Überdeckung im Inneren löst der Trenngang auf, und die Vorbewertung
+  // darf sie deshalb nicht als Endzustand behandeln (gemessen: voreilige
+  // Reparatur kostete in complex 2 × I3 und 2 Kreuzungen).
+  let hardEnds = 0;
+  let weighted = 0;
+  let crossings = 0;
+  if (priors.length === 0 || self.segments.length === 0) return { hard, hardEnds, weighted, crossings };
+  const selfEnd = (i: number): boolean => i === 0 || i === self.segments.length - 1;
+  // Hüllbox-Grobfilter: nur Paare, deren Boxen sich im Freigabe-Abstand
+  // berühren, erreichen das Kollisionsmodell. Ohne ihn prüfte jede Kante
+  // gegen die Segmente ALLER früheren Kanten (PERF-001).
+  for (let i = 0; i < self.segments.length; i++) {
+    const seg = at(self.segments, i);
+    const loX = Math.min(seg[0].x, seg[1].x) - clearance;
+    const hiX = Math.max(seg[0].x, seg[1].x) + clearance;
+    const loY = Math.min(seg[0].y, seg[1].y) - clearance;
+    const hiY = Math.max(seg[0].y, seg[1].y) + clearance;
+    for (const prior of priors) {
+      for (let j = 0; j < prior.segments.length; j++) {
+        const other = at(prior.segments, j);
+        if (Math.min(other[0].x, other[1].x) > hiX) continue;
+        if (Math.max(other[0].x, other[1].x) < loX) continue;
+        if (Math.min(other[0].y, other[1].y) > hiY) continue;
+        if (Math.max(other[0].y, other[1].y) < loY) continue;
+        const klass = classifySegmentAgainstSegment(seg, other, clearance).class;
+        if (klass === 'soft') {
+          crossings += 1;
+          continue;
+        }
+        if (klass !== 'hard' && klass !== 'weighted') continue;
+        if (klass === 'hard' && isPortBundleOverlap(self, prior, seg, other)) continue;
+        if (klass === 'hard') {
+          hard += 1;
+          if (selfEnd(i) && (j === 0 || j === prior.segments.length - 1)) hardEnds += 1;
+        } else weighted += 1;
+      }
+    }
+  }
+  return { hard, hardEnds, weighted, crossings };
+};
+
+/**
+ * Verifikations-Reparatur (ROUTE-010 / p11).
+ *
+ * Die Leiter in `searchOnce` endet mit Stufen OHNE Trassensperre — deren
+ * Preis: Sie kennen die verlegte Belegung nicht mehr und können deshalb eine
+ * bereits verlegte Trasse kollinear ÜBERDECKEN (I2, hart) statt sie zu
+ * kreuzen. Genau dort entstand p11: e-down und e-up legten ihre je 464 px
+ * langen Endstücke auf dieselbe Linie y=536 (240 px Überdeckung, 2 × Abstand
+ * 0 px < 12 px). Die vorhandenen Schutzmechanismen greifen dort nicht:
+ *
+ *   - Die Trassensperre (`addTubes`) ist die HÜLLBOX der Mittelstücke; sie
+ *     verbietet in p11 zugleich die Kreuzung, die die einzige Lösung ist
+ *     (I10 erlaubt Kreuzungen), und sie kennt die PORT-STUBS nicht — die
+ *     Bündel-Zone bleibt bewusst frei, und genau eine solche Fremd-Stub-
+ *     Überdeckung ist p11s I2.
+ *   - Die ADR-0032-Reparatur prüft nur Mittelstücke ab Segment 2
+ *     (`countHardInnerViolations`); ein L-Pfad mit vier Stützpunkten hat
+ *     keine.
+ *
+ * Diese Stufe schließt die Lücke mit der EINEN Wahrheit der Invarianten:
+ * Der Gewinner wird gegen die Geometrie ALLER früher verlegten Kanten
+ * klassifiziert (`priorVerdict`, inklusive Bündel-Ausnahme). Verstößt er
+ * hart, übernimmt der beste Katalogkandidat, der den Verstoß auflöst — dann
+ * stehen zusätzlich die Z-Lagen über der MITTLEREN Achse zur Wahl
+ * (`midAxisCandidates`). Budgets wie bei ADR 0032: nie länger, und höchstens
+ * so viele Kreuzungen mehr, wie der abgebaute Verstoß wert ist (Kostenmodell:
+ * Überdeckung unmöglich, Freigabe 400 gegen Kreuzung 120). Rein geometrisch —
+ * Auslöser ist die Invariante, die Reparatur kommt aus dem Katalog.
+ */
+/** Port-Raster der Lane-Staffelung (px) — dieselbe Quelle wie der Fan-Out. */
+const laneGrid = ROUTING_TOKENS.laneGrid;
+
+/** Anfrage mit verschobenem Seitenschritt (parallel, beide Ports). */
+const portInput = (input: PortInput, step: number, stepTarget: number): PortInput => ({
+  ...input,
+  laneStep: step,
+  laneStepTarget: stepTarget,
+});
+
+const bestOccupancyRepair = (
+  input: PortInput,
+  obstacles: Rect[],
+  priors: readonly RoutedPathGeometry[]
+): Point[] | null => {
+  const baseLane = input.lane ?? 0;
+  const baseStep = input.laneStep ?? baseLane;
+  const baseStepTarget = input.laneStepTarget ?? input.laneTarget ?? baseLane;
+  // Der Kandidatenvorrat umfasst die PARALLELEN TRASSEN neben der zugewiesenen:
+  // ein Seitenschritt (`laneStep`, senkrecht zur Port-Achse) um Vielfache des
+  // Lane-Rasters — dieselbe Staffelung, mit der der Port-Fan-Out Bündel
+  // auseinanderzieht (`lib/routing/tokens`, kein Szenario-Wissen). Bewusst
+  // der Seitenschritt und nicht `lane`: `lane` verlängert den Stub entlang
+  // der Port-Achse (`stubLength = ROUTE_MIN_STUB + |lane|`), und genau diese
+  // Verlängerung legte in p11 die Kante auf die fremde Trasse. Ohne die
+  // parallelen Trassen gibt es dort keine Lösung: Beide Kanten brauchen den
+  // Korridor an ihren Anschlüssen; erst die versetzte Trasse hält die 12 px
+  // Freigabe ein (Kosten: zwei Jogs à einem Lane-Raster).
+  const offsets = [0, laneGrid, -laneGrid, 2 * laneGrid, -2 * laneGrid];
+  let best: Point[] | null = null;
+  let bestScore = Number.POSITIVE_INFINITY;
+  for (const offset of offsets) {
+    const variant = portInput(input, baseStep + offset, baseStepTarget + offset);
+    const candidates = [...catalogCandidates(variant), ...midAxisCandidates(variant)];
+    for (let i = 0; i < candidates.length; i++) {
+      const pts = at(candidates, i);
+      if (!isOrthogonalPath(pts) || pathHitsObstacles(pts, obstacles)) continue;
+      // Selbstüberdeckung (R-2) ist eine eigene I2-Verletzung (die Leitung
+      // belegt eine Lane zweimal) — solche Kandidaten sind keine Lösung.
+      if (hasSelfOverlap(pts)) continue;
+      const verdict = priorVerdict(pts, priors);
+      // Pflicht: den harten Verstoß auflösen (`hard` = Überdeckung außerhalb
+      // der Bündel-Ausnahme). `weighted` bleibt erlaubt — es ist die
+      // Freigabe-Seite derselben Route und wird wie überall im Kostenmodell
+      // bepreist (`clearanceViolation`), nicht verboten.
+      if (verdict.hard > 0) continue;
+      // Eine Währung: dieselben Terme wie `scorePath` am Ende der Anfrage,
+      // plus die Freigabe-Strafe für die unvermeidbaren Rest-Abstände. Damit
+      // entscheidet dieselbe Kostenfunktion wie überall, ob ein Jog (Länge,
+      // `laneGrid` px) eine Freigabe-Verletzung wert ist.
+      const score = scorePath(pts, verdict.crossings) + COST_WEIGHTS.clearanceViolation * verdict.weighted;
+      if (score < bestScore - EPS) {
+        bestScore = score;
+        best = pts;
+      }
+    }
+  }
+  return best;
+};
+
 /**
  * Kleinster Abstand eines Punktes zu einer Polyline (Segment für Segment,
  * inklusive Endpunkte). Nur für die ADR-0032-Reparaturmetrik — dort sind die
@@ -1033,7 +1279,7 @@ export function hasSelfOverlap(points: Point[]): boolean {
   return false;
 }
 
-export function countCrossings(waypoints: Point[], others: Segment[]): number {
+export function countCrossings(waypoints: Point[], others: readonly Segment[]): number {
   if (others.length === 0 || waypoints.length < 2) return 0;
   const own = waypointsToSegments(waypoints);
   let count = 0;
@@ -1521,6 +1767,14 @@ export type PathRequest = {
    * Korridor doppelt belegen (ROUTE-BUG-16). Werden nicht aufgebläht.
    */
   cableTubes?: readonly Rect[];
+  /**
+   * Geometrie der früher verlegten Kanten (vollständig: Stützpunkte,
+   * Segmente, Stubs) — Grundlage der Verifikations-Reparatur (ROUTE-010/p11).
+   * Die Stubs sind hier unentbehrlich: p11s I2 ist die Überdeckung eines
+   * FREMDEN Port-Stubs, den die Trassensperre auslässt, und die Bündel-
+   * Ausnahme (`isPortBundleOverlap`) braucht beide Geometrien.
+   */
+  priorGeometries?: readonly RoutedPathGeometry[];
   /** Obergrenze der Stub-Länge aus der Bauteil-Freigabe (ROUTE-BUG-31). */
   stubCap?: number;
   /** Dasselbe für den Ziel-Stub. */
@@ -1535,7 +1789,13 @@ export type PathRequest = {
   stubTieTarget?: number;
   obstacles?: Rect[];
   borderRadius?: number;
-  crossingSegments?: Segment[];
+  /**
+   * Geometrie der früher verlegten Kanten (Segmente in Verlegereihenfolge).
+   * Kreuzungen dagegen sind `soft` und werden in der Kandidatenwahl mit
+   * `COST_WEIGHTS.crossing` bepreist (`scoreRoute`); Ausnahmen (Bündel) sind
+   * `hard`/`weighted` und damit nicht Teil des Preises.
+   */
+  crossingSegments?: readonly Segment[];
   /**
    * AUDIT ROUTE-001 (Härtung 2026-09-08): die EIGENEN Node-Boxen (Quelle
    * und Ziel) — Produktionspfad `routeAllCables` reicht sie als Referenzen
@@ -1677,7 +1937,7 @@ const obstacleKey = (obstacles: readonly Rect[]): string => {
   return s;
 };
 
-const segmentsKey = (segments: Segment[] | undefined): string => {
+const segmentsKey = (segments: readonly Segment[] | undefined): string => {
   if (!segments || segments.length === 0) return '0';
   let h = segments.length | 0;
   for (let i = 0; i < segments.length; i++) {
@@ -1705,13 +1965,13 @@ const requestKey = (input: PathRequest, obstacles: Rect[]): string =>
   // Cache-Schlüssel — sonst liefern identische Geometrie-Paare mit
   // unterschiedlicher Hindernis-/Trassenbelegung dasselbe (falsche) Ergebnis.
   `${(input.ownObstacles ?? []).length},` +
-  `${obstacleKey(obstacles)},${segmentsKey(input.crossingSegments)},` +
+  `${obstacleKey(obstacles)},${segmentsKey(input.crossingSegments ? [...input.crossingSegments] : [])},` +
   `${obstacleKey(input.cableTubes ?? [])},` +
-  // Stufe 3: Auch die Label-Währung gehört in den Schlüssel — sonst gibt
-  // der Float-Lauf dem Milli-px-Lauf sein Ergebnis zurück (gemessen in der
-  // ersten A/B-Probe: scheinbare Byte-Gleichheit durch Cache-Treffer,
-  // während der kalte Golden Master acdc brach). Bei stabilem Gate ist der
-  // Bestandteil konstant; beim Modus-Flip trennt er die Läufe sauber.
+  // ROUTE-010/p11: Auch die Geometrie der früheren Kanten entscheidet die
+  // Kandidatenwahl (die Verifikations-Reparatur verwirft Kandidaten, die eine
+  // verlegte Trasse überdecken) — ohne sie im Schlüssel bekäme ein Plan mit
+  // anderen Trassen das Ergebnis des ersten.
+  `${segmentsKey(input.priorGeometries ? input.priorGeometries.flatMap((g) => [...g.segments]) : [])},` +
   `${integerMilliPxEnabled() ? 'i' : 'f'},` +
   // AUDIT ROUTE-015: edtProximityFactor gehört in den Schlüssel — sonst
   // liefert der Cache eine Route, die mit einem anderen Faktor berechnet
@@ -1980,14 +2240,26 @@ function searchOnce(
     step === 0 && stepTarget === 0
       ? [portFrame({ ...input, lane })]
       : [portFrame({ ...input, lane }), portFrame({ ...input, lane, laneStep: 0, laneStepTarget: 0 })];
-  let bestFound: { waypoints: Point[]; usedSearch: PathResult['usedSearch']; tight: boolean } | null = null;
-  let bestPenalty = Number.POSITIVE_INFINITY;
+  // Ergebnis-Sammler als Objekt: Die Zuweisungen entstehen in `runAttempts`
+  // (Closure) — ein `let` würde von der Kontrollfluss-Analyse nicht gesehen.
+  const best: {
+    found: { waypoints: Point[]; usedSearch: PathResult['usedSearch']; tight: boolean } | null;
+    penalty: number;
+  } = { found: null, penalty: Number.POSITIVE_INFINITY };
   // Rangfolge der Garantien — erst die harte Regel, dann die weiche:
   //
-  //   1. volle Freigabe (14 px) + Trassensperre
-  //   2. volle Freigabe, ohne Trassensperre   (I3 schlägt I2)
-  //   3. gelockerte Freigabe („Stub-Recht") + Trassensperre
-  //   4. gelockerte Freigabe, ohne Trassensperre
+  //   1.  volle Freigabe (14 px) + Trassensperre (Hüllbox: meidet auch Kreuzungen)
+  //   2.  volle Freigabe, ohne Trassensperre   (I3 schlägt I2)
+  //   3.  gelockerte Freigabe („Stub-Recht") + Trassensperre
+  //   4.  gelockerte Freigabe, ohne Trassensperre
+  //
+  // Die Stufen 2–4 kennen die verlegte Belegung nicht mehr — sie fahren ohne
+  // Trassensperre und können eine fremde Trasse deshalb kollinear ÜBERDECKEN
+  // (I2, hart) statt sie zu kreuzen; genau dort entstand p11 (240 px auf
+  // y=536). Nach der Leiter prüft `findCablePath` den Gewinner deshalb gegen
+  // die GEOMETRIE aller früheren Kanten und lässt bei einer port-gebundenen
+  // Überdeckung die Verifikations-Reparatur übernehmen (s. `priorVerdict`,
+  // `bestOccupancyRepair`).
   //
   // Ohne diese Ordnung drückte die Trassensperre Kanten an Bauteile heran
   // (gemessen 4.5 px statt 12 px, I3) — zwei Kanten auf einer Trasse sind
@@ -1997,58 +2269,63 @@ function searchOnce(
   // aufgeblähtes Bauteil den Stub-Punkt überdeckt, entzerrt `searchFrame`
   // dieses eine Hindernis. Ein Vorab-Abbruch würde die Suche in den
   // Notfallpfad schicken (gemessen: Stressszene 22).
+  // Stufe 1 (Trassensperre) läuft getrennt von den Stufen 2–4, damit der
+  // Frühstopp (`break outer` bei mangelfreiem Treffer) die rangniedrigeren
+  // Versuche nicht abschneidet, wenn der Tube-Versuch selbst mangelfrei war.
   const attempts: { tubes: readonly Rect[]; relaxed: boolean }[] =
+    tubes.length > 0 ? [{ tubes, relaxed: false }] : [{ tubes: [], relaxed: false }];
+  const looseAttempts: { tubes: readonly Rect[]; relaxed: boolean }[] =
     tubes.length > 0
       ? [
-          { tubes, relaxed: false },
           { tubes: [], relaxed: false },
           { tubes, relaxed: true },
           { tubes: [], relaxed: true },
         ]
-      : [
-          { tubes: [], relaxed: false },
-          { tubes: [], relaxed: true },
-        ];
-  outer: for (const attempt of attempts) {
-    for (const f of frames) {
-      const found = searchFrame(f, obstacles, attempt.tubes, marginUsed, attempt.relaxed);
-      if (!found) continue;
-      const penalty = routeDefectScore(found.waypoints);
-      if (penalty < bestPenalty - EPS) {
-        bestFound = found;
-        bestPenalty = penalty;
+      : [{ tubes: [], relaxed: true }];
+  const runAttempts = (list: readonly { tubes: readonly Rect[]; relaxed: boolean }[]): void => {
+    outer: for (const attempt of list) {
+      for (const f of frames) {
+        const found = searchFrame(f, obstacles, attempt.tubes, marginUsed, attempt.relaxed);
+        if (!found) continue;
+        const penalty = routeDefectScore(found.waypoints);
+        if (penalty < best.penalty - EPS) {
+          best.found = found;
+          best.penalty = penalty;
+        }
+        if (penalty <= EPS) break outer;
+        // Nur ein MANGELFREIER Versuch beendet die Leiter vorzeitig — so steht
+        // es im Kommentar oben („die erste mangelfreie, sonst die mit der
+        // geringsten Strafe"). Ein defekter Treffer (z. B. Selbstüberdeckung,
+        // R-2 in `routeDefectScore`) darf die rangniedrigeren Versuche nicht
+        // sperren: Die Garantie-Rangfolge gilt ZWISCHEN den Versuchen, nicht als
+        // Frühstopp beim ersten Treffer. Gemessen ohne diesen Fix: e-auto-8
+        // (Plan complex) faltete sich nach verschobenen Tubes kollinear auf
+        // sich selbst (I2 = 1 statt 0), obwohl der nächste Versuch einen
+        // sauberen Pfad hatte.
+        //
+        // Verworfene Erweiterung (gemessen 2026-10-03): „Mangelfrei" zusätzlich
+        // als hart-sauber gegen verlegte Kanten zu deuten (kollineare
+        // Überdeckung der Mittelstücke, Korridor-Ausnahme nach ADR 0031)
+        // veränderte die Kandidatenwahl im Kreuzungs-Ausweichlauf so stark,
+        // dass der Referenzplan acdc zwei Kreuzungen und 44 px Kabelweg
+        // für −2 gewichtete Verstöße eintauschte (Kreuzungen 6 → 8, Kabelweg
+        // 5710 → 5754) — Ratchet-Brüche ohne Gate-Gewinn, da die Shift-I2-
+        // Ratchets (camper 21) selbst bei der umverteilen Zählung grün blieben.
+        // Hart-Prüfung gegen verlegte Kanten macht deshalb nur die
+        // ADR-0032-Reparatur — dort ist sie an den Tube-Durchstoß gebunden und
+        // an Budget-Schranken (Kreuzungen, Länge) gekoppelt. Zweite gemessene
+        // Variante (Auswahl-Only, ohne Frühstopp-Änderung): derselbe Effekt —
+        // die Korridor-Näherung der Bündel-Ausnahme (Bogenlänge vom eigenen
+        // Port) ist NICHT äquivalent zu `isPortBundleOverlap` ( Checker-Frei-
+        // stellung braucht die Geometrie BEIDER Kanten); solange
+        // `crossingSegments` keine Prior-Geometrie trägt, bleibt die exakte
+        // Prüfung der Reparatur vorbehalten (s. ADR 0032 „Alternativen").
+        if (best.found && best.penalty <= EPS) break;
       }
-      if (penalty <= EPS) break outer;
-      // Nur ein MANGELFREIER Versuch beendet die Leiter vorzeitig — so steht
-      // es im Kommentar oben („die erste mangelfreie, sonst die mit der
-      // geringsten Strafe"). Ein defekter Treffer (z. B. Selbstüberdeckung,
-      // R-2 in `routeDefectScore`) darf die rangniedrigeren Versuche nicht
-      // sperren: Die Garantie-Rangfolge gilt ZWISCHEN den Versuchen, nicht als
-      // Frühstopp beim ersten Treffer. Gemessen ohne diesen Fix: e-auto-8
-      // (Plan complex) faltete sich nach verschobenen Tubes kollinear auf
-      // sich selbst (I2 = 1 statt 0), obwohl der nächste Versuch einen
-      // sauberen Pfad hatte.
-      //
-      // Verworfene Erweiterung (gemessen 2026-10-03): „Mangelfrei" zusätzlich
-      // als hart-sauber gegen verlegte Kanten zu deuten (kollineare
-      // Überdeckung der Mittelstücke, Korridor-Ausnahme nach ADR 0031)
-      // veränderte die Kandidatenwahl im Kreuzungs-Ausweichlauf so stark,
-      // dass der Referenzplan acdc zwei Kreuzungen und 44 px Kabelweg
-      // für −2 gewichtete Verstöße eintauschte (Kreuzungen 6 → 8, Kabelweg
-      // 5710 → 5754) — Ratchet-Brüche ohne Gate-Gewinn, da die Shift-I2-
-      // Ratchets (camper 21) selbst bei der umverteilen Zählung grün blieben.
-      // Hart-Prüfung gegen verlegte Kanten macht deshalb nur die
-      // ADR-0032-Reparatur — dort ist sie an den Tube-Durchstoß gebunden und
-      // an Budget-Schranken (Kreuzungen, Länge) gekoppelt. Zweite gemessene
-      // Variante (Auswahl-Only, ohne Frühstopp-Änderung): derselbe Effekt —
-      // die Korridor-Näherung der Bündel-Ausnahme (Bogenlänge vom eigenen
-      // Port) ist NICHT äquivalent zu `isPortBundleOverlap` ( Checker-Frei-
-      // stellung braucht die Geometrie BEIDER Kanten); solange
-      // `crossingSegments` keine Prior-Geometrie trägt, bleibt die exakte
-      // Prüfung der Reparatur vorbehalten (s. ADR 0032 „Alternativen").
-      if (bestFound && bestPenalty <= EPS) break;
     }
-  }
+  };
+  runAttempts(attempts);
+  runAttempts(looseAttempts);
   // ADR 0032 — Reparatur von Tube-Durchstößen (Fall „all-or-nothing-Drop"):
   // Stammt der gewinnende Pfad aus einem Versuch OHNE Trassensperren (der
   // FESTE Port-Rahmen kollidierte mit einer Tube), wurden dafür ALLE Tubes
@@ -2066,7 +2343,7 @@ function searchOnce(
   // Kanten ändern ihre Geometrie nicht (keine Kaskade; die globale
   // Scoping-Variante mit eigenen Leiterstufen wurde gemessen und verworfen,
   // s. ADR 0032 „Alternativen").
-  if (tubes.length > 0 && bestFound && pathHitsObstacles(bestFound.waypoints, tubes)) {
+  if (tubes.length > 0 && best.found && pathHitsObstacles(best.found.waypoints, tubes)) {
     /**
      * Verstöße der GESUCHTEN Mittelstücke (ohne die festen Stubs/Jogs an
      * beiden Enden — die kann kein Kandidat ändern) gegen verlegte Kanten:
@@ -2101,9 +2378,9 @@ function searchOnce(
       }
       return count;
     };
-    const baseScore = crossingSegments.length > 0 ? routeViolationScore(bestFound.waypoints) : 0;
-    const baseCrossings = crossingSegments.length > 0 ? routeCrossingCount(bestFound.waypoints) : 0;
-    const baseLength = pathLength(bestFound.waypoints);
+    const baseScore = crossingSegments.length > 0 ? routeViolationScore(best.found.waypoints) : 0;
+    const baseCrossings = crossingSegments.length > 0 ? routeCrossingCount(best.found.waypoints) : 0;
+    const baseLength = pathLength(best.found.waypoints);
     // HARD-GATE: Eine Reparatur ändert Trassen-Geometrie — und damit die
     // Tube, an der sich später geroutete Kanten orientieren (Kaskade).
     // Das ist nur bei einem HARTEN Verstoß gerechtfertigt (kollineare
@@ -2114,7 +2391,7 @@ function searchOnce(
     // complex verschoben das Busbar-Cluster und erzeugten +4 Kreuzungen
     // (27 → 31), ohne einen einzigen harten Verstoß zu beseitigen.
     const baseHardViolations =
-      crossingSegments.length > 0 ? countHardInnerViolations(bestFound.waypoints, crossingSegments) : 0;
+      crossingSegments.length > 0 ? countHardInnerViolations(best.found.waypoints, crossingSegments) : 0;
     if (baseScore > 0 && baseHardViolations > 0) {
       const frameHitsTube = (f: PortFrame, tube: Rect): boolean =>
         segmentHitsAny(f.S, f.S2, [tube]) ||
@@ -2138,7 +2415,7 @@ function searchOnce(
        * der verschobenen Tube von e-auto-2 aus und kreuzte dafür e-auto-4
        * und e-auto-5 (Kreuzungen 27 → 31).
        */
-      const basePath = bestFound.waypoints;
+      const basePath = best.found.waypoints;
       const routeDeviation = (wps: readonly Point[]): number => {
         const baseSegs = waypointsToSegments(basePath);
         let sum = 0;
@@ -2196,18 +2473,18 @@ function searchOnce(
         if (process.env.NODE_ENV !== 'production') {
           console.warn(
             `[pathfinding] ADR-0032-Reparatur: Tube-Durchstoß mit hartem Verstoß ` +
-              `(${bestFound.waypoints[0]!.x},${bestFound.waypoints[0]!.y})→` +
-              `(${bestFound.waypoints[bestFound.waypoints.length - 1]!.x},${bestFound.waypoints[bestFound.waypoints.length - 1]!.y}), ` +
+              `(${best.found.waypoints[0]!.x},${best.found.waypoints[0]!.y})→` +
+              `(${best.found.waypoints[best.found.waypoints.length - 1]!.x},${best.found.waypoints[best.found.waypoints.length - 1]!.y}), ` +
               `Verstöße ${baseScore}→${bestRepair.score}, Kreuzungen ${baseCrossings}→${bestRepair.crossings}, ` +
               `Länge ${baseLength.toFixed(0)}→${bestRepair.length.toFixed(0)} px`
           );
         }
-        bestFound = bestRepair.found;
+        best.found = bestRepair.found;
       }
     }
   }
 
-  if (bestFound) return bestFound;
+  if (best.found) return best.found;
 
   // Kein freier Stub-Punkt oder keine freie Suche: Lane komplett
   // zurücknehmen und erneut versuchen — ein Bündel ohne eigene Lane ist
@@ -2297,6 +2574,40 @@ export function findCablePath(input: PathRequest): PathResult {
         bestCross = cross;
         bestScore = score;
         if (bestCross <= MAX_ACCEPTABLE_CROSSINGS) break;
+      }
+    }
+  }
+
+  // Verifikations-Reparatur (ROUTE-010 / p11) — EINMAL pro Anfrage, nach allen
+  // Suchstufen (Katalog, A*, Ausweich-Trassen, Notstufe): Die Stufen kennen die
+  // verlegte Belegung nicht mehr, seit die Trassensperre fiel, und die
+  // Trassensperre selbst ist eine Hüllbox über den MITTELSTÜCKEN — ein langes
+  // erstes/letztes Segment bleibt in ihr bewusst frei (Bündel-Zone, ADR 0009/
+  // 0031). Genau dort entstand p11: e-down und e-up legten ihre je 464 px
+  // langen Endstücke auf dieselbe Linie y=536 (240 px Überdeckung, I2 + 2 ×
+  // I3), obwohl sie sich keinen Anschluss teilen.
+  //
+  // Ausgelöst wird sie nur von Überdeckungen, die der Trenngang
+  // (`nudgeOrthogonalPaths`) NICHT auflösen kann — Überdeckungen auf
+  // Port-Segmenten beider Kanten (`hardEnds`, s. `priorVerdict`). Alle
+  // anderen Überdeckungen sind seine Aufgabe; eine voreilige Reparatur kostete
+  // dort gemessen 2 × I3 und 2 Kreuzungen (complex).
+  const priors = input.priorGeometries ?? [];
+  if (priors.length > 0) {
+    const base = priorVerdict(best.waypoints, priors);
+    if (base.hardEnds > 0) {
+      const repaired = bestOccupancyRepair({ ...capped, lane }, obstacles, priors);
+      if (repaired) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn(
+            `[pathfinding] ROUTE-010-Reparatur: Überdeckung mit verlegter Kante ` +
+              `(${best.waypoints[0]!.x},${best.waypoints[0]!.y})→` +
+              `(${best.waypoints[best.waypoints.length - 1]!.x},${best.waypoints[best.waypoints.length - 1]!.y}): ` +
+              `hart ${base.hard}→0, Länge ${pathLength(best.waypoints).toFixed(0)}→${pathLength(repaired).toFixed(0)} px`
+          );
+        }
+        best = { waypoints: repaired, usedSearch: 'catalog', tight: false };
+        bestCross = countCrossings(repaired, crossingSegments);
       }
     }
   }
