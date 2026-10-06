@@ -552,7 +552,9 @@ const moveDeltas = (
  */
 const obstacleHitCounts = (
   points: readonly Point[],
-  obstacles: readonly Rect[]
+  obstacles: readonly Rect[],
+  /** Schranke für den Frühausstieg: der Aufrufer vergleicht nur „mehr als". */
+  limits?: { hard: number; weighted: number }
 ): { hard: number; weighted: number } => {
   let hard = 0;
   let weighted = 0;
@@ -585,6 +587,14 @@ const obstacleHitCounts = (
       const verdict = classifySegmentAgainstNode([a, b], rect);
       if (verdict.class === 'hard') hard += 1;
       else if (verdict.class === 'weighted') weighted += 1;
+      // Frühausstieg (ergebnisneutral): Der Aufrufer vergleicht die Bilanz nur
+      // mit „mehr als vorher" — steht sie schon darüber, ist der Rest der
+      // Zählung ohne Einfluss auf die Entscheidung. Im pathologischen
+      // Gate-Plan (jede Lane von Bauteilen belegt) bricht der Durchlauf damit
+      // nach wenigen Segmenten ab statt alle zu klassifizieren.
+      if (limits !== undefined && (hard > limits.hard || weighted > limits.weighted)) {
+        return { hard, weighted };
+      }
     }
   }
   return { hard, weighted };
@@ -638,6 +648,40 @@ export function separateCableClearance(
 
   let working = ordered.map((path) => makeWorking(path, clearance));
 
+  // Zwischenspeicher für Werte, die NUR vom aktuellen `working` abhängen:
+  // „vorher"-Bilanz und Hindernis-Treffer eines Pfades. Solange `working` sich
+  // nicht ändert (also bis zur nächsten Annahme — die beendet den Durchgang),
+  // sind sie für jeden Kandidaten identisch. Ohne den Speicher zahlte jeder
+  // Verstoß dieselbe O(E · Segmente²)-Bilanz erneut: gemessen am
+  // Perf-Gate-Referenzplan (36 Knoten/134 Kanten) war der Trenngang damit
+  // ~300 ms von ~360 ms Gesamtlaufzeit.
+  let beforeCache = new Map<number, PairMeasure>();
+  let hitsCache = new Map<number, { hard: number; weighted: number }>();
+  // Ergebnis-Cache für Kandidaten-Züge: Ein Zug ist durch
+  // (Pfad, Segmentindex, Verschiebung, Durchgang) eindeutig bestimmt, solange
+  // `working` sich nicht ändert — und das tut es innerhalb eines Durchgangs nur
+  // bei einer Annahme, die den Durchgang beendet. Derselbe Zug wird über die
+  // Verstöße hinweg vielfach erneut geprüft (dieselben Kanten verletzen
+  // mehrfach); der Cache beantwortet ihn dann ohne Neuberechnung.
+  // Ergebnisidentisch: Der Wert hängt ausschließlich von den Schlüsselwerten ab.
+  let attemptCache = new Set<string>();
+  const beforeOf = (mover: number): PairMeasure => {
+    let value = beforeCache.get(mover);
+    if (value === undefined) {
+      value = measurePathAgainstOthers(working, mover, pairClearance, sizes);
+      beforeCache.set(mover, value);
+    }
+    return value;
+  };
+  const hitsOf = (mover: number, points: readonly Point[]): { hard: number; weighted: number } => {
+    let value = hitsCache.get(mover);
+    if (value === undefined) {
+      value = obstacleHitCounts(points, obstacles);
+      hitsCache.set(mover, value);
+    }
+    return value;
+  };
+
   for (let round = 0; round < maxRounds; round++) {
     const violations = collectViolations(working, pairClearance, sizes);
     if (violations.length === 0) break;
@@ -667,19 +711,16 @@ export function separateCableClearance(
       // (Audit 2026-10-03) — die Reihenfolge ist Teil des Ergebnisses, nicht
       // ein Tie-Break.
       // Bilanz „vorher" je Seite — unabhängig vom Kandidaten, deshalb genau
-      // einmal je Verstoß (nicht je Kandidat) berechnet.
-      const beforeMeasures = sides.map((side) =>
-        measurePathAgainstOthers(working, side.mover, pairClearance, sizes)
-      );
-      const sidesWithIndex = sides.map((side, index) => ({ ...side, index }));
+      // einmal je Durchgang (nicht je Verstoß) berechnet.
+      const beforeMeasures = sides.map((side) => beforeOf(side.mover));
       let applied = false;
       for (const allowLonger of [false, true]) {
         if (applied) break;
-        for (const side of sidesWithIndex) {
+        for (let sideIndex = 0; sideIndex < sides.length; sideIndex++) {
           if (applied) break;
-          const sideIndex = side.index;
+          const side = at(sides, sideIndex);
           const current = at(working, side.mover);
-          const hitsBefore = obstacleHitCounts(current.points, obstacles);
+          const hitsBefore = hitsOf(side.mover, current.points);
           const requiredStub = requiredStubLength(current.points);
           for (const moveIndex of moveSegments(current.points, side.segment)) {
             const targetDelta = moveIndex === side.segment ? violation.distance : undefined;
@@ -695,11 +736,21 @@ export function separateCableClearance(
                 at(working, violation.a === side.mover ? violation.b : violation.a)
               )
             )) {
+              const attemptKey = `${side.mover}:${moveIndex}:${delta}:${allowLonger ? 1 : 0}`;
+              if (attemptCache.has(attemptKey)) continue;
+              attemptCache.add(attemptKey);
               const shifted = shiftInteriorSegment(current.points, moveIndex, delta);
               if (!shifted) continue;
               const repaired = stitchOrthogonal(shifted);
+              // Billigste Entscheidung zuerst: die Länge. Sie hängt nur am
+              // Kandidaten (nicht an Nachbarn) und sortiert im ersten Durchgang
+              // alle verlängernden Züge aus, bevor Ableitungen (Vereinfachung,
+              // Segmentgeometrie, Hüllbox) und Hindernis-Prüfung bezahlt werden.
+              // Ergebnisidentisch: dieselben Vergleiche, nur früher.
+              const candidateLength = pathLength(repaired);
+              if (!allowLonger && candidateLength > current.length + EPS) continue;
               if (!candidateIsAcceptable(repaired, current)) continue;
-              const hitsAfter = obstacleHitCounts(repaired, obstacles);
+              const hitsAfter = obstacleHitCounts(repaired, obstacles, hitsBefore);
               // Der Gang darf keinen Hindernis-Treffer hinzufügen (I1 hart, I3
               // gewichtet) — sonst tauscht er eine Kabel-Freigabe gegen eine
               // Bauteil-Durchdringung.
@@ -712,23 +763,22 @@ export function separateCableClearance(
                 points: simplifyWaypoints(repaired),
                 geometry: routedPathGeometry(repaired),
                 bounds: boundsOf(repaired, clearance),
-                length: pathLength(repaired),
+                length: candidateLength,
                 locked: current.locked,
               };
 
               // Längen-Wächter (1. Durchgang): Freigabe nicht gegen Umweg
               // einkaufen. Gemessen 2026-10-03 an der Stress-Szene
               // `p02-batterie-10-verbraucher`: ohne ihn +96 px Trassenlänge
-              // (Budget „Länge ≤ Baseline" gerissen). Vor der teuren Bilanz
-              // geprüft: er hängt nur am Kandidaten, nicht an den Nachbarn.
-              if (!allowLonger && candidate.length > current.length + EPS) {
-                continue;
-              }
+              // (Budget „Länge ≤ Baseline" gerissen). Er ist oben bereits
+              // gezogen (vor den abgeleiteten Objekten) — dieselbe Entscheidung,
+              // nur früher.
+              //
               // Genau die Zahl, die auch das Gate zählt, entscheidet über die
               // Annahme — streng sinkend, ohne neue harte Überdeckung, ohne
               // neue Kreuzung. Die „vorher"-Bilanz des bewegten Pfades hängt
-              // nur von diesem ab und wird deshalb EINMAL je Seite berechnet
-              // (vor der Durchgangsschleife), nicht je Kandidat.
+              // nur von diesem ab und wird deshalb EINMAL je Durchgang
+              // berechnet (`beforeOf`, oben), nicht je Kandidat.
               if (
                 !candidateImproves(
                   working,
@@ -745,6 +795,11 @@ export function separateCableClearance(
               const next = [...working];
               next[side.mover] = candidate;
               working = next;
+              // `working` hat sich geändert: alle Zwischenspeicher, die davon
+              // abhängen, sind ungültig.
+              beforeCache = new Map<number, PairMeasure>();
+              hitsCache = new Map<number, { hard: number; weighted: number }>();
+              attemptCache = new Set<string>();
               result.set(candidate.id, repaired);
               improved = true;
               applied = true;
@@ -802,7 +857,7 @@ export function separateCableClearance(
             length: pathLength(repaired),
             locked: current.locked,
           };
-          const hitsAfter = obstacleHitCounts(repaired, obstacles);
+          const hitsAfter = obstacleHitCounts(repaired, obstacles, hitsBefore);
           if (hitsAfter.hard > hitsBefore.hard || hitsAfter.weighted > hitsBefore.weighted) continue;
           // Paarweise Vergleiche wie zuvor — aber die „vorher"-Bilanz
           // (`current` gegen jeden Nachbarn) hängt NUR vom Pfad ab und wird

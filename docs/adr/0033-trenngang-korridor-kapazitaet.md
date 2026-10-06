@@ -143,6 +143,25 @@ Pfad gemessen. Regression in `lib/routing/rules/portBundle.test.ts`
   291 ms, erster Einbau 10 939 ms, jetzt **2 568 ms**. Die Kette 10/50/100/250/500
   Knoten bleibt bei 1,7/13,7/13,7/62,0/198,5 ms. Audit über die sechs
   Referenzpläne: ~1,2 s inklusive Start, `--shifts` ~8 s.
+- **Live-Pfad-Kosten (Ratchet nachgezogen, 2026-10-06).** `benchmarks/edgeRoutingPerf.bench.ts`
+  misst den Produktivpfad `routeAllCables` auf einem 36-Knoten/134-Kanten-Plan.
+  Dieser Plan ist bewusst pathologisch: fast alle Kanten liegen im selben
+  Korridor und erzeugen 1 807 Freigabe-Verstöße, von denen der Gang keinen
+  einzigen auflösen kann (jede Lane ist von Bauteilen belegt). Gemessen ohne
+  Trenngang 47 ms (`fe635ea`), mit Trenngang 342 ms; nach ergebnisidentischen
+  Optimierungen (Zug-Ergebnis-Cache je Durchgang, „vorher"-Bilanz und
+  Hindernis-Treffer je Pfad einmal statt je Verstoß, Längenprüfung vor den
+  abgeleiteten Objekten, Frühausstieg der Hindernis-Zählung) **223–234 ms**
+  (Median, sechs Läufe). Der Ratchet steht deshalb bei **300 ms** (Messwert +
+  ~30 % Kopfraum für geteilte Runner) statt 60 ms. Das ist ausdrücklich der
+  Preis einer NEUEN Zusicherung (I3 = 0), nicht ein Rückfall derselben
+  Rechnung — das 16-ms-Ziel nach ADR 0012 für das reine Kanten-Rendern bleibt
+  unberührt und grün (2,3 ms), und der Live-Pfad war dort schon als ungelöster
+  Zielkonflikt benannt. Auf den sechs Referenzplänen kostet der Gang gemessen
+  ~1,2× (Audit weiterhin ~1,2 s inkl. Start); das 500-Knoten-Spannkanten-Szenario
+  bleibt bei ~5,7 s (Median). Ergebnisgleichheit der Optimierungen belegt:
+  goldene Meister byte-identisch, Regression 68 Tests unverändert,
+  `npm run routing:audit` I1–I7 = 0 und Kreuzungen unverändert.
 - **Versatz-Matrix deutlich besser**:: I3 je Plan 130/469/45/75/180/1225 →
   25/26/0/10/24/0, I2 6/12/0/0/2/2 → 0/6/0/0/2/0 (`SHIFT_RATCHET`
   nachgezogen).
@@ -210,6 +229,17 @@ Pfad gemessen. Regression in `lib/routing/rules/portBundle.test.ts`
   Durchgang, `maxRounds` 200). Strukturelle Fälle — beide beteiligten Segmente
   sind Port-Stubs oder jede Lane ist durch Hindernisse belegt — bleiben
   stehen; sie sind Arbeit an der Platzierung, nicht an dieser Stelle.
+- **Nächster ausgewiesener Hebel (Punkt 2, „lokal statt global"):** Jeder Zug
+  wird heute gegen **alle** übrigen Pfade bilanziert. Eine Vorauswahl über die
+  vom Zug berührte Region wäre deutlich billiger — gemessen und vorläufig
+  verworfen, weil `stitchOrthogonal` kollineare Segmente verschmilzt und der
+  Klassifikator **je Segmentpaar** zählt: Eine Fenster-Fassung änderte die
+  Bilanz auch für weit entfernte Nachbarn (acdc I2+I3 = 3, complex 7,
+  Kreuzungen 26 > Ratchet 25). Sie ist kein Freifahrtschein, sondern Arbeit mit
+  Beweispflicht: Die Region muss die _verschmolzenen_ Segmente einschließen
+  (Indexfenster in der vereinfachten Punktliste, nicht in der rohen), und der
+  Nachweis ist ein byte-identischer goldener Meister plus unveränderte
+  Audit-Zahlen.
 - `routeAllCables` führt den Trenngang nach Nudge/Merge aus; er kostet
   gemessen ~12 % auf dem 500-Knoten-Spannkanten-Szenario (5 110 → 5 741 ms
   Median) und ~1,2 s Audit-Zeit über die sechs Referenzpläne. Ein späterer

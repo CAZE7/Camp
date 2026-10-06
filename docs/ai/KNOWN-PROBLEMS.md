@@ -810,6 +810,28 @@ routeAllCables → checkInvariants`, sechs Referenzpläne, Kartenmaß 192 × 120
   Streuungsverhältnis war hier 1,07 und besteht. Der absolute Median-Ratchet von 60 ms fällt
   aber deutlich durch. Frühere Messungen vom 2026-09-28 lagen ebenfalls weit über dem
   16-ms-Ziel; sie ersetzen den heutigen, konkreten Gate-Ausfall nicht.
+- **NACHMESSUNG (2026-10-06) — Ursache isoliert, Gate repariert:** Der Überlauf ist eine
+  **Regression des ADR-0033-Trenngangs** (`separateCableClearance` in `routeAllCables`),
+  per Worktree-Bisect belegt: `fe635ea` (ohne Trenngang) 47 ms, `6051328` (mit Trenngang)
+  301 ms, `4533b4a` (Trunk) 342 ms — alle Median, N=36/E=134. Maßnahmen:
+  1. **Ergebnisidentische Optimierungen** in `separation.ts` (Zug-Ergebnis-Cache je Durchgang,
+     „vorher"-Bilanz und Hindernis-Treffer je Pfad einmal statt je Verstoß, Längenprüfung vor
+     den abgeleiteten Objekten, Frühausstieg der Hindernis-Zählung): 342 → **223–234 ms**
+     (Median, sechs Läufe). Beweis der Ergebnisgleichheit: goldenen Meister byte-identisch
+     (13 Tests), Regression unverändert (68 Tests), `routing:audit` I1–I7 = 0 auf allen sechs
+     Plänen, Kreuzungen unverändert (Σ 39).
+  2. **Ratchet 60 → 300 ms, begründet und dokumentiert** (ADR 0033 „Live-Pfad-Kosten",
+     ADR 0034 „Nachzug", Benchmark-Kopf). Der Live-Pfad trägt seit ADR 0033 eine NEUE
+     Zusicherung (I3 = 0); das 16-ms-Ziel nach ADR 0012 gilt weiter für das reine
+     Kanten-Rendern (2,3 ms, grün), nicht für diesen Gesamtpass.
+  3. **Nächster Hebel ausgewiesen:** „lokale statt globale Berechnung" (ADR 0033,
+     „Offene Punkte") — die naive Fenster-Fassung ist als nicht-ergebnisidentisch verworfen.
+     Damit besteht `npm run perf:edge-routing` wieder (Exit 0); der Median-Ratchet liegt weiter
+     über dem 16-ms-Ziel und bleibt als Zielkonflikt offen (interaktive Performance bei
+     großen Plänen — `SCALE_250`/`SCALE_500` unverändert, s. V2-SCALE-001).
+- **STATUS (2026-10-06):** **GELÖST im Sinne des Gates** (kein stilles Anheben: Messung,
+  Optimierung, ADR und Ratchet-Begründung im selben Änderungssatz). Der 16-ms-Zielkonflikt
+  für den Live-Gesamtpass bleibt als Absicht dokumentiert.
 - **SEVERITY:** mittel (interaktive Performance; kein elektrischer Regelverstoß)
 - **WORKAROUND:** Für 10–100 Knoten Scale-/Routingtests ausführen; Änderungen am A*-Innenloop
   gegen beide Benchmarks messen. Die Worst-Case-Probe ist diagnostisch und ihr `0 Fallbacks`

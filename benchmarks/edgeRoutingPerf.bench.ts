@@ -200,7 +200,42 @@ bench('Sehr groß', 120, 5);
  *
  * Aufruf: npm run perf:edge-routing
  */
-const LIVE_PATH_RATCHET_MS = 60;
+/**
+ * Ratchet nachgezogen 2026-10-06 (ADR 0033 — Trenngang; ADR 0034 — Port-Korridor).
+ *
+ * Der Live-Pfad enthält seit der Kabel-Freigabe-Garantie einen zusätzlichen
+ * Durchgang über die Verstöße (`separateCableClearance`). Gemessen an DIESEM
+ * Referenzplan (36 Knoten / 134 Kanten — ein bewusst pathologisches Szenario:
+ * die Kanten liegen fast alle im selben Korridor und erzeugen 1 807
+ * Freigabe-Verstöße, von denen der Gang keinen einzigen auflösen kann, weil
+ * jede Lane von Bauteilen belegt ist):
+ *
+ *   ohne Trenngang          47 ms   (Median, `fe635ea`, diese Maschine)
+ *   mit Trenngang, roh     342 ms   (Median, vier Läufe)
+ *   mit Trenngang, optimiert 223–234 ms (Median, sechs Läufe nach den
+ *                              ergebnisidentischen Optimierungen: Zug-Caches
+ *                              je Durchgang, „vorher"-Bilanz und Hindernis-
+ *                              Treffer je Pfad einmal, Längenprüfung vor den
+ *                              Ableitungen, Frühausstieg der Hindernis-Zählung)
+ *
+ * Der Zuwachs ist der Preis einer NEUEN Zusicherung (I3 = 0 auf allen sechs
+ * Referenzplänen), nicht ein Rückfall derselben Rechnung: Auf den
+ * Referenzplänen kostet der Gang gemessen ~1,2× Audit-Zeit; das
+ * 500-Knoten-Spannkanten-Szenario bleibt bei ~5,7 s (Median). Das 16-ms-Ziel
+ * aus ADR 0012 gilt weiterhin für das reine Kanten-Rendern — dieser erste
+ * Gate-Block ist grün (2,3 ms) — und der Live-Pfad bleibt der dort
+ * ausdrücklich benannte, ungelöste Zielkonflikt (ADR 0012/0030): Der Ratchet
+ * hält nur den Ist-Zustand fest.
+ *
+ * 300 ms = gemessener Wert (223–234 ms, dieselbe Maschine) + ~30 % Kopfraum
+ * für geteilte Runner; die Streuung selbst ist über `LIVE_PATH_TAIL_FACTOR`
+ * separat abgesichert. Der Ratchet fängt weiterhin die grobe Entgleisung (eine
+ * quadratisch gewordene Verstoß- oder Bilanzschleife hebt diesen Wert um ein
+ * Vielfaches). Wer den Pfad schneller macht, zieht nach unten — der nächste
+ * ausgewiesene Hebel ist „lokale statt globale Berechnung" (ADR 0033,
+ * „Offene Punkte").
+ */
+const LIVE_PATH_RATCHET_MS = 300;
 const LIVE_PATH_REVOLUTIONS = 15;
 /**
  * Streuungs-Ratchet (ADR 0030, PERF-001): Der Median allein sieht den Schwanz
