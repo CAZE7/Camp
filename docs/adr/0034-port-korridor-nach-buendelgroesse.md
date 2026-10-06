@@ -82,6 +82,32 @@ gehört sie in die Formel, nicht in eine neue Konstante.
 Referenz-Goldens unverändert — die Änderung ist für `K ≤ 3` die Identität und
 greift nur dort, wo vorher ein Widerspruch gemeldet wurde.
 
+## Laufzeit — gemessen, nicht geschätzt
+
+`benchmarks/edgeRoutingPerf.bench.ts` (`npm run perf:edge-routing`),
+Live-Pfad `routeAllCables`, N = 36 / E = 134, Median:
+
+| Stand                                                           | Median     |
+| --------------------------------------------------------------- | ---------- |
+| ohne ADR 0034 und ohne Domänen-Gang                             | 205 ms     |
+| mit ADR 0034, Domänen-Gang pauschal                             | 434 ms     |
+| mit ADR 0034, Domänen-Gang nur bei Paarregel (**ausgeliefert**) | **236 ms** |
+
+Der zweite Trenngang läuft deshalb nur, wenn der Plan mindestens ein
+Kantenpaar enthält, für das `requiredClearanceBetween` mehr fordert als
+`cableClearance` (`hasPairRuleAbove`, O(1) über die verschiedenen Domänen).
+Ein reiner Gleichstrom-Plan hat keins — ohne diese Prüfung wäre der Gang
+eine Messung ohne jeden Befund.
+
+Die verbleibenden ~+30 ms (+15 %) sind ADR 0034 selbst: Der breitere
+Korridor ab K = 4 lässt der Separation mehr Züge, die sie prüfen und
+verwerfen muss. Das ist der Preis für 6 aufgelöste I3 in p02.
+
+**Stand des Perf-Gates:** Der Live-Pfad-Ratchet (60 ms) ist **schon vor
+diesem ADR** überschritten — gemessen 205 ms am Basis-Commit `0faba6b`
+und in der CI des Vorgänger-PRs (`de4e0601`) an derselben Stelle rot.
+Dieser ADR verschlechtert ihn um ~15 %, reißt ihn aber nicht.
+
 ## Konsequenzen
 
 - Ein Anschluss mit vielen Kanten bekommt einen größeren Auslaufkorridor
