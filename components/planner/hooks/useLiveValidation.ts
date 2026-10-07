@@ -8,7 +8,6 @@ import { reachableNodeIds } from '../../../lib/domain/graph';
 import type { VerificationReport } from '../../../lib/verify';
 
 import { getSystemVoltage } from '../utils/voltage';
-import { calculateEdgeCurrent } from '../../../lib/vde-standards';
 // V2: Bauteilgrenzen und Strombudget kommen aus der elektrischen Ebene —
 // eine Tabelle statt verstreuter `node.type ===`-Zweige.
 import {
@@ -18,6 +17,9 @@ import {
   evaluateLoadFeasibility,
   resolveComponentConstraints,
 } from '../../../lib/electricalGraph';
+// Topologieabhängige Stromberechnung (eine Rechnung pro Render, gecacht —
+// dieselbe Quelle wie Verifikations-Engine und Kanten-Labels).
+import { getCableCurrents } from '../../../lib/electricalGraph/currentFlow';
 import { amps } from '../../../lib/units';
 import { verificationReportFor, verificationWarnings } from '../utils/verificationWarnings';
 import type { AutoWireConflict, AutoWireReport } from '../../../lib/autoWire/conflicts';
@@ -64,6 +66,38 @@ export interface ValidationWarning {
    * auszugeben wäre eine Behauptung, die die Engine gerade nicht trifft.
    */
   unverified?: boolean;
+  /**
+   * Strukturierte Befund-Details (Auftrag §14/§16): Betriebsstrom/Nennstrom/
+   * Belastbarkeit, contributors, Iz-Faktoren. Die Warn-Zentrale zeigt daraus
+   * die kompakte Wertzeile („Betriebsstrom 158,7 A / Zulässig 120,4 A") und
+   * das aufklappbare „Warum?\".
+   */
+  details?: ValidationWarningDetails;
+}
+
+/** Strukturierte Befund-Details (Spiegel von `AuditEventDetails`). */
+export interface ValidationWarningDetails {
+  ibA?: number | null;
+  inA?: number | null;
+  izA?: number | null;
+  calculationMethod?: string;
+  contributors?: readonly {
+    componentId: string;
+    label: string;
+    role: 'load' | 'source';
+    contribution: number;
+  }[];
+  assumptions?: readonly string[];
+  izBreakdown?: {
+    baseIz: number;
+    ambientFactor: number;
+    groupingFactor: number;
+    installationFactor: number;
+    plannerSafetyFactor: number;
+    correctedIz: number;
+    explanation: string;
+  };
+  protectionChain?: readonly string[];
 }
 
 /** Reihenfolge der Schwere für die Sortierung in der Warn-Zentrale. */
@@ -283,6 +317,16 @@ export function useLiveValidation(
     }
 
     const sysVoltage = getSystemVoltage(nodes);
+
+    // EINE Stromrechnung pro Render (gecacht über die Store-Referenzen —
+    // dieselbe Rechnung wie Engine und Kanten-Labels): topologieabhängig,
+    // deterministisch, mit contributors. `null` = nicht bestimmbar (Daten-
+    // lücke — bleibt hier bewusst unbewertet, die Engine weist sie aus).
+    // Ohne expliziten Spannungswert: Das Modell löst die Systemspannung selbst
+    // aus den Knoten auf (getSystemVoltage) — dieselbe Quelle wie Engine und
+    // Edge-Label. So teilen sich alle drei Verbraucher EINE gecachte Rechnung
+    // (Cache-Key nur über Referenzen von nodes/edges, nicht über Spannung).
+    const currentModel = getCableCurrents(nodes, edges);
 
     // Die Bank-Topologie ist eine Eingabe, keine aus der Mitgliederzahl
     // erratene Verschaltung. Deklarierte Zählfehler müssen deshalb schon vor
@@ -518,12 +562,12 @@ export function useLiveValidation(
       const dischargeLimit = Number(battery.data?.bmsContinuousDischarge || 0);
       const chargeLimit = Number(battery.data?.bmsContinuousCharge || 0);
       for (const edge of edges) {
-        const sourceNode = nodeMap.get(edge.source);
-        const targetNode = nodeMap.get(edge.target);
         const isBatterySourcePlus = edge.source === battery.id && !!edge.sourceHandle?.includes('plus');
         const isBatteryTargetPlus = edge.target === battery.id && !!edge.targetHandle?.includes('plus');
         if (!isBatterySourcePlus && !isBatteryTargetPlus) continue;
-        const I = calculateEdgeCurrent(sourceNode, targetNode, nodes, sysVoltage, edges);
+        // Topologieabhängiger Strom aus dem gemeinsamen Modell.
+        const I = currentModel.byEdgeId.get(edge.id)?.operatingCurrent ?? null;
+        if (I === null) continue; // nicht bestimmbar — die Engine weist es aus
         if (dischargeLimit > 0 && isBatterySourcePlus && I > dischargeLimit) {
           warnings.push({
             id: `bms-discharge-${battery.id}-${edge.id}`,
@@ -588,22 +632,41 @@ export function useLiveValidation(
       const limit = componentCurrentLimit(constraints);
       if (limit === undefined) continue;
 
+      // Die eingetragene Grenze ist der NENNSTROM DES BAUTEILS — bei
+      // Ladequellen (Charger/MPPT/DC-DC/AC-Ladegerät) die AUSGANGSseite.
+      // Der Eingangszug eines galvanisch getrennten DC-DCs ist um 1/η HÖHER
+      // als das Ausgangs-Rating — ihn gegen die Rating zu prüfen würde jede
+      // normal arbeitende Ladequelle als kritisch melden (Kategoriedefekt).
+      // Das Modell kennt beide Seiten getrennt: die EIGENEN
+      // Quellenbeiträge (role 'source') und den Kabelgesamtwert.
+      // Durchgangsbauwerke (Schiene, Shunt, Sicherung) injizieren nichts —
+      // für sie ist der Kabelgesamtwert das korrekte Maß.
       let worst = 0;
       let worstEdgeId: string | undefined;
+      let outputWorst = 0;
+      let outputEdgeId: string | undefined;
       for (const edge of edges) {
         if (edge.source !== node.id && edge.target !== node.id) continue;
         if (edge.data?.edgeDomain === 'AC_230V') continue;
-        const current = calculateEdgeCurrent(
-          nodeMap.get(edge.source),
-          nodeMap.get(edge.target),
-          nodes,
-          sysVoltage,
-          edges
-        );
-        if (current > worst) {
+        const entry = currentModel.byEdgeId.get(edge.id);
+        if (!entry) continue;
+        const current = entry.operatingCurrent ?? null;
+        if (current !== null && current > worst) {
           worst = current;
           worstEdgeId = edge.id;
         }
+        for (const contribution of entry.contributingLoads) {
+          if (contribution.componentId !== node.id || contribution.role !== 'source') continue;
+          if (contribution.contribution > outputWorst) {
+            outputWorst = contribution.contribution;
+            outputEdgeId = edge.id;
+          }
+        }
+      }
+      const isRatedOnOutput = outputWorst > 0;
+      if (isRatedOnOutput) {
+        worst = outputWorst;
+        worstEdgeId = outputEdgeId;
       }
       if (worst <= 0) continue;
 

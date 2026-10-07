@@ -521,7 +521,8 @@ describe('usePlannerStore - extended coverage', () => {
  * ──────────────────────────────────────────────────────────────────────────── */
 import { renderHook } from '@testing-library/react';
 import { useLiveValidation } from '../components/planner/hooks/useLiveValidation';
-import { calculateEdgeCurrent, getSystemVoltage } from '../lib/vde-standards';
+import { getSystemVoltage } from '../lib/vde-standards';
+import { getCableCurrents } from '../lib/electricalGraph/currentFlow';
 import { FUSE_MAP, STANDARD_FUSE_SIZES, calculateCrossSection, calculateMaxFuse } from '../lib/electrical';
 import { collectEdgeErrors } from '../components/edges/CableEdge';
 import { solarEdgeFuseFloorOf } from '../lib/solar'; // ELE-007
@@ -562,13 +563,16 @@ function getEdgeErrors(
 ): ReturnType<typeof collectEdgeErrors> {
   const nodeMap = new Map(nodes.map((n) => [n.id, n]));
   const sourceNode = nodeMap.get(edge.source);
-  const targetNode = nodeMap.get(edge.target);
   const sysVoltage = getSystemVoltage(nodes);
 
   // AC-Kanten werden von CableEdge komplett übersprungen
   if (edge.data?.edgeDomain === 'AC_230V') return [];
 
-  const I = calculateEdgeCurrent(sourceNode, targetNode, nodes, sysVoltage);
+  // Dieselbe EINZIGE Stromquelle wie CableEdge in Produktion (AUDIT §13):
+  // der topologieabhängige Strom aus dem Strommodell. Die frühere
+  // Endpunkt-Heuristik (calculateEdgeCurrent) wies Kanten andere Ströme zu
+  // als die Dimensionierung — genau die Diskrepanz, die hier gefehlt hat.
+  const I = getCableCurrents(nodes, edges).byEdgeId.get(edge.id)?.operatingCurrent ?? 0;
   const length = edge.data?.length ?? 1;
   const cs = calculateCrossSection(I, length, edge.data?.crossSection, 'DC_12V');
   const maxFuse = calculateMaxFuse(cs);
@@ -779,7 +783,49 @@ describe('Auto-Wire: keine Warnungen nach performAutoWiring', () => {
     // Starterbatterie wird automatisch ergänzt
     expect(n.some((x) => x.type === 'battery' && x.data.label === 'Starterbatterie')).toBe(true);
 
-    assertZeroWarnings(n, e);
+    // EHRLICHE UNMÖGLICHKEIT (statt falscher Sicherheit): Der worst case
+    // (WR-Eingang 78,4 A + DC-Lasten 11,7 A + Charger-/Booster-Eingänge
+    // je 22,2 A = 134,5 A) übersteigt die 100-A-Hauptsicherung des
+    // 70-mm²-Katalogmaximums. AutoWire KAPPT die Hauptstränge bei 70 mm²,
+    // markiert sie als nicht ausführbar (fuseWarning), und die Engine meldet
+    // die Überlast als kritisch — NUR auf den Hauptsträngen. Zweite
+    // Parallelleitung oder 24 V sind die echte Lösung; beides wird hier
+    // nicht modelliert, der Befund darf nicht verschwinden.
+    const { result } = renderHook(() => useLiveValidation(n, e));
+    // Hauptstrang-Kette: Batterie ↔ Shunt ↔ Busbars (Plus- und Minus-Seite).
+    const shuntId = n.find((x) => x.type === 'shunt')?.id;
+    const mainNodeIds = new Set(
+      ['b1', shuntId, ...n.filter((x) => x.type === 'busbar').map((x) => x.id)].filter(Boolean)
+    );
+    const mainIds = new Set(
+      e.filter((x) => mainNodeIds.has(x.source) && mainNodeIds.has(x.target)).map((x) => x.id)
+    );
+    expect(mainIds.size).toBeGreaterThanOrEqual(3); // Plus-/Shunt-/Minus-Hauptstrang
+    for (const mainId of mainIds) {
+      const main = e.find((x) => x.id === mainId)!;
+      expect(main.data?.fuseWarning, `Hauptstrang ${mainId} muss als nicht ausführbar markiert sein`).toBe(
+        true
+      );
+    }
+    const ibInIz = result.current.filter((w) => w.ruleId === 'AMP-001-ib-in-iz' && w.type === 'critical');
+    expect(ibInIz.length).toBeGreaterThan(0); // die echte Überlast bleibt sichtbar
+    for (const w of ibInIz) {
+      expect(
+        mainIds.has(w.focusId ?? ''),
+        `AMP-001 darf NUR den Hauptstrang treffen, nicht ${w.focusId}`
+      ).toBe(true);
+    }
+    // Abseits der Hauptstränge gilt weiter der Auto-Wire-Vertrag.
+    const blockingElsewhere = result.current.filter(
+      (w) =>
+        (w.type === 'critical' || w.category === 'safety') &&
+        !ALLOWED_DATA_GAP_RULES.has(w.ruleId ?? '') &&
+        !(w.ruleId === 'AMP-001-ib-in-iz' && mainIds.has(w.focusId ?? ''))
+    );
+    expect(
+      blockingElsewhere,
+      `Unerwartete Befunde abseits der Hauptstränge:\n${blockingElsewhere.map((w) => `${w.ruleId}: ${w.message}`).join('\n')}`
+    ).toEqual([]);
     assertFusesMatchVde(e);
   });
 
@@ -946,9 +992,12 @@ describe('Auto-Wire: Topologie-Heilung & reale Templates', () => {
     expect(n.filter((x) => x.type === 'busbar').length).toBe(2);
     expect(n.some((x) => x.data.label === 'Main Busbar')).toBe(false);
 
-    // Mission 4: Das Template nutzt einen 1500-W-Wechselrichter, damit sich
-    // der Strom mit der Normreihe fehlerfrei absichern lässt. Deshalb gilt
-    // hier die volle Prüfung — ohne die frühere Sonderbehandlung für 2000 W.
+    // Das Template ist so ausgelegt, dass der worst-case Hauptstrang-
+    // Betriebsstrom (WR-Eingang + DC-Lasten + Booster-Eingang, s.
+    // AUDIT-Block in templates.ts) die 100-A-Hauptsicherung trägt. Deshalb
+    // gilt hier die volle Prüfung — der Plan darf keine Sicherheitsbefunde
+    // enthalten. (Frühere 900/1500-W-Auslegungen lagen über der Grenze,
+    // weil der Booster-Eingangsstrom nicht gezählt wurde.)
     assertNoSafetyWarnings(n, e);
     assertFusesMatchVde(e);
   }, 15000);

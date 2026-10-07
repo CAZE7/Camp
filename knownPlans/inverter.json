@@ -54,10 +54,10 @@
       {
         "data": {
           "autoWired": true,
-          "crossSection": 70,
+          "crossSection": 1.5,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
-          "fuseSize": 100,
+          "fuseSize": 5,
           "fuseType": "mrbf",
           "fuseWarning": false,
           "length": 1,
@@ -72,7 +72,7 @@
       {
         "data": {
           "autoWired": true,
-          "crossSection": 70,
+          "crossSection": 1.5,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseWarning": false,
@@ -197,7 +197,7 @@
       {
         "data": {
           "label": "12V Sicherungskasten",
-          "rating": 100
+          "rating": 5
         },
         "id": "auto:2:12v-sicherungskasten",
         "position": {
@@ -273,19 +273,19 @@
     "cumulativeDrops": {
       "auto:0:plus-schiene": 0.01,
       "auto:1:minus-schiene": 0.034,
-      "auto:2:12v-sicherungskasten": 0.083,
+      "auto:2:12v-sicherungskasten": 0.048,
       "auto:3:smart-shunt": 0.01,
       "battery-1": 0,
       "cons-230v": 0,
-      "cons-light": 0.198,
+      "cons-light": 0.163,
       "inverter-1": 0.083
     },
     "edgeCurrents": {
       "e-auto-1": 99.71,
       "e-auto-2": 99.71,
       "e-auto-3": 99.71,
-      "e-auto-4": 99.71,
-      "e-auto-5": 99.71,
+      "e-auto-4": 1.67,
+      "e-auto-5": 0,
       "e-auto-6": 1.67,
       "e-auto-7": 1.67,
       "e-auto-8": 98.04,

@@ -9,28 +9,21 @@ import {
   isFuseFeasible,
   designAmpacity,
 } from '../electrical';
-import { calculateEdgeCurrent } from '../vde-standards';
+import { getCableCurrents } from '../electricalGraph/currentFlow';
 import {
   addVolts,
-  addWatts,
   amps,
-  currentFromPower,
   maxAmps,
   meters,
   mm2,
-  quantityOr,
   scaleVolts,
   subtractVolts,
-  volts,
-  watts,
   ZERO_AMPS,
   ZERO_VOLTS,
-  ZERO_WATTS,
   type Amps,
   type Meters,
   type Mm2,
   type Volts,
-  type Watts,
 } from '../units';
 import {
   DEFAULT_EDGE_LENGTH,
@@ -54,6 +47,27 @@ import { breakingCapacityAOf, isFuseType, shortCircuitAtFuseA, type FuseType } f
 export type PathDropResult = { supply: Volts; any: Volts; hasSupplyPath: boolean };
 
 export const NO_DROP: PathDropResult = { supply: ZERO_VOLTS, any: ZERO_VOLTS, hasSupplyPath: false };
+
+/**
+ * EINE Stromquelle für die Dimensionierung (AUDIT §2/§13): dasselbe
+ * Topologie-Strommodell, das die Verifikations-Engine und die Kanten-Anzeige
+ * bewerten. Die frühere Endpunkt-Heuristik (`calculateEdgeCurrent`) maß die
+ * Kabel an der Gesamtlast des Endpunkts — eine 12-A-Last hinter einer
+ * Sammelschiene dimensionierte den Batteriehauptstrang trotzdem für 12 A.
+ *
+ * `null` (nicht bestimmbar, Datenlücke) wird mit 0 A dimensioniert und von
+ * der Live-Validierung als Lücke ausgewiesen — es wird kein Strom erfunden,
+ * der die Leitung später „fehldimensioniert“ aussehen ließe, ohne dass der
+ * Nutzer eine Zahl sieht.
+ *
+ * Performance (AUDIT §19): `getCableCurrents` ist Referenz-gecacht — in einer
+ * Dimensionierungsrunde (gleiche nodes/edges-Referenzen) wird das Modell
+ * genau EINMAL berechnet und von allen Kanten geteilt.
+ */
+export function modelCurrentOf(nodes: Node[], edges: CableEdge[], edgeId: string): Amps {
+  const operating = getCableCurrents(nodes, edges).byEdgeId.get(edgeId)?.operatingCurrent;
+  return amps(operating ?? 0);
+}
 
 /**
  * Kumulierter Spannungsfall — Spiegelbild von calculatePathVoltageDrop.
@@ -92,8 +106,7 @@ export function cumulativeDropAt(
     if (edge.target !== nodeId) continue;
     if (edge.data?.edgeDomain === 'AC_230V') continue;
     hasIncoming = true;
-    const sourceNode = nodeMap.get(edge.source);
-    const I = calculateEdgeCurrent(sourceNode, node, nodes, sysVoltage);
+    const I = modelCurrentOf(nodes, edges, edge.id);
     const ownDrop = edgeVoltageDrop(
       I,
       planningLength(edge, pointOf) ?? DEFAULT_EDGE_LENGTH,
@@ -146,7 +159,7 @@ export function sizeDcEdges(
   const sizeEdge = (edge: CableEdge, allowedOwn: Volts): Mm2 => {
     const sourceNode = nodeMap.get(edge.source);
     const targetNode = nodeMap.get(edge.target);
-    const I = calculateEdgeCurrent(sourceNode, targetNode, nodes, sysVoltage, allEdges); // ELE-005: Insel-BFS
+    const I = modelCurrentOf(nodes, allEdges, edge.id);
     // AUDIT ELE-007: Solar-Zuleitungen werden thermisch UND im Spannungsfall
     // mit dem DESIGN-Strom (≥ 1,25 × Isc, IEC-62548-Kontext) dimensioniert —
     // nicht mit der Imp-Näherung. Konservativ: Isc-Schätzwert ohne Datenblatt
@@ -189,7 +202,7 @@ export function sizeDcEdges(
     for (const edge of dcEdges) {
       const sourceNode = nodeMap.get(edge.source);
       const targetNode = nodeMap.get(edge.target);
-      const I = calculateEdgeCurrent(sourceNode, targetNode, nodes, sysVoltage, allEdges); // ELE-005
+      const I = modelCurrentOf(nodes, allEdges, edge.id);
       const currentCs = edgeCrossSection(edge, MIN_CROSS_SECTION);
       const cumAtSource = relevantCumulativeDrop(edge.source, nodeMap, allEdges, nodes, sysVoltage);
       const ownDrop = edgeVoltageDrop(I, planningLength(edge, pointOf) ?? DEFAULT_EDGE_LENGTH, currentCs);
@@ -253,13 +266,7 @@ export function sizeDcEdges(
         const cs = edgeCrossSection(edge, MIN_CROSS_SECTION);
         if (cs >= MAX_CROSS_SECTION) continue;
         const own = edgeVoltageDrop(
-          calculateEdgeCurrent(
-            nodeMap.get(edge.source),
-            nodeMap.get(edge.target),
-            nodes,
-            sysVoltage,
-            allEdges
-          ), // ELE-005
+          modelCurrentOf(nodes, allEdges, edge.id),
           planningLength(edge, pointOf) ?? DEFAULT_EDGE_LENGTH,
           cs
         );
@@ -298,7 +305,7 @@ export function applyFuseSizes(
     if (!edge.data) edge.data = {};
     const sourceNode = nodeMap.get(edge.source);
     const targetNode = nodeMap.get(edge.target);
-    const I = calculateEdgeCurrent(sourceNode, targetNode, nodes, sysVoltage, allEdges); // ELE-005
+    const I = modelCurrentOf(nodes, allEdges, edge.id);
     // AUDIT ELE-007: Solar-Zuleitungen brauchen eine Sicherung ≥ 1,56 × Isc
     // (NEC 690.8 × 690.9 als Modellannahme, Quellendoku in lib/solar.ts).
     // Der höhere Wert steuert Bump-Logik und selectFuseSize — der Querschnitt
@@ -341,102 +348,20 @@ export function applyFuseSizes(
   }
 }
 
-/** Netzspannung im 230-V-Zweig. */
-
-export const AC_VOLTAGE: Volts = volts(230);
-/** Übliche Absicherung eines Landstromanschlusses. */
-
-export const SHORE_POWER_CURRENT: Amps = amps(16);
 /** Standardlänge einer AC-Leitung ohne gespeicherte Länge. */
 
 export const DEFAULT_AC_LENGTH: Meters = meters(2);
 
-export function acCurrentA(
-  sourceNode: Node | undefined,
-  targetNode: Node | undefined,
-  nodes: Node[] = [],
-  /** AUDIT ELE-010: volle Kantenliste für die AC-Insel-BFS. */
-  edges: CableEdge[] = []
-): Amps {
-  const loadOf = (node: Node | undefined): Amps =>
-    currentFromPower(quantityOr(node?.data?.watts, watts, ZERO_WATTS), AC_VOLTAGE);
-
-  /** 230-V-Last einer AC-Insel (ab dem Inverter), sonst globaler Fallback. */
-  const total230vLoad = (): Watts => {
-    let total: Watts = ZERO_WATTS;
-    for (const n of nodes) {
-      if (n.type !== 'consumer230v') continue;
-      total = addWatts(total, quantityOr(n.data?.watts, watts, ZERO_WATTS));
-    }
-    return total;
-  };
-
-  const acIslandLoad = (inverter: Node): Watts => {
-    if (!edges || edges.length === 0) return total230vLoad();
-    const byId = new Map(nodes.map((n) => [n.id, n]));
-    const adjacency = new Map<string, string[]>();
-    const add = (a: string, b: string): void => {
-      if (!adjacency.has(a)) adjacency.set(a, []);
-      adjacency.get(a)!.push(b);
-    };
-    for (const edge of edges) {
-      if (edge.data?.edgeDomain !== 'AC_230V') continue;
-      add(edge.source, edge.target);
-      add(edge.target, edge.source);
-    }
-    const visited = new Set<string>([inverter.id]);
-    const queue = [inverter.id];
-    while (queue.length > 0) {
-      const current = queue.shift()!;
-      for (const next of adjacency.get(current) ?? []) {
-        if (!visited.has(next)) {
-          visited.add(next);
-          queue.push(next);
-        }
-      }
-    }
-    let total: Watts = ZERO_WATTS;
-    for (const id of visited) {
-      const node = byId.get(id);
-      if (node?.type === 'consumer230v') {
-        total = addWatts(total, quantityOr(node.data?.watts, watts, ZERO_WATTS));
-      }
-    }
-    return total;
-  };
-
-  // WR→Gerät: nur die Gerätelast zählt (WR-Nennleistung wäre eine Über-
-  // dimensionierung). Gerät→Gerät (Import-Daisy-Chain): das vorgelagerte
-  // Gerät trägt auch die Nachbarnlast — Issue 8.
-  if (targetNode?.type === 'consumer230v') {
-    if (sourceNode?.type === 'consumer230v') return maxAmps(loadOf(sourceNode), loadOf(targetNode));
-    return loadOf(targetNode);
-  }
-  if (sourceNode?.type === 'consumer230v') return loadOf(sourceNode);
-  const inverter =
-    sourceNode?.type === 'inverter' ? sourceNode : targetNode?.type === 'inverter' ? targetNode : undefined;
-  if (inverter) {
-    // Die AC-Zuleitung (Landstrom→ac_in bzw. WR→Gerät) trägt den tatsächlichen
-    // 230-V-Laststrom. Bei mehreren 230-V-Verbrauchern ist der WR nur Nennlast;
-    // die Summe der Geräte ist maßgeblich, sonst wird die Leitung zu dünn.
-    const ownLoad = quantityOr(inverter.data?.continuousPower || inverter.data?.watts, watts, ZERO_WATTS);
-    const connectedLoad = acIslandLoad(inverter);
-    const load = ownLoad > connectedLoad ? ownLoad : connectedLoad;
-    return currentFromPower(load, AC_VOLTAGE);
-  }
-  if (sourceNode?.type === 'shorePower' || targetNode?.type === 'shorePower') {
-    const supply = sourceNode?.type === 'shorePower' ? sourceNode : targetNode;
-    const other = supply === sourceNode ? targetNode : sourceNode;
-    // ELEC-003: Der Anschlusswert wird modelliert gepflegt (shorePower.rating
-    // in A). Nur wenn er fehlt, greift der Modell-Default von 16 A.
-    const modeled = shoreSupplyRating(supply);
-    const chargerAmps = quantityOr((other?.data as Record<string, unknown>)?.amps, amps, ZERO_AMPS);
-    return maxAmps(modeled ?? SHORE_POWER_CURRENT, chargerAmps);
-  }
-  return ZERO_AMPS;
-}
-
-/** @internal für Unit-Tests exportiert. */
+/**
+ * EHEMALIGE AC-Endpunkt-Heuristik `acCurrentA` (2026-10 entfernt,
+ * AUDIT §13 „eine Stromquelle"): sie maß 230-V-Leitungen an der
+ * Insel-Gesamtlast des Endpunkts statt am tatsächlichen Durchfluss —
+ * dieselbe Fehlerkategorie wie auf der DC-Seite (siehe
+ * `docs/AUDIT-STROMBERECHNUNG-2026-10.md`). Alle AC- und DC-Stromwerte
+ * kommen jetzt aus EINEM Topologie-Strommodell — `getCableCurrents`
+ * (`lib/electricalGraph/currentFlow.ts`), hier über `modelCurrentOf`.
+ * Die historische Implementation steht im Git-History dieses Files.
+ */
 
 /**
  * Modellierter Absicherungswert einer Landstromdose in A (ELEC-003).
@@ -471,7 +396,7 @@ export function sizeAcEdges(edges: CableEdge[], nodes: Node[]): void {
     // Bauform, Charakteristik und Icn im Inspektor ab.
     const sourceNode = nodeMap.get(edge.source);
     const targetNode = nodeMap.get(edge.target);
-    const I = acCurrentA(sourceNode, targetNode, nodes, edges);
+    const I = modelCurrentOf(nodes, edges, edge.id);
     const length = planningLength(edge, pointOf) ?? DEFAULT_AC_LENGTH;
 
     // AUDIT CRASH-001: calculateCrossSection gibt Nutzer-/Import-Querschnitte
@@ -538,18 +463,11 @@ export function markInfeasibleSizing(
   dcEdges: CableEdge[],
   nodes: Node[],
   sysVoltage: Volts,
-  allEdges: CableEdge[] = [],
-  nodeMap: Map<string, Node> = new Map(nodes.map((n) => [n.id, n]))
+  allEdges: CableEdge[] = []
 ): void {
   for (const edge of dcEdges) {
     if (!edge.data) edge.data = {};
-    const I = calculateEdgeCurrent(
-      nodeMap.get(edge.source),
-      nodeMap.get(edge.target),
-      nodes,
-      sysVoltage,
-      allEdges
-    );
+    const I = modelCurrentOf(nodes, allEdges, edge.id);
     const cs = edgeCrossSection(edge, MIN_CROSS_SECTION);
     // Plus-Leiter: schutzbezogen — keine Normsicherung trägt den Strom bei
     // diesem Querschnitt (I_B ≤ I_n ≤ I_z, isFuseFeasible kapselt das).

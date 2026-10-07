@@ -933,7 +933,9 @@ describe('autoWire — applyFuseSizes', () => {
         data: { length: 2, crossSection: 2.5, edgeDomain: 'DC_12V' },
       }),
     ];
-    applyFuseSizes(edges, nodes, volts(12.8));
+    // allEdges = edges: der Strom kommt aus dem EINEN Modell (AUDIT §13),
+    // das seine Kanten in der Liste braucht.
+    applyFuseSizes(edges, nodes, volts(12.8), undefined, edges);
     const fuse = edges[0]?.data?.fuseSize;
     expect(fuse).toBeDefined();
     expect(fuse!).toBeLessThanOrEqual(FUSE_MAP[2.5]!);
@@ -952,7 +954,8 @@ describe('autoWire — applyFuseSizes', () => {
         data: { length: 1, crossSection: 2.5, edgeDomain: 'DC_12V' },
       }),
     ];
-    applyFuseSizes(edges, nodes, volts(12.8));
+    // allEdges = edges (AUDIT §13 — s.o.).
+    applyFuseSizes(edges, nodes, volts(12.8), undefined, edges);
     const data = edges[0]?.data;
     expect(data).toBeDefined();
     const cs = data?.crossSection ?? 0;
@@ -973,7 +976,8 @@ describe('autoWire — applyFuseSizes', () => {
         data: { length: 2, crossSection: 2.5, edgeDomain: 'DC_12V' },
       }),
     ];
-    applyFuseSizes(edges, nodes, volts(12.8));
+    // allEdges = edges (AUDIT §13 — s.o.).
+    applyFuseSizes(edges, nodes, volts(12.8), undefined, edges);
     expect(edges[0]?.data?.fuseSize).toBeUndefined();
   });
 });

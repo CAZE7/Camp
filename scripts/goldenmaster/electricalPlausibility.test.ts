@@ -79,6 +79,11 @@ describe('Golden-Master: elektrische Plausibilität (AUDIT E2)', () => {
     for (const [plan, fixture] of fixtures) {
       for (const edge of fixture.autoWire.edges) {
         const current = fixture.electrical.edgeCurrents[edge.id];
+        // `null` = nicht bestimmbar (Datenlücke) — das ist der explizite
+        // Ausgabewert des Strommodells (Regel M: Lücke benennen, nichts
+        // erfinden). Kein Problem; bestimmt vorhandene Ströme bleiben hart
+        // geprüft.
+        if (current === null) continue;
         if (typeof current !== 'number' || !Number.isFinite(current) || current < 0) {
           problems.push(`${plan}/${edge.id}: Strom = ${String(current)}`);
         }
@@ -99,7 +104,7 @@ describe('Golden-Master: elektrische Plausibilität (AUDIT E2)', () => {
         for (const edge of fixture.autoWire.edges) {
           const crossSection = crossSectionOf(edge);
           const current = fixture.electrical.edgeCurrents[edge.id];
-          if (crossSection === undefined || current === undefined) continue;
+          if (crossSection === undefined || current === undefined || current === null) continue;
           const iz = designAmpacity(crossSection);
           if (iz <= 0) continue;
           if (current > iz + 1e-9 && !marked(edge)) {
@@ -121,6 +126,10 @@ describe('Golden-Master: elektrische Plausibilität (AUDIT E2)', () => {
             problems.push(`${edge.id}: fuseWarning ohne prüfbaren Strom/Querschnitt`);
             continue;
           }
+          // `null` Strom (Datenlücke) macht die Marker-Deckung unprüfbar —
+          // kein Urteil erfinden (Sizing setzt den Marker ohnehin nur mit
+          // bekanntem Strom).
+          if (current === null) continue;
           const iz = designAmpacity(crossSection);
           const maxFuse = FUSE_MAP[crossSection] ?? 0;
           const justified = current > iz + 1e-9 || current > maxFuse + 1e-9;
@@ -139,7 +148,8 @@ describe('Golden-Master: elektrische Plausibilität (AUDIT E2)', () => {
           if (inputEdgeIds.has(edge.id)) continue; // Nutzer-Vorgabe, nicht AutoWire
           const fuse = fuseOf(edge);
           const current = fixture.electrical.edgeCurrents[edge.id];
-          if (fuse === undefined || current === undefined) continue;
+          // null = Strom nicht bestimmbar (Datenlücke) — I_B ≤ I_n unprüfbar.
+          if (fuse === undefined || current === undefined || current === null) continue;
           // Ausnahme: markierte, nicht ausführbare Dimensionierung — sie ist
           // ausdrücklich als „so nicht schutzfähig“ gekennzeichnet.
           if (current > fuse + 1e-9 && !marked(edge)) {

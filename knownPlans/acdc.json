@@ -88,12 +88,12 @@
       {
         "data": {
           "autoWired": true,
-          "crossSection": 70,
+          "crossSection": 1.5,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
-          "fuseSize": 100,
+          "fuseSize": 5,
           "fuseType": "mrbf",
-          "fuseWarning": true,
+          "fuseWarning": false,
           "length": 1,
           "lengthIsAssumption": true
         },
@@ -106,10 +106,10 @@
       {
         "data": {
           "autoWired": true,
-          "crossSection": 70,
+          "crossSection": 1.5,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
-          "fuseWarning": true,
+          "fuseWarning": false,
           "length": 1,
           "lengthIsAssumption": true
         },
@@ -207,7 +207,7 @@
           "autoWired": true,
           "crossSection": 2.5,
           "edgeDomain": "AC_230V",
-          "fuseSize": 7.5,
+          "fuseSize": 5,
           "length": 2,
           "lengthIsAssumption": true
         },
@@ -273,7 +273,7 @@
       {
         "data": {
           "label": "12V Sicherungskasten",
-          "rating": 100
+          "rating": 5
         },
         "id": "auto:2:12v-sicherungskasten",
         "position": {
@@ -361,11 +361,11 @@
       "accharger-1": 0,
       "auto:0:plus-schiene": 0.015,
       "auto:1:minus-schiene": 0.052,
-      "auto:2:12v-sicherungskasten": 0.127,
+      "auto:2:12v-sicherungskasten": 0.13,
       "auto:3:smart-shunt": 0.015,
       "battery-1": 0,
       "cons-230v": 0,
-      "cons-fridge": 0.334,
+      "cons-fridge": 0.337,
       "inverter-1": 0.125,
       "shore-1": 0
     },
@@ -375,14 +375,14 @@
       "e-auto-11": 25,
       "e-auto-2": 152.06,
       "e-auto-3": 152.06,
-      "e-auto-4": 152.06,
-      "e-auto-5": 152.06,
+      "e-auto-4": 5,
+      "e-auto-5": 0,
       "e-auto-6": 5,
       "e-auto-7": 5,
       "e-auto-8": 147.06,
       "e-auto-9": 147.06,
-      "e-auto-ac-12": 5.22,
-      "e-auto-ac-13": 6.52,
+      "e-auto-ac-12": 6.52,
+      "e-auto-ac-13": 0,
       "e-auto-ac-14": 25
     },
     "systemVoltage": 12.8

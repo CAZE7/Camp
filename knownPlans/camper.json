@@ -150,7 +150,7 @@
       {
         "data": {
           "autoWired": false,
-          "crossSection": 35,
+          "crossSection": 4,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseSize": 5,
@@ -167,7 +167,7 @@
       {
         "data": {
           "autoWired": false,
-          "crossSection": 35,
+          "crossSection": 2.5,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseSize": 5,
@@ -184,7 +184,7 @@
       {
         "data": {
           "autoWired": false,
-          "crossSection": 50,
+          "crossSection": 2.5,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseSize": 5,
@@ -312,25 +312,25 @@
   "electrical": {
     "cumulativeDrops": {
       "auto:0:plus-schiene": 0.041,
-      "auto:1:minus-schiene": 0.144,
+      "auto:1:minus-schiene": 0.145,
       "auto:2:smart-shunt": 0.041,
       "battery-1": 0,
-      "cons-cool": 0.359,
-      "cons-light": 0.36,
-      "cons-usb": 0.357,
-      "fusebox-1": 0.351,
-      "ground-1": 0.061
+      "cons-cool": 0.31,
+      "cons-light": 0.267,
+      "cons-usb": 0.277,
+      "fusebox-1": 0.145,
+      "ground-1": 0.041
     },
     "edgeCurrents": {
       "e-auto-1": 8.98,
       "e-auto-2": 8.98,
       "e-auto-3": 8.98,
-      "e-auto-4": 8.98,
+      "e-auto-4": 0,
       "e-auto-5": 1.78,
       "e-auto-6": 3.2,
       "e-auto-7": 4,
       "e-batt-fuse": 8.98,
-      "e-batt-gnd": 8.98,
+      "e-batt-gnd": 0,
       "e-fuse-cool": 4,
       "e-fuse-light": 1.78,
       "e-fuse-usb": 3.2

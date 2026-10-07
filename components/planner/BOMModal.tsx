@@ -5,7 +5,7 @@ import { usePlannerStore } from '../../store/usePlannerStore';
 import { ClipboardCopy } from 'lucide-react';
 import { getComponentSpec } from '../registry';
 import { calculateCrossSection } from '../../lib/electrical';
-import { calculateEdgeCurrent, getSystemVoltage } from '../../lib/vde-standards';
+import { getCableCurrents } from '../../lib/electricalGraph/currentFlow';
 import { getCableRoute } from '../edges/utils/cableRouteStore';
 import { PX_PER_METER } from '../../lib/units';
 
@@ -142,7 +142,6 @@ export function BOMModal() {
       });
       const cableLengths: Record<string, number> = {};
       const nodesMap = new Map(nodes.map((n) => [n.id, n]));
-      const sysVoltage = getSystemVoltage(nodes);
       // AUDIT L1: Längen, die erfunden sind oder sich widersprechen, werden
       // gesammelt und angezeigt — eine Stückliste, die eine Zahl nennt, ohne
       // ihre Quelle zu kennen, ist eine Bestellvorlage für zu kurzes Kabel.
@@ -153,8 +152,6 @@ export function BOMModal() {
       };
 
       edges.forEach((edge) => {
-        const s = nodesMap.get(edge.source);
-        const t = nodesMap.get(edge.target);
         const isAc = edge.data?.edgeDomain === 'AC_230V';
         let cs = edge.data?.crossSection;
         const length = edgeLengthOf(edge.id, edge.data?.length, 1, edge.data?.lengthIsAssumption === true);
@@ -162,7 +159,10 @@ export function BOMModal() {
           if (isAc) {
             cs = 2.5;
           } else {
-            const I = calculateEdgeCurrent(s, t, nodes, sysVoltage, edges); // ELE-005: Insel-BFS
+            // EINE Stromquelle (AUDIT §13): dieselbe topologieabhängige
+            // Rechnung wie Dimensionierung und Validierung — die Stückliste
+            // darf nie einen anderen Strom sehen als der Rest der App.
+            const I = getCableCurrents(nodes, edges).byEdgeId.get(edge.id)?.operatingCurrent ?? 0;
             cs = calculateCrossSection(I, length.meters, undefined, 'DC_12V');
           }
         }

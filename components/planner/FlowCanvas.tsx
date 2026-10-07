@@ -567,8 +567,8 @@ export function FlowCanvas() {
   }, [rawNodes, rawEdges, selectedTrace, focusSeedIds, viewMode, activeDomains, nodes, edges, cableRoutes]);
 
   const traceLabel = useMemo(
-    () => (selectedTrace ? circuitTraceLabel(rawNodes, selectedTrace) : null),
-    [rawNodes, selectedTrace]
+    () => (selectedTrace ? circuitTraceLabel(rawNodes, selectedTrace, rawEdges) : null),
+    [rawNodes, rawEdges, selectedTrace]
   );
 
   /**

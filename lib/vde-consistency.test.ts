@@ -114,15 +114,18 @@ describe('VDE-Konsistenz: keine hardcoded Magic-Numbers', () => {
     expect(content).toMatch(/VDE_CHARGE_DERATING_FACTOR/);
   });
 
-  it('CableEdge.tsx bezieht alle Ströme aus den zentralen Funktionen (DC + AC)', () => {
-    // Seit der AC-Strom-Berechnung braucht CableEdge die Konstanten nicht
-    // mehr selbst zu importieren — es delegiert an calculateEdgeCurrent (DC)
-    // und acCurrentA (230 V) aus lib/autoWire/sizing.ts. Genau diese
-    // Delegation wird hier erzwungen, damit keine Magic Numbers (0.85, 18 V,
-    // 230 V) in die Anzeige zurückwandern.
+  it('CableEdge.tsx bezieht alle Ströme aus dem zentralen Strommodell (DC + AC)', () => {
+    // Seit der Topologie-Reform (AUDIT §2/§13) delegiert CableEdge JEDEN
+    // Betriebsstrom an das EINE Strommodell (`getCableCurrents` aus
+    // lib/electricalGraph/currentFlow) — dieselbe Rechnung, die Engine,
+    // AutoWire-Dimensionierung und Stückliste führen. Genau diese Delegation
+    // wird hier erzwungen, damit keine Magic Numbers (0.85, 18 V, 230 V) und
+    // keine Endpunkt-Heuristik (calculateEdgeCurrent / acCurrentA) in die
+    // Anzeige zurückwandern.
     const content = fs.readFileSync(path.join(REPO_ROOT, 'components/edges/CableEdge.tsx'), 'utf-8');
-    expect(content).toMatch(/calculateEdgeCurrent/);
-    expect(content).toMatch(/acCurrentA/);
+    expect(content).toMatch(/getCableCurrents/);
+    expect(content).not.toMatch(/calculateEdgeCurrent/);
+    expect(content).not.toMatch(/acCurrentA/);
     expect(content).not.toMatch(/[/]\s*0\.85\b/);
   });
 

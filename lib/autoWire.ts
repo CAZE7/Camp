@@ -910,7 +910,7 @@ export function performAutoWiring(
   // ELE-002: Nicht ausführbare Dimensionierungen auf JEDER Leitung markieren
   // (auch der Minus-Rückleitung) — der Marker wird von der Live-Validierung
   // gelesen, vorher schrieb ihn niemand sichtbar.
-  markInfeasibleSizing(allDcEdges, currentNodes, sysVoltage, allEdges, nodeMap);
+  markInfeasibleSizing(allDcEdges, currentNodes, sysVoltage, allEdges);
   // DOM-002: Bauform der Sicherungen mitschreiben (kleinste Bauform, deren
   // Abschaltvermögen den Bank-Ik am Einbauort trägt) — sonst meldete Rule A7
   // in jedem Auto-Plan „Abschaltvermögen unbekannt".

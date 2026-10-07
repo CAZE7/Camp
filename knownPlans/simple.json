@@ -247,16 +247,16 @@
       "auto:1:minus-schiene": 0.086,
       "auto:2:smart-shunt": 0.025,
       "battery-1": 0,
-      "cons-light": 0.331,
-      "cons-pump": 0.356,
-      "fusebox-1": 0.208
+      "cons-light": 0.27,
+      "cons-pump": 0.294,
+      "fusebox-1": 0.147
     },
     "edgeCurrents": {
       "e-auto-1": 5.33,
       "e-auto-2": 5.33,
       "e-auto-3": 5.33,
       "e-auto-4": 5.33,
-      "e-auto-5": 5.33,
+      "e-auto-5": 0,
       "e-auto-6": 1.78,
       "e-auto-7": 1.78,
       "e-auto-8": 3.56,

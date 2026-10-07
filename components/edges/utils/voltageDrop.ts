@@ -1,8 +1,8 @@
 import type { Node, Edge } from '@xyflow/react';
 import type { CableEdgeData } from '../CableEdge';
 import { assessCableSelection, getEdgeDomain } from '../../../lib/electrical';
-import { AC_SYSTEM_VOLTAGE, calculateEdgeCurrent, getSystemVoltage } from '../../../lib/vde-standards';
-import { acCurrentA } from '../../../lib/autoWire/sizing';
+import { AC_SYSTEM_VOLTAGE, getSystemVoltage } from '../../../lib/vde-standards';
+import { getCableCurrents } from '../../../lib/electricalGraph/currentFlow';
 import { solarDropBasisVoltageOf, solarPanelEndOf } from '../../../lib/solar';
 import { PX_PER_METER } from '../../../lib/units';
 import { COPPER_CONDUCTIVITY_MS_PER_MM2 } from '../../../lib/materials';
@@ -101,14 +101,13 @@ export function edgeDropInputs(
     // pauschal 0 A / 1,5 mm².
     // Die Länge folgt derselben Priorität wie CableEdge: gespeicherter Wert,
     // gerouteter Verlegeweg, Luftlinie; 2 m nur ohne verwertbare Geometrie.
-    // AUDIT ELE-004/ELE-009: Die Anzeige verwendet dieselbe per-Kanten-
-    // AC-Stromquelle wie die AutoWire-Dimensionierung (`acCurrentA`,
-    // lib/autoWire/sizing.ts). Es gibt genau EINEN AC-Strompfad — die frühere
-    // zweite Funktion `calculateAcEdgeCurrent` (vde-standards.ts) hatte null
-    // Produkt-Consumenten und wurde entfernt; ein Insel-Summenwert wäre nur an
-    // Quellkanten korrekt und unterschätzte z. B. eine Landstrom→Ladegerät-
-    // Leitung, solange ein 230-V-Verbraucher in der Insel hängt.
-    const I = acCurrentA(sourceNode, targetNode, nodes, edges);
+    // AUDIT §13/§19: EINE Stromquelle für die ganze Schicht — Anzeige,
+    // Dimensionierung und Validierung lesen dieselbe topologieabhängige
+    // Rechnung aus dem Strommodell (Referenz-Cache, keine Doppelrechnung).
+    // Die frühere Endpunkt-Heuristik (`acCurrentA`) summte die Insel an
+    // jeder Kante neu und lief von der Validierung auseinander.
+    const I =
+      getCableCurrents(nodes, edges as Edge<CableEdgeData>[]).byEdgeId.get(edge.id)?.operatingCurrent ?? 0;
     const selection = assessCableSelection(I, length, edge.data?.crossSection, 'AC_230V');
     return {
       isAC: true,
@@ -122,7 +121,9 @@ export function edgeDropInputs(
   }
 
   const sysVoltage = getSystemVoltage(nodes);
-  const I = calculateEdgeCurrent(sourceNode, targetNode, nodes, sysVoltage, edges); // ELE-005: Insel-BFS
+  // Dieselbe Quelle wie AC-Zweig, AutoWire und Validierung (AUDIT §13).
+  const I =
+    getCableCurrents(nodes, edges as Edge<CableEdgeData>[]).byEdgeId.get(edge.id)?.operatingCurrent ?? 0;
   // `resolveCableLength` erhält gespeicherte Nullen, schätzt fehlende/ungültige
   // Werte aus Route oder Geometrie und vermeidet einen 1-m-Mindestclamp.
   const selection = assessCableSelection(I, length, edge.data?.crossSection, 'DC_12V');

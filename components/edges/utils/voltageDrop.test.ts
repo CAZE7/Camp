@@ -219,7 +219,9 @@ describe('AUDIT ELE-001 — die Anzeige rechnet mit dem VERLEGTEN Querschnitt', 
 
   it('gespeicherter Querschnitt kleiner als die Empfehlung ⇒ Anzeige-Wert ist der gespeicherte', () => {
     const stored = edge({ length: 10, crossSection: 2.5 });
-    const inputs = edgeDropInputs(stored, nodes[0], nodes[1], nodes);
+    // Kantenliste wird mitgegeben: der Strom kommt aus dem EINEN Modell
+    // (AUDIT §13) und braucht die Kante darin für den Pfad.
+    const inputs = edgeDropInputs(stored, nodes[0], nodes[1], nodes, [stored]);
     // Der Kern des Befunds: hier stand früher die EMPFEHLUNG (max aus beiden).
     expect(inputs.crossSection).toBe(stored.data!.crossSection);
     expect(inputs.recommendedCrossSection).toBeGreaterThan(2.5);
@@ -229,13 +231,15 @@ describe('AUDIT ELE-001 — die Anzeige rechnet mit dem VERLEGTEN Querschnitt', 
   });
 
   it('ohne gespeicherten Wert fällt die Anzeige auf die Empfehlung zurück (kein NaN)', () => {
-    const inputs = edgeDropInputs(edge({ length: 10 }), nodes[0], nodes[1], nodes);
+    const fresh = edge({ length: 10 });
+    const inputs = edgeDropInputs(fresh, nodes[0], nodes[1], nodes, [fresh]);
     expect(inputs.crossSection).toBe(inputs.recommendedCrossSection);
     expect(inputs.undersized).toBe(false);
   });
 
   it('ausreichend gespeicherter Querschnitt gilt weder als unterdimensioniert noch als Fehler', () => {
-    const inputs = edgeDropInputs(edge({ length: 2, crossSection: 10 }), nodes[0], nodes[1], nodes);
+    const sized = edge({ length: 2, crossSection: 10 });
+    const inputs = edgeDropInputs(sized, nodes[0], nodes[1], nodes, [sized]);
     expect(inputs.crossSection).toBe(10);
     expect(inputs.undersized).toBe(false);
     expect(hasVoltageDropError({ ...inputs, cumulativeDropVolts: 0 }).hasDropError).toBe(false);

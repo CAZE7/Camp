@@ -137,14 +137,33 @@ describe('CableEdge', () => {
   });
 
   it('calculates crossSection and maxFuse when source is consumer', () => {
+    // Anzeige & Dimensionierung lesen den Betriebsstrom aus dem EINEN
+    // Strommodell (AUDIT: topologieabhängig, nie Endpunkt-Heuristik) — das
+    // Fixture ist daher ein echtes Mini-Plan: Batterie speist den 120-W-
+    // Verbraucher über genau diese Plus-Leitung.
+    const planNodes = [
+      { id: '1', type: 'consumer', data: { watts: 120 } },
+      { id: '2', type: 'battery', data: {} },
+    ];
+    const planEdges: Edge<CableEdgeData>[] = [
+      {
+        id: 'e1-2',
+        source: '1',
+        target: '2',
+        sourceHandle: 'plus',
+        targetHandle: 'plus',
+        data: { length: 5, edgeDomain: 'DC_12V' },
+      },
+    ];
     mockReactFlow({
-      getNode: vi.fn((id: string) => {
-        if (id === '1') return { id: '1', type: 'consumer', data: { watts: 120 } }; // I = 10A
-        return null;
-      }),
-      getNodes: vi.fn().mockReturnValue([]),
+      getNode: vi.fn((id: string) => planNodes.find((n) => n.id === id) ?? null),
+      getNodes: vi.fn().mockReturnValue(planNodes),
+    });
+    act(() => {
+      usePlannerStore.setState({ edges: planEdges });
     });
 
+    // Modell: I = 120 W / 12,0 V (Entladeschluss 0,9375 × 12,8 V) = 10 A
     // calculatedA = (10 * (5 * 2)) / (58 * 0.36) = 100 / 20.88 = 4.79
     // minRequiredA = max(1.5, 4.79) = 4.79
     // VDE_SIZES = [1.5, 2.5, 4.0, 6.0, 10.0, 16.0, ...], first size >= 4.79 is 6.0
@@ -160,14 +179,34 @@ describe('CableEdge', () => {
   });
 
   it('calculates crossSection and maxFuse when target is mpptController', () => {
+    // Echte Solar-Topologie (AUDIT: Strom kommt aus dem EINEN Modell):
+    // 540-W-Panel → MPPT → Batterie. Die Batterie-Zuleitung e1-2 trägt den
+    // vollen Ladestrom des MPPT.
+    const planNodes = [
+      { id: '1', type: 'battery', data: {} },
+      { id: '2', type: 'mpptController', data: { amps: 30 } },
+      { id: '3', type: 'solar', data: { watts: 540 } },
+    ];
+    const planEdges: Edge<CableEdgeData>[] = [
+      {
+        id: 'e1-2',
+        source: '1',
+        target: '2',
+        sourceHandle: 'plus',
+        targetHandle: 'plus',
+        data: { length: 5, edgeDomain: 'DC_12V' },
+      },
+      { id: 'e3-2', source: '3', target: '2', data: { edgeDomain: 'Solar' } },
+    ];
     mockReactFlow({
-      getNode: vi.fn((id: string) => {
-        if (id === '2') return { id: '2', type: 'mpptController', data: { amps: 30 } }; // I = 30A
-        return null;
-      }),
-      getNodes: vi.fn().mockReturnValue([]),
+      getNode: vi.fn((id: string) => planNodes.find((n) => n.id === id) ?? null),
+      getNodes: vi.fn().mockReturnValue(planNodes),
+    });
+    act(() => {
+      usePlannerStore.setState({ edges: planEdges });
     });
 
+    // Modell: I = 540 W / 18 V (Vmp) = 30 A Ladestrom auf e1-2
     // calculatedA = (30 * (5 * 2)) / (58 * 0.36) = 300 / 20.88 = 14.36
     // VDE_SIZES = [... 10.0, 16.0, 25.0, ...], first size >= 14.36 is 16.0
     // cs = 16.0 => FUSE_MAP[16] = 40 (Belastbarkeit 16 mm² = 64 A,
@@ -372,11 +411,28 @@ describe('CableEdge', () => {
   });
 
   it('rendert den Strom-Partikel auf belasteten Leitungen', () => {
+    // Belastet = das Strommodell weist der Kante einen echten Strom zu:
+    // Batterie speist den 120-W-Verbraucher über diese Plus-Leitung (10 A).
+    const planNodes = [
+      { id: '1', type: 'consumer', data: { watts: 120 } },
+      { id: '2', type: 'battery', data: {} },
+    ];
+    const planEdges: Edge<CableEdgeData>[] = [
+      {
+        id: 'e1-2',
+        source: '1',
+        target: '2',
+        sourceHandle: 'plus',
+        targetHandle: 'plus',
+        data: { length: 5, edgeDomain: 'DC_12V' },
+      },
+    ];
     mockReactFlow({
-      getNode: vi.fn((id: string) =>
-        id === '1' ? { id: '1', type: 'consumer', data: { watts: 120 } } : null
-      ),
-      getNodes: vi.fn().mockReturnValue([]),
+      getNode: vi.fn((id: string) => planNodes.find((n) => n.id === id) ?? null),
+      getNodes: vi.fn().mockReturnValue(planNodes),
+    });
+    act(() => {
+      usePlannerStore.setState({ edges: planEdges });
     });
 
     const { container } = renderEdge(<CableEdge {...defaultProps} sourceHandle="plus" />);
