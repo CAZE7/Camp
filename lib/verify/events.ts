@@ -21,6 +21,7 @@ import {
   FINDING_KINDS,
   SEVERITY_ORDER,
   type AuditEvent,
+  type AuditEventDetails,
   type CheckResult,
   type CheckStatus,
   type EntityRef,
@@ -46,6 +47,8 @@ export interface AuditEventInput {
   message: string;
   autoFixRemedy: string;
   counterexample?: readonly string[];
+  /** Strukturierte Befund-Details (Werte, contributors, Faktoren). */
+  details?: AuditEventDetails;
   /** Override der Gleichung (Standard: `formalTest` der Regel). */
   equation?: string;
   /**
@@ -91,6 +94,7 @@ export function auditEvent(input: AuditEventInput): AuditEvent {
     message: input.message,
     autoFixRemedy: remedy,
     ...(input.counterexample ? { counterexample: input.counterexample } : {}),
+    ...(input.details ? { details: input.details } : {}),
     ...(input.coverageOnly ? { coverageOnly: true } : {}),
   };
 }

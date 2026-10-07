@@ -250,6 +250,106 @@ export interface AmpacityResult {
 }
 
 /**
+ * Zentrale, maschinenlesbare Aufschlüsselung der korrigierten Belastbarkeit
+ * I_z (Auftrag §7). JEDE Korrektur ist ein benannter Faktor — keine
+ * Doppelanwendung, keine versteckte Pauschale:
+ *
+ *   I_z = I_z,basis × f_ambient × f_grouping × f_installation × f_planer
+ *
+ *   - `ambientFactor`        f₁(ϑ_U) — Umgebungstemperatur (≤ 1, nie kapazitäts-
+ *                              erhöhend); 1 ohne Temperaturangabe (30 °C =
+ *                              Tabellenreferenz).
+ *   - `groupingFactor`       f₂(n) — Häufung in der Trasse (VDE_GROUP_FACTORS);
+ *                              1 ohne Angabe.
+ *   - `installationFactor`   Verlegesart-Korrektur. **Nicht modelliert** →
+ *                              explizit 1,0 (der Plan trägt keine
+ *                              Verlegeart; 1,0 = keine Kürzung, keine Erhöhung).
+ *   - `plannerSafetyFactor`  die Planer-Pauschale `DERATE_FACTOR` (0,7) — die
+ *                              Iz-Wahrheit der Dimensionierung (AUDIT ELE-001).
+ *                              Gilt exakt EINMAL (min-Verknüpfung, nicht
+ *                              multiplikativ doppelt).
+ *
+ * Der strenge Wert gewinnt: `min(1, f₁·f₂·f_inst)` gegen `plannerSafetyFactor`.
+ * Ein Kältebonus (f₁ > 1) wird nie kapazitätserhöhend angesetzt.
+ */
+export interface CorrectedIzBreakdown {
+  /** Basistabellenwert in A (VDE_AMPACITY, B2). */
+  baseIz: number;
+  /** f₁ — Umgebungstemperaturfaktor. */
+  ambientFactor: number;
+  /** f₂ — Häufungsfaktor. */
+  groupingFactor: number;
+  /** f — Verlegesart (nicht modelliert, explizit 1,0). */
+  installationFactor: number;
+  /** f — Planer-Pauschale (DERATE_FACTOR 0,7). */
+  plannerSafetyFactor: number;
+  /** Ergebnis: korrigierte Belastbarkeit in A. */
+  correctedIz: number;
+  /** Menschenlesbare Rechnung (Reportpflicht, UI „Warum?“). */
+  explanation: string;
+}
+
+/** Bedingungen für die zentrale Iz-Korrektur (alle optional, keine Stillerfüllung). */
+export interface CorrectedIzConditions {
+  /** Umgebungstemperatur in °C (30 °C = Tabellenreferenz). */
+  ambientC?: number;
+  /** Isolierstoff (PVC/XLPE, Default PVC). */
+  insulation?: InsulationClass;
+  /** Anzahl belasteter Stromkreise in der Trasse (1…9). */
+  bundledCircuits?: number;
+}
+
+/**
+ * Zentrale Berechnung der korrigierten Belastbarkeit I_z mit vollständiger
+ * Faktoren-Aufschlüsselung. EINE Autorität für „was darf die Leitung tragen“:
+ * Verifikation, Sizing-Checks und die UI lesen alle denselben Wert.
+ *
+ * @throws RangeError bei unbekanntem Querschnitt (keine stille 0 A).
+ */
+export function calculateCorrectedIz(
+  crossSectionMm2: number,
+  conditions?: CorrectedIzConditions
+): CorrectedIzBreakdown {
+  const base = VDE_AMPACITY[crossSectionMm2];
+  if (base === undefined) {
+    throw new RangeError(
+      `calculateCorrectedIz: Querschnitt ${crossSectionMm2} mm² ist nicht in der Belastbarkeitstabelle — kein stiller Ersatzwert`
+    );
+  }
+
+  const insulation = conditions?.insulation ?? 'PVC';
+  const hasAmbient = conditions?.ambientC !== undefined;
+  const ambientFactor = hasAmbient ? ambientTemperatureFactor(conditions.ambientC as number, insulation) : 1;
+  const groupingFactor =
+    conditions?.bundledCircuits === undefined ? 1 : groupFactor(conditions.bundledCircuits);
+  const installationFactor = 1; // Verlegesart nicht modelliert — explizit 1,0.
+  const plannerSafetyFactor = DERATE_FACTOR;
+
+  // Physikalischer Faktor (nie kapazitätserhöhend) gegen die Pauschale —
+  // der STRENGERE (kleinere) Faktor gewinnt. 0,7 wird exakt einmal wirksam.
+  const physical = Math.min(1, ambientFactor * groupingFactor * installationFactor);
+  const effective = Math.min(plannerSafetyFactor, physical);
+  const correctedIz = base * effective;
+
+  const fmt = (value: number): string => value.toFixed(2);
+  const explanation = `I_z = ${fmt(base)} A × min(${fmt(plannerSafetyFactor)} [Planerpauschale], ${fmt(
+    physical
+  )} [f₁ ${fmt(ambientFactor)} × f₂ ${fmt(groupingFactor)} × f₃ ${fmt(installationFactor)}]) = ${fmt(
+    correctedIz
+  )} A`;
+
+  return {
+    baseIz: base,
+    ambientFactor,
+    groupingFactor,
+    installationFactor,
+    plannerSafetyFactor,
+    correctedIz,
+    explanation,
+  };
+}
+
+/**
  * Angesetzte Belastbarkeit I_z einer Leitung.
  *
  * Die Engine rechnet mit dem STRENGEREN zweier Werte:
@@ -264,35 +364,23 @@ export interface AmpacityResult {
  * @throws RangeError bei unbekanntem Querschnitt (keine stille 0 A).
  */
 export function effectiveAmpacityA(crossSectionMm2: number, conditions?: AmpacityConditions): AmpacityResult {
-  const base = VDE_AMPACITY[crossSectionMm2];
-  if (base === undefined) {
-    throw new RangeError(
-      `effectiveAmpacityA: Querschnitt ${crossSectionMm2} mm² ist nicht in der Belastbarkeitstabelle — kein stiller Ersatzwert`
-    );
-  }
-  if (!conditions) {
-    return {
-      izA: base * DERATE_FACTOR,
-      baseAmpacityA: base,
-      ambientFactor: DERATE_FACTOR,
-      groupingFactor: 1,
-      combinedFactor: DERATE_FACTOR,
-      basis: 'plan-model-pauschale',
-    };
-  }
-  const insulation = conditions.insulation ?? 'PVC';
-  const ambientFactor = ambientTemperatureFactor(conditions.ambientC, insulation);
-  const groupingFactor =
-    conditions.bundledCircuits === undefined ? 1 : groupFactor(conditions.bundledCircuits);
-  const physicsFactor = Math.min(1, ambientFactor * groupingFactor);
-  const combinedFactor = Math.min(DERATE_FACTOR, physicsFactor);
+  // Eine Rechnung für beide: die zentrale Aufschlüsselung (Auftrag §7).
+  const breakdown = calculateCorrectedIz(crossSectionMm2, conditions);
+  const basis: AmpacityResult['basis'] =
+    conditions?.ambientC === undefined && conditions?.bundledCircuits === undefined
+      ? 'plan-model-pauschale'
+      : 'plan-model-und-physik';
+  // Kompatibilität: ohne Bedingungen trägt das Feld `ambientFactor` die
+  // Pauschale (so war es historisch); mit Bedingungen den echten Faktor.
+  const ambientField =
+    conditions?.ambientC === undefined ? breakdown.plannerSafetyFactor : breakdown.ambientFactor;
   return {
-    izA: base * combinedFactor,
-    baseAmpacityA: base,
-    ambientFactor,
-    groupingFactor,
-    combinedFactor,
-    basis: 'plan-model-und-physik',
+    izA: breakdown.correctedIz,
+    baseAmpacityA: breakdown.baseIz,
+    ambientFactor: ambientField,
+    groupingFactor: breakdown.groupingFactor,
+    combinedFactor: breakdown.correctedIz / breakdown.baseIz,
+    basis,
   };
 }
 

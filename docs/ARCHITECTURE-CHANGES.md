@@ -1,5 +1,63 @@
 # ARCHITECTURE-CHANGES (Routing V2)
 
+## LEDGER 2026-10-07 — Golden Master re-captured: Fließstrom-Modell als einzige Stromquelle (Stromberechnungs-Umstellung)
+
+**Anlass:** Bewusste Domänenänderung gemäß `docs/AUDIT-STROMBERECHNUNG-2026-10.md`
+(Audit-Auftrag: topologisch korrektes I_b je Kabelsegment statt Endpunkt-Heuristik).
+Die alte Baseline hatte die Endpunkt-Heuristik eingefroren, die jedem Kabel
+am Hauptstrang die Gesamtlast zuschrieb (Beispiel: 12-A-Zweig hinter
+Sicherungskasten → Batterie-Hauptleitung für 99,7 A dimensioniert).
+
+**Änderungen, die das Fixture-Delta verursachen:**
+
+1. `lib/autoWire/sizing.ts` — alle Dimensionierungspfade (`sizeDcEdges`,
+   `applyFuseSizes`, `markInfeasibleSizing`, `sizeAcEdges`, `cumulativeDropAt`)
+   lesen den Strom über `modelCurrentOf` → `getCableCurrents`
+   (Topologie-Strommodell, `lib/electricalGraph/currentFlow.ts`) statt
+   `calculateEdgeCurrent`/`acCurrentA`. Jede Kante trägt nur ihren eigenen
+   Durchfluss; Hauptstrang = Summe der Zweige, keine Doppelzählung.
+   Die Iz-Wahrheit (Basis × min(0,7-Planerpauschale, f₁·f₂)) kommt unverändert
+   aus derselben Tabelle (`VDE_AMPACITY`) wie die Verifikations-Engine.
+2. `scripts/goldenmaster/pipeline.ts` — die Electrical-Stufe der
+   Golden-Master-Pipeline friert jetzt ebenfalls das Strommodell ein statt der
+   Alt-Heuristik (die Harness muss messen, was das Produkt rechnet).
+   `edgeCurrents` ist damit `number | null`: `null` = nicht bestimmbar
+   (Datenlücke, Regel M: benennen statt erfinden). Die sechs Referenzpläne
+   liefern aktuell ausschließlich bestimmte Ströme (keine `null`).
+3. `components/planner/templates.ts` (`TEMPLATE_AUTARK` = Referenzplan
+   `complex`) — bewusste Datennachführung, weil der nachgewiesene Worst Case
+   der alten Daten (133,24 A = 88,24 Inverter + 11,67 DC + 33,33 Booster,
+   wobei das ALT-Modell den Booster-Eingang stillschweigend wegließ) mit
+   I_n = 100 A fachlich infeasibel war:
+   Inverter 900 → 600 W, Induktionskochfeld (230-V-Insel) 800 → 500 W
+   (Insel ≤ Inverter), DC-DC-Ladebooster 30 → 20 A.
+   Neuer Worst Case: 58,82 + 11,67 + 22,22 = **92,71 A** ≤ I_n = 100 A
+   ≤ I_z(50 mm²) = 95,2 A. `TEMPLATE_ALLROUNDER` unverändert
+   (Worst Case 92,35 A, AutoWire erhöht die Hauptkante auf 70 mm²/100 A).
+4. `components/planner/hooks/useLiveValidation.ts` — CMP-Regel vergleicht für
+   Ausgangs-nominierte Komponenten (DC-DC, Lader) deren EIGENE
+   Quellendbeiträge mit dem Nominalstrom; Durchleiter (Schiene/Shunt/Fuse)
+   behalten die Gesamtstrom-Prüfung. Kategoriefehler-Fix, keine
+   Schwellwertänderung.
+
+**Erwartetes Delta je Referenzplan (Richtung durchweg: Zweige nicht mehr
+überdimensioniert, keine Sicherheitsabsenkung — Hauptleitungen bleiben
+konform, wo Last fließt):**
+
+| Plan       | Delta (Auszug)                                                                                                                                                                                                                                                       |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `inverter` | Fusebox-Zweig 70 mm²/100 A → 1,5 mm²/5 A (trägt nur die LED, 1,67 A); Fusebox-Rating 100 → 5 A; Hauptleitung bleibt 70 mm² @ 99,71 A                                                                                                                                 |
+| `acdc`     | gleicher Fusebox-Zweig-Fix (1,5 mm²/5 A), Rating 100 → 5 A, Fusebox-Fuse 7,5 → 5 A                                                                                                                                                                                   |
+| `camper`   | Fusebox-Zweige 35/35/50 mm² → 4/2,5/2,5 mm² (Zweiglasten Kühlbox/LED/USB)                                                                                                                                                                                            |
+| `solar`    | Hauptstrang 20 A → 11,11 A (MPPT/η), belastungsfreier Rückweg 20 → 0 A, Panel-Zuleitung 4 → 2,5 mm², Fusebox-Rating 20 → 5 A                                                                                                                                         |
+| `simple`   | nur `cumulativeDrops` (Modell-basierte Kantenströme im Spannungsfall)                                                                                                                                                                                                |
+| `complex`  | Template-Nachführung (s. o.); AutoEdge-Hauptleitung 70 → 50 mm² (92,71 A ≤ 95,2 A = 0,7 × 136 A); vorhandene Nutzerkanten bleiben 70 mm² (Regel: keine stillschweigende Schwächung); Fusebox-Fuse 100 → 15 A (Zweiglast 11,67 A), Inverter-Fuse 100 → 60 A (58,82 A) |
+
+**Nachweis:** `npx vitest run scripts/goldenmaster/` → 46/46 grün (13
+byte-identisch inkl. Determinismus-Doppelrun, 33 Physik-Invarianten:
+I_B ≤ I_z,design oder fuseWarning, Marker-Deckung, I_B ≤ I_n,
+I_n ≤ FUSE_MAP, kein erfundenes AC-Schutzorgan). `npx tsc --noEmit` grün.
+
 ## LEDGER 2026-10-06 (2) — Pixel-Baselines aktualisiert (visuelles Gate)
 
 Kein Routing-/Domänen-Delta: Die Routen-Geometrie dieses Änderungssatzes ist

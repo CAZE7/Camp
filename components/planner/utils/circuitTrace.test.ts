@@ -10,11 +10,42 @@ const nodes: Node[] = [
   { id: 'lamp', type: 'consumer', position: { x: 0, y: 0 }, data: { label: 'Lampe', watts: 12 } },
   { id: 'unrelated', type: 'solar', position: { x: 0, y: 0 }, data: { label: 'Insel' } },
 ];
+// Plus-Seiten des DC-Kreises (Handle-Polarität bestimmt die Netz-Mitgliedschaft
+// im Strommodell — AUDIT §13: Strom kommt aus dem EINEN topologischen Modell,
+// das Kanten ohne bestimmbare Polarität als „nicht bestimmbar“ auswies).
 const edges: Edge[] = [
-  { id: 'e1', source: 'battery', target: 'shunt', data: { crossSection: 10 } },
-  { id: 'e2', source: 'shunt', target: 'fuse', data: { crossSection: 6 } },
-  { id: 'e3', source: 'fuse', target: 'fridge', data: { crossSection: 2.5 } },
-  { id: 'e4', source: 'fuse', target: 'lamp', data: { crossSection: 1.5 } },
+  {
+    id: 'e1',
+    source: 'battery',
+    target: 'shunt',
+    sourceHandle: 'plus',
+    targetHandle: 'plus',
+    data: { crossSection: 10 },
+  },
+  {
+    id: 'e2',
+    source: 'shunt',
+    target: 'fuse',
+    sourceHandle: 'plus',
+    targetHandle: 'plus',
+    data: { crossSection: 6 },
+  },
+  {
+    id: 'e3',
+    source: 'fuse',
+    target: 'fridge',
+    sourceHandle: 'plus',
+    targetHandle: 'plus',
+    data: { crossSection: 2.5 },
+  },
+  {
+    id: 'e4',
+    source: 'fuse',
+    target: 'lamp',
+    sourceHandle: 'plus',
+    targetHandle: 'plus',
+    data: { crossSection: 1.5 },
+  },
 ];
 
 describe('circuit tracing', () => {

@@ -1,6 +1,7 @@
 import type { Edge, Node } from '@xyflow/react';
-import { AC_SYSTEM_VOLTAGE, calculateEdgeCurrent, getSystemVoltage } from '../../../lib/vde-standards';
-import { acCurrentA } from '../../../lib/autoWire/sizing';
+import type { CableEdgeData } from '../../edges/CableEdge';
+import { AC_SYSTEM_VOLTAGE, getSystemVoltage } from '../../../lib/vde-standards';
+import { getCableCurrents } from '../../../lib/electricalGraph/currentFlow';
 import { nodeLabelOf } from '../../../lib/safeText'; // AUDIT T1
 import { withClassFlag } from './classFlags';
 import { compareIds } from '../../../lib/sortOrder';
@@ -187,8 +188,8 @@ const format = (value: number): string => (Number.isInteger(value) ? String(valu
  * Systemspannung und mit 0 A beschriftet, solange keine Sicherung gesetzt war.
  *
  * Jetzt kommen alle drei Zahlen aus denselben Autoritäten wie Anzeige und
- * Dimensionierung: Systemspannung (getSystemVoltage), Strom
- * (calculateEdgeCurrent bzw. acCurrentA), Querschnitt aus der Kante.
+ * Dimensionierung: Systemspannung (getSystemVoltage), Strom aus dem EINEN
+ * Strommodell (AUDIT §13 — keine Endpunkt-Heuristik), Querschnitt aus der Kante.
  */
 export function circuitTraceLabel(
   nodes: Node[],
@@ -201,17 +202,17 @@ export function circuitTraceLabel(
     return nodeLabelOf(node, 'Bauteil');
   });
   const edge = trace.referenceEdge;
-  const source = edge ? nodeMap.get(edge.source) : undefined;
-  const target = edge ? nodeMap.get(edge.target) : undefined;
   const isAc = edge?.data?.edgeDomain === 'AC_230V';
   const sysVoltage = getSystemVoltage(nodes);
   const voltage = isAc ? AC_SYSTEM_VOLTAGE : sysVoltage;
-  const computedAmps =
-    edge && source && target
-      ? isAc
-        ? acCurrentA(source, target, nodes, traceEdges)
-        : calculateEdgeCurrent(source, target, nodes, sysVoltage, traceEdges)
-      : 0;
+  // Dieselbe Quelle wie Anzeige/Dimensionierung/Validierung. `traceEdges`
+  // enthält im Normalfall ALLE Kanten des Plans (der Aufrufer übergibt
+  // `rawEdges`) — das Modell braucht sie für den Pfad; die Referenzkante
+  // selbst ist darin enthalten.
+  const computedAmps = edge
+    ? (getCableCurrents(nodes, traceEdges as Edge<CableEdgeData>[]).byEdgeId.get(edge.id)?.operatingCurrent ??
+      0)
+    : 0;
   const amps = computedAmps > 0 ? computedAmps : Number(edge?.data?.fuseSize) || 0;
   const crossSection = Number(edge?.data?.crossSection) || 2.5;
   return `${names.join(' → ')} (${format(voltage)} V, ${format(amps)} A, ${format(crossSection)} mm²)`;

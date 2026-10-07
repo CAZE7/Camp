@@ -266,6 +266,7 @@ export function checkRcdCoverage(context: PassContext): CheckResult {
         message: `230-V-Stromkreis ${labelOfNode(context.graph, entry.nodeId)}: auf dem Weg von der Einspeisung führt kein FI ≤ 30 mA — der Stromkreis ist nicht fehlerstromgeschützt.`,
         autoFixRemedy: `FI (30 mA, Typ A; Typ B bei möglichen glatten Gleichfehlerströmen) unmittelbar hinter der Einspeisung bzw. am Wechselrichter-Ausgang für diesen Stromkreis setzen und die 230-V-Leitung dahinter führen.`,
         counterexample: entry.path,
+        details: { protectionChain: [...entry.path] },
       })
     );
   }

@@ -4,7 +4,7 @@
       {
         "data": {
           "autoWired": true,
-          "crossSection": 70,
+          "crossSection": 50,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseWarning": false,
@@ -20,7 +20,7 @@
       {
         "data": {
           "autoWired": true,
-          "crossSection": 70,
+          "crossSection": 1.5,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseWarning": false,
@@ -100,7 +100,7 @@
       {
         "data": {
           "autoWired": true,
-          "crossSection": 10,
+          "crossSection": 6,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseWarning": false,
@@ -116,7 +116,7 @@
       {
         "data": {
           "autoWired": true,
-          "crossSection": 16,
+          "crossSection": 10,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseWarning": false,
@@ -132,7 +132,7 @@
       {
         "data": {
           "autoWired": true,
-          "crossSection": 16,
+          "crossSection": 10,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseWarning": false,
@@ -183,7 +183,7 @@
           "crossSection": 70,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
-          "fuseSize": 100,
+          "fuseSize": 15,
           "fuseType": "classT",
           "fuseWarning": false,
           "length": 1
@@ -215,7 +215,7 @@
           "crossSection": 70,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
-          "fuseSize": 100,
+          "fuseSize": 60,
           "fuseType": "classT",
           "fuseWarning": false,
           "length": 1
@@ -232,7 +232,7 @@
           "crossSection": 10,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
-          "fuseSize": 32,
+          "fuseSize": 25,
           "fuseType": "classT",
           "fuseWarning": false,
           "length": 1
@@ -249,7 +249,7 @@
           "crossSection": 16,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
-          "fuseSize": 30,
+          "fuseSize": 25,
           "fuseType": "classT",
           "fuseWarning": false,
           "length": 1
@@ -359,10 +359,10 @@
       {
         "data": {
           "autoWired": false,
-          "crossSection": 25,
+          "crossSection": 16,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
-          "fuseSize": 30,
+          "fuseSize": 25,
           "fuseType": "classT",
           "fuseWarning": false,
           "length": 5
@@ -437,7 +437,7 @@
       },
       {
         "data": {
-          "amps": 30,
+          "amps": 20,
           "label": "DC-DC Ladebooster"
         },
         "id": "charger-2",
@@ -486,7 +486,7 @@
       {
         "data": {
           "label": "Induktionskochfeld (1 Platte)",
-          "watts": 800
+          "watts": 500
         },
         "id": "cons-induct",
         "position": {
@@ -498,7 +498,7 @@
       {
         "data": {
           "label": "Sicherungskasten",
-          "rating": 100
+          "rating": 15
         },
         "id": "fusebox-1",
         "position": {
@@ -509,10 +509,10 @@
       },
       {
         "data": {
-          "continuousPower": 900,
+          "continuousPower": 600,
           "hasRcd": true,
-          "label": "900W Inverter",
-          "watts": 900
+          "label": "600W Inverter",
+          "watts": 600
         },
         "id": "inverter-1",
         "position": {
@@ -562,46 +562,46 @@
   },
   "electrical": {
     "cumulativeDrops": {
-      "auto:0:smart-shunt": 0.01,
+      "auto:0:smart-shunt": 0.013,
       "battery-1": 0,
-      "busbar-minus": 0.034,
-      "busbar-plus": 0.025,
+      "busbar-minus": 0.036,
+      "busbar-plus": 0.023,
       "charger-1": 0,
       "charger-2": 0,
-      "cons-fan": 0.264,
-      "cons-fridge": 0.241,
-      "cons-heat": 0.264,
+      "cons-fan": 0.265,
+      "cons-fridge": 0.243,
+      "cons-heat": 0.265,
       "cons-induct": 0,
-      "fusebox-1": 0.084,
-      "inverter-1": 0.078,
+      "fusebox-1": 0.036,
+      "inverter-1": 0.065,
       "shore-1": 0,
       "solar-1": 0,
       "starter-1": 0
     },
     "edgeCurrents": {
-      "e-auto-1": 99.9,
-      "e-auto-2": 99.9,
+      "e-auto-1": 92.71,
+      "e-auto-2": 0,
       "e-auto-3": 5,
       "e-auto-4": 3.33,
       "e-auto-5": 3.33,
-      "e-auto-6": 22.22,
-      "e-auto-7": 32,
-      "e-auto-8": 30,
-      "e-auto-9": 30,
-      "e-batt-minus": 99.9,
-      "e-batt-plus": 99.9,
-      "e-busbar-fuse": 99.9,
-      "e-busbar-inv-minus": 88.24,
-      "e-busbar-inv-plus": 88.24,
-      "e-charger-busbar": 32,
-      "e-dcdc-busbar": 30,
+      "e-auto-6": 0,
+      "e-auto-7": 22.22,
+      "e-auto-8": 22.22,
+      "e-auto-9": 22.22,
+      "e-batt-minus": 92.71,
+      "e-batt-plus": 92.71,
+      "e-busbar-fuse": 11.67,
+      "e-busbar-inv-minus": 58.82,
+      "e-busbar-inv-plus": 58.82,
+      "e-charger-busbar": 22.22,
+      "e-dcdc-busbar": 22.22,
       "e-fuse-fan": 3.33,
       "e-fuse-fridge": 5,
       "e-fuse-heat": 3.33,
-      "e-inv-induct": 3.48,
-      "e-shore-inv": 3.91,
-      "e-solar-charger": 22.22,
-      "e-starter-dcdc": 30
+      "e-inv-induct": 2.17,
+      "e-shore-inv": 0,
+      "e-solar-charger": 0,
+      "e-starter-dcdc": 22.22
     },
     "systemVoltage": 12.8
   },
@@ -824,7 +824,7 @@
       },
       {
         "data": {
-          "amps": 30,
+          "amps": 20,
           "label": "DC-DC Ladebooster"
         },
         "id": "charger-2",
@@ -873,7 +873,7 @@
       {
         "data": {
           "label": "Induktionskochfeld (1 Platte)",
-          "watts": 800
+          "watts": 500
         },
         "id": "cons-induct",
         "position": {
@@ -895,10 +895,10 @@
       },
       {
         "data": {
-          "continuousPower": 900,
+          "continuousPower": 600,
           "hasRcd": true,
-          "label": "900W Inverter",
-          "watts": 900
+          "label": "600W Inverter",
+          "watts": 600
         },
         "id": "inverter-1",
         "position": {

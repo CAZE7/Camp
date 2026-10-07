@@ -297,23 +297,24 @@ export const TEMPLATE_AUTARK = {
       id: 'charger-2',
       type: 'dcdcCharger',
       position: { x: 380, y: 240 },
-      data: { label: 'DC-DC Ladebooster', amps: 30 },
+      data: { label: 'DC-DC Ladebooster', amps: 20 },
     },
     { id: 'busbar-plus', type: 'busbar', position: { x: 380, y: 496 }, data: { label: 'Plus Busbar' } },
     { id: 'busbar-minus', type: 'busbar', position: { x: 380, y: 688 }, data: { label: 'Minus Busbar' } },
     { id: 'fusebox-1', type: 'fuse', position: { x: 680, y: 200 }, data: { label: 'Sicherungskasten' } },
-    // AUDIT ELE-001: Die absicherbare Grenze des Modells ist 70 mm² mit
-    // max. 100 A (FUSE_MAP, 70 % der Tabellen-Belastbarkeit). Der
-    // Batterie-Hauptstrang trägt Wechselrichter-Eingangsstrom + DC-Lasten;
-    // bei 12,8 V bleibt dafür ein Wechselrichter bis ~900 W Continuous.
-    // Größere Wechselrichter (z. B. 1500 W ⇒ ~138 A + DC-Lasten > 120 A
-    // thermische Grenze) erzeugen zu Recht Warnungen — real löst man das
-    // mit 24 V oder parallelen Leitungen, beides wird nicht modelliert.
+    // AUDIT ELE-001 (2026-10 korrigiert): Die absicherbare Grenze des
+    // Modells ist 70 mm² mit max. 100 A (FUSE_MAP). Der Batterie-Hauptstrang
+    // trägt im worst case EINGANGSSTROM DES WECHSELRICHTERS + DC-LASTEN +
+    // BOOSTER-EINGANG (alles gleichzeitig am Bus). Damit der Template-Plan
+    // ohne Sicherheitsbefund startet, muss die Summe ≤ 100 A bleiben:
+    // 600 W WR ⇒ 58,8 A + DC-Lasten 11,7 A + 20-A-Booster-Eingang 22,2 A
+    // = 92,7 A. (Die frühere 900-W-Auslegung hatte den Booster-Eingang nicht
+    // gezählt und lag mit 133 A über der Grenze — zu Recht gemeldet.)
     {
       id: 'inverter-1',
       type: 'inverter',
       position: { x: 680, y: 480 },
-      data: { label: '900W Inverter', watts: 900, continuousPower: 900, hasRcd: true },
+      data: { label: '600W Inverter', watts: 600, continuousPower: 600, hasRcd: true },
     },
     {
       id: 'cons-fridge',
@@ -332,7 +333,7 @@ export const TEMPLATE_AUTARK = {
       id: 'cons-induct',
       type: 'consumer230v',
       position: { x: 980, y: 540 },
-      data: { label: 'Induktionskochfeld (1 Platte)', watts: 800 },
+      data: { label: 'Induktionskochfeld (1 Platte)', watts: 500 },
     },
   ] as Node[],
   edges: [

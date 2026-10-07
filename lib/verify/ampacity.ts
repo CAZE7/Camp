@@ -53,7 +53,8 @@ import {
 } from './deviceClasses';
 import { auditEvent, checkOrNotApplicable } from './events';
 import { behaviorOf, labelOfNode } from './graph';
-import { effectiveAmpacityA } from './physics';
+import { calculateCorrectedIz, effectiveAmpacityA } from './physics';
+import type { AuditEventDetails } from './types';
 import {
   effectiveOvercurrentDevice,
   protectionsOnCable,
@@ -360,6 +361,59 @@ function ampacityOf(context: PassContext, cable: CableModel): ReturnType<typeof 
 }
 
 /**
+ * Strukturierte Details für AMP-001-Befunde (Auftrag §14): Ib/In/Iz,
+ * die contributors des Strommodells und die volle Iz-Faktoren-Aufschlüsselung.
+ * Basis ist `calculateCorrectedIz` — dieselbe Rechnung wie `ampacityOf`,
+ * aber mit benannten Faktoren (keine Doppelberechnung, nur dieselben Inputs).
+ */
+function ibInIzDetails(
+  context: PassContext,
+  cable: CableModel,
+  ampacity: ReturnType<typeof effectiveAmpacityA> | null,
+  inA: number | null
+): AuditEventDetails {
+  const explanation = cable.currentExplanation;
+  const details: AuditEventDetails = {
+    ibA: cable.currentA,
+    inA,
+    izA: ampacity?.izA ?? null,
+  };
+  if (explanation) {
+    details.calculationMethod = explanation.calculationMethod;
+    if (explanation.contributingLoads.length > 0) {
+      details.contributors = explanation.contributingLoads.map((entry) => ({
+        componentId: entry.componentId,
+        label: entry.label,
+        role: entry.role,
+        contribution: entry.contribution,
+      }));
+    }
+    if (explanation.assumptions.length > 0) details.assumptions = [...explanation.assumptions];
+  }
+  if (ampacity && cable.crossSectionMm2 !== null) {
+    try {
+      const breakdown = calculateCorrectedIz(cable.crossSectionMm2, {
+        ambientC: context.options.ampacity.ambientC,
+        insulation: context.options.ampacity.insulation,
+        bundledCircuits: bundledCircuitsFor(context, cable.edgeId),
+      });
+      details.izBreakdown = {
+        baseIz: breakdown.baseIz,
+        ambientFactor: breakdown.ambientFactor,
+        groupingFactor: breakdown.groupingFactor,
+        installationFactor: breakdown.installationFactor,
+        plannerSafetyFactor: breakdown.plannerSafetyFactor,
+        correctedIz: breakdown.correctedIz,
+        explanation: breakdown.explanation,
+      };
+    } catch {
+      // Querschnitt nicht in der Tabelle — izBreakdown bleibt weg (izA ist null).
+    }
+  }
+  return details;
+}
+
+/**
  * Angesetzte Belastbarkeit des NÄCHSTEN größeren Normquerschnitts — unter
  * denselben Bedingungen wie das geprüfte Kabel (Umgebung, Isolierstoff,
  * Häufung). Ohne ihn kann die Abhilfe nur raten, was ein dickerer Leiter
@@ -443,6 +497,7 @@ export function checkIbInIz(context: PassContext): CheckResult {
           calculatedValue: ib,
           allowedLimit: ampacity.izA,
           unit: 'A',
+          details: ibInIzDetails(context, cable, ampacity, null),
           message: `Kabel ${label}: I_b = ${ib.toFixed(1)} A überschreitet die korrigierte Belastbarkeit I_z = ${ampacity.izA.toFixed(1)} A (Basis ${ampacity.baseAmpacityA} A × ${ampacity.combinedFactor.toFixed(3)}; f₁ = ${ampacity.ambientFactor.toFixed(3)}, f₂ = ${ampacity.groupingFactor.toFixed(3)})${deratingExplanation(ampacity)}.`,
           autoFixRemedy: remedyForAmpacity(
             ib,
@@ -499,6 +554,7 @@ export function checkIbInIz(context: PassContext): CheckResult {
           allowedLimit: device.ratedCurrentA,
           unit: 'A',
           equation: 'I_b ≤ I_n ≤ I_z (hier: I_b > I_n)',
+          details: ibInIzDetails(context, cable, ampacity, device.ratedCurrentA),
           message: `Kabel ${label}: Betriebsstrom I_b = ${ib.toFixed(1)} A liegt über dem Nennstrom I_n = ${device.ratedCurrentA} A des wirksamen Schutzorgans (${describeDevice(device)})${effective.host === 'node' ? ` im Bauteil „${labelOfNode(context.graph, effective.hostId)}“` : ` auf Leitung „${effective.hostId}“`}.`,
           autoFixRemedy: `Schutzorgan mit I_n ≥ ${ib.toFixed(1)} A einsetzen (Vorschlag ${selectFuseSize(ib, cable.crossSectionMm2)} A), sofern I_n ≤ I_z = ${ampacity.izA.toFixed(1)} A bleibt — sonst Querschnitt erhöhen.`,
         })
@@ -514,6 +570,7 @@ export function checkIbInIz(context: PassContext): CheckResult {
           allowedLimit: ampacity.izA,
           unit: 'A',
           equation: 'I_b ≤ I_n ≤ I_z (hier: I_n > I_z)',
+          details: ibInIzDetails(context, cable, ampacity, device.ratedCurrentA),
           message: `Kabel ${label}: Nennstrom I_n = ${device.ratedCurrentA} A des Schutzorgans liegt über der Leitungsbelastbarkeit I_z = ${ampacity.izA.toFixed(1)} A.`,
           autoFixRemedy: remedyForFuseLargerThanAmpacity(ib, cable.crossSectionMm2, ampacity.izA),
         })

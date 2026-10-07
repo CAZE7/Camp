@@ -452,16 +452,20 @@ describe('lib/verify/graph — Randfälle der Modellbildung', () => {
     expect(graph.cableById.get('e-dach')?.crossSectionMm2).toBeNull();
   });
 
-  it('hält eine Leitung ohne Deklaration ihres Verbrauchers bei 0 A — aber ohne Aussage', () => {
+  it('hält jede Leitung mit unbestimmter Last als null (Datenlücke, keine 0-A-Erfindung)', () => {
     const plan = healthyDcPlan();
     const graph = buildConductionGraph(
       plan.nodes.map((node) => (node.id === 'load1' ? fixtureNode('load1', 'consumer') : node)),
       plan.edges
     );
+    // Der Lastabgang selbst ist nicht bestimmbar …
     expect(graph.cableById.get('e-fuse-load')?.currentA).toBeNull();
-    // Die Zuleitung Batterie → Sicherung endet an keinem Verbraucher: dort
-    // bleibt der berechnete 0-A-Wert stehen (die Last ist auf diesem Abschnitt
-    // nicht deklariert und wird nicht geraten).
-    expect(graph.cableById.get('e-bat-fuse')?.currentA).toBe(0);
+    // … und auch die Zuleitung Batterie → Sicherung: jeder Pfad der
+    // unbestimmten Last zur Batterie läuft durch diese Kante, daher ist ihr
+    // Strom ebenfalls nicht bestimmbar. (Semantikwechsel vom Audit: früher
+    // stand hier der erfundene Wert 0 A, der eine Datenlücke als „gesund“
+    // ausgab — Regel M: keine stille Ersatzannahme.)
+    expect(graph.cableById.get('e-bat-fuse')?.currentA).toBeNull();
+    expect(graph.cableById.get('e-bat-fuse')?.currentSource).toContain('nicht bestimmbar');
   });
 });

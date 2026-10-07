@@ -4,10 +4,10 @@
       {
         "data": {
           "autoWired": true,
-          "crossSection": 4,
+          "crossSection": 2.5,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
-          "fuseSize": 20,
+          "fuseSize": 15,
           "fuseType": "anl",
           "fuseWarning": false,
           "length": 0.2,
@@ -22,10 +22,10 @@
       {
         "data": {
           "autoWired": true,
-          "crossSection": 6,
+          "crossSection": 4,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
-          "fuseSize": 20,
+          "fuseSize": 15,
           "fuseType": "anl",
           "fuseWarning": false,
           "length": 2,
@@ -40,7 +40,7 @@
       {
         "data": {
           "autoWired": true,
-          "crossSection": 6,
+          "crossSection": 4,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseWarning": false,
@@ -56,7 +56,7 @@
       {
         "data": {
           "autoWired": true,
-          "crossSection": 4,
+          "crossSection": 1.5,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseWarning": false,
@@ -72,7 +72,7 @@
       {
         "data": {
           "autoWired": true,
-          "crossSection": 4,
+          "crossSection": 1.5,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseWarning": false,
@@ -88,10 +88,10 @@
       {
         "data": {
           "autoWired": true,
-          "crossSection": 4,
+          "crossSection": 1.5,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
-          "fuseSize": 20,
+          "fuseSize": 5,
           "fuseType": "anl",
           "fuseWarning": false,
           "length": 1,
@@ -106,7 +106,7 @@
       {
         "data": {
           "autoWired": true,
-          "crossSection": 4,
+          "crossSection": 1.5,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseWarning": false,
@@ -122,7 +122,7 @@
       {
         "data": {
           "autoWired": true,
-          "crossSection": 6,
+          "crossSection": 4,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseSize": 5,
@@ -140,7 +140,7 @@
       {
         "data": {
           "autoWired": true,
-          "crossSection": 2.5,
+          "crossSection": 4,
           "dropWarning": false,
           "edgeDomain": "DC_12V",
           "fuseWarning": false,
@@ -216,7 +216,7 @@
       {
         "data": {
           "label": "12V Sicherungskasten",
-          "rating": 20
+          "rating": 5
         },
         "id": "auto:2:12v-sicherungskasten",
         "position": {
@@ -289,27 +289,27 @@
   },
   "electrical": {
     "cumulativeDrops": {
-      "auto:0:plus-schiene": 0.034,
-      "auto:1:minus-schiene": 0.121,
-      "auto:2:12v-sicherungskasten": 0.293,
-      "auto:3:smart-shunt": 0.034,
+      "auto:0:plus-schiene": 0.031,
+      "auto:1:minus-schiene": 0.179,
+      "auto:2:12v-sicherungskasten": 0.179,
+      "auto:3:smart-shunt": 0.051,
       "battery-1": 0,
-      "cons-fridge": 0.379,
+      "cons-fridge": 0.308,
       "mppt-1": 0,
       "solar-1": 0
     },
     "edgeCurrents": {
-      "e-auto-1": 20,
-      "e-auto-10": 20,
-      "e-auto-11": 20,
-      "e-auto-2": 20,
-      "e-auto-3": 20,
-      "e-auto-4": 20,
-      "e-auto-5": 20,
+      "e-auto-1": 11.11,
+      "e-auto-10": 11.11,
+      "e-auto-11": 11.11,
+      "e-auto-2": 11.11,
+      "e-auto-3": 11.11,
+      "e-auto-4": 5,
+      "e-auto-5": 0,
       "e-auto-6": 5,
       "e-auto-7": 5,
-      "e-auto-8": 11.11,
-      "e-auto-9": 11.11
+      "e-auto-8": 0,
+      "e-auto-9": 0
     },
     "systemVoltage": 12.8
   },

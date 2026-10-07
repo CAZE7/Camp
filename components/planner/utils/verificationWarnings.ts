@@ -120,6 +120,9 @@ export function verificationWarning(event: AuditEvent, index: number): Validatio
     // Nur bei einer Lücke gesetzt: „false“ wäre in der Ansicht ein stiller
     // Gegensatz zu „geprüft“, obwohl es nur „Befund, keine Lücke“ heißt.
     ...(isGap ? { unverified: true } : {}),
+    // Strukturierte Details (Ib/In/Iz, contributors, Iz-Faktoren) — Grundlage
+    // der Wertzeile und des „Warum?\" in der Warn-Zentrale.
+    ...(event.details ? { details: event.details } : {}),
     message: `${prefix}${event.message}`,
   };
 }

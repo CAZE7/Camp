@@ -122,6 +122,164 @@ export function consequence(warning: ValidationWarning) {
  */
 const MEASURED_NUMBER = /^[≈≤<>~+-]?\s*\d+(?:[.,]\d+)?\s*$/;
 
+/** Deutsches Zahlformat (Komma, max. 2 Nachkommastellen) für Detailwerte. */
+function fmtA(value: number): string {
+  const fixed = Math.abs(value) < 100 ? value.toFixed(1) : String(Math.round(value));
+  return fixed.replace('.', ',');
+}
+
+/**
+ * Detailwerte einer AMP-001-Karte (Auftrag §16): „Leitung überlastet /
+ * Betriebsstrom 158,7 A / Zulässig 120,4 A / Differenz +38,3 A". Gesetzt nur,
+ * wenn das Detail echte Zahlen trägt (Ib UND Iz vorhanden).
+ */
+function ampacityValues(warning: ValidationWarning): { ib: number; iz: number; diff: number } | null {
+  const details = warning.details;
+  if (!details) return null;
+  const ib = details.ibA;
+  const iz = details.izA;
+  if (typeof ib !== 'number' || typeof iz !== 'number' || !Number.isFinite(iz) || iz <= 0) return null;
+  return { ib, iz, diff: ib - iz };
+}
+
+/**
+ * Ein Befund: Titel, Problem, (kompakte) Werte, Folge, Abhilfe und die
+ * aufklappbare „Warum?\"-Sektion (contributors + Iz-Faktoren + Annahmen).
+ * Separate Komponente, damit jeder Befund seinen eigenen Expansionszustand
+ * hält (keine gemeinsame State-Leckage über die Liste).
+ */
+function FindingCard({
+  warning,
+  onFix,
+  onClose,
+}: {
+  warning: ValidationWarning;
+  onFix?: (warning: ValidationWarning) => void;
+  onClose: () => void;
+}) {
+  const [whyOpen, setWhyOpen] = useState(false);
+  const style = TYPE_STYLES[warning.type];
+  const values = ampacityValues(warning);
+  const details = warning.details;
+  const hasWhy =
+    (details?.contributors?.length ?? 0) > 0 ||
+    details?.izBreakdown !== undefined ||
+    (details?.assumptions?.length ?? 0) > 0 ||
+    details?.protectionChain?.length !== undefined;
+
+  return (
+    <li className={`rounded-lg border-l-4 p-3 ${style.card}`}>
+      <div className="flex items-start gap-2">
+        {style.icon}
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-bold text-foreground">{warning.title || style.label}</p>
+
+          {/* Kompakte Wertzeile (AMP-001): Betriebsstrom / Zulässig / Differenz. */}
+          {values && (
+            <p
+              className={`mt-1 font-mono text-xs font-semibold ${
+                values.ib > values.iz ? 'text-warn-critical' : 'text-ink-soft'
+              }`}
+            >
+              {values.ib > values.iz ? 'Leitung überlastet' : 'Leitung im grünen Bereich'} · Betriebsstrom{' '}
+              {fmtA(values.ib)} A · Zulässig {fmtA(values.iz)} A
+              {values.ib > values.iz ? ` · Differenz +${fmtA(values.diff)} A` : ''}
+            </p>
+          )}
+
+          <p className="mt-1 text-sm leading-relaxed text-ink-soft">
+            <strong>Problem:</strong> {toPlainExplanation(warning.message)}
+          </p>
+          {(warning.measuredValue !== undefined || warning.expectedValue !== undefined) && !values && (
+            <p className="mt-1 font-mono text-xs leading-relaxed text-ink-soft">
+              Ist: {valueWithUnit(warning.measuredValue, warning.unit)}
+              {' · Soll: '}
+              {valueWithUnit(warning.expectedValue, warning.unit)}
+              {warning.source ? ` · Regel: ${warning.source}` : ''}
+            </p>
+          )}
+          <p className="mt-1 text-sm leading-relaxed text-ink-soft">{consequence(warning)}</p>
+          <p className="mt-1 text-sm font-semibold leading-relaxed text-foreground">{nextStep(warning)}</p>
+
+          {/* „Warum?" — maschinenlesbare Begründung aus dem Strom-/Iz-Modell. */}
+          {hasWhy && (
+            <div className="mt-2">
+              <button
+                type="button"
+                onClick={() => setWhyOpen((value) => !value)}
+                aria-expanded={whyOpen}
+                className="flex min-h-8 items-center gap-1 rounded text-xs font-semibold text-foreground underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <ChevronDown className={`h-3.5 w-3.5 transition-transform ${whyOpen ? 'rotate-180' : ''}`} />
+                Warum?
+              </button>
+              {whyOpen && (
+                <div className="mt-2 rounded border border-border bg-card/60 p-2 font-mono text-[11px] leading-relaxed text-ink-soft">
+                  {details?.calculationMethod && (
+                    <p>
+                      Methode: <strong>{details.calculationMethod}</strong>
+                    </p>
+                  )}
+                  {details?.contributors && details.contributors.length > 0 && (
+                    <div className="mt-1">
+                      <p className="font-sans font-semibold">Beiträge zum Betriebsstrom:</p>
+                      <ul className="mt-0.5 flex flex-col">
+                        {details.contributors.map((entry) => (
+                          <li key={`${entry.componentId}-${entry.role}`}>
+                            {entry.label} ({entry.componentId}) — {fmtA(entry.contribution)} A{' '}
+                            {entry.role === 'load' ? '(Last)' : '(Quelle)'}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {details?.protectionChain && details.protectionChain.length > 0 && (
+                    <p className="mt-1">Schutzkette: {details.protectionChain.join(' → ')}</p>
+                  )}
+                  {details?.izBreakdown && (
+                    <p className="mt-1">
+                      I_z = {fmtA(details.izBreakdown.baseIz)} A Basis × f₁{' '}
+                      {details.izBreakdown.ambientFactor.toFixed(2)} × f₂{' '}
+                      {details.izBreakdown.groupingFactor.toFixed(2)} × f₃{' '}
+                      {details.izBreakdown.installationFactor.toFixed(2)} × Planerpauschale{' '}
+                      {details.izBreakdown.plannerSafetyFactor.toFixed(2)} ={' '}
+                      {fmtA(details.izBreakdown.correctedIz)} A
+                    </p>
+                  )}
+                  {details?.assumptions && details.assumptions.length > 0 && (
+                    <div className="mt-1 font-sans">
+                      <p className="font-semibold">Annahmen:</p>
+                      <ul className="mt-0.5 list-disc pl-4">
+                        {details.assumptions.map((assumption) => (
+                          <li key={assumption}>{assumption}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {warning.focusId && onFix && (
+            <Button
+              variant="outline"
+              onClick={() => {
+                onFix(warning);
+                onClose();
+              }}
+              className="mt-3 min-h-11 gap-1.5 bg-card text-sm"
+            >
+              <Crosshair className="h-4 w-4" />
+              Im Plan zeigen
+            </Button>
+          )}
+        </div>
+      </div>
+    </li>
+  );
+}
+
 export function valueWithUnit(value: string | undefined, unit: string | undefined): string {
   if (value === undefined) return '—';
   if (!unit) return value;
@@ -195,6 +353,24 @@ export function nextStep(warning: ValidationWarning) {
   return 'So löst du es: Zeige die betroffene Stelle im Plan und ergänze die dort beschriebene Komponente.';
 }
 
+/**
+ * Gruppierung der Befunde für die Kopfzeile (Auftrag §17):
+ *   - Sicherheitsfehler: kritische Sicherheitsbefunde
+ *   - Planungsfehler:    kritische Nicht-Sicherheitsbefunde + alle Warnungen
+ *   - Angaben fehlen:    Hinweise (Datenlücken — nie „kritisch“)
+ */
+function groupCounts(warnings: ValidationWarning[]) {
+  let safety = 0;
+  let planning = 0;
+  let gaps = 0;
+  for (const warning of warnings) {
+    if (warning.type === 'info') gaps += 1;
+    else if (warning.type === 'critical' && warning.category === 'safety') safety += 1;
+    else planning += 1;
+  }
+  return { safety, planning, gaps };
+}
+
 export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -208,6 +384,7 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
     warnings.forEach((warning) => value[warning.type]++);
     return value;
   }, [warnings]);
+  const groups = useMemo(() => groupCounts(warnings), [warnings]);
 
   useEffect(() => {
     const openPanel = () => setOpen(true);
@@ -329,7 +506,19 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
           <div className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-border bg-card px-4 py-3">
             <div>
               <h3 className="text-sm font-bold text-foreground">Prüfung deiner Anlage</h3>
-              <p className="text-xs text-muted-foreground">Kritische Punkte stehen zuerst.</p>
+              {/* Urteilszeile (Auftrag §17): kritisch = nur severity critical. */}
+              <p
+                className={`text-xs font-semibold ${
+                  counts.critical > 0 ? 'text-warn-critical' : 'text-moss'
+                }`}
+              >
+                {counts.critical > 0 ? '🔴 Anlage nicht sicher' : '✅ Keine kritischen Fehler'}
+              </p>
+              {/* Gruppierung: Sicherheit / Planung / fehlende Angaben. */}
+              <p className="text-xs text-muted-foreground">
+                {groups.safety} Sicherheitsfehler · {groups.planning} Planungsfehler · {groups.gaps} Angaben
+                fehlen
+              </p>
             </div>
             <button
               type="button"
@@ -342,47 +531,9 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
           </div>
 
           <ul className="flex flex-col gap-3 p-3">
-            {sorted.map((warning) => {
-              const style = TYPE_STYLES[warning.type];
-              return (
-                <li key={warning.id} className={`rounded-lg border-l-4 p-3 ${style.card}`}>
-                  <div className="flex items-start gap-2">
-                    {style.icon}
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-bold text-foreground">{warning.title || style.label}</p>
-                      <p className="mt-1 text-sm leading-relaxed text-ink-soft">
-                        <strong>Problem:</strong> {toPlainExplanation(warning.message)}
-                      </p>
-                      {(warning.measuredValue !== undefined || warning.expectedValue !== undefined) && (
-                        <p className="mt-1 font-mono text-xs leading-relaxed text-ink-soft">
-                          Ist: {valueWithUnit(warning.measuredValue, warning.unit)}
-                          {' · Soll: '}
-                          {valueWithUnit(warning.expectedValue, warning.unit)}
-                          {warning.source ? ` · Regel: ${warning.source}` : ''}
-                        </p>
-                      )}
-                      <p className="mt-1 text-sm leading-relaxed text-ink-soft">{consequence(warning)}</p>
-                      <p className="mt-1 text-sm font-semibold leading-relaxed text-foreground">
-                        {nextStep(warning)}
-                      </p>
-                      {warning.focusId && onFix && (
-                        <Button
-                          variant="outline"
-                          onClick={() => {
-                            onFix(warning);
-                            setOpen(false);
-                          }}
-                          className="mt-3 min-h-11 gap-1.5 bg-card text-sm"
-                        >
-                          <Crosshair className="h-4 w-4" />
-                          Im Plan zeigen
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </li>
-              );
-            })}
+            {sorted.map((warning) => (
+              <FindingCard key={warning.id} warning={warning} onFix={onFix} onClose={() => setOpen(false)} />
+            ))}
           </ul>
         </div>
       )}

@@ -25,6 +25,7 @@
  */
 
 import type { HandleDomainValue } from '../domain/handleDomains';
+import type { CableCurrentExplanation } from '../electricalGraph/currentFlow';
 
 // ============================================================================
 // 1. GRUNDVOKABULAR
@@ -420,6 +421,11 @@ export interface CableModel {
   currentA: number | null;
   /** Quelle des Stromwerts (Modellkennzeichnung, z. B. `calculateEdgeCurrent`). */
   currentSource: string;
+  /**
+   * Topologieabhängige Stromerklärung (contributors, Methode, Annahmen) —
+   * die nachvollziehbare Grundlage von `currentA` (Auftrag: explainable Ib).
+   */
+  currentExplanation?: CableCurrentExplanation;
   /** Schutzorgane, die IN dieser Leitung sitzen (Kantendaten), mit Einbauort. */
   protections: readonly ProtectionPlacement[];
 }
@@ -484,6 +490,46 @@ export interface ConductionGraph {
  *   - eine exakte Remediation („Querschnitt auf 10 mm² erhöhen ODER Sicherung
  *     auf höchstens 25 A verringern“).
  */
+/**
+ * Strukturierte, maschinenlesbare Details eines Befunds (Auftrag §14):
+ * Werte, contributors und Faktoren — die Grundlage der UI-Karte
+ * („Betriebsstrom 158,7 A / Zulässig 120,4 A / [Warum?]“).
+ *
+ * HASH-SICHER: Das Zertifikat-Hash deckt nur Regelfolgen/Status/Abdeckung
+ * ab, keine Events — `details` kann also ohne Hashbruch wachsen.
+ */
+export interface AuditEventDetails {
+  /** Betriebsstrom Ib in A; `null` = nicht bestimmbar. */
+  ibA?: number | null;
+  /** Nennstrom In des Schutzorgans in A. */
+  inA?: number | null;
+  /** Korrigierte Belastbarkeit Iz in A. */
+  izA?: number | null;
+  /** Berechnungsmethode des Ib-Werts (Stromfluss-Modell). */
+  calculationMethod?: string;
+  /** Beiträge zum Ib (wer liefert/zieht den Strom auf dieser Kante). */
+  contributors?: readonly {
+    componentId: string;
+    label: string;
+    role: 'load' | 'source';
+    contribution: number;
+  }[];
+  /** Explizite Annahmen des Strommodells (z. B. Parallel-Aufteilung). */
+  assumptions?: readonly string[];
+  /** Aufschlüsselung der Iz-Korrektur (Auftrag §7). */
+  izBreakdown?: {
+    baseIz: number;
+    ambientFactor: number;
+    groupingFactor: number;
+    installationFactor: number;
+    plannerSafetyFactor: number;
+    correctedIz: number;
+    explanation: string;
+  };
+  /** Gefundene Schutzkette (Knoten-Labels, Quelle → Verbraucher). */
+  protectionChain?: readonly string[];
+}
+
 export interface AuditEvent {
   ruleId: RuleId;
   severity: VerificationSeverity;
@@ -506,6 +552,8 @@ export interface AuditEvent {
   autoFixRemedy: string;
   /** Gegenbeispiel/Trace (z. B. Pfad Knoten→Knoten), falls vorhanden. */
   counterexample?: readonly string[];
+  /** Strukturierte Befund-Details (Werte, contributors, Faktoren). */
+  details?: AuditEventDetails;
   /**
    * REINES ABDECKUNGS-EREIGNIS: Die Regel gehörte im Profil/Kontext zum Lauf,
    * hatte aber im Plan **keine Eingabe** (0 betrachtete Entitäten). Es ist

@@ -1,8 +1,7 @@
 import type { Node, Edge } from '@xyflow/react';
 import { performAutoWiring } from '../../lib/autoWire';
-import { getSystemVoltage, calculateEdgeCurrent } from '../../lib/vde-standards';
-import { acCurrentA } from '../../lib/autoWire/sizing';
-import { getEdgeDomain } from '../../lib/electrical';
+import { getSystemVoltage } from '../../lib/vde-standards';
+import { getCableCurrents } from '../../lib/electricalGraph/currentFlow';
 import { relevantCumulativeDrop } from '../../lib/autoWire/sizing';
 import type { CableEdge } from '../../lib/autoWire/primitives';
 import { routeAllCables, type RouteEdgeRef } from '../../components/edges/utils/routeAll';
@@ -47,8 +46,11 @@ export type GoldenEdge = {
 
 export type GoldenElectrical = {
   systemVoltage: number;
-  /** pro Kante: berechneter Strom (A), 2 Nachkommastellen */
-  edgeCurrents: Record<string, number>;
+  /**
+   * pro Kante: berechneter Strom (A) aus dem Topologie-Strommodell, 2
+   * Nachkommastellen; `null` = nicht bestimmbar (Datenlücke) — keine 0 A.
+   */
+  edgeCurrents: Record<string, number | null>;
   /** pro Knoten: relevanter kumulierter Spannungsfall (V), 3 Nachkommastellen */
   cumulativeDrops: Record<string, number>;
 };
@@ -134,27 +136,15 @@ export function captureGoldenMaster(input: GoldenPlanInput): GoldenMaster {
   // Stufe 2: Electrical (Systemspannung, Kantenströme, Spannungsfälle)
   const sysVoltage = getSystemVoltage(nodes);
   const nodeMap = new Map(nodes.map((n) => [n.id, n]));
-  const edgeCurrents: Record<string, number> = {};
+  // EINE Stromquelle (AUDIT §13): dasselbe Topologie-Strommodell, das die
+  // Verifikations-Engine und die Kanten-Anzeige bewerten — nicht die alte
+  // Endpunkt-Heuristik (calculateEdgeCurrent/acCurrentA). `null` (Datenlücke,
+  // nicht bestimmbar) wird als `null` eingefroren, nicht als 0 A.
+  const model = getCableCurrents(nodes, edges);
+  const edgeCurrents: Record<string, number | null> = {};
   for (const e of byId(edges)) {
-    const sourceNode = nodeMap.get(e.source);
-    const targetNode = nodeMap.get(e.target);
-    // ELE-003: Domänenbestimmung wie im Renderer (CableEdge) — früher liefen
-    // AC-Kanten still durch die DC-Strom-BFS und froren Strom-Abweichungen
-    // am Wechselrichter ein. Jetzt bekommt jede Kante ihr eigenes Modell.
-    let domain =
-      e.data?.edgeDomain ?? getEdgeDomain(sourceNode?.type, targetNode?.type, e.sourceHandle, e.targetHandle);
-    if (
-      ['solar', 'roofSolar'].includes(sourceNode?.type || '') ||
-      ['solar', 'roofSolar'].includes(targetNode?.type || '')
-    ) {
-      domain = 'Solar';
-    }
-    edgeCurrents[e.id] = round(
-      domain === 'AC_230V'
-        ? acCurrentA(sourceNode, targetNode, nodes, edges as CableEdge[])
-        : calculateEdgeCurrent(sourceNode, targetNode, nodes, sysVoltage, edges), // ELE-005
-      2
-    );
+    const current = model.byEdgeId.get(e.id)?.operatingCurrent;
+    edgeCurrents[e.id] = current === null || current === undefined ? null : round(current, 2);
   }
   const cumulativeDrops: Record<string, number> = {};
   for (const n of byId(nodes)) {

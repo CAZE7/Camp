@@ -22,8 +22,8 @@ import {
   FUSE_MAX_UNPROTECTED_LENGTH_M,
   FUSE_MAX_UNPROTECTED_SOURCE,
 } from '../../lib/electrical';
-import { AC_SYSTEM_VOLTAGE, calculateEdgeCurrent, getSystemVoltage } from '../../lib/vde-standards';
-import { acCurrentA } from '../../lib/autoWire/sizing';
+import { AC_SYSTEM_VOLTAGE, getSystemVoltage } from '../../lib/vde-standards';
+import { getCableCurrents } from '../../lib/electricalGraph/currentFlow';
 
 /** Wie lange ein angetipptes Kabel sein Label als Tooltip zeigt (Touch). */
 export const TAP_LABEL_TIMEOUT_MS = 5000;
@@ -111,7 +111,8 @@ export type EdgeErrorRule =
   | 'fuse-too-large'
   | 'fuse-below-minimum'
   | 'main-fuse-distance'
-  | 'fuse-offset';
+  | 'fuse-offset'
+  | 'current-undetermined';
 
 export interface EdgeError {
   ruleId: EdgeErrorRule;
@@ -558,6 +559,7 @@ const CableEdge = function ({
     recommendedCrossSection,
     crossSectionUndersized,
     I,
+    currentUndetermined,
     sourceNode,
     targetNode,
     edgeDomain,
@@ -596,9 +598,15 @@ const CableEdge = function ({
 
     const isAC = edgeDomain === 'AC_230V';
     const sysVoltage = isAC ? AC_SYSTEM_VOLTAGE : getSystemVoltage(getNodes());
-    const I = isAC
-      ? acCurrentA(sourceNode, targetNode, getNodes(), siblingEdges) // AUDIT ELE-004: Anzeige = Dimensionierung
-      : calculateEdgeCurrent(sourceNode, targetNode, getNodes(), sysVoltage, siblingEdges); // ELE-005: Kanten für Insel-BFS
+    // Topologieabhängiger Betriebsstrom aus dem gemeinsamen Strommodell
+    // (eine Rechnung pro Render, gecacht — dieselbe Quelle wie Engine und
+    // Live-Validierung). `null` = nicht bestimmbar (Datenlücke): Die Anzeige
+    // rechnet dann mit 0 A, meldet es aber als eigenen Befund statt eine
+    // Zahl zu erfinden.
+    const modelCurrent =
+      getCableCurrents(getNodes(), siblingEdges).byEdgeId.get(id)?.operatingCurrent ?? null;
+    const I = modelCurrent ?? 0;
+    const currentUndetermined = modelCurrent === null;
 
     // AUDIT ELE-001: Anzeige/Prüfung rechnen mit dem VERLEGTEN Querschnitt,
     // nicht mit der Empfehlung. `calculateCrossSection(…, data.crossSection)`
@@ -633,6 +641,7 @@ const CableEdge = function ({
       strokeWidth,
       animationDuration,
       I,
+      currentUndetermined,
       sourceNode,
       targetNode,
       edgeDomain,
@@ -694,6 +703,21 @@ const CableEdge = function ({
     length,
     totalDropPercentage,
   });
+
+  // EHRLICHE MELDUNG statt erfundener Zahl (Prinzip: Datenlücke ≠ Fehler):
+  // Wenn das Strommodell den Betriebsstrom der Leitung nicht bestimmen kann
+  // (Last ohne Watt-/Ampere-Angabe), wird dies als Warnung angezeigt — die
+  // Engine meldet dieselbe Kante parallel als „nicht prüfbar" (Gap-Prinzip).
+  // Es wird NICHT stillschweigend mit 0 A gerechnet, als wäre alles sicher.
+  if (currentUndetermined) {
+    errors.push({
+      ruleId: 'current-undetermined',
+      severity: 'warning',
+      message:
+        'Ib nicht bestimmbar — Betriebsstrom unklar (Last ohne W/A-Angabe). Thermik & Spannungsfall nicht bewertet!',
+      source: 'Strommodell: Datenlücke (die Engine meldet die Kante parallel als „nicht prüfbar“)',
+    });
+  }
   const stroke = hasDropError ? WIRE_COLORS.error : getWireColor({ edgeDomain, isPlus });
   const emphasized = selected || isHovered;
   const isBackbone = useMemo(

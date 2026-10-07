@@ -11,12 +11,16 @@
  *      `crossSection` wird `null` — nicht 2,5 mm²; eine fehlende Länge wird
  *      `null` — nicht 0 m (0 m hätte keinen Spannungsfall und würde die
  *      Leitung stillschweigend „gesund“ rechnen).
- *   2. **Eine Autorität je Frage.** Domäne kommt aus
- *      `getHandleDomain` (`lib/domain/handleDomains.ts`), der Betriebsstrom
- *      aus `calculateEdgeCurrent` (DC) bzw. `acCurrentA` (AC) — dieselbe
- *      Quelle, die AutoWire dimensioniert und die Live-Validierung anzeigt
- *      (AUDIT ELE-001/ELE-009). Die Verifikation erfindet keine zweite
- *      Stromrechnung.
+ *   2. **Eine Autorität je Frage.** Die Kabel-Domäne kommt aus der
+ *      Edge-Domänen-Autorität (`getEdgeDomain`, gespeicherter Wert gewinnt),
+ *      der topologieabhängige Betriebsstrom aus `currentFlow`
+ *      (`lib/electricalGraph/currentFlow.ts`) — dieselbe Quelle, die die
+ *      Edge-Labels und die Live-Validierung anzeigen. Port-Domänen von
+ *      Durchführungen (Schiene/Leerrohr/Sicherungskasten/Shunt/Masse) werden
+ *      aus den angeschlossenen Kabeln verfeinert, solange diese einheitlich
+ *      sind (AUDIT RC-2: ein 230-V-Kreis über eine AC-Schiene ist keine
+ *      „Domänenkreuzung“ und der AC-Schutzpfad darf die Schiene passieren).
+ *      Die Verifikation erfindet keine zweite Stromrechnung.
  *
  * Die Handle-Tabelle dupliziert bewusst den Registry-Vertrag (lib/ darf nicht
  * aus components/ importieren, ARCH-Regel A). Dass beide übereinstimmen,
@@ -24,19 +28,14 @@
  * Kopie unbemerkt entstehen (Präzedenz: `lib/domain/handleDomains.test.ts`).
  */
 
-import { acCurrentA } from '../autoWire/sizing';
 import type { CableEdgeData } from '../domain/cableEdgeData';
 import type { Edge, Node } from '../domain/graph';
+import { edgeDomainOf, getCableCurrents } from '../electricalGraph/currentFlow';
 import { isFuseType, type FuseType } from '../shortCircuit';
 import { solarDropBasisVoltageOf } from '../solar';
 import { safeText } from '../safeText';
-import { parseDecimalString, parseQuantity, mm2, meters, toNumber, volts } from '../units';
-import {
-  calculateEdgeCurrent,
-  getHandleDomain,
-  getSystemVoltage,
-  isStarterBatteryNode,
-} from '../vde-standards';
+import { parseDecimalString, parseQuantity, mm2, meters, toNumber } from '../units';
+import { getHandleDomain, getSystemVoltage, isStarterBatteryNode } from '../vde-standards';
 import type { HandleDomainValue } from '../domain/handleDomains';
 
 import { productClassOfFuseType } from './deviceClasses';
@@ -274,29 +273,26 @@ function fuseNodeDevice(data: Record<string, unknown> | undefined): ProtectionDe
   };
 }
 
-/**
- * Ist am Verbraucher des Kabels überhaupt eine Leistung/ein Strom deklariert?
- *
- * `calculateEdgeCurrent` liefert für einen Verbraucher OHNE Angabe 0 A. Diese
- * Null ist keine Messung, sondern eine Datenlücke — sie würde I_b ≤ I_n ≤ I_z
- * stillschweigend erfüllen und einen unbekannten Strom als „gesund“ ausgeben.
- * Deshalb wird sie hier zu `null` (Regel M: keine stille Ersatzannahme).
- */
-function declaresLoadCurrent(node: Node | undefined): boolean {
-  if (!node) return false;
-  const data = node.data as Record<string, unknown> | undefined;
-  if (!data) return false;
-  for (const field of ['watts', 'amps', 'continuousPower', 'acCurrentA']) {
-    if (numberField(data, field) !== null) return true;
+/** Deutsche Kennzeichnung der Strommethode des Stromfluss-Modells. */
+function currentFlowMethodLabel(method: string): string {
+  switch (method) {
+    case 'explicit-totalAmps':
+      return 'deklarierte totalAmps';
+    case 'solar-panel':
+      return 'Panelstrom (String-Kollaps, MPP)';
+    case 'flow-model':
+      return 'topologieabhängiger Stromfluss';
+    case 'string-internal':
+      return 'Serien-String (voller Stringstrom)';
+    case 'no-flow':
+      return 'keine Last/Quelle im Abschnitt';
+    case 'undetermined':
+      return 'nicht bestimmbar';
+    case 'excluded':
+      return 'kein Stromleiter';
+    default:
+      return method;
   }
-  return false;
-}
-
-/** Verbraucherknoten an einem Kabelende (Quelle oder Ziel), falls vorhanden. */
-function loadEndOf(source: Node | undefined, target: Node | undefined): Node | undefined {
-  if (target && componentBehavior(target).kind === 'LOAD') return target;
-  if (source && componentBehavior(source).kind === 'LOAD') return source;
-  return undefined;
 }
 
 // ============================================================================
@@ -494,6 +490,14 @@ export function buildConductionGraph(
   const nodeById = new Map(nodeList.map((node) => [node.id, node]));
   const systemVoltageV = options.systemVoltageV ?? toNumber(getSystemVoltage(nodeList));
 
+  // EINE Stromrechnung pro Planlauf (topologieabhängig, gecacht) — alle
+  // Kanten-Ströme des Graphen kommen aus diesem Modell.
+  // NUR die Test-Überschreibung `options.systemVoltageV` wird an das Modell
+  // weitergegeben; im Normalbetrieb bleibt der Cache-Key auf `null`, damit
+  // Engine, Edge-Label und Live-Validierung dieselbe Rechnung teilen (das
+  // Modell löst die Spannung selbst aus den Knoten auf — eine Quelle).
+  const currentModel = getCableCurrents(nodeList, edgeList, options.systemVoltageV);
+
   const componentPorts = new Map<string, PortRef[]>();
   const components = new Map<string, CircuitComponent>();
 
@@ -558,39 +562,43 @@ export function buildConductionGraph(
       });
     }
 
-    const carrier = carrierFor(from.sourceDomain, [from.nodeType, to.nodeType]);
+    // Kabel-Domäne aus der Edge-Domänen-Autorität (gespeicherter Wert
+    // gewinnt, sonst getEdgeDomain; Solar-Vorrang) — nicht aus dem From-Port
+    // (AUDIT RC-2: ein Busbar-Port ist knotentypisch DC, das Kabel kann AC sein).
+    const edgeDomain = edgeDomainOf(edge as Edge<CableEdgeData>, sourceNode.type, targetNode.type);
+    const carrier = carrierFor(edgeDomain, [from.nodeType, to.nodeType]);
     if (carrier === 'water') continue; // Fluidik ist kein Kabel
 
     const data = edge.data;
-    const isAc = from.domain === 'AC_LV' || to.domain === 'AC_LV';
+    const isAc = edgeDomain === 'AC_230V';
     const crossSection = parseQuantity(data?.crossSection, mm2);
     const length = parseQuantity(data?.length, meters);
 
-    const computedCurrentA = isAc
-      ? toNumber(acCurrentA(sourceNode, targetNode, nodeList, edgeList))
-      : toNumber(calculateEdgeCurrent(sourceNode, targetNode, nodeList, volts(systemVoltageV), edgeList));
-    const loadEnd = loadEndOf(sourceNode, targetNode);
-    const currentIsFabricatedZero =
-      !isAc && computedCurrentA === 0 && loadEnd !== undefined && !declaresLoadCurrent(loadEnd);
-    const currentA = currentIsFabricatedZero ? null : computedCurrentA;
-    const currentSource = currentIsFabricatedZero
-      ? `nicht bestimmbar: ${loadEnd?.type ?? 'Verbraucher'} „${loadEnd?.id ?? '?'}“ deklariert weder Leistung (W) noch Strom (A)`
-      : isAc
-        ? 'acCurrentA (lib/autoWire/sizing.ts)'
-        : 'calculateEdgeCurrent (lib/vde-standards.ts)';
+    // Topologieabhängiger Betriebsstrom aus dem Stromfluss-Modell (eine
+    // Rechnung pro Planlauf, gemeinsam mit UI/Live-Validierung gecacht).
+    const explanation = currentModel.byEdgeId.get(edge.id);
+    const currentA = explanation?.operatingCurrent ?? null;
+    const currentSource =
+      explanation === undefined
+        ? 'currentFlow: nicht im Strommodell'
+        : currentA === null
+          ? 'currentFlow: nicht bestimmbar (Datenlücke — keine 0-A-Erfindung)'
+          : `currentFlow: ${currentFlowMethodLabel(explanation.calculationMethod)}`;
 
     const cable: CableModel = {
       edgeId: edge.id,
       from,
       to,
-      domain: from.domain,
-      sourceDomain: from.sourceDomain,
+      domain:
+        from.domain === 'FLUID' || from.domain === 'NON_ELECTRICAL' ? from.domain : isAc ? 'AC_LV' : 'DC_ELV',
+      sourceDomain: edgeDomain,
       carrier,
       lengthM: length === null ? null : toNumber(length),
       lengthIsAssumption: data?.lengthIsAssumption === true,
       crossSectionMm2: crossSection === null ? null : toNumber(crossSection),
       currentA,
       currentSource,
+      currentExplanation: explanation,
       protections: protectionsOf(data, edge.id, isAc),
     };
     cables.push(cable);
@@ -611,6 +619,37 @@ export function buildConductionGraph(
       if (port.role === 'target') sides.batterySide = port;
       else sides.loadSide = port;
       shuntSides.set(port.nodeId, sides);
+    }
+  }
+
+  // ── Port-Domänen-Verfeinerung für Durchführungen (AUDIT RC-2) ──────────
+  // Schienen, Leerrohre, Sicherungskästen, Shunts und Massepunkte haben
+  // knotentypisch DC-Handles. Solange ALLE elektrischen Kabel an einem
+  // solchem Knoten ein und dieselbe Domäne haben, gilt die Domäne der
+  // Kabel (ein 230-V-Verteiler über eine Schiene ist AC). Gemischte
+  // Anschlüsse bleiben DC — dann meldet SYN-004 die echte Kreuzung.
+  for (const node of nodeList) {
+    const behavior = componentBehavior(node);
+    if (
+      behavior.kind !== 'PASSIVE' &&
+      behavior.kind !== 'PROTECTION' &&
+      behavior.kind !== 'MEASUREMENT' &&
+      behavior.kind !== 'REFERENCE'
+    ) {
+      continue;
+    }
+    const nodeCables = cablesByNode.get(node.id) ?? [];
+    const domains = new Set<string>();
+    for (const cable of nodeCables) {
+      if (cable.carrier === 'water') continue;
+      domains.add(cable.sourceDomain);
+    }
+    if (domains.size !== 1) continue;
+    const onlyDomain = [...domains][0];
+    if (onlyDomain !== 'AC_230V') continue;
+    for (const port of componentPorts.get(node.id) ?? []) {
+      port.domain = 'AC_LV';
+      port.sourceDomain = 'AC_230V';
     }
   }
 
