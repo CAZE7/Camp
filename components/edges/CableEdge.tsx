@@ -14,11 +14,12 @@ import { getWireColor, WIRE_COLORS } from './utils/edgeColors';
 import { hasVoltageDropError, resolveCableLength } from './utils/voltageDrop';
 import {
   assessCableSelection,
+  calculateCableIz,
   calculateStrokeWidth,
+  evaluateCableProtection,
   getEdgeDomain,
   maxFuseForDisplay,
-  VDE_AMPACITY,
-  DERATE_FACTOR,
+  thermalCrossSectionFor,
   FUSE_MAX_UNPROTECTED_LENGTH_M,
   FUSE_MAX_UNPROTECTED_SOURCE,
 } from '../../lib/electrical';
@@ -112,11 +113,13 @@ export type EdgeErrorRule =
   | 'fuse-below-minimum'
   | 'main-fuse-distance'
   | 'fuse-offset'
-  | 'current-undetermined';
+  | 'current-undetermined'
+  /** Kein Tabellenwert für diesen Strom (Auftrag Phase 5) — Datenlücke, kein Verstoß. */
+  | 'ampacity-outside-model';
 
 export interface EdgeError {
   ruleId: EdgeErrorRule;
-  severity: 'critical' | 'warning';
+  severity: 'critical' | 'warning' | 'info';
   /** Anzeigetext (Chip) — bewusst weiter Mensch-Sprache. */
   message: string;
   /** Messwert (z. B. Strom in A, Spannungsfall in %). */
@@ -188,9 +191,20 @@ export const collectEdgeErrors = (input: {
   // Geprüft wird der tatsächlich vorhandene Nutzer-Querschnitt, falls
   // gesetzt (die Empfehlung ist immer passend dimensioniert).
   const csForThermalCheck = data?.crossSection ?? crossSection;
+  let ampacityOfCableA: number | null = null;
   if (edgeDomain !== 'AC_230V' && csForThermalCheck !== undefined) {
-    const iz = (VDE_AMPACITY[csForThermalCheck] ?? 0) * DERATE_FACTOR;
-    if (Number.isFinite(iz) && iz > 0 && I > iz) {
+    // I_z kommt aus der EINEN Funktion (Auftrag Phase 6) — dieselbe Zahl, die
+    // Engine und Dimensionierung sehen; hier wird nichts mehr eigenständig
+    // aus VDE_AMPACITY × DERATE_FACTOR zusammengerechnet.
+    const boundary = thermalCrossSectionFor(I);
+    let iz: number | null;
+    try {
+      iz = calculateCableIz({ crossSectionMm2: csForThermalCheck }).correctedIz;
+    } catch {
+      iz = null;
+    }
+    ampacityOfCableA = iz;
+    if (iz !== null && Number.isFinite(iz) && iz > 0 && I > iz) {
       errors.push({
         ruleId: 'thermal-overload',
         severity: 'critical',
@@ -198,7 +212,24 @@ export const collectEdgeErrors = (input: {
         measuredValue: Math.round(I),
         expectedValue: Math.round(iz),
         unit: 'A',
-        source: 'Modell: Iz_design = Tabellen-Ampacity × 0,7 (lib/electrical.ts)',
+        source: 'Modell: Iz = Tabellenwert × min(0,7 [Planerpauschale], f₁·f₂) (lib/electrical.ts)',
+      });
+    }
+    // Auftrag Phase 5: Oberhalb der größten hinterlegten Belastbarkeit gibt es
+    // KEINE Tabellenaussage. Das ist eine Datenlücke — sie wird als solche
+    // gemeldet und nicht als „70 mm² genügt“ verdeckt.
+    if (boundary.status === 'outside-model') {
+      errors.push({
+        ruleId: 'ampacity-outside-model',
+        severity: 'info',
+        message: `Für diesen Strom liegt keine hinterlegte Belastbarkeitstabelle vor (${I.toFixed(
+          1
+        )} A erforderlich, größter Tabellenwert ${boundary.maximumModeledCurrentA.toFixed(1)} A).`,
+        measuredValue: Number(I.toFixed(1)),
+        expectedValue: Number(boundary.maximumModeledCurrentA.toFixed(1)),
+        unit: 'A',
+        source:
+          'Modellgrenze: Belastbarkeitstabelle endet bei 70 mm² (VDE_AMPACITY); für höhere Ströme ist eine Leitungsteilung/-parallelführung oder eine andere Spannungsebene zu planen.',
       });
     }
   }
@@ -243,6 +274,15 @@ export const collectEdgeErrors = (input: {
   const minimumFuseCurrent = fuseFloor ?? I;
   const isSolarRule = fuseFloor !== undefined && fuseFloor > I;
 
+  // EIN Koordinationsurteil für alle Ungleichungen dieser Kante (Auftrag
+  // Phase 7). Die Meldungen bleiben im Wortlaut der Chip-Anzeige; entschieden
+  // wird `I_b ≤ I_n ≤ I_z` nur noch in `evaluateCableProtection`.
+  const coordination = evaluateCableProtection({
+    ib: I,
+    in: typeof data?.fuseSize === 'number' ? data.fuseSize : null,
+    iz: ampacityOfCableA,
+  });
+
   if (isPlus) {
     // AC-Sicherungen sind explizit pflegbar (AutoWire setzt sie in
     // `sizeAcEdges`). Fehlende AC-Sicherung wird NICHT als „Sicherung fehlt!“
@@ -280,7 +320,10 @@ export const collectEdgeErrors = (input: {
           source: 'Modell: I_n ≤ FUSE_MAP[querschnitt] = 0,7 × Ampacity',
         });
       }
-      if (data.fuseSize < minimumFuseCurrent) {
+      const belowMinimum = isSolarRule
+        ? data.fuseSize < minimumFuseCurrent
+        : coordination.violations.includes('ib-over-in');
+      if (belowMinimum) {
         errors.push({
           ruleId: 'fuse-below-minimum',
           severity: 'critical',

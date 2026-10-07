@@ -42,11 +42,12 @@
  */
 
 import { COPPER_RESISTIVITY_OHM_MM2_PER_M, COPPER_TEMPERATURE_COEFFICIENT_PER_K } from '../materials';
-import { DERATE_FACTOR, VDE_AMPACITY, groupFactor } from '../electrical';
+import { calculateCableIz } from '../electrical';
 import {
   VOLTAGE_DROP_PCT_CRITICAL,
   VOLTAGE_DROP_PCT_PLAN_LIMIT,
   VOLTAGE_DROP_PCT_TARGET,
+  type InsulationClass,
 } from '../electrical';
 import type { LoadClass } from './types';
 
@@ -189,39 +190,14 @@ export const VOLTAGE_DROP_PCT_ALARM = VOLTAGE_DROP_PCT_CRITICAL;
 // 3. THERMISCHE BELASTBARKEIT (I_z)
 // ============================================================================
 
-/** Isolierstoffklasse — bestimmt die Grenzleitertemperatur T_max. */
-export type InsulationClass = 'PVC' | 'XLPE';
-
-/** Grenzleitertemperaturen der Isolierstoffe in °C (IEC 60364-5-52 Tab. 52-4). */
-export const MAX_CONDUCTOR_TEMPERATURE_C: Record<InsulationClass, number> = {
-  PVC: 70,
-  XLPE: 90,
-};
-
-/** Referenz-Umgebungstemperatur der Tabellenwerte in °C (Luft). */
-export const REFERENCE_AMBIENT_C = 30;
-
 /**
- * Umgebungstemperatur-Korrekturfaktor f₁:
- *
- *   f₁ = √((T_max − ϑ_U) / (T_max − 30 °C))
- *
- * @throws RangeError bei ϑ_U ≥ T_max: Der Leiter kann bei dieser
- *   Umgebungstemperatur gar nicht mehr betrieben werden — das ist kein
- *   Faktor 0, sondern ein Planungsfehler mit Ansage.
+ * Isolierstoff, Grenzleitertemperatur und Temperaturfaktor kommen aus der
+ * EINEN Iz-Quelle (`lib/electrical.ts`, Auftrag Phase 6). Sie werden hier nur
+ * re-exportiert, damit bestehende Importe (Engine, Tests, UI) unverändert
+ * weiterlaufen — es gibt keine zweite Definition mehr.
  */
-export function ambientTemperatureFactor(ambientC: number, insulation: InsulationClass = 'PVC'): number {
-  if (!Number.isFinite(ambientC)) {
-    throw new RangeError(`ambientTemperatureFactor: Temperatur muss endlich sein (erhielt ${ambientC})`);
-  }
-  const tMax = MAX_CONDUCTOR_TEMPERATURE_C[insulation];
-  if (ambientC >= tMax) {
-    throw new RangeError(
-      `ambientTemperatureFactor: Umgebung ${ambientC} °C ≥ Grenzleitertemperatur ${tMax} °C (${insulation}) — Betrieb unzulässig`
-    );
-  }
-  return Math.sqrt((tMax - ambientC) / (tMax - REFERENCE_AMBIENT_C));
-}
+export type { InsulationClass } from '../electrical';
+export { MAX_CONDUCTOR_TEMPERATURE_C, REFERENCE_AMBIENT_C, ambientTemperatureFactor } from '../electrical';
 
 /** Korrekturfaktoren der Belastbarkeit. */
 export interface AmpacityConditions {
@@ -301,8 +277,11 @@ export interface CorrectedIzConditions {
 
 /**
  * Zentrale Berechnung der korrigierten Belastbarkeit I_z mit vollständiger
- * Faktoren-Aufschlüsselung. EINE Autorität für „was darf die Leitung tragen“:
- * Verifikation, Sizing-Checks und die UI lesen alle denselben Wert.
+ * Faktoren-Aufschlüsselung — eine Fassade der EINEN Iz-Funktion
+ * (`calculateCableIz` in `lib/electrical.ts`, Auftrag Phase 6).
+ *
+ * Die Namen bleiben aus Kompatibilität: `plannerSafetyFactor` ist die
+ * Planer-Pauschale (`plannerFactor`), die Aufschlüsselung ist identisch.
  *
  * @throws RangeError bei unbekanntem Querschnitt (keine stille 0 A).
  */
@@ -310,42 +289,20 @@ export function calculateCorrectedIz(
   crossSectionMm2: number,
   conditions?: CorrectedIzConditions
 ): CorrectedIzBreakdown {
-  const base = VDE_AMPACITY[crossSectionMm2];
-  if (base === undefined) {
-    throw new RangeError(
-      `calculateCorrectedIz: Querschnitt ${crossSectionMm2} mm² ist nicht in der Belastbarkeitstabelle — kein stiller Ersatzwert`
-    );
-  }
-
-  const insulation = conditions?.insulation ?? 'PVC';
-  const hasAmbient = conditions?.ambientC !== undefined;
-  const ambientFactor = hasAmbient ? ambientTemperatureFactor(conditions.ambientC as number, insulation) : 1;
-  const groupingFactor =
-    conditions?.bundledCircuits === undefined ? 1 : groupFactor(conditions.bundledCircuits);
-  const installationFactor = 1; // Verlegesart nicht modelliert — explizit 1,0.
-  const plannerSafetyFactor = DERATE_FACTOR;
-
-  // Physikalischer Faktor (nie kapazitätserhöhend) gegen die Pauschale —
-  // der STRENGERE (kleinere) Faktor gewinnt. 0,7 wird exakt einmal wirksam.
-  const physical = Math.min(1, ambientFactor * groupingFactor * installationFactor);
-  const effective = Math.min(plannerSafetyFactor, physical);
-  const correctedIz = base * effective;
-
-  const fmt = (value: number): string => value.toFixed(2);
-  const explanation = `I_z = ${fmt(base)} A × min(${fmt(plannerSafetyFactor)} [Planerpauschale], ${fmt(
-    physical
-  )} [f₁ ${fmt(ambientFactor)} × f₂ ${fmt(groupingFactor)} × f₃ ${fmt(installationFactor)}]) = ${fmt(
-    correctedIz
-  )} A`;
-
+  const result = calculateCableIz({
+    crossSectionMm2,
+    ...(conditions?.ambientC === undefined ? {} : { ambientC: conditions.ambientC }),
+    ...(conditions?.insulation === undefined ? {} : { insulation: conditions.insulation }),
+    ...(conditions?.bundledCircuits === undefined ? {} : { bundledCircuits: conditions.bundledCircuits }),
+  });
   return {
-    baseIz: base,
-    ambientFactor,
-    groupingFactor,
-    installationFactor,
-    plannerSafetyFactor,
-    correctedIz,
-    explanation,
+    baseIz: result.baseIz,
+    ambientFactor: result.ambientFactor,
+    groupingFactor: result.groupingFactor,
+    installationFactor: result.installationFactor,
+    plannerSafetyFactor: result.plannerFactor,
+    correctedIz: result.correctedIz,
+    explanation: result.explanation,
   };
 }
 

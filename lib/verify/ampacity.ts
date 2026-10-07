@@ -30,6 +30,7 @@ import {
   DERATE_FACTOR,
   FUSE_MAX_UNPROTECTED_LENGTH_M,
   VDE_SIZES,
+  evaluateCableProtection,
   maxFuseForDisplay,
   selectFuseSize,
 } from '../electrical';
@@ -489,7 +490,17 @@ export function checkIbInIz(context: PassContext): CheckResult {
 
     evaluated += 1;
 
-    if (ib > ampacity.izA + EPSILON_A) {
+    // Die Koordination I_b ≤ I_n ≤ I_z wird GENAU EINMAL entschieden
+    // (`evaluateCableProtection`, lib/electrical.ts — Auftrag Phase 7). Die
+    // Meldungen unten bleiben unverändert; sie übersetzen nur noch das Urteil
+    // in Remediation und Anzeigetext.
+    const verdict = evaluateCableProtection({
+      ib,
+      in: null,
+      iz: ampacity.izA,
+    });
+
+    if (verdict.violations.includes('ib-over-iz')) {
       events.push(
         auditEvent({
           ruleId,
@@ -545,7 +556,13 @@ export function checkIbInIz(context: PassContext): CheckResult {
       continue;
     }
 
-    if (ib > device.ratedCurrentA + EPSILON_A) {
+    const protectionVerdict = evaluateCableProtection({
+      ib,
+      in: device.ratedCurrentA,
+      iz: ampacity.izA,
+    });
+
+    if (protectionVerdict.violations.includes('ib-over-in')) {
       events.push(
         auditEvent({
           ruleId,
@@ -561,7 +578,7 @@ export function checkIbInIz(context: PassContext): CheckResult {
       );
     }
 
-    if (device.ratedCurrentA > ampacity.izA + EPSILON_A) {
+    if (protectionVerdict.violations.includes('in-over-iz')) {
       events.push(
         auditEvent({
           ruleId,

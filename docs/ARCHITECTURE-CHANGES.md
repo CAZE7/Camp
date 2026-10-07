@@ -1,5 +1,81 @@
 # ARCHITECTURE-CHANGES (Routing V2)
 
+## LEDGER 2026-10-07 (2) — Elektrische Berechnungs- und Validierungsschicht: eine I_z-Wahrheit, leitwertgewichtete Parallelpfade, AC-Schutzkette, Prüfzustände
+
+**Anlass:** Auftrag „Elektrische Berechnungs- und Validierungsschicht" (Phasen 1–12).
+Die Meldungen `I_b = 158,7 A` / `I_z = 120,4 A` / `70 mm²` / `0,7 Derating` /
+`FI/RCD-Fehler` / „12 von 36 kritisch" mussten fachlich aufgelöst werden — ohne
+Fehler abzuschalten, `0,7` zu entfernen oder Critical-Meldungen zu beschwichtigen.
+
+**Geänderte Dateien (Domäne):**
+
+1. `lib/electrical.ts`
+   - NEU `calculateCableIz(context)` — die EINE I_z-Funktion
+     (`baseIz · min(plannerFactor, f₁·f₂·f₃)`), liefert `source` +
+     `confidence` + Rechenweg. `lib/verify/physics.ts` ist nur noch Fassade
+     (`calculateCorrectedIz` → `calculateCableIz`; die Typen
+     `InsulationClass`, `MAX_CONDUCTOR_TEMPERATURE_C`, `REFERENCE_AMBIENT_C`,
+     `ambientTemperatureFactor` sind reine Re-Exports). `designAmpacity(cs)`
+     und `isThermallyOverloaded` rufen dieselbe Funktion.
+   - NEU `thermalCrossSectionFor(currentA)` → `{status:'within-model'|'outside-model', …}`.
+     Oberhalb der größten Tabellenstufe gibt es **keine** stille 70-mm²-Empfehlung
+     mehr; `assessCableSelection` liefert `beyondModeledRange`,
+     `requiredTableCurrentA`, `maximumModeledCurrentA`.
+   - NEU `evaluateCableProtection({ib,in,iz})` — die EINE Koordinationsprüfung
+     (`violated|incomplete|satisfied|not_applicable` + `violations` + Schwere).
+2. `lib/validationSeverity.ts` (NEU) — Nutzer-Vokabular `critical|error|warning|info`
+   und `violated|incomplete|satisfied|not_applicable` samt Zählfunktion.
+3. `lib/electricalGraph/currentFlow.ts`
+   - Parallelpfade werden **nach Leitwert** verteilt
+     (`R = ρ·L/A` aus den gespeicherten Kabelwerten, gemeinsamer Trunk kürzt
+     sich heraus); Equal-Split nur noch bei nachweislich gleichwertigen Pfaden
+     (`assumed`), bei unterschiedlicher Datenlage konservativ voller Strom je
+     Pfad mit ausgewiesener Annahme (`unknown`).
+   - Dual-Rollen: keine pauschale Vollstromregel; Wandler werden als
+     Reihenglied erkannt (`planEnds`: Zielkante = Eingang, Quellkante =
+     Ausgang), das Modell führt `dualRoleTopology`
+     (`series-pass-through|galvanically-separated|independent-in-out|bidirectional-converter`).
+   - `CableCurrentExplanation` trägt zusätzlich `ib`, `contributingSources`,
+     `path` (Flussrichtung), `flowDirection`, `splitMethod`, `splitConfidence`.
+4. `lib/verify/protection.ts` — NEU `analyseAcProtectionChains(context)`:
+   je 230-V-Verbraucher die tatsächliche Schutzkette
+   (`consumerId, sourceId, protectionChain, rcdPresent, rcdResidualCurrent, status,
+paths, exampleUnprotectedPath, rcdsElsewhere`). RCD-001 und RCD-003
+   entscheiden daraus statt aus einer globalen FI-Suche.
+5. `lib/verify/rootCauses.ts` (NEU) + `lib/verify/pipeline.ts` —
+   `rootCauseId`-Gruppen (`affectedEdges`, `affectedComponents`), `stateCounts`;
+   `validationSeverityOf`/`validationStatusOf` projizieren die Normsprache der
+   Engine auf das Nutzer-Vokabular (UNVERIFIABLE ⇒ immer `info`/`incomplete`).
+6. `lib/verify/ampacity.ts` — AMP-001 entscheidet über
+   `evaluateCableProtection`; Meldungen/Werte unverändert.
+7. `components/edges/CableEdge.tsx` — `collectEdgeErrors` rechnet I_z über
+   `calculateCableIz` (kein zweites `VDE_AMPACITY × DERATE_FACTOR` mehr), meldet
+   die Modellgrenze als `ampacity-outside-model` (Info:
+   „Für diesen Strom liegt keine hinterlegte Belastbarkeitstabelle vor“) und
+   nutzt `evaluateCableProtection` für `I_b ≤ I_n`.
+8. UI: `verificationWarnings`/`ValidationWarning` tragen `severity`, `status`,
+   `rootCauseId`; `WarningCenter` zeigt „N verletzt · M ohne ausreichende
+   Angaben · K Ursachen“, ordnet Karten ihrer Ursache zu und listet betroffene
+   Leitungen aufklappbar.
+
+**Fixture-Delta (`knownPlans/complex.json` = einziger Referenzplan mit DC-DC-Booster):**
+
+| Wert                                                                    | alt                 | neu                 | Begründung                                                                                                                                                                                                    |
+| ----------------------------------------------------------------------- | ------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `e-auto-1`, `e-batt-plus`, `e-batt-minus` (Hausstrang)                  | 92,71 A             | 70,49 A             | Der Booster-Eingangsstrom (22,22 A) kommt von der **Starterseite** und wurde vorher zusätzlich auf die Hausseite gestempelt (Doppelzählung). 92,71 − 22,22 = 70,49 = WR 58,82 + DC-Lasten 11,67 (Summe exakt) |
+| `e-dcdc-busbar`, `e-auto-8` (Booster-Ausgang)                           | 22,22 A             | 20,0 A              | Der Ausgangszug trägt den Ausgangsstrom (20 A), nicht den Eingangsstrom (20/0,9 = 22,22 A)                                                                                                                    |
+| `e-auto-9` (Booster-Eingang)                                            | 22,22 A             | 22,22 A             | unverändert — die Eingangsseite trägt weiter den Eingangsstrom                                                                                                                                                |
+| `cumulativeDrops` (Busbar, Fusebox, Inverter, Lasten)                   | 0,036/0,065/0,265 V | 0,031/0,060/0,261 V | Folge des korrigierten Stromes (kleinerer ΔU)                                                                                                                                                                 |
+| AutoWire-Sizing (`crossSection` 50 → 35, `fuseSize` 100 → 80 / 25 → 20) | —                   | —                   | Dimensionierung mit dem korrigierten Modellstrom: 35 mm² (≥ 70,49 A/0,7) und 80 A Sicherung sind ausreichend; vorher dimensionierte der überhöhte Strom dicker                                                |
+
+**Test, der die Korrektur beweist:** `lib/electricalGraph/currentFlow.split.test.ts`
+(Nr. 6/6b: Booster-Eingang 33,33 A nur auf der Starterseite, Ausgang 30 A nur auf
+der Ausgangsseite; zwei Ausgangskabel je 15 A), `lib/verify/validationStates.test.ts`,
+`lib/verify/validation158.regression.test.ts`.
+`store/usePlannerStoreExtended.test.ts` („Volle Hütte") wurde auf 1000 W
+Inverter nachgezogen, damit der geprüfte ehrliche Unmöglichkeitsfall (Hauptsicherung
+zu klein) weiterhin echt auftritt — die Doppelzählung entfiel.
+
 ## LEDGER 2026-10-07 — Golden Master re-captured: Fließstrom-Modell als einzige Stromquelle (Stromberechnungs-Umstellung)
 
 **Anlass:** Bewusste Domänenänderung gemäß `docs/AUDIT-STROMBERECHNUNG-2026-10.md`

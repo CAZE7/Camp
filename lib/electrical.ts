@@ -271,10 +271,72 @@ export const isFuseFeasible = (currentA: number, crossSection: number): boolean 
   return minFuse <= maxFuse;
 };
 
-export const lookupThermalCrossSection = (I: number): number => {
-  const requiredAmpacity = I * (1 / DERATE_FACTOR);
+/** Größter Querschnitt, für den eine Belastbarkeitstabelle hinterlegt ist. */
+export const MAX_MODELED_CROSS_SECTION_MM2: number = (() => {
+  const last = VDE_SIZES[VDE_SIZES.length - 1];
+  if (last === undefined) throw new Error('VDE_SIZES ist leer — Modellgrenze nicht bestimmbar');
+  return last;
+})();
+
+/** Größter Tabellenstrom, den das Modell kennt (A) — Belastbarkeit bei `MAX_MODELED_CROSS_SECTION_MM2`. */
+export const MAX_MODELED_AMPACITY_A: number = (() => {
+  const value = VDE_AMPACITY[MAX_MODELED_CROSS_SECTION_MM2];
+  if (value === undefined) {
+    throw new Error(`VDE_AMPACITY kennt ${MAX_MODELED_CROSS_SECTION_MM2} mm² nicht — Modellgrenze unbekannt`);
+  }
+  return value;
+})();
+
+/**
+ * Ergebnis der thermischen Querschnittssuche — AUSDRÜCKLICH ZWEIWERTIG.
+ *
+ * Warum eine Union statt einer Zahl (AUDIT ELE-002, Auftrag Phase 5): Die
+ * frühere Funktion lieferte oberhalb der größten Normstufe **still** 70 mm²
+ * zurück. Jeder Aufrufer durfte das als „ausreichend“ lesen — eine
+ * Unterdimensionierung ohne Signal. Jetzt gibt es für „innerhalb des
+ * Modells“ einen Querschnitt und für „außerhalb“ die zwei Randzahlen
+ * (`requiredCurrentA`, `maximumModeledCurrentA`). Wer eine Eignungsaussage
+ * trifft, MUSS den Status prüfen; eine 70-mm²-Empfehlung für 400 A kann so
+ * nicht mehr entstehen.
+ */
+export type AmpacityModelBoundary =
+  | { status: 'within-model'; crossSectionMm2: number }
+  | { status: 'outside-model'; requiredCurrentA: number; maximumModeledCurrentA: number };
+
+/**
+ * Kleinster Normquerschnitt, dessen Tabellenwert den Strom inklusive Derating
+ * trägt — oder der dokumentierte Modellrand.
+ *
+ * @throws RangeError bei nicht-endlichem oder negativem Strom (Regel M).
+ */
+export function thermalCrossSectionFor(currentA: number): AmpacityModelBoundary {
+  if (!Number.isFinite(currentA) || currentA < 0) {
+    throw new RangeError(`thermalCrossSectionFor: Strom muss endlich und ≥ 0 sein (erhielt ${currentA})`);
+  }
+  const requiredAmpacity = currentA * (1 / DERATE_FACTOR);
   const size = VDE_SIZES.find((s) => (VDE_AMPACITY[s] ?? 0) >= requiredAmpacity);
-  return size || 70.0;
+  if (size === undefined) {
+    return {
+      status: 'outside-model',
+      requiredCurrentA: currentA,
+      maximumModeledCurrentA: MAX_MODELED_AMPACITY_A * DERATE_FACTOR,
+    };
+  }
+  return { status: 'within-model', crossSectionMm2: size };
+}
+
+/**
+ * Größter Normquerschnitt, den die Tabelle für diesen Strom hergibt.
+ *
+ * **Diese Zahl ist NICHT die Aussage „reicht“.** Oberhalb der Modellgrenze
+ * liefert sie die größte bekannte Stufe — der Aufrufer, der daraus eine
+ * Eignung ableiten will, prüft vorher `thermalCrossSectionFor(I).status`
+ * (dann steht dort `outside-model`). Genau diese Trennung verhindert, dass
+ * „70 mm² genügt“ für Ströme behauptet wird, für die es keine Tabelle gibt.
+ */
+export const lookupThermalCrossSection = (I: number): number => {
+  const boundary = thermalCrossSectionFor(I);
+  return boundary.status === 'within-model' ? boundary.crossSectionMm2 : MAX_MODELED_CROSS_SECTION_MM2;
 };
 
 /**
@@ -303,8 +365,17 @@ export const calculateCrossSection = (
   const maxAllowedVoltageDrop = electricalDomain === 'AC_230V' ? 4.6 : 0.36;
   const dropArea = (I * (length * 2)) / (COPPER_CONDUCTIVITY_MS_PER_MM2 * maxAllowedVoltageDrop);
 
-  // Schritt B: Mindestquerschnitt nach thermischer Belastbarkeit (VDE Lookup mit Derating)
-  const thermalArea = lookupThermalCrossSection(I);
+  // Schritt B: Mindestquerschnitt nach thermischer Belastbarkeit.
+  // Die Modellgrenze wird EXPLIZIT behandelt (Auftrag Phase 5): Liegt der
+  // Strom über der größten hinterlegten Belastbarkeit, gibt es keine
+  // Tabellenstufe — die Empfehlung bleibt an der Modellgrenze, aber der
+  // Status ist als `outside-model` (bzw. `beyondModeledRange` in
+  // `assessCableSelection`) ausgewiesen statt als „70 mm² genügt“.
+  const thermalBoundary = thermalCrossSectionFor(I);
+  const thermalArea =
+    thermalBoundary.status === 'within-model'
+      ? thermalBoundary.crossSectionMm2
+      : MAX_MODELED_CROSS_SECTION_MM2;
 
   // Finaler Querschnitt: Maximum aus beiden Kriterien und eventuellem manuellen Querschnitt
   const rawMax = Math.max(1.5, dropArea, thermalArea, dataCrossSection || 0);
@@ -338,6 +409,17 @@ export type CableSelection = {
   crossSectionIsStored: boolean;
   /** true = verbauter Querschnitt ist kleiner als die Empfehlung. */
   undersized: boolean;
+  /**
+   * true = der Strom liegt oberhalb der größten hinterlegten Belastbarkeit
+   * (Auftrag Phase 5). Dann gibt es KEINE Querschnittsempfehlung aus der
+   * Tabelle; die Anzeige muss „Für diesen Strom liegt keine hinterlegte
+   * Belastbarkeitstabelle vor“ sagen und darf nicht „70 mm² genügt“ behaupten.
+   */
+  beyondModeledRange: boolean;
+  /** Geforderter Tabellenstrom (A) — nur gesetzt, wenn `beyondModeledRange`. */
+  requiredTableCurrentA: number | null;
+  /** Größter hinterlegter Tabellenstrom (A) — die Modellgrenze selbst. */
+  maximumModeledCurrentA: number;
 };
 
 /** Bewertet gespeicherten gegen den geforderten Querschnitt (AUDIT ELE-001). */
@@ -348,15 +430,20 @@ export const assessCableSelection = (
   electricalDomain: 'DC_12V' | 'AC_230V' = 'DC_12V'
 ): CableSelection => {
   const recommendedCrossSection = calculateCrossSection(I, length, undefined, electricalDomain);
+  const thermalBoundary = thermalCrossSectionFor(I);
   const hasStored =
     typeof storedCrossSection === 'number' && Number.isFinite(storedCrossSection) && storedCrossSection > 0;
   const installedCrossSection = hasStored ? storedCrossSection : recommendedCrossSection;
+  const beyondModeledRange = thermalBoundary.status === 'outside-model';
   return {
     installedCrossSection,
     recommendedCrossSection,
     crossSectionIsStored: hasStored,
     // Toleranz gegen Float-Ränder, nicht gegen echte Unterdimensionierung.
     undersized: hasStored && installedCrossSection < recommendedCrossSection - 1e-9,
+    beyondModeledRange,
+    requiredTableCurrentA: beyondModeledRange ? I : null,
+    maximumModeledCurrentA: MAX_MODELED_AMPACITY_A * DERATE_FACTOR,
   };
 };
 
@@ -376,7 +463,16 @@ export const assessCableSelection = (
  */
 export const designAmpacity = (crossSection: number, bundleCircuits?: number): number => {
   const table = VDE_AMPACITY[crossSection] ?? 0;
-  return bundleCircuits === undefined ? table * DERATE_FACTOR : table * groupFactor(bundleCircuits);
+  if (bundleCircuits !== undefined) {
+    // Evaluierungsvariante (Mission Stufe 2): Tabellenwert × k_B(n). Bewusst
+    // NICHT die Produktivwahrheit — f_H(2) = 0,80 läge über der Pauschale 0,7.
+    return table * groupFactor(bundleCircuits);
+  }
+  // Produktiv: exakt dieselbe Zahl wie die EINE I_z-Funktion. Unbekannte
+  // Querschnitte bleiben hier bewusst 0 (Drift-Guard Test) — die strikte
+  // Variante, die bei fehlendem Tabellenwert WIRFT, ist `calculateCableIz`.
+  if (VDE_AMPACITY[crossSection] === undefined) return 0;
+  return calculateCableIz({ crossSectionMm2: crossSection }).correctedIz;
 };
 
 /**
@@ -386,9 +482,259 @@ export const designAmpacity = (crossSection: number, bundleCircuits?: number): n
  * Verdikt über die verlegte Leitung.
  */
 export const isThermallyOverloaded = (I: number, crossSection: number): boolean => {
-  const iz = designAmpacity(crossSection);
+  const iz = calculateCableIz({ crossSectionMm2: crossSection }).correctedIz;
   return iz > 0 && I > iz + 1e-9;
 };
+
+// ============================================================================
+// DIE EINE I_z-WAHRHEIT (`calculateCableIz`)
+// ============================================================================
+//
+// Vorher lagen die Faktoren an zwei Orten: die Planer-Pauschale hier
+// (`DERATE_FACTOR`), die physikalischen Faktoren f₁/f₂ in
+// `lib/verify/physics.ts` (`calculateCorrectedIz`). Beide beschrieben
+// dieselbe Leitung, durften aber auseinanderlaufen — genau das Verbotene in
+// einem „eine Quelle je Zuständigkeit"-Repo. Ab hier gibt es EINE Funktion,
+// die jede zulässige Belastbarkeit bildet; `physics.calculateCorrectedIz` ist
+// nur noch ihre Fassade für die Verifikation (gleiche Zahlen, andere Namen).
+
+/** Isolierstoffklasse — bestimmt die Grenzleitertemperatur T_max. */
+export type InsulationClass = 'PVC' | 'XLPE';
+
+/** Grenzleitertemperaturen der Isolierstoffe in °C (IEC 60364-5-52 Tab. 52-4). */
+export const MAX_CONDUCTOR_TEMPERATURE_C: Record<InsulationClass, number> = {
+  PVC: 70,
+  XLPE: 90,
+};
+
+/** Referenz-Umgebungstemperatur der Tabellenwerte in °C (Luft). */
+export const REFERENCE_AMBIENT_C = 30;
+
+/**
+ * Umgebungstemperatur-Korrekturfaktor f₁:
+ *
+ *   f₁ = √((T_max − ϑ_U) / (T_max − 30 °C))
+ *
+ * @throws RangeError bei ϑ_U ≥ T_max: Der Leiter kann bei dieser
+ *   Umgebungstemperatur gar nicht mehr betrieben werden — das ist kein
+ *   Faktor 0, sondern ein Planungsfehler mit Ansage.
+ */
+export function ambientTemperatureFactor(ambientC: number, insulation: InsulationClass = 'PVC'): number {
+  if (!Number.isFinite(ambientC)) {
+    throw new RangeError(`ambientTemperatureFactor: Temperatur muss endlich sein (erhielt ${ambientC})`);
+  }
+  const tMax = MAX_CONDUCTOR_TEMPERATURE_C[insulation];
+  if (ambientC >= tMax) {
+    throw new RangeError(
+      `ambientTemperatureFactor: Umgebung ${ambientC} °C ≥ Grenzleitertemperatur ${tMax} °C (${insulation}) — Betrieb unzulässig`
+    );
+  }
+  return Math.sqrt((tMax - ambientC) / (tMax - REFERENCE_AMBIENT_C));
+}
+
+/** Eingabe der einen I_z-Rechnung. Alle Felder beschreiben GENAU EINE Leitung. */
+export interface CableIzContext {
+  /** Querschnitt der Leitung in mm² (muss in `VDE_AMPACITY` stehen). */
+  crossSectionMm2: number;
+  /** Umgebungstemperatur in °C; ohne Angabe 30 °C (Tabellenreferenz, f₁ = 1). */
+  ambientC?: number;
+  /** Isolierstoff (Default PVC, weil die Tabelle PVC-Werte führt). */
+  insulation?: InsulationClass;
+  /** Anzahl belasteter Stromkreise in derselben Trasse (1…9, s. `groupFactor`). */
+  bundledCircuits?: number;
+}
+
+/** Woher die angesetzte Korrektur stammt — Report- und UI-Pflicht. */
+export type CableIzSource = 'planner-derate' | 'physics-correction';
+
+/** Vertrauensgrad der Zahl: gerechnet oder auf Referenzbedingungen angenommen. */
+export type CableIzConfidence = 'computed' | 'reference-conditions-assumed';
+
+/** Vollständige, benannte Aufschlüsselung der zulässigen Belastbarkeit I_z. */
+export interface CableIzResult {
+  /** Basistabellenwert der Leitung in A (Verlegeart-B2-Reihe). */
+  baseIz: number;
+  /** f₁ — Umgebungstemperatur (1 bei fehlender Angabe = 30 °C Referenz). */
+  ambientFactor: number;
+  /** f₂ — Häufung (1 ohne Angabe). */
+  groupingFactor: number;
+  /** f₃ — Verlegesart (nicht modelliert, explizit 1,0). */
+  installationFactor: number;
+  /** Planer-Pauschale `DERATE_FACTOR` (0,7) — eigene, dokumentierte Annahme. */
+  plannerFactor: number;
+  /** Ergebnis: die zulässige Belastbarkeit in A. */
+  correctedIz: number;
+  /** Welcher der beiden Wege die Zahl bestimmt hat (der strengere gewinnt). */
+  source: CableIzSource;
+  /** Rechenweg oder Annahme — ohne Angabe: Referenzbedingungen. */
+  confidence: CableIzConfidence;
+  /** Menschenlesbare Rechnung (UI „Warum?“). */
+  explanation: string;
+}
+
+/**
+ * DIE zentrale I_z-Funktion: zulässige Belastbarkeit EINER Leitung.
+ *
+ *   I_z = I_z,Basis · min(Planer-Pauschale, f₁ · f₂ · f₃)
+ *
+ * Der STRENGERE der beiden Wege gewinnt; ein Kältebonus (f₁ > 1) wird nie
+ * kapazitätserhöhend angesetzt (`min(1, …)`). Die Pauschale 0,7 wird damit
+ * exakt einmal wirksam — nicht doppelt, nicht umgangen.
+ *
+ * @throws RangeError bei unbekanntem Querschnitt (keine stille 0 A).
+ */
+export function calculateCableIz(context: CableIzContext): CableIzResult {
+  const { crossSectionMm2 } = context;
+  const base = VDE_AMPACITY[crossSectionMm2];
+  if (base === undefined) {
+    throw new RangeError(
+      `calculateCableIz: Querschnitt ${crossSectionMm2} mm² ist nicht in der Belastbarkeitstabelle — kein stiller Ersatzwert`
+    );
+  }
+
+  const insulation = context.insulation ?? 'PVC';
+  const hasAmbient = context.ambientC !== undefined;
+  const ambientFactor = hasAmbient ? ambientTemperatureFactor(context.ambientC as number, insulation) : 1;
+  const groupingFactor = context.bundledCircuits === undefined ? 1 : groupFactor(context.bundledCircuits);
+  const installationFactor = 1; // Verlegesart nicht modelliert — explizit 1,0.
+  const plannerFactor = DERATE_FACTOR;
+
+  const physical = Math.min(1, ambientFactor * groupingFactor * installationFactor);
+  const plannerIsStricter = plannerFactor <= physical;
+  const effective = plannerIsStricter ? plannerFactor : physical;
+  const correctedIz = base * effective;
+
+  const fmt = (value: number): string => value.toFixed(2);
+  const explanation = `I_z = ${fmt(base)} A × min(${fmt(plannerFactor)} [Planerpauschale], ${fmt(
+    physical
+  )} [f₁ ${fmt(ambientFactor)} × f₂ ${fmt(groupingFactor)} × f₃ ${fmt(installationFactor)}]) = ${fmt(
+    correctedIz
+  )} A`;
+
+  return {
+    baseIz: base,
+    ambientFactor,
+    groupingFactor,
+    installationFactor,
+    plannerFactor,
+    correctedIz,
+    source: plannerIsStricter ? 'planner-derate' : 'physics-correction',
+    confidence:
+      hasAmbient || context.bundledCircuits !== undefined ? 'computed' : 'reference-conditions-assumed',
+    explanation,
+  };
+}
+
+// ============================================================================
+// DIE EINE KOORDINATIONSPRÜFUNG (`evaluateCableProtection`)
+// ============================================================================
+
+/** Ergebnis je Teilstück der Koordinationskette `I_b ≤ I_n ≤ I_z`. */
+export interface CableProtectionVerdict {
+  /** Betriebsstrom I_b in A; `null` = nicht bestimmt. */
+  ib: number | null;
+  /** Nennstrom I_n des wirksamen Schutzorgans in A; `null` = kein Organ bekannt. */
+  in: number | null;
+  /** Zulässige Belastbarkeit I_z in A; `null` = nicht bestimmbar. */
+  iz: number | null;
+  /** Zustand der Kette (Vokabular aus `lib/validationSeverity.ts`). */
+  status: 'satisfied' | 'violated' | 'incomplete' | 'not_applicable';
+  /** Schwere im Sinne der Anzeige (kritisch nur bei echter Überlast). */
+  severity: 'critical' | 'error' | 'warning' | 'info';
+  /** Welche Teilstücke verletzt sind — leer, wenn none. */
+  violations: readonly ('ib-over-iz' | 'ib-over-in' | 'in-over-iz')[];
+  /** Klartext der Rechnung („I_b = 158,7 A ≤ I_n = 100 A ✗ …"). */
+  explanation: string;
+}
+
+/**
+ * Die EINE Prüfung der Schutzkoordination nach IEC 60364-4-43 §433.1:
+ *
+ *   (1)  I_b ≤ I_n ≤ I_z
+ *
+ * Vorher stand diese Ungleichung in `lib/verify/ampacity.ts` (Engine), im
+ * Kanten-Fehlerpfad (`components/edges/CableEdge.tsx`) und in Teilen der
+ * Anzeige jeweils neu — drei Stellen, drei Gelegenheiten zum Auseinanderlaufen.
+ * Hier steht sie einmal; alle Validatoren rufen sie auf.
+ *
+ * Semantik der Zustände:
+ *   - `violated`      — mindestens ein Teilstück ist widerlegt (Zahlen liegen vor).
+ *   - `incomplete`    — ein Wert fehlt (Ib unbekannt, keine Sicherung, kein Iz).
+ *   - `not_applicable`— kein Strom (I_b = 0 A) und kein Organ: nichts zu prüfen.
+ *   - `satisfied`     — alle vorliegenden Teilstücke erfüllt.
+ *
+ * Die Schwere bewertet die FOLGE, nicht die Datenlage: Ein überlasteter Leiter
+ * (`I_b > I_z`) ist `critical`, ein zu großer Nennstrom bei tragfähigem Leiter
+ * ist `error`, ein fehlendes Organ `warning`, eine Datenlücke `info`.
+ */
+export function evaluateCableProtection(input: {
+  ib: number | null;
+  in: number | null;
+  iz: number | null;
+}): CableProtectionVerdict {
+  const { ib, iz } = input;
+  const ratedCurrent = input.in;
+  const violations: Array<'ib-over-iz' | 'ib-over-in' | 'in-over-iz'> = [];
+  const fmt = (value: number | null): string => (value === null ? '—' : `${value.toFixed(1)} A`);
+
+  if (ib !== null && iz !== null && ib > iz + 1e-9) violations.push('ib-over-iz');
+  if (ib !== null && ratedCurrent !== null && ib > ratedCurrent + 1e-9) violations.push('ib-over-in');
+  if (ratedCurrent !== null && iz !== null && ratedCurrent > iz + 1e-9) violations.push('in-over-iz');
+
+  const explanation = `I_b = ${fmt(ib)} ≤ I_n = ${fmt(ratedCurrent)} ≤ I_z = ${fmt(iz)}`;
+
+  if (violations.includes('ib-over-iz')) {
+    return {
+      ib,
+      in: ratedCurrent,
+      iz,
+      status: 'violated',
+      severity: 'critical',
+      violations,
+      explanation,
+    };
+  }
+  if (violations.length > 0) {
+    return {
+      ib,
+      in: ratedCurrent,
+      iz,
+      status: 'violated',
+      severity: 'error',
+      violations,
+      explanation,
+    };
+  }
+  if (ib === null || iz === null) {
+    return {
+      ib,
+      in: ratedCurrent,
+      iz,
+      status: 'incomplete',
+      severity: 'info',
+      violations,
+      explanation,
+    };
+  }
+  if (ratedCurrent === null) {
+    // Leiter thermisch bewertet, aber ohne (wirksames) Schutzorgan: Die
+    // Grundanforderung „I_n vorhanden" meldet eine eigene Regel; hier ist die
+    // Datenlage unvollständig, keine Verletzung.
+    return {
+      ib,
+      in: null,
+      iz,
+      status: 'incomplete',
+      severity: 'warning',
+      violations,
+      explanation,
+    };
+  }
+  if (ib === 0 && ratedCurrent === 0 && iz === 0) {
+    return { ib, in: ratedCurrent, iz, status: 'not_applicable', severity: 'info', violations, explanation };
+  }
+  return { ib, in: ratedCurrent, iz, status: 'satisfied', severity: 'info', violations, explanation };
+}
 
 // ── ΔU %-Stufen (MISSION Stufe 2: „ΔU% 1/3/4 %") ─────────────────────────
 //

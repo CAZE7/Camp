@@ -150,10 +150,16 @@ function ampacityValues(warning: ValidationWarning): { ib: number; iz: number; d
  */
 function FindingCard({
   warning,
+  rootCause,
   onFix,
   onClose,
 }: {
   warning: ValidationWarning;
+  /**
+   * Ursachengruppe dieses Befunds (Auftrag Phase 10/11): mehrere gleichartige
+   * Leitungsbefunde bleiben sichtbar, sind aber EINER Entscheidung zuordenbar.
+   */
+  rootCause?: { rootCauseId: string; findingCount: number; affectedEdges: readonly string[] };
   onFix?: (warning: ValidationWarning) => void;
   onClose: () => void;
 }) {
@@ -165,7 +171,9 @@ function FindingCard({
     (details?.contributors?.length ?? 0) > 0 ||
     details?.izBreakdown !== undefined ||
     (details?.assumptions?.length ?? 0) > 0 ||
-    details?.protectionChain?.length !== undefined;
+    details?.protectionChain?.length !== undefined ||
+    (rootCause?.affectedEdges.length ?? 0) > 1 ||
+    details?.rcdsElsewhere !== undefined;
 
   return (
     <li className={`rounded-lg border-l-4 p-3 ${style.card}`}>
@@ -199,6 +207,15 @@ function FindingCard({
             </p>
           )}
           <p className="mt-1 text-sm leading-relaxed text-ink-soft">{consequence(warning)}</p>
+          {/* Gleiche Ursache, mehrere Leitungen (Phase 10/11) — kompakt, ohne
+              zweiten Textblock: eine Entscheidung, mehrere Betroffene. */}
+          {rootCause && rootCause.findingCount > 1 && (
+            <p className="mt-1 font-mono text-[11px] leading-relaxed text-ink-soft">
+              Gleiche Ursache ({rootCause.rootCauseId}) · {rootCause.findingCount} Leitungen betroffen
+              {warning.status === 'incomplete' ? ' · Datenlage unvollständig, kein Verstoß' : ''}
+            </p>
+          )}
+
           <p className="mt-1 text-sm font-semibold leading-relaxed text-foreground">{nextStep(warning)}</p>
 
           {/* „Warum?" — maschinenlesbare Begründung aus dem Strom-/Iz-Modell. */}
@@ -235,6 +252,29 @@ function FindingCard({
                   )}
                   {details?.protectionChain && details.protectionChain.length > 0 && (
                     <p className="mt-1">Schutzkette: {details.protectionChain.join(' → ')}</p>
+                  )}
+                  {details?.rcdPresent !== undefined && (
+                    <p className="mt-1">
+                      FI auf dem Versorgungspfad: {details.rcdPresent ? 'ja' : 'nein'}
+                      {typeof details.rcdResidualCurrentA === 'number'
+                        ? ` (IΔn ${(details.rcdResidualCurrentA * 1000).toFixed(0)} mA)`
+                        : ''}
+                    </p>
+                  )}
+                  {details?.rcdsElsewhere && details.rcdsElsewhere.length > 0 && (
+                    <p className="mt-1">
+                      FI vorhanden, aber nicht auf diesem Pfad: {details.rcdsElsewhere.join(', ')}
+                    </p>
+                  )}
+                  {rootCause && rootCause.affectedEdges.length > 1 && (
+                    <div className="mt-1 font-sans">
+                      <p className="font-semibold">Betroffene Leitungen:</p>
+                      <ul className="mt-0.5 flex flex-col font-mono">
+                        {rootCause.affectedEdges.map((edgeId) => (
+                          <li key={edgeId}>{edgeId}</li>
+                        ))}
+                      </ul>
+                    </div>
                   )}
                   {details?.izBreakdown && (
                     <p className="mt-1">
@@ -385,6 +425,33 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
     return value;
   }, [warnings]);
   const groups = useMemo(() => groupCounts(warnings), [warnings]);
+  /**
+   * Ursachengruppen der Meldungen (Auftrag Phase 10/11): Die Anzeige ordnet
+   * gleichartige Befunde zusammen, ohne sie zu verstecken — jeder Befund
+   * bleibt eine eigene Karte mit eigenen Zahlen.
+   */
+  const rootCauses = useMemo(() => {
+    const map = new Map<string, { rootCauseId: string; findingCount: number; affectedEdges: string[] }>();
+    for (const warning of warnings) {
+      const id = warning.rootCauseId;
+      if (typeof id !== 'string' || id === '') continue;
+      const entry = map.get(id) ?? { rootCauseId: id, findingCount: 0, affectedEdges: [] };
+      entry.findingCount += 1;
+      if (warning.focusType === 'edge' && warning.focusId) entry.affectedEdges.push(warning.focusId);
+      map.set(id, entry);
+    }
+    return map;
+  }, [warnings]);
+  const stateCounts = useMemo(() => {
+    const value = { violated: 0, incomplete: 0, satisfied: 0, not_applicable: 0 };
+    for (const warning of warnings) {
+      if (warning.status === 'violated') value.violated += 1;
+      else if (warning.status === 'incomplete') value.incomplete += 1;
+      else if (warning.status === 'satisfied') value.satisfied += 1;
+      else if (warning.status === 'not_applicable') value.not_applicable += 1;
+    }
+    return value;
+  }, [warnings]);
 
   useEffect(() => {
     const openPanel = () => setOpen(true);
@@ -516,6 +583,10 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
               </p>
               {/* Gruppierung: Sicherheit / Planung / fehlende Angaben. */}
               <p className="text-xs text-muted-foreground">
+                {stateCounts.violated} verletzt · {stateCounts.incomplete} ohne ausreichende Angaben ·{' '}
+                {rootCauses.size} Ursachen
+              </p>
+              <p className="text-xs text-muted-foreground">
                 {groups.safety} Sicherheitsfehler · {groups.planning} Planungsfehler · {groups.gaps} Angaben
                 fehlen
               </p>
@@ -532,7 +603,15 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
 
           <ul className="flex flex-col gap-3 p-3">
             {sorted.map((warning) => (
-              <FindingCard key={warning.id} warning={warning} onFix={onFix} onClose={() => setOpen(false)} />
+              <FindingCard
+                key={warning.id}
+                warning={warning}
+                {...(warning.rootCauseId !== undefined && rootCauses.has(warning.rootCauseId)
+                  ? { rootCause: rootCauses.get(warning.rootCauseId)! }
+                  : {})}
+                onFix={onFix}
+                onClose={() => setOpen(false)}
+              />
             ))}
           </ul>
         </div>

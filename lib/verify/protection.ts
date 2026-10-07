@@ -34,7 +34,15 @@ import { labelOfNode } from './graph';
 import { RCD_SELECTIVITY_RATIO_HEURISTIC } from './physics';
 import { sortedCables, upstreamChain } from './pathSearch';
 import { buildPortGraph, type PortGraph } from './topology';
-import type { AuditEvent, CheckResult, PortRef, ProtectionDevice, ProtectionPlacement } from './types';
+import type {
+  AuditEvent,
+  AuditEventDetails,
+  CheckResult,
+  PortKey,
+  PortRef,
+  ProtectionDevice,
+  ProtectionPlacement,
+} from './types';
 
 /** Mindestquerschnitt der Masseanbindung (AutoWire-Planungsvorgabe). */
 export const CHASSIS_BOND_MIN_MM2 = 16;
@@ -190,53 +198,221 @@ function acLoadNodes(context: PassContext): string[] {
   return nodes.sort();
 }
 
-interface ReachReport {
-  /** Lasten, die auf mindestens einem Weg OHNE FI erreichbar sind. */
-  unprotected: Array<{ nodeId: string; path: readonly string[] }>;
-  /** Lasten, die gar nicht erreichbar sind (kein AC-Pfad). */
-  unreachable: string[];
-  /** Lasten mit FI auf jedem Weg. */
-  protectedNodes: string[];
-  /** true = mindestens ein Weg führte durch einen FI. */
-  anyRcdInPlan: boolean;
+// ============================================================================
+// AC-SCHUTZKETTE JE VERBRAUCHER (Auftrag Phase 8)
+// ============================================================================
+//
+// Die frühere Prüfung suchte einen FI „im Plan" bzw. irgendwo im erreichbaren
+// AC-Bereich. Das ist die falsche Frage: Ein FI schützt nur, wenn er auf dem
+// VERSORGUNGSPFAD des konkreten Verbrauchers liegt (Quelle → FI → LS →
+// Verteilung → Verbraucher). Genau diesen Pfad ermittelt die folgende
+// Analyse, und zwar ausschließlich in der Engine — nicht im React-Hook.
+
+/** Ein realisierter Schutzpfad eines Verbrauchers (Knoten-IDs, Quelle → Last). */
+export interface AcProtectionPath {
+  /** Knoten-IDs des Pfads in Flussrichtung (Quelle → Verbraucher). */
+  nodeIds: readonly string[];
+  /** Kanten-IDs des Pfads in derselben Reihenfolge. */
+  cableIds: readonly string[];
+  /** Bemessungsdifferenzströme der auf DIESEM Pfad liegenden FIs (A). */
+  rcdResidualCurrentsA: readonly number[];
+  /** Erreicht dieser Pfad eine 230-V-Quelle? */
+  reachesSource: boolean;
 }
 
-function analyseAcCoverage(context: PassContext, portGraph: PortGraph): ReachReport {
-  const loads = new Set(acLoadNodes(context));
-  const supplies = acSupplies(context);
-  const unprotected = new Map<string, readonly string[]>();
-  const protectedNodes = new Set<string>();
-  const reachable = new Set<string>();
-  let anyRcdInPlan = false;
+/**
+ * Ergebnis der Schutzkettenprüfung EINES 230-V-Verbrauchers.
+ *
+ * `status`:
+ *   - `satisfied`      — jeder Versorgungspfad führt über einen FI ≤ 30 mA.
+ *   - `violated`       — ein Pfad kommt ohne FI durch (oder der FI ist gröber
+ *                        als 30 mA) — das ist der echte Fehlerschutz-Befund.
+ *   - `incomplete`     — kein Versorgungspfad gefunden (Datenlage).
+ *   - `not_applicable` — keine AC-Quelle im Plan.
+ */
+export interface AcProtectionChain {
+  consumerId: string;
+  /** Quelle, über die der Verbraucher versorgt wird (beste Pfadquelle). */
+  sourceId: string | null;
+  /** Knoten-IDs der Kette Quelle → Verbraucher (kürzester schutzgebender Pfad). */
+  protectionChain: readonly string[];
+  /** Liegt auf JEDEM Versorgungspfad ein FI ≤ 30 mA? */
+  rcdPresent: boolean;
+  /** Kleinster IΔn auf den Versorgungspfaden (A); `null` = kein FI gefunden. */
+  rcdResidualCurrent: number | null;
+  status: 'satisfied' | 'violated' | 'incomplete' | 'not_applicable';
+  /** Alle betrachteten Pfade, deterministisch sortiert. */
+  paths: readonly AcProtectionPath[];
+  /** Der erste Pfad OHNE FI — das Gegenbeispiel der Meldung. */
+  exampleUnprotectedPath: readonly string[] | null;
+  /**
+   * FI-Organe, die im selben AC-Netz existieren, aber auf keinem Pfad DIESES
+   * Verbrauchers liegen (Auftrag Phase 8: „RCD existiert woanders, schützt
+   * diesen Verbraucher aber nicht"). Kanten-IDs.
+   */
+  rcdsElsewhere: readonly string[];
+}
 
-  for (const supply of supplies) {
-    const walks = acWalk(context, portGraph, supply.ports);
-    for (const entry of walks) {
-      if (!loads.has(entry.nodeId)) continue;
-      reachable.add(entry.nodeId);
-      const covered = supply.rcdAtSource || entry.protectedByRcd;
-      if (covered) {
-        protectedNodes.add(entry.nodeId);
-        if (entry.rcdResidualCurrentsA.length > 0 || supply.rcdAtSource) anyRcdInPlan = true;
-      } else if (!unprotected.has(entry.nodeId)) {
-        unprotected.set(entry.nodeId, entry.path);
+/** Pfadschlüssel für deterministische Sortierung. */
+const pathSortKey = (path: AcProtectionPath): string => path.nodeIds.join('>') || path.cableIds.join('>');
+
+/**
+ * Alle einfachen AC-Pfade von einem Verbraucher zu den AC-Quellen, inklusive
+ * der auf dem Weg durchlaufenen FI-Organe.
+ *
+ * Bewusst über den Port-Graphen (wie `acWalk`): Nur elektrisch leitende Wege
+ * zählen, und eine Durchführung (Schiene/Leiterplatte/Sicherungskasten) wird
+ * passiert, ein Verbraucher nicht. Kappe `MAX_AC_PATHS` gegen pathologische
+ * Netze; der Deckel ist im Ergebnis sichtbar (mehr Pfade ⇒ bereits der erste
+ * ungeschützte entscheidet).
+ */
+function acSupplyPaths(
+  context: PassContext,
+  portGraph: PortGraph,
+  consumerId: string,
+  sourceIds: ReadonlySet<string>,
+  supplyHasIntegratedRcd: ReadonlySet<string>
+): AcProtectionPath[] {
+  const paths: AcProtectionPath[] = [];
+  const MAX_AC_PATHS = 64;
+  // Knoten → Ports: Der Walk arbeitet auf dem Port-Graphen (dieselbe
+  // Durchführungsdefinition wie die übrige Engine), braucht aber die
+  // Zuordnung von Knoten zu Ports — einmal aufgebaut, deterministisch.
+  const portsByNode = new Map<string, PortKey[]>();
+  for (const [key, port] of [...portGraph.ports.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+    const list = portsByNode.get(port.nodeId) ?? [];
+    list.push(key);
+    portsByNode.set(port.nodeId, list);
+  }
+  const isLoad = (nodeId: string): boolean => context.graph.components.get(nodeId)?.behavior.kind === 'LOAD';
+
+  const walk = (
+    currentNode: string,
+    visitedNodes: ReadonlySet<string>,
+    nodeIds: string[],
+    cableIds: string[],
+    residuals: number[]
+  ): void => {
+    if (paths.length >= MAX_AC_PATHS) return;
+    if (sourceIds.has(currentNode)) {
+      const rcds = supplyHasIntegratedRcd.has(currentNode)
+        ? [...residuals, MAX_RCD_RESIDUAL_CURRENT_A]
+        : residuals;
+      paths.push({
+        nodeIds: [...nodeIds],
+        cableIds: [...cableIds],
+        rcdResidualCurrentsA: rcds,
+        reachesSource: true,
+      });
+      return;
+    }
+    // Nur die eigene Start-Last darf „blind" für den Anschluss sein; jede
+    // weitere Last beendet den Weg (ein Verbraucher leitet nicht weiter).
+    if (currentNode !== consumerId && isLoad(currentNode)) return;
+    const ports = portsByNode.get(currentNode) ?? [];
+    for (const portKeyValue of ports) {
+      const port = portGraph.ports.get(portKeyValue);
+      if (!port) continue;
+      for (const edge of portGraph.adjacency.get(portKeyValue) ?? []) {
+        if (paths.length >= MAX_AC_PATHS) return;
+        if (edge.kind !== 'cable' || !edge.cableId) continue;
+        const cable = context.graph.cableById.get(edge.cableId);
+        if (!cable || cable.domain !== 'AC_LV') continue;
+        const nextNodeId = cable.from.nodeId === currentNode ? cable.to.nodeId : cable.from.nodeId;
+        if (visitedNodes.has(nextNodeId)) continue;
+        const nextVisited = new Set(visitedNodes);
+        nextVisited.add(nextNodeId);
+        const rcdResiduals = cable.protections
+          .map((placement) => placement.device)
+          .filter(isRcd)
+          .map((device) => device.ratedResidualCurrentA);
+        walk(
+          nextNodeId,
+          nextVisited,
+          [...nodeIds, nextNodeId],
+          [...cableIds, cable.edgeId],
+          [...residuals, ...rcdResiduals]
+        );
       }
     }
-    if (supply.rcdAtSource) anyRcdInPlan = true;
+  };
+
+  walk(consumerId, new Set([consumerId]), [consumerId], [], []);
+  return paths.sort((a, b) => pathSortKey(a).localeCompare(pathSortKey(b)));
+}
+
+/**
+ * DIE AC-Schutzkettenprüfung (Auftrag Phase 8). Für JEDEN 230-V-Verbraucher
+ * wird der tatsächliche Schutzpfad ermittelt — Quelle, FI, LS, Verteilung,
+ * Verbraucher — und ausgewertet, ob ein FI auf DIESEM Pfad liegt.
+ */
+export function analyseAcProtectionChains(context: PassContext): AcProtectionChain[] {
+  const portGraph = buildPortGraph(context.graph);
+  const supplies = acSupplies(context);
+  const sourceIds = new Set(supplies.map((supply) => supply.nodeId));
+  const integratedRcdSupplies = new Set(
+    supplies.filter((supply) => supply.rcdAtSource).map((supply) => supply.nodeId)
+  );
+  const consumers = acLoadNodes(context);
+
+  // FI-Organe des Plans (Kanten-ID → IΔn) — für „FI existiert, schützt aber
+  // diesen Stromkreis nicht".
+  const planRcds = new Map<string, number>();
+  for (const cable of sortedCables(context.graph)) {
+    if (cable.domain !== 'AC_LV') continue;
+    for (const placement of cable.protections) {
+      if (!isRcd(placement.device)) continue;
+      planRcds.set(cable.edgeId, placement.device.ratedResidualCurrentA);
+    }
   }
 
-  const unreachable = [...loads].filter((nodeId) => !reachable.has(nodeId)).sort();
-  const unprotectedList = [...unprotected.entries()]
-    .filter(([nodeId]) => !protectedNodes.has(nodeId))
-    .map(([nodeId, path]) => ({ nodeId, path }))
-    .sort((a, b) => a.nodeId.localeCompare(b.nodeId));
+  const chains: AcProtectionChain[] = [];
+  for (const consumerId of consumers) {
+    if (sourceIds.has(consumerId)) continue; // Wechselrichter-Eingang ist kein Endstromkreis
+    const paths =
+      sourceIds.size === 0
+        ? []
+        : acSupplyPaths(context, portGraph, consumerId, sourceIds, integratedRcdSupplies);
+    const withSource = paths.filter((path) => path.reachesSource);
+    const usedCables = new Set(withSource.flatMap((path) => [...path.cableIds]));
 
-  return {
-    unprotected: unprotectedList,
-    unreachable,
-    protectedNodes: [...protectedNodes].sort(),
-    anyRcdInPlan,
-  };
+    const unprotected = withSource.filter((path) => path.rcdResidualCurrentsA.length === 0);
+    const allResiduals = withSource
+      .flatMap((path) => [...path.rcdResidualCurrentsA])
+      .filter((value) => Number.isFinite(value) && value > 0);
+    const rcdResidualCurrent = allResiduals.length > 0 ? Math.min(...allResiduals) : null;
+    const rcdPresent = withSource.length > 0 && unprotected.length === 0;
+    const overLimit = rcdResidualCurrent !== null && rcdResidualCurrent > MAX_RCD_RESIDUAL_CURRENT_A + 1e-12;
+
+    const status: AcProtectionChain['status'] =
+      sourceIds.size === 0
+        ? 'not_applicable'
+        : withSource.length === 0
+          ? 'incomplete'
+          : rcdPresent && !overLimit
+            ? 'satisfied'
+            : 'violated';
+
+    // Der schutzgebende Pfad (alle Pfade mit FI, sonst der erste) — Quelle
+    // ist der Startknoten des kürzesten dieser Pfade.
+    const preferred =
+      withSource.find((path) => path.rcdResidualCurrentsA.length > 0) ?? withSource[0] ?? paths[0] ?? null;
+    const sourceId = preferred ? (preferred.nodeIds.find((id) => sourceIds.has(id)) ?? null) : null;
+
+    chains.push({
+      consumerId,
+      sourceId,
+      protectionChain: preferred ? [...preferred.nodeIds] : [consumerId],
+      rcdPresent,
+      rcdResidualCurrent,
+      status,
+      paths: withSource.length > 0 ? withSource : paths,
+      exampleUnprotectedPath: unprotected[0] ? [...unprotected[0].nodeIds] : null,
+      rcdsElsewhere: [...planRcds.keys()].filter((edgeId) => !usedCables.has(edgeId)).sort(),
+    });
+  }
+
+  return chains.sort((a, b) => a.consumerId.localeCompare(b.consumerId));
 }
 
 // ============================================================================
@@ -245,46 +421,84 @@ function analyseAcCoverage(context: PassContext, portGraph: PortGraph): ReachRep
 
 export function checkRcdCoverage(context: PassContext): CheckResult {
   const ruleId = 'RCD-001-rcd-deviation' as const;
-  const loadNodes = acLoadNodes(context);
-  if (loadNodes.length === 0) {
+  const chains = analyseAcProtectionChains(context);
+  const applicable = chains.filter((chain) => chain.status !== 'not_applicable');
+  if (applicable.length === 0) {
     // Leere Quantifizierung ist bewiesen wahr — aber der Report weist sie als
     // »0 geprüfte Entitäten« aus (PASS ohne Scheinaussage über 230 V).
     return passedCheck(ruleId, 0);
   }
 
   const events: AuditEvent[] = [];
-  const portGraph = buildPortGraph(context.graph);
-  const coverage = analyseAcCoverage(context, portGraph);
   const overLimit = rcdsOverLimit(context);
+  let evaluated = 0;
 
-  for (const entry of coverage.unprotected) {
-    events.push(
-      auditEvent({
-        ruleId,
-        entity: { kind: 'node', id: entry.nodeId },
-        severity: 'CRITICAL_SAFETY',
-        message: `230-V-Stromkreis ${labelOfNode(context.graph, entry.nodeId)}: auf dem Weg von der Einspeisung führt kein FI ≤ 30 mA — der Stromkreis ist nicht fehlerstromgeschützt.`,
-        autoFixRemedy: `FI (30 mA, Typ A; Typ B bei möglichen glatten Gleichfehlerströmen) unmittelbar hinter der Einspeisung bzw. am Wechselrichter-Ausgang für diesen Stromkreis setzen und die 230-V-Leitung dahinter führen.`,
-        counterexample: entry.path,
-        details: { protectionChain: [...entry.path] },
-      })
-    );
-  }
+  for (const chain of chains) {
+    if (chain.status === 'not_applicable') continue;
+    const label = labelOfNode(context.graph, chain.consumerId);
+    const sourceLabel =
+      chain.sourceId === null ? '(keine Quelle)' : labelOfNode(context.graph, chain.sourceId);
 
-  for (const nodeId of coverage.unreachable) {
-    events.push(
-      auditEvent({
-        ruleId,
-        entity: { kind: 'node', id: nodeId },
-        kind: 'UNVERIFIABLE',
-        message: `230-V-Stromkreis ${labelOfNode(context.graph, nodeId)}: kein Versorgungspfad gefunden — ohne Pfad ist kein FI nachweisbar.`,
-        autoFixRemedy:
-          'Stromkreis an Landstrom bzw. Wechselrichterausgang anschließen; erst danach ist der Fehlerstromschutz prüfbar.',
-      })
-    );
+    if (chain.status === 'incomplete') {
+      events.push(
+        auditEvent({
+          ruleId,
+          entity: { kind: 'node', id: chain.consumerId },
+          kind: 'UNVERIFIABLE',
+          message: `230-V-Stromkreis ${label}: kein Versorgungspfad zu einer AC-Quelle gefunden — ohne Pfad ist kein FI nachweisbar.`,
+          autoFixRemedy:
+            'Stromkreis an Landstrom bzw. Wechselrichterausgang anschließen; erst danach ist der Fehlerstromschutz prüfbar.',
+          details: acChainDetails(chain),
+        })
+      );
+      continue;
+    }
+
+    evaluated += 1;
+    const overLimitHere =
+      chain.rcdResidualCurrent !== null && chain.rcdResidualCurrent > MAX_RCD_RESIDUAL_CURRENT_A + 1e-12;
+    if (chain.status === 'violated' && !chain.rcdPresent) {
+      events.push(
+        auditEvent({
+          ruleId,
+          entity: { kind: 'node', id: chain.consumerId },
+          severity: 'CRITICAL_SAFETY',
+          message: `230-V-Stromkreis ${label} (Quelle ${sourceLabel}): auf dem Versorgungspfad liegt kein FI ≤ 30 mA — der Stromkreis ist nicht fehlerstromgeschützt.`,
+          autoFixRemedy: `FI (30 mA, Typ A; Typ B bei möglichen glatten Gleichfehlerströmen) unmittelbar hinter der Einspeisung bzw. am Wechselrichter-Ausgang für diesen Stromkreis setzen und die 230-V-Leitung dahinter führen.`,
+          counterexample: chain.exampleUnprotectedPath ?? [...chain.protectionChain],
+          details: acChainDetails(chain),
+        })
+      );
+    }
+    if (
+      chain.status === 'violated' &&
+      chain.rcdPresent &&
+      overLimitHere &&
+      chain.rcdResidualCurrent !== null
+    ) {
+      events.push(
+        auditEvent({
+          ruleId,
+          entity: { kind: 'node', id: chain.consumerId },
+          severity: 'CRITICAL_SAFETY',
+          calculatedValue: chain.rcdResidualCurrent * 1000,
+          allowedLimit: MAX_RCD_RESIDUAL_CURRENT_A * 1000,
+          unit: 'mA',
+          message: `230-V-Stromkreis ${label}: der FI auf dem Versorgungspfad hat IΔn = ${(chain.rcdResidualCurrent * 1000).toFixed(0)} mA und überschreitet damit die 30 mA.`,
+          autoFixRemedy:
+            'FI mit IΔn ≤ 30 mA einsetzen (für Personenschutz in Caravan/Motorcaravan zulässig: höchstens 30 mA).',
+          details: acChainDetails(chain),
+        })
+      );
+    }
   }
 
   for (const finding of overLimit) {
+    // Bereits über die Kette gemeldet (derselbe FI): keine Doppelmeldung.
+    const alreadyReported = chains.some(
+      (chain) => chain.status === 'violated' && chain.rcdsElsewhere.includes(finding.edgeId)
+    );
+    if (alreadyReported) continue;
     events.push(
       auditEvent({
         ruleId,
@@ -300,11 +514,22 @@ export function checkRcdCoverage(context: PassContext): CheckResult {
     );
   }
 
-  return checkOrNotApplicable(
-    ruleId,
-    events,
-    coverage.protectedNodes.length + coverage.unprotected.length + overLimit.length
-  );
+  return checkOrNotApplicable(ruleId, events, evaluated + overLimit.length);
+}
+
+/** Strukturierte Schutzketten-Details eines RCD-Befunds (Auftrag Phase 8). */
+function acChainDetails(chain: AcProtectionChain): AuditEventDetails {
+  return {
+    protectionChain: [...chain.protectionChain],
+    consumerId: chain.consumerId,
+    sourceId: chain.sourceId,
+    rcdPresent: chain.rcdPresent,
+    rcdResidualCurrentA: chain.rcdResidualCurrent,
+    rcdsElsewhere: [...chain.rcdsElsewhere],
+    assumptions: [
+      'Das Modell ist EINLEITERIG: Der Pfad beschreibt die Position im Leitungspfad (Quelle → FI → LS → Verteilung → Verbraucher), nicht einzelne Leiter L/N/PE.',
+    ],
+  };
 }
 
 /** FI-Organe mit IΔn > 30 mA auf AC-Leitungen (unabhängig vom Pfad). */
@@ -409,37 +634,42 @@ export function checkRcdType(context: PassContext): CheckResult {
 
 export function checkRcdPosition(context: PassContext): CheckResult {
   const ruleId = 'RCD-003-rcd-position' as const;
-  const loadNodes = acLoadNodes(context);
-  if (loadNodes.length === 0) return passedCheck(ruleId, 0);
+  const chains = analyseAcProtectionChains(context);
+  const applicable = chains.filter((chain) => chain.status !== 'not_applicable');
+  if (applicable.length === 0) return passedCheck(ruleId, 0);
 
-  const portGraph = buildPortGraph(context.graph);
-  const coverage = analyseAcCoverage(context, portGraph);
+  // Gibt es überhaupt einen FI im Plan? Ohne einen ist diese Regel nicht
+  // anwendbar — die Grundanforderung meldet RCD-001.
+  const anyRcdInPlan = sortedCables(context.graph).some(
+    (cable) => cable.domain === 'AC_LV' && cable.protections.some((placement) => isRcd(placement.device))
+  );
+  if (!anyRcdInPlan) return passedCheck(ruleId, 0);
+
   const events: AuditEvent[] = [];
   let evaluated = 0;
 
-  if (!coverage.anyRcdInPlan) {
-    // Es gibt überhaupt keinen FI: Diese Regel prüft Abzweige VOR einer
-    // vorhandenen Schutzeinrichtung — ohne FI ist sie nicht anwendbar; die
-    // Grundanforderung meldet RCD-001.
-    return passedCheck(ruleId, 0);
-  }
-
-  for (const entry of coverage.unprotected) {
+  for (const chain of chains) {
+    if (chain.status === 'not_applicable') continue;
+    if (chain.status === 'satisfied') {
+      evaluated += 1;
+      continue;
+    }
+    if (chain.status === 'incomplete' || chain.rcdPresent) continue;
     evaluated += 1;
     events.push(
       auditEvent({
         ruleId,
-        entity: { kind: 'node', id: entry.nodeId },
+        entity: { kind: 'node', id: chain.consumerId },
         severity: 'CRITICAL_SAFETY',
-        message: `Abzweig vor dem FI: Stromkreis ${labelOfNode(context.graph, entry.nodeId)} ist von der Einspeisung erreichbar, ohne einen vorhandenen FI zu durchlaufen.`,
+        message: `Abzweig vor dem FI: Stromkreis ${labelOfNode(context.graph, chain.consumerId)} ist von der Einspeisung erreichbar, ohne den vorhandenen FI zu durchlaufen.`,
         autoFixRemedy:
           'Diesen Stromkreis hinter die Fehlerstrom-Schutzeinrichtung legen (Abzweig erst nach deren Eingangsklemmen) oder einen eigenen FI ≤ 30 mA für diesen Abzweig einsetzen.',
-        counterexample: entry.path,
+        counterexample: chain.exampleUnprotectedPath ?? [...chain.protectionChain],
+        details: acChainDetails(chain),
       })
     );
   }
 
-  evaluated += coverage.protectedNodes.length;
   return checkOrNotApplicable(ruleId, events, evaluated);
 }
 

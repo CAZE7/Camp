@@ -29,6 +29,12 @@ import {
   type RuleId,
   type VerificationSeverity,
 } from './types';
+import {
+  countValidationStates,
+  type ValidationSeverity,
+  type ValidationStateCounts,
+  type ValidationStatus,
+} from '../validationSeverity';
 import { ruleSpec } from './rules';
 
 /** Eingabe zur Erzeugung eines Audit-Events. */
@@ -195,6 +201,61 @@ export function highestSeverity(events: readonly AuditEvent[]): VerificationSeve
     }
   }
   return worst;
+}
+
+// ============================================================================
+// NUTZER-VOKABULAR: SCHWERE UND ZUSTAND (Auftrag Phase 9)
+// ============================================================================
+
+/**
+ * Übersetzt die Normsprache der Engine in die vier Nutzerstufen.
+ *
+ *   CRITICAL_SAFETY  + VIOLATION      → critical   (echte Gefahr, widerlegt)
+ *   CODE_VIOLATION   + VIOLATION      → error      (Regelverstoß, widerlegt)
+ *   EFFICIENCY_WARNING + VIOLATION    → warning    (Auslegungshinweis)
+ *   UNVERIFIABLE (jede Schwere)       → info       (Datenlage, KEIN Verstoß)
+ *   Abdeckungs-Ereignis               → info
+ *
+ * Die Projektion ist absichtlich monoton: Eine Verletzung wird nie
+ * abgeschwächt, nur weil ihre Schwere niedriger ist — sie bleibt `error`
+ * bzw. `warning`, und eine Datenlücke wird nie zur Verletzung.
+ */
+export function validationSeverityOf(event: AuditEvent): ValidationSeverity {
+  if (isCoverageEvent(event) || event.kind === 'UNVERIFIABLE') return 'info';
+  switch (event.severity) {
+    case 'CRITICAL_SAFETY':
+      return 'critical';
+    case 'CODE_VIOLATION':
+      return 'error';
+    default:
+      return 'warning';
+  }
+}
+
+/**
+ * Zustand des Befunds gegenüber dem Plan.
+ *
+ *   VIOLATION                 → violated
+ *   UNVERIFIABLE              → incomplete
+ *   Abdeckungs-Ereignis       → not_applicable
+ *   sonst (kein Befund)       → satisfied
+ */
+export function validationStatusOf(event: AuditEvent): ValidationStatus {
+  if (isCoverageEvent(event)) return 'not_applicable';
+  if (event.kind === 'VIOLATION') return 'violated';
+  return 'incomplete';
+}
+
+/** Zählt die Zustände aller Meldungen eines Berichts (ohne Abdeckungs-Ereignisse). */
+export function validationStateCountsOf(events: readonly AuditEvent[]): ValidationStateCounts {
+  return countValidationStates(
+    events
+      .filter((event) => !isCoverageEvent(event))
+      .map((event) => ({
+        severity: validationSeverityOf(event),
+        status: validationStatusOf(event),
+      }))
+  );
 }
 
 /** Sortiert Ereignisse stabil nach Schwere, dann Regel-ID, dann Entität. */

@@ -26,6 +26,7 @@
 
 import type { HandleDomainValue } from '../domain/handleDomains';
 import type { CableCurrentExplanation } from '../electricalGraph/currentFlow';
+import type { RootCause } from './rootCauses';
 
 // ============================================================================
 // 1. GRUNDVOKABULAR
@@ -64,8 +65,38 @@ export type Polarity = 'positive' | 'negative' | 'line' | 'neutral' | 'protectiv
 /** Port-Rolle in der Kantenrichtung (Quelle/Ziel des Plan-Werkzeugs). */
 export type PortRole = 'source' | 'target';
 
-/** Gefährdungsklasse eines Befunds — genau drei Stufen (Auftragsvorgabe). */
+/**
+ * Gefährdungsklasse eines Befunds — die NORMSPRACHE der Engine (drei Stufen).
+ *
+ * Für Anzeige und Gruppierung existiert daneben das Nutzer-Vokabular
+ * (`critical | error | warning | info` + `violated | incomplete | satisfied |
+ * not_applicable`) in `lib/validationSeverity.ts`. Die Projektion
+ * `validationSeverityOf` / `validationStatusOf` (in `./events`) ist die
+ * EINZIGE Übersetzung — keine zweite Bewertung. Beide Vokabulare werden hier
+ * re-exportiert (Auftrag Phase 9).
+ */
 export type VerificationSeverity = 'CRITICAL_SAFETY' | 'CODE_VIOLATION' | 'EFFICIENCY_WARNING';
+
+import type {
+  ValidationSeverity as ValidationSeverityType,
+  ValidationStatus as ValidationStatusType,
+  ValidationStateCounts as ValidationStateCountsType,
+} from '../validationSeverity';
+
+export type {
+  ValidationSeverityType as ValidationSeverity,
+  ValidationStatusType as ValidationStatus,
+  ValidationStateCountsType as ValidationStateCounts,
+};
+export {
+  VALIDATION_SEVERITIES,
+  VALIDATION_STATUSES,
+  SEVERITY_LABEL,
+  STATUS_LABEL,
+  countValidationStates,
+  severityRank,
+  validationStatusRank,
+} from '../validationSeverity';
 
 /** Alle gültigen Schweregrade (Reihenfolge = Sortierreihenfolge im Report). */
 export const SEVERITY_ORDER: readonly VerificationSeverity[] = [
@@ -528,6 +559,28 @@ export interface AuditEventDetails {
   };
   /** Gefundene Schutzkette (Knoten-Labels, Quelle → Verbraucher). */
   protectionChain?: readonly string[];
+  /** Verbraucher, um den es in der Schutzkette geht (Auftrag Phase 8). */
+  consumerId?: string;
+  /** Quelle, über die dieser Verbraucher versorgt wird. */
+  sourceId?: string | null;
+  /** Liegt auf JEDEM Versorgungspfad dieses Verbrauchers ein FI ≤ 30 mA? */
+  rcdPresent?: boolean;
+  /** Kleinster IΔn auf dem Versorgungspfad (A); `null` = kein FI. */
+  rcdResidualCurrentA?: number | null;
+  /** FI-Organe (Kanten-IDs), die existieren, diesen Verbraucher aber nicht schützen. */
+  rcdsElsewhere?: readonly string[];
+  /** Knotenfolge des Pfads in Flussrichtung (Quelle → Verbraucher). */
+  path?: readonly string[];
+  /** Verteilungsregel der Parallelpfade (Auftrag Phase 2). */
+  splitMethod?: string;
+  /** Vertrauensgrad der Stromverteilung. */
+  splitConfidence?: string;
+  /**
+   * Gemeinsame Ursache mehrerer Befunde (Auftrag Phase 10). Die Gruppierung
+   * entsteht in `lib/verify/rootCauses.ts`; sie ändert keinen Befund, sie
+   * ordnet ihn ein — mehrere echte Leitungsfehler bleiben sichtbar.
+   */
+  rootCauseId?: string;
 }
 
 export interface AuditEvent {
@@ -627,4 +680,12 @@ export interface VerificationReport {
   skippedRules: readonly RuleId[];
   /** Modellgrenzen, die für dieses Verdikt gelten (nie leer). */
   limitations: readonly string[];
+  /**
+   * Ursachengruppen über den Befunden (Auftrag Phase 10): mehrere gleichartige
+   * Meldungen bleiben einzeln erhalten, sind aber einer Ursache zuordenbar
+   * (`rootCauseId` steht zusätzlich in den Ereignis-Details).
+   */
+  rootCauses: readonly RootCause[];
+  /** Zählwerk der Meldungen nach Nutzer-Schwere und -Zustand (Phase 9). */
+  stateCounts: ValidationStateCountsType;
 }

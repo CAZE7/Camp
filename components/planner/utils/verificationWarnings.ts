@@ -3,6 +3,8 @@ import {
   isCoverageEvent,
   rulesForContext,
   ruleSpec,
+  validationSeverityOf,
+  validationStatusOf,
   verifyPlan,
   type AuditEvent,
   type PassNumber,
@@ -112,6 +114,11 @@ export function verificationWarning(event: AuditEvent, index: number): Validatio
     title: spec.title,
     ...(focusType ? { focusId: event.entity.id, focusType } : {}),
     ruleId: event.ruleId,
+    // Nutzer-Vokabular (Auftrag Phase 9): Schwere und Zustand kommen aus der
+    // EINEN Projektion der Engine; hier wird nichts neu bewertet.
+    severity: validationSeverityOf(event),
+    status: validationStatusOf(event),
+    ...(typeof event.details?.rootCauseId === 'string' ? { rootCauseId: event.details.rootCauseId } : {}),
     measuredValue: formatValue(event.calculatedValue),
     expectedValue: formatValue(event.allowedLimit),
     unit: event.unit,
