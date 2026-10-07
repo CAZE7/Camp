@@ -27,6 +27,7 @@
 export * from './types';
 export * from './rules';
 export * from './events';
+export * from './rootCauses';
 export * from './physics';
 export * from './deviceClasses';
 export * from './graph';

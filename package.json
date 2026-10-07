@@ -27,6 +27,7 @@
     "regression:capture": "tsx scripts/regression/capture.ts",
     "test:regression": "vitest run scripts/regression/regression.test.ts",
     "regression:invariants": "tsx scripts/regression/invariantProbe.ts",
+    "verify:explain": "tsx scripts/verify/explainCableCurrent.ts",
     "perf:edge-routing": "tsx benchmarks/edgeRoutingPerf.bench.ts",
     "perf:route-scaling": "tsx benchmarks/routeAllScaling.probe.ts",
     "pree2e": "node scripts/check-node-version.mjs",

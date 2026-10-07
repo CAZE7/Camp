@@ -762,7 +762,7 @@ describe('Auto-Wire: keine Warnungen nach performAutoWiring', () => {
       makeNode('ch1', 'charger', { label: 'Ladequelle', amps: 20 }),
       makeNode('ac1', 'acBatteryCharger', { label: '230V Ladegerät', amps: 25 }),
       makeNode('p1', 'shorePower', { label: 'Landstrom', hasRcd: true }),
-      makeNode('i1', 'inverter', { label: 'Inverter', watts: 800, hasRcd: true }),
+      makeNode('i1', 'inverter', { label: 'Inverter', watts: 1000, hasRcd: true }),
       makeNode('c1', 'consumer', { label: 'Kühlschrank', watts: 60, hours: 4 }),
       makeNode('c2', 'consumer', { label: 'Pumpe', watts: 40, hours: 3 }),
       makeNode('c3', 'consumer', { label: 'LED', watts: 40, hours: 2 }),
@@ -783,14 +783,24 @@ describe('Auto-Wire: keine Warnungen nach performAutoWiring', () => {
     // Starterbatterie wird automatisch ergänzt
     expect(n.some((x) => x.type === 'battery' && x.data.label === 'Starterbatterie')).toBe(true);
 
-    // EHRLICHE UNMÖGLICHKEIT (statt falscher Sicherheit): Der worst case
-    // (WR-Eingang 78,4 A + DC-Lasten 11,7 A + Charger-/Booster-Eingänge
-    // je 22,2 A = 134,5 A) übersteigt die 100-A-Hauptsicherung des
+    // EHRLICHE UNMÖGLICHKEIT (statt falscher Sicherheit): Der worst case auf
+    // der HAUSSEITE (WR-Eingang 98,0 A bei 1000 W Dauerleistung + DC-Lasten
+    // 11,7 A = 109,8 A) übersteigt die 100-A-Hauptsicherung des
     // 70-mm²-Katalogmaximums. AutoWire KAPPT die Hauptstränge bei 70 mm²,
     // markiert sie als nicht ausführbar (fuseWarning), und die Engine meldet
     // die Überlast als kritisch — NUR auf den Hauptsträngen. Zweite
     // Parallelleitung oder 24 V sind die echte Lösung; beides wird hier
     // nicht modelliert, der Befund darf nicht verschwinden.
+    //
+    // KORREKTUR 2026-10-07 (Auftrag Phase 3): Die frühere Rechnung addierte
+    // zusätzlich die EINGANGSströme von Booster und Ladegerät auf die
+    // Hausseite (je 22,2 A). Ein Booster-Eingang liegt auf der Starterseite,
+    // ein 230-V-Ladegerät-Eingang auf der AC-Seite — beide werden als
+    // getrennte Anschlüsse geführt (Reihenglied), nicht doppelt gestempelt.
+    // Damit die Prüfung des ehrlichen Unmöglichkeitsfalls erhalten bleibt,
+    // ist der Wechselrichter in diesem Szenario 1000 W statt 800 W — groß
+    // genug, dass die Hauptsicherung ehrlich als zu klein gemeldet wird,
+    // klein genug, dass die WR-Einzelzuleitung selbst noch trägt.
     const { result } = renderHook(() => useLiveValidation(n, e));
     // Hauptstrang-Kette: Batterie ↔ Shunt ↔ Busbars (Plus- und Minus-Seite).
     const shuntId = n.find((x) => x.type === 'shunt')?.id;
@@ -807,6 +817,19 @@ describe('Auto-Wire: keine Warnungen nach performAutoWiring', () => {
         true
       );
     }
+    // Phase-3-Regression: Der Booster-Eingang hängt an der Starterseite und
+    // der 230-V-Ladegerät-Eingang an der AC-Seite — keiner der beiden Ströme
+    // wird auf die Hausseite gestempelt (früher: +44,4 A Doppelzählung).
+    const model = getCableCurrents(n, e);
+    const boosterInput = e.find((x) => x.target === 'd1');
+    const boosterOutput = e.find((x) => x.source === 'd1');
+    expect(model.byEdgeId.get(boosterInput!.id)?.operatingCurrent ?? 0).toBeGreaterThan(0);
+    expect(model.byEdgeId.get(boosterOutput!.id)?.operatingCurrent ?? 0).toBeGreaterThan(0);
+    expect(
+      model.byEdgeId.get(boosterInput!.id)?.operatingCurrent ?? 0,
+      'Booster-Eingang (Starterseite) darf nicht auf dem Hausstrang erscheinen'
+    ).toBeLessThan(1000 / 12 / 0.85 + 1);
+
     const ibInIz = result.current.filter((w) => w.ruleId === 'AMP-001-ib-in-iz' && w.type === 'critical');
     expect(ibInIz.length).toBeGreaterThan(0); // die echte Überlast bleibt sichtbar
     for (const w of ibInIz) {

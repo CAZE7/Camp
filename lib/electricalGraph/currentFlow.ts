@@ -61,6 +61,7 @@ import type { CableEdgeData } from '../domain/cableEdgeData';
 import type { Edge, Node } from '../domain/graph';
 import { getSystemVoltage, VDE_INVERTER_EFFICIENCY, VDE_SOLAR_VMP_VOLTAGE } from '../vde-standards';
 import { getEdgeDomain } from '../electrical';
+import { COPPER_RESISTIVITY_OHM_MM2_PER_M } from '../materials';
 import { compareIds } from '../sortOrder';
 import { deriveBatteryBanks } from './batteryBank';
 
@@ -84,10 +85,38 @@ export interface CurrentContribution {
 }
 
 /**
+ * Wie der Strom eines Beitrags auf mehrere parallele Pfade verteilt wurde
+ * (Auftrag Phase 2). Die Methode ist Teil des Ergebnisses, nicht der Prosa:
+ * Ein Equal-Split ist nur bei NACHWEISLICH gleichwertigen Pfaden zulässig.
+ */
+export type CurrentSplitMethod =
+  /** Nur ein Pfad — es gibt nichts zu verteilen. */
+  | 'single-path'
+  /** Mehrere Pfade, alle mit denselben (auch gleichermaßen fehlenden) Kabelwerten. */
+  | 'equal-equivalent-paths'
+  /** Mehrere Pfade, alle mit vollständigen Kabeldaten: I ~ G = 1/R. */
+  | 'conductance-weighted'
+  /** Mehrere Pfade, Datenlage unterschiedlich: konservativ voller Strom je Pfad. */
+  | 'full-per-path-unknown'
+  /** Kein Stromfluss (0 A / keine Last) — Verteilung nicht anwendbar. */
+  | 'not-applicable';
+
+/** Vertrauensgrad der Aufteilung (nie „erfundene Präzision“). */
+export type CurrentSplitConfidence = 'computed' | 'assumed' | 'unknown';
+
+/**
  * Maschinenlesbare Erklärung des Betriebsstroms EINER KANTE.
  *
- * `operatingCurrent = null` bedeutet: nicht bestimmbar (Datenlücke) —
- * bewusst unterscheidbar von 0 A (gemessen/gerechnet „keine Last“).
+ * `ib` (bzw. `operatingCurrent`) = null bedeutet: nicht bestimmbar
+ * (Datenlücke) — bewusst unterscheidbar von 0 A (gemessen/gerechnet „keine
+ * Last“).
+ *
+ * Auftrag Phase 4 verlangt für JEDE Leitung abrufbar:
+ * `{ ib, contributingLoads, contributingSources, path, flowDirection,
+ *    calculationMethod, assumptions }` — alle acht Felder stehen hier; die
+ * historischen Namen (`operatingCurrent`, `upstreamSources`, `direction`)
+ * bleiben als dieselben Werte erhalten, damit bestehende Konsumenten nicht
+ * brechen.
  */
 export interface CableCurrentExplanation {
   cableId: string;
@@ -97,13 +126,28 @@ export interface CableCurrentExplanation {
   voltage: number;
   /** Betriebsstrom Ib in A; `null` = nicht bestimmbar. */
   operatingCurrent: number | null;
+  /** Derselbe Wert wie `operatingCurrent` unter dem Namen der Normgröße I_b. */
+  ib: number | null;
   /** Alle Beiträge, die auf dieser Kante ankommen (sortiert). */
   contributingLoads: readonly CurrentContribution[];
+  /** Quellen-Beiträge, die diese Kante tragen (sortiert, symmetrisch zu den Lasten). */
+  contributingSources: readonly CurrentContribution[];
   /** Quellen, deren Strom über diese Kante fließt (Knoten-IDs, sortiert). */
   upstreamSources: readonly string[];
   /** Lasten, deren Strom über diese Kante fließt (Knoten-IDs, sortiert). */
   downstreamLoads: readonly string[];
+  /**
+   * Knotenfolge in FLUSSRICHTUNG (Quelle → Last bzw. Last → Quelle, je nach
+   * `direction`). Leer, wenn kein Pfad bestimmt ist.
+   */
+  path: readonly string[];
   direction: FlowDirection;
+  /** Derselbe Wert wie `direction` unter dem Namen aus Auftrag Phase 4. */
+  flowDirection: FlowDirection;
+  /** Verteilungsregel der Parallelpfade (Phase 2). */
+  splitMethod: CurrentSplitMethod;
+  /** Vertrauensgrad der Verteilung. */
+  splitConfidence: CurrentSplitConfidence;
   /**
    * Berechnungsmethode (maschinenlesbar):
    *   'explicit-totalAmps' — deklarierte totalAmps (gewinnt)
@@ -119,12 +163,30 @@ export interface CableCurrentExplanation {
   assumptions: readonly string[];
 }
 
+/**
+ * Topologische Rolle eines Bauteils, das im selben Netz Quelle UND Last ist
+ * (Auftrag Phase 3). Die Regel „Dual-Rolle bekommt pauschal den vollen Strom
+ * auf jedem Anschluss“ ist damit ersetzt: Jede Kante trägt ihren Anteil nach
+ * der Aufteilung ihres Pfades, und die Begründung steht im Modell.
+ */
+export type DualRoleTopology =
+  /** Ein-/Ausgang im selben Netz (DC-DC-Wandler): Durchgang = Reihenglied. */
+  | 'series-pass-through'
+  /** Ein- und Ausgang galvanisch getrennt (AC-Ladegerät, Wechselrichter). */
+  | 'galvanically-separated'
+  /** Ein- und Ausgang auf getrennten Ästen desselben Netzes. */
+  | 'independent-in-out'
+  /** Beide Richtungen möglich (Wechselrichter mit AC-Ein- und -Ausgang). */
+  | 'bidirectional-converter';
+
 /** Das vollständige Strommodell eines Plans. */
 export interface CableCurrentModel {
   /** Kanten-ID → Erklärung (jede Kante genau einmal). */
   byEdgeId: ReadonlyMap<string, CableCurrentExplanation>;
   /** DC-Systemspannung der Auslegung in V. */
   systemVoltageV: number;
+  /** Knoten-ID → topologische Rolle (nur für Bauteile mit Doppelrolle gesetzt). */
+  dualRoleTopology: ReadonlyMap<string, DualRoleTopology>;
   /** Modell-Hinweise (nie lautlose Vereinfachungen). */
   notes: readonly string[];
 }
@@ -220,7 +282,12 @@ type NetKind = 'plus' | 'minus' | 'ac';
 
 /** Netz-Mitglied: Rollen können kombiniert sein (Ladegerät = Quelle + Last). */
 interface NetMember {
+  /** Knoten-ID im Netz (Batterien: String-ID) — Schlüssel der Flüsse. */
   nodeId: string;
+  /** Originaler Plan-Knoten (bei Batterie-Strings der repräsentative Knoten). */
+  node: string;
+  /** Bauteiltyp des Originalknotens (`dcdcCharger`, `inverter`, …). */
+  nodeType: string;
   isFlexibleSource: boolean;
   isFixedSource: boolean;
   isSink: boolean;
@@ -244,12 +311,31 @@ interface FlowNet {
   adjacency: Map<string, Array<{ edgeId: string; other: string }>>;
   /** Kanten-ID → Endpunkte (Netzknoten). */
   endpoints: Map<string, { from: string; to: string }>;
+  /**
+   * Kanten-ID → Plan-Knoten der beiden Enden. Damit ist entscheidbar, ob ein
+   * Kabel an der EIN- oder AUSGANGSSEITE eines Wandlers hängt (Auftrag
+   * Phase 3) — der Plan zeichnet Leitungen immer von der Quell- zur
+   * Zielseite (`source`/`target` der Kante).
+   */
+  planEnds: Map<string, { source: string; target: string }>;
 }
 
 interface BatteryString {
   id: string;
   batteryIds: string[];
   internalEdgeIds: string[];
+}
+
+/**
+ * Elektrische Kabeldaten EINER Kante — Grundlage der gewichteten Aufteilung
+ * (Auftrag Phase 2). `null` in einem Feld heißt „nicht angegeben“; daraus
+ * entsteht nie eine erfundene Zahl.
+ */
+interface EdgeCableData {
+  lengthM: number | null;
+  crossSectionMm2: number | null;
+  /** true = Länge ist eine Planungsannahme (`lengthIsAssumption`). */
+  lengthIsAssumption: boolean;
 }
 
 interface PlanIndex {
@@ -259,6 +345,8 @@ interface PlanIndex {
   /** Kanten, deren Endknoten existieren. */
   validEdges: Edge<CableEdgeData>[];
   edgeDomain: Map<string, Domain>;
+  /** Kanten-ID → gespeicherte Kabelparameter (Länge, Querschnitt). */
+  cableData: Map<string, EdgeCableData>;
   strings: BatteryString[];
   stringOfBattery: Map<string, string>;
   /** Interne String-Kabel: edgeId → String-ID. */
@@ -277,11 +365,17 @@ function buildPlanIndex(nodes: readonly Node[], edges: readonly Edge<CableEdgeDa
 
   const edgeDomain = new Map<string, Domain>();
   const validEdges: Edge<CableEdgeData>[] = [];
+  const cableData = new Map<string, EdgeCableData>();
   for (const edge of sortedEdges) {
     const sourceNode = nodeById.get(edge.source);
     const targetNode = nodeById.get(edge.target);
     if (!sourceNode || !targetNode) continue; // fehlendes Ende: SYN-001-Territorium
     edgeDomain.set(edge.id, edgeDomainOf(edge, sourceNode.type, targetNode.type));
+    cableData.set(edge.id, {
+      lengthM: numberField(edge.data as Record<string, unknown> | undefined, 'length'),
+      crossSectionMm2: numberField(edge.data as Record<string, unknown> | undefined, 'crossSection'),
+      lengthIsAssumption: edge.data?.lengthIsAssumption === true,
+    });
     validEdges.push(edge);
   }
 
@@ -382,6 +476,7 @@ function buildPlanIndex(nodes: readonly Node[], edges: readonly Edge<CableEdgeDa
     sortedEdges,
     validEdges,
     edgeDomain,
+    cableData,
     strings,
     stringOfBattery,
     internalEdgeOfString,
@@ -674,11 +769,12 @@ function buildFlowNet(
   const cables: NetCable[] = [];
   const adjacency = new Map<string, Array<{ edgeId: string; other: string }>>();
   const endpoints = new Map<string, { from: string; to: string }>();
+  const planEnds = new Map<string, { source: string; target: string }>();
 
   const memberFor = (node: Node, kind: NetKind): NetMember => {
     const type = node.type ?? '';
     const label = nodeLabelOf(node);
-    const base = { nodeId: '', label };
+    const base = { nodeId: '', node: node.id, nodeType: type, label };
     if (node.type === 'battery') {
       return {
         ...base,
@@ -873,6 +969,7 @@ function buildFlowNet(
 
     cables.push({ edgeId: edge.id, from: sourceMember.nodeId, to: targetMember.nodeId });
     endpoints.set(edge.id, { from: sourceMember.nodeId, to: targetMember.nodeId });
+    planEnds.set(edge.id, { source: sourceNode.id, target: targetNode.id });
     const adjA = adjacency.get(sourceMember.nodeId) ?? [];
     adjA.push({ edgeId: edge.id, other: targetMember.nodeId });
     adjacency.set(sourceMember.nodeId, adjA);
@@ -885,7 +982,7 @@ function buildFlowNet(
 
   for (const list of adjacency.values()) list.sort((a, b) => compareIds(a.edgeId, b.edgeId));
   cables.sort((a, b) => compareIds(a.edgeId, b.edgeId));
-  return { kind, members, cables, adjacency, endpoints };
+  return { kind, members, cables, adjacency, endpoints, planEnds };
 }
 
 function panelSupplyOf(index: PlanIndex, node: Node): number | null {
@@ -960,6 +1057,10 @@ interface CableFlowState {
   loadDirection: 'forward' | 'reverse' | null;
   /** Richtung der Ladefluss-Beiträge relativ zur Zeichenrichtung. */
   chargeDirection: 'forward' | 'reverse' | null;
+  /** Knotenfolge des ersten Lastfluss-Pfads (Flussrichtung, Phase 4). */
+  loadPath: string[] | null;
+  /** Knotenfolge des ersten Ladefluss-Pfads (Flussrichtung, Phase 4). */
+  chargePath: string[] | null;
 }
 
 const newCableFlowState = (): CableFlowState => ({
@@ -970,11 +1071,215 @@ const newCableFlowState = (): CableFlowState => ({
   loads: new Set(),
   loadDirection: null,
   chargeDirection: null,
+  loadPath: null,
+  chargePath: null,
 });
 
+/** Ergebnis der Pfadgewichtung EINES Beitrags (Auftrag Phase 2). */
+interface SplitDecision {
+  method: CurrentSplitMethod;
+  confidence: CurrentSplitConfidence;
+  /** Anteile je Pfad, in Pfadreihenfolge (Summe = amount bei `shares`). */
+  shares: number[];
+  /** Je Pfad der Faktor, mit dem `amountA` multipliziert wird. */
+  factors: number[];
+  note: string | null;
+}
+
+/** Beschreibung einer Kante für die Gewichtung — Widerstand und Datenlage. */
+interface CableConductance {
+  /** R = ρ·L/A in Ω; `null` = Datenlage reicht nicht. */
+  resistanceOhm: number | null;
+  /** Kennwerte für den Gleichwertigkeitsvergleich. */
+  lengthM: number | null;
+  crossSectionMm2: number | null;
+  lengthIsAssumption: boolean;
+}
+
+/** Vergleichsform der Kabelparameter — inklusive „beide fehlen“. */
+function cableShapeKey(data: CableConductance): string {
+  const value = (input: number | null): string => (input === null ? '?' : input.toFixed(6));
+  return `${value(data.lengthM)}/${value(data.crossSectionMm2)}`;
+}
+
 /**
- * Trägt einen Fluss auf seine Pfade auf (Equal-Split über die Pfade) und
- * schreibt die Kanten-Zustände.
+ * Reihenwiderstand einer Kante (ρ·L/A) — die im Kabel GESPEICHERTEN Werte,
+ * kein Ersatzwert (Auftrag Phase 2: „Verwende dafür die im Kabel
+ * gespeicherten Parameter").
+ */
+function resistanceOfCable(data: CableConductance): number | null {
+  if (data.lengthM === null || data.crossSectionMm2 === null) return null;
+  if (!(data.lengthM >= 0) || !(data.crossSectionMm2 > 0)) return null;
+  return (COPPER_RESISTIVITY_OHM_MM2_PER_M * data.lengthM) / data.crossSectionMm2;
+}
+
+/**
+ * Kanten, die in JEDEM Pfad vorkommen — der gemeinsame Abschnitt (Trunk).
+ *
+ * Dieser Anteil trägt den GESAMTEN Strom und beeinflusst daher die Aufteilung
+ * NICHT: Er kürzt sich aus dem Verhältnis G₁:G₂ heraus. Würde man ihn
+ * mitrechnen, verschöbe er die Verteilung systematisch in Richtung
+ * Gleichverteilung — genau die erfundene Präzision, die dieser Auftrag
+ * ausschließt.
+ */
+function commonEdgeIds(paths: readonly PathResult[]): Set<string> {
+  const [first, ...rest] = paths;
+  if (!first) return new Set();
+  const common = new Set(first.edges);
+  for (const path of rest) {
+    for (const edgeId of [...common]) {
+      if (!path.edges.includes(edgeId)) common.delete(edgeId);
+    }
+  }
+  return common;
+}
+
+/**
+ * Widerstand des pfad-eigenen (abzweigenden) Anteils: Summe der Kabel, die
+ * nicht in allen Parallelpfaden liegen.
+ */
+function pathResistanceOhm(
+  dataFor: (edgeId: string) => CableConductance,
+  path: PathResult,
+  common: ReadonlySet<string>
+): number | null {
+  let sum = 0;
+  for (const edgeId of path.edges) {
+    if (common.has(edgeId)) continue;
+    const data = dataFor(edgeId);
+    const resistance = data.resistanceOhm;
+    if (resistance === null) return null;
+    sum += resistance;
+  }
+  return sum === 0 ? null : sum;
+}
+
+/**
+ * DIE Verteilungsregel für parallele Pfade (Auftrag Phase 2).
+ *
+ * Die frühere Regel war ein pauschaler Equal-Split (`amount / paths.length`)
+ * für JEDE Mehrfachverbindung. Sie gilt ab hier nur noch, wenn die Pfade
+ * nachweislich gleichwertig sind:
+ *
+ *   1. **Ein Pfad** → voller Strom, nichts zu verteilen.
+ *   2. **Alle Pfade vollständig vermessen** → Gewichtung nach Leitwert:
+ *        R_Pfad = Σ (ρ · L / A)   (Serienschaltung der Kabel)
+ *        G_Pfad = 1 / R_Pfad
+ *        I_Pfad = I_gesamt · G_Pfad / Σ G
+ *      (bei gleichen Kabeln ergibt das exakt den Equal-Split — die alte
+ *      Regel ist damit ein Spezialfall, kein eigener Pfad).
+ *   3. **Alle Pfade gleichwertig, aber ohne Messwerte** (gleiche Anzahl
+ *      Kabel und je Position gleiche — auch gleichermaßen fehlende —
+ *      Parametern): Equal-Split, ausgewiesen als ANNAHME
+ *      (`confidence: 'assumed'`). Das betrifft z. B. zwei baugleiche
+ *      Batteriezuführungen ohne eingetragene Länge.
+ *   4. **Datenlage der Pfade unterschiedlich** → keine erfundene Präzision:
+ *      jeder Pfad erhält konservativ den VOLLEN Strom,
+ *      `splitMethod: 'full-per-path-unknown'`, `confidence: 'unknown'`, und
+ *      die Annahme steht in `CableCurrentExplanation.assumptions`.
+ *
+ * Determinismus: Die Pfadliste kommt aus `enumeratePaths` (sortierte
+ * Nachbarschaft), die Reihenfolge ist stabil; Gleitkomma-Rundung passiert
+ * erst bei der Ausgabe.
+ */
+function splitPathsDeterministic(
+  dataFor: (edgeId: string) => CableConductance,
+  paths: PathResult[]
+): SplitDecision {
+  if (paths.length === 0) {
+    return { method: 'not-applicable', confidence: 'unknown', shares: [], factors: [], note: null };
+  }
+  if (paths.length === 1) {
+    return {
+      method: 'single-path',
+      confidence: 'computed',
+      shares: [1],
+      factors: [1],
+      note: null,
+    };
+  }
+
+  const common = commonEdgeIds(paths);
+  const resistances = paths.map((path) => pathResistanceOhm(dataFor, path, common));
+  const allMeasured = resistances.every((value): value is number => value !== null && value > 0);
+  if (allMeasured) {
+    const conductances = resistances.map((value) => 1 / value);
+    const sum = conductances.reduce((acc, value) => acc + value, 0);
+    const factors = conductances.map((value) => value / sum);
+    return {
+      method: 'conductance-weighted',
+      confidence: 'computed',
+      shares: factors,
+      factors,
+      note: `Stromverteilung über ${paths.length} Parallelpfade nach Leitwert G = 1/R (R = ρ·L/A des pfad-eigenen Anteils, aus den gespeicherten Kabellängen und -querschnitten; der gemeinsame Abschnitt trägt den Gesamtstrom und kürzt sich heraus).`,
+    };
+  }
+
+  // Gleichwertigkeitsprüfung: gleiche Länge der Kette und je Position gleiche
+  // (auch gleichermaßen fehlende) Kabelparameter.
+  const first = paths[0];
+  const equivalent =
+    first !== undefined &&
+    paths.every((path) => {
+      if (path.edges.length !== first.edges.length) return false;
+      for (let index = 0; index < path.edges.length; index += 1) {
+        const a = path.edges[index];
+        const b = first.edges[index];
+        if (a === undefined || b === undefined) return false;
+        if (cableShapeKey(dataFor(a)) !== cableShapeKey(dataFor(b))) return false;
+      }
+      return true;
+    });
+
+  if (equivalent) {
+    const factor = 1 / paths.length;
+    return {
+      method: 'equal-equivalent-paths',
+      confidence: 'assumed',
+      shares: paths.map(() => factor),
+      factors: paths.map(() => factor),
+      note: `Gleiche Aufteilung auf ${paths.length} nachweislich gleichwertige Parallelpfade (gleiche Kabelführung, gleiche — auch gleichermaßen fehlende — Kabelwerte); ohne eingetragene Länge/Querschnitt ist der Equal-Split eine dokumentierte Annahme, keine Messung.`,
+    };
+  }
+
+  return {
+    method: 'full-per-path-unknown',
+    confidence: 'unknown',
+    shares: paths.map(() => 1),
+    factors: paths.map(() => 1),
+    note: `Parallelpfade mit UNTERSCHIEDLICHER Datenlage: Für mindestens einen Pfad fehlen Länge oder Querschnitt, deshalb ist keine Aufteilung nachweisbar. Konservative Annahme: jeder der ${paths.length} Pfade kann den vollen Strom allein führen (keine Entlastung angesetzt, keine Präzision erfunden).`,
+  };
+}
+
+/** Eingetragene Kabelwerte EINER Kante (aus dem Planindex). */
+function conductanceOfIndex(index: PlanIndex, edgeId: string): CableConductance {
+  const data = index.cableData.get(edgeId);
+  const value: CableConductance = {
+    resistanceOhm: null,
+    lengthM: data?.lengthM ?? null,
+    crossSectionMm2: data?.crossSectionMm2 ?? null,
+    lengthIsAssumption: data?.lengthIsAssumption ?? false,
+  };
+  return { ...value, resistanceOhm: resistanceOfCable(value) };
+}
+
+/** Split-Info EINER Kante (dominanter Beitrag gewinnt — deterministisch). */
+interface EdgeSplitInfo {
+  method: CurrentSplitMethod;
+  confidence: CurrentSplitConfidence;
+  note: string | null;
+  /** Anteil des Beitrags, der diese Info gesetzt hat (Vergleichswert). */
+  amount: number;
+}
+
+/**
+ * Trägt einen Fluss auf seine Pfade auf und schreibt die Kanten-Zustände.
+ *
+ * Die Verteilung entsteht aus `splitPathsDeterministic` (Phase 2) und ist
+ * damit für jede Kante begründet: Ein Split ist entweder gerechnet
+ * (`conductance-weighted`), eine ausgewiesene Annahme
+ * (`equal-equivalent-paths`) oder ausdrücklich unbekannt
+ * (`full-per-path-unknown`).
  *
  * `traversedFromStart` = der Pfad wurde von der LAST (Lastfluss) bzw. von
  * der QUELLE (Ladefluss) aus aufgezeichnet; daraus folgt die physikalische
@@ -991,23 +1296,25 @@ function applyFlow(
   componentLabel: string,
   componentRole: 'load' | 'source',
   flowClass: 'load' | 'charge',
-  splitPaths: Map<string, number>,
-  /**
-   * `true`: Equal-Split über die Pfade (identische Parallelpfade).
-   * `false`: voller Betrag auf JEDEM Pfad — für Dual-Rollen-Komponenten
-   * (Ladegerät/Booster = Quelle UND Last im selben Netz): jeder ihrer
-   * Anschlusskabel kann den vollen Komponentstrom allein führen
-   * (Eingang ODER Ausgang) — konservativ, keine Unterschätzung.
-   */
-  splitEvenly = true
+  splitInfo: Map<string, EdgeSplitInfo>,
+  dataFor: (edgeId: string) => CableConductance
 ): void {
   if (paths.length === 0 || !(amountA > 0)) return;
-  const share = splitEvenly ? amountA / paths.length : amountA;
+  const decision = splitPathsDeterministic(dataFor, paths);
 
-  for (const path of paths) {
+  for (const [pathIndex, path] of paths.entries()) {
+    const share = amountA * (decision.factors[pathIndex] ?? 0);
     for (const edgeId of path.edges) {
-      if (splitEvenly) {
-        splitPaths.set(edgeId, Math.max(splitPaths.get(edgeId) ?? 0, paths.length));
+      const previous = splitInfo.get(edgeId);
+      // Der Beitrag mit dem größten Anteil bestimmt die ausgewiesene Regel;
+      // bei Gleichstand bleibt der erste (sortierte Pfadreihenfolge ⇒ stabil).
+      if (previous === undefined || share > previous.amount + 1e-9) {
+        splitInfo.set(edgeId, {
+          method: decision.method,
+          confidence: decision.confidence,
+          note: decision.note,
+          amount: share,
+        });
       }
     }
     for (let i = 0; i < path.edges.length; i += 1) {
@@ -1033,12 +1340,35 @@ function applyFlow(
       }
       const direction = endpoint.from === currentFrom ? 'forward' : 'reverse';
 
+      // Der Pfad wird in FLUSSRICHTUNG abgelegt (Auftrag Phase 4): Die
+      // Aufzählung läuft immer vom Startknoten (Last bzw. Quelle) — die
+      // physikalische Richtung hängt an Netzart (Plus/Minus sind
+      // Spiegelbilder) und Flussklasse.
+      const physicalPath =
+        flowClass === 'load'
+          ? net.kind === 'minus'
+            ? [...path.nodes]
+            : [...path.nodes].reverse()
+          : net.kind === 'minus'
+            ? [...path.nodes].reverse()
+            : [...path.nodes];
+      // Der Pfad dieser Kante reicht von der Quelle BIS ZU IHR (nicht weiter):
+      // „Warum fließt dieser Strom über dieses Kabel?" beantwortet die
+      // Strecke, die der Strom bis hierher genommen hat — nicht ein fremder
+      // Zweig, der zufällig zuerst aufgezählt wurde. Die Fortsetzung hinter
+      // dieser Kante steht in der Erklärung der Folgekabel.
+      const farEnd = currentFrom === nodeA ? nodeB : nodeA;
+      const cutIndex = physicalPath.indexOf(farEnd);
+      const trimmedPath = cutIndex >= 0 ? physicalPath.slice(0, cutIndex + 1) : physicalPath;
+
       if (flowClass === 'load') {
         flowState.loadFlow += share;
         if (flowState.loadDirection === null) flowState.loadDirection = direction;
+        if (flowState.loadPath === null) flowState.loadPath = trimmedPath;
       } else {
         flowState.chargeFlow += share;
         if (flowState.chargeDirection === null) flowState.chargeDirection = direction;
+        if (flowState.chargePath === null) flowState.chargePath = trimmedPath;
       }
 
       const existing = flowState.contributions.find(
@@ -1060,6 +1390,63 @@ function applyFlow(
   }
 }
 
+/** Bauteiltypen, die einen gerichteten Ein- und Ausgang haben. */
+const DIRECTED_CONVERTER_TYPES = new Set([
+  'inverter',
+  'acBatteryCharger',
+  'charger',
+  'mpptController',
+  'dcdcCharger',
+]);
+
+/**
+ * Beschränkt die Pfade eines Wandler-Bauteils auf seine EIN- bzw.
+ * AUSGANGSSEITE (Auftrag Phase 3).
+ *
+ * Der Plan zeichnet jede Leitung von einem Quell- zu einem Zielhandle. Für
+ * einen Wandler gilt damit:
+ *   - Der Lastbezug (Eingang) läuft über Kabel, an deren ZIEL der Wandler
+ *     hängt (`planEnds.target === node`).
+ *   - Die Speisung (Ausgang) läuft über Kabel, an deren QUELLE der Wandler
+ *     hängt (`planEnds.source === node`).
+ *
+ * Ohne diese Trennung wäre „Wandler“ nur ein Knoten im Netz, und ein
+ * Leistungsfluss könnte über die falsche Seite geführt werden — genau der
+ * Fall, den die frühere Vollstromregel überschrieben hat.
+ *
+ * Ist die Seite aus der Verdrahtung NICHT bestimmbar (kein passender
+ * Anschluss), bleiben alle Pfade erhalten und die Annahme wird ausgewiesen.
+ */
+function restrictToConverterSide(
+  net: FlowNet,
+  member: NetMember,
+  paths: readonly PathResult[],
+  role: 'sink' | 'source'
+): { paths: PathResult[]; note: string | null } {
+  if (paths.length === 0) return { paths: [], note: null };
+  if (!DIRECTED_CONVERTER_TYPES.has(member.nodeType)) return { paths: [...paths], note: null };
+  const nodeId = member.node;
+  const matchesSide = (path: PathResult): boolean => {
+    const first = path.edges[0];
+    if (first === undefined) return false;
+    const ends = net.planEnds.get(first);
+    if (!ends) return false;
+    return role === 'sink' ? ends.target === nodeId : ends.source === nodeId;
+  };
+  const preferred = paths.filter(matchesSide);
+  if (preferred.length === 0) {
+    return {
+      paths: [...paths],
+      note: `Ein-/Ausgangsseite des Bauteils „${member.label}“ (${nodeId}) ist aus der Verdrahtung nicht bestimmbar — gerechnet wird über alle erreichbaren Anschlüsse; Anschlussrichtung prüfen.`,
+    };
+  }
+  if (preferred.length === paths.length) return { paths: [...paths], note: null };
+  return {
+    paths: preferred,
+    note: `Nur die ${role === 'sink' ? 'Eingangs-' : 'Ausgangs-'}seite des Bauteils „${member.label}“ (${nodeId}) wird belastet: Der Plan verdrahtet Ein- und Ausgang als getrennte Anschlüsse (Reihenglied) — der Strom der anderen Seite ist ein eigener Beitrag.`,
+  };
+}
+
 /**
  * Führt das Flussmodell für EIN Netz aus (Regeln A1–A5) und schreibt in
  * `flows` (Kanten-ID → Zustand).
@@ -1068,7 +1455,8 @@ function runNetFlows(
   net: FlowNet,
   flows: Map<string, CableFlowState>,
   notes: string[],
-  splitPaths: Map<string, number>
+  splitInfo: Map<string, EdgeSplitInfo>,
+  dataFor: (edgeId: string) => CableConductance
 ): void {
   const flexibleSources: string[] = [];
   const fixedSources: string[] = [];
@@ -1102,10 +1490,15 @@ function runNetFlows(
       );
       continue;
     }
-    // Dual-Rolle (DC-DC-Wandler = Quelle UND Last): Reihen-Element, der
-    // Komponentstrom läuft durch ALLE seine Kanten — kein Equal-Split.
-    const splitEvenly = !(member.isFixedSource && member.isSink);
-    applyFlow(net, flows, paths, demand, sinkId, member.label, 'load', 'load', splitPaths, splitEvenly);
+    // KEINE pauschale Vollstromregel für Dual-Rollen-Bauteile mehr (Auftrag
+    // Phase 3): Ein Wandler ist nur dann ein Reihenglied, wenn Eingang und
+    // Ausgang im SELBEN Netz liegen — und auch dann teilt sich der Strom auf
+    // seine parallelen Anschlüsse nach Leitwert (Phase 2). Die topologische
+    // Einordnung steht in `dualRoleTopology` (siehe `computeCableCurrents`)
+    // und in den Annahmen der betroffenen Leitungen.
+    const restricted = restrictToConverterSide(net, member, paths, 'sink');
+    if (restricted.note !== null) notes.push(restricted.note);
+    applyFlow(net, flows, restricted.paths, demand, sinkId, member.label, 'load', 'load', splitInfo, dataFor);
   }
 
   // (a) Fixe Quellen. Priorität:
@@ -1142,11 +1535,16 @@ function runNetFlows(
 
       let handled = false;
       if (net.kind !== 'ac' && flexibleSources.length > 0) {
-        const chargePaths = enumeratePaths(net, sourceId, isFlexible, passThrough);
+        const chargePathsRaw = enumeratePaths(net, sourceId, isFlexible, passThrough);
+        const chargeRestricted = restrictToConverterSide(net, member, chargePathsRaw, 'source');
+        if (chargeRestricted.note !== null) notes.push(chargeRestricted.note);
+        const chargePaths = chargeRestricted.paths;
         if (chargePaths.length > 0) {
-          // Dual-Rolle (DC-DC-Wandler): Reihen-Element — voller Ladestrom auf
-          // jeder Kante, kein Equal-Split (s. o.).
-          const splitEvenly = !member.isSink;
+          // Ladefluss der fixen Quelle zur Batterie — dieselbe begründete
+          // Verteilungsregel wie überall (Phase 2/3). Der Eingangszug eines
+          // Reihenwandlers trägt seinen eigenen Laststrom (Ausgang/η, s.
+          // `loadDemand`), der Ausgangszug den Ladestrom; keine Kante bekommt
+          // pauschal beide Ströme.
           applyFlow(
             net,
             flows,
@@ -1156,8 +1554,8 @@ function runNetFlows(
             member.label,
             'source',
             'charge',
-            splitPaths,
-            splitEvenly
+            splitInfo,
+            dataFor
           );
           handled = true;
           // (a4b) Pflichtspeisung: Lasten, die nur über diese Quelle
@@ -1187,7 +1585,8 @@ function runNetFlows(
               member.label,
               'source',
               'load',
-              splitPaths
+              splitInfo,
+              dataFor
             );
           }
         }
@@ -1218,7 +1617,7 @@ function runNetFlows(
         for (const { demand, paths } of reachable) {
           const amount = output * (reachableDemand > 0 ? demand / reachableDemand : 1);
           if (!(amount > 1e-9)) continue;
-          applyFlow(net, flows, paths, amount, sourceId, member.label, 'source', 'load', splitPaths);
+          applyFlow(net, flows, paths, amount, sourceId, member.label, 'source', 'load', splitInfo, dataFor);
         }
       }
     }
@@ -1290,19 +1689,33 @@ export function computeCableCurrents(input: ComputeCurrentsInput): CableCurrentM
   const solarCurrents = buildSolarCableCurrent(index, solarGraph, notes);
 
   const flows = new Map<string, CableFlowState>();
-  const splitPaths = new Map<string, number>();
-  for (const net of [plusNet, minusNet, acNet]) runNetFlows(net, flows, notes, splitPaths);
+  const splitInfo = new Map<string, EdgeSplitInfo>();
+  const dataFor = (edgeId: string): CableConductance => conductanceOfIndex(index, edgeId);
+  const nets: Array<[NetKind, FlowNet]> = [
+    ['plus', plusNet],
+    ['minus', minusNet],
+    ['ac', acNet],
+  ];
+  for (const [, net] of nets) runNetFlows(net, flows, notes, splitInfo, dataFor);
+
+  // ── Dual-Rollen-Klassifikation (Auftrag Phase 3) ────────────────────────
+  // Erst hier, nach dem Bau aller drei Netze, ist entscheidbar, WIE ein
+  // Bauteil Doppelrolle spielt: Reihenglied im selben Netz, galvanisch
+  // getrennte Seiten oder zwei unabhängige Äste. Die Aussage steht im Modell,
+  // nicht nur im Kommentar.
+  const dualRoleTopology = classifyDualRoles(index, nets);
+  for (const [nodeId, topology] of [...dualRoleTopology.entries()].sort(([a], [b]) => compareIds(a, b))) {
+    notes.push(
+      `Bauteil „${nodeLabelOf(index.nodeById.get(nodeId))}“ (${nodeId}) hat Doppelrolle (Quelle UND Last): ${dualRoleNote(topology)}`
+    );
+  }
 
   // ── String-Interne: tragen den vollen Stringstrom ───────────────────────
   // Der Stringstrom ist der Strom seiner ZULEITUNG: Summe über alle
   // Zuleitungskabel JE Netz, Maximum über die Netze (plus- und minus-Seite
   // tragen denselben Strom — nie Summe beider Seiten).
   const stringFlows = new Map<string, CableFlowState>();
-  const netsByPriority: Array<[NetKind, FlowNet]> = [
-    ['plus', plusNet],
-    ['minus', minusNet],
-    ['ac', acNet],
-  ];
+  const netsByPriority: Array<[NetKind, FlowNet]> = nets;
   for (const string of index.strings) {
     let best: { total: number; state: CableFlowState } | undefined;
     for (const [, net] of netsByPriority) {
@@ -1342,6 +1755,8 @@ export function computeCableCurrents(input: ComputeCurrentsInput): CableCurrentM
             loads,
             loadDirection: null,
             chargeDirection: null,
+            loadPath: null,
+            chargePath: null,
           },
         };
       }
@@ -1478,12 +1893,16 @@ export function computeCableCurrents(input: ComputeCurrentsInput): CableCurrentM
           'Bidirektionale Leitung: größter einwirkender Strom gilt (Last- ODER Ladefluss, nie Summe).'
         );
       }
-      const splitCount = splitPaths.get(edge.id) ?? 0;
-      if (splitCount > 1) {
-        assumptions.push(
-          `Gleiche Aufteilung auf ${splitCount} Versorgungspfade (Parallelpfade aus identischen Kabeln tragen je den Anteil).`
-        );
-      }
+      const split = splitInfo.get(edge.id);
+      if (split?.note) assumptions.push(split.note);
+    }
+    // Doppelrolle: Die Kante hängt an einem Bauteil, das in diesem Netz
+    // Quelle UND Last ist — die topologische Begründung gehört zur Leitung.
+    for (const endpointId of [edge.source, edge.target]) {
+      const topology = dualRoleTopology.get(endpointId);
+      if (topology === undefined) continue;
+      assumptions.push(`Doppelrolle „${nodeLabelOf(nodeById.get(endpointId))}“: ${dualRoleNote(topology)}`);
+      break;
     }
     if (method === 'undetermined') {
       assumptions.push(
@@ -1491,6 +1910,7 @@ export function computeCableCurrents(input: ComputeCurrentsInput): CableCurrentM
       );
     }
 
+    const split = splitInfo.get(edge.id);
     byEdgeId.set(
       edge.id,
       buildExplanation(
@@ -1506,7 +1926,12 @@ export function computeCableCurrents(input: ComputeCurrentsInput): CableCurrentM
         flow ? [...flow.loads].sort() : [],
         directionOf(flow, domain),
         method,
-        assumptions
+        assumptions,
+        {
+          path: flowPathOf(flow),
+          splitMethod: split?.method ?? (known > 1e-9 ? 'single-path' : 'not-applicable'),
+          splitConfidence: split?.confidence ?? (known > 1e-9 ? 'computed' : 'unknown'),
+        }
       )
     );
   }
@@ -1523,7 +1948,7 @@ export function computeCableCurrents(input: ComputeCurrentsInput): CableCurrentM
     );
   }
 
-  return { byEdgeId, systemVoltageV, notes };
+  return { byEdgeId, systemVoltageV, dualRoleTopology, notes };
 }
 
 function netContaining(
@@ -1575,6 +2000,28 @@ function explicitTotalAmps(source: Node, target: Node): number | null {
   return null;
 }
 
+/**
+ * Zusatzangaben einer Erklärung, die nicht aus dem reinen Strömungswert
+ * folgen: Pfad in Flussrichtung und die ausgewiesene Verteilungsregel.
+ */
+interface ExplanationContext {
+  path: readonly string[];
+  splitMethod: CurrentSplitMethod;
+  splitConfidence: CurrentSplitConfidence;
+}
+
+/**
+ * Knotenfolge in physikalischer FLUSSRICHTUNG (Quelle → Last beim Lastfluss,
+ * Quelle → Batterie beim Ladefluss). Der dominante Fluss (Last oder Ladung)
+ * bestimmt den angezeigten Pfad — eine Kante trägt nie beide gleichzeitig.
+ */
+function flowPathOf(flow: CableFlowState | undefined): readonly string[] {
+  if (!flow) return [];
+  if (flow.loadFlow >= flow.chargeFlow && flow.loadPath) return flow.loadPath;
+  if (flow.chargePath) return flow.chargePath;
+  return [];
+}
+
 function buildExplanation(
   edge: Edge<CableEdgeData>,
   voltage: number,
@@ -1584,7 +2031,8 @@ function buildExplanation(
   downstreamLoads: readonly string[],
   direction: FlowDirection,
   calculationMethod: string,
-  assumptions: readonly string[]
+  assumptions: readonly string[],
+  context: ExplanationContext = { path: [], splitMethod: 'not-applicable', splitConfidence: 'unknown' }
 ): CableCurrentExplanation {
   return {
     cableId: edge.id,
@@ -1592,13 +2040,118 @@ function buildExplanation(
     toNodeId: edge.target,
     voltage,
     operatingCurrent,
+    ib: operatingCurrent,
     contributingLoads,
+    contributingSources: contributingLoads.filter((entry) => entry.role === 'source'),
     upstreamSources,
     downstreamLoads,
+    path: [...context.path],
     direction,
+    flowDirection: direction,
+    splitMethod: context.splitMethod,
+    splitConfidence: context.splitConfidence,
     calculationMethod,
     assumptions,
   };
+}
+
+// ============================================================================
+// 6b. DOPPELROLLE: WELCHE TOPOLOGIE LIEGT VOR? (Auftrag Phase 3)
+// ============================================================================
+
+/** Rollen eines Knotens über alle Netze (Quelle/Last je Netzart). */
+interface NodeRoleSummary {
+  sinkNets: NetKind[];
+  sourceNets: NetKind[];
+}
+
+/** Ist ein Knoten ein Wandler (Bauteil mit Ein- und Ausgangsdomäne)? */
+const CONVERTER_NODE_TYPES = new Set([
+  'inverter',
+  'acBatteryCharger',
+  'charger',
+  'mpptController',
+  'dcdcCharger',
+]);
+
+/**
+ * Klassifiziert jedes Bauteil, das in mindestens einem Netz Quelle UND/ODER
+ * in einem anderen Netz Last ist. Die Unterscheidung ist die Begründung
+ * dafür, ob ein Anschlusskabel den Komponentstrom allein führen kann:
+ *
+ *   - `series-pass-through`      — Ein- und Ausgang im selben Netz: Der
+ *     Strom fließt durch das Bauteil hindurch; Eingang trägt Ausgang/η,
+ *     Ausgang den Ausgangsstrom. Ein Reihenglied ist kein Freibrief für
+ *     „voll auf jeder Kante“: parallele Anschlüsse teilen sich nach Leitwert.
+ *   - `galvanically-separated`   — Ein- und Ausgang in verschiedenen Netzen
+ *     (AC-Ladegerät, Wechselrichter): Beide Seiten sind eigene Stromkreise.
+ *   - `independent-in-out`       — Ein- und Ausgang auf getrennten Ästen
+ *     DESSELBEN Netzes (z. B. Plus- und Minusseite): Kein Durchgang, keine
+ *     Vollstrom-Annahme.
+ *   - `bidirectional-converter`  — Wandler mit Ein- und Ausgang auf derselben
+ *     Netzart in beiden Richtungen (Wechselrichter mit AC-Ein- und -Ausgang).
+ */
+function classifyDualRoles(
+  index: PlanIndex,
+  nets: ReadonlyArray<[NetKind, FlowNet]>
+): Map<string, DualRoleTopology> {
+  const roles = new Map<string, NodeRoleSummary>();
+  const ensure = (nodeId: string): NodeRoleSummary => {
+    const existing = roles.get(nodeId);
+    if (existing) return existing;
+    const created: NodeRoleSummary = { sinkNets: [], sourceNets: [] };
+    roles.set(nodeId, created);
+    return created;
+  };
+  for (const [kind, net] of nets) {
+    for (const [nodeId, member] of net.members) {
+      const summary = ensure(nodeId);
+      if (member.isSink) summary.sinkNets.push(kind);
+      if (member.isFixedSource) summary.sourceNets.push(kind);
+      // Flexible Quellen (Batterie/Netz) sind keine Wandler — sie sind immer
+      // Quellen, ihre Doppelrolle ist „Laden/Entladen“ und wird weiterhin
+      // über max(Lastfluss, Ladefluss) geführt.
+      if (member.isFlexibleSource) summary.sourceNets.push('flexible' as NetKind);
+    }
+  }
+
+  const topology = new Map<string, DualRoleTopology>();
+  for (const [nodeId, summary] of roles) {
+    const node = index.nodeById.get(nodeId);
+    const isConverter = CONVERTER_NODE_TYPES.has(node?.type ?? '');
+    if (!isConverter) continue;
+    const sinks = [...new Set(summary.sinkNets)];
+    const sources = [...new Set(summary.sourceNets)].filter((entry) => entry !== ('flexible' as NetKind));
+    if (sinks.length === 0 || sources.length === 0) continue;
+    const sameNet = sinks.some((kind) => sources.includes(kind));
+    if (sameNet && node?.type === 'inverter' && sinks.includes('ac') && sources.includes('ac')) {
+      topology.set(nodeId, 'bidirectional-converter');
+      continue;
+    }
+    if (sameNet) {
+      topology.set(nodeId, 'series-pass-through');
+      continue;
+    }
+    // Verschiedene Netze: AC↔DC ist galvanisch getrennt, DC↔DC über
+    // Plus/Minus sind zwei Äste desselben Stromkreises.
+    const acDcMix = [...sinks, ...sources].includes('ac');
+    topology.set(nodeId, acDcMix ? 'galvanically-separated' : 'independent-in-out');
+  }
+  return topology;
+}
+
+/** Menschenlesbare Begründung einer Dual-Rollen-Klassifikation. */
+function dualRoleNote(topology: DualRoleTopology): string {
+  switch (topology) {
+    case 'series-pass-through':
+      return 'Ein- und Ausgang liegen im selben Netz, das Bauteil arbeitet als Reihenglied — jede Seite trägt den Strom IHRER Seite (Eingang ≈ Ausgang/η), parallele Anschlüsse teilen sich nach Leitwert; keine pauschale Vollstrom-Annahme.';
+    case 'galvanically-separated':
+      return 'Ein- und Ausgang liegen in getrennten Netzen (z. B. AC-Eingang, DC-Ausgang) — beide Seiten sind eigene Stromkreise und werden getrennt gerechnet.';
+    case 'independent-in-out':
+      return 'Ein- und Ausgang liegen auf getrennten Ästen desselben Netzes — kein Durchgang, der Strom wird je Ast bestimmt (keine Vollstrom-Annahme).';
+    case 'bidirectional-converter':
+      return 'Der Wandler kann in beide Richtungen arbeiten (AC-Ein- und -Ausgang) — die Richtung ist aus dem Plan nicht bestimmbar, deshalb gilt je Kante der größere der beiden Beträge.';
+  }
 }
 
 function toNumber(value: unknown): number {

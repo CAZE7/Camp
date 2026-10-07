@@ -157,6 +157,33 @@ Kalt-Voc-Prüfung; ohne `acProtection` keine Abschaltbedingung.
 
 ---
 
+## 8.6 Severity und Status (Nutzer-Vokabular, Auftrag Phase 9)
+
+Die Engine-Sprache (`CRITICAL_SAFETY | CODE_VIOLATION | EFFICIENCY_WARNING` ×
+`VIOLATION | UNVERIFIABLE`) bleibt die Normsprache. Für Anzeige und Gruppierung
+existiert seit 2026-10-07 **eine** Projektion in `lib/validationSeverity.ts`:
+
+| Engine                               | Nutzer-Schwere | Nutzer-Zustand   |
+| ------------------------------------ | -------------- | ---------------- |
+| `CRITICAL_SAFETY` + `VIOLATION`      | `critical`     | `violated`       |
+| `CODE_VIOLATION` + `VIOLATION`       | `error`        | `violated`       |
+| `EFFICIENCY_WARNING` + `VIOLATION`   | `warning`      | `violated`       |
+| jede Schwere + `UNVERIFIABLE`        | `info`         | `incomplete`     |
+| Abdeckungs-Ereignis (`coverageOnly`) | `info`         | `not_applicable` |
+
+`validationSeverityOf` / `validationStatusOf` (`lib/verify/events.ts`) sind die
+einzigen Übersetzer; **keine Datenlücke erscheint als Critical**. Befunde tragen
+zusätzlich `details.rootCauseId` (Gruppen aus `lib/verify/rootCauses.ts`,
+`affectedEdges`/`affectedComponents`); mehrere gleichartige Leitungssbefunde
+bleiben einzeln erhalten, sind aber einer Ursache zuordenbar.
+
+**AC-Schutzkette (Auftrag Phase 8):** `analyseAcProtectionChains(context)` in
+`lib/verify/protection.ts` ermittelt je 230-V-Verbraucher
+`{consumerId, sourceId, protectionChain, rcdPresent, rcdResidualCurrent, status,
+paths, exampleUnprotectedPath, rcdsElsewhere}` — RCD-001 und RCD-003 entscheiden
+daraus, welcher FI auf dem **relevanten Versorgungspfad** liegt; eine globale
+FI-Suche gibt es nicht mehr.
+
 ## 8.6 Reihenfolge der Severities
 
 `SEVERITY_ORDER`: `critical (0) < warning (1) < info (2)`.

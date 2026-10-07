@@ -167,3 +167,28 @@ nutzt die Kanten-Heuristik statt des Bankstroms.
   Vorschlagsstrom → keine neuen Fehlalarme.
 - Normwerte, Regelmatrix-Inhalte, Schwellenwerte, Routing, UI-Layout
   (außer den genannten Anzeigepunkten).
+
+---
+
+## 6. AUFLÖSUNG (2026-10-07) — Phasen 1–12 abgearbeitet
+
+| Audit-Befund                               | Auflösung                                                                                                                                     | Beweis                                                                                          |
+| ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| RC-1 Globaler Fallback (Ib = 158,7 A)      | Topologie-Strommodell + leitwertgewichtete Parallelpfade; jede Kante trägt ihren eigenen Fluss                                                | `lib/electricalGraph/currentFlow.split.test.ts` (1/2/3/4/5), `validation158.regression.test.ts` |
+| 158,7-A-Fall                               | als Reproduktions-Fixture eingefroren: 1500-W-WR (147,06 A) + Kühlbox (5 A) + Pumpe (6,67 A) = 158,73 A auf dem Hauptstrang, 11,67 A im Zweig | `lib/verify/validation158.regression.test.ts`                                                   |
+| RC-2/RC-4 FI-Prüfung am falschen Ort       | `analyseAcProtectionChains`: Schutzpfad je Verbraucher (Quelle → FI → LS → Verteiler → Verbraucher), inkl. „FI existiert woanders“            | `lib/verify/validationStates.test.ts` (13/14/15)                                                |
+| RC-5 Doppelzählung beim Reihenwandler      | `dualRoleTopology` + Seitenzuordnung (Eingang = Zielkante, Ausgang = Quellkante)                                                              | `currentFlow.split.test.ts` (6/6b), Golden-Master-Delta `complex.json`                          |
+| RC-3 „12 von 36 kritisch“ ohne Gruppierung | `severity`/`status`/`rootCauseId` je Befund + Zählwerk `stateCounts` + Ursachengruppen                                                        | `validationStates.test.ts`, `WarningCenter`                                                     |
+| ELE-002 70-mm²-Sättigung                   | `thermalCrossSectionFor` ⇒ `outside-model` + UI-Satz „Für diesen Strom liegt keine hinterlegte Belastbarkeitstabelle vor“                     | `validationStates.test.ts` (11/12)                                                              |
+| Iz-Pfade an mehreren Stellen               | `calculateCableIz` + `evaluateCableProtection`; `collectEdgeErrors` rechnet kein zweites `VDE_AMPACITY × 0,7` mehr                            | `lib/electrical.test.ts`, `lib/verify/physics.test.ts` (unverändert grün)                       |
+
+**Nicht geändert (bewusst):** `DERATE_FACTOR = 0,7` bleibt als dokumentierte
+Planerpauschale in Kraft (kein Entfernen, kein Abschwächen); Critical-Meldungen
+bleiben critical, wo eine Verletzung widerlegt ist; Fehler wurden nicht
+abgeschaltet, Tests nicht geskippt.
+
+**Verbleibende Modellgrenzen:** Tabelle endet bei 70 mm² (Aussage wird
+ausgewiesen, nicht geraten); Verlegeart/Isolierstoff nur über f₁/f₂ abgebildet;
+Schutzkette ist ein EINLEITER-Modell (L/N/PE nicht einzeln); Wechselrichter-Insel
+bleibt elektronisch begrenzt (`inverter-limited`); vorgelagerte Netzimpedanz
+bleibt die dokumentierte Annahme 0,8 Ω.

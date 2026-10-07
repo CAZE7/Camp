@@ -39,9 +39,9 @@ import { runPass3 } from './ampacity';
 import { runPass4 } from './powerPath';
 import { runPass5 } from './protection';
 import { rulesForContext } from './rules';
-import { sortEvents } from './events';
+import { sortEvents, validationStateCountsOf } from './events';
+import { attachRootCauses } from './rootCauses';
 import type {
-  AuditEvent,
   CheckResult,
   CheckStatus,
   Coverage,
@@ -222,7 +222,17 @@ export function verifyPlan(input: VerificationInput): VerificationReport {
     });
   }
 
-  const events: AuditEvent[] = sortEvents(allChecks.flatMap((check) => [...check.events]));
+  const sortedEvents = sortEvents(allChecks.flatMap((check) => [...check.events]));
+  // Ursachenzuordnung (Phase 10) und Zustandszählung (Phase 9) entstehen NACH
+  // der Sortierung: Die Sortierschlüssel (Schwere, Regel, Entität) bleiben
+  // unberührt, die Zuordnung ist rein additiv — der Zertifikat-Hash deckt nur
+  // Verdikt/Statusmatrix/Abdeckung ab und ändert sich damit nicht.
+  const nodeTypes = new Map<string, string>();
+  for (const node of input.nodes) {
+    if (typeof node.type === 'string' && node.type !== '') nodeTypes.set(node.id, node.type);
+  }
+  const { events, rootCauses } = attachRootCauses(sortedEvents, nodeTypes);
+  const stateCounts = validationStateCountsOf(events);
   const verdict = verdictOf(passes);
 
   // Regeln, die zwar im Profil gelten, aber keine Entität gesehen haben
@@ -271,6 +281,8 @@ export function verifyPlan(input: VerificationInput): VerificationReport {
     certificate,
     skippedRules,
     limitations,
+    rootCauses,
+    stateCounts,
   };
 }
 
@@ -279,9 +291,11 @@ export function verifyPlan(input: VerificationInput): VerificationReport {
  * Die vollständige Ereignisliste liefert `formatEvent` (events.ts).
  */
 export function formatReportSummary(report: VerificationReport): string[] {
+  const counts = report.stateCounts;
   const lines = [
     `Verdikt: ${report.verdict} — ${report.coverage.exercised} Regeln ausgeführt, davon ${report.coverage.passed} PASS / ${report.coverage.failed} FAIL / ${report.coverage.unprovable} UNPROVABLE; ${report.coverage.notApplicable} nicht anwendbar (Profil ${report.certificate.profile}, Kontext ${report.certificate.context}).`,
     `Zertifikat: ${report.certificate.certificateHash} (Plan ${report.certificate.planFingerprintHash}), Engine ${report.certificate.engineVersion}.`,
+    `Meldungen nach Schwere: critical ${counts.critical} / error ${counts.error} / warning ${counts.warning} / info ${counts.info}; Zustand: violated ${counts.violated} / incomplete ${counts.incomplete} / satisfied ${counts.satisfied} / not_applicable ${counts.not_applicable}; Ursachen: ${report.rootCauses.length}.`,
   ];
   for (const pass of report.passes) {
     lines.push(`  PASS ${pass.pass} ${pass.name}: ${pass.status} (${pass.checks.length} Regeln)`);

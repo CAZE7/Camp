@@ -33,6 +33,16 @@ export interface ValidationWarning {
   id: string;
   category: 'safety' | 'topology' | 'monitoring' | 'estimation' | 'routing';
   type: 'critical' | 'warning' | 'info';
+  /**
+   * Nutzer-Schwere der Verifikations-Engine (Auftrag Phase 9):
+   * `critical | error | warning | info`. `type` bleibt die dreistufige
+   * Anzeigeklasse (Ampelfarbe); `severity` ist die feinere Aussage daneben.
+   */
+  severity?: 'critical' | 'error' | 'warning' | 'info';
+  /** Zustand des Befunds: verletzt / Datenlage unvollständig / erfüllt / nicht anwendbar. */
+  status?: 'violated' | 'incomplete' | 'satisfied' | 'not_applicable';
+  /** Ursachengruppe (Auftrag Phase 10) — mehrere Befunde, eine Entscheidung. */
+  rootCauseId?: string;
   message: string;
   /** Kurzer, laienverständlicher Titel für die Warn-Zentrale. */
   title?: string;
@@ -81,6 +91,20 @@ export interface ValidationWarningDetails {
   inA?: number | null;
   izA?: number | null;
   calculationMethod?: string;
+  /** Knotenfolge des Versorgungspfads (Quelle → Verbraucher). */
+  path?: readonly string[];
+  /** Verteilungsregel der Parallelpfade (Auftrag Phase 2/4). */
+  splitMethod?: string;
+  splitConfidence?: string;
+  /** Schutzkette eines 230-V-Stromkreises (Auftrag Phase 8). */
+  consumerId?: string;
+  sourceId?: string | null;
+  rcdPresent?: boolean;
+  rcdResidualCurrentA?: number | null;
+  /** FI-Organe (Kanten-IDs), die diesen Stromkreis nicht schützen. */
+  rcdsElsewhere?: readonly string[];
+  /** Ursachengruppe (Auftrag Phase 10). */
+  rootCauseId?: string;
   contributors?: readonly {
     componentId: string;
     label: string;

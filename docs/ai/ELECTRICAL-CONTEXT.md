@@ -142,7 +142,22 @@ konservative Annahme (AUDIT NORM-003).
 Ein vorhandener Nutzer-/Importquerschnitt wird **nie verkleinert** — auch nicht von 95 mm² auf 70.
 
 **Thermisch:** `lookupThermalCrossSection(I)` → kleinste Normstufe mit
-`Ampacity ≥ I / 0.7` (d. h. `Iz_design = 0.7 × Tabellenwert`). Sättigung bei 70 mm².
+`Ampacity ≥ I / 0.7` (d. h. `Iz_design = 0.7 × Tabellenwert`). **Modellgrenze 70 mm²:**
+oberhalb der größten Tabellenstufe gibt es keine Tabellenaussage —
+`thermalCrossSectionFor(I)` liefert dann `{status:'outside-model', requiredCurrentA,
+maximumModeledCurrentA}` und `assessCableSelection` setzt `beyondModeledRange`
+(„Für diesen Strom liegt keine hinterlegte Belastbarkeitstabelle vor“); ein
+stiller Rückfall auf 70 mm² ist damit ausgeschlossen.
+
+**Die eine I_z-Wahrheit (Auftrag Phase 6):** `calculateCableIz({crossSectionMm2,
+ambientC?, insulation?, bundledCircuits?})` in `lib/electrical.ts` liefert
+`{baseIz, ambientFactor, groupingFactor, installationFactor, plannerFactor,
+correctedIz, source, confidence}`. `lib/verify/physics.calculateCorrectedIz` ist
+nur noch eine Fassade (`plannerSafetyFactor` = `plannerFactor`), `designAmpacity(cs)`
+und `isThermallyOverloaded` rufen dieselbe Funktion. **Die eine
+Koordinationsprüfung (Phase 7):** `evaluateCableProtection({ib,in,iz})` →
+`{status: violated|incomplete|satisfied|not_applicable, severity, violations,
+explanation}` — genutzt von AMP-001 (Engine) und `collectEdgeErrors` (UI).
 
 **Zwei Wege zum Querschnitt — bewusst, aber leicht zu verwechseln:**
 
