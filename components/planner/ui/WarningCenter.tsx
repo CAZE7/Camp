@@ -546,6 +546,7 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
         aria-haspopup="dialog"
+        aria-controls={open ? 'warning-panel' : undefined}
         aria-label={`${warnings.length} Prüfhinweise anzeigen${
           counts.critical > 0 ? `, davon ${counts.critical} kritisch` : ''
         }`}
@@ -564,6 +565,7 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
 
       {open && (
         <div
+          id="warning-panel"
           ref={panelRef}
           tabIndex={-1}
           className="absolute right-0 top-full z-50 mt-2 max-h-96 w-11/12 min-w-80 max-w-md overflow-y-auto rounded border border-border bg-card shadow-2xl focus:outline-none sm:w-96"
