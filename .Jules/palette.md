@@ -67,6 +67,7 @@
 
 **Learning:** Standalone toggle buttons and segmented controls acting as pseudo-radio groups (like the 'Sommer'/'Winter' toggles) must convey which option is currently active to assistive technologies. Without this, screen reader users cannot perceive the current state or understand the result of their selection.
 **Action:** Always add `aria-pressed={condition}` to any button that visually toggles between active and inactive states.
+
 ## 2025-05-18 - Missing aria-controls on Warning Center Popup Toggle
 
 **Learning:** When a button toggles a dropdown or a popup panel (like the WarningCenter), `aria-haspopup="dialog"` and `aria-expanded` alone are not fully informative for screen readers. They need `aria-controls` pointing to the `id` of the panel so that the assistive technology can programmatically link the trigger to the content it controls, allowing users to navigate to the new content easily.
