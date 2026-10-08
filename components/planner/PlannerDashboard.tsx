@@ -534,10 +534,13 @@ function ActionsSection({
             </button>
 
             <div className="my-2 border-t border-border" />
-            <p className="px-3 py-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <p
+              id="season-group-label"
+              className="px-3 py-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+            >
               Jahreszeit
             </p>
-            <div className="flex gap-1 px-2 pb-2">
+            <div role="group" aria-labelledby="season-group-label" className="flex gap-1 px-2 pb-2">
               <Button
                 variant={season === 'summer' ? 'default' : 'ghost'}
                 onClick={() => setSeason('summer')}
