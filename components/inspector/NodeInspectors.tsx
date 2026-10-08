@@ -2,6 +2,7 @@ import React from 'react';
 import { type Edge } from '@xyflow/react';
 import { type CableEdgeData } from '../edges/CableEdge';
 import { ValidatingInput, COMMON_RULES, type ValidationRule } from '../ui/ValidatingInput';
+import { InspectorSection } from './InspectorSection';
 import { solarTempCoefficientPerKelvin } from '../../lib/solar'; // AUDIT S1: %/K ↔ 1/K
 import { UPSTREAM_IMPEDANCE_ASSUMPTION_OHM } from '../../lib/acProtection'; // AUDIT N1: I_k der Einspeisung
 import { isStarterBatteryLabel } from '../../lib/vde-standards'; // AUTO-003: Rollen-Fallback
@@ -52,20 +53,22 @@ export function ComponentInfoInspector({ node, onUpdateNodeData }: BaseNodeInspe
           Die Sammelschiene verteilt Plus oder Minus auf mehrere Leitungen. Ihr Nennstrom muss mindestens dem
           maximalen Gesamtstrom entsprechen.
         </p>
-        <div>
-          <label htmlFor={`${node.id}-rating`} className="mb-1 block text-sm font-medium text-foreground">
-            Maximaler Strom in Ampere
-          </label>
-          <ValidatingInput
-            id={`${node.id}-rating`}
-            type="number"
-            min="1"
-            value={busbar.data?.rating || 250}
-            rules={[COMMON_RULES.strictlyPositive]}
-            onValidChange={(value) => onUpdateNodeData?.(node.id, { rating: value })}
-            className="min-h-11 rounded border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-          />
-        </div>
+        <InspectorSection title="Elektrisch" defaultOpen>
+          <div>
+            <label htmlFor={`${node.id}-rating`} className="mb-1 block text-sm font-medium text-foreground">
+              Maximaler Strom in Ampere
+            </label>
+            <ValidatingInput
+              id={`${node.id}-rating`}
+              type="number"
+              min="1"
+              value={busbar.data?.rating || 250}
+              rules={[COMMON_RULES.strictlyPositive]}
+              onValidChange={(value) => onUpdateNodeData?.(node.id, { rating: value })}
+              className="min-h-11 rounded border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
+        </InspectorSection>
       </div>
     );
   }
@@ -89,234 +92,246 @@ export function BatteryInspector({
 }) {
   return (
     <>
-      <div className="flex flex-col">
-        {(chargingTimeStr || calculatedSolarWatts !== undefined) && (
-          <div className="warn-card warn-card-info mb-4 flex-col gap-2 p-3">
-            <h4 className="label-eyebrow text-warn-info">Lade-Informationen</h4>
-            <div className="flex flex-col gap-1 text-sm text-ink-soft">
-              {chargingTimeStr && (
-                <div className="flex justify-between">
-                  <span>Ladezeit:</span>
-                  <span className="font-semibold">{chargingTimeStr}</span>
-                </div>
-              )}
-              {calculatedSolarWatts !== undefined && (
-                <div className="flex justify-between">
-                  <span>Ladeleistung (Dach):</span>
-                  <span className="font-semibold">{calculatedSolarWatts} W</span>
-                </div>
-              )}
-            </div>
+      <InspectorSection title="Elektrisch" defaultOpen>
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col">
+            <label
+              className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+              htmlFor={`${node.id}-capacity`}
+            >
+              Kapazität (Ah)
+            </label>
+            <ValidatingInput
+              id={`${node.id}-capacity`}
+              type="number"
+              min="0"
+              value={node.data?.capacity || 0}
+              rules={[COMMON_RULES.strictlyPositive]}
+              onValidChange={(val) => onUpdateNodeData?.(node.id, { capacity: val })}
+              className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+            />
           </div>
-        )}
-        <label
-          className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
-          htmlFor={`${node.id}-capacity`}
-        >
-          Kapazität (Ah)
-        </label>
-        <ValidatingInput
-          id={`${node.id}-capacity`}
-          type="number"
-          min="0"
-          value={node.data?.capacity || 0}
-          rules={[COMMON_RULES.strictlyPositive]}
-          onValidChange={(val) => onUpdateNodeData?.(node.id, { capacity: val })}
-          className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
-        />
-      </div>
-      <div className="flex flex-col">
-        <label
-          className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
-          htmlFor={`${node.id}-chemistry`}
-        >
-          Zellchemie
-        </label>
-        <select
-          id={`${node.id}-chemistry`}
-          value={node.data?.chemistry || 'LiFePO4'}
-          onChange={(e) => onUpdateNodeData?.(node.id, { chemistry: e.target.value })}
-          className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
-        >
-          <option value="LiFePO4">LiFePO4</option>
-          <option value="AGM">AGM</option>
-          <option value="Gel">Gel</option>
-        </select>
-        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-          Verschiedene Blei-Varianten (AGM/Gel) dürfen nicht parallel geschaltet werden — ihre
-          Ladeschlussspannungen unterscheiden sich (Gel ~14,1–14,4 V, AGM ~14,4–14,7 V).
-        </p>
-      </div>
-      <div className="flex flex-col">
-        <label
-          className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
-          htmlFor={`${node.id}-role`}
-        >
-          Rolle im Verbund
-        </label>
-        <select
-          id={`${node.id}-role`}
-          value={node.data?.role || (isStarterBatteryLabel(node.data?.label) ? 'starter' : 'house')}
-          onChange={(e) =>
-            onUpdateNodeData?.(node.id, {
-              role: e.target.value === 'starter' ? 'starter' : 'house',
-            })
-          }
-          className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
-        >
-          <option value="house">Aufbaubatterie</option>
-          <option value="starter">Starterbatterie</option>
-        </select>
-        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-          Explizite Angabe gewinnt über die Namens-Heuristik („Starter…") — umbenannte Batterien wechseln so
-          nicht mehr still ihre Rolle.
-        </p>
-      </div>
-      <div className="flex flex-col">
-        <label
-          className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
-          htmlFor={`${node.id}-nominalVoltage`}
-        >
-          Nennspannung (V)
-        </label>
-        <ValidatingInput
-          id={`${node.id}-nominalVoltage`}
-          type="number"
-          min="0"
-          step="0.1"
-          isFloat={true}
-          value={node.data?.nominalVoltage || 0}
-          rules={[COMMON_RULES.positive]}
-          onValidChange={(val) => onUpdateNodeData?.(node.id, { nominalVoltage: val })}
-          className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
-        />
-        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-          Lässt du das Feld leer, wird 12,8 V (LiFePO4) bzw. 12,0 V (Blei) angenommen. 24-V-/48-V-Systeme
-          müssen hier explizit eingetragen werden.
-        </p>
-      </div>
-      <div className="flex flex-col">
-        <label
-          className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
-          htmlFor={`${node.id}-bmsContinuousDischarge`}
-        >
-          BMS Dauerentladung (A)
-        </label>
-        <ValidatingInput
-          id={`${node.id}-bmsContinuousDischarge`}
-          type="number"
-          min="0"
-          value={node.data?.bmsContinuousDischarge || 0}
-          rules={[COMMON_RULES.positive]}
-          onValidChange={(val) => onUpdateNodeData?.(node.id, { bmsContinuousDischarge: val })}
-          className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
-        />
-      </div>
-      <div className="flex flex-col">
-        <label
-          className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
-          htmlFor={`${node.id}-bmsPeakDischarge`}
-        >
-          BMS Peak-Entladung (A)
-        </label>
-        <ValidatingInput
-          id={`${node.id}-bmsPeakDischarge`}
-          type="number"
-          min="0"
-          value={node.data?.bmsPeakDischarge || 0}
-          rules={[COMMON_RULES.positive]}
-          onValidChange={(val) => onUpdateNodeData?.(node.id, { bmsPeakDischarge: val })}
-          className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
-        />
-      </div>
-      {/* AUDIT DOM-002: Innenwiderstand treibt die Kurzschlussstrom-
-          Schätzung (Abschaltvermögens-Check an Batterie-Hauptleitungen). */}
-      <div className="flex flex-col">
-        <label
-          className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
-          htmlFor={`${node.id}-internalResistance`}
-        >
-          Innenwiderstand (mΩ)
-        </label>
-        <ValidatingInput
-          id={`${node.id}-internalResistance`}
-          type="number"
-          min="0"
-          step="0.1"
-          isFloat={true}
-          value={node.data?.internalResistance || 0}
-          rules={[COMMON_RULES.positive]}
-          onValidChange={(val) => onUpdateNodeData?.(node.id, { internalResistance: val })}
-          className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
-        />
-        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-          Datenblattwert (Block inkl. BMS). Bleibt das Feld leer, schätzt der Planer aus Chemie und Kapazität
-          (≈ 3 mΩ je 100 Ah bei LiFePO4) — Schätzung, kein Grenzfalldatenblatt.
-        </p>
-      </div>
-      {/* DOM-002-Nachpflege (Peukert): lastabhängige Kapazität der
+          <div className="flex flex-col">
+            <label
+              className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+              htmlFor={`${node.id}-chemistry`}
+            >
+              Zellchemie
+            </label>
+            <select
+              id={`${node.id}-chemistry`}
+              value={node.data?.chemistry || 'LiFePO4'}
+              onChange={(e) => onUpdateNodeData?.(node.id, { chemistry: e.target.value })}
+              className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              <option value="LiFePO4">LiFePO4</option>
+              <option value="AGM">AGM</option>
+              <option value="Gel">Gel</option>
+            </select>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              Verschiedene Blei-Varianten (AGM/Gel) dürfen nicht parallel geschaltet werden — ihre
+              Ladeschlussspannungen unterscheiden sich (Gel ~14,1–14,4 V, AGM ~14,4–14,7 V).
+            </p>
+          </div>
+          <div className="flex flex-col">
+            <label
+              className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+              htmlFor={`${node.id}-role`}
+            >
+              Rolle im Verbund
+            </label>
+            <select
+              id={`${node.id}-role`}
+              value={node.data?.role || (isStarterBatteryLabel(node.data?.label) ? 'starter' : 'house')}
+              onChange={(e) =>
+                onUpdateNodeData?.(node.id, {
+                  role: e.target.value === 'starter' ? 'starter' : 'house',
+                })
+              }
+              className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              <option value="house">Aufbaubatterie</option>
+              <option value="starter">Starterbatterie</option>
+            </select>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              Explizite Angabe gewinnt über die Namens-Heuristik („Starter…") — umbenannte Batterien wechseln
+              so nicht mehr still ihre Rolle.
+            </p>
+          </div>
+          <div className="flex flex-col">
+            <label
+              className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+              htmlFor={`${node.id}-nominalVoltage`}
+            >
+              Nennspannung (V)
+            </label>
+            <ValidatingInput
+              id={`${node.id}-nominalVoltage`}
+              type="number"
+              min="0"
+              step="0.1"
+              isFloat={true}
+              value={node.data?.nominalVoltage || 0}
+              rules={[COMMON_RULES.positive]}
+              onValidChange={(val) => onUpdateNodeData?.(node.id, { nominalVoltage: val })}
+              className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              Lässt du das Feld leer, wird 12,8 V (LiFePO4) bzw. 12,0 V (Blei) angenommen. 24-V-/48-V-Systeme
+              müssen hier explizit eingetragen werden.
+            </p>
+          </div>
+        </div>
+      </InspectorSection>
+      <InspectorSection title="Anschluss">
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col">
+            <label
+              className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+              htmlFor={`${node.id}-bmsContinuousDischarge`}
+            >
+              BMS Dauerentladung (A)
+            </label>
+            <ValidatingInput
+              id={`${node.id}-bmsContinuousDischarge`}
+              type="number"
+              min="0"
+              value={node.data?.bmsContinuousDischarge || 0}
+              rules={[COMMON_RULES.positive]}
+              onValidChange={(val) => onUpdateNodeData?.(node.id, { bmsContinuousDischarge: val })}
+              className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
+          <div className="flex flex-col">
+            <label
+              className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+              htmlFor={`${node.id}-bmsPeakDischarge`}
+            >
+              BMS Peak-Entladung (A)
+            </label>
+            <ValidatingInput
+              id={`${node.id}-bmsPeakDischarge`}
+              type="number"
+              min="0"
+              value={node.data?.bmsPeakDischarge || 0}
+              rules={[COMMON_RULES.positive]}
+              onValidChange={(val) => onUpdateNodeData?.(node.id, { bmsPeakDischarge: val })}
+              className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
+        </div>
+      </InspectorSection>
+      <InspectorSection title="Berechnung">
+        <div className="flex flex-col gap-3">
+          {(chargingTimeStr || calculatedSolarWatts !== undefined) && (
+            <div className="warn-card warn-card-info mb-4 flex-col gap-2 p-3">
+              <h4 className="label-eyebrow text-warn-info">Lade-Informationen</h4>
+              <div className="flex flex-col gap-1 text-sm text-ink-soft">
+                {chargingTimeStr && (
+                  <div className="flex justify-between">
+                    <span>Ladezeit:</span>
+                    <span className="font-semibold">{chargingTimeStr}</span>
+                  </div>
+                )}
+                {calculatedSolarWatts !== undefined && (
+                  <div className="flex justify-between">
+                    <span>Ladeleistung (Dach):</span>
+                    <span className="font-semibold">{calculatedSolarWatts} W</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          {/* AUDIT DOM-002: Innenwiderstand treibt die Kurzschlussstrom-
+              Schätzung (Abschaltvermögens-Check an Batterie-Hauptleitungen). */}
+          <div className="flex flex-col">
+            <label
+              className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+              htmlFor={`${node.id}-internalResistance`}
+            >
+              Innenwiderstand (mΩ)
+            </label>
+            <ValidatingInput
+              id={`${node.id}-internalResistance`}
+              type="number"
+              min="0"
+              step="0.1"
+              isFloat={true}
+              value={node.data?.internalResistance || 0}
+              rules={[COMMON_RULES.positive]}
+              onValidChange={(val) => onUpdateNodeData?.(node.id, { internalResistance: val })}
+              className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              Datenblattwert (Block inkl. BMS). Bleibt das Feld leer, schätzt der Planer aus Chemie und
+              Kapazität (≈ 3 mΩ je 100 Ah bei LiFePO4) — Schätzung, kein Grenzfalldatenblatt.
+            </p>
+          </div>
+          {/* DOM-002-Nachpflege (Peukert): lastabhängige Kapazität der
           Autarkie-Rechnung — Faustwerte lib/peukert.ts (UNVERIFIED). */}
-      <div className="flex flex-col">
-        <label
-          className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
-          htmlFor={`${node.id}-peukertExponent`}
-        >
-          Peukert-Exponent (k)
-        </label>
-        <ValidatingInput
-          id={`${node.id}-peukertExponent`}
-          type="number"
-          min="1"
-          step="0.01"
-          isFloat={true}
-          value={node.data?.peukertExponent || 0}
-          rules={[COMMON_RULES.positive]}
-          onValidChange={(val) => onUpdateNodeData?.(node.id, { peukertExponent: val })}
-          className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
-        />
-        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-          Datenblattwert; k = 1 bedeutet „kein Peukert-Effekt“. Bleibt das Feld leer, gilt der
-          Chemie-Faustwert (LiFePO4 1,05 / AGM 1,12 / Gel 1,15). Höhere Entladeströme mindern dann die
-          angezeigte Autarkie.
-        </p>
-      </div>
-      <div className="flex flex-col">
-        <label
-          className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
-          htmlFor={`${node.id}-bmsContinuousCharge`}
-        >
-          BMS Dauer-Ladestrom (A)
-        </label>
-        <ValidatingInput
-          id={`${node.id}-bmsContinuousCharge`}
-          type="number"
-          min="0"
-          value={node.data?.bmsContinuousCharge || 0}
-          rules={[COMMON_RULES.positive]}
-          onValidChange={(val) => onUpdateNodeData?.(node.id, { bmsContinuousCharge: val })}
-          className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
-        />
-      </div>
-      <div className="flex flex-col gap-2">
-        <label className="flex items-center gap-2 text-sm text-foreground">
-          <input
-            type="checkbox"
-            checked={node.data?.hasInternalBms || false}
-            onChange={(e) => onUpdateNodeData?.(node.id, { hasInternalBms: e.target.checked })}
-            className="rounded border-rule text-primary focus:ring-ring"
-          />
-          Internes BMS vorhanden
-        </label>
-        <label className="flex items-center gap-2 text-sm text-foreground">
-          <input
-            type="checkbox"
-            checked={node.data?.hasExternalBms || false}
-            onChange={(e) => onUpdateNodeData?.(node.id, { hasExternalBms: e.target.checked })}
-            className="rounded border-rule text-primary focus:ring-ring"
-          />
-          Externes BMS vorhanden
-        </label>
-      </div>
+          <div className="flex flex-col">
+            <label
+              className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+              htmlFor={`${node.id}-peukertExponent`}
+            >
+              Peukert-Exponent (k)
+            </label>
+            <ValidatingInput
+              id={`${node.id}-peukertExponent`}
+              type="number"
+              min="1"
+              step="0.01"
+              isFloat={true}
+              value={node.data?.peukertExponent || 0}
+              rules={[COMMON_RULES.positive]}
+              onValidChange={(val) => onUpdateNodeData?.(node.id, { peukertExponent: val })}
+              className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              Datenblattwert; k = 1 bedeutet „kein Peukert-Effekt“. Bleibt das Feld leer, gilt der
+              Chemie-Faustwert (LiFePO4 1,05 / AGM 1,12 / Gel 1,15). Höhere Entladeströme mindern dann die
+              angezeigte Autarkie.
+            </p>
+          </div>
+          <div className="flex flex-col">
+            <label
+              className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+              htmlFor={`${node.id}-bmsContinuousCharge`}
+            >
+              BMS Dauer-Ladestrom (A)
+            </label>
+            <ValidatingInput
+              id={`${node.id}-bmsContinuousCharge`}
+              type="number"
+              min="0"
+              value={node.data?.bmsContinuousCharge || 0}
+              rules={[COMMON_RULES.positive]}
+              onValidChange={(val) => onUpdateNodeData?.(node.id, { bmsContinuousCharge: val })}
+              className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <label className="flex items-center gap-2 text-sm text-foreground">
+              <input
+                type="checkbox"
+                checked={node.data?.hasInternalBms || false}
+                onChange={(e) => onUpdateNodeData?.(node.id, { hasInternalBms: e.target.checked })}
+                className="rounded border-rule text-primary focus:ring-ring"
+              />
+              Internes BMS vorhanden
+            </label>
+            <label className="flex items-center gap-2 text-sm text-foreground">
+              <input
+                type="checkbox"
+                checked={node.data?.hasExternalBms || false}
+                onChange={(e) => onUpdateNodeData?.(node.id, { hasExternalBms: e.target.checked })}
+                className="rounded border-rule text-primary focus:ring-ring"
+              />
+              Externes BMS vorhanden
+            </label>
+          </div>
+        </div>
+      </InspectorSection>
     </>
   );
 }
@@ -330,42 +345,46 @@ export function ConsumerInspector({
 }) {
   return (
     <>
-      <div className="flex flex-col">
-        <label
-          className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
-          htmlFor={`${node.id}-watts`}
-        >
-          Leistung (W)
-        </label>
-        <ValidatingInput
-          id={`${node.id}-watts`}
-          type="number"
-          min="0"
-          value={node.data?.watts || 0}
-          rules={[COMMON_RULES.strictlyPositive]}
-          onValidChange={(val) => onUpdateNodeData?.(node.id, { watts: val })}
-          className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
-        />
-      </div>
-      <div className="flex flex-col">
-        <label
-          className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
-          htmlFor={`${node.id}-hours`}
-        >
-          Nutzung (h/Tag)
-        </label>
-        <ValidatingInput
-          id={`${node.id}-hours`}
-          type="number"
-          min="0"
-          max="24"
-          isFloat={true}
-          value={node.data?.hours || 0}
-          rules={[COMMON_RULES.hours]}
-          onValidChange={(val) => onUpdateNodeData?.(node.id, { hours: val })}
-          className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
-        />
-      </div>
+      <InspectorSection title="Elektrisch" defaultOpen>
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col">
+            <label
+              className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+              htmlFor={`${node.id}-watts`}
+            >
+              Leistung (W)
+            </label>
+            <ValidatingInput
+              id={`${node.id}-watts`}
+              type="number"
+              min="0"
+              value={node.data?.watts || 0}
+              rules={[COMMON_RULES.strictlyPositive]}
+              onValidChange={(val) => onUpdateNodeData?.(node.id, { watts: val })}
+              className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
+          <div className="flex flex-col">
+            <label
+              className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+              htmlFor={`${node.id}-hours`}
+            >
+              Nutzung (h/Tag)
+            </label>
+            <ValidatingInput
+              id={`${node.id}-hours`}
+              type="number"
+              min="0"
+              max="24"
+              isFloat={true}
+              value={node.data?.hours || 0}
+              rules={[COMMON_RULES.hours]}
+              onValidChange={(val) => onUpdateNodeData?.(node.id, { hours: val })}
+              className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
+        </div>
+      </InspectorSection>
     </>
   );
 }
@@ -379,67 +398,75 @@ export function ChargerInspector({
 }) {
   return (
     <>
-      {node.type === 'mpptController' && (
-        <div className="flex flex-col">
-          <label
-            className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
-            htmlFor={`${node.id}-maxPvVoltage`}
-          >
-            Max. PV-Eingangsspannung (V)
-          </label>
-          {/* ELE-007: Basis der Kalt-Voc-Fensterprüfung — 0/leer = Prüfung aus. */}
-          <ValidatingInput
-            id={`${node.id}-maxPvVoltage`}
-            type="number"
-            min="0"
-            step="0.1"
-            isFloat={true}
-            value={node.data?.maxPvVoltage || 0}
-            rules={[COMMON_RULES.positive]}
-            onValidChange={(val) => onUpdateNodeData?.(node.id, { maxPvVoltage: val })}
-            className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
-          />
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-            Der Regler muss die Kalt-Leerlaufspannung des Strings verkraften — der Planer prüft Voc(−20 °C)
-            gegen diesen Wert, sobald die Panels ihr Datenblatt-Voc tragen.
-          </p>
+      <InspectorSection title="Elektrisch" defaultOpen>
+        <div className="flex flex-col gap-3">
+          {node.type === 'mpptController' && (
+            <div className="flex flex-col">
+              <label
+                className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+                htmlFor={`${node.id}-maxPvVoltage`}
+              >
+                Max. PV-Eingangsspannung (V)
+              </label>
+              {/* ELE-007: Basis der Kalt-Voc-Fensterprüfung — 0/leer = Prüfung aus. */}
+              <ValidatingInput
+                id={`${node.id}-maxPvVoltage`}
+                type="number"
+                min="0"
+                step="0.1"
+                isFloat={true}
+                value={node.data?.maxPvVoltage || 0}
+                rules={[COMMON_RULES.positive]}
+                onValidChange={(val) => onUpdateNodeData?.(node.id, { maxPvVoltage: val })}
+                className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                Der Regler muss die Kalt-Leerlaufspannung des Strings verkraften — der Planer prüft Voc(−20
+                °C) gegen diesen Wert, sobald die Panels ihr Datenblatt-Voc tragen.
+              </p>
+            </div>
+          )}
+          <div className="flex flex-col">
+            <label
+              className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+              htmlFor={`${node.id}-amps`}
+            >
+              Ladeleistung (A)
+            </label>
+            <ValidatingInput
+              id={`${node.id}-amps`}
+              type="number"
+              min="0"
+              value={node.data?.amps || 0}
+              rules={[COMMON_RULES.strictlyPositive]}
+              onValidChange={(val) => onUpdateNodeData?.(node.id, { amps: val })}
+              className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
         </div>
-      )}
-      <div className="flex flex-col">
-        <label
-          className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
-          htmlFor={`${node.id}-amps`}
-        >
-          Ladeleistung (A)
-        </label>
-        <ValidatingInput
-          id={`${node.id}-amps`}
-          type="number"
-          min="0"
-          value={node.data?.amps || 0}
-          rules={[COMMON_RULES.strictlyPositive]}
-          onValidChange={(val) => onUpdateNodeData?.(node.id, { amps: val })}
-          className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
-        />
-      </div>
-      <div className="flex flex-col">
-        <label
-          className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
-          htmlFor={`${node.id}-efficiency`}
-        >
-          Effizienz in %
-        </label>
-        <ValidatingInput
-          id={`${node.id}-efficiency`}
-          type="number"
-          min="0"
-          max="100"
-          value={node.data?.efficiency ?? 100}
-          rules={[COMMON_RULES.efficiency]}
-          onValidChange={(val) => onUpdateNodeData?.(node.id, { efficiency: val })}
-          className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
-        />
-      </div>
+      </InspectorSection>
+      <InspectorSection title="Berechnung">
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col">
+            <label
+              className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+              htmlFor={`${node.id}-efficiency`}
+            >
+              Effizienz in %
+            </label>
+            <ValidatingInput
+              id={`${node.id}-efficiency`}
+              type="number"
+              min="0"
+              max="100"
+              value={node.data?.efficiency ?? 100}
+              rules={[COMMON_RULES.efficiency]}
+              onValidChange={(val) => onUpdateNodeData?.(node.id, { efficiency: val })}
+              className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
+        </div>
+      </InspectorSection>
     </>
   );
 }
@@ -453,21 +480,25 @@ export function FuseInspector({
 }) {
   return (
     <div className="flex flex-col">
-      <label
-        className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
-        htmlFor={`${node.id}-rating`}
-      >
-        Sicherung (A)
-      </label>
-      <ValidatingInput
-        id={`${node.id}-rating`}
-        type="number"
-        min="0"
-        value={node.data?.rating || 0}
-        rules={[COMMON_RULES.strictlyPositive]}
-        onValidChange={(val) => onUpdateNodeData?.(node.id, { rating: val })}
-        className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
-      />
+      <InspectorSection title="Elektrisch" defaultOpen>
+        <div className="flex flex-col gap-3">
+          <label
+            className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+            htmlFor={`${node.id}-rating`}
+          >
+            Sicherung (A)
+          </label>
+          <ValidatingInput
+            id={`${node.id}-rating`}
+            type="number"
+            min="0"
+            value={node.data?.rating || 0}
+            rules={[COMMON_RULES.strictlyPositive]}
+            onValidChange={(val) => onUpdateNodeData?.(node.id, { rating: val })}
+            className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+        </div>
+      </InspectorSection>
     </div>
   );
 }
@@ -481,47 +512,56 @@ export function ShorePowerInspector({
 }) {
   return (
     <div className="flex flex-col gap-2">
-      <label className="flex items-center gap-2 text-sm text-foreground">
-        <input
-          type="checkbox"
-          checked={node.data?.hasRcd || false}
-          onChange={(e) => onUpdateNodeData?.(node.id, { hasRcd: e.target.checked })}
-          className="rounded border-rule text-primary focus:ring-ring"
-        />
-        RCD (FI-Schalter) 30mA installiert
-      </label>
-      {!node.data?.hasRcd && (
-        <div className="warn-card warn-card-critical p-2 text-xs">
-          Ein FI-Schutzschalter (max. 30mA) ist bei Landstromanschlüssen vorgeschrieben (DIN VDE 0100-721).
+      <InspectorSection title="Anschluss" defaultOpen>
+        <div className="flex flex-col gap-3">
+          <label className="flex items-center gap-2 text-sm text-foreground">
+            <input
+              type="checkbox"
+              checked={node.data?.hasRcd || false}
+              onChange={(e) => onUpdateNodeData?.(node.id, { hasRcd: e.target.checked })}
+              className="rounded border-rule text-primary focus:ring-ring"
+            />
+            RCD (FI-Schalter) 30mA installiert
+          </label>
+          {!node.data?.hasRcd && (
+            <div className="warn-card warn-card-critical p-2 text-xs">
+              Ein FI-Schutzschalter (max. 30mA) ist bei Landstromanschlüssen vorgeschrieben (DIN VDE
+              0100-721).
+            </div>
+          )}
         </div>
-      )}
-      <div className="mt-2">
-        <label
-          htmlFor={`${node.id}-prospectiveIkA`}
-          className="mb-1 block text-sm font-medium text-foreground"
-        >
-          Prospektiver Kurzschlussstrom I<sub>k</sub> der Einspeisung in Ampere
-        </label>
-        <ValidatingInput
-          id={`${node.id}-prospectiveIkA`}
-          type="number"
-          min="1"
-          step="1"
-          allowEmpty
-          value={node.data?.prospectiveIkA ?? ''}
-          rules={[COMMON_RULES.strictlyPositive]}
-          onValidChange={(val) => onUpdateNodeData?.(node.id, { prospectiveIkA: val })}
-          onEmptyChange={() => onUpdateNodeData?.(node.id, { prospectiveIkA: undefined })}
-          className="min-h-11 rounded border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-        />
-        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-          Optional, aber der stärkste Wert, den du hier eintragen kannst: Steht der gemessene oder vom
-          Platzbetreiber genannte Kurzschlussstrom an der Einspeisestelle fest, prüft der Planer das
-          Abschaltvermögen (Icn) deiner AC-Schutzorgane gegen diese Zahl statt gegen eine Annahme. Bleibt das
-          Feld leer, rechnet der Planer mit {UPSTREAM_IMPEDANCE_ASSUMPTION_OHM} Ω vorgelagert
-          (Campingplatz-Pitch) und weist die Reichweite dieser Annahme am Verdikt aus.
-        </p>
-      </div>
+      </InspectorSection>
+      <InspectorSection title="Berechnung">
+        <div className="flex flex-col gap-3">
+          <div className="mt-2">
+            <label
+              htmlFor={`${node.id}-prospectiveIkA`}
+              className="mb-1 block text-sm font-medium text-foreground"
+            >
+              Prospektiver Kurzschlussstrom I<sub>k</sub> der Einspeisung in Ampere
+            </label>
+            <ValidatingInput
+              id={`${node.id}-prospectiveIkA`}
+              type="number"
+              min="1"
+              step="1"
+              allowEmpty
+              value={node.data?.prospectiveIkA ?? ''}
+              rules={[COMMON_RULES.strictlyPositive]}
+              onValidChange={(val) => onUpdateNodeData?.(node.id, { prospectiveIkA: val })}
+              onEmptyChange={() => onUpdateNodeData?.(node.id, { prospectiveIkA: undefined })}
+              className="min-h-11 rounded border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              Optional, aber der stärkste Wert, den du hier eintragen kannst: Steht der gemessene oder vom
+              Platzbetreiber genannte Kurzschlussstrom an der Einspeisestelle fest, prüft der Planer das
+              Abschaltvermögen (Icn) deiner AC-Schutzorgane gegen diese Zahl statt gegen eine Annahme. Bleibt
+              das Feld leer, rechnet der Planer mit {UPSTREAM_IMPEDANCE_ASSUMPTION_OHM} Ω vorgelagert
+              (Campingplatz-Pitch) und weist die Reichweite dieser Annahme am Verdikt aus.
+            </p>
+          </div>
+        </div>
+      </InspectorSection>
     </div>
   );
 }
@@ -541,75 +581,83 @@ export function InverterInspector({
 
   return (
     <>
-      <div className="flex flex-col">
-        <label
-          className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
-          htmlFor={`${node.id}-continuousPower`}
-        >
-          Dauerleistung (W)
-        </label>
-        <ValidatingInput
-          id={`${node.id}-continuousPower`}
-          type="number"
-          min="0"
-          value={node.data?.continuousPower || 0}
-          rules={[COMMON_RULES.strictlyPositive]}
-          onValidChange={(val) => onUpdateNodeData?.(node.id, { continuousPower: val })}
-          className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
-        />
-      </div>
-      {/* AUDIT AC-001: FI-Schutz am AC-Ausgangskreis pflegbar (30 mA Typ A),
-          sonst war die neue Live-Regel „Inverter-Kreis ohne RCD“ nicht behebbar. */}
-      <div className="mt-4 flex flex-col gap-2">
-        <label className="flex items-center gap-2 text-sm text-foreground">
-          <input
-            type="checkbox"
-            checked={node.data?.hasRcd || false}
-            onChange={(e) => onUpdateNodeData?.(node.id, { hasRcd: e.target.checked })}
-            className="rounded border-rule text-primary focus:ring-ring"
-          />
-          FI/LS (RCBO) im AC-Ausgang installiert
-        </label>
-        {!node.data?.hasRcd && (
-          <div className="warn-card warn-card-critical p-2 text-xs">
-            Speist der Wechselrichter 230-V-Geräte, muss der Ausgangskreis einen FI-Schutzschalter (max. 30
-            mA, Typ A) haben — sonst droht Stromschlaggefahr auch ohne Landstrom.
+      <InspectorSection title="Elektrisch" defaultOpen>
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col">
+            <label
+              className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+              htmlFor={`${node.id}-continuousPower`}
+            >
+              Dauerleistung (W)
+            </label>
+            <ValidatingInput
+              id={`${node.id}-continuousPower`}
+              type="number"
+              min="0"
+              value={node.data?.continuousPower || 0}
+              rules={[COMMON_RULES.strictlyPositive]}
+              onValidChange={(val) => onUpdateNodeData?.(node.id, { continuousPower: val })}
+              className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+            />
           </div>
-        )}
-      </div>
-      <div className="mt-4 flex flex-col">
-        {/* Gruppenüberschrift, kein Steuerelement-Label (a11y: label bräuchte ein Control) */}
-        <span className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          Gleichzeitige 230V Geräte
-        </span>
-        <div className="flex max-h-32 flex-col gap-1 overflow-y-auto rounded border border-rule p-1">
-          {consumerNodes.map((consumer) => {
-            const isChecked = (node.data?.concurrentDevices || []).includes(consumer.id);
-            return (
-              <label
-                key={consumer.id}
-                className="flex cursor-pointer items-center gap-2 rounded p-1 text-sm text-foreground hover:bg-paper"
-              >
-                <input
-                  type="checkbox"
-                  checked={isChecked}
-                  onChange={(e) => {
-                    const curr = node.data?.concurrentDevices || [];
-                    const next = e.target.checked
-                      ? [...curr, consumer.id]
-                      : curr.filter((id: string) => id !== consumer.id);
-                    onUpdateNodeData?.(node.id, { concurrentDevices: next });
-                  }}
-                  className="rounded border-rule text-primary focus:ring-ring"
-                />
-                <span className="flex-1 truncate">
-                  {consumer.data?.label || '230V Verbraucher'} ({consumer.data?.watts || 0}W)
-                </span>
-              </label>
-            );
-          })}
+          {/* AUDIT AC-001: FI-Schutz am AC-Ausgangskreis pflegbar (30 mA Typ A),
+          sonst war die neue Live-Regel „Inverter-Kreis ohne RCD“ nicht behebbar. */}
+          <div className="mt-4 flex flex-col gap-2">
+            <label className="flex items-center gap-2 text-sm text-foreground">
+              <input
+                type="checkbox"
+                checked={node.data?.hasRcd || false}
+                onChange={(e) => onUpdateNodeData?.(node.id, { hasRcd: e.target.checked })}
+                className="rounded border-rule text-primary focus:ring-ring"
+              />
+              FI/LS (RCBO) im AC-Ausgang installiert
+            </label>
+            {!node.data?.hasRcd && (
+              <div className="warn-card warn-card-critical p-2 text-xs">
+                Speist der Wechselrichter 230-V-Geräte, muss der Ausgangskreis einen FI-Schutzschalter (max.
+                30 mA, Typ A) haben — sonst droht Stromschlaggefahr auch ohne Landstrom.
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      </InspectorSection>
+      <InspectorSection title="Berechnung">
+        <div className="flex flex-col gap-3">
+          <div className="mt-4 flex flex-col">
+            {/* Gruppenüberschrift, kein Steuerelement-Label (a11y: label bräuchte ein Control) */}
+            <span className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Gleichzeitige 230V Geräte
+            </span>
+            <div className="flex max-h-32 flex-col gap-1 overflow-y-auto rounded border border-rule p-1">
+              {consumerNodes.map((consumer) => {
+                const isChecked = (node.data?.concurrentDevices || []).includes(consumer.id);
+                return (
+                  <label
+                    key={consumer.id}
+                    className="flex cursor-pointer items-center gap-2 rounded p-1 text-sm text-foreground hover:bg-paper"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={(e) => {
+                        const curr = node.data?.concurrentDevices || [];
+                        const next = e.target.checked
+                          ? [...curr, consumer.id]
+                          : curr.filter((id: string) => id !== consumer.id);
+                        onUpdateNodeData?.(node.id, { concurrentDevices: next });
+                      }}
+                      className="rounded border-rule text-primary focus:ring-ring"
+                    />
+                    <span className="flex-1 truncate">
+                      {consumer.data?.label || '230V Verbraucher'} ({consumer.data?.watts || 0}W)
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </InspectorSection>
     </>
   );
 }
@@ -623,42 +671,46 @@ export function Consumer230VInspector({
 }) {
   return (
     <>
-      <div className="flex flex-col">
-        <label
-          className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
-          htmlFor={`${node.id}-watts230`}
-        >
-          Leistung 230V (W)
-        </label>
-        <ValidatingInput
-          id={`${node.id}-watts230`}
-          type="number"
-          min="0"
-          value={node.data?.watts || 0}
-          rules={[COMMON_RULES.strictlyPositive]}
-          onValidChange={(val) => onUpdateNodeData?.(node.id, { watts: val })}
-          className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
-        />
-      </div>
-      <div className="flex flex-col">
-        <label
-          className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
-          htmlFor={`${node.id}-hours230`}
-        >
-          Nutzung (h/Tag)
-        </label>
-        <ValidatingInput
-          id={`${node.id}-hours230`}
-          type="number"
-          min="0"
-          max="24"
-          isFloat={true}
-          value={node.data?.hours || 0}
-          rules={[COMMON_RULES.hours]}
-          onValidChange={(val) => onUpdateNodeData?.(node.id, { hours: val })}
-          className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
-        />
-      </div>
+      <InspectorSection title="Elektrisch" defaultOpen>
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col">
+            <label
+              className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+              htmlFor={`${node.id}-watts230`}
+            >
+              Leistung 230V (W)
+            </label>
+            <ValidatingInput
+              id={`${node.id}-watts230`}
+              type="number"
+              min="0"
+              value={node.data?.watts || 0}
+              rules={[COMMON_RULES.strictlyPositive]}
+              onValidChange={(val) => onUpdateNodeData?.(node.id, { watts: val })}
+              className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
+          <div className="flex flex-col">
+            <label
+              className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+              htmlFor={`${node.id}-hours230`}
+            >
+              Nutzung (h/Tag)
+            </label>
+            <ValidatingInput
+              id={`${node.id}-hours230`}
+              type="number"
+              min="0"
+              max="24"
+              isFloat={true}
+              value={node.data?.hours || 0}
+              rules={[COMMON_RULES.hours]}
+              onValidChange={(val) => onUpdateNodeData?.(node.id, { hours: val })}
+              className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
+        </div>
+      </InspectorSection>
     </>
   );
 }
@@ -697,132 +749,140 @@ export function SolarInspector({
 }) {
   return (
     <>
-      <div className="flex flex-col">
-        <label
-          className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
-          htmlFor={`${node.id}-wattsSolar`}
-        >
-          Leistung (W)
-        </label>
-        <ValidatingInput
-          id={`${node.id}-wattsSolar`}
-          type="number"
-          min="0"
-          value={node.data?.watts || 0}
-          rules={[COMMON_RULES.strictlyPositive]}
-          onValidChange={(val) => onUpdateNodeData?.(node.id, { watts: val })}
-          className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
-        />
-      </div>
-      <div className="flex flex-col">
-        <label
-          className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
-          htmlFor={`${node.id}-voltage`}
-        >
-          Arbeitsspannung (V)
-        </label>
-        <ValidatingInput
-          id={`${node.id}-voltage`}
-          type="number"
-          min="0"
-          step="0.1"
-          isFloat={true}
-          value={node.data?.voltage || 0}
-          rules={[COMMON_RULES.strictlyPositive]}
-          onValidChange={(val) => onUpdateNodeData?.(node.id, { voltage: val })}
-          className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
-        />
-      </div>
-      <div className="flex flex-col">
-        <label
-          className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
-          htmlFor={`${node.id}-ampsSolar`}
-        >
-          Strom (A)
-        </label>
-        <ValidatingInput
-          id={`${node.id}-ampsSolar`}
-          type="number"
-          min="0"
-          step="0.1"
-          isFloat={true}
-          value={node.data?.amps || 0}
-          rules={[COMMON_RULES.strictlyPositive]}
-          onValidChange={(val) => onUpdateNodeData?.(node.id, { amps: val })}
-          className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
-        />
-      </div>
-      {/* ELE-007: Datenblattwerte für Isc/Voc — ohne sie schätzt/kappt der Planer
+      <InspectorSection title="Elektrisch" defaultOpen>
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col">
+            <label
+              className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+              htmlFor={`${node.id}-wattsSolar`}
+            >
+              Leistung (W)
+            </label>
+            <ValidatingInput
+              id={`${node.id}-wattsSolar`}
+              type="number"
+              min="0"
+              value={node.data?.watts || 0}
+              rules={[COMMON_RULES.strictlyPositive]}
+              onValidChange={(val) => onUpdateNodeData?.(node.id, { watts: val })}
+              className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
+          <div className="flex flex-col">
+            <label
+              className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+              htmlFor={`${node.id}-voltage`}
+            >
+              Arbeitsspannung (V)
+            </label>
+            <ValidatingInput
+              id={`${node.id}-voltage`}
+              type="number"
+              min="0"
+              step="0.1"
+              isFloat={true}
+              value={node.data?.voltage || 0}
+              rules={[COMMON_RULES.strictlyPositive]}
+              onValidChange={(val) => onUpdateNodeData?.(node.id, { voltage: val })}
+              className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
+          <div className="flex flex-col">
+            <label
+              className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+              htmlFor={`${node.id}-ampsSolar`}
+            >
+              Strom (A)
+            </label>
+            <ValidatingInput
+              id={`${node.id}-ampsSolar`}
+              type="number"
+              min="0"
+              step="0.1"
+              isFloat={true}
+              value={node.data?.amps || 0}
+              rules={[COMMON_RULES.strictlyPositive]}
+              onValidChange={(val) => onUpdateNodeData?.(node.id, { amps: val })}
+              className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
+          {/* ELE-007: Datenblattwerte für Isc/Voc — ohne sie schätzt/kappt der Planer
           konservativ bzw. fordert den Wert für die Voc-Fensterprüfung an. */}
-      <div className="flex flex-col">
-        <label
-          className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
-          htmlFor={`${node.id}-isc`}
-        >
-          Kurzschlussstrom Isc (A)
-        </label>
-        <ValidatingInput
-          id={`${node.id}-isc`}
-          type="number"
-          min="0"
-          step="0.1"
-          isFloat={true}
-          value={node.data?.isc || 0}
-          rules={[COMMON_RULES.positive]}
-          onValidChange={(val) => onUpdateNodeData?.(node.id, { isc: val })}
-          className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
-        />
-        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-          Fehlt der Wert, schätzt der Planer Isc = 1,25 × Imp (konservativ) und sichert die Zuleitung nach der
-          1,56 × Isc-Regel ab.
-        </p>
-      </div>
-      <div className="flex flex-col">
-        <label
-          className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
-          htmlFor={`${node.id}-voc`}
-        >
-          Leerlaufspannung Voc, STC (V)
-        </label>
-        <ValidatingInput
-          id={`${node.id}-voc`}
-          type="number"
-          min="0"
-          step="0.1"
-          isFloat={true}
-          value={node.data?.voc || 0}
-          rules={[COMMON_RULES.positive]}
-          onValidChange={(val) => onUpdateNodeData?.(node.id, { voc: val })}
-          className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
-        />
-      </div>
-      <div className="flex flex-col">
-        <label
-          className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
-          htmlFor={`${node.id}-tempCoefficient`}
-        >
-          Temp.-Koeffizient Voc (%/K)
-        </label>
-        <ValidatingInput
-          id={`${node.id}-tempCoefficient`}
-          type="number"
-          step="0.01"
-          isFloat={true}
-          // AUDIT S1: Beschriftung und gespeicherter Wert müssen dieselbe
-          // Einheit haben. Angezeigt wird %/K (Datenblatt-Schreibweise),
-          // gespeichert der Bruch 1/K (Modell-Schreibweise) — Umrechnung an
-          // genau dieser Grenze. `solarTempCoefficientPerKelvin` normalisiert
-          // auch Altpläne, die den Prozentwert gespeichert hatten.
-          value={solarTempCoefficientPercentOf(node.data?.tempCoefficient)}
-          rules={[TEMP_COEFF_PERCENT_RULE]}
-          onValidChange={(val) => onUpdateNodeData?.(node.id, { tempCoefficient: -Math.abs(val) / 100 })}
-          className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
-        />
-        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-          Typisch c-Si: −0,25 bis −0,35 %/K. Der Planer rechnet Voc kalt bei −20 °C hoch und prüft es gegen
-          das Regler-Fenster (falls dort ein Maximalwert steht).
-        </p>
-      </div>
+        </div>
+      </InspectorSection>
+      <InspectorSection title="Berechnung">
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col">
+            <label
+              className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+              htmlFor={`${node.id}-isc`}
+            >
+              Kurzschlussstrom Isc (A)
+            </label>
+            <ValidatingInput
+              id={`${node.id}-isc`}
+              type="number"
+              min="0"
+              step="0.1"
+              isFloat={true}
+              value={node.data?.isc || 0}
+              rules={[COMMON_RULES.positive]}
+              onValidChange={(val) => onUpdateNodeData?.(node.id, { isc: val })}
+              className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              Fehlt der Wert, schätzt der Planer Isc = 1,25 × Imp (konservativ) und sichert die Zuleitung nach
+              der 1,56 × Isc-Regel ab.
+            </p>
+          </div>
+          <div className="flex flex-col">
+            <label
+              className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+              htmlFor={`${node.id}-voc`}
+            >
+              Leerlaufspannung Voc, STC (V)
+            </label>
+            <ValidatingInput
+              id={`${node.id}-voc`}
+              type="number"
+              min="0"
+              step="0.1"
+              isFloat={true}
+              value={node.data?.voc || 0}
+              rules={[COMMON_RULES.positive]}
+              onValidChange={(val) => onUpdateNodeData?.(node.id, { voc: val })}
+              className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
+          <div className="flex flex-col">
+            <label
+              className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+              htmlFor={`${node.id}-tempCoefficient`}
+            >
+              Temp.-Koeffizient Voc (%/K)
+            </label>
+            <ValidatingInput
+              id={`${node.id}-tempCoefficient`}
+              type="number"
+              step="0.01"
+              isFloat={true}
+              // AUDIT S1: Beschriftung und gespeicherter Wert müssen dieselbe
+              // Einheit haben. Angezeigt wird %/K (Datenblatt-Schreibweise),
+              // gespeichert der Bruch 1/K (Modell-Schreibweise) — Umrechnung an
+              // genau dieser Grenze. `solarTempCoefficientPerKelvin` normalisiert
+              // auch Altpläne, die den Prozentwert gespeichert hatten.
+              value={solarTempCoefficientPercentOf(node.data?.tempCoefficient)}
+              rules={[TEMP_COEFF_PERCENT_RULE]}
+              onValidChange={(val) => onUpdateNodeData?.(node.id, { tempCoefficient: -Math.abs(val) / 100 })}
+              className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              Typisch c-Si: −0,25 bis −0,35 %/K. Der Planer rechnet Voc kalt bei −20 °C hoch und prüft es
+              gegen das Regler-Fenster (falls dort ein Maximalwert steht).
+            </p>
+          </div>
+        </div>
+      </InspectorSection>
     </>
   );
 }
@@ -836,40 +896,44 @@ export function RoofWindowInspector({
 }) {
   return (
     <>
-      <div className="flex flex-col">
-        <label
-          className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
-          htmlFor={`${node.id}-width`}
-        >
-          Breite (cm)
-        </label>
-        <ValidatingInput
-          id={`${node.id}-width`}
-          type="number"
-          min="1"
-          value={node.data?.width || 0}
-          rules={[COMMON_RULES.strictlyPositive]}
-          onValidChange={(val) => onUpdateNodeData?.(node.id, { width: val })}
-          className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
-        />
-      </div>
-      <div className="flex flex-col">
-        <label
-          className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
-          htmlFor={`${node.id}-height`}
-        >
-          Länge (cm)
-        </label>
-        <ValidatingInput
-          id={`${node.id}-height`}
-          type="number"
-          min="1"
-          value={node.data?.height || 0}
-          rules={[COMMON_RULES.strictlyPositive]}
-          onValidChange={(val) => onUpdateNodeData?.(node.id, { height: val })}
-          className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
-        />
-      </div>
+      <InspectorSection title="Allgemein" defaultOpen>
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col">
+            <label
+              className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+              htmlFor={`${node.id}-width`}
+            >
+              Breite (cm)
+            </label>
+            <ValidatingInput
+              id={`${node.id}-width`}
+              type="number"
+              min="1"
+              value={node.data?.width || 0}
+              rules={[COMMON_RULES.strictlyPositive]}
+              onValidChange={(val) => onUpdateNodeData?.(node.id, { width: val })}
+              className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
+          <div className="flex flex-col">
+            <label
+              className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+              htmlFor={`${node.id}-height`}
+            >
+              Länge (cm)
+            </label>
+            <ValidatingInput
+              id={`${node.id}-height`}
+              type="number"
+              min="1"
+              value={node.data?.height || 0}
+              rules={[COMMON_RULES.strictlyPositive]}
+              onValidChange={(val) => onUpdateNodeData?.(node.id, { height: val })}
+              className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
+        </div>
+      </InspectorSection>
     </>
   );
 }
@@ -883,57 +947,65 @@ export function RoofSolarInspector({
 }) {
   return (
     <>
-      <div className="flex flex-col">
-        <label
-          className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
-          htmlFor={`${node.id}-width2`}
-        >
-          Breite (cm)
-        </label>
-        <ValidatingInput
-          id={`${node.id}-width2`}
-          type="number"
-          min="1"
-          value={node.data?.width || 0}
-          rules={[COMMON_RULES.strictlyPositive]}
-          onValidChange={(val) => onUpdateNodeData?.(node.id, { width: val })}
-          className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
-        />
-      </div>
-      <div className="flex flex-col">
-        <label
-          className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
-          htmlFor={`${node.id}-height2`}
-        >
-          Länge (cm)
-        </label>
-        <ValidatingInput
-          id={`${node.id}-height2`}
-          type="number"
-          min="1"
-          value={node.data?.height || 0}
-          rules={[COMMON_RULES.strictlyPositive]}
-          onValidChange={(val) => onUpdateNodeData?.(node.id, { height: val })}
-          className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
-        />
-      </div>
-      <div className="flex flex-col">
-        <label
-          className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
-          htmlFor={`${node.id}-wattsRoof`}
-        >
-          Leistung (Wp)
-        </label>
-        <ValidatingInput
-          id={`${node.id}-wattsRoof`}
-          type="number"
-          min="0"
-          value={node.data?.watts || 0}
-          rules={[COMMON_RULES.strictlyPositive]}
-          onValidChange={(val) => onUpdateNodeData?.(node.id, { watts: val })}
-          className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
-        />
-      </div>
+      <InspectorSection title="Allgemein" defaultOpen>
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col">
+            <label
+              className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+              htmlFor={`${node.id}-width2`}
+            >
+              Breite (cm)
+            </label>
+            <ValidatingInput
+              id={`${node.id}-width2`}
+              type="number"
+              min="1"
+              value={node.data?.width || 0}
+              rules={[COMMON_RULES.strictlyPositive]}
+              onValidChange={(val) => onUpdateNodeData?.(node.id, { width: val })}
+              className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
+          <div className="flex flex-col">
+            <label
+              className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+              htmlFor={`${node.id}-height2`}
+            >
+              Länge (cm)
+            </label>
+            <ValidatingInput
+              id={`${node.id}-height2`}
+              type="number"
+              min="1"
+              value={node.data?.height || 0}
+              rules={[COMMON_RULES.strictlyPositive]}
+              onValidChange={(val) => onUpdateNodeData?.(node.id, { height: val })}
+              className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
+        </div>
+      </InspectorSection>
+      <InspectorSection title="Elektrisch" defaultOpen>
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col">
+            <label
+              className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+              htmlFor={`${node.id}-wattsRoof`}
+            >
+              Leistung (Wp)
+            </label>
+            <ValidatingInput
+              id={`${node.id}-wattsRoof`}
+              type="number"
+              min="0"
+              value={node.data?.watts || 0}
+              rules={[COMMON_RULES.strictlyPositive]}
+              onValidChange={(val) => onUpdateNodeData?.(node.id, { watts: val })}
+              className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
+        </div>
+      </InspectorSection>
     </>
   );
 }
@@ -949,77 +1021,84 @@ export function ConduitInspector({
 }) {
   return (
     <>
-      <div className="flex flex-col">
-        <label
-          className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
-          htmlFor="conduit-type-select"
-        >
-          Rohrtyp
-        </label>
-        <select
-          id="conduit-type-select"
-          value={node.data?.conduitType || 'EN 20'}
-          onChange={(e) => onUpdateNodeData?.(node.id, { conduitType: e.target.value })}
-          className="rounded border border-border bg-card px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
-        >
-          <option value="EN 20">EN 20 (16.9 mm Innen-Ø)</option>
-          <option value="EN 25">EN 25 (21.4 mm Innen-Ø)</option>
-          <option value="EN 32">EN 32 (28.1 mm Innen-Ø)</option>
-          <option value="EN 40">EN 40 (37.7 mm Innen-Ø)</option>
-        </select>
-      </div>
-
-      <div className="mt-4 flex flex-col">
-        {/* Gruppenüberschrift, kein Steuerelement-Label (a11y: label bräuchte ein Control) */}
-        <span className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          Zugewiesene Kabel
-        </span>
-        {edges && edges.length > 0 ? (
-          <div className="flex max-h-48 flex-col gap-2 overflow-y-auto rounded border border-rule p-2">
-            {(() => {
-              const assignedEdges = node.data?.assignedEdges || [];
-              const assignedEdgesSet = new Set(assignedEdges);
-              return edges.map((edge) => {
-                const isAssigned = assignedEdgesSet.has(edge.id);
-                const edgeData = edge.data as CableEdgeData | undefined;
-                const length = edgeData?.length || 3;
-                const crossSection = edgeData?.crossSection || 2.5;
-
-                return (
-                  <label
-                    key={edge.id}
-                    className="flex min-h-11 cursor-pointer items-center gap-2 rounded px-2 py-1 text-sm text-foreground hover:bg-paper"
-                  >
-                    <input
-                      type="checkbox"
-                      id={`edge-assign-${edge.id}`}
-                      checked={isAssigned}
-                      onChange={(e) => {
-                        const checked = e.target.checked;
-                        let newAssignedEdges = [...assignedEdges];
-                        if (checked) {
-                          newAssignedEdges.push(edge.id);
-                        } else {
-                          newAssignedEdges = newAssignedEdges.filter((id: string) => id !== edge.id);
-                        }
-                        onUpdateNodeData?.(node.id, { assignedEdges: newAssignedEdges });
-                      }}
-                      className="rounded border-rule text-primary focus:ring-ring"
-                    />
-                    <span className="flex-1 truncate">
-                      Kabel ({length}m, {crossSection}mm²)
-                    </span>
-                  </label>
-                );
-              });
-            })()}
+      <InspectorSection title="Allgemein" defaultOpen>
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col">
+            <label
+              className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+              htmlFor="conduit-type-select"
+            >
+              Rohrtyp
+            </label>
+            <select
+              id="conduit-type-select"
+              value={node.data?.conduitType || 'EN 20'}
+              onChange={(e) => onUpdateNodeData?.(node.id, { conduitType: e.target.value })}
+              className="rounded border border-border bg-card px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              <option value="EN 20">EN 20 (16.9 mm Innen-Ø)</option>
+              <option value="EN 25">EN 25 (21.4 mm Innen-Ø)</option>
+              <option value="EN 32">EN 32 (28.1 mm Innen-Ø)</option>
+              <option value="EN 40">EN 40 (37.7 mm Innen-Ø)</option>
+            </select>
           </div>
-        ) : (
-          <div className="rounded border border-rule bg-paper p-2 text-xs italic text-muted-foreground">
-            Keine Kabel im Plan vorhanden.
+        </div>
+      </InspectorSection>
+      <InspectorSection title="Anschluss">
+        <div className="flex flex-col gap-3">
+          <div className="mt-4 flex flex-col">
+            {/* Gruppenüberschrift, kein Steuerelement-Label (a11y: label bräuchte ein Control) */}
+            <span className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Zugewiesene Kabel
+            </span>
+            {edges && edges.length > 0 ? (
+              <div className="flex max-h-48 flex-col gap-2 overflow-y-auto rounded border border-rule p-2">
+                {(() => {
+                  const assignedEdges = node.data?.assignedEdges || [];
+                  const assignedEdgesSet = new Set(assignedEdges);
+                  return edges.map((edge) => {
+                    const isAssigned = assignedEdgesSet.has(edge.id);
+                    const edgeData = edge.data as CableEdgeData | undefined;
+                    const length = edgeData?.length || 3;
+                    const crossSection = edgeData?.crossSection || 2.5;
+
+                    return (
+                      <label
+                        key={edge.id}
+                        className="flex min-h-11 cursor-pointer items-center gap-2 rounded px-2 py-1 text-sm text-foreground hover:bg-paper"
+                      >
+                        <input
+                          type="checkbox"
+                          id={`edge-assign-${edge.id}`}
+                          checked={isAssigned}
+                          onChange={(e) => {
+                            const checked = e.target.checked;
+                            let newAssignedEdges = [...assignedEdges];
+                            if (checked) {
+                              newAssignedEdges.push(edge.id);
+                            } else {
+                              newAssignedEdges = newAssignedEdges.filter((id: string) => id !== edge.id);
+                            }
+                            onUpdateNodeData?.(node.id, { assignedEdges: newAssignedEdges });
+                          }}
+                          className="rounded border-rule text-primary focus:ring-ring"
+                        />
+                        <span className="flex-1 truncate">
+                          Kabel ({length}m, {crossSection}mm²)
+                        </span>
+                      </label>
+                    );
+                  });
+                })()}
+              </div>
+            ) : (
+              <div className="rounded border border-rule bg-paper p-2 text-xs italic text-muted-foreground">
+                Keine Kabel im Plan vorhanden.
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </div>
+      </InspectorSection>
     </>
   );
 }

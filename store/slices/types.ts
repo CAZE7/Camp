@@ -142,6 +142,13 @@ export interface PlannerState {
   detailLevel: PlannerDetailLevel;
   setDetailLevel: (level: PlannerDetailLevel) => void;
 
+  /**
+   * Fokusmodus: Der Planer liegt als eigenständige Anwendung über der Seite
+   * (Application Shell). Reine Anzeigeentscheidung — nicht persistiert.
+   */
+  focusMode: boolean;
+  setFocusMode: (enabled: boolean) => void;
+
   /** Arbeitsmodus Planung / Physisch / Prüfung — siehe `PlannerMode`. */
   plannerMode: PlannerMode;
   setPlannerMode: (mode: PlannerMode) => void;

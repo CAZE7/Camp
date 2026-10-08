@@ -6,6 +6,7 @@
  */
 
 import React, { useState } from 'react';
+import { Check, X } from 'lucide-react';
 
 interface Metric {
   label: string;
@@ -20,7 +21,7 @@ function KPICard({ metrics, title }: { metrics: Metric[]; title: string }) {
     <div className="de-hud-card w-[280px]">
       <div className="mb-3 flex items-center justify-between">
         <h3 className="de-label-eyebrow">{title}</h3>
-        <span className="h-2 w-2 animate-pulse rounded-full bg-[var(--de-ok)]" />
+        <span className="h-2 w-2 rounded-full bg-[var(--de-ok)]" />
       </div>
       <div className="flex flex-col gap-2">
         {metrics.map((m) => (
@@ -186,11 +187,26 @@ export function HUDBlueprint() {
         <div className="rounded-[2px] border border-[var(--de-rule)] bg-[var(--de-surface-1)] p-3">
           <h4 className="mb-2 font-mono text-[11px] font-bold uppercase">HUD Do&apos;s</h4>
           <ul className="space-y-1 font-mono text-[11px]">
-            <li className="text-[var(--de-ok)]">✓ Surface Overlay + 16-20px Backdrop-Blur</li>
-            <li className="text-[var(--de-ok)]">✓ KPI-Karten schwebend, 1px Border, kein Schatten</li>
-            <li className="text-[var(--de-ok)]">✓ Tabular-nums für alle Zahlen, rechtsbündig</li>
-            <li className="text-[var(--de-ok)]">✓ Warnings hierarchisch: critical → warning → info</li>
-            <li className="text-[var(--de-ok)]">✓ Click to inspect: Direkt-Fokus auf Node/Edge</li>
+            <li className="flex items-start gap-1.5 text-[var(--de-ok)]">
+              <Check className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+              Deckende Fläche + 1px Kante statt Glas
+            </li>
+            <li className="flex items-start gap-1.5 text-[var(--de-ok)]">
+              <Check className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+              KPI-Karten schwebend, 1px Border, kein Schatten
+            </li>
+            <li className="flex items-start gap-1.5 text-[var(--de-ok)]">
+              <Check className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+              Tabular-nums für alle Zahlen, rechtsbündig
+            </li>
+            <li className="flex items-start gap-1.5 text-[var(--de-ok)]">
+              <Check className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+              Warnings hierarchisch: critical → warning → info
+            </li>
+            <li className="flex items-start gap-1.5 text-[var(--de-ok)]">
+              <Check className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+              Click to inspect: Direkt-Fokus auf Node/Edge
+            </li>
           </ul>
         </div>
         <div className="rounded-[2px] border border-[var(--de-error-border)] bg-[var(--de-error-bg)] p-3">
@@ -198,11 +214,26 @@ export function HUDBlueprint() {
             HUD Don&apos;ts
           </h4>
           <ul className="space-y-1 font-mono text-[11px]">
-            <li className="text-[var(--de-error)]">✗ Keine dauerhaft eingeblendeten Metriken über Canvas</li>
-            <li className="text-[var(--de-error)]">✗ Keine bunten Schatten, nur 1px Border + Blur</li>
-            <li className="text-[var(--de-error)]">✗ Keine Text-Wrapping-Fehler in KPI-Karten</li>
-            <li className="text-[var(--de-error)]">✗ Kein Auto-Dismiss für kritische Fehler</li>
-            <li className="text-[var(--de-error)]">✗ Keine generischen „Fehler“-Texte ohne Regel-ID</li>
+            <li className="flex items-start gap-1.5 text-[var(--de-error)]">
+              <X className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+              Keine dauerhaft eingeblendeten Metriken über Canvas
+            </li>
+            <li className="flex items-start gap-1.5 text-[var(--de-error)]">
+              <X className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+              Kein Backdrop-Blur, kein Glas, keine bunten Schatten
+            </li>
+            <li className="flex items-start gap-1.5 text-[var(--de-error)]">
+              <X className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+              Keine Text-Wrapping-Fehler in KPI-Karten
+            </li>
+            <li className="flex items-start gap-1.5 text-[var(--de-error)]">
+              <X className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+              Kein Auto-Dismiss für kritische Fehler
+            </li>
+            <li className="flex items-start gap-1.5 text-[var(--de-error)]">
+              <X className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+              Keine generischen „Fehler“-Texte ohne Regel-ID
+            </li>
           </ul>
         </div>
       </div>

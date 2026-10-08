@@ -9,6 +9,7 @@
  */
 
 import React, { useState } from 'react';
+import { Check, X } from 'lucide-react';
 
 type Unit = 'V' | 'A' | 'mm²' | 'W' | 'm' | 'Ah' | '%' | '°C';
 
@@ -239,12 +240,30 @@ export function InspectorBlueprintCompact() {
       <div className="w-[280px] rounded-[4px] border border-dashed border-[var(--de-rule)] p-4">
         <h4 className="de-label-eyebrow mb-2">Do&apos;s &amp; Don&apos;ts Inspektor</h4>
         <ul className="space-y-2 font-mono text-[11px] leading-snug">
-          <li className="text-[var(--de-ok)]">✓ 2-spaltig, Fluchtlinie bündig</li>
-          <li className="text-[var(--de-ok)]">✓ Einheit im Suffix, nicht im Label</li>
-          <li className="text-[var(--de-ok)]">✓ Computed = gestrichelt + tint</li>
-          <li className="text-[var(--de-error)]">✗ Kein zentrierter Zahlenwust</li>
-          <li className="text-[var(--de-error)]">✗ Kein Schatten, nur 1px Border</li>
-          <li className="text-[var(--de-error)]">✗ Kein Text unter 11px</li>
+          <li className="flex items-start gap-1.5 text-[var(--de-ok)]">
+            <Check className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+            2-spaltig, Fluchtlinie bündig
+          </li>
+          <li className="flex items-start gap-1.5 text-[var(--de-ok)]">
+            <Check className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+            Einheit im Suffix, nicht im Label
+          </li>
+          <li className="flex items-start gap-1.5 text-[var(--de-ok)]">
+            <Check className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+            Computed = gestrichelt + tint
+          </li>
+          <li className="flex items-start gap-1.5 text-[var(--de-error)]">
+            <X className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+            Kein zentrierter Zahlenwust
+          </li>
+          <li className="flex items-start gap-1.5 text-[var(--de-error)]">
+            <X className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+            Kein Glas, kein Blur — Kante statt Schatten
+          </li>
+          <li className="flex items-start gap-1.5 text-[var(--de-error)]">
+            <X className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+            Kein Text unter 11px
+          </li>
         </ul>
       </div>
     </div>

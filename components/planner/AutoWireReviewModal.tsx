@@ -3,10 +3,10 @@
  *
  * Zeigt den Vorschlag von `performAutoWiring`, BEVOR er angewendet wird:
  *
- *   ✅ Anzahl sicherer Verbindungen (neu vorgeschlagen)
- *   🔧 Anzahl vom Automaten geheilter Nutzerkanten (umgehängt)
- *   ⚠️ Konflikte (Regelverstöße an gepinnten Kanten, Lastgrenze, Spannung …)
- *   ❓ Offene Fragen (Batterietopologie, AC-Quelle)
+ *   - Anzahl sicherer Verbindungen (neu vorgeschlagen)
+ *   - Anzahl vom Automaten geheilter Nutzerkanten (umgehängt)
+ *   - Konflikte (Regelverstöße an gepinnten Kanten, Lastgrenze, Spannung …)
+ *   - Offene Fragen (Batterietopologie, AC-Quelle)
  *
  * Der Nutzer entscheidet mit drei Buttons:
  *   — »Anwenden«: Vorschlag in den Graphen schreiben (applyAutoWirePreview)

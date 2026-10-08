@@ -35,48 +35,84 @@ const mockLockedMutationErrors: Array<{
   suggestedFix: string;
 }> = [];
 
+const planState = () => ({
+  viewMode: 'electric',
+  focusMode: false,
+  nodes: [] as Array<{ id: string; type?: string; data: Record<string, unknown> }>,
+  waterNodes: [] as Array<{ id: string; type?: string; data: Record<string, unknown> }>,
+  focusElement: mockFocusElement,
+  deleteSelected: vi.fn(),
+});
+const mockState = planState();
+
 vi.mock('../../store/usePlannerStore', () => ({
   // AUDIT T1: Der Mock-Zustand ist ein Test-Double eigener Form — der
   // Selektor bekommt `unknown`, damit Aufruf und Rückgabe nicht `any` sind.
-  usePlannerStore: vi.fn((selector: (state: unknown) => unknown) => {
-    const state = {
-      viewMode: 'electric',
-      setViewMode: mockSetViewMode,
-      season: 'summer',
-      setSeason: mockSetSeason,
-      autoWireSystem: mockAutoWireSystem,
-      onLayout: mockOnLayout,
-      onLayoutV2: mockOnLayoutV2,
-      systemMessage: null,
-      setSystemMessage: vi.fn(),
-      focusElement: mockFocusElement,
-      nodes: [],
-      edges: mockEdges,
-      waterNodes: [],
-      waterEdges: [],
-      waterWarning: null,
-      undo: mockUndo,
-      redo: mockRedo,
-      canUndo: true,
-      canRedo: true,
-      clearPlan: mockClearPlan,
-      guidedMode: true,
-      setGuidedMode: mockSetGuidedMode,
-      // Auto-Wire-Report + PlannerError-Mapper (Sync aus useLiveValidation → Store)
-      autoWireReport: null,
-      plannerErrors: [],
-      lockedMutationErrors: mockLockedMutationErrors,
-      setPlannerErrors: vi.fn(),
-      addPlannerError: vi.fn(),
-      clearPlannerErrors: vi.fn(),
-    };
-    return selector(state);
-  }),
+  usePlannerStore: Object.assign(
+    vi.fn((selector: (state: unknown) => unknown) => {
+      const state = {
+        viewMode: 'electric',
+        setViewMode: mockSetViewMode,
+        season: 'summer',
+        setSeason: mockSetSeason,
+        autoWireSystem: mockAutoWireSystem,
+        onLayout: mockOnLayout,
+        onLayoutV2: mockOnLayoutV2,
+        systemMessage: null,
+        setSystemMessage: vi.fn(),
+        focusElement: mockFocusElement,
+        nodes: [],
+        edges: mockEdges,
+        waterNodes: [],
+        waterEdges: [],
+        waterWarning: null,
+        undo: mockUndo,
+        redo: mockRedo,
+        canUndo: true,
+        canRedo: true,
+        clearPlan: mockClearPlan,
+        guidedMode: true,
+        setGuidedMode: mockSetGuidedMode,
+        // Auto-Wire-Report + PlannerError-Mapper (Sync aus useLiveValidation → Store)
+        autoWireReport: null,
+        plannerErrors: [],
+        lockedMutationErrors: mockLockedMutationErrors,
+        setPlannerErrors: vi.fn(),
+        addPlannerError: vi.fn(),
+        clearPlannerErrors: vi.fn(),
+        //chrome-leiste: Werkzeug-/Ansichtszustände
+        focusMode: mockState.focusMode,
+        setFocusMode: vi.fn(),
+        detailLevel: 'detail',
+        setDetailLevel: vi.fn(),
+        trunkMode: false,
+        setTrunkMode: vi.fn(),
+        backboneGrouping: true,
+        setBackboneGrouping: vi.fn(),
+        isSidebarOpen: true,
+        setSidebarOpen: vi.fn(),
+        toggleSidebar: vi.fn(),
+        isInspectorOpen: true,
+        setInspectorOpen: vi.fn(),
+        toggleInspector: vi.fn(),
+        deleteSelected: vi.fn(),
+      };
+      return selector(state);
+    }),
+    // Der Export-Pfad liest den Store direkt (`getState`) — der Doppel-Staat
+    // muss auch diesen Zugang bedienen, sonst wäre der Test eine Attrappe.
+    { getState: () => mockState }
+  ),
 }));
 
 // Helper to open the overflow ("Mehr") menu where secondary actions live
 const openMoreMenu = () => {
   fireEvent.click(screen.getByRole('button', { name: 'Weitere Aktionen' }));
+};
+
+// Helper to open one of the menubar menus (Datei … Hilfe)
+const openMenu = (id: 'datei' | 'bearbeiten' | 'ansicht' | 'werkzeuge' | 'planung' | 'hilfe') => {
+  fireEvent.click(screen.getByTestId(`menubar-${id}`));
 };
 
 describe('PlannerDashboard - Core Interactions', () => {
@@ -100,11 +136,12 @@ describe('PlannerDashboard - Core Interactions', () => {
     // Secondary actions live in the overflow menu
     openMoreMenu();
     expect(screen.getByText(/Stückliste/)).toBeInTheDocument();
-    expect(screen.getByText(/Plan lokal prüfen/)).toBeInTheDocument();
+    expect(screen.getByText(/Plan prüfen/)).toBeInTheDocument();
     expect(screen.getAllByText(/Aufräumen/).length).toBeGreaterThan(0);
     expect(screen.getByText(/Bild exportieren/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Sommer' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Winter' })).toBeInTheDocument();
+    openMenu('planung');
+    expect(screen.getByRole('menuitem', { name: 'Sommer' })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: 'Winter' })).toBeInTheDocument();
 
     // Der Pro-Modus-Schalter wurde entfernt; Fachdetails sind immer sichtbar.
   });
@@ -122,12 +159,14 @@ describe('PlannerDashboard - Core Interactions', () => {
   it('calls setSeason when changing season', () => {
     render(<PlannerDashboard />);
 
-    // Season buttons live in the overflow menu and keep it open after a click
-    openMoreMenu();
-    fireEvent.click(screen.getByRole('button', { name: 'Winter' }));
+    // Die Jahreszeit ist eine Planungsannahme und liegt im Menü „Planung“;
+    // ein Menüpunkt schließt das Menü, deshalb wird es erneut geöffnet.
+    openMenu('planung');
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Winter' }));
     expect(mockSetSeason).toHaveBeenCalledWith('winter');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Sommer' }));
+    openMenu('planung');
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Sommer' }));
     expect(mockSetSeason).toHaveBeenCalledWith('summer');
   });
 });
@@ -167,7 +206,7 @@ describe('PlannerDashboard - Action Buttons', () => {
     const dispatchEventSpy = vi.spyOn(window, 'dispatchEvent');
 
     openMoreMenu();
-    fireEvent.click(screen.getByText(/Plan lokal prüfen/));
+    fireEvent.click(screen.getByText(/Plan prüfen/));
 
     // Kein 'check-schematic'-Dispatch mehr (hatte nie einen Listener).
     const types = dispatchEventSpy.mock.calls.map((call) => (call[0] as CustomEvent).type);
@@ -218,7 +257,7 @@ describe('PlannerDashboard - Action Buttons', () => {
     // Die Übersicht wanderte aus der Toolbar ins ⋯-Menü: Der Canvas trägt
     // dieselbe Aktion bereits als Zoom-Steuerung („Ganzen Plan einpassen").
     openMoreMenu();
-    fireEvent.click(screen.getByText(/^Übersicht$/));
+    fireEvent.click(screen.getByText(/^Gesamtübersicht$/));
 
     const dispatched = dispatchEventSpy.mock.calls.map((c) => (c[0] as CustomEvent).type);
     expect(dispatched).toContain('planner-fit-view');
@@ -492,7 +531,7 @@ describe('blockierte Änderungen an fixierten Leitungen', () => {
     });
 
     render(<PlannerDashboard />);
-    fireEvent.click(screen.getByRole('button', { name: /Prüfhinweise anzeigen/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Planungsprüfung öffnen/ }));
 
     const finding = screen.getByText('Änderung an fixierter Leitung blockiert').closest('li');
     expect(finding).not.toBeNull();

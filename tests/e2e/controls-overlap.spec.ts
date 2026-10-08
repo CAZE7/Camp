@@ -1,5 +1,5 @@
 import { expect, test, type Locator } from '@playwright/test';
-import { addComponent, openPlanner, showCanvas } from './helpers';
+import { addComponent, autoWire, openPlanner, showCanvas } from './helpers';
 
 function overlap(
   a: { x: number; y: number; width: number; height: number },
@@ -19,6 +19,35 @@ async function boxOf(locator: Locator) {
   if (!(await locator.first().isVisible())) return null;
   return locator.first().boundingBox();
 }
+
+/**
+ * Der Prüfbericht liegt auf schmalen Geräten als Blatt am Fenster (über der
+ * Navigation), ab `md` als Popover unter dem Abzeichen. Zuvor war er am
+ * Abzeichen verankert und rutschte auf 375 px links aus dem Bild
+ * (gemessen: linke Kante −68 px) — dieser Test hält die Kante fest.
+ */
+test.describe('M10-2 Prüfbericht bleibt im Bild', () => {
+  test('das Blatt liegt vollständig im Fenster', async ({ page }) => {
+    await openPlanner(page);
+    await showCanvas(page);
+    await addComponent(page, 'battery');
+    await autoWire(page);
+
+    const badge = page.getByRole('button', { name: /Planungsprüfung öffnen/ });
+    await badge.scrollIntoViewIfNeeded();
+    await badge.click();
+
+    const panel = page.getByRole('dialog', { name: 'Planungsprüfung' });
+    await expect(panel).toBeVisible();
+    const box = await panel.boundingBox();
+    const viewport = page.viewportSize()!;
+    expect(box, 'Prüfbericht ohne Bounding-Box').not.toBeNull();
+    expect(box!.x, 'linke Kante außerhalb').toBeGreaterThanOrEqual(-1);
+    expect(box!.x + box!.width, 'rechte Kante außerhalb').toBeLessThanOrEqual(viewport.width + 1);
+    expect(box!.y, 'obere Kante außerhalb').toBeGreaterThanOrEqual(-1);
+    expect(box!.y + box!.height, 'untere Kante außerhalb').toBeLessThanOrEqual(viewport.height + 1);
+  });
+});
 
 test.describe('M10-2 Control-Überlappungen', () => {
   test('Statuszeile, MiniMap, FAB und Controls überlappen nicht', async ({ page }) => {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, type ComponentType } from 'react';
+import { MessageSquare } from 'lucide-react';
 
 type ChatProps = { defaultOpen?: boolean };
 type ChatComponent = ComponentType<ChatProps>;
@@ -40,14 +41,18 @@ export default function AssistantLauncher() {
         disabled={loading}
         aria-label={loading ? 'Assistent wird geladen' : 'Chat öffnen'}
         aria-busy={loading}
-        className="fixed bottom-6 right-6 flex h-16 w-16 items-center justify-center rounded-full bg-oxide text-on-signal shadow-lg transition-all hover:bg-oxide/90 disabled:cursor-wait disabled:opacity-70"
+        className="fixed bottom-6 right-6 flex h-14 w-14 items-center justify-center border border-oxide bg-surface-panel text-oxide transition-colors hover:bg-accent disabled:cursor-wait disabled:opacity-70"
       >
-        {loading ? '…' : '💬'}
+        {loading ? (
+          <span aria-hidden="true">…</span>
+        ) : (
+          <MessageSquare className="h-5 w-5" aria-hidden="true" />
+        )}
       </button>
       {loadFailed && (
         <p
           role="alert"
-          className="fixed bottom-24 right-6 max-w-xs rounded border border-border bg-bone p-3 text-sm text-ink shadow-lg"
+          className="fixed bottom-24 right-6 max-w-xs border border-border bg-surface-panel p-3 text-sm text-foreground"
         >
           Der Assistent konnte nicht geladen werden. Bitte versuche es erneut.
         </p>

@@ -1,8 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Compass } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { MousePointerSquareDashed } from 'lucide-react';
 
 interface EmptyStateProps {
   title: string;
@@ -34,18 +33,19 @@ export function EmptyState({
     <div
       className={`pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center ${className ?? ''}`.trim()}
     >
-      <div className="pointer-events-auto mx-4 flex max-w-sm flex-col items-center rounded-lg border border-border bg-card p-6 text-center shadow-2xl sm:p-8">
-        <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
-          {icon ?? <Compass className="h-10 w-10 text-primary" strokeWidth={1.5} />}
-        </div>
-        <h2 className="mb-3 text-2xl font-extrabold tracking-tight text-foreground">{title}</h2>
-        <p className="text-muted-foreground">{description}</p>
+      <div className="pointer-events-auto mx-4 flex max-w-md flex-col items-start gap-2 border border-rule-strong bg-surface-panel p-4 text-left">
+        <span className="flex items-center gap-2 text-muted-foreground">
+          {icon ?? <MousePointerSquareDashed className="h-4 w-4" aria-hidden="true" />}
+          <span className="panel-title">Leerer Plan</span>
+        </span>
+        <h2 className="text-md font-semibold text-foreground">{title}</h2>
+        <p className="text-sm text-muted-foreground">{description}</p>
         {actionLabel && onAction && (
-          <Button onClick={onAction} className="mt-6 min-h-[44px] px-6" size="lg">
+          <button type="button" onClick={onAction} className="cad-btn cad-btn--line mt-1 min-h-11">
             {actionLabel}
-          </Button>
+          </button>
         )}
-        {hint && <p className="mt-3 text-xs text-muted-foreground">{hint}</p>}
+        {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
       </div>
     </div>
   );

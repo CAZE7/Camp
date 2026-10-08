@@ -868,7 +868,7 @@ const CableEdge = function ({
             {/* Kompaktes Kern-Label: Typ-Kürzel + Querschnitt + Länge.
                 AUDIT ELE-001: Gezeigt wird der VERLEGTE Querschnitt. Ist er
                 kleiner als die Empfehlung, markiert das Label das sichtbar
-                (⚠ + rot) — vorher stand hier die Empfehlung, und die Kante
+                (rotes „zu klein“ + rote Zahl) — vorher stand hier die Empfehlung, und die Kante
                 sah aus, als wäre sie ausreichend dimensioniert. */}
             <span
               className="edge-label-main"
@@ -905,7 +905,7 @@ const CableEdge = function ({
                       : 'DC−'}
               </span>
               <span>
-                {crossSectionUndersized ? '⚠ ' : '· '}
+                {crossSectionUndersized ? 'zu klein · ' : '· '}
                 {crossSection} mm² · {length.toFixed(1)} m
                 {crossSectionUndersized ? ` (empf. ${recommendedCrossSection})` : ''}
               </span>

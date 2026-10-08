@@ -43,6 +43,8 @@ export type UiSlice = Pick<
   | 'setGuidedMode'
   | 'detailLevel'
   | 'setDetailLevel'
+  | 'focusMode'
+  | 'setFocusMode'
   | 'plannerMode'
   | 'setPlannerMode'
   | 'autoWireReport'
@@ -127,6 +129,10 @@ export const createUiSlice: PlannerSlice<UiSlice> = (set, get) => ({
   // die er vorher gesehen hat. „Übersichtlich" ist ein bewusster Klick.
   detailLevel: 'detail',
   setDetailLevel: (level) => set({ detailLevel: level }),
+  // Fokusmodus: Der Planer übernimmt das Fenster (eigene Anwendung statt
+  // eingebetteter Seitenabschnitt). Reine Anzeigeentscheidung, nicht persistiert.
+  focusMode: false,
+  setFocusMode: (enabled) => set({ focusMode: enabled }),
   // V2: Einstieg ist die PLANUNG — erst die elektrische Wahrheit, dann der
   // Einbauort, dann die Prüfung. Der Modus ist reine Anzeige (ADR 0008).
   plannerMode: 'planung',

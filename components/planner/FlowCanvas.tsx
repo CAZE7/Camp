@@ -8,7 +8,6 @@ import {
   MiniMap,
   Panel,
   useReactFlow,
-  useStore,
   type Connection,
   type Viewport,
   type Node,
@@ -35,7 +34,6 @@ import {
 import { usePlannerStore } from '../../store/usePlannerStore';
 import { useAppStore } from '../../lib/store';
 import { FloatingMetricsCard } from './ui/FloatingMetricsCard';
-import { PlannerStatusBar } from './ui/PlannerStatusBar';
 import { useSequentialTapConnect } from './hooks/useSequentialTapConnect';
 import { usePlannerDragDrop } from './hooks/usePlannerDragDrop';
 import { useCoarsePointer } from './hooks/useMediaCapabilities';
@@ -155,7 +153,6 @@ function useAccessibleHandles() {
 
 export function FlowCanvas() {
   const { screenToFlowPosition, fitView, getNode, setCenter, getViewport, setViewport } = useReactFlow();
-  const zoom = useStore((state) => state.transform[2]);
   const cableRoutes = useCableRoutes();
   const viewportsRef = useRef<Partial<Record<'electric' | 'water', Viewport>>>({});
   const previousViewMode = useRef<'electric' | 'water' | null>(null);
@@ -716,7 +713,7 @@ export function FlowCanvas() {
       {saveFailure && (
         <div
           role="alert"
-          className="absolute left-1/2 top-8 z-50 w-11/12 -translate-x-1/2 rounded-lg border border-signal bg-signal/10 p-3 text-center text-sm font-semibold text-signal shadow-lg md:w-auto"
+          className="absolute left-1/2 top-8 z-50 w-11/12 -translate-x-1/2 rounded border border-signal bg-signal/10 p-3 text-center text-sm font-semibold text-signal md:w-auto"
         >
           Plan konnte nicht gespeichert werden ({saveFailure.message}). Änderungen gehen beim Neuladen
           verloren — Browser-Speicher freigeben und den Plan erneut öffnen.
@@ -727,7 +724,7 @@ export function FlowCanvas() {
         <div
           role="status"
           aria-live="polite"
-          className="absolute left-1/2 top-24 z-50 w-11/12 -translate-x-1/2 rounded-lg border border-warn-warning bg-warn-warning-bg p-3 text-center font-semibold text-warn-warning shadow-lg md:w-auto"
+          className="absolute left-1/2 top-24 z-50 w-11/12 -translate-x-1/2 rounded border border-warn-warning bg-warn-warning-bg p-3 text-center font-semibold text-warn-warning md:w-auto"
         >
           {waterWarning}
         </div>
@@ -844,22 +841,25 @@ export function FlowCanvas() {
         >
           <CableRouteSync />
 
-          {/* M7-3: Statuszeile ab lg. Auf dem 508-px-Tablet-Canvas (768 −
-              Sidebar) umbricht sie und läuft in FAB/Fachwissen. */}
-          <Panel
-            position="bottom-center"
-            className="pointer-events-none hidden max-w-[min(20rem,calc(100%-18rem))] lg:block"
-          >
-            <PlannerStatusBar zoom={zoom} />
-          </Panel>
-          {/* M7-3: Punkt-Raster statt Linienraster — ingenieursüblich und
-              weniger visuelles Rauschen unter großen Netzen. */}
+          {/* Zweistufiges Raster wie im technischen Zeichenbrett: ein feines
+              Punktraster auf dem Snap-Maß und kräftigere Linien alle fünf
+              Einheiten als Orientierung. Das Raster bleibt zurückhaltend —
+              der Plan ist das Produkt, nicht der Hintergrund. */}
           <Background
+            id="grid-fine"
             variant={BackgroundVariant.Dots}
             color="var(--canvas-grid)"
             gap={PLANNER_SNAP_GRID[0]}
-            size={2}
-            style={{ opacity: 0.35 }}
+            size={1}
+            style={{ opacity: 0.22 }}
+          />
+          <Background
+            id="grid-coarse"
+            variant={BackgroundVariant.Lines}
+            color="var(--canvas-grid)"
+            gap={PLANNER_SNAP_GRID[0] * 5}
+            lineWidth={1}
+            style={{ opacity: 0.4 }}
           />
           {/* RF-Panel sitzt bei bottom:0 mit margin:15px — Tailwind-mb
               verliert gegen die Shorthand. !bottom/!left mit !important.
@@ -882,22 +882,6 @@ export function FlowCanvas() {
               style={{ backgroundColor: minimapColors.background }}
             />
           )}
-
-          <Panel
-            position="top-left"
-            className="m-2 hidden max-w-[min(20rem,calc(100vw-6rem))] sm:block md:m-3"
-          >
-            <div className="rounded border border-border bg-surface-panel px-3 py-2 shadow-sm">
-              <span className="label-eyebrow text-text-low">
-                {viewMode === 'water' ? 'Wasserplan' : 'Elektrikplan'}
-              </span>
-              <p className="mt-0.5 text-xs leading-snug text-ink-soft">
-                {coarsePointer
-                  ? 'Anschluss antippen, dann Ziel antippen. Am Griff ziehen; 500 ms halten öffnet das Kontextmenü.'
-                  : 'Anschluss anklicken oder ziehen. Rechtsklick öffnet das Kontextmenü.'}
-              </p>
-            </div>
-          </Panel>
 
           {/* V2-UX-001: Der Arbeitsmodus steht VOR den Anzeigefiltern — er
               beantwortet, welche Frage gerade bearbeitet wird. */}
@@ -934,7 +918,7 @@ export function FlowCanvas() {
               <div
                 data-testid="circuit-trace-info"
                 role="status"
-                className="rounded border border-rule bg-surface-panel px-3 py-2 text-xs font-semibold text-foreground shadow-md"
+                className="border border-rule-strong bg-surface-panel px-2 py-1 text-xs text-foreground"
               >
                 <span className="label-eyebrow mr-2 text-oxide">Strompfad</span>
                 {traceLabel}
@@ -950,7 +934,7 @@ export function FlowCanvas() {
                 onClick={() => {
                   void fitView({ duration: 400, padding: PLANNER_FIT_PADDING });
                 }}
-                className="flex min-h-12 items-center gap-2 rounded-full border border-border bg-card px-4 text-sm font-semibold text-foreground shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="cad-btn cad-btn--line min-h-12 gap-2 px-3"
                 aria-label="Planübersicht anzeigen"
               >
                 <MapIcon className="h-5 w-5" aria-hidden="true" />
@@ -962,10 +946,10 @@ export function FlowCanvas() {
           {viewMode === 'electric' && calculatedSolarWatts > 0 && (
             <Panel
               position="bottom-center"
-              className="mb-4 rounded-lg border border-oxide/40 bg-oxide/10 p-3 text-sm text-oxide shadow-sm"
+              className="mb-4 border border-rule-strong bg-surface-panel p-2 text-xs text-foreground"
             >
-              <strong>Dachplaner-Daten erkannt:</strong> {calculatedSolarWatts} W Solarleistung verfügbar. Der
-              Solar-Laderegler (MPPT) muss dafür passend dimensioniert sein.
+              <strong className="font-semibold">Dachplaner-Daten erkannt:</strong> {calculatedSolarWatts} W
+              Solarleistung verfügbar. Der Solar-Laderegler (MPPT) muss dafür passend dimensioniert sein.
             </Panel>
           )}
         </ReactFlow>
@@ -977,7 +961,7 @@ export function FlowCanvas() {
         role="status"
       >
         {(firstTappedHandle || connectionFeedback) && (
-          <span className="inline-block rounded-lg bg-ink px-4 py-3 text-sm font-semibold text-bone shadow-lg">
+          <span className="inline-block border border-rule-strong bg-ink px-3 py-2 text-sm text-paper">
             {firstTappedHandle
               ? 'Erster Anschluss gewählt. Wähle jetzt den zweiten Anschluss; erneut tippen bricht ab.'
               : connectionFeedback}

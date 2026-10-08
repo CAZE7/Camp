@@ -93,14 +93,15 @@
   /* ---- 3. SURFACE-LAYERING (Light als Referenz, Dark ist primär) -------
        Canvas Base = tiefes reflexionsarmes Schwarz/Anthrazit
        Surface Raised = Karten, Sidebars, Panels mit 1px Border statt Schatten
-       Surface Overlay = Inspektoren, Modale, Floating Badges mit Backdrop-Blur
+       Surface Overlay = Inspektoren, Modale, Floating Badges — DECKEND, mit
+       1px Kante statt Glas (Nutzer-Vorgabe: keine Glasflächen). Durchsichtige
+       Flächen über dem Raster ließen Leitungen hinter den Zahlen durchscheinen.
     */
   --de-canvas-base: #eceef0; /* Light Referenz */
   --de-surface-0: #eceef0;
   --de-surface-1: #f9fafb;
   --de-surface-2: #ffffff;
-  --de-surface-overlay: rgba(255, 255, 255, 0.92);
-  --de-surface-overlay-blur: 16px;
+  --de-surface-overlay: #ffffff;
 
   --de-rule: #d3d7db;
   --de-rule-strong: #b4bac1;
@@ -210,8 +211,7 @@
   --de-surface-0: #0e1114; /* Canvas */
   --de-surface-1: #161a1f; /* Panel, Sidebar */
   --de-surface-2: #1e242c; /* Raised Card */
-  --de-surface-overlay: rgba(22, 26, 31, 0.88);
-  --de-surface-overlay-blur: 20px;
+  --de-surface-overlay: #161a1f; /* = Surface-1: Overlay liegt auf der Panel-Ebene */
 
   --de-rule: #1f262e;
   --de-rule-strong: #2c3542;
@@ -567,10 +567,10 @@
 }
 
 /* ---- 11. HUD / FLOATING METRICS ---------------------------------------- */
+/* Deckend statt durchsichtig: Hinter dem Panel liegende Leitungen und Raster
+   dürfen die Zahlen nicht überlagern. Die Trennung macht die 1px-Kante. */
 .de-hud-card {
   background: var(--de-surface-overlay);
-  backdrop-filter: blur(var(--de-surface-overlay-blur));
-  -webkit-backdrop-filter: blur(var(--de-surface-overlay-blur));
   border: 1px solid var(--de-rule-strong);
   border-radius: var(--de-node-radius);
   padding: var(--de-space-3) var(--de-space-4);

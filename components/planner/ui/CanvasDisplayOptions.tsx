@@ -72,7 +72,7 @@ function ToggleButton({ pressed, onClick, children, tint, title }: ToggleButtonP
       onClick={onClick}
       title={title}
       style={style}
-      className="flex min-h-11 items-center gap-1.5 rounded border px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="cad-btn min-h-11 gap-1.5 px-3"
     >
       <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: tint }} />
       {children}
@@ -144,7 +144,7 @@ function DisplayToggles({
             aria-pressed={detailLevel === option.level}
             onClick={() => onSelectDetailLevel(option.level)}
             title={option.title}
-            className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded border border-rule px-3 py-1.5 text-xs font-semibold text-ink-soft transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-pressed:border-accent aria-pressed:bg-accent aria-pressed:text-ink"
+            className={`cad-btn min-h-11 flex-1 justify-center ${detailLevel === option.level ? 'cad-btn--active' : ''}`}
           >
             {option.label}
           </button>
@@ -202,7 +202,7 @@ export function CanvasDisplayOptions(props: CanvasDisplayOptionsProps) {
 
   if (!compact) {
     return (
-      <div className="rounded border border-border bg-surface-panel/95 p-1.5 shadow-sm">
+      <div className="border border-rule-strong bg-surface-panel p-1">
         <DisplayToggles {...props} />
       </div>
     );
@@ -216,7 +216,7 @@ export function CanvasDisplayOptions(props: CanvasDisplayOptionsProps) {
         aria-expanded={open}
         aria-controls="canvas-display-options-panel"
         onClick={() => setOpen((value) => !value)}
-        className="flex min-h-11 items-center gap-2 rounded-lg border border-border bg-card px-3 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="cad-btn cad-btn--line min-h-11 gap-2 px-3 text-sm"
       >
         <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
         Ansicht
@@ -227,17 +227,17 @@ export function CanvasDisplayOptions(props: CanvasDisplayOptionsProps) {
           id="canvas-display-options-panel"
           role="group"
           aria-label="Anzeige und Filter"
-          className="absolute right-0 top-full z-[70] mt-2 w-[min(20rem,calc(100vw-1rem))] rounded-lg border border-border bg-card p-3 shadow-2xl"
+          className="absolute right-0 top-full z-[70] mt-2 w-[min(20rem,calc(100vw-1rem))] border border-rule-strong bg-surface-raised p-3"
         >
           <div className="mb-2 flex min-h-11 items-center justify-between gap-3 border-b border-border pb-2">
             <div>
-              <p className="text-sm font-semibold text-foreground">Planansicht</p>
-              <p className="text-xs text-muted-foreground">Filter und Hervorhebungen</p>
+              <p className="panel-title">Planansicht</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">Filter und Hervorhebungen</p>
             </div>
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="cad-btn h-11 w-11 shrink-0 justify-center"
               aria-label="Ansichtsoptionen schließen"
             >
               <X className="h-5 w-5" aria-hidden="true" />

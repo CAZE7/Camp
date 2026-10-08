@@ -74,14 +74,15 @@
 ### Do's
 
 - **1px Border statt Schatten:** `border: 1px solid var(--de-rule-strong)` — scharf, kein Matsch.
-- **Surface-Layering:** Canvas Base #0A0D10 → Surface-0 #0E1114 → Surface-1 #161A1F → Surface-2 #1E242C → Overlay rgba + blur 20px.
-- **Backdrop-Blur nur für Overlay:** HUD, Modale, Floating Badges — 16-20px blur.
+- **Surface-Layering:** Canvas Base #0A0D10 → Surface-0 #0E1114 → Surface-1 #161A1F → Surface-2 #1E242C → Overlay (deckend).
+- **Overlay deckend, nicht durchsichtig:** Prüfbericht, Kontextmenü, Kennzahlen-Karte und Expertenblatt liegen auf einer deckenden Fläche mit 1px Kante (`--de-rule-strong`). Durchscheinende Leitungen oder Raster hinter Zahlen sind ein Lesbarkeitsproblem, kein Effekt.
+- **Ein Schattentoken für schwebende Flächen:** `--cad-shadow-overlay` (`0 8px 20px -12px`), ausschließlich für Overlays über dem Canvas. Trennung leistet die Kante, der Schatten nur die Lesbarkeit.
 
 ### Don'ts
 
 - **Kein Box-Shadow auf Cards:** Schatten leuchtet im Dark, frisst Kontrast.
 - **Kein harter Schatten:** `shadow-lg`, `shadow-md` im Canvas verboten.
-- **Kein Blur für Nodes:** Blur nur für Overlay, nicht für Karten selbst (teuer + unscharf).
+- **Kein Blur, kein Glas:** Backdrop-Blur ist im ganzen Planer entfernt (Nutzer-Vorgabe „keine Glasflächen") — auch für HUD und Modale. Blur kostet GPU und macht Zahlen schwerer lesbar.
 
 ---
 
@@ -152,14 +153,14 @@
 ### Do's
 
 - **Floating Metrics collapsed per Default:** Nur Überschrift als Griff, expandiert zeigt Details — Canvas hat Priorität.
-- **Surface Overlay + Blur:** 16-20px Blur, 1px Border strong, 4px Radius.
+- **Surface Overlay:** deckende Fläche, 1px Border strong, ≤4px Radius, `--cad-shadow-overlay`.
 - **Warnings hierarchisch:** critical → warning → info, mit Rule-ID + Fokus-Button.
 - **Click to inspect:** Jeder Warning hat „Fokus →“ der Node/Edge selektiert.
 
 ### Don'ts
 
 - **Keine dauerhaft eingeblendeten Metriken über Canvas:** Überdecken Bauteile.
-- **Keine bunten Schatten:** Nur Border + Blur.
+- **Keine bunten Schatten:** Nur Kante + ein neutrales Schattentoken.
 - **Kein Auto-Dismiss für kritisch:** Kritische Fehler bleiben bis behoben.
 - **Keine generischen Texte:** „Fehler“ ohne Rule-ID ist nutzlos — immer `fuse-missing`, `drop-exceeded` etc.
 
@@ -178,7 +179,7 @@
 - **Kein Bounce/Elastic:** Verspielt, zeitintensiv, unprofessionell.
 - **Kein >200ms für Hover:** Fühlt sich träge an.
 - **Keine Dauer-Animation für Fluss:** Respektiert `prefers-reduced-motion`, nur bei I>0 und dann diskret.
-- **Kein Blur-Animation:** Blur animieren ist teuer — nur statisch.
+- **Kein Blur, keine Blur-Animation:** entfällt (siehe Abschnitt 4).
 
 ---
 
@@ -222,7 +223,7 @@
 - [ ] Alle Abstände Vielfache von 4px?
 - [ ] Node-Breiten 192/224/256px?
 - [ ] Radius ≤4px?
-- [ ] 1px Border statt Schatten?
+- [ ] 1px Border statt Schatten (Ausnahme: `--cad-shadow-overlay` auf Overlays)?
 - [ ] Port Hit-Target ≥44px, Visual 12px?
 - [ ] Shape-Coding für Polarität?
 - [ ] Tabular-nums für Zahlen?

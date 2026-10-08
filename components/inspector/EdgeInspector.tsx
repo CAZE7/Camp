@@ -1,5 +1,6 @@
 import React from 'react';
 import { type Edge } from '@xyflow/react';
+import { InspectorSection } from './InspectorSection';
 import { type CableEdgeData } from '../edges/CableEdge';
 import { useCableRoute } from '../edges/utils/cableRouteStore';
 import { PX_PER_METER } from '../../lib/units';
@@ -128,176 +129,83 @@ export function EdgeInspector({
   return (
     <div className="flex flex-col space-y-4">
       <h3 className="text-sm font-semibold text-foreground">Kabel</h3>
-
-      {/* V2-INTENT-002: Vorher gab es keinen Weg, eine bewusste Entscheidung
+      <InspectorSection title="Allgemein" defaultOpen>
+        <div className="flex flex-col gap-3">
+          {/* V2-INTENT-002: Vorher gab es keinen Weg, eine bewusste Entscheidung
           zu erklären — jeder Auto-Wire-Lauf konnte sie einsammeln. */}
-      {onChangeIntent && (
-        <fieldset className="flex flex-col">
-          <legend className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Verbindlichkeit
-          </legend>
-          <div role="radiogroup" aria-label="Verbindlichkeit" className="flex gap-1">
-            {INTENT_CHOICES.map((choice) => (
-              <button
-                key={choice.value}
-                type="button"
-                role="radio"
-                data-testid={`edge-intent-${choice.value}`}
-                aria-checked={selectedIntent === choice.value}
-                title={choice.hint}
-                onClick={() => onChangeIntent(edge.id, choice.value)}
-                className="min-h-11 flex-1 rounded border border-border px-2 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-checked:border-accent aria-checked:bg-accent aria-checked:text-foreground"
-              >
-                {choice.label}
-              </button>
-            ))}
-          </div>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {INTENT_CHOICES.find((choice) => choice.value === selectedIntent)?.hint}
-          </p>
-        </fieldset>
-      )}
-      <div className="flex flex-col">
-        <label
-          className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
-          htmlFor="length-input"
-        >
-          Länge (m)
-        </label>
-        <ValidatingInput
-          id="length-input"
-          type="number"
-          min="0.1"
-          step="0.1"
-          isFloat={true}
-          value={edge.data?.length ?? lengthEstimateM ?? 3}
-          rules={[COMMON_RULES.strictlyPositive]}
-          onValidChange={(val) => onChangeLength(edge.id, val)}
-          className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
-        />
-        {typeof edge.data?.length !== 'number' && (
-          <p className="mt-1 text-xs text-muted-foreground">
-            Geschätzt aus dem gerouteten Verlegeweg (inkl. Umwege, nicht Luftlinie) — ein eigener Wert
-            überschreibt die Schätzung dauerhaft.
-          </p>
-        )}
-        {typeof edge.data?.length === 'number' && edge.data.lengthIsAssumption === true && (
-          <p className="mt-1 text-xs text-muted-foreground">
-            Planungsannahme aus der Vorlage (kein Messwert) — nach dem Verlegen den echten Wert eintragen; er
-            überschreibt die Annahme dauerhaft.
-          </p>
-        )}
-      </div>
-      {!isAc && onChangeFuseSize && (
-        <div className="flex flex-col">
-          <label
-            className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
-            htmlFor="fuse-input"
-          >
-            Sicherung (A)
-          </label>
-          <ValidatingInput
-            id="fuse-input"
-            type="number"
-            min="0"
-            value={edge.data?.fuseSize ?? 0}
-            rules={[COMMON_RULES.positive]}
-            onValidChange={(val) => onChangeFuseSize(edge.id, val)}
-            className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
-          />
-          {maxFuse > 0 && (
-            <p className="mt-1 text-xs text-muted-foreground">
-              Max. {maxFuse} A nach implementierter Regel (abgeleitet aus der Strombelastbarkeit von{' '}
-              {storedCs} mm² mit 0,7-Derating).
-            </p>
+          {onChangeIntent && (
+            <fieldset className="flex flex-col">
+              <legend className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Verbindlichkeit
+              </legend>
+              <div role="radiogroup" aria-label="Verbindlichkeit" className="flex gap-1">
+                {INTENT_CHOICES.map((choice) => (
+                  <button
+                    key={choice.value}
+                    type="button"
+                    role="radio"
+                    data-testid={`edge-intent-${choice.value}`}
+                    aria-checked={selectedIntent === choice.value}
+                    title={choice.hint}
+                    onClick={() => onChangeIntent(edge.id, choice.value)}
+                    className="min-h-11 flex-1 rounded border border-border px-2 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-checked:border-accent aria-checked:bg-accent aria-checked:text-foreground"
+                  >
+                    {choice.label}
+                  </button>
+                ))}
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {INTENT_CHOICES.find((choice) => choice.value === selectedIntent)?.hint}
+              </p>
+            </fieldset>
           )}
+          <div className="flex flex-col">
+            <label
+              className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+              htmlFor="length-input"
+            >
+              Länge (m)
+            </label>
+            <ValidatingInput
+              id="length-input"
+              type="number"
+              min="0.1"
+              step="0.1"
+              isFloat={true}
+              value={edge.data?.length ?? lengthEstimateM ?? 3}
+              rules={[COMMON_RULES.strictlyPositive]}
+              onValidChange={(val) => onChangeLength(edge.id, val)}
+              className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+            {typeof edge.data?.length !== 'number' && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Geschätzt aus dem gerouteten Verlegeweg (inkl. Umwege, nicht Luftlinie) — ein eigener Wert
+                überschreibt die Schätzung dauerhaft.
+              </p>
+            )}
+            {typeof edge.data?.length === 'number' && edge.data.lengthIsAssumption === true && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Planungsannahme aus der Vorlage (kein Messwert) — nach dem Verlegen den echten Wert eintragen;
+                er überschreibt die Annahme dauerhaft.
+              </p>
+            )}
+          </div>
         </div>
-      )}
-      {/* AUDIT ELE-004: Position der Sicherung — ohne diese Angabe gilt eine
-          vorhandene Sicherung als „am Pol sitzend" (≤ 20 cm ungeschützt). */}
-      {!isAc && onChangeFuseOffset && edge.data?.fuseSize !== undefined && (
-        <div className="flex flex-col">
-          <label
-            className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
-            htmlFor="fuse-offset-input"
-          >
-            Abstand Sicherung → Batteriepol (m)
-          </label>
-          <ValidatingInput
-            id="fuse-offset-input"
-            type="number"
-            min="0"
-            max="1"
-            step="0.05"
-            isFloat={true}
-            value={edge.data?.fuseOffset ?? 0}
-            rules={[COMMON_RULES.positive]}
-            onValidChange={(val) => onChangeFuseOffset(edge.id, val)}
-            className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
-          />
-          <p className="mt-1 text-xs text-muted-foreground">
-            Die Hauptsicherung soll möglichst direkt am Batteriepol sitzen — ungeschützte Strecke ≤ 0,2 m (ISO
-            10133:2000 §8.1 = 200 mm; ABYC E-11: 7 in = 178 mm).
-          </p>
-        </div>
-      )}
-      {/* AUDIT DOM-002: Bauform → typisches Abschaltvermögen (kA) für den
-          Kurzschluss-Check der Live-Validierung. Ohne Bauform bleibt der
-          Check offen und meldet sich als Hinweis. */}
-      {!isAc && onChangeFuseType && edge.data?.fuseSize !== undefined && (
-        <div className="flex flex-col">
-          <label
-            className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
-            htmlFor="fuse-type-select"
-          >
-            Sicherungs-Bauform
-          </label>
-          <select
-            id="fuse-type-select"
-            value={isFuseType(edge.data?.fuseType) ? edge.data?.fuseType : ''}
-            onChange={(e) => onChangeFuseType(edge.id, e.target.value === '' ? undefined : e.target.value)}
-            className="rounded border border-border bg-background px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
-          >
-            <option value="">— nicht angegeben —</option>
-            {FUSE_TYPES.map((ft) => (
-              <option key={ft} value={ft}>
-                {FUSE_TYPE_LABELS[ft]} (
-                {ft === 'mrbf'
-                  ? '≈ 10 kA @ 12 V / 5 kA @ 24 V'
-                  : `≈ ${(FUSE_BREAKING_CAPACITY_A[ft] / 1000).toLocaleString('de-DE')} kA`}
-                )
-              </option>
-            ))}
-          </select>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Abschaltvermögen der Bauform nach Hersteller-Datenblatt (Littelfuse/Blue Sea; MRBF
-            spannungsabhängig). Danach prüft der Planer, ob die Sicherung den geschätzten Kurzschlussstrom der
-            Batteriebank trennen kann.
-          </p>
-        </div>
-      )}
-      {/* AUDIT DOM-001: Die AC-„Sicherung" war ein Zahlenfeld ohne Bauform;
-          jetzt LS/RCBO + Charakteristik (B/C) + Icn — mit Mehrleiter-
-          Zusammensetzung (PE nach IEC 60364-5-54 Tab. 54.2) und
-          Abschaltbedingungs-Schätzung (IEC 60364-4-41, 2/3-Regel). */}
-      {isAc && onChangeAcProtection && (
-        <div className="flex flex-col gap-3 rounded border border-border p-3">
-          <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Schutzorgan (230 V)
-          </h4>
-
-          {onChangeFuseSize && (
+      </InspectorSection>
+      <InspectorSection title="Anschluss" defaultOpen>
+        <div className="flex flex-col gap-3">
+          {!isAc && onChangeFuseSize && (
             <div className="flex flex-col">
               <label
                 className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
-                htmlFor="ac-fuse-input"
+                htmlFor="fuse-input"
               >
-                Bemessungsstrom In (A)
+                Sicherung (A)
               </label>
               <ValidatingInput
-                id="ac-fuse-input"
+                id="fuse-input"
                 type="number"
-                min="1"
+                min="0"
                 value={edge.data?.fuseSize ?? 0}
                 rules={[COMMON_RULES.positive]}
                 onValidChange={(val) => onChangeFuseSize(edge.id, val)}
@@ -305,126 +213,232 @@ export function EdgeInspector({
               />
               {maxFuse > 0 && (
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Max. {maxFuse} A nach implementierter Regel (aus der Strombelastbarkeit von {storedCs} mm²
-                  mit 0,7-Derating).
+                  Max. {maxFuse} A nach implementierter Regel (abgeleitet aus der Strombelastbarkeit von{' '}
+                  {storedCs} mm² mit 0,7-Derating).
                 </p>
               )}
             </div>
           )}
-
-          <div className="flex flex-col">
-            <label
-              className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
-              htmlFor="ac-kind-select"
-            >
-              Bauform
-            </label>
-            <select
-              id="ac-kind-select"
-              value={acKind}
-              onChange={(event) => {
-                const value = event.target.value;
-                if (value === '') {
-                  setAcProtection(undefined);
-                  return;
+          {/* AUDIT ELE-004: Position der Sicherung — ohne diese Angabe gilt eine
+          vorhandene Sicherung als „am Pol sitzend" (≤ 20 cm ungeschützt). */}
+          {!isAc && onChangeFuseOffset && edge.data?.fuseSize !== undefined && (
+            <div className="flex flex-col">
+              <label
+                className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+                htmlFor="fuse-offset-input"
+              >
+                Abstand Sicherung → Batteriepol (m)
+              </label>
+              <ValidatingInput
+                id="fuse-offset-input"
+                type="number"
+                min="0"
+                max="1"
+                step="0.05"
+                isFloat={true}
+                value={edge.data?.fuseOffset ?? 0}
+                rules={[COMMON_RULES.positive]}
+                onValidChange={(val) => onChangeFuseOffset(edge.id, val)}
+                className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Die Hauptsicherung soll möglichst direkt am Batteriepol sitzen — ungeschützte Strecke ≤ 0,2 m
+                (ISO 10133:2000 §8.1 = 200 mm; ABYC E-11: 7 in = 178 mm).
+              </p>
+            </div>
+          )}
+          {/* AUDIT DOM-002: Bauform → typisches Abschaltvermögen (kA) für den
+          Kurzschluss-Check der Live-Validierung. Ohne Bauform bleibt der
+          Check offen und meldet sich als Hinweis. */}
+          {!isAc && onChangeFuseType && edge.data?.fuseSize !== undefined && (
+            <div className="flex flex-col">
+              <label
+                className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+                htmlFor="fuse-type-select"
+              >
+                Sicherungs-Bauform
+              </label>
+              <select
+                id="fuse-type-select"
+                value={isFuseType(edge.data?.fuseType) ? edge.data?.fuseType : ''}
+                onChange={(e) =>
+                  onChangeFuseType(edge.id, e.target.value === '' ? undefined : e.target.value)
                 }
-                setAcProtection({
-                  kind: value,
-                  characteristic: acChar === '' ? 'B' : acChar,
-                  breakingCapacityKA: acBic === '' ? 6 : acBic,
-                });
-              }}
-              className="rounded border border-border bg-background px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
-            >
-              <option value="">— nicht angegeben —</option>
-              <option value="mcb">LS-Schalter (MCB)</option>
-              <option value="rcbo">FI/LS (RCBO, 30 mA)</option>
-            </select>
-          </div>
+                className="rounded border border-border bg-background px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="">— nicht angegeben —</option>
+                {FUSE_TYPES.map((ft) => (
+                  <option key={ft} value={ft}>
+                    {FUSE_TYPE_LABELS[ft]} (
+                    {ft === 'mrbf'
+                      ? '≈ 10 kA @ 12 V / 5 kA @ 24 V'
+                      : `≈ ${(FUSE_BREAKING_CAPACITY_A[ft] / 1000).toLocaleString('de-DE')} kA`}
+                    )
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Abschaltvermögen der Bauform nach Hersteller-Datenblatt (Littelfuse/Blue Sea; MRBF
+                spannungsabhängig). Danach prüft der Planer, ob die Sicherung den geschätzten Kurzschlussstrom
+                der Batteriebank trennen kann.
+              </p>
+            </div>
+          )}
+          {/* AUDIT DOM-001: Die AC-„Sicherung" war ein Zahlenfeld ohne Bauform;
+          jetzt LS/RCBO + Charakteristik (B/C) + Icn — mit Mehrleiter-
+          Zusammensetzung (PE nach IEC 60364-5-54 Tab. 54.2) und
+          Abschaltbedingungs-Schätzung (IEC 60364-4-41, 2/3-Regel). */}
+          {isAc && onChangeAcProtection && (
+            <div className="flex flex-col gap-3 rounded border border-border p-3">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Schutzorgan (230 V)
+              </h4>
 
-          {acKind !== '' && (
-            <>
+              {onChangeFuseSize && (
+                <div className="flex flex-col">
+                  <label
+                    className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+                    htmlFor="ac-fuse-input"
+                  >
+                    Bemessungsstrom In (A)
+                  </label>
+                  <ValidatingInput
+                    id="ac-fuse-input"
+                    type="number"
+                    min="1"
+                    value={edge.data?.fuseSize ?? 0}
+                    rules={[COMMON_RULES.positive]}
+                    onValidChange={(val) => onChangeFuseSize(edge.id, val)}
+                    className="rounded border border-border px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                  {maxFuse > 0 && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Max. {maxFuse} A nach implementierter Regel (aus der Strombelastbarkeit von {storedCs}{' '}
+                      mm² mit 0,7-Derating).
+                    </p>
+                  )}
+                </div>
+              )}
+
               <div className="flex flex-col">
                 <label
                   className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
-                  htmlFor="ac-char-select"
+                  htmlFor="ac-kind-select"
                 >
-                  Charakteristik (IEC 60898-1)
+                  Bauform
                 </label>
                 <select
-                  id="ac-char-select"
-                  value={acChar === '' ? 'B' : acChar}
-                  onChange={(event) =>
+                  id="ac-kind-select"
+                  value={acKind}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    if (value === '') {
+                      setAcProtection(undefined);
+                      return;
+                    }
                     setAcProtection({
-                      kind: acKind,
-                      characteristic: event.target.value,
-                      breakingCapacityKA: acBic === '' ? 6 : acBic,
-                    })
-                  }
-                  className="rounded border border-border bg-background px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
-                >
-                  <option value="B">B (3–5×In, Standard)</option>
-                  <option value="C">C (5–10×In, induktive Lasten)</option>
-                </select>
-              </div>
-
-              <div className="flex flex-col">
-                <label
-                  className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
-                  htmlFor="ac-bic-select"
-                >
-                  Abschaltvermögen Icn
-                </label>
-                <select
-                  id="ac-bic-select"
-                  value={String(acBic === '' ? 6 : acBic)}
-                  onChange={(event) =>
-                    setAcProtection({
-                      kind: acKind,
+                      kind: value,
                       characteristic: acChar === '' ? 'B' : acChar,
-                      breakingCapacityKA: Number(event.target.value),
-                    })
-                  }
+                      breakingCapacityKA: acBic === '' ? 6 : acBic,
+                    });
+                  }}
                   className="rounded border border-border bg-background px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
                 >
-                  {MCB_BREAKING_CAPACITY_KA_OPTIONS.map((ka) => (
-                    <option key={ka} value={ka}>
-                      {ka} kA
-                    </option>
-                  ))}
+                  <option value="">— nicht angegeben —</option>
+                  <option value="mcb">LS-Schalter (MCB)</option>
+                  <option value="rcbo">FI/LS (RCBO, 30 mA)</option>
                 </select>
               </div>
-            </>
-          )}
 
-          {acComposition && (
-            <p className="text-xs text-muted-foreground">
-              Mehrleiter: <strong className="text-foreground">{acComposition.label}</strong> — L/N je{' '}
-              {acComposition.phase} mm², PE = {acComposition.protectiveEarth} mm² (IEC 60364-5-54, Tabelle
-              54.2).
-            </p>
-          )}
+              {acKind !== '' && (
+                <>
+                  <div className="flex flex-col">
+                    <label
+                      className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+                      htmlFor="ac-char-select"
+                    >
+                      Charakteristik (IEC 60898-1)
+                    </label>
+                    <select
+                      id="ac-char-select"
+                      value={acChar === '' ? 'B' : acChar}
+                      onChange={(event) =>
+                        setAcProtection({
+                          kind: acKind,
+                          characteristic: event.target.value,
+                          breakingCapacityKA: acBic === '' ? 6 : acBic,
+                        })
+                      }
+                      className="rounded border border-border bg-background px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+                    >
+                      <option value="B">B (3–5×In, Standard)</option>
+                      <option value="C">C (5–10×In, induktive Lasten)</option>
+                    </select>
+                  </div>
 
-          {tripAssessment && (
-            <div className={`text-xs ${tripVerdictTone}`}>
-              <p>{tripAssessment.reason}</p>
-              {tripAssessment.verdict !== 'not-modeled' && tripAssessment.iaA !== null && (
-                <p className="mt-1 text-muted-foreground">
-                  Ia = {Math.round(tripAssessment.iaA)} A · Zs zulässig ≤{' '}
-                  {tripAssessment.zsMaxOhm?.toFixed(2)} Ω · Leitungsanteil ≈{' '}
-                  {tripAssessment.cableLoopOhm.toFixed(2)} Ω (Annahme vorgelagert ≈{' '}
-                  {UPSTREAM_IMPEDANCE_ASSUMPTION_OHM} Ω ohne FI-Deckung — die Plan-Hinweise werten die
-                  tatsächliche Speisung mit FI-Feld aus).
+                  <div className="flex flex-col">
+                    <label
+                      className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+                      htmlFor="ac-bic-select"
+                    >
+                      Abschaltvermögen Icn
+                    </label>
+                    <select
+                      id="ac-bic-select"
+                      value={String(acBic === '' ? 6 : acBic)}
+                      onChange={(event) =>
+                        setAcProtection({
+                          kind: acKind,
+                          characteristic: acChar === '' ? 'B' : acChar,
+                          breakingCapacityKA: Number(event.target.value),
+                        })
+                      }
+                      className="rounded border border-border bg-background px-3 py-2 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+                    >
+                      {MCB_BREAKING_CAPACITY_KA_OPTIONS.map((ka) => (
+                        <option key={ka} value={ka}>
+                          {ka} kA
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </>
+              )}
+
+              {acComposition && (
+                <p className="text-xs text-muted-foreground">
+                  Mehrleiter: <strong className="text-foreground">{acComposition.label}</strong> — L/N je{' '}
+                  {acComposition.phase} mm², PE = {acComposition.protectiveEarth} mm² (IEC 60364-5-54, Tabelle
+                  54.2).
                 </p>
+              )}
+
+              {tripAssessment && (
+                <div className={`text-xs ${tripVerdictTone}`}>
+                  <p>{tripAssessment.reason}</p>
+                  {tripAssessment.verdict !== 'not-modeled' && tripAssessment.iaA !== null && (
+                    <p className="mt-1 text-muted-foreground">
+                      Ia = {Math.round(tripAssessment.iaA)} A · Zs zulässig ≤{' '}
+                      {tripAssessment.zsMaxOhm?.toFixed(2)} Ω · Leitungsanteil ≈{' '}
+                      {tripAssessment.cableLoopOhm.toFixed(2)} Ω (Annahme vorgelagert ≈{' '}
+                      {UPSTREAM_IMPEDANCE_ASSUMPTION_OHM} Ω ohne FI-Deckung — die Plan-Hinweise werten die
+                      tatsächliche Speisung mit FI-Feld aus).
+                    </p>
+                  )}
+                </div>
               )}
             </div>
           )}
         </div>
-      )}
-      <p className="mt-2 text-xs text-muted-foreground">
-        Der Kabelquerschnitt wird automatisch nach den implementierten Regeln (thermische Belastbarkeit +
-        Spannungsfall) berechnet und an der Leitung im Planer angezeigt — keine normengeprüfte Auslegung.
-      </p>
+      </InspectorSection>
+      <InspectorSection title="Berechnung">
+        <div className="flex flex-col gap-3">
+          <p className="mt-2 text-xs text-muted-foreground">
+            Der Kabelquerschnitt wird automatisch nach den implementierten Regeln (thermische Belastbarkeit +
+            Spannungsfall) berechnet und an der Leitung im Planer angezeigt — keine normengeprüfte Auslegung.
+          </p>
+        </div>
+      </InspectorSection>
     </div>
   );
 }

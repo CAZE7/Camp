@@ -1,40 +1,54 @@
 import React from 'react';
-import { Search, XCircle } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 
 interface SidebarSearchProps {
   value: string;
   onChange: (value: string) => void;
+  /** Enter: Fokus auf die erste Trefferzeile — Tastaturbedienung der Palette. */
+  onEnter?: () => void;
 }
 
 /**
- * Suchfeld der Bauteil-Katalog-Spalte. Bewusst kontrolliert: Der
- * Suchbegriff und damit das Filterergebnis bleiben in der Sidebar, das
- * Feld rendert nur.
+ * Suchfeld der Komponentenpalette. Bewusst kontrolliert: Der Suchbegriff und
+ * damit das Filterergebnis bleiben in der Sidebar, das Feld rendert nur.
+ * Enter springt in die Trefferliste (dort fügt Enter das Bauteil hinzu),
+ * Escape leert den Filter.
  */
-export function SidebarSearch({ value, onChange }: SidebarSearchProps) {
+export function SidebarSearch({ value, onChange, onEnter }: SidebarSearchProps) {
   return (
     <div className="relative flex items-center">
       <label htmlFor="component-search" className="sr-only">
-        Komponenten durchsuchen
+        Suche nach Komponenten
       </label>
-      <Search className="absolute left-3 h-4 w-4 text-muted-foreground" aria-hidden="true" />
+      <Search
+        className="pointer-events-none absolute left-2 h-4 w-4 text-muted-foreground"
+        aria-hidden="true"
+      />
       <input
         id="component-search"
         data-testid="sidebar-search"
         type="search"
-        placeholder="Suchen..."
+        placeholder="Komponente suchen…"
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="min-h-11 w-full rounded-xl border border-border bg-card pl-9 pr-11 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            onEnter?.();
+          } else if (event.key === 'Escape') {
+            onChange('');
+          }
+        }}
+        className="focus:border-accent-line min-h-9 w-full border border-rule-strong bg-surface-raised pl-8 pr-8 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
       />
       {value && (
         <button
           type="button"
           onClick={() => onChange('')}
-          className="absolute right-0 flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="absolute right-0 flex h-full w-8 items-center justify-center text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           aria-label="Filter zurücksetzen"
         >
-          <XCircle className="h-5 w-5" />
+          <X className="h-4 w-4" aria-hidden="true" />
         </button>
       )}
     </div>

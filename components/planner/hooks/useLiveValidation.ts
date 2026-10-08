@@ -305,7 +305,7 @@ export function useLiveValidation(
           unit: '',
           source: 'Datenmodell: battery.nominalVoltage (NodeInspector)',
           message:
-            'ℹ️ Hinweis: Bei mindestens einer Batterie ist die Nennspannung nicht eingetragen. Die Mischspannungs-Prüfung (12 V / 24 V) kann diese Batterie nicht einbeziehen — trage die Nennspannung im Batterie-Inspektor ein.',
+            'Hinweis: Bei mindestens einer Batterie ist die Nennspannung nicht eingetragen. Die Mischspannungs-Prüfung (12 V / 24 V) kann diese Batterie nicht einbeziehen — trage die Nennspannung im Batterie-Inspektor ein.',
         });
       }
       if (voltages.size > 1) {
@@ -418,7 +418,7 @@ export function useLiveValidation(
         expectedValue: 'identische Chemie (z. B. AGM ‖ AGM)',
         unit: '',
         source: 'Modell: Ladeschlussspannungen/Fenster je Chemie (AGM ~14,4–14,7 V, Gel ~14,1–14,4 V)',
-        message: `⚠️ Kritisch: „${nodeLabel(sourceNode, 'Batterie')}“ (${nodeField(sourceNode, 'chemistry', '?')}) und „${nodeLabel(targetNode, 'Batterie')}“ (${nodeField(targetNode, 'chemistry', '?')}) sind parallel geschaltet. Unterschiedliche Chemien haben unterschiedliche Ladeschlussspannungen — ein Partner wird dauerhaft über- oder unterladen (Sulfatierung/Gasung). Trenne die Verbindung oder verwende identische Chemien.`,
+        message: `Kritisch: „${nodeLabel(sourceNode, 'Batterie')}“ (${nodeField(sourceNode, 'chemistry', '?')}) und „${nodeLabel(targetNode, 'Batterie')}“ (${nodeField(targetNode, 'chemistry', '?')}) sind parallel geschaltet. Unterschiedliche Chemien haben unterschiedliche Ladeschlussspannungen — ein Partner wird dauerhaft über- oder unterladen (Sulfatierung/Gasung). Trenne die Verbindung oder verwende identische Chemien.`,
       });
     });
 
@@ -449,7 +449,7 @@ export function useLiveValidation(
           unit: '',
           source: 'Regel M: fehlende Eingabe ⇒ UNKNOWN; Modell prüft Voc(T_min) gegen maxPvVoltage',
           message:
-            '⚠️ Hinweis: Am Laderegler ist die maximale PV-Eingangsspannung nicht eingetragen. Die Kalt-Voc-Prüfung (Strings können bei −10 °C über die Leerlaufspannung hinausgehen) ist damit unbewertet. Wert im Regler-Inspektor eintragen — erst dann prüft das Modell das Eingangsfenster.',
+            'Hinweis: Am Laderegler ist die maximale PV-Eingangsspannung nicht eingetragen. Die Kalt-Voc-Prüfung (Strings können bei −10 °C über die Leerlaufspannung hinausgehen) ist damit unbewertet. Wert im Regler-Inspektor eintragen — erst dann prüft das Modell das Eingangsfenster.',
         });
         return;
       }
@@ -474,7 +474,7 @@ export function useLiveValidation(
           expectedValue: `max. ${maxPvVoltage} V`,
           unit: 'V',
           source: 'Modellannahme: Voc(T_min) = Voc_STC · (1 + |TK|·ΔT); TK-Default −0,35 %/K (c-Si)',
-          message: `⚠️ Kritisch: Die Leerlaufspannung des Solar-Strings steigt in der Kälte auf ≈ ${Math.round(
+          message: `Kritisch: Die Leerlaufspannung des Solar-Strings steigt in der Kälte auf ≈ ${Math.round(
             worst
           )} V (Auslegungstemperatur ${SOLAR_DESIGN_MIN_TEMPERATURE_C} °C) — der Laderegler „${nodeLabel(
             mppt,
@@ -494,7 +494,7 @@ export function useLiveValidation(
           expectedValue: 'Voc (STC) je Panel',
           unit: '',
           source: 'Modell: Voc-Fensterprüfung nur mit Datenblattwert (schätzen wäre unehrlich)',
-          message: `ℹ️ Hinweis: Für die Kalt-Voc-Prüfung des Ladereglers fehlt bei mindestens einem Panel der Datenblattwert „Leerlaufspannung Voc“. Trage ihn im Panel-Inspektor ein, damit das Eingangsfenster geprüft werden kann.`,
+          message: ` Hinweis: Für die Kalt-Voc-Prüfung des Ladereglers fehlt bei mindestens einem Panel der Datenblattwert „Leerlaufspannung Voc“. Trage ihn im Panel-Inspektor ein, damit das Eingangsfenster geprüft werden kann.`,
         });
       }
       // AUDIT S1: Voc ist eingetragen, aber die Kalt-Voc ist nicht auswertbar —
@@ -516,7 +516,7 @@ export function useLiveValidation(
           expectedValue: 'TK im Bereich −0,20…−0,50 %/K (c-Si)',
           unit: '',
           source: 'Modell: Voc(T) = Voc_STC · (1 + |TK|·(25 °C − T)); Faktor muss positiv sein',
-          message: `⚠️ Warnung: Bei mindestens einem Panel ist die kalte Leerlaufspannung nicht berechenbar — der eingetragene Temperaturkoeffizient Voc liegt außerhalb des Modellbereichs (üblich sind −0,20 bis −0,50 %/K für c-Si). Die Voc-Fensterprüfung des Ladereglers ist damit AUSGEFALLEN, nicht bestanden. Wert im Panel-Inspektor korrigieren.`,
+          message: `Warnung: Bei mindestens einem Panel ist die kalte Leerlaufspannung nicht berechenbar — der eingetragene Temperaturkoeffizient Voc liegt außerhalb des Modellbereichs (üblich sind −0,20 bis −0,50 %/K für c-Si). Die Voc-Fensterprüfung des Ladereglers ist damit AUSGEFALLEN, nicht bestanden. Wert im Panel-Inspektor korrigieren.`,
         });
       }
     });
@@ -571,7 +571,7 @@ export function useLiveValidation(
           title: 'Solarregler zu klein',
           focusId: chargers[0]?.id,
           focusType: 'node',
-          message: `⚠️ Hinweis: Solarregler unterdimensioniert (Solar: ~${totalSolarWatts}W, MPPT max: ~${Math.round(mpptCapacity)}W).`,
+          message: `Hinweis: Solarregler unterdimensioniert (Solar: ~${totalSolarWatts}W, MPPT max: ~${Math.round(mpptCapacity)}W).`,
         });
       }
     }
@@ -605,7 +605,7 @@ export function useLiveValidation(
             expectedValue: `max. ${dischargeLimit} A`,
             unit: 'A',
             source: 'Batteriemodell: bmsContinuousDischarge (BMS-Grenze)',
-            message: `⚠️ Kritisch: Die Leitung von „${nodeLabel(
+            message: `Kritisch: Die Leitung von „${nodeLabel(
               battery,
               'Batterie'
             )}“ wird mit ≈${Math.round(I)} A belastet, das BMS erlaubt dauerhaft nur ${dischargeLimit} A. Kabeldimensionierung und Sicherung schützen das Kabel, nicht das BMS — die Batterie kann abgeschaltet werden oder Schaden nehmen.`,
@@ -624,7 +624,7 @@ export function useLiveValidation(
             expectedValue: `max. ${chargeLimit} A`,
             unit: 'A',
             source: 'Batteriemodell: bmsContinuousCharge (BMS-Grenze)',
-            message: `⚠️ Kritisch: Der Ladezweig zu „${nodeLabel(
+            message: `Kritisch: Der Ladezweig zu „${nodeLabel(
               battery,
               'Batterie'
             )}“ führt ≈${Math.round(I)} A, das BMS erlaubt dauerhaft nur ${chargeLimit} A Ladestrom.`,
@@ -717,7 +717,7 @@ export function useLiveValidation(
         expectedValue: `max. ${Math.round(limit)} A`,
         unit: 'A',
         source: 'Bauteildaten (Nennstrom/Dauerstrom laut Eingabe)',
-        message: `⚠️ Kritisch: ${verdict.message} Die Leitung ist zwar passend dimensioniert, das Bauteil selbst trägt diesen Strom aber nicht.`,
+        message: `Kritisch: ${verdict.message} Die Leitung ist zwar passend dimensioniert, das Bauteil selbst trägt diesen Strom aber nicht.`,
       });
     }
 
@@ -734,7 +734,7 @@ export function useLiveValidation(
           title: 'Ladebooster nicht komplett',
           focusId: charger.id,
           focusType: 'node',
-          message: `💡 Hinweis: Der Ladebooster (DC-DC) scheint nicht vollständig angeschlossen zu sein. Bitte Starterseite (Eingang) und Aufbaubatterie-Pfad (Ausgang) prüfen.`,
+          message: `Hinweis: Der Ladebooster (DC-DC) scheint nicht vollständig angeschlossen zu sein. Bitte Starterseite (Eingang) und Aufbaubatterie-Pfad (Ausgang) prüfen.`,
         });
       }
     });
@@ -779,7 +779,7 @@ export function useLiveValidation(
             unit: '',
             source:
               'Regel E2: Pfadprüfung Lader → Verteilung → Aufbaubatterie (Regel M: fehlendes Ziel ist UNKNOWN, nicht OK)',
-            message: `⚠️ Hinweis: Im Plan ist keine Aufbaubatterie vorhanden — der Ladebooster kann nichts laden. Eine Batterie mit Rolle „Aufbau" anlegen; die Starterseite zählt nicht.`,
+            message: `Hinweis: Im Plan ist keine Aufbaubatterie vorhanden — der Ladebooster kann nichts laden. Eine Batterie mit Rolle „Aufbau" anlegen; die Starterseite zählt nicht.`,
           });
           continue;
         }
@@ -798,7 +798,7 @@ export function useLiveValidation(
             unit: '',
             source:
               'Regel E2: Pfadprüfung Lader → Verteilung → Aufbaubatterie (Regel M: keine stille Annahme „angeschlossen")',
-            message: `⚠️ Hinweis: Der Ladebooster hat Ein- und Ausgang, aber vom Ausgang führt kein Pfad zu einer Aufbaubatterie — geladen wird nur die Starterseite. Verbindung zur Verteilung/Sammelschiene prüfen, an der die Aufbaubatterie hängt.`,
+            message: `Hinweis: Der Ladebooster hat Ein- und Ausgang, aber vom Ausgang führt kein Pfad zu einer Aufbaubatterie — geladen wird nur die Starterseite. Verbindung zur Verteilung/Sammelschiene prüfen, an der die Aufbaubatterie hängt.`,
           });
         }
       }
@@ -826,7 +826,7 @@ export function useLiveValidation(
             measuredValue: diagnosticText(raw),
             expectedValue: 'endlicher Wert ≥ 0',
             source: 'Datenmodell: watts/amps ≥ 0 (Import-/Altdaten-Validierung)',
-            message: `⚠️ Kritisch: Bei „${nodeLabel(node, '?')}“ ist ${
+            message: `Kritisch: Bei „${nodeLabel(node, '?')}“ ist ${
               field === 'watts' ? 'die Leistung' : 'der Strom'
             } ungültig (${diagnosticText(raw)}). Der Wert wird intern als 0 A behandelt und kann zu dünn dimensionierte Leitungen verbergen. Korrigiere die Angabe im Inspektor.`,
           });
@@ -963,7 +963,7 @@ function autoWireWarnings(
       category: 'topology',
       type: 'info',
       title: 'Offene Entscheidung',
-      message: `❓ ${question}`,
+      message: `${question}`,
       ruleId: 'AUTO-OPEN-QUESTION',
       source: 'Auto-Verdrahtung',
     });

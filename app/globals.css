@@ -738,7 +738,7 @@
   }
   @media (min-width: 1280px) {
     .planner-shell {
-      --planner-sidebar-w: 280px;
+      --planner-sidebar-w: 248px;
       --planner-inspector-w: 288px;
     }
   }
@@ -747,6 +747,10 @@
       --planner-inspector-w: 320px;
     }
   }
+  /* Die Umschalter sitzen auf der Panelkante: ein schmaler Griff am Rand der
+     Palette bzw. der Eigenschaften-Spalte, wie in Konstruktionswerkzeugen.
+     Bezugselement ist der Arbeitsbereich (PlannerInner), deshalb bleiben beide
+     auch im eingeklappten Zustand an derselben Kante erreichbar. */
   .planner-sidebar-toggle--open {
     left: calc(var(--planner-sidebar-w) - 1rem);
   }
@@ -765,8 +769,10 @@
      Floating canvas controls use this shared clearance instead of assuming a
      fixed 64 px bar, so their hit areas never overlap the system gesture zone. */
   @media (max-width: 767px) {
+    /* Unter dem Canvas liegen Statuszeile (~26 px) und Bottom-Navigation
+       (56 px): Der Undo/Redo-Griff sitzt darüber, nicht darin. */
     .planner-mobile-history {
-      bottom: calc(5rem + env(safe-area-inset-bottom)) !important;
+      bottom: calc(6.5rem + env(safe-area-inset-bottom)) !important;
     }
     .planner-mobile-feedback {
       bottom: calc(6rem + env(safe-area-inset-bottom)) !important;
@@ -1212,18 +1218,586 @@
 
 /* M7-3 Statuszeile: Cursor-Koordinaten, Zoom, Planumfang — dezent am
    unteren Rand, Mono-Text auf surface-2. */
+/* Die Statuszeile sitzt jetzt fest im Shell-Raster (Zeile unter der
+   Zeichenfläche) statt als schwebendes Panel im Canvas. Diese Regel hält nur
+   noch die Typografie-Rolle fest; Umbruch und Rahmen des früheren Panels
+   entfallen — sonst stünde sie auf schmalen Geräten dreizeilig im Canvas. */
 .planner-statusbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  align-items: center;
-  padding: 0.25rem 0.5rem;
   font-family: var(--font-mono);
   font-size: 0.6875rem;
   line-height: 1rem;
   font-variant-numeric: tabular-nums;
   color: var(--text-med);
-  background: var(--surface-1);
-  border: 1px solid var(--border);
-  border-radius: 2px;
+}
+.planner-statusbar > * {
+  white-space: nowrap;
+}
+
+/* ==========================================================================
+   CAD-ARBEITSFLÄCHE — eigenständige Application Shell des Planers
+   ==========================================================================
+   Der Planer ist ein Werkzeug, keine Webseite: Menüleiste, Werkzeugleiste,
+   Werkzeug-/Komponentenpalette, Zeichenfläche, Eigenschaften und Statuszeile
+   in einem festen Raster. Kein Seiten-Scroll — nur einzelne Panels scrollen.
+
+   Regeln dieses Blocks:
+   - nur Tokens (Hex lebt in den Token-Blöcken oben),
+   - Radien ≤ 4 px (Ingenieurs-Optik, keine SaaS-Karten),
+   - 1-px-Linien statt Schatten,
+   - Farbe ausschließlich semantisch (Fehler/Warnung/OK/Auswahl).
+   ========================================================================== */
+
+.planner-shell {
+  /* Chrome-Höhen: die Statuszeile ist flach, die Werkzeugleiste kompakt. */
+  --cad-menubar-h: 32px;
+  --cad-toolbar-h: 40px;
+  --cad-statusbar-h: 26px;
+  --cad-palette-w: 232px;
+  /* Zeichenfläche des Canvas: feines Raster (10 px) — siehe FlowCanvas. */
+  --cad-grid: var(--canvas-grid);
+}
+
+@media (min-width: 1280px) {
+  .planner-shell {
+    --cad-palette-w: 248px;
+  }
+}
+
+/* Fokusmodus: Der Planer übernimmt das Fenster (eigene Anwendung, kein
+   Seiten-Scroll, keine Marketing-Rahmen). Wird über `#planer` beim Öffnen
+   sowie über „Vollbild“ in der Werkzeugleiste aktiviert. */
+.planner-shell--focus {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+}
+
+.cad-scroll {
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--rule-strong) transparent;
+}
+.cad-scroll::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.cad-scroll::-webkit-scrollbar-thumb {
+  background: var(--rule-strong);
+  border: 3px solid var(--surface-panel);
+  border-radius: 4px;
+}
+.cad-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* --- 1. Menüleiste -------------------------------------------------------
+   Klassische Anwendungsmenüs. Zurückhaltend: Textlinks, keine Kacheln,
+   Auswahl beim Öffnen markiert. */
+.cad-menubar {
+  display: flex;
+  flex-shrink: 0;
+  align-items: stretch;
+  height: var(--cad-menubar-h);
+  border-bottom: 1px solid var(--rule);
+  background: var(--surface-panel);
+  font-size: 0.8125rem;
+  user-select: none;
+}
+.cad-menubar__brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-inline: 0.75rem;
+  border-right: 1px solid var(--rule);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text-high);
+  white-space: nowrap;
+}
+.cad-menubar__project {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.5rem;
+  padding-inline: 0.75rem;
+  border-right: 1px solid var(--rule);
+  color: var(--text-med);
+  white-space: nowrap;
+}
+.cad-menubar__project-name {
+  max-width: 16rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.75rem;
+  color: var(--text-high);
+}
+.cad-menubar__menus {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: stretch;
+  /* Auf dem Handy passen sechs Menüs nicht nebeneinander: Die Leiste scrollt
+     waagerecht (wie eine Werkzeugleiste), statt Menüs abzuschneiden. */
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.cad-menubar__menus::-webkit-scrollbar {
+  display: none;
+}
+.cad-menubar__item {
+  display: inline-flex;
+  align-items: center;
+  padding-inline: 0.625rem;
+  border: 0;
+  background: transparent;
+  color: var(--text-med);
+  font-size: 0.8125rem;
+  cursor: default;
+}
+.cad-menubar__item:hover,
+.cad-menubar__item[data-open='true'] {
+  background: var(--surface-hover);
+  color: var(--text-high);
+}
+.cad-menubar__item:focus-visible {
+  outline: 2px solid var(--accent-line);
+  outline-offset: -2px;
+}
+.cad-menubar__status {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+  padding-inline: 0.75rem;
+  color: var(--text-med);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+/* Dropdown eines Menüs */
+.cad-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 90;
+  min-width: 15rem;
+  border: 1px solid var(--rule-strong);
+  border-radius: 4px;
+  background: var(--surface-raised);
+  padding-block: 0.25rem;
+}
+.cad-menu__label {
+  padding: 0.25rem 0.75rem;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.6875rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-low);
+}
+.cad-menu__item {
+  display: flex;
+  width: 100%;
+  min-height: 1.75rem;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.25rem 0.75rem;
+  border: 0;
+  background: transparent;
+  color: var(--text-high);
+  font-size: 0.8125rem;
+  text-align: left;
+  cursor: default;
+}
+.cad-menu__item:hover:not(:disabled),
+.cad-menu__item:focus-visible:not(:disabled) {
+  background: var(--surface-hover);
+  outline: none;
+}
+.cad-menu__item:disabled {
+  color: var(--text-low);
+  cursor: not-allowed;
+}
+.cad-menu__item[aria-checked='true']::before,
+.cad-menu__check {
+  color: var(--accent-line);
+}
+.cad-menu__hint {
+  margin-left: auto;
+  padding-left: 1.5rem;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.75rem;
+  color: var(--text-low);
+}
+.cad-menu__sep {
+  height: 1px;
+  margin-block: 0.25rem;
+  background: var(--rule);
+}
+
+/* --- 2. Werkzeugleiste --------------------------------------------------- */
+.cad-toolbar {
+  display: flex;
+  flex-shrink: 0;
+  min-height: var(--cad-toolbar-h);
+  align-items: center;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--rule);
+  background: var(--surface-panel);
+  padding-inline: 0.5rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.cad-toolbar::-webkit-scrollbar {
+  display: none;
+}
+.cad-toolbar__group {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.cad-toolbar__sep {
+  width: 1px;
+  height: 1.5rem;
+  margin-inline: 0.25rem;
+  background: var(--rule);
+  flex-shrink: 0;
+}
+
+/* Werkzeugknopf: flach, 1-px-Linie, kein Dauer-Farbton. */
+.cad-btn {
+  display: inline-flex;
+  align-items: center;
+  /* Keine feste min-height: Die Knopfhöhe kommt aus Innenabstand + Zeile,
+     damit Touch-Ziele über Tailwind-Utilities (min-h-11 = 44 px) vergrößert
+     werden können. Eine unlayered `min-height` hier würde jede Utility
+     schlagen (Utilities liegen in einem @layer). */
+  padding-block: 0.1875rem;
+  gap: 0.375rem;
+  padding-inline: 0.5rem;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-med);
+  font-size: 0.8125rem;
+  white-space: nowrap;
+  cursor: default;
+}
+.cad-btn:hover:not(:disabled) {
+  background: var(--surface-hover);
+  color: var(--text-high);
+}
+.cad-btn:disabled {
+  opacity: 0.4;
+}
+.cad-btn:focus-visible {
+  outline: 2px solid var(--accent-line);
+  outline-offset: 1px;
+}
+.cad-btn--line {
+  border-color: var(--rule-strong);
+  background: var(--surface-raised);
+  color: var(--text-high);
+}
+.cad-btn--active {
+  border-color: var(--accent-line);
+  background: color-mix(in srgb, var(--accent-line) 12%, transparent);
+  color: var(--text-high);
+}
+/* Die eine hervorgehobene Aktion (AutoWire): Rahmen statt Farbfläche. */
+.cad-btn--primary {
+  border-color: var(--accent-line);
+  background: var(--surface-raised);
+  color: var(--text-high);
+  font-weight: 500;
+}
+.cad-btn--primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent-line) 14%, var(--surface-raised));
+}
+
+/* --- 3. Panels (Palette / Eigenschaften) --------------------------------- */
+.cad-panel {
+  display: flex;
+  min-height: 0;
+  height: 100%;
+  flex-direction: column;
+  background: var(--surface-panel);
+}
+.cad-panel__head {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  height: 2rem;
+  padding-inline: 0.75rem;
+  border-bottom: 1px solid var(--rule);
+}
+.cad-panel__body {
+  min-height: 0;
+  flex: 1;
+}
+
+/* Schwebende Flächen (Prüfbericht, Kontextmenü, Expertenblatt): EIN
+   Schattenwert für alle. Die Kante macht die Trennung (1px Rahmen auf
+   angehobener Fläche), der Schatten nur die Lesbarkeit über dem Raster —
+   keine „schwebenden Karten" mit 24px-Blur. */
+:root {
+  --cad-shadow-overlay: 0 8px 20px -12px rgb(0 0 0 / 0.55);
+}
+
+/* Eigenschafts-Sektion im Inspector (Allgemein/Elektrisch/Anschluss/
+   Berechnung): Titelzeile als Klappgriff, darunter die Felder. Die Trennung
+   ist eine Haarlinie — Ordnung, keine Karte. */
+.de-inspector__group + .de-inspector__group {
+  margin-top: 0.25rem;
+  border-top: 1px solid var(--rule);
+  padding-top: 0.375rem;
+}
+.de-inspector__group-title {
+  margin: 0;
+  font: inherit;
+}
+.de-inspector__group-toggle {
+  display: flex;
+  width: 100%;
+  min-height: 1.5rem;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.125rem 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-med);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.6875rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: default;
+}
+.de-inspector__group-toggle:hover {
+  color: var(--text-high);
+}
+.de-inspector__group-toggle:focus-visible {
+  outline: 2px solid var(--accent-line);
+  outline-offset: -2px;
+}
+.de-inspector__group-body {
+  padding-top: 0.375rem;
+}
+
+/* Sektion im Panel: klappbar, Titelzeile 28 px, sonst nichts. */
+.cad-section {
+  border-bottom: 1px solid var(--rule);
+}
+.cad-section__head {
+  display: flex;
+  width: 100%;
+  min-height: 1.75rem;
+  align-items: center;
+  gap: 0.5rem;
+  padding-inline: 0.75rem;
+  border: 0;
+  background: transparent;
+  color: var(--text-med);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.6875rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: default;
+}
+.cad-section__head:hover {
+  background: var(--surface-hover);
+  color: var(--text-high);
+}
+.cad-section__head:focus-visible {
+  outline: 2px solid var(--accent-line);
+  outline-offset: -2px;
+}
+.cad-section__body {
+  padding: 0.5rem 0.75rem 0.75rem;
+}
+
+/* Komponenteneintrag der Palette: eine Zeile, Icon + Name + technische Info. */
+.cad-item {
+  display: flex;
+  width: 100%;
+  min-height: 2.25rem;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-high);
+  font-size: 0.8125rem;
+  text-align: left;
+  cursor: grab;
+}
+.cad-item:hover {
+  background: var(--surface-hover);
+  border-color: var(--rule);
+}
+.cad-item:focus-visible {
+  outline: 2px solid var(--accent-line);
+  outline-offset: -2px;
+}
+.cad-item__icon {
+  display: grid;
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+  place-items: center;
+  color: var(--text-med);
+}
+.cad-item__text {
+  min-width: 0;
+  flex: 1;
+}
+.cad-item__label {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.8125rem;
+}
+.cad-item__meta {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.6875rem;
+  color: var(--text-low);
+}
+.cad-item[aria-selected='true'] {
+  border-color: var(--accent-line);
+  background: var(--surface-hover);
+}
+.cad-item--active {
+  border-color: var(--accent-line);
+  background: color-mix(in srgb, var(--accent-line) 10%, transparent);
+}
+
+/* --- 4. Key-Value-Zeilen für technische Werte ---------------------------- */
+.cad-kv {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding-block: 0.125rem;
+}
+.cad-kv__key {
+  color: var(--text-med);
+  font-size: 0.8125rem;
+}
+.cad-kv__val {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.8125rem;
+  color: var(--text-high);
+  text-align: right;
+  white-space: nowrap;
+}
+.cad-kv__val--empty {
+  color: var(--text-low);
+}
+.cad-kv__val--signal {
+  color: var(--error);
+}
+.cad-kv__val--warn {
+  color: var(--warn);
+}
+.cad-kv__val--ok {
+  color: var(--ok);
+}
+
+/* --- 5. Statuszeile ------------------------------------------------------ */
+.cad-statusbar {
+  display: flex;
+  flex-shrink: 0;
+  min-height: var(--cad-statusbar-h);
+  align-items: center;
+  gap: 0.5rem;
+  white-space: nowrap;
+  border-top: 1px solid var(--rule);
+  background: var(--surface-panel);
+  padding-inline: 0.5rem;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.6875rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-med);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+.cad-statusbar::-webkit-scrollbar {
+  display: none;
+}
+@media (min-width: 768px) {
+  .cad-statusbar {
+    gap: 0.75rem;
+    padding-inline: 0.75rem;
+  }
+}
+.cad-statusbar__cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  white-space: nowrap;
+}
+.cad-statusbar__sep {
+  width: 1px;
+  height: 0.875rem;
+  background: var(--rule);
+}
+.cad-statusbar__signal {
+  color: var(--error);
+}
+.cad-statusbar__ok {
+  color: var(--ok);
+}
+
+/* --- 6. Bottom-Sheet (Handy) --------------------------------------------- */
+.cad-sheet {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 45;
+  display: flex;
+  max-height: 82dvh;
+  flex-direction: column;
+  border-top: 1px solid var(--rule-strong);
+  background: var(--surface-panel);
+}
+.cad-sheet__bar {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--rule);
+}
+.cad-sheet__title {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.6875rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-med);
+}
+
+/* --- 7. Leerzustände ----------------------------------------------------- */
+.cad-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem 0.75rem;
+  color: var(--text-med);
+  font-size: 0.8125rem;
+}
+.cad-empty__title {
+  color: var(--text-high);
+  font-weight: 500;
 }

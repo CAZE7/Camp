@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Search } from 'lucide-react';
+import React, { useCallback, useRef, useState } from 'react';
+import { SearchX } from 'lucide-react';
 import {
   DEFAULT_OPEN_CATEGORY,
   deviceAssistant,
@@ -17,16 +17,22 @@ interface SidebarProps {
 }
 
 /**
- * Linke Spalte des Planers: Bauteil-Katalog (Registry) + Geräte-Vorlagen.
+ * Komponentenpalette — Werkzeugkasten des Planers, keine Kartenfläche.
  *
- * Diese Datei hält nur noch die Schale — Suchbegriff, Kategorien-Zustand und
- * die Komposition. Daten und reine Funktionen liegen in `sidebar/catalog.ts`,
- * Hinzufügen und Ghost-Drag in `sidebar/drag.ts`, Kachel, Kategorie und
- * Suchfeld in eigenen Komponenten. Ehemals 300+ Zeilen in einem File.
+ * Aufbau wie in technischer Software: Kopfzeile, feste Suchzeile, darunter die
+ * kategorisierte Liste mit kompakten Zeilen. Die Suche ist zentral („wechsel…“
+ * → „Wechselrichter“), Tastatur inklusive: Pfeiltasten laufen durch alle
+ * Treffer, Enter fügt hinzu, Escape leert den Filter. Ziehen mit der Maus ist
+ * der zweite Weg, Antippen der dritte.
+ *
+ * Diese Datei hält nur die Schale — Suchbegriff, Kategorien-Zustand und
+ * Komposition. Daten und reine Funktionen liegen in `sidebar/catalog.ts`,
+ * Hinzufügen und Ghost-Drag in `sidebar/drag.ts`.
  */
 export function Sidebar({ mode = 'electric', onMobileAdd }: SidebarProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [manualOpen, setManualOpen] = useState<Record<string, boolean>>({});
+  const listRef = useRef<HTMLDivElement>(null);
   const activeComponents = useComponentCatalog(mode);
   const isSearching = searchTerm.trim().length > 0;
   const matches = (label: string, description: string) =>
@@ -47,29 +53,46 @@ export function Sidebar({ mode = 'electric', onMobileAdd }: SidebarProps) {
     }));
   const devicesOpen = isSearching || (manualOpen.__devices ?? false);
   const hasAnyResult = filteredComponents.length > 0 || filteredDevices.length > 0;
+  const resultCount = filteredComponents.length + filteredDevices.length;
+
+  /**
+   * Pfeiltasten laufen durch die Zeilen quer über die Gruppen hinweg (wie in
+   * einer Liste, nicht wie in getrennten Listen) — inklusive Fokuswechsel,
+   * damit der nächste Schritt ohne Maus erreichbar ist.
+   */
+  const navigateRows = useCallback((direction: 1 | -1) => {
+    const rows = Array.from(
+      listRef.current?.querySelectorAll<HTMLButtonElement>('[data-testid="sidebar-item"]') ?? []
+    );
+    const index = rows.indexOf(document.activeElement as HTMLButtonElement);
+    const next = rows[index + direction];
+    (next ?? rows[0])?.focus();
+  }, []);
+
+  const focusFirstRow = useCallback(() => {
+    listRef.current?.querySelector<HTMLButtonElement>('[data-testid="sidebar-item"]')?.focus();
+  }, []);
 
   return (
-    // Breite alleinige Sache der Spalte in PlannerSidebar (260/280 px) —
-    // ein eigenes lg:w-72 (288 px) ließ den Inhalt aus der Spalte quellen.
     <aside
       data-testid="sidebar"
-      className="flex h-full w-full flex-col border-r border-border bg-paper"
+      className="cad-panel w-full border-r border-border"
       aria-label={mode === 'water' ? 'Wasser-Komponenten' : 'Elektrik-Komponenten'}
     >
-      <div className="border-b border-border bg-accent p-4">
+      <div className="cad-panel__head">
         <h2 className="panel-title">Komponenten</h2>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Antippen oder per Tastatur hinzufügen; am Desktop auch ziehen.
-        </p>
+        <span className="text-xs tabular-nums text-muted-foreground">
+          {isSearching ? `${resultCount} Treffer` : `${activeComponents.length} Bauteile`}
+        </span>
       </div>
 
-      <div className="border-b border-border p-4">
-        <SidebarSearch value={searchTerm} onChange={setSearchTerm} />
+      <div className="border-b border-border p-2">
+        <SidebarSearch value={searchTerm} onChange={setSearchTerm} onEnter={focusFirstRow} />
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4">
+      <div ref={listRef} className="cad-panel__body cad-scroll">
         {hasAnyResult ? (
-          <div className="flex flex-col gap-3">
+          <>
             {categories.map((category) => (
               <CategorySection
                 key={category}
@@ -79,6 +102,7 @@ export function Sidebar({ mode = 'electric', onMobileAdd }: SidebarProps) {
                 onToggle={() => toggleCat(category)}
                 onMobileAdd={onMobileAdd}
                 accent="default"
+                onNavigate={navigateRows}
               />
             ))}
             {mode === 'electric' && filteredDevices.length > 0 && (
@@ -91,17 +115,19 @@ export function Sidebar({ mode = 'electric', onMobileAdd }: SidebarProps) {
                 }
                 onMobileAdd={onMobileAdd}
                 accent="device"
+                onNavigate={navigateRows}
               />
             )}
-          </div>
+          </>
         ) : (
-          <div className="flex flex-col items-center gap-3 py-8 text-center text-sm text-muted-foreground">
-            <Search className="h-8 w-8" aria-hidden="true" />
-            <p>Keine Treffer für „{searchTerm}“</p>
+          <div className="cad-empty">
+            <SearchX className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+            <p className="cad-empty__title">Keine Treffer für „{searchTerm}“</p>
+            <p>Prüfe die Schreibweise oder setze den Filter zurück.</p>
             <button
               type="button"
               onClick={() => setSearchTerm('')}
-              className="min-h-11 rounded-lg border border-border bg-card px-4 font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="cad-btn cad-btn--line mt-1 min-h-11 self-start"
             >
               Filter zurücksetzen
             </button>

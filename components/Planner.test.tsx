@@ -40,6 +40,13 @@ vi.mock('@xyflow/react', async () => {
     ReactFlowProvider: ({ children }: { children: React.ReactNode }) => (
       <div data-testid="react-flow-provider">{children}</div>
     ),
+    // Die Shell liest den Canvas-Zoom über `useStore`. Ein Attrappen-Provider
+    // hat keinen Kontext — deshalb wird hier nur dieser eine Hook mit einem
+    // ruhigen Standardwert beantwortet, statt den echten Provider zu mounten
+    // (dessen ResizeObserver-Lauf in jsdom unnötig Speicher frisst).
+    useStore: (selector: (state: { transform: number[] }) => unknown) => selector({ transform: [0, 0, 1] }),
+    // Die Statuszeile fragt die Zeigerposition über den Viewport-Helper ab.
+    useReactFlow: () => ({ screenToFlowPosition: (point: { x: number; y: number }) => point }),
   };
 });
 
@@ -64,16 +71,15 @@ describe('Planner Component', () => {
 
     // Because of dynamic loading, we need to wait for the inner div to appear.
     await waitFor(() => {
-      const sidebar = screen.getByTestId('planner-sidebar');
-      // The sidebar is wrapped in a container that carries the responsive classes.
-      const mainContainer = sidebar.parentElement?.parentElement;
-      // Mobile: Spalte mit Bottom-Tabs. Ab 768 px (Tablet) nebeneinander —
-      // bewusst `md:flex-row` statt `lg:flex-row`, damit das iPad hochkant
-      // bereits Sidebar + Canvas zeigt (Akzeptanzkriterium A2).
-      expect(mainContainer).toHaveClass(
+      // Die Anwendungsshell ist eine Spalte: Menüleiste, Werkzeugleiste,
+      // Arbeitsbereich, Statuszeile. Nur der Arbeitsbereich wird ab 768 px
+      // zur Zeile (Sidebar + Canvas nebeneinander, Akzeptanzkriterium A2).
+      const shell = screen.getByTestId('planner-shell');
+      expect(shell).toHaveClass(
+        'planner-shell',
         'flex',
         'flex-col',
-        'md:flex-row',
+        'h-dvh',
         'shrink-0',
         'min-h-0',
         'w-full',
@@ -82,7 +88,8 @@ describe('Planner Component', () => {
       );
       // `shrink-0` is essential: flex-1's zero basis collapsed the dvh shell
       // to the toolbar + bottom nav in a parent with automatic height.
-      expect(mainContainer).toHaveClass('planner-shell', 'h-dvh');
+      const workspace = screen.getByTestId('planner-workspace');
+      expect(workspace).toHaveClass('flex', 'flex-col', 'md:flex-row', 'min-h-0', 'min-w-0', 'flex-1');
     });
   });
 });
