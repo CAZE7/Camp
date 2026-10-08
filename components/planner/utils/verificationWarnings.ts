@@ -100,7 +100,9 @@ export function verificationWarning(event: AuditEvent, index: number): Validatio
 
   const focusType =
     event.entity.kind === 'node' || event.entity.kind === 'edge' ? event.entity.kind : undefined;
-  const prefix = type === 'critical' ? '⚠️ Kritisch: ' : type === 'warning' ? '⚠️ Warnung: ' : 'ℹ️ Hinweis: ';
+  // Kein Symbol-Präfix: Die Schwere trägt der Titel („Kritisch“) und die
+  // Farbe in der Oberfläche. Ein Zeichen davor wäre Dekoration (Auftrag §24).
+  const prefix = type === 'critical' ? 'Kritisch: ' : type === 'warning' ? 'Warnung: ' : 'Hinweis: ';
   // Norm, Klausel und Herkunft kommen aus DEM EREIGNIS: Es ist der Beleg, den
   // die Engine erzeugt hat (die Regelmatrix ist nur seine Quelle). Die Klausel
   // wird nicht angehängt, wenn sie schon im Normtext steht — doppelt genannt

@@ -370,7 +370,7 @@ function LiveRecommendationCard({
 
   if (I > 0) {
     return (
-      <div className="relative mx-4 mt-4 overflow-hidden rounded-lg border border-rule bg-surface-panel p-4 shadow-lg">
+      <div className="relative mx-4 mt-4 overflow-hidden rounded border border-rule bg-surface-panel p-4">
         <h4 className="panel-title mb-3 flex items-center gap-1.5">
           <span className="h-1.5 w-1.5 rounded-full bg-copper"></span>
           Aktuelle Empfehlung{' '}
@@ -459,7 +459,10 @@ export function ExpertPanel() {
       data-testid="expert-panel"
       data-open={isOpen ? 'true' : 'false'}
       className={cn(
-        'planner-expert-panel pointer-events-auto absolute z-50 transition-all duration-300 ease-out',
+        // Kein `transition-all`: Ein Blatt, das seine Breite animiert, wirkt wie
+        // eine Karte aus einer Marketing-Oberfläche. Bewegung gibt es nur als
+        // kurzes Einblenden, damit der Blick nicht springt.
+        'planner-expert-panel pointer-events-auto absolute z-50 transition-opacity duration-150 ease-out',
         // Geschlossen: FAB unten rechts, ab md über der Statuszeile.
         // Offen: wächst nach oben (kein top+bottom-Stretch), max-h hält
         // MiniMap/Statuszeile/Bottom-Nav frei. Die CSS-Klasse ergänzt auf
@@ -473,7 +476,7 @@ export function ExpertPanel() {
       {isOpen && (
         <div
           data-testid="expert-panel-open"
-          className="flex max-h-[min(28rem,calc(100dvh-8rem))] flex-col overflow-hidden rounded-lg border border-rule bg-bone/95 shadow-2xl backdrop-blur-xl duration-300 animate-in fade-in slide-in-from-bottom-4"
+          className="flex max-h-[min(28rem,calc(100dvh-8rem))] flex-col overflow-hidden rounded border border-rule-strong bg-surface-panel duration-150 animate-in fade-in"
         >
           {/* Header — sticky, Token-Farben (bg-ink / text-bone) in hell und dunkel. */}
           <div className="sticky top-0 z-10 flex shrink-0 items-center gap-3 bg-ink px-5 py-4 text-bone">
@@ -511,7 +514,7 @@ export function ExpertPanel() {
 
           {/* Automatische Verbindung Erfolgs-Bestätigung */}
           {autoWireSummary && (
-            <div className="mx-4 mt-4 rounded-lg border border-moss bg-moss/10 p-3.5 shadow-sm duration-300 animate-in fade-in slide-in-from-top-2">
+            <div className="mx-4 mt-4 rounded border border-moss bg-moss/10 p-3.5 duration-150 animate-in fade-in">
               <div className="flex items-start gap-2.5">
                 <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-moss" aria-hidden="true" />
                 <div className="min-w-0 flex-1">
@@ -598,7 +601,7 @@ export function ExpertPanel() {
                   {isExpanded && (
                     <div
                       id={`tip-content-${idx}`}
-                      className="px-5 pb-4 pl-10 duration-200 animate-in fade-in slide-in-from-top-2"
+                      className="px-5 pb-4 pl-10 duration-150 animate-in fade-in"
                     >
                       <p className="text-sm leading-relaxed text-ink-soft">{tip.body}</p>
                       {tip.norm && (
@@ -638,8 +641,8 @@ export function ExpertPanel() {
         <button
           onClick={() => setIsOpen(true)}
           className={cn(
-            'group relative flex items-center gap-2.5 rounded-lg border border-copper bg-ink py-3 pl-3 pr-4',
-            'text-bone shadow-lg',
+            'group relative flex items-center gap-2.5 rounded border border-copper bg-ink py-3 pl-3 pr-4',
+            'text-bone',
             'hover:border-copper hover:bg-surface-raised hover:text-ink',
             'transition-colors duration-200'
           )}

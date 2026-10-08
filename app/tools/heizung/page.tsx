@@ -25,7 +25,8 @@ import {
   Wind,
   Flame,
   Home,
-  Sparkles,
+  Check,
+  Gauge,
 } from 'lucide-react';
 
 // Outfit wird lokal über @fontsource-variable/outfit gebündelt (offline-fähiger Build).
@@ -330,7 +331,7 @@ function HeaterSelection({
                     {h.name}
                     {h.id === recommendedHeaterId && (
                       <span className="caption-xs ml-2 inline-flex items-center gap-1 font-semibold uppercase tracking-wider text-oxide">
-                        <Sparkles className="h-3 w-3" aria-hidden="true" /> Empfohlen
+                        <Check className="h-3 w-3" aria-hidden="true" /> Empfohlen
                       </span>
                     )}
                   </span>
@@ -354,7 +355,7 @@ function HeaterSelection({
             onClick={() => setSelectedHeaterId(recommendedHeaterId)}
             className="w-full gap-2 border-oxide/40 text-oxide hover:bg-paper"
           >
-            <Sparkles className="h-4 w-4" aria-hidden="true" />
+            <Check className="h-4 w-4" aria-hidden="true" />
             Empfehlung übernehmen: {HEATER_CATALOG.find((h) => h.id === recommendedHeaterId)?.name}
           </Button>
         )}
@@ -1046,7 +1047,7 @@ export default function HeatingCalculatorPage() {
           {/* Sticky TOC */}
           <nav
             aria-label="Abschnitte"
-            className="sticky top-2 z-20 -mx-2 mt-6 flex gap-2 overflow-x-auto rounded-none border border-rule bg-bone/95 p-2 backdrop-blur"
+            className="sticky top-2 z-20 -mx-2 mt-6 flex gap-2 overflow-x-auto rounded-none border border-rule bg-bone p-2"
           >
             <SectionAnchor id="section-fahrzeug" label="Fahrzeug" icon={<Home className="h-4 w-4" />} />
             <SectionAnchor id="section-heizgeraet" label="Heizgerät" icon={<Flame className="h-4 w-4" />} />
@@ -1057,7 +1058,7 @@ export default function HeatingCalculatorPage() {
             />
             <SectionAnchor id="section-daemmung" label="Dämmung" icon={<Ruler className="h-4 w-4" />} />
             <SectionAnchor id="section-erweitert" label="Erweitert" icon={<Wind className="h-4 w-4" />} />
-            <SectionAnchor id="section-ergebnis" label="Ergebnis" icon={<Sparkles className="h-4 w-4" />} />
+            <SectionAnchor id="section-ergebnis" label="Ergebnis" icon={<Gauge className="h-4 w-4" />} />
           </nav>
 
           <div className="mt-8 space-y-6">

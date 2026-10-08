@@ -18,7 +18,7 @@ import { type RoofNodeData } from '@/components/nodes/types';
 import { SAFE_MARGINS } from './validation';
 import { SiteHeader } from '@/components/brand/SiteHeader';
 import { SiteFooter } from '@/components/brand/SiteFooter';
-import { Plus, AlertTriangle, Sparkles, ArrowRight, Info, X as XIcon } from 'lucide-react';
+import { Plus, AlertTriangle, CheckCircle2, ArrowRight, Info, X as XIcon } from 'lucide-react';
 
 // Outfit wird lokal über @fontsource-variable/outfit gebündelt.
 const outfit = { className: 'font-outfit' };
@@ -386,7 +386,7 @@ function DachPlanerInner() {
             {/* Empfehlungshinweis */}
             {placementCount > 0 && invalidNodes.length === 0 && overlappingNodes.length === 0 && (
               <div className="warn-card warn-card-ok mt-6 text-sm">
-                <Sparkles className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+                <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
                 <span>Alle Elemente liegen sicher und ohne Überlappung in der Safe Zone.</span>
               </div>
             )}

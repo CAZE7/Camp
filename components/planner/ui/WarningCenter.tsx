@@ -469,7 +469,10 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
 
   useEffect(() => {
     if (!open) return;
-    panelRef.current?.focus();
+    // `preventScroll`: Der Fokus holt das Blatt sonst per Scroll ins Bild und
+    // verschiebt dabei die ganze Seite (gemessen: 768 px ⇒ Seite sprang um
+    // 800 px, das Blatt landete unterhalb des Fensters).
+    panelRef.current?.focus({ preventScroll: true });
     const onClick = (event: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) setOpen(false);
     };
@@ -546,9 +549,13 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
         aria-haspopup="dialog"
-        aria-label={`${warnings.length} Prüfhinweise anzeigen${
-          counts.critical > 0 ? `, davon ${counts.critical} kritisch` : ''
-        }`}
+        // Der Name war ein Satz mit drei Zahlen („24 Prüfhinweise anzeigen,
+        // davon 0 kritisch") — Vorlesewerkzeuge lasen ihn vor jedem Wechsel
+        // mit. Jetzt: sichtbare Beschriftung (Zahl + Schwere) plus Aktion. Die
+        // sichtbare Beschriftung bleibt im Namen enthalten — sonst ließe sich
+        // der Knopf per Sprachsteuerung nicht mehr über seinen Text aufrufen
+        // (WCAG 2.5.3 „Label in Name").
+        aria-label={`${badgeLabel} — Planungsprüfung öffnen`}
         className={`flex min-h-11 items-center gap-1.5 rounded-[4px] px-3 font-mono text-[12px] font-semibold shadow-none transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${TYPE_STYLES[topType].badge} border border-[var(--de-rule-strong)]`}
       >
         {topType === 'critical' ? (
@@ -566,20 +573,29 @@ export function WarningCenter({ warnings, onFix }: WarningCenterProps) {
         <div
           ref={panelRef}
           tabIndex={-1}
-          className="absolute right-0 top-full z-50 mt-2 max-h-96 w-11/12 min-w-80 max-w-md overflow-y-auto rounded border border-border bg-card shadow-2xl focus:outline-none sm:w-96"
+          // Am Abzeichen verankert läge die Prüfliste außerhalb des Fensters:
+          // schmal sitzt das Abzeichen nicht am rechten Rand (gemessen: 375 px
+          // ⇒ linke Kante −68 px), breit steht in der Statuszeile direkt unter
+          // dem Abzeichen nur wenig Höhe zur Verfügung (gemessen: 1440 px ⇒
+          // Unterkante 1292 px bei 900 px Fenster). Deshalb hängt sie am
+          // Fenster: schmal als Blatt über der Navigation (oberhalb der
+          // schwebenden Undo-Leiste), ab `md` als Bericht unter der
+          // Werkzeugleiste am rechten Rand — beide Kanten ohne Rechnung im
+          // sichtbaren Bereich.
+          className="fixed inset-x-2 bottom-[calc(9.5rem+env(safe-area-inset-bottom))] z-50 max-h-[60dvh] overflow-y-auto rounded border border-rule-strong bg-card shadow-[var(--cad-shadow-overlay)] focus:outline-none md:inset-x-auto md:bottom-auto md:right-3 md:top-[4.75rem] md:max-h-[min(32rem,calc(100dvh-6rem))] md:w-96"
           role="dialog"
-          aria-label="Prüfhinweise für deine Anlage"
+          aria-label="Planungsprüfung"
         >
           <div className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-border bg-card px-4 py-3">
             <div>
-              <h3 className="text-sm font-bold text-foreground">Prüfung deiner Anlage</h3>
+              <h3 className="text-sm font-bold text-foreground">Planungsprüfung</h3>
               {/* Urteilszeile (Auftrag §17): kritisch = nur severity critical. */}
               <p
                 className={`text-xs font-semibold ${
                   counts.critical > 0 ? 'text-warn-critical' : 'text-moss'
                 }`}
               >
-                {counts.critical > 0 ? '🔴 Anlage nicht sicher' : '✅ Keine kritischen Fehler'}
+                {counts.critical > 0 ? 'Anlage nicht sicher' : 'Keine kritischen Fehler'}
               </p>
               {/* Gruppierung: Sicherheit / Planung / fehlende Angaben. */}
               <p className="text-xs text-muted-foreground">

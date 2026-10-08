@@ -5,6 +5,7 @@ import RoadTripAnimationLazy from './RoadTripAnimationLazy';
 import { SiteHeader } from '@/components/brand/SiteHeader';
 import { SiteFooter } from '@/components/brand/SiteFooter';
 import { PageStructuredData } from '@/components/seo/PageStructuredData';
+import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 import { metadataForPage } from '@/app/seoMetadata';
@@ -131,9 +132,6 @@ export default function CamperAusbauguide() {
 
               <div className="warn-card warn-card-warning my-10 flex-col">
                 <div className="flex items-start gap-3">
-                  <span aria-hidden="true" className="mt-0.5 text-lg">
-                    💡
-                  </span>
                   <p className="text-base leading-relaxed text-warn-warning">
                     <strong>Profi-Tipp:</strong> Mach dir einen digitalen &quot;Schattenriss&quot; deines Vans
                     (z. B. in SketchUp oder Vanspace3D) und plane jeden Millimeter, besonders die Kabelwege
@@ -141,9 +139,6 @@ export default function CamperAusbauguide() {
                   </p>
                 </div>
                 <div className="mt-3 flex items-start gap-3">
-                  <span aria-hidden="true" className="mt-0.5 text-lg">
-                    ⚠️
-                  </span>
                   <p className="text-base leading-relaxed text-warn-warning">
                     <strong>Häufiger Anfängerfehler:</strong> Kabel lose in der Dämmung verlegen. Später
                     willst du einen Schrank anschrauben, triffst ein unsichtbares Kabel und darfst die halbe
@@ -203,43 +198,33 @@ export default function CamperAusbauguide() {
                   </h4>
                   <ul className="space-y-3 text-base text-ink-soft">
                     <li className="flex gap-3">
-                      <span aria-hidden="true" className="text-oxide">
-                        ✓
-                      </span>
+                      <Check aria-hidden="true" className="mt-1 h-4 w-4 shrink-0 text-oxide" />
                       <span>
                         <strong>Blechknabber / Nibbler:</strong> Für saubere Fensterausschnitte ohne
                         Blechverzug.
                       </span>
                     </li>
                     <li className="flex gap-3">
-                      <span aria-hidden="true" className="text-oxide">
-                        ✓
-                      </span>
+                      <Check aria-hidden="true" className="mt-1 h-4 w-4 shrink-0 text-oxide" />
                       <span>
                         <strong>Crimpzange (hydraulisch, 16–50 mm²):</strong> Unerlässlich für dicke
                         Batteriekabel.
                       </span>
                     </li>
                     <li className="flex gap-3">
-                      <span aria-hidden="true" className="text-oxide">
-                        ✓
-                      </span>
+                      <Check aria-hidden="true" className="mt-1 h-4 w-4 shrink-0 text-oxide" />
                       <span>
                         <strong>Crimpzange (0,5–6 mm²):</strong> Für Flachsteckerhülsen (niemals löten!).
                       </span>
                     </li>
                     <li className="flex gap-3">
-                      <span aria-hidden="true" className="text-oxide">
-                        ✓
-                      </span>
+                      <Check aria-hidden="true" className="mt-1 h-4 w-4 shrink-0 text-oxide" />
                       <span>
                         <strong>Nietmutternzange (M4–M8):</strong> Gewinde sicher im Blech verankern.
                       </span>
                     </li>
                     <li className="flex gap-3">
-                      <span aria-hidden="true" className="text-oxide">
-                        ✓
-                      </span>
+                      <Check aria-hidden="true" className="mt-1 h-4 w-4 shrink-0 text-oxide" />
                       <span>
                         <strong>Multimeter:</strong> Für Elektrik-Checks und Fehlersuche.
                       </span>
@@ -317,9 +302,6 @@ export default function CamperAusbauguide() {
               </ul>
 
               <div className="warn-card warn-card-warning my-8">
-                <span aria-hidden="true" className="mt-0.5 text-lg">
-                  ⚠️
-                </span>
                 <p className="text-base leading-relaxed text-warn-warning">
                   <strong>Häufiger Anfängerfehler:</strong> Den Holz-Hilfsrahmen vergessen. Das Blech ist nur
                   ~1 mm dick, Fensterklemmen brauchen aber oft 26–34 mm. Klebe einen passenden Holzrahmen von
@@ -385,9 +367,6 @@ export default function CamperAusbauguide() {
               </p>
 
               <div className="warn-card warn-card-warning my-10">
-                <span aria-hidden="true" className="mt-0.5 text-lg">
-                  💡
-                </span>
                 <p className="text-base leading-relaxed text-warn-warning">
                   <strong>Profi-Tipp:</strong> Setze Sicherungen so nah wie möglich an die Batterie. Die
                   Sicherung schützt das KABEL vor dem Durchschmoren, nicht das Endgerät!

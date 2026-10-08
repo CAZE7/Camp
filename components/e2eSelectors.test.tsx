@@ -49,6 +49,21 @@ const REQUIRED_TESTIDS = [
   'action-check',
 ] as const;
 
+/**
+ * Ein Selektor gilt als vorhanden, wenn er entweder als literales Attribut im
+ * JSX steht (`data-testid="action-bom"`) oder als Deklaration im
+ * Aktionsmodell (`testId: 'action-bom'`). Menüeinträge tragen die Kennung im
+ * Datenobjekt; gerendert wird sie über `data-testid={item.testId}` — für die
+ * E2E-Suite ist beides gleichwertig, weil im DOM dasselbe Attribut entsteht.
+ */
+function hasTestId(sources: string, id: string): boolean {
+  return (
+    sources.includes(`data-testid="${id}"`) ||
+    sources.includes(`data-testid={'${id}'}`) ||
+    sources.includes(`testId: '${id}'`)
+  );
+}
+
 /** Quellcode der Anwendung (ohne Tests) als ein String. */
 function appSources(): string {
   const files: string[] = [];
@@ -74,9 +89,7 @@ describe('E2E-Selektoren — Vertrag mit tests/e2e', () => {
   const sources = appSources();
 
   it('alle vereinbarten data-testid-Attribute existieren im Anwendungscode', () => {
-    const missing = REQUIRED_TESTIDS.filter(
-      (id) => !sources.includes(`data-testid="${id}"`) && !sources.includes(`data-testid={'${id}'}`)
-    );
+    const missing = REQUIRED_TESTIDS.filter((id) => !hasTestId(sources, id));
     expect(missing, `Fehlende Selektoren: ${missing.join(', ')}`).toEqual([]);
   });
 
@@ -101,7 +114,7 @@ describe('E2E-Selektoren — Vertrag mit tests/e2e', () => {
     collect(/data-testid="([^"]+)"/g);
 
     expect(used.size, 'Die E2E-Suite verwendet keine testids?').toBeGreaterThan(5);
-    const unknown = Array.from(used).filter((id) => !sources.includes(`data-testid="${id}"`));
+    const unknown = Array.from(used).filter((id) => !hasTestId(sources, id));
     expect(unknown, `In tests/e2e verwendet, aber nirgends gerendert: ${unknown.join(', ')}`).toEqual([]);
   });
 

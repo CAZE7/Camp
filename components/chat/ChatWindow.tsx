@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, type ReactNode } from 'react';
-import { X } from 'lucide-react';
+import { MessageSquare, X } from 'lucide-react';
 
 /** Kleiner interaktiver Rahmen für die Ansicht des Assistenten. */
 export default function ChatWindow({ defaultOpen, children }: { defaultOpen: boolean; children: ReactNode }) {
@@ -12,10 +12,10 @@ export default function ChatWindow({ defaultOpen, children }: { defaultOpen: boo
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 flex h-16 w-16 items-center justify-center rounded-full bg-oxide text-on-signal shadow-lg transition-all hover:bg-oxide/90"
+        className="fixed bottom-6 right-6 flex h-14 w-14 items-center justify-center border border-oxide bg-surface-panel text-oxide transition-colors hover:bg-accent"
         aria-label="Chat öffnen"
       >
-        💬
+        <MessageSquare className="h-5 w-5" aria-hidden="true" />
       </button>
     );
   }

@@ -41,6 +41,12 @@ const plannerState: Record<string, unknown> = {
   setSidebarOpen,
   selectedNodes: [],
   selectedEdges: [],
+  // Die Statuszeile liest Umfang und Prüfstand direkt aus dem Store.
+  nodes: [],
+  edges: [],
+  waterNodes: [],
+  waterEdges: [],
+  plannerErrors: [],
   setSelectedNodes,
   setSelectedEdges,
   undo: vi.fn(),
@@ -86,7 +92,7 @@ describe('PlannerInner — responsives Layout', () => {
     // den Canvas also nie.
     expect(nav).toHaveClass('md:hidden');
 
-    const tabs = ['Bauteile', 'Elektrik', 'Wasser', 'Details', 'Heizung'];
+    const tabs = ['Bauteile', 'Elektrik', 'Wasser', 'Details', 'Fokus'];
     tabs.forEach((label) => {
       const button = screen.getByRole('button', { name: label });
       // min-h-14 / min-w-14 = 56 px, deutlich über den geforderten 44 px.
@@ -116,7 +122,10 @@ describe('PlannerInner — responsives Layout', () => {
     render(<PlannerInner />);
     expect(column('flow-canvas')).toBeTruthy();
 
-    const canvasColumn = screen.getByTestId('planner-dashboard').parentElement as HTMLElement;
+    // Die Canvas-Spalte trägt eine eigene Kennung: Die Werkzeugleiste sitzt seit
+    // dem Umbau über dem Arbeitsbereich, `planner-dashboard` ist also nicht mehr
+    // ihr Elternelement.
+    const canvasColumn = screen.getByTestId('planner-canvas-column');
     expect(canvasColumn.className).toContain('flex');
     expect(canvasColumn.className).not.toContain('hidden');
 
@@ -124,27 +133,27 @@ describe('PlannerInner — responsives Layout', () => {
     const sidebarColumn = column('planner-sidebar');
     expect(sidebarColumn.className).toContain('flex');
     // Jetzt ist der Canvas auf dem Handy ausgeblendet …
-    expect((screen.getByTestId('planner-dashboard').parentElement as HTMLElement).className).toContain(
-      'hidden'
-    );
+    expect(screen.getByTestId('planner-canvas-column').className).toContain('hidden');
     // … bleibt ab Tablet aber sichtbar.
-    expect((screen.getByTestId('planner-dashboard').parentElement as HTMLElement).className).toContain(
-      'md:flex'
-    );
+    expect(screen.getByTestId('planner-canvas-column').className).toContain('md:flex');
   });
 
   it('A2 (768 px): Sidebar + Canvas nebeneinander, Inspector als Overlay', () => {
     render(<PlannerInner />);
 
-    // Zeilenrichtung ab md statt erst ab lg.
-    expect(shell().className).toContain('md:flex-row');
-    expect(shell().className).not.toContain('md:flex-rowdark');
+    // Die Shell ist eine Spalte (Menüleiste, Werkzeugleiste, Arbeitsbereich,
+    // Statuszeile) — die Zeilenrichtung trägt der Arbeitsbereich ab md.
+    expect(shell().className).toContain('flex-col');
+    expect(shell().className).toContain('h-dvh');
+    expect(shell().className).toContain('overflow-hidden');
+    const workspace = screen.getByTestId('planner-workspace');
+    expect(workspace.className).toContain('md:flex-row');
+    expect(workspace.className).toContain('min-h-0');
+    expect(workspace.className).not.toContain('md:flex-rowdark');
 
     // Sidebar und Canvas sind ab md beide sichtbar.
     expect(column('planner-sidebar').className).toContain('md:flex');
-    expect((screen.getByTestId('planner-dashboard').parentElement as HTMLElement).className).toContain(
-      'md:flex'
-    );
+    expect(screen.getByTestId('planner-canvas-column').className).toContain('md:flex');
 
     // Inspector liegt zwischen 768 und 1279 px als Overlay über dem Canvas …
     const aside = screen.getByRole('complementary', { name: 'Eigenschaften' });
@@ -163,7 +172,7 @@ describe('PlannerInner — responsives Layout', () => {
   it('A3 (1440 px): drei Spalten mit festen Breiten und Canvas-Mindestbreite', () => {
     render(<PlannerInner />);
     const aside = screen.getByRole('complementary', { name: 'Eigenschaften' });
-    const canvasColumn = screen.getByTestId('planner-dashboard').parentElement as HTMLElement;
+    const canvasColumn = screen.getByTestId('planner-canvas-column');
 
     // Inspector: 288 px ab 1280 px, 320 px ab 1536 px.
     expect(aside.className).toContain('xl:w-[288px]');

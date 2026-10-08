@@ -7,15 +7,28 @@ interface ComponentTileProps {
   comp: Comp;
   onMobileAdd?: () => void;
   accent: 'default' | 'device';
+  /** Zeilen-Navigation der Palette (Pfeiltasten) — siehe `Sidebar`. */
+  onNavigate?: (direction: 1 | -1) => void;
 }
 
-export function ComponentTile({ comp, onMobileAdd, accent }: ComponentTileProps) {
+/**
+ * Eine Zeile der Komponentenpalette.
+ *
+ * Bewusst eine kompakte Zeile statt einer Kachel: In einer Werkzeugpalette
+ * zählt, wie viele Bauteile gleichzeitig sichtbar sind, nicht wie groß ein
+ * einzelnes ist. Icon (funktional, monochrom) + Name + kurze technische Info.
+ * Bedienung: Klick/Antippen oder Enter fügt am sichtbaren Mittelpunkt ein,
+ * Ziehen mit der Maus setzt frei, Pfeiltasten laufen durch die Liste.
+ */
+export function ComponentTile({ comp, onMobileAdd, accent, onNavigate }: ComponentTileProps) {
   const Icon = comp.icon;
   const desktopDragStarted = useRef(false);
   const keyboardAddHandled = useRef(false);
+  const rowRef = useRef<HTMLButtonElement>(null);
 
   return (
     <button
+      ref={rowRef}
       type="button"
       // Stabile Selektoren für die E2E-Tests (docs/E2E-TESTS.md).
       // Der Typ steht als eigenes Attribut, weil dieselbe Komponente auch
@@ -24,14 +37,25 @@ export function ComponentTile({ comp, onMobileAdd, accent }: ComponentTileProps)
       data-component-type={comp.type}
       data-component-label={comp.label}
       data-accent={accent}
+      role="option"
+      aria-selected={false}
       className={cn(
-        'flex min-h-24 w-full touch-manipulation flex-col items-center justify-center gap-1 rounded-xl border p-2 text-center text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 lg:cursor-grab',
-        accent === 'device'
-          ? 'border-border bg-accent text-accent-foreground hover:bg-secondary'
-          : 'border-border bg-card text-foreground hover:bg-accent'
+        'cad-item touch-manipulation',
+        accent === 'device' ? 'text-foreground' : 'text-foreground',
+        'lg:cursor-grab'
       )}
       onPointerDown={(event) => {
         desktopDragStarted.current = handlePointerDown(event, comp);
+      }}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          keyboardAddHandled.current = true;
+          addAtVisibleCenter(comp, onMobileAdd);
+        } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+          event.preventDefault();
+          onNavigate?.(event.key === 'ArrowDown' ? 1 : -1);
+        }
       }}
       onClick={() => {
         // A started mouse ghost drag owns this click, even if it was released
@@ -47,23 +71,18 @@ export function ComponentTile({ comp, onMobileAdd, accent }: ComponentTileProps)
         }
         addAtVisibleCenter(comp, onMobileAdd);
       }}
-      onKeyDown={(event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault();
-          keyboardAddHandled.current = true;
-          addAtVisibleCenter(comp, onMobileAdd);
-        }
-      }}
       aria-label={`${comp.label} hinzufügen. ${comp.description}`}
       title={`${comp.label}: ${comp.description}`}
     >
-      <Icon className="h-5 w-5 shrink-0 text-copper" aria-hidden="true" />
-      <span className="line-clamp-2 font-semibold leading-tight">{comp.label}</span>
-      {comp.watts !== undefined && (
-        <span className="rounded border border-border bg-card px-1.5 py-0.5 font-mono text-xs text-copper">
-          {comp.watts} W
+      <span className="cad-item__icon">
+        <Icon className="h-4 w-4" aria-hidden="true" />
+      </span>
+      <span className="cad-item__text">
+        <span className="cad-item__label">{comp.label}</span>
+        <span className="cad-item__meta">
+          {comp.watts !== undefined ? `${comp.watts} W · ${comp.description}` : comp.description}
         </span>
-      )}
+      </span>
     </button>
   );
 }

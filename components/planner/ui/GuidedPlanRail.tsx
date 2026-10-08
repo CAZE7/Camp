@@ -68,11 +68,14 @@ export function GuidedPlanRail({
   // Warn-Zentrale nutzt — hier nur als Zusammenfassung mit demselben Klickziel.
   const status =
     critical > 0
-      ? { tone: 'text-signal', label: `${critical} kritische${critical === 1 ? 's Problem' : ' Probleme'}` }
+      ? {
+          tone: 'text-destructive',
+          label: `${critical} kritische${critical === 1 ? 's Problem' : ' Probleme'}`,
+        }
       : hints > 0
-        ? { tone: 'text-copper', label: `${hints} Hinweis${hints === 1 ? '' : 'e'}` }
+        ? { tone: 'text-warning', label: `${hints} Hinweis${hints === 1 ? '' : 'e'}` }
         : {
-            tone: 'text-moss',
+            tone: 'text-success',
             label: edges.length > 0 ? `${edges.length} Verbindungen geprüft` : 'Noch keine Verbindungen',
           };
 
@@ -80,7 +83,7 @@ export function GuidedPlanRail({
     <nav
       data-testid="guided-rail"
       aria-label="Planungsablauf"
-      className="pointer-events-none flex w-full shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b border-border bg-surface-panel px-3 py-1.5"
+      className="cad-rail pointer-events-none flex w-full shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b border-border bg-surface-panel px-3 py-1.5"
     >
       {/* Mobil: Zähler statt fünf Labels — die Leiste soll auf 375 px nicht zur
           dritten Chrome-Zeile werden. `display:none` nimmt die Liste darunter
@@ -106,11 +109,11 @@ export function GuidedPlanRail({
               data-status={step.status}
               aria-current={isCurrent ? 'step' : undefined}
               title={`${step.label}: ${step.detail}`}
-              className={`flex min-w-0 items-center gap-1 rounded px-1.5 py-0.5 text-xs font-semibold ${
+              className={`flex min-w-0 items-center gap-1 px-1.5 py-0.5 text-xs ${
                 isCurrent
-                  ? 'bg-accent text-foreground'
+                  ? 'border border-accent bg-accent text-foreground'
                   : step.status === 'done'
-                    ? 'text-moss'
+                    ? 'text-success'
                     : 'text-muted-foreground'
               }`}
             >
@@ -135,7 +138,9 @@ export function GuidedPlanRail({
 
       {/* Ab sm steht der Fortschritt in der Liste daneben — hier bleibt nur die
           Begründung, sonst stünde dieselbe Information zweimal in einer Zeile. */}
-      <p className="hidden min-w-0 text-xs text-muted-foreground sm:block">{plan.activeStep.detail}</p>
+      <p className="hidden min-w-0 truncate text-xs text-muted-foreground lg:block">
+        {plan.activeStep.detail}
+      </p>
 
       {/* Ohne offene Hinweise gibt es in der Warn-Zentrale keinen Dialog —
           ein Klickbarer Chip wäre dann ein toter Klick. Deshalb: Status zum
@@ -144,7 +149,7 @@ export function GuidedPlanRail({
         <span
           data-testid="guided-plan-status"
           role="status"
-          className={`pointer-events-auto flex min-h-9 items-center gap-1 rounded border border-border bg-card px-2 text-xs font-semibold ${status.tone}`}
+          className={`pointer-events-auto hidden min-h-9 items-center gap-1 border border-rule-strong bg-surface-panel px-2 text-xs md:flex ${status.tone}`}
         >
           {status.label}
         </span>
@@ -153,7 +158,7 @@ export function GuidedPlanRail({
           type="button"
           data-testid="guided-plan-status"
           onClick={onOpenWarnings}
-          className={`pointer-events-auto flex min-h-9 items-center gap-1 rounded border border-border bg-card px-2 text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${status.tone}`}
+          className={`pointer-events-auto hidden min-h-9 items-center gap-1 border border-rule-strong bg-surface-panel px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:flex ${status.tone}`}
           title="Planstatus anzeigen"
         >
           {status.label}
@@ -164,9 +169,9 @@ export function GuidedPlanRail({
         type="button"
         data-testid="guided-primary-action"
         onClick={() => runAction(plan.activeStep.action.kind)}
-        className="pointer-events-auto flex min-h-9 items-center gap-1.5 rounded bg-primary px-3 text-xs font-bold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="cad-btn cad-btn--primary pointer-events-auto min-h-9"
       >
-        <ActiveIcon className="h-3.5 w-3.5" />
+        <ActiveIcon className="h-3.5 w-3.5" aria-hidden="true" />
         {plan.activeStep.action.label}
       </button>
 
@@ -174,7 +179,7 @@ export function GuidedPlanRail({
         type="button"
         data-testid="guided-expert-toggle"
         onClick={onSwitchToExpertMode}
-        className="pointer-events-auto flex min-h-9 items-center gap-1 rounded px-2 text-xs font-semibold text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="cad-btn cad-btn--ghost pointer-events-auto min-h-9 text-muted-foreground"
         title="Schrittleiste ausblenden und frei im Plan arbeiten"
       >
         <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden="true" />

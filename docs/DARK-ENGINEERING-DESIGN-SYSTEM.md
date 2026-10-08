@@ -341,7 +341,7 @@ Siehe `InspectorBlueprint.tsx`.
 
 **Floating Metrics Cards:**
 
-- Surface Overlay (rgba + blur 16-20px), 1px Border strong, 4px Radius
+- Surface Overlay (deckend), 1px Border strong, ≤4px Radius, `--cad-shadow-overlay`
 - Min-width 200px, Padding 12px 16px
 - KPIs: Label 12px med, Value 13px mono semibold rechts
 - Status-Dots: 6px, ok/warn/error
@@ -384,7 +384,7 @@ Siehe `HUDBlueprint.tsx`.
 - Bounce, Elastic, Spring mit Overshoot
 - > 200ms für Hover/Selektion
 - Rotation >1deg außer Dragging
-- Blur-Animation (teuer, nur statischer Blur für Overlay)
+- Blur (weder statisch noch animiert; Overlays sind deckend)
 
 **Selektions- und Hover-Feedback:**
 
@@ -521,7 +521,7 @@ Alle Blueprints sind lauffähige React-Komponenten mit Tailwind + CSS-Variablen,
 | **Farben**     | Semantische Tokens via var(--de-*), farbenblind-tauglich (Farbe + Form), WCAG AAA                         | Hex-Literale in TS/TSX, Tailwind-Palettenklassen (bg-red-500), Farbmissbrauch (Rot für Erfolg)          |
 | **Typografie** | Inter UI, IBM Plex Mono für Werte, tabular-nums, 11px min, clamp fluid                                    | Text unter 11px, Outfit im Canvas, zentrierte Zahlenkolonnen, variable Breite bei sich ändernden Werten |
 | **Grid**       | 4px/8px Vielfache, Node 192/224/256px, Header 40px                                                        | Off-Grid Werte (13px Padding, 7px Margin), Radius >4px                                                  |
-| **Surfaces**   | 1px Border, Surface-Layering, Overlay mit Blur 16-20px                                                    | Box-Shadow auf Cards, harte Schatten, Schatten statt Border                                             |
+| **Surfaces**   | 1px Border, Surface-Layering, Overlay deckend + Kante                                                     | Box-Shadow auf Cards, harte Schatten, Schatten statt Border                                             |
 | **Nodes**      | 3 Zonen, DIN-Symbol, Status-Dot, Port-Shape-Coding, 44px Hit                                              | Nur Farbe für Status, kleiner Hit-Target <24px, Schatten, verspielte Icons                              |
 | **Edges**      | Orthogonale 90°, Hierarchie via Dicke (3px/2px/1.5px), Bridge mit non-scaling-stroke, Label nie über Node | Diagonale, Dicke = Querschnitt, Pixelmatsch-Brücken, Label über Node                                    |
 | **Inspector**  | 2-spaltig Fluchtlinie, Einheit als Suffix, Computed = dashed + tint, Ampel für ΔU                         | 1-spaltig zentriert, Einheit im Label, kein Unterschied Input/Computed, kein Feedback                   |

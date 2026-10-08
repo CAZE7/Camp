@@ -99,7 +99,7 @@ export function VerificationSeal({ summary }: VerificationSealProps) {
           data-testid="verification-seal-panel"
           role="region"
           aria-label="Prüfbericht der Verifikations-Engine"
-          className="absolute right-0 z-[80] mt-2 w-[min(92vw,30rem)] rounded border border-border bg-surface-panel p-3 text-xs shadow-2xl"
+          className="absolute right-0 z-[80] mt-2 w-[min(92vw,30rem)] rounded border border-rule-strong bg-surface-panel p-3 text-xs shadow-[var(--cad-shadow-overlay)]"
         >
           <p className="mb-2 font-semibold text-foreground">{summary.headline}</p>
 

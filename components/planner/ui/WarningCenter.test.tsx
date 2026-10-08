@@ -32,7 +32,7 @@ const warning = (over: Partial<ValidationWarning> = {}): ValidationWarning => ({
 /** Panel öffnen — die Wert-/Lösungszeilen existieren nur im aufgeklappten Zustand. */
 function openPanel(warnings: ValidationWarning[]) {
   render(<WarningCenter warnings={warnings} />);
-  fireEvent.click(screen.getByRole('button', { name: /Prüfhinweise anzeigen/ }));
+  fireEvent.click(screen.getByRole('button', { name: /Planungsprüfung öffnen/ }));
 }
 
 describe('WarningCenter — Barrierefreiheit (AUDIT A5/A6)', () => {
@@ -60,13 +60,13 @@ describe('WarningCenter — Barrierefreiheit (AUDIT A5/A6)', () => {
   it('A5: die Schwere steht als Wort im Abzeichen, nicht nur als Rotton', () => {
     render(<WarningCenter warnings={[warning()]} />);
 
-    expect(screen.getByRole('button', { name: /1 Prüfhinweise anzeigen/ })).toHaveTextContent('1 kritisch');
+    expect(screen.getByRole('button', { name: /Planungsprüfung öffnen/ })).toHaveTextContent('1 kritisch');
   });
 
   it('A5: bei bloßen Hinweisen steht die Schwere ebenfalls als Wort da', () => {
     render(<WarningCenter warnings={[warning({ type: 'info', category: 'estimation' })]} />);
 
-    const badge = screen.getByRole('button', { name: /1 Prüfhinweise anzeigen/ });
+    const badge = screen.getByRole('button', { name: /Planungsprüfung öffnen/ });
     expect(badge).toHaveTextContent('1 Hinweis');
     expect(badge).not.toHaveTextContent('kritisch');
   });
@@ -85,7 +85,7 @@ describe('WarningCenter — Barrierefreiheit (AUDIT A5/A6)', () => {
       />
     );
 
-    const badge = screen.getByRole('button', { name: /3 Prüfhinweise anzeigen/ });
+    const badge = screen.getByRole('button', { name: /Planungsprüfung öffnen/ });
     // Genau diese Zeile war vorher „3 Kritisch“ — die Gesamtzahl mit dem
     // Wort der schwersten Stufe.
     expect(badge).toHaveTextContent(/^2 von 3 kritisch$/);
@@ -105,7 +105,7 @@ describe('WarningCenter — Barrierefreiheit (AUDIT A5/A6)', () => {
     });
     const fixed: ValidationWarning[] = [];
     render(<WarningCenter warnings={[warningForLockedEdge]} onFix={(value) => fixed.push(value)} />);
-    fireEvent.click(screen.getByRole('button', { name: /Prüfhinweise anzeigen/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Planungsprüfung öffnen/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Im Plan zeigen' }));
 
     expect(fixed).toEqual([warningForLockedEdge]);
@@ -121,7 +121,7 @@ describe('WarningCenter — Barrierefreiheit (AUDIT A5/A6)', () => {
       />
     );
 
-    expect(screen.getByRole('button', { name: /2 Prüfhinweise anzeigen/ })).toHaveTextContent('2 Warnungen');
+    expect(screen.getByRole('button', { name: /Planungsprüfung öffnen/ })).toHaveTextContent('2 Warnungen');
   });
 });
 

@@ -1,41 +1,20 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { AccessibleDialog } from '@/components/ui/AccessibleDialog';
-import {
-  Package,
-  Zap,
-  Droplets,
-  ScanSearch,
-  LayoutGrid,
-  Camera,
-  Sun,
-  Snowflake,
-  MoreHorizontal,
-  Maximize2,
-  Network,
-  Undo2,
-  Redo2,
-  Loader2,
-  Trash2,
-  Wrench,
-  Check,
-  Circle,
-  AlertTriangle,
-  Info,
-  SlidersHorizontal,
-  ListChecks,
-} from 'lucide-react';
-import { usePlannerStore } from '../../store/usePlannerStore';
-import type { LayoutV2Outcome } from '../../store/slices/types';
-import { useAppStore } from '../../lib/store';
+'use client';
+
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { AlertTriangle, Check, Info, X } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
-import { getNodesBounds, getViewportForBounds } from '@xyflow/react';
+
+import { AccessibleDialog } from '@/components/ui/AccessibleDialog';
+import { usePlannerStore } from '../../store/usePlannerStore';
 import { useLiveValidation, useVerificationReport, type ValidationWarning } from './hooks/useLiveValidation';
+import { usePlannerActions, type PlannerMenuId } from './hooks/usePlannerActions';
+import { PlannerMenubar } from './ui/PlannerMenubar';
+import { PlannerToolbar } from './ui/PlannerToolbar';
+import { SaveIndicator } from './ui/SaveIndicator';
 import { RoutingStatusBadge } from './ui/RoutingStatusBadge';
 import { WarningCenter } from './ui/WarningCenter';
 import { VerificationSeal } from './ui/VerificationSeal';
 import { GuidedPlanRail } from './ui/GuidedPlanRail';
-import { autoWireFeedbackFor } from './utils/guidedSteps';
 import { verificationSummary } from './utils/verificationWarnings';
 import {
   createPlannerError,
@@ -44,48 +23,15 @@ import {
 } from '../../lib/planner/plannerError';
 import { isRouteLocked } from '../../lib/electricalGraph/intent';
 
-function NavigationSection({
-  viewMode,
-  setViewMode,
-}: {
-  viewMode: 'electric' | 'water';
-  setViewMode: (mode: 'electric' | 'water') => void;
-}) {
-  return (
-    // Between 768 and 1023 px the bottom navigation is intentionally gone,
-    // while the full desktop labels do not fit next to the sidebar. Keeping a
-    // compact, labelled icon switcher here prevents the Wasser plan from
-    // becoming unreachable on portrait tablets.
-    <div className="hidden items-center gap-1 md:flex" role="tablist" aria-label="Planbereich wählen">
-      <Button
-        variant={viewMode === 'electric' ? 'default' : 'ghost'}
-        size="sm"
-        role="tab"
-        aria-selected={viewMode === 'electric'}
-        onClick={() => setViewMode('electric')}
-        className="min-h-11 min-w-11 gap-1 px-3"
-        aria-label="Elektrikplan anzeigen"
-        title="Elektrikplan anzeigen"
-      >
-        <Zap className="h-4 w-4" aria-hidden="true" />
-        <span className="hidden lg:inline">Elektrik</span>
-      </Button>
-      <Button
-        variant={viewMode === 'water' ? 'default' : 'ghost'}
-        size="sm"
-        role="tab"
-        aria-selected={viewMode === 'water'}
-        onClick={() => setViewMode('water')}
-        className="min-h-11 min-w-11 gap-1 px-3"
-        aria-label="Wasserplan anzeigen"
-        title="Wasserplan anzeigen"
-      >
-        <Droplets className="h-4 w-4" aria-hidden="true" />
-        <span className="hidden lg:inline">Wasser</span>
-      </Button>
-    </div>
-  );
-}
+/**
+ * Chrome-Leiste des Planers: Menüleiste + Werkzeugleiste + geführte Schrittleiste.
+ *
+ * Die Datei hält nur noch die Komposition und den einen Zustand, den alle
+ * Zugänge teilen (offenes Menü, Rückmeldung, Reset-Rückfrage). Die Aktionen
+ * selbst stehen in `hooks/usePlannerActions` — Menüleiste, Werkzeugleiste und
+ * `⋯`-Überlauf zeigen dieselbe Beschreibung, es gibt keinen zweiten
+ * Aktionspfad (und damit auch keinen zweiten, der abdriften könnte).
+ */
 
 interface ActionFeedback {
   type: 'success' | 'error' | 'info';
@@ -94,528 +40,14 @@ interface ActionFeedback {
   onAction?: () => void;
 }
 
-function relativeSaveTime(date: Date | null): string {
-  if (!date) return 'noch nicht in dieser Sitzung';
-  const minutes = Math.floor((Date.now() - date.getTime()) / 60_000);
-  if (minutes < 1) return 'gerade eben';
-  return `vor ${minutes} Minute${minutes === 1 ? '' : 'n'}`;
-}
-
-function SaveIndicator({ revision }: { revision: unknown[] }) {
-  const [saved, setSaved] = useState(true);
-  const [savedAt, setSavedAt] = useState<Date | null>(null);
-  const first = useRef(true);
-  const [, forceMinuteUpdate] = useState(0);
-
-  useEffect(() => {
-    if (first.current) {
-      first.current = false;
-      setSavedAt(new Date());
-      return;
-    }
-    setSaved(false);
-    const timer = window.setTimeout(() => {
-      setSaved(true);
-      setSavedAt(new Date());
-    }, 450);
-    return () => window.clearTimeout(timer);
-    // The four graph references are the persisted planner revision.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, revision);
-
-  useEffect(() => {
-    const interval = window.setInterval(() => forceMinuteUpdate((value) => value + 1), 60_000);
-    return () => window.clearInterval(interval);
-  }, []);
-
-  const detail = saved ? `Zuletzt gespeichert: ${relativeSaveTime(savedAt)}` : 'Ungespeicherte Änderungen';
-  return (
-    <span
-      data-testid="save-indicator"
-      role="status"
-      aria-live="polite"
-      aria-label={detail}
-      title={detail}
-      className={`flex h-11 min-w-11 items-center justify-center gap-1 rounded border px-2 text-xs font-semibold ${
-        saved ? 'border-success/40 bg-success/10 text-success' : 'border-copper/50 bg-copper/10 text-copper'
-      }`}
-    >
-      {saved ? (
-        <Check className="h-4 w-4" aria-hidden="true" />
-      ) : (
-        <Circle className="h-3 w-3 fill-current" aria-hidden="true" />
-      )}
-      <span className="hidden 2xl:inline">{saved ? 'Gespeichert' : 'Ungespeichert'}</span>
-    </span>
-  );
-}
-
-const SHORTCUTS: { keys: string; label: string }[] = [
-  { keys: 'Strg+Z', label: 'Rückgängig' },
-  { keys: 'Entf', label: 'Löschen' },
-  { keys: 'Strg+S', label: 'Speichern' },
-];
-
-/**
- * Sichtbare Tastaturkürzel in der Toolbar (WCAG 3.3.5 „Hilfe“).
- * Nur ab 1280 px eingeblendet — darunter fehlt der Platz, und Touch-Geräte
- * haben in der Regel keine Tastatur.
- */
-function KeyboardShortcutHints() {
-  return (
-    <ul className="hidden items-center gap-1 2xl:flex" aria-label="Tastaturkürzel">
-      {SHORTCUTS.map((shortcut) => (
-        <li key={shortcut.keys} className="flex items-center gap-1 text-xs text-muted-foreground">
-          <kbd className="shortcut-key">{shortcut.keys}</kbd>
-          <span className="hidden 2xl:inline">{shortcut.label}</span>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function ActionsSection({
-  season,
-  setSeason,
-  autoWireSystem,
-  onLayout,
-  onLayoutV2,
-  nodes,
-  warnings,
-  setFeedback,
-  undo,
-  redo,
-  canUndo,
-  canRedo,
-  onRequestReset,
-  guidedMode,
-  onToggleGuidedMode,
-}: {
-  season: 'summer' | 'winter';
-  setSeason: (season: 'summer' | 'winter') => void;
-  autoWireSystem: () => void;
-  onLayout: () => void;
-  onLayoutV2: () => Promise<LayoutV2Outcome>;
-  nodes: import('@xyflow/react').Node[];
-  warnings: ValidationWarning[];
-  setFeedback: (feedback: ActionFeedback) => void;
-  undo?: () => void;
-  redo?: () => void;
-  canUndo?: boolean;
-  canRedo?: boolean;
-  onRequestReset: () => void;
-  /** Wahr = geführte Schrittleiste sichtbar (Expertenmodus ist das Gegenteil). */
-  guidedMode: boolean;
-  onToggleGuidedMode: () => void;
-}) {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [busy, setBusy] = useState<'export' | 'wire' | 'layout' | 'layoutV2' | 'check' | null>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const setHasOnboarded = useAppStore((state) => state.setHasOnboarded);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    const onClick = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) setMenuOpen(false);
-    };
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setMenuOpen(false);
-    };
-    document.addEventListener('mousedown', onClick);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onClick);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [menuOpen]);
-
-  const handleExportBOM = useCallback(() => {
-    // Das BOMModal liest den Store selbst und öffnet sich über dieses Event.
-    window.dispatchEvent(new CustomEvent('show-bom-modal'));
-    setMenuOpen(false);
-  }, []);
-
-  const runAutoWire = () => {
-    setBusy('wire');
-    autoWireSystem();
-    // Spec #29: Der Vorschlag ist bei Konflikten/Fragen erst nach Bestätigung
-    // im Review-Dialog angewendet. Erfolgs-Feedback also erst nach
-    // `planner-auto-wired` — ein sofortiger Toast würde sonst bei Abbruch
-    // von einer vollzogenen Verkabelung sprechen.
-    const onApplied = () => {
-      const latestNodes = usePlannerStore.getState().nodes;
-      setFeedback(autoWireFeedbackFor(latestNodes));
-      window.removeEventListener('planner-auto-wired', onApplied);
-    };
-    window.addEventListener('planner-auto-wired', onApplied);
-    window.setTimeout(() => setBusy(null), 350);
-  };
-
-  const runLayout = () => {
-    setBusy('layout');
-    onLayout();
-    setMenuOpen(false);
-    setFeedback({
-      type: 'success',
-      message: 'Plan in drei Funktionsspalten aufgeräumt. Rückgängig ist möglich.',
-    });
-    window.setTimeout(() => setBusy(null), 350);
-  };
-
-  /**
-   * AUDIT ROUTE-003 / ADR 0018: ELK ist jetzt ein erreichbarer Produktivpfad.
-   * Das Feedback sagt, welche Engine TATSÄCHLICH gelaufen ist — der frühere
-   * stille Dagre-Fallback war genau der „Doku ≠ Implementation"-Befund.
-   */
-  const runLayoutV2 = async () => {
-    setBusy('layoutV2');
-    setMenuOpen(false);
-    let outcome: LayoutV2Outcome;
-    try {
-      outcome = await onLayoutV2();
-    } catch {
-      outcome = { applied: false, reason: 'error' };
-    }
-    if (outcome.applied) {
-      setFeedback({
-        type: outcome.engine === 'elk' ? 'success' : 'info',
-        message:
-          outcome.engine === 'elk'
-            ? 'Plan mit ELK global strukturiert. Rückgängig ist möglich.'
-            : 'ELK nicht rechtzeitig fertig — Raster-Layout (Dagre-Fallback) angewendet. Rückgängig ist möglich.',
-      });
-    } else if (outcome.reason === 'empty') {
-      setFeedback({ type: 'info', message: 'Keine Bauteile zum Strukturieren im Plan.' });
-    } else if (outcome.reason === 'error') {
-      setFeedback({
-        type: 'error',
-        message: 'Layout fehlgeschlagen — ELK und Dagre-Fallback konnten den Plan nicht anordnen.',
-      });
-    }
-    // 'stale': Eine neuere Anfrage läuft bereits und meldet selbst — hier
-    // bewusst keine doppelte Meldung.
-    setBusy(null);
-  };
-
-  const runCheck = () => {
-    setBusy('check');
-    // Die Prüfung läuft live (useLiveValidation); der Button öffnet nur die
-    // Warn-Zentrale. Der frühere 'check-schematic'-Dispatch hatte keinen
-    // Listener und wurde entfernt.
-    if (warnings.length > 0) {
-      window.dispatchEvent(new CustomEvent('open-warning-center'));
-      setFeedback({
-        type: 'info',
-        message: `${warnings.length} Hinweis${warnings.length === 1 ? '' : 'e'} gefunden. Die Prüfliste wurde geöffnet.`,
-      });
-    } else {
-      setFeedback({ type: 'success', message: 'Lokale Planprüfung abgeschlossen: aktuell keine Hinweise.' });
-    }
-    window.setTimeout(() => setBusy(null), 350);
-    setMenuOpen(false);
-  };
-
-  const onExportImage = useCallback(async () => {
-    setBusy('export');
-    setMenuOpen(false);
-    try {
-      const { toPng } = await import('html-to-image');
-      const reactFlowWrapper = document.querySelector('.react-flow') as HTMLElement | null;
-      if (!reactFlowWrapper) throw new Error('Planfläche nicht gefunden');
-      const paper = getComputedStyle(document.documentElement).getPropertyValue('--paper').trim();
-      const viewport = reactFlowWrapper.querySelector<HTMLElement>('.react-flow__viewport');
-      const bounds =
-        nodes.length > 0
-          ? getNodesBounds(nodes)
-          : { x: 0, y: 0, width: reactFlowWrapper.clientWidth, height: reactFlowWrapper.clientHeight };
-      const imageWidth = Math.max(640, Math.ceil(bounds.width + 160));
-      const imageHeight = Math.max(480, Math.ceil(bounds.height + 160));
-      const transform = getViewportForBounds(bounds, imageWidth, imageHeight, 0.5, 2, 0.12);
-      const dataUrl = await toPng(viewport || reactFlowWrapper, {
-        backgroundColor: paper,
-        pixelRatio: 2,
-        cacheBust: true,
-        width: imageWidth,
-        height: imageHeight,
-        style: viewport
-          ? {
-              width: `${imageWidth}px`,
-              height: `${imageHeight}px`,
-              transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.zoom})`,
-            }
-          : undefined,
-        filter: (node) =>
-          !(
-            node?.classList?.contains('react-flow__panel') ||
-            node?.classList?.contains('react-flow__controls') ||
-            node?.classList?.contains('react-flow__minimap')
-          ),
-      });
-      const link = document.createElement('a');
-      link.download = 'werft-schaltplan.png';
-      link.href = dataUrl;
-      link.click();
-      setFeedback({ type: 'success', message: 'Bild in hoher Auflösung exportiert.' });
-    } catch (error) {
-      // M6-4: statt console.error (vom Nutzer unsichtbar) zeigt das Dashboard
-      // die Ursache direkt; die Fehlerklasse bleibt im Meldungstext erhalten.
-      const message =
-        nodes.length === 0
-          ? 'Nichts zu exportieren – platziere zuerst Komponenten.'
-          : error instanceof Error && error.name === 'SecurityError'
-            ? 'Export blockiert: Der Plan enthält externe Inhalte.'
-            : `Bild-Export fehlgeschlagen${
-                error instanceof Error && error.name ? ` (${error.name})` : ''
-              }. Passe die Ansicht an und versuche es erneut.`;
-      setFeedback({ type: 'error', message });
-    } finally {
-      setBusy(null);
-    }
-  }, [nodes, setFeedback]);
-
-  return (
-    <div className="flex min-w-0 items-center gap-1.5">
-      <Button
-        data-testid="action-autowire"
-        onClick={runAutoWire}
-        disabled={busy !== null}
-        className="min-h-11 min-w-11 gap-1.5 px-3"
-        title="Verbindungen, Querschnitte und Sicherungen automatisch berechnen; strukturiert den Plan anschließend nach ELK"
-        aria-label="Automatisch verbinden"
-      >
-        {busy === 'wire' ? (
-          <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />
-        ) : (
-          <Zap className="h-4 w-4" />
-        )}
-        <span className="hidden lg:inline">Automatisch verbinden</span>
-      </Button>
-
-      {/* Unter 768 px stehen die runden Canvas-Aktionen direkt über der
-          Bottom-Navigation; ab Tablet bleiben beide History-Richtungen hier. */}
-      <Button
-        data-testid="toolbar-undo"
-        variant="outline"
-        size="icon"
-        onClick={undo}
-        disabled={!canUndo}
-        className="tool-btn hidden h-11 w-11 md:inline-flex"
-        data-tooltip="Rückgängig (Strg+Z)"
-        aria-label="Rückgängig"
-        title="Rückgängig"
-      >
-        <Undo2 className="h-4 w-4" />
-      </Button>
-      <Button
-        data-testid="toolbar-redo"
-        variant="outline"
-        size="icon"
-        onClick={redo}
-        disabled={!canRedo}
-        className="tool-btn hidden h-11 w-11 md:inline-flex"
-        data-tooltip="Wiederholen (Strg+Y)"
-        aria-label="Wiederholen"
-        title="Wiederholen"
-      >
-        <Redo2 className="h-4 w-4" />
-      </Button>
-
-      {/* UX-Reset 2026-09: „Plan ordnen“ ist die EINZIGE Layout-Aktion in der
-          Toolbar. Welcher Algorithmus läuft (ELK Layered, sonst Dagre-Raster),
-          ist eine Implementierungsentscheidung — vorher standen „Übersicht“,
-          „Aufräumen“ und „Strukturieren (ELK)“ gleichzeitig nebeneinander und
-          zwangen den Nutzer, drei Layout-Systeme zu unterscheiden. Die
-          Einzelaktionen bleiben im ⋯-Menü erreichbar. */}
-      <Button
-        variant="outline"
-        data-testid="action-tidy"
-        // AUDIT T1: React erwartet von onClick `void`. `runLayoutV2` fängt
-        // seine Fehler selbst (try/catch → Feedback-Banner), das `void`
-        // markiert also ein bewusstes Nicht-Abwarten statt eines stillen
-        // Wegwerfens (no-misused-promises).
-        onClick={() => {
-          void runLayoutV2();
-        }}
-        disabled={busy !== null}
-        className="hidden min-h-11 gap-1.5 lg:inline-flex"
-        title="Plan automatisch anordnen (ELK, bei Ausfall Raster-Layout). Rückgängig ist möglich."
-      >
-        {busy === 'layoutV2' ? (
-          <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />
-        ) : (
-          <LayoutGrid className="h-4 w-4" />
-        )}
-        <span>Plan ordnen</span>
-      </Button>
-
-      <div className="relative" ref={menuRef}>
-        <Button
-          data-testid="action-more"
-          variant="outline"
-          size="icon"
-          onClick={() => setMenuOpen((value) => !value)}
-          className="tool-btn h-11 w-11"
-          data-tooltip="Weitere Aktionen"
-          aria-haspopup="menu"
-          aria-expanded={menuOpen}
-          aria-label="Weitere Aktionen"
-        >
-          <MoreHorizontal className="h-4 w-4" />
-        </Button>
-        {menuOpen && (
-          <div
-            role="menu"
-            className="absolute left-0 top-full z-[70] mt-2 w-72 rounded border border-border bg-card p-2 shadow-2xl sm:left-auto sm:right-0"
-          >
-            <button
-              role="menuitem"
-              onClick={() => {
-                window.dispatchEvent(new CustomEvent('planner-fit-view'));
-                setMenuOpen(false);
-              }}
-              className="flex min-h-11 w-full items-center gap-2 rounded px-3 text-sm text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <Maximize2 className="h-4 w-4" />
-              Übersicht
-            </button>
-            <button
-              role="menuitem"
-              data-testid="action-layout"
-              onClick={runLayout}
-              disabled={busy !== null}
-              className="flex min-h-11 w-full items-center gap-2 rounded px-3 text-sm text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
-            >
-              <LayoutGrid className="h-4 w-4" />
-              Aufräumen
-            </button>
-            <button
-              role="menuitem"
-              data-testid="action-layout-v2-menu"
-              onClick={() => {
-                void runLayoutV2();
-              }}
-              disabled={busy !== null}
-              className="flex min-h-11 w-full items-center gap-2 rounded px-3 text-sm text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
-            >
-              <Network className="h-4 w-4" />
-              Strukturieren (ELK)
-            </button>
-            <button
-              role="menuitem"
-              data-testid="action-bom"
-              onClick={handleExportBOM}
-              className="flex min-h-11 w-full items-center gap-2 rounded px-3 text-sm text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <Package className="h-4 w-4" />
-              Stückliste
-            </button>
-            <button
-              role="menuitem"
-              data-testid="action-check"
-              onClick={runCheck}
-              className="flex min-h-11 w-full items-center gap-2 rounded px-3 text-sm text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <ScanSearch className="h-4 w-4" />
-              Plan lokal prüfen
-            </button>
-            <button
-              role="menuitem"
-              onClick={() => {
-                void onExportImage();
-              }}
-              className="flex min-h-11 w-full items-center gap-2 rounded px-3 text-sm text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              {busy === 'export' ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Camera className="h-4 w-4" />
-              )}
-              Bild exportieren
-            </button>
-
-            <div className="my-2 border-t border-border" />
-            <p className="px-3 py-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Jahreszeit
-            </p>
-            <div className="flex gap-1 px-2 pb-2">
-              <Button
-                variant={season === 'summer' ? 'default' : 'ghost'}
-                onClick={() => setSeason('summer')}
-                className="min-h-11 flex-1 gap-1"
-                aria-pressed={season === 'summer'}
-              >
-                <Sun className="h-4 w-4" />
-                Sommer
-              </Button>
-              <Button
-                variant={season === 'winter' ? 'default' : 'ghost'}
-                onClick={() => setSeason('winter')}
-                className="min-h-11 flex-1 gap-1"
-                aria-pressed={season === 'winter'}
-              >
-                <Snowflake className="h-4 w-4" />
-                Winter
-              </Button>
-            </div>
-            <p className="px-3 pb-2 text-xs text-muted-foreground">
-              Winter berücksichtigt weniger Solarertrag und höheren Heizbedarf.
-            </p>
-
-            <button
-              role="menuitem"
-              data-testid="action-guided-toggle"
-              onClick={() => {
-                onToggleGuidedMode();
-                setMenuOpen(false);
-              }}
-              aria-pressed={guidedMode}
-              className="flex min-h-11 w-full items-center gap-2 rounded px-3 text-sm text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              {guidedMode ? <SlidersHorizontal className="h-4 w-4" /> : <ListChecks className="h-4 w-4" />}
-              {guidedMode ? 'Expertenmodus: Schrittleiste ausblenden' : 'Geführte Planung einblenden'}
-            </button>
-            <button
-              role="menuitem"
-              onClick={() => {
-                setMenuOpen(false);
-                setHasOnboarded(false);
-              }}
-              className="flex min-h-11 w-full items-center gap-2 rounded px-3 text-sm text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <Wrench className="h-4 w-4" />
-              Einführung erneut öffnen
-            </button>
-            <button
-              role="menuitem"
-              onClick={() => {
-                setMenuOpen(false);
-                onRequestReset();
-              }}
-              className="flex min-h-11 w-full items-center gap-2 rounded px-3 text-sm font-semibold text-destructive hover:bg-signal/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <Trash2 className="h-4 w-4" />
-              Neuen leeren Plan starten
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 export function PlannerDashboard() {
   const [feedback, setFeedback] = useState<ActionFeedback | null>(null);
   const [resetOpen, setResetOpen] = useState(false);
+  const [openMenu, setOpenMenu] = useState<PlannerMenuId | 'more' | null>(null);
 
   const {
     viewMode,
     setViewMode,
-    season,
-    setSeason,
-    autoWireSystem,
-    onLayout,
-    onLayoutV2,
-    focusElement,
     nodes,
     edges,
     waterNodes,
@@ -628,16 +60,12 @@ export function PlannerDashboard() {
     clearPlan,
     guidedMode,
     setGuidedMode,
+    focusMode,
+    setFocusMode,
   } = usePlannerStore(
     useShallow((state) => ({
       viewMode: state.viewMode,
       setViewMode: state.setViewMode,
-      season: state.season,
-      setSeason: state.setSeason,
-      autoWireSystem: state.autoWireSystem,
-      onLayout: state.onLayout,
-      onLayoutV2: state.onLayoutV2,
-      focusElement: state.focusElement,
       nodes: state.nodes,
       edges: state.edges,
       waterNodes: state.waterNodes,
@@ -650,6 +78,8 @@ export function PlannerDashboard() {
       clearPlan: state.clearPlan,
       guidedMode: state.guidedMode,
       setGuidedMode: state.setGuidedMode,
+      focusMode: state.focusMode,
+      setFocusMode: state.setFocusMode,
     }))
   );
 
@@ -698,10 +128,9 @@ export function PlannerDashboard() {
   );
   const warnings = useMemo(() => {
     const supplemental: ValidationWarning[] = [];
-    // Landstrom/RCD wird nicht mehr dupliziert: die kanonische Regel
-    // `missing-rcd-*` liefert useLiveValidation (Rule A2) — inklusive
-    // Node-Fokus. Frühere Zweitvariante hier erzeugte dieselbe Warnung
-    // doppelt (mit abweichenden IDs, an denen Wartung schiefhing).
+    // Landstrom/RCD wird nicht dupliziert: die kanonische Regel `missing-rcd-*`
+    // liefert useLiveValidation (Rule A2) — inklusive Node-Fokus. Eine
+    // Zweitvariante hier erzeugte dieselbe Warnung doppelt.
     nodes
       .filter((node) => node.type === 'inverter')
       .forEach((node) => {
@@ -722,11 +151,9 @@ export function PlannerDashboard() {
             message: `Die gleichzeitig ausgewählten Geräte benötigen ${total} W, der Wechselrichter liefert dauerhaft nur ${node.data.continuousPower} W. Reduziere die gleichzeitige Nutzung oder plane ein stärkeres Gerät.`,
           });
       });
-    // Leerrohr-Füllgrad wird hier NICHT mehr zweitgeprüft: Die Regel
-    // AMP-006 der Verifikations-Engine rechnet ihn (über `conduitFillOutcome`)
-    // und meldet fehlende Angaben als „nicht entscheidbar“ statt mit einem
-    // unterstellten Kabel. Eine zweite Rechnung an dieser Stelle war die
-    // Quelle eines erfundenen 2,5-mm²-Füllgrads (Regel M).
+    // Leerrohr-Füllgrad wird hier NICHT zweitgeprüft: Die Regel AMP-006 der
+    // Verifikations-Engine rechnet ihn und meldet fehlende Angaben als „nicht
+    // entscheidbar“ statt mit einem unterstellten Kabel (Regel M).
     if (waterWarning)
       supplemental.push({
         id: 'water-flow-hint',
@@ -738,9 +165,11 @@ export function PlannerDashboard() {
     return [...liveWarnings, ...lockedMutationWarnings, ...supplemental];
   }, [liveWarnings, lockedMutationWarnings, nodes, waterWarning]);
 
-  // Spec #36: Strukturierte Fehler im Store halten. Jede Warnung wird zu
-  // einem PlannerError umgewandelt; das Warn-Center und künftige Filter/
-  // Prüfmodus-Ansichten können damit ohne String-Parsing arbeiten.
+  /**
+   * Die Warnzentrale zeigt genau die Befunde, die das Dashboard bewertet hat:
+   * Der Store bekommt dieselbe Liste (Meldungen an einer Quelle, Anzeige an
+   * einer anderen wären zwei Wahrheiten).
+   */
   useEffect(() => {
     const errors = warnings.map((w) =>
       createPlannerError({
@@ -764,171 +193,81 @@ export function PlannerDashboard() {
     setPlannerErrors(errors);
   }, [warnings, setPlannerErrors]);
 
-  const handleFix = useCallback(
-    (warning: ValidationWarning) => {
-      if (warning.focusId && warning.focusType) focusElement(warning.focusId, warning.focusType);
-    },
-    [focusElement]
-  );
+  const handleFix = useCallback((warning: ValidationWarning) => {
+    if (warning.focusId && warning.focusType) {
+      usePlannerStore.getState().focusElement(warning.focusId, warning.focusType);
+    }
+  }, []);
 
-  /**
-   * Aktionen der Schrittleiste. Sie feuern dieselben Events wie die
-   * Toolbar-/Menüpfade — eine Wirkung, zwei Einstiege, keine Zweitlogik.
-   */
-  const openWarningCenter = useCallback(() => {
-    window.dispatchEvent(new CustomEvent('open-warning-center'));
-  }, []);
-  const openBom = useCallback(() => {
-    window.dispatchEvent(new CustomEvent('show-bom-modal'));
-  }, []);
-  /**
-   * „Bauteile hinzufügen" öffnet den Katalog: Auf dem Handy ist er ein eigener
-   * Tab, am Desktop eine einklappbare Spalte — beides weiß `PlannerInner`,
-   * deshalb bleibt hier nur das Event.
-   */
-  const openCatalog = useCallback(() => {
-    window.dispatchEvent(new CustomEvent('planner-open-catalog'));
-  }, []);
-  const handleGuidedAutoWire = useCallback(() => {
-    // Spec #29: autoWireSystem öffnet bei Konflikten/Fragen den Review-
-    // Dialog und wendet den Vorschlag erst nach Bestätigung an. Das
-    // Erfolgs-Feedback darf also NICHT sofort erscheinen (sonst wäre
-    // es eine Lüge bei „Abbrechen"). Das Feedback feuert erst, wenn
-    // `planner-auto-wired` dispatcht wird (nach applyAutoWirePreview).
-    autoWireSystem();
-    const onApplied = () => {
-      // Zum Zeitpunkt des Events hat der Store bereits den neuen
-      // Graphen — die aktuellsten Nodes holen wir direkt aus dem Store.
-      const latestNodes = usePlannerStore.getState().nodes;
-      setFeedback(autoWireFeedbackFor(latestNodes));
-      window.removeEventListener('planner-auto-wired', onApplied);
-    };
-    window.addEventListener('planner-auto-wired', onApplied);
-  }, [autoWireSystem]);
+  const actions = usePlannerActions({
+    warnings,
+    onFeedback: (next) => setFeedback(next),
+    onRequestReset: () => setResetOpen(true),
+  });
 
   // Ctrl+S wird in PlannerInner abgefangen (kein Browser-Speichern-Dialog) und
   // hier sichtbar bestätigt — der Plan liegt ohnehin laufend im Local Storage.
   useEffect(() => {
     const onSave = () =>
-      setFeedback({
-        type: 'success',
-        message: 'Plan gespeichert: Änderungen liegen automatisch in diesem Browser.',
-      });
+      setFeedback({ type: 'success', message: 'Plan gespeichert (lokal in diesem Browser).' });
     window.addEventListener('planner-save', onSave);
     return () => window.removeEventListener('planner-save', onSave);
   }, []);
 
   useEffect(() => {
     if (!feedback) return;
-    const timer = setTimeout(() => setFeedback(null), 5000);
-    return () => clearTimeout(timer);
+    const timer = window.setTimeout(() => setFeedback(null), 5000);
+    return () => window.clearTimeout(timer);
   }, [feedback]);
 
+  const criticalCount = warnings.filter((warning) => warning.type === 'critical').length;
+  const projectName = viewMode === 'water' ? 'Wasserplan' : 'Elektrikplan';
+  const planRevision = [nodes, edges, waterNodes, waterEdges];
+
   return (
-    <>
-      <header className="relative flex w-full shrink-0 flex-wrap items-center gap-2 overflow-visible border-b border-border bg-card px-2 py-1">
-        {/* Umbruch statt Überlagerung — auf BEIDEN Ebenen, weil Überlagern
-            unbedienbare Knöpfe bedeutet (gemessen: bei 375 px deckte die
-            rechte Gruppe mit dem Prüfsiegel den Knopf »Automatisch
-            verbinden« zu; Playwright verweigerte den Klick zu Recht).
-
-            1. Kopfzeile (`flex-wrap`): Passt die rechte Gruppe nicht mehr
-               neben die linke (schmaler Viewport, angedockter Inspector ab
-               1280 px, zusätzliches Prüfsiegel), rutscht sie als Ganzes in
-               die nächste Zeile und bleibt rechtsbündig.
-            2. Linke Gruppe (`flex-auto` + `flex-wrap`): Sie fordert ihre
-               INHALTSBREITE an, nicht 0 — sonst würde sie sich auf 0 px
-               zusammenschieben, ihre Knöpfe liefen sichtbar nach rechts aus
-               und die rechte Gruppe läge darüber. Reicht der Platz nicht,
-               bricht sie intern um, statt zu überlappen. */}
-        <div className="flex min-w-0 flex-auto flex-wrap items-center gap-2 overflow-visible">
-          <NavigationSection viewMode={viewMode} setViewMode={setViewMode} />
-          <ActionsSection
-            season={season}
-            setSeason={setSeason}
-            autoWireSystem={autoWireSystem}
-            onLayout={onLayout}
-            onLayoutV2={onLayoutV2}
-            nodes={viewMode === 'water' ? waterNodes : nodes}
-            warnings={warnings}
-            setFeedback={setFeedback}
-            undo={undo}
-            redo={redo}
-            canUndo={canUndo}
-            canRedo={canRedo}
-            onRequestReset={() => setResetOpen(true)}
-            guidedMode={guidedMode}
-            onToggleGuidedMode={() => setGuidedMode(!guidedMode)}
-          />
-        </div>
-        <div className="ml-auto flex shrink-0 items-center gap-2 pl-2">
-          {/* Tastaturkürzel sichtbar machen (Desktop): Nutzer sollen sie nicht
-              raten müssen. Auf Touch-Geräten ohne Tastatur wird nichts angezeigt. */}
-          <KeyboardShortcutHints />
-          <SaveIndicator revision={[nodes, edges, waterNodes, waterEdges]} />
-          <span
-            className="hidden items-center gap-1 rounded border border-border bg-accent px-2 py-1 text-xs font-semibold text-foreground xl:inline-flex"
-            title="Die Jahreszeit beeinflusst Solarertrag und Heizverbrauch"
-          >
-            {season === 'summer' ? (
-              <Sun className="h-3.5 w-3.5 text-oxide" aria-hidden="true" />
-            ) : (
-              <Snowflake className="h-3.5 w-3.5 text-info" aria-hidden="true" />
-            )}
-            {season === 'summer' ? 'Sommer' : 'Winter'}
+    <div data-testid="planner-dashboard" className="flex shrink-0 flex-col">
+      <PlannerMenubar
+        menus={actions.menus}
+        projectName={projectName}
+        openMenu={typeof openMenu === 'string' && openMenu !== 'more' ? openMenu : null}
+        onOpenMenu={(menu) => setOpenMenu(menu)}
+        status={
+          <span className="hidden items-center gap-2 sm:flex">
+            <span className="text-muted-foreground">
+              {nodes.length} Bauteile · {edges.length} Leitungen
+            </span>
+            {criticalCount > 0 && <span className="text-destructive">{criticalCount} kritisch</span>}
           </span>
-          {viewMode === 'electric' && <RoutingStatusBadge />}
-          {/* Prüfsiegel erst, wenn es etwas zu prüfen gibt: Ein leerer Plan
-              würde »unvollständig belegt« melden (0 Regeln angewandt) — eine
-              Aussage über einen Plan, den es noch nicht gibt. */}
-          {viewMode === 'electric' && nodes.length > 0 && <VerificationSeal summary={verification} />}
-          <WarningCenter warnings={warnings} onFix={handleFix} />
-        </div>
+        }
+      />
 
-        {feedback && (
-          <div
-            role={feedback.type === 'error' ? 'alert' : 'status'}
-            aria-live={feedback.type === 'error' ? 'assertive' : 'polite'}
-            /* Deckblatt-artiger Toast: opaque Fläche + Statuskante statt
-               durchscheinender Tönung — vorher lag der Text halbtransparent
-               über Hinweiskarte und Canvas und war dort kaum lesbar. */
-            className={`fixed left-1/2 top-16 z-[95] w-11/12 max-w-md -translate-x-1/2 rounded border border-l-4 border-border bg-surface-panel p-3 text-sm font-semibold text-foreground shadow-2xl ${
-              feedback.type === 'error'
-                ? 'border-l-signal'
-                : feedback.type === 'success'
-                  ? 'border-l-moss'
-                  : 'border-l-oxide'
-            }`}
-          >
-            <div className="flex items-center justify-between gap-3">
-              <span className="flex items-start gap-2">
-                {feedback.type === 'error' ? (
-                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-signal" aria-hidden="true" />
-                ) : feedback.type === 'success' ? (
-                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-moss" aria-hidden="true" />
-                ) : (
-                  <Info className="mt-0.5 h-4 w-4 shrink-0 text-oxide" aria-hidden="true" />
-                )}
-                <span>{feedback.message}</span>
-              </span>
-              {feedback.actionLabel && feedback.onAction && (
-                <Button
-                  data-testid="feedback-action"
-                  variant="outline"
-                  size="sm"
-                  className="shrink-0 border-current bg-card"
-                  onClick={() => {
-                    feedback.onAction?.();
-                    setFeedback(null);
-                  }}
-                >
-                  {feedback.actionLabel}
-                </Button>
-              )}
-            </div>
-          </div>
-        )}
-      </header>
+      <PlannerToolbar
+        busy={actions.busy}
+        canUndo={canUndo}
+        canRedo={canRedo}
+        onUndo={undo}
+        onRedo={redo}
+        onAutoWire={actions.runAutoWire}
+        onTidy={() => void actions.runLayoutV2()}
+        onCheck={actions.runCheck}
+        onBom={actions.openBom}
+        onExport={() => void actions.exportImage()}
+        viewMode={viewMode}
+        onSelectViewMode={setViewMode}
+        focusMode={focusMode}
+        onToggleFocusMode={() => setFocusMode(!focusMode)}
+        overflow={actions.overflow}
+        openMenu={openMenu}
+        onOpenMenu={setOpenMenu}
+        statusArea={
+          <>
+            <SaveIndicator revision={planRevision} />
+            {viewMode === 'electric' && <RoutingStatusBadge />}
+            {viewMode === 'electric' && nodes.length > 0 && <VerificationSeal summary={verification} />}
+            <WarningCenter warnings={warnings} onFix={handleFix} />
+          </>
+        }
+      />
 
       {/* Geführter Modus (Standard): EIN nächster Schritt statt Werkzeugkasten.
           Der Wasserplan hat eigene Regeln — die Schrittleiste gilt nur für die
@@ -938,12 +277,56 @@ export function PlannerDashboard() {
           nodes={nodes}
           edges={edges}
           warnings={warnings}
-          onOpenCatalog={openCatalog}
-          onAutoWire={handleGuidedAutoWire}
-          onOpenWarnings={openWarningCenter}
-          onOpenBom={openBom}
+          onOpenCatalog={actions.openCatalog}
+          onAutoWire={actions.runAutoWire}
+          onOpenWarnings={actions.openWarnings}
+          onOpenBom={actions.openBom}
           onSwitchToExpertMode={() => setGuidedMode(false)}
         />
+      )}
+
+      {feedback && (
+        <div
+          role={feedback.type === 'error' ? 'alert' : 'status'}
+          aria-live={feedback.type === 'error' ? 'assertive' : 'polite'}
+          className={`fixed left-1/2 top-20 z-[95] flex w-11/12 max-w-md -translate-x-1/2 items-start gap-2 border border-l-4 border-border bg-surface-panel p-3 text-sm text-foreground ${
+            feedback.type === 'error'
+              ? 'border-l-destructive'
+              : feedback.type === 'success'
+                ? 'border-l-success'
+                : 'border-l-oxide'
+          }`}
+        >
+          {feedback.type === 'error' ? (
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" aria-hidden="true" />
+          ) : feedback.type === 'success' ? (
+            <Check className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden="true" />
+          ) : (
+            <Info className="mt-0.5 h-4 w-4 shrink-0 text-oxide" aria-hidden="true" />
+          )}
+          <span className="flex-1">{feedback.message}</span>
+          {feedback.actionLabel && feedback.onAction && (
+            <button
+              type="button"
+              data-testid="feedback-action"
+              onClick={() => {
+                feedback.onAction?.();
+                setFeedback(null);
+              }}
+              className="cad-btn cad-btn--line shrink-0"
+            >
+              {feedback.actionLabel}
+            </button>
+          )}
+          <button
+            type="button"
+            aria-label="Meldung schließen"
+            onClick={() => setFeedback(null)}
+            className="cad-btn shrink-0 px-1"
+          >
+            <X className="h-4 w-4" aria-hidden="true" />
+          </button>
+        </div>
       )}
 
       <AccessibleDialog
@@ -954,11 +337,15 @@ export function PlannerDashboard() {
         className="max-w-md"
       >
         <div className="flex flex-col-reverse gap-3 p-5 sm:flex-row sm:justify-end">
-          <Button variant="outline" onClick={() => setResetOpen(false)} className="min-h-11">
+          <button
+            type="button"
+            onClick={() => setResetOpen(false)}
+            className="cad-btn cad-btn--line min-h-11"
+          >
             Abbrechen
-          </Button>
-          <Button
-            variant="destructive"
+          </button>
+          <button
+            type="button"
             onClick={() => {
               clearPlan?.();
               setResetOpen(false);
@@ -969,12 +356,12 @@ export function PlannerDashboard() {
                 onAction: undo,
               });
             }}
-            className="min-h-11"
+            className="cad-btn cad-btn--line min-h-11 border-destructive text-destructive"
           >
             Plan leeren
-          </Button>
+          </button>
         </div>
       </AccessibleDialog>
-    </>
+    </div>
   );
 }
