@@ -187,7 +187,7 @@ Details: [ARCHITECTURE-RULES.md](docs/ai/ARCHITECTURE-RULES.md) und
 
 ### Mission 11: Profi-Niveau
 
-- [ ] M11-1 DESIGN-SPRUNG (Top-Prio, Nutzer-Vorgabe): Planner visuell auf CAD-Niveau polieren
+- [x] M11-1 DESIGN-SPRUNG (Top-Prio, Nutzer-Vorgabe): Planner visuell auf CAD-Niveau polieren
       — Node-Cards, Toolbar, Panels, Handles neu gestaltet (token-basiert, hell+dunkel).
       PFLICHT: Vorher/Nachher-Screenshots (375/768/1440 px) im PR — Merge erst nach optischer
       Freigabe durch den Nutzer.
