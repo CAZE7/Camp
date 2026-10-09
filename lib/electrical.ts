@@ -643,7 +643,7 @@ export interface CableProtectionVerdict {
   severity: 'critical' | 'error' | 'warning' | 'info';
   /** Welche Teilstücke verletzt sind — leer, wenn none. */
   violations: readonly ('ib-over-iz' | 'ib-over-in' | 'in-over-iz')[];
-  /** Klartext der Rechnung („I_b = 158,7 A ≤ I_n = 100 A ✗ …"). */
+  /** Klartext je Teilstück, mit der Relation die gilt: „I_b = 158.7 A > I_n = 100.0 A ✗ · I_n = 100.0 A ≤ I_z = 120.4 A ✓". */
   explanation: string;
 }
 
@@ -681,7 +681,37 @@ export function evaluateCableProtection(input: {
   if (ib !== null && ratedCurrent !== null && ib > ratedCurrent + 1e-9) violations.push('ib-over-in');
   if (ratedCurrent !== null && iz !== null && ratedCurrent > iz + 1e-9) violations.push('in-over-iz');
 
-  const explanation = `I_b = ${fmt(ib)} ≤ I_n = ${fmt(ratedCurrent)} ≤ I_z = ${fmt(iz)}`;
+  // Die Kette wird aus den tatsächlich geprüften Teilstücken zusammengesetzt,
+  // nicht als Soll-Form mit eingesetzten Ist-Werten gedruckt: „I_b = 158,7 A ≤
+  // I_n = 100 A" ist eine falsche Aussage, und zwei Zeilen darunter steht
+  // „verletzt". Je Teilstück gehört dieRelation hin, die wirklich gilt.
+  const relation = (left: string, right: string, violated: boolean, decidable: boolean): string =>
+    decidable ? `${left} ${violated ? '>' : '≤'} ${right} ${violated ? '✗' : '✓'}` : `${left} ≤ ${right} ?`;
+  const bothKnown = ib !== null && ratedCurrent !== null && iz !== null;
+  const explanation = bothKnown
+    ? [
+        relation(`I_b = ${fmt(ib)}`, `I_n = ${fmt(ratedCurrent)}`, violations.includes('ib-over-in'), true),
+        relation(`I_n = ${fmt(ratedCurrent)}`, `I_z = ${fmt(iz)}`, violations.includes('in-over-iz'), true),
+      ].join(' · ')
+    : ratedCurrent === null && ib !== null && iz !== null
+      ? [
+          'I_n = — (kein Schutzorgan bekannt) ?',
+          relation(`I_b = ${fmt(ib)}`, `I_z = ${fmt(iz)}`, violations.includes('ib-over-iz'), true),
+        ].join(' · ')
+      : [
+          relation(
+            `I_b = ${fmt(ib)}`,
+            `I_n = ${fmt(ratedCurrent)}`,
+            violations.includes('ib-over-in'),
+            false
+          ),
+          relation(
+            `I_n = ${fmt(ratedCurrent)}`,
+            `I_z = ${fmt(iz)}`,
+            violations.includes('in-over-iz'),
+            false
+          ),
+        ].join(' · ');
 
   if (violations.includes('ib-over-iz')) {
     return {

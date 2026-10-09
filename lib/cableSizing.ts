@@ -20,7 +20,6 @@
  */
 
 import {
-  DERATE_FACTOR,
   VOLTAGE_DROP_PCT_CRITICAL,
   VOLTAGE_DROP_PCT_PLAN_LIMIT,
   VDE_AMPACITY,
@@ -248,83 +247,3 @@ export function thermalCurrentFor(crossSectionMm2: number): { tableA: number | n
   const tableA = VDE_AMPACITY[crossSectionMm2] ?? null;
   return { tableA, designA: designAmpacity(mm2(crossSectionMm2)) };
 }
-
-/** Zustand der automatischen Kabeldimensionierung. */
-export type CableSizingStatus = 'valid' | 'undersized' | 'outside_model' | 'missing_data';
-
-/** Ergebnis der automatischen Querschnittsfindung. */
-export type FindMinimumValidCableResult = {
-  status: CableSizingStatus;
-  crossSectionMm2: number | null;
-  explanation: string;
-};
-
-/**
- * Findet den kleinsten zulässigen Querschnitt, der ALLE Bedingungen erfüllt:
- * Ib ≤ Iz, In ≤ Iz, Ib ≤ In, und Spannungsabfall ≤ Grenze.
- * Verwendet deterministisch sortierte Kandidaten — kein Zufall, keine Schleife.
- */
-export function findMinimumValidCable(
-  ibA: number,
-  lengthM: number,
-  voltageDropPercentLimit = VOLTAGE_DROP_PCT_PLAN_LIMIT,
-  systemVoltageV = DC_NOMINAL_VOLTAGE_V
-): FindMinimumValidCableResult {
-  if (!Number.isFinite(ibA) || ibA < 0) {
-    return { status: 'missing_data', crossSectionMm2: null, explanation: 'Betriebsstrom fehlt oder ungültig.' };
-  }
-  if (!Number.isFinite(lengthM) || lengthM <= 0) {
-    return { status: 'missing_data', crossSectionMm2: null, explanation: 'Kabelänge fehlt oder ungültig.' };
-  }
-
-  const allowedDropV = (systemVoltageV * voltageDropPercentLimit) / 100;
-  const candidateSections = VDE_SIZES.slice().sort((a, b) => a - b);
-
-  for (const sec of candidateSections) {
-    const tableA = VDE_AMPACITY[sec];
-    if (tableA === undefined) continue;
-    const iz = tableA * DERATE_FACTOR; // designAmpacity uses same factor internally
-    // Thermisch ausreichend
-    if (ibA > iz + 1e-9) continue;
-
-    // Spannungsabfall prüfen
-    const dropV = voltageDrop(amps(ibA), meters(lengthM), mm2(sec), COPPER_CONDUCTIVITY_MS_PER_MM2);
-    if (dropV > allowedDropV + 1e-9) continue;
-
-    // Sicherungskoodination: nächste Standard-Sicherung ≤ Iz muss ≥ Ib sein (vereinfacht)
-    const maxFuse = calculateMaxFuse(sec);
-    // Wir prüfen nur, dass ein existierender Fuse-Wert >= Ib existiert im Modell
-    // (vollständige Koordination erfolgt in validateProtection)
-    if (maxFuse < ibA - 1e-9) continue;
-
-    return {
-      status: 'valid',
-      crossSectionMm2: sec,
-      explanation: `Querschnitt ${sec} mm²: Iz = ${iz.toFixed(1)} A ≥ Ib = ${ibA.toFixed(1)} A; ΔU = ${(dropV / systemVoltageV * 100).toFixed(2)} % ≤ ${voltageDropPercentLimit} %; Max-Sicherung = ${maxFuse} A.`,
-    };
-  }
-
-  // Kein Kandidat reichte aus
-  const lastSec = candidateSections[candidateSections.length - 1];
-  if (lastSec === undefined) {
-    return { status: 'missing_data', crossSectionMm2: null, explanation: 'Keine Kabeldaten verfügbar.' };
-  }
-  const lastIz = (VDE_AMPACITY[lastSec] ?? 0) * DERATE_FACTOR;
-  if ((VDE_AMPACITY[lastSec] ?? 0) === 0) {
-    return { status: 'missing_data', crossSectionMm2: null, explanation: 'Keine Kabeldaten verfügbar.' };
-  }
-  if (ibA > lastIz + 1e-9) {
-    return {
-      status: 'outside_model',
-      crossSectionMm2: null,
-      explanation: `Für Ib = ${ibA.toFixed(1)} A reicht das Modell nicht aus (größter Querschnitt ${lastSec} mm² → Iz = ${lastIz.toFixed(1)} A). Erweitere Kabeltabelle oder teile Leitung.`
-    };
-  }
-  // Falls Strom theoretisch reicht, aber Spannungsabfall nicht (selten mit großen Querschnitten)
-  return {
-    status: 'undersized',
-    crossSectionMm2: null,
-    explanation: `Spannungsabfall bei maximalem Querschnitt ${lastSec} mm² überschreitet ${voltageDropPercentLimit} %.`
-  };
-}
-

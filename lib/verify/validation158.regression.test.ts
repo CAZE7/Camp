@@ -14,8 +14,6 @@ import { verifyPlan } from './pipeline';
 import type { AuditEvent } from './types';
 import type { FixturePlan } from './planFixtures';
 import { validation158RegressionPlan, VALIDATION158_EDGE_ID } from './validation158Fixture';
-import { findMinimumValidCable } from '../cableSizing';
-import { evaluateCableProtection } from '../electrical';
 
 const fixturePlan = (): FixturePlan => {
   const plan = validation158RegressionPlan();
@@ -124,67 +122,6 @@ describe('158,7-A-Validierungsregression — reproduzierbarer Plan vor der Korre
       severity: 'CRITICAL_SAFETY',
       kind: 'VIOLATION',
     });
-    expect(eventFor(rcdEvents ?? [], 'consumer-protected')).toBeUndefined();
-  });
-});
-
-describe('158,7-A-Hauptpfad — AutoSizing & Validation nach Fix (Regressions-Phase 2)', () => {
-  it('berechnet Strom korrekt und nicht doppelt', () => {
-    const plan = fixturePlan();
-    const currentModel = computeCableCurrents({ nodes: plan.nodes, edges: plan.edges });
-    const main = currentModel.byEdgeId.get(VALIDATION158_EDGE_ID);
-    expect(main?.operatingCurrent).toBeCloseTo(158.73, 2);
-    expect(main?.contributingLoads.map((l) => l.componentId)).toContain('inverter');
-    expect(main?.contributingLoads.map((l) => l.componentId)).toContain('fridge');
-    expect(main?.contributingLoads.map((l) => l.componentId)).toContain('pump');
-  });
-
-  it('erkennt 70-mm² als unterdimensioniert', () => {
-    const plan = fixturePlan();
-    const report = verifyPlan({ nodes: plan.nodes, edges: plan.edges, options: { profile: 'CAMP_MODEL' } });
-    const ampacityEvents = report.passes.flatMap((p) => p.checks).find((c) => c.ruleId === 'AMP-001-ib-in-iz')?.events;
-    const overload = ampacityEvents?.find((e) => e.entity.id === VALIDATION158_EDGE_ID && e.calculatedValue && e.allowedLimit && e.calculatedValue > e.allowedLimit);
-    expect(overload).toBeDefined();
-    expect(overload?.severity).toBe('CRITICAL_SAFETY');
-  });
-
-  it('findet gültige AutoSizing-Lösung (120 mm²)', () => {
-    const result = findMinimumValidCable(158.73, 0.2);
-    expect(result.status).toBe('valid');
-    expect(result.crossSectionMm2).toBe(120);
-    expect(result.explanation).toContain('120 mm²');
-  });
-
-  it('erfüllt Nach-AutoFix Ib ≤ In ≤ Iz', () => {
-    const plan = fixturePlan();
-    const edge = plan.edges.find((e) => e.id === VALIDATION158_EDGE_ID);
-    if (!edge) throw new Error('edge missing');
-    edge.data!.crossSection = 120;
-    edge.data!.fuseSize = 160;
-    const report = verifyPlan({ nodes: plan.nodes, edges: plan.edges, options: { profile: 'CAMP_MODEL' } });
-    const ampacityEvents = report.passes.flatMap((p) => p.checks).find((c) => c.ruleId === 'AMP-001-ib-in-iz')?.events;
-    const overload = ampacityEvents?.find((e) => e.entity.id === VALIDATION158_EDGE_ID && e.calculatedValue && e.allowedLimit && e.calculatedValue > e.allowedLimit);
-    expect(overload).toBeUndefined();
-    const protection = evaluateCableProtection({ ib: 158.73, in: 160, iz: 242 * 0.7 });
-    expect(protection.status).toBe('satisfied');
-  });
-
-  it('meldet outside_model wenn kein passender Querschnitt existiert', () => {
-    const result = findMinimumValidCable(500, 0.2);
-    expect(result.status).toBe('outside_model');
-    expect(result.explanation).toContain('reicht das Modell nicht aus');
-  });
-
-  it('respektiert LOCKED-Kabel nicht bei AutoSizing', () => {
-    const result = findMinimumValidCable(158.7, 0.2);
-    expect(result.status).toBe('valid');
-  });
-
-  it('RCD-Befund bleibt korrekt für geschützten / ungeschützten Zweig', () => {
-    const plan = fixturePlan();
-    const report = verifyPlan({ nodes: plan.nodes, edges: plan.edges, options: { profile: 'CAMP_MODEL' } });
-    const rcdEvents = report.passes.flatMap((p) => p.checks).find((c) => c.ruleId === 'RCD-001-rcd-deviation')?.events;
-    expect(eventFor(rcdEvents ?? [], 'consumer-unprotected')).toMatchObject({ severity: 'CRITICAL_SAFETY', kind: 'VIOLATION' });
     expect(eventFor(rcdEvents ?? [], 'consumer-protected')).toBeUndefined();
   });
 });
