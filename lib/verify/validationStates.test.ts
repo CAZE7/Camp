@@ -64,6 +64,27 @@ describe('Phase 12 (10) — Koordination I_b ≤ I_n ≤ I_z', () => {
     expect(gap.violations).toEqual([]);
   });
 
+  it('druckt die Kette nicht als erfüllte Soll-Form, wenn ein Teilstück widerlegt ist', () => {
+    const violated = evaluateCableProtection({ ib: 158.73, in: 100, iz: 120.4 });
+    // Vorher stand hier `I_b = 158.7 A ≤ I_n = 100.0 A ≤ I_z = 120.4 A` — eine
+    // falsche Aussage, direkt gefolgt von „verletzt". Jetzt je Teilstück die
+    // Relation, die wirklich gilt, mit Verdict.
+    expect(violated.explanation).not.toContain('I_b = 158.7 A ≤ I_n');
+    expect(violated.explanation).toContain('I_b = 158.7 A > I_n = 100.0 A ✗');
+    expect(violated.explanation).toContain('I_n = 100.0 A ≤ I_z = 120.4 A ✓');
+
+    const satisfied = evaluateCableProtection({ ib: 20, in: 100, iz: 120.4 });
+    expect(satisfied.explanation).toContain('I_b = 20.0 A ≤ I_n = 100.0 A ✓');
+
+    const noOrgan = evaluateCableProtection({ ib: 20, in: null, iz: 120.4 });
+    expect(noOrgan.explanation).toContain('kein Schutzorgan bekannt');
+    expect(noOrgan.explanation).toContain('I_b = 20.0 A ≤ I_z = 120.4 A ✓');
+
+    const noCurrent = evaluateCableProtection({ ib: null, in: 20, iz: 120.4 });
+    expect(noCurrent.explanation).toContain('?');
+    expect(noCurrent.explanation).not.toContain('✗');
+  });
+
   it('die Engine entscheidet dieselbe Ungleichung (kein zweiter Rechenweg)', () => {
     const plan = withEdge(healthyDcPlan(), 'e-fuse-load', { crossSection: 1.5, fuseSize: 16 });
     const report = verifyPlan({ nodes: plan.nodes, edges: plan.edges, options: { profile: 'CAMP_MODEL' } });

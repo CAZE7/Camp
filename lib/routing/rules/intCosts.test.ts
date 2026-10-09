@@ -110,7 +110,12 @@ describe('saturatingAddMilli', () => {
         expect(g).toBeLessThan(INT_COST_INF);
       }
     }
-  });
+    // 50 × 5000 = 250 000 Assertions. Gemessen 7,27 s allein, 18,5 s im
+    // parallelen Gesamtlauf gegen das globale testTimeout von 15 000 ms
+    // (vitest.config.ts:20) — der fiel im `npm test`-Lauf wiederholt um.
+    // Das Assertion-Ziel (kein INF auch nach 5000 Updates) bleibt bestehen,
+    // nur die Zeitgrenze trägt dem Rechnung.
+  }, 60_000);
 
   it('Property: current über g_max oder negatives Update wirft', () => {
     expect(() => saturatingAddMilli(budget.gMax + 1, 0, budget)).toThrow(RangeError);

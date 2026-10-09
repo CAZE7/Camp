@@ -1,7 +1,7 @@
 import { COPPER_CONDUCTIVITY_MS_PER_MM2, COPPER_RESISTIVITY_OHM_MM2_PER_M } from './materials';
 import { edgeDomainOf, handleDomain, type HandleDomainValue } from './domain/handleDomains';
 
-export const VDE_SIZES = [1.5, 2.5, 4.0, 6.0, 10.0, 16.0, 25.0, 35.0, 50.0, 70.0, 95.0, 120.0];
+export const VDE_SIZES = [1.5, 2.5, 4.0, 6.0, 10.0, 16.0, 25.0, 35.0, 50.0, 70.0];
 
 /**
  * Strombelastbarkeit (A) je Querschnitt — Kupfer, PVC.
@@ -26,13 +26,6 @@ export const VDE_AMPACITY: Record<number, number> = {
   35.0: 111.0,
   50.0: 136.0,
   70.0: 172.0,
-  /** Erweiterte Querschnitte (DIN VDE 0298-4 B2 / Verlegeart Rohr auf Wand, 2 belastete Adern, 30 °C).
-   * 95 mm² = 207 A, 120 mm² = 242 A — konservativ an bestehende Modellreihe angepasst
-   * (Verhältnis zu Standard-B2-Werten ≈ 0,88, konsistent mit 50/70 mm²). Quelle: veröffentlichte
-   * Belastbarkeitstabellen (elektrical-installation.org, voltflow.net, bayka.de), Transkription.
-   * Erweiterung ermöglicht auto-valid Kabeldimensionierung für Ströme > 120 A (Auftrag Phase 5). */
-  95.0: 207.0,
-  120.0: 242.0,
 };
 
 /**
@@ -650,7 +643,7 @@ export interface CableProtectionVerdict {
   severity: 'critical' | 'error' | 'warning' | 'info';
   /** Welche Teilstücke verletzt sind — leer, wenn none. */
   violations: readonly ('ib-over-iz' | 'ib-over-in' | 'in-over-iz')[];
-  /** Klartext der Rechnung („I_b = 158,7 A ≤ I_n = 100 A ✗ …"). */
+  /** Klartext je Teilstück, mit der Relation die gilt: „I_b = 158.7 A > I_n = 100.0 A ✗ · I_n = 100.0 A ≤ I_z = 120.4 A ✓". */
   explanation: string;
 }
 
@@ -688,7 +681,37 @@ export function evaluateCableProtection(input: {
   if (ib !== null && ratedCurrent !== null && ib > ratedCurrent + 1e-9) violations.push('ib-over-in');
   if (ratedCurrent !== null && iz !== null && ratedCurrent > iz + 1e-9) violations.push('in-over-iz');
 
-  const explanation = `I_b = ${fmt(ib)} ≤ I_n = ${fmt(ratedCurrent)} ≤ I_z = ${fmt(iz)}`;
+  // Die Kette wird aus den tatsächlich geprüften Teilstücken zusammengesetzt,
+  // nicht als Soll-Form mit eingesetzten Ist-Werten gedruckt: „I_b = 158,7 A ≤
+  // I_n = 100 A" ist eine falsche Aussage, und zwei Zeilen darunter steht
+  // „verletzt". Je Teilstück gehört dieRelation hin, die wirklich gilt.
+  const relation = (left: string, right: string, violated: boolean, decidable: boolean): string =>
+    decidable ? `${left} ${violated ? '>' : '≤'} ${right} ${violated ? '✗' : '✓'}` : `${left} ≤ ${right} ?`;
+  const bothKnown = ib !== null && ratedCurrent !== null && iz !== null;
+  const explanation = bothKnown
+    ? [
+        relation(`I_b = ${fmt(ib)}`, `I_n = ${fmt(ratedCurrent)}`, violations.includes('ib-over-in'), true),
+        relation(`I_n = ${fmt(ratedCurrent)}`, `I_z = ${fmt(iz)}`, violations.includes('in-over-iz'), true),
+      ].join(' · ')
+    : ratedCurrent === null && ib !== null && iz !== null
+      ? [
+          'I_n = — (kein Schutzorgan bekannt) ?',
+          relation(`I_b = ${fmt(ib)}`, `I_z = ${fmt(iz)}`, violations.includes('ib-over-iz'), true),
+        ].join(' · ')
+      : [
+          relation(
+            `I_b = ${fmt(ib)}`,
+            `I_n = ${fmt(ratedCurrent)}`,
+            violations.includes('ib-over-in'),
+            false
+          ),
+          relation(
+            `I_n = ${fmt(ratedCurrent)}`,
+            `I_z = ${fmt(iz)}`,
+            violations.includes('in-over-iz'),
+            false
+          ),
+        ].join(' · ');
 
   if (violations.includes('ib-over-iz')) {
     return {
