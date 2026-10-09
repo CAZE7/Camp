@@ -32,7 +32,13 @@ export function CategorySection({
   if (items.length === 0) return null;
   return (
     <section className="cad-section">
-      <button type="button" onClick={onToggle} aria-expanded={open} aria-controls={open ? listboxId : undefined} className="cad-section__head">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        aria-controls={open ? listboxId : undefined}
+        className="cad-section__head"
+      >
         <ChevronDown
           className={cn('h-3.5 w-3.5 shrink-0 transition-transform', open ? '' : '-rotate-90')}
           aria-hidden="true"
