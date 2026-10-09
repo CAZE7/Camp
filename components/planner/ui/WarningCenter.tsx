@@ -94,11 +94,8 @@ export function isUnverifiedFinding(warning: ValidationWarning): boolean {
 export function consequence(warning: ValidationWarning) {
   if (isUnverifiedFinding(warning))
     return 'Folge: Dieser Punkt ist ungeprüft — der Plan weist ihn weder als erfüllt noch als verletzt aus.';
-  if (warning.category === 'safety') {
-    const isAc = /230[- ]?V|Wechselrichter|FI\b|RCD\b/i.test(warning.message || '') || (warning.details?.protectionChain !== undefined && warning.details.protectionChain.length > 0);
-    if (isAc) return 'Folge: Überhitzung und – abhängig vom Schutzkonzept – zusätzliche elektrische Gefährdung.';
-    return 'Folge: Die Leitung kann sich unzulässig erwärmen. Es besteht ein Risiko für Leitung und Anlage.';
-  }
+  if (warning.category === 'safety')
+    return 'Folge: Leitung oder Gerät kann überhitzen; bei 230 V besteht zusätzlich Stromschlaggefahr.';
   if (warning.category === 'topology')
     return 'Folge: Das System kann unvollständig sein oder nicht wie geplant funktionieren.';
   if (warning.category === 'monitoring')

@@ -1,7 +1,7 @@
 import { COPPER_CONDUCTIVITY_MS_PER_MM2, COPPER_RESISTIVITY_OHM_MM2_PER_M } from './materials';
 import { edgeDomainOf, handleDomain, type HandleDomainValue } from './domain/handleDomains';
 
-export const VDE_SIZES = [1.5, 2.5, 4.0, 6.0, 10.0, 16.0, 25.0, 35.0, 50.0, 70.0, 95.0, 120.0];
+export const VDE_SIZES = [1.5, 2.5, 4.0, 6.0, 10.0, 16.0, 25.0, 35.0, 50.0, 70.0];
 
 /**
  * Strombelastbarkeit (A) je Querschnitt — Kupfer, PVC.
@@ -26,13 +26,6 @@ export const VDE_AMPACITY: Record<number, number> = {
   35.0: 111.0,
   50.0: 136.0,
   70.0: 172.0,
-  /** Erweiterte Querschnitte (DIN VDE 0298-4 B2 / Verlegeart Rohr auf Wand, 2 belastete Adern, 30 °C).
-   * 95 mm² = 207 A, 120 mm² = 242 A — konservativ an bestehende Modellreihe angepasst
-   * (Verhältnis zu Standard-B2-Werten ≈ 0,88, konsistent mit 50/70 mm²). Quelle: veröffentlichte
-   * Belastbarkeitstabellen (elektrical-installation.org, voltflow.net, bayka.de), Transkription.
-   * Erweiterung ermöglicht auto-valid Kabeldimensionierung für Ströme > 120 A (Auftrag Phase 5). */
-  95.0: 207.0,
-  120.0: 242.0,
 };
 
 /**

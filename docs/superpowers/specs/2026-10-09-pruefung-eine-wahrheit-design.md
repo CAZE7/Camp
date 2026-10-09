@@ -30,15 +30,15 @@ Messbares Endkriterium: Für jeden der sechs `knownPlans/*.json`, die drei
 **5 von 9 Testdateien fehlen, 8 Tests, Exit 1.** Commit `137858f` (PR #515) sagt „Build passes;
 8/8 pass“. Die Fehlschläge:
 
-| Test | Assertion |
-| --- | --- |
-| `lib/verify/validationStates.test.ts:108` | `expected 169.39999999999998 to be close to 120.4` (Differenz 49 A) |
-| `lib/electrical.test.ts:175` | `expected 125 to be 100` |
-| `lib/vde-properties.test.ts` G4 | `expected 70 to be greater than or equal to 95` |
-| `lib/vde-properties.test.ts` G7 | erwartet `…:70:W…`, erhalten `…:70:-…` (Warnmarke verschwunden) |
-| `lib/vde-standards.test.ts:30` | Normreihen-Assertion |
-| `validationStates.test.ts` Fälle 11 und 12 | `expected 120 to be 70`, `expected true to be false` |
-| `components/planner/ui/WarningCenter.test.tsx:250` | erwartet `Stromschlaggefahr`, erhält neuen Folge-Text |
+| Test                                               | Assertion                                                           |
+| -------------------------------------------------- | ------------------------------------------------------------------- |
+| `lib/verify/validationStates.test.ts:108`          | `expected 169.39999999999998 to be close to 120.4` (Differenz 49 A) |
+| `lib/electrical.test.ts:175`                       | `expected 125 to be 100`                                            |
+| `lib/vde-properties.test.ts` G4                    | `expected 70 to be greater than or equal to 95`                     |
+| `lib/vde-properties.test.ts` G7                    | erwartet `…:70:W…`, erhalten `…:70:-…` (Warnmarke verschwunden)     |
+| `lib/vde-standards.test.ts:30`                     | Normreihen-Assertion                                                |
+| `validationStates.test.ts` Fälle 11 und 12         | `expected 120 to be 70`, `expected true to be false`                |
+| `components/planner/ui/WarningCenter.test.tsx:250` | erwartet `Stromschlaggefahr`, erhält neuen Folge-Text               |
 
 Ursache ist eine gemeinsame Konstante: `lib/electrical.ts:4` erhielt `95.0, 120.0` in
 `VDE_SIZES`, `:27`/`:33` zwei `VDE_AMPACITY`-Einträge. Davon abgeleitet, ohne weitere
@@ -58,16 +58,16 @@ eine Sicherheitszahl.
 
 ### 2.2 Es gibt acht Zählstellen, drei Datenquellen
 
-| Stelle | zählt | Quelle |
-| --- | --- | --- |
-| `lib/verify/pipeline.ts:298` | Schwere (4) + Zustand (4) + `rootCauses.length` | Engine |
-| `WarningCenter.tsx:425` | `type` (3) | eigene Schleife |
-| `WarningCenter.tsx:448` | `status` (4) | eigene Schleife |
-| `WarningCenter.tsx:405` `groupCounts` | safety/planning/gaps (3) | eigene Schleife |
-| `WarningCenter.tsx:436` | `rootCauses.size` | eigene Map |
-| `components/planner/utils/guidedSteps.ts:131` | critical / nicht-critical | Befundliste |
-| `components/planner/AutoWireReviewModal.tsx:58` | critical / other | `AutoWireReport.conflicts` |
-| `components/planner/ui/PlannerStatusBar.tsx:36` | kritisch / Warnungen | `store.plannerErrors` |
+| Stelle                                          | zählt                                           | Quelle                     |
+| ----------------------------------------------- | ----------------------------------------------- | -------------------------- |
+| `lib/verify/pipeline.ts:298`                    | Schwere (4) + Zustand (4) + `rootCauses.length` | Engine                     |
+| `WarningCenter.tsx:425`                         | `type` (3)                                      | eigene Schleife            |
+| `WarningCenter.tsx:448`                         | `status` (4)                                    | eigene Schleife            |
+| `WarningCenter.tsx:405` `groupCounts`           | safety/planning/gaps (3)                        | eigene Schleife            |
+| `WarningCenter.tsx:436`                         | `rootCauses.size`                               | eigene Map                 |
+| `components/planner/utils/guidedSteps.ts:131`   | critical / nicht-critical                       | Befundliste                |
+| `components/planner/AutoWireReviewModal.tsx:58` | critical / other                                | `AutoWireReport.conflicts` |
+| `components/planner/ui/PlannerStatusBar.tsx:36` | kritisch / Warnungen                            | `store.plannerErrors`      |
 
 In der Panel-Kopfzeile stehen zwei Zeilen untereinander (`WarningCenter.tsx:605–610`): die eine
 partitioniert alle Befunde, die andere nur solche mit gesetztem `status`. `status` ist optional
@@ -161,13 +161,13 @@ Das Fixture summt 147,06 A (WR) + 5,00 A + 6,67 A = 158,73 A auf dem Hauptstrang
 
 ## 3. Entscheidungen
 
-| # | Entscheidung | Begründung |
-| --- | --- | --- |
-| E1 | Querschnittsreihe zurück auf 1,5…70 mm² | Modellgrenze wieder belegbar; 8 Tests wieder grün; Ausdehnung nur mit belastbarer Normquelle, und dann vollständig |
-| E2 | Variante A: alle elektrischen Altbefunde werden Engine-Regeln | sonst bleibt die zweite Quelle stehen und der Zähler driftet beim nächsten Melder erneut |
-| E3 | Planerpauschale 0,7 bleibt rechnerisch, wird aber Klartext-Annahme | keine Zahl ändert sich, keine Referenz muss recaptured werden |
-| E4 | Domäne, Zustand und Abhilfe werden Pflichtfelder des Befunds | Typ erzwingt, was Konvention nicht gehalten hat |
-| E5 | `consequence()` und `nextStep()` verlassen die UI | Regel D verbietet der Anzeige, elektrische Aussagen zu dichten |
+| #   | Entscheidung                                                       | Begründung                                                                                                         |
+| --- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| E1  | Querschnittsreihe zurück auf 1,5…70 mm²                            | Modellgrenze wieder belegbar; 8 Tests wieder grün; Ausdehnung nur mit belastbarer Normquelle, und dann vollständig |
+| E2  | Variante A: alle elektrischen Altbefunde werden Engine-Regeln      | sonst bleibt die zweite Quelle stehen und der Zähler driftet beim nächsten Melder erneut                           |
+| E3  | Planerpauschale 0,7 bleibt rechnerisch, wird aber Klartext-Annahme | keine Zahl ändert sich, keine Referenz muss recaptured werden                                                      |
+| E4  | Domäne, Zustand und Abhilfe werden Pflichtfelder des Befunds       | Typ erzwingt, was Konvention nicht gehalten hat                                                                    |
+| E5  | `consequence()` und `nextStep()` verlassen die UI                  | Regel D verbietet der Anzeige, elektrische Aussagen zu dichten                                                     |
 
 Abweichung von reinem A, ausdrücklich genannt: **vier** der 21 Literale sind nicht elektrisch —
 `route-lock-*` (`:862`), `ROUTE-LOCK-{MISSING,GEOMETRY,ENDPOINT,INVALID}` (`:898`),
@@ -186,7 +186,7 @@ Store (nodes, edges, routingReport, autoWireReport)
        ├─ lib/verify/pipeline.verifyPlan(...)     -> VerificationReport (29 + n Regeln)
        ├─ lib/routing/invariants (finalValidation) -> RoutingFinding[]   [neu: deklarierte Projektion]
        └─ lib/autoWire/conflicts                   -> AutoWireFinding[]  [neu: deklarierte Projektion]
-                alle drei -> lib/verify/findings.ts::summarizeFindings(findings)
+                alle drei -> lib/validationSeverity.ts::summarizeFindings(report)
                                         |
                             VerificationSummary (verdikt, kritisch, ohneAngaben, profil, kontext)
                                         |
@@ -196,22 +196,43 @@ Store (nodes, edges, routingReport, autoWireReport)
 
 ### 4.1 Befund-Typ
 
-`lib/verify/findings.ts` (neu) hält den einen Typ und die eine Auszählung:
+`lib/validationSeverity.ts` besitzt bereits „EIN VOKABULAR für Meldungsgard und Meldungszustand"
+und mit `countValidationStates` (`:79–97`) schon das eine Zählwerk über Schwere und Zustand.
+Domäne, Folge-Text und die sichtbare Zusammenfassung kommen in **dasselbe Modul** — nicht in ein
+nebenliegendes `findings.ts`, das eine zweite Heimat wäre:
 
 ```ts
-export type DomainClass = /* definiert in lib/verify/types.ts:44 */;
+export type FindingDomain = DomainClass | 'MIXED' | 'UNKNOWN'; // siehe 4.3
+export function consequenceFor(domain: FindingDomain, status: ValidationStatus): string;
+export interface FindingSummary {
+  verdict: VerificationVerdict;
+  criticalCount: number; // severity critical + error
+  incompleteCount: number; // status violated/incomplete Trennung bleibt sichtbar
+  affectedEntities: number;
+  profile: string;
+  context: string;
+}
+export function summarizeFindings(report: VerificationReport): FindingSummary;
+```
+
+Die Befundform selbst bleibt die vorhandene `ValidationWarning`
+(`components/planner/hooks/useLiveValidation.ts:32–86`) — sie wird um `domain`, `consequence` und
+ein Pflicht-`status` ergänzt und bleibt damit abwärtskompatibel zu Prüfsiegel, Guided Steps und
+Stückliste, die die Felder schon heute lesen:
+
+```ts
 export interface Finding {
-  id: string;                 // stabil: ruleId:entityKind:entityId
-  ruleId: string;             // eine Registry, kein freies Textfeld
-  domain: DomainClass;        // DC | AC | MIXED | UNKNOWN — Pflicht, aus dem Modell
-  status: 'violated' | 'incomplete' | 'satisfied' | 'not_applicable';  // Pflicht
+  id: string; // stabil: ruleId:entityKind:entityId
+  ruleId: string; // eine Registry, kein freies Textfeld
+  domain: FindingDomain; // DC_ELV | AC_LV | SENSOR_DATA | FLUID | NON_ELECTRICAL | MIXED | UNKNOWN
+  status: 'violated' | 'incomplete' | 'satisfied' | 'not_applicable'; // Pflicht
   severity: 'critical' | 'error' | 'warning' | 'info';
-  title: string;              // kurz, laienverstaendlich
-  remedy: string;             // konkrete Handlung, nie leer
-  consequence: string;        // domain- und statusabhaengig, aus der Engine-Projektion
-  message: string;            // Begruendung (lang) — nur im „Warum?“ sichtbar
+  title: string; // kurz, laienverständlich
+  remedy: string; // konkrete Handlung, nie leer
+  consequence: string; // domain- und statusabhängig, aus der Engine-Projektion
+  message: string; // Begründung (lang) — nur im „Warum?“ sichtbar
   details?: AuditEventDetails;
-  rootCauseId?: string;       // nur gesetzt, wenn >= 1 betroffene Entitaet existiert
+  rootCauseId?: string; // nur gesetzt, wenn ≥ 1 betroffene Entität existiert
   focus?: { kind: 'node' | 'edge'; id: string };
   source: 'verify' | 'routing' | 'autowire';
 }
@@ -223,28 +244,70 @@ darf eine eigene Zahl aus der Liste bilden. Ein Architekturtest verbietet das (A
 
 ### 4.2 Domäne
 
-Quelle ist das vorhandene Modell: `CableModel.domain` bzw. `PortRef.domain`
-(`lib/verify/types.ts:273`, `:443`; Typ `DomainClass` ebenda `:44`; abgeleitet über
-`domainClassOf` in `lib/verify/graph.ts`), für Knoten-Befunde die Domäne des betroffenen
-Anschlusses, für Plan-Befunde (z. B. Mischspannung) `MIXED`. `auditEvent()`
-(`lib/verify/events.ts:74`) erhält `domain` als Pflichtargument — dieselbe Mechanik, die schon
-`standard`/`clause`/`provenance` aus der Matrix zieht. `getEdgeDomain`/`getHandleDomain`
-(`lib/electrical.ts:796`, `:813`) bleiben die einzigen Ableitungsstellen.
+Quelle ist das vorhandene Modell, **abgeleitet an einer Stelle, nicht von 68 Aufrufen behauptet.**
+Gemessen: `auditEvent(` hat 71 Vorkommen, davon 68 in Produktionsmodulen
+(`ampacity.ts` 27, `protection.ts` 21, `topology.ts` 11, `powerPath.ts` 8, `events.ts` 5).
+`domain` als Pflichtargument von `auditEvent()` zu verlangen würde diese 68 Stellen anfassen und
+jedem Regelimplementierer erlauben, eine Gefährdungsklasse zu nennen, die das Modell widerlegt —
+genau die Doppelwahrheit, die `types.ts:259–263` mit der getrennten Speicherung von
+`sourceDomain`/`domain` verhindern will.
+
+Stattdessen: `pipeline.ts` besitzt den Leitungsgraphen (`buildConductionGraph`, `:196`) und
+projiziert die Domäne **nach** der Sortierung auf jeden Befund, durch eine einzige Funktion
+
+```ts
+/** lib/verify/graph.ts — die einzige Ableitung Befund → Gefährdungsklasse. */
+export function findingDomainOf(graph: ConductionGraph, entity: EntityRef): FindingDomain;
+```
+
+| entity.kind | Ableitung                                                                                   |
+| ----------- | ------------------------------------------------------------------------------------------- |
+| `edge`      | `CableModel.domain` der Kante (`types.ts:443`)                                              |
+| `node`      | Menge der Port-Domänen des Knotens: eine ⇒ die Klasse, mehrere ⇒ `MIXED`, keine ⇒ `UNKNOWN` |
+| `path`      | `MIXED`, wenn die Kanten des Pfads verschiedene Klassen tragen, sonst die gemeinsame        |
+| `net`       | Klasse des Netzes aus dem Graphen                                                           |
+| `system`    | `MIXED` bei Plan-Ebene (z. B. Mischspannung zweier Bänke), sonst `UNKNOWN`                  |
+
+`getEdgeDomain` / `getHandleDomain` (`lib/electrical.ts:796`, `:813`) bleiben die einzigen
+Ableitungsstellen für die Basisklassen (`AGENTS.md` §4.5); die Klasse eines Ports berechnet
+`domainClassFor` (`lib/verify/graph.ts:344`). Kein Regelmodul nennt eine Domäne.
+Nebenbei zu berichtigen: `lib/verify/types.ts:262` bezeichnet `domainClassOf` in `graph.ts` als
+die Autorität — diesen Namen gibt es im Repo nicht (einzige Fundstelle ist dieser Kommentar; real
+heißt die Funktion `domainClassFor`). Ein Kommentar, der ein Symbol erfindet, ist dieselbe
+Klasse Fehler wie eine Zahl, die das eigene Gate nicht beschreibt (`KNOWN-PROBLEMS` AUDIT N3).
+`sortEvents`/`attachRootCauses`/`validationStateCountsOf` (`pipeline.ts:225–235`) bleiben
+unberührt; der Zertifikat-Hash deckt nur Verdikt, Statusmatrix und Abdeckung ab
+(`:249–257`) und ändert sich daher nicht.
 
 ### 4.3 Folge-Text
 
-`domain` + `status` entscheiden, nicht `category`:
+`domain` + `status` entscheiden, nicht `category`. Das Vokabular ist das vorhandene
+(`DomainClass`, `lib/verify/types.ts:44–54`: `DC_ELV`, `AC_LV`, `SENSOR_DATA`, `FLUID`,
+`NON_ELECTRICAL`), erweitert um zwei Zustände, die kein Leiter haben kann:
 
-| domain | status | Folge |
-| --- | --- | --- |
-| DC | violated | „Die Leitung kann sich unzulässig erwärmen; ein Kurzschluss kann sie ohne Abschaltung führen.“ |
-| DC | incomplete | „Dieser Punkt ist ungeprüft — der Plan weist ihn weder als erfüllt noch als verletzt aus.“ |
-| AC | violated | „Überhitzung und — bei fehlendem oder falschem Schutzorgan — Stromschlaggefahr.“ |
-| AC | incomplete | wie DC/incomplete |
-| MIXED | violated | „… mindestens eine Leitung liegt auf der anderen Spannungsebene …“ |
-| UNKNOWN | * | „Die Spannungsebene des betroffenen Punkts ist nicht bestimmt; eine Gefährdungsangabe wäre eine Annahme.“ |
+```ts
+/** Gefährdungsklasse eines BEFUNDS — verbreitert DomainClass um die nicht-leiter-Fälle. */
+export type FindingDomain = DomainClass | 'MIXED' | 'UNKNOWN';
+```
 
-Der Vermerk „230 V“ oder „Stromschlag“ erscheint ausschließlich bei `AC` und `MIXED`.
+`MIXED` ist nötig, weil Befunde über Plan-Ebene (Mischspannung zweier Bänke, `entity.kind:
+'system'`) genau eine Klasse nicht kennen; `UNKNOWN` für Datenlücken und System-Ereignisse ohne
+ableitbaren Leiter. Bestehende `switch`e über `DomainClass` (`graph.ts::domainClassOf`) bleiben
+unberührt — die Verbreiterung gilt nur für die Anzeige-Projektion, nicht für das Modell.
+
+| domain           | violated                                                                                                                   | incomplete                    |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
+| `DC_ELV`         | „Die Leitung kann sich unzulässig erwärmen; ein Fehlerstrom kann ohne Abschaltung bleiben."                                | Zeile „ungeprüft" (wie heute) |
+| `AC_LV`          | „Überhitzung und — je nach Schutzorgan — Stromschlaggefahr."                                                               | Zeile „ungeprüft"             |
+| `SENSOR_DATA`    | „Dieser Kreis führt Laststrom, obwohl er nur misst; die Messung und die Abschaltung werden unzuverlässig."                 | Zeile „ungeprüft"             |
+| `FLUID`          | „Wasser-/Gasführung betroffen — Leckage oder ungewollte Brücke, keine elektrische Gefährdung."                             | Zeile „ungeprüft"             |
+| `NON_ELECTRICAL` | „Kein Leiter betroffen; die Aussage betrifft Fläche bzw. Hülle."                                                           | Zeile „ungeprüft"             |
+| `MIXED`          | „Mindestens eine Leitung liegt auf der anderen Spannungsebene; Überhitzung und — auf der 230-V-Seite — Stromschlaggefahr." | Zeile „ungeprüft"             |
+| `UNKNOWN`        | „Die Spannungsebene dieses Punkts ist nicht bestimmt; eine Gefährdungsangabe wäre eine Annahme."                           | Zeile „ungeprüft"             |
+
+Der Vermerk „230 V", „Netzspannung" oder „Stromschlag" erscheint ausschließlich bei `AC_LV` und
+`MIXED`. Die Zeile „ungeprüft" bleibt wortgleich, wie Gate 2 in `WarningCenter.test.tsx:239–245`
+sie heute schon hält.
 
 Kein Emoji im Nutzertext: `verificationWarnings.ts:103` setzt `⚠️ Kritisch: ` / `ℹ️ Hinweis: `
 vor die Message, und `WarningCenter.tsx:48–54` (`toPlainExplanation`) nimmt sie mit einem
@@ -282,25 +345,26 @@ Tests), aber jede Zahl, die ein Mensch sieht, nennt Profil und Kontext daneben.
 
 ## 5. Komponenten und Dateien
 
-| Datei | Änderung |
-| --- | --- |
-| `lib/electrical.ts` | `VDE_SIZES`/`VDE_AMPACITY` zurück auf 70; `evaluateCableProtection`-Explanation je Relation mit Verdict |
-| `lib/vde-standards.ts` | Re-Export unverändert (Konsistenztest `vde-consistency.test.ts:201` verlangt Referenzgleichheit) |
-| `lib/cableSizing.ts` | `findMinimumValidCable`, `CableSizingStatus`, `FindMinimumValidCableResult` entfernen (keine Konsumenten) |
-| `lib/verify/validation158.regression.test.ts` | Phase-2-Blöcke auf `calculateCrossSection`/`assessCableSelection` umstellen |
-| `lib/verify/types.ts` | `AuditEvent.domain: DomainClass` |
-| `lib/verify/events.ts` | `domain` Pflicht in `auditEvent()`, Folge-Text-Projektion |
-| `lib/verify/findings.ts` | neu: `Finding`, `summarizeFindings` |
-| `lib/verify/rules.ts` | neue Regel-Einträge für die 17 elektrischen Altbefunde (`RULE_MATRIX`, `:76`) |
-| `lib/verify/{topology,ampacity,protection,powerPath,rules}.ts` | Literal je neuer Regel (Bijektion `rules.test.ts:86–93`) |
-| `lib/routing/invariants.ts` o. `finalValidation.ts` | deklarierte Projektion der Lock-Befunde auf `Finding` |
-| `lib/autoWire/conflicts.ts` | deklarierte Projektion der Konflikte/Fragen auf `Finding` |
-| `components/planner/hooks/useLiveValidation.ts` | 21 Literale entfernen; nur noch Eingabe, Fokus, Sortierung |
-| `components/planner/utils/verificationWarnings.ts` | Projektion auf `Finding` (Domäne, Status, Folge, Abhilfe) |
-| `components/planner/ui/WarningCenter.tsx` | `consequence()` (94), `nextStep()` (332), `isUnverifiedFinding()` (85), `UNVERIFIED_WARNING_PREFIXES` (71), `counts` (425), `stateCounts` (448), `groupCounts` (405), `rootCauses` (436) entfernen; `summarizeFindings` lesen; `message` ins „Warum?“; Emoji aus der Verdiktszeile |
-| `components/planner/ui/PlannerStatusBar.tsx:36` | nicht mehr `store.plannerErrors`, sondern dieselbe Summary |
-| `components/planner/utils/guidedSteps.ts:131` | dieselbe Summary |
-| `components/planner/AutoWireReviewModal.tsx:58` | dieselbe Summary |
+| Datei                                                          | Änderung                                                                                                                                                                                                                                                                                                                                                  |
+| -------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `lib/electrical.ts`                                            | `VDE_SIZES`/`VDE_AMPACITY` zurück auf 70; `evaluateCableProtection`-Explanation je Relation mit Verdict                                                                                                                                                                                                                                                   |
+| `lib/vde-standards.ts`                                         | Re-Export unverändert (Konsistenztest `vde-consistency.test.ts:201` verlangt Referenzgleichheit)                                                                                                                                                                                                                                                          |
+| `lib/cableSizing.ts`                                           | `findMinimumValidCable`, `CableSizingStatus`, `FindMinimumValidCableResult` entfernen (keine Konsumenten)                                                                                                                                                                                                                                                 |
+| `lib/verify/validation158.regression.test.ts`                  | Phase-2-Block aus `137858f` entfernt: drei Dupletten von Phase 1, drei 120-mm²-Fälle, ein Fall ohne Prüfung im Namen                                                                                                                                                                                                                                      |
+| `lib/verify/types.ts`                                          | `FindingDomain` (Verbreiterung von `DomainClass`, `:44–54`), `AuditEvent.domain: FindingDomain`                                                                                                                                                                                                                                                           |
+| `lib/verify/graph.ts`                                          | `findingDomainOf(graph, entity)` — die einzige Befund→Klasse-Ableitung (Abschnitt 4.2)                                                                                                                                                                                                                                                                    |
+| `lib/verify/pipeline.ts`                                       | projiziert `domain` auf jeden sortierten Befund (`:225–235`); Regelmodule nennen keine Domäne                                                                                                                                                                                                                                                             |
+| `lib/validationSeverity.ts`                                    | `consequenceFor`, `FindingSummary`, `summarizeFindings` (bestehendes Vokabular-Modul, keine zweite Heimat)                                                                                                                                                                                                                                                |
+| `lib/verify/rules.ts`                                          | neue Regel-Einträge für die 17 elektrischen Altbefunde (`RULE_MATRIX`, `:76`)                                                                                                                                                                                                                                                                             |
+| `lib/verify/{topology,ampacity,protection,powerPath,rules}.ts` | Literal je neuer Regel (Bijektion `rules.test.ts:86–93`)                                                                                                                                                                                                                                                                                                  |
+| `lib/routing/invariants.ts` o. `finalValidation.ts`            | deklarierte Projektion der Lock-Befunde auf `Finding`                                                                                                                                                                                                                                                                                                     |
+| `lib/autoWire/conflicts.ts`                                    | deklarierte Projektion der Konflikte/Fragen auf `Finding`                                                                                                                                                                                                                                                                                                 |
+| `components/planner/hooks/useLiveValidation.ts`                | 21 Literale entfernen; nur noch Eingabe, Fokus, Sortierung                                                                                                                                                                                                                                                                                                |
+| `components/planner/utils/verificationWarnings.ts`             | Projektion auf `Finding` (Domäne, Status, Folge, Abhilfe)                                                                                                                                                                                                                                                                                                 |
+| `components/planner/ui/WarningCenter.tsx`                      | `consequence()` (94), `nextStep()` (332), `isUnverifiedFinding()` (85), `UNVERIFIED_WARNING_PREFIXES` (71), `counts` (425), `stateCounts` (448), `groupCounts` (405), `rootCauses` (436) entfernen; `summarizeFindings` lesen; `message` ins „Warum?“; Emoji bei den Produzenten weg (`verificationWarnings.ts:103`), nicht erst beim Anzeigen abgegrenzt |
+| `components/planner/ui/PlannerStatusBar.tsx:36`                | nicht mehr `store.plannerErrors`, sondern dieselbe Summary                                                                                                                                                                                                                                                                                                |
+| `components/planner/utils/guidedSteps.ts:131`                  | dieselbe Summary                                                                                                                                                                                                                                                                                                                                          |
+| `components/planner/AutoWireReviewModal.tsx:58`                | dieselbe Summary                                                                                                                                                                                                                                                                                                                                          |
 
 Reihenfolge ist erzwungen: Matrix + Pass-Impl **vor** UI, sonst sind
 `verificationWarnings.test.ts:166` (`rulesApplied === 29`) und `rules.test.ts:86–93` rot.
@@ -353,15 +417,15 @@ Neue oder geänderte Gates, jeweils mit dem Befehl, der sie prüft:
 
 ## 8. Phasen und Exit-Kriterien
 
-| Phase | Inhalt | Exit |
-| --- | --- | --- |
-| 0 | E1 rückgängig: Tabelle auf 70, `findMinimumValidCable` weg, `≤`-Kette mit Verdict, `isAc`-Heuristik raus | die 8 Fehlschläge von 2.1 sind grün; 81 Zeilen `cableSizing.ts` weniger; `npm run build` ok |
-| 1 | `domain`/`status` Pflicht, `Finding` + `summarizeFindings`, `consequence`/`nextStep` aus der UI | Gates 2, 3, 5, 7 grün |
-| 2 | 17 elektrische Altbefunde in Matrix + Pass-Impl (19 neue IDs, Anhang A); 4 nicht-elektrische über deklarierte Projektion | `rulesApplied` 29 → 48 bei PRACTICE/VEHICLE; jedes Literal hat `remedy`; kein Befund fällt in den Auffangtext |
-| 3 | Flächen lesen nur noch die Summary (Panel, Statuszeile, GuidedPlanRail, ReviewModal, Seal) | Gate 3 über alle Referenzpläne; Gate 5 |
-| 4 | Profil-Konsolidierung, Planerpauschale-Klartext, Jargon aus `message` | Gates 6, 1; `explainCableCurrent` nennt Profil und zeigt die 0,7 sichtbar |
-| 5 | Panel-Dichte: `message` ins „Warum?“, Wertzeile + Abhilfe sichtbar, Emoji raus, Mobil-Kante gegen `tests/e2e/controls-overlap.spec.ts` | Playwright `controls-overlap`, `responsive`, `touch`, `expert-panel` grün |
-| 6 | Determinismus- und Wiederhol-Gate über den Plan-Bestand | Gates 4, 8, 9 |
+| Phase | Inhalt                                                                                                                                 | Exit                                                                                                          |
+| ----- | -------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| 0     | E1 rückgängig: Tabelle auf 70, `findMinimumValidCable` weg, `≤`-Kette mit Verdict, `isAc`-Heuristik raus                               | die 8 Fehlschläge von 2.1 sind grün; 81 Zeilen `cableSizing.ts` weniger; `npm run build` ok                   |
+| 1     | `domain`/`status` Pflicht, `Finding` + `summarizeFindings`, `consequence`/`nextStep` aus der UI                                        | Gates 2, 3, 5, 7 grün                                                                                         |
+| 2     | 17 elektrische Altbefunde in Matrix + Pass-Impl (19 neue IDs, Anhang A); 4 nicht-elektrische über deklarierte Projektion               | `rulesApplied` 29 → 48 bei PRACTICE/VEHICLE; jedes Literal hat `remedy`; kein Befund fällt in den Auffangtext |
+| 3     | Flächen lesen nur noch die Summary (Panel, Statuszeile, GuidedPlanRail, ReviewModal, Seal)                                             | Gate 3 über alle Referenzpläne; Gate 5                                                                        |
+| 4     | Profil-Konsolidierung, Planerpauschale-Klartext, Jargon aus `message`                                                                  | Gates 6, 1; `explainCableCurrent` nennt Profil und zeigt die 0,7 sichtbar                                     |
+| 5     | Panel-Dichte: `message` ins „Warum?“, Wertzeile + Abhilfe sichtbar, Emoji raus, Mobil-Kante gegen `tests/e2e/controls-overlap.spec.ts` | Playwright `controls-overlap`, `responsive`, `touch`, `expert-panel` grün                                     |
+| 6     | Determinismus- und Wiederhol-Gate über den Plan-Bestand                                                                                | Gates 4, 8, 9                                                                                                 |
 
 ## 9. Ausdrücklich nicht in diesem Paket
 
@@ -398,16 +462,16 @@ Neue oder geänderte Gates, jeweils mit dem Befehl, der sie prüft:
 
 ## 11. Bindende Konventionen aus `AGENTS.md`, die diesen Plan berührt
 
-| Stelle | Regel | Auswirkung |
-| --- | --- | --- |
-| §4.2 | „Eine Stromquelle verwenden … nie einen zweiten Strompfad bauen. (Die frühere `calculateAcEdgeCurrent` hatte null Produkt-Consumenten und ist entfernt, AUDIT ELE-009.)" | Phase 0Löscht `findMinimumValidCable` aus demselben Grund wie damals ELE-009: null Produktions-Consumenten, zweite Implementierung |
-| §4.5 | „Domänen nur über `getEdgeDomain`/`getHandleDomain` bestimmen" | Phase 1 nutzt genau diese beiden, keine dritte Ableitung |
-| §4.10 / §5 | „Nie eine VDE-/Normaussage erfinden"; „Unbekannte elektrische Daten als gültig behandeln oder Sicherheitsurteile raten" verboten | Begründet E1 (Rücknahme 95/120) und E5 (die UI dichtet keine Folge mehr) |
-| §6 DO NOT TOUCH | `lib/electrical.ts` Sicherungsgrenzen, `lib/vde-standards.ts` — „nur mit Tests + expliziter Review" | Phase 0 fasst `VDE_SIZES`/`VDE_AMPACITY` und `evaluateCableProtection` an. Explizit freigegeben am 2026-10-09 (Entscheidung E1); die Tests in §7 sind die Review-Grundlage |
-| §6 | `knownPlans/*`, `scripts/goldenmaster/snapshots/*`, `scripts/regression/__snapshots__/*` sind eingefrorene Wahrheit | Phase 2 darf sie nur mit begründetem Recapture bewegen |
-| §7 | „Gate vor jedem Commit: `npm run check`" | Jeder Phase endet mit `npm run check` allein, un-gepipelt, Exit abgefragt |
-| §8 | „Ein PR pro Aufgabe"; „Neue Erkenntnisse als neue IDs unten anhängen, bestehende Texte nicht umschreiben" | Phase-Ergebnisse bleiben getrennt; die Befunde aus 2.1–2.7 werden am Ende als neue IDs in `docs/ai/KNOWN-PROBLEMS.md` angehängt |
-| §9 | „Responsive: 375 / 768 / 1440"; „Ein Commit pro Aufgabe; jeder Bugfix mit Regressionstest" | Phase 5 misst an `tests/e2e/controls-overlap.spec.ts` und `responsive.spec.ts` |
+| Stelle          | Regel                                                                                                                                                                    | Auswirkung                                                                                                                                                                 |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| §4.2            | „Eine Stromquelle verwenden … nie einen zweiten Strompfad bauen. (Die frühere `calculateAcEdgeCurrent` hatte null Produkt-Consumenten und ist entfernt, AUDIT ELE-009.)" | Phase 0Löscht `findMinimumValidCable` aus demselben Grund wie damals ELE-009: null Produktions-Consumenten, zweite Implementierung                                         |
+| §4.5            | „Domänen nur über `getEdgeDomain`/`getHandleDomain` bestimmen"                                                                                                           | Phase 1 nutzt genau diese beiden, keine dritte Ableitung                                                                                                                   |
+| §4.10 / §5      | „Nie eine VDE-/Normaussage erfinden"; „Unbekannte elektrische Daten als gültig behandeln oder Sicherheitsurteile raten" verboten                                         | Begründet E1 (Rücknahme 95/120) und E5 (die UI dichtet keine Folge mehr)                                                                                                   |
+| §6 DO NOT TOUCH | `lib/electrical.ts` Sicherungsgrenzen, `lib/vde-standards.ts` — „nur mit Tests + expliziter Review"                                                                      | Phase 0 fasst `VDE_SIZES`/`VDE_AMPACITY` und `evaluateCableProtection` an. Explizit freigegeben am 2026-10-09 (Entscheidung E1); die Tests in §7 sind die Review-Grundlage |
+| §6              | `knownPlans/*`, `scripts/goldenmaster/snapshots/*`, `scripts/regression/__snapshots__/*` sind eingefrorene Wahrheit                                                      | Phase 2 darf sie nur mit begründetem Recapture bewegen                                                                                                                     |
+| §7              | „Gate vor jedem Commit: `npm run check`"                                                                                                                                 | Jeder Phase endet mit `npm run check` allein, un-gepipelt, Exit abgefragt                                                                                                  |
+| §8              | „Ein PR pro Aufgabe"; „Neue Erkenntnisse als neue IDs unten anhängen, bestehende Texte nicht umschreiben"                                                                | Phase-Ergebnisse bleiben getrennt; die Befunde aus 2.1–2.7 werden am Ende als neue IDs in `docs/ai/KNOWN-PROBLEMS.md` angehängt                                            |
+| §9              | „Responsive: 375 / 768 / 1440"; „Ein Commit pro Aufgabe; jeder Bugfix mit Regressionstest"                                                                               | Phase 5 misst an `tests/e2e/controls-overlap.spec.ts` und `responsive.spec.ts`                                                                                             |
 
 ## Anhang A — die 19 neuen Regel-IDs
 
@@ -417,27 +481,27 @@ freie Strings in `ValidationWarning.ruleId` und werden durch IDs aus der geschlo
 Union ersetzt. Die Kollision `TOPO-002-dcdc-house-path` (Hook `:776`, `:795`) gegen die Engine-
 `TOPO-002-shunt-direct-bypass`/`-003` wird durch Umbenennung aufgelöst, nicht durch Überladen.
 
-| neue ID | Pass | bisheriges Literal | domain | status bei fehlender Eingabe |
-| --- | --- | --- | --- | --- |
-| `SYN-005-voltage-undeclared` | SYN | `:294` `mixed-voltage-unknown` | MIXED | incomplete |
-| `SYN-006-voltage-mixed-banks` | SYN | `:312` `mixed-voltage-batteries` | MIXED | violated |
-| `DOM-003-bank-member-count` | DOM | `:367` Variante `member-count-mismatch` | DC | violated |
-| `DOM-004-bank-declaration` | DOM | `:367` Variante `declaration-mismatch` | DC | violated |
-| `DOM-005-bank-counts-missing` | DOM | `:367` Variante `missing-counts` | DC | incomplete |
-| `DOM-006-invalid-load-value` | DOM | `:818` `invalid-load` | UNKNOWN | violated |
-| `TOPO-006-parallel-chemistry` | TOPO | `:409` `battery-parallel-chemistry` | DC | violated |
-| `TOPO-007-solar-direct` | TOPO | `:543` `solar-direct` | DC | violated |
-| `TOPO-008-dcdc-partial` | TOPO | `:730` `dcdc-unconnected` | DC | violated |
-| `TOPO-009-dcdc-no-house-battery` | TOPO | `:769` `dcdc-no-house-battery` | DC | violated |
-| `TOPO-010-dcdc-house-path` | TOPO | `:788` `dcdc-house-path` | DC | violated |
-| `PWR-002-mppt-load-rating` | PWR | `:567` `solar-overload` | DC | violated |
-| `AMP-007-cold-voc-window` | AMP | `:465` `solar-voc-window` | DC | violated |
-| `AMP-008-cold-voc-undeclared` | AMP | `:439` `solar-voc-window-unknown` | DC | incomplete |
-| `AMP-009-cold-voc-missing-data` | AMP | `:485` `solar-voc-missing` | DC | incomplete |
-| `AMP-010-cold-voc-uncomputable` | AMP | `:507` `solar-voc-uncomputable` | DC | incomplete |
-| `AMP-011-bms-discharge-limit` | AMP | `:596` `bms-discharge` | DC | violated |
-| `AMP-012-bms-charge-limit` | AMP | `:615` `bms-charge` | DC | violated |
-| `AMP-013-component-current-limit` | AMP | `:708` `component-limit` | DC | violated |
+| neue ID                           | Pass | bisheriges Literal                      | domain  | status bei fehlender Eingabe |
+| --------------------------------- | ---- | --------------------------------------- | ------- | ---------------------------- |
+| `SYN-005-voltage-undeclared`      | SYN  | `:294` `mixed-voltage-unknown`          | MIXED   | incomplete                   |
+| `SYN-006-voltage-mixed-banks`     | SYN  | `:312` `mixed-voltage-batteries`        | MIXED   | violated                     |
+| `DOM-003-bank-member-count`       | DOM  | `:367` Variante `member-count-mismatch` | DC_ELV  | violated                     |
+| `DOM-004-bank-declaration`        | DOM  | `:367` Variante `declaration-mismatch`  | DC_ELV  | violated                     |
+| `DOM-005-bank-counts-missing`     | DOM  | `:367` Variante `missing-counts`        | DC_ELV  | incomplete                   |
+| `DOM-006-invalid-load-value`      | DOM  | `:818` `invalid-load`                   | UNKNOWN | violated                     |
+| `TOPO-006-parallel-chemistry`     | TOPO | `:409` `battery-parallel-chemistry`     | DC_ELV  | violated                     |
+| `TOPO-007-solar-direct`           | TOPO | `:543` `solar-direct`                   | DC_ELV  | violated                     |
+| `TOPO-008-dcdc-partial`           | TOPO | `:730` `dcdc-unconnected`               | DC_ELV  | violated                     |
+| `TOPO-009-dcdc-no-house-battery`  | TOPO | `:769` `dcdc-no-house-battery`          | DC_ELV  | violated                     |
+| `TOPO-010-dcdc-house-path`        | TOPO | `:788` `dcdc-house-path`                | DC_ELV  | violated                     |
+| `PWR-002-mppt-load-rating`        | PWR  | `:567` `solar-overload`                 | DC_ELV  | violated                     |
+| `AMP-007-cold-voc-window`         | AMP  | `:465` `solar-voc-window`               | DC_ELV  | violated                     |
+| `AMP-008-cold-voc-undeclared`     | AMP  | `:439` `solar-voc-window-unknown`       | DC_ELV  | incomplete                   |
+| `AMP-009-cold-voc-missing-data`   | AMP  | `:485` `solar-voc-missing`              | DC_ELV  | incomplete                   |
+| `AMP-010-cold-voc-uncomputable`   | AMP  | `:507` `solar-voc-uncomputable`         | DC_ELV  | incomplete                   |
+| `AMP-011-bms-discharge-limit`     | AMP  | `:596` `bms-discharge`                  | DC_ELV  | violated                     |
+| `AMP-012-bms-charge-limit`        | AMP  | `:615` `bms-charge`                     | DC_ELV  | violated                     |
+| `AMP-013-component-current-limit` | AMP  | `:708` `component-limit`                | DC_ELV  | violated                     |
 
 17 Literale, 19 IDs (das Bank-Literal trägt drei Varianten). Die Nummern sind gegen die bestehende
 Union `RuleId` (`lib/verify/types.ts:206–240`) geprüft: belegt sind dort SYN-001…004, DOM-001…002,
