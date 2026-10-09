@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useId } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ComponentTile } from './ComponentTile';
@@ -28,10 +28,11 @@ export function CategorySection({
   accent,
   onNavigate,
 }: CategorySectionProps) {
+  const listboxId = useId();
   if (items.length === 0) return null;
   return (
     <section className="cad-section">
-      <button type="button" onClick={onToggle} aria-expanded={open} className="cad-section__head">
+      <button type="button" onClick={onToggle} aria-expanded={open} aria-controls={open ? listboxId : undefined} className="cad-section__head">
         <ChevronDown
           className={cn('h-3.5 w-3.5 shrink-0 transition-transform', open ? '' : '-rotate-90')}
           aria-hidden="true"
@@ -40,7 +41,7 @@ export function CategorySection({
         <span className="tabular-nums text-muted-foreground">{items.length}</span>
       </button>
       {open && (
-        <div role="listbox" aria-label={title} className="pb-1">
+        <div id={listboxId} role="listbox" aria-label={title} className="pb-1">
           {items.map((comp) => (
             <ComponentTile
               key={`${comp.type}-${comp.label}`}
