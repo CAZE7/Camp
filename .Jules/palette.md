@@ -67,3 +67,7 @@
 
 **Learning:** Standalone toggle buttons and segmented controls acting as pseudo-radio groups (like the 'Sommer'/'Winter' toggles) must convey which option is currently active to assistive technologies. Without this, screen reader users cannot perceive the current state or understand the result of their selection.
 **Action:** Always add `aria-pressed={condition}` to any button that visually toggles between active and inactive states.
+## 2026-05-18 - Missing aria-controls on CategorySection Toggle
+
+**Learning:** When building custom accordion-style expanding sections (like `CategorySection` in the sidebar), setting `aria-expanded` on the trigger button is necessary but not sufficient. Screen readers also need to know *what* section is being expanded. Without an `aria-controls` attribute pointing to the ID of the collapsible container, the relationship between the button and the content remains hidden.
+**Action:** Always use `useId()` to generate a unique ID for the content container of any collapsible section, and link the trigger button using `aria-controls={isOpen ? id : undefined}`. The `undefined` fallback handles cases where the content is unmounted when closed, preventing broken reference errors.
