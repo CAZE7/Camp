@@ -255,6 +255,7 @@ export function PlannerDashboard() {
         viewMode={viewMode}
         onSelectViewMode={setViewMode}
         focusMode={focusMode}
+        guidedMode={guidedMode}
         onToggleFocusMode={() => setFocusMode(!focusMode)}
         overflow={actions.overflow}
         openMenu={openMenu}

@@ -13,6 +13,7 @@ const mockPlannerStoreState = {
   ],
   waterNodes: [],
   edges: [{ id: 'edge-1', source: 'node-1', target: 'node-2' }],
+  viewMode: 'electric' as const,
   season: 'summer',
   selectedNodes: [{ id: 'node-1' }],
   selectedEdges: [],
@@ -53,6 +54,7 @@ type InspectorMockProps = {
   calculatedSolarWatts?: number;
   nodes?: unknown[];
   edges?: unknown[];
+  viewMode?: 'electric' | 'water';
 };
 
 // Mock Inspector component
@@ -65,6 +67,7 @@ vi.mock('../Inspector', () => ({
       <span data-testid="prop-calculatedSolarWatts">{props.calculatedSolarWatts}</span>
       <span data-testid="prop-nodesLength">{props.nodes?.length || 0}</span>
       <span data-testid="prop-edgesLength">{props.edges?.length || 0}</span>
+      <span data-testid="prop-viewMode">{props.viewMode}</span>
     </div>
   ),
 }));
@@ -80,6 +83,8 @@ describe('PlannerInspector', () => {
     // Check if toggle button is rendered and has the correct title for "open" state
     const toggleButton = screen.getByTitle('Inspector einklappen');
     expect(toggleButton).toBeInTheDocument();
+    expect(toggleButton).toHaveClass('h-11', 'w-11');
+    expect(toggleButton).toHaveAttribute('aria-controls', 'inspector-panel');
 
     // Inspector mock should be in the document
     expect(screen.getByTestId('inspector-mock')).toBeInTheDocument();
@@ -115,6 +120,7 @@ describe('PlannerInspector', () => {
     // We defined mockPlannerStoreState with 2 nodes and 1 edge
     expect(screen.getByTestId('prop-nodesLength')).toHaveTextContent('2');
     expect(screen.getByTestId('prop-edgesLength')).toHaveTextContent('1');
+    expect(screen.getByTestId('prop-viewMode')).toHaveTextContent('electric');
   });
 
   it('updates selectedEdge prop when store changes', async () => {

@@ -4,6 +4,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import CableEdge, { calculateAnimationDuration, collectEdgeErrors, type CableEdgeData } from './CableEdge';
 import { useReactFlow, Position, type Edge, type Node } from '@xyflow/react';
 import { usePlannerStore } from '../../store/usePlannerStore';
+import { clearCableRoutes, publishCableRoutes } from './utils/cableRouteStore';
+import type { PathResult } from './utils/pathfinding';
 import { FUSE_MAX_UNPROTECTED_LENGTH_M, FUSE_MAX_UNPROTECTED_SOURCE } from '../../lib/electrical';
 import { type MockBaseEdgeProps } from '../../test-helpers/reactflowMocks'; // AUDIT T1
 
@@ -72,15 +74,33 @@ describe('CableEdge', () => {
     sourceHandle: null,
   };
 
+  const makePublishedRoute = (status: Partial<PathResult> = {}): PathResult => ({
+    path: 'M 0,0 L 100,100',
+    waypoints: [
+      { x: 0, y: 0 },
+      { x: 100, y: 100 },
+    ],
+    labelX: 50,
+    labelY: 50,
+    offsetX: 0,
+    offsetY: 0,
+    length: 200,
+    bends: 1,
+    crossings: 0,
+    usedSearch: 'astar',
+    ...status,
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     mockReactFlow({
       getNode: vi.fn(),
       getNodes: vi.fn().mockReturnValue([]),
     });
-    // Der echte Store startet ohne Kanten; Tests, die den Store füllen,
+    // Die echten Stores starten ohne Kanten/Routen; Tests, die sie füllen,
     // setzen den Zustand in afterEach zurück.
     act(() => {
+      clearCableRoutes();
       usePlannerStore.setState({ edges: [] });
     });
   });
@@ -90,6 +110,7 @@ describe('CableEdge', () => {
     // RTL-Cleanup, trifft also eine noch gemountete Kante — ohne act() ist das
     // ein State-Update außerhalb des Test-Rahmens.
     act(() => {
+      clearCableRoutes();
       usePlannerStore.setState({ nodes: [], edges: [], waterNodes: [], waterEdges: [] });
     });
   });
@@ -102,6 +123,36 @@ describe('CableEdge', () => {
 
     // Default length is 5m
     // expect(getByText('5.00 m')).toBeInTheDocument(); // Smart labeling hides this
+  });
+
+  it('erklärt eine enge Bauteil-Reserve konsistent in ARIA und Tooltip', () => {
+    act(() => {
+      publishCableRoutes(new Map([[defaultProps.id, makePublishedRoute({ tightMarginUsed: true })]]));
+    });
+    const { container } = renderEdge(<CableEdge {...defaultProps} />);
+    const interaction = container.querySelector('path[role="button"]');
+    const title = container.querySelector('title')?.textContent ?? '';
+
+    expect(interaction?.getAttribute('aria-label')).toContain('Engstelle: reduzierte Bauteil-Reserve');
+    expect(title).toContain('Engstelle: reduzierte Bauteil-Reserve');
+    expect(title).toContain('verbindlicher Mindestabstand wird separat geprüft');
+    expect(title).not.toContain('minimale Bauteil-Freigabe unterschritten');
+  });
+
+  it('kennzeichnet eine Fallback-Route als Routing-Ausnahme statt als clearancefreie Route', () => {
+    act(() => {
+      publishCableRoutes(
+        new Map([
+          [defaultProps.id, makePublishedRoute({ usedSearch: 'fallback', fallbackHitsObstacles: true })],
+        ])
+      );
+    });
+    const { container } = renderEdge(<CableEdge {...defaultProps} />);
+    const interaction = container.querySelector('path[role="button"]');
+    const title = container.querySelector('title')?.textContent ?? '';
+
+    expect(interaction?.getAttribute('aria-label')).toContain('Fallback ohne volle Bauteil-Reserve');
+    expect(title).toContain('Fallback ohne volle Bauteil-Reserve');
   });
 
   // Dreißigste Fassung: Eine Planungsannahme darf nicht als „eingetragen"

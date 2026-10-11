@@ -157,6 +157,7 @@ describe('PlannerInner — responsives Layout', () => {
 
     // Inspector liegt zwischen 768 und 1279 px als Overlay über dem Canvas …
     const aside = screen.getByRole('complementary', { name: 'Eigenschaften' });
+    expect(aside).toHaveAttribute('id', 'inspector-panel');
     expect(aside.className).toContain('md:fixed');
     expect(aside.className).toContain('md:w-80'); // 320 px Slide-over
     // … und dockt erst ab 1280 px als echte Spalte an.
@@ -183,6 +184,13 @@ describe('PlannerInner — responsives Layout', () => {
     expect(canvasColumn.className).toContain('xl:min-w-[600px]');
     expect(canvasColumn.className).not.toContain('w-auto');
     expect(column('planner-sidebar').className).not.toContain('w-auto');
+  });
+
+  it('hides a collapsed docked inspector from desktop focus and accessibility navigation', () => {
+    plannerState.isInspectorOpen = false;
+    render(<PlannerInner />);
+
+    expect(screen.getByTestId('inspector-panel')).toHaveClass('xl:invisible');
   });
 
   it('öffnet den Inspector bei jeder Auswahl und schließt ihn ohne Auswahl', () => {

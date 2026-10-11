@@ -13,10 +13,26 @@ describe('Inspector Component', () => {
   });
 
   describe('Empty Selection', () => {
-    it('renders "Kein Element ausgewählt" when no edge or node is selected', () => {
-      render(<Inspector selectedEdge={null} onChangeLength={mockOnChangeLength} />);
+    it('renders the electrical routing legend when no edge or node is selected', () => {
+      render(<Inspector selectedEdge={null} onChangeLength={mockOnChangeLength} viewMode="electric" />);
 
       expect(screen.getByText('Kein Element ausgewählt')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Leitungs-Legende' })).toBeInTheDocument();
+      expect(screen.getByText('12 V DC · Plus')).toBeInTheDocument();
+      expect(screen.getByText('12 V DC · Minus')).toBeInTheDocument();
+      expect(screen.getByText('230 V AC')).toBeInTheDocument();
+      expect(screen.getByText('Solar')).toBeInTheDocument();
+      expect(screen.getByText(/Kabel verlaufen rechtwinklig/)).toBeInTheDocument();
+    });
+
+    it('shows the water routing legend in water view', () => {
+      render(<Inspector selectedEdge={null} onChangeLength={mockOnChangeLength} viewMode="water" />);
+
+      expect(screen.getByRole('heading', { name: 'Rohr-Legende' })).toBeInTheDocument();
+      expect(screen.getByText('Frischwasser')).toBeInTheDocument();
+      expect(screen.getByText('Abwasser')).toBeInTheDocument();
+      expect(screen.getByText(/Rohre verlaufen rechtwinklig/)).toBeInTheDocument();
+      expect(screen.queryByText('12 V DC · Plus')).not.toBeInTheDocument();
     });
   });
 

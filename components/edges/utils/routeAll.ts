@@ -63,11 +63,20 @@ import { LEGACY_ROUTING_TOKENS, ROUTING_TOKENS } from '../../../lib/routing/toke
 import { ROUTING_GATES } from '../../../lib/routing/rules/costModel';
 import { greedyConflictOrder, type ConflictCandidate } from '../../../lib/routing/rules/conflictGraph';
 import {
+  classifySegmentAgainstNode,
+  classifySegmentAgainstSegment,
   requiredClearanceBetween,
   routingDomainOfEdge,
   type RoutingDomain,
 } from '../../../lib/routing/rules/collision';
-import { routedPathGeometry, type RoutedPathGeometry } from '../../../lib/routing/rules/portBundle';
+import {
+  bundleCorridor,
+  isPortBundleProximity,
+  portBundleSizes,
+  portKeyOf,
+  routedPathGeometry,
+  type RoutedPathGeometry,
+} from '../../../lib/routing/rules/portBundle';
 import { separateCableClearance } from './separation';
 import { compareIds } from '../../../lib/sortOrder';
 
@@ -353,15 +362,11 @@ const rebuild = (
     bends: countBends(waypoints),
     crossings,
     usedSearch,
-    // AUDIT ROUTE-001 (Härtung 2026-09-08): die Härtungs-Marke der
-    // Einzelsuche darf im RouteAll-Rebuild nicht verloren gehen — sonst
-    // wäre ein Fallback ohne Hindernisfreigabe an der UI/Invarianten-
-    // Oberfläche unsichtbar.
+    // Die beiden Statusmarker werden vor dem Rebuild gegen die finalen
+    // Waypoints neu bestimmt. So bleibt die UI-Meldung an der gerenderten
+    // Geometrie, nicht an einer inzwischen ersetzten Einzelsuche hängen.
     fallbackHitsObstacles,
     locked,
-    // ROUTE-BUG-23: Auch die Kennzeichnung „Freigabe geometrisch nicht
-    // einhaltbar" muss den Rebuild überleben — sonst sieht die UI nur eine
-    // unauffällige Leitung, wo der Router eine Ausnahme gemacht hat.
     tightMarginUsed,
   };
 };
@@ -384,50 +389,112 @@ function nodeCenter(node: RoutableNode): { x: number; y: number } {
   };
 }
 
+type PortAwareTube = { rect: Rect; portKeys: readonly string[] };
+
 /**
  * ROUTE-BUG-16: Verlegte Leitungen als Sperrflächen („Tubes").
  *
  * Jede bereits geroutete Kante belegt ihren Korridor: Die Segmente werden zu
  * Boxen der Breite `2 · cableClearance` aufgezogen, damit die nächste Kante
- * mindestens `cableClearance` Abstand hält, statt denselben billigsten
- * Korridor zu wählen. Die Port-Stubs (erstes/letztes Segment) bleiben frei —
- * dort läuft ein Bündel by design gemeinsam (dokumentierte Bündel-Ausnahme
- * von Invariante I2).
+ * mindestens `cableClearance` Abstand hält. Port-Bündel bleiben nur im
+ * tatsächlichen Port-Korridor frei. Die frühere Ausnahme ganzer erster/letzter
+ * Segmente ließ lange Anfahrten ungeschützt und erlaubte dadurch T-Kontakte
+ * weit außerhalb des gemeinsamen Stubs.
  */
-const addTubes = (tubes: Rect[], waypoints: readonly Point[]): void => {
-  const segments = waypointsToSegments(simplifyWaypoints(waypoints));
-  // Halbe Breite = voller Node-Abstand: Zwei Leitungen halten denselben
-  // Abstand wie eine Leitung zum Bauteil. Gemessen ist das der Wert, bei dem
-  // weder doppelte Trassenbelegung (I2) noch Engstellen unter 12 px (I3)
-  // entstehen; die halbe Breite drückte Kanten in 6-px-Korridore
-  // (Kurzsegmente I6, neue Überdeckungen).
-  //
-  // Erstes und letztes Segment bleiben ausgespart: Dort läuft ein Bündel am
-  // gemeinsamen Anschluss by design zusammen. Gemessen und VERWORFEN
-  // (2026-10-06): die Bündel-Zone als Länge (`stubMin` ab Port) statt als
-  // ganzes Segment — sie belegte die langen Endsegmente mit (p11s 464-px-
-  // Korridor) und brach dafür legal zusammenlaufende Leitungen: acdc und
-  // complex je 1 × I3, inverter +1 Kreuzung, complex +600 px Kabelweg.
-  // Die Belegungslücke langer Endsegmente schließt stattdessen die
-  // Verifikations-Reparatur in `pathfinding.ts` — dort, wo sie belegt ist
-  // (I2-Verstoß gegen die verlegte Geometrie).
+const addTubes = (
+  tubes: PortAwareTube[],
+  waypoints: readonly Point[],
+  bundleSizes: ReadonlyMap<string, number>,
+  useMeasuredPortCorridors: boolean
+): void => {
+  const points = simplifyWaypoints([...waypoints]);
+  const segments = waypointsToSegments(points);
+  if (segments.length === 0) return;
+
   const half = ROUTING_TOKENS.cableClearance;
-  for (let i = 1; i < segments.length - 1; i++) {
-    const seg = segments[i];
-    if (!seg) continue;
-    const [a, b] = seg;
-    tubes.push({
-      x: Math.min(a.x, b.x) - half,
-      y: Math.min(a.y, b.y) - half,
-      width: Math.abs(b.x - a.x) + 2 * half,
-      height: Math.abs(b.y - a.y) + 2 * half,
-    });
+  if (!useMeasuredPortCorridors) {
+    // Vor React-Flows Handle-Messung fehlen die tatsächlichen Port-Korridore.
+    // In diesem provisorischen Geometriemodus bleibt die bewährte Sperrfläche
+    // (nur Innensegmente) unverändert; die präzise Port-Ausnahme wird erst
+    // aktiv, sobald gemessene Handle-Bounds vorliegen.
+    for (let i = 1; i < segments.length - 1; i++) {
+      const segment = segments[i];
+      if (!segment) continue;
+      const [a, b] = segment;
+      tubes.push({
+        rect: {
+          x: Math.min(a.x, b.x) - half,
+          y: Math.min(a.y, b.y) - half,
+          width: Math.abs(b.x - a.x) + 2 * half,
+          height: Math.abs(b.y - a.y) + 2 * half,
+        },
+        portKeys: [],
+      });
+    }
+    return;
+  }
+  const first = points[0];
+  const last = points[points.length - 1];
+  if (!first || !last) return;
+  const sourceKey = portKeyOf(first);
+  const targetKey = portKeyOf(last);
+  const sourceSize = bundleSizes.get(sourceKey) ?? 1;
+  const targetSize = bundleSizes.get(targetKey) ?? 1;
+  const sourceCorridor = sourceSize > 1 ? bundleCorridor(sourceSize) : 0;
+  const targetCorridor = targetSize > 1 ? bundleCorridor(targetSize) : 0;
+  const totalLength = pathLength(points);
+  let along = 0;
+
+  const pointAt = (a: Point, b: Point, distance: number, segmentLength: number): Point => {
+    const ratio = distance / segmentLength;
+    return { x: a.x + (b.x - a.x) * ratio, y: a.y + (b.y - a.y) * ratio };
+  };
+
+  for (const [a, b] of segments) {
+    const segmentLength = Math.abs(b.x - a.x) + Math.abs(b.y - a.y);
+    if (segmentLength <= Number.EPSILON) continue;
+    const start = along;
+    const end = along + segmentLength;
+    const cuts = [start, end];
+    for (const boundary of [
+      sourceCorridor,
+      sourceCorridor + half,
+      totalLength - targetCorridor - half,
+      totalLength - targetCorridor,
+    ]) {
+      if (boundary > start && boundary < end) cuts.push(boundary);
+    }
+    cuts.sort((left, right) => left - right);
+
+    for (let i = 0; i + 1 < cuts.length; i++) {
+      const from = cuts[i];
+      const to = cuts[i + 1];
+      if (from === undefined || to === undefined || to - from <= Number.EPSILON) continue;
+      const midpoint = (from + to) / 2;
+      const portKeys: string[] = [];
+      if (sourceCorridor > 0 && midpoint < sourceCorridor) portKeys.push(sourceKey);
+      if (targetCorridor > 0 && midpoint > totalLength - targetCorridor) portKeys.push(targetKey);
+      const p1 = pointAt(a, b, from - start, segmentLength);
+      const p2 = pointAt(a, b, to - start, segmentLength);
+      tubes.push({
+        rect: {
+          x: Math.min(p1.x, p2.x) - half,
+          y: Math.min(p1.y, p2.y) - half,
+          width: Math.abs(p2.x - p1.x) + 2 * half,
+          height: Math.abs(p2.y - p1.y) + 2 * half,
+        },
+        portKeys,
+      });
+    }
+    along = end;
   }
 };
 
 /**
  * Tubes im Ausschnitt der aktuellen Route (PERF-001, wie bei den Nodes) —
- * und auf ihn ZUGESCHNITTEN.
+ * und auf ihn ZUGESCHNITTEN. Tubes im selben Port-Bündel-Korridor werden nur
+ * für Kanten mit genau diesem gemeinsamen Port ausgeblendet; andere Handles
+ * müssen den Kabelabstand auch direkt am Bauteil einhalten.
  *
  * Zuschneiden ist Pflicht, nicht Kosmetik: `searchFrame` spannt das
  * Hanan-Gitter auch über die Außenkanten der Sperrflächen auf. Reichte ein
@@ -436,15 +503,20 @@ const addTubes = (tubes: Rect[], waypoints: readonly Point[]): void => {
  * Hindernisse geladen waren (gemessen: 378 px Umweg quer durch ein Bauteil,
  * I1-Verstoß).
  */
-const tubesForRegion = (tubes: readonly Rect[], region: Rect): Rect[] => {
+const tubesForRegion = (
+  tubes: readonly PortAwareTube[],
+  region: Rect,
+  currentPorts: ReadonlySet<string>
+): Rect[] => {
   const out: Rect[] = [];
   for (let i = 0; i < tubes.length; i++) {
-    const r = tubes[i];
-    if (!r) continue;
-    const x0 = Math.max(r.x, region.x);
-    const y0 = Math.max(r.y, region.y);
-    const x1 = Math.min(r.x + r.width, region.x + region.width);
-    const y1 = Math.min(r.y + r.height, region.y + region.height);
+    const tube = tubes[i];
+    if (!tube || tube.portKeys.some((portKey) => currentPorts.has(portKey))) continue;
+    const { x, y, width, height } = tube.rect;
+    const x0 = Math.max(x, region.x);
+    const y0 = Math.max(y, region.y);
+    const x1 = Math.min(x + width, region.x + region.width);
+    const y1 = Math.min(y + height, region.y + region.height);
     if (x1 - x0 <= 0 || y1 - y0 <= 0) continue;
     out.push({ x: x0, y: y0, width: x1 - x0, height: y1 - y0 });
   }
@@ -695,6 +767,19 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
     if (node) nodeById.set(node.id, node);
   }
 
+  // Handle-Bounds stehen erst nach dem React-Flow-Mount zur Verfügung. Erst
+  // wenn ALLE vorhandenen Routen-Endpunkte gemessen sind, ist die präzise
+  // Port-Korridor-Geometrie zuverlässig genug für die strengere Tube-Ausnahme;
+  // der erste/partielle Layout-Pass bleibt im provisorischen Routingmodus.
+  const hasMeasuredPortGeometry = edges.every((edge) => {
+    const source = nodeById.get(edge.source);
+    const target = nodeById.get(edge.target);
+    return (
+      (!source || nodeHandleBounds(source) !== undefined) &&
+      (!target || nodeHandleBounds(target) !== undefined)
+    );
+  });
+
   const edgeById = new Map<string, RouteEdgeRef>(edges.map((edge) => [edge.id, edge]));
 
   const allObstacles = nodesToObstacles(nodes, new Set());
@@ -774,6 +859,27 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
     ...workOrder.filter((edge) => !isLockedRouteEdge(edge)),
   ];
   const lockedIds = new Set(edges.filter(isLockedRouteEdge).map((edge) => edge.id));
+  // Bundle-Größen aus den endgültigen Port-Koordinaten aller Routen vorab
+  // bestimmen. Die Tube-Freistellung muss dieselbe Korridorgröße verwenden
+  // wie I3 (`portBundleSizes`/`bundleCorridor`), auch wenn eine Route später
+  // als fixierter Snapshot statt aus den aktuellen Handles kommt.
+  const bundleSizes = portBundleSizes(
+    routingOrder.flatMap((edge) => {
+      const locked = isLockedRouteEdge(edge) ? validStoredLockedPath(edge) : undefined;
+      if (!locked && (!nodeById.has(edge.source) || !nodeById.has(edge.target))) return [];
+      const source = locked?.[0] ?? resolveHandle(edge, 'source');
+      const target = locked?.[locked.length - 1] ?? resolveHandle(edge, 'target');
+      return [
+        {
+          id: edge.id,
+          waypoints: [
+            { x: source.x, y: source.y },
+            { x: target.x, y: target.y },
+          ],
+        },
+      ];
+    })
+  );
 
   // Domänen-Autorität: `data.edgeDomain` (kennt `water`) sonst Knotentyp +
   // Handles — dieselbe Quelle wie Anzeige, Sizing und Validierung
@@ -807,7 +913,7 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
   const raw: { id: string; waypoints: Point[]; result: PathResult }[] = [];
   const dynamicRoutedSegments: Segment[] = [];
   // ROUTE-BUG-16: wächst mit jeder verlegten Kante (siehe `addTubes`).
-  const tubes: Rect[] = [];
+  const tubes: PortAwareTube[] = [];
   // ROUTE-010 / p11: Geometrie der bereits verlegten Kanten (vollständig,
   // inklusive Port-Stubs) — Eingabe der Verifikations-Reparatur
   // (`priorVerdict` in `pathfinding.ts`). Die Stubs sind der Punkt: p11s I2
@@ -836,6 +942,12 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
     if (!srcNode && !tgtNode) continue;
     const src = resolveHandle(edge, 'source');
     const tgt = resolveHandle(edge, 'target');
+    const sourcePortKey = portKeyOf({ x: src.x, y: src.y });
+    const targetPortKey = portKeyOf({ x: tgt.x, y: tgt.y });
+    const currentPorts = new Set([sourcePortKey, targetPortKey]);
+    const lanes = portLanes.get(edge.id);
+    const lane = lanes?.lane ?? 0;
+    const laneTarget = lanes?.laneTarget ?? 0;
     const exclude = new Set([edge.source, edge.target]);
     const region: Rect = {
       x: Math.min(src.x, tgt.x) - OBSTACLE_REGION_PAD,
@@ -851,7 +963,6 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
     // ±19/±38 px je Bauteil-Paar): zwei Geschwister-Kanten erhielten
     // denselben Betrag, knickten also an derselben Stelle ab und belegten
     // dieselbe Trasse (I2). Ein Port ohne Bündel fährt auf Lane 0.
-    const lanes = portLanes.get(edge.id);
     const request = {
       sourceX: src.x,
       sourceY: src.y,
@@ -867,8 +978,8 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
       // doppelte Belegung der Nachbarspur). Die Trennung von Plus/Minus ist
       // Aufgabe des Fan-Outs: beide Leiter verlassen dasselbe Bauteil an
       // verschiedenen Ports oder bekommen verschiedene Lanes.
-      lane: lanes?.lane ?? 0,
-      laneTarget: lanes?.laneTarget ?? 0,
+      lane,
+      laneTarget,
       // Rang im Bündel — greift nur, wenn die Stub-Kappung bindet
       // (ROUTE-BUG-34, `capStep` in pathfinding.ts).
       stubCapRank: lanes?.laneRank,
@@ -889,6 +1000,122 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
       // Stubs) für die Verifikations-Reparatur.
       priorGeometries,
     };
+    const measureCandidateConflicts = (waypoints: readonly Point[]): { hard: number; weighted: number } => {
+      const candidate = routedPathGeometry(waypoints);
+      let hard = 0;
+      let weighted = 0;
+      const candidateObstacles = obstaclesNear(
+        exclude,
+        routeWindow(waypoints, ROUTING_TOKENS.cableClearance)
+      );
+      for (const segment of candidate.segments) {
+        for (const obstacle of candidateObstacles) {
+          const verdict = classifySegmentAgainstNode(segment, obstacle, ROUTING_TOKENS.cableClearance);
+          if (verdict.class === 'hard') hard += 1;
+          else if (verdict.class === 'weighted') weighted += 1;
+        }
+      }
+      const currentDomain = domainById.get(edge.id);
+      for (let priorIndex = 0; priorIndex < priorGeometries.length; priorIndex++) {
+        const prior = priorGeometries[priorIndex];
+        const priorId = raw[priorIndex]?.id;
+        if (!prior || !priorId) continue;
+        const priorDomain = domainById.get(priorId);
+        const clearance =
+          currentDomain !== undefined && priorDomain !== undefined
+            ? requiredClearanceBetween(currentDomain, priorDomain)
+            : ROUTING_TOKENS.cableClearance;
+        for (const ownSegment of candidate.segments) {
+          for (const priorSegment of prior.segments) {
+            if (
+              isPortBundleProximity(
+                candidate,
+                prior,
+                ownSegment,
+                priorSegment,
+                ROUTING_TOKENS.portFacingClearance,
+                bundleSizes
+              )
+            ) {
+              continue;
+            }
+            const verdict = classifySegmentAgainstSegment(ownSegment, priorSegment, clearance);
+            if (verdict.class === 'hard') hard += 1;
+            else if (verdict.class === 'weighted') weighted += 1;
+          }
+        }
+      }
+      return { hard, weighted };
+    };
+    const conflictScore = (conflicts: { hard: number; weighted: number }): number =>
+      conflicts.hard * 100 + conflicts.weighted;
+
+    const routeWithTubes = (requestForRoute: typeof request, routeTubes: Rect[]): PathResult => {
+      const initial = findCablePath({ ...requestForRoute, cableTubes: routeTubes });
+      const hasAssignedPortLane = lane !== 0 || laneTarget !== 0;
+      if (
+        !hasMeasuredPortGeometry ||
+        !hasAssignedPortLane ||
+        !pathHitsObstacles(initial.waypoints, routeTubes)
+      ) {
+        return initial;
+      }
+
+      // Nur bei einem tatsächlichen Tube-Treffer wird ein strenger Fan-out-
+      // Retry zugelassen. Erst die vorhandenen Tubes umgehen; falls nur ein
+      // echter Kabel-Kreuzungspunkt die Route freigibt, wird ein tube-freier
+      // Kandidat separat gegen die vollständige I1/I2/I3-Geometrie geprüft.
+      // Der normale Request erhält das Fan-out-Flag ausdrücklich NICHT.
+      const retryInput = {
+        ...requestForRoute,
+        // Im gezielten Retry bleibt der Seitenschritt des Bündels erhalten,
+        // aber die geraden Stubs werden auf die Mindestlänge zurückgesetzt.
+        // So beginnt der Fan-out innerhalb der gemeinsamen Port-Zone statt
+        // erst nach einem langen, bereits überlappenden Stub.
+        lane: 0,
+        laneTarget: 0,
+        laneStep: lane,
+        laneStepTarget: laneTarget,
+        stubCapRank: undefined,
+        stubCapRankTarget: undefined,
+        stubTie: undefined,
+        stubTieTarget: undefined,
+        // Die eingebaute Reparatur nimmt lange Port-Überdeckungen zum Anlass,
+        // den Stub zu verlängern. Der gezielte Retry misst die vollständige
+        // Geometrie selbst und muss diesen gegenläufigen Eingriff auslassen.
+        priorGeometries: [],
+        crossingSegments: [],
+        requireFanOutLane: true,
+        skipCache: true,
+      };
+      const before = measureCandidateConflicts(initial.waypoints);
+      const accept = (candidate: PathResult): boolean => {
+        const after = measureCandidateConflicts(candidate.waypoints);
+        return (
+          conflictScore(after) < conflictScore(before) &&
+          after.hard === 0 &&
+          after.weighted === 0 &&
+          !(candidate.usedSearch === 'fallback' && candidate.fallbackHitsObstacles)
+        );
+      };
+
+      const fannedOut = findCablePath({ ...retryInput, cableTubes: routeTubes });
+      if (
+        !pathHitsObstacles(fannedOut.waypoints, routeTubes) &&
+        !fannedOut.tightMarginUsed &&
+        accept(fannedOut)
+      ) {
+        return fannedOut;
+      }
+
+      // Eine echte Kreuzung ist zulässig (Soft-Konflikt), solange sie kein
+      // Touch, keine Überdeckung und keine Clearance-Unterschreitung erzeugt.
+      // Diese Suche lässt daher die Tubes weg, hält aber die Fan-out-Lane fest
+      // und nimmt das Ergebnis nur bei messbar besserer, I1–I3-freier Geometrie.
+      const crossingCandidate = findCablePath({ ...retryInput, cableTubes: [] });
+      if (!crossingCandidate.tightMarginUsed && accept(crossingCandidate)) return crossingCandidate;
+      return initial;
+    };
     let request_ = request;
     const storedLockedPath = isLockedRouteEdge(edge) ? validStoredLockedPath(edge) : undefined;
     let result: PathResult;
@@ -897,7 +1124,7 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
       // optimization may change a point. Final validation reports conflicts.
       result = rebuild([...storedLockedPath], 0, 'locked', [], false, false, true);
     } else {
-      result = findCablePath({ ...request_, cableTubes: tubesForRegion(tubes, region) });
+      result = routeWithTubes(request_, tubesForRegion(tubes, region, currentPorts));
       // ROUTE-BUG-24: Das Hindernis-Fenster (PERF-001) ist die Bounding-Box der
       // beiden Ports plus Puffer. Verlässt die gefundene Route dieses Fenster,
       // lagen Bauteile jenseits der Grenze außerhalb jeder Prüfung — die
@@ -917,7 +1144,7 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
         if (wider.length === request_.obstacles.length) break;
         request_ = { ...request_, obstacles: wider };
         window = span;
-        result = findCablePath({ ...request_, cableTubes: tubesForRegion(tubes, span) });
+        result = routeWithTubes(request_, tubesForRegion(tubes, span, currentPorts));
       }
       // ROUTE-BUG-24, Absicherung des Limits: Verlässt die Route das Fenster
       // auch nach dem dritten Durchgang NOCH, lag die Drei-Runden-Schranke am
@@ -934,7 +1161,7 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
         const full = obstaclesNear(exclude, routeWindow(result.waypoints, 0));
         if (full.length > request_.obstacles.length) {
           request_ = { ...request_, obstacles: full };
-          result = findCablePath({ ...request_, cableTubes: tubesForRegion(tubes, finalSpan) });
+          result = routeWithTubes(request_, tubesForRegion(tubes, finalSpan, currentPorts));
         }
       }
       // ROUTE-BUG-16 (Rangfolge der Garantien): Trassen-Belegung ist eine
@@ -949,7 +1176,7 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
       }
     }
     raw.push({ id: edge.id, waypoints: result.waypoints, result });
-    addTubes(tubes, result.waypoints);
+    addTubes(tubes, result.waypoints, bundleSizes, hasMeasuredPortGeometry);
     priorGeometries.push(routedPathGeometry(result.waypoints));
     const segments = waypointsToSegments(result.waypoints);
     dynamicRoutedSegments.push(...segments);
@@ -1106,13 +1333,30 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
     if (!item) continue;
     const wp = finalWaypoints.get(id) ?? item.waypoints;
     const crossings = crossingsByEdge.get(id) ?? 0;
+    const edgeRef = edgeById.get(id);
+    const excludedNodes = new Set<string>();
+    if (edgeRef) {
+      excludedNodes.add(edgeRef.source);
+      excludedNodes.add(edgeRef.target);
+    }
+    // Nudge, Bend-Merge und Clearance-Trenngang können die Einzelsuche
+    // verschieben oder reparieren. Darum beide UI-Marken auf den finalen
+    // Waypoints und denselben vollen Hindernisrand (OBSTACLE_MARGIN) beziehen.
+    const finalObstacles = obstaclesNear(excludedNodes, routeWindow(wp, OBSTACLE_MARGIN));
+    const finalPathHitsMargin = pathHitsObstacles(
+      wp,
+      finalObstacles.map((obstacle) => inflateRect(obstacle, OBSTACLE_MARGIN))
+    );
+    const fallbackHitsObstacles =
+      item.result.usedSearch === 'fallback' && finalPathHitsMargin ? true : undefined;
+    const tightMarginUsed = item.result.usedSearch !== 'fallback' && finalPathHitsMargin ? true : undefined;
     const routed = rebuild(
       wp,
       crossings,
       item.result.usedSearch,
       hopsByEdge.get(id) ?? [],
-      item.result.fallbackHitsObstacles,
-      item.result.tightMarginUsed,
+      fallbackHitsObstacles,
+      tightMarginUsed,
       item.result.locked || lockedIds.has(id)
     );
     // Bündel-Versatz desselben Kantenpaars — gehört hierher, nicht in die
@@ -1120,7 +1364,6 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
     // zusammen mit der Kollisionsauflösung einrechnen (Befund 2026-09-28:
     // vorher addierte `CableEdge` ihn nachträglich auf die fertige Position,
     // womit die Kollisionsprüfung eine andere Lage prüfte als die gerenderte).
-    const edgeRef = edgeById.get(id);
     const bundleNudge = edgeLabelNudge({
       edgeId: id,
       source: edgeRef?.source ?? '',

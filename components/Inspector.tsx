@@ -64,23 +64,83 @@ interface InspectorProps {
   nodes?: PlannerFlowNode[];
   chargingTimeStr?: string;
   calculatedSolarWatts?: number;
+  viewMode?: PlannerViewMode;
 }
 
-const EmptySelection = () => (
-  <div className="flex h-full flex-col items-center justify-center text-muted-foreground">
-    <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
-      <MousePointerClick className="h-7 w-7 text-primary opacity-70" />
+type PlannerViewMode = 'electric' | 'water';
+
+type LegendEntry = {
+  label: string;
+  stroke: string;
+  dash?: string;
+};
+
+function RoutingLegend({ viewMode }: { viewMode: PlannerViewMode }) {
+  const entries: LegendEntry[] =
+    viewMode === 'water'
+      ? [
+          { label: 'Frischwasser', stroke: 'var(--pipe-fresh)' },
+          { label: 'Abwasser', stroke: 'var(--pipe-gray)', dash: '10 6' },
+        ]
+      : [
+          { label: '12 V DC · Plus', stroke: 'var(--wire-dc)' },
+          { label: '12 V DC · Minus', stroke: 'var(--wire-dc-minus)' },
+          { label: '230 V AC', stroke: 'var(--wire-ac)', dash: '10 6' },
+          { label: 'Solar', stroke: 'var(--wire-solar)', dash: '3 5' },
+        ];
+
+  return (
+    <section className="cad-routing-legend" aria-labelledby="routing-legend-title">
+      <h3 id="routing-legend-title" className="cad-routing-legend__title">
+        {viewMode === 'water' ? 'Rohr-Legende' : 'Leitungs-Legende'}
+      </h3>
+      <ul className="cad-routing-legend__list">
+        {entries.map((entry) => (
+          <li key={entry.label} className="cad-routing-legend__row">
+            <svg className="cad-routing-legend__sample" viewBox="0 0 40 16" aria-hidden="true">
+              <path
+                d="M2 13H15V3H36"
+                fill="none"
+                stroke={entry.stroke}
+                strokeDasharray={entry.dash}
+                strokeLinecap="square"
+                strokeLinejoin="round"
+                strokeWidth="2.5"
+                vectorEffect="non-scaling-stroke"
+              />
+            </svg>
+            <span>{entry.label}</span>
+          </li>
+        ))}
+      </ul>
+      <p className="cad-routing-legend__note">
+        {viewMode === 'water'
+          ? 'Rohre verlaufen rechtwinklig und werden beim Verschieben automatisch neu geführt.'
+          : 'Kabel verlaufen rechtwinklig. Kreuzungen markiert eine Brücke; beim Verschieben routet der Plan neu.'}
+      </p>
+    </section>
+  );
+}
+
+const EmptySelection = ({ viewMode }: { viewMode: PlannerViewMode }) => (
+  <div className="cad-empty-selection">
+    <div className="cad-empty-selection__intro">
+      <span className="cad-empty-selection__icon" aria-hidden="true">
+        <MousePointerClick className="h-5 w-5" />
+      </span>
+      <div>
+        <p className="font-semibold text-foreground">Kein Element ausgewählt</p>
+        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+          Bauteil oder Leitung im Plan auswählen – hier erscheinen die passenden Einstellungen.
+        </p>
+      </div>
     </div>
-    <p className="font-semibold text-foreground">Kein Element ausgewählt</p>
-    <p className="mt-2 px-4 text-center text-xs leading-relaxed">
-      Tippe eine Komponente oder Leitung im Plan an – hier erscheinen dann nur die passenden Einstellungen
-      dazu.
-    </p>
-    <div className="mt-4 space-y-1.5 px-5 text-left text-xs">
-      <p className="font-semibold text-foreground">So gehst du vor:</p>
-      <p>1. Bauteil aus der linken Leiste ziehen</p>
-      <p>2. Bauteile verbinden</p>
-      <p>3. Hier Werte wie Kapazität oder Länge anpassen</p>
+
+    <RoutingLegend viewMode={viewMode} />
+
+    <div className="cad-empty-selection__steps">
+      <p className="panel-title">Schnellstart</p>
+      <p>Bauteile ergänzen → automatisch verbinden → prüfen.</p>
     </div>
   </div>
 );
@@ -260,6 +320,7 @@ export default function Inspector({
   nodes,
   chargingTimeStr,
   calculatedSolarWatts,
+  viewMode = 'electric',
 }: InspectorProps) {
   const hasSelection = selectedNode || selectedEdge;
 
@@ -273,7 +334,7 @@ export default function Inspector({
       </div>
 
       {!hasSelection ? (
-        <EmptySelection />
+        <EmptySelection viewMode={viewMode} />
       ) : selectedNode ? (
         <NodeInspector
           node={selectedNode}

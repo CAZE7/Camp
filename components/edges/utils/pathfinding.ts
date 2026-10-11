@@ -502,6 +502,11 @@ export type PortInput = {
   /** Seitenschritt am Ziel-Port. Fällt auf `laneStep`, dann `laneTarget`. */
   laneStepTarget?: number;
   /**
+   * Bei echtem Fan-Out keine lane-0-Alternative anbieten; benachbarte
+   * Seitenschritte derselben zugewiesenen Lane bleiben als Ausweichkandidaten.
+   */
+  requireFanOutLane?: boolean;
+  /**
    * Obergrenze der Quell-Stub-Länge aus der Bauteil-Freigabe (ROUTE-BUG-31).
    * Setzt `findCablePath` aus den Rohboxen; fehlt sie, gilt keine Grenze.
    */
@@ -732,6 +737,46 @@ export function portFrame(input: PortInput): PortFrame {
   };
 }
 
+/**
+ * Kandidaten-Frames für Port-Lanes. Im normalen Modus bleibt die bestehende
+ * Lane-0-Alternative erhalten. Bei `requireFanOutLane` bleiben nur die
+ * zugewiesene Fan-Out-Lane und benachbarte Seitenschritte derselben Lane;
+ * so kann die Route ausweichen, ohne das Fan-Out aufzuheben.
+ */
+const portFrames = (input: PortInput): PortFrame[] => {
+  const step = input.laneStep ?? input.lane ?? 0;
+  const stepTarget = input.laneStepTarget ?? input.laneTarget ?? input.lane ?? 0;
+  if (!input.requireFanOutLane || (step === 0 && stepTarget === 0)) {
+    return step === 0 && stepTarget === 0
+      ? [portFrame(input)]
+      : [portFrame(input), portFrame({ ...input, laneStep: 0, laneStepTarget: 0 })];
+  }
+
+  const frames = [portFrame(input)];
+  const offsets = [
+    ROUTING_TOKENS.laneGrid,
+    -ROUTING_TOKENS.laneGrid,
+    2 * ROUTING_TOKENS.laneGrid,
+    -2 * ROUTING_TOKENS.laneGrid,
+  ];
+  for (const offset of offsets) {
+    if (step !== 0 && step + offset !== 0) {
+      frames.push(portFrame({ ...input, laneStep: step + offset }));
+    }
+    if (stepTarget !== 0 && stepTarget + offset !== 0) {
+      frames.push(portFrame({ ...input, laneStepTarget: stepTarget + offset }));
+    }
+  }
+
+  const seen = new Set<string>();
+  return frames.filter((frame) => {
+    const key = `${frame.S3.x},${frame.S3.y}|${frame.T3.x},${frame.T3.y}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
+
 /** Zeigen die Port-Normalen aufeinander (einschließlich positiver Projektion)? */
 const isFacing = (f: PortFrame): boolean => portsFaceEachOther(f.S, f.T, f.ds, f.dt);
 
@@ -906,12 +951,7 @@ export function catalogCandidates(input: PortInput): Point[][] {
   // von der anderen Seite an — wird der Schritt zum Haken (hin und zurück).
   // Beide Varianten stehen zur Wahl; `scoreCatalog` verwirft den Haken über
   // die Mängel-Strafe (I4).
-  const step = input.laneStep ?? input.lane ?? 0;
-  const stepTarget = input.laneStepTarget ?? input.laneTarget ?? input.lane ?? 0;
-  const frames =
-    step === 0 && stepTarget === 0
-      ? [portFrame(input)]
-      : [portFrame(input), portFrame({ ...input, laneStep: 0, laneStepTarget: 0 })];
+  const frames = portFrames(input);
   for (const f of frames) {
     for (const variant of ['primary', 'late', 'midX', 'midY'] as const) {
       out.push(assembleCatalog(f, coreWaypoints(f, variant)));
@@ -948,12 +988,7 @@ export function catalogCandidates(input: PortInput): Point[][] {
  * Szenario-Kenntnis — translation-invariant wie der übrige Katalog.
  */
 const midAxisCandidates = (input: PortInput): Point[][] => {
-  const step = input.laneStep ?? input.lane ?? 0;
-  const stepTarget = input.laneStepTarget ?? input.laneTarget ?? input.lane ?? 0;
-  const frames =
-    step === 0 && stepTarget === 0
-      ? [portFrame(input)]
-      : [portFrame(input), portFrame({ ...input, laneStep: 0, laneStepTarget: 0 })];
+  const frames = portFrames(input);
   const out: Point[][] = [];
   for (const f of frames) {
     for (const variant of ['midX', 'midY'] as const) {
@@ -1761,6 +1796,8 @@ export type PathRequest = {
   laneStep?: number;
   /** Seitenschritt am Ziel-Port. Fällt auf `laneStep`, dann `laneTarget`. */
   laneStepTarget?: number;
+  /** Fan-Out-Lane erzwingen, statt bei Hindernissen auf Lane 0 zurückzufallen. */
+  requireFanOutLane?: boolean;
   /**
    * Bereits verlegte Leitungen als dünne Sperrflächen (px-Boxen um deren
    * Segmente, OHNE die Port-Stubs). Verhindert, dass zwei Kanten denselben
@@ -1831,15 +1868,12 @@ export type PathResult = {
    */
   fallbackHitsObstacles?: boolean;
   /**
-   * ROUTE-BUG-23: true, wenn diese Route die Bauteil-Freigabe NICHT einhält,
-   * weil sie geometrisch nicht einhaltbar war — der Router hat die Rangfolge
-   * der Garantien bis zur letzten Stufe ausgeschöpft (R-7 „Stub-Recht":
-   * Hindernis-Box auf Rohbox + 2 px, bzw. Wiederholungslauf mit halbiertem
-   * Margin). Der Pfad ist orthogonal und im Rohmodell kollisionsfrei, liegt
-   * aber enger als `cableClearance` am Bauteil.
-   *
-   * Nicht versteckt, sondern gekennzeichnet: Die UI kann die Leitung
-   * markieren, und `npm run routing:audit` zählt dieselben Fälle als I3.
+   * ROUTE-BUG-23: true, wenn der endgültige Pfad die normale
+   * `OBSTACLE_MARGIN`-Reserve zu einem fremden Bauteil unterschreitet.
+   * Das allein bedeutet NICHT, dass auch die verbindliche
+   * `cableClearance` unterschritten ist: Darüber entscheidet das Final-Gate
+   * (I3). `routeAllCables` berechnet die Marke nach allen Geometrie-Pässen
+   * erneut, damit sie zur tatsächlich gerenderten Trasse passt.
    */
   tightMarginUsed?: boolean;
   /** Route was rendered from its persisted immutable user snapshot. */
@@ -1956,7 +1990,7 @@ const requestKey = (input: PathRequest, obstacles: Rect[]): string =>
   `${quantize(input.sourceX)},${quantize(input.sourceY)},${input.sourcePosition ?? ''},` +
   `${quantize(input.targetX)},${quantize(input.targetY)},${input.targetPosition ?? ''},` +
   `${input.lane ?? 0}/${input.laneTarget ?? ''}/${input.laneStep ?? ''}/` +
-  `${input.laneStepTarget ?? ''},${input.borderRadius ?? ROUTE_BORDER_RADIUS},` +
+  `${input.laneStepTarget ?? ''}/${input.requireFanOutLane ? 1 : 0},${input.borderRadius ?? ROUTE_BORDER_RADIUS},` +
   // ROUTE-BUG-34: Der Bündel-Rang ändert die Stub-Länge und gehört damit in
   // den Schlüssel wie jeder andere Routing-Eingang.
   `${input.stubCapRank ?? ''}/${input.stubCapRankTarget ?? ''},` +
@@ -2234,12 +2268,7 @@ function searchOnce(
 
   // A*-Varianten: mit Seitenschritt und (falls einer gesetzt war) ohne.
   // Gewählt wird die erste mangelfreie, sonst die mit der geringsten Strafe.
-  const step = input.laneStep ?? lane;
-  const stepTarget = input.laneStepTarget ?? input.laneTarget ?? lane;
-  const frames =
-    step === 0 && stepTarget === 0
-      ? [portFrame({ ...input, lane })]
-      : [portFrame({ ...input, lane }), portFrame({ ...input, lane, laneStep: 0, laneStepTarget: 0 })];
+  const frames = portFrames({ ...input, lane });
   // Ergebnis-Sammler als Objekt: Die Zuweisungen entstehen in `runAttempts`
   // (Closure) — ein `let` würde von der Kontrollfluss-Analyse nicht gesehen.
   const best: {
@@ -2274,8 +2303,9 @@ function searchOnce(
   // Versuche nicht abschneidet, wenn der Tube-Versuch selbst mangelfrei war.
   const attempts: { tubes: readonly Rect[]; relaxed: boolean }[] =
     tubes.length > 0 ? [{ tubes, relaxed: false }] : [{ tubes: [], relaxed: false }];
-  const looseAttempts: { tubes: readonly Rect[]; relaxed: boolean }[] =
-    tubes.length > 0
+  const looseAttempts: { tubes: readonly Rect[]; relaxed: boolean }[] = input.requireFanOutLane
+    ? [{ tubes, relaxed: true }]
+    : tubes.length > 0
       ? [
           { tubes: [], relaxed: false },
           { tubes, relaxed: true },
@@ -2467,15 +2497,23 @@ function searchOnce(
         }
       }
       if (bestRepair) {
-        // Nachvollziehbarkeit (dieselbe Konvention wie der Fallback-Warn):
-        // Eine Trassenänderung durch die Reparatur wird im Entwicklungs- und
-        // Testlauf gemeldet — still passiert sie nie.
+        // Eine erfolgreiche Reparatur ist eine Diagnose, kein Fehler: Sie wird
+        // im Entwicklungs-/Testlauf als Info protokolliert. Die Score-Bilanz
+        // ist gewichtet (harte Überdeckung = 100, Clearance-Unterschreitung =
+        // 1), daher zusätzlich die eindeutige Zahl harter Überdeckungen.
         if (process.env.NODE_ENV !== 'production') {
-          console.warn(
-            `[pathfinding] ADR-0032-Reparatur: Tube-Durchstoß mit hartem Verstoß ` +
+          const repairedHardViolations = countHardInnerViolations(
+            bestRepair.found.waypoints,
+            crossingSegments
+          );
+          // eslint-disable-next-line no-console -- erfolgreicher Reparaturlauf, kein Fehler/Warnhinweis.
+          console.info(
+            `[pathfinding] ADR-0032-Reparatur abgeschlossen: Tube-Durchstoß ` +
               `(${best.found.waypoints[0]!.x},${best.found.waypoints[0]!.y})→` +
-              `(${best.found.waypoints[best.found.waypoints.length - 1]!.x},${best.found.waypoints[best.found.waypoints.length - 1]!.y}), ` +
-              `Verstöße ${baseScore}→${bestRepair.score}, Kreuzungen ${baseCrossings}→${bestRepair.crossings}, ` +
+              `(${best.found.waypoints[best.found.waypoints.length - 1]!.x},${best.found.waypoints[best.found.waypoints.length - 1]!.y}); ` +
+              `harte Überdeckungen ${baseHardViolations}→${repairedHardViolations}, ` +
+              `gewichteter Konfliktscore (Überdeckung=100, Clearance-Unterschreitung=1) ` +
+              `${baseScore}→${bestRepair.score}, Kreuzungen ${baseCrossings}→${bestRepair.crossings}, ` +
               `Länge ${baseLength.toFixed(0)}→${bestRepair.length.toFixed(0)} px`
           );
         }
@@ -2489,7 +2527,10 @@ function searchOnce(
   // Kein freier Stub-Punkt oder keine freie Suche: Lane komplett
   // zurücknehmen und erneut versuchen — ein Bündel ohne eigene Lane ist
   // besser als gar kein hindernisfreier Pfad.
-  if (lane !== 0 || step !== 0 || stepTarget !== 0) {
+  if (
+    !input.requireFanOutLane &&
+    (lane !== 0 || (input.laneStep ?? 0) !== 0 || (input.laneStepTarget ?? input.laneTarget ?? lane) !== 0)
+  ) {
     const found = searchFrame(
       portFrame({ ...input, lane: 0, laneTarget: 0, laneStep: 0, laneStepTarget: 0 }),
       obstacles,
@@ -2613,14 +2654,18 @@ export function findCablePath(input: PathRequest): PathResult {
   }
 
   const result = assemble(best.waypoints, bestCross, best.usedSearch, radius);
-  if (best.tight) result.tightMarginUsed = true;
+  // Statusmarker beschreiben die Geometrie, die tatsächlich gerendert wird,
+  // nicht bloß die Suchstufe, die sie ursprünglich erzeugt hat. Insbesondere
+  // kann die Stub-Ausnahme einen Pfad enger an ein Fremdbauteil führen, auch
+  // wenn kein separater Halb-Margin-Retry nötig war.
+  const finalPathHitsMargin = pathHitsObstacles(result.waypoints, obstacles);
   if (result.usedSearch === 'fallback') {
     // R-3: Der Notfallpfad ist orthogonal, hat aber keine Freigabe-Garantie
     // (der Wiederholungslauf mit halbiertem Margin ist oben gelaufen).
     // AUDIT ROUTE-001 (Ausnahme a): Kollision des Fallback-Pfads gegen die
-    // Hindernis-Boxen explizit kennzeichnen — zählbar für Invarianten,
-    // statt die harte Verletzung nur im Log zu verstecken.
-    result.fallbackHitsObstacles = pathHitsObstacles(result.waypoints, obstacles);
+    // aufgeblasenen Hindernis-Boxen explizit kennzeichnen — zählbar für
+    // Invarianten, statt den Konflikt nur im Log zu verstecken.
+    result.fallbackHitsObstacles = finalPathHitsMargin;
     fallbackCount += 1;
     if (process.env.NODE_ENV !== 'production') {
       console.warn(
@@ -2629,6 +2674,11 @@ export function findCablePath(input: PathRequest): PathResult {
           `${allObstacles.length} Hindernisse, ${crossingSegments.length} Fremdsegmente`
       );
     }
+  } else if (finalPathHitsMargin) {
+    // Engstelle statt Fehler: Die normale Routing-Reserve (OBSTACLE_MARGIN)
+    // wird unterschritten. Ob auch die verbindliche cableClearance verletzt
+    // ist, entscheidet separat das Final-Gate (I3).
+    result.tightMarginUsed = true;
   }
   if (!input.skipCache) cacheSet(key, result);
   return result;

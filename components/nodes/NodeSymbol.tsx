@@ -174,9 +174,11 @@ export function NodeSymbol({ kind }: { kind: NodeSymbolKind }) {
           />
         )}
       </span>
-      <span className="node-symbol__code" data-testid="din-code">
-        {code}
-        <span className="ml-1 hidden text-[8px] opacity-60 md:inline">·{dinCode}</span>
+      <span className="node-symbol__identity">
+        <span className="node-symbol__code" data-testid="din-code">
+          {code}
+        </span>
+        <span className="node-symbol__din-code">· {dinCode}</span>
       </span>
     </div>
   );

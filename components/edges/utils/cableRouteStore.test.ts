@@ -420,9 +420,9 @@ describe('Final-Validation-Publikation (AUDIT F-07)', () => {
     });
   });
 
-  // ROUTE-BUG-23: Der Report muss nicht nur zählen, WIE VIELE Züge scheitern,
-  // sondern auch sagen, wie viele Leitungen der Router bewusst enger gelegt
-  // hat, weil Stub und Mindestabstand geometrisch nicht gleichzeitig passen.
+  // ROUTE-BUG-23: Der Report zählt separat, wie viele finale Leitungen die
+  // normale Bauteil-Reserve unterschreiten. Das ist nicht automatisch eine
+  // I3-Verletzung; der verbindliche Mindestabstand bleibt ein eigenes Gate.
   it('computeCableRouteFinalValidation zählt tightMarginUsed-Leitungen', () => {
     const nodes = [
       makeNode('a', 0, 0, 100, 100),

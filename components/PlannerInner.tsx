@@ -14,7 +14,7 @@ import { ExpertPanel } from './planner/ExpertPanel';
 import { OnboardingWizard } from './planner/OnboardingWizard';
 import { ShortcutOverlay } from './planner/ui/ShortcutOverlay';
 import { CanvasSkeleton } from './ui/Skeleton';
-import { Frame, Layers, Settings2, Droplets, X, Undo2, Redo2, Zap } from 'lucide-react';
+import { Frame, Layers, Minimize2, Settings2, Droplets, X, Undo2, Redo2, Zap } from 'lucide-react';
 import { useAppStore } from '../lib/store';
 import { usePlannerStore } from '../store/usePlannerStore';
 
@@ -182,7 +182,7 @@ function PlannerShell() {
     // Ab 1280 px echte dritte Spalte (kein Overlay, kein Schatten).
     isInspectorOpen
       ? 'xl:static xl:z-auto xl:flex xl:w-[288px] xl:flex-none 2xl:w-[320px]'
-      : 'xl:static xl:flex xl:w-0 xl:flex-none xl:overflow-hidden xl:border-l-0',
+      : 'xl:static xl:invisible xl:flex xl:w-0 xl:flex-none xl:overflow-hidden xl:border-l-0',
   ].join(' ');
 
   const isDarkPlanner = usePlannerDarkMode();
@@ -274,7 +274,12 @@ function PlannerShell() {
           />
         )}
 
-        <aside data-testid="inspector-panel" className={inspectorClass} aria-label="Eigenschaften">
+        <aside
+          id="inspector-panel"
+          data-testid="inspector-panel"
+          className={inspectorClass}
+          aria-label="Eigenschaften"
+        >
           {/* Schließen-Knopf gehört zum Overlay, nicht zur Spalte. */}
           <div className="hidden shrink-0 items-center justify-between border-b border-border px-3 py-2 md:flex xl:hidden">
             <span className="panel-title">Eigenschaften</span>
@@ -291,7 +296,7 @@ function PlannerShell() {
         </aside>
       </div>
 
-      {/* Touch-Undo/Redo bleibt über dem Canvas erreichbar, ohne die vier
+      {/* Touch-Undo/Redo bleibt über dem Canvas erreichbar, ohne die fünf
           Bottom-Tabs auf 375 px zusammenzuquetschen. Sichtbar deaktivierte
           Zustände spiegeln die History des Stores unmittelbar. */}
       {activeTab === 'canvas' && (
@@ -406,7 +411,7 @@ function PlannerShell() {
           aria-pressed={focusMode}
           title={focusMode ? 'Fokusmodus verlassen' : 'Vollbild (Fokusmodus)'}
         >
-          <Frame size={20} aria-hidden="true" />
+          {focusMode ? <Minimize2 size={20} aria-hidden="true" /> : <Frame size={20} aria-hidden="true" />}
           <span>Fokus</span>
         </button>
       </nav>

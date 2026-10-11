@@ -69,7 +69,25 @@ function buildSeededPlan(seed: number): { nodes: Node[]; edges: RouteEdgeRef[] }
 }
 
 describe('routeAll-Nachoptimierung (R-6)', () => {
-  it('hält gemessene React-Flow-Geometrie der Charger-/DCDC-Busbar-Routen I2-frei', () => {
+  it('ROUTE-BUG-23: Clearance-Marken beschreiben die finale Geometrie, nicht die Einzelsuche', () => {
+    const nodes = complexPlan.autoWire.nodes as unknown as Node[];
+    const edges = complexPlan.autoWire.edges as unknown as RouteEdgeRef[];
+    const routes = routeAllCables(nodes, edges);
+    const tightRoute = routes.get('e-auto-3');
+    expect(tightRoute).toBeDefined();
+
+    // Die Einzelsuche brauchte zunächst den engen Margin. Der globale
+    // Clearance-Nachlauf verlegt diese Trasse danach in den vollen Korridor;
+    // die sichtbare Marke und der Report dürfen daher keinen alten Zustand
+    // weiterreichen.
+    expect(tightRoute!.tightMarginUsed).toBeUndefined();
+    const report = computeCableRouteFinalValidation(nodes, edges, routes);
+    const finalTightMarginRoutes = [...routes.values()].filter((route) => route.tightMarginUsed).length;
+    expect(report.status).toBe('VALID');
+    expect(report.tightMarginRoutes).toBe(finalTightMarginRoutes);
+  });
+
+  it('validiert die gemessene React-Flow-Geometrie der Complex-Routen vollständig', () => {
     const geometryById = new Map(measuredComplexGeometry.nodes.map((node) => [node.id, node]));
     const nodes = (complexPlan.autoWire.nodes as unknown as Node[]).map((node) => {
       const geometry = geometryById.get(node.id);
@@ -94,12 +112,14 @@ describe('routeAll-Nachoptimierung (R-6)', () => {
         [violation.edgeId, violation.otherId].includes('e-dcdc-busbar')
     );
 
-    // AUDIT ROUTE-011: I2-Verletzungen (Edge×Edge) sind jetzt sichtbar.
-    // Die Verletzungen waren immer da; das Gate hat sie nur nicht gesehen.
-    // Dieser Test prüft nur, dass das spezifische Paar charger-busbar ↔
-    // dcdc-busbar nicht betroffen ist (das war die ursprüngliche Garantie).
+    // Die gemessenen Bounds und Handles sind Teil des Routingeingangs, nicht
+    // ein pauschaler Fixture-Fallback: auch das gesamte finale Gate muss grün
+    // sein, einschließlich der Clearance zwischen Kabeln.
     expect(affectedPair).toEqual([]);
-    // Der Gesamtstatus kann INVALID sein, wenn andere I2-Verletzungen existieren.
+    expect(report.counts.edgeNodeCollisions).toBe(0);
+    expect(report.counts.edgeEdgeOverlaps).toBe(0);
+    expect(report.counts.clearanceViolations).toBe(0);
+    expect(report.status).toBe('VALID');
   });
 
   it('ist deterministisch: fixer Seed ⇒ identische Routen über zwei Läufe', () => {

@@ -106,10 +106,10 @@ export type FinalValidationReport = {
   /** Strukturierte, kantenbezogene Konflikte aus unveränderlichen Trassen. */
   lockedRouteViolations?: LockedRouteViolation[];
   /**
-   * ROUTE-BUG-23: Wie viele Leitungen die Bauteil-Freigabe aus geometrischer
-   * Not unterschreiten (`PathResult.tightMarginUsed`). Das sind dieselben
-   * Fälle, die I3 zählt — hier als ZAHL für die Anzeige, damit „Zwang nicht
-   * erreicht" die Ursache nennt, statt nur zu zählen.
+   * ROUTE-BUG-23: Wie viele finale Trassen die normale Routing-Reserve
+   * (`OBSTACLE_MARGIN`) zu einem fremden Bauteil unterschreiten.
+   * Das ist nicht automatisch eine I3-Verletzung: `cableClearance` wird
+   * separat vom Final-Gate geprüft.
    */
   tightMarginRoutes?: number;
 };

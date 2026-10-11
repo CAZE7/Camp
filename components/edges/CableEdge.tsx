@@ -774,6 +774,13 @@ const CableEdge = function ({
   // Linienstärke kodiert die Rolle der Leitung (Backbone 3 px / normal 2 px),
   // nicht mehr den Querschnitt — der steht im Label. Siehe utils/cableStyle.ts.
   const renderedStrokeWidth = cableStrokeWidth({ isBackbone, emphasized, trunkMode });
+  const routeStatusDetails = [
+    ...(routeInvalid ? ['Routing-Ausnahme: Fallback ohne volle Bauteil-Reserve'] : []),
+    ...(routeTight
+      ? ['Engstelle: reduzierte Bauteil-Reserve; verbindlicher Mindestabstand wird separat geprüft']
+      : []),
+  ];
+  const routeStatusSuffix = routeStatusDetails.length > 0 ? `, ${routeStatusDetails.join('; ')}` : '';
 
   // Sichtbarkeit des Labels: kompakt = nur bei Auswahl oder nach Tap.
   const labelVisible = !isCompact || selected || tapRevealed;
@@ -783,10 +790,11 @@ const CableEdge = function ({
   return (
     <>
       {/* R9: Routing-Ausnahmen pro Leitung sichtbar, nicht nur aggregiert im
-          RoutingStatusBadge. `fallbackHitsObstacles` = kein Freigabe-Nachweis
-          (rot, gepunktet), `tightMarginUsed` = Freigabe < cableClearance
-          (orange). Der Halo liegt UNTER der Leitung und ändert weder ihren
-          Pfad noch ihre Trefferzone. */}
+          RoutingStatusBadge. `fallbackHitsObstacles` = Fallback unterschreitet
+          die normale Bauteil-Reserve (rot, gepunktet); `tightMarginUsed` =
+          verringerte Reserve an einer Engstelle (orange). Ob auch der
+          verbindliche Mindestabstand verletzt ist, prüft das Final-Gate (I3).
+          Der Halo liegt UNTER der Leitung und ändert weder Pfad noch Trefferzone. */}
       {(routeInvalid || routeTight) && (
         <path
           d={edgePath}
@@ -842,144 +850,88 @@ const CableEdge = function ({
         </circle>
       )}
 
-      {/* Label: am Desktop immer sichtbar, auf Handy nur bei Auswahl/Tap. */}
+      {/* Label: compact auf der Zeichenfläche, mit Messwerten bei Auswahl/Touch.
+          Der opaque Labelgrund und die Domain-Markierung passen zu den orthogonalen
+          Trassen, ohne in deren Routing-Geometrie einzugreifen. */}
       {labelVisible && (
         <EdgeLabelRenderer>
           <div
             style={{
               position: 'absolute',
               transform: `translate(-50%, -50%) translate(${labelX}px,${labelY + labelNudgeY}px)`,
-              background: 'var(--bone)',
-              padding: '2px 6px',
-              borderRadius: '4px',
-              fontSize: '12px',
-              fontWeight: 'bold',
-              border: `1px solid ${hasDropError ? 'var(--wire-error)' : 'var(--rule)'}`,
-              color: 'var(--ink)',
               pointerEvents: 'all',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              lineHeight: 1.25,
-              boxShadow: hasDropError ? '0 0 0 1px var(--wire-error-bg)' : undefined,
             }}
-            className="nodrag nopan edge-label"
+            className={`nodrag nopan edge-label ${
+              edgeDomain === 'AC_230V'
+                ? 'edge-label--ac'
+                : edgeDomain === 'Solar'
+                  ? 'edge-label--solar'
+                  : isPlus
+                    ? 'edge-label--dc-plus'
+                    : 'edge-label--dc-minus'
+            } ${hasDropError ? 'edge-label--error' : ''}`}
           >
-            {/* Kompaktes Kern-Label: Typ-Kürzel + Querschnitt + Länge.
-                AUDIT ELE-001: Gezeigt wird der VERLEGTE Querschnitt. Ist er
-                kleiner als die Empfehlung, markiert das Label das sichtbar
-                (rotes „zu klein“ + rote Zahl) — vorher stand hier die Empfehlung, und die Kante
-                sah aus, als wäre sie ausreichend dimensioniert. */}
-            <span
-              className="edge-label-main"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                color: crossSectionUndersized ? 'var(--error)' : stroke,
-              }}
-              title={
-                crossSectionUndersized
-                  ? `Verlegt: ${crossSection} mm² — gefordert: ${recommendedCrossSection} mm² (Spannungsfall/Thermik)`
-                  : undefined
-              }
-            >
-              <span
-                style={{
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: '12px',
-                  fontWeight: 700,
-                  letterSpacing: '0.04em',
-                  // A4: Vorher `color: stroke` mit `opacity: .85` auf
-                  // --bone — SOLAR 3,74:1, 230V 3,82:1, DC+ 4,22:1 bei 12 px.
-                  // Nötig sind 4,5:1; --ink liefert das in beiden Themes.
-                  color: 'var(--ink)',
-                }}
-              >
+            {/* Kernlabel zeigt den VERLEGTEN Querschnitt; eine unterschrittene
+                Empfehlung bleibt direkt an der betroffenen Leitung sichtbar. */}
+            <span className="edge-label-main">
+              <span className="edge-label__domain">
                 {edgeDomain === 'AC_230V'
-                  ? '230V'
+                  ? '230 V'
                   : edgeDomain === 'Solar'
                     ? 'SOLAR'
                     : isPlus
-                      ? 'DC+'
-                      : 'DC−'}
+                      ? 'DC +'
+                      : 'DC −'}
               </span>
-              <span>
+              <span
+                className={`edge-label__spec ${crossSectionUndersized ? 'edge-label__spec--error' : ''}`}
+                title={
+                  crossSectionUndersized
+                    ? `Verlegt: ${crossSection} mm² — gefordert: ${recommendedCrossSection} mm² (Spannungsfall/Thermik)`
+                    : undefined
+                }
+              >
                 {crossSectionUndersized ? 'zu klein · ' : '· '}
                 {crossSection} mm² · {length.toFixed(1)} m
                 {crossSectionUndersized ? ` (empf. ${recommendedCrossSection})` : ''}
               </span>
             </span>
+            {emphasized && routeInvalid && (
+              <span className="edge-label__error-message">
+                Routing-Ausnahme: Fallback ohne volle Bauteil-Reserve.
+              </span>
+            )}
+            {emphasized && routeTight && (
+              <span className="edge-label__note">
+                Engstelle: reduzierte Bauteil-Reserve; verbindlicher Mindestabstand wird separat geprüft.
+              </span>
+            )}
 
             {/* Details bei Auswahl / Hover */}
             {emphasized && edgeDomain === 'AC_230V' ? (
               <>
-                <span style={{ color: 'var(--info)', fontSize: '12px' }}>
+                <span className="edge-label__detail">
                   real ausführen: {acCableComposition(crossSection).label} (L/N je {crossSection} mm² + PE{' '}
                   {acCableComposition(crossSection).protectiveEarth} mm² · Tab. 54.2)
                 </span>
-                <span
-                  style={{
-                    background: 'var(--warn-info)',
-                    color: 'var(--on-signal)',
-                    padding: '1px 4px',
-                    borderRadius: '4px',
-                    fontSize: '12px',
-                    marginTop: '2px',
-                  }}
-                >
+                <span className="edge-label__note">
                   {data?.acProtection?.kind === 'rcbo'
                     ? 'FI/LS gewählt (RCBO, 30 mA) — Abschaltung wird geschätzt (Hinweis A8)'
                     : 'FI/LS (RCD ≤ 30 mA) einplanen — Abschaltung wird geschätzt (Hinweis A8)'}
                 </span>
                 {/* Auch AC-Kanten zeigen ihren Spannungsfall-Fehler (Bug 10). */}
                 {errors.map((err, idx) => (
-                  <span
-                    key={idx}
-                    style={{
-                      background: 'var(--wire-error)',
-                      color: 'var(--on-signal)',
-                      padding: '1px 4px',
-                      borderRadius: '4px',
-                      fontSize: '12px',
-                      marginTop: '2px',
-                    }}
-                  >
+                  <span key={`${err.ruleId}-${idx}`} className="edge-label__error-message">
                     {err.message}
                   </span>
                 ))}
               </>
             ) : emphasized ? (
               <>
-                {data?.fuseSize && (
-                  <span
-                    style={{
-                      background: 'var(--success)',
-                      color: 'var(--on-signal)',
-                      padding: '1px 4px',
-                      borderRadius: '4px',
-                      fontSize: '12px',
-                      marginTop: '2px',
-                    }}
-                  >
-                    {data.fuseSize}A Sicherung
-                  </span>
-                )}
-                {maxFuse > 0 && (
-                  <span style={{ color: 'var(--wire-error)', fontSize: '12px' }}>Max: {maxFuse}A</span>
-                )}
+                {data?.fuseSize && <span className="edge-label__fuse">{data.fuseSize}A Sicherung</span>}
+                {maxFuse > 0 && <span className="edge-label__hint">Max: {maxFuse}A</span>}
                 {errors.map((err, idx) => (
-                  <span
-                    key={idx}
-                    style={{
-                      background: 'var(--wire-error)',
-                      color: 'var(--on-signal)',
-                      padding: '1px 4px',
-                      borderRadius: '4px',
-                      fontSize: '12px',
-                      marginTop: '2px',
-                    }}
-                  >
+                  <span key={`${err.ruleId}-${idx}`} className="edge-label__error-message">
                     {err.message}
                   </span>
                 ))}
@@ -998,7 +950,7 @@ const CableEdge = function ({
         style={{ cursor: 'pointer' }}
         role="button"
         tabIndex={0}
-        aria-label={`${edgeDomain === 'AC_230V' ? '230 Volt Wechselstromleitung' : edgeDomain === 'Solar' ? 'Solarleitung' : 'Gleichstromleitung'}, ${crossSection} Quadratmillimeter, ${length.toFixed(1)} Meter${lengthIsAssumption ? ' (Planungsannahme aus der Vorlage)' : lengthIsEstimated ? ' (geschätzt aus Verlegeweg)' : ''}${routeInvalid ? ', Achtung: Routing ohne Hindernis-Freigabe' : routeTight ? ', Hinweis: minimale Bauteil-Freigabe unterschritten' : ''}`}
+        aria-label={`${edgeDomain === 'AC_230V' ? '230 Volt Wechselstromleitung' : edgeDomain === 'Solar' ? 'Solarleitung' : 'Gleichstromleitung'}, ${crossSection} Quadratmillimeter, ${length.toFixed(1)} Meter${lengthIsAssumption ? ' (Planungsannahme aus der Vorlage)' : lengthIsEstimated ? ' (geschätzt aus Verlegeweg)' : ''}${routeStatusSuffix}`}
         onClick={() => {
           revealLabel();
           usePlannerStore.getState().focusElement(id, 'edge');
@@ -1014,7 +966,7 @@ const CableEdge = function ({
         onMouseLeave={() => setIsHovered(false)}
       >
         <title>
-          {`${length.toFixed(2)} m${lengthIsAssumption ? ' (Planungsannahme aus der Vorlage — im Inspektor überschreibbar)' : lengthIsEstimated ? ' (Schätzung: gerouteter Verlegeweg)' : ' (eingetragen)'} | ${crossSection} mm²${routeCrossings > 0 ? ` | ${routeCrossings} Kreuzung(en)` : ''}${routeInvalid ? ' | Routing ohne Hindernis-Freigabe' : routeTight ? ' | eng an Bauteil (< Freigabe)' : ''}`}
+          {`${length.toFixed(2)} m${lengthIsAssumption ? ' (Planungsannahme aus der Vorlage — im Inspektor überschreibbar)' : lengthIsEstimated ? ' (Schätzung: gerouteter Verlegeweg)' : ' (eingetragen)'} | ${crossSection} mm²${routeCrossings > 0 ? ` | ${routeCrossings} Kreuzung(en)` : ''}${routeStatusDetails.length > 0 ? ` | ${routeStatusDetails.join('; ')}` : ''}`}
         </title>
       </path>
     </>

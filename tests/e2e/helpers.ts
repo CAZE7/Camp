@@ -125,12 +125,19 @@ export async function edgeCount(page: Page): Promise<number> {
   return page.locator('.react-flow__edge').count();
 }
 
-/** Klickt „Automatisch verbinden“ und wartet, bis Kanten entstanden sind. */
+/**
+ * Startet Auto-Wire über den sichtbaren Expertenknopf oder — im geführten
+ * Modus — über das Mehr-Menü, und wartet auf die entstandenen Kanten.
+ */
 export async function autoWire(page: Page): Promise<void> {
   await showCanvas(page);
-  const button = page.getByTestId('action-autowire');
-  await expect(button).toBeEnabled();
-  await button.click();
+  const toolbarButton = page.getByTestId('action-autowire');
+  if ((await toolbarButton.count()) > 0) {
+    await expect(toolbarButton).toBeEnabled();
+    await toolbarButton.click();
+  } else {
+    await openMoreMenuItem(page, 'action-autowire-menu');
+  }
   await expect
     .poll(async () => edgeCount(page), { message: 'Auto-Wire erzeugte keine Kanten' })
     .toBeGreaterThan(0);
