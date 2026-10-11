@@ -56,13 +56,21 @@ test.describe('Responsives Layout', () => {
     expect(box!.width).toBeGreaterThanOrEqual(minimum);
   });
 
-  test('M3.5: Tablet erreicht Auto-Wire, Undo/Redo und Mehr ohne Overflow', async ({ page }) => {
+  test('M3.5: Tablet erreicht Verlauf und Auto-Wire ohne die geführte Primäraktion zu verdrängen', async ({
+    page,
+  }) => {
     await openPlanner(page);
     const width = page.viewportSize()?.width ?? 0;
     test.skip(width !== 768, 'Gilt exakt für das Tablet-Projekt.');
-    for (const id of ['action-autowire', 'toolbar-undo', 'toolbar-redo', 'action-more']) {
+
+    for (const id of ['toolbar-undo', 'toolbar-redo', 'action-more']) {
       await expect(page.getByTestId(id)).toBeVisible();
     }
+    // Im geführten Modus konkurriert Auto-Wire nicht mit dem nächsten Schritt,
+    // bleibt aber über den Experten-Überlauf erreichbar.
+    await expect(page.getByTestId('action-autowire')).toHaveCount(0);
+    await page.getByTestId('action-more').click();
+    await expect(page.getByTestId('action-autowire-menu')).toBeVisible();
     await expectNoHorizontalOverflow(page);
   });
 
