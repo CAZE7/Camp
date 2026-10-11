@@ -38,6 +38,7 @@ const mockLockedMutationErrors: Array<{
 const planState = () => ({
   viewMode: 'electric',
   focusMode: false,
+  guidedMode: true as boolean,
   nodes: [] as Array<{ id: string; type?: string; data: Record<string, unknown> }>,
   waterNodes: [] as Array<{ id: string; type?: string; data: Record<string, unknown> }>,
   focusElement: mockFocusElement,
@@ -71,7 +72,7 @@ vi.mock('../../store/usePlannerStore', () => ({
         canUndo: true,
         canRedo: true,
         clearPlan: mockClearPlan,
-        guidedMode: true,
+        guidedMode: mockState.guidedMode,
         setGuidedMode: mockSetGuidedMode,
         // Auto-Wire-Report + PlannerError-Mapper (Sync aus useLiveValidation → Store)
         autoWireReport: null,
@@ -118,6 +119,7 @@ const openMenu = (id: 'datei' | 'bearbeiten' | 'ansicht' | 'werkzeuge' | 'planun
 describe('PlannerDashboard - Core Interactions', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockState.guidedMode = true;
   });
 
   afterEach(() => {
@@ -130,12 +132,15 @@ describe('PlannerDashboard - Core Interactions', () => {
     // View toggles
     expect(screen.getByText('Elektrik')).toBeInTheDocument();
     expect(screen.getByText('Wasser')).toBeInTheDocument();
-    // Primary action is always visible
-    expect(screen.getByText(/Automatisch verbinden/)).toBeInTheDocument();
+    // Guided mode shows exactly the next step; AutoWire stays available in
+    // the overflow and does not compete with the guided primary action.
+    expect(screen.getByTestId('guided-primary-action')).toHaveTextContent('Batterie hinzufügen');
+    expect(screen.queryByTestId('action-autowire')).not.toBeInTheDocument();
 
-    // Secondary actions live in the overflow menu
+    // Expert actions remain reachable in the overflow menu.
     openMoreMenu();
-    expect(screen.getByText(/Stückliste/)).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: 'Automatisch verbinden' })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: /^Stückliste/ })).toBeInTheDocument();
     expect(screen.getByText(/Plan prüfen/)).toBeInTheDocument();
     expect(screen.getAllByText(/Aufräumen/).length).toBeGreaterThan(0);
     expect(screen.getByText(/Bild exportieren/)).toBeInTheDocument();
@@ -144,6 +149,81 @@ describe('PlannerDashboard - Core Interactions', () => {
     expect(screen.getByRole('menuitem', { name: 'Winter' })).toBeInTheDocument();
 
     // Der Pro-Modus-Schalter wurde entfernt; Fachdetails sind immer sichtbar.
+  });
+
+  it('supports keyboard navigation and focus restoration in the overflow menu', () => {
+    render(<PlannerDashboard />);
+    const trigger = screen.getByRole('button', { name: 'Weitere Aktionen' });
+    fireEvent.click(trigger);
+
+    const menu = screen.getByRole('menu', { name: 'Weitere Aktionen' });
+    const items = within(menu)
+      .getAllByRole('menuitem')
+      .filter((item) => !(item as HTMLButtonElement).disabled);
+    const firstItem = items[0];
+    const secondItem = items[1];
+    const lastItem = items[items.length - 1];
+    if (!firstItem || !secondItem || !lastItem)
+      throw new Error('Overflow menu must have at least two actions.');
+    expect(firstItem).toHaveFocus();
+
+    fireEvent.keyDown(firstItem, { key: 'ArrowDown' });
+    expect(secondItem).toHaveFocus();
+    fireEvent.keyDown(secondItem, { key: 'End' });
+    expect(lastItem).toHaveFocus();
+
+    fireEvent.keyDown(lastItem, { key: 'Escape' });
+    expect(screen.queryByRole('menu', { name: 'Weitere Aktionen' })).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
+  });
+
+  it('closes the overflow menu when its trigger is clicked again', () => {
+    render(<PlannerDashboard />);
+    const trigger = screen.getByRole('button', { name: 'Weitere Aktionen' });
+    fireEvent.click(trigger);
+    expect(screen.getByRole('menu', { name: 'Weitere Aktionen' })).toBeInTheDocument();
+
+    // Model the browser moving focus from a menu item to its trigger on pointer activation.
+    fireEvent.mouseDown(trigger);
+    trigger.focus();
+    fireEvent.click(trigger);
+
+    expect(screen.queryByRole('menu', { name: 'Weitere Aktionen' })).not.toBeInTheDocument();
+  });
+
+  it('supports keyboard navigation and focus restoration in menubar menus', () => {
+    render(<PlannerDashboard />);
+    const trigger = screen.getByTestId('menubar-planung');
+    fireEvent.click(trigger);
+
+    const menu = screen.getByRole('menu', { name: 'Menü' });
+    const items = within(menu)
+      .getAllByRole('menuitem')
+      .filter((item) => !(item as HTMLButtonElement).disabled);
+    const firstItem = items[0];
+    const lastItem = items[items.length - 1];
+    if (!firstItem || !lastItem) throw new Error('Menubar menu must have at least one action.');
+    expect(firstItem).toHaveFocus();
+
+    fireEvent.keyDown(firstItem, { key: 'ArrowUp' });
+    expect(lastItem).toHaveFocus();
+    fireEvent.keyDown(lastItem, { key: 'Escape' });
+
+    expect(screen.queryByRole('menu', { name: 'Menü' })).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
+  });
+
+  it('closes a menubar dropdown when its trigger is clicked again', () => {
+    render(<PlannerDashboard />);
+    const trigger = screen.getByTestId('menubar-planung');
+    fireEvent.click(trigger);
+    expect(screen.getByRole('menu', { name: 'Menü' })).toBeInTheDocument();
+
+    fireEvent.mouseDown(trigger);
+    trigger.focus();
+    fireEvent.click(trigger);
+
+    expect(screen.queryByRole('menu', { name: 'Menü' })).not.toBeInTheDocument();
   });
 
   it('calls setViewMode when changing view mode', () => {
@@ -174,6 +254,7 @@ describe('PlannerDashboard - Core Interactions', () => {
 describe('PlannerDashboard - Action Buttons', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockState.guidedMode = true;
   });
 
   afterEach(() => {
@@ -185,14 +266,15 @@ describe('PlannerDashboard - Action Buttons', () => {
     const dispatchEventSpy = vi.spyOn(window, 'dispatchEvent');
 
     openMoreMenu();
-    fireEvent.click(screen.getByText(/Stückliste/));
+    fireEvent.click(screen.getByRole('menuitem', { name: /^Stückliste/ }));
 
     expect(dispatchEventSpy).toHaveBeenCalledTimes(1);
     const event = dispatchEventSpy.mock.calls[0]![0] as CustomEvent;
     expect(event.type).toBe('show-bom-modal');
   });
 
-  it('calls autoWireSystem with no args when clicking the primary automatic wiring action', () => {
+  it('calls autoWireSystem from the toolbar primary action in expert mode', () => {
+    mockState.guidedMode = false;
     render(<PlannerDashboard />);
 
     fireEvent.click(screen.getByText(/Automatisch verbinden/));
@@ -269,6 +351,7 @@ describe('PlannerDashboard - Action Buttons', () => {
    * Sichtbar bleibt EIN „Plan ordnen"; die Einzelaktionen leben im ⋯-Menü.
    */
   it('bietet genau eine Layout-Aktion in der Toolbar an und ordnet den Plan', async () => {
+    mockState.guidedMode = false;
     render(<PlannerDashboard />);
 
     expect(screen.getByTestId('action-tidy')).toHaveTextContent('Plan ordnen');
@@ -349,6 +432,7 @@ describe('PlannerDashboard - Mission 3 feedback', () => {
 describe('PlannerDashboard - Image Export', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockState.guidedMode = true;
   });
 
   afterEach(() => {

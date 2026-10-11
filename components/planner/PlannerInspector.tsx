@@ -13,6 +13,7 @@ export function PlannerInspector() {
     waterNodes,
     edges,
     waterEdges,
+    viewMode,
     season,
     selectedNodes,
     selectedEdges,
@@ -32,6 +33,7 @@ export function PlannerInspector() {
       waterNodes: state.waterNodes,
       edges: state.edges,
       waterEdges: state.waterEdges,
+      viewMode: state.viewMode,
       season: state.season,
       selectedNodes: state.selectedNodes,
       selectedEdges: state.selectedEdges,
@@ -75,12 +77,13 @@ export function PlannerInspector() {
       <button
         type="button"
         onClick={toggleInspector}
-        className={`planner-inspector-toggle cad-btn cad-btn--line absolute top-1 z-50 hidden h-7 w-4 items-center justify-center transition-[right] duration-150 motion-reduce:transition-none xl:inline-flex ${
+        className={`planner-inspector-toggle cad-btn cad-btn--line absolute top-1 z-50 hidden h-11 w-11 items-center justify-center transition-[right] duration-150 motion-reduce:transition-none xl:inline-flex ${
           isInspectorOpen ? 'planner-inspector-toggle--open' : 'right-0.5'
         }`}
         title={isInspectorOpen ? 'Inspector einklappen' : 'Inspector ausklappen'}
         aria-label={isInspectorOpen ? 'Rechte Sidebar einklappen' : 'Rechte Sidebar ausklappen'}
         aria-expanded={isInspectorOpen}
+        aria-controls="inspector-panel"
       >
         {isInspectorOpen ? (
           <PanelRightClose size={14} aria-hidden="true" />
@@ -108,6 +111,7 @@ export function PlannerInspector() {
             chargingTimeStr={metrics.chargingTimeStr}
             calculatedSolarWatts={calculatedSolarWatts}
             nodes={nodes}
+            viewMode={viewMode}
           />
         </div>
       </div>

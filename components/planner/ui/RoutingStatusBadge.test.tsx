@@ -50,15 +50,16 @@ describe('RoutingStatusBadge (AUDIT F-07)', () => {
     });
     const bad = screen.getByTestId('routing-status-invalid');
     expect(bad).toBeInTheDocument();
-    expect(bad.getAttribute('aria-label')).toBe('Routing: 1 Zwang nicht erreicht');
+    expect(bad.getAttribute('aria-label')).toBe('Routing nicht verifiziert: 1 Regelverletzung');
     expect(bad.getAttribute('title')).toContain('nicht layout-verifiziert');
+    expect(bad.getAttribute('title')).toContain('I1 Bauteil-Kollisionen: 1');
     // ADR 0014: Kabel werden immer automatisch verlegt — der Hinweis darf
     // keine Handlung verlangen, die die App nicht anbietet.
     expect(bad.getAttribute('title')).not.toContain('Leitungen umlegen');
-    expect(bad.getAttribute('title')).toContain('Verschiebe die Bauteile');
+    expect(bad.getAttribute('title')).toContain('Verschiebe die betroffenen Bauteile');
   });
 
-  it('nennt die Not-Freigabe auch im VALID-Badge (ROUTE-BUG-36)', () => {
+  it('nennt die verringerte Reserve auch im VALID-Badge (ROUTE-BUG-36)', () => {
     clearCableRoutes();
     render(<RoutingStatusBadge />);
     // I1–I3 sind sauber, eine Leitung ist aber mit verringerter Freigabe
@@ -69,8 +70,9 @@ describe('RoutingStatusBadge (AUDIT F-07)', () => {
     });
     const good = screen.getByTestId('routing-status-valid');
     expect(good).toBeInTheDocument();
-    expect(good.getAttribute('title')).toContain('Not-Freigabe');
+    expect(good.getAttribute('title')).toContain('verringerter Bauteil-Reserve');
     expect(good.getAttribute('title')).toContain('1 Leitung(en)');
+    expect(good.getAttribute('title')).toContain('verbindlicher Mindestabstand eingehalten');
   });
 
   it('zeigt ein VALID-Badge, wenn alle Final-Invarianten erfüllt sind', () => {

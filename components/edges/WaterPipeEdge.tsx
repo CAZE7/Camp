@@ -133,7 +133,9 @@ const WaterPipeEdge = function ({
       </circle>
       <EdgeLabelRenderer>
         <div
-          className="nodrag nopan edge-label rounded border border-border bg-card px-2 py-1 text-xs font-bold text-foreground shadow-sm"
+          className={`nodrag nopan edge-label edge-label--water ${
+            isGrayWater ? 'edge-label--water-gray' : 'edge-label--water-fresh'
+          } ${selected ? 'edge-label--selected' : ''}`}
           style={{
             position: 'absolute',
             transform: `translate(-50%, -50%) translate(${labelX}px,${labelY + labelNudgeY}px)`,

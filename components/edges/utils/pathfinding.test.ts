@@ -643,6 +643,32 @@ describe('Fallback-Verhalten (R-3)', () => {
     expect(frame.stubTarget).toBeGreaterThanOrEqual(ROUTING_TOKENS.stubMin);
   });
 
+  it('erzwingt Fan-out nur beim gezielten Retry, nicht im normalen Request', () => {
+    const input = {
+      sourceX: 0,
+      sourceY: 0,
+      targetX: 200,
+      targetY: 0,
+      ...rightLeft,
+      obstacles: [],
+      lane: 0,
+      laneTarget: 0,
+      laneStep: 16,
+      laneStepTarget: 0,
+      skipCache: true,
+    };
+
+    const normal = findCablePath(input);
+    const retry = findCablePath({ ...input, requireFanOutLane: true });
+
+    expect(normal.waypoints).toEqual([
+      { x: 0, y: 0 },
+      { x: 200, y: 0 },
+    ]);
+    expect(retry.waypoints.some((point) => point.y !== 0)).toBe(true);
+    expect(isOrthogonalPath(retry.waypoints)).toBe(true);
+  });
+
   // ROUTE-BUG-31: Die Lane-Staffelung verlängert den Stub. Steht ein Bauteil
   // gegenüber, darf diese Verlängerung den Lane-Punkt nicht an das Bauteil
   // heranschieben — die Freigabe ist eine Regel, die Staffelung Komfort.
@@ -705,15 +731,16 @@ describe('Fallback-Verhalten (R-3)', () => {
     expect(twin.stub).toBe(ROUTING_TOKENS.stubMin);
   });
 
-  // ROUTE-BUG-23: Eine Route, die die Bauteil-Freigabe aus geometrischer Not
-  // unterschreitet, muss das sagen — statt still enger zu liegen. Dieselben
-  // Fälle zählt `npm run routing:audit` als I3.
-  it('Freigabe-Notstufe wird gekennzeichnet (tightMarginUsed)', () => {
+  // ROUTE-BUG-23: Eine Route, die die normale Bauteil-Reserve aus
+  // geometrischer Not unterschreitet, muss das sagen — statt still enger zu
+  // liegen. Ob auch `cableClearance` verletzt ist, prüft das Final-Gate (I3).
+  it('verringerte Bauteil-Reserve wird gekennzeichnet (tightMarginUsed)', () => {
     const stress = ROUTING_SCENARIOS.find((scenario) => scenario.id === '22-stress-scene');
     if (!stress) throw new Error('Referenzszenario 22 fehlt');
     // Der Ziel-Handle liegt 28 px vom Nachbarbauteil. Stub (24 px) plus
-    // Freigabe (12 px) brauchen 36 px — beides gleichzeitig ist geometrisch
-    // unmöglich, also greift R-7 („Stub-Recht") und die Route wird enger.
+    // verbindliche Mindestfreigabe (12 px) brauchen 36 px — beides ist
+    // geometrisch unmöglich, also greift R-7 („Stub-Recht") und die Route
+    // unterschreitet sowohl den Mindestabstand als auch die normale Reserve.
     expect(findCablePath({ ...stress.input, skipCache: true }).tightMarginUsed).toBe(true);
 
     const free = findCablePath({

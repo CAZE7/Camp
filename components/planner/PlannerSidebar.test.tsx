@@ -27,6 +27,7 @@ vi.mock('../Sidebar', () => ({
 describe('PlannerSidebar', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockSidebarStoreState.isSidebarOpen = true;
   });
 
   it('renders correctly initially with sidebar open', () => {
@@ -38,6 +39,17 @@ describe('PlannerSidebar', () => {
     // Check if the toggle button is present and has the correct title for "open" state
     const toggleButton = screen.getByTitle('Sidebar einklappen');
     expect(toggleButton).toBeInTheDocument();
+    expect(toggleButton).toHaveClass('h-11', 'w-11');
+    expect(toggleButton).toHaveAttribute('aria-controls', 'component-palette-panel');
+    expect(document.getElementById('component-palette-panel')).toBeInTheDocument();
+  });
+
+  it('keeps a collapsed desktop palette out of keyboard navigation while preserving its mobile tab layout', () => {
+    mockSidebarStoreState.isSidebarOpen = false;
+    render(<PlannerSidebar />);
+
+    const panel = document.getElementById('component-palette-panel');
+    expect(panel).toHaveClass('w-full', 'md:invisible', 'md:w-0');
   });
 
   it('toggles sidebar state when button is clicked', () => {

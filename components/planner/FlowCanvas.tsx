@@ -851,7 +851,7 @@ export function FlowCanvas() {
             color="var(--canvas-grid)"
             gap={PLANNER_SNAP_GRID[0]}
             size={1}
-            style={{ opacity: 0.22 }}
+            style={{ opacity: 0.12 }}
           />
           <Background
             id="grid-coarse"
@@ -859,7 +859,7 @@ export function FlowCanvas() {
             color="var(--canvas-grid)"
             gap={PLANNER_SNAP_GRID[0] * 5}
             lineWidth={1}
-            style={{ opacity: 0.4 }}
+            style={{ opacity: 0.24 }}
           />
           {/* RF-Panel sitzt bei bottom:0 mit margin:15px — Tailwind-mb
               verliert gegen die Shorthand. !bottom/!left mit !important.

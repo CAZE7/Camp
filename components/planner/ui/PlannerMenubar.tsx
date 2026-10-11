@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useEffect, useId, useRef } from 'react';
+import React, { useCallback, useEffect, useId, useRef } from 'react';
 import type { PlannerMenuGroup, PlannerMenuId, PlannerMenus } from '../hooks/usePlannerActions';
+import { handleMenuKeyDown } from './menuKeyboard';
 
 /**
  * Menüleiste der Planer-Anwendung (klassische Anwendungsstruktur).
@@ -40,7 +41,7 @@ function MenuDropdown({
 }: {
   id: string;
   groups: PlannerMenuGroup[];
-  onClose: () => void;
+  onClose: (restoreFocus?: boolean) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -51,7 +52,14 @@ function MenuDropdown({
   }, []);
 
   return (
-    <div ref={ref} id={id} role="menu" aria-label="Menü" className="cad-menu">
+    <div
+      ref={ref}
+      id={id}
+      role="menu"
+      aria-label="Menü"
+      className="cad-menu"
+      onKeyDown={(event) => handleMenuKeyDown(event, onClose)}
+    >
       {groups.map((group, index) => (
         <React.Fragment key={group.label ?? `g${index}`}>
           {index > 0 && <div className="cad-menu__sep" role="separator" />}
@@ -67,7 +75,7 @@ function MenuDropdown({
                 disabled={item.disabled}
                 onClick={() => {
                   item.run();
-                  onClose();
+                  onClose(true);
                 }}
                 className={`cad-menu__item ${item.danger ? 'text-destructive' : ''}`}
               >
@@ -91,15 +99,24 @@ function MenuDropdown({
 export function PlannerMenubar({ menus, projectName, openMenu, onOpenMenu, status }: PlannerMenubarProps) {
   const baseId = useId();
   const barRef = useRef<HTMLDivElement>(null);
+  const triggerRefs = useRef(new Map<PlannerMenuId, HTMLButtonElement>());
+  const closeMenu = useCallback(
+    (restoreFocus = false) => {
+      const activeMenu = openMenu;
+      onOpenMenu(null);
+      if (restoreFocus && activeMenu) triggerRefs.current.get(activeMenu)?.focus();
+    },
+    [openMenu, onOpenMenu]
+  );
 
-  // Klick außerhalb schließt, Escape ebenso — Standardverhalten von Menüleisten.
+  // Klick außerhalb schließt, Escape schließt und stellt den Fokus wieder her.
   useEffect(() => {
     if (!openMenu) return;
     const onPointerDown = (event: MouseEvent) => {
-      if (barRef.current && !barRef.current.contains(event.target as Node)) onOpenMenu(null);
+      if (barRef.current && !barRef.current.contains(event.target as Node)) closeMenu();
     };
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onOpenMenu(null);
+      if (event.key === 'Escape' && !event.defaultPrevented) closeMenu(true);
     };
     document.addEventListener('mousedown', onPointerDown);
     document.addEventListener('keydown', onKeyDown);
@@ -107,7 +124,7 @@ export function PlannerMenubar({ menus, projectName, openMenu, onOpenMenu, statu
       document.removeEventListener('mousedown', onPointerDown);
       document.removeEventListener('keydown', onKeyDown);
     };
-  }, [openMenu, onOpenMenu]);
+  }, [openMenu, closeMenu]);
 
   return (
     <div ref={barRef} className="cad-menubar" role="menubar" aria-label="Hauptmenü des Planers">
@@ -122,8 +139,18 @@ export function PlannerMenubar({ menus, projectName, openMenu, onOpenMenu, statu
         {MENU_ORDER.map((menu) => {
           const open = openMenu === menu;
           return (
-            <div key={menu} className="relative">
+            <div
+              key={menu}
+              className="relative"
+              onBlur={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget as Node | null)) closeMenu();
+              }}
+            >
               <button
+                ref={(element) => {
+                  if (element) triggerRefs.current.set(menu, element);
+                  else triggerRefs.current.delete(menu);
+                }}
                 type="button"
                 role="menuitem"
                 aria-haspopup="menu"
@@ -136,13 +163,7 @@ export function PlannerMenubar({ menus, projectName, openMenu, onOpenMenu, statu
               >
                 {MENU_LABELS[menu]}
               </button>
-              {open && (
-                <MenuDropdown
-                  id={`${baseId}-${menu}`}
-                  groups={menus[menu]}
-                  onClose={() => onOpenMenu(null)}
-                />
-              )}
+              {open && <MenuDropdown id={`${baseId}-${menu}`} groups={menus[menu]} onClose={closeMenu} />}
             </div>
           );
         })}

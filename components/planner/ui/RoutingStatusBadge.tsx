@@ -11,9 +11,10 @@ import { totalViolations } from '../../../lib/routing/finalValidation';
  * Planer hier immer den Ergebnisstatus des zuletzt gerouteten Plans an:
  *
  * - `VALID`    → grün "Routing verifiziert"
- * - `INVALID`  → orange "Routing: n Zwänge nicht erreicht", mit Tooltip
- *                über I1 (Leitung × Bauteil), I2 (Leitung × Leitung) und
- *                I3 (Mindestabstand).
+ * - `INVALID`  → orange "Routing prüfen · n Regelverletzungen", mit Tooltip
+ *                über die betroffenen Invarianten und den nächsten sinnvollen
+ *                Schritt. Die Zahl „Regelverletzungen" ist die Summe der
+ *                Final-Gate-Befunde, kein einzelner Routing-Score.
  * - undefined  → neutral, solange der erste Routinglauf noch nicht fertig
  *                ist.
  *
@@ -58,18 +59,17 @@ export function RoutingStatusBadge() {
 
   const total = totalViolations(report.counts);
   if (report.status === 'VALID') {
-    // ROUTE-BUG-36: Die Not-Freigabe muss auch im grünen Fall sichtbar
-    // bleiben. Seit der Stub-Kappung (ROUTE-BUG-31) ist sie kein Fehler
-    // mehr, sondern der geregelte Ausgang für enge Stellen: I3 ist
-    // eingehalten, aber die volle Freigabe war dort nicht erreichbar. Wer
-    // nur das grüne Badge sieht, hält den Plan für großzügiger, als er ist.
+    // ROUTE-BUG-36: Die verringerte normale Bauteil-Reserve muss auch im
+    // grünen Fall sichtbar bleiben. `VALID` bedeutet, dass I1–I3 den
+    // verbindlichen Mindestabstand bestätigen; eine Reserve unter
+    // `OBSTACLE_MARGIN` ist ein separater Hinweis auf eine Engstelle.
     const tight = report.tightMarginRoutes ?? 0;
     const detail =
       `${report.edgeCount} Kanten, I1=0, I2=0, I3=0` +
       (tight > 0
-        ? ` — davon ${tight} Leitung(en) mit Not-Freigabe verlegt ` +
-          `(Stub endet an der Bauteil-Freigabe): Mindestabstand eingehalten, ` +
-          `Bündel-Staffelung dort eingeschränkt`
+        ? ` — davon ${tight} Leitung(en) mit verringerter Bauteil-Reserve ` +
+          `(Engstelle): verbindlicher Mindestabstand eingehalten, ` +
+          `zusätzliche Routing-Reserve geringer`
         : '');
     return (
       <span
@@ -85,41 +85,53 @@ export function RoutingStatusBadge() {
     );
   }
 
-  const countText = total === 1 ? '1 Zwang' : `${total} Zwänge`;
-  const detail = [
-    `${report.edgeCount} geprüfte Kanten`,
-    `I1 Leitungen × Bauteile: ${report.counts.edgeNodeCollisions}`,
-    `I2 Leitung × Leitung: ${report.counts.edgeEdgeOverlaps}`,
-    `I3 Mindestabstand: ${report.counts.clearanceViolations}`,
+  const countText = total === 1 ? '1 Regelverletzung' : `${total} Regelverletzungen`;
+  const causes = [
+    ...(report.counts.edgeNodeCollisions > 0
+      ? [`I1 Bauteil-Kollisionen: ${report.counts.edgeNodeCollisions}`]
+      : []),
+    ...(report.counts.edgeEdgeOverlaps > 0
+      ? [`I2 Leitungs-Überdeckungen: ${report.counts.edgeEdgeOverlaps}`]
+      : []),
+    ...(report.counts.clearanceViolations > 0
+      ? [`I3 Mindestabstands-Verstöße: ${report.counts.clearanceViolations}`]
+      : []),
     ...((report.counts.lockedRouteViolations ?? 0) > 0
       ? [`Fixierte Trassen: ${report.counts.lockedRouteViolations} Konflikt(e)`]
       : []),
-    // ROUTE-BUG-23: Die Ursache nennen, nicht nur die Zahl. Eine Leitung mit
-    // `tightMarginUsed` liegt enger am Bauteil als erlaubt, weil Port-Stub
-    // und Mindestabstand dort geometrisch nicht gleichzeitig passen.
+    ...((report.counts.sanityViolations ?? 0) > 0
+      ? [`Ungültige Routing-Geometrie: ${report.counts.sanityViolations}`]
+      : []),
+  ];
+  const detail = [
+    `${report.edgeCount} geprüfte Kanten`,
+    `${countText}`,
+    ...causes,
     ...(report.tightMarginRoutes
       ? [
-          `davon ${report.tightMarginRoutes} Leitung(en) mit unterschrittenem Abstand, ` +
-            `weil Port-Stub und Mindestabstand geometrisch nicht gleichzeitig passen`,
+          `davon ${report.tightMarginRoutes} Leitung(en) mit verringerter Bauteil-Reserve ` +
+            `(Engstelle/Port-Stub); der verbindliche Mindestabstand wird separat in I3 geprüft`,
         ]
       : []),
     // ADR 0014: Es gibt kein manuelles Leitungs-Legen mehr — „Leitungen
     // umlegen“ war eine Anleitung zu einer Handlung, die die App nicht
     // anbietet. Genannt wird jetzt der Hebel, den der Nutzer wirklich hat:
     // Bauteile verschieben, danach routet der nächste Lauf von selbst.
-    'Der Plan ist damit nicht layout-verifiziert. Die Leitungen werden automatisch verlegt: ' +
-      'Verschiebe die Bauteile mit mehr Abstand zueinander, danach läuft das Routing erneut.',
+    'Der Plan ist nicht layout-verifiziert. Verschiebe die betroffenen Bauteile mit mehr Abstand; das Routing wird danach automatisch neu berechnet.',
+    ...((report.counts.lockedRouteViolations ?? 0) > 0
+      ? ['Prüfe außerdem die fixierte Trasse oder entsperre sie.']
+      : []),
   ].join(' — ');
   return (
     <span
       data-testid="routing-status-invalid"
       role="status"
-      aria-label={`Routing: ${countText} nicht erreicht`}
+      aria-label={`Routing nicht verifiziert: ${countText}`}
       title={detail}
       className="inline-flex h-11 items-center justify-center gap-1 rounded border border-oxide/50 bg-oxide/10 px-2 text-xs font-semibold text-oxide"
     >
       <AlertTriangle className="h-4 w-4" aria-hidden="true" />
-      <span className="hidden xl:inline">Routing: {countText} nicht erreicht</span>
+      <span className="hidden xl:inline">Routing prüfen · {countText}</span>
     </span>
   );
 }
