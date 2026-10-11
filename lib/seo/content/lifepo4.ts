@@ -154,7 +154,7 @@ export const LIFEPO4_CONTENT: SeoPageContent = {
         { href: '/camper-elektrik/agm/', label: 'AGM und Gel im Vergleich' },
         { href: '/camper-elektrik/mppt/', label: 'MPPT-Laderegler auslegen' },
         { href: '/rechner/batteriekapazitaet/', label: 'Batteriekapazität berechnen' },
-        { href: '/elektrik-planung/#planer', label: 'Camper-Elektroplaner öffnen' },
+        { href: '/planer/', label: 'Camper-Elektroplaner öffnen' },
       ],
     },
   ],

@@ -162,7 +162,7 @@ export const KABELQUERSCHNITT_CONTENT: SeoPageContent = {
       ],
       callout: {
         tone: 'info',
-        text: '[Camper-Elektroplaner öffnen](/elektrik-planung/#planer) — die berechneten Querschnitte lassen sich dort direkt im Schaltplan verwenden.',
+        text: '[Camper-Elektroplaner öffnen](/planer/) — die berechneten Querschnitte lassen sich dort direkt im Schaltplan verwenden.',
       },
     },
   ],
@@ -194,7 +194,7 @@ export const KABELQUERSCHNITT_CONTENT: SeoPageContent = {
     { href: '/camper-elektrik/sicherungen/', label: 'Sicherungen im Camper' },
     { href: '/rechner/batteriekapazitaet/', label: 'Batteriekapazität berechnen' },
     { href: '/rechner/spannungsabfall-12v/', label: 'Spannungsabfall-Rechner' },
-    { href: '/elektrik-planung/', label: 'Camper-Elektroplaner öffnen' },
+    { href: '/planer/', label: 'Camper-Elektroplaner öffnen' },
   ],
   sources: [
     {

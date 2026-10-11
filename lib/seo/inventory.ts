@@ -73,6 +73,44 @@ const EXISTING_PAGES: readonly LegacyPage[] = [
     source: 'app/elektrik-planung/page.tsx',
   },
   {
+    /**
+     * Die Zeichenanwendung selbst — eine eigene Route, damit sie das ganze
+     * Browserfenster bekommt.
+     *
+     * Warum nicht weiterhin `/elektrik-planung/#planer`: Der Planer führt feste
+     * Spaltenbreiten und eine eigene Anwendungsshell (Menüleiste, Werkzeugleiste,
+     * Statuszeile) und stand dort als `h-dvh`-Block zwischen Rechner, Normtext
+     * und Fragen — unter der 48-px-Kopfleiste der Website und über dem Seitenfuß.
+     * Zwei Anwendungen (Dokument und Editor) teilten sich ein Scroll-Dokument.
+     * Auf eigener Route ist der Editor das Dokument: kein Text drumherum, kein
+     * Versatz, die Zeichenfläche beginnt bei y = 0.
+     *
+     * `/elektrik-planung/` bleibt die Wissens- und Rechnerseite des Themas und
+     * verweist kontextuell hierher (Linkgraph-Regel `kontextuelle-verwaiste-seite`).
+     */
+    path: '/planer/',
+    label: 'Elektroplaner (Vollbild)',
+    kind: 'werkzeug',
+    indexability: 'index',
+    h1: 'Camper-Elektroplaner',
+    title: 'Camper-Elektroplaner: Schaltplan im Vollbild zeichnen',
+    description:
+      'Schaltplan für die Camper-Elektrik im Vollbild zeichnen: Bauteile setzen, automatisch verdrahten, Querschnitt und Sicherung prüfen — Stückliste inklusive.',
+    searchIntent:
+      'die ganze 12-V- und 230-V-Anlage als Schaltplan zeichnen und automatisch verdrahten lassen.',
+    topicId: 'camper-elektrik',
+    priority: 'P0',
+    structuredData: ['WebPage', 'WebApplication'],
+    ogImage: {
+      path: '/og/elektrik-planung.png',
+      width: 1200,
+      height: 630,
+      alt: 'Camper-Elektroplaner — Schaltplan im Vollbild mit Bauteilkatalog und Zeichenfläche',
+    },
+    sitemap: { changeFrequency: 'monthly', priority: 0.9 },
+    source: 'app/planer/page.tsx',
+  },
+  {
     path: '/tools/dach/',
     label: 'Dach-Planer',
     kind: 'werkzeug',

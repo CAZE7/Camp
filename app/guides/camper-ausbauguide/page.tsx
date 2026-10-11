@@ -406,7 +406,7 @@ export default function CamperAusbauguide() {
                     <span className="text-ink-soft"> — Ort, Größe und Abschaltvermögen.</span>
                   </li>
                   <li>
-                    <Link href="/elektrik-planung/" className="underline underline-offset-2 hover:text-ink">
+                    <Link href="/planer/" className="underline underline-offset-2 hover:text-ink">
                       Anlage im Camper-Elektroplaner zeichnen
                     </Link>
                     <span className="text-ink-soft"> — jede Leitung geprüft, Stückliste inklusive.</span>

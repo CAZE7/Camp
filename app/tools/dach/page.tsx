@@ -211,7 +211,7 @@ function DachPlanerInner() {
                 </p>
               </div>
               <Link
-                href="/elektrik-planung"
+                href="/planer"
                 className="hidden min-h-11 items-center gap-2 border border-ink bg-ink px-4 text-sm font-semibold text-paper hover:bg-soot focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 sm:inline-flex"
               >
                 Im Schaltplan öffnen
@@ -393,7 +393,7 @@ function DachPlanerInner() {
 
             {/* Mobile CTA */}
             <Link
-              href="/elektrik-planung"
+              href="/planer"
               className="mt-6 flex min-h-12 items-center justify-center gap-2 border border-ink bg-ink px-4 text-sm font-semibold text-paper sm:hidden"
             >
               Im Schaltplan öffnen

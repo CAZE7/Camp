@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useId, useRef } from 'react';
+import Link from 'next/link';
 import type { PlannerMenuGroup, PlannerMenuId, PlannerMenus } from '../hooks/usePlannerActions';
 import { handleMenuKeyDown } from './menuKeyboard';
 
@@ -129,7 +130,13 @@ export function PlannerMenubar({ menus, projectName, openMenu, onOpenMenu, statu
   return (
     <div ref={barRef} className="cad-menubar" role="menubar" aria-label="Hauptmenü des Planers">
       <span className="cad-menubar__brand">
-        Werft
+        {/* Wortmarke als Weg zurück auf die Website: Die Anwendungsroute
+            (`/planer/`) trägt bewusst keine Kopfleiste der Website, weil sie
+            der Zeichenfläche Fensterhöhe kosten würde. Der Ausgang liegt dafür
+            dort, wo ihn jede Anwendung hat — auf der Marke in der Titelleiste. */}
+        <Link href="/" className="cad-menubar__home" title="Werft — zur Startseite">
+          Werft
+        </Link>
         <span className="cad-menubar__project-name" title="Automatisch lokal gespeicherter Plan">
           {projectName}
         </span>

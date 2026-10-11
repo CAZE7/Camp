@@ -154,7 +154,7 @@ export const MPPT_CONTENT: SeoPageContent = {
     { href: '/camper-elektrik/batterie/', label: 'Batterie dimensionieren' },
     { href: '/camper-elektrik/sicherungen/', label: 'Sicherungen im Camper' },
     { href: '/rechner/solaranlage/', label: 'Solaranlage berechnen' },
-    { href: '/elektrik-planung/#planer', label: 'Camper-Elektroplaner öffnen' },
+    { href: '/planer/', label: 'Camper-Elektroplaner öffnen' },
   ],
   sources: [
     {

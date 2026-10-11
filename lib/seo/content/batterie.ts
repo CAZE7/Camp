@@ -117,7 +117,7 @@ export const BATTERIE_CONTENT: SeoPageContent = {
         { href: '/camper-elektrik/lifepo4/', label: 'LiFePO4 im Camper' },
         { href: '/camper-elektrik/agm/', label: 'AGM und Gel im Camper' },
         { href: '/camper-elektrik/sicherungen/', label: 'Sicherungen am Batteriepol' },
-        { href: '/elektrik-planung/#planer', label: 'Camper-Elektroplaner öffnen' },
+        { href: '/planer/', label: 'Camper-Elektroplaner öffnen' },
       ],
     },
   ],
@@ -145,7 +145,7 @@ export const BATTERIE_CONTENT: SeoPageContent = {
     { href: '/camper-elektrik/solar/', label: 'Solar im Camper auslegen' },
     { href: '/camper-elektrik/sicherungen/', label: 'Sicherungen im Camper' },
     { href: '/rechner/batteriekapazitaet/', label: 'Batteriekapazität berechnen' },
-    { href: '/elektrik-planung/', label: 'Camper-Elektroplaner öffnen' },
+    { href: '/planer/', label: 'Camper-Elektroplaner öffnen' },
   ],
   sources: [
     {

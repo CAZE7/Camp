@@ -132,7 +132,7 @@ export const BATTERIEKAPAZITAET_CONTENT: SeoPageContent = {
       },
       callout: {
         tone: 'info',
-        text: 'Die berechnete Kapazität lässt sich im [Camper-Elektroplaner](/elektrik-planung/#planer) direkt an der Batterie eintragen — dort prüft sie die Energiebilanz gegen alle Verbraucher und Ladepfade.',
+        text: 'Die berechnete Kapazität lässt sich im [Camper-Elektroplaner](/planer/) direkt an der Batterie eintragen — dort prüft sie die Energiebilanz gegen alle Verbraucher und Ladepfade.',
       },
     },
   ],
@@ -159,7 +159,7 @@ export const BATTERIEKAPAZITAET_CONTENT: SeoPageContent = {
     { href: '/camper-elektrik/lifepo4/', label: 'LiFePO4 im Camper' },
     { href: '/camper-elektrik/agm/', label: 'AGM und Gel im Camper' },
     { href: '/rechner/', label: 'Alle Rechner im Überblick' },
-    { href: '/elektrik-planung/', label: 'Camper-Elektroplaner öffnen' },
+    { href: '/planer/', label: 'Camper-Elektroplaner öffnen' },
   ],
   sources: [
     {

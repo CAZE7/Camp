@@ -116,7 +116,7 @@ export const AGM_CONTENT: SeoPageContent = {
         { href: '/camper-elektrik/lifepo4/', label: 'LiFePO4 im Camper' },
         { href: '/rechner/batteriekapazitaet/', label: 'Batteriekapazität berechnen' },
         { href: '/rechner/solaranlage/', label: 'Solaranlage berechnen' },
-        { href: '/elektrik-planung/#planer', label: 'Camper-Elektroplaner öffnen' },
+        { href: '/planer/', label: 'Camper-Elektroplaner öffnen' },
       ],
     },
   ],

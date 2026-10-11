@@ -21,13 +21,15 @@ keine Abnahme durch eine Fachkraft.
 
 ```bash
 npm ci          # exakte Abhängigkeiten aus dem Lockfile
-npm run dev     # http://localhost:3000/elektrik-planung/
+npm run dev     # http://localhost:3000/planer/
 npm run check   # Lint + Format + Typecheck (2 Profile) + 2485 Tests
 npm run build   # Static Export nach ./out
 ```
 
-Der Planer liegt unter `/elektrik-planung/`. Alles wird lokal im Browser
-gespeichert (`localStorage`, versioniert mit Migration).
+Der Planer liegt auf einer eigenen Route unter `/planer/` und füllt dort das
+ganze Browserfenster; `/elektrik-planung/` ist die Wissens- und Rechnerseite
+daneben. Alles wird lokal im Browser gespeichert (`localStorage`, versioniert
+mit Migration).
 
 ---
 

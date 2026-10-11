@@ -349,7 +349,7 @@ export default function AusbauFahrplanPage() {
             >
               Holzausbau →
             </Link>
-            <Link href="/elektrik-planung" className="mt-2 flex min-h-11 items-center text-sm text-copper">
+            <Link href="/planer" className="mt-2 flex min-h-11 items-center text-sm text-copper">
               Schaltplan zeichnen →
             </Link>
           </div>

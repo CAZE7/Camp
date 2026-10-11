@@ -1,9 +1,12 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { ELEKTRIK_FAQ } from '@/components/elektrik/electricContent';
 import ElektrikPlanung from './page';
 
+// Attrappe bleibt absichtlich stehen: Sie ist der Draht, an dem die
+// Negativ-Assertion unten erkennt, ob die Anwendung wieder in diese Seite
+// eingebettet wird (dasselbe Muster wie in `app/page.test.tsx`).
 vi.mock('../../components/Planner', () => ({
   default: () => <div data-testid="mock-planner">Mocked Planner</div>,
 }));
@@ -97,8 +100,24 @@ describe('ElektrikPlanung', () => {
     expect(questions.map((question) => question.name)).toEqual(summaries);
   });
 
-  it('bindet den Planer unterhalb der Rechenwege ein', () => {
+  it('verweist auf die Planer-Seite, statt die Anwendung einzubetten', () => {
     render(<ElektrikPlanung />);
-    expect(screen.getByTestId('mock-planner')).toBeInTheDocument();
+
+    // Die Zeichenanwendung hat eine eigene Route (`/planer/`, volles
+    // Browserfenster). Steht sie wieder als Block in diesem Artikel, teilen
+    // sich Dokument und Editor ein Scroll-Dokument — genau der Zustand, der
+    // mit dem Umzug abgeschafft wurde.
+    expect(screen.queryByTestId('mock-planner')).not.toBeInTheDocument();
+
+    // `#planer` bleibt als Ankerziel erhalten: Die Themenseiten
+    // (`components/seo/SeoPage.tsx`) und die Knöpfe oben auf der Seite
+    // verweisen darauf. Ein verschwundenes Fragment meldet die Exportprüfung
+    // als `interner-anker-tot`.
+    const abschnitt = document.getElementById('planer');
+    expect(abschnitt, 'Abschnitt #planer fehlt').not.toBeNull();
+    expect(within(abschnitt!).getByRole('link', { name: /Planer im Vollbild öffnen/ })).toHaveAttribute(
+      'href',
+      '/planer/'
+    );
   });
 });

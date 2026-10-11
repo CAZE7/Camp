@@ -79,6 +79,20 @@ export const OPPORTUNITIES: readonly Opportunity[] = [
     source: 'annahme',
   },
   {
+    // Die Anwendungsroute (`/planer/`) bedient die Zeichnen-Intention; die
+    // Wissensroute (`/elektrik-planung/`) darunter bleibt für „Planer online"
+    // mit Rechner und Normtext zuständig (siehe Eintrag `elektroplaner`).
+    id: 'elektroplaner-vollbild',
+    query: 'camper schaltplan zeichnen programm',
+    intent: 'planung',
+    page: '/planer/',
+    coverage: 'abgedeckt',
+    gap: null,
+    priority: 'P0',
+    action: 'keine',
+    source: 'annahme',
+  },
+  {
     id: 'elektroplaner',
     query: 'wohnmobil elektrik planer online',
     intent: 'planung',

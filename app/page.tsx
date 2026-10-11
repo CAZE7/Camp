@@ -18,7 +18,7 @@ const TOOLS = [
   {
     title: 'Schaltplan',
     body: '12 V- und 230 V-Anlage zeichnen, verkabeln, Stückliste erzeugen.',
-    href: '/elektrik-planung',
+    href: '/planer',
     icon: Zap,
     cta: 'Planer öffnen',
     primary: true,
@@ -86,7 +86,7 @@ export default function Home() {
           </p>
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <Link
-              href="/elektrik-planung"
+              href="/planer"
               className="inline-flex min-h-11 items-center gap-2 bg-oxide px-4 py-2 text-sm font-medium text-on-signal transition-colors hover:bg-oxide/90"
             >
               Schaltplan starten

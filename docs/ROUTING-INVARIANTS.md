@@ -132,7 +132,7 @@ Ohne diese Schritte schlägt der Test fehl und nennt das betroffene Szenario.
   Handle-Koordinaten fremder Kanten nicht kennt (React-Flow-Architektur).
 - **Kein Pixel-Vergleich in der Geometrie-Galerie.** Die visuelle Regression
   vergleicht Geometrie (Wegpunkte, Pfad-String), nicht gerenderte Bilder.
-  Gerenderte Seiten (inkl. Planner unter `/elektrik-planung/`) deckt das
+  Gerenderte Seiten (inkl. Planner unter `/planer/`) deckt das
   Pixel-Gate aus D-9 (`tests/e2e/visual.spec.ts`, 375/768/1440 px) ab.
 - **`maxDetourRatio` ist pro Szenario gesetzt**, nicht global hergeleitet. Die
   Werte stammen aus den tatsächlichen Ergebnissen mit Sicherheitsaufschlag und

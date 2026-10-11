@@ -228,7 +228,7 @@ export const CAMPER_ELEKTRIK_PILLAR: SeoPageContent = {
       },
       callout: {
         tone: 'info',
-        text: 'Der Camper-Elektroplaner prüft diese Punkte automatisch mit: Er rechnet Spannungsfall je Kabel, prüft die Absicherung, warnt vor dem Schutzorgan weit weg vom Batteriepol und erzeugt die Stückliste. [Camper-Elektroplaner öffnen](/elektrik-planung/#planer).',
+        text: 'Der Camper-Elektroplaner prüft diese Punkte automatisch mit: Er rechnet Spannungsfall je Kabel, prüft die Absicherung, warnt vor dem Schutzorgan weit weg vom Batteriepol und erzeugt die Stückliste. [Camper-Elektroplaner öffnen](/planer/).',
       },
     },
   ],
@@ -257,7 +257,7 @@ export const CAMPER_ELEKTRIK_PILLAR: SeoPageContent = {
     { href: '/camper-elektrik/solar/', label: 'Solar auslegen' },
     { href: '/camper-elektrik/schaltplan/', label: 'Schaltplan zeichnen' },
     { href: '/rechner/', label: 'Alle Rechner im Überblick' },
-    { href: '/elektrik-planung/', label: 'Camper-Elektroplaner öffnen' },
+    { href: '/planer/', label: 'Camper-Elektroplaner öffnen' },
   ],
   sources: [
     {

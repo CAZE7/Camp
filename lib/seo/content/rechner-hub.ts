@@ -88,7 +88,7 @@ export const RECHNER_HUB_CONTENT: SeoPageContent = {
         'Einzelrechner beantworten Einzelfragen. Der Camper-Elektroplaner verbindet sie: Bauteile setzen, verdrahten lassen — Querschnitt, Sicherung, Spannungsfall und Energiebilanz werden je Leitung geprüft, die Stückliste entsteht aus dem Plan.',
       ],
       links: [
-        { href: '/elektrik-planung/', label: 'Camper-Elektroplaner öffnen' },
+        { href: '/planer/', label: 'Camper-Elektroplaner öffnen' },
         { href: '/camper-elektrik/schaltplan/', label: 'Schaltplan zeichnen: Aufbau und Prüfung' },
       ],
       callout: {
@@ -133,7 +133,7 @@ export const RECHNER_HUB_CONTENT: SeoPageContent = {
     { href: '/camper-elektrik/spannungsabfall/', label: 'Spannungsabfall berechnen' },
     { href: '/tools/heizung/', label: 'Heizlast-Rechner' },
     { href: '/tools/dach/', label: 'Dach-Planer' },
-    { href: '/elektrik-planung/', label: 'Camper-Elektroplaner öffnen' },
+    { href: '/planer/', label: 'Camper-Elektroplaner öffnen' },
   ],
   sources: [
     {

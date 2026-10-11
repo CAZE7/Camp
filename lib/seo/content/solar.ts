@@ -164,7 +164,7 @@ export const SOLAR_CONTENT: SeoPageContent = {
     { href: '/camper-elektrik/batterie/', label: 'Batterie dimensionieren' },
     { href: '/rechner/solaranlage/', label: 'Solaranlage berechnen' },
     { href: '/tools/dach/', label: 'Dach-Planer: Panels auf der Fläche platzieren' },
-    { href: '/elektrik-planung/', label: 'Camper-Elektroplaner öffnen' },
+    { href: '/planer/', label: 'Camper-Elektroplaner öffnen' },
   ],
   sources: [
     {

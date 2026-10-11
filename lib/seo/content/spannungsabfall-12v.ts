@@ -152,7 +152,7 @@ export const SPANNUNGSABFALL_12V_CONTENT: SeoPageContent = {
         },
         { href: '/camper-elektrik/kabelquerschnitt/', label: 'Kabelquerschnitt berechnen' },
         { href: '/camper-elektrik/sicherungen/', label: 'Sicherung passend zur Leitung wählen' },
-        { href: '/elektrik-planung/#planer', label: 'Camper-Elektroplaner öffnen' },
+        { href: '/planer/', label: 'Camper-Elektroplaner öffnen' },
       ],
     },
   ],
@@ -180,7 +180,7 @@ export const SPANNUNGSABFALL_12V_CONTENT: SeoPageContent = {
     { href: '/camper-elektrik/sicherungen/', label: 'Sicherungen dimensionieren' },
     { href: '/rechner/batteriekapazitaet/', label: 'Batteriekapazität berechnen' },
     { href: '/rechner/', label: 'Alle Rechner im Überblick' },
-    { href: '/elektrik-planung/', label: 'Camper-Elektroplaner öffnen' },
+    { href: '/planer/', label: 'Camper-Elektroplaner öffnen' },
   ],
   sources: [
     {
