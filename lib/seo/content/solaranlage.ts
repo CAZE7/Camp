@@ -145,7 +145,7 @@ export const SOLARANLAGE_CONTENT: SeoPageContent = {
       },
       callout: {
         tone: 'info',
-        text: 'Berechnete Leistung und Panelanzahl lassen sich im [Camper-Elektroplaner](/elektrik-planung/#planer) als Solarquelle eintragen — dort fließen sie in die Energiebilanz ein.',
+        text: 'Berechnete Leistung und Panelanzahl lassen sich im [Camper-Elektroplaner](/planer/) als Solarquelle eintragen — dort fließen sie in die Energiebilanz ein.',
       },
     },
   ],
@@ -172,7 +172,7 @@ export const SOLARANLAGE_CONTENT: SeoPageContent = {
     { href: '/rechner/batteriekapazitaet/', label: 'Batteriekapazität berechnen' },
     { href: '/tools/dach/', label: 'Dach-Planer' },
     { href: '/rechner/', label: 'Alle Rechner im Überblick' },
-    { href: '/elektrik-planung/', label: 'Camper-Elektroplaner öffnen' },
+    { href: '/planer/', label: 'Camper-Elektroplaner öffnen' },
   ],
   sources: [
     {

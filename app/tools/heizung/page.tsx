@@ -1115,7 +1115,7 @@ export default function HeatingCalculatorPage() {
               <Info className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
               <div className="text-sm">
                 Bereit für den nächsten Schritt?{' '}
-                <Link href="/elektrik-planung" className="underline">
+                <Link href="/planer" className="underline">
                   Plane die Stromversorgung im Schaltplan
                 </Link>{' '}
                 — dort werden Heizung und Verbraucher automatisch abgesichert und verkabelt.

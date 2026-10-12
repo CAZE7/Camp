@@ -112,7 +112,7 @@ export const SCHALTPLAN_CONTENT: SeoPageContent = {
       ],
       callout: {
         tone: 'info',
-        text: '[Camper-Elektroplaner öffnen](/elektrik-planung/#planer) — vom ersten Bauteil bis zur Stückliste.',
+        text: '[Camper-Elektroplaner öffnen](/planer/) — vom ersten Bauteil bis zur Stückliste.',
       },
     },
   ],
@@ -138,7 +138,7 @@ export const SCHALTPLAN_CONTENT: SeoPageContent = {
     { href: '/camper-elektrik/kabelquerschnitt/', label: 'Kabelquerschnitt berechnen' },
     { href: '/camper-elektrik/sicherungen/', label: 'Sicherungen im Camper' },
     { href: '/camper-elektrik/230v/', label: '230-V-Anlage im Camper' },
-    { href: '/elektrik-planung/', label: 'Camper-Elektroplaner öffnen' },
+    { href: '/planer/', label: 'Camper-Elektroplaner öffnen' },
     { href: '/guides/ausbau-fahrplan/', label: 'Reihenfolge der Gewerke' },
   ],
   sources: [

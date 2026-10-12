@@ -63,10 +63,28 @@ const ERLAUBTE_BIBLIOTHEKEN: Record<string, readonly HeavyLibrary[]> = {
   '/tools/dach/': ['react-flow', 'dagre', 'elkjs'],
 };
 
-/** Gemessene Erstaufbau-Budgets (unkomprimierte Skripte inkl. Script-Preloads). */
+/**
+ * Gemessene Erstaufbau-Budgets (unkomprimierte Skripte inkl. Script-Preloads).
+ *
+ * Ein Eintrag ist ein Ratchet: Er hält den gemessenen Zustand und verbietet den
+ * Rückfall. Wer eine Seite leichter macht, zieht den Wert nach — so wie hier
+ * geschehen, als die Zeichenanwendung auf die eigene Route `/planer/` umzog.
+ */
 const INITIAL_SCRIPT_BUDGETS: Record<string, number> = {
   default: 700 * 1024,
-  '/elektrik-planung/': 750 * 1024,
+  /**
+   * `/elektrik-planung/` brauchte früher eine Ausnahme (750 KiB), weil die
+   * Seite den Planer einbettete. Seit dem Umzug der Anwendung auf `/planer/`
+   * lädt sie nur noch Rechner und Redaktion: gemessen 643,6 KiB (2026-10-11,
+   * `NEXT_PUBLIC_BASE_PATH=/Camp npm run build`) — die Ausnahme ist entfernt,
+   * es gilt wieder das Standardbudget.
+   *
+   * `/planer/` trägt bewusst KEINEN Eintrag: Die Anwendung ist 606,9 KiB
+   * schwer im Erstaufbau und liegt damit unter dem Standard. React Flow, ELK
+   * und Dagre kommen erst mit dem dynamisch nachgeladenen `PlannerInner`
+   * (`components/Planner.tsx`, `ssr: false`) — ein statischer Import würde
+   * sowohl dieses Budget als auch `bundle-schwer` reißen.
+   */
   '/tools/heizung/': 900 * 1024,
   '/tools/dach/': 1100 * 1024,
   // Auch ohne Indexstatus soll die Chat-Ansicht das AI-SDK erst nach Klick laden.

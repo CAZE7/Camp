@@ -15,6 +15,14 @@ import { PIXEL_MARKER } from './pixelMarker';
  * Mobile und Dark Mode. V2-Architekturarbeit darf diese Baseline nicht als
  * Nebenwirkung verschieben.
  *
+ * Route `planung`: Der Planer ist auf die eigene Anwendungsroute `/planer/`
+ * umgezogen (volles Browserfenster, ohne Website-Kopfleiste) und wird dort
+ * eingefroren; `elektrik-wissen` hält die Wissens- und Rechnerseite
+ * `/elektrik-planung/`, auf der er vorher als Block im Artikel stand. Beide
+ * Baselines sind nach dem Umzug neu zu ziehen — der Weg dafür ist der
+ * Workflow `.github/workflows/baselines.yml`
+ * (`npx playwright test tests/e2e/visual.spec.ts --update-snapshots`).
+ *
  * Schwelle: 2 % abweichende Pixel (maxDiffPixelRatio) — tolerant gegen
  * Anti-Aliasing, hart gegen Layout-/Farb-Brüche. Baselines liegen in
  * tests/e2e/visual.spec.ts-snapshots/; Refresh nur nach UI-Freigabe mit
@@ -41,7 +49,8 @@ const ROUTES: Array<{ path: string; name: string; fullPage: boolean; ready?: str
   { path: '/', name: 'start', fullPage: true },
   { path: '/tools/dach/', name: 'dach', fullPage: false },
   { path: '/tools/heizung/', name: 'heizung', fullPage: false },
-  { path: '/elektrik-planung/', name: 'planung', fullPage: false, ready: 'planner-shell' },
+  { path: '/planer/', name: 'planung', fullPage: false, ready: 'planner-shell' },
+  { path: '/elektrik-planung/', name: 'elektrik-wissen', fullPage: false },
   { path: '/impressum/', name: 'impressum', fullPage: true },
 ];
 

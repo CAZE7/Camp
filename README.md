@@ -10,10 +10,39 @@ ob ihr Plan trägt — nicht für Elektrofachkräfte, die eine normgerechte
 Fachplanung erstellen. Die Vorschläge sind bewusst konservativ und ersetzen
 keine Abnahme durch eine Fachkraft.
 
-> **Demo:** _(Platzhalter — hier gehört die GitHub-Pages-URL des Repos hin,
-> sobald Pages aktiviert ist.)_
-> **Screenshots:** _(Platzhalter — noch keine erstellt.)_
-> Beides ist bewusst leer statt erfunden.
+**Demo:** [caze7.github.io/Camp](https://caze7.github.io/Camp/) ·
+Planer direkt: [caze7.github.io/Camp/planer](https://caze7.github.io/Camp/planer/)
+
+---
+
+## Screenshots
+
+![Elektroplaner im Vollbild: links der Bauteilkatalog, auf der Zeichenfläche ein automatisch verdrahteter Schaltplan mit Kabellabels für Querschnitt und Länge](docs/images/planer-vollbild.png)
+
+_Die Anwendung als eigene Route (`/planer/`) im ganzen Browserfenster: Katalog
+links, Zeichenfläche mit automatischer Verdrahtung, an jedem Kabel Querschnitt
+und Länge, oben Prüfstand und Warnzentrum._
+
+![Derselbe Plan im Dark-Engineering-Theme](docs/images/planer-vollbild-dunkel.png)
+
+_Dasselbe Szenario im Dark-Engineering-Theme — die Tokens sind die einzige
+Farbquelle, Kontraste sind per Test-Gate geprüft (ADR 0005)._
+
+![Planer auf 375 px: Bottom-Tabs für Bauteile, Elektrik, Wasser, Details und Fokus](docs/images/planer-mobil.png)
+
+_Auf dem Handy wird aus der Sidebar der Bottom-Tab „Bauteile“, die
+Zeichengesten und die Prüfung bleiben dieselben._
+
+![Wissens- und Rechnerseite /elektrik-planung/ mit Rechner für Kabelquerschnitt und Absicherung](docs/images/elektrik-planung.png)
+
+_`/elektrik-planung/` ist die Wissens- und Rechnerseite neben der Anwendung:
+Normzusammenhänge, Rechner und der Weg in den Vollbild-Planer._
+
+![Startseite der Werft mit Werkzeugkarten und Guides](docs/images/startseite.png)
+
+_Die Startseite bündelt Werkzeuge und Guides; jeder Kartenlink führt in eine
+indexierbare Wissens- oder Werkzeugseite — der Linkgraph ist Teil des
+Export-Audits._
 
 ---
 
@@ -21,13 +50,15 @@ keine Abnahme durch eine Fachkraft.
 
 ```bash
 npm ci          # exakte Abhängigkeiten aus dem Lockfile
-npm run dev     # http://localhost:3000/elektrik-planung/
-npm run check   # Lint + Format + Typecheck (2 Profile) + 2485 Tests
+npm run dev     # http://localhost:3000/planer/
+npm run check   # Lint + Format + Typecheck (2 Profile) + 3309 Tests
 npm run build   # Static Export nach ./out
 ```
 
-Der Planer liegt unter `/elektrik-planung/`. Alles wird lokal im Browser
-gespeichert (`localStorage`, versioniert mit Migration).
+Der Planer liegt auf einer eigenen Route unter `/planer/` und füllt dort das
+ganze Browserfenster; `/elektrik-planung/` ist die Wissens- und Rechnerseite
+daneben. Alles wird lokal im Browser gespeichert (`localStorage`, versioniert
+mit Migration).
 
 ---
 
@@ -48,6 +79,10 @@ gespeichert (`localStorage`, versioniert mit Migration).
 | Wassermodus (Tanks, Pumpe, Entnahmestellen)                     | `components/nodes/WaterNode.tsx`                     | `WaterPipeEdge.test.tsx`                                                         |
 | Dachplaner und Heizlast-Rechner                                 | `app/tools/dach/`, `app/tools/heizung/`              | `page.test.tsx`, `validation.test.ts`                                            |
 | Bedienung auf Handy, Tablet und Desktop                         | `components/PlannerInner.tsx`                        | `PlannerInner.test.tsx`, E2E `responsive.spec.ts`                                |
+| Vollbild-Anwendungsroute ohne Site-Chrome                       | `app/planer/page.tsx`                                | `app/planer/page.test.tsx`, E2E `planner-flow.spec.ts`                           |
+| SEO-Inventar mit Linkgraph- und Export-Gates                    | `lib/seo/`, `scripts/seo/`                           | `scripts/seo/*.test.ts`, Export-Audit innerhalb von `npm run build`              |
+| Barrierefreiheit: axe-Gate über 9 Seiten × 4 Viewports          | `tests/e2e/a11y.spec.ts`                             | 36 axe-Läufe gegen den gebauten Export, critical/serious = Fail                  |
+| Pixel-Baselines je Route, Viewport und Theme                    | `tests/e2e/visual*.spec.ts`                          | 76 Baseline-Vergleiche, Pflege per `--update-snapshots`                          |
 
 ---
 
@@ -133,35 +168,36 @@ docs/                   Architektur-Entscheidungen und Nachweise
 ## Qualitätsstand
 
 Alle Angaben stammen aus Läufen auf dem aktuellen Stand
-(Testzahlen: 2026-09-28; übrige Angaben: Commit-Reihe K1–K7, 2026-08-21; Node 22.22.3).
+(Testzahlen und E2E-Läufe: 2026-10-12; Node 22.22.3; Chromium 153.0.8010.0
+gegen den gebauten Static Export).
 
-| Prüfung                     | Befehl                                      | Ergebnis                                                                                  |
-| --------------------------- | ------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| Typecheck (Produktionscode) | `npm run typecheck`                         | **0 Fehler**, `noUncheckedIndexedAccess` in der Basis-tsconfig                            |
-| Typecheck (inkl. Tests)     | `npm run typecheck:tests`                   | **0 Fehler** — Einheiten und Indexschärfe gelten auch in Tests                            |
-| Lint (ESLint 10, flat)      | `npm run lint`                              | **0 Fehler** — u. a. consistent-type-imports, Tailwind-Sortierung                         |
-| Format (Prettier)           | `npm run format:check`                      | sauber, inkl. Tailwind-Klassensortierung                                                  |
-| Unit-/Komponententests      | `npm test`                                  | **2485 Tests, 179 Dateien, grün**                                                         |
-| Coverage-Gate (lib/**)      | `npm run test:coverage`                     | Schwellen: Zeilen 90, Branches 85, Funktionen 90, Statements 95                           |
-| Property-Tests (VDE)        | `npx vitest run lib/vde-properties.test.ts` | 35 Tests, ~17.000 generierte Fälle                                                        |
-| Routing-Invarianten         | `npx vitest run components/edges/utils`     | 25 Szenarien × 7 Invarianten                                                              |
-| Routing-Versatz (P0)        | `npm run routing:audit -- --shifts`         | 7×7-Plan-Translation: 0 Notfallpfade, 0× I1; I2 je Plan über Ratchet (Gate in `npm test`) |
-| Design-Token-Gate           | `npx vitest run lib/designTokens.test.ts`   | 174 Tests, CSS per postcss geparst, WCAG-Kontrastpaare geprüft                            |
-| Build                       | `npm run build`                             | erfolgreich, `./out` Static Export                                                        |
-| Lockfile-Gate               | `npm run ci:verify-lockfile-gate`           | greift (npm ci scheitert bei Drift)                                                       |
-| Dead-Code-Audit             | `npm run audit:dead-code`                   | knip: letzter Lauf ohne Befund; braucht viel RAM (kein CI-Gate, ADR 0006)                 |
-| Accessibility (axe, E2E)    | `npm run e2e -- a11y`                       | axe-Scan des gebauten Exports: critical/serious = Fail                                    |
-| Lighthouse Accessibility    | Report vom 2026-08-20, Lighthouse 13.4.1    | **100 / 100** historisch; der laufende Gate ist axe (Zeile oben)                          |
-| End-to-End (REST der Suite) | `npm run e2e`                               | Playwright vs. gebauter Export, Chromium in CI installiert                                |
+| Prüfung                        | Befehl                                                  | Ergebnis                                                                                  |
+| ------------------------------ | ------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Typecheck (Produktionscode)    | `npm run typecheck`                                     | **0 Fehler**, `noUncheckedIndexedAccess` in der Basis-tsconfig                            |
+| Typecheck (inkl. Tests)        | `npm run typecheck:tests`                               | **0 Fehler** — Einheiten und Indexschärfe gelten auch in Tests                            |
+| Lint (ESLint 10, flat)         | `npm run lint`                                          | **0 Fehler** — u. a. consistent-type-imports, Tailwind-Sortierung                         |
+| Format (Prettier)              | `npm run format:check`                                  | sauber, inkl. Tailwind-Klassensortierung                                                  |
+| Unit-/Komponententests         | `npm test`                                              | **3309 Tests bestanden, 1 bedingt übersprungen, 241 Dateien**                             |
+| Coverage-Gate (lib/**)         | `npm run test:coverage`                                 | Schwellen: Zeilen 90, Branches 85, Funktionen 90, Statements 95                           |
+| Property-Tests (VDE)           | `npx vitest run lib/vde-properties.test.ts`             | 35 Tests, ~17.000 generierte Fälle                                                        |
+| Routing-Invarianten            | `npx vitest run components/edges/utils`                 | 25 Szenarien × 7 Invarianten                                                              |
+| Routing-Versatz (P0)           | `npm run routing:audit -- --shifts`                     | 7×7-Plan-Translation: 0 Notfallpfade, 0× I1; I2 je Plan über Ratchet (Gate in `npm test`) |
+| Design-Token-Gate              | `npx vitest run lib/designTokens.test.ts`               | 174 Tests, CSS per postcss geparst, WCAG-Kontrastpaare geprüft                            |
+| Build                          | `npm run build`                                         | erfolgreich, `./out` Static Export                                                        |
+| Lockfile-Gate                  | `npm run ci:verify-lockfile-gate`                       | greift (npm ci scheitert bei Drift)                                                       |
+| Dead-Code-Audit                | `npm run audit:dead-code`                               | knip: letzter Lauf ohne Befund; braucht viel RAM (kein CI-Gate, ADR 0006)                 |
+| Accessibility (axe, E2E)       | `npm run e2e -- a11y`                                   | 36 Läufe (9 Seiten × 4 Viewports): 0 kritische/schwere Verstöße                           |
+| End-to-End (funktionale Suite) | `npx playwright test --grep-invert "hält die Baseline"` | 133 bestanden, 31 bedingt übersprungen, 0 Fehler                                          |
+| Visuelle Baselines             | `npx playwright test --grep "hält die Baseline"`        | 76 Vergleiche grün (Routen × Viewports × Themes, plus DE-/Pixel-Baselines)                |
 
-**Offener Punkt (ehrlich benannt):** Die Playwright-Suite (inklusive des
-axe-a11y-Gates `tests/e2e/a11y.spec.ts`) ist vollständig geschrieben und in
-CI eingebunden, wird aber erst im CI-Lauf bewiesen: der Browser-Download
-war in der Entwicklungsumgebung blockiert (Playwright-CDN nicht erreichbar).
-Details und die stattdessen lokal erbrachten Belege: `docs/E2E-TESTS.md`.
-
-Der Lighthouse-Wert stammt aus Mission 1 (2026-08-20) und wurde seitdem nicht
-neu gemessen; die Rohdaten liegen in `lighthouse-report/`.
+**Ehrlicher Stand zur Browser-Stufe:** Die Playwright-Suite läuft lokal und in
+CI gegen den gebauten Export; die Zahlen oben sind gemessen, nicht erwartet.
+In CI installiert der Job den Browser selbst (`npx playwright install
+--with-deps chromium`). Für lokale Läufe ohne erreichbaren Playwright-CDN
+steht die Startanleitung in `docs/UI-BASELINE.md` §4; Historie und Grenzen der
+Geräteemulation: `docs/E2E-TESTS.md`. Die visuellen Baselines sind an genau
+einen Rendering-Stand gebunden — nach UI-Änderungen werden sie bewusst und
+begründet neu geschrieben (`--update-snapshots`), niemals stillschweigend.
 
 ---
 
@@ -182,6 +218,8 @@ npm run build               # Static Export nach ./out
 npm run e2e                 # Playwright (benötigt ./out und Chromium)
 npm run routing:gallery     # Routing-Galerie neu erzeugen
 npm run ci:verify-lockfile-gate
+npx playwright test tests/e2e/visual.spec.ts --update-snapshots
+                            # visuelle Baselines nach einer UI-Änderung neu schreiben
 ```
 
 Für Tests und E2E wird Node.js 20.19+ benötigt; empfohlen ist die Version
@@ -243,6 +281,8 @@ Branch Protection: `docs/CI.md`.
 - `docs/COMPONENT-REGISTRY.md` — Analyse der Bauteildefinitionen
 - `docs/E2E-TESTS.md` — Playwright-Setup und Grenzen der Geräteemulation
 - `docs/INVENTORY.md`, `docs/RESTMISSION-REPORT.md` — Bestandsaufnahme aus Mission 1
+- `docs/AUDIT-*.md` — historische Fach-Audits (Routing, Auto-Wire, Elektroplaner, Extrem-System)
+- `docs/images/` — die README-Bilder, erzeugt aus dem gebauten Export (Chromium, keine Mockups)
 - `AGENTS.md` — Arbeitsauftrag und Definition of Done
 
 ## Daten im Browser
@@ -254,4 +294,4 @@ keine Daten an einen Server gesendet.
 
 ## Lizenz
 
-ISC (siehe `package.json`).
+ISC — der Volltext steht in [LICENSE](LICENSE).

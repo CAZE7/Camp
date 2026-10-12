@@ -137,7 +137,7 @@ export const UEBER_WERFT_CONTENT: SeoPageContent = {
     { href: '/', label: 'Startseite' },
     { href: '/camper-elektrik/', label: 'Camper-Elektrik planen' },
     { href: '/rechner/', label: 'Alle Rechner' },
-    { href: '/elektrik-planung/', label: 'Camper-Elektroplaner öffnen' },
+    { href: '/planer/', label: 'Camper-Elektroplaner öffnen' },
     { href: '/impressum/', label: 'Impressum' },
     { href: '/datenschutz/', label: 'Datenschutz' },
   ],

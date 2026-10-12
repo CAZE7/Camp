@@ -14,7 +14,14 @@ import { expect, type Locator, type Page } from '@playwright/test';
  *     seiner öffentlichen API sind.
  */
 
-export const PLANNER_URL = '/elektrik-planung/';
+/**
+ * Adresse der Zeichenanwendung.
+ *
+ * Der Planer liegt auf einer eigenen Route und füllt dort das ganze
+ * Browserfenster; `/elektrik-planung/` ist die Wissens- und Rechnerseite, die
+ * dorthin verweist. Alle Szenarien, die die Anwendung bedienen, starten hier.
+ */
+export const PLANNER_URL = '/planer/';
 
 /** Öffnet den Planer und wartet, bis der Canvas montiert ist. */
 export async function openPlanner(page: Page): Promise<void> {

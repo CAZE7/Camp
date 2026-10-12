@@ -142,6 +142,24 @@ LD_LIBRARY_PATH=/tmp/al2023lib/lib FONTCONFIG_PATH=/tmp/fonts \
 npx playwright test --grep "hält die Baseline" --update-snapshots
 ```
 
+**Fälliger Refresh (2026-10-11, Planer auf eigener Route)** — der Elektroplaner ist
+aus dem Artikel `/elektrik-planung/` auf die Anwendungsroute `/planer/` umgezogen und
+füllt dort das ganze Browserfenster (ohne `SiteHeader`/`SiteFooter`). Betroffen sind
+zwei Flächen des Routen-Gates:
+
+1. `route-planung-*` (8 PNG): dieselbe Kennung, neue Adresse. Eingefroren wird jetzt
+   `/planer/` — die Zeichenfläche beginnt bei y = 0, die 48-px-Kopfleiste der Website
+   und der Erstbesuchsdialog über einer Textspalte entfallen.
+2. `route-elektrik-wissen-*` (8 PNG): Erstaufnahme. Die Wissensseite zeigt an der
+   Stelle des ehemaligen `h-dvh`-Blocks den Einstieg in die Anwendung.
+
+Beide Gruppen sind in dieser Umgebung **nicht** aufgenommen: Der Browser-Download für
+Playwright ist gesperrt (§6 in `docs/E2E-TESTS.md`). Der meldende Job `visual`
+(`continue-on-error`) meldet die Abweichung, bis `baselines.yml` oder
+`npx playwright test tests/e2e/visual.spec.ts --update-snapshots` läuft. Der
+blockierende Lauf ist nicht betroffen — die funktionalen Szenarien folgen
+`PLANNER_URL` in `tests/e2e/helpers.ts`.
+
 ## 5. Lokale Nicht-Pixel-Gates
 
 Auch ohne Playwright-Browser schützen diese schnellen Checks die Baseline:

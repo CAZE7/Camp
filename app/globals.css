@@ -1316,6 +1316,16 @@
   color: var(--text-high);
   white-space: nowrap;
 }
+/* Die Wortmarke ist der Ausgang der Anwendung (Route `/planer/` ohne
+   Website-Kopfleiste). Ruhend sieht sie aus wie zuvor — Farbe und Textstil
+   erbt sie von `.cad-menubar__brand` (Tailwind-Preflight setzt `a` auf
+   `inherit`); die Unterstreichung kommt erst auf Zeiger und Fokus, damit der
+   Weg zurück auffindbar ist, ohne die Titelleiste lauter zu machen. */
+.cad-menubar__home:hover,
+.cad-menubar__home:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 0.25em;
+}
 .cad-menubar__project {
   display: flex;
   min-width: 0;

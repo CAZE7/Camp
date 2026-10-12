@@ -17,7 +17,7 @@ const LINKS = [
   { href: '/', label: 'Zur Startseite' },
   { href: '/tools/dach', label: 'Dach-Planer' },
   { href: '/tools/heizung', label: 'Heizlast' },
-  { href: '/elektrik-planung', label: 'Schaltplan' },
+  { href: '/planer', label: 'Schaltplan' },
   { href: '/guides/ausbau-fahrplan', label: 'Ausbau-Fahrplan' },
 ];
 

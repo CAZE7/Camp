@@ -23,17 +23,20 @@ import {
 } from '@/lib/electrical';
 import { COPPER_CONDUCTIVITY_MS_PER_MM2 } from '@/lib/materials';
 import { VDE_BATTERY_DOD } from '@/lib/vde-standards';
-import Planner from '../../components/Planner';
 
 /**
  * Seite „Elektrik-Planung".
  *
  * Zwei Aufgaben auf einer Adresse, in dieser Reihenfolge: zuerst die
  * Einzelfrage („welche Leitung, welche Sicherung?"), die als Rechner direkt
- * beantwortet wird, darunter die zeichnende Anwendung für die gesamte Anlage.
- * Die redaktionellen Abschnitte erklären die Rechenwege hinter dem Rechner —
- * sie sind Teil der Seite und keine Zierde: Ohne sie stünde der Rechner ohne
+ * beantwortet wird, darunter die Herleitung und die Normgrenzen. Die
+ * redaktionellen Abschnitte erklären die Rechenwege hinter dem Rechner — sie
+ * sind Teil der Seite und keine Zierde: Ohne sie stünde der Rechner ohne
  * nachvollziehbare Herleitung da.
+ *
+ * Die zeichnende Anwendung für die gesamte Anlage liegt seit dem Umzug auf
+ * `/planer/` (eigene Route, volles Browserfenster); diese Seite verweist im
+ * Abschnitt `#planer` dorthin und bleibt selbst ein lesbares Dokument.
  *
  * Abschnittsführung: `main` → `section` mit eigener Überschrift und
  * `article` für die in sich abgeschlossenen Beiträge; Unterthemen sind `h3`.
@@ -106,7 +109,7 @@ export default function ElektrikPlanung() {
                 <Link href="#rechner">Zum Rechner</Link>
               </Button>
               <Button asChild size="lg" variant="outline">
-                <Link href="#planer">Schaltplan zeichnen</Link>
+                <Link href="/planer/">Schaltplan zeichnen</Link>
               </Button>
             </div>
             <ul className="mt-8 grid gap-x-8 gap-y-2 text-base text-ink-soft md:grid-cols-2">
@@ -385,15 +388,16 @@ export default function ElektrikPlanung() {
               </li>
             </ul>
           </section>
-        </div>
 
-        {/* Die Zeichenfläche steht außerhalb der Lesespalte und bekommt die volle
-            Fensterbreite: Der Planer führt feste Spaltenbreiten (Katalog ab 260 px,
-            Zeichenfläche mindestens 600 px, Eigenschaften bis 320 px) und liefe in
-            der auf 64 rem begrenzten Spalte über. Die feste Höhe hält den
-            Layoutsprung beim Nachladen bei null (CLS). */}
-        <section id="planer" aria-labelledby="planer-titel" className="scroll-mt-20">
-          <div className="container-page pb-6 md:pb-8">
+          {/* Der Planer ist auf eine eigene Route umgezogen (`/planer/`) und
+              füllt dort das ganze Browserfenster. Vorher stand er hier als
+              `h-dvh`-Block zwischen Rechner, Normtext und Fragen: Die
+              Kopfleiste der Website nahm ihm 48 px Fensterhöhe, und wer
+              zeichnen wollte, musste erst an einem Artikel vorbei. Was bleibt,
+              ist der Weg dorthin — als Abschnitt mit eigener Überschrift und
+              derselben Zusage wie vorher, damit `#planer`-Verweise aus den
+              Themenseiten weiterhin ein Ziel haben. */}
+          <section id="planer" aria-labelledby="planer-titel" className="scroll-mt-20">
             <h2 id="planer-titel" className="font-display text-xl font-semibold text-ink">
               Schaltplan zeichnen und automatisch verdrahten
             </h2>
@@ -402,11 +406,29 @@ export default function ElektrikPlanung() {
               Querschnitt, Sicherung und Längen landen gleichzeitig in der Stückliste. Der Plan liegt lokal im
               Browser, du kannst ihn also unterbrechen und später weiterführen.
             </p>
-          </div>
-          <div className="h-dvh overflow-hidden border-y border-rule bg-bone">
-            <Planner />
-          </div>
-        </section>
+            <div className="node-card mt-5 max-w-3xl p-5 md:p-6">
+              <p className="panel-title">Camper-Elektroplaner</p>
+              <p className="mt-2 text-md text-ink-soft">
+                Die Zeichenfläche öffnet als eigene Seite im ganzen Browserfenster: Bauteilkatalog links,
+                Schaltplan in der Mitte, Eigenschaften rechts — ohne Textspalte drumherum.
+              </p>
+              <div className="mt-4 flex flex-wrap gap-3">
+                <Link
+                  href="/planer/"
+                  className="inline-flex min-h-11 items-center bg-oxide px-4 py-2 text-sm font-medium text-on-signal transition-colors hover:bg-oxide/90"
+                >
+                  Planer im Vollbild öffnen
+                </Link>
+                <Link
+                  href="/camper-elektrik/schaltplan/"
+                  className="inline-flex min-h-11 items-center border border-rule-strong px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-surface-hover"
+                >
+                  Aufbau eines Schaltplans lesen
+                </Link>
+              </div>
+            </div>
+          </section>
+        </div>
 
         <div className="container-page space-y-16">
           <section id="faq" aria-labelledby="faq-titel" className="scroll-mt-20">

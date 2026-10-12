@@ -77,7 +77,7 @@ export function SiteHeader({ tone = 'paper' }: { tone?: 'paper' | 'soot' }) {
 
         <div className="flex items-center gap-1">
           <Link
-            href="/elektrik-planung"
+            href="/planer"
             className="hidden min-h-11 items-center bg-oxide px-3 py-2 text-sm font-medium text-on-signal transition-colors hover:bg-oxide/90 sm:inline-flex"
           >
             Planer öffnen
@@ -136,7 +136,7 @@ export function SiteHeader({ tone = 'paper' }: { tone?: 'paper' | 'soot' }) {
             })}
             <li className="sm:hidden">
               <Link
-                href="/elektrik-planung"
+                href="/planer"
                 onClick={() => setOpen(false)}
                 className="mt-2 flex min-h-11 items-center justify-center bg-oxide px-3 py-2 text-sm font-medium text-on-signal"
               >

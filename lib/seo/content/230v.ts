@@ -149,7 +149,7 @@ export const AC_230V_CONTENT: SeoPageContent = {
     { href: '/camper-elektrik/wechselrichter/', label: 'Wechselrichter auslegen' },
     { href: '/camper-elektrik/sicherungen/', label: 'Sicherungen im Camper' },
     { href: '/camper-elektrik/schaltplan/', label: 'Schaltplan zeichnen' },
-    { href: '/elektrik-planung/', label: 'Camper-Elektroplaner öffnen' },
+    { href: '/planer/', label: 'Camper-Elektroplaner öffnen' },
     { href: '/ueber-werft/', label: 'Über Werft: Grenzen des Modells' },
   ],
   sources: [

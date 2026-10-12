@@ -20,7 +20,8 @@ const PAGES: Array<{ path: string; name: string }> = [
   { path: '/', name: 'Startseite' },
   { path: '/tools/dach/', name: 'Dachplaner' },
   { path: '/tools/heizung/', name: 'Heizlast-Rechner' },
-  { path: '/elektrik-planung/', name: 'Elektrik-Planer' },
+  { path: '/planer/', name: 'Elektroplaner (Anwendung)' },
+  { path: '/elektrik-planung/', name: 'Elektrik-Wissensseite' },
   // Die inhaltsgetriebenen Seiten teilen sich ein Gerüst (`components/seo/`).
   // Sie stehen hier stellvertretend für die drei Seitentypen — Pillar,
   // Cluster mit Rechner, Vertrauensseite —, damit ein Fehler im Gerüst nicht
@@ -40,7 +41,7 @@ for (const { path, name } of PAGES) {
 
     const builder = new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']);
 
-    if (path === '/elektrik-planung/') {
+    if (path === '/planer/') {
       // Der React-Flow-Canvas ist eine Anwendung mit Zeiger-/Tastatur-Modell
       // (Pfeiltasten-Verschiebung, Verbindungsmodus) und kein Dokumenten-
       // Fließtext: axe-Regeln für Dokumentstruktur (z. B. 'region' pro

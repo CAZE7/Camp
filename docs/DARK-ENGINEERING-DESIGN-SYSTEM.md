@@ -472,7 +472,7 @@ Für jeden State: Border, Background, Text, Shadow, Opacity, Transform, Cursor, 
 
 ```ts
 test('node-card states', async ({ page }) => {
-  await page.goto('/elektrik-planung');
+  await page.goto('/planer/');
   const node = page.locator('[data-testid="planner-node"]').first();
   await expect(node).toHaveScreenshot('node-default.png');
   await node.hover();

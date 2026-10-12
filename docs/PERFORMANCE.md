@@ -299,6 +299,8 @@ npm run build            # Static Export
 npm run perf:edge-routing # Render-Hotspot-Messung
 
 # Chunk-Inspizierung (PERF-05): React Flow darf nicht in den initialen
-# <script>-Tags der Planer-Route stehen.
-#   cat out/elektrik-planung/index.html | grep -oE '/_next/static/chunks/[^"]+\.js'
+# <script>-Tags der Planer-Route stehen. Die Planer-Route ist seit dem Umzug
+# der Anwendung auf eine eigene Seite `/planer/` (vorher: eingebetteter Block
+# auf `/elektrik-planung/`).
+#   cat out/planer/index.html | grep -oE '/_next/static/chunks/[^"]+\.js'
 ```

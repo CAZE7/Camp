@@ -62,7 +62,7 @@ export default function HolzausbauGuide() {
           ← Ausbau-Fahrplan
         </Link>
         <Link
-          href="/elektrik-planung"
+          href="/planer"
           className="ml-4 inline-flex min-h-11 items-center text-sm text-ink-soft hover:text-ink"
         >
           Schaltplan zeichnen →
