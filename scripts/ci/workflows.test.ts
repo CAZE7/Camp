@@ -197,7 +197,7 @@ describe('GitHub-Actions-Workflows', () => {
     expect(raw).not.toMatch(/always\(\)/);
   });
 
-  it('Deploy triggert per Push ausschließlich auf dem Release-Branch', () => {
+  it('Deploy triggert per Push auf den Ziel-Default-Branch `main`', () => {
     const workflow = readWorkflow('deploy.yml');
     const push = (workflow.on as { push?: { branches?: string[]; 'branches-ignore'?: string[] } }).push;
     // Actions kann in `branches` keine Ausdrücke auswerten — die Liste muss
@@ -205,9 +205,11 @@ describe('GitHub-Actions-Workflows', () => {
     // Default-Branches manuell mitziehen (Kommentar in deploy.yml).
     // `branches-ignore` hat zuvor auf 100+ Agent-/Dependabot-Branches Runs
     // erzeugt, in denen alle Jobs übersprungen wurden (Skipped-Rauschen).
-    expect(push?.branches, 'Push-Trigger muss exakt den Release-Branch listen').toEqual([
-      'feature/react-flow-cable-editor-7322653268250495059',
-    ]);
+    // `main` ist der Zielstand: Der Trigger zeigt vor der tatsächlichen
+    // Umstellung des Default-Branches auf `main`; bis dahin meldet der
+    // Wächter `ci:verify-deploy-trigger` die Abweichung (beabsichtigt).
+    // Reihenfolge der Umstellung: docs/default-branch-auf-main-umstellen.md
+    expect(push?.branches, 'Push-Trigger muss exakt den Ziel-Default-Branch listen').toEqual(['main']);
     expect(
       push?.['branches-ignore'],
       'branches-ignore triggert auf jedem Agent-Branch (Skipped-Rauschen)'
