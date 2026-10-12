@@ -14,7 +14,7 @@ import { join } from 'node:path';
  * Nur Desktop: Das Datei-Menü liegt dort in der Menüleiste.
  */
 
-test.beforeEach((_fixtures, testInfo) => {
+test.beforeEach(({ browserName: _browserName }, testInfo) => {
   test.skip(testInfo.project.name !== 'desktop-1440', 'Datei-Menü ist nur in der Desktop-Menüleiste');
 });
 
