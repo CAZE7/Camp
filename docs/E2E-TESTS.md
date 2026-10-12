@@ -83,25 +83,28 @@ das CI-Gate separat mit passenden `workflows:write`-Rechten übernommen werden.
 Ein umbenannter Selektor fällt damit im schnellen Unit-Lauf auf, nicht erst
 in der Browser-Stufe.
 
-## 6. Ehrlicher Status: lokal nicht ausgeführt
+## 6. Status: lokal ausgeführt — und wie der Browser dahin kam
 
-**Die Suite wurde in dieser Arbeitsumgebung nicht ausgeführt.** Der
-Playwright-Browser-Download ist hier blockiert:
+**Die Suite läuft lokal gegen den gebauten Export.** Stand 2026-10-12,
+Chromium 153.0.8010.0, gebauter Static Export ohne `basePath`:
 
-```
-$ npx playwright install chromium
-Error: Failed to download Chrome for Testing 151.0.7922.34, caused by
-Error: Download failure, code=1
+| Lauf                                                                   | Ergebnis                                         |
+| ---------------------------------------------------------------------- | ------------------------------------------------ |
+| `npx playwright test --grep-invert "hält die Baseline"`                | 133 bestanden, 31 bedingt übersprungen, 0 Fehler |
+| `npx playwright test --grep "hält die Baseline"` (Baseline-Vergleiche) | 76 bestanden                                     |
+| `tests/e2e/a11y.spec.ts` (axe, 9 Seiten × 4 Viewports)                 | 36 bestanden, 0 kritische/schwere Verstöße       |
 
-$ curl -sSI https://cdn.playwright.dev/
-curl: (35) OpenSSL SSL_connect: SSL_ERROR_SYSCALL
-```
+Historie, damit der Weg nachvollziehbar bleibt: Der Playwright-CDN war in
+einer früheren Arbeitsumgebung nicht erreichbar (`npx playwright install
+chromium` brach mit Download-Fehler ab, `cdn.playwright.dev` nicht routebar).
+In CI war das nie ein Problem — dort installiert der Job den Browser selbst
+(`npx playwright install --with-deps chromium`). Lokal half schließlich ein
+Chromium-Build außerhalb des Repos (ohne eine einzige Repo-Abhängigkeit zu
+ändern), gegen den Playwright per `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`
+läuft; die Startanleitung steht in `docs/UI-BASELINE.md` §4. Das Repo selbst
+bleibt bei der CI-Wahrheit: Browser aus dem offiziellen Installationsweg.
 
-Es ist auch kein System-Chromium vorhanden. Die geforderten **drei
-aufeinanderfolgenden grünen Läufe stehen deshalb aus** und müssen im ersten
-CI-Lauf des Pull Requests erbracht werden.
-
-Was **lokal verifiziert** wurde:
+Was **zusätzlich lokal verifiziert** wurde:
 
 | Prüfung                              | Ergebnis                                                                                                                                                          |
 | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |

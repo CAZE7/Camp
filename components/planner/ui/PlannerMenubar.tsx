@@ -128,7 +128,9 @@ export function PlannerMenubar({ menus, projectName, openMenu, onOpenMenu, statu
   }, [openMenu, closeMenu]);
 
   return (
-    <div ref={barRef} className="cad-menubar" role="menubar" aria-label="Hauptmenü des Planers">
+    /* `barRef` bleibt auf der Titelleiste: Sie ist der Bezug für „Klick
+       außerhalb schließt das Menü" und muss die Dropdowns einschließen. */
+    <div ref={barRef} className="cad-menubar">
       <span className="cad-menubar__brand">
         {/* Wortmarke als Weg zurück auf die Website: Die Anwendungsroute
             (`/planer/`) trägt bewusst keine Kopfleiste der Website, weil sie
@@ -142,7 +144,16 @@ export function PlannerMenubar({ menus, projectName, openMenu, onOpenMenu, statu
         </span>
       </span>
 
-      <div className="cad-menubar__menus">
+      {/*
+        `role="menubar"` sitzt auf der Menüreihe, nicht auf der ganzen Leiste.
+        Eine Menubar darf nur `menuitem` (bzw. `group`) besitzen — Marke und
+        Speicherzustand gehören nicht dazu. Lag die Rolle auf dem Rahmen, war
+        der Home-Link ein `link`-Kind einer `menubar`: axe meldet das als
+        `aria-required-children` mit Impact `critical` (gemessen auf `/planer/`,
+        WCAG 1.3.1, alle vier Viewports). Rollen ändern nichts am Layout, die
+        CSS-Klassen bleiben dieselben.
+      */}
+      <div className="cad-menubar__menus" role="menubar" aria-label="Hauptmenü des Planers">
         {MENU_ORDER.map((menu) => {
           const open = openMenu === menu;
           return (

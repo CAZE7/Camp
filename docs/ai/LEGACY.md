@@ -113,8 +113,8 @@ kein Gate.
 
 ## L-9 — Archivierte Audits
 
-`AUDIT.md`, `AUDIT-AUTOWIRE.md`, `AUDIT-CAMP-ELEKTROPLANER.md`, `AUDIT-EXTREM-2026-09.md`
-sind **Momentaufnahmen** (Baseline 2026-09-06, Nachträge 2026-09-07). Ihr Statusblock
+`docs/AUDIT-ROUTING-2026.md`, `docs/AUDIT-AUTOWIRE.md`, `docs/AUDIT-CAMP-ELEKTROPLANER.md`,
+`docs/AUDIT-EXTREM-2026-09.md` sind **Momentaufnahmen** (Baseline 2026-09-06, Nachträge 2026-09-07). Ihr Statusblock
 (`NOT SAFE` / `NOT READY`) beschreibt die **damals auditierte Baseline**, nicht den heutigen
 Stand: alle vier BLOCKING ISSUES sind behoben und im Dokument selbst als behoben markiert.
 

@@ -3,7 +3,8 @@
 Welcher Testtyp existiert, was er beweist und **welcher Typ für welche Änderung verpflichtend
 ist**.
 
-**Baseline (verifiziert 2026-09-28):** `npm test` → **2485 Tests / 179 Dateien, grün**.
+**Baseline (verifiziert 2026-10-12):** `npm test` → **3309 Tests bestanden, 1 bedingt
+übersprungen, 241 Dateien**.
 `npm run typecheck` und `npm run typecheck:tests` grün. `npm run routing:audit`: I1–I7 = 0,
 Fallback 0, deterministisch.
 
