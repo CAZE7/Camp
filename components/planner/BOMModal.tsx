@@ -2,200 +2,55 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { AccessibleDialog } from '@/components/ui/AccessibleDialog';
 import { usePlannerStore } from '../../store/usePlannerStore';
-import { ClipboardCopy } from 'lucide-react';
-import { getComponentSpec } from '../registry';
-import { calculateCrossSection } from '../../lib/electrical';
-import { getCableCurrents } from '../../lib/electricalGraph/currentFlow';
-import { getCableRoute } from '../edges/utils/cableRouteStore';
-import { PX_PER_METER } from '../../lib/units';
-
-/** Woher eine Stücklisten-Länge kommt (AUDIT L1). */
-type LengthSource = 'stored' | 'assumed' | 'routed' | 'fallback';
-
-type EdgeLength = {
-  /** Für den Materialbedarf verwendete Länge in Metern. */
-  meters: number;
-  /** Quelle dieser Länge — die Stückliste muss sie nennen können. */
-  source: LengthSource;
-  /** Eingetragene Länge, falls eine vorhanden ist. */
-  storedM?: number;
-  /** Geroutete Verlegelänge, falls für die Kante eine Route vorliegt. */
-  routedM?: number;
-};
+import { ClipboardCopy, FileSpreadsheet } from 'lucide-react';
+import { verificationReportFor, verificationSummary } from './utils/verificationWarnings';
+import { assessRelease, type ReleaseAssessment } from './utils/releaseStatus';
+import {
+  buildBom,
+  bomToCsv,
+  bomToJson,
+  LENGTH_DIVERGENCE_TOLERANCE,
+  componentTypeInfo,
+  type BomData,
+  type LengthAssumption,
+} from './utils/bom';
+import { downloadTextFile } from './utils/fileIO';
 
 /**
- * Ab welcher relativen Abweichung zwei Längenquellen als widersprüchlich
- * gelten. 10 % deckt Rundung und kleine Maßunterschiede ab; darüber ist es
- * ein echter Widerspruch zwischen Planzeichnung und Eintrag.
- */
-const LENGTH_DIVERGENCE_TOLERANCE = 0.1;
-
-/**
- * R1/L1: Kabellänge einer Kante für die Stückliste.
+ * Stückliste — Dialog. Die Berechnung liegt in `utils/bom.ts` (eine Quelle für
+ * Anzeige, JSON und CSV); die Freigabe in `utils/releaseStatus.ts`. Dieser
+ * Dialog rechnet nichts selbst.
  *
- * Vorher galt „eingetragener Wert zuerst, sonst geroutete Länge" — und genau
- * diese Reihenfolge unterschätzte den Materialbedarf systematisch:
- * AutoWire trägt als Länge die **Luftlinie** aus der Knotengeometrie ein
- * (Issue 6), der Router kennt dagegen den tatsächlichen Verlegeweg inklusive
- * aller Umwege. Im Referenzplan `camper` standen 22,10 m eingetragen gegen
- * 38,05 m geroutet — Faktor 1,72. Die Stückliste nannte die kleinere Zahl und
- * schwieg darüber, dass eine zweite, größere bekannt war (AUDIT L1).
- *
- * Jetzt: liegen BEIDE Quellen vor, zählt die größere (Material wird zu kurz
- * bestellt, nicht zu lang), und die Abweichung wird als Widerspruch gemeldet.
- * Fehlt beides, bleibt die Platzhalterlänge — aber ausdrücklich als das, was
- * sie ist: erfunden. Wasserstrecken haben nur dann eine Route, wenn der
- * Wasser-Plan zuletzt im Vordergrund geroutet wurde (geteilter Route-Store).
+ * Alle Daten stammen aus EINEM Snapshot beim Öffnen: Stückliste, Prüfbericht
+ * und Planstand-Fingerprint beziehen sich auf denselben Plan.
  */
-function edgeLengthOf(
-  edgeId: string,
-  stored: number | undefined,
-  fallback: number,
-  isAssumption = false
-): EdgeLength {
-  const storedM = typeof stored === 'number' && Number.isFinite(stored) && stored >= 0 ? stored : undefined;
-  const route = getCableRoute(edgeId);
-  const routedM = route ? route.length / PX_PER_METER : undefined;
 
-  if (storedM !== undefined && routedM !== undefined) {
-    return {
-      meters: Math.max(storedM, routedM),
-      source: storedM >= routedM ? (isAssumption ? 'assumed' : 'stored') : 'routed',
-      storedM,
-      routedM,
-    };
-  }
-  // Eine Planungsannahme ist keine Nutzereingabe: Die Stückliste muss sie als
-  // Annahme nennen können, sonst liest sich „eingetragen" wie eine Messung
-  // (dreißigste Fassung).
-  if (storedM !== undefined) return { meters: storedM, source: isAssumption ? 'assumed' : 'stored', storedM };
-  if (routedM !== undefined) return { meters: routedM, source: 'routed', routedM };
-  return { meters: fallback, source: 'fallback' };
+interface BomSnapshot {
+  bom: BomData;
+  assessment: ReleaseAssessment;
+  componentCount: number;
 }
 
-/** Zwei Längenquellen widersprechen sich messbar? */
-function diverges(length: EdgeLength): boolean {
-  if (length.storedM === undefined || length.routedM === undefined) return false;
-  const larger = Math.max(length.storedM, length.routedM);
-  if (larger === 0) return false;
-  const smaller = Math.min(length.storedM, length.routedM);
-  return (larger - smaller) / larger > LENGTH_DIVERGENCE_TOLERANCE;
-}
-
-/** Eine Längen-Annahme, die die Stückliste dem Nutzer schuldet. */
-type LengthAssumption = {
-  /** Betroffene Strecke (Klartext, z. B. „Batterie → Sicherungskasten"). */
-  label: string;
-  /** Verwendete Länge in Metern. */
-  meters: number;
-  source: LengthSource;
-  /** Eingetragen, falls abweichend vom verwendeten Wert. */
-  storedM?: number;
-  /** Geroutet, falls abweichend vom verwendeten Wert. */
-  routedM?: number;
-};
-
-type BomData = {
-  counts: Record<string, number>;
-  cableLengths: Record<string, number>;
-  pipeLengths: Record<string, number>;
-  /** Längen, die nicht aus dem Plan selbst stammen oder sich widersprechen. */
-  lengthAssumptions: LengthAssumption[];
-};
-
-/**
- * Bauteil-Bezeichnungen kommen aus der Registry (K4).
- *
- * Vorher stand hier eine zweite Label-Tabelle — sie war bereits von der
- * Sidebar abgewichen („Batteriemonitor mit Shunt“ vs. „Batteriemonitor
- * (Shunt)“). Unbekannte Typen (z. B. aus einem alten gespeicherten Plan)
- * bekommen einen ehrlichen Platzhalter statt `undefined`.
- */
-function typeInfo(type: string): { label: string; purpose: string } {
-  const spec = getComponentSpec(type);
-  if (spec) return { label: spec.label, purpose: spec.purpose };
-  return { label: type, purpose: 'Unbekannter Bauteiltyp aus einem älteren Plan.' };
-}
+const EMPTY_BOM: BomData = { counts: {}, cableLengths: {}, pipeLengths: {}, lengthAssumptions: [] };
 
 export function BOMModal() {
   const [open, setOpen] = useState(false);
-  const [bomData, setBomData] = useState<BomData>({
-    counts: {},
-    cableLengths: {},
-    pipeLengths: {},
-    lengthAssumptions: [],
-  });
-  // AUDIT T1 (react-hooks/immutability): Beide Zustände stehen über dem Effekt,
-  // der sie liest und schreibt — vorher stand der Effekt vor den Deklarationen.
+  const [snapshot, setSnapshot] = useState<BomSnapshot | null>(null);
+  const bomData = snapshot?.bom ?? EMPTY_BOM;
+  // AUDIT T1 (react-hooks/immutability): Zustände stehen über dem Effekt.
   const [copied, setCopied] = useState(false);
-  // M6-4: Ein stiller catch warf den Fehler weg; Nutzer sahen nur "kein Effekt".
-  // Die Fehlerursache bleibt erhalten (console.warn für Diagnose), sichtbar
-  // gemacht wird eine handlungsorientierte Meldung im Dialog selbst.
+  // M6-4: Fehlerursache sichtbar machen statt stillem catch.
   const [copyError, setCopyError] = useState<string | null>(null);
 
   useEffect(() => {
     const handleShowBom = () => {
       const { nodes, edges, waterNodes, waterEdges } = usePlannerStore.getState();
-      const counts: Record<string, number> = {};
-      [...nodes, ...waterNodes].forEach((node) => {
-        if (node.type) counts[node.type] = (counts[node.type] || 0) + 1;
-      });
-      const cableLengths: Record<string, number> = {};
-      const nodesMap = new Map(nodes.map((n) => [n.id, n]));
-      // AUDIT L1: Längen, die erfunden sind oder sich widersprechen, werden
-      // gesammelt und angezeigt — eine Stückliste, die eine Zahl nennt, ohne
-      // ihre Quelle zu kennen, ist eine Bestellvorlage für zu kurzes Kabel.
-      const lengthAssumptions: LengthAssumption[] = [];
-      const labelOf = (id: string): string => {
-        const data = nodesMap.get(id)?.data;
-        return typeof data?.label === 'string' && data.label !== '' ? data.label : id;
-      };
-
-      edges.forEach((edge) => {
-        const isAc = edge.data?.edgeDomain === 'AC_230V';
-        let cs = edge.data?.crossSection;
-        const length = edgeLengthOf(edge.id, edge.data?.length, 1, edge.data?.lengthIsAssumption === true);
-        if (!cs) {
-          if (isAc) {
-            cs = 2.5;
-          } else {
-            // EINE Stromquelle (AUDIT §13): dieselbe topologieabhängige
-            // Rechnung wie Dimensionierung und Validierung — die Stückliste
-            // darf nie einen anderen Strom sehen als der Rest der App.
-            const I = getCableCurrents(nodes, edges).byEdgeId.get(edge.id)?.operatingCurrent ?? 0;
-            cs = calculateCrossSection(I, length.meters, undefined, 'DC_12V');
-          }
-        }
-        const crossSection = String(cs || 2.5);
-        cableLengths[crossSection] = (cableLengths[crossSection] || 0) + length.meters;
-        if (length.source === 'fallback' || diverges(length)) {
-          lengthAssumptions.push({
-            label: `${labelOf(edge.source)} → ${labelOf(edge.target)}`,
-            meters: length.meters,
-            source: length.source,
-            storedM: length.storedM,
-            routedM: length.routedM,
-          });
-        }
-      });
-      const pipeLengths: Record<string, number> = {};
-      waterEdges.forEach((edge) => {
-        const type = String(edge.data?.pipeType || 'fresh');
-        // Wasserstrecken legt kein AutoWire an — es gibt dort keine
-        // Planungsannahme, jede eingetragene Länge ist eine Nutzereingabe.
-        const length = edgeLengthOf(edge.id, edge.data?.length, 2);
-        pipeLengths[type] = (pipeLengths[type] || 0) + length.meters;
-        if (length.source === 'fallback' || diverges(length)) {
-          lengthAssumptions.push({
-            label: `${type === 'gray' ? 'Abwasser' : 'Frischwasser'} ${edge.source} → ${edge.target}`,
-            meters: length.meters,
-            source: length.source,
-            storedM: length.storedM,
-            routedM: length.routedM,
-          });
-        }
-      });
-      setBomData({ counts, cableLengths, pipeLengths, lengthAssumptions });
+      const bom = buildBom({ nodes, edges, waterNodes, waterEdges });
+      const report = verificationReportFor(nodes, edges);
+      const summary = verificationSummary(report);
+      const componentCount = nodes.length + waterNodes.length;
+      const assessment = assessRelease(componentCount > 0 ? summary : null, componentCount);
+      setSnapshot({ bom, assessment, componentCount });
       setCopied(false);
       setCopyError(null);
       setOpen(true);
@@ -207,36 +62,25 @@ export function BOMModal() {
   const componentEntries = useMemo(() => Object.entries(bomData.counts), [bomData.counts]);
   const cableEntries = useMemo(() => Object.entries(bomData.cableLengths), [bomData.cableLengths]);
   const pipeEntries = useMemo(() => Object.entries(bomData.pipeLengths), [bomData.pipeLengths]);
-  const lengthAssumptions = bomData.lengthAssumptions;
+  const lengthAssumptions: LengthAssumption[] = bomData.lengthAssumptions;
   const inventedLengths = lengthAssumptions.filter((entry) => entry.source === 'fallback');
   const divergingLengths = lengthAssumptions.filter((entry) => entry.source !== 'fallback');
   const empty = componentEntries.length === 0 && cableEntries.length === 0 && pipeEntries.length === 0;
+  const assessment = snapshot?.assessment ?? null;
+  const planFingerprint = assessment?.planFingerprintHash ?? 'kein-planstand';
 
-  // BOM als JSON für die Zwischenablage.
-  const bomJson = useMemo(() => {
-    const cables = cableEntries.map(([crossSection, length]) => ({
-      crossSection: Number(crossSection),
-      length: Number(length.toFixed(1)),
-    }));
-    const components = componentEntries.map(([type, count]) => ({ type, count }));
-    // Die Längen-Annahmen reisen mit: Wer die Liste weiterverarbeitet (Shop,
-    // Excel, Kollege), sieht dieselbe Einschränkung wie im Dialog.
-    const assumptions = bomData.lengthAssumptions.map((entry) => ({
-      route: entry.label,
-      usedMeters: Number(entry.meters.toFixed(1)),
-      source: entry.source,
-      ...(entry.storedM !== undefined ? { storedMeters: Number(entry.storedM.toFixed(1)) } : {}),
-      ...(entry.routedM !== undefined ? { routedMeters: Number(entry.routedM.toFixed(1)) } : {}),
-    }));
-    return JSON.stringify(
-      { cables, components, ...(assumptions.length > 0 ? { lengthAssumptions: assumptions } : {}) },
-      null,
-      2
-    );
-  }, [cableEntries, componentEntries, bomData.lengthAssumptions]);
+  const bomJson = useMemo(() => bomToJson(bomData), [bomData]);
 
-  // Kopiert die Stückliste als JSON in die Zwischenablage — ohne jeden Bezug
-  // zu einem entfernten KI-Chat (der im Static-Export nicht existiert, R1).
+  const exportCsv = () => {
+    if (!assessment?.canExportDocument) return;
+    const csv = bomToCsv(bomData, {
+      planFingerprint,
+      documentStatus: assessment.label,
+    });
+    downloadTextFile(`stueckliste-${planFingerprint.slice(0, 8)}.csv`, csv, 'text/csv;charset=utf-8');
+  };
+
+  // Kopiert die Stückliste als JSON in die Zwischenablage.
   const copyBomToClipboard = async () => {
     const message = `Stückliste aus dem Schaltplan:\n\n\`\`\`json\n${bomJson}\n\`\`\``;
     try {
@@ -265,6 +109,26 @@ export function BOMModal() {
       className="max-w-2xl"
     >
       <div className="flex-1 space-y-6 overflow-y-auto p-5">
+        {assessment && (
+          <section
+            aria-labelledby="bom-status"
+            data-testid="bom-release-status"
+            data-status={assessment.status}
+            className={`rounded-lg border p-3 ${assessment.status === 'gesperrt' ? 'warn-card warn-card-critical' : 'border-border'}`}
+          >
+            <h3 id="bom-status" className="font-semibold">
+              Dokumentstatus: {assessment.label}
+            </h3>
+            <p className="mt-1 text-sm">{assessment.explanation}</p>
+            {assessment.blockers.length > 0 && (
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm" data-testid="bom-blockers">
+                {assessment.blockers.map((message) => (
+                  <li key={message}>{message}</li>
+                ))}
+              </ul>
+            )}
+          </section>
+        )}
         {empty ? (
           <div className="rounded-lg border border-border bg-accent p-6 text-center">
             <p className="font-semibold">Dein Plan ist noch leer.</p>
@@ -281,7 +145,7 @@ export function BOMModal() {
                 </h3>
                 <ul className="divide-y divide-border rounded-lg border border-border">
                   {componentEntries.map(([type, count]) => {
-                    const info = typeInfo(type);
+                    const info = componentTypeInfo(type);
                     return (
                       <li key={type} className="flex gap-3 p-3">
                         <span className="min-w-10 font-mono font-bold">{count} ×</span>
@@ -410,6 +274,21 @@ export function BOMModal() {
           </div>
         )}
         <div className="flex flex-col gap-2 sm:flex-row">
+          <Button
+            variant="outline"
+            onClick={exportCsv}
+            disabled={empty || !assessment?.canExportDocument}
+            data-testid="bom-export-csv"
+            title={
+              assessment?.canExportDocument
+                ? 'Stückliste als CSV-Datei (Planstand und Dokumentstatus in jeder Zeile)'
+                : 'Gesperrt: kritische Befunde müssen zuerst behoben werden.'
+            }
+            className="min-h-11 gap-2"
+          >
+            <FileSpreadsheet className="h-4 w-4" aria-hidden="true" />
+            CSV exportieren
+          </Button>
           <Button
             variant="outline"
             // AUDIT T1: copyBomToClipboard meldet Fehlschläge selbst über

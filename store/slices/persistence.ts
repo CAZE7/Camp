@@ -22,7 +22,7 @@ export const PLANNER_STORAGE_VERSION = 1;
  * Graphlogik. „Retten statt Verwerfen" bleibt: nur nachweisbar unbrauchbare
  * Elemente fliegen, kaputte `data` werden zu `{}` neutralisiert.
  */
-function isNodeShape(value: unknown): value is Node {
+export function isNodeShape(value: unknown): value is Node {
   if (!value || typeof value !== 'object') return false;
   const v = value as Record<string, unknown>;
   if (typeof v.id !== 'string' || v.id === '') return false;
@@ -41,7 +41,7 @@ function isNodeShape(value: unknown): value is Node {
   return true;
 }
 
-function isEdgeShape(value: unknown): value is Edge {
+export function isEdgeShape(value: unknown): value is Edge {
   if (!value || typeof value !== 'object') return false;
   const v = value as Record<string, unknown>;
   if (typeof v.id !== 'string' || v.id === '') return false;

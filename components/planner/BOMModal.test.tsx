@@ -72,7 +72,9 @@ describe('BOMModal — Längen mit Quelle (AUDIT L1)', () => {
     expect(
       screen.getByText(/widersprechen sich eingetragene Länge und gerouteter Verlegeweg/i)
     ).toBeInTheDocument();
-    expect(screen.getByText(/Batterie → Kühlbox/)).toBeInTheDocument();
+    // Der Strecken-Name steht jetzt auch im Freigabe-Banner (kritischer Befund),
+    // daher: mindestens ein Treffer statt eindeutig.
+    expect(screen.getAllByText(/Batterie → Kühlbox/).length).toBeGreaterThan(0);
     expect(screen.getByText(/eingetragen 22.1 m, geroutet 38.1 m/i)).toBeInTheDocument();
   });
 
@@ -139,5 +141,51 @@ describe('BOMModal — Längen mit Quelle (AUDIT L1)', () => {
     expect(await screen.findByText('Stückliste')).toBeInTheDocument();
     fireEvent.click(screen.getByText('Schließen'));
     expect(screen.queryByText('Stückliste')).not.toBeInTheDocument();
+  });
+});
+
+describe('BOMModal — Dokumentstatus und CSV-Freigabe', () => {
+  beforeEach(() => {
+    routes.clear();
+    act(() => {
+      usePlannerStore.getState().setNodes([
+        { id: 'b1', type: 'battery', position: { x: 0, y: 0 }, data: { label: 'Batterie' } },
+        { id: 'c1', type: 'consumer', position: { x: 400, y: 0 }, data: { label: 'Kühlbox' } },
+      ]);
+      // 22,10 m ohne Schutzorgan ⇒ kritischer Befund (Grenze 200 mm) ⇒ gesperrt.
+      usePlannerStore.getState().setEdges([
+        {
+          id: 'e1',
+          source: 'b1',
+          target: 'c1',
+          sourceHandle: 'plus',
+          targetHandle: 'plus',
+          type: 'cableEdge',
+          data: { length: 22.1, crossSection: 4, edgeDomain: 'DC_12V' },
+        },
+      ]);
+    });
+  });
+
+  it('sperrt den CSV-Export, solange ein kritischer Befund offen ist, und nennt ihn', async () => {
+    render(<BOMModal />);
+    openBom();
+    const status = await screen.findByTestId('bom-release-status');
+    expect(status).toHaveAttribute('data-status', 'gesperrt');
+    expect(screen.getByTestId('bom-blockers')).toHaveTextContent(/Leitung Batterie → Kühlbox/);
+    expect(screen.getByTestId('bom-export-csv')).toBeDisabled();
+  });
+
+  it('erlaubt den CSV-Export ohne kritischen Befund (Entwurf-Kennzeichnung bleibt sichtbar)', async () => {
+    act(() => {
+      usePlannerStore.getState().setEdges([]);
+    });
+    render(<BOMModal />);
+    openBom();
+    const status = await screen.findByTestId('bom-release-status');
+    expect(status).not.toHaveAttribute('data-status', 'gesperrt');
+    // Ein Plan mit nur Bauteilen, ohne Leitungen, gilt nicht als geprüft.
+    expect(status).toHaveTextContent(/Dokumentstatus/);
+    expect(screen.getByTestId('bom-export-csv')).not.toBeDisabled();
   });
 });

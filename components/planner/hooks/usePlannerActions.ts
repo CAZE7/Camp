@@ -17,8 +17,10 @@ import {
   Package,
   PanelRight,
   Plus,
+  FolderOpen,
   Redo2,
   Ruler,
+  Save,
   ScanSearch,
   SlidersHorizontal,
   Sun,
@@ -31,8 +33,12 @@ import {
 import { useShallow } from 'zustand/react/shallow';
 import { usePlannerStore } from '../../../store/usePlannerStore';
 import { useAppStore } from '../../../lib/store';
-import type { LayoutV2Outcome } from '../../../store/slices/types';
+import type { LayoutV2Outcome, PlannerFlowNode, PlannerWaterEdge } from '../../../store/slices/types';
+import type { Edge } from '@xyflow/react';
+import type { CableEdgeData } from '../../../lib/domain/cableEdgeData';
 import { autoWireFeedbackFor } from '../utils/guidedSteps';
+import { downloadTextFile, pickTextFile } from '../utils/fileIO';
+import { parsePlannerProject, projectFileName, serializePlannerProject } from '../../../store/projectFile';
 import type { ValidationWarning } from './useLiveValidation';
 
 /**
@@ -87,6 +93,8 @@ export interface PlannerActions {
   runLayoutV2: () => Promise<void>;
   runCheck: () => void;
   exportImage: () => Promise<void>;
+  saveProject: () => void;
+  openProject: () => Promise<void>;
   openBom: () => void;
   openWarnings: () => void;
   openShortcuts: () => void;
@@ -269,6 +277,84 @@ export function usePlannerActions({
     setBusy(null);
   }, [onFeedback]);
 
+  /**
+   * Projekt speichern: lädt die Planungsdatei (JSON) herunter. Der Inhalt
+   * kommt aus EINEM Store-Snapshot, nicht aus gerenderten Werten.
+   */
+  const saveProject = useCallback(() => {
+    const state = usePlannerStore.getState();
+    const text = serializePlannerProject({
+      viewMode: state.viewMode,
+      season: state.season,
+      nodes: state.nodes,
+      edges: state.edges,
+      waterNodes: state.waterNodes,
+      waterEdges: state.waterEdges,
+    });
+    downloadTextFile(projectFileName(), text, 'application/json');
+    onFeedback({ type: 'success', message: 'Projektdatei gespeichert.' });
+  }, [onFeedback]);
+
+  /**
+   * Projekt öffnen: Eine Datei wird vollständig geprüft, bevor der Plan
+   * angefasst wird. Fehlerhafte Datei ⇒ Plan bleibt unverändert, Grund wird
+   * genannt. Der Import ist über Rückgängig zurücknehmbar.
+   */
+  const openProject = useCallback(async () => {
+    let picked: { name: string; text: string } | null;
+    try {
+      picked = await pickTextFile('.json,application/json');
+    } catch {
+      onFeedback({
+        type: 'error',
+        message: 'Die Datei konnte nicht gelesen werden. Der Plan bleibt unverändert.',
+      });
+      return;
+    }
+    if (!picked) return;
+    const result = parsePlannerProject(picked.text);
+    if (!result.ok) {
+      onFeedback({
+        type: 'error',
+        message: `Projektdatei „${picked.name}“ nicht geöffnet: ${result.errors.join(' ')} Der aktuelle Plan bleibt unverändert.`,
+      });
+      return;
+    }
+    const state = usePlannerStore.getState();
+    const hasContent = state.nodes.length + state.waterNodes.length > 0;
+    if (
+      hasContent &&
+      !window.confirm(
+        `Der aktuelle Plan wird durch „${picked.name}“ ersetzt. Mit Rückgängig (Strg+Z) lässt sich der Wechsel zurücknehmen. Fortfahren?`
+      )
+    ) {
+      return;
+    }
+    const applied = usePlannerStore.getState().importProject({
+      season: result.plan.season,
+      nodes: result.plan.nodes as PlannerFlowNode[],
+      edges: result.plan.edges as Edge<CableEdgeData>[],
+      waterNodes: result.plan.waterNodes as PlannerFlowNode[],
+      waterEdges: result.plan.waterEdges as PlannerWaterEdge[],
+    });
+    if (!applied) {
+      onFeedback({
+        type: 'error',
+        message:
+          'Projekt nicht geöffnet: Der aktuelle Plan enthält fest verdrahtete Leitungen. Siehe Warnungen.',
+      });
+      return;
+    }
+    const warningNote =
+      result.warnings.length > 0
+        ? ` ${result.warnings.length} Hinweis(e) zur Bereinigung: ${result.warnings.slice(0, 3).join(' ')}`
+        : '';
+    onFeedback({
+      type: result.warnings.length > 0 ? 'info' : 'success',
+      message: `Projekt „${picked.name}“ geöffnet.${warningNote}`,
+    });
+  }, [onFeedback]);
+
   const menus = useMemo<PlannerMenus>(
     () => ({
       datei: [
@@ -285,6 +371,18 @@ export function usePlannerActions({
               label: 'Plan als Bild exportieren',
               icon: Camera,
               run: () => void exportImage(),
+            },
+            {
+              label: 'Projekt speichern (.json)',
+              icon: Save,
+              testId: 'action-project-save',
+              run: saveProject,
+            },
+            {
+              label: 'Projekt öffnen (.json)',
+              icon: FolderOpen,
+              testId: 'action-project-open',
+              run: () => void openProject(),
             },
           ],
         },
@@ -489,6 +587,8 @@ export function usePlannerActions({
       canUndo,
       detailLevel,
       exportImage,
+      saveProject,
+      openProject,
       focusMode,
       guidedMode,
       isInspectorOpen,
@@ -614,6 +714,8 @@ export function usePlannerActions({
     },
     runCheck,
     exportImage,
+    saveProject,
+    openProject,
     openBom,
     openWarnings,
     openShortcuts,
