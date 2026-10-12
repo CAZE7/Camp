@@ -59,32 +59,21 @@ Software-Rendering in der Sandbox), gegen den gebauten Static Export.
 - [x] **CI auf dem PR grün:** Quality Gate (5:51 min), End-to-End
       (3:16 min), Visuelles Gate (1:56 min) — Lauf 38273878129.
 
-## Offen (braucht Rechte oder Daten, die nur der Betreiber hat)
+- [x] **Deploy-Trigger auf `main` gepusht:** Patch direkt auf dem
+      Default-Branch angewendet (Commit `2c7f0f1`), 23/23 Workflow-Tests grün,
+      `npm run check` grün, Pre-Push-Hook grün.
+- [x] **Default-Branch auf `main` umgestellt:** - `github-pages`-Environment-Policy erweitert (Policy-ID `62813862` für `main`). - `main` auf exakten Baumstand synchronisiert (`git diff --exit-code main feature/react-flow-cable-editor-7322653268250495059` war leer). - Default-Branch per API auf `main` gesetzt (`gh api -X PATCH repos/CAZE7/Camp -f default_branch=main`). - Deploy auf `main` belegt (Lauf `38285940920`, alle 5 Jobs grün, Smoke-Check erfolgreich, HTTP 200 auf `/` und `/planer/`). - Alte Deployment-Policy des Feature-Branches entfernt (`48333300`).
+- [x] **Branch Protection auf `main` aktiviert:** Strict Status-Checks
+      (`Quality Gate / Typecheck, Tests & Build`, `Quality Gate / End-to-End (Playwright)`),
+      1 Approving Review, Enforce Admins, Force-Pushes und Deletions blockiert (`docs/CI.md` §4).
+- [x] **Betreiber-Entscheidungen umgesetzt:** - Lizenz: konsistent bei **ISC** geblieben (`LIZENZ=ISC_BLEIBT`). - Remote-Branches: die 315 gemergten Branches vorerst erhalten (`BRANCHES_LOSCHEN=NEIN`). - Warn-Stufe: `LEGAL_NOTICE_GATE` bleibt auf `warn` (solange Impressum Platzhalter enthält).
 
-Übergabe-Prompt für einen Agenten mit den nötigen Rechten:
-[`docs/handoff-showcase-abschluss-prompt.md`](handoff-showcase-abschluss-prompt.md)
-(vor dem Abschicken die Betreiber-Vorgaben im Prompt ausfüllen).
+## Offen (braucht reale Betreiber-Angaben)
 
-- [ ] Patch anwenden und pushen (benötigt `workflows:write`) — Runbook
-      Schritt 2, drei Befehle.
-- [ ] Default-Branch auf `main` umstellen, `github-pages`-Policy erweitern,
-      Deploy auf `main` belegen — Runbook Schritte 2–6 (GitHub-Admin).
-- [ ] Impressum: die fünf Felder in `lib/siteLegal.ts` füllen (nur der
-      Betreiber kann echte Angaben liefern).
-- [ ] Branch-Löschung ausführen (Liste und Vorschlag im Inventar).
-
-## Von dir zu entscheiden
-
-- [ ] Die **315 löschbaren** Remote-Branches löschen? Vorschlag: ja, einzeln
-      per `git push origin --delete <name>`, nie den Default-Branch.
-- [ ] Die **78 Branches ohne PR** einzeln prüfen — eher PR schließen als
-      Branch löschen.
-- [ ] Lizenz: bei **ISC** bleiben (alles konsistent) oder auf **MIT**
-      wechseln? Beides vertretbar, aktuell nichts gemischt.
-- [ ] Impressum: **Option A** (Angaben ergänzen — Empfehlung, die
-      Infrastruktur steht komplett) oder **Option B** (Demo-Kennzeichnung,
-      entfernt weder Warnung noch Risiko)?
-- [ ] Nach dem Ausfüllen: `LEGAL_NOTICE_GATE` auf `block` stellen?
+- [ ] **Impressum füllen:** die fünf Pflichtfelder in `lib/siteLegal.ts` mit echten,
+      ladungsfähigen Betreiberdaten belegen (Aufgabe 7 bewusst übersprungen; keine
+      personenbezogenen Daten erfunden). Nach Eintragung: Impressum-Baselines
+      aktualisieren und `LEGAL_NOTICE_GATE` auf `block` schärfen.
 
 ## Bekannte, bewusste Abweichungen
 
