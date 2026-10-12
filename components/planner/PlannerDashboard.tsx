@@ -278,6 +278,7 @@ export function PlannerDashboard() {
           nodes={nodes}
           edges={edges}
           warnings={warnings}
+          verdict={verificationReport.verdict}
           onOpenCatalog={actions.openCatalog}
           onAutoWire={actions.runAutoWire}
           onOpenWarnings={actions.openWarnings}
