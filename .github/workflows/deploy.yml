@@ -12,7 +12,10 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    # Nur Pushes auf den Release-Branch lösen den Workflow aus.
+    # Ziel-Trigger: der Default-Branch `main` (Umschaltung siehe
+    # docs/default-branch-auf-main-umstellen.md — Reihenfolge einhalten,
+    # damit der Deploy nicht ausfällt und die github-pages-Environment
+    # `main` vorher erlaubt).
     # Vorher triggerte `branches-ignore` bei JEDEM der 100+ Agent-/
     # Dependabot-Branches einen Run, in dem dann alle Jobs übersprungen
     # wurden („Skipped“-Rauschen, Befund: 13 der letzten 20 Runs ohne
@@ -21,8 +24,10 @@ on:
     # Default-Branch des Repos, muss diese Liste manuell mitwandern —
     # der `if`-Schutz an den Jobs (Default-Branch-Vergleich) bleibt davon
     # unberührt und verhindert weiterhin Deploys von falschen Branches
-    # (z. B. bei workflow_dispatch).
-    branches: ["feature/react-flow-cable-editor-7322653268250495059"]
+    # (z. B. bei workflow_dispatch). Bis zur tatsächlichen Umstellung des
+    # Default-Branches meldet der Wächter `npm run ci:verify-deploy-trigger`
+    # im Quality Gate die Abweichung — das ist der beabsichtigte Alarm.
+    branches: ["main"]
   workflow_dispatch:
 
 # Standard: nur Lesen. Schreibrechte werden pro Job vergeben.

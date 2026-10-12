@@ -119,20 +119,15 @@ gh api -X PUT repos/:owner/:repo/branches/feature%2Freact-flow-cable-editor-7322
 
 ### 4.3 Runbook für Default-Branch Migration auf `main` (D03)
 
-Da `main` und der Feature-Branch divergiert sind (2 Unique Commits auf `main`: `4c21f06`, `927b4e7`), darf kein unbedachter `--ff-only` oder Force-Push auf divergiertem Stand ausgeführt werden:
-
-1. **Unique-Commits prüfen**: Die Änderungen aus `4c21f06` (VDE-Konstanten/Spannungsabfall aus PR #304) sind im aktuellen Feature-Branch bereits modularisiert in den Zustand-Slices und `lib/vdeStandards.ts` enthalten.
-2. **`main` synchronisieren**:
-   ```bash
-   git checkout main
-   git merge feature/react-flow-cable-editor-7322653268250495059 -m "Merge branch 'feature/react-flow-cable-editor-7322653268250495059' into main"
-   git push origin main
-   ```
-3. **GitHub Settings**: Default-Branch von `feature/react-flow-cable-editor-7322653268250495059` auf `main` umstellen.
-4. **UNBEDINGT gleichzeitig anpassen**:
-   - **GitHub Pages Source**: Branch auf `main` umstellen.
-   - **Environment `github-pages` Deployment Protection Rule**: Von Feature-Branch auf `main` umstellen (sonst blockiert der Deploy!).
-5. **Branch Protection (D02)**: Regeln auf `main` übertragen.
+**Aktuell und maßgeblich: [`docs/default-branch-auf-main-umstellen.md`](default-branch-auf-main-umstellen.md)** (Stand 2026-10-12).
+Der frühere Befund „2 Unique Commits auf `main`“ ist überholt: `origin/main`
+stand zuletzt auf `ac94476` (2026-09-07, 904 Commits) und hat **keine
+gemeinsame Historie** mehr mit dem Feature-Branch (kein Merge-Base, der
+Feature-Branch ist ein einzelner Root-Commit). Ein `--ff-only`/normaler
+Merge ist deshalb unmöglich; das aktuelle Runbook löst das ohne Force-Push
+über `--allow-unrelated-histories` mit anschließender Baum-Verifikation und
+legt die Reihenfolge fest (Environment-Policy → Default-Wechsel → Deploy auf
+`main`), damit der Pages-Deploy nicht ausfällt.
 
 ## 5. Berechtigungen & Agenten-Integration (D12)
 
