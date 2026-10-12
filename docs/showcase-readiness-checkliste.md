@@ -32,12 +32,12 @@ Software-Rendering in der Sandbox), gegen den gebauten Static Export.
       Datenschutzseite mit Rechtsberatung-Vorbehalt; Optionen mit Folgen
       dokumentiert. Keine personenbezogenen Daten eingetragen;
       `LEGAL_NOTICE_GATE` bleibt auf `warn`.
-- [x] **README überarbeitet:** Einstieg (Was, für wen, technischer Kern:
+- [x] **README überarbeitet.** Einstieg (Was, für wen, technischer Kern:
       Next.js 16, React 19, TypeScript strict, React Flow 12, Zustand 5,
-      VDE-Domäne in `lib/`); Demo-URL belegt (Pages-API `build_type:
-    workflow` + Live-Abruf, 2026-10-12); Abschnitt „Zwei Agenten-Dateien“
-      (`AGENTS.md` vs. `agent.md` — unterschiedliche Zwecke, nicht
-      zusammengeführt, Begründung im README); Lizenz-Dreiklang
+      VDE-Domäne in `lib/`). Demo-URL belegt (Pages-API plus Live-Abruf,
+      2026-10-12). Neuer Abschnitt „Zwei Agenten-Dateien“: `AGENTS.md` und
+      `agent.md` haben unterschiedliche Zwecke und wurden nicht
+      zusammengeführt (Begründung im README). Lizenz-Dreiklang
       README/LICENSE/`package.json` als konsistent ISC geprüft.
 - [x] **Echte Screenshots** aus dem gebauten Export: `docs/screenshots/`
       (Desktop hell/dunkel 1440×900, mobil 375×812, Wissensseite,
