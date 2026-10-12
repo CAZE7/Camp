@@ -1,44 +1,61 @@
 # Werft — Elektrikplaner für den Camper-Ausbau
 
-Ein statischer Web-Planer für 12-V-Bordnetze im Wohnmobil. Bauteile per
-Klick oder Ziehen aufs Blatt, Leitungen automatisch verlegen lassen —
-und die Anwendung rechnet Querschnitte, Sicherungen und Spannungsfall nach
-den einschlägigen VDE-Regeln nach. Ohne Konto, ohne Server, ohne Backend.
+Werft ist ein statischer Web-Planer für die Elektrik im Camper: Bauteile
+per Klick oder Ziehen auf die Zeichenfläche, Leitungen automatisch
+verlegen lassen — und Querschnitte, Sicherungen und Spannungsfall rechnen
+sich nach konservativen VDE-Modellen selbst nach. Ohne Konto, ohne Server,
+ohne Backend: Der Plan bleibt im Browser (`localStorage`), die Anwendung
+wird als statischer Export ausgeliefert. **Für wen:** Menschen, die ihren
+Camper selbst ausbauen und wissen wollen, ob ihr Plan trägt — nicht für
+Elektrofachkräfte, die eine normgerechte Fachplanung erstellen. Die
+Vorschläge sind bewusst konservativ und ersetzen keine Abnahme durch eine
+Fachkraft.
 
-**Für wen:** Menschen, die ihren Camper selbst ausbauen und wissen wollen,
-ob ihr Plan trägt — nicht für Elektrofachkräfte, die eine normgerechte
-Fachplanung erstellen. Die Vorschläge sind bewusst konservativ und ersetzen
-keine Abnahme durch eine Fachkraft.
+**Technischer Kern:** Next.js 16 (App Router, `output: 'export'`), React 19,
+TypeScript `strict` (inkl. `noUncheckedIndexedAccess`), React Flow 12
+(`@xyflow/react`) als Canvas und Zustand 5 als Store — die Elektro-Domäne
+(VDE-Berechnung, AutoWire, orthogonales Kabel-Routing) liegt framework-frei
+in `lib/` und wird von Unit-, Property-, Golden-Master- und
+Routing-Invarianten-Gates festgehalten. **Stand dieses README:** Commit-Stand
+dieses PR; die Zahlen im Abschnitt „Qualitätsstand“ sind mit Datum belegt.
 
 **Demo:** [caze7.github.io/Camp](https://caze7.github.io/Camp/) ·
 Planer direkt: [caze7.github.io/Camp/planer](https://caze7.github.io/Camp/planer/)
+(belegt: Pages-API `build_type: workflow` + Live-Abruf, 2026-10-12)
 
 ---
 
 ## Screenshots
 
-![Elektroplaner im Vollbild: links der Bauteilkatalog, auf der Zeichenfläche ein automatisch verdrahteter Schaltplan mit Kabellabels für Querschnitt und Länge](docs/images/planer-vollbild.png)
+Frisch aufgenommen aus dem gebauten Static Export (`npm run build` → `./out`),
+Chromium headless, 2026-10-12, 1440×900 bzw. 375×812. Planzustand: der
+Onboarding-Flow der Anwendung (Stromquelle Solar, Geräte Kühlschrank + LED,
+Vorlage „Allround“ = 13 Bauteile · 13 Leitungen) — kein Mockup, keine
+nachbearbeiteten Bilder.
+
+![Elektroplaner im Vollbild: links der Bauteilkatalog, auf der Zeichenfläche ein automatisch verdrahteter Schaltplan mit Kabellabels für Querschnitt und Länge](docs/screenshots/planer-vollbild.png)
 
 _Die Anwendung als eigene Route (`/planer/`) im ganzen Browserfenster: Katalog
 links, Zeichenfläche mit automatischer Verdrahtung, an jedem Kabel Querschnitt
-und Länge, oben Prüfstand und Warnzentrum._
+und Länge, oben Prüfbericht und Warnzentrum — der gezeigte Stand trägt offene
+Prüfhinweise, weil Entscheidungen wie RCD-Auswahl bewusst beim Nutzer bleiben._
 
-![Derselbe Plan im Dark-Engineering-Theme](docs/images/planer-vollbild-dunkel.png)
+![Derselbe Plan im Dark-Engineering-Theme](docs/screenshots/planer-vollbild-dunkel.png)
 
 _Dasselbe Szenario im Dark-Engineering-Theme — die Tokens sind die einzige
 Farbquelle, Kontraste sind per Test-Gate geprüft (ADR 0005)._
 
-![Planer auf 375 px: Bottom-Tabs für Bauteile, Elektrik, Wasser, Details und Fokus](docs/images/planer-mobil.png)
+![Planer auf 375 px: Bottom-Tabs für Bauteile, Elektrik, Wasser, Details und Fokus](docs/screenshots/planer-mobil.png)
 
 _Auf dem Handy wird aus der Sidebar der Bottom-Tab „Bauteile“, die
 Zeichengesten und die Prüfung bleiben dieselben._
 
-![Wissens- und Rechnerseite /elektrik-planung/ mit Rechner für Kabelquerschnitt und Absicherung](docs/images/elektrik-planung.png)
+![Wissens- und Rechnerseite /elektrik-planung/ mit Rechner für Kabelquerschnitt und Absicherung](docs/screenshots/elektrik-planung.png)
 
 _`/elektrik-planung/` ist die Wissens- und Rechnerseite neben der Anwendung:
 Normzusammenhänge, Rechner und der Weg in den Vollbild-Planer._
 
-![Startseite der Werft mit Werkzeugkarten und Guides](docs/images/startseite.png)
+![Startseite der Werft mit Werkzeugkarten und Guides](docs/screenshots/startseite.png)
 
 _Die Startseite bündelt Werkzeuge und Guides; jeder Kartenlink führt in eine
 indexierbare Wissens- oder Werkzeugseite — der Linkgraph ist Teil des
@@ -167,9 +184,13 @@ docs/                   Architektur-Entscheidungen und Nachweise
 
 ## Qualitätsstand
 
-Alle Angaben stammen aus Läufen auf dem aktuellen Stand
-(Testzahlen und E2E-Läufe: 2026-10-12; Node 22.22.3; Chromium 153.0.8010.0
-gegen den gebauten Static Export).
+**Neu gemessen am 2026-10-12 auf diesem Branch** (Sandbox-Lauf: Node 22.22.3;
+Chromium 153.0.8010.0 gegen den gebauten Static Export, Software-Rendering):
+alle `npm run check`-Anteile, die Unit-/Komponententests, der Build, das
+axe-Gate und die funktionale E2E-Suite. **Zeilen mit †** sind die zuletzt
+dokumentierte Messung aus dem README-Stand vor diesem PR (ebenfalls
+2026-10-12); sie wurden in diesem Sandbox-Lauf nicht erneut ausgeführt und
+sind an ihr Datum gebunden.
 
 | Prüfung                        | Befehl                                                  | Ergebnis                                                                                  |
 | ------------------------------ | ------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
@@ -179,19 +200,24 @@ gegen den gebauten Static Export).
 | Format (Prettier)              | `npm run format:check`                                  | sauber, inkl. Tailwind-Klassensortierung                                                  |
 | Unit-/Komponententests         | `npm test`                                              | **3309 Tests bestanden, 1 bedingt übersprungen, 241 Dateien**                             |
 | Coverage-Gate (lib/**)         | `npm run test:coverage`                                 | Schwellen: Zeilen 90, Branches 85, Funktionen 90, Statements 95                           |
-| Property-Tests (VDE)           | `npx vitest run lib/vde-properties.test.ts`             | 35 Tests, ~17.000 generierte Fälle                                                        |
-| Routing-Invarianten            | `npx vitest run components/edges/utils`                 | 25 Szenarien × 7 Invarianten                                                              |
-| Routing-Versatz (P0)           | `npm run routing:audit -- --shifts`                     | 7×7-Plan-Translation: 0 Notfallpfade, 0× I1; I2 je Plan über Ratchet (Gate in `npm test`) |
-| Design-Token-Gate              | `npx vitest run lib/designTokens.test.ts`               | 174 Tests, CSS per postcss geparst, WCAG-Kontrastpaare geprüft                            |
-| Build                          | `npm run build`                                         | erfolgreich, `./out` Static Export                                                        |
-| Lockfile-Gate                  | `npm run ci:verify-lockfile-gate`                       | greift (npm ci scheitert bei Drift)                                                       |
-| Dead-Code-Audit                | `npm run audit:dead-code`                               | knip: letzter Lauf ohne Befund; braucht viel RAM (kein CI-Gate, ADR 0006)                 |
+| Property-Tests (VDE) †         | `npx vitest run lib/vde-properties.test.ts`             | 35 Tests, ~17.000 generierte Fälle                                                        |
+| Routing-Invarianten †          | `npx vitest run components/edges/utils`                 | 25 Szenarien × 7 Invarianten                                                              |
+| Routing-Versatz (P0) †         | `npm run routing:audit -- --shifts`                     | 7×7-Plan-Translation: 0 Notfallpfade, 0× I1; I2 je Plan über Ratchet (Gate in `npm test`) |
+| Design-Token-Gate †            | `npx vitest run lib/designTokens.test.ts`               | 174 Tests, CSS per postcss geparst, WCAG-Kontrastpaare geprüft                            |
+| Build                          | `npm run build`                                         | erfolgreich, `./out` Static Export (Export-Audit: 31 Seiten geprüft)                      |
+| Lockfile-Gate †                | `npm run ci:verify-lockfile-gate`                       | greift (npm ci scheitert bei Drift); `npm ci` lief in diesem Lauf drift-frei              |
+| Dead-Code-Audit †              | `npm run audit:dead-code`                               | knip: letzter Lauf ohne Befund; braucht viel RAM (kein CI-Gate, ADR 0006)                 |
 | Accessibility (axe, E2E)       | `npm run e2e -- a11y`                                   | 36 Läufe (9 Seiten × 4 Viewports): 0 kritische/schwere Verstöße                           |
-| End-to-End (funktionale Suite) | `npx playwright test --grep-invert "hält die Baseline"` | 133 bestanden, 31 bedingt übersprungen, 0 Fehler                                          |
-| Visuelle Baselines             | `npx playwright test --grep "hält die Baseline"`        | 76 Vergleiche grün (Routen × Viewports × Themes, plus DE-/Pixel-Baselines)                |
+| End-to-End (funktionale Suite) | `npx playwright test --grep-invert "hält die Baseline"` | 133 bestanden, 31 bedingt übersprungen, 0 Fehler (3,3 min)                                |
+| Visuelle Baselines †           | `npx playwright test --grep "hält die Baseline"`        | 76 Vergleiche grün (Routen × Viewports × Themes, plus DE-/Pixel-Baselines)                |
 
-**Ehrlicher Stand zur Browser-Stufe:** Die Playwright-Suite läuft lokal und in
-CI gegen den gebauten Export; die Zahlen oben sind gemessen, nicht erwartet.
+**Ehrlicher Stand zur Browser-Stufe:** `npm run check`, Build, axe-Gate und die
+funktionale E2E-Suite wurden für diesen PR am 2026-10-12 in einer
+Sandbox (Node 22.22.3, Chromium 153.0.8010.0, Software-Rendering) gegen den
+gebauten Export ausgeführt — Ergebnisse wie in der Tabelle. Die
+Pixel-Baseline-Vergleiche sind bewusst **nicht** Teil dieses Laufs: Ein
+Pixelvergleich unter Software-Rendering wäre kein Beleg, und der
+Visuelles-Gate-Job in CI läuft dort mit identischer Hardware-Umgebung.
 In CI installiert der Job den Browser selbst (`npx playwright install
 --with-deps chromium`). Für lokale Läufe ohne erreichbaren Playwright-CDN
 steht die Startanleitung in `docs/UI-BASELINE.md` §4; Historie und Grenzen der
@@ -282,7 +308,9 @@ Branch Protection: `docs/CI.md`.
 - `docs/E2E-TESTS.md` — Playwright-Setup und Grenzen der Geräteemulation
 - `docs/INVENTORY.md`, `docs/RESTMISSION-REPORT.md` — Bestandsaufnahme aus Mission 1
 - `docs/AUDIT-*.md` — historische Fach-Audits (Routing, Auto-Wire, Elektroplaner, Extrem-System)
-- `docs/images/` — die README-Bilder, erzeugt aus dem gebauten Export (Chromium, keine Mockups)
+- `docs/screenshots/` — die README-Bilder, aufgenommen aus dem gebauten Export (Chromium, keine Mockups; 2026-10-12)
+- `docs/showcase-readiness-checkliste.md` — **Checkliste dieses Vorbereitungs-PR (#524)**: erledigt, offen, Entscheidungen
+- `docs/branch-inventory-2026-10-12.md` — alle 412 Remote-Branches mit PR-Status und Lösch-Vorschlag
 - `AGENTS.md` — Arbeitsauftrag und Definition of Done
 
 ## Daten im Browser
@@ -292,6 +320,20 @@ Beide Stores sind versioniert und haben defensive Migrationsfunktionen, damit
 ältere Stände nach Schema-Änderungen keine Laufzeitfehler erzeugen. Es werden
 keine Daten an einen Server gesendet.
 
+## Zwei Agenten-Dateien — und warum es zwei sind
+
+`AGENTS.md` (Root) ist die **Arbeitsanweisung für Coding-Agents**: Pflichtlektüre,
+Aufgaben-Routing in `docs/ai/`, harte Verbote, Befehle und die
+[Definition of Done](docs/ai/CHANGE-WORKFLOW.md) (§ 24, je Bereich).
+`agent.md` (kleingeschrieben) ist dagegen die **Übergabe-Liste für Aufgaben, die
+Repo-Admin-Rechte brauchen** (GitHub-Settings: Default-Branch, Pages-Quelle,
+Environment-Policy) plus die abgeschlossenen Erlass-Tracks (Design-Relaunch,
+Routing-Qualität, Stack, Performance) mit ihren Metriken. Beide Dateien sind
+bewusst keine Duplikate — `agent.md` wird zudem von Code-Kommentaren und ADRs
+namentlich zitiert („agent.md Erlass R-1“) und bleibt deshalb als eigenständige
+Datei bestehen. Der Einstieg für Agents ist immer `AGENTS.md`.
+
 ## Lizenz
 
-ISC — der Volltext steht in [LICENSE](LICENSE).
+ISC — der Volltext steht in [LICENSE](LICENSE). `package.json` (`"license":
+"ISC"`) und dieser Abschnitt sind damit deckungsgleich (geprüft 2026-10-12).
