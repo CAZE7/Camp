@@ -61,8 +61,12 @@ Software-Rendering in der Sandbox), gegen den gebauten Static Export.
 
 ## Offen (braucht Rechte oder Daten, die nur der Betreiber hat)
 
+Übergabe-Prompt für einen Agenten mit den nötigen Rechten:
+[`docs/handoff-showcase-abschluss-prompt.md`](handoff-showcase-abschluss-prompt.md)
+(vor dem Abschicken die Betreiber-Vorgaben im Prompt ausfüllen).
+
 - [ ] Patch anwenden und pushen (benötigt `workflows:write`) — Runbook
-      Schritt 3, drei Befehle.
+      Schritt 2, drei Befehle.
 - [ ] Default-Branch auf `main` umstellen, `github-pages`-Policy erweitern,
       Deploy auf `main` belegen — Runbook Schritte 2–6 (GitHub-Admin).
 - [ ] Impressum: die fünf Felder in `lib/siteLegal.ts` füllen (nur der
