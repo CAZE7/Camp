@@ -50,8 +50,9 @@ const FuseNode = function ({ id, data, isConnectable, selected }: PlannerNodePro
             <span>A</span>
           </div>
         ) : (
-          <div className="cursor-text" onDoubleClick={() => handleDoubleClick('rating', data.rating || 0)}>
-            Sicherung: {data.rating || 0} A
+          <div className="cursor-text" onDoubleClick={() => handleDoubleClick('rating', data.rating ?? '')}>
+            {/* Kein Nennstrom eingetragen = fehlende Angabe, KEIN Wert „0 A“ (kein stiller Fallback). */}
+            {data.rating ? `Sicherung: ${data.rating} A` : 'Sicherung: nicht angegeben'}
           </div>
         )}
       </div>
