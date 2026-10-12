@@ -2,8 +2,12 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { AccessibleDialog } from '@/components/ui/AccessibleDialog';
 import { usePlannerStore } from '../../store/usePlannerStore';
-import { ClipboardCopy, FileSpreadsheet } from 'lucide-react';
-import { verificationReportFor, verificationSummary } from './utils/verificationWarnings';
+import { ClipboardCopy, FileSpreadsheet, Printer } from 'lucide-react';
+import {
+  verificationReportFor,
+  verificationSummary,
+  type VerificationSummary,
+} from './utils/verificationWarnings';
 import { assessRelease, type ReleaseAssessment } from './utils/releaseStatus';
 import {
   buildBom,
@@ -15,6 +19,7 @@ import {
   type LengthAssumption,
 } from './utils/bom';
 import { downloadTextFile } from './utils/fileIO';
+import { buildPrintReportHtml, openPrintReport } from './utils/printReport';
 
 /**
  * Stückliste — Dialog. Die Berechnung liegt in `utils/bom.ts` (eine Quelle für
@@ -29,6 +34,7 @@ interface BomSnapshot {
   bom: BomData;
   assessment: ReleaseAssessment;
   componentCount: number;
+  summary: VerificationSummary | null;
 }
 
 const EMPTY_BOM: BomData = { counts: {}, cableLengths: {}, pipeLengths: {}, lengthAssumptions: [] };
@@ -50,7 +56,7 @@ export function BOMModal() {
       const summary = verificationSummary(report);
       const componentCount = nodes.length + waterNodes.length;
       const assessment = assessRelease(componentCount > 0 ? summary : null, componentCount);
-      setSnapshot({ bom, assessment, componentCount });
+      setSnapshot({ bom, assessment, componentCount, summary: componentCount > 0 ? summary : null });
       setCopied(false);
       setCopyError(null);
       setOpen(true);
@@ -78,6 +84,22 @@ export function BOMModal() {
       documentStatus: assessment.label,
     });
     downloadTextFile(`stueckliste-${planFingerprint.slice(0, 8)}.csv`, csv, 'text/csv;charset=utf-8');
+  };
+
+  const printReport = () => {
+    if (!snapshot || !assessment?.canExportDocument) return;
+    const html = buildPrintReportHtml({
+      bom: snapshot.bom,
+      summary: snapshot.summary,
+      assessment,
+      generatedAt: new Date().toISOString(),
+      projectName: 'Camp-Elektroplan',
+    });
+    if (!openPrintReport(html)) {
+      setCopyError(
+        'Der Druckbericht konnte nicht geöffnet werden – der Browser blockiert vermutlich Pop-ups. Erlaube Pop-ups für diese Seite und versuche es erneut.'
+      );
+    }
   };
 
   // Kopiert die Stückliste als JSON in die Zwischenablage.
@@ -288,6 +310,21 @@ export function BOMModal() {
           >
             <FileSpreadsheet className="h-4 w-4" aria-hidden="true" />
             CSV exportieren
+          </Button>
+          <Button
+            variant="outline"
+            onClick={printReport}
+            disabled={empty || !assessment?.canExportDocument}
+            data-testid="bom-print-report"
+            title={
+              assessment?.canExportDocument
+                ? 'Druckbericht öffnen – im Druckdialog „Als PDF speichern“ wählen'
+                : 'Gesperrt: kritische Befunde müssen zuerst behoben werden.'
+            }
+            className="min-h-11 gap-2"
+          >
+            <Printer className="h-4 w-4" aria-hidden="true" />
+            Druckbericht (PDF)
           </Button>
           <Button
             variant="outline"
