@@ -309,6 +309,8 @@ Branch Protection: `docs/CI.md`.
 - `docs/INVENTORY.md`, `docs/RESTMISSION-REPORT.md` — Bestandsaufnahme aus Mission 1
 - `docs/AUDIT-*.md` — historische Fach-Audits (Routing, Auto-Wire, Elektroplaner, Extrem-System)
 - `docs/screenshots/` — die README-Bilder, aufgenommen aus dem gebauten Export (Chromium, keine Mockups; 2026-10-12)
+- `docs/showcase-readiness-checkliste.md` — **Checkliste dieses Vorbereitungs-PR (#524)**: erledigt, offen, Entscheidungen
+- `docs/branch-inventory-2026-10-12.md` — alle 412 Remote-Branches mit PR-Status und Lösch-Vorschlag
 - `AGENTS.md` — Arbeitsauftrag und Definition of Done
 
 ## Daten im Browser
