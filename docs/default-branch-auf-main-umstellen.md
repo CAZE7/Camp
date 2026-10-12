@@ -66,7 +66,7 @@ gewohnt weiter — die Seite bleibt ununterbrochen online.
 erst in Schritt 6 entfernen).
 
 **Schritt 3 — Patch anwenden, committen und Vorbereitungs-PR mergen**
-(Java-Script-frei, reines Git; benötigt `workflows:write`, siehe Tabelle oben):
+(reines Git; benötigt `workflows:write`, siehe Tabelle oben):
 
 ```bash
 git apply docs/ci/patches/2026-10-12-deploy-trigger-main.patch
