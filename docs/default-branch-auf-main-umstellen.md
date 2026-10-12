@@ -2,19 +2,20 @@
 
 Kurzanleitung für den Repo-Betreiber (GitHub-Einstellungen nötig, die ein
 Agent nicht ohne Weiteres setzen darf). **Nur Vorbereitung ist im Repo
-geschehen** — der Deploy-Workflow triggert seit dem PR „Showcase-Readiness“
-auf `main`, umgestellt hat das Repository selbst damit noch nichts.
+geschehen** — die Ziel-Änderung des Deploy-Triggers auf `main` liegt als
+Patch bei (siehe Tabelle), umgestellt hat das Repository selbst damit
+noch nichts.
 
 ## Ausgangslage (gemessen am 2026-10-12)
 
-| Befund                           | Wert                                                                                                                      |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| Default-Branch                   | `feature/react-flow-cable-editor-7322653268250495059`                                                                     |
-| `origin/main`                    | existiert, Stand `ac94476` (2026-09-07, 904 Commits)                                                                      |
-| Historie `main` ↔ Feature-Branch | **kein gemeinsamer Merge-Base** (Feature-Branch ist ein einzelner Root-Commit `3790959`) — ein Fast-Forward ist unmöglich |
-| GitHub Pages                     | `build_type: workflow`, URL `https://caze7.github.io/Camp/`                                                               |
-| Environment `github-pages`       | Deployment-Branch-Policy erlaubt **genau** den Feature-Branch (per API geprüft)                                           |
-| Deploy-Trigger (nach diesem PR)  | `on.push.branches: ["main"]`; die Job-`if`-Bedingungen vergleichen dynamisch mit dem tatsächlichen Default-Branch         |
+| Befund                           | Wert                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Default-Branch                   | `feature/react-flow-cable-editor-7322653268250495059`                                                                                                                                                                                                                                                                                                                                                                                  |
+| `origin/main`                    | existiert, Stand `ac94476` (2026-09-07, 904 Commits)                                                                                                                                                                                                                                                                                                                                                                                   |
+| Historie `main` ↔ Feature-Branch | **kein gemeinsamer Merge-Base** (Feature-Branch ist ein einzelner Root-Commit `3790959`) — ein Fast-Forward ist unmöglich                                                                                                                                                                                                                                                                                                              |
+| GitHub Pages                     | `build_type: workflow`, URL `https://caze7.github.io/Camp/`                                                                                                                                                                                                                                                                                                                                                                            |
+| Environment `github-pages`       | Deployment-Branch-Policy erlaubt **genau** den Feature-Branch (per API geprüft)                                                                                                                                                                                                                                                                                                                                                        |
+| Deploy-Trigger                   | Die Ziel-Änderung auf `main` liegt als **kopierfertiger Patch** bei: `docs/ci/patches/2026-10-12-deploy-trigger-main.patch` (betrifft `.github/workflows/deploy.yml`, die 1:1-Kopie in `docs/ci/workflows/` und `scripts/ci/workflows.test.ts`). Die Sandbox-GitHub-App darf Workflow-Dateien nicht pushen (`without workflows permission`, dokumentiert in `docs/CI.md` §2.1) — anwenden darf nur ein Konto/App mit `workflows:write` |
 
 Daraus folgen drei Hartnäckigkeiten, die die Reihenfolge bestimmen:
 
@@ -64,11 +65,21 @@ gewohnt weiter — die Seite bleibt ununterbrochen online.
 `github-pages` → Deployment branches → `main` ergänzen (Feature-Branch-Eintrag
 erst in Schritt 6 entfernen).
 
-**Schritt 3 — Vorbereitungs-PR mergen.** Der Wächter-Check aus Hartnäckigkeit 2
-ist dabei rot; entweder die fehlgeschlagenen Jobs nach Schritt 4 neu laufen
-lassen oder den einen bewusst verstandenen Check admin-seitig übergehen. Der
-Merge-Push selbst deployt noch nichts (siehe Schritt 1) und berührt die
-Seite nicht.
+**Schritt 3 — Patch anwenden, committen und Vorbereitungs-PR mergen**
+(Java-Script-frei, reines Git; benötigt `workflows:write`, siehe Tabelle oben):
+
+```bash
+git apply docs/ci/patches/2026-10-12-deploy-trigger-main.patch
+npx vitest run scripts/ci/workflows.test.ts   # 23 Tests müssen grün sein
+git add .github/workflows/deploy.yml docs/ci/workflows/deploy.yml scripts/ci/workflows.test.ts
+git commit -m "chore(ci): Deploy-Trigger auf main (Patch 2026-10-12)"
+git push origin <vorbereitungs-branch>
+```
+
+Mit angewendetem Patch ist der Wächter-Check aus Hartnäckigkeit 2 grün, und
+der Merge-Push deployt noch nichts (siehe Schritt 1) und berührt die Seite
+nicht. Wird der Patch erst nach dem Merge angewendet, bleibt der eine Check
+bis dahin rot — beabsichtigt (siehe Hartnäckigkeit 2).
 
 **Schritt 4 — Default-Branch umstellen:** Settings → Branches → Default auf
 `main`. Den Vorbereitungs-PR dabei auf `main` umzielen lassen bzw. falls
