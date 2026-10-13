@@ -235,7 +235,7 @@ export function runABTest(config: ABTestConfig): ABTestResult {
       // Perform statistical test (using single values as samples)
       // In real scenario, we'd have multiple runs per variant
       const test = performTTest([valueA], [valueB]);
-      const effectSize = calculateEffectSize([valueA], [valueB]);
+      const _effectSize = calculateEffectSize([valueA], [valueB]);
 
       const isSignificant = test.pValue < config.significanceLevel;
       const winner = config.lowerIsBetter
@@ -279,7 +279,7 @@ export function runABTest(config: ABTestConfig): ABTestResult {
   }
 
   let winner: ABTestVariant | null = null;
-  let statisticalSignificance: ABTestResult['statisticalSignificance'] = 'insufficient-data';
+  const _statisticalSignificance: ABTestResult['statisticalSignificance'] = 'insufficient-data';
 
   if (significantComparisons.length === 0) {
     statisticalSignificance = 'not-significant';
