@@ -59,9 +59,16 @@ function runDiagnostic(): RoutingDiagnosticExport {
         bend: 10,
         crossing: 100,
       },
+      gates: {},
     },
     states: [],
-    metrics: {},
+    metrics: {
+      A: null,
+      B: null,
+      C: null,
+      D: null,
+      E: null,
+    },
     transitions: [],
   };
 
