@@ -476,7 +476,7 @@ export function compareTwoVariants(
   };
 
   const result = runABTest(config);
-  return result.comparisons[0];
+  return result.comparisons[0]!;
 }
 
 /**
