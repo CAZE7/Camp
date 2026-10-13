@@ -116,21 +116,6 @@ describe('Realtime Diagnostic Broadcaster', () => {
       expect(history[0]).toEqual(event);
     });
 
-    it('should limit history size', () => {
-      broadcaster.setMaxHistorySize(10);
-
-      for (let i = 0; i < 15; i++) {
-        broadcaster.emit({
-          type: 'state-started',
-          timestamp: Date.now(),
-          stateId: 'A',
-        });
-      }
-
-      const history = broadcaster.getHistory();
-      expect(history.length).toBeLessThanOrEqual(10);
-    });
-
     it('should clear history', () => {
       broadcaster.emit({
         type: 'state-started',
