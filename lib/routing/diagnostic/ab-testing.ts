@@ -200,11 +200,11 @@ export function runABTest(config: ABTestConfig): ABTestResult {
       const variantA = config.variants[i];
       const variantB = config.variants[j];
 
-      const metricsA = variantA.export.metrics[stateId];
-      const metricsB = variantB.export.metrics[stateId];
+      const metricsA = variantA!.export.metrics[stateId];
+      const metricsB = variantB!.export.metrics[stateId];
 
       if (!metricsA || !metricsB) {
-        console.warn(`⚠️  Skipping ${variantA.id} vs ${variantB.id}: Missing metrics`);
+        console.warn(`⚠️  Skipping ${variantA!.id} vs ${variantB!.id}: Missing metrics`);
         continue;
       }
 
@@ -239,8 +239,8 @@ export function runABTest(config: ABTestConfig): ABTestResult {
       const confidence = 1 - test.pValue;
 
       comparisons.push({
-        variantA: variantA.id,
-        variantB: variantB.id,
+        variantA: variantA!.id,
+        variantB: variantB!.id,
         metric: config.primaryMetric,
         valueA,
         valueB,
@@ -252,13 +252,13 @@ export function runABTest(config: ABTestConfig): ABTestResult {
         confidence,
       });
 
-      console.warn(`   ${variantA.id} vs ${variantB.id}:`);
+      console.warn(`   ${variantA!.id} vs ${variantB!.id}:`);
       console.warn(`     ${config.primaryMetric}: ${valueA.toFixed(2)} vs ${valueB.toFixed(2)}`);
       console.warn(`     Delta: ${delta.toFixed(2)} (${deltaPercent.toFixed(1)}%)`);
       console.warn(
         `     p-value: ${test.pValue.toFixed(4)} (${isSignificant ? 'significant' : 'not significant'})`
       );
-      console.warn(`     Winner: ${winner === 'tie' ? 'Tie' : winner === 'A' ? variantA.id : variantB.id}`);
+      console.warn(`     Winner: ${winner === 'tie' ? 'Tie' : winner === 'A' ? variantA!.id : variantB!.id}`);
       console.warn('');
     }
   }
@@ -353,8 +353,8 @@ export function analyzeSecondaryMetrics(result: ABTestResult): Map<string, Varia
         const variantA = result.config.variants[i];
         const variantB = result.config.variants[j];
 
-        const metricsA = variantA.export.metrics[result.config.stateId];
-        const metricsB = variantB.export.metrics[result.config.stateId];
+        const metricsA = variantA!.export.metrics[result.config.stateId];
+        const metricsB = variantB!.export.metrics[result.config.stateId];
 
         if (!metricsA || !metricsB) continue;
 
@@ -367,8 +367,8 @@ export function analyzeSecondaryMetrics(result: ABTestResult): Map<string, Varia
         const deltaPercent = valueA !== 0 ? (delta / valueA) * 100 : 0;
 
         comparisons.push({
-          variantA: variantA.id,
-          variantB: variantB.id,
+          variantA: variantA!.id,
+          variantB: variantB!.id,
           metric: metric as string,
           valueA,
           valueB,
@@ -468,7 +468,7 @@ export function compareTwoVariants(
   lowerIsBetter: boolean = true
 ): VariantComparison {
   const config: ABTestConfig = {
-    name: `${variantA.id} vs ${variantB.id}`,
+    name: `${variantA!.id} vs ${variantB!.id}`,
     variants: [variantA, variantB],
     primaryMetric: metric,
     stateId,
