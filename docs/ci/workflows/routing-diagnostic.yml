@@ -17,7 +17,6 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write
 
 jobs:
   regression-check:
@@ -77,28 +76,6 @@ jobs:
         with:
           name: regression-report
           path: regression-report.md
-
-      - name: Comment PR with results
-        if: github.event_name == 'pull_request' && always()
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7
-        with:
-          script: |
-            const fs = require('fs');
-            const reportPath = 'regression-report.md';
-            
-            if (!fs.existsSync(reportPath)) {
-              console.log('No regression report found');
-              return;
-            }
-            
-            const report = fs.readFileSync(reportPath, 'utf-8');
-            
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: report
-            });
 
       - name: Update Golden Master (on main branch)
         if: github.ref == 'refs/heads/main' && steps.regression.outcome == 'success'

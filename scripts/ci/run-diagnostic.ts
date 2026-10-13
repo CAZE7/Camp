@@ -12,6 +12,7 @@
 
 import { writeFileSync } from 'fs';
 import type { RoutingDiagnosticExport } from '@/lib/routing/diagnostic';
+import { ROUTING_TOKENS } from '@/lib/routing/tokens';
 
 function parseArgs(): { outputPath: string } {
   const args = process.argv.slice(2);
@@ -49,7 +50,7 @@ function runDiagnostic(): RoutingDiagnosticExport {
     },
     configuration: {
       routingTokens: {
-        cableClearance: 12,
+        cableClearance: ROUTING_TOKENS.cableClearance,
         segmentMin: 16,
         laneGrid: 16,
         bendRadius: 8,

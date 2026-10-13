@@ -13,6 +13,7 @@
 import { writeFileSync, existsSync, mkdirSync } from 'fs';
 import { resolve, dirname } from 'path';
 import type { RoutingDiagnosticExport } from '@/lib/routing/diagnostic';
+import { ROUTING_TOKENS } from '@/lib/routing/tokens';
 
 // Mock implementation - in real scenario would run actual routing
 function generateGoldenMaster(): RoutingDiagnosticExport {
@@ -38,7 +39,11 @@ function generateGoldenMaster(): RoutingDiagnosticExport {
     },
     configuration: {
       routingTokens: {
-        cableClearance: 12,
+import { ROUTING_TOKENS } from '../../lib/routing/tokens';
+
+// ... (rest of imports)
+
+        cableClearance: ROUTING_TOKENS.cableClearance,
         segmentMin: 16,
         laneGrid: 16,
         bendRadius: 8,

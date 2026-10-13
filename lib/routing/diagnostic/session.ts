@@ -25,6 +25,7 @@ import type {
 import { DIAGNOSTIC_SCHEMA_VERSION } from './types';
 import { evaluateRoutingSnapshot } from './metrics';
 import { compareRoutingSnapshots, prioritizeQualityLosses } from './compare';
+import { ROUTING_TOKENS } from '../tokens';
 
 // ── Session-Klasse ──────────────────────────────────────────────────────────
 
@@ -263,7 +264,11 @@ export class RoutingDiagnosticSession {
       meta: { ...this.meta },
       configuration: {
         routingTokens: {
-          cableClearance: 12,
+import { ROUTING_TOKENS } from '../tokens';
+
+// ... (rest of imports)
+
+          cableClearance: ROUTING_TOKENS.cableClearance,
           stubMin: 24,
           segmentMin: 16,
           laneGrid: 16,
