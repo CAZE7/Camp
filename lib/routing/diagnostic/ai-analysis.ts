@@ -157,7 +157,7 @@ function detectRecurringViolations(exportData: RoutingDiagnosticExport): Detecte
         confidence: Math.min(0.95, 0.6 + count * 0.1),
         frequency: count,
         affectedMetrics: [metric],
-        affectedStates: [transition[0] as DiagnosticStateId, transition[2] as DiagnosticStateId],
+        affectedStates: [transition![0] as DiagnosticStateId, transition![2] as DiagnosticStateId],
         recommendations: [
           `Untersuche den Algorithmus für ${transition} Übergang`,
           `Prüfe ob ${metric} Constraint zu streng ist`,
