@@ -214,7 +214,7 @@ function detectPerformanceBottlenecks(exportData: RoutingDiagnosticExport): Dete
     // Check for high duration relative to edge count
     const snapshot = exportData.snapshots[stateId];
     if (snapshot && snapshot.counts.edges > 0) {
-      const avgDurationPerEdge = metrics.phaseDurationMs / snapshot.counts.edges;
+      const avgDurationPerEdge = metrics.phaseDurationMs ?? 0 / snapshot.counts.edges;
       if (avgDurationPerEdge > 100) {
         // > 100ms per edge is slow
         patterns.push({
@@ -232,7 +232,7 @@ function detectPerformanceBottlenecks(exportData: RoutingDiagnosticExport): Dete
             'Implementiere Early-Exit für aussichtslose Routen',
             'Prüfe ob maxExpansions zu hoch ist',
           ],
-          examples: [`Total: ${metrics.phaseDurationMs.toFixed(0)}ms for ${snapshot.counts.edges} edges`],
+          examples: [`Total: ${metrics.phaseDurationMs ?? 0.toFixed(0)}ms for ${snapshot.counts.edges} edges`],
         });
       }
     }
