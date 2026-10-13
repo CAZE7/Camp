@@ -116,7 +116,7 @@ describe('Root-Cause-Analysis', () => {
       const loss: QualityLoss = {
         rank: 1,
         transition: 'B→C',
-        severity: 'soft-degradation',
+        severity: 'geometric-degradation',
         description: 'Too many crossings after routing',
         affectedEdges: ['edge1', 'edge2'],
         metricDelta: {
@@ -162,7 +162,7 @@ describe('Root-Cause-Analysis', () => {
       const loss: QualityLoss = {
         rank: 1,
         transition: 'B→C',
-        severity: 'soft-degradation',
+        severity: 'geometric-degradation',
         description: 'Multiple fallback routes',
         affectedEdges: ['edge1', 'edge2', 'edge3'],
         metricDelta: {
@@ -185,7 +185,7 @@ describe('Root-Cause-Analysis', () => {
         {
           rank: 1,
           transition: 'B→C',
-          severity: 'soft-degradation',
+          severity: 'geometric-degradation',
           description: 'Fallback routes',
           affectedEdges: ['edge1'],
           metricDelta: { metric: 'fallbackRoutes', before: 0, after: 2 },
@@ -205,7 +205,7 @@ describe('Root-Cause-Analysis', () => {
 
       expect(analysis.hypotheses.length).toBeGreaterThan(1);
       // Critical should come first
-      expect(analysis.hypotheses[0].severity).toBe('critical');
+      expect(analysis.hypotheses[0]!.severity).toBe('critical');
     });
 
     it('should generate unique IDs for each hypothesis', () => {
