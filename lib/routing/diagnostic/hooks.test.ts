@@ -31,18 +31,17 @@ vi.mock('./snapshot', async () => {
 });
 
 describe('Diagnostic Hooks', () => {
-  const mockNodes: SnapshotNodeInput[] = [
-    { id: 'node1', position: { x: 0, y: 0 } },
-  ];
-  const mockEdges: SnapshotEdgeInput[] = [
-    { id: 'edge1', source: 'node1', target: 'node2' },
-  ];
+  const mockNodes: SnapshotNodeInput[] = [{ id: 'node1', position: { x: 0, y: 0 } }];
+  const mockEdges: SnapshotEdgeInput[] = [{ id: 'edge1', source: 'node1', target: 'node2' }];
   const mockRoutes: SnapshotRouteInput[] = [
-    { 
-      edgeId: 'edge1', 
+    {
+      edgeId: 'edge1',
       source: 'node1',
       target: 'node2',
-      waypoints: [{ x: 0, y: 0 }, { x: 10, y: 10 }] 
+      waypoints: [
+        { x: 0, y: 0 },
+        { x: 10, y: 10 },
+      ],
     },
   ];
 
@@ -91,7 +90,9 @@ describe('Diagnostic Hooks', () => {
         recordState: vi.fn(),
       };
       vi.mocked(isRoutingDiagnosticsEnabled).mockReturnValue(true);
-      vi.mocked(getActiveDiagnosticSession).mockReturnValue(mockSession as unknown as ReturnType<typeof getActiveDiagnosticSession>);
+      vi.mocked(getActiveDiagnosticSession).mockReturnValue(
+        mockSession as unknown as ReturnType<typeof getActiveDiagnosticSession>
+      );
 
       recordDiagnosticState({
         stateId: 'A',
@@ -111,7 +112,9 @@ describe('Diagnostic Hooks', () => {
         }),
       };
       vi.mocked(isRoutingDiagnosticsEnabled).mockReturnValue(true);
-      vi.mocked(getActiveDiagnosticSession).mockReturnValue(mockSession as unknown as ReturnType<typeof getActiveDiagnosticSession>);
+      vi.mocked(getActiveDiagnosticSession).mockReturnValue(
+        mockSession as unknown as ReturnType<typeof getActiveDiagnosticSession>
+      );
 
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
@@ -136,7 +139,9 @@ describe('Diagnostic Hooks', () => {
         recordState: vi.fn(),
       };
       vi.mocked(isRoutingDiagnosticsEnabled).mockReturnValue(true);
-      vi.mocked(getActiveDiagnosticSession).mockReturnValue(mockSession as unknown as ReturnType<typeof getActiveDiagnosticSession>);
+      vi.mocked(getActiveDiagnosticSession).mockReturnValue(
+        mockSession as unknown as ReturnType<typeof getActiveDiagnosticSession>
+      );
 
       recordInitialState(mockNodes, mockEdges);
 
@@ -151,7 +156,9 @@ describe('Diagnostic Hooks', () => {
         recordState: vi.fn(),
       };
       vi.mocked(isRoutingDiagnosticsEnabled).mockReturnValue(true);
-      vi.mocked(getActiveDiagnosticSession).mockReturnValue(mockSession as unknown as ReturnType<typeof getActiveDiagnosticSession>);
+      vi.mocked(getActiveDiagnosticSession).mockReturnValue(
+        mockSession as unknown as ReturnType<typeof getActiveDiagnosticSession>
+      );
 
       recordPostAutoWireState(mockNodes, mockEdges);
 
@@ -166,7 +173,9 @@ describe('Diagnostic Hooks', () => {
         recordState: vi.fn(),
       };
       vi.mocked(isRoutingDiagnosticsEnabled).mockReturnValue(true);
-      vi.mocked(getActiveDiagnosticSession).mockReturnValue(mockSession as unknown as ReturnType<typeof getActiveDiagnosticSession>);
+      vi.mocked(getActiveDiagnosticSession).mockReturnValue(
+        mockSession as unknown as ReturnType<typeof getActiveDiagnosticSession>
+      );
 
       recordPostRoutingState(mockNodes, mockEdges, mockRoutes);
 
@@ -181,7 +190,9 @@ describe('Diagnostic Hooks', () => {
         recordState: vi.fn(),
       };
       vi.mocked(isRoutingDiagnosticsEnabled).mockReturnValue(true);
-      vi.mocked(getActiveDiagnosticSession).mockReturnValue(mockSession as unknown as ReturnType<typeof getActiveDiagnosticSession>);
+      vi.mocked(getActiveDiagnosticSession).mockReturnValue(
+        mockSession as unknown as ReturnType<typeof getActiveDiagnosticSession>
+      );
 
       recordPostPostprocessingState(mockNodes, mockEdges, mockRoutes);
 
@@ -196,7 +207,9 @@ describe('Diagnostic Hooks', () => {
         recordState: vi.fn(),
       };
       vi.mocked(isRoutingDiagnosticsEnabled).mockReturnValue(true);
-      vi.mocked(getActiveDiagnosticSession).mockReturnValue(mockSession as unknown as ReturnType<typeof getActiveDiagnosticSession>);
+      vi.mocked(getActiveDiagnosticSession).mockReturnValue(
+        mockSession as unknown as ReturnType<typeof getActiveDiagnosticSession>
+      );
 
       recordFinalState(mockNodes, mockEdges, mockRoutes);
 

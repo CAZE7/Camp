@@ -61,7 +61,7 @@ describe('Export Formats', () => {
   describe('exportToHTML', () => {
     it('should generate valid HTML', () => {
       const html = exportToHTML(mockExportData);
-      
+
       expect(html).toContain('<!DOCTYPE html>');
       expect(html).toContain('<html');
       expect(html).toContain('</html>');
@@ -71,7 +71,7 @@ describe('Export Formats', () => {
 
     it('should include all states', () => {
       const html = exportToHTML(mockExportData);
-      
+
       expect(html).toContain('State A');
       expect(html).toContain('State B');
       expect(html).toContain('State C');
@@ -81,7 +81,7 @@ describe('Export Formats', () => {
 
     it('should include configuration', () => {
       const html = exportToHTML(mockExportData);
-      
+
       expect(html).toContain('cableClearance');
       expect(html).toContain('12');
     });
@@ -90,14 +90,14 @@ describe('Export Formats', () => {
   describe('exportToCSV', () => {
     it('should generate valid CSV', () => {
       const csv = exportToCSV(mockExportData);
-      
+
       expect(csv).toContain('State');
       expect(csv).toContain('Metric');
     });
 
     it('should handle empty metrics', () => {
       const csv = exportToCSV(mockExportData);
-      
+
       expect(csv).toBeDefined();
       expect(typeof csv).toBe('string');
     });
@@ -106,7 +106,7 @@ describe('Export Formats', () => {
   describe('exportToMarkdown', () => {
     it('should generate valid Markdown', () => {
       const markdown = exportToMarkdown(mockExportData);
-      
+
       expect(markdown).toContain('# Routing Diagnostic Report');
       expect(markdown).toContain('test-plan');
       expect(markdown).toContain('test-session');
@@ -114,14 +114,14 @@ describe('Export Formats', () => {
 
     it('should include configuration section', () => {
       const markdown = exportToMarkdown(mockExportData);
-      
+
       expect(markdown).toContain('Summary');
       expect(markdown).toContain('Quality Losses');
     });
 
     it('should include states section', () => {
       const markdown = exportToMarkdown(mockExportData);
-      
+
       expect(markdown).toContain('## Summary');
       expect(markdown).toContain('Quality Losses');
     });
@@ -130,25 +130,25 @@ describe('Export Formats', () => {
   describe('exportDiagnostic', () => {
     it('should export as HTML when format is html', () => {
       const result = exportDiagnostic(mockExportData, 'html');
-      
+
       expect(result).toContain('<!DOCTYPE html>');
     });
 
     it('should export as CSV when format is csv', () => {
       const result = exportDiagnostic(mockExportData, 'csv');
-      
+
       expect(result).toContain('State,Metric,Value');
     });
 
     it('should export as Markdown when format is markdown', () => {
       const result = exportDiagnostic(mockExportData, 'markdown');
-      
+
       expect(result).toContain('# Routing Diagnostic Report');
     });
 
     it('should default to JSON when format is json', () => {
       const result = exportDiagnostic(mockExportData, 'json');
-      
+
       expect(() => JSON.parse(result) as RoutingDiagnosticExport).not.toThrow();
       const parsed = JSON.parse(result) as RoutingDiagnosticExport;
       expect(parsed.meta.planId).toBe('test-plan');
