@@ -92,23 +92,23 @@ const patternMatchers: PatternMatcher[] = [
     name: 'postprocessing-clearance-degradation',
     test: (exportData, loss) => {
       if (loss.transition !== 'C→D') return null;
-      if (loss.metricDelta.metric !== 'clearanceViolations') return null;
-      if (loss.metricDelta.after <= loss.metricDelta.before) return null;
+      if (loss.metricDelta!.metric !== 'clearanceViolations') return null;
+      if (loss.metricDelta!.after <= loss.metricDelta!.before) return null;
 
       return {
         id: `rc-${Date.now()}-${Date.now().toString(36)}`,
         category: 'postprocessing',
         severity: 'major',
         title: 'Postprocessing verschlechtert Cable Clearance',
-        description: `Die Postprocessing-Phase (C→D) hat ${loss.metricDelta.after - loss.metricDelta.before} neue Clearance-Verletzungen eingeführt. Dies deutet auf ein Problem im Nudging oder Separation-Algorithmus hin.`,
+        description: `Die Postprocessing-Phase (C→D) hat ${loss.metricDelta!.after - loss.metricDelta!.before} neue Clearance-Verletzungen eingeführt. Dies deutet auf ein Problem im Nudging oder Separation-Algorithmus hin.`,
         confidence: 0.85,
         evidence: [
           {
             type: 'metric-delta',
             description: 'Clearance-Verletzungen nach Postprocessing',
             source: 'C→D transition',
-            value: loss.metricDelta.after,
-            expected: loss.metricDelta.before,
+            value: loss.metricDelta!.after,
+            expected: loss.metricDelta!.before,
           },
           {
             type: 'pattern-match',
@@ -133,22 +133,22 @@ const patternMatchers: PatternMatcher[] = [
     name: 'routing-excessive-crossings',
     test: (exportData, loss) => {
       if (loss.transition !== 'B→C') return null;
-      if (loss.metricDelta.metric !== 'totalCrossingPairs') return null;
-      if (loss.metricDelta.after < 3) return null;
+      if (loss.metricDelta!.metric !== 'totalCrossingPairs') return null;
+      if (loss.metricDelta!.after < 3) return null;
 
       return {
         id: `rc-${Date.now()}-${Date.now().toString(36)}`,
         category: 'routing-algorithm',
-        severity: loss.metricDelta.after > 5 ? 'critical' : 'major',
+        severity: loss.metricDelta!.after > 5 ? 'critical' : 'major',
         title: 'Routing-Algorithmus erzeugt übermäßige Kreuzungen',
-        description: `Der Routing-Algorithmus hat ${loss.metricDelta.after} Kreuzungen erzeugt. Dies deutet auf suboptimale Pfadwahl oder unzureichende Crossing-Penalties hin.`,
+        description: `Der Routing-Algorithmus hat ${loss.metricDelta!.after} Kreuzungen erzeugt. Dies deutet auf suboptimale Pfadwahl oder unzureichende Crossing-Penalties hin.`,
         confidence: 0.9,
         evidence: [
           {
             type: 'metric-delta',
             description: 'Kreuzungen nach Routing',
             source: 'B→C transition',
-            value: loss.metricDelta.after,
+            value: loss.metricDelta!.after,
             expected: 0,
           },
           {
@@ -174,7 +174,7 @@ const patternMatchers: PatternMatcher[] = [
     name: 'auto-wiring-suboptimal-topology',
     test: (exportData, loss) => {
       if (loss.transition !== 'A→B') return null;
-      if (!['totalCableLength', 'totalBends'].includes(loss.metricDelta.metric)) return null;
+      if (!['totalCableLength', 'totalBends'].includes(loss.metricDelta!.metric)) return null;
 
       const baselineMetrics = exportData.metrics.A;
       const afterMetrics = exportData.metrics.B;
@@ -223,22 +223,22 @@ const patternMatchers: PatternMatcher[] = [
   {
     name: 'configuration-overly-strict',
     test: (exportData, loss) => {
-      if (loss.metricDelta.metric !== 'fallbackRoutes') return null;
-      if (loss.metricDelta.after < 2) return null;
+      if (loss.metricDelta!.metric !== 'fallbackRoutes') return null;
+      if (loss.metricDelta!.after < 2) return null;
 
       return {
         id: `rc-${Date.now()}-${Date.now().toString(36)}`,
         category: 'configuration',
         severity: 'major',
         title: 'Zu strenge Routing-Constraints erzwingen Fallback-Routen',
-        description: `${loss.metricDelta.after} Routen konnten nicht mit Standard-Constraints gefunden werden und verwenden Fallback-Modi. Die Konfiguration ist wahrscheinlich zu restriktiv.`,
+        description: `${loss.metricDelta!.after} Routen konnten nicht mit Standard-Constraints gefunden werden und verwenden Fallback-Modi. Die Konfiguration ist wahrscheinlich zu restriktiv.`,
         confidence: 0.8,
         evidence: [
           {
             type: 'metric-delta',
             description: 'Fallback-Routen',
             source: 'routing-metrics',
-            value: loss.metricDelta.after,
+            value: loss.metricDelta!.after,
             expected: 0,
           },
           {
@@ -263,22 +263,22 @@ const patternMatchers: PatternMatcher[] = [
   {
     name: 'routing-edge-node-collisions',
     test: (exportData, loss) => {
-      if (loss.metricDelta.metric !== 'edgeNodeViolations') return null;
-      if (loss.metricDelta.after < 1) return null;
+      if (loss.metricDelta!.metric !== 'edgeNodeViolations') return null;
+      if (loss.metricDelta!.after < 1) return null;
 
       return {
         id: `rc-${Date.now()}-${Date.now().toString(36)}`,
         category: 'routing-algorithm',
         severity: 'critical',
         title: 'Routing erzeugt Edge-Node Kollisionen',
-        description: `${loss.metricDelta.after} Kanten kollidieren mit Nodes. Dies ist ein harter Invarianten-Verstoß (I1) und deutet auf fehlerhafte Obstacle-Detection hin.`,
+        description: `${loss.metricDelta!.after} Kanten kollidieren mit Nodes. Dies ist ein harter Invarianten-Verstoß (I1) und deutet auf fehlerhafte Obstacle-Detection hin.`,
         confidence: 0.95,
         evidence: [
           {
             type: 'metric-delta',
             description: 'Edge-Node Violations',
             source: 'invariant-check',
-            value: loss.metricDelta.after,
+            value: loss.metricDelta!.after,
             expected: 0,
           },
           {
@@ -306,7 +306,7 @@ const patternMatchers: PatternMatcher[] = [
       const phaseDuration = loss.affectedEdges.length > 0 ? exportData.metrics.C?.phaseDurationMs : null;
 
       if (!phaseDuration || phaseDuration < 1000) return null;
-      if (loss.metricDelta.metric !== 'fallbackRoutes') return null;
+      if (loss.metricDelta!.metric !== 'fallbackRoutes') return null;
 
       return {
         id: `rc-${Date.now()}-${Date.now().toString(36)}`,

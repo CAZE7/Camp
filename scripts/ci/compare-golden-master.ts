@@ -160,7 +160,7 @@ function compareStates(
     compareMetric('clearanceViolations', reference.clearanceViolations, current.clearanceViolations, true),
 
     // Performance (lower is better)
-    compareMetric('phaseDurationMs', reference.phaseDurationMs, current.phaseDurationMs, true),
+    compareMetric('phaseDurationMs', reference.phaseDurationMs ?? 0, current.phaseDurationMs ?? 0, true),
     compareMetric('fallbackRoutes', reference.fallbackRoutes, current.fallbackRoutes, true),
   ];
 
