@@ -34,13 +34,13 @@ lib/routing/diagnostic/
 
 **3 modifizierte Dateien** mit 5 Hooks:
 
-| Hook | Datei | State |
-|------|-------|-------|
-| `recordInitialState` | `store/slices/graphSlice.ts:810` | A |
-| `recordPostAutoWireState` | `store/slices/graphSlice.ts:850` | B |
-| `recordPostRoutingState` | `components/edges/utils/routeAll.ts:1190` | C |
-| `recordPostPostprocessingState` | `components/edges/utils/routeAll.ts:1300` | D |
-| `recordFinalState` | `components/edges/utils/cableRouteStore.ts:450` | E |
+| Hook                            | Datei                                           | State |
+| ------------------------------- | ----------------------------------------------- | ----- |
+| `recordInitialState`            | `store/slices/graphSlice.ts:810`                | A     |
+| `recordPostAutoWireState`       | `store/slices/graphSlice.ts:850`                | B     |
+| `recordPostRoutingState`        | `components/edges/utils/routeAll.ts:1190`       | C     |
+| `recordPostPostprocessingState` | `components/edges/utils/routeAll.ts:1300`       | D     |
+| `recordFinalState`              | `components/edges/utils/cableRouteStore.ts:450` | E     |
 
 ### 3. Dokumentation
 
@@ -58,19 +58,20 @@ lib/routing/diagnostic/
 
 ## Die fünf Zustände
 
-| State | Zeitpunkt | Erfasst |
-|-------|-----------|---------|
-| **A** | Nach Assistent, vor AutoWire | Bauteile, Kanten |
-| **B** | Nach AutoWire + Platzierung | Bauteile, Kanten (inkl. automatisch erstellter) |
-| **C** | Nach Routing (roh) | Bauteile, Kanten, Roh-Wegpunkte |
-| **D** | Nach Postprocessing | Bauteile, Kanten, optimierte Wegpunkte |
-| **E** | Final (nach Hopping/Labels) | Bauteile, Kanten, finale Wegpunkte, Kreuzungen |
+| State | Zeitpunkt                    | Erfasst                                         |
+| ----- | ---------------------------- | ----------------------------------------------- |
+| **A** | Nach Assistent, vor AutoWire | Bauteile, Kanten                                |
+| **B** | Nach AutoWire + Platzierung  | Bauteile, Kanten (inkl. automatisch erstellter) |
+| **C** | Nach Routing (roh)           | Bauteile, Kanten, Roh-Wegpunkte                 |
+| **D** | Nach Postprocessing          | Bauteile, Kanten, optimierte Wegpunkte          |
+| **E** | Final (nach Hopping/Labels)  | Bauteile, Kanten, finale Wegpunkte, Kreuzungen  |
 
 ---
 
 ## Metrik-Katalog
 
 ### Geometrie
+
 - Kabellänge (gesamt, mittel, median, max)
 - Biegungen (gesamt, pro Kante)
 - U-Turns
@@ -78,6 +79,7 @@ lib/routing/diagnostic/
 - Redundante Wegpunkte
 
 ### Kreuzungen & Überdeckungen
+
 - Geometrische Kreuzungen
 - Port-shared Kreuzungen
 - Kollineare Überdeckungen
@@ -85,6 +87,7 @@ lib/routing/diagnostic/
 - Endpoint-Touches
 
 ### Clearance & Kollisionen
+
 - Edge-Node-Violations (I1)
 - Edge-Edge-Overlaps (I2)
 - Clearance-Violations (I3)
@@ -92,6 +95,7 @@ lib/routing/diagnostic/
 - Invalid Segments
 
 ### Stabilität
+
 - Geänderte Positionen/Kanten/Wegpunkte
 - Geänderte Sperren
 - Neue/entfernte Elemente
@@ -109,6 +113,7 @@ Für jeden Übergang wird automatisch ein detaillierter Bericht erstellt:
 4. **D → E**: Einfluss von Finalisierung und Validierung
 
 Jeder Bericht enthält:
+
 - Metrik-Deltas (absolut und prozentual)
 - Neue und behobene Verletzungen
 - Top-Verschlechterungen und -Verbesserungen
@@ -119,10 +124,10 @@ Jeder Bericht enthält:
 
 ## Performance
 
-| Modus | Overhead | Beschreibung |
-|-------|----------|--------------|
-| **Deaktiviert** (Default) | 0 ms | Hooks kehren sofort zurück |
-| **Aktiviert** | ~48 ms | Vollständiger Lauf (5 Snapshots + Metriken + Vergleiche) |
+| Modus                     | Overhead | Beschreibung                                             |
+| ------------------------- | -------- | -------------------------------------------------------- |
+| **Deaktiviert** (Default) | 0 ms     | Hooks kehren sofort zurück                               |
+| **Aktiviert**             | ~48 ms   | Vollständiger Lauf (5 Snapshots + Metriken + Vergleiche) |
 
 **Speicher:** ~50 KB pro Session (max. 5 Sessions = 250 KB)
 
@@ -193,6 +198,7 @@ npx tsx scripts/routing/diagnosticDemo.ts
 ### Routing-Qualität
 
 Der Testplan (`simple`) zeigt **hohe Qualität**:
+
 - ✅ I1 = 0 (keine Edge-Node-Kollisionen)
 - ✅ I2 = 0 (keine kollinearen Überdeckungen)
 - ✅ I3 = 0 (keine Clearance-Verletzungen)
@@ -204,6 +210,7 @@ Der Testplan (`simple`) zeigt **hohe Qualität**:
 ### Trade-offs
 
 **C → D: Kabellänge vs. Biegungen**
+
 - Kabellänge: +2.26% (2456.8 → 2512.4 px)
 - Biegungen: -11.11% (18 → 16)
 - **Bewertung:** Akzeptabler Trade-off (weniger Biegungen = übersichtlicher)
@@ -223,11 +230,13 @@ Der Testplan (`simple`) zeigt **hohe Qualität**:
 ## Empfehlung: Keine sofortigen Routing-Fixes
 
 **Begründung:**
+
 1. Alle harten Invarianten erfüllt
 2. Beobachtete Trade-offs sind akzeptabel
 3. Keine systematischen Probleme identifiziert
 
 **Stattdessen:** Diagnose-Infrastruktur für zukünftige Optimierungen nutzen:
+
 - A/B-Vergleiche für Routing-Änderungen
 - Regressionstests für Routing-Qualität
 - Identifikation von Problemfällen
@@ -243,6 +252,7 @@ Der Testplan (`simple`) zeigt **hohe Qualität**:
 ## Dateien
 
 ### Neue Dateien (8)
+
 - `lib/routing/diagnostic/types.ts`
 - `lib/routing/diagnostic/snapshot.ts`
 - `lib/routing/diagnostic/metrics.ts`
@@ -253,11 +263,13 @@ Der Testplan (`simple`) zeigt **hohe Qualität**:
 - `lib/routing/diagnostic/diagnostic.test.ts`
 
 ### Modifizierte Dateien (3)
+
 - `store/slices/graphSlice.ts` (States A, B)
 - `components/edges/utils/routeAll.ts` (States C, D)
 - `components/edges/utils/cableRouteStore.ts` (State E)
 
 ### Dokumentation (3)
+
 - `docs/ai/ROUTING-DIAGNOSTIC.md` (Benutzerdokumentation)
 - `DIAGNOSTIC-ABSCHLUSSBERICHT.md` (Vollständiger Bericht)
 - `scripts/routing/diagnosticDemo.ts` (Demo-Skript)
@@ -269,6 +281,7 @@ Der Testplan (`simple`) zeigt **hohe Qualität**:
 Die 5-State-Diagnostik ist **vollständig implementiert** und bietet eine **verlässliche Messgrundlage** für zukünftige Routing-Optimierungen. Der Auftrag ist **abgeschlossen**.
 
 **Nächste Schritte:**
+
 1. Diagnose in CI integrieren (optional)
 2. Thermische Bündel integrieren (Priorität 1)
 3. Domänen-Clearance erzwingen (Priorität 2)

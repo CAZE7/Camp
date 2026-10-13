@@ -12,13 +12,13 @@ Anstatt den Routing-Algorithmus zu verbessern (was außerhalb des Auftrags liegt
 
 ### Die fünf Zustände
 
-| State | Zeitpunkt | Beschreibung |
-|-------|-----------|--------------|
-| **A** | Nach Assistent | Initialer Plan direkt nach dem Erstellungsassistenten, vor AutoWire |
-| **B** | Nach AutoWire | Plan nach AutoWire + Bauteilplatzierung, vor dem Routing |
-| **C** | Nach Routing | Plan nach dem eigentlichen Routing (Roh-Wegpunkte), vor Postprocessing |
-| **D** | Nach Postprocessing | Plan nach Nudge, Bend-Merge, Clearance-Separation, vor Hopping |
-| **E** | Final | Plan nach Hopping, Label-Platzierung und Final-Validation |
+| State | Zeitpunkt           | Beschreibung                                                           |
+| ----- | ------------------- | ---------------------------------------------------------------------- |
+| **A** | Nach Assistent      | Initialer Plan direkt nach dem Erstellungsassistenten, vor AutoWire    |
+| **B** | Nach AutoWire       | Plan nach AutoWire + Bauteilplatzierung, vor dem Routing               |
+| **C** | Nach Routing        | Plan nach dem eigentlichen Routing (Roh-Wegpunkte), vor Postprocessing |
+| **D** | Nach Postprocessing | Plan nach Nudge, Bend-Merge, Clearance-Separation, vor Hopping         |
+| **E** | Final               | Plan nach Hopping, Label-Platzierung und Final-Validation              |
 
 ## Architektur
 
@@ -40,13 +40,13 @@ lib/routing/diagnostic/
 
 Die Hooks sind an folgenden Stellen im Produktivcode eingefügt:
 
-| Hook | Datei | Funktion |
-|------|-------|----------|
-| `recordInitialState` | `store/slices/graphSlice.ts` | Vor `performAutoWiring` in `previewAutoWire` |
-| `recordPostAutoWireState` | `store/slices/graphSlice.ts` | Nach `applyAutoWirePreview` |
-| `recordPostRoutingState` | `components/edges/utils/routeAll.ts` | Nach Roh-Routing, vor `nudgeOrthogonalPaths` |
-| `recordPostPostprocessingState` | `components/edges/utils/routeAll.ts` | Nach Nudge/BendMerge/Separation, vor `analyzeRouteCrossings` |
-| `recordFinalState` | `components/edges/utils/cableRouteStore.ts` | Nach `publishCableRoutes` und `computeCableRouteFinalValidation` |
+| Hook                            | Datei                                       | Funktion                                                         |
+| ------------------------------- | ------------------------------------------- | ---------------------------------------------------------------- |
+| `recordInitialState`            | `store/slices/graphSlice.ts`                | Vor `performAutoWiring` in `previewAutoWire`                     |
+| `recordPostAutoWireState`       | `store/slices/graphSlice.ts`                | Nach `applyAutoWirePreview`                                      |
+| `recordPostRoutingState`        | `components/edges/utils/routeAll.ts`        | Nach Roh-Routing, vor `nudgeOrthogonalPaths`                     |
+| `recordPostPostprocessingState` | `components/edges/utils/routeAll.ts`        | Nach Nudge/BendMerge/Separation, vor `analyzeRouteCrossings`     |
+| `recordFinalState`              | `components/edges/utils/cableRouteStore.ts` | Nach `publishCableRoutes` und `computeCableRouteFinalValidation` |
 
 ### Aktivierung
 
@@ -223,17 +223,15 @@ import { createDiagnosticSession, enableRoutingDiagnostics } from 'lib/routing/d
 test('Routing-Qualität verbessert sich nach Fix', () => {
   enableRoutingDiagnostics(true);
   const session = createDiagnosticSession('test-plan', 0, config);
-  
+
   // ... Plan optimieren ...
-  
+
   const export_ = session.export();
-  
+
   // Prüfe, dass keine neuen harten Verletzungen entstanden sind
-  const hardViolations = export_.qualityLosses.filter(
-    (l) => l.severity === 'hard-violation'
-  );
+  const hardViolations = export_.qualityLosses.filter((l) => l.severity === 'hard-violation');
   expect(hardViolations).toHaveLength(0);
-  
+
   // Prüfe, dass die Kabellänge nicht um mehr als 10% gestiegen ist
   const cableLengthDelta = export_.transitions[2].deltas.totalCableLength;
   expect(cableLengthDelta.percent).toBeLessThan(10);
@@ -262,7 +260,7 @@ writeFileSync('diagnostic-export.json', json);
 Die Diagnose ist bewusst **minimal-invasiv** designed:
 
 - **Deaktiviert**: Kein Overhead (Hooks kehren sofort zurück)
-- **Aktiviert**: 
+- **Aktiviert**:
   - Snapshot-Erfassung: ~1-5 ms pro State
   - Metrik-Berechnung: ~2-10 ms pro State
   - Vergleich: ~5-15 ms für alle 4 Übergänge
@@ -322,7 +320,7 @@ npx vitest run lib/routing/diagnostic/diagnostic.test.ts
 Wenn State D und State E unterschiedliche Metriken aufweisen (z. B. verschiedene Kabellängen), wird dies als **ungeklärte Abweichung** dokumentiert:
 
 ```
-D→E: Kabellänge unterscheidet sich (26.335 → 26.412 px) — Validierung oder 
+D→E: Kabellänge unterscheidet sich (26.335 → 26.412 px) — Validierung oder
 Store-Update könnte Geometrie verändert haben.
 ```
 

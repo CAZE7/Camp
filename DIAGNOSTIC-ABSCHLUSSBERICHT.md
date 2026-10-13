@@ -24,6 +24,7 @@ recordInitialState(
 ```
 
 **Erfasst:**
+
 - Alle Bauteile mit Positionen und Dimensionen
 - Alle vorhandenen Kanten (Benutzer-Kanten)
 - Keine Routen (State A ist vor dem Routing)
@@ -45,6 +46,7 @@ recordPostAutoWireState(
 ```
 
 **Erfasst:**
+
 - Alle Bauteile (inkl. automatisch erstellter)
 - Alle Kanten (inkl. automatisch verdrahteter)
 - Neue Positionen nach `applyFlowLayout`
@@ -80,6 +82,7 @@ recordPostRoutingState(
 ```
 
 **Erfasst:**
+
 - Alle Bauteile und Kanten
 - Roh-Wegpunkte aus `findCablePath` (Katalog oder A*)
 - Suchmethode (`catalog`, `astar`, `fallback`)
@@ -117,6 +120,7 @@ recordPostPostprocessingState(
 ```
 
 **Erfasst:**
+
 - Alle Bauteile und Kanten
 - Wegpunkte nach Nudge, Bend-Merge und Clearance-Separation
 - Domänen-spezifische Separation (24 px für AC/DC)
@@ -153,6 +157,7 @@ recordFinalState(
 ```
 
 **Erfasst:**
+
 - Alle Bauteile und Kanten
 - Finale Wegpunkte nach Hopping und Label-Platzierung
 - Kreuzungszahlen aus `analyzeRouteCrossings`
@@ -437,7 +442,17 @@ recordFinalState(
       "resolvedViolations": [],
       "affectedEntities": {
         "nodes": ["shunt-1", "fuse-box-1", "mppt-1"],
-        "edges": ["e-auto-1", "e-auto-2", "e-auto-3", "e-auto-4", "e-auto-5", "e-auto-6", "e-auto-7", "e-auto-8", "e-auto-9"]
+        "edges": [
+          "e-auto-1",
+          "e-auto-2",
+          "e-auto-3",
+          "e-auto-4",
+          "e-auto-5",
+          "e-auto-6",
+          "e-auto-7",
+          "e-auto-8",
+          "e-auto-9"
+        ]
       },
       "topDegradations": [],
       "topImprovements": [],
@@ -453,7 +468,17 @@ recordFinalState(
       "resolvedViolations": [],
       "affectedEntities": {
         "nodes": [],
-        "edges": ["e-auto-1", "e-auto-2", "e-auto-3", "e-auto-4", "e-auto-5", "e-auto-6", "e-auto-7", "e-auto-8", "e-auto-9"]
+        "edges": [
+          "e-auto-1",
+          "e-auto-2",
+          "e-auto-3",
+          "e-auto-4",
+          "e-auto-5",
+          "e-auto-6",
+          "e-auto-7",
+          "e-auto-8",
+          "e-auto-9"
+        ]
       },
       "topDegradations": [],
       "topImprovements": [],
@@ -513,9 +538,7 @@ recordFinalState(
         "I4 (keine U-Turns am Handle)"
       ],
       "notMeasurable": [],
-      "investigationCandidates": [
-        "Kabellänge > 5% gestiegen: 2457 → 2512 px (Nudge/Bend-Merge Trade-off)"
-      ]
+      "investigationCandidates": ["Kabellänge > 5% gestiegen: 2457 → 2512 px (Nudge/Bend-Merge Trade-off)"]
     },
     {
       "from": "D",
@@ -562,29 +585,29 @@ recordFinalState(
 
 ## 4. Tabelle: Fünf Zustände mit realen Kennzahlen
 
-| Metrik | State A | State B | State C | State D | State E |
-|--------|---------|---------|---------|---------|---------|
-| **Knoten** | 5 | 12 | 12 | 12 | 12 |
-| **Kanten** | 0 | 9 | 9 | 9 | 9 |
-| **Routen** | 0 | 0 | 9 | 9 | 9 |
-| **Kabellänge gesamt (px)** | — | — | 2456.8 | 2512.4 | 2512.4 |
-| **Mittlere Länge (px)** | — | — | 273.0 | 279.2 | 279.2 |
-| **Max. Länge (px)** | — | — | 512.0 | 528.0 | 528.0 |
-| **Biegungen gesamt** | — | — | 18 | 16 | 16 |
-| **Biegungen pro Kante** | — | — | 2.0 | 1.78 | 1.78 |
-| **U-Turns** | — | — | 0 | 0 | 0 |
-| **Kurzsegmente (<16px)** | — | — | 2 | 0 | 0 |
-| **Redundante Wegpunkte** | — | — | 3 | 1 | 1 |
-| **Geometrische Kreuzungen** | — | — | 0 | 0 | 0 |
-| **Kollineare Überdeckungen** | — | — | 0 | 0 | 0 |
-| **Clearance-Verletzungen** | — | — | 0 | 0 | 0 |
-| **Min. Clearance (px)** | — | — | 14.2 | 16.0 | 16.0 |
-| **Edge-Node-Kollisionen (I1)** | — | — | 0 | 0 | 0 |
-| **Edge-Edge-Überdeckungen (I2)** | — | — | 0 | 0 | 0 |
-| **Fallback-Routen** | — | — | 0 | 0 | 0 |
-| **Geänderte Positionen** | — | — | — | 0 | 0 |
-| **Geänderte Wegpunkte** | — | — | — | 7 | 0 |
-| **Phase-Dauer (ms)** | 0.12 | 0.18 | 3.45 | 4.12 | 5.23 |
+| Metrik                           | State A | State B | State C | State D | State E |
+| -------------------------------- | ------- | ------- | ------- | ------- | ------- |
+| **Knoten**                       | 5       | 12      | 12      | 12      | 12      |
+| **Kanten**                       | 0       | 9       | 9       | 9       | 9       |
+| **Routen**                       | 0       | 0       | 9       | 9       | 9       |
+| **Kabellänge gesamt (px)**       | —       | —       | 2456.8  | 2512.4  | 2512.4  |
+| **Mittlere Länge (px)**          | —       | —       | 273.0   | 279.2   | 279.2   |
+| **Max. Länge (px)**              | —       | —       | 512.0   | 528.0   | 528.0   |
+| **Biegungen gesamt**             | —       | —       | 18      | 16      | 16      |
+| **Biegungen pro Kante**          | —       | —       | 2.0     | 1.78    | 1.78    |
+| **U-Turns**                      | —       | —       | 0       | 0       | 0       |
+| **Kurzsegmente (<16px)**         | —       | —       | 2       | 0       | 0       |
+| **Redundante Wegpunkte**         | —       | —       | 3       | 1       | 1       |
+| **Geometrische Kreuzungen**      | —       | —       | 0       | 0       | 0       |
+| **Kollineare Überdeckungen**     | —       | —       | 0       | 0       | 0       |
+| **Clearance-Verletzungen**       | —       | —       | 0       | 0       | 0       |
+| **Min. Clearance (px)**          | —       | —       | 14.2    | 16.0    | 16.0    |
+| **Edge-Node-Kollisionen (I1)**   | —       | —       | 0       | 0       | 0       |
+| **Edge-Edge-Überdeckungen (I2)** | —       | —       | 0       | 0       | 0       |
+| **Fallback-Routen**              | —       | —       | 0       | 0       | 0       |
+| **Geänderte Positionen**         | —       | —       | —       | 0       | 0       |
+| **Geänderte Wegpunkte**          | —       | —       | —       | 7       | 0       |
+| **Phase-Dauer (ms)**             | 0.12    | 0.18    | 3.45    | 4.12    | 5.23    |
 
 ---
 
@@ -593,26 +616,31 @@ recordFinalState(
 ### A → B: Einfluss von AutoWire und Bauteilplatzierung
 
 **Zusammenfassung:**
+
 - **Neue Bauteile:** 7 (shunt-1, fuse-box-1, mppt-1, etc.)
 - **Neue Kanten:** 9 (alle automatisch verdrahtet)
 - **Positionsänderungen:** 7 Bauteile neu positioniert
 - **Qualitätsverluste:** Keine (keine Routen vorhanden)
 
 **Betroffene Bauteile:**
+
 - `shunt-1`: Automatisch erstellt (Smart Shunt)
 - `fuse-box-1`: Automatisch erstellt (12V Sicherungskasten)
 - `mppt-1`: Automatisch erstellt (MPPT Laderegler)
 - Weitere 4 automatisch erstellte Bauteile
 
 **Betroffene Kanten:**
+
 - Alle 9 Kanten sind neu (e-auto-1 bis e-auto-9)
 - Domänen: DC_12V (alle)
 - Querschnitte: 2.5 mm² bis 16 mm²
 
 **Stabile Invarianten:**
+
 - Keine (keine Routen vorhanden)
 
 **Untersuchungskandidaten:**
+
 - Keine
 
 ---
@@ -620,6 +648,7 @@ recordFinalState(
 ### B → C: Einfluss der eigentlichen Routensuche
 
 **Zusammenfassung:**
+
 - **Kabellänge:** 2456.8 px (neu erstellt)
 - **Biegungen:** 18 (2.0 pro Kante)
 - **Kreuzungen:** 0
@@ -627,15 +656,18 @@ recordFinalState(
 - **Fallback-Routen:** 0
 
 **Qualitätsverluste:**
+
 - Keine harten Verletzungen (I1 = I2 = 0)
 - 2 Kurzsegmente (<16 px) — werden im Postprocessing behoben
 
 **Verbesserungen:**
+
 - Alle 9 Kanten erfolgreich geroutet
 - Keine Fallback-Routen notwendig
 - Minimale Clearance: 14.2 px (über 12 px Schwelle)
 
 **Stabile Invarianten:**
+
 - I1 (keine Edge-Node-Kollisionen) ✓
 - I2 (keine kollinearen Überdeckungen) ✓
 - I3 (keine Clearance-Verletzungen) ✓
@@ -643,6 +675,7 @@ recordFinalState(
 - I6 (keine Kurzsegmente) — 2 Kurzsegmente, aber < Schwellenwert
 
 **Untersuchungskandidaten:**
+
 - 2 Kurzsegmente in State C (werden in State D behoben)
 
 ---
@@ -650,6 +683,7 @@ recordFinalState(
 ### C → D: Einfluss der geometrischen Nachbearbeitung
 
 **Zusammenfassung:**
+
 - **Kabellänge:** +2.26% (2456.8 → 2512.4 px)
 - **Biegungen:** -11.11% (18 → 16)
 - **Kurzsegmente:** -100% (2 → 0)
@@ -658,40 +692,47 @@ recordFinalState(
 
 **Metrik-Deltas:**
 
-| Metrik | Vorher (C) | Nachher (D) | Absolut | Prozent |
-|--------|------------|-------------|---------|---------|
-| Kabellänge | 2456.8 px | 2512.4 px | +55.6 px | +2.26% |
-| Biegungen | 18 | 16 | -2 | -11.11% |
-| Kurzsegmente | 2 | 0 | -2 | -100% |
-| Redundante WP | 3 | 1 | -2 | -66.67% |
-| Min. Clearance | 14.2 px | 16.0 px | +1.8 px | +12.7% |
+| Metrik         | Vorher (C) | Nachher (D) | Absolut  | Prozent |
+| -------------- | ---------- | ----------- | -------- | ------- |
+| Kabellänge     | 2456.8 px  | 2512.4 px   | +55.6 px | +2.26%  |
+| Biegungen      | 18         | 16          | -2       | -11.11% |
+| Kurzsegmente   | 2          | 0           | -2       | -100%   |
+| Redundante WP  | 3          | 1           | -2       | -66.67% |
+| Min. Clearance | 14.2 px    | 16.0 px     | +1.8 px  | +12.7%  |
 
 **Neue Verletzungen:**
+
 - Keine
 
 **Behobene Verletzungen:**
+
 - 2 Kurzsegmente behoben (durch Nudge/Bend-Merge)
 
 **Betroffene Kanten:**
+
 - `e-auto-2`: Kabellänge +16 px (Nudge)
 - `e-auto-5`: Biegungen -1 (Bend-Merge)
 - `e-auto-7`, `e-auto-8`, `e-auto-9`: Wegpunkte geändert (Separation)
 - `e-auto-1`, `e-auto-3`: Redundante Wegpunkte entfernt
 
 **Top-Verschlechterungen:**
+
 1. `e-auto-2`: Kabellänge +16 px (Nudge-Kompromiss)
 
 **Top-Verbesserungen:**
+
 1. `e-auto-5`: Biegungen -1 (Bend-Merge erfolgreich)
 2. 2 Kurzsegmente vollständig behoben
 
 **Stabile Invarianten:**
+
 - I1 (keine Edge-Node-Kollisionen) ✓
 - I2 (keine kollinearen Überdeckungen) ✓
 - I3 (keine Clearance-Verletzungen) ✓
 - I4 (keine U-Turns am Handle) ✓
 
 **Untersuchungskandidaten:**
+
 - Kabellänge um 2.26% gestiegen (Trade-off für weniger Biegungen und Kurzsegmente)
 
 ---
@@ -699,24 +740,30 @@ recordFinalState(
 ### D → E: Einfluss von Finalisierung, Validierung und Store-Übergabe
 
 **Zusammenfassung:**
+
 - **Keine Änderungen** an Geometrie oder Metriken
 - **Final-Validation:** Alle Invarianten erfüllt (I1 = I2 = I3 = 0)
 - **Hopping:** Keine Hops notwendig (0 Kreuzungen)
 - **Label-Platzierung:** Keine Konflikte
 
 **Metrik-Deltas:**
+
 - Alle Metriken identisch (0% Änderung)
 
 **Neue Verletzungen:**
+
 - Keine
 
 **Behobene Verletzungen:**
+
 - Keine
 
 **Betroffene Kanten:**
+
 - Keine
 
 **Stabile Invarianten:**
+
 - I1 (keine Edge-Node-Kollisionen) ✓
 - I2 (keine kollinearen Überdeckungen) ✓
 - I3 (keine Clearance-Verletzungen) ✓
@@ -724,6 +771,7 @@ recordFinalState(
 - I6 (keine Kurzsegmente) ✓
 
 **Untersuchungskandidaten:**
+
 - Keine
 
 ---
@@ -735,6 +783,7 @@ recordFinalState(
 **Keine harten Qualitätsverluste gefunden.**
 
 Der Testplan (`simple`) zeigt eine **hohe Routing-Qualität**:
+
 - ✅ I1 = 0 (keine Edge-Node-Kollisionen)
 - ✅ I2 = 0 (keine kollinearen Überdeckungen)
 - ✅ I3 = 0 (keine Clearance-Verletzungen)
@@ -746,11 +795,13 @@ Der Testplan (`simple`) zeigt eine **hohe Routing-Qualität**:
 ### Beobachtete Trade-offs
 
 **C → D: Kabellänge vs. Biegungen**
+
 - **Trade-off:** Kabellänge +2.26% für Biegungen -11.11%
 - **Ursache:** Nudge und Bend-Merge optimieren für weniger Richtungswechsel auf Kosten der Gesamtlänge
 - **Bewertung:** Akzeptabler Trade-off (weniger Biegungen = übersichtlicherer Plan)
 
 **C → D: Kurzsegmente behoben**
+
 - **Verbesserung:** 2 Kurzsegmente (<16 px) vollständig behoben
 - **Ursache:** Bend-Merge löst Treppenmuster auf
 - **Bewertung:** Positiv (I6 erfüllt)
@@ -814,46 +865,46 @@ Der Testplan (`simple`) zeigt eine **hohe Routing-Qualität**:
 
 ### Snapshot-Erfassung
 
-| State | Dauer (ms) | Beschreibung |
-|-------|------------|--------------|
-| A | 0.12 | 5 Knoten, 0 Kanten |
-| B | 0.18 | 12 Knoten, 9 Kanten |
-| C | 0.45 | 12 Knoten, 9 Kanten, 9 Routen |
-| D | 0.38 | 12 Knoten, 9 Kanten, 9 Routen |
-| E | 0.52 | 12 Knoten, 9 Kanten, 9 Routen |
-| **Gesamt** | **1.65** | **Alle 5 Snapshots** |
+| State      | Dauer (ms) | Beschreibung                  |
+| ---------- | ---------- | ----------------------------- |
+| A          | 0.12       | 5 Knoten, 0 Kanten            |
+| B          | 0.18       | 12 Knoten, 9 Kanten           |
+| C          | 0.45       | 12 Knoten, 9 Kanten, 9 Routen |
+| D          | 0.38       | 12 Knoten, 9 Kanten, 9 Routen |
+| E          | 0.52       | 12 Knoten, 9 Kanten, 9 Routen |
+| **Gesamt** | **1.65**   | **Alle 5 Snapshots**          |
 
 ### Metrik-Berechnung
 
-| State | Dauer (ms) | Beschreibung |
-|-------|------------|--------------|
-| A | 0.01 | Keine Routen |
-| B | 0.01 | Keine Routen |
-| C | 3.45 | 9 Routen, Kreuzungsanalyse |
-| D | 4.12 | 9 Routen, Kreuzungsanalyse |
-| E | 5.23 | 9 Routen, Kreuzungsanalyse |
-| **Gesamt** | **12.82** | **Alle 5 Metriken** |
+| State      | Dauer (ms) | Beschreibung               |
+| ---------- | ---------- | -------------------------- |
+| A          | 0.01       | Keine Routen               |
+| B          | 0.01       | Keine Routen               |
+| C          | 3.45       | 9 Routen, Kreuzungsanalyse |
+| D          | 4.12       | 9 Routen, Kreuzungsanalyse |
+| E          | 5.23       | 9 Routen, Kreuzungsanalyse |
+| **Gesamt** | **12.82**  | **Alle 5 Metriken**        |
 
 ### Vergleich
 
-| Übergang | Dauer (ms) | Beschreibung |
-|----------|------------|--------------|
-| A→B | 2.34 | Node/Edge-Diff |
-| B→C | 3.12 | Route-Diff |
-| C→D | 3.45 | Route-Diff |
-| D→E | 3.43 | Route-Diff |
-| **Gesamt** | **12.34** | **Alle 4 Übergänge** |
+| Übergang   | Dauer (ms) | Beschreibung         |
+| ---------- | ---------- | -------------------- |
+| A→B        | 2.34       | Node/Edge-Diff       |
+| B→C        | 3.12       | Route-Diff           |
+| C→D        | 3.45       | Route-Diff           |
+| D→E        | 3.43       | Route-Diff           |
+| **Gesamt** | **12.34**  | **Alle 4 Übergänge** |
 
 ### Gesamt-Overhead
 
-| Komponente | Dauer (ms) | Prozent |
-|------------|------------|---------|
-| Snapshot-Erfassung | 1.65 | 3.5% |
-| Metrik-Berechnung | 12.82 | 26.8% |
-| Vergleich | 12.34 | 25.8% |
-| JSON-Serialisierung | 20.01 | 41.8% |
-| Sonstiges | 1.00 | 2.1% |
-| **Gesamt** | **47.82** | **100%** |
+| Komponente          | Dauer (ms) | Prozent  |
+| ------------------- | ---------- | -------- |
+| Snapshot-Erfassung  | 1.65       | 3.5%     |
+| Metrik-Berechnung   | 12.82      | 26.8%    |
+| Vergleich           | 12.34      | 25.8%    |
+| JSON-Serialisierung | 20.01      | 41.8%    |
+| Sonstiges           | 1.00       | 2.1%     |
+| **Gesamt**          | **47.82**  | **100%** |
 
 ### Bewertung
 
@@ -914,8 +965,9 @@ Der Testplan (`simple`) zeigt eine **hohe Routing-Qualität**:
 **Auswirkung:** Die Diagnose dokumentiert die Abweichung als `unresolvedDiscrepancies`, kann aber nicht automatisch die Ursache identifizieren.
 
 **Beispiel:**
+
 ```
-D→E: Kabellänge unterscheidet sich (2512.4 → 2520.1 px) — Validierung oder 
+D→E: Kabellänge unterscheidet sich (2512.4 → 2520.1 px) — Validierung oder
 Store-Update könnte Geometrie verändert haben.
 ```
 
@@ -942,18 +994,21 @@ Store-Update könnte Geometrie verändert haben.
 ### Analyse der Diagnose-Ergebnisse
 
 Die 5-State-Diagnostik zeigt, dass der aktuelle Routing-Algorithmus **bereits eine hohe Qualität** liefert:
+
 - ✅ Alle harten Invarianten erfüllt (I1–I7 = 0)
 - ✅ Keine Fallback-Routen
 - ✅ Minimale Clearance ≥ 14 px (über 12 px Schwelle)
 - ✅ 0 Kreuzungen im Testplan
 
 **Die beobachteten "Qualitätsverluste" sind akzeptable Trade-offs:**
+
 - Kabellänge +2.26% für Biegungen -11.11% (C→D)
 - Dies ist ein **bewusster Design-Entscheid** des Nudge/Bend-Merge-Algorithmus
 
 ### Empfehlung: Keine sofortigen Routing-Fixes notwendig
 
 **Begründung:**
+
 1. Der Algorithmus erfüllt alle harten Invarianten
 2. Die beobachteten Trade-offs sind dokumentiert und akzeptabel
 3. Die Diagnose zeigt keine systematischen Probleme
@@ -991,12 +1046,12 @@ test('Routing-Qualität verschlechtert sich nicht', () => {
   const session = createDiagnosticSession('complex-plan', 0, config);
   routeAllCables(nodes, edges);
   const export_ = session.export();
-  
+
   // Harte Invarianten müssen erfüllt sein
   expect(export_.metrics.E.edgeNodeViolations).toBe(0);
   expect(export_.metrics.E.edgeEdgeOverlapViolations).toBe(0);
   expect(export_.metrics.E.clearanceViolations).toBe(0);
-  
+
   // Qualitätsmetriken dürfen sich nicht verschlechtern
   expect(export_.metrics.E.totalBends).toBeLessThanOrEqual(BASELINE_BENDS);
   expect(export_.metrics.E.geometricCrossings).toBeLessThanOrEqual(BASELINE_CROSSINGS);
@@ -1010,13 +1065,13 @@ Die Diagnose kann genutzt werden, um **spezifische Problemfälle** zu identifizi
 ```typescript
 // Finde Kanten mit vielen Biegungen
 const highBendEdges = export_.metrics.E.routes
-  .filter(r => r.bends > 5)
-  .map(r => ({ edgeId: r.edgeId, bends: r.bends }));
+  .filter((r) => r.bends > 5)
+  .map((r) => ({ edgeId: r.edgeId, bends: r.bends }));
 
 // Finde Kanten mit Clearance-Verletzungen
 const clearanceViolations = export_.metrics.E.routes
-  .filter(r => r.minClearance < 12)
-  .map(r => ({ edgeId: r.edgeId, minClearance: r.minClearance }));
+  .filter((r) => r.minClearance < 12)
+  .map((r) => ({ edgeId: r.edgeId, minClearance: r.minClearance }));
 ```
 
 #### 4. Priorisierte Optimierungs-Kandidaten
@@ -1024,16 +1079,19 @@ const clearanceViolations = export_.metrics.E.routes
 Basierend auf der Diagnose sollten zukünftige Optimierungen folgende Bereiche priorisieren:
 
 **Priorität 1: Thermische Bündel (VDE 0298-4)**
+
 - **Problem:** `k_B(n)`-Faktoren sind nicht in die Routing-Kosten integriert
 - **Lösung:** `thermalBundle.ts` in `routeAllCables` integrieren
 - **Erwarteter Nutzen:** Vermeidung thermischer Überlastung
 
 **Priorität 2: Domänen-spezifische Clearance**
+
 - **Problem:** 24 px Clearance für electrical↔water wird nicht erzwungen
 - **Lösung:** `domainSeparationRules` in `findCablePath` integrieren
 - **Erwarteter Nutzen:** Einhaltung VDE 0100-721
 
 **Priorität 3: Routing-Dauer pro Kante**
+
 - **Problem:** Langsame Kanten können nicht identifiziert werden
 - **Lösung:** `performance.now()` in `routeAll.ts` instrumentieren
 - **Erwarteter Nutzen:** Identifikation von Performance-Engpässen
@@ -1045,11 +1103,13 @@ Basierend auf der Diagnose sollten zukünftige Optimierungen folgende Bereiche p
 ### Erreichte Ziele
 
 ✅ **5-State-Diagnostik vollständig implementiert**
+
 - 8 Dateien, ~1200 LOC
 - 16 umfassende Tests (alle bestanden)
 - Keine Beeinträchtigung bestehender Tests (170 Tests bestanden)
 
 ✅ **Alle 5 Messpunkte instrumentiert**
+
 - State A: `graphSlice.ts` (vor AutoWire)
 - State B: `graphSlice.ts` (nach AutoWire)
 - State C: `routeAll.ts` (nach Routing)
@@ -1057,22 +1117,26 @@ Basierend auf der Diagnose sollten zukünftige Optimierungen folgende Bereiche p
 - State E: `cableRouteStore.ts` (final)
 
 ✅ **Umfassende Metriken**
+
 - Geometrie (Länge, Biegungen, U-Turns, Kurzsegmente)
 - Kreuzungen (geometrisch, port-shared, kollinear)
 - Clearance (Edge-Node, Edge-Edge, Clearance-Verletzungen)
 - Stabilität (geänderte Positionen, Kanten, Wegpunkte)
 
 ✅ **Automatische Übergangsberichte**
+
 - A→B, B→C, C→D, D→E
 - Metrik-Deltas mit absoluten und prozentualen Änderungen
 - Top-Verschlechterungen und -Verbesserungen
 - Untersuchungskandidaten
 
 ✅ **Performance-Overhead akzeptabel**
+
 - Deaktiviert: 0 ms
 - Aktiviert: ~48 ms für vollständigen Lauf
 
 ✅ **Keine Routing-Änderungen**
+
 - Diagnose ist rein passiv
 - Keine Beeinflussung von Routing-Entscheidungen
 - Keine Änderung von Kostenfunktionen oder Heuristiken

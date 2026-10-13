@@ -192,7 +192,11 @@ async function main(): Promise<void> {
   console.log(`  Session-ID: ${export_.meta.sessionId}`);
   console.log(`  Plan-ID: ${export_.meta.planId}`);
   console.log(`  Schema-Version: ${export_.meta.schemaVersion}`);
-  console.log(`  Erfasste States: ${Object.keys(export_.snapshots).filter((k) => export_.snapshots[k as any]).join(', ')}`);
+  console.log(
+    `  Erfasste States: ${Object.keys(export_.snapshots)
+      .filter((k) => export_.snapshots[k as any])
+      .join(', ')}`
+  );
   console.log(`  Übergangsberichte: ${export_.transitions.length}`);
   console.log(`  Qualitätsverluste: ${export_.qualityLosses.length}`);
   console.log(`  Gesamtdauer: ${export_.timings.totalMs.toFixed(2)} ms`);

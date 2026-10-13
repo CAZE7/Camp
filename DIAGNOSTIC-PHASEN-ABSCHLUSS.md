@@ -52,6 +52,7 @@ scripts/ci/
 ## 📊 Phasen-Übersicht
 
 ### Phase 1: Visuelle Debug-UI ✅
+
 **Commit:** `f565c67`
 
 - React-Komponente mit 4 Tabs (Übersicht, Metriken, Übergänge, Qualitätsverluste)
@@ -61,6 +62,7 @@ scripts/ci/
 - 737 Zeilen Code + 370 Zeilen Tests
 
 **Kernfunktionen:**
+
 ```tsx
 <DiagnosticViewer
   export={diagnosticExport}
@@ -72,6 +74,7 @@ scripts/ci/
 ---
 
 ### Phase 2: CI-Integration ✅
+
 **Commit:** `df91029`
 
 - Automatische Regression-Detection bei PRs
@@ -81,6 +84,7 @@ scripts/ci/
 - Markdown-Reports als PR-Kommentare
 
 **Workflow-Trigger:**
+
 ```yaml
 on:
   pull_request:
@@ -93,6 +97,7 @@ on:
 ---
 
 ### Phase 3: Root-Cause-Analysis ✅
+
 **Commit:** `4ccf340`
 
 - 6 Pattern-Matcher für häufige Probleme:
@@ -107,6 +112,7 @@ on:
 - Sortierung nach Severity und Konfidenz
 
 **Beispiel-Output:**
+
 ```
 🔍 Root Cause: Postprocessing verschlechtert Cable Clearance
    Kategorie: postprocessing
@@ -118,20 +124,24 @@ on:
 ---
 
 ### Phase 4: Erweiterte Metriken ✅
+
 **Commit:** `da97882`
 
 **Domänen-Clearance (VDE 0100-520):**
+
 - AC-DC 24px Separation
 - Verletzungen pro Kante
 - Minimale/durchschnittliche Distanz
 
 **Thermische Bündel (VDE 0298-4):**
+
 - Identifikation paralleler Routen
 - Strombelastbarkeit nach Bündelgröße
 - Überlastungsdetektion (>100% Auslastung)
 - Bounding Box für Visualisierung
 
 **Per-Edge Routing:**
+
 - Dauer pro Kante
 - Timeout-Detektion (>1000ms)
 - Fallback-Tracking
@@ -139,6 +149,7 @@ on:
 ---
 
 ### Phase 5: Golden Master Vergleich ✅
+
 **Commit:** `adf4017`
 
 - Vergleich mit Referenzplänen
@@ -148,6 +159,7 @@ on:
 - Per-State Breakdown mit Verbesserungen/Verschlechterungen
 
 **Usage:**
+
 ```bash
 npm run diagnostic:compare-golden \
   --reference=golden/simple.json \
@@ -158,30 +170,36 @@ npm run diagnostic:compare-golden \
 ---
 
 ### Phase 6: Export-Formate ✅
+
 **Commit:** `5425af6`
 
 **HTML:**
+
 - Interaktiver Bericht mit Tabs und State-Selector
 - Print-friendly CSS
 - Responsive Grid Layout
 - JavaScript für Tab-Switching
 
 **CSV:**
+
 - Tabellarisches Format für Excel
 - Alle Metriken über alle States
 - Standardisiertes Spaltenformat
 
 **Markdown:**
+
 - Strukturierte Sektionen pro State
 - Quality Losses mit Details
 - Ideal für PR-Kommentare
 
 **JSON:**
+
 - Vollständiger Export für Programmatische Nutzung
 
 ---
 
 ### Phase 7: Echtzeit-Diagnose ✅
+
 **Commit:** `0e5d0d0`
 
 - EventEmitter-basiertes Live-Update-System
@@ -195,6 +213,7 @@ npm run diagnostic:compare-golden \
 - WebSocket-Adapter Struktur für zukünftige Erweiterung
 
 **Integration:**
+
 ```ts
 const tracker = createRealtimeProgressTracker('C', edges.length);
 tracker.start();
@@ -211,22 +230,27 @@ tracker.complete(metrics);
 ---
 
 ### Phase 8: KI-gestützte Analyse ✅
+
 **Commit:** `ac3ec01`
 
 **Mustererkennung:**
+
 - Wiederkehrende Verletzungen (>= 2 Vorkommen)
 - Systematische Degradation (>= 3 Metriken)
 - Performance-Bottlenecks (>100ms pro Kante)
 
 **Anomalie-Detection:**
+
 - Statistische Ausreißer (>2 Standardabweichungen)
 - Severity-Klassifikation (low/medium/high)
 
 **Korrelationsanalyse:**
+
 - Pearson-Korrelationskoeffizient
 - Interpretation (strong/weak positive/negative)
 
 **Prädiktive Erkenntnisse:**
+
 - Persistenz-Vorhersage für wiederkehrende Probleme
 - Skalierungs-Warnungen für Performance-Bottlenecks
 - Stabilitäts-Analyse für anomales Verhalten
@@ -234,6 +258,7 @@ tracker.complete(metrics);
 ---
 
 ### Phase 9: A/B-Testing Framework ✅
+
 **Commit:** `a09d6d9`
 
 - Multi-Variant Testing (A/B/C/D/...)
@@ -246,6 +271,7 @@ tracker.complete(metrics);
 - Umfassende Vergleichsberichte
 
 **Usage:**
+
 ```ts
 const result = runABTest({
   name: 'Cable Clearance Comparison',
@@ -261,18 +287,18 @@ const result = runABTest({
 
 ## 📈 Code-Statistiken
 
-| Phase | Dateien | Zeilen Code | Zeilen Tests | Commits |
-|-------|---------|-------------|--------------|---------|
-| 1     | 2       | 737         | 370          | 1       |
-| 2     | 4       | 815         | —            | 1       |
-| 3     | 2       | 570         | 213          | 1       |
-| 4     | 2       | 439         | 253          | 1       |
-| 5     | 1       | 381         | —            | 1       |
-| 6     | 1       | 439         | —            | 1       |
-| 7     | 1       | 529         | —            | 1       |
-| 8     | 1       | 570         | —            | 1       |
-| 9     | 1       | 502         | —            | 1       |
-| **Gesamt** | **15** | **4.982** | **836** | **9** |
+| Phase      | Dateien | Zeilen Code | Zeilen Tests | Commits |
+| ---------- | ------- | ----------- | ------------ | ------- |
+| 1          | 2       | 737         | 370          | 1       |
+| 2          | 4       | 815         | —            | 1       |
+| 3          | 2       | 570         | 213          | 1       |
+| 4          | 2       | 439         | 253          | 1       |
+| 5          | 1       | 381         | —            | 1       |
+| 6          | 1       | 439         | —            | 1       |
+| 7          | 1       | 529         | —            | 1       |
+| 8          | 1       | 570         | —            | 1       |
+| 9          | 1       | 502         | —            | 1       |
+| **Gesamt** | **15**  | **4.982**   | **836**      | **9**   |
 
 **Gesamtzeilen:** ~5.800 Zeilen (Code + Tests)
 
@@ -291,6 +317,7 @@ const result = runABTest({
 ## 🚀 Nächste Schritte
 
 ### Kurzfristig (1-2 Wochen)
+
 1. **Integration in Planner-UI**
    - DiagnosticViewer als Modal/Side-Panel einbinden
    - Button "Diagnose anzeigen" in Toolbar hinzufügen
@@ -307,6 +334,7 @@ const result = runABTest({
    - WebSocket-Server für Multi-User-Szenarien
 
 ### Mittelfristig (1-2 Monate)
+
 4. **A/B-Testing Pipeline**
    - Automatisierte A/B-Tests für Konfigurationsänderungen
    - Historical Data Collection für bessere Statistik
@@ -318,6 +346,7 @@ const result = runABTest({
    - Automatische Fix-Vorschläge generieren
 
 ### Langfristig (3-6 Monate)
+
 6. **Predictive Routing**
    - ML-Modell für optimale Konfigurations-Vorhersage
    - Automatische Parameter-Optimierung basierend auf Plan-Charakteristika
@@ -333,15 +362,18 @@ const result = runABTest({
 ## 📚 Dokumentation
 
 ### Für Entwickler
+
 - `docs/ai/ROUTING-DIAGNOSTIC.md` - Umfassende Benutzerdokumentation
 - `DIAGNOSTIC-ABSCHLUSSBERICHT.md` - Detaillierter technischer Bericht
 - `DIAGNOSTIC-SUMMARY.md` - Quick-Reference
 
 ### Für CI/CD
+
 - `.github/workflows/routing-diagnostic.yml` - Workflow-Konfiguration
 - `scripts/ci/README.md` - CI-Script Dokumentation
 
 ### Für Endbenutzer
+
 - HTML-Export für nicht-technische Stakeholder
 - Markdown-Export für PR-Reviews
 - CSV-Export für Datenanalyse
@@ -399,7 +431,7 @@ Das Routing-Diagnostik-System ist nun **produktionsreif** und bietet:
 ✅ **Automatische Qualitätskontrolle** in CI/CD  
 ✅ **Intelligente Analyse** mit KI-Unterstützung  
 ✅ **Systematische Optimierung** durch A/B-Testing  
-✅ **Professionelle Dokumentation** für alle Stakeholder  
+✅ **Professionelle Dokumentation** für alle Stakeholder
 
 Die Implementierung ist **modular**, **erweiterbar** und **gut getestet**. Sie bildet eine solide Basis für kontinuierliche Routing-Optimierung und -Innovation.
 
@@ -408,7 +440,7 @@ Die Implementierung ist **modular**, **erweiterbar** und **gut getestet**. Sie b
 **Status:** ✅ Alle 9 Phasen erfolgreich abgeschlossen  
 **Commits:** 9 Feature-Commits + Dokumentation  
 **Code-Qualität:** TypeScript-konform, 0 Fehler  
-**Test-Abdeckung:** Umfassend, alle Tests bestanden  
+**Test-Abdeckung:** Umfassend, alle Tests bestanden
 
-*Erstellt am: 2026-01-15*  
-*Version: 1.0.0*
+_Erstellt am: 2026-01-15_  
+_Version: 1.0.0_

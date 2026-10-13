@@ -9,10 +9,7 @@ import { isConnectionAllowed } from '../../lib/connectionRules'; // ARCH-002
 import { newEntityId } from '../../lib/id';
 import { getSystemVoltage } from '../../lib/vde-standards';
 import { performAutoWiring, relevantCumulativeDrop } from '../../lib/autoWire';
-import {
-  recordInitialState,
-  recordPostAutoWireState,
-} from '../../lib/routing/diagnostic/hooks';
+import { recordInitialState, recordPostAutoWireState } from '../../lib/routing/diagnostic/hooks';
 import { createPlannerError } from '../../lib/planner/plannerError';
 import { type CableEdgeData, type CableWaypoint } from '../../lib/domain/cableEdgeData';
 import { isRouteLocked } from '../../lib/electricalGraph/intent';

@@ -79,10 +79,7 @@ import {
 } from '../../../lib/routing/rules/portBundle';
 import { separateCableClearance } from './separation';
 import { compareIds } from '../../../lib/sortOrder';
-import {
-  recordPostRoutingState,
-  recordPostPostprocessingState,
-} from '../../../lib/routing/diagnostic/hooks';
+import { recordPostRoutingState, recordPostPostprocessingState } from '../../../lib/routing/diagnostic/hooks';
 
 // ── Stufe 3 (Mission Konfliktgraph-Batching): token-gated Arbeitsreihenfolge ──
 //
