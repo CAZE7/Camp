@@ -79,6 +79,10 @@ import {
 } from '../../../lib/routing/rules/portBundle';
 import { separateCableClearance } from './separation';
 import { compareIds } from '../../../lib/sortOrder';
+import {
+  recordPostRoutingState,
+  recordPostPostprocessingState,
+} from '../../../lib/routing/diagnostic/hooks';
 
 // ── Stufe 3 (Mission Konfliktgraph-Batching): token-gated Arbeitsreihenfolge ──
 //
@@ -1184,6 +1188,25 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
 
   const inflated: Rect[] = allObstacles.map((r) => inflateRect(r, OBSTACLE_MARGIN));
 
+  // ── DIAGNOSTIC: State C (Roh-Wegpunkte nach Routing, vor Postprocessing) ──
+  recordPostRoutingState(
+    nodes as unknown as Parameters<typeof recordPostRoutingState>[0],
+    edges as unknown as Parameters<typeof recordPostRoutingState>[1],
+    raw.map((r) => ({
+      edgeId: r.id,
+      source: edgeById.get(r.id)?.source ?? '',
+      target: edgeById.get(r.id)?.target ?? '',
+      waypoints: r.waypoints,
+      usedSearch: r.result.usedSearch,
+      fallbackHitsObstacles: r.result.fallbackHitsObstacles,
+      tightMarginUsed: r.result.tightMarginUsed,
+      length: r.result.length,
+      bends: r.result.bends,
+      crossings: 0, // Kreuzungen werden erst nach Postprocessing berechnet
+      locked: lockedIds.has(r.id),
+    }))
+  );
+
   // Verworfener Versuch (gemessen 2026-09-09): ein ZWEITER Routing-Gang über
   // die kreuzungsreichsten Kanten, mit vollem Wissen über alle anderen
   // (Trassen + Kreuzungs-Segmente) und Ausweich-Trassen ab der ersten
@@ -1298,6 +1321,25 @@ export function routeAllCables(nodes: RoutableNode[], edges: RouteEdgeRef[]): Ma
           [],
       ];
     })
+  );
+
+  // ── DIAGNOSTIC: State D (nach Nudge/BendMerge/Separation, vor Hopping) ──
+  recordPostPostprocessingState(
+    nodes as unknown as Parameters<typeof recordPostPostprocessingState>[0],
+    edges as unknown as Parameters<typeof recordPostPostprocessingState>[1],
+    order.map((id) => ({
+      edgeId: id,
+      source: edgeById.get(id)?.source ?? '',
+      target: edgeById.get(id)?.target ?? '',
+      waypoints: finalWaypoints.get(id) ?? [],
+      usedSearch: byId.get(id)?.result.usedSearch ?? null,
+      fallbackHitsObstacles: byId.get(id)?.result.fallbackHitsObstacles,
+      tightMarginUsed: byId.get(id)?.result.tightMarginUsed,
+      length: byId.get(id)?.result.length ?? null,
+      bends: byId.get(id)?.result.bends ?? null,
+      crossings: 0, // Kreuzungen werden erst nach analyzeRouteCrossings berechnet
+      locked: lockedIds.has(id),
+    }))
   );
 
   // WP-7 (#395) / ROUTE-BUG-5: Hops und echte Fremdkanten-Kreuzungszahlen
