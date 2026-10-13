@@ -21,7 +21,9 @@ import { computePolylineLength, countBendsInWaypoints } from './snapshot';
 
 // ── Konstanten ──────────────────────────────────────────────────────────────
 
-const CABLE_CLEARANCE = 12; // px, aus lib/routing/tokens.ts
+import { ROUTING_TOKENS } from '../tokens';
+
+const CABLE_CLEARANCE = ROUTING_TOKENS.cableClearance; // px
 const SEGMENT_MIN = 16; // px, aus lib/routing/tokens.ts
 const EPS = 1e-6;
 

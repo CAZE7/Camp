@@ -1,0 +1,154 @@
+name: Routing Diagnostic Regression Check
+
+on:
+  pull_request:
+    paths:
+      - 'lib/routing/**'
+      - 'components/edges/**'
+      - 'store/slices/graphSlice.ts'
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'lib/routing/**'
+      - 'components/edges/**'
+      - 'store/slices/graphSlice.ts'
+
+permissions:
+  contents: read
+
+jobs:
+  regression-check:
+    name: Routing Quality Regression Check
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download Golden Master Baseline
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: golden-master/
+          key: golden-master-${{ hashFiles('lib/routing/**/*.ts', 'components/edges/**/*.ts') }}
+          restore-keys: |
+            golden-master-
+
+      - name: Generate Golden Master (if not cached)
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p golden-master
+          npm run diagnostic:generate-golden-master -- --output=golden-master/baseline.json
+        env:
+          ROUTING_DIAGNOSTICS_ENABLED: 'true'
+
+      - name: Run current diagnostic
+        run: |
+          npm run diagnostic:run -- --output=current-diagnostic.json
+        env:
+          ROUTING_DIAGNOSTICS_ENABLED: 'true'
+
+      - name: Run regression check
+        id: regression
+        run: |
+          node scripts/ci/diagnostic-regression-check.ts \
+            --baseline=golden-master/baseline.json \
+            --current=current-diagnostic.json \
+            --output=regression-report.md
+        continue-on-error: true
+
+      - name: Upload regression report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d6b5e732002289c598b8a00547c0b6f63 # v4
+        with:
+          name: regression-report
+          path: regression-report.md
+
+      - name: Comment PR with results
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7
+        with:
+          script: |
+            const fs = require('fs');
+            const reportPath = 'regression-report.md';
+            
+            if (!fs.existsSync(reportPath)) {
+              console.log('No regression report found');
+              return;
+            }
+            
+            const report = fs.readFileSync(reportPath, 'utf-8');
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: report
+            });
+
+      - name: Update Golden Master (on main branch)
+        if: github.ref == 'refs/heads/main' && steps.regression.outcome == 'success'
+        run: |
+          cp current-diagnostic.json golden-master/baseline.json
+          echo "✅ Golden Master updated"
+
+      - name: Fail if regressions detected
+        if: steps.regression.outcome == 'failure'
+        run: |
+          echo "❌ Regression check failed. See regression-report.md for details."
+          exit 1
+
+  update-golden-master:
+    name: Update Golden Master Baseline
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: regression-check
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate new Golden Master
+        run: |
+          mkdir -p golden-master
+          npm run diagnostic:generate-golden-master -- --output=golden-master/baseline.json
+        env:
+          ROUTING_DIAGNOSTICS_ENABLED: 'true'
+
+      - name: Cache Golden Master
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: golden-master/
+          key: golden-master-${{ hashFiles('lib/routing/**/*.ts', 'components/edges/**/*.ts') }}
+
+      - name: Commit Golden Master
+        run: |
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+          git add golden-master/
+          git diff --staged --quiet || git commit -m "chore: update golden master baseline [skip ci]"
+          git push

@@ -35,13 +35,13 @@ export function exportToHTML(exportData: RoutingDiagnosticExport): string {
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       line-height: 1.6;
-      color: #1f2937;
+      color: var(--text-high);
       background: #f9fafb;
       padding: 2rem;
     }
     .container { max-width: 1200px; margin: 0 auto; }
     h1 { font-size: 2rem; margin-bottom: 0.5rem; color: #111827; }
-    h2 { font-size: 1.5rem; margin-top: 2rem; margin-bottom: 1rem; color: #1f2937; border-bottom: 2px solid #e5e7eb; padding-bottom: 0.5rem; }
+    h2 { font-size: 1.5rem; margin-top: 2rem; margin-bottom: 1rem; color: var(--text-high); border-bottom: 2px solid #e5e7eb; padding-bottom: 0.5rem; }
     h3 { font-size: 1.25rem; margin-top: 1.5rem; margin-bottom: 0.75rem; color: #374151; }
     .meta { background: white; padding: 1.5rem; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 2rem; }
     .meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem; }

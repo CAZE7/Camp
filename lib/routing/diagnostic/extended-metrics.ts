@@ -89,7 +89,9 @@ export interface ExtendedMetrics {
 // Constants
 // ============================================================================
 
-const AC_DC_CLEARANCE = 24; // px (VDE 0100-520)
+import { ROUTING_TOKENS } from '../tokens';
+
+const AC_DC_CLEARANCE = ROUTING_TOKENS.stubMin; // px (VDE 0100-520, 24px)
 const BUNDLE_PROXIMITY = 8; // px (Kanten gelten als gebündelt wenn < 8px Abstand)
 const TIMEOUT_THRESHOLD = 1000; // ms
 
