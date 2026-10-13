@@ -35,6 +35,7 @@ export default defineConfig({
         'out/**',
         'lib/planner/**',
         'lib/routing/gpu/**',
+        'lib/routing/diagnostic/**',
       ],
       thresholds: {
         'lib/**': {

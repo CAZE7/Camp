@@ -9,6 +9,7 @@ import { isConnectionAllowed } from '../../lib/connectionRules'; // ARCH-002
 import { newEntityId } from '../../lib/id';
 import { getSystemVoltage } from '../../lib/vde-standards';
 import { performAutoWiring, relevantCumulativeDrop } from '../../lib/autoWire';
+import { recordInitialState, recordPostAutoWireState } from '../../lib/routing/diagnostic/hooks';
 import { createPlannerError } from '../../lib/planner/plannerError';
 import { type CableEdgeData, type CableWaypoint } from '../../lib/domain/cableEdgeData';
 import { isRouteLocked } from '../../lib/electricalGraph/intent';
@@ -809,6 +810,13 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
   /** Berechnet Auto-Wire als Preview, ohne den echten Graphen zu verändern. */
   previewAutoWire: () => {
     const { nodes, edges } = get();
+
+    // ── DIAGNOSTIC: State A (initialer Plan vor AutoWire) ──
+    recordInitialState(
+      nodes as unknown as Parameters<typeof recordInitialState>[0],
+      edges as unknown as Parameters<typeof recordInitialState>[1]
+    );
+
     const result = performAutoWiring(nodes, edges);
     if (!result) {
       get().addPlannerError(
@@ -858,6 +866,13 @@ export const createGraphSlice: PlannerSlice<GraphSlice> = (set, get) => ({
         autoWirePreview: null,
       })
     );
+
+    // ── DIAGNOSTIC: State B (nach AutoWire + Platzierung, vor Routing) ──
+    recordPostAutoWireState(
+      preview.nodes as unknown as Parameters<typeof recordPostAutoWireState>[0],
+      preview.edges as unknown as Parameters<typeof recordPostAutoWireState>[1]
+    );
+
     if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
       window.requestAnimationFrame(() => {
         window.dispatchEvent(new CustomEvent('planner-fit-view'));

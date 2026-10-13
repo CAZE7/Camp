@@ -23,6 +23,7 @@ import {
   type RoutingTraceSnapshot,
   type RoutingTraceTriggerReference,
 } from './routingDebug';
+import { recordFinalState } from '../../../lib/routing/diagnostic/hooks';
 import {
   totalViolations,
   validateFinalRouting,
@@ -511,6 +512,26 @@ export function CableRouteSync() {
       const report = computeCableRouteFinalValidation(nodes, edgeRefs, routes);
       publishCableRoutes(routes);
       publishCableRouteFinalValidation(report);
+
+      // ── DIAGNOSTIC: State E (finaler Zustand nach Hopping/Label/Validation) ──
+      recordFinalState(
+        nodes as unknown as Parameters<typeof recordFinalState>[0],
+        edgeRefs as unknown as Parameters<typeof recordFinalState>[1],
+        Array.from(routes.entries()).map(([edgeId, route]) => ({
+          edgeId,
+          source: edgeRefs.find((e) => e.id === edgeId)?.source ?? '',
+          target: edgeRefs.find((e) => e.id === edgeId)?.target ?? '',
+          waypoints: route.waypoints,
+          usedSearch: route.usedSearch,
+          fallbackHitsObstacles: route.fallbackHitsObstacles,
+          tightMarginUsed: route.tightMarginUsed,
+          length: route.length,
+          bends: route.bends,
+          crossings: route.crossings,
+          hops: route.hops ?? [],
+          locked: route.locked,
+        }))
+      );
 
       if (routingDebugEnabled()) {
         const snapshot = createRoutingTraceSnapshot(all, edgeRefs, routingSignature);
