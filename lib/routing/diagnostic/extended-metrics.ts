@@ -331,7 +331,7 @@ export function calculatePerEdgeRoutingMetrics(snapshot: DiagnosticStateSnapshot
   return {
     durationPerEdge,
     meanDuration: durations.length > 0 ? durations.reduce((a, b) => a + b, 0) / durations.length : 0,
-    medianDuration: sorted.length > 0 ? sorted[Math.floor(sorted.length / 2)] : 0,
+    medianDuration: sorted.length > 0 ? sorted[Math.floor(sorted.length / 2)] ?? 0 : 0,
     maxDuration: durations.length > 0 ? Math.max(...durations) : 0,
     timeoutEdges,
     fallbackEdges,
@@ -406,7 +406,7 @@ export function generateExtendedMetricsReport(metrics: ExtendedMetrics): string 
     lines.push('### Timeout-Kanten');
     lines.push('');
     for (const edgeId of metrics.perEdgeRouting.timeoutEdges) {
-      const duration = metrics.perEdgeRouting.durationPerEdge[edgeId];
+      const duration = metrics.perEdgeRouting.durationPerEdge[edgeId] ?? 0;
       lines.push(`- **${edgeId}:** ${duration.toFixed(2)} ms`);
     }
     lines.push('');

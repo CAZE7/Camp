@@ -283,7 +283,7 @@ export function exportToHTML(exportData: RoutingDiagnosticExport): string {
         <div class="metric-card" style="margin-bottom: 1rem;">
           <h4>
             #${loss.rank} ${loss.description}
-            <span class="badge ${loss.severity === 'hard-violation' ? 'badge-danger' : loss.severity === 'soft-degradation' ? 'badge-warning' : 'badge-success'}">
+            <span class="badge ${loss.severity === 'hard-violation' ? 'badge-danger' : loss.severity === 'geometric-degradation' ? 'badge-warning' : 'badge-success'}">
               ${loss.severity}
             </span>
           </h4>
