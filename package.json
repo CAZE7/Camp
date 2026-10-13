@@ -39,7 +39,9 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "audit:dead-code": "knip --no-progress"
+    "audit:dead-code": "knip --no-progress",
+    "diagnostic:generate-golden-master": "tsx scripts/ci/generate-golden-master.ts",
+    "diagnostic:run": "tsx scripts/ci/diagnostic-regression-check.ts"
   },
   "engines": {
     "node": ">=22.0.0"
