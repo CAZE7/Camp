@@ -39,10 +39,6 @@ function generateGoldenMaster(): RoutingDiagnosticExport {
     },
     configuration: {
       routingTokens: {
-import { ROUTING_TOKENS } from '../../lib/routing/tokens';
-
-// ... (rest of imports)
-
         cableClearance: ROUTING_TOKENS.cableClearance,
         segmentMin: 16,
         laneGrid: 16,
