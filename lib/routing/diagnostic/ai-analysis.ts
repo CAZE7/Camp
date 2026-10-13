@@ -457,9 +457,9 @@ export function performAIAnalysis(exportData: RoutingDiagnosticExport): AIAnalys
   const highSeverityAnomalies = anomalies.filter((a) => a.severity === 'high').length;
   const topRecommendation =
     predictions.length > 0
-      ? predictions[0].recommendation
+      ? predictions[0]!.recommendation
       : patterns.length > 0
-        ? patterns[0].recommendations[0]
+        ? patterns[0]!.recommendations[0] ?? null
         : null;
 
   return {
