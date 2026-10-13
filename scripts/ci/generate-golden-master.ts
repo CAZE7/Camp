@@ -119,7 +119,7 @@ function parseArgs(): { outputPath: string } {
 
   for (const arg of args) {
     if (arg.startsWith('--output=')) {
-      outputPath = arg.split('=')[1];
+      outputPath = arg.split('=')[1] ?? 'golden-master/baseline.json';
     }
   }
 

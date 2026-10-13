@@ -194,7 +194,7 @@ async function main(): Promise<void> {
   console.log(`  Schema-Version: ${export_.meta.schemaVersion}`);
   console.log(
     `  Erfasste States: ${Object.keys(export_.snapshots)
-      .filter((k) => export_.snapshots[k as any])
+      .filter((k) => export_.snapshots[k as keyof typeof export_.snapshots])
       .join(', ')}`
   );
   console.log(`  Übergangsberichte: ${export_.transitions.length}`);

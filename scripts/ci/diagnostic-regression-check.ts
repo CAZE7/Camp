@@ -66,11 +66,11 @@ function parseArgs(): RegressionConfig {
 
   for (const arg of args) {
     if (arg.startsWith('--baseline=')) {
-      config.baselinePath = arg.split('=')[1];
+       config.baselinePath = arg.split('=')[1] ?? '';
     } else if (arg.startsWith('--current=')) {
-      config.currentPath = arg.split('=')[1];
+      config.currentPath = arg.split('=')[1] ?? '';
     } else if (arg.startsWith('--output=')) {
-      config.outputPath = arg.split('=')[1];
+      config.outputPath = arg.split('=')[1] ?? '';
     } else if (arg.startsWith('--threshold-cable-length=')) {
       config.thresholds.cableLength = parseFloat(arg.split('=')[1]);
     } else if (arg.startsWith('--threshold-bends=')) {
