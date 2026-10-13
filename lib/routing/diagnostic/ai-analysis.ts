@@ -232,7 +232,7 @@ function detectPerformanceBottlenecks(exportData: RoutingDiagnosticExport): Dete
             'Implementiere Early-Exit für aussichtslose Routen',
             'Prüfe ob maxExpansions zu hoch ist',
           ],
-          examples: [`Total: ${metrics.phaseDurationMs ?? 0.toFixed(0)}ms for ${snapshot.counts.edges} edges`],
+          examples: [`Total: ${(metrics.phaseDurationMs ?? 0).toFixed(0)}ms for ${snapshot.counts.edges} edges`],
         });
       }
     }
