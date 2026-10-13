@@ -66,7 +66,7 @@ function parseArgs(): RegressionConfig {
 
   for (const arg of args) {
     if (arg.startsWith('--baseline=')) {
-       config.baselinePath = arg.split('=')[1] ?? '';
+      config.baselinePath = arg.split('=')[1] ?? '';
     } else if (arg.startsWith('--current=')) {
       config.currentPath = arg.split('=')[1] ?? '';
     } else if (arg.startsWith('--output=')) {
