@@ -417,7 +417,7 @@ export function generateRootCauseReport(analysis: RootCauseAnalysis): string {
   lines.push('');
 
   for (let i = 0; i < analysis.hypotheses.length; i++) {
-    const h = analysis.hypotheses[i];
+    const h = analysis.hypotheses[i]!;
     lines.push(`### ${i + 1}. ${h.title}`);
     lines.push('');
     lines.push(`**Category:** ${h.category}`);

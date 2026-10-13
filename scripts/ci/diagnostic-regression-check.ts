@@ -72,11 +72,11 @@ function parseArgs(): RegressionConfig {
     } else if (arg.startsWith('--output=')) {
       config.outputPath = arg.split('=')[1] ?? '';
     } else if (arg.startsWith('--threshold-cable-length=')) {
-      config.thresholds.cableLength = parseFloat(arg.split('=')[1]);
+      config.thresholds.cableLength = parseFloat(arg.split('=')[1] ?? '0');
     } else if (arg.startsWith('--threshold-bends=')) {
-      config.thresholds.bends = parseFloat(arg.split('=')[1]);
+      config.thresholds.bends = parseFloat(arg.split('=')[1] ?? '0');
     } else if (arg.startsWith('--threshold-crossings=')) {
-      config.thresholds.crossings = parseInt(arg.split('=')[1]);
+      config.thresholds.crossings = parseInt(arg.split('=')[1] ?? '0');
     }
   }
 

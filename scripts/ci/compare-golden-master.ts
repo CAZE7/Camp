@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /**
  * Golden Master Comparison Tool
  *
@@ -76,9 +77,9 @@ function parseArgs(): ComparisonConfig {
 
   for (const arg of args) {
     if (arg.startsWith('--reference=')) {
-      config.referencePath = arg.split('=')[1];
+      config.referencePath = arg.split('=')[1] ?? '';
     } else if (arg.startsWith('--current=')) {
-      config.currentPath = arg.split('=')[1];
+      config.currentPath = arg.split('=')[1] ?? '';
     } else if (arg.startsWith('--output=')) {
       config.outputPath = arg.split('=')[1];
     } else if (arg.startsWith('--format=')) {
