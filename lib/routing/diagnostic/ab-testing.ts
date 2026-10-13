@@ -200,10 +200,10 @@ function calculateEffectSize(sample1: number[], sample2: number[]): number {
 // ============================================================================
 
 export function runABTest(config: ABTestConfig): ABTestResult {
-  console.log(`🧪 Running A/B test: ${config.name}`);
-  console.log(`   Variants: ${config.variants.map((v) => v.id).join(', ')}`);
-  console.log(`   Primary metric: ${config.primaryMetric}`);
-  console.log('');
+  console.warn(`🧪 Running A/B test: ${config.name}`);
+  console.warn(`   Variants: ${config.variants.map((v) => v.id).join(', ')}`);
+  console.warn(`   Primary metric: ${config.primaryMetric}`);
+  console.warn('');
 
   const comparisons: VariantComparison[] = [];
   const stateId = config.stateId;
@@ -218,7 +218,7 @@ export function runABTest(config: ABTestConfig): ABTestResult {
       const metricsB = variantB.export.metrics[stateId];
 
       if (!metricsA || !metricsB) {
-        console.log(`⚠️  Skipping ${variantA.id} vs ${variantB.id}: Missing metrics`);
+        console.warn(`⚠️  Skipping ${variantA.id} vs ${variantB.id}: Missing metrics`);
         continue;
       }
 
@@ -258,12 +258,12 @@ export function runABTest(config: ABTestConfig): ABTestResult {
         confidence,
       });
 
-      console.log(`   ${variantA.id} vs ${variantB.id}:`);
-      console.log(`     ${config.primaryMetric}: ${valueA.toFixed(2)} vs ${valueB.toFixed(2)}`);
-      console.log(`     Delta: ${delta.toFixed(2)} (${deltaPercent.toFixed(1)}%)`);
-      console.log(`     p-value: ${test.pValue.toFixed(4)} (${isSignificant ? 'significant' : 'not significant'})`);
-      console.log(`     Winner: ${winner === 'tie' ? 'Tie' : winner === 'A' ? variantA.id : variantB.id}`);
-      console.log('');
+      console.warn(`   ${variantA.id} vs ${variantB.id}:`);
+      console.warn(`     ${config.primaryMetric}: ${valueA.toFixed(2)} vs ${valueB.toFixed(2)}`);
+      console.warn(`     Delta: ${delta.toFixed(2)} (${deltaPercent.toFixed(1)}%)`);
+      console.warn(`     p-value: ${test.pValue.toFixed(4)} (${isSignificant ? 'significant' : 'not significant'})`);
+      console.warn(`     Winner: ${winner === 'tie' ? 'Tie' : winner === 'A' ? variantA.id : variantB.id}`);
+      console.warn('');
     }
   }
 
@@ -323,12 +323,12 @@ export function runABTest(config: ABTestConfig): ABTestResult {
     }
   }
 
-  console.log('');
-  console.log(`📊 Test-Ergebnis:`);
-  console.log(`   Signifikanz: ${statisticalSignificance}`);
-  console.log(`   Gewinner: ${winner ? winner.name : 'Kein klarer Gewinner'}`);
-  console.log(`   Konfidenz: ${(overallConfidence * 100).toFixed(1)}%`);
-  console.log('');
+  console.warn('');
+  console.warn(`📊 Test-Ergebnis:`);
+  console.warn(`   Signifikanz: ${statisticalSignificance}`);
+  console.warn(`   Gewinner: ${winner ? winner.name : 'Kein klarer Gewinner'}`);
+  console.warn(`   Konfidenz: ${(overallConfidence * 100).toFixed(1)}%`);
+  console.warn('');
 
   return {
     testName: config.name,

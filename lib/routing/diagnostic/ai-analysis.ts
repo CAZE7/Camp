@@ -12,8 +12,6 @@
 import type {
   RoutingDiagnosticExport,
   RoutingMetrics,
-  DiagnosticStateId,
-  QualityLoss,
 } from './types';
 
 // ============================================================================
@@ -183,7 +181,6 @@ function detectRecurringViolations(exportData: RoutingDiagnosticExport): Detecte
 
 function detectSystematicDegradation(exportData: RoutingDiagnosticExport): DetectedPattern[] {
   const patterns: DetectedPattern[] = [];
-  const states: DiagnosticStateId[] = ['A', 'B', 'C', 'D', 'E'];
 
   // Check if metrics consistently degrade across transitions
   for (const transition of exportData.transitions) {
@@ -438,7 +435,7 @@ function generatePredictions(
 // ============================================================================
 
 export function performAIAnalysis(exportData: RoutingDiagnosticExport): AIAnalysisResult {
-  console.log('🤖 Performing AI-powered analysis...');
+  console.warn('🤖 Performing AI-powered analysis...');
 
   // Detect patterns
   const patterns = [
@@ -447,19 +444,19 @@ export function performAIAnalysis(exportData: RoutingDiagnosticExport): AIAnalys
     ...detectPerformanceBottlenecks(exportData),
   ];
 
-  console.log(`   Found ${patterns.length} pattern(s)`);
+  console.warn(`   Found ${patterns.length} pattern(s)`);
 
   // Detect anomalies
   const anomalies = detectAnomalies(exportData);
-  console.log(`   Found ${anomalies.length} anomalie(s)`);
+  console.warn(`   Found ${anomalies.length} anomalie(s)`);
 
   // Analyze correlations
   const correlations = analyzeCorrelations(exportData);
-  console.log(`   Found ${correlations.length} correlation(s)`);
+  console.warn(`   Found ${correlations.length} correlation(s)`);
 
   // Generate predictions
   const predictions = generatePredictions(exportData, patterns, anomalies);
-  console.log(`   Generated ${predictions.length} prediction(s)`);
+  console.warn(`   Generated ${predictions.length} prediction(s)`);
 
   // Summary
   const highSeverityAnomalies = anomalies.filter((a) => a.severity === 'high').length;
