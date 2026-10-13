@@ -352,8 +352,8 @@ export function analyzeSecondaryMetrics(result: ABTestResult): Map<string, Varia
         const variantA = result.config.variants[i];
         const variantB = result.config.variants[j];
 
-        const metricsA = variantA.export.metrics[result.config.stateId];
-        const metricsB = variantB.export.metrics[result.config.stateId];
+        const metricsA = variantA!.export.metrics[result.config.stateId];
+        const metricsB = variantB!.export.metrics[result.config.stateId];
 
         if (!metricsA || !metricsB) continue;
 
