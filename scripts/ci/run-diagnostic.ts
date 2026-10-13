@@ -61,7 +61,13 @@ function runDiagnostic(): RoutingDiagnosticExport {
       },
       gates: {},
     },
-    states: [],
+    snapshots: {
+      A: null,
+      B: null,
+      C: null,
+      D: null,
+      E: null,
+    },
     metrics: {
       A: null,
       B: null,
@@ -70,6 +76,16 @@ function runDiagnostic(): RoutingDiagnosticExport {
       E: null,
     },
     transitions: [],
+    validations: [],
+    timings: {
+      snapshotCaptureMs: { A: 0, B: 0, C: 0, D: 0, E: 0 },
+      metricsEvalMs: { A: 0, B: 0, C: 0, D: 0, E: 0 },
+      compareMs: 0,
+      totalMs: 0,
+    },
+    unresolvedDiscrepancies: [],
+    captureErrors: [],
+    qualityLosses: [],
   };
 
   console.log('✅ Diagnostic completed');
