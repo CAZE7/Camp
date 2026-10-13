@@ -41,7 +41,7 @@
     "format:check": "prettier --check .",
     "audit:dead-code": "knip --no-progress",
     "diagnostic:generate-golden-master": "tsx scripts/ci/generate-golden-master.ts",
-    "diagnostic:run": "tsx scripts/ci/diagnostic-regression-check.ts"
+    "diagnostic:run": "tsx scripts/ci/run-diagnostic.ts"
   },
   "engines": {
     "node": ">=22.0.0"
