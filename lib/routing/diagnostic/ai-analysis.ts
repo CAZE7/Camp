@@ -349,8 +349,8 @@ function analyzeCorrelations(exportData: RoutingDiagnosticExport): CorrelationRe
     for (let j = i + 1; j < metricNames.length; j++) {
       const metric1 = metricNames[i];
       const metric2 = metricNames[j];
-      const values1 = metricsData.get(metric1)!;
-      const values2 = metricsData.get(metric2)!;
+      const values1 = metricsData.get(metric1!)!;
+      const values2 = metricsData.get(metric2!)!;
 
       if (values1.length === values2.length && values1.length >= 2) {
         const coefficient = calculateCorrelation(values1, values2);
