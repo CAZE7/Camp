@@ -279,7 +279,7 @@ export function runABTest(config: ABTestConfig): ABTestResult {
   }
 
   let winner: ABTestVariant | null = null;
-  let statisticalSignificance: ABTestResult['statisticalSignificance'] = 'insufficient-data';
+  let statisticalSignificance: ABTestResult['statisticalSignificance'];
 
   if (significantComparisons.length === 0) {
     statisticalSignificance = 'not-significant';
