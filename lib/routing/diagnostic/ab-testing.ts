@@ -251,7 +251,7 @@ export function runABTest(config: ABTestConfig): ABTestResult {
         confidence,
       });
 
-      console.warn(`   ${variantA.id} vs ${variantB.id}:`);
+      console.warn(`   ${variantA!.id} vs ${variantB!.id}:`);
       console.warn(`     ${config.primaryMetric}: ${valueA.toFixed(2)} vs ${valueB.toFixed(2)}`);
       console.warn(`     Delta: ${delta.toFixed(2)} (${deltaPercent.toFixed(1)}%)`);
       console.warn(
