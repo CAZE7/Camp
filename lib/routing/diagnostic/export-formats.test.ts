@@ -150,7 +150,7 @@ describe('Export Formats', () => {
       const result = exportDiagnostic(mockExportData, 'json');
       
       expect(() => JSON.parse(result)).not.toThrow();
-      const parsed = JSON.parse(result);
+      const parsed = JSON.parse(result) as RoutingDiagnosticExport;
       expect(parsed.meta.planId).toBe('test-plan');
     });
   });
