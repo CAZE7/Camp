@@ -459,7 +459,7 @@ export function performAIAnalysis(exportData: RoutingDiagnosticExport): AIAnalys
     predictions.length > 0
       ? predictions[0]!.recommendation
       : patterns.length > 0
-        ? patterns[0]!.recommendations[0] ?? null
+        ? (patterns[0]!.recommendations[0] ?? null)
         : null;
 
   return {
