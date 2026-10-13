@@ -120,4 +120,11 @@ export function getActiveDiagnosticSession(): RoutingDiagnosticSession | null {
   if (!diagnosticsEnabled) return null;
   return currentSession;
 }
+// ── Erweiterte Module ───────────────────────────────────────────────────────
+
 export * from './root-cause-analysis';
+export * from './extended-metrics';
+export * from './export-formats';
+export * from './realtime-diagnostic';
+export * from './ai-analysis';
+export * from './ab-testing';
