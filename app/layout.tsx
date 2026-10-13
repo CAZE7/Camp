@@ -81,17 +81,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="de" suppressHydrationWarning>
       <head>
-        {/* Google tag (gtag.js) */}
-        <script async src="https://www.googletagmanager.com/gtag/js?id=G-Q7E3XL4T34" />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `window.dataLayer = window.dataLayer || [];
-function gtag(){dataLayer.push(arguments);}
-gtag('js', new Date());
-
-gtag('config', 'G-Q7E3XL4T34');`,
-          }}
-        />
         {/* Dark Mode vor dem ersten Paint setzen (kein Flash): Dieselbe
             System-Politik wie usePlannerDarkMode / SystemThemeSync. */}
         <script
