@@ -284,6 +284,21 @@ export interface PlannerState {
   canUndo: boolean;
   canRedo: boolean;
   clearPlan: () => void;
+  /**
+   * Ersetzt den Planinhalt durch eine geprüfte Projektdatei (siehe
+   * `store/projectFile.ts`). Undo-fähig. Gibt `false` zurück, wenn der Import
+   * wegen fest verdrahteter Leitungen abgelehnt wurde (Meldung im Store).
+   */
+  importProject: (plan: ImportedProjectPlan) => boolean;
+}
+
+/** Der Teil einer geprüften Projektdatei, den der Store übernimmt. */
+export interface ImportedProjectPlan {
+  season: 'summer' | 'winter';
+  nodes: PlannerFlowNode[];
+  edges: Edge<CableEdgeData>[];
+  waterNodes: PlannerFlowNode[];
+  waterEdges: PlannerWaterEdge[];
 }
 
 /**

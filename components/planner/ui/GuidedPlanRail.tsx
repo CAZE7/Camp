@@ -5,6 +5,8 @@ import { Check, ChevronRight, Package, Plus, ScanSearch, SlidersHorizontal, Zap 
 import type { ValidationWarning } from '../hooks/useLiveValidation';
 import type { PlannerFlowNode } from '../../nodes/types';
 import { evaluateGuidedSteps, type GuidedEdgeRef, type GuidedStepAction } from '../utils/guidedSteps';
+import { useCableRouteFinalValidation } from '../../edges/utils/cableRouteStore';
+import type { VerificationVerdict } from '../../../lib/verify/types';
 
 /**
  * Geführte Planungsleiste — die sichtbare Antwort auf „Was kommt als Nächstes?".
@@ -26,6 +28,8 @@ export interface GuidedPlanRailProps {
   nodes: PlannerFlowNode[];
   edges: readonly GuidedEdgeRef[];
   warnings: ValidationWarning[];
+  /** Prüfbericht-Verdikt (Schritt „Ergebnis“). */
+  verdict: VerificationVerdict;
   /** Öffnet den Bauteilkatalog (mobile: Tab; Desktop: Spalte auf + Fokus Suche). */
   onOpenCatalog: () => void;
   onAutoWire: () => void;
@@ -45,13 +49,23 @@ export function GuidedPlanRail({
   nodes,
   edges,
   warnings,
+  verdict,
   onOpenCatalog,
   onAutoWire,
   onOpenWarnings,
   onOpenBom,
   onSwitchToExpertMode,
 }: GuidedPlanRailProps) {
-  const plan = evaluateGuidedSteps({ nodes, edges, warnings });
+  // Routing-Gate: nur `VALID` gilt als fehlerfrei. `undefined` heißt „noch kein
+  // Routing-Ergebnis“ und zählt ebenfalls als nicht bestätigt.
+  const routing = useCableRouteFinalValidation();
+  const plan = evaluateGuidedSteps({
+    nodes,
+    edges,
+    warnings,
+    verdict,
+    routingValid: routing?.status === 'VALID',
+  });
   const critical = warnings.filter((warning) => warning.type === 'critical').length;
   const hints = warnings.length - critical;
 
