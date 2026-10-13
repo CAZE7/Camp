@@ -120,3 +120,4 @@ export function getActiveDiagnosticSession(): RoutingDiagnosticSession | null {
   if (!diagnosticsEnabled) return null;
   return currentSession;
 }
+export * from './root-cause-analysis';
