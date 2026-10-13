@@ -1,5 +1,5 @@
-/**
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
+/**
  * A/B-Testing Framework für Routing-Varianten
  *
  * Systematischer Vergleich verschiedener Routing-Konfigurationen
