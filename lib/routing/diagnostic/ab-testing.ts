@@ -257,7 +257,7 @@ export function runABTest(config: ABTestConfig): ABTestResult {
       console.warn(
         `     p-value: ${test.pValue.toFixed(4)} (${isSignificant ? 'significant' : 'not significant'})`
       );
-      console.warn(`     Winner: ${winner === 'tie' ? 'Tie' : winner === 'A' ? variantA.id : variantB.id}`);
+      console.warn(`     Winner: ${winner === 'tie' ? 'Tie' : winner === 'A' ? variantA!.id : variantB!.id}`);
       console.warn('');
     }
   }
