@@ -366,8 +366,8 @@ export function analyzeSecondaryMetrics(result: ABTestResult): Map<string, Varia
         const deltaPercent = valueA !== 0 ? (delta / valueA) * 100 : 0;
 
         comparisons.push({
-          variantA: variantA.id,
-          variantB: variantB.id,
+          variantA: variantA!.id,
+          variantB: variantB!.id,
           metric: metric as string,
           valueA,
           valueB,
