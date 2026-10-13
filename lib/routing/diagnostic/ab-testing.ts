@@ -1,4 +1,5 @@
 /**
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
  * A/B-Testing Framework für Routing-Varianten
  *
  * Systematischer Vergleich verschiedener Routing-Konfigurationen
@@ -251,13 +252,13 @@ export function runABTest(config: ABTestConfig): ABTestResult {
         confidence,
       });
 
-      console.warn(`   ${variantA!.id} vs ${variantB!.id}:`);
+      console.warn(`   ${variantA.id} vs ${variantB.id}:`);
       console.warn(`     ${config.primaryMetric}: ${valueA.toFixed(2)} vs ${valueB.toFixed(2)}`);
       console.warn(`     Delta: ${delta.toFixed(2)} (${deltaPercent.toFixed(1)}%)`);
       console.warn(
         `     p-value: ${test.pValue.toFixed(4)} (${isSignificant ? 'significant' : 'not significant'})`
       );
-      console.warn(`     Winner: ${winner === 'tie' ? 'Tie' : winner === 'A' ? variantA!.id : variantB!.id}`);
+      console.warn(`     Winner: ${winner === 'tie' ? 'Tie' : winner === 'A' ? variantA.id : variantB.id}`);
       console.warn('');
     }
   }
@@ -352,8 +353,8 @@ export function analyzeSecondaryMetrics(result: ABTestResult): Map<string, Varia
         const variantA = result.config.variants[i];
         const variantB = result.config.variants[j];
 
-        const metricsA = variantA!.export.metrics[result.config.stateId];
-        const metricsB = variantB!.export.metrics[result.config.stateId];
+        const metricsA = variantA.export.metrics[result.config.stateId];
+        const metricsB = variantB.export.metrics[result.config.stateId];
 
         if (!metricsA || !metricsB) continue;
 
@@ -366,8 +367,8 @@ export function analyzeSecondaryMetrics(result: ABTestResult): Map<string, Varia
         const deltaPercent = valueA !== 0 ? (delta / valueA) * 100 : 0;
 
         comparisons.push({
-          variantA: variantA!.id,
-          variantB: variantB!.id,
+          variantA: variantA.id,
+          variantB: variantB.id,
           metric: metric as string,
           valueA,
           valueB,
