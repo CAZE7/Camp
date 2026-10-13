@@ -72,7 +72,7 @@ jobs:
 
       - name: Upload regression report
         if: always()
-        uses: actions/upload-artifact@ea165f8d6b5e732002289c598b8a00547c0b6f63 # v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: regression-report
           path: regression-report.md
