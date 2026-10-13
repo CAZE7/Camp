@@ -10,11 +10,7 @@
  * - Prädiktive Empfehlungen basierend auf historischen Daten
  */
 
-import type {
-  RoutingDiagnosticExport,
-  RoutingMetrics,
-  DiagnosticStateId,
-} from './types';
+import type { RoutingDiagnosticExport, RoutingMetrics, DiagnosticStateId } from './types';
 
 // ============================================================================
 // Types
