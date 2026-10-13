@@ -358,8 +358,8 @@ function analyzeCorrelations(exportData: RoutingDiagnosticExport): CorrelationRe
 
         if (interpretation !== 'none') {
           correlations.push({
-            metric1,
-            metric2,
+            metric1: metric1!,
+            metric2: metric2!,
             coefficient,
             interpretation,
             sampleSize: values1.length,
