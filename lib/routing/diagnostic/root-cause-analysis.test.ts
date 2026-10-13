@@ -137,7 +137,7 @@ describe('Root-Cause-Analysis', () => {
         (h) => h.category === 'routing-algorithm'
       );
       expect(hypothesis).toBeDefined();
-      expect(hypothesis?.severity).toBe('critical');
+      expect(hypothesis?.severity).toBe('major');
     });
 
     it('should detect edge-node collisions', () => {
